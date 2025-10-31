@@ -1,0 +1,662 @@
+---
+title: Plugin 생태계 (5가지 전문 플러그인)
+description: MoAI-ADK 플러그인 생태계 - 26개 전문 Agent와 SaaS 통합
+---
+
+# Plugin 생태계: 5가지 전문 플러그인
+
+MoAI-ADK의 확장성 계층입니다. 5개의 전문 플러그인으로 **풀스택 개발, DevOps 배포, 기술 블로깅**을 자동화합니다.
+
+## 개요
+
+**목적**: Alfred SuperAgent를 확장 → 도메인별 특화 기능 제공
+
+**생태계 규모**:
+- **5개 플러그인**: Backend, DevOps, Frontend, UI/UX, Technical Blog
+- **26개 Agent**: 전문가 수준의 협력 에이전트
+- **25개 Skills**: 도메인별 모범 사례 집합
+- **15개 Commands**: 플러그인별 사용자 진입점
+
+---
+
+## 플러그인 구조
+
+```
+Plugin Architecture (공통 패턴):
+┌────────────────────────────────────────┐
+│ Plugin.json (메타데이터)                 │
+├────────────────────────────────────────┤
+│ - name: 플러그인명                      │
+│ - version: 버전 (1.0.0-dev)             │
+│ - description: 한줄 설명                │
+│ - commands: [3-4개 엔트리 포인트]       │
+│ - agents: [3-7개 전문 Agent]           │
+│ - skills: [3-6개 도메인 Skill]         │
+│ - mcpServers: SaaS 통합 (옵션)         │
+└────────────────────────────────────────┘
+          ↓
+┌────────────────────────────────────────┐
+│ Commands/ (사용자 진입점)                │
+├────────────────────────────────────────┤
+│ - `/init-fastapi` - 프로젝트 생성       │
+│ - `/db-setup` - 데이터베이스 설정       │
+│ - `/resource-crud` - CRUD 자동 생성     │
+└────────────────────────────────────────┘
+          ↓
+┌────────────────────────────────────────┐
+│ Agents/ (전문가 협력)                   │
+├────────────────────────────────────────┤
+│ - 아키텍트 (Sonnet) - 전략 수립         │
+│ - 개발자 (Haiku) - 코드 구현            │
+│ - 전문가 (Haiku) - 특화 기능            │
+│ - 협력자 (Haiku) - 통합                 │
+└────────────────────────────────────────┘
+          ↓
+┌────────────────────────────────────────┐
+│ Skills/ (모범 사례)                     │
+├────────────────────────────────────────┤
+│ - 도메인 패턴                           │
+│ - 언어 모범 사례                        │
+│ - 프레임워크 가이드                     │
+│ - SaaS 서비스 통합                      │
+└────────────────────────────────────────┘
+```
+
+---
+
+## 1️⃣ Backend Plugin
+
+**용도**: FastAPI 백엔드 + SQLAlchemy ORM + Alembic 마이그레이션
+
+### 플러그인 정보
+
+| 항목 | 값 |
+|------|-----|
+| **ID** | `moai-plugin-backend` |
+| **Version** | 1.0.0-dev |
+| **Language** | Python 3.13+ |
+| **Framework** | FastAPI 0.120.2 |
+| **ORM** | SQLAlchemy 2.0 |
+| **Package Manager** | uv 0.9.3 |
+
+### 4개 Specialist Agents
+
+```
+1. API Designer (Sonnet)
+   - RESTful API 설계 및 스키마 정의
+   - OpenAPI 3.1 스펙 생성
+   - 엔드포인트 패턴 설계
+
+2. Backend Architect (Sonnet)
+   - 전체 아키텍처 설계
+   - 계층별 책임 분리
+   - 의존성 주입 패턴
+
+3. Database Expert (Haiku)
+   - SQLAlchemy 스키마 설계
+   - Alembic 마이그레이션 작성
+   - 성능 최적화
+
+4. FastAPI Specialist (Haiku)
+   - 엔드포인트 구현
+   - Pydantic 모델 생성
+   - 에러 처리 및 검증
+```
+
+### 4개 Skills
+
+- **moai-domain-backend** - Backend 아키텍처 패턴
+- **moai-lang-python** - Python 3.13+ 모범 사례
+- **moai-domain-database** - 데이터베이스 설계 최적화
+- **moai-lang-fastapi-patterns** - FastAPI 모범 사례
+
+### Commands
+
+```bash
+# FastAPI 프로젝트 초기화
+/init-fastapi
+
+# PostgreSQL 또는 MySQL 데이터베이스 설정
+/db-setup
+
+# SPEC에서 CRUD 엔드포인트 자동 생성
+/resource-crud
+```
+
+### 사용 예시
+
+```bash
+# 예제 1: 새 FastAPI 프로젝트 생성
+$ /init-fastapi "e-commerce API"
+  → FastAPI 프로젝트 구조 생성
+  → pyproject.toml + uv.lock 생성
+  → 기본 라우터 및 미들웨어 설정
+
+# 예제 2: User 리소스 CRUD 생성
+$ /resource-crud "User 리소스"
+  → models/user.py (SQLAlchemy)
+  → schemas/user.py (Pydantic)
+  → routes/users.py (FastAPI 엔드포인트)
+  → 테스트 케이스 자동 생성
+
+# 예제 3: 데이터베이스 마이그레이션
+$ /db-setup "PostgreSQL 초기 설정"
+  → Alembic 초기화
+  → 첫 번째 마이그레이션 생성
+  → 데이터베이스 연결 테스트
+```
+
+---
+
+## 2️⃣ DevOps Plugin
+
+**용도**: 다중 클라우드 배포 (Vercel, Supabase, Render)
+
+### 플러그인 정보
+
+| 항목 | 값 |
+|------|-----|
+| **ID** | `moai-plugin-devops` |
+| **Version** | 1.0.0-dev |
+| **Platforms** | Vercel, Supabase, Render |
+| **CI/CD** | GitHub Actions |
+| **Infrastructure** | Docker, Kubernetes 준비 |
+
+### 4개 Specialist Agents
+
+```
+1. Deployment Strategist (Sonnet)
+   - 배포 전략 및 파이프라인 설계
+   - 다중 환경 관리 (dev, staging, prod)
+   - CI/CD 자동화 계획
+
+2. Vercel Specialist (Haiku)
+   - Next.js 배포 최적화
+   - 엣지 함수 설정
+   - 환경변수 관리
+
+3. Supabase Specialist (Haiku)
+   - PostgreSQL 데이터베이스 설정
+   - 실시간 구독 구성
+   - 보안 정책 설정
+
+4. Render Specialist (Haiku)
+   - Python/Node.js 서비스 배포
+   - 환경 변수 및 시크릿 관리
+   - 배포 후 검증
+```
+
+### 6개 Skills
+
+- **moai-domain-devops** - DevOps 아키텍처
+- **moai-saas-vercel-mcp** - Vercel 플랫폼 통합
+- **moai-saas-supabase-mcp** - Supabase 통합
+- **moai-saas-render-mcp** - Render 배포
+- **moai-domain-backend** - 백엔드 배포 패턴
+- **moai-domain-frontend** - 프론트엔드 배포 패턴
+
+### Commands
+
+```bash
+# 배포 전략 수립
+/plan-deployment
+
+# Vercel에 배포
+/deploy-vercel
+
+# Supabase 데이터베이스 초기화
+/setup-supabase
+
+# Render에 백엔드 배포
+/deploy-render
+```
+
+### 배포 워크플로우
+
+```
+사용자: /deploy-vercel "Next.js 앱"
+       ↓
+Deployment Strategist:
+  - Vercel 프로젝트 설정 분석
+  - 환경변수 요구사항 식별
+  - CI/CD 파이프라인 생성
+       ↓
+Vercel Specialist:
+  - vercel.json 생성
+  - 환경변수 설정
+  - 배포 트리거
+       ↓
+자동 배포:
+  - GitHub에서 빌드
+  - Vercel CDN에 배포
+  - 미리보기 URL 생성
+  - 프로덕션 배포 (main)
+```
+
+### 지원하는 플랫폼
+
+| Platform | 용도 | 지원 기능 |
+|----------|------|---------|
+| **Vercel** | Frontend 배포 | Next.js, React, SvelteKit |
+| **Supabase** | Database + Auth | PostgreSQL, Real-time, Auth |
+| **Render** | 백엔드 & 크론 | Python, Node.js, Worker |
+
+---
+
+## 3️⃣ Frontend Plugin
+
+**용도**: Next.js + React + TailwindCSS 프론트엔드 개발
+
+### 플러그인 정보
+
+| 항목 | 값 |
+|------|-----|
+| **ID** | `moai-plugin-frontend` |
+| **Version** | 1.0.0-dev |
+| **Framework** | Next.js 15 |
+| **Language** | TypeScript 5.7 |
+| **Styling** | TailwindCSS v4 |
+| **UI Library** | shadcn/ui |
+
+### 4개 Specialist Agents
+
+```
+1. Design System Manager (Sonnet)
+   - 디자인 시스템 아키텍처
+   - 컴포넌트 라이브러리 설계
+   - 스타일 가이드 작성
+
+2. Frontend Architect (Sonnet)
+   - Next.js 프로젝트 구조 설계
+   - 라우팅 전략
+   - 상태 관리 패턴
+
+3. Performance Optimizer (Haiku)
+   - Core Web Vitals 최적화
+   - 이미지 최적화
+   - 번들 크기 감소
+
+4. TypeScript Specialist (Haiku)
+   - 타입 안전성 강화
+   - 런타임 검증
+   - 타입 정의 생성
+```
+
+### 5개 Skills
+
+- **moai-domain-frontend** - Frontend 아키텍처
+- **moai-lang-typescript** - TypeScript 모범 사례
+- **moai-design-shadcn-ui** - shadcn/ui 컴포넌트
+- **moai-design-tailwind-v4** - TailwindCSS v4
+- **moai-lang-nextjs-advanced** - Next.js 고급 패턴
+
+### Commands
+
+```bash
+# Next.js 프로젝트 초기화
+/init-nextjs
+
+# 컴포넌트 생성
+/generate-component
+
+# 페이지 생성 (라우팅 자동)
+/generate-page
+
+# 성능 분석 및 최적화
+/analyze-performance
+```
+
+### 사용 예시
+
+```bash
+# 예제 1: Dashboard 애플리케이션 생성
+$ /init-nextjs "Dashboard App"
+  → Next.js 15 프로젝트 구조
+  → TypeScript 설정 (strict mode)
+  → TailwindCSS 설정
+  → ESLint + Prettier
+
+# 예제 2: Button 컴포넌트 생성
+$ /generate-component "Button with icon"
+  → components/ui/button.tsx (shadcn/ui)
+  → variants 설정 (size, variant)
+  → 타입 정의
+  → Storybook 스토리
+
+# 예제 3: 사용자 대시보드 페이지 생성
+$ /generate-page "dashboard/users"
+  → app/dashboard/users/page.tsx
+  → DataTable 컴포넌트
+  → 필터링 및 검색
+  → 서버 액션 통합
+```
+
+---
+
+## 4️⃣ UI/UX Plugin
+
+**용도**: 디자인 시스템 및 프로토타이핑 자동화
+
+### 플러그인 정보
+
+| 항목 | 값 |
+|------|-----|
+| **ID** | `moai-plugin-uiux` |
+| **Version** | 1.0.0-dev |
+| **Design Tools** | Figma 통합 (MCP) |
+| **Focus** | Design System, Component |
+
+### 7개 Specialist Agents
+
+```
+1. Design System Architect (Sonnet)
+   - 디자인 토큰 정의
+   - 컴포넌트 시스템 설계
+   - 브랜딩 가이드
+
+2. Figma Designer (Haiku)
+   - Figma 프로토타입 생성
+   - 컴포넌트 라이브러리
+   - 디자인 규칙 시행
+
+3. CSS/HTML Generator (Haiku)
+   - 디자인을 HTML/CSS로 변환
+   - TailwindCSS 클래스 생성
+   - 반응형 디자인
+
+4. Design Documentation Writer (Haiku)
+   - 디자인 가이드 작성
+   - 사용 사례 및 패턴
+   - 접근성 고려사항
+
+5. Accessibility Specialist (Haiku)
+   - WCAG 2.1 AA 준수
+   - 색상 대비 검증
+   - 키보드 네비게이션
+
+6. Component Builder (Haiku)
+   - React 컴포넌트 생성
+   - Props 인터페이스
+   - 변형 관리
+
+7. Design-to-Code Orchestrator (Sonnet)
+   - Figma → Code 변환 조율
+   - 품질 검증
+   - 최종 통합
+```
+
+### Skills
+
+- 접근성 및 포함성
+- 색상 및 타이포그래피
+- 컴포넌트 패턴
+- 디자인 토큰 관리
+
+---
+
+## 5️⃣ Technical Blog Plugin
+
+**용도**: 기술 블로그 자동 작성 및 SEO 최적화
+
+### 플러그인 정보
+
+| 항목 | 값 |
+|------|-----|
+| **ID** | `moai-plugin-technical-blog` |
+| **Version** | 2.0.0-dev |
+| **Templates** | 5가지 (Tutorial, Case Study, How-to, Announcement, Comparison) |
+| **Features** | SEO, Code Examples, Images, llms.txt |
+
+### 7개 Specialist Agents
+
+```
+1. Technical Content Strategist (Sonnet)
+   - 콘텐츠 전략 수립
+   - 대상 청중 분석
+   - 구조 계획
+
+2. Technical Writer (Haiku)
+   - 블로그 포스트 작성
+   - 템플릿 기반 구조
+   - 명확한 설명
+
+3. Code Example Curator (Haiku)
+   - 실행 가능한 코드 예제 생성
+   - 다중 언어 지원
+   - 검증
+
+4. Visual Content Designer (Haiku)
+   - 이미지 프롬프트 생성
+   - 다이어그램 및 차트
+   - OG 이미지
+
+5. SEO & Discoverability Specialist (Haiku)
+   - 메타 태그 생성
+   - 해시태그 최적화
+   - llms.txt 업데이트
+   - AI 검색 가능성
+
+6. Markdown Formatter (Haiku)
+   - markdownlint 검증
+   - 자동 수정
+   - 품질 보증
+
+7. Template Workflow Coordinator (Sonnet)
+   - 템플릿 선택 자동화
+   - Agent 협력 조율
+   - 최종 조립
+```
+
+### 5가지 블로그 템플릿
+
+| Template | 용도 | 구조 |
+|----------|------|------|
+| **Tutorial** | 학습 가이드 | Intro → Prerequisites → 5 Steps → Conclusion |
+| **Case Study** | 성공 사례 | Problem → Approach → Results → Learnings |
+| **How-to** | 실용 가이드 | Goal → Prerequisites → Steps → Verification |
+| **Announcement** | 기능 발표 | What's New → Features → Getting Started |
+| **Comparison** | 비교 분석 | Overview → Options → Matrix → Conclusion |
+
+### 12개 Skills
+
+**컨텐츠**:
+- moai-content-blog-strategy - 블로그 전략
+- moai-content-blog-templates - 템플릿 작성
+- moai-content-markdown-best-practices - Markdown 모범 사례
+
+**코드**:
+- moai-content-code-examples - 코드 예제 생성
+- moai-content-image-generation - 이미지 프롬프트
+
+**SEO**:
+- moai-content-seo-optimization - SEO 최적화
+- moai-content-technical-seo - 기술 SEO
+- moai-content-meta-tags - 메타 태그
+- moai-content-hashtag-strategy - 해시태그 전략
+- moai-content-technical-writing - 기술 라이팅
+
+**플랫폼**:
+- moai-content-markdown-to-blog - Markdown → Blog
+- moai-content-llms-txt-management - llms.txt 관리
+
+### Commands
+
+```bash
+# 블로그 포스트 생성
+/blog-write "Next.js 15 초보자 튜토리얼"
+
+# 기존 포스트 최적화
+/blog-write "./posts/existing-post.md SEO 최적화"
+
+# 템플릿 목록 확인
+/blog-write "템플릿 목록"
+```
+
+### 사용 예시
+
+```bash
+# 예제 1: Tutorial 자동 생성
+$ /blog-write "Next.js 15 초보자 튜토리얼"
+  → Template 감지: Tutorial
+  → Content Strategist: 구조 계획
+  → Writer + Code Curator + Designer 병렬 실행 (3x 빠름)
+  → Markdown Formatter: 검증 및 수정
+  → Output: ./posts/nextjs-15-tutorial.md
+    ✅ YAML 프론트매터 (메타데이터)
+    ✅ 5개 코드 예제 (TypeScript 검증)
+    ✅ 이미지 프롬프트 (AI 생성용)
+    ✅ SEO 최적화 (메타 태그, OG)
+    ✅ Markdown 검증 (lint 통과)
+
+# 예제 2: Case Study 작성
+$ /blog-write "마이그레이션으로 성능 50% 향상"
+  → Template 감지: Case Study
+  → 구조: Problem → Approach → Results → Learnings
+  → Metrics & 정량적 데이터 포함
+  → 기술 결정의 "왜" 설명
+
+# 예제 3: Comparison 분석
+$ /blog-write "React vs Vue 상세 비교"
+  → Template 감지: Comparison
+  → 6+ 차원에서 비교 (성능, 생태계, 학습곡선 등)
+  → Decision Matrix 자동 생성
+  → 마이그레이션 경로 제시
+```
+
+### 병렬 실행 모델
+
+```
+Command Input: /blog-write "Next.js 튜토리얼"
+               ↓
+[Sequential] Template Coordinator
+  - 템플릿 감지: Tutorial
+  - 난이도 추론: Beginner
+  - 주제 추출: "Next.js 15"
+  - 실행 계획 생성
+               ↓
+[Sequential] Content Strategist
+  - 대상 청중 분석
+  - 학습 목표 정의
+  - 콘텐츠 구조
+               ↓
+[PARALLEL] 4개 Agent 동시 실행 (3배 빠름)
+  ├─ Writer: 콘텐츠 작성
+  ├─ Code Curator: 5개 코드 예제
+  ├─ SEO Specialist: 메타 태그, 해시태그
+  └─ Visual Designer: 이미지 프롬프트
+               ↓
+[Sequential] Markdown Formatter
+  - Lint 검증
+  - 자동 수정
+  - 최종 품질 검증
+               ↓
+Output: ./posts/nextjs-15-tutorial.md ✅
+```
+
+---
+
+## 플러그인 설치 및 사용
+
+### 플러그인 설치
+
+```bash
+# 모든 플러그인 설치
+$ /plugin install moai-plugin-backend moai-plugin-devops moai-plugin-frontend moai-plugin-uiux moai-plugin-technical-blog
+
+# 개별 설치
+$ /plugin install moai-plugin-backend
+$ /plugin install moai-plugin-devops
+```
+
+### 플러그인 확인
+
+```bash
+$ /plugin list
+
+# 출력
+📦 Installed Plugins:
+  ✅ moai-plugin-backend (v1.0.0-dev)
+  ✅ moai-plugin-devops (v1.0.0-dev)
+  ✅ moai-plugin-frontend (v1.0.0-dev)
+  ✅ moai-plugin-uiux (v1.0.0-dev)
+  ✅ moai-plugin-technical-blog (v2.0.0-dev)
+```
+
+---
+
+## 플러그인 비교 매트릭스
+
+| 기능 | Backend | DevOps | Frontend | UI/UX | Blog |
+|------|---------|--------|----------|-------|------|
+| **Agents** | 4 | 4 | 4 | 7 | 7 |
+| **Skills** | 4 | 6 | 5 | 4 | 12 |
+| **Commands** | 3 | 4 | 4 | 3 | 1 |
+| **Framework** | FastAPI | Multi | Next.js | Design | Markdown |
+| **모델 조합** | Sonnet×2 + Haiku×2 | Sonnet×2 + Haiku×2 | Sonnet×2 + Haiku×2 | Sonnet×2 + Haiku×5 | Sonnet×3 + Haiku×4 |
+| **병렬 실행** | ❌ | ❌ | ❌ | ❌ | ✅ (4 Agents) |
+| **SaaS 통합** | ❌ | ✅ (3개) | ❌ | ✅ (Figma) | ❌ |
+
+---
+
+## 통합 워크플로우 예시
+
+### 시나리오: 완전한 풀스택 애플리케이션 구축
+
+```
+Step 1: 백엔드 초기화 (Backend Plugin)
+$ /init-fastapi "E-commerce API"
+  → FastAPI + SQLAlchemy + Alembic 설정
+
+Step 2: 데이터베이스 설정 (Backend + DevOps Plugin)
+$ /db-setup "PostgreSQL"
+  → Supabase와 통합
+$ /setup-supabase
+  → 데이터베이스 초기화
+
+Step 3: CRUD API 생성 (Backend Plugin)
+$ /resource-crud "Product"
+  → Product 모델, 스키마, 엔드포인트 자동 생성
+
+Step 4: 프론트엔드 생성 (Frontend Plugin)
+$ /init-nextjs "E-commerce Dashboard"
+  → Next.js 15 + TypeScript + TailwindCSS
+
+Step 5: 컴포넌트 설계 (UI/UX Plugin)
+$ /design-system "E-commerce Theme"
+  → 색상, 타이포그래피, 컴포넌트 시스템
+
+Step 6: 페이지 생성 (Frontend Plugin)
+$ /generate-page "products/list"
+  → Product DataTable 자동 생성
+  → 백엔드 API 통합
+
+Step 7: Vercel 배포 (DevOps Plugin)
+$ /deploy-vercel "E-commerce Dashboard"
+  → 자동 배포 파이프라인
+
+Step 8: 기술 블로그 작성 (Blog Plugin)
+$ /blog-write "E-commerce 구축 가이드"
+  → Tutorial 템플릿
+  → 7개 Specialist Agent 병렬 실행
+  → 완성된 포스트 + SEO 최적화
+```
+
+---
+
+## 다음 단계
+
+플러그인 생태계를 이해했다면:
+
+1. **플러그인 설치**: `/plugin install <plugin-id>` 실행
+2. **첫 번째 프로젝트 생성**: 플러그인 명령어 사용
+3. **SPEC과 통합**: 플러그인과 Alfred 워크플로우 연계
+4. **커스터마이징**: 플러그인 Agent 및 Skill 확장
+
+---
+
+## 참고 자료
+
+- [Alfred Workflow](/ko/cli/alfred-1-plan) - 플러그인과 함께 사용
+- [Agent 시스템](/ko/agents/overview) - 플러그인 Agent 이해
+- [Skills 시스템](/ko/skills/overview) - 도메인별 Skill 활용
+- [GitHub Marketplace](https://github.com/moai-adk/moai-alfred-marketplace) - 플러그인 소스 코드
