@@ -6,11 +6,11 @@
     "name": "GOOS"
   },
   "skills": [
-    "./skills/moai-design-figma-mcp.md",
-    "./skills/moai-design-figma-to-code.md",
-    "./skills/moai-design-shadcn-ui.md",
-    "./skills/moai-design-tailwind-v4.md",
-    "./skills/moai-domain-frontend.md",
-    "./skills/moai-essentials-review.md"
+    "skills/moai-design-figma-mcp.md",
+    "skills/moai-design-figma-to-code.md",
+    "skills/moai-design-shadcn-ui.md",
+    "skills/moai-design-tailwind-v4.md",
+    "skills/moai-lang-tailwind-shadcn.md",
+    "skills/moai-domain-frontend.md"
   ]
 }

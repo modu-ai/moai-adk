@@ -6,16 +6,17 @@
     "name": "GOOS"
   },
   "skills": [
-    "./skills/moai-content-blog-strategy.md",
-    "./skills/moai-content-markdown-to-blog.md",
-    "./skills/moai-content-seo-optimization.md",
-    "./skills/moai-content-image-generation.md",
-    "./skills/moai-content-llms-txt-management.md",
-    "./skills/moai-content-technical-writing.md",
-    "./skills/moai-content-technical-seo.md",
-    "./skills/moai-content-markdown-best-practices.md",
-    "./skills/moai-content-code-examples.md",
-    "./skills/moai-content-hashtag-strategy.md",
-    "./skills/moai-content-meta-tags.md"
+    "skills/moai-content-blog-strategy.md",
+    "skills/moai-content-blog-templates.md",
+    "skills/moai-content-code-examples.md",
+    "skills/moai-content-hashtag-strategy.md",
+    "skills/moai-content-image-generation.md",
+    "skills/moai-content-llms-txt-management.md",
+    "skills/moai-content-markdown-best-practices.md",
+    "skills/moai-content-markdown-to-blog.md",
+    "skills/moai-content-meta-tags.md",
+    "skills/moai-content-seo-optimization.md",
+    "skills/moai-content-technical-seo.md",
+    "skills/moai-content-technical-writing.md"
   ]
 }

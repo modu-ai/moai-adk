@@ -6,10 +6,10 @@
     "name": "GOOS"
   },
   "skills": [
-    "./skills/moai-framework-nextjs-advanced.md",
-    "./skills/moai-framework-react-19.md",
-    "./skills/moai-design-shadcn-ui.md",
-    "./skills/moai-domain-frontend.md",
-    "./skills/moai-testing-playwright-mcp.md"
+    "skills/moai-lang-nextjs-advanced.md",
+    "skills/moai-lang-typescript.md",
+    "skills/moai-design-shadcn-ui.md",
+    "skills/moai-design-tailwind-v4.md",
+    "skills/moai-domain-frontend.md"
   ]
 }

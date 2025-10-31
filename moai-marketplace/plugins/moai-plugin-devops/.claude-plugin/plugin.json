@@ -6,11 +6,11 @@
     "name": "GOOS"
   },
   "skills": [
-    "./skills/moai-saas-vercel-mcp.md",
-    "./skills/moai-saas-supabase-mcp.md",
-    "./skills/moai-saas-render-mcp.md",
-    "./skills/moai-domain-backend.md",
-    "./skills/moai-domain-frontend.md",
-    "./skills/moai-domain-devops.md"
+    "skills/moai-saas-vercel-mcp.md",
+    "skills/moai-saas-supabase-mcp.md",
+    "skills/moai-saas-render-mcp.md",
+    "skills/moai-domain-backend.md",
+    "skills/moai-domain-frontend.md",
+    "skills/moai-domain-devops.md"
   ]
 }

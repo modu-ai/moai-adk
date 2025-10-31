@@ -3,12 +3,12 @@
   "description": "FastAPI 0.120.2 + uv scaffolding - SQLAlchemy 2.0, Alembic migrations, Pydantic 2.12",
   "version": "1.0.0-dev",
   "author": {
-    "name": "GOOS🪿"
+    "name": "GOOS"
   },
   "skills": [
-    "./skills/moai-framework-fastapi-patterns.md",
-    "./skills/moai-lang-python.md",
-    "./skills/moai-domain-backend.md",
-    "./skills/moai-domain-database.md"
+    "skills/moai-lang-fastapi-patterns.md",
+    "skills/moai-lang-python.md",
+    "skills/moai-domain-backend.md",
+    "skills/moai-domain-database.md"
   ]
 }
