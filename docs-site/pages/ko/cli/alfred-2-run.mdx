@@ -1,30 +1,495 @@
 ---
-title: /alfred:2-run
-description: /alfred:2-run 가이드
+title: /alfred:2-run - TDD 구현
+description: MoAI-ADK TDD 자동 구현 명령어 (RED-GREEN-REFACTOR)
 ---
 
-# /alfred:2-run
+# /alfred:2-run - TDD 구현
 
-이 페이지는 현재 작성 중입니다.
+TDD 구현은 MoAI-ADK 워크플로우의 세 번째 단계입니다. SPEC을 기반으로 RED-GREEN-REFACTOR 사이클을 자동으로 수행하여 코드를 구현합니다.
 
 ## 개요
 
-/alfred:2-run에 대한 자세한 내용은 곧 업데이트될 예정입니다.
+**목적**: SPEC을 바탕으로 RED → GREEN → REFACTOR TDD 사이클 자동 수행
 
-## 주요 특징
+**실행 위치**: 프로젝트 루트 디렉토리
 
-- 특징 1
-- 특징 2
-- 특징 3
+**예상 시간**: 15-30분 (복잡도에 따라 변동)
 
-## 사용법
+**입력**: SPEC ID (예: `SPEC-AUTH-001`)
+
+**출력**: 코드 + 테스트 + 문서 + Git 커밋
+
+---
+
+## 기본 사용법
+
+### 기본 형식
+
+Claude Code에서:
+
+```
+/alfred:2-run SPEC-AUTH-001
+```
+
+### 옵션 포함
+
+```
+/alfred:2-run SPEC-AUTH-001 --phase test        # RED 단계만 실행
+/alfred:2-run SPEC-AUTH-001 --phase code        # GREEN 단계만 실행
+/alfred:2-run SPEC-AUTH-001 --phase refactor    # REFACTOR 단계만 실행
+/alfred:2-run SPEC-AUTH-001 --interactive       # 대화형 모드
+```
+
+---
+
+## TDD 사이클 상세
+
+### Phase 1: RED - 테스트 작성
+
+**목표**: 요구사항을 검증하는 **실패하는 테스트** 작성
+
+**실행 내용**:
+
+#### Step 1: 테스트 파일 생성
+
+```python
+# tests/test_auth.py
+import pytest
+from src.auth import login, LoginResult
+
+class TestLogin:
+    """사용자 로그인 관련 테스트"""
+
+    def test_login_with_valid_credentials(self):
+        """올바른 이메일과 비밀번호로 로그인 성공"""
+        # Given: 유효한 사용자가 존재
+        user_email = "user@example.com"
+        user_password = "secure123"
+
+        # When: 로그인 시도
+        result = login(email=user_email, password=user_password)
+
+        # Then: 토큰 반환 확인
+        assert result.status == "authenticated"
+        assert result.token is not None
+        assert result.token_type == "Bearer"
+        assert result.expires_in == 86400  # 24 hours
+
+    def test_login_with_wrong_password(self):
+        """잘못된 비밀번호로 로그인 실패"""
+        result = login(email="user@example.com", password="wrong123")
+        assert result.status == "error"
+        assert result.error_code == "INVALID_CREDENTIALS"
+
+    def test_login_with_nonexistent_user(self):
+        """존재하지 않는 사용자로 로그인 실패"""
+        result = login(email="nonexistent@example.com", password="any123")
+        assert result.status == "error"
+        assert result.error_code == "USER_NOT_FOUND"
+```
+
+#### Step 2: 테스트 실행 (RED - 실패)
 
 ```bash
-# 예제 명령어
-# 상세 사용법은 곧 업데이트됩니다
+$ pytest tests/test_auth.py -v
+
+FAILED tests/test_auth.py::TestLogin::test_login_with_valid_credentials
+  ModuleNotFoundError: No module named 'src.auth'
 ```
+
+**상태**: ❌ RED - 테스트 실패 (예상된 상황)
+
+**Git 커밋**:
+```bash
+git add tests/test_auth.py
+git commit -m "test(RED): Add login function tests"
+```
+
+---
+
+### Phase 2: GREEN - 최소 구현
+
+**목표**: 테스트를 **통과하는 최소한의 코드** 작성
+
+**실행 내용**:
+
+#### Step 1: 구현 코드 작성
+
+```python
+# src/auth.py
+from dataclasses import dataclass
+from typing import Optional
+import bcrypt
+from datetime import datetime, timedelta
+import jwt
+
+@dataclass
+class LoginResult:
+    """로그인 결과"""
+    status: str  # "authenticated" or "error"
+    token: Optional[str] = None
+    token_type: str = "Bearer"
+    expires_in: int = 86400  # 24 hours
+    error_code: Optional[str] = None
+
+# 임시 사용자 DB (프로토타입)
+USERS_DB = {
+    "user@example.com": bcrypt.hashpw(b"secure123", bcrypt.gensalt()).decode()
+}
+
+def login(email: str, password: str) -> LoginResult:
+    """사용자 로그인"""
+
+    # 사용자 존재 확인
+    if email not in USERS_DB:
+        return LoginResult(
+            status="error",
+            error_code="USER_NOT_FOUND"
+        )
+
+    # 비밀번호 검증
+    hashed_password = USERS_DB[email]
+    if not bcrypt.checkpw(password.encode(), hashed_password.encode()):
+        return LoginResult(
+            status="error",
+            error_code="INVALID_CREDENTIALS"
+        )
+
+    # 토큰 생성
+    payload = {
+        "email": email,
+        "exp": datetime.utcnow() + timedelta(hours=24)
+    }
+    token = jwt.encode(payload, "secret-key", algorithm="HS256")
+
+    return LoginResult(
+        status="authenticated",
+        token=token,
+        expires_in=86400
+    )
+```
+
+#### Step 2: 테스트 실행 (GREEN - 성공)
+
+```bash
+$ pytest tests/test_auth.py -v
+
+PASSED tests/test_auth.py::TestLogin::test_login_with_valid_credentials
+PASSED tests/test_auth.py::TestLogin::test_login_with_wrong_password
+PASSED tests/test_auth.py::TestLogin::test_login_with_nonexistent_user
+
+===================== 3 passed in 0.12s =====================
+```
+
+**상태**: ✅ GREEN - 모든 테스트 통과
+
+**Git 커밋**:
+```bash
+git add src/auth.py
+git commit -m "feat(GREEN): Implement login function with JWT tokens"
+```
+
+---
+
+### Phase 3: REFACTOR - 코드 개선
+
+**목표**: 코드 품질 개선, 보안 강화, 문서화
+
+**실행 내용**:
+
+#### Step 1: 보안 개선
+
+```python
+# src/auth.py (개선된 버전)
+from dataclasses import dataclass
+from typing import Optional, Dict
+import bcrypt
+from datetime import datetime, timedelta
+import jwt
+import logging
+from functools import lru_cache
+
+logger = logging.getLogger(__name__)
+
+SECRET_KEY = "your-secret-key-from-env"  # 환경 변수에서 읽기
+TOKEN_EXPIRATION_HOURS = 24
+
+@dataclass
+class LoginResult:
+    """로그인 결과
+
+    Attributes:
+        status: 로그인 상태 ("authenticated" or "error")
+        token: JWT 토큰 (성공 시에만 포함)
+        token_type: 토큰 타입 (기본값: "Bearer")
+        expires_in: 토큰 만료시간 (초 단위)
+        error_code: 에러 코드 (실패 시에만 포함)
+    """
+    status: str
+    token: Optional[str] = None
+    token_type: str = "Bearer"
+    expires_in: int = 86400
+    error_code: Optional[str] = None
+
+class UserRepository:
+    """사용자 저장소"""
+
+    @staticmethod
+    def find_by_email(email: str) -> Optional[Dict]:
+        """이메일로 사용자 조회"""
+        # 실제 DB에서 조회
+        return None
+
+    @staticmethod
+    def verify_password(stored_hash: str, password: str) -> bool:
+        """비밀번호 검증"""
+        try:
+            return bcrypt.checkpw(
+                password.encode('utf-8'),
+                stored_hash.encode('utf-8')
+            )
+        except (ValueError, TypeError) as e:
+            logger.error(f"비밀번호 검증 실패: {e}")
+            return False
+
+class AuthService:
+    """인증 서비스"""
+
+    @staticmethod
+    def login(email: str, password: str) -> LoginResult:
+        """사용자 로그인
+
+        Args:
+            email: 사용자 이메일
+            password: 사용자 비밀번호
+
+        Returns:
+            LoginResult: 로그인 결과
+
+        Raises:
+            ValueError: 이메일 형식이 올바르지 않음
+        """
+        # 입력 검증
+        if not email or not password:
+            logger.warning("빈 이메일 또는 비밀번호")
+            return LoginResult(
+                status="error",
+                error_code="INVALID_INPUT"
+            )
+
+        # 사용자 조회
+        user = UserRepository.find_by_email(email)
+        if not user:
+            logger.warning(f"사용자 없음: {email}")
+            return LoginResult(
+                status="error",
+                error_code="USER_NOT_FOUND"
+            )
+
+        # 비밀번호 검증
+        if not UserRepository.verify_password(user['password_hash'], password):
+            logger.warning(f"비밀번호 검증 실패: {email}")
+            return LoginResult(
+                status="error",
+                error_code="INVALID_CREDENTIALS"
+            )
+
+        # 토큰 생성
+        token = AuthService._create_token(email)
+
+        logger.info(f"로그인 성공: {email}")
+        return LoginResult(
+            status="authenticated",
+            token=token,
+            expires_in=TOKEN_EXPIRATION_HOURS * 3600
+        )
+
+    @staticmethod
+    def _create_token(email: str) -> str:
+        """JWT 토큰 생성"""
+        payload = {
+            "email": email,
+            "iat": datetime.utcnow(),
+            "exp": datetime.utcnow() + timedelta(hours=TOKEN_EXPIRATION_HOURS)
+        }
+        return jwt.encode(payload, SECRET_KEY, algorithm="HS256")
+```
+
+#### Step 2: 테스트 커버리지 확인
+
+```bash
+$ pytest tests/test_auth.py --cov=src/auth --cov-report=html
+
+===================== 85% coverage =====================
+```
+
+**상태**: ✅ 85% 이상 커버리지 달성
+
+#### Step 3: 코드 스타일 검사
+
+```bash
+$ ruff check src/auth.py
+$ mypy src/auth.py --strict
+
+===================== 0 issues found =====================
+```
+
+**상태**: ✅ 코드 품질 검사 통과
+
+#### Step 4: 문서화
+
+Alfred가 자동으로 생성하는 `.moai/docs/auth.md`:
+
+```markdown
+# 인증 기능
+
+## 개요
+사용자 이메일과 비밀번호를 이용한 안전한 로그인 기능입니다.
+
+## 모듈 구조
+
+### AuthService
+- `login(email, password)`: 사용자 로그인
+- `_create_token(email)`: JWT 토큰 생성
+
+### LoginResult
+- `status`: 로그인 상태
+- `token`: JWT 토큰
+- `expires_in`: 만료 시간
+
+## 사용 예시
+
+```python
+from src.auth import AuthService
+
+result = AuthService.login("user@example.com", "password123")
+if result.status == "authenticated":
+    print(f"Token: {result.token}")
+else:
+    print(f"Error: {result.error_code}")
+```
+
+## 보안 고려사항
+
+- ✅ 비밀번호는 bcrypt로 해싱됨
+- ✅ 토큰은 HS256으로 서명됨
+- ✅ 모든 입력은 검증됨
+- ✅ 민감한 정보는 로그에 노출되지 않음
+```
+
+#### Step 5: Git 커밋 (REFACTOR)
+
+```bash
+git add src/auth.py tests/test_auth.py .moai/docs/auth.md
+git commit -m "refactor(REFACTOR): Improve code quality and add documentation
+
+- Add proper error handling and validation
+- Implement AuthService class with dependency injection
+- Add comprehensive docstrings (Google style)
+- Improve logging for debugging
+- Achieve 85%+ test coverage"
+```
+
+---
+
+## TDD 사이클 요약
+
+| 단계 | 목표 | 산출물 | Git 커밋 |
+|------|------|--------|---------|
+| **RED** | 실패하는 테스트 작성 | `tests/` | `test(RED): ...` |
+| **GREEN** | 최소 구현으로 테스트 통과 | `src/` | `feat(GREEN): ...` |
+| **REFACTOR** | 코드 품질 개선 | `src/` + `docs/` | `refactor(REFACTOR): ...` |
+
+---
+
+## 자동 검증 단계
+
+### ✅ 테스트 실행
+
+```bash
+$ pytest --cov=src --cov-report=term-missing
+
+✓ 85% 이상 커버리지 달성
+```
+
+### ✅ 코드 품질 검사
+
+```bash
+$ ruff check src/
+$ mypy src/ --strict
+$ bandit -r src/
+
+✓ 모든 검사 통과
+```
+
+### ✅ TAG 검증
+
+```bash
+$ moai validate
+
+✓ TEST → CODE → DOC 연결됨
+```
+
+### ✅ Git 커밋 검증
+
+```bash
+$ git log --oneline -3
+
+4c3b2a1 refactor(REFACTOR): Improve code quality and documentation
+3d2c1b0 feat(GREEN): Implement login function with JWT tokens
+2e1d0c9 test(RED): Add login function tests
+```
+
+---
+
+## 문제 해결
+
+### Q: 테스트가 실패하면?
+
+**A**:
+```bash
+# 테스트 디버그
+pytest tests/test_auth.py -vv --tb=short
+
+# 특정 테스트만 실행
+pytest tests/test_auth.py::TestLogin::test_login_with_valid_credentials -vv
+```
+
+### Q: 커버리지가 85% 미만이면?
+
+**A**:
+```bash
+# 커버리지 리포트 확인
+pytest --cov=src --cov-report=html
+open htmlcov/index.html
+
+# 누락된 라인 확인 및 추가 테스트 작성
+```
+
+### Q: 타입 검사 오류가 발생하면?
+
+**A**:
+```bash
+# mypy 오류 확인
+mypy src/auth.py --strict
+
+# 타입 힌팅 추가 또는 # type: ignore 주석 사용
+```
+
+---
 
 ## 다음 단계
 
-- [홈으로](/ko)
-- [문서 개요](/ko/introduction/overview)
+구현 완료 후:
+
+1. **[/alfred:3-sync 실행](/ko/cli/alfred-3-sync)** - 문서 동기화 및 PR 생성
+2. **[코드 리뷰](/ko/workflow/overview)** - 팀원 리뷰
+3. **[배포](/ko/workflow/overview)** - main 브랜치에 병합
+
+---
+
+## 참고 자료
+
+- [TDD 개념](/ko/concepts/spec-first-tdd) - Test-Driven Development
+- [TRUST 5 품질](/ko/introduction/overview) - 코드 품질 기준
+- [Git 워크플로우](/ko/config/git-strategy) - Git 전략
