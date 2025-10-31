@@ -1,15 +1,73 @@
 {
+  "id": "moai-plugin-frontend",
   "name": "frontend-plugin",
   "description": "Next.js 16 + React 19.2 scaffolding with Playwright-MCP integration for E2E testing",
   "version": "1.0.0-dev",
+  "status": "development",
+  "category": "frontend",
+  "minClaudeCodeVersion": "1.0.0",
   "author": {
     "name": "GOOS"
   },
+  "repository": "https://github.com/moai-adk/moai-marketplace/tree/main/plugins/moai-plugin-frontend",
+  "license": "MIT",
+  "tags": [
+    "frontend",
+    "nextjs",
+    "react",
+    "typescript",
+    "shadcn",
+    "tailwind",
+    "testing"
+  ],
+  "agents": [
+    {
+      "name": "frontend-architect",
+      "path": "agents/frontend-architect.md",
+      "type": "specialist",
+      "description": "Next.js architecture and component structure design"
+    },
+    {
+      "name": "design-system-manager",
+      "path": "agents/design-system-manager.md",
+      "type": "specialist",
+      "description": "Design system implementation with shadcn/ui and Tailwind"
+    },
+    {
+      "name": "typescript-specialist",
+      "path": "agents/typescript-specialist.md",
+      "type": "specialist",
+      "description": "TypeScript strict typing and advanced patterns"
+    },
+    {
+      "name": "performance-optimizer",
+      "path": "agents/performance-optimizer.md",
+      "type": "specialist",
+      "description": "Frontend performance optimization and Core Web Vitals"
+    }
+  ],
   "skills": [
     "skills/moai-lang-nextjs-advanced.md",
     "skills/moai-lang-typescript.md",
     "skills/moai-design-shadcn-ui.md",
     "skills/moai-design-tailwind-v4.md",
     "skills/moai-domain-frontend.md"
-  ]
+  ],
+  "permissions": {
+    "allowedTools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Bash(npm:*)",
+      "Bash(npx:*)",
+      "Bash(node:*)",
+      "Bash(git:*)",
+      "Task"
+    ],
+    "deniedTools": []
+  },
+  "installCommand": "/plugin install moai-plugin-frontend",
+  "releaseNotes": "Initial 1.0.0-dev release with 4 specialist agents for Next.js/React development and 5 skills covering framework patterns, TypeScript, design systems, and styling"
 }

@@ -1,10 +1,69 @@
 {
+  "id": "moai-plugin-uiux",
   "name": "uiux-plugin",
   "description": "Design automation with Figma MCP - 7 agents, design-to-code conversion, shadcn/ui components",
   "version": "1.0.0-dev",
+  "status": "development",
+  "category": "uiux",
+  "minClaudeCodeVersion": "1.0.0",
   "author": {
     "name": "GOOS"
   },
+  "repository": "https://github.com/moai-adk/moai-marketplace/tree/main/plugins/moai-plugin-uiux",
+  "license": "MIT",
+  "tags": [
+    "design",
+    "uiux",
+    "figma",
+    "design-to-code",
+    "shadcn",
+    "tailwind",
+    "accessibility"
+  ],
+  "agents": [
+    {
+      "name": "figma-designer",
+      "path": "agents/figma-designer.md",
+      "type": "specialist",
+      "description": "Figma design collaboration and API integration"
+    },
+    {
+      "name": "design-strategist",
+      "path": "agents/design-strategist.md",
+      "type": "specialist",
+      "description": "Design system strategy and component architecture"
+    },
+    {
+      "name": "design-system-architect",
+      "path": "agents/design-system-architect.md",
+      "type": "specialist",
+      "description": "Design system establishment and governance"
+    },
+    {
+      "name": "component-builder",
+      "path": "agents/component-builder.md",
+      "type": "specialist",
+      "description": "Reusable component development and customization"
+    },
+    {
+      "name": "css-html-generator",
+      "path": "agents/css-html-generator.md",
+      "type": "specialist",
+      "description": "CSS and HTML generation from design specifications"
+    },
+    {
+      "name": "accessibility-specialist",
+      "path": "agents/accessibility-specialist.md",
+      "type": "specialist",
+      "description": "WCAG compliance and accessibility auditing"
+    },
+    {
+      "name": "design-documentation-writer",
+      "path": "agents/design-documentation-writer.md",
+      "type": "specialist",
+      "description": "Design documentation and component libraries"
+    }
+  ],
   "skills": [
     "skills/moai-design-figma-mcp.md",
     "skills/moai-design-figma-to-code.md",
@@ -12,5 +71,28 @@
     "skills/moai-design-tailwind-v4.md",
     "skills/moai-lang-tailwind-shadcn.md",
     "skills/moai-domain-frontend.md"
-  ]
+  ],
+  "mcpServers": [
+    {
+      "name": "figma",
+      "type": "optional",
+      "description": "Figma design file access and API integration"
+    }
+  ],
+  "permissions": {
+    "allowedTools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Bash(npm:*)",
+      "Bash(npx:*)",
+      "Bash(git:*)",
+      "Task"
+    ],
+    "deniedTools": []
+  },
+  "installCommand": "/plugin install moai-plugin-uiux",
+  "releaseNotes": "Initial 1.0.0-dev release with 7 specialist agents for design automation and 6 skills covering Figma integration, design-to-code conversion, component development, and accessibility"
 }
