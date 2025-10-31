@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "name": "backend-plugin",
+  "display_name": "FastAPI Backend Development",
+  "version": "1.0.0",
+  "description": "FastAPI 0.120.2 + uv scaffolding - SQLAlchemy 2.0 ORM, Alembic database migrations, async support",
+  "author": {
+    "name": "moai-adk",
+    "url": "https://adk.mo.ai.kr"
+  },
+  "capabilities": [
+    "FastAPI scaffolding",
+    "SQLAlchemy ORM integration",
+    "Alembic migrations",
+    "Async/await patterns",
+    "Database schema design"
+  ],
+  "entry_point": "backend_plugin",
+  "supported_languages": ["python"],
+  "min_version": "1.0.0"
+}
