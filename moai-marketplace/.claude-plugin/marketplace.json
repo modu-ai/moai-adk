@@ -1,48 +1,9 @@
 {
-  "schema_version": "1.0",
   "name": "moai-marketplace",
-  "display_name": "MoAI Marketplace",
+  "version": "1.0.0",
   "description": "Official MoAI-ADK plugin marketplace - domain-specialized agents for full-stack development",
-  "owner": {
+  "author": {
     "name": "moai-adk",
     "url": "https://adk.mo.ai.kr"
-  },
-  "plugins": [
-    {
-      "id": "uiux-plugin",
-      "name": "UI/UX Design Plugin",
-      "version": "1.0.0",
-      "display_name": "UI/UX Design Automation",
-      "description": "Design automation with Figma MCP - 7 agents, design-to-code workflows, shadcn/ui component generation",
-      "source": "./plugins/moai-plugin-uiux",
-      "status": "active"
-    },
-    {
-      "id": "frontend-plugin",
-      "name": "Frontend Plugin",
-      "version": "1.0.0",
-      "display_name": "Next.js & React Development",
-      "description": "Next.js 16 + React 19.2 scaffolding with Playwright-MCP integration for E2E testing",
-      "source": "./plugins/moai-plugin-frontend",
-      "status": "active"
-    },
-    {
-      "id": "backend-plugin",
-      "name": "Backend Plugin",
-      "version": "1.0.0",
-      "display_name": "FastAPI Backend Development",
-      "description": "FastAPI 0.120.2 + uv scaffolding - SQLAlchemy 2.0 ORM, Alembic database migrations, async support",
-      "source": "./plugins/moai-plugin-backend",
-      "status": "active"
-    },
-    {
-      "id": "devops-plugin",
-      "name": "DevOps Plugin",
-      "version": "1.0.0",
-      "display_name": "Multi-Cloud Deployment",
-      "description": "Multi-cloud deployment with Vercel, Supabase, and Render MCPs for CI/CD automation",
-      "source": "./plugins/moai-plugin-devops",
-      "status": "active"
-    }
-  ]
+  }
 }

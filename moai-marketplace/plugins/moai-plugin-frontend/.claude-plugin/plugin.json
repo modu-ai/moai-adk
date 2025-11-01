@@ -1,21 +1,9 @@
 {
-  "schema_version": "1.0",
   "name": "frontend-plugin",
-  "display_name": "Next.js & React Development",
   "version": "1.0.0",
   "description": "Next.js 16 + React 19.2 scaffolding with Playwright-MCP integration for E2E testing",
   "author": {
     "name": "moai-adk",
     "url": "https://adk.mo.ai.kr"
-  },
-  "capabilities": [
-    "Next.js 16 project generation",
-    "React 19.2 component development",
-    "TypeScript support",
-    "Tailwind CSS integration",
-    "Playwright E2E testing"
-  ],
-  "entry_point": "frontend_plugin",
-  "supported_languages": ["typescript", "javascript"],
-  "min_version": "1.0.0"
+  }
 }

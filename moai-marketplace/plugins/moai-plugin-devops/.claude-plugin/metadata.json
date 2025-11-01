@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0",
+  "display_name": "Multi-Cloud Deployment",
+  "capabilities": [
+    "Vercel deployment automation",
+    "Supabase database provisioning",
+    "Render cloud deployment",
+    "CI/CD pipeline configuration",
+    "Infrastructure as Code"
+  ],
+  "entry_point": "devops_plugin",
+  "supported_languages": ["yaml", "python", "typescript"],
+  "min_version": "1.0.0"
+}
