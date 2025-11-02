@@ -167,13 +167,13 @@ STEP 1 consists of **two independent phases** to provide flexible workflow based
 Invoking the Task tool (Explore agent):
 - subagent_type: "Explore"
 - description: "Scan entire TAG system"
-- prompt: "Please scan @TAG system throughout the project:
- - @SPEC TAG location (.moai/specs/)
- - @TEST TAG location (tests/)
- - @CODE TAG location (src/)
- - @DOC TAG location (docs/)
- - Detect orphan TAGs and broken references
- thoroughness level: very thorough"
+- prompt: "프로젝트 전체에서 @TAG 시스템을 스캔해주세요:
+ - @SPEC TAG 위치 (.moai/specs/)
+ - @TEST TAG 위치 (tests/)
+ - @CODE TAG 위치 (src/)
+ - @DOC TAG 위치 (docs/)
+ - 고아 TAG 및 끊긴 참조 감지
+ 상세도 수준: very thorough"
 ```
 
 **Note**: For simple changes, skip Phase A and proceed directly to Phase B.
@@ -192,54 +192,54 @@ This phase is **always required** and runs **two agents sequentially**:
 1. Tag-agent call (TAG verification - FULL PROJECT SCOPE):
    - subagent_type: "tag-agent"
 - description: "Verify TAG system across entire project"
- - prompt: "Please perform a COMPREHENSIVE TAG system verification across the ENTIRE PROJECT.
+ - prompt: "전체 프로젝트에서 포괄적인 @TAG 시스템 검증을 수행해주세요.
 
- **Required scope**: Scan all source files, not just changed files.
+ **필수 범위**: 변경된 파일만이 아니라 모든 소스 파일을 스캔합니다.
 
- **Verification items**:
- 1. @SPEC TAGs in .moai/specs/ directory
- 2. @TEST TAGs in tests/ directory
- 3. @CODE TAGs in src/ directory
- 4. @DOC TAGs in docs/ directory
+ **검증 항목**:
+ 1. .moai/specs/ 디렉토리의 @SPEC TAG
+ 2. tests/ 디렉토리의 @TEST TAG
+ 3. src/ 디렉토리의 @CODE TAG
+ 4. docs/ 디렉토리의 @DOC TAG
 
- **Orphan detection** (MANDATORY):
- - Detect @CODE TAGs without matching @SPEC
- - Detect @SPEC TAGs without matching @CODE
- - Detect @TEST TAGs without matching @SPEC
- - Detect @DOC TAGs without matching @SPEC/@CODE
+ **고아 감지** (필수):
+ - 매칭되는 @SPEC이 없는 @CODE TAG 감지
+ - 매칭되는 @CODE가 없는 @SPEC TAG 감지
+ - 매칭되는 @SPEC이 없는 @TEST TAG 감지
+ - 매칭되는 @SPEC/@CODE가 없는 @DOC TAG 감지
 
- **Output format**: Provide complete list of orphan TAGs with locations.
+ **출력 형식**: 고아 TAG의 전체 목록을 위치와 함께 제공합니다.
 
- (Optional) Explore results: $EXPLORE_RESULTS"
+ (선택사항) 탐색 결과: $EXPLORE_RESULTS"
 
 2. doc-syncer call (synchronization plan):
    - subagent_type: "doc-syncer"
    - description: "Establish a document synchronization plan"
-   - prompt: """You are doc-syncer agent.
+   - prompt: """당신은 doc-syncer 에이전트입니다.
 
-LANGUAGE CONFIGURATION:
-- conversation_language: {{CONVERSATION_LANGUAGE}}
-- language_name: {{CONVERSATION_LANGUAGE_NAME}}
+언어 설정:
+- 대화_언어: {{CONVERSATION_LANGUAGE}}
+- 언어명: {{CONVERSATION_LANGUAGE_NAME}}
 
-CRITICAL INSTRUCTION:
-Documentation updates MUST respect conversation_language:
-- User-facing documentation (README, guides): {{CONVERSATION_LANGUAGE}}
-- SPEC documents (spec.md, plan.md, acceptance.md): {{CONVERSATION_LANGUAGE}}
-- Code comments: {{CONVERSATION_LANGUAGE}} (when not technical keywords)
-- Technical documentation and YAML frontmatter: English
+중요 지시사항:
+문서 업데이트는 대화_언어를 반드시 존중해야 합니다:
+- 사용자 대면 문서 (README, 가이드): {{CONVERSATION_LANGUAGE}}
+- SPEC 문서 (spec.md, plan.md, acceptance.md): {{CONVERSATION_LANGUAGE}}
+- 코드 주석: {{CONVERSATION_LANGUAGE}} (기술 키워드 제외)
+- 기술 문서 및 YAML 프론트매터: 영어
 
-SKILL INVOCATION:
-Use explicit Skill() calls when needed:
-- Skill("moai-foundation-tags") for TAG chain validation
-- Skill("moai-foundation-trust") for quality gate checks
-- Skill("moai-alfred-tag-scanning") for TAG inventory updates
+스킬 호출:
+필요 시 명시적 Skill() 호출 사용:
+- Skill("moai-foundation-tags") - TAG 체인 검증
+- Skill("moai-foundation-trust") - 품질 게이트 검사
+- Skill("moai-alfred-tag-scanning") - TAG 인벤토리 업데이트
 
-TASK:
-Please analyze Git changes and establish a document synchronization plan.
-Ensure all documentation updates align with the conversation_language setting.
+작업:
+Git 변경사항을 분석하고 문서 동기화 계획을 수립해주세요.
+모든 문서 업데이트가 대화_언어 설정과 일치하는지 확인합니다.
 
 $ARGUMENTS
-(Optional) TAG validation results: $TAG_VALIDATION_RESULTS"""
+(선택사항) TAG 검증 결과: $TAG_VALIDATION_RESULTS"""
 ```
 
 **Note**:

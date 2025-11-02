@@ -173,11 +173,11 @@ STEP 1 consists of **two independent phases** to provide flexible workflow based
 Invoking the Task tool (Explore agent):
 - subagent_type: "Explore"
 - description: "Explore related files in the codebase"
-- prompt: "Please find all files related to the following keywords: $ARGUMENTS
- - File location (src/, tests/, docs/)
- - Relevant SPEC document (.moai/specs/)
- - Existing implementation code
- thoroughness level: medium"
+- prompt: "다음 키워드와 관련된 모든 파일을 찾아주세요: $ARGUMENTS
+ - 파일 위치 (src/, tests/, docs/)
+ - 관련 SPEC 문서 (.moai/specs/)
+ - 기존 구현 코드
+ 상세도 수준: medium"
 ```
 
 **Note**: If user provides clear SPEC title, skip Phase A and proceed directly to Phase B.
@@ -196,47 +196,47 @@ This phase is **always required** regardless of whether Phase A was executed.
 Call the Task tool:
 - subagent_type: "spec-builder"
 - description: "Analyze the plan and establish a plan"
-- prompt: """You are spec-builder agent.
+- prompt: """당신은 spec-builder 에이전트입니다.
 
-LANGUAGE CONFIGURATION:
-- conversation_language: {{CONVERSATION_LANGUAGE}}
-- language_name: {{CONVERSATION_LANGUAGE_NAME}}
+언어 설정:
+- 대화_언어: {{CONVERSATION_LANGUAGE}}
+- 언어명: {{CONVERSATION_LANGUAGE_NAME}}
 
-CRITICAL INSTRUCTION:
-SPEC documents MUST follow bilingual structure (User language + English summary):
+중요 지시사항:
+SPEC 문서는 이중 언어 구조를 따라야 합니다 (사용자 언어 + 영어 요약):
 
-For conversation_language == 'ko' (Korean):
-- YAML metadata: English only
-- Title (@SPEC tag): Korean primary, with English version in footer
-- Main content (analysis, requirements, EARS): Korean
-- SUMMARY section: English (100-200 words for international contributors)
-- HISTORY: Korean (new entries), English summaries for major versions
+conversation_language == 'ko' (한국어)인 경우:
+- YAML 메타데이터: 영어만 사용
+- 제목 (@SPEC 태그): 한국어 주요, 영어 버전은 하단에 기재
+- 주요 내용 (분석, 요구사항, EARS): 한국어
+- SUMMARY 섹션: 영어 (국제 기여자를 위해 100-200단어)
+- HISTORY: 한국어 (새로운 항목), 주요 버전에는 영어 요약
 
-For conversation_language == 'ja' (Japanese):
-- Same bilingual pattern as Korean
-- Main content: Japanese
-- SUMMARY: English
+conversation_language == 'ja' (일본어)인 경우:
+- 한국어와 동일한 이중 언어 패턴 사용
+- 주요 내용: 일본어
+- SUMMARY: 영어
 
-For other languages:
-- Main content: User's specified language
-- SUMMARY: English (always)
+다른 언어인 경우:
+- 주요 내용: 사용자 지정 언어
+- SUMMARY: 영어 (항상)
 
-SKILL INVOCATION:
-Use explicit Skill() calls when needed:
-- Skill("moai-foundation-specs") for SPEC structure guidance
-- Skill("moai-foundation-ears") for EARS syntax requirements
-- Skill("moai-alfred-spec-metadata-validation") for metadata validation
+스킬 호출:
+필요 시 명시적 Skill() 호출 사용:
+- Skill("moai-foundation-specs") - SPEC 구조 가이드
+- Skill("moai-foundation-ears") - EARS 문법 요구사항
+- Skill("moai-alfred-spec-metadata-validation") - 메타데이터 검증
 
-TASK:
-Please analyze the project document and suggest SPEC candidates.
-Run in analysis mode, and must include the following:
-1. In-depth analysis of product/structure/tech.md
-2. Identify SPEC candidates and Determine priorities
-3. Design EARS structure
-4. Wait for user approval
+작업:
+프로젝트 문서를 분석하여 SPEC 후보자를 제시해주세요.
+분석 모드로 실행하며, 다음을 포함해야 합니다:
+1. product/structure/tech.md의 심층 분석
+2. SPEC 후보자 식별 및 우선순위 결정
+3. EARS 구조 설계
+4. 사용자 승인 대기
 
-User input: $ARGUMENTS
-(Optional) Explore results: $EXPLORE_RESULTS"""
+사용자 입력: $ARGUMENTS
+(선택사항) 탐색 결과: $EXPLORE_RESULTS"""
 ```
 
 **Note**: If Phase A was executed, pass the exploration results via `$EXPLORE_RESULTS` variable.
@@ -278,36 +278,58 @@ After user approval (collected via `AskUserQuestion tool (documented in moai-alf
 1. Call spec-builder (create plan):
    - subagent_type: "spec-builder"
    - description: "Create SPEC document"
-   - prompt: """You are spec-builder agent.
+   - prompt: """당신은 spec-builder 에이전트입니다.
 
-LANGUAGE CONFIGURATION:
-- conversation_language: {{CONVERSATION_LANGUAGE}}
-- language_name: {{CONVERSATION_LANGUAGE_NAME}}
+언어 설정:
+- 대화_언어: {{CONVERSATION_LANGUAGE}}
+- 언어명: {{CONVERSATION_LANGUAGE_NAME}}
 
-CRITICAL INSTRUCTION:
-ALL SPEC documents MUST be generated in conversation_language:
-- spec.md: Full document in conversation_language
-- plan.md: Full document in conversation_language
-- acceptance.md: Full document in conversation_language
+중요 지시사항:
+모든 SPEC 문서는 대화_언어로 작성되어야 합니다:
+- spec.md: 전체 문서를 대화_언어로 작성
+- plan.md: 전체 문서를 대화_언어로 작성
+- acceptance.md: 전체 문서를 대화_언어로 작성
 
-YAML frontmatter and @TAG identifiers MUST remain in English.
-Code examples and technical keywords can be mixed (code in English, narrative in user language).
+YAML 프론트매터와 @TAG 식별자는 반드시 영어로 유지합니다.
+코드 예제와 기술 키워드는 혼합 가능 (코드는 영어, 설명은 사용자 언어).
 
-SKILL INVOCATION:
-Use explicit Skill() calls when needed:
-- Skill("moai-foundation-specs") for SPEC structure guidance
-- Skill("moai-foundation-ears") for EARS syntax requirements
-- Skill("moai-alfred-spec-metadata-validation") for metadata validation
-- Skill("moai-alfred-tag-scanning") for TAG chain references
+스킬 호출:
+필요 시 명시적 Skill() 호출 사용:
+- Skill("moai-foundation-specs") - SPEC 구조 가이드
+- Skill("moai-foundation-ears") - EARS 문법 요구사항
+- Skill("moai-alfred-spec-metadata-validation") - 메타데이터 검증
+- Skill("moai-alfred-tag-scanning") - TAG 체인 참조
 
-TASK:
-Please fill out the SPEC document according to the plan approved in STEP 1.
-Create a specification for the EARS structure."""
+작업:
+STEP 1에서 승인된 계획에 따라 SPEC 문서를 작성해주세요.
+EARS 구조에 대한 명세를 작성합니다."""
 
 2. Invoke git-manager (Git task):
    - subagent_type: "git-manager"
-   - description: "Create Git branch/PR"
-   - prompt: "After completing the plan, please create a branch and Draft PR."
+   - description: "Create Git branch/PR with duplicate prevention"
+   - prompt: """당신은 git-manager 에이전트입니다.
+
+언어 설정:
+- 대화_언어: {{CONVERSATION_LANGUAGE}}
+- 언어명: {{CONVERSATION_LANGUAGE_NAME}}
+
+중요 지시사항 (팀 모드 중복 방지):
+GitHub Issue 또는 PR을 만들기 전에:
+1. 항상 제목에 SPEC-ID가 있는 기존 Issue를 확인하세요
+2. 항상 feature/SPEC-{ID} 브랜치명의 기존 PR을 확인하세요
+3. Issue가 존재하면 → 업데이트, 중복 생성 금지
+4. PR이 존재하면 → 업데이트, 중복 생성 금지
+5. 둘 다 존재하면 → 최신 SPEC 버전으로 모두 업데이트
+6. 레이블 필터 실패 시 대체 검색 사용 (일부 Issue는 레이블 없을 수 있음)
+7. 항상 레이블 추가: "spec", "planning", + 우선순위 레이블
+
+git-manager.md의 "SPEC 작성 시" 섹션에서 자세한 중복 방지 프로토콜과 코드 예제를 참고하세요.
+
+작업:
+완성된 SPEC 문서에 대해 기능 브랜치(feature/SPEC-{SPEC_ID})와 Draft PR(→ develop)을 생성합니다.
+GitHub 엔티티를 생성하기 전에 중복 방지 프로토콜을 구현합니다.
+
+출력 언어: {{CONVERSATION_LANGUAGE}}"""
 ```
 
 ## function

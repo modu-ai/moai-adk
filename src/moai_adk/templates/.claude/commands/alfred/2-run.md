@@ -160,12 +160,12 @@ STEP 1 consists of **two independent phases** to provide flexible workflow based
 Invoking the Task tool (Explore agent):
 - subagent_type: "Explore"
 - description: "Explore existing code structures and patterns"
-- prompt: "Please explore existing code related to SPEC-$ARGUMENTS:
- - Similar function implementation code (src/)
- - Test patterns for reference (tests/)
- - Architectural patterns and design patterns
- - Current libraries and versions (package.json, requirements.txt)
- thoroughness level: medium"
+- prompt: "SPEC-$ARGUMENTS와 관련된 기존 코드를 탐색해주세요:
+ - 유사한 기능 구현 코드 (src/)
+ - 참고할 테스트 패턴 (tests/)
+ - 아키텍처 패턴 및 디자인 패턴
+ - 현재 라이브러리 및 버전 (package.json, requirements.txt)
+ 상세도 수준: medium"
 ```
 
 **Note**: If you skip Phase A, proceed directly to Phase B.
@@ -184,15 +184,15 @@ This phase is **always required** regardless of whether Phase A was executed.
 Task tool call:
 - subagent_type: "implementation-planner"
 - description: "SPEC analysis and establishment of execution strategy"
-- prompt: "Please analyze the SPEC of $ARGUMENTS and establish an execution plan.
- It must include the following:
- 1. SPEC requirements extraction and complexity assessment
- 2. Library and tool selection (using WebFetch)
- 3. TAG chain design
- 4. Step-by-step execution plan
- 5. Risks and response plans
- 6. Create action plan and use `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` to confirm the next action with the user
- (Optional) Explore results: $EXPLORE_RESULTS"
+- prompt: "$ARGUMENTS의 SPEC을 분석하고 실행 계획을 수립해주세요.
+ 다음을 포함해야 합니다:
+ 1. SPEC 요구사항 추출 및 복잡도 평가
+ 2. 라이브러리 및 도구 선택 (WebFetch 사용)
+ 3. TAG 체인 설계
+ 4. 단계별 실행 계획
+ 5. 위험 요소 및 대응 계획
+ 6. 행동 계획을 작성하고 `AskUserQuestion 도구 (moai-alfred-interactive-questions 스킬 참고)`로 사용자와 다음 단계를 확인합니다
+ (선택사항) 탐색 결과: $EXPLORE_RESULTS"
 ```
 
 **Note**: If Phase A was executed, pass the exploration results via `$EXPLORE_RESULTS` variable.
@@ -247,37 +247,37 @@ After user approval (gathered through `AskUserQuestion tool (documented in moai-
 Call the Task tool:
 - subagent_type: "tdd-implementer"
 - description: "Execute task with TDD implementation"
-- prompt: """You are tdd-implementer agent.
+- prompt: """당신은 tdd-implementer 에이전트입니다.
 
-LANGUAGE CONFIGURATION:
-- conversation_language: {{CONVERSATION_LANGUAGE}}
-- language_name: {{CONVERSATION_LANGUAGE_NAME}}
+언어 설정:
+- 대화_언어: {{CONVERSATION_LANGUAGE}}
+- 언어명: {{CONVERSATION_LANGUAGE_NAME}}
 
-CRITICAL INSTRUCTION:
-Code syntax and keywords: English (immutable).
-Code comments:
-- Local project code: MUST be in {{CONVERSATION_LANGUAGE}}
-- Package code (src/moai_adk/): MUST be in English (for global distribution)
-Test descriptions and documentation: MUST be in {{CONVERSATION_LANGUAGE}}.
+중요 지시사항:
+코드 문법 및 키워드: 영어 (고정).
+코드 주석:
+- 로컬 프로젝트 코드: 반드시 {{CONVERSATION_LANGUAGE}}로 작성
+- 패키지 코드 (src/moai_adk/): 반드시 영어로 작성 (글로벌 배포용)
+테스트 설명 및 문서: 반드시 {{CONVERSATION_LANGUAGE}}로 작성.
 
-SKILL INVOCATION:
-Use explicit Skill() calls when needed:
-- Skill("moai-alfred-language-detection") for project language detection
-- Skill("moai-lang-python") or language-specific Skills for best practices
-- Skill("moai-essentials-debug") when tests fail
-- Skill("moai-essentials-refactor") during REFACTOR phase
+스킬 호출:
+필요 시 명시적 Skill() 호출 사용:
+- Skill("moai-alfred-language-detection") - 프로젝트 언어 감지
+- Skill("moai-lang-python") 또는 언어별 스킬 - 베스트 프랙티스
+- Skill("moai-essentials-debug") - 테스트 실패 시
+- Skill("moai-essentials-refactor") - REFACTOR 단계에서
 
-TASK: Execute the task according to the plan approved in STEP 1.
+작업: STEP 1에서 승인된 계획에 따라 작업을 실행합니다.
 
-For TDD scenario:
-- Perform RED → GREEN → REFACTOR cycle
-- Perform the following for each TAG:
-  1. RED Phase: Write a test that fails with the @TEST:ID tag
-  2. GREEN Phase: Minimal implementation with the @CODE:ID tag
-  3. REFACTOR Phase: Improve code quality
-  4. Verify TAG completion conditions and proceed to the next TAG
+TDD 시나리오의 경우:
+- RED → GREEN → REFACTOR 사이클 수행
+- 각 TAG에 대해 다음을 수행:
+  1. RED 단계: @TEST:ID 태그로 실패하는 테스트 작성
+  2. GREEN 단계: @CODE:ID 태그로 최소한의 구현
+  3. REFACTOR 단계: 코드 품질 개선
+  4. TAG 완료 조건 확인 및 다음 TAG 진행
 
-Execute on: $ARGUMENTS"""
+실행 대상: $ARGUMENTS"""
 ```
 
 ## 🔗 TDD optimization for each language
@@ -541,6 +541,45 @@ Only if the user selects **"Proceed"** or **"Start"** will Alfred call the tdd-i
 **Load first**: `.moai/specs/SPEC-XXX/spec.md` (implementation target requirement)
 
 **Recommendation**: Job execution completed successfully. You can experience better performance and context management by starting a new chat session with the `/clear` or `/new` command before proceeding to the next step (`/alfred:3-sync`).
+
+---
+
+## Command Completion Pattern
+
+### After STEP 3 (git-manager) Completes
+
+Alfred calls AskUserQuestion to collect user's next action:
+
+```python
+AskUserQuestion(
+    questions=[
+        {
+            "question": "구현이 완료되었습니다. 다음으로 뭘 하시겠습니까?",
+            "header": "다음 단계",
+            "multiSelect": false,
+            "options": [
+                {
+                    "label": "📚 문서 동기화 진행",
+                    "description": "/alfred:3-sync 실행하여 문서 동기화"
+                },
+                {
+                    "label": "🔍 추가 구현",
+                    "description": "다른 SPEC 구현 진행"
+                },
+                {
+                    "label": "🔄 새 세션 시작",
+                    "description": "성능 최적화를 위해 /clear 실행"
+                }
+            ]
+        }
+    ]
+)
+```
+
+**User Responses**:
+- **📚 문서 동기화**: Proceed to `/alfred:3-sync` for documentation synchronization
+- **🔍 추가 구현**: Repeat `/alfred:2-run SPEC-XXX` for next feature
+- **🔄 새 세션**: Execute `/clear` to start fresh session (recommended for performance)
 
 ---
 
