@@ -194,7 +194,7 @@ class TestSessionStartHandler:
             "update_available": True,
             "is_major_update": True,
             "release_notes_url": "https://github.com/modu-ai/moai-adk/releases/tag/v1.0.0",
-            "upgrade_command": "uv pip install --upgrade moai-adk>=1.0.0"
+            "upgrade_command": "uv tool upgrade moai-adk"
         }
 
         payload: HookPayload = {"cwd": ".", "phase": "compact"}
@@ -244,7 +244,7 @@ class TestSessionStartHandler:
             "update_available": True,
             "is_major_update": False,
             "release_notes_url": "https://github.com/modu-ai/moai-adk/releases/tag/v0.9.0",
-            "upgrade_command": "uv pip install --upgrade moai-adk>=0.9.0"
+            "upgrade_command": "uv tool upgrade moai-adk"
         }
 
         payload: HookPayload = {"cwd": ".", "phase": "compact"}

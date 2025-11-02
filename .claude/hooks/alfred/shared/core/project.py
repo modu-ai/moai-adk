@@ -716,7 +716,7 @@ def get_package_version_info(cwd: str = ".") -> dict[str, Any]:
 
             if latest_parts > current_parts:
                 result["update_available"] = True
-                result["upgrade_command"] = f"uv pip install --upgrade moai-adk>={result['latest']}"
+                result["upgrade_command"] = f"uv tool upgrade moai-adk"
 
                 # Detect major version change
                 result["is_major_update"] = is_major_version_change(

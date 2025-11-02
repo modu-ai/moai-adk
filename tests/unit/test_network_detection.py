@@ -124,7 +124,7 @@ def test_get_package_version_with_valid_cache(project_module, tmp_path):
         "current": "0.8.1",
         "latest": "0.9.0",
         "update_available": True,
-        "upgrade_command": "uv pip install --upgrade moai-adk>=0.9.0",
+        "upgrade_command": "uv tool upgrade moai-adk",
         "last_check": datetime.now(timezone.utc).isoformat()
     }
     cache_file.write_text(json.dumps(cache_data, indent=2))
