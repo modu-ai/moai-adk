@@ -314,7 +314,10 @@ Alfred가 선택된 언어, 닉네임, 그리고 팀 모드 설정을 다음과 
 - `.moai/config.json` 의 `language`, `user`, `github` 필드에 저장됨
 - CLAUDE.md의 `{{CONVERSATION_LANGUAGE}}` 및 `{{USER_NICKNAME}}` 변수로 치환됨
 - 모든 Alfred 대화에서 사용됨
-- **팀 모드**: git-manager가 GitHub 설정 상태를 참고하여 브랜치 정리 전략 수립
+- **팀 모드**: git-manager가 다음 워크플로우를 자동으로 적용:
+  - **`spec_git_workflow: "feature_branch"`**: `/alfred:1-plan` 실행 시 feature/spec-* 브랜치 생성, PR 기반 리뷰 프로세스 적용
+  - **`spec_git_workflow: "develop_direct"`**: `/alfred:1-plan` 실행 시 develop 브랜치에 직접 커밋, 브랜치 생성 과정 생략
+  - **`spec_git_workflow: "per_spec"`**: `/alfred:1-plan` 실행 시마다 사용자에게 워크플로우 선택 요청
 
 **설정 완료 출력 예시**:
 ```markdown
@@ -608,6 +611,8 @@ Alfred starts project initialization by calling the project-manager agent with t
 - Project Type: [New/Existing]
 - Existing Document Status: [Existence/Absence]
 - Approved Interview Plan: [Plan Summary]
+- **Team Mode Git Workflow** (from STEP 0.1.3):
+  - `spec_git_workflow: "feature_branch" | "develop_direct" | "per_spec"` (팀 모드만)
 
 **Execution**:
 ```
@@ -619,6 +624,13 @@ Call the Task tool:
 LANGUAGE CONFIGURATION:
 - conversation_language: {{CONVERSATION_LANGUAGE}}
 - language_name: {{CONVERSATION_LANGUAGE_NAME}}
+
+GIT WORKFLOW CONFIGURATION (Team Mode):
+- spec_git_workflow: [feature_branch | develop_direct | per_spec]
+  - "feature_branch": Create feature/spec-* branch, PR-based review, merge to develop
+  - "develop_direct": Direct commit to develop, no branch creation
+  - "per_spec": Ask user per SPEC (during /alfred:1-plan execution)
+- Note: Store this value in .moai/config.json github.spec_git_workflow for git-manager reference
 
 PROJECT_TYPE: [new|existing]
 DETECTED_LANGUAGES: [detected codebase languages]
@@ -633,11 +645,14 @@ If conversation_language is 'ko': All narrative content in Korean
 If conversation_language is 'ja': All narrative content in Japanese
 If conversation_language is other: Follow the specified language
 
-After project initialization, update .moai/config.json with nested language structure:
+After project initialization, update .moai/config.json with nested language and git workflow structure:
 {
   "language": {
     "conversation_language": "{{CONVERSATION_LANGUAGE}}",
     "conversation_language_name": "{{CONVERSATION_LANGUAGE_NAME}}"
+  },
+  "github": {
+    "spec_git_workflow": "[feature_branch|develop_direct|per_spec]"
   }
 }
 

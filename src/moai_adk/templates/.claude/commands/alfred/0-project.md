@@ -79,7 +79,7 @@ The user executes the `/alfred:8-project` command to start analyzing the project
 - ❌ Create a file in the `.claude/memory/` directory
 - ❌ Create a file `.claude/commands/alfred/*.json`
 - ❌ Unnecessary overwriting of existing documents
-- ❌ Date and numerical prediction (“within 3 months”, “50% reduction”) etc.)
+- ❌ Date and numerical prediction ("within 3 months", "50% reduction") etc.)
 - ❌ Hypothetical scenarios, expected market size, future technology trend predictions
 
 **Expressions to use**:
@@ -175,9 +175,11 @@ AskUserQuestion(
 )
 ```
 
-#### 0.1.3 팀 모드 추가 배치: GitHub 설정 확인 (팀 모드만)
+#### 0.1.3 팀 모드 추가 배치: GitHub 설정 & Git 워크플로우 선택 (팀 모드만)
 
 **조건**: `config.json`에서 `"mode": "team"` 감지 시 실행
+
+**배치 구성**: 2개 질문 (1회 호출로 통합)
 
 **Example AskUserQuestion Call**:
 ```python
@@ -201,15 +203,46 @@ AskUserQuestion(
                     "description": "GitHub Settings → General 확인 후 다시 진행"
                 }
             ]
+        },
+        {
+            "question": "[Team Mode] Which Git workflow should we use when creating SPEC documents?",
+            "header": "SPEC Git Workflow",
+            "multiSelect": false,
+            "options": [
+                {
+                    "label": "📋 Feature Branch + PR",
+                    "description": "매 SPEC마다 feature 브랜치 생성 → PR 리뷰 → develop 병합. 팀 협업과 코드 리뷰에 최적"
+                },
+                {
+                    "label": "🔄 Direct Commit to Develop",
+                    "description": "브랜치 생성 없이 develop에 직접 커밋. 빠른 프로토타이핑과 단순 워크플로우에 최적"
+                },
+                {
+                    "label": "🤔 Decide per SPEC",
+                    "description": "SPEC 생성 시마다 매번 선택. 유연성이 높지만 매번 결정 필요"
+                }
+            ]
         }
     ]
 )
 ```
 
 **응답 처리**:
+
+**Q1 (GitHub 설정)**:
 - **"Yes, already enabled"** → `auto_delete_branches: true` 저장
 - **"No, not enabled"** → `auto_delete_branches: false` + 권장사항 저장
 - **"Not sure"** → `auto_delete_branches: null` + 경고 메시지
+
+**Q2 (Git 워크플로우)**:
+- **"Feature Branch + PR"** → `spec_git_workflow: "feature_branch"` 저장
+  - `/alfred:1-plan` 실행 시 자동으로 feature 브랜치 생성
+  - git-manager가 PR 기반 워크플로우 적용
+- **"Direct Commit to Develop"** → `spec_git_workflow: "develop_direct"` 저장
+  - `/alfred:1-plan` 실행 시 develop 브랜치에 직접 커밋
+  - 브랜치 생성 과정 생략
+- **"Decide per SPEC"** → `spec_git_workflow: "per_spec"` 저장
+  - `/alfred:1-plan` 실행 시마다 git-manager가 사용자에게 선택 요청
 
 **User Response Example**:
 ```
@@ -236,26 +269,40 @@ Alfred가 선택된 언어, 닉네임, 그리고 팀 모드 설정을 다음과 
 }
 ```
 
-#### 0.2.2 GitHub 설정 저장 (팀 모드만)
+#### 0.2.2 GitHub & Git 워크플로우 설정 저장 (팀 모드만)
 
-**팀 모드 감지 시 추가 저장**:
+**팀 모드 감지 시 추가 저장 - Feature Branch + PR 선택 시**:
 ```json
 {
   "github": {
     "auto_delete_branches": true,
+    "spec_git_workflow": "feature_branch",
     "checked_at": "2025-10-23T12:34:56Z",
-    "recommendation": "Branch cleanup will be automated after PR merge"
+    "workflow_recommendation": "Feature branch를 사용한 PR 기반 협업 워크플로우. 매 SPEC마다 feature/spec-* 브랜치 생성, PR 리뷰 후 develop 병합"
   }
 }
 ```
 
-**또는 (미활성화 상태)**:
+**또는 - Direct Commit to Develop 선택 시**:
 ```json
 {
   "github": {
     "auto_delete_branches": false,
+    "spec_git_workflow": "develop_direct",
     "checked_at": "2025-10-23T12:34:56Z",
-    "recommendation": "Enable 'Automatically delete head branches' in GitHub Settings → General for better GitFlow workflow"
+    "workflow_recommendation": "develop 브랜치에 직접 커밋하는 단순 워크플로우. 브랜치 생성 과정 생략, 빠른 개발 속도"
+  }
+}
+```
+
+**또는 - Decide per SPEC 선택 시**:
+```json
+{
+  "github": {
+    "auto_delete_branches": true,
+    "spec_git_workflow": "per_spec",
+    "checked_at": "2025-10-23T12:34:56Z",
+    "workflow_recommendation": "SPEC 생성 시마다 워크플로우 선택. /alfred:1-plan 실행 시 git-manager가 선택 요청"
   }
 }
 ```
@@ -267,7 +314,10 @@ Alfred가 선택된 언어, 닉네임, 그리고 팀 모드 설정을 다음과 
 - `.moai/config.json` 의 `language`, `user`, `github` 필드에 저장됨
 - CLAUDE.md의 `{{CONVERSATION_LANGUAGE}}` 및 `{{USER_NICKNAME}}` 변수로 치환됨
 - 모든 Alfred 대화에서 사용됨
-- **팀 모드**: git-manager가 GitHub 설정 상태를 참고하여 브랜치 정리 전략 수립
+- **팀 모드**: git-manager가 다음 워크플로우를 자동으로 적용:
+  - **`spec_git_workflow: "feature_branch"`**: `/alfred:1-plan` 실행 시 feature/spec-* 브랜치 생성, PR 기반 리뷰 프로세스 적용
+  - **`spec_git_workflow: "develop_direct"`**: `/alfred:1-plan` 실행 시 develop 브랜치에 직접 커밋, 브랜치 생성 과정 생략
+  - **`spec_git_workflow: "per_spec"`**: `/alfred:1-plan` 실행 시마다 사용자에게 워크플로우 선택 요청
 
 **설정 완료 출력 예시**:
 ```markdown
@@ -313,7 +363,7 @@ grep "optimized" .moai/config.json
 - `.moai/project/*.md` file exists in the latest backup folder
 - `optimized: false` in `config.json` (immediately after reinitialization)
 
-**Select user if backup exists**  
+**Select user if backup exists**
 Call `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` to display a TUI with the following options:
 - **Merge**: Merge backup contents and latest template (recommended)
 - **New**: Ignore the backup and start a new interview
@@ -329,7 +379,7 @@ Call `AskUserQuestion tool (documented in moai-alfred-interactive-questions skil
 
 ---
 
-### 1.1 Backup merge workflow (when user selects “Merge”)
+### 1.1 Backup merge workflow (when user selects "Merge")
 
 **Purpose**: Restore only user customizations while maintaining the latest template structure.
 
@@ -477,7 +527,7 @@ Set optimization flags after the merge is complete:
  - Monolingual vs. hybrid vs. microservice
  - Code base size estimation
 
-### 1.3 Establish interview strategy (when user selects “New”)
+### 1.3 Establish interview strategy (when user selects "New")
 
 **Select question tree by project type**:
 
@@ -492,7 +542,7 @@ Set optimization flags after the merge is complete:
 - **Technical Questions**: Language/Framework, Quality Policy, Deployment Strategy
 - **Governance**: Security Requirements, Traceability Strategy (Optional)
 
-### 1.4 Generate Interview Plan Report (when user selects “Create New”)
+### 1.4 Generate Interview Plan Report (when user selects "Create New")
 
 **Format of plan to be presented to users**:
 
@@ -524,7 +574,7 @@ Set optimization flags after the merge is complete:
 
 ---
 **Approval Request**: Would you like to proceed with the interview using the above plan?
- (Choose “Proceed,” “Modify [Content],” or “Abort”)
+ (Choose "Proceed," "Modify [Content]," or "Abort")
 ```
 
 ### 1.5 Wait for user approval (moai-alfred-interactive-questions) (when user selects "New")
@@ -541,7 +591,7 @@ After Alfred receives the project-manager's interview plan report, uses `AskUser
 
 ---
 
-## 🚀 STEP 2: Execute project initialization (after user approves “New”)
+## 🚀 STEP 2: Execute project initialization (after user approves "New")
 
 **Note**: This step will only be executed if the user selects **"New"**.
 - When selecting "Merge": End the task in Phase 1.1 (Merge Backups)
@@ -561,6 +611,8 @@ Alfred starts project initialization by calling the project-manager agent with t
 - Project Type: [New/Existing]
 - Existing Document Status: [Existence/Absence]
 - Approved Interview Plan: [Plan Summary]
+- **Team Mode Git Workflow** (from STEP 0.1.3):
+  - `spec_git_workflow: "feature_branch" | "develop_direct" | "per_spec"` (팀 모드만)
 
 **Execution**:
 ```
@@ -572,6 +624,13 @@ Call the Task tool:
 LANGUAGE CONFIGURATION:
 - conversation_language: {{CONVERSATION_LANGUAGE}}
 - language_name: {{CONVERSATION_LANGUAGE_NAME}}
+
+GIT WORKFLOW CONFIGURATION (Team Mode):
+- spec_git_workflow: [feature_branch | develop_direct | per_spec]
+  - "feature_branch": Create feature/spec-* branch, PR-based review, merge to develop
+  - "develop_direct": Direct commit to develop, no branch creation
+  - "per_spec": Ask user per SPEC (during /alfred:1-plan execution)
+- Note: Store this value in .moai/config.json github.spec_git_workflow for git-manager reference
 
 PROJECT_TYPE: [new|existing]
 DETECTED_LANGUAGES: [detected codebase languages]
@@ -586,11 +645,14 @@ If conversation_language is 'ko': All narrative content in Korean
 If conversation_language is 'ja': All narrative content in Japanese
 If conversation_language is other: Follow the specified language
 
-After project initialization, update .moai/config.json with nested language structure:
+After project initialization, update .moai/config.json with nested language and git workflow structure:
 {
   "language": {
     "conversation_language": "{{CONVERSATION_LANGUAGE}}",
     "conversation_language_name": "{{CONVERSATION_LANGUAGE_NAME}}"
+  },
+  "github": {
+    "spec_git_workflow": "[feature_branch|develop_direct|per_spec]"
   }
 }
 
@@ -612,7 +674,7 @@ After the project-manager has finished creating the document, **Alfred can optio
 
 | Conditions                           | Automatic selection Skill    | Purpose                                |
 | ------------------------------------ | ---------------------------- | -------------------------------------- |
-| User Requests “Quality Verification” | moai-alfred-trust-validation | Initial project structure verification |
+| User Requests "Quality Verification" | moai-alfred-trust-validation | Initial project structure verification |
 
 **Execution flow** (optional):
 ```
@@ -772,7 +834,7 @@ Based on the collected information, it is reflected in three major documents:
  - Project mission extracted from existing README/document
  - Main user base and scenario inferred from code
  - Backtracking of core problem to be solved
- - Preservation of existing assets in “Legacy Context”
+ - Preservation of existing assets in "Legacy Context"
 
 2. Contents reflected in **structure.md**
  - Identified actual directory structure
@@ -789,7 +851,7 @@ Based on the collected information, it is reflected in three major documents:
 
 **Preservation Policy**:
 - Supplement only the missing parts without overwriting existing documents
-- Preserve conflicting content in the “Legacy Context” section
+- Preserve conflicting content in the "Legacy Context" section
 - Mark items needing improvement with @CODE and TODO tags
 
 **Example Final Report**:
@@ -888,7 +950,7 @@ Alfred only calls the trust-checker agent to perform project initial structural 
 ❌ **Critical**: Needs fix
 - Required section missing
 - config.json syntax error
-- User choice: “Revalidate after fix” or “Skip”
+- User choice: "Revalidate after fix" or "Skip"
 
 **Skip verification**:
 - Verification is not run by default
@@ -938,9 +1000,9 @@ If multiple conditions are met, the candidates are merged without duplicates and
 
 #### 2.6.2 User confirmation flow
 
-`AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` asks “whether to enable recommended items.”
+`AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` asks "whether to enable recommended items."
 - Provides three options: **Install all** / **Install selectively** / **Do not install**.
-Selecting “Selective Install” presents the list of candidates again as multiple choices, allowing the user to select only the items they need.
+Selecting "Selective Install" presents the list of candidates again as multiple choices, allowing the user to select only the items they need.
 
 #### 2.6.3 Activation and Recording Steps
 
@@ -949,9 +1011,9 @@ Selecting “Selective Install” presents the list of candidates again as multi
 - Call `subagent_type: "cc-manager"` with the `Task` tool and include a briefing and user selections in the prompt.
 - cc-manager determines the necessary sub-agents and skills based on the briefing, and copies and updates `CLAUDE.md`, `.claude/agents/alfred/*.md`, and `.claude/skills/*.md` as customized for the project.
 3. **Check for configuration updates**: Review the results reflected by cc-manager.
-- Sub-Agents: Keep the `.claude/agents/alfred/` template active and list it in the `CLAUDE.md` “Agents” section.
-- Skills: Check the `.claude/skills/` document and add it to the `CLAUDE.md` “Skills” section.
-- Output style: Apply `.claude/output-styles/alfred/` and record the activation in `CLAUDE.md` “Output Styles”.
+- Sub-Agents: Keep the `.claude/agents/alfred/` template active and list it in the `CLAUDE.md` "Agents" section.
+- Skills: Check the `.claude/skills/` document and add it to the `CLAUDE.md` "Skills" section.
+- Output style: Apply `.claude/output-styles/alfred/` and record the activation in `CLAUDE.md` "Output Styles".
 4. **Update config.json**
    ```json
    {
@@ -964,17 +1026,17 @@ Selecting “Selective Install” presents the list of candidates again as multi
    }
    ```
 Merge existing properties, if any.
-5. **Final Report**: Add a list of “Activated Sub-Agents/Skills/Style” and a `cc_manager_briefing` summary at the top of the Completion Report, and reflect the same contents in the `CLAUDE.md` table so that they are automatically searched in subsequent commands.
+5. **Final Report**: Add a list of "Activated Sub-Agents/Skills/Style" and a `cc_manager_briefing` summary at the top of the Completion Report, and reflect the same contents in the `CLAUDE.md` table so that they are automatically searched in subsequent commands.
 
 ## Interview guide by project type
 
 ### New project interview area
 
 **Product Discovery** (product.md)
-- Core mission and value proposition 
- - Key user bases and needs 
- - 3 key problems to solve 
- - Differentiation compared to competing solutions 
+- Core mission and value proposition
+ - Key user bases and needs
+ - 3 key problems to solve
+ - Differentiation compared to competing solutions
  - Measurable indicators of success
 
 **Structure Blueprint** (structure.md)
@@ -1022,14 +1084,14 @@ Merge existing properties, if any.
 
 **Error 1**: Project language detection failed
 ```
-Symptom: “Language not detected” message
+Symptom: "Language not detected" message
 Solution: Specify language manually or create language-specific settings file
 ```
 
 **Error 2**: Conflict with existing document
 ```
 Symptom: product.md already exists and has different contents
-Solution: Preserve existing contents and add new contents in “Legacy Context” section
+Solution: Preserve existing contents and add new contents in "Legacy Context" section
 ```
 
 **Error 3**: Failed to create config.json
@@ -1082,8 +1144,8 @@ This subcommand is executed under the following conditions:
  - Set optimized=true
    ```
 
-4. **Waiting for user approval**  
-`AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` asks “Do you want to proceed with template optimization?” and provides the following options.
+4. **Waiting for user approval**
+`AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` asks "Do you want to proceed with template optimization?" and provides the following options.
 - **Proceed** → Phase 2 execution
 - **Preview** → Display change details and recheck
 - **Skip** → keep optimized=false
@@ -1246,8 +1308,8 @@ Alfred: Skill("moai-alfred-template-generator")
 **Users can skip Phase 3**:
 
 **Skip condition**:
-- User explicitly selects “Skip”
-- “Simple project” when Alfred automatically determines (only basic features required)
+- User explicitly selects "Skip"
+- "Simple project" when Alfred automatically determines (only basic features required)
 
 **Skip effect**:
 - Maintain all 37 skills (no lightweighting)
