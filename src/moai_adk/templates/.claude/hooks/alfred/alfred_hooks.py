@@ -60,7 +60,7 @@ from typing import Any
 
 from utils.timeout import CrossPlatformTimeout, TimeoutError as PlatformTimeoutError
 
-from core import HookResult
+from shared.core import HookResult
 from handlers import (
     handle_notification,
     handle_post_tool_use,
