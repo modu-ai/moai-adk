@@ -1,0 +1,17 @@
+{
+  "tech_preferences": {
+    "database": "PostgreSQL (inferred from tech choices)",
+    "testing": "pytest",
+    "linter": "ruff"
+  },
+  "expertise_signals": {
+    "ask_question_skip_rate": 0.4,
+    "custom_workflows": 3,
+    "estimated_level": "intermediate"
+  },
+  "skip_questions": [
+    "test_framework",
+    "git_strategy"
+  ],
+  "last_updated": "2025-11-02T20:00:00Z"
+}

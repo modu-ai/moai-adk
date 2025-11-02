@@ -175,9 +175,11 @@ AskUserQuestion(
 )
 ```
 
-#### 0.1.3 팀 모드 추가 배치: GitHub 설정 확인 (팀 모드만)
+#### 0.1.3 팀 모드 추가 배치: GitHub 설정 & Git 워크플로우 선택 (팀 모드만)
 
 **조건**: `config.json`에서 `"mode": "team"` 감지 시 실행
+
+**배치 구성**: 2개 질문 (1회 호출로 통합)
 
 **Example AskUserQuestion Call**:
 ```python
@@ -201,15 +203,46 @@ AskUserQuestion(
                     "description": "GitHub Settings → General 확인 후 다시 진행"
                 }
             ]
+        },
+        {
+            "question": "[Team Mode] Which Git workflow should we use when creating SPEC documents?",
+            "header": "SPEC Git Workflow",
+            "multiSelect": false,
+            "options": [
+                {
+                    "label": "📋 Feature Branch + PR",
+                    "description": "매 SPEC마다 feature 브랜치 생성 → PR 리뷰 → develop 병합. 팀 협업과 코드 리뷰에 최적"
+                },
+                {
+                    "label": "🔄 Direct Commit to Develop",
+                    "description": "브랜치 생성 없이 develop에 직접 커밋. 빠른 프로토타이핑과 단순 워크플로우에 최적"
+                },
+                {
+                    "label": "🤔 Decide per SPEC",
+                    "description": "SPEC 생성 시마다 매번 선택. 유연성이 높지만 매번 결정 필요"
+                }
+            ]
         }
     ]
 )
 ```
 
 **응답 처리**:
+
+**Q1 (GitHub 설정)**:
 - **"Yes, already enabled"** → `auto_delete_branches: true` 저장
 - **"No, not enabled"** → `auto_delete_branches: false` + 권장사항 저장
 - **"Not sure"** → `auto_delete_branches: null` + 경고 메시지
+
+**Q2 (Git 워크플로우)**:
+- **"Feature Branch + PR"** → `spec_git_workflow: "feature_branch"` 저장
+  - `/alfred:1-plan` 실행 시 자동으로 feature 브랜치 생성
+  - git-manager가 PR 기반 워크플로우 적용
+- **"Direct Commit to Develop"** → `spec_git_workflow: "develop_direct"` 저장
+  - `/alfred:1-plan` 실행 시 develop 브랜치에 직접 커밋
+  - 브랜치 생성 과정 생략
+- **"Decide per SPEC"** → `spec_git_workflow: "per_spec"` 저장
+  - `/alfred:1-plan` 실행 시마다 git-manager가 사용자에게 선택 요청
 
 **User Response Example**:
 ```
@@ -236,26 +269,40 @@ Alfred가 선택된 언어, 닉네임, 그리고 팀 모드 설정을 다음과 
 }
 ```
 
-#### 0.2.2 GitHub 설정 저장 (팀 모드만)
+#### 0.2.2 GitHub & Git 워크플로우 설정 저장 (팀 모드만)
 
-**팀 모드 감지 시 추가 저장**:
+**팀 모드 감지 시 추가 저장 - Feature Branch + PR 선택 시**:
 ```json
 {
   "github": {
     "auto_delete_branches": true,
+    "spec_git_workflow": "feature_branch",
     "checked_at": "2025-10-23T12:34:56Z",
-    "recommendation": "Branch cleanup will be automated after PR merge"
+    "workflow_recommendation": "Feature branch를 사용한 PR 기반 협업 워크플로우. 매 SPEC마다 feature/spec-* 브랜치 생성, PR 리뷰 후 develop 병합"
   }
 }
 ```
 
-**또는 (미활성화 상태)**:
+**또는 - Direct Commit to Develop 선택 시**:
 ```json
 {
   "github": {
     "auto_delete_branches": false,
+    "spec_git_workflow": "develop_direct",
     "checked_at": "2025-10-23T12:34:56Z",
-    "recommendation": "Enable 'Automatically delete head branches' in GitHub Settings → General for better GitFlow workflow"
+    "workflow_recommendation": "develop 브랜치에 직접 커밋하는 단순 워크플로우. 브랜치 생성 과정 생략, 빠른 개발 속도"
+  }
+}
+```
+
+**또는 - Decide per SPEC 선택 시**:
+```json
+{
+  "github": {
+    "auto_delete_branches": true,
+    "spec_git_workflow": "per_spec",
+    "checked_at": "2025-10-23T12:34:56Z",
+    "workflow_recommendation": "SPEC 생성 시마다 워크플로우 선택. /alfred:1-plan 실행 시 git-manager가 선택 요청"
   }
 }
 ```
