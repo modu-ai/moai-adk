@@ -145,7 +145,7 @@ git-manager **recommends** GitFlow best practices with pre-push hooks, but respe
 - ⚠️ **force-push warning**: A warning is displayed when a force push is made (but allowed)
 - ✅ **Provides flexibility**: Users can proceed at their own discretion.
 
-**Detailed policy**: See `.moai/memory/gitflow-protection-policy.md`
+**Detailed policy**: See Skill("moai-alfred-gitflow-policy")
 
 #### 🔄 Feature development workflow (feature/*)
 

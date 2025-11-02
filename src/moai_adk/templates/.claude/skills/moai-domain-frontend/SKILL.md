@@ -1,11 +1,11 @@
 ---
 name: moai-domain-frontend
-version: 2.0.0
+version: 2.1.0
 created: 2025-10-22
-updated: 2025-10-22
+updated: 2025-11-02
 status: active
-description: React 19/Vue 3.5/Angular 19 with state management, performance optimization, and accessibility.
-keywords: ['react', 'vue', 'angular', 'state', 'accessibility']
+description: React 19/Vue 3.5/Angular 19 with state management, performance optimization, accessibility, and meta-frameworks (Nuxt, SvelteKit, Astro, SolidJS).
+keywords: ['react', 'vue', 'angular', 'state', 'accessibility', 'nuxt', 'sveltekit', 'astro', 'solidjs']
 allowed-tools:
   - Read
   - Bash
@@ -18,7 +18,7 @@ allowed-tools:
 | Field | Value |
 | ----- | ----- |
 | **Skill Name** | moai-domain-frontend |
-| **Version** | 2.0.0 (2025-10-22) |
+| **Version** | 2.1.0 (2025-11-02) |
 | **Allowed tools** | Read (read_file), Bash (terminal) |
 | **Auto-load** | On demand when keywords detected |
 | **Tier** | Domain |
@@ -27,13 +27,14 @@ allowed-tools:
 
 ## What It Does
 
-React 19/Vue 3.5/Angular 19 with state management, performance optimization, and accessibility.
+React 19/Vue 3.5/Angular 19 with state management, performance optimization, accessibility, and meta-frameworks (Nuxt, SvelteKit, Astro, SolidJS).
 
 **Key capabilities**:
-- ✅ Best practices enforcement for domain domain
+- ✅ Best practices enforcement for frontend domain
 - ✅ TRUST 5 principles integration
-- ✅ Latest tool versions (2025-10-22)
+- ✅ Latest tool versions (2025-11-02)
 - ✅ TDD workflow support
+- ✅ Meta-framework patterns (Nuxt, SvelteKit, Astro)
 
 ---
 
@@ -51,14 +52,17 @@ React 19/Vue 3.5/Angular 19 with state management, performance optimization, and
 
 ---
 
-## Tool Version Matrix (2025-10-22)
+## Tool Version Matrix (2025-11-02)
 
 | Tool | Version | Purpose | Status |
 |------|---------|---------|--------|
-| **React** | 19.0.0 | Primary | ✅ Current |
-| **Vue** | 3.5.13 | Primary | ✅ Current |
-| **Angular** | 19.0.0 | Primary | ✅ Current |
-| **Vite** | 6.0.5 | Primary | ✅ Current |
+| **React** | 19.0.0 | UI Library | ✅ Current |
+| **Vue** | 3.5.13 | UI Framework | ✅ Current |
+| **Angular** | 19.0.0 | UI Framework | ✅ Current |
+| **Svelte** | 4.2+ | UI Framework | ✅ Current |
+| **SolidJS** | 1.2.0 | UI Library | ✅ Current |
+| **Vite** | 6.0.5 | Build tool | ✅ Current |
+| **Astro** | 5.15.3 | Static site gen | ✅ Current |
 
 ---
 

@@ -111,7 +111,13 @@ Alfred passes the user's language directly to you via `Task()` calls.
 - Editing files other than the `.moai/project` path is prohibited
 - Use of 16-Core tags such as @SPEC/@SPEC/@CODE/@CODE/TODO is recommended in documents
 - If user responses are ambiguous, information is collected through clear specific questions
-- Only update if existing document exists carry out
+- **CRITICAL (Issue #162)**: Before creating/overwriting project files:
+  - Check if `.moai/project/product.md` already exists
+  - If exists, ask user via `AskUserQuestion`: "Existing project documents detected. How would you like to proceed?"
+    - **Merge**: Merge with backup content (preserve user edits)
+    - **Overwrite**: Replace with fresh interview (backup to `.moai/project/.history/` first)
+    - **Keep**: Cancel operation, use existing files
+  - Only update if existing document exists carry out
 
 ## ⚠️ Failure response
 

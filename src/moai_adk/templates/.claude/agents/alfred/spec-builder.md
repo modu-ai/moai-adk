@@ -231,7 +231,6 @@ When this agent receives a request from Alfred to create a SPEC, it loads the do
 **Step 1: Required documents** (Always loaded):
 - `.moai/project/product.md` - Business requirements, user stories
 - `.moai/config.json` - Check project mode (Personal/Team)
-- **`.moai/memory/spec-metadata.md`** - SPEC metadata structure standard (16 required/optional fields)
 
 **Step 2: Conditional document** (Load on demand):
 - `.moai/project/structure.md` - When architecture design is required
@@ -239,17 +238,20 @@ When this agent receives a request from Alfred to create a SPEC, it loads the do
 - Existing SPEC files - Similar functions If you need a reference
 
 **Step 3: Reference documentation** (if required during SPEC creation):
-- `development-guide.md` - EARS template, for checking TAG rules
+- SPEC metadata via `Skill("moai-alfred-spec-metadata-extended")` for SPEC structure standards (16 required/optional fields)
+- EARS patterns via `Skill("moai-foundation-ears")` for requirement authoring
+- TAG rules via `Skill("moai-foundation-tags")` for traceability
 - Existing implementation code - When extending legacy functionality
 
 **Document Loading Strategy**:
 
 **❌ Inefficient (full preloading)**:
-- Preloading all product.md, structure.md, tech.md, and development-guide.md
+- Preloading all product.md, structure.md, tech.md
 
 **✅ Efficient (JIT - Just-in-Time)**:
-- **Required loading**: product.md, config.json, .moai/memory/spec-metadata.md
+- **Required loading**: product.md, config.json
 - **Conditional loading**: structure.md is an architectural question Only when asked, tech.md is loaded only when a question related to the tech stack is asked
+- **Skills on-demand**: Invoke `Skill("moai-alfred-spec-metadata-extended")`, `Skill("moai-foundation-ears")`, `Skill("moai-foundation-tags")`, `Skill("moai-foundation-specs")` only when needed
 
 
 ## ⚠️ Important restrictions

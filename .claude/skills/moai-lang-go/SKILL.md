@@ -1,11 +1,11 @@
 ---
 name: moai-lang-go
-version: 2.0.0
+version: 2.1.0
 created: 2025-10-22
-updated: 2025-10-22
+updated: 2025-11-02
 status: active
-description: Go 1.24+ best practices with go test, golangci-lint, gofmt, and standard library utilization.
-keywords: ['go', 'golang', 'testing', 'golangci-lint', 'gofmt']
+description: Go 1.24+ best practices with go test, golangci-lint, gofmt, standard library utilization, and web frameworks (Gin, Beego).
+keywords: ['go', 'golang', 'testing', 'golangci-lint', 'gofmt', 'gin', 'beego']
 allowed-tools:
   - Read
   - Bash
@@ -18,7 +18,7 @@ allowed-tools:
 | Field | Value |
 | ----- | ----- |
 | **Skill Name** | moai-lang-go |
-| **Version** | 2.0.0 (2025-10-22) |
+| **Version** | 2.1.0 (2025-11-02) |
 | **Allowed tools** | Read (read_file), Bash (terminal) |
 | **Auto-load** | On demand when keywords detected |
 | **Tier** | Language |
@@ -27,13 +27,14 @@ allowed-tools:
 
 ## What It Does
 
-Go 1.24+ best practices with go test, golangci-lint, gofmt, and standard library utilization.
+Go 1.24+ best practices with go test, golangci-lint, gofmt, standard library utilization, and web frameworks (Gin, Beego).
 
 **Key capabilities**:
 - ✅ Best practices enforcement for language domain
 - ✅ TRUST 5 principles integration
-- ✅ Latest tool versions (2025-10-22)
+- ✅ Latest tool versions (2025-11-02)
 - ✅ TDD workflow support
+- ✅ Web framework patterns (Gin, Beego)
 
 ---
 
@@ -51,14 +52,16 @@ Go 1.24+ best practices with go test, golangci-lint, gofmt, and standard library
 
 ---
 
-## Tool Version Matrix (2025-10-22)
+## Tool Version Matrix (2025-11-02)
 
 | Tool | Version | Purpose | Status |
 |------|---------|---------|--------|
-| **Go** | 1.24.0 | Primary | ✅ Current |
-| **golangci-lint** | 1.62.2 | Primary | ✅ Current |
-| **gofmt** | 1.24.0 | Primary | ✅ Current |
-| **gotestsum** | 1.12.0 | Primary | ✅ Current |
+| **Go** | 1.24.0 | Runtime | ✅ Current |
+| **golangci-lint** | 1.62.2 | Linter | ✅ Current |
+| **gofmt** | 1.24.0 | Formatter | ✅ Current |
+| **gotestsum** | 1.12.0 | Test runner | ✅ Current |
+| **Gin** | 1.11.0 | Web framework | ✅ Current |
+| **Beego** | 2.x | Web framework | ✅ Current |
 
 ---
 

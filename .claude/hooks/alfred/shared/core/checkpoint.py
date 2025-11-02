@@ -56,7 +56,7 @@ def detect_risky_operation(tool_name: str, tool_args: dict[str, Any], cwd: str) 
 
     Risky Operations:
         - Bash tool: rm -rf, git merge, git reset --hard, git rebase, script execution
-        - Edit/Write tool: CLAUDE.md, config.json, .moai/memory/*.md
+        - Edit/Write tool: CLAUDE.md, config.json, .claude/skills/*.md
         - MultiEdit tool: Edit ≥10 items File simultaneously
         - Script execution: Python, Node, Java, Go, Rust, Dart, Swift, Kotlin, Shell scripts
 
@@ -98,8 +98,8 @@ def detect_risky_operation(tool_name: str, tool_args: dict[str, Any], cwd: str) 
         critical_files = [
             "CLAUDE.md",
             "config.json",
-            ".moai/memory/development-guide.md",
-            ".moai/memory/spec-metadata.md",
+            ".claude/skills/moai-alfred-dev-guide/reference.md",
+            ".claude/skills/moai-alfred-spec-metadata-extended/reference.md",
             ".moai/config.json",
         ]
 
