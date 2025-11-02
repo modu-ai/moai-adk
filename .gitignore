@@ -62,3 +62,10 @@ logs/
 
 # Project Plans (internal tracking, not versioned)
 CURSOR_INTEGRATION_PLAN.md
+
+# Local .claude infrastructure (package template is source of truth)
+# Users should never modify these files directly - sync from package template
+.claude/commands/
+.claude/agents/
+.claude/hooks/
+.claude/skills/
