@@ -1,10 +1,10 @@
 ---
 name: alfred:0-project
-description: "Initialize project document - create product/structure/tech.md and set optimization for each language"
+description: "Initialize/update project document - create/update product/structure/tech.md and set optimization for each language. Supports: /alfred:0-project (init) or /alfred:0-project update (optimize template after moai-adk update)"
 # Translations:
-# - ko: "프로젝트 문서 초기화 - product/structure/tech.md 생성 및 언어별 최적화 설정"
-# - ja: "プロジェクト文書の初期化 - product/structure/tech.mdの作成と言語別最適化設定"
-# - zh: "初始化项目文档 - 创建product/structure/tech.md并设置语言优化"
+# - ko: "프로젝트 문서 초기화/업데이트 - product/structure/tech.md 생성/업데이트 및 언어별 최적화 설정. 지원: /alfred:0-project (초기화) 또는 /alfred:0-project update (moai-adk 업데이트 후 템플릿 최적화)"
+# - ja: "プロジェクト文書の初期化/更新 - product/structure/tech.mdの作成/更新と言語別最適化設定. サポート: /alfred:0-project (初期化) または /alfred:0-project update (moai-adk更新後のテンプレート最適化)"
+# - zh: "初始化/更新项目文档 - 创建/更新product/structure/tech.md并设置语言优化. 支持: /alfred:0-project (初始化) 或 /alfred:0-project update (moai-adk更新后模板优化)"
 allowed-tools:
 - Read
 - Write
