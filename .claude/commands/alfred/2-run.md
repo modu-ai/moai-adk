@@ -254,9 +254,9 @@ LANGUAGE CONFIGURATION:
 - language_name: {{CONVERSATION_LANGUAGE_NAME}}
 
 CRITICAL INSTRUCTION:
-Code and technical output MUST be in English.
-Code comments MAY be in {{CONVERSATION_LANGUAGE}} if appropriate.
-Test descriptions and documentation can use {{CONVERSATION_LANGUAGE}}.
+Code syntax and keywords: English (immutable).
+Code comments: MUST be in {{CONVERSATION_LANGUAGE}}.
+Test descriptions and documentation: MUST be in {{CONVERSATION_LANGUAGE}}.
 
 SKILL INVOCATION:
 Use explicit Skill() calls when needed:
