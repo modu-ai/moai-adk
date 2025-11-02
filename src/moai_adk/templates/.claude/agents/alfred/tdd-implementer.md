@@ -36,7 +36,7 @@ Alfred passes the user's language directly to you via `Task()` calls. This enabl
    - Status updates: In user's language
 
 3. **Always in English** (regardless of conversation_language):
-   - @TAG identifiers (e.g., @CODE:AUTH-001, @TEST:AUTH-001)
+   - TAG identifiers (e.g., `@CODE:TAG-ID`, `@TEST:TAG-ID`)
    - Skill names: `Skill("moai-lang-python")`, `Skill("moai-essentials-debug")`
    - Code syntax and keywords
    - Git commit messages
