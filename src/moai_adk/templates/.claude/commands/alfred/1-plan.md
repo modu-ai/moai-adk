@@ -203,10 +203,23 @@ LANGUAGE CONFIGURATION:
 - language_name: {{CONVERSATION_LANGUAGE_NAME}}
 
 CRITICAL INSTRUCTION:
-All SPEC documents and analysis must be generated in conversation_language.
-- If conversation_language is 'ko' (Korean): Generate ALL analysis, plans, and SPEC documents in Korean
-- If conversation_language is 'ja' (Japanese): Generate ALL analysis, plans, and SPEC documents in Japanese
-- If conversation_language is other language: Follow the specified language
+SPEC documents MUST follow bilingual structure (User language + English summary):
+
+For conversation_language == 'ko' (Korean):
+- YAML metadata: English only
+- Title (@SPEC tag): Korean primary, with English version in footer
+- Main content (analysis, requirements, EARS): Korean
+- SUMMARY section: English (100-200 words for international contributors)
+- HISTORY: Korean (new entries), English summaries for major versions
+
+For conversation_language == 'ja' (Japanese):
+- Same bilingual pattern as Korean
+- Main content: Japanese
+- SUMMARY: English
+
+For other languages:
+- Main content: User's specified language
+- SUMMARY: English (always)
 
 SKILL INVOCATION:
 Use explicit Skill() calls when needed:
