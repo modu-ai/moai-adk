@@ -1,8 +1,8 @@
 ---
-name: moai-skill-factory
+name: moai-cc-skill-factory
 version: 2.1.0
 created: 2025-10-22
-updated: 2025-10-27
+updated: 2025-11-02
 status: active
 description: Create and maintain high-quality Claude Code Skills through interactive discovery, web research, and continuous updates. Use when building new Skills, researching latest best practices, updating existing Skills with current information, or generating Skill packages backed by official documentation and real-world examples.
 keywords: [skill-creation, claude-skills, best-practices, web-research, interactive-discovery, skill-updates]
@@ -22,7 +22,7 @@ allowed-tools:
 | Field | Value |
 | ----- | ----- |
 | Version | 2.1.0 |
-| Tier | Special |
+| Tier | CC (Claude Code Meta) |
 | Auto-load | Proactively when building Skills |
 | Purpose | Interactive discovery → Web research → Skill generation |
 

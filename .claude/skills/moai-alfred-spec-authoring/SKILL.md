@@ -1,8 +1,8 @@
 ---
-name: moai-spec-authoring
+name: moai-alfred-spec-authoring
 version: 1.2.0
 created: 2025-10-23
-updated: 2025-10-29
+updated: 2025-11-02
 status: active
 description: SPEC document authoring guide - YAML metadata, EARS syntax (5 patterns with Unwanted Behaviors), validation checklist
 keywords: ['spec', 'authoring', 'ears', 'metadata', 'requirements', 'tdd', 'planning']
@@ -18,11 +18,11 @@ allowed-tools:
 
 | Field | Value |
 | ----- | ----- |
-| **Skill Name** | moai-spec-authoring |
-| **Version** | 1.2.0 (2025-10-29) |
+| **Skill Name** | moai-alfred-spec-authoring |
+| **Version** | 1.2.0 (2025-11-02) |
 | **Allowed tools** | Read, Bash, Glob |
 | **Auto-load** | `/alfred:1-plan`, SPEC authoring tasks |
-| **Tier** | Foundation |
+| **Tier** | Alfred |
 
 ---
 

@@ -1,11 +1,11 @@
 ---
 name: moai-lang-java
-version: 2.0.0
+version: 2.1.0
 created: 2025-10-22
-updated: 2025-10-22
+updated: 2025-11-02
 status: active
-description: Java 23+ best practices with JUnit 5, Maven/Gradle, CheckStyle, and modern patterns.
-keywords: ['java', 'junit', 'maven', 'gradle', 'checkstyle']
+description: Java 23+ best practices with JUnit 5, Maven/Gradle, CheckStyle, modern patterns, and Spring Boot.
+keywords: ['java', 'junit', 'maven', 'gradle', 'checkstyle', 'spring-boot']
 allowed-tools:
   - Read
   - Bash
@@ -18,7 +18,7 @@ allowed-tools:
 | Field | Value |
 | ----- | ----- |
 | **Skill Name** | moai-lang-java |
-| **Version** | 2.0.0 (2025-10-22) |
+| **Version** | 2.1.0 (2025-11-02) |
 | **Allowed tools** | Read (read_file), Bash (terminal) |
 | **Auto-load** | On demand when keywords detected |
 | **Tier** | Language |
@@ -27,13 +27,14 @@ allowed-tools:
 
 ## What It Does
 
-Java 23+ best practices with JUnit 5, Maven/Gradle, CheckStyle, and modern patterns.
+Java 23+ best practices with JUnit 5, Maven/Gradle, CheckStyle, modern patterns, and Spring Boot.
 
 **Key capabilities**:
 - ✅ Best practices enforcement for language domain
 - ✅ TRUST 5 principles integration
-- ✅ Latest tool versions (2025-10-22)
+- ✅ Latest tool versions (2025-11-02)
 - ✅ TDD workflow support
+- ✅ Spring Boot enterprise framework patterns
 
 ---
 
@@ -51,14 +52,15 @@ Java 23+ best practices with JUnit 5, Maven/Gradle, CheckStyle, and modern patte
 
 ---
 
-## Tool Version Matrix (2025-10-22)
+## Tool Version Matrix (2025-11-02)
 
 | Tool | Version | Purpose | Status |
 |------|---------|---------|--------|
-| **Java** | 23.0.0 | Primary | ✅ Current |
-| **JUnit** | 5.11.0 | Primary | ✅ Current |
-| **Maven** | 3.9.9 | Primary | ✅ Current |
-| **Gradle** | 8.12.0 | Primary | ✅ Current |
+| **Java** | 23.0.0 | Runtime | ✅ Current |
+| **JUnit** | 5.11.0 | Testing | ✅ Current |
+| **Maven** | 3.9.9 | Build tool | ✅ Current |
+| **Gradle** | 8.12.0 | Build tool | ✅ Current |
+| **Spring Boot** | 3.5.7 | Enterprise framework | ✅ Current |
 
 ---
 

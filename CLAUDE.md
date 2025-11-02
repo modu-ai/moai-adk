@@ -28,7 +28,7 @@ You are the SuperAgent **🎩 Alfred** of **🗿 MoAI-ADK**. Follow these core p
 
 **Team Structure**: Alfred coordinates **19 team members** (10 core sub-agents + 6 specialists + 2 built-in Claude agents + Alfred) using **55 Claude Skills** across 6 tiers.
 
-**For detailed agent information**: See [CLAUDE-AGENTS-GUIDE.md](./CLAUDE-AGENTS-GUIDE.md)
+**For detailed agent information**: Skill("moai-alfred-agent-guide")
 
 ---
 
@@ -542,16 +542,16 @@ Quick lookup for Alfred to find critical information:
 
 | Information Needed              | Reference Document                                 | Section                        |
 | ------------------------------- | -------------------------------------------------- | ------------------------------ |
-| Sub-agent selection criteria    | [CLAUDE-AGENTS-GUIDE.md](./CLAUDE-AGENTS-GUIDE.md) | Agent Selection Decision Tree  |
-| Skill invocation rules          | [CLAUDE-RULES.md](./CLAUDE-RULES.md)               | Skill Invocation Rules         |
-| Interactive question guidelines | [CLAUDE-RULES.md](./CLAUDE-RULES.md)               | Interactive Question Rules     |
-| Git commit message format       | [CLAUDE-RULES.md](./CLAUDE-RULES.md)               | Git Commit Message Standard    |
-| @TAG lifecycle & validation     | [CLAUDE-RULES.md](./CLAUDE-RULES.md)               | @TAG Lifecycle                 |
-| TRUST 5 principles              | [CLAUDE-RULES.md](./CLAUDE-RULES.md)               | TRUST 5 Principles             |
-| Practical workflow examples     | [CLAUDE-PRACTICES.md](./CLAUDE-PRACTICES.md)       | Practical Workflow Examples    |
-| Context engineering strategy    | [CLAUDE-PRACTICES.md](./CLAUDE-PRACTICES.md)       | Context Engineering Strategy   |
-| Agent collaboration patterns    | [CLAUDE-AGENTS-GUIDE.md](./CLAUDE-AGENTS-GUIDE.md) | Agent Collaboration Principles |
-| Model selection guide           | [CLAUDE-AGENTS-GUIDE.md](./CLAUDE-AGENTS-GUIDE.md) | Model Selection Guide          |
+| Sub-agent selection criteria    | Skill("moai-alfred-agent-guide")                   | Agent Selection Decision Tree  |
+| Skill invocation rules          | Skill("moai-alfred-rules")                         | Skill Invocation Rules         |
+| Interactive question guidelines | Skill("moai-alfred-rules")                         | Interactive Question Rules     |
+| Git commit message format       | Skill("moai-alfred-rules")                         | Git Commit Message Standard    |
+| @TAG lifecycle & validation     | Skill("moai-alfred-rules")                         | @TAG Lifecycle                 |
+| TRUST 5 principles              | Skill("moai-alfred-rules")                         | TRUST 5 Principles             |
+| Practical workflow examples     | Skill("moai-alfred-practices")                     | Practical Workflow Examples    |
+| Context engineering strategy    | Skill("moai-alfred-practices")                     | Context Engineering Strategy   |
+| Agent collaboration patterns    | Skill("moai-alfred-agent-guide")                   | Agent Collaboration Principles |
+| Model selection guide           | Skill("moai-alfred-agent-guide")                   | Model Selection Guide          |
 
 ---
 
@@ -829,7 +829,8 @@ Your project is ready. You can now run `/alfred:1-plan` to start planning specs.
 | **SPEC Documents**      | `.moai/specs/SPEC-*/` | spec.md, plan.md, acceptance.md      |
 | **Sync Reports**        | `.moai/reports/`      | Sync analysis, tag validation        |
 | **Technical Analysis**  | `.moai/analysis/`     | Architecture studies, optimization   |
-| **Memory Files**        | `.moai/memory/`       | Session context, persistent state    |
+| **Memory Files**        | `.moai/memory/`       | Session state only (runtime data)    |
+| **Knowledge Base**      | `.claude/skills/moai-alfred-*` | Alfred workflow guidance (on-demand) |
 
 #### ❌ FORBIDDEN: Root Directory
 
@@ -909,7 +910,6 @@ Is it user-facing official documentation?
 - `.claude/agents/`
 - `.claude/commands/`
 - `.claude/skills/`
-- `.moai/memory/`
 
 **Rationale**: These files define system behavior, tool invocations, and internal infrastructure. English ensures:
 
@@ -936,7 +936,7 @@ Is it user-facing official documentation?
 - Nested language structure in config.json: `language.conversation_language` and `language.conversation_language_name`
 - Migration module for legacy configs (v0.6.3 → v0.7.0+)
 - Supports 5 languages: English, Korean, Japanese, Chinese, Spanish
-- Schema documentation: `.moai/memory/language-config-schema.md`
+- Schema documentation: Skill("moai-alfred-config-schema")
 
 **Phase 3: Agent Instructions** ✅
 
@@ -971,4 +971,4 @@ Is it user-facing official documentation?
 
 **Note**: The conversation language is selected at the beginning of `/alfred:0-project` and applies to all subsequent project initialization steps. User-facing documentation will be generated in the user's configured language.
 
-For detailed configuration reference, see: `.moai/memory/language-config-schema.md`
+For detailed configuration reference, see: Skill("moai-alfred-config-schema")

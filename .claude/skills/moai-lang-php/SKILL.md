@@ -1,11 +1,11 @@
 ---
 name: moai-lang-php
-version: 2.0.0
+version: 2.1.0
 created: 2025-10-22
-updated: 2025-10-22
+updated: 2025-11-02
 status: active
-description: PHP 8.4+ best practices with PHPUnit 11, Composer, and PSR-12 standards.
-keywords: ['php', 'phpunit', 'composer', 'psr']
+description: PHP 8.4+ best practices with PHPUnit 11, Composer, PSR-12 standards, and web frameworks (Laravel, Symfony).
+keywords: ['php', 'phpunit', 'composer', 'psr', 'laravel', 'symfony']
 allowed-tools:
   - Read
   - Bash
@@ -18,7 +18,7 @@ allowed-tools:
 | Field | Value |
 | ----- | ----- |
 | **Skill Name** | moai-lang-php |
-| **Version** | 2.0.0 (2025-10-22) |
+| **Version** | 2.1.0 (2025-11-02) |
 | **Allowed tools** | Read (read_file), Bash (terminal) |
 | **Auto-load** | On demand when keywords detected |
 | **Tier** | Language |
@@ -27,13 +27,14 @@ allowed-tools:
 
 ## What It Does
 
-PHP 8.4+ best practices with PHPUnit 11, Composer, and PSR-12 standards.
+PHP 8.4+ best practices with PHPUnit 11, Composer, PSR-12 standards, and web frameworks (Laravel, Symfony).
 
 **Key capabilities**:
 - ✅ Best practices enforcement for language domain
 - ✅ TRUST 5 principles integration
-- ✅ Latest tool versions (2025-10-22)
+- ✅ Latest tool versions (2025-11-02)
 - ✅ TDD workflow support
+- ✅ Web framework patterns (Laravel, Symfony)
 
 ---
 
@@ -51,13 +52,15 @@ PHP 8.4+ best practices with PHPUnit 11, Composer, and PSR-12 standards.
 
 ---
 
-## Tool Version Matrix (2025-10-22)
+## Tool Version Matrix (2025-11-02)
 
 | Tool | Version | Purpose | Status |
 |------|---------|---------|--------|
-| **PHP** | 8.4.0 | Primary | ✅ Current |
-| **PHPUnit** | 11.5.0 | Primary | ✅ Current |
-| **Composer** | 2.8.0 | Primary | ✅ Current |
+| **PHP** | 8.4.0 | Runtime | ✅ Current |
+| **PHPUnit** | 11.5.0 | Testing | ✅ Current |
+| **Composer** | 2.8.0 | Package manager | ✅ Current |
+| **Laravel** | 12.0.0 | Web framework | ✅ Current |
+| **Symfony** | 7.3.5 | Web framework | ✅ Current |
 
 ---
 

@@ -1,11 +1,11 @@
 ---
 name: moai-lang-typescript
-version: 2.0.0
+version: 2.1.0
 created: 2025-10-22
-updated: 2025-10-22
+updated: 2025-11-02
 status: active
-description: TypeScript 5.7+ best practices with Vitest 2.1, Biome 1.9, strict typing, and npm/pnpm/bun package management.
-keywords: ['typescript', 'testing', 'vitest', 'biome', 'types', 'react', 'nextjs']
+description: TypeScript 5.7+ best practices with Vitest 2.1, Biome 1.9, strict typing, npm/pnpm/bun package management, and fullstack meta-frameworks (Next.js, Remix, etc.).
+keywords: ['typescript', 'testing', 'vitest', 'biome', 'types', 'nextjs', 'remix', 'express', 'fastify', 'nestjs', 'sails']
 allowed-tools:
   - Read
   - Bash
@@ -18,7 +18,7 @@ allowed-tools:
 | Field | Value |
 | ----- | ----- |
 | **Skill Name** | moai-lang-typescript |
-| **Version** | 2.0.0 (2025-10-22) |
+| **Version** | 2.1.0 (2025-11-02) |
 | **Allowed tools** | Read (read_file), Bash (terminal) |
 | **Auto-load** | On demand when keywords detected |
 | **Tier** | Language |
@@ -27,13 +27,14 @@ allowed-tools:
 
 ## What It Does
 
-TypeScript 5.7+ best practices with Vitest 2.1, Biome 1.9, strict typing, and npm/pnpm/bun package management.
+TypeScript 5.7+ best practices with Vitest 2.1, Biome 1.9, strict typing, npm/pnpm/bun package management, and fullstack meta-frameworks (Next.js, Remix, Express, Fastify, NestJS, Sails).
 
 **Key capabilities**:
 - ✅ Best practices enforcement for language domain
 - ✅ TRUST 5 principles integration
-- ✅ Latest tool versions (2025-10-22)
+- ✅ Latest tool versions (2025-11-02)
 - ✅ TDD workflow support
+- ✅ Fullstack meta-framework patterns (Next.js, Remix)
 
 ---
 
@@ -51,7 +52,7 @@ TypeScript 5.7+ best practices with Vitest 2.1, Biome 1.9, strict typing, and np
 
 ---
 
-## Tool Version Matrix (2025-10-22)
+## Tool Version Matrix (2025-11-02)
 
 | Tool | Version | Purpose | Status |
 |------|---------|---------|--------|
@@ -60,8 +61,13 @@ TypeScript 5.7+ best practices with Vitest 2.1, Biome 1.9, strict typing, and np
 | **Biome** | 1.9.4 | Primary | ✅ Current |
 | **Bun** | 1.1.0 | Primary | ✅ Current |
 | **pnpm** | 9.14.2 | Primary | ✅ Current |
-| **React** | 19.0.0 | Primary | ✅ Current |
-| **Next.js** | 15.1.0 | Primary | ✅ Current |
+| **npm** | 11.0+ | Primary | ✅ Current |
+| **Next.js** | 15.1.0 | Meta-framework | ✅ Current |
+| **Remix** | 2.17.0 | Meta-framework | ✅ Current |
+| **Express.js** | 5.1.0 | Web framework | ✅ Current |
+| **Fastify** | 5.3.2 | Web framework | ✅ Current |
+| **NestJS** | 11.1.8 | Enterprise framework | ✅ Current |
+| **Sails.js** | 1.5.15 | MVC framework | ✅ Current |
 
 ---
 

@@ -22,13 +22,13 @@ def get_jit_context(prompt: str, cwd: str) -> list[str]:
         If there is no matching pattern or file, an empty list []
 
     Patterns:
-        - "/alfred:1-plan" → .moai/memory/spec-metadata.md
-        - "/alfred:2-run" → .moai/memory/development-guide.md
+        - "/alfred:1-plan" → .claude/skills/moai-alfred-spec-metadata-extended/reference.md
+        - "/alfred:2-run" → .claude/skills/moai-alfred-dev-guide/reference.md
         - "test" → tests/ (if directory exists)
 
     Examples:
         >>> get_jit_context("/alfred:1-plan", "/project")
-        ['.moai/memory/spec-metadata.md']
+        ['.claude/skills/moai-alfred-spec-metadata-extended/reference.md']
         >>> get_jit_context("implement test", "/project")
         ['tests/']
         >>> get_jit_context("unknown", "/project")
@@ -49,8 +49,8 @@ def get_jit_context(prompt: str, cwd: str) -> list[str]:
 
     # Pattern matching
     patterns = {
-        "/alfred:1-plan": [".moai/memory/spec-metadata.md"],
-        "/alfred:2-run": [".moai/memory/development-guide.md"],
+        "/alfred:1-plan": [".claude/skills/moai-alfred-spec-metadata-extended/reference.md"],
+        "/alfred:2-run": [".claude/skills/moai-alfred-dev-guide/reference.md"],
         "test": ["tests/"],
     }
 
