@@ -542,6 +542,45 @@ Only if the user selects **"Proceed"** or **"Start"** will Alfred call the tdd-i
 
 ---
 
+## Command Completion Pattern
+
+### After STEP 3 (git-manager) Completes
+
+Alfred calls AskUserQuestion to collect user's next action:
+
+```python
+AskUserQuestion(
+    questions=[
+        {
+            "question": "구현이 완료되었습니다. 다음으로 뭘 하시겠습니까?",
+            "header": "다음 단계",
+            "multiSelect": false,
+            "options": [
+                {
+                    "label": "📚 문서 동기화 진행",
+                    "description": "/alfred:3-sync 실행하여 문서 동기화"
+                },
+                {
+                    "label": "🔍 추가 구현",
+                    "description": "다른 SPEC 구현 진행"
+                },
+                {
+                    "label": "🔄 새 세션 시작",
+                    "description": "성능 최적화를 위해 /clear 실행"
+                }
+            ]
+        }
+    ]
+)
+```
+
+**User Responses**:
+- **📚 문서 동기화**: Proceed to `/alfred:3-sync` for documentation synchronization
+- **🔍 추가 구현**: Repeat `/alfred:2-run SPEC-XXX` for next feature
+- **🔄 새 세션**: Execute `/clear` to start fresh session (recommended for performance)
+
+---
+
 ## Next steps
 
 **Recommendation**: For better performance and context management, start a new chat session with the `/clear` or `/new` command before proceeding to the next step.
