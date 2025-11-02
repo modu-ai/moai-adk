@@ -1,6 +1,6 @@
 ---
 name: alfred:9-feedback
-description: "Interactive GitHub Issue creation - Step-by-step dialog to create issues without command arguments"
+description: "Create GitHub issues interactively"
 allowed-tools:
 - Bash(gh:*)
 - Task

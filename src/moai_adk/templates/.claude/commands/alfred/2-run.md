@@ -1,10 +1,6 @@
 ---
 name: alfred:2-run
-description: "Execute planned work (TDD implementation, prototyping, documentation, etc.)"
-# Translations:
-# - ko: "계획된 작업 실행 (TDD 구현, 프로토타이핑, 문서화 등)"
-# - ja: "計画されたタスクの実行（TDD実装、プロトタイピング、ドキュメント作成など）"
-# - zh: "执行计划任务（TDD实现、原型开发、文档编写等）"
+description: "Execute TDD implementation cycle"
 argument-hint: "SPEC-ID - All with SPEC ID to implement (e.g. SPEC-001) or all \"SPEC Implementation\""
 allowed-tools:
   - Read
@@ -28,7 +24,7 @@ allowed-tools:
 >
 > **Batched Design**: All AskUserQuestion calls follow batched design principles (1-4 questions per call) to minimize user interaction turns. See CLAUDE.md section "Alfred Command Completion Pattern" for details.
 
-<!-- @CODE:ALF-WORKFLOW-001:CMD-RUN -->
+<!-- @CODE:ALF-WORKFLOW-002:CMD-RUN -->
 
 **4-Step Workflow Integration**: This command implements Step 3 of Alfred's workflow (Task Execution with TodoWrite tracking). See CLAUDE.md for full workflow details.
 
