@@ -58,9 +58,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from utils.timeout import CrossPlatformTimeout, TimeoutError as PlatformTimeoutError
-
-from shared.core import HookResult
 from handlers import (
     handle_notification,
     handle_post_tool_use,
@@ -71,6 +68,8 @@ from handlers import (
     handle_subagent_stop,
     handle_user_prompt_submit,
 )
+from shared.core import HookResult
+from utils.timeout import TimeoutError as PlatformTimeoutError
 
 # Add the hooks directory to sys.path to enable package imports
 HOOKS_DIR = Path(__file__).parent
@@ -80,7 +79,7 @@ if str(HOOKS_DIR) not in sys.path:
 
 def _hook_timeout_handler(signum, frame):
     """Signal handler for global hook timeout"""
-    raise HookTimeoutError("Hook execution exceeded 5-second timeout")
+    raise PlatformTimeoutError("Hook execution exceeded 5-second timeout")
 
 
 def main() -> None:
@@ -199,7 +198,7 @@ def main() -> None:
 
     finally:
         # Always cancel the alarm to prevent signal leakage
-        timeout.cancel()
+        signal.alarm(0)
 
 
 if __name__ == "__main__":

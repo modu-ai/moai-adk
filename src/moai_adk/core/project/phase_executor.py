@@ -142,7 +142,7 @@ class PhaseExecutor:
         # Set template variable context (if provided)
         if config:
             # @TAG:LANG-FIX-001:PY-CONFIG | Read language from nested config structure
-            language_config = config.get("language", {})
+            language_config: dict[str, Any] = config.get("language", {})
             if not isinstance(language_config, dict):
                 language_config = {}
 

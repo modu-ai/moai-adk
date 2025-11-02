@@ -245,13 +245,24 @@ class TemplateVariableValidator:
             if var_name not in variables:
                 errors.append(f"Missing required variable: {var_name}")
             elif not isinstance(variables[var_name], var_type):
-                errors.append(f"Invalid type for {var_name}: expected {var_type.__name__}, got {type(variables[var_name]).__name__}")
+                actual_type = type(variables[var_name]).__name__
+                errors.append(
+                    f"Invalid type for {var_name}: "
+                    f"expected {var_type.__name__}, got {actual_type}"
+                )
 
         # Check optional variables (if present)
         for var_name, var_type in cls.OPTIONAL_VARIABLES.items():
             if var_name in variables:
                 if not isinstance(variables[var_name], var_type):
-                    type_names = " or ".join(t.__name__ for t in var_type) if isinstance(var_type, tuple) else var_type.__name__
-                    errors.append(f"Invalid type for {var_name}: expected {type_names}, got {type(variables[var_name]).__name__}")
+                    if isinstance(var_type, tuple):
+                        type_names = " or ".join(t.__name__ for t in var_type)
+                    else:
+                        type_names = var_type.__name__
+                    actual_type = type(variables[var_name]).__name__
+                    errors.append(
+                        f"Invalid type for {var_name}: "
+                        f"expected {type_names}, got {actual_type}"
+                    )
 
         return len(errors) == 0, errors
