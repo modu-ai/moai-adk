@@ -1,10 +1,6 @@
 ---
 name: alfred:3-sync
-description: "Document synchronization + PR Ready conversion"
-# Translations:
-# - ko: "문서 동기화 + PR Ready 전환"
-# - ja: "ドキュメント同期 + PR Ready変換"
-# - zh: "文档同步 + PR Ready转换"
+description: "Synchronize documentation and finalize PR"
 argument-hint: 'Mode target path - Mode: auto (default)|force|status|project, target
   path: Synchronization target path'
 allowed-tools:
@@ -26,7 +22,7 @@ allowed-tools:
 >
 > **Batched Design**: All AskUserQuestion calls follow batched design principles (1-4 questions per call) to minimize user interaction turns. See CLAUDE.md section "Alfred Command Completion Pattern" for details.
 
-<!-- @CODE:ALF-WORKFLOW-001:CMD-SYNC -->
+<!-- @CODE:ALF-WORKFLOW-003:CMD-SYNC -->
 
 **4-Step Workflow Integration**: This command implements Step 4 of Alfred's workflow (Report & Commit with conditional report generation). See CLAUDE.md for full workflow details.
 

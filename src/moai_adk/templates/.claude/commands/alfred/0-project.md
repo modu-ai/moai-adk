@@ -1,6 +1,6 @@
 ---
 name: alfred:0-project
-description: "Initialize/update project document - create/update product/structure/tech.md and set optimization for each language. Supports: /alfred:0-project (init) or /alfred:0-project update (optimize template after moai-adk update)"
+description: "Initialize project metadata and documentation"
 allowed-tools:
 - Read
 - Write
@@ -706,24 +706,24 @@ After the project-manager has finished creating the document, **Alfred can optio
 **Interview Flow**:
 
 1. **Product Discovery** (create product.md)
- - Define core mission (@DOC:MISSION-001)
- - Identify key user base (@SPEC:USER-001)
- - Identify key problems to solve (@SPEC:PROBLEM-001)
- - Summary of differences and strengths (@DOC:STRATEGY-001)
- - Setting success indicators (@SPEC:SUCCESS-001)
+ - Define core mission (`@DOC:MISSION-001`)
+ - Identify key user base (`@SPEC:USER-001`)
+ - Identify key problems to solve (`@SPEC:PROBLEM-001`)
+ - Summary of differences and strengths (`@DOC:STRATEGY-001`)
+ - Setting success indicators (`@SPEC:SUCCESS-001`)
 
 2. **Structure Blueprint** (create structure.md)
- - Selection of architecture strategy (@DOC:ARCHITECTURE-001)
- - Division of responsibilities by module (@DOC:MODULES-001)
- - External system integration plan (@DOC:INTEGRATION-001)
- - Define traceability strategy (@DOC:TRACEABILITY-001)
+ - Selection of architecture strategy (`@DOC:ARCHITECTURE-001`)
+ - Division of responsibilities by module (`@DOC:MODULES-001`)
+ - External system integration plan (`@DOC:INTEGRATION-001`)
+ - Define traceability strategy (`@DOC:TRACEABILITY-001`)
 
 3. **Tech Stack Mapping** (written by tech.md)
- - Select language & runtime (@DOC:STACK-001)
- - Determine core framework (@DOC:FRAMEWORK-001)
- - Set quality gate (@DOC:QUALITY-001)
-   - Define security policy (@DOC:SECURITY-001)
- - Plan distribution channels (@DOC:DEPLOY-001)
+ - Select language & runtime (`@DOC:STACK-001`)
+ - Determine core framework (`@DOC:FRAMEWORK-001`)
+ - Set quality gate (`@DOC:QUALITY-001`)
+   - Define security policy (`@DOC:SECURITY-001`)
+ - Plan distribution channels (`@DOC:DEPLOY-001`)
 
 **Automatically generate config.json**:
 ```json
@@ -973,11 +973,11 @@ cc-manager selects the required sub-agents and skills based on the briefing.The 
 
 | Project requirements (document basis)                                              | Recommended sub-agent/skill                                                                                             | Purpose                                                                |
 | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| High quality and coverage goals (`product.md@SPEC:SUCCESS-001`)                    | `tdd-implementer`, `moai-essentials-debug`, `moai-essentials-review`                                                    | Establishment of RED·GREEN·REFACTOR workflow                           |
-| Traceability/TAG improvement request (`structure.md@DOC:TRACEABILITY-001`)         | `doc-syncer`, `moai-alfred-tag-scanning`, `moai-alfred-trust-validation`                                                | Enhanced TAG traceability and document/code synchronization            |
+| High quality and coverage goals (`` `product.md@SPEC:SUCCESS-001` ``)                    | `tdd-implementer`, `moai-essentials-debug`, `moai-essentials-review`                                                    | Establishment of RED·GREEN·REFACTOR workflow                           |
+| Traceability/TAG improvement request (`` `structure.md@DOC:TRACEABILITY-001` ``)         | `doc-syncer`, `moai-alfred-tag-scanning`, `moai-alfred-trust-validation`                                                | Enhanced TAG traceability and document/code synchronization            |
 | Deployment automation/branch strategy required (`structure.md` Architecture/TODO)  | `git-manager`, `moai-alfred-git-workflow`, `moai-foundation-git`                                                        | Branch Strategy·Commit Policy·PR Automation                            |
 | Refactoring legacy modules (`product.md` BACKLOG, `tech.md` TODO)                  | `implementation-planner`, `moai-essentials-refactor`                                                                     | Technical Debt Diagnosis and Refactoring Roadmap                       |
-| Strengthening regulatory/security compliance (`tech.md@DOC:SECURITY-001`)          | `quality-gate`, `moai-alfred-trust-validation`, `moai-foundation-trust`, `moai-domain-security`                         | TRUST S (Secured) and Trackable Compliance, Security Consulting        |
+| Strengthening regulatory/security compliance (`` `tech.md@DOC:SECURITY-001` ``)          | `quality-gate`, `moai-alfred-trust-validation`, `moai-foundation-trust`, `moai-domain-security`                         | TRUST S (Secured) and Trackable Compliance, Security Consulting        |
 | CLI Automation/Tooling Requirements (`tech.md` BUILD/CLI section)                  | `implementation-planner`, `moai-domain-cli-tool`, detected language skills (e.g. `moai-lang-python`)                    | CLI command design, input/output standardization                       |
 | Data analysis/reporting needs (`product.md` DATA, `tech.md` ANALYTICS)             | `implementation-planner`, `moai-domain-data-science`, detected language skills                                          | Data Pipeline·Notebook Job Definition                                  |
 | Improved database structure (`structure.md` DB, `tech.md` STORAGE)                 | `doc-syncer`, `moai-domain-database`, `moai-alfred-tag-scanning`                                                        | Strengthening schema documentation and TAG-DB mapping                  |
