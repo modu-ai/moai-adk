@@ -1,418 +1,432 @@
-# Acceptance Criteria: Claude Code Features Integration
+# SPEC-CLAUDE-CODE-FEATURES-001: Acceptance Test Scenarios
 
-**SPEC ID**: CLAUDE-CODE-FEATURES-001
-**Version**: 0.0.1
-**Created**: 2025-11-02
+## Overview
+12 comprehensive test scenarios in Given-When-Then (GWT) format to validate all 6 features of Claude Code v2.0.30+ integration.
 
 ---
 
-## Test Scenarios (Given-When-Then Format)
+## Feature 1: Enhanced Code Analysis (@CODE) - Scenarios 1-2
 
-### Scenario 1: Haiku Auto SonnetPlan - Cost Reduction Verification
+### Test Scenario 1: Code Complexity Analysis
+**Feature**: Enhanced Code Analysis
+**Priority**: High
+**Status**: Pending
 
-**Feature**: Haiku Auto SonnetPlan Mode
-**Goal**: 비용 70-90% 절감 검증
+**Given**: 
+- A Python function with nested loops and conditional branches
+- File path: `src/example.py`
+- Function name: `process_data()`
+- Code:
+  ```python
+  def process_data(items):
+      result = []
+      for item in items:
+          if item > 0:
+              for sub_item in item.values():
+                  if sub_item.is_valid():
+                      result.append(process(sub_item))
+      return result
+  ```
 
-**Given**:
-- MoAI-ADK v0.9.0 설치 완료
-- `.moai/config.json`에서 `auto_sonnet_plan.enabled: true`
-- 사용자가 `/alfred:1-plan "User authentication feature"` 실행
-
-**When**:
-- spec-builder 에이전트가 SPEC 분석 시작
-- 계획 수립 단계 (STEP 1)에서 모델 선택
+**When**: 
+- Code analysis is triggered with `@CODE` tag
+- Analysis engine parses the function
 
 **Then**:
-- ✅ spec-builder는 **Sonnet 4.5** 모델을 사용해야 함
-- ✅ 로그에 "Using claude-sonnet-4-5 for planning mode" 메시지 출력
-- ✅ 비용 측정: Plan 단계에서 Sonnet 비용 발생
-- ✅ 비용 절감률: 전체 워크플로우에서 70-90% 절감 (Haiku 실행 모드 포함)
+- Cyclomatic complexity score: 4
+- Cognitive complexity score: 6
+- Quality rating: Medium
+- Optimization suggestions provided:
+  - Reduce nested loops
+  - Extract validation logic
+  - Use list comprehension
 
-**Quality Gate**:
-- Cost reduction ≥ 70%
-- Plan quality score ≥ 0.9 (based on EARS compliance)
+**Expected Output**: Structured analysis report with scores and suggestions
 
 ---
 
-### Scenario 2: Haiku Auto SonnetPlan - Performance Improvement
-
-**Feature**: Haiku Auto SonnetPlan Mode
-**Goal**: 성능 4-6배 향상 검증
+### Test Scenario 2: Multi-File Code Quality Assessment
+**Feature**: Enhanced Code Analysis
+**Priority**: High
+**Status**: Pending
 
 **Given**:
-- spec-builder가 SPEC 생성 완료 (Sonnet으로 계획 수립)
-- TodoWrite 작업 목록 초기화됨
-- `/alfred:2-run SPEC-XXX-001` 실행 준비
+- Multiple Python files in project:
+  - `core.py` (500 lines)
+  - `utils.py` (300 lines)
+  - `handlers.py` (400 lines)
+- All files have `@CODE` tags
 
 **When**:
-- tdd-implementer 에이전트가 RED-GREEN-REFACTOR 사이클 시작
-- 코드 구현 및 테스트 실행
+- Batch analysis is executed on all files
+- Quality metrics are aggregated
 
 **Then**:
-- ✅ tdd-implementer는 **Haiku 4.5** 모델을 사용해야 함
-- ✅ 로그에 "Using claude-haiku-4-5 for execution mode" 메시지 출력
-- ✅ 실행 속도: 기존 Sonnet 대비 4-6배 빠름
-- ✅ 구현 품질: TRUST 5 원칙 준수 (Test Coverage ≥ 90%)
+- Individual file reports generated
+- Project-wide quality score calculated
+- Hotspots identified (top 3 most complex functions)
+- Linting issues enumerated
+- Overall project quality rating provided
 
-**Quality Gate**:
-- Performance improvement ≥ 4x
-- Test coverage ≥ 90%
-- Linting: 0 errors
+**Expected Output**: Comprehensive quality dashboard
 
 ---
 
-### Scenario 3: Haiku Auto SonnetPlan - Fallback Mechanism
+## Feature 2: Automated Test Generation (@TEST) - Scenarios 3-4
 
-**Feature**: Haiku Auto SonnetPlan Mode (Fallback)
-**Goal**: Haiku가 복잡도를 처리 못할 때 Sonnet으로 자동 폴백
+### Test Scenario 3: SPEC-to-Test Conversion
+**Feature**: Automated Test Generation
+**Priority**: High
+**Status**: Pending
 
 **Given**:
-- tdd-implementer가 복잡한 알고리즘 구현 중
-- Task complexity score: 0.85 (> 0.7 threshold)
+- SPEC document with EARS-format requirements:
+  ```
+  GIVEN a user with valid credentials
+  WHEN login is attempted
+  THEN access is granted and session created
+  ```
+- Feature branch: `feature/SPEC-AUTH-001`
+- Test framework: pytest
 
 **When**:
-- Haiku 모델로 구현 시도
-- Complexity analyzer가 0.85 점수 반환
+- Test generation is triggered
+- Generator reads SPEC scenarios
 
 **Then**:
-- ✅ 로그에 "Complexity 0.85 > 0.7, falling back to Sonnet" 메시지 출력
-- ✅ 자동으로 **Sonnet 4.5** 모델로 전환
-- ✅ 사용자에게 알림: "Using Sonnet for complex task due to high complexity"
-- ✅ 작업이 성공적으로 완료됨
+- Test file created: `tests/test_auth.py`
+- Test cases generated:
+  - `test_login_with_valid_credentials()`
+  - `test_login_with_invalid_password()`
+  - `test_login_with_nonexistent_user()`
+  - `test_session_created_after_login()`
+- Tests include @TEST tags for traceability
+- Tests are immediately runnable
+- Parameterized tests for variations
 
-**Quality Gate**:
-- Fallback logic triggers correctly
-- No task failures due to model limitations
+**Expected Output**: `tests/test_auth.py` with 4+ test cases
 
 ---
 
-### Scenario 4: PreCompact Hook - Automatic Context Saving
-
-**Feature**: PreCompact Hook
-**Goal**: 토큰 사용률 80% 도달 시 자동 저장
+### Test Scenario 4: Edge Case Identification & Testing
+**Feature**: Automated Test Generation
+**Priority**: High
+**Status**: Pending
 
 **Given**:
-- 사용자가 긴 세션에서 여러 SPEC 작업 중
-- 현재 토큰 사용량: 160,000 / 200,000 (80%)
-
+- SPEC with core requirements
+- Feature implementation in `src/payment.py`:
+  - `process_payment(amount, card_info)` function
+  - Valid amount range: 0.01 - 999,999.99
+  
 **When**:
-- 다음 요청으로 토큰 사용률이 80%를 초과
-- PreCompact Hook이 트리거됨
+- Test generation analyzes implementation
+- Edge cases are identified
 
 **Then**:
-- ✅ `.moai/memory/session-state.json`에 현재 상태 저장
-- ✅ 로그에 "Token usage 80.0% >= 80%, triggering PreCompact" 메시지 출력
-- ✅ 사용자에게 알림: "Context saved due to high token usage"
-- ✅ 저장 내용: 작업 목록, 계획 상태, 진행 상황 포함
+- Generated tests include:
+  - Boundary tests: `0.00`, `0.01`, `999,999.99`, `1,000,000.00`
+  - Type tests: string, None, negative values
+  - Format tests: invalid card formats
+  - Concurrency tests: parallel payment requests
+- All edge cases have corresponding test cases
+- Test names clearly indicate what is being tested
 
-**Quality Gate**:
-- State file created successfully
-- All critical context preserved (TodoWrite, Plan, Progress)
+**Expected Output**: `tests/test_payment.py` with 12+ test cases covering edge cases
 
 ---
 
-### Scenario 5: PreCompact Hook - Session Recovery
+## Feature 3: Documentation Sync (@DOC) - Scenarios 5-6
 
-**Feature**: PreCompact Hook (Session Recovery)
-**Goal**: 새 세션에서 이전 상태 복원
+### Test Scenario 5: Automatic Docstring Generation
+**Feature**: Documentation Sync
+**Priority**: Medium
+**Status**: Pending
 
 **Given**:
-- 이전 세션에서 `.moai/memory/session-state.json` 저장됨
-- 사용자가 `/clear` 실행 후 새 세션 시작
+- Python function without docstring:
+  ```python
+  def calculate_discount(price, quantity, customer_tier):
+      base_discount = 0
+      if quantity > 100:
+          base_discount = 10
+      if customer_tier == "premium":
+          base_discount += 5
+      return price * (1 - base_discount/100)
+  ```
+- File tagged with @DOC
 
 **When**:
-- 새 세션 시작 시 PreCompact Hook이 저장된 상태 감지
-- 사용자에게 복원 여부 확인 (AskUserQuestion)
+- Documentation sync is executed
+- Docstring generator analyzes function
 
 **Then**:
-- ✅ AskUserQuestion으로 "이전 세션 상태를 복원하시겠습니까?" 질문
-- ✅ 사용자가 "Yes" 선택 시 상태 복원
-- ✅ TodoWrite 작업 목록, 계획 상태, 진행 상황 모두 복원됨
-- ✅ 로그에 "Session state restored from .moai/memory/session-state.json" 메시지 출력
+- Docstring is generated with:
+  - Function description
+  - Parameter documentation (type hints inferred)
+  - Return value documentation
+  - Example usage
+  - Raises documentation if exceptions possible
+- Generated docstring follows Google style guide
+- Docstring is inserted into source file
 
-**Quality Gate**:
-- State restoration 100% accurate
-- No data loss during recovery
+**Expected Output**: Function with complete docstring
 
 ---
 
-### Scenario 6: Background Bash - Long-Running Test Execution
-
-**Feature**: Background Bash Commands
-**Goal**: pytest를 백그라운드에서 실행하고 사용자는 다른 작업 계속 진행
+### Test Scenario 6: README & Changelog Synchronization
+**Feature**: Documentation Sync
+**Priority**: Medium
+**Status**: Pending
 
 **Given**:
-- tdd-implementer가 테스트 실행 준비 (pytest 명령어)
-- 예상 실행 시간: 5분
+- Implemented feature: `calculate_discount()` in `src/pricing.py`
+- File tagged with @DOC
+- Existing `README.md` with API section
+- Existing `CHANGELOG.md`
+- New version: 0.8.0
 
 **When**:
-- tdd-implementer가 `run_in_background=true` 옵션으로 pytest 실행
-- 사용자는 백그라운드 실행 중 다른 작업 시작
+- Documentation sync is triggered
+- Changes are detected and documented
 
 **Then**:
-- ✅ pytest가 백그라운드에서 실행됨
-- ✅ 작업 ID 반환: `bg-a1b2c3d4`
-- ✅ 로그 파일 경로 반환: `.moai/logs/background-tasks/bg-a1b2c3d4.log`
-- ✅ 백그라운드 실행 중 사용자는 다른 명령어 실행 가능
-- ✅ pytest 완료 후 알림: "Background task bg-a1b2c3d4 completed successfully"
+- `README.md` updated:
+  - New function added to API section
+  - Example usage included
+  - Return to table of contents works
+- `CHANGELOG.md` updated:
+  - Entry: "Add `calculate_discount()` for flexible pricing"
+  - Version: 0.8.0
+  - Date: Current date
+  - Category: Features
+- Links are validated
+- Formatting is consistent
 
-**Quality Gate**:
-- Background execution does not block user
-- Log file contains complete test results
+**Expected Output**: Updated README.md and CHANGELOG.md
 
 ---
 
-### Scenario 7: Background Bash - Timeout Handling
+## Feature 4: Git Workflow Automation (GitFlow) - Scenarios 7-8
 
-**Feature**: Background Bash Commands (Timeout)
-**Goal**: 백그라운드 작업이 타임아웃되면 안전하게 종료
+### Test Scenario 7: Branch Naming Validation
+**Feature**: Git Workflow Automation
+**Priority**: High
+**Status**: Pending
 
 **Given**:
-- 백그라운드 작업 실행 중 (타임아웃 설정: 10분)
-- 작업이 11분째 실행 중
+- Feature branch naming convention: `feature/SPEC-{ID}`
+- Bugfix branch naming convention: `bugfix/SPEC-{ID}`
+- Release branch naming convention: `release/v{VERSION}`
+- Invalid branch names:
+  - `my-feature` (missing SPEC reference)
+  - `feature/my-awesome-feature` (no SPEC ID)
+  - `Feature/SPEC-001` (uppercase F)
 
 **When**:
-- 타임아웃(10분) 초과 감지
-- Background Bash Handler가 작업 종료
+- Developer attempts to push invalid branch
+- GitFlow validator is triggered
 
 **Then**:
-- ✅ 작업이 자동으로 종료됨
-- ✅ 로그에 "Background task bg-a1b2c3d4 timed out after 10 minutes" 메시지 출력
-- ✅ 사용자에게 알림: "Task timed out. Partial results saved to .moai/logs/..."
-- ✅ 부분 결과가 로그 파일에 저장됨
+- Invalid branch: Push is blocked
+- Error message displayed: "Branch must follow convention: feature/SPEC-{ID}"
+- Valid branch: `feature/SPEC-001` is accepted
+- Valid branch: `feature/SPEC-CLAUDE-001` is accepted
+- Pre-commit hook prevents local commit on invalid branch
 
-**Quality Gate**:
-- Timeout handling graceful (no crashes)
-- Partial results preserved
+**Expected Output**: Branch validation enforcement via pre-commit hook
 
 ---
 
-### Scenario 8: Enhanced Grep - Multiline Pattern Matching
-
-**Feature**: Enhanced Grep Tool
-**Goal**: 여러 줄에 걸친 패턴 매칭 (multiline=true)
+### Test Scenario 8: Commit Message Linting
+**Feature**: Git Workflow Automation
+**Priority**: High
+**Status**: Pending
 
 **Given**:
-- tag-agent가 복잡한 정규식으로 코드 블록 검색
-- 패턴: `@SPEC:[A-Z-]+\s*\n.*Requirements`
+- Commit message convention:
+  - Emoji prefix: 🔴 (RED/test), 🟢 (GREEN/impl), ♻️ (REFACTOR)
+  - Format: `emoji MESSAGE with @TAG reference`
+  - Example: `🔴 RED: Test login validation with @TEST:AUTH-001-RED`
+- Invalid messages:
+  - `Fixed bug in auth` (no emoji)
+  - `red test login` (wrong format)
+  - `🔴 test` (no tag reference)
 
 **When**:
-- tag-agent가 `multiline=true` 옵션으로 Grep 실행
-- 여러 줄에 걸친 SPEC 블록 검색
+- Developer commits with invalid message
+- Commit message linter runs
 
 **Then**:
-- ✅ Grep이 multiline 모드에서 패턴 매칭 수행
-- ✅ 매칭된 전체 블록 반환 (SPEC 헤더 + Requirements 섹션)
-- ✅ 결과가 정확히 패턴에 매칭된 블록만 포함
-- ✅ 로그에 "Multiline mode enabled for pattern matching" 메시지 출력
+- Invalid message: Commit is rejected
+- Error message: "Commit must include emoji, message, and @TAG reference"
+- Valid message: `🔴 RED: Test login validation with @TEST:AUTH-001-RED` is accepted
+- Suggestion provided for fixing message
 
-**Quality Gate**:
-- Multiline pattern matching 100% accurate
-- No false positives/negatives
+**Expected Output**: Enforced commit message format via pre-commit hook
 
 ---
 
-### Scenario 9: Enhanced Grep - Head Limit Parameter
+## Feature 5: SPEC-First Development (@SPEC) - Scenarios 9-10
 
-**Feature**: Enhanced Grep Tool
-**Goal**: head_limit 파라미터로 결과 개수 제한
+### Test Scenario 9: SPEC-to-Code Traceability
+**Feature**: SPEC-First Development
+**Priority**: High
+**Status**: Pending
 
 **Given**:
-- tag-agent가 `@SPEC:` 패턴으로 전체 프로젝트 검색
-- 예상 매칭 결과: 50개 SPEC 문서
+- SPEC: `SPEC-AUTH-001` with requirement:
+  - REQ-AUTH-001: "System shall validate user credentials"
+  - REQ-AUTH-002: "System shall create session on successful login"
+- Code implementation:
+  ```python
+  def validate_credentials(username, password):  # @SPEC:AUTH-001-REQ-001
+      pass
+  
+  def create_session(user_id):  # @SPEC:AUTH-001-REQ-002
+      pass
+  ```
 
 **When**:
-- tag-agent가 `head_limit=10` 옵션으로 Grep 실행
-- 처음 10개 결과만 필요
+- Traceability matrix is generated
+- Code is analyzed for @SPEC tags
 
 **Then**:
-- ✅ Grep이 정확히 10개 결과만 반환
-- ✅ 결과가 수정 시간 기준 최신순 정렬
-- ✅ 로그에 "Returning first 10 results (head_limit=10)" 메시지 출력
-- ✅ 성능: 대용량 프로젝트에서도 빠른 응답 (<1초)
+- Traceability matrix shows:
+  - REQ-AUTH-001 → validate_credentials() ✓
+  - REQ-AUTH-002 → create_session() ✓
+  - All requirements have corresponding code
+  - All code references requirements
+- Missing references identified
+- Orphaned code flagged
 
-**Quality Gate**:
-- Result count exactly matches head_limit
-- Performance: <1 second for large codebases
+**Expected Output**: Traceability matrix in `SPEC-AUTH-001/traceability.md`
 
 ---
 
-### Scenario 10: Plan Resume - Restore Previous Plan
-
-**Feature**: Plan Resume
-**Goal**: 이전 계획 상태를 복원하고 수정
+### Test Scenario 10: SPEC Compliance Validation
+**Feature**: SPEC-First Development
+**Priority**: High
+**Status**: Pending
 
 **Given**:
-- 사용자가 이전 세션에서 `/alfred:1-plan` 실행 완료
-- 계획 상태가 `.moai/memory/plan-history.json`에 저장됨
+- SPEC: `SPEC-PAYMENT-001` with 5 acceptance criteria
+- Implementation covering:
+  - 4/5 criteria implemented and tested
+  - 1/5 criteria pending
+- Test coverage: 80%
 
 **When**:
-- 사용자가 `--resume-plan` 옵션으로 `/alfred:1-plan` 실행
-- spec-builder가 마지막 계획 상태 로드
+- SPEC compliance check is executed
+- Coverage analysis runs
 
 **Then**:
-- ✅ 마지막 저장된 계획이 로드됨
-- ✅ 사용자에게 이전 계획 내용 표시
-- ✅ AskUserQuestion으로 수정 여부 확인
-- ✅ 수정 완료 후 TodoWrite이 자동으로 업데이트됨
-- ✅ 변경 이력이 `.moai/memory/plan-history.json`에 추가됨
+- Compliance report shows:
+  - 4/5 criteria met: ✓
+  - 1/5 criteria pending: ⏳
+  - Overall completion: 80%
+  - Missing implementation flagged
+  - Missing tests identified
+- Recommendation: "Implement criterion 5 and add tests before merge"
+- PR approval blocked until compliance reaches 100%
 
-**Quality Gate**:
-- Plan restoration 100% accurate
-- TodoWrite updates reflect plan modifications
+**Expected Output**: Compliance report blocking non-compliant merge
 
 ---
 
-### Scenario 11: TodoWrite Auto-Initialization - From Plan Results
+## Feature 6: Checkpoint & Rollback System - Scenarios 11-12
 
-**Feature**: TodoWrite Auto-Initialization
-**Goal**: Plan Agent 결과에서 TodoWrite 자동 초기화
+### Test Scenario 11: Checkpoint Creation & Recovery
+**Feature**: Checkpoint & Rollback System
+**Priority**: High
+**Status**: Pending
 
 **Given**:
-- spec-builder가 SPEC 분석 완료 (Sonnet으로 계획 수립)
-- 계획 결과에 5개 작업 항목 포함
+- Working directory with experimental code
+- Current state: Feature partially implemented
+- Checkpoint creation: `git checkpoint "WIP: Auth feature"`
+- File changes made after checkpoint:
+  - `src/auth.py` modified
+  - `tests/test_auth.py` added
+  - `config.json` modified
 
 **When**:
-- spec-builder가 계획 완료 후 TodoWrite Auto-Init 호출
-- TodoWrite Initializer가 계획 결과 파싱
+- Rollback to checkpoint is executed
+- `git rollback <checkpoint-hash>`
 
 **Then**:
-- ✅ TodoWrite이 자동으로 5개 작업 항목 생성
-- ✅ 모든 작업이 "pending" 상태로 시작
-- ✅ 첫 번째 작업만 "in_progress"로 설정
-- ✅ 각 작업은 `content`, `activeForm`, `status` 필드 포함
-- ✅ 로그에 "TodoWrite auto-initialized with 5 tasks from Plan results" 메시지 출력
+- Working directory state restored to checkpoint
+- All post-checkpoint changes reverted:
+  - `src/auth.py` restored to checkpoint version
+  - `tests/test_auth.py` deleted
+  - `config.json` restored
+- Checkpoint history preserved in Git tags
+- No data loss
+- Timestamp in checkpoint tag: `moai_cp/20251102_144530`
 
-**Quality Gate**:
-- All tasks correctly initialized
-- Task priorities and dependencies set accurately
+**Expected Output**: Working directory reverted to checkpoint state
 
 ---
 
-### Scenario 12: Integration Test - Full Workflow with All Features
-
-**Feature**: All 6 Features Integration
-**Goal**: 전체 워크플로우에서 모든 기능이 함께 작동하는지 검증
+### Test Scenario 12: Checkpoint Management & History
+**Feature**: Checkpoint & Rollback System
+**Priority**: Medium
+**Status**: Pending
 
 **Given**:
-- MoAI-ADK v0.9.0 설치 완료
-- 모든 6개 기능이 `.moai/config.json`에서 활성화됨
-- 사용자가 새 SPEC 작업 시작
+- Repository with 5 checkpoints:
+  - `moai_cp/20251102_100000` - "Start implementation"
+  - `moai_cp/20251102_110000` - "RED tests passing"
+  - `moai_cp/20251102_120000` - "GREEN implementation"
+  - `moai_cp/20251102_130000` - "REFACTOR code cleanup"
+  - `moai_cp/20251102_140000` - "All tests passing"
+- Current time: 20251102_150000
 
 **When**:
-1. `/alfred:1-plan "User profile management"` 실행
-   - spec-builder (Sonnet) → 계획 수립
-   - TodoWrite Auto-Init → 작업 목록 생성
-2. `/alfred:2-run SPEC-PROFILE-001` 실행
-   - tdd-implementer (Haiku) → 코드 구현
-   - Background Bash → pytest 백그라운드 실행
-   - Enhanced Grep → @TAG 검색
-3. 토큰 사용률 80% 도달
-   - PreCompact Hook → 상태 자동 저장
-4. 새 세션에서 `--resume-plan` 실행
-   - Plan Resume → 이전 계획 복원
+- Checkpoint list command is executed
+- `git checkpoint list` or Alfred checkpoint management
 
 **Then**:
-- ✅ **Feature 1**: spec-builder는 Sonnet, tdd-implementer는 Haiku 사용
-- ✅ **Feature 2**: 토큰 80% 도달 시 상태 자동 저장됨
-- ✅ **Feature 3**: pytest가 백그라운드에서 실행되고 완료 알림 수신
-- ✅ **Feature 4**: Enhanced Grep이 @TAG 패턴 정확히 검색
-- ✅ **Feature 5**: 새 세션에서 이전 계획 성공적으로 복원
-- ✅ **Feature 6**: TodoWrite이 Plan 결과에서 자동 초기화됨
+- Checkpoint history displayed:
+  - Shows all 5 checkpoints with timestamps
+  - Shows checkpoint messages
+  - Shows relative time (2 hours ago, 1 hour ago, etc.)
+  - Shows which checkpoint is current (if any)
+- Search functionality: `git checkpoint list --grep "test"`
+- Latest checkpoint highlighted
+- Diff between checkpoints available: `git checkpoint diff cp1 cp2`
 
-**Quality Gate**:
-- ✅ Integration tests 통과율 ≥ 95%
-- ✅ 비용 절감 70-90% 달성
-- ✅ 성능 4-6배 향상 달성
-- ✅ 모든 기능이 충돌 없이 작동
+**Expected Output**: Formatted checkpoint history with management options
 
 ---
 
-## Definition of Done
+## Test Execution Plan
 
-### Functional Requirements
-- ✅ 모든 12개 테스트 시나리오 통과
-- ✅ 각 기능이 `.moai/config.json`에서 활성화/비활성화 가능
-- ✅ Backward compatibility: v0.8.0 프로젝트가 v0.9.0으로 마이그레이션 성공
+### Phase 1: Unit Tests (Week 1-2)
+- Scenarios 1-2: Code analysis
+- Scenarios 3-4: Test generation
+- Run: `pytest tests/test_features.py -v`
 
-### Non-Functional Requirements
-- ✅ **Performance**: 성능 4-6배 향상 (Haiku mode)
-- ✅ **Cost**: 비용 70-90% 절감 (Haiku mode)
-- ✅ **Reliability**: 에러 발생 시 graceful degradation
-- ✅ **Usability**: 모든 기능에 대한 사용자 가이드 제공
+### Phase 2: Integration Tests (Week 3)
+- Scenarios 5-12: All features
+- Run: `pytest tests/test_integration.py -v`
 
-### Quality Gates
-1. **TRUST 5 Compliance**
-   - **Test First**: 모든 코드가 테스트 커버리지 90% 이상
-   - **Readable**: Ruff 100% 통과
-   - **Unified**: 일관된 코딩 스타일
-   - **Secured**: 보안 취약점 0개
-   - **Trackable**: @TAG 체인 100% 연결
+### Phase 3: E2E Tests (Week 4)
+- All 12 scenarios with real workflows
+- Run: `pytest tests/test_e2e.py -v`
 
-2. **Test Coverage**
-   - Unit tests: 90% 이상
-   - Integration tests: 95% 통과율
-   - E2E tests: 모든 시나리오 통과
-
-3. **Code Quality**
-   - Linting (Ruff): 0 errors
-   - Type Checking (Pyright): strict mode 통과
-   - Security (Bandit): 0 high/medium vulnerabilities
+### Success Criteria
+- All 12 scenarios passing
+- Code coverage >= 85%
+- Performance targets met
+- Zero breaking changes
+- Documentation complete
 
 ---
 
-## Verification Methods
+## Sign-Off
 
-### Automated Testing
-- **Unit Tests**: `tests/unit/test_*` (pytest)
-- **Integration Tests**: `tests/integration/test_claude_code_features.py`
-- **E2E Tests**: `tests/e2e/test_full_workflow.py`
-
-### Manual Verification
-- **Cost Measurement**: Claude API dashboard에서 비용 비교
-- **Performance Benchmarking**: 실행 시간 측정 (Sonnet vs Haiku)
-- **User Experience**: 실제 프로젝트에서 워크플로우 테스트
-
-### Acceptance Sign-off
-- ✅ **Developer**: 모든 테스트 통과 확인
-- ✅ **Product Owner**: 비용 절감 및 성능 향상 목표 달성 확인
-- ✅ **QA**: 품질 게이트 모두 통과 확인
-
----
-
-## Test Data & Fixtures
-
-### Sample SPEC for Testing
-```yaml
-# .moai/specs/SPEC-TEST-001/spec.md
----
-id: TEST-001
-version: 0.0.1
-status: draft
----
-
-## @SPEC:TEST-001
-Sample SPEC for testing Claude Code features
-```
-
-### Mock Configuration
-```json
-{
-  "claude_code": {
-    "features": {
-      "auto_sonnet_plan": {"enabled": true},
-      "precompact_hook": {"enabled": true, "token_threshold": 0.8},
-      "background_bash": {"enabled": true, "timeout_ms": 600000},
-      "enhanced_grep": {"enabled": true},
-      "plan_resume": {"enabled": true},
-      "todowrite_auto_init": {"enabled": true}
-    }
-  }
-}
-```
-
----
-
-**Acceptance Criteria Version**: 0.0.1
-**Last Updated**: 2025-11-02
-**Next Review**: Upon implementation completion
+- **Acceptance Owner**: GOOS
+- **Test Reviewer**: Alfred SuperAgent
+- **Quality Gate**: TRUST 5 Principles
+- **Target Completion**: End of Week 4
