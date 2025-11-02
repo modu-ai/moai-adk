@@ -255,7 +255,9 @@ LANGUAGE CONFIGURATION:
 
 CRITICAL INSTRUCTION:
 Code syntax and keywords: English (immutable).
-Code comments: MUST be in {{CONVERSATION_LANGUAGE}}.
+Code comments:
+- Local project code: MUST be in {{CONVERSATION_LANGUAGE}}
+- Package code (src/moai_adk/): MUST be in English (for global distribution)
 Test descriptions and documentation: MUST be in {{CONVERSATION_LANGUAGE}}.
 
 SKILL INVOCATION:
