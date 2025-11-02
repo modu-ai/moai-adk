@@ -5,6 +5,7 @@ Project information inquiry (language, Git, SPEC progress, etc.)
 """
 
 import json
+import signal
 import socket
 import subprocess
 from contextlib import contextmanager

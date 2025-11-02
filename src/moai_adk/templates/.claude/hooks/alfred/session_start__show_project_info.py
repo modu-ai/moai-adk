@@ -13,7 +13,9 @@ import json
 import sys
 from pathlib import Path
 from typing import Any
-from utils.timeout import CrossPlatformTimeout, TimeoutError as PlatformTimeoutError
+
+from utils.timeout import CrossPlatformTimeout
+from utils.timeout import TimeoutError as PlatformTimeoutError
 
 # Setup import path for shared modules
 HOOKS_DIR = Path(__file__).parent

@@ -155,7 +155,7 @@ class InventoryGenerator:
         Returns:
             List of TagInventory objects
         """
-        inventory = []
+        inventory: list[TagInventory] = []
         root = Path(root_path)
 
         if not root.exists() or not root.is_dir():
