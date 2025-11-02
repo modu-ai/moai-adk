@@ -619,33 +619,33 @@ Alfred starts project initialization by calling the project-manager agent with t
 Call the Task tool:
 - subagent_type: "project-manager"
 - description: "Initialize project with conversation language support"
-- prompt: """You are project-manager agent.
+- prompt: """당신은 project-manager 에이전트입니다.
 
-LANGUAGE CONFIGURATION:
-- conversation_language: {{CONVERSATION_LANGUAGE}}
-- language_name: {{CONVERSATION_LANGUAGE_NAME}}
+언어 설정:
+- 대화_언어: {{CONVERSATION_LANGUAGE}}
+- 언어명: {{CONVERSATION_LANGUAGE_NAME}}
 
-GIT WORKFLOW CONFIGURATION (Team Mode):
+GIT 워크플로우 설정 (팀 모드):
 - spec_git_workflow: [feature_branch | develop_direct | per_spec]
-  - "feature_branch": Create feature/spec-* branch, PR-based review, merge to develop
-  - "develop_direct": Direct commit to develop, no branch creation
-  - "per_spec": Ask user per SPEC (during /alfred:1-plan execution)
-- Note: Store this value in .moai/config.json github.spec_git_workflow for git-manager reference
+  - "feature_branch": feature/spec-* 브랜치 생성, PR 기반 리뷰, develop 병합
+  - "develop_direct": develop에 직접 커밋, 브랜치 생성 안 함
+  - "per_spec": SPEC별로 사용자에게 물어봄 (/alfred:1-plan 실행 중)
+- 참고: 이 값을 .moai/config.json github.spec_git_workflow에 저장하여 git-manager가 참조하도록
 
-PROJECT_TYPE: [new|existing]
-DETECTED_LANGUAGES: [detected codebase languages]
+프로젝트_타입: [new|existing]
+감지된_언어들: [감지된 코드베이스 언어들]
 
-CRITICAL INSTRUCTION:
-All interviews and generated documentation MUST be in conversation_language:
-- product.md: Generate in {{CONVERSATION_LANGUAGE}}
-- structure.md: Generate in {{CONVERSATION_LANGUAGE}}
-- tech.md: Generate in {{CONVERSATION_LANGUAGE}}
+중요 지시사항:
+모든 인터뷰와 생성된 문서는 대화_언어로 작성되어야 합니다:
+- product.md: {{CONVERSATION_LANGUAGE}}로 생성
+- structure.md: {{CONVERSATION_LANGUAGE}}로 생성
+- tech.md: {{CONVERSATION_LANGUAGE}}로 생성
 
-If conversation_language is 'ko': All narrative content in Korean
-If conversation_language is 'ja': All narrative content in Japanese
-If conversation_language is other: Follow the specified language
+conversation_language가 'ko'인 경우: 모든 설명 내용을 한국어로
+conversation_language가 'ja'인 경우: 모든 설명 내용을 일본어로
+다른 언어인 경우: 지정된 언어를 따릅니다
 
-After project initialization, update .moai/config.json with nested language and git workflow structure:
+프로젝트 초기화 후, 이중 언어 및 git 워크플로우 구조로 .moai/config.json 업데이트:
 {
   "language": {
     "conversation_language": "{{CONVERSATION_LANGUAGE}}",
@@ -656,12 +656,12 @@ After project initialization, update .moai/config.json with nested language and 
   }
 }
 
-SKILL INVOCATION:
-Use explicit Skill() calls when needed:
-- Skill("moai-alfred-language-detection") for codebase language detection
-- Skill("moai-foundation-langs") for multi-language project setup
+스킬 호출:
+필요 시 명시적 Skill() 호출 사용:
+- Skill("moai-alfred-language-detection") - 코드베이스 언어 감지
+- Skill("moai-foundation-langs") - 다국어 프로젝트 설정
 
-TASK: Conduct project interviews and create/update product/structure/tech.md documents."""
+작업: 프로젝트 인터뷰를 진행하고 product/structure/tech.md 문서를 생성/업데이트합니다."""
 ```
 
 **Outcome**: The project-manager agent conducts structured interviews entirely in the selected language and creates/updates product/structure/tech.md documents in that language.
