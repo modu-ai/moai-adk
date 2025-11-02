@@ -21,7 +21,8 @@
       "SlashCommand(/alfred:1-plan moai-adk Self-Update Integration Feature)",
       "SlashCommand(/alfred:2-run SPEC-UPDATE-REFACTOR-002)",
       "Bash(pip show:*)",
-      "Read(//Users/goos/.local/share/uv/tools/moai-adk/**)"
+      "Read(//Users/goos/.local/share/uv/tools/moai-adk/**)",
+      "Bash(claude --version)"
     ],
     "deny": [],
     "ask": []
