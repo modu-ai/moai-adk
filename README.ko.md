@@ -1,6 +1,6 @@
 # MoAI-ADK (Agentic Development Kit)
 
-[한국어](README.ko.md) |[English](README.md) | [ไทย](README.th.md) | [日本語](README.ja.md) | [中文](README.zh.md) | [हिन्दी](README.hi.md)
+[한국어](README.ko.md) | [English](README.md)
 
 [![PyPI version](https://img.shields.io/pypi/v/moai-adk)](https://pypi.org/project/moai-adk/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -71,7 +71,7 @@ MoAI-ADK는 세 가지 핵심 원칙으로 AI 협력 개발을 혁신합니다. 
 `/alfred:3-sync` 명령어 하나로 코드, 테스트, 문서가 모두 **최신 상태로 동기화**됩니다. README, CHANGELOG, API 문서, 그리고 Living Document까지 자동으로 업데이트됩니다. 6개월 후에도 코드와 문서는 일치합니다.
 
 **4️⃣ @TAG 시스템으로 추적**
-모든 코드와 테스트, 문서에 `@TAG:ID`를 붙입니다. 나중에 요구사항이 변경되면, `rg "@SPEC:AUTH-001"` 한 명령어로 관련된 테스트, 구현, 문서를 **모두 찾을 수 있습니다**. 리팩토링 시 자신감이 생깁니다.
+모든 코드와 테스트, 문서에 `@TAG:ID`를 붙입니다. 나중에 요구사항이 변경되면, `rg "@SPEC:EX-AUTH-001"` 한 명령어로 관련된 테스트, 구현, 문서를 **모두 찾을 수 있습니다**. 리팩토링 시 자신감이 생깁니다.
 
 **5️⃣ Alfred가 컨텍스트를 기억**
 AI 에이전트들이 협력해 프로젝트의 구조, 결정 이유, 작업 히스토리를 **모두 기억**합니다. 같은 질문을 반복할 필요가 없습니다.
@@ -762,13 +762,13 @@ MoAI-ADK는 5가지 핵심 개념으로 이루어져 있습니다. 각 개념은
 **TAG 체인**:
 
 ```
-@SPEC:AUTH-001 (요구사항)
+@SPEC:EX-AUTH-001 (요구사항)
     ↓
-@TEST:AUTH-001 (테스트)
+@TEST:EX-AUTH-001 (테스트)
     ↓
-@CODE:AUTH-001 (구현)
+@CODE:EX-AUTH-001 (구현)
     ↓
-@DOC:AUTH-001 (문서)
+@DOC:EX-AUTH-001 (문서)
 ```
 
 **TAG ID 규칙**: `<도메인>-<3자리 숫자>`
@@ -918,7 +918,7 @@ status: draft
 priority: high
 ---
 
-# `@SPEC:HELLO-001: Hello World API
+# `@SPEC:EX-HELLO-001: Hello World API
 
 ## Ubiquitous Requirements
 - 시스템은 HTTP GET /hello 엔드포인트를 제공해야 한다
@@ -948,7 +948,7 @@ priority: high
 **생성되는 파일**: `tests/test_hello.py`
 
 ```python
-# `@TEST:HELLO-001 | SPEC: SPEC-HELLO-001.md
+# `@TEST:EX-HELLO-001 | SPEC: SPEC-HELLO-001.md
 
 import pytest
 from fastapi.testclient import TestClient
@@ -989,7 +989,7 @@ git commit -m "🔴 test(HELLO-001): add failing hello API tests"
 **생성되는 파일**: `src/hello/api.py`
 
 ```python
-# `@CODE:HELLO-001:API | SPEC: SPEC-HELLO-001.md | TEST: tests/test_hello.py
+# `@CODE:EX-HELLO-001:API | SPEC: SPEC-HELLO-001.md | TEST: tests/test_hello.py
 
 from fastapi import FastAPI
 
@@ -997,7 +997,7 @@ app = FastAPI()
 
 @app.get("/hello")
 def hello(name: str = "World"):
-    """@CODE:HELLO-001:API - Hello endpoint"""
+    """@CODE:EX-HELLO-001:API - Hello endpoint"""
     return {"message": f"Hello, {name}!"}
 ```
 
@@ -1027,7 +1027,7 @@ app = FastAPI()
 
 @app.get("/hello")
 def hello(name: str = "World"):
-    """@CODE:HELLO-001:API - Hello endpoint with validation"""
+    """@CODE:EX-HELLO-001:API - Hello endpoint with validation"""
     if len(name) > 50:
         raise HTTPException(status_code=400, detail="Name too long (max 50 chars)")
     return {"message": f"Hello, {name}!"}
@@ -1106,9 +1106,9 @@ curl "http://localhost:8000/hello"
 ```
 
 ### Traceability
-- `@SPEC:HELLO-001` - 요구사항
-- `@TEST:HELLO-001` - 테스트
-- `@CODE:HELLO-001:API` - 구현
+- `@SPEC:EX-HELLO-001` - 요구사항
+- `@TEST:EX-HELLO-001` - 테스트
+- `@CODE:EX-HELLO-001:API` - 구현
 ```
 
 ---
@@ -1122,10 +1122,10 @@ rg '@(SPEC|TEST|CODE|DOC):HELLO-001' -n
 
 #### 출력 (완전한 추적성)
 ```
-.moai/specs/SPEC-HELLO-001/spec.md:7:# `@SPEC:HELLO-001: Hello World API
-tests/test_hello.py:3:# `@TEST:HELLO-001 | SPEC: SPEC-HELLO-001.md
-src/hello/api.py:3:# `@CODE:HELLO-001:API | SPEC: SPEC-HELLO-001.md
-docs/api/hello.md:24:- `@SPEC:HELLO-001`
+.moai/specs/SPEC-HELLO-001/spec.md:7:# `@SPEC:EX-HELLO-001: Hello World API
+tests/test_hello.py:3:# `@TEST:EX-HELLO-001 | SPEC: SPEC-HELLO-001.md
+src/hello/api.py:3:# `@CODE:EX-HELLO-001:API | SPEC: SPEC-HELLO-001.md
+docs/api/hello.md:24:- `@SPEC:EX-HELLO-001`
 ```
 
 ✅ **의미**: 요구사항 → 테스트 → 구현 → 문서가 완벽하게 연결됨!
@@ -1211,7 +1211,7 @@ author: @user
 priority: high
 ---
 
-# `@SPEC:TODO-001: Todo Management API
+# `@SPEC:EX-TODO-001: Todo Management API
 
 ## Ubiquitous Requirements
 - 시스템은 할 일을 추가할 수 있어야 한다
@@ -1247,7 +1247,7 @@ priority: high
 
 - 📚 라이브러리: FastAPI + SQLAlchemy
 - 📁 폴더 구조: `src/todo/`, `tests/todo/`
-- 🏷️ TAG 설계: `@CODE:TODO-001:API`, `@CODE:TODO-001:MODEL`, `@CODE:TODO-001:REPO`
+- 🏷️ TAG 설계: `@CODE:EX-TODO-001:API`, `@CODE:EX-TODO-001:MODEL`, `@CODE:EX-TODO-001:REPO`
 
 **Phase 2: RED → GREEN → REFACTOR**
 
@@ -1255,7 +1255,7 @@ priority: high
 
 ```python
 # tests/test_todo_api.py
-# `@TEST:TODO-001 | SPEC: SPEC-TODO-001.md
+# `@TEST:EX-TODO-001 | SPEC: SPEC-TODO-001.md
 
 import pytest
 from src.todo.api import create_todo, get_todos
@@ -1297,7 +1297,7 @@ git commit -m "🔴 test(TODO-001): add failing API tests"
 
 ```python
 # src/todo/api.py
-# `@CODE:TODO-001:API | SPEC: SPEC-TODO-001.md | TEST: tests/test_todo_api.py
+# `@CODE:EX-TODO-001:API | SPEC: SPEC-TODO-001.md | TEST: tests/test_todo_api.py
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -1311,19 +1311,19 @@ class TodoRequest(BaseModel):
 
 @app.post("/todos", status_code=201)
 def create_todo(todo: TodoRequest):
-    """@CODE:TODO-001:API - POST 엔드포인트"""
+    """@CODE:EX-TODO-001:API - POST 엔드포인트"""
     todo_id = str(uuid.uuid4())
     todos_db[todo_id] = {"id": todo_id, "title": todo.title}
     return todos_db[todo_id]
 
 @app.get("/todos")
 def get_todos():
-    """@CODE:TODO-001:API - GET all 엔드포인트"""
+    """@CODE:EX-TODO-001:API - GET all 엔드포인트"""
     return list(todos_db.values())
 
 @app.get("/todos/{todo_id}")
 def get_todo(todo_id: str):
-    """@CODE:TODO-001:API - GET by ID 엔드포인트"""
+    """@CODE:EX-TODO-001:API - GET by ID 엔드포인트"""
     if todo_id not in todos_db:
         raise HTTPException(status_code=404, detail="Todo not found")
     return todos_db[todo_id]
@@ -1342,7 +1342,7 @@ git commit -m "🟢 feat(TODO-001): implement minimal Todo API"
 
 ```python
 # src/todo/models.py
-# `@CODE:TODO-001:MODEL | SPEC: SPEC-TODO-001.md
+# `@CODE:EX-TODO-001:MODEL | SPEC: SPEC-TODO-001.md
 
 from datetime import datetime
 from sqlalchemy import Column, String, DateTime
@@ -1351,7 +1351,7 @@ from sqlalchemy.ext.declarative import declarative_base
 Base = declarative_base()
 
 class Todo(Base):
-    """@CODE:TODO-001:MODEL - 할 일 데이터 모델"""
+    """@CODE:EX-TODO-001:MODEL - 할 일 데이터 모델"""
     __tablename__ = "todos"
 
     id = Column(String, primary_key=True)
@@ -1359,7 +1359,7 @@ class Todo(Base):
     created_at = Column(DateTime, default=datetime.utcnow)   # 자동 생성 시간
 
     def validate(self):
-        """@CODE:TODO-001:MODEL - 검증"""
+        """@CODE:EX-TODO-001:MODEL - 검증"""
         if not self.title or len(self.title) > 200:
             raise ValueError("Title must be 1-200 characters")
 ```
@@ -1395,10 +1395,10 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
 1. **TAG 체인 검증**
 
    ```bash
-   ✅ @SPEC:TODO-001 → .moai/specs/SPEC-TODO-001/spec.md
-   ✅ @TEST:TODO-001 → tests/test_todo_api.py
-   ✅ @CODE:TODO-001 → src/todo/ (3개 파일)
-   ✅ @DOC:TODO-001 → docs/api/todo.md (자동 생성)
+   ✅ @SPEC:EX-TODO-001 → .moai/specs/SPEC-TODO-001/spec.md
+   ✅ @TEST:EX-TODO-001 → tests/test_todo_api.py
+   ✅ @CODE:EX-TODO-001 → src/todo/ (3개 파일)
+   ✅ @DOC:EX-TODO-001 → docs/api/todo.md (자동 생성)
 
    TAG Chain Integrity: 100%
    Orphan TAGs: None
@@ -1407,7 +1407,7 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
 2. **Living Document 생성**
 
    ```markdown
-   # `@DOC:TODO-001: Todo Management API
+   # `@DOC:EX-TODO-001: Todo Management API
 
    ## Overview
 
@@ -1421,8 +1421,8 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
    - URL: /todos
    - Request: {"title": "string (1-200 chars)"}
    - Response: 201 Created with todo object
-   - Implemented in: @CODE:TODO-001:API
-   - Tested in: @TEST:TODO-001
+   - Implemented in: @CODE:EX-TODO-001:API
+   - Tested in: @TEST:EX-TODO-001
 
    ### Get All Todos
 
@@ -1450,7 +1450,7 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
 
    ### Added
 
-   - Todo Management API with CRUD operations (@SPEC:TODO-001)
+   - Todo Management API with CRUD operations (@SPEC:EX-TODO-001)
      - Create new todos
      - List all todos
      - Update existing todos
@@ -1472,11 +1472,11 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
 rg '@(SPEC|TEST|CODE|DOC):TODO-001' -n
 
 # 출력:
-# .moai/specs/SPEC-TODO-001/spec.md:1: # `@SPEC:TODO-001: Todo Management API
-# tests/test_todo_api.py:2: # `@TEST:TODO-001 | SPEC: SPEC-TODO-001.md
-# src/todo/api.py:5: # `@CODE:TODO-001:API | SPEC: SPEC-TODO-001.md
-# src/todo/models.py:5: # `@CODE:TODO-001:MODEL | SPEC: SPEC-TODO-001.md
-# docs/api/todo.md:1: # `@DOC:TODO-001: Todo Management API
+# .moai/specs/SPEC-TODO-001/spec.md:1: # `@SPEC:EX-TODO-001: Todo Management API
+# tests/test_todo_api.py:2: # `@TEST:EX-TODO-001 | SPEC: SPEC-TODO-001.md
+# src/todo/api.py:5: # `@CODE:EX-TODO-001:API | SPEC: SPEC-TODO-001.md
+# src/todo/models.py:5: # `@CODE:EX-TODO-001:MODEL | SPEC: SPEC-TODO-001.md
+# docs/api/todo.md:1: # `@DOC:EX-TODO-001: Todo Management API
 
 
 # 2️⃣ 테스트 실행
@@ -1506,21 +1506,21 @@ git log --oneline | head -5
 
 ```
 ✅ SPEC 작성 (3분)
-   └─ @SPEC:TODO-001 TAG 할당
+   └─ @SPEC:EX-TODO-001 TAG 할당
    └─ EARS 형식의 명확한 요구사항
 
 ✅ TDD 구현 (5분)
    └─ 🔴 RED: 테스트 먼저 작성
    └─ 🟢 GREEN: 최소 구현
    └─ ♻️ REFACTOR: 품질 개선
-   └─ @TEST:TODO-001, @CODE:TODO-001 TAG 할당
+   └─ @TEST:EX-TODO-001, @CODE:EX-TODO-001 TAG 할당
    └─ 커버리지 87%, TRUST 5원칙 검증
 
 ✅ 문서 동기화 (1분)
    └─ Living Document 자동 생성
    └─ README, CHANGELOG 업데이트
    └─ TAG 체인 검증 완료
-   └─ @DOC:TODO-001 TAG 할당
+   └─ @DOC:EX-TODO-001 TAG 할당
    └─ PR 상태: Draft → Ready for Review
 
 결과:
@@ -1951,7 +1951,7 @@ claude
 
 **증상**:
 ```
-⚠ Orphan TAG detected: @TEST:HELLO-001 (no matching @SPEC)
+⚠ Orphan TAG detected: @TEST:EX-HELLO-001 (no matching @SPEC)
 ```
 
 **원인**: SPEC이 삭제되었거나 TAG가 불일치
@@ -1963,13 +1963,13 @@ claude
 rg '@(SPEC|TEST|CODE):HELLO-001' -n
 
 # 2. 누락된 TAG 확인
-rg '@SPEC:HELLO-001' -n .moai/specs/
+rg '@SPEC:EX-HELLO-001' -n .moai/specs/
 
 # 3. SPEC이 없으면 재생성
 /alfred:1-plan "기능 설명"
 
 # 또는 테스트의 TAG 수정
-# tests/test_hello.py에서 @TEST:HELLO-001 → @TEST:HELLO-002
+# tests/test_hello.py에서 @TEST:EX-HELLO-001 → @TEST:EX-HELLO-002
 
 # 4. 동기화
 /alfred:3-sync
