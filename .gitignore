@@ -69,3 +69,7 @@ CURSOR_INTEGRATION_PLAN.md
 .claude/agents/
 .claude/hooks/
 .claude/skills/
+
+# Developer local settings and configurations
+.claude/settings.local.json
+CLAUDE.md.local
