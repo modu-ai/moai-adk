@@ -1,9 +1,10 @@
 name: Release & Deploy to PyPI
 
-# 트리거: GitHub Release가 published 상태로 생성되었을 때
+# 트리거: 버전 태그가 푸시되었을 때 (release event의 신뢰성 문제 해결)
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - "v*.*.*"
 
 jobs:
   deploy:
@@ -49,7 +50,7 @@ jobs:
           echo "🔍 Verifying PyPI deployment..."
 
           # Extract version from release tag (e.g., v0.14.0 → 0.14.0)
-          VERSION="${{ github.event.release.tag_name }}"
+          VERSION="${{ github.ref_name }}"
           VERSION="${VERSION#v}"
 
           # Wait for PyPI CDN propagation (max 50 seconds)
@@ -113,10 +114,5 @@ jobs:
           echo "🎉 Release deployment complete!"
           echo ""
           echo "📦 Package: moai-adk"
-          echo "🏷️  Release: ${{ github.event.release.tag_name }}"
-          echo "🔗 PyPI: https://pypi.org/project/moai-adk/${{ github.event.release.tag_name }}/"
-          echo ""
-          echo "✅ Verification passed:"
-          echo "   - Package deployed to PyPI"
-          echo "   - Installation test successful"
-          echo "   - Version check passed"
+          echo "🏷️  Release: ${{ github.ref }}"
+          echo "🔗 PyPI: https://pypi.org/project/moai-adk/${{ github.ref_name }}/"
