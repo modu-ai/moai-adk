@@ -306,6 +306,37 @@ After reviewing your implementation plan, Alfred invokes `AskUserQuestion tool (
 - ✅ `.moai/specs/SPEC-{ID}/plan.md` - Implementation plan with TAGs
 - ✅ `.moai/specs/SPEC-{ID}/acceptance.md` - Acceptance criteria (Given-When-Then)
 
+### 2.0.1.5 User Confirmation for Branch Creation (Team Mode Only)
+
+**Purpose**: Confirm with user before creating Git branch and PR in Team mode
+
+**Conditional Logic**:
+
+IF `project_mode == "team"`:
+- THEN: Ask user via `AskUserQuestion` tool:
+  - Question: "SPEC 문서가 생성되었습니다. Git 브랜치와 Draft PR을 생성하시겠습니까?"
+  - Option 1: "✅ 예, 브랜치 생성" → Proceed to STEP 2.0.2 (git-manager)
+  - Option 2: "❌ 아니오, 나중에" → Skip git-manager, complete command
+
+ELSE (personal mode):
+- THEN: Skip git-manager invocation (no branch creation needed for personal mode)
+- Auto-complete with message: "Personal mode로 SPEC 문서가 생성되었습니다. 필요시 나중에 `/alfred:2-run` 명령으로 구현을 시작할 수 있습니다."
+
+**Implementation**:
+
+Before invoking git-manager, Alfred must:
+1. Read `.moai/config.json` to check `project_mode`
+2. If mode is "team":
+   - Use `AskUserQuestion` to ask for confirmation
+   - Store user response
+   - Only invoke git-manager if user confirms ("예")
+3. If mode is "personal":
+   - Skip git-manager invocation
+   - Display completion message
+   - Continue to command completion
+
+---
+
 ### 2.0.2 git-manager Agent Invocation (After SPEC Creation)
 
 **Call Task tool with**:
