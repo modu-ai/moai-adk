@@ -22,7 +22,9 @@
       "SlashCommand(/alfred:2-run SPEC-UPDATE-REFACTOR-002)",
       "Bash(pip show:*)",
       "Read(//Users/goos/.local/share/uv/tools/moai-adk/**)",
-      "Bash(claude --version)"
+      "Bash(claude --version)",
+      "Bash(for:*)",
+      "Bash(do echo \"=== $file ===\" diff .claude/commands/alfred/$file src/moai_adk/templates/.claude/commands/alfred/$file)"
     ],
     "deny": [],
     "ask": []
