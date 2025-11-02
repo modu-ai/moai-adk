@@ -317,6 +317,99 @@ For advanced workflow customization, see [Workflow Templates Guide](.moai/docs/w
 
 ---
 
+## Language Localization Architecture (v0.7.0+)
+
+### Hybrid Language Model
+
+MoAI-ADK v0.7.0 introduced a **two-layer language architecture** that enables global teams to work in their preferred language while keeping the infrastructure in English for consistency and maintainability.
+
+### Layer 1: User Conversation & Dynamic Content
+
+**All user-facing content uses your configured `conversation_language`** (set during `/alfred:0-project`):
+
+- ✅ **Responses & Explanations**: Your language (Korean, Japanese, Spanish, English, Chinese, etc.)
+- ✅ **Generated Documents**: SPEC, test files, implementation guides in your language
+- ✅ **Code Comments**: Function docstrings and inline comments in your language
+- ✅ **Git Commit Messages**: All commits in your language
+- ✅ **Sub-agent Communication**: All task prompts in your language
+
+### Layer 2: Static Infrastructure (English Only)
+
+**System infrastructure stays in English** for global consistency:
+
+- 🔒 `.claude/agents/` — Agent templates (English)
+- 🔒 `.claude/commands/` — Command templates (English)
+- 🔒 `.claude/skills/` — Skill content (English, industry standard)
+- 🔒 `.moai/memory/` — Internal guidelines (English)
+- 🔒 @TAG identifiers — Technical markers (English)
+- 🔒 Package code in `src/moai_adk/` — Source code comments (English for global distribution)
+
+### Configuration Example
+
+```json
+{
+  "language": {
+    "conversation_language": "ko",
+    "conversation_language_name": "Korean"
+  }
+}
+```
+
+When configured, Alfred will:
+- Respond in Korean (모든 대화)
+- Generate SPECs in Korean
+- Write code comments in Korean
+- Create Git commits in Korean
+- All while using English-only Skill() invocations internally
+
+### Supported Languages
+
+- 🇬🇧 English
+- 🇰🇷 Korean (한국어)
+- 🇯🇵 Japanese (日本語)
+- 🇨🇳 Chinese (中文)
+- 🇪🇸 Spanish (Español)
+
+### Implementation Status (v0.7.0+)
+
+| Component | Status | Details |
+|-----------|--------|---------|
+| **Config System** | ✅ Complete | Nested language structure in `.moai/config.json` |
+| **Sub-agent Instructions** | ✅ Complete | All 12 agents support language parameter |
+| **Code Generation** | ✅ Complete | Comments/docs in user language |
+| **Git Integration** | ✅ Complete | Commit messages in user language |
+| **Dynamic Content** | ✅ Complete | All reports/explanations in user language |
+
+### Why This Matters
+
+1. **Global Accessibility**: Support teams in any language without translating infrastructure
+2. **Developer Experience**: Write code comments in your native language
+3. **Maintainability**: Infrastructure stays in English (single source of truth)
+4. **Scalability**: Add new languages instantly without code changes
+
+### How to Change Language
+
+**During Project Initialization**:
+```bash
+/alfred:0-project
+# Select your language when prompted
+```
+
+**After Project Creation**:
+Edit `.moai/config.json`:
+```json
+{
+  "language": {
+    "conversation_language": "ja",
+    "conversation_language_name": "Japanese"
+  }
+}
+```
+
+Then restart Claude Code for changes to take effect.
+
+---
+
 ## Earlier Detailed Guide (Optional Reading)
 
 Need more explanations? See detailed guides below.
@@ -760,6 +853,39 @@ When you run MoAI-ADK, Alfred loads configuration from **4 coordinated documents
 - Document team-specific workflows in **CLAUDE-PRACTICES.md**
 
 > ⚠️ **Important**: These are internal configuration files for Alfred, not user guides. Keep them concise and decision-focused. Most teams don't modify them.
+
+### Language Policy in CLAUDE.md (v0.7.0+)
+
+**Key Language Rules**:
+
+1. **User Conversation**: Your configured language (Korean, Japanese, Spanish, etc.)
+   - All responses, explanations, and guidance use your `conversation_language`
+   - Alfred reads this from `.moai/config.json`
+
+2. **Code & Git History**: Your configured language
+   - Code comments: Your language
+   - Commit messages: Your language
+   - Documentation: Your language
+
+3. **Infrastructure Only**: English
+   - `.claude/agents/`, `.claude/commands/`, `.claude/skills/` stay in English
+   - `@TAG` identifiers and technical terms use English
+   - `.moai/memory/` files remain in English
+
+**Example**:
+```
+Your CLAUDE.md talks to you in Korean (한국어)
+Your code comments are in Korean (한국어)
+Your git commits are in Korean (한국어)
+Your SPEC documents are in Korean (한국어)
+
+But Alfred's internal commands use English:
+  ✅ Skill("moai-foundation-trust")
+  ✅ @CODE:AUTH-001 (TAG format)
+  ✅ .claude/skills/ (infrastructure)
+```
+
+**See Also**: [Language Localization Architecture](#language-localization-architecture-v070) for complete details on the hybrid language model.
 
 ---
 
