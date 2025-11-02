@@ -125,9 +125,8 @@ class TestSessionStartHandler:
 
     @patch("handlers.session.count_specs")
     @patch("handlers.session.get_git_info")
-    @patch("handlers.session.detect_language")
     def test_session_start_compact_phase(
-        self, mock_detect_lang, mock_get_git, mock_count_specs
+        self, mock_get_git, mock_count_specs
     ):
         """compact 단계는 상세 정보 반환
 
@@ -136,9 +135,8 @@ class TestSessionStartHandler:
 
         Given: phase="compact"인 payload
         When: handle_session_start()를 호출하면
-        Then: system_message에 언어, 브랜치, SPEC 진도 정보가 포함된다
+        Then: system_message에 브랜치, SPEC 진도 정보가 포함된다
         """
-        mock_detect_lang.return_value = "Python"
         mock_get_git.return_value = {
             "branch": "main",
             "commit": "abc123def456",
@@ -156,7 +154,6 @@ class TestSessionStartHandler:
 
         assert result.system_message is not None
         assert "MoAI-ADK Session Started" in result.system_message
-        assert "Python" in result.system_message
         assert "main" in result.system_message
         assert "5/10" in result.system_message
 
@@ -164,9 +161,8 @@ class TestSessionStartHandler:
     @patch("handlers.session.list_checkpoints")
     @patch("handlers.session.count_specs")
     @patch("handlers.session.get_git_info")
-    @patch("handlers.session.detect_language")
     def test_session_start_major_version_warning(
-        self, mock_detect_lang, mock_get_git, mock_count_specs,
+        self, mock_get_git, mock_count_specs,
         mock_list_checkpoints, mock_version_info
     ):
         """Major version update shows warning with release notes
@@ -182,7 +178,6 @@ class TestSessionStartHandler:
         Then: system_message includes "⚠️ Major version update available"
               and release notes URL
         """
-        mock_detect_lang.return_value = "Python"
         mock_get_git.return_value = {}
         mock_count_specs.return_value = {"completed": 0, "total": 0, "percentage": 0}
         mock_list_checkpoints.return_value = []
@@ -215,9 +210,8 @@ class TestSessionStartHandler:
     @patch("handlers.session.list_checkpoints")
     @patch("handlers.session.count_specs")
     @patch("handlers.session.get_git_info")
-    @patch("handlers.session.detect_language")
     def test_session_start_regular_update_with_release_notes(
-        self, mock_detect_lang, mock_get_git, mock_count_specs,
+        self, mock_get_git, mock_count_specs,
         mock_list_checkpoints, mock_version_info
     ):
         """Regular update shows version info with release notes
@@ -232,7 +226,6 @@ class TestSessionStartHandler:
         When: handle_session_start() is called
         Then: system_message includes version line and release notes URL
         """
-        mock_detect_lang.return_value = "Python"
         mock_get_git.return_value = {}
         mock_count_specs.return_value = {"completed": 0, "total": 0, "percentage": 0}
         mock_list_checkpoints.return_value = []
