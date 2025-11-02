@@ -1099,6 +1099,116 @@ claude
 > - **Manual upgrade path**: Use `moai-adk update --templates-only` after manually upgrading the package
 > - **Rollback safe**: Automatic backups in `.moai-backups/` before template sync
 
+### Optimize Project Templates with `/alfred:0-project update` (v0.9.0+)
+
+After upgrading MoAI-ADK with `moai-adk update`, your project templates and configurations may need optimization to stay in sync with the latest package version. Use the **dedicated Alfred command** to automatically merge template updates while preserving your customizations.
+
+#### When to Run `/alfred:0-project update`
+
+**Automatic Trigger**: After running `moai-adk update`, your project's `optimized` flag is set based on template changes:
+
+```bash
+# 1. Upgrade MoAI-ADK package
+moai-adk update
+# Output: ✓ Package upgraded to v0.9.0!
+# ℹ️  Next: Run `/alfred:0-project update` in Claude Code to optimize templates
+
+# 2. Open Claude Code
+claude
+
+# 3. Run optimization command
+/alfred:0-project update
+```
+
+#### What `/alfred:0-project update` Does
+
+**Phase 1: Smart Backup & Analysis**
+- ✅ Creates automatic backup in `.moai-backups/` (preserves all customizations)
+- ✅ Compares backup version with new template version
+- ✅ Generates comparison report showing changed sections
+- ✅ Presents user-friendly analysis with merge recommendations
+
+**Phase 2: Smart Merge (User Approval)**
+After reviewing the analysis, you can choose:
+- **"Proceed"** → Execute smart merge (merge backup + latest template)
+- **"Preview"** → View detailed change summary before proceeding
+- **"Skip"** → Keep current files unchanged (safe to proceed later)
+
+**Phase 3: Preserve Customizations**
+- ✅ Maintains latest template structure (sections, headers, @TAG format)
+- ✅ Inserts only your customizations (actual content you wrote)
+- ✅ Preserves HISTORY sections cumulatively
+- ✅ Updates version numbers automatically
+
+#### Complete Example
+
+```bash
+# Terminal: Upgrade MoAI-ADK
+$ moai-adk update
+✓ Package upgraded to v0.9.0!
+
+# Claude Code
+/alfred:0-project update
+
+# Alfred displays:
+# 📊 Project Update Analysis
+#
+# Current: CLAUDE.md v0.8.1 (248 lines, template + your customizations)
+# Latest:  Template v0.9.0 (787 lines, expanded guidelines)
+#
+# Changes Detected:
+# ✅ Alfred Persona System (new)
+# ✅ Language Boundary Rules (enhanced)
+# ✅ Report Style Standards (new)
+# ✅ Your Customizations: Preserved (한국어, GOOS🪿엉아, etc.)
+
+# User selects: 🔄 Smart Merge Proceed
+
+# Result:
+# ✅ Merge Complete!
+# - CLAUDE.md updated (v0.8.1 → v0.9.0)
+# - User customizations preserved
+# - config.json updated with optimization metadata
+# - Backup saved to .moai-backups/20251102-221000/
+```
+
+#### Key Features
+
+1. **Automatic Backup**: Always creates backup before merge (safe rollback available)
+2. **Smart Detection**: Identifies template defaults vs. your customizations
+3. **Preservation Policy**: Never overwrites your custom content
+4. **Version Tracking**: Automatically updates template_version in config.json
+5. **HISTORY Section**: Cumulative merge history preserved
+
+#### Command Reference
+
+| Operation | Command |
+|-----------|---------|
+| **Optimize** | `/alfred:0-project update` |
+| **Review First** | Select "Preview" option when prompted |
+| **Keep Current** | Select "Skip" option (safe—run later anytime) |
+| **Check Status** | `cat .moai/config.json \| grep -A2 optimization` |
+
+#### Rollback If Needed
+
+If something goes wrong, restore from automatic backup:
+
+```bash
+# List available backups
+ls -lt .moai-backups/
+
+# Restore from backup (example)
+cp -r .moai-backups/20251102-221000/CLAUDE.md ./CLAUDE.md
+cp -r .moai-backups/20251102-221000/.moai/config.json ./.moai/config.json
+```
+
+#### Why This Matters
+
+- **Stay Current**: Get latest Alfred improvements, fixes, and features
+- **Keep Your Work**: All customizations preserved through merges
+- **No Manual Editing**: Smart merge handles complex version synchronization
+- **Trust the Process**: Automatic backups ensure safe rollback anytime
+
 ---
 
 ## Development Setup for Contributors
