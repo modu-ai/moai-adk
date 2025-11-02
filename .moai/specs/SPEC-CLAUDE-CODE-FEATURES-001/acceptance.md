@@ -247,7 +247,7 @@
 - Commit message convention:
   - Emoji prefix: 🔴 (RED/test), 🟢 (GREEN/impl), ♻️ (REFACTOR)
   - Format: `emoji MESSAGE with @TAG reference`
-  - Example: `🔴 RED: Test login validation with @TEST:AUTH-001-RED`
+  - Example: `🔴 RED: Test login validation with @TEST:COMMIT-001-RED`
 - Invalid messages:
   - `Fixed bug in auth` (no emoji)
   - `red test login` (wrong format)
@@ -260,7 +260,7 @@
 **Then**:
 - Invalid message: Commit is rejected
 - Error message: "Commit must include emoji, message, and @TAG reference"
-- Valid message: `🔴 RED: Test login validation with @TEST:AUTH-001-RED` is accepted
+- Valid message: `🔴 RED: Test login validation with @TEST:COMMIT-001-GREEN` is accepted
 - Suggestion provided for fixing message
 
 **Expected Output**: Enforced commit message format via pre-commit hook
@@ -275,15 +275,15 @@
 **Status**: Pending
 
 **Given**:
-- SPEC: `SPEC-AUTH-001` with requirement:
-  - REQ-AUTH-001: "System shall validate user credentials"
-  - REQ-AUTH-002: "System shall create session on successful login"
+- SPEC: `SPEC-TRACE-001` with requirement:
+  - REQ-TRACE-001: "System shall validate user credentials"
+  - REQ-TRACE-002: "System shall create session on successful login"
 - Code implementation:
   ```python
-  def validate_credentials(username, password):  # @SPEC:AUTH-001-REQ-001
+  def validate_credentials(username, password):  # @SPEC:TRACE-001-REQ-001
       pass
-  
-  def create_session(user_id):  # @SPEC:AUTH-001-REQ-002
+
+  def create_session(user_id):  # @SPEC:TRACE-001-REQ-002
       pass
   ```
 
@@ -293,14 +293,14 @@
 
 **Then**:
 - Traceability matrix shows:
-  - REQ-AUTH-001 → validate_credentials() ✓
-  - REQ-AUTH-002 → create_session() ✓
+  - REQ-TRACE-001 → validate_credentials() ✓
+  - REQ-TRACE-002 → create_session() ✓
   - All requirements have corresponding code
   - All code references requirements
 - Missing references identified
 - Orphaned code flagged
 
-**Expected Output**: Traceability matrix in `SPEC-AUTH-001/traceability.md`
+**Expected Output**: Traceability matrix in `SPEC-TRACE-001/traceability.md`
 
 ---
 
