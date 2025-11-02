@@ -1,6 +1,6 @@
 # MoAI-ADK (Agentic Development Kit)
 
-[한국어](README.ko.md) |[English](README.md) | [ไทย](README.th.md) | [日本語](README.ja.md) | [中文](README.zh.md) | [हिन्दी](README.hi.md)
+[한국어](README.ko.md) | [English](README.md)
 
 [![PyPI version](https://img.shields.io/pypi/v/moai-adk)](https://pypi.org/project/moai-adk/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -71,7 +71,7 @@ Write SPECs first with the `/alfred:1-plan` command. A vague request like "login
 A single `/alfred:3-sync` command **synchronizes** all code, tests, and documentation. README, CHANGELOG, API docs, and Living Documents all update automatically. Six months later, code and docs still match.
 
 **4️⃣ Tracking with @TAG System**
-Every piece of code, test, and documentation gets a `@TAG:ID`. When requirements change later, one command—`rg "@SPEC:AUTH-001"`—**finds all related tests, implementations, and docs**. You gain confidence during refactoring.
+Every piece of code, test, and documentation gets a `@TAG:ID`. When requirements change later, one command—`rg "@SPEC:EX-AUTH-001"`—**finds all related tests, implementations, and docs**. You gain confidence during refactoring.
 
 **5️⃣ Alfred Remembers Context**
 A team of AI agents collaborate to **remember** your project's structure, decision rationale, and work history. No need to repeat the same questions.
@@ -579,7 +579,7 @@ status: draft
 priority: high
 ---
 
-# `@SPEC:HELLO-001: Hello World API
+# `@SPEC:EX-HELLO-001: Hello World API
 
 ## Ubiquitous Requirements
 - System SHALL provide HTTP GET /hello endpoint
@@ -609,7 +609,7 @@ priority: high
 **File Created**: `tests/test_hello.py`
 
 ```python
-# `@TEST:HELLO-001 | SPEC: SPEC-HELLO-001.md
+# `@TEST:EX-HELLO-001 | SPEC: SPEC-HELLO-001.md
 
 import pytest
 from fastapi.testclient import TestClient
@@ -650,7 +650,7 @@ git commit -m "🔴 test(HELLO-001): add failing hello API tests"
 **File Created**: `src/hello/api.py`
 
 ```python
-# `@CODE:HELLO-001:API | SPEC: SPEC-HELLO-001.md | TEST: tests/test_hello.py
+# `@CODE:EX-HELLO-001:API | SPEC: SPEC-HELLO-001.md | TEST: tests/test_hello.py
 
 from fastapi import FastAPI
 
@@ -658,7 +658,7 @@ app = FastAPI()
 
 @app.get("/hello")
 def hello(name: str = "World"):
-    """@CODE:HELLO-001:API - Hello endpoint"""
+    """@CODE:EX-HELLO-001:API - Hello endpoint"""
     return {"message": f"Hello, {name}!"}
 ```
 
@@ -688,7 +688,7 @@ app = FastAPI()
 
 @app.get("/hello")
 def hello(name: str = "World"):
-    """@CODE:HELLO-001:API - Hello endpoint with validation"""
+    """@CODE:EX-HELLO-001:API - Hello endpoint with validation"""
     if len(name) > 50:
         raise HTTPException(status_code=400, detail="Name too long (max 50 chars)")
     return {"message": f"Hello, {name}!"}
@@ -767,9 +767,9 @@ curl "http://localhost:8000/hello"
 ```
 
 ### Traceability
-- `@SPEC:HELLO-001` - Requirements
-- `@TEST:HELLO-001` - Tests
-- `@CODE:HELLO-001:API` - Implementation
+- `@SPEC:EX-HELLO-001` - Requirements
+- `@TEST:EX-HELLO-001` - Tests
+- `@CODE:EX-HELLO-001:API` - Implementation
 ```
 
 ---
@@ -783,10 +783,10 @@ rg '@(SPEC|TEST|CODE|DOC):HELLO-001' -n
 
 #### Output (Complete Traceability)
 ```
-.moai/specs/SPEC-HELLO-001/spec.md:7:# `@SPEC:HELLO-001: Hello World API
-tests/test_hello.py:3:# `@TEST:HELLO-001 | SPEC: SPEC-HELLO-001.md
-src/hello/api.py:3:# `@CODE:HELLO-001:API | SPEC: SPEC-HELLO-001.md
-docs/api/hello.md:24:- `@SPEC:HELLO-001`
+.moai/specs/SPEC-HELLO-001/spec.md:7:# `@SPEC:EX-HELLO-001: Hello World API
+tests/test_hello.py:3:# `@TEST:EX-HELLO-001 | SPEC: SPEC-HELLO-001.md
+src/hello/api.py:3:# `@CODE:EX-HELLO-001:API | SPEC: SPEC-HELLO-001.md
+docs/api/hello.md:24:- `@SPEC:EX-HELLO-001`
 ```
 
 ✅ **Complete chain**: SPEC → TEST → CODE → DOC (fully traceable!)
@@ -881,7 +881,7 @@ Your SPEC documents are in Korean (한국어)
 
 But Alfred's internal commands use English:
   ✅ Skill("moai-foundation-trust")
-  ✅ @CODE:AUTH-001 (TAG format)
+  ✅ @CODE:EX-AUTH-001 (TAG format)
   ✅ .claude/skills/ (infrastructure)
 ```
 
@@ -1424,9 +1424,9 @@ uv cache clean moai-adk && moai-adk update
 - Timeout: 10 seconds for cache clear operation
 
 **References:**
-- SPEC: @SPEC:UPDATE-CACHE-FIX-001
-- Implementation: @CODE:UPDATE-CACHE-FIX-001-001, @CODE:UPDATE-CACHE-FIX-001-002, @CODE:UPDATE-CACHE-FIX-001-003
-- Tests: @TEST:UPDATE-CACHE-FIX-001
+- SPEC: @SPEC:EX-UPDATE-001
+- Implementation: @CODE:EX-UPDATE-001-001, @CODE:EX-UPDATE-001-002, @CODE:EX-UPDATE-001-003
+- Tests: @TEST:EX-UPDATE-001
 
 ### Contributing Tests
 
@@ -1833,13 +1833,13 @@ MoAI-ADK consists of 5 key concepts. Each concept connects to the others, and to
 **TAG Chain**:
 
 ```
-@SPEC:AUTH-001 (requirements)
+@SPEC:EX-AUTH-001 (requirements)
     ↓
-@TEST:AUTH-001 (test)
+@TEST:EX-AUTH-001 (test)
     ↓
-@CODE:AUTH-001 (implementation)
+@CODE:EX-AUTH-001 (implementation)
     ↓
-@DOC:AUTH-001 (documentation)
+@DOC:EX-AUTH-001 (documentation)
 ```
 
 **TAG ID Rules**: `<Domain>-<3 digits>`
@@ -1975,7 +1975,7 @@ author: @user
 priority: high
 ---
 
-# @SPEC:TODO-001: Todo Management API
+# @SPEC:EX-TODO-001: Todo Management API
 
 ## Ubiquitous Requirements
 - The system SHALL be able to add todos
@@ -2011,7 +2011,7 @@ The **implementation-planner** Sub-agent decides:
 
 - 📚 Libraries: FastAPI + SQLAlchemy
 - 📁 Folder structure: `src/todo/`, `tests/todo/`
-- 🏷️ TAG design: `@CODE:TODO-001:API`, `@CODE:TODO-001:MODEL`, `@CODE:TODO-001:REPO`
+- 🏷️ TAG design: `@CODE:EX-TODO-001:API`, `@CODE:EX-TODO-001:MODEL`, `@CODE:EX-TODO-001:REPO`
 
 **Phase 2: RED → GREEN → REFACTOR**
 
@@ -2061,7 +2061,7 @@ git commit -m "🔴 test(TODO-001): add failing API tests"
 
 ```python
 # src/todo/api.py
-# @CODE:TODO-001:API | SPEC: SPEC-TODO-001.md | TEST: tests/test_todo_api.py
+# @CODE:EX-TODO-001:API | SPEC: SPEC-TODO-001.md | TEST: tests/test_todo_api.py
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -2075,19 +2075,19 @@ class TodoRequest(BaseModel):
 
 @app.post("/todos", status_code=201)
 def create_todo(todo: TodoRequest):
-    """@CODE:TODO-001:API - POST endpoint"""
+    """@CODE:EX-TODO-001:API - POST endpoint"""
     todo_id = str(uuid.uuid4())
     todos_db[todo_id] = {"id": todo_id, "title": todo.title}
     return todos_db[todo_id]
 
 @app.get("/todos")
 def get_todos():
-    """@CODE:TODO-001:API - GET all endpoint"""
+    """@CODE:EX-TODO-001:API - GET all endpoint"""
     return list(todos_db.values())
 
 @app.get("/todos/{todo_id}")
 def get_todo(todo_id: str):
-    """@CODE:TODO-001:API - GET by ID endpoint"""
+    """@CODE:EX-TODO-001:API - GET by ID endpoint"""
     if todo_id not in todos_db:
         raise HTTPException(status_code=404, detail="Todo not found")
     return todos_db[todo_id]
@@ -2106,7 +2106,7 @@ git commit -m "🟢 feat(TODO-001): implement minimal Todo API"
 
 ```python
 # src/todo/models.py
-# @CODE:TODO-001:MODEL | SPEC: SPEC-TODO-001.md
+# @CODE:EX-TODO-001:MODEL | SPEC: SPEC-TODO-001.md
 
 from datetime import datetime
 from sqlalchemy import Column, String, DateTime
@@ -2115,7 +2115,7 @@ from sqlalchemy.ext.declarative import declarative_base
 Base = declarative_base()
 
 class Todo(Base):
-    """@CODE:TODO-001:MODEL - Todo data model"""
+    """@CODE:EX-TODO-001:MODEL - Todo data model"""
     __tablename__ = "todos"
 
     id = Column(String, primary_key=True)
@@ -2123,7 +2123,7 @@ class Todo(Base):
     created_at = Column(DateTime, default=datetime.utcnow)   # Auto creation time
 
     def validate(self):
-        """@CODE:TODO-001:MODEL - Validation"""
+        """@CODE:EX-TODO-001:MODEL - Validation"""
         if not self.title or len(self.title) > 200:
             raise ValueError("Title must be 1-200 characters")
 ```
@@ -2159,10 +2159,10 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
 1. **TAG Chain Validation**
 
    ```bash
-   ✅ @SPEC:TODO-001 → .moai/specs/SPEC-TODO-001/spec.md
+   ✅ @SPEC:EX-TODO-001 → .moai/specs/SPEC-TODO-001/spec.md
    ✅ @TEST:README-EXAMPLE-TODO → tests/test_todo_api.py
-   ✅ @CODE:TODO-001 → src/todo/ (3 files)
-   ✅ @DOC:TODO-001 → docs/api/todo.md (auto-generated)
+   ✅ @CODE:EX-TODO-001 → src/todo/ (3 files)
+   ✅ @DOC:EX-TODO-001 → docs/api/todo.md (auto-generated)
 
    TAG Chain Integrity: 100%
    Orphan TAGs: None
@@ -2171,7 +2171,7 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
 2. **Living Document Generation**
 
    ```markdown
-   # @DOC:TODO-001: Todo Management API
+   # @DOC:EX-TODO-001: Todo Management API
 
    ## Overview
 
@@ -2185,7 +2185,7 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
    - URL: /todos
    - Request: {"title": "string (1-200 chars)"}
    - Response: 201 Created with todo object
-   - Implemented in: @CODE:TODO-001:API
+   - Implemented in: @CODE:EX-TODO-001:API
    - Tested in: @TEST:README-EXAMPLE-TODO
 
    ### Get All Todos
@@ -2214,7 +2214,7 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
 
    ### Added
 
-   - Todo Management API with CRUD operations (@SPEC:TODO-001)
+   - Todo Management API with CRUD operations (@SPEC:EX-TODO-001)
      - Create new todos
      - List all todos
      - Update existing todos
@@ -2236,11 +2236,11 @@ Let's verify everything generated is properly connected:
 rg '@(SPEC|TEST|CODE|DOC):TODO-001' -n
 
 # Output:
-# .moai/specs/SPEC-TODO-001/spec.md:1: # @SPEC:TODO-001: Todo Management API
+# .moai/specs/SPEC-TODO-001/spec.md:1: # @SPEC:EX-TODO-001: Todo Management API
 # tests/test_todo_api.py:2: # @TEST:README-EXAMPLE-TODO | SPEC: SPEC-TODO-001.md
-# src/todo/api.py:5: # @CODE:TODO-001:API | SPEC: SPEC-TODO-001.md
-# src/todo/models.py:5: # @CODE:TODO-001:MODEL | SPEC: SPEC-TODO-001.md
-# docs/api/todo.md:1: # @DOC:TODO-001: Todo Management API
+# src/todo/api.py:5: # @CODE:EX-TODO-001:API | SPEC: SPEC-TODO-001.md
+# src/todo/models.py:5: # @CODE:EX-TODO-001:MODEL | SPEC: SPEC-TODO-001.md
+# docs/api/todo.md:1: # @DOC:EX-TODO-001: Todo Management API
 
 
 # 2️⃣ Run tests
@@ -2270,21 +2270,21 @@ git log --oneline | head -5
 
 ```
 ✅ SPEC written (3 minutes)
-   └─ @SPEC:TODO-001 TAG assigned
+   └─ @SPEC:EX-TODO-001 TAG assigned
    └─ Clear requirements in EARS format
 
 ✅ TDD implementation (5 minutes)
    └─ 🔴 RED: Tests written first
    └─ 🟢 GREEN: Minimal implementation
    └─ ♻️ REFACTOR: Quality improvement
-   └─ @TEST:README-EXAMPLE-TODO, @CODE:TODO-001 TAGs assigned
+   └─ @TEST:README-EXAMPLE-TODO, @CODE:EX-TODO-001 TAGs assigned
    └─ 87% coverage, TRUST 5 principles verified
 
 ✅ Documentation sync (1 minute)
    └─ Living Document auto-generated
    └─ README, CHANGELOG updated
    └─ TAG chain validation complete
-   └─ @DOC:TODO-001 TAG assigned
+   └─ @DOC:EX-TODO-001 TAG assigned
    └─ PR status: Draft → Ready for Review
 
 Result:
@@ -2830,7 +2830,7 @@ claude
 
 **Symptom**:
 ```
-⚠ Orphan TAG detected: @TEST:HELLO-001 (no matching @SPEC)
+⚠ Orphan TAG detected: @TEST:EX-HELLO-001 (no matching @SPEC)
 ```
 
 **Cause**: SPEC deleted or TAGs don't match
@@ -2842,13 +2842,13 @@ claude
 rg '@(SPEC|TEST|CODE):HELLO-001' -n
 
 # 2. Check if SPEC exists
-rg '@SPEC:HELLO-001' -n .moai/specs/
+rg '@SPEC:EX-HELLO-001' -n .moai/specs/
 
 # 3. If SPEC missing, regenerate
 /alfred:1-plan "feature description"
 
 # Or fix TAG in test file
-# Edit tests/test_hello.py: @TEST:HELLO-001 → @TEST:README-EXAMPLE-HELLO
+# Edit tests/test_hello.py: @TEST:EX-HELLO-001 → @TEST:README-EXAMPLE-HELLO
 
 # 4. Sync
 /alfred:3-sync
