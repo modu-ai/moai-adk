@@ -482,28 +482,188 @@ Running system diagnostics...
 ✓ All checks passed
 ```
 
-### Step 2️⃣: 패키지 업데이트
+### Step 2️⃣: 패키지 업데이트 (시스템 전역 - 한 번만)
+
+**목적**: `moai-adk` 패키지 자체를 새 버전으로 업그레이드
+
+**실행 위치**: 어디서나 (프로젝트 폴더 밖에서도 OK)
+
+**실행 횟수**: 시스템 전체에서 **한 번만**
 
 ```bash
-# 방법 A: moai-adk 자체 명령 (권장)
+# 방법 A: moai-adk 자체 명령 (권장 - 패키지 + 템플릿 동기화)
 moai-adk update
 
-# 또는 방법 B: uv tool 명령
+# 또는 방법 B: uv tool 명령 (패키지만 업데이트)
 uv tool upgrade moai-adk
 ```
 
-### Step 3️⃣: 프로젝트별 템플릿 동기화
+**무엇이 업데이트되나요?**
+
+- ✅ `moai-adk` **패키지 프로그램** (PyPI 최신 버전)
+- ✅ (방법 A 선택 시) 로컬 캐시의 템플릿 스냅샷
+
+**예시**: `moai-adk v0.14.0` → `moai-adk v0.15.0`
+
+**확인 명령어**:
+```bash
+moai-adk --version
+# 출력: moai-adk version 0.15.0
+```
+
+---
+
+### Step 3️⃣: 프로젝트별 템플릿 동기화 (각 프로젝트마다)
+
+**목적**: 각 프로젝트의 `.moai/`과 `.claude/` 폴더를 **새 버전의 템플릿으로 업데이트**
+
+**실행 위치**: 각 프로젝트 루트 폴더에서
+
+**실행 횟수**: 업데이트할 각 프로젝트마다 **반복 실행**
 
 ```bash
-# 각 프로젝트 폴더에서 실행
-cd project-1
+# 프로젝트 1 동기화
+cd ~/projects/project-1
 moai-adk init .
 echo "✅ project-1 동기화 완료"
 
-cd ../project-2
+# 프로젝트 2 동기화
+cd ~/projects/project-2
 moai-adk init .
 echo "✅ project-2 동기화 완료"
+
+# 프로젝트 3 동기화
+cd ~/projects/project-3
+moai-adk init .
+echo "✅ project-3 동기화 완료"
 ```
+
+**무엇이 업데이트되나요?**
+
+프로젝트 폴더의 다음 항목들:
+
+```
+project-1/
+├── .moai/
+│   ├── config.json        ← 유지 (당신의 설정)
+│   ├── project/           ← 유지 (당신의 문서)
+│   └── memory/            ← 유지 (학습 데이터)
+├── .claude/
+│   ├── agents/            ← 교체 (새 버전)
+│   ├── commands/          ← 교체 (새 버전)
+│   ├── hooks/             ← 교체 (새 버전)
+│   ├── skills/            ← 교체 (새 버전)
+│   └── settings.json      ← 유지 (당신의 설정)
+├── src/                   ← 유지 (당신의 코드)
+├── tests/                 ← 유지 (당신의 테스트)
+└── docs/                  ← 유지 (당신의 문서)
+```
+
+**확인 명령어**:
+```bash
+cd ~/projects/project-1
+moai-adk doctor
+# ✅ .claude/ directory ready
+# ✅ 16 agents configured
+# ✅ 74 skills loaded
+```
+
+---
+
+## 📊 Step 2 vs Step 3 비교표
+
+| 항목 | **Step 2: 패키지 업데이트** | **Step 3: 템플릿 동기화** |
+|------|---------------------------|------------------------|
+| **무엇** | `moai-adk` 패키지 자체 | 각 프로젝트의 `.moai/`, `.claude/` |
+| **범위** | 시스템 전역 | 프로젝트별 (로컬) |
+| **실행 위치** | 어디서나 (프로젝트 밖) | 각 프로젝트 폴더에서 |
+| **실행 횟수** | **1회** | 프로젝트 수만큼 |
+| **명령어** | `moai-adk update` | `moai-adk init .` |
+| **영향 범위** | 시스템에 설치된 `moai-adk` | 해당 프로젝트의 설정 |
+| **비유** | 아이폰 iOS 업데이트 | 각 앱의 설정 동기화 |
+
+---
+
+## 🎯 Step 2 + Step 3 완전 이해하기
+
+### 시나리오: 3개 프로젝트를 v0.14 → v0.15로 업데이트
+
+**Before:**
+```
+시스템:
+  └─ moai-adk v0.14.0 (설치됨)
+
+프로젝트들:
+  ├─ project-1/ (.claude 템플릿 v0.14)
+  ├─ project-2/ (.claude 템플릿 v0.14)
+  └─ project-3/ (.claude 템플릿 v0.14)
+```
+
+**Step 2️⃣ 실행 (시스템 패키지 업데이트)**:
+```bash
+moai-adk update
+```
+
+**After Step 2:**
+```
+시스템:
+  └─ moai-adk v0.15.0 ✅ (업그레이드됨)
+
+프로젝트들:
+  ├─ project-1/ (.claude 템플릿 v0.14) ← 아직 옛날 버전
+  ├─ project-2/ (.claude 템플릿 v0.14) ← 아직 옛날 버전
+  └─ project-3/ (.claude 템플릿 v0.14) ← 아직 옛날 버전
+```
+
+**Step 3️⃣ 실행 (각 프로젝트 템플릿 동기화)**:
+```bash
+cd ~/projects/project-1
+moai-adk init .
+
+cd ~/projects/project-2
+moai-adk init .
+
+cd ~/projects/project-3
+moai-adk init .
+```
+
+**After Step 3:**
+```
+시스템:
+  └─ moai-adk v0.15.0 ✅
+
+프로젝트들:
+  ├─ project-1/ (.claude 템플릿 v0.15) ✅
+  ├─ project-2/ (.claude 템플릿 v0.15) ✅
+  └─ project-3/ (.claude 템플릿 v0.15) ✅
+```
+
+---
+
+## ⚠️ Step 3를 생략하면 어떻게 되나?
+
+**Step 2만 실행하고 Step 3을 하지 않으면:**
+
+```bash
+# Step 2만 실행
+moai-adk update
+# ✅ moai-adk v0.15.0 설치됨
+
+# Step 3 미실행
+# (moai-adk init . 실행 안 함)
+
+# 결과
+cd ~/projects/project-1
+claude
+/alfred:0-project
+
+# ⚠️ 문제: 새로운 기능이 작동하지 않음
+# ❌ 새 agents를 찾을 수 없음
+# ❌ 새 skills를 찾을 수 없음
+# ❌ 설정이 구 버전에 맞춰져 있음
+```
+
+**해결책**: 반드시 Step 3을 각 프로젝트마다 실행해야 합니다.
 
 ### Step 4️⃣: 동기화 검증
 
