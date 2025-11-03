@@ -7,6 +7,11 @@
             "command": "uv run .claude/hooks/alfred/session_start__show_project_info.py",
             "type": "command",
             "description": "Display project info and language configuration at session start"
+          },
+          {
+            "command": "uv run .claude/hooks/alfred/session_start__weekly_analysis_prompt.py",
+            "type": "command",
+            "description": "Remind user to run weekly session analysis if 7+ days elapsed"
           }
         ]
       }

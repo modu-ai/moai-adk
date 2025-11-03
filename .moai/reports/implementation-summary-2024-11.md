@@ -141,46 +141,55 @@ python3 .moai/scripts/session_analyzer.py \
 
 ---
 
-### 5-3. GitHub Actions 워크플로우: `weekly-session-analysis.yml`
+### 5-3. SessionStart 훅: `session_start__weekly_analysis_prompt.py` (로컬 실행)
 
-**파일**: `.github/workflows/weekly-session-analysis.yml` (140줄)
+**파일**: `.claude/hooks/alfred/session_start__weekly_analysis_prompt.py` (70줄)
 
 **실행 조건**:
-- 매주 월요일 09:00 UTC 자동 실행
-- 수동 실행 가능 (`workflow_dispatch`)
+- 세션 시작 시마다 자동 실행
+- 마지막 분석 이후 7일 이상 경과했으면 사용자에게 안내
+- 로컬 머신에서만 실행 (GitHub Actions 대체)
 
 **동작 흐름**:
 ```
-1. Python 설정
-   └─ python 3.13 설치
+1. 마지막 분석 날짜 확인
+   └─ .moai/reports/weekly-*.md 파일 검사
 
-2. 세션 분석 실행
-   └─ --days 7 --verbose
+2. 경과 일수 계산
+   └─ 현재 시간과 비교
 
-3. 변경사항 확인
-   └─ .moai/reports/ 체크
+3. 조건 확인 (7일 이상?)
+   ├─ YES: 사용자에게 안내 메시지 출력
+   └─ NO: 조용히 종료 (훅 오류 없음)
 
-4. PR 자동 생성 (변경사항 있으면)
-   └─ Title: [AUTO] Weekly Session Analysis
-   └─ Body: 분석 결과 + 조치 사항
-   └─ Label: automation, analysis
+4. 사용자 선택
+   └─ 안내된 명령어로 수동 분석 실행
 ```
 
-**PR 내용**:
-```markdown
-## Weekly Session Meta-Analysis Report
-
-### What to Review
-- Tool Usage Patterns
-- Error Patterns
-- Permission Requests
-- Hook Failures
-
-### Action Items
-1. Permission Adjustments
-2. CLAUDE.md Updates
-3. Hook Debugging
+**사용자 안내 메시지**:
 ```
+=================================================================
+📊 Weekly Session Analysis Reminder
+=================================================================
+
+⏰ 마지막 분석: 7일 전
+
+💡 세션 분석 실행:
+
+   Option 1: Python 스크립트로 실행
+   python3 .moai/scripts/session_analyzer.py --days 7 --verbose
+
+   Option 2: 셸 스크립트로 실행
+   bash .moai/scripts/weekly_analysis.sh
+
+분석 결과는 .moai/reports/weekly-YYYY-MM-DD.md에 저장됩니다.
+=================================================================
+```
+
+**왜 SessionStart 훅인가?**:
+- GitHub Actions는 서버에서 실행 → `~/.claude/projects/` (로컬 세션 로그) 접근 불가
+- SessionStart 훅은 로컬 머신에서 실행 → 실제 세션 로그에 접근 가능
+- 사용자가 명시적으로 분석 실행 → 로컬 개발 환경에 최적화
 
 ---
 
@@ -215,12 +224,14 @@ python3 .moai/scripts/session_analyzer.py \
 
 ### 5-5. 상태
 
-| 항목 | 상태 | 줄수 |
+| 항목 | 상태 | 비고 |
 |------|------|------|
-| session_analyzer.py | ✅ 완료 | 350 |
-| weekly_analysis.sh | ✅ 완료 | 50 |
-| GitHub Actions | ✅ 완료 | 140 |
-| CLAUDE.md 문서화 | ✅ 완료 | 115 |
+| session_analyzer.py | ✅ 완료 | 350줄, 세션 분석 엔진 |
+| weekly_analysis.sh | ✅ 완료 | 50줄, 수동 실행 스크립트 |
+| SessionStart 훅 | ✅ 완료 | 70줄, 로컬 기반 주간 리마인더 |
+| GitHub Actions | ❌ 삭제됨 | 서버 기반 실행 불가 (로컬 파일 접근 불가) |
+| .claude/settings.json | ✅ 수정 | SessionStart 훅 등록 (로컬 + 템플릿) |
+| CLAUDE.md 문서화 | ✅ 수정 | GitHub Actions → SessionStart 훅으로 변경 |
 
 ---
 
@@ -270,16 +281,14 @@ Phase 1 (Clone 패턴)
    └─ migrate_v0.14_to_v0.15.py
 
 .claude/
-└─ skills/
-   └─ moai-alfred-clone-pattern.md  (600줄) ✅
+├─ skills/
+│  └─ moai-alfred-clone-pattern.md           (600줄) ✅
+└─ hooks/alfred/
+   └─ session_start__weekly_analysis_prompt.py (70줄) ✅
 
-.github/
-└─ workflows/
-   └─ weekly-session-analysis.yml   (140줄) ✅
-
-CLAUDE.md (추가: 215줄)
+CLAUDE.md (추가: 330줄)
 ├─ 🔄 Alfred의 하이브리드 아키텍처 (100줄) ✅
-└─ 📊 세션 로그 메타분석 시스템 (115줄) ✅
+└─ 📊 세션 로그 메타분석 시스템 (230줄) ✅ (GitHub Actions → SessionStart 훅)
 ```
 
 ### 핵심 알고리즘
@@ -385,11 +394,12 @@ for pattern in analysis_patterns:
   - [x] CLAUDE.md 확장
   - [ ] Alfred 메서드 구현 (Phase 2)
 
-- [x] Phase 5 분석 완료
-  - [x] 세션 분석기 작성
-  - [x] 자동화 스크립트 추가
-  - [x] GitHub Actions 통합
-  - [x] CLAUDE.md 문서화
+- [x] Phase 5 분석 완료 (GitHub Actions → SessionStart 훅으로 수정)
+  - [x] 세션 분석기 작성 (session_analyzer.py)
+  - [x] 자동화 스크립트 추가 (weekly_analysis.sh)
+  - [x] SessionStart 훅 구현 (session_start__weekly_analysis_prompt.py)
+  - [x] CLAUDE.md 문서화 (GitHub Actions 제거, SessionStart 훅 설명 추가)
+  - [x] .claude/settings.json 수정 (로컬 + 템플릿)
 
 - [ ] Phase 6 (다음)
   - [ ] CLAUDE.md 완전 재편
@@ -400,13 +410,26 @@ for pattern in analysis_patterns:
 
 ## 📊 코드 통계
 
+**초기 구현 (Phase 1, 5)**:
+
 | 항목 | 줄수 | 파일 수 |
 |------|------|--------|
-| 신규 코드 | 1,087 | 5 |
+| 신규 코드 (스크립트+Skill) | 1,000 | 4 |
 | CLAUDE.md 추가 | 215 | 1 |
-| **총계** | **1,302** | **6** |
+| GitHub Actions | 140 | 1 |
+| **소계** | **1,355** | **6** |
 
-**커밋**: `597d0434`
+**수정사항 (GitHub Actions 제거 → SessionStart 훅)**:
+
+| 항목 | 변경 | 파일 수 |
+|------|------|--------|
+| GitHub Actions | ❌ -140줄 | -1 |
+| SessionStart 훅 | ✅ +70줄 | +1 |
+| CLAUDE.md | 📝 +115줄 | 0 |
+| settings.json | 📝 수정 | +2 (로컬+템플릿) |
+| **최종 계** | **1,400줄** | **7 파일** |
+
+**커밋**: 이전 `597d0434` → 새 커밋 예정
 
 ---
 
