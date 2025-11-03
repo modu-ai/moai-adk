@@ -3,7 +3,7 @@ id: TECH-001
 version: 0.1.1
 status: active
 created: 2025-10-01
-updated: 2025-10-17
+updated: 2025-11-04
 author: @tech-lead
 priority: medium
 ---
@@ -12,10 +12,10 @@ priority: medium
 
 ## HISTORY
 
-### v0.1.1 (2025-10-17)
-- **UPDATED**: Template version synced (v0.3.8)
+### v0.1.1 (2025-11-04)
+- **UPDATED**: Template version synced (v0.4.0), added HANDBOOK.md guide
 - **AUTHOR**: @Alfred
-- **SECTIONS**: Metadata standardization (single `author` field, added `priority`)
+- **SECTIONS**: Simplified documentation, referenced handbook for guidance
 
 ### v0.1.0 (2025-10-01)
 - **INITIAL**: Authored the technology stack document
