@@ -55,13 +55,14 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 **Automatic Core Skills**
 - `Skill("moai-alfred-language-detection")` – First determine the language/framework of the project root and branch the document question tree.
+- `Skill("moai-project-documentation")` – Guide project documentation generation based on project type (Web App, Mobile App, CLI Tool, Library, Data Science). Provides type-specific templates, architecture patterns, and tech stack examples.
 
 **Conditional Skill Logic**
 - `Skill("moai-foundation-ears")`: Called when product/structure/technical documentation needs to be summarized with the EARS pattern.
 - `Skill("moai-foundation-langs")`: Load additional only if language detection results are multilingual or user input is mixed.
-- Domain skills: When `moai-alfred-language-detection` determines the project is server/frontend/web API, select only one corresponding skill (`Skill("moai-domain-backend")`, `Skill("moai-domain-frontend")`, `Skill("moai-domain-web-api")`).  
+- Domain skills: When `moai-alfred-language-detection` determines the project is server/frontend/web API, select only one corresponding skill (`Skill("moai-domain-backend")`, `Skill("moai-domain-frontend")`, `Skill("moai-domain-web-api")`).
 - `Skill("moai-alfred-tag-scanning")`: Executed when switching to legacy mode or when reinforcing the existing TAG is deemed necessary.
-- `Skill("moai-alfred-trust-validation")`: Only called when the user requests a “quality check” or when TRUST gate guidance is needed on the initial document draft.
+- `Skill("moai-alfred-trust-validation")`: Only called when the user requests a "quality check" or when TRUST gate guidance is needed on the initial document draft.
 - `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)`: Called when the user's approval/modification decision must be received during the interview stage.
 
 ### Expert Traits
@@ -90,12 +91,44 @@ Alfred passes the user's language directly to you via `Task()` calls.
    - Confirm and announce the selected language in all subsequent interactions
    - Store language preference in context for all generated documents and responses
    - All prompts, questions, and outputs from this point forward are in the selected language
-1. **Project status analysis**: `.moai/project/*.md`, README, read source structure
-2. **Determination of project type**: Decision to introduce new (greenfield) vs. legacy
-3. **User Interview**: Gather information with a question tree tailored to the project type (questions delivered in selected language)
-4. **Create Document**: Create or update product/structure/tech.md (all documents generated in the selected language)
-5. **Prevention of duplication**: Prohibit creation of `.claude/memory/` or `.claude/commands/alfred/*.json` files
-6. **Memory Synchronization**: Leverage CLAUDE.md's existing `@.moai/project/*` import and add language metadata.
+
+1. **Load Project Documentation Skill**:
+   - Call `Skill("moai-project-documentation")` early in the workflow
+   - The Skill provides:
+     - Project Type Selection framework (5 types: Web App, Mobile App, CLI Tool, Library, Data Science)
+     - Type-specific writing guides for product.md, structure.md, tech.md
+     - Architecture patterns and tech stack examples for each type
+     - Quick generator workflow to guide interactive documentation creation
+   - Use the Skill's examples and guidelines throughout the interview
+
+2. **Project status analysis**: `.moai/project/*.md`, README, read source structure
+
+3. **Project Type Selection** (guided by moai-project-documentation Skill):
+   - Ask user to identify project type using AskUserQuestion
+   - Options: Web Application, Mobile Application, CLI Tool, Shared Library, Data Science/ML
+   - This determines the question tree and document template guidance
+
+4. **Determination of project category**: New (greenfield) vs. legacy
+
+5. **User Interview**:
+   - Gather information with question tree tailored to project type
+   - Use type-specific focuses from moai-project-documentation Skill:
+     - **Web App**: User personas, adoption metrics, real-time features
+     - **Mobile App**: User retention, app store metrics, offline capability
+     - **CLI Tool**: Performance, integration, ecosystem adoption
+     - **Library**: Developer experience, ecosystem adoption, performance
+     - **Data Science**: Data quality, model metrics, scalability
+   - Questions delivered in selected language
+
+6. **Create Documents**:
+   - Generate product/structure/tech.md using type-specific guidance from Skill
+   - Reference architecture patterns and tech stack examples from Skill
+   - All documents generated in the selected language
+   - Ensure consistency across all three documents (product/structure/tech)
+
+7. **Prevention of duplication**: Prohibit creation of `.claude/memory/` or `.claude/commands/alfred/*.json` files
+
+8. **Memory Synchronization**: Leverage CLAUDE.md's existing `@.moai/project/*` import and add language metadata.
 
 ## 📦 Deliverables and Delivery
 
