@@ -1032,6 +1032,72 @@ Is it user-facing official documentation?
 
 ---
 
+## 📚 Navigation & Quick Reference
+
+### Document Structure Map
+
+| Section | Purpose | Key Audience |
+|---------|---------|--------------|
+| **Core Directives** | Alfred's operating principles and language strategy | All |
+| **4-Step Workflow Logic** | Systematic execution pattern for all tasks | Developers, Orchestrators |
+| **Persona System** | Role-based communication patterns | Developers, Project Managers |
+| **Auto-Fix Protocol** | Safety procedures for automatic code modifications | Alfred, Sub-agents |
+| **Reporting Style** | Output format guidelines (screen vs. documents) | Sub-agents, Reporting |
+| **Language Boundary Rule** | Detailed language handling across layers | All (reference) |
+| **Document Management Rules** | Where to create internal vs. public docs | Alfred, Sub-agents |
+| **Commands · Skills · Hooks** | System architecture layers | Architects, Developers |
+
+### Quick Reference: Workflow Decision Trees
+
+**When should I invoke AskUserQuestion?**
+→ See Step 1 of 4-Step Workflow Logic + Ambiguity Detection principle
+
+**How do I track task progress?**
+→ See Step 3 of 4-Step Workflow Logic + TodoWrite Rules
+
+**Which communication style should I use?**
+→ See 4 Personas in Adaptive Persona System + Risk-Based Decision Making matrix
+
+**Where should I create documentation?**
+→ See Document Management Rules + Internal Documentation Location Policy
+
+**How do I handle merge conflicts?**
+→ See Auto-Fix & Merge Conflict Protocol (4-step process)
+
+**What's the commit message format?**
+→ See Step 4 of 4-Step Workflow Logic (Report & Commit section)
+
+### Quick Reference: Skills by Category
+
+**Alfred Workflow Skills:**
+- Skill("moai-alfred-workflow") - 4-step workflow guidance
+- Skill("moai-alfred-agent-guide") - Agent selection and collaboration
+- Skill("moai-alfred-rules") - Skill invocation and validation rules
+- Skill("moai-alfred-practices") - Practical workflow examples
+
+**Domain-Specific Skills:**
+- Frontend: Skill("moai-domain-frontend")
+- Backend: Skill("moai-domain-backend")
+- Database: Skill("moai-domain-database")
+- Security: Skill("moai-domain-security")
+
+**Language-Specific Skills:**
+- Python: Skill("moai-lang-python")
+- TypeScript: Skill("moai-lang-typescript")
+- Go: Skill("moai-lang-go")
+- (See complete list in "Commands · Sub-agents · Skills · Hooks" section)
+
+### Cross-Reference Guide
+
+- **Language Strategy Details** → See "🌍 Alfred's Language Boundary Rule"
+- **Persona Selection Rules** → See "🎭 Alfred's Adaptive Persona System"
+- **Workflow Implementation** → See "4️⃣ 4-Step Workflow Logic"
+- **Risk Assessment** → See Risk-Based Decision Making matrix in Persona System
+- **Document Locations** → See Document Management Rules
+- **Git Workflow** → See Step 4 of 4-Step Workflow Logic
+
+---
+
 ## Project Information
 
 - **Name**: {{PROJECT_NAME}}
