@@ -107,7 +107,11 @@ class CrossPlatformTimeout:
         """Unix/POSIX: Use signal.SIGALRM for timeout."""
         def signal_handler(signum, frame):
             if self.callback:
-                self.callback()
+                try:
+                    self.callback()
+                except Exception:
+                    # Ignore callback exceptions, timeout error takes precedence
+                    pass
             raise TimeoutError(
                 f"Operation exceeded {self.timeout_seconds}s timeout (Unix signal)"
             )
