@@ -10,7 +10,7 @@
       {
         "hooks": [
           {
-            "command": "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/alfred/session_start__show_project_info.py",
+            "command": "uv run .claude/hooks/alfred/session_start__show_project_info.py",
             "type": "command"
           }
         ]
@@ -20,7 +20,7 @@
       {
         "hooks": [
           {
-            "command": "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/alfred/pre_tool__auto_checkpoint.py",
+            "command": "uv run .claude/hooks/alfred/pre_tool__auto_checkpoint.py",
             "type": "command"
           }
         ],
@@ -31,7 +31,7 @@
       {
         "hooks": [
           {
-            "command": "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/alfred/user_prompt__jit_load_docs.py",
+            "command": "uv run .claude/hooks/alfred/user_prompt__jit_load_docs.py",
             "type": "command"
           }
         ]
@@ -41,7 +41,7 @@
       {
         "hooks": [
           {
-            "command": "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/alfred/session_end__cleanup.py",
+            "command": "uv run .claude/hooks/alfred/session_end__cleanup.py",
             "type": "command"
           }
         ]
@@ -51,7 +51,7 @@
       {
         "hooks": [
           {
-            "command": "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/alfred/post_tool__log_changes.py",
+            "command": "uv run .claude/hooks/alfred/post_tool__log_changes.py",
             "type": "command"
           }
         ],

@@ -63,6 +63,78 @@ Alfred passes the user's language directly to you via `Task()` calls.
 - **Communication style**: Writing a structured plan, providing clear evidence
 - **Full text Area**: Requirements analysis, technology stack selection, implementation priorities
 
+## 🎯 Proactive Expert Delegation
+
+### Expert Agent Trigger Keywords
+
+When analyzing SPEC documents, implementation-planner **automatically detects domain-specific keywords** and proactively delegates to specialized expert agents:
+
+#### Expert Delegation Matrix
+
+| Expert Agent | Trigger Keywords | When to Delegate | Output Expected |
+|--------------|-----------------|-----------------|-----------------|
+| **backend-expert** | 'backend', 'api', 'server', 'database', 'microservice', 'deployment', 'authentication' | SPEC requires server-side architecture, API design, or database schema | Backend architecture guide, API contract design |
+| **frontend-expert** | 'frontend', 'ui', 'page', 'component', 'client-side', 'browser', 'web interface' | SPEC requires client-side UI, component design, or state management | Component architecture, state management strategy |
+| **devops-expert** | 'deployment', 'docker', 'kubernetes', 'ci/cd', 'pipeline', 'infrastructure', 'railway', 'vercel', 'aws' | SPEC requires deployment automation, containerization, or CI/CD | Deployment strategy, infrastructure-as-code templates |
+| **ui-ux-expert** | 'design', 'ux', 'ui', 'accessibility', 'a11y', 'user experience', 'wireframe', 'prototype', 'design system', 'figma', 'user research', 'persona', 'journey map' | SPEC requires UX design, design systems, accessibility audit, or design-to-code workflows | Design system architecture, accessibility audit, Figma-to-code guide |
+
+### Proactive Delegation Workflow
+
+**Step 1: Scan SPEC Content**
+- Read SPEC file content (all sections: requirements, specifications, constraints)
+- Search for expert trigger keywords using pattern matching
+- Build keyword match map: `{expert_name: [matched_keywords]}`
+
+**Step 2: Decision Matrix**
+- If backend keywords found → Delegate to backend-expert
+- If frontend keywords found → Delegate to frontend-expert
+- If devops keywords found → Delegate to devops-expert
+- If ui-ux keywords found → Delegate to ui-ux-expert
+- If multiple experts needed → Invoke in dependency order (backend → frontend → devops → ui-ux)
+
+**Step 3: Task Invocation**
+
+When delegating to an expert agent, use the `Task()` tool with:
+```
+Task(
+  description: "brief task description",
+  prompt: "[Full SPEC analysis request in user's conversation_language]",
+  subagent_type: "{expert_agent_name}",
+  model: "sonnet"
+)
+```
+
+**Example Delegations**:
+
+```
+Example 1: Backend API Requirements
+─────────────────────────────────────
+SPEC Keywords Detected: ['api', 'authentication', 'database', 'server']
+→ Delegate to: backend-expert
+→ Task Prompt: "SPEC-AUTH-001에서 REST API와 데이터베이스 스키마를 설계해주세요"
+
+Example 2: Full-Stack Application
+──────────────────────────────────
+SPEC Keywords Detected: ['frontend', 'backend', 'deployment', 'api']
+→ Delegate to: backend-expert (for API design)
+→ Delegate to: frontend-expert (for component architecture)
+→ Delegate to: devops-expert (for deployment strategy)
+
+Example 3: Design System Implementation
+───────────────────────────────────────
+SPEC Keywords Detected: ['design system', 'accessibility', 'component', 'figma', 'a11y']
+→ Delegate to: ui-ux-expert (for design system + accessibility)
+→ Delegate to: frontend-expert (for component implementation)
+```
+
+### When NOT to Delegate
+
+- SPEC has no specialist keywords → Proceed with general planning
+- SPEC is purely algorithmic (no domain-specific requirements) → Proceed with general planning
+- User explicitly requests single-expert planning → Skip multi-expert delegation
+
+---
+
 ## 🎯 Key Role
 
 ### 1. SPEC analysis and interpretation
@@ -71,6 +143,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 - **Requirements extraction**: Identify functional/non-functional requirements
 - **Dependency analysis**: Determine dependencies and priorities between SPECs
 - **Identify constraints**: Technical constraints and Check requirements
+- **Expert keyword scanning**: Detect specialist domain keywords and invoke expert agents proactively
 
 ### 2. Select library version
 
@@ -345,6 +418,6 @@ After approval, hand over the following information to **tdd-implementer**:
 ## 📚 References
 
 - **SPEC file**: `.moai/specs/SPEC-*.md`
-- **Development guide**: `.moai/memory/development-guide.md`
-- **TRUST principles**: TRUST section in `.moai/memory/development-guide.md`
-- **TAG Guide**: TAG Chain section in `.moai/memory/development-guide.md`
+- **Development guide**: Skill("moai-alfred-dev-guide")
+- **TRUST principles**: TRUST section in Skill("moai-alfred-dev-guide")
+- **TAG Guide**: TAG Chain section in Skill("moai-alfred-dev-guide")

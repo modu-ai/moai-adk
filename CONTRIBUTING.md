@@ -1,5 +1,430 @@
 # 🤝 Contributing to MoAI-ADK
 
+**English version below | 아래에 한국어 버전이 있습니다**
+
+---
+
+## 📑 Table of Contents
+
+- [English](#english-version)
+- [한국어](#한국어-버전)
+
+---
+
+# English Version
+
+## 🤝 Contributing to MoAI-ADK
+
+Thank you for contributing to the MoAI-ADK project! This document guides you on how to effectively contribute to the project.
+
+---
+
+## 📋 Table of Contents (English)
+
+- [Issue Creation Guide](#issue-creation-guide)
+  - [Bug Report](#bug-report)
+  - [Feature Request](#feature-request)
+- [Pull Request Guide](#pull-request-guide)
+- [Development Environment Setup](#development-environment-setup)
+- [Code Contribution Guide](#code-contribution-guide)
+
+---
+
+## Issue Creation Guide
+
+### Bug Report
+
+Found a bug? Please create an issue with the following information:
+
+**Title Format**: `[Bug] Brief description of the bug`
+
+**Required Information**:
+
+```markdown
+## 🐛 Bug Description
+
+Provide a clear and concise description of what the bug is.
+
+## 🔄 Steps to Reproduce
+
+1. What command did you execute?
+2. What input did you provide?
+3. What action did you perform?
+4. At what point did the error occur?
+
+## 💥 Expected vs Actual Behavior
+
+- **Expected Behavior**: How should it work?
+- **Actual Behavior**: How did it actually work?
+
+## 🖥️ Environment Information
+
+- **OS**: (e.g., macOS 14.0, Ubuntu 22.04, Windows 11)
+- **Python Version**: (e.g., 3.11.0)
+- **MoAI-ADK Version**: (e.g., v0.14.0)
+- **Claude Code Version**: (Optional)
+
+## 📸 Screenshots or Logs
+
+Please attach error messages, screenshots, or logs if possible.
+
+```bash
+# Example error log
+Error: Cannot find module '...'
+    at Function.Module._resolveFilename ...
+```
+
+## 🔍 Additional Information
+
+Provide any additional context or information related to the bug.
+```
+
+**Example**:
+
+```markdown
+## 🐛 Bug Description
+
+Executing `/alfred:2-run` command fails at the TAG validation step.
+
+## 🔄 Steps to Reproduce
+
+1. Initialize project with `python -m moai_adk init .`
+2. Run `/alfred:1-plan "User Authentication"` to create Plan & SPEC
+3. Execute `/alfred:2-run SPEC-AUTH-001`
+4. Error occurs at TAG validation step
+
+## 💥 Expected vs Actual Behavior
+
+- **Expected Behavior**: TDD cycle should complete successfully
+- **Actual Behavior**: ``@TEST:AUTH-001` not found` error occurs
+
+## 🖥️ Environment Information
+
+- **OS**: macOS 14.2
+- **Python Version**: 3.11.0
+- **MoAI-ADK Version**: v0.14.0
+
+## 📸 Screenshots or Logs
+
+```bash
+Error: TAG validation failed
+`@TEST:AUTH-001` not found in tests/ directory
+```
+```
+
+---
+
+### Feature Request
+
+Want to propose a new feature?
+
+**Title Format**: `[Feature Request] Feature Name`
+
+**Required Information**:
+
+```markdown
+## 💡 Feature Proposal
+
+Provide a clear and concise description of the proposed feature.
+
+## 🎯 Problem This Solves
+
+What problem does this feature solve? What inconvenience exists in the current workflow?
+
+## ✨ Proposed Solution
+
+Describe in detail how the feature should work.
+
+**Expected Usage**:
+```bash
+# Command example
+python -m moai_adk new-feature --option
+```
+
+## 🔄 Considered Alternatives
+
+Have you considered other alternatives or solutions?
+
+## 📚 Additional Information
+
+Are there relevant documentation, references, or similar tools that provide this feature?
+```
+
+**Example**:
+
+```markdown
+## 💡 Feature Proposal
+
+Auto-export SPEC documents to PDF
+
+## 🎯 Problem This Solves
+
+Currently, to share SPEC documents with external stakeholders, manual conversion from Markdown is required.
+Non-developer stakeholders find it difficult to read Markdown format.
+
+## ✨ Proposed Solution
+
+Propose adding `python -m moai_adk export` command to export SPEC documents to PDF.
+
+**Expected Usage**:
+```bash
+# Export specific SPEC to PDF
+python -m moai_adk export SPEC-AUTH-001 --format pdf
+
+# Export all SPECs to PDF
+python -m moai_adk export --all --format pdf --output ./exports
+```
+
+## 🔄 Considered Alternatives
+
+- Manual conversion using Pandoc
+- Host documentation on GitHub Pages
+
+## 📚 Additional Information
+
+Reference: [Pandoc Markdown to PDF](https://pandoc.org/MANUAL.html#creating-a-pdf)
+```
+
+---
+
+## Pull Request Guide
+
+Before submitting a Pull Request, please verify the following:
+
+### PR Submission Checklist
+
+- [ ] **SPEC Written**: Is there a SPEC document for the changes? (`/alfred:1-plan`)
+- [ ] **TDD Completed**: Have you completed the RED-GREEN-REFACTOR cycle? (`/alfred:2-run`)
+- [ ] **Documentation Synchronized**: Has the Living Document been updated? (`/alfred:3-sync`)
+- [ ] **@TAG Traceability**: Are all code changes properly tagged with @TAG?
+- [ ] **TRUST 5 Principles Followed**:
+  - [ ] **T**est: Are tests written? (Coverage ≥85%)
+  - [ ] **R**eadable: Is code readable? (Function ≤50 LOC, File ≤300 LOC)
+  - [ ] **U**nified: Are consistent patterns used?
+  - [ ] **S**ecured: Are there no security vulnerabilities?
+  - [ ] **T**rackable: Is it traceable via @TAG?
+
+### PR Template
+
+MoAI-ADK uses an [automatic PR template](.github/PULL_REQUEST_TEMPLATE.md).
+The `/alfred:3-sync` command automatically fills in most of the information.
+
+**Parts you need to manually complete**:
+- Verify SPEC ID
+- Summarize changes
+- Document test scenarios
+
+---
+
+## Development Environment Setup
+
+### 1. Clone Repository
+
+```bash
+git clone https://github.com/modu-ai/moai-adk.git
+cd moai-adk
+```
+
+### 2. Install uv Package Manager (if needed)
+
+**Windows Users (RECOMMENDED)**:
+```powershell
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+**macOS/Linux Users**:
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+**WSL Users (Windows Subsystem for Linux)**:
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+**Platform Notes**:
+- 🟢 **Windows (PowerShell)**: Recommended for Windows users - most stable
+- 🟡 **WSL**: Works but has environment setup overhead
+- ✅ **macOS/Linux**: Use native bash installation
+
+### 3. Install Dependencies
+
+```bash
+# Recommended: uv (fast installation)
+uv pip install -e ".[dev]"
+
+# Or use standard pip
+pip install -e ".[dev]"
+```
+
+### 4. Use MoAI-ADK Locally
+
+```bash
+# Check CLI version
+python -m moai_adk --version
+
+# Check help
+python -m moai_adk --help
+```
+
+### 5. Run in Development Mode
+
+```bash
+# Run tests
+uv run pytest -n auto
+
+# Run code quality checks
+uv run ruff check
+uv run mypy src
+```
+
+### 6. Understanding Alfred Configuration (Important!)
+
+The core of MoAI-ADK is **Alfred** (MoAI SuperAgent). Alfred's behavior is defined in 4 documents in the `.claude/` directory:
+
+#### 📄 Essential Reading: 4-Document Architecture
+
+| Document | Size | When to Read | Key Content |
+|----------|------|-------------|-------------|
+| **CLAUDE.md** | ~7kb | Before starting development | Alfred's identity, core directives, 3-step workflow |
+| **CLAUDE-AGENTS-GUIDE.md** | ~14kb | When you need a specific Agent | 19 Sub-agent team structure, 55 Skills classification |
+| **CLAUDE-RULES.md** | ~17kb | When understanding decision rules | Skill invocation rules, user question rules, TRUST 5 gates |
+| **CLAUDE-PRACTICES.md** | ~8kb | When you want real workflow examples | JIT context patterns, practical workflows |
+
+#### 🎯 Key Developer Knowledge (Summary)
+
+**Alfred's 3 Core Responsibilities**:
+1. **SPEC-First**: Define requirements before code
+2. **Automated TDD**: Execute RED → GREEN → REFACTOR cycle
+3. **Automatic Document Sync**: Keep code and docs synchronized
+
+**Understand the 4-Layer Architecture**:
+- 📌 **Commands** (`/alfred:0-3`): Workflow entry points
+- 🤖 **Sub-agents** (19): Specialists for each phase
+- 📚 **Skills** (55): Reusable knowledge base
+- 🛡️ **Hooks**: Safety checks and validation
+
+#### 💡 Tips
+
+- Need to modify `.claude/` files? **Usually not**. Defaults are optimized.
+- When proposing new features, refer to "Skill Invocation Rules" in **CLAUDE-RULES.md**.
+- If Alfred's behavior seems off, check "Alfred's Core Directives" in **CLAUDE.md** first.
+
+---
+
+## Code Contribution Guide
+
+### Follow MoAI-ADK 3-Step Workflow
+
+MoAI-ADK follows the **SPEC-First TDD** methodology. All code changes must follow these steps:
+
+#### Step 1: Plan & Write SPEC (`/alfred:1-plan`)
+
+```bash
+/alfred:1-plan "Feature description"
+```
+
+- Write requirements in EARS format
+- Creates `.moai/specs/SPEC-{ID}/spec.md`
+- Automatically creates feature branch
+
+#### Step 2: Execute TDD (`/alfred:2-run`)
+
+```bash
+/alfred:2-run SPEC-{ID}
+```
+
+- **RED**: Write failing test (`@TEST:ID`)
+- **GREEN**: Implement minimum code to pass test (`@CODE:ID`)
+- **REFACTOR**: Improve code quality
+
+#### Step 3: Synchronize Documentation (`/alfred:3-sync`)
+
+```bash
+/alfred:3-sync
+```
+
+- Update Living Document
+- Verify @TAG chain
+- Convert to PR Ready state
+
+### Code Style Guide
+
+**TypeScript Code**:
+- Function: ≤50 LOC
+- File: ≤300 LOC
+- Parameters: ≤5
+- Complexity: ≤10
+
+**@TAG Usage Example**:
+```typescript
+// Example of proper @TAG annotation in code
+// In real implementation: `@CODE:AUTH-001` | SPEC: SPEC-AUTH-001.md | TEST: tests/auth.test.ts
+export class AuthService {
+  // Implementation with @TAG markers
+  async login(username: string, password: string): Promise<Token> {
+    // Implementation
+  }
+}
+```
+
+**Writing Tests**:
+```typescript
+// Example of proper @TAG annotation in tests
+// In real implementation: `@TEST:AUTH-001` | SPEC: SPEC-AUTH-001.md
+describe('AuthService', () => {
+  it('should authenticate valid credentials', async () => {
+    // Given
+    const authService = new AuthService();
+
+    // When
+    const token = await authService.login('user', 'pass');
+
+    // Then
+    expect(token).toBeDefined();
+  });
+});
+```
+
+---
+
+## 💬 Have Questions?
+
+- **General Questions**: [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions)
+- **Bug Reports**: [GitHub Issues](https://github.com/modu-ai/moai-adk/issues)
+- **Real-time Chat**: (Discord link coming soon)
+
+---
+
+## 🙏 Code of Conduct
+
+The MoAI-ADK project is committed to creating an environment that is open and welcoming to all.
+
+**What We Encourage**:
+- ✅ Respectful and considerate behavior
+- ✅ Constructive feedback
+- ✅ Collaborative problem-solving
+- ✅ Diversity and inclusion
+
+**What Is Not Acceptable**:
+- ❌ Offensive or aggressive language
+- ❌ Harassment or discrimination
+- ❌ Disrespectful or unprofessional behavior
+
+---
+
+**Thank you for all contributions!** 🪿
+
+Let's make MoAI-ADK a better tool together!
+
+---
+
+---
+
+# 한국어 버전
+
+## 🤝 MoAI-ADK에 기여하기
+
 MoAI-ADK 프로젝트에 기여해주셔서 감사합니다! 이 문서는 프로젝트에 효과적으로 기여하는 방법을 안내합니다.
 
 ---
@@ -45,8 +470,8 @@ MoAI-ADK 프로젝트에 기여해주셔서 감사합니다! 이 문서는 프�
 ## 🖥️ 환경 정보
 
 - **OS**: (예: macOS 14.0, Ubuntu 22.04, Windows 11)
-- **Node.js 버전**: (예: v20.11.0)
-- **MoAI-ADK 버전**: (예: v0.2.5)
+- **Python 버전**: (예: 3.11.0)
+- **MoAI-ADK 버전**: (예: v0.14.0)
 - **Claude Code 버전**: (선택사항)
 
 ## 📸 스크린샷 또는 로그
@@ -81,19 +506,19 @@ Error: Cannot find module '...'
 ## 💥 예상 동작 vs 실제 동작
 
 - **예상 동작**: TDD 사이클이 정상적으로 완료되어야 함
-- **실제 동작**: `@TEST:AUTH-001 not found` 에러 발생
+- **실제 동작**: ``@TEST:AUTH-001` not found` 에러 발생
 
 ## 🖥️ 환경 정보
 
 - **OS**: macOS 14.2
-- **Node.js 버전**: v20.11.0
-- **MoAI-ADK 버전**: v0.2.5
+- **Python 버전**: 3.11.0
+- **MoAI-ADK 버전**: v0.14.0
 
 ## 📸 스크린샷 또는 로그
 
 ```bash
 Error: TAG validation failed
-@TEST:AUTH-001 not found in tests/ directory
+`@TEST:AUTH-001` not found in tests/ directory
 ```
 ```
 
@@ -210,7 +635,29 @@ git clone https://github.com/modu-ai/moai-adk.git
 cd moai-adk
 ```
 
-### 2. 의존성 설치
+### 2. uv 패키지 관리자 설치 (필요할 경우)
+
+**Windows 사용자 (권장)**:
+```powershell
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+**macOS/Linux 사용자**:
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+**WSL 사용자 (Windows Subsystem for Linux)**:
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+**플랫폼별 주의사항**:
+- 🟢 **Windows (PowerShell)**: Windows 사용자를 위한 권장 방법 - 가장 안정적
+- 🟡 **WSL**: 작동하지만 환경 설정 오버헤드 발생
+- ✅ **macOS/Linux**: 기본 bash 설치 사용
+
+### 3. 의존성 설치
 
 ```bash
 # uv 권장 (빠른 설치)
@@ -220,7 +667,7 @@ uv pip install -e ".[dev]"
 pip install -e ".[dev]"
 ```
 
-### 3. 로컬에서 MoAI-ADK 사용
+### 4. 로컬에서 MoAI-ADK 사용
 
 ```bash
 # CLI 버전 확인
@@ -230,7 +677,7 @@ python -m moai_adk --version
 python -m moai_adk --help
 ```
 
-### 4. 개발 모드 실행
+### 5. 개발 모드 실행
 
 ```bash
 # 테스트 실행
@@ -241,7 +688,7 @@ uv run ruff check
 uv run mypy src
 ```
 
-### 5. Alfred의 설정 문서 이해하기 (중요!)
+### 6. Alfred의 설정 문서 이해하기 (중요!)
 
 MoAI-ADK의 핵심은 **Alfred** (MoAI SuperAgent)입니다. Alfred의 동작 방식은 `.claude/` 디렉토리의 4개 문서로 정의됩니다:
 
@@ -319,11 +766,12 @@ MoAI-ADK는 **SPEC-First TDD** 방법론을 따릅니다. 모든 코드 변경�
 - 매개변수: ≤5개
 - 복잡도: ≤10
 
-**@TAG 사용**:
+**@TAG 사용 예제**:
 ```typescript
-// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: tests/auth.test.ts
+// 코드에서 @TAG 애노테이션을 올바르게 사용하는 예제
+// 실제 구현 시: `@CODE:AUTH-001` | SPEC: SPEC-AUTH-001.md | TEST: tests/auth.test.ts
 export class AuthService {
-  // @CODE:AUTH-001:API
+  // @TAG 마커를 포함한 구현
   async login(username: string, password: string): Promise<Token> {
     // 구현
   }
@@ -332,7 +780,8 @@ export class AuthService {
 
 **테스트 작성**:
 ```typescript
-// @TEST:AUTH-001 | SPEC: SPEC-AUTH-001.md
+// 테스트에서 @TAG 애노테이션을 올바르게 사용하는 예제
+// 실제 구현 시: `@TEST:AUTH-001` | SPEC: SPEC-AUTH-001.md
 describe('AuthService', () => {
   it('should authenticate valid credentials', async () => {
     // Given

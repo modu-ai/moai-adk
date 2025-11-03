@@ -221,13 +221,16 @@ class TestInitialize:
         assert (tmp_path / ".moai" / "config.json").exists()
 
     def test_initialize_creates_english_claude_template(self, tmp_path: Path) -> None:
-        """Should copy English CLAUDE.md template by default"""
+        """Should copy English CLAUDE.md template by default with variable substitution"""
         initializer = ProjectInitializer(tmp_path)
         result = initializer.initialize()
 
         assert result.success is True
         claude_content = (tmp_path / "CLAUDE.md").read_text(encoding="utf-8")
-        assert "Meet Alfred: Your MoAI SuperAgent" in claude_content
+        # Check that template variables are substituted (not literal {{VARIABLE}} placeholders)
+        assert "Meet Alfred: Your" in claude_content
+        assert "SuperAgent" in claude_content
+        assert "{{PROJECT_NAME}}" not in claude_content  # Ensure variables are substituted
         assert "페르소나" not in claude_content
 
     def test_initialize_measures_duration(self, tmp_path: Path) -> None:

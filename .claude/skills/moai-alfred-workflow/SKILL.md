@@ -219,8 +219,9 @@ feat: Add authentication support
 - Session management added
 - Rate limiting configured
 
-🤖 Generated with Claude Code
-Co-Authored-By: Alfred <alfred@mo.ai.kr>
+🎩 Generated with Claude Code
+
+Co-Authored-By: 🎩 Alfred@[MoAI](https://adk.mo.ai.kr)
 ```
 
 ---

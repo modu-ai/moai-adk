@@ -235,6 +235,125 @@ After reviewing the action plan, select one of the following:
 
 After user approval (gathered through `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)`), **call the tdd-implementer agent using the Task tool**.
 
+---
+
+### 2.0.5 Domain Readiness Check (Automatic - Before Implementation)
+
+**Purpose**: Load domain-expert agents as "implementation advisors" based on SPEC.stack metadata
+
+**When to run**: After user approval, BEFORE invoking tdd-implementer
+
+**Detection Logic**:
+
+Alfred reads the SPEC metadata to identify required domains:
+
+```bash
+# Read SPEC metadata
+spec_metadata=$(grep "^domains:" .moai/specs/SPEC-{ID}/spec.md)
+
+# Or read from config.json
+selected_domains=$(jq -r '.stack.selected_domains[]' .moai/config.json)
+```
+
+**Domain Expert Advisory Pattern**:
+
+| Domain | Readiness Check | Advisory Focus |
+|--------|----------------|----------------|
+| **Frontend** | Component structure, testing strategy, state management | Component hierarchy, React/Vue best practices, UI testing patterns |
+| **Backend** | API contract, database schema, async patterns | RESTful design, database indexing, error handling, authentication |
+| **DevOps** | Docker readiness, environment variables, health checks | Containerization, CI/CD integration, deployment strategies |
+| **Database** | Schema design, migration strategy, indexing | Data modeling, query optimization, migration safety |
+| **Data Science** | Data pipeline design, notebook structure | ETL patterns, data validation, model versioning |
+| **Mobile** | Platform-specific requirements, app lifecycle | Native integration, state management, offline support |
+
+**Example Invocation** (Frontend + Backend detected):
+
+```python
+# Read SPEC metadata
+spec_domains = ["frontend", "backend"]  # from SPEC frontmatter
+
+# Invoke domain experts BEFORE tdd-implementer
+for domain in spec_domains:
+    if domain == "frontend":
+        Task(
+            subagent_type="Explore",
+            prompt="""You are consulting as frontend-expert for TDD implementation.
+
+SPEC: [SPEC-UI-001 - User Dashboard Component]
+
+Provide implementation readiness check:
+1. Component structure recommendations
+2. State management approach (Redux/Zustand/Context)
+3. Testing strategy (Jest + Testing Library)
+4. Accessibility requirements
+5. Performance optimization tips
+
+Output: Brief advisory for tdd-implementer (3-4 key points)"""
+        )
+
+    if domain == "backend":
+        Task(
+            subagent_type="Explore",
+            prompt="""You are consulting as backend-expert for TDD implementation.
+
+SPEC: [SPEC-API-001 - Authentication Endpoints]
+
+Provide implementation readiness check:
+1. API contract validation
+2. Database schema requirements
+3. Authentication/authorization patterns
+4. Error handling strategy
+5. Async processing considerations
+
+Output: Brief advisory for tdd-implementer (3-4 key points)"""
+        )
+```
+
+**Output Format** (Stored in SPEC plan.md):
+
+```markdown
+## Domain Expert Advisory (Implementation Phase)
+
+### Frontend Readiness
+- Component structure: Use compound component pattern for Dashboard
+- State management: Recommend Zustand for lightweight state
+- Testing: Prioritize user interaction tests over implementation details
+- Performance: Implement React.memo for expensive components
+
+### Backend Readiness
+- API contract: OpenAPI 3.0 spec generated from FastAPI
+- Database schema: Add index on user_id and created_at columns
+- Authentication: Use JWT with refresh token rotation
+- Async: Use background tasks for email notifications
+```
+
+**Integration with tdd-implementer**:
+
+```python
+# Pass domain expert feedback to tdd-implementer
+Task(
+    subagent_type="tdd-implementer",
+    prompt="""You are tdd-implementer agent.
+
+SPEC: SPEC-{ID}
+
+DOMAIN EXPERT ADVISORY:
+{domain_expert_feedback}
+
+Execute TDD implementation considering domain expert guidance.
+Follow RED → GREEN → REFACTOR cycle with domain best practices.
+
+$ARGUMENTS"""
+)
+```
+
+**Graceful Degradation**:
+- If SPEC.stack.domains missing → Skip advisory (greenfield implementation)
+- If domain expert unavailable → Continue with tdd-implementer only
+- Advisory is non-blocking (implementation proceeds regardless)
+
+---
+
 ### ⚙️ How to call an agent
 
 **STEP 2 calls tdd-implementer using the Task tool**:
@@ -532,7 +651,7 @@ Only if the user selects **"Proceed"** or **"Start"** will Alfred call the tdd-i
 
 ## 🧠 Context Management
 
-> For more information: `.moai/memory/development-guide.md` - see section "Context Engineering"
+> For more information: Skill("moai-alfred-dev-guide") - see section "Context Engineering"
 
 ### Core strategy of this command
 

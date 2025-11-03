@@ -1,11 +1,11 @@
 ---
 name: moai-lang-scala
-version: 2.0.0
+version: 2.1.0
 created: 2025-10-22
-updated: 2025-10-22
+updated: 2025-11-02
 status: active
-description: Scala 3.6+ best practices with ScalaTest 3.2, sbt 1.10, and functional programming patterns.
-keywords: ['scala', 'scalatest', 'sbt', 'functional']
+description: Scala 3.6+ best practices with ScalaTest 3.2, sbt 1.10, functional programming patterns, and Play Framework.
+keywords: ['scala', 'scalatest', 'sbt', 'functional', 'play-framework']
 allowed-tools:
   - Read
   - Bash
@@ -18,7 +18,7 @@ allowed-tools:
 | Field | Value |
 | ----- | ----- |
 | **Skill Name** | moai-lang-scala |
-| **Version** | 2.0.0 (2025-10-22) |
+| **Version** | 2.1.0 (2025-11-02) |
 | **Allowed tools** | Read (read_file), Bash (terminal) |
 | **Auto-load** | On demand when keywords detected |
 | **Tier** | Language |
@@ -27,13 +27,14 @@ allowed-tools:
 
 ## What It Does
 
-Scala 3.6+ best practices with ScalaTest 3.2, sbt 1.10, and functional programming patterns.
+Scala 3.6+ best practices with ScalaTest 3.2, sbt 1.10, functional programming patterns, and Play Framework.
 
 **Key capabilities**:
 - ✅ Best practices enforcement for language domain
 - ✅ TRUST 5 principles integration
-- ✅ Latest tool versions (2025-10-22)
+- ✅ Latest tool versions (2025-11-02)
 - ✅ TDD workflow support
+- ✅ Play Framework web application patterns
 
 ---
 
@@ -51,13 +52,14 @@ Scala 3.6+ best practices with ScalaTest 3.2, sbt 1.10, and functional programmi
 
 ---
 
-## Tool Version Matrix (2025-10-22)
+## Tool Version Matrix (2025-11-02)
 
 | Tool | Version | Purpose | Status |
 |------|---------|---------|--------|
-| **Scala** | 3.6.0 | Primary | ✅ Current |
-| **ScalaTest** | 3.2.19 | Primary | ✅ Current |
-| **sbt** | 1.10.0 | Primary | ✅ Current |
+| **Scala** | 3.6.0 | Runtime | ✅ Current |
+| **ScalaTest** | 3.2.19 | Testing | ✅ Current |
+| **sbt** | 1.10.0 | Build tool | ✅ Current |
+| **Play Framework** | 3.0.9 | Web framework | ✅ Current |
 
 ---
 

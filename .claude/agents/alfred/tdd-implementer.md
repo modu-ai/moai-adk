@@ -422,7 +422,7 @@ else:
 ## 📚 References
 
 - **Implementation plan**: implementation-planner output
-- **Development guide**: `.moai/memory/development-guide.md`
+- **Development guide**: Skill("moai-alfred-dev-guide")
 - **TRUST principles**: TRUST section
-- **TAG guide** in `.moai/memory/development-guide.md`: TAG chain section
-- **TDD guide** in `.moai/memory/development-guide.md`: TDD section in `.moai/memory/development-guide.md`
+- **TAG guide** in Skill("moai-alfred-dev-guide"): TAG chain section
+- **TDD guide** in Skill("moai-alfred-dev-guide"): TDD section in Skill("moai-alfred-dev-guide")

@@ -167,7 +167,7 @@ def init(
             else:
                 # Interactive mode: Simple notification
                 console.print("\n[cyan]🔄 Reinitializing project...[/cyan]")
-                console.print("   Backup will be created at .moai-backups/{timestamp}/\n")
+                console.print("   Backup will be created at .moai-backups/backup/\n")
 
         # 5. Initialize project (Progress Bar with 5 phases)
         # Always allow reinit (force mode by default)
@@ -175,6 +175,18 @@ def init(
 
         # Reinit mode: set config.json optimized to false (v0.3.1+)
         if is_reinit:
+            # Migration: Remove old hook files (Issue #163)
+            old_hook_files = [
+                ".claude/hooks/alfred/session_start__startup.py",  # v0.8.0 deprecated
+            ]
+            for old_file in old_hook_files:
+                old_path = project_path / old_file
+                if old_path.exists():
+                    try:
+                        old_path.unlink()  # Remove old file
+                    except Exception:
+                        pass  # Ignore removal failures
+
             config_path = project_path / ".moai" / "config.json"
             if config_path.exists():
                 try:
@@ -255,7 +267,7 @@ def init(
             if is_reinit:
                 console.print("\n[yellow]⚠️  Configuration Notice:[/yellow]")
                 console.print("  All template files have been [bold]force overwritten[/bold]")
-                console.print("  Previous files are backed up in [cyan].moai-backups/{timestamp}/[/cyan]")
+                console.print("  Previous files are backed up in [cyan].moai-backups/backup/[/cyan]")
                 console.print("\n  [cyan]To merge your previous config:[/cyan]")
                 console.print("  Run [bold]/alfred:0-project[/bold] command in Claude Code")
                 console.print("  It will merge backup config when [dim]optimized=false[/dim]\n")

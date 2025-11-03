@@ -69,3 +69,6 @@ CURSOR_INTEGRATION_PLAN.md
 # Developer local settings and configurations
 .claude/settings.local.json
 CLAUDE.md.local
+
+# Runtime session and memory files (auto-generated per user/session)
+# These files are created during package initialization and updated at runtime
