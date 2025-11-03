@@ -231,9 +231,72 @@ After reviewing the action plan, select one of the following:
 
 ---
 
+## Implementation Strategy Approval
+
+After the execution plan is ready, Alfred uses `AskUserQuestion` tool (documented in moai-alfred-interactive-questions skill) to obtain explicit user approval before proceeding to TDD implementation.
+
+**Example AskUserQuestion Call**:
+```python
+AskUserQuestion(
+    questions=[
+        {
+            "question": "Implementation plan is ready. How would you like to proceed?",
+            "header": "Implementation Approval",
+            "multiSelect": false,
+            "options": [
+                {
+                    "label": "✅ Proceed with TDD",
+                    "description": "Start RED → GREEN → REFACTOR cycle"
+                },
+                {
+                    "label": "🔍 Research First",
+                    "description": "Invoke Explore agent to study existing code patterns"
+                },
+                {
+                    "label": "🔄 Modify Strategy",
+                    "description": "Request changes to implementation approach"
+                },
+                {
+                    "label": "⏸️ Postpone",
+                    "description": "Save plan and return later"
+                }
+            ]
+        }
+    ]
+)
+```
+
+**Response Processing**:
+- **"✅ Proceed with TDD"** (`answers["0"] === "✅ Proceed with TDD"`) → Execute Phase 2
+  - Proceed directly to STEP 2 (TDD implementation)
+  - Invoke tdd-implementer agent with approved plan
+  - Begin RED phase (write failing tests)
+  - Display: "🔴 Starting RED phase..."
+
+- **"🔍 Research First"** (`answers["0"] === "🔍 Research First"`) → Run exploration first
+  - Invoke Explore agent to analyze existing codebase
+  - Pass exploration results to implementation-planner
+  - Re-generate plan with research insights
+  - Re-present plan for approval
+  - Display: "🔍 Codebase exploration complete. Plan updated."
+
+- **"🔄 Modify Strategy"** (`answers["0"] === "🔄 Modify Strategy"`) → Revise plan
+  - Collect strategy modification requests from user
+  - Update implementation plan with changes
+  - Re-present for approval (recursive)
+  - Display: "🔄 Plan modified. Please review updated strategy."
+
+- **"⏸️ Postpone"** (`answers["0"] === "⏸️ Postpone"`) → Save and resume later
+  - Save plan to `.moai/specs/SPEC-{ID}/plan.md`
+  - Commit with message "plan(spec): Save implementation plan for SPEC-{ID}"
+  - User can resume with `/alfred:2-run SPEC-{ID}`
+  - Display: "⏸️ Plan saved. Resume with `/alfred:2-run SPEC-{ID}`"
+
+---
+
 ## 🚀 STEP 2: Execute task (after user approval)
 
-After user approval (gathered through `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)`), **call the tdd-implementer agent using the Task tool**.
+After user approval (collected via the AskUserQuestion decision point above), **call the tdd-implementer agent using the Task tool**.
 
 ---
 
@@ -667,25 +730,30 @@ Only if the user selects **"Proceed"** or **"Start"** will Alfred call the tdd-i
 
 Alfred calls AskUserQuestion to collect user's next action:
 
+**Example AskUserQuestion Call**:
 ```python
 AskUserQuestion(
     questions=[
         {
-            "question": "구현이 완료되었습니다. 다음으로 뭘 하시겠습니까?",
-            "header": "다음 단계",
+            "question": "Implementation is complete. What would you like to do next?",
+            "header": "Next Steps",
             "multiSelect": false,
             "options": [
                 {
-                    "label": "📚 문서 동기화 진행",
-                    "description": "/alfred:3-sync 실행하여 문서 동기화"
+                    "label": "📚 Synchronize Documentation",
+                    "description": "Proceed to /alfred:3-sync for documentation synchronization"
                 },
                 {
-                    "label": "🔍 추가 구현",
-                    "description": "다른 SPEC 구현 진행"
+                    "label": "🔨 Implement More Features",
+                    "description": "Continue with /alfred:2-run SPEC-XXX for next feature"
                 },
                 {
-                    "label": "🔄 새 세션 시작",
-                    "description": "성능 최적화를 위해 /clear 실행"
+                    "label": "🔄 New Session",
+                    "description": "Execute /clear for better context management (recommended)"
+                },
+                {
+                    "label": "✅ Complete",
+                    "description": "Finish current session"
                 }
             ]
         }
@@ -693,10 +761,26 @@ AskUserQuestion(
 )
 ```
 
-**User Responses**:
-- **📚 문서 동기화**: Proceed to `/alfred:3-sync` for documentation synchronization
-- **🔍 추가 구현**: Repeat `/alfred:2-run SPEC-XXX` for next feature
-- **🔄 새 세션**: Execute `/clear` to start fresh session (recommended for performance)
+**Response Processing**:
+- **"📚 Synchronize Documentation"** (`answers["0"] === "📚 Synchronize Documentation"`) → Proceed to `/alfred:3-sync`
+  - Display: "Starting documentation synchronization..."
+  - User can execute: `/alfred:3-sync auto`
+  - This verifies TAGs, updates docs, and prepares for PR merge
+
+- **"🔨 Implement More Features"** (`answers["0"] === "🔨 Implement More Features"`) → Continue implementation
+  - Display: "Ready for next feature implementation..."
+  - User can run: `/alfred:2-run SPEC-YYY` for another feature
+  - Maintains current session context
+
+- **"🔄 New Session"** (`answers["0"] === "🔄 New Session"`) → Clear and restart
+  - Display: "⏳ Clearing session for better context management..."
+  - Recommended after large implementations
+  - Next session: Can run any command
+
+- **"✅ Complete"** (`answers["0"] === "✅ Complete"`) → End current workflow
+  - Display: "Implementation workflow complete!"
+  - Recommend next manual steps via `/alfred:3-sync`
+  - User can review work or plan next features
 
 ---
 

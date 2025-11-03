@@ -157,7 +157,7 @@ uv tool install moai-adk
 
 ```bash
 moai-adk --version
-# 출력: MoAI-ADK v0.14.0
+# 출력: MoAI-ADK v1.0.0
 ```
 
 ---
@@ -177,8 +177,7 @@ cd hello-world
 hello-world/
 ├── .moai/              ✅ Alfred 설정
 ├── .claude/            ✅ Claude Code 자동화
-├── CLAUDE.md           ✅ 프로젝트 가이드
-└── README.md           ✅ 프로젝트 문서
+└── CLAUDE.md           ✅ 프로젝트 가이드
 ```
 
 #### 검증: 핵심 파일 확인
@@ -263,9 +262,9 @@ A: personal (로컬 개발용)
 
 ---
 
-## 이전 상세 가이드 (선택사항)
+## 📖 설치 및 프로젝트 설정 완전 가이드
 
-더 자세한 설명이 필요하다면 아래를 참고하세요.
+빠른 시작 후 더 자세한 설명이 필요하다면 아래를 참고하세요.
 
 ### 설치 상세 가이드
 
@@ -322,11 +321,7 @@ my-project/
 │   ├── skills/                     # 74개 Claude Skills
 │   ├── hooks/                      # 5개 이벤트 자동화 후크
 │   └── settings.json               # Claude Code 설정
-├── src/                            # 구현 코드
-├── tests/                          # 테스트 코드
-├── docs/                           # 자동 생성 문서
-├── CLAUDE.md                       # Alfred의 핵심 지침
-└── README.md
+└── CLAUDE.md                       # Alfred의 핵심 지침
 ```
 
 ---
@@ -345,13 +340,7 @@ my-project/
 
 ---
 
-## 이전 가이드 (7단계 완전 분석)
-
-완전한 설명을 원한다면 이전 버전을 참고하세요 (이 문서의 [GitHub History](https://github.com/modu-ai/moai-adk/blob/main/README.ko.md)).
-
----
-
-## MoAI-ADK 최신 버전 유지하기
+## 📦 MoAI-ADK 최신 버전 유지하기
 
 ### 버전 확인
 
@@ -365,19 +354,150 @@ uv tool list  # moai-adk의 현재 버전 확인
 
 ### 업그레이드 하기
 
-#### 방법 1: moai-adk 자체 업데이트 명령어 (가장 간단)
+MoAI-ADK는 **2가지 업데이트 메커니즘**을 제공합니다:
+
+1. **`moai-adk update`**: 패키지 버전 + 템플릿 동기화 (권장)
+2. **`uv tool upgrade`**: 표준 uv 도구 업그레이드 (선택)
+
+#### 방법 1: moai-adk 자체 업데이트 명령어 (권장 - 가장 완전함)
+
+이 방법은 패키지 버전 업데이트와 동시에 로컬 템플릿도 자동으로 동기화합니다.
 
 ```bash
-# MoAI-ADK 자체 업데이트 명령어 - 에이전트/Skills 템플릿도 함께 업데이트
+# 1단계: MoAI-ADK 패키지 업데이트 (+ 템플릿 동기화)
 moai-adk update
-
-# 업데이트 후 프로젝트에 새 템플릿 적용 (선택)
-moai-adk init .
 ```
 
-#### 방법 2: uv tool 명령어로 업그레이드
+**무엇이 업데이트되나요?**
 
-**특정 도구만 업그레이드 (권장)**
+- ✅ `moai-adk` 패키지 자체 (PyPI의 최신 버전)
+- ✅ 16개 Sub-agent 템플릿
+- ✅ 74개 Claude Skills
+- ✅ 5개 Claude Code Hooks
+- ✅ 4개 Alfred 명령어 정의
+
+**출력 예시 1: 패키지 업데이트 필요한 경우**
+
+```bash
+$ moai-adk update
+🔍 Checking versions...
+   Current version: 0.14.0
+   Latest version:  0.15.0
+📥 Upgrading moai-adk from 0.14.0 to 0.15.0...
+✓ Package upgraded successfully
+
+🔍 Comparing config versions...
+   Package template: 0.15.0
+   Project config:   0.14.0
+
+📄 Syncing templates (0.14.0 → 0.15.0)...
+   💾 Creating backup...
+   ✓ Backup: .moai-backups/backup/
+   ✅ .claude/ update complete (agents, commands, skills, hooks)
+   ✅ .moai/ update complete (specs/reports preserved)
+   🔄 CLAUDE.md merge complete
+   🔄 config.json merge complete
+
+✓ Update complete!
+ℹ️  Next step: Run /alfred:0-project to optimize
+```
+
+**출력 예시 2: 이미 최신 버전인 경우**
+
+```bash
+$ moai-adk update
+🔍 Checking versions...
+   Current version: 0.15.0
+   Latest version:  0.15.0
+✓ Package already up to date (0.15.0)
+
+🔍 Comparing config versions...
+   Package template: 0.15.0
+   Project config:   0.15.0
+
+✓ Template already up to date (3초 완료)
+
+ℹ️  Nothing to update
+```
+
+**출력 예시 3: 설정 문제가 있는 경우**
+
+```bash
+$ moai-adk update
+🔍 Checking versions...
+   Current version: 0.15.0
+   Latest version:  0.15.0
+✓ Package already up to date (0.15.0)
+
+🔍 Comparing config versions...
+   Package template: 0.15.0
+   Project config:   0.0.0  ← 오래된 프로젝트
+
+📄 Syncing templates (0.0.0 → 0.15.0)...
+   💾 Creating backup...
+   ✓ Backup: .moai-backups/backup/
+⚠ Template warnings:
+   Unsubstituted variables: CODEBASE_LANGUAGE, CONVERSATION_LANGUAGE_NAME
+   ✅ .claude/ update complete
+   ✅ .moai/ update complete (specs/reports preserved)
+   🔄 CLAUDE.md merge complete
+   🔄 config.json merge complete
+   ⚙️  Set optimized=false (최적화 필요)
+
+✓ Update complete!
+ℹ️  Next step: Run /alfred:0-project to optimize template changes
+```
+
+#### moai-adk update로 기존 프로젝트 템플릿 동기화
+
+새 버전의 기능을 현재 프로젝트에 반영하려면, 각 프로젝트 디렉토리에서 `moai-adk update`를 실행하세요:
+
+```bash
+# 2단계: 프로젝트 디렉토리로 이동
+cd your-existing-project
+
+# 3단계: 새 템플릿 동기화 (기존 코드는 유지)
+moai-adk update
+```
+
+**`moai-adk update`는 다음을 지능적으로 처리합니다**:
+
+```
+moai-adk update 실행 시:
+
+Stage 1: 패키지 버전 확인 (PyPI)
+  └─ 더 최신 버전이 있으면? 업그레이드
+
+Stage 2: 템플릿 버전 비교 ⭐ 핵심 최적화
+  ├─ 패키지 템플릿 버전: 0.15.0
+  ├─ 프로젝트 config 템플릿 버전: 0.15.0
+  ├─ 같으면? Stage 3 스킵! (불필요한 복사 작업 제거)
+  └─ 다르면? Stage 3으로 진행
+
+Stage 3: 필요한 템플릿만 동기화
+  ├─ .claude/agents/    ← 새 버전으로 업데이트
+  ├─ .claude/commands/  ← 새 버전으로 업데이트
+  ├─ .claude/skills/    ← 새 버전으로 업데이트
+  ├─ .claude/hooks/     ← 새 버전으로 업데이트
+  ├─ .moai/             ← 병합 (config.json 사용자 설정 유지)
+  │   ├─ project/       ← 유지 (당신의 문서)
+  │   ├─ specs/         ← 유지 (당신의 스펙)
+  │   ├─ reports/       ← 유지 (당신의 리포트)
+  │   └─ memory/        ← 유지 (학습 데이터)
+  ├─ src/               ← 유지 (당신의 코드)
+  ├─ tests/             ← 유지 (당신의 테스트)
+  └─ docs/              ← 유지 (당신의 문서)
+```
+
+> ✅ **안전함**: 비즈니스 코드, 테스트, 커스텀 문서, 당신의 설정은 절대 건드리지 않습니다.
+>
+> 💡 **성능**: Stage 2 버전 비교로 이미 최신 상태인 프로젝트는 3~4초만에 완료됩니다.
+
+#### 방법 2: uv tool 명령어로 업그레이드 (대체 방법)
+
+표준 uv 도구 매니저를 사용하려면:
+
+**특정 도구만 업그레이드**
 
 ```bash
 # moai-adk만 최신 버전으로 업그레이드
@@ -387,42 +507,391 @@ uv tool upgrade moai-adk
 **모든 설치된 도구 업그레이드**
 
 ```bash
-# 모든 uv tool 도구를 최신 버전으로 업그레이트
-uv tool update
+# 모든 uv tool 도구를 최신 버전으로 업그레이드
+uv tool upgrade --all
 ```
 
-**특정 버전으로 설치**
+**특정 버전으로 설치 (필요시)**
 
 ```bash
 # 특정 버전으로 재설치
-uv tool install moai-adk
+uv tool install moai-adk==0.14.0
+
+# 또는 최신 버전 명시적 설치
+uv tool install moai-adk@latest
 ```
 
-### 업데이트 후 확인
+⚠️ **주의**: 이 방법은 패키지만 업데이트되고, 템플릿은 동기화되지 않습니다. **권장하지 않습니다.** 대신 `moai-adk update`를 사용하세요 (패키지 + 템플릿 동기화를 한 번에 처리).
+
+---
+
+## 📦 완전한 업데이트 프로세스 (권장 워크플로우)
+
+### Step 1️⃣: 현재 상태 확인 (선택)
 
 ```bash
-# 1. 설치된 버전 확인
+# 현재 설치된 버전 확인
 moai-adk --version
 
-# 2. 프로젝트 정상 작동 확인
+# 프로젝트 상태 진단
 moai-adk doctor
-
-# 3. 기존 프로젝트에 새 템플릿 적용 (필요한 경우)
-cd your-project
-moai-adk init .  # 기존 코드는 유지, .moai/ 구조와 템플릿만 업데이트
-
-# 4. Alfred에서 업데이트된 기능 확인
-cd your-project
-claude
-/alfred:0-project  # 새로운 언어 선택 기능 등을 확인
 ```
 
-> 💡 **Tip**:
->
-> - `moai-adk update`: MoAI-ADK 패키지 버전 업데이트 + 에이전트/Skills 템플릿 동기화
-> - `moai-adk init .`: 기존 프로젝트에 새 템플릿 적용 (코드는 안전하게 유지)
-> - 두 명령을 함께 실행하면 완전한 업데이트가 완료됩니다.
-> - 주요 업데이트(minor/major)가 나오면 위 절차를 실행하여 새로운 에이전트/Skills를 활용할 수 있습니다.
+**출력 예시:**
+
+```
+Running system diagnostics...
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┓
+┃ Check                                    ┃ Status ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━┩
+│ Python >= 3.13                           │   ✓    │
+│ Git installed                            │   ✓    │
+│ Project structure (.moai/)               │   ✓    │
+│ Config file (.moai/config.json)          │   ✓    │
+└──────────────────────────────────────────┴────────┘
+
+✓ All checks passed
+```
+
+### Step 2️⃣: 패키지 + 모든 프로젝트 업데이트 (moai-adk update 사용)
+
+**목적**:
+
+1. `moai-adk` 패키지를 새 버전으로 업그레이드
+2. 각 프로젝트의 `.moai/`과 `.claude/` 동기화
+
+**방식**: 각 프로젝트에서 **`moai-adk update` 1회씩 실행**
+
+**💡 핵심: `moai-adk update`의 3단계 워크플로우**
+
+```
+moai-adk update 의 동작 방식:
+
+Stage 1: 패키지 버전 확인 (PyPI 확인)
+         └─ 필요시 패키지 업그레이드 (v0.14 → v0.15)
+            ↓
+Stage 2: 템플릿 버전 비교 ⭐ 핵심 (성능 최적화)
+         ├─ 패키지 템플릿 버전: 0.15.0
+         ├─ 프로젝트 config 버전: 0.15.0
+         ├─ 같으면? Stage 3 스킵! (3초 완료)
+         └─ 다르면? Stage 3으로 진행
+            ↓
+Stage 3: 템플릿 동기화 (필요할 때만)
+         ├─ .claude/agents, commands, skills, hooks 갱신
+         ├─ .moai/ 설정 병합 (specs, reports 유지)
+         └─ config.json, CLAUDE.md 동기화
+```
+
+**모든 프로젝트에 동일한 명령어 사용**:
+
+```bash
+# 프로젝트 1 업데이트
+cd ~/projects/project-1
+moai-adk update
+
+# 프로젝트 2 업데이트
+cd ~/projects/project-2
+moai-adk update
+
+# 프로젝트 3 업데이트
+cd ~/projects/project-3
+moai-adk update
+```
+
+또는 **스크립트로 자동화**:
+
+```bash
+#!/bin/bash
+# 모든 프로젝트를 한 번에 업데이트
+
+for project in ~/projects/project-1 ~/projects/project-2 ~/projects/project-3; do
+    echo "🔄 Updating $project..."
+    cd "$project"
+    moai-adk update
+    echo "✅ $project updated"
+done
+```
+
+**각 프로젝트에서 무엇이 일어나나요?**
+
+```
+프로젝트별 업데이트 흐름:
+
+cd ~/projects/project-1
+moai-adk update
+
+↓ Stage 1: 패키지 버전 확인
+   현재: 0.14.0
+   최신: 0.15.0
+   → 패키지 업그레이드 (시스템 레벨, 1회만)
+
+↓ Stage 2: 템플릿 버전 비교
+   프로젝트 설정: template_version = 0.14.0
+   패키지 템플릿: 0.15.0
+   → 버전 다름! Stage 3 진행
+
+↓ Stage 3: 템플릿 동기화
+   ✅ .claude/agents/ → 갱신
+   ✅ .claude/commands/ → 갱신
+   ✅ .claude/skills/ → 갱신
+   ✅ .claude/hooks/ → 갱신
+   ✅ config.json: template_version = 0.15.0 (저장)
+   ✅ 완료!
+
+다음 프로젝트에서 moai-adk update 실행:
+
+cd ~/projects/project-2
+moai-adk update
+
+↓ Stage 1: 패키지 버전 확인
+   현재: 0.15.0 (이미 업데이트됨)
+   최신: 0.15.0
+   → 버전 같음, 스킵
+
+↓ Stage 2: 템플릿 버전 비교
+   프로젝트 설정: template_version = 0.14.0
+   패키지 템플릿: 0.15.0
+   → 버전 다름! Stage 3 진행
+
+↓ Stage 3: 템플릿 동기화
+   ✅ 모든 템플릿 갱신
+   ✅ 완료!
+```
+
+**확인 명령어**:
+
+```bash
+# 패키지 버전 확인
+moai-adk --version
+# 출력: moai-adk version 0.15.0
+
+# 프로젝트 상태 확인
+moai-adk doctor
+# ✅ .moai/ directory initialized
+# ✅ .claude/ directory ready
+# ✅ 16 agents configured
+# ✅ 74 skills loaded
+```
+
+**⚠️ 주의사항**:
+
+- ✅ 각 프로젝트에서 **`moai-adk update` 1회씩** 실행
+- ❌ `moai-adk init .`은 불필요 (이미 update가 동기화 함)
+- ✅ Stage 1 (패키지 업그레이드)는 첫 프로젝트에서만 실행되고, 이후 프로젝트는 스킵됨
+- ✅ Stage 2/3 (템플릿 동기화)는 각 프로젝트마다 필요시 실행
+
+---
+
+## 🆕 기존 프로젝트에 moai-adk 설치하기
+
+이미 진행 중인 프로젝트에 MoAI-ADK를 추가하려면:
+
+### 단계 1️⃣: 프로젝트 디렉토리로 이동
+
+```bash
+cd your-existing-project
+
+# 프로젝트 구조 확인 (선택)
+ls -la
+# src/, tests/, README.md 등이 있는가?
+```
+
+### 단계 2️⃣: MoAI-ADK 초기화
+
+```bash
+# 현재 디렉토리에 .moai/, .claude/ 생성
+moai-adk init .
+```
+
+**생성되는 파일/폴더**
+
+```
+your-existing-project/
+├── .moai/                    ✅ 새로 생성
+│   ├── config.json
+│   ├── project/
+│   │   ├── product.md
+│   │   ├── structure.md
+│   │   └── tech.md
+│   ├── memory/
+│   ├── specs/
+│   └── reports/
+├── .claude/                  ✅ 새로 생성
+│   ├── agents/
+│   ├── commands/
+│   ├── skills/
+│   ├── hooks/
+│   └── settings.json
+├── CLAUDE.md                 ✅ 새로 생성
+├── src/                      ✅ 유지
+├── tests/                    ✅ 유지
+└── README.md                 ✅ 유지
+```
+
+> ✅ **안전**: 기존 코드(`src/`, `tests/` 등)는 절대 건드리지 않습니다.
+
+### 단계 3️⃣: 설정 확인
+
+```bash
+# Alfred 설정 확인
+cat .moai/config.json
+
+# 프로젝트 정보 확인
+ls -la .moai/project/
+```
+
+### 단계 4️⃣: Claude Code 실행
+
+```bash
+# Claude Code 시작
+claude
+
+# 프로젝트 초기화
+/alfred:0-project
+```
+
+Alfred가 프로젝트 정보를 수집하고 설정을 최적화합니다.
+
+---
+
+## 🔍 업데이트 후 확인 체크리스트
+
+업데이트 후 문제가 없는지 확인하세요.
+
+### 1️⃣ 버전 확인
+
+```bash
+# 새 버전이 설치되었나?
+moai-adk --version
+# 출력: moai-adk version 0.15.0
+
+# PyPI의 최신 버전 확인
+uv tool list | grep moai-adk
+```
+
+### 2️⃣ 프로젝트 진단
+
+```bash
+cd your-project
+moai-adk doctor
+
+# 정상 출력 예시:
+# ✅ Python 3.13.0
+# ✅ uv 0.5.1
+# ✅ .moai/ directory
+# ✅ .claude/ directory
+# ✅ 16 agents configured
+# ✅ 74 skills loaded
+# ✅ 5 hooks active
+```
+
+### 3️⃣ Alfred 기능 테스트
+
+```bash
+cd your-project
+claude
+
+# 새로운 기능 확인
+/alfred:0-project
+```
+
+Alfred가 최신 기능과 언어 지원을 제공하는지 확인합니다.
+
+### 4️⃣ 기존 코드 검증
+
+```bash
+# 테스트 실행
+pytest tests/
+
+# 린팅 확인
+ruff check src/
+
+# 타입 검사
+mypy src/
+```
+
+기존 코드가 계속 정상 작동하는지 확인합니다.
+
+---
+
+## ⚠️ 업데이트 후 문제 해결
+
+### 문제 1: 템플릿 충돌 (Template Conflict)
+
+**증상**: `moai-adk init .` 실행 후 `.claude/` 파일이 변경되었다는 git 메시지
+
+```bash
+# 상태 확인
+git status
+
+# 변경 내용 확인
+git diff .claude/
+```
+
+**해결책**:
+
+```bash
+# 1. 변경사항 커밋
+git add .claude/
+git commit -m "chore: 템플릿 업데이트"
+
+# 또는 2. 변경사항 취소 (필요시)
+git checkout .claude/
+```
+
+### 문제 2: 구 버전과의 호환성
+
+**증상**: 오래된 프로젝트에서 업데이트 후 오류
+
+**해결책**:
+
+```bash
+# 1. 설정 마이그레이션 확인
+cat .moai/config.json | head -20
+
+# 2. 필요시 설정 재구성
+moai-adk init .
+
+# 3. 여전히 오류면 doctor 실행
+moai-adk doctor
+```
+
+### 문제 3: 패키지 설치 오류
+
+**증상**: `moai-adk update` 실행 후 명령어 실행 불가
+
+```bash
+# 확인 1: uv PATH 설정
+which uv
+echo $PATH
+
+# 확인 2: moai-adk 위치
+which moai-adk
+
+# 재설치
+uv tool reinstall moai-adk
+```
+
+---
+
+## 💡 업데이트 팁과 모범 사례
+
+### ✅ DO (권장)
+
+- ✅ 정기적으로 업데이트 확인 (월 1회 정도)
+- ✅ `moai-adk update` 사용 (가장 완전함: 패키지 + 템플릿 동기화)
+- ✅ 각 프로젝트마다 `moai-adk update` 실행 (패키지는 1회, 템플릿은 각 프로젝트별)
+- ✅ `moai-adk doctor`로 검증
+- ✅ 변경사항 커밋 및 저장
+- ✅ 테스트로 검증 후 배포
+
+### ❌ DON'T (피하세요)
+
+- ❌ 복수의 프로젝트를 한꺼번에 업데이트하지 마세요
+- ❌ 수동으로 `.claude/` 파일을 편집하지 마세요
+- ❌ 임의로 파일을 삭제하지 마세요
+- ❌ 커밋하지 않고 업데이트 후 배포하지 마세요
 
 ---
 
@@ -470,17 +939,15 @@ graph TD
 
 ## 핵심 명령 요약
 
-| 명령                      | 무엇을 하나요?                                               | 대표 산출물                                                        |
-| ------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------ |
-| `/alfred:0-project`       | 프로젝트 설명 수집, 설정·문서 생성, Skill 추천               | `.moai/config.json`, `.moai/project/*`, 초기 보고서                |
-| `/alfred:1-plan <설명>`   | 요구사항 분석, SPEC 초안, Plan Board 작성                    | `.moai/specs/SPEC-*/spec.md`, plan/acceptance 문서, feature 브랜치 |
-| `/alfred:2-run <SPEC-ID>` | TDD 실행, 테스트/구현/리팩토링, 품질 검증                    | `tests/`, `src/` 구현, 품질 리포트, TAG 연결                       |
-| `/alfred:3-sync`          | 문서/README/CHANGELOG 동기화, TAG/PR 상태 정리               | `docs/`, `.moai/reports/sync-report.md`, Ready PR                  |
-| `/alfred:9-feedback`      | 대화형으로 GitHub Issue 생성 (타입 → 제목 → 설명 → 우선순위) | GitHub Issue + 자동 라벨 + 우선순위 + URL                          |
+| 명령                      | 무엇을 하나요?                                                         | 대표 산출물                                                        |
+| ------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `/alfred:0-project`       | 프로젝트 설명 수집, 설정·문서 생성, Skill 추천                         | `.moai/config.json`, `.moai/project/*`, 초기 보고서                |
+| `/alfred:1-plan <설명>`   | 요구사항 분석, SPEC 초안, Plan Board 작성                              | `.moai/specs/SPEC-*/spec.md`, plan/acceptance 문서, feature 브랜치 |
+| `/alfred:2-run <SPEC-ID>` | TDD 실행, 테스트/구현/리팩토링, 품질 검증                              | `tests/`, `src/` 구현, 품질 리포트, TAG 연결                       |
+| `/alfred:3-sync`          | 문서/README/CHANGELOG 동기화, TAG/PR 상태 정리                         | `docs/`, `.moai/reports/sync-report.md`, Ready PR                  |
+| `/alfred:9-feedback`      | MoAI-ADK 개선 피드백 GitHub Issue 생성 (타입 → 제목 → 설명 → 우선순위) | GitHub Issue + 자동 라벨 + 우선순위 + URL                          |
 
 > ❗ 모든 명령은 **Phase 0(선택) → Phase 1 → Phase 2 → Phase 3** 순환 구조를 유지합니다. 실행 중 상태와 다음 단계 제안은 Alfred가 자동으로 보고합니다.
->
-> 💡 **v0.7.0+부터 추가**: `/alfred:9-feedback`로 개발 중 GitHub Issue를 즉시 생성할 수 있습니다. 개발 흐름을 끊지 않으면서 팀 전체가 이슈를 추적하고 논의할 수 있습니다.
 
 ---
 
@@ -535,16 +1002,16 @@ MoAI-ADK는 이제 SPEC 문서에서 **GitHub Issue 자동 동기화**를 제공
 
 ### 기능
 
-✅ **자동 Issue 생성**: SPEC 파일이 변경된 모든 PR에서 GitHub Issue 자동 생성
-✅ **메타데이터 추출**: ID, version, status, priority가 YAML frontmatter에서 자동으로 파싱됨
-✅ **PR 통합**: Issue가 PR과 자동 코멘트를 통해 연결됨
-✅ **라벨 관리**: 우선순위 기반 라벨 (critical, high, medium, low) 자동 적용
+- ✅ **자동 Issue 생성**: SPEC 파일이 변경된 모든 PR에서 GitHub Issue 자동 생성
+- ✅ **메타데이터 추출**: ID, version, status, priority가 YAML frontmatter에서 자동으로 - 파싱됨
+- ✅ **PR 통합**: Issue가 PR과 자동 코멘트를 통해 연결됨
+- ✅ **라벨 관리**: 우선순위 기반 라벨 (critical, high, medium, low) 자동 적용
 
 ### 설정 요구사항
 
-**GitHub Actions 워크플로우**: `.github/workflows/spec-issue-sync.yml`
-**GitHub Issue 템플릿**: `.github/ISSUE_TEMPLATE/spec.yml`
-**GitHub 라벨**: `spec`, `planning`, `critical`, `high`, `medium`, `low`
+- **GitHub Actions 워크플로우**: `.github/workflows/spec-issue-sync.yml`
+- **GitHub Issue 템플릿**: `.github/ISSUE_TEMPLATE/spec.yml`
+- **GitHub 라벨**: `spec`, `planning`, `critical`, `high`, `medium`, `low`
 
 모든 템플릿은 MoAI-ADK와 함께 자동으로 설치되며 `moai-adk init` 실행 시 동기화됩니다.
 
@@ -1593,10 +2060,10 @@ Alfred는 여러 전문 에이전트와 Claude Skills를 조합해 작업합니�
 | Sub-agent          | 모델   | 역할                                                         |
 | ------------------ | ------ | ------------------------------------------------------------ |
 | project-manager 📋 | Sonnet | 프로젝트 초기화, 메타데이터 인터뷰                           |
-| spec-builder 🏗️    | Sonnet | Plan 보드, EARS SPEC 작성, 전문가 상담 권장                 |
+| spec-builder 🏗️    | Sonnet | Plan 보드, EARS SPEC 작성, 전문가 상담 권장                  |
 | code-builder 💎    | Sonnet | `implementation-planner` + `tdd-implementer`로 TDD 전체 수행 |
 | doc-syncer 📖      | Haiku  | Living Doc, README, CHANGELOG 동기화                         |
-| tag-agent 🏷️       | Haiku  | TAG 인벤토리, orphan 탐지, @EXPERT TAG 검증                 |
+| tag-agent 🏷️       | Haiku  | TAG 인벤토리, orphan 탐지, @EXPERT TAG 검증                  |
 | git-manager 🚀     | Haiku  | GitFlow, Draft/Ready, Auto Merge                             |
 | debug-helper 🔍    | Sonnet | 실패 분석, fix-forward 전략                                  |
 | trust-checker ✅   | Haiku  | TRUST 5 품질 게이트                                          |
@@ -1607,14 +2074,15 @@ Alfred는 여러 전문 에이전트와 Claude Skills를 조합해 작업합니�
 
 전문가 에이전트는 `implementation-planner`가 SPEC 문서에서 도메인별 키워드를 감지하면 자동으로 활성화됩니다. 각 전문가는 자신의 도메인에 대한 아키텍처 가이드, 기술 추천, 리스크 분석을 제공합니다.
 
-| 전문가 에이전트   | 모델   | 전문 분야                          | 자동 활성화 키워드                                              |
-| --------------- | ------ | --------------------------------- | ------------------------------------------------------------ |
-| backend-expert 🔧 | Sonnet | Backend 아키텍처, API 설계, DB   | 'backend', 'api', 'server', 'database', 'deployment', 'authentication' |
-| frontend-expert 💻| Sonnet | Frontend 아키텍처, 컴포넌트, 상태관리 | 'frontend', 'ui', 'page', 'component', 'client-side', 'web interface' |
-| devops-expert 🚀  | Sonnet | DevOps, CI/CD, 배포, 컨테이너  | 'deployment', 'docker', 'kubernetes', 'ci/cd', 'pipeline', 'aws' |
-| ui-ux-expert 🎨   | Sonnet | UI/UX 설계, 접근성, 디자인 시스템 | 'design', 'ux', 'accessibility', 'a11y', 'figma', 'design system' |
+| 전문가 에이전트    | 모델   | 전문 분야                             | 자동 활성화 키워드                                                     |
+| ------------------ | ------ | ------------------------------------- | ---------------------------------------------------------------------- |
+| backend-expert 🔧  | Sonnet | Backend 아키텍처, API 설계, DB        | 'backend', 'api', 'server', 'database', 'deployment', 'authentication' |
+| frontend-expert 💻 | Sonnet | Frontend 아키텍처, 컴포넌트, 상태관리 | 'frontend', 'ui', 'page', 'component', 'client-side', 'web interface'  |
+| devops-expert 🚀   | Sonnet | DevOps, CI/CD, 배포, 컨테이너         | 'deployment', 'docker', 'kubernetes', 'ci/cd', 'pipeline', 'aws'       |
+| ui-ux-expert 🎨    | Sonnet | UI/UX 설계, 접근성, 디자인 시스템     | 'design', 'ux', 'accessibility', 'a11y', 'figma', 'design system'      |
 
 **작동 원리**:
+
 - `/alfred:2-run` 시작 시, `implementation-planner`가 SPEC 내용을 스캔
 - 일치하는 키워드가 해당 전문가 에이전트를 자동으로 활성화
 - 각 전문가는 도메인별 아키텍처 가이드 제공
@@ -1666,19 +2134,19 @@ MoAI-ADK 내부 워크플로우 오케스트레이션 스킬
 
 특화된 도메인 전문 지식
 
-| Skill                      | 설명                                                                      |
-| -------------------------- | ------------------------------------------------------------------------- |
-| `moai-domain-backend`      | 백엔드 아키텍처, API 설계, 스케일링 가이드                                |
-| `moai-domain-cli-tool`     | CLI 도구 개발, 인자 파싱, POSIX 준수, 사용자친화적 help 메시지            |
-| `moai-domain-data-science` | 데이터 분석, 시각화, 통계 모델링, 재현 가능한 연구 워크플로우             |
-| `moai-domain-database`     | 데이터베이스 설계, 스키마 최적화, 인덱싱 전략, 마이그레이션 관리          |
+| Skill                        | 설명                                                                              |
+| ---------------------------- | --------------------------------------------------------------------------------- |
+| `moai-domain-backend`        | 백엔드 아키텍처, API 설계, 스케일링 가이드                                        |
+| `moai-domain-cli-tool`       | CLI 도구 개발, 인자 파싱, POSIX 준수, 사용자친화적 help 메시지                    |
+| `moai-domain-data-science`   | 데이터 분석, 시각화, 통계 모델링, 재현 가능한 연구 워크플로우                     |
+| `moai-domain-database`       | 데이터베이스 설계, 스키마 최적화, 인덱싱 전략, 마이그레이션 관리                  |
 | `moai-domain-design-systems` | 디자인 시스템 아키텍처, W3C DTCG 토큰, WCAG 2.2 접근성, 디자인-투-코드, Figma MCP |
-| `moai-domain-devops`       | CI/CD 파이프라인, Docker containerization, Kubernetes 오케스트레이션, IaC |
-| `moai-domain-frontend`     | React/Vue/Angular 개발, 상태 관리, 성능 최적화, 접근성                    |
-| `moai-domain-ml`           | 머신러닝 모델 학습, 평가, 배포, MLOps 워크플로우                          |
-| `moai-domain-mobile-app`   | Flutter/React Native 개발, 상태 관리, 네이티브 통합                       |
-| `moai-domain-security`     | OWASP Top 10, 정적 분석 (SAST), 의존성 보안, secrets 관리                 |
-| `moai-domain-web-api`      | REST API, GraphQL 설계 패턴, 인증, 버전 관리, OpenAPI 문서화              |
+| `moai-domain-devops`         | CI/CD 파이프라인, Docker containerization, Kubernetes 오케스트레이션, IaC         |
+| `moai-domain-frontend`       | React/Vue/Angular 개발, 상태 관리, 성능 최적화, 접근성                            |
+| `moai-domain-ml`             | 머신러닝 모델 학습, 평가, 배포, MLOps 워크플로우                                  |
+| `moai-domain-mobile-app`     | Flutter/React Native 개발, 상태 관리, 네이티브 통합                               |
+| `moai-domain-security`       | OWASP Top 10, 정적 분석 (SAST), 의존성 보안, secrets 관리                         |
+| `moai-domain-web-api`        | REST API, GraphQL 설계 패턴, 인증, 버전 관리, OpenAPI 문서화                      |
 
 #### Language Tier
 
@@ -2119,6 +2587,138 @@ moai-adk doctor --verbose
 2. 에러 메시지 전체 (스크린샷 또는 복사)
 3. 재현 방법 (어떤 명령어를 실행했는가?)
 4. 운영체제 및 버전
+
+---
+
+## 🚀 빠른 이슈 생성: `/alfred:9-feedback`
+
+MoAI-ADK 사용 중 버그가 발생했거나 기능을 요청하고 싶으신가요? Claude Code에서 단 한 줄의 명령어로 자동 이슈 생성이 가능합니다.
+
+### 개요
+
+```bash
+/alfred:9-feedback
+```
+
+이 명령어를 실행하면 Alfred가 대화형 질문을 통해 이슈를 자동으로 생성합니다:
+- 🐛 **버그 리포트** - 문제 상황 기록
+- ✨ **기능 요청** - 새로운 기능 제안
+- ⚡ **개선 사항** - 기존 기능 개선 제안
+- ❓ **질문/토론** - 팀과의 질문
+
+### 실행 예시
+
+```bash
+# Claude Code에서 실행
+/alfred:9-feedback
+```
+
+### 대화형 단계별 진행
+
+**1️⃣ 이슈 유형 선택**
+
+```
+어떤 유형의 이슈를 만들고 싶으신가요?
+
+[ ] 🐛 Bug Report - 문제가 발생했어요
+[ ] ✨ Feature Request - 새 기능을 제안합니다
+[ ] ⚡ Improvement - 기존 기능을 개선합니다
+[ ] ❓ Question/Discussion - 팀에게 질문합니다
+```
+
+**2️⃣ 이슈 제목 입력**
+
+```
+이슈 제목을 입력하세요 (간단 명료하게):
+예: moai-adk update 실행 중 템플릿 동기화 오류 발생
+```
+
+**3️⃣ 상세 설명 입력 (선택사항)**
+
+```
+상세한 설명을 입력하세요 (Enter 키로 생략 가능):
+
+예:
+moai-adk update 실행 시 다음 오류 발생:
+- 증상: .claude/ 디렉터리 권한 오류
+- 환경: macOS 14.2, Python 3.13, moai-adk v0.15.0
+- 기대 동작: 템플릿이 정상적으로 동기화되어야 함
+- 실제 동작: Permission denied 오류로 중단
+```
+
+**4️⃣ 우선순위 선택**
+
+```
+우선순위 수준을 선택하세요:
+
+[ ] 🔴 Critical - 시스템 다운, 데이터 손실, 보안 문제
+[ ] 🟠 High - 주요 기능 고장, 심각한 영향
+[✓] 🟡 Medium - 일반 우선순위 (기본값)
+[ ] 🟢 Low - 경미한 문제, 해도 좋고 안 해도 됨
+```
+
+### 자동 이슈 생성
+
+Alfred가 자동으로:
+1. 제목에 이모지 추가: `🐛 [BUG] moai-adk update 실행 중 템플릿 동기화 오류 발생`
+2. GitHub 이슈 형식으로 포매팅
+3. 적절한 라벨 자동 할당: `bug`, `reported`, `priority-high`
+4. 리포지토리에 이슈 생성
+
+### 완료 후 출력
+
+```
+✅ GitHub Issue #245 생성 완료!
+
+📋 제목: 🐛 [BUG] moai-adk update 실행 중 템플릿 동기화 오류 발생
+🔴 우선순위: High
+🏷️  라벨: bug, reported, priority-high
+🔗 링크: https://github.com/modu-ai/moai-adk/issues/245
+
+💡 팁: 이 이슈 번호를 커밋 메시지에 참조할 수 있습니다
+```
+
+### 주요 특징
+
+| 특징           | 설명                                                     |
+| -------------- | -------------------------------------------------------- |
+| **명령어 간단** | 인자 없이 `/alfred:9-feedback` 만 실행                    |
+| **대화형**     | 직관적인 단계별 질문으로 이슈 생성                        |
+| **자동 라벨**  | 이슈 유형과 우선순위에 따라 자동으로 라벨 할당           |
+| **즉시 생성**  | 약 30초 내에 이슈가 GitHub에 생성됨                      |
+| **팀 공유**    | 생성된 이슈는 즉시 팀과 공유되고 추적 가능                |
+
+### 사용 사례
+
+**📌 버그 리포트 예시**
+
+```
+/alfred:9-feedback
+→ 🐛 Bug Report 선택
+→ "moai-adk update 실행 후 .claude/hooks/ 파일 손상"
+→ 상세 증상 입력
+→ 🟠 High 우선순위 선택
+→ Issue #246 자동 생성
+```
+
+**💡 기능 요청 예시**
+
+```
+/alfred:9-feedback
+→ ✨ Feature Request 선택
+→ "moai-adk update에 --dry-run 옵션 추가"
+→ 상세 설명 입력
+→ 🟡 Medium 우선순위 선택
+→ Issue #247 자동 생성
+```
+
+### 주의사항
+
+- ✅ 각 단계에서 명확하고 간결하게 입력하세요
+- ✅ 버그 리포트에는 환경 정보(OS, Python 버전, moai-adk 버전) 포함
+- ✅ 상세 설명은 선택사항이므로 스킵 가능
+- ❌ 개인 정보나 민감한 데이터는 포함하지 마세요
+- ❌ 동일한 이슈 중복 생성 피하기 (GitHub Issues에서 검색 후 생성)
 
 ---
 

@@ -1670,122 +1670,137 @@ When working in your **local development environment**, CodeRabbit provides auto
 
 ---
 
-## Quick Issue Creation with `/alfred:9-feedback`
+## 🚀 Quick Issue Creation with `/alfred:9-feedback`
 
-MoAI-ADK v0.7.0+ includes the **Quick Issue Creation** feature, allowing developers to instantly create GitHub Issues without interrupting their development workflow.
+Encountered a bug or want to suggest a feature while using MoAI-ADK? Create GitHub Issues instantly with a single command directly from Claude Code without interrupting your workflow.
 
-### Why Quick Issue Creation?
+### Overview
 
-During development, you frequently encounter:
-- 🐛 Bugs that need immediate reporting
-- ✨ Feature ideas that come to mind
-- ⚡ Performance improvements to suggest
-- ❓ Architecture questions that need team discussion
-
-**The old way**: Stop coding, go to GitHub, manually fill issue form, remember what you were working on.
-**The new way**: Type one command, GitHub Issue is created instantly, continue coding.
-
-### Interactive Dialog Flow
-
-When you run `/alfred:9-help`, Alfred guides you through an interactive multi-step dialog:
-
-**Step 1: Select Issue Type**
+```bash
+/alfred:9-feedback
 ```
-Alfred: What type of issue do you want to create?
+
+When you run this command, Alfred guides you through an interactive dialog to automatically create an issue:
+- 🐛 **Bug Report** - Document problems you encounter
+- ✨ **Feature Request** - Suggest new capabilities
+- ⚡ **Improvement** - Propose enhancements to existing features
+- ❓ **Question/Discussion** - Ask questions for team discussion
+
+### Quick Example
+
+```bash
+# Run in Claude Code
+/alfred:9-feedback
+```
+
+### Interactive Step-by-Step Flow
+
+**1️⃣ Select Issue Type**
+
+```
+What type of issue do you want to create?
+
 [ ] 🐛 Bug Report - Something isn't working
 [ ] ✨ Feature Request - Suggest new functionality
 [ ] ⚡ Improvement - Enhance existing features
 [ ] ❓ Question/Discussion - Ask the team
 ```
 
-**Step 2: Enter Issue Title**
+**2️⃣ Enter Issue Title**
+
 ```
-Alfred: What's the issue title?
-Your input: "Login button not responding to clicks"
+What's the issue title? (be concise)
+Example: moai-adk update fails with template sync error
 ```
 
-**Step 3: Enter Description (Optional)**
+**3️⃣ Enter Detailed Description (Optional)**
+
 ```
-Alfred: Provide a detailed description (optional—press Enter to skip)
-Your input: "When I click the login button on iPhone 15, it freezes for 5 seconds then crashes"
+Provide a detailed description (optional—press Enter to skip):
+
+Example:
+When running moai-adk update:
+- Symptom: .claude/ directory permission error
+- Environment: macOS 14.2, Python 3.13, moai-adk v0.15.0
+- Expected: Templates should synchronize successfully
+- Actual: Permission denied error and termination
 ```
 
-**Step 4: Select Priority Level**
+**4️⃣ Select Priority Level**
+
 ```
-Alfred: What's the priority level?
+What's the priority level?
+
 [ ] 🔴 Critical - System down, data loss, security breach
 [ ] 🟠 High - Major feature broken, significant impact
 [✓] 🟡 Medium - Normal priority (default)
 [ ] 🟢 Low - Minor issues, nice-to-have
 ```
 
-**Step 5: Automatic Issue Creation**
-```
+### Automatic Issue Creation
+
 Alfred automatically:
-1. Determines appropriate labels based on issue type and priority
-2. Formats title with emoji: "🐛 [BUG] Login button not responding..."
-3. Creates GitHub Issue with all information
-4. Returns the issue number and URL
+1. Adds emoji to title: `🐛 [BUG] moai-adk update fails with template sync error`
+2. Formats the issue in GitHub format
+3. Auto-applies appropriate labels: `bug`, `reported`, `priority-high`
+4. Creates the issue in your repository
+
+### Completion Output
+
+```
+✅ GitHub Issue #245 created successfully!
+
+📋 Title: 🐛 [BUG] moai-adk update fails with template sync error
+🔴 Priority: High
+🏷️  Labels: bug, reported, priority-high
+🔗 URL: https://github.com/modu-ai/moai-adk/issues/245
+
+💡 Tip: Reference this issue number in your commit messages
 ```
 
 ### Key Features
 
-1. **⚡ Instant Creation**: Create GitHub Issues in seconds
-2. **🏷️ Automatic Labels**: Issue type + priority automatically labeled
-3. **🎯 Priority Selection**: Choose from Critical/High/Medium/Low
-4. **🔗 Team Visibility**: Issues immediately visible and discussable
-5. **📋 Standardized Format**: All issues follow consistent structure
+| Feature | Description |
+|---------|-------------|
+| **Simple Command** | Just `/alfred:9-feedback`—no arguments needed |
+| **Interactive** | Step-by-step dialog for intuitive issue creation |
+| **Auto-labeled** | Issue type and priority automatically assigned as labels |
+| **Instant Creation** | Issue created in GitHub within ~30 seconds |
+| **Team Shared** | Issue immediately visible and trackable for your team |
 
-### Complete Example: Bug Report During Code Review
+### Use Cases
 
-```bash
-# During code review, you notice a critical issue and want to report it instantly
-$ /alfred:9-feedback
+**📌 Bug Report Example**
 
-Alfred: What type of issue do you want to create?
-> 🐛 Bug Report
-
-Alfred: What's the issue title?
-> Login button crash on mobile devices
-
-Alfred: Provide a detailed description (optional—press Enter to skip)
-> Tapping the login button on iPhone 15 causes app to freeze for 5 seconds then crash.
-> Tested on iOS 17.2, Chrome 120 on macOS 14.2.
-> Expected: Login modal should appear
-> Actual: No response then crash
-
-Alfred: What's the priority level?
-> 🟠 High
-
-✅ GitHub Issue #234 created successfully!
-
-📋 Title: 🐛 [BUG] Login button crash on mobile devices
-🟠 Priority: High
-🏷️  Labels: bug, reported, priority-high
-🔗 URL: https://github.com/owner/repo/issues/234
-
-💡 Next: Continue with your work—the issue is now tracked!
+```
+/alfred:9-feedback
+→ Select 🐛 Bug Report
+→ Title: "moai-adk update fails with template sync error"
+→ Describe the symptom and environment
+→ Select 🟠 High priority
+→ Issue #246 automatically created
 ```
 
-### Integration with MoAI-ADK Workflow
+**💡 Feature Request Example**
 
-1. **During Development**: Use `/alfred:9-help` to report bugs/ideas instantly
-2. **In Code Review**: Convert improvement suggestions to tracked issues
-3. **When Planning**: Reference created issues in SPEC documents
-4. **During Sync**: Link issues to SPEC requirements with `/alfred:3-sync`
+```
+/alfred:9-feedback
+→ Select ✨ Feature Request
+→ Title: "Add --dry-run option to moai-adk update"
+→ Describe the desired behavior
+→ Select 🟡 Medium priority
+→ Issue #247 automatically created
+```
 
-### Prerequisites
+### Best Practices
 
-- GitHub CLI (`gh`) installed and authenticated
-- Repository initialized with Git
+- ✅ Be clear and concise in your title
+- ✅ Include environment details for bug reports (OS, Python version, moai-adk version)
+- ✅ Description is optional—skip if title is self-explanatory
+- ❌ Avoid including personal information or sensitive data
+- ❌ Check existing issues to prevent duplicates before creating new ones
 
-### Learn More
-
-See `.moai/docs/quick-issue-creation-guide.md` for comprehensive documentation including:
-- Detailed usage examples
-- Best practices and tips
-- Troubleshooting guide
-- Integration with SPEC documents
+---
 
 ---
 

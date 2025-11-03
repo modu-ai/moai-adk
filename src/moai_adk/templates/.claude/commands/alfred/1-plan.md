@@ -444,15 +444,72 @@ Present your plan in the following format:
 - **Branches/PR**: [Git operations by mode]
 
 ---
-**Approval Request**: Would you like to proceed with creating a plan with the above plan?
- (Choose between “Proceed,” “Modify [Content],” or “Abort”)
+
+## Plan Approval Decision Point
+
+After the planning phase is complete, Alfred uses `AskUserQuestion` tool (documented in moai-alfred-interactive-questions skill) to obtain explicit user approval before proceeding to SPEC creation.
+
+**Example AskUserQuestion Call**:
+```python
+AskUserQuestion(
+    questions=[
+        {
+            "question": "Plan development is complete. Would you like to proceed with SPEC creation based on this plan?",
+            "header": "Plan Approval",
+            "multiSelect": false,
+            "options": [
+                {
+                    "label": "✅ Proceed with SPEC Creation",
+                    "description": "Create SPEC files in .moai/specs/SPEC-{ID}/ based on approved plan"
+                },
+                {
+                    "label": "🔄 Request Modifications",
+                    "description": "Specify changes to the plan before SPEC creation"
+                },
+                {
+                    "label": "⏸️ Save as Draft",
+                    "description": "Save plan as draft without creating SPEC files yet"
+                },
+                {
+                    "label": "❌ Cancel",
+                    "description": "Discard plan and return to planning phase"
+                }
+            ]
+        }
+    ]
+)
+```
+
+**Response Processing**:
+- **"✅ Proceed with SPEC Creation"** (`answers["0"] === "✅ Proceed with SPEC Creation"`) → Execute Phase 2
+  - Invoke spec-builder agent with approved plan
+  - Create spec.md, plan.md, acceptance.md files in `.moai/specs/SPEC-{ID}/`
+  - Initialize @SPEC TAG system
+  - Create feature branch via git-manager
+  - Create Draft PR for review
+
+- **"🔄 Request Modifications"** (`answers["0"] === "🔄 Request Modifications"`) → Repeat planning phase
+  - Collect modification requests from user
+  - Update plan based on feedback
+  - Re-present plan for approval (recursive decision)
+
+- **"⏸️ Save as Draft"** (`answers["0"] === "⏸️ Save as Draft"`) → Save without SPEC
+  - Save plan to `.moai/specs/SPEC-{ID}/plan.md` with status: draft
+  - Commit with message "draft(spec): WIP SPEC-{ID} - {title}"
+  - User can resume with `/alfred:1-plan resume SPEC-{ID}`
+
+- **"❌ Cancel"** (`answers["0"] === "❌ Cancel"`) → End task
+  - Discard plan artifacts
+  - Return user to initial planning prompt
+  - No files created or modified
+
 ```
 
 ---
 
 ## 🚀 STEP 2 Implementation Guide: Create a Plan (After Approval)
 
-Only if the user selects **"Proceed"** or **"Start"** will Alfred call the spec-builder agent to begin building the SPEC document.
+Only if the user selects **"✅ Proceed with SPEC Creation"** will Alfred call the spec-builder agent to begin building the SPEC document.
 
 ### EARS specification writing guide
 
@@ -759,27 +816,32 @@ See `.coderabbit.yaml` for detailed SPEC review checklist.
 
 ## Final Step
 
-After plan creation completes, Alfred automatically invokes AskUserQuestion to ask the user what to do next:
+After SPEC creation completes, Alfred automatically invokes AskUserQuestion to ask the user what to do next:
 
+**Example AskUserQuestion Call**:
 ```python
 AskUserQuestion(
     questions=[
         {
-            "question": "스펙 작성이 완료되었습니다. 다음으로 뭘 하시겠습니까?",
-            "header": "다음 단계",
+            "question": "SPEC creation is complete. What would you like to do next?",
+            "header": "Next Steps",
             "multiSelect": false,
             "options": [
                 {
-                    "label": "🔨 구현 시작",
-                    "description": "/alfred:2-run SPEC-XXX로 TDD 구현 진행"
+                    "label": "🔨 Start Implementation",
+                    "description": "Proceed to /alfred:2-run SPEC-XXX for TDD implementation"
                 },
                 {
-                    "label": "📝 스펙 수정",
-                    "description": "SPEC 문서 검토 후 수정"
+                    "label": "📝 Review SPEC",
+                    "description": "Review and modify SPEC documents before implementation"
                 },
                 {
-                    "label": "🔄 새 세션 시작",
-                    "description": "성능 최적화를 위해 /clear 실행"
+                    "label": "🔄 New Session",
+                    "description": "Execute /clear for better context management (recommended)"
+                },
+                {
+                    "label": "❌ Cancel",
+                    "description": "Return to planning phase"
                 }
             ]
         }
@@ -787,10 +849,26 @@ AskUserQuestion(
 )
 ```
 
-**User Responses**:
-- **🔨 구현 시작**: Proceed to `/alfred:2-run SPEC-XXX` for TDD implementation
-- **📝 스펙 수정**: Review and modify SPEC documents before implementation
-- **🔄 새 세션 시작**: Execute `/clear` to start fresh session (recommended for performance)
+**Response Processing**:
+- **"🔨 Start Implementation"** (`answers["0"] === "🔨 Start Implementation"`) → Proceed to `/alfred:2-run`
+  - Display: "Starting TDD implementation workflow..."
+  - User can execute: `/alfred:2-run SPEC-XXX`
+  - Continue to next phase without session break
+
+- **"📝 Review SPEC"** (`answers["0"] === "📝 Review SPEC"`) → Review generated SPEC
+  - Display: "📁 SPEC files created in `.moai/specs/SPEC-XXX/`"
+  - Show files: spec.md, plan.md, acceptance.md
+  - User can modify and then run `/alfred:2-run SPEC-XXX`
+
+- **"🔄 New Session"** (`answers["0"] === "🔄 New Session"`) → Clear and restart
+  - Display: "⏳ Clearing session for better context management..."
+  - Note: Improves performance for large projects
+  - Next session: User can run `/alfred:2-run SPEC-XXX`
+
+- **"❌ Cancel"** (`answers["0"] === "❌ Cancel"`) → Return to planning
+  - Display: "Returning to planning phase..."
+  - SPEC files preserved for future use
+  - User can create more SPECs with `/alfred:1-plan`
 
 ---
 
