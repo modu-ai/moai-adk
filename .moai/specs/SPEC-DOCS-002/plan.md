@@ -15,25 +15,28 @@ Phase 2는 VitePress 문서 사이트에 **핵심 개념 3개 페이지**를 추
 **콘텐츠 소스**: README.md 608~932줄
 
 **구성**:
+
 1. **Alfred SuperAgent 소개** (50 LOC)
+
    - 중앙 오케스트레이터 역할
    - 배트맨 집사 Alfred에서 영감
    - 9개 전문 에이전트 조율
 
 2. **9개 전문 에이전트 표** (100 LOC)
-   | 에이전트        | 페르소나          | 전문 영역        | 커맨드                 | 위임 시점      |
+   | 에이전트 | 페르소나 | 전문 영역 | 커맨드 | 위임 시점 |
    | --------------- | ----------------- | ---------------- | ---------------------- | -------------- |
-   | spec-builder    | 시스템 아키텍트   | SPEC 작성        | `/alfred:1-plan`       | 명세 필요 시   |
-   | code-builder    | 수석 개발자       | TDD 구현         | `/alfred:2-run`        | 구현 단계      |
-   | doc-syncer      | 테크니컬 라이터   | 문서 동기화      | `/alfred:3-sync`       | 동기화 필요 시 |
-   | tag-agent       | 지식 관리자       | TAG 시스템       | `@agent-tag-agent`     | TAG 작업 시    |
-   | git-manager     | 릴리스 엔지니어   | Git 워크플로우   | `@agent-git-manager`   | Git 조작 시    |
-   | debug-helper    | 트러블슈팅 전문가 | 오류 진단        | `@agent-debug-helper`  | 에러 발생 시   |
-   | trust-checker   | 품질 보증 리드    | TRUST 검증       | `@agent-trust-checker` | 검증 요청 시   |
-   | cc-manager      | 데브옵스 엔지니어 | Claude Code 설정 | `@agent-cc-manager`    | 설정 필요 시   |
-   | project-manager | 프로젝트 매니저   | 프로젝트 초기화  | `/alfred:8-project`    | 프로젝트 시작  |
+   | spec-builder | 시스템 아키텍트 | SPEC 작성 | `/alfred:1-plan` | 명세 필요 시 |
+   | code-builder | 수석 개발자 | TDD 구현 | `/alfred:2-run` | 구현 단계 |
+   | doc-syncer | 테크니컬 라이터 | 문서 동기화 | `/alfred:3-sync` | 동기화 필요 시 |
+   | tag-agent | 지식 관리자 | TAG 시스템 | `@agent-tag-agent` | TAG 작업 시 |
+   | git-manager | 릴리스 엔지니어 | Git 워크플로우 | `@agent-git-manager` | Git 조작 시 |
+   | debug-helper | 트러블슈팅 전문가 | 오류 진단 | `@agent-debug-helper` | 에러 발생 시 |
+   | trust-checker | 품질 보증 리드 | TRUST 검증 | `@agent-trust-checker` | 검증 요청 시 |
+   | cc-manager | 데브옵스 엔지니어 | Claude Code 설정 | `@agent-cc-manager` | 설정 필요 시 |
+   | project-manager | 프로젝트 매니저 | 프로젝트 초기화 | `/alfred:0-project` | 프로젝트 시작 |
 
 3. **Mermaid 오케스트레이션 다이어그램** (50 LOC)
+
    ```mermaid
    graph TD
        A[사용자 요청] --> B[Alfred 분석]
@@ -59,28 +62,34 @@ Phase 2는 VitePress 문서 사이트에 **핵심 개념 3개 페이지**를 추
 **콘텐츠 소스**: README.md 813~931줄
 
 **구성**:
+
 1. **CODE-FIRST 원칙** (50 LOC)
+
    - TAG의 진실은 코드 자체에만 존재
    - 중간 캐시 없음 (코드 직접 스캔)
    - `rg '@TAG' -n` 방식
 
 2. **TAG 체인** (80 LOC)
+
    ```mermaid
    graph LR
        A[@SPEC:ID] --> B[@TEST:ID]
        B --> C[@CODE:ID]
        C --> D[@DOC:ID]
    ```
+
    - @SPEC → @TEST → @CODE → @DOC 4단계
    - TAG ID 규칙: `<도메인>-<3자리>`
    - 버전 관리: v0.1.0 (INITIAL) → v1.0.0 (안정화)
 
 3. **언어별 TAG 사용 예시** (100 LOC)
+
    - TypeScript: `// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md`
    - Python: `# @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md`
    - Dart: `// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md`
 
 4. **TAG 검증 방법** (20 LOC)
+
    ```bash
    # 전체 TAG 스캔
    rg '@(SPEC|TEST|CODE|DOC):' -n
@@ -96,23 +105,28 @@ Phase 2는 VitePress 문서 사이트에 **핵심 개념 3개 페이지**를 추
 **콘텐츠 소스**: development-guide.md + README 분산 섹션
 
 **구성**:
+
 1. **T (Test First)** (40 LOC)
+
    - 테스트 커버리지 ≥85%
    - TDD Red-Green-Refactor 사이클
    - 언어별 테스트 프레임워크 (Jest, pytest, go test)
 
 2. **R (Readable)** (40 LOC)
+
    - 파일 ≤300 LOC
    - 함수 ≤50 LOC
    - 복잡도 ≤10
    - 의도 드러내는 네이밍
 
 3. **U (Unified)** (30 LOC)
+
    - 아키텍처 통합성
    - 일관된 코딩 스타일
    - 언어별 표준 도구 (ESLint, ruff, golint)
 
 4. **S (Secured)** (50 LOC)
+
    - SQL Injection 방어
    - XSS 방어
    - CSRF 방어
@@ -154,10 +168,12 @@ Phase 2는 VitePress 문서 사이트에 **핵심 개념 3개 페이지**를 추
 ### Top-down 접근법
 
 1. **VitePress Sidebar 확장** (우선):
+
    - `docs/.vitepress/config.mts` 수정
    - `concepts` 섹션에 3개 항목 추가
 
 2. **페이지 작성** (순차):
+
    1. alfred-agents.md (가장 중요)
    2. tag-system.md
    3. trust-principles.md
@@ -194,10 +210,12 @@ Phase 2는 VitePress 문서 사이트에 **핵심 개념 3개 페이지**를 추
 ### 기술적 리스크
 
 1. **Mermaid 렌더링 실패**
+
    - **확률**: 낮음 (VitePress 기본 지원)
    - **대응**: 다이어그램 문법 검증, 사전 테스트
 
 2. **README 콘텐츠 부족**
+
    - **확률**: 낮음 (608~932줄 충분)
    - **대응**: dev-guide.md 보완 활용
 
@@ -208,6 +226,7 @@ Phase 2는 VitePress 문서 사이트에 **핵심 개념 3개 페이지**를 추
 ### 콘텐츠 리스크
 
 1. **중복 내용**
+
    - **확률**: 중간 (Phase 1과 중복 가능)
    - **대응**: Phase 1 페이지 검토 후 차별화
 
@@ -220,11 +239,13 @@ Phase 2는 VitePress 문서 사이트에 **핵심 개념 3개 페이지**를 추
 ## 다음 단계 (Phase 3-4)
 
 **Phase 3** (Priority 2):
+
 - Output Styles (4가지 스타일)
 - CLI Reference
 - 문제 해결
 
 **Phase 4** (Priority 3):
+
 - 언어별 가이드 (TypeScript, Python, Flutter, Go, Rust)
 - 고급 주제
 - 기여 가이드
