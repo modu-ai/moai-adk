@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0",
+  "display_name": "FastAPI Backend Development",
+  "capabilities": [
+    "FastAPI scaffolding",
+    "SQLAlchemy ORM integration",
+    "Alembic migrations",
+    "Async/await patterns",
+    "Database schema design"
+  ],
+  "entry_point": "backend_plugin",
+  "supported_languages": ["python"],
+  "min_version": "1.0.0"
+}
