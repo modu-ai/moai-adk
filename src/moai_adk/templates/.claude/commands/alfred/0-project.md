@@ -1325,6 +1325,43 @@ After initialization is complete:
 - **Set Change**: Run `/alfred:0-project` again to update document
 - **Template optimization**: Run `/alfred:0-project update` after `moai-adk update`
 
+## Final Step
+
+After project initialization completes, Alfred automatically invokes AskUserQuestion to ask the user what to do next:
+
+```python
+AskUserQuestion(
+    questions=[
+        {
+            "question": "프로젝트 초기화가 완료되었습니다. 다음으로 뭘 하시겠습니까?",
+            "header": "다음 단계",
+            "multiSelect": false,
+            "options": [
+                {
+                    "label": "📋 스펙 작성 진행",
+                    "description": "/alfred:1-plan 실행하여 첫 SPEC 작성"
+                },
+                {
+                    "label": "🔍 프로젝트 구조 검토",
+                    "description": "생성된 문서 검토 및 수정"
+                },
+                {
+                    "label": "🔄 새 세션 시작",
+                    "description": "성능 최적화를 위해 /clear 실행"
+                }
+            ]
+        }
+    ]
+)
+```
+
+**User Responses**:
+- **📋 스펙 작성 진행**: Proceed to `/alfred:1-plan` for creating first SPEC
+- **🔍 프로젝트 구조 검토**: Review and modify generated project documents
+- **🔄 새 세션 시작**: Execute `/clear` to start fresh session (recommended for performance)
+
+---
+
 ## Related commands
 
 - `/alfred:1-plan` - Start writing SPEC

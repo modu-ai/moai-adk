@@ -152,7 +152,7 @@ class LanguageDetector:
 
         if language.lower() not in workflow_mapping:
             raise ValueError(
-                f"No workflow template available for language: {language}. "
+                f"Unsupported language: {language}. "
                 f"Supported languages: {', '.join(workflow_mapping.keys())}"
             )
 
