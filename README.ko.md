@@ -557,6 +557,7 @@ Running system diagnostics...
 ### Step 2️⃣: 패키지 + 모든 프로젝트 업데이트 (moai-adk update 사용)
 
 **목적**:
+
 1. `moai-adk` 패키지를 새 버전으로 업그레이드
 2. 각 프로젝트의 `.moai/`과 `.claude/` 동기화
 
@@ -679,55 +680,6 @@ moai-adk doctor
 - ❌ `moai-adk init .`은 불필요 (이미 update가 동기화 함)
 - ✅ Stage 1 (패키지 업그레이드)는 첫 프로젝트에서만 실행되고, 이후 프로젝트는 스킵됨
 - ✅ Stage 2/3 (템플릿 동기화)는 각 프로젝트마다 필요시 실행
-
----
-
-### Step 3️⃣: 동기화 검증
-
-모든 프로젝트가 정상적으로 업데이트되었는지 확인하세요:
-
-```bash
-# 프로젝트 1 검증
-cd ~/projects/project-1
-moai-adk doctor
-echo "---"
-
-# 프로젝트 2 검증
-cd ~/projects/project-2
-moai-adk doctor
-echo "---"
-
-# 프로젝트 3 검증
-cd ~/projects/project-3
-moai-adk doctor
-```
-
-**정상 출력**:
-```
-✅ Python >= 3.13
-✅ Git installed
-✅ Project structure (.moai/)
-✅ Config file (.moai/config.json)
-✅ All checks passed
-```
-
-**문제 발생 시**:
-```bash
-# 명령어 재실행
-cd ~/projects/project-name
-moai-adk update
-
-# 강제 동기화 필요 시
-moai-adk update --force
-```
-
-### Step 4️⃣: 변경사항 커밋 (권장)
-
-```bash
-git add .claude/ .moai/
-git commit -m "chore: 템플릿 업데이트 (moai-adk v0.15.0)"
-git push
-```
 
 ---
 
@@ -923,17 +875,6 @@ uv tool reinstall moai-adk
 
 ---
 
-## 📊 버전별 주요 변경사항
-
-| 버전   | 주요 변경                                         | 업데이트 필요 |
-| ------ | ------------------------------------------------- | ------------- |
-| v0.15+ | 🌍 다국어 지원 (한국어, 일본어, 중국어, 스페인어) | ✅ 권장       |
-| v0.14  | 📋 SPEC 문법 개선 (EARS → Unwanted Behaviors)     | ✅ 권장       |
-| v0.13  | ⚡ 3단계 병렬 처리로 70-80% 성능 향상             | ✅ 권장       |
-| v0.12  | 🎯 @TAG 시스템 고도화                             | ✅ 권장       |
-
----
-
 ## 💡 업데이트 팁과 모범 사례
 
 ### ✅ DO (권장)
@@ -998,17 +939,15 @@ graph TD
 
 ## 핵심 명령 요약
 
-| 명령                      | 무엇을 하나요?                                               | 대표 산출물                                                        |
-| ------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------ |
-| `/alfred:0-project`       | 프로젝트 설명 수집, 설정·문서 생성, Skill 추천               | `.moai/config.json`, `.moai/project/*`, 초기 보고서                |
-| `/alfred:1-plan <설명>`   | 요구사항 분석, SPEC 초안, Plan Board 작성                    | `.moai/specs/SPEC-*/spec.md`, plan/acceptance 문서, feature 브랜치 |
-| `/alfred:2-run <SPEC-ID>` | TDD 실행, 테스트/구현/리팩토링, 품질 검증                    | `tests/`, `src/` 구현, 품질 리포트, TAG 연결                       |
-| `/alfred:3-sync`          | 문서/README/CHANGELOG 동기화, TAG/PR 상태 정리               | `docs/`, `.moai/reports/sync-report.md`, Ready PR                  |
-| `/alfred:9-feedback`      | 대화형으로 GitHub Issue 생성 (타입 → 제목 → 설명 → 우선순위) | GitHub Issue + 자동 라벨 + 우선순위 + URL                          |
+| 명령                      | 무엇을 하나요?                                                         | 대표 산출물                                                        |
+| ------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `/alfred:0-project`       | 프로젝트 설명 수집, 설정·문서 생성, Skill 추천                         | `.moai/config.json`, `.moai/project/*`, 초기 보고서                |
+| `/alfred:1-plan <설명>`   | 요구사항 분석, SPEC 초안, Plan Board 작성                              | `.moai/specs/SPEC-*/spec.md`, plan/acceptance 문서, feature 브랜치 |
+| `/alfred:2-run <SPEC-ID>` | TDD 실행, 테스트/구현/리팩토링, 품질 검증                              | `tests/`, `src/` 구현, 품질 리포트, TAG 연결                       |
+| `/alfred:3-sync`          | 문서/README/CHANGELOG 동기화, TAG/PR 상태 정리                         | `docs/`, `.moai/reports/sync-report.md`, Ready PR                  |
+| `/alfred:9-feedback`      | MoAI-ADK 개선 피드백 GitHub Issue 생성 (타입 → 제목 → 설명 → 우선순위) | GitHub Issue + 자동 라벨 + 우선순위 + URL                          |
 
 > ❗ 모든 명령은 **Phase 0(선택) → Phase 1 → Phase 2 → Phase 3** 순환 구조를 유지합니다. 실행 중 상태와 다음 단계 제안은 Alfred가 자동으로 보고합니다.
->
-> 💡 **v0.7.0+부터 추가**: `/alfred:9-feedback`로 개발 중 GitHub Issue를 즉시 생성할 수 있습니다. 개발 흐름을 끊지 않으면서 팀 전체가 이슈를 추적하고 논의할 수 있습니다.
 
 ---
 
@@ -1063,16 +1002,16 @@ MoAI-ADK는 이제 SPEC 문서에서 **GitHub Issue 자동 동기화**를 제공
 
 ### 기능
 
-✅ **자동 Issue 생성**: SPEC 파일이 변경된 모든 PR에서 GitHub Issue 자동 생성
-✅ **메타데이터 추출**: ID, version, status, priority가 YAML frontmatter에서 자동으로 파싱됨
-✅ **PR 통합**: Issue가 PR과 자동 코멘트를 통해 연결됨
-✅ **라벨 관리**: 우선순위 기반 라벨 (critical, high, medium, low) 자동 적용
+- ✅ **자동 Issue 생성**: SPEC 파일이 변경된 모든 PR에서 GitHub Issue 자동 생성
+- ✅ **메타데이터 추출**: ID, version, status, priority가 YAML frontmatter에서 자동으로 - 파싱됨
+- ✅ **PR 통합**: Issue가 PR과 자동 코멘트를 통해 연결됨
+- ✅ **라벨 관리**: 우선순위 기반 라벨 (critical, high, medium, low) 자동 적용
 
 ### 설정 요구사항
 
-**GitHub Actions 워크플로우**: `.github/workflows/spec-issue-sync.yml`
-**GitHub Issue 템플릿**: `.github/ISSUE_TEMPLATE/spec.yml`
-**GitHub 라벨**: `spec`, `planning`, `critical`, `high`, `medium`, `low`
+- **GitHub Actions 워크플로우**: `.github/workflows/spec-issue-sync.yml`
+- **GitHub Issue 템플릿**: `.github/ISSUE_TEMPLATE/spec.yml`
+- **GitHub 라벨**: `spec`, `planning`, `critical`, `high`, `medium`, `low`
 
 모든 템플릿은 MoAI-ADK와 함께 자동으로 설치되며 `moai-adk init` 실행 시 동기화됩니다.
 
@@ -2648,6 +2587,138 @@ moai-adk doctor --verbose
 2. 에러 메시지 전체 (스크린샷 또는 복사)
 3. 재현 방법 (어떤 명령어를 실행했는가?)
 4. 운영체제 및 버전
+
+---
+
+## 🚀 빠른 이슈 생성: `/alfred:9-feedback`
+
+MoAI-ADK 사용 중 버그가 발생했거나 기능을 요청하고 싶으신가요? Claude Code에서 단 한 줄의 명령어로 자동 이슈 생성이 가능합니다.
+
+### 개요
+
+```bash
+/alfred:9-feedback
+```
+
+이 명령어를 실행하면 Alfred가 대화형 질문을 통해 이슈를 자동으로 생성합니다:
+- 🐛 **버그 리포트** - 문제 상황 기록
+- ✨ **기능 요청** - 새로운 기능 제안
+- ⚡ **개선 사항** - 기존 기능 개선 제안
+- ❓ **질문/토론** - 팀과의 질문
+
+### 실행 예시
+
+```bash
+# Claude Code에서 실행
+/alfred:9-feedback
+```
+
+### 대화형 단계별 진행
+
+**1️⃣ 이슈 유형 선택**
+
+```
+어떤 유형의 이슈를 만들고 싶으신가요?
+
+[ ] 🐛 Bug Report - 문제가 발생했어요
+[ ] ✨ Feature Request - 새 기능을 제안합니다
+[ ] ⚡ Improvement - 기존 기능을 개선합니다
+[ ] ❓ Question/Discussion - 팀에게 질문합니다
+```
+
+**2️⃣ 이슈 제목 입력**
+
+```
+이슈 제목을 입력하세요 (간단 명료하게):
+예: moai-adk update 실행 중 템플릿 동기화 오류 발생
+```
+
+**3️⃣ 상세 설명 입력 (선택사항)**
+
+```
+상세한 설명을 입력하세요 (Enter 키로 생략 가능):
+
+예:
+moai-adk update 실행 시 다음 오류 발생:
+- 증상: .claude/ 디렉터리 권한 오류
+- 환경: macOS 14.2, Python 3.13, moai-adk v0.15.0
+- 기대 동작: 템플릿이 정상적으로 동기화되어야 함
+- 실제 동작: Permission denied 오류로 중단
+```
+
+**4️⃣ 우선순위 선택**
+
+```
+우선순위 수준을 선택하세요:
+
+[ ] 🔴 Critical - 시스템 다운, 데이터 손실, 보안 문제
+[ ] 🟠 High - 주요 기능 고장, 심각한 영향
+[✓] 🟡 Medium - 일반 우선순위 (기본값)
+[ ] 🟢 Low - 경미한 문제, 해도 좋고 안 해도 됨
+```
+
+### 자동 이슈 생성
+
+Alfred가 자동으로:
+1. 제목에 이모지 추가: `🐛 [BUG] moai-adk update 실행 중 템플릿 동기화 오류 발생`
+2. GitHub 이슈 형식으로 포매팅
+3. 적절한 라벨 자동 할당: `bug`, `reported`, `priority-high`
+4. 리포지토리에 이슈 생성
+
+### 완료 후 출력
+
+```
+✅ GitHub Issue #245 생성 완료!
+
+📋 제목: 🐛 [BUG] moai-adk update 실행 중 템플릿 동기화 오류 발생
+🔴 우선순위: High
+🏷️  라벨: bug, reported, priority-high
+🔗 링크: https://github.com/modu-ai/moai-adk/issues/245
+
+💡 팁: 이 이슈 번호를 커밋 메시지에 참조할 수 있습니다
+```
+
+### 주요 특징
+
+| 특징           | 설명                                                     |
+| -------------- | -------------------------------------------------------- |
+| **명령어 간단** | 인자 없이 `/alfred:9-feedback` 만 실행                    |
+| **대화형**     | 직관적인 단계별 질문으로 이슈 생성                        |
+| **자동 라벨**  | 이슈 유형과 우선순위에 따라 자동으로 라벨 할당           |
+| **즉시 생성**  | 약 30초 내에 이슈가 GitHub에 생성됨                      |
+| **팀 공유**    | 생성된 이슈는 즉시 팀과 공유되고 추적 가능                |
+
+### 사용 사례
+
+**📌 버그 리포트 예시**
+
+```
+/alfred:9-feedback
+→ 🐛 Bug Report 선택
+→ "moai-adk update 실행 후 .claude/hooks/ 파일 손상"
+→ 상세 증상 입력
+→ 🟠 High 우선순위 선택
+→ Issue #246 자동 생성
+```
+
+**💡 기능 요청 예시**
+
+```
+/alfred:9-feedback
+→ ✨ Feature Request 선택
+→ "moai-adk update에 --dry-run 옵션 추가"
+→ 상세 설명 입력
+→ 🟡 Medium 우선순위 선택
+→ Issue #247 자동 생성
+```
+
+### 주의사항
+
+- ✅ 각 단계에서 명확하고 간결하게 입력하세요
+- ✅ 버그 리포트에는 환경 정보(OS, Python 버전, moai-adk 버전) 포함
+- ✅ 상세 설명은 선택사항이므로 스킵 가능
+- ❌ 개인 정보나 민감한 데이터는 포함하지 마세요
+- ❌ 동일한 이슈 중복 생성 피하기 (GitHub Issues에서 검색 후 생성)
 
 ---
 
