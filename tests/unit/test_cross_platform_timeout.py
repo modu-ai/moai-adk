@@ -34,8 +34,6 @@ class TestCrossPlatformTimeoutWindows:
     @pytest.mark.skipif(sys.platform != "win32", reason="Windows-only test")
     def test_timeout_windows_threading_fires(self):
         """Test that Windows timeout fires with threading.Timer."""
-        timeout_fired = threading.Event()
-
         def slow_operation():
             time.sleep(2)  # Sleep longer than timeout
 
@@ -104,8 +102,8 @@ class TestCrossPlatformTimeoutUnix:
     @pytest.mark.skipif(sys.platform == "win32", reason="Unix-only test")
     def test_timeout_unix_signal_cleanup(self):
         """Test that Unix signal is properly cleaned up after timeout."""
-        # Get initial alarm state
-        initial_alarm = signal.alarm(0)
+        # Reset any existing alarm
+        signal.alarm(0)
 
         try:
             with CrossPlatformTimeout(1):

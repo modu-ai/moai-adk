@@ -19,11 +19,6 @@ def test_insert_tag_into_header():
 
 This is a guide.
 """
-    expected = """# @DOC:AUTH-001 | Chain: @SPEC:AUTH-001 -> @DOC:AUTH-001
-# User Guide
-
-This is a guide.
-"""
 
     with patch("pathlib.Path.read_text", return_value=original), \
          patch("pathlib.Path.write_text") as mock_write:
