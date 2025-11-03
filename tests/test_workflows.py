@@ -1,4 +1,4 @@
-# @TEST:LANG-001 | SPEC: SPEC-LANGUAGE-DETECTION-001.md | CODE: src/moai_adk/templates/workflows/
+# @TEST:LANG-001 | SPEC: SPEC-LANGUAGE-DETECTION-001.md | CODE: src/moai_adk/templates/.github/workflows/
 """Unit tests for language-specific workflow templates
 
 Tests workflow file creation and correctness for Python, JavaScript, TypeScript, and Go.
@@ -15,7 +15,7 @@ class TestWorkflowFileCreation:
     def test_workflow_file_creation(self):
         """Should create all 4 language-specific workflow templates"""
         # @TAG:LANG-001 - Create workflow templates
-        templates_dir = Path(__file__).parent.parent / "src" / "moai_adk" / "templates" / "workflows"
+        templates_dir = Path(__file__).parent.parent / "src" / "moai_adk" / "templates" / ".github" / "workflows"
 
         python_workflow = templates_dir / "python-tag-validation.yml"
         javascript_workflow = templates_dir / "javascript-tag-validation.yml"
@@ -30,7 +30,7 @@ class TestWorkflowFileCreation:
 
     def test_each_file_contains_required_github_actions_syntax(self):
         """Should contain valid GitHub Actions YAML syntax"""
-        templates_dir = Path(__file__).parent.parent / "src" / "moai_adk" / "templates" / "workflows"
+        templates_dir = Path(__file__).parent.parent / "src" / "moai_adk" / "templates" / ".github" / "workflows"
 
         workflow_files = [
             "python-tag-validation.yml",
@@ -59,7 +59,7 @@ class TestPythonWorkflowCorrectness:
 
     def test_python_workflow_correctness(self):
         """Should have correct Python-specific configuration"""
-        templates_dir = Path(__file__).parent.parent / "src" / "moai_adk" / "templates" / "workflows"
+        templates_dir = Path(__file__).parent.parent / "src" / "moai_adk" / "templates" / ".github" / "workflows"
         python_workflow = templates_dir / "python-tag-validation.yml"
 
         # RED: Parse and verify structure
@@ -98,7 +98,7 @@ class TestPythonWorkflowCorrectness:
 
     def test_python_workflow_coverage_target(self):
         """Should specify 85% coverage target"""
-        templates_dir = Path(__file__).parent.parent / "src" / "moai_adk" / "templates" / "workflows"
+        templates_dir = Path(__file__).parent.parent / "src" / "moai_adk" / "templates" / ".github" / "workflows"
         python_workflow = templates_dir / "python-tag-validation.yml"
 
         with open(python_workflow) as f:
@@ -114,7 +114,7 @@ class TestJavaScriptWorkflowCorrectness:
 
     def test_javascript_workflow_correctness(self):
         """Should have correct JavaScript-specific configuration"""
-        templates_dir = Path(__file__).parent.parent / "src" / "moai_adk" / "templates" / "workflows"
+        templates_dir = Path(__file__).parent.parent / "src" / "moai_adk" / "templates" / ".github" / "workflows"
         js_workflow = templates_dir / "javascript-tag-validation.yml"
 
         with open(js_workflow) as f:
@@ -141,7 +141,7 @@ class TestJavaScriptWorkflowCorrectness:
 
     def test_javascript_workflow_package_manager_detection(self):
         """Should have logic for npm/yarn/pnpm auto-detection"""
-        templates_dir = Path(__file__).parent.parent / "src" / "moai_adk" / "templates" / "workflows"
+        templates_dir = Path(__file__).parent.parent / "src" / "moai_adk" / "templates" / ".github" / "workflows"
         js_workflow = templates_dir / "javascript-tag-validation.yml"
 
         with open(js_workflow) as f:
@@ -160,7 +160,7 @@ class TestTypeScriptWorkflowCorrectness:
 
     def test_typescript_workflow_correctness(self):
         """Should have TypeScript-specific configuration"""
-        templates_dir = Path(__file__).parent.parent / "src" / "moai_adk" / "templates" / "workflows"
+        templates_dir = Path(__file__).parent.parent / "src" / "moai_adk" / "templates" / ".github" / "workflows"
         ts_workflow = templates_dir / "typescript-tag-validation.yml"
 
         with open(ts_workflow) as f:
@@ -190,7 +190,7 @@ class TestGoWorkflowCorrectness:
 
     def test_go_workflow_correctness(self):
         """Should have Go-specific configuration"""
-        templates_dir = Path(__file__).parent.parent / "src" / "moai_adk" / "templates" / "workflows"
+        templates_dir = Path(__file__).parent.parent / "src" / "moai_adk" / "templates" / ".github" / "workflows"
         go_workflow = templates_dir / "go-tag-validation.yml"
 
         with open(go_workflow) as f:
@@ -216,7 +216,7 @@ class TestGoWorkflowCorrectness:
 
     def test_go_workflow_coverage_target(self):
         """Should specify 75% coverage target for Go"""
-        templates_dir = Path(__file__).parent.parent / "src" / "moai_adk" / "templates" / "workflows"
+        templates_dir = Path(__file__).parent.parent / "src" / "moai_adk" / "templates" / ".github" / "workflows"
         go_workflow = templates_dir / "go-tag-validation.yml"
 
         with open(go_workflow) as f:
