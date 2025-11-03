@@ -35,13 +35,13 @@ class TestLanguageDetectionExtended:
         assert detector.detect(tmp_path) == "php"
 
     def test_detect_java(self, tmp_path: Path):
-        """@TEST:LDE-003-JAVA | Java project detection (pom.xml)."""
+        """@TEST:LDE-JAVA-MAVEN-001 | Java project detection (pom.xml)."""
         (tmp_path / "pom.xml").touch()
         detector = LanguageDetector()
         assert detector.detect(tmp_path) == "java"
 
     def test_detect_java_gradle(self, tmp_path: Path):
-        """@TEST:LDE-003-JAVA-GRADLE | Java project detection (build.gradle)."""
+        """@TEST:LDE-JAVA-GRADLE-001 | Java project detection (build.gradle)."""
         (tmp_path / "build.gradle").touch()
         detector = LanguageDetector()
         assert detector.detect(tmp_path) == "java"
@@ -201,7 +201,7 @@ class TestErrorHandling:
     def test_workflow_template_for_unsupported_language(self):
         """@TEST:LDE-ERROR-WORKFLOW | ValueError for unsupported workflow language."""
         detector = LanguageDetector()
-        with pytest.raises(ValueError, match="No workflow template available"):
+        with pytest.raises(ValueError, match="Unsupported language"):
             detector.get_workflow_template_path("cobol")
 
     def test_no_build_tool_detected(self, tmp_path: Path):

@@ -1,13 +1,19 @@
 ---
 name: alfred:1-plan
-description: "Planning (brainstorming, plan writing, design discussion) + Branch/PR creation"
+description: "Define specifications and create development branch"
 argument-hint: Title 1 Title 2 ... | SPEC-ID modifications
 allowed-tools:
-- Read      # Read project documents for analysis
-- Grep      # Search for patterns (replaces Bash(rg:*))
-- Glob      # Find SPEC and code files
-- TodoWrite # Track planning progress
-- Task      # Invoke spec-builder and git-manager agents
+- Read
+- Write
+- Edit
+- MultiEdit
+- Grep
+- Glob
+- TodoWrite
+- Bash(git:*)
+- Bash(gh:*)
+- Bash(rg:*)
+- Bash(mkdir:*)
 ---
 
 # 🏗️ MoAI-ADK Step 1: Establish a plan (Plan) - Always make a plan first and then proceed.
@@ -24,32 +30,6 @@ allowed-tools:
 **"Plan → Run → Sync"** As the first step in the workflow, it supports the entire planning process from ideation to plan creation.
 
 **Plan for**: $ARGUMENTS
-
----
-
-## 🚀 START HERE - Immediate Execution
-
-**Right now**: Gather project information in parallel (5 independent operations):
-
-Execute in a SINGLE response:
-```
-1. Read .moai/project/product.md
-2. Read .moai/project/structure.md
-3. Read .moai/project/tech.md
-4. Glob .moai/specs/SPEC-*/spec.md
-5. Grep "@SPEC:" pattern in .moai/specs/ (find used TAG IDs)
-```
-
-**Immediately invoke spec-builder agent** (after gathering above):
-
-Call Task tool with:
-- `subagent_type: "spec-builder"`
-- `description: "Analyze project and create planning proposal"`
-- `prompt: "You are spec-builder agent. LANGUAGE CONFIGURATION: conversation_language={{CONVERSATION_LANGUAGE}}, language_name={{CONVERSATION_LANGUAGE_NAME}}. TASK: Analyze the project document and suggest SPEC candidates based on the following input. Run in analysis mode with plan report. User input: \"$ARGUMENTS\""`
-
-**Expected output**: Plan report with SPEC candidates, priorities, and EARS structure design. User approves before proceeding.
-
----
 
 ## 🤖 CodeRabbit AI Integration (Local Only)
 
@@ -172,29 +152,31 @@ STEP 1 consists of **two independent phases** to provide flexible workflow based
 
 ---
 
-### 🔍 Phase A: Codebase Exploration (OPTIONAL - Skip by Default)
+### 🔍 Phase A: Codebase Exploration (OPTIONAL)
 
-**Use ONLY when needed**: If user input is unclear or vague, invoke Explore agent.
+**Use the Explore agent when user request is unclear or needs context.**
 
-Otherwise, skip directly to Phase B (spec-builder) with **"START HERE"** directive.
+#### When to use Phase A:
 
-**When Phase A is needed**:
-- ✅ User provides vague keywords ("where is...", "find me...", "related to...")
-- ✅ Need to understand code structure before creating SPEC
+- ✅ User uses vague keywords ("where is...", "find me...", "related to...")
+- ✅ Need to understand existing code structure before planning
+- ✅ Feature spans multiple files or modules
+- ❌ User provides clear SPEC title (skip to Phase B)
 
-**When to SKIP Phase A** (use directly):
-- ✅ User provides clear SPEC title (e.g., "JWT authentication")
-- ✅ User specifies SPEC ID modification (e.g., "SPEC-AUTH-001 add OAuth")
-- ✅ Command input is clear and actionable
+#### How to invoke Explore agent:
 
-**If Phase A invocation is needed**:
+```
+Invoking the Task tool (Explore agent):
+- subagent_type: "Explore"
+- description: "Explore related files in the codebase"
+- prompt: "다음 키워드와 관련된 모든 파일을 찾아주세요: $ARGUMENTS
+ - 파일 위치 (src/, tests/, docs/)
+ - 관련 SPEC 문서 (.moai/specs/)
+ - 기존 구현 코드
+ 상세도 수준: medium"
+```
 
-Call Task tool with:
-- `subagent_type: "Explore"`
-- `description: "Explore codebase for context"`
-- `prompt: "Find all files related to: $ARGUMENTS. Include file locations, existing SPEC documents, implementation patterns."`
-
-Then pass exploration results to spec-builder in "START HERE" phase.
+**Note**: If user provides clear SPEC title, skip Phase A and proceed directly to Phase B.
 
 ---
 
@@ -204,61 +186,53 @@ Then pass exploration results to spec-builder in "START HERE" phase.
 
 This phase is **always required** regardless of whether Phase A was executed.
 
-#### Information Gathering (Parallel Execution)
-
-**CRITICAL**: Before invoking spec-builder, gather all required information in a **SINGLE response** using parallel tool calls:
-
-```
-In a SINGLE response, execute these independent operations in parallel:
-
-1. Read .moai/project/product.md (business requirements)
-2. Read .moai/project/structure.md (architecture constraints)
-3. Read .moai/project/tech.md (technical stack)
-4. Glob .moai/specs/SPEC-*/spec.md (existing SPECs)
-5. Grep "@SPEC:" pattern in .moai/specs/ (used TAG IDs)
-
-These five operations are independent and can run simultaneously:
-- No operation depends on the output of another
-- They access different files/directories
-- Combined execution time < individual sum (1.5-2x faster)
-```
-
-**Performance Impact**: ~1.5-2x faster project analysis phase (50-100ms saved per command execution)
-
 #### How to invoke spec-builder:
 
 ```
 Call the Task tool:
 - subagent_type: "spec-builder"
 - description: "Analyze the plan and establish a plan"
-- prompt: """You are spec-builder agent.
+- prompt: """당신은 spec-builder 에이전트입니다.
 
-LANGUAGE CONFIGURATION:
-- conversation_language: {{CONVERSATION_LANGUAGE}}
-- language_name: {{CONVERSATION_LANGUAGE_NAME}}
+언어 설정:
+- 대화_언어: {{CONVERSATION_LANGUAGE}}
+- 언어명: {{CONVERSATION_LANGUAGE_NAME}}
 
-CRITICAL INSTRUCTION:
-All SPEC documents and analysis must be generated in conversation_language.
-- If conversation_language is 'ko' (Korean): Generate ALL analysis, plans, and SPEC documents in Korean
-- If conversation_language is 'ja' (Japanese): Generate ALL analysis, plans, and SPEC documents in Japanese
-- If conversation_language is other language: Follow the specified language
+중요 지시사항:
+SPEC 문서는 이중 언어 구조를 따라야 합니다 (사용자 언어 + 영어 요약):
 
-SKILL INVOCATION:
-Use explicit Skill() calls when needed:
-- Skill("moai-foundation-specs") for SPEC structure guidance
-- Skill("moai-foundation-ears") for EARS syntax requirements
-- Skill("moai-alfred-spec-metadata-validation") for metadata validation
+conversation_language == 'ko' (한국어)인 경우:
+- YAML 메타데이터: 영어만 사용
+- 제목 (@SPEC 태그): 한국어 주요, 영어 버전은 하단에 기재
+- 주요 내용 (분석, 요구사항, EARS): 한국어
+- SUMMARY 섹션: 영어 (국제 기여자를 위해 100-200단어)
+- HISTORY: 한국어 (새로운 항목), 주요 버전에는 영어 요약
 
-TASK:
-Please analyze the project document and suggest SPEC candidates.
-Run in analysis mode, and must include the following:
-1. In-depth analysis of product/structure/tech.md
-2. Identify SPEC candidates and Determine priorities
-3. Design EARS structure
-4. Wait for user approval
+conversation_language == 'ja' (일본어)인 경우:
+- 한국어와 동일한 이중 언어 패턴 사용
+- 주요 내용: 일본어
+- SUMMARY: 영어
 
-User input: $ARGUMENTS
-(Optional) Explore results: $EXPLORE_RESULTS"""
+다른 언어인 경우:
+- 주요 내용: 사용자 지정 언어
+- SUMMARY: 영어 (항상)
+
+스킬 호출:
+필요 시 명시적 Skill() 호출 사용:
+- Skill("moai-foundation-specs") - SPEC 구조 가이드
+- Skill("moai-foundation-ears") - EARS 문법 요구사항
+- Skill("moai-alfred-spec-metadata-validation") - 메타데이터 검증
+
+작업:
+프로젝트 문서를 분석하여 SPEC 후보자를 제시해주세요.
+분석 모드로 실행하며, 다음을 포함해야 합니다:
+1. product/structure/tech.md의 심층 분석
+2. SPEC 후보자 식별 및 우선순위 결정
+3. EARS 구조 설계
+4. 사용자 승인 대기
+
+사용자 입력: $ARGUMENTS
+(선택사항) 탐색 결과: $EXPLORE_RESULTS"""
 ```
 
 **Note**: If Phase A was executed, pass the exploration results via `$EXPLORE_RESULTS` variable.
@@ -290,116 +264,9 @@ After reviewing your implementation plan, Alfred invokes `AskUserQuestion tool (
 
 ---
 
-## 🔄 STEP 2: Create SPEC Documents (After User Approval)
+## 🚀 STEP 2: Create plan document (after user approval)
 
-**After user approval** from STEP 1 plan report, immediately invoke spec-builder agent to create SPEC documents:
-
-### 2.0.1 spec-builder Agent Invocation (Second Call - Document Creation)
-
-**Call Task tool with**:
-- `subagent_type: "spec-builder"`
-- `description: "Create SPEC documents (spec.md, plan.md, acceptance.md)"`
-- `prompt: "You are spec-builder agent. LANGUAGE CONFIGURATION: conversation_language={{CONVERSATION_LANGUAGE}}, language_name={{CONVERSATION_LANGUAGE_NAME}}. TASK: Create full SPEC documents based on user-approved plan from STEP 1. Generate spec.md, plan.md, and acceptance.md files in .moai/specs/SPEC-{ID}/ directory. Use EARS syntax (Event-driven, Action, Response, State). After SPEC creation, proceed to git-manager for branch/PR creation."`
-
-**Expected output**:
-- ✅ `.moai/specs/SPEC-{ID}/spec.md` - Full SPEC with EARS requirements
-- ✅ `.moai/specs/SPEC-{ID}/plan.md` - Implementation plan with TAGs
-- ✅ `.moai/specs/SPEC-{ID}/acceptance.md` - Acceptance criteria (Given-When-Then)
-
-### 2.0.2 git-manager Agent Invocation (After SPEC Creation)
-
-**Call Task tool with**:
-- `subagent_type: "git-manager"`
-- `description: "Create Git branch and Draft PR"`
-- `prompt: "You are git-manager agent. TASK: After spec-builder creates SPEC documents, create Git branch and Draft PR. Branch name: feature/SPEC-{ID}. Strategy: Personal mode → branch from main/develop. Team mode → always branch from develop. In Team mode, also create GitHub Issue and Draft PR."`
-
-**Expected output**:
-- ✅ Git branch created: `feature/SPEC-{ID}`
-- ✅ Initial commit with SPEC documents
-- ✅ (Team mode) GitHub Issue created
-- ✅ (Team mode) Draft PR ready for review
-
-**See also**: Skill("moai-alfred-spec-metadata-extended") for SPEC metadata standards, Skill("moai-alfred-spec-authoring") for detailed SPEC writing patterns
-
----
-
-### 2.0.5 Domain Routing (Automatic - After SPEC Creation)
-
-**Purpose**: Automatically invoke domain-expert agents based on SPEC content keywords
-
-**When to run**: After spec-builder creates SPEC documents, before git-manager creates branch/PR
-
-**Detection Logic**:
-
-Alfred analyzes the SPEC document (`spec.md`) for domain-specific keywords:
-
-| Domain | Keywords | Expert Agent |
-|--------|----------|--------------|
-| **Frontend** | 'frontend', 'ui', 'page', 'component', 'client-side', 'browser', 'react', 'vue', 'angular', 'next', 'nuxt', 'svelte', 'astro', 'remix', 'solid' | frontend-expert |
-| **Backend** | 'backend', 'api', 'server', 'database', 'fastapi', 'django', 'express', 'fastify', 'nestjs', 'spring', 'golang', 'rust', 'axum', 'rocket' | backend-expert |
-| **DevOps** | 'deployment', 'ci/cd', 'docker', 'kubernetes', 'railway', 'vercel', 'devops', 'infrastructure', 'pipeline', 'container' | devops-expert |
-| **Database** | 'database', 'sql', 'nosql', 'postgresql', 'mysql', 'mongodb', 'redis', 'schema', 'query', 'migration' | database-expert |
-| **Data Science** | 'data analysis', 'machine learning', 'ml', 'ai', 'data pipeline', 'notebook', 'pandas', 'sklearn', 'tensorflow', 'pytorch' | data-expert |
-| **Mobile** | 'mobile', 'ios', 'android', 'react native', 'flutter', 'app', 'swift', 'kotlin' | mobile-expert |
-
-**Automatic Invocation Pattern**:
-
-```python
-# Pseudo-code for domain detection
-spec_content = Read(".moai/specs/SPEC-{ID}/spec.md")
-
-detected_domains = []
-if any(keyword in spec_content.lower() for keyword in frontend_keywords):
-    detected_domains.append("frontend")
-if any(keyword in spec_content.lower() for keyword in backend_keywords):
-    detected_domains.append("backend")
-if any(keyword in spec_content.lower() for keyword in devops_keywords):
-    detected_domains.append("devops")
-# ... repeat for all domains
-
-# Invoke domain experts based on detection
-for domain in detected_domains:
-    Task(
-        subagent_type="Explore",
-        prompt=f"Review SPEC-{ID} for {domain} requirements and provide domain-specific guidance"
-    )
-```
-
-**Example Invocation** (Backend detected):
-```
-Invoking Task tool (backend-expert via Explore):
-- subagent_type: "Explore"
-- description: "Review SPEC for backend requirements"
-- prompt: """You are consulting as backend-expert for this SPEC.
-
-SPEC Content: [SPEC-AUTH-001 content]
-
-Please provide:
-1. Backend framework recommendations (FastAPI, Django, etc.)
-2. API design patterns for this SPEC
-3. Database schema considerations
-4. Authentication/security requirements
-5. Performance optimization suggestions
-
-Output format: Brief advisory (2-3 paragraphs)"""
-```
-
-**Output Storage**:
-- Domain expert feedback stored in `.moai/specs/SPEC-{ID}/domain-advisory.md`
-- SPEC metadata updated with `domains: [frontend, backend]` field
-- Config.json updated with domain routing information
-
-**Integration with Phase 2**:
-- Domain detection runs AFTER spec-builder completes
-- Domain expert feedback BEFORE git-manager creates branch/PR
-- Feedback included in SPEC plan.md as "Domain Expert Advisory" section
-
-**Graceful Degradation**:
-- If no keywords detected → No domain experts invoked
-- If domain expert unavailable → Continue without advisory
-- Multi-domain projects (full-stack) → Invoke multiple experts sequentially
-
----
+After user approval (collected via `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)`), call the spec-builder and git-manager agents using the **Task tool**.
 
 ### ⚙️ How to call an agent
 
@@ -407,36 +274,58 @@ Output format: Brief advisory (2-3 paragraphs)"""
 1. Call spec-builder (create plan):
    - subagent_type: "spec-builder"
    - description: "Create SPEC document"
-   - prompt: """You are spec-builder agent.
+   - prompt: """당신은 spec-builder 에이전트입니다.
 
-LANGUAGE CONFIGURATION:
-- conversation_language: {{CONVERSATION_LANGUAGE}}
-- language_name: {{CONVERSATION_LANGUAGE_NAME}}
+언어 설정:
+- 대화_언어: {{CONVERSATION_LANGUAGE}}
+- 언어명: {{CONVERSATION_LANGUAGE_NAME}}
 
-CRITICAL INSTRUCTION:
-ALL SPEC documents MUST be generated in conversation_language:
-- spec.md: Full document in conversation_language
-- plan.md: Full document in conversation_language
-- acceptance.md: Full document in conversation_language
+중요 지시사항:
+모든 SPEC 문서는 대화_언어로 작성되어야 합니다:
+- spec.md: 전체 문서를 대화_언어로 작성
+- plan.md: 전체 문서를 대화_언어로 작성
+- acceptance.md: 전체 문서를 대화_언어로 작성
 
-YAML frontmatter and @TAG identifiers MUST remain in English.
-Code examples and technical keywords can be mixed (code in English, narrative in user language).
+YAML 프론트매터와 @TAG 식별자는 반드시 영어로 유지합니다.
+코드 예제와 기술 키워드는 혼합 가능 (코드는 영어, 설명은 사용자 언어).
 
-SKILL INVOCATION:
-Use explicit Skill() calls when needed:
-- Skill("moai-foundation-specs") for SPEC structure guidance
-- Skill("moai-foundation-ears") for EARS syntax requirements
-- Skill("moai-alfred-spec-metadata-validation") for metadata validation
-- Skill("moai-alfred-tag-scanning") for TAG chain references
+스킬 호출:
+필요 시 명시적 Skill() 호출 사용:
+- Skill("moai-foundation-specs") - SPEC 구조 가이드
+- Skill("moai-foundation-ears") - EARS 문법 요구사항
+- Skill("moai-alfred-spec-metadata-validation") - 메타데이터 검증
+- Skill("moai-alfred-tag-scanning") - TAG 체인 참조
 
-TASK:
-Please fill out the SPEC document according to the plan approved in STEP 1.
-Create a specification for the EARS structure."""
+작업:
+STEP 1에서 승인된 계획에 따라 SPEC 문서를 작성해주세요.
+EARS 구조에 대한 명세를 작성합니다."""
 
 2. Invoke git-manager (Git task):
    - subagent_type: "git-manager"
-   - description: "Create Git branch/PR"
-   - prompt: "After completing the plan, please create a branch and Draft PR."
+   - description: "Create Git branch/PR with duplicate prevention"
+   - prompt: """당신은 git-manager 에이전트입니다.
+
+언어 설정:
+- 대화_언어: {{CONVERSATION_LANGUAGE}}
+- 언어명: {{CONVERSATION_LANGUAGE_NAME}}
+
+중요 지시사항 (팀 모드 중복 방지):
+GitHub Issue 또는 PR을 만들기 전에:
+1. 항상 제목에 SPEC-ID가 있는 기존 Issue를 확인하세요
+2. 항상 feature/SPEC-{ID} 브랜치명의 기존 PR을 확인하세요
+3. Issue가 존재하면 → 업데이트, 중복 생성 금지
+4. PR이 존재하면 → 업데이트, 중복 생성 금지
+5. 둘 다 존재하면 → 최신 SPEC 버전으로 모두 업데이트
+6. 레이블 필터 실패 시 대체 검색 사용 (일부 Issue는 레이블 없을 수 있음)
+7. 항상 레이블 추가: "spec", "planning", + 우선순위 레이블
+
+git-manager.md의 "SPEC 작성 시" 섹션에서 자세한 중복 방지 프로토콜과 코드 예제를 참고하세요.
+
+작업:
+완성된 SPEC 문서에 대해 기능 브랜치(feature/SPEC-{SPEC_ID})와 Draft PR(→ develop)을 생성합니다.
+GitHub 엔티티를 생성하기 전에 중복 방지 프로토콜을 구현합니다.
+
+출력 언어: {{CONVERSATION_LANGUAGE}}"""
 ```
 
 ## function
@@ -652,10 +541,10 @@ You must include a HISTORY section **right after the YAML Front Matter**:
 
 **HISTORY writing rules**:
 - **Version system**: v0.0.1 (INITIAL) → v0.1.0 (implementation complete) → v1.0.0 (stabilization)
- - Detailed version system: See Skill("moai-alfred-spec-metadata-extended")
+ - Detailed version system: See Skill("moai-alfred-spec-metadata-extended") for version-system guide
 - **Version order**: Latest version on top (reverse order)
 - **Change type tag**: INITIAL, ADDED, CHANGED, IMPLEMENTATION COMPLETED, BREAKING, DEPRECATED, REMOVED, FIXED
- - Detailed description: See Skill("moai-alfred-spec-metadata-extended")
+ - Detailed description: See Skill("moai-alfred-spec-metadata-extended") for history-writing-guide
 - **Required items**: Version, date, AUTHOR, changes
 - **Optional items**: REVIEW, SCOPE, CONTEXT, MIGRATION
 
@@ -865,6 +754,43 @@ See `.coderabbit.yaml` for detailed SPEC review checklist.
 **Load first**: `.moai/project/product.md` (business requirement)
 
 **Recommendation**: The plan is complete. You can experience better performance and context management by starting a new chat session with the `/clear` or `/new` command before proceeding to the next step (`/alfred:2-run`).
+
+---
+
+## Final Step
+
+After plan creation completes, Alfred automatically invokes AskUserQuestion to ask the user what to do next:
+
+```python
+AskUserQuestion(
+    questions=[
+        {
+            "question": "스펙 작성이 완료되었습니다. 다음으로 뭘 하시겠습니까?",
+            "header": "다음 단계",
+            "multiSelect": false,
+            "options": [
+                {
+                    "label": "🔨 구현 시작",
+                    "description": "/alfred:2-run SPEC-XXX로 TDD 구현 진행"
+                },
+                {
+                    "label": "📝 스펙 수정",
+                    "description": "SPEC 문서 검토 후 수정"
+                },
+                {
+                    "label": "🔄 새 세션 시작",
+                    "description": "성능 최적화를 위해 /clear 실행"
+                }
+            ]
+        }
+    ]
+)
+```
+
+**User Responses**:
+- **🔨 구현 시작**: Proceed to `/alfred:2-run SPEC-XXX` for TDD implementation
+- **📝 스펙 수정**: Review and modify SPEC documents before implementation
+- **🔄 새 세션 시작**: Execute `/clear` to start fresh session (recommended for performance)
 
 ---
 

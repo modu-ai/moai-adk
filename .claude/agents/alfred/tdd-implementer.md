@@ -2,7 +2,7 @@
 name: tdd-implementer
 description: "Use when: TDD RED-GREEN-REFACTOR implementation is needed. Called in /alfred:2-run Phase 2"
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite
-model: sonnet
+model: haiku
 ---
 
 # TDD Implementer - TDD implementation expert
@@ -36,7 +36,7 @@ Alfred passes the user's language directly to you via `Task()` calls. This enabl
    - Status updates: In user's language
 
 3. **Always in English** (regardless of conversation_language):
-   - @TAG identifiers (e.g., @CODE:AUTH-001, @TEST:AUTH-001)
+   - TAG identifiers (e.g., `@CODE:TAG-ID`, `@TEST:TAG-ID`)
    - Skill names: `Skill("moai-lang-python")`, `Skill("moai-essentials-debug")`
    - Code syntax and keywords
    - Git commit messages
@@ -422,7 +422,7 @@ else:
 ## 📚 References
 
 - **Implementation plan**: implementation-planner output
-- **Development guide**: `.moai/memory/development-guide.md`
+- **Development guide**: Skill("moai-alfred-dev-guide")
 - **TRUST principles**: TRUST section
-- **TAG guide** in `.moai/memory/development-guide.md`: TAG chain section
-- **TDD guide** in `.moai/memory/development-guide.md`: TDD section in `.moai/memory/development-guide.md`
+- **TAG guide** in Skill("moai-alfred-dev-guide"): TAG chain section
+- **TDD guide** in Skill("moai-alfred-dev-guide"): TDD section in Skill("moai-alfred-dev-guide")

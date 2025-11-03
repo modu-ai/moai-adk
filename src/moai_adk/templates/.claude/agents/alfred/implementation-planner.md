@@ -345,6 +345,6 @@ After approval, hand over the following information to **tdd-implementer**:
 ## 📚 References
 
 - **SPEC file**: `.moai/specs/SPEC-*.md`
-- **Development guide**: `.moai/memory/development-guide.md`
-- **TRUST principles**: TRUST section in `.moai/memory/development-guide.md`
-- **TAG Guide**: TAG Chain section in `.moai/memory/development-guide.md`
+- **Development guide**: Skill("moai-alfred-dev-guide")
+- **TRUST principles**: TRUST section in Skill("moai-alfred-dev-guide")
+- **TAG Guide**: TAG Chain section in Skill("moai-alfred-dev-guide")

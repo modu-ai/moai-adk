@@ -1,9 +1,0 @@
-{
-  "name": "backend-plugin",
-  "version": "1.0.0",
-  "description": "FastAPI 0.120.2 + uv scaffolding - SQLAlchemy 2.0 ORM, Alembic database migrations, async support",
-  "author": {
-    "name": "moai-adk",
-    "url": "https://adk.mo.ai.kr"
-  }
-}

@@ -1,4 +1,5 @@
 # @CODE:INIT-003:PHASE | SPEC: .moai/specs/SPEC-INIT-003/spec.md | TEST: tests/unit/test_init_reinit.py
+# @CODE:TEST-COVERAGE-001 | SPEC: SPEC-TEST-COVERAGE-001.md | TEST: tests/unit/test_phase_executor.py
 """Phase-based installation executor (SPEC-INIT-003 v0.4.2)
 
 Runs the project initialization across five phases:
@@ -7,6 +8,8 @@ Runs the project initialization across five phases:
 - Phase 3: Resource (copy templates while preserving user content)
 - Phase 4: Configuration (generate configuration files)
 - Phase 5: Validation (verify and finalize)
+
+Test coverage includes 5-phase integration tests with backup, configuration, and validation
 """
 
 import json
@@ -142,7 +145,7 @@ class PhaseExecutor:
         # Set template variable context (if provided)
         if config:
             # @TAG:LANG-FIX-001:PY-CONFIG | Read language from nested config structure
-            language_config = config.get("language", {})
+            language_config: dict[str, Any] = config.get("language", {})
             if not isinstance(language_config, dict):
                 language_config = {}
 
@@ -252,9 +255,8 @@ class PhaseExecutor:
     ) -> None:
         """Phase 5: validation and wrap-up.
 
-        @CODE:INIT-004:PHASE5 | Phase 5 verification logic
+        @CODE:INIT-PHASE-001 | Phase 5 verification logic
         @REQ:VALIDATION-001 | SPEC-INIT-004: Verify required files after initialization completion
-        @CODE:INIT-004:PHASE5-INTEGRATION | Integration of validation in Phase 5
 
         Args:
             project_path: Project path.
@@ -266,8 +268,8 @@ class PhaseExecutor:
             "Phase 5: Validation and finalization...", progress_callback
         )
 
-        # @CODE:INIT-004:VERIFY-001 | Validate installation results
-        # @CODE:INIT-004:VALIDATION-CHECK | Comprehensive installation validation
+        # Validate installation results
+        # Comprehensive installation validation
         # Verifies all required files including 4 Alfred command files:
         # - 0-project.md, 1-plan.md, 2-run.md, 3-sync.md
         self.validator.validate_installation(project_path)

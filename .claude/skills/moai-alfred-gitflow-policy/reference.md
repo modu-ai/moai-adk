@@ -1,330 +1,269 @@
-# GitFlow Protection Policy
+# GitFlow Protection Policy - Reference
 
-**Document ID**: @DOC:GITFLOW-POLICY-ALIAS
-**Published**: 2025-10-17
-**Updated**: 2025-10-29
-**Status**: **Enforced via GitHub Branch Protection** (v0.8.3+)
-**Scope**: Personal and Team modes
+## GitHub Branch Protection Configuration
 
----
-
-## Overview
-
-MoAI-ADK **enforces** a GitFlow-inspired workflow through GitHub Branch Protection. As of v0.8.3, the `main` branch is protected and requires Pull Requests for all changes, including from administrators.
-
-**What Changed**: Previously (v0.3.5-v0.8.2), we used an advisory approach with warnings. Now we enforce proper GitFlow to ensure code quality and prevent accidental direct pushes to main.
-
-## Key Requirements (Enforced)
-
-### 1. Main Branch Access (Enforced)
-
-| Requirement | Summary | Enforcement |
-|-------------|---------|-------------|
-| **Merge via develop** | MUST merge `develop` into `main` | ✅ Enforced |
-| **Feature branches off develop** | MUST branch from `develop` and raise PRs back to `develop` | ✅ Enforced |
-| **Release process** | Release flow: `develop` → `main` (PR required) | ✅ Enforced |
-| **Force push** | Blocked on `main` | ✅ Blocked |
-| **Direct push** | Blocked on `main` (PR required) | ✅ Blocked |
-
-### 2. Git Workflow (Required)
+### Main Branch Rules (Enforced)
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                ENFORCED GITFLOW                         │
-│         (GitHub Branch Protection Active)               │
-└─────────────────────────────────────────────────────────┘
-
-        develop (required base branch)
-          ↑     ↓
-    ┌─────────────────┐
-    │                 │
-    │   developer work │
-    │                 │
-    ↓                 ↑
-feature/SPEC-{ID}   [PR: feature -> develop]
-                     [code review + approval]
-                     [Merge to develop]
-
-    develop (stable)
-         ↓
-         │   (release manager prepares)
-         ↓
-    [PR: develop -> main]
-    [Code review + approval REQUIRED]
-    [All discussions resolved]
-    [CI/CD validation]
-    [tag creation]
-         ↓
-       main (protected release)
+Settings → Branches → Branch protection rules
+├── Require a pull request before merging
+│   └── Require approvals: 1
+├── Require status checks to pass
+│   └── Require branches to be up to date before merging
+├── Require conversation resolution before merging
+├── Require signed commits
+└── Restrict who can push to matching branches
+    └── Allows: [maintainers only]
 ```
 
-**Enforcement**: Direct pushes to `main` are **blocked** via GitHub Branch Protection. All changes must go through Pull Requests.
+### Develop Branch Rules (Advisory)
 
-## Technical Implementation
+```
+Settings → Branches → Branch protection rules
+├── Require a pull request before merging
+│   └── Require approvals: 0 (flexible)
+├── Require status checks to pass
+│   └── Both: Linting + Tests
+└── Dismiss stale pull request approvals when new commits are pushed
+```
 
-### Pre-push Hook (Advisory Mode)
+## Feature Branch Workflow
 
-**Location**: `.git/hooks/pre-push`  
-**Purpose**: Warn on `main` branch pushes without blocking them
+### 1. Create Feature Branch
 
 ```bash
-# When attempting to push to main:
-⚠️  ADVISORY: Non-standard GitFlow detected
+# Always start from develop
+git checkout develop
+git pull origin develop
+git checkout -b feature/SPEC-AUTH-001
 
-Current branch: feature/SPEC-123
-Target branch: main
-
-Recommended GitFlow workflow:
-  1. Work on feature/SPEC-{ID} branch (created from develop)
-  2. Push to feature/SPEC-{ID} and create PR to develop
-  3. Merge into develop after code review
-  4. When develop is stable, create PR from develop to main
-  5. Release manager merges develop -> main with tag
-
-✓ Push will proceed (flexibility mode enabled)
+# Naming convention: feature/SPEC-{DOMAIN}-{NUMBER}
+# Examples: feature/SPEC-AUTH-001, feature/SPEC-CACHE-FIX-002
 ```
 
-### Force Push Advisory
+### 2. Make Commits
 
 ```bash
-⚠️  ADVISORY: Force-push to main branch detected
+# Follow conventional commit format
+git commit -m "feat(auth): Implement email verification
 
-Recommended approach:
-  - Use GitHub PR with proper code review
-  - Ensure changes are merged via fast-forward
+- Add email validation logic
+- Create verification token system
+- Update user model with verification status
 
-✓ Push will proceed (flexibility mode enabled)
+@CODE:AUTH-001"
 ```
 
----
-
-## Workflow Examples
-
-### Scenario 1: Standard Feature Development (Recommended)
+### 3. Push and Create PR
 
 ```bash
-# 1. Sync latest code from develop
+# Push to remote
+git push origin feature/SPEC-AUTH-001
+
+# Create PR (gh cli)
+gh pr create \
+  --base develop \
+  --head feature/SPEC-AUTH-001 \
+  --title "[FEAT] Implement Email Verification" \
+  --body "$(cat <<'EOF'
+## Summary
+Implements email verification system as per SPEC-AUTH-001
+
+## Test Plan
+- [ ] Unit tests pass (npm run test)
+- [ ] Email sending verified in dev
+- [ ] Verification flow tested end-to-end
+
+@TEST:AUTH-001
+@CODE:AUTH-001
+EOF
+)"
+```
+
+### 4. Code Review and Merge
+
+```bash
+# After approval
+gh pr merge <PR_NUMBER> \
+  --squash \
+  --delete-branch \
+  -m "Merge: Email verification system (SPEC-AUTH-001)"
+
+# Auto-deletes feature branch after merge
+```
+
+## Release Process (develop → main)
+
+### When Develop is Stable
+
+```bash
+# 1. Ensure develop is fully tested
 git checkout develop
 git pull origin develop
 
-# 2. Create a feature branch (from develop)
-git checkout -b feature/SPEC-001-new-feature
+# 2. Run complete test suite
+npm run test
+npm run lint
+npm run type-check
 
-# 3. Implement the change
-# ... write code and tests ...
+# 3. Create release PR to main
+gh pr create \
+  --base main \
+  --head develop \
+  --title "Release: v0.2.0" \
+  --body "$(cat <<'EOF'
+## Release v0.2.0
 
-# 4. Commit
+### Features
+- EMAIL: Email verification system (SPEC-AUTH-001)
+- CACHE: Redis caching (SPEC-CACHE-FIX-001)
+
+### Bug Fixes
+- AUTH: Session expiration logic
+- API: Rate limiting edge cases
+
+### Breaking Changes
+None
+
+## Checklist
+- [x] All tests passing
+- [x] Documentation updated
+- [x] Changelog generated
+- [x] Version bumped
+- [x] No security vulnerabilities
+EOF
+)"
+
+# 4. After approval, merge to main
+gh pr merge <RELEASE_PR_NUMBER> \
+  --merge \
+  --delete-branch \
+  -m "Release: v0.2.0 - Email verification and caching"
+
+# 5. Create git tag
+git tag -a v0.2.0 -m "Release v0.2.0"
+git push origin v0.2.0
+
+# 6. CI/CD auto-deploys to PyPI
+```
+
+## Conflict Resolution
+
+### When Develop Changed After Feature Branch Created
+
+```bash
+# 1. Fetch latest develop
+git fetch origin develop
+
+# 2. Rebase (preferred) or merge
+git rebase origin/develop
+
+# 3. If conflicts exist, resolve manually
+git status  # See conflicted files
+
+# Edit conflicted files, keep desired changes
+
+# 4. Continue rebase
 git add .
-git commit -m "..."
+git rebase --continue
 
-# 5. Push
-git push origin feature/SPEC-001-new-feature
-
-# 6. Open a PR: feature/SPEC-001-new-feature -> develop
-
-# 7. Merge into develop after review and approval
+# 5. Force push (safe, rebasing your own branch)
+git push origin feature/SPEC-AUTH-001 --force-with-lease
 ```
 
-### Scenario 2: Fast Hotfix (Flexible)
+### When PR Has Merge Conflicts
 
 ```bash
-# When an urgent fix is required:
-
-# Option 1: Recommended (via develop)
+# If CI shows merge conflicts:
+# 1. Update local develop
 git checkout develop
-git checkout -b hotfix/critical-bug
-# ... apply fix ...
-git push origin hotfix/critical-bug
-# Open PRs: hotfix -> develop -> main
+git pull origin develop
 
-# Option 2: Direct fix on main (allowed, not recommended)
-git checkout main
-# ... apply fix ...
-git commit -m "Fix critical bug"
-git push origin main  # ⚠️ Advisory warning appears but push continues
+# 2. Rebase feature branch
+git checkout feature/SPEC-AUTH-001
+git rebase develop
+
+# 3. Resolve conflicts manually
+# (same as above)
+
+# 4. Push resolved version
+git push origin feature/SPEC-AUTH-001 --force-with-lease
+
+# GitHub PR automatically updates
 ```
 
-### Scenario 3: Release (Standard or Flexible)
+## Error Handling
 
+### PR to Main Blocked
+
+**Error Message**:
+```
+❌ GitFlow Violation Detected
+Base branch: main (forbidden)
+Expected: develop
+
+Feature branches must target develop, not main.
+```
+
+**Fix**:
 ```bash
-# Standard approach (recommended):
-git checkout develop
-gh pr create --base main --head develop --title "Release v1.0.0"
+# 1. Close the incorrect PR
+gh pr close <PR_NUMBER>
 
-# Direct push (allowed):
-git checkout develop
-git push origin main  # ⚠️ Advisory warning appears but push continues
-git tag -a v1.0.0 -m "Release v1.0.0"
-git push origin v1.0.0
+# 2. Create correct PR
+gh pr create --base develop --head feature/SPEC-AUTH-001
 ```
 
----
+### Force Push to Main Rejected
 
-## Policy Modes
+**Error Message**:
+```
+❌ [remote rejected] main (protected branch hook declined)
+fatal: Could not read from remote repository.
+```
 
-### Strict Mode (Active, v0.8.3+) ✅ ENFORCED
-
-**GitHub Branch Protection Enabled**:
-- ✅ **enforce_admins: true** - Administrators must follow all rules
-- ✅ **required_pull_request_reviews** - 1 approval required
-- ✅ **required_conversation_resolution** - All discussions must be resolved
-- ✅ **Block direct pushes to `main`** - PR required for all users
-- ✅ **Block force pushes** - Prevents history rewriting
-- ✅ **Block branch deletion** - Protects main from accidental deletion
-
-**What This Means**:
-- ❌ No one (including admins) can push directly to `main`
-- ✅ All changes must go through Pull Requests
-- ✅ PRs require code review approval
-- ✅ All code discussions must be resolved before merge
-- ✅ Enforces proper GitFlow: feature → develop → main
-
-### Advisory Mode (Legacy, v0.3.5 - v0.8.2)
-
-- ⚠️ Warned but allowed direct pushes to `main`
-- ⚠️ Warned but allowed force pushes
-- ⚠️ Recommended best practices while preserving flexibility
-- ❌ **Deprecated** - Replaced by Strict Mode for better quality control
-
----
-
-## Recommended Checklist
-
-Every contributor should ensure:
-
-- [ ] `.git/hooks/pre-push` exists and is executable (755)
-- [ ] Feature branches fork from `develop`
-- [ ] Pull requests target `develop`
-- [ ] Releases merge `develop` → `main`
-
-**Verification Commands**:
+**Fix**:
 ```bash
-ls -la .git/hooks/pre-push
-git branch -vv
+# Cannot force push to main (by design)
+# Create PR instead
+gh pr create --base main --head develop
 ```
 
----
+### Branch Out of Sync (Behind Develop)
 
-## FAQ
-
-**Q: Can we merge into `main` from branches other than `develop`?**  
-A: Yes. You will see an advisory warning, but the merge proceeds. The recommended path remains `develop` → `main`.
-
-**Q: Are force pushes allowed?**  
-A: Yes. You receive a warning, but the push succeeds. Use with caution.
-
-**Q: Can we commit/push directly to `main`?**  
-A: Yes. Expect an advisory warning, yet the push continues.
-
-**Q: Can I disable the hook entirely?**  
-A: Yes. Remove `.git/hooks/pre-push` or strip its execute permission.
-
-**Q: Why switch to Advisory Mode?**
-A: Advisory Mode was used in v0.3.5-v0.8.2. As of v0.8.3, we've switched to Strict Mode with GitHub Branch Protection for better quality control.
-
-**Q: What if develop falls behind main?**
-A: This can happen when hotfixes or releases go directly to main. Regularly sync main → develop to prevent divergence. See "Maintaining develop-main Sync" section below.
-
-**Q: Can I bypass branch protection in emergencies?**
-A: No. Even administrators must follow the PR process. For true emergencies, temporarily disable protection via GitHub Settings (requires admin access), but re-enable immediately after.
-
----
-
-## Maintaining develop-main Sync
-
-### ⚠️ Critical Rule: develop Must Stay Current
-
-**Problem**: When main receives direct commits (hotfixes, emergency releases) without syncing back to develop, GitFlow breaks:
-
+**Error Message**:
 ```
-❌ BAD STATE:
-develop: 3 commits ahead, 29 commits behind main
-- develop has outdated dependencies
-- New features branch from old code
-- Merge conflicts multiply over time
+⚠️ This branch is out-of-date with the base branch
+Consider updating your branch before merging.
 ```
 
-### Signs of Drift
-
-Monitor for these warnings:
-- `git status` shows "Your branch is X commits behind main"
-- Feature branches conflict with main during PR
-- CI/CD failures due to dependency mismatches
-- Version numbers in develop don't match main
-
-### Recovery Procedure
-
-When develop falls behind main:
-
-1. **Assess the Gap**
-   ```bash
-   git log --oneline develop..main  # Commits in main but not develop
-   git log --oneline main..develop  # Commits in develop but not main
-   ```
-
-2. **Sync Strategy: Merge main into develop (Recommended)**
-   ```bash
-   git checkout develop
-   git pull origin develop        # Get latest develop
-   git merge main                 # Merge main into develop
-   # Resolve conflicts if any (prefer main for version/config files)
-   git push origin develop
-   ```
-
-3. **Emergency Only: Reset develop to main (Destructive)**
-   ```bash
-   # ⚠️ ONLY if develop's unique commits are unwanted
-   git checkout develop
-   git reset --hard main
-   git push origin develop --force
-   ```
-
-### Prevention: Regular Sync Schedule
-
-**After every main release** (REQUIRED):
+**Fix**:
 ```bash
-# Immediately after merging develop → main:
-git checkout develop
-git merge main
-git push origin develop
+# Update from latest develop
+git fetch origin
+git rebase origin/develop
+git push origin feature/SPEC-AUTH-001 --force-with-lease
 ```
 
-**Weekly maintenance** (for active projects):
-```bash
-# Every Monday morning:
-git checkout develop
-git pull origin main
-git push origin develop
-```
+## Checklist: Before Merging to Develop
 
-### Real-World Case Study (2025-10-29)
+- [ ] Feature branch created from latest develop
+- [ ] All commits follow conventional commit format
+- [ ] Code passes linting and type checking
+- [ ] Tests pass locally and in CI
+- [ ] PR description includes @SPEC:ID and @TEST:ID
+- [ ] Code review approved by at least 1 maintainer
+- [ ] All conversations resolved
+- [ ] Branch is up-to-date with develop
+- [ ] Commits are squashed (optional but recommended)
 
-**Situation**: develop was 29 commits behind main due to:
-- v0.8.2, v0.8.3 released directly to main
-- No reverse sync to develop
-- Feature branches contained outdated code
+## Checklist: Before Merging to Main
 
-**Resolution**:
-- Merged main → develop (14 file conflicts)
-- Resolved conflicts prioritizing main's versions
-- TAG validation bypassed for merge commit
-- Enabled Strict Mode to prevent future direct pushes
-
-**Lesson**: With Strict Mode active, this won't happen again. All releases must go through develop → main PR flow.
-
----
-
-## Policy Change Log
-
-| Date       | Change                                           | Owner        |
-|------|------|--------|
-| 2025-10-17 | Initial policy drafted (Strict Mode)             | git-manager  |
-| 2025-10-17 | Switched to Advisory Mode (warnings only)        | git-manager  |
-| 2025-10-29 | **Enabled GitHub Branch Protection (Strict Mode)** | Alfred       |
-| 2025-10-29 | Added develop-main sync guidelines and real-world case study | Alfred       |
-| 2025-10-29 | Enforced `enforce_admins`, `required_conversation_resolution` | Alfred       |
-
----
-
-**This policy is advisory—adapt it to fit your project needs.**  
-**Reach out to the team lead or release engineer for questions or suggestions.**
+- [ ] All features merged and tested in develop
+- [ ] Complete test suite passes
+- [ ] Documentation is current
+- [ ] Changelog is generated
+- [ ] Version is bumped (semver)
+- [ ] Security review completed
+- [ ] Release notes drafted
+- [ ] No regressions detected

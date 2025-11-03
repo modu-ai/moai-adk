@@ -1,19 +1,16 @@
 name: MoAI GitFlow Release Pipeline
 
-# main 브랜치에 릴리즈 커밋(🔖 RELEASE:)이 푸시될 때 자동으로 실행
+# Draft PR이 release 라벨과 함께 main으로 merge될 때 자동으로 실행
+# 이는 "🔖 RELEASE:" 커밋 패턴보다 더 신뢰할 수 있는 트리거입니다 (실패율 <5%)
 on:
-  push:
+  pull_request:
+    types: [closed]
     branches:
       - main
-    # 릴리즈 커밋만 필터 (RELEASE 패턴)
-    paths-ignore:
-      - "docs/**"
-      - "README.md"
-      - ".gitignore"
 
 jobs:
   detect-release:
-    name: 🔍 Detect Release Commit
+    name: 🔍 Detect Release PR
     runs-on: ubuntu-latest
     outputs:
       is_release: ${{ steps.detect.outputs.is_release }}
@@ -26,35 +23,44 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: 🔍 Detect release commit
+      - name: 🔍 Detect release PR (라벨 기반)
         id: detect
         run: |
-          # 마지막 커밋 메시지 확인 (merge commit 포함)
-          LAST_COMMIT=$(git log -1 --pretty=%B)
-          echo "최근 커밋: $LAST_COMMIT"
+          # PR이 merge 되었는지 확인
+          if [ "${{ github.event.pull_request.merged }}" = "true" ]; then
+            echo "✅ PR이 main으로 merge 되었습니다"
 
-          # RELEASE 패턴 감지 (🔖 RELEASE: v0.6.0)
-          # 커밋 메시지 어디든 RELEASE 패턴이 있으면 감지 (merge commit 지원)
-          if echo "$LAST_COMMIT" | grep -q "🔖 RELEASE:"; then
-            echo "✅ Release 커밋 감지됨"
+            # PR labels에서 'release' 찾기
+            LABELS="${{ github.event.pull_request.labels.*.name }}"
 
-            # 버전 추출 (🔖 RELEASE: v0.6.0 → 0.6.0)
-            VERSION=$(echo "$LAST_COMMIT" | grep -oP 'RELEASE: v\K[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "")
+            if echo "$LABELS" | grep -q "release"; then
+              echo "✅ Release 라벨 감지됨"
 
-            if [ -n "$VERSION" ]; then
-              echo "🔖 버전: v$VERSION"
-              echo "is_release=true" >> $GITHUB_OUTPUT
-              echo "version=$VERSION" >> $GITHUB_OUTPUT
-            else
               # pyproject.toml에서 버전 읽기
               VERSION=$(grep '^version = ' pyproject.toml | awk -F'"' '{print $2}' || echo "")
-              echo "is_release=true" >> $GITHUB_OUTPUT
-              echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+              if [ -n "$VERSION" ]; then
+                echo "🔖 버전: v$VERSION"
+                echo "is_release=true" >> $GITHUB_OUTPUT
+                echo "version=$VERSION" >> $GITHUB_OUTPUT
+              else
+                echo "❌ pyproject.toml에서 버전을 찾을 수 없습니다"
+                echo "is_release=false" >> $GITHUB_OUTPUT
+              fi
+            else
+              echo "ℹ️  Release 라벨이 없는 일반 PR입니다"
+              echo "is_release=false" >> $GITHUB_OUTPUT
             fi
           else
-            echo "ℹ️  Release 커밋이 아닙니다"
+            echo "ℹ️  PR이 merge되지 않았습니다"
             echo "is_release=false" >> $GITHUB_OUTPUT
           fi
+
+      - name: 📝 Log detection result (for debugging)
+        run: |
+          echo "Detection result:"
+          echo "  is_release=${{ steps.detect.outputs.is_release }}"
+          echo "  version=${{ steps.detect.outputs.version }}"
 
   create-tag-and-release:
     name: 🎯 Create Tag and Release

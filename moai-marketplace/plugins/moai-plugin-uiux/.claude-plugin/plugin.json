@@ -1,9 +1,0 @@
-{
-  "name": "uiux-plugin",
-  "version": "1.0.0",
-  "description": "Design automation with Figma MCP - 7 agents, design-to-code workflows, shadcn/ui component generation",
-  "author": {
-    "name": "moai-adk",
-    "url": "https://adk.mo.ai.kr"
-  }
-}

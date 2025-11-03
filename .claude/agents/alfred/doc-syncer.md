@@ -178,7 +178,7 @@ doc-syncer verifies the integrity of the primary chain with the rg command:
 
 ### Document synchronization criteria
 
-- Check document consistency with TRUST principles (@.moai/memory/development-guide.md)
+- Check document consistency with TRUST principles (Skill("moai-alfred-dev-guide"))
 - @TAG system integrity verification
 - Automatically create/update API documents
 - Synchronize README and architecture documents

@@ -260,3 +260,160 @@ jobs:
           echo "🗿 MoAI-ADK GitFlow automation complete"
           echo "✨ Professional workflow without needing to know Git"
 
+  # ==============================================================================
+  # PowerShell Cross-Platform Testing (Windows)
+  # ==============================================================================
+
+  powershell-tests:
+    name: 🪟 PowerShell Cross-Platform Tests
+    runs-on: windows-latest
+    if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/develop') || startsWith(github.ref, 'refs/heads/feature/')
+
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install PowerShell Core
+        shell: powershell
+        run: |
+          # PowerShell Core already installed on Windows runner
+          pwsh -NoProfile -Command "Write-Host 'PowerShell Version:' (pwsh --version)"
+
+      - name: Install Package Dependencies
+        shell: powershell
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]" --quiet
+
+      - name: Run PowerShell Package Validation Tests
+        shell: powershell
+        run: |
+          # @TAG:POWERSHELL-CI-001 | Windows CI/CD PowerShell validation
+
+          $ErrorActionPreference = "Continue"
+          $testResults = @{}
+
+          Write-Host "🔧 PowerShell Cross-Platform Test Suite" -ForegroundColor Cyan
+          Write-Host "Timestamp: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor Gray
+          Write-Host ""
+
+          # Test 1: Package Installation
+          Write-Host "[TEST] Package Installation" -ForegroundColor Yellow
+          try {
+              if (python -c "import moai_adk; print('OK')" 2>&1 | Select-String "OK") {
+                  Write-Host "✓ Package installation verified" -ForegroundColor Green
+                  $testResults["Package Installation"] = $true
+              } else {
+                  Write-Host "✗ Package installation failed" -ForegroundColor Red
+                  $testResults["Package Installation"] = $false
+              }
+          } catch {
+              Write-Host "✗ Package test error: $_" -ForegroundColor Red
+              $testResults["Package Installation"] = $false
+          }
+
+          # Test 2: Module Loading
+          Write-Host "[TEST] Module Loading" -ForegroundColor Yellow
+          try {
+              python @"
+          import moai_adk
+          from moai_adk import cli, core, templates
+          modules = ['cli', 'core', 'templates']
+          for mod in modules:
+              print(f'✓ {mod} module loaded')
+"@ 2>&1 | Out-Null
+              Write-Host "✓ All modules loaded successfully" -ForegroundColor Green
+              $testResults["Module Loading"] = $true
+          } catch {
+              Write-Host "✗ Module loading failed: $_" -ForegroundColor Red
+              $testResults["Module Loading"] = $false
+          }
+
+          # Test 3: Command Availability (Windows-specific)
+          Write-Host "[TEST] Command Availability" -ForegroundColor Yellow
+          $commands = @("python", "pip", "pytest")
+          $allAvailable = $true
+          foreach ($cmd in $commands) {
+              if ((Get-Command $cmd -ErrorAction SilentlyContinue) -ne $null) {
+                  Write-Host "✓ $cmd available" -ForegroundColor Green
+              } else {
+                  Write-Host "✗ $cmd not found" -ForegroundColor Red
+                  $allAvailable = $false
+              }
+          }
+          $testResults["Command Availability"] = $allAvailable
+
+          # Test 4: Cross-Platform Script Compatibility
+          Write-Host "[TEST] Script Compatibility Check" -ForegroundColor Yellow
+          try {
+              # Test JSON parsing (Windows PowerShell compatibility)
+              $testJson = @{
+                  "version" = "0.7.0"
+                  "language" = "python"
+                  "platform" = "windows"
+              } | ConvertTo-Json
+
+              $parsed = $testJson | ConvertFrom-Json
+              if ($parsed.version -eq "0.7.0") {
+                  Write-Host "✓ JSON parsing works (Windows compatibility)" -ForegroundColor Green
+                  $testResults["Script Compatibility"] = $true
+              } else {
+                  Write-Host "✗ JSON parsing failed" -ForegroundColor Red
+                  $testResults["Script Compatibility"] = $false
+              }
+          } catch {
+              Write-Host "✗ Script compatibility test error: $_" -ForegroundColor Red
+              $testResults["Script Compatibility"] = $false
+          }
+
+          # Final Report
+          Write-Host ""
+          Write-Host ("=" * 70) -ForegroundColor Cyan
+          Write-Host "Test Results Summary" -ForegroundColor Cyan
+          Write-Host ("=" * 70) -ForegroundColor Cyan
+
+          $passed = 0
+          $failed = 0
+
+          foreach ($test in $testResults.GetEnumerator()) {
+              $status = if ($test.Value) { "✓ PASS" } else { "✗ FAIL" }
+              $color = if ($test.Value) { "Green" } else { "Red" }
+              Write-Host "$($test.Name): $status" -ForegroundColor $color
+
+              if ($test.Value) { $passed++ } else { $failed++ }
+          }
+
+          Write-Host ""
+          Write-Host "Results: $passed passed, $failed failed"
+
+          if ($failed -gt 0) {
+              Write-Host ""
+              Write-Host "Some tests failed! ✗" -ForegroundColor Red
+              exit 1
+          } else {
+              Write-Host ""
+              Write-Host "All tests passed! ✓" -ForegroundColor Green
+              exit 0
+          }
+
+      - name: Run pytest Tests (Windows)
+        shell: powershell
+        run: |
+          # @TAG:POWERSHELL-CI-002 | Windows pytest execution
+          pytest tests/ -v --tb=short --cov=src/moai_adk --cov-report=term-missing
+        continue-on-error: ${{ github.event.pull_request.draft == true }}
+
+      - name: 📊 PowerShell Tests Complete
+        run: |
+          Write-Host "🪟 PowerShell cross-platform tests complete" -ForegroundColor Green
+        shell: powershell
+

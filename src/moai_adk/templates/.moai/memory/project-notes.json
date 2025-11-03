@@ -1,0 +1,26 @@
+{
+  "tech_debt": [
+    {
+      "area": "Legacy auth system",
+      "severity": "medium",
+      "estimated_effort": "2 SPECs"
+    }
+  ],
+  "performance_bottlenecks": [
+    {
+      "area": "Database queries",
+      "metric": "500ms p95 latency",
+      "fix_candidate": "Add indexes on user_id"
+    }
+  ],
+  "recent_patterns": {
+    "frequent_file_edits": ["src/auth/service.py"],
+    "test_failures": ["test_jwt_validation.py"],
+    "git_operations": "daily commits, feature branches"
+  },
+  "next_priorities": [
+    "Refactor user service",
+    "Add caching layer",
+    "Update documentation"
+  ]
+}
