@@ -186,7 +186,6 @@ class TestIntegration2StageWorkflow:
             result = runner.invoke(update, ["--path", str(temp_project), '--force'])
 
             # Verify no backup directory was created
-            backup_path = temp_project / ".moai-backups"
             # (actual backup check would be in template sync)
             mock_sync.assert_called_once()
             assert result.exit_code == 0
