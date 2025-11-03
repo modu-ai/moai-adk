@@ -487,7 +487,7 @@ class TestInitializeGit:
         executor._initialize_git(tmp_path)
 
         mock_run.assert_called_once_with(
-            ["git", "init"], cwd=tmp_path, check=True, capture_output=True
+            ["git", "init"], cwd=tmp_path, check=True, capture_output=True, timeout=30
         )
 
     @patch("subprocess.run")

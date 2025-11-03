@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
+# @CODE:OFFLINE-001 | SPEC: SPEC-OFFLINE-SUPPORT-001 | TEST: tests/unit/test_network_detection.py
 """Project metadata utilities
 
 Project information inquiry (language, Git, SPEC progress, etc.)
+
+Network detection and caching support:
+- is_network_available(): Check network connectivity with timeout
+- get_package_version_info(): Get package version with offline cache support
 """
 
 import json
