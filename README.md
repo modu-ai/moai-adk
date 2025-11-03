@@ -2418,6 +2418,7 @@ Specialized domain expertise
 | `moai-domain-cli-tool`     | CLI tool development, argument parsing, POSIX compliance, user-friendly help messages    |
 | `moai-domain-data-science` | Data analysis, visualization, statistical modeling, reproducible research workflows      |
 | `moai-domain-database`     | Database design, schema optimization, indexing strategies, migration management          |
+| `moai-domain-design-systems` | Design system architecture, W3C DTCG tokens, WCAG 2.2 accessibility, design-to-code, Figma MCP |
 | `moai-domain-devops`       | CI/CD pipelines, Docker containerization, Kubernetes orchestration, IaC                  |
 | `moai-domain-frontend`     | React/Vue/Angular development, state management, performance optimization, accessibility |
 | `moai-domain-ml`           | Machine learning model training, evaluation, deployment, MLOps workflows                 |
