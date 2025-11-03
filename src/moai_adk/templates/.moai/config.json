@@ -100,6 +100,11 @@
       "philosophy": "The source of truth for TAGs lives in the code itself"
     }
   },
+  "hooks": {
+    "timeout_ms": 5000,
+    "graceful_degradation": true,
+    "notes": "Hook execution timeout (milliseconds). Set graceful_degradation to true to continue even if a hook fails."
+  },
   "github": {
     "@CODE:GITHUB-CONFIG-001": "@DOC:GITHUB-TEMPLATES-001",
     "templates": {

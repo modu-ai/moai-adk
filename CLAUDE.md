@@ -237,3 +237,175 @@ Alfred는 전역 사용자를 지원하면서 인프라를 영어로 유지하�
 ---
 
 참고: 대화 언어는 `/alfred:0-project` 시작 부분에서 선택되며, 이후 모든 프로젝트 초기화 단계에 적용됩니다.
+
+---
+
+## ⚠️ conversation_language 명확화 (MoAI-ADK 커스텀 필드)
+
+`conversation_language`는 **Claude Code의 네이티브 설정이 아닙니다**. 이는 MoAI-ADK만의 커스텀 필드입니다.
+
+### 위치 및 구조
+
+**저장 위치**:
+- `.moai/config.json` → `language.conversation_language`
+
+**예시**:
+```json
+{
+  "language": {
+    "conversation_language": "ko",
+    "conversation_language_name": "한국어"
+  }
+}
+```
+
+### Alfred가 읽고 사용하는 방식
+
+1. **Hook 스크립트가 config.json 읽음**
+   ```python
+   import json
+   config = json.loads(Path(".moai/config.json").read_text())
+   lang = config["language"]["conversation_language"]
+   ```
+
+2. **CLAUDE.md 템플릿 변수 치환**
+   ```
+   {{CONVERSATION_LANGUAGE}} → "ko"
+   {{CONVERSATION_LANGUAGE_NAME}} → "한국어"
+   ```
+
+3. **Sub-agent에게 언어 매개변수 전달**
+   ```python
+   Task(
+       prompt="작업 프롬프트",
+       subagent_type="spec-builder",
+       language="ko"  # conversation_language 값 전달
+   )
+   ```
+
+### Claude Code는 이 값을 직접 인식하지 않습니다
+
+- Claude Code의 `conversation_language` 필드는 없음
+- Alfred와 Hook 스크립트가 읽어서 처리
+- 모든 사용자 대면 콘텐츠의 언어 선택에 사용
+- Infrastructure (Skills, agents, commands) 는 영어 유지
+
+---
+
+## 🔒 Permissions 우선순위 규칙
+
+Claude Code는 permissions 설정을 **우선순위 순서**로 처리합니다.
+
+### 처리 순서
+
+```
+1. deny (최고 우선순위) - 항상 차단
+2. ask (중간 우선순위) - 사용자 확인
+3. allow (최저 우선순위) - 자동 승인
+```
+
+### 패턴 명시성 규칙
+
+**더 구체적인 패턴이 더 일반적인 패턴을 우선합니다**
+
+**예시**:
+```json
+{
+  "allow": [
+    "Bash(git status:*)",
+    "Bash(git log:*)",
+    "Bash(git diff:*)"
+  ],
+  "ask": [
+    "Bash(git push:*)",
+    "Bash(git merge:*)"
+  ],
+  "deny": [
+    "Bash(git push --force:*)"
+  ]
+}
+```
+
+**결과**:
+- `git status` → ✅ allow (allow 목록)
+- `git push` → ❓ ask (ask 목록)
+- `git push --force` → ❌ deny (더 구체적 패턴)
+
+### 권장 구조
+
+```json
+{
+  "allow": [
+    // 읽기 전용: status, log, diff, show, tag, config
+    // 안전한 도구: ls, mkdir, echo, which
+    // 개발 도구: python, pytest, ruff, black, uv 읽기
+  ],
+  "ask": [
+    // 변경 작업: add, commit, checkout, merge, reset
+    // 설치: uv add, pip install
+    // 파일 삭제: rm, rm -rf
+    // 중요한 gh 작업: pr merge
+  ],
+  "deny": [
+    // 환경 변수 파일: .env, secrets
+    // 위험한 명령: dd, mkfs, format, chmod -R 777
+    // 강제 푸시: git push --force
+    // 시스템 명령: reboot, shutdown
+  ]
+}
+```
+
+---
+
+## ⚙️ Claude Code 설정 가이드
+
+MoAI-ADK 프로젝트의 Claude Code 설정 파일들:
+
+### 1. .claude/settings.json (로컬)
+
+**역할**: Claude Code의 Hook, 권한, 환경 설정
+
+**주요 섹션**:
+- `hooks`: SessionStart, PreToolUse, UserPromptSubmit, SessionEnd, PostToolUse
+- `permissions`: allow/ask/deny Git 및 시스템 명령
+- 설정 변경 시 패키지 템플릿과 동기화 필수
+
+**권장사항**:
+- 패키지 템플릿과 동일하게 유지
+- Git 명령은 **세분화** (git:* 대신 구체적 명령)
+- 위험한 명령 (`push --force`, `reset --hard`)은 deny
+
+### 2. .moai/config.json (로컬)
+
+**역할**: MoAI-ADK 프로젝트 설정
+
+**주요 섹션**:
+- `language`: conversation_language 설정
+- `project`: 프로젝트 메타데이터
+- `git_strategy`: GitFlow 전략
+- `hooks`: Hook 실행 타임아웃 (5초)
+- `tags`: @TAG 스캔 정책
+- `constitution`: TRUST 5 원칙 설정
+
+**언어 설정**:
+```json
+{
+  "language": {
+    "conversation_language": "ko",
+    "conversation_language_name": "한국어"
+  }
+}
+```
+
+### 3. src/moai_adk/templates/ (패키지 템플릿)
+
+**역할**: 새 프로젝트 생성 시 사용할 템플릿
+
+**파일들**:
+- `.claude/settings.json` - Hook 및 권한 템플릿
+- `.moai/config.json` - 프로젝트 설정 템플릿
+- `CLAUDE.md` - 프로젝트 지침 템플릿 (영어)
+
+**중요**: 패키지 템플릿 변경 → 로컬 프로젝트 동기화 필수
+
+---

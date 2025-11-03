@@ -4,7 +4,16 @@
     "@SPEC:PROJECT-CONFIG-001": "@SPEC:MOAI-CONFIG-001"
   },
   "moai": {
-    "version": "0.14.0"
+    "version": "0.15.2",
+    "update_check_frequency": "daily",
+    "version_check": {
+      "enabled": true,
+      "cache_ttl_hours": 24
+    }
+  },
+  "language": {
+    "conversation_language": "ko",
+    "conversation_language_name": "한국어"
   },
   "constitution": {
     "enforce_tdd": true,
@@ -63,10 +72,8 @@
     "mode": "team",
     "locale": "ko",
     "language": "python",
-    "conversation_language": "ko",
-    "conversation_language_name": "한국어",
     "user_nickname": "GOOS🪿엉아",
-    "template_version": "0.14.0",
+    "template_version": "0.15.2",
     "created_at": "2025-10-27T12:34:56+09:00",
     "initialized": true,
     "optimized": true,
@@ -96,6 +103,11 @@
       "scan_command": "rg '@TAG' -n",
       "philosophy": "The source of truth for TAGs lives in the code itself"
     }
+  },
+  "hooks": {
+    "timeout_ms": 5000,
+    "graceful_degradation": true,
+    "notes": "Hook execution timeout (milliseconds). Set graceful_degradation to true to continue even if a hook fails."
   },
   "github": {
     "@CODE:GITHUB-CONFIG-001": "@DOC:GITHUB-TEMPLATES-001",
