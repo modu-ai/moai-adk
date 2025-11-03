@@ -225,7 +225,29 @@ git clone https://github.com/modu-ai/moai-adk.git
 cd moai-adk
 ```
 
-### 2. Install Dependencies
+### 2. Install uv Package Manager (if needed)
+
+**Windows Users (RECOMMENDED)**:
+```powershell
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+**macOS/Linux Users**:
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+**WSL Users (Windows Subsystem for Linux)**:
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+**Platform Notes**:
+- 🟢 **Windows (PowerShell)**: Recommended for Windows users - most stable
+- 🟡 **WSL**: Works but has environment setup overhead
+- ✅ **macOS/Linux**: Use native bash installation
+
+### 3. Install Dependencies
 
 ```bash
 # Recommended: uv (fast installation)
@@ -235,7 +257,7 @@ uv pip install -e ".[dev]"
 pip install -e ".[dev]"
 ```
 
-### 3. Use MoAI-ADK Locally
+### 4. Use MoAI-ADK Locally
 
 ```bash
 # Check CLI version
@@ -245,7 +267,7 @@ python -m moai_adk --version
 python -m moai_adk --help
 ```
 
-### 4. Run in Development Mode
+### 5. Run in Development Mode
 
 ```bash
 # Run tests
@@ -256,7 +278,7 @@ uv run ruff check
 uv run mypy src
 ```
 
-### 5. Understanding Alfred Configuration (Important!)
+### 6. Understanding Alfred Configuration (Important!)
 
 The core of MoAI-ADK is **Alfred** (MoAI SuperAgent). Alfred's behavior is defined in 4 documents in the `.claude/` directory:
 
@@ -613,7 +635,29 @@ git clone https://github.com/modu-ai/moai-adk.git
 cd moai-adk
 ```
 
-### 2. 의존성 설치
+### 2. uv 패키지 관리자 설치 (필요할 경우)
+
+**Windows 사용자 (권장)**:
+```powershell
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+**macOS/Linux 사용자**:
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+**WSL 사용자 (Windows Subsystem for Linux)**:
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+**플랫폼별 주의사항**:
+- 🟢 **Windows (PowerShell)**: Windows 사용자를 위한 권장 방법 - 가장 안정적
+- 🟡 **WSL**: 작동하지만 환경 설정 오버헤드 발생
+- ✅ **macOS/Linux**: 기본 bash 설치 사용
+
+### 3. 의존성 설치
 
 ```bash
 # uv 권장 (빠른 설치)
@@ -623,7 +667,7 @@ uv pip install -e ".[dev]"
 pip install -e ".[dev]"
 ```
 
-### 3. 로컬에서 MoAI-ADK 사용
+### 4. 로컬에서 MoAI-ADK 사용
 
 ```bash
 # CLI 버전 확인
@@ -633,7 +677,7 @@ python -m moai_adk --version
 python -m moai_adk --help
 ```
 
-### 4. 개발 모드 실행
+### 5. 개발 모드 실행
 
 ```bash
 # 테스트 실행
@@ -644,7 +688,7 @@ uv run ruff check
 uv run mypy src
 ```
 
-### 5. Alfred의 설정 문서 이해하기 (중요!)
+### 6. Alfred의 설정 문서 이해하기 (중요!)
 
 MoAI-ADK의 핵심은 **Alfred** (MoAI SuperAgent)입니다. Alfred의 동작 방식은 `.claude/` 디렉토리의 4개 문서로 정의됩니다:
 

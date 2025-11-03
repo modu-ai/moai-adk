@@ -142,16 +142,45 @@ Get your first MoAI-ADK project running in **3 simple steps**. Beginners can fin
 
 #### Command
 
+**Choose your platform**:
+
 ```bash
 # macOS/Linux
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Windows (PowerShell)
+# Windows (PowerShell) - RECOMMENDED FOR WINDOWS USERS
 powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 
-# Verify
+# Windows (Git Bash) - Alternative
+curl -LsSf https://astral.sh/uv/install.sh | bash
+
+# WSL (Windows Subsystem for Linux)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Verify installation
 uv --version
 ```
+
+**Platform Selection Guide**:
+
+| Platform | Method | Notes |
+|----------|--------|-------|
+| **macOS** | bash | Native UNIX-based, use standard installation |
+| **Linux** | bash | Native Linux support |
+| **Windows (Native)** | ⭐ PowerShell | **RECOMMENDED** - Most stable, native Windows support |
+| **Windows (Git Bash)** | bash | Alternative if PowerShell unavailable |
+| **WSL** | bash | Use Linux installation within WSL2 |
+
+**Important Notes on Windows**:
+- 🟢 **PowerShell (Native)**: Most reliable and stable method. No WSL or Git Bash needed.
+- 🟡 **Git Bash / WSL**: Works, but may encounter path issues. Try PowerShell first.
+- ❌ **Do NOT use WSL if**: You're testing on Windows—PowerShell native is easier and faster.
+
+**Why PowerShell for Windows?**
+- Fewer environment setup issues
+- Better Windows integration
+- Faster execution
+- No WSL overhead
 
 #### Expected Output
 ```
