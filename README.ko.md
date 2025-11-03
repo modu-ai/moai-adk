@@ -482,52 +482,97 @@ Running system diagnostics...
 ✓ All checks passed
 ```
 
-### Step 2️⃣: 패키지 업데이트 (시스템 전역 - 한 번만)
+### Step 2️⃣: 패키지 업데이트 + 현재 프로젝트 템플릿 동기화 (한 번만)
 
-**목적**: `moai-adk` 패키지 자체를 새 버전으로 업그레이드
+**목적**:
+1. `moai-adk` 패키지 자체를 새 버전으로 업그레이드
+2. **현재 프로젝트의 `.moai/`과 `.claude/` 동시 동기화** (버전 비교 후)
 
-**실행 위치**: 어디서나 (프로젝트 폴더 밖에서도 OK)
+**실행 위치**: 업데이트하려는 프로젝트 폴더 안에서
 
-**실행 횟수**: 시스템 전체에서 **한 번만**
+**실행 횟수**: 각 프로젝트에서 **1회씩**
+
+**💡 핵심 특징 (moai-adk init . 과의 차이)**:
+```
+moai-adk update 의 3단계 워크플로우:
+
+Stage 1: 패키지 버전 확인 (PyPI 확인)
+         └─ 필요시 패키지만 업그레이드
+
+Stage 2: 설정 버전 비교 (⭐ 가장 중요)
+         ├─ 패키지 템플릿 버전: 0.15.0
+         ├─ 프로젝트 config 버전: 0.15.0
+         └─ 같으면? Stage 3 스킵! (성능 최적화)
+
+Stage 3: 템플릿 동기화 (필요할 때만)
+         ├─ 버전이 다를 때만 실행
+         └─ .claude/, .moai/ 업데이트
+```
+
+**moai-adk init . 과의 차이점**:
+```
+moai-adk update      moai-adk init .
+─────────────────────────────────────
+✅ 버전 비교       ✅ 무조건 복사
+✅ 필요시 동기화   ✅ 항상 동기화
+✅ 빠름(~3s)       ❌ 느림(~12-18s)
+```
 
 ```bash
-# 방법 A: moai-adk 자체 명령 (권장 - 패키지 + 템플릿 동기화)
+# 방법 A: moai-adk 자체 명령 (권장 - 패키지 + 현재 프로젝트 템플릿 동시 처리)
+cd ~/projects/project-1
 moai-adk update
+# ✅ 패키지 v0.14.0 → v0.15.0
+# ✅ project-1의 .moai/, .claude/ 동시 동기화
 
-# 또는 방법 B: uv tool 명령 (패키지만 업데이트)
+# 또는 방법 B: uv tool 명령 (패키지만 업데이트, 프로젝트 템플릿은 별도 처리)
 uv tool upgrade moai-adk
+moai-adk init .  # 프로젝트 템플릿 별도 동기화 필요
 ```
 
 **무엇이 업데이트되나요?**
 
-- ✅ `moai-adk` **패키지 프로그램** (PyPI 최신 버전)
-- ✅ (방법 A 선택 시) 로컬 캐시의 템플릿 스냅샷
-
-**예시**: `moai-adk v0.14.0` → `moai-adk v0.15.0`
+```
+project-1/
+├── (시스템 수준)
+│   └─ moai-adk v0.14.0 → v0.15.0 ✅
+├── .moai/
+│   ├── config.json        ← 유지 (당신의 설정)
+│   ├── project/           ← 유지 (당신의 문서)
+│   └── memory/            ← 유지 (학습 데이터)
+└── .claude/
+    ├── agents/            ← 교체 (v0.14 → v0.15) ✅
+    ├── commands/          ← 교체 (v0.14 → v0.15) ✅
+    ├── hooks/             ← 교체 (v0.14 → v0.15) ✅
+    ├── skills/            ← 교체 (v0.14 → v0.15) ✅
+    └── settings.json      ← 유지 (당신의 설정)
+```
 
 **확인 명령어**:
 ```bash
 moai-adk --version
 # 출력: moai-adk version 0.15.0
+
+moai-adk doctor
+# ✅ .claude/ directory ready
+# ✅ 16 agents configured
 ```
 
 ---
 
-### Step 3️⃣: 프로젝트별 템플릿 동기화 (각 프로젝트마다)
+### Step 3️⃣: 다른 프로젝트들의 템플릿 동기화 (추가 프로젝트만)
 
-**목적**: 각 프로젝트의 `.moai/`과 `.claude/` 폴더를 **새 버전의 템플릿으로 업데이트**
+**목적**: 업데이트하지 않은 **다른 프로젝트들**의 템플릿을 새 버전으로 동기화
 
 **실행 위치**: 각 프로젝트 루트 폴더에서
 
-**실행 횟수**: 업데이트할 각 프로젝트마다 **반복 실행**
+**실행 횟수**: 업데이트할 **추가 프로젝트마다 1회씩**
 
 ```bash
-# 프로젝트 1 동기화
-cd ~/projects/project-1
-moai-adk init .
-echo "✅ project-1 동기화 완료"
+# ⚠️ 주의: Step 2에서 project-1은 이미 처리됨!
+# 나머지 프로젝트들만 동기화하면 됨
 
-# 프로젝트 2 동기화
+# 프로젝트 2 동기화 (Step 2에서 처리 안 한 경우)
 cd ~/projects/project-2
 moai-adk init .
 echo "✅ project-2 동기화 완료"
@@ -537,6 +582,82 @@ cd ~/projects/project-3
 moai-adk init .
 echo "✅ project-3 동기화 완료"
 ```
+
+**⚠️ 중요**: Step 2에서 `moai-adk update`를 실행한 프로젝트는 **이미 Step 3 완료** (중복 제거됨)
+
+---
+
+## 🎯 `moai-adk update` vs `moai-adk init .` 실제 코드 분석
+
+### 소스 코드에서 확인한 차이점
+
+#### `moai-adk update` (update.py, 라인 818-1013)
+
+**3단계 워크플로우**:
+
+1. **Stage 1**: 패키지 버전 확인 및 업그레이드
+   ```python
+   # 라인 854-865: 현재 버전 vs PyPI 최신 버전 비교
+   current = _get_current_version()
+   latest = _get_latest_version()  # PyPI에서 조회
+   ```
+
+2. **Stage 2**: 버전 비교로 동기화 필요 여부 판단 ⭐ 핵심
+   ```python
+   # 라인 948-974: 템플릿 버전 비교
+   package_config_version = _get_package_config_version()  # 0.15.0
+   project_config_version = _get_project_config_version(project_path)  # 0.15.0
+
+   config_comparison = _compare_versions(package_config_version, project_config_version)
+   if config_comparison <= 0:
+       # 버전이 같으면 Stage 3 스킵!
+       return  # 성능 최적화
+   ```
+
+3. **Stage 3**: 버전이 다를 때만 템플릿 동기화
+   ```python
+   # 라인 995: 버전이 다를 때만 실행
+   if not _sync_templates(project_path, force):
+       raise TemplateSyncError()
+   ```
+
+**성능 최적화** (라인 13):
+- 템플릿 버전이 같으면 불필요한 동기화 스킵
+- 70-80% 성능 향상 (3~4초 vs 12~18초)
+
+#### `moai-adk init .` (init.py, 라인 103-200)
+
+**단순 초기화/재초기화**:
+```python
+# 라인 130-150: 대화형/비대화형 모드
+if non_interactive:
+    # 설정 수집
+else:
+    # 프롬프트로 사용자로부터 입력 받음
+    answers = prompt_project_setup(...)
+
+# 라인 160+: 무조건 템플릿 복사
+# 버전 비교 없음!
+# ProjectInitializer로 템플릿 복사
+```
+
+**특징**:
+- ❌ 버전 비교 없음
+- ❌ 무조건 모든 템플릿 복사
+- ❌ 느림 (항상 12~18초)
+- ✅ 프로젝트 첫 생성에는 적합
+
+### 정리: 언제 뭘 쓸까?
+
+| 상황 | 명령어 | 이유 |
+|------|--------|------|
+| **새 프로젝트 생성** | `moai-adk init my-project` | 첫 초기화이므로 무조건 복사 필요 |
+| **기존 프로젝트에 MoAI-ADK 추가** | `moai-adk init .` | 처음 설정이므로 모든 파일 생성 필요 |
+| **버전 업데이트 후 현재 프로젝트 동기화** | `moai-adk update` | 버전 비교로 필요시만 동기화 (빠름) |
+| **여러 프로젝트 동기화** | 프로젝트1: `moai-adk update`, 나머지: `moai-adk init .` | 첫 업데이트는 update, 나머지는 init |
+| **강제 재동기화** | `moai-adk update --force` | 버전 비교 무시하고 무조건 동기화 |
+
+---
 
 **무엇이 업데이트되나요?**
 
