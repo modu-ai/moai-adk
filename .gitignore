@@ -65,10 +65,6 @@ CURSOR_INTEGRATION_PLAN.md
 
 # Local .claude infrastructure (package template is source of truth)
 # Users should never modify these files directly - sync from package template
-.claude/commands/
-.claude/agents/
-.claude/hooks/
-.claude/skills/
 
 # Developer local settings and configurations
 .claude/settings.local.json
