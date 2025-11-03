@@ -1,9 +1,9 @@
 ---
 id: PRODUCT-001
-version: 0.1.3
+version: 0.1.1
 status: active
 created: 2025-10-01
-updated: 2025-10-17
+updated: 2025-11-04
 author: @project-owner
 priority: high
 ---
@@ -12,22 +12,10 @@ priority: high
 
 ## HISTORY
 
-### v0.1.3 (2025-10-17)
-- **UPDATED**: Template version synced (v0.3.8)
+### v0.1.1 (2025-11-04)
+- **UPDATED**: Template version synced (v0.4.0), added HANDBOOK.md guide
 - **AUTHOR**: @Alfred
-- **SECTIONS**: Mission (finalized team of 12 agents: Alfred + 11 specialists)
-  - Added implementation-planner, tdd-implementer, quality-gate
-  - Split code-builder into implementation-planner + tdd-implementer + quality-gate
-
-### v0.1.2 (2025-10-17)
-- **UPDATED**: Agent count adjusted (9 → 11)
-- **AUTHOR**: @Alfred
-- **SECTIONS**: Mission (updated Alfred SuperAgent roster)
-
-### v0.1.1 (2025-10-17)
-- **UPDATED**: Template defaults aligned with the real MoAI-ADK project
-- **AUTHOR**: @Alfred
-- **SECTIONS**: Mission, User, Problem, Strategy, Success populated with project context
+- **SECTIONS**: Simplified history, aligned with other documentation templates
 
 ### v0.1.0 (2025-10-01)
 - **INITIAL**: Authored the product definition document
