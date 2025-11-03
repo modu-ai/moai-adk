@@ -1,0 +1,186 @@
+name: TAG Validation
+
+# @DOC:DOC-TAG-004 | Component 2: CI/CD workflow for TAG validation
+# Validates TAG annotations on every PR to ensure quality and consistency
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main, develop, "feature/**"]
+
+jobs:
+  validate-tags:
+    name: 🏷️ Validate TAG Annotations
+    runs-on: ubuntu-latest
+
+    # Skip validation on draft PRs (allow WIP)
+    if: github.event.pull_request.draft == false || github.event_name == 'push'
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for comprehensive validation
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: |
+          uv pip install --system -e .
+          uv pip install --system requests
+        # Note: This workflow is for MoAI-ADK (Python project).
+        # Generated projects auto-detect language via moai-alfred-language-detection.
+
+      - name: Get PR number
+        id: pr
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            echo "number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+          else
+            echo "number=0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run TAG validation (info mode)
+        if: github.event_name == 'push' || github.event.pull_request.draft == false
+        id: validate_info
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ steps.pr.outputs.number }}" != "0" ]; then
+            python -m moai_adk.core.tags.ci_validator \
+              --pr-number ${{ steps.pr.outputs.number }} \
+              --output-json validation-report.json \
+              --output-comment pr-comment.md
+          else
+            echo "Skipping PR validation on push event"
+            echo '{"status": "skipped", "message": "Push event - no PR validation"}' > validation-report.json
+            echo "# TAG Validation Skipped\n\nPush event detected. TAG validation runs on PRs." > pr-comment.md
+          fi
+
+      - name: Run TAG validation (strict mode)
+        if: github.event.pull_request.ready_for_review == true
+        id: validate_strict
+        continue-on-error: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python -m moai_adk.core.tags.ci_validator \
+            --pr-number ${{ steps.pr.outputs.number }} \
+            --strict \
+            --output-json validation-report-strict.json \
+            --output-comment pr-comment-strict.md
+
+      - name: Upload validation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tag-validation-report
+          path: |
+            validation-report*.json
+            pr-comment*.md
+          retention-days: 30
+
+      - name: Post PR comment (info mode)
+        if: github.event_name == 'pull_request' && steps.pr.outputs.number != '0'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+
+            // Read the comment file
+            let comment = '';
+            try {
+              comment = fs.readFileSync('pr-comment.md', 'utf8');
+            } catch (error) {
+              comment = '## ⚠️ TAG Validation\n\nCould not read validation results.';
+            }
+
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.login === 'github-actions[bot]' &&
+              comment.body.includes('TAG Validation')
+            );
+
+            // Create or update comment
+            const commentBody = comment + '\n\n---\n\n*Automated validation by [MoAI-ADK TAG System](https://github.com/YOUR_ORG/MoAI-ADK)*';
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: commentBody
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: commentBody
+              });
+            }
+
+      - name: Validation summary
+        if: always()
+        run: |
+          echo "## TAG Validation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f validation-report.json ]; then
+            echo "### Info Mode Results" >> $GITHUB_STEP_SUMMARY
+            cat validation-report.json | python -c "import json, sys; r=json.load(sys.stdin); print(f\"- Status: {r.get('status', 'unknown')}\"); print(f\"- Errors: {r.get('statistics', {}).get('total_errors', 0)}\"); print(f\"- Warnings: {r.get('statistics', {}).get('total_warnings', 0)}\")" >> $GITHUB_STEP_SUMMARY || echo "- Could not parse report" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ -f validation-report-strict.json ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Strict Mode Results" >> $GITHUB_STEP_SUMMARY
+            cat validation-report-strict.json | python -c "import json, sys; r=json.load(sys.stdin); print(f\"- Status: {r.get('status', 'unknown')}\"); print(f\"- Errors: {r.get('statistics', {}).get('total_errors', 0)}\"); print(f\"- Warnings: {r.get('statistics', {}).get('total_warnings', 0)}\")" >> $GITHUB_STEP_SUMMARY || echo "- Could not parse report" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Set PR status check
+        if: github.event_name == 'pull_request'
+        run: |
+          if [ -f validation-report.json ]; then
+            STATUS=$(cat validation-report.json | python -c "import json, sys; r=json.load(sys.stdin); print('success' if r.get('is_valid', False) else 'failure')")
+            echo "Validation status: $STATUS"
+            if [ "$STATUS" = "failure" ]; then
+              exit 1
+            fi
+          fi
+
+  # Optional: Require TAG validation to pass before merge
+  # Uncomment this job to enforce strict validation
+  #
+  # require-validation:
+  #   name: Require TAG Validation
+  #   runs-on: ubuntu-latest
+  #   needs: validate-tags
+  #   if: github.event.pull_request.draft == false
+  #   steps:
+  #     - name: Check validation passed
+  #       run: echo "TAG validation passed"

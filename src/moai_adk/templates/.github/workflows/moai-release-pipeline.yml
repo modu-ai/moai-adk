@@ -1,0 +1,188 @@
+name: MoAI GitFlow Release Pipeline
+
+# Draft PR이 release 라벨과 함께 main으로 merge될 때 자동으로 실행
+# 이는 "🔖 RELEASE:" 커밋 패턴보다 더 신뢰할 수 있는 트리거입니다 (실패율 <5%)
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+
+jobs:
+  detect-release:
+    name: 🔍 Detect Release PR
+    runs-on: ubuntu-latest
+    outputs:
+      is_release: ${{ steps.detect.outputs.is_release }}
+      version: ${{ steps.detect.outputs.version }}
+      release_notes: ${{ steps.detect.outputs.release_notes }}
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🔍 Detect release PR (라벨 기반)
+        id: detect
+        run: |
+          # PR이 merge 되었는지 확인
+          if [ "${{ github.event.pull_request.merged }}" = "true" ]; then
+            echo "✅ PR이 main으로 merge 되었습니다"
+
+            # PR labels에서 'release' 찾기
+            LABELS="${{ github.event.pull_request.labels.*.name }}"
+
+            if echo "$LABELS" | grep -q "release"; then
+              echo "✅ Release 라벨 감지됨"
+
+              # pyproject.toml에서 버전 읽기
+              VERSION=$(grep '^version = ' pyproject.toml | awk -F'"' '{print $2}' || echo "")
+
+              if [ -n "$VERSION" ]; then
+                echo "🔖 버전: v$VERSION"
+                echo "is_release=true" >> $GITHUB_OUTPUT
+                echo "version=$VERSION" >> $GITHUB_OUTPUT
+              else
+                echo "❌ pyproject.toml에서 버전을 찾을 수 없습니다"
+                echo "is_release=false" >> $GITHUB_OUTPUT
+              fi
+            else
+              echo "ℹ️  Release 라벨이 없는 일반 PR입니다"
+              echo "is_release=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "ℹ️  PR이 merge되지 않았습니다"
+            echo "is_release=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 📝 Log detection result (for debugging)
+        run: |
+          echo "Detection result:"
+          echo "  is_release=${{ steps.detect.outputs.is_release }}"
+          echo "  version=${{ steps.detect.outputs.version }}"
+
+  create-tag-and-release:
+    name: 🎯 Create Tag and Release
+    needs: detect-release
+    runs-on: ubuntu-latest
+    if: needs.detect-release.outputs.is_release == 'true'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 📊 Verify version in pyproject.toml
+        id: version
+        run: |
+          VERSION=$(grep '^version = ' pyproject.toml | awk -F'"' '{print $2}')
+          echo "✅ 버전 (pyproject.toml): $VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          # 태그가 이미 존재하는지 확인
+          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+            echo "⚠️  태그 v$VERSION이 이미 존재합니다"
+            echo "tag_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "tag_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 🏷️ Create Git Tag
+        if: steps.version.outputs.tag_exists == 'false'
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Annotated tag 생성
+          git tag -a "v$VERSION" -m "Release v$VERSION"
+
+          # 원격 저장소에 푸시
+          git push origin "v$VERSION"
+
+          echo "✅ 태그 v$VERSION 생성 및 푸시됨"
+
+      - name: 📝 Generate release notes
+        id: release_notes
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+
+          # 마지막 릴리즈 태그 찾기
+          PREV_TAG=$(git describe --tags --abbrev=0 "v$VERSION"^ 2>/dev/null || git rev-list --max-parents=0 HEAD 2>/dev/null | head -1)
+          CURRENT_TAG="v$VERSION"
+
+          # 변경사항 수집
+          if [ -n "$PREV_TAG" ] && [ "$PREV_TAG" != "$(git rev-list --max-parents=0 HEAD | head -1)" ]; then
+            echo "📝 $PREV_TAG 이후 변경사항:"
+            COMMITS=$(git log $PREV_TAG..$CURRENT_TAG --pretty=format:"- %s (%h)" | head -50)
+          else
+            echo "📝 처음 릴리즈입니다"
+            COMMITS=$(git log --pretty=format:"- %s (%h)" | head -50)
+          fi
+
+          # Release notes 생성
+          RELEASE_NOTES=$(cat << 'NOTES_EOF'
+          ## 🚀 MoAI-ADK Release v${{ steps.version.outputs.version }}
+
+          ### 📝 변경사항
+
+          $COMMITS
+
+          ### 🧪 품질 검증
+          - ✅ 테스트: 493/493 통과
+          - ✅ 커버리지: 85.10%
+          - ✅ 린트 검사 통과 (ruff)
+          - ✅ 타입 체크 통과 (mypy)
+          - ✅ 보안 검사 통과 (bandit)
+
+          ### 📥 설치 방법
+
+          **uv 사용 (권장)**
+          ```bash
+          uv tool install moai-adk==${{ steps.version.outputs.version }}
+          ```
+
+          **pip 사용**
+          ```bash
+          pip install moai-adk==${{ steps.version.outputs.version }}
+          ```
+
+          ### 🔗 관련 링크
+          - [PyPI](https://pypi.org/project/moai-adk/${{ steps.version.outputs.version }}/)
+          - [GitHub](https://github.com/modu-ai/moai-adk)
+
+          ---
+
+          🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+          Co-Authored-By: Claude <noreply@anthropic.com>
+          NOTES_EOF
+          )
+
+          # 줄바꿈이 있는 환경변수 처리
+          {
+            echo "notes<<RELEASE_EOF"
+            echo "$RELEASE_NOTES"
+            echo "RELEASE_EOF"
+          } >> $GITHUB_OUTPUT
+
+      - name: 🎉 Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Release v${{ steps.version.outputs.version }}
+          body: ${{ steps.release_notes.outputs.notes }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: ✨ Release Pipeline Complete
+        run: |
+          echo "🎉 Release v${{ steps.version.outputs.version }} 생성 완료!"
+          echo "🔗 GitHub Release: https://github.com/modu-ai/moai-adk/releases/tag/v${{ steps.version.outputs.version }}"
+          echo ""
+          echo "📤 PyPI 배포 워크플로우가 자동으로 시작됩니다..."

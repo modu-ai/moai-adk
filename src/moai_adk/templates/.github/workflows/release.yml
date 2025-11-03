@@ -1,0 +1,118 @@
+name: Release & Deploy to PyPI
+
+# 트리거: 버전 태그가 푸시되었을 때 (release event의 신뢰성 문제 해결)
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  deploy:
+    name: 📦 Deploy to PyPI
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: 📦 Install uv
+        uses: astral-sh/setup-uv@v2
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+
+      - name: 🔨 Build package
+        run: |
+          echo "🏗️  Building package..."
+          uv build
+          echo "✅ Package built successfully"
+          ls -lh dist/
+
+      - name: 🚀 Publish to PyPI
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          echo "📤 Publishing to PyPI..."
+          uv publish --publish-url https://upload.pypi.org/legacy/
+          echo "✅ Package published successfully"
+
+      - name: 🔍 Verify PyPI deployment
+        run: |
+          echo "🔍 Verifying PyPI deployment..."
+
+          # Extract version from release tag (e.g., v0.14.0 → 0.14.0)
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+
+          # Wait for PyPI CDN propagation (max 50 seconds)
+          MAX_RETRIES=10
+          RETRY_COUNT=0
+          PACKAGE_FOUND=false
+
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo "⏳ Checking PyPI... (attempt $RETRY_COUNT/$MAX_RETRIES)"
+
+            if pip index versions moai-adk 2>/dev/null | grep -q "$VERSION"; then
+              echo "✅ Package available on PyPI: moai-adk==$VERSION"
+              PACKAGE_FOUND=true
+              break
+            fi
+
+            if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+              sleep 5
+            fi
+          done
+
+          if [ "$PACKAGE_FOUND" = "false" ]; then
+            echo "❌ Package not found on PyPI after 50 seconds"
+            echo "⚠️  Manual verification required: https://pypi.org/project/moai-adk/$VERSION/"
+            exit 1
+          fi
+
+          # Test installation in temporary environment
+          echo ""
+          echo "📦 Testing installation..."
+
+          TEMP_VENV="/tmp/moai-adk-verify-$VERSION"
+          python -m venv "$TEMP_VENV"
+          source "$TEMP_VENV/bin/activate"
+
+          # Install package without cache
+          pip install moai-adk==$VERSION --no-cache-dir 2>&1 | tail -5
+
+          # Verify installation
+          if moai-adk --version 2>/dev/null | grep -q "$VERSION"; then
+            echo "✅ Installation verification passed"
+            echo "   Installed version: $(moai-adk --version)"
+          else
+            echo "❌ Installation verification failed"
+            INSTALLED=$(moai-adk --version 2>/dev/null || echo "unknown")
+            echo "   Expected: $VERSION"
+            echo "   Got: $INSTALLED"
+            deactivate
+            rm -rf "$TEMP_VENV"
+            exit 1
+          fi
+
+          # Cleanup
+          deactivate
+          rm -rf "$TEMP_VENV"
+          echo "✅ Cleanup complete"
+
+      - name: ✨ Deployment complete
+        run: |
+          echo "🎉 Release deployment complete!"
+          echo ""
+          echo "📦 Package: moai-adk"
+          echo "🏷️  Release: ${{ github.ref }}"
+          echo "🔗 PyPI: https://pypi.org/project/moai-adk/${{ github.ref_name }}/"
