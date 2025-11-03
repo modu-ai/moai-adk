@@ -58,6 +58,14 @@ import sys
 from pathlib import Path
 from typing import Any
 
+# Add the hooks directory to sys.path BEFORE any imports (critical!)
+HOOKS_DIR = Path(__file__).parent
+SHARED_DIR = HOOKS_DIR / "shared"
+if str(SHARED_DIR) not in sys.path:
+    sys.path.insert(0, str(SHARED_DIR))
+if str(HOOKS_DIR) not in sys.path:
+    sys.path.insert(0, str(HOOKS_DIR))
+
 from handlers import (
     handle_notification,
     handle_post_tool_use,
@@ -70,11 +78,6 @@ from handlers import (
 )
 from shared.core import HookResult
 from utils.timeout import TimeoutError as PlatformTimeoutError
-
-# Add the hooks directory to sys.path to enable package imports
-HOOKS_DIR = Path(__file__).parent
-if str(HOOKS_DIR) not in sys.path:
-    sys.path.insert(0, str(HOOKS_DIR))
 
 
 def _hook_timeout_handler(signum, frame):
