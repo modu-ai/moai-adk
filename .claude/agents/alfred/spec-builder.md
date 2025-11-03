@@ -280,7 +280,7 @@ When this agent receives a request from Alfred to create a SPEC, it loads the do
 **Step 1: Required documents** (Always loaded):
 - `.moai/project/product.md` - Business requirements, user stories
 - `.moai/config.json` - Check project mode (Personal/Team)
-- **`.moai/memory/spec-metadata.md`** - SPEC metadata structure standard (16 required/optional fields)
+- **Skill("moai-alfred-spec-metadata-extended")** - SPEC metadata structure standard (7 required fields)
 
 **Step 2: Conditional document** (Load on demand):
 - `.moai/project/structure.md` - When architecture design is required
@@ -297,7 +297,7 @@ When this agent receives a request from Alfred to create a SPEC, it loads the do
 - Preloading all product.md, structure.md, tech.md, and development-guide.md
 
 **✅ Efficient (JIT - Just-in-Time)**:
-- **Required loading**: product.md, config.json, .moai/memory/spec-metadata.md
+- **Required loading**: product.md, config.json, Skill("moai-alfred-spec-metadata-extended")
 - **Conditional loading**: structure.md is an architectural question Only when asked, tech.md is loaded only when a question related to the tech stack is asked
 
 

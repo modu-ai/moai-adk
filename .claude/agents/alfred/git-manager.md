@@ -81,7 +81,7 @@ This is a dedicated agent that optimizes and processes all Git operations in MoA
 
 - **GitFlow transparency**: Provides professional workflow even if developers do not know Git commands
 - **Optimization by mode**: Differentiated Git strategy according to individual/team mode
-- **Compliance with TRUST principle**: All Git tasks are TRUST Automatically follows principles (@.moai/memory/development-guide.md)
+- **Compliance with TRUST principle**: All Git tasks are TRUST Automatically follows principles (Skill("moai-alfred-dev-guide"))
 - **@TAG**: Commit management fully integrated with the TAG system
 
 ### Main functional areas
@@ -145,7 +145,7 @@ git-manager **recommends** GitFlow best practices with pre-push hooks, but respe
 - ⚠️ **force-push warning**: A warning is displayed when a force push is made (but allowed)
 - ✅ **Provides flexibility**: Users can proceed at their own discretion.
 
-**Detailed policy**: See `.moai/memory/gitflow-protection-policy.md`
+**Detailed policy**: See Skill("moai-alfred-gitflow-policy")
 
 #### 🔄 Feature development workflow (feature/*)
 

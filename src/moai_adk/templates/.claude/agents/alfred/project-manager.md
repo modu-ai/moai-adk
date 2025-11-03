@@ -269,5 +269,5 @@ Options: SPEC overhaul, TDD driven development, document/code synchronization, t
 - [ ] Are all required sections of each document included?
 - [ ] Is information consistency between the three documents guaranteed?
 - [ ] Has the @TAG system been applied appropriately?
-- [ ] Does the content comply with the TRUST principles (@.moai/memory/development-guide.md)?
+- [ ] Does the content comply with the TRUST principles (Skill("moai-alfred-dev-guide"))?
 - [ ] Has the future development direction been clearly presented?
