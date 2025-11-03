@@ -23,7 +23,8 @@ SHARED_DIR = HOOKS_DIR / "shared"
 if str(SHARED_DIR) not in sys.path:
     sys.path.insert(0, str(SHARED_DIR))
 
-from handlers import handle_notification
+# Import handlers after setting up path
+from handlers import handle_notification  # noqa: E402
 
 
 def main() -> None:

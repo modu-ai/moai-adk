@@ -97,7 +97,7 @@ def timeout_handler(seconds: int):
     try:
         yield
     finally:
-        timeout.cancel()  # Disable alarm
+        signal.alarm(0)  # Disable alarm
         signal.signal(signal.SIGALRM, old_handler)
 
 

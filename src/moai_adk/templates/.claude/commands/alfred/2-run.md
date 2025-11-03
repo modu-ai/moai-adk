@@ -250,6 +250,8 @@ Call the Task tool:
 - 언어명: {{CONVERSATION_LANGUAGE_NAME}}
 
 중요 지시사항:
+**Code and technical output MUST be in English.** This ensures global compatibility and maintainability.
+
 코드 문법 및 키워드: 영어 (고정).
 코드 주석:
 - 로컬 프로젝트 코드: 반드시 {{CONVERSATION_LANGUAGE}}로 작성
@@ -540,7 +542,7 @@ Only if the user selects **"Proceed"** or **"Start"** will Alfred call the tdd-i
 
 ---
 
-## Command Completion Pattern
+## Final Step
 
 ### After STEP 3 (git-manager) Completes
 

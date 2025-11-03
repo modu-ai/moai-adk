@@ -757,6 +757,43 @@ See `.coderabbit.yaml` for detailed SPEC review checklist.
 
 ---
 
+## Final Step
+
+After plan creation completes, Alfred automatically invokes AskUserQuestion to ask the user what to do next:
+
+```python
+AskUserQuestion(
+    questions=[
+        {
+            "question": "스펙 작성이 완료되었습니다. 다음으로 뭘 하시겠습니까?",
+            "header": "다음 단계",
+            "multiSelect": false,
+            "options": [
+                {
+                    "label": "🔨 구현 시작",
+                    "description": "/alfred:2-run SPEC-XXX로 TDD 구현 진행"
+                },
+                {
+                    "label": "📝 스펙 수정",
+                    "description": "SPEC 문서 검토 후 수정"
+                },
+                {
+                    "label": "🔄 새 세션 시작",
+                    "description": "성능 최적화를 위해 /clear 실행"
+                }
+            ]
+        }
+    ]
+)
+```
+
+**User Responses**:
+- **🔨 구현 시작**: Proceed to `/alfred:2-run SPEC-XXX` for TDD implementation
+- **📝 스펙 수정**: Review and modify SPEC documents before implementation
+- **🔄 새 세션 시작**: Execute `/clear` to start fresh session (recommended for performance)
+
+---
+
 ## Next steps
 
 **Recommendation**: For better performance and context management, start a new chat session with the `/clear` or `/new` command before proceeding to the next step.

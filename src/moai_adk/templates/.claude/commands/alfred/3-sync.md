@@ -715,6 +715,43 @@ Report synchronization results in a structured format:
 3. Orphan TAG cleanup
 ```
 
+## Final Step
+
+After document synchronization completes, Alfred automatically invokes AskUserQuestion to ask the user what to do next:
+
+```python
+AskUserQuestion(
+    questions=[
+        {
+            "question": "문서 동기화가 완료되었습니다. 다음으로 뭘 하시겠습니까?",
+            "header": "다음 단계",
+            "multiSelect": false,
+            "options": [
+                {
+                    "label": "📋 다음 스펙 작성",
+                    "description": "/alfred:1-plan으로 새로운 기능 SPEC 작성"
+                },
+                {
+                    "label": "📤 PR 병합",
+                    "description": "GitHub에서 PR 검토 및 병합 진행"
+                },
+                {
+                    "label": "🔄 새 세션 시작",
+                    "description": "성능 최적화를 위해 /clear 실행"
+                }
+            ]
+        }
+    ]
+)
+```
+
+**User Responses**:
+- **📋 다음 스펙 작성**: Proceed to `/alfred:1-plan` for creating next SPEC
+- **📤 PR 병합**: Manual PR review and merge on GitHub
+- **🔄 새 세션 시작**: Execute `/clear` to start fresh session (recommended for performance)
+
+---
+
 ## Next steps guidance
 
 ### Development cycle complete
