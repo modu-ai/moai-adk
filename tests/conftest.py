@@ -2,11 +2,24 @@
 """Pytest configuration and shared fixtures for MoAI-ADK tests"""
 
 import shutil
+import sys
 import tempfile
 from pathlib import Path
 from typing import Generator
 
 import pytest
+
+# Hook 디렉토리를 sys.path에 추가 (hooks 테스트가 모듈을 찾을 수 있도록)
+HOOKS_DIR = Path(__file__).parent.parent / ".claude" / "hooks" / "alfred"
+SHARED_DIR = HOOKS_DIR / "shared"
+UTILS_DIR = HOOKS_DIR / "utils"
+
+if str(SHARED_DIR) not in sys.path:
+    sys.path.insert(0, str(SHARED_DIR))
+if str(HOOKS_DIR) not in sys.path:
+    sys.path.insert(0, str(HOOKS_DIR))
+if str(UTILS_DIR) not in sys.path:
+    sys.path.insert(0, str(UTILS_DIR))
 
 
 @pytest.fixture
