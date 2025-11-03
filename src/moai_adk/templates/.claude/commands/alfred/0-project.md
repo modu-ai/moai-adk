@@ -127,7 +127,9 @@ grep "mode" .moai/config.json
 #      "mode": "personal" → 기본 질문만 실행
 ```
 
-#### 0.1.2 기본 배치: 언어 선택 + 닉네임
+#### 0.1.2 기본 배치: 언어 선택 + 에이전트 프롬프트 언어 + 닉네임 (3개 질문, 1회 배치 호출)
+
+**배치 설계**: 3개 질문을 1회 호출로 통합 (UX 개선: 3 turns → 1 turn)
 
 **Example AskUserQuestion Call**:
 ```python
@@ -157,6 +159,21 @@ AskUserQuestion(
             ]
         },
         {
+            "question": "In which language should Alfred's sub-agent prompts be written?",
+            "header": "Agent Prompt Language",
+            "multiSelect": false,
+            "options": [
+                {
+                    "label": "🌐 English (Global Standard)",
+                    "description": "All sub-agent prompts in English for global consistency and team collaboration. Recommended for Claude Pro $20 users: reduces token usage by ~15-20%, lowering API costs"
+                },
+                {
+                    "label": "🗣️ Selected Language (Localized)",
+                    "description": "All sub-agent prompts in the language you selected above for local team efficiency"
+                }
+            ]
+        },
+        {
             "question": "How would you like to be called in our conversations? (e.g., GOOS, Team Lead, Developer, or custom name - max 20 chars)",
             "header": "Nickname",
             "multiSelect": false,
@@ -170,6 +187,24 @@ AskUserQuestion(
     ]
 )
 ```
+
+**응답 처리**:
+
+**Q1 (사용자 언어)**:
+- Selected option stored as: `conversation_language: "ko"` (or "en", "ja", "zh", etc.)
+
+**Q2 (에이전트 프롬프트 언어)** - **NEW**:
+- **"English (Global Standard)"** → `agent_prompt_language: "english"`
+  - All sub-agent prompts written in English
+  - Recommended for global teams, code consistency, and international collaboration
+  - Project-manager, spec-builder, code-builder use English prompts internally
+- **"Selected Language (Localized)"** → `agent_prompt_language: "localized"`
+  - All sub-agent prompts written in the user-selected language
+  - Recommended for local teams, local documentation, and native language efficiency
+  - Project-manager receives prompts in selected language (e.g., Korean, Japanese)
+
+**Q3 (사용자 닉네임)**:
+- Custom nickname stored as: `user.nickname: "GOOS"` (or custom input)
 
 #### 0.1.3 팀 모드 추가 배치: GitHub 설정 & Git 워크플로우 선택 (팀 모드만)
 
@@ -250,13 +285,15 @@ Selected Nickname: GOOS (typed via "Other" option)
 
 Alfred가 선택된 언어, 닉네임, 그리고 팀 모드 설정을 다음과 같이 저장합니다:
 
-#### 0.2.1 기본 정보 저장 (항상)
+#### 0.2.1 기본 정보 저장 (항상) - 에이전트 프롬프트 언어 추가
 
 ```json
 {
   "language": {
     "conversation_language": "ko",
-    "conversation_language_name": "한국어"
+    "conversation_language_name": "한국어",
+    "agent_prompt_language": "localized",
+    "agent_prompt_language_description": "All sub-agent prompts written in the selected language (localized)"
   },
   "user": {
     "nickname": "GOOS",
@@ -264,6 +301,23 @@ Alfred가 선택된 언어, 닉네임, 그리고 팀 모드 설정을 다음과 
   }
 }
 ```
+
+**에이전트 프롬프트 언어 옵션**:
+
+- **`"english"`** (Global Standard) - **💰 Claude Pro $20 사용자 추천**:
+  - All sub-agent prompts and internal communication in English
+  - Best for: International teams, global collaboration, code consistency
+  - Impact: Project-manager, spec-builder, code-builder all use English task prompts
+  - **Cost Benefit**: Reduces token usage by ~15-20% compared to non-English prompts
+    - English prompts are more efficient and use fewer tokens
+    - Significant cost savings for continuous API usage
+    - Example: 100,000 tokens in English ≈ 115,000-120,000 tokens in Korean/Japanese
+
+- **`"localized"`** (Localized - Default for non-English):
+  - All sub-agent prompts and internal communication in selected language
+  - Best for: Local teams, native language efficiency, culturally-specific guidance
+  - Impact: Project-manager, spec-builder, code-builder all use localized task prompts
+  - Note: Uses ~15-20% more tokens due to language characteristics
 
 #### 0.2.2 GitHub & Git 워크플로우 설정 저장 (팀 모드만)
 
@@ -603,6 +657,9 @@ Alfred starts project initialization by calling the project-manager agent with t
 **Parameters passed to project-manager**:
 - **conversation_language** (from STEP 0): Language code selected by user (e.g., "ko", "en", "ja", "zh")
 - **language_name** (from STEP 0): Display name of selected language (e.g., "Korean", "English")
+- **agent_prompt_language** (from STEP 0.1.2) - **NEW**:
+  - `"english"` = All sub-agent prompts in English (Global Standard)
+  - `"localized"` = All sub-agent prompts in selected conversation_language (Localized)
 - Detected Languages: [Language List from codebase detection]
 - Project Type: [New/Existing]
 - Existing Document Status: [Existence/Absence]
@@ -618,8 +675,27 @@ Call the Task tool:
 - prompt: """당신은 project-manager 에이전트입니다.
 
 언어 설정:
-- 대화_언어: {{CONVERSATION_LANGUAGE}}
+- 대화_언어: {{CONVERSATION_LANGUAGE}} (모든 대화, 문서에 사용)
 - 언어명: {{CONVERSATION_LANGUAGE_NAME}}
+- 에이전트_프롬프트_언어: {{AGENT_PROMPT_LANGUAGE}} (내부 sub-agent 통신 언어)
+
+에이전트 프롬프트 언어에 따른 작업 방식:
+
+1. **agent_prompt_language = "english"** (Global Standard):
+   - 당신(project-manager)은 **영어**로 사고하고 작업합니다
+   - 모든 내부 분석과 계획을 영어로 진행합니다
+   - 생성된 product.md, structure.md, tech.md는 **{{CONVERSATION_LANGUAGE}}**로 작성합니다
+   - Sub-agent들(spec-builder 등)에게 전달하는 프롬프트는 **영어**입니다
+
+2. **agent_prompt_language = "localized"** (Localized):
+   - 당신(project-manager)은 **{{CONVERSATION_LANGUAGE}}**로 사고하고 작업합니다
+   - 모든 내부 분석과 계획을 {{CONVERSATION_LANGUAGE}}로 진행합니다
+   - 생성된 product.md, structure.md, tech.md는 **{{CONVERSATION_LANGUAGE}}**로 작성합니다
+   - Sub-agent들(spec-builder 등)에게 전달하는 프롬프트도 **{{CONVERSATION_LANGUAGE}}**입니다
+
+중요: 대화_언어(conversation_language)와 에이전트_프롬프트_언어(agent_prompt_language)는 다를 수 있습니다!
+- 대화_언어는 **사용자와의 대화**, **생성 문서**에 사용
+- 에이전트_프롬프트_언어는 **sub-agents 통신**, **내부 prompt**에 사용
 
 GIT 워크플로우 설정 (팀 모드):
 - spec_git_workflow: [feature_branch | develop_direct | per_spec]
@@ -632,7 +708,7 @@ GIT 워크플로우 설정 (팀 모드):
 감지된_언어들: [감지된 코드베이스 언어들]
 
 중요 지시사항:
-모든 인터뷰와 생성된 문서는 대화_언어로 작성되어야 합니다:
+모든 인터뷰와 생성된 문서는 대화_언어(conversation_language)로 작성되어야 합니다:
 - product.md: {{CONVERSATION_LANGUAGE}}로 생성
 - structure.md: {{CONVERSATION_LANGUAGE}}로 생성
 - tech.md: {{CONVERSATION_LANGUAGE}}로 생성
@@ -641,11 +717,12 @@ conversation_language가 'ko'인 경우: 모든 설명 내용을 한국어로
 conversation_language가 'ja'인 경우: 모든 설명 내용을 일본어로
 다른 언어인 경우: 지정된 언어를 따릅니다
 
-프로젝트 초기화 후, 이중 언어 및 git 워크플로우 구조로 .moai/config.json 업데이트:
+프로젝트 초기화 후, 다음과 같이 .moai/config.json 업데이트:
 {
   "language": {
     "conversation_language": "{{CONVERSATION_LANGUAGE}}",
-    "conversation_language_name": "{{CONVERSATION_LANGUAGE_NAME}}"
+    "conversation_language_name": "{{CONVERSATION_LANGUAGE_NAME}}",
+    "agent_prompt_language": "{{AGENT_PROMPT_LANGUAGE}}"
   },
   "github": {
     "spec_git_workflow": "[feature_branch|develop_direct|per_spec]"
@@ -657,7 +734,8 @@ conversation_language가 'ja'인 경우: 모든 설명 내용을 일본어로
 - Skill("moai-alfred-language-detection") - 코드베이스 언어 감지
 - Skill("moai-foundation-langs") - 다국어 프로젝트 설정
 
-작업: 프로젝트 인터뷰를 진행하고 product/structure/tech.md 문서를 생성/업데이트합니다."""
+작업: 프로젝트 인터뷰를 진행하고 product/structure/tech.md 문서를 생성/업데이트합니다.
+에이전트_프롬프트_언어 설정에 따라 sub-agent들과의 통신 언어를 결정합니다."""
 ```
 
 **Outcome**: The project-manager agent conducts structured interviews entirely in the selected language and creates/updates product/structure/tech.md documents in that language.
