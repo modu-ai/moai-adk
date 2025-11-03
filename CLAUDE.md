@@ -519,13 +519,16 @@ MoAI-ADK는 Claude Code 세션 로그를 자동 분석하여 데이터 기반으
 **세션 로그 저장 위치**:
 - `~/.claude/projects/*/session-*.json` (Claude Code 자동 생성)
 
-**주간 분석**:
-- GitHub Actions에서 매주 월요일 09:00 UTC 자동 실행
-- 지난 7일간의 모든 세션 분석
-- 분석 보고서 생성 및 PR 자동 생성
+**주간 분석 (SessionStart 훅)**:
+- **자동 트리거**: 세션 시작 시마다 마지막 분석 이후 경과 일수 확인
+- **조건**: 7일 이상 경과했으면 사용자에게 안내
+- **실행 방식**: 사용자가 선택하여 수동 실행 (로컬 머신에서만 가능)
+- 분석 결과는 `.moai/reports/weekly-YYYY-MM-DD.md`에 자동 저장
 
-**보고서 위치**:
-- `.moai/reports/weekly-YYYY-MM-DD.md`
+**왜 SessionStart 훅인가?**:
+- GitHub Actions는 서버에서 실행되어 `~/.claude/projects/` (로컬 파일)에 접근 불가
+- SessionStart 훅은 로컬 머신에서 실행되어 실제 세션 로그에 접근 가능
+- 사용자가 명시적으로 분석을 실행하여 로컬 개발 환경에 최적화
 
 ### 분석 항목
 
