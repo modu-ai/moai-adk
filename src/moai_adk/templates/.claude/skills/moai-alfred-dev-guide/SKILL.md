@@ -1,55 +1,51 @@
 ---
-name: moai-alfred-dev-guide
-description: "SPEC-First TDD development workflow, 3-step cycle (SPEC → TDD → Sync), Skills index, TRUST principles, and TAG system overview. Use as the foundational development guide for MoAI-ADK workflow."
-allowed-tools: "Read, Glob, Grep"
+name: "Orchestrating SPEC-First TDD Development"
+description: "Guides agents through SPEC-First TDD workflow with context engineering, TRUST principles, and @TAG traceability. Essential for /alfred:1-plan, /alfred:2-run, /alfred:3-sync commands. Covers EARS requirements, JIT context loading, TDD RED-GREEN-REFACTOR cycle, and TAG chain validation."
+allowed-tools: "Read, Bash(rg:*), Bash(grep:*)"
 ---
 
-## What It Does
+# Alfred Development Guide Skill
 
-MoAI-ADK의 핵심 개발 철학: "No spec, no code. No tests, no implementation." SPEC-First TDD 3-step 사이클과 55개 Skill 전체 인덱스를 제공합니다.
+## Core Workflow: SPEC → TEST → CODE → DOC
 
-## When to Use
+**No spec, no code. No tests, no implementation.**
 
-- ✅ MoAI-ADK 개발 흐름 이해
-- ✅ SPEC → TDD → Sync 3-step 사이클
-- ✅ TRUST 5 원칙 학습
-- ✅ TAG 시스템 개요
-- ✅ 사용 가능한 Skills 전체 목록 검색
+### 1. SPEC Phase (`/alfred:1-plan`)
+- Author detailed specifications first with `@SPEC:ID` tags
+- Use EARS format (5 patterns: Ubiquitous, Event-driven, State-driven, Optional, Constraints)
+- Store in `.moai/specs/SPEC-{ID}/spec.md`
 
-## Core Development Loop
+### 2. TDD Phase (`/alfred:2-run`)
+- **RED**: Write failing tests with `@TEST:ID` tags
+- **GREEN**: Implement minimal code with `@CODE:ID` tags
+- **REFACTOR**: Improve code while maintaining SPEC compliance
+- Document with `@DOC:ID` tags
 
-```bash
-Step 1: /alfred:1-plan "Feature name"
-   → SPEC 작성 (no code without spec)
+### 3. SYNC Phase (`/alfred:3-sync`)
+- Verify @TAG chain integrity (SPEC→TEST→CODE→DOC)
+- Synchronize documentation with implementation
+- Generate sync report
 
-Step 2: /alfred:2-run SPEC-ID
-   → TDD: RED → GREEN → REFACTOR (no implementation without tests)
+## Key Principles
 
-Step 3: /alfred:3-sync
-   → Documentation update (no completion without traceability)
-```
+**Context Engineering**: Load only necessary documents at each phase
+- `/alfred:1-plan` → product.md, structure.md, tech.md
+- `/alfred:2-run` → SPEC-{ID}/spec.md, development-guide.md
+- `/alfred:3-sync` → sync-report.md, TAG validation
 
-## TRUST 5 Principles
+**TRUST 5 Pillars**:
+1. **T** – Test-driven (RED→GREEN→REFACTOR)
+2. **R** – Readable (clear naming, documentation)
+3. **U** – Unified (consistent patterns, language)
+4. **S** – Secured (OWASP compliance, security reviews)
+5. **E** – Evaluated (metrics, coverage ≥85%)
 
-- **Test**: 85%+ coverage
-- **Readable**: SOLID principles, no code smells
-- **Unified**: Consistent patterns
-- **Secured**: OWASP Top 10 safe
-- **Trackable**: @TAG chain SPEC→TEST→CODE→DOC
+## Common Patterns
 
-## 55 Skills by Tier
-
-| Tier | Count | Purpose |
-|------|-------|---------|
-| Foundation | 6 | Core principles (TRUST, TAG, SPEC, EARS, Git, Lang) |
-| Essentials | 4 | Debug, Refactor, Perf, Review |
-| Alfred | 11 | Workflow orchestration |
-| Domain | 10 | Backend, Frontend, API, DB, Security, DevOps, ML, Mobile, CLI, Data Science |
-| Language | 23 | Python, TypeScript, Go, Rust, Java, and 18+ more |
-| Ops | 1 | Claude Code session management |
-
----
-
-Learn more in `reference.md` for complete workflow details, all 55 Skill descriptions, and implementation patterns.
-
-**Related Skills**: moai-alfred-rules, moai-foundation-trust, moai-foundation-specs
+| Scenario | Action |
+|----------|--------|
+| Write tests first | RED phase: failing tests with @TEST:ID |
+| Implement feature | GREEN phase: minimal code with @CODE:ID |
+| Refactor safely | REFACTOR phase: improve code structure |
+| Track changes | Always use @TAG system in code + docs |
+| Validate completion | `/alfred:3-sync` verifies all links |

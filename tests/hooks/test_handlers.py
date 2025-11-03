@@ -13,22 +13,44 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
-# Add hooks directory to path
+# Add hooks directory to path (must be before any imports from hooks)
 HOOKS_DIR = Path(__file__).parent.parent.parent / ".claude" / "hooks" / "alfred"
 SHARED_DIR = HOOKS_DIR / "shared"
 UTILS_DIR = HOOKS_DIR / "utils"
-sys.path.insert(0, str(SHARED_DIR))
-sys.path.insert(0, str(HOOKS_DIR))
 
-from core import HookPayload, HookResult  # noqa: E402
-from handlers.notification import (  # noqa: E402
-    handle_notification,
-    handle_stop,
-    handle_subagent_stop,
-)
-from handlers.session import handle_session_end, handle_session_start  # noqa: E402
-from handlers.tool import handle_post_tool_use, handle_pre_tool_use  # noqa: E402
-from handlers.user import handle_user_prompt_submit  # noqa: E402
+# sys.path에 추가 (최상단에 추가하여 우선순위 높임)
+# sys.path를 새로 생성하는 것이 아니라, 명시적으로 추가
+sys.path = [str(SHARED_DIR), str(HOOKS_DIR), str(UTILS_DIR)] + [p for p in sys.path if p not in [str(SHARED_DIR), str(HOOKS_DIR), str(UTILS_DIR)]]
+
+# 이제 핸들러를 import할 수 있음
+try:
+    from core import HookPayload, HookResult  # noqa: E402
+except ImportError as e:
+    raise ImportError(f"Failed to import from core: {e}. SHARED_DIR={SHARED_DIR}, sys.path={sys.path[:3]}") from e
+
+try:
+    from handlers.notification import (  # noqa: E402
+        handle_notification,
+        handle_stop,
+        handle_subagent_stop,
+    )
+except ImportError as e:
+    raise ImportError(f"Failed to import from handlers.notification: {e}") from e
+
+try:
+    from handlers.session import handle_session_end, handle_session_start  # noqa: E402
+except ImportError as e:
+    raise ImportError(f"Failed to import from handlers.session: {e}") from e
+
+try:
+    from handlers.tool import handle_post_tool_use, handle_pre_tool_use  # noqa: E402
+except ImportError as e:
+    raise ImportError(f"Failed to import from handlers.tool: {e}") from e
+
+try:
+    from handlers.user import handle_user_prompt_submit  # noqa: E402
+except ImportError as e:
+    raise ImportError(f"Failed to import from handlers.user: {e}") from e
 
 
 class TestPreToolUseHandler:
@@ -125,9 +147,8 @@ class TestSessionStartHandler:
 
     @patch("handlers.session.count_specs")
     @patch("handlers.session.get_git_info")
-    @patch("handlers.session.detect_language")
     def test_session_start_compact_phase(
-        self, mock_detect_lang, mock_get_git, mock_count_specs
+        self, mock_get_git, mock_count_specs
     ):
         """compact 단계는 상세 정보 반환
 
@@ -136,9 +157,8 @@ class TestSessionStartHandler:
 
         Given: phase="compact"인 payload
         When: handle_session_start()를 호출하면
-        Then: system_message에 언어, 브랜치, SPEC 진도 정보가 포함된다
+        Then: system_message에 브랜치, SPEC 진도 정보가 포함된다
         """
-        mock_detect_lang.return_value = "Python"
         mock_get_git.return_value = {
             "branch": "main",
             "commit": "abc123def456",
@@ -156,7 +176,6 @@ class TestSessionStartHandler:
 
         assert result.system_message is not None
         assert "MoAI-ADK Session Started" in result.system_message
-        assert "Python" in result.system_message
         assert "main" in result.system_message
         assert "5/10" in result.system_message
 
@@ -164,9 +183,8 @@ class TestSessionStartHandler:
     @patch("handlers.session.list_checkpoints")
     @patch("handlers.session.count_specs")
     @patch("handlers.session.get_git_info")
-    @patch("handlers.session.detect_language")
     def test_session_start_major_version_warning(
-        self, mock_detect_lang, mock_get_git, mock_count_specs,
+        self, mock_get_git, mock_count_specs,
         mock_list_checkpoints, mock_version_info
     ):
         """Major version update shows warning with release notes
@@ -182,7 +200,6 @@ class TestSessionStartHandler:
         Then: system_message includes "⚠️ Major version update available"
               and release notes URL
         """
-        mock_detect_lang.return_value = "Python"
         mock_get_git.return_value = {}
         mock_count_specs.return_value = {"completed": 0, "total": 0, "percentage": 0}
         mock_list_checkpoints.return_value = []
@@ -194,7 +211,7 @@ class TestSessionStartHandler:
             "update_available": True,
             "is_major_update": True,
             "release_notes_url": "https://github.com/modu-ai/moai-adk/releases/tag/v1.0.0",
-            "upgrade_command": "uv pip install --upgrade moai-adk>=1.0.0"
+            "upgrade_command": "uv tool upgrade moai-adk"
         }
 
         payload: HookPayload = {"cwd": ".", "phase": "compact"}
@@ -215,9 +232,8 @@ class TestSessionStartHandler:
     @patch("handlers.session.list_checkpoints")
     @patch("handlers.session.count_specs")
     @patch("handlers.session.get_git_info")
-    @patch("handlers.session.detect_language")
     def test_session_start_regular_update_with_release_notes(
-        self, mock_detect_lang, mock_get_git, mock_count_specs,
+        self, mock_get_git, mock_count_specs,
         mock_list_checkpoints, mock_version_info
     ):
         """Regular update shows version info with release notes
@@ -232,7 +248,6 @@ class TestSessionStartHandler:
         When: handle_session_start() is called
         Then: system_message includes version line and release notes URL
         """
-        mock_detect_lang.return_value = "Python"
         mock_get_git.return_value = {}
         mock_count_specs.return_value = {"completed": 0, "total": 0, "percentage": 0}
         mock_list_checkpoints.return_value = []
@@ -244,7 +259,7 @@ class TestSessionStartHandler:
             "update_available": True,
             "is_major_update": False,
             "release_notes_url": "https://github.com/modu-ai/moai-adk/releases/tag/v0.9.0",
-            "upgrade_command": "uv pip install --upgrade moai-adk>=0.9.0"
+            "upgrade_command": "uv tool upgrade moai-adk"
         }
 
         payload: HookPayload = {"cwd": ".", "phase": "compact"}

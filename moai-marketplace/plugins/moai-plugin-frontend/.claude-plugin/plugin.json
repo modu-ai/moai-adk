@@ -1,9 +1,0 @@
-{
-  "name": "frontend-plugin",
-  "version": "1.0.0",
-  "description": "Next.js 16 + React 19.2 scaffolding with Playwright-MCP integration for E2E testing",
-  "author": {
-    "name": "moai-adk",
-    "url": "https://adk.mo.ai.kr"
-  }
-}

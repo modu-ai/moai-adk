@@ -1,10 +1,6 @@
 ---
 name: alfred:0-project
-description: "Initialize project document - create product/structure/tech.md and set optimization for each language"
-# Translations:
-# - ko: "프로젝트 문서 초기화 - product/structure/tech.md 생성 및 언어별 최적화 설정"
-# - ja: "プロジェクト文書の初期化 - product/structure/tech.mdの作成と言語別最適化設定"
-# - zh: "初始化项目文档 - 创建product/structure/tech.md并设置语言优化"
+description: "Initialize project metadata and documentation"
 allowed-tools:
 - Read
 - Write
@@ -131,7 +127,9 @@ grep "mode" .moai/config.json
 #      "mode": "personal" → 기본 질문만 실행
 ```
 
-#### 0.1.2 기본 배치: 언어 선택 + 닉네임
+#### 0.1.2 기본 배치: 언어 선택 + 에이전트 프롬프트 언어 + 닉네임 (3개 질문, 1회 배치 호출)
+
+**배치 설계**: 3개 질문을 1회 호출로 통합 (UX 개선: 3 turns → 1 turn)
 
 **Example AskUserQuestion Call**:
 ```python
@@ -161,6 +159,21 @@ AskUserQuestion(
             ]
         },
         {
+            "question": "In which language should Alfred's sub-agent prompts be written?",
+            "header": "Agent Prompt Language",
+            "multiSelect": false,
+            "options": [
+                {
+                    "label": "🌐 English (Global Standard)",
+                    "description": "All sub-agent prompts in English for global consistency and team collaboration. Recommended for Claude Pro $20 users: reduces token usage by ~15-20%, lowering API costs"
+                },
+                {
+                    "label": "🗣️ Selected Language (Localized)",
+                    "description": "All sub-agent prompts in the language you selected above for local team efficiency"
+                }
+            ]
+        },
+        {
             "question": "How would you like to be called in our conversations? (e.g., GOOS, Team Lead, Developer, or custom name - max 20 chars)",
             "header": "Nickname",
             "multiSelect": false,
@@ -175,9 +188,29 @@ AskUserQuestion(
 )
 ```
 
-#### 0.1.3 팀 모드 추가 배치: GitHub 설정 확인 (팀 모드만)
+**응답 처리**:
+
+**Q1 (사용자 언어)**:
+- Selected option stored as: `conversation_language: "ko"` (or "en", "ja", "zh", etc.)
+
+**Q2 (에이전트 프롬프트 언어)** - **NEW**:
+- **"English (Global Standard)"** → `agent_prompt_language: "english"`
+  - All sub-agent prompts written in English
+  - Recommended for global teams, code consistency, and international collaboration
+  - Project-manager, spec-builder, code-builder use English prompts internally
+- **"Selected Language (Localized)"** → `agent_prompt_language: "localized"`
+  - All sub-agent prompts written in the user-selected language
+  - Recommended for local teams, local documentation, and native language efficiency
+  - Project-manager receives prompts in selected language (e.g., Korean, Japanese)
+
+**Q3 (사용자 닉네임)**:
+- Custom nickname stored as: `user.nickname: "GOOS"` (or custom input)
+
+#### 0.1.3 팀 모드 추가 배치: GitHub 설정 & Git 워크플로우 선택 (팀 모드만)
 
 **조건**: `config.json`에서 `"mode": "team"` 감지 시 실행
+
+**배치 구성**: 2개 질문 (1회 호출로 통합)
 
 **Example AskUserQuestion Call**:
 ```python
@@ -201,15 +234,46 @@ AskUserQuestion(
                     "description": "GitHub Settings → General 확인 후 다시 진행"
                 }
             ]
+        },
+        {
+            "question": "[Team Mode] Which Git workflow should we use when creating SPEC documents?",
+            "header": "SPEC Git Workflow",
+            "multiSelect": false,
+            "options": [
+                {
+                    "label": "📋 Feature Branch + PR",
+                    "description": "매 SPEC마다 feature 브랜치 생성 → PR 리뷰 → develop 병합. 팀 협업과 코드 리뷰에 최적"
+                },
+                {
+                    "label": "🔄 Direct Commit to Develop",
+                    "description": "브랜치 생성 없이 develop에 직접 커밋. 빠른 프로토타이핑과 단순 워크플로우에 최적"
+                },
+                {
+                    "label": "🤔 Decide per SPEC",
+                    "description": "SPEC 생성 시마다 매번 선택. 유연성이 높지만 매번 결정 필요"
+                }
+            ]
         }
     ]
 )
 ```
 
 **응답 처리**:
+
+**Q1 (GitHub 설정)**:
 - **"Yes, already enabled"** → `auto_delete_branches: true` 저장
 - **"No, not enabled"** → `auto_delete_branches: false` + 권장사항 저장
 - **"Not sure"** → `auto_delete_branches: null` + 경고 메시지
+
+**Q2 (Git 워크플로우)**:
+- **"Feature Branch + PR"** → `spec_git_workflow: "feature_branch"` 저장
+  - `/alfred:1-plan` 실행 시 자동으로 feature 브랜치 생성
+  - git-manager가 PR 기반 워크플로우 적용
+- **"Direct Commit to Develop"** → `spec_git_workflow: "develop_direct"` 저장
+  - `/alfred:1-plan` 실행 시 develop 브랜치에 직접 커밋
+  - 브랜치 생성 과정 생략
+- **"Decide per SPEC"** → `spec_git_workflow: "per_spec"` 저장
+  - `/alfred:1-plan` 실행 시마다 git-manager가 사용자에게 선택 요청
 
 **User Response Example**:
 ```
@@ -294,13 +358,15 @@ AskUserQuestion(
 
 Alfred가 선택된 언어, 닉네임, 그리고 팀 모드 설정을 다음과 같이 저장합니다:
 
-#### 0.2.1 기본 정보 저장 (항상)
+#### 0.2.1 기본 정보 저장 (항상) - 에이전트 프롬프트 언어 추가
 
 ```json
 {
   "language": {
     "conversation_language": "ko",
-    "conversation_language_name": "한국어"
+    "conversation_language_name": "한국어",
+    "agent_prompt_language": "localized",
+    "agent_prompt_language_description": "All sub-agent prompts written in the selected language (localized)"
   },
   "user": {
     "nickname": "GOOS",
@@ -313,26 +379,57 @@ Alfred가 선택된 언어, 닉네임, 그리고 팀 모드 설정을 다음과 
 }
 ```
 
-#### 0.2.2 GitHub 설정 저장 (팀 모드만)
+**에이전트 프롬프트 언어 옵션**:
 
-**팀 모드 감지 시 추가 저장**:
+- **`"english"`** (Global Standard) - **💰 Claude Pro $20 사용자 추천**:
+  - All sub-agent prompts and internal communication in English
+  - Best for: International teams, global collaboration, code consistency
+  - Impact: Project-manager, spec-builder, code-builder all use English task prompts
+  - **Cost Benefit**: Reduces token usage by ~15-20% compared to non-English prompts
+    - English prompts are more efficient and use fewer tokens
+    - Significant cost savings for continuous API usage
+    - Example: 100,000 tokens in English ≈ 115,000-120,000 tokens in Korean/Japanese
+
+- **`"localized"`** (Localized - Default for non-English):
+  - All sub-agent prompts and internal communication in selected language
+  - Best for: Local teams, native language efficiency, culturally-specific guidance
+  - Impact: Project-manager, spec-builder, code-builder all use localized task prompts
+  - Note: Uses ~15-20% more tokens due to language characteristics
+
+#### 0.2.2 GitHub & Git 워크플로우 설정 저장 (팀 모드만)
+
+**팀 모드 감지 시 추가 저장 - Feature Branch + PR 선택 시**:
 ```json
 {
   "github": {
     "auto_delete_branches": true,
+    "spec_git_workflow": "feature_branch",
     "checked_at": "2025-10-23T12:34:56Z",
-    "recommendation": "Branch cleanup will be automated after PR merge"
+    "workflow_recommendation": "Feature branch를 사용한 PR 기반 협업 워크플로우. 매 SPEC마다 feature/spec-* 브랜치 생성, PR 리뷰 후 develop 병합"
   }
 }
 ```
 
-**또는 (미활성화 상태)**:
+**또는 - Direct Commit to Develop 선택 시**:
 ```json
 {
   "github": {
     "auto_delete_branches": false,
+    "spec_git_workflow": "develop_direct",
     "checked_at": "2025-10-23T12:34:56Z",
-    "recommendation": "Enable 'Automatically delete head branches' in GitHub Settings → General for better GitFlow workflow"
+    "workflow_recommendation": "develop 브랜치에 직접 커밋하는 단순 워크플로우. 브랜치 생성 과정 생략, 빠른 개발 속도"
+  }
+}
+```
+
+**또는 - Decide per SPEC 선택 시**:
+```json
+{
+  "github": {
+    "auto_delete_branches": true,
+    "spec_git_workflow": "per_spec",
+    "checked_at": "2025-10-23T12:34:56Z",
+    "workflow_recommendation": "SPEC 생성 시마다 워크플로우 선택. /alfred:1-plan 실행 시 git-manager가 선택 요청"
   }
 }
 ```
@@ -344,7 +441,10 @@ Alfred가 선택된 언어, 닉네임, 그리고 팀 모드 설정을 다음과 
 - `.moai/config.json` 의 `language`, `user`, `github` 필드에 저장됨
 - CLAUDE.md의 `{{CONVERSATION_LANGUAGE}}` 및 `{{USER_NICKNAME}}` 변수로 치환됨
 - 모든 Alfred 대화에서 사용됨
-- **팀 모드**: git-manager가 GitHub 설정 상태를 참고하여 브랜치 정리 전략 수립
+- **팀 모드**: git-manager가 다음 워크플로우를 자동으로 적용:
+  - **`spec_git_workflow: "feature_branch"`**: `/alfred:1-plan` 실행 시 feature/spec-* 브랜치 생성, PR 기반 리뷰 프로세스 적용
+  - **`spec_git_workflow: "develop_direct"`**: `/alfred:1-plan` 실행 시 develop 브랜치에 직접 커밋, 브랜치 생성 과정 생략
+  - **`spec_git_workflow: "per_spec"`**: `/alfred:1-plan` 실행 시마다 사용자에게 워크플로우 선택 요청
 
 **설정 완료 출력 예시**:
 ```markdown
@@ -634,49 +734,85 @@ Alfred starts project initialization by calling the project-manager agent with t
 **Parameters passed to project-manager**:
 - **conversation_language** (from STEP 0): Language code selected by user (e.g., "ko", "en", "ja", "zh")
 - **language_name** (from STEP 0): Display name of selected language (e.g., "Korean", "English")
+- **agent_prompt_language** (from STEP 0.1.2) - **NEW**:
+  - `"english"` = All sub-agent prompts in English (Global Standard)
+  - `"localized"` = All sub-agent prompts in selected conversation_language (Localized)
 - Detected Languages: [Language List from codebase detection]
 - Project Type: [New/Existing]
 - Existing Document Status: [Existence/Absence]
 - Approved Interview Plan: [Plan Summary]
+- **Team Mode Git Workflow** (from STEP 0.1.3):
+  - `spec_git_workflow: "feature_branch" | "develop_direct" | "per_spec"` (팀 모드만)
 
 **Execution**:
 ```
 Call the Task tool:
 - subagent_type: "project-manager"
 - description: "Initialize project with conversation language support"
-- prompt: """You are project-manager agent.
+- prompt: """당신은 project-manager 에이전트입니다.
 
-LANGUAGE CONFIGURATION:
-- conversation_language: {{CONVERSATION_LANGUAGE}}
-- language_name: {{CONVERSATION_LANGUAGE_NAME}}
+언어 설정:
+- 대화_언어: {{CONVERSATION_LANGUAGE}} (모든 대화, 문서에 사용)
+- 언어명: {{CONVERSATION_LANGUAGE_NAME}}
+- 에이전트_프롬프트_언어: {{AGENT_PROMPT_LANGUAGE}} (내부 sub-agent 통신 언어)
 
-PROJECT_TYPE: [new|existing]
-DETECTED_LANGUAGES: [detected codebase languages]
+에이전트 프롬프트 언어에 따른 작업 방식:
 
-CRITICAL INSTRUCTION:
-All interviews and generated documentation MUST be in conversation_language:
-- product.md: Generate in {{CONVERSATION_LANGUAGE}}
-- structure.md: Generate in {{CONVERSATION_LANGUAGE}}
-- tech.md: Generate in {{CONVERSATION_LANGUAGE}}
+1. **agent_prompt_language = "english"** (Global Standard):
+   - 당신(project-manager)은 **영어**로 사고하고 작업합니다
+   - 모든 내부 분석과 계획을 영어로 진행합니다
+   - 생성된 product.md, structure.md, tech.md는 **{{CONVERSATION_LANGUAGE}}**로 작성합니다
+   - Sub-agent들(spec-builder 등)에게 전달하는 프롬프트는 **영어**입니다
 
-If conversation_language is 'ko': All narrative content in Korean
-If conversation_language is 'ja': All narrative content in Japanese
-If conversation_language is other: Follow the specified language
+2. **agent_prompt_language = "localized"** (Localized):
+   - 당신(project-manager)은 **{{CONVERSATION_LANGUAGE}}**로 사고하고 작업합니다
+   - 모든 내부 분석과 계획을 {{CONVERSATION_LANGUAGE}}로 진행합니다
+   - 생성된 product.md, structure.md, tech.md는 **{{CONVERSATION_LANGUAGE}}**로 작성합니다
+   - Sub-agent들(spec-builder 등)에게 전달하는 프롬프트도 **{{CONVERSATION_LANGUAGE}}**입니다
 
-After project initialization, update .moai/config.json with nested language structure:
+중요: 대화_언어(conversation_language)와 에이전트_프롬프트_언어(agent_prompt_language)는 다를 수 있습니다!
+- 대화_언어는 **사용자와의 대화**, **생성 문서**에 사용
+- 에이전트_프롬프트_언어는 **sub-agents 통신**, **내부 prompt**에 사용
+
+GIT 워크플로우 설정 (팀 모드):
+- spec_git_workflow: [feature_branch | develop_direct | per_spec]
+  - "feature_branch": feature/spec-* 브랜치 생성, PR 기반 리뷰, develop 병합
+  - "develop_direct": develop에 직접 커밋, 브랜치 생성 안 함
+  - "per_spec": SPEC별로 사용자에게 물어봄 (/alfred:1-plan 실행 중)
+- 참고: 이 값을 .moai/config.json github.spec_git_workflow에 저장하여 git-manager가 참조하도록
+
+프로젝트_타입: [new|existing]
+감지된_언어들: [감지된 코드베이스 언어들]
+
+중요 지시사항:
+모든 인터뷰와 생성된 문서는 대화_언어(conversation_language)로 작성되어야 합니다:
+- product.md: {{CONVERSATION_LANGUAGE}}로 생성
+- structure.md: {{CONVERSATION_LANGUAGE}}로 생성
+- tech.md: {{CONVERSATION_LANGUAGE}}로 생성
+
+conversation_language가 'ko'인 경우: 모든 설명 내용을 한국어로
+conversation_language가 'ja'인 경우: 모든 설명 내용을 일본어로
+다른 언어인 경우: 지정된 언어를 따릅니다
+
+프로젝트 초기화 후, 다음과 같이 .moai/config.json 업데이트:
 {
   "language": {
     "conversation_language": "{{CONVERSATION_LANGUAGE}}",
-    "conversation_language_name": "{{CONVERSATION_LANGUAGE_NAME}}"
+    "conversation_language_name": "{{CONVERSATION_LANGUAGE_NAME}}",
+    "agent_prompt_language": "{{AGENT_PROMPT_LANGUAGE}}"
+  },
+  "github": {
+    "spec_git_workflow": "[feature_branch|develop_direct|per_spec]"
   }
 }
 
-SKILL INVOCATION:
-Use explicit Skill() calls when needed:
-- Skill("moai-alfred-language-detection") for codebase language detection
-- Skill("moai-foundation-langs") for multi-language project setup
+스킬 호출:
+필요 시 명시적 Skill() 호출 사용:
+- Skill("moai-alfred-language-detection") - 코드베이스 언어 감지
+- Skill("moai-foundation-langs") - 다국어 프로젝트 설정
 
-TASK: Conduct project interviews and create/update product/structure/tech.md documents."""
+작업: 프로젝트 인터뷰를 진행하고 product/structure/tech.md 문서를 생성/업데이트합니다.
+에이전트_프롬프트_언어 설정에 따라 sub-agent들과의 통신 언어를 결정합니다."""
 ```
 
 **Outcome**: The project-manager agent conducts structured interviews entirely in the selected language and creates/updates product/structure/tech.md documents in that language.
@@ -725,24 +861,24 @@ After the project-manager has finished creating the document, **Alfred can optio
 **Interview Flow**:
 
 1. **Product Discovery** (create product.md)
- - Define core mission (@DOC:MISSION-001)
- - Identify key user base (@SPEC:USER-001)
- - Identify key problems to solve (@SPEC:PROBLEM-001)
- - Summary of differences and strengths (@DOC:STRATEGY-001)
- - Setting success indicators (@SPEC:SUCCESS-001)
+ - Define core mission (DOC:MISSION-001)
+ - Identify key user base (SPEC:USER-001)
+ - Identify key problems to solve (SPEC:PROBLEM-001)
+ - Summary of differences and strengths (DOC:STRATEGY-001)
+ - Setting success indicators (SPEC:SUCCESS-001)
 
 2. **Structure Blueprint** (create structure.md)
- - Selection of architecture strategy (@DOC:ARCHITECTURE-001)
- - Division of responsibilities by module (@DOC:MODULES-001)
- - External system integration plan (@DOC:INTEGRATION-001)
- - Define traceability strategy (@DOC:TRACEABILITY-001)
+ - Selection of architecture strategy (DOC:ARCHITECTURE-001)
+ - Division of responsibilities by module (DOC:MODULES-001)
+ - External system integration plan (DOC:INTEGRATION-001)
+ - Define traceability strategy (DOC:TRACEABILITY-001)
 
 3. **Tech Stack Mapping** (written by tech.md)
- - Select language & runtime (@DOC:STACK-001)
- - Determine core framework (@DOC:FRAMEWORK-001)
- - Set quality gate (@DOC:QUALITY-001)
-   - Define security policy (@DOC:SECURITY-001)
- - Plan distribution channels (@DOC:DEPLOY-001)
+ - Select language & runtime (DOC:STACK-001)
+ - Determine core framework (DOC:FRAMEWORK-001)
+ - Set quality gate (DOC:QUALITY-001)
+   - Define security policy (DOC:SECURITY-001)
+ - Plan distribution channels (DOC:DEPLOY-001)
 
 **Automatically generate config.json**:
 ```json
@@ -992,11 +1128,11 @@ cc-manager selects the required sub-agents and skills based on the briefing.The 
 
 | Project requirements (document basis)                                              | Recommended sub-agent/skill                                                                                             | Purpose                                                                |
 | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| High quality and coverage goals (`product.md@SPEC:SUCCESS-001`)                    | `tdd-implementer`, `moai-essentials-debug`, `moai-essentials-review`                                                    | Establishment of RED·GREEN·REFACTOR workflow                           |
-| Traceability/TAG improvement request (`structure.md@DOC:TRACEABILITY-001`)         | `doc-syncer`, `moai-alfred-tag-scanning`, `moai-alfred-trust-validation`                                                | Enhanced TAG traceability and document/code synchronization            |
+| High quality and coverage goals (product.md:SPEC:SUCCESS-001)                    | `tdd-implementer`, `moai-essentials-debug`, `moai-essentials-review`                                                    | Establishment of RED·GREEN·REFACTOR workflow                           |
+| Traceability/TAG improvement request (structure.md:DOC:TRACEABILITY-001)         | `doc-syncer`, `moai-alfred-tag-scanning`, `moai-alfred-trust-validation`                                                | Enhanced TAG traceability and document/code synchronization            |
 | Deployment automation/branch strategy required (`structure.md` Architecture/TODO)  | `git-manager`, `moai-alfred-git-workflow`, `moai-foundation-git`                                                        | Branch Strategy·Commit Policy·PR Automation                            |
 | Refactoring legacy modules (`product.md` BACKLOG, `tech.md` TODO)                  | `implementation-planner`, `moai-essentials-refactor`                                                                     | Technical Debt Diagnosis and Refactoring Roadmap                       |
-| Strengthening regulatory/security compliance (`tech.md@DOC:SECURITY-001`)          | `quality-gate`, `moai-alfred-trust-validation`, `moai-foundation-trust`, `moai-domain-security`                         | TRUST S (Secured) and Trackable Compliance, Security Consulting        |
+| Strengthening regulatory/security compliance (tech.md:DOC:SECURITY-001)          | `quality-gate`, `moai-alfred-trust-validation`, `moai-foundation-trust`, `moai-domain-security`                         | TRUST S (Secured) and Trackable Compliance, Security Consulting        |
 | CLI Automation/Tooling Requirements (`tech.md` BUILD/CLI section)                  | `implementation-planner`, `moai-domain-cli-tool`, detected language skills (e.g. `moai-lang-python`)                    | CLI command design, input/output standardization                       |
 | Data analysis/reporting needs (`product.md` DATA, `tech.md` ANALYTICS)             | `implementation-planner`, `moai-domain-data-science`, detected language skills                                          | Data Pipeline·Notebook Job Definition                                  |
 | Improved database structure (`structure.md` DB, `tech.md` STORAGE)                 | `doc-syncer`, `moai-domain-database`, `moai-alfred-tag-scanning`                                                        | Strengthening schema documentation and TAG-DB mapping                  |
@@ -1343,6 +1479,43 @@ After initialization is complete:
 - **Legacy project**: Review @CODE/@CODE/TODO items in product/structure/tech document and confirm priority
 - **Set Change**: Run `/alfred:0-project` again to update document
 - **Template optimization**: Run `/alfred:0-project update` after `moai-adk update`
+
+## Final Step
+
+After project initialization completes, Alfred automatically invokes AskUserQuestion to ask the user what to do next:
+
+```python
+AskUserQuestion(
+    questions=[
+        {
+            "question": "프로젝트 초기화가 완료되었습니다. 다음으로 뭘 하시겠습니까?",
+            "header": "다음 단계",
+            "multiSelect": false,
+            "options": [
+                {
+                    "label": "📋 스펙 작성 진행",
+                    "description": "/alfred:1-plan 실행하여 첫 SPEC 작성"
+                },
+                {
+                    "label": "🔍 프로젝트 구조 검토",
+                    "description": "생성된 문서 검토 및 수정"
+                },
+                {
+                    "label": "🔄 새 세션 시작",
+                    "description": "성능 최적화를 위해 /clear 실행"
+                }
+            ]
+        }
+    ]
+)
+```
+
+**User Responses**:
+- **📋 스펙 작성 진행**: Proceed to `/alfred:1-plan` for creating first SPEC
+- **🔍 프로젝트 구조 검토**: Review and modify generated project documents
+- **🔄 새 세션 시작**: Execute `/clear` to start fresh session (recommended for performance)
+
+---
 
 ## Related commands
 

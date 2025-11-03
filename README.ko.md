@@ -1,6 +1,6 @@
 # MoAI-ADK (Agentic Development Kit)
 
-[한국어](README.ko.md) |[English](README.md) | [ไทย](README.th.md) | [日本語](README.ja.md) | [中文](README.zh.md) | [हिन्दी](README.hi.md)
+[한국어](README.ko.md) | [English](README.md)
 
 [![PyPI version](https://img.shields.io/pypi/v/moai-adk)](https://pypi.org/project/moai-adk/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -20,16 +20,16 @@ MoAI-ADK는 세 가지 핵심 원칙으로 AI 협력 개발을 혁신합니다. 
 **빨리 시작하고 싶다면** "5분 Quick Start"로 바로 진행할 수 있습니다.
 **이미 설치했고 개념을 이해하고 싶다면** "핵심 개념 쉽게 이해하기"를 추천합니다.
 
-| 질문                                    | 바로 보기                                                          |
-| --------------------------------------- | ------------------------------------------------------------------ |
-| 처음 접했는데 무엇인가요?               | [MoAI-ADK란?](#moai-adk란)                                         |
-| 어떻게 시작하나요?                      | [5분 Quick Start](#5-분-quick-start)                               |
-| 기본 흐름이 궁금해요                    | [기본 워크플로우 (0 → 3)](#기본-워크플로우-0--3)                   |
-| Plan / Run / Sync 명령은 무엇을 하나요? | [핵심 명령 요약](#핵심-명령-요약)                                  |
-| SPEC·TDD·TAG가 뭐죠?                    | [핵심 개념 쉽게 이해하기](#핵심-개념-쉽게-이해하기)                |
-| 에이전트/Skills가 궁금해요              | [Sub-agent & Skills 개요](#sub-agent--skills-개요)                 |
-| Claude Code Hooks가 궁금해요            | [Claude Code Hooks 가이드](#claude-code-hooks-가이드)              |
-| 더 깊이 공부하고 싶어요                 | [추가 자료](#추가-자료)                                            |
+| 질문                                    | 바로 보기                                             |
+| --------------------------------------- | ----------------------------------------------------- |
+| 처음 접했는데 무엇인가요?               | [MoAI-ADK란?](#moai-adk란)                            |
+| 어떻게 시작하나요?                      | [5분 Quick Start](#5-분-quick-start)                  |
+| 기본 흐름이 궁금해요                    | [기본 워크플로우 (0 → 3)](#기본-워크플로우-0--3)      |
+| Plan / Run / Sync 명령은 무엇을 하나요? | [핵심 명령 요약](#핵심-명령-요약)                     |
+| SPEC·TDD·TAG가 뭐죠?                    | [핵심 개념 쉽게 이해하기](#핵심-개념-쉽게-이해하기)   |
+| 에이전트/Skills가 궁금해요              | [Sub-agent & Skills 개요](#sub-agent--skills-개요)    |
+| Claude Code Hooks가 궁금해요            | [Claude Code Hooks 가이드](#claude-code-hooks-가이드) |
+| 더 깊이 공부하고 싶어요                 | [추가 자료](#추가-자료)                               |
 
 ---
 
@@ -71,7 +71,7 @@ MoAI-ADK는 세 가지 핵심 원칙으로 AI 협력 개발을 혁신합니다. 
 `/alfred:3-sync` 명령어 하나로 코드, 테스트, 문서가 모두 **최신 상태로 동기화**됩니다. README, CHANGELOG, API 문서, 그리고 Living Document까지 자동으로 업데이트됩니다. 6개월 후에도 코드와 문서는 일치합니다.
 
 **4️⃣ @TAG 시스템으로 추적**
-모든 코드와 테스트, 문서에 `@TAG:ID`를 붙입니다. 나중에 요구사항이 변경되면, `rg "@SPEC:AUTH-001"` 한 명령어로 관련된 테스트, 구현, 문서를 **모두 찾을 수 있습니다**. 리팩토링 시 자신감이 생깁니다.
+모든 코드와 테스트, 문서에 `@TAG:ID`를 붙입니다. 나중에 요구사항이 변경되면, `rg "@SPEC:EX-AUTH-001"` 한 명령어로 관련된 테스트, 구현, 문서를 **모두 찾을 수 있습니다**. 리팩토링 시 자신감이 생깁니다.
 
 **5️⃣ Alfred가 컨텍스트를 기억**
 AI 에이전트들이 협력해 프로젝트의 구조, 결정 이유, 작업 히스토리를 **모두 기억**합니다. 같은 질문을 반복할 필요가 없습니다.
@@ -124,7 +124,7 @@ MoAI-ADK로 **3단계 만에** 첫 프로젝트를 시작하세요. 초보자도
 
 ### 단계 1️⃣: 설치 (약 1분)
 
-#### 명령어
+#### UV 설치 명령어
 
 ```bash
 # macOS/Linux
@@ -132,14 +132,15 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Windows (PowerShell)
 powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
-
-# 설치 확인
-uv --version
 ```
 
 #### 실제 출력 (예시)
-```
+
+```bash
+# UV 버전 확인
+uv --version
 ✓ uv 0.5.1 is already installed
+
 $ uv --version
 uv 0.5.1
 ```
@@ -149,13 +150,14 @@ uv 0.5.1
 ```bash
 uv tool install moai-adk
 
-# 결과: ✅ Installed moai-adk v0.9.0
+# 결과: ✅ Installed moai-adk
 ```
 
 **검증**:
+
 ```bash
 moai-adk --version
-# 출력: MoAI-ADK v0.9.0
+# 출력: MoAI-ADK v1.0.0
 ```
 
 ---
@@ -191,6 +193,7 @@ moai-adk doctor
 ```
 
 **출력 예시**:
+
 ```
 ✅ Python 3.13.0
 ✅ uv 0.5.1
@@ -217,6 +220,7 @@ claude
 ```
 
 #### Alfred가 물어볼 것들
+
 ```
 Q1: 프로젝트 이름은?
 A: hello-world
@@ -251,6 +255,7 @@ A: personal (로컬 개발용)
 > **→ 다음 섹션: ["첫 10분 실습: Hello World API"](#-첫-10분-실습-hello-world-api) 로 이동**
 
 이 섹션에서는:
+
 - ✅ 간단한 API를 SPEC으로 정의하기
 - ✅ TDD (RED → GREEN → REFACTOR) 완전 체험
 - ✅ 자동 문서 생성 경험
@@ -265,6 +270,7 @@ A: personal (로컬 개발용)
 ### 설치 상세 가이드
 
 **uv 설치 후 추가 확인**:
+
 ```bash
 # PATH 설정 확인 (필요시)
 export PATH="$HOME/.cargo/bin:$PATH"
@@ -274,6 +280,7 @@ uv --version
 ```
 
 **MoAI-ADK 설치 후 다른 명령어들도 사용 가능**:
+
 ```bash
 moai-adk init          # 프로젝트 초기화
 moai-adk doctor        # 시스템 진단
@@ -283,18 +290,21 @@ moai-adk update        # 최신 버전으로 업데이트
 ### 프로젝트 생성 상세 가이드
 
 **새 프로젝트 생성**:
+
 ```bash
 moai-adk init my-project
 cd my-project
 ```
 
 **기존 프로젝트에 추가**:
+
 ```bash
 cd your-existing-project
 moai-adk init .
 ```
 
 생성되는 전체 구조:
+
 ```
 my-project/
 ├── .moai/                          # MoAI-ADK 프로젝트 설정
@@ -325,11 +335,11 @@ my-project/
 
 한 번 설정 후, 모든 기능 개발은 이 3단계를 반복합니다:
 
-| 단계 | 명령어 | 수행 작업 | 시간 |
-|------|--------|---------|------|
-| 📋 **PLAN** | `/alfred:1-plan "기능 설명"` | SPEC 작성 (EARS 형식) | 2분 |
-| 💻 **RUN** | `/alfred:2-run SPEC-ID` | TDD 구현 (RED→GREEN→REFACTOR) | 5분 |
-| 📚 **SYNC** | `/alfred:3-sync` | 문서 자동 동기화 | 1분 |
+| 단계        | 명령어                       | 수행 작업                     | 시간 |
+| ----------- | ---------------------------- | ----------------------------- | ---- |
+| 📋 **PLAN** | `/alfred:1-plan "기능 설명"` | SPEC 작성 (EARS 형식)         | 2분  |
+| 💻 **RUN**  | `/alfred:2-run SPEC-ID`      | TDD 구현 (RED→GREEN→REFACTOR) | 5분  |
+| 📚 **SYNC** | `/alfred:3-sync`             | 문서 자동 동기화              | 1분  |
 
 **한 사이클 = 약 8분** → **하루에 7-8개 기능 완성 가능** ⚡
 
@@ -460,13 +470,13 @@ graph TD
 
 ## 핵심 명령 요약
 
-| 명령                      | 무엇을 하나요?                                 | 대표 산출물                                                        |
-| ------------------------- | ---------------------------------------------- | ------------------------------------------------------------------ |
-| `/alfred:0-project`       | 프로젝트 설명 수집, 설정·문서 생성, Skill 추천 | `.moai/config.json`, `.moai/project/*`, 초기 보고서                |
-| `/alfred:1-plan <설명>`   | 요구사항 분석, SPEC 초안, Plan Board 작성      | `.moai/specs/SPEC-*/spec.md`, plan/acceptance 문서, feature 브랜치 |
-| `/alfred:2-run <SPEC-ID>` | TDD 실행, 테스트/구현/리팩토링, 품질 검증      | `tests/`, `src/` 구현, 품질 리포트, TAG 연결                       |
-| `/alfred:3-sync`          | 문서/README/CHANGELOG 동기화, TAG/PR 상태 정리 | `docs/`, `.moai/reports/sync-report.md`, Ready PR                  |
-| `/alfred:9-feedback` | 대화형으로 GitHub Issue 생성 (타입 → 제목 → 설명 → 우선순위) | GitHub Issue + 자동 라벨 + 우선순위 + URL |
+| 명령                      | 무엇을 하나요?                                               | 대표 산출물                                                        |
+| ------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------ |
+| `/alfred:0-project`       | 프로젝트 설명 수집, 설정·문서 생성, Skill 추천               | `.moai/config.json`, `.moai/project/*`, 초기 보고서                |
+| `/alfred:1-plan <설명>`   | 요구사항 분석, SPEC 초안, Plan Board 작성                    | `.moai/specs/SPEC-*/spec.md`, plan/acceptance 문서, feature 브랜치 |
+| `/alfred:2-run <SPEC-ID>` | TDD 실행, 테스트/구현/리팩토링, 품질 검증                    | `tests/`, `src/` 구현, 품질 리포트, TAG 연결                       |
+| `/alfred:3-sync`          | 문서/README/CHANGELOG 동기화, TAG/PR 상태 정리               | `docs/`, `.moai/reports/sync-report.md`, Ready PR                  |
+| `/alfred:9-feedback`      | 대화형으로 GitHub Issue 생성 (타입 → 제목 → 설명 → 우선순위) | GitHub Issue + 자동 라벨 + 우선순위 + URL                          |
 
 > ❗ 모든 명령은 **Phase 0(선택) → Phase 1 → Phase 2 → Phase 3** 순환 구조를 유지합니다. 실행 중 상태와 다음 단계 제안은 Alfred가 자동으로 보고합니다.
 >
@@ -491,6 +501,7 @@ MoAI-ADK는 이제 SPEC 문서에서 **GitHub Issue 자동 동기화**를 제공
 ### 동기화되는 내용
 
 **SPEC에서 GitHub Issue로:**
+
 - **SPEC ID**: 고유 식별자 (예: AUTH-001, USER-001)
 - **Version**: 시맨틱 버저닝 (v0.1.0, v1.0.0)
 - **Status**: draft, in-review, in-progress, completed, stable
@@ -498,17 +509,18 @@ MoAI-ADK는 이제 SPEC 문서에서 **GitHub Issue 자동 동기화**를 제공
 - **전체 내용**: EARS 요구사항, 수락 기준, 의존성
 
 **GitHub Issue 형식:**
+
 ```markdown
 # [SPEC-AUTH-001] 사용자 인증 (v1.0.0)
 
 ## SPEC 메타데이터
 
-| 필드 | 값 |
-|-------|-------|
-| **ID** | AUTH-001 |
-| **Version** | v1.0.0 |
-| **Status** | in-progress |
-| **Priority** | high |
+| 필드         | 값          |
+| ------------ | ----------- |
+| **ID**       | AUTH-001    |
+| **Version**  | v1.0.0      |
+| **Status**   | in-progress |
+| **Priority** | high        |
 
 ## SPEC 문서
 
@@ -535,7 +547,6 @@ MoAI-ADK는 이제 SPEC 문서에서 **GitHub Issue 자동 동기화**를 제공
 **GitHub 라벨**: `spec`, `planning`, `critical`, `high`, `medium`, `low`
 
 모든 템플릿은 MoAI-ADK와 함께 자동으로 설치되며 `moai-adk init` 실행 시 동기화됩니다.
-
 
 ### 워크플로우 예시
 
@@ -577,6 +588,7 @@ MoAI-ADK v0.7.0+부터 개발 중 **GitHub Issue를 즉시 생성**할 수 있�
 ### 왜 빠른 Issue 생성인가?
 
 코딩 중에 자주 만나는 상황들:
+
 - 🐛 버그를 발견하고 즉시 보고하고 싶을 때
 - ✨ 좋은 기능 아이디어가 떠올랐을 때
 - ⚡ 성능 개선 아이디어가 있을 때
@@ -590,6 +602,7 @@ MoAI-ADK v0.7.0+부터 개발 중 **GitHub Issue를 즉시 생성**할 수 있�
 `/alfred:9-feedback`를 실행하면 Alfred가 단계별 대화형 인터페이스로 안내합니다:
 
 **1단계: Issue 타입 선택**
+
 ```
 Alfred: 어떤 타입의 Issue를 만들고 싶으신가요?
 [ ] 🐛 버그 리포트 - 뭔가 작동하지 않음
@@ -599,18 +612,21 @@ Alfred: 어떤 타입의 Issue를 만들고 싶으신가요?
 ```
 
 **2단계: Issue 제목 입력**
+
 ```
 Alfred: Issue 제목을 입력하세요
 당신의 입력: "로그인 버튼이 모바일에서 응답하지 않음"
 ```
 
 **3단계: 설명 입력 (선택사항)**
+
 ```
 Alfred: 상세한 설명을 입력하세요 (선택 사항—Enter를 누르면 건너뛸 수 있습니다)
 당신의 입력: "iPhone 15에서 로그인 버튼을 누르면 5초간 멈춘 후 앱이 종료됩니다"
 ```
 
 **4단계: 우선순위 선택**
+
 ```
 Alfred: 우선순위를 선택하세요
 [ ] 🔴 긴급 - 시스템 다운, 데이터 손실, 보안 문제
@@ -620,6 +636,7 @@ Alfred: 우선순위를 선택하세요
 ```
 
 **5단계: 자동 Issue 생성**
+
 ```
 Alfred가 자동으로:
 1. Issue 타입과 우선순위에 따라 적절한 라벨 결정
@@ -682,6 +699,7 @@ Alfred: 우선순위를 선택하세요
 ### 더 알아보기
 
 `.moai/docs/quick-issue-creation-guide.md`에서 다음을 확인할 수 있습니다:
+
 - 상세한 사용 예시
 - 최적 사례 및 팁
 - 문제 해결 가이드
@@ -762,13 +780,13 @@ MoAI-ADK는 5가지 핵심 개념으로 이루어져 있습니다. 각 개념은
 **TAG 체인**:
 
 ```
-@SPEC:AUTH-001 (요구사항)
+@SPEC:EX-AUTH-001 (요구사항)
     ↓
-@TEST:AUTH-001 (테스트)
+@TEST:EX-AUTH-001 (테스트)
     ↓
-@CODE:AUTH-001 (구현)
+@CODE:EX-AUTH-001 (구현)
     ↓
-@DOC:AUTH-001 (문서)
+@DOC:EX-AUTH-001 (문서)
 ```
 
 **TAG ID 규칙**: `<도메인>-<3자리 숫자>`
@@ -884,6 +902,7 @@ rg '@TAG:AUTH-001' -n
 > 이미 3단계 초고속 시작을 완료했다면, 이 섹션부터 시작하세요!
 
 ### 사전 준비
+
 - ✅ MoAI-ADK 설치 완료
 - ✅ 프로젝트 생성 완료 (`moai-adk init hello-world`)
 - ✅ Claude Code 실행 중
@@ -893,11 +912,13 @@ rg '@TAG:AUTH-001' -n
 ### Step 1️⃣: SPEC 작성 (2분)
 
 #### 명령어
+
 ```bash
 /alfred:1-plan "GET /hello 엔드포인트 - 쿼리 파라미터 name을 받아서 인사말 반환"
 ```
 
 #### Alfred가 자동으로 생성
+
 ```
 ✅ SPEC ID: HELLO-001
 ✅ 파일: .moai/specs/SPEC-HELLO-001/spec.md
@@ -905,11 +926,13 @@ rg '@TAG:AUTH-001' -n
 ```
 
 #### 생성된 SPEC 확인
+
 ```bash
 cat .moai/specs/SPEC-HELLO-001/spec.md
 ```
 
 **내용 예시**:
+
 ```yaml
 ---
 id: HELLO-001
@@ -917,8 +940,7 @@ version: 0.0.1
 status: draft
 priority: high
 ---
-
-# `@SPEC:HELLO-001: Hello World API
+# `@SPEC:EX-HELLO-001: Hello World API
 
 ## Ubiquitous Requirements
 - 시스템은 HTTP GET /hello 엔드포인트를 제공해야 한다
@@ -939,6 +961,7 @@ priority: high
 ### Step 2️⃣: TDD 구현 (5분)
 
 #### 명령어
+
 ```bash
 /alfred:2-run HELLO-001
 ```
@@ -948,7 +971,7 @@ priority: high
 **생성되는 파일**: `tests/test_hello.py`
 
 ```python
-# `@TEST:HELLO-001 | SPEC: SPEC-HELLO-001.md
+# `@TEST:EX-HELLO-001 | SPEC: SPEC-HELLO-001.md
 
 import pytest
 from fastapi.testclient import TestClient
@@ -970,6 +993,7 @@ def test_hello_without_name_should_return_default_greeting():
 ```
 
 **실행**:
+
 ```bash
 pytest tests/test_hello.py -v
 ```
@@ -977,6 +1001,7 @@ pytest tests/test_hello.py -v
 **결과**: ❌ FAILED (app가 없음 - 정상!)
 
 **Git 커밋**:
+
 ```bash
 git add tests/test_hello.py
 git commit -m "🔴 test(HELLO-001): add failing hello API tests"
@@ -989,7 +1014,7 @@ git commit -m "🔴 test(HELLO-001): add failing hello API tests"
 **생성되는 파일**: `src/hello/api.py`
 
 ```python
-# `@CODE:HELLO-001:API | SPEC: SPEC-HELLO-001.md | TEST: tests/test_hello.py
+# `@CODE:EX-HELLO-001:API | SPEC: SPEC-HELLO-001.md | TEST: tests/test_hello.py
 
 from fastapi import FastAPI
 
@@ -997,11 +1022,12 @@ app = FastAPI()
 
 @app.get("/hello")
 def hello(name: str = "World"):
-    """@CODE:HELLO-001:API - Hello endpoint"""
+    """@CODE:EX-HELLO-001:API - Hello endpoint"""
     return {"message": f"Hello, {name}!"}
 ```
 
 **실행**:
+
 ```bash
 pytest tests/test_hello.py -v
 ```
@@ -1009,6 +1035,7 @@ pytest tests/test_hello.py -v
 **결과**: ✅ PASSED (모두 통과!)
 
 **Git 커밋**:
+
 ```bash
 git add src/hello/api.py
 git commit -m "🟢 feat(HELLO-001): implement hello API"
@@ -1027,13 +1054,14 @@ app = FastAPI()
 
 @app.get("/hello")
 def hello(name: str = "World"):
-    """@CODE:HELLO-001:API - Hello endpoint with validation"""
+    """@CODE:EX-HELLO-001:API - Hello endpoint with validation"""
     if len(name) > 50:
         raise HTTPException(status_code=400, detail="Name too long (max 50 chars)")
     return {"message": f"Hello, {name}!"}
 ```
 
 **테스트 추가**:
+
 ```python
 def test_hello_with_long_name_should_return_400():
     """name이 50자를 초과하면 400 에러를 반환해야 한다"""
@@ -1043,6 +1071,7 @@ def test_hello_with_long_name_should_return_400():
 ```
 
 **실행**:
+
 ```bash
 pytest tests/test_hello.py -v
 ```
@@ -1050,6 +1079,7 @@ pytest tests/test_hello.py -v
 **결과**: ✅ PASSED (모두 통과!)
 
 **Git 커밋**:
+
 ```bash
 git add tests/test_hello.py src/hello/api.py
 git commit -m "♻️ refactor(HELLO-001): add name length validation"
@@ -1060,11 +1090,13 @@ git commit -m "♻️ refactor(HELLO-001): add name length validation"
 ### Step 3️⃣: 문서 동기화 (2분)
 
 #### 명령어
+
 ```bash
 /alfred:3-sync
 ```
 
 #### Alfred가 자동으로 처리
+
 ```
 ✅ docs/api/hello.md - API 문서 생성
 ✅ README.md - API 사용법 추가
@@ -1073,30 +1105,38 @@ git commit -m "♻️ refactor(HELLO-001): add name length validation"
 ```
 
 #### 생성된 API 문서 확인
+
 ```bash
 cat docs/api/hello.md
 ```
 
 **내용 예시**:
-```markdown
+
+````markdown
 # Hello API Documentation
 
 ## GET /hello
 
 ### Description
+
 이름을 받아서 개인화된 인사말을 반환합니다.
 
 ### Parameters
+
 - `name` (query, optional): 이름 (기본값: "World", 최대 50자)
 
 ### Responses
+
 - **200**: 성공
   ```json
   { "message": "Hello, 철수!" }
   ```
+````
+
 - **400**: 이름이 너무 김
 
 ### Examples
+
 ```bash
 curl "http://localhost:8000/hello?name=철수"
 # → {"message": "Hello, 철수!"}
@@ -1106,10 +1146,12 @@ curl "http://localhost:8000/hello"
 ```
 
 ### Traceability
-- `@SPEC:HELLO-001` - 요구사항
-- `@TEST:HELLO-001` - 테스트
-- `@CODE:HELLO-001:API` - 구현
-```
+
+- `@SPEC:EX-HELLO-001` - 요구사항
+- `@TEST:EX-HELLO-001` - 테스트
+- `@CODE:EX-HELLO-001:API` - 구현
+
+````
 
 ---
 
@@ -1118,14 +1160,15 @@ curl "http://localhost:8000/hello"
 #### 명령어
 ```bash
 rg '@(SPEC|TEST|CODE|DOC):HELLO-001' -n
-```
+````
 
 #### 출력 (완전한 추적성)
+
 ```
-.moai/specs/SPEC-HELLO-001/spec.md:7:# `@SPEC:HELLO-001: Hello World API
-tests/test_hello.py:3:# `@TEST:HELLO-001 | SPEC: SPEC-HELLO-001.md
-src/hello/api.py:3:# `@CODE:HELLO-001:API | SPEC: SPEC-HELLO-001.md
-docs/api/hello.md:24:- `@SPEC:HELLO-001`
+.moai/specs/SPEC-HELLO-001/spec.md:7:# `@SPEC:EX-HELLO-001: Hello World API
+tests/test_hello.py:3:# `@TEST:EX-HELLO-001 | SPEC: SPEC-HELLO-001.md
+src/hello/api.py:3:# `@CODE:EX-HELLO-001:API | SPEC: SPEC-HELLO-001.md
+docs/api/hello.md:24:- `@SPEC:EX-HELLO-001`
 ```
 
 ✅ **의미**: 요구사항 → 테스트 → 구현 → 문서가 완벽하게 연결됨!
@@ -1135,6 +1178,7 @@ docs/api/hello.md:24:- `@SPEC:HELLO-001`
 ### 🎉 10분 후: 당신이 얻은 것
 
 #### 생성된 파일들
+
 ```
 hello-world/
 ├── .moai/specs/SPEC-HELLO-001/
@@ -1150,11 +1194,13 @@ hello-world/
 ```
 
 #### Git 히스토리
+
 ```bash
 git log --oneline | head -4
 ```
 
 **출력**:
+
 ```
 c1d2e3f ♻️ refactor(HELLO-001): add name length validation
 b2c3d4e 🟢 feat(HELLO-001): implement hello API
@@ -1163,6 +1209,7 @@ d4e5f6g Merge branch 'develop' (initial project commit)
 ```
 
 #### 배운 것 정리
+
 - ✅ **SPEC**: EARS 형식으로 요구사항을 명확히 정의
 - ✅ **TDD**: RED → GREEN → REFACTOR 사이클 경험
 - ✅ **자동화**: 문서가 코드와 함께 자동 생성됨
@@ -1211,7 +1258,7 @@ author: @user
 priority: high
 ---
 
-# `@SPEC:TODO-001: Todo Management API
+# `@SPEC:EX-TODO-001: Todo Management API
 
 ## Ubiquitous Requirements
 - 시스템은 할 일을 추가할 수 있어야 한다
@@ -1247,7 +1294,7 @@ priority: high
 
 - 📚 라이브러리: FastAPI + SQLAlchemy
 - 📁 폴더 구조: `src/todo/`, `tests/todo/`
-- 🏷️ TAG 설계: `@CODE:TODO-001:API`, `@CODE:TODO-001:MODEL`, `@CODE:TODO-001:REPO`
+- 🏷️ TAG 설계: `@CODE:EX-TODO-001:API`, `@CODE:EX-TODO-001:MODEL`, `@CODE:EX-TODO-001:REPO`
 
 **Phase 2: RED → GREEN → REFACTOR**
 
@@ -1255,7 +1302,7 @@ priority: high
 
 ```python
 # tests/test_todo_api.py
-# `@TEST:TODO-001 | SPEC: SPEC-TODO-001.md
+# `@TEST:EX-TODO-001 | SPEC: SPEC-TODO-001.md
 
 import pytest
 from src.todo.api import create_todo, get_todos
@@ -1297,7 +1344,7 @@ git commit -m "🔴 test(TODO-001): add failing API tests"
 
 ```python
 # src/todo/api.py
-# `@CODE:TODO-001:API | SPEC: SPEC-TODO-001.md | TEST: tests/test_todo_api.py
+# `@CODE:EX-TODO-001:API | SPEC: SPEC-TODO-001.md | TEST: tests/test_todo_api.py
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -1311,19 +1358,19 @@ class TodoRequest(BaseModel):
 
 @app.post("/todos", status_code=201)
 def create_todo(todo: TodoRequest):
-    """@CODE:TODO-001:API - POST 엔드포인트"""
+    """@CODE:EX-TODO-001:API - POST 엔드포인트"""
     todo_id = str(uuid.uuid4())
     todos_db[todo_id] = {"id": todo_id, "title": todo.title}
     return todos_db[todo_id]
 
 @app.get("/todos")
 def get_todos():
-    """@CODE:TODO-001:API - GET all 엔드포인트"""
+    """@CODE:EX-TODO-001:API - GET all 엔드포인트"""
     return list(todos_db.values())
 
 @app.get("/todos/{todo_id}")
 def get_todo(todo_id: str):
-    """@CODE:TODO-001:API - GET by ID 엔드포인트"""
+    """@CODE:EX-TODO-001:API - GET by ID 엔드포인트"""
     if todo_id not in todos_db:
         raise HTTPException(status_code=404, detail="Todo not found")
     return todos_db[todo_id]
@@ -1342,7 +1389,7 @@ git commit -m "🟢 feat(TODO-001): implement minimal Todo API"
 
 ```python
 # src/todo/models.py
-# `@CODE:TODO-001:MODEL | SPEC: SPEC-TODO-001.md
+# `@CODE:EX-TODO-001:MODEL | SPEC: SPEC-TODO-001.md
 
 from datetime import datetime
 from sqlalchemy import Column, String, DateTime
@@ -1351,7 +1398,7 @@ from sqlalchemy.ext.declarative import declarative_base
 Base = declarative_base()
 
 class Todo(Base):
-    """@CODE:TODO-001:MODEL - 할 일 데이터 모델"""
+    """@CODE:EX-TODO-001:MODEL - 할 일 데이터 모델"""
     __tablename__ = "todos"
 
     id = Column(String, primary_key=True)
@@ -1359,7 +1406,7 @@ class Todo(Base):
     created_at = Column(DateTime, default=datetime.utcnow)   # 자동 생성 시간
 
     def validate(self):
-        """@CODE:TODO-001:MODEL - 검증"""
+        """@CODE:EX-TODO-001:MODEL - 검증"""
         if not self.title or len(self.title) > 200:
             raise ValueError("Title must be 1-200 characters")
 ```
@@ -1395,10 +1442,10 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
 1. **TAG 체인 검증**
 
    ```bash
-   ✅ @SPEC:TODO-001 → .moai/specs/SPEC-TODO-001/spec.md
-   ✅ @TEST:TODO-001 → tests/test_todo_api.py
-   ✅ @CODE:TODO-001 → src/todo/ (3개 파일)
-   ✅ @DOC:TODO-001 → docs/api/todo.md (자동 생성)
+   ✅ @SPEC:EX-TODO-001 → .moai/specs/SPEC-TODO-001/spec.md
+   ✅ @TEST:EX-TODO-001 → tests/test_todo_api.py
+   ✅ @CODE:EX-TODO-001 → src/todo/ (3개 파일)
+   ✅ @DOC:EX-TODO-001 → docs/api/todo.md (자동 생성)
 
    TAG Chain Integrity: 100%
    Orphan TAGs: None
@@ -1407,7 +1454,7 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
 2. **Living Document 생성**
 
    ```markdown
-   # `@DOC:TODO-001: Todo Management API
+   # `@DOC:EX-TODO-001: Todo Management API
 
    ## Overview
 
@@ -1421,8 +1468,8 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
    - URL: /todos
    - Request: {"title": "string (1-200 chars)"}
    - Response: 201 Created with todo object
-   - Implemented in: @CODE:TODO-001:API
-   - Tested in: @TEST:TODO-001
+   - Implemented in: @CODE:EX-TODO-001:API
+   - Tested in: @TEST:EX-TODO-001
 
    ### Get All Todos
 
@@ -1450,7 +1497,7 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
 
    ### Added
 
-   - Todo Management API with CRUD operations (@SPEC:TODO-001)
+   - Todo Management API with CRUD operations (@SPEC:EX-TODO-001)
      - Create new todos
      - List all todos
      - Update existing todos
@@ -1472,11 +1519,11 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
 rg '@(SPEC|TEST|CODE|DOC):TODO-001' -n
 
 # 출력:
-# .moai/specs/SPEC-TODO-001/spec.md:1: # `@SPEC:TODO-001: Todo Management API
-# tests/test_todo_api.py:2: # `@TEST:TODO-001 | SPEC: SPEC-TODO-001.md
-# src/todo/api.py:5: # `@CODE:TODO-001:API | SPEC: SPEC-TODO-001.md
-# src/todo/models.py:5: # `@CODE:TODO-001:MODEL | SPEC: SPEC-TODO-001.md
-# docs/api/todo.md:1: # `@DOC:TODO-001: Todo Management API
+# .moai/specs/SPEC-TODO-001/spec.md:1: # `@SPEC:EX-TODO-001: Todo Management API
+# tests/test_todo_api.py:2: # `@TEST:EX-TODO-001 | SPEC: SPEC-TODO-001.md
+# src/todo/api.py:5: # `@CODE:EX-TODO-001:API | SPEC: SPEC-TODO-001.md
+# src/todo/models.py:5: # `@CODE:EX-TODO-001:MODEL | SPEC: SPEC-TODO-001.md
+# docs/api/todo.md:1: # `@DOC:EX-TODO-001: Todo Management API
 
 
 # 2️⃣ 테스트 실행
@@ -1506,21 +1553,21 @@ git log --oneline | head -5
 
 ```
 ✅ SPEC 작성 (3분)
-   └─ @SPEC:TODO-001 TAG 할당
+   └─ @SPEC:EX-TODO-001 TAG 할당
    └─ EARS 형식의 명확한 요구사항
 
 ✅ TDD 구현 (5분)
    └─ 🔴 RED: 테스트 먼저 작성
    └─ 🟢 GREEN: 최소 구현
    └─ ♻️ REFACTOR: 품질 개선
-   └─ @TEST:TODO-001, @CODE:TODO-001 TAG 할당
+   └─ @TEST:EX-TODO-001, @CODE:EX-TODO-001 TAG 할당
    └─ 커버리지 87%, TRUST 5원칙 검증
 
 ✅ 문서 동기화 (1분)
    └─ Living Document 자동 생성
    └─ README, CHANGELOG 업데이트
    └─ TAG 체인 검증 완료
-   └─ @DOC:TODO-001 TAG 할당
+   └─ @DOC:EX-TODO-001 TAG 할당
    └─ PR 상태: Draft → Ready for Review
 
 결과:
@@ -1739,6 +1786,7 @@ MoAI-ADK 시작 시 자주 만나는 오류와 해결 방법입니다.
 ### 1️⃣ uv가 설치되지 않았습니다
 
 **증상**:
+
 ```bash
 $ uv --version
 bash: uv: command not found
@@ -1749,6 +1797,7 @@ bash: uv: command not found
 **해결**:
 
 **macOS/Linux**:
+
 ```bash
 # 설치
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -1761,6 +1810,7 @@ uv --version
 ```
 
 **Windows (PowerShell)**:
+
 ```powershell
 powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 
@@ -1769,6 +1819,7 @@ uv --version
 ```
 
 **여전히 실패하면**:
+
 ```bash
 # PATH 수동 추가 (macOS/Linux)
 export PATH="$HOME/.cargo/bin:$PATH"
@@ -1782,6 +1833,7 @@ uv --version
 ### 2️⃣ Python 버전이 맞지 않습니다
 
 **증상**:
+
 ```
 Python 3.8 found, but 3.13+ required
 ```
@@ -1791,6 +1843,7 @@ Python 3.8 found, but 3.13+ required
 **해결**:
 
 **Option A: pyenv 사용 (권장)**:
+
 ```bash
 # pyenv 설치
 curl https://pyenv.run | bash
@@ -1804,6 +1857,7 @@ python --version  # Python 3.13.x
 ```
 
 **Option B: uv로 Python 자동 관리**:
+
 ```bash
 # uv가 자동으로 Python 3.13 다운로드
 uv python install 3.13
@@ -1818,6 +1872,7 @@ python --version
 ### 3️⃣ Git이 설치되지 않았습니다
 
 **증상**:
+
 ```
 ✗ Git (runtime): not found
 ```
@@ -1827,6 +1882,7 @@ python --version
 **해결**:
 
 **macOS**:
+
 ```bash
 # Homebrew로 설치
 brew install git
@@ -1836,12 +1892,14 @@ xcode-select --install
 ```
 
 **Ubuntu/Debian**:
+
 ```bash
 sudo apt update
 sudo apt install git -y
 ```
 
 **Windows**:
+
 ```powershell
 # winget로 설치
 winget install Git.Git
@@ -1851,6 +1909,7 @@ winget install Git.Git
 ```
 
 **검증**:
+
 ```bash
 git --version  # git version 2.x.x
 ```
@@ -1860,6 +1919,7 @@ git --version  # git version 2.x.x
 ### 4️⃣ Claude Code가 .moai/ 폴더를 인식하지 못합니다
 
 **증상**:
+
 ```
 "프로젝트가 초기화되지 않았습니다"
 /alfred:0-project 명령어가 작동하지 않음
@@ -1885,6 +1945,7 @@ claude  # Claude Code 재시작
 ```
 
 **검증**:
+
 ```bash
 moai-adk doctor
 # 모든 항목이 ✅ 표시되어야 함
@@ -1895,6 +1956,7 @@ moai-adk doctor
 ### 5️⃣ 테스트 실행 시 모듈을 찾을 수 없습니다
 
 **증상**:
+
 ```
 FAILED tests/test_hello.py - ModuleNotFoundError: No module named 'fastapi'
 ```
@@ -1922,6 +1984,7 @@ pytest tests/ -v
 ### 6️⃣ /alfred 명령어가 작동하지 않습니다
 
 **증상**:
+
 ```
 Unknown command: /alfred:1-plan
 ```
@@ -1950,8 +2013,9 @@ claude
 ### 7️⃣ TAG 체인이 깨졌습니다
 
 **증상**:
+
 ```
-⚠ Orphan TAG detected: @TEST:HELLO-001 (no matching @SPEC)
+⚠ Orphan TAG detected: @TEST:EX-HELLO-001 (no matching @SPEC)
 ```
 
 **원인**: SPEC이 삭제되었거나 TAG가 불일치
@@ -1963,13 +2027,13 @@ claude
 rg '@(SPEC|TEST|CODE):HELLO-001' -n
 
 # 2. 누락된 TAG 확인
-rg '@SPEC:HELLO-001' -n .moai/specs/
+rg '@SPEC:EX-HELLO-001' -n .moai/specs/
 
 # 3. SPEC이 없으면 재생성
 /alfred:1-plan "기능 설명"
 
 # 또는 테스트의 TAG 수정
-# tests/test_hello.py에서 @TEST:HELLO-001 → @TEST:HELLO-002
+# tests/test_hello.py에서 @TEST:EX-HELLO-001 → @TEST:EX-HELLO-002
 
 # 4. 동기화
 /alfred:3-sync
@@ -1980,23 +2044,29 @@ rg '@SPEC:HELLO-001' -n .moai/specs/
 ### 8️⃣ 일반적인 디버깅 명령어
 
 **시스템 상태 확인**:
+
 ```bash
 moai-adk doctor
 ```
+
 **출력**: 모든 의존성 체크 + 권장사항
 
 **프로젝트 구조 확인**:
+
 ```bash
 tree -L 2 .moai/
 ```
 
 **TAG 체인 무결성 검증**:
+
 ```bash
 rg '@(SPEC|TEST|CODE|DOC):' -n | wc -l
 ```
+
 **출력**: 총 TAG 개수
 
 **Git 상태 확인**:
+
 ```bash
 git status
 git log --oneline -5
@@ -2026,6 +2096,7 @@ moai-adk doctor --verbose
 - **Discord 커뮤니티**: 실시간 질문
 
 **보고할 때 포함해야 할 정보**:
+
 1. `moai-adk doctor --verbose` 출력
 2. 에러 메시지 전체 (스크린샷 또는 복사)
 3. 재현 방법 (어떤 명령어를 실행했는가?)
@@ -2048,42 +2119,41 @@ moai-adk doctor --verbose
 
 ## 최신 업데이트
 
-| 버전        | 주요 기능                                                                     | 날짜       |
-| ----------- | ----------------------------------------------------------------------------- | ---------- |
-| **v0.8.2**  | 📖 EARS 용어 업데이트: "Constraints" → "Unwanted Behaviors" (명확성 개선)      | 2025-10-29 |
+| 버전        | 주요 기능                                                                               | 날짜       |
+| ----------- | --------------------------------------------------------------------------------------- | ---------- |
+| **v0.8.2**  | 📖 EARS 용어 업데이트: "Constraints" → "Unwanted Behaviors" (명확성 개선)               | 2025-10-29 |
 | **v0.8.1**  | 🔄 명령어 변경: `/alfred:9-help` → `/alfred:9-feedback` + 사용자 피드백 워크플로우 개선 | 2025-10-28 |
-| **v0.8.0**  | 🏷️ @DOC TAG 자동 생성 시스템 + SessionStart 버전 체크 강화                    | 2025-10-27 |
-| **v0.7.0**  | 🌍 완전한 언어 지역화 시스템 (영어, 한국어, 일본어, 중국어, 스페인어)           | 2025-10-26 |
-| **v0.6.3**  | ⚡ 3단계 업데이트 워크플로우: 병렬 작업을 통한 70-80% 성능 개선                 | 2025-10-25 |
-| **v0.6.0**  | 🏗️ 주요 아키텍처 리팩터링 + SPEC 메타데이터 구조 개선 (필수 7개 + 선택 9개)     | 2025-10-24 |
-| **v0.4.11** | ✨ TAG Guard 시스템 + CLAUDE.md 포맷팅 개선 + 코드 정리                       | 2025-10-23 |
+| **v0.8.0**  | 🏷️ @DOC TAG 자동 생성 시스템 + SessionStart 버전 체크 강화                              | 2025-10-27 |
+| **v0.7.0**  | 🌍 완전한 언어 지역화 시스템 (영어, 한국어, 일본어, 중국어, 스페인어)                   | 2025-10-26 |
+| **v0.6.3**  | ⚡ 3단계 업데이트 워크플로우: 병렬 작업을 통한 70-80% 성능 개선                         | 2025-10-25 |
+| **v0.6.0**  | 🏗️ 주요 아키텍처 리팩터링 + SPEC 메타데이터 구조 개선 (필수 7개 + 선택 9개)             | 2025-10-24 |
+| **v0.4.11** | ✨ TAG Guard 시스템 + CLAUDE.md 포맷팅 개선 + 코드 정리                                 | 2025-10-23 |
 
 > 📦 **지금 설치**: `uv tool install moai-adk` 또는 `pip install moai-adk`
 
 ---
 
-
 ## 추가 자료
 
-| 목적              | 리소스                                                            |
-| ----------------- | ----------------------------------------------------------------- |
-| Skills 세부 구조  | `.claude/skills/` 디렉터리 (58개 Skills)                           |
-| Sub-agent 상세    | `.claude/agents/alfred/` 디렉터리 (12개 agents)                    |
-| 워크플로우 가이드 | `.claude/commands/alfred/` (4개 명령: 0-project ~ 3-sync)          |
-| 문서              | 추후 제공 예정 (프로젝트의 `.moai/`, `.claude/`, `docs/` 참고)      |
-| 릴리즈 노트       | GitHub Releases: https://github.com/modu-ai/moai-adk/releases     |
+| 목적              | 리소스                                                         |
+| ----------------- | -------------------------------------------------------------- |
+| Skills 세부 구조  | `.claude/skills/` 디렉터리 (58개 Skills)                       |
+| Sub-agent 상세    | `.claude/agents/alfred/` 디렉터리 (12개 agents)                |
+| 워크플로우 가이드 | `.claude/commands/alfred/` (4개 명령: 0-project ~ 3-sync)      |
+| 문서              | 추후 제공 예정 (프로젝트의 `.moai/`, `.claude/`, `docs/` 참고) |
+| 릴리즈 노트       | GitHub Releases: https://github.com/modu-ai/moai-adk/releases  |
 
 ---
 
 ## 커뮤니티 & 지원
 
-| 채널                     | 링크                                                     |
-| ------------------------ | -------------------------------------------------------- |
-| **GitHub Repository**    | https://github.com/modu-ai/moai-adk                      |
-| **Issues & Discussions** | https://github.com/modu-ai/moai-adk/issues               |
-| **PyPI Package**         | https://pypi.org/project/moai-adk/                       |
-| **Latest Release**       | https://github.com/modu-ai/moai-adk/releases             |
-| **Documentation**        | 프로젝트 내 `.moai/`, `.claude/`, `docs/` 참고           |
+| 채널                     | 링크                                           |
+| ------------------------ | ---------------------------------------------- |
+| **GitHub Repository**    | https://github.com/modu-ai/moai-adk            |
+| **Issues & Discussions** | https://github.com/modu-ai/moai-adk/issues     |
+| **PyPI Package**         | https://pypi.org/project/moai-adk/             |
+| **Latest Release**       | https://github.com/modu-ai/moai-adk/releases   |
+| **Documentation**        | 프로젝트 내 `.moai/`, `.claude/`, `docs/` 참고 |
 
 ---
 

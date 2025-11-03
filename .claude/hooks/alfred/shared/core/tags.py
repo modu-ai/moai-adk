@@ -38,9 +38,22 @@ from pathlib import Path
 from typing import Iterable, List, Optional
 
 DEFAULT_CODE_EXTS = (
-    ".py", ".ts", ".tsx", ".js", ".jsx", ".go", ".rs",
-    ".java", ".kt", ".rb", ".php", ".c", ".cpp", ".cs",
-    ".swift", ".scala"
+    ".py",
+    ".ts",
+    ".tsx",
+    ".js",
+    ".jsx",
+    ".go",
+    ".rs",
+    ".java",
+    ".kt",
+    ".rb",
+    ".php",
+    ".c",
+    ".cpp",
+    ".cs",
+    ".swift",
+    ".scala",
 )
 
 
@@ -88,35 +101,49 @@ def _load_rules(cwd: str) -> List[Rule]:
 
     # Defaults (ordered)
     return [
-        Rule(
-            include=[".moai/specs/**", "**/SPEC-*/spec.md"],
-            expect="@SPEC:",
-            exclude=[]
-        ),
+        Rule(include=[".moai/specs/**", "**/SPEC-*/spec.md"], expect="@SPEC:", exclude=[]),
         Rule(
             include=[
-                "**/*_test.py", "**/test_*.py", "**/*.test.ts",
-                "**/*.test.tsx", "**/*.test.js", "**/*.test.jsx",
-                "**/*.test.go", "**/*.test.rs", "**/*.spec.ts",
-                "**/*.spec.tsx", "tests/**"
+                "**/*_test.py",
+                "**/test_*.py",
+                "**/*.test.ts",
+                "**/*.test.tsx",
+                "**/*.test.js",
+                "**/*.test.jsx",
+                "**/*.test.go",
+                "**/*.test.rs",
+                "**/*.spec.ts",
+                "**/*.spec.tsx",
+                "tests/**",
             ],
             expect="@TEST:",
-            exclude=[".claude/**"]
+            exclude=[".claude/**"],
         ),
         Rule(
             include=["docs/**/*.md", "**/README.md", "**/*.api.md"],
             expect="@DOC:",
-            exclude=[".claude/**"]
+            exclude=[".claude/**"],
         ),
         Rule(
             include=["**/*"],
             expect="@CODE:",
             exclude=[
-                "tests/**", "docs/**", ".moai/**", ".claude/**",
-                "**/*.md", "**/*.json", "**/*.yml", "**/*.yaml",
-                "**/*.toml", "**/*.lock", "**/*.svg", "**/*.png",
-                "**/*.jpg", "**/*.jpeg", "**/*.gif"
-            ]
+                "tests/**",
+                "docs/**",
+                ".moai/**",
+                ".claude/**",
+                "**/*.md",
+                "**/*.json",
+                "**/*.yml",
+                "**/*.yaml",
+                "**/*.toml",
+                "**/*.lock",
+                "**/*.svg",
+                "**/*.png",
+                "**/*.jpg",
+                "**/*.jpeg",
+                "**/*.gif",
+            ],
         ),
     ]
 
@@ -147,17 +174,22 @@ def _iter_recent_changes(cwd: str) -> Iterable[Path]:
         # Staged files
         r1 = subprocess.run(
             ["git", "diff", "--name-only", "--cached"],
-            cwd=cwd, capture_output=True, text=True, timeout=1
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=1,
         )
         # Modified (unstaged) tracked files
         r2 = subprocess.run(
-            ["git", "ls-files", "-m"],
-            cwd=cwd, capture_output=True, text=True, timeout=1
+            ["git", "ls-files", "-m"], cwd=cwd, capture_output=True, text=True, timeout=1
         )
         # Untracked (other) files respecting .gitignore
         r3 = subprocess.run(
             ["git", "ls-files", "-o", "--exclude-standard"],
-            cwd=cwd, capture_output=True, text=True, timeout=1
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=1,
         )
         names = set()
         if r1.returncode == 0:

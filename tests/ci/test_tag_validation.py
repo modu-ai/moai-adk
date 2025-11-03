@@ -18,6 +18,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
+import requests
 
 from moai_adk.core.tags.pre_commit_validator import (
     PreCommitValidator,
@@ -65,8 +66,8 @@ class TestCIValidatorInitialization:
 class TestGitHubAPIMocking:
     """Test GitHub API interaction with mocks"""
 
-    @patch('requests.get')
-    def test_get_pr_changed_files_success(self, mock_get):
+    @patch('moai_adk.core.tags.ci_validator.requests.Session')
+    def test_get_pr_changed_files_success(self, mock_session_class):
         """Should fetch changed files from GitHub API"""
         # Mock successful API response
         mock_response = Mock()
@@ -76,7 +77,11 @@ class TestGitHubAPIMocking:
             {"filename": "tests/test_auth.py", "status": "added"},
             {"filename": "README.md", "status": "modified"}
         ]
-        mock_get.return_value = mock_response
+
+        # Mock the session instance and its get method
+        mock_session = Mock()
+        mock_session.get.return_value = mock_response
+        mock_session_class.return_value = mock_session
 
         validator = CIValidator(
             github_token="test_token",
@@ -91,14 +96,22 @@ class TestGitHubAPIMocking:
         assert "tests/test_auth.py" in files
         assert "README.md" in files
 
-    @patch('requests.get')
-    def test_get_pr_changed_files_api_error(self, mock_get):
+    @patch('moai_adk.core.tags.ci_validator.requests.Session')
+    def test_get_pr_changed_files_api_error(self, mock_session_class):
         """Should handle API errors gracefully"""
-        # Mock API error
+        # Mock API error response
         mock_response = Mock()
         mock_response.status_code = 404
-        mock_response.raise_for_status.side_effect = Exception("Not Found")
-        mock_get.return_value = mock_response
+
+        # Create a mock exception for raise_for_status
+        error = requests.exceptions.HTTPError("404 Not Found")
+        error.response = mock_response
+        mock_response.raise_for_status.side_effect = error
+
+        # Mock the session instance and its get method
+        mock_session = Mock()
+        mock_session.get.return_value = mock_response
+        mock_session_class.return_value = mock_session
 
         validator = CIValidator(
             github_token="test_token",
@@ -111,13 +124,17 @@ class TestGitHubAPIMocking:
         # Should return empty list on error
         assert files == []
 
-    @patch('requests.get')
-    def test_get_pr_changed_files_with_auth_header(self, mock_get):
+    @patch('moai_adk.core.tags.ci_validator.requests.Session')
+    def test_get_pr_changed_files_with_auth_header(self, mock_session_class):
         """Should include authorization header in API request"""
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = []
-        mock_get.return_value = mock_response
+
+        # Mock the session instance and its get method
+        mock_session = Mock()
+        mock_session.get.return_value = mock_response
+        mock_session_class.return_value = mock_session
 
         validator = CIValidator(
             github_token="secret_token",
@@ -127,9 +144,9 @@ class TestGitHubAPIMocking:
 
         validator.get_pr_changed_files(pr_number=1)
 
-        # Verify authorization header was included
-        mock_get.assert_called_once()
-        call_args = mock_get.call_args
+        # Verify authorization header was included in session.get call
+        mock_session.get.assert_called_once()
+        call_args = mock_session.get.call_args
         headers = call_args[1].get('headers', {})
         assert 'Authorization' in headers
         assert headers['Authorization'] == 'Bearer secret_token'
@@ -179,8 +196,8 @@ def test_authenticate():
                 assert result.is_valid is True
                 assert len(result.errors) == 0
 
-    @patch('requests.get')
-    def test_validate_pr_changes_with_errors(self, mock_get):
+    @patch('moai_adk.core.tags.ci_validator.requests.Session')
+    def test_validate_pr_changes_with_errors(self, mock_session_class):
         """PR with TAG errors should fail validation"""
         # Mock API response
         mock_response = Mock()
@@ -188,7 +205,11 @@ def test_authenticate():
         mock_response.json.return_value = [
             {"filename": "test_file.py", "status": "modified"}
         ]
-        mock_get.return_value = mock_response
+
+        # Mock the session instance and its get method
+        mock_session = Mock()
+        mock_session.get.return_value = mock_response
+        mock_session_class.return_value = mock_session
 
         validator = CIValidator(
             github_token="token",

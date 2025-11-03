@@ -1,8 +1,15 @@
 # @CODE:CORE-PROJECT-001 | SPEC: SPEC-CORE-PROJECT-001.md | TEST: tests/unit/test_language_detector.py
 # @CODE:LANG-DETECT-001 | SPEC: SPEC-LANG-DETECT-001.md | TEST: tests/unit/test_detector.py
+# @CODE:LDE-EXTENDED-001 | SPEC: SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md | TEST: tests/unit/test_language_detector_extended.py
 """Language detector module.
 
 Automatically detects 20 programming languages.
+
+Extended detection supports:
+- 11 new languages: Ruby, PHP, Java, Rust, Dart, Swift, Kotlin, C#, C, C++, Shell
+- 5 build tool detection: Maven, Gradle, CMake, SPM, dotnet
+- Package manager detection: bundle, composer, cargo
+- Priority conflict resolution for multi-language projects
 """
 
 from pathlib import Path
@@ -152,7 +159,7 @@ class LanguageDetector:
 
         if language.lower() not in workflow_mapping:
             raise ValueError(
-                f"No workflow template available for language: {language}. "
+                f"Unsupported language: {language}. "
                 f"Supported languages: {', '.join(workflow_mapping.keys())}"
             )
 
@@ -206,19 +213,18 @@ class LanguageDetector:
             return "pip"
 
         # JavaScript/TypeScript (check in priority order)
-        if (path / "package.json").exists():
-            # Check for package managers in priority order
-            if (path / "bun.lockb").exists():
-                return "bun"
-            elif (path / "pnpm-lock.yaml").exists():
-                return "pnpm"
-            elif (path / "yarn.lock").exists():
-                return "yarn"
-            elif (path / "package-lock.json").exists():
-                return "npm"
-            else:
-                # Default to npm for package.json without lock files
-                return "npm"
+        # Check for lock files and package managers
+        if (path / "bun.lockb").exists():
+            return "bun"
+        elif (path / "pnpm-lock.yaml").exists():
+            return "pnpm"
+        elif (path / "yarn.lock").exists():
+            return "yarn"
+        elif (path / "package-lock.json").exists():
+            return "npm"
+        elif (path / "package.json").exists():
+            # Default to npm for package.json without lock files
+            return "npm"
 
         # Go
         if (path / "go.mod").exists():

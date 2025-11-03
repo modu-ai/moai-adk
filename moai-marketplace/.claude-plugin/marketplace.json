@@ -1,9 +1,0 @@
-{
-  "name": "moai-marketplace",
-  "version": "1.0.0",
-  "description": "Official MoAI-ADK plugin marketplace - domain-specialized agents for full-stack development",
-  "author": {
-    "name": "moai-adk",
-    "url": "https://adk.mo.ai.kr"
-  }
-}

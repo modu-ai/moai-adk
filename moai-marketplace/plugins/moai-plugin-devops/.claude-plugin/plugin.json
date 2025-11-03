@@ -1,9 +1,0 @@
-{
-  "name": "devops-plugin",
-  "version": "1.0.0",
-  "description": "Multi-cloud deployment with Vercel, Supabase, and Render MCPs for CI/CD automation",
-  "author": {
-    "name": "moai-adk",
-    "url": "https://adk.mo.ai.kr"
-  }
-}

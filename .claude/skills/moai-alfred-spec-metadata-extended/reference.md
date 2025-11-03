@@ -1,356 +1,348 @@
-# SPEC Metadata Structure Guide
+# SPEC Metadata Extended - Reference
 
-> **MoAI-ADK SPEC Metadata Standard**
->
-> Every SPEC document must follow this structure.
+## YAML Frontmatter Fields
 
----
+### Field: `id`
 
-## 📋 Metadata Overview
+**Type**: `string`
+**Required**: ✅ Yes
+**Format**: `{DOMAIN}-{NUMBER}` (e.g., `AUTH-001`, `CACHE-FIX-002`)
+**Rules**:
+- Domain: 2-8 characters, UPPERCASE
+- Number: 3 digits, zero-padded (001, 002, 100)
+- No duplicates allowed across project
 
-SPEC metadata contains **7 required fields** and **9 optional fields**.
-
-### Full Example
-
-```yaml
----
-# Required Fields (7)
-id: AUTH-001                    # Unique SPEC ID
-version: 0.0.1                  # Semantic version (v0.0.1 = INITIAL, draft start)
-status: draft                   # draft|active|completed|deprecated
-created: 2025-09-15             # Creation date (YYYY-MM-DD)
-updated: 2025-09-15             # Last updated (YYYY-MM-DD; initially same as created)
-author: @Goos                   # Author (single GitHub handle)
-priority: high                  # low|medium|high|critical
-
-# Optional Fields – Classification/Meta
-category: security              # feature|bugfix|refactor|security|docs|perf
-labels:                         # Tags for search and grouping
-  - authentication
-  - jwt
-
-# Optional Fields – Relationships (Dependency Graph)
-depends_on:                     # SPECs this one depends on (optional)
-  - USER-001
-blocks:                         # SPECs blocked by this one (optional)
-  - AUTH-002
-related_specs:                  # Related SPECs (optional)
-  - TOKEN-002
-related_issue: "https://github.com/modu-ai/moai-adk/issues/123"
-
-# Optional Fields – Scope/Impact
-scope:
-  packages:                     # Impacted packages
-    - src/core/auth
-  files:                        # Key files (optional)
-    - auth-service.ts
-    - jwt-manager.ts
----
-```
-
----
-
-## Required Fields
-
-### 1. `id` – Unique SPEC Identifier
-- **Type**: string
-- **Format**: `<DOMAIN>-<NUMBER>`
-- **Examples**: `AUTH-001`, `INSTALLER-SEC-001`
-- **Rules**:
-  - Immutable once assigned
-  - Use three digits (001–999)
-  - Domain in uppercase; hyphens allowed
-  - Directory name: `.moai/specs/SPEC-{ID}/` (e.g., `.moai/specs/SPEC-AUTH-001/`)
-
-### 2. `version` – Semantic Version
-- **Type**: string (`MAJOR.MINOR.PATCH`)
-- **Default**: `0.0.1` (all SPECs start here, status: draft)
-- **Version Lifecycle**:
-  - **v0.0.1**: INITIAL – SPEC first draft (status: draft)
-  - **v0.0.x**: Draft refinements (increment PATCH when editing the SPEC)
-  - **v0.1.0**: TDD implementation complete (status: completed, updated via `/alfred:3-sync`)
-  - **v0.1.x**: Bug fixes or doc improvements (PATCH increment)
-  - **v0.x.0**: Feature additions or major enhancements (MINOR increment)
-  - **v1.0.0**: Stable release (production ready, explicit stakeholder approval required)
-
-### 3. `status` – Progress State
-- **Type**: enum
-- **Values**:
-  - `draft`: Authoring in progress
-  - `active`: Implementation underway
-  - `completed`: Implementation finished
-  - `deprecated`: Planned for retirement
-
-### 4. `created` – Creation Date
-- **Type**: date string
-- **Format**: `YYYY-MM-DD`
-- **Example**: `2025-10-06`
-
-### 5. `updated` – Last Modified Date
-- **Type**: date string
-- **Format**: `YYYY-MM-DD`
-- **Rule**: Update whenever the SPEC content changes.
-
-### 6. `author` – Primary Author
-- **Type**: string
-- **Format**: `@{GitHub ID}`
-- **Example**: `@Goos`
-- **Rules**:
-  - Single value only (no `authors` array)
-  - Prefix the GitHub handle with `@`
-  - Additional contributors belong in the HISTORY section
-
-### 7. `priority` – Work Priority
-- **Type**: enum
-- **Values**:
-  - `critical`: Immediate attention (security, severe defects)
-  - `high`: Major feature work
-  - `medium`: Enhancements
-  - `low`: Optimizations or documentation
-
----
-
-## Optional Fields
-
-### Classification / Meta
-
-#### 8. `category` – Change Type
-- **Type**: enum
-- **Values**:
-  - `feature`: New functionality
-  - `bugfix`: Defect resolution
-  - `refactor`: Structural improvements
-  - `security`: Security enhancements
-  - `docs`: Documentation updates
-  - `perf`: Performance optimizations
-
-#### 9. `labels` – Classification Tags
-- **Type**: array of strings
-- **Purpose**: Search, filtering, grouping
-- **Example**:
-  ```yaml
-  labels:
-    - installer
-    - template
-    - security
-  ```
-
-### Relationship Fields (Dependency Graph)
-
-#### 10. `depends_on` – Required SPECs
-- **Type**: array of strings
-- **Meaning**: SPECs that must be completed first
-- **Example**:
-  ```yaml
-  depends_on:
-    - USER-001
-    - AUTH-001
-  ```
-- **Use Case**: Determines execution order and parallelization.
-
-#### 11. `blocks` – Blocked SPECs
-- **Type**: array of strings
-- **Meaning**: SPECs that cannot proceed until this one is resolved
-- **Example**:
-  ```yaml
-  blocks:
-    - PAYMENT-003
-  ```
-
-#### 12. `related_specs` – Associated SPECs
-- **Type**: array of strings
-- **Meaning**: Related items without direct dependencies
-- **Example**:
-  ```yaml
-  related_specs:
-    - TOKEN-002
-    - SESSION-001
-  ```
-
-#### 13. `related_issue` – Linked GitHub Issue
-- **Type**: string (URL)
-- **Format**: Full GitHub issue URL
-- **Example**:
-  ```yaml
-  related_issue: "https://github.com/modu-ai/moai-adk/issues/123"
-  ```
-
-### Scope Fields (Impact Analysis)
-
-#### 14. `scope.packages` – Impacted Packages
-- **Type**: array of strings
-- **Meaning**: Packages or modules touched by the SPEC
-- **Example**:
-  ```yaml
-  scope:
-    packages:
-      - moai-adk-ts/src/core/installer
-      - moai-adk-ts/src/core/git
-  ```
-
-#### 15. `scope.files` – Key Files
-- **Type**: array of strings
-- **Meaning**: Primary files involved (for reference)
-- **Example**:
-  ```yaml
-  scope:
-    files:
-      - template-processor.ts
-      - template-security.ts
-  ```
-
----
-
-## Metadata Validation
-
-### Required Field Checks
+**Validation**:
 ```bash
-# Verify that every SPEC includes the required fields
-rg "^(id|version|status|created|updated|author|priority):" .moai/specs/SPEC-*/spec.md
+# Check for duplicates
+rg "@SPEC:AUTH-001" .moai/specs/  # Should return exactly 1 hit
 
-# Identify SPECs missing the priority field
-rg -L "^priority:" .moai/specs/SPEC-*/spec.md
+# Check format
+rg "^id: [A-Z]+-\d{3}$" .moai/specs/SPEC-*/spec.md
 ```
 
-### Format Checks
+### Field: `title`
+
+**Type**: `string`
+**Required**: ✅ Yes
+**Max Length**: 128 characters
+**Style**: User-facing, descriptive noun phrase
+
+**Examples**:
+- ✅ "User Authentication System"
+- ✅ "Redis Cache Optimization"
+- ❌ "Implement auth" (too vague)
+- ❌ "User Authentication System for Multi-tenant Applications with Role-Based Access Control" (too long)
+
+### Field: `version`
+
+**Type**: `semver` (X.Y.Z)
+**Required**: ✅ Yes
+**Format**: `major.minor.patch`
+**Rules**:
+- Draft: `0.x.x` (no implementation yet)
+- Alpha: `1.0.0-alpha` (partial implementation)
+- Beta: `1.0.0-beta` (mostly done, testing)
+- Release: `1.0.0+` (fully implemented)
+
+**Examples**:
+```yaml
+version: 0.1.0  # Initial draft
+version: 0.2.0  # Requirements refined
+version: 1.0.0  # First implementation
+version: 1.1.0  # Bug fixes + features
+version: 2.0.0  # Major refactor
+```
+
+### Field: `status`
+
+**Type**: `enum`
+**Required**: ✅ Yes
+**Allowed Values**:
+- `draft` – Not ready for implementation
+- `active` – Current work item
+- `in-progress` – Being implemented
+- `completed` – Implemented + tested
+- `deprecated` – No longer used
+- `archived` – Historical reference
+
+**State Transitions**:
+```
+draft → active → in-progress → completed
+                             ↓
+                         deprecated
+                             ↓
+                          archived
+```
+
+### Field: `created`
+
+**Type**: `ISO8601` (YYYY-MM-DD)
+**Required**: ✅ Yes
+**Example**: `2025-11-03`
+**Rule**: Never change after creation
+
+### Field: `updated`
+
+**Type**: `ISO8601` (YYYY-MM-DD)
+**Required**: ✅ Yes
+**Example**: `2025-11-03`
+**Rule**: Update whenever spec changes
+
+### Field: `author`
+
+**Type**: `string`
+**Required**: ✅ Yes
+**Format**: `@USERNAME` or `@NICKNAME`
+**Examples**:
+- `@GOOS🪿엉아`
+- `@alice.smith`
+- `@team-backend`
+
+### Field: `priority`
+
+**Type**: `enum`
+**Required**: ✅ Yes
+**Allowed Values**:
+- `critical` – Blocking other work (P0)
+- `high` – Important feature (P1)
+- `medium` – Nice to have (P2)
+- `low` – Backlog (P3)
+
+## HISTORY Section Format
+
+### Structure
+
+```markdown
+## HISTORY
+
+### v1.1.0 (2025-11-05)
+- Fixed race condition in verification
+- Added timeout handling
+- Updated error messages
+
+### v1.0.0 (2025-11-03)
+- Initial implementation complete
+- All tests passing
+- Documentation updated
+
+### v0.2.0 (2025-11-02)
+- Refined email requirements
+- Added rate limiting constraints
+- Extended EARS patterns
+
+### v0.1.0 (2025-11-01)
+- Initial draft with basic auth
+- Ubiquitous requirements defined
+```
+
+### Rules
+
+- Start with most recent version
+- One entry per version change
+- Bullet points, not paragraphs
+- Link to commits if available
+- Update `updated` field when modifying
+
+## EARS Requirements Format
+
+### Pattern 1: Ubiquitous
+
+```markdown
+- The system shall provide [capability].
+- The system shall validate [input] before [action].
+- The system shall [behavior] within [time] of [trigger].
+
+Examples:
+- The system shall provide user authentication via email.
+- The system shall validate email format (RFC 5322) before storage.
+- The system shall send verification email within 10 seconds of signup.
+```
+
+### Pattern 2: Event-driven
+
+```markdown
+- WHEN [condition], the system shall [behavior].
+- Upon [event], the system shall [action] and [action].
+
+Examples:
+- WHEN a user clicks 'Sign Up', the system shall display signup form.
+- Upon verification link click, the system shall activate user account.
+- WHEN 3 failed attempts occur, the system shall lock the account.
+```
+
+### Pattern 3: State-driven
+
+```markdown
+- WHILE [state], the system shall [behavior].
+- WHILE not [condition], the system shall [action].
+
+Examples:
+- WHILE the user is unauthenticated, the system shall deny access.
+- WHILE session is active, the system shall refresh token automatically.
+- WHILE rate limit not exceeded, the system shall process requests.
+```
+
+### Pattern 4: Optional Features
+
+```markdown
+- WHERE [condition], the system may [behavior].
+- If [feature] enabled, the system may [action].
+
+Examples:
+- WHERE 2FA is enabled, the system may require additional verification.
+- If API quota available, the system may allow batch operations.
+- WHERE user preference set, the system may send notifications.
+```
+
+### Pattern 5: Constraints (Unwanted Behaviors)
+
+```markdown
+- IF [condition], the system shall [constraint].
+- The system shall NOT [unwanted behavior].
+
+Examples:
+- IF password invalid 3x, the system shall lock account.
+- The system shall NOT store plaintext passwords.
+- IF token expired, the system shall return 401 error.
+- The system shall NOT process requests exceeding rate limit.
+```
+
+## TAG Placement
+
+### Location
+
+Place `@SPEC:ID` in first 50 lines of spec.md:
+
+```markdown
+# User Authentication SPEC
+
+@SPEC:AUTH-001
+
+## Overview
+...
+```
+
+### Usage in Code
+
+Link implementation to spec:
+
+```python
+# src/auth.py
+# @CODE:AUTH-001
+
+def verify_email(email: str, token: str) -> bool:
+    """Verify email with token. Requirement: AUTH-001"""
+    # Implementation here
+    pass
+```
+
+## Duplicate Detection
+
+### Before Creating SPEC
+
 ```bash
-# Ensure the author field uses @Handle format
-rg "^author: @[A-Z]" .moai/specs/SPEC-*/spec.md
+# Check if ID already exists
+rg "@SPEC:AUTH-001" .moai/specs/
 
-# Ensure the version field follows 0.x.y
-rg "^version: 0\.\d+\.\d+" .moai/specs/SPEC-*/spec.md
+# Expected: 0 hits (if new) or 1 hit (if existing)
+# If >1 hit: ERROR – duplicate detected
 ```
 
+### Duplicate Resolution
+
+If duplicate found:
+1. Use different number: AUTH-001 → AUTH-002
+2. Or use different domain: AUTH-001 → SECURITY-001
+3. Recheck with `rg "@SPEC:{NEW-ID}" .moai/specs/`
+
+## Validation Checklist
+
+```bash
+#!/bin/bash
+# validate-spec.sh - Verify SPEC completeness
+
+SPEC_DIR=".moai/specs/SPEC-$1"
+
+if [ ! -d "$SPEC_DIR" ]; then
+  echo "❌ Directory not found: $SPEC_DIR"
+  exit 1
+fi
+
+# Check metadata fields
+for field in "id" "title" "version" "status" "created" "updated" "author" "priority"; do
+  if ! grep "^$field:" "$SPEC_DIR/spec.md" > /dev/null; then
+    echo "❌ Missing field: $field"
+  fi
+done
+
+# Check SPEC ID in file
+SPEC_ID=$(grep "^id:" "$SPEC_DIR/spec.md" | cut -d' ' -f2)
+if ! grep "@SPEC:$SPEC_ID" "$SPEC_DIR/spec.md" > /dev/null; then
+  echo "❌ Missing @SPEC:$SPEC_ID tag in spec.md"
+fi
+
+# Check for EARS patterns (at least 3)
+EARS_COUNT=$(grep -E "^- (The system shall|WHEN|WHILE|WHERE|IF)" "$SPEC_DIR/spec.md" | wc -l)
+if [ "$EARS_COUNT" -lt 5 ]; then
+  echo "⚠️  Only $EARS_COUNT EARS requirements (recommend ≥5)"
+fi
+
+# Check HISTORY section
+if ! grep "^## HISTORY" "$SPEC_DIR/spec.md" > /dev/null; then
+  echo "❌ Missing HISTORY section"
+fi
+
+echo "✅ SPEC validation complete"
+```
+
+## File Structure
+
+```
+.moai/specs/SPEC-AUTH-001/
+├── spec.md           # Requirements + metadata
+├── plan.md           # Implementation plan (phase 2)
+└── acceptance.md     # Test scenarios (phase 2)
+```
+
+### spec.md Contents (Phase 1)
+
+```markdown
+---
+id: AUTH-001
+title: "User Authentication System"
+version: 0.1.0
+status: active
+created: 2025-11-03
+updated: 2025-11-03
+author: @USERNAME
+priority: high
 ---
 
-## Migration Guide
+# User Authentication SPEC
 
-### Updating Existing SPECs
+@SPEC:AUTH-001
 
-#### 1. Add the `priority` Field
-Add it if missing:
-```yaml
-priority: medium  # or low|high|critical
+## Overview
+[System description]
+
+## Ubiquitous Requirements
+[The system shall...]
+
+## Event-driven Requirements
+[WHEN... the system shall...]
+
+## State-driven Requirements
+[WHILE... the system shall...]
+
+## Optional Features
+[WHERE... the system may...]
+
+## Constraints
+[IF... the system shall...]
+
+## HISTORY
+
+### v0.1.0 (2025-11-03)
+- Initial draft
 ```
-
-#### 2. Normalize the `author` Field
-- `authors: ["@goos"]` → `author: @Goos`
-- Convert lowercase handles to the canonical casing.
-
-#### 3. Add Optional Fields (Recommended)
-```yaml
-category: refactor
-labels:
-  - code-quality
-  - maintenance
-```
-
-### Updating config.json for Language Support (v0.4.2+)
-
-**Background**: MoAI-ADK v0.4.2 introduces conversation language selection in `/alfred:0-project`. Existing projects need to add language metadata to `.moai/config.json`.
-
-#### Migration Steps
-
-**For Existing Projects** (before v0.4.2):
-
-Current config.json structure:
-```json
-{
-  "project": {
-    "locale": "en",
-    "mode": "personal",
-    "language": "python"
-  }
-}
-```
-
-**Updated Structure** (v0.4.2+):
-```json
-{
-  "project": {
-    "locale": "en",
-    "mode": "personal",
-    "language": "python",
-    "conversation_language": "en",
-    "conversation_language_name": "English",
-    "codebase_languages": ["python"]
-  }
-}
-```
-
-#### New Fields
-
-| Field | Type | Required | Description | Example |
-|-------|------|----------|-------------|---------|
-| `conversation_language` | string (ISO 639-1 code) | ✅ Yes | Two-letter language code for Alfred dialogs | `"ko"`, `"en"`, `"ja"`, `"zh"` |
-| `conversation_language_name` | string | ✅ Yes | Display name of conversation language | `"Korean"`, `"English"` |
-| `codebase_languages` | array of strings | ✅ Yes | List of programming languages detected | `["python"]`, `["typescript", "python"]` |
-
-#### Manual Update Process
-
-1. Open `.moai/config.json`
-2. Add the three new fields under `project`:
-   ```json
-   "conversation_language": "en",
-   "conversation_language_name": "English",
-   "codebase_languages": ["python"]
-   ```
-3. Save and commit:
-   ```bash
-   git add .moai/config.json
-   git commit -m "chore: add language metadata to config.json for v0.4.2+"
-   ```
-
-#### Automated Update (via `/alfred:0-project`)
-
-Running `/alfred:0-project` on an existing project will:
-1. Detect current language settings
-2. Add new fields automatically
-3. Preserve existing values
-
-**No manual action required if running `/alfred:0-project` after upgrade.**
-
-#### Field Mapping (Legacy → New)
-
-| Old Field | New Field | Migration Rule |
-|-----------|-----------|-----------------|
-| `locale` | `conversation_language` | Keep as-is (or run `/alfred:0-project` to re-select) |
-| (none) | `conversation_language_name` | Auto-populate from locale mapping |
-| `language` | `codebase_languages` | Wrap in array: `"python"` → `["python"]` |
-
-#### Backward Compatibility
-
-- ✅ Projects without new fields will continue working
-- ⚠️ New language features (multilingual documentation) unavailable without migration
-- ✅ `/alfred:0-project` automatically migrates on next run
-- ✅ Auto-detection will prefer new fields if present
-
----
-
-## Design Principles
-
-### 1. DRY (Don't Repeat Yourself)
-- ❌ **Remove**: the `reference` field (every SPEC referenced the same master plan)
-- ✅ **Instead**: document project-level resources in README.md
-
-### 2. Context-Aware
-- Include only the necessary context.
-- Use optional fields only when they add value.
-
-### 3. Traceable
-- Use `depends_on`, `blocks`, and `related_specs` to map dependencies.
-- Automated tooling can detect cyclic references.
-
-### 4. Maintainable
-- Every field must be machine-verifiable.
-- Maintain consistent formatting for easy parsing.
-
-### 5. Simple First
-- Keep complexity low.
-- Limit to 7 required + 9 optional fields.
-- Expand gradually when justified.
-
----
-
-**Last Updated**: 2025-10-06  
-**Author**: @Alfred
