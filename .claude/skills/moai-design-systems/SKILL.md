@@ -1,289 +1,147 @@
 ---
-name: moai-design-systems
+skill_name: moai-design-systems
+description: Design system patterns, W3C DTCG 2025.10 token architecture, WCAG 2.2 accessibility standards, and Figma MCP workflows for consistent, accessible UI development
+allowed_tools: [Read, Write, WebFetch, WebSearch]
+freedom_level: medium
 version: 1.0.0
-created: 2025-11-04
-updated: 2025-11-04
-status: active
-description: Comprehensive guide for creating accessible, production-grade design systems with design tokens, component libraries, WCAG 2.1 compliance, and Figma MCP integration.
-keywords: ['design-systems', 'design-tokens', 'accessibility', 'wcag', 'figma', 'mcp', 'atomic-design', 'component-library', 'storybook']
-allowed-tools:
-  - Read
-  - Bash
+last_updated: 2025-11-04
+tags: [design-systems, design-tokens, accessibility, wcag, figma-mcp, dtcg]
 ---
 
-# Design Systems Skill
+# Design Systems Development Skill
 
-## Skill Metadata
+**Purpose**: Guide implementation of production-ready design systems using W3C DTCG 2025.10 token standards, WCAG 2.2 accessibility compliance, and Figma MCP automation workflows.
 
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-design-systems |
-| **Version** | 1.0.0 (2025-11-04) |
-| **Allowed tools** | Read (read_file), Bash (terminal) |
-| **Auto-load** | On demand when keywords detected |
-| **Tier** | Domain |
-| **Freedom Level** | Medium (can be specialized for frameworks) |
+**When to use this Skill**:
+- Setting up design token architecture for multi-platform projects
+- Implementing accessible component libraries (WCAG 2.2 AA/AAA)
+- Automating design-to-code workflows with Figma MCP
+- Building maintainable design systems with Storybook
+- Ensuring color contrast compliance and semantic token naming
 
----
-
-## What It Does
-
-Comprehensive guide for creating accessible, production-grade design systems with design tokens, component libraries, WCAG 2.1 compliance, and Figma MCP integration.
-
-**Key capabilities**:
-- ✅ Design token architecture (W3C DTCG spec 2025.10)
-- ✅ Component library structure (Atomic Design methodology)
-- ✅ Accessibility standards (WCAG 2.1 AA/AAA)
-- ✅ Figma MCP workflow (design-to-code automation)
-- ✅ Testing & validation strategies
-- ✅ Latest tool versions (2025-11-04)
+**Latest Standards** (as of November 2025):
+- **DTCG Specification**: 2025.10 (first stable version)
+- **WCAG Guidelines**: 2.2 (AA: 4.5:1 text, AAA: 7:1 text)
+- **Figma MCP**: Desktop + Remote server support
+- **Style Dictionary**: 4.0 (DTCG-compatible)
+- **Storybook**: 8.x (with Docs addon)
 
 ---
 
-## When to Use
+## Progressive Disclosure Structure
 
-**Automatic triggers**:
-- Design system creation or refactoring
-- Component library architecture
-- Accessibility compliance reviews
-- Design token implementation
-- Figma-to-code workflow setup
+### Level 1: Quick Start Overview (Read This First)
 
-**Manual invocation**:
-- Design new design system from scratch
-- Audit existing design system for WCAG compliance
-- Migrate to design token-based architecture
-- Set up Figma MCP automation
+**Design System Foundation** - Three Pillars:
+
+1. **Design Tokens** (Single Source of Truth)
+   - Color, typography, spacing, borders, shadows
+   - Semantic naming: `color.primary.500`, `spacing.md`, `font.heading.lg`
+   - Multi-theme support (light/dark modes)
+   - Format: W3C DTCG 2025.10 JSON or Style Dictionary 4.0
+
+2. **Component Library** (Atomic Design Pattern)
+   - Atoms → Molecules → Organisms → Templates → Pages
+   - Props API for reusability and composition
+   - Variant states: default, hover, active, disabled, error, loading
+   - Documentation: Storybook with auto-generated props/usage
+
+3. **Accessibility Standards** (WCAG 2.2 Compliance)
+   - Color contrast: 4.5:1 (AA), 7:1 (AAA) for text
+   - Keyboard navigation: Tab order, focus management
+   - Screen readers: ARIA roles, labels, live regions
+   - Motion: `prefers-reduced-motion` support
+
+**Tool Ecosystem Quick Reference**:
+
+| Tool | Version | Purpose | Official Link |
+|------|---------|---------|---------------|
+| **W3C DTCG** | 2025.10 | Design token specification | https://designtokens.org |
+| **Style Dictionary** | 4.0+ | Token transformation engine | https://styledictionary.com |
+| **Figma MCP** | Latest | Design-to-code automation | https://help.figma.com/hc/en-us/articles/32132100833559 |
+| **Storybook** | 8.x | Component documentation | https://storybook.js.org |
+| **axe DevTools** | Latest | Accessibility testing | https://www.deque.com/axe/devtools/ |
+| **Chromatic** | Latest | Visual regression testing | https://chromatic.com |
+
+**Decision Points Checklist**:
+
+- [ ] Choose token format: DTCG 2025.10 or Style Dictionary 4.0 (both compatible)
+- [ ] Target WCAG level: AA (4.5:1) or AAA (7:1) contrast
+- [ ] Component pattern: Atomic Design or alternative structure
+- [ ] Documentation tool: Storybook, zeroheight, or custom
+- [ ] Figma integration: MCP server (desktop vs remote)
+- [ ] Testing strategy: Visual regression + accessibility + interaction
 
 ---
 
-## Progressive Disclosure
+### Level 2: Implementation Patterns (How to Build)
 
-### Level 0: Quick Summary (2-3 sentences)
+#### Pattern 1: Design Token Architecture (DTCG 2025.10)
 
-Design systems require four pillars: design tokens (W3C DTCG spec), component libraries (Atomic Design), accessibility compliance (WCAG 2.1 AA minimum), and automation (Figma MCP). Use this Skill when creating production-grade design systems with comprehensive documentation, testing, and version control.
-
-### Level 1: Key Principles & Quick Reference
-
-**Core Principles**:
-1. **Token-First Architecture**: All visual decisions stored as design tokens (colors, typography, spacing)
-2. **Atomic Component Structure**: Build from atoms → molecules → organisms → templates → pages
-3. **Accessibility Baseline**: WCAG 2.1 AA minimum (4.5:1 contrast, keyboard nav, ARIA patterns)
-4. **Automated Workflow**: Figma MCP for design token extraction and component sync
-5. **Living Documentation**: Storybook with auto-generated docs and interactive examples
-
-**Quick Decision Tree**:
-```
-Starting a design system?
-├─ Define design tokens (colors, typography, spacing)
-├─ Structure components (atomic design)
-├─ Ensure accessibility (WCAG 2.1 AA)
-├─ Set up automation (Figma MCP)
-└─ Document everything (Storybook)
-```
-
-### Level 2: Detailed Guidance
-
-#### 1. Design Token Architecture (150 words)
-
-**W3C Design Tokens Community Group Format (2025.10 stable)**
-
-Design tokens are the atomic building blocks of your design system—colors, typography, spacing, shadows, and more. Use the W3C DTCG specification (stable as of 2025-10-28) with JSON format:
+**Token Structure** - Semantic Naming Convention:
 
 ```json
 {
-  "color": {
-    "primary": {
-      "$value": "#0066CC",
+  "$schema": "https://tr.designtokens.org/format/",
+  "$tokens": {
+    "color": {
       "$type": "color",
-      "$description": "Primary brand color"
-    },
-    "neutral": {
-      "50": { "$value": "#F9FAFB", "$type": "color" },
-      "900": { "$value": "#111827", "$type": "color" }
-    }
-  },
-  "typography": {
-    "heading": {
-      "font-family": { "$value": "Inter", "$type": "fontFamily" },
-      "font-size": { "$value": "32px", "$type": "dimension" },
-      "line-height": { "$value": "1.2", "$type": "number" }
-    }
-  }
-}
-```
-
-**Semantic Naming Strategy**:
-- Use intent-based names: `primary`, `success`, `error`, `neutral` (not `blue`, `green`, `red`)
-- Support theming: `light` and `dark` mode variants
-- Export formats: JSON, CSS Custom Properties, SCSS variables, Tailwind config
-
-**Tool Ecosystem**:
-- **Style Dictionary v4**: Transform tokens to any platform (iOS, Android, web)
-- **Tokens Studio**: Figma plugin for token management
-- **Terrazzo**: Design token build tool
-
-#### 2. Component Library Structure (150 words)
-
-**Atomic Design Methodology**
-
-Organize components in five hierarchical levels (Brad Frost, atomicdesign.bradfrost.com):
-
-**Atoms** (basic building blocks):
-- Buttons, inputs, labels, icons, typography styles, color swatches
-- Example: `<Button variant="primary" size="medium">Click me</Button>`
-
-**Molecules** (simple combinations):
-- Form fields (label + input), search box (input + icon), card headers
-- Example: `<FormField label="Email" input={<Input type="email" />} />`
-
-**Organisms** (complex components):
-- Navigation bars, footers, forms, data tables, modals
-- Example: `<Header logo={<Logo />} nav={<Nav />} search={<SearchBox />} />`
-
-**Templates** (page layouts):
-- Grid systems, content areas, sidebar layouts
-- Focus on structure, not content
-
-**Pages** (final UI):
-- Real content applied to templates
-- Demonstrates design system resilience
-
-**Component Props API Design**:
-```typescript
-interface ButtonProps {
-  variant: 'primary' | 'secondary' | 'tertiary';
-  size: 'small' | 'medium' | 'large';
-  disabled?: boolean;
-  loading?: boolean;
-  icon?: ReactNode;
-  onClick: () => void;
-}
-```
-
-**Governance Model** (from 2025 best practices):
-- **Design System Manager**: Overall strategy and roadmap
-- **Component Library Curator**: Updates, deprecations, versioning
-- **Documentation Specialist**: Guidelines, examples, API references
-
-#### 3. Accessibility Standards (WCAG 2.1) (150 words)
-
-**WCAG 2.1 AA Baseline** (industry standard, legal requirement):
-
-**Contrast Requirements**:
-- Normal text (< 18pt): **4.5:1** contrast ratio minimum
-- Large text (≥ 18pt or 14pt bold): **3:1** contrast ratio
-- UI components (buttons, form borders): **3:1** contrast ratio
-- Use tools: Contrast Checker, Figma plugins (Stark, A11y)
-
-**Keyboard Navigation**:
-- All interactive elements must be keyboard accessible (Tab, Enter, Space, Esc)
-- Focus indicators must be visible (outline, border, background change)
-- No keyboard traps (focus can always move away)
-- Logical tab order (matches visual order)
-
-**ARIA Patterns** (W3C WAI-ARIA):
-- Use semantic HTML first: `<button>`, `<nav>`, `<main>`, `<article>`
-- Add ARIA when semantic HTML insufficient: `role="dialog"`, `aria-label`, `aria-describedby`
-- Common patterns: modals, tabs, accordions, dropdowns, tooltips
-- Test with screen readers: NVDA (Windows), VoiceOver (macOS/iOS), TalkBack (Android)
-
-**WCAG 2.1 AAA Enhancements** (optional, specialized use):
-- Enhanced contrast: **7:1** (normal text), **4.5:1** (large text)
-- Target size: **44 CSS pixels** minimum (touch targets)
-- Sign language interpretation, extended audio descriptions
-
-**Testing Strategy**:
-- **Automated**: axe-core, Lighthouse, WAVE (catches ~30% of issues)
-- **Manual**: Keyboard-only testing, screen reader testing (catches remaining 70%)
-- **CI/CD Integration**: Run accessibility tests in pipeline (fail build on violations)
-
-#### 4. Figma MCP Workflow (150 words)
-
-**Figma MCP for Design-to-Code Automation** (2025 latest)
-
-Figma MCP (Model Context Protocol) enables AI-powered design token extraction and component generation:
-
-**Setup Requirements**:
-- Figma account + Personal Access Token (Settings → Account → Personal access tokens)
-- Claude Code, Cursor, VS Code, or Windsurf with MCP support
-- MCP server configuration (`.claude/mcp.json`)
-
-**Workflow**:
-1. **Design Token Extraction**: MCP server scans Figma file for colors, typography, spacing, shadows, gradients
-2. **Export Formats**: Generate tokens in CSS, SCSS, TypeScript, JSON
-3. **Component Spec Generation**: Extract component structure, variants, props from Figma frames
-4. **Code Connect**: Map Figma components to code components (live sync)
-5. **Natural Language Commands**: "Extract design tokens from this frame" → AI generates token JSON
-
-**AI-Powered Features** (2025):
-- **Contextual suggestions**: "This button should use `color.primary` token"
-- **Standards compliance**: Validate token names against defined conventions
-- **Codebase scanning**: Output structured rules file (token definitions, component libraries, style hierarchies)
-
-**Example MCP Configuration**:
-```json
-{
-  "mcpServers": {
-    "figma": {
-      "command": "npx",
-      "args": ["-y", "@figma/mcp-figma"],
-      "env": {
-        "FIGMA_PERSONAL_ACCESS_TOKEN": "your-token-here"
+      "primary": {
+        "50": { "$value": "#eff6ff" },
+        "100": { "$value": "#dbeafe" },
+        "500": { "$value": "#3b82f6" },
+        "900": { "$value": "#1e3a8a" }
+      },
+      "semantic": {
+        "text": {
+          "primary": { "$value": "{color.gray.900}" },
+          "secondary": { "$value": "{color.gray.600}" },
+          "disabled": { "$value": "{color.gray.400}" }
+        },
+        "background": {
+          "default": { "$value": "{color.white}" },
+          "elevated": { "$value": "{color.gray.50}" }
+        }
       }
+    },
+    "spacing": {
+      "$type": "dimension",
+      "xs": { "$value": "0.25rem" },
+      "sm": { "$value": "0.5rem" },
+      "md": { "$value": "1rem" },
+      "lg": { "$value": "1.5rem" },
+      "xl": { "$value": "2rem" }
+    },
+    "typography": {
+      "$type": "fontFamily",
+      "sans": { "$value": ["Inter", "system-ui", "sans-serif"] },
+      "mono": { "$value": ["JetBrains Mono", "monospace"] }
+    },
+    "fontSize": {
+      "$type": "dimension",
+      "sm": { "$value": "0.875rem" },
+      "base": { "$value": "1rem" },
+      "lg": { "$value": "1.125rem" },
+      "xl": { "$value": "1.25rem" }
     }
   }
 }
 ```
 
-**Best Practices**:
-- Maintain single source of truth (Figma or code, not both)
-- Use Figma as design source → Export to code (one-way sync)
-- Version control tokens (Git) for change tracking
-- Automate token updates in CI/CD pipeline
+**Multi-Theme Support** (Light/Dark Mode):
 
-#### 5. Testing & Validation (120 words)
-
-**Accessibility Testing**:
-- **Automated tools**: WAVE (browser extension), Lighthouse (DevTools), axe-core (Jest integration)
-- **Manual testing**: Keyboard-only navigation, screen reader testing (NVDA, VoiceOver)
-- **CI/CD integration**: Fail builds on accessibility violations
-
-**Design Consistency Audit**:
-- Token usage coverage: Are all components using design tokens?
-- Component variants: Do all states (hover, focus, disabled, loading) exist?
-- Documentation coverage: Are all components documented in Storybook?
-
-**Component Coverage Checklist**:
-- [ ] All atomic components defined (buttons, inputs, typography)
-- [ ] All molecules tested in isolation
-- [ ] All organisms have accessibility tests
-- [ ] All templates responsive (mobile, tablet, desktop)
-- [ ] All pages pass WCAG 2.1 AA validation
-
-**Testing Stack** (2025 best practices):
-- **Unit tests**: Vitest, Jest (component logic)
-- **Accessibility tests**: @axe-core/react, jest-axe
-- **Visual regression**: Chromatic, Percy (detect unintended changes)
-- **E2E tests**: Playwright, Cypress (user flows)
-
-### Level 3: Advanced Patterns & Code Examples
-
-#### Advanced Design Token Theming
-
-**Multi-Theme Support** (light/dark/high-contrast):
 ```json
 {
   "color": {
-    "background": {
-      "primary": {
-        "$value": "{color.neutral.50}",
+    "semantic": {
+      "background": {
         "$type": "color",
-        "$extensions": {
-          "mode": {
-            "light": "{color.neutral.50}",
-            "dark": "{color.neutral.900}",
-            "high-contrast": "#FFFFFF"
+        "default": {
+          "$value": "{color.white}",
+          "$extensions": {
+            "mode": {
+              "dark": "{color.gray.900}"
+            }
           }
         }
       }
@@ -292,296 +150,653 @@ Figma MCP (Model Context Protocol) enables AI-powered design token extraction an
 }
 ```
 
-**CSS Custom Properties Export** (Style Dictionary):
-```css
-:root {
-  --color-primary: #0066CC;
-  --color-neutral-50: #F9FAFB;
-  --typography-heading-font-family: Inter;
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-}
+**Style Dictionary Configuration** (v4.0+):
 
-[data-theme="dark"] {
-  --color-primary: #3B82F6;
-  --color-neutral-50: #111827;
-}
+```javascript
+// style-dictionary.config.js
+export default {
+  source: ['tokens/**/*.json'],
+  platforms: {
+    css: {
+      transformGroup: 'css',
+      buildPath: 'build/css/',
+      files: [{
+        destination: 'variables.css',
+        format: 'css/variables'
+      }]
+    },
+    js: {
+      transformGroup: 'js',
+      buildPath: 'build/js/',
+      files: [{
+        destination: 'tokens.js',
+        format: 'javascript/es6'
+      }]
+    }
+  }
+};
 ```
 
-#### Component API Documentation (TypeScript)
+#### Pattern 2: Atomic Design Component Structure
 
-**Button Component Spec**:
+**Folder Hierarchy**:
+
+```
+src/design-system/
+├── tokens/                    # Design tokens (DTCG format)
+│   ├── color.json
+│   ├── typography.json
+│   └── spacing.json
+├── components/
+│   ├── atoms/                 # Basic building blocks
+│   │   ├── Button/
+│   │   │   ├── Button.tsx
+│   │   │   ├── Button.stories.tsx
+│   │   │   ├── Button.test.tsx
+│   │   │   └── index.ts
+│   │   ├── Input/
+│   │   └── Icon/
+│   ├── molecules/             # Simple combinations
+│   │   ├── FormField/
+│   │   ├── SearchBar/
+│   │   └── Card/
+│   ├── organisms/             # Complex sections
+│   │   ├── Header/
+│   │   ├── Footer/
+│   │   └── DataTable/
+│   └── templates/             # Page layouts
+│       ├── DashboardLayout/
+│       └── AuthLayout/
+└── styles/
+    ├── global.css
+    └── theme.css
+```
+
+**Component Props API** (Reusability Pattern):
+
 ```typescript
+// atoms/Button/Button.tsx
+import { forwardRef } from 'react';
+import { cva, type VariantProps } from 'class-variance-authority';
+
+const buttonVariants = cva(
+  'inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50',
+  {
+    variants: {
+      variant: {
+        primary: 'bg-primary-500 text-white hover:bg-primary-600',
+        secondary: 'bg-gray-200 text-gray-900 hover:bg-gray-300',
+        outline: 'border border-gray-300 bg-transparent hover:bg-gray-100',
+        ghost: 'hover:bg-gray-100',
+        danger: 'bg-red-500 text-white hover:bg-red-600'
+      },
+      size: {
+        sm: 'h-8 px-3 text-sm',
+        md: 'h-10 px-4 text-base',
+        lg: 'h-12 px-6 text-lg'
+      }
+    },
+    defaultVariants: {
+      variant: 'primary',
+      size: 'md'
+    }
+  }
+);
+
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+  isLoading?: boolean;
+}
+
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, isLoading, children, disabled, ...props }, ref) => {
+    return (
+      <button
+        ref={ref}
+        className={buttonVariants({ variant, size, className })}
+        disabled={disabled || isLoading}
+        aria-busy={isLoading}
+        {...props}
+      >
+        {isLoading ? <Spinner /> : children}
+      </button>
+    );
+  }
+);
+
+Button.displayName = 'Button';
+```
+
+#### Pattern 3: WCAG 2.2 Accessibility Implementation
+
+**Color Contrast Validation** (Automated Check):
+
+```typescript
+// utils/a11y/contrast.ts
 /**
- * Primary UI component for user interaction
- * @see https://design-system.example.com/button
+ * Calculate relative luminance for WCAG compliance
+ * @see https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html
  */
-export interface ButtonProps {
-  /**
-   * Visual variant
-   * @default 'primary'
-   */
-  variant: 'primary' | 'secondary' | 'tertiary' | 'ghost';
+function getLuminance(rgb: [number, number, number]): number {
+  const [r, g, b] = rgb.map(val => {
+    const sRGB = val / 255;
+    return sRGB <= 0.03928
+      ? sRGB / 12.92
+      : Math.pow((sRGB + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/**
+ * Calculate contrast ratio between two colors
+ * WCAG AA: 4.5:1 (normal text), 3:1 (large text)
+ * WCAG AAA: 7:1 (normal text), 4.5:1 (large text)
+ */
+export function getContrastRatio(
+  foreground: string,
+  background: string
+): number {
+  const fgLum = getLuminance(hexToRgb(foreground));
+  const bgLum = getLuminance(hexToRgb(background));
+  const lighter = Math.max(fgLum, bgLum);
+  const darker = Math.min(fgLum, bgLum);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+/**
+ * Check if color pair meets WCAG AA/AAA requirements
+ */
+export function meetsWCAG(
+  foreground: string,
+  background: string,
+  level: 'AA' | 'AAA' = 'AA',
+  isLargeText: boolean = false
+): boolean {
+  const ratio = getContrastRatio(foreground, background);
   
-  /**
-   * Size of button
-   * @default 'medium'
-   */
-  size: 'small' | 'medium' | 'large';
+  if (level === 'AAA') {
+    return isLargeText ? ratio >= 4.5 : ratio >= 7;
+  }
   
-  /**
-   * Disabled state
-   * @default false
-   */
-  disabled?: boolean;
-  
-  /**
-   * Loading state with spinner
-   * @default false
-   */
-  loading?: boolean;
-  
-  /**
-   * Icon component (appears before text)
-   */
-  icon?: ReactNode;
-  
-  /**
-   * Click handler
-   */
-  onClick: () => void;
-  
-  /**
-   * Accessible label (for icon-only buttons)
-   */
-  'aria-label'?: string;
+  // AA level
+  return isLargeText ? ratio >= 3 : ratio >= 4.5;
 }
 ```
 
-#### Storybook Integration
+**Keyboard Navigation** (Focus Management):
 
-**Button.stories.tsx** (Storybook 8.0):
 ```typescript
+// hooks/useKeyboardNavigation.ts
+import { useEffect, useRef } from 'react';
+
+export function useKeyboardNavigation<T extends HTMLElement>(
+  options: {
+    onEscape?: () => void;
+    onEnter?: () => void;
+    trapFocus?: boolean;
+  } = {}
+) {
+  const elementRef = useRef<T>(null);
+
+  useEffect(() => {
+    const element = elementRef.current;
+    if (!element) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        options.onEscape?.();
+      } else if (e.key === 'Enter') {
+        options.onEnter?.();
+      } else if (e.key === 'Tab' && options.trapFocus) {
+        // Focus trap implementation
+        const focusableElements = element.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey && document.activeElement === firstElement) {
+          lastElement.focus();
+          e.preventDefault();
+        } else if (!e.shiftKey && document.activeElement === lastElement) {
+          firstElement.focus();
+          e.preventDefault();
+        }
+      }
+    };
+
+    element.addEventListener('keydown', handleKeyDown);
+    return () => element.removeEventListener('keydown', handleKeyDown);
+  }, [options]);
+
+  return elementRef;
+}
+```
+
+**ARIA Labels & Roles** (Screen Reader Support):
+
+```typescript
+// components/atoms/Input/Input.tsx
+export const Input = forwardRef<HTMLInputElement, InputProps>(
+  ({ label, error, required, ...props }, ref) => {
+    const inputId = useId();
+    const errorId = `${inputId}-error`;
+    
+    return (
+      <div className="form-field">
+        <label htmlFor={inputId} className="form-label">
+          {label}
+          {required && <span aria-label="required">*</span>}
+        </label>
+        
+        <input
+          ref={ref}
+          id={inputId}
+          aria-invalid={!!error}
+          aria-describedby={error ? errorId : undefined}
+          aria-required={required}
+          {...props}
+        />
+        
+        {error && (
+          <span id={errorId} role="alert" className="error-message">
+            {error}
+          </span>
+        )}
+      </div>
+    );
+  }
+);
+```
+
+**Motion Accessibility** (Reduced Motion Support):
+
+```css
+/* styles/motion.css */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Safe animations for reduced motion users */
+.fade-enter {
+  opacity: 0;
+}
+
+.fade-enter-active {
+  opacity: 1;
+  transition: opacity 200ms ease-in;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-enter-active {
+    transition: none;
+    opacity: 1;
+  }
+}
+```
+
+#### Pattern 4: Figma MCP Integration Workflow
+
+**Setup** (Desktop Server):
+
+```bash
+# Install Figma desktop app
+# Enable MCP server in settings
+# Desktop server runs at http://127.0.0.1:3845/mcp
+```
+
+**MCP Configuration** (Claude Desktop):
+
+```json
+{
+  "mcpServers": {
+    "figma": {
+      "command": "figma-mcp",
+      "args": [],
+      "env": {
+        "FIGMA_ACCESS_TOKEN": "your-figma-token"
+      }
+    }
+  }
+}
+```
+
+**Extracting Design Tokens from Figma**:
+
+1. **Create Figma Variables** (Color, Typography, Spacing)
+2. **Use MCP Server** to extract variables:
+   - Select frame in Figma
+   - Prompt: "Extract all design tokens from this frame"
+   - MCP returns DTCG-compatible JSON
+3. **Transform to Code** using Style Dictionary
+
+**Component Code Generation**:
+
+```
+User Workflow:
+1. Select component frame in Figma
+2. Prompt: "Generate React component from this design"
+3. MCP extracts:
+   - Component structure
+   - Applied design tokens
+   - Layout properties (flex, grid)
+   - Typography and spacing
+4. Output: TypeScript React component with props
+```
+
+**Automation Pattern** (Link-based workflow):
+
+```typescript
+// scripts/sync-figma-tokens.ts
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
+
+async function syncFigmaTokens(figmaFileUrl: string) {
+  // Use Figma MCP to extract tokens
+  const { stdout } = await execAsync(
+    `figma-mcp extract-tokens --url="${figmaFileUrl}"`
+  );
+  
+  const tokens = JSON.parse(stdout);
+  
+  // Write to tokens directory
+  await writeFile('tokens/color.json', JSON.stringify(tokens.color, null, 2));
+  await writeFile('tokens/spacing.json', JSON.stringify(tokens.spacing, null, 2));
+  
+  // Run Style Dictionary build
+  await execAsync('npm run tokens:build');
+  
+  console.log('✅ Design tokens synchronized from Figma');
+}
+```
+
+#### Pattern 5: Storybook Documentation Setup
+
+**Installation & Configuration**:
+
+```bash
+npx storybook@latest init
+```
+
+**Storybook Configuration** (v8.x):
+
+```typescript
+// .storybook/main.ts
+import type { StorybookConfig } from '@storybook/react-vite';
+
+const config: StorybookConfig = {
+  stories: ['../src/**/*.stories.@(js|jsx|ts|tsx|mdx)'],
+  addons: [
+    '@storybook/addon-links',
+    '@storybook/addon-essentials',
+    '@storybook/addon-interactions',
+    '@storybook/addon-a11y', // Accessibility testing
+  ],
+  framework: {
+    name: '@storybook/react-vite',
+    options: {},
+  },
+  docs: {
+    autodocs: 'tag', // Auto-generate docs
+  },
+};
+
+export default config;
+```
+
+**Component Story** (with accessibility tests):
+
+```typescript
+// components/atoms/Button/Button.stories.tsx
 import type { Meta, StoryObj } from '@storybook/react';
 import { Button } from './Button';
 
 const meta: Meta<typeof Button> = {
-  title: 'Components/Button',
+  title: 'Atoms/Button',
   component: Button,
-  parameters: {
-    layout: 'centered',
-    docs: {
-      description: {
-        component: 'Primary UI component for user interaction. Supports variants, sizes, disabled, and loading states.',
-      },
-    },
-  },
   tags: ['autodocs'],
   argTypes: {
     variant: {
       control: 'select',
-      options: ['primary', 'secondary', 'tertiary', 'ghost'],
+      options: ['primary', 'secondary', 'outline', 'ghost', 'danger'],
     },
     size: {
       control: 'select',
-      options: ['small', 'medium', 'large'],
+      options: ['sm', 'md', 'lg'],
     },
   },
 };
 
 export default meta;
-type Story = StoryObj<typeof meta>;
+type Story = StoryObj<typeof Button>;
 
 export const Primary: Story = {
   args: {
+    children: 'Primary Button',
     variant: 'primary',
-    children: 'Button',
   },
+};
+
+export const AllVariants: Story = {
+  render: () => (
+    <div className="flex gap-4">
+      <Button variant="primary">Primary</Button>
+      <Button variant="secondary">Secondary</Button>
+      <Button variant="outline">Outline</Button>
+      <Button variant="ghost">Ghost</Button>
+      <Button variant="danger">Danger</Button>
+    </div>
+  ),
 };
 
 export const Disabled: Story = {
   args: {
-    variant: 'primary',
-    disabled: true,
     children: 'Disabled Button',
+    disabled: true,
   },
 };
 
 export const Loading: Story = {
   args: {
-    variant: 'primary',
-    loading: true,
-    children: 'Loading...',
+    children: 'Loading Button',
+    isLoading: true,
   },
 };
 ```
 
-#### Accessibility Testing (Jest + axe-core)
+---
 
-**Button.test.tsx**:
+### Level 3: Advanced Topics (Deep Expertise)
+
+#### Advanced 1: Type-Safe Design Tokens (TypeScript)
+
+**Generate TypeScript Types from DTCG Tokens**:
+
 ```typescript
-import { render, screen } from '@testing-library/react';
-import { axe, toHaveNoViolations } from 'jest-axe';
-import { Button } from './Button';
+// scripts/generate-token-types.ts
+import { readFileSync, writeFileSync } from 'fs';
+
+interface DTCGToken {
+  $value: string | number | string[];
+  $type?: string;
+  [key: string]: any;
+}
+
+function generateTypes(tokens: Record<string, any>, prefix = ''): string {
+  let types = '';
+  
+  for (const [key, value] of Object.entries(tokens)) {
+    if (value.$value !== undefined) {
+      const tokenPath = `${prefix}${key}`.replace(/\./g, '-');
+      types += `export const ${tokenPath} = '${value.$value}';\n`;
+    } else {
+      types += generateTypes(value, `${prefix}${key}.`);
+    }
+  }
+  
+  return types;
+}
+
+const colorTokens = JSON.parse(readFileSync('tokens/color.json', 'utf-8'));
+const types = generateTypes(colorTokens.$tokens);
+writeFileSync('src/tokens/colors.ts', types);
+```
+
+#### Advanced 2: Visual Regression Testing (Chromatic)
+
+```bash
+# Install Chromatic
+npm install --save-dev chromatic
+
+# Configure in package.json
+{
+  "scripts": {
+    "chromatic": "chromatic --project-token=<your-token>"
+  }
+}
+```
+
+**CI/CD Integration**:
+
+```yaml
+# .github/workflows/chromatic.yml
+name: Chromatic
+
+on: [push]
+
+jobs:
+  chromatic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run Chromatic
+        uses: chromaui/action@v1
+        with:
+          projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+```
+
+#### Advanced 3: Accessibility Testing Automation
+
+**Jest + jest-axe Configuration**:
+
+```typescript
+// tests/setup.ts
+import '@testing-library/jest-dom';
+import { toHaveNoViolations } from 'jest-axe';
 
 expect.extend(toHaveNoViolations);
+```
+
+**Component Accessibility Tests**:
+
+```typescript
+// components/atoms/Button/Button.test.tsx
+import { render } from '@testing-library/react';
+import { axe } from 'jest-axe';
+import { Button } from './Button';
 
 describe('Button Accessibility', () => {
-  it('should not have accessibility violations', async () => {
-    const { container } = render(
-      <Button variant="primary" onClick={() => {}}>
-        Click me
-      </Button>
-    );
-    
+  it('should have no accessibility violations', async () => {
+    const { container } = render(<Button>Click me</Button>);
     const results = await axe(container);
     expect(results).toHaveNoViolations();
   });
-  
-  it('should have accessible name for icon-only buttons', async () => {
-    render(
-      <Button 
-        variant="ghost" 
-        icon={<CloseIcon />} 
-        aria-label="Close modal"
-        onClick={() => {}}
-      />
-    );
-    
-    const button = screen.getByRole('button', { name: 'Close modal' });
-    expect(button).toBeInTheDocument();
+
+  it('should have correct ARIA attributes when disabled', () => {
+    const { getByRole } = render(<Button disabled>Disabled</Button>);
+    const button = getByRole('button');
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('should indicate loading state to screen readers', () => {
+    const { getByRole } = render(<Button isLoading>Loading</Button>);
+    const button = getByRole('button');
+    expect(button).toHaveAttribute('aria-busy', 'true');
   });
 });
 ```
 
 ---
 
-## Tool Version Matrix (2025-11-04)
+## Best Practices Checklist
 
-| Tool | Version | Purpose | Status |
-|------|---------|---------|--------|
-| **W3C DTCG Spec** | 2025.10 | Design tokens standard | ✅ Stable |
-| **Style Dictionary** | 4.x | Token transformation | ✅ Current |
-| **Figma MCP** | Latest | Design-to-code automation | ✅ Current |
-| **Storybook** | 8.0+ | Component documentation | ✅ Current |
-| **axe-core** | 4.10+ | Accessibility testing | ✅ Current |
-| **Vitest** | 2.1+ | Unit testing | ✅ Current |
-| **Playwright** | 1.48+ | E2E testing | ✅ Current |
+Design Token Architecture:
+- [ ] Use semantic naming (`color.primary.500` not `color.blue`)
+- [ ] Implement aliasing for themes (`{color.white}` references)
+- [ ] Validate DTCG 2025.10 spec compliance
+- [ ] Version tokens with semantic versioning
+- [ ] Document token usage in Storybook
 
----
+Component Development:
+- [ ] Follow Atomic Design hierarchy (Atoms → Molecules → Organisms)
+- [ ] Create variant-based props APIs (not separate components)
+- [ ] Document all props with TypeScript types
+- [ ] Write Storybook stories for all variants
+- [ ] Test component accessibility with jest-axe
 
-## Best Practices
+Accessibility:
+- [ ] Verify 4.5:1 contrast for all text (WCAG AA)
+- [ ] Implement keyboard navigation for all interactive elements
+- [ ] Add ARIA labels to form fields and buttons
+- [ ] Test with screen readers (NVDA, JAWS, VoiceOver)
+- [ ] Support `prefers-reduced-motion`
 
-✅ **DO**:
-- Use semantic token names (`primary`, `success`, `error` not `blue`, `green`, `red`)
-- Start with atomic components (buttons, inputs) before complex organisms
-- Test accessibility with both automated tools (30%) and manual testing (70%)
-- Document all components in Storybook with live examples
-- Version control design tokens in Git
-- Maintain WCAG 2.1 AA baseline (4.5:1 contrast, keyboard nav)
-- Use Figma MCP for automated token extraction
-- Implement strong governance (manager, curator, documentation specialist)
+Testing:
+- [ ] Visual regression tests for all components (Chromatic)
+- [ ] Accessibility tests with axe-core
+- [ ] Interaction tests with Testing Library
+- [ ] Cross-browser compatibility checks
 
-❌ **DON'T**:
-- Hard-code colors/spacing in components (use tokens)
-- Skip keyboard navigation testing
-- Rely only on automated accessibility testing
-- Create duplicate components without governance
-- Mix token formats (pick DTCG v4 or legacy, not both)
-- Ignore ARIA patterns for complex components (modals, tabs, dropdowns)
-- Skip documentation updates when changing components
-- Use WCAG 2.0 (upgrade to 2.1)
-
----
-
-## Anti-Patterns
-
-🚫 **Token Chaos**: Hard-coded colors scattered across components
-- **Solution**: Centralize all visual decisions in design tokens
-
-🚫 **Inaccessible Components**: No keyboard support, missing ARIA labels
-- **Solution**: Test with keyboard-only and screen readers
-
-🚫 **Documentation Debt**: Outdated examples, missing props
-- **Solution**: Auto-generate docs with Storybook, enforce updates in PR reviews
-
-🚫 **Manual Token Sync**: Copy-paste from Figma to code
-- **Solution**: Automate with Figma MCP + CI/CD pipeline
-
-🚫 **Monolithic Components**: Single component with 50+ props
-- **Solution**: Apply Atomic Design (split into atoms, molecules, organisms)
+Figma Integration:
+- [ ] Set up Figma MCP server (desktop or remote)
+- [ ] Extract design tokens from Figma variables
+- [ ] Automate component code generation
+- [ ] Sync design changes with codebase
 
 ---
 
-## References (Official Documentation)
+## When NOT to Use This Skill
 
-### Design Tokens
-- [W3C Design Tokens Spec (2025.10)](https://www.designtokens.org/tr/drafts/format/)
-- [Style Dictionary v4 Documentation](https://styledictionary.com/)
-- [Tokens Studio for Figma](https://tokens.studio/)
+- **Simple static sites**: Overkill for projects without complex UI requirements
+- **Rapid prototyping**: Design systems add overhead during early exploration
+- **Single-use projects**: Token architecture benefits long-term maintenance
+- **Non-web platforms**: This Skill focuses on web (React/Vue/TypeScript)
 
-### Accessibility
-- [WCAG 2.1 Guidelines](https://www.w3.org/TR/WCAG21/)
-- [WAI-ARIA Authoring Practices](https://www.w3.org/WAI/ARIA/apg/)
-- [axe-core Accessibility Testing](https://github.com/dequelabs/axe-core)
-
-### Figma Integration
-- [Figma MCP Documentation](https://www.figma.com/blog/design-systems-ai-mcp/)
-- [Figma Design Tokens Plugin](https://www.figma.com/community/plugin/888356646278934516)
-
-### Component Libraries
-- [Atomic Design Methodology](https://atomicdesign.bradfrost.com/)
-- [Storybook Documentation](https://storybook.js.org/)
-
-### Tools & Testing
-- [WAVE Accessibility Tool](https://wave.webaim.org/)
-- [Lighthouse Accessibility Audits](https://developer.chrome.com/docs/lighthouse/)
-- [Playwright E2E Testing](https://playwright.dev/)
+For these cases, consider:
+- Plain CSS/Tailwind for static sites
+- Component libraries (Material-UI, shadcn/ui) for rapid development
+- Platform-specific design systems (iOS HIG, Material Design for Android)
 
 ---
 
-## Failure Modes
+**Related Skills**:
+- `moai-domain-frontend` - Frontend architecture patterns
+- `moai-lang-typescript` - TypeScript best practices
+- `moai-foundation-testing` - Testing strategies
 
-### When required tools are not installed
-- **Symptom**: Token transformation fails, tests don't run
-- **Solution**: Install Style Dictionary, axe-core, Storybook via package manager
-
-### When WCAG violations exist
-- **Symptom**: Low contrast, missing keyboard navigation, no ARIA labels
-- **Solution**: Run automated tests (Lighthouse, axe-core), manual keyboard/screen reader testing
-
-### When design tokens are inconsistent
-- **Symptom**: Hard-coded colors, duplicate spacing values, no theming support
-- **Solution**: Migrate to centralized token JSON, use Style Dictionary for exports
-
-### When components lack documentation
-- **Symptom**: Developers don't know how to use components, duplicate implementations
-- **Solution**: Set up Storybook, auto-generate docs, enforce documentation in PR reviews
-
----
-
-## Dependencies
-
-- Access to project files via Read/Bash tools
-- Integration with `moai-domain-frontend` for framework-specific patterns
-- Integration with `moai-foundation-trust` for quality gates (85% test coverage)
-- Figma account + Personal Access Token for MCP integration
-
----
-
-## Works Well With
-
-- `moai-domain-frontend` (React/Vue/Angular component implementation)
-- `moai-lang-typescript` (TypeScript component props)
-- `moai-foundation-trust` (quality gates, test coverage)
-- `moai-alfred-code-reviewer` (accessibility review in PRs)
-
----
-
-## Changelog
-
-- **v1.0.0** (2025-11-04): Initial release with W3C DTCG spec 2025.10, WCAG 2.1, Figma MCP integration, Atomic Design methodology, Storybook best practices
-
----
-
-**End of Skill** | Created 2025-11-04
+**Official Resources**:
+- W3C DTCG: https://designtokens.org
+- WCAG 2.2: https://www.w3.org/WAI/WCAG22/quickref/
+- Figma MCP: https://help.figma.com/hc/en-us/articles/32132100833559
+- Style Dictionary: https://styledictionary.com
+- Storybook: https://storybook.js.org

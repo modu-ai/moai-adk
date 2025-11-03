@@ -1,287 +1,805 @@
-# Design Systems - Practical Examples
+# Design Systems: Practical Examples
 
-## Example 1: Complete Design Token Setup
+Real-world code examples for implementing design systems with DTCG 2025.10 tokens, WCAG 2.2 accessibility, and Figma MCP workflows.
 
-### Step 1: Define Core Tokens (core/color.json)
+---
 
-```json
-{
-  "color": {
-    "primary": {
-      "50": { "$value": "#EFF6FF", "$type": "color", "$description": "Lightest primary" },
-      "100": { "$value": "#DBEAFE", "$type": "color" },
-      "200": { "$value": "#BFDBFE", "$type": "color" },
-      "300": { "$value": "#93C5FD", "$type": "color" },
-      "400": { "$value": "#60A5FA", "$type": "color" },
-      "500": { "$value": "#3B82F6", "$type": "color", "$description": "Base primary" },
-      "600": { "$value": "#2563EB", "$type": "color" },
-      "700": { "$value": "#1D4ED8", "$type": "color" },
-      "800": { "$value": "#1E40AF", "$type": "color" },
-      "900": { "$value": "#1E3A8A", "$type": "color", "$description": "Darkest primary" }
-    },
-    "neutral": {
-      "50": { "$value": "#F9FAFB", "$type": "color" },
-      "100": { "$value": "#F3F4F6", "$type": "color" },
-      "200": { "$value": "#E5E7EB", "$type": "color" },
-      "300": { "$value": "#D1D5DB", "$type": "color" },
-      "400": { "$value": "#9CA3AF", "$type": "color" },
-      "500": { "$value": "#6B7280", "$type": "color" },
-      "600": { "$value": "#4B5563", "$type": "color" },
-      "700": { "$value": "#374151", "$type": "color" },
-      "800": { "$value": "#1F2937", "$type": "color" },
-      "900": { "$value": "#111827", "$type": "color" }
-    },
-    "success": {
-      "500": { "$value": "#10B981", "$type": "color", "$description": "Success state" }
-    },
-    "error": {
-      "500": { "$value": "#EF4444", "$type": "color", "$description": "Error state" }
-    },
-    "warning": {
-      "500": { "$value": "#F59E0B", "$type": "color", "$description": "Warning state" }
-    }
-  }
-}
-```
+## Example 1: Complete Design Token Setup (DTCG 2025.10)
 
-### Step 2: Define Semantic Tokens (semantic/buttons.json)
+### Color Tokens
+
+**File**: `tokens/color.json`
 
 ```json
 {
-  "button": {
-    "primary": {
-      "background": {
-        "$value": "{color.primary.500}",
-        "$type": "color",
-        "$description": "Primary button background"
+  "$schema": "https://tr.designtokens.org/format/",
+  "$tokens": {
+    "color": {
+      "$type": "color",
+      "gray": {
+        "50": { "$value": "#f9fafb" },
+        "100": { "$value": "#f3f4f6" },
+        "200": { "$value": "#e5e7eb" },
+        "300": { "$value": "#d1d5db" },
+        "400": { "$value": "#9ca3af" },
+        "500": { "$value": "#6b7280" },
+        "600": { "$value": "#4b5563" },
+        "700": { "$value": "#374151" },
+        "800": { "$value": "#1f2937" },
+        "900": { "$value": "#111827" }
       },
-      "background-hover": {
-        "$value": "{color.primary.600}",
-        "$type": "color"
+      "primary": {
+        "50": { "$value": "#eff6ff" },
+        "100": { "$value": "#dbeafe" },
+        "200": { "$value": "#bfdbfe" },
+        "300": { "$value": "#93c5fd" },
+        "400": { "$value": "#60a5fa" },
+        "500": { "$value": "#3b82f6" },
+        "600": { "$value": "#2563eb" },
+        "700": { "$value": "#1d4ed8" },
+        "800": { "$value": "#1e40af" },
+        "900": { "$value": "#1e3a8a" }
       },
-      "text": {
-        "$value": "#FFFFFF",
-        "$type": "color"
+      "semantic": {
+        "text": {
+          "primary": {
+            "$value": "{color.gray.900}",
+            "$description": "Main body text color",
+            "$extensions": {
+              "mode": {
+                "dark": "{color.gray.50}"
+              }
+            }
+          },
+          "secondary": {
+            "$value": "{color.gray.600}",
+            "$description": "Supporting text color",
+            "$extensions": {
+              "mode": {
+                "dark": "{color.gray.400}"
+              }
+            }
+          },
+          "disabled": {
+            "$value": "{color.gray.400}",
+            "$description": "Disabled text color",
+            "$extensions": {
+              "mode": {
+                "dark": "{color.gray.600}"
+              }
+            }
+          }
+        },
+        "background": {
+          "default": {
+            "$value": "#ffffff",
+            "$description": "Default page background",
+            "$extensions": {
+              "mode": {
+                "dark": "{color.gray.900}"
+              }
+            }
+          },
+          "elevated": {
+            "$value": "{color.gray.50}",
+            "$description": "Card and elevated surfaces",
+            "$extensions": {
+              "mode": {
+                "dark": "{color.gray.800}"
+              }
+            }
+          }
+        },
+        "action": {
+          "primary": {
+            "$value": "{color.primary.500}",
+            "$description": "Primary action color (buttons, links)"
+          },
+          "primaryHover": {
+            "$value": "{color.primary.600}",
+            "$description": "Primary action hover state"
+          }
+        }
       }
-    },
-    "secondary": {
-      "background": {
-        "$value": "{color.neutral.100}",
-        "$type": "color"
+    }
+  }
+}
+```
+
+### Typography Tokens
+
+**File**: `tokens/typography.json`
+
+```json
+{
+  "$schema": "https://tr.designtokens.org/format/",
+  "$tokens": {
+    "font": {
+      "family": {
+        "$type": "fontFamily",
+        "sans": {
+          "$value": ["Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],
+          "$description": "Primary sans-serif font stack"
+        },
+        "mono": {
+          "$value": ["JetBrains Mono", "Menlo", "Monaco", "Courier New", "monospace"],
+          "$description": "Monospace font stack for code"
+        }
       },
-      "background-hover": {
-        "$value": "{color.neutral.200}",
-        "$type": "color"
+      "size": {
+        "$type": "dimension",
+        "xs": { "$value": "0.75rem", "$description": "12px" },
+        "sm": { "$value": "0.875rem", "$description": "14px" },
+        "base": { "$value": "1rem", "$description": "16px" },
+        "lg": { "$value": "1.125rem", "$description": "18px" },
+        "xl": { "$value": "1.25rem", "$description": "20px" },
+        "2xl": { "$value": "1.5rem", "$description": "24px" },
+        "3xl": { "$value": "1.875rem", "$description": "30px" },
+        "4xl": { "$value": "2.25rem", "$description": "36px" }
       },
-      "text": {
-        "$value": "{color.neutral.900}",
-        "$type": "color"
+      "weight": {
+        "$type": "fontWeight",
+        "normal": { "$value": "400" },
+        "medium": { "$value": "500" },
+        "semibold": { "$value": "600" },
+        "bold": { "$value": "700" }
+      },
+      "lineHeight": {
+        "$type": "number",
+        "tight": { "$value": "1.25" },
+        "normal": { "$value": "1.5" },
+        "relaxed": { "$value": "1.75" }
       }
     }
   }
 }
 ```
 
-### Step 3: Define Typography Tokens (core/typography.json)
+### Spacing Tokens
+
+**File**: `tokens/spacing.json`
 
 ```json
 {
-  "typography": {
-    "font-family": {
-      "base": { "$value": "Inter, system-ui, sans-serif", "$type": "fontFamily" },
-      "heading": { "$value": "Inter, system-ui, sans-serif", "$type": "fontFamily" },
-      "mono": { "$value": "JetBrains Mono, monospace", "$type": "fontFamily" }
-    },
-    "font-size": {
-      "xs": { "$value": "12px", "$type": "dimension" },
-      "sm": { "$value": "14px", "$type": "dimension" },
-      "base": { "$value": "16px", "$type": "dimension" },
-      "lg": { "$value": "18px", "$type": "dimension" },
-      "xl": { "$value": "20px", "$type": "dimension" },
-      "2xl": { "$value": "24px", "$type": "dimension" },
-      "3xl": { "$value": "30px", "$type": "dimension" },
-      "4xl": { "$value": "36px", "$type": "dimension" }
-    },
-    "font-weight": {
-      "normal": { "$value": "400", "$type": "fontWeight" },
-      "medium": { "$value": "500", "$type": "fontWeight" },
-      "semibold": { "$value": "600", "$type": "fontWeight" },
-      "bold": { "$value": "700", "$type": "fontWeight" }
-    },
-    "line-height": {
-      "tight": { "$value": "1.25", "$type": "number" },
-      "normal": { "$value": "1.5", "$type": "number" },
-      "relaxed": { "$value": "1.75", "$type": "number" }
+  "$schema": "https://tr.designtokens.org/format/",
+  "$tokens": {
+    "spacing": {
+      "$type": "dimension",
+      "0": { "$value": "0" },
+      "1": { "$value": "0.25rem", "$description": "4px" },
+      "2": { "$value": "0.5rem", "$description": "8px" },
+      "3": { "$value": "0.75rem", "$description": "12px" },
+      "4": { "$value": "1rem", "$description": "16px" },
+      "5": { "$value": "1.25rem", "$description": "20px" },
+      "6": { "$value": "1.5rem", "$description": "24px" },
+      "8": { "$value": "2rem", "$description": "32px" },
+      "10": { "$value": "2.5rem", "$description": "40px" },
+      "12": { "$value": "3rem", "$description": "48px" },
+      "16": { "$value": "4rem", "$description": "64px" }
     }
   }
 }
 ```
 
-### Step 4: Define Spacing Tokens (core/spacing.json)
+### Style Dictionary Build Configuration
 
-```json
-{
-  "spacing": {
-    "0": { "$value": "0", "$type": "dimension" },
-    "1": { "$value": "4px", "$type": "dimension" },
-    "2": { "$value": "8px", "$type": "dimension" },
-    "3": { "$value": "12px", "$type": "dimension" },
-    "4": { "$value": "16px", "$type": "dimension" },
-    "5": { "$value": "20px", "$type": "dimension" },
-    "6": { "$value": "24px", "$type": "dimension" },
-    "8": { "$value": "32px", "$type": "dimension" },
-    "10": { "$value": "40px", "$type": "dimension" },
-    "12": { "$value": "48px", "$type": "dimension" },
-    "16": { "$value": "64px", "$type": "dimension" }
-  }
-}
-```
+**File**: `style-dictionary.config.js`
 
-### Step 5: Transform Tokens with Style Dictionary
-
-**style-dictionary.config.json**:
-```json
-{
-  "source": ["tokens/**/*.json"],
-  "platforms": {
-    "css": {
-      "transformGroup": "css",
-      "buildPath": "dist/css/",
-      "files": [
-        {
-          "destination": "variables.css",
-          "format": "css/variables"
+```javascript
+export default {
+  source: ['tokens/**/*.json'],
+  
+  platforms: {
+    // CSS Variables
+    css: {
+      transformGroup: 'css',
+      buildPath: 'build/css/',
+      files: [{
+        destination: 'variables.css',
+        format: 'css/variables',
+        options: {
+          outputReferences: true
         }
-      ]
+      }]
     },
-    "js": {
-      "transformGroup": "js",
-      "buildPath": "dist/js/",
-      "files": [
-        {
-          "destination": "tokens.js",
-          "format": "javascript/es6"
-        }
-      ]
+    
+    // JavaScript/TypeScript
+    js: {
+      transformGroup: 'js',
+      buildPath: 'build/js/',
+      files: [{
+        destination: 'tokens.js',
+        format: 'javascript/es6'
+      }, {
+        destination: 'tokens.d.ts',
+        format: 'typescript/es6-declarations'
+      }]
     },
-    "typescript": {
-      "transformGroup": "js",
-      "buildPath": "dist/ts/",
-      "files": [
-        {
-          "destination": "tokens.ts",
-          "format": "typescript/es6-declarations"
-        }
-      ]
+    
+    // Tailwind CSS
+    tailwind: {
+      transformGroup: 'js',
+      buildPath: 'build/tailwind/',
+      files: [{
+        destination: 'tokens.js',
+        format: 'javascript/module-flat'
+      }]
     }
   }
-}
+};
 ```
 
-**Generated CSS (dist/css/variables.css)**:
+**Generated Output** (`build/css/variables.css`):
+
 ```css
 :root {
-  --color-primary-50: #EFF6FF;
-  --color-primary-500: #3B82F6;
-  --color-primary-900: #1E3A8A;
-  --color-neutral-50: #F9FAFB;
-  --color-neutral-900: #111827;
+  /* Colors */
+  --color-gray-50: #f9fafb;
+  --color-gray-900: #111827;
+  --color-primary-500: #3b82f6;
+  --color-semantic-text-primary: var(--color-gray-900);
+  --color-semantic-action-primary: var(--color-primary-500);
   
-  --button-primary-background: var(--color-primary-500);
-  --button-primary-background-hover: var(--color-primary-600);
-  --button-primary-text: #FFFFFF;
+  /* Typography */
+  --font-family-sans: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-size-base: 1rem;
+  --font-weight-bold: 700;
+  --font-line-height-normal: 1.5;
   
-  --typography-font-family-base: Inter, system-ui, sans-serif;
-  --typography-font-size-base: 16px;
-  --typography-font-weight-normal: 400;
-  
-  --spacing-4: 16px;
-  --spacing-8: 32px;
+  /* Spacing */
+  --spacing-4: 1rem;
+  --spacing-8: 2rem;
+}
+
+[data-theme="dark"] {
+  --color-semantic-text-primary: var(--color-gray-50);
+  --color-semantic-background-default: var(--color-gray-900);
 }
 ```
 
 ---
 
-## Example 2: Atomic Design Component Library
+## Example 2: Atomic Design Folder Structure
 
-### Atom: Button Component
+```
+src/design-system/
+├── tokens/                           # DTCG 2025.10 JSON tokens
+│   ├── color.json
+│   ├── typography.json
+│   ├── spacing.json
+│   ├── border.json
+│   └── shadow.json
+│
+├── components/
+│   ├── atoms/                        # Basic building blocks
+│   │   ├── Button/
+│   │   │   ├── Button.tsx
+│   │   │   ├── Button.stories.tsx
+│   │   │   ├── Button.test.tsx
+│   │   │   ├── Button.module.css
+│   │   │   └── index.ts
+│   │   ├── Input/
+│   │   ├── Label/
+│   │   ├── Icon/
+│   │   ├── Spinner/
+│   │   └── Badge/
+│   │
+│   ├── molecules/                    # Simple component combinations
+│   │   ├── FormField/
+│   │   │   ├── FormField.tsx
+│   │   │   ├── FormField.stories.tsx
+│   │   │   ├── FormField.test.tsx
+│   │   │   └── index.ts
+│   │   ├── SearchBar/
+│   │   ├── Card/
+│   │   ├── Alert/
+│   │   └── Dropdown/
+│   │
+│   ├── organisms/                    # Complex component sections
+│   │   ├── Header/
+│   │   ├── Footer/
+│   │   ├── DataTable/
+│   │   ├── Modal/
+│   │   └── NavigationMenu/
+│   │
+│   └── templates/                    # Page-level layouts
+│       ├── DashboardLayout/
+│       ├── AuthLayout/
+│       └── LandingPageLayout/
+│
+├── hooks/                            # Shared React hooks
+│   ├── useKeyboardNavigation.ts
+│   ├── useFocusTrap.ts
+│   └── useReducedMotion.ts
+│
+├── utils/                            # Utility functions
+│   ├── a11y/
+│   │   ├── contrast.ts
+│   │   └── ariaUtils.ts
+│   └── tokens/
+│       └── tokenHelpers.ts
+│
+├── styles/                           # Global styles
+│   ├── global.css
+│   ├── reset.css
+│   └── theme.css
+│
+└── index.ts                          # Public API exports
+```
 
-**Button.tsx**:
+**Public API** (`src/design-system/index.ts`):
+
 ```typescript
-import { ButtonHTMLAttributes, ReactNode } from 'react';
-import styles from './Button.module.css';
+// Atoms
+export { Button } from './components/atoms/Button';
+export { Input } from './components/atoms/Input';
+export { Icon } from './components/atoms/Icon';
 
-export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  /**
-   * Visual variant
-   * @default 'primary'
-   */
-  variant?: 'primary' | 'secondary' | 'tertiary' | 'ghost';
-  
-  /**
-   * Size of button
-   * @default 'medium'
-   */
-  size?: 'small' | 'medium' | 'large';
-  
-  /**
-   * Loading state with spinner
-   * @default false
-   */
-  loading?: boolean;
-  
-  /**
-   * Icon component
-   */
-  icon?: ReactNode;
-  
-  /**
-   * Button content
-   */
-  children: ReactNode;
+// Molecules
+export { FormField } from './components/molecules/FormField';
+export { Card } from './components/molecules/Card';
+
+// Organisms
+export { Header } from './components/organisms/Header';
+export { DataTable } from './components/organisms/DataTable';
+
+// Hooks
+export { useKeyboardNavigation } from './hooks/useKeyboardNavigation';
+export { useFocusTrap } from './hooks/useFocusTrap';
+
+// Utils
+export { getContrastRatio, meetsWCAG } from './utils/a11y/contrast';
+```
+
+---
+
+## Example 3: WCAG 2.2 AA Compliance Checklist
+
+### Color Contrast Validation
+
+**Automated Test** (`utils/a11y/contrast.test.ts`):
+
+```typescript
+import { getContrastRatio, meetsWCAG } from './contrast';
+
+describe('Color Contrast WCAG 2.2 Compliance', () => {
+  describe('Level AA Requirements', () => {
+    it('should pass AA for normal text (4.5:1)', () => {
+      // Gray 600 on white background
+      expect(meetsWCAG('#4b5563', '#ffffff', 'AA', false)).toBe(true);
+      expect(getContrastRatio('#4b5563', '#ffffff')).toBeGreaterThanOrEqual(4.5);
+    });
+
+    it('should pass AA for large text (3:1)', () => {
+      // Gray 400 on white background (18pt+)
+      expect(meetsWCAG('#9ca3af', '#ffffff', 'AA', true)).toBe(true);
+      expect(getContrastRatio('#9ca3af', '#ffffff')).toBeGreaterThanOrEqual(3);
+    });
+
+    it('should fail AA for insufficient contrast', () => {
+      // Light gray on white (fails)
+      expect(meetsWCAG('#e5e7eb', '#ffffff', 'AA', false)).toBe(false);
+    });
+
+    it('should pass AA for UI components (3:1)', () => {
+      // Gray 300 border on white background
+      expect(getContrastRatio('#d1d5db', '#ffffff')).toBeGreaterThanOrEqual(3);
+    });
+  });
+
+  describe('Level AAA Requirements', () => {
+    it('should pass AAA for normal text (7:1)', () => {
+      // Gray 900 on white background
+      expect(meetsWCAG('#111827', '#ffffff', 'AAA', false)).toBe(true);
+      expect(getContrastRatio('#111827', '#ffffff')).toBeGreaterThanOrEqual(7);
+    });
+
+    it('should pass AAA for large text (4.5:1)', () => {
+      // Gray 600 on white background (18pt+)
+      expect(meetsWCAG('#4b5563', '#ffffff', 'AAA', true)).toBe(true);
+      expect(getContrastRatio('#4b5563', '#ffffff')).toBeGreaterThanOrEqual(4.5);
+    });
+  });
+});
+```
+
+**Token Validation Script** (`scripts/validate-contrast.ts`):
+
+```typescript
+import { readFileSync } from 'fs';
+import { getContrastRatio } from '../utils/a11y/contrast';
+
+interface ColorToken {
+  $value: string;
 }
 
-export function Button({
-  variant = 'primary',
-  size = 'medium',
-  loading = false,
-  icon,
-  disabled,
-  children,
-  className,
-  ...props
-}: ButtonProps) {
+const colorTokens = JSON.parse(readFileSync('tokens/color.json', 'utf-8'));
+const semantic = colorTokens.$tokens.color.semantic;
+
+console.log('WCAG 2.2 AA Contrast Validation\n');
+
+// Validate text colors
+const textPrimary = semantic.text.primary.$value;
+const bgDefault = semantic.background.default.$value;
+const ratio = getContrastRatio(textPrimary, bgDefault);
+
+console.log(`Text Primary on Default Background: ${ratio.toFixed(2)}:1`);
+console.log(`✅ WCAG AA (4.5:1): ${ratio >= 4.5 ? 'PASS' : 'FAIL'}`);
+console.log(`✅ WCAG AAA (7:1): ${ratio >= 7 ? 'PASS' : 'FAIL'}\n`);
+
+// Validate all semantic text colors
+const textColors = ['primary', 'secondary', 'disabled'];
+const backgrounds = ['default', 'elevated'];
+
+textColors.forEach(textType => {
+  backgrounds.forEach(bgType => {
+    const textColor = semantic.text[textType].$value;
+    const bgColor = semantic.background[bgType].$value;
+    const ratio = getContrastRatio(textColor, bgColor);
+    
+    const status = ratio >= 4.5 ? '✅' : '❌';
+    console.log(`${status} ${textType} on ${bgType}: ${ratio.toFixed(2)}:1`);
+  });
+});
+```
+
+### Keyboard Navigation Implementation
+
+**Hook** (`hooks/useKeyboardNavigation.ts`):
+
+```typescript
+import { useEffect, useRef } from 'react';
+
+interface KeyboardNavigationOptions {
+  onEscape?: () => void;
+  onEnter?: () => void;
+  trapFocus?: boolean;
+  enableArrowKeys?: boolean;
+}
+
+export function useKeyboardNavigation<T extends HTMLElement>(
+  options: KeyboardNavigationOptions = {}
+) {
+  const elementRef = useRef<T>(null);
+
+  useEffect(() => {
+    const element = elementRef.current;
+    if (!element) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Escape key handling
+      if (e.key === 'Escape' && options.onEscape) {
+        options.onEscape();
+        return;
+      }
+
+      // Enter key handling
+      if (e.key === 'Enter' && options.onEnter) {
+        options.onEnter();
+        return;
+      }
+
+      // Focus trap (Tab key)
+      if (e.key === 'Tab' && options.trapFocus) {
+        const focusableElements = element.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+
+        if (focusableElements.length === 0) return;
+
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) {
+          // Shift+Tab: going backwards
+          if (document.activeElement === firstElement) {
+            lastElement.focus();
+            e.preventDefault();
+          }
+        } else {
+          // Tab: going forwards
+          if (document.activeElement === lastElement) {
+            firstElement.focus();
+            e.preventDefault();
+          }
+        }
+      }
+
+      // Arrow key navigation
+      if (options.enableArrowKeys && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        const focusableElements = Array.from(
+          element.querySelectorAll<HTMLElement>(
+            '[role="menuitem"], [role="option"], [role="tab"]'
+          )
+        );
+
+        if (focusableElements.length === 0) return;
+
+        const currentIndex = focusableElements.indexOf(document.activeElement as HTMLElement);
+        let nextIndex = currentIndex;
+
+        if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+          nextIndex = (currentIndex + 1) % focusableElements.length;
+        } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+          nextIndex = (currentIndex - 1 + focusableElements.length) % focusableElements.length;
+        }
+
+        focusableElements[nextIndex].focus();
+        e.preventDefault();
+      }
+    };
+
+    element.addEventListener('keydown', handleKeyDown);
+    return () => element.removeEventListener('keydown', handleKeyDown);
+  }, [options]);
+
+  return elementRef;
+}
+```
+
+**Usage Example** (Modal component):
+
+```typescript
+import { useKeyboardNavigation } from '../../hooks/useKeyboardNavigation';
+
+interface ModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+}
+
+export function Modal({ isOpen, onClose, children }: ModalProps) {
+  const modalRef = useKeyboardNavigation<HTMLDivElement>({
+    onEscape: onClose,
+    trapFocus: true
+  });
+
+  useEffect(() => {
+    if (isOpen && modalRef.current) {
+      const firstFocusable = modalRef.current.querySelector<HTMLElement>(
+        'button, [href], input'
+      );
+      firstFocusable?.focus();
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
   return (
-    <button
-      className={`${styles.button} ${styles[variant]} ${styles[size]} ${className || ''}`}
-      disabled={disabled || loading}
-      {...props}
+    <div
+      ref={modalRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+      className="modal-overlay"
     >
-      {loading && <span className={styles.spinner} aria-hidden="true" />}
-      {icon && <span className={styles.icon}>{icon}</span>}
-      <span>{children}</span>
-    </button>
+      <div className="modal-content">
+        {children}
+      </div>
+    </div>
   );
 }
 ```
 
-**Button.module.css**:
+### ARIA Implementation Examples
+
+**FormField with Complete ARIA** (`components/molecules/FormField/FormField.tsx`):
+
+```typescript
+import { useId, forwardRef } from 'react';
+import { Input } from '../../atoms/Input';
+import { Label } from '../../atoms/Label';
+
+interface FormFieldProps {
+  label: string;
+  error?: string;
+  hint?: string;
+  required?: boolean;
+  disabled?: boolean;
+  type?: string;
+  value?: string;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}
+
+export const FormField = forwardRef<HTMLInputElement, FormFieldProps>(
+  ({ label, error, hint, required, disabled, ...inputProps }, ref) => {
+    const inputId = useId();
+    const errorId = `${inputId}-error`;
+    const hintId = `${inputId}-hint`;
+
+    return (
+      <div className="form-field">
+        <Label htmlFor={inputId}>
+          {label}
+          {required && (
+            <span className="required-indicator" aria-label="required field">
+              *
+            </span>
+          )}
+        </Label>
+
+        {hint && !error && (
+          <p id={hintId} className="hint-text">
+            {hint}
+          </p>
+        )}
+
+        <Input
+          ref={ref}
+          id={inputId}
+          aria-invalid={!!error}
+          aria-describedby={
+            error ? errorId : hint ? hintId : undefined
+          }
+          aria-required={required}
+          disabled={disabled}
+          {...inputProps}
+        />
+
+        {error && (
+          <p id={errorId} role="alert" className="error-text">
+            {error}
+          </p>
+        )}
+      </div>
+    );
+  }
+);
+
+FormField.displayName = 'FormField';
+```
+
+---
+
+## Example 4: Figma → React Component Export Workflow
+
+### Step 1: Figma File Structure
+
+**Best Practices**:
+- Name layers semantically: `PrimaryButton`, `HeaderNavigation`, `ProductCard`
+- Use Figma Variables for colors, spacing, typography
+- Apply Auto Layout for responsive components
+- Add component descriptions for AI context
+
+**Figma Variables Example**:
+
+```
+Colors/
+  Primary/
+    primary-50: #eff6ff
+    primary-500: #3b82f6
+    primary-600: #2563eb
+  
+  Semantic/
+    text-primary: {gray-900}
+    action-primary: {primary-500}
+
+Spacing/
+  spacing-2: 8px
+  spacing-4: 16px
+  spacing-6: 24px
+
+Typography/
+  font-size-base: 16px
+  font-weight-bold: 700
+```
+
+### Step 2: Extract Design Tokens via MCP
+
+**Prompt to Claude**:
+
+```
+Extract all design tokens from this Figma file:
+https://www.figma.com/file/XYZ123/DesignSystem
+
+Output as DTCG 2025.10 JSON format.
+```
+
+**MCP Response** (Generated JSON):
+
+```json
+{
+  "$schema": "https://tr.designtokens.org/format/",
+  "$tokens": {
+    "color": {
+      "primary": {
+        "$type": "color",
+        "500": { "$value": "#3b82f6" }
+      }
+    },
+    "spacing": {
+      "$type": "dimension",
+      "4": { "$value": "1rem" }
+    }
+  }
+}
+```
+
+### Step 3: Generate Component Code
+
+**Prompt to Claude**:
+
+```
+Generate a React TypeScript component from this Figma frame:
+https://www.figma.com/file/XYZ123/DesignSystem?node-id=123:456
+
+Requirements:
+- Use design tokens from tokens/color.json
+- WCAG 2.2 AA compliant
+- Include Storybook story
+- Add accessibility tests
+```
+
+**Generated Component** (`components/atoms/Button/Button.tsx`):
+
+```typescript
+import { forwardRef } from 'react';
+import { cva, type VariantProps } from 'class-variance-authority';
+import styles from './Button.module.css';
+
+const buttonVariants = cva(styles.button, {
+  variants: {
+    variant: {
+      primary: styles.primary,
+      secondary: styles.secondary,
+      outline: styles.outline
+    },
+    size: {
+      sm: styles.sm,
+      md: styles.md,
+      lg: styles.lg
+    }
+  },
+  defaultVariants: {
+    variant: 'primary',
+    size: 'md'
+  }
+});
+
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+  isLoading?: boolean;
+}
+
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, isLoading, children, disabled, ...props }, ref) => {
+    return (
+      <button
+        ref={ref}
+        className={buttonVariants({ variant, size, className })}
+        disabled={disabled || isLoading}
+        aria-busy={isLoading}
+        {...props}
+      >
+        {isLoading ? (
+          <>
+            <span className={styles.spinner} aria-hidden="true" />
+            <span className="sr-only">Loading...</span>
+          </>
+        ) : (
+          children
+        )}
+      </button>
+    );
+  }
+);
+
+Button.displayName = 'Button';
+```
+
+**Generated Styles** (`Button.module.css`):
+
 ```css
 .button {
   display: inline-flex;
   align-items: center;
-  gap: var(--spacing-2);
-  font-family: var(--typography-font-family-base);
-  font-weight: var(--typography-font-weight-medium);
-  border: none;
-  border-radius: 6px;
+  justify-content: center;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  transition: background-color 0.2s, color 0.2s;
   cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  border: none;
 }
 
 .button:focus-visible {
@@ -289,795 +807,432 @@ export function Button({
   outline-offset: 2px;
 }
 
-/* Variants */
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .primary {
-  background: var(--button-primary-background);
-  color: var(--button-primary-text);
+  background-color: var(--color-primary-500);
+  color: #ffffff;
 }
 
 .primary:hover:not(:disabled) {
-  background: var(--button-primary-background-hover);
+  background-color: var(--color-primary-600);
 }
 
 .secondary {
-  background: var(--button-secondary-background);
-  color: var(--button-secondary-text);
+  background-color: var(--color-gray-200);
+  color: var(--color-gray-900);
 }
 
-/* Sizes */
-.small {
-  padding: var(--spacing-1) var(--spacing-3);
-  font-size: var(--typography-font-size-sm);
+.secondary:hover:not(:disabled) {
+  background-color: var(--color-gray-300);
 }
 
-.medium {
-  padding: var(--spacing-2) var(--spacing-4);
-  font-size: var(--typography-font-size-base);
+.sm {
+  height: 2rem;
+  padding: 0 0.75rem;
+  font-size: 0.875rem;
 }
 
-.large {
-  padding: var(--spacing-3) var(--spacing-6);
-  font-size: var(--typography-font-size-lg);
+.md {
+  height: 2.5rem;
+  padding: 0 1rem;
+  font-size: 1rem;
 }
 
-.spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid currentColor;
-  border-right-color: transparent;
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
+.lg {
+  height: 3rem;
+  padding: 0 1.5rem;
+  font-size: 1.125rem;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-```
-
-### Molecule: FormField Component
-
-**FormField.tsx**:
-```typescript
-import { ReactElement } from 'react';
-import styles from './FormField.module.css';
-
-export interface FormFieldProps {
-  /**
-   * Field label
-   */
-  label: string;
-  
-  /**
-   * Input component (atom)
-   */
-  input: ReactElement;
-  
-  /**
-   * Error message
-   */
-  error?: string;
-  
-  /**
-   * Helper text
-   */
-  helperText?: string;
-  
-  /**
-   * Required field
-   * @default false
-   */
-  required?: boolean;
-  
-  /**
-   * Field ID (for label association)
-   */
-  id: string;
-}
-
-export function FormField({
-  label,
-  input,
-  error,
-  helperText,
-  required,
-  id,
-}: FormFieldProps) {
-  const describedBy = [];
-  if (error) describedBy.push(`${id}-error`);
-  if (helperText) describedBy.push(`${id}-helper`);
-  
-  return (
-    <div className={styles.formField}>
-      <label htmlFor={id} className={styles.label}>
-        {label}
-        {required && <span className={styles.required} aria-label="required">*</span>}
-      </label>
-      
-      {/* Clone input with accessibility props */}
-      {React.cloneElement(input, {
-        id,
-        'aria-invalid': !!error,
-        'aria-describedby': describedBy.length > 0 ? describedBy.join(' ') : undefined,
-      })}
-      
-      {helperText && (
-        <p id={`${id}-helper`} className={styles.helperText}>
-          {helperText}
-        </p>
-      )}
-      
-      {error && (
-        <p id={`${id}-error`} className={styles.error} role="alert">
-          {error}
-        </p>
-      )}
-    </div>
-  );
-}
-```
-
-### Organism: Header Component
-
-**Header.tsx**:
-```typescript
-import { ReactNode } from 'react';
-import styles from './Header.module.css';
-
-export interface NavigationItem {
-  label: string;
-  href: string;
-  current?: boolean;
-}
-
-export interface HeaderProps {
-  /**
-   * Logo component
-   */
-  logo: ReactNode;
-  
-  /**
-   * Navigation items
-   */
-  navigation: NavigationItem[];
-  
-  /**
-   * Search box component (optional)
-   */
-  searchBox?: ReactNode;
-  
-  /**
-   * User menu component (optional)
-   */
-  userMenu?: ReactNode;
-  
-  /**
-   * Navigation handler
-   */
-  onNavigate: (path: string) => void;
-}
-
-export function Header({
-  logo,
-  navigation,
-  searchBox,
-  userMenu,
-  onNavigate,
-}: HeaderProps) {
-  return (
-    <header className={styles.header}>
-      <div className={styles.container}>
-        {/* Logo */}
-        <div className={styles.logo}>{logo}</div>
-        
-        {/* Navigation */}
-        <nav className={styles.nav} aria-label="Main navigation">
-          <ul className={styles.navList}>
-            {navigation.map((item) => (
-              <li key={item.href}>
-                <a
-                  href={item.href}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    onNavigate(item.href);
-                  }}
-                  aria-current={item.current ? 'page' : undefined}
-                  className={item.current ? styles.navLinkActive : styles.navLink}
-                >
-                  {item.label}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
-        
-        {/* Search */}
-        {searchBox && <div className={styles.search}>{searchBox}</div>}
-        
-        {/* User Menu */}
-        {userMenu && <div className={styles.userMenu}>{userMenu}</div>}
-      </div>
-    </header>
-  );
-}
-```
-
----
-
-## Example 3: WCAG 2.1 AA Compliance
-
-### Accessible Modal Dialog
-
-**Modal.tsx**:
-```typescript
-import { ReactNode, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
-import FocusTrap from 'focus-trap-react';
-import styles from './Modal.module.css';
-
-export interface ModalProps {
-  /**
-   * Modal open state
-   */
-  isOpen: boolean;
-  
-  /**
-   * Close handler
-   */
-  onClose: () => void;
-  
-  /**
-   * Modal title
-   */
-  title: string;
-  
-  /**
-   * Modal content
-   */
-  children: ReactNode;
-  
-  /**
-   * Footer actions (buttons)
-   */
-  footer?: ReactNode;
-}
-
-export function Modal({ isOpen, onClose, title, children, footer }: ModalProps) {
-  const titleId = useRef(`modal-title-${Math.random().toString(36).slice(2)}`);
-  const previousFocus = useRef<HTMLElement | null>(null);
-  
-  useEffect(() => {
-    if (!isOpen) return;
-    
-    // Store currently focused element
-    previousFocus.current = document.activeElement as HTMLElement;
-    
-    // Prevent body scroll
-    document.body.style.overflow = 'hidden';
-    
-    // Handle Escape key
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    
-    document.addEventListener('keydown', handleEscape);
-    
-    return () => {
-      // Restore body scroll
-      document.body.style.overflow = '';
-      
-      // Restore focus to previous element
-      previousFocus.current?.focus();
-      
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [isOpen, onClose]);
-  
-  if (!isOpen) return null;
-  
-  return createPortal(
-    <div className={styles.overlay} onClick={onClose} aria-hidden="true">
-      <FocusTrap>
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby={titleId.current}
-          className={styles.modal}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div className={styles.header}>
-            <h2 id={titleId.current} className={styles.title}>
-              {title}
-            </h2>
-            <button
-              onClick={onClose}
-              aria-label="Close modal"
-              className={styles.closeButton}
-            >
-              <CloseIcon />
-            </button>
-          </div>
-          
-          {/* Body */}
-          <div className={styles.body}>{children}</div>
-          
-          {/* Footer */}
-          {footer && <div className={styles.footer}>{footer}</div>}
-        </div>
-      </FocusTrap>
-    </div>,
-    document.body
-  );
-}
-```
-
-### Accessible Form with Validation
-
-**RegistrationForm.tsx**:
-```typescript
-import { useState } from 'react';
-import { FormField } from './FormField';
-import { Input } from './Input';
-import { Button } from './Button';
-
-export function RegistrationForm() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  
-  const validate = () => {
-    const newErrors: Record<string, string> = {};
-    
-    if (!email) {
-      newErrors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      newErrors.email = 'Email is invalid';
-    }
-    
-    if (!password) {
-      newErrors.password = 'Password is required';
-    } else if (password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters';
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-  
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validate()) {
-      // Focus first error field
-      const firstErrorField = document.querySelector('[aria-invalid="true"]') as HTMLElement;
-      firstErrorField?.focus();
-      return;
-    }
-    
-    // Submit form
-    console.log('Form submitted:', { email, password });
-  };
-  
-  return (
-    <form onSubmit={handleSubmit} noValidate>
-      <FormField
-        id="email"
-        label="Email"
-        required
-        input={
-          <Input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
-          />
-        }
-        error={errors.email}
-        helperText="We'll never share your email"
-      />
-      
-      <FormField
-        id="password"
-        label="Password"
-        required
-        input={
-          <Input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="new-password"
-          />
-        }
-        error={errors.password}
-        helperText="Minimum 8 characters"
-      />
-      
-      <Button type="submit" variant="primary">
-        Create Account
-      </Button>
-    </form>
-  );
-}
-```
-
----
-
-## Example 4: Figma MCP Integration Workflow
-
-### Step 1: Extract Design Tokens from Figma
-
-**Prompt to Claude Code (with Figma MCP active)**:
-```
-"Extract all color tokens from the 'Design System / Colors' page
-in file 'abc123' and generate a JSON file following W3C DTCG spec.
-Include semantic naming (primary, neutral, success, error, warning)."
-```
-
-**MCP Response** (generated tokens.json):
-```json
-{
-  "color": {
-    "primary": {
-      "500": {
-        "$value": "#3B82F6",
-        "$type": "color",
-        "$description": "Primary brand color"
-      }
-    },
-    "neutral": {
-      "50": { "$value": "#F9FAFB", "$type": "color" },
-      "900": { "$value": "#111827", "$type": "color" }
-    },
-    "success": {
-      "500": { "$value": "#10B981", "$type": "color" }
-    }
+@media (prefers-reduced-motion: reduce) {
+  .button {
+    transition: none;
   }
 }
 ```
 
-### Step 2: Generate Component Spec from Figma Frame
-
-**Prompt**:
-```
-"Generate TypeScript interface for the Button component
-in frame 'Components/Button' with all variants (primary, secondary)
-and sizes (small, medium, large)."
-```
-
-**MCP Response** (ButtonProps.ts):
-```typescript
-export interface ButtonProps {
-  variant: 'primary' | 'secondary' | 'tertiary';
-  size: 'small' | 'medium' | 'large';
-  disabled?: boolean;
-  children: React.ReactNode;
-}
-
-// Extracted dimensions from Figma
-export const ButtonSizes = {
-  small: { height: 32, paddingX: 12, fontSize: 14 },
-  medium: { height: 40, paddingX: 16, fontSize: 16 },
-  large: { height: 48, paddingX: 24, fontSize: 18 },
-};
-```
-
-### Step 3: Automate Token Sync in CI/CD
-
-**GitHub Actions workflow** (.github/workflows/sync-tokens.yml):
-```yaml
-name: Sync Design Tokens
-
-on:
-  workflow_dispatch:  # Manual trigger
-  schedule:
-    - cron: '0 0 * * 1'  # Weekly on Monday
-
-jobs:
-  sync:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Extract tokens from Figma
-        env:
-          FIGMA_ACCESS_TOKEN: ${{ secrets.FIGMA_ACCESS_TOKEN }}
-        run: |
-          npx figma-tokens-cli extract \
-            --file-key abc123 \
-            --output tokens/figma.json
-      
-      - name: Transform tokens with Style Dictionary
-        run: npx style-dictionary build
-      
-      - name: Commit changes
-        run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          git add tokens/ dist/
-          git commit -m "chore: sync design tokens from Figma" || exit 0
-          git push
-```
-
 ---
 
-## Example 5: Storybook Documentation Setup
+## Example 5: Storybook Configuration & Stories
 
-### Component Story with Controls
+### Storybook Main Configuration
 
-**Button.stories.tsx**:
+**File**: `.storybook/main.ts`
+
+```typescript
+import type { StorybookConfig } from '@storybook/react-vite';
+
+const config: StorybookConfig = {
+  stories: [
+    '../src/**/*.mdx',
+    '../src/**/*.stories.@(js|jsx|mjs|ts|tsx)'
+  ],
+  
+  addons: [
+    '@storybook/addon-links',
+    '@storybook/addon-essentials',
+    '@storybook/addon-interactions',
+    '@storybook/addon-a11y', // Accessibility testing
+    '@chromatic-com/storybook' // Visual regression
+  ],
+  
+  framework: {
+    name: '@storybook/react-vite',
+    options: {}
+  },
+  
+  docs: {
+    autodocs: 'tag'
+  },
+  
+  viteFinal: async (config) => {
+    // Add custom Vite config here
+    return config;
+  }
+};
+
+export default config;
+```
+
+### Theme Configuration
+
+**File**: `.storybook/preview.ts`
+
+```typescript
+import type { Preview } from '@storybook/react';
+import '../src/design-system/styles/global.css';
+
+const preview: Preview = {
+  parameters: {
+    actions: { argTypesRegex: '^on[A-Z].*' },
+    controls: {
+      matchers: {
+        color: /(background|color)$/i,
+        date: /Date$/i
+      }
+    },
+    // Accessibility addon configuration
+    a11y: {
+      config: {
+        rules: [
+          {
+            id: 'color-contrast',
+            enabled: true
+          },
+          {
+            id: 'label',
+            enabled: true
+          }
+        ]
+      }
+    }
+  },
+  
+  // Global decorators
+  decorators: [
+    (Story) => (
+      <div style={{ padding: '2rem' }}>
+        <Story />
+      </div>
+    )
+  ],
+  
+  // Theme switching
+  globalTypes: {
+    theme: {
+      description: 'Global theme for components',
+      defaultValue: 'light',
+      toolbar: {
+        title: 'Theme',
+        icon: 'circlehollow',
+        items: ['light', 'dark'],
+        dynamicTitle: true
+      }
+    }
+  }
+};
+
+export default preview;
+```
+
+### Complete Component Story
+
+**File**: `components/atoms/Button/Button.stories.tsx`
+
 ```typescript
 import type { Meta, StoryObj } from '@storybook/react';
+import { fn } from '@storybook/test';
 import { Button } from './Button';
-import { PlusIcon } from './icons';
 
 const meta: Meta<typeof Button> = {
-  title: 'Components/Button',
+  title: 'Design System/Atoms/Button',
   component: Button,
+  tags: ['autodocs'],
+  
   parameters: {
     layout: 'centered',
-    docs: {
-      description: {
-        component: `
-Primary UI component for user interaction. Supports multiple variants,
-sizes, loading states, and icons. All buttons meet WCAG 2.1 AA contrast
-requirements (4.5:1 minimum) and are fully keyboard accessible.
-        `.trim(),
-      },
-    },
+    a11y: {
+      // Component-specific a11y config
+      config: {
+        rules: [{ id: 'button-name', enabled: true }]
+      }
+    }
   },
-  tags: ['autodocs'],
+  
   argTypes: {
     variant: {
       control: 'select',
-      options: ['primary', 'secondary', 'tertiary', 'ghost'],
-      description: 'Visual variant of the button',
+      options: ['primary', 'secondary', 'outline'],
+      description: 'Visual style variant',
       table: {
-        defaultValue: { summary: 'primary' },
-      },
+        type: { summary: 'string' },
+        defaultValue: { summary: 'primary' }
+      }
     },
     size: {
       control: 'select',
-      options: ['small', 'medium', 'large'],
+      options: ['sm', 'md', 'lg'],
+      description: 'Button size',
+      table: {
+        type: { summary: 'string' },
+        defaultValue: { summary: 'md' }
+      }
+    },
+    isLoading: {
+      control: 'boolean',
+      description: 'Loading state indicator'
     },
     disabled: {
       control: 'boolean',
-    },
-    loading: {
-      control: 'boolean',
-    },
+      description: 'Disabled state'
+    }
   },
+  
+  args: {
+    onClick: fn()
+  }
 };
 
 export default meta;
-type Story = StoryObj<typeof meta>;
+type Story = StoryObj<typeof Button>;
 
+// Default story
 export const Primary: Story = {
   args: {
-    variant: 'primary',
-    children: 'Button',
-  },
+    children: 'Primary Button',
+    variant: 'primary'
+  }
 };
 
 export const Secondary: Story = {
   args: {
-    variant: 'secondary',
-    children: 'Button',
-  },
+    children: 'Secondary Button',
+    variant: 'secondary'
+  }
 };
 
-export const WithIcon: Story = {
+export const Outline: Story = {
   args: {
-    variant: 'primary',
-    icon: <PlusIcon />,
-    children: 'Add Item',
-  },
+    children: 'Outline Button',
+    variant: 'outline'
+  }
+};
+
+// Size variations
+export const Small: Story = {
+  args: {
+    children: 'Small Button',
+    size: 'sm'
+  }
+};
+
+export const Large: Story = {
+  args: {
+    children: 'Large Button',
+    size: 'lg'
+  }
+};
+
+// State variations
+export const Disabled: Story = {
+  args: {
+    children: 'Disabled Button',
+    disabled: true
+  }
 };
 
 export const Loading: Story = {
   args: {
-    variant: 'primary',
-    loading: true,
-    children: 'Loading...',
-  },
+    children: 'Loading Button',
+    isLoading: true
+  }
 };
 
-export const Disabled: Story = {
-  args: {
-    variant: 'primary',
-    disabled: true,
-    children: 'Disabled',
-  },
+// All variants showcase
+export const AllVariants: Story = {
+  render: () => (
+    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+      <Button variant="primary">Primary</Button>
+      <Button variant="secondary">Secondary</Button>
+      <Button variant="outline">Outline</Button>
+      <Button variant="primary" disabled>Disabled</Button>
+      <Button variant="primary" isLoading>Loading</Button>
+    </div>
+  )
 };
 
+// All sizes showcase
 export const AllSizes: Story = {
   render: () => (
-    <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-      <Button size="small">Small</Button>
-      <Button size="medium">Medium</Button>
-      <Button size="large">Large</Button>
+    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+      <Button size="sm">Small</Button>
+      <Button size="md">Medium</Button>
+      <Button size="lg">Large</Button>
     </div>
-  ),
+  )
+};
+
+// Interaction test
+export const WithInteraction: Story = {
+  args: {
+    children: 'Click to test'
+  },
+  play: async ({ canvasElement, step }) => {
+    const { userEvent, within, expect } = await import('@storybook/test');
+    const canvas = within(canvasElement);
+    
+    await step('Click button', async () => {
+      const button = canvas.getByRole('button');
+      await userEvent.click(button);
+    });
+    
+    await step('Verify focus', async () => {
+      const button = canvas.getByRole('button');
+      await expect(button).toHaveFocus();
+    });
+  }
 };
 ```
 
-### MDX Documentation with Live Examples
+### Accessibility Test Story
 
-**Button.mdx**:
-```mdx
-import { Canvas, Meta, Story } from '@storybook/blocks';
-import * as ButtonStories from './Button.stories';
+**Dedicated a11y story**:
 
-<Meta of={ButtonStories} />
+```typescript
+export const AccessibilityTest: Story = {
+  args: {
+    children: 'Accessibility Test Button'
+  },
+  parameters: {
+    a11y: {
+      element: '#storybook-root',
+      config: {
+        rules: [
+          { id: 'color-contrast', enabled: true },
+          { id: 'button-name', enabled: true },
+          { id: 'focus-order', enabled: true }
+        ]
+      }
+    }
+  }
+};
+```
 
-# Button
+---
 
-Primary UI component for user interaction.
+## Example 6: Visual Regression Testing (Chromatic)
 
-## Usage
+### GitHub Actions Workflow
 
-Import the Button component:
+**File**: `.github/workflows/chromatic.yml`
 
-```tsx
-import { Button } from '@company/design-system';
+```yaml
+name: Chromatic
 
-function App() {
-  return (
-    <Button variant="primary" onClick={() => console.log('clicked')}>
-      Click me
-    </Button>
-  );
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  chromatic:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Required for Chromatic
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build Storybook
+        run: npm run build-storybook
+      
+      - name: Publish to Chromatic
+        uses: chromaui/action@v1
+        with:
+          projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+          exitZeroOnChanges: true
+          onlyChanged: true # Only test changed components
+          buildScriptName: 'build-storybook'
+```
+
+### Package.json Scripts
+
+```json
+{
+  "scripts": {
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
+    "chromatic": "chromatic --project-token=$CHROMATIC_PROJECT_TOKEN",
+    "test:visual": "npm run build-storybook && npm run chromatic"
+  },
+  "devDependencies": {
+    "@chromatic-com/storybook": "^1.0.0",
+    "@storybook/addon-a11y": "^8.0.0",
+    "@storybook/react-vite": "^8.0.0",
+    "chromatic": "^11.0.0"
+  }
 }
 ```
 
-## Variants
+---
 
-The Button component supports four visual variants:
+## Complete Example: Production-Ready Button Component
 
-<Canvas of={ButtonStories.Primary} />
-<Canvas of={ButtonStories.Secondary} />
+**All files combined for a production-ready atomic component:**
 
-## Sizes
+### 1. Component (`Button.tsx`)
+### 2. Styles (`Button.module.css`)
+### 3. Tests (`Button.test.tsx`)
+### 4. Stories (`Button.stories.tsx`)
+### 5. Index (`index.ts`)
 
-Three sizes are available: small, medium (default), and large.
-
-<Canvas of={ButtonStories.AllSizes} />
-
-## Loading State
-
-Use the `loading` prop to display a spinner:
-
-<Canvas of={ButtonStories.Loading} />
-
-## Accessibility
-
-- **Keyboard Navigation**: All buttons are focusable and activatable via Enter/Space keys
-- **Contrast Ratio**: 4.5:1 minimum (WCAG 2.1 AA)
-- **Focus Indicator**: 2px outline with 2px offset
-- **ARIA**: Use `aria-label` for icon-only buttons
-
-### Example: Icon-only Button
-
-```tsx
-<Button variant="ghost" icon={<CloseIcon />} aria-label="Close modal">
-  {/* No visible text */}
-</Button>
-```
-
-## API
-
-See the interactive controls below to explore all props.
-```
+**See SKILL.md Level 2 for complete implementations.**
 
 ---
 
-## Example 6: Testing Strategy
-
-### Accessibility Test Suite
-
-**Button.a11y.test.tsx**:
-```typescript
-import { render, screen } from '@testing-library/react';
-import { axe, toHaveNoViolations } from 'jest-axe';
-import userEvent from '@testing-library/user-event';
-import { Button } from './Button';
-
-expect.extend(toHaveNoViolations);
-
-describe('Button Accessibility', () => {
-  it('should not have accessibility violations', async () => {
-    const { container } = render(
-      <Button variant="primary" onClick={() => {}}>
-        Click me
-      </Button>
-    );
-    
-    const results = await axe(container);
-    expect(results).toHaveNoViolations();
-  });
-  
-  it('should be keyboard accessible', async () => {
-    const handleClick = vi.fn();
-    render(<Button onClick={handleClick}>Click me</Button>);
-    
-    const button = screen.getByRole('button');
-    button.focus();
-    
-    expect(button).toHaveFocus();
-    
-    // Activate with Enter
-    await userEvent.keyboard('{Enter}');
-    expect(handleClick).toHaveBeenCalledTimes(1);
-    
-    // Activate with Space
-    await userEvent.keyboard(' ');
-    expect(handleClick).toHaveBeenCalledTimes(2);
-  });
-  
-  it('should have sufficient color contrast', () => {
-    const { container } = render(<Button variant="primary">Text</Button>);
-    
-    const button = container.querySelector('button');
-    const styles = window.getComputedStyle(button!);
-    
-    // Get computed colors
-    const bgColor = styles.backgroundColor;
-    const textColor = styles.color;
-    
-    // Calculate contrast ratio (using external library or manual calculation)
-    const contrastRatio = calculateContrast(bgColor, textColor);
-    
-    // WCAG 2.1 AA requires 4.5:1 for normal text
-    expect(contrastRatio).toBeGreaterThanOrEqual(4.5);
-  });
-  
-  it('should have accessible name for icon-only buttons', () => {
-    render(
-      <Button variant="ghost" icon={<CloseIcon />} aria-label="Close">
-        {/* No visible text */}
-      </Button>
-    );
-    
-    const button = screen.getByRole('button', { name: 'Close' });
-    expect(button).toBeInTheDocument();
-  });
-});
-```
-
-### Visual Regression Test
-
-**Button.visual.test.ts** (Playwright):
-```typescript
-import { test, expect } from '@playwright/test';
-
-test.describe('Button Visual Regression', () => {
-  test('should match screenshot for all variants', async ({ page }) => {
-    await page.goto('http://localhost:6006/iframe.html?id=components-button--all-variants');
-    
-    // Wait for fonts to load
-    await page.waitForLoadState('networkidle');
-    
-    // Take screenshot
-    await expect(page).toHaveScreenshot('button-variants.png', {
-      maxDiffPixels: 100,
-    });
-  });
-  
-  test('should match screenshot for all sizes', async ({ page }) => {
-    await page.goto('http://localhost:6006/iframe.html?id=components-button--all-sizes');
-    await page.waitForLoadState('networkidle');
-    
-    await expect(page).toHaveScreenshot('button-sizes.png');
-  });
-});
-```
-
----
-
-**Examples Version**: 1.0.0 (2025-11-04)
+**This examples file demonstrates:**
+- ✅ DTCG 2025.10 token structure
+- ✅ WCAG 2.2 AA/AAA compliance
+- ✅ Figma MCP integration workflow
+- ✅ Storybook 8 documentation patterns
+- ✅ Visual regression testing setup
+- ✅ Accessibility testing automation
+- ✅ Production-ready component architecture
