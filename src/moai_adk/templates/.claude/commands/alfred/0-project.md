@@ -335,22 +335,40 @@ AskUserQuestion(
 ```
 
 **Response Processing**:
-```json
-{
-  "stack": {
-    "selected_domains": ["frontend", "backend"],
-    "domain_selection_date": "2025-10-23T12:34:56Z"
-  }
-}
-```
 
-**Hint to User**: "You can always modify domains later during `/alfred:1-plan` when creating SPECs"
+When user selects domains, Alfred processes the response as follows:
+
+**Selected Domain Processing** (`answers["0"]` contains selected domain labels):
+- Extract selected domain codes from labels: "Frontend" → "frontend", "Backend" → "backend", etc.
+- Store selected domains in `.moai/config.json`:
+  ```json
+  {
+    "stack": {
+      "selected_domains": ["frontend", "backend"],
+      "domain_selection_date": "2025-10-23T12:34:56Z"
+    }
+  }
+  ```
+
+**Skip Domain Selection** (if user selects "⚡ Skip"):
+- Store in config.json:
+  ```json
+  {
+    "stack": {
+      "selected_domains": [],
+      "domain_selection_skipped": true,
+      "domain_selection_date": "2025-10-23T12:34:56Z"
+    }
+  }
+  ```
+- Display: "✅ Domain selection skipped. You can add domains later during `/alfred:1-plan`"
 
 **Domain Expert Activation**:
 - Selected domains stored in `.moai/config.json`
 - Domain-expert agents activated during `/alfred:1-plan` (automatic keyword detection)
 - Domain-expert agents available as advisors during `/alfred:2-run`
 - Domain-specific sync routing enabled in `/alfred:3-sync`
+- If domains skipped: Default agent lineup used (can be customized later in `/alfred:1-plan`)
 
 ---
 
@@ -490,18 +508,60 @@ grep "optimized" .moai/config.json
 - `.moai/project/*.md` file exists in the latest backup folder
 - User's existing project files can be merged (regardless of optimized flag)
 
+**Backup Detection Result**:
+- **Backup Found**: Latest backup is `.moai-backups/[TIMESTAMP]/`
+- **No Backup**: Proceed directly to Phase 1.2 (project environment analysis)
+
 **Select user if backup exists**
-Call `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` to display a TUI with the following options:
-- **Merge**: Merge backup contents and latest template (recommended)
-- **New**: Ignore the backup and start a new interview
-- **Skip**: Keep current file (terminate task)
 
-**Response processing**:
-- **"Merge"** → Proceed to Phase 1.1 (backup merge workflow)
-- **"Create new"** → Proceed to Phase 1.2 (Project environment analysis) (existing process)
-- **"Skip"** → End task
+When a backup is detected, call `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` to present a TUI decision:
 
-**No backup**:
+**Example AskUserQuestion Call**:
+```python
+AskUserQuestion(
+    questions=[
+        {
+            "question": "Previous project configuration found in backup. How would you like to proceed?",
+            "header": "Backup Merge Decision",
+            "multiSelect": false,
+            "options": [
+                {
+                    "label": "🔄 Merge (Recommended)",
+                    "description": "Restore your previous customizations with latest template structure"
+                },
+                {
+                    "label": "📋 New Interview",
+                    "description": "Start fresh interview, ignore previous configuration"
+                },
+                {
+                    "label": "⏸️ Skip (Keep Current)",
+                    "description": "Keep existing project files without changes"
+                }
+            ]
+        }
+    ]
+)
+```
+
+**Response Processing**:
+- **"Merge (Recommended)"** (`answers["0"] === "Merge"`) → Proceed to Phase 1.1 (backup merge workflow)
+  - Extract user customizations from backup
+  - Combine with latest template structure
+  - Update version in HISTORY section
+  - Set `optimized: true` in config.json
+
+- **"New Interview"** (`answers["0"] === "New Interview"`) → Proceed to Phase 1.2 (Project environment analysis)
+  - Archive existing backup for reference
+  - Begin fresh interview without prior customizations
+  - Create new product/structure/tech.md from interview results
+
+- **"Skip (Keep Current)"** (`answers["0"] === "Skip"`) → End task
+  - Terminate /alfred:0-project execution
+  - Preserve all existing files unchanged
+  - User must manually run if changes needed
+
+**No backup found**:
+- Display: "✅ No previous backup detected. Starting fresh interview..."
 - Proceed directly to Phase 1.2 (project environment analysis)
 
 ---
@@ -671,50 +731,108 @@ Set optimization flags after the merge is complete:
 
 ### 1.4 Generate Interview Plan Report (when user selects "Create New")
 
+**Purpose**: Present user with a clear interview plan before execution, allowing review and modification.
+
 **Format of plan to be presented to users**:
 
 ```markdown
-## 📊 Project initialization plan: [PROJECT-NAME]
+## 📊 Project Initialization Plan: [PROJECT-NAME]
 
 ### Environmental Analysis Results
 - **Project Type**: [New/Existing/Hybrid]
-- **Languages ​​Detected**: [Language List]
+- **Languages Detected**: [Language List]
 - **Current Document Status**: [Completeness Rating 0-100%]
 - **Structure Complexity**: [Simple/Medium/Complex]
 
-### 🎯 Interview strategy
-- **Question category**: Product Discovery / Structure / Tech
-- **Expected number of questions**: [N (M required + K optional)]
-- **Estimated time required**: [Time estimation]
-- **Priority area**: [Focus on Areas to be covered]
+### 🎯 Interview Strategy
+- **Question Category**: Product Discovery / Structure / Tech
+- **Expected Number of Questions**: [N questions (M required + K optional)]
+- **Estimated Time Required**: [Time estimation, e.g., 15-20 minutes]
+- **Priority Areas**: [Key focus areas to be covered]
 
-### ⚠️ Notes
-- **Existing document**: [Overwrite vs supplementation strategy]
-- **Language settings**: [Automatic detection vs manual setting]
-- **Configuration conflicts**: [Compatibility with existing config.json]
+### 📋 Interview Phases
+1. **Product Discovery** (product.md)
+   - Core mission and value proposition
+   - Key user bases and success metrics
 
-### ✅ Expected deliverables
-- **product.md**: [Business requirements document]
-- **structure.md**: [System architecture document]
-- **tech.md**: [Technology stack and policy document]
-- **config.json**: [Project configuration file]
+2. **Structure Blueprint** (structure.md)
+   - System architecture strategy
+   - Module boundaries and responsibility
+
+3. **Tech Stack Mapping** (tech.md)
+   - Language/framework selection
+   - Quality and deployment policies
+
+### ⚠️ Important Notes
+- **Existing Document**: [Overwrite/Merge/Supplement strategy]
+- **Language Settings**: [Conversation language: {{CONVERSATION_LANGUAGE_NAME}}]
+- **Team Mode**: [Personal/Team workflow configured]
+- **Configuration**: [Compatibility with existing config.json]
+
+### ✅ Expected Deliverables
+- **product.md**: Business requirements and strategy document
+- **structure.md**: System architecture and design document
+- **tech.md**: Technology stack and quality policy document
+- **config.json**: Project settings and configurations
 
 ---
-**Approval Request**: Would you like to proceed with the interview using the above plan?
- (Choose "Proceed," "Modify [Content]," or "Abort")
+**Please review the plan above and confirm whether to proceed.**
 ```
 
-### 1.5 Wait for user approval (moai-alfred-interactive-questions) (when user selects "New")
+### 1.5 User Approval with AskUserQuestion (when user selects "New")
 
-After Alfred receives the project-manager's interview plan report, uses `AskUserQuestion` tool (documented in moai-alfred-interactive-questions skill) and asks whether Phase 2 is approved.
-- **Proceed**: Interview conducted according to approved plan
-- **Modify**: Re-establish the plan (re-execute Phase 1)
-- **Stop**: Stop initialization
+After Alfred generates the interview plan report, call `AskUserQuestion` tool (documented in moai-alfred-interactive-questions skill) to get explicit user approval before starting the interview.
 
-**Response processing**:
-- **"Progress"** (`answers["0"] === "Progress"`) → Execute Phase 2
-- **"Modify"** (`answers["0"] === "Modify"`) → Repeat Phase 1 (recall project-manager)
-- **"Abort"** (`answers["0"] === "Abort"`) → End task
+**Example AskUserQuestion Call**:
+```python
+AskUserQuestion(
+    questions=[
+        {
+            "question": "Please review the interview plan above. Would you like to proceed with this plan?",
+            "header": "Interview Plan Approval",
+            "multiSelect": false,
+            "options": [
+                {
+                    "label": "✅ Proceed with Plan",
+                    "description": "Start interview following the plan above (Phase 2)"
+                },
+                {
+                    "label": "📋 Modify Plan",
+                    "description": "Revise strategy and re-run analysis (back to Phase 1)"
+                },
+                {
+                    "label": "⏹️ Cancel",
+                    "description": "Exit initialization, keep existing files unchanged"
+                }
+            ]
+        }
+    ]
+)
+```
+
+**Response Processing**:
+
+- **"Proceed with Plan"** (`answers["0"] === "Proceed"`) → Execute Phase 2
+  - Call project-manager agent with approved plan parameters
+  - Conduct interview according to the plan
+  - Generate product/structure/tech.md documents
+  - Save config.json with all settings
+
+- **"Modify Plan"** (`answers["0"] === "Modify"`) → Repeat Phase 1
+  - Return to environmental analysis
+  - Re-run project type detection
+  - Re-run language detection
+  - Generate new interview plan with user feedback
+  - Ask for approval again with modified plan
+
+- **"Cancel"** (`answers["0"] === "Cancel"`) → End task
+  - Terminate /alfred:0-project execution
+  - Do not modify any existing files
+  - User can re-run command later
+
+**Phase 2 Execution Condition**:
+- Only proceed to Phase 2 (project initialization) if user confirms "Proceed with Plan"
+- All other responses lead to re-planning or task termination
 
 ---
 
@@ -1296,10 +1414,52 @@ This subcommand is executed under the following conditions:
    ```
 
 4. **Waiting for user approval**
-`AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` asks "Do you want to proceed with template optimization?" and provides the following options.
-- **Proceed** → Phase 2 execution
-- **Preview** → Display change details and recheck
-- **Skip** → keep optimized=false
+
+Call `AskUserQuestion` tool (documented in moai-alfred-interactive-questions skill) to obtain user approval for template optimization.
+
+**Example AskUserQuestion Call**:
+```python
+AskUserQuestion(
+    questions=[
+        {
+            "question": "Template optimization analysis complete. Changes detected in backup vs current template. How would you like to proceed?",
+            "header": "Template Optimization",
+            "multiSelect": false,
+            "options": [
+                {
+                    "label": "✅ Proceed",
+                    "description": "Run smart merge: preserve customizations with latest template (Phase 2)"
+                },
+                {
+                    "label": "👀 Preview",
+                    "description": "Show detailed change list before proceeding"
+                },
+                {
+                    "label": "⏸️ Skip",
+                    "description": "Keep current template unchanged (optimized: false)"
+                }
+            ]
+        }
+    ]
+)
+```
+
+**Response Processing**:
+- **"Proceed"** (`answers["0"] === "Proceed"`) → Execute Phase 2
+  - Run smart merge logic
+  - Preserve user customizations from backup
+  - Combine with latest template structure
+  - Set `optimized: true` in config.json
+
+- **"Preview"** (`answers["0"] === "Preview"`) → Display detailed changes
+  - Show file-by-file comparison
+  - Highlight customization sections
+  - Ask approval again with "Proceed" or "Skip" only
+
+- **"Skip"** (`answers["0"] === "Skip"`) → Keep current state
+  - Do not modify any files
+  - Keep `optimized: false` in config.json
+  - User can run again with `moai-adk update` later
 
 #### Phase 2: Run smart merge (after user approval)
 
@@ -1510,10 +1670,26 @@ AskUserQuestion(
 )
 ```
 
-**User Responses**:
-- **📋 스펙 작성 진행**: Proceed to `/alfred:1-plan` for creating first SPEC
-- **🔍 프로젝트 구조 검토**: Review and modify generated project documents
-- **🔄 새 세션 시작**: Execute `/clear` to start fresh session (recommended for performance)
+**Response Processing**:
+
+- **"📋 스펙 작성 진행"** (`answers["0"] === "스펙 작성 진행"`) → Proceed to `/alfred:1-plan`
+  - Display: "✅ Starting SPEC creation workflow..."
+  - User can immediately run: `/alfred:1-plan "first feature name"`
+  - Continue to next phase without session break
+
+- **"🔍 프로젝트 구조 검토"** (`answers["0"] === "프로젝트 구조 검토"`) → Review generated documents
+  - Display: "📁 Open these files for review:"
+    - `.moai/project/product.md` - Business requirements
+    - `.moai/project/structure.md` - System architecture
+    - `.moai/project/tech.md` - Technology stack
+  - After review, user can run `/alfred:1-plan` or `/alfred:0-project` again for updates
+  - Display: "💾 Save changes manually in editor or run `/alfred:0-project` again"
+
+- **"🔄 새 세션 시작"** (`answers["0"] === "새 세션 시작"`) → Start fresh session
+  - Display: "⏳ Preparing to clear session..."
+  - Note: This improves context window management for large projects
+  - Next session can start with: `/alfred:1-plan "next feature"`
+  - Alternative: Type `/clear` in shell to restart manually
 
 ---
 
