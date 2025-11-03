@@ -104,7 +104,12 @@ Alfred follows a systematic **4-step workflow** for all user requests to ensure 
   - **Git Commit**: ALWAYS create commits (mandatory)
     - Call git-manager for all Git operations
     - TDD commits: RED → GREEN → REFACTOR
-    - Include Alfred co-authorship: `Co-Authored-By: 🎩 Alfred@[MoAI](https://adk.mo.ai.kr)`
+    - Commit message format (use HEREDOC for multi-line):
+      ```
+      🤖 Generated with Claude Code
+
+      Co-Authored-By: 🎩 Alfred@[MoAI](https://adk.mo.ai.kr)
+      ```
 
 **Workflow Validation**:
 - ✅ All steps followed in order
