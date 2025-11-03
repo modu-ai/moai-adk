@@ -303,12 +303,45 @@ To skip pre-verification, use the `/alfred:3-sync --skip-pre-check` option.
 
 ---
 
-### User verification steps
+### 🎯 Synchronization Plan Approval (DECISION POINT 1)
 
-After reviewing your sync plan, `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` presents the following options for user decision:
-- **"Proceed"** or **"Start"**: Start synchronization as planned
-- **"Modify [Contents]"**: Request modifications to your sync plan
-- **"Abort"**: Abort the sync operation
+After completing synchronization analysis and establishing a plan, Alfred invokes AskUserQuestion to gather user approval:
+
+```python
+AskUserQuestion(
+    questions=[
+        {
+            "question": "Synchronization plan is ready. How would you like to proceed?",
+            "header": "Plan Approval",
+            "multiSelect": false,
+            "options": [
+                {
+                    "label": "✅ Proceed with Sync",
+                    "description": "Execute document synchronization as planned"
+                },
+                {
+                    "label": "🔄 Request Modifications",
+                    "description": "Specify changes to the synchronization strategy"
+                },
+                {
+                    "label": "🔍 Review Details",
+                    "description": "Re-examine TAG validation results and changes"
+                },
+                {
+                    "label": "❌ Abort",
+                    "description": "Cancel synchronization, keep current state"
+                }
+            ]
+        }
+    ]
+)
+```
+
+**Response Processing**:
+- **✅ Proceed with Sync** (`answers["0"] === "Proceed"`) → Execute Phase 2 (document synchronization)
+- **🔄 Request Modifications** (`answers["0"] === "Modifications"`) → Collect feedback and re-analyze
+- **🔍 Review Details** (`answers["0"] === "Review"`) → Display TAG validation results, then re-present decision
+- **❌ Abort** (`answers["0"] === "Abort"`) → Stop synchronization, maintain current branches
 
 ---
 
@@ -879,29 +912,71 @@ Report synchronization results in a structured format:
 3. Orphan TAG cleanup
 ```
 
-## Final Step
+## 🎯 PR Merge Strategy Selection (DECISION POINT 2)
 
-After document synchronization completes, Alfred automatically invokes AskUserQuestion to ask the user what to do next:
+After document synchronization completes successfully, Alfred checks team mode and invokes AskUserQuestion for PR merge strategy:
 
 ```python
 AskUserQuestion(
     questions=[
         {
-            "question": "문서 동기화가 완료되었습니다. 다음으로 뭘 하시겠습니까?",
-            "header": "다음 단계",
+            "question": "Document synchronization complete. How would you like to handle the PR?",
+            "header": "PR Merge Strategy",
             "multiSelect": false,
             "options": [
                 {
-                    "label": "📋 다음 스펙 작성",
-                    "description": "/alfred:1-plan으로 새로운 기능 SPEC 작성"
+                    "label": "🤖 Auto-Merge (Recommended)",
+                    "description": "Automatically merge PR and clean up branch (team mode)"
                 },
                 {
-                    "label": "📤 PR 병합",
-                    "description": "GitHub에서 PR 검토 및 병합 진행"
+                    "label": "📋 Manual Review",
+                    "description": "Keep PR in Ready state for manual review and merge"
                 },
                 {
-                    "label": "🔄 새 세션 시작",
-                    "description": "성능 최적화를 위해 /clear 실행"
+                    "label": "✏️ Keep as Draft",
+                    "description": "Maintain PR in draft state for further refinement"
+                },
+                {
+                    "label": "🔄 New Cycle",
+                    "description": "Save changes and start new feature (skip PR for now)"
+                }
+            ]
+        }
+    ]
+)
+```
+
+**Response Processing**:
+- **🤖 Auto-Merge** (`answers["0"] === "Auto-Merge"`) → Execute PR auto-merge with CI checks, update develop branch
+- **📋 Manual Review** (`answers["0"] === "Manual"`) → Transition PR to Ready state, notify reviewers
+- **✏️ Keep as Draft** (`answers["0"] === "Draft"`) → Leave PR in draft, ready for refinement
+- **🔄 New Cycle** (`answers["0"] === "New"`) → Skip PR handling, proceed to next feature planning
+
+---
+
+## Final Step
+
+After PR strategy is confirmed, Alfred invokes AskUserQuestion to ask the user what to do next:
+
+```python
+AskUserQuestion(
+    questions=[
+        {
+            "question": "Documentation synchronization complete. What would you like to do next?",
+            "header": "Next Steps",
+            "multiSelect": false,
+            "options": [
+                {
+                    "label": "📋 Create Next SPEC",
+                    "description": "Start new feature planning with /alfred:1-plan"
+                },
+                {
+                    "label": "📤 Merge PR",
+                    "description": "Review and merge PR to develop branch"
+                },
+                {
+                    "label": "🔄 Start New Session",
+                    "description": "Execute /clear for fresh session (recommended for performance)"
                 }
             ]
         }
@@ -910,9 +985,9 @@ AskUserQuestion(
 ```
 
 **User Responses**:
-- **📋 다음 스펙 작성**: Proceed to `/alfred:1-plan` for creating next SPEC
-- **📤 PR 병합**: Manual PR review and merge on GitHub
-- **🔄 새 세션 시작**: Execute `/clear` to start fresh session (recommended for performance)
+- **📋 Create Next SPEC**: Proceed to `/alfred:1-plan` for creating next SPEC
+- **📤 Merge PR**: Manual PR review and merge on GitHub
+- **🔄 Start New Session**: Execute `/clear` to start fresh session (recommended for performance)
 
 ---
 
