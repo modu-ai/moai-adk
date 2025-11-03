@@ -29,6 +29,12 @@ MoAI-ADK의 19개 Sub-agent 아키텍처, 어떤 agent를 선택할지 결정하
 - Explore: 코드베이스 탐색
 - Plan: 작업 계획
 
+### 4 Expert Agents (Sonnet - Proactively Triggered)
+- **backend-expert**: Backend 아키텍처, API 설계, 데이터베이스
+- **frontend-expert**: Frontend 아키텍처, 컴포넌트 설계, 상태 관리
+- **devops-expert**: DevOps 전략, 배포, 인프라
+- **ui-ux-expert**: UI/UX 설계, 접근성, 디자인 시스템 (Figma MCP)
+
 ### 6 Specialist Agents (Haiku)
 - project-manager: 프로젝트 초기화
 - skill-factory: Skill 생성/최적화

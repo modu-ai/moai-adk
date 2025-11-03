@@ -1593,15 +1593,32 @@ Alfred는 여러 전문 에이전트와 Claude Skills를 조합해 작업합니�
 | Sub-agent          | 모델   | 역할                                                         |
 | ------------------ | ------ | ------------------------------------------------------------ |
 | project-manager 📋 | Sonnet | 프로젝트 초기화, 메타데이터 인터뷰                           |
-| spec-builder 🏗️    | Sonnet | Plan 보드, EARS SPEC 작성                                    |
+| spec-builder 🏗️    | Sonnet | Plan 보드, EARS SPEC 작성, 전문가 상담 권장                 |
 | code-builder 💎    | Sonnet | `implementation-planner` + `tdd-implementer`로 TDD 전체 수행 |
 | doc-syncer 📖      | Haiku  | Living Doc, README, CHANGELOG 동기화                         |
-| tag-agent 🏷️       | Haiku  | TAG 인벤토리, orphan 탐지                                    |
+| tag-agent 🏷️       | Haiku  | TAG 인벤토리, orphan 탐지, @EXPERT TAG 검증                 |
 | git-manager 🚀     | Haiku  | GitFlow, Draft/Ready, Auto Merge                             |
 | debug-helper 🔍    | Sonnet | 실패 분석, fix-forward 전략                                  |
 | trust-checker ✅   | Haiku  | TRUST 5 품질 게이트                                          |
 | quality-gate 🛡️    | Haiku  | 커버리지 변화 및 릴리스 차단 조건 검토                       |
 | cc-manager 🛠️      | Sonnet | Claude Code 세션 최적화, Skill 배포                          |
+
+### 전문가 에이전트 (SPEC 키워드로 자동 활성화)
+
+전문가 에이전트는 `implementation-planner`가 SPEC 문서에서 도메인별 키워드를 감지하면 자동으로 활성화됩니다. 각 전문가는 자신의 도메인에 대한 아키텍처 가이드, 기술 추천, 리스크 분석을 제공합니다.
+
+| 전문가 에이전트   | 모델   | 전문 분야                          | 자동 활성화 키워드                                              |
+| --------------- | ------ | --------------------------------- | ------------------------------------------------------------ |
+| backend-expert 🔧 | Sonnet | Backend 아키텍처, API 설계, DB   | 'backend', 'api', 'server', 'database', 'deployment', 'authentication' |
+| frontend-expert 💻| Sonnet | Frontend 아키텍처, 컴포넌트, 상태관리 | 'frontend', 'ui', 'page', 'component', 'client-side', 'web interface' |
+| devops-expert 🚀  | Sonnet | DevOps, CI/CD, 배포, 컨테이너  | 'deployment', 'docker', 'kubernetes', 'ci/cd', 'pipeline', 'aws' |
+| ui-ux-expert 🎨   | Sonnet | UI/UX 설계, 접근성, 디자인 시스템 | 'design', 'ux', 'accessibility', 'a11y', 'figma', 'design system' |
+
+**작동 원리**:
+- `/alfred:2-run` 시작 시, `implementation-planner`가 SPEC 내용을 스캔
+- 일치하는 키워드가 해당 전문가 에이전트를 자동으로 활성화
+- 각 전문가는 도메인별 아키텍처 가이드 제공
+- 모든 전문가 상담은 추적성을 위해 `@EXPERT:DOMAIN` 태그로 표시
 
 ### Skills (Progressive Disclosure)
 
