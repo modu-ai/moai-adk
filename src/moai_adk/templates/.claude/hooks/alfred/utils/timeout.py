@@ -14,7 +14,6 @@ Architecture:
 import platform
 import signal
 import threading
-import time
 from contextlib import contextmanager
 from typing import Callable, Optional
 
