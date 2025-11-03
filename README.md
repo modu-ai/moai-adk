@@ -2339,15 +2339,32 @@ Alfred works by combining multiple specialized agents with Claude Skills.
 | Sub-agent          | Model  | Role                                                                    |
 | ------------------ | ------ | ----------------------------------------------------------------------- |
 | project-manager 📋 | Sonnet | Project initialization, metadata interviews                             |
-| spec-builder 🏗️    | Sonnet | Plan board, EARS SPEC authoring                                         |
+| spec-builder 🏗️    | Sonnet | Plan board, EARS SPEC authoring, expert consultation recommendations    |
 | code-builder 💎    | Sonnet | Performs complete TDD with `implementation-planner` + `tdd-implementer` |
 | doc-syncer 📖      | Haiku  | Living Doc, README, CHANGELOG sync                                      |
-| tag-agent 🏷️       | Haiku  | TAG inventory, orphan detection                                         |
+| tag-agent 🏷️       | Haiku  | TAG inventory, orphan detection, @EXPERT TAG validation                 |
 | git-manager 🚀     | Haiku  | GitFlow, Draft/Ready, Auto Merge                                        |
 | debug-helper 🔍    | Sonnet | Failure analysis, fix-forward strategy                                  |
 | trust-checker ✅   | Haiku  | TRUST 5 quality gate                                                    |
 | quality-gate 🛡️    | Haiku  | Coverage change and release blocker review                              |
 | cc-manager 🛠️      | Sonnet | Claude Code session optimization, Skill deployment                      |
+
+### Expert Agents (Proactively Triggered by SPEC Keywords)
+
+Expert agents activate automatically when `implementation-planner` detects domain-specific keywords in SPEC documents. They provide architecture guidance, technology recommendations, and risk analysis for their specialized domains.
+
+| Expert Agent      | Model  | Specialty                                           | Auto-Trigger Keywords                                                    |
+| ----------------- | ------ | --------------------------------------------------- | ------------------------------------------------------------------------ |
+| backend-expert 🔧 | Sonnet | Backend architecture, API design, database, auth   | 'backend', 'api', 'server', 'database', 'deployment', 'authentication'  |
+| frontend-expert 💻| Sonnet | Frontend architecture, components, state mgmt      | 'frontend', 'ui', 'page', 'component', 'client-side', 'web interface'   |
+| devops-expert 🚀  | Sonnet | DevOps, CI/CD, deployment, containerization        | 'deployment', 'docker', 'kubernetes', 'ci/cd', 'pipeline', 'aws'        |
+| ui-ux-expert 🎨   | Sonnet | UI/UX design, accessibility (WCAG), design systems | 'design', 'ux', 'accessibility', 'a11y', 'figma', 'design system'       |
+
+**How It Works**:
+- When `/alfred:2-run` starts, `implementation-planner` scans the SPEC content
+- Matching keywords trigger automatic expert agent invocation
+- Experts provide domain-specific architecture guidance
+- All expert consultations are tagged with `@EXPERT:DOMAIN` for traceability
 
 ### Skills (Progressive Disclosure - v0.4 New!)
 

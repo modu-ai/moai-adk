@@ -68,6 +68,40 @@ The **code-builder pipeline** runs two Sonnet specialists in sequence: **impleme
 
 ---
 
+## Expert Agents (Proactively Triggered by SPEC Keywords)
+
+| Expert Agent            | Model  | Specialty                                                                           | Trigger Keywords                                                                                   | Trigger Source      |
+| ----------------------- | ------ | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ------------------- |
+| **backend-expert** 🔧   | Sonnet | Backend architecture, API design, database schema, microservices, authentication    | 'backend', 'api', 'server', 'database', 'microservice', 'deployment', 'authentication'            | implementation-planner |
+| **frontend-expert** 💻  | Sonnet | Frontend architecture, component design, state management, UI/UX implementation     | 'frontend', 'ui', 'page', 'component', 'client-side', 'browser', 'web interface'                  | implementation-planner |
+| **devops-expert** 🚀    | Sonnet | DevOps strategy, deployment automation, containerization, CI/CD, cloud infrastructure | 'deployment', 'docker', 'kubernetes', 'ci/cd', 'pipeline', 'infrastructure', 'railway', 'vercel', 'aws' | implementation-planner |
+| **ui-ux-expert** 🎨     | Sonnet | UI/UX design, accessibility (WCAG 2.1 AA/AAA), design systems, Figma MCP, design-to-code | 'design', 'ux', 'ui', 'accessibility', 'a11y', 'user experience', 'wireframe', 'prototype', 'design system', 'figma', 'user research', 'persona', 'journey map' | implementation-planner |
+
+### How Expert Agents Work
+
+1. **Automatic Keyword Detection**: When `implementation-planner` analyzes a SPEC, it scans for expert trigger keywords
+2. **Proactive Delegation**: If keywords match, `implementation-planner` automatically invokes the relevant expert agent(s)
+3. **Expert Consultation**: Each expert provides domain-specific architecture guidance, technology recommendations, and risk analysis
+4. **Integration**: Expert feedback is integrated into the implementation plan and tagged with `@EXPERT:DOMAIN` for traceability
+
+### Example: Full-Stack Authentication SPEC
+
+```
+SPEC Keywords: 'api', 'authentication', 'design', 'accessibility'
+
+→ Trigger backend-expert (for API & auth architecture)
+→ Trigger ui-ux-expert (for login UI & accessibility)
+
+Result:
+@SPEC:AUTH-001 | @EXPERT:BACKEND | @EXPERT:UIUX
+
+Implementation Plan includes:
+- Backend: JWT token strategy, rate limiting, audit logging
+- UI/UX: Accessible login form (WCAG 2.1 AA), error messaging
+```
+
+---
+
 ## Zero-project Specialists
 
 | Sub-agent                  | Model  | Focus                                                       | Trigger                         |
