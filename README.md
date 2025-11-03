@@ -194,13 +194,13 @@ uv 0.5.1
 ```bash
 uv tool install moai-adk
 
-# Result: ✅ Installed moai-adk v0.9.0
+# Result: ✅ Installed moai-adk v0.14.0
 ```
 
 **Verification**:
 ```bash
 moai-adk --version
-# Output: MoAI-ADK v0.9.0
+# Output: MoAI-ADK v0.14.0
 ```
 
 ---
@@ -241,8 +241,8 @@ moai-adk doctor
 ✅ uv 0.5.1
 ✅ .moai/ directory initialized
 ✅ .claude/ directory ready
-✅ 12 agents configured
-✅ 55 skills loaded
+✅ 16 agents configured
+✅ 74 skills loaded
 ```
 
 ---
@@ -404,7 +404,7 @@ When configured, Alfred will:
 | Component | Status | Details |
 |-----------|--------|---------|
 | **Config System** | ✅ Complete | Nested language structure in `.moai/config.json` |
-| **Sub-agent Instructions** | ✅ Complete | All 12 agents support language parameter |
+| **Sub-agent Instructions** | ✅ Complete | All 16 agents support language parameter |
 | **Code Generation** | ✅ Complete | Comments/docs in user language |
 | **Git Integration** | ✅ Complete | Commit messages in user language |
 | **Dynamic Content** | ✅ Complete | All reports/explanations in user language |
@@ -2981,8 +2981,8 @@ A. Possible, but remember: SPEC → TEST → CODE → DOC order and keep @TAGs u
 
 | Purpose                   | Resource                                                        |
 | ------------------------- | --------------------------------------------------------------- |
-| Skills detailed structure | `.claude/skills/` directory (55+ Skills)                         |
-| Sub-agent details         | `.claude/agents/alfred/` directory (12 agents)                  |
+| Skills detailed structure | `.claude/skills/` directory (74 Skills)                         |
+| Sub-agent details         | `.claude/agents/alfred/` directory (16 agents + 4 commands)    |
 | Workflow guide            | `.claude/commands/alfred/` (4 commands: 0-project ~ 3-sync)     |
 | Documentation             | Coming soon (see `.moai/`, `.claude/`, `docs/` in your project) |
 | Release notes             | GitHub Releases: https://github.com/modu-ai/moai-adk/releases   |

@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/Python-3.13+-blue)](https://www.python.org/)
 [![Tests](https://github.com/modu-ai/moai-adk/actions/workflows/moai-gitflow.yml/badge.svg)](https://github.com/modu-ai/moai-adk/actions/workflows/moai-gitflow.yml)
-[![Coverage](https://img.shields.io/badge/coverage-87.84%25-brightgreen)](https://github.com/modu-ai/moai-adk)
+[![Coverage](https://img.shields.io/badge/coverage-97.7%25-brightgreen)](https://github.com/modu-ai/moai-adk)
 
 > **MoAI-ADK는 AI와 함께 명세(SPEC) → 테스트(TDD) → 코드 → 문서를 자연스럽게 잇는 개발 워크플로우를 제공합니다.**
 
@@ -157,7 +157,7 @@ uv tool install moai-adk
 
 ```bash
 moai-adk --version
-# 출력: MoAI-ADK v1.0.0
+# 출력: MoAI-ADK v0.14.0
 ```
 
 ---
@@ -199,8 +199,8 @@ moai-adk doctor
 ✅ uv 0.5.1
 ✅ .moai/ directory initialized
 ✅ .claude/ directory ready
-✅ 12 agents configured
-✅ 55 skills loaded
+✅ 16 agents configured
+✅ 74 skills loaded
 ```
 
 ---
@@ -317,10 +317,10 @@ my-project/
 │   ├── specs/                      # SPEC 파일들
 │   └── reports/                    # 분석 리포트
 ├── .claude/                        # Claude Code 자동화
-│   ├── agents/                     # 12개 Sub-agent
-│   ├── commands/                   # 4개 Alfred 명령
-│   ├── skills/                     # 55개 Claude Skills
-│   ├── hooks/                      # 이벤트 기반 자동화
+│   ├── agents/                     # 16개 Sub-agent (전문가 포함)
+│   ├── commands/                   # 4개 Alfred 명령어
+│   ├── skills/                     # 74개 Claude Skills
+│   ├── hooks/                      # 5개 이벤트 자동화 후크
 │   └── settings.json               # Claude Code 설정
 ├── src/                            # 구현 코드
 ├── tests/                          # 테스트 코드
@@ -2155,8 +2155,8 @@ moai-adk doctor --verbose
 
 | 목적              | 리소스                                                         |
 | ----------------- | -------------------------------------------------------------- |
-| Skills 세부 구조  | `.claude/skills/` 디렉터리 (58개 Skills)                       |
-| Sub-agent 상세    | `.claude/agents/alfred/` 디렉터리 (12개 agents)                |
+| Skills 세부 구조  | `.claude/skills/` 디렉터리 (74개 Skills)                       |
+| Sub-agent 상세    | `.claude/agents/alfred/` 디렉터리 (16개 agents + 4개 명령어)   |
 | 워크플로우 가이드 | `.claude/commands/alfred/` (4개 명령: 0-project ~ 3-sync)      |
 | 문서              | 추후 제공 예정 (프로젝트의 `.moai/`, `.claude/`, `docs/` 참고) |
 | 릴리즈 노트       | GitHub Releases: https://github.com/modu-ai/moai-adk/releases  |
