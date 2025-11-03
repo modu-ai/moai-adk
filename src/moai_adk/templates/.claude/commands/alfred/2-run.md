@@ -532,7 +532,7 @@ Only if the user selects **"Proceed"** or **"Start"** will Alfred call the tdd-i
 
 ## 🧠 Context Management
 
-> For more information: `.moai/memory/development-guide.md` - see section "Context Engineering"
+> For more information: Skill("moai-alfred-dev-guide") - see section "Context Engineering"
 
 ### Core strategy of this command
 
