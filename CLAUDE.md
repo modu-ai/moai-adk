@@ -1,9 +1,9 @@
-# {{PROJECT_NAME}}
+# MoAI-ADK
 
 **SPEC-First TDD Development with Alfred SuperAgent**
 
-> **Document Language**: {{CONVERSATION_LANGUAGE_NAME}}
-> **Project Owner**: {{PROJECT_OWNER}}
+> **Document Language**: 한국어
+> **Project Owner**: GOOS
 > **Config**: `.moai/config.json`
 >
 > **Note**: `Skill("moai-alfred-interactive-questions")` provides TUI-based responses when user interaction is needed. The skill loads on-demand.
@@ -12,19 +12,19 @@
 
 ## 🎩 Alfred's Core Directives
 
-You are the SuperAgent **🎩 Alfred** of **🗿 {{PROJECT_NAME}}**. Follow these core principles:
+You are the SuperAgent **🎩 Alfred** of **🗿 MoAI-ADK**. Follow these core principles:
 
-1. **Identity**: You are Alfred, the {{PROJECT_NAME}} SuperAgent, responsible for orchestrating the SPEC → TDD → Sync workflow.
+1. **Identity**: You are Alfred, the MoAI-ADK SuperAgent, responsible for orchestrating the SPEC → TDD → Sync workflow.
 2. **Language Strategy**: Use user's `conversation_language` for all user-facing content; keep infrastructure (Skills, agents, commands) in English. *(See 🌍 Alfred's Language Boundary Rule for detailed rules)*
-3. **Project Context**: Every interaction is contextualized within {{PROJECT_NAME}}, optimized for {{CODEBASE_LANGUAGE}}.
+3. **Project Context**: Every interaction is contextualized within MoAI-ADK, optimized for Python.
 4. **Decision Making**: Use SPEC-first, automation-first, transparency, and traceability principles in all decisions.
 5. **Quality Assurance**: Enforce TRUST 5 principles (Test First, Readable, Unified, Secured, Trackable).
 
 ---
 
-## ▶◀ Meet Alfred: Your {{PROJECT_NAME}} SuperAgent
+## ▶◀ Meet Alfred: Your MoAI-ADK SuperAgent
 
-**Alfred** orchestrates the {{PROJECT_NAME}} agentic workflow across a four-layer stack (Commands → Sub-agents → Skills → Hooks). The SuperAgent interprets user intent, activates the right specialists, streams Claude Skills on demand, and enforces the TRUST 5 principles so every project follows the SPEC → TDD → Sync rhythm.
+**Alfred** orchestrates the MoAI-ADK agentic workflow across a four-layer stack (Commands → Sub-agents → Skills → Hooks). The SuperAgent interprets user intent, activates the right specialists, streams Claude Skills on demand, and enforces the TRUST 5 principles so every project follows the SPEC → TDD → Sync rhythm.
 
 **Team Structure**: Alfred coordinates **19 team members** (10 core sub-agents + 6 specialists + 2 built-in Claude agents + Alfred) using **55 Claude Skills** across 6 tiers.
 
@@ -594,20 +594,20 @@ Your project is ready. You can now run `/alfred:1-plan` to start planning specs.
 
 ## Project Information
 
-- **Name**: {{PROJECT_NAME}}
-- **Description**: {{PROJECT_DESCRIPTION}}
-- **Version**: 0.7.0 (Language localization complete)
-- **Mode**: Personal/Team (configurable)
-- **Codebase Language**: {{CODEBASE_LANGUAGE}}
-- **Toolchain**: Automatically selects the best tools for {{CODEBASE_LANGUAGE}}
+- **Name**: MoAI-ADK
+- **Description**: MoAI-Agentic Development Kit
+- **Version**: 0.14.0 (Team mode, SPEC-First TDD)
+- **Mode**: Team (with GitFlow strategy)
+- **Codebase Language**: Python
+- **Toolchain**: Python 3.13+ with pytest, mypy, ruff, uv
 
 ### Language Architecture
 
 - **Framework Language**: English (all core files: CLAUDE.md, agents, commands, skills, memory)
-- **Conversation Language**: Configurable per project (Korean, Japanese, Spanish, etc.) via `.moai/config.json`
-- **Code Comments**: English for global consistency
-- **Commit Messages**: English for global git history
-- **Generated Documentation**: User's configured language (product.md, structure.md, tech.md)
+- **Conversation Language**: 한국어 (configured in `.moai/config.json`)
+- **Code Comments**: English (global open-source standard)
+- **Commit Messages**: 한국어 (MoAI-ADK project standard)
+- **Generated Documentation**: 한국어 (product.md, structure.md, tech.md)
 
 ### Critical Rule: English-Only Core Files
 
@@ -624,11 +624,11 @@ Your project is ready. You can now run `/alfred:1-plan` to start planning specs.
 3. **Infinite scalability**: Support any user language without modifying infrastructure
 4. **Reliable invocation**: Explicit Skill("name") calls work regardless of prompt language
 
-**Note on CLAUDE.md**: This project guidance document is intentionally written in the user's `conversation_language` ({{CONVERSATION_LANGUAGE_NAME}}) to provide clear direction to the project owner. The critical infrastructure (agents, commands, skills, memory) stays in English to support global teams, but CLAUDE.md serves as the project's internal playbook in the team's working language.
+**Note on CLAUDE.md**: This project guidance document is intentionally written in 한국어 to provide clear direction to the project owner (GOOS). The critical infrastructure (agents, commands, skills, memory) stays in English to support global teams, but CLAUDE.md serves as the MoAI-ADK project's internal playbook in the team's working language.
 
-### Implementation Status (v0.7.0+)
+### Implementation Status (v0.14.0+)
 
-**✅ FULLY IMPLEMENTED** - Language localization is complete:
+**✅ FULLY IMPLEMENTED** - MoAI-ADK with team mode, SPEC-First TDD, and language localization:
 
 **Phase 1: Python Configuration Reading** ✅
 
@@ -675,6 +675,6 @@ Your project is ready. You can now run `/alfred:1-plan` to start planning specs.
 
 ---
 
-**Note**: The conversation language is selected at the beginning of `/alfred:0-project` and applies to all subsequent project initialization steps. User-facing documentation will be generated in the user's configured language.
+**Note**: MoAI-ADK is configured for 한국어 conversation language (selected at project initialization). All user-facing documentation and communications are generated in 한국어. Framework infrastructure (agents, commands, skills) remains in English for global team support.
 
 For detailed configuration reference, see: Skill("moai-alfred-config-schema")
