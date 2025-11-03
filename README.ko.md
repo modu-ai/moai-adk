@@ -1672,6 +1672,7 @@ MoAI-ADK 내부 워크플로우 오케스트레이션 스킬
 | `moai-domain-cli-tool`     | CLI 도구 개발, 인자 파싱, POSIX 준수, 사용자친화적 help 메시지            |
 | `moai-domain-data-science` | 데이터 분석, 시각화, 통계 모델링, 재현 가능한 연구 워크플로우             |
 | `moai-domain-database`     | 데이터베이스 설계, 스키마 최적화, 인덱싱 전략, 마이그레이션 관리          |
+| `moai-domain-design-systems` | 디자인 시스템 아키텍처, W3C DTCG 토큰, WCAG 2.2 접근성, 디자인-투-코드, Figma MCP |
 | `moai-domain-devops`       | CI/CD 파이프라인, Docker containerization, Kubernetes 오케스트레이션, IaC |
 | `moai-domain-frontend`     | React/Vue/Angular 개발, 상태 관리, 성능 최적화, 접근성                    |
 | `moai-domain-ml`           | 머신러닝 모델 학습, 평가, 배포, MLOps 워크플로우                          |
