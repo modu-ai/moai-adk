@@ -1,4 +1,3 @@
-# @TEST:TEST-COVERAGE-001 | SPEC: SPEC-TEST-COVERAGE-001.md
 """Integration tests for TemplateProcessor
 
 Tests template file operations:
@@ -101,11 +100,26 @@ class TestClaudeTemplate:
     def test_copy_claude_md_uses_english_template(self, tmp_path: Path) -> None:
         """Should copy English CLAUDE.md template by default"""
         processor = TemplateProcessor(tmp_path)
+        # Set context to perform variable substitution
+        processor.set_context({
+            "PROJECT_NAME": "MyProject",
+            "PROJECT_DESCRIPTION": "A test project",
+            "CODEBASE_LANGUAGE": "python",
+            "CONVERSATION_LANGUAGE_NAME": "English",
+            "PROJECT_OWNER": "Test Owner",
+            "MOAI_VERSION": "0.7.0",
+            "CREATION_TIMESTAMP": "2025-01-01 00:00:00",
+            "PROJECT_MODE": "personal",
+            "PROJECT_VERSION": "0.1.0",
+            "AUTHOR": "Test Owner",
+            "CONVERSATION_LANGUAGE": "en",
+        })
         processor._copy_claude_md(silent=True)
 
         content = (tmp_path / "CLAUDE.md").read_text(encoding="utf-8")
-        assert "Meet Alfred: Your MoAI SuperAgent" in content
+        assert "Meet Alfred: Your MyProject SuperAgent" in content
         assert "Project Information" in content
+        assert "{{PROJECT_NAME}}" not in content  # Ensure variables are substituted
         assert "페르소나" not in content
 
 
