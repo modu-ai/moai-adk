@@ -206,19 +206,18 @@ class LanguageDetector:
             return "pip"
 
         # JavaScript/TypeScript (check in priority order)
-        if (path / "package.json").exists():
-            # Check for package managers in priority order
-            if (path / "bun.lockb").exists():
-                return "bun"
-            elif (path / "pnpm-lock.yaml").exists():
-                return "pnpm"
-            elif (path / "yarn.lock").exists():
-                return "yarn"
-            elif (path / "package-lock.json").exists():
-                return "npm"
-            else:
-                # Default to npm for package.json without lock files
-                return "npm"
+        # Check for lock files and package managers
+        if (path / "bun.lockb").exists():
+            return "bun"
+        elif (path / "pnpm-lock.yaml").exists():
+            return "pnpm"
+        elif (path / "yarn.lock").exists():
+            return "yarn"
+        elif (path / "package-lock.json").exists():
+            return "npm"
+        elif (path / "package.json").exists():
+            # Default to npm for package.json without lock files
+            return "npm"
 
         # Go
         if (path / "go.mod").exists():
