@@ -48,7 +48,9 @@
       "draft_pr": true,
       "feature_prefix": "feature/SPEC-",
       "main_branch": "main",
-      "use_gitflow": true
+      "use_gitflow": true,
+      "default_pr_base": "develop",
+      "prevent_main_direct_merge": true
     }
   },
   "pipeline": {

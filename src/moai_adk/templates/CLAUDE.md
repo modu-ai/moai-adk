@@ -546,6 +546,97 @@ Combine layers when necessary: a command triggers sub-agents, sub-agents activat
 
 ---
 
+## GitFlow Branch Strategy (Team Mode - CRITICAL)
+
+**Core Rule**: MoAI-ADK enforces GitFlow workflow.
+
+### Branch Structure
+
+```
+feature/SPEC-XXX --> develop --> main
+   (development)    (integration) (release)
+                     |
+              No automatic deployment
+
+                              |
+                      Automatic package deployment
+```
+
+### Mandatory Rules
+
+**Forbidden patterns**:
+- Creating PR from feature branch directly to main
+- Auto-merging to main after /alfred:3-sync
+- Using GitHub's default branch without explicit base specification
+
+**Correct workflow**:
+1. Create feature branch and develop
+   ```bash
+   /alfred:1-plan "feature name"   # Creates feature/SPEC-XXX
+   /alfred:2-run SPEC-XXX          # Development and testing
+   /alfred:3-sync auto SPEC-XXX    # Creates PR targeting develop
+   ```
+
+2. Merge to develop branch
+   ```bash
+   gh pr merge XXX --squash --delete-branch  # Merge to develop
+   ```
+
+3. Final release (only when all development is complete)
+   ```bash
+   # Execute only after develop is ready
+   git checkout main
+   git merge develop
+   git push origin main
+   # Triggers automatic package deployment
+   ```
+
+### git-manager Behavior Rules
+
+**PR creation**:
+- base branch = `config.git_strategy.team.develop_branch` (develop)
+- Never set to main
+- Ignore GitHub's default branch setting (explicitly specify develop)
+
+**Command example**:
+```bash
+gh pr create \
+  --base develop \
+  --head feature/SPEC-HOOKS-EMERGENCY-001 \
+  --title "[HOTFIX] ..." \
+  --body "..."
+```
+
+### Package Deployment Policy
+
+| Branch | PR Target | Package Deployment | Timing |
+|--------|-----------|-------------------|--------|
+| feature/SPEC-* | develop | None | During development |
+| develop | main | None | Integration stage |
+| main | - | Automatic | At release |
+
+### Violation Handling
+
+git-manager validates:
+1. `use_gitflow: true` in config.json
+2. PR base is develop
+3. If base is main, display error and stop
+
+Error message:
+```
+GitFlow Violation Detected
+
+Feature branches must create PR targeting develop.
+Current: main (forbidden)
+Expected: develop
+
+Resolution:
+1. Close existing PR: gh pr close XXX
+2. Create new PR with correct base: gh pr create --base develop
+```
+
+---
+
 ## ⚡ Alfred Command Completion Pattern
 
 **CRITICAL RULE**: When any Alfred command (`/alfred:0-project`, `/alfred:1-plan`, `/alfred:2-run`, `/alfred:3-sync`) completes, **ALWAYS use `AskUserQuestion` tool** to ask the user what to do next.
