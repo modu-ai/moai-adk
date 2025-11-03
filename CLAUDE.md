@@ -409,3 +409,219 @@ MoAI-ADK 프로젝트의 Claude Code 설정 파일들:
 **중요**: 패키지 템플릿 변경 → 로컬 프로젝트 동기화 필수
 
 ---
+
+## 🔄 Alfred의 하이브리드 아키텍처
+
+MoAI-ADK는 두 가지 에이전트 패턴을 조합하여 최대 효율성을 달성합니다.
+
+### Lead-Specialist Pattern (기존)
+
+특화된 도메인 전문가가 필요한 경우:
+- **UI/UX 디자인** → `ui-ux-expert`
+- **백엔드 아키텍처** → `backend-expert`
+- **데이터베이스 설계** → `moai-domain-database`
+- **보안/인프라** → `devops-expert`, `moai-domain-security`
+- **머신러닝** → `moai-domain-ml`
+
+**특징**:
+- 도메인 특화 지식 강점
+- 특정 영역 깊이 우수
+- 순차 실행 중심
+
+### Master-Clone Pattern (신규)
+
+Alfred가 자신의 복제본을 생성하여 특정 작업을 위임:
+- **대규모 마이그레이션**: v0.14.0 → v0.15.2 (8단계)
+- **전체 리팩토링**: 100+ 파일 동시 변경
+- **병렬 탐색**: 여러 아키텍처 동시 평가
+- **탐색적 작업**: 결과 불확실한 복잡 작업
+
+**특징**:
+- 전체 프로젝트 컨텍스트 유지
+- 완전 자율적 판단
+- 병렬 실행 가능
+- 자체 학습 능력
+
+### 선택 기준
+
+```
+Task를 받으면:
+
+1️⃣ 도메인 특화 필요?
+   (UI, Backend, DB, Security, ML 중 하나)
+   │
+   ├─ YES → Lead-Specialist 패턴
+   │        (기존 전문가 에이전트 활용)
+   │
+   └─ NO → 다음 단계로
+
+2️⃣ 멀티스텝 복잡 작업?
+   (5단계 이상 또는 100+ 파일)
+   │
+   ├─ YES → Master-Clone 패턴
+   │        (Alfred 복제본으로 위임)
+   │
+   └─ NO → Alfred가 직접 처리
+```
+
+### Clone 패턴의 장점
+
+| 측면 | Clone | Lead-Specialist |
+|------|-------|-----------------|
+| **컨텍스트** | 전체 유지 | 도메인만 전달 |
+| **자율성** | 완전 자율적 | 지시에 따름 |
+| **병렬 처리** | ✅ 가능 | ❌ 순차만 가능 |
+| **학습** | 자체 메모리 저장 | 피드백 기반 |
+| **적합 작업** | 장기 멀티스텝 | 전문화 필요 |
+
+### 실제 사용 예시
+
+**Clone 선택하는 경우**:
+```
+✅ "프로젝트 전체를 v0.14.0 → v0.15.2로 마이그레이션"
+   → Clone: 전체 컨텍스트로 최적 경로 찾음
+
+✅ "100+ 파일에서 모든 imports 경로 업데이트"
+   → Clone: 병렬 처리로 1시간에 완료
+
+✅ "다음 분기 아키텍처 개선 방안 탐색"
+   → Clone: 불확실성 높은 작업도 자율적 탐색
+```
+
+**Specialist 선택하는 경우**:
+```
+✅ "React 컴포넌트 UI 재설계"
+   → ui-ux-expert (디자인 전문화)
+
+✅ "Python FastAPI 성능 최적화"
+   → backend-expert (아키텍처 전문화)
+
+✅ "PostgreSQL 스키마 마이그레이션"
+   → moai-domain-database (DB 전문화)
+```
+
+---
+
+## 📚 자세한 참고자료
+
+Clone 패턴의 상세 가이드, 실제 구현 예시, 선택 알고리즘:
+
+**→ Skill("moai-alfred-clone-pattern") 참고**
+
+---
+
+## 📊 세션 로그 메타분석 시스템
+
+MoAI-ADK는 Claude Code 세션 로그를 자동 분석하여 데이터 기반으로 설정과 규칙을 지속 개선합니다.
+
+### 자동 수집 및 분석
+
+**세션 로그 저장 위치**:
+- `~/.claude/projects/*/session-*.json` (Claude Code 자동 생성)
+
+**주간 분석**:
+- GitHub Actions에서 매주 월요일 09:00 UTC 자동 실행
+- 지난 7일간의 모든 세션 분석
+- 분석 보고서 생성 및 PR 자동 생성
+
+**보고서 위치**:
+- `.moai/reports/weekly-YYYY-MM-DD.md`
+
+### 분석 항목
+
+#### 1. 📈 Tool 사용 패턴
+- 가장 자주 사용되는 도구 TOP 10
+- Tool별 사용 빈도
+- 의외로 덜 사용되는 도구 발견
+
+#### 2. ⚠️ 오류 패턴
+- 반복되는 Tool 실패
+- 가장 흔한 오류 메시지
+- 오류 발생 패턴
+
+#### 3. 🪝 Hook 실패 분석
+- SessionStart, PreToolUse, PostToolUse 등 Hook 실패
+- 실패 빈도 및 타입
+- Hook 디버깅 필요 여부
+
+#### 4. 🔐 권한 요청 분석
+- 가장 자주 요청되는 권한
+- 권한 타입별 요청 빈도
+- 권한 설정 재검토 필요성
+
+### 개선 피드백 루프
+
+**분석 결과에 따른 자동 제안**:
+
+```
+1️⃣ 높은 권한 요청 발견
+   ↓
+2️⃣ .claude/settings.json의 permissions 재조정
+   - allow → ask로 변경
+   - 또는 새로운 Bash 규칙 추가
+   ↓
+3️⃣ 오류 패턴 발견
+   ↓
+4️⃣ CLAUDE.md에 회피 전략 추가
+   - "X 오류 시 Y를 시도하세요"
+   - 새로운 Skill 또는 도구 추천
+   ↓
+5️⃣ Hook 실패 발견
+   ↓
+6️⃣ .claude/hooks/ 디버깅 및 개선
+```
+
+### 수동 분석 방법
+
+분석을 수동으로 실행할 수도 있습니다:
+
+```bash
+# 지난 7일 분석
+python3 .moai/scripts/session_analyzer.py --days 7
+
+# 지난 30일 분석
+python3 .moai/scripts/session_analyzer.py --days 30 --verbose
+
+# 특정 파일에 저장
+python3 .moai/scripts/session_analyzer.py \
+  --days 7 \
+  --output .moai/reports/custom-analysis.md \
+  --verbose
+```
+
+### 분석 리포트 읽기
+
+매주 생성되는 리포트는:
+
+```markdown
+# MoAI-ADK 세션 메타분석 리포트
+
+## 📊 전체 메트릭
+- 총 세션 수
+- 성공/실패 비율
+- 총 이벤트 수
+
+## 🔧 도구 사용 패턴
+- TOP 10 도구
+
+## ⚠️ 도구 오류 패턴
+- 반복되는 오류
+
+## 🪝 Hook 실패 분석
+- 실패한 Hook 목록
+
+## 💡 개선 제안
+- 구체적인 조치 사항
+```
+
+### 주기적 개선 체크리스트
+
+**매주 검토 항목**:
+
+- [ ] 새로운 권한 요청 발견했나? → `.claude/settings.json` 업데이트
+- [ ] 반복되는 오류 있나? → CLAUDE.md 회피 전략 추가
+- [ ] Hook 실패 있나? → `.claude/hooks/` 디버깅
+- [ ] Tool 사용 패턴 변화? → 도구 설명 업데이트
+- [ ] 성공률 변화? → 전반적 규칙 재평가
+
+---
