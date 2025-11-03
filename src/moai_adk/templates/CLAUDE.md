@@ -1207,3 +1207,27 @@ Is it user-facing official documentation?
 **Note**: The conversation language is selected at the beginning of `/alfred:0-project` and applies to all subsequent project initialization steps. User-facing documentation will be generated in the user's configured language.
 
 For detailed configuration reference, see: Skill("moai-alfred-config-schema")
+
+---
+
+## 📚 Advanced Topics (External Skills)
+
+### Session Log Analytics
+
+MoAI-ADK automatically analyzes Claude Code session logs to continuously improve settings and rules based on data-driven insights.
+
+**For detailed information**, see: Skill("moai-alfred-session-analytics")
+
+### Advanced Configuration Guide
+
+Comprehensive guide for configuring Claude Code settings in MoAI-ADK projects, including `.claude/settings.json`, `.moai/config.json`, and package templates.
+
+**For detailed information**, see: Skill("moai-alfred-config-advanced")
+
+### Master-Clone Pattern
+
+Alfred's hybrid architecture combines Lead-Specialist Pattern (domain experts) and Master-Clone Pattern (Alfred clones for large-scale tasks).
+
+**For detailed information**, see: Skill("moai-alfred-clone-pattern")
+
+---
