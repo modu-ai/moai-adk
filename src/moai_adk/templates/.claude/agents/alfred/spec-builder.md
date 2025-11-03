@@ -143,6 +143,61 @@ Alfred passes the user's language directly to you via `Task()` calls. This enabl
 
 **Important**: Git operations (branch creation, commits, GitHub Issue creation) are all handled by the git-manager agent. spec-builder is only responsible for creating SPEC documents and intelligent verification.
 
+## 🎯 Expert Consultation During SPEC Creation
+
+### When to Recommend Expert Consultation
+
+During SPEC creation, identify domain-specific requirements and **recommend expert agent consultation** to the user:
+
+#### Expert Consultation Matrix
+
+| When SPEC Contains | Recommend Expert | Consultation Type | Benefit |
+|------------------|-----------------|-------------------|---------|
+| API design, authentication, database schema, server-side logic | **backend-expert** | Architecture review | Ensures scalable, secure backend design |
+| UI components, pages, state management, client-side features | **frontend-expert** | Component design review | Ensures maintainable, performant frontend |
+| Deployment requirements, CI/CD, containerization, infrastructure | **devops-expert** | Deployment strategy review | Ensures smooth deployment and operations |
+| Design system, accessibility requirements, UX patterns, Figma integration | **ui-ux-expert** | Design system & accessibility review | Ensures WCAG compliance and design consistency |
+
+### Consultation Workflow
+
+**Step 1: Analyze SPEC Requirements**
+- Scan requirements for domain-specific keywords
+- Identify which expert domains are relevant
+- Note complex requirements that benefit from specialist input
+
+**Step 2: Suggest Expert Consultation**
+- Inform user about relevant expert consultations
+- Example: "This SPEC involves API design and database schema. Consider consulting with backend-expert for architecture review."
+- Use `AskUserQuestion` to ask if user wants expert consultation
+
+**Step 3: Facilitate Consultation** (If user agrees)
+- Provide full SPEC context to expert agent
+- Ask expert for specific recommendations:
+  - Architecture design guidance
+  - Technology stack suggestions
+  - Risk identification and mitigation
+- Integrate expert feedback into SPEC
+
+### Expert Consultation Keywords
+
+**Backend Expert Consultation Triggers**:
+- Keywords: API, REST, GraphQL, authentication, authorization, database, schema, microservice, server
+- When to recommend: Any SPEC with backend implementation requirements
+
+**Frontend Expert Consultation Triggers**:
+- Keywords: component, page, UI, state management, client-side, browser, interface, responsive
+- When to recommend: Any SPEC with UI/component implementation requirements
+
+**DevOps Expert Consultation Triggers**:
+- Keywords: deployment, Docker, Kubernetes, CI/CD, pipeline, infrastructure, cloud
+- When to recommend: Any SPEC with deployment or infrastructure requirements
+
+**UI/UX Expert Consultation Triggers**:
+- Keywords: design system, accessibility, a11y, WCAG, user research, persona, user flow, interaction, design, figma
+- When to recommend: Any SPEC with design system or accessibility requirements
+
+---
+
 ## 🔗 SPEC verification function
 
 ### SPEC quality verification
@@ -153,6 +208,7 @@ Alfred passes the user's language directly to you via `Task()` calls. This enabl
 - **Completeness**: Verification of required sections (TAG BLOCK, requirements, constraints)
 - **Consistency**: Project documents (product.md, structure.md, tech.md) and consistency verification
 - **Traceability**: Checking the integrity of the @TAG chain
+- **Expert relevance**: Identification of domain-specific requirements for expert consultation
 
 ## Command usage example
 
