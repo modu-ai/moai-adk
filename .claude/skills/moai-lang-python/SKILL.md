@@ -1,12 +1,12 @@
 ---
 
 name: moai-lang-python
-version: 2.0.0
+version: 2.1.0
 created: 2025-10-22
-updated: 2025-10-22
+updated: 2025-11-02
 status: active
-description: Python 3.13+ best practices with pytest 8.4.2, mypy 1.8.0, ruff 0.13.1, and uv 0.9.3. Use when writing or reviewing Python code in project workflows.
-keywords: [python, testing, pytest, mypy, ruff, uv, async, fastapi, pydantic]
+description: Python 3.13+ best practices with pytest 8.4.2, mypy 1.8.0, ruff 0.13.1, uv 0.9.3, and backend frameworks (FastAPI, Flask, Django).
+keywords: [python, testing, pytest, mypy, ruff, uv, async, fastapi, flask, django, pydantic]
 allowed-tools:
   - Read
   - Bash
@@ -19,12 +19,12 @@ allowed-tools:
 | Field | Value |
 | ----- | ----- |
 | **Skill Name** | moai-lang-python |
-| **Version** | 2.0.0 (2025-10-22) |
+| **Version** | 2.1.0 (2025-11-02) |
 | **Python Support** | 3.13.1 (latest), 3.12.7 (LTS), 3.11.10 (maintenance) |
 | **Allowed tools** | Read (read_file), Bash (terminal) |
 | **Auto-load** | On demand when language keywords detected |
 | **Trigger cues** | `.py` files, Python frameworks, TDD discussions, async patterns |
-| **Tier** | Language / 23 (comprehensive coverage) |
+| **Tier** | Language / Fullstack backends (FastAPI, Flask, Django) |
 
 ---
 
@@ -318,7 +318,7 @@ mypy --strict .                     # Type check pass?
 
 ---
 
-## Tool Version Matrix (2025-10-22)
+## Tool Version Matrix (2025-11-02)
 
 | Tool | Version | Purpose | Status |
 |------|---------|---------|--------|
@@ -327,7 +327,9 @@ mypy --strict .                     # Type check pass?
 | **ruff** | 0.13.1 | Lint/Format | ✅ New standard |
 | **mypy** | 1.8.0 | Type checking | ✅ Current |
 | **uv** | 0.9.3 | Package manager | ✅ Recommended |
-| **FastAPI** | 0.115.0 | Web framework | ✅ Latest |
+| **FastAPI** | 0.115.0 | API framework | ✅ Latest |
+| **Flask** | 3.1.2 | Micro-framework | ✅ Current |
+| **Django** | 5.2.7 LTS | Fullstack framework | ✅ LTS |
 | **Pydantic** | 2.7.0 | Validation | ✅ Latest |
 | **SQLAlchemy** | 2.0.28 | ORM | ✅ Latest |
 

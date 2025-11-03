@@ -316,6 +316,170 @@ After reviewing your sync plan, `AskUserQuestion tool (documented in moai-alfred
 
 After user approval (collected via `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)`), the doc-syncer agent performs **Living Document synchronization and @TAG updates**, and optionally executes PR Ready transitions only in team mode.
 
+---
+
+### 2.0.5 Domain-Based Sync Routing (Automatic - During Sync)
+
+**Purpose**: Route documentation sync to domain-specific experts based on changed files
+
+**When to run**: During doc-syncer execution, after analyzing git changes
+
+**Detection Logic**:
+
+Alfred analyzes changed files to determine which domains were modified:
+
+```bash
+# Get list of changed files
+git diff --name-only HEAD~1 HEAD
+
+# Domain detection by file patterns
+```
+
+**File Pattern → Domain Mapping**:
+
+| File Patterns | Domain | Sync Focus |
+|---------------|--------|-----------|
+| `src/components/*`, `src/pages/*`, `*.tsx`, `*.jsx`, `*.vue` | Frontend | Component documentation, Storybook, UI architecture |
+| `src/api/*`, `src/models/*`, `src/routes/*`, `src/services/*` | Backend | API documentation (OpenAPI), schema docs, error handling |
+| `Dockerfile`, `docker-compose.yml`, `.github/workflows/*`, `terraform/*`, `k8s/*` | DevOps | Deployment docs, CI/CD status, infrastructure diagrams |
+| `src/database/*`, `migrations/*`, `*.sql`, `schema/*` | Database | Schema documentation, migration logs, query optimization |
+| `notebooks/*`, `src/pipelines/*`, `*.ipynb`, `src/models/ml/*` | Data Science | Pipeline documentation, model cards, data validation |
+| `src/mobile/*`, `ios/*`, `android/*`, `*.swift`, `*.kt` | Mobile | Platform-specific docs, app lifecycle, native modules |
+
+**Automatic Invocation Pattern**:
+
+```python
+# Pseudo-code for domain detection from git changes
+changed_files = git_diff("HEAD~1", "HEAD")
+
+detected_domains = []
+if any(".tsx" in f or ".jsx" in f or "src/components/" in f for f in changed_files):
+    detected_domains.append("frontend")
+if any("src/api/" in f or "src/models/" in f or "src/routes/" in f for f in changed_files):
+    detected_domains.append("backend")
+if any("Dockerfile" in f or ".github/workflows/" in f or "docker-compose" in f for f in changed_files):
+    detected_domains.append("devops")
+# ... repeat for all domains
+
+# Invoke domain-specific sync for each detected domain
+for domain in detected_domains:
+    Task(
+        subagent_type="Explore",
+        prompt=f"Generate domain-specific sync report for {domain} changes"
+    )
+```
+
+**Example Invocation** (Frontend + Backend detected):
+
+```python
+# Frontend sync
+Task(
+    subagent_type="Explore",
+    prompt="""You are frontend-expert providing sync documentation.
+
+Changed Files: [src/components/Dashboard.tsx, src/pages/Home.vue]
+
+Provide frontend-specific documentation:
+1. Component documentation updates
+2. Storybook story generation
+3. UI architecture diagram updates
+4. Accessibility compliance notes
+
+Output format: Markdown document for .moai/reports/sync-frontend.md"""
+)
+
+# Backend sync
+Task(
+    subagent_type="Explore",
+    prompt="""You are backend-expert providing sync documentation.
+
+Changed Files: [src/api/auth.py, src/models/user.py, src/routes/users.py]
+
+Provide backend-specific documentation:
+1. OpenAPI spec generation
+2. Schema documentation updates
+3. Error handling documentation
+4. API endpoint examples
+
+Output format: Markdown document for .moai/reports/sync-backend.md"""
+)
+```
+
+**Output Storage Structure**:
+
+```
+.moai/reports/
+├── sync-report-2025-10-23.md          # Combined sync report
+├── sync-frontend-2025-10-23.md        # Frontend-specific sync
+├── sync-backend-2025-10-23.md         # Backend-specific sync
+└── sync-devops-2025-10-23.md          # DevOps-specific sync
+```
+
+**Combined Sync Report Format**:
+
+```markdown
+## 📚 Documentation Sync Report - 2025-10-23
+
+### Changed Files Summary
+- Frontend: 3 files (components, pages)
+- Backend: 5 files (api, models, routes)
+- DevOps: 1 file (Dockerfile)
+
+### Domain-Specific Sync Results
+
+#### 🎨 Frontend Sync
+- ✅ Component documentation: Dashboard.tsx documented
+- ✅ Storybook stories: 2 stories generated
+- ✅ UI architecture: Component hierarchy diagram updated
+- 📄 Details: [sync-frontend-2025-10-23.md](./sync-frontend-2025-10-23.md)
+
+#### ⚙️ Backend Sync
+- ✅ OpenAPI spec: /api/auth endpoints documented
+- ✅ Schema documentation: User model fields updated
+- ✅ Error handling: 401/403 response examples added
+- 📄 Details: [sync-backend-2025-10-23.md](./sync-backend-2025-10-23.md)
+
+#### 🚀 DevOps Sync
+- ✅ Dockerfile: Multi-stage build documented
+- ✅ Deployment: Railway configuration updated
+- 📄 Details: [sync-devops-2025-10-23.md](./sync-devops-2025-10-23.md)
+
+### @TAG Verification
+- ✅ All changed files have @TAG references
+- ✅ SPEC → CODE → TEST → DOC chain intact
+
+### Next Steps
+- Review domain-specific sync reports
+- Update README.md with new features
+- Create PR for documentation changes
+```
+
+**Integration with doc-syncer**:
+
+```python
+# doc-syncer orchestrates domain-specific sync
+Task(
+    subagent_type="doc-syncer",
+    prompt="""You are doc-syncer agent.
+
+DOMAIN SYNC RESULTS:
+{domain_sync_results}
+
+Consolidate all domain-specific sync reports into master sync report.
+Ensure @TAG chain integrity across all domains.
+Update .moai/reports/sync-report-{date}.md
+
+$ARGUMENTS"""
+)
+```
+
+**Graceful Degradation**:
+- If no domain detected → Standard sync (no domain-specific reports)
+- If domain expert unavailable → Use generic sync templates
+- Multi-domain changes → Generate separate reports, combine into master
+
+---
+
 ### Phase 2 Details: SPEC Completion Processing (Automatic)
 
 The doc-syncer agent automatically determines whether TDD implementation is complete and updates SPEC metadata.
@@ -832,7 +996,7 @@ AskUserQuestion(
 
 ## 🧠 Context Management
 
-> For more information: `.moai/memory/development-guide.md` - see section "Context Engineering"
+> For more information: Skill("moai-alfred-dev-guide") - see section "Context Engineering"
 
 ### Core strategy of this command
 

@@ -281,6 +281,79 @@ Selected Language: 🇰🇷 한국어
 Selected Nickname: GOOS (typed via "Other" option)
 ```
 
+---
+
+### 0.1.4 Domain Selection (Optional - All Modes)
+
+**Purpose**: Identify project domains to activate domain-expert agents for specialized guidance.
+
+**When to ask**: After language/nickname/GitHub settings complete
+
+**Batched Design**: Domain selection integrated into initial batch OR asked separately based on user preference
+
+**Example AskUserQuestion Call**:
+```python
+AskUserQuestion(
+    questions=[
+        {
+            "question": "Which domains does your project involve? (Select all that apply)",
+            "header": "Project Domains",
+            "multiSelect": true,
+            "options": [
+                {
+                    "label": "🎨 Frontend",
+                    "description": "React, Vue, Angular, Next.js, Nuxt, SvelteKit, Astro, Remix, SolidJS"
+                },
+                {
+                    "label": "⚙️ Backend",
+                    "description": "FastAPI, Flask, Django, Express, Fastify, NestJS, Spring Boot, Gin, Axum"
+                },
+                {
+                    "label": "🚀 DevOps",
+                    "description": "Railway, Vercel, Docker, Kubernetes, AWS, GCP, Azure, CI/CD"
+                },
+                {
+                    "label": "🗄️ Database",
+                    "description": "PostgreSQL, MySQL, MongoDB, Redis, database design and optimization"
+                },
+                {
+                    "label": "📊 Data Science",
+                    "description": "Data analysis, machine learning, data pipelines, notebooks"
+                },
+                {
+                    "label": "📱 Mobile",
+                    "description": "React Native, Flutter, iOS, Android app development"
+                },
+                {
+                    "label": "⚡ Skip",
+                    "description": "No domain selection (can add later via /alfred:1-plan)"
+                }
+            ]
+        }
+    ]
+)
+```
+
+**Response Processing**:
+```json
+{
+  "stack": {
+    "selected_domains": ["frontend", "backend"],
+    "domain_selection_date": "2025-10-23T12:34:56Z"
+  }
+}
+```
+
+**Hint to User**: "You can always modify domains later during `/alfred:1-plan` when creating SPECs"
+
+**Domain Expert Activation**:
+- Selected domains stored in `.moai/config.json`
+- Domain-expert agents activated during `/alfred:1-plan` (automatic keyword detection)
+- Domain-expert agents available as advisors during `/alfred:2-run`
+- Domain-specific sync routing enabled in `/alfred:3-sync`
+
+---
+
 ### 0.2 사용자 정보 저장
 
 Alfred가 선택된 언어, 닉네임, 그리고 팀 모드 설정을 다음과 같이 저장합니다:
@@ -298,6 +371,10 @@ Alfred가 선택된 언어, 닉네임, 그리고 팀 모드 설정을 다음과 
   "user": {
     "nickname": "GOOS",
     "selected_at": "2025-10-23T12:34:56Z"
+  },
+  "stack": {
+    "selected_domains": ["frontend", "backend"],
+    "domain_selection_date": "2025-10-23T12:34:56Z"
   }
 }
 ```
@@ -411,7 +488,7 @@ grep "optimized" .moai/config.json
 **Backup existence conditions**:
 - `.moai-backups/` directory exists
 - `.moai/project/*.md` file exists in the latest backup folder
-- `optimized: false` in `config.json` (immediately after reinitialization)
+- User's existing project files can be merged (regardless of optimized flag)
 
 **Select user if backup exists**
 Call `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` to display a TUI with the following options:
@@ -424,7 +501,7 @@ Call `AskUserQuestion tool (documented in moai-alfred-interactive-questions skil
 - **"Create new"** → Proceed to Phase 1.2 (Project environment analysis) (existing process)
 - **"Skip"** → End task
 
-**No backup or optimized: true**:
+**No backup**:
 - Proceed directly to Phase 1.2 (project environment analysis)
 
 ---

@@ -196,6 +196,43 @@ class PhaseExecutor:
             "Phase 4: Generating configurations...", progress_callback
         )
 
+        # Read existing config to preserve user settings (Issue #165)
+        config_path = project_path / ".moai" / "config.json"
+        existing_config: dict[str, Any] = {}
+        if config_path.exists():
+            try:
+                with open(config_path, "r", encoding="utf-8") as f:
+                    existing_config = json.load(f)
+            except (json.JSONDecodeError, OSError):
+                # If config reading fails, start fresh
+                existing_config = {}
+
+        # Merge user settings from existing config (preserve customization)
+        if existing_config:
+            # Preserve user.nickname if it exists
+            if "user" in existing_config and isinstance(existing_config.get("user"), dict):
+                if "user" not in config:
+                    config["user"] = {}
+                user_config = config["user"]
+                if isinstance(user_config, dict):
+                    existing_user = existing_config["user"]
+                    if isinstance(existing_user, dict) and "nickname" in existing_user:
+                        user_config["nickname"] = existing_user["nickname"]
+
+            # Preserve language settings if they exist
+            if "language" in existing_config and isinstance(existing_config.get("language"), dict):
+                if "language" not in config:
+                    config["language"] = {}
+                lang_config = config["language"]
+                if isinstance(lang_config, dict):
+                    existing_lang = existing_config["language"]
+                    if isinstance(existing_lang, dict):
+                        # Preserve conversation_language settings
+                        if "conversation_language" in existing_lang:
+                            lang_config["conversation_language"] = existing_lang["conversation_language"]
+                        if "conversation_language_name" in existing_lang:
+                            lang_config["conversation_language_name"] = existing_lang["conversation_language_name"]
+
         # Ensure project section exists and set defaults
         if "project" not in config:
             config["project"] = {}
@@ -205,7 +242,6 @@ class PhaseExecutor:
             project_config["optimized"] = False  # Default value
 
         # Write config.json
-        config_path = project_path / ".moai" / "config.json"
         with open(config_path, "w", encoding="utf-8") as f:
             json.dump(config, f, indent=2, ensure_ascii=False)
 

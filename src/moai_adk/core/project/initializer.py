@@ -11,7 +11,9 @@ Phase-based 5-step initialization process:
 5. Validation: Verification and finalization
 """
 
+import json
 import time
+from datetime import datetime
 from pathlib import Path
 
 from moai_adk.core.project.phase_executor import PhaseExecutor, ProgressCallback
@@ -54,6 +56,62 @@ class ProjectInitializer:
         self.path = Path(path).resolve()
         self.validator = ProjectValidator()
         self.executor = PhaseExecutor(self.validator)
+
+    def _create_memory_files(self) -> list[str]:
+        """Create runtime session and memory files (auto-generated per user/session)
+
+        Returns:
+            List of created memory files
+
+        @CODE:INIT-MEMORY-001 | Auto-generate session memory files
+        """
+        memory_dir = self.path / ".moai" / "memory"
+        memory_dir.mkdir(parents=True, exist_ok=True)
+        created_files = []
+
+        # 1. project-notes.json - Project tracking notes (empty on init)
+        project_notes = {
+            "tech_debt": [],
+            "performance_bottlenecks": [],
+            "recent_patterns": {
+                "frequent_file_edits": [],
+                "test_failures": [],
+                "git_operations": "daily commits, feature branches"
+            },
+            "next_priorities": []
+        }
+        project_notes_file = memory_dir / "project-notes.json"
+        project_notes_file.write_text(json.dumps(project_notes, indent=2))
+        created_files.append(str(project_notes_file))
+
+        # 2. session-hint.json - Last session state
+        session_hint = {
+            "last_command": None,
+            "command_timestamp": None,
+            "hours_ago": None,
+            "active_spec": None,
+            "current_branch": "main"
+        }
+        session_hint_file = memory_dir / "session-hint.json"
+        session_hint_file.write_text(json.dumps(session_hint, indent=2))
+        created_files.append(str(session_hint_file))
+
+        # 3. user-patterns.json - User preferences and expertise
+        user_patterns = {
+            "tech_preferences": {},
+            "expertise_signals": {
+                "ask_question_skip_rate": 0.0,
+                "custom_workflows": 0,
+                "estimated_level": "beginner"
+            },
+            "skip_questions": [],
+            "last_updated": datetime.now().isoformat() + "Z"
+        }
+        user_patterns_file = memory_dir / "user-patterns.json"
+        user_patterns_file.write_text(json.dumps(user_patterns, indent=2))
+        created_files.append(str(user_patterns_file))
+
+        return created_files
 
     def initialize(
         self,
@@ -144,6 +202,9 @@ class ProjectInitializer:
                 self.path, mode, progress_callback
             )
 
+            # Phase 6: Create runtime memory files (auto-generated per user/session)
+            memory_files = self._create_memory_files()
+
             # Generate result
             duration = int((time.time() - start_time) * 1000)  # ms
             return InstallationResult(
@@ -153,7 +214,7 @@ class ProjectInitializer:
                 mode=mode,
                 locale=locale,
                 duration=duration,
-                created_files=resource_files + config_files,
+                created_files=resource_files + config_files + memory_files,
             )
 
         except Exception as e:

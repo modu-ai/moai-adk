@@ -98,6 +98,37 @@ class PreCommitValidator:
         self.strict_mode = strict_mode
         self.check_orphans = check_orphans
         self.tag_pattern = re.compile(tag_pattern or self.DEFAULT_TAG_PATTERN)
+        # Document files to exclude from TAG validation
+        self.excluded_file_patterns = [
+            r"\.md$",  # Markdown files
+            r"README",  # README files
+            r"CHANGELOG",  # CHANGELOG files
+            r"CONTRIBUTING",  # CONTRIBUTING files
+            r"LICENSE",  # LICENSE files
+            r"\.txt$",  # Text files
+            r"\.rst$",  # ReStructuredText files
+            r"test_.*\.py$",  # Test files (test_*.py)
+            r".*_test\.py$",  # Test files (*_test.py)
+            r"tests/",  # Files in tests/ directory
+            r"validator\.py$",  # Validator files (contain example TAGs in docstrings)
+        ]
+
+    def should_validate_file(self, filepath: str) -> bool:
+        """Check if file should be validated for TAGs
+
+        Document files (*.md, README, CONTRIBUTING, etc.) are excluded
+        because they often contain example TAGs that are not actual code.
+
+        Args:
+            filepath: File path to check
+
+        Returns:
+            True if file should be validated, False if excluded
+        """
+        for pattern in self.excluded_file_patterns:
+            if re.search(pattern, filepath):
+                return False
+        return True
 
     def validate_format(self, tag: str) -> bool:
         """Validate TAG format
@@ -137,6 +168,10 @@ class PreCommitValidator:
         tag_locations: Dict[str, List[Tuple[str, int]]] = {}
 
         for filepath in files:
+            # Skip document files (*.md, README, CONTRIBUTING, etc.)
+            if not self.should_validate_file(filepath):
+                continue
+
             try:
                 path = Path(filepath)
                 if not path.exists() or not path.is_file():
@@ -195,6 +230,10 @@ class PreCommitValidator:
         }
 
         for filepath in files:
+            # Skip document files (*.md, README, CONTRIBUTING, etc.)
+            if not self.should_validate_file(filepath):
+                continue
+
             try:
                 path = Path(filepath)
                 if not path.exists() or not path.is_file():

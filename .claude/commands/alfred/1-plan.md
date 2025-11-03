@@ -480,7 +480,7 @@ Only if the user selects **"Proceed"** or **"Start"** will Alfred call the spec-
 
 #### YAML Front Matter Schema
 
-> **📋 SPEC Metadata Standard (SSOT)**: `.moai/memory/spec-metadata.md`
+> **📋 SPEC Metadata Standard (SSOT)**: Skill("moai-alfred-spec-metadata-extended")
 
 **Metadata that must be included** at the top of the spec.md file:
 - **7 required fields**: id, version, status, created, updated, author, priority
@@ -507,7 +507,7 @@ priority: high
 - **author**: GitHub @ prefix is required before ID (e.g. `@Goos`)
 - **priority**: critical | high | medium | low
 
-**Full field description and validation methods**: see `.moai/memory/spec-metadata.md`
+**Full field description and validation methods**: see Skill("moai-alfred-spec-metadata-extended")
 
 #### HISTORY section (required)
 
@@ -541,10 +541,10 @@ You must include a HISTORY section **right after the YAML Front Matter**:
 
 **HISTORY writing rules**:
 - **Version system**: v0.0.1 (INITIAL) → v0.1.0 (implementation complete) → v1.0.0 (stabilization)
- - Detailed version system: See `.moai/memory/spec-metadata.md#version-system`
+ - Detailed version system: See Skill("moai-alfred-spec-metadata-extended") for version-system guide
 - **Version order**: Latest version on top (reverse order)
 - **Change type tag**: INITIAL, ADDED, CHANGED, IMPLEMENTATION COMPLETED, BREAKING, DEPRECATED, REMOVED, FIXED
- - Detailed description: See `.moai/memory/spec-metadata.md#history-writing-guide`
+ - Detailed description: See Skill("moai-alfred-spec-metadata-extended") for history-writing-guide
 - **Required items**: Version, date, AUTHOR, changes
 - **Optional items**: REVIEW, SCOPE, CONTEXT, MIGRATION
 
@@ -747,7 +747,7 @@ See `.coderabbit.yaml` for detailed SPEC review checklist.
 
 ## 🧠 Context Management
 
-> For more information: `.moai/memory/development-guide.md` - see section "Context Engineering"
+> For more information: Skill("moai-alfred-dev-guide") - see section "Context Engineering"
 
 ### Core strategy of this command
 

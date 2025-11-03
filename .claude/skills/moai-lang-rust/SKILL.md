@@ -1,11 +1,11 @@
 ---
 name: moai-lang-rust
-version: 2.0.0
+version: 2.1.0
 created: 2025-10-22
-updated: 2025-10-22
+updated: 2025-11-02
 status: active
-description: Rust 1.84+ best practices with cargo test, clippy, rustfmt, and ownership/borrow checker mastery.
-keywords: ['rust', 'testing', 'cargo', 'clippy', 'rustfmt', 'ownership']
+description: Rust 1.84+ best practices with cargo test, clippy, rustfmt, ownership/borrow checker mastery, and web frameworks (Axum, Rocket).
+keywords: ['rust', 'testing', 'cargo', 'clippy', 'rustfmt', 'ownership', 'axum', 'rocket']
 allowed-tools:
   - Read
   - Bash
@@ -18,7 +18,7 @@ allowed-tools:
 | Field | Value |
 | ----- | ----- |
 | **Skill Name** | moai-lang-rust |
-| **Version** | 2.0.0 (2025-10-22) |
+| **Version** | 2.1.0 (2025-11-02) |
 | **Allowed tools** | Read (read_file), Bash (terminal) |
 | **Auto-load** | On demand when keywords detected |
 | **Tier** | Language |
@@ -27,13 +27,14 @@ allowed-tools:
 
 ## What It Does
 
-Rust 1.84+ best practices with cargo test, clippy, rustfmt, and ownership/borrow checker mastery.
+Rust 1.84+ best practices with cargo test, clippy, rustfmt, ownership/borrow checker mastery, and web frameworks (Axum, Rocket).
 
 **Key capabilities**:
 - ✅ Best practices enforcement for language domain
 - ✅ TRUST 5 principles integration
-- ✅ Latest tool versions (2025-10-22)
+- ✅ Latest tool versions (2025-11-02)
 - ✅ TDD workflow support
+- ✅ Web framework patterns (Axum, Rocket)
 
 ---
 
@@ -51,14 +52,16 @@ Rust 1.84+ best practices with cargo test, clippy, rustfmt, and ownership/borrow
 
 ---
 
-## Tool Version Matrix (2025-10-22)
+## Tool Version Matrix (2025-11-02)
 
 | Tool | Version | Purpose | Status |
 |------|---------|---------|--------|
-| **Rust** | 1.84.0 | Primary | ✅ Current |
-| **cargo** | 1.84.0 | Primary | ✅ Current |
-| **clippy** | 1.84.0 | Primary | ✅ Current |
-| **rustfmt** | 1.84.0 | Primary | ✅ Current |
+| **Rust** | 1.84.0 | Runtime | ✅ Current |
+| **cargo** | 1.84.0 | Package manager | ✅ Current |
+| **clippy** | 1.84.0 | Linter | ✅ Current |
+| **rustfmt** | 1.84.0 | Formatter | ✅ Current |
+| **Axum** | 0.8.6 | Web framework | ✅ Current |
+| **Rocket** | 0.5.0 | Web framework | ✅ Current |
 
 ---
 

@@ -63,7 +63,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 ### Expert Traits
 
 - **Thinking style**: Fast and accurate quality verification through Level 1→2→3 differential scanning, maximizing efficiency with early termination
-- **Decision-making criteria**: Compliance with TRUST 5 principles (@.moai/memory/development-guide.md), security level, testing Coverage, code quality
+- **Decision-making criteria**: Compliance with TRUST 5 principles (Skill("moai-alfred-dev-guide")), security level, testing Coverage, code quality
 - **Communication style**: Standardized verification report, score by principle, improvement suggestions by priority, delegation of dedicated agent
 - **Area of expertise**: Comprehensive verification of TRUST principles, performance analysis, security check, code standard compliance, dependency verification
 
@@ -142,7 +142,7 @@ trust-checker comprehensively verifies the entire TRUST principle:
 
 ## 📊 TRUST 5 principles verification system
 
-### Apply @.moai/memory/development-guide.md standards
+### Apply Skill("moai-alfred-dev-guide") standards
 
 #### T - Test First
 

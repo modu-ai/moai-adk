@@ -142,16 +142,45 @@ Get your first MoAI-ADK project running in **3 simple steps**. Beginners can fin
 
 #### Command
 
+**Choose your platform**:
+
 ```bash
 # macOS/Linux
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Windows (PowerShell)
+# Windows (PowerShell) - RECOMMENDED FOR WINDOWS USERS
 powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 
-# Verify
+# Windows (Git Bash) - Alternative
+curl -LsSf https://astral.sh/uv/install.sh | bash
+
+# WSL (Windows Subsystem for Linux)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Verify installation
 uv --version
 ```
+
+**Platform Selection Guide**:
+
+| Platform | Method | Notes |
+|----------|--------|-------|
+| **macOS** | bash | Native UNIX-based, use standard installation |
+| **Linux** | bash | Native Linux support |
+| **Windows (Native)** | ⭐ PowerShell | **RECOMMENDED** - Most stable, native Windows support |
+| **Windows (Git Bash)** | bash | Alternative if PowerShell unavailable |
+| **WSL** | bash | Use Linux installation within WSL2 |
+
+**Important Notes on Windows**:
+- 🟢 **PowerShell (Native)**: Most reliable and stable method. No WSL or Git Bash needed.
+- 🟡 **Git Bash / WSL**: Works, but may encounter path issues. Try PowerShell first.
+- ❌ **Do NOT use WSL if**: You're testing on Windows—PowerShell native is easier and faster.
+
+**Why PowerShell for Windows?**
+- Fewer environment setup issues
+- Better Windows integration
+- Faster execution
+- No WSL overhead
 
 #### Expected Output
 ```
@@ -165,13 +194,13 @@ uv 0.5.1
 ```bash
 uv tool install moai-adk
 
-# Result: ✅ Installed moai-adk v0.9.0
+# Result: ✅ Installed moai-adk v0.14.0
 ```
 
 **Verification**:
 ```bash
 moai-adk --version
-# Output: MoAI-ADK v0.9.0
+# Output: MoAI-ADK v0.14.0
 ```
 
 ---
@@ -212,8 +241,8 @@ moai-adk doctor
 ✅ uv 0.5.1
 ✅ .moai/ directory initialized
 ✅ .claude/ directory ready
-✅ 12 agents configured
-✅ 55 skills loaded
+✅ 16 agents configured
+✅ 74 skills loaded
 ```
 
 ---
@@ -375,7 +404,7 @@ When configured, Alfred will:
 | Component | Status | Details |
 |-----------|--------|---------|
 | **Config System** | ✅ Complete | Nested language structure in `.moai/config.json` |
-| **Sub-agent Instructions** | ✅ Complete | All 12 agents support language parameter |
+| **Sub-agent Instructions** | ✅ Complete | All 16 agents support language parameter |
 | **Code Generation** | ✅ Complete | Comments/docs in user language |
 | **Git Integration** | ✅ Complete | Commit messages in user language |
 | **Dynamic Content** | ✅ Complete | All reports/explanations in user language |
@@ -2310,15 +2339,32 @@ Alfred works by combining multiple specialized agents with Claude Skills.
 | Sub-agent          | Model  | Role                                                                    |
 | ------------------ | ------ | ----------------------------------------------------------------------- |
 | project-manager 📋 | Sonnet | Project initialization, metadata interviews                             |
-| spec-builder 🏗️    | Sonnet | Plan board, EARS SPEC authoring                                         |
+| spec-builder 🏗️    | Sonnet | Plan board, EARS SPEC authoring, expert consultation recommendations    |
 | code-builder 💎    | Sonnet | Performs complete TDD with `implementation-planner` + `tdd-implementer` |
 | doc-syncer 📖      | Haiku  | Living Doc, README, CHANGELOG sync                                      |
-| tag-agent 🏷️       | Haiku  | TAG inventory, orphan detection                                         |
+| tag-agent 🏷️       | Haiku  | TAG inventory, orphan detection, @EXPERT TAG validation                 |
 | git-manager 🚀     | Haiku  | GitFlow, Draft/Ready, Auto Merge                                        |
 | debug-helper 🔍    | Sonnet | Failure analysis, fix-forward strategy                                  |
 | trust-checker ✅   | Haiku  | TRUST 5 quality gate                                                    |
 | quality-gate 🛡️    | Haiku  | Coverage change and release blocker review                              |
 | cc-manager 🛠️      | Sonnet | Claude Code session optimization, Skill deployment                      |
+
+### Expert Agents (Proactively Triggered by SPEC Keywords)
+
+Expert agents activate automatically when `implementation-planner` detects domain-specific keywords in SPEC documents. They provide architecture guidance, technology recommendations, and risk analysis for their specialized domains.
+
+| Expert Agent      | Model  | Specialty                                           | Auto-Trigger Keywords                                                    |
+| ----------------- | ------ | --------------------------------------------------- | ------------------------------------------------------------------------ |
+| backend-expert 🔧 | Sonnet | Backend architecture, API design, database, auth   | 'backend', 'api', 'server', 'database', 'deployment', 'authentication'  |
+| frontend-expert 💻| Sonnet | Frontend architecture, components, state mgmt      | 'frontend', 'ui', 'page', 'component', 'client-side', 'web interface'   |
+| devops-expert 🚀  | Sonnet | DevOps, CI/CD, deployment, containerization        | 'deployment', 'docker', 'kubernetes', 'ci/cd', 'pipeline', 'aws'        |
+| ui-ux-expert 🎨   | Sonnet | UI/UX design, accessibility (WCAG), design systems | 'design', 'ux', 'accessibility', 'a11y', 'figma', 'design system'       |
+
+**How It Works**:
+- When `/alfred:2-run` starts, `implementation-planner` scans the SPEC content
+- Matching keywords trigger automatic expert agent invocation
+- Experts provide domain-specific architecture guidance
+- All expert consultations are tagged with `@EXPERT:DOMAIN` for traceability
 
 ### Skills (Progressive Disclosure - v0.4 New!)
 
@@ -2372,6 +2418,7 @@ Specialized domain expertise
 | `moai-domain-cli-tool`     | CLI tool development, argument parsing, POSIX compliance, user-friendly help messages    |
 | `moai-domain-data-science` | Data analysis, visualization, statistical modeling, reproducible research workflows      |
 | `moai-domain-database`     | Database design, schema optimization, indexing strategies, migration management          |
+| `moai-domain-design-systems` | Design system architecture, W3C DTCG tokens, WCAG 2.2 accessibility, design-to-code, Figma MCP |
 | `moai-domain-devops`       | CI/CD pipelines, Docker containerization, Kubernetes orchestration, IaC                  |
 | `moai-domain-frontend`     | React/Vue/Angular development, state management, performance optimization, accessibility |
 | `moai-domain-ml`           | Machine learning model training, evaluation, deployment, MLOps workflows                 |
@@ -2934,8 +2981,8 @@ A. Possible, but remember: SPEC → TEST → CODE → DOC order and keep @TAGs u
 
 | Purpose                   | Resource                                                        |
 | ------------------------- | --------------------------------------------------------------- |
-| Skills detailed structure | `.claude/skills/` directory (55+ Skills)                         |
-| Sub-agent details         | `.claude/agents/alfred/` directory (12 agents)                  |
+| Skills detailed structure | `.claude/skills/` directory (74 Skills)                         |
+| Sub-agent details         | `.claude/agents/alfred/` directory (16 agents + 4 commands)    |
 | Workflow guide            | `.claude/commands/alfred/` (4 commands: 0-project ~ 3-sync)     |
 | Documentation             | Coming soon (see `.moai/`, `.claude/`, `docs/` in your project) |
 | Release notes             | GitHub Releases: https://github.com/modu-ai/moai-adk/releases   |
