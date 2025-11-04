@@ -1,0 +1,62 @@
+{
+  "latest": {
+    "timestamp": "2025-11-04T19:37:30.083172+09:00",
+    "total_reports": 3,
+    "archived_reports": 0,
+    "active_reports": 3,
+    "total_storage_bytes": 0,
+    "archived_storage_bytes": 0,
+    "reports_by_type": {
+      "sync": 1,
+      "audit": 1,
+      "analysis": 1
+    },
+    "storage_by_type": {
+      "sync": 0,
+      "audit": 0,
+      "analysis": 0
+    },
+    "age_statistics": {
+      "min_days": -1,
+      "max_days": -1,
+      "mean_days": -1,
+      "median_days": -1,
+      "total_days": -3
+    },
+    "retention_distribution": {
+      "30": 1,
+      "90": 2
+    }
+  },
+  "history": [
+    {
+      "timestamp": "2025-11-04T19:37:30.083172+09:00",
+      "total_reports": 3,
+      "archived_reports": 0,
+      "active_reports": 3,
+      "total_storage_bytes": 0,
+      "archived_storage_bytes": 0,
+      "reports_by_type": {
+        "sync": 1,
+        "audit": 1,
+        "analysis": 1
+      },
+      "storage_by_type": {
+        "sync": 0,
+        "audit": 0,
+        "analysis": 0
+      },
+      "age_statistics": {
+        "min_days": -1,
+        "max_days": -1,
+        "mean_days": -1,
+        "median_days": -1,
+        "total_days": -3
+      },
+      "retention_distribution": {
+        "30": 1,
+        "90": 2
+      }
+    }
+  ]
+}

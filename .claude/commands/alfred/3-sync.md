@@ -18,7 +18,8 @@ allowed-tools:
 ---
 
 # 📚 MoAI-ADK Step 3: Document Synchronization (+Optional PR Ready)
-> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
+
+> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 >
 > **Batched Design**: All AskUserQuestion calls follow batched design principles (1-4 questions per call) to minimize user interaction turns. See CLAUDE.md section "Alfred Command Completion Pattern" for details.
 
@@ -26,15 +27,7 @@ allowed-tools:
 
 **4-Step Workflow Integration**: This command implements Step 4 of Alfred's workflow (Report & Commit with conditional report generation). See CLAUDE.md for full workflow details.
 
-## 🚀 START HERE
-
-**CRITICAL**: Load the TUI Survey Skill FIRST before any user interaction:
-
-```
-AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)
-```
-
-This Skill MUST be loaded at the very beginning to enable TUI menu rendering for AskUserQuestion calls throughout this workflow.
+---
 
 ## 🎯 Command Purpose
 
@@ -42,1043 +35,2062 @@ Synchronize code changes to Living Documents and verify @TAG system to ensure co
 
 **Document sync to**: $ARGUMENTS
 
-> **Standard two-step workflow** (see `CLAUDE.md` - "Alfred Command Execution Pattern" for details)
+> **Standard workflow**: STEP 1 (Analysis & Planning) → User Approval → STEP 2 (Document Sync) → STEP 3 (Git Commit & PR)
 
-## 📋 Execution flow
+---
 
-**Phase 0: Skill Loading** (IMMEDIATE)
-- Load `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` at the very start
-- This enables TUI menu rendering for all user interactions
+## 📋 Execution Modes
 
-**Phase 1: Analysis & Planning**
-1. **Project status analysis**: Git changes and TAG system verification
-2. **Determine the scope of synchronization**: Full/partial/selective synchronization strategy
-3. **User Confirmation**: Review and approve synchronization plan via AskUserQuestion (TUI menu)
+This command supports **4 operational modes**:
 
-**Phase 2: Conditional Execution** (based on user choice)
-4. **Document Synchronization**: Living Document updates and TAG integrity guaranteed (IF user selects "Proceed")
-5. **Git operations**: Commit and PR state transitions via git-manager (IF user selects "Proceed")
-   - OR abort workflow (IF user selects "Abort")
-   - OR revise plan (IF user selects "Modify")
+| Mode | Scope | PR Processing | Use Case |
+|------|-------|---------------|----------|
+| **auto** (default) | Smart selective sync | PR Ready conversion | Daily development workflow |
+| **force** | Full project re-sync | Full regeneration | Error recovery, major refactoring |
+| **status** | Status check only | Report only | Quick health check |
+| **project** | Integrated project-wide | Project-level updates | Milestone completion, periodic sync |
+
+**Command usage examples**:
+- `/alfred:3-sync` → Auto-sync (PR Ready only)
+- `/alfred:3-sync --auto-merge` → PR auto-merge + branch cleanup
+- `/alfred:3-sync force` → Force full synchronization
+- `/alfred:3-sync status` → Check synchronization status
+- `/alfred:3-sync project` → Integrated project synchronization
+- `/alfred:3-sync auto src/auth/` → Specific path synchronization
+
+---
 
 ## 🧠 Associated Skills & Agents
 
-| Agent        | Core Skill                     | Purpose                        |
+| Agent | Core Skill | Purpose |
 | ------------ | ------------------------------ | ------------------------------ |
-| tag-agent    | `moai-alfred-tag-scanning`     | Verify TAG system integrity    |
+| tag-agent | `moai-alfred-tag-scanning` | Verify TAG system integrity |
 | quality-gate | `moai-alfred-trust-validation` | Check code quality before sync |
-| doc-syncer   | `moai-alfred-tag-scanning`     | Synchronize Living Documents   |
-| git-manager  | `moai-alfred-git-workflow`     | Handle Git operations          |
+| doc-syncer | `moai-alfred-tag-scanning` | Synchronize Living Documents |
+| git-manager | `moai-alfred-git-workflow` | Handle Git operations |
 
 **Note**: TUI Survey Skill is loaded once at Phase 0 and reused throughout all user interactions.
 
-## 🔗 Associated Agent
-
-- **Phase 1**: quality-gate (🛡️ Quality Assurance Engineer) - Quality verification before synchronization (conditional)
-- **Primary**: doc-syncer (📖 Technical Writer) - Dedicated to document synchronization
-- **Secondary**: git-manager (🚀 Release Engineer) - Dedicated to Git commits/PR
-
-## 💡 Example of use
-
-Users can run the command as follows:
-- `/alfred:3-sync` - Auto-sync (PR Ready only)
-- `/alfred:3-sync --auto-merge` - PR auto-merge + branch cleanup
-- `/alfred:3-sync force` - Force full synchronization
-- `/alfred:3-sync status` - Check synchronization status
-- `/alfred:3-sync project` - Integrated project synchronization
-
-### 🚀 Fully automated GitFlow (--auto-merge)
-
-**Automatically performs the following actions when used in Team mode**:
-1. Document synchronization complete
-2. Switch to PR Ready
-3. Check CI/CD status
-4. PR automatic merge (squash)
-5. Develop checkout and synchronization
-6. Organizing local feature branches
-7. **Ready for next task** ✅
-
-**Recommended use time**: When you want to complete the merge in one go after completing TDD implementation.
-
-**Personal mode**: Automate local main/develop merges and branch cleanups
-
-## 🔍 STEP 1: Analyze synchronization scope and establish plan
-
-STEP 1 consists of **two independent phases** to provide flexible workflow based on project complexity:
-
-### 📋 STEP 1 Workflow Overview
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│ STEP 1: Synchronization Analysis & Planning                │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  Phase A (OPTIONAL)                                         │
-│  ┌─────────────────────────────────────────┐               │
-│  │ 🔍 Explore Agent                        │               │
-│  │ • Navigate complex TAG chains           │               │
-│  │ • Scan entire TAG system                │               │
-│  │ • Identify orphan TAGs                  │               │
-│  └─────────────────────────────────────────┘               │
-│                    ↓                                        │
-│          (exploration results)                              │
-│                    ↓                                        │
-│  Phase B (REQUIRED)                                         │
-│  ┌─────────────────────────────────────────┐               │
-│  │ ⚙️ tag-agent + doc-syncer Agents        │               │
-│  │ • Verify TAG integrity (full project)   │               │
-│  │ • Analyze Git changes                   │               │
-│  │ • Create synchronization plan           │               │
-│  │ • Request user approval                 │               │
-│  └─────────────────────────────────────────┘               │
-│                    ↓                                        │
-│          (user approval via AskUserQuestion)                │
-│                    ↓                                        │
-│              PROCEED TO STEP 2                              │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**Key Points**:
-- **Phase A is optional** - Skip for simple single-SPEC changes
-- **Phase B is required** - Always runs to verify TAGs and plan sync
-- **Results flow forward** - Exploration results (if any) are passed to tag-agent
-- **⚠️ Important**: tag-agent verifies ENTIRE PROJECT, not just changed files
-
 ---
 
-### 🔍 Phase A: TAG Chain Navigation (OPTIONAL)
-
-**Use the Explore agent for complex or extensive TAG chains.**
-
-#### When to use Phase A:
-
-- ✅ Large projects (100+ files)
-- ✅ Need comprehensive TAG chain integrity verification
-- ✅ Changes span multiple SPECs or modules
-- ❌ Simple changes to a single SPEC (skip to Phase B)
-
-#### How to invoke Explore agent:
+## 🚀 OVERALL WORKFLOW STRUCTURE
 
 ```
-Invoking the Task tool (Explore agent):
-- subagent_type: "Explore"
-- description: "Scan entire TAG system"
-- prompt: "프로젝트 전체에서 @TAG 시스템을 스캔해주세요:
- - @SPEC TAG 위치 (.moai/specs/)
- - @TEST TAG 위치 (tests/)
- - @CODE TAG 위치 (src/)
- - @DOC TAG 위치 (docs/)
- - 고아 TAG 및 끊긴 참조 감지
- 상세도 수준: very thorough"
-```
-
-**Note**: For simple changes, skip Phase A and proceed directly to Phase B.
-
----
-
-### ⚙️ Phase B: TAG Verification & Sync Planning (REQUIRED)
-
-**Call tag-agent and doc-syncer to verify TAG integrity and plan synchronization.**
-
-This phase is **always required** and runs **two agents sequentially**:
-
-#### How to invoke agents:
-
-```
-1. Tag-agent call (TAG verification - FULL PROJECT SCOPE):
-   - subagent_type: "tag-agent"
-- description: "Verify TAG system across entire project"
- - prompt: "전체 프로젝트에서 포괄적인 @TAG 시스템 검증을 수행해주세요.
-
- **필수 범위**: 변경된 파일만이 아니라 모든 소스 파일을 스캔합니다.
-
- **검증 항목**:
- 1. .moai/specs/ 디렉토리의 @SPEC TAG
- 2. tests/ 디렉토리의 @TEST TAG
- 3. src/ 디렉토리의 @CODE TAG
- 4. docs/ 디렉토리의 @DOC TAG
-
- **고아 감지** (필수):
- - 매칭되는 @SPEC이 없는 @CODE TAG 감지
- - 매칭되는 @CODE가 없는 @SPEC TAG 감지
- - 매칭되는 @SPEC이 없는 @TEST TAG 감지
- - 매칭되는 @SPEC/@CODE가 없는 @DOC TAG 감지
-
- **출력 형식**: 고아 TAG의 전체 목록을 위치와 함께 제공합니다.
-
- (선택사항) 탐색 결과: $EXPLORE_RESULTS"
-
-2. doc-syncer call (synchronization plan):
-   - subagent_type: "doc-syncer"
-   - description: "Establish a document synchronization plan"
-   - prompt: """당신은 doc-syncer 에이전트입니다.
-
-언어 설정:
-- 대화_언어: {{CONVERSATION_LANGUAGE}}
-- 언어명: {{CONVERSATION_LANGUAGE_NAME}}
-
-중요 지시사항:
-문서 업데이트는 대화_언어를 반드시 존중해야 합니다:
-- 사용자 대면 문서 (README, 가이드): {{CONVERSATION_LANGUAGE}}
-- SPEC 문서 (spec.md, plan.md, acceptance.md): {{CONVERSATION_LANGUAGE}}
-- 코드 주석: {{CONVERSATION_LANGUAGE}} (기술 키워드 제외)
-- 기술 문서 및 YAML 프론트매터: 영어
-
-스킬 호출:
-필요 시 명시적 Skill() 호출 사용:
-- Skill("moai-foundation-tags") - TAG 체인 검증
-- Skill("moai-foundation-trust") - 품질 게이트 검사
-- Skill("moai-alfred-tag-scanning") - TAG 인벤토리 업데이트
-
-작업:
-Git 변경사항을 분석하고 문서 동기화 계획을 수립해주세요.
-모든 문서 업데이트가 대화_언어 설정과 일치하는지 확인합니다.
-
-$ARGUMENTS
-(선택사항) TAG 검증 결과: $TAG_VALIDATION_RESULTS"""
-```
-
-**Note**:
-- **Sequential execution**: Run tag-agent first, then doc-syncer
-- **Results flow**: TAG validation results from tag-agent are passed to doc-syncer via `$TAG_VALIDATION_RESULTS`
-- **Phase A results**: If Phase A was executed, exploration results are passed to tag-agent via `$EXPLORE_RESULTS`
-
----
-
-### Synchronization analysis in progress
-
-1. **Check project status**
- - Git status and changed file list
- - Code-document consistency check
- - @TAG system verification (using tag-agent or Explore)
- - (Optional) Extensive TAG scan based on Explore results
-
-2. **Determine the scope of synchronization**
- - Living Document area requiring update
- - TAG index need to be updated
- - PR status transition possibility (team mode)
-
-3. **Establish a synchronization strategy**
- - Synchronization approach for each mode
- - Estimated work time and priorities
- - Identify potential risks
-
-### Phase 1 Details: Quality pre-verification (conditional automatic execution)
-
-Quickly check code quality before synchronization.
-
-**Differences from Phase 3 (2-build)**:
-- **Phase 3**: In-depth verification after completion of TDD implementation (test coverage, code quality, security)
-- **Phase 1**: Quick scan before synchronization (file corruption, critical issues only)
-
-**Purpose**: Prevent documentation of code with quality issues
-
-**Execution conditions (automatic judgment)**:
-- Check the number of code change lines with Git diff
-- Changed lines > 50 lines: Automatically run
-- Changed lines ≤ 50 lines: Skip
-- Change only document: Skip
-
-**Verification items**:
-- **Verify only changed files**: File targets verified by Git diff
-- **TRUST principle verification**: Run trust-checker script
-- **Code style**: Run linter (changed files only)
-- **TAG chain**: Verify changed TAG integrity
-
-**How ​​it works**:
-Alfred automatically calls the quality-gate agent when there are a lot of code changes to perform quick quality verification before document synchronization.
-
-**Handling verification results**:
-
-✅ **PASS (0 Critical)**: Synchronization in progress
-
-⚠️ **WARNING (0 Critical, Warning included)**: Synchronization proceeds after displaying warning.
-
-❌ **CRITICAL (1 or more Critical)**: Synchronization stopped, correction recommended
-- Critical issue found: Synchronization stopped, correction recommended
-- User selection: “Retry after modification” or “Force proceed”
-
-**Skip verification option**:
-To skip pre-verification, use the `/alfred:3-sync --skip-pre-check` option.
-
----
-
-### 🎯 Synchronization Plan Approval (DECISION POINT 1)
-
-After completing synchronization analysis and establishing a plan, Alfred invokes AskUserQuestion to gather user approval:
-
-```python
-AskUserQuestion(
-    questions=[
-        {
-            "question": "Synchronization plan is ready. How would you like to proceed?",
-            "header": "Plan Approval",
-            "multiSelect": false,
-            "options": [
-                {
-                    "label": "✅ Proceed with Sync",
-                    "description": "Execute document synchronization as planned"
-                },
-                {
-                    "label": "🔄 Request Modifications",
-                    "description": "Specify changes to the synchronization strategy"
-                },
-                {
-                    "label": "🔍 Review Details",
-                    "description": "Re-examine TAG validation results and changes"
-                },
-                {
-                    "label": "❌ Abort",
-                    "description": "Cancel synchronization, keep current state"
-                }
-            ]
-        }
-    ]
-)
-```
-
-**Response Processing**:
-- **✅ Proceed with Sync** (`answers["0"] === "Proceed"`) → Execute Phase 2 (document synchronization)
-- **🔄 Request Modifications** (`answers["0"] === "Modifications"`) → Collect feedback and re-analyze
-- **🔍 Review Details** (`answers["0"] === "Review"`) → Display TAG validation results, then re-present decision
-- **❌ Abort** (`answers["0"] === "Abort"`) → Stop synchronization, maintain current branches
-
----
-
-## 🚀 STEP 2: Execute document synchronization (after user approval)
-
-After user approval (collected via `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)`), the doc-syncer agent performs **Living Document synchronization and @TAG updates**, and optionally executes PR Ready transitions only in team mode.
-
----
-
-### 2.0.5 Domain-Based Sync Routing (Automatic - During Sync)
-
-**Purpose**: Route documentation sync to domain-specific experts based on changed files
-
-**When to run**: During doc-syncer execution, after analyzing git changes
-
-**Detection Logic**:
-
-Alfred analyzes changed files to determine which domains were modified:
-
-```bash
-# Get list of changed files
-git diff --name-only HEAD~1 HEAD
-
-# Domain detection by file patterns
-```
-
-**File Pattern → Domain Mapping**:
-
-| File Patterns | Domain | Sync Focus |
-|---------------|--------|-----------|
-| `src/components/*`, `src/pages/*`, `*.tsx`, `*.jsx`, `*.vue` | Frontend | Component documentation, Storybook, UI architecture |
-| `src/api/*`, `src/models/*`, `src/routes/*`, `src/services/*` | Backend | API documentation (OpenAPI), schema docs, error handling |
-| `Dockerfile`, `docker-compose.yml`, `.github/workflows/*`, `terraform/*`, `k8s/*` | DevOps | Deployment docs, CI/CD status, infrastructure diagrams |
-| `src/database/*`, `migrations/*`, `*.sql`, `schema/*` | Database | Schema documentation, migration logs, query optimization |
-| `notebooks/*`, `src/pipelines/*`, `*.ipynb`, `src/models/ml/*` | Data Science | Pipeline documentation, model cards, data validation |
-| `src/mobile/*`, `ios/*`, `android/*`, `*.swift`, `*.kt` | Mobile | Platform-specific docs, app lifecycle, native modules |
-
-**Automatic Invocation Pattern**:
-
-```python
-# Pseudo-code for domain detection from git changes
-changed_files = git_diff("HEAD~1", "HEAD")
-
-detected_domains = []
-if any(".tsx" in f or ".jsx" in f or "src/components/" in f for f in changed_files):
-    detected_domains.append("frontend")
-if any("src/api/" in f or "src/models/" in f or "src/routes/" in f for f in changed_files):
-    detected_domains.append("backend")
-if any("Dockerfile" in f or ".github/workflows/" in f or "docker-compose" in f for f in changed_files):
-    detected_domains.append("devops")
-# ... repeat for all domains
-
-# Invoke domain-specific sync for each detected domain
-for domain in detected_domains:
-    Task(
-        subagent_type="Explore",
-        prompt=f"Generate domain-specific sync report for {domain} changes"
-    )
-```
-
-**Example Invocation** (Frontend + Backend detected):
-
-```python
-# Frontend sync
-Task(
-    subagent_type="Explore",
-    prompt="""You are frontend-expert providing sync documentation.
-
-Changed Files: [src/components/Dashboard.tsx, src/pages/Home.vue]
-
-Provide frontend-specific documentation:
-1. Component documentation updates
-2. Storybook story generation
-3. UI architecture diagram updates
-4. Accessibility compliance notes
-
-Output format: Markdown document for .moai/reports/sync-frontend.md"""
-)
-
-# Backend sync
-Task(
-    subagent_type="Explore",
-    prompt="""You are backend-expert providing sync documentation.
-
-Changed Files: [src/api/auth.py, src/models/user.py, src/routes/users.py]
-
-Provide backend-specific documentation:
-1. OpenAPI spec generation
-2. Schema documentation updates
-3. Error handling documentation
-4. API endpoint examples
-
-Output format: Markdown document for .moai/reports/sync-backend.md"""
-)
-```
-
-**Output Storage Structure**:
-
-```
-.moai/reports/
-├── sync-report-2025-10-23.md          # Combined sync report
-├── sync-frontend-2025-10-23.md        # Frontend-specific sync
-├── sync-backend-2025-10-23.md         # Backend-specific sync
-└── sync-devops-2025-10-23.md          # DevOps-specific sync
-```
-
-**Combined Sync Report Format**:
-
-```markdown
-## 📚 Documentation Sync Report - 2025-10-23
-
-### Changed Files Summary
-- Frontend: 3 files (components, pages)
-- Backend: 5 files (api, models, routes)
-- DevOps: 1 file (Dockerfile)
-
-### Domain-Specific Sync Results
-
-#### 🎨 Frontend Sync
-- ✅ Component documentation: Dashboard.tsx documented
-- ✅ Storybook stories: 2 stories generated
-- ✅ UI architecture: Component hierarchy diagram updated
-- 📄 Details: [sync-frontend-2025-10-23.md](./sync-frontend-2025-10-23.md)
-
-#### ⚙️ Backend Sync
-- ✅ OpenAPI spec: /api/auth endpoints documented
-- ✅ Schema documentation: User model fields updated
-- ✅ Error handling: 401/403 response examples added
-- 📄 Details: [sync-backend-2025-10-23.md](./sync-backend-2025-10-23.md)
-
-#### 🚀 DevOps Sync
-- ✅ Dockerfile: Multi-stage build documented
-- ✅ Deployment: Railway configuration updated
-- 📄 Details: [sync-devops-2025-10-23.md](./sync-devops-2025-10-23.md)
-
-### @TAG Verification
-- ✅ All changed files have @TAG references
-- ✅ SPEC → CODE → TEST → DOC chain intact
-
-### Next Steps
-- Review domain-specific sync reports
-- Update README.md with new features
-- Create PR for documentation changes
-```
-
-**Integration with doc-syncer**:
-
-```python
-# doc-syncer orchestrates domain-specific sync
-Task(
-    subagent_type="doc-syncer",
-    prompt="""You are doc-syncer agent.
-
-DOMAIN SYNC RESULTS:
-{domain_sync_results}
-
-Consolidate all domain-specific sync reports into master sync report.
-Ensure @TAG chain integrity across all domains.
-Update .moai/reports/sync-report-{date}.md
-
-$ARGUMENTS"""
-)
-```
-
-**Graceful Degradation**:
-- If no domain detected → Standard sync (no domain-specific reports)
-- If domain expert unavailable → Use generic sync templates
-- Multi-domain changes → Generate separate reports, combine into master
-
----
-
-### Phase 2 Details: SPEC Completion Processing (Automatic)
-
-The doc-syncer agent automatically determines whether TDD implementation is complete and updates SPEC metadata.
-
-**Automatic update conditions**:
-- SPEC with status `draft`
-- RED → GREEN → REFACTOR commit exists
-- @TEST and @CODE TAG exist
-
-**Update details**:
-- `status: draft` → `status: completed`
-- `version: 0.0.x` → `version: 0.1.0`
-- Automatic addition of HISTORY section
-
-**If conditions are not met**: Phase 2 detailed work is automatically skipped
-
----
-
-### Phase 2-1: SPEC Document Synchronization (CRITICAL)
-
-**IMPORTANT**: Any code or file changes MUST be reflected in SPEC documents to maintain specification alignment.
-
-#### When to synchronize SPEC documents:
-
-1. **After code modifications**:
-   - Functional changes to implemented features
-   - Bug fixes that alter expected behavior
-   - Performance optimizations with observable changes
-   - API/function signature changes
-   - New dependencies or external integrations
-
-2. **After requirement clarifications**:
-   - Acceptance criteria refinements
-   - Edge case discoveries during implementation
-   - User feedback incorporation
-   - Security/compliance adjustments
-
-3. **After structural changes**:
-   - File organization or module restructuring
-   - New configuration options
-   - Breaking API changes
-   - Database schema modifications
-
-#### SPEC documents requiring update:
-
-All files in `.moai/specs/SPEC-{ID}/` must be synchronized:
-
-- **spec.md**: Update EARS requirements if implementation differs from specification
-- **plan.md**: Revise implementation strategy if approach changed
-- **acceptance.md**: Update acceptance criteria if new test cases or edge cases discovered
-
-#### Synchronization rules:
-
-**Code ↔ SPEC Comparison**:
-```
-1. Review Git diff for changed files
-2. Identify functional impacts:
-   ├─ Signature changes (parameters, return values)
-   ├─ Behavior changes (logic flow, edge cases)
-   ├─ Performance characteristics (latency, throughput changes)
-   └─ External dependencies (new APIs, services)
-3. Map changes to SPEC requirements:
-   ├─ Verify each changed function matches EARS statement
-   ├─ Check if acceptance criteria still valid
-   └─ Identify any spec-to-code divergence
-4. Update SPEC documents:
-   ├─ Correct EARS statements to match actual implementation
-   ├─ Add discovered edge cases to acceptance criteria
-   ├─ Update plan.md with implementation changes
-   └─ Maintain TAG references (@SPEC, @CODE, @TEST consistency)
-```
-
-#### Example: When synchronization is needed
-
-**Scenario 1: Bug Fix Changes Behavior**
-```
-Git change: Fixed database connection retry logic
-- Was: Max 3 retries with 1-second delay
-- Now: Max 5 retries with exponential backoff
-
-SPEC update required:
-- spec.md: Update EARS statement for retry behavior
-- acceptance.md: Add test case for exponential backoff
-- Update @CODE TAG location if function moved
-```
-
-**Scenario 2: API Signature Changes**
-```
-Git change: Refactored authentication function signature
-- Was: validate_token(token: str) -> bool
-- Now: validate_token(token: str, ttl: int = 3600) -> dict
-
-SPEC update required:
-- spec.md: Update function requirements for new TTL parameter
-- acceptance.md: Add test cases for TTL validation
-- plan.md: Document reason for signature change
-```
-
-**Scenario 3: New Edge Cases Discovered**
-```
-Git change: Added null-check validation during testing
-- Discovered: Special handling needed for empty strings
-
-SPEC update required:
-- spec.md: Add EARS statement for empty string edge case
-- acceptance.md: Add test case for empty string handling
-- Link with @TEST TAG from test file
-```
-
-#### SPEC-Code Divergence Detection:
-
-**Anti-pattern: Code without matching SPEC**
-```
-❌ WRONG: Code changes exist but SPEC documents unchanged
-- Function behavior diverges from specification
-- Acceptance criteria becomes inaccurate
-- @TAG chain breaks (CODE exists without matching SPEC reference)
-
-✅ CORRECT: Code changes synchronized to SPEC
-- SPEC documents updated to match implementation
-- All EARS statements verified against actual code
-- @TAG chain maintained: SPEC ↔ CODE ↔ TEST ↔ DOC
-```
-
-#### SPEC Synchronization Checklist (doc-syncer responsibility):
-
-Before marking sync as complete:
-- [ ] All changed code files reviewed against SPEC
-- [ ] EARS statements match implementation behavior
-- [ ] Acceptance criteria valid for current code
-- [ ] Edge cases discovered during implementation added to SPEC
-- [ ] @CODE/@TEST TAGs point to correct locations
-- [ ] @SPEC TAG references updated if files reorganized
-- [ ] HISTORY section updated if version changed
-- [ ] No spec-code divergence remains
-
----
-
-## function
-
-- **Automatic Document Synchronization**: The doc-syncer agent performs Living Document synchronization and @TAG updates. Optionally implements the PR Ready transition only in team mode.
-- **SPEC-Code Alignment**: doc-syncer verifies that SPEC documents match implemented code and updates them when changes are detected.
-
-## Synchronization output
-
-- `.moai/reports/sync-report.md` creation/update
-- TAG chain verification: Direct code scan (`rg '@TAG' -n src/ tests/`)
-
-## Execution method by mode
-
-## 📋 STEP 1 Implementation Guide: Analyzing the scope of synchronization and establishing a plan
-
-### 1. Project status analysis
-
-Alfred calls the doc-syncer agent to analyze synchronization targets and scopes.
-
-#### Analysis Checklist
-
-- [ ] **Git status**: Changed files, branch status, commit history
-- [ ] **Document consistency**: Need for code-to-document synchronization
-- [ ] **TAG system**: @TAG scheme verification and broken links
-- [ ] **Sync scope**: Full vs partial vs specific path synchronization
-
-### 2. Determine synchronization strategy
-
-#### Mode-specific synchronization approach
-
-| mode         | Synchronization range           | PR processing          | Key Features           |
-| ------------ | ------------------------------- | ---------------------- | ---------------------- |
-| **Personal** | Local document synchronization  | checkpoint only        | Focus on personal work |
-| **Team**     | Full Sync + TAG                 | PR Ready conversion    | Collaboration support  |
-| **Auto**     | Intelligent automatic selection | Decisions by situation | Optimal strategy       |
-| **Force**    | Force full sync                 | Full regeneration      | For error recovery     |
-
-#### Expected scope of work
-
-- **Living Document**: API documentation, README, architecture document
-- **TAG index**: Update `.moai/indexes/tags.db`
-- **Sync report**: `.moai/reports/sync-report.md`
-- **PR status**: Draft → Ready for Review transition
-
-### 3. Generate synchronization plan report
-
-Present your plan in the following format:
-
-```
-## Document Synchronization Plan Report: [TARGET]
-
-### 📊 Health Analysis Results
-- **Changed Files**: [Number and Type]
-- **Synchronization Required**: [High/Medium/Low]
-- **TAG System Status**: [Healthy/Problem Detected]
-
-### 🎯 Sync Strategy
-- **Selected Mode**: [auto/force/status/project]
-- **Sync Scope**: [Full/Partial/Selective]
-- **PR Handling**: [Maintain/Switch Ready/Create New PR]
-
-### ⚠️ Notes
-- **Potential conflicts**: [Possible document conflicts]
-- **TAG issues**: [Broken links, duplicate TAGs]
-- **Performance impact**: [Estimated time for large synchronization]
-
-### ✅ Expected deliverables
-- **sync-report.md**: [Summary of sync results]
-- **tags.db**: [Updated TAG index]
-- **Living Documents**: [Updated document list]
-- **PR Status**: [PR transition in team mode]
-
----
-**Approval Request**: Do you want to proceed with synchronization using the above plan?
- (select “Proceed”, “Modify [Content]”, or “Abort”)
+┌──────────────────────────────────────────────────────────┐
+│ STEP 0: Load Skills (IMMEDIATE)                         │
+│  → Load moai-alfred-ask-user-questions Skill            │
+│  → Enable TUI menu rendering                            │
+└──────────────────────────────────────────────────────────┘
+                          ↓
+┌──────────────────────────────────────────────────────────┐
+│ STEP 1: Analysis & Planning                             │
+│  STEP 1.1: Verify prerequisites                         │
+│  STEP 1.2: Analyze project status (Git + TAG)           │
+│  STEP 1.3: Determine sync scope (mode-specific)         │
+│  STEP 1.4: (Optional) TAG chain navigation              │
+│  STEP 1.5: Create synchronization plan                  │
+│  STEP 1.6: Request user approval (AskUserQuestion)      │
+└──────────────────────────────────────────────────────────┘
+                          ↓
+          ┌───────────────┴───────────────┐
+          │                               │
+     User chooses                    User chooses
+     "Proceed"                       "Abort/Modify"
+          │                               │
+          ↓                               ↓
+┌─────────────────────────┐   ┌──────────────────────┐
+│ STEP 2: Execute Sync    │   │ STEP 4: Graceful Exit│
+│  STEP 2.1: Safety backup│   │  → Display abort msg │
+│  STEP 2.2: Living Doc   │   │  → OR re-analyze     │
+│  STEP 2.3: TAG update   │   └──────────────────────┘
+│  STEP 2.4: SPEC sync    │
+│  STEP 2.5: Domain sync  │
+│  STEP 2.6: Completion   │
+└─────────────────────────┘
+          ↓
+┌──────────────────────────────────────────────────────────┐
+│ STEP 3: Git Operations & PR                             │
+│  STEP 3.1: Commit document changes (git-manager)        │
+│  STEP 3.2: (Optional) PR Ready transition               │
+│  STEP 3.3: (Optional) PR auto-merge (--auto-merge flag) │
+│  STEP 3.4: (Optional) Branch cleanup                    │
+│  STEP 3.5: Display completion report                    │
+└──────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🚀 STEP 2 Implementation Guide: Document Synchronization (After Approval)
+## 🔧 STEP 0: Load Skills (IMMEDIATE)
 
-Only when the user selects **"Proceed"** or **"Start"** will Alfred call the doc-syncer agent to perform Living Document synchronization and TAG updates.
+**Your task**: Load the TUI Survey Skill at the very beginning to enable interactive menus.
 
-### Sync step-by-step guide
+**Steps**:
 
-1. **Living Document Synchronization**: Code → Document automatically reflected
-2. **TAG System Verification**: @TAG System Integrity Verification
-3. **Index Update**: Traceability Matrix Update
-4. **Create Report**: Create a summary of synchronization results
+1. **Load the skill immediately**:
+   ```
+   Invoke Skill: moai-alfred-ask-user-questions
+   ```
 
-### Agent collaboration structure
+2. **Why this matters**:
+   - This skill provides TUI menu rendering capabilities
+   - Must be loaded BEFORE any user interaction
+   - Used in STEP 1.6, STEP 2.6, and STEP 3.5
 
-- **Step 1**: The `doc-syncer` agent is dedicated to Living Document synchronization and @TAG management.
-- **Step 2**: The `git-manager` agent is dedicated to all Git commits, PR state transitions, and synchronization.
-- **Single Responsibility Principle**: doc-syncer only performs document tasks, and git-manager only performs Git tasks.
-- **Sequential execution**: Executes in the order doc-syncer → git-manager to maintain clear dependencies.
-- **No inter-agent calls**: Each agent does not directly call other agents, and executes commands. Runs sequentially in levels only.
+**Result**: TUI menu system ready for all subsequent user interactions.
 
-## 🚀 Optimized parallel/sequential hybrid workflow
+**Next step**: Go to STEP 1.1
 
-### Phase 1: Quick status check (parallel execution)
+---
 
-Do the following **simultaneously**:
+## 📊 STEP 1: Analysis & Planning
 
-```
-Task 1 (haiku): Check Git status
-├── Collect list of changed files
-├── Check branch status
-└── Determine need for synchronization
+### STEP 1.1: Verify Prerequisites
 
-Task 2 (sonnet): Analyze document structure
-├── Detect project type
-├── Collect TAG list
-└── Determine synchronization scope
-```
+**Your task**: Check that all required components exist before starting synchronization analysis.
 
-### Phase 2: Document synchronization (sequential execution)
+**Steps**:
 
-The `doc-syncer` agent (sonnet) handles intensive processing:
+1. **Check MoAI-ADK project structure**:
+   - Directory to check: `.moai/` and `.claude/`
+   - IF `.moai/` does NOT exist → Print error and exit:
+     ```
+     ❌ Error: Not a MoAI-ADK project
 
+     This command requires MoAI-ADK structure:
+     - .moai/config.json (project configuration)
+     - .moai/specs/ (SPEC documents)
+     - .claude/ (Claude Code configuration)
+
+     Run `/alfred:0-project init` to initialize a project.
+     ```
+
+2. **Check Git repository status**:
+   - Execute: `git rev-parse --is-inside-work-tree`
+   - IF NOT a Git repository → Print error and exit:
+     ```
+     ❌ Error: Not a Git repository
+
+     This command requires Git version control.
+     Initialize with: git init
+     ```
+
+3. **Verify Python environment** (for TAG verification):
+   - Execute: `which python3`
+   - IF python3 NOT found → Print warning (non-fatal):
+     ```
+     ⚠️ Warning: Python3 not found
+
+     TAG verification scripts may not run.
+     Synchronization will continue with limited TAG checks.
+     ```
+
+4. **Print prerequisites status**:
+   ```
+   ✅ Prerequisites verified:
+   - MoAI-ADK structure: OK
+   - Git repository: OK
+   - Python environment: OK (or WARNING)
+   ```
+
+**Result**: All prerequisites validated. Ready for analysis.
+
+**Next step**: Go to STEP 1.2
+
+---
+
+### STEP 1.2: Analyze Project Status
+
+**Your task**: Gather Git changes and project metadata to determine synchronization scope.
+
+**Steps**:
+
+1. **Check Git status**:
+   - Execute: `git status --porcelain`
+   - Store result in variable: `$GIT_STATUS`
+
+2. **Get list of changed files**:
+   - Execute: `git diff --name-only HEAD`
+   - Store result in variable: `$CHANGED_FILES`
+
+3. **Count changes by type**:
+   - Python files changed: Count files matching `*.py` in `$CHANGED_FILES`
+   - Test files changed: Count files in `tests/` directory
+   - Document files changed: Count files matching `*.md` in `$CHANGED_FILES`
+   - SPEC files changed: Count files in `.moai/specs/` directory
+
+4. **Read project configuration**:
+   - Read file: `.moai/config.json`
+   - Extract values:
+     - `git_strategy.mode` → Store as `$PROJECT_MODE` (Personal/Team)
+     - `git_strategy.spec_git_workflow` → Store as `$WORKFLOW` (feature_branch/develop_direct)
+     - `language.conversation_language` → Store as `$LANG`
+
+5. **Determine if changes are code-heavy or document-heavy**:
+   - IF Python files changed > 50 lines → `$CHANGE_TYPE = "code-heavy"`
+   - ELSE IF document files changed > 10 lines → `$CHANGE_TYPE = "doc-heavy"`
+   - ELSE → `$CHANGE_TYPE = "mixed"`
+
+6. **Print analysis summary**:
+   ```
+   📊 Project Status Analysis
+
+   Git Status:
+   - Changed files: [count from $CHANGED_FILES]
+   - Python files: [count]
+   - Test files: [count]
+   - Documents: [count]
+   - SPEC files: [count]
+
+   Project Configuration:
+   - Mode: $PROJECT_MODE (Personal/Team)
+   - Workflow: $WORKFLOW
+   - Language: $LANG
+   - Change type: $CHANGE_TYPE
+   ```
+
+**Result**: Project status analyzed and stored in variables.
+
+**Next step**: Go to STEP 1.3
+
+---
+
+### STEP 1.3: Determine Sync Scope (Mode-Specific)
+
+**Your task**: Determine which files and documents need synchronization based on the selected mode.
+
+**Steps**:
+
+1. **Read mode from $ARGUMENTS**:
+   - Parse first argument: `$1` → Store as `$MODE`
+   - IF `$MODE` is empty → Set `$MODE = "auto"`
+   - Valid modes: `auto`, `force`, `status`, `project`
+
+2. **IF mode is "status"**:
+   - **Your task**: Perform quick status check only (no synchronization)
+   - Execute: `python3 .moai/scripts/tag_scanner.py --status-only`
+   - Read file: `.moai/reports/sync-report-latest.md` (if exists)
+   - Print status:
+     ```
+     📊 Synchronization Status
+
+     Last sync: [date from sync-report-latest.md]
+
+     TAG System Health:
+     - @SPEC TAGs: [count] found
+     - @CODE TAGs: [count] found
+     - @TEST TAGs: [count] found
+     - @DOC TAGs: [count] found
+     - Orphan TAGs: [count] (if any)
+
+     Git Status:
+     - Changed files since last sync: [count]
+     - Uncommitted changes: [yes/no]
+
+     Recommendation: [Sync needed / Up to date]
+     ```
+   - **STOP HERE** → Exit command (status mode complete)
+
+3. **IF mode is "force"**:
+   - **Your task**: Force full re-synchronization of all documents
+   - Set scope variables:
+     - `$SYNC_SCOPE = "full"`
+     - `$TARGET_DIRS = "src/ tests/ docs/ .moai/specs/"`
+     - `$REGENERATE_ALL = true`
+   - Print:
+     ```
+     🔄 Force Mode Activated
+
+     Synchronization scope: FULL PROJECT
+     - All source files will be scanned
+     - All documents will be regenerated
+     - All TAG chains will be re-verified
+     ```
+
+4. **IF mode is "project"**:
+   - **Your task**: Project-wide integrated synchronization
+   - Set scope variables:
+     - `$SYNC_SCOPE = "project"`
+     - `$TARGET_DIRS = "src/ tests/ docs/ .moai/specs/ README.md"`
+     - `$UPDATE_PROJECT_DOCS = true`
+   - Print:
+     ```
+     🏢 Project Mode Activated
+
+     Synchronization scope: INTEGRATED PROJECT
+     - README.md will be updated (full feature list)
+     - docs/architecture.md will be updated
+     - docs/api/ will be unified
+     - .moai/indexes/ will be rebuilt
+     ```
+
+5. **IF mode is "auto"** (default):
+   - **Your task**: Smart selective synchronization based on Git changes
+   - Set scope variables:
+     - `$SYNC_SCOPE = "selective"`
+     - `$TARGET_DIRS = [directories from $CHANGED_FILES]`
+     - `$UPDATE_PROJECT_DOCS = false`
+   - Determine selective scope:
+     - IF `$CHANGE_TYPE = "code-heavy"` → Include `src/`, `tests/`, related SPEC
+     - IF `$CHANGE_TYPE = "doc-heavy"` → Include `docs/`, `.moai/specs/`
+     - IF `$CHANGE_TYPE = "mixed"` → Include all changed directories
+   - Print:
+     ```
+     🎯 Auto Mode Activated
+
+     Synchronization scope: SELECTIVE
+     - Target directories: $TARGET_DIRS
+     - Changed files: [count]
+     - Estimated sync time: [based on change count]
+     ```
+
+6. **Parse additional flags from $ARGUMENTS**:
+   - Search for `--auto-merge` flag → Set `$AUTO_MERGE = true` (default: false)
+   - Search for `--skip-pre-check` flag → Set `$SKIP_PRE_CHECK = true` (default: false)
+   - Search for `--skip-quality-check` flag → Set `$SKIP_QUALITY_CHECK = true` (default: false)
+
+**Result**: Synchronization scope determined and stored in variables.
+
+**Next step**:
+- IF mode was "status" → EXIT (already completed)
+- ELSE → Go to STEP 1.4
+
+---
+
+### STEP 1.4: (Optional) TAG Chain Navigation
+
+**Your task**: Optionally perform comprehensive TAG chain exploration for large projects.
+
+**Decision point**:
+
+1. **Determine if TAG exploration is needed**:
+   - IF `$MODE = "force"` OR `$MODE = "project"` → TAG exploration REQUIRED
+   - ELSE IF changed files > 100 → TAG exploration RECOMMENDED
+   - ELSE IF `$SYNC_SCOPE = "selective"` → SKIP exploration (go to STEP 1.5)
+
+2. **IF TAG exploration is REQUIRED or RECOMMENDED**:
+   - Print:
+     ```
+     🔍 TAG Chain Navigation
+
+     Performing comprehensive TAG system scan...
+     This may take a few moments for large projects.
+     ```
+
+3. **Invoke Explore agent for TAG scanning**:
+   - **Your task**: Call the Explore agent to scan entire TAG system
+   - Use Task tool:
+     - `subagent_type`: "Explore"
+     - `description`: "Scan entire TAG system across project"
+     - `prompt`:
+       ```
+       프로젝트 전체에서 @TAG 시스템을 스캔해주세요:
+
+       스캔 범위:
+       - @SPEC TAG 위치 (.moai/specs/)
+       - @TEST TAG 위치 (tests/)
+       - @CODE TAG 위치 (src/)
+       - @DOC TAG 위치 (docs/)
+
+       검증 항목:
+       - 고아 TAG (orphan TAGs) 감지
+       - 끊긴 참조 (broken references) 감지
+       - 중복 TAG (duplicate TAGs) 감지
+
+       상세도 수준: very thorough
+
+       출력 형식:
+       - TAG 인벤토리 전체 목록
+       - 문제 TAG 목록 (위치 포함)
+       - 추천 수정 사항
+       ```
+
+4. **Store Explore agent results**:
+   - Read response from Explore agent
+   - Store in variable: `$EXPLORE_RESULTS`
+   - Print summary:
+     ```
+     ✅ TAG exploration complete
+
+     TAG inventory:
+     - @SPEC TAGs found: [count]
+     - @CODE TAGs found: [count]
+     - @TEST TAGs found: [count]
+     - @DOC TAGs found: [count]
+
+     Issues detected:
+     - Orphan TAGs: [count]
+     - Broken references: [count]
+     - Duplicate TAGs: [count]
+     ```
+
+5. **IF TAG exploration was SKIPPED**:
+   - Set `$EXPLORE_RESULTS = null`
+   - Print:
+     ```
+     ⏩ TAG exploration skipped (not needed for selective sync)
+     ```
+
+**Result**: TAG chain exploration completed (or skipped). Results stored in `$EXPLORE_RESULTS`.
+
+**Next step**: Go to STEP 1.5
+
+---
+
+### STEP 1.5: Create Synchronization Plan
+
+**Your task**: Call tag-agent and doc-syncer to verify TAG integrity and establish a detailed synchronization plan.
+
+**This phase runs TWO agents sequentially**:
+
+1. **Tag-agent call (TAG verification across ENTIRE PROJECT)**:
+
+   - **Your task**: Invoke tag-agent to verify TAG system integrity
+   - Use Task tool:
+     - `subagent_type`: "tag-agent"
+     - `description`: "Verify TAG system across entire project"
+     - `prompt`:
+       ```
+       전체 프로젝트에서 포괄적인 @TAG 시스템 검증을 수행해주세요.
+
+       **필수 범위**: 변경된 파일만이 아니라 모든 소스 파일을 스캔합니다.
+
+       **검증 항목**:
+       1. .moai/specs/ 디렉토리의 @SPEC TAG
+       2. tests/ 디렉토리의 @TEST TAG
+       3. src/ 디렉토리의 @CODE TAG
+       4. docs/ 디렉토리의 @DOC TAG
+
+       **고아 감지** (필수):
+       - 매칭되는 @SPEC이 없는 @CODE TAG 감지
+       - 매칭되는 @CODE가 없는 @SPEC TAG 감지
+       - 매칭되는 @SPEC이 없는 @TEST TAG 감지
+       - 매칭되는 @SPEC/@CODE가 없는 @DOC TAG 감지
+
+       **출력 형식**:
+       - 고아 TAG의 전체 목록을 위치와 함께 제공합니다.
+       - TAG 체인 무결성 평가 (Healthy / Issues Detected)
+
+       (선택사항) 탐색 결과: $EXPLORE_RESULTS
+       ```
+
+   - **Wait for tag-agent response**
+   - Store response in variable: `$TAG_VALIDATION_RESULTS`
+   - Print summary:
+     ```
+     ✅ TAG verification complete
+
+     TAG chain integrity: [Healthy / Issues Detected]
+
+     Issues found (if any):
+     - Orphan @CODE TAGs: [list]
+     - Orphan @SPEC TAGs: [list]
+     - Broken references: [list]
+     ```
+
+2. **Doc-syncer call (synchronization plan establishment)**:
+
+   - **Your task**: Invoke doc-syncer to analyze Git changes and create sync plan
+   - Use Task tool:
+     - `subagent_type`: "doc-syncer"
+     - `description`: "Establish a document synchronization plan"
+     - `prompt`:
+       ```
+       당신은 doc-syncer 에이전트입니다.
+
+       언어 설정:
+       - 대화_언어: $LANG
+       - 언어명: [Korean/English/Japanese based on $LANG]
+
+       중요 지시사항:
+       문서 업데이트는 대화_언어를 반드시 존중해야 합니다:
+       - 사용자 대면 문서 (README, 가이드): $LANG
+       - SPEC 문서 (spec.md, plan.md, acceptance.md): $LANG
+       - 코드 주석: $LANG (기술 키워드 제외)
+       - 기술 문서 및 YAML 프론트매터: 영어
+
+       스킬 호출:
+       필요 시 명시적 Skill() 호출 사용:
+       - Skill("moai-foundation-tags") - TAG 체인 검증
+       - Skill("moai-foundation-trust") - 품질 게이트 검사
+       - Skill("moai-alfred-tag-scanning") - TAG 인벤토리 업데이트
+
+       작업:
+       Git 변경사항을 분석하고 문서 동기화 계획을 수립해주세요.
+       모든 문서 업데이트가 대화_언어 설정과 일치하는지 확인합니다.
+
+       동기화 모드: $MODE
+       동기화 범위: $SYNC_SCOPE
+       대상 디렉토리: $TARGET_DIRS
+       변경된 파일: $CHANGED_FILES
+
+       (필수) TAG 검증 결과: $TAG_VALIDATION_RESULTS
+       (선택사항) 탐색 결과: $EXPLORE_RESULTS
+       ```
+
+   - **Wait for doc-syncer response**
+   - Store response in variable: `$SYNC_PLAN`
+   - Print summary:
+     ```
+     📋 Synchronization Plan Created
+
+     Documents to update:
+     - Living Documents: [list]
+     - SPEC documents: [list]
+     - TAG indexes: [list]
+
+     Estimated work:
+     - Files to update: [count]
+     - New files to create: [count]
+     - TAG repairs needed: [count]
+     - Estimated time: [based on change count]
+     ```
+
+**Result**: TAG validation results and synchronization plan stored in variables.
+
+**Next step**: Go to STEP 1.6
+
+---
+
+### STEP 1.6: Request User Approval
+
+**Your task**: Present the synchronization plan to the user and request approval to proceed.
+
+**Steps**:
+
+1. **Display comprehensive plan report**:
+   ```
+   ═══════════════════════════════════════════════════════
+   📚 Document Synchronization Plan Report
+   ═══════════════════════════════════════════════════════
+
+   📊 Project Analysis:
+   - Mode: $MODE
+   - Scope: $SYNC_SCOPE
+   - Changed files: [count from $CHANGED_FILES]
+   - Project mode: $PROJECT_MODE (Personal/Team)
+
+   🎯 Synchronization Strategy:
+   - Living Documents to update: [list from $SYNC_PLAN]
+   - SPEC documents to sync: [list]
+   - TAG repairs needed: [count from $TAG_VALIDATION_RESULTS]
+   - Domain-specific sync: [if applicable]
+
+   ⚠️ TAG System Status:
+   - TAG chain integrity: [Healthy / Issues Detected]
+   - Orphan TAGs: [count]
+   - Broken references: [count]
+
+   ✅ Expected Deliverables:
+   - sync-report.md: Summary of synchronization results
+   - tags.db: Updated TAG index
+   - Living Documents: [list]
+   - PR Status: [if Team mode: Draft → Ready transition]
+
+   ═══════════════════════════════════════════════════════
+   ```
+
+2. **Ask user for approval using AskUserQuestion**:
+   - **Your task**: Use the AskUserQuestion tool to gather user decision
+   - Tool call:
+     - `questions`: Array with 1 question
+     - Question details:
+       - `question`: "Synchronization plan is ready. How would you like to proceed?"
+       - `header`: "Plan Approval"
+       - `multiSelect`: false
+       - `options`: Array with 4 choices:
+         1. Label: "✅ Proceed with Sync", Description: "Execute document synchronization as planned"
+         2. Label: "🔄 Request Modifications", Description: "Specify changes to the synchronization strategy"
+         3. Label: "🔍 Review Details", Description: "Re-examine TAG validation results and changes"
+         4. Label: "❌ Abort", Description: "Cancel synchronization, keep current state"
+
+3. **Wait for user response**:
+   - Store response in variable: `$USER_DECISION`
+   - Read value from: `$USER_DECISION["0"]` (first question answer)
+
+4. **Process user response**:
+
+   **IF user chose "✅ Proceed with Sync"**:
+   - Print:
+     ```
+     ✅ User approved synchronization plan
+
+     Proceeding to document synchronization...
+     ```
+   - **Next step**: Go to STEP 2.1
+
+   **IF user chose "🔄 Request Modifications"**:
+   - Print:
+     ```
+     🔄 User requested modifications to plan
+
+     Please specify what changes you'd like to the synchronization strategy:
+     ```
+   - Wait for user input (freeform text)
+   - Store input in variable: `$MODIFICATION_REQUEST`
+   - Print:
+     ```
+     Re-analyzing with requested modifications...
+     ```
+   - **Next step**: Go back to STEP 1.5 (re-create plan with modifications)
+
+   **IF user chose "🔍 Review Details"**:
+   - Print detailed TAG validation results:
+     ```
+     🔍 Detailed TAG Validation Results
+
+     $TAG_VALIDATION_RESULTS (full output)
+
+     Detailed synchronization plan:
+
+     $SYNC_PLAN (full output)
+     ```
+   - After displaying details, re-present the approval question
+   - **Next step**: Go back to STEP 1.6 (re-ask approval)
+
+   **IF user chose "❌ Abort"**:
+   - Print:
+     ```
+     ❌ Synchronization aborted by user
+
+     No changes were made to documents or Git history.
+     Current branch state maintained.
+     ```
+   - **Next step**: Go to STEP 4 (Graceful Exit)
+
+**Result**: User decision captured. Command proceeds or exits based on choice.
+
+**Next step**: Based on user decision (see above)
+
+---
+
+## 🚀 STEP 2: Execute Document Synchronization
+
+### STEP 2.1: Create Safety Backup
+
+**Your task**: Create a safety backup of current document state before making any changes.
+
+**Steps**:
+
+1. **Create backup directory with timestamp**:
+   - Generate timestamp: `date +%Y-%m-%d-%H%M%S` → Store as `$TIMESTAMP`
+   - Create directory: `.moai-backups/sync-$TIMESTAMP/`
+   - Execute: `mkdir -p .moai-backups/sync-$TIMESTAMP/`
+
+2. **Copy current documents to backup**:
+   - Copy README.md: `cp README.md .moai-backups/sync-$TIMESTAMP/` (if exists)
+   - Copy docs/: `cp -r docs/ .moai-backups/sync-$TIMESTAMP/` (if exists)
+   - Copy .moai/specs/: `cp -r .moai/specs/ .moai-backups/sync-$TIMESTAMP/`
+   - Copy .moai/indexes/: `cp -r .moai/indexes/ .moai-backups/sync-$TIMESTAMP/` (if exists)
+
+3. **Verify backup creation**:
+   - Execute: `ls -la .moai-backups/sync-$TIMESTAMP/`
+   - IF backup directory is empty → Print error and exit:
+     ```
+     ❌ Error: Backup creation failed
+
+     Unable to create safety backup at:
+     .moai-backups/sync-$TIMESTAMP/
+
+     Synchronization aborted to prevent data loss.
+     ```
+   - ELSE → Print success:
+     ```
+     💾 Safety backup created
+
+     Backup location: .moai-backups/sync-$TIMESTAMP/
+     Files backed up: [count]
+
+     You can restore from this backup if needed.
+     ```
+
+**Result**: Safety backup created. Safe to proceed with document modifications.
+
+**Next step**: Go to STEP 2.2
+
+---
+
+### STEP 2.2: Synchronize Living Documents
+
+**Your task**: Call doc-syncer agent to perform Living Document synchronization and TAG updates.
+
+**Steps**:
+
+1. **Invoke doc-syncer agent for synchronization execution**:
+   - **Your task**: Call doc-syncer to execute the approved synchronization plan
+   - Use Task tool:
+     - `subagent_type`: "doc-syncer"
+     - `description`: "Execute Living Document synchronization"
+     - `prompt`:
+       ```
+       당신은 doc-syncer 에이전트입니다.
+
+       언어 설정:
+       - 대화_언어: $LANG
+
+       **승인된 동기화 계획 실행**:
+
+       이전 분석 결과:
+       - TAG 검증 결과: $TAG_VALIDATION_RESULTS
+       - 동기화 계획: $SYNC_PLAN
+       - 탐색 결과: $EXPLORE_RESULTS (if available)
+
+       **작업 지시**:
+
+       1. Living Document 동기화:
+          - 변경된 코드를 문서에 반영
+          - API 문서 자동 생성/업데이트
+          - README 업데이트 (if needed)
+          - Architecture 문서 동기화
+
+       2. @TAG 시스템 업데이트:
+          - TAG 인덱스 갱신 (.moai/indexes/tags.db)
+          - 고아 TAG 수리 (if possible)
+          - 끊긴 참조 복구
+
+       3. 문서-코드 일관성 검증:
+          - SPEC ↔ CODE 동기화 확인
+          - TEST ↔ CODE 매칭 확인
+          - DOC ↔ CODE 참조 확인
+
+       4. 동기화 리포트 생성:
+          - 파일 위치: .moai/reports/sync-report-$TIMESTAMP.md
+          - 포함 내용: 업데이트된 파일 목록, TAG 수리 내역, 남은 이슈
+
+       **중요**: 모든 문서 생성/수정은 대화_언어($LANG)를 사용하세요.
+
+       승인된 계획을 정확히 실행하고, 결과를 상세히 보고해주세요.
+       ```
+
+2. **Wait for doc-syncer completion**:
+   - Monitor doc-syncer agent execution
+   - Store results in variable: `$SYNC_RESULTS`
+
+3. **Verify synchronization results**:
+   - Read file: `.moai/reports/sync-report-$TIMESTAMP.md`
+   - IF file does NOT exist → Print error:
+     ```
+     ⚠️ Warning: Sync report not generated
+
+     doc-syncer may have encountered an issue.
+     Checking for partial sync results...
+     ```
+   - ELSE → Print success:
+     ```
+     ✅ Living Document synchronization complete
+
+     Sync report: .moai/reports/sync-report-$TIMESTAMP.md
+     ```
+
+4. **Print synchronization summary**:
+   ```
+   📚 Synchronization Results:
+
+   Documents updated:
+   - [list from $SYNC_RESULTS]
+
+   TAG repairs:
+   - [count] orphan TAGs fixed
+   - [count] broken references repaired
+
+   New files created:
+   - [list]
+
+   Sync report: .moai/reports/sync-report-$TIMESTAMP.md
+   ```
+
+**Result**: Living Documents synchronized. TAG system updated.
+
+**Next step**: Go to STEP 2.3
+
+---
+
+### STEP 2.3: Update TAG Index
+
+**Your task**: Update the TAG traceability index to reflect current state.
+
+**Steps**:
+
+1. **Check if TAG scanner script exists**:
+   - Check file: `.moai/scripts/tag_scanner.py`
+   - IF file does NOT exist → Print warning and skip:
+     ```
+     ⚠️ Warning: TAG scanner script not found
+
+     Skipping TAG index update.
+     TAG verification was performed by doc-syncer agent.
+     ```
+   - IF file exists → Proceed to next step
+
+2. **Run TAG scanner to update index**:
+   - Execute: `python3 .moai/scripts/tag_scanner.py --update-index`
+   - Store exit code in variable: `$TAG_SCANNER_EXIT`
+
+3. **Verify TAG scanner success**:
+   - IF `$TAG_SCANNER_EXIT != 0` → Print warning:
+     ```
+     ⚠️ Warning: TAG scanner encountered issues
+
+     Exit code: $TAG_SCANNER_EXIT
+
+     TAG index may be incomplete. Check:
+     .moai/logs/tag-scanner.log
+     ```
+   - ELSE → Print success:
+     ```
+     ✅ TAG index updated
+
+     Index location: .moai/indexes/tags.db
+     ```
+
+4. **Verify TAG chain integrity**:
+   - Execute: `rg '@TAG' -n src/ tests/` (direct code scan)
+   - Store output in variable: `$TAG_SCAN_OUTPUT`
+   - Count TAGs by type:
+     - `@SPEC` TAGs: Count lines matching `@SPEC`
+     - `@CODE` TAGs: Count lines matching `@CODE`
+     - `@TEST` TAGs: Count lines matching `@TEST`
+     - `@DOC` TAGs: Count lines matching `@DOC`
+   - Print:
+     ```
+     🔗 TAG Chain Verification:
+     - @SPEC TAGs: [count]
+     - @CODE TAGs: [count]
+     - @TEST TAGs: [count]
+     - @DOC TAGs: [count]
+
+     TAG chain integrity: [PASS / ISSUES]
+     ```
+
+**Result**: TAG index updated and verified.
+
+**Next step**: Go to STEP 2.4
+
+---
+
+### STEP 2.4: SPEC Document Synchronization (CRITICAL)
+
+**Your task**: Ensure that SPEC documents are updated to match code changes.
+
+**Important note**: This step is CRITICAL. Any code changes MUST be reflected in SPEC documents to maintain specification alignment.
+
+**Steps**:
+
+1. **Analyze Git diff for functional changes**:
+   - Execute: `git diff HEAD --unified=3`
+   - Store output in variable: `$GIT_DIFF`
+   - Identify functional impacts:
+     - Function signature changes (parameters, return values)
+     - Behavior changes (logic flow, edge cases)
+     - Performance characteristics (latency, throughput)
+     - External dependencies (new APIs, services)
+
+2. **Determine which SPECs need updates**:
+   - Parse changed files from `$CHANGED_FILES`
+   - For each changed file in `src/`:
+     - Search for `@CODE:SPEC-{ID}` TAG in file
+     - Extract SPEC ID
+     - Add to list: `$SPECS_TO_UPDATE`
+   - Print:
+     ```
+     📋 SPEC Documents Requiring Synchronization:
+
+     $SPECS_TO_UPDATE (list of SPEC IDs)
+     ```
+
+3. **For each SPEC in $SPECS_TO_UPDATE**:
+
+   a. **Read current SPEC documents**:
+      - Read file: `.moai/specs/SPEC-{ID}/spec.md`
+      - Read file: `.moai/specs/SPEC-{ID}/plan.md`
+      - Read file: `.moai/specs/SPEC-{ID}/acceptance.md`
+
+   b. **Compare SPEC requirements with actual code implementation**:
+      - **Your task**: Verify each SPEC requirement matches code behavior
+      - Check:
+        - Do EARS statements match function signatures?
+        - Are acceptance criteria still valid?
+        - Were edge cases discovered during implementation?
+        - Did implementation strategy change from plan.md?
+
+   c. **Identify spec-to-code divergence**:
+      - IF divergence detected → Mark for update
+      - Store divergence details in variable: `$SPEC_DIVERGENCE`
+
+   d. **Update SPEC documents to match implementation**:
+      - **IF spec.md needs update**:
+        - Update EARS statements to match actual code behavior
+        - Add edge cases discovered during implementation
+        - Update @CODE TAG references if files moved
+      - **IF acceptance.md needs update**:
+        - Add new test cases for edge cases
+        - Update acceptance criteria for behavior changes
+        - Link with @TEST TAGs from test files
+      - **IF plan.md needs update**:
+        - Document implementation changes
+        - Explain deviations from original plan
+        - Update technical approach if changed
+
+   e. **Update SPEC metadata if implementation is complete**:
+      - Check if SPEC status is `draft`
+      - Check if RED → GREEN → REFACTOR commits exist
+      - Check if @TEST and @CODE TAGs exist
+      - **IF all conditions met**:
+        - Update: `status: draft` → `status: completed`
+        - Update: `version: 0.0.x` → `version: 0.1.0`
+        - Add HISTORY section with completion date
+
+4. **Verify SPEC-Code alignment**:
+   - For each updated SPEC:
+     - **Verify**: All EARS statements match implementation
+     - **Verify**: Acceptance criteria valid for current code
+     - **Verify**: @CODE/@TEST TAGs point to correct locations
+     - **Verify**: No spec-code divergence remains
+
+5. **Print SPEC synchronization results**:
+   ```
+   ✅ SPEC Document Synchronization Complete
+
+   SPECs updated: [count]
+
+   Details:
+   - SPEC-001: spec.md, acceptance.md updated (edge case added)
+   - SPEC-002: plan.md updated (implementation approach changed)
+   - SPEC-003: Status → completed (v0.1.0)
+
+   SPEC-Code alignment: VERIFIED
+   ```
+
+6. **IF no SPECs required updates**:
+   - Print:
+     ```
+     ℹ️ No SPEC updates needed
+
+     All SPEC documents are aligned with current code.
+     ```
+
+**Result**: SPEC documents synchronized with code. Specification alignment maintained.
+
+**Next step**: Go to STEP 2.5
+
+---
+
+### STEP 2.5: Domain-Based Sync Routing (Automatic)
+
+**Your task**: Route documentation sync to domain-specific experts based on changed file patterns.
+
+**Steps**:
+
+1. **Detect domains from changed files**:
+   - Read variable: `$CHANGED_FILES`
+   - Initialize empty array: `$DETECTED_DOMAINS`
+
+2. **Check for Frontend changes**:
+   - Search `$CHANGED_FILES` for patterns:
+     - `*.tsx`, `*.jsx`, `*.vue`
+     - `src/components/*`, `src/pages/*`
+   - IF any match found → Add "frontend" to `$DETECTED_DOMAINS`
+
+3. **Check for Backend changes**:
+   - Search `$CHANGED_FILES` for patterns:
+     - `src/api/*`, `src/models/*`, `src/routes/*`, `src/services/*`
+   - IF any match found → Add "backend" to `$DETECTED_DOMAINS`
+
+4. **Check for DevOps changes**:
+   - Search `$CHANGED_FILES` for patterns:
+     - `Dockerfile`, `docker-compose.yml`
+     - `.github/workflows/*`, `terraform/*`, `k8s/*`
+   - IF any match found → Add "devops" to `$DETECTED_DOMAINS`
+
+5. **Check for Database changes**:
+   - Search `$CHANGED_FILES` for patterns:
+     - `src/database/*`, `migrations/*`, `*.sql`, `schema/*`
+   - IF any match found → Add "database" to `$DETECTED_DOMAINS`
+
+6. **Check for Data Science changes**:
+   - Search `$CHANGED_FILES` for patterns:
+     - `notebooks/*`, `src/pipelines/*`, `*.ipynb`, `src/models/ml/*`
+   - IF any match found → Add "datascience" to `$DETECTED_DOMAINS`
+
+7. **Check for Mobile changes**:
+   - Search `$CHANGED_FILES` for patterns:
+     - `src/mobile/*`, `ios/*`, `android/*`, `*.swift`, `*.kt`
+   - IF any match found → Add "mobile" to `$DETECTED_DOMAINS`
+
+8. **IF no domains detected**:
+   - Print:
+     ```
+     ℹ️ No domain-specific sync needed
+
+     Using standard sync templates.
+     ```
+   - **Skip to STEP 2.6**
+
+9. **IF domains detected**:
+   - Print:
+     ```
+     🎯 Domain-specific sync routing activated
+
+     Detected domains: $DETECTED_DOMAINS
+
+     Generating domain-specific documentation...
+     ```
+
+10. **For each domain in $DETECTED_DOMAINS**:
+
+    **IF domain is "frontend"**:
+    - Invoke Explore agent:
+      - `subagent_type`: "Explore"
+      - `prompt`:
+        ```
+        Act as frontend-expert. Provide sync documentation.
+
+        Changed Files: [list frontend files from $CHANGED_FILES]
+
+        Provide frontend-specific documentation:
+        1. Component documentation updates
+        2. Storybook story generation (if applicable)
+        3. UI architecture diagram updates
+        4. Accessibility compliance notes
+        5. Component prop documentation
+
+        Output format: Markdown document
+        Save to: .moai/reports/sync-frontend-$TIMESTAMP.md
+        ```
+
+    **IF domain is "backend"**:
+    - Invoke Explore agent:
+      - `subagent_type`: "Explore"
+      - `prompt`:
+        ```
+        Act as backend-expert. Provide sync documentation.
+
+        Changed Files: [list backend files from $CHANGED_FILES]
+
+        Provide backend-specific documentation:
+        1. OpenAPI spec generation/updates
+        2. Schema documentation updates
+        3. Error handling documentation
+        4. API endpoint examples
+        5. Performance characteristics
+
+        Output format: Markdown document
+        Save to: .moai/reports/sync-backend-$TIMESTAMP.md
+        ```
+
+    **IF domain is "devops"**:
+    - Invoke Explore agent:
+      - `subagent_type`: "Explore"
+      - `prompt`:
+        ```
+        Act as devops-expert. Provide sync documentation.
+
+        Changed Files: [list devops files from $CHANGED_FILES]
+
+        Provide DevOps-specific documentation:
+        1. Deployment documentation updates
+        2. CI/CD pipeline changes
+        3. Infrastructure diagrams
+        4. Configuration management notes
+        5. Monitoring/alerting setup
+
+        Output format: Markdown document
+        Save to: .moai/reports/sync-devops-$TIMESTAMP.md
+        ```
+
+    **IF domain is "database"**:
+    - Invoke Explore agent:
+      - `subagent_type`: "Explore"
+      - `prompt`:
+        ```
+        Act as database-expert. Provide sync documentation.
+
+        Changed Files: [list database files from $CHANGED_FILES]
+
+        Provide database-specific documentation:
+        1. Schema documentation updates
+        2. Migration logs
+        3. Query optimization notes
+        4. Index strategies
+        5. Data integrity constraints
+
+        Output format: Markdown document
+        Save to: .moai/reports/sync-database-$TIMESTAMP.md
+        ```
+
+    **IF domain is "datascience"**:
+    - Invoke Explore agent:
+      - `subagent_type`: "Explore"
+      - `prompt`:
+        ```
+        Act as datascience-expert. Provide sync documentation.
+
+        Changed Files: [list data science files from $CHANGED_FILES]
+
+        Provide data science-specific documentation:
+        1. Pipeline documentation
+        2. Model cards (for ML models)
+        3. Data validation rules
+        4. Feature engineering notes
+        5. Experiment tracking
+
+        Output format: Markdown document
+        Save to: .moai/reports/sync-datascience-$TIMESTAMP.md
+        ```
+
+    **IF domain is "mobile"**:
+    - Invoke Explore agent:
+      - `subagent_type`: "Explore"
+      - `prompt`:
+        ```
+        Act as mobile-expert. Provide sync documentation.
+
+        Changed Files: [list mobile files from $CHANGED_FILES]
+
+        Provide mobile-specific documentation:
+        1. Platform-specific documentation (iOS/Android)
+        2. App lifecycle documentation
+        3. Native module documentation
+        4. Push notification setup
+        5. Deep linking configuration
+
+        Output format: Markdown document
+        Save to: .moai/reports/sync-mobile-$TIMESTAMP.md
+        ```
+
+11. **Wait for all domain-specific sync agents to complete**:
+    - Monitor each Explore agent execution
+    - Store results in array: `$DOMAIN_SYNC_RESULTS`
+
+12. **Create combined sync report**:
+    - **Your task**: Consolidate all domain-specific reports into master report
+    - Read all domain-specific report files
+    - Write combined report to: `.moai/reports/sync-report-$TIMESTAMP.md`
+    - Include sections:
+      - Changed Files Summary
+      - Domain-Specific Sync Results (with links to detailed reports)
+      - @TAG Verification
+      - Next Steps
+
+13. **Print domain sync summary**:
+    ```
+    ✅ Domain-specific sync complete
+
+    Domains processed:
+    - Frontend: [count] files → sync-frontend-$TIMESTAMP.md
+    - Backend: [count] files → sync-backend-$TIMESTAMP.md
+    - DevOps: [count] files → sync-devops-$TIMESTAMP.md
+
+    Combined report: sync-report-$TIMESTAMP.md
+    ```
+
+**Result**: Domain-specific documentation generated. Combined sync report created.
+
+**Next step**: Go to STEP 2.6
+
+---
+
+### STEP 2.6: Display Synchronization Completion Report
+
+**Your task**: Present comprehensive synchronization results to the user.
+
+**Steps**:
+
+1. **Read synchronization results**:
+   - Read file: `.moai/reports/sync-report-$TIMESTAMP.md`
+   - Store content in variable: `$SYNC_REPORT_CONTENT`
+
+2. **Calculate synchronization metrics**:
+   - Count updated files from `$SYNC_RESULTS`
+   - Count TAG repairs from `$TAG_VALIDATION_RESULTS`
+   - Count domain-specific reports from `$DETECTED_DOMAINS`
+
+3. **Print comprehensive completion report**:
+   ```
+   ═══════════════════════════════════════════════════════
+   ✅ Document Synchronization Complete
+   ═══════════════════════════════════════════════════════
+
+   📊 Synchronization Summary:
+   - Mode: $MODE
+   - Scope: $SYNC_SCOPE
+   - Files updated: [count]
+   - Files created: [count]
+   - TAG repairs: [count]
+
+   📚 Documents Updated:
+   - Living Documents: [list]
+   - SPEC documents: [list]
+   - Domain-specific reports: [count]
+
+   🔗 TAG System Status:
+   - @SPEC TAGs: [count]
+   - @CODE TAGs: [count]
+   - @TEST TAGs: [count]
+   - @DOC TAGs: [count]
+   - TAG chain integrity: [PASS / WARNING]
+
+   📄 Reports Generated:
+   - Master sync report: .moai/reports/sync-report-$TIMESTAMP.md
+   - Domain reports: [list if any]
+
+   💾 Backup Location:
+   - Safety backup: .moai-backups/sync-$TIMESTAMP/
+
+   ═══════════════════════════════════════════════════════
+   ```
+
+4. **IF TAG issues remain**:
+   - Print warning:
+     ```
+     ⚠️ Remaining TAG Issues:
+
+     The following issues could not be automatically resolved:
+     - Orphan @CODE TAGs: [list]
+     - Broken references: [list]
+
+     Manual review recommended.
+     ```
+
+5. **Print next step guidance**:
+   ```
+   🚀 Next Steps:
+
+   1. Review sync report: .moai/reports/sync-report-$TIMESTAMP.md
+   2. Commit changes: Git operations will be handled next
+   3. PR handling: [if Team mode] Ready for PR transition
+   ```
+
+**Result**: User informed of synchronization results. Ready for Git operations.
+
+**Next step**: Go to STEP 3.1
+
+---
+
+## 🔧 STEP 3: Git Operations & PR
+
+### STEP 3.1: Commit Document Changes
+
+**Your task**: Call git-manager agent to commit all document changes with proper commit message.
+
+**Steps**:
+
+1. **Prepare commit summary**:
+   - Read variable: `$SYNC_RESULTS`
+   - Create summary text:
+     ```
+     docs: sync documentation with code changes
+
+     Synchronized Living Documents:
+     - [list from $SYNC_RESULTS]
+
+     TAG system updates:
+     - [TAG repair count] repairs
+     - TAG index updated
+
+     SPEC synchronization:
+     - [SPEC update count] SPECs updated
+
+     Domain-specific sync:
+     - [domain list if applicable]
+
+     🤖 Generated with Claude Code
+
+     Co-Authored-By: 🦄 Alfred@MoAI
+     ```
+   - Store in variable: `$COMMIT_MESSAGE`
+
+2. **Invoke git-manager agent for commit**:
+   - **Your task**: Call git-manager to commit document changes
+   - Use Task tool:
+     - `subagent_type`: "git-manager"
+     - `description`: "Commit document synchronization changes"
+     - `prompt`:
+       ```
+       당신은 git-manager 에이전트입니다.
+
+       **작업**: 문서 동기화 변경사항을 Git 커밋으로 저장하세요.
+
+       **커밋 범위**:
+       - 변경된 모든 문서 파일
+       - .moai/reports/ 디렉토리
+       - .moai/indexes/ 디렉토리 (if changed)
+       - README.md (if changed)
+       - docs/ 디렉토리 (if changed)
+
+       **커밋 메시지**:
+       $COMMIT_MESSAGE
+
+       **중요**:
+       - HEREDOC 형식으로 커밋 메시지 전달
+       - 모든 변경사항을 하나의 커밋으로 묶기
+       - 커밋 후 성공 여부 보고
+
+       **실행 순서**:
+       1. git add (변경된 문서 파일들)
+       2. git commit -m (HEREDOC)
+       3. git log -1 (커밋 확인)
+       ```
+
+3. **Wait for git-manager response**:
+   - Store response in variable: `$GIT_COMMIT_RESULT`
+
+4. **Verify commit success**:
+   - Execute: `git log -1 --oneline`
+   - Store output in variable: `$LAST_COMMIT`
+   - Print:
+     ```
+     ✅ Document changes committed
+
+     Commit: $LAST_COMMIT
+     ```
+
+5. **IF commit failed**:
+   - Print error:
+     ```
+     ❌ Error: Git commit failed
+
+     git-manager reported an issue.
+     Check git status and resolve conflicts if any.
+
+     You can retry commit manually:
+     git add .moai/reports/ docs/ README.md
+     git commit -m "docs: sync documentation"
+     ```
+   - **STOP HERE** → Exit with error code
+
+**Result**: Document changes committed to Git history.
+
+**Next step**: Go to STEP 3.2
+
+---
+
+### STEP 3.2: (Optional) PR Ready Transition
+
+**Your task**: Transition PR from Draft to Ready for Review (Team mode only).
+
+**Decision point**:
+
+1. **Check if PR transition is needed**:
+   - Read variable: `$PROJECT_MODE`
+   - IF `$PROJECT_MODE != "Team"` → Skip this step:
+     ```
+     ℹ️ PR transition skipped (Personal mode)
+     ```
+   - **Next step**: Go to STEP 3.5 (skip auto-merge)
+
+2. **IF Team mode**:
+   - Continue to PR transition
+
+3. **Check if gh CLI is available**:
+   - Execute: `which gh`
+   - IF gh NOT found → Print warning and skip:
+     ```
+     ⚠️ Warning: GitHub CLI (gh) not found
+
+     PR transition skipped.
+     To enable PR features, install gh CLI:
+     https://cli.github.com/
+     ```
+   - **Next step**: Go to STEP 3.5
+
+4. **Get current PR number**:
+   - Execute: `gh pr view --json number -q '.number'`
+   - Store result in variable: `$PR_NUMBER`
+   - IF command fails → Print info and skip:
+     ```
+     ℹ️ No PR found for current branch
+
+     Skipping PR transition.
+     You can create a PR manually with: gh pr create
+     ```
+   - **Next step**: Go to STEP 3.5
+
+5. **Get current PR status**:
+   - Execute: `gh pr view $PR_NUMBER --json isDraft -q '.isDraft'`
+   - Store result in variable: `$IS_DRAFT`
+
+6. **IF PR is already Ready** (`$IS_DRAFT = false`):
+   - Print:
+     ```
+     ℹ️ PR already in Ready state
+
+     PR #$PR_NUMBER: Ready for Review
+     ```
+   - **Next step**: Go to STEP 3.3 (check auto-merge)
+
+7. **IF PR is Draft** (`$IS_DRAFT = true`):
+   - Transition PR to Ready:
+     - Execute: `gh pr ready $PR_NUMBER`
+     - Store exit code in variable: `$PR_READY_EXIT`
+
+8. **Verify PR transition success**:
+   - IF `$PR_READY_EXIT != 0` → Print error:
+     ```
+     ❌ Error: PR transition failed
+
+     Unable to transition PR #$PR_NUMBER to Ready.
+     Check PR status manually: gh pr view $PR_NUMBER
+     ```
+   - ELSE → Print success:
+     ```
+     ✅ PR transitioned to Ready for Review
+
+     PR #$PR_NUMBER: Ready for Review
+
+     View PR: gh pr view $PR_NUMBER --web
+     ```
+
+9. **Assign reviewers** (if configured):
+   - Read `.moai/config.json` → Extract `github.reviewers`
+   - IF reviewers configured:
+     - Execute: `gh pr edit $PR_NUMBER --add-reviewer [reviewer-list]`
+
+10. **Add labels** (if configured):
+    - Read `.moai/config.json` → Extract `github.pr_labels`
+    - IF labels configured:
+      - Execute: `gh pr edit $PR_NUMBER --add-label [label-list]`
+
+**Result**: PR transitioned to Ready for Review (Team mode only).
+
+**Next step**: Go to STEP 3.3
+
+---
+
+### STEP 3.3: (Optional) PR Auto-Merge
+
+**Your task**: Automatically merge PR and clean up branch (if --auto-merge flag is set).
+
+**Decision point**:
+
+1. **Check if auto-merge is requested**:
+   - Read variable: `$AUTO_MERGE`
+   - IF `$AUTO_MERGE = false` → Skip this step:
+     ```
+     ℹ️ Auto-merge not requested
+
+     PR is Ready for manual review and merge.
+     ```
+   - **Next step**: Go to STEP 3.5
+
+2. **IF auto-merge requested** (`$AUTO_MERGE = true`):
+   - Print:
+     ```
+     🤖 Auto-merge activated
+
+     Checking PR status and CI/CD...
+     ```
+
+3. **Check CI/CD status**:
+   - Execute: `gh pr checks $PR_NUMBER`
+   - Store exit code in variable: `$CI_STATUS`
+   - IF `$CI_STATUS != 0` → Print error and abort:
+     ```
+     ❌ Error: CI/CD checks not passing
+
+     Cannot auto-merge PR #$PR_NUMBER
+
+     Check CI/CD status: gh pr checks $PR_NUMBER
+
+     Please wait for checks to pass or merge manually.
+     ```
+   - **STOP HERE** → Go to STEP 3.5
+
+4. **Check for merge conflicts**:
+   - Execute: `gh pr view $PR_NUMBER --json mergeable -q '.mergeable'`
+   - Store result in variable: `$MERGEABLE`
+   - IF `$MERGEABLE != "MERGEABLE"` → Print error and abort:
+     ```
+     ❌ Error: PR has merge conflicts
+
+     Cannot auto-merge PR #$PR_NUMBER
+
+     Resolve conflicts manually:
+     git fetch origin develop
+     git merge origin/develop
+     ```
+   - **STOP HERE** → Go to STEP 3.5
+
+5. **Execute auto-merge**:
+   - Print:
+     ```
+     🚀 Merging PR #$PR_NUMBER...
+     ```
+   - Execute: `gh pr merge $PR_NUMBER --squash --delete-branch`
+   - Store exit code in variable: `$MERGE_EXIT`
+
+6. **Verify merge success**:
+   - IF `$MERGE_EXIT != 0` → Print error:
+     ```
+     ❌ Error: PR merge failed
+
+     Auto-merge encountered an issue.
+     Merge manually: gh pr merge $PR_NUMBER --squash
+     ```
+   - ELSE → Print success:
+     ```
+     ✅ PR merged successfully
+
+     PR #$PR_NUMBER: Merged to develop
+     Remote feature branch: Deleted
+     ```
+
+**Result**: PR merged and remote branch deleted (if auto-merge succeeded).
+
+**Next step**: Go to STEP 3.4
+
+---
+
+### STEP 3.4: (Optional) Branch Cleanup
+
+**Your task**: Clean up local branches and checkout develop branch (if auto-merge succeeded).
+
+**Decision point**:
+
+1. **Check if branch cleanup is needed**:
+   - Read variable: `$MERGE_EXIT`
+   - IF `$MERGE_EXIT != 0` OR `$AUTO_MERGE = false` → Skip cleanup:
+     ```
+     ℹ️ Branch cleanup skipped
+     ```
+   - **Next step**: Go to STEP 3.5
+
+2. **IF merge succeeded**:
+   - Continue to branch cleanup
+
+3. **Get current branch name**:
+   - Execute: `git rev-parse --abbrev-ref HEAD`
+   - Store result in variable: `$CURRENT_BRANCH`
+
+4. **Checkout develop branch**:
+   - Execute: `git checkout develop`
+   - Store exit code in variable: `$CHECKOUT_EXIT`
+   - IF `$CHECKOUT_EXIT != 0` → Print error:
+     ```
+     ⚠️ Warning: Could not checkout develop
+
+     Staying on current branch: $CURRENT_BRANCH
+     ```
+   - ELSE → Print:
+     ```
+     ✅ Checked out develop branch
+     ```
+
+5. **Synchronize with remote**:
+   - Execute: `git pull origin develop`
+   - Print:
+     ```
+     ✅ Develop branch synchronized with remote
+     ```
+
+6. **Delete local feature branch**:
+   - Execute: `git branch -d $CURRENT_BRANCH`
+   - Store exit code in variable: `$DELETE_EXIT`
+   - IF `$DELETE_EXIT != 0` → Print warning:
+     ```
+     ⚠️ Warning: Could not delete local branch
+
+     Branch: $CURRENT_BRANCH
+
+     Delete manually if needed: git branch -D $CURRENT_BRANCH
+     ```
+   - ELSE → Print:
+     ```
+     ✅ Local feature branch deleted
+
+     Branch: $CURRENT_BRANCH
+     ```
+
+7. **Check for auto-delete-branches config**:
+   - Read `.moai/config.json` → Extract `github.auto_delete_branches`
+   - IF configured as `true`:
+     - Print:
+       ```
+       ℹ️ Remote branch already deleted by auto-merge
+       ```
+
+8. **Print branch cleanup summary**:
+   ```
+   🧹 Branch Cleanup Complete
+
+   - Current branch: develop
+   - Deleted local branch: $CURRENT_BRANCH
+   - Remote branch: Deleted
+
+   🎉 Ready for next feature!
+
+   Start next work with: /alfred:1-plan "feature description"
+   ```
+
+**Result**: Branches cleaned up. Repository ready for next development cycle.
+
+**Next step**: Go to STEP 3.5
+
+---
+
+### STEP 3.5: Display Completion Report & Next Steps
+
+**Your task**: Present final completion report and ask user what to do next.
+
+**Steps**:
+
+1. **Determine workflow completion status**:
+   - Read variables: `$PROJECT_MODE`, `$AUTO_MERGE`, `$MERGE_EXIT`
+   - Determine completion type:
+     - IF `$AUTO_MERGE = true` AND `$MERGE_EXIT = 0` → Status: "Full Auto-Merge Complete"
+     - ELSE IF `$PROJECT_MODE = "Team"` → Status: "PR Ready for Review"
+     - ELSE → Status: "Personal Mode Checkpoint"
+
+2. **Print final completion report**:
+
+   **IF Full Auto-Merge Complete**:
+   ```
+   ═══════════════════════════════════════════════════════
+   🎉 MoAI-ADK Workflow Complete (Full Auto-Merge)
+   ═══════════════════════════════════════════════════════
+
+   ✅ Completed Steps:
+   1. Document synchronization
+   2. TAG system verification
+   3. Git commit
+   4. PR merge to develop
+   5. Branch cleanup
+
+   📍 Current Status:
+   - Branch: develop
+   - PR #$PR_NUMBER: Merged
+   - Local feature branch: Deleted
+   - Remote feature branch: Deleted
+
+   🚀 Ready for next feature!
+
+   ═══════════════════════════════════════════════════════
+   ```
+
+   **IF PR Ready for Review**:
+   ```
+   ═══════════════════════════════════════════════════════
+   ✅ MoAI-ADK Workflow Complete (PR Ready)
+   ═══════════════════════════════════════════════════════
+
+   ✅ Completed Steps:
+   1. Document synchronization
+   2. TAG system verification
+   3. Git commit
+   4. PR transition to Ready
+
+   📍 Current Status:
+   - PR #$PR_NUMBER: Ready for Review
+   - Branch: $CURRENT_BRANCH
+
+   ⏳ Next Steps:
+   - Review PR: gh pr view $PR_NUMBER --web
+   - Merge after approval: gh pr merge $PR_NUMBER --squash
+
+   ═══════════════════════════════════════════════════════
+   ```
+
+   **IF Personal Mode**:
+   ```
+   ═══════════════════════════════════════════════════════
+   ✅ Document Synchronization Complete (Personal Mode)
+   ═══════════════════════════════════════════════════════
+
+   ✅ Completed Steps:
+   1. Document synchronization
+   2. TAG system verification
+   3. Git commit (checkpoint)
+
+   📍 Current Status:
+   - Branch: $CURRENT_BRANCH
+   - Changes committed locally
+
+   💡 Personal mode workflow:
+   - Continue development on current branch
+   - OR merge to main manually when ready
+
+   ═══════════════════════════════════════════════════════
+   ```
+
+3. **Ask user for next action using AskUserQuestion**:
+   - **Your task**: Use the AskUserQuestion tool to gather user's next step
+   - Tool call:
+     - `questions`: Array with 1 question
+     - Question details:
+       - `question`: "Documentation synchronization complete. What would you like to do next?"
+       - `header`: "Next Steps"
+       - `multiSelect`: false
+       - `options`: Array with 3 choices (context-dependent):
+
+         **IF auto-merge completed**:
+         1. Label: "📋 Create Next SPEC", Description: "Start new feature planning with /alfred:1-plan"
+         2. Label: "🔄 Start New Session", Description: "Execute /clear for fresh session (recommended for performance)"
+         3. Label: "🎯 Project Overview", Description: "Review project status and documentation"
+
+         **IF PR Ready (not auto-merged)**:
+         1. Label: "📋 Create Next SPEC", Description: "Start new feature planning with /alfred:1-plan"
+         2. Label: "📤 Review PR", Description: "View PR and prepare for manual merge"
+         3. Label: "🔄 Start New Session", Description: "Execute /clear for fresh session (recommended for performance)"
+
+         **IF Personal Mode**:
+         1. Label: "📋 Create Next SPEC", Description: "Start new feature planning with /alfred:1-plan"
+         2. Label: "🔧 Continue Development", Description: "Keep working on current branch"
+         3. Label: "🔄 Start New Session", Description: "Execute /clear for fresh session (recommended for performance)"
+
+4. **Wait for user response**:
+   - Store response in variable: `$NEXT_ACTION`
+   - Read value from: `$NEXT_ACTION["0"]`
+
+5. **Process user response**:
+
+   **IF user chose "📋 Create Next SPEC"**:
+   - Print:
+     ```
+     🚀 Ready to start next feature
+
+     Use: /alfred:1-plan "feature description"
+
+     This will create a new SPEC and start a new development cycle.
+     ```
+
+   **IF user chose "🔄 Start New Session"**:
+   - Print:
+     ```
+     🔄 Starting fresh session
+
+     Recommendation: Use /clear or /new command to reset context.
+
+     This improves performance for the next development cycle.
+     ```
+
+   **IF user chose "📤 Review PR"** (Team mode):
+   - Print:
+     ```
+     📤 Opening PR for review
+
+     PR #$PR_NUMBER: Ready for Review
+
+     View in browser: gh pr view $PR_NUMBER --web
+
+     After approval, merge with: gh pr merge $PR_NUMBER --squash
+     ```
+
+   **IF user chose "🔧 Continue Development"** (Personal mode):
+   - Print:
+     ```
+     🔧 Continuing development
+
+     Current branch: $CURRENT_BRANCH
+
+     Your changes are committed. Continue implementing features.
+     ```
+
+   **IF user chose "🎯 Project Overview"**:
+   - Print:
+     ```
+     🎯 Project Overview
+
+     Sync reports: .moai/reports/
+     SPEC documents: .moai/specs/
+     TAG index: .moai/indexes/tags.db
+
+     Quick status check: /alfred:3-sync status
+     ```
+
+6. **Print final message**:
+   ```
+   ✨ Thank you for using MoAI-ADK!
+
+   For more information:
+   - Skill("moai-alfred-dev-guide")
+   - CLAUDE.md in project root
+   ```
+
+**Result**: User informed of completion. Next action suggested.
+
+**Next step**: Command complete. Exit.
+
+---
+
+## 🚨 STEP 4: Graceful Exit (User Aborted or Modified)
+
+**Your task**: Handle user abortion or modification requests gracefully.
+
+**This step is reached when**:
+- User chose "❌ Abort" in STEP 1.6
+- User chose "🔄 Request Modifications" in STEP 1.6
+
+**Steps**:
+
+1. **Read user decision**:
+   - Read variable: `$USER_DECISION["0"]`
+
+2. **IF user chose "❌ Abort"**:
+   - Print abort message:
+     ```
+     ═══════════════════════════════════════════════════════
+     ❌ Synchronization Aborted
+     ═══════════════════════════════════════════════════════
+
+     No changes were made to:
+     - Documents
+     - Git history
+     - Branch state
+
+     Your project remains in its current state.
+
+     You can retry synchronization anytime with:
+     /alfred:3-sync [mode]
+
+     ═══════════════════════════════════════════════════════
+     ```
+   - **Exit command** with exit code 0
+
+3. **IF user chose "🔄 Request Modifications"**:
+   - Print:
+     ```
+     🔄 Re-analyzing with modifications...
+     ```
+   - **Go back to STEP 1.5** with `$MODIFICATION_REQUEST` applied
+
+**Result**: Command exits gracefully or re-runs analysis.
+
+**Next step**: Exit or STEP 1.5
+
+---
+
+## 📚 Mode-Specific Execution Summary
+
+### Auto Mode (default)
+
+**Command**: `/alfred:3-sync` or `/alfred:3-sync auto`
+
+**Behavior**:
+- Smart selective synchronization based on Git changes
+- Only changed files and related documents are updated
+- Quick execution for daily workflow
+- PR Ready transition in Team mode
+
+**Best for**: Daily development workflow
+
+---
+
+### Force Mode
+
+**Command**: `/alfred:3-sync force`
+
+**Behavior**:
+- Full project re-synchronization
+- All documents regenerated
+- All TAG chains re-verified
+- Longer execution time
+
+**Best for**: Error recovery, major refactoring, periodic full sync
+
+---
+
+### Status Mode
+
+**Command**: `/alfred:3-sync status`
+
+**Behavior**:
+- Quick status check only
+- No synchronization performed
+- Reports TAG system health
+- Lists changed files since last sync
+
+**Best for**: Quick health check before starting work
+
+---
+
+### Project Mode
+
+**Command**: `/alfred:3-sync project`
+
+**Behavior**:
+- Integrated project-wide synchronization
+- README.md updated with full feature list
+- docs/architecture.md updated
+- docs/api/ unified
+- .moai/indexes/ rebuilt
+
+**Best for**: Milestone completion, periodic integrated sync
+
+---
+
+## 🏗️ Agent Collaboration Architecture
+
+### Separation of Concerns
+
+**doc-syncer Agent** (STEP 2):
 - Living Document synchronization
-- @TAG system verification and update
-- Document-code consistency check
-- TAG traceability matrix update
+- @TAG system updates
+- SPEC-Code alignment
+- Domain-specific routing
+- Sync report generation
 
-### Phase 3: Git task processing (sequential execution)
+**git-manager Agent** (STEP 3):
+- Git commit operations
+- PR status transitions
+- PR auto-merge (if requested)
+- Branch cleanup
+- GitHub CLI integration
 
-Final processing by the `git-manager` agent (haiku):
-
-- Commit document changes
-- Apply synchronization strategy for each mode
-- Switch PR Ready in Team mode
-- Automatically assign reviewers (using gh CLI)
-
-### Phase 4: PR merge and branch cleanup (optional)
-
-Additional processing by `git-manager` when using the `--auto-merge` flag:
-
-**Team mode (GitFlow)**:
-1. Check PR status (CI/CD pass check)
-2. PR automatic merge (to develop branch)
-3. Delete remote feature branch
-4. Local develop checkout and synchronization
-5. Organizing local feature branches
-6. Notification that the next task is ready
-
-**Personal Mode**:
-1. Local main/develop merge
-2. Delete feature branch
-3. Check out the base branch
-4. Notification that the next task is ready
-
-**Performance improvements**: Minimize latency by parallelizing the initial verification step
-
-### Argument handling
-
-- **$1 (mode)**: `$1` → `auto` (default)|`force`|`status`|`project`
-- **$2 (path)**: `$2` → Sync target path (optional)
-- **flags**:
- - `--auto-merge`: Enable PR automatic merge and branch cleanup (Team mode)
- - `--skip-pre-check`: Skip pre-quality check
- - `--skip-quality-check`: Skip final quality check
-
-**Command usage example**:
-- `/alfred:3-sync` - Basic automatic synchronization (optimized by mode)
-- `/alfred:3-sync --auto-merge` - PR automatic merge + branch cleanup (Team mode recommended)
-- `/alfred:3-sync force` - Force full synchronization
-- `/alfred:3-sync status` - Check synchronization status
-- `/alfred:3-sync project` - Integrated project synchronization
-- `/alfred:3-sync auto src/auth/` - Specific path Synchronization
-- `/alfred:3-sync --auto-merge --skip-pre-check` - Fast merge
-
-### Agent role separation
-
-#### doc-syncer dedicated area
-
-- Living Document synchronization (code ↔ document)
-- @TAG system verification and update
-- Automatic creation/update of API document
-- README and architecture document synchronization
-- Verification of document-code consistency
-
-#### git-manager dedicated area
-
-- All Git commit operations (add, commit, push)
-- Apply synchronization strategy for each mode
-- PR status transition (Draft → Ready)
-- **PR auto merge** (when --auto-merge flag)
- - Check CI/CD status
- - Conflict verification
- - Execute Squash merge
-  - Remote branch deletion
-- **Branch cleanup and conversion**
- - Local develop checkout
- - Remote synchronization (git pull)
- - Local feature branch deletion
-- Automatic assignment and labeling of reviewers
-- GitHub CLI integration and remote synchronization
-
-### 🧪 Personal Mode
-
-- The git-manager agent automatically creates checkpoints before and after synchronization
-- The README, in-depth documentation, and PR body are organized manually according to the checklist.
-
-### 🏢 Team Mode
-
-- Full synchronization of Living Document + @TAG verification/correction
-- Optionally perform PR Ready conversion and labeling only when gh CLI is set
-- Fully automated when using **--auto-merge flag**:
- 1. Document synchronization complete.
-  2. git push origin feature/SPEC-{ID}
-  3. gh pr ready {PR_NUMBER}
-4. Check CI/CD status (gh pr checks)
-  5. gh pr merge --squash --delete-branch
-  6. git checkout develop && git pull origin develop
-7. Notification that the next task is ready
-
-**Important**: All Git operations (commit, sync, PR management) are handled by the git-manager agent, so this command does not run Git operations directly.
-
-**Branch Policy**:
-- Base branch: `develop` (GitFlow standard)
-- After merge: automatically checkout `develop`
-- Next `/alfred:1-plan` automatically starts in `develop`
-
-## Synchronization Details (Summary)
-
-1. Project analysis and TAG verification → Check broken/duplicate/orphaned TAG
-2. Code ↔ Document synchronization → API/README/architecture document update, SPEC ↔ Code TODO synchronization
-3. TAG chain verification → `rg '@TAG' -n src/ tests/` (scan code directly)
-
-## Next steps
-
-**Recommendation**: For better performance and context management, start a new chat session with the `/clear` or `/new` command before proceeding to the next step.
-
-- The entire MoAI-ADK workflow is completed after document synchronization is completed
-- All Git operations are dedicated to the git-manager agent to ensure consistency
-- Only command-level orchestration is used without direct calls between agents
-
-## Report results
-
-Report synchronization results in a structured format:
-
-### Successful synchronization (summary example)
-
-✅ Document synchronization complete — Update N, Create M, TAG Modify K, Verification passed
-
-### Partial synchronization (problem detected)
-
-```
-⚠️ Partial sync completed (issue found)
-
-❌ Problems that need solving:
-├── Broken links: X (specific list)
-├── Duplicate TAG: X
-└── Orphan TAG: X
-
-🛠️ Auto-correction recommendations:
-1. Broken link recovery
-2. Merge duplicate TAGs
-3. Orphan TAG cleanup
-```
-
-## 🎯 PR Merge Strategy Selection (DECISION POINT 2)
-
-After document synchronization completes successfully, Alfred checks team mode and invokes AskUserQuestion for PR merge strategy:
-
-```python
-AskUserQuestion(
-    questions=[
-        {
-            "question": "Document synchronization complete. How would you like to handle the PR?",
-            "header": "PR Merge Strategy",
-            "multiSelect": false,
-            "options": [
-                {
-                    "label": "🤖 Auto-Merge (Recommended)",
-                    "description": "Automatically merge PR and clean up branch (team mode)"
-                },
-                {
-                    "label": "📋 Manual Review",
-                    "description": "Keep PR in Ready state for manual review and merge"
-                },
-                {
-                    "label": "✏️ Keep as Draft",
-                    "description": "Maintain PR in draft state for further refinement"
-                },
-                {
-                    "label": "🔄 New Cycle",
-                    "description": "Save changes and start new feature (skip PR for now)"
-                }
-            ]
-        }
-    ]
-)
-```
-
-**Response Processing**:
-- **🤖 Auto-Merge** (`answers["0"] === "Auto-Merge"`) → Execute PR auto-merge with CI checks, update develop branch
-- **📋 Manual Review** (`answers["0"] === "Manual"`) → Transition PR to Ready state, notify reviewers
-- **✏️ Keep as Draft** (`answers["0"] === "Draft"`) → Leave PR in draft, ready for refinement
-- **🔄 New Cycle** (`answers["0"] === "New"`) → Skip PR handling, proceed to next feature planning
+**Single Responsibility Principle**:
+- doc-syncer does NOT touch Git
+- git-manager does NOT touch documents
+- Clear handoff between STEP 2 and STEP 3
 
 ---
 
-## Final Step
+## 🔗 TAG System Verification
 
-After PR strategy is confirmed, Alfred invokes AskUserQuestion to ask the user what to do next:
+### Direct Code Scanning
 
-```python
-AskUserQuestion(
-    questions=[
-        {
-            "question": "Documentation synchronization complete. What would you like to do next?",
-            "header": "Next Steps",
-            "multiSelect": false,
-            "options": [
-                {
-                    "label": "📋 Create Next SPEC",
-                    "description": "Start new feature planning with /alfred:1-plan"
-                },
-                {
-                    "label": "📤 Merge PR",
-                    "description": "Review and merge PR to develop branch"
-                },
-                {
-                    "label": "🔄 Start New Session",
-                    "description": "Execute /clear for fresh session (recommended for performance)"
-                }
-            ]
-        }
-    ]
-)
-```
+**Method**: `rg '@TAG' -n src/ tests/`
 
-**User Responses**:
-- **📋 Create Next SPEC**: Proceed to `/alfred:1-plan` for creating next SPEC
-- **📤 Merge PR**: Manual PR review and merge on GitHub
-- **🔄 Start New Session**: Execute `/clear` to start fresh session (recommended for performance)
+**Why**: Direct code scanning ensures accurate TAG counting without relying on index files.
+
+**Verification points**:
+- @SPEC TAG locations (.moai/specs/)
+- @TEST TAG locations (tests/)
+- @CODE TAG locations (src/)
+- @DOC TAG locations (docs/)
+
+**Integrity checks**:
+- Orphan @CODE TAGs (no matching @SPEC)
+- Orphan @SPEC TAGs (no matching @CODE)
+- Broken references
+- Duplicate TAGs
 
 ---
 
-## Next steps guidance
+## 🎯 Integration with MoAI-ADK Workflow
 
-### Development cycle complete
+### 4-Step Workflow Position
 
-**Default mode (PR Ready only)**:
-```
-🔄 MoAI-ADK 3-step workflow completion:
-✅ /alfred:1-plan → Create EARS specification (feature/SPEC-{ID} branch)
-✅ /alfred:2-run → TDD implementation
-✅ /alfred:3-sync → Document synchronization + PR Ready
+This command is **STEP 4** (Report & Commit):
 
-⏳ Next steps: PR review and manual merge required
-> gh pr view (check PR)
-> gh pr merge --squash (merge after review)
-```
+1. **/alfred:1-plan** → SPEC creation
+2. **/alfred:2-run** → TDD implementation
+3. **/alfred:3-sync** → **Document sync + PR (this command)**
+4. Cycle complete → Start new SPEC
 
-**Auto Merge Mode (Recommended)**:
-```
-🔄 Fully automated GitFlow workflow:
-✅ /alfred:1-plan → EARS specification creation (from develop)
-✅ /alfred:2-run → TDD implementation
-✅ /alfred:3-sync --auto-merge → Document synchronization + PR Merge + branch cleanup
+### Conditional Report Generation
 
-🎉 Automatic switch to develop branch done!
-📍 You are here: develop (ready for next work)
-> /alfred:1-plan "Describe next feature" # Create new branch in develop
-```
+**Follows CLAUDE.md guidance**:
+- Reports generated ONLY when explicitly requested
+- Sync report is REQUIRED (always generated)
+- Domain-specific reports OPTIONAL (only if domains detected)
 
-### Integrated project mode
+---
 
-**When to use**:
-- When the implementation of multiple SPECs has been completed and the entire project documentation needs to be updated
-- When periodic synchronization of the entire document in Personal mode is required.
+## ⚙️ Environment Dependencies
 
-**Differences from Personal/Team mode**:
-- **Personal/Team mode**: Synchronize only specific SPEC-related documents
-- **Project mode**: Synchronize README, architecture documentation, and entire API documentation
-
-**Output**:
-- README.md (updated complete feature list)
-- docs/architecture.md (updated system design)
-- docs/api/ (unified API documentation)
-- .moai/indexes/ (rebuilt full TAG index)
-
-```
-🏢 Integrated branch sync complete!
-
-📋 Entire project synchronization:
-├── README.md (full feature list)
-├── docs/architecture.md (system design)
-├── docs/api/ (unified API documentation)
-└── .moai/indexes/ (full TAG index)
-
-🎯 PR conversion support completed
-```
-
-## Constraints and Assumptions
-
-**Environment Dependency:**
-
-- Git repository required
-- gh CLI (required for GitHub integration)
-- Python3 (TAG verification script)
-
-**Prerequisites:**
-
+**Required**:
+- Git repository
 - MoAI-ADK project structure (.moai/, .claude/)
-- TDD implementation completion status
-- Compliance with TRUST 5 principles
+- Python3 (for TAG verification scripts)
 
-**Limitations:**
+**Optional**:
+- gh CLI (for GitHub PR integration)
+- Domain-specific experts (for domain routing)
 
-- TAG verification is based on file existence
-- PR automatic conversion only works in gh CLI environment
-- Coverage figures need to be measured separately
-
----
-
-## 🧠 Context Management
-
-> For more information: Skill("moai-alfred-dev-guide") - see section "Context Engineering"
-
-### Core strategy of this command
-
-**Load first**: `.moai/reports/sync-report-latest.md` (old sync state)
-
-**Recommendation**: Document synchronization is complete. Now that the entire MoAI-ADK cycle (1-spec → 2-build → 3-sync) has been completed, start a new conversation session with the `/clear` or `/new` command before developing the next feature.
+**Graceful degradation**:
+- Works without gh CLI (skips PR features)
+- Works without Python3 (limited TAG checks)
+- Works without domain experts (uses generic templates)
 
 ---
 
-**Aims to improve code-document consistency and ensure @TAG traceability by linking with the doc-syncer subagent.**
+## 🎓 Best Practices
+
+### When to Use Each Mode
+
+**Use auto mode** (default):
+- Daily development workflow
+- Single SPEC implementation complete
+- Quick sync after code changes
+
+**Use force mode**:
+- After major refactoring
+- Error recovery (TAG system broken)
+- Periodic full re-sync (weekly/monthly)
+
+**Use status mode**:
+- Before starting work (health check)
+- Quick overview of sync needs
+- No changes to files
+
+**Use project mode**:
+- Milestone completion
+- Release preparation
+- Integrated documentation update
+
+### Performance Tips
+
+**Use --auto-merge for fast iteration**:
+- Automatically merges PR
+- Cleans up branches
+- Returns to develop
+- Ready for next /alfred:1-plan immediately
+
+**Start new session after sync**:
+- Use /clear or /new command
+- Reduces context size
+- Improves performance for next cycle
+
+---
+
+## 🔍 Troubleshooting
+
+### TAG Verification Issues
+
+**Problem**: Orphan TAGs detected
+
+**Solution**:
+1. Review sync report: `.moai/reports/sync-report-latest.md`
+2. Manually fix orphan TAGs in code
+3. Re-run: `/alfred:3-sync force`
+
+### PR Transition Failed
+
+**Problem**: gh CLI error
+
+**Solution**:
+1. Check gh authentication: `gh auth status`
+2. Verify PR exists: `gh pr view`
+3. Manual transition: `gh pr ready [PR_NUMBER]`
+
+### Merge Conflicts
+
+**Problem**: Cannot auto-merge due to conflicts
+
+**Solution**:
+1. Fetch latest: `git fetch origin develop`
+2. Merge develop: `git merge origin/develop`
+3. Resolve conflicts
+4. Re-run: `/alfred:3-sync`
+
+---
+
+## 📖 Related Documentation
+
+**Skills**:
+- `Skill("moai-alfred-tag-scanning")` - TAG system details
+- `Skill("moai-alfred-git-workflow")` - Git operations
+- `Skill("moai-alfred-trust-validation")` - Quality gates
+- `Skill("moai-alfred-ask-user-questions")` - TUI interactions
+
+**Workflows**:
+- CLAUDE.md - Alfred 4-step workflow
+- `.moai/docs/workflows/alfred-3-sync.md` - Detailed workflow
+
+**Configuration**:
+- `.moai/config.json` - Project settings
+- `.claude/settings.json` - Claude Code settings
+
+---
+
+**Version**: 3.0.0 (Fully Imperative)
+**Last Updated**: 2025-01-04
+**Pattern**: Pure command-driven, zero Python pseudo-code, step-by-step execution flow

@@ -6,7 +6,7 @@
 > **Project Owner**: {{PROJECT_OWNER}}
 > **Config**: `.moai/config.json`
 >
-> **Note**: `Skill("moai-alfred-interactive-questions")` provides TUI-based responses when user interaction is needed. The skill loads on-demand.
+> **Note**: `Skill("moai-alfred-ask-user-questions")` provides TUI-based responses when user interaction is needed. The skill loads on-demand.
 
 ---
 
@@ -41,8 +41,16 @@ Alfred follows a systematic **4-step workflow** for all user requests to ensure 
 - **Action**: Evaluate request clarity
   - **HIGH clarity**: Technical stack, requirements, scope all specified → Skip to Step 2
   - **MEDIUM/LOW clarity**: Multiple interpretations possible, business/UX decisions needed → Invoke `AskUserQuestion`
-- **AskUserQuestion Usage**:
-  - Present 3-5 options (not open-ended questions)
+- **AskUserQuestion Usage** (CRITICAL - NO EMOJIS):
+  - **ALWAYS invoke** `Skill("moai-alfred-ask-user-questions")` before using AskUserQuestion for up-to-date best practices
+  - **❌ CRITICAL: NEVER use emojis in ANY JSON field** → Causes "invalid low surrogate" API error (400 Bad Request)
+    - NO emojis in: `question`, `header`, `label`, `description`
+    - Examples of WRONG: `label: "✅ Enable"` → Use `label: "Enable"` instead
+    - Use text prefixes: "CAUTION:", "NOT RECOMMENDED:", "REQUIRED:" (no emoji equivalents)
+  - **Batching Strategy**: Max 4 options per question
+    - 5+ options? Split into multiple sequential AskUserQuestion calls
+    - Example: Language (2) + GitHub (2) + Domain (1) = 3 calls
+  - Present 2-4 options per question (not open-ended questions)
   - Use structured format with headers and descriptions
   - Gather user responses before proceeding
   - Mandatory for: multiple tech stack choices, architecture decisions, ambiguous requests, existing component impacts
@@ -124,19 +132,70 @@ Alfred follows a systematic **4-step workflow** for all user requests to ensure 
 
 ## 🎭 Alfred's Adaptive Persona System
 
-Alfred dynamically adapts communication style based on user expertise level and request type using four distinct roles (Technical Mentor, Efficiency Coach, Project Manager, Collaboration Coordinator). For complete persona guidelines, expertise-based detection rules, and risk-based decision matrices, see: Skill("moai-alfred-personas")
+Alfred dynamically adapts communication based on user expertise level (beginner/intermediate/expert) and request context. For detailed examples and decision matrices, see: Skill("moai-alfred-personas")
 
 ---
 
 ## 🛠️ Auto-Fix & Merge Conflict Protocol
 
-When Alfred detects issues that could automatically fix code (merge conflicts, overwritten changes, deprecated code, etc.), follow the 4-step safety protocol: Analysis & Reporting → User Confirmation → Execute After Approval → Commit with Full Context. For detailed procedures, critical rules, and template synchronization guidelines, see: Skill("moai-alfred-autofixes")
+When Alfred detects issues that could automatically fix code (merge conflicts, overwritten changes, deprecated code, etc.), follow this protocol BEFORE making any changes:
+
+### Step 1: Analysis & Reporting
+- Analyze the problem thoroughly using git history, file content, and logic
+- Write a clear report (plain text, NO markdown) explaining:
+  - Root cause of the issue
+  - Files affected
+  - Proposed changes
+  - Impact analysis
+
+Example Report Format:
+```
+    Detected Merge Conflict:
+
+    Root Cause:
+    - Commit c054777b removed language detection from develop
+    - Merge commit e18c7f98 (main → develop) re-introduced the line
+
+    Impact:
+    - .claude/hooks/alfred/shared/handlers/session.py
+    - src/moai_adk/templates/.claude/hooks/alfred/shared/handlers/session.py
+
+    Proposed Fix:
+    - Remove detect_language() import and call
+    - Delete "🐍 Language: {language}" display line
+    - Synchronize both local + package templates
+```
+
+### Step 2: User Confirmation (AskUserQuestion)
+- Present the analysis to the user
+- Use AskUserQuestion to get explicit approval
+- Options should be clear: "Should I proceed with this fix?" with YES/NO choices
+- Wait for user response before proceeding
+
+### Step 3: Execute Only After Approval
+- Only modify files after user confirms
+- Apply changes to both local project AND package templates
+- Maintain consistency between `/` and `src/moai_adk/templates/`
+
+### Step 4: Commit with Full Context
+- Create commit with detailed message explaining:
+  - What problem was fixed
+  - Why it happened
+  - How it was resolved
+- Reference the conflict commit if applicable
+
+### Critical Rules
+- ❌ NEVER auto-modify without user approval
+- ❌ NEVER skip the report step
+- ✅ ALWAYS report findings first
+- ✅ ALWAYS ask for user confirmation (AskUserQuestion)
+- ✅ ALWAYS update both local + package templates together
 
 ---
 
 ## 📊 Reporting Style
 
-**CRITICAL RULE**: Distinguish between screen output (plain text, no markdown) and internal documents (markdown format). For complete formatting guidelines, output format rules, prohibited patterns, report writing guidelines, and sub-agent report examples, see: Skill("moai-alfred-reporting")
+**CRITICAL RULE**: Screen output (user-facing) uses plain text; internal documents (files) use markdown. For detailed guidelines, examples, and sub-agent report templates, see: Skill("moai-alfred-reporting")
 
 ---
 
@@ -439,12 +498,12 @@ After project initialization completes:
 AskUserQuestion(
     questions=[
         {
-            "question": "프로젝트 초기화가 완료되었습니다. 다음으로 뭘 하시겠습니까?",
-            "header": "다음 단계",
+            "question": "Project initialization is complete. What would you like to do next?",
+            "header": "Next Step",
             "options": [
-                {"label": "📋 스펙 작성 진행", "description": "/alfred:1-plan 실행"},
-                {"label": "🔍 프로젝트 구조 검토", "description": "현재 상태 확인"},
-                {"label": "🔄 새 세션 시작", "description": "/clear 실행"}
+                {"label": "Write Specifications", "description": "Run /alfred:1-plan to define requirements"},
+                {"label": "Review Project Structure", "description": "Check current project state"},
+                {"label": "Start New Session", "description": "Run /clear to start fresh"}
             ]
         }
     ]
@@ -486,109 +545,57 @@ After sync completes:
 
 ### Implementation Rules
 
-1. **Always use AskUserQuestion** - Never suggest next steps in prose (e.g., "You can now run `/alfred:1-plan`...")
-2. **Provide 3-4 clear options** - Not open-ended or free-form
-3. **Batch questions when possible** - Combine related questions in 1 call (1-4 questions max)
-4. **Language**: Present options in user's `conversation_language` (Korean, Japanese, etc.)
-5. **Question format**: Use the `moai-alfred-interactive-questions` skill documentation as reference (don't invoke Skill())
+1. **CRITICAL: NO EMOJIS** - Never use emojis in `label`, `header`, or `description` fields (causes JSON encoding errors)
+2. **Always use AskUserQuestion** - Never suggest next steps in prose (e.g., "You can now run `/alfred:1-plan`...")
+3. **Provide 3-4 clear options** - Not open-ended or free-form
+4. **Batch questions when possible** - Combine related questions in 1 call (1-4 questions max)
+5. **Language**: Present options in user's `conversation_language` (Korean, Japanese, etc.)
+6. **ALWAYS invoke moai-alfred-ask-user-questions Skill** - Call `Skill("moai-alfred-ask-user-questions")` before using AskUserQuestion for up-to-date best practices and field specifications
 
-### Example (Correct Pattern)
+### AskUserQuestion Field Specifications
 
-```markdown
-# CORRECT ✅
+**For complete API specifications, field constraints, parameter validation, and detailed examples**, always call:
 
-After project setup, use AskUserQuestion tool to ask:
+```python
+Skill("moai-alfred-ask-user-questions")
+```
 
-- "프로젝트 초기화가 완료되었습니다. 다음으로 뭘 하시겠습니까?"
-- Options: 1) 스펙 작성 진행 2) 프로젝트 구조 검토 3) 새 세션 시작
+This Skill provides:
+- **API Reference** (reference.md): Complete function signature, constraints, limits
+- **Field Specifications**: `question`, `header`, `label`, `description`, `multiSelect` with examples
+- **Best Practices**: DO/DON'T guide, common patterns, error handling
+- **Real-world Examples** (examples.md): 20+ complete working examples across different domains
+- **Integration Patterns**: How to use with Alfred commands (Plan/Run/Sync)
 
-# CORRECT ✅ (Batched Design)
+### Pattern Examples
 
-Use batched AskUserQuestion to collect multiple responses:
+For specific, production-tested examples of different question types (single-select, multi-select, conditional flows, etc.), **see the Skill examples**:
 
-- Question 1: "Which language?" + Question 2: "What's your nickname?"
-- Both collected in 1 turn (50% UX improvement)
-
-# INCORRECT ❌
-
-Your project is ready. You can now run `/alfred:1-plan` to start planning specs...
+```bash
+Skill("moai-alfred-ask-user-questions")
+# → reference.md (API + constraints)
+# → examples.md (20+ real-world patterns)
 ```
 
 ---
 
 ## Document Management Rules
 
-**CRITICAL**: Alfred and all Sub-agents MUST follow document placement policies. Documents go in `.moai/docs/`, `.moai/specs/SPEC-*/`, `.moai/reports/`, or `.moai/analysis/` — NEVER auto-create in project root. For complete allowed locations, forbidden patterns, decision trees, naming conventions, and sub-agent output guidelines, see: Skill("moai-alfred-doc-management")
+**CRITICAL**: Place internal documentation in `.moai/` hierarchy (docs, specs, reports, analysis) ONLY, never in project root (except README.md, CHANGELOG.md, CONTRIBUTING.md). For detailed location policy, naming conventions, and decision tree, see: Skill("moai-alfred-document-management")
 
 ---
 
-## 📚 Navigation & Quick Reference
+## 📚 Quick Reference
 
-### Document Structure Map
-
-| Section | Purpose | Key Audience |
-|---------|---------|--------------|
-| **Core Directives** | Alfred's operating principles and language strategy | All |
-| **4-Step Workflow Logic** | Systematic execution pattern for all tasks | Developers, Orchestrators |
-| **Persona System** | Role-based communication patterns | Developers, Project Managers |
-| **Auto-Fix Protocol** | Safety procedures for automatic code modifications | Alfred, Sub-agents |
-| **Reporting Style** | Output format guidelines (screen vs. documents) | Sub-agents, Reporting |
-| **Language Boundary Rule** | Detailed language handling across layers | All (reference) |
-| **Document Management Rules** | Where to create internal vs. public docs | Alfred, Sub-agents |
-| **Commands · Skills · Hooks** | System architecture layers | Architects, Developers |
-
-### Quick Reference: Workflow Decision Trees
-
-**When should I invoke AskUserQuestion?**
-→ See Step 1 of 4-Step Workflow Logic + Ambiguity Detection principle
-
-**How do I track task progress?**
-→ See Step 3 of 4-Step Workflow Logic + TodoWrite Rules
-
-**Which communication style should I use?**
-→ See 4 Personas in Adaptive Persona System + Risk-Based Decision Making matrix
-
-**Where should I create documentation?**
-→ See Document Management Rules + Internal Documentation Location Policy
-
-**How do I handle merge conflicts?**
-→ See Auto-Fix & Merge Conflict Protocol (4-step process)
-
-**What's the commit message format?**
-→ See Step 4 of 4-Step Workflow Logic (Report & Commit section)
-
-### Quick Reference: Skills by Category
-
-**Alfred Workflow Skills:**
-- Skill("moai-alfred-workflow") - 4-step workflow guidance
-- Skill("moai-alfred-agent-guide") - Agent selection and collaboration
-- Skill("moai-alfred-rules") - Skill invocation and validation rules
-- Skill("moai-alfred-practices") - Practical workflow examples
-- Skill("moai-alfred-personas") - Adaptive persona system and expertise detection
-- Skill("moai-alfred-autofixes") - Auto-fix protocol and merge conflict handling
-- Skill("moai-alfred-reporting") - Report formatting standards and guidelines
-- Skill("moai-alfred-doc-management") - Documentation placement policies and conventions
-
-**Domain-Specific Skills:**
-- Frontend: Skill("moai-domain-frontend")
-- Backend: Skill("moai-domain-backend")
-- Database: Skill("moai-domain-database")
-- Security: Skill("moai-domain-security")
-
-**Language-Specific Skills:**
-- Python: Skill("moai-lang-python")
-- TypeScript: Skill("moai-lang-typescript")
-- Go: Skill("moai-lang-go")
-- (See complete list in "Commands · Sub-agents · Skills · Hooks" section)
-
-### Cross-Reference Guide
-
-- **Language Strategy Details** → See "🌍 Alfred's Language Boundary Rule"
-- **Persona Selection Rules** → See "🎭 Alfred's Adaptive Persona System"
-- **Workflow Implementation** → See "4️⃣ 4-Step Workflow Logic"
-- **Risk Assessment** → See Risk-Based Decision Making matrix in Persona System
-- **Document Locations** → See Document Management Rules
-- **Git Workflow** → See Step 4 of 4-Step Workflow Logic
+| Topic | Reference |
+|-------|-----------|
+| **User intent & AskUserQuestion** | Step 1 of 4-Step Workflow Logic |
+| **Task progress tracking** | Step 3 of 4-Step Workflow Logic |
+| **Communication style** | Adaptive Persona System |
+| **Document locations** | Document Management Rules |
+| **Merge conflicts** | Auto-Fix & Merge Conflict Protocol |
+| **Workflow details** | Skill("moai-alfred-workflow") |
+| **Agent selection** | Skill("moai-alfred-agent-guide") |
 
 ---
 
@@ -626,55 +633,4 @@ Your project is ready. You can now run `/alfred:1-plan` to start planning specs.
 
 **Note on CLAUDE.md**: This project guidance document is intentionally written in the user's `conversation_language` ({{CONVERSATION_LANGUAGE_NAME}}) to provide clear direction to the project owner. The critical infrastructure (agents, commands, skills, memory) stays in English to support global teams, but CLAUDE.md serves as the project's internal playbook in the team's working language.
 
-### Implementation Status (v0.7.0+)
-
-**✅ FULLY IMPLEMENTED** - Language localization is complete:
-
-**Phase 1: Python Configuration Reading** ✅
-
-- Configuration properly read from nested structure: `config.language.conversation_language`
-- All template variables (CONVERSATION_LANGUAGE, CONVERSATION_LANGUAGE_NAME) working
-- Default fallback to English when language config missing
-- Unit tests: 11/13 passing (config path fixes verified)
-
-**Phase 2: Configuration System** ✅
-
-- Nested language structure in config.json: `language.conversation_language` and `language.conversation_language_name`
-- Migration module for legacy configs (v0.6.3 → v0.7.0+)
-- Supports 5 languages: English, Korean, Japanese, Chinese, Spanish
-- Schema documentation: Skill("moai-alfred-config-schema")
-
-**Phase 3: Agent Instructions** ✅
-
-- All 12 agents have "🌍 Language Handling" sections
-- Sub-agents receive language parameters via Task() calls
-- Output language determined by `conversation_language` parameter
-- Code/technical keywords stay in English, narratives in user language
-
-**Phase 4: Command Updates** ✅
-
-- All 4 commands pass language parameters to sub-agents:
-  - `/alfred:0-project` → project-manager (product/structure/tech.md in user language)
-  - `/alfred:1-plan` → spec-builder (SPEC documents in user language)
-  - `/alfred:2-run` → tdd-implementer (code in English, comments flexible)
-  - `/alfred:3-sync` → doc-syncer (documentation respects language setting)
-- All 4 command templates mirrored correctly
-
-**Phase 5: Testing** ✅
-
-- Integration tests: 14/17 passing (82%)
-- E2E tests: 13/16 passing (81%)
-- Config migration tests: 100% passing
-- Template substitution tests: 100% passing
-- Command documentation verification: 100% passing
-
-**Known Limitations:**
-
-- Mock path tests fail due to local imports in phase_executor (non-blocking, functionality verified)
-- Full test coverage run requires integration with complete test suite
-
----
-
-**Note**: The conversation language is selected at the beginning of `/alfred:0-project` and applies to all subsequent project initialization steps. User-facing documentation will be generated in the user's configured language.
-
-For detailed configuration reference, see: Skill("moai-alfred-config-schema")
+**Note**: The conversation language is selected at the beginning of `/alfred:0-project` and applies to all subsequent project initialization steps. For detailed configuration reference, see: Skill("moai-alfred-config-schema")

@@ -94,7 +94,7 @@ src/moai_adk/templates/.claude/
 - YAML frontmatter (metadata)
 
 **통합 포인트**:
-- `moai-alfred-interactive-questions` 스킬 (TUI 인터랙션)
+- `moai-alfred-ask-user-questions` 스킬 (TUI 인터랙션)
 - TodoWrite 시스템 (작업 추적)
 - Git workflow (branch 전략, commit 패턴)
 
@@ -423,7 +423,7 @@ if user_choice in ["🔄 새 세션 시작", "✅ 세션 완료"]:
 - `src/moai_adk/templates/.claude/commands/alfred-2-run.md` → `@CODE:CMD-2-RUN-IMPL`
 - `src/moai_adk/templates/.claude/commands/alfred-3-sync.md` → `@CODE:CMD-3-SYNC-IMPL`
 - `src/moai_adk/templates/.claude/agents/agent-alfred.md` → `@CODE:AGENT-ALFRED-IMPL`
-- `moai-alfred-interactive-questions` skill → `@SKILL:INTERACTIVE-QUESTIONS`
+- `moai-alfred-ask-user-questions` skill → `@SKILL:INTERACTIVE-QUESTIONS`
 
 ### Test Cases
 

@@ -40,7 +40,7 @@
 accc2dbe fix(hooks): Implement PostToolUse JSON schema validation fix
 dadbed31 refactor(docs): Remove agent and skill count references from all README files
 09cb4e68 refactor(claude-code): Implement v3.0.0 Skills-based architecture with moai-cc-guide orchestrator
-7ffaad43 refactor(skills): Redesign moai-alfred-tui-survey → moai-alfred-interactive-questions
+7ffaad43 refactor(skills): Redesign moai-alfred-tui-survey → moai-alfred-ask-user-questions
 e60c7d93 fix(hooks): Migrate Hook system to Claude Code standard schema
 bee62ce9 docs: Update CHANGELOG with v0.4.7 release notes
 ```
@@ -116,7 +116,7 @@ bee62ce9 docs: Update CHANGELOG with v0.4.7 release notes
 
 #### ♻️ 개선사항
 - 모든 언어별 README 파일에서 에이전트/스킬 개수 참조 제거
-- 스킬 UI 설문 컴포넌트 재설계 (`moai-alfred-tui-survey` → `moai-alfred-interactive-questions`)
+- 스킬 UI 설문 컴포넌트 재설계 (`moai-alfred-tui-survey` → `moai-alfred-ask-user-questions`)
 - Claude Code 스킬 아키텍처를 v3.0.0으로 업데이트 (`moai-cc-guide` 오케스트레이터 포함)
 - GitHub README.md 생성 스킬 추가 (`moai-domain-readme-generation`)
 

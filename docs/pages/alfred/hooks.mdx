@@ -1,0 +1,27 @@
+# Claude Code Hooks
+
+`.claude/hooks/alfred/` 디렉터리는 Claude Code의 이벤트 라이프사이클에 맞춰 실행되는 Python 스크립트입니다. 각 파일은 단일 이벤트에 대응하며, `handlers/`와 `shared/` 모듈을 통해 공통 로직을 재사용합니다.
+
+## 주요 Hook 요약
+
+| 파일 | 이벤트 | 목적 |
+| ---- | ------ | ---- |
+| `session_start__show_project_info.py` | `SessionStart` | 세션 시작 시 프로젝트 요약, 현재 브랜치, SPEC 진행률 안내 |
+| `user_prompt__jit_load_docs.py` | `UserPromptSubmit` | 사용자 프롬프트를 분석해 관련 문서/Skill을 추가 컨텍스트로 추천 |
+| `pre_tool__auto_checkpoint.py` | `PreToolUse` | 위험 명령 감지 시 Git checkpoint 생성 및 경고 메시지 출력 |
+| `post_tool__log_changes.py` | `PostToolUse` | (향후) 변경 로그 기록과 메트릭 수집 준비 |
+| `session_end__cleanup.py` | `SessionEnd` | 세션 종료 시 캐시 정리, 메트릭 저장 등 후처리 |
+
+## 공통 구조
+
+- **타임아웃**: 모든 Hook은 `utils.timeout.CrossPlatformTimeout`으로 5초 제한을 두어 실패 시에도 세션이 중단되지 않습니다.
+- **JSON I/O**: Claude Code로부터 JSON payload를 받아 처리 후 `continue` 여부와 메시지를 반환합니다.
+- **오류 허용**: 예외 발생 시에도 `continue: True` 를 반환해 개발 흐름이 중단되지 않도록 설계되어 있습니다.
+
+## 확장 포인트
+
+- `handlers/` 폴더에 실제 비즈니스 로직이 위치합니다. Git checkpoint 정책, 문서 추천 로직 등을 여기에서 수정할 수 있습니다.
+- `shared/` 및 `utils/` 폴더는 로그 유틸, 경로 해석, 템플릿 로더 등 공통 기능을 제공합니다.
+- 새로운 Hook을 추가하려면 `event__description.py` 형태의 파일을 생성하고 `hooks.json` (Claude Code 설정)에서 매핑을 등록하세요.
+
+> Hook 변경 후에는 `/alfred:0-project` 또는 `moai-adk update`를 실행해 템플릿 버전과 설정이 일치하는지 확인하는 것이 좋습니다.

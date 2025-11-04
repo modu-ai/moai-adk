@@ -1,0 +1,27 @@
+# Output Styles
+
+Alfred는 응답 형식을 `.claude/output-styles/alfred/*.md`에 정의된 Output Style에 맞춰 조정할 수 있습니다. 회고, 학습, 보고 등 상황에 따라 Output Style을 선택하면 톤과 섹션 구성이 자동으로 최적화됩니다.
+
+## 제공되는 스타일
+
+| 이름 | 목적 | 주요 특징 |
+| ---- | ---- | -------- |
+| `Agentic Coding` | 실무 개발 보고 | 9개 전문 에이전트 협업 요약, Fast/Collab 모드 전환 설명, TRUST 5 체크 |
+| `MoAI ADK Learning` | MoAI-ADK 개념 학습 | SPEC-First, @TAG, TRUST 개념을 초보자 관점에서 설명, EARS 예제 제공 |
+| `Study with Alfred` | 새로운 기술 학습 | What/Why/How/Practice 4단계 학습 흐름, 비유와 실습 과제를 포함 |
+
+## 사용법
+
+```text
+/alfred:9-feedback output=moai-adk-learning
+/alfred:1-plan output=agentic-coding
+```
+
+- 명령어 인자 또는 AskUserQuestion 선택지로 Output Style을 지정할 수 있습니다.
+- Output Style은 Markdown 템플릿이므로 섹션 제목, 말투, 이모지 등을 프로젝트 스타일에 맞게 수정 가능합니다.
+
+## 커스터마이징 팁
+
+- 템플릿 상단 Front matter의 `name`, `description`을 수정하면 Claude Code 선택 목록에 자동 반영됩니다.
+- 학습/보고 관점에서 강조하고 싶은 항목이 있다면 Markdown 섹션을 추가하거나 Callout 컴포넌트를 활용하세요.
+- 새로운 스타일 추가 시 파일명을 `kebab-case`로 작성하고, 관련 명령어 문서에서 참고 안내를 추가하면 사용자 경험을 높일 수 있습니다.

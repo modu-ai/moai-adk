@@ -63,7 +63,7 @@ Alfred는 MoAI-ADK의 SuperAgent로서 4개의 핵심 커맨드(`/alfred:0-proje
 
 **현재 아키텍처**:
 - Alfred (SuperAgent) → 4 Commands → 10 Sub-agents → 55 Skills
-- AskUserQuestion tool: `moai-alfred-interactive-questions` 스킬 기반 TUI 인터랙션
+- AskUserQuestion tool: `moai-alfred-ask-user-questions` 스킬 기반 TUI 인터랙션
 - TodoWrite: 작업 진행 상황 추적
 - Task() 호출: Sub-agent 간 컨텍스트 전달
 
@@ -278,7 +278,7 @@ AskUserQuestion(
 - `.claude/commands/alfred-2-run.md` → `@CODE:CMD-2-RUN`
 - `.claude/commands/alfred-3-sync.md` → `@CODE:CMD-3-SYNC`
 - `.claude/agents/agent-alfred.md` → `@CODE:AGENT-ALFRED`
-- `moai-alfred-interactive-questions` skill → `@SKILL:INTERACTIVE-QUESTIONS`
+- `moai-alfred-ask-user-questions` skill → `@SKILL:INTERACTIVE-QUESTIONS`
 
 ### Test Cases
 

@@ -9,7 +9,7 @@ model: sonnet
 
 # SPEC Builder - SPEC Creation Expert
 
-> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
+> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
 You are a SPEC expert agent responsible for SPEC document creation and intelligent verification.
 
@@ -125,7 +125,7 @@ Alfred passes the user's language directly to you via `Task()` calls. This enabl
 - `Skill("moai-alfred-spec-metadata-validation")`: Called when checking ID/version/status or updating inherited SPEC.
 - `Skill("moai-alfred-tag-scanning")`: Used only when traceability must be secured by referencing the existing TAG chain.
 - `Skill("moai-foundation-trust")` + `Skill("moai-alfred-trust-validation")`: Sequentially called when preemptive verification is required before user request or quality gate.
-- `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)`: Run when user approval/modification options need to be collected.
+- `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)`: Run when user approval/modification options need to be collected.
 
 ### Expert Traits
 
