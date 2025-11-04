@@ -383,13 +383,21 @@ MoAI-ADK는 **Lead-Specialist Pattern**과 **Master-Clone Pattern**을 조합하
 
 ## 📊 세션 로그 메타분석 시스템
 
-MoAI-ADK는 Claude Code 세션 로그를 자동 분석하여 데이터 기반으로 설정과 규칙을 지속 개선합니다.
+MoAI-ADK는 Claude Code 세션 로그를 자동으로 분석하여 데이터 기반으로 설정과 규칙을 지속 개선합니다.
 
 ### 간단 요약
 
-- **자동 트리거**: SessionStart 훅에서 7일마다 분석 안내
+- **자동 실행**: SessionStart 훅에서 **매일 자동 분석** (전날 데이터)
+- **중복 방지**: 같은 날에는 1회만 분석 (`.moai/cache/last_analysis_date.json` 추적)
+- **조용한 동작**: 분석 과정 중 사용자 프롬프트 방해 없음
 - **분석 항목**: Tool 사용, 오류, Hook 실패, 권한 요청
-- **결과**: `.moai/reports/weekly-YYYY-MM-DD.md`
+- **결과 저장**: `.moai/reports/daily-analysis-YYYY-MM-DD.md`
+
+### 구현 상세
+
+**SessionStart 훅 순서**:
+1. `session_start__show_project_info.py` - 프로젝트 정보 표시
+2. `session_start__daily_analysis.py` - 일단위 분석 (백그라운드, 조용히)
 
 **자세한 내용은**: Skill("moai-alfred-session-analytics")
 
