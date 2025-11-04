@@ -61,6 +61,16 @@
             "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/post_tool__log_changes.py",
             "type": "command",
             "description": "Log file changes for audit and tracking"
+          },
+          {
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/core/post_tool__multilingual_linting.py",
+            "type": "command",
+            "description": "Run multilingual linting checks on modified files (Python, JavaScript, TypeScript, Go, Rust, Java, Ruby, PHP)"
+          },
+          {
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/core/post_tool__multilingual_formatting.py",
+            "type": "command",
+            "description": "Run multilingual code formatting on modified files"
           }
         ],
         "matcher": "Edit|Write|MultiEdit"
