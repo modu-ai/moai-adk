@@ -1,6 +1,6 @@
 # Interactive Discovery: TUI-Based Skill Requirement Gathering
 
-This guide covers using **moai-alfred-interactive-questions** Skill to engage users through interactive dialogue and clarify Skill requirements.
+This guide covers using **moai-alfred-ask-user-questions** Skill to engage users through interactive dialogue and clarify Skill requirements.
 
 ---
 
@@ -515,7 +515,7 @@ Map survey answers to research queries:
 - [SKILL.md](SKILL.md) — Main Skill framework
 - [WEB-RESEARCH.md](WEB-RESEARCH.md) — Using discoveries in research
 - [skill-factory.md](../../agents/alfred/skill-factory.md) — Sub-Agent orchestration
-- `moai-alfred-interactive-questions` Skill — TUI implementation
+- `moai-alfred-ask-user-questions` Skill — TUI implementation
 
 ---
 

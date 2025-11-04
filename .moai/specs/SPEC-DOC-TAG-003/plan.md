@@ -328,7 +328,7 @@ Phase 3는 **7개 배치**로 구성되며, 각 배치는 독립적으로 실행
 | `moai-alfred-sync-workflow/SKILL.md` | `@DOC:SKILL-SYNC-WF-001` | SKILL | HIGH | `@SPEC:SYNC-001 -> @DOC:SKILL-SYNC-WF-001` |
 | `moai-alfred-project-workflow/SKILL.md` | `@DOC:SKILL-PROJECT-WF-001` | SKILL | HIGH | `@SPEC:PROJECT-001 -> @DOC:SKILL-PROJECT-WF-001` |
 | `moai-alfred-trust-validation/SKILL.md` | `@DOC:SKILL-TRUST-VAL-001` | SKILL | HIGH | `@SPEC:TRUST-001 -> @DOC:SKILL-TRUST-VAL-001` |
-| `moai-alfred-interactive-questions/SKILL.md` | `@DOC:SKILL-INTERACTIVE-001` | SKILL | MEDIUM | - |
+| `moai-alfred-ask-user-questions/SKILL.md` | `@DOC:SKILL-INTERACTIVE-001` | SKILL | MEDIUM | - |
 
 **실행 단계**:
 

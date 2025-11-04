@@ -116,7 +116,7 @@ class ProjectInitializer:
     def initialize(
         self,
         mode: str = "personal",
-        locale: str = "ko",
+        locale: str = "en",  # Changed from "ko" to "en" (will be configurable in /alfred:0-project)
         language: str | None = None,
         backup_enabled: bool = True,
         progress_callback: ProgressCallback | None = None,
@@ -125,9 +125,9 @@ class ProjectInitializer:
         """Execute project initialization (5-phase process)
 
         Args:
-            mode: Project mode (personal/team)
-            locale: Locale (ko/en/ja/zh)
-            language: Force language specification (auto-detect if None)
+            mode: Project mode (personal/team) - Default: personal (configurable in /alfred:0-project)
+            locale: Locale (ko/en/ja/zh) - Default: en (configurable in /alfred:0-project)
+            language: Force language specification (auto-detect if None) - Will be detected in /alfred:0-project
             backup_enabled: Whether to enable backup
             progress_callback: Progress callback
             reinit: Reinitialization mode (v0.3.0, SPEC-INIT-003)

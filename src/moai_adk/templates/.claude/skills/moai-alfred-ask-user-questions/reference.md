@@ -93,15 +93,63 @@ Claude Code automatically adds an "Other" option to every question, allowing use
 
 ## Parameter Constraints
 
+### ❌ CRITICAL: NO EMOJIS IN JSON FIELDS
+
+**NEVER use emojis in ANY JSON field** — causes encoding errors and API failures.
+
+| Field | Emoji Allowed? | Example |
+|-------|----------------|---------|
+| `question` | ❌ NO | "Choose authentication method?" (not "🔐 Choose auth?") |
+| `header` | ❌ NO | "Auth Method" (not "🔐 Auth Method") |
+| `label` | ❌ NO | "JWT with email" (not "✅ JWT with email") |
+| `description` | ❌ NO | "Traditional email/password login" (not "📧 Traditional email...") |
+| multiSelect | N/A (boolean) | - |
+
+**Why**: JSON encoding fails with special characters → 400 Bad Request error with "invalid low surrogate" message.
+
+### Batching Strategy (5+ Options Problem)
+
+**Problem**: You have 5+ options but AskUserQuestion max is 4 per question.
+
+**Solution**: Batch into multiple sequential AskUserQuestion calls:
+
+```typescript
+// ❌ WRONG: Trying to fit 5 options in 1 question
+questions: [{
+  question: "Choose setting",
+  header: "Setting",
+  options: [opt1, opt2, opt3, opt4, opt5]  // Exceeds max!
+}]
+
+// ✅ CORRECT: Batch into 2 calls (4 + 1)
+// Call 1: First 4 options
+questions: [{
+  question: "Choose primary setting",
+  header: "Setting",
+  options: [opt1, opt2, opt3, opt4]
+}]
+// Call 2: Remaining option
+questions: [{
+  question: "Choose additional setting",
+  header: "Extra",
+  options: [opt5]
+}]
+
+// OR: Split by category (2 + 2 + 1)
+// Call 1: Language & Nickname (2 questions)
+// Call 2: GitHub & Reports (2 questions)
+// Call 3: Domain selection (1 question)
+```
+
 ### Question Limits
 
 | Parameter | Min | Max | Reason |
 |-----------|-----|-----|--------|
 | **Questions per call** | 1 | 4 | Avoid user fatigue |
 | **Options per question** | 2 | 4 | Prevent choice overload |
-| **Header length** | 1 | 12 chars | TUI layout constraints |
-| **Label length** | 1 word | 5 words | Quick scanning |
-| **Description length** | 10 chars | 200 chars | Provide context without overwhelming |
+| **Header length** | 1 | 12 chars | TUI layout constraints (NO EMOJIS) |
+| **Label length** | 1 word | 5 words | Quick scanning (NO EMOJIS) |
+| **Description length** | 10 chars | 200 chars | Provide context without overwhelming (NO EMOJIS) |
 
 ### Header Guidelines
 
@@ -338,6 +386,36 @@ if (category["DB Type"] === "Relational (SQL)") {
 
 ## Best Practices (Complete Guide)
 
+### ❌ NO EMOJIS RULE (CRITICAL FOR ALL)
+
+Before any other rule: **Never use emojis in JSON fields**.
+
+```typescript
+// ❌ WRONG - Will cause JSON encoding error
+{
+  question: "🔐 Which auth method?",     // NO EMOJI
+  header: "🔐 Auth",                     // NO EMOJI
+  label: "✅ JWT (recommended)",         // NO EMOJI
+  description: "📧 Email/password based" // NO EMOJI
+}
+
+// ✅ CORRECT
+{
+  question: "Which authentication method?",
+  header: "Auth",
+  label: "JWT (recommended)",
+  description: "Email/password based"
+}
+```
+
+**Consequences of emoji use**:
+- API Error 400: "invalid low surrogate in string"
+- AskUserQuestion call fails silently
+- User sees no prompt
+- Entire workflow halts
+
+---
+
 ### DO
 
 1. **Be specific in questions**
@@ -351,11 +429,12 @@ if (category["DB Type"] === "Relational (SQL)") {
 3. **Order options logically**
    - Safest/most common option first
    - Risky/experimental options last
-   - Mark dangerous options clearly
+   - Mark dangerous options clearly (use text only: "CAUTION:", "NOT RECOMMENDED:")
 
 4. **Flag risks explicitly**
-   - Use prefixes: "⚠️ CAUTION:", "🚨 NOT RECOMMENDED:"
-   - Example: "⚠️ Force push (data loss risk)"
+   - Use text prefixes: "CAUTION:", "NOT RECOMMENDED:"
+   - Example: "CAUTION: Force push (data loss risk)"
+   - Do NOT use emoji prefixes (causes JSON errors)
 
 5. **Explain trade-offs**
    - Mention time, complexity, resources
@@ -383,43 +462,49 @@ if (category["DB Type"] === "Relational (SQL)") {
 
 ### DON'T
 
-1. **Don't overuse questions**
+1. **Don't use emojis (CRITICAL)**
+   - ❌ NO emojis in question, header, label, or description
+   - ❌ Causes "invalid low surrogate" JSON error
+   - ✅ Use plain text only: "Enable", "Settings", "GitHub"
+   - ✅ Use text prefixes instead: "CAUTION:", "NOT RECOMMENDED:", "REQUIRED:"
+
+2. **Don't overuse questions**
    - Only ask when genuinely ambiguous
    - Don't ask for decisions that have obvious defaults
 
-2. **Don't provide too many options (>4)**
+3. **Don't provide too many options (>4)**
    - Choice paralysis sets in
-   - Use hierarchical selection instead
+   - Use batching strategy: split into multiple AskUserQuestion calls
 
-3. **Don't use vague labels**
+4. **Don't use vague labels**
    - ❌ "Option A", "Approach 2"
    - ✅ "PostgreSQL", "Factory pattern"
 
-4. **Don't skip descriptions**
+5. **Don't skip descriptions**
    - User needs context to decide
    - Every option must have a description
 
-5. **Don't hide trade-offs**
+6. **Don't hide trade-offs**
    - Always mention implications (time, complexity, risk)
    - Don't present false equivalence
 
-6. **Don't make destructive actions default**
-   - Risky option should be clearly marked
+7. **Don't make destructive actions default**
+   - Risky option should be clearly marked (use text: "CAUTION:")
    - Never pre-select dangerous operations
 
-7. **Don't mix concerns in one question**
+8. **Don't mix concerns in one question**
    - One decision per question
    - Don't ask "Which database and auth method?" as one question
 
-8. **Don't manually add "Other" option**
+9. **Don't manually add "Other" option**
    - It's auto-provided by Claude Code
    - You'll duplicate it unnecessarily
 
-9. **Don't nest more than 2 levels deep**
-   - Keep conditional flow linear
-   - Avoid Q1 → Q2 → Q3 → Q4 chains
+10. **Don't nest more than 2 levels deep**
+    - Keep conditional flow linear
+    - Avoid Q1 → Q2 → Q3 → Q4 chains
 
-10. **Don't ask trivial questions**
+11. **Don't ask trivial questions**
     - If answer is obvious from context, don't ask
     - Example: Don't ask "Create file?" when user said "Create file X"
 

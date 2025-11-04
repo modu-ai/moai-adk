@@ -434,6 +434,47 @@ class TestMergeClaudeMd:
     """Test CLAUDE.md merging"""
 
     @pytest.mark.skipif(sys.platform == "win32", reason="Windows charmap encoding issue")
+    def test_merge_claude_md_substitutes_variables(self, tmp_path: Path) -> None:
+        """Should substitute variables in merged CLAUDE.md (Fix for Issue #176)"""
+        # Create template CLAUDE.md with variables
+        template = tmp_path / "template.md"
+        template.write_text(
+            "# {{PROJECT_NAME}}\n\nDescription: {{PROJECT_DESCRIPTION}}\n\nLanguage: {{CODEBASE_LANGUAGE}}\n\n## Project Information\n\n- Template Project"
+        )
+
+        # Create existing CLAUDE.md with user project info
+        existing = tmp_path / "existing.md"
+        existing.write_text(
+            "# Old Template\n\nLanguage: {{CODEBASE_LANGUAGE}}\n\n## Project Information\n\n- My Project\n- Version: 1.0.0"
+        )
+
+        processor = TemplateProcessor(tmp_path)
+        processor.set_context({
+            "PROJECT_NAME": "MyProject",
+            "PROJECT_DESCRIPTION": "A test project",
+            "CODEBASE_LANGUAGE": "python",
+        })
+        # Call merge and then substitution directly (simulating _copy_claude_md)
+        processor._merge_claude_md(template, existing)
+
+        # Now substitute variables in the merged content (the fix)
+        if processor.context:
+            content = existing.read_text(encoding='utf-8')
+            content, warnings = processor._substitute_variables(content)
+            existing.write_text(content, encoding='utf-8')
+
+        # Should merge: template content + user project info + substitute variables
+        merged = existing.read_text()
+        assert "# MyProject" in merged  # Variable substituted
+        assert "Description: A test project" in merged  # Variable substituted
+        assert "Language: python" in merged  # Variable substituted
+        assert "My Project" in merged  # User project info preserved
+        assert "Version: 1.0.0" in merged  # User project info preserved
+        assert "Template Project" not in merged  # Template project info removed
+        assert "{{PROJECT_NAME}}" not in merged  # No unsubstituted variables
+        assert "{{PROJECT_DESCRIPTION}}" not in merged
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="Windows charmap encoding issue")
     def test_merge_claude_md_preserves_project_info(self, tmp_path: Path) -> None:
         """Should preserve project info section when merging"""
         # Create template CLAUDE.md

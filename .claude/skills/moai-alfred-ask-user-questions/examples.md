@@ -595,6 +595,231 @@ doc-syncer:
 
 ---
 
+## Example 11: Report Generation Control with Token Warnings (v0.17.0)
+
+### Scenario
+
+**Context**: User is running `/alfred:0-project` initialization.
+
+**Alfred detects** (project-manager):
+- Report generation is a configurable feature (new in v0.17.0)
+- User needs to understand token cost implications
+- Token budget is important for Claude Pro users
+- Decision affects `/alfred:3-sync` behavior
+
+### AskUserQuestion Invocation
+
+```typescript
+const answer = await AskUserQuestion({
+  questions: [{
+    question: `How would you like to handle automatic report generation?
+
+⚠️ TOKEN COST WARNING:
+- Enable: ~50-60 tokens per report × 3-5 reports per command = 150-300 tokens/session
+- Minimal: ~20-30 tokens per report × 1-2 reports per command = 20-60 tokens/session
+- Disable: ~0 tokens (0 reports generated)
+
+For Claude Pro $20/month users: Token usage directly impacts API costs (~$0.02 per 1K tokens).`,
+    header: "Report Generation",
+    multiSelect: false,
+    options: [
+      {
+        label: "📊 Enable (Default)",
+        description: "Full analysis reports for every sync. Best for understanding project changes. (High token usage)"
+      },
+      {
+        label: "⚡ Minimal (Recommended)",
+        description: "Essential reports only (sync summary + TAG validation). Balances insight with token efficiency. (Low token usage)"
+      },
+      {
+        label: "🚫 Disable",
+        description: "No automatic reports. Maximum token savings but no analysis output. (Zero token usage)"
+      }
+    ]
+  }]
+});
+
+// Result: { "Report Generation": "⚡ Minimal (Recommended)" }
+```
+
+### Config Storage
+
+After user selection, Alfred stores in `.moai/config.json`:
+
+```json
+{
+  "report_generation": {
+    "enabled": true,
+    "auto_create": false,
+    "warn_user": true,
+    "user_choice": "Minimal",
+    "configured_at": "2025-11-04T19:37:30+09:00"
+  }
+}
+```
+
+### Outcome
+
+Alfred behavior in `/alfred:3-sync`:
+- ✅ `enabled: true` → Report generation is active
+- ✅ `auto_create: false` → Only essential reports (TAG validation, sync summary)
+- ✅ `warn_user: true` → Display token warnings in future syncs
+- ✅ User saves 80% tokens (300 tokens → 60 tokens per session)
+- ❌ No full analysis reports (but critical info still provided)
+
+---
+
+## Example 12: Batching Design Pattern (v0.17.0)
+
+### Scenario
+
+**Context**: Project initialization with multiple independent decisions.
+
+**Problem**: Asking questions sequentially = 5 user interactions = high UX friction.
+
+**Solution**: Batch 3 related questions in ONE interaction = 1 user turn = efficient UX.
+
+### AskUserQuestion Invocation (Batched)
+
+```typescript
+const answers = await AskUserQuestion({
+  questions: [
+    {
+      question: "What's your working language for this project?",
+      header: "Language",
+      multiSelect: false,
+      options: [
+        { label: "English", description: "Documentation and discussions in English." },
+        { label: "한국어 (Korean)", description: "Documentation and discussions in Korean." },
+        { label: "日本語 (Japanese)", description: "Documentation and discussions in Japanese." }
+      ]
+    },
+    {
+      question: "Which project mode would you prefer?",
+      header: "Mode",
+      multiSelect: false,
+      options: [
+        {
+          label: "Personal (Solo)",
+          description: "Fast, flexible workflow. No branching or PR reviews needed."
+        },
+        {
+          label: "Team (GitFlow)",
+          description: "Professional workflow with feature branches and PR reviews."
+        }
+      ]
+    },
+    {
+      question: "How would you like to handle automatic report generation?",
+      header: "Report Generation",
+      multiSelect: false,
+      options: [
+        {
+          label: "📊 Enable",
+          description: "Full analysis reports. (150-300 tokens/session)"
+        },
+        {
+          label: "⚡ Minimal",
+          description: "Essential reports only. (20-60 tokens/session)"
+        },
+        {
+          label: "🚫 Disable",
+          description: "No reports. (0 tokens/session)"
+        }
+      ]
+    }
+  ]
+});
+
+// Result (ONE interaction, all 3 questions answered):
+// {
+//   "Language": "한국어 (Korean)",
+//   "Mode": "Team (GitFlow)",
+//   "Report Generation": "⚡ Minimal"
+// }
+```
+
+### UX Comparison
+
+**❌ Sequential (Old Pattern)**:
+```
+User: "Initialize project"
+  ↓
+Alfred: "What language?" → User selects → Question 1 complete
+  ↓
+Alfred: "Which mode?" → User selects → Question 2 complete
+  ↓
+Alfred: "Report generation?" → User selects → Question 3 complete
+  ↓
+(3 separate interactions = slow UX)
+```
+
+**✅ Batched (v0.17.0 Pattern)**:
+```
+User: "Initialize project"
+  ↓
+Alfred: [3 questions at once] → User selects all → All 3 complete
+  ↓
+(1 interaction = fast UX, 66% fewer back-and-forth turns)
+```
+
+### Outcome
+
+- ✅ User provides 3 answers in ONE interaction
+- ✅ 66% reduction in back-and-forth turns
+- ✅ Project configured with Language (Korean), Mode (Team), Reports (Minimal)
+- ✅ Better user experience: clearer, faster, less frustrating
+
+---
+
+## Example 13: Conditional Report Generation in Team Mode
+
+### Scenario
+
+**Context**: User chose Team mode + Minimal reports during initialization.
+
+**User runs**: `/alfred:3-sync auto`
+
+**Alfred needs to decide**: Should full sync reports be generated or just essential?
+
+### AskUserQuestion Invocation
+
+```typescript
+// Read config to check user's report preference
+const reportConfig = config.report_generation;
+
+if (reportConfig.enabled && reportConfig.auto_create === false) {
+  // User chose "Minimal" - ask for this sync only
+  const syncReportChoice = await AskUserQuestion({
+    questions: [{
+      question: "Your default is 'Minimal' reports. For THIS sync, would you prefer more detail?",
+      header: "This Sync Only",
+      multiSelect: false,
+      options: [
+        {
+          label: "Stick with Minimal",
+          description: "Only sync summary + TAG validation. (20-30 tokens)"
+        },
+        {
+          label: "Full report this time",
+          description: "Include architecture analysis, TAG traceability matrix, impact analysis. (50-60 tokens)"
+        }
+      ]
+    }]
+  });
+}
+// Result: { "This Sync Only": "Stick with Minimal" }
+```
+
+### Outcome
+
+- ✅ Respects user's default setting (Minimal)
+- ✅ Allows per-sync override without changing config
+- ✅ User gets targeted token usage: 25 tokens instead of 300
+- ✅ User can still request full reports when needed (e.g., major refactoring)
+
+---
+
 ## Summary: Pattern Catalog
 
 | Pattern | Use Case | Example Scenario |
@@ -609,7 +834,38 @@ doc-syncer:
 | **Pattern 8: Error Recovery** | Handle failures with user guidance | Test failure → Fix implementation vs update tests |
 | **Pattern 9: SPEC Clarification** | Vague SPEC scope/title | "Performance improvements" → Which domain? |
 | **Pattern 10: Mode Selection** | Choose workflow mode/strategy | Doc sync mode (auto vs force vs partial) |
+| **Pattern 11: Token-Aware Configuration** | Feature with cost implications | Report generation (Enable/Minimal/Disable) with token warnings |
+| **Pattern 12: Batching for Efficiency** | Combine related questions | Language + Mode + Reports (3 questions, 1 interaction) |
+| **Pattern 13: Conditional Per-Session Override** | Respect defaults while allowing override | "Your default is Minimal. Full report this time?" |
 
 ---
 
-**End of Examples** | 2025-10-27
+## Best Practices Summary
+
+### ✅ DO Use AskUserQuestion When:
+- User intent is ambiguous (vague, multiple interpretations)
+- Multiple valid approaches exist (technology choices, architecture)
+- Important configuration decisions with trade-offs
+- Risky operations requiring explicit consent
+- Feature flags with cost/performance implications (v0.17.0+)
+
+### ✅ DO Batch Questions When:
+- Questions are **independent** (no dependencies)
+- Questions are **related** (same decision domain)
+- Reduces interaction turns (3 questions in 1 turn = 66% faster UX)
+- All answers needed before proceeding
+
+### ✅ DO Include Token Warnings When:
+- Feature has cost implications (report generation, analysis depth)
+- Users on Claude Pro care about token budget
+- Decision impacts future session costs
+- Show concrete numbers: "150-300 tokens/session" vs "20-60 tokens/session"
+
+### ❌ DON'T Use Sequential When:
+- Questions are independent (use batching instead)
+- No dependencies between Q1 and Q2 (ask together)
+- Results in friction: 3 questions = 3 separate interactions
+
+---
+
+**End of Examples** | 2025-11-04

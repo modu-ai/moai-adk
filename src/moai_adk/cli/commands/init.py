@@ -28,6 +28,7 @@ Project initialization command (interactive/non-interactive):
 """
 
 import json
+import platform
 from pathlib import Path
 from typing import Sequence
 
@@ -134,6 +135,10 @@ def init(
             )
             project_name = project_path.name if is_current_dir else path
             locale = locale or "en"
+            # Language detection happens in /alfred:0-project, so default to None here
+            # This will become "generic" internally, but Summary will show more helpful message
+            if not language:
+                language = None
         else:
             # Interactive Mode
             print_welcome_message()
@@ -244,7 +249,13 @@ def init(
             console.print(separator)
             console.print("\n[cyan]📊 Summary:[/cyan]")
             console.print(f"  [dim]📁 Location:[/dim]  {result.project_path}")
-            console.print(f"  [dim]🌐 Language:[/dim]  {result.language}")
+            # Show language more clearly - "generic" means auto-detect
+            language_display = (
+                "Auto-detect (use /alfred:0-project)"
+                if result.language == "generic"
+                else result.language
+            )
+            console.print(f"  [dim]🌐 Language:[/dim]  {language_display}")
             console.print(f"  [dim]🔧 Mode:[/dim]      {result.mode}")
             console.print(
                 f"  [dim]🌍 Locale:[/dim]    {result.locale}"
@@ -278,17 +289,17 @@ def init(
                     f"  [blue]1.[/blue] Run [bold]cd {project_name}[/bold] to enter the project"
                 )
                 console.print(
-                    "  [blue]2.[/blue] Check [bold].moai/config.json[/bold] for configuration"
+                    "  [blue]2.[/blue] Run [bold]/alfred:0-project[/bold] in Claude Code for full setup"
                 )
                 console.print(
-                    "  [blue]3.[/blue] Read [bold]CLAUDE.md[/bold] for development guide\n"
+                    "     (Configure: mode, language, report generation, etc.)\n"
                 )
             else:
                 console.print(
-                    "  [blue]1.[/blue] Check [bold].moai/config.json[/bold] for configuration"
+                    "  [blue]1.[/blue] Run [bold]/alfred:0-project[/bold] in Claude Code for full setup"
                 )
                 console.print(
-                    "  [blue]2.[/blue] Read [bold]CLAUDE.md[/bold] for development guide\n"
+                    "     (Configure: mode, language, report generation, etc.)\n"
                 )
         else:
             console.print("\n[red bold]❌ Initialization Failed![/red bold]")

@@ -306,7 +306,7 @@ scope: "Phase 3 of 4-phase @DOC TAG automatic generation system - Batch migratio
 3. `moai-alfred-sync-workflow/SKILL.md` → `@DOC:SKILL-SYNC-WF-001`
 4. `moai-alfred-project-workflow/SKILL.md` → `@DOC:SKILL-PROJECT-WF-001`
 5. `moai-alfred-trust-validation/SKILL.md` → `@DOC:SKILL-TRUST-VAL-001`
-6. `moai-alfred-interactive-questions/SKILL.md` → `@DOC:SKILL-INTERACTIVE-001`
+6. `moai-alfred-ask-user-questions/SKILL.md` → `@DOC:SKILL-INTERACTIVE-001`
 
 **실행 조건**:
 - Batch 4 완료
