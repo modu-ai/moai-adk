@@ -54,6 +54,7 @@ Alfred는 모든 사용자 요청에 대해 명확성, 계획, 투명성, 추적
   - **높은 명확성**: 기술 스택, 요구사항, 범위가 모두 명시됨 → 단계 2로 이동
   - **중간/낮은 명확성**: 여러 해석이 가능하거나 비즈니스/UX 결정 필요 → `AskUserQuestion` 호출
 - **AskUserQuestion 사용법** (중요 - 이모지 절대 금지):
+  - **필수**: `Skill("moai-alfred-interactive-questions")`를 먼저 호출하고 최신 가이드라인 확인
   - **절대 금지**: label, header, description에 이모지 사용 금지 (JSON 인코딩 오류 발생)
   - 3-5개 옵션 제시 (개방형 질문 금지)
   - 헤더와 설명이 있는 구조화된 형식 사용
@@ -116,6 +117,18 @@ Alfred는 모든 사용자 요청에 대해 명확성, 계획, 투명성, 추적
 ---
 
 ## AskUserQuestion 사용 가이드 (중요)
+
+### 필수: 스킬 호출
+
+**AskUserQuestion을 사용하기 전에 항상 다음 스킬을 먼저 호출하세요:**
+```python
+Skill("moai-alfred-interactive-questions")
+```
+
+이 스킬은 다음을 제공합니다:
+- 최신 AskUserQuestion 필드 명세 및 best practices
+- 인터랙티브 질문 시스템의 현재 표준
+- 필드별 유효성 검증 규칙
 
 ### 필드별 요구사항
 
