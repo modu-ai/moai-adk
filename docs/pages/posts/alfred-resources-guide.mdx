@@ -1,7 +1,7 @@
 ---
-title: "Alfred 리소스 탐색
+title: "Alfred 리소스 탐색"
 date: 2025-10-30
-description: "명령어, 서브 에이전트, Skills, Hooks, Output Style을 한 번에 정리한 Alfred SuperAgent 안내서
+description: "명령어, 서브 에이전트, Skills, Hooks, Output Style을 한 번에 정리한 Alfred SuperAgent 안내서"
 type: post
 tag:
   - Alfred
@@ -14,7 +14,7 @@ Alfred SuperAgent는 `.claude/` 디렉터리에 있는 명령어, 서브 에이�
 "
 | 분류 | 위치 | 역할 |
 | ---- | ---- | ---- |
-| 명령어 | `.claude/commands/alfred/*.md` | `/alfred:*` 명령의 런북과 허용 도구 정의 |
+| 명령어 | `.claude/commands/alfred/*.md` | alfred:* 명령의 런북과 허용 도구 정의 |
 | 서브 에이전트 | `.claude/agents/alfred/*.md` | 전문 역할(예: SPEC 작성, Git 관리)을 자동 수행 |
 | Skills | `.claude/skills/*` | Alfred와 에이전트가 참조하는 지식 베이스 |
 | Hooks | `.claude/hooks/alfred/*.py` | Claude Code 이벤트 기반 가드레일 및 자동화 |
@@ -34,7 +34,7 @@ Alfred SuperAgent는 `.claude/` 디렉터리에 있는 명령어, 서브 에이�
 "
 ## Alfred 명령어
 "
-`.claude/commands/alfred/*.md` 파일은 각 `/alfred:*` 명령이 어떤 목적을 갖고 어떤 도구를 사용할 수 있는지 정의합니다. 명령을 실행하면 Alfred가 해당 런북을 따라 서브 에이전트와 Skills를 호출하고, Hooks가 안전장치를 제공합니다.
+`.claude/commands/alfred/*.md` 파일은 각 alfred:* 명령이 어떤 목적을 갖고 어떤 도구를 사용할 수 있는지 정의합니다. 명령을 실행하면 Alfred가 해당 런북을 따라 서브 에이전트와 Skills를 호출하고, Hooks가 안전장치를 제공합니다.
 "
 | 명령어 | 핵심 목적 | 주요 산출물 | 대표 서브 에이전트 |
 | ------ | -------- | ----------- | ------------------- |

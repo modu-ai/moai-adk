@@ -1,9 +1,15 @@
 ---
 name: moai-alfred-doc-management
+version: 1.0.0
+created: 2025-11-05
+updated: 2025-11-05
+status: active
 description: Internal documentation placement rules, forbidden patterns, and sub-agent output guidelines
-tier: alfred
-freedom: low
-tags: [documentation, file-locations, conventions, policies, management]
+keywords: ['documentation', 'file-locations', 'conventions', 'policies', 'management']
+allowed-tools:
+  - Read
+  - Write
+  - Bash
 ---
 
 # Document Management Rules
