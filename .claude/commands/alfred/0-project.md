@@ -922,7 +922,23 @@ Alfred starts project initialization by calling the project-manager agent with t
 - **Team Mode Git Workflow** (from STEP 0.1.3):
   - `spec_git_workflow: "feature_branch" | "develop_direct" | "per_spec"` (팀 모드만)
 
-**Execution**:
+### 2.1.1 Dynamic Prompt Generation by conversation_language
+
+**CRITICAL**: The project-manager prompt MUST be generated in the user's selected `conversation_language`.
+
+Alfred generates the appropriate language version of the prompt based on `conversation_language` value.
+
+All language versions contain identical structure, translated appropriately:
+
+| conversation_language | Language | Prompt Generated In |
+|----------------------|----------|-------------------|
+| ko | Korean | 한국어 |
+| en | English | English |
+| ja | Japanese | 日本語 |
+| zh | Chinese | 中文 |
+| es | Spanish | Español |
+
+### 2.1.2 Execution
 
 ```
 Call the Task tool:
@@ -982,10 +998,74 @@ conversation_language가 'ja'인 경우: 모든 설명 내용을 일본어로
   },
   "github": {
     "spec_git_workflow": "[feature_branch|develop_direct|per_spec]"
+  },
+  "announcements": {
+    "enabled": true,
+    "language": "{{CONVERSATION_LANGUAGE}}",
+    "items": [
+      "🎩 SPEC-First: 구현 전에 항상 요구사항을 SPEC으로 정의하세요 (/alfred:1-plan)",
+      "✅ TRUST 5 원칙 준수: Test First, Readable, Unified, Secured, Trackable",
+      "📝 TodoWrite 활용: 모든 작업을 추적하고 in_progress/completed 상태를 즉시 업데이트하세요",
+      "🌍 언어 경계: 대화와 문서는 conversation_language 사용, 인프라(Skills, agents, commands)는 영어",
+      "🔗 @TAG 체인: SPEC→TEST→CODE→DOC 추적 가능하도록 유지하세요",
+      "⚡ 병렬 실행: 의존성 없는 작업은 동시 실행 가능 (Task tool 병렬 호출)",
+      "💡 Skill 먼저: 특정 도메인 작업은 적절한 Skill을 먼저 확인하세요"
+    ]
   }
 }
 
-스킬 호출:
+### 2.1.3 Language-Specific announcements Examples
+
+**Announcements will be generated in conversation_language and saved to config.json**:
+
+**Example: English announcements** (when conversation_language = "en"):
+
+```json
+"announcements": {
+  "enabled": true,
+  "language": "en",
+  "items": [
+    "🎩 SPEC-First: Always define requirements as SPEC before implementation (/alfred:1-plan)",
+    "✅ TRUST 5 Principles: Test First, Readable, Unified, Secured, Trackable",
+    "📝 TodoWrite Usage: Track all tasks and update in_progress/completed status immediately",
+    "🌍 Language Boundary: Use conversation_language for dialogs/documents, English for infrastructure",
+    "🔗 @TAG Chain: Maintain traceability SPEC→TEST→CODE→DOC",
+    "⚡ Parallel Execution: Independent tasks can run simultaneously (Task tool parallel calls)",
+    "💡 Skills First: Check appropriate Skill first for domain-specific tasks"
+  ]
+}
+```
+
+**Example: Japanese announcements** (when conversation_language = "ja"):
+
+```json
+"announcements": {
+  "enabled": true,
+  "language": "ja",
+  "items": [
+    "🎩 SPEC-First: 実装前に必ず要件をSPECとして定義してください (/alfred:1-plan)",
+    "✅ TRUST 5原則の遵守: Test First, Readable, Unified, Secured, Trackable",
+    "📝 TodoWriteの活用: すべてのタスクを追跡し、in_progress/completed状態を即座に更新してください",
+    "🌍 言語の境界: 会話とドキュメントはconversation_languageを使用、インフラはEnglish",
+    "🔗 @TAGチェーン: SPEC→TEST→CODE→DOCのトレーサビリティを維持してください",
+    "⚡ 並列実行: 依存関係のないタスクは同時実行可能 (Task tool並列呼び出し)",
+    "💡 スキルを優先: ドメイン固有のタスクは適切なSkillを最初に確認してください"
+  ]
+}
+```
+
+**Dynamic Generation Logic**:
+
+Alfred generates announcements items array in `{{CONVERSATION_LANGUAGE}}`:
+- Korean (ko) → Korean announcements
+- English (en) → English announcements
+- Japanese (ja) → Japanese announcements
+- Chinese (zh) → Chinese announcements
+- Spanish (es) → Spanish announcements
+
+These announcements will be displayed in Claude Code startup via `companyAnnouncements` setting in `.claude/settings.json`.
+
+スキル 호출:
 필요 시 명시적 Skill() 호출 사용:
 - Skill("moai-alfred-language-detection") - 코드베이스 언어 감지
 - Skill("moai-foundation-langs") - 다국어 프로젝트 설정
