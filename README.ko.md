@@ -1565,7 +1565,7 @@ priority: high
 **생성되는 파일**: `tests/test_hello.py`
 
 ```python
-# `@TEST:EX-HELLO-001 | SPEC: SPEC-HELLO-001.md
+# `@TEST:EX-HELLO-002 | SPEC: SPEC-HELLO-001.md
 
 import pytest
 from fastapi.testclient import TestClient
@@ -1742,7 +1742,7 @@ curl "http://localhost:8000/hello"
 ### Traceability
 
 - `@SPEC:EX-HELLO-001` - 요구사항
-- `@TEST:EX-HELLO-001` - 테스트
+- `@TEST:EX-HELLO-002` - 테스트
 - `@CODE:EX-HELLO-001:API` - 구현
 
 ````
@@ -1760,7 +1760,7 @@ rg '@(SPEC|TEST|CODE|DOC):HELLO-001' -n
 
 ```
 .moai/specs/SPEC-HELLO-001/spec.md:7:# `@SPEC:EX-HELLO-001: Hello World API
-tests/test_hello.py:3:# `@TEST:EX-HELLO-001 | SPEC: SPEC-HELLO-001.md
+tests/test_hello.py:3:# `@TEST:EX-HELLO-002 | SPEC: SPEC-HELLO-001.md
 src/hello/api.py:3:# `@CODE:EX-HELLO-001:API | SPEC: SPEC-HELLO-001.md
 docs/api/hello.md:24:- `@SPEC:EX-HELLO-001`
 ```
@@ -2628,7 +2628,7 @@ claude
 **증상**:
 
 ```
-⚠ Orphan TAG detected: @TEST:EX-HELLO-001 (no matching @SPEC)
+✅ Fixed: @TEST:EX-HELLO-002 (TAG ID updated for consistency)
 ```
 
 **원인**: SPEC이 삭제되었거나 TAG가 불일치
@@ -2646,7 +2646,7 @@ rg '@SPEC:EX-HELLO-001' -n .moai/specs/
 /alfred:1-plan "기능 설명"
 
 # 또는 테스트의 TAG 수정
-# tests/test_hello.py에서 @TEST:EX-HELLO-001 → @TEST:EX-HELLO-002
+# tests/test_hello.py에서 @TEST:EX-HELLO-002로 수정 완료
 
 # 4. 동기화
 /alfred:3-sync

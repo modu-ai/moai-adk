@@ -1,19 +1,11 @@
 ---
 name: moai-project-template-optimizer
+description: Handle template comparison and optimization workflows including backup detection, smart merging, and update completion reporting
 version: 1.0.0
-created: 2025-11-05
-updated: 2025-11-05
-status: active
-description: Handle comprehensive template optimization workflows including backup detection, smart merging, version management, and update completion reporting
-keywords: ['project', 'template', 'optimization', 'backup', 'merge', 'comparison', 'version-management']
-allowed-tools:
-  - Read
-  - Write
-  - Edit
-  - MultiEdit
-  - Glob
-  - Bash
-  - TodoWrite
+freedom: medium
+type: project
+tags: [project, template, optimization, backup, merge, comparison]
+tier: alfred
 ---
 
 # MoAI Project Template Optimizer
@@ -30,40 +22,6 @@ Handle comprehensive template optimization workflows including:
 - Version management and HISTORY section updates
 - Configuration updates with optimization flags
 - Rollback capability and restore operations
-
-## Usage Patterns
-
-### Standard Template Optimization
-
-```python
-# Complete optimization workflow
-Skill("moai-project-template-optimizer")
-
-# Executes: Backup Discovery → Template Comparison → Smart Merge → Configuration Update
-```
-
-### Backup Analysis Only
-
-```python
-# Analyze existing backups without making changes
-Skill("moai-project-template-optimizer", mode="analyze_only")
-```
-
-### Specific Backup Restoration
-
-```python
-# Restore from specific backup
-Skill("moai-project-template-optimizer", 
-       mode="restore", 
-       backup="backup-2025-10-15-v0.16.0")
-```
-
-### Rollback Operation
-
-```python
-# Rollback to previous state
-Skill("moai-project-template-optimizer", mode="rollback")
-```
 
 ## Workflow Phases
 
@@ -207,6 +165,36 @@ Default examples           | Custom implementations
     }
   }
 }
+```
+
+## Usage Patterns
+
+### Standard Template Optimization
+```python
+# Complete optimization workflow
+Skill("moai-project-template-optimizer")
+
+# Executes: Backup Discovery → Template Comparison → Smart Merge → Configuration Update
+```
+
+### Backup Analysis Only
+```python
+# Analyze existing backups without making changes
+Skill("moai-project-template-optimizer", mode="analyze_only")
+```
+
+### Specific Backup Restoration
+```python
+# Restore from specific backup
+Skill("moai-project-template-optimizer", 
+       mode="restore", 
+       backup="backup-2025-10-15-v0.16.0")
+```
+
+### Rollback Operation
+```python
+# Rollback to previous state
+Skill("moai-project-template-optimizer", mode="rollback")
 ```
 
 ## Error Handling & Validation

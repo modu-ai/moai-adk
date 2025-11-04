@@ -139,7 +139,7 @@ Alfred proceeds with `next-intl`, avoiding:
 ```typescript
 const answer = await AskUserQuestion({
   questions: [{
-    question: "⚠️ This will PERMANENTLY delete 50 test users from PRODUCTION database. Are you sure?",
+    question: "WARNING: This will PERMANENTLY delete 50 test users from PRODUCTION database. Are you sure?",
     header: "Confirm",
     multiSelect: false,
     options: [
@@ -147,9 +147,9 @@ const answer = await AskUserQuestion({
         label: "No, cancel", 
         description: "Abort operation. No changes will be made." 
       },
-      { 
-        label: "Yes, proceed", 
-        description: "🚨 IRREVERSIBLE. Delete 50 users now." 
+      {
+        label: "Yes, proceed",
+        description: "ALERT: IRREVERSIBLE. Delete 50 users now."
       }
     ]
   }]
@@ -624,15 +624,15 @@ For Claude Pro $20/month users: Token usage directly impacts API costs (~$0.02 p
     multiSelect: false,
     options: [
       {
-        label: "📊 Enable (Default)",
+        label: "Enable (Default)",
         description: "Full analysis reports for every sync. Best for understanding project changes. (High token usage)"
       },
       {
-        label: "⚡ Minimal (Recommended)",
+        label: "Minimal (Recommended)",
         description: "Essential reports only (sync summary + TAG validation). Balances insight with token efficiency. (Low token usage)"
       },
       {
-        label: "🚫 Disable",
+        label: "Disable",
         description: "No automatic reports. Maximum token savings but no analysis output. (Zero token usage)"
       }
     ]
@@ -715,15 +715,15 @@ const answers = await AskUserQuestion({
       multiSelect: false,
       options: [
         {
-          label: "📊 Enable",
+          label: "Enable",
           description: "Full analysis reports. (150-300 tokens/session)"
         },
         {
-          label: "⚡ Minimal",
+          label: "Minimal",
           description: "Essential reports only. (20-60 tokens/session)"
         },
         {
-          label: "🚫 Disable",
+          label: "Disable",
           description: "No reports. (0 tokens/session)"
         }
       ]
@@ -735,7 +735,7 @@ const answers = await AskUserQuestion({
 // {
 //   "Language": "한국어 (Korean)",
 //   "Mode": "Team (GitFlow)",
-//   "Report Generation": "⚡ Minimal"
+//   "Report Generation": "Minimal"
 // }
 ```
 

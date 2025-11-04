@@ -71,10 +71,10 @@ const languageBatch = {
       header: "Language",
       multiSelect: false,
       options: [
-        { label: "🌍 English", description: "All dialogs and documentation in English" },
-        { label: "🇰🇷 한국어", description: "모든 대화와 문서를 한국어로" },
-        { label: "🇯🇵 日本語", description: "すべての対話と文書を日本語で" },
-        { label: "🇨🇳 中文", description: "所有对话和文档使用中文" }
+        { label: "English", description: "All dialogs and documentation in English" },
+        { label: "한국어", description: "모든 대화와 문서를 한국어로" },
+        { label: "日本語", description: "すべての対話と文書を日本語で" },
+        { label: "中文", description: "所有对话和文档使用中文" }
       ]
     },
     {
@@ -82,8 +82,8 @@ const languageBatch = {
       header: "Agent Prompt",
       multiSelect: false,
       options: [
-        { label: "🌐 English (Global Standard)", description: "Reduces token usage by 15-20%" },
-        { label: "🗣️ Selected Language (Localized)", description: "Local efficiency with native language" }
+        { label: "English (Global Standard)", description: "Reduces token usage by 15-20%" },
+        { label: "Selected Language (Localized)", description: "Local efficiency with native language" }
       ]
     },
     {
@@ -112,9 +112,9 @@ const teamModeBatch = {
       header: "GitHub Settings", 
       multiSelect: false,
       options: [
-        { label: "✅ Yes, already enabled", description: "PR merge 후 자동으로 원격 브랜치 삭제됨" },
-        { label: "❌ No, not enabled (Recommended)", description: "Settings → General에서 확인 필요" },
-        { label: "🤔 Not sure / Need to check", description: "GitHub Settings 확인 후 다시 진행" }
+        { label: "Yes, already enabled", description: "PR merge 후 자동으로 원격 브랜치 삭제됨" },
+        { label: "No, not enabled (Recommended)", description: "Settings → General에서 확인 필요" },
+        { label: "Not sure / Need to check", description: "GitHub Settings 확인 후 다시 진행" }
       ]
     },
     {
@@ -122,9 +122,9 @@ const teamModeBatch = {
       header: "Git Workflow",
       multiSelect: false,
       options: [
-        { label: "📋 Feature Branch + PR", description: "매 SPEC마다 feature 브랜치 생성 → PR 리뷰 → develop 병합" },
-        { label: "🔄 Direct Commit to Develop", description: "develop에 직접 커밋. 빠른 프로토타이핑에 최적" },
-        { label: "🤔 Decide per SPEC", description: "SPEC 생성 시마다 매번 선택. 유연성 높지만 결정 필요" }
+        { label: "Feature Branch + PR", description: "매 SPEC마다 feature 브랜치 생성 → PR 리뷰 → develop 병합" },
+        { label: "Direct Commit to Develop", description: "develop에 직접 커밋. 빠른 프로토타이핑에 최적" },
+        { label: "Decide per SPEC", description: "SPEC 생성 시마다 매번 선택. 유연성 높지만 결정 필요" }
       ]
     }
   ]
@@ -139,13 +139,13 @@ const teamModeBatch = {
 const reportGenerationBatch = {
   questions: [
     {
-      question: "Configure report generation:\n\n⚡ **Minimal (Recommended)**: Essential reports only (20-30 tokens)\n📊 **Enable**: Full analysis reports (50-60 tokens)\n🚫 **Disable**: No reports (0 tokens)\n\nAffects future /alfred:3-sync costs.",
+      question: "Configure report generation:\n\n**Minimal (Recommended)**: Essential reports only (20-30 tokens)\n**Enable**: Full analysis reports (50-60 tokens)\n**Disable**: No reports (0 tokens)\n\nAffects future /alfred:3-sync costs.",
       header: "Report Generation",
       multiSelect: false,
       options: [
-        { label: "⚡ Minimal (Recommended)", description: "80% token reduction, faster sync" },
-        { label: "📊 Enable", description: "Complete reports, higher token usage" },
-        { label: "🚫 Disable", description: "No automatic reports, zero cost" }
+        { label: "Minimal (Recommended)", description: "80% token reduction, faster sync" },
+        { label: "Enable", description: "Complete reports, higher token usage" },
+        { label: "Disable", description: "No automatic reports, zero cost" }
       ]
     }
   ]

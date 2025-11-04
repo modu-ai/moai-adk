@@ -223,8 +223,7 @@ This command supports **4 operational modes**:
    - Extract values:
      - `git_strategy.mode` → Store as `$PROJECT_MODE` (Personal/Team)
      - `git_strategy.spec_git_workflow` → Store as `$WORKFLOW` (feature_branch/develop_direct)
-     - `language.conversation_language` → Store as `$LANG` ({{CONVERSATION_LANGUAGE}})
-     - `language.conversation_language_name` → Store as `$LANG_NAME` ({{CONVERSATION_LANGUAGE_NAME}})
+     - `language.conversation_language` → Store as `$LANG`
 
 5. **Determine if changes are code-heavy or document-heavy**:
    - IF Python files changed > 50 lines → `$CHANGE_TYPE = "code-heavy"`
@@ -2089,18 +2088,6 @@ This command is **STEP 4** (Report & Commit):
 **Configuration**:
 - `.moai/config.json` - Project settings
 - `.claude/settings.json` - Claude Code settings
-
----
-
-## Final Step
-
-The synchronization workflow is now complete. You have successfully:
-1. Synchronized all code changes to Living Documents with proper @TAG references
-2. Verified traceability between SPEC, TEST, CODE, and DOC elements
-3. Ensured quality gates compliance and documentation integrity
-4. Prepared final Git commits and optionally created PRs
-
-The development cycle is now complete and ready for the next iteration or project milestone.
 
 ---
 
