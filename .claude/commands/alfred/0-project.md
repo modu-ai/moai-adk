@@ -2840,169 +2840,612 @@ Solution: Check file permissions (chmod 644) or create config.json manually
 
 ---
 
-## 🚀 STEP 0-UPDATE: Template optimization (subcommand mode)
+## 🚀 STEP 0-UPDATE: Template optimization (subcommand mode) - 명령형 지침
 
-> **Purpose**: After running `moai-adk update`, compare the backup and new template to optimize the template while preserving user customization.
+**When to execute this step**:
+- User runs `/alfred:0-project update`
+- OR user selected "Update Mode" from a menu
+- OR after running `moai-adk update` command (when `optimized=false` in config.json)
 
-### Execution conditions
+**Your task**: After running `moai-adk update`, merge latest templates while preserving user customizations.
 
-This subcommand is executed under the following conditions:
+---
 
-1. **After executing moai-adk update**: `optimized=false` status in `config.json`
-2. **Template update required**: When there is a difference between the backup and the new template
-3. **User explicit request**: User directly executes `/alfred:0-project update`
+### STEP 0-UPDATE.1: Verify prerequisites and check backup
 
-### Execution flow
+**Your task**: Verify that prerequisites exist before starting template optimization.
 
-#### Phase 1: Backup analysis and comparison
+**Steps**:
 
-1. **Make sure you have the latest backup**:
+1. **Check if backup directory exists**:
+   - Directory to check: `.moai-backups/`
+   - IF directory does NOT exist → Show error and exit:
+     ```
+     ❌ Error: No backup found at .moai-backups/
 
-   ```bash
+     This command requires a backup from previous initialization.
+     Backup would have been created when you ran: /alfred:0-project
 
+     Next steps:
+     - IF this is a new project: Run /alfred:0-project
+     - IF backup was deleted: Cannot recover, re-initialize project
+     ```
+   - IF directory exists → Continue to next step
+
+2. **Find latest backup timestamp**:
+   - Command: List subdirectories in `.moai-backups/`
+   - Expected format: `.moai-backups/YYYYMMDD_HHMMSS/`
+   - Find: Latest timestamp directory
+   - Store: Timestamp value (e.g., "20250104_143022")
+   - IF no timestamp directories found → Show error (same as step 1)
+
+3. **Check if config.json exists in current directory**:
+   - Read: `.moai/config.json`
+   - IF file does NOT exist → Show error and exit:
+     ```
+     ❌ Error: .moai/config.json not found
+
+     This command requires an initialized project.
+
+     Next steps:
+     - Run: /alfred:0-project
+     - OR check if you are in the correct directory
+     ```
+   - IF file exists → Continue
+
+4. **Print backup verification result**:
+   ```
+   ✅ Prerequisites verified
+
+   📦 Backup found:
+   - Location: .moai-backups/[TIMESTAMP]/
+   - Timestamp: [TIMESTAMP]
+   - Ready for template comparison
    ```
 
-# Browse the latest backups in the .moai-backups/ directory
+---
 
-ls -lt .moai-backups/ | head -1
+### STEP 0-UPDATE.2: Load and compare templates
 
-````
+**Your task**: Identify what changed between the old and new templates.
 
-2. **Change Analysis**:
-- Compare `.claude/` directory from backup with current template
-- Compare `.moai/project/` document from backup with current document
-- Identify user customization items
+**Steps**:
 
-3. **Create Comparison Report**:
-```markdown
-## 📊 Template optimization analysis
+1. **Load old template files from backup**:
+   - Read: `.moai-backups/[LATEST_TIMESTAMP]/CLAUDE.md`
+   - Read: `.moai-backups/[LATEST_TIMESTAMP]/.claude/settings.json`
+   - Read: `.moai-backups/[LATEST_TIMESTAMP]/.moai/project/product.md`
+   - Read: `.moai-backups/[LATEST_TIMESTAMP]/.moai/project/structure.md`
+   - Read: `.moai-backups/[LATEST_TIMESTAMP]/.moai/project/tech.md`
+   - Store: All old content in memory
 
-### Changed items
-- CLAUDE.md: "## Project Information" section needs to be preserved
-- settings.json: 3 env variables need to be preserved
-- product.md: Has user-written content
+2. **Load new template files from package**:
+   - Read: `src/moai_adk/templates/CLAUDE.md`
+   - Read: `src/moai_adk/templates/.claude/settings.json`
+   - Read: `src/moai_adk/templates/.moai/project/product.md`
+   - Read: `src/moai_adk/templates/.moai/project/structure.md`
+   - Read: `src/moai_adk/templates/.moai/project/tech.md`
+   - Store: All new content in memory
 
-### Recommended Action
-- Run Smart Merge
-- Preserve User Customizations
-- Set optimized=true
-````
+3. **Compare CLAUDE.md**:
+   - Check: Is "## 🤖 Project Information" section present in old backup?
+   - Check: Does old version have different structure/sections than new?
+   - Identify: Custom content added by user (anything not in original template)
+   - Store: Sections that need preservation
 
-4. **Waiting for user approval**
+4. **Compare settings.json**:
+   - Check: Custom environment variables in old backup
+   - Check: Custom permissions in `permissions.allow` array
+   - Check: Custom hooks in `hooks` section
+   - Identify: User-added configurations
+   - Store: Settings that need preservation
 
-Call `AskUserQuestion` tool (documented in moai-alfred-ask-user-questions skill) to obtain user approval for template optimization.
+5. **Compare .moai/project/ documents**:
+   - For each file (product.md, structure.md, tech.md):
+     - Check: Does old version have user-written content?
+     - Check: Is structure different from template?
+     - Identify: Sections with real project data vs placeholder text
+   - Store: Content sections that need preservation
 
-**Example AskUserQuestion Call**:
+6. **Create comparison summary**:
+   - Count: How many files changed
+   - Count: How many customizations found
+   - Identify: Which files need smart merge vs simple overwrite
 
-```python
-AskUserQuestion(
-    questions=[
-        {
-            "question": "Template optimization analysis complete. Changes detected in backup vs current template. How would you like to proceed?",
-            "header": "Template Optimization",
-            "multiSelect": false,
-            "options": [
-                {
-                    "label": "✅ Proceed",
-                    "description": "Run smart merge: preserve customizations with latest template (Phase 2)"
-                },
-                {
-                    "label": "👀 Preview",
-                    "description": "Show detailed change list before proceeding"
-                },
-                {
-                    "label": "⏸️ Skip",
-                    "description": "Keep current template unchanged (optimized: false)"
-                }
-            ]
-        }
-    ]
-)
-```
+---
 
-**Response Processing**:
+### STEP 0-UPDATE.3: Display comparison report and ask for approval
 
-- **"Proceed"** (`answers["0"] === "Proceed"`) → Execute Phase 2
+**Your task**: Show comparison results to user and get permission to proceed.
 
-  - Run smart merge logic
-  - Preserve user customizations from backup
-  - Combine with latest template structure
-  - Set `optimized: true` in config.json
+**Steps**:
 
-- **"Preview"** (`answers["0"] === "Preview"`) → Display detailed changes
+1. **Print comparison report**:
+   ```
+   🔍 Template Comparison Analysis
 
-  - Show file-by-file comparison
-  - Highlight customization sections
-  - Ask approval again with "Proceed" or "Skip" only
+   📊 Files analyzed:
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   - CLAUDE.md
+   - .claude/settings.json
+   - .moai/project/product.md
+   - .moai/project/structure.md
+   - .moai/project/tech.md
 
-- **"Skip"** (`answers["0"] === "Skip"`) → Keep current state
-  - Do not modify any files
-  - Keep `optimized: false` in config.json
-  - User can run again with `moai-adk update` later
+   🔧 Changes detected:
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   [IF CLAUDE.md has customizations]
+   ✓ CLAUDE.md:
+     - "## 🤖 Project Information" section (user-customized)
+     - [List other custom sections if found]
 
-#### Phase 2: Run smart merge (after user approval)
+   [IF settings.json has customizations]
+   ✓ .claude/settings.json:
+     - Custom permissions: [list count] items
+     - Custom environment variables: [list count] items
+     - Custom hooks: [list if any]
 
-1. **Execute smart merge logic**:
+   [IF project docs have customizations]
+   ✓ .moai/project/product.md: Has user-written content
+   ✓ .moai/project/structure.md: Has user-written content
+   ✓ .moai/project/tech.md: Has user-written content
 
-- Run `TemplateProcessor.copy_templates()`
-- CLAUDE.md: Preserve "## Project Information" section
-- settings.json: env variables and permissions.allow merge
+   [IF NO customizations found in a file]
+   - [filename]: No customizations (can be safely overwritten)
 
-2. Set **optimized=true**:
+   💡 Recommendation:
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   - Smart merge will preserve your customizations
+   - Latest template structure will be applied
+   - Backup will be created before any changes
+   ```
 
+2. **Call AskUserQuestion tool**:
    ```python
-   # update config.json
-   config_data["project"]["optimized"] = True
+   AskUserQuestion(
+       questions=[
+           {
+               "question": "Template optimization analysis complete. How would you like to proceed?",
+               "header": "📦 Template Optimization",
+               "multiSelect": false,
+               "options": [
+                   {
+                       "label": "✅ Proceed",
+                       "description": "Run smart merge: preserve customizations with latest template structure"
+                   },
+                   {
+                       "label": "👀 Preview",
+                       "description": "Show detailed file-by-file changes before proceeding"
+                   },
+                   {
+                       "label": "⏸️ Skip",
+                       "description": "Keep current templates unchanged (you can run this command later)"
+                   }
+               ]
+           }
+       ]
+   )
    ```
 
-3. **Optimization completion report**:
-   ```markdown
-   ✅ Template optimization completed!
+3. **Process user's response**:
+   - Store: User's answer in variable `user_choice`
+   - IF `user_choice == "Proceed"` → Go to STEP 0-UPDATE.4
+   - IF `user_choice == "Preview"` → Go to STEP 0-UPDATE.3.1
+   - IF `user_choice == "Skip"` → Go to STEP 0-UPDATE.7 (exit gracefully)
+
+---
+
+### STEP 0-UPDATE.3.1: Show detailed preview (conditional - only if user requested)
+
+**Your task**: Show detailed file-by-file changes before merging.
+
+**Steps**:
+
+1. **For CLAUDE.md**:
+   - Print:
+     ```
+     📄 FILE: CLAUDE.md
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+     🔸 SECTIONS TO PRESERVE (from your backup):
+     - ## 🤖 Project Information
+       [Show first 5 lines of this section from backup]
+
+     🔸 NEW TEMPLATE STRUCTURE:
+     - [List new sections added in latest template]
+
+     🔸 MERGE STRATEGY:
+     - Keep your "Project Information" section
+     - Apply new template structure
+     - Combine both into final CLAUDE.md
+     ```
+
+2. **For settings.json**:
+   - Print:
+     ```
+     📄 FILE: .claude/settings.json
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+     🔸 CUSTOM PERMISSIONS (from your backup):
+     [Show user's custom permissions array]
+
+     🔸 CUSTOM ENVIRONMENT VARIABLES (from your backup):
+     [Show user's custom env vars if any]
+
+     🔸 MERGE STRATEGY:
+     - Keep your custom permissions
+     - Add new default permissions from template
+     - Preserve your environment variables
+     ```
+
+3. **For .moai/project/ files**:
+   - For each file (product.md, structure.md, tech.md):
+     - Print:
+       ```
+       📄 FILE: .moai/project/[filename]
+       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+       🔸 YOUR CURRENT CONTENT (first 10 lines):
+       [Show first 10 lines from backup]
+
+       🔸 NEW TEMPLATE STRUCTURE:
+       [Show first 10 lines from new template]
+
+       🔸 MERGE STRATEGY:
+       - Keep your written content
+       - Apply new template structure/headings
+       - Combine both into final document
+       ```
+
+4. **Ask for approval again**:
+   ```python
+   AskUserQuestion(
+       questions=[
+           {
+               "question": "Preview complete. Ready to proceed with smart merge?",
+               "header": "📦 Confirm Merge",
+               "multiSelect": false,
+               "options": [
+                   {
+                       "label": "✅ Proceed",
+                       "description": "Apply smart merge now"
+                   },
+                   {
+                       "label": "⏸️ Skip",
+                       "description": "Cancel and keep current templates"
+                   }
+               ]
+           }
+       ]
+   )
    ```
+
+5. **Process second response**:
+   - IF "Proceed" → Go to STEP 0-UPDATE.4
+   - IF "Skip" → Go to STEP 0-UPDATE.7 (exit gracefully)
+
+---
+
+### STEP 0-UPDATE.4: Create safety backup before merge
+
+**Your task**: Create a timestamped backup of current state before making any changes.
+
+**Steps**:
+
+1. **Generate new timestamp**:
+   - Format: `YYYYMMDD_HHMMSS` (e.g., "20250104_153045")
+   - Store: In variable `new_backup_timestamp`
+
+2. **Create backup directory**:
+   - Directory: `.moai-backups/[new_backup_timestamp]/`
+   - IF directory creation fails → Show error and exit:
+     ```
+     ❌ Error: Cannot create backup directory
+
+     Failed to create: .moai-backups/[TIMESTAMP]/
+
+     Possible reasons:
+     - Insufficient disk space
+     - Permission denied
+     - Invalid directory name
+
+     Cannot proceed without safety backup.
+     ```
+
+3. **Copy current files to backup**:
+   - Copy: `CLAUDE.md` → `.moai-backups/[new_backup_timestamp]/CLAUDE.md`
+   - Copy: `.claude/settings.json` → `.moai-backups/[new_backup_timestamp]/.claude/settings.json`
+   - Copy: `.moai/project/product.md` → `.moai-backups/[new_backup_timestamp]/.moai/project/product.md`
+   - Copy: `.moai/project/structure.md` → `.moai-backups/[new_backup_timestamp]/.moai/project/structure.md`
+   - Copy: `.moai/project/tech.md` → `.moai-backups/[new_backup_timestamp]/.moai/project/tech.md`
+   - Copy: `.moai/config.json` → `.moai-backups/[new_backup_timestamp]/.moai/config.json`
+
+4. **Verify backup integrity**:
+   - Check: All files copied successfully
+   - Check: Files are readable
+   - IF any file missing → Show error and exit (do NOT proceed with merge)
+
+5. **Print backup confirmation**:
+   ```
+   💾 Safety backup created
+
+   Location: .moai-backups/[new_backup_timestamp]/
+   Files backed up: 6
+
+   [IF merge fails, you can restore from this backup]
+   ```
+
+---
+
+### STEP 0-UPDATE.5: Execute smart merge
+
+**Your task**: Merge new templates with user customizations.
+
+**Steps**:
+
+1. **Merge CLAUDE.md**:
+   - Read: New template from `src/moai_adk/templates/CLAUDE.md`
+   - Read: User's "## 🤖 Project Information" section from backup
+   - Find: Location where "## 🤖 Project Information" should be inserted in new template
+   - Insert: User's section into new template at correct location
+   - Keep: All other sections from new template
+   - Write: Merged content to `CLAUDE.md`
+   - IF write fails → Go to STEP 0-UPDATE.6 (error recovery)
+
+2. **Merge .claude/settings.json**:
+   - Read: New template from `src/moai_adk/templates/.claude/settings.json`
+   - Read: User's custom permissions from backup
+   - Read: User's custom environment variables from backup
+   - Merge strategy:
+     ```
+     {
+       "hooks": [merge user's custom hooks with new defaults],
+       "permissions": {
+         "allow": [merge user's + new defaults, remove duplicates],
+         "ask": [keep new defaults],
+         "deny": [keep new defaults]
+       },
+       "environmentVariables": [merge user's custom vars with new defaults]
+     }
+     ```
+   - Write: Merged settings.json
+   - IF write fails → Go to STEP 0-UPDATE.6 (error recovery)
+
+3. **Merge .moai/project/product.md**:
+   - Read: New template from `src/moai_adk/templates/.moai/project/product.md`
+   - Read: User's content from backup
+   - Merge strategy:
+     - Keep: New template section headings
+     - Insert: User's written content under each heading
+     - Preserve: User's custom sections not in template
+   - Write: Merged product.md
+   - IF write fails → Go to STEP 0-UPDATE.6 (error recovery)
+
+4. **Merge .moai/project/structure.md**:
+   - Same merge strategy as product.md
+   - Write: Merged structure.md
+   - IF write fails → Go to STEP 0-UPDATE.6 (error recovery)
+
+5. **Merge .moai/project/tech.md**:
+   - Same merge strategy as product.md
+   - Write: Merged tech.md
+   - IF write fails → Go to STEP 0-UPDATE.6 (error recovery)
+
+6. **Print merge progress** (after each file):
+   ```
+   ✓ CLAUDE.md merged
+   ✓ .claude/settings.json merged
+   ✓ .moai/project/product.md merged
+   ✓ .moai/project/structure.md merged
+   ✓ .moai/project/tech.md merged
+   ```
+
+---
+
+### STEP 0-UPDATE.5.1: Update config.json metadata
+
+**Your task**: Mark the optimization as complete in config.json.
+
+**Steps**:
+
+1. **Read current config.json**:
+   - Read: `.moai/config.json`
+   - Parse: JSON content
+
+2. **Update fields**:
+   - Set: `project.optimized = true`
+   - Set: `project.optimized_at = "[ISO_TIMESTAMP]"` (current timestamp in ISO 8601 format)
+   - Set: `project.template_version = "[PACKAGE_VERSION]"` (from moai-adk package version)
+
+3. **Add history entry**:
+   - Append to `history` array:
+     ```json
+     {
+       "date": "[ISO_TIMESTAMP]",
+       "event": "Template optimization",
+       "action": "Smart merge with user customizations",
+       "backup": "[new_backup_timestamp]",
+       "template_version": "[PACKAGE_VERSION]",
+       "notes": "Updated to latest moai-adk template structure"
+     }
+     ```
+
+4. **Write updated config.json**:
+   - Write: Updated content to `.moai/config.json`
+   - IF write fails → Show error (but merge already succeeded, so this is non-critical)
+
+5. **Print config update confirmation**:
+   ```
+   ⚙️ config.json updated
+
+   Changes:
+   - optimized: true
+   - optimized_at: [TIMESTAMP]
+   - template_version: [VERSION]
+   - history: Added optimization event
+   ```
+
+---
+
+### STEP 0-UPDATE.5.2: Display completion report
+
+**Your task**: Confirm to user that template optimization is complete.
+
+**Print**:
+```
+✅ Template optimization completed!
 
 📄 Merged files:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✓ CLAUDE.md
+  - Latest template structure applied
+  - Your "Project Information" section preserved
 
-- CLAUDE.md (preserves project information)
-- settings.json (preserves env variables)
+✓ .claude/settings.json
+  - New default settings applied
+  - Your custom permissions preserved
+  - Your environment variables preserved
 
-⚙️ config.json: optimized=true Configuration complete
+✓ .moai/project/product.md
+  - Latest template structure applied
+  - Your content preserved
 
-````
+✓ .moai/project/structure.md
+  - Latest template structure applied
+  - Your content preserved
 
-### Alfred Automation Strategy
+✓ .moai/project/tech.md
+  - Latest template structure applied
+  - Your content preserved
 
-**Alfred automatic decision**:
-- Automatically call project-manager agent
-- Check backup freshness (within 24 hours)
-- Automatically analyze changes
+⚙️ .moai/config.json
+  - optimized: true
+  - template_version: [VERSION]
 
-**Auto-activation of Skills**:
-- moai-alfred-tag-scanning: TAG chain verification
-- moai-alfred-trust-validation: Verification of compliance with TRUST principles
+💾 Safety backups:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Pre-merge backup: .moai-backups/[new_backup_timestamp]/
+- Previous backup: .moai-backups/[old_timestamp]/
 
-### Running example
+🎯 Next steps:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Review merged templates:
+   - cat CLAUDE.md
+   - cat .claude/settings.json
 
-```bash
-# After running moai-adk update
-moai-adk update
+2. Test your project:
+   - /alfred:1-plan "test feature"
 
-# Output:
-# ✓ Update complete!
-# ℹ️  Next step: Run /alfred:0-project update to optimize template changes
+3. IF issues occur:
+   - Restore from backup: .moai-backups/[new_backup_timestamp]/
 
-# Run Alfred
-/alfred:0-project update
+✨ Your project is now using the latest moai-adk template!
+```
 
-# → Phase 1: Generate backup analysis and comparison report
-# → Wait for user approval
-# → Phase 2: Run smart merge, set optimized=true
-````
+**Then STOP this command** (do NOT proceed to STEP 1 or any other section).
 
-### caution
+---
 
-- **Backup required**: Cannot run without backup in `.moai-backups/` directory
-- **Manual review recommended**: Preview is required if there are important customizations
-- **Conflict resolution**: Request user selection in case of merge conflict
+### STEP 0-UPDATE.6: Error recovery (merge failure)
+
+**Your task**: Handle errors during merge and restore from backup.
+
+**When to execute**:
+- IF any file write fails in STEP 0-UPDATE.5
+- IF merge conflict cannot be resolved automatically
+
+**Steps**:
+
+1. **Identify which file failed**:
+   - Store: Filename that caused error
+   - Store: Error message
+
+2. **Print error message**:
+   ```
+   ❌ Merge failed
+
+   Failed file: [FILENAME]
+   Error: [ERROR_MESSAGE]
+
+   Possible reasons:
+   - Permission denied (check file permissions)
+   - Disk full (check available space)
+   - File locked by another process
+
+   🔄 Attempting automatic recovery...
+   ```
+
+3. **Restore from safety backup**:
+   - Copy: `.moai-backups/[new_backup_timestamp]/[FAILED_FILE]` → `[FAILED_FILE]`
+   - Copy: All other files from backup (to ensure consistency)
+   - Print: "✓ Files restored from backup"
+
+4. **Ask user for next steps**:
+   ```python
+   AskUserQuestion(
+       questions=[
+           {
+               "question": "Merge failed and files were restored. What would you like to do?",
+               "header": "⚠️ Error Recovery",
+               "multiSelect": false,
+               "options": [
+                   {
+                       "label": "🔍 Show error details",
+                       "description": "Display full error message and failed file"
+                   },
+                   {
+                       "label": "🔧 Manual merge",
+                       "description": "I'll merge the files manually"
+                   },
+                   {
+                       "label": "⏸️ Skip for now",
+                       "description": "Keep current templates, try again later"
+                   }
+               ]
+           }
+       ]
+   )
+   ```
+
+5. **Process user's choice**:
+   - IF "Show error details":
+     - Print: Full error message
+     - Print: Backup location
+     - Print: Manual merge instructions
+   - IF "Manual merge" OR "Skip for now":
+     - Exit command with status message
+
+---
+
+### STEP 0-UPDATE.7: Graceful exit (user skipped)
+
+**Your task**: Exit the update command cleanly when user chooses to skip.
+
+**When to execute**:
+- IF user selected "Skip" in STEP 0-UPDATE.3
+- IF user selected "Skip" in STEP 0-UPDATE.3.1
+
+**Steps**:
+
+1. **Print skip message**:
+   ```
+   ⏸️ Template optimization skipped
+
+   No changes were made to your templates.
+
+   Current state:
+   - Templates: Using previous version
+   - config.json: optimized = false
+   - Backup: .moai-backups/[LATEST_TIMESTAMP]/
+
+   💡 You can run template optimization later:
+   - Command: /alfred:0-project update
+   - OR run: moai-adk update
+
+   ✨ Your project continues to work normally.
+   ```
+
+2. **STOP this command** (do NOT proceed to any other steps)
 
 ---
 
