@@ -1,12 +1,7 @@
-# SPEC-UPDATE-REFACTOR-001: /alfred:9-update Option C 하이브리드 리팩토링
-
-## Metadata
-
-```yaml
 ---
 id: UPDATE-REFACTOR-001
 version: 0.2.0
-status: closed
+status: completed
 created: 2025-10-02
 updated: 2025-10-06
 completed: 2025-10-06
@@ -14,7 +9,10 @@ authors: [alfred, spec-builder, code-builder]
 priority: P0
 category: refactor
 ---
-```
+
+# SPEC-UPDATE-REFACTOR-001: /alfred:9-update Option C 하이브리드 리팩토링
+
+## Metadata
 
 ## HISTORY
 
@@ -1146,7 +1144,7 @@ rg "@TEST:UPDATE-REFACTOR-001" -n
 # 체인 무결성 검증
 rg "@(SPEC|CODE|TEST):UPDATE-REFACTOR-001" -n
 ```
-status: closed
+status: completed
 ---
 
 **END OF SPEC**

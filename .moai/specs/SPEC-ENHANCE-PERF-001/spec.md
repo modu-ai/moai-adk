@@ -1,7 +1,7 @@
 ---
 id: ENHANCE-PERF-001
 version: 0.1.0
-status: implementation-complete
+status: completed
 created: 2025-10-31
 updated: 2025-10-31
 author: @Alfred

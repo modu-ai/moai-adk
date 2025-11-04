@@ -3,7 +3,7 @@ title: Dynamic Document Reference for spec-builder
 id: SPEC-FEATURE-001
 type: feature
 priority: medium
-status: closed
+status: completed
 resolution: replaced_by_skill
 closed_date: 2025-11-04
 affects: spec-builder agent, project structure

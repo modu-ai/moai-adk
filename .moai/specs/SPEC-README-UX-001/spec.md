@@ -1,7 +1,7 @@
 ---
 id: README-UX-001
 version: 0.1.0
-status: implementation-complete
+status: completed
 created: 2025-10-19
 updated: 2025-10-19
 author: @Alfred

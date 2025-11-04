@@ -1,7 +1,7 @@
 ---
 id: INSTALL-001
 version: 0.2.0
-status: closed
+status: completed
 created: 2025-10-06
 updated: 2025-10-06
 author: @Goos

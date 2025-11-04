@@ -1,15 +1,15 @@
-# @SPEC:LANGUAGE-DETECTION-001: JavaScript/TypeScript 프로젝트 CI/CD 워크플로우 언어 감지 및 템플릿 분리
-
 ---
 title: JavaScript/TypeScript 프로젝트 CI/CD 워크플로우 언어 감지 및 템플릿 분리
 id: LANGUAGE-DETECTION-001
 version: v0.1.0
-status: closed
+status: completed
 author: GoosLab
 created: 2025-10-30
 updated: 2025-10-30
 issue: "#131"
 ---
+
+# @SPEC:LANGUAGE-DETECTION-001: JavaScript/TypeScript 프로젝트 CI/CD 워크플로우 언어 감지 및 템플릿 분리
 
 ## HISTORY
 
@@ -433,7 +433,7 @@ except LanguageDetectionError as e:
 - 언어 감지 시간: **< 100ms**
 - 캐시 히트 시: **< 10ms**
 - 워크플로우 생성 시간: **< 500ms**
-status: closed
+status: completed
 ---
 
 **Generated with**: 🎩 Alfred (MoAI-ADK v0.7.0)

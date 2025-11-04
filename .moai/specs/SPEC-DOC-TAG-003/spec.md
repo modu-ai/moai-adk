@@ -1,7 +1,7 @@
 ---
 id: DOC-TAG-003
 version: 0.1.0
-status: planned
+status: completed
 created: 2025-10-29
 updated: 2025-11-04
 author: "@Goos"

@@ -1,7 +1,7 @@
 ---
 id: CLAUDE-CODE-FEATURES-001
 version: 0.0.1
-status: closed
+status: completed
 created: 2025-11-02
 updated: 2025-11-02
 author: @GOOS

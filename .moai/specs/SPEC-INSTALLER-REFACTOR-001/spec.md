@@ -1,7 +1,7 @@
 ---
 id: INSTALLER-REFACTOR-001
 version: 0.2.0
-status: implementation-complete
+status: completed
 created: 2025-10-06
 updated: 2025-10-18
 author: @Goos

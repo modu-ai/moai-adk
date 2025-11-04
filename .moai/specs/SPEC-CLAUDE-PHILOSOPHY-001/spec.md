@@ -1,7 +1,7 @@
 ---
 id: CLAUDE-PHILOSOPHY-001
 version: 0.1.0
-status: implementation-complete
+status: completed
 created: 2025-11-04
 updated: 2025-11-04
 author: @Alfred
@@ -269,7 +269,7 @@ name: moai-alfred-session-analytics
 version: 1.0.0
 created: 2025-11-04
 updated: 2025-11-04
-status: active
+status: completed
 description: Alfred 세션 분석, 로깅, 메트릭 수집 가이드
 keywords: ['session', 'analytics', 'logging', 'metrics']
 allowed-tools:
@@ -301,7 +301,7 @@ name: moai-alfred-config-advanced
 version: 1.0.0
 created: 2025-11-04
 updated: 2025-11-04
-status: active
+status: completed
 description: MoAI-ADK 고급 설정 가이드 (Hook 타임아웃, 권한 세분화)
 keywords: ['config', 'advanced', 'hooks', 'permissions']
 allowed-tools:
