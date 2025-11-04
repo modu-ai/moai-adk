@@ -1084,7 +1084,115 @@ When user selects Korean (conversation_language = "ko"):
 - ✅ **Zero duplication**: No pre-translated copies maintained
 - ✅ **Future-proof**: Any new language automatically supported without code changes
 
-スキル 호출:
+### 2.1.4 Variable Mapping & CompanyAnnouncements Translation
+
+**Dynamic Translation of CompanyAnnouncements**:
+
+When user completes STEP 0 and selects `conversation_language`, Alfred performs variable substitution and translation:
+
+```
+Input Variables from STEP 0:
+  - conversation_language = "ko" (or any language code)
+  - conversation_language_name = "한국어" (or language name)
+
+Translation Process:
+  1. Read conversation_language from config.json
+  2. For each item in base English announcements:
+     Translate English text → {{CONVERSATION_LANGUAGE}} (runtime)
+  3. Save translated items to .claude/settings.json companyAnnouncements array
+  4. Claude Code displays translated announcements on startup
+
+Template Variables Used:
+  - {{CONVERSATION_LANGUAGE}} - Language code (e.g., "ko", "en", "ja", "zh")
+  - {{CONVERSATION_LANGUAGE_NAME}} - Language name (e.g., "한국어", "English", "日本語")
+```
+
+**Base Announcements** (Always English - Source of Truth):
+
+```json
+{
+  "companyAnnouncements": [
+    "🎩 SPEC-First: Always define requirements as SPEC before implementation (/alfred:1-plan)",
+    "✅ TRUST 5 Principles: Test First, Readable, Unified, Secured, Trackable",
+    "📝 TodoWrite Usage: Track all tasks and update in_progress/completed status immediately",
+    "🌍 Language Boundary: Use conversation_language for dialogs/documents, English for infrastructure",
+    "🔗 @TAG Chain: Maintain traceability SPEC→TEST→CODE→DOC",
+    "⚡ Parallel Execution: Independent tasks can run simultaneously (Task tool parallel calls)",
+    "💡 Skills First: Check appropriate Skill first for domain-specific tasks"
+  ]
+}
+```
+
+**Example: Korean Translation**
+
+When user selects Korean (conversation_language = "ko"):
+
+```json
+{
+  "companyAnnouncements": [
+    "🎩 SPEC-First: 구현 전에 항상 요구사항을 SPEC으로 정의하세요 (/alfred:1-plan)",
+    "✅ TRUST 5 Principles: Test First, Readable, Unified, Secured, Trackable",
+    "📝 TodoWrite Usage: 모든 작업을 추적하고 in_progress/completed 상태를 즉시 업데이트하세요",
+    "🌍 Language Boundary: conversation_language를 대화/문서에, 영어를 인프라에 사용하세요",
+    "🔗 @TAG Chain: SPEC→TEST→CODE→DOC 추적성을 유지하세요",
+    "⚡ Parallel Execution: 독립적인 작업은 동시에 실행할 수 있습니다 (Task tool 병렬 호출)",
+    "💡 Skills First: 도메인 특화 작업은 먼저 적절한 Skill을 확인하세요"
+  ]
+}
+```
+
+**Implementation Flow** (Alfred internally):
+
+```python
+# Step 1: Read config.json
+conversation_language = config.get("language.conversation_language")
+
+# Step 2: Get base English announcements
+base_announcements = [
+    "🎩 SPEC-First: Always define requirements as SPEC before implementation (/alfred:1-plan)",
+    "✅ TRUST 5 Principles: Test First, Readable, Unified, Secured, Trackable",
+    # ... (7 total items)
+]
+
+# Step 3: Translate each item to user's language
+translated_announcements = []
+for item in base_announcements:
+    translated_item = translate_service.translate(
+        text=item,
+        source_language="en",
+        target_language=conversation_language
+    )
+    translated_announcements.append(translated_item)
+
+# Step 4: Save to .claude/settings.json
+settings = json.loads(Path(".claude/settings.json").read_text())
+settings["companyAnnouncements"] = translated_announcements
+Path(".claude/settings.json").write_text(json.dumps(settings, ensure_ascii=False, indent=2))
+
+# Step 5: Claude Code loads and displays announcements on startup
+```
+
+**Key Design Principles**:
+
+- ✅ **Single source of truth**: Only English base announcements stored in config.json
+- ✅ **Runtime translation**: Translations happen when user selects language (not pre-translated)
+- ✅ **Zero maintenance**: New languages automatically supported via translation service
+- ✅ **Any language support**: Not limited to pre-defined language list
+- ✅ **User language selection**: announcement.language variable set to {{CONVERSATION_LANGUAGE}}
+
+**Integration Points**:
+
+| Component | Role | Action |
+|-----------|------|--------|
+| STEP 0 User Input | Language Selection | User selects conversation_language |
+| Alfred | Translation Manager | Reads language, translates announcements, saves to settings |
+| config.json | Source of Truth | Stores English base announcements only |
+| .claude/settings.json | Runtime Configuration | Stores translated companyAnnouncements for Claude Code |
+| Claude Code | Display | Shows translated announcements on session startup |
+
+**Note**: The `announcements.language` field in config.json is set to `{{CONVERSATION_LANGUAGE}}` to enable the Claude Code display system to recognize the active language setting.
+
+Skill 호출:
 필요 시 명시적 Skill() 호출 사용:
 - Skill("moai-alfred-language-detection") - 코드베이스 언어 감지
 - Skill("moai-foundation-langs") - 다국어 프로젝트 설정
