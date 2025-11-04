@@ -1,4 +1,4 @@
-# @TEST:TEST-COVERAGE-001 | SPEC: SPEC-TEST-COVERAGE-001.md
+# @TEST:DETECTOR-COVERAGE-001 | SPEC: SPEC-TEST-COVERAGE-001.md
 """Unit tests for detector.py module
 
 Tests for LanguageDetector class.

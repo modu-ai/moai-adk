@@ -299,7 +299,7 @@ def _get_project_config_version(project_path: Path) -> str:
         raise ValueError(f"Failed to parse project config.json: {e}") from e
 
 
-# @CODE:UPDATE-CACHE-001-DETECT-STALE
+# @CODE:UPDATE-CACHE-001
 def _detect_stale_cache(upgrade_output: str, current_version: str, latest_version: str) -> bool:
     """
     Detect if uv cache is stale by comparing versions.
@@ -345,7 +345,7 @@ def _detect_stale_cache(upgrade_output: str, current_version: str, latest_versio
         return False
 
 
-# @CODE:UPDATE-CACHE-002-CLEAR-SUCCESS
+# @CODE:UPDATE-CACHE-002
 def _clear_uv_package_cache(package_name: str = "moai-adk") -> bool:
     """
     Clear uv cache for specific package.
@@ -396,7 +396,7 @@ def _clear_uv_package_cache(package_name: str = "moai-adk") -> bool:
         return False
 
 
-# @CODE:UPDATE-CACHE-003-RETRY-LOGIC
+# @CODE:UPDATE-CACHE-003
 def _execute_upgrade_with_retry(installer_cmd: list[str], package_name: str = "moai-adk") -> bool:
     """
     Execute upgrade with automatic cache retry on stale detection.
@@ -1030,7 +1030,7 @@ def update(path: str, force: bool, check: bool, templates_only: bool, yes: bool)
         comparison = _compare_versions(current, latest)
 
         # Stage 1: Package Upgrade (if current < latest)
-        # @CODE:UPDATE-STAGE1-009: Stage 1 - Package version check and upgrade
+        # @CODE:UPDATE-STAGE1-009
         if comparison < 0:
             console.print(f"\n[cyan]📦 Upgrading: {current} → {latest}[/cyan]")
 

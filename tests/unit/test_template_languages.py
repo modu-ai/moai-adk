@@ -1,4 +1,4 @@
-# @TEST:TEST-COVERAGE-001 | SPEC: SPEC-TEST-COVERAGE-001.md
+# @TEST:TEMPLATE-LANGUAGES-001 | SPEC: SPEC-TEST-COVERAGE-001.md
 """Unit tests for template/languages.py module
 
 Tests for language template mapping.

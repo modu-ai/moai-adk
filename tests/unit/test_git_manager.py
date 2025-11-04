@@ -1,4 +1,4 @@
-# @TEST:TEST-COVERAGE-001 | SPEC: SPEC-TEST-COVERAGE-001.md
+# @TEST:GIT-MANAGER-001 | SPEC: SPEC-TEST-COVERAGE-001.md
 """Unit tests for git/manager.py module
 
 Tests for GitManager class using temporary Git repositories.

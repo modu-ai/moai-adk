@@ -1,4 +1,4 @@
-# @TEST:TEST-COVERAGE-001 | SPEC: SPEC-TEST-COVERAGE-001.md
+# @TEST:CHECKER-COVERAGE-001 | SPEC: SPEC-TEST-COVERAGE-001.md
 """Unit tests for checker.py module
 
 Tests for SystemChecker class and check_environment function.

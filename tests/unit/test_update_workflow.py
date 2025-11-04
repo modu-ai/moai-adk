@@ -1,4 +1,4 @@
-# @TEST:UPDATE-REFACTOR-002-002
+# @TEST:UPDATE-REFACTOR-002
 """Unit tests for Phase 2: 2-Stage Workflow
 
 Tests for version management and 2-stage update workflow.

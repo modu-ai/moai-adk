@@ -1,4 +1,4 @@
-# @TEST:TEST-COVERAGE-001 | SPEC: SPEC-TEST-COVERAGE-001.md
+# @TEST:UPDATE-COVERAGE-001 | SPEC: SPEC-TEST-COVERAGE-001.md
 """Unit tests for update.py command
 
 Tests for update command with various scenarios.

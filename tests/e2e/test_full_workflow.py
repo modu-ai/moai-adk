@@ -1,4 +1,4 @@
-# @TEST:TEST-COVERAGE-001 | SPEC: SPEC-TEST-COVERAGE-001.md
+# @TEST:E2E-WORKFLOW-001 | SPEC: SPEC-TEST-COVERAGE-001.md
 """E2E Test: Full MoAI-ADK Workflow
 
 Tests the complete workflow:

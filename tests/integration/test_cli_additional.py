@@ -1,4 +1,4 @@
-# @TEST:TEST-COVERAGE-001 | SPEC: SPEC-TEST-COVERAGE-001.md
+# @TEST:CLI-ADDITIONAL-001 | SPEC: SPEC-TEST-COVERAGE-001.md
 """Additional CLI Tests for Coverage
 
 추가 CLI 테스트로 85% 커버리지 달성:

@@ -1,4 +1,4 @@
-# @TEST:TEST-COVERAGE-001 | SPEC: SPEC-TEST-COVERAGE-001.md
+# @TEST:INITIALIZER-001 | SPEC: SPEC-TEST-COVERAGE-001.md
 """Integration tests for ProjectInitializer
 
 Tests the complete project initialization workflow:
