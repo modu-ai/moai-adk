@@ -332,8 +332,8 @@ class TemplateProcessor:
         # Create .claude directory if not exists
         dst.mkdir(parents=True, exist_ok=True)
 
-        # @CODE:INIT-004:ALFRED-002 | Alfred command files must always be overwritten
-        # @CODE:INIT-004:ALFRED-COPY | Copy all 4 Alfred command files from templates
+        # @CODE:INIT-ALFRED-002 | Alfred command files must always be overwritten
+        # @CODE:INIT-COMMAND-003 | Copy all 4 Alfred command files from templates
         # Alfred folders to copy wholesale (overwrite)
         alfred_folders = [
             "hooks/alfred",
