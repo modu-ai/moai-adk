@@ -71,6 +71,7 @@
   "project": {
     "name": "{{PROJECT_NAME}}",
     "description": "{{PROJECT_DESCRIPTION}}",
+    "owner": "{{PROJECT_OWNER}}",
     "mode": "{{PROJECT_MODE}}",
     "locale": "{{CONVERSATION_LANGUAGE}}",
     "language": "{{CODEBASE_LANGUAGE}}",

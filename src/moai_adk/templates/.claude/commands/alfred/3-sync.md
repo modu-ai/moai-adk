@@ -383,25 +383,25 @@ This command supports **4 operational modes**:
      - `description`: "Scan entire TAG system across project"
      - `prompt`:
        ```
-       프로젝트 전체에서 @TAG 시스템을 스캔해주세요:
+       Please scan the entire @TAG system across the project:
 
-       스캔 범위:
-       - @SPEC TAG 위치 (.moai/specs/)
-       - @TEST TAG 위치 (tests/)
-       - @CODE TAG 위치 (src/)
-       - @DOC TAG 위치 (docs/)
+       Scan scope:
+       - @SPEC TAG locations (.moai/specs/)
+       - @TEST TAG locations (tests/)
+       - @CODE TAG locations (src/)
+       - @DOC TAG locations (docs/)
 
-       검증 항목:
-       - 고아 TAG (orphan TAGs) 감지
-       - 끊긴 참조 (broken references) 감지
-       - 중복 TAG (duplicate TAGs) 감지
+       Validation items:
+       - Detect orphan TAGs
+       - Detect broken references
+       - Detect duplicate TAGs
 
-       상세도 수준: very thorough
+       Thoroughness level: very thorough
 
-       출력 형식:
-       - TAG 인벤토리 전체 목록
-       - 문제 TAG 목록 (위치 포함)
-       - 추천 수정 사항
+       Output format:
+       - Complete TAG inventory list
+       - List of problematic TAGs (with locations)
+       - Recommended fixes
        ```
 
 4. **Store Explore agent results**:
@@ -450,27 +450,27 @@ This command supports **4 operational modes**:
      - `description`: "Verify TAG system across entire project"
      - `prompt`:
        ```
-       전체 프로젝트에서 포괄적인 @TAG 시스템 검증을 수행해주세요.
+       Please perform comprehensive @TAG system verification across the entire project.
 
-       **필수 범위**: 변경된 파일만이 아니라 모든 소스 파일을 스캔합니다.
+       **Required Scope**: Scan ALL source files, not just changed files.
 
-       **검증 항목**:
-       1. .moai/specs/ 디렉토리의 @SPEC TAG
-       2. tests/ 디렉토리의 @TEST TAG
-       3. src/ 디렉토리의 @CODE TAG
-       4. docs/ 디렉토리의 @DOC TAG
+       **Verification Items**:
+       1. @SPEC TAGs in .moai/specs/ directory
+       2. @TEST TAGs in tests/ directory
+       3. @CODE TAGs in src/ directory
+       4. @DOC TAGs in docs/ directory
 
-       **고아 감지** (필수):
-       - 매칭되는 @SPEC이 없는 @CODE TAG 감지
-       - 매칭되는 @CODE가 없는 @SPEC TAG 감지
-       - 매칭되는 @SPEC이 없는 @TEST TAG 감지
-       - 매칭되는 @SPEC/@CODE가 없는 @DOC TAG 감지
+       **Orphan Detection** (Required):
+       - Detect @CODE TAGs with no matching @SPEC
+       - Detect @SPEC TAGs with no matching @CODE
+       - Detect @TEST TAGs with no matching @SPEC
+       - Detect @DOC TAGs with no matching @SPEC/@CODE
 
-       **출력 형식**:
-       - 고아 TAG의 전체 목록을 위치와 함께 제공합니다.
-       - TAG 체인 무결성 평가 (Healthy / Issues Detected)
+       **Output Format**:
+       - Provide complete list of orphan TAGs with locations
+       - TAG chain integrity assessment (Healthy / Issues Detected)
 
-       (선택사항) 탐색 결과: $EXPLORE_RESULTS
+       (Optional) Exploration results: $EXPLORE_RESULTS
        ```
 
    - **Wait for tag-agent response**
@@ -495,36 +495,36 @@ This command supports **4 operational modes**:
      - `description`: "Establish a document synchronization plan"
      - `prompt`:
        ```
-       당신은 doc-syncer 에이전트입니다.
+       You are the doc-syncer agent.
 
-       언어 설정:
-       - 대화_언어: $LANG
-       - 언어명: [Korean/English/Japanese based on $LANG]
+       Language settings:
+       - conversation_language: $LANG
+       - language_name: [Korean/English/Japanese based on $LANG]
 
-       중요 지시사항:
-       문서 업데이트는 대화_언어를 반드시 존중해야 합니다:
-       - 사용자 대면 문서 (README, 가이드): $LANG
-       - SPEC 문서 (spec.md, plan.md, acceptance.md): $LANG
-       - 코드 주석: $LANG (기술 키워드 제외)
-       - 기술 문서 및 YAML 프론트매터: 영어
+       Important instructions:
+       Document updates must respect the conversation language:
+       - User-facing docs (README, guides): $LANG
+       - SPEC documents (spec.md, plan.md, acceptance.md): $LANG
+       - Code comments: $LANG (except technical keywords)
+       - Technical docs and YAML frontmatter: English
 
-       스킬 호출:
-       필요 시 명시적 Skill() 호출 사용:
-       - Skill("moai-foundation-tags") - TAG 체인 검증
-       - Skill("moai-foundation-trust") - 품질 게이트 검사
-       - Skill("moai-alfred-tag-scanning") - TAG 인벤토리 업데이트
+       Skill invocations:
+       Use explicit Skill() calls as needed:
+       - Skill("moai-foundation-tags") - TAG chain validation
+       - Skill("moai-foundation-trust") - Quality gate inspection
+       - Skill("moai-alfred-tag-scanning") - TAG inventory update
 
-       작업:
-       Git 변경사항을 분석하고 문서 동기화 계획을 수립해주세요.
-       모든 문서 업데이트가 대화_언어 설정과 일치하는지 확인합니다.
+       Tasks:
+       Analyze Git changes and establish document synchronization plan.
+       Ensure all document updates align with conversation language settings.
 
-       동기화 모드: $MODE
-       동기화 범위: $SYNC_SCOPE
-       대상 디렉토리: $TARGET_DIRS
-       변경된 파일: $CHANGED_FILES
+       Synchronization mode: $MODE
+       Synchronization scope: $SYNC_SCOPE
+       Target directories: $TARGET_DIRS
+       Changed files: $CHANGED_FILES
 
-       (필수) TAG 검증 결과: $TAG_VALIDATION_RESULTS
-       (선택사항) 탐색 결과: $EXPLORE_RESULTS
+       (Required) TAG verification results: $TAG_VALIDATION_RESULTS
+       (Optional) Exploration results: $EXPLORE_RESULTS
        ```
 
    - **Wait for doc-syncer response**
@@ -722,43 +722,43 @@ This command supports **4 operational modes**:
      - `description`: "Execute Living Document synchronization"
      - `prompt`:
        ```
-       당신은 doc-syncer 에이전트입니다.
+       You are the doc-syncer agent.
 
-       언어 설정:
-       - 대화_언어: $LANG
+       Language settings:
+       - conversation_language: $LANG
 
-       **승인된 동기화 계획 실행**:
+       **Execute Approved Synchronization Plan**:
 
-       이전 분석 결과:
-       - TAG 검증 결과: $TAG_VALIDATION_RESULTS
-       - 동기화 계획: $SYNC_PLAN
-       - 탐색 결과: $EXPLORE_RESULTS (if available)
+       Previous analysis results:
+       - TAG verification results: $TAG_VALIDATION_RESULTS
+       - Synchronization plan: $SYNC_PLAN
+       - Exploration results: $EXPLORE_RESULTS (if available)
 
-       **작업 지시**:
+       **Task Instructions**:
 
-       1. Living Document 동기화:
-          - 변경된 코드를 문서에 반영
-          - API 문서 자동 생성/업데이트
-          - README 업데이트 (if needed)
-          - Architecture 문서 동기화
+       1. Living Document synchronization:
+          - Reflect changed code in documentation
+          - Auto-generate/update API documentation
+          - Update README (if needed)
+          - Synchronize Architecture documents
 
-       2. @TAG 시스템 업데이트:
-          - TAG 인덱스 갱신 (.moai/indexes/tags.db)
-          - 고아 TAG 수리 (if possible)
-          - 끊긴 참조 복구
+       2. @TAG system updates:
+          - Update TAG index (.moai/indexes/tags.db)
+          - Repair orphan TAGs (if possible)
+          - Restore broken references
 
-       3. 문서-코드 일관성 검증:
-          - SPEC ↔ CODE 동기화 확인
-          - TEST ↔ CODE 매칭 확인
-          - DOC ↔ CODE 참조 확인
+       3. Document-code consistency verification:
+          - Verify SPEC ↔ CODE synchronization
+          - Verify TEST ↔ CODE matching
+          - Verify DOC ↔ CODE references
 
-       4. 동기화 리포트 생성:
-          - 파일 위치: .moai/reports/sync-report-$TIMESTAMP.md
-          - 포함 내용: 업데이트된 파일 목록, TAG 수리 내역, 남은 이슈
+       4. Generate synchronization report:
+          - File location: .moai/reports/sync-report-$TIMESTAMP.md
+          - Include content: Updated file list, TAG repair history, remaining issues
 
-       **중요**: 모든 문서 생성/수정은 대화_언어($LANG)를 사용하세요.
+       **Important**: Use conversation_language($LANG) for all document creation/modification.
 
-       승인된 계획을 정확히 실행하고, 결과를 상세히 보고해주세요.
+       Execute the approved plan precisely and report results in detail.
        ```
 
 2. **Wait for doc-syncer completion**:
@@ -1306,29 +1306,29 @@ This command supports **4 operational modes**:
      - `description`: "Commit document synchronization changes"
      - `prompt`:
        ```
-       당신은 git-manager 에이전트입니다.
+       You are the git-manager agent.
 
-       **작업**: 문서 동기화 변경사항을 Git 커밋으로 저장하세요.
+       **Task**: Commit document synchronization changes to Git.
 
-       **커밋 범위**:
-       - 변경된 모든 문서 파일
-       - .moai/reports/ 디렉토리
-       - .moai/indexes/ 디렉토리 (if changed)
+       **Commit Scope**:
+       - All changed document files
+       - .moai/reports/ directory
+       - .moai/indexes/ directory (if changed)
        - README.md (if changed)
-       - docs/ 디렉토리 (if changed)
+       - docs/ directory (if changed)
 
-       **커밋 메시지**:
+       **Commit Message**:
        $COMMIT_MESSAGE
 
-       **중요**:
-       - HEREDOC 형식으로 커밋 메시지 전달
-       - 모든 변경사항을 하나의 커밋으로 묶기
-       - 커밋 후 성공 여부 보고
+       **Important**:
+       - Pass commit message in HEREDOC format
+       - Bundle all changes into a single commit
+       - Report success after commit
 
-       **실행 순서**:
-       1. git add (변경된 문서 파일들)
+       **Execution Order**:
+       1. git add (changed document files)
        2. git commit -m (HEREDOC)
-       3. git log -1 (커밋 확인)
+       3. git log -1 (verify commit)
        ```
 
 3. **Wait for git-manager response**:

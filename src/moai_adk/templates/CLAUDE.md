@@ -81,7 +81,7 @@ Alfred follows a systematic **4-step workflow** for all user requests to ensure 
 ### Step 4: Report & Commit
 - **Goal**: Document work and create git history
 - **Action**:
-  - **Report Generation**: ONLY if user explicitly requested ("보고서 만들어줘", "create report", "write analysis document")
+  - **Report Generation**: ONLY if user explicitly requested ("create report", "generate report", "write analysis document")
     - ❌ Prohibited: Auto-generate `IMPLEMENTATION_GUIDE.md`, `*_REPORT.md`, `*_ANALYSIS.md` in project root
     - ✅ Allowed: `.moai/docs/`, `.moai/reports/`, `.moai/analysis/`, `.moai/specs/SPEC-*/`
   - **Git Commit**: ALWAYS create commits (mandatory)
@@ -604,7 +604,7 @@ Skill("moai-alfred-ask-user-questions")
 - **Name**: {{PROJECT_NAME}}
 - **Description**: {{PROJECT_DESCRIPTION}}
 - **Version**: 0.7.0 (Language localization complete)
-- **Mode**: Personal/Team (configurable)
+- **Mode**: {{PROJECT_MODE}}
 - **Codebase Language**: {{CODEBASE_LANGUAGE}}
 - **Toolchain**: Automatically selects the best tools for {{CODEBASE_LANGUAGE}}
 
