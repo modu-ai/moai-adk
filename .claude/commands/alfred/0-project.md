@@ -3019,7 +3019,7 @@ Solution: Check file permissions (chmod 644) or create config.json manually
                    },
                    {
                        "label": "⏸️ Skip",
-                       "description": "Keep current templates unchanged (you can run this command later)"
+                       "description": "Keep current templates unchanged (run this command later to update)"
                    }
                ]
            }
@@ -3438,7 +3438,7 @@ Solution: Check file permissions (chmod 644) or create config.json manually
    - config.json: optimized = false
    - Backup: .moai-backups/[LATEST_TIMESTAMP]/
 
-   💡 You can run template optimization later:
+   💡 Template optimization can be run later:
    - Command: /alfred:0-project update
    - OR run: moai-adk update
 

@@ -1,0 +1,102 @@
+---
+title: "레퍼런스 — CLI & 프로젝트 구조
+date: 2025-10-30
+description: ""`moai-adk` CLI 명령어와 `.moai`·`.claude` 디렉터리 구조를 정리한 레퍼런스"
+type: post
+tag:
+  - Reference
+  - CLI
+---
+"
+`src/moai_adk/__main__.py`는 Click 기반 CLI 엔트리포인트로, 다음 다섯 가지 서브 명령을 제공합니다. CLI는 Alfred 명령과 별개로 로컬 프로젝트 관리와 템플릿 동기화에 초점을 둡니다.
+"
+## `moai-adk` CLI 명령어
+"
+| 명령어 | 설명 | 활용 시점 |
+| ------ | ---- | -------- |
+| `moai-adk init [경로]` | 새 프로젝트 생성 또는 기존 프로젝트에 MoAI-ADK 템플릿 주입 | Alfred를 처음 도입할 때 |
+| `moai-adk doctor` | 환경 점검 (Python, uv, Git, 디렉터리 구조) | 설치 직후, 문제 발생 시 |
+| `moai-adk status` | SPEC/TEST/CODE/DOC 태그 요약, 체크포인트, 템플릿 버전 조회 | 작업 전 상태 파악, 리뷰 전 확인 |
+| `moai-adk backup` | `.moai/`, `.claude/`, CLAUDE.md 백업 생성 | 템플릿 업데이트 전, 대규모 변경 전 |
+| `moai-adk update` | 패키지 & 템플릿 동기화 (가장 중요한 명령) | 새 버전 릴리스 이후, 정기 점검 |
+"
+### 실행 예시
+"
+```bash
+# 현재 상태 점검
+moai-adk status
+"
+# 템플릿 동기화 (백업 자동 생성)
+moai-adk update
+"
+# 백업 파일은 .moai-backups/에 저장됩니다.
+```
+"
+### 내부 동작
+"
+- CLI 실행 시 `pyfiglet` 로고와 버전 정보를 출력하여 환경을 빠르게 확인할 수 있습니다.
+- 각 명령 구현은 `src/moai_adk/cli/commands/`에 있으며, Rich 콘솔로 컬러 출력이 구성되어 있습니다.
+- 실패 시에도 에러 코드와 메시지를 명확히 출력하도록 예외 처리가 되어 있어, Alfred의 `/alfred:2-run`에서 Bash 도구로 호출해도 안전합니다.
+"
+### 릴리스 연동
+"
+`moai_adk/cli/commands/update.py`는 템플릿 버전을 비교해 Stage 1~3 업데이트를 수행하며, GitHub Actions 중 `moai-release-pipeline.yml`이 릴리스 감지 시 동일한 로직을 사용합니다. 프로젝트별로 템플릿을 수정했다면 릴리스 전에 `moai-adk update`를 반드시 실행해 충돌을 조정하세요.
+"
+## 프로젝트 디렉터리 구조
+"
+MoAI-ADK 프로젝트는 두 개의 핵심 루트 디렉터리인 `.moai/`와 `.claude/`, 그리고 `CLAUDE.md`로 구성됩니다. Python 패키지 소스(`src/moai_adk`)와 함께 관리하며, Alfred 명령과 CLI 모두 이 구조를 기준으로 동작합니다.
+"
+```
+.
+├── .moai/          # 프로젝트 메타데이터, SPEC, 보고서
+├── .claude/        # Alfred 명령어/에이전트/Skills/Hook 템플릿
+├── CLAUDE.md       # 세션 가드레일 & 작업 지침
+├── src/moai_adk/   # Python 패키지 (CLI, 템플릿 동기화 로직)
+└── docs/           # Nextra 기반 온라인 문서 (현재 블로그)
+```
+"
+### `.moai/` 디렉터리
+"
+| 서브폴더 | 내용 | 비고 |
+| -------- | ---- | ---- |
+| `config.json` | 프로젝트 이름, 언어, 모드, 템플릿 버전 | `/alfred:0-project` & `moai-adk update`에서 갱신 |
+| `project/` | `product.md`, `structure.md`, `tech.md` | 프로젝트 개요 & 아키텍처 |
+| `specs/` | EARS SPEC 디렉터리 | `/alfred:1-plan` 결과물이 위치 |
+| `reports/` | Sync/분석 보고서, TAG 통계 | `/alfred:3-sync`에서 자동 생성 |
+| `memory/` | 세션 상태, 사용자 패턴, 언어 정책 | Alfred의 장기 기억 |
+| `analysis/`, `metrics/`, `logs/` | 명령/Hook 실행 기록, 성능 데이터 | 품질 추적 및 감사 용도 |
+| `backups/`, `.moai-backups/` | 템플릿 백업 | `moai-adk update` 실행 시 생성 |
+"
+### `.claude/` 디렉터리
+"
+| 서브폴더 | 설명 |
+| -------- | ---- |
+| `commands/alfred/` | `/alfred:*` 명령어 정의 |
+| `agents/alfred/` | 서브 에이전트 지침 |
+| `skills/` | Foundation/Essentials/Domain/Language/CC Skills |
+| `hooks/alfred/` | Claude Code 이벤트 Hook (Python 스크립트) |
+| `output-styles/alfred/` | 보고/학습용 Output Style |
+| `settings.json` | Claude Code 세션 설정 (언어, tool policy 등) |
+| `settings.local.json` | 커스텀 설정 오버레이 |
+"
+### Python 패키지 구조
+"
+| 경로 | 역할 |
+| ---- | ---- |
+| `src/moai_adk/__main__.py` | CLI 엔트리포인트 (`moai-adk` 명령) |
+| `src/moai_adk/cli/` | Click 명령 구현 (`init`, `doctor`, `status`, `update`, `backup`) |
+| `src/moai_adk/core/` | 템플릿 동기화, 백업, 파일 시스템 유틸 |
+| `src/moai_adk/templates/` | `.moai/`, `.claude/` 기본 템플릿 |
+| `scripts/check-version-sync.py` | 릴리스 전 버전 일치성 검사 |
+"
+### Git 전략
+"
+- `.gitignore`는 사용자별 파일(`CLAUDE.md`, `.claude/` 내부 일부) 제외를 기본으로 포함합니다.
+- Alfred 명령은 자동으로 feature 브랜치를 생성하고 Draft PR을 준비합니다.
+- `/alfred:3-sync` 결과물(보고서, 문서)은 커밋에 포함되어 태그 추적성을 유지합니다.
+"
+### 커스터마이징 가이드
+"
+- 템플릿을 수정한 경우 `moai-adk update` 실행 전 `.moai-backups/`를 확인하여 병합 전략을 세우세요.
+- `.claude/settings.local.json`을 사용하면 공식 템플릿을 수정하지 않고 사용자별 설정을 적용할 수 있습니다.
+- 새 자산(명령어, 에이전트, Skill)을 추가할 때는 @TAG를 부여해 `/alfred:3-sync` 보고서와 추적성을 확보하세요.

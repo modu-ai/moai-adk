@@ -711,7 +711,7 @@ class TestVariableSubstitution:
 
         assert "TestProject" in substituted
         assert len(warnings) > 0
-        assert "AUTHOR" in warnings[0]
+        assert any("AUTHOR" in warning for warning in warnings)
 
     def test_substitute_variables_no_warnings_when_all_substituted(
         self, tmp_path: Path

@@ -64,7 +64,9 @@
   },
   "language": {
     "conversation_language": "{{CONVERSATION_LANGUAGE}}",
-    "conversation_language_name": "{{CONVERSATION_LANGUAGE_NAME}}"
+    "conversation_language_name": "{{CONVERSATION_LANGUAGE_NAME}}",
+    "agent_prompt_language": "{{AGENT_PROMPT_LANGUAGE}}",
+    "agent_prompt_language_description": "Language for sub-agent internal prompts (english=global standard, localized=user's conversation language)"
   },
   "project": {
     "name": "{{PROJECT_NAME}}",

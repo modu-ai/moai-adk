@@ -1,0 +1,47 @@
+---
+title: "소개"
+description: "MoAI-ADK - SPEC-First TDD 개발 프레임워크 (Alfred 슈퍼에이전트 포함)"
+---
+
+# MoAI-ADK (Aggressive Development Kit)
+
+**MoAI-ADK**는 Claude Code 환경에서 🎩 Alfred SuperAgent와 19명의 에이전트 팀이 협업하여 **SPEC → TDD → 코드 → 문서**를 자연스럽게 잇는 개발 프레임워크입니다.
+
+## 핵심 가치
+
+- **SPEC-First 철학**: 요구사항을 먼저 정리하고 개발 실패를 최소화
+- **자동화된 TDD**: `/alfred:2-run`이 RED → GREEN → REFACTOR 사이클 자동 진행
+- **Living Document**: `/alfred:3-sync`가 문서를 항상 최신 상태로 유지
+- **완벽한 추적성**: `@SPEC ↔ @TEST ↔ @CODE ↔ @DOC` 체인으로 변경 영향도 즉시 파악
+
+## 🚀 빠른 시작
+
+1. **설치**: `npm install -g moai-adk`
+2. **프로젝트 초기화**: `moai-adk init`
+3. **개발 시작**: `/alfred:1-plan "새 기능"`
+
+## 🎯 주요 특징
+
+### 📋 SPEC-First 개발
+- 요구사항 먼저 정의 → 구현 실패 최소화
+- @TAG 체인으로 완벽한 추적성 보장
+- 명확한 수용 기준(DoD) 정의
+
+### 🔄 자동화 TDD
+- RED → GREEN → REFACTOR 사이클 자동화
+- 테스트 코드 먼저 작성 → 안정적인 구현
+- 리팩토링 전 품질 게이트 통과
+
+### 📚 Living Documentation
+- `/alfred:3-sync`로 문서 항상 최신 상태 유지
+- 코드 변경 → 문서 자동 업데이트
+- 기술 부쵝 최소화
+
+### 🔍 완벽한 추적성
+- @SPEC ↔ @TEST ↔ @CODE ↔ @DOC 체인
+- 변경 영향도 즉시 파악
+- Git 히스토리와의 연동
+
+---
+
+🤖 **MoAI-ADK와 함께 개발 생산성을 극대화하세요!**

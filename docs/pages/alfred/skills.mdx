@@ -1,37 +1,217 @@
-# Skills 카탈로그
-
-Alfred와 서브 에이전트는 `.claude/skills/`에 정의된 Skills를 온디맨드로 로딩해 프로젝트 맥락, 언어 지식, 도메인 베스트 프랙티스를 확보합니다. Skills는 Markdown 또는 디렉터리 구조로 구성되어 있으며, **Foundation → Essentials → Domain → Language → Ops** 계층으로 나뉩니다.
-
-## 계층 구조
-
-| Tier | 대표 파일/디렉터리 | 목적 |
-| ---- | ------------------ | ---- |
-| Foundation | `moai-foundation-*` | SPEC, TAG, TRUST, Git 등 모든 프로젝트에서 공통으로 필요한 원칙 |
-| Essentials | `moai-essentials-*` | 리팩토링, 디버깅, 리뷰 등 TDD 실행에 필요한 필수 역량 |
-| Domain | `moai-domain-*` | Backend, Frontend, DevOps, ML 등 문제 영역별 지식 |
-| Language | `moai-lang-*` | Python, TypeScript, Go, Rust 등 언어별 스타일 가이드와 테스트 패턴 |
-| Ops / CC | `moai-cc-*` | Claude Code 설정, MCP 플러그인, 명령어/Skill 메타 관리 |
-| Alfred 전용 | `moai-alfred-*` | Alfred의 워크플로우, SPEC 메타데이터, Interactive 질문 등 운영 가이드 |
-
-## 자주 사용하는 Skills
-
-- **SPEC 품질**: `moai-alfred-spec-metadata-validation`, `moai-foundation-ears`, `moai-alfred-ears-authoring`
-- **TDD**: `moai-essentials-refactor`, `moai-essentials-debug`, `moai-lang-python` (또는 언어별 파일)
-- **TAG 추적**: `moai-alfred-tag-scanning`, `moai-foundation-tags`
-- **Git & 릴리스**: `moai-foundation-git`, `moai-alfred-git-workflow`, `moai-cc-commands`
-- **협업/교육**: `moai-alfred-reporting`, `moai-adk-learning`, `moai-alfred-persona-roles`
-
-## 호출 방식
-
-1. **명령어 기반 로딩** – `/alfred:2-run` 실행 시 SPEC 언어를 감지하여 해당 언어 Skill을 자동 로드합니다.
-2. **키워드 감지** – "database", "kubernetes" 등의 키워드가 등장하면 Domain Skills 활성화.
-3. **인증 수준** – Beginner/Intermediate/Expert 레벨에 따라 설명 강도를 조절하는 Skills (`moai-alfred-expertise-detection`).
-4. **Hooks** – `user_prompt__jit_load_docs`가 사용자 입력에 맞는 Skills/문서를 추천합니다.
-
-## Skill 편집 가이드
-
-- Skills는 Markdown 기반이라 문서 수정으로 동작을 조정할 수 있습니다.
-- 새로운 Skill을 만들려면 `skill-factory` 에이전트 또는 `/alfred:9-feedback` 후 TODO를 통해 등록하세요.
-- 업데이트 후에는 `/alfred:3-sync`로 문서를 동기화하여 변경 내역이 보고서에 반영되도록 합니다.
-
-> Skill 파일은 버전 관리 대상이므로, 팀별 커스터마이징 시 브랜치 전략과 백업(.moai-backups/)을 활용해 템플릿 갱신에 대비하세요.
+---
+title: "Skills
+description: "Alfred와 에이전트들이 활용하는 55개 Skills 카탈로그와 활용법
+---
+"
+Alfred와 서브 에이전트들은 `.claude/skills/`에 정의된 Skills를 온디맨드로 로딩하여 프로젝트 맥락, 언어 지식, 도메인 베스트 프랙티스를 확보합니다.
+"
+## Skills 계층 구조
+"
+| Tier | 목적 | 대표 파일 |
+| ---- | ---- | --------- |
+| **Foundation** | 모든 프로젝트에서 공통으로 필요한 원칙 | `moai-foundation-*` |
+| **Essentials** | TDD 실행에 필요한 필수 역량 | `moai-essentials-*` |
+| **Domain** | 문제 영역별 지식 | `moai-domain-*` |
+| **Language** | 언어별 스타일 가이드와 테스트 패턴 | `moai-lang-*` |
+| **Operations** | Claude Code 설정 및 MCP 관리 | `moai-cc-*` |
+| **Alfred** | Alfred 워크플로우 운영 가이드 | `moai-alfred-*` |
+"
+## Foundation Skills (기초)
+"
+### `moai-foundation-specs`
+**목적**: SPEC 작성 및 검증을 위한 기본 원칙
+**주요 기능**:
+- YAML 메타데이터 검증 (7개 필수 필드)
+- EARS 구문 분석 및 검증
+- HISTORY 섹션 관리
+- @SPEC:ID TAG 배치 규칙
+"
+### `moai-foundation-tags`
+**목적**: @TAG 체인 관리 및 고아 TAG 탐지
+**주요 기능**:
+- TAG 스캐닝 및 인벤토리 생성
+- `@SPEC ↔ @TEST ↔ @CODE ↔ @DOC` 연결 검증
+- 고아 TAG 탐지 및 보고
+- CODE-FIRST 원칙 강제
+"
+### `moai-foundation-git`
+**목적**: GitFlow 워크플로우 및 커밋 표준
+**주요 기능**:
+- MoAI-ADK GitFlow 규칙 강제
+- 브랜치 보호 및 PR 생성 규칙
+- 커밋 메시지 형식 (Alfred 서명 포함)
+- 충돌 해결 전략
+"
+### `moai-foundation-ears`
+**목적**: EARS (Easy Approach to Requirements Syntax) 작성 가이드
+**5가지 패턴**:
+- **Ubiquitous**: "시스템은 사용자가 로그인할 수 있어야 한다"
+- **Event-driven**: "사용자가 로그인 버튼을 클릭하면"
+- **State-driven**: "사용자가 인증된 상태에서"
+- **Optional**: "관리자는 통계를 볼 수 있다"
+- **Unwanted**: "시스템은 중단되면 안 된다"
+"
+### `moai-foundation-langs`
+**목적**: 프로젝트 언어 자동 감지
+**감지 파일**: `package.json`, `pyproject.toml`, `go.mod`, `Cargo.toml`
+"
+## Essentials Skills (필수)
+"
+### `moai-essentials-refactor`
+**목적**: 코드 리팩토링 지침 및 디자인 패턴
+**주요 기능**:
+- SOLID 원칙 적용
+- 코드 스멜 탐지 및 개선
+- 디자인 패턴 추천
+- 클린 코드 관행
+"
+### `moai-essentials-debug`
+**목적**: 고급 디버깅 및 오류 해결
+**주요 기능**:
+- 스택 트레이스 분석
+- 오류 패턴 탐지
+- Fix 전략 제안
+- 재현 시나리오 작성
+"
+### `moai-essentials-perf`
+**목적**: 성능 최적화 및 병목 탐지
+**주요 기능**:
+- 프로파일링 전략
+- 병목 지점 탐지
+- 최적화 기법
+- 메트릭 수집
+"
+### `moai-essentials-review`
+**목적**: 자동화된 코드 리뷰
+**주요 기능**:
+- SOLID 원칙 검증
+- 코드 스멀 탐지
+- 언어별 베스트 프랙티스
+- 보안 규칙 검사
+"
+## Language Skills (언어별)
+"
+### `moai-lang-python`
+**버전**: Python 3.13+
+**도구**: pytest 8.4.2, mypy 1.8.0, ruff 0.13.1, uv 0.9.3
+**특징**:
+- FastAPI, Flask, Django 백엔드 프레임워크
+- 타입 힌트 강제
+- async/await 패턴
+- 가상환경 관리
+"
+### `moai-lang-typescript`
+**버전**: TypeScript 5.7+
+**도구**: Vitest 2.1, Biome 1.9, npm/pnpm/bun
+**특징**:
+- 엄격한 타입 검사
+- Next.js, Remix, SvelteKit 메타프레임워크
+- React 19/Vue 3.5/Angular 19
+- 상태 관리 패턴
+"
+### `moai-lang-go`
+**버전**: Go 1.24+
+**도구**: go test, golangci-lint, gofmt
+**특징**:
+- 동시성 패턴 (goroutine, channel)
+- 표준 라이브러리 활용
+- Gin, Beego 웹 프레임워크
+- 인터페이스 설계
+"
+### `moai-lang-rust`
+**버전**: Rust 1.84+
+**도구**: cargo test, clippy, rustfmt
+**특징**:
+- 소유권과 생명주기 관리
+- 안전한 동시성
+- Axum, Rocket 웹 프레임워크
+- 제로코스트 추상화
+"
+## Domain Skills (도메인별)
+"
+### `moai-domain-backend`
+**목적**: 백엔드 아키텍처 및 API 설계
+**주요 기능**:
+- 마이크로서비스 아키텍처
+- API 설계 (REST, GraphQL)
+- 데이터베이스 설계 및 최적화
+- 인증/인가 시스템
+"
+### `moai-domain-frontend`
+**목적**: 프론트엔드 아키텍처 및 UI 개발
+**주요 기능**:
+- 컴포넌트 설계
+- 상태 관리 전략
+- 성능 최적화
+- 접근성 (WCAG 2.2)
+"
+### `moai-domain-database`
+**목적**: 데이터베이스 설계 및 최적화
+**주요 기능**:
+- 스키마 설계 및 정규화
+- 인덱싱 전략
+- 마이그레이션 관리
+- 쿼리 최적화
+"
+### `moai-domain-security`
+**목적**: 보안 규칙 및 OWASP Top 10
+**주요 기능**:
+- SAST/DAST 스캔
+- 의존성 보안 검사
+- 시크릿 관리
+- 침투 테스트 가이드
+"
+## Alfred 전용 Skills
+"
+### `moai-alfred-workflow`
+**목적**: Alfred 4단계 워크플로우 오케스트레이션
+**주요 기능**:
+- TodoWrite 패턴 및 상태 관리
+- 작업 추적 및 진행률 보고
+- 품질 게이트 통과 조건
+- Git 커밋 사이클 관리
+"
+### `moai-alfred-agent-guide`
+**목적**: 19명 에이전트 팀 구조 및 협업 지침
+**주요 기능**:
+- 에이전트 선택 의사결정 트리
+- 협업 원칙 및 통신 프로토콜
+- 전문 분야별 역할 분담
+- 성능 측정 및 개선
+"
+### `moai-alfred-tag-scanning`
+**목적**: @TAG 시스템 스캐닝 및 무결성 검증
+**주요 기능**:
+- CODE-FIRST 원칙 적용
+- 인벤토리 생성 및 업데이트
+- 고아 TAG 탐지 및 보고
+- 서브넘버 정책 지원
+"
+## 자주 사용하는 Skills 조합
+"
+### 새 프로젝트 초기화
+```
+moai-foundation-specs + moai-foundation-git + moai-alfred-workflow
+```
+"
+### Python 웹 API 개발
+```
+moai-lang-python + moai-domain-backend + moai-essentials-refactor
+```
+"
+### React 컴포넌트 개발
+```
+moai-lang-typescript + moai-domain-frontend + moai-essentials-perf
+```
+"
+### 데이터베이스 마이그레이션
+```
+moai-domain-database + moai-lang-sql + moai-essentials-debug
+```
+"
+---
+"
+**관련 링크**:
+- **[에이전트](agents)** - Skills를 활용하는 전문가들
+- **[명령어](commands)** - Skills를 호출하는 명령어들
+- **[Hooks](hooks)** - Skills 실행 시 자동화된 검증

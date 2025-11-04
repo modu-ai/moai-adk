@@ -1,0 +1,132 @@
+import { Callout, Steps } from 'nextra/components'
+"
+---
+title: "MoAI-ADK 빠른 시작
+date: 2025-10-30
+description: "설치부터 `/alfred:0-project` 실행까지 10분 만에 따라 하는 세팅 가이드
+type: post
+tag:
+  - Guide
+  - QuickStart
+---
+"
+MoAI-ADK는 UV와 Python 3.13 이상, Claude Code 환경이 준비되어 있으면 바로 사용할 수 있습니다. 아래 순서를 따르면 Alfred SuperAgent 기반 프로젝트를 10분 안에 띄울 수 있습니다.
+"
+## 준비 사항
+"
+- Python 3.13 이상
+- [uv](https://docs.astral.sh/uv/) 패키지 관리자
+- Claude Desktop 또는 Claude Code CLI
+"
+```bash
+# uv 설치 (macOS/Linux)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+"
+# Windows (PowerShell)
+irm https://astral.sh/uv/install.ps1 | iex
+```
+"
+설치 후 버전을 확인합니다.
+"
+```bash
+uv --version
+# 예: uv 0.5.1
+```
+"
+## 1. MoAI-ADK 설치
+"
+```bash
+uv tool install moai-adk
+moai-adk --version
+# 출력: MoAI-ADK vX.Y.Z
+```
+"
+`moai-adk` 패키지에는 CLI, 템플릿 동기화 도구, Alfred 자동화 리소스가 포함되어 있습니다.
+"
+## 2. 새 프로젝트 생성
+"
+```bash
+moai-adk init hello-world
+cd hello-world
+```
+"
+생성된 디렉터리는 다음과 같습니다.
+"
+```
+hello-world/
+├── .moai/        # 프로젝트 메타데이터와 SPEC/리포트
+├── .claude/      # Alfred 명령어, 에이전트, 스킬, 훅, 출력 스타일
+└── CLAUDE.md     # 세션 지침 (작업 가이드)
+```
+"
+```bash
+# 시스템 진단
+moai-adk doctor
+```
+"
+예상 출력:
+"
+```
+✅ Python 3.13.0
+✅ uv 0.5.1
+✅ .moai/ directory initialized
+✅ .claude/ directory ready
+✅ 16 agents configured
+✅ 74 skills loaded
+```
+"
+## 3. Claude Code에서 Alfred 부팅
+"
+```bash
+claude
+# Claude Code가 열리면
+/alfred:0-project
+```
+"
+Alfred는 다음 정보를 질문합니다.
+"
+<Steps>
+  <div>
+    <strong>프로젝트 이름</strong> – Git 브랜치와 TAG에 사용됩니다.
+  </div>
+  <div>
+    <strong>프로젝트 목표</strong> – 세션 요약과 보고서에 활용됩니다.
+  </div>
+  <div>
+    <strong>주 개발 언어</strong> – Skill 로딩 우선순위를 조정합니다.
+  </div>
+  <div>
+    <strong>모드 선택</strong> – personal / team / oss 중 선택 (기본: personal).
+  </div>
+</Steps>
+"
+### 명령어 흐름 요약
+"
+| 순서 | 명령어 | 주요 목적 | 대표 출력/확인 포인트 |
+| ---- | ------ | -------- | --------------------- |
+| 1 | `uv tool install moai-adk` | 패키지 설치 | `moai-adk --version` |
+| 2 | `moai-adk init hello-world` | 템플릿 구조 생성 | `.moai/`, `.claude/` 디렉터리 |
+| 3 | `moai-adk doctor` | 환경 검증 | 체크리스트 ✅ |
+| 4 | `claude` → `/alfred:0-project` | Alfred 부팅 & 초기 설정 | `.moai/config.json` 업데이트 |
+"
+초기화가 완료되면 `.moai/config.json`, `.moai/project/*.md`, `.claude/settings.json`이 최신 템플릿에 맞춰 채워집니다.
+"
+## 4. 첫 기능 개발 사이클
+"
+| 단계 | 명령어 | 설명 | 예상 시간 |
+| ---- | ------ | ---- | -------- |
+| 1 | `/alfred:1-plan "기능 설명"` | 요구사항 정제, EARS SPEC 작성, Draft PR 준비 | 2분 |
+| 2 | `/alfred:2-run SPEC-ID` | RED → GREEN → REFACTOR TDD 자동화 | 5분 |
+| 3 | `/alfred:3-sync` | README, TAG, 보고서 등 문서 동기화 | 1분 |
+"
+> SPEC ID는 `/alfred:1-plan` 결과로 생성되는 `@SPEC:ABC-123` 형태입니다.
+"
+## 5. 유지보수 & 업데이트
+"
+- `moai-adk update`: 패키지 버전과 `.claude/`, `.moai/` 템플릿을 동시에 동기화
+- `/alfred:9-feedback`: 세션 종료 후 회고 템플릿 제공 (선택)
+- `moai-adk status`: 프로젝트 요약, TAG 통계, 최근 체크포인트 확인
+"
+<Callout type="success">
+첫 기능을 완성했다면, 이제 <a href="/posts/plan-run-sync-workflow">Plan → Run → Sync 워크플로우</a>와 Alfred 리소스 글을 읽어보며 팀에 맞는 자동화 전략을 세워보세요.
+</Callout>

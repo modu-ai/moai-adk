@@ -1,10 +1,4 @@
 {
-  "env": {
-    "ANTHROPIC_AUTH_TOKEN": "${GLM_API_KEY}",
-    "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
-    "API_TIMEOUT_MS": "3000000",
-    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": 1
-  },
   "companyAnnouncements": [
     "🎩 SPEC-First: Always define requirements as SPEC before implementation (/alfred:1-plan)",
     "✅ TRUST 5 Principles: Test First, Readable, Unified, Secured, Trackable",
@@ -67,6 +61,11 @@
             "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/post_tool__log_changes.py",
             "type": "command",
             "description": "Log file changes for audit and tracking"
+          },
+          {
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/post_tool__enable_streaming_ui.py",
+            "type": "command",
+            "description": "Ensure streaming UI indicators and progress displays are enabled"
           },
           {
             "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/core/post_tool__multilingual_linting.py",
@@ -181,5 +180,7 @@
       "Bash(git reset --hard:*)",
       "Bash(git rebase -i:*)"
     ]
-  }
+  },
+  "spinnerTipsEnabled": true,
+  "outputStyle": "streaming"
 }

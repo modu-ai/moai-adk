@@ -1,60 +1,355 @@
-# 프로젝트 구조
-
-MoAI-ADK 프로젝트는 두 개의 핵심 루트 디렉터리인 `.moai/`와 `.claude/`, 그리고 `CLAUDE.md`로 구성됩니다. Python 패키지 소스(`src/moai_adk`)와 함께 관리하며, Alfred 명령과 CLI 모두 이 구조를 기준으로 동작합니다.
-
-## 최상위 구성
-
+---
+title: "프로젝트 구조
+description: "`.moai/`와 `.claude/` 디렉터리 구조와 파일 역할 상세 설명
+---
+"
+MoAI-ADK 프로젝트는 두 개의 핵심 디렉터리 `.moai/`와 `.claude/`, 그리고 `CLAUDE.md`로 구성됩니다. 이 구조는 Alfred 워크플로우와 `moai-adk` CLI 모두에서 사용됩니다.
+"
+## 전체 디렉터리 구조
+"
 ```
-.
-├── .moai/          # 프로젝트 메타데이터, SPEC, 보고서
-├── .claude/        # Alfred 명령어/에이전트/Skills/Hook 템플릿
-├── CLAUDE.md       # 세션 가드레일 & 작업 지침
-├── src/moai_adk/   # Python 패키지 (CLI, 템플릿 동기화 로직)
-└── docs/           # Nextra 기반 온라인 문서 (현재 페이지)
+project/
+├── .moai/                     # 프로젝트 메타데이터와 생산물
+│   ├── config.json           # 프로젝트 설정
+│   ├── project/              # 프로젝트 개요 문서
+│   ├── specs/                # EARS SPEC 파일들
+│   ├── reports/              # 동기화 및 분석 보고서
+│   ├── memory/               # Alfred의 장기 기억
+│   ├── backups/              # 템플릿 백업
+│   └── .moai-backups/        # 자동 백업 (CLI 생성)
+├── .claude/                   # Alfred 리소스 템플릿
+│   ├── commands/alfred/      # /alfred:* 명령어 정의
+│   ├── agents/alfred/        # 서브 에이전트 지침
+│   ├── skills/               # Skills 카탈로그
+│   ├── hooks/alfred/         # Claude Code Hooks
+│   ├── output-styles/alfred/ # 출력 스타일 템플릿
+│   ├── settings.json        # Claude Code 설정
+│   └── settings.local.json  # 로컬 커스텀 설정
+├── CLAUDE.md                  # 세션 지침 및 작업 가이드
+└── src/                       # 실제 소스 코드
 ```
-
-## `.moai/` 디렉터리
-
-| 서브폴더 | 내용 | 비고 |
-| -------- | ---- | ---- |
-| `config.json` | 프로젝트 이름, 언어, 모드, 템플릿 버전 | `/alfred:0-project` & `moai-adk update`에서 갱신 |
-| `project/` | `product.md`, `structure.md`, `tech.md` | 프로젝트 개요 & 아키텍처 |
-| `specs/` | EARS SPEC 디렉터리 | `/alfred:1-plan` 결과물이 위치 |
-| `reports/` | Sync/분석 보고서, TAG 통계 | `/alfred:3-sync`에서 자동 생성 |
-| `memory/` | 세션 상태, 사용자 패턴, 언어 정책 | Alfred의 장기 기억 |
-| `analysis/`, `metrics/`, `logs/` | 명령/Hook 실행 기록, 성능 데이터 | 품질 추적 및 감사 용도 |
-| `backups/`, `.moai-backups/` | 템플릿 백업 | `moai-adk update` 실행 시 생성 |
-
-## `.claude/` 디렉터리
-
-| 서브폴더 | 설명 |
-| -------- | ---- |
-| `commands/alfred/` | `/alfred:*` 명령어 정의 |
-| `agents/alfred/` | 서브 에이전트 지침 |
-| `skills/` | Foundation/Essentials/Domain/Language/CC Skills |
-| `hooks/alfred/` | Claude Code 이벤트 Hook (Python 스크립트) |
-| `output-styles/alfred/` | 보고/학습용 Output Style |
-| `settings.json` | Claude Code 세션 설정 (언어, tool policy 등) |
-| `settings.local.json` | 커스텀 설정 오버레이 |
-
-## Python 패키지 구조
-
-| 경로 | 역할 |
-| ---- | ---- |
-| `src/moai_adk/__main__.py` | CLI 엔트리포인트 (`moai-adk` 명령) |
-| `src/moai_adk/cli/` | Click 명령 구현 (`init`, `doctor`, `status`, `update`, `backup`) |
-| `src/moai_adk/core/` | 템플릿 동기화, 백업, 파일 시스템 유틸 |
-| `src/moai_adk/templates/` | `.moai/`, `.claude/` 기본 템플릿 |
-| `scripts/check-version-sync.py` | 릴리스 전 버전 일치성 검사 |
-
-## Git 전략
-
-- `.gitignore`는 사용자별 파일(`CLAUDE.md`, `.claude/` 내부 일부) 제외를 기본으로 포함합니다.
-- Alfred 명령은 자동으로 feature 브랜치를 생성하고 Draft PR을 준비합니다.
-- `/alfred:3-sync` 결과물(보고서, 문서)은 커밋에 포함되어 태그 추적성을 유지합니다.
-
-## 커스터마이징 가이드
-
-- 템플릿을 수정한 경우 `moai-adk update` 실행 전 `.moai-backups/`를 확인하여 병합 전략을 세우세요.
-- `.claude/settings.local.json`을 사용하면 공식 템플릿을 수정하지 않고 사용자별 설정을 적용할 수 있습니다.
-- 새 자산(명령어, 에이전트, Skill)을 추가할 때는 @TAG를 부여해 `/alfred:3-sync` 보고서와 추적성을 확보하세요.
+"
+## `.moai/` 디렉터리 상세
+"
+### `config.json` - 프로젝트 설정
+"
+프로젝트의 핵심 메타데이터를 저장하는 설정 파일입니다.
+"
+```json
+{
+  "project": {
+    "name": "MyProject",
+    "description": "사용자 인증 시스템",
+    "version": "1.0.0",
+    "author": "개발팀"
+  },
+  "language": {
+    "conversation_language": "ko",
+    "conversation_language_name": "한국어"
+  },
+  "git_strategy": {
+    "mode": "team",
+    "base_branch": "develop",
+    "auto_delete_branches": true
+  },
+  "version": {
+    "template_version": "0.15.2",
+    "last_update": "2025-01-15T14:30:00Z"
+  },
+  "tags": {
+    "scan_policy": "automatic",
+    "allow_subnumbers": true
+  },
+  "hooks": {
+    "timeout_seconds": 5,
+    "enabled": ["session_start", "pre_tool", "post_tool"]
+  }
+}
+```
+"
+**주요 설정**:
+- **project**: 프로젝트 기본 정보
+- **language**: 대화 언어 설정 (한국어/영어)
+- **git_strategy**: Git 워크플로우 전략
+- **version**: 템플릿 버전 관리
+- **tags**: @TAG 스캐닝 정책
+- **hooks**: Hook 실행 설정
+"
+### `project/` - 프로젝트 개요 문서
+"
+프로젝트의 비전과 구조를 문서화합니다.
+"
+```
+project/
+├── product.md      # 제품 비전, 목표 사용자, 핵심 가치
+├── structure.md    # 시스템 아키텍처, 컴포넌트 구조
+└── tech.md         # 기술 스택, 개발 원칙, 제약 조건
+```
+"
+### `specs/` - EARS SPEC 저장소
+"
+`/alfred:1-plan` 결과물이 저장되는 디렉터리입니다.
+"
+```
+specs/
+├── SPEC-001/
+│   ├── spec.md           # EARS 기반 요구사항
+│   ├── implementation.md # 구현 계획
+│   └── test-plan.md      # 테스트 전략
+├── SPEC-002/
+│   └── ...
+└── metadata.json          # SPEC 전체 메타데이터
+```
+"
+**SPEC 파일 구조**:
+```yaml
+---
+title: "사용자 인증 기능
+spec_id: SPEC-001
+version: 1.2
+created: "2025-01-10"
+updated: "2025-01-15"
+assignee: "frontend-team"
+status: "in-progress"
+tags: ["authentication", "security", "api"]
+---
+"
+# SPEC-001: 사용자 인증 기능
+"
+## EARS 요구사항
+"
+### Ubiquitous Requirements
+- 시스템은 사용자가 이메일과 비밀번호로 로그인할 수 있어야 한다
+"
+### Event-driven Requirements
+- 사용자가 로그인 버튼을 클릭하면 인증 API를 호출한다
+"
+### State-driven Requirements
+- 사용자가 인증된 상태에서만 보호된 리소스에 접근할 수 있다
+"
+### Optional Requirements
+- 관리자는 모든 사용자 목록을 볼 수 있다
+"
+### Unwanted Behaviors
+- 시스템은 비밀번호를 평문으로 저장하면 안 된다
+```
+"
+### `reports/` - 동기화 및 분석 보고서
+"
+`/alfred:3-sync` 실행 시 생성되는 보고서들입니다.
+"
+```
+reports/
+├── sync/                   # 문서 동기화 보고서
+│   ├── 20250115_sync.md   # 일일 동기화 보고서
+│   └── weekly_summary.md  # 주간 요약
+├── quality/                # 품질 분석 보고서
+│   ├── test_coverage.md    # 테스트 커버리지
+│   ├── code_quality.md     # 코드 품질 분석
+│   └── security_scan.md    # 보안 스캔 결과
+└── tags/                   # TAG 관련 보고서
+    ├── inventory.md        # TAG 인벤토리
+    ├── orphans.md          # 고아 TAG 목록
+    └── consistency.md      # 무결성 검증 결과
+```
+"
+### `memory/` - Alfred의 장기 기억
+"
+Alfred가 세션 간에 유지해야 할 정보를 저장합니다.
+"
+```
+memory/
+├── command-execution-state.json  # 명령어 실행 상태
+├── user-preferences.json         # 사용자 선호도
+├── language-context.json         # 언어 정책 및 맥락
+└── session-handoff-notes.md      # 세션 인수인계 노트
+```
+"
+## `.claude/` 디렉터리 상세
+"
+### `commands/alfred/` - 명령어 정의
+"
+`/alfred:*` 명령어의 런북과 허용 도구를 정의합니다.
+"
+```
+commands/alfred/
+├── 0-project.md      # 프로젝트 초기화
+├── 1-plan.md         # SPEC 작성
+├── 2-run.md          # TDD 실행
+├── 3-sync.md         # 동기화
+├── 9-feedback.md     # 회고
+└── release-new.md    # 릴리스 준비
+```
+"
+**명령어 파일 구조**:
+```markdown
+---
+title: "Plan
+command: /alfred:1-plan
+description: "요구사항 정제 및 EARS SPEC 작성
+tools: [Task, Read, Write, Edit, AskUserQuestion, TodoWrite]
+subagent: spec-builder
+---
+"
+# /alfred:1-plan Command
+"
+## 목적
+사용자 요구사항을 EARS 기반의 구조화된 SPEC으로 변환합니다.
+"
+## 실행 단계
+1. 요구사항 명확성 평가
+2. 모호성 탐지 시 AskUserQuestion 호출
+3. EARS 패턴 적용하여 SPEC 작성
+4. Draft PR과 브랜치 생성
+"
+## 주요 에이전트
+- **spec-builder**: EARS SPEC 전문가
+- **implementation-planner**: 구현 전략 수립
+- **git-manager**: 브랜치/PR 관리
+```
+"
+### `agents/alfred/` - 서브 에이전트 지침
+"
+Alfred가 호출하는 전문 에이전트들의 역할과 행동 지침입니다.
+"
+```
+agents/alfred/
+├── spec-builder.md       # SPEC 작성 전문가
+├── tdd-implementer.md    # TDD 실천가
+├── quality-gate.md       # 품질 관리자
+├── doc-syncer.md         # 문서 동기화 전문가
+├── backend-expert.md     # 백엔드 전문가
+├── frontend-expert.md    # 프론트엔드 전문가
+└── ...
+```
+"
+### `skills/` - Skills 카탈로그
+"
+Alfred와 에이전트들이 활용하는 지식 베이스입니다.
+"
+```
+skills/
+├── foundation/              # 기초 Skills
+│   ├── moai-foundation-specs.md
+│   ├── moai-foundation-tags.md
+│   └── moai-foundation-git.md
+├── essentials/              # 필수 Skills
+│   ├── moai-essentials-refactor.md
+│   ├── moai-essentials-debug.md
+│   └── moai-essentials-perf.md
+├── domain/                  # 도메인별 Skills
+│   ├── moai-domain-backend.md
+│   ├── moai-domain-frontend.md
+│   └── moai-domain-database.md
+├── language/                # 언어별 Skills
+│   ├── moai-lang-python.md
+│   ├── moai-lang-typescript.md
+│   └── moai-lang-go.md
+├── cc/                      # Claude Code 관리
+│   ├── moai-cc-settings.md
+│   └── moai-cc-skills.md
+└── alfred/                  # Alfred 전용
+    ├── moai-alfred-workflow.md
+    └── moai-alfred-tags.md
+```
+"
+### `hooks/alfred/` - Claude Code Hooks
+"
+이벤트 기반 자동화를 담당하는 Python 스크립트입니다.
+"
+```
+hooks/alfred/
+├── session_start__show_project_info.py
+├── user_prompt__jit_load_docs.py
+├── pre_tool__auto_checkpoint.py
+├── post_tool__log_changes.py
+└── session_end__cleanup.py
+```
+"
+### `settings.json` - Claude Code 설정
+"
+Claude Code 세션의 기본 설정을 관리합니다.
+"
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Read(**/*)",
+      "Write(**/*.{md,py,js,ts})"
+    ],
+    "ask": [
+      "Bash(git push:*)",
+      "Bash(git merge:*)",
+      "Bash(npm install:*)"
+    ],
+    "deny": [
+      "Bash(git push --force:*)",
+      "Bash(rm -rf:*)",
+      "Read(**/.env)"
+    ]
+  },
+  "hooks": {
+    "sessionStart": ["session_start__show_project_info"],
+    "userPromptSubmit": ["user_prompt__jit_load_docs"],
+    "preToolUse": ["pre_tool__auto_checkpoint"],
+    "postToolUse": ["post_tool__log_changes"],
+    "sessionEnd": ["session_end__cleanup"]
+  },
+  "hookTimeout": 5000,
+  "language": "korean"
+}
+```
+"
+## `CLAUDE.md` - 세션 지침
+"
+프로젝트별 Claude Code 세션의 가드레일과 작업 지침을 담습니다.
+"
+```markdown
+# MyProject - Claude Code 세션 지침
+"
+## 프로젝트 개요
+- 목표: 사용자 인증 시스템 개발
+- 주요 기술: Python FastAPI, React TypeScript
+- 팀 구조: Frontend 2명, Backend 2명
+"
+## 워크플로우
+1. 모든 기능은 `/alfred:1-plan`으로 시작
+2. TDD는 `/alfred:2-run`으로 진행
+3. 완료 후 `/alfred:3-sync`로 문서 동기화
+"
+## 규칙
+- 코드 주석은 한국어로 작성
+- 커밋 메시지는 Alfred 형식 준수
+- 테스트 커버리지 85% 이상 유지
+"
+## 긴급 시 연락처
+- 기술 리드: tech-lead@company.com
+- 프로덕트 오너: po@company.com
+```
+"
+## 파일 변경 및 버전 관리
+"
+### 변경 감지 전략
+- **CLI**: `moai-adk status`로 변경 파일 탐지
+- **Alfred**: PostToolUse Hook으로 실시간 감지
+- **Git**: 커밋별 변경 추적
+"
+### 버전 동기화
+1. **템플릿 버전**: `config.json`에 기록
+2. **자동 백업**: `moai-adk update` 실행 시
+3. **병합 전략**: 사용자 변경 우선, 템플릿 충돌은 안내
+"
+### 권장 관리 방법
+- **정기 백업**: 주 1회 `moai-adk backup`
+- **업데이트**: 월 1회 `moai-adk update`
+- **상태 확인**: 매일 `moai-adk status`
+"
+---
+"
+**관련 링크**:
+- **[CLI 레퍼런스](cli)** - `moai-adk` 명령어 상세 가이드
+- **[Alfred 명령어](../alfred/commands)** - `/alfred:*` 워크플로우 명령어들
+- **[워크플로우](../workflow)** - 구조를 활용하는 전체 개발 사이클
