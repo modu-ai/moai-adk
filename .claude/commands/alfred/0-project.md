@@ -922,74 +922,87 @@ Alfred starts project initialization by calling the project-manager agent with t
 - **Team Mode Git Workflow** (from STEP 0.1.3):
   - `spec_git_workflow: "feature_branch" | "develop_direct" | "per_spec"` (팀 모드만)
 
-### 2.1.1 Dynamic Prompt Generation by conversation_language
+### 2.1.1 Dynamic Prompt Translation by conversation_language
 
-**CRITICAL**: The project-manager prompt MUST be generated in the user's selected `conversation_language`.
+**CRITICAL**: The base prompt is written in English. At runtime, Alfred translates it to the user's `conversation_language` before passing to project-manager.
 
-Alfred generates the appropriate language version of the prompt based on `conversation_language` value.
+**Translation Flow**:
 
-All language versions contain identical structure, translated appropriately:
+```
+English base prompt (source of truth)
+    ↓
+Alfred reads conversation_language from STEP 0
+    ↓
+Translate prompt to {{CONVERSATION_LANGUAGE}} (runtime)
+    ↓
+Pass translated prompt to project-manager agent
+```
 
-| conversation_language | Language | Prompt Generated In |
-|----------------------|----------|-------------------|
-| ko | Korean | 한국어 |
-| en | English | English |
-| ja | Japanese | 日本語 |
-| zh | Chinese | 中文 |
-| es | Spanish | Español |
+**Supported Languages**:
 
-### 2.1.2 Execution
+| conversation_language | Language | Translation |
+|----------------------|----------|------------|
+| en | English | (No translation - original) |
+| ko | Korean | English → 한국어 |
+| ja | Japanese | English → 日本語 |
+| zh | Chinese | English → 中文 |
+| es | Spanish | English → Español |
+
+### 2.1.2 Base Prompt (English - Source of Truth)
 
 ```
 Call the Task tool:
 - subagent_type: "project-manager"
 - description: "Initialize project with conversation language support"
-- prompt: """당신은 project-manager 에이전트입니다.
+- prompt: """You are the project-manager agent.
 
-언어 설정:
-- 대화_언어: {{CONVERSATION_LANGUAGE}} (모든 대화, 문서에 사용)
-- 언어명: {{CONVERSATION_LANGUAGE_NAME}}
-- 에이전트_프롬프트_언어: {{AGENT_PROMPT_LANGUAGE}} (내부 sub-agent 통신 언어)
+Language Settings:
+- Conversation Language: {{CONVERSATION_LANGUAGE}} (used for all dialogs, documents)
+- Language Name: {{CONVERSATION_LANGUAGE_NAME}}
+- Agent Prompt Language: {{AGENT_PROMPT_LANGUAGE}} (internal sub-agent communication)
 
-에이전트 프롬프트 언어에 따른 작업 방식:
+Agent Prompt Language Behavior:
 
 1. **agent_prompt_language = "english"** (Global Standard):
-   - 당신(project-manager)은 **영어**로 사고하고 작업합니다
-   - 모든 내부 분석과 계획을 영어로 진행합니다
-   - 생성된 product.md, structure.md, tech.md는 **{{CONVERSATION_LANGUAGE}}**로 작성합니다
-   - Sub-agent들(spec-builder 등)에게 전달하는 프롬프트는 **영어**입니다
+   - You (project-manager) think and work in **English**
+   - All internal analysis and planning done in English
+   - Generated product.md, structure.md, tech.md written in **{{CONVERSATION_LANGUAGE}}**
+   - Prompts to sub-agents (spec-builder, etc.) are in **English**
 
 2. **agent_prompt_language = "localized"** (Localized):
-   - 당신(project-manager)은 **{{CONVERSATION_LANGUAGE}}**로 사고하고 작업합니다
-   - 모든 내부 분석과 계획을 {{CONVERSATION_LANGUAGE}}로 진행합니다
-   - 생성된 product.md, structure.md, tech.md는 **{{CONVERSATION_LANGUAGE}}**로 작성합니다
-   - Sub-agent들(spec-builder 등)에게 전달하는 프롬프트도 **{{CONVERSATION_LANGUAGE}}**입니다
+   - You (project-manager) think and work in **{{CONVERSATION_LANGUAGE}}**
+   - All internal analysis and planning done in {{CONVERSATION_LANGUAGE}}
+   - Generated product.md, structure.md, tech.md written in **{{CONVERSATION_LANGUAGE}}**
+   - Prompts to sub-agents (spec-builder, etc.) are in **{{CONVERSATION_LANGUAGE}}**
 
-중요: 대화_언어(conversation_language)와 에이전트_프롬프트_언어(agent_prompt_language)는 다를 수 있습니다!
-- 대화_언어는 **사용자와의 대화**, **생성 문서**에 사용
-- 에이전트_프롬프트_언어는 **sub-agents 통신**, **내부 prompt**에 사용
+Important: conversation_language and agent_prompt_language can be different!
+- conversation_language is used for **user dialogs**, **generated documents**
+- agent_prompt_language is used for **sub-agent communication**, **internal prompts**
 
-GIT 워크플로우 설정 (팀 모드):
+Git Workflow Configuration (Team Mode):
 - spec_git_workflow: [feature_branch | develop_direct | per_spec]
-  - "feature_branch": feature/spec-* 브랜치 생성, PR 기반 리뷰, develop 병합
-  - "develop_direct": develop에 직접 커밋, 브랜치 생성 안 함
-  - "per_spec": SPEC별로 사용자에게 물어봄 (/alfred:1-plan 실행 중)
-- 참고: 이 값을 .moai/config.json github.spec_git_workflow에 저장하여 git-manager가 참조하도록
+  - "feature_branch": Create feature/spec-* branch, PR-based review, merge to develop
+  - "develop_direct": Commit directly to develop, no branch creation
+  - "per_spec": Ask user per SPEC during /alfred:1-plan execution
+- Reference: Save this to .moai/config.json github.spec_git_workflow for git-manager
 
-프로젝트_타입: [new|existing]
-감지된_언어들: [감지된 코드베이스 언어들]
+Project Type: [new|existing]
+Detected Languages: [List of detected codebase languages]
 
-중요 지시사항:
-모든 인터뷰와 생성된 문서는 대화_언어(conversation_language)로 작성되어야 합니다:
-- product.md: {{CONVERSATION_LANGUAGE}}로 생성
-- structure.md: {{CONVERSATION_LANGUAGE}}로 생성
-- tech.md: {{CONVERSATION_LANGUAGE}}로 생성
+Critical Directives:
+All interviews and generated documents must be written in conversation_language ({{CONVERSATION_LANGUAGE}}):
+- product.md: Generate in {{CONVERSATION_LANGUAGE}}
+- structure.md: Generate in {{CONVERSATION_LANGUAGE}}
+- tech.md: Generate in {{CONVERSATION_LANGUAGE}}
 
-conversation_language가 'ko'인 경우: 모든 설명 내용을 한국어로
-conversation_language가 'ja'인 경우: 모든 설명 내용을 일본어로
-다른 언어인 경우: 지정된 언어를 따릅니다
+When conversation_language is 'en': Write all content in English
+When conversation_language is 'ko': Write all content in Korean
+When conversation_language is 'ja': Write all content in Japanese
+For other languages: Follow the specified language
 
-프로젝트 초기화 후, 다음과 같이 .moai/config.json 업데이트:
+After project initialization, update .moai/config.json with announcements (base in English, runtime-translated):
+
+```json
 {
   "language": {
     "conversation_language": "{{CONVERSATION_LANGUAGE}}",
@@ -1003,67 +1016,65 @@ conversation_language가 'ja'인 경우: 모든 설명 내용을 일본어로
     "enabled": true,
     "language": "{{CONVERSATION_LANGUAGE}}",
     "items": [
-      "🎩 SPEC-First: 구현 전에 항상 요구사항을 SPEC으로 정의하세요 (/alfred:1-plan)",
-      "✅ TRUST 5 원칙 준수: Test First, Readable, Unified, Secured, Trackable",
-      "📝 TodoWrite 활용: 모든 작업을 추적하고 in_progress/completed 상태를 즉시 업데이트하세요",
-      "🌍 언어 경계: 대화와 문서는 conversation_language 사용, 인프라(Skills, agents, commands)는 영어",
-      "🔗 @TAG 체인: SPEC→TEST→CODE→DOC 추적 가능하도록 유지하세요",
-      "⚡ 병렬 실행: 의존성 없는 작업은 동시 실행 가능 (Task tool 병렬 호출)",
-      "💡 Skill 먼저: 특정 도메인 작업은 적절한 Skill을 먼저 확인하세요"
+      "🎩 SPEC-First: Always define requirements as SPEC before implementation (/alfred:1-plan)",
+      "✅ TRUST 5 Principles: Test First, Readable, Unified, Secured, Trackable",
+      "📝 TodoWrite Usage: Track all tasks and update in_progress/completed status immediately",
+      "🌍 Language Boundary: Use conversation_language for dialogs/documents, English for infrastructure",
+      "🔗 @TAG Chain: Maintain traceability SPEC→TEST→CODE→DOC",
+      "⚡ Parallel Execution: Independent tasks can run simultaneously (Task tool parallel calls)",
+      "💡 Skills First: Check appropriate Skill first for domain-specific tasks"
     ]
   }
 }
+```
 
-### 2.1.3 Language-Specific announcements Examples
+### 2.1.3 Runtime Translation of Announcements
 
-**Announcements will be generated in conversation_language and saved to config.json**:
+**Translation Logic**:
 
-**Example: English announcements** (when conversation_language = "en"):
+The `announcements.items` array in the base config (English) is **translated at runtime** to `{{CONVERSATION_LANGUAGE}}`:
 
-```json
-"announcements": {
-  "enabled": true,
-  "language": "en",
-  "items": [
-    "🎩 SPEC-First: Always define requirements as SPEC before implementation (/alfred:1-plan)",
-    "✅ TRUST 5 Principles: Test First, Readable, Unified, Secured, Trackable",
-    "📝 TodoWrite Usage: Track all tasks and update in_progress/completed status immediately",
-    "🌍 Language Boundary: Use conversation_language for dialogs/documents, English for infrastructure",
-    "🔗 @TAG Chain: Maintain traceability SPEC→TEST→CODE→DOC",
-    "⚡ Parallel Execution: Independent tasks can run simultaneously (Task tool parallel calls)",
-    "💡 Skills First: Check appropriate Skill first for domain-specific tasks"
-  ]
-}
+```
+English base announcements (in config.json)
+    ↓
+Alfred reads conversation_language
+    ↓
+Translate each item to {{CONVERSATION_LANGUAGE}} (runtime)
+    ↓
+Save translated announcements to .claude/settings.json companyAnnouncements
+    ↓
+Claude Code displays announcements in user's language on startup
+```
+
+**Example: Korean announcements** (when conversation_language = "ko"):
+
+After translation, the announcements would be displayed as:
+
+```
+🎩 SPEC-First: 구현 전에 항상 요구사항을 SPEC으로 정의하세요 (/alfred:1-plan)
+✅ TRUST 5 원칙 준수: Test First, Readable, Unified, Secured, Trackable
+📝 TodoWrite 활용: 모든 작업을 추적하고 in_progress/completed 상태를 즉시 업데이트하세요
+🌍 언어 경계: 대화와 문서는 conversation_language 사용, 인프라(Skills, agents, commands)는 영어
+🔗 @TAG 체인: SPEC→TEST→CODE→DOC 추적 가능하도록 유지하세요
+⚡ 병렬 실행: 의존성 없는 작업은 동시 실행 가능 (Task tool 병렬 호출)
+💡 Skill 먼저: 특정 도메인 작업은 적절한 Skill을 먼저 확인하세요
 ```
 
 **Example: Japanese announcements** (when conversation_language = "ja"):
 
-```json
-"announcements": {
-  "enabled": true,
-  "language": "ja",
-  "items": [
-    "🎩 SPEC-First: 実装前に必ず要件をSPECとして定義してください (/alfred:1-plan)",
-    "✅ TRUST 5原則の遵守: Test First, Readable, Unified, Secured, Trackable",
-    "📝 TodoWriteの活用: すべてのタスクを追跡し、in_progress/completed状態を即座に更新してください",
-    "🌍 言語の境界: 会話とドキュメントはconversation_languageを使用、インフラはEnglish",
-    "🔗 @TAGチェーン: SPEC→TEST→CODE→DOCのトレーサビリティを維持してください",
-    "⚡ 並列実行: 依存関係のないタスクは同時実行可能 (Task tool並列呼び出し)",
-    "💡 スキルを優先: ドメイン固有のタスクは適切なSkillを最初に確認してください"
-  ]
-}
+```
+🎩 SPEC-First: 実装前に必ず要件をSPECとして定義してください (/alfred:1-plan)
+✅ TRUST 5原則の遵守: Test First, Readable, Unified, Secured, Trackable
+📝 TodoWriteの活用: すべてのタスクを追跡し、in_progress/completed状態を即座に更新してください
+🌍 言語の境界: 会話とドキュメントはconversation_languageを使用、インフラはEnglish
+🔗 @TAGチェーン: SPEC→TEST→CODE→DOCのトレーサビリティを維持してください
+⚡ 並列実行: 依存関係のないタスクは同時実行可能 (Task tool並列呼び出し)
+💡 スキルを優先: ドメイン固有のタスクは適切なSkillを最初に確認してください
 ```
 
-**Dynamic Generation Logic**:
+**Base Items** (Always English - Single Source of Truth):
 
-Alfred generates announcements items array in `{{CONVERSATION_LANGUAGE}}`:
-- Korean (ko) → Korean announcements
-- English (en) → English announcements
-- Japanese (ja) → Japanese announcements
-- Chinese (zh) → Chinese announcements
-- Spanish (es) → Spanish announcements
-
-These announcements will be displayed in Claude Code startup via `companyAnnouncements` setting in `.claude/settings.json`.
+The `announcements.items` in config.json is always in English. Translation happens at runtime via Alfred's translation pipeline.
 
 スキル 호출:
 필요 시 명시적 Skill() 호출 사용:
