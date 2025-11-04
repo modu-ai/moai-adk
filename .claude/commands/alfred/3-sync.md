@@ -68,6 +68,7 @@ This command supports **4 operational modes**:
 | quality-gate | `moai-alfred-trust-validation` | Check code quality before sync |
 | doc-syncer | `moai-alfred-tag-scanning` | Synchronize Living Documents |
 | git-manager | `moai-alfred-git-workflow` | Handle Git operations |
+| **NEW: policy-validator** | `moai-alfred-tag-policy-enforcer` | **Enforce TAG policy compliance** |
 
 **Note**: TUI Survey Skill is loaded once at Phase 0 and reused throughout all user interactions.
 
@@ -84,12 +85,13 @@ This command supports **4 operational modes**:
                           ↓
 ┌──────────────────────────────────────────────────────────┐
 │ STEP 1: Analysis & Planning                             │
-│  STEP 1.1: Verify prerequisites                         │
-│  STEP 1.2: Analyze project status (Git + TAG)           │
-│  STEP 1.3: Determine sync scope (mode-specific)         │
-│  STEP 1.4: (Optional) TAG chain navigation              │
-│  STEP 1.5: Create synchronization plan                  │
-│  STEP 1.6: Request user approval (AskUserQuestion)      │
+│  STEP 1.1: **TAG Policy Compliance Check** (CRITICAL)   │
+│  STEP 1.2: Verify prerequisites                         │
+│  STEP 1.3: Analyze project status (Git + TAG)           │
+│  STEP 1.4: Determine sync scope (mode-specific)         │
+│  STEP 1.5: (Optional) TAG chain navigation              │
+│  STEP 1.6: Create synchronization plan                  │
+│  STEP 1.7: Request user approval (AskUserQuestion)      │
 └──────────────────────────────────────────────────────────┘
                           ↓
           ┌───────────────┴───────────────┐
@@ -144,7 +146,88 @@ This command supports **4 operational modes**:
 
 ## 📊 STEP 1: Analysis & Planning
 
-### STEP 1.1: Verify Prerequisites
+### STEP 1.1: **TAG Policy Compliance Check** (CRITICAL)
+
+**Your task**: Perform comprehensive TAG policy validation before any synchronization.
+
+**CRITICAL STEPS**:
+
+1. **Complete TAG Policy Validation**:
+   ```bash
+   # Run comprehensive TAG policy validation
+   python3 -c "
+import sys
+sys.path.insert(0, 'src')
+from moai_adk.core.tags.validator import CentralValidator
+from moai_adk.core.tags.policy_validator import TagPolicyValidator
+
+print('🔍 전체 TAG 정책 검증 시작...')
+
+# 1. Central validation (duplicates, orphans, chains)
+central_validator = CentralValidator()
+central_result = central_validator.validate_directory('.')
+print(f'✅ 중앙 검증 완료: {central_result.statistics.total_files_scanned}개 파일, {central_result.statistics.total_issues}개 이슈')
+
+# 2. Policy validation (SPEC-first enforcement)
+policy_validator = TagPolicyValidator()
+print('✅ 정책 검증 준비 완료')
+
+if central_result.statistics.error_count > 0:
+    print(f'❌ 치명적 TAG 문제: {central_result.statistics.error_count}개')
+    for error in central_result.errors[:3]:
+        print(f'  - {error.message}')
+    sys.exit(1)
+else:
+    print('✅ TAG 정책 준수 확인 - 동기화 가능')
+"
+   ```
+
+2. **TAG Chain Integrity Verification**:
+   ```bash
+   # Verify SPEC → CODE → TEST → DOC chains
+   python3 -c "
+import sys
+sys.path.insert(0, 'src')
+from moai_adk.core.tags.validator import CentralValidator
+
+validator = CentralValidator()
+result = validator.validate_directory('.')
+
+# Check for broken chains
+broken_chains = [i for i in result.issues if i.type == 'chain']
+if broken_chains:
+    print(f'⚠️ 끊어진 TAG 체인: {len(broken_chains)}개')
+    print('동기화 전에 수정할 것을 권장합니다')
+else:
+    print('✅ TAG 체인 무결성 확인')
+"
+   ```
+
+3. **Checkpoint Creation** (for safety):
+   ```bash
+   # Create safety checkpoint before sync
+   python3 -c "
+import sys
+sys.path.insert(0, 'src')
+from moai_adk.core.tags.rollback_manager import RollbackManager
+
+try:
+    rollback_manager = RollbackManager()
+    checkpoint_id = rollback_manager.create_checkpoint(
+        '동기화 전 안전 체크포인트',
+        metadata={'command': 'alfred:3-sync'}
+    )
+    print(f'✅ 안전 체크포인트 생성: {checkpoint_id}')
+except Exception as e:
+    print(f'⚠️ 체크포인트 생성 실패: {e}')
+"
+   ```
+
+**Result**: TAG policy validated, checkpoint created, ready for sync.
+
+**Next step**: Go to STEP 1.2
+
+### STEP 1.2: Verify Prerequisites
 
 **Your task**: Check that all required components exist before starting synchronization analysis.
 

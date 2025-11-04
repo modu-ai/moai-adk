@@ -1,0 +1,39 @@
+{
+  "project": {
+    "name": "Alfred Skills Test Suite",
+    "description": "Comprehensive testing suite for 4 core Alfred skills",
+    "version": "1.0.0",
+    "owner": "GOOS",
+    "created": "2025-11-05"
+  },
+  "language": {
+    "conversation_language": "ko",
+    "conversation_language_name": "한국어"
+  },
+  "mode": "personal",
+  "git_strategy": {
+    "use_gitflow": true,
+    "team": {
+      "develop_branch": "develop"
+    }
+  },
+  "hooks": {
+    "timeout": 5
+  },
+  "tags": {
+    "scan_on_startup": true,
+    "enforce_integrity": true
+  },
+  "constitution": {
+    "trust_principles": ["Test First", "Readable", "Unified", "Secured", "Trackable"],
+    "quality_gates": {
+      "test_coverage_min": 85,
+      "lint_strict": true
+    }
+  },
+  "report_generation": {
+    "enabled": true,
+    "auto_create": "full",
+    "allowed_locations": [".moai/docs", ".moai/reports", ".moai/analysis", ".moai/specs"]
+  }
+}

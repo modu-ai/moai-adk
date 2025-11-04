@@ -104,6 +104,38 @@
       ],
       "scan_command": "rg '@TAG' -n",
       "philosophy": "The source of truth for TAGs lives in the code itself"
+    },
+    "policy": {
+      "@CODE:TAG-POLICY-001": "@DOC:TAG-POLICY-CONFIG-001",
+      "enforcement_mode": "strict",
+      "require_spec_before_code": true,
+      "require_test_for_code": true,
+      "auto_generate_tags": true,
+      "violation_action": "block_with_guidance",
+      "validation_hooks": ["pre_tool", "post_tool", "pre_commit"],
+      "auto_correction": {
+        "enabled": false,
+        "confidence_threshold": 0.8,
+        "create_missing_specs": false,
+        "create_missing_tests": false,
+        "remove_duplicates": true,
+        "backup_before_fix": true
+      },
+      "rollback": {
+        "enabled": true,
+        "max_checkpoints": 10,
+        "auto_cleanup": true,
+        "backup_before_rollback": true,
+        "rollback_timeout": 30
+      },
+      "realtime_validation": {
+        "enabled": true,
+        "strict_format": true,
+        "allow_without_spec": false,
+        "enforce_chains": true,
+        "validation_timeout": 5
+      },
+      "notes": "TAG 정책 위반 방지 시스템 설정. enforcement_mode: strict|lenient. violation_action: block|warn|log. 자동 수정 기능은 auto_correction.enabled=true로 활성화."
     }
   },
   "hooks": {
