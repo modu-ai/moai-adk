@@ -1,27 +1,254 @@
-# Claude Code Hooks
-
-`.claude/hooks/alfred/` 디렉터리는 Claude Code의 이벤트 라이프사이클에 맞춰 실행되는 Python 스크립트입니다. 각 파일은 단일 이벤트에 대응하며, `handlers/`와 `shared/` 모듈을 통해 공통 로직을 재사용합니다.
-
-## 주요 Hook 요약
-
-| 파일 | 이벤트 | 목적 |
-| ---- | ------ | ---- |
-| `session_start__show_project_info.py` | `SessionStart` | 세션 시작 시 프로젝트 요약, 현재 브랜치, SPEC 진행률 안내 |
-| `user_prompt__jit_load_docs.py` | `UserPromptSubmit` | 사용자 프롬프트를 분석해 관련 문서/Skill을 추가 컨텍스트로 추천 |
-| `pre_tool__auto_checkpoint.py` | `PreToolUse` | 위험 명령 감지 시 Git checkpoint 생성 및 경고 메시지 출력 |
-| `post_tool__log_changes.py` | `PostToolUse` | (향후) 변경 로그 기록과 메트릭 수집 준비 |
-| `session_end__cleanup.py` | `SessionEnd` | 세션 종료 시 캐시 정리, 메트릭 저장 등 후처리 |
-
-## 공통 구조
-
-- **타임아웃**: 모든 Hook은 `utils.timeout.CrossPlatformTimeout`으로 5초 제한을 두어 실패 시에도 세션이 중단되지 않습니다.
-- **JSON I/O**: Claude Code로부터 JSON payload를 받아 처리 후 `continue` 여부와 메시지를 반환합니다.
-- **오류 허용**: 예외 발생 시에도 `continue: True` 를 반환해 개발 흐름이 중단되지 않도록 설계되어 있습니다.
-
-## 확장 포인트
-
-- `handlers/` 폴더에 실제 비즈니스 로직이 위치합니다. Git checkpoint 정책, 문서 추천 로직 등을 여기에서 수정할 수 있습니다.
-- `shared/` 및 `utils/` 폴더는 로그 유틸, 경로 해석, 템플릿 로더 등 공통 기능을 제공합니다.
-- 새로운 Hook을 추가하려면 `event__description.py` 형태의 파일을 생성하고 `hooks.json` (Claude Code 설정)에서 매핑을 등록하세요.
-
-> Hook 변경 후에는 `/alfred:0-project` 또는 `moai-adk update`를 실행해 템플릿 버전과 설정이 일치하는지 확인하는 것이 좋습니다.
+---
+title: "Hooks
+description: "Claude Code Hooks 시스템을 통한 자동화, 안전장치, 워크플로우 통합
+---
+"
+Claude Code Hooks는 특정 이벤트에 반응하여 자동화 작업을 수행하는 Python 스크립트입니다. Alfred는 Hooks를 통해 워크플로우의 안전성, 일관성, 효율성을 보장합니다.
+"
+## Hook 타입 및 실행 시점
+"
+| Hook | 실행 시점 | 주요 목적 | 대표 기능 |
+| ---- | --------- | --------- | --------- |
+| `SessionStart` | Claude Code 세션 시작 | 프로젝트 상태 초기화 | 프로젝트 요약, SPEC 진행률 안내 |
+| `UserPromptSubmit` | 사용자 입력 제출 전 | JIT 문서 로드 및 검증 | 관련 문서 즉시 로드, 명령어 유효성 검사 |
+| `PreToolUse` | 도구 사용 전 | 안전장치 및 체크포인트 | 위험 명령 감지, Git 체크포인트 생성 |
+| `PostToolUse` | 도구 사용 후 | 변경 로그 기록 | 파일 변경 추적, 메트릭 수집 |
+| `SessionEnd` | 세션 종료 시 | 정리 및 데이터 정돈 | 임시 파일 정리, 세션 요약 저장 |
+"
+## 핵심 Hooks 상세 설명
+"
+### `session_start__show_project_info`
+"
+**목적**: 세션 시작 시 프로젝트 현황 요약
+"
+**주요 기능**:
+- `.moai/config.json`에서 프로젝트 정보 읽기
+- SPEC 진행률 및 통계 표시
+- 최근 커밋 및 변경 사항 요약
+- 오늘의 작업 목표 제안
+"
+**실행 결과**:
+```
+🎩 MoAI-ADK 프로젝트: MyProject
+- 진행 중인 SPEC: 3개
+- 완료된 기능: 12개
+- 최근 커밋: "feat: 사용자 인증 기능 추가"
+- 제안 작업: /alfred:2-run SPEC-003 계속 진행
+```
+"
+### `user_prompt__jit_load_docs`
+"
+**목적**: 명령어에 맞는 참고 문서 즉시 로드
+"
+**JIT (Just-In-Time) 로딩 전략**:
+- `/alfred:1-plan` → SPEC 작성 관련 문서
+- `/alfred:2-run` → TDD 및 언어별 가이드
+- `/alfred:3-sync` → 문서 동기화 가이드
+- 언어 감지 → 해당 언어 Skills 로드
+"
+**로딩 우선순위**:
+1. 프로젝트별 문서 (`.moai/docs/`)
+2. 패키지 템플릿 (src/moai_adk/templates/)
+3. 공통 문서 (CLAUDE.md)
+"
+### `pre_tool__auto_checkpoint`
+"
+**목적**: 위험 명령 감지 시 자동 체크포인트 생성
+"
+**위험 명령 패턴**:
+```python
+DANGEROUS_PATTERNS = [
+    "git push --force",
+    "rm -rf",
+    "dd if=",
+    "mkfs",
+    "chmod -R 777",
+    ":(){ :|:& };:",  # fork bomb
+    "sudo rm",
+    "format",
+    "shutdown",
+    "reboot"
+]
+```
+"
+**안전 프로토콜**:
+1. **위험 감지**: 명령어 패턴 매칭
+2. **사용자 확인**: 위험성 설명 및 확인 요청
+3. **체크포인트**: 현재 상태 Git 저장
+4. **롤백 준비**: 복원 스크립트 생성
+"
+### `post_tool__log_changes`
+"
+**목적**: 도구 실행 후 변경 로그 및 메트릭 기록
+"
+**기록 항목**:
+- 파일 생성/수정/삭제 목록
+- 코드 라인 변경 통계
+- 실행 시간 및 성능 메트릭
+- 에러 및 경고 발생 횟수
+"
+**로그 형식**:
+```json
+{
+  "timestamp": "2025-01-15T10:30:00Z",
+  "command": "Write",
+  "files_affected": 3,
+  "lines_added": 127,
+  "lines_deleted": 15,
+  "execution_time_ms": 2340,
+  "errors": []
+}
+```
+"
+### `session_end__cleanup`
+"
+**목적**: 세션 종료 시 정리 및 데이터 정돈
+"
+**정리 작업**:
+- 임시 파일 및 캐시 정리
+- 미완성 TODO 리스트 저장
+- 세션 요약 리포트 생성
+- 다음 세션을 위한 준비
+"
+## Hook 개발 가이드
+"
+### 기본 Hook 템플릿
+"
+```python
+# .claude/hooks/alfred/my_hook.py
+"
+from pathlib import Path
+import json
+from typing import Any, Dict
+"
+def execute(context: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Hook 실행 함수
+"
+    Args:
+        context: 실행 컨텍스트 (파일명, 명령어, 사용자 입력 등)
+"
+    Returns:
+        Hook 실행 결과
+    """
+    try:
+        # Hook 로직 구현
+        result = process_hook_logic(context)
+"
+        return {
+            "success": True,
+            "message": "Hook 실행 성공",
+            "data": result
+        }
+"
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Hook 실패: {str(e)}",
+            "error": str(e)
+        }
+"
+def process_hook_logic(context: Dict[str, Any]) -> Any:
+    """실제 Hook 로직"""
+    pass
+```
+"
+### Hook 컨텍스트 구조
+"
+```python
+context = {
+    "tool_name": "Bash",          # 실행된 도구 이름
+    "command": "git commit",      # 실행된 명령어
+    "working_directory": "/path", # 작업 디렉토리
+    "files_modified": ["file1"],  # 수정된 파일 목록
+    "user_input": "/alfred:1-plan", # 사용자 입력
+    "session_id": "uuid",         # 세션 ID
+    "timestamp": "2025-01-15T10:30:00Z"  # 타임스탬프
+}
+```
+"
+## Alfred 워크플로우와 Hook 연동
+"
+### Plan 단계 (`/alfred:1-plan`)
+- **SessionStart**: 프로젝트 진행률 확인
+- **UserPromptSubmit**: SPEC 작성 가이드 로드
+- **PreToolUse**: SPEC 파일 생성 전 검증
+- **PostToolUse**: SPEC 메타데이터 기록
+"
+### Run 단계 (`/alfred:2-run`)
+- **PreToolUse**: 테스트 실행 전 환경 체크
+- **PostToolUse**: 테스트 결과 및 커버리지 기록
+- **PreToolUse**: 커밋 전 코드 스타일 검사
+- **PostToolUse**: 커밋 메시지 형식 검증
+"
+### Sync 단계 (`/alfred:3-sync`)
+- **UserPromptSubmit**: 문서 템플릿 로드
+- **PreToolUse**: 문서 수정 전 백업
+- **PostToolUse**: TAG 무결성 검증
+- **SessionEnd**: 동기화 리포트 생성
+"
+## Hook 설정 및 관리
+"
+### `.claude/settings.json` 설정
+"
+```json
+{
+  "hooks": {
+    "sessionStart": ["session_start__show_project_info"],
+    "userPromptSubmit": ["user_prompt__jit_load_docs"],
+    "preToolUse": ["pre_tool__auto_checkpoint"],
+    "postToolUse": ["post_tool__log_changes"],
+    "sessionEnd": ["session_end__cleanup"]
+  },
+  "hookTimeout": 5000
+}
+```
+"
+### Hook 테스트
+"
+```bash
+# 특정 Hook 테스트
+python .claude/hooks/alfred/test_hook.py session_start__show_project_info
+"
+# 전체 Hook 테스트
+moai-adk test-hooks
+```
+"
+### Hook 디버깅
+"
+```bash
+# Hook 로그 확인
+tail -f ~/.claude/logs/hooks.log
+"
+# 디버그 모드 실행
+DEBUG_HOOKS=true claude
+```
+"
+## 모범 사례
+"
+### 1. 빠른 실행
+- Hook 실행 시간은 5초 이내 권장
+- 무거운 작업은 백그라운드로 분리
+- 캐싱 적극 활용
+"
+### 2. 견고한 에러 처리
+- 모든 예외 상황 처리
+- 사용자 친화적 에러 메시지
+- 실패해도 세션은 계속 진행
+"
+### 3. 일관된 로깅
+- 표준화된 로그 형식 사용
+- 중요 이벤트만 기록
+- 성능 메트릭 포함
+"
+### 4. 테스트 가능성
+- 단위 테스트 작성
+- Mock 환경에서 테스트
+- 경계 조건 테스트
+"
+---
+"
+**관련 링크**:
+- **[명령어](commands)** - Hook이 감시하고 지원하는 명령어들
+- **[에이전트](agents)** - Hook 실행 결과를 활용하는 에이전트들
+- **[워크플로우](../workflow)** - Hook이 통합되는 전체 개발 사이클

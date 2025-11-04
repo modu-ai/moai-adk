@@ -28,7 +28,6 @@ Project initialization command (interactive/non-interactive):
 """
 
 import json
-import platform
 from pathlib import Path
 from typing import Sequence
 

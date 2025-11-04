@@ -857,7 +857,7 @@ def _validate_template_substitution_with_rollback(project_path: Path, backup_pat
             console.print(f"   {issue}")
 
         if backup_path:
-            console.print(f"[yellow]🔄 Rolling back due to validation failure...[/yellow]")
+            console.print("[yellow]🔄 Rolling back due to validation failure...[/yellow]")
         else:
             console.print("[yellow]💡 Run '/alfred:0-project' to fix template variables[/yellow]")
             console.print("[red]⚠️ No backup available - manual fix required[/red]")

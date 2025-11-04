@@ -28,7 +28,12 @@
       "Bash(/tmp/moai-adk-learning.md)",
       "Bash(/tmp/study-with-alfred.md)",
       "Bash(/tmp/package-agentic-coding.md)",
-      "Bash(/tmp/package-study-with-alfred.md)"
+      "Bash(/tmp/package-study-with-alfred.md)",
+      "Bash(perl:*)",
+      "Bash(gh release view:*)",
+      "Bash(npm run dev:*)",
+      "Bash(while read spec)",
+      "Bash(done:*)"
     ],
     "deny": [],
     "ask": []

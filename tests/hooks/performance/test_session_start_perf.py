@@ -24,7 +24,7 @@ HOOKS_DIR = Path(__file__).parent.parent.parent.parent / ".claude" / "hooks" / "
 SHARED_DIR = HOOKS_DIR / "shared"
 sys.path.insert(0, str(SHARED_DIR))
 
-from core.project import get_git_info, get_package_version_info
+from core.project import get_git_info, get_package_version_info  # noqa: E402
 
 
 class TestSessionStartPerformance:
@@ -92,9 +92,24 @@ class TestSessionStartPerformance:
         # Initialize a git repo for testing
         import subprocess
         subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True, check=False)
-        subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, capture_output=True, check=False)
-        subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=tmp_path, capture_output=True, check=False)
-        subprocess.run(["git", "commit", "--allow-empty", "-m", "Initial"], cwd=tmp_path, capture_output=True, check=False)
+        subprocess.run(
+            ["git", "config", "user.name", "Test"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=False
+        )
+        subprocess.run(
+            ["git", "config", "user.email", "test@test.com"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=False
+        )
+        subprocess.run(
+            ["git", "commit", "--allow-empty", "-m", "Initial"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=False
+        )
 
         # Measure first call
         start = time.perf_counter()
@@ -116,9 +131,24 @@ class TestSessionStartPerformance:
         # Initialize a git repo
         import subprocess
         subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True, check=False)
-        subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, capture_output=True, check=False)
-        subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=tmp_path, capture_output=True, check=False)
-        subprocess.run(["git", "commit", "--allow-empty", "-m", "Initial"], cwd=tmp_path, capture_output=True, check=False)
+        subprocess.run(
+            ["git", "config", "user.name", "Test"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=False
+        )
+        subprocess.run(
+            ["git", "config", "user.email", "test@test.com"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=False
+        )
+        subprocess.run(
+            ["git", "commit", "--allow-empty", "-m", "Initial"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=False
+        )
 
         # First call to populate cache
         result1 = get_git_info(str(tmp_path))
@@ -169,9 +199,24 @@ class TestSessionStartPerformance:
         # Initialize git repo for testing
         import subprocess
         subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True, check=False)
-        subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, capture_output=True, check=False)
-        subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=tmp_path, capture_output=True, check=False)
-        subprocess.run(["git", "commit", "--allow-empty", "-m", "Initial"], cwd=tmp_path, capture_output=True, check=False)
+        subprocess.run(
+            ["git", "config", "user.name", "Test"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=False
+        )
+        subprocess.run(
+            ["git", "config", "user.email", "test@test.com"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=False
+        )
+        subprocess.run(
+            ["git", "commit", "--allow-empty", "-m", "Initial"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=False
+        )
 
         # First call to populate all caches
         _ = get_package_version_info(str(tmp_path))

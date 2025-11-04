@@ -217,7 +217,7 @@ def test_session_start_respects_config(tmp_path: Path, project_module):
     config_path.write_text(json.dumps(config_data), encoding="utf-8")
 
     # Mock network check to ensure it's not even attempted
-    with patch.object(project_module, 'is_network_available', return_value=True) as mock_network:
+    with patch.object(project_module, 'is_network_available', return_value=True):
         with patch('urllib.request.urlopen') as mock_urlopen:
             mock_urlopen.side_effect = Exception("Should not reach here!")
 
