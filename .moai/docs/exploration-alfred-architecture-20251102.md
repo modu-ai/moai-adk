@@ -236,7 +236,7 @@ AskUserQuestion(
 
 **Files**: 
 - Invoked in commands at lines where user approval is needed
-- Documented in `moai-alfred-interactive-questions` skill (loaded on-demand)
+- Documented in `moai-alfred-ask-user-questions` skill (loaded on-demand)
 
 ---
 

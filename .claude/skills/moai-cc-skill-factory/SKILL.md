@@ -33,7 +33,7 @@ allowed-tools:
 Interactive discovery, web research, continuous updates를 통한 고품질 Claude Code Skill 생성 및 유지관리 시스템을 제공합니다.
 
 **Core capabilities**:
-- ✅ Interactive user surveys via `moai-alfred-interactive-questions`
+- ✅ Interactive user surveys via `moai-alfred-ask-user-questions`
 - ✅ Web research for latest information (WebFetch/WebSearch)
 - ✅ Skill analysis and update recommendations
 - ✅ Official documentation validation
@@ -236,7 +236,7 @@ Complete Skill package created
 
 ## Related Skills
 
-- `moai-alfred-interactive-questions`: Interactive user surveys (delegated)
+- `moai-alfred-ask-user-questions`: Interactive user surveys (delegated)
 - `moai-alfred-skill-generator`: Skill generation orchestrator
 
 ---

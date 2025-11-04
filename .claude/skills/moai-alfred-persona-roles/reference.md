@@ -98,7 +98,7 @@ Default: Project Manager (safest)
 
 | Skill | Usage by Role |
 |-------|---------------|
-| `moai-alfred-interactive-questions` | All roles (when ambiguous) |
+| `moai-alfred-ask-user-questions` | All roles (when ambiguous) |
 | `moai-alfred-expertise-detection` | All roles (adapt behavior) |
 | `moai-alfred-proactive-suggestions` | Efficiency Coach, Project Manager |
 | `moai-foundation-trust` | All roles (quality gates) |

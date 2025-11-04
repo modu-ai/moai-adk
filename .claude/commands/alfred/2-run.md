@@ -20,7 +20,7 @@ allowed-tools:
 ---
 
 # ⚒️ MoAI-ADK Phase 2: Run the plan - Flexible implementation strategy
-> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
+> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 >
 > **Batched Design**: All AskUserQuestion calls follow batched design principles (1-4 questions per call) to minimize user interaction turns. See CLAUDE.md section "Alfred Command Completion Pattern" for details.
 
@@ -187,7 +187,7 @@ Task tool call:
  3. TAG 체인 설계
  4. 단계별 실행 계획
  5. 위험 요소 및 대응 계획
- 6. 행동 계획을 작성하고 `AskUserQuestion 도구 (moai-alfred-interactive-questions 스킬 참고)`로 사용자와 다음 단계를 확인합니다
+ 6. 행동 계획을 작성하고 `AskUserQuestion 도구 (moai-alfred-ask-user-questions 스킬 참고)`로 사용자와 다음 단계를 확인합니다
  (선택사항) 탐색 결과: $EXPLORE_RESULTS"
 ```
 
@@ -233,7 +233,7 @@ After reviewing the action plan, select one of the following:
 
 ## Implementation Strategy Approval
 
-After the execution plan is ready, Alfred uses `AskUserQuestion` tool (documented in moai-alfred-interactive-questions skill) to obtain explicit user approval before proceeding to TDD implementation.
+After the execution plan is ready, Alfred uses `AskUserQuestion` tool (documented in moai-alfred-ask-user-questions skill) to obtain explicit user approval before proceeding to TDD implementation.
 
 **Example AskUserQuestion Call**:
 ```python
@@ -511,7 +511,7 @@ The `implementation-planner` agent does the following:
 2. **Library selection**: Check the latest stable version and verify compatibility through WebFetch
 3. **TAG chain design**: Determine TAG order and dependency
 4. **Establishment of implementation strategy**: Step-by-step implementation plan and risk identification
-5. **Create action plan**: Create a structured plan and, via `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)`, collect user approval before proceeding
+5. **Create action plan**: Create a structured plan and, via `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)`, collect user approval before proceeding
 
 ### Phase 2: Task execution phase (after approval)
 

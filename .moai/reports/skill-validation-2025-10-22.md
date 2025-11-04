@@ -62,7 +62,7 @@
 - moai-alfred-spec-metadata-validation: 218 / 243 (needs examples boost)
 - moai-alfred-tag-scanning: 195 / 216 (needs examples boost)
 - moai-alfred-trust-validation: 39 / 319 (needs major examples boost)
-- moai-alfred-interactive-questions: 29 / 28 (needs major content)
+- moai-alfred-ask-user-questions: 29 / 28 (needs major content)
 
 **Foundation Tier (3 skills)**:
 - moai-foundation-langs: 60 / 275 (needs examples boost)

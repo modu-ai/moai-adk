@@ -96,7 +96,7 @@ scope:
   - git-manager (Git 작업 관리)
 
 - **필수 도구**:
-  - `AskUserQuestion` (대화형 질문 도구, moai-alfred-interactive-questions skill에 문서화)
+  - `AskUserQuestion` (대화형 질문 도구, moai-alfred-ask-user-questions skill에 문서화)
   - `TodoWrite` (작업 목록 추적 도구)
   - `Plan` (Claude 내장 에이전트, 작업 분석 및 계획)
 

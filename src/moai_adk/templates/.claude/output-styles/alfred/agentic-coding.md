@@ -8,7 +8,7 @@ description: "Agent-based coding mode that integrates hands-on development and c
 ---
 
 # Agentic Coding
-> Interactive prompts rely on `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
+> Interactive prompts rely on `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
 
 **Audience**: Professional developers, team leaders, architects
 

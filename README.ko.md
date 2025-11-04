@@ -2255,7 +2255,7 @@ MoAI-ADK 내부 워크플로우 오케스트레이션 스킬
 | `moai-alfred-spec-metadata-validation` | SPEC YAML frontmatter 및 HISTORY 섹션 정합성 검증                   |
 | `moai-alfred-tag-scanning`             | @TAG 마커 전체 스캔 및 인벤토리 생성 (CODE-FIRST 원칙)              |
 | `moai-alfred-trust-validation`         | TRUST 5-principles 준수 검증                                        |
-| `moai-alfred-interactive-questions`    | Claude Code Tools AskUserQuestion TUI 메뉴 표준화                   |
+| `moai-alfred-ask-user-questions`    | Claude Code Tools AskUserQuestion TUI 메뉴 표준화                   |
 
 #### Domain Tier
 
