@@ -1,6 +1,7 @@
 ---
 name: alfred:0-project
 description: "Initialize project metadata and documentation"
+argument-hint: "[setting|update]"
 allowed-tools:
   - Read
   - Write
@@ -99,63 +100,196 @@ The user executes the `/alfred:0-project` command to start analyzing the project
 - **팀 모드 추가 배치**: 2개 질문을 1회 호출 (2 turns → 1 turn, **50% 상호작용 감소**)
 - **전체 효과**: 평균 **60% 상호작용 감소**, 사용자 경험 대폭 개선
 
-### 0.0 명령어 진입점: 플래그 파싱 및 실행 모드 결정 (신규)
+### 0.0 명령어 진입점: 서브커맨드 파싱 (신규)
 
-**Purpose**: Determine execution mode based on user-provided flags before starting project initialization.
+**Purpose**: Parse subcommand to determine execution mode.
 
-**Flag Parsing Logic**:
+**Subcommand Parsing Logic**:
 
-When `/alfred:0-project` is executed, Alfred first checks for command-line flags:
+When `/alfred:0-project` is executed, Alfred checks for subcommands:
 
-1. **Check for `--review` flag in `$ARGUMENTS`**:
-   - IF `--review` flag is present → Set `review_mode = true`
-   - ELSE → Set `review_mode = false` (default: immediate execution mode)
+1. **Parse `$ARGUMENTS` for subcommands**:
+   - IF `setting` → Execute Setting Mode (STEP 0-SETTING)
+   - ELSE IF `update` → Execute Update Mode (STEP 0-UPDATE)
+   - ELSE IF empty → Execute Default Mode
 
-2. **Extract clean arguments**:
-   - Remove `--review` flag from `$ARGUMENTS` to get remaining user input
-   - Store cleaned arguments for subsequent processing
+2. **Default Mode Logic** (no subcommand):
+   - Check if `.moai/config.json` exists
+   - IF exists → Show "Already initialized" message + suggest `setting` or `update` (STEP 0.1 Already Initialized Check)
+   - ELSE → Execute first-time initialization (STEP 0.1 First-time Setup)
 
-3. **Route execution flow**:
-   - **Review Mode** (`review_mode = true`):
-     - Generate planning report with user interview results
-     - Request user approval via AskUserQuestion
-     - Execute STEP 0.1-0.3 only after approval
-   - **Immediate Execution Mode** (`review_mode = false`, default):
-     - Skip planning report generation
-     - Execute STEP 0.1 batch questions directly
-     - Automatically proceed to STEP 0.2-0.3 without intermediate approval
+**Subcommand Options**:
+- (No argument): Default initialization mode
+- `setting`: Modify existing project settings
+- `update`: Optimize templates after `moai-adk update`
 
-**Flag Options**:
-- `--review`: Enable planning review mode (user approval required before execution)
-- (No flag): Immediate execution mode (default behavior - auto-execute after batch questions)
+**Execution Flow Summary**:
 
-**Execution Flow Comparison**:
-
-| Mode | Flag | Flow | Turn Reduction |
-|------|------|------|----------------|
-| **Immediate Execution** (Default) | None | STEP 0.1 → 0.2 → 0.3 | ✅ 60-75% |
-| **Review Mode** | `--review` | STEP 0.1 → Planning Report → User Approval → 0.2 → 0.3 | Legacy (6-12 turns) |
+| Command | Mode | Behavior |
+|---------|------|----------|
+| `/alfred:0-project` (first time) | Default | Initialize project (STEP 0.1 First-time Setup) |
+| `/alfred:0-project` (already initialized) | Default | Show options (STEP 0.1 Already Initialized Check) |
+| `/alfred:0-project setting` | Setting | Modify existing config (STEP 0-SETTING) |
+| `/alfred:0-project update` | Update | Merge backup templates (STEP 0-UPDATE) |
 
 **Implementation Details**:
 
-Alfred performs the following actions based on detected mode:
+- **Default Mode (no subcommand)**:
+  1. Check if `.moai/config.json` exists
+  2. IF NOT exists → Proceed to STEP 0.1 First-time Setup
+  3. IF exists → Proceed to STEP 0.1 Already Initialized Check
 
-- **Review Mode (`--review` flag)**:
-  1. Execute STEP 0.1 batch questions (language + nickname + GitHub settings)
-  2. Generate planning report with interview analysis
-  3. Invoke AskUserQuestion for user approval (see STEP 1.5)
-  4. IF approved → Proceed to STEP 0.2 (save user info)
-  5. ELSE → Modify plan or cancel
+- **Setting Mode (`setting` subcommand)**:
+  1. Load current configuration from `.moai/config.json`
+  2. Ask user which settings to modify (multi-select)
+  3. Collect new values via batched AskUserQuestion
+  4. Update only modified fields in config.json
+  5. Preserve unchanged settings
 
-- **Immediate Execution Mode (No flag, default)**:
-  1. Execute STEP 0.1 batch questions (language + nickname + GitHub settings)
-  2. Automatically proceed to STEP 0.2 (save user info)
-  3. Skip STEP 1.5 approval (no planning report generation)
-  4. Continue to STEP 0.3 and subsequent phases without interruption
+- **Update Mode (`update` subcommand)**:
+  1. Check if backup exists (`.moai-backups/`)
+  2. Compare backup with current template
+  3. Merge user customizations with latest template
+  4. Set `optimized: true` in config.json
 
-**Note**: The `--review` flag enables the legacy workflow with intermediate approval. Without the flag, Alfred optimizes UX by auto-executing after collecting essential user input.
+### 0.1 Already Initialized Check (conditional entry point)
 
-### 0.1 배치 설계: 언어 선택 + 사용자 닉네임 + GitHub 설정 확인 (1-3회 호출)
+**Purpose**: Determine whether this is a first-time initialization or a subsequent run on an already-initialized project.
+
+**Execution Condition**:
+- Default mode (no subcommand): `/alfred:0-project` executed with no arguments
+- Comes after STEP 0.0 subcommand parsing
+
+**Implementation Steps**:
+
+1. **Check if `.moai/config.json` exists**:
+
+   ```bash
+   if [ -f .moai/config.json ]; then
+       # Project is already initialized
+       # Proceed to "0.1.0 Already Initialized Flow"
+   else
+       # Project is new/uninitialized
+       # Proceed to "0.1.1 First-time Setup Flow"
+   fi
+   ```
+
+2. **Display appropriate message**:
+
+   **If already initialized**:
+   ```markdown
+   ✅ Project is already initialized!
+
+   Current settings:
+   - Language: 한국어 (ko)
+   - Nickname: GOOS
+
+   What would you like to do?
+   ```
+
+   **If not initialized**:
+   ```markdown
+   🚀 Starting first-time project initialization...
+   ```
+
+---
+
+### 0.1.0 Already Initialized Flow (when config.json exists)
+
+**Purpose**: Show options for an already-initialized project without running full initialization again.
+
+**Call AskUserQuestion** to present options:
+
+```python
+AskUserQuestion(
+    questions=[
+        {
+            "question": "Your project is already initialized. What would you like to do?",
+            "header": "Already Initialized",
+            "multiSelect": false,
+            "options": [
+                {
+                    "label": "🔧 Modify Settings",
+                    "description": "Change language, nickname, GitHub settings, or reports config. Runs /alfred:0-project setting mode"
+                },
+                {
+                    "label": "📋 Review Current Setup",
+                    "description": "Display current project settings and configuration"
+                },
+                {
+                    "label": "🔄 Re-initialize",
+                    "description": "Run full initialization again (warns before overwriting)"
+                },
+                {
+                    "label": "⏸️ Cancel",
+                    "description": "Exit without changes"
+                }
+            ]
+        }
+    ]
+)
+```
+
+**Response Processing**:
+
+- **"🔧 Modify Settings"** → Proceed to STEP 0-SETTING (setting mode)
+  - Note: This is equivalent to running `/alfred:0-project setting`
+  - Load config.json and show modification options
+
+- **"📋 Review Current Setup"** → Display current configuration:
+  ```markdown
+  ## Current Project Configuration
+
+  ✅ **Language**: 한국어 (ko)
+  ✅ **Nickname**: GOOS
+  ✅ **Agent Prompt Language**: Localized
+  ✅ **GitHub Auto-delete Branches**: true
+  ✅ **SPEC Git Workflow**: feature_branch
+  ✅ **Report Generation**: Minimal
+  ✅ **Selected Domains**: frontend, backend
+
+  📝 Configuration saved in: .moai/config.json
+  📁 Project files: .moai/project/
+
+  To modify settings, run: /alfred:0-project setting
+  ```
+  Then exit after displaying.
+
+- **"🔄 Re-initialize"** → Show warning and proceed to first-time setup:
+  ```markdown
+  ⚠️ WARNING: This will re-run the full project initialization
+
+  Existing files will be preserved in:
+  - Backup: .moai-backups/[TIMESTAMP]/
+  - Current: .moai/project/*.md (will be updated)
+
+  Are you sure you want to continue? (y/n)
+  ```
+  If user confirms, proceed to STEP 0.1.1 (First-time Setup)
+
+- **"⏸️ Cancel"** → Exit without any changes:
+  ```markdown
+  ✅ Exiting without changes.
+
+  Your project remains initialized with current settings.
+  Run /alfred:0-project setting to modify settings later.
+  ```
+
+---
+
+### 0.1.1 First-time Setup Flow (when config.json doesn't exist)
+
+**Purpose**: Collect initial language, nickname, and team mode settings for a new project.
+
+**Flow**:
+
+1. Display welcome message
+2. Proceed to batched questions (STEP 0.1.2 below)
+3. Save responses to `.moai/config.json`
+
+---
+
+### 0.1.2 배치 설계: 언어 선택 + 사용자 닉네임 + GitHub 설정 확인 (1-3회 호출)
 
 #### 📌 배치 호출의 의미
 
@@ -781,6 +915,389 @@ Alfred가 선택된 언어, 닉네임, 그리고 팀 모드 설정을 다음과 
 - 인터뷰 질문이 선택된 언어로 진행됨
 - 생성된 문서 (product.md, structure.md, tech.md)가 선택된 언어로 작성됨
 - CLAUDE.md가 선택된 언어와 사용자 닉네임을 표시함
+
+---
+
+## 🎛️ STEP 0-SETTING: Modify existing project settings (subcommand mode)
+
+**Purpose**: Modify one or more settings in an already-initialized project without re-running the full interview process.
+
+**Execution Condition**:
+- User executes `/alfred:0-project setting`
+- `.moai/config.json` already exists
+- User wants to change specific settings (language, nickname, GitHub settings, report generation, etc.)
+
+**UX Improvement**:
+- **Multi-select filtering**: User selects which settings to modify (only 1 interaction)
+- **Batched questions**: Only the selected settings are presented (1 interaction per question group)
+- **Selective update**: Only modified fields updated in config.json; unchanged settings preserved
+- **Total interaction reduction**: ~60% fewer turns compared to re-running full initialization
+
+### 0-SETTING.1 Load current configuration
+
+**Purpose**: Read and display the current project settings from `.moai/config.json`.
+
+**Implementation Steps**:
+
+1. **Read config.json**:
+   ```bash
+   Read .moai/config.json
+   ```
+
+2. **Extract current values**:
+   - Language: `config.json.language.conversation_language`
+   - Nickname: `config.json.user.nickname`
+   - Agent Prompt Language: `config.json.language.agent_prompt_language`
+   - GitHub auto-delete branches: `config.json.github.auto_delete_branches`
+   - GitHub spec_git_workflow: `config.json.github.spec_git_workflow`
+   - Report generation: `config.json.report_generation.enabled`
+   - Selected domains: `config.json.stack.selected_domains` (if any)
+
+3. **Display current settings**:
+   ```markdown
+   ## Current Project Settings
+
+   ✅ **Language**: 한국어 (ko)
+   ✅ **Nickname**: GOOS
+   ✅ **Agent Prompt Language**: Localized (한국어)
+   ✅ **GitHub Auto-delete Branches**: true
+   ✅ **SPEC Git Workflow**: feature_branch
+   ✅ **Report Generation**: Minimal
+   ✅ **Selected Domains**: frontend, backend
+
+   Which settings would you like to modify?
+   ```
+
+### 0-SETTING.2 Multi-select: Choose which settings to modify
+
+**Purpose**: Let user select which specific settings they want to change (not all).
+
+**Implementation Steps**:
+
+Call `AskUserQuestion` with `multiSelect: true` to allow multiple selections:
+
+```python
+AskUserQuestion(
+    questions=[
+        {
+            "question": "Which settings would you like to modify? (Select all that apply)",
+            "header": "Settings to Modify",
+            "multiSelect": true,
+            "options": [
+                {
+                    "label": "🌍 Language & Agent Prompt Language",
+                    "description": "Change conversation language or agent prompt language"
+                },
+                {
+                    "label": "👤 Nickname",
+                    "description": "Change user nickname (max 20 chars)"
+                },
+                {
+                    "label": "🔧 GitHub Settings (Team mode only)",
+                    "description": "Change auto-delete branches or SPEC git workflow"
+                },
+                {
+                    "label": "📊 Report Generation",
+                    "description": "Change automatic report generation settings"
+                },
+                {
+                    "label": "🎯 Project Domains",
+                    "description": "Add or modify project domain selections"
+                }
+            ]
+        }
+    ]
+)
+```
+
+**Response Processing**:
+
+User selection is stored in `answers["0"]` as an array of selected option labels. Map selections to section codes:
+
+```
+Selection → Section Code
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+"Language & Agent Prompt Language" → LANGUAGE
+"Nickname" → NICKNAME
+"GitHub Settings (Team mode only)" → GITHUB
+"Report Generation" → REPORTS
+"Project Domains" → DOMAINS
+```
+
+**Example**:
+- User selects: ["Language & Agent Prompt Language", "Nickname"]
+- Section codes: [LANGUAGE, NICKNAME]
+- Next step: Proceed to 0-SETTING.3 with only LANGUAGE and NICKNAME batches
+
+### 0-SETTING.3 Batched questions for selected settings
+
+**Purpose**: Ask for new values only for the settings the user selected.
+
+**Implementation Rules**:
+
+1. **Build dynamic AskUserQuestion** based on selected sections:
+   - Never show questions for unselected sections
+   - Group related questions into single AskUserQuestion call (batch)
+   - Process each selected section with its appropriate questions
+
+2. **Batch 1 - LANGUAGE Section** (if selected):
+
+   ```python
+   # When "Language & Agent Prompt Language" is selected
+   AskUserQuestion(
+       questions=[
+           {
+               "question": "Change conversation language?",
+               "header": "Language",
+               "multiSelect": false,
+               "options": [
+                   {"label": "🌍 English", "description": "..."},
+                   {"label": "🇰🇷 한국어", "description": "..."},
+                   {"label": "🇯🇵 日本語", "description": "..."},
+                   {"label": "🇨🇳 中文", "description": "..."}
+               ]
+           },
+           {
+               "question": "Change agent prompt language?",
+               "header": "Agent Prompt Language",
+               "multiSelect": false,
+               "options": [
+                   {"label": "🌐 English (Global Standard)", "description": "..."},
+                   {"label": "🗣️ Selected Language (Localized)", "description": "..."}
+               ]
+           }
+       ]
+   )
+   ```
+
+3. **Batch 2 - NICKNAME Section** (if selected):
+
+   ```python
+   AskUserQuestion(
+       questions=[
+           {
+               "question": "Enter new nickname (max 20 chars):",
+               "header": "Nickname",
+               "multiSelect": false,
+               "options": [
+                   {"label": "Change nickname", "description": "Type your new name in 'Other'"}
+               ]
+           }
+       ]
+   )
+   ```
+
+4. **Batch 3 - GITHUB Section** (if selected and team mode):
+
+   ```python
+   AskUserQuestion(
+       questions=[
+           {
+               "question": "Update GitHub auto-delete branches setting?",
+               "header": "GitHub Auto-delete Branches",
+               "multiSelect": false,
+               "options": [
+                   {"label": "✅ Yes, enable", "description": "..."},
+                   {"label": "❌ No, disable", "description": "..."},
+                   {"label": "🤔 Keep current", "description": "..."}
+               ]
+           },
+           {
+               "question": "Update SPEC git workflow?",
+               "header": "SPEC Git Workflow",
+               "multiSelect": false,
+               "options": [
+                   {"label": "📋 Feature Branch + PR", "description": "..."},
+                   {"label": "🔄 Direct Commit to Develop", "description": "..."},
+                   {"label": "🤔 Decide per SPEC", "description": "..."},
+                   {"label": "⏸️ Keep current", "description": "..."}
+               ]
+           }
+       ]
+   )
+   ```
+
+5. **Batch 4 - REPORTS Section** (if selected):
+
+   ```python
+   AskUserQuestion(
+       questions=[
+           {
+               "question": "Update report generation settings?",
+               "header": "Report Generation",
+               "multiSelect": false,
+               "options": [
+                   {"label": "📊 Enable", "description": "Full analysis reports"},
+                   {"label": "⚡ Minimal", "description": "Essential reports only"},
+                   {"label": "🚫 Disable", "description": "No automatic reports"},
+                   {"label": "⏸️ Keep current", "description": "No change"}
+               ]
+           }
+       ]
+   )
+   ```
+
+6. **Batch 5 - DOMAINS Section** (if selected):
+
+   ```python
+   AskUserQuestion(
+       questions=[
+           {
+               "question": "Update project domain selections?",
+               "header": "Project Domains",
+               "multiSelect": true,
+               "options": [
+                   {"label": "🎨 Frontend", "description": "..."},
+                   {"label": "⚙️ Backend", "description": "..."},
+                   {"label": "🚀 DevOps", "description": "..."},
+                   {"label": "🗄️ Database", "description": "..."},
+                   {"label": "📊 Data Science", "description": "..."},
+                   {"label": "📱 Mobile", "description": "..."},
+                   {"label": "⚡ Clear all", "description": "Remove all domain selections"}
+               ]
+           }
+       ]
+   )
+   ```
+
+### 0-SETTING.4 Update config.json with selected changes
+
+**Purpose**: Merge user's new values into `.moai/config.json`, preserving unmodified settings.
+
+**Implementation Steps**:
+
+1. **Load existing config.json**
+2. **Process each selected section's responses**:
+
+   **For LANGUAGE section**:
+   ```json
+   {
+     "language": {
+       "conversation_language": "[new_value]",
+       "conversation_language_name": "[display_name]",
+       "agent_prompt_language": "[english|localized]"
+     }
+   }
+   ```
+
+   **For NICKNAME section**:
+   ```json
+   {
+     "user": {
+       "nickname": "[new_value]"
+     }
+   }
+   ```
+
+   **For GITHUB section**:
+   ```json
+   {
+     "github": {
+       "auto_delete_branches": [true|false|keep_current],
+       "spec_git_workflow": "[feature_branch|develop_direct|per_spec|keep_current]"
+     }
+   }
+   ```
+
+   **For REPORTS section**:
+   ```json
+   {
+     "report_generation": {
+       "enabled": [true|false],
+       "auto_create": [true|false],
+       "user_choice": "[Enable|Minimal|Disable]",
+       "updated_at": "[timestamp]"
+     }
+   }
+   ```
+
+   **For DOMAINS section**:
+   ```json
+   {
+     "stack": {
+       "selected_domains": [[array of selected domains]],
+       "domain_selection_date": "[timestamp]"
+     }
+   }
+   ```
+
+3. **Merge strategy** (CRITICAL):
+   - Only update fields that user selected and changed
+   - Preserve all unchanged fields (do NOT overwrite with empty values)
+   - Preserve all fields that were NOT selected (keep original)
+   - Example: If user only changes LANGUAGE, all other sections remain untouched
+
+4. **Write updated config.json**:
+   ```
+   Write .moai/config.json with merged configuration
+   ```
+
+### 0-SETTING.5 Completion report
+
+**Purpose**: Confirm which settings were changed and display success status.
+
+**Report Format**:
+
+```markdown
+✅ Settings update completed!
+
+📝 Modified settings:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[For each modified section, show:]
+
+**🌍 Language Settings**:
+- Conversation Language: 한국어 (ko) → English (en)
+- Agent Prompt Language: Localized → English (Global Standard)
+
+**👤 Nickname**:
+- GOOS → GoosLab
+
+**🔧 GitHub Settings**:
+- Auto-delete Branches: true (no change)
+- SPEC Git Workflow: feature_branch → develop_direct
+
+[Sections NOT modified are NOT shown]
+
+💾 Configuration saved to `.moai/config.json`
+
+📋 Next steps:
+1. Review the changes above
+2. Continue development with updated settings
+3. Run `/alfred:0-project setting` again to modify more settings
+4. Run `/alfred:1-plan` to create new SPEC with updated settings
+```
+
+**Special case - Keep current**:
+
+If user selects "Keep current" or makes no changes in a batched question:
+```markdown
+**🔧 GitHub Settings**:
+- No changes (kept current settings)
+```
+
+### 0-SETTING.6 Error handling
+
+**Error Condition 1: config.json not found**
+```
+Error: .moai/config.json not found
+Solution: This command requires an already-initialized project.
+Run: /alfred:0-project (without arguments) to initialize first
+```
+
+**Error Condition 2: Invalid JSON in config.json**
+```
+Error: config.json syntax error
+Solution: Fix the JSON syntax manually or restore from backup
+Backup location: .moai-backups/
+```
+
+**Error Condition 3: No settings selected**
+```
+User selected no checkboxes in the multi-select question.
+Action: Display message and exit without changes
+Message: "No settings selected. Exiting without changes."
+```
 
 ---
 
@@ -1868,9 +2385,9 @@ Solution: Check file permissions (chmod 644) or create config.json manually
 
 ---
 
-## /alfred:0-project update: Template optimization (subcommand)
+## 🚀 STEP 0-UPDATE: Template optimization (subcommand mode)
 
-> **Purpose**: After running moai-adk update, compare the backup and new template to optimize the template while preserving user customization.
+> **Purpose**: After running `moai-adk update`, compare the backup and new template to optimize the template while preserving user customization.
 
 ### Execution conditions
 
