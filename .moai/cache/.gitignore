@@ -1,5 +1,0 @@
-# Ignore all cache files in this directory
-*
-
-# But keep the .gitignore file itself
-!.gitignore
