@@ -6,7 +6,7 @@
 **Test Location**: `/Users/goos/MoAI/MoAI-ADK/docs`
 **Server URL**: http://localhost:3001
 **Framework**: Next.js 14.2.15 + Nextra 3.3.1
-**Test Method**: MCP Playwright simulation + curl diagnostics
+**Test Method**: MCP Playwright simulation + curl diagnostics + google-devtool-mcp (attempted) + advanced diagnostics
 
 ## 🎯 Test Results
 

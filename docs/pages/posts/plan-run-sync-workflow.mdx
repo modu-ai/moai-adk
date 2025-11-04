@@ -1,25 +1,23 @@
 import { Tabs } from 'nextra/components'
 "
 ---
-title: "Plan → Run → Sync 워크플로우
+title: "Plan → Run → Sync 워크플로우"
 date: 2025-10-30
-description: "Alfred SuperAgent가 자동화하는 3단계 워크플로우와 Hooks 연동을 정리한 가이드
+description: "Alfred SuperAgent가 자동화하는 3단계 워크플로우와 Hooks 연동을 정리한 가이드"
 type: post
 tag:
   - Workflow
   - Alfred
 ---
-"
 MoAI-ADK는 Alfred SuperAgent가 orchestrate 하는 **4-Step Workflow** (Intent → Plan → Run → Sync) 중 개발자가 반복하는 핵심 3단계를 자동화합니다. 각 단계는 `.claude/commands/alfred/*.md` 정의에 따라 서브 에이전트와 Skills를 불러와 일관된 품질을 보장합니다.
-"
 ## 전체 흐름
-"
+
 ```mermaid
 %%{init: {'theme':'neutral','themeVariables':{'primaryColor':'#f0f0f0','primaryBorderColor':'#999999','primaryTextColor':'#333333','secondaryColor':'#ffffff','lineColor':'#777777','textColor':'#222222'}}}%%
 graph TD
-    Start[요구사항 입력] --> Plan[/Plan<br/>/alfred:1-plan/]
-    Plan --> Run[/Run<br/>/alfred:2-run/]
-    Run --> Sync[/Sync<br/>/alfred:3-sync/]
+    Start[요구사항 입력] --> Plan[/Plan<br/>`alfred:1-plan`/]
+    Plan --> Run[/Run<br/>`alfred:2-run`/]
+    Run --> Sync[/Sync<br/>`alfred:3-sync`/]
     Sync --> Review{PR 준비?}
     Review -->|보완 필요| Plan
     Review -->|완료| Done[Merge / 배포]
@@ -27,7 +25,7 @@ graph TD
 "
 각 단계는 Alfred가 자동으로 연결한 서브 에이전트, Skills, Hooks가 협업하여 진행합니다.
 "
-## `/alfred:1-plan` — PLAN 단계
+## `alfred:1-plan` — PLAN 단계
 "
 - **주요 역할**: 요구사항 정제, EARS SPEC 작성, Draft PR/브랜치 생성
 - **참여 서브 에이전트**:
@@ -40,9 +38,9 @@ graph TD
   - `.moai/memory/spec-metadata.md` 업데이트
   - Draft PR와 feature 브랜치
 "
-> 시나리오: 신규 SPEC 작성, 기존 SPEC 개선, 아이디어 브레인스토밍 모두 `/alfred:1-plan`에서 처리합니다.
+> 시나리오: 신규 SPEC 작성, 기존 SPEC 개선, 아이디어 브레인스토밍 모두 `alfred:1-plan`에서 처리합니다.
 "
-## `/alfred:2-run` — RUN 단계
+## `alfred:2-run` — RUN 단계
 "
 - **주요 역할**: RED → GREEN → REFACTOR TDD 사이클 실행
 - **단계**:
@@ -56,7 +54,7 @@ graph TD
   - 신뢰성 높은 커밋 메시지와 체크포인트
   - @SPEC ↔ @TEST ↔ @CODE 태그 연결
 "
-## `/alfred:3-sync` — SYNC 단계
+## `alfred:3-sync` — SYNC 단계
 "
 - **주요 역할**: 코드/테스트 변경 사항을 문서로 반영, TAG 무결성 검증
 - **참여 서브 에이전트**:
@@ -73,9 +71,9 @@ graph TD
 "
 | 단계 | 핵심 작업 | 산출물 | 주요 에이전트/Skills |
 | ---- | -------- | ------ | -------------------- |
-| Plan (`/alfred:1-plan`) | 요구사항 정제, EARS SPEC 작성, Draft PR 생성 | SPEC 파일, feature 브랜치, SPEC 메타데이터 | `spec-builder`, `project-manager`, `git-manager`, `moai-foundation-specs` |
-| Run (`/alfred:2-run`) | RED → GREEN → REFACTOR, 품질 게이트, 커밋 작성 | 테스트/구현 코드, 커밋, TODO 리스트 | `implementation-planner`, `tdd-implementer`, `quality-gate`, 언어별 `moai-lang-*` |
-| Sync (`/alfred:3-sync`) | 문서/보고서 동기화, TAG 검증, Git 상태 정리 | README/CHANGELOG 업데이트, 리포트, TAG 무결성 로그 | `doc-syncer`, `tag-agent`, `quality-gate`, `moai-alfred-tag-scanning` |
+| Plan (`alfred:1-plan`) | 요구사항 정제, EARS SPEC 작성, Draft PR 생성 | SPEC 파일, feature 브랜치, SPEC 메타데이터 | `spec-builder`, `project-manager`, `git-manager`, `moai-foundation-specs` |
+| Run (`alfred:2-run`) | RED → GREEN → REFACTOR, 품질 게이트, 커밋 작성 | 테스트/구현 코드, 커밋, TODO 리스트 | `implementation-planner`, `tdd-implementer`, `quality-gate`, 언어별 `moai-lang-*` |
+| Sync (`alfred:3-sync`) | 문서/보고서 동기화, TAG 검증, Git 상태 정리 | README/CHANGELOG 업데이트, 리포트, TAG 무결성 로그 | `doc-syncer`, `tag-agent`, `quality-gate`, `moai-alfred-tag-scanning` |
 "
 ## Hooks와의 연동
 "

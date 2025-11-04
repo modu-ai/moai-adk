@@ -9,7 +9,7 @@ MoAI-ADK를 사용하면서 발생할 수 있는 일반적인 문제들을 체�
 "
 ### Alfred가 응답하지 않을 때
 "
-**증상**: `/alfred:*` 명령어를 입력해도 반응이 없거나 타임아웃 발생
+**증상**: alfred:* 명령어를 입력해도 반응이 없거나 타임아웃 발생
 "
 **즉시 조치**:
 ```bash
@@ -33,7 +33,7 @@ cat .moai/config.json
 "
 ### Git 충돌 발생 시
 "
-**증상**: `/alfred:3-sync` 실행 중 merge conflict 발생
+**증상**: alfred:3-sync 실행 중 merge conflict 발생
 "
 **즉시 조치**:
 ```bash
@@ -96,7 +96,7 @@ sudo chown -R $(whoami) .moai .claude
 "
 ### SPEC 작성 문제
 "
-#### 문제: `/alfred:1-plan`이 계속 질문만 함
+#### 문제: alfred:1-plan이 계속 질문만 함
 "
 **원인**: 요구사항이 모호하거나 비즈니스 목표 불명확
 "
@@ -137,7 +137,7 @@ claude
 "
 ### TDD 실행 문제
 "
-#### 문제: `/alfred:2-run`에서 테스트 실패 반복
+#### 문제: alfred:2-run에서 테스트 실패 반복
 "
 **원인 분석**:
 1. 테스트 환경 설정 문제
@@ -189,7 +189,7 @@ python -m pytest test_basic.py -v
 "
 ### 문서 동기화 문제
 "
-#### 문제: `/alfred:3-sync`에서 TAG 오류 발생
+#### 문제: alfred:3-sync에서 TAG 오류 발생
 "
 **TAG 무결성 검증**:
 ```bash
@@ -342,7 +342,7 @@ claude
 - Claude Code: latest
 "
 ## 재현 단계
-1. `/alfred:1-plan "로그인 기능"` 실행
+1. alfred:1-plan "로그인 기능" 실행
 2. SPEC 작성 중간에 멈춤
 3. 30초 후 타임아웃
 "
