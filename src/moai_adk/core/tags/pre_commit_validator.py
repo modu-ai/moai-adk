@@ -141,6 +141,7 @@ class PreCommitValidator:
             return True
 
         # Validate only core framework files that should have unique TAGs
+        # This ensures template distribution doesn't have TAG conflicts
         core_framework_patterns = [
             r"src/moai_adk/core/tags/",
             r"src/moai_adk/cli/commands/",
