@@ -1,4 +1,10 @@
 {
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "${GLM_API_KEY}",
+    "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
+    "API_TIMEOUT_MS": "3000000",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": 1
+  },
   "companyAnnouncements": [
     "🎩 SPEC-First: Always define requirements as SPEC before implementation (/alfred:1-plan)",
     "✅ TRUST 5 Principles: Test First, Readable, Unified, Secured, Trackable",
