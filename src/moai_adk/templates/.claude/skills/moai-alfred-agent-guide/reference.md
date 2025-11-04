@@ -174,7 +174,7 @@ Alfred relies on 55 Claude Skills grouped by tier. Skills load via Progressive D
 
 **Essentials Tier (4)**: `moai-essentials-debug`, `moai-essentials-perf`, `moai-essentials-refactor`, `moai-essentials-review` (Debug/Perf/Refactor/Review workflows)
 
-**Alfred Tier (11)**: `moai-alfred-code-reviewer`, `moai-alfred-debugger-pro`, `moai-alfred-ears-authoring`, `moai-alfred-git-workflow`, `moai-alfred-language-detection`, `moai-alfred-performance-optimizer`, `moai-alfred-refactoring-coach`, `moai-alfred-spec-metadata-validation`, `moai-alfred-tag-scanning`, `moai-alfred-trust-validation`, `moai-alfred-interactive-questions` (code review, debugging, EARS, Git, language detection, performance, refactoring, metadata, TAG scanning, trust validation, interactive questions)
+**Alfred Tier (11)**: `moai-alfred-code-reviewer`, `moai-alfred-debugger-pro`, `moai-alfred-ears-authoring`, `moai-alfred-git-workflow`, `moai-alfred-language-detection`, `moai-alfred-performance-optimizer`, `moai-alfred-refactoring-coach`, `moai-alfred-spec-metadata-validation`, `moai-alfred-tag-scanning`, `moai-alfred-trust-validation`, `moai-alfred-ask-user-questions` (code review, debugging, EARS, Git, language detection, performance, refactoring, metadata, TAG scanning, trust validation, interactive questions)
 
 **Domain Tier (10)** — `moai-domain-backend`, `web-api`, `frontend`, `mobile-app`, `security`, `devops`, `database`, `data-science`, `ml`, `cli-tool`.
 

@@ -18,7 +18,7 @@ allowed-tools:
 ---
 
 # 📚 MoAI-ADK Step 3: Document Synchronization (+Optional PR Ready)
-> **Critical Note**: ALWAYS invoke `Skill("moai-alfred-interactive-questions")` before using `AskUserQuestion` tool. This skill provides up-to-date best practices, field specifications, and validation rules for interactive prompts.
+> **Critical Note**: ALWAYS invoke `Skill("moai-alfred-ask-user-questions")` before using `AskUserQuestion` tool. This skill provides up-to-date best practices, field specifications, and validation rules for interactive prompts.
 >
 > **Batched Design**: All AskUserQuestion calls follow batched design principles (1-4 questions per call) to minimize user interaction turns. See CLAUDE.md section "Alfred Command Completion Pattern" for details.
 
@@ -31,7 +31,7 @@ allowed-tools:
 **CRITICAL**: Load the TUI Survey Skill FIRST before any user interaction:
 
 ```
-AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)
+AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)
 ```
 
 This Skill MUST be loaded at the very beginning to enable TUI menu rendering for AskUserQuestion calls throughout this workflow.
@@ -47,7 +47,7 @@ Synchronize code changes to Living Documents and verify @TAG system to ensure co
 ## 📋 Execution flow
 
 **Phase 0: Skill Loading** (IMMEDIATE)
-- Load `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` at the very start
+- Load `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` at the very start
 - This enables TUI menu rendering for all user interactions
 
 **Phase 1: Analysis & Planning**
@@ -347,7 +347,7 @@ AskUserQuestion(
 
 ## 🚀 STEP 2: Execute document synchronization (after user approval)
 
-After user approval (collected via `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)`), the doc-syncer agent performs **Living Document synchronization and @TAG updates**, and optionally executes PR Ready transitions only in team mode.
+After user approval (collected via `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)`), the doc-syncer agent performs **Living Document synchronization and @TAG updates**, and optionally executes PR Ready transitions only in team mode.
 
 ---
 

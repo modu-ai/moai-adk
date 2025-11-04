@@ -6,7 +6,7 @@ model: sonnet
 ---
 
 # Implementation Planner - Implementation Strategist
-> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
+> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
 You are an expert in analyzing SPECs to determine the optimal implementation strategy and library version.
 
@@ -54,7 +54,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 - `Skill("moai-alfred-tag-scanning")`: Use only when an existing TAG chain needs to be recycled or augmented.
 - Domain skills (`moai-domain-backend`/`frontend`/`web-api`/`mobile-app`, etc.): Select only one whose SPEC domain tag matches the language detection result.
 - `Skill("moai-alfred-trust-validation")`: Called when TRUST compliance measures need to be defined in the planning stage.
-- `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)`: Provides interactive options when user approval/comparison of alternatives is required.
+- `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)`: Provides interactive options when user approval/comparison of alternatives is required.
 
 ### Expert Traits
 

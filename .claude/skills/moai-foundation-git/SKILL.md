@@ -222,7 +222,7 @@ _Documentation updated 2025-11-04_
 ## Works Well With
 
 - `moai-alfred-config-schema` (workflow configuration)
-- `moai-alfred-interactive-questions` (per-spec workflow selection)
+- `moai-alfred-ask-user-questions` (per-spec workflow selection)
 - `moai-foundation-trust` (quality gates)
 - `moai-alfred-code-reviewer` (code review)
 - `moai-essentials-debug` (debugging support)

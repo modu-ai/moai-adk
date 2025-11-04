@@ -77,7 +77,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 - `Skill("moai-alfred-git-workflow")` - Git strategy impact
 - Domain skills (CLI/Data Science/Database/etc) - When relevant
 - Language skills (23 available) - Based on detected language
-- `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` - User clarification
+- `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` - User clarification
 
 ---
 

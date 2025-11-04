@@ -8,7 +8,7 @@ description: "Learning mode to easily learn MoAI-ADK concepts and workflow"
 ---
 
 # MoAI ADK Learning
-> Interactive prompts rely on `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
+> Interactive prompts rely on `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
 
 **Audience**: Developers new to MoAI-ADK
 

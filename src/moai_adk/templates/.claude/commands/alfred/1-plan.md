@@ -17,7 +17,7 @@ allowed-tools:
 ---
 
 # 🏗️ MoAI-ADK Step 1: Establish a plan (Plan) - Always make a plan first and then proceed.
-> **Critical Note**: ALWAYS invoke `Skill("moai-alfred-interactive-questions")` before using `AskUserQuestion` tool. This skill provides up-to-date best practices, field specifications, and validation rules for interactive prompts.
+> **Critical Note**: ALWAYS invoke `Skill("moai-alfred-ask-user-questions")` before using `AskUserQuestion` tool. This skill provides up-to-date best practices, field specifications, and validation rules for interactive prompts.
 >
 > **Batched Design**: All AskUserQuestion calls follow batched design principles (1-4 questions per call) to minimize user interaction turns. See CLAUDE.md section "Alfred Command Completion Pattern" for details.
 
@@ -257,7 +257,7 @@ conversation_language == 'ja' (일본어)인 경우:
 
 ### User verification steps
 
-After reviewing your implementation plan, Alfred invokes `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` to present the following options:
+After reviewing your implementation plan, Alfred invokes `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` to present the following options:
 - **"Go"** or **"Start"**: Start writing the plan as planned
 - **"Modify [Content]"**: Request modifications to the plan
 - **"Stop"**: Stop writing the plan
@@ -266,7 +266,7 @@ After reviewing your implementation plan, Alfred invokes `AskUserQuestion tool (
 
 ## 🚀 STEP 2: Create plan document (after user approval)
 
-After user approval (collected via `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)`), call the spec-builder and git-manager agents using the **Task tool**.
+After user approval (collected via `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)`), call the spec-builder and git-manager agents using the **Task tool**.
 
 ### ⚙️ How to call an agent
 
@@ -447,7 +447,7 @@ Present your plan in the following format:
 
 ## Plan Approval Decision Point
 
-After the planning phase is complete, Alfred uses `AskUserQuestion` tool (documented in moai-alfred-interactive-questions skill) to obtain explicit user approval before proceeding to SPEC creation.
+After the planning phase is complete, Alfred uses `AskUserQuestion` tool (documented in moai-alfred-ask-user-questions skill) to obtain explicit user approval before proceeding to SPEC creation.
 
 **Example AskUserQuestion Call**:
 ```python

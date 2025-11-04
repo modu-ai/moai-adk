@@ -1,8 +1,8 @@
 ---
-name: moai-alfred-interactive-questions
+name: moai-alfred-ask-user-questions
 version: 3.1.0
 created: 2025-10-22
-updated: 2025-10-27
+updated: 2025-11-04
 status: active
 description: Guide Alfred sub-agents to actively invoke AskUserQuestion for ambiguous decisions.
 keywords: ['interactive', 'clarification', 'decision-making', 'AskUserQuestion']
@@ -10,13 +10,13 @@ allowed-tools:
   - AskUserQuestion
 ---
 
-# Alfred Interactive Questions - Skill Guide
+# Alfred Ask User Questions - Skill Guide
 
 ## Skill Metadata
 
 | Field | Value |
 | ----- | ----- |
-| **Skill Name** | moai-alfred-interactive-questions |
+| **Skill Name** | moai-alfred-ask-user-questions |
 | **Version** | 3.1.0 (2025-10-27) |
 | **Core Tool** | `AskUserQuestion` (Claude Code built-in) |
 | **Auto-load** | When Alfred detects ambiguity in requests |

@@ -18,7 +18,7 @@ allowed-tools:
 
 # 📋 MoAI-ADK Step 0: Initialize/Update Universal Language Support Project Documentation
 
-> **Critical Note**: ALWAYS invoke `Skill("moai-alfred-interactive-questions")` before using `AskUserQuestion` tool. This skill provides up-to-date best practices, field specifications, and validation rules for interactive prompts.
+> **Critical Note**: ALWAYS invoke `Skill("moai-alfred-ask-user-questions")` before using `AskUserQuestion` tool. This skill provides up-to-date best practices, field specifications, and validation rules for interactive prompts.
 
 ## 🎯 Command Purpose
 
@@ -300,7 +300,7 @@ AskUserQuestion(
 | **순차 호출** ❌ | 3 turns (질문3 → 대답3) | 반복적, 피곤함 |
 | **배치 호출** ✅ | 1 turn (질문3 → 대답3) | 빠름, 효율적 |
 
-Alfred가 `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` 를 사용하여 **배치 호출**로 필수 정보를 수집합니다:
+Alfred가 `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` 를 사용하여 **배치 호출**로 필수 정보를 수집합니다:
 
 **기본 배치 (항상 실행: 1회 호출)**:
 
@@ -1332,7 +1332,7 @@ grep "optimized" .moai/config.json
 
 **Select user if backup exists**
 
-When a backup is detected, call `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` to present a TUI decision:
+When a backup is detected, call `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` to present a TUI decision:
 
 **Example AskUserQuestion Call**:
 
@@ -1634,7 +1634,7 @@ Set optimization flags after the merge is complete:
 
 **In immediate execution mode** (no `--review` flag), this section is skipped entirely and execution proceeds directly to STEP 2.
 
-After Alfred generates the interview plan report (review mode only), call `AskUserQuestion` tool (documented in moai-alfred-interactive-questions skill) to get explicit user approval before starting the interview.
+After Alfred generates the interview plan report (review mode only), call `AskUserQuestion` tool (documented in moai-alfred-ask-user-questions skill) to get explicit user approval before starting the interview.
 
 **Example AskUserQuestion Call**:
 
@@ -1916,7 +1916,7 @@ After the project-manager has finished creating the document, **Alfred can optio
 
 **Note**: Quality verification is optional during the project initialization phase.
 
-### 2.3 Sub-agent moai-alfred-interactive-questions (Nested)
+### 2.3 Sub-agent moai-alfred-ask-user-questions (Nested)
 
 **The project-manager agent can internally call the TUI survey skill** to check the details of the task.
 
@@ -1926,7 +1926,7 @@ After the project-manager has finished creating the document, **Alfred can optio
 - When selecting language/framework
 - When changing important settings
 
-**Example** (inside project-manager): Ask whether to "overwrite file" with `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)`,
+**Example** (inside project-manager): Ask whether to "overwrite file" with `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)`,
 
 - Allows you to choose between **Overwrite** / **Merge** / **Skip**.
 
@@ -2229,7 +2229,7 @@ Alfred only calls the trust-checker agent to perform project initial structural 
 ### 2.6: Agent & Skill Tailoring (Project Optimization)
 
 Based on the results of the interviews and initial analysis, we recommend and activate sub-agents and skills that should be immediately utilized in the project.
-Before actual application, user confirmation is received with `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)`, and selected items are recorded in `CLAUDE.md` and `.moai/config.json`.
+Before actual application, user confirmation is received with `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)`, and selected items are recorded in `CLAUDE.md` and `.moai/config.json`.
 
 #### 2.6.0 Create cc-manager briefing
 
@@ -2259,7 +2259,7 @@ cc-manager selects the required sub-agents and skills based on the briefing.The 
 | Introduction of ML/AI functions (`product.md` AI, `tech.md` MODEL)                 | `implementation-planner`, `moai-domain-ml`, detected language skills                                                    | Model training/inference pipeline definition                           |
 | Mobile app strategy (`product.md` MOBILE, `structure.md` CLIENT)                   | `implementation-planner`, `moai-domain-mobile-app`, detected language skills (e.g. `moai-lang-dart`, `moai-lang-swift`) | Mobile client structure design                                         |
 | Strengthening coding standards/review process (`tech.md` REVIEW)                   | `quality-gate`, `moai-essentials-review`                                                                                | Strengthening review checklist and quality reporting                   |
-| Requires onboarding/training mode (`tech.md` STACK description, etc.)              | `moai-alfred-interactive-questions`, `moai-adk-learning`, `agentic-coding` Output style                                 | Enhanced interview TUI and automatically provided onboarding materials |
+| Requires onboarding/training mode (`tech.md` STACK description, etc.)              | `moai-alfred-ask-user-questions`, `moai-adk-learning`, `agentic-coding` Output style                                 | Enhanced interview TUI and automatically provided onboarding materials |
 
 > **Language/Domain Skill Selection Rules**
 >
@@ -2271,7 +2271,7 @@ If multiple conditions are met, the candidates are merged without duplicates and
 
 #### 2.6.2 User confirmation flow
 
-`AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` asks "whether to enable recommended items."
+`AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` asks "whether to enable recommended items."
 
 - Provides three options: **Install all** / **Install selectively** / **Do not install**.
   Selecting "Selective Install" presents the list of candidates again as multiple choices, allowing the user to select only the items they need.
@@ -2435,7 +2435,7 @@ ls -lt .moai-backups/ | head -1
 
 4. **Waiting for user approval**
 
-Call `AskUserQuestion` tool (documented in moai-alfred-interactive-questions skill) to obtain user approval for template optimization.
+Call `AskUserQuestion` tool (documented in moai-alfred-ask-user-questions skill) to obtain user approval for template optimization.
 
 **Example AskUserQuestion Call**:
 

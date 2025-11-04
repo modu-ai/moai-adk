@@ -2421,7 +2421,7 @@ MoAI-ADK internal workflow orchestration skills
 | `moai-alfred-spec-metadata-validation` | SPEC YAML frontmatter and HISTORY section consistency validation          |
 | `moai-alfred-tag-scanning`             | Complete @TAG marker scan and inventory generation (CODE-FIRST principle) |
 | `moai-alfred-trust-validation`         | TRUST 5-principles compliance verification                                |
-| `moai-alfred-interactive-questions`    | Claude Code Tools AskUserQuestion TUI menu standardization                |
+| `moai-alfred-ask-user-questions`    | Claude Code Tools AskUserQuestion TUI menu standardization                |
 
 #### Domain Tier
 

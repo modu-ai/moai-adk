@@ -6,7 +6,7 @@
 > **Project Owner**: {{PROJECT_OWNER}}
 > **Config**: `.moai/config.json`
 >
-> **Note**: `Skill("moai-alfred-interactive-questions")` provides TUI-based responses when user interaction is needed. The skill loads on-demand.
+> **Note**: `Skill("moai-alfred-ask-user-questions")` provides TUI-based responses when user interaction is needed. The skill loads on-demand.
 
 ---
 
@@ -42,7 +42,7 @@ Alfred follows a systematic **4-step workflow** for all user requests to ensure 
   - **HIGH clarity**: Technical stack, requirements, scope all specified → Skip to Step 2
   - **MEDIUM/LOW clarity**: Multiple interpretations possible, business/UX decisions needed → Invoke `AskUserQuestion`
 - **AskUserQuestion Usage** (CRITICAL - NO EMOJIS):
-  - **ALWAYS invoke** `Skill("moai-alfred-interactive-questions")` before using AskUserQuestion for up-to-date best practices
+  - **ALWAYS invoke** `Skill("moai-alfred-ask-user-questions")` before using AskUserQuestion for up-to-date best practices
   - NEVER use emojis in labels, headers, or descriptions (causes JSON encoding errors)
   - Present 3-5 options (not open-ended questions)
   - Use structured format with headers and descriptions
@@ -544,14 +544,14 @@ After sync completes:
 3. **Provide 3-4 clear options** - Not open-ended or free-form
 4. **Batch questions when possible** - Combine related questions in 1 call (1-4 questions max)
 5. **Language**: Present options in user's `conversation_language` (Korean, Japanese, etc.)
-6. **ALWAYS invoke moai-alfred-interactive-questions Skill** - Call `Skill("moai-alfred-interactive-questions")` before using AskUserQuestion for up-to-date best practices and field specifications
+6. **ALWAYS invoke moai-alfred-ask-user-questions Skill** - Call `Skill("moai-alfred-ask-user-questions")` before using AskUserQuestion for up-to-date best practices and field specifications
 
 ### AskUserQuestion Field Specifications
 
 **For complete API specifications, field constraints, parameter validation, and detailed examples**, always call:
 
 ```python
-Skill("moai-alfred-interactive-questions")
+Skill("moai-alfred-ask-user-questions")
 ```
 
 This Skill provides:
@@ -566,7 +566,7 @@ This Skill provides:
 For specific, production-tested examples of different question types (single-select, multi-select, conditional flows, etc.), **see the Skill examples**:
 
 ```bash
-Skill("moai-alfred-interactive-questions")
+Skill("moai-alfred-ask-user-questions")
 # → reference.md (API + constraints)
 # → examples.md (20+ real-world patterns)
 ```

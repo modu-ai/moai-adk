@@ -18,7 +18,7 @@ allowed-tools:
 
 # 📋 MoAI-ADK Step 0: Initialize/Update Universal Language Support Project Documentation
 
-> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
+> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
 ## 🎯 Command Purpose
 
@@ -308,7 +308,7 @@ The user executes the `/alfred:0-project` command to start analyzing the project
 | **순차 호출** ❌ | 3 turns (질문3 → 대답3) | 반복적, 피곤함 |
 | **배치 호출** ✅ | 1 turn (질문3 → 대답3) | 빠름, 효율적 |
 
-Alfred가 `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` 를 사용하여 **배치 호출**로 필수 정보를 수집합니다:
+Alfred가 `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` 를 사용하여 **배치 호출**로 필수 정보를 수집합니다:
 
 **기본 배치 (항상 실행: 1회 호출)**:
 
@@ -991,267 +991,438 @@ Alfred가 선택된 언어, 닉네임, 그리고 팀 모드 설정을 다음과 
 
 ### 0-SETTING.3 Collect new values (batched questions)
 
-**Your task**: Based on user's selections, ask for new values.
+**Your task**: Based on user's selections from STEP 0-SETTING.2, ask for new values for ONLY the sections they selected.
 
-**IMPORTANT**: Only ask questions for the sections the user selected.
+**IMPORTANT**: Only ask questions for the sections the user selected. Skip all unselected sections.
 
-#### IF user selected "🌍 Language & Agent Prompt Language":
+---
 
-```python
-AskUserQuestion(
-    questions=[
-        {
-            "question": "Which settings would you like to modify? (Select all that apply)",
-            "header": "Settings to Modify",
-            "multiSelect": true,
-            "options": [
-                {
-                    "label": "🌍 Language & Agent Prompt Language",
-                    "description": "Change conversation language or agent prompt language"
-                },
-                {
-                    "label": "👤 Nickname",
-                    "description": "Change user nickname (max 20 chars)"
-                },
-                {
-                    "label": "🔧 GitHub Settings (Team mode only)",
-                    "description": "Change auto-delete branches or SPEC git workflow"
-                },
-                {
-                    "label": "📊 Report Generation",
-                    "description": "Change automatic report generation settings"
-                },
-                {
-                    "label": "🎯 Project Domains",
-                    "description": "Add or modify project domain selections"
-                }
-            ]
-        }
-    ]
-)
-```
+#### Batch 1: LANGUAGE Section
 
-**Response Processing**:
+**IF user selected "🌍 Language & Agent Prompt Language"**:
 
-User selection is stored in `answers["0"]` as an array of selected option labels. Map selections to section codes:
+**Ask the user these TWO questions together** (batched in one interaction):
 
-```
-Selection → Section Code
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-"Language & Agent Prompt Language" → LANGUAGE
-"Nickname" → NICKNAME
-"GitHub Settings (Team mode only)" → GITHUB
-"Report Generation" → REPORTS
-"Project Domains" → DOMAINS
-```
+**Question 1**: "Which conversation language do you prefer?"
 
-**Example**:
-- User selects: ["Language & Agent Prompt Language", "Nickname"]
-- Section codes: [LANGUAGE, NICKNAME]
-- Next step: Proceed to 0-SETTING.3 with only LANGUAGE and NICKNAME batches
+**Present these options**:
+- 🌍 **English** - Global standard, widest community support
+- 🇰🇷 **한국어** - Korean language for conversation and reports
+- 🇯🇵 **日本語** - Japanese language for conversation and reports
+- 🇨🇳 **中文** - Chinese language for conversation and reports
 
-### 0-SETTING.3 Batched questions for selected settings
+**Question 2**: "Which agent prompt language should Alfred use?"
 
-**Purpose**: Ask for new values only for the settings the user selected.
+**Present these options**:
+- 🌐 **English (Global Standard)** - All internal agent prompts in English (infrastructure stability)
+- 🗣️ **Selected Language (Localized)** - Agent prompts in your conversation language (experimental)
 
-**Implementation Rules**:
+**Wait for the user to answer BOTH questions**.
 
-1. **Build dynamic AskUserQuestion** based on selected sections:
-   - Never show questions for unselected sections
-   - Group related questions into single AskUserQuestion call (batch)
-   - Process each selected section with its appropriate questions
+**Store both answers** for the config.json update in STEP 0-SETTING.4.
 
-2. **Batch 1 - LANGUAGE Section** (if selected):
+**Map user's language choice to language code**:
+- "English" → `en`
+- "한국어" → `ko`
+- "日本語" → `ja`
+- "中文" → `zh`
 
-   ```python
-   # When "Language & Agent Prompt Language" is selected
-   AskUserQuestion(
-       questions=[
-           {
-               "question": "Change conversation language?",
-               "header": "Language",
-               "multiSelect": false,
-               "options": [
-                   {"label": "🌍 English", "description": "..."},
-                   {"label": "🇰🇷 한국어", "description": "..."},
-                   {"label": "🇯🇵 日本語", "description": "..."},
-                   {"label": "🇨🇳 中文", "description": "..."}
-               ]
-           },
-           {
-               "question": "Change agent prompt language?",
-               "header": "Agent Prompt Language",
-               "multiSelect": false,
-               "options": [
-                   {"label": "🌐 English (Global Standard)", "description": "..."},
-                   {"label": "🗣️ Selected Language (Localized)", "description": "..."}
-               ]
-           }
-       ]
-   )
-   ```
+**Map agent prompt language choice to setting**:
+- "English (Global Standard)" → `english`
+- "Selected Language (Localized)" → `localized`
 
-3. **Batch 2 - NICKNAME Section** (if selected):
+---
 
-   ```python
-   AskUserQuestion(
-       questions=[
-           {
-               "question": "Enter new nickname (max 20 chars):",
-               "header": "Nickname",
-               "multiSelect": false,
-               "options": [
-                   {"label": "Change nickname", "description": "Type your new name in 'Other'"}
-               ]
-           }
-       ]
-   )
-   ```
+#### Batch 2: NICKNAME Section
 
-4. **Batch 3 - GITHUB Section** (if selected and team mode):
+**IF user selected "👤 Nickname"**:
 
-   ```python
-   AskUserQuestion(
-       questions=[
-           {
-               "question": "Update GitHub auto-delete branches setting?",
-               "header": "GitHub Auto-delete Branches",
-               "multiSelect": false,
-               "options": [
-                   {"label": "✅ Yes, enable", "description": "..."},
-                   {"label": "❌ No, disable", "description": "..."},
-                   {"label": "🤔 Keep current", "description": "..."}
-               ]
-           },
-           {
-               "question": "Update SPEC git workflow?",
-               "header": "SPEC Git Workflow",
-               "multiSelect": false,
-               "options": [
-                   {"label": "📋 Feature Branch + PR", "description": "..."},
-                   {"label": "🔄 Direct Commit to Develop", "description": "..."},
-                   {"label": "🤔 Decide per SPEC", "description": "..."},
-                   {"label": "⏸️ Keep current", "description": "..."}
-               ]
-           }
-       ]
-   )
-   ```
+**Ask the user**:
 
-5. **Batch 4 - REPORTS Section** (if selected):
+**Question**: "What is your new nickname?"
 
-   ```python
-   AskUserQuestion(
-       questions=[
-           {
-               "question": "Update report generation settings?",
-               "header": "Report Generation",
-               "multiSelect": false,
-               "options": [
-                   {"label": "📊 Enable", "description": "Full analysis reports"},
-                   {"label": "⚡ Minimal", "description": "Essential reports only"},
-                   {"label": "🚫 Disable", "description": "No automatic reports"},
-                   {"label": "⏸️ Keep current", "description": "No change"}
-               ]
-           }
-       ]
-   )
-   ```
+**Instructions to user**:
+- Maximum 20 characters
+- Used in commits, reports, and project documentation
+- Examples: "GOOS", "GoosLab", "DevTeam", "Alex"
 
-6. **Batch 5 - DOMAINS Section** (if selected):
+**Wait for the user to enter their new nickname**.
 
-   ```python
-   AskUserQuestion(
-       questions=[
-           {
-               "question": "Update project domain selections?",
-               "header": "Project Domains",
-               "multiSelect": true,
-               "options": [
-                   {"label": "🎨 Frontend", "description": "..."},
-                   {"label": "⚙️ Backend", "description": "..."},
-                   {"label": "🚀 DevOps", "description": "..."},
-                   {"label": "🗄️ Database", "description": "..."},
-                   {"label": "📊 Data Science", "description": "..."},
-                   {"label": "📱 Mobile", "description": "..."},
-                   {"label": "⚡ Clear all", "description": "Remove all domain selections"}
-               ]
-           }
-       ]
-   )
-   ```
+**Store the answer** for config.json update in STEP 0-SETTING.4.
+
+**Validation**:
+- If user enters text longer than 20 characters → Trim to 20 characters and notify user
+- If user enters empty text → Keep current nickname (no change)
+
+---
+
+#### Batch 3: GITHUB Section
+
+**IF user selected "🔧 GitHub Settings"**:
+
+**Ask the user these TWO questions together** (batched in one interaction):
+
+**Question 1**: "Enable GitHub auto-delete branches after PR merge?"
+
+**Present these options**:
+- ✅ **Yes, enable** - Automatically delete feature branches after successful PR merge
+- ❌ **No, disable** - Keep feature branches after merge (manual cleanup)
+- 🤔 **Keep current** - No change to this setting
+
+**Question 2**: "Which SPEC git workflow should Alfred use?"
+
+**Present these options**:
+- 📋 **Feature Branch + PR** - Create feature branch for each SPEC, submit PR to develop
+- 🔄 **Direct Commit to Develop** - Skip branches, commit directly to develop
+- 🤔 **Decide per SPEC** - Ask user for workflow choice when creating each SPEC
+- ⏸️ **Keep current** - No change to this setting
+
+**Wait for the user to answer BOTH questions**.
+
+**Store both answers** for config.json update in STEP 0-SETTING.4.
+
+**Map user's choices to config values**:
+
+For auto-delete branches:
+- "Yes, enable" → `true`
+- "No, disable" → `false`
+- "Keep current" → Keep existing value (no change)
+
+For SPEC git workflow:
+- "Feature Branch + PR" → `feature_branch`
+- "Direct Commit to Develop" → `develop_direct`
+- "Decide per SPEC" → `per_spec`
+- "Keep current" → Keep existing value (no change)
+
+---
+
+#### Batch 4: REPORTS Section
+
+**IF user selected "📊 Report Generation"**:
+
+**Ask the user**:
+
+**Question**: "Update automatic report generation settings?"
+
+**Present these options**:
+- 📊 **Enable** - Full analysis reports (comprehensive, ~50-60 tokens per report)
+- ⚡ **Minimal** (Recommended) - Essential reports only (~20-30 tokens per report, 80% token savings)
+- 🚫 **Disable** - No automatic report generation (0 tokens, fastest)
+- ⏸️ **Keep current** - No change to this setting
+
+**Wait for the user to select an option**.
+
+**Store the answer** for config.json update in STEP 0-SETTING.4.
+
+**Map user's choice to config values**:
+- "Enable" → `enabled: true`, `auto_create: true`, `user_choice: "Enable"`
+- "Minimal" → `enabled: true`, `auto_create: false`, `user_choice: "Minimal"`
+- "Disable" → `enabled: false`, `auto_create: false`, `user_choice: "Disable"`
+- "Keep current" → Keep existing values (no change)
+
+---
+
+#### Batch 5: DOMAINS Section
+
+**IF user selected "🎯 Project Domains"**:
+
+**Ask the user**:
+
+**Question**: "Select all project domains that apply to this project (multiple selections allowed):"
+
+**Present these options** (allow multiple selections):
+- 🎨 **Frontend** - Web UI, React, Vue, Angular, HTML/CSS
+- ⚙️ **Backend** - APIs, servers, Python/Node/Java backends
+- 🚀 **DevOps** - CI/CD, Docker, Kubernetes, infrastructure
+- 🗄️ **Database** - SQL, NoSQL, data modeling, migrations
+- 📊 **Data Science** - ML, analytics, data pipelines
+- 📱 **Mobile** - iOS, Android, React Native, Flutter
+- ⚡ **Clear all** - Remove all domain selections (start fresh)
+
+**Wait for the user to select one or more domains**.
+
+**Store the answer** for config.json update in STEP 0-SETTING.4.
+
+**Map user's selections to config values**:
+- User selects domains → Array of domain IDs (e.g., `["frontend", "backend"]`)
+- User selects "Clear all" → Empty array `[]`
+- User selects nothing (cancels) → Keep existing domains (no change)
+
+**Domain ID mapping**:
+- "Frontend" → `"frontend"`
+- "Backend" → `"backend"`
+- "DevOps" → `"devops"`
+- "Database" → `"database"`
+- "Data Science" → `"data_science"`
+- "Mobile" → `"mobile"`
+
+---
+
+**After collecting all selected sections' answers**, proceed to STEP 0-SETTING.4 to update config.json.
 
 ### 0-SETTING.4 Update config.json with selected changes
 
-**Purpose**: Merge user's new values into `.moai/config.json`, preserving unmodified settings.
+**Your task**: Save only the settings the user changed to `.moai/config.json`. Preserve all unchanged fields.
 
-**Implementation Steps**:
+---
 
-1. **Load existing config.json**
-2. **Process each selected section's responses**:
+#### Step 1: Load current config.json
 
-   **For LANGUAGE section**:
-   ```json
-   {
-     "language": {
-       "conversation_language": "[new_value]",
-       "conversation_language_name": "[display_name]",
-       "agent_prompt_language": "[english|localized]"
-     }
-   }
-   ```
+1. **Read the file**: `.moai/config.json`
+2. **Parse the JSON structure** into memory
+3. **Keep all current values** for merge (do NOT discard anything)
 
-   **For NICKNAME section**:
-   ```json
-   {
-     "user": {
-       "nickname": "[new_value]"
-     }
-   }
-   ```
+**Error check**: If file doesn't exist or has invalid JSON, go to STEP 0-SETTING.6 (Error Handling).
 
-   **For GITHUB section**:
-   ```json
-   {
-     "github": {
-       "auto_delete_branches": [true|false|keep_current],
-       "spec_git_workflow": "[feature_branch|develop_direct|per_spec|keep_current]"
-     }
-   }
-   ```
+---
 
-   **For REPORTS section**:
-   ```json
-   {
-     "report_generation": {
-       "enabled": [true|false],
-       "auto_create": [true|false],
-       "user_choice": "[Enable|Minimal|Disable]",
-       "updated_at": "[timestamp]"
-     }
-   }
-   ```
+#### Step 2: Merge user's new values into config
 
-   **For DOMAINS section**:
-   ```json
-   {
-     "stack": {
-       "selected_domains": [[array of selected domains]],
-       "domain_selection_date": "[timestamp]"
-     }
-   }
-   ```
+**For EACH section the user selected in STEP 0-SETTING.2**, update ONLY those fields:
 
-3. **Merge strategy** (CRITICAL):
-   - Only update fields that user selected and changed
-   - Preserve all unchanged fields (do NOT overwrite with empty values)
-   - Preserve all fields that were NOT selected (keep original)
-   - Example: If user only changes LANGUAGE, all other sections remain untouched
+---
 
-4. **Write updated config.json**:
-   ```
-   Write .moai/config.json with merged configuration
-   ```
+##### IF user selected LANGUAGE section:
+
+**From stored answers in STEP 0-SETTING.3 Batch 1**:
+
+**Update these fields**:
+- `language.conversation_language` = [mapped language code: "en", "ko", "ja", or "zh"]
+- `language.conversation_language_name` = [display name: "English", "한국어", "日本語", or "中文"]
+- `language.agent_prompt_language` = [mapped value: "english" or "localized"]
+
+**DO NOT change**:
+- All other fields in `language` section (preserve existing values)
+- Any other top-level sections (`user`, `github`, `report_generation`, `stack`, etc.)
+
+**Example merge**:
+```json
+// Before:
+{
+  "language": {
+    "conversation_language": "ko",
+    "conversation_language_name": "한국어",
+    "agent_prompt_language": "english"
+  }
+}
+
+// User changed to English + Localized
+// After:
+{
+  "language": {
+    "conversation_language": "en",
+    "conversation_language_name": "English",
+    "agent_prompt_language": "localized"
+  }
+}
+```
+
+---
+
+##### IF user selected NICKNAME section:
+
+**From stored answer in STEP 0-SETTING.3 Batch 2**:
+
+**Update this field**:
+- `user.nickname` = [user's new nickname, trimmed to max 20 chars]
+
+**DO NOT change**:
+- Any other fields in `user` section
+- Any other top-level sections
+
+**Example merge**:
+```json
+// Before:
+{
+  "user": {
+    "nickname": "GOOS",
+    "email": "goos@example.com"
+  }
+}
+
+// User changed nickname to "GoosLab"
+// After:
+{
+  "user": {
+    "nickname": "GoosLab",
+    "email": "goos@example.com"  // preserved
+  }
+}
+```
+
+---
+
+##### IF user selected GITHUB section:
+
+**From stored answers in STEP 0-SETTING.3 Batch 3**:
+
+**For auto-delete branches**:
+- IF user chose "Yes, enable" → Update `github.auto_delete_branches` = `true`
+- IF user chose "No, disable" → Update `github.auto_delete_branches` = `false`
+- IF user chose "Keep current" → Do NOT change this field (keep existing value)
+
+**For SPEC git workflow**:
+- IF user chose "Feature Branch + PR" → Update `github.spec_git_workflow` = `"feature_branch"`
+- IF user chose "Direct Commit to Develop" → Update `github.spec_git_workflow` = `"develop_direct"`
+- IF user chose "Decide per SPEC" → Update `github.spec_git_workflow` = `"per_spec"`
+- IF user chose "Keep current" → Do NOT change this field (keep existing value)
+
+**DO NOT change**:
+- Any other fields in `github` section
+- Any other top-level sections
+
+**Example merge**:
+```json
+// Before:
+{
+  "github": {
+    "auto_delete_branches": true,
+    "spec_git_workflow": "feature_branch",
+    "token": "ghp_xxx"
+  }
+}
+
+// User changed workflow to "develop_direct", kept auto-delete current
+// After:
+{
+  "github": {
+    "auto_delete_branches": true,  // preserved (user chose "Keep current")
+    "spec_git_workflow": "develop_direct",  // updated
+    "token": "ghp_xxx"  // preserved
+  }
+}
+```
+
+---
+
+##### IF user selected REPORTS section:
+
+**From stored answer in STEP 0-SETTING.3 Batch 4**:
+
+**IF user chose "Enable"**:
+- Update `report_generation.enabled` = `true`
+- Update `report_generation.auto_create` = `true`
+- Update `report_generation.user_choice` = `"Enable"`
+- Update `report_generation.updated_at` = [current ISO timestamp]
+
+**IF user chose "Minimal"**:
+- Update `report_generation.enabled` = `true`
+- Update `report_generation.auto_create` = `false`
+- Update `report_generation.user_choice` = `"Minimal"`
+- Update `report_generation.updated_at` = [current ISO timestamp]
+
+**IF user chose "Disable"**:
+- Update `report_generation.enabled` = `false`
+- Update `report_generation.auto_create` = `false`
+- Update `report_generation.user_choice` = `"Disable"`
+- Update `report_generation.updated_at` = [current ISO timestamp]
+
+**IF user chose "Keep current"**:
+- Do NOT change ANY fields in `report_generation` section
+
+**DO NOT change**:
+- Field `report_generation.allowed_locations` (always preserve)
+- Any other top-level sections
+
+---
+
+##### IF user selected DOMAINS section:
+
+**From stored answer in STEP 0-SETTING.3 Batch 5**:
+
+**IF user selected one or more domains**:
+- Update `stack.selected_domains` = [array of domain IDs user selected]
+- Update `stack.domain_selection_date` = [current ISO timestamp]
+
+**IF user selected "Clear all"**:
+- Update `stack.selected_domains` = `[]` (empty array)
+- Update `stack.domain_selection_date` = [current ISO timestamp]
+
+**IF user selected nothing (cancelled)**:
+- Do NOT change ANY fields in `stack` section
+
+**DO NOT change**:
+- Any other fields in `stack` section
+- Any other top-level sections
+
+**Example merge**:
+```json
+// Before:
+{
+  "stack": {
+    "selected_domains": ["frontend"],
+    "domain_selection_date": "2025-01-01T00:00:00Z"
+  }
+}
+
+// User selected: ["frontend", "backend", "database"]
+// After:
+{
+  "stack": {
+    "selected_domains": ["frontend", "backend", "database"],  // updated
+    "domain_selection_date": "2025-11-04T10:30:00Z"  // updated with current time
+  }
+}
+```
+
+---
+
+#### Step 3: Apply merge strategy (CRITICAL)
+
+**IMPORTANT**: Follow this merge strategy EXACTLY:
+
+1. **Start with the original config.json** (loaded in Step 1)
+2. **Apply ONLY the changes for sections user selected** (from Step 2)
+3. **Preserve ALL unchanged sections completely** (no modifications)
+
+**Verification checklist before writing**:
+- [ ] User selected LANGUAGE? → Only `language` section modified
+- [ ] User selected NICKNAME? → Only `user.nickname` field modified
+- [ ] User selected GITHUB? → Only changed fields in `github` section modified
+- [ ] User selected REPORTS? → Only `report_generation` section modified
+- [ ] User selected DOMAINS? → Only `stack.selected_domains` and `stack.domain_selection_date` modified
+- [ ] All unselected sections → 100% preserved (exact copy from original)
+
+**Example full merge**:
+
+```json
+// Original config.json
+{
+  "language": { "conversation_language": "ko" },
+  "user": { "nickname": "GOOS" },
+  "github": { "auto_delete_branches": true },
+  "report_generation": { "enabled": true },
+  "stack": { "selected_domains": ["frontend"] }
+}
+
+// User selected: LANGUAGE + NICKNAME sections only
+// Changed: conversation_language to "en", nickname to "GoosLab"
+
+// Merged config.json (correct)
+{
+  "language": { "conversation_language": "en" },  // ✅ updated
+  "user": { "nickname": "GoosLab" },  // ✅ updated
+  "github": { "auto_delete_branches": true },  // ✅ preserved (not selected)
+  "report_generation": { "enabled": true },  // ✅ preserved (not selected)
+  "stack": { "selected_domains": ["frontend"] }  // ✅ preserved (not selected)
+}
+```
+
+---
+
+#### Step 4: Write updated config.json to disk
+
+1. **Combine original config + new values** using the merge strategy from Step 3
+2. **Format the JSON** with proper indentation (2 spaces)
+3. **Write the merged JSON** to `.moai/config.json`
+4. **Verify the write succeeded** (check file exists and is valid JSON)
+
+**If write fails**:
+- Print error: "Failed to write config.json"
+- Go to STEP 0-SETTING.6 (Error Handling)
+
+**If write succeeds**:
+- Proceed to STEP 0-SETTING.5 (Completion Report)
 
 ### 0-SETTING.5 Completion report
 
@@ -1353,7 +1524,7 @@ grep "optimized" .moai/config.json
 
 **Select user if backup exists**
 
-When a backup is detected, call `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` to present a TUI decision:
+When a backup is detected, call `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` to present a TUI decision:
 
 **Example AskUserQuestion Call**:
 
@@ -1655,7 +1826,7 @@ Set optimization flags after the merge is complete:
 
 **In immediate execution mode** (no `--review` flag), this section is skipped entirely and execution proceeds directly to STEP 2.
 
-After Alfred generates the interview plan report (review mode only), call `AskUserQuestion` tool (documented in moai-alfred-interactive-questions skill) to get explicit user approval before starting the interview.
+After Alfred generates the interview plan report (review mode only), call `AskUserQuestion` tool (documented in moai-alfred-ask-user-questions skill) to get explicit user approval before starting the interview.
 
 **Example AskUserQuestion Call**:
 
@@ -1937,7 +2108,7 @@ After the project-manager has finished creating the document, **Alfred can optio
 
 **Note**: Quality verification is optional during the project initialization phase.
 
-### 2.3 Sub-agent moai-alfred-interactive-questions (Nested)
+### 2.3 Sub-agent moai-alfred-ask-user-questions (Nested)
 
 **The project-manager agent can internally call the TUI survey skill** to check the details of the task.
 
@@ -1947,7 +2118,7 @@ After the project-manager has finished creating the document, **Alfred can optio
 - When selecting language/framework
 - When changing important settings
 
-**Example** (inside project-manager): Ask whether to "overwrite file" with `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)`,
+**Example** (inside project-manager): Ask whether to "overwrite file" with `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)`,
 
 - Allows you to choose between **Overwrite** / **Merge** / **Skip**.
 
@@ -2250,7 +2421,7 @@ Alfred only calls the trust-checker agent to perform project initial structural 
 ### 2.6: Agent & Skill Tailoring (Project Optimization)
 
 Based on the results of the interviews and initial analysis, we recommend and activate sub-agents and skills that should be immediately utilized in the project.
-Before actual application, user confirmation is received with `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)`, and selected items are recorded in `CLAUDE.md` and `.moai/config.json`.
+Before actual application, user confirmation is received with `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)`, and selected items are recorded in `CLAUDE.md` and `.moai/config.json`.
 
 #### 2.6.0 Create cc-manager briefing
 
@@ -2280,7 +2451,7 @@ cc-manager selects the required sub-agents and skills based on the briefing.The 
 | Introduction of ML/AI functions (`product.md` AI, `tech.md` MODEL)                 | `implementation-planner`, `moai-domain-ml`, detected language skills                                                    | Model training/inference pipeline definition                           |
 | Mobile app strategy (`product.md` MOBILE, `structure.md` CLIENT)                   | `implementation-planner`, `moai-domain-mobile-app`, detected language skills (e.g. `moai-lang-dart`, `moai-lang-swift`) | Mobile client structure design                                         |
 | Strengthening coding standards/review process (`tech.md` REVIEW)                   | `quality-gate`, `moai-essentials-review`                                                                                | Strengthening review checklist and quality reporting                   |
-| Requires onboarding/training mode (`tech.md` STACK description, etc.)              | `moai-alfred-interactive-questions`, `moai-adk-learning`, `agentic-coding` Output style                                 | Enhanced interview TUI and automatically provided onboarding materials |
+| Requires onboarding/training mode (`tech.md` STACK description, etc.)              | `moai-alfred-ask-user-questions`, `moai-adk-learning`, `agentic-coding` Output style                                 | Enhanced interview TUI and automatically provided onboarding materials |
 
 > **Language/Domain Skill Selection Rules**
 >
@@ -2292,7 +2463,7 @@ If multiple conditions are met, the candidates are merged without duplicates and
 
 #### 2.6.2 User confirmation flow
 
-`AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` asks "whether to enable recommended items."
+`AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` asks "whether to enable recommended items."
 
 - Provides three options: **Install all** / **Install selectively** / **Do not install**.
   Selecting "Selective Install" presents the list of candidates again as multiple choices, allowing the user to select only the items they need.
@@ -2456,7 +2627,7 @@ ls -lt .moai-backups/ | head -1
 
 4. **Waiting for user approval**
 
-Call `AskUserQuestion` tool (documented in moai-alfred-interactive-questions skill) to obtain user approval for template optimization.
+Call `AskUserQuestion` tool (documented in moai-alfred-ask-user-questions skill) to obtain user approval for template optimization.
 
 **Example AskUserQuestion Call**:
 
