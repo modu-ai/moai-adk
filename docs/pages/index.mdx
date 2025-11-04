@@ -1,72 +1,47 @@
 ---
-title: "MoAI-ADK 문서"
-description: "SPEC-First TDD 개발 프레임워크 (Alfred 슈퍼에이전트 포함)"
+title: "소개"
+description: "MoAI-ADK - SPEC-First TDD 개발 프레임워크 (Alfred 슈퍼에이전트 포함)"
 ---
 
-# 🎩 MoAI-ADK
+# MoAI-ADK (Aggressive Development Kit)
 
-**SPEC-First TDD 개발 프레임워크 (Alfred 슈퍼에이전트 포함)**
+**MoAI-ADK**는 Claude Code 환경에서 🎩 Alfred SuperAgent와 19명의 에이전트 팀이 협업하여 **SPEC → TDD → 코드 → 문서**를 자연스럽게 잇는 개발 프레임워크입니다.
 
-MoAI-ADK는 명세 기반 테스트 주도 개발(TDD)을 체계적으로 지원하는 개발 프레임워크입니다. 🎩 Alfred 슈퍼에이전트가 개발 워크플로우를 자동화하여 높은 품질의 소프트웨어를 효율적으로 구축할 수 있도록 돕습니다.
+## 핵심 가치
 
-## ✨ 주요 기능
-
-### 🎯 SPEC-First 개발
-- **SPEC 문서**: 명세서가 테스트와 코드를 주도합니다
-- **@TAG 시스템**: 코드, 테스트, 문서 간 추적성 보장
-- **자동화된 워크플로우**: SPEC → TDD → Sync
-
-### 🤖 Alfred 슈퍼에이전트
-- **19명의 팀 멤버**: 10명의 핵심 에이전트 + 6명의 전문가 + 2명의 빌트인 에이전트
-- **55개 Claude Skills**: 특화된 도메인 전문성
-- **4단계 워크플로우**: 의도 파악 → 계획 수립 → 작업 실행 → 보고 및 커밋
-
-### 🔧 개발 도구 통합
-- **CLI 명령어**: `/alfred:0-project`, `/alfred:1-plan`, `/alfred:2-run`, `/alfred:3-sync`
-- **테스트 자동화**: RED → GREEN → REFACTOR
-- **Git 워크플로우**: 자동 브랜치 관리 및 PR 생성
+- **SPEC-First 철학**: 요구사항을 먼저 정리하고 개발 실패를 최소화
+- **자동화된 TDD**: `/alfred:2-run`이 RED → GREEN → REFACTOR 사이클 자동 진행
+- **Living Document**: `/alfred:3-sync`가 문서를 항상 최신 상태로 유지
+- **완벽한 추적성**: `@SPEC ↔ @TEST ↔ @CODE ↔ @DOC` 체인으로 변경 영향도 즉시 파악
 
 ## 🚀 빠른 시작
 
-```bash
-# 1. 프로젝트 초기화
-pip install moai-adk
-moai-adk init
+1. **설치**: `npm install -g moai-adk`
+2. **프로젝트 초기화**: `moai-adk init`
+3. **개발 시작**: `/alfred:1-plan "새 기능"`
 
-# 2. 프로젝트 설정
-/alfred:0-project
+## 🎯 주요 특징
 
-# 3. SPEC 작성
-/alfred:1-plan "새로운 기능 명세"
+### 📋 SPEC-First 개발
+- 요구사항 먼저 정의 → 구현 실패 최소화
+- @TAG 체인으로 완벽한 추적성 보장
+- 명확한 수용 기준(DoD) 정의
 
-# 4. TDD 개발
-/alfred:2-run SPEC-001
+### 🔄 자동화 TDD
+- RED → GREEN → REFACTOR 사이클 자동화
+- 테스트 코드 먼저 작성 → 안정적인 구현
+- 리팩토링 전 품질 게이트 통과
 
-# 5. 동기화
-/alfred:3-sync auto
-```
+### 📚 Living Documentation
+- `/alfred:3-sync`로 문서 항상 최신 상태 유지
+- 코드 변경 → 문서 자동 업데이트
+- 기술 부쵝 최소화
 
-## 📚 문서
-
-- **[빠른 시작](/quick-start)**: 5분 만에 MoAI-ADK 시작하기
-- **[워크플로우](/workflow)**: SPEC-First TDD 개발 프로세스
-- **[Alfred 가이드](/alfred)**: 슈퍼에이전트 사용법
-- **[레퍼런스](/reference)**: CLI 명령어와 프로젝트 구조
-
-## 🎯 핵심 원칙
-
-### TRUST 5
-- **Test First**: 항상 테스트부터 작성
-- **Readable**: 명확하고 이해하기 쉬운 코드
-- **Unified**: 일관된 개발 패턴
-- **Secured**: 보안 우선 개발
-- **Trackable**: 모든 변경 이력 추적
-
-### 3단계 개발 워크플로우
-1. **SPEC**: 요구사항 정의
-2. **구축**: TDD 루프로 구현
-3. **동기화**: 문서와 테스트 정렬
+### 🔍 완벽한 추적성
+- @SPEC ↔ @TEST ↔ @CODE ↔ @DOC 체인
+- 변경 영향도 즉시 파악
+- Git 히스토리와의 연동
 
 ---
 
-🤖 **Generated with Claude Code** & 🎩 **Alfred**
+🤖 **MoAI-ADK와 함께 개발 생산성을 극대화하세요!**
