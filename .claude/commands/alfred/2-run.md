@@ -35,6 +35,26 @@ Execute planned tasks based on SPEC document analysis. Supports TDD implementati
 
 **Run on**: $ARGUMENTS
 
+## 🚀 Initialize Implementation with JIT Skills
+
+Before starting implementation, load essential JIT skills for enhanced execution:
+
+```python
+# Load session information and current project status
+Skill("moai-session-info")
+
+# Load streaming UI for progress indication during implementation
+Skill("moai-streaming-ui")
+
+# Load change logger for tracking implementation changes
+Skill("moai-change-logger")
+
+# Load TAG policy validator for ensuring compliance during implementation
+Skill("moai-tag-policy-validator")
+```
+
+This provides comprehensive context, progress tracking, change logging, and TAG compliance during implementation.
+
 ## 💡 Execution philosophy: "Plan → Run → Sync"
 
 `/alfred:2-run` performs planned tasks through various execution strategies.
@@ -178,7 +198,7 @@ The implementation-planner agent will:
 
 After the implementation-planner completes the execution plan, invoke `Skill("moai-alfred-ask-user-questions")` first.
 
-Then use the AskUserQuestion tool to obtain explicit user approval:
+Then use the AskUserQuestion 도구 to obtain explicit user approval:
   - Present the implementation plan in plain text format
   - Ask "Implementation plan is ready. How would you like to proceed?"
   - Provide these options:
@@ -441,7 +461,7 @@ Your task is to guide the user on what to do next. Follow these steps:
 
 After STEP 3 completes successfully, invoke `Skill("moai-alfred-ask-user-questions")` first.
 
-Then use the AskUserQuestion tool to ask the user:
+Then use the AskUserQuestion 도구 to ask the user:
   - Ask "Implementation is complete. What would you like to do next?"
   - Provide these options:
     - "Synchronize Documentation" - Proceed to /alfred:3-sync for documentation synchronization

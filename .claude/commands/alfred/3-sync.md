@@ -19,7 +19,7 @@ allowed-tools:
 
 # 📚 MoAI-ADK Step 3: Document Synchronization (+Optional PR Ready)
 
-> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
+> **Note**: Interactive prompts use `AskUserQuestion 도구 (moai-alfred-ask-user-questions 스킬 참조)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 >
 > **Batched Design**: All AskUserQuestion calls follow batched design principles (1-4 questions per call) to minimize user interaction turns. See CLAUDE.md section "Alfred Command Completion Pattern" for details.
 
@@ -36,6 +36,32 @@ Synchronize code changes to Living Documents and verify @TAG system to ensure co
 **Document sync to**: $ARGUMENTS
 
 > **Standard workflow**: STEP 1 (Analysis & Planning) → User Approval → STEP 2 (Document Sync) → STEP 3 (Git Commit & PR)
+
+## 🚀 Initialize Synchronization with JIT Skills
+
+Before starting synchronization, load essential JIT skills for enhanced documentation and validation:
+
+```python
+# Load session information and current implementation status
+Skill("moai-session-info")
+
+# Load streaming UI for progress indication during sync operations
+Skill("moai-streaming-ui")
+
+# Load change logger for comprehensive audit trail
+Skill("moai-change-logger")
+
+# Load enhanced JIT documentation for intelligent doc updates
+Skill("moai-jit-docs-enhanced")
+
+# Load TAG policy validator for ensuring TAG compliance
+Skill("moai-tag-policy-validator")
+
+# Load learning optimizer for continuous improvement
+Skill("moai-learning-optimizer")
+```
+
+This provides comprehensive context, progress tracking, intelligent documentation, TAG validation, and learning optimization during synchronization.
 
 ---
 
@@ -595,7 +621,7 @@ except Exception as e:
        필요 시 명시적 Skill() 호출 사용:
        - Skill("moai-foundation-tags") - TAG 체인 검증
        - Skill("moai-foundation-trust") - 품질 게이트 검사
-       - Skill("moai-alfred-tag-scanning") - TAG 인벤토리 업데이트
+       - Skill("moai-foundation-tags") - TAG 인벤토리 업데이트
 
        작업:
        Git 변경사항을 분석하고 문서 동기화 계획을 수립해주세요.
@@ -673,7 +699,7 @@ except Exception as e:
    ```
 
 2. **Ask user for approval using AskUserQuestion**:
-   - **Your task**: Use the AskUserQuestion tool to gather user decision
+   - **Your task**: Use the AskUserQuestion 도구 to gather user decision
    - Tool call:
      - `questions`: Array with 1 question
      - Question details:
@@ -1795,7 +1821,7 @@ except Exception as e:
    ```
 
 3. **Ask user for next action using AskUserQuestion**:
-   - **Your task**: Use the AskUserQuestion tool to gather user's next step
+   - **Your task**: Use the AskUserQuestion 도구 to gather user's next step
    - Tool call:
      - `questions`: Array with 1 question
      - Question details:
@@ -2159,9 +2185,9 @@ This command is **STEP 4** (Report & Commit):
 ## 📖 Related Documentation
 
 **Skills**:
-- `Skill("moai-alfred-tag-scanning")` - TAG system details
+- `Skill("moai-foundation-tags")` - TAG system details
 - `Skill("moai-alfred-git-workflow")` - Git operations
-- `Skill("moai-alfred-trust-validation")` - Quality gates
+- `Skill("moai-foundation-trust")` - Quality gates
 - `Skill("moai-alfred-ask-user-questions")` - TUI interactions
 
 **Workflows**:
