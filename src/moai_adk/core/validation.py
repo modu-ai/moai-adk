@@ -27,7 +27,7 @@ def detect_tdd_completion() -> bool:
             ["git", "log", "-5", "--pretty=format:%s"],
             capture_output=True,
             text=True,
-            timeout=1.0,
+            timeout=0.5,  # 성능: 500ms로 단축
         )
 
         if result.returncode != 0:
@@ -36,13 +36,18 @@ def detect_tdd_completion() -> bool:
         commit_messages = result.stdout.strip().split("\n")
         tdd_keywords = ["🟢 GREEN:", "♻️ REFACTOR:"]
 
+        # 성능: 첫 번째 매치 발견 시 즉시 반환
         for msg in commit_messages:
-            if any(keyword in msg for keyword in tdd_keywords):
+            if msg and any(keyword in msg for keyword in tdd_keywords):
                 return True
 
         return False
 
+    except subprocess.TimeoutExpired:
+        # 성능: Git 타임아웃 시 False 반환 (non-blocking)
+        return False
     except Exception:
+        # 에러 처리: 모든 예외는 조용히 처리
         return False
 
 

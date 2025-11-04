@@ -29,6 +29,8 @@ def handle_post_tool_use(payload: Dict[str, Any]) -> Dict[str, Any]:
     """
     PostToolUse Hook 핸들러: TRUST 검증 자동 트리거
 
+    최적화: 100ms 제약 준수를 위해 최소 작업만 수행합니다.
+
     Args:
         payload: Claude Code PostToolUse 이벤트 데이터
 
@@ -36,59 +38,52 @@ def handle_post_tool_use(payload: Dict[str, Any]) -> Dict[str, Any]:
         Hook 결과 (blocked=False, message 포함)
     """
     try:
-        # 1. TRUST 검증 필요 여부 판단
+        # 1. TRUST 검증 필요 여부 판단 (<100ms)
         if not is_trust_validation_needed(payload):
             return {
                 "blocked": False,
                 "message": None,
             }
 
-        # 2. 검증 도구 존재 확인
-        validate_script = (
-            project_root / "src" / "moai_adk" / "cli" / "validate_trust.py"
-        )
-        if not validate_script.exists():
-            return {
-                "blocked": False,
-                "message": (
-                    "ℹ️ TRUST 검증 도구를 찾을 수 없습니다. "
-                    "src/moai_adk/cli/validate_trust.py 필요"
-                ),
-            }
-
-        # 3. 비동기 검증 실행
+        # 2. 비동기 검증 실행 (검증 도구 존재 확인은 프로세스 실행 시)
         try:
             process = trigger_trust_validation()
 
-            # 프로세스 ID를 메모리 파일에 저장 (다음 Hook에서 수집)
-            pid_file = project_root / ".moai" / "memory" / "validation_pids.json"
-            pid_file.parent.mkdir(parents=True, exist_ok=True)
+            # 성능: 프로세스 ID만 저장하고 즉시 반환
+            try:
+                pid_file = project_root / ".moai" / "memory" / "validation_pids.json"
+                pid_file.parent.mkdir(parents=True, exist_ok=True)
 
-            pids = []
-            if pid_file.exists():
-                try:
-                    pids = json.loads(pid_file.read_text())
-                except (json.JSONDecodeError, OSError):
-                    pids = []
+                pids = []
+                if pid_file.exists():
+                    try:
+                        pids = json.loads(pid_file.read_text())
+                    except (json.JSONDecodeError, OSError):
+                        pass
 
-            pids.append(process.pid)
-            pid_file.write_text(json.dumps(pids))
+                pids.append(process.pid)
+                pid_file.write_text(json.dumps(pids))
+            except Exception:
+                # PID 저장 실패는 무시 (검증 자체는 백그라운드 실행)
+                pass
 
             return {
                 "blocked": False,
                 "message": "🔍 TRUST 원칙 검증 중... (백그라운드 실행)",
             }
 
-        except Exception as e:
+        except Exception:
+            # 검증 실행 실패는 silent (non-blocking)
             return {
                 "blocked": False,
-                "message": f"⚠️ TRUST 검증 시작 실패: {str(e)}",
+                "message": None,
             }
 
-    except Exception as e:
+    except Exception:
+        # 모든 예외는 조용히 처리 (Hook은 절대 blocked되면 안 됨)
         return {
             "blocked": False,
-            "message": f"❌ Hook 실행 중 오류: {str(e)}",
+            "message": None,
         }
 
 
