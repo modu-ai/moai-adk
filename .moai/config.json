@@ -143,5 +143,19 @@
     "spec_git_workflow_configured": true,
     "spec_git_workflow_rationale": "Develop 브랜치에 직접 커밋하는 단순 워크플로우. 빠른 프로토타이핑과 단순 워크플로우에 최적",
     "notes_new_fields": "auto_delete_branches: whether to auto-delete feature branches after merge. spec_git_workflow: 'feature_branch' (auto), 'develop_direct' (direct), 'per_spec' (ask per SPEC)"
+  },
+  "auto_cleanup": {
+    "enabled": true,
+    "retention_days": 30,
+    "max_reports": 50,
+    "configured_at": "2025-11-05T07:21:00+09:00",
+    "notes": "Automatic cleanup of old reports and .moai directory maintenance via hooks system"
+  },
+  "daily_analysis": {
+    "enabled": true,
+    "interval_days": 1,
+    "auto_commit": false,
+    "configured_at": "2025-11-05T07:25:00+09:00",
+    "notes": "Daily session analysis and improvement suggestions via hooks system"
   }
 }
