@@ -1,6 +1,6 @@
 ---
-name: moai-cc-claude-md
-description: "Authoring CLAUDE.md Project Instructions. Design project-specific AI guidance, document workflows, define architecture patterns. Use when creating CLAUDE.md files for projects, documenting team standards, or establishing AI collaboration guidelines."
+name: moai-cc-guide
+description: "Architecture decisions and workflow guidance. Decision trees, architecture patterns, project setup workflows, and troubleshooting guides for Claude Code configuration."
 allowed-tools: "Read, Write, Edit, Glob"
 ---
 

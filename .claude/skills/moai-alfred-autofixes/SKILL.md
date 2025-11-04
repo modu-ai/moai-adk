@@ -1,9 +1,16 @@
 ---
 name: moai-alfred-autofixes
+version: 1.0.0
+created: 2025-11-05
+updated: 2025-11-05
+status: active
 description: Safety protocol for automatic code fixes, merge conflicts, and user approval workflow
-tier: alfred
-freedom: low
-tags: [auto-fix, merge-conflicts, safety, approval, protocol]
+keywords: ['auto-fix', 'merge-conflicts', 'safety', 'approval', 'protocol']
+allowed-tools:
+  - Read
+  - Write
+  - Bash
+  - AskUserQuestion
 ---
 
 # Auto-Fix & Merge Conflict Protocol

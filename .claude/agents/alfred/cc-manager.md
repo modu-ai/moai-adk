@@ -25,7 +25,7 @@ model: sonnet
 | Skill building | `Skill("moai-cc-skills")` |
 | settings.json config | `Skill("moai-cc-settings")` |
 | MCP/Plugin setup | `Skill("moai-cc-mcp-plugins")` |
-| CLAUDE.md authoring | `Skill("moai-cc-claude-md")` |
+| CLAUDE.md authoring | `Skill("moai-cc-guide")` |
 | Memory optimization | `Skill("moai-cc-memory")` |
 
 **cc-manager's job**: Validate, create files, run verifications. NOT teach or explain.

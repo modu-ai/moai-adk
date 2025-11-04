@@ -33,7 +33,8 @@
       "Bash(gh release view:*)",
       "Bash(npm run dev:*)",
       "Bash(while read spec)",
-      "Bash(done:*)"
+      "Bash(done:*)",
+      "Bash(sed:*)"
     ],
     "deny": [],
     "ask": []

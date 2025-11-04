@@ -107,22 +107,22 @@ Dry-Run 결과가 만족스러우면, `--dry-run` 플래그를 제외하고 실�
 
 릴리즈 정보는 일관된 형식으로 제공되어야 합니다. 모든 릴리즈는 다음 표준을 따릅니다.
 
-### 릴리즈 정보 구성 (영어 & 한국어)
+### 릴리즈 정보 구성 (국제화 표준)
 
-모든 릴리즈는 **영어와 한국어** 두 언어로 작성되어야 합니다.
+⚠️ **중요**: 모든 릴리즈 정보는 **영어로만 작성**합니다. 국제 사용자들을 위한 일관성을 유지하기 위함입니다.
 
 **구성 순서**:
-1. 🚀 Major Features (주요 기능) - 영어/한국어
-2. 📊 Release Statistics (릴리즈 통계)
-3. 🧪 Quality Assurance (품질 보증)
-4. 💻 Installation Guide (설치 가이드) - **uv tool 중심**
-5. 🔗 Documentation (문서)
-6. 🔄 Migration & Compatibility (호환성)
-7. 👏 Credits (크레딧)
+1. 🚀 Major Features
+2. 📊 Release Statistics
+3. 🧪 Quality Assurance
+4. 💻 Installation Guide (uv tool 중심)
+5. 🔄 Migration & Compatibility
+6. 🔗 Documentation
+7. 👏 Credits
 
-### 설치 가이드 표준 형식
+### Installation Guide Standard Format
 
-#### ✅ 추천 방식: uv tool (CLI 도구)
+#### ✅ Recommended: uv tool (CLI Tool)
 
 ```markdown
 ### 🎯 Recommended: CLI Tool Usage
@@ -137,7 +137,7 @@ uv tool install moai-adk==X.Y.Z
 moai-adk --version
 
 # Use as CLI command
-moai-adk /alfred:1-plan "새 기능"
+moai-adk /alfred:1-plan "New Feature"
 ```
 
 **Advantages**:
@@ -147,7 +147,7 @@ moai-adk /alfred:1-plan "새 기능"
 - ✅ Recommended for most users
 ```
 
-#### 대체 방식 1: Python 라이브러리 (pip)
+#### Alternative 1: Python Library (pip)
 
 ```markdown
 ### 📚 Alternative: Python Library
@@ -168,14 +168,14 @@ from moai_adk import Alfred
 - You're managing it as a project dependency
 ```
 
-#### 대체 방식 2: Python 라이브러리 (uv pip - 빠른 설치)
+#### Alternative 2: Python Library (uv pip - Fast Installation)
 
 ```markdown
 # Or install with uv (faster)
 uv pip install moai-adk==X.Y.Z
 ```
 
-### GitHub Release 기본 템플릿
+### GitHub Release Basic Template
 
 ```markdown
 ## 🚀 Major Features
@@ -230,28 +230,29 @@ uv pip install moai-adk==X.Y.Z
 
 Released with Claude Code
 
-Co-Authored-By: 🎩 Alfred@MoAI
+Co-Authored-By: Alfred <alfred@mo.ai.kr>
 ```
 
-### 언어 규칙
+### Language Rules
 
-| 항목 | 영어 | 한국어 | 예시 |
-|------|------|--------|------|
-| **Feature 제목** | 영어 | 선택 | "Multi-Language Translation" |
-| **설명문** | 영어 + 한국어 혼합 | 괄호로 구분 | "Multi-Language Runtime Translation System (다국어 런타임 번역)" |
-| **Installation** | 영어 (코드는 동일) | 코드만 표시 | 코드 블록은 언어 중립적 |
-| **Benefits** | 영어 | 선택 옵션 | 영어로 주요 내용, 필요시 한국어 추가 |
-| **표 헤더** | 영어 | 필요시 이중 제공 | "Metric \| Value" 또는 "항목 \| 값" |
+⚠️ **Important**: All release content must be **English only** for international consistency.
 
-### 예시: v0.16.0 포맷
+| Item | Language | Requirement | Example |
+|------|----------|-------------|---------|
+| **Feature Titles** | English | Required | "Multi-Language Translation" |
+| **Descriptions** | English | Required | "Multi-Language Runtime Translation System with unlimited language support" |
+| **Installation** | English | Required | Code blocks are language-neutral |
+| **Benefits** | English | Required | Clear, concise benefits in English |
+| **Table Headers** | English | Required | "Metric \| Value" |
 
-**GitHub Release 예시**:
+### Example: v0.16.0 Format
+
+**GitHub Release Example**:
 ```markdown
 ## 🚀 Major Features
 
 ### 1. 🌐 Multi-Language Runtime Translation System
 Single English source with unlimited language support via runtime translation.
-(단일 영어 소스에서 무제한 언어 지원)
 
 **Key Benefits**:
 - Zero code modification for language support
@@ -284,9 +285,9 @@ uv pip install moai-adk==0.16.0
 ```
 ```
 
-### CHANGELOG.md 포맷
+### CHANGELOG.md Format
 
-**CHANGELOG.md의 Installation 섹션**:
+**Installation Section in CHANGELOG.md**:
 
 ```markdown
 ### 💻 Installation
@@ -308,18 +309,19 @@ uv pip install moai-adk==X.Y.Z
 ```
 ```
 
-### 일관성 체크리스트
+### Consistency Checklist
 
-각 릴리즈 전에 다음 항목을 확인하세요:
+Please verify the following items before each release:
 
-- [ ] Feature 섹션: 3개 이상의 주요 기능 기술
-- [ ] 각 Feature: 1-2 문장 설명 + Benefits 나열
-- [ ] Installation: uv tool **먼저**, pip/uv pip는 **대체 방식**으로
-- [ ] Quality: 테스트, 보안, 타입 체크, 커버리지 포함
-- [ ] Statistics: 커밋, 파일, 라인 수 포함
-- [ ] Migration: Breaking changes 명시
-- [ ] Credits: Claude Code + Alfred 크레딧 포함
-- [ ] Links: CHANGELOG, 문서 링크 포함
+- [ ] Features section: At least 3 major features described
+- [ ] Each feature: 1-2 sentence description + Benefits listed
+- [ ] Installation: uv tool **first**, pip/uv pip as **alternatives**
+- [ ] Quality: Tests, security, type checking, coverage included
+- [ ] Statistics: Commits, files, line counts included
+- [ ] Migration: Breaking changes explicitly stated
+- [ ] Credits: Claude Code + Alfred credits included
+- [ ] Links: CHANGELOG, documentation links included
+- [ ] Language: **English only** throughout the release
 
 ---
 
@@ -1083,45 +1085,45 @@ fi
 
 ---
 
-## 🔍 Phase 1: 버전 분석 및 검증
+## 🔍 Phase 1: Version Analysis and Validation
 
-### 1.1 프로젝트 정보 수집
+### 1.1 Project Information Collection
 
-**버전 정보 읽기 (SSOT 방식)**:
+**Version Information Reading (SSOT Method)**:
 ```bash
-# pyproject.toml에서 버전 읽기 (SSOT - 유일한 진실의 출처)
+# Read version from pyproject.toml (SSOT - Single Source of Truth)
 current_version=$(rg "^version = " pyproject.toml | awk -F'"' '{print $2}')
-echo "📌 현재 버전 (pyproject.toml): $current_version"
+echo "📌 Current version (pyproject.toml): $current_version"
 
-# 설치된 패키지 버전 확인 (검증용)
+# Check installed package version (for verification)
 installed_version=$(python -c "from importlib.metadata import version; print(version('moai-adk'))" 2>/dev/null || echo "N/A")
-echo "📦 설치된 버전: $installed_version"
+echo "📦 Installed version: $installed_version"
 
-# 버전 일치 여부 확인
+# Check version consistency
 if [ "$current_version" != "$installed_version" ] && [ "$installed_version" != "N/A" ]; then
-    echo "⚠️ 경고: pyproject.toml과 설치된 버전이 다릅니다"
+    echo "⚠️ Warning: pyproject.toml and installed version differ"
     echo "→ pyproject.toml: $current_version"
-    echo "→ 설치된 버전: $installed_version"
-    echo "→ 해결: uv pip install -e . --force-reinstall --no-deps"
+    echo "→ Installed version: $installed_version"
+    echo "→ Solution: uv pip install -e . --force-reinstall --no-deps"
 fi
 
-# __init__.py는 자동 로드 (확인만)
-echo "ℹ️ __init__.py는 importlib.metadata로 자동 로드 (수정 불필요)"
+# __init__.py is auto-loaded (confirmation only)
+echo "ℹ️ __init__.py uses importlib.metadata for auto-loading (no modification needed)"
 ```
 
-**Git 상태 확인**:
+**Git Status Check**:
 ```bash
-# Git 상태
+# Git status
 git status --short
 git log --oneline -5
 
-# 브랜치 확인
+# Branch check
 current_branch=$(git branch --show-current)
-echo "🌿 현재 브랜치: $current_branch"
+echo "🌿 Current branch: $current_branch"
 
-# 미커밋 변경사항 확인
+# Check uncommitted changes
 if [ -n "$(git status --short)" ]; then
-    echo "⚠️ 미커밋 변경사항 있음 (자동 커밋 예정)"
+    echo "⚠️ Uncommitted changes exist (auto-commit planned)"
 fi
 ```
 
@@ -2298,15 +2300,28 @@ Co-Authored-By: Alfred <alfred@mo.ai.kr>
 - ✅ **Include accurate metrics** (test pass rate, coverage)
 - ✅ **Verify links** (v[PREV] and v[VERSION] accurately)
 
-**Create Release with gh CLI** (English only):
+**Create Release with gh CLI** (English only) - **IMPROVED with Template Validation**:
+
 ```bash
-# Generate release notes (use template above)
-release_title="🔖 v{new_version} | {VERSION_TYPE} | {Release Title}"
+# Step 3.6.1: Analyze recent commits for category classification
+echo "📊 Analyzing commits for release notes categories..."
 
-release_notes="# 🎉 Release v{new_version} | {VERSION_TYPE}
+# Classify commits by message pattern
+FEATURES=$(git log $current_version..HEAD --oneline 2>/dev/null | grep -E "^[a-f0-9]+ (feat|✨)" | wc -l)
+BUG_FIXES=$(git log $current_version..HEAD --oneline 2>/dev/null | grep -E "^[a-f0-9]+ (fix|🐛)" | wc -l)
+IMPROVEMENTS=$(git log $current_version..HEAD --oneline 2>/dev/null | grep -E "^[a-f0-9]+ (perf|refactor|♻️)" | wc -l)
+DOCS=$(git log $current_version..HEAD --oneline 2>/dev/null | grep -E "^[a-f0-9]+ (docs|📚)" | wc -l)
 
-**Version**: v{new_version}
-**Type**: {VERSION_TYPE}
+echo "✅ Found: $FEATURES features, $BUG_FIXES fixes, $IMPROVEMENTS improvements, $DOCS docs"
+
+# Generate release notes using HEREDOC with template validation
+release_title="🔖 v$new_version | $VERSION_TYPE | Release v$new_version"
+
+release_notes=$(cat << TEMPLATE
+# 🎉 Release v$new_version | $VERSION_TYPE | Release v$new_version
+
+**Version**: v$new_version
+**Type**: $VERSION_TYPE
 **Release Date**: $(date +%Y-%m-%d)
 
 ## What's Changed
@@ -2340,18 +2355,34 @@ release_notes="# 🎉 Release v{new_version} | {VERSION_TYPE}
 ## Installation
 
 ### Using uv (Recommended)
-\`\`\`bash
+```bash
 uv tool install moai-adk=={new_version}
-\`\`\`
+moai-adk --version
+```
 
 ### Using pip (Legacy)
-\`\`\`bash
+```bash
 pip install moai-adk=={new_version}
-\`\`\`
+moai-adk --version
+```
+
+## Upgrade Guide
+
+### Upgrade from Previous Version (uv)
+```bash
+uv tool upgrade moai-adk
+moai-adk --version
+```
+
+### Upgrade from Previous Version (pip)
+```bash
+pip install --upgrade moai-adk
+moai-adk --version
+```
 
 ## Full Changelog
 
-Compare all changes: [v{current_version}...v{new_version}](https://github.com/modu-ai/moai-adk/compare/v{current_version}...v{new_version})
+Compare all changes: [v$current_version...v$new_version](https://github.com/modu-ai/moai-adk/compare/v$current_version...v$new_version)
 
 ## Contributors
 
@@ -2361,18 +2392,65 @@ Thanks to all contributors who made this release possible.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: Alfred <alfred@mo.ai.kr>"
+Co-Authored-By: Alfred <alfred@mo.ai.kr>
+TEMPLATE
+)
 
-# Create GitHub Release (Draft, English only)
+# Step 3.6.2: Template Validation Checklist
+echo ""
+echo "🔍 Validating release notes format..."
+echo ""
+
+VALIDATION_PASSED=true
+
+# Check required sections
+for section in "# 🎉 Release" "## What's Changed" "### ✨ New Features" "### 🐛 Bug Fixes" "### ♻️ Improvements" "### 📚 Documentation" "## Installation" "## Full Changelog"; do
+    if echo "$release_notes" | grep -q "$section"; then
+        echo "✅ Found section: $section"
+    else
+        echo "⚠️  Missing section: $section"
+        VALIDATION_PASSED=false
+    fi
+done
+
+echo ""
+
+if [ "$VALIDATION_PASSED" = false ]; then
+    echo "⚠️  Template validation warning: Some sections missing. Review release notes before publishing."
+fi
+
+# Step 3.6.3: Create GitHub Release (HEREDOC ensures proper formatting)
+echo "📝 Creating GitHub Release with validated template..."
+
 gh release create "v{new_version}" \
   --title "$release_title" \
   --notes "$release_notes" \
   --draft
 
-echo "ℹ️ GitHub Release created as Draft"
-echo "→ https://github.com/modu-ai/moai-adk/releases/tag/v{new_version}"
-echo "→ Verify content and publish the release..."
+if [ $? -eq 0 ]; then
+    echo "✅ GitHub Release created as Draft"
+    echo "→ Review: https://github.com/modu-ai/moai-adk/releases/tag/v{new_version}"
+    echo "→ Edit if needed, then run: gh release edit v{new_version} --draft=false"
+else
+    echo "❌ Failed to create GitHub Release"
+    echo "→ Possible issues:"
+    echo "  1. GitHub authentication: gh auth status"
+    echo "  2. Duplicate release: Check if v{new_version} already exists"
+    echo "  3. Invalid release notes: Check HEREDOC syntax"
+    exit 1
+fi
 ```
+
+**Template Compliance Checklist** (verified before publishing):
+- ✅ Title format: `🔖 v[VERSION] | [TYPE] | [Title]`
+- ✅ Body starts with: `# 🎉 Release v[VERSION]`
+- ✅ All 4 sections: Features, Bug Fixes, Improvements, Documentation
+- ✅ Quality Assurance Results table present
+- ✅ Installation section with uv + pip
+- ✅ Full Changelog link with correct version range
+- ✅ Contributors section
+- ✅ Claude Code + Alfred co-author footer
+- ✅ English language only
 
 ### Step 3.7: Publish GitHub Release (Draft → Published)
 
