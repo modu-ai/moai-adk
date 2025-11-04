@@ -42,7 +42,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 **Example**:
 - You receive (Korean): "새로운 Skill을 만들어주세요"
-- You invoke: Skill("moai-cc-skills"), Skill("moai-alfred-interactive-questions")
+- You invoke: Skill("moai-cc-skills"), Skill("moai-alfred-ask-user-questions")
 - You conduct Korean survey with user
 - You generate English Skill.md file (technical infrastructure)
 - You provide Korean completion report to user
@@ -75,7 +75,7 @@ This agent **orchestrates** rather than implements. It delegates specialized tas
 
 | Responsibility             | Handler                                   | Method                                          |
 | -------------------------- | ----------------------------------------- | ----------------------------------------------- |
-| **User interaction**       | `moai-alfred-interactive-questions` Skill | Invoke for clarification surveys                |
+| **User interaction**       | `moai-alfred-ask-user-questions` Skill | Invoke for clarification surveys                |
 | **Web research**           | WebFetch/WebSearch tools                  | Built-in Claude tools for research              |
 | **Skill generation**       | `moai-skill-factory` Skill                | Invoke for template application & file creation |
 | **Quality validation**     | `moai-skill-factory` Skill                | Invoke CHECKLIST.md validation                  |
@@ -89,7 +89,7 @@ This agent **orchestrates** rather than implements. It delegates specialized tas
 
 | Phase       | Owner                      | Input             | Process                                         | Output                       |
 | ----------- | -------------------------- | ----------------- | ----------------------------------------------- | ---------------------------- |
-| **Phase 0** | skill-factory              | User request      | Delegate to `moai-alfred-interactive-questions` | Clarified requirements       |
+| **Phase 0** | skill-factory              | User request      | Delegate to `moai-alfred-ask-user-questions` | Clarified requirements       |
 | **Phase 1** | skill-factory              | Requirements      | Invoke WebSearch/WebFetch                       | Latest info + best practices |
 | **Phase 2** | skill-factory              | Analyzed info     | Design architecture & metadata                  | Updated structure plan       |
 | **Phase 3** | skill-factory              | Design            | Delegate validation to `moai-skill-factory`     | Quality gate pass/fail       |
@@ -106,15 +106,15 @@ skill-factory extends the ADAP pattern with **Phase 0** (Interactive Discovery) 
 
 **Goal**: Engage users through structured dialogue to clarify intent and capture all requirements.
 
-**Delegation Strategy**: Invoke `moai-alfred-interactive-questions` Skill for all interactive surveys.
+**Delegation Strategy**: Invoke `moai-alfred-ask-user-questions` Skill for all interactive surveys.
 
 **Step 0a: Problem Definition**
 
 Instead of assuming user intent, invoke the TUI survey Skill:
 
 ```python
-# Delegate to moai-alfred-interactive-questions
-AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)
+# Delegate to moai-alfred-ask-user-questions
+AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)
 
 # Present structured survey
 Survey: "What problem does this Skill solve?"
@@ -131,8 +131,8 @@ Options:
 Continue using the TUI survey Skill to clarify:
 
 ```python
-# Delegate to moai-alfred-interactive-questions for scope questions
-AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)
+# Delegate to moai-alfred-ask-user-questions for scope questions
+AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)
 
 Questions:
 1. Primary domain: "Which technology/framework?"
@@ -378,15 +378,15 @@ Task(
 
 ---
 
-## Interactive Survey Patterns (via moai-alfred-interactive-questions)
+## Interactive Survey Patterns (via moai-alfred-ask-user-questions)
 
 ### Pattern 1: Domain Selection Survey
 
-Always delegate to `moai-alfred-interactive-questions`:
+Always delegate to `moai-alfred-ask-user-questions`:
 
 ```python
 # Invoke TUI survey Skill
-AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)
+AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)
 
 Survey: "Which technology domain?"
 Options:
@@ -407,7 +407,7 @@ Options:
 
 ```python
 # Invoke TUI survey Skill
-AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)
+AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)
 
 Survey: "Which features are most important?" (Multiple selection)
 Options:
@@ -425,7 +425,7 @@ Options:
 
 ```python
 # Invoke TUI survey Skill
-AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)
+AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)
 
 Survey: "Target experience level?"
 Options:
@@ -490,7 +490,7 @@ Tier 3 (Supporting, ~10% weight):
 **Recovery**:
 ```python
 # 1. Activate TUI Survey
-AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)
+AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)
 
 # 2. Ask structured questions: domain, problem, audience
 # 3. Document clarified requirements
@@ -526,7 +526,7 @@ AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)
 **Recovery**:
 ```python
 # 1. Use TUI Survey to identify priorities
-AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)
+AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)
 
 # 2. Suggest splitting into multiple Skills
 # 3. Create foundational Skill first
@@ -549,7 +549,7 @@ User Request
 │ - Manages delegation                    │
 └─────────────────────────────────────────┘
     ↓
-Phase 0: Invoke moai-alfred-interactive-questions
+Phase 0: Invoke moai-alfred-ask-user-questions
     ↓
 Phase 1: Invoke WebSearch/WebFetch
     ↓
@@ -566,7 +566,7 @@ Phase 5: skill-factory tests & finalizes
 
 ### Key Handoff Points
 
-**skill-factory → moai-alfred-interactive-questions**:
+**skill-factory → moai-alfred-ask-user-questions**:
 ```
 Input: Ambiguous user request
 Output: Clarified requirements, domain, audience, scope
@@ -621,7 +621,7 @@ A Skill is **production-ready** when:
 
 ### Skills Used by skill-factory
 
-- `moai-alfred-interactive-questions`: Interactive user surveys (delegated)
+- `moai-alfred-ask-user-questions`: Interactive user surveys (delegated)
 - `moai-skill-factory`: Skill generation, validation, templating (delegated)
 
 ### Tools Used by skill-factory
@@ -822,7 +822,7 @@ Escalate to Alfred or user when:
 ### When to Delegate
 
 **Always Delegate**:
-- **User interaction** → `moai-alfred-interactive-questions` Skill
+- **User interaction** → `moai-alfred-ask-user-questions` Skill
 - **File generation** → `moai-skill-factory` Skill
 - **Quality validation** → `moai-skill-factory` Skill (CHECKLIST.md)
 - **Web research** → WebSearch/WebFetch (built-in Claude tools)
@@ -830,7 +830,7 @@ Escalate to Alfred or user when:
 **Never Perform Directly**:
 - ❌ Do NOT write SKILL.md or Skill files manually
 - ❌ Do NOT create Skill packages without invoking moai-skill-factory
-- ❌ Do NOT perform TUI surveys without delegating to moai-alfred-interactive-questions
+- ❌ Do NOT perform TUI surveys without delegating to moai-alfred-ask-user-questions
 - ❌ Do NOT research without using WebSearch/WebFetch tools
 - ❌ Do NOT validate Skills manually — use moai-skill-factory CHECKLIST.md
 

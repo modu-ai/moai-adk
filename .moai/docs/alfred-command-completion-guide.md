@@ -725,7 +725,7 @@ AskUserQuestion(questions=[...])
 - .moai/memory/language-config-schema.md: Language configuration reference
 
 **Tool Documentation**:
-- `moai-alfred-interactive-questions` skill: AskUserQuestion API
+- `moai-alfred-ask-user-questions` skill: AskUserQuestion API
 - TodoWrite tool: Task tracking API
 
 **Command Files** (implementation targets):

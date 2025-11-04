@@ -13,6 +13,7 @@ Test coverage includes 5-phase integration tests with backup, configuration, and
 """
 
 import json
+import platform
 import shutil
 import subprocess
 from collections.abc import Callable
@@ -149,6 +150,12 @@ class PhaseExecutor:
             if not isinstance(language_config, dict):
                 language_config = {}
 
+            # Detect OS for cross-platform Hook path configuration
+            hook_project_dir = (
+                "%CLAUDE_PROJECT_DIR%" if platform.system() == "Windows"
+                else "$CLAUDE_PROJECT_DIR"
+            )
+
             context = {
                 "MOAI_VERSION": __version__,
                 "CREATION_TIMESTAMP": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -161,6 +168,7 @@ class PhaseExecutor:
                 "CONVERSATION_LANGUAGE": language_config.get("conversation_language", "en"),
                 "CONVERSATION_LANGUAGE_NAME": language_config.get("conversation_language_name", "English"),
                 "CODEBASE_LANGUAGE": config.get("language", "generic"),
+                "HOOK_PROJECT_DIR": hook_project_dir,
             }
             processor.set_context(context)
 

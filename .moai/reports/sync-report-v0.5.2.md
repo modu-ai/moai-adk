@@ -40,7 +40,7 @@ Comprehensive document synchronization completed for v0.5.2 feature branch. All 
 | File | Change | Type | Status | Notes |
 |------|--------|------|--------|-------|
 | **src/moai_adk/core/project/phase_executor.py** | Minor refactor | Python | ✅ Complete | 3 lines refactored; ProgressCallback type definition cleaned up; documentation comments improved |
-| **.claude/settings.local.json** | Configuration | JSON | ✅ Complete | Added explicit `Skill("moai-alfred-interactive-questions")` permission |
+| **.claude/settings.local.json** | Configuration | JSON | ✅ Complete | Added explicit `Skill("moai-alfred-ask-user-questions")` permission |
 
 ### 1.3 Documentation Template Files (2 files)
 
@@ -139,13 +139,13 @@ New Test Coverage Chain (In Development):
 
 **README.md** (English):
 ```
-Line 978: | `moai-alfred-interactive-questions` | Claude Code Tools AskUserQuestion TUI menu standardization |
+Line 978: | `moai-alfred-ask-user-questions` | Claude Code Tools AskUserQuestion TUI menu standardization |
 ```
 Status: ✅ Already documented
 
 **README.ko.md** (Korean):
 ```
-Line 977: | `moai-alfred-interactive-questions` | Claude Code Tools AskUserQuestion TUI 메뉴 표준화 |
+Line 977: | `moai-alfred-ask-user-questions` | Claude Code Tools AskUserQuestion TUI 메뉴 표준화 |
 ```
 Status: ✅ Already documented
 

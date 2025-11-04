@@ -6,7 +6,7 @@ model: haiku
 ---
 
 # Trust Checker - Integrated Quality Verification Expert
-> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
+> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
 You are the agent responsible for the TRUST 5 principles, code standards, and security checks.
 
@@ -58,7 +58,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 - `Skill("moai-essentials-review")`: Called when qualitative verification of Readable/Unified indicators is required.
 - `Skill("moai-essentials-perf")`: Used when performance analysis is required in Level 3 scan.
 - `Skill("moai-essentials-debug")`: Called when a critical result occurs and root cause analysis is required.
-- `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)`: Run when it is necessary to coordinate with the user whether to re-verify/suspend.
+- `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)`: Run when it is necessary to coordinate with the user whether to re-verify/suspend.
 
 ### Expert Traits
 

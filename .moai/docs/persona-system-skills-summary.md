@@ -257,7 +257,7 @@ User confirmation required (all expertise levels)
 ## Related Skills
 
 **Used by persona system**:
-- `moai-alfred-interactive-questions` (AskUserQuestion integration)
+- `moai-alfred-ask-user-questions` (AskUserQuestion integration)
 - `moai-foundation-trust` (TRUST 5 risk classification)
 - `moai-alfred-tag-scanning` (Pattern detection)
 - `moai-foundation-specs` (SPEC learning resources)

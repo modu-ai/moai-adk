@@ -601,7 +601,7 @@ Co-Authored-By: 🎩 Alfred@[MoAI](https://adk.mo.ai.kr)
 
 ### External Dependencies
 - **SPEC-SESSION-CLEANUP-001**: Phase 1 완료 (documentation)
-- `moai-alfred-interactive-questions` skill: 이미 구현됨
+- `moai-alfred-ask-user-questions` skill: 이미 구현됨
 
 ### Internal Dependencies
 - Phase 2A → Phase 2B (커맨드 파일 수정 후 에이전트 파일 업데이트)
@@ -647,7 +647,7 @@ Co-Authored-By: 🎩 Alfred@[MoAI](https://adk.mo.ai.kr)
 - **Testing**: Manual verification (8 test scenarios)
 
 ### Integration Points
-- `moai-alfred-interactive-questions` skill (TUI)
+- `moai-alfred-ask-user-questions` skill (TUI)
 - TodoWrite system (session state)
 - Git workflow (commits, branch strategy)
 

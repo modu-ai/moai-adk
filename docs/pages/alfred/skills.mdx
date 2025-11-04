@@ -1,0 +1,37 @@
+# Skills 카탈로그
+
+Alfred와 서브 에이전트는 `.claude/skills/`에 정의된 Skills를 온디맨드로 로딩해 프로젝트 맥락, 언어 지식, 도메인 베스트 프랙티스를 확보합니다. Skills는 Markdown 또는 디렉터리 구조로 구성되어 있으며, **Foundation → Essentials → Domain → Language → Ops** 계층으로 나뉩니다.
+
+## 계층 구조
+
+| Tier | 대표 파일/디렉터리 | 목적 |
+| ---- | ------------------ | ---- |
+| Foundation | `moai-foundation-*` | SPEC, TAG, TRUST, Git 등 모든 프로젝트에서 공통으로 필요한 원칙 |
+| Essentials | `moai-essentials-*` | 리팩토링, 디버깅, 리뷰 등 TDD 실행에 필요한 필수 역량 |
+| Domain | `moai-domain-*` | Backend, Frontend, DevOps, ML 등 문제 영역별 지식 |
+| Language | `moai-lang-*` | Python, TypeScript, Go, Rust 등 언어별 스타일 가이드와 테스트 패턴 |
+| Ops / CC | `moai-cc-*` | Claude Code 설정, MCP 플러그인, 명령어/Skill 메타 관리 |
+| Alfred 전용 | `moai-alfred-*` | Alfred의 워크플로우, SPEC 메타데이터, Interactive 질문 등 운영 가이드 |
+
+## 자주 사용하는 Skills
+
+- **SPEC 품질**: `moai-alfred-spec-metadata-validation`, `moai-foundation-ears`, `moai-alfred-ears-authoring`
+- **TDD**: `moai-essentials-refactor`, `moai-essentials-debug`, `moai-lang-python` (또는 언어별 파일)
+- **TAG 추적**: `moai-alfred-tag-scanning`, `moai-foundation-tags`
+- **Git & 릴리스**: `moai-foundation-git`, `moai-alfred-git-workflow`, `moai-cc-commands`
+- **협업/교육**: `moai-alfred-reporting`, `moai-adk-learning`, `moai-alfred-persona-roles`
+
+## 호출 방식
+
+1. **명령어 기반 로딩** – `/alfred:2-run` 실행 시 SPEC 언어를 감지하여 해당 언어 Skill을 자동 로드합니다.
+2. **키워드 감지** – "database", "kubernetes" 등의 키워드가 등장하면 Domain Skills 활성화.
+3. **인증 수준** – Beginner/Intermediate/Expert 레벨에 따라 설명 강도를 조절하는 Skills (`moai-alfred-expertise-detection`).
+4. **Hooks** – `user_prompt__jit_load_docs`가 사용자 입력에 맞는 Skills/문서를 추천합니다.
+
+## Skill 편집 가이드
+
+- Skills는 Markdown 기반이라 문서 수정으로 동작을 조정할 수 있습니다.
+- 새로운 Skill을 만들려면 `skill-factory` 에이전트 또는 `/alfred:9-feedback` 후 TODO를 통해 등록하세요.
+- 업데이트 후에는 `/alfred:3-sync`로 문서를 동기화하여 변경 내역이 보고서에 반영되도록 합니다.
+
+> Skill 파일은 버전 관리 대상이므로, 팀별 커스터마이징 시 브랜치 전략과 백업(.moai-backups/)을 활용해 템플릿 갱신에 대비하세요.

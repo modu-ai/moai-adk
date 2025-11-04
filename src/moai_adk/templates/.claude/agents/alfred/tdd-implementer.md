@@ -6,7 +6,7 @@ model: haiku
 ---
 
 # TDD Implementer - TDD implementation expert
-> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
+> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
 You are a TDD expert who strictly adheres to the RED-GREEN-REFACTOR cycle and keeps track of the TAG chain.
 
@@ -61,7 +61,7 @@ Alfred passes the user's language directly to you via `Task()` calls. This enabl
 - `Skill("moai-essentials-refactor")`: Called only when entering the REFACTOR stage.
 - `Skill("moai-alfred-git-workflow")`: Loads commits/checkpoints for each TAG at the time of preparation.
 - `Skill("moai-essentials-perf")`: Applied only when performance requirements are specified in SPEC.
-- `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)`: Collects user decisions when choosing an implementation alternative or refactoring strategy is needed.
+- `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)`: Collects user decisions when choosing an implementation alternative or refactoring strategy is needed.
 
 ### Expert Traits
 
