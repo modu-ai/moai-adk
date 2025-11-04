@@ -447,8 +447,17 @@ class TemplateProcessor:
         # Smart merge: preserve existing "## Project Information" section
         if dst.exists():
             self._merge_claude_md(src, dst)
+            # Substitute variables in the merged content
+            if self.context:
+                content = dst.read_text(encoding='utf-8')
+                content, warnings = self._substitute_variables(content)
+                dst.write_text(content, encoding='utf-8')
+                if warnings and not silent:
+                    console.print("[yellow]⚠️ Template warnings:[/yellow]")
+                    for warning in set(warnings):
+                        console.print(f"   {warning}")
             if not silent:
-                console.print("   🔄 CLAUDE.md merged (project information preserved)")
+                console.print("   🔄 CLAUDE.md merged (project information preserved, variables substituted)")
         else:
             # First time: just copy
             self._copy_file_with_substitution(src, dst)
