@@ -18,7 +18,7 @@ model: sonnet
 
 | Request | Route To |
 |---------|----------|
-| Architecture decisions | `Skill("moai-cc-guide")` + workflows/ |
+| Architecture decisions | `Skill("moai-alfred-workflow")` + workflows/ |
 | Hooks setup | `Skill("moai-cc-hooks")` |
 | Agent creation | `Skill("moai-cc-agents")` |
 | Command design | `Skill("moai-cc-commands")` |

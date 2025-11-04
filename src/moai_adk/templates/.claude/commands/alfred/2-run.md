@@ -192,12 +192,12 @@ Read the SPEC metadata to identify required domains.
 
 IF SPEC frontmatter contains `domains:` field OR `.moai/config.json` has `stack.selected_domains`, THEN:
   - For each domain in the list:
-    - IF domain is "frontend", THEN invoke Explore agent with prompt: "You are consulting as frontend-expert for TDD implementation. SPEC: [SPEC-{ID}]. Provide implementation readiness check: Component structure recommendations, State management approach, Testing strategy, Accessibility requirements, Performance optimization tips. Output: Brief advisory for tdd-implementer (3-4 key points)"
-    - IF domain is "backend", THEN invoke Explore agent with prompt: "You are consulting as backend-expert for TDD implementation. SPEC: [SPEC-{ID}]. Provide implementation readiness check: API contract validation, Database schema requirements, Authentication/authorization patterns, Error handling strategy, Async processing considerations. Output: Brief advisory for tdd-implementer (3-4 key points)"
-    - IF domain is "devops", THEN invoke Explore agent with devops-specific readiness check
-    - IF domain is "database", THEN invoke Explore agent with database-specific readiness check
-    - IF domain is "data-science", THEN invoke Explore agent with data-science-specific readiness check
-    - IF domain is "mobile", THEN invoke Explore agent with mobile-specific readiness check
+    - IF domain is "frontend", THEN invoke Task with subagent_type "Explore" and prompt: "You are consulting as frontend-expert for TDD implementation. SPEC: [SPEC-{ID}]. Provide implementation readiness check: Component structure recommendations, State management approach, Testing strategy, Accessibility requirements, Performance optimization tips. Output: Brief advisory for tdd-implementer (3-4 key points)"
+    - IF domain is "backend", THEN invoke Task with subagent_type "Explore" and prompt: "You are consulting as backend-expert for TDD implementation. SPEC: [SPEC-{ID}]. Provide implementation readiness check: API contract validation, Database schema requirements, Authentication/authorization patterns, Error handling strategy, Async processing considerations. Output: Brief advisory for tdd-implementer (3-4 key points)"
+    - IF domain is "devops", THEN invoke Task with subagent_type "Explore" and domain-specific readiness check
+    - IF domain is "database", THEN invoke Task with subagent_type "Explore" and database-specific readiness check
+    - IF domain is "data-science", THEN invoke Task with subagent_type "Explore" and data-science-specific readiness check
+    - IF domain is "mobile", THEN invoke Task with subagent_type "Explore" and mobile-specific readiness check
   - Store all domain expert feedback in memory
   - Save advisory to `.moai/specs/SPEC-{ID}/plan.md` under "## Domain Expert Advisory (Implementation Phase)" section
 

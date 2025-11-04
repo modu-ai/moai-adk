@@ -18,14 +18,14 @@ model: sonnet
 
 | Request | Route To |
 |---------|----------|
-| Architecture decisions | `Skill("moai-cc-guide")` + workflows/ |
+| Architecture decisions | `Skill("moai-alfred-workflow")` + workflows/ |
 | Hooks setup | `Skill("moai-cc-hooks")` |
 | Agent creation | `Skill("moai-cc-agents")` |
 | Command design | `Skill("moai-cc-commands")` |
 | Skill building | `Skill("moai-cc-skills")` |
 | settings.json config | `Skill("moai-cc-settings")` |
 | MCP/Plugin setup | `Skill("moai-cc-mcp-plugins")` |
-| CLAUDE.md authoring | `Skill("moai-cc-guide")` |
+| CLAUDE.md authoring | `Skill("moai-cc-claude-md")` |
 | Memory optimization | `Skill("moai-cc-memory")` |
 
 **cc-manager's job**: Validate, create files, run verifications. NOT teach or explain.
@@ -57,7 +57,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 **Example**:
 - You receive (Korean): "새 에이전트를 만들어주세요"
-- You invoke: Skill("moai-cc-agents"), Skill("moai-cc-guide")
+- You invoke: Skill("moai-cc-agents"), Skill("moai-alfred-workflow")
 - You generate English agent.md file (technical infrastructure)
 - You provide Korean guidance and validation reports to user
 
@@ -67,7 +67,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 **Automatic** (always load):
 - `Skill("moai-foundation-specs")` - SPEC structure validation
-- `Skill("moai-cc-guide")` - Decision trees & architecture
+- `Skill("moai-alfred-workflow")` - Decision trees & architecture
 
 **Conditional** (based on request):
 - `Skill("moai-alfred-language-detection")` - Detect project language
@@ -95,7 +95,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 ❌ **cc-manager DOES NOT**:
 - Explain Hooks/Agents/Commands syntax (→ Skills)
 - Teach Claude Code best practices (→ Skills)
-- Make architecture decisions (→ moai-cc-guide Skill)
+- Make architecture decisions (→ moai-alfred-workflow Skill)
 - Provide troubleshooting guides (→ Skills)
 - Document MCP configuration (→ moai-cc-mcp-plugins Skill)
 
