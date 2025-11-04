@@ -33,13 +33,23 @@ class TestMultilingualLintingHook:
 
     def test_file_language_mapping(self):
         """Test file to language mapping"""
-        hook = MultilingualLintingHook()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir)
 
-        assert hook.get_language_for_file(Path("test.py")) == "python"
-        assert hook.get_language_for_file(Path("test.js")) == "javascript"
-        assert hook.get_language_for_file(Path("test.ts")) == "typescript"
-        assert hook.get_language_for_file(Path("test.go")) == "go"
-        assert hook.get_language_for_file(Path("test.rs")) == "rust"
+            # Create language markers
+            (project_root / "pyproject.toml").touch()
+            (project_root / "package.json").write_text(json.dumps({"name": "test"}))
+            (project_root / "go.mod").touch()
+            (project_root / "Cargo.toml").touch()
+            (project_root / "tsconfig.json").touch()
+
+            hook = MultilingualLintingHook(project_root)
+
+            assert hook.get_language_for_file(Path("test.py")) == "python"
+            assert hook.get_language_for_file(Path("test.js")) == "javascript"
+            assert hook.get_language_for_file(Path("test.ts")) == "typescript"
+            assert hook.get_language_for_file(Path("test.go")) == "go"
+            assert hook.get_language_for_file(Path("test.rs")) == "rust"
 
     def test_unknown_file_extension(self):
         """Test handling of unknown file extensions"""
@@ -144,13 +154,23 @@ class TestMultilingualFormattingHook:
 
     def test_file_language_mapping(self):
         """Test file to language mapping"""
-        hook = MultilingualFormattingHook()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir)
 
-        assert hook.get_language_for_file(Path("test.py")) == "python"
-        assert hook.get_language_for_file(Path("test.js")) == "javascript"
-        assert hook.get_language_for_file(Path("test.ts")) == "typescript"
-        assert hook.get_language_for_file(Path("test.go")) == "go"
-        assert hook.get_language_for_file(Path("test.rs")) == "rust"
+            # Create language markers
+            (project_root / "pyproject.toml").touch()
+            (project_root / "package.json").write_text(json.dumps({"name": "test"}))
+            (project_root / "go.mod").touch()
+            (project_root / "Cargo.toml").touch()
+            (project_root / "tsconfig.json").touch()
+
+            hook = MultilingualFormattingHook(project_root)
+
+            assert hook.get_language_for_file(Path("test.py")) == "python"
+            assert hook.get_language_for_file(Path("test.js")) == "javascript"
+            assert hook.get_language_for_file(Path("test.ts")) == "typescript"
+            assert hook.get_language_for_file(Path("test.go")) == "go"
+            assert hook.get_language_for_file(Path("test.rs")) == "rust"
 
     def test_unknown_file_extension(self):
         """Test handling of unknown file extensions"""
@@ -381,6 +401,16 @@ class TestEdgeCases:
         """Test project with many different file types"""
         with tempfile.TemporaryDirectory() as tmpdir:
             project_root = Path(tmpdir)
+
+            # Create language markers for all languages
+            (project_root / "pyproject.toml").touch()
+            (project_root / "package.json").write_text(json.dumps({"name": "test"}))
+            (project_root / "tsconfig.json").touch()
+            (project_root / "go.mod").touch()
+            (project_root / "Cargo.toml").touch()
+            (project_root / "pom.xml").touch()
+            (project_root / "Gemfile").touch()
+            (project_root / "composer.json").touch()
 
             # Create files with many extensions
             files = [

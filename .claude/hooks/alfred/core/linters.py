@@ -112,6 +112,10 @@ class LinterRegistry:
         if not file_path.suffix == ".py":
             return True
 
+        if not file_path.exists():
+            logger.warning(f"⚠️ File not found: {file_path}")
+            return True
+
         try:
             result = subprocess.run(
                 ["ruff", "check", str(file_path), "--select=E,F,W,I,N"],
@@ -161,6 +165,10 @@ class LinterRegistry:
     def _run_javascript_linting(self, file_path: Path) -> bool:
         """Run eslint for JavaScript"""
         if file_path.suffix not in [".js", ".jsx", ".mjs"]:
+            return True
+
+        if not file_path.exists():
+            logger.warning(f"⚠️ File not found: {file_path}")
             return True
 
         try:
