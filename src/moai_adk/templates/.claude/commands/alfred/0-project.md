@@ -924,29 +924,44 @@ Alfred starts project initialization by calling the project-manager agent with t
 
 ### 2.1.1 Dynamic Prompt Translation by conversation_language
 
-**CRITICAL**: The base prompt is written in English. At runtime, Alfred translates it to the user's `conversation_language` before passing to project-manager.
+**CRITICAL**: The base prompt is written in English. At runtime, Alfred translates it to the user's `conversation_language` (any language) before passing to project-manager.
 
 **Translation Flow**:
 
 ```
-English base prompt (source of truth)
+English base prompt (single source of truth)
     ↓
-Alfred reads conversation_language from STEP 0
+Alfred reads conversation_language from STEP 0 (any language)
     ↓
-Translate prompt to {{CONVERSATION_LANGUAGE}} (runtime)
+Translate English prompt to {{CONVERSATION_LANGUAGE}} (runtime, any language)
     ↓
 Pass translated prompt to project-manager agent
 ```
 
 **Supported Languages**:
 
-| conversation_language | Language | Translation |
-|----------------------|----------|------------|
-| en | English | (No translation - original) |
-| ko | Korean | English → 한국어 |
-| ja | Japanese | English → 日本語 |
-| zh | Chinese | English → 中文 |
-| es | Spanish | English → Español |
+- **English (en)**: English (original, no translation)
+- **Any other language**: Automatically translated from English
+
+Examples:
+- Korean (ko) → English → 한국어
+- Japanese (ja) → English → 日本語
+- Chinese (zh) → English → 中文
+- Spanish (es) → English → Español
+- French (fr) → English → Français
+- German (de) → English → Deutsch
+- Portuguese (pt) → English → Português
+- Russian (ru) → English → Русский
+- Arabic (ar) → English → العربية
+- Hindi (hi) → English → हिंदी
+- **Any language supported by translation service**
+
+**Key Design Principle**:
+
+- ✅ **Single source of truth**: Only English version maintained
+- ✅ **Any language support**: Not limited to pre-defined languages
+- ✅ **Runtime translation**: Translate on-demand for each user's selected language
+- ✅ **Zero maintenance**: New language automatically supported
 
 ### 2.1.2 Base Prompt (English - Source of Truth)
 
@@ -1035,46 +1050,39 @@ After project initialization, update .moai/config.json with announcements (base 
 The `announcements.items` array in the base config (English) is **translated at runtime** to `{{CONVERSATION_LANGUAGE}}`:
 
 ```
-English base announcements (in config.json)
+English base announcements (single source of truth)
     ↓
-Alfred reads conversation_language
+Alfred reads conversation_language from STEP 0 (any language)
     ↓
-Translate each item to {{CONVERSATION_LANGUAGE}} (runtime)
+Translate each item from English to {{CONVERSATION_LANGUAGE}} (runtime)
     ↓
 Save translated announcements to .claude/settings.json companyAnnouncements
     ↓
 Claude Code displays announcements in user's language on startup
 ```
 
-**Example: Korean announcements** (when conversation_language = "ko"):
-
-After translation, the announcements would be displayed as:
-
-```
-🎩 SPEC-First: 구현 전에 항상 요구사항을 SPEC으로 정의하세요 (/alfred:1-plan)
-✅ TRUST 5 원칙 준수: Test First, Readable, Unified, Secured, Trackable
-📝 TodoWrite 활용: 모든 작업을 추적하고 in_progress/completed 상태를 즉시 업데이트하세요
-🌍 언어 경계: 대화와 문서는 conversation_language 사용, 인프라(Skills, agents, commands)는 영어
-🔗 @TAG 체인: SPEC→TEST→CODE→DOC 추적 가능하도록 유지하세요
-⚡ 병렬 실행: 의존성 없는 작업은 동시 실행 가능 (Task tool 병렬 호출)
-💡 Skill 먼저: 특정 도메인 작업은 적절한 Skill을 먼저 확인하세요
-```
-
-**Example: Japanese announcements** (when conversation_language = "ja"):
-
-```
-🎩 SPEC-First: 実装前に必ず要件をSPECとして定義してください (/alfred:1-plan)
-✅ TRUST 5原則の遵守: Test First, Readable, Unified, Secured, Trackable
-📝 TodoWriteの活用: すべてのタスクを追跡し、in_progress/completed状態を即座に更新してください
-🌍 言語の境界: 会話とドキュメントはconversation_languageを使用、インフラはEnglish
-🔗 @TAGチェーン: SPEC→TEST→CODE→DOCのトレーサビリティを維持してください
-⚡ 並列実行: 依存関係のないタスクは同時実行可能 (Task tool並列呼び出し)
-💡 スキルを優先: ドメイン固有のタスクは適切なSkillを最初に確認してください
-```
-
 **Base Items** (Always English - Single Source of Truth):
 
-The `announcements.items` in config.json is always in English. Translation happens at runtime via Alfred's translation pipeline.
+The `announcements.items` in config.json is **always in English**. Translation happens at runtime via Alfred's translation pipeline to support any language.
+
+**Example Translation Results**:
+
+When user selects Korean (conversation_language = "ko"):
+
+```
+(Original English)
+🎩 SPEC-First: Always define requirements as SPEC before implementation (/alfred:1-plan)
+
+(Translated to Korean at runtime)
+🎩 SPEC-First: 구현 전에 항상 요구사항을 SPEC으로 정의하세요 (/alfred:1-plan)
+```
+
+**Key Design Principle**:
+
+- ✅ **Single source**: Only English announcements in config.json
+- ✅ **Automatic translation**: Translates to user's language at runtime (any language)
+- ✅ **Zero duplication**: No pre-translated copies maintained
+- ✅ **Future-proof**: Any new language automatically supported without code changes
 
 スキル 호출:
 필요 시 명시적 Skill() 호출 사용:
