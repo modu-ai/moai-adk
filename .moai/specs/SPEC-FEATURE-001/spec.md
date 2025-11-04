@@ -3,12 +3,25 @@ title: Dynamic Document Reference for spec-builder
 id: SPEC-FEATURE-001
 type: feature
 priority: medium
-status: planning
+status: closed
+resolution: replaced_by_skill
+closed_date: 2025-11-04
 affects: spec-builder agent, project structure
 discussion: #130
 ---
 
 # SPEC-FEATURE-001: Dynamic Document Reference System
+
+## HISTORY
+
+### v1.0.0 (2025-11-04) - CLOSED
+- **Status**: Closed
+- **Reason**: Dynamic Document Reference 기능이 Skill 시스템(`moai-foundation-product`, `moai-foundation-structure`)으로 대체됨
+- **Resolution**: Skill 기반 아키텍처가 더 유연한 문서 참조 제공으로 자연스럽게 해결됨
+- **Author**: @Goos
+- **Note**: 추가 문서 참조는 `/alfred:1-plan` 실행 시 spec-builder가 자동으로 `.moai/project/` 디렉토리 문서 스캔
+
+---
 
 ## Problem Statement
 
