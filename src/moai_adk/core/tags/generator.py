@@ -1,10 +1,10 @@
-# @CODE:GEN-001, @CODE:GEN-002
+# @CODE:TAG-GENERATOR-001, @CODE:TAG-GENERATOR-002
 """TAG ID generation and duplicate detection.
 
 Generates sequential @DOC:DOMAIN-NNN identifiers and detects duplicates
 using ripgrep for performance.
 
-@SPEC:DOC-TAG-001: @DOC tag automatic generation infrastructure
+@SPEC:TAG-ID-GENERATION-001: @DOC tag automatic generation infrastructure
 """
 
 import re
@@ -26,16 +26,16 @@ def generate_doc_tag(domain: str, existing_ids: List[str]) -> str:
         existing_ids: List of existing TAG IDs for this domain
 
     Returns:
-        Next TAG ID (e.g., "@DOC:AUTH-003")
+        Next TAG ID (e.g., "AUTH-003")
 
     Raises:
         ValueError: Invalid domain format
 
     Examples:
         >>> generate_doc_tag("AUTH", [])
-        '@DOC:AUTH-001'
+        'AUTH-001'
         >>> generate_doc_tag("AUTH", ["@DOC:AUTH-001", "@DOC:AUTH-002"])
-        '@DOC:AUTH-003'
+        'AUTH-003'
     """
     # Validate domain format: uppercase alphanumeric and hyphens only
     if not DOMAIN_PATTERN.match(domain):
@@ -77,7 +77,7 @@ def detect_duplicates(domain: str, search_path: str = "docs/") -> List[str]:
 
     Examples:
         >>> detect_duplicates("AUTH", "docs/")
-        ['@DOC:AUTH-001', '@DOC:AUTH-002']
+        ['AUTH-001', 'AUTH-002']
     """
     try:
         result = subprocess.run(
