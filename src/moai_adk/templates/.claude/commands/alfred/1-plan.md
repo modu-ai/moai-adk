@@ -757,7 +757,7 @@ For complete EARS syntax and examples, invoke: `Skill("moai-foundation-ears")`
 
 ### SPEC Metadata Standard
 
-For complete metadata field descriptions, validation rules, and version system guide, invoke: `Skill("moai-alfred-spec-metadata-extended")`
+For complete metadata field descriptions, validation rules, and version system guide, invoke: `Skill("moai-alfred-spec-metadata-validation")`
 
 **Quick reference**:
 - **7 required fields**: id, version, status, created, updated, author, priority
