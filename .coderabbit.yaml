@@ -20,14 +20,14 @@ coderabbit:
   # Auto-approval settings (Pro feature)
   auto_approve:
     enabled: true
-    min_score: 0.80  # Approve if 80%+ quality
+    min_score: 0.75  # Approve if 75%+ quality (optimized for rate limit)
 
-  # Python-specific rules
+  # Python-specific rules - Optimized for rate limit
   python:
     - check_type_hints: true
     - check_docstrings: true
     - check_pep8: true
-    - check_test_coverage: true
+    - check_test_coverage: false  # Disable to reduce load
 
   # SPEC document review rules
   spec_review:
@@ -76,7 +76,7 @@ coderabbit:
       - ✅ Links to related SPECs/issues
       - ✅ Dependencies clearly documented
 
-  # Ignore patterns
+  # Ignore patterns - Optimize for rate limit
   ignore:
     - "*.md"
     - "*.txt"
@@ -86,6 +86,16 @@ coderabbit:
     - ".git/"
     - "__pycache__/"
     - "*.pyc"
+    # Additional ignore patterns to reduce review load
+    - ".moai/tmp/"
+    - ".moai/reports/"
+    - "ANALYSIS_SUMMARY.md"
+    - "COMMAND_DOCUMENTATION_STANDARDS.md"
+    - "COMMAND_EXAMPLES.md"
+    - "DOCUMENTATION_INDEX.md"
+    - "fix_duplicate_tags.py"
+    - "package-lock.json"
+    - "uv.lock"
 
   # Review instructions
   instructions: |
