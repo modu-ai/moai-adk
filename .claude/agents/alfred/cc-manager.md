@@ -71,13 +71,13 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 **Conditional** (based on request):
 - `Skill("moai-alfred-language-detection")` - Detect project language
-- `Skill("moai-alfred-tag-scanning")` - Validate TAG chains
+- `Skill("moai-foundation-tags")` - Validate TAG chains
 - `Skill("moai-foundation-tags")` - TAG policy
 - `Skill("moai-foundation-trust")` - TRUST 5 validation
 - `Skill("moai-alfred-git-workflow")` - Git strategy impact
 - Domain skills (CLI/Data Science/Database/etc) - When relevant
 - Language skills (23 available) - Based on detected language
-- `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` - User clarification
+- `AskUserQuestion 도구 (moai-alfred-ask-user-questions 스킬 참조)` - User clarification
 
 ---
 
