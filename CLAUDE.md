@@ -548,11 +548,11 @@ MoAI-ADK는 Claude Code 세션 로그를 자동 분석하여 데이터 기반으
 **세션 로그 저장 위치**:
 - `~/.claude/projects/*/session-*.json` (Claude Code 자동 생성)
 
-**주간 분석 (SessionStart 훅)**:
+**일일 분석 (SessionStart 훅)**:
 - **자동 트리거**: 세션 시작 시마다 마지막 분석 이후 경과 일수 확인
-- **조건**: 7일 이상 경과했으면 사용자에게 안내
-- **실행 방식**: 사용자가 선택하여 수동 실행 (로컬 머신에서만 가능)
-- 분석 결과는 `.moai/reports/weekly-YYYY-MM-DD.md`에 자동 저장
+- **조건**: 1일 이상 경과했으면 자동 실행
+- **실행 방식**: 자동 실행 (로컬 머신에서만 가능)
+- 분석 결과는 `.moai/reports/daily-YYYY-MM-DD.md`에 자동 저장
 
 **왜 SessionStart 훅인가?**:
 - GitHub Actions는 서버에서 실행되어 `~/.claude/projects/` (로컬 파일)에 접근 불가
@@ -608,6 +608,9 @@ MoAI-ADK는 Claude Code 세션 로그를 자동 분석하여 데이터 기반으
 분석을 수동으로 실행할 수도 있습니다:
 
 ```bash
+# 지난 1일 분석
+python3 .moai/scripts/session_analyzer.py --days 1
+
 # 지난 7일 분석
 python3 .moai/scripts/session_analyzer.py --days 7
 
@@ -616,14 +619,14 @@ python3 .moai/scripts/session_analyzer.py --days 30 --verbose
 
 # 특정 파일에 저장
 python3 .moai/scripts/session_analyzer.py \
-  --days 7 \
+  --days 1 \
   --output .moai/reports/custom-analysis.md \
   --verbose
 ```
 
 ### 분석 리포트 읽기
 
-매주 생성되는 리포트는:
+매일 생성되는 리포트는:
 
 ```markdown
 # MoAI-ADK 세션 메타분석 리포트
@@ -648,7 +651,7 @@ python3 .moai/scripts/session_analyzer.py \
 
 ### 주기적 개선 체크리스트
 
-**매주 검토 항목**:
+**매일 검토 항목**:
 
 - [ ] 새로운 권한 요청 발견했나? → `.claude/settings.json` 업데이트
 - [ ] 반복되는 오류 있나? → CLAUDE.md 회피 전략 추가
