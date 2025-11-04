@@ -94,7 +94,10 @@ The user executes the `/alfred:0-project` command to start analyzing the project
 
 **목적**: 프로젝트 초기화 시작 전에 대화 언어를 설정하고 사용자 닉네임을 등록합니다. 이 설정은 모든 Alfred 프롬프트, 인터뷰 질문 및 생성된 문서에 적용됩니다.
 
-**UX 개선**: 2개 질문을 **1회 배치 호출**로 통합 (50% 상호작용 감소: 2 turns → 1 turn)
+**UX 개선**: 배치 호출로 상호작용 최소화
+- **기본 배치**: 3개 질문을 1회 호출 (3 turns → 1 turn, **66% 상호작용 감소**)
+- **팀 모드 추가 배치**: 2개 질문을 1회 호출 (2 turns → 1 turn, **50% 상호작용 감소**)
+- **전체 효과**: 평균 **60% 상호작용 감소**, 사용자 경험 대폭 개선
 
 ### 0.0 Alfred 자기소개 및 환영 인사
 
@@ -110,16 +113,27 @@ MoAI-ADK의 SuperAgent로서 당신의 프로젝트를 함께 만들어갈 준�
 
 ### 0.1 배치 설계: 언어 선택 + 사용자 닉네임 + GitHub 설정 확인 (1-3회 호출)
 
+#### 📌 배치 호출의 의미
+
+**배치 호출(Batch Invocation)**이란 **여러 개의 관련 질문을 하나의 AskUserQuestion 호출에 담아** 사용자가 한 번에 응답하도록 하는 방식입니다.
+
+| 방식 | 상호작용 수 | 사용자 경험 |
+|------|-----------|----------|
+| **순차 호출** ❌ | 3 turns (질문3 → 대답3) | 반복적, 피곤함 |
+| **배치 호출** ✅ | 1 turn (질문3 → 대답3) | 빠름, 효율적 |
+
 Alfred가 `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` 를 사용하여 **배치 호출**로 필수 정보를 수집합니다:
 
-**기본 배치 (항상 실행)**:
+**기본 배치 (항상 실행: 1회 호출)**:
 
-- 언어 선택
-- 사용자 닉네임
+- Q1: 언어 선택
+- Q2: 에이전트 프롬프트 언어 선택
+- Q3: 사용자 닉네임 입력
 
-**추가 배치 (팀 모드 감지 시)**:
+**추가 배치 (팀 모드 감지 시: 1회 호출)**:
 
-- GitHub "Automatically delete head branches" 설정 확인
+- Q1: GitHub "Automatically delete head branches" 설정 확인
+- Q2: SPEC Git 워크플로우 선택
 
 #### 0.1.1 팀 모드 감지
 
@@ -193,26 +207,74 @@ AskUserQuestion(
 )
 ```
 
-**응답 처리**:
+#### 응답 처리 및 저장 방식
 
-**Q1 (사용자 언어)**:
+**중요**: 이 3개 질문의 응답은 **모두 .moai/config.json에 저장**되며, 이후 모든 Alfred 명령에서 참조됩니다.
 
-- Selected option stored as: `conversation_language: "ko"` (or "en", "ja", "zh", etc.)
+**Q1: 대화 언어 선택**
 
-**Q2 (에이전트 프롬프트 언어)** - **NEW**:
+선택된 옵션 → `.moai/config.json`에 저장:
 
-- **"English (Global Standard)"** → `agent_prompt_language: "english"`
-  - All sub-agent prompts written in English
-  - Recommended for global teams, code consistency, and international collaboration
-  - Project-manager, spec-builder, code-builder use English prompts internally
-- **"Selected Language (Localized)"** → `agent_prompt_language: "localized"`
-  - All sub-agent prompts written in the user-selected language
-  - Recommended for local teams, local documentation, and native language efficiency
-  - Project-manager receives prompts in selected language (e.g., Korean, Japanese)
+```json
+{
+  "language": {
+    "conversation_language": "ko",  // "en", "ja", "zh", "es"
+    "conversation_language_name": "한국어"
+  }
+}
+```
 
-**Q3 (사용자 닉네임)**:
+**영향 범위**:
+- 🗣️ 모든 Alfred 대화 및 출력 (이 언어로 진행)
+- 📄 생성되는 문서 (product.md, structure.md, tech.md, SPEC, 보고서 등)
+- ❓ 이후 질문과 프롬프트 (모두 선택된 언어로)
 
-- Custom nickname stored as: `user.nickname: "GOOS"` (or custom input)
+---
+
+**Q2: 에이전트 프롬프트 언어 선택** (NEW)
+
+선택된 옵션 → `.moai/config.json`의 `language` 섹션에 저장:
+
+```json
+{
+  "language": {
+    "agent_prompt_language": "english"  // 또는 "localized"
+  }
+}
+```
+
+**옵션 설명**:
+
+- **🌐 English (Global Standard)** → `"english"`
+  - 모든 sub-agent 프롬프트가 **영어로 작성**됨
+  - ✅ 장점: 코드 일관성, 팀 협업, 글로벌 표준
+  - ✅ 권장: Claude Pro 사용자 (토큰 15-20% 절감)
+  - project-manager, spec-builder 등이 영어로 작동
+
+- **🗣️ Selected Language (Localized)** → `"localized"`
+  - 모든 sub-agent 프롬프트가 **선택된 언어로 작성**됨
+  - ✅ 장점: 로컬 팀 효율성, 네이티브 언어 편의성
+  - project-manager도 한국어/일본어 등으로 작동
+
+---
+
+**Q3: 사용자 닉네임 입력**
+
+사용자 입력 → `.moai/config.json`에 저장:
+
+```json
+{
+  "user": {
+    "nickname": "GOOS"  // 최대 20자
+  }
+}
+```
+
+**사용 예**:
+
+- Alfred가 대화할 때: "안녕하세요, GOOS님"
+- 생성 문서에: "Project Owner: GOOS"
+- 로그: "User: GOOS | timestamp: 2025-11-04"
 
 #### 0.1.3 팀 모드 추가 배치: GitHub 설정 & Git 워크플로우 선택 (팀 모드만)
 
@@ -267,31 +329,124 @@ AskUserQuestion(
 )
 ```
 
-**응답 처리**:
+#### 응답 처리 및 저장 방식
 
-**Q1 (GitHub 설정)**:
+**Q1 Response (GitHub 설정 - auto_delete_branches)**:
 
-- **"Yes, already enabled"** → `auto_delete_branches: true` 저장
-- **"No, not enabled"** → `auto_delete_branches: false` + 권장사항 저장
-- **"Not sure"** → `auto_delete_branches: null` + 경고 메시지
+**저장될 config.json 구조**:
 
-**Q2 (Git 워크플로우)**:
-
-- **"Feature Branch + PR"** → `spec_git_workflow: "feature_branch"` 저장
-  - `/alfred:1-plan` 실행 시 자동으로 feature 브랜치 생성
-  - git-manager가 PR 기반 워크플로우 적용
-- **"Direct Commit to Develop"** → `spec_git_workflow: "develop_direct"` 저장
-  - `/alfred:1-plan` 실행 시 develop 브랜치에 직접 커밋
-  - 브랜치 생성 과정 생략
-- **"Decide per SPEC"** → `spec_git_workflow: "per_spec"` 저장
-  - `/alfred:1-plan` 실행 시마다 git-manager가 사용자에게 선택 요청
-
-**User Response Example**:
-
+```json
+{
+  "github": {
+    "auto_delete_branches": true,
+    "auto_delete_branches_rationale": "PR 자동 병합 후 원격 브랜치 자동 정리로 저장소 관리 단순화"
+  }
+}
 ```
-Selected Language: 🇰🇷 한국어
-Selected Nickname: GOOS (typed via "Other" option)
+
+**각 옵션별 처리**:
+
+| 선택지 | 저장값 | config.json | 영향 범위 | 팀 워크플로우에서의 의미 |
+|--------|--------|-----------|---------|----------------------|
+| ✅ Yes, already enabled | `true` | `"auto_delete_branches": true` | **최적화**: PR 자동 정리로 깔끔한 저장소 | 팀원이 여러 feature 브랜치를 만들 때, 병합 후 자동 정리되어 저장소 정리 불필요 |
+| ❌ No, not enabled | `false` | `"auto_delete_branches": false` | **수동 관리**: 브랜치 정리를 수동으로 진행 | 브랜치를 수동으로 삭제해야 하므로 추가 작업 필요 |
+| 🤔 Not sure | `null` | `"auto_delete_branches": null` | **경고**: 설정 확인 필요 | 워크플로우 진행은 가능하지만, 나중에 GitHub 설정 변경 권장 |
+
+**사용 예**:
+
+- git-manager가 branch cleanup 타이밍 결정:
+  - `true` → PR 병합 후 자동으로 원격 브랜치 삭제
+  - `false` → 로컬 정리 명령 제공 (`git branch -d`, `git push origin --delete`)
+  - `null` → 사용자에게 수동 정리 알림
+
+---
+
+**Q2 Response (Git 워크플로우 - spec_git_workflow)**:
+
+**저장될 config.json 구조**:
+
+```json
+{
+  "github": {
+    "spec_git_workflow": "feature_branch",
+    "spec_git_workflow_rationale": "SPEC마다 feature 브랜치 생성으로 팀 리뷰 및 추적 가능한 워크플로우 확보"
+  }
+}
 ```
+
+**각 옵션별 처리**:
+
+| 선택지 | 저장값 | 동작 | `/alfred:1-plan` 시 | 팀 협업 영향 |
+|--------|--------|------|-------------------|-----------|
+| 📋 Feature Branch + PR | `"feature_branch"` | 매 SPEC마다 feature/SPEC-{ID} 브랜치 생성 → PR 리뷰 → develop 병합 | 1. 브랜치 자동 생성<br>2. PR 템플릿 생성<br>3. 리뷰자 설정<br>4. Merge 후 삭제 | ✅ 최적: 팀 리뷰, 코드 추적, 감사 이력 완벽<br>⚠️ 약간의 workflow 오버헤드 |
+| 🔄 Direct Commit to Develop | `"develop_direct"` | develop 브랜치에 직접 커밋 (브랜치 생성 생략) | 1. 브랜치 생성 생략<br>2. 직접 develop 커밋<br>3. conflict 시 사용자 수동 해결 | ✅ 빠름: 프로토타입, 개인 프로젝트 적합<br>❌ 팀 리뷰 불가, 이력 추적 어려움 |
+| 🤔 Decide per SPEC | `"per_spec"` | SPEC마다 git-manager가 워크플로우 선택 요청 | 1. AskUserQuestion으로 사용자 선택 요청<br>2. 선택에 따라 1번 또는 2번 경로 실행 | 🔀 유연함: SPEC 특성에 따라 선택 가능<br>⚠️ 매번 결정 필요한 오버헤드 |
+
+**상세 동작 흐름**:
+
+**Feature Branch + PR 선택 시** (`"feature_branch"`):
+```
+/alfred:1-plan SPEC-001 "Feature 설명"
+  ↓
+git-manager: feature/SPEC-001 브랜치 생성
+  ↓
+SPEC 문서 작성 및 커밋
+  ↓
+자동으로 PR 생성 (develop ← feature/SPEC-001)
+  ↓
+팀원들이 PR 리뷰
+  ↓
+승인 후 Merge (auto_delete_branches 설정에 따라 브랜치 정리)
+```
+
+**Direct Commit to Develop 선택 시** (`"develop_direct"`):
+```
+/alfred:1-plan SPEC-001 "Feature 설명"
+  ↓
+git-manager: develop 브랜치 확인
+  ↓
+SPEC 문서 작성 및 develop에 직접 커밋
+  ↓
+(PR 없음, 리뷰 없음)
+```
+
+**Decide per SPEC 선택 시** (`"per_spec"`):
+```
+/alfred:1-plan SPEC-001 "Feature 설명"
+  ↓
+AskUserQuestion: "이 SPEC의 git 워크플로우를 선택하세요"
+  ├─ Feature Branch + PR 선택 → 위 "Feature Branch" 흐름
+  └─ Direct Commit 선택 → 위 "Direct Commit" 흐름
+```
+
+---
+
+**실제 저장되는 config.json 예시** (팀 모드):
+
+```json
+{
+  "language": {
+    "conversation_language": "ko",
+    "conversation_language_name": "한국어",
+    "agent_prompt_language": "localized"
+  },
+  "user": {
+    "nickname": "GOOS"
+  },
+  "github": {
+    "auto_delete_branches": true,
+    "auto_delete_branches_rationale": "PR 병합 후 원격 브랜치 자동 정리로 저장소 관리 단순화",
+    "spec_git_workflow": "feature_branch",
+    "spec_git_workflow_rationale": "SPEC마다 feature 브랜치 생성으로 팀 리뷰 및 추적 가능한 워크플로우"
+  }
+}
+```
+
+**응답 저장 타임라인**:
+
+1. 기본 배치 Q1-Q3 응답 → `.moai/config.json`의 `language`, `user` 섹션 저장
+2. 팀 모드 추가 배치 Q1-Q2 응답 → `.moai/config.json`의 `github` 섹션 저장
+3. Optional 도메인 선택 → `.moai/config.json`의 `stack.selected_domains` 저장
 
 ---
 
