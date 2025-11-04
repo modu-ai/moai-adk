@@ -4,7 +4,16 @@
     "@SPEC:PROJECT-CONFIG-001": "@SPEC:MOAI-CONFIG-001"
   },
   "moai": {
-    "version": "0.14.0"
+    "version": "0.15.2",
+    "update_check_frequency": "daily",
+    "version_check": {
+      "enabled": true,
+      "cache_ttl_hours": 24
+    }
+  },
+  "language": {
+    "conversation_language": "ko",
+    "conversation_language_name": "한국어"
   },
   "constitution": {
     "enforce_tdd": true,
@@ -63,10 +72,8 @@
     "mode": "team",
     "locale": "ko",
     "language": "python",
-    "conversation_language": "ko",
-    "conversation_language_name": "한국어",
     "user_nickname": "GOOS🪿엉아",
-    "template_version": "0.14.0",
+    "template_version": "0.15.2",
     "created_at": "2025-10-27T12:34:56+09:00",
     "initialized": true,
     "optimized": true,
@@ -97,6 +104,25 @@
       "philosophy": "The source of truth for TAGs lives in the code itself"
     }
   },
+  "hooks": {
+    "timeout_ms": 5000,
+    "graceful_degradation": true,
+    "notes": "Hook execution timeout (milliseconds). Set graceful_degradation to true to continue even if a hook fails."
+  },
+  "report_generation": {
+    "enabled": true,
+    "auto_create": false,
+    "warn_user": true,
+    "user_choice": "Minimal",
+    "configured_at": "2025-11-04T19:37:30+09:00",
+    "allowed_locations": [
+      ".moai/docs/",
+      ".moai/reports/",
+      ".moai/analysis/",
+      ".moai/specs/SPEC-*/"
+    ],
+    "notes": "Control automatic report generation. 'enabled': turn on/off, 'auto_create': full (true) vs minimal (false) reports. Helps reduce token usage."
+  },
   "github": {
     "@CODE:GITHUB-CONFIG-001": "@DOC:GITHUB-TEMPLATES-001",
     "templates": {
@@ -107,6 +133,13 @@
       "docs_directory": ".moai/docs",
       "test_directory": "tests",
       "notes": "Configure GitHub templates for project customization. When enable_* flags are false, corresponding MoAI-specific sections are omitted from templates."
-    }
+    },
+    "auto_delete_branches": null,
+    "auto_delete_branches_checked": false,
+    "auto_delete_branches_rationale": "Not configured",
+    "spec_git_workflow": "per_spec",
+    "spec_git_workflow_configured": false,
+    "spec_git_workflow_rationale": "Ask per SPEC (flexible, user controls each workflow)",
+    "notes_new_fields": "auto_delete_branches: whether to auto-delete feature branches after merge. spec_git_workflow: 'feature_branch' (auto), 'develop_direct' (direct), 'per_spec' (ask per SPEC)"
   }
 }

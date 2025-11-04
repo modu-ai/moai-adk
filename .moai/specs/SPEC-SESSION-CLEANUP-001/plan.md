@@ -354,7 +354,7 @@ if user_choice in ["새 세션", "세션 완료"]:
 
 ### Dependencies
 - **SPEC-ALF-WORKFLOW-001**: Alfred 4-Step Workflow (완료)
-- `moai-alfred-interactive-questions` skill (이미 구현됨)
+- `moai-alfred-ask-user-questions` skill (이미 구현됨)
 
 ### Timeline
 - **Phase 1**: 4개 커맨드 파일 수정 (Step 1.1-1.4)

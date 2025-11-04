@@ -1,0 +1,38 @@
+# 서브 에이전트 카탈로그
+
+`.claude/agents/alfred/*.md`는 Alfred가 상황에 따라 호출하는 전문 에이전트의 역할과 행동 지침을 정의합니다. 모든 에이전트는 공통적으로 `AskUserQuestion`, `TodoWrite`, `Bash`, `Read/Write/Edit` 등 필요한 도구 집합을 갖고 있으며, 명령어 지침을 우선시하는 계층 구조를 따릅니다.
+
+## 핵심 에이전트
+
+| 에이전트 | 역할/호출 조건 | 주요 책임 |
+| -------- | --------------- | --------- |
+| `project-manager` | `/alfred:0-project` | 프로젝트 구조 생성, `.moai/config.json` 초기화, 템플릿 버전 기록 |
+| `spec-builder` | `/alfred:1-plan` | EARS SPEC 작성, 요구사항 정제, 사용자 수준에 따른 설명 조정 |
+| `implementation-planner` | `/alfred:2-run` Phase 1 | SPEC 분석, 구현 전략/리스크/테스트 플랜 작성 |
+| `tdd-implementer` | `/alfred:2-run` Phase 2 | RED → GREEN → REFACTOR 사이클 실행, 커밋 준비 |
+| `quality-gate` | `/alfred:2-run` Phase 2.5, `/alfred:3-sync` | 테스트/린트/커버리지/보안 검사, TRUST 5 원칙 검증 |
+| `doc-syncer` | `/alfred:3-sync` | README·CHANGELOG·보고서 업데이트, 문서 구조 검증 |
+| `tag-agent` | `/alfred:3-sync`, TAG 점검 필요시 | @SPEC/@TEST/@CODE/@DOC 체인 검증, 고아 TAG 탐지 |
+| `git-manager` | 전 단계 공통 | 브랜치/PR/커밋 관리, 체크포인트 생성, 릴리스 준비 |
+| `debug-helper` | 오류 발생 시 자동 호출 | 로그 분석, 원인 파악, 재현 시나리오 및 Fix 전략 제시 |
+| `trust-checker` | trust 검증 필요 시 | 코드 품질, 보안 규칙, 테스트 커버리지 평가 |
+| `cc-manager` | Claude 설정 변경 시 | 명령어/에이전트/Skill 템플릿 관리, 설정 최적화 |
+| `skill-factory` | 신규 Skill 작성/업데이트 시 | Skill 생성 워크플로우 안내, 베스트 프랙티스 수집 |
+
+## 전문 분야 에이전트
+
+| 에이전트 | 주요 분야 | 트리거 키워드 |
+| -------- | --------- | ------------- |
+| `backend-expert` | API, 서버, 데이터베이스, 인증 | backend, api, server, database, authentication |
+| `frontend-expert` | UI 컴포넌트, 상태 관리, 클라이언트 아키텍처 | frontend, ui, component, client-side, web |
+| `ui-ux-expert` | 디자인 시스템, 접근성, UX 전략 | design, ux, accessibility, prototype, figma |
+| `devops-expert` | CI/CD, 인프라, 컨테이너, 배포 | deployment, docker, kubernetes, pipeline, infrastructure |
+
+> 전문 에이전트는 SPEC 키워드를 스캔하거나 사용자가 명시적으로 요청하면 자동으로 호출되며, 관련 Domain/Language Skills를 함께 로딩합니다.
+
+## 에이전트 활용 팁
+
+- **행동 우선순위**: 모든 에이전트는 소속 명령어의 지침을 최우선으로 따르고, 충돌 시 상위 명령어의 요구사항을 우선합니다.
+- **인간 친화적 설명**: 파일에는 Beginner/Intermediate/Expert 레벨에 따른 안내 방식이 정의되어 있어, 사용자 경험에 맞는 피드백을 제공합니다.
+- **TodoWrite 연동**: 구현 중 발견한 후속 작업은 `TodoWrite` 도구로 기록하여 `/alfred:3-sync`나 회고 시 다시 확인할 수 있습니다.
+- **확장**: 자체 에이전트를 추가하고 싶다면 `.claude/agents/alfred/`에 새로운 파일을 추가한 뒤 `moai-adk update` 후에도 유지되도록 백업 규칙을 설정하세요.

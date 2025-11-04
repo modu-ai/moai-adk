@@ -351,8 +351,14 @@ class TemplateProcessor:
                 # Smart merge for settings.json
                 if item.name == "settings.json":
                     self._merge_settings_json(item, dst_item)
+                    # Apply variable substitution to merged settings.json (for cross-platform Hook paths)
+                    if self.context:
+                        content = dst_item.read_text(encoding='utf-8')
+                        content, file_warnings = self._substitute_variables(content)
+                        dst_item.write_text(content, encoding='utf-8')
+                        all_warnings.extend(file_warnings)
                     if not silent:
-                        console.print("   🔄 settings.json merged (env variables preserved)")
+                        console.print("   🔄 settings.json merged (Hook paths configured for your OS)")
                 else:
                     # FORCE OVERWRITE: Always copy other files (no skip)
                     warnings = self._copy_file_with_substitution(item, dst_item)
@@ -447,8 +453,17 @@ class TemplateProcessor:
         # Smart merge: preserve existing "## Project Information" section
         if dst.exists():
             self._merge_claude_md(src, dst)
+            # Substitute variables in the merged content
+            if self.context:
+                content = dst.read_text(encoding='utf-8')
+                content, warnings = self._substitute_variables(content)
+                dst.write_text(content, encoding='utf-8')
+                if warnings and not silent:
+                    console.print("[yellow]⚠️ Template warnings:[/yellow]")
+                    for warning in set(warnings):
+                        console.print(f"   {warning}")
             if not silent:
-                console.print("   🔄 CLAUDE.md merged (project information preserved)")
+                console.print("   🔄 CLAUDE.md merged (project information preserved, variables substituted)")
         else:
             # First time: just copy
             self._copy_file_with_substitution(src, dst)

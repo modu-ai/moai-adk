@@ -1,6 +1,7 @@
 ---
 name: alfred:0-project
 description: "Initialize project metadata and documentation"
+argument-hint: "[setting|update]"
 allowed-tools:
   - Read
   - Write
@@ -17,7 +18,7 @@ allowed-tools:
 
 # 📋 MoAI-ADK Step 0: Initialize/Update Universal Language Support Project Documentation
 
-> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
+> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
 ## 🎯 Command Purpose
 
@@ -94,32 +95,231 @@ The user executes the `/alfred:0-project` command to start analyzing the project
 
 **목적**: 프로젝트 초기화 시작 전에 대화 언어를 설정하고 사용자 닉네임을 등록합니다. 이 설정은 모든 Alfred 프롬프트, 인터뷰 질문 및 생성된 문서에 적용됩니다.
 
-**UX 개선**: 2개 질문을 **1회 배치 호출**로 통합 (50% 상호작용 감소: 2 turns → 1 turn)
+**UX 개선**: 배치 호출로 상호작용 최소화
+- **기본 배치**: 3개 질문을 1회 호출 (3 turns → 1 turn, **66% 상호작용 감소**)
+- **팀 모드 추가 배치**: 2개 질문을 1회 호출 (2 turns → 1 turn, **50% 상호작용 감소**)
+- **전체 효과**: 평균 **60% 상호작용 감소**, 사용자 경험 대폭 개선
 
-### 0.0 Alfred 자기소개 및 환영 인사
+### 0.0 명령어 진입점: 서브커맨드 파싱 (신규 - 명령형 지침)
 
-Alfred가 첫 상호작용으로 다음과 같이 인사합니다:
+**Your immediate task**: Detect which subcommand the user provided and route to the correct workflow.
 
-```
-안녕하세요! 👋 저는 Alfred입니다.
-MoAI-ADK의 SuperAgent로서 당신의 프로젝트를 함께 만들어갈 준비가 되어 있습니다.
+#### ⚡ Step 1: Check what subcommand the user provided
 
-앞으로의 모든 대화에서 당신을 편하게 부르기 위해,
-먼저 기본 설정을 진행하겠습니다.
-```
+**Look at the user's command carefully**:
+- Did they type `/alfred:0-project setting`?
+- Did they type `/alfred:0-project update`?
+- Did they type just `/alfred:0-project` (no subcommand)?
+- Did they type something invalid like `/alfred:0-project xyz`?
 
-### 0.1 배치 설계: 언어 선택 + 사용자 닉네임 + GitHub 설정 확인 (1-3회 호출)
+#### ⚡ Step 2: Route based on subcommand
 
-Alfred가 `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` 를 사용하여 **배치 호출**로 필수 정보를 수집합니다:
+**IF user typed: `/alfred:0-project setting`**:
+1. Print: "🔧 Entering Settings Mode - Modify existing project configuration"
+2. Jump to **STEP 0-SETTING** below
+3. Skip ALL other sections
+4. Stop after completing STEP 0-SETTING
+5. **DO NOT proceed** to STEP 1, 2, or 3
 
-**기본 배치 (항상 실행)**:
+**ELSE IF user typed: `/alfred:0-project update`**:
+1. Print: "🔄 Entering Template Update Mode - Optimize templates after moai-adk update"
+2. Jump to **STEP 0-UPDATE** below
+3. Skip ALL other sections
+4. Stop after completing STEP 0-UPDATE
+5. **DO NOT proceed** to STEP 1, 2, or 3
 
-- 언어 선택
-- 사용자 닉네임
+**ELSE IF user typed: `/alfred:0-project` (no subcommand, nothing after)**:
+1. Check if the file `.moai/config.json` exists in the current directory
+   - Read the file path: `.moai/config.json`
+   - IF file exists → Print "✅ Project is already initialized!" AND jump to **STEP 0.1.0**
+   - IF file does NOT exist → Print "🚀 Starting first-time project initialization..." AND jump to **STEP 0.1.1**
 
-**추가 배치 (팀 모드 감지 시)**:
+**ELSE IF user typed an invalid subcommand** (like `/alfred:0-project xyz`):
+1. Print this error message:
+   ```
+   ❌ Unknown subcommand: xyz
 
-- GitHub "Automatically delete head branches" 설정 확인
+   Valid subcommands:
+   /alfred:0-project          - Auto-detect mode (first-time or already initialized)
+   /alfred:0-project setting  - Modify existing settings
+   /alfred:0-project update   - Optimize templates after moai-adk update
+
+   Example: /alfred:0-project setting
+   ```
+2. Exit immediately
+3. **DO NOT make any changes**
+
+#### ⚡ Step 3: CRITICAL RULES
+
+⚠️ **IMPORTANT - Read this carefully**:
+- Execute ONLY ONE mode per command invocation
+- **DO NOT execute multiple modes** (e.g., do not run setting mode AND first-time setup in the same invocation)
+- Stop and exit immediately after completing the selected mode
+- **DO NOT jump to STEP 1 or later** unless that is the explicitly detected mode
+- **DO NOT guess** which mode the user wanted - always detect from their actual command
+
+### 0.1 Already Initialized Check (conditional entry point)
+
+**Purpose**: Determine whether this is a first-time initialization or a subsequent run on an already-initialized project.
+
+**Execution Condition**:
+- Default mode (no subcommand): `/alfred:0-project` executed with no arguments
+- Comes after STEP 0.0 subcommand parsing
+
+**Implementation Steps**:
+
+1. **Check if `.moai/config.json` exists**:
+
+   ```bash
+   if [ -f .moai/config.json ]; then
+       # Project is already initialized
+       # Proceed to "0.1.0 Already Initialized Flow"
+   else
+       # Project is new/uninitialized
+       # Proceed to "0.1.1 First-time Setup Flow"
+   fi
+   ```
+
+2. **Display appropriate message**:
+
+   **If already initialized**:
+   ```markdown
+   ✅ Project is already initialized!
+
+   Current settings:
+   - Language: 한국어 (ko)
+   - Nickname: GOOS
+
+   What would you like to do?
+   ```
+
+   **If not initialized**:
+   ```markdown
+   🚀 Starting first-time project initialization...
+   ```
+
+---
+
+### 0.1.0 Already Initialized Flow (when config.json exists) - 명령형 지침
+
+**Purpose**: Show options for an already-initialized project and handle user selection.
+
+#### Step 1: Load and display current configuration
+
+1. **Read `.moai/config.json`** to get current settings
+2. **Extract and display** these values:
+   ```
+   ✅ **Language**: [value from language.conversation_language]
+   ✅ **Nickname**: [value from user.nickname]
+   ✅ **Agent Prompt Language**: [value from language.agent_prompt_language]
+   ✅ **GitHub Auto-delete Branches**: [value from github.auto_delete_branches]
+   ✅ **SPEC Git Workflow**: [value from github.spec_git_workflow]
+   ✅ **Report Generation**: [value from report_generation.user_choice]
+   ```
+
+#### Step 2: Ask the user what they want to do
+
+**Present these 4 options** to the user (let them choose one):
+
+1. **"🔧 Modify Settings"** - Change language, nickname, GitHub settings, or reports config
+2. **"📋 Review Current Setup"** - Display full current project configuration
+3. **"🔄 Re-initialize"** - Run full initialization again (with warning)
+4. **"⏸️ Cancel"** - Exit without making any changes
+
+**Wait for the user to select one option**.
+
+#### Step 3: Handle user's selection
+
+**IF user selected: "🔧 Modify Settings"**:
+1. Print: "🔧 Entering Settings Mode..."
+2. **Jump to STEP 0-SETTING** (same as `/alfred:0-project setting`)
+3. Let STEP 0-SETTING handle the rest
+4. Stop after STEP 0-SETTING completes
+
+**ELSE IF user selected: "📋 Review Current Setup"**:
+1. Print this header: `## Current Project Configuration`
+2. Show all current settings (from config.json):
+   ```
+   ✅ **Language**: [value]
+   ✅ **Nickname**: [value]
+   ✅ **Agent Prompt Language**: [value]
+   ✅ **GitHub Auto-delete Branches**: [value]
+   ✅ **SPEC Git Workflow**: [value]
+   ✅ **Report Generation**: [value]
+
+   📝 Configuration saved in: .moai/config.json
+   📁 Project files: .moai/project/
+
+   To modify settings, run: /alfred:0-project setting
+   ```
+3. Print: "✅ Configuration review complete."
+4. Exit (stop the command)
+
+**ELSE IF user selected: "🔄 Re-initialize"**:
+1. Print this warning:
+   ```
+   ⚠️ WARNING: This will re-run the full project initialization
+
+   Your existing files will be preserved in:
+   - Backup: .moai-backups/[TIMESTAMP]/
+   - Current: .moai/project/*.md (will be UPDATED)
+   ```
+2. **Ask the user**: "Are you sure you want to continue? Type 'yes' to confirm or anything else to cancel"
+3. **IF user typed 'yes'**:
+   - Print: "🔄 Starting full re-initialization..."
+   - **Jump to STEP 0.1.1** (First-time Setup)
+   - Let STEP 0.1.1 handle the rest
+4. **ELSE** (user typed anything else):
+   - Print: "✅ Re-initialization cancelled."
+   - Exit (stop the command)
+
+**ELSE IF user selected: "⏸️ Cancel"**:
+1. Print:
+   ```
+   ✅ Exiting without changes.
+
+   Your project remains initialized with current settings.
+   To modify settings later, run: /alfred:0-project setting
+   ```
+2. Exit immediately (stop the command)
+
+---
+
+### 0.1.1 First-time Setup Flow (when config.json doesn't exist)
+
+**Purpose**: Collect initial language, nickname, and team mode settings for a new project.
+
+**Flow**:
+
+1. Display welcome message
+2. Proceed to batched questions (STEP 0.1.2 below)
+3. Save responses to `.moai/config.json`
+
+---
+
+### 0.1.2 배치 설계: 언어 선택 + 사용자 닉네임 + GitHub 설정 확인 (1-3회 호출)
+
+#### 📌 배치 호출의 의미
+
+**배치 호출(Batch Invocation)**이란 **여러 개의 관련 질문을 하나의 AskUserQuestion 호출에 담아** 사용자가 한 번에 응답하도록 하는 방식입니다.
+
+| 방식 | 상호작용 수 | 사용자 경험 |
+|------|-----------|----------|
+| **순차 호출** ❌ | 3 turns (질문3 → 대답3) | 반복적, 피곤함 |
+| **배치 호출** ✅ | 1 turn (질문3 → 대답3) | 빠름, 효율적 |
+
+Alfred가 `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` 를 사용하여 **배치 호출**로 필수 정보를 수집합니다:
+
+**기본 배치 (항상 실행: 1회 호출)**:
+
+- Q1: 언어 선택
+- Q2: 에이전트 프롬프트 언어 선택
+- Q3: 사용자 닉네임 입력
+
+**추가 배치 (팀 모드 감지 시: 1회 호출)**:
+
+- Q1: GitHub "Automatically delete head branches" 설정 확인
+- Q2: SPEC Git 워크플로우 선택
 
 #### 0.1.1 팀 모드 감지
 
@@ -193,26 +393,74 @@ AskUserQuestion(
 )
 ```
 
-**응답 처리**:
+#### 응답 처리 및 저장 방식
 
-**Q1 (사용자 언어)**:
+**중요**: 이 3개 질문의 응답은 **모두 .moai/config.json에 저장**되며, 이후 모든 Alfred 명령에서 참조됩니다.
 
-- Selected option stored as: `conversation_language: "ko"` (or "en", "ja", "zh", etc.)
+**Q1: 대화 언어 선택**
 
-**Q2 (에이전트 프롬프트 언어)** - **NEW**:
+선택된 옵션 → `.moai/config.json`에 저장:
 
-- **"English (Global Standard)"** → `agent_prompt_language: "english"`
-  - All sub-agent prompts written in English
-  - Recommended for global teams, code consistency, and international collaboration
-  - Project-manager, spec-builder, code-builder use English prompts internally
-- **"Selected Language (Localized)"** → `agent_prompt_language: "localized"`
-  - All sub-agent prompts written in the user-selected language
-  - Recommended for local teams, local documentation, and native language efficiency
-  - Project-manager receives prompts in selected language (e.g., Korean, Japanese)
+```json
+{
+  "language": {
+    "conversation_language": "ko",  // "en", "ja", "zh", "es"
+    "conversation_language_name": "한국어"
+  }
+}
+```
 
-**Q3 (사용자 닉네임)**:
+**영향 범위**:
+- 🗣️ 모든 Alfred 대화 및 출력 (이 언어로 진행)
+- 📄 생성되는 문서 (product.md, structure.md, tech.md, SPEC, 보고서 등)
+- ❓ 이후 질문과 프롬프트 (모두 선택된 언어로)
 
-- Custom nickname stored as: `user.nickname: "GOOS"` (or custom input)
+---
+
+**Q2: 에이전트 프롬프트 언어 선택** (NEW)
+
+선택된 옵션 → `.moai/config.json`의 `language` 섹션에 저장:
+
+```json
+{
+  "language": {
+    "agent_prompt_language": "english"  // 또는 "localized"
+  }
+}
+```
+
+**옵션 설명**:
+
+- **🌐 English (Global Standard)** → `"english"`
+  - 모든 sub-agent 프롬프트가 **영어로 작성**됨
+  - ✅ 장점: 코드 일관성, 팀 협업, 글로벌 표준
+  - ✅ 권장: Claude Pro 사용자 (토큰 15-20% 절감)
+  - project-manager, spec-builder 등이 영어로 작동
+
+- **🗣️ Selected Language (Localized)** → `"localized"`
+  - 모든 sub-agent 프롬프트가 **선택된 언어로 작성**됨
+  - ✅ 장점: 로컬 팀 효율성, 네이티브 언어 편의성
+  - project-manager도 한국어/일본어 등으로 작동
+
+---
+
+**Q3: 사용자 닉네임 입력**
+
+사용자 입력 → `.moai/config.json`에 저장:
+
+```json
+{
+  "user": {
+    "nickname": "GOOS"  // 최대 20자
+  }
+}
+```
+
+**사용 예**:
+
+- Alfred가 대화할 때: "안녕하세요, GOOS님"
+- 생성 문서에: "Project Owner: GOOS"
+- 로그: "User: GOOS | timestamp: 2025-11-04"
 
 #### 0.1.3 팀 모드 추가 배치: GitHub 설정 & Git 워크플로우 선택 (팀 모드만)
 
@@ -267,31 +515,201 @@ AskUserQuestion(
 )
 ```
 
-**응답 처리**:
+#### 응답 처리 및 저장 방식
 
-**Q1 (GitHub 설정)**:
+**Q1 Response (GitHub 설정 - auto_delete_branches)**:
 
-- **"Yes, already enabled"** → `auto_delete_branches: true` 저장
-- **"No, not enabled"** → `auto_delete_branches: false` + 권장사항 저장
-- **"Not sure"** → `auto_delete_branches: null` + 경고 메시지
+**저장될 config.json 구조**:
 
-**Q2 (Git 워크플로우)**:
-
-- **"Feature Branch + PR"** → `spec_git_workflow: "feature_branch"` 저장
-  - `/alfred:1-plan` 실행 시 자동으로 feature 브랜치 생성
-  - git-manager가 PR 기반 워크플로우 적용
-- **"Direct Commit to Develop"** → `spec_git_workflow: "develop_direct"` 저장
-  - `/alfred:1-plan` 실행 시 develop 브랜치에 직접 커밋
-  - 브랜치 생성 과정 생략
-- **"Decide per SPEC"** → `spec_git_workflow: "per_spec"` 저장
-  - `/alfred:1-plan` 실행 시마다 git-manager가 사용자에게 선택 요청
-
-**User Response Example**:
-
+```json
+{
+  "github": {
+    "auto_delete_branches": true,
+    "auto_delete_branches_rationale": "PR 자동 병합 후 원격 브랜치 자동 정리로 저장소 관리 단순화"
+  }
+}
 ```
-Selected Language: 🇰🇷 한국어
-Selected Nickname: GOOS (typed via "Other" option)
+
+**각 옵션별 처리**:
+
+| 선택지 | 저장값 | config.json | 영향 범위 | 팀 워크플로우에서의 의미 |
+|--------|--------|-----------|---------|----------------------|
+| ✅ Yes, already enabled | `true` | `"auto_delete_branches": true` | **최적화**: PR 자동 정리로 깔끔한 저장소 | 팀원이 여러 feature 브랜치를 만들 때, 병합 후 자동 정리되어 저장소 정리 불필요 |
+| ❌ No, not enabled | `false` | `"auto_delete_branches": false` | **수동 관리**: 브랜치 정리를 수동으로 진행 | 브랜치를 수동으로 삭제해야 하므로 추가 작업 필요 |
+| 🤔 Not sure | `null` | `"auto_delete_branches": null` | **경고**: 설정 확인 필요 | 워크플로우 진행은 가능하지만, 나중에 GitHub 설정 변경 권장 |
+
+**사용 예**:
+
+- git-manager가 branch cleanup 타이밍 결정:
+  - `true` → PR 병합 후 자동으로 원격 브랜치 삭제
+  - `false` → 로컬 정리 명령 제공 (`git branch -d`, `git push origin --delete`)
+  - `null` → 사용자에게 수동 정리 알림
+
+---
+
+**Q2 Response (Git 워크플로우 - spec_git_workflow)**:
+
+**저장될 config.json 구조**:
+
+```json
+{
+  "github": {
+    "spec_git_workflow": "feature_branch",
+    "spec_git_workflow_rationale": "SPEC마다 feature 브랜치 생성으로 팀 리뷰 및 추적 가능한 워크플로우 확보"
+  }
+}
 ```
+
+**각 옵션별 처리**:
+
+| 선택지 | 저장값 | 동작 | `/alfred:1-plan` 시 | 팀 협업 영향 |
+|--------|--------|------|-------------------|-----------|
+| 📋 Feature Branch + PR | `"feature_branch"` | 매 SPEC마다 feature/SPEC-{ID} 브랜치 생성 → PR 리뷰 → develop 병합 | 1. 브랜치 자동 생성<br>2. PR 템플릿 생성<br>3. 리뷰자 설정<br>4. Merge 후 삭제 | ✅ 최적: 팀 리뷰, 코드 추적, 감사 이력 완벽<br>⚠️ 약간의 workflow 오버헤드 |
+| 🔄 Direct Commit to Develop | `"develop_direct"` | develop 브랜치에 직접 커밋 (브랜치 생성 생략) | 1. 브랜치 생성 생략<br>2. 직접 develop 커밋<br>3. conflict 시 사용자 수동 해결 | ✅ 빠름: 프로토타입, 개인 프로젝트 적합<br>❌ 팀 리뷰 불가, 이력 추적 어려움 |
+| 🤔 Decide per SPEC | `"per_spec"` | SPEC마다 git-manager가 워크플로우 선택 요청 | 1. AskUserQuestion으로 사용자 선택 요청<br>2. 선택에 따라 1번 또는 2번 경로 실행 | 🔀 유연함: SPEC 특성에 따라 선택 가능<br>⚠️ 매번 결정 필요한 오버헤드 |
+
+**상세 동작 흐름**:
+
+**Feature Branch + PR 선택 시** (`"feature_branch"`):
+```
+/alfred:1-plan SPEC-001 "Feature 설명"
+  ↓
+git-manager: feature/SPEC-001 브랜치 생성
+  ↓
+SPEC 문서 작성 및 커밋
+  ↓
+자동으로 PR 생성 (develop ← feature/SPEC-001)
+  ↓
+팀원들이 PR 리뷰
+  ↓
+승인 후 Merge (auto_delete_branches 설정에 따라 브랜치 정리)
+```
+
+**Direct Commit to Develop 선택 시** (`"develop_direct"`):
+```
+/alfred:1-plan SPEC-001 "Feature 설명"
+  ↓
+git-manager: develop 브랜치 확인
+  ↓
+SPEC 문서 작성 및 develop에 직접 커밋
+  ↓
+(PR 없음, 리뷰 없음)
+```
+
+**Decide per SPEC 선택 시** (`"per_spec"`):
+```
+/alfred:1-plan SPEC-001 "Feature 설명"
+  ↓
+AskUserQuestion: "이 SPEC의 git 워크플로우를 선택하세요"
+  ├─ Feature Branch + PR 선택 → 위 "Feature Branch" 흐름
+  └─ Direct Commit 선택 → 위 "Direct Commit" 흐름
+```
+
+---
+
+**실제 저장되는 config.json 예시** (팀 모드):
+
+```json
+{
+  "language": {
+    "conversation_language": "ko",
+    "conversation_language_name": "한국어",
+    "agent_prompt_language": "localized"
+  },
+  "user": {
+    "nickname": "GOOS"
+  },
+  "github": {
+    "auto_delete_branches": true,
+    "auto_delete_branches_rationale": "PR 병합 후 원격 브랜치 자동 정리로 저장소 관리 단순화",
+    "spec_git_workflow": "feature_branch",
+    "spec_git_workflow_rationale": "SPEC마다 feature 브랜치 생성으로 팀 리뷰 및 추적 가능한 워크플로우"
+  }
+}
+```
+
+**응답 저장 타임라인**:
+
+1. 기본 배치 Q1-Q3 응답 → `.moai/config.json`의 `language`, `user` 섹션 저장
+2. 팀 모드 추가 배치 Q1-Q2 응답 → `.moai/config.json`의 `github` 섹션 저장
+3. Optional 도메인 선택 → `.moai/config.json`의 `stack.selected_domains` 저장
+
+---
+
+### 0.1.3.5 Report Generation Settings (All Modes - Optional)
+
+**Purpose**: Control automatic report generation frequency to manage token usage and improve performance.
+
+**When to ask**: After GitHub settings (team mode) or immediately after nickname (personal mode)
+
+**Batched Design**: 1 question with token cost warning
+
+**Important**: This question includes a detailed token warning to inform users about API costs before enabling automatic reports.
+
+**Example AskUserQuestion Call**:
+
+```python
+AskUserQuestion(
+    questions=[
+        {
+            "question": "How would you like to handle automatic report generation?\n\n⚠️ TOKEN COST WARNING:\n- Enable: ~50-60 tokens per report × 3-5 reports per command = 150-300 tokens/session\n- Minimal: ~20-30 tokens per report × 1-2 reports per command = 20-60 tokens/session\n- Disable: ~0 tokens (0 reports generated)\n\nFor Claude Pro $20 users: Token usage directly impacts API costs (~$0.02 per 1K tokens)",
+            "header": "Report Generation",
+            "multiSelect": false,
+            "options": [
+                {
+                    "label": "📊 Enable (Default)",
+                    "description": "Full analysis reports (50-60 tokens each). Best for detailed documentation. ~250-300 tokens/session"
+                },
+                {
+                    "label": "⚡ Minimal (Recommended)",
+                    "description": "Essential reports only, reduced output. ~40-60 tokens/session. 80% token reduction"
+                },
+                {
+                    "label": "🚫 Disable",
+                    "description": "No automatic reports. Fastest execution, zero report tokens. Manual generation available on request"
+                }
+            ]
+        }
+    ]
+)
+```
+
+**Response Processing**:
+
+The selected option determines `.moai/config.json` settings:
+
+| Selection | Saved Setting | Config Value | Effect |
+|-----------|---------------|--------------|--------|
+| **📊 Enable** | `enabled: true, auto_create: true` | Full reports | Normal behavior: 3-5 reports per command |
+| **⚡ Minimal** | `enabled: true, auto_create: false` | Essential only | 1-2 essential reports per command (~60-70% reduction) |
+| **🚫 Disable** | `enabled: false, auto_create: false` | No reports | Zero report generation unless explicitly requested |
+
+**Saved Configuration**:
+
+```json
+{
+  "report_generation": {
+    "enabled": true,
+    "auto_create": false,
+    "warn_user": true,
+    "user_choice": "Minimal",
+    "configured_at": "2025-11-04T12:00:00Z",
+    "allowed_locations": [
+      ".moai/docs/",
+      ".moai/reports/",
+      ".moai/analysis/",
+      ".moai/specs/SPEC-*/"
+    ]
+  }
+}
+```
+
+**Usage in sub-agents**:
+
+- Alfred commands check `report_generation.enabled` before generating reports
+- `/alfred:3-sync`: Respects this setting when creating sync reports
+- `doc-syncer` agent: Skips report generation if `enabled: false`
+- User can manually request reports at any time with explicit command (e.g., "generate analysis report")
 
 ---
 
@@ -299,7 +717,7 @@ Selected Nickname: GOOS (typed via "Other" option)
 
 **Purpose**: Identify project domains to activate domain-expert agents for specialized guidance.
 
-**When to ask**: After language/nickname/GitHub settings complete
+**When to ask**: After language/nickname/GitHub settings/report generation settings complete
 
 **Batched Design**: Domain selection integrated into initial batch OR asked separately based on user preference
 
@@ -508,6 +926,836 @@ Alfred가 선택된 언어, 닉네임, 그리고 팀 모드 설정을 다음과 
 
 ---
 
+## 🎛️ STEP 0-SETTING: Modify existing project settings (subcommand mode) - 명령형 지침
+
+**Purpose**: User wants to change specific settings without re-running the full initialization.
+
+**When to execute this step**:
+- User runs `/alfred:0-project setting`
+- OR User selected "🔧 Modify Settings" from the Already Initialized menu
+
+### 0-SETTING.1 Load and display current configuration
+
+**Your task**: Read `.moai/config.json` and show the user what their current settings are.
+
+**Steps**:
+
+1. **Read the configuration file**:
+   - Load the file: `.moai/config.json`
+   - Extract these values:
+     * Language: `language.conversation_language` (e.g., "ko", "en")
+     * Nickname: `user.nickname` (e.g., "GOOS")
+     * Agent Prompt Language: `language.agent_prompt_language` (e.g., "localized")
+     * GitHub auto-delete: `github.auto_delete_branches` (true/false)
+     * SPEC workflow: `github.spec_git_workflow` (e.g., "feature_branch")
+     * Report generation: `report_generation.user_choice` (e.g., "Minimal")
+     * Domains: `stack.selected_domains` (e.g., ["frontend", "backend"])
+
+2. **Display to the user**:
+   ```
+   ## Current Project Settings
+
+   ✅ **Language**: [value from config.json]
+   ✅ **Nickname**: [value from config.json]
+   ✅ **Agent Prompt Language**: [value from config.json]
+   ✅ **GitHub Auto-delete Branches**: [value from config.json]
+   ✅ **SPEC Git Workflow**: [value from config.json]
+   ✅ **Report Generation**: [value from config.json]
+   ✅ **Selected Domains**: [value from config.json]
+   ```
+
+3. **Tell the user**: "Which settings would you like to modify?"
+
+### 0-SETTING.2 Ask which settings to modify
+
+**Your task**: Ask the user to select which settings they want to change.
+
+**Tell the user**: "Select the settings you want to modify (you can choose multiple):"
+
+**Present these 5 options** (allow multiple selections):
+
+1. **"🌍 Language & Agent Prompt Language"** - Change conversation language or agent language
+2. **"👤 Nickname"** - Change user nickname (max 20 characters)
+3. **"🔧 GitHub Settings"** - Change auto-delete branches or SPEC git workflow
+4. **"📊 Report Generation"** - Change report generation settings
+5. **"🎯 Project Domains"** - Add or remove project domain selections
+
+**Wait for the user to select one or more options**.
+
+**After the user selects**, determine which sections were chosen:
+- If "🌍 Language..." selected → Will ask in the LANGUAGE section
+- If "👤 Nickname" selected → Will ask in the NICKNAME section
+- If "🔧 GitHub Settings" selected → Will ask in the GITHUB section
+- If "📊 Report Generation" selected → Will ask in the REPORTS section
+- If "🎯 Project Domains" selected → Will ask in the DOMAINS section
+
+### 0-SETTING.3 Collect new values (batched questions)
+
+**Your task**: Based on user's selections from STEP 0-SETTING.2, ask for new values for ONLY the sections they selected.
+
+**IMPORTANT**: Only ask questions for the sections the user selected. Skip all unselected sections.
+
+---
+
+#### Batch 1: LANGUAGE Section
+
+**IF user selected "🌍 Language & Agent Prompt Language"**:
+
+**Ask the user these TWO questions together** (batched in one interaction):
+
+**Question 1**: "Which conversation language do you prefer?"
+
+**Present these options**:
+- 🌍 **English** - Global standard, widest community support
+- 🇰🇷 **한국어** - Korean language for conversation and reports
+- 🇯🇵 **日本語** - Japanese language for conversation and reports
+- 🇨🇳 **中文** - Chinese language for conversation and reports
+
+**Question 2**: "Which agent prompt language should Alfred use?"
+
+**Present these options**:
+- 🌐 **English (Global Standard)** - All internal agent prompts in English (infrastructure stability)
+- 🗣️ **Selected Language (Localized)** - Agent prompts in your conversation language (experimental)
+
+**Wait for the user to answer BOTH questions**.
+
+**Store both answers** for the config.json update in STEP 0-SETTING.4.
+
+**Map user's language choice to language code**:
+- "English" → `en`
+- "한국어" → `ko`
+- "日本語" → `ja`
+- "中文" → `zh`
+
+**Map agent prompt language choice to setting**:
+- "English (Global Standard)" → `english`
+- "Selected Language (Localized)" → `localized`
+
+---
+
+#### Batch 2: NICKNAME Section
+
+**IF user selected "👤 Nickname"**:
+
+**Ask the user**:
+
+**Question**: "What is your new nickname?"
+
+**Instructions to user**:
+- Maximum 20 characters
+- Used in commits, reports, and project documentation
+- Examples: "GOOS", "GoosLab", "DevTeam", "Alex"
+
+**Wait for the user to enter their new nickname**.
+
+**Store the answer** for config.json update in STEP 0-SETTING.4.
+
+**Validation**:
+- If user enters text longer than 20 characters → Trim to 20 characters and notify user
+- If user enters empty text → Keep current nickname (no change)
+
+---
+
+#### Batch 3: GITHUB Section
+
+**IF user selected "🔧 GitHub Settings"**:
+
+**Ask the user these TWO questions together** (batched in one interaction):
+
+**Question 1**: "Enable GitHub auto-delete branches after PR merge?"
+
+**Present these options**:
+- ✅ **Yes, enable** - Automatically delete feature branches after successful PR merge
+- ❌ **No, disable** - Keep feature branches after merge (manual cleanup)
+- 🤔 **Keep current** - No change to this setting
+
+**Question 2**: "Which SPEC git workflow should Alfred use?"
+
+**Present these options**:
+- 📋 **Feature Branch + PR** - Create feature branch for each SPEC, submit PR to develop
+- 🔄 **Direct Commit to Develop** - Skip branches, commit directly to develop
+- 🤔 **Decide per SPEC** - Ask user for workflow choice when creating each SPEC
+- ⏸️ **Keep current** - No change to this setting
+
+**Wait for the user to answer BOTH questions**.
+
+**Store both answers** for config.json update in STEP 0-SETTING.4.
+
+**Map user's choices to config values**:
+
+For auto-delete branches:
+- "Yes, enable" → `true`
+- "No, disable" → `false`
+- "Keep current" → Keep existing value (no change)
+
+For SPEC git workflow:
+- "Feature Branch + PR" → `feature_branch`
+- "Direct Commit to Develop" → `develop_direct`
+- "Decide per SPEC" → `per_spec`
+- "Keep current" → Keep existing value (no change)
+
+---
+
+#### Batch 4: REPORTS Section
+
+**IF user selected "📊 Report Generation"**:
+
+**Ask the user**:
+
+**Question**: "Update automatic report generation settings?"
+
+**Present these options**:
+- 📊 **Enable** - Full analysis reports (comprehensive, ~50-60 tokens per report)
+- ⚡ **Minimal** (Recommended) - Essential reports only (~20-30 tokens per report, 80% token savings)
+- 🚫 **Disable** - No automatic report generation (0 tokens, fastest)
+- ⏸️ **Keep current** - No change to this setting
+
+**Wait for the user to select an option**.
+
+**Store the answer** for config.json update in STEP 0-SETTING.4.
+
+**Map user's choice to config values**:
+- "Enable" → `enabled: true`, `auto_create: true`, `user_choice: "Enable"`
+- "Minimal" → `enabled: true`, `auto_create: false`, `user_choice: "Minimal"`
+- "Disable" → `enabled: false`, `auto_create: false`, `user_choice: "Disable"`
+- "Keep current" → Keep existing values (no change)
+
+---
+
+#### Batch 5: DOMAINS Section
+
+**IF user selected "🎯 Project Domains"**:
+
+**Ask the user**:
+
+**Question**: "Select all project domains that apply to this project (multiple selections allowed):"
+
+**Present these options** (allow multiple selections):
+- 🎨 **Frontend** - Web UI, React, Vue, Angular, HTML/CSS
+- ⚙️ **Backend** - APIs, servers, Python/Node/Java backends
+- 🚀 **DevOps** - CI/CD, Docker, Kubernetes, infrastructure
+- 🗄️ **Database** - SQL, NoSQL, data modeling, migrations
+- 📊 **Data Science** - ML, analytics, data pipelines
+- 📱 **Mobile** - iOS, Android, React Native, Flutter
+- ⚡ **Clear all** - Remove all domain selections (start fresh)
+
+**Wait for the user to select one or more domains**.
+
+**Store the answer** for config.json update in STEP 0-SETTING.4.
+
+**Map user's selections to config values**:
+- User selects domains → Array of domain IDs (e.g., `["frontend", "backend"]`)
+- User selects "Clear all" → Empty array `[]`
+- User selects nothing (cancels) → Keep existing domains (no change)
+
+**Domain ID mapping**:
+- "Frontend" → `"frontend"`
+- "Backend" → `"backend"`
+- "DevOps" → `"devops"`
+- "Database" → `"database"`
+- "Data Science" → `"data_science"`
+- "Mobile" → `"mobile"`
+
+---
+
+**After collecting all selected sections' answers**, proceed to STEP 0-SETTING.4 to update config.json.
+
+### 0-SETTING.4 Update config.json with selected changes
+
+**Your task**: Save only the settings the user changed to `.moai/config.json`. Preserve all unchanged fields.
+
+---
+
+#### Step 1: Load current config.json
+
+1. **Read the file**: `.moai/config.json`
+2. **Parse the JSON structure** into memory
+3. **Keep all current values** for merge (do NOT discard anything)
+
+**Error check**: If file doesn't exist or has invalid JSON, go to STEP 0-SETTING.6 (Error Handling).
+
+---
+
+#### Step 2: Merge user's new values into config
+
+**For EACH section the user selected in STEP 0-SETTING.2**, update ONLY those fields:
+
+---
+
+##### IF user selected LANGUAGE section:
+
+**From stored answers in STEP 0-SETTING.3 Batch 1**:
+
+**Update these fields**:
+- `language.conversation_language` = [mapped language code: "en", "ko", "ja", or "zh"]
+- `language.conversation_language_name` = [display name: "English", "한국어", "日本語", or "中文"]
+- `language.agent_prompt_language` = [mapped value: "english" or "localized"]
+
+**DO NOT change**:
+- All other fields in `language` section (preserve existing values)
+- Any other top-level sections (`user`, `github`, `report_generation`, `stack`, etc.)
+
+**Example merge**:
+```json
+// Before:
+{
+  "language": {
+    "conversation_language": "ko",
+    "conversation_language_name": "한국어",
+    "agent_prompt_language": "english"
+  }
+}
+
+// User changed to English + Localized
+// After:
+{
+  "language": {
+    "conversation_language": "en",
+    "conversation_language_name": "English",
+    "agent_prompt_language": "localized"
+  }
+}
+```
+
+---
+
+##### IF user selected NICKNAME section:
+
+**From stored answer in STEP 0-SETTING.3 Batch 2**:
+
+**Update this field**:
+- `user.nickname` = [user's new nickname, trimmed to max 20 chars]
+
+**DO NOT change**:
+- Any other fields in `user` section
+- Any other top-level sections
+
+**Example merge**:
+```json
+// Before:
+{
+  "user": {
+    "nickname": "GOOS",
+    "email": "goos@example.com"
+  }
+}
+
+// User changed nickname to "GoosLab"
+// After:
+{
+  "user": {
+    "nickname": "GoosLab",
+    "email": "goos@example.com"  // preserved
+  }
+}
+```
+
+---
+
+##### IF user selected GITHUB section:
+
+**From stored answers in STEP 0-SETTING.3 Batch 3**:
+
+**For auto-delete branches**:
+- IF user chose "Yes, enable" → Update `github.auto_delete_branches` = `true`
+- IF user chose "No, disable" → Update `github.auto_delete_branches` = `false`
+- IF user chose "Keep current" → Do NOT change this field (keep existing value)
+
+**For SPEC git workflow**:
+- IF user chose "Feature Branch + PR" → Update `github.spec_git_workflow` = `"feature_branch"`
+- IF user chose "Direct Commit to Develop" → Update `github.spec_git_workflow` = `"develop_direct"`
+- IF user chose "Decide per SPEC" → Update `github.spec_git_workflow` = `"per_spec"`
+- IF user chose "Keep current" → Do NOT change this field (keep existing value)
+
+**DO NOT change**:
+- Any other fields in `github` section
+- Any other top-level sections
+
+**Example merge**:
+```json
+// Before:
+{
+  "github": {
+    "auto_delete_branches": true,
+    "spec_git_workflow": "feature_branch",
+    "token": "ghp_xxx"
+  }
+}
+
+// User changed workflow to "develop_direct", kept auto-delete current
+// After:
+{
+  "github": {
+    "auto_delete_branches": true,  // preserved (user chose "Keep current")
+    "spec_git_workflow": "develop_direct",  // updated
+    "token": "ghp_xxx"  // preserved
+  }
+}
+```
+
+---
+
+##### IF user selected REPORTS section:
+
+**From stored answer in STEP 0-SETTING.3 Batch 4**:
+
+**IF user chose "Enable"**:
+- Update `report_generation.enabled` = `true`
+- Update `report_generation.auto_create` = `true`
+- Update `report_generation.user_choice` = `"Enable"`
+- Update `report_generation.updated_at` = [current ISO timestamp]
+
+**IF user chose "Minimal"**:
+- Update `report_generation.enabled` = `true`
+- Update `report_generation.auto_create` = `false`
+- Update `report_generation.user_choice` = `"Minimal"`
+- Update `report_generation.updated_at` = [current ISO timestamp]
+
+**IF user chose "Disable"**:
+- Update `report_generation.enabled` = `false`
+- Update `report_generation.auto_create` = `false`
+- Update `report_generation.user_choice` = `"Disable"`
+- Update `report_generation.updated_at` = [current ISO timestamp]
+
+**IF user chose "Keep current"**:
+- Do NOT change ANY fields in `report_generation` section
+
+**DO NOT change**:
+- Field `report_generation.allowed_locations` (always preserve)
+- Any other top-level sections
+
+---
+
+##### IF user selected DOMAINS section:
+
+**From stored answer in STEP 0-SETTING.3 Batch 5**:
+
+**IF user selected one or more domains**:
+- Update `stack.selected_domains` = [array of domain IDs user selected]
+- Update `stack.domain_selection_date` = [current ISO timestamp]
+
+**IF user selected "Clear all"**:
+- Update `stack.selected_domains` = `[]` (empty array)
+- Update `stack.domain_selection_date` = [current ISO timestamp]
+
+**IF user selected nothing (cancelled)**:
+- Do NOT change ANY fields in `stack` section
+
+**DO NOT change**:
+- Any other fields in `stack` section
+- Any other top-level sections
+
+**Example merge**:
+```json
+// Before:
+{
+  "stack": {
+    "selected_domains": ["frontend"],
+    "domain_selection_date": "2025-01-01T00:00:00Z"
+  }
+}
+
+// User selected: ["frontend", "backend", "database"]
+// After:
+{
+  "stack": {
+    "selected_domains": ["frontend", "backend", "database"],  // updated
+    "domain_selection_date": "2025-11-04T10:30:00Z"  // updated with current time
+  }
+}
+```
+
+---
+
+#### Step 3: Apply merge strategy (CRITICAL)
+
+**IMPORTANT**: Follow this merge strategy EXACTLY:
+
+1. **Start with the original config.json** (loaded in Step 1)
+2. **Apply ONLY the changes for sections user selected** (from Step 2)
+3. **Preserve ALL unchanged sections completely** (no modifications)
+
+**Verification checklist before writing**:
+- [ ] User selected LANGUAGE? → Only `language` section modified
+- [ ] User selected NICKNAME? → Only `user.nickname` field modified
+- [ ] User selected GITHUB? → Only changed fields in `github` section modified
+- [ ] User selected REPORTS? → Only `report_generation` section modified
+- [ ] User selected DOMAINS? → Only `stack.selected_domains` and `stack.domain_selection_date` modified
+- [ ] All unselected sections → 100% preserved (exact copy from original)
+
+**Example full merge**:
+
+```json
+// Original config.json
+{
+  "language": { "conversation_language": "ko" },
+  "user": { "nickname": "GOOS" },
+  "github": { "auto_delete_branches": true },
+  "report_generation": { "enabled": true },
+  "stack": { "selected_domains": ["frontend"] }
+}
+
+// User selected: LANGUAGE + NICKNAME sections only
+// Changed: conversation_language to "en", nickname to "GoosLab"
+
+// Merged config.json (correct)
+{
+  "language": { "conversation_language": "en" },  // ✅ updated
+  "user": { "nickname": "GoosLab" },  // ✅ updated
+  "github": { "auto_delete_branches": true },  // ✅ preserved (not selected)
+  "report_generation": { "enabled": true },  // ✅ preserved (not selected)
+  "stack": { "selected_domains": ["frontend"] }  // ✅ preserved (not selected)
+}
+```
+
+---
+
+#### Step 4: Write updated config.json to disk
+
+1. **Combine original config + new values** using the merge strategy from Step 3
+2. **Format the JSON** with proper indentation (2 spaces)
+3. **Write the merged JSON** to `.moai/config.json`
+4. **Verify the write succeeded** (check file exists and is valid JSON)
+
+**If write fails**:
+- Print error: "Failed to write config.json"
+- Go to STEP 0-SETTING.6 (Error Handling)
+
+**If write succeeds**:
+- Proceed to STEP 0-SETTING.5 (Completion Report)
+
+### 0-SETTING.5 Completion report
+
+**Your task**: Display a completion report showing what was changed.
+
+---
+
+#### Step 1: Print header
+
+**Print to user**:
+```
+✅ Settings update completed!
+
+📝 Modified settings:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+---
+
+#### Step 2: Show changes for each modified section
+
+**For EACH section the user selected in STEP 0-SETTING.2**, display the before/after values:
+
+---
+
+##### IF LANGUAGE section was modified:
+
+**Print**:
+```
+🌍 Language Settings:
+- Conversation Language: [old_language_name] ([old_code]) → [new_language_name] ([new_code])
+- Agent Prompt Language: [old_agent_language] → [new_agent_language]
+```
+
+**Example**:
+```
+🌍 Language Settings:
+- Conversation Language: 한국어 (ko) → English (en)
+- Agent Prompt Language: English (Global Standard) → Selected Language (Localized)
+```
+
+**Special case - No change made**:
+
+IF user selected LANGUAGE but all answers were "Keep current":
+
+**Print**:
+```
+🌍 Language Settings:
+- No changes (kept current settings)
+```
+
+---
+
+##### IF NICKNAME section was modified:
+
+**Print**:
+```
+👤 Nickname:
+- [old_nickname] → [new_nickname]
+```
+
+**Example**:
+```
+👤 Nickname:
+- GOOS → GoosLab
+```
+
+**Special case - No change made**:
+
+IF user entered empty text or same nickname:
+
+**Print**:
+```
+👤 Nickname:
+- No change (kept current nickname)
+```
+
+---
+
+##### IF GITHUB section was modified:
+
+**Print**:
+```
+🔧 GitHub Settings:
+- Auto-delete Branches: [old_value] → [new_value]
+- SPEC Git Workflow: [old_workflow] → [new_workflow]
+```
+
+**For fields where user chose "Keep current"**, show:
+```
+- Auto-delete Branches: [current_value] (no change)
+```
+
+**Example**:
+```
+🔧 GitHub Settings:
+- Auto-delete Branches: true (no change)
+- SPEC Git Workflow: feature_branch → develop_direct
+```
+
+**Special case - No changes made**:
+
+IF user chose "Keep current" for ALL GitHub settings:
+
+**Print**:
+```
+🔧 GitHub Settings:
+- No changes (kept current settings)
+```
+
+---
+
+##### IF REPORTS section was modified:
+
+**Print**:
+```
+📊 Report Generation:
+- Setting: [old_choice] → [new_choice]
+- Status: [enabled/disabled]
+- Auto-create: [true/false]
+```
+
+**Example**:
+```
+📊 Report Generation:
+- Setting: Enable → Minimal
+- Status: enabled
+- Auto-create: false
+```
+
+**Special case - No change made**:
+
+IF user chose "Keep current":
+
+**Print**:
+```
+📊 Report Generation:
+- No changes (kept current settings)
+```
+
+---
+
+##### IF DOMAINS section was modified:
+
+**Print**:
+```
+🎯 Project Domains:
+- Selected: [list of domain names]
+- Previous: [list of old domain names]
+```
+
+**Example**:
+```
+🎯 Project Domains:
+- Selected: Frontend, Backend, Database
+- Previous: Frontend
+```
+
+**Special case - Cleared all**:
+
+IF user selected "Clear all":
+
+**Print**:
+```
+🎯 Project Domains:
+- Selected: (none)
+- Previous: [list of old domains]
+```
+
+**Special case - No change made**:
+
+IF user cancelled or selected nothing:
+
+**Print**:
+```
+🎯 Project Domains:
+- No changes (kept current domains)
+```
+
+---
+
+#### Step 3: Print sections NOT modified
+
+**DO NOT print anything for sections the user did NOT select**.
+
+**Example**:
+- User only selected LANGUAGE and NICKNAME
+- Do NOT show GITHUB, REPORTS, or DOMAINS sections in the report
+
+---
+
+#### Step 4: Print file save confirmation
+
+**Print**:
+```
+
+💾 Configuration saved to `.moai/config.json`
+```
+
+---
+
+#### Step 5: Print next steps
+
+**Print**:
+```
+
+📋 Next steps:
+1. Review the changes above
+2. Continue development with updated settings
+3. Run `/alfred:0-project setting` again if you need to modify more settings
+4. Run `/alfred:1-plan` to create a new SPEC with your updated configuration
+```
+
+---
+
+#### Step 6: End this command
+
+**Stop execution**. Do NOT proceed to STEP 1 or any other workflow.
+
+The `/alfred:0-project setting` subcommand is now complete.
+
+---
+
+### 0-SETTING.6 Error handling
+
+**CRITICAL**: Check for errors BEFORE starting STEP 0-SETTING.1.
+
+---
+
+#### Error 1: config.json not found
+
+**Check BEFORE STEP 0-SETTING.1**: Does `.moai/config.json` exist?
+
+**IF file does NOT exist**:
+
+**Print to user**:
+```
+❌ Error: .moai/config.json not found
+
+This command requires an already-initialized project.
+
+To initialize first, run:
+  /alfred:0-project
+
+(without the "setting" subcommand)
+```
+
+**Action**: Exit immediately. Stop this command. Do NOT proceed to any other steps.
+
+---
+
+#### Error 2: Invalid JSON in config.json
+
+**Check BEFORE STEP 0-SETTING.1**: Can `.moai/config.json` be parsed as valid JSON?
+
+**IF file has syntax errors** (cannot be parsed):
+
+**Print to user**:
+```
+❌ Error: config.json has syntax errors
+
+The file exists but contains invalid JSON syntax.
+
+Please fix the JSON manually, or restore from backup:
+  Backup location: .moai-backups/
+
+You can also run:
+  cat .moai/config.json | jq .
+
+to see the specific JSON error.
+```
+
+**Action**: Exit immediately. Stop this command. Do NOT proceed to any other steps.
+
+---
+
+#### Error 3: No settings selected
+
+**Check in STEP 0-SETTING.2**: Did the user select any settings to modify?
+
+**IF user clicked "Cancel" or selected nothing** (empty selection):
+
+**Print to user**:
+```
+✅ No settings selected. Exiting without changes.
+
+Your project configuration remains unchanged.
+
+To modify settings later, run:
+  /alfred:0-project setting
+```
+
+**Action**: Exit immediately. Stop this command. Do NOT proceed to STEP 0-SETTING.3 or beyond.
+
+---
+
+#### Error 4: Failed to write config.json
+
+**Check in STEP 0-SETTING.4 Step 4**: Did the write to `.moai/config.json` succeed?
+
+**IF write operation failed**:
+
+**Print to user**:
+```
+❌ Error: Failed to write config.json
+
+The configuration update could not be saved.
+
+Possible causes:
+- File permissions issue
+- Disk full
+- File locked by another process
+
+Please check file permissions:
+  ls -la .moai/config.json
+
+Your previous configuration is unchanged.
+```
+
+**Action**: Exit immediately. Stop this command. Do NOT proceed to STEP 0-SETTING.5.
+
+---
+
+**Error handling summary**:
+
+1. Check Error 1 & 2 BEFORE starting STEP 0-SETTING.1
+2. Check Error 3 in STEP 0-SETTING.2 (after user answers which settings to modify)
+3. Check Error 4 in STEP 0-SETTING.4 Step 4 (after attempting to write file)
+
+If ANY error occurs, show the error message and exit immediately. Do NOT continue the workflow.
+
+---
+
 ## 🚀 STEP 1: Environmental analysis and interview plan development
 
 Analyze the project environment and develop a systematic interview plan.
@@ -539,7 +1787,7 @@ grep "optimized" .moai/config.json
 
 **Select user if backup exists**
 
-When a backup is detected, call `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` to present a TUI decision:
+When a backup is detected, call `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` to present a TUI decision:
 
 **Example AskUserQuestion Call**:
 
@@ -833,9 +2081,15 @@ Set optimization flags after the merge is complete:
 **Please review the plan above and confirm whether to proceed.**
 ```
 
-### 1.5 User Approval with AskUserQuestion (when user selects "New")
+### 1.5 User Approval with AskUserQuestion (REVIEW MODE ONLY)
 
-After Alfred generates the interview plan report, call `AskUserQuestion` tool (documented in moai-alfred-interactive-questions skill) to get explicit user approval before starting the interview.
+**Execution Condition**: This section only executes when BOTH conditions are true:
+1. User selects "New" (not "Merge" or "Skip")
+2. `--review` flag provided (review mode)
+
+**In immediate execution mode** (no `--review` flag), this section is skipped entirely and execution proceeds directly to STEP 2.
+
+After Alfred generates the interview plan report (review mode only), call `AskUserQuestion` tool (documented in moai-alfred-ask-user-questions skill) to get explicit user approval before starting the interview.
 
 **Example AskUserQuestion Call**:
 
@@ -922,58 +2176,102 @@ Alfred starts project initialization by calling the project-manager agent with t
 - **Team Mode Git Workflow** (from STEP 0.1.3):
   - `spec_git_workflow: "feature_branch" | "develop_direct" | "per_spec"` (팀 모드만)
 
-**Execution**:
+### 2.1.1 Dynamic Prompt Translation by conversation_language
+
+**CRITICAL**: The base prompt is written in English. At runtime, Alfred translates it to the user's `conversation_language` (any language) before passing to project-manager.
+
+**Translation Flow**:
+
+```
+English base prompt (single source of truth)
+    ↓
+Alfred reads conversation_language from STEP 0 (any language)
+    ↓
+Translate English prompt to {{CONVERSATION_LANGUAGE}} (runtime, any language)
+    ↓
+Pass translated prompt to project-manager agent
+```
+
+**Supported Languages**:
+
+- **English (en)**: English (original, no translation)
+- **Any other language**: Automatically translated from English
+
+Examples:
+- Korean (ko) → English → 한국어
+- Japanese (ja) → English → 日本語
+- Chinese (zh) → English → 中文
+- Spanish (es) → English → Español
+- French (fr) → English → Français
+- German (de) → English → Deutsch
+- Portuguese (pt) → English → Português
+- Russian (ru) → English → Русский
+- Arabic (ar) → English → العربية
+- Hindi (hi) → English → हिंदी
+- **Any language supported by translation service**
+
+**Key Design Principle**:
+
+- ✅ **Single source of truth**: Only English version maintained
+- ✅ **Any language support**: Not limited to pre-defined languages
+- ✅ **Runtime translation**: Translate on-demand for each user's selected language
+- ✅ **Zero maintenance**: New language automatically supported
+
+### 2.1.2 Base Prompt (English - Source of Truth)
 
 ```
 Call the Task tool:
 - subagent_type: "project-manager"
 - description: "Initialize project with conversation language support"
-- prompt: """당신은 project-manager 에이전트입니다.
+- prompt: """You are the project-manager agent.
 
-언어 설정:
-- 대화_언어: {{CONVERSATION_LANGUAGE}} (모든 대화, 문서에 사용)
-- 언어명: {{CONVERSATION_LANGUAGE_NAME}}
-- 에이전트_프롬프트_언어: {{AGENT_PROMPT_LANGUAGE}} (내부 sub-agent 통신 언어)
+Language Settings:
+- Conversation Language: {{CONVERSATION_LANGUAGE}} (used for all dialogs, documents)
+- Language Name: {{CONVERSATION_LANGUAGE_NAME}}
+- Agent Prompt Language: {{AGENT_PROMPT_LANGUAGE}} (internal sub-agent communication)
 
-에이전트 프롬프트 언어에 따른 작업 방식:
+Agent Prompt Language Behavior:
 
 1. **agent_prompt_language = "english"** (Global Standard):
-   - 당신(project-manager)은 **영어**로 사고하고 작업합니다
-   - 모든 내부 분석과 계획을 영어로 진행합니다
-   - 생성된 product.md, structure.md, tech.md는 **{{CONVERSATION_LANGUAGE}}**로 작성합니다
-   - Sub-agent들(spec-builder 등)에게 전달하는 프롬프트는 **영어**입니다
+   - You (project-manager) think and work in **English**
+   - All internal analysis and planning done in English
+   - Generated product.md, structure.md, tech.md written in **{{CONVERSATION_LANGUAGE}}**
+   - Prompts to sub-agents (spec-builder, etc.) are in **English**
 
 2. **agent_prompt_language = "localized"** (Localized):
-   - 당신(project-manager)은 **{{CONVERSATION_LANGUAGE}}**로 사고하고 작업합니다
-   - 모든 내부 분석과 계획을 {{CONVERSATION_LANGUAGE}}로 진행합니다
-   - 생성된 product.md, structure.md, tech.md는 **{{CONVERSATION_LANGUAGE}}**로 작성합니다
-   - Sub-agent들(spec-builder 등)에게 전달하는 프롬프트도 **{{CONVERSATION_LANGUAGE}}**입니다
+   - You (project-manager) think and work in **{{CONVERSATION_LANGUAGE}}**
+   - All internal analysis and planning done in {{CONVERSATION_LANGUAGE}}
+   - Generated product.md, structure.md, tech.md written in **{{CONVERSATION_LANGUAGE}}**
+   - Prompts to sub-agents (spec-builder, etc.) are in **{{CONVERSATION_LANGUAGE}}**
 
-중요: 대화_언어(conversation_language)와 에이전트_프롬프트_언어(agent_prompt_language)는 다를 수 있습니다!
-- 대화_언어는 **사용자와의 대화**, **생성 문서**에 사용
-- 에이전트_프롬프트_언어는 **sub-agents 통신**, **내부 prompt**에 사용
+Important: conversation_language and agent_prompt_language can be different!
+- conversation_language is used for **user dialogs**, **generated documents**
+- agent_prompt_language is used for **sub-agent communication**, **internal prompts**
 
-GIT 워크플로우 설정 (팀 모드):
+Git Workflow Configuration (Team Mode):
 - spec_git_workflow: [feature_branch | develop_direct | per_spec]
-  - "feature_branch": feature/spec-* 브랜치 생성, PR 기반 리뷰, develop 병합
-  - "develop_direct": develop에 직접 커밋, 브랜치 생성 안 함
-  - "per_spec": SPEC별로 사용자에게 물어봄 (/alfred:1-plan 실행 중)
-- 참고: 이 값을 .moai/config.json github.spec_git_workflow에 저장하여 git-manager가 참조하도록
+  - "feature_branch": Create feature/spec-* branch, PR-based review, merge to develop
+  - "develop_direct": Commit directly to develop, no branch creation
+  - "per_spec": Ask user per SPEC during /alfred:1-plan execution
+- Reference: Save this to .moai/config.json github.spec_git_workflow for git-manager
 
-프로젝트_타입: [new|existing]
-감지된_언어들: [감지된 코드베이스 언어들]
+Project Type: [new|existing]
+Detected Languages: [List of detected codebase languages]
 
-중요 지시사항:
-모든 인터뷰와 생성된 문서는 대화_언어(conversation_language)로 작성되어야 합니다:
-- product.md: {{CONVERSATION_LANGUAGE}}로 생성
-- structure.md: {{CONVERSATION_LANGUAGE}}로 생성
-- tech.md: {{CONVERSATION_LANGUAGE}}로 생성
+Critical Directives:
+All interviews and generated documents must be written in conversation_language ({{CONVERSATION_LANGUAGE}}):
+- product.md: Generate in {{CONVERSATION_LANGUAGE}}
+- structure.md: Generate in {{CONVERSATION_LANGUAGE}}
+- tech.md: Generate in {{CONVERSATION_LANGUAGE}}
 
-conversation_language가 'ko'인 경우: 모든 설명 내용을 한국어로
-conversation_language가 'ja'인 경우: 모든 설명 내용을 일본어로
-다른 언어인 경우: 지정된 언어를 따릅니다
+When conversation_language is 'en': Write all content in English
+When conversation_language is 'ko': Write all content in Korean
+When conversation_language is 'ja': Write all content in Japanese
+For other languages: Follow the specified language
 
-프로젝트 초기화 후, 다음과 같이 .moai/config.json 업데이트:
+After project initialization, update .moai/config.json with announcements (base in English, runtime-translated):
+
+```json
 {
   "language": {
     "conversation_language": "{{CONVERSATION_LANGUAGE}}",
@@ -982,10 +2280,65 @@ conversation_language가 'ja'인 경우: 모든 설명 내용을 일본어로
   },
   "github": {
     "spec_git_workflow": "[feature_branch|develop_direct|per_spec]"
+  },
+  "announcements": {
+    "enabled": true,
+    "language": "{{CONVERSATION_LANGUAGE}}",
+    "items": [
+      "🎩 SPEC-First: Always define requirements as SPEC before implementation (/alfred:1-plan)",
+      "✅ TRUST 5 Principles: Test First, Readable, Unified, Secured, Trackable",
+      "📝 TodoWrite Usage: Track all tasks and update in_progress/completed status immediately",
+      "🌍 Language Boundary: Use conversation_language for dialogs/documents, English for infrastructure",
+      "🔗 @TAG Chain: Maintain traceability SPEC→TEST→CODE→DOC",
+      "⚡ Parallel Execution: Independent tasks can run simultaneously (Task tool parallel calls)",
+      "💡 Skills First: Check appropriate Skill first for domain-specific tasks"
+    ]
   }
 }
+```
 
-스킬 호출:
+### 2.1.3 Runtime Translation of Announcements
+
+**Translation Logic**:
+
+The `announcements.items` array in the base config (English) is **translated at runtime by Alfred** to `{{CONVERSATION_LANGUAGE}}`:
+
+```
+English base announcements (single source of truth)
+    ↓
+Alfred reads conversation_language from STEP 0 (any language)
+    ↓
+Translate each item from English to {{CONVERSATION_LANGUAGE}} (runtime)
+    ↓
+Save translated announcements to .claude/settings.json companyAnnouncements
+    ↓
+Claude Code displays announcements in user's language on startup
+```
+
+**Base Items** (Always English - Single Source of Truth):
+
+The `announcements.items` in config.json is **always in English**. Translation happens at runtime via Alfred's translation pipeline to support any language.
+
+**Example Translation Results**:
+
+When user selects Korean (conversation_language = "ko"):
+
+```
+(Original English)
+🎩 SPEC-First: Always define requirements as SPEC before implementation (/alfred:1-plan)
+
+(Translated to Korean at runtime)
+🎩 SPEC-First: 구현 전에 항상 요구사항을 SPEC으로 정의하세요 (/alfred:1-plan)
+```
+
+**Key Design Principle**:
+
+- ✅ **Single source**: Only English announcements in config.json
+- ✅ **Automatic translation**: Translates to user's language at runtime (any language)
+- ✅ **Zero duplication**: No pre-translated copies maintained
+- ✅ **Future-proof**: Any new language automatically supported without code changes
+
+スキル 호출:
 필요 시 명시적 Skill() 호출 사용:
 - Skill("moai-alfred-language-detection") - 코드베이스 언어 감지
 - Skill("moai-foundation-langs") - 다국어 프로젝트 설정
@@ -1018,7 +2371,7 @@ After the project-manager has finished creating the document, **Alfred can optio
 
 **Note**: Quality verification is optional during the project initialization phase.
 
-### 2.3 Sub-agent moai-alfred-interactive-questions (Nested)
+### 2.3 Sub-agent moai-alfred-ask-user-questions (Nested)
 
 **The project-manager agent can internally call the TUI survey skill** to check the details of the task.
 
@@ -1028,7 +2381,7 @@ After the project-manager has finished creating the document, **Alfred can optio
 - When selecting language/framework
 - When changing important settings
 
-**Example** (inside project-manager): Ask whether to "overwrite file" with `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)`,
+**Example** (inside project-manager): Ask whether to "overwrite file" with `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)`,
 
 - Allows you to choose between **Overwrite** / **Merge** / **Skip**.
 
@@ -1331,7 +2684,7 @@ Alfred only calls the trust-checker agent to perform project initial structural 
 ### 2.6: Agent & Skill Tailoring (Project Optimization)
 
 Based on the results of the interviews and initial analysis, we recommend and activate sub-agents and skills that should be immediately utilized in the project.
-Before actual application, user confirmation is received with `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)`, and selected items are recorded in `CLAUDE.md` and `.moai/config.json`.
+Before actual application, user confirmation is received with `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)`, and selected items are recorded in `CLAUDE.md` and `.moai/config.json`.
 
 #### 2.6.0 Create cc-manager briefing
 
@@ -1361,7 +2714,7 @@ cc-manager selects the required sub-agents and skills based on the briefing.The 
 | Introduction of ML/AI functions (`product.md` AI, `tech.md` MODEL)                 | `implementation-planner`, `moai-domain-ml`, detected language skills                                                    | Model training/inference pipeline definition                           |
 | Mobile app strategy (`product.md` MOBILE, `structure.md` CLIENT)                   | `implementation-planner`, `moai-domain-mobile-app`, detected language skills (e.g. `moai-lang-dart`, `moai-lang-swift`) | Mobile client structure design                                         |
 | Strengthening coding standards/review process (`tech.md` REVIEW)                   | `quality-gate`, `moai-essentials-review`                                                                                | Strengthening review checklist and quality reporting                   |
-| Requires onboarding/training mode (`tech.md` STACK description, etc.)              | `moai-alfred-interactive-questions`, `moai-adk-learning`, `agentic-coding` Output style                                 | Enhanced interview TUI and automatically provided onboarding materials |
+| Requires onboarding/training mode (`tech.md` STACK description, etc.)              | `moai-alfred-ask-user-questions`, `moai-adk-learning`, `agentic-coding` Output style                                 | Enhanced interview TUI and automatically provided onboarding materials |
 
 > **Language/Domain Skill Selection Rules**
 >
@@ -1373,7 +2726,7 @@ If multiple conditions are met, the candidates are merged without duplicates and
 
 #### 2.6.2 User confirmation flow
 
-`AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` asks "whether to enable recommended items."
+`AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` asks "whether to enable recommended items."
 
 - Provides three options: **Install all** / **Install selectively** / **Do not install**.
   Selecting "Selective Install" presents the list of candidates again as multiple choices, allowing the user to select only the items they need.
@@ -1487,172 +2840,612 @@ Solution: Check file permissions (chmod 644) or create config.json manually
 
 ---
 
-## /alfred:0-project update: Template optimization (subcommand)
+## 🚀 STEP 0-UPDATE: Template optimization (subcommand mode) - 명령형 지침
 
-> **Purpose**: After running moai-adk update, compare the backup and new template to optimize the template while preserving user customization.
+**When to execute this step**:
+- User runs `/alfred:0-project update`
+- OR user selected "Update Mode" from a menu
+- OR after running `moai-adk update` command (when `optimized=false` in config.json)
 
-### Execution conditions
-
-This subcommand is executed under the following conditions:
-
-1. **After executing moai-adk update**: `optimized=false` status in `config.json`
-2. **Template update required**: When there is a difference between the backup and the new template
-3. **User explicit request**: User directly executes `/alfred:0-project update`
-
-### Execution flow
-
-#### Phase 1: Backup analysis and comparison
-
-1. **Make sure you have the latest backup**:
-
-   ```bash
-
-   ```
-
-# Browse the latest backups in the .moai-backups/ directory
-
-ls -lt .moai-backups/ | head -1
-
-````
-
-2. **Change Analysis**:
-- Compare `.claude/` directory from backup with current template
-- Compare `.moai/project/` document from backup with current document
-- Identify user customization items
-
-3. **Create Comparison Report**:
-```markdown
-## 📊 Template optimization analysis
-
-### Changed items
-- CLAUDE.md: "## Project Information" section needs to be preserved
-- settings.json: 3 env variables need to be preserved
-- product.md: Has user-written content
-
-### Recommended Action
-- Run Smart Merge
-- Preserve User Customizations
-- Set optimized=true
-````
-
-4. **Waiting for user approval**
-
-Call `AskUserQuestion` tool (documented in moai-alfred-interactive-questions skill) to obtain user approval for template optimization.
-
-**Example AskUserQuestion Call**:
-
-```python
-AskUserQuestion(
-    questions=[
-        {
-            "question": "Template optimization analysis complete. Changes detected in backup vs current template. How would you like to proceed?",
-            "header": "Template Optimization",
-            "multiSelect": false,
-            "options": [
-                {
-                    "label": "✅ Proceed",
-                    "description": "Run smart merge: preserve customizations with latest template (Phase 2)"
-                },
-                {
-                    "label": "👀 Preview",
-                    "description": "Show detailed change list before proceeding"
-                },
-                {
-                    "label": "⏸️ Skip",
-                    "description": "Keep current template unchanged (optimized: false)"
-                }
-            ]
-        }
-    ]
-)
-```
-
-**Response Processing**:
-
-- **"Proceed"** (`answers["0"] === "Proceed"`) → Execute Phase 2
-
-  - Run smart merge logic
-  - Preserve user customizations from backup
-  - Combine with latest template structure
-  - Set `optimized: true` in config.json
-
-- **"Preview"** (`answers["0"] === "Preview"`) → Display detailed changes
-
-  - Show file-by-file comparison
-  - Highlight customization sections
-  - Ask approval again with "Proceed" or "Skip" only
-
-- **"Skip"** (`answers["0"] === "Skip"`) → Keep current state
-  - Do not modify any files
-  - Keep `optimized: false` in config.json
-  - User can run again with `moai-adk update` later
-
-#### Phase 2: Run smart merge (after user approval)
-
-1. **Execute smart merge logic**:
-
-- Run `TemplateProcessor.copy_templates()`
-- CLAUDE.md: Preserve "## Project Information" section
-- settings.json: env variables and permissions.allow merge
-
-2. Set **optimized=true**:
-
-   ```python
-   # update config.json
-   config_data["project"]["optimized"] = True
-   ```
-
-3. **Optimization completion report**:
-   ```markdown
-   ✅ Template optimization completed!
-   ```
-
-📄 Merged files:
-
-- CLAUDE.md (preserves project information)
-- settings.json (preserves env variables)
-
-⚙️ config.json: optimized=true Configuration complete
-
-````
-
-### Alfred Automation Strategy
-
-**Alfred automatic decision**:
-- Automatically call project-manager agent
-- Check backup freshness (within 24 hours)
-- Automatically analyze changes
-
-**Auto-activation of Skills**:
-- moai-alfred-tag-scanning: TAG chain verification
-- moai-alfred-trust-validation: Verification of compliance with TRUST principles
-
-### Running example
-
-```bash
-# After running moai-adk update
-moai-adk update
-
-# Output:
-# ✓ Update complete!
-# ℹ️  Next step: Run /alfred:0-project update to optimize template changes
-
-# Run Alfred
-/alfred:0-project update
-
-# → Phase 1: Generate backup analysis and comparison report
-# → Wait for user approval
-# → Phase 2: Run smart merge, set optimized=true
-````
-
-### caution
-
-- **Backup required**: Cannot run without backup in `.moai-backups/` directory
-- **Manual review recommended**: Preview is required if there are important customizations
-- **Conflict resolution**: Request user selection in case of merge conflict
+**Your task**: After running `moai-adk update`, merge latest templates while preserving user customizations.
 
 ---
 
+### STEP 0-UPDATE.1: Verify prerequisites and check backup
+
+**Your task**: Verify that prerequisites exist before starting template optimization.
+
+**Steps**:
+
+1. **Check if backup directory exists**:
+   - Directory to check: `.moai-backups/`
+   - IF directory does NOT exist → Show error and exit:
+     ```
+     ❌ Error: No backup found at .moai-backups/
+
+     This command requires a backup from previous initialization.
+     Backup would have been created when you ran: /alfred:0-project
+
+     Next steps:
+     - IF this is a new project: Run /alfred:0-project
+     - IF backup was deleted: Cannot recover, re-initialize project
+     ```
+   - IF directory exists → Continue to next step
+
+2. **Find latest backup timestamp**:
+   - Command: List subdirectories in `.moai-backups/`
+   - Expected format: `.moai-backups/YYYYMMDD_HHMMSS/`
+   - Find: Latest timestamp directory
+   - Store: Timestamp value (e.g., "20250104_143022")
+   - IF no timestamp directories found → Show error (same as step 1)
+
+3. **Check if config.json exists in current directory**:
+   - Read: `.moai/config.json`
+   - IF file does NOT exist → Show error and exit:
+     ```
+     ❌ Error: .moai/config.json not found
+
+     This command requires an initialized project.
+
+     Next steps:
+     - Run: /alfred:0-project
+     - OR check if you are in the correct directory
+     ```
+   - IF file exists → Continue
+
+4. **Print backup verification result**:
+   ```
+   ✅ Prerequisites verified
+
+   📦 Backup found:
+   - Location: .moai-backups/[TIMESTAMP]/
+   - Timestamp: [TIMESTAMP]
+   - Ready for template comparison
+   ```
+
+---
+
+### STEP 0-UPDATE.2: Load and compare templates
+
+**Your task**: Identify what changed between the old and new templates.
+
+**Steps**:
+
+1. **Load old template files from backup**:
+   - Read: `.moai-backups/[LATEST_TIMESTAMP]/CLAUDE.md`
+   - Read: `.moai-backups/[LATEST_TIMESTAMP]/.claude/settings.json`
+   - Read: `.moai-backups/[LATEST_TIMESTAMP]/.moai/project/product.md`
+   - Read: `.moai-backups/[LATEST_TIMESTAMP]/.moai/project/structure.md`
+   - Read: `.moai-backups/[LATEST_TIMESTAMP]/.moai/project/tech.md`
+   - Store: All old content in memory
+
+2. **Load new template files from package**:
+   - Read: `src/moai_adk/templates/CLAUDE.md`
+   - Read: `src/moai_adk/templates/.claude/settings.json`
+   - Read: `src/moai_adk/templates/.moai/project/product.md`
+   - Read: `src/moai_adk/templates/.moai/project/structure.md`
+   - Read: `src/moai_adk/templates/.moai/project/tech.md`
+   - Store: All new content in memory
+
+3. **Compare CLAUDE.md**:
+   - Check: Is "## 🤖 Project Information" section present in old backup?
+   - Check: Does old version have different structure/sections than new?
+   - Identify: Custom content added by user (anything not in original template)
+   - Store: Sections that need preservation
+
+4. **Compare settings.json**:
+   - Check: Custom environment variables in old backup
+   - Check: Custom permissions in `permissions.allow` array
+   - Check: Custom hooks in `hooks` section
+   - Identify: User-added configurations
+   - Store: Settings that need preservation
+
+5. **Compare .moai/project/ documents**:
+   - For each file (product.md, structure.md, tech.md):
+     - Check: Does old version have user-written content?
+     - Check: Is structure different from template?
+     - Identify: Sections with real project data vs placeholder text
+   - Store: Content sections that need preservation
+
+6. **Create comparison summary**:
+   - Count: How many files changed
+   - Count: How many customizations found
+   - Identify: Which files need smart merge vs simple overwrite
+
+---
+
+### STEP 0-UPDATE.3: Display comparison report and ask for approval
+
+**Your task**: Show comparison results to user and get permission to proceed.
+
+**Steps**:
+
+1. **Print comparison report**:
+   ```
+   🔍 Template Comparison Analysis
+
+   📊 Files analyzed:
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   - CLAUDE.md
+   - .claude/settings.json
+   - .moai/project/product.md
+   - .moai/project/structure.md
+   - .moai/project/tech.md
+
+   🔧 Changes detected:
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   [IF CLAUDE.md has customizations]
+   ✓ CLAUDE.md:
+     - "## 🤖 Project Information" section (user-customized)
+     - [List other custom sections if found]
+
+   [IF settings.json has customizations]
+   ✓ .claude/settings.json:
+     - Custom permissions: [list count] items
+     - Custom environment variables: [list count] items
+     - Custom hooks: [list if any]
+
+   [IF project docs have customizations]
+   ✓ .moai/project/product.md: Has user-written content
+   ✓ .moai/project/structure.md: Has user-written content
+   ✓ .moai/project/tech.md: Has user-written content
+
+   [IF NO customizations found in a file]
+   - [filename]: No customizations (can be safely overwritten)
+
+   💡 Recommendation:
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   - Smart merge will preserve your customizations
+   - Latest template structure will be applied
+   - Backup will be created before any changes
+   ```
+
+2. **Call AskUserQuestion tool**:
+   ```python
+   AskUserQuestion(
+       questions=[
+           {
+               "question": "Template optimization analysis complete. How would you like to proceed?",
+               "header": "📦 Template Optimization",
+               "multiSelect": false,
+               "options": [
+                   {
+                       "label": "✅ Proceed",
+                       "description": "Run smart merge: preserve customizations with latest template structure"
+                   },
+                   {
+                       "label": "👀 Preview",
+                       "description": "Show detailed file-by-file changes before proceeding"
+                   },
+                   {
+                       "label": "⏸️ Skip",
+                       "description": "Keep current templates unchanged (you can run this command later)"
+                   }
+               ]
+           }
+       ]
+   )
+   ```
+
+3. **Process user's response**:
+   - Store: User's answer in variable `user_choice`
+   - IF `user_choice == "Proceed"` → Go to STEP 0-UPDATE.4
+   - IF `user_choice == "Preview"` → Go to STEP 0-UPDATE.3.1
+   - IF `user_choice == "Skip"` → Go to STEP 0-UPDATE.7 (exit gracefully)
+
+---
+
+### STEP 0-UPDATE.3.1: Show detailed preview (conditional - only if user requested)
+
+**Your task**: Show detailed file-by-file changes before merging.
+
+**Steps**:
+
+1. **For CLAUDE.md**:
+   - Print:
+     ```
+     📄 FILE: CLAUDE.md
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+     🔸 SECTIONS TO PRESERVE (from your backup):
+     - ## 🤖 Project Information
+       [Show first 5 lines of this section from backup]
+
+     🔸 NEW TEMPLATE STRUCTURE:
+     - [List new sections added in latest template]
+
+     🔸 MERGE STRATEGY:
+     - Keep your "Project Information" section
+     - Apply new template structure
+     - Combine both into final CLAUDE.md
+     ```
+
+2. **For settings.json**:
+   - Print:
+     ```
+     📄 FILE: .claude/settings.json
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+     🔸 CUSTOM PERMISSIONS (from your backup):
+     [Show user's custom permissions array]
+
+     🔸 CUSTOM ENVIRONMENT VARIABLES (from your backup):
+     [Show user's custom env vars if any]
+
+     🔸 MERGE STRATEGY:
+     - Keep your custom permissions
+     - Add new default permissions from template
+     - Preserve your environment variables
+     ```
+
+3. **For .moai/project/ files**:
+   - For each file (product.md, structure.md, tech.md):
+     - Print:
+       ```
+       📄 FILE: .moai/project/[filename]
+       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+       🔸 YOUR CURRENT CONTENT (first 10 lines):
+       [Show first 10 lines from backup]
+
+       🔸 NEW TEMPLATE STRUCTURE:
+       [Show first 10 lines from new template]
+
+       🔸 MERGE STRATEGY:
+       - Keep your written content
+       - Apply new template structure/headings
+       - Combine both into final document
+       ```
+
+4. **Ask for approval again**:
+   ```python
+   AskUserQuestion(
+       questions=[
+           {
+               "question": "Preview complete. Ready to proceed with smart merge?",
+               "header": "📦 Confirm Merge",
+               "multiSelect": false,
+               "options": [
+                   {
+                       "label": "✅ Proceed",
+                       "description": "Apply smart merge now"
+                   },
+                   {
+                       "label": "⏸️ Skip",
+                       "description": "Cancel and keep current templates"
+                   }
+               ]
+           }
+       ]
+   )
+   ```
+
+5. **Process second response**:
+   - IF "Proceed" → Go to STEP 0-UPDATE.4
+   - IF "Skip" → Go to STEP 0-UPDATE.7 (exit gracefully)
+
+---
+
+### STEP 0-UPDATE.4: Create safety backup before merge
+
+**Your task**: Create a timestamped backup of current state before making any changes.
+
+**Steps**:
+
+1. **Generate new timestamp**:
+   - Format: `YYYYMMDD_HHMMSS` (e.g., "20250104_153045")
+   - Store: In variable `new_backup_timestamp`
+
+2. **Create backup directory**:
+   - Directory: `.moai-backups/[new_backup_timestamp]/`
+   - IF directory creation fails → Show error and exit:
+     ```
+     ❌ Error: Cannot create backup directory
+
+     Failed to create: .moai-backups/[TIMESTAMP]/
+
+     Possible reasons:
+     - Insufficient disk space
+     - Permission denied
+     - Invalid directory name
+
+     Cannot proceed without safety backup.
+     ```
+
+3. **Copy current files to backup**:
+   - Copy: `CLAUDE.md` → `.moai-backups/[new_backup_timestamp]/CLAUDE.md`
+   - Copy: `.claude/settings.json` → `.moai-backups/[new_backup_timestamp]/.claude/settings.json`
+   - Copy: `.moai/project/product.md` → `.moai-backups/[new_backup_timestamp]/.moai/project/product.md`
+   - Copy: `.moai/project/structure.md` → `.moai-backups/[new_backup_timestamp]/.moai/project/structure.md`
+   - Copy: `.moai/project/tech.md` → `.moai-backups/[new_backup_timestamp]/.moai/project/tech.md`
+   - Copy: `.moai/config.json` → `.moai-backups/[new_backup_timestamp]/.moai/config.json`
+
+4. **Verify backup integrity**:
+   - Check: All files copied successfully
+   - Check: Files are readable
+   - IF any file missing → Show error and exit (do NOT proceed with merge)
+
+5. **Print backup confirmation**:
+   ```
+   💾 Safety backup created
+
+   Location: .moai-backups/[new_backup_timestamp]/
+   Files backed up: 6
+
+   [IF merge fails, you can restore from this backup]
+   ```
+
+---
+
+### STEP 0-UPDATE.5: Execute smart merge
+
+**Your task**: Merge new templates with user customizations.
+
+**Steps**:
+
+1. **Merge CLAUDE.md**:
+   - Read: New template from `src/moai_adk/templates/CLAUDE.md`
+   - Read: User's "## 🤖 Project Information" section from backup
+   - Find: Location where "## 🤖 Project Information" should be inserted in new template
+   - Insert: User's section into new template at correct location
+   - Keep: All other sections from new template
+   - Write: Merged content to `CLAUDE.md`
+   - IF write fails → Go to STEP 0-UPDATE.6 (error recovery)
+
+2. **Merge .claude/settings.json**:
+   - Read: New template from `src/moai_adk/templates/.claude/settings.json`
+   - Read: User's custom permissions from backup
+   - Read: User's custom environment variables from backup
+   - Merge strategy:
+     ```
+     {
+       "hooks": [merge user's custom hooks with new defaults],
+       "permissions": {
+         "allow": [merge user's + new defaults, remove duplicates],
+         "ask": [keep new defaults],
+         "deny": [keep new defaults]
+       },
+       "environmentVariables": [merge user's custom vars with new defaults]
+     }
+     ```
+   - Write: Merged settings.json
+   - IF write fails → Go to STEP 0-UPDATE.6 (error recovery)
+
+3. **Merge .moai/project/product.md**:
+   - Read: New template from `src/moai_adk/templates/.moai/project/product.md`
+   - Read: User's content from backup
+   - Merge strategy:
+     - Keep: New template section headings
+     - Insert: User's written content under each heading
+     - Preserve: User's custom sections not in template
+   - Write: Merged product.md
+   - IF write fails → Go to STEP 0-UPDATE.6 (error recovery)
+
+4. **Merge .moai/project/structure.md**:
+   - Same merge strategy as product.md
+   - Write: Merged structure.md
+   - IF write fails → Go to STEP 0-UPDATE.6 (error recovery)
+
+5. **Merge .moai/project/tech.md**:
+   - Same merge strategy as product.md
+   - Write: Merged tech.md
+   - IF write fails → Go to STEP 0-UPDATE.6 (error recovery)
+
+6. **Print merge progress** (after each file):
+   ```
+   ✓ CLAUDE.md merged
+   ✓ .claude/settings.json merged
+   ✓ .moai/project/product.md merged
+   ✓ .moai/project/structure.md merged
+   ✓ .moai/project/tech.md merged
+   ```
+
+---
+
+### STEP 0-UPDATE.5.1: Update config.json metadata
+
+**Your task**: Mark the optimization as complete in config.json.
+
+**Steps**:
+
+1. **Read current config.json**:
+   - Read: `.moai/config.json`
+   - Parse: JSON content
+
+2. **Update fields**:
+   - Set: `project.optimized = true`
+   - Set: `project.optimized_at = "[ISO_TIMESTAMP]"` (current timestamp in ISO 8601 format)
+   - Set: `project.template_version = "[PACKAGE_VERSION]"` (from moai-adk package version)
+
+3. **Add history entry**:
+   - Append to `history` array:
+     ```json
+     {
+       "date": "[ISO_TIMESTAMP]",
+       "event": "Template optimization",
+       "action": "Smart merge with user customizations",
+       "backup": "[new_backup_timestamp]",
+       "template_version": "[PACKAGE_VERSION]",
+       "notes": "Updated to latest moai-adk template structure"
+     }
+     ```
+
+4. **Write updated config.json**:
+   - Write: Updated content to `.moai/config.json`
+   - IF write fails → Show error (but merge already succeeded, so this is non-critical)
+
+5. **Print config update confirmation**:
+   ```
+   ⚙️ config.json updated
+
+   Changes:
+   - optimized: true
+   - optimized_at: [TIMESTAMP]
+   - template_version: [VERSION]
+   - history: Added optimization event
+   ```
+
+---
+
+### STEP 0-UPDATE.5.2: Display completion report
+
+**Your task**: Confirm to user that template optimization is complete.
+
+**Print**:
+```
+✅ Template optimization completed!
+
+📄 Merged files:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✓ CLAUDE.md
+  - Latest template structure applied
+  - Your "Project Information" section preserved
+
+✓ .claude/settings.json
+  - New default settings applied
+  - Your custom permissions preserved
+  - Your environment variables preserved
+
+✓ .moai/project/product.md
+  - Latest template structure applied
+  - Your content preserved
+
+✓ .moai/project/structure.md
+  - Latest template structure applied
+  - Your content preserved
+
+✓ .moai/project/tech.md
+  - Latest template structure applied
+  - Your content preserved
+
+⚙️ .moai/config.json
+  - optimized: true
+  - template_version: [VERSION]
+
+💾 Safety backups:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Pre-merge backup: .moai-backups/[new_backup_timestamp]/
+- Previous backup: .moai-backups/[old_timestamp]/
+
+🎯 Next steps:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Review merged templates:
+   - cat CLAUDE.md
+   - cat .claude/settings.json
+
+2. Test your project:
+   - /alfred:1-plan "test feature"
+
+3. IF issues occur:
+   - Restore from backup: .moai-backups/[new_backup_timestamp]/
+
+✨ Your project is now using the latest moai-adk template!
+```
+
+**Then STOP this command** (do NOT proceed to STEP 1 or any other section).
+
+---
+
+### STEP 0-UPDATE.6: Error recovery (merge failure)
+
+**Your task**: Handle errors during merge and restore from backup.
+
+**When to execute**:
+- IF any file write fails in STEP 0-UPDATE.5
+- IF merge conflict cannot be resolved automatically
+
+**Steps**:
+
+1. **Identify which file failed**:
+   - Store: Filename that caused error
+   - Store: Error message
+
+2. **Print error message**:
+   ```
+   ❌ Merge failed
+
+   Failed file: [FILENAME]
+   Error: [ERROR_MESSAGE]
+
+   Possible reasons:
+   - Permission denied (check file permissions)
+   - Disk full (check available space)
+   - File locked by another process
+
+   🔄 Attempting automatic recovery...
+   ```
+
+3. **Restore from safety backup**:
+   - Copy: `.moai-backups/[new_backup_timestamp]/[FAILED_FILE]` → `[FAILED_FILE]`
+   - Copy: All other files from backup (to ensure consistency)
+   - Print: "✓ Files restored from backup"
+
+4. **Ask user for next steps**:
+   ```python
+   AskUserQuestion(
+       questions=[
+           {
+               "question": "Merge failed and files were restored. What would you like to do?",
+               "header": "⚠️ Error Recovery",
+               "multiSelect": false,
+               "options": [
+                   {
+                       "label": "🔍 Show error details",
+                       "description": "Display full error message and failed file"
+                   },
+                   {
+                       "label": "🔧 Manual merge",
+                       "description": "I'll merge the files manually"
+                   },
+                   {
+                       "label": "⏸️ Skip for now",
+                       "description": "Keep current templates, try again later"
+                   }
+               ]
+           }
+       ]
+   )
+   ```
+
+5. **Process user's choice**:
+   - IF "Show error details":
+     - Print: Full error message
+     - Print: Backup location
+     - Print: Manual merge instructions
+   - IF "Manual merge" OR "Skip for now":
+     - Exit command with status message
+
+---
+
+### STEP 0-UPDATE.7: Graceful exit (user skipped)
+
+**Your task**: Exit the update command cleanly when user chooses to skip.
+
+**When to execute**:
+- IF user selected "Skip" in STEP 0-UPDATE.3
+- IF user selected "Skip" in STEP 0-UPDATE.3.1
+
+**Steps**:
+
+1. **Print skip message**:
+   ```
+   ⏸️ Template optimization skipped
+
+   No changes were made to your templates.
+
+   Current state:
+   - Templates: Using previous version
+   - config.json: optimized = false
+   - Backup: .moai-backups/[LATEST_TIMESTAMP]/
+
+   💡 You can run template optimization later:
+   - Command: /alfred:0-project update
+   - OR run: moai-adk update
+
+   ✨ Your project continues to work normally.
+   ```
+
+2. **STOP this command** (do NOT proceed to any other steps)
 ## 🚀 STEP 3: Project Custom Optimization (Optional)
 
 **Execution conditions**:
