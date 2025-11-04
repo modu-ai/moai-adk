@@ -245,19 +245,19 @@ AskUserQuestion(
             "multiSelect": false,
             "options": [
                 {
-                    "label": "✅ Proceed with TDD",
-                    "description": "Start RED → GREEN → REFACTOR cycle"
+                    "label": "Proceed with TDD",
+                    "description": "Start RED -> GREEN -> REFACTOR cycle"
                 },
                 {
-                    "label": "🔍 Research First",
+                    "label": "Research First",
                     "description": "Invoke Explore agent to study existing code patterns"
                 },
                 {
-                    "label": "🔄 Modify Strategy",
+                    "label": "Modify Strategy",
                     "description": "Request changes to implementation approach"
                 },
                 {
-                    "label": "⏸️ Postpone",
+                    "label": "Postpone",
                     "description": "Save plan and return later"
                 }
             ]
@@ -267,30 +267,30 @@ AskUserQuestion(
 ```
 
 **Response Processing**:
-- **"✅ Proceed with TDD"** (`answers["0"] === "✅ Proceed with TDD"`) → Execute Phase 2
+- **"Proceed with TDD"** (`answers["0"] === "Proceed with TDD"`) → Execute Phase 2
   - Proceed directly to STEP 2 (TDD implementation)
   - Invoke tdd-implementer agent with approved plan
   - Begin RED phase (write failing tests)
-  - Display: "🔴 Starting RED phase..."
+  - Display: "Starting RED phase..."
 
-- **"🔍 Research First"** (`answers["0"] === "🔍 Research First"`) → Run exploration first
+- **"Research First"** (`answers["0"] === "Research First"`) → Run exploration first
   - Invoke Explore agent to analyze existing codebase
   - Pass exploration results to implementation-planner
   - Re-generate plan with research insights
   - Re-present plan for approval
-  - Display: "🔍 Codebase exploration complete. Plan updated."
+  - Display: "Codebase exploration complete. Plan updated."
 
-- **"🔄 Modify Strategy"** (`answers["0"] === "🔄 Modify Strategy"`) → Revise plan
+- **"Modify Strategy"** (`answers["0"] === "Modify Strategy"`) → Revise plan
   - Collect strategy modification requests from user
   - Update implementation plan with changes
   - Re-present for approval (recursive)
-  - Display: "🔄 Plan modified. Please review updated strategy."
+  - Display: "Plan modified. Please review updated strategy."
 
-- **"⏸️ Postpone"** (`answers["0"] === "⏸️ Postpone"`) → Save and resume later
+- **"Postpone"** (`answers["0"] === "Postpone"`) → Save and resume later
   - Save plan to `.moai/specs/SPEC-{ID}/plan.md`
   - Commit with message "plan(spec): Save implementation plan for SPEC-{ID}"
   - User can resume with `/alfred:2-run SPEC-{ID}`
-  - Display: "⏸️ Plan saved. Resume with `/alfred:2-run SPEC-{ID}`"
+  - Display: "Plan saved. Resume with `/alfred:2-run SPEC-{ID}`"
 
 ---
 
@@ -740,19 +740,19 @@ AskUserQuestion(
             "multiSelect": false,
             "options": [
                 {
-                    "label": "📚 Synchronize Documentation",
+                    "label": "Synchronize Documentation",
                     "description": "Proceed to /alfred:3-sync for documentation synchronization"
                 },
                 {
-                    "label": "🔨 Implement More Features",
+                    "label": "Implement More Features",
                     "description": "Continue with /alfred:2-run SPEC-XXX for next feature"
                 },
                 {
-                    "label": "🔄 New Session",
+                    "label": "New Session",
                     "description": "Execute /clear for better context management (recommended)"
                 },
                 {
-                    "label": "✅ Complete",
+                    "label": "Complete",
                     "description": "Finish current session"
                 }
             ]
@@ -762,22 +762,22 @@ AskUserQuestion(
 ```
 
 **Response Processing**:
-- **"📚 Synchronize Documentation"** (`answers["0"] === "📚 Synchronize Documentation"`) → Proceed to `/alfred:3-sync`
+- **"Synchronize Documentation"** (`answers["0"] === "Synchronize Documentation"`) → Proceed to `/alfred:3-sync`
   - Display: "Starting documentation synchronization..."
   - User can execute: `/alfred:3-sync auto`
   - This verifies TAGs, updates docs, and prepares for PR merge
 
-- **"🔨 Implement More Features"** (`answers["0"] === "🔨 Implement More Features"`) → Continue implementation
+- **"Implement More Features"** (`answers["0"] === "Implement More Features"`) → Continue implementation
   - Display: "Ready for next feature implementation..."
   - User can run: `/alfred:2-run SPEC-YYY` for another feature
   - Maintains current session context
 
-- **"🔄 New Session"** (`answers["0"] === "🔄 New Session"`) → Clear and restart
-  - Display: "⏳ Clearing session for better context management..."
+- **"New Session"** (`answers["0"] === "New Session"`) → Clear and restart
+  - Display: "Clearing session for better context management..."
   - Recommended after large implementations
   - Next session: Can run any command
 
-- **"✅ Complete"** (`answers["0"] === "✅ Complete"`) → End current workflow
+- **"Complete"** (`answers["0"] === "Complete"`) → End current workflow
   - Display: "Implementation workflow complete!"
   - Recommend next manual steps via `/alfred:3-sync`
   - User can review work or plan next features
