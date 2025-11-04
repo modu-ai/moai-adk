@@ -382,6 +382,24 @@ Your task is to create the SPEC document files in the correct directory structur
 rg "@SPEC:{ID}" -n .moai/specs/
 ```
 
+**TAG Policy Compliance Check**: After SPEC creation, verify TAG policy compliance:
+
+```bash
+# Validate TAG format and chain integrity
+python3 -c "
+import sys
+sys.path.insert(0, 'src')
+from moai_adk.core.tags.policy_validator import TagPolicyValidator
+validator = TagPolicyValidator()
+violations = validator.validate_after_modification('.moai/specs/SPEC-{ID}/spec.md', content)
+if violations:
+    print('❌ TAG 정책 위반 발견:', violations)
+    sys.exit(1)
+else:
+    print('✅ TAG 정책 준수 확인')
+"
+```
+
 **Composite Domain Rules**:
 - ✅ Allow: `UPDATE-REFACTOR-001` (2 domains)
 - ⚠️ Caution: `UPDATE-REFACTOR-FIX-001` (3+ domains, simplification recommended)
@@ -516,6 +534,13 @@ The spec-builder agent will:
    - Given-When-Then scenarios
    - Test cases
    - Success criteria
+
+5. **TAG Policy Validation** (CRITICAL - SPEC-first enforcement):
+   - Verify @TAG compliance in all created files
+   - Check SPEC chain integrity (@SPEC → @TEST → @CODE → @DOC)
+   - Validate TAG format: @(SPEC|CODE|TEST|DOC):DOMAIN-TYPE-NNN
+   - Ensure no duplicate TAGs across project
+   - Confirm SPEC ID uniqueness via project scan
 
 ### Step 3: Verify SPEC files were created
 

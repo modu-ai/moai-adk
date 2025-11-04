@@ -101,7 +101,41 @@ Users can run commands as follows:
 
 Your task is to analyze SPEC requirements and create an execution plan. Follow these steps:
 
-### STEP 1.1: Determine if Codebase Exploration is Needed
+### STEP 1.1: SPEC Document Analysis and TAG Policy Validation
+
+**CRITICAL**: First validate TAG policy compliance before proceeding.
+
+1. **Read SPEC document**: `.moai/specs/SPEC-$ARGUMENTS/spec.md`
+
+2. **TAG Policy Validation** (Mandatory):
+   ```bash
+   # Verify SPEC exists and TAG policy compliance
+   python3 -c "
+import sys
+sys.path.insert(0, 'src')
+from moai_adk.core.tags.policy_validator import TagPolicyValidator
+from pathlib import Path
+
+spec_file = Path('.moai/specs/SPEC-$ARGUMENTS/spec.md')
+if not spec_file.exists():
+    print('❌ SPEC 파일이 존재하지 않습니다')
+    sys.exit(1)
+
+content = spec_file.read_text(encoding='utf-8')
+validator = TagPolicyValidator()
+violations = validator.validate_before_creation(str(spec_file), content)
+
+if violations:
+    print('❌ TAG 정책 위반 발견:')
+    for v in violations:
+        print(f'  - {v.message}')
+    sys.exit(1)
+else:
+    print('✅ SPEC TAG 정책 준수 확인')
+"
+   ```
+
+3. **Proceed with Exploration** (only if TAG validation passes):
 
 Read the SPEC document at `.moai/specs/SPEC-$ARGUMENTS/spec.md`.
 
@@ -205,7 +239,36 @@ IF no domains specified OR domain expert unavailable, THEN:
   - Skip advisory phase
   - Continue to STEP 2.2 (implementation proceeds regardless)
 
-### STEP 2.2: Invoke TDD Implementer Agent
+### STEP 2.2: TAG Policy Check Before Implementation
+
+**CRITICAL**: Verify SPEC → CODE → TAG chain before implementation.
+
+```bash
+# Ensure SPEC exists and has valid @TAG
+python3 -c "
+import sys
+sys.path.insert(0, 'src')
+from moai_adk.core.tags.policy_validator import TagPolicyValidator
+from pathlib import Path
+import re
+
+spec_file = Path('.moai/specs/SPEC-$ARGUMENTS/spec.md')
+if not spec_file.exists():
+    print('❌ SPEC 파일이 존재하지 않습니다')
+    sys.exit(1)
+
+content = spec_file.read_text(encoding='utf-8')
+
+# Check for @SPEC: tag
+if not re.search(r'@SPEC:[A-Z0-9-]+-\d{3}', content):
+    print('❌ SPEC 파일에 @TAG가 없습니다')
+    sys.exit(1)
+
+print('✅ SPEC TAG 확인 완료 - 구현 시작 가능')
+"
+```
+
+### STEP 2.3: Invoke TDD Implementer Agent
 
 Invoke the tdd-implementer agent using the Task tool:
   - Set subagent_type to "tdd-implementer"
@@ -213,6 +276,11 @@ Invoke the tdd-implementer agent using the Task tool:
   - Pass prompt including:
     - SPEC ID ($ARGUMENTS)
     - Language settings (conversation_language, conversation_language_name)
+    - **CRITICAL**: TAG policy enforcement instructions
+      - "All CODE files MUST include @CODE: tag referencing the SPEC"
+      - "All TEST files MUST include @TEST: tag referencing the SPEC"
+      - "Maintain SPEC → CODE → TEST → DOC chain integrity"
+      - "Follow TAG format: @(TYPE):DOMAIN-NNN"
     - Code and technical output must be in English
     - Code comments language rules (local project vs package code)
     - Test descriptions and documentation language

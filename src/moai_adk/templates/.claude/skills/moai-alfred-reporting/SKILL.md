@@ -1,28 +1,54 @@
 ---
 name: moai-alfred-reporting
+version: 1.0.0
+created: 2025-11-05
+updated: 2025-11-05
+status: active
 description: Report generation standards, output formatting rules, and sub-agent report examples
-tier: alfred
-freedom: medium
-tags: [reporting, formatting, documentation, output, style]
+keywords: ['reporting', 'formatting', 'documentation', 'output', 'style']
+allowed-tools:
+  - Read
+  - Bash
 ---
 
-# Reporting Style
+# Alfred Reporting Skill
 
-**CRITICAL RULE**: Distinguish between screen output (user-facing) and internal documents (files).
+## Skill Metadata
 
-## Output Format Rules
+| Field | Value |
+| ----- | ----- |
+| **Skill Name** | moai-alfred-reporting |
+| **Version** | 1.0.0 (2025-11-05) |
+| **Allowed tools** | Read, Bash |
+| **Auto-load** | On demand during report generation |
+| **Tier** | Alfred |
 
-- **Screen output to user**: Plain text (NO markdown syntax)
-- **Internal documents** (files in `.moai/docs/`, `.moai/reports/`): Markdown format
-- **Code comments and git commits**: User's configured language, clear structure
+---
 
-## Screen Output to User (Plain Text)
+## What It Does
 
-**When responding directly to user in chat/prompt:**
+Establishes comprehensive standards for report generation, output formatting, and documentation structure within Alfred's workflow. Ensures consistent, professional communication across all user interactions and internal documentation.
 
-Use plain text format (NO markdown headers, tables, or special formatting):
+## Core Principle: Output Format Distinction
 
-Example:
+**CRITICAL RULE**: Always distinguish between screen output (user-facing) and internal documents (files).
+
+### Screen Output to Users (Plain Text)
+- **Format**: Plain text with NO markdown syntax
+- **Purpose**: Direct chat responses, real-time updates
+- **Style**: Clear, concise, immediate readability
+
+### Internal Documents (Markdown Format)
+- **Format**: Structured markdown with proper syntax
+- **Purpose**: Files in `.moai/docs/`, `.moai/reports/`, `.moai/analysis/`
+- **Style**: Professional documentation with structure
+
+## Screen Output Standards
+
+### Plain Text Format
+
+When responding directly to users in chat:
+
 ```
 Detected Merge Conflict:
 
@@ -40,149 +66,242 @@ Proposed Actions:
 - Synchronize both files
 ```
 
-## Internal Documents (Markdown Format)
+**Key Characteristics**:
+- NO markdown headers (`##`, `###`)
+- NO markdown tables (`| column | value |`)
+- NO markdown formatting (`**bold**`, `*italic*`)
+- Simple text with clear indentation
+- Human-readable hierarchy through spacing
 
-**When creating files in `.moai/docs/`, `.moai/reports/`, `.moai/analysis/`:**
+### When to Use Plain Text
 
-Use markdown format with proper structure:
+**Always use plain text for:**
+- Direct responses to user questions
+- Real-time progress updates
+- Error messages and debugging output
+- Quick status reports
+- Analysis summaries in chat
+
+## Internal Document Standards
+
+### Markdown Format
+
+When creating files in `.moai/` directories:
 
 ```markdown
 ## 🎊 Task Completion Report
 
 ### Implementation Results
 - ✅ Feature A implementation completed
-- ✅ Tests written and passing
+- ✅ Tests written and passing (47/47)
 - ✅ Documentation synchronized
 
 ### Quality Metrics
-| Item | Result |
-|------|--------|
-| Test Coverage | 95% |
-| Linting | Passed |
+| Item | Result | Status |
+|------|--------|--------|
+| Test Coverage | 95% | ✅ |
+| Linting | 0 issues | ✅ |
+| Type Checking | Passed | ✅ |
 
 ### Next Steps
-1. Run `/alfred:3-sync`
-2. Create and review PR
+1. Run `/alfred:3-sync` for final synchronization
+2. Create and review Pull Request
 3. Merge to main branch
+
+### Important Notes
+⚠️ Database migration required for production deployment
 ```
 
-## ❌ Prohibited Report Output Patterns
+**Key Characteristics**:
+- Proper markdown headings (`##`, `###`)
+- Structured tables for data presentation
+- Emojis for visual status indicators (✅, ❌, ⚠️, 🎊, 📊)
+- Lists and bullet points for organization
+- Clear section separation
 
-**DO NOT wrap reports using these methods:**
+### Document Locations
 
-```bash
-# ❌ Wrong Example 1: Bash command wrapping
-cat << 'EOF'
-## Report
-...content...
-EOF
-
-# ❌ Wrong Example 2: Python wrapping
-python -c "print('''
-## Report
-...content...
-''')"
-
-# ❌ Wrong Example 3: echo usage
-echo "## Report"
-echo "...content..."
-```
+| Document Type | Location | File Pattern |
+|---------------|----------|--------------|
+| Implementation Guides | `.moai/docs/` | `implementation-{SPEC}.md` |
+| Analysis Reports | `.moai/analysis/` | `{topic}-analysis.md` |
+| Sync Reports | `.moai/reports/` | `sync-report-{date}.md` |
+| Exploration Results | `.moai/docs/` | `exploration-{topic}.md` |
+| Strategic Planning | `.moai/docs/` | `strategy-{topic}.md` |
 
 ## Report Writing Guidelines
 
-### 1. Markdown Format
-- Use headings (`##`, `###`) for section separation
-- Present structured information in tables
-- List items with bullet points
-- Use emojis for status indicators (✅, ❌, ⚠️, 🎊, 📊)
+### 1. Structured Sections
 
-### 2. Report Length Management
-- Short reports (<500 chars): Output once
-- Long reports (>500 chars): Split by sections
-- Lead with summary, follow with details
-
-### 3. Structured Sections
 ```markdown
 ## 🎯 Key Achievements
-- Core accomplishments
+- Core accomplishments completed
+- Major milestones reached
 
 ## 📊 Statistics Summary
-| Item | Result |
+| Metric | Value | Status |
+|--------|-------|--------|
+| Performance | +25% | ✅ |
+| Quality | 95% | ✅ |
 
 ## ⚠️ Important Notes
-- Information user needs to know
+- Critical information user needs to know
+- Warnings or considerations
 
 ## 🚀 Next Steps
-1. Recommended action
+1. Recommended immediate action
+2. Follow-up tasks
+3. Long-term considerations
 ```
 
-### 4. Language Settings
-- Use user's `conversation_language`
-- Keep code/technical terms in English
-- Use user's language for explanations/guidance
+### 2. Length Management
 
-## Sub-agent Report Examples
+**Short Reports (<500 characters)**:
+- Output in single response
+- Lead with summary
+- Include key metrics
 
-### spec-builder (SPEC Creation Complete)
+**Long Reports (>500 characters)**:
+- Split into logical sections
+- Lead with executive summary
+- Follow with detailed analysis
+- Use emojis for visual organization
+
+### 3. Language and Tone
+
+**User's Language**:
+- Explanations and guidance in user's `conversation_language`
+- Clear, accessible language
+- Cultural context awareness
+
+**Technical Terms**:
+- Keep technical terms in English
+- Provide explanations in user's language
+- Use consistent terminology
+
+## Sub-Agent Report Templates
+
+### spec-builder Report Template
+
 ```markdown
 ## 📋 SPEC Creation Complete
 
 ### Generated Documents
-- ✅ `.moai/specs/SPEC-XXX-001/spec.md`
-- ✅ `.moai/specs/SPEC-XXX-001/plan.md`
-- ✅ `.moai/specs/SPEC-XXX-001/acceptance.md`
+- ✅ `.moai/specs/SPEC-XXX-001/spec.md` - Requirements specification
+- ✅ `.moai/specs/SPEC-XXX-001/plan.md` - Implementation plan
+- ✅ `.moai/specs/SPEC-XXX-001/acceptance.md` - Acceptance criteria
 
 ### EARS Validation Results
 - ✅ All requirements follow EARS format
-- ✅ @TAG chain created
+- ✅ @TAG chain created and linked
+- ✅ Acceptance criteria are measurable
+- ✅ Scope boundaries clearly defined
+
+### Quality Metrics
+| Aspect | Status | Details |
+|--------|--------|---------|
+| Clarity | ✅ | Requirements are unambiguous |
+| Completeness | ✅ | All user needs captured |
+| Testability | ✅ | Each requirement can be tested |
+| Feasibility | ✅ | Implementation is achievable |
+
+### Next Steps
+1. Review SPEC with stakeholders
+2. Run `/alfred:2-run SPEC-XXX-001` to begin implementation
+3. Schedule acceptance criteria review
 ```
 
-### tdd-implementer (Implementation Complete)
+### tdd-implementer Report Template
+
 ```markdown
 ## 🚀 TDD Implementation Complete
 
 ### Implementation Files
-- ✅ `src/feature.py` (code written)
-- ✅ `tests/test_feature.py` (tests written)
+- ✅ `src/feature.py` - Core implementation (245 lines)
+- ✅ `tests/test_feature.py` - Comprehensive test suite (156 lines)
+- ✅ `docs/api.md` - API documentation updated
 
-### Test Results
-| Phase | Status |
-|-------|--------|
-| RED | ✅ Failure confirmed |
-| GREEN | ✅ Implementation successful |
-| REFACTOR | ✅ Refactoring complete |
+### TDD Phases Results
+| Phase | Status | Tests | Description |
+|-------|--------|-------|-------------|
+| RED | ✅ | 5/5 failing | Failure confirmed for all requirements |
+| GREEN | ✅ | 5/5 passing | Implementation successful |
+| REFACTOR | ✅ | 5/5 passing | Code optimized, tests maintained |
 
 ### Quality Metrics
-- Test coverage: 95%
-- Linting: 0 issues
+- **Test Coverage**: 95% (47/49 lines covered)
+- **Code Quality**: 0 linting issues
+- **Performance**: 15% improvement over baseline
+- **Security**: No vulnerabilities detected
+
+### Implementation Highlights
+- Used dependency injection for testability
+- Implemented comprehensive error handling
+- Added logging for production monitoring
+- Created extensible architecture for future features
+
+### Next Steps
+1. Run integration tests with related systems
+2. Schedule code review with team
+3. Prepare documentation updates
+4. Run `/alfred:3-sync` for final synchronization
 ```
 
-### doc-syncer (Documentation Sync Complete)
+### doc-syncer Report Template
+
 ```markdown
 ## 📚 Documentation Sync Complete
 
 ### Updated Documents
-- ✅ `README.md` - Usage examples added
-- ✅ `.moai/docs/architecture.md` - Structure updated
+- ✅ `README.md` - Usage examples and installation guide
+- ✅ `.moai/docs/architecture.md` - System architecture updated
 - ✅ `CHANGELOG.md` - v0.8.0 entries added
+- ✅ `docs/api/` - API documentation refreshed
 
-### @TAG Verification
-- ✅ SPEC → CODE connection verified
-- ✅ CODE → TEST connection verified
-- ✅ TEST → DOC connection verified
+### @TAG Verification Results
+- ✅ SPEC → CODE connection verified (all links valid)
+- ✅ CODE → TEST connection verified (test coverage complete)
+- ✅ TEST → DOC connection verified (documentation current)
+
+### Documentation Quality
+| Document | Status | Updates | Review Required |
+|----------|--------|---------|-----------------|
+| README.md | ✅ | Installation guide added | No |
+| API Docs | ✅ | New endpoints documented | Yes |
+| Architecture | ✅ | New components added | No |
+| CHANGELOG | ✅ | Release notes current | No |
+
+### Synchronization Metrics
+- **Files Updated**: 12 documents
+- **Links Verified**: 47 @TAG connections
+- **Content Added**: 2,341 words
+- **Accuracy Score**: 98% (minor outdated items found)
+
+### Improvements Made
+- Added code examples to README
+- Updated architecture diagrams
+- Enhanced API documentation with examples
+- Standardized formatting across all docs
+
+### Next Steps
+1. Review documentation updates with team
+2. Publish updated documentation
+3. Schedule next documentation sync (recommended: weekly)
 ```
 
-## When to Apply
+## Report Generation Triggers
 
-**Reports should be output directly in these moments:**
+### Automatic Report Generation
 
-1. **Command Completion** (always)
-   - `/alfred:0-project` complete
-   - `/alfred:1-plan` complete
-   - `/alfred:2-run` complete
-   - `/alfred:3-sync` complete
+**Always generate reports for:**
 
-2. **Sub-agent Task Completion** (mostly)
+1. **Command Completion** (Alfred commands)
+   - `/alfred:0-project` complete → Project setup report
+   - `/alfred:1-plan` complete → SPEC creation report
+   - `/alfred:2-run` complete → Implementation report
+   - `/alfred:3-sync` complete → Synchronization report
+
+2. **Sub-agent Task Completion**
    - spec-builder: SPEC creation done
    - tdd-implementer: Implementation done
    - doc-syncer: Documentation sync done
@@ -198,33 +317,92 @@ echo "...content..."
    - After PR creation
    - After merge completion
 
-**Exceptions: When reports are NOT needed**
-- Simple query/read operations
-- Intermediate steps (incomplete tasks)
-- When user explicitly requests "quick" response
+### Conditional Report Generation
 
-## Bash Tool Usage Exceptions
+**Generate reports when:**
 
-**Bash tools allowed ONLY for:**
+1. **User explicitly requests**
+   - "Create a report for this work"
+   - "Generate analysis document"
+   - "Write implementation guide"
 
-1. **Actual System Commands**
-   - File operations (`touch`, `mkdir`, `cp`)
-   - Git operations (`git add`, `git commit`, `git push`)
-   - Package installation (`pip`, `npm`, `uv`)
-   - Test execution (`pytest`, `npm test`)
+2. **Significant milestones**
+   - Major feature completion
+   - Architecture changes
+   - Performance improvements
 
-2. **Environment Configuration**
-   - Permission changes (`chmod`)
-   - Environment variables (`export`)
-   - Directory navigation (`cd`)
+3. **Quality issues discovered**
+   - Test failures requiring investigation
+   - Performance regressions
+   - Security vulnerabilities
 
-3. **Information Queries (excluding file content)**
-   - System info (`uname`, `df`)
-   - Process status (`ps`, `top`)
-   - Network status (`ping`, `curl`)
+## Report Quality Standards
 
-**Use Read tool for file content:**
+### Content Requirements
+
+**Every report must include:**
+1. **Clear Title**: Descriptive and searchable
+2. **Executive Summary**: Key findings and outcomes
+3. **Detailed Sections**: Structured information presentation
+4. **Metrics and Data**: Quantifiable results where applicable
+5. **Next Steps**: Actionable recommendations
+
+**Formatting Requirements:**
+1. **Consistent Structure**: Use standardized templates
+2. **Visual Organization**: Emojis, tables, lists for clarity
+3. **Language Consistency**: User's language for explanations
+4. **Technical Accuracy**: Verify all technical details
+
+### Quality Checklist
+
 ```markdown
-❌ Bash: cat file.txt
-✅ Read: Read(file_path="/absolute/path/file.txt")
+## Report Quality Checklist
+
+### Content Quality
+- [ ] Title is descriptive and accurate
+- [ ] Executive summary captures key points
+- [ ] All sections are complete and relevant
+- [ ] Data and metrics are accurate
+- [ ] Next steps are actionable
+
+### Formatting Standards
+- [ ] Markdown syntax is correct
+- [ ] Tables are properly formatted
+- [ ] Emojis used appropriately for status
+- [ ] Section hierarchy is logical
+- [ ] Language is consistent (user's language)
+
+### Technical Accuracy
+- [ ] @TAG references are correct
+- [ ] File paths are accurate
+- [ ] Technical details are verified
+- [ ] Code examples are tested
+- [ ] Links are functional
 ```
+
+## Integration with Alfred Workflow
+
+### 4-Step Workflow Integration
+
+- **Step 1**: Intent understanding determines if report needed
+- **Step 2**: Planning includes report deliverables
+- **Step 3**: Execution generates report data
+- **Step 4**: Report creation and dissemination
+
+### Tool Usage Guidelines
+
+**Appropriate Tool Usage:**
+- **Read tool**: For reading file content and analysis
+- **Bash tool**: For system operations and file management
+- **Write tool**: For creating reports and documentation
+
+**Prohibited Patterns:**
+- **Bash for file content**: Use `cat file.txt` → Use Read tool instead
+- **Complex file wrapping**: Avoid heredoc for report generation
+- **Markdown in chat**: Use plain text for user responses
+
+## References
+
+- Skill("moai-alfred-doc-management"): Document placement rules
+- Skill("moai-alfred-workflow"): 4-Step workflow logic
+- Skill("moai-alfred-personas"): Communication style adaptation
