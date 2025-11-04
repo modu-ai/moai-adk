@@ -2992,6 +2992,93 @@ A. Possible, but remember: SPEC → TEST → CODE → DOC order and keep @TAGs u
 
 ---
 
+## 🚀 v0.17.0 Improvements (In Development)
+
+### 1. CLI Initialization Optimization
+**Improvement**: `moai-adk init` execution time reduced from **30s → 5s**
+
+**Key Changes**:
+- `init` command now asks only for project name (simplified)
+- Other settings (language, mode, author) collected in `/alfred:0-project`
+- Improved next steps guidance after initialization
+
+### 2. Report Generation Control
+**Purpose**: Manage token usage to reduce costs and improve performance
+
+**Features**:
+- Report generation preference during `/alfred:0-project` setup
+- 3 levels supported:
+  - **📊 Enable**: Full analysis reports (50-60 tokens/report)
+  - **⚡ Minimal** (Recommended): Essential reports only (20-30 tokens/report)
+  - **🚫 Disable**: No report generation (0 tokens)
+
+**Configuration**: `.moai/config.json` → `report_generation` section
+- `enabled`: Activate report generation
+- `auto_create`: Full vs minimal reports
+- `allowed_locations`: Report storage directories
+
+**Impact**:
+- **80% token reduction** with Minimal setting
+- **30-40% faster** `/alfred:3-sync` execution
+
+### 3. Flexible Git Workflows (Team Mode)
+**Purpose**: Choose branch strategy matching team size and project characteristics
+
+**3 Workflow Options**:
+1. **📋 Feature Branch + PR**: Create feature branch per SPEC → PR review → merge to develop
+   - Optimal for team collaboration and code review
+   - Perfect change history tracking
+
+2. **🔄 Direct Commit to Develop**: Skip branching, commit directly to develop
+   - Best for prototyping and rapid development
+   - Minimal workflow overhead
+
+3. **🤔 Decide Per SPEC**: Choose workflow for each SPEC during creation
+   - Maximum flexibility
+   - Select based on SPEC characteristics
+
+**Configuration**: `.moai/config.json` → `github.spec_git_workflow`
+- `"feature_branch"`: PR-based (default)
+- `"develop_direct"`: Direct commit
+- `"per_spec"`: Ask per SPEC
+
+### 4. GitHub Branch Auto-Cleanup
+**Feature**: Automatically delete remote branches after PR merge
+
+**Configuration**: `.moai/config.json` → `github.auto_delete_branches`
+- `true`: Auto-delete after merge
+- `false`: Manual cleanup
+- `null`: Not configured (can set later)
+
+### Usage Example
+
+**Initial Setup**:
+```bash
+# 1. Quick initialization
+moai-adk init
+
+# 2. Detailed configuration (mode, language, reports)
+/alfred:0-project
+```
+
+**Development Workflow**:
+```bash
+# Create SPEC (selected workflow auto-applied)
+/alfred:1-plan "new feature"
+
+# Implement with TDD
+/alfred:2-run SPEC-001
+
+# Sync (respects report settings)
+/alfred:3-sync auto
+```
+
+**Token Savings**:
+- Minimal setting: 150-250 tokens/session (vs. 250-300 with Enable)
+- Monthly savings: ~5,000-10,000 tokens (~$0.10-0.20)
+
+---
+
 ## Additional Resources
 
 | Purpose                   | Resource                                                        |

@@ -628,3 +628,90 @@ python3 .moai/scripts/session_analyzer.py \
 - [ ] 성공률 변화? → 전반적 규칙 재평가
 
 ---
+
+## 🚀 v0.17.0 새로운 기능들 (현재 개발 중)
+
+### 1. CLI 초기화 최적화
+**개선**: `moai-adk init` 실행 시간 **30초 → 5초**로 단축
+
+**변경사항**:
+- init 명령어: 프로젝트명만 질문 (간소화)
+- 다른 설정 (언어, 모드, 저자)은 `/alfred:0-project`에서 수집
+- 초기화 완료 후 다음 단계 안내 개선
+
+### 2. 보고서 생성 제어
+**목적**: 토큰 사용량 관리로 비용 절감 및 성능 향상
+
+**기능**:
+- `/alfred:0-project` 초기화 시 보고서 생성 옵션 선택
+- 3가지 수준 지원:
+  - **📊 Enable**: 전체 분석 보고서 (50-60 토큰/보고서)
+  - **⚡ Minimal** (권장): 필수 보고서만 (20-30 토큰/보고서)
+  - **🚫 Disable**: 보고서 생성 안 함 (0 토큰)
+
+**설정 위치**: `.moai/config.json` → `report_generation` 섹션
+- `enabled`: 보고서 생성 활성화 여부
+- `auto_create`: 전체/최소 보고서 선택
+- `allowed_locations`: 보고서 저장 위치
+
+**효과**:
+- Minimal 선택 시 **토큰 사용량 80% 감소**
+- `/alfred:3-sync` 실행 시간 30-40% 단축
+
+### 3. 유연한 Git 워크플로우 (팀 모드)
+**목적**: 팀 규모와 프로젝트 특성에 맞는 브랜치 전략 선택
+
+**3가지 워크플로우**:
+1. **📋 Feature Branch + PR**: SPEC마다 feature 브랜치 생성 → PR 리뷰 → develop 병합
+   - 팀 협업과 코드 리뷰에 최적
+   - 변경 이력 추적 완벽
+
+2. **🔄 Direct Commit to Develop**: 브랜치 없이 develop에 직접 커밋
+   - 프로토타입과 빠른 개발에 최적
+   - 워크플로우 오버헤드 최소
+
+3. **🤔 Decide Per SPEC**: SPEC 생성 시마다 워크플로우 선택
+   - 최고의 유연성
+   - SPEC 특성에 맞게 결정 가능
+
+**설정 위치**: `.moai/config.json` → `github.spec_git_workflow`
+- `"feature_branch"`: PR 기반 (기본)
+- `"develop_direct"`: 직접 커밋
+- `"per_spec"`: 매번 선택
+
+### 4. GitHub 자동 브랜치 정리
+**기능**: PR 병합 후 원격 브랜치 자동 삭제 옵션
+
+**설정 위치**: `.moai/config.json` → `github.auto_delete_branches`
+- `true`: 병합 후 자동 삭제
+- `false`: 수동 관리
+- `null`: 미설정 (나중에 설정 가능)
+
+### 사용 예시
+
+**초기 설정**:
+```bash
+# 1. 프로젝트 초기화 (빠름)
+moai-adk init
+
+# 2. 상세 설정 (모드, 언어, 보고서 등)
+/alfred:0-project
+```
+
+**개발 진행**:
+```bash
+# SPEC 생성 (선택한 워크플로우 자동 적용)
+/alfred:1-plan "새로운 기능"
+
+# 구현 (TDD)
+/alfred:2-run SPEC-001
+
+# 동기화 (보고서 생성 설정 존중)
+/alfred:3-sync auto
+```
+
+**토큰 절감 예시**:
+- Minimal 설정: 150-250 토큰/세션 (vs. 250-300 Enable 시)
+- 월간 절감: ~5,000-10,000 토큰 (수십 달러 절감)
+
+---
