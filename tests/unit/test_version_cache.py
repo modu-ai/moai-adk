@@ -27,7 +27,11 @@ def _load_version_cache_module(module_name: str = "version_cache_module"):
 
     if not version_cache_path.exists():
         # If not found, try templates directory (for testing after installation)
-        version_cache_path = repo_root / "src" / "moai_adk" / "templates" / ".claude" / "hooks" / "alfred" / "core" / "version_cache.py"
+        templates_core_dir = (
+            repo_root / "src" / "moai_adk" / "templates" /
+            ".claude" / "hooks" / "alfred" / "core"
+        )
+        version_cache_path = templates_core_dir / "version_cache.py"
 
     spec = importlib.util.spec_from_file_location(module_name, version_cache_path)
     if spec is None or spec.loader is None:
@@ -60,8 +64,8 @@ class TestVersionCache:
     @pytest.fixture
     def version_cache(self, cache_dir, version_cache_module):
         """VersionCache 인스턴스."""
-        VersionCache = version_cache_module.VersionCache
-        return VersionCache(cache_dir=cache_dir, ttl_hours=24)
+        version_cache_class = version_cache_module.VersionCache
+        return version_cache_class(cache_dir=cache_dir, ttl_hours=24)
 
     @pytest.fixture
     def sample_version_info(self):
