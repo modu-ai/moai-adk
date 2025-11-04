@@ -5,7 +5,11 @@
   "retention_policy": {
     "default_days": 30,
     "archive_days": 90,
-    "permanent_tags": ["release", "audit", "critical"]
+    "permanent_tags": [
+      "release",
+      "audit",
+      "critical"
+    ]
   },
   "naming_convention": "{type}-{purpose}-{YYYY-MM-DD-HHmm}.md",
   "report_types": {
@@ -44,7 +48,10 @@
       "status": "complete",
       "retention_days": 90,
       "archived": false,
-      "tags": ["audit", "infrastructure"]
+      "tags": [
+        "audit",
+        "infrastructure"
+      ]
     },
     {
       "id": "analysis-20251104-1100",
@@ -57,19 +64,42 @@
       "status": "complete",
       "retention_days": 90,
       "archived": false,
-      "tags": ["translation", "implementation", "analysis"]
+      "tags": [
+        "translation",
+        "implementation",
+        "analysis"
+      ]
+    },
+    {
+      "id": "completion-report-report-management-system-20251104",
+      "filename": "completion-report-report-management-system-20251104.md",
+      "type": "completion",
+      "purpose": "Report Management System implementation complete",
+      "generated_at": "2025-11-04T19:39:18.996030Z",
+      "generated_by": "alfred",
+      "spec_id": null,
+      "status": "complete",
+      "retention_days": 30,
+      "archived": false,
+      "tags": [
+        "implementation",
+        "complete",
+        "infrastructure"
+      ],
+      "size_bytes": 11904
     }
   ],
   "metadata": {
-    "total_reports": 3,
+    "total_reports": 4,
     "reports_by_type": {
       "sync": 1,
+      "audit": 1,
       "analysis": 1,
-      "audit": 1
+      "completion": 1
     },
-    "storage_usage_bytes": 45000,
-    "last_cleanup": "2025-11-04T11:00:00Z",
-    "next_cleanup": "2025-11-11T00:00:00Z"
+    "storage_usage_bytes": 11904,
+    "last_cleanup": "2025-11-04T19:39:24.801783Z",
+    "next_cleanup": "2025-11-11T19:39:24.801784Z"
   },
   "notes": "현재는 2025-11-04 신규 생성 보고서 3개만 등록. 기존 89개 보고서는 점진적으로 마이그레이션 예정."
 }
