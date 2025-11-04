@@ -82,13 +82,12 @@ class PreCommitValidator:
         tag_pattern: Custom TAG regex pattern
     """
 
-    # Default TAG pattern: @(SPEC|CODE|TEST|DOC):DOMAIN-NNN or DOMAIN-TYPE-NNN or DOMAIN-TYPE-NNN-SUBNNN
+    # Default TAG pattern: @(SPEC|CODE|TEST|DOC):DOMAIN-NNN or DOMAIN-TYPE-NNN
     # Matches formats like:
     # - @CODE:AUTH-API-001 (domain-type-number)
     # - @CODE:SPEC-001 (domain-number)
     # - @TEST:USER-REG-001 (domain-type-number)
-    # - @CODE:UPDATE-REFACTOR-002-001 (domain-type-number-subnumber)
-    DEFAULT_TAG_PATTERN = r"@(SPEC|CODE|TEST|DOC):([A-Z]+(?:-[A-Z]+)*-\d{3}(?:-\d{3})?)"
+    DEFAULT_TAG_PATTERN = r"@(SPEC|CODE|TEST|DOC):([A-Z]+(?:-[A-Z]+)*-\d{3})"
 
     def __init__(
         self,
