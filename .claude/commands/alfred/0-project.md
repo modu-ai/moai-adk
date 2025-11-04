@@ -1426,70 +1426,333 @@ For SPEC git workflow:
 
 ### 0-SETTING.5 Completion report
 
-**Purpose**: Confirm which settings were changed and display success status.
+**Your task**: Display a completion report showing what was changed.
 
-**Report Format**:
+---
 
-```markdown
+#### Step 1: Print header
+
+**Print to user**:
+```
 ✅ Settings update completed!
 
 📝 Modified settings:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
 
-[For each modified section, show:]
+---
 
-**🌍 Language Settings**:
+#### Step 2: Show changes for each modified section
+
+**For EACH section the user selected in STEP 0-SETTING.2**, display the before/after values:
+
+---
+
+##### IF LANGUAGE section was modified:
+
+**Print**:
+```
+🌍 Language Settings:
+- Conversation Language: [old_language_name] ([old_code]) → [new_language_name] ([new_code])
+- Agent Prompt Language: [old_agent_language] → [new_agent_language]
+```
+
+**Example**:
+```
+🌍 Language Settings:
 - Conversation Language: 한국어 (ko) → English (en)
-- Agent Prompt Language: Localized → English (Global Standard)
+- Agent Prompt Language: English (Global Standard) → Selected Language (Localized)
+```
 
-**👤 Nickname**:
+**Special case - No change made**:
+
+IF user selected LANGUAGE but all answers were "Keep current":
+
+**Print**:
+```
+🌍 Language Settings:
+- No changes (kept current settings)
+```
+
+---
+
+##### IF NICKNAME section was modified:
+
+**Print**:
+```
+👤 Nickname:
+- [old_nickname] → [new_nickname]
+```
+
+**Example**:
+```
+👤 Nickname:
 - GOOS → GoosLab
+```
 
-**🔧 GitHub Settings**:
+**Special case - No change made**:
+
+IF user entered empty text or same nickname:
+
+**Print**:
+```
+👤 Nickname:
+- No change (kept current nickname)
+```
+
+---
+
+##### IF GITHUB section was modified:
+
+**Print**:
+```
+🔧 GitHub Settings:
+- Auto-delete Branches: [old_value] → [new_value]
+- SPEC Git Workflow: [old_workflow] → [new_workflow]
+```
+
+**For fields where user chose "Keep current"**, show:
+```
+- Auto-delete Branches: [current_value] (no change)
+```
+
+**Example**:
+```
+🔧 GitHub Settings:
 - Auto-delete Branches: true (no change)
 - SPEC Git Workflow: feature_branch → develop_direct
+```
 
-[Sections NOT modified are NOT shown]
+**Special case - No changes made**:
+
+IF user chose "Keep current" for ALL GitHub settings:
+
+**Print**:
+```
+🔧 GitHub Settings:
+- No changes (kept current settings)
+```
+
+---
+
+##### IF REPORTS section was modified:
+
+**Print**:
+```
+📊 Report Generation:
+- Setting: [old_choice] → [new_choice]
+- Status: [enabled/disabled]
+- Auto-create: [true/false]
+```
+
+**Example**:
+```
+📊 Report Generation:
+- Setting: Enable → Minimal
+- Status: enabled
+- Auto-create: false
+```
+
+**Special case - No change made**:
+
+IF user chose "Keep current":
+
+**Print**:
+```
+📊 Report Generation:
+- No changes (kept current settings)
+```
+
+---
+
+##### IF DOMAINS section was modified:
+
+**Print**:
+```
+🎯 Project Domains:
+- Selected: [list of domain names]
+- Previous: [list of old domain names]
+```
+
+**Example**:
+```
+🎯 Project Domains:
+- Selected: Frontend, Backend, Database
+- Previous: Frontend
+```
+
+**Special case - Cleared all**:
+
+IF user selected "Clear all":
+
+**Print**:
+```
+🎯 Project Domains:
+- Selected: (none)
+- Previous: [list of old domains]
+```
+
+**Special case - No change made**:
+
+IF user cancelled or selected nothing:
+
+**Print**:
+```
+🎯 Project Domains:
+- No changes (kept current domains)
+```
+
+---
+
+#### Step 3: Print sections NOT modified
+
+**DO NOT print anything for sections the user did NOT select**.
+
+**Example**:
+- User only selected LANGUAGE and NICKNAME
+- Do NOT show GITHUB, REPORTS, or DOMAINS sections in the report
+
+---
+
+#### Step 4: Print file save confirmation
+
+**Print**:
+```
 
 💾 Configuration saved to `.moai/config.json`
+```
+
+---
+
+#### Step 5: Print next steps
+
+**Print**:
+```
 
 📋 Next steps:
 1. Review the changes above
 2. Continue development with updated settings
-3. Run `/alfred:0-project setting` again to modify more settings
-4. Run `/alfred:1-plan` to create new SPEC with updated settings
+3. Run `/alfred:0-project setting` again if you need to modify more settings
+4. Run `/alfred:1-plan` to create a new SPEC with your updated configuration
 ```
 
-**Special case - Keep current**:
+---
 
-If user selects "Keep current" or makes no changes in a batched question:
-```markdown
-**🔧 GitHub Settings**:
-- No changes (kept current settings)
-```
+#### Step 6: End this command
+
+**Stop execution**. Do NOT proceed to STEP 1 or any other workflow.
+
+The `/alfred:0-project setting` subcommand is now complete.
+
+---
 
 ### 0-SETTING.6 Error handling
 
-**Error Condition 1: config.json not found**
+**CRITICAL**: Check for errors BEFORE starting STEP 0-SETTING.1.
+
+---
+
+#### Error 1: config.json not found
+
+**Check BEFORE STEP 0-SETTING.1**: Does `.moai/config.json` exist?
+
+**IF file does NOT exist**:
+
+**Print to user**:
 ```
-Error: .moai/config.json not found
-Solution: This command requires an already-initialized project.
-Run: /alfred:0-project (without arguments) to initialize first
+❌ Error: .moai/config.json not found
+
+This command requires an already-initialized project.
+
+To initialize first, run:
+  /alfred:0-project
+
+(without the "setting" subcommand)
 ```
 
-**Error Condition 2: Invalid JSON in config.json**
+**Action**: Exit immediately. Stop this command. Do NOT proceed to any other steps.
+
+---
+
+#### Error 2: Invalid JSON in config.json
+
+**Check BEFORE STEP 0-SETTING.1**: Can `.moai/config.json` be parsed as valid JSON?
+
+**IF file has syntax errors** (cannot be parsed):
+
+**Print to user**:
 ```
-Error: config.json syntax error
-Solution: Fix the JSON syntax manually or restore from backup
-Backup location: .moai-backups/
+❌ Error: config.json has syntax errors
+
+The file exists but contains invalid JSON syntax.
+
+Please fix the JSON manually, or restore from backup:
+  Backup location: .moai-backups/
+
+You can also run:
+  cat .moai/config.json | jq .
+
+to see the specific JSON error.
 ```
 
-**Error Condition 3: No settings selected**
+**Action**: Exit immediately. Stop this command. Do NOT proceed to any other steps.
+
+---
+
+#### Error 3: No settings selected
+
+**Check in STEP 0-SETTING.2**: Did the user select any settings to modify?
+
+**IF user clicked "Cancel" or selected nothing** (empty selection):
+
+**Print to user**:
 ```
-User selected no checkboxes in the multi-select question.
-Action: Display message and exit without changes
-Message: "No settings selected. Exiting without changes."
+✅ No settings selected. Exiting without changes.
+
+Your project configuration remains unchanged.
+
+To modify settings later, run:
+  /alfred:0-project setting
 ```
+
+**Action**: Exit immediately. Stop this command. Do NOT proceed to STEP 0-SETTING.3 or beyond.
+
+---
+
+#### Error 4: Failed to write config.json
+
+**Check in STEP 0-SETTING.4 Step 4**: Did the write to `.moai/config.json` succeed?
+
+**IF write operation failed**:
+
+**Print to user**:
+```
+❌ Error: Failed to write config.json
+
+The configuration update could not be saved.
+
+Possible causes:
+- File permissions issue
+- Disk full
+- File locked by another process
+
+Please check file permissions:
+  ls -la .moai/config.json
+
+Your previous configuration is unchanged.
+```
+
+**Action**: Exit immediately. Stop this command. Do NOT proceed to STEP 0-SETTING.5.
+
+---
+
+**Error handling summary**:
+
+1. Check Error 1 & 2 BEFORE starting STEP 0-SETTING.1
+2. Check Error 3 in STEP 0-SETTING.2 (after user answers which settings to modify)
+3. Check Error 4 in STEP 0-SETTING.4 Step 4 (after attempting to write file)
+
+If ANY error occurs, show the error message and exit immediately. Do NOT continue the workflow.
 
 ---
 
