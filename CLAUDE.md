@@ -126,46 +126,12 @@ Skill("moai-alfred-interactive-questions")
 ```
 
 이 스킬은 다음을 제공합니다:
-- 최신 AskUserQuestion 필드 명세 및 best practices
-- 인터랙티브 질문 시스템의 현재 표준
-- 필드별 유효성 검증 규칙
-
-### 필드별 요구사항
-
-**절대 금지**: `label`, `header`, `description` 필드에 **이모지 사용 금지** (JSON 인코딩 오류 발생)
-
-**필드 명세**:
-- `question`: 사용자에게 하는 질문 (한국어 사용 가능, 이모지 금지)
-- `header`: 필드 제목 (최대 12자, 이모지 금지) - 예: "인증 방식", "기술 스택"
-- `label`: 옵션 텍스트 (이모지 금지) - 예: "JWT 토큰", "OAuth2"
-- `description`: 옵션 설명 (이모지 금지) - 예: "토큰 기반 인증 방식"
-- `multiSelect`: 불린값 (선택사항, 다중 선택 필요 시 true)
-
-**잘못된 예** (JSON 인코딩 오류 발생):
-```python
-AskUserQuestion(questions=[{
-    "question": "인증 방식을 선택해주세요",
-    "header": "🔐 인증 방식",  # 잘못됨: 이모지 포함
-    "options": [
-        {"label": "🔑 JWT 토큰", ...},  # 잘못됨: 이모지 포함
-        {"label": "🔓 OAuth2", ...}  # 잘못됨: 이모지 포함
-    ]
-}])
-```
-
-**올바른 예** (이모지 제거):
-```python
-AskUserQuestion(questions=[{
-    "question": "인증 방식을 선택해주세요",
-    "header": "Auth Method",
-    "multiSelect": false,
-    "options": [
-        {"label": "JWT Tokens", "description": "토큰 기반 인증 방식"},
-        {"label": "OAuth2", "description": "위임 인증 프로토콜"},
-        {"label": "API Keys", "description": "키 기반 간단한 인증"}
-    ]
-}])
-```
+- **API 명세** (reference.md): 완전한 함수 시그니처, 제약사항, 제한값
+- **필드 명세**: `question`, `header`, `label`, `description`, `multiSelect` 상세 설명 및 예시
+- **필드별 유효성 검증**: 이모지 금지, 최대 글자 수 등 모든 규칙
+- **Best Practices**: DO/DON'T 가이드, 공통 패턴, 오류 처리
+- **실무 예시** (examples.md): 20개 이상의 다양한 도메인 예시
+- **통합 패턴**: Plan/Run/Sync 명령어와의 연동
 
 ---
 

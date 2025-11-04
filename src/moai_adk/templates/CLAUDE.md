@@ -548,61 +548,27 @@ After sync completes:
 
 ### AskUserQuestion Field Specifications
 
-**CRITICAL**: All AskUserQuestion fields must be emoji-free to avoid JSON encoding errors.
+**For complete API specifications, field constraints, parameter validation, and detailed examples**, always call:
 
-**Field Requirements**:
-- `question`: Actual question text (can be in user's language, NO emojis)
-- `header`: Short field label max 12 chars, NO emojis (e.g., "Auth Type", "Tech Stack")
-- `label`: Option text, NO emojis (e.g., "Use JWT", "Use OAuth2")
-- `description`: Explanation text, NO emojis (e.g., "Stateless token-based authentication")
-- `multiSelect`: Boolean (optional, set true for multiple selections)
-
-**INCORRECT** (causes JSON encoding error):
 ```python
-AskUserQuestion(questions=[{
-    "question": "What auth method?",
-    "header": "🔐 Auth Type",  # WRONG: emoji in header
-    "options": [
-        {"label": "🔑 JWT Tokens", ...},  # WRONG: emoji in label
-        {"label": "🔓 OAuth2", ...}  # WRONG: emoji in label
-    ]
-}])
+Skill("moai-alfred-interactive-questions")
 ```
 
-**CORRECT** (emoji-free):
-```python
-AskUserQuestion(questions=[{
-    "question": "What authentication method do you prefer?",
-    "header": "Auth Method",
-    "multiSelect": false,
-    "options": [
-        {"label": "JWT Tokens", "description": "Stateless token-based authentication"},
-        {"label": "OAuth2", "description": "Delegated authorization protocol"},
-        {"label": "API Keys", "description": "Simple key-based authentication"}
-    ]
-}])
-```
+This Skill provides:
+- **API Reference** (reference.md): Complete function signature, constraints, limits
+- **Field Specifications**: `question`, `header`, `label`, `description`, `multiSelect` with examples
+- **Best Practices**: DO/DON'T guide, common patterns, error handling
+- **Real-world Examples** (examples.md): 20+ complete working examples across different domains
+- **Integration Patterns**: How to use with Alfred commands (Plan/Run/Sync)
 
-### Example (Correct Pattern)
+### Pattern Examples
 
-```markdown
-# CORRECT ✅
+For specific, production-tested examples of different question types (single-select, multi-select, conditional flows, etc.), **see the Skill examples**:
 
-After project setup, use AskUserQuestion tool to ask:
-
-- "Project initialization is complete. What would you like to do next?"
-- Options: 1) Write Specifications 2) Review Project Structure 3) Start New Session
-
-# CORRECT ✅ (Batched Design)
-
-Use batched AskUserQuestion to collect multiple responses:
-
-- Question 1: "Which language?" + Question 2: "What's your name?"
-- Both collected in 1 turn (50% UX improvement)
-
-# INCORRECT ❌
-
-Your project is ready. You can now run `/alfred:1-plan` to start planning specs...
+```bash
+Skill("moai-alfred-interactive-questions")
+# → reference.md (API + constraints)
+# → examples.md (20+ real-world patterns)
 ```
 
 ---
