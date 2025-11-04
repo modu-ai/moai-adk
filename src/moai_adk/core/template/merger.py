@@ -1,4 +1,4 @@
-# @CODE:TEMPLATE-001 | SPEC: SPEC-INIT-003/spec.md | Chain: TEMPLATE-001
+# @CODE:TEMPLATE-MERGER-001 | SPEC: SPEC-INIT-003/spec.md | Chain: TEMPLATE-001
 """Template file merger (SPEC-INIT-003 v0.3.0).
 
 Intelligently merges existing user files with new templates.

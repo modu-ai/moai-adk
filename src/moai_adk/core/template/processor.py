@@ -65,6 +65,15 @@ class TemplateProcessor:
         """
         warnings = []
 
+        # Detect common template variables and provide helpful suggestions
+        common_variables = {
+            "HOOK_PROJECT_DIR": "Cross-platform hook path (update moai-adk to fix)",
+            "PROJECT_NAME": "Project name (run /alfred:0-project to set)",
+            "AUTHOR": "Project author (run /alfred:0-project to set)",
+            "CONVERSATION_LANGUAGE": "Interface language (run /alfred:0-project to set)",
+            "MOAI_VERSION": "MoAI-ADK version (should be set automatically)",
+        }
+
         # Perform variable substitution
         for key, value in self.context.items():
             placeholder = f"{{{{{key}}}}}"  # {{KEY}}
@@ -72,11 +81,23 @@ class TemplateProcessor:
                 safe_value = self._sanitize_value(value)
                 content = content.replace(placeholder, safe_value)
 
-        # Detect unsubstituted variables
+        # Detect unsubstituted variables with enhanced error messages
         remaining = re.findall(r'\{\{([A-Z_]+)\}\}', content)
         if remaining:
             unique_remaining = sorted(set(remaining))
-            warnings.append(f"Unsubstituted variables: {', '.join(unique_remaining)}")
+
+            # Build detailed warning message
+            warning_parts = []
+            for var in unique_remaining:
+                if var in common_variables:
+                    suggestion = common_variables[var]
+                    warning_parts.append(f"{{{{{var}}}}} → {suggestion}")
+                else:
+                    warning_parts.append(f"{{{{{var}}}}} → Unknown variable (check template)")
+
+            warnings.append("Template variables not substituted:")
+            warnings.extend(f"  • {part}" for part in warning_parts)
+            warnings.append("💡 Run 'uv run moai-adk update' to fix template variables")
 
         return content, warnings
 
@@ -311,8 +332,8 @@ class TemplateProcessor:
         # Create .claude directory if not exists
         dst.mkdir(parents=True, exist_ok=True)
 
-        # @CODE:INIT-004:ALFRED-002 | Alfred command files must always be overwritten
-        # @CODE:INIT-004:ALFRED-COPY | Copy all 4 Alfred command files from templates
+        # @CODE:INIT-ALFRED-002 | Alfred command files must always be overwritten
+        # @CODE:INIT-COMMAND-003 | Copy all 4 Alfred command files from templates
         # Alfred folders to copy wholesale (overwrite)
         alfred_folders = [
             "hooks/alfred",

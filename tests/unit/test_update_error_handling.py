@@ -1,4 +1,4 @@
-# @TEST:UPDATE-REFACTOR-002-004
+# @TEST:UPDATE-REFACTOR-004
 """Test error handling and recovery for update command.
 
 This module tests all error scenarios:

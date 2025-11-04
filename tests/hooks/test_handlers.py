@@ -20,7 +20,15 @@ UTILS_DIR = HOOKS_DIR / "utils"
 
 # sys.path에 추가 (최상단에 추가하여 우선순위 높임)
 # sys.path를 새로 생성하는 것이 아니라, 명시적으로 추가
-sys.path = [str(SHARED_DIR), str(HOOKS_DIR), str(UTILS_DIR)] + [p for p in sys.path if p not in [str(SHARED_DIR), str(HOOKS_DIR), str(UTILS_DIR)]]
+sys.path = [
+    str(SHARED_DIR),
+    str(HOOKS_DIR),
+    str(UTILS_DIR)
+] + [p for p in sys.path if p not in [
+    str(SHARED_DIR),
+    str(HOOKS_DIR),
+    str(UTILS_DIR)
+]]
 
 # 이제 핸들러를 import할 수 있음
 try:
@@ -189,7 +197,7 @@ class TestSessionStartHandler:
     ):
         """Major version update shows warning with release notes
 
-        @TEST:MAJOR-UPDATE-001-07
+        @TEST:MAJOR-UPDATE-007
 
         SPEC Requirements:
             - WHEN major version update is available (e.g., 0.8.1 → 1.0.0),
@@ -238,7 +246,7 @@ class TestSessionStartHandler:
     ):
         """Regular update shows version info with release notes
 
-        @TEST:REGULAR-UPDATE-001-08
+        @TEST:REGULAR-UPDATE-008
 
         SPEC Requirements:
             - WHEN minor/patch update is available (e.g., 0.8.1 → 0.9.0),

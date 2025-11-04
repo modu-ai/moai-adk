@@ -274,7 +274,9 @@ class TestTemplateVariableSubstitution:
         assert "ko" in result, "Should substitute known variable"
         assert "{{MISSING_VAR}}" in result, "Should not substitute unknown variable"
         assert len(warnings) > 0, "Should have warnings for missing variables"
-        assert "MISSING_VAR" in warnings[0], "Warning should mention missing variable"
+        # Check all warnings for the missing variable (not just the first one)
+        warning_text = " ".join(warnings)
+        assert "MISSING_VAR" in warning_text, "Warning should mention missing variable"
 
 
 class TestCommandLanguageParameters:

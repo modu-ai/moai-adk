@@ -13,7 +13,9 @@
   },
   "language": {
     "conversation_language": "ko",
-    "conversation_language_name": "한국어"
+    "conversation_language_name": "한국어",
+    "agent_prompt_language": "localized",
+    "agent_prompt_language_description": "All sub-agent prompts written in the selected language (localized)"
   },
   "constitution": {
     "enforce_tdd": true,
@@ -77,8 +79,8 @@
     "created_at": "2025-10-27T12:34:56+09:00",
     "initialized": true,
     "optimized": true,
-    "last_optimization": "2025-11-02T22:10:00+09:00",
-    "optimization_notes": "Smart merge completed: CLAUDE.md already contains optimized extended guidelines with user customizations (한국어, GOOS) preserved. No changes needed."
+    "last_optimization": "2025-11-05T18:30:00+09:00",
+    "optimization_notes": "STEP 0-UPDATE completed: Current configuration already optimized. Hook variables correctly use $CLAUDE_PROJECT_DIR, multilingual linting/formatting hooks already present. No changes needed - project state is optimal."
   },
   "tags": {
     "auto_sync": true,
@@ -134,12 +136,12 @@
       "test_directory": "tests",
       "notes": "Configure GitHub templates for project customization. When enable_* flags are false, corresponding MoAI-specific sections are omitted from templates."
     },
-    "auto_delete_branches": null,
-    "auto_delete_branches_checked": false,
-    "auto_delete_branches_rationale": "Not configured",
-    "spec_git_workflow": "per_spec",
-    "spec_git_workflow_configured": false,
-    "spec_git_workflow_rationale": "Ask per SPEC (flexible, user controls each workflow)",
+    "auto_delete_branches": true,
+    "auto_delete_branches_checked": true,
+    "auto_delete_branches_rationale": "PR 병합 후 원격 브랜치 자동 정리로 저장소 관리 단순화",
+    "spec_git_workflow": "develop_direct",
+    "spec_git_workflow_configured": true,
+    "spec_git_workflow_rationale": "Develop 브랜치에 직접 커밋하는 단순 워크플로우. 빠른 프로토타이핑과 단순 워크플로우에 최적",
     "notes_new_fields": "auto_delete_branches: whether to auto-delete feature branches after merge. spec_git_workflow: 'feature_branch' (auto), 'develop_direct' (direct), 'per_spec' (ask per SPEC)"
   }
 }

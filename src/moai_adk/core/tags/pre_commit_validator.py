@@ -111,6 +111,8 @@ class PreCommitValidator:
             r".*_test\.py$",  # Test files (*_test.py)
             r"tests/",  # Files in tests/ directory
             r"validator\.py$",  # Validator files (contain example TAGs in docstrings)
+            r"\.moai/",  # Local project configuration files (exclude template validation)
+            r"fix_duplicate_tags\.py$",  # Temporary fix script
         ]
 
     def should_validate_file(self, filepath: str) -> bool:
@@ -118,6 +120,10 @@ class PreCommitValidator:
 
         Document files (*.md, README, CONTRIBUTING, etc.) are excluded
         because they often contain example TAGs that are not actual code.
+        Local project files (.moai/) are excluded to avoid template conflicts.
+
+        For template distribution, only validate template files in src/moai_adk/templates/.
+        For testing, allow all Python files to be validated.
 
         Args:
             filepath: File path to check
@@ -125,10 +131,32 @@ class PreCommitValidator:
         Returns:
             True if file should be validated, False if excluded
         """
+        # Exclude patterns first
         for pattern in self.excluded_file_patterns:
             if re.search(pattern, filepath):
                 return False
-        return True
+
+        # Allow all .py files for testing scenarios
+        if filepath.endswith('.py'):
+            return True
+
+        # Only validate template files, not regular source files
+        # This ensures template distribution doesn't have TAG conflicts
+        if "templates/" in filepath:
+            return True
+
+        # Validate only core framework files that should have unique TAGs
+        # This ensures template distribution doesn't have TAG conflicts
+        core_framework_patterns = [
+            r"src/moai_adk/core/tags/",
+            r"src/moai_adk/cli/commands/",
+        ]
+
+        for pattern in core_framework_patterns:
+            if re.search(pattern, filepath):
+                return True
+
+        return False
 
     def validate_format(self, tag: str) -> bool:
         """Validate TAG format

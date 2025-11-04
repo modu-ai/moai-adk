@@ -6,11 +6,10 @@ Tests for:
 - get_spec_git_workflow
 """
 
-import pytest
 from moai_adk.core.config.migration import (
-    migrate_config_schema_v0_17_0,
     get_report_generation_config,
     get_spec_git_workflow,
+    migrate_config_schema_v0_17_0,
 )
 
 

@@ -439,13 +439,21 @@ class TestMergeClaudeMd:
         # Create template CLAUDE.md with variables
         template = tmp_path / "template.md"
         template.write_text(
-            "# {{PROJECT_NAME}}\n\nDescription: {{PROJECT_DESCRIPTION}}\n\nLanguage: {{CODEBASE_LANGUAGE}}\n\n## Project Information\n\n- Template Project"
+            "# {{PROJECT_NAME}}\n\n"
+            "Description: {{PROJECT_DESCRIPTION}}\n\n"
+            "Language: {{CODEBASE_LANGUAGE}}\n\n"
+            "## Project Information\n\n"
+            "- Template Project"
         )
 
         # Create existing CLAUDE.md with user project info
         existing = tmp_path / "existing.md"
         existing.write_text(
-            "# Old Template\n\nLanguage: {{CODEBASE_LANGUAGE}}\n\n## Project Information\n\n- My Project\n- Version: 1.0.0"
+            "# Old Template\n\n"
+            "Language: {{CODEBASE_LANGUAGE}}\n\n"
+            "## Project Information\n\n"
+            "- My Project\n"
+            "- Version: 1.0.0"
         )
 
         processor = TemplateProcessor(tmp_path)
@@ -703,7 +711,7 @@ class TestVariableSubstitution:
 
         assert "TestProject" in substituted
         assert len(warnings) > 0
-        assert "AUTHOR" in warnings[0]
+        assert any("AUTHOR" in warning for warning in warnings)
 
     def test_substitute_variables_no_warnings_when_all_substituted(
         self, tmp_path: Path

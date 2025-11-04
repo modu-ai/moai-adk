@@ -1,6 +1,6 @@
 # TAG Coverage Matrix
 
-Generated: 2025-11-04 14:36:15
+Generated: 2025-11-04 20:08:13
 
 | SPEC | CODE | TEST | DOC | Completion |
 |------|------|------|-----|------------|
@@ -46,18 +46,30 @@ Generated: 2025-11-04 14:36:15
 | AUTH-API-002 (❌) | ✅ | ❌ | ❌ | 25% |
 | AUTH-LOGIN-001 (✅) | ✅ | ✅ | ✅ | 100% |
 | AUTH-TIMEOUT-001 (✅) | ✅ | ✅ | ❌ | 75% |
+| BACKUP-UTILS-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | BRAND-001 (✅) | ✅ | ✅ | ✅ | 100% |
 | BUG-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | BUGFIX-001 (✅) | ✅ | ❌ | ❌ | 50% |
 | BUGFIX-GITHUB-MERGE-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | CACHE-001 (✅) | ❌ | ✅ | ❌ | 50% |
+| CACHE-002 (❌) | ❌ | ✅ | ❌ | 25% |
+| CACHE-003 (❌) | ❌ | ✅ | ❌ | 25% |
+| CACHE-004 (❌) | ❌ | ✅ | ❌ | 25% |
+| CACHE-005 (❌) | ❌ | ✅ | ❌ | 25% |
+| CACHE-006 (❌) | ❌ | ✅ | ❌ | 25% |
+| CACHE-007 (❌) | ❌ | ✅ | ❌ | 25% |
+| CACHE-008 (❌) | ❌ | ✅ | ❌ | 25% |
 | CACHE-009 (❌) | ❌ | ✅ | ❌ | 25% |
 | CALC-001 (✅) | ✅ | ✅ | ✅ | 100% |
+| CHECKER-COVERAGE-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | CHECKPOINT-EVENT-001 (✅) | ✅ | ✅ | ❌ | 75% |
 | CLAUDE-CODE-FEATURES-001 (✅) | ❌ | ✅ | ❌ | 50% |
 | CLAUDE-COMMANDS-001 (✅) | ✅ | ✅ | ❌ | 75% |
 | CLI-001 (✅) | ✅ | ✅ | ✅ | 100% |
+| CLI-ADDITIONAL-001 (❌) | ❌ | ✅ | ❌ | 25% |
+| CLI-INTEGRATION-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | CLI-PROMPTS-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| CLI-STATUS-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | CLI-TOOL-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | CMD-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | CMD-AGENT-001 (❌) | ❌ | ❌ | ✅ | 25% |
@@ -74,6 +86,7 @@ Generated: 2025-11-04 14:36:15
 | CONFIG-MODE-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | CONFIG-MULTILING-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | CONFIG-STRUCTURE-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| CONFTEST-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | CONTRIB-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | CONTRIB-DEV-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | CONTRIB-OVERVIEW-001 (❌) | ❌ | ❌ | ✅ | 25% |
@@ -82,6 +95,10 @@ Generated: 2025-11-04 14:36:15
 | CONTRIB-TEST-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | CORE-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | CORE-GIT-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| CORE-GIT-BRANCH-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| CORE-GIT-COMMIT-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| CORE-GIT-INIT-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| CORE-GIT-MANAGER-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | CORE-PROJECT-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | CORE-PROJECT-003 (❌) | ✅ | ❌ | ❌ | 25% |
 | CUSTOM-001 (❌) | ❌ | ❌ | ✅ | 25% |
@@ -90,6 +107,7 @@ Generated: 2025-11-04 14:36:15
 | DB-QUERY-099 (❌) | ❌ | ✅ | ❌ | 25% |
 | DEPLOY-001 (✅) | ❌ | ❌ | ✅ | 50% |
 | DEPLOY-002 (❌) | ❌ | ❌ | ✅ | 25% |
+| DETECTOR-COVERAGE-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | DOC-TAG-001 (✅) | ✅ | ✅ | ✅ | 100% |
 | DOC-TAG-002 (✅) | ❌ | ❌ | ❌ | 25% |
 | DOC-TAG-003 (✅) | ✅ | ❌ | ❌ | 50% |
@@ -105,6 +123,8 @@ Generated: 2025-11-04 14:36:15
 | EX-HELLO-002 (❌) | ❌ | ✅ | ❌ | 25% |
 | EX-TODO-001 (✅) | ✅ | ✅ | ✅ | 100% |
 | EX-UPDATE-001 (✅) | ✅ | ✅ | ❌ | 75% |
+| EX-UPDATE-002 (❌) | ✅ | ❌ | ❌ | 25% |
+| EX-UPDATE-003 (❌) | ✅ | ❌ | ❌ | 25% |
 | EXPERT-TEST-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | FEAT-001 (✅) | ✅ | ✅ | ❌ | 75% |
 | FEATURE-001 (✅) | ✅ | ✅ | ✅ | 100% |
@@ -112,10 +132,13 @@ Generated: 2025-11-04 14:36:15
 | FORMAT-001 (✅) | ✅ | ❌ | ❌ | 50% |
 | FRAMEWORK-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | FULL-001 (✅) | ✅ | ✅ | ✅ | 100% |
-| GEN-001 (❌) | ✅ | ✅ | ❌ | 50% |
-| GEN-002 (❌) | ✅ | ✅ | ❌ | 50% |
+| GEN-001 (❌) | ❌ | ✅ | ❌ | 25% |
+| GEN-002 (❌) | ❌ | ✅ | ❌ | 25% |
 | GEN-003 (❌) | ❌ | ✅ | ❌ | 25% |
 | GIT-001 (✅) | ✅ | ❌ | ❌ | 50% |
+| GIT-BRANCH-001 (❌) | ❌ | ✅ | ❌ | 25% |
+| GIT-COMMIT-001 (❌) | ❌ | ✅ | ❌ | 25% |
+| GIT-MANAGER-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | GIT-MGR-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | GITHUB-CONFIG-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | GITHUB-TEMPLATES-001 (❌) | ❌ | ❌ | ✅ | 25% |
@@ -182,12 +205,15 @@ Generated: 2025-11-04 14:36:15
 | INIT-002 (✅) | ✅ | ✅ | ✅ | 100% |
 | INIT-003 (✅) | ✅ | ✅ | ❌ | 75% |
 | INIT-004 (✅) | ✅ | ✅ | ❌ | 75% |
+| INIT-ALFRED-002 (❌) | ✅ | ❌ | ❌ | 25% |
+| INIT-COMMAND-003 (❌) | ✅ | ❌ | ❌ | 25% |
 | INIT-DEV-CONFIG-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | INIT-FLOW-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | INIT-MEMORY-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | INIT-PHASE-001 (❌) | ✅ | ❌ | ❌ | 25% |
-| INS-001 (❌) | ✅ | ✅ | ❌ | 50% |
-| INS-002 (❌) | ✅ | ✅ | ❌ | 50% |
+| INITIALIZER-001 (❌) | ❌ | ✅ | ❌ | 25% |
+| INS-001 (❌) | ❌ | ✅ | ❌ | 25% |
+| INS-002 (❌) | ❌ | ✅ | ❌ | 25% |
 | INS-003 (❌) | ❌ | ✅ | ❌ | 25% |
 | INSTALL-001 (✅) | ✅ | ✅ | ✅ | 100% |
 | INSTALLER-QUALITY-001 (✅) | ✅ | ✅ | ❌ | 75% |
@@ -196,6 +222,7 @@ Generated: 2025-11-04 14:36:15
 | INSTALLER-SEC-001 (✅) | ✅ | ❌ | ❌ | 50% |
 | INSTALLER-TEST-001 (✅) | ❌ | ✅ | ❌ | 50% |
 | INTEGRATION-001 (❌) | ❌ | ❌ | ✅ | 25% |
+| INTEGRATION-INIT-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | INTRO-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | JSON-CONFIG-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | LANG-001 (❌) | ❌ | ✅ | ❌ | 25% |
@@ -230,6 +257,12 @@ Generated: 2025-11-04 14:36:15
 | LDE-WORKFLOW-PATH-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | LOGGING-001 (✅) | ✅ | ✅ | ✅ | 100% |
 | MAJOR-UPDATE-001 (❌) | ❌ | ✅ | ❌ | 25% |
+| MAJOR-UPDATE-002 (❌) | ❌ | ✅ | ❌ | 25% |
+| MAJOR-UPDATE-003 (❌) | ❌ | ✅ | ❌ | 25% |
+| MAJOR-UPDATE-004 (❌) | ❌ | ✅ | ❌ | 25% |
+| MAJOR-UPDATE-005 (❌) | ❌ | ✅ | ❌ | 25% |
+| MAJOR-UPDATE-006 (❌) | ❌ | ✅ | ❌ | 25% |
+| MAJOR-UPDATE-007 (❌) | ❌ | ✅ | ❌ | 25% |
 | MAJOR-UPDATE-008 (❌) | ❌ | ✅ | ❌ | 25% |
 | MAJOR-UPDATE-WARN-001 (❌) | ✅ | ✅ | ❌ | 50% |
 | MAP-001 (❌) | ✅ | ✅ | ❌ | 50% |
@@ -255,12 +288,13 @@ Generated: 2025-11-04 14:36:15
 | OFFLINE-TIMEOUT-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | OFFLINE-UNAVAILABLE-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | ORPHAN-001 (✅) | ✅ | ❌ | ✅ | 75% |
-| PAR-001 (❌) | ✅ | ✅ | ❌ | 50% |
+| PAR-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | PARTIAL-001 (✅) | ✅ | ❌ | ❌ | 50% |
 | PAY-001 (✅) | ✅ | ✅ | ❌ | 75% |
 | PAYMENT-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | PAYMENT-005 (❌) | ✅ | ❌ | ❌ | 25% |
 | PAYMENT-007 (✅) | ✅ | ❌ | ❌ | 50% |
+| PHASE-EXECUTOR-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | PLACEHOLDER-HANDLING-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | PLAN-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | PLAN-ENHANCE-PERF-001 (❌) | ❌ | ❌ | ✅ | 25% |
@@ -277,7 +311,7 @@ Generated: 2025-11-04 14:36:15
 | README-UX-001 (✅) | ❌ | ❌ | ✅ | 50% |
 | README-VERSION-UPDATE-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | REFACTOR-001 (✅) | ✅ | ✅ | ❌ | 75% |
-| REGULAR-UPDATE-001 (❌) | ❌ | ✅ | ❌ | 25% |
+| REGULAR-UPDATE-008 (❌) | ❌ | ✅ | ❌ | 25% |
 | RELEASE-NEW-ANALYSIS-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | RELEASE-NEW-IMPROVEMENTS-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | RUN-001 (✅) | ❌ | ❌ | ❌ | 25% |
@@ -354,9 +388,22 @@ Generated: 2025-11-04 14:36:15
 | SUCCESS-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | SYNC-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | SYNC-SESSION-CLEANUP-001 (❌) | ❌ | ❌ | ✅ | 25% |
+| TAG-DOC-INSERTION-001 (✅) | ❌ | ❌ | ❌ | 25% |
+| TAG-GENERATION-001 (✅) | ❌ | ❌ | ❌ | 25% |
+| TAG-GENERATOR-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| TAG-GENERATOR-002 (❌) | ✅ | ❌ | ❌ | 25% |
+| TAG-ID-GENERATION-001 (✅) | ❌ | ❌ | ❌ | 25% |
+| TAG-INSERTER-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| TAG-INSERTER-002 (❌) | ✅ | ❌ | ❌ | 25% |
 | TAG-LIFECYCLE-001 (✅) | ❌ | ❌ | ❌ | 25% |
+| TAG-PARSER-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | TECH-DEBT-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | TEMPLATE-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| TEMPLATE-BACKUP-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| TEMPLATE-CONFIG-001 (❌) | ❌ | ✅ | ❌ | 25% |
+| TEMPLATE-LANGUAGES-001 (❌) | ❌ | ✅ | ❌ | 25% |
+| TEMPLATE-MERGER-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| TEMPLATE-MODULE-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | TEMPLATE-PROCESSING-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | TEMPLATE-SUBSTITUTION-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | TEST-001 (✅) | ✅ | ✅ | ✅ | 100% |
@@ -375,20 +422,42 @@ Generated: 2025-11-04 14:36:15
 | TROUBLESHOOT-FAQ-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | TRUST-001 (✅) | ✅ | ✅ | ❌ | 75% |
 | TUTORIAL-001 (❌) | ❌ | ❌ | ✅ | 25% |
+| UNIT-INIT-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | UPD-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | UPD-TPL-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | UPDATE-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | UPDATE-002 (✅) | ✅ | ❌ | ❌ | 50% |
 | UPDATE-003 (✅) | ❌ | ❌ | ❌ | 25% |
 | UPDATE-004 (✅) | ✅ | ❌ | ✅ | 75% |
+| UPDATE-CACHE-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| UPDATE-CACHE-002 (❌) | ✅ | ❌ | ❌ | 25% |
+| UPDATE-CACHE-003 (❌) | ✅ | ❌ | ❌ | 25% |
 | UPDATE-CACHE-FIX-001 (✅) | ✅ | ✅ | ✅ | 100% |
+| UPDATE-CACHE-FIX-002 (❌) | ❌ | ✅ | ❌ | 25% |
+| UPDATE-CACHE-FIX-003 (❌) | ❌ | ✅ | ❌ | 25% |
+| UPDATE-CACHE-FIX-004 (❌) | ❌ | ✅ | ❌ | 25% |
+| UPDATE-CACHE-FIX-005 (❌) | ❌ | ✅ | ❌ | 25% |
+| UPDATE-CACHE-FIX-006 (❌) | ❌ | ✅ | ❌ | 25% |
+| UPDATE-CACHE-FIX-007 (❌) | ❌ | ✅ | ❌ | 25% |
+| UPDATE-CACHE-FIX-008 (❌) | ❌ | ✅ | ❌ | 25% |
 | UPDATE-CONFIG-002 (✅) | ❌ | ❌ | ❌ | 25% |
+| UPDATE-CONFIG-005 (❌) | ✅ | ❌ | ❌ | 25% |
+| UPDATE-CONTEXT-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| UPDATE-COVERAGE-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | UPDATE-ENHANCE-001 (✅) | ❌ | ❌ | ❌ | 25% |
+| UPDATE-METADATA-003 (❌) | ✅ | ❌ | ❌ | 25% |
+| UPDATE-PACKAGE-007 (❌) | ✅ | ❌ | ❌ | 25% |
 | UPDATE-REFACTOR-001 (✅) | ✅ | ✅ | ✅ | 100% |
 | UPDATE-REFACTOR-002 (✅) | ✅ | ✅ | ✅ | 100% |
-| UPDATE-REFACTOR-003 (✅) | ❌ | ❌ | ❌ | 25% |
+| UPDATE-REFACTOR-003 (✅) | ❌ | ✅ | ✅ | 75% |
+| UPDATE-REFACTOR-004 (❌) | ❌ | ✅ | ❌ | 25% |
+| UPDATE-REFACTOR-005 (❌) | ❌ | ✅ | ❌ | 25% |
 | UPDATE-RESULT-002 (✅) | ❌ | ❌ | ❌ | 25% |
+| UPDATE-SYNC-006 (❌) | ✅ | ❌ | ❌ | 25% |
+| UPDATE-TEMPLATE-004 (❌) | ✅ | ❌ | ❌ | 25% |
 | UPDATE-THREE-STAGE-WORKFLOW-001 (❌) | ❌ | ✅ | ❌ | 25% |
+| UPDATE-VERSION-002 (❌) | ✅ | ❌ | ❌ | 25% |
+| UPDATE-VERSION-008 (❌) | ✅ | ❌ | ❌ | 25% |
 | UPDATE-VERSION-FUNCTIONS-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | USER-001 (✅) | ✅ | ✅ | ✅ | 100% |
 | USER-002 (❌) | ✅ | ✅ | ❌ | 50% |
@@ -398,8 +467,10 @@ Generated: 2025-11-04 14:36:15
 | USER-REG-001 (✅) | ✅ | ✅ | ✅ | 100% |
 | UTIL-003 (❌) | ✅ | ❌ | ❌ | 25% |
 | UTILS-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| UTILS-BANNER-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | VAL-001 (❌) | ✅ | ✅ | ❌ | 50% |
 | VALID-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| VALIDATOR-COVERAGE-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | VERIFICATION-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | VERSION-ALWAYS-VALID-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | VERSION-CACHE-001 (❌) | ✅ | ✅ | ❌ | 50% |
@@ -414,5 +485,5 @@ Generated: 2025-11-04 14:36:15
 
 ## Summary
 
-- Total SPECs: 407
+- Total SPECs: 478
 - Fully Implemented (100%): 31

@@ -998,7 +998,7 @@ uv tool list  # Check current version of moai-adk
 ### Upgrading
 
 #### Method 1: MoAI-ADK Built-in Update Command (Recommended - 3-Stage Workflow, v0.6.3+)
-<!-- @DOC:UPDATE-REFACTOR-002-003 -->
+<!-- @DOC:UPDATE-REFACTOR-003 -->
 
 MoAI-ADK's `update` command provides **automatic tool detection** and **intelligent 3-stage workflow** with **70-80% performance improvement** for templates already synchronized:
 
@@ -1454,7 +1454,7 @@ uv cache clean moai-adk && moai-adk update
 
 **References:**
 - SPEC: @SPEC:EX-UPDATE-001
-- Implementation: @CODE:EX-UPDATE-001-001, @CODE:EX-UPDATE-001-002, @CODE:EX-UPDATE-001-003
+- Implementation: @CODE:EX-UPDATE-001, @CODE:EX-UPDATE-002, @CODE:EX-UPDATE-003
 - Tests: @TEST:EX-UPDATE-001
 
 ### Contributing Tests

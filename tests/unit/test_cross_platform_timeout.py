@@ -14,18 +14,20 @@ import signal
 import sys
 import threading
 import time
-
-# Import the module to test
 from pathlib import Path
 from unittest import mock
 
 import pytest
 
 # Add templates path to sys.path for imports
-templates_path = Path(__file__).parent.parent.parent / "src" / "moai_adk" / "templates" / ".claude" / "hooks" / "alfred"
+templates_path = (
+    Path(__file__).parent.parent.parent / "src" / "moai_adk" / "templates" /
+    ".claude" / "hooks" / "alfred"
+)
 sys.path.insert(0, str(templates_path))
 
-from utils.timeout import CrossPlatformTimeout, TimeoutError
+# Import the module to test
+from utils.timeout import CrossPlatformTimeout, TimeoutError  # noqa: E402
 
 
 class TestCrossPlatformTimeoutWindows:
@@ -185,7 +187,7 @@ class TestCrossPlatformTimeoutGeneral:
         def return_value():
             return 42
 
-        result = CrossPlatformTimeout(1).__enter__()
+        CrossPlatformTimeout(1).__enter__()
         # Context manager returns self, so no return value from function
         # This test documents expected behavior
 

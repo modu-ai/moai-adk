@@ -7,9 +7,7 @@ Tests for:
 - prompt_project_setup function
 """
 
-import pytest
-from pathlib import Path
-from moai_adk.cli.prompts.init_prompts import ProjectSetupAnswers, prompt_project_setup
+from moai_adk.cli.prompts.init_prompts import ProjectSetupAnswers
 
 
 class TestProjectSetupAnswersStructure:

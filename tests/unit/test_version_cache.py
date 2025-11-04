@@ -1,4 +1,4 @@
-# @TEST:CACHE-001-01, @TEST:CACHE-001-02, @TEST:CACHE-001-03, @TEST:CACHE-001-04, @TEST:CACHE-001-05
+# @TEST:CACHE-001, @TEST:CACHE-002, @TEST:CACHE-003, @TEST:CACHE-004, @TEST:CACHE-005
 """
 VersionCache 시스템 테스트.
 
@@ -27,7 +27,11 @@ def _load_version_cache_module(module_name: str = "version_cache_module"):
 
     if not version_cache_path.exists():
         # If not found, try templates directory (for testing after installation)
-        version_cache_path = repo_root / "src" / "moai_adk" / "templates" / ".claude" / "hooks" / "alfred" / "core" / "version_cache.py"
+        templates_core_dir = (
+            repo_root / "src" / "moai_adk" / "templates" /
+            ".claude" / "hooks" / "alfred" / "core"
+        )
+        version_cache_path = templates_core_dir / "version_cache.py"
 
     spec = importlib.util.spec_from_file_location(module_name, version_cache_path)
     if spec is None or spec.loader is None:
@@ -60,8 +64,8 @@ class TestVersionCache:
     @pytest.fixture
     def version_cache(self, cache_dir, version_cache_module):
         """VersionCache 인스턴스."""
-        VersionCache = version_cache_module.VersionCache
-        return VersionCache(cache_dir=cache_dir, ttl_hours=24)
+        version_cache_class = version_cache_module.VersionCache
+        return version_cache_class(cache_dir=cache_dir, ttl_hours=24)
 
     @pytest.fixture
     def sample_version_info(self):
@@ -76,9 +80,9 @@ class TestVersionCache:
             "is_major_update": False
         }
 
-    # @TEST:CACHE-001-01: Cache file creation and validation
+    # @TEST:CACHE-001: Cache file creation and validation
     def test_cache_file_created_on_save(self, version_cache, cache_dir, sample_version_info):
-        """@TEST:CACHE-001-01: Cache file is created when saving"""
+        """@TEST:CACHE-001: Cache file is created when saving"""
         # Given: A VersionCache instance with empty cache directory
         cache_file = cache_dir / "version-check.json"
         assert not cache_file.exists(), "Cache file should not exist initially"
@@ -97,9 +101,9 @@ class TestVersionCache:
         assert cached_data["current_version"] == "0.8.1"
         assert cached_data["latest_version"] == "0.9.0"
 
-    # @TEST:CACHE-001-02: TTL validation - within 24 hours
+    # @TEST:CACHE-002: TTL validation - within 24 hours
     def test_cache_validity_within_24_hours(self, version_cache, cache_dir, sample_version_info):
-        """@TEST:CACHE-001-02: Cache is valid within TTL"""
+        """@TEST:CACHE-002: Cache is valid within TTL"""
         # Given: Cache was created 6 hours ago
         six_hours_ago = datetime.now() - timedelta(hours=6)
         sample_version_info["last_check"] = six_hours_ago.isoformat()
@@ -111,9 +115,9 @@ class TestVersionCache:
         # Then: Should return True
         assert result is True, "Cache should be valid within 24 hours (6 hours old)"
 
-    # @TEST:CACHE-001-03: TTL expiration - after 24 hours
+    # @TEST:CACHE-003: TTL expiration - after 24 hours
     def test_cache_expired_after_24_hours(self, version_cache, cache_dir, sample_version_info):
-        """@TEST:CACHE-001-03: Cache expires after TTL"""
+        """@TEST:CACHE-003: Cache expires after TTL"""
         # Given: Cache was created 48 hours ago
         forty_eight_hours_ago = datetime.now() - timedelta(hours=48)
         sample_version_info["last_check"] = forty_eight_hours_ago.isoformat()
@@ -125,9 +129,9 @@ class TestVersionCache:
         # Then: Should return False
         assert result is False, "Cache should be expired after 48 hours (> 24 hour TTL)"
 
-    # @TEST:CACHE-001-04: Load valid cache
+    # @TEST:CACHE-004: Load valid cache
     def test_load_returns_valid_cache(self, version_cache, cache_dir, sample_version_info):
-        """@TEST:CACHE-001-04: Load returns cached data if valid"""
+        """@TEST:CACHE-004: Load returns cached data if valid"""
         # Given: Valid cache file exists (1 hour old)
         one_hour_ago = datetime.now() - timedelta(hours=1)
         sample_version_info["last_check"] = one_hour_ago.isoformat()
@@ -142,9 +146,9 @@ class TestVersionCache:
         assert loaded_data["latest_version"] == "0.9.0"
         assert loaded_data["update_available"] is True
 
-    # @TEST:CACHE-001-05: Error handling - corrupted file
+    # @TEST:CACHE-005: Error handling - corrupted file
     def test_cache_handles_corrupted_file(self, version_cache, cache_dir):
-        """@TEST:CACHE-001-05: Cache handles file corruption gracefully"""
+        """@TEST:CACHE-005: Cache handles file corruption gracefully"""
         # Given: Corrupted cache file exists
         cache_file = cache_dir / "version-check.json"
         cache_file.write_text("{ invalid json content !!!")
@@ -161,7 +165,7 @@ class TestVersionCache:
         # Then: Should return False
         assert is_valid_result is False, "is_valid() should return False for corrupted cache"
 
-    # @TEST:CACHE-001-06: Additional - Cache expiry on boundary (exactly 24 hours)
+    # @TEST:CACHE-006: Additional - Cache expiry on boundary (exactly 24 hours)
     def test_cache_expired_at_ttl_boundary(self, version_cache, cache_dir, sample_version_info):
         """Cache should be expired at exactly TTL boundary (24 hours)"""
         # Given: Cache was created exactly 24 hours ago
@@ -175,7 +179,7 @@ class TestVersionCache:
         # Then: Should return False (strictly greater than TTL)
         assert result is False, "Cache should expire at exactly 24 hours"
 
-    # @TEST:CACHE-001-07: Additional - Load returns None when expired
+    # @TEST:CACHE-007: Additional - Load returns None when expired
     def test_load_returns_none_when_expired(self, version_cache, cache_dir, sample_version_info):
         """load() should return None when cache is expired"""
         # Given: Expired cache file exists (48 hours old)
@@ -189,7 +193,7 @@ class TestVersionCache:
         # Then: Should return None
         assert loaded_data is None, "load() should return None when cache is expired"
 
-    # @TEST:CACHE-001-08: Additional - Clear cache functionality
+    # @TEST:CACHE-008: Additional - Clear cache functionality
     def test_clear_removes_cache_file(self, version_cache, cache_dir, sample_version_info):
         """clear() should remove cache file"""
         # Given: Cache file exists
@@ -204,7 +208,7 @@ class TestVersionCache:
         assert result is True, "clear() should return True on success"
         assert not cache_file.exists(), "Cache file should be removed"
 
-    # @TEST:CACHE-001-09: Additional - Get cache age
+    # @TEST:CACHE-009: Additional - Get cache age
     def test_get_age_hours(self, version_cache, cache_dir, sample_version_info):
         """get_age_hours() should return correct age in hours"""
         # Given: Cache created 12 hours ago

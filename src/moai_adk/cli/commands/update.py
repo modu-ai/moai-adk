@@ -64,7 +64,7 @@ PIPX_COMMAND = ["pipx", "upgrade", "moai-adk"]
 PIP_COMMAND = ["pip", "install", "--upgrade", "moai-adk"]
 
 
-# @CODE:UPDATE-REFACTOR-002-004
+# @CODE:UPDATE-TEMPLATE-004
 # Custom exceptions for better error handling
 class UpdateError(Exception):
     """Base exception for update operations."""
@@ -141,7 +141,7 @@ def _is_installed_via_pip() -> bool:
         return False
 
 
-# @CODE:UPDATE-REFACTOR-002-001
+# @CODE:UPDATE-CONTEXT-001
 def _detect_tool_installer() -> list[str] | None:
     """Detect which tool installed moai-adk.
 
@@ -181,7 +181,7 @@ def _detect_tool_installer() -> list[str] | None:
         return None
 
 
-# @CODE:UPDATE-REFACTOR-002-002
+# @CODE:UPDATE-VERSION-002
 def _get_current_version() -> str:
     """Get currently installed moai-adk version.
 
@@ -238,7 +238,7 @@ def _compare_versions(current: str, latest: str) -> int:
         return 1
 
 
-# @CODE:UPDATE-REFACTOR-002-006
+# @CODE:UPDATE-SYNC-006
 def _get_package_config_version() -> str:
     """Get the current package template version.
 
@@ -253,7 +253,7 @@ def _get_package_config_version() -> str:
     return __version__
 
 
-# @CODE:UPDATE-REFACTOR-002-007
+# @CODE:UPDATE-PACKAGE-007
 def _get_project_config_version(project_path: Path) -> str:
     """Get current project config.json template version.
 
@@ -299,7 +299,7 @@ def _get_project_config_version(project_path: Path) -> str:
         raise ValueError(f"Failed to parse project config.json: {e}") from e
 
 
-# @CODE:UPDATE-CACHE-FIX-001-001-DETECT-STALE
+# @CODE:UPDATE-CACHE-001
 def _detect_stale_cache(upgrade_output: str, current_version: str, latest_version: str) -> bool:
     """
     Detect if uv cache is stale by comparing versions.
@@ -345,7 +345,7 @@ def _detect_stale_cache(upgrade_output: str, current_version: str, latest_versio
         return False
 
 
-# @CODE:UPDATE-CACHE-FIX-001-002-CLEAR-SUCCESS
+# @CODE:UPDATE-CACHE-002
 def _clear_uv_package_cache(package_name: str = "moai-adk") -> bool:
     """
     Clear uv cache for specific package.
@@ -396,7 +396,7 @@ def _clear_uv_package_cache(package_name: str = "moai-adk") -> bool:
         return False
 
 
-# @CODE:UPDATE-CACHE-FIX-001-003-RETRY-LOGIC
+# @CODE:UPDATE-CACHE-003
 def _execute_upgrade_with_retry(installer_cmd: list[str], package_name: str = "moai-adk") -> bool:
     """
     Execute upgrade with automatic cache retry on stale detection.
@@ -516,7 +516,7 @@ def _execute_upgrade(installer_cmd: list[str]) -> bool:
 
 
 def _sync_templates(project_path: Path, force: bool = False) -> bool:
-    """Sync templates to project.
+    """Sync templates to project with rollback mechanism.
 
     Args:
         project_path: Project path (absolute)
@@ -525,8 +525,18 @@ def _sync_templates(project_path: Path, force: bool = False) -> bool:
     Returns:
         True if sync succeeded, False otherwise
     """
+    from moai_adk.core.template.backup import TemplateBackup
+
+    backup_path = None
     try:
         processor = TemplateProcessor(project_path)
+
+        # Create pre-sync backup for rollback
+        if not force:
+            backup = TemplateBackup(project_path)
+            if backup.has_existing_files():
+                backup_path = backup.create_backup()
+                console.print(f"💾 Created backup: {backup_path.name}")
 
         # Load existing config
         existing_config = _load_existing_config(project_path)
@@ -539,6 +549,14 @@ def _sync_templates(project_path: Path, force: bool = False) -> bool:
         # Copy templates
         processor.copy_templates(backup=False, silent=True)
 
+        # Validate template substitution
+        validation_passed = _validate_template_substitution_with_rollback(project_path, backup_path)
+        if not validation_passed:
+            if backup_path:
+                console.print(f"[yellow]🔄 Rolling back to backup: {backup_path.name}[/yellow]")
+                backup.restore_backup(backup_path)
+            return False
+
         # Preserve metadata
         _preserve_project_metadata(project_path, context, existing_config, __version__)
         _apply_context_to_file(processor, project_path / "CLAUDE.md")
@@ -547,7 +565,16 @@ def _sync_templates(project_path: Path, force: bool = False) -> bool:
         set_optimized_false(project_path)
 
         return True
-    except Exception:
+    except Exception as e:
+        console.print(f"[red]✗ Template sync failed: {e}[/red]")
+        if backup_path:
+            console.print(f"[yellow]🔄 Rolling back to backup: {backup_path.name}[/yellow]")
+            try:
+                backup = TemplateBackup(project_path)
+                backup.restore_backup(backup_path)
+                console.print("[green]✅ Rollback completed[/green]")
+            except Exception as rollback_error:
+                console.print(f"[red]✗ Rollback failed: {rollback_error}[/red]")
         return False
 
 
@@ -631,6 +658,8 @@ def _build_template_context(
     version_for_config: str,
 ) -> dict[str, str]:
     """Build substitution context for template files."""
+    import platform
+
     project_section = _extract_project_section(existing_config)
 
     project_name = _coalesce(
@@ -660,6 +689,17 @@ def _build_template_context(
         default=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     )
 
+    # Detect OS for cross-platform Hook path configuration
+    hook_project_dir = (
+        "%CLAUDE_PROJECT_DIR%" if platform.system() == "Windows"
+        else "$CLAUDE_PROJECT_DIR"
+    )
+
+    # Extract language configuration
+    language_config = existing_config.get("language", {})
+    if not isinstance(language_config, dict):
+        language_config = {}
+
     return {
         "MOAI_VERSION": version_for_config,
         "PROJECT_NAME": project_name,
@@ -667,6 +707,12 @@ def _build_template_context(
         "PROJECT_DESCRIPTION": project_description,
         "PROJECT_VERSION": project_version,
         "CREATION_TIMESTAMP": created_at,
+        "HOOK_PROJECT_DIR": hook_project_dir,
+        "CONVERSATION_LANGUAGE": language_config.get("conversation_language", "en"),
+        "CONVERSATION_LANGUAGE_NAME": language_config.get("conversation_language_name", "English"),
+        "CODEBASE_LANGUAGE": project_section.get("language", "generic"),
+        "PROJECT_OWNER": project_section.get("author", "@user"),
+        "AUTHOR": project_section.get("author", "@user"),
     }
 
 
@@ -714,7 +760,7 @@ def _preserve_project_metadata(
     config_data.setdefault("moai", {})
     config_data["moai"]["version"] = version_for_config
 
-    # @CODE:UPDATE-REFACTOR-002-008: Update template_version to track sync status
+    # @CODE:UPDATE-VERSION-008: Update template_version to track sync status
     # This allows Stage 2 to compare package vs project template versions
     project_data["template_version"] = version_for_config
 
@@ -740,7 +786,89 @@ def _apply_context_to_file(processor: TemplateProcessor, target_path: Path) -> N
     target_path.write_text(substituted, encoding="utf-8")
 
 
-# @CODE:UPDATE-REFACTOR-002-003
+def _validate_template_substitution(project_path: Path) -> None:
+    """Validate that all template variables have been properly substituted."""
+    import re
+
+    # Files to check for unsubstituted variables
+    files_to_check = [
+        project_path / ".claude" / "settings.json",
+        project_path / "CLAUDE.md",
+    ]
+
+    issues_found = []
+
+    for file_path in files_to_check:
+        if not file_path.exists():
+            continue
+
+        try:
+            content = file_path.read_text(encoding='utf-8')
+            # Look for unsubstituted template variables
+            unsubstituted = re.findall(r'\{\{([A-Z_]+)\}\}', content)
+            if unsubstituted:
+                unique_vars = sorted(set(unsubstituted))
+                issues_found.append(f"{file_path.relative_to(project_path)}: {', '.join(unique_vars)}")
+        except Exception as e:
+            console.print(f"[yellow]⚠️ Could not validate {file_path.relative_to(project_path)}: {e}[/yellow]")
+
+    if issues_found:
+        console.print("[red]✗ Template substitution validation failed:[/red]")
+        for issue in issues_found:
+            console.print(f"   {issue}")
+        console.print("[yellow]💡 Run '/alfred:0-project' to fix template variables[/yellow]")
+    else:
+        console.print("[green]✅ Template substitution validation passed[/green]")
+
+
+def _validate_template_substitution_with_rollback(project_path: Path, backup_path: Path | None) -> bool:
+    """Validate template substitution with rollback capability.
+
+    Returns:
+        True if validation passed, False if failed (rollback handled by caller)
+    """
+    import re
+
+    # Files to check for unsubstituted variables
+    files_to_check = [
+        project_path / ".claude" / "settings.json",
+        project_path / "CLAUDE.md",
+    ]
+
+    issues_found = []
+
+    for file_path in files_to_check:
+        if not file_path.exists():
+            continue
+
+        try:
+            content = file_path.read_text(encoding='utf-8')
+            # Look for unsubstituted template variables
+            unsubstituted = re.findall(r'\{\{([A-Z_]+)\}\}', content)
+            if unsubstituted:
+                unique_vars = sorted(set(unsubstituted))
+                issues_found.append(f"{file_path.relative_to(project_path)}: {', '.join(unique_vars)}")
+        except Exception as e:
+            console.print(f"[yellow]⚠️ Could not validate {file_path.relative_to(project_path)}: {e}[/yellow]")
+
+    if issues_found:
+        console.print("[red]✗ Template substitution validation failed:[/red]")
+        for issue in issues_found:
+            console.print(f"   {issue}")
+
+        if backup_path:
+            console.print("[yellow]🔄 Rolling back due to validation failure...[/yellow]")
+        else:
+            console.print("[yellow]💡 Run '/alfred:0-project' to fix template variables[/yellow]")
+            console.print("[red]⚠️ No backup available - manual fix required[/red]")
+
+        return False
+    else:
+        console.print("[green]✅ Template substitution validation passed[/green]")
+        return True
+
+
+# @CODE:UPDATE-METADATA-003
 def _show_version_info(current: str, latest: str) -> None:
     """Display version information.
 
@@ -753,7 +881,7 @@ def _show_version_info(current: str, latest: str) -> None:
     console.print(f"   Latest version:  {latest}")
 
 
-# @CODE:UPDATE-REFACTOR-002-005
+# @CODE:UPDATE-CONFIG-005
 def _show_installer_not_found_help() -> None:
     """Show help when installer not found."""
     console.print("[red]❌ Cannot detect package installer[/red]\n")
@@ -902,7 +1030,7 @@ def update(path: str, force: bool, check: bool, templates_only: bool, yes: bool)
         comparison = _compare_versions(current, latest)
 
         # Stage 1: Package Upgrade (if current < latest)
-        # @CODE:UPDATE-REFACTOR-002-009: Stage 1 - Package version check and upgrade
+        # @CODE:UPDATE-STAGE1-009
         if comparison < 0:
             console.print(f"\n[cyan]📦 Upgrading: {current} → {latest}[/cyan]")
 
@@ -942,7 +1070,7 @@ def update(path: str, force: bool, check: bool, templates_only: bool, yes: bool)
             return
 
         # Stage 2: Config Version Comparison
-        # @CODE:UPDATE-REFACTOR-002-010: Stage 2 - Compare template versions to determine if sync needed
+        # @CODE:UPDATE-STAGE2-010: Stage 2 - Compare template versions to determine if sync needed
         console.print(f"✓ Package already up to date ({current})")
 
         try:
@@ -974,7 +1102,7 @@ def update(path: str, force: bool, check: bool, templates_only: bool, yes: bool)
             return
 
         # Stage 3: Template Sync (Only if package_config_version > project_config_version)
-        # @CODE:UPDATE-REFACTOR-002-011: Stage 3 - Template sync only if versions differ
+        # @CODE:UPDATE-STAGE3-011: Stage 3 - Template sync only if versions differ
         console.print(f"\n[cyan]📄 Syncing templates ({project_config_version} → {package_config_version})...[/cyan]")
 
         # Create backup unless --force

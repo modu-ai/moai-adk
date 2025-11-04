@@ -485,6 +485,12 @@ class TestStrictVsInfoMode:
         """Info mode should pass validation with warnings"""
         validator = CIValidator(strict_mode=False)
 
+        # Mock should_validate_file to allow test files
+        def mock_should_validate(filepath):
+            return True
+
+        validator.should_validate_file = mock_should_validate
+
         with tempfile.TemporaryDirectory() as tmpdir:
             # File with orphan CODE (warning only)
             file1 = Path(tmpdir) / "file1.py"
@@ -499,6 +505,12 @@ class TestStrictVsInfoMode:
     def test_strict_mode_blocks_warnings(self):
         """Strict mode should fail validation on warnings"""
         validator = CIValidator(strict_mode=True)
+
+        # Mock should_validate_file to allow test files
+        def mock_should_validate(filepath):
+            return True
+
+        validator.should_validate_file = mock_should_validate
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # File with orphan CODE (warning in info mode)

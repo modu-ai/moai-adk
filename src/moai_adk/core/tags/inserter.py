@@ -1,10 +1,10 @@
-# @CODE:INS-001, @CODE:INS-002
+# @CODE:TAG-INSERTER-001, @CODE:TAG-INSERTER-002
 """Markdown TAG insertion and file operations.
 
 Inserts @DOC tags into markdown file headers with chain references
 and provides backup/recovery functionality.
 
-@SPEC:DOC-TAG-001: @DOC tag automatic generation infrastructure
+@SPEC:TAG-DOC-INSERTION-001: @DOC tag automatic generation infrastructure
 """
 
 from pathlib import Path
@@ -15,14 +15,14 @@ def format_tag_header(tag_id: str, chain_ref: Optional[str] = None) -> str:
     """Format TAG header comment with chain reference.
 
     Args:
-        tag_id: TAG ID (e.g., "@DOC:AUTH-001")
-        chain_ref: Chain reference (e.g., "@SPEC:AUTH-001")
+        tag_id: TAG ID (e.g., "AUTH-001")
+        chain_ref: Chain reference (e.g., "AUTH-001")
 
     Returns:
         Formatted header comment
 
     Examples:
-        >>> format_tag_header("@DOC:AUTH-001", "@SPEC:AUTH-001")
+        >>> format_tag_header("AUTH-001", "AUTH-001")
         '# @DOC:AUTH-001 | Chain: @SPEC:AUTH-001 -> @DOC:AUTH-001'
     """
     if chain_ref:

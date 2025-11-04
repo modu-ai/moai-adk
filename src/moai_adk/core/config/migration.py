@@ -142,7 +142,11 @@ def migrate_config_schema_v0_17_0(config: dict[str, Any]) -> dict[str, Any]:
                 ".moai/analysis/",
                 ".moai/specs/SPEC-*/",
             ],
-            "notes": "Control automatic report generation. 'enabled': turn on/off, 'auto_create': full (true) vs minimal (false) reports. Helps reduce token usage.",
+            "notes": (
+                "Control automatic report generation. 'enabled': turn on/off, "
+                "'auto_create': full (true) vs minimal (false) reports. "
+                "Helps reduce token usage."
+            ),
         }
 
     # 2. Enhance github section with new fields
