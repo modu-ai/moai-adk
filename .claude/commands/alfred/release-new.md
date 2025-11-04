@@ -2298,12 +2298,25 @@ Co-Authored-By: Alfred <alfred@mo.ai.kr>
 - ✅ **Include accurate metrics** (test pass rate, coverage)
 - ✅ **Verify links** (v[PREV] and v[VERSION] accurately)
 
-**Create Release with gh CLI** (English only):
+**Create Release with gh CLI** (English only) - **IMPROVED with Template Validation**:
+
 ```bash
-# Generate release notes (use template above)
+# Step 3.6.1: Analyze recent commits for category classification
+echo "📊 Analyzing commits for release notes categories..."
+
+# Classify commits by message pattern
+FEATURES=$(git log $current_version..HEAD --oneline 2>/dev/null | grep -E "^[a-f0-9]+ (feat|✨)" | wc -l)
+BUG_FIXES=$(git log $current_version..HEAD --oneline 2>/dev/null | grep -E "^[a-f0-9]+ (fix|🐛)" | wc -l)
+IMPROVEMENTS=$(git log $current_version..HEAD --oneline 2>/dev/null | grep -E "^[a-f0-9]+ (perf|refactor|♻️)" | wc -l)
+DOCS=$(git log $current_version..HEAD --oneline 2>/dev/null | grep -E "^[a-f0-9]+ (docs|📚)" | wc -l)
+
+echo "✅ Found: $FEATURES features, $BUG_FIXES fixes, $IMPROVEMENTS improvements, $DOCS docs"
+
+# Generate release notes using HEREDOC with template validation
 release_title="🔖 v{new_version} | {VERSION_TYPE} | {Release Title}"
 
-release_notes="# 🎉 Release v{new_version} | {VERSION_TYPE}
+release_notes=$(cat << 'TEMPLATE'
+# 🎉 Release v{new_version} | {VERSION_TYPE} | {Release Title}
 
 **Version**: v{new_version}
 **Type**: {VERSION_TYPE}
@@ -2340,14 +2353,30 @@ release_notes="# 🎉 Release v{new_version} | {VERSION_TYPE}
 ## Installation
 
 ### Using uv (Recommended)
-\`\`\`bash
+```bash
 uv tool install moai-adk=={new_version}
-\`\`\`
+moai-adk --version
+```
 
 ### Using pip (Legacy)
-\`\`\`bash
+```bash
 pip install moai-adk=={new_version}
-\`\`\`
+moai-adk --version
+```
+
+## Upgrade Guide
+
+### Upgrade from Previous Version (uv)
+```bash
+uv tool upgrade moai-adk
+moai-adk --version
+```
+
+### Upgrade from Previous Version (pip)
+```bash
+pip install --upgrade moai-adk
+moai-adk --version
+```
 
 ## Full Changelog
 
@@ -2361,18 +2390,65 @@ Thanks to all contributors who made this release possible.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: Alfred <alfred@mo.ai.kr>"
+Co-Authored-By: Alfred <alfred@mo.ai.kr>
+TEMPLATE
+)
 
-# Create GitHub Release (Draft, English only)
+# Step 3.6.2: Template Validation Checklist
+echo ""
+echo "🔍 Validating release notes format..."
+echo ""
+
+VALIDATION_PASSED=true
+
+# Check required sections
+for section in "# 🎉 Release" "## What's Changed" "### ✨ New Features" "### 🐛 Bug Fixes" "### ♻️ Improvements" "### 📚 Documentation" "## Installation" "## Full Changelog"; do
+    if echo "$release_notes" | grep -q "$section"; then
+        echo "✅ Found section: $section"
+    else
+        echo "⚠️  Missing section: $section"
+        VALIDATION_PASSED=false
+    fi
+done
+
+echo ""
+
+if [ "$VALIDATION_PASSED" = false ]; then
+    echo "⚠️  Template validation warning: Some sections missing. Review release notes before publishing."
+fi
+
+# Step 3.6.3: Create GitHub Release (HEREDOC ensures proper formatting)
+echo "📝 Creating GitHub Release with validated template..."
+
 gh release create "v{new_version}" \
   --title "$release_title" \
   --notes "$release_notes" \
   --draft
 
-echo "ℹ️ GitHub Release created as Draft"
-echo "→ https://github.com/modu-ai/moai-adk/releases/tag/v{new_version}"
-echo "→ Verify content and publish the release..."
+if [ $? -eq 0 ]; then
+    echo "✅ GitHub Release created as Draft"
+    echo "→ Review: https://github.com/modu-ai/moai-adk/releases/tag/v{new_version}"
+    echo "→ Edit if needed, then run: gh release edit v{new_version} --draft=false"
+else
+    echo "❌ Failed to create GitHub Release"
+    echo "→ Possible issues:"
+    echo "  1. GitHub authentication: gh auth status"
+    echo "  2. Duplicate release: Check if v{new_version} already exists"
+    echo "  3. Invalid release notes: Check HEREDOC syntax"
+    exit 1
+fi
 ```
+
+**Template Compliance Checklist** (verified before publishing):
+- ✅ Title format: `🔖 v[VERSION] | [TYPE] | [Title]`
+- ✅ Body starts with: `# 🎉 Release v[VERSION]`
+- ✅ All 4 sections: Features, Bug Fixes, Improvements, Documentation
+- ✅ Quality Assurance Results table present
+- ✅ Installation section with uv + pip
+- ✅ Full Changelog link with correct version range
+- ✅ Contributors section
+- ✅ Claude Code + Alfred co-author footer
+- ✅ English language only
 
 ### Step 3.7: Publish GitHub Release (Draft → Published)
 
