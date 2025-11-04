@@ -205,23 +205,23 @@ AskUserQuestion(
     questions=[
         {
             "question": "Your project is already initialized. What would you like to do?",
-            "header": "Already Initialized",
+            "header": "Project Status",
             "multiSelect": false,
             "options": [
                 {
-                    "label": "🔧 Modify Settings",
+                    "label": "Modify Settings",
                     "description": "Change language, nickname, GitHub settings, or reports config. Runs /alfred:0-project setting mode"
                 },
                 {
-                    "label": "📋 Review Current Setup",
+                    "label": "Review Current Setup",
                     "description": "Display current project settings and configuration"
                 },
                 {
-                    "label": "🔄 Re-initialize",
+                    "label": "Re-initialize",
                     "description": "Run full initialization again (warns before overwriting)"
                 },
                 {
-                    "label": "⏸️ Cancel",
+                    "label": "Cancel",
                     "description": "Exit without changes"
                 }
             ]

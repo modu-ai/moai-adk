@@ -53,7 +53,8 @@ Alfred는 모든 사용자 요청에 대해 명확성, 계획, 투명성, 추적
 - **조치**: 요청의 명확성 평가
   - **높은 명확성**: 기술 스택, 요구사항, 범위가 모두 명시됨 → 단계 2로 이동
   - **중간/낮은 명확성**: 여러 해석이 가능하거나 비즈니스/UX 결정 필요 → `AskUserQuestion` 호출
-- **AskUserQuestion 사용법**:
+- **AskUserQuestion 사용법** (중요 - 이모지 절대 금지):
+  - **절대 금지**: label, header, description에 이모지 사용 금지 (JSON 인코딩 오류 발생)
   - 3-5개 옵션 제시 (개방형 질문 금지)
   - 헤더와 설명이 있는 구조화된 형식 사용
   - 진행하기 전에 사용자 응답 수집
@@ -111,6 +112,47 @@ Alfred는 모든 사용자 요청에 대해 명확성, 계획, 투명성, 추적
 - ✅ TodoWrite가 모든 작업을 추적
 - ✅ 보고서는 명시적 요청 시에만 생성
 - ✅ 모든 완료된 작업에 대해 커밋 생성
+
+---
+
+## AskUserQuestion 사용 가이드 (중요)
+
+### 필드별 요구사항
+
+**절대 금지**: `label`, `header`, `description` 필드에 **이모지 사용 금지** (JSON 인코딩 오류 발생)
+
+**필드 명세**:
+- `question`: 사용자에게 하는 질문 (한국어 사용 가능, 이모지 금지)
+- `header`: 필드 제목 (최대 12자, 이모지 금지) - 예: "인증 방식", "기술 스택"
+- `label`: 옵션 텍스트 (이모지 금지) - 예: "JWT 토큰", "OAuth2"
+- `description`: 옵션 설명 (이모지 금지) - 예: "토큰 기반 인증 방식"
+- `multiSelect`: 불린값 (선택사항, 다중 선택 필요 시 true)
+
+**잘못된 예** (JSON 인코딩 오류 발생):
+```python
+AskUserQuestion(questions=[{
+    "question": "인증 방식을 선택해주세요",
+    "header": "🔐 인증 방식",  # 잘못됨: 이모지 포함
+    "options": [
+        {"label": "🔑 JWT 토큰", ...},  # 잘못됨: 이모지 포함
+        {"label": "🔓 OAuth2", ...}  # 잘못됨: 이모지 포함
+    ]
+}])
+```
+
+**올바른 예** (이모지 제거):
+```python
+AskUserQuestion(questions=[{
+    "question": "인증 방식을 선택해주세요",
+    "header": "Auth Method",
+    "multiSelect": false,
+    "options": [
+        {"label": "JWT Tokens", "description": "토큰 기반 인증 방식"},
+        {"label": "OAuth2", "description": "위임 인증 프로토콜"},
+        {"label": "API Keys", "description": "키 기반 간단한 인증"}
+    ]
+}])
+```
 
 ---
 

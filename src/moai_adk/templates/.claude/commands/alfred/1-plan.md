@@ -459,19 +459,19 @@ AskUserQuestion(
             "multiSelect": false,
             "options": [
                 {
-                    "label": "✅ Proceed with SPEC Creation",
+                    "label": "Proceed with SPEC Creation",
                     "description": "Create SPEC files in .moai/specs/SPEC-{ID}/ based on approved plan"
                 },
                 {
-                    "label": "🔄 Request Modifications",
+                    "label": "Request Modifications",
                     "description": "Specify changes to the plan before SPEC creation"
                 },
                 {
-                    "label": "⏸️ Save as Draft",
+                    "label": "Save as Draft",
                     "description": "Save plan as draft without creating SPEC files yet"
                 },
                 {
-                    "label": "❌ Cancel",
+                    "label": "Cancel",
                     "description": "Discard plan and return to planning phase"
                 }
             ]
@@ -481,24 +481,24 @@ AskUserQuestion(
 ```
 
 **Response Processing**:
-- **"✅ Proceed with SPEC Creation"** (`answers["0"] === "✅ Proceed with SPEC Creation"`) → Execute Phase 2
+- **"Proceed with SPEC Creation"** (`answers["0"] === "Proceed with SPEC Creation"`) → Execute Phase 2
   - Invoke spec-builder agent with approved plan
   - Create spec.md, plan.md, acceptance.md files in `.moai/specs/SPEC-{ID}/`
   - Initialize @SPEC TAG system
   - Create feature branch via git-manager
   - Create Draft PR for review
 
-- **"🔄 Request Modifications"** (`answers["0"] === "🔄 Request Modifications"`) → Repeat planning phase
+- **"Request Modifications"** (`answers["0"] === "Request Modifications"`) → Repeat planning phase
   - Collect modification requests from user
   - Update plan based on feedback
   - Re-present plan for approval (recursive decision)
 
-- **"⏸️ Save as Draft"** (`answers["0"] === "⏸️ Save as Draft"`) → Save without SPEC
+- **"Save as Draft"** (`answers["0"] === "Save as Draft"`) → Save without SPEC
   - Save plan to `.moai/specs/SPEC-{ID}/plan.md` with status: draft
   - Commit with message "draft(spec): WIP SPEC-{ID} - {title}"
   - User can resume with `/alfred:1-plan resume SPEC-{ID}`
 
-- **"❌ Cancel"** (`answers["0"] === "❌ Cancel"`) → End task
+- **"Cancel"** (`answers["0"] === "Cancel"`) → End task
   - Discard plan artifacts
   - Return user to initial planning prompt
   - No files created or modified
@@ -828,19 +828,19 @@ AskUserQuestion(
             "multiSelect": false,
             "options": [
                 {
-                    "label": "🔨 Start Implementation",
+                    "label": "Start Implementation",
                     "description": "Proceed to /alfred:2-run SPEC-XXX for TDD implementation"
                 },
                 {
-                    "label": "📝 Review SPEC",
+                    "label": "Review SPEC",
                     "description": "Review and modify SPEC documents before implementation"
                 },
                 {
-                    "label": "🔄 New Session",
+                    "label": "New Session",
                     "description": "Execute /clear for better context management (recommended)"
                 },
                 {
-                    "label": "❌ Cancel",
+                    "label": "Cancel",
                     "description": "Return to planning phase"
                 }
             ]
@@ -850,22 +850,22 @@ AskUserQuestion(
 ```
 
 **Response Processing**:
-- **"🔨 Start Implementation"** (`answers["0"] === "🔨 Start Implementation"`) → Proceed to `/alfred:2-run`
+- **"Start Implementation"** (`answers["0"] === "Start Implementation"`) → Proceed to `/alfred:2-run`
   - Display: "Starting TDD implementation workflow..."
   - User can execute: `/alfred:2-run SPEC-XXX`
   - Continue to next phase without session break
 
-- **"📝 Review SPEC"** (`answers["0"] === "📝 Review SPEC"`) → Review generated SPEC
-  - Display: "📁 SPEC files created in `.moai/specs/SPEC-XXX/`"
+- **"Review SPEC"** (`answers["0"] === "Review SPEC"`) → Review generated SPEC
+  - Display: "SPEC files created in `.moai/specs/SPEC-XXX/`"
   - Show files: spec.md, plan.md, acceptance.md
   - User can modify and then run `/alfred:2-run SPEC-XXX`
 
-- **"🔄 New Session"** (`answers["0"] === "🔄 New Session"`) → Clear and restart
-  - Display: "⏳ Clearing session for better context management..."
+- **"New Session"** (`answers["0"] === "New Session"`) → Clear and restart
+  - Display: "Clearing session for better context management..."
   - Note: Improves performance for large projects
   - Next session: User can run `/alfred:2-run SPEC-XXX`
 
-- **"❌ Cancel"** (`answers["0"] === "❌ Cancel"`) → Return to planning
+- **"Cancel"** (`answers["0"] === "Cancel"`) → Return to planning
   - Display: "Returning to planning phase..."
   - SPEC files preserved for future use
   - User can create more SPECs with `/alfred:1-plan`

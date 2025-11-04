@@ -316,19 +316,19 @@ AskUserQuestion(
             "multiSelect": false,
             "options": [
                 {
-                    "label": "✅ Proceed with Sync",
+                    "label": "Proceed with Sync",
                     "description": "Execute document synchronization as planned"
                 },
                 {
-                    "label": "🔄 Request Modifications",
+                    "label": "Request Modifications",
                     "description": "Specify changes to the synchronization strategy"
                 },
                 {
-                    "label": "🔍 Review Details",
+                    "label": "Review Details",
                     "description": "Re-examine TAG validation results and changes"
                 },
                 {
-                    "label": "❌ Abort",
+                    "label": "Abort",
                     "description": "Cancel synchronization, keep current state"
                 }
             ]
@@ -338,10 +338,10 @@ AskUserQuestion(
 ```
 
 **Response Processing**:
-- **✅ Proceed with Sync** (`answers["0"] === "Proceed"`) → Execute Phase 2 (document synchronization)
-- **🔄 Request Modifications** (`answers["0"] === "Modifications"`) → Collect feedback and re-analyze
-- **🔍 Review Details** (`answers["0"] === "Review"`) → Display TAG validation results, then re-present decision
-- **❌ Abort** (`answers["0"] === "Abort"`) → Stop synchronization, maintain current branches
+- **Proceed with Sync** (`answers["0"] === "Proceed with Sync"`) → Execute Phase 2 (document synchronization)
+- **Request Modifications** (`answers["0"] === "Request Modifications"`) → Collect feedback and re-analyze
+- **Review Details** (`answers["0"] === "Review Details"`) → Display TAG validation results, then re-present decision
+- **Abort** (`answers["0"] === "Abort"`) → Stop synchronization, maintain current branches
 
 ---
 
@@ -925,19 +925,19 @@ AskUserQuestion(
             "multiSelect": false,
             "options": [
                 {
-                    "label": "🤖 Auto-Merge (Recommended)",
+                    "label": "Auto-Merge (Recommended)",
                     "description": "Automatically merge PR and clean up branch (team mode)"
                 },
                 {
-                    "label": "📋 Manual Review",
+                    "label": "Manual Review",
                     "description": "Keep PR in Ready state for manual review and merge"
                 },
                 {
-                    "label": "✏️ Keep as Draft",
+                    "label": "Keep as Draft",
                     "description": "Maintain PR in draft state for further refinement"
                 },
                 {
-                    "label": "🔄 New Cycle",
+                    "label": "New Cycle",
                     "description": "Save changes and start new feature (skip PR for now)"
                 }
             ]
@@ -947,10 +947,10 @@ AskUserQuestion(
 ```
 
 **Response Processing**:
-- **🤖 Auto-Merge** (`answers["0"] === "Auto-Merge"`) → Execute PR auto-merge with CI checks, update develop branch
-- **📋 Manual Review** (`answers["0"] === "Manual"`) → Transition PR to Ready state, notify reviewers
-- **✏️ Keep as Draft** (`answers["0"] === "Draft"`) → Leave PR in draft, ready for refinement
-- **🔄 New Cycle** (`answers["0"] === "New"`) → Skip PR handling, proceed to next feature planning
+- **Auto-Merge (Recommended)** (`answers["0"] === "Auto-Merge (Recommended)"`) → Execute PR auto-merge with CI checks, update develop branch
+- **Manual Review** (`answers["0"] === "Manual Review"`) → Transition PR to Ready state, notify reviewers
+- **Keep as Draft** (`answers["0"] === "Keep as Draft"`) → Leave PR in draft, ready for refinement
+- **New Cycle** (`answers["0"] === "New Cycle"`) → Skip PR handling, proceed to next feature planning
 
 ---
 
@@ -967,15 +967,15 @@ AskUserQuestion(
             "multiSelect": false,
             "options": [
                 {
-                    "label": "📋 Create Next SPEC",
+                    "label": "Create Next SPEC",
                     "description": "Start new feature planning with /alfred:1-plan"
                 },
                 {
-                    "label": "📤 Merge PR",
+                    "label": "Merge PR",
                     "description": "Review and merge PR to develop branch"
                 },
                 {
-                    "label": "🔄 Start New Session",
+                    "label": "Start New Session",
                     "description": "Execute /clear for fresh session (recommended for performance)"
                 }
             ]
@@ -985,9 +985,9 @@ AskUserQuestion(
 ```
 
 **User Responses**:
-- **📋 Create Next SPEC**: Proceed to `/alfred:1-plan` for creating next SPEC
-- **📤 Merge PR**: Manual PR review and merge on GitHub
-- **🔄 Start New Session**: Execute `/clear` to start fresh session (recommended for performance)
+- **Create Next SPEC**: Proceed to `/alfred:1-plan` for creating next SPEC
+- **Merge PR**: Manual PR review and merge on GitHub
+- **Start New Session**: Execute `/clear` to start fresh session (recommended for performance)
 
 ---
 

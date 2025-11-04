@@ -41,7 +41,8 @@ Alfred follows a systematic **4-step workflow** for all user requests to ensure 
 - **Action**: Evaluate request clarity
   - **HIGH clarity**: Technical stack, requirements, scope all specified → Skip to Step 2
   - **MEDIUM/LOW clarity**: Multiple interpretations possible, business/UX decisions needed → Invoke `AskUserQuestion`
-- **AskUserQuestion Usage**:
+- **AskUserQuestion Usage** (CRITICAL - NO EMOJIS):
+  - NEVER use emojis in labels, headers, or descriptions (causes JSON encoding errors)
   - Present 3-5 options (not open-ended questions)
   - Use structured format with headers and descriptions
   - Gather user responses before proceeding
@@ -490,12 +491,12 @@ After project initialization completes:
 AskUserQuestion(
     questions=[
         {
-            "question": "프로젝트 초기화가 완료되었습니다. 다음으로 뭘 하시겠습니까?",
-            "header": "다음 단계",
+            "question": "Project initialization is complete. What would you like to do next?",
+            "header": "Next Step",
             "options": [
-                {"label": "📋 스펙 작성 진행", "description": "/alfred:1-plan 실행"},
-                {"label": "🔍 프로젝트 구조 검토", "description": "현재 상태 확인"},
-                {"label": "🔄 새 세션 시작", "description": "/clear 실행"}
+                {"label": "Write Specifications", "description": "Run /alfred:1-plan to define requirements"},
+                {"label": "Review Project Structure", "description": "Check current project state"},
+                {"label": "Start New Session", "description": "Run /clear to start fresh"}
             ]
         }
     ]
@@ -537,11 +538,49 @@ After sync completes:
 
 ### Implementation Rules
 
-1. **Always use AskUserQuestion** - Never suggest next steps in prose (e.g., "You can now run `/alfred:1-plan`...")
-2. **Provide 3-4 clear options** - Not open-ended or free-form
-3. **Batch questions when possible** - Combine related questions in 1 call (1-4 questions max)
-4. **Language**: Present options in user's `conversation_language` (Korean, Japanese, etc.)
-5. **Question format**: Use the `moai-alfred-interactive-questions` skill documentation as reference (don't invoke Skill())
+1. **CRITICAL: NO EMOJIS** - Never use emojis in `label`, `header`, or `description` fields (causes JSON encoding errors)
+2. **Always use AskUserQuestion** - Never suggest next steps in prose (e.g., "You can now run `/alfred:1-plan`...")
+3. **Provide 3-4 clear options** - Not open-ended or free-form
+4. **Batch questions when possible** - Combine related questions in 1 call (1-4 questions max)
+5. **Language**: Present options in user's `conversation_language` (Korean, Japanese, etc.)
+6. **Question format**: Use the `moai-alfred-interactive-questions` skill documentation as reference (don't invoke Skill())
+
+### AskUserQuestion Field Specifications
+
+**CRITICAL**: All AskUserQuestion fields must be emoji-free to avoid JSON encoding errors.
+
+**Field Requirements**:
+- `question`: Actual question text (can be in user's language, NO emojis)
+- `header`: Short field label max 12 chars, NO emojis (e.g., "Auth Type", "Tech Stack")
+- `label`: Option text, NO emojis (e.g., "Use JWT", "Use OAuth2")
+- `description`: Explanation text, NO emojis (e.g., "Stateless token-based authentication")
+- `multiSelect`: Boolean (optional, set true for multiple selections)
+
+**INCORRECT** (causes JSON encoding error):
+```python
+AskUserQuestion(questions=[{
+    "question": "What auth method?",
+    "header": "🔐 Auth Type",  # WRONG: emoji in header
+    "options": [
+        {"label": "🔑 JWT Tokens", ...},  # WRONG: emoji in label
+        {"label": "🔓 OAuth2", ...}  # WRONG: emoji in label
+    ]
+}])
+```
+
+**CORRECT** (emoji-free):
+```python
+AskUserQuestion(questions=[{
+    "question": "What authentication method do you prefer?",
+    "header": "Auth Method",
+    "multiSelect": false,
+    "options": [
+        {"label": "JWT Tokens", "description": "Stateless token-based authentication"},
+        {"label": "OAuth2", "description": "Delegated authorization protocol"},
+        {"label": "API Keys", "description": "Simple key-based authentication"}
+    ]
+}])
+```
 
 ### Example (Correct Pattern)
 
@@ -550,14 +589,14 @@ After sync completes:
 
 After project setup, use AskUserQuestion tool to ask:
 
-- "프로젝트 초기화가 완료되었습니다. 다음으로 뭘 하시겠습니까?"
-- Options: 1) 스펙 작성 진행 2) 프로젝트 구조 검토 3) 새 세션 시작
+- "Project initialization is complete. What would you like to do next?"
+- Options: 1) Write Specifications 2) Review Project Structure 3) Start New Session
 
 # CORRECT ✅ (Batched Design)
 
 Use batched AskUserQuestion to collect multiple responses:
 
-- Question 1: "Which language?" + Question 2: "What's your nickname?"
+- Question 1: "Which language?" + Question 2: "What's your name?"
 - Both collected in 1 turn (50% UX improvement)
 
 # INCORRECT ❌
