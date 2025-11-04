@@ -444,7 +444,7 @@ wheels = [
 
 [[package]]
 name = "moai-adk"
-version = "0.17.0"
+version = "0.17.2"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
