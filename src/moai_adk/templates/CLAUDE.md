@@ -42,6 +42,7 @@ Alfred follows a systematic **4-step workflow** for all user requests to ensure 
   - **HIGH clarity**: Technical stack, requirements, scope all specified → Skip to Step 2
   - **MEDIUM/LOW clarity**: Multiple interpretations possible, business/UX decisions needed → Invoke `AskUserQuestion`
 - **AskUserQuestion Usage** (CRITICAL - NO EMOJIS):
+  - **ALWAYS invoke** `Skill("moai-alfred-interactive-questions")` before using AskUserQuestion for up-to-date best practices
   - NEVER use emojis in labels, headers, or descriptions (causes JSON encoding errors)
   - Present 3-5 options (not open-ended questions)
   - Use structured format with headers and descriptions
@@ -543,7 +544,7 @@ After sync completes:
 3. **Provide 3-4 clear options** - Not open-ended or free-form
 4. **Batch questions when possible** - Combine related questions in 1 call (1-4 questions max)
 5. **Language**: Present options in user's `conversation_language` (Korean, Japanese, etc.)
-6. **Question format**: Use the `moai-alfred-interactive-questions` skill documentation as reference (don't invoke Skill())
+6. **ALWAYS invoke moai-alfred-interactive-questions Skill** - Call `Skill("moai-alfred-interactive-questions")` before using AskUserQuestion for up-to-date best practices and field specifications
 
 ### AskUserQuestion Field Specifications
 

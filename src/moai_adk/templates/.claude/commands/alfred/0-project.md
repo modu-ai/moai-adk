@@ -18,7 +18,7 @@ allowed-tools:
 
 # 📋 MoAI-ADK Step 0: Initialize/Update Universal Language Support Project Documentation
 
-> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
+> **Critical Note**: ALWAYS invoke `Skill("moai-alfred-interactive-questions")` before using `AskUserQuestion` tool. This skill provides up-to-date best practices, field specifications, and validation rules for interactive prompts.
 
 ## 🎯 Command Purpose
 
