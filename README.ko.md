@@ -755,6 +755,131 @@ Alfred가 프로젝트 정보를 수집하고 설정을 최적화합니다.
 
 ---
 
+## 🎛️ `/alfred:0-project` 3-tier 서브커맨드 가이드
+
+v0.17.0부터 `/alfred:0-project`는 **3가지 실행 모드**를 지원하여, 프로젝트 상태에 따라 자동으로 올바른 동작을 수행합니다.
+
+### 1️⃣ 기본 모드 (인자 없음) — 스마트 자동 감지
+
+```bash
+/alfred:0-project
+```
+
+**동작**:
+- **첫 실행**: 프로젝트 초기화 (언어, 닉네임, GitHub 설정 수집)
+- **재실행** (이미 초기화됨): "Already Initialized" 메뉴 표시
+
+**"Already Initialized" 메뉴에서 선택 가능한 옵션**:
+- 🔧 **Modify Settings**: 기존 설정 변경 (아래 `setting` 모드와 동일)
+- 📋 **Review Current Setup**: 현재 설정 확인
+- 🔄 **Re-initialize**: 전체 초기화 다시 실행
+- ⏸️ **Cancel**: 변경 없이 종료
+
+### 2️⃣ Setting 모드 — 기존 설정 수정 (신규 v0.17.0+)
+
+```bash
+/alfred:0-project setting
+```
+
+**목적**: 이미 초기화된 프로젝트의 설정을 **부분적으로 수정**합니다.
+
+**수정 가능한 설정**:
+- 🌍 **언어 & 에이전트 프롬프트 언어**: 프로젝트 언어와 AI 에이전트 언어 변경
+- 👤 **닉네임**: 사용자 닉네임 변경
+- 🔧 **GitHub 설정** (팀 모드): auto-delete branches, SPEC Git 워크플로우
+- 📊 **보고서 생성**: 자동 보고서 활성화 여부 및 수준 조절
+- 🎯 **프로젝트 도메인**: 도메인 선택 추가/제거
+
+**워크플로우**:
+
+```bash
+# 1. setting 모드 실행
+/alfred:0-project setting
+
+# 2. 현재 설정 확인
+#    ✅ Language: 한국어 (ko)
+#    ✅ Nickname: GOOS
+#    ✅ Agent Prompt Language: Localized
+
+# 3. 수정할 설정 선택 (다중 선택 가능)
+#    ☑ Language & Agent Prompt Language
+#    ☐ Nickname
+#    ☑ Report Generation
+#    ☐ GitHub Settings
+
+# 4. 선택한 항목들의 새로운 값 입력 (배치 질문)
+# 5. .moai/config.json 자동 업데이트 (변경된 필드만)
+# 6. 완료 보고 표시
+```
+
+**UX 개선 효과**:
+- **60% 상호작용 감소**: 다중 선택 + 배치 질문으로 최소 상호작용
+- **안전한 업데이트**: 선택된 필드만 변경, 다른 설정은 그대로 보존
+- **빠른 설정 변경**: 전체 초기화 대신 필요한 항목만 수정
+
+**예시**:
+
+```bash
+# 시나리오: 언어만 영어로 변경하고 싶을 때
+
+/alfred:0-project setting
+
+# → "Language & Agent Prompt Language" 선택
+# → Conversation Language: 한국어 → English로 변경
+# → Agent Prompt Language: Localized → English (Global Standard)로 변경
+
+# 결과: .moai/config.json의 language 섹션만 업데이트됨
+#      github, user, report_generation 섹션은 그대로 유지됨
+```
+
+### 3️⃣ Update 모드 — 템플릿 최적화 (신규 v0.17.0+)
+
+```bash
+/alfred:0-project update
+```
+
+**목적**: `moai-adk update` 실행 후 **새 템플릿과 사용자 커스터마이제이션을 병합**합니다.
+
+**언제 사용하나요?**:
+```bash
+# 1. 먼저 MoAI-ADK를 업데이트
+moai-adk update
+
+# 2. Alfred에게 템플릿 최적화 지시
+/alfred:0-project update
+
+# 3. 사용자가 작성한 설정은 보존되고, 새로운 템플릿 구조 적용됨
+```
+
+**동작 단계**:
+
+1. **Backup 분석**: 이전 설정 백업과 현재 템플릿 비교
+2. **변경 감지**: 어떤 부분이 변경되었는지 분석
+3. **사용자 승인**: 병합 진행 여부 확인
+4. **Smart Merge**: 사용자 커스터마이제이션 보존하며 최신 템플릿 적용
+5. **최적화 완료**: `optimized: true` 플래그 설정
+
+**예시**:
+
+```bash
+# 기존 프로젝트가 있을 때
+
+# 1. 패키지 업데이트
+moai-adk update --upgrade
+
+# 2. 템플릿 최적화 (사용자 설정 보존)
+/alfred:0-project update
+
+# 결과:
+# ✅ Template optimization completed!
+# 📄 Merged files:
+#   - CLAUDE.md (latest version, custom "Project Information" preserved)
+#   - .claude/settings.json (env variables merged)
+#   - .moai/project/*.md (latest structure with user content)
+```
+
+---
+
 ## 🔍 업데이트 후 확인 체크리스트
 
 업데이트 후 문제가 없는지 확인하세요.
@@ -939,13 +1064,15 @@ graph TD
 
 ## 핵심 명령 요약
 
-| 명령                      | 무엇을 하나요?                                                         | 대표 산출물                                                        |
-| ------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `/alfred:0-project`       | 프로젝트 설명 수집, 설정·문서 생성, Skill 추천                         | `.moai/config.json`, `.moai/project/*`, 초기 보고서                |
-| `/alfred:1-plan <설명>`   | 요구사항 분석, SPEC 초안, Plan Board 작성                              | `.moai/specs/SPEC-*/spec.md`, plan/acceptance 문서, feature 브랜치 |
-| `/alfred:2-run <SPEC-ID>` | TDD 실행, 테스트/구현/리팩토링, 품질 검증                              | `tests/`, `src/` 구현, 품질 리포트, TAG 연결                       |
-| `/alfred:3-sync`          | 문서/README/CHANGELOG 동기화, TAG/PR 상태 정리                         | `docs/`, `.moai/reports/sync-report.md`, Ready PR                  |
-| `/alfred:9-feedback`      | MoAI-ADK 개선 피드백 GitHub Issue 생성 (타입 → 제목 → 설명 → 우선순위) | GitHub Issue + 자동 라벨 + 우선순위 + URL                          |
+| 명령                        | 무엇을 하나요?                                                         | 대표 산출물                                                        |
+| --------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `/alfred:0-project`         | 프로젝트 초기화: 설정 수집, 문서 생성, Skill 추천                       | `.moai/config.json`, `.moai/project/*`, 초기 보고서                |
+| `/alfred:0-project setting` | 기존 설정 수정: 언어, 닉네임, GitHub 설정, 보고서 생성 옵션 변경        | 업데이트된 `.moai/config.json`                                     |
+| `/alfred:0-project update`  | 템플릿 최적화: `moai-adk update` 후 사용자 커스터마이제이션 보존       | 병합된 `.claude/`, `.moai/` 템플릿 파일                            |
+| `/alfred:1-plan <설명>`     | 요구사항 분석, SPEC 초안, Plan Board 작성                              | `.moai/specs/SPEC-*/spec.md`, plan/acceptance 문서, feature 브랜치 |
+| `/alfred:2-run <SPEC-ID>`   | TDD 실행, 테스트/구현/리팩토링, 품질 검증                              | `tests/`, `src/` 구현, 품질 리포트, TAG 연결                       |
+| `/alfred:3-sync`            | 문서/README/CHANGELOG 동기화, TAG/PR 상태 정리                         | `docs/`, `.moai/reports/sync-report.md`, Ready PR                  |
+| `/alfred:9-feedback`        | MoAI-ADK 개선 피드백 GitHub Issue 생성 (타입 → 제목 → 설명 → 우선순위) | GitHub Issue + 자동 라벨 + 우선순위 + URL                          |
 
 > ❗ 모든 명령은 **Phase 0(선택) → Phase 1 → Phase 2 → Phase 3** 순환 구조를 유지합니다. 실행 중 상태와 다음 단계 제안은 Alfred가 자동으로 보고합니다.
 
