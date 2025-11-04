@@ -53,10 +53,18 @@ Alfred는 모든 사용자 요청에 대해 명확성, 계획, 투명성, 추적
 - **조치**: 요청의 명확성 평가
   - **높은 명확성**: 기술 스택, 요구사항, 범위가 모두 명시됨 → 단계 2로 이동
   - **중간/낮은 명확성**: 여러 해석이 가능하거나 비즈니스/UX 결정 필요 → `AskUserQuestion` 호출
-- **AskUserQuestion 사용법** (중요 - 이모지 절대 금지):
+- **AskUserQuestion 사용법** (중요 - JSON 형식 준수 필수):
   - **필수**: `Skill("moai-alfred-ask-user-questions")`를 먼저 호출하고 최신 가이드라인 확인
-  - **절대 금지**: label, header, description에 이모지 사용 금지 (JSON 인코딩 오류 발생)
-  - 3-5개 옵션 제시 (개방형 질문 금지)
+  - **JSON 필드 규칙** (최우선):
+    - ❌ **절대 금지**: question, header, label, description에 이모지 사용
+    - 이유: JSON 인코딩 에러 "invalid low surrogate in string" 발생 → API 400 에러
+    - 잘못된 예: `label: "✅ Enable"`, `header: "🔧 GitHub Settings"`
+    - 올바른 예: `label: "Enable"`, `header: "GitHub Settings"`
+    - 위험 표시: 이모지 대신 **텍스트** 사용 - "CAUTION:", "NOT RECOMMENDED:"
+  - **배치 전략**: 최대 4개 option per question
+    - 5개 이상 필요 시: 여러 번의 AskUserQuestion 호출로 분할
+    - 예시: 언어 설정(2) → GitHub 설정(2) → 도메인(1) = 3번 호출
+  - 2-4개 옵션 제시 (개방형 질문 금지)
   - 헤더와 설명이 있는 구조화된 형식 사용
   - 진행하기 전에 사용자 응답 수집
   - 필수: 여러 기술 스택 선택, 아키텍처 결정, 모호한 요청, 기존 컴포넌트 영향

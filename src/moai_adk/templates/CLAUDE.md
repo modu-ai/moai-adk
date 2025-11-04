@@ -43,8 +43,14 @@ Alfred follows a systematic **4-step workflow** for all user requests to ensure 
   - **MEDIUM/LOW clarity**: Multiple interpretations possible, business/UX decisions needed → Invoke `AskUserQuestion`
 - **AskUserQuestion Usage** (CRITICAL - NO EMOJIS):
   - **ALWAYS invoke** `Skill("moai-alfred-ask-user-questions")` before using AskUserQuestion for up-to-date best practices
-  - NEVER use emojis in labels, headers, or descriptions (causes JSON encoding errors)
-  - Present 3-5 options (not open-ended questions)
+  - **❌ CRITICAL: NEVER use emojis in ANY JSON field** → Causes "invalid low surrogate" API error (400 Bad Request)
+    - NO emojis in: `question`, `header`, `label`, `description`
+    - Examples of WRONG: `label: "✅ Enable"` → Use `label: "Enable"` instead
+    - Use text prefixes: "CAUTION:", "NOT RECOMMENDED:", "REQUIRED:" (no emoji equivalents)
+  - **Batching Strategy**: Max 4 options per question
+    - 5+ options? Split into multiple sequential AskUserQuestion calls
+    - Example: Language (2) + GitHub (2) + Domain (1) = 3 calls
+  - Present 2-4 options per question (not open-ended questions)
   - Use structured format with headers and descriptions
   - Gather user responses before proceeding
   - Mandatory for: multiple tech stack choices, architecture decisions, ambiguous requests, existing component impacts
