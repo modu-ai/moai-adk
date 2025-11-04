@@ -29,9 +29,11 @@ htmlcov/
 site/
 docs/_build/
 
-# Documentation source (only docs/public/ is tracked)
-docs/*
-!docs/public/
+# Documentation (Nextra)
+docs/node_modules/
+docs/.next/
+docs/.npm-cache/
+docs/.turbo/
 
 # Virtual environment
 venv/
