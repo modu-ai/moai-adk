@@ -111,3 +111,121 @@ def get_conversation_language_name(config: dict[str, Any]) -> str:
         "es": "Español",
     }
     return language_names.get(language_code, "English")
+
+
+def migrate_config_schema_v0_17_0(config: dict[str, Any]) -> dict[str, Any]:
+    """Migrate config schema for v0.16.0 → v0.17.0 (report generation feature).
+
+    Adds new sections:
+    - report_generation: Control automatic report generation
+    - Enhanced github: auto_delete_branches, spec_git_workflow settings
+
+    This function is backward-compatible and safe for existing configs.
+
+    Args:
+        config: Configuration dictionary (may be v0.16.0 or earlier).
+
+    Returns:
+        Configuration dictionary with v0.17.0 schema.
+    """
+    # 1. Add report_generation section if missing (defaults to enabled=true, auto_create=false)
+    if "report_generation" not in config:
+        config["report_generation"] = {
+            "enabled": True,
+            "auto_create": False,
+            "warn_user": True,
+            "user_choice": "Minimal",
+            "configured_at": None,  # Will be set when user configures
+            "allowed_locations": [
+                ".moai/docs/",
+                ".moai/reports/",
+                ".moai/analysis/",
+                ".moai/specs/SPEC-*/",
+            ],
+            "notes": "Control automatic report generation. 'enabled': turn on/off, 'auto_create': full (true) vs minimal (false) reports. Helps reduce token usage.",
+        }
+
+    # 2. Enhance github section with new fields
+    if "github" not in config:
+        config["github"] = {}
+
+    github_config = config["github"]
+
+    # Add auto_delete_branches settings if missing
+    if "auto_delete_branches" not in github_config:
+        github_config["auto_delete_branches"] = None
+        github_config["auto_delete_branches_checked"] = False
+        github_config["auto_delete_branches_rationale"] = "Not configured"
+
+    # Add spec_git_workflow settings if missing
+    if "spec_git_workflow" not in github_config:
+        github_config["spec_git_workflow"] = "per_spec"
+        github_config["spec_git_workflow_configured"] = False
+        github_config["spec_git_workflow_rationale"] = (
+            "Ask per SPEC (flexible, user controls each workflow)"
+        )
+
+    # Add notes for new fields if missing
+    if "notes_new_fields" not in github_config:
+        github_config["notes_new_fields"] = (
+            "auto_delete_branches: whether to auto-delete feature branches after merge. "
+            "spec_git_workflow: 'feature_branch' (auto), 'develop_direct' (direct), "
+            "'per_spec' (ask per SPEC)"
+        )
+
+    return config
+
+
+def get_report_generation_config(config: dict[str, Any]) -> dict[str, Any]:
+    """Get report generation configuration with safe defaults.
+
+    Args:
+        config: Configuration dictionary.
+
+    Returns:
+        Report generation configuration with defaults.
+    """
+    default_config = {
+        "enabled": True,
+        "auto_create": False,
+        "warn_user": True,
+        "user_choice": "Minimal",
+        "configured_at": None,
+        "allowed_locations": [
+            ".moai/docs/",
+            ".moai/reports/",
+            ".moai/analysis/",
+            ".moai/specs/SPEC-*/",
+        ],
+    }
+
+    report_gen = config.get("report_generation", {})
+    if isinstance(report_gen, dict):
+        # Merge with defaults to ensure all keys exist
+        return {**default_config, **report_gen}
+
+    return default_config
+
+
+def get_spec_git_workflow(config: dict[str, Any]) -> str:
+    """Get SPEC git workflow setting with safe default.
+
+    Options:
+    - 'per_spec': Ask per SPEC (flexible, user controls)
+    - 'feature_branch': Auto-create branch for each SPEC
+    - 'develop_direct': Direct commits to develop
+
+    Args:
+        config: Configuration dictionary.
+
+    Returns:
+        Workflow setting string.
+    """
+    github_config = config.get("github", {})
+    if isinstance(github_config, dict):
+        workflow = github_config.get("spec_git_workflow")
+        if workflow in ["per_spec", "feature_branch", "develop_direct"]:
+            return workflow
+
+    # Default: per_spec (ask user)
+    return "per_spec"

@@ -17,10 +17,10 @@ class ProjectSetupAnswers(TypedDict):
     """Project setup answers"""
 
     project_name: str
-    mode: str  # personal | team
-    locale: str  # ko | en
-    language: str | None
-    author: str
+    mode: str  # personal | team (default from init)
+    locale: str  # ko | en (default from init)
+    language: str | None  # Will be set in /alfred:0-project
+    author: str  # Will be set in /alfred:0-project
 
 
 def prompt_project_setup(
@@ -45,13 +45,16 @@ def prompt_project_setup(
     """
     answers: ProjectSetupAnswers = {
         "project_name": "",
-        "mode": "personal",
-        "locale": "ko",
-        "language": None,
-        "author": "",
+        "mode": "personal",  # Default: will be configurable in /alfred:0-project
+        "locale": "en",      # Default: will be configurable in /alfred:0-project
+        "language": None,    # Will be detected in /alfred:0-project
+        "author": "",        # Will be set in /alfred:0-project
     }
 
     try:
+        # SIMPLIFIED: Only ask for project name
+        # All other settings (mode, locale, language, author) are now configured in /alfred:0-project
+
         # 1. Project name (only when not using the current directory)
         if not is_current_dir:
             if project_name:
@@ -78,86 +81,9 @@ def prompt_project_setup(
                 f"[cyan]📦 Project Name:[/cyan] {answers['project_name']} [dim](current directory)[/dim]"
             )
 
-        # 2. Project mode
-        result = questionary.select(
-            "🔧 Project Mode:",
-            choices=[
-                questionary.Choice("Personal (single developer)", value="personal"),
-                questionary.Choice("Team (collaborative)", value="team"),
-            ],
-            default="personal",
-        ).ask()
-        if result is None:
-            raise KeyboardInterrupt
-        answers["mode"] = result
+        # NOTE: All other configuration (mode, language, author) is now handled in /alfred:0-project
+        # This significantly reduces init time and improves UX
         answers["locale"] = initial_locale or "en"
-        if initial_locale:
-            console.print(
-                f"[cyan]🌐 Preferred Language:[/cyan] {answers['locale']} (specified via CLI option)"
-            )
-        else:
-            console.print(
-                "[cyan]🌐 Preferred Language:[/cyan] en (default, changeable in /alfred:0-project)"
-            )
-
-        # 3. Programming language (auto-detect or manual)
-        result = questionary.confirm(
-            "🔍 Auto-detect programming language?",
-            default=True,
-        ).ask()
-        if result is None:
-            raise KeyboardInterrupt
-        detect_language = result
-
-        if not detect_language:
-            result = questionary.select(
-                "💻 Select programming language:",
-                choices=[
-                    "Python",
-                    "TypeScript",
-                    "JavaScript",
-                    "Java",
-                    "Go",
-                    "Rust",
-                    "Ruby",
-                    "Dart",
-                    "Swift",
-                    "Kotlin",
-                    "PHP",
-                    "C#",
-                    "C",
-                    "C++",
-                    "Elixir",
-                    "Scala",
-                    "Clojure",
-                    "Haskell",
-                    "Lua",
-                    "OCaml",
-                    "Generic",
-                ],
-            ).ask()
-            if result is None:
-                raise KeyboardInterrupt
-            answers["language"] = result
-
-        # 4. Author information (optional)
-        result = questionary.confirm(
-            "👤 Add author information? (optional)",
-            default=False,
-        ).ask()
-        if result is None:
-            raise KeyboardInterrupt
-        add_author = result
-
-        if add_author:
-            result = questionary.text(
-                "Author (GitHub ID):",
-                default="",
-                validate=lambda text: text.startswith("@") or "Must start with @",
-            ).ask()
-            if result is None:
-                raise KeyboardInterrupt
-            answers["author"] = result
 
         return answers
 
