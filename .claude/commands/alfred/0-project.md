@@ -2937,7 +2937,10 @@ Solution: Check file permissions (chmod 644) or create config.json manually
    - Check: Custom environment variables in old backup
    - Check: Custom permissions in `permissions.allow` array
    - Check: Custom hooks in `hooks` section
-   - Identify: User-added configurations
+   - Check: `companyAnnouncements` section and detect language
+     - Read current conversation_language from `.moai/config.json`
+     - Check if announcements in backup are translated (non-English)
+     - Identify: User-added configurations
    - Store: Settings that need preservation
 
 5. **Compare .moai/project/ documents**:
@@ -2984,6 +2987,7 @@ Solution: Check file permissions (chmod 644) or create config.json manually
      - Custom permissions: [list count] items
      - Custom environment variables: [list count] items
      - Custom hooks: [list if any]
+     - companyAnnouncements: [detected language] translations preserved
 
    [IF project docs have customizations]
    ✓ .moai/project/product.md: Has user-written content
@@ -3196,9 +3200,20 @@ Solution: Check file permissions (chmod 644) or create config.json manually
    - Read: New template from `src/moai_adk/templates/.claude/settings.json`
    - Read: User's custom permissions from backup
    - Read: User's custom environment variables from backup
+   - Read: Current conversation_language from `.moai/config.json`
+   - Read: User's companyAnnouncements from backup
+   - **Handle companyAnnouncements**:
+     - **If user's announcements are already translated** (non-English):
+       - Keep user's translated announcements (preserve existing translations)
+     - **If user's announcements are English** AND conversation_language != "en":
+       - Translate English template announcements to user's conversation_language
+       - Use runtime translation process (documented in lines 2300-2340)
+     - **If conversation_language == "en"**:
+       - Use English template announcements as-is
    - Merge strategy:
      ```
      {
+       "companyAnnouncements": [preserve/translate based on language logic above],
        "hooks": [merge user's custom hooks with new defaults],
        "permissions": {
          "allow": [merge user's + new defaults, remove duplicates],
@@ -3234,7 +3249,7 @@ Solution: Check file permissions (chmod 644) or create config.json manually
 6. **Print merge progress** (after each file):
    ```
    ✓ CLAUDE.md merged
-   ✓ .claude/settings.json merged
+   ✓ .claude/settings.json merged (companyAnnouncements preserved/translated)
    ✓ .moai/project/product.md merged
    ✓ .moai/project/structure.md merged
    ✓ .moai/project/tech.md merged
@@ -3305,6 +3320,7 @@ Solution: Check file permissions (chmod 644) or create config.json manually
   - New default settings applied
   - Your custom permissions preserved
   - Your environment variables preserved
+  - Your companyAnnouncements translations preserved
 
 ✓ .moai/project/product.md
   - Latest template structure applied
