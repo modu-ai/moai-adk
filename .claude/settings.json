@@ -28,6 +28,16 @@
       {
         "hooks": [
           {
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session_start__memory_monitor.py",
+            "type": "command",
+            "description": "Monitor memory usage and provide alerts for potential memory leaks"
+          },
+          {
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session_start__runtime_fallback.py",
+            "type": "command",
+            "description": "Check runtime health and provide Node.js fallback when Bun shows memory issues"
+          },
+          {
             "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session_start__show_project_info.py",
             "type": "command",
             "description": "Display project info and language configuration at session start"
@@ -83,14 +93,14 @@
             "description": "Ensure streaming UI indicators and progress displays are enabled"
           },
           {
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/core/post_tool__multilingual_linting.py",
+            "command": "# uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/core/post_tool__multilingual_linting.py",
             "type": "command",
-            "description": "Run multilingual linting checks on modified files (Python, JavaScript, TypeScript, Go, Rust, Java, Ruby, PHP)"
+            "description": "DISABLED: Run multilingual linting checks on modified files (Python, JavaScript, TypeScript, Go, Rust, Java, Ruby, PHP) - Temporarily disabled for memory stability"
           },
           {
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/core/post_tool__multilingual_formatting.py",
+            "command": "# uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/core/post_tool__multilingual_formatting.py",
             "type": "command",
-            "description": "Run multilingual code formatting on modified files"
+            "description": "DISABLED: Run multilingual code formatting on modified files - Temporarily disabled for memory stability"
           }
         ],
         "matcher": "Edit|Write|MultiEdit"
