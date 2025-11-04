@@ -1,4 +1,4 @@
-# @CODE:TEMPLATE-001 | SPEC: SPEC-INIT-003/spec.md | Chain: TEMPLATE-001
+# @CODE:TEMPLATE-MODULE-001 | SPEC: SPEC-INIT-003/spec.md | Chain: TEMPLATE-001
 """Template management module."""
 
 from moai_adk.core.template.backup import TemplateBackup
