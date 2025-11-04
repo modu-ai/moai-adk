@@ -99,17 +99,61 @@ The user executes the `/alfred:0-project` command to start analyzing the project
 - **팀 모드 추가 배치**: 2개 질문을 1회 호출 (2 turns → 1 turn, **50% 상호작용 감소**)
 - **전체 효과**: 평균 **60% 상호작용 감소**, 사용자 경험 대폭 개선
 
-### 0.0 Alfred 자기소개 및 환영 인사
+### 0.0 명령어 진입점: 플래그 파싱 및 실행 모드 결정 (신규)
 
-Alfred가 첫 상호작용으로 다음과 같이 인사합니다:
+**Purpose**: Determine execution mode based on user-provided flags before starting project initialization.
 
-```
-안녕하세요! 👋 저는 Alfred입니다.
-MoAI-ADK의 SuperAgent로서 당신의 프로젝트를 함께 만들어갈 준비가 되어 있습니다.
+**Flag Parsing Logic**:
 
-앞으로의 모든 대화에서 당신을 편하게 부르기 위해,
-먼저 기본 설정을 진행하겠습니다.
-```
+When `/alfred:0-project` is executed, Alfred first checks for command-line flags:
+
+1. **Check for `--review` flag in `$ARGUMENTS`**:
+   - IF `--review` flag is present → Set `review_mode = true`
+   - ELSE → Set `review_mode = false` (default: immediate execution mode)
+
+2. **Extract clean arguments**:
+   - Remove `--review` flag from `$ARGUMENTS` to get remaining user input
+   - Store cleaned arguments for subsequent processing
+
+3. **Route execution flow**:
+   - **Review Mode** (`review_mode = true`):
+     - Generate planning report with user interview results
+     - Request user approval via AskUserQuestion
+     - Execute STEP 0.1-0.3 only after approval
+   - **Immediate Execution Mode** (`review_mode = false`, default):
+     - Skip planning report generation
+     - Execute STEP 0.1 batch questions directly
+     - Automatically proceed to STEP 0.2-0.3 without intermediate approval
+
+**Flag Options**:
+- `--review`: Enable planning review mode (user approval required before execution)
+- (No flag): Immediate execution mode (default behavior - auto-execute after batch questions)
+
+**Execution Flow Comparison**:
+
+| Mode | Flag | Flow | Turn Reduction |
+|------|------|------|----------------|
+| **Immediate Execution** (Default) | None | STEP 0.1 → 0.2 → 0.3 | ✅ 60-75% |
+| **Review Mode** | `--review` | STEP 0.1 → Planning Report → User Approval → 0.2 → 0.3 | Legacy (6-12 turns) |
+
+**Implementation Details**:
+
+Alfred performs the following actions based on detected mode:
+
+- **Review Mode (`--review` flag)**:
+  1. Execute STEP 0.1 batch questions (language + nickname + GitHub settings)
+  2. Generate planning report with interview analysis
+  3. Invoke AskUserQuestion for user approval (see STEP 1.5)
+  4. IF approved → Proceed to STEP 0.2 (save user info)
+  5. ELSE → Modify plan or cancel
+
+- **Immediate Execution Mode (No flag, default)**:
+  1. Execute STEP 0.1 batch questions (language + nickname + GitHub settings)
+  2. Automatically proceed to STEP 0.2 (save user info)
+  3. Skip STEP 1.5 approval (no planning report generation)
+  4. Continue to STEP 0.3 and subsequent phases without interruption
+
+**Note**: The `--review` flag enables the legacy workflow with intermediate approval. Without the flag, Alfred optimizes UX by auto-executing after collecting essential user input.
 
 ### 0.1 배치 설계: 언어 선택 + 사용자 닉네임 + GitHub 설정 확인 (1-3회 호출)
 
@@ -1065,9 +1109,15 @@ Set optimization flags after the merge is complete:
 **Please review the plan above and confirm whether to proceed.**
 ```
 
-### 1.5 User Approval with AskUserQuestion (when user selects "New")
+### 1.5 User Approval with AskUserQuestion (REVIEW MODE ONLY)
 
-After Alfred generates the interview plan report, call `AskUserQuestion` tool (documented in moai-alfred-interactive-questions skill) to get explicit user approval before starting the interview.
+**Execution Condition**: This section only executes when BOTH conditions are true:
+1. User selects "New" (not "Merge" or "Skip")
+2. `--review` flag provided (review mode)
+
+**In immediate execution mode** (no `--review` flag), this section is skipped entirely and execution proceeds directly to STEP 2.
+
+After Alfred generates the interview plan report (review mode only), call `AskUserQuestion` tool (documented in moai-alfred-interactive-questions skill) to get explicit user approval before starting the interview.
 
 **Example AskUserQuestion Call**:
 
