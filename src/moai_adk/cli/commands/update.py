@@ -516,7 +516,7 @@ def _execute_upgrade(installer_cmd: list[str]) -> bool:
 
 
 def _sync_templates(project_path: Path, force: bool = False) -> bool:
-    """Sync templates to project.
+    """Sync templates to project with rollback mechanism.
 
     Args:
         project_path: Project path (absolute)
@@ -525,8 +525,18 @@ def _sync_templates(project_path: Path, force: bool = False) -> bool:
     Returns:
         True if sync succeeded, False otherwise
     """
+    from moai_adk.core.template.backup import TemplateBackup
+
+    backup_path = None
     try:
         processor = TemplateProcessor(project_path)
+
+        # Create pre-sync backup for rollback
+        if not force:
+            backup = TemplateBackup(project_path)
+            if backup.has_existing_files():
+                backup_path = backup.create_backup()
+                console.print(f"💾 Created backup: {backup_path.name}")
 
         # Load existing config
         existing_config = _load_existing_config(project_path)
@@ -539,6 +549,14 @@ def _sync_templates(project_path: Path, force: bool = False) -> bool:
         # Copy templates
         processor.copy_templates(backup=False, silent=True)
 
+        # Validate template substitution
+        validation_passed = _validate_template_substitution_with_rollback(project_path, backup_path)
+        if not validation_passed:
+            if backup_path:
+                console.print(f"[yellow]🔄 Rolling back to backup: {backup_path.name}[/yellow]")
+                backup.restore_backup(backup_path)
+            return False
+
         # Preserve metadata
         _preserve_project_metadata(project_path, context, existing_config, __version__)
         _apply_context_to_file(processor, project_path / "CLAUDE.md")
@@ -547,7 +565,16 @@ def _sync_templates(project_path: Path, force: bool = False) -> bool:
         set_optimized_false(project_path)
 
         return True
-    except Exception:
+    except Exception as e:
+        console.print(f"[red]✗ Template sync failed: {e}[/red]")
+        if backup_path:
+            console.print(f"[yellow]🔄 Rolling back to backup: {backup_path.name}[/yellow]")
+            try:
+                backup = TemplateBackup(project_path)
+                backup.restore_backup(backup_path)
+                console.print("[green]✅ Rollback completed[/green]")
+            except Exception as rollback_error:
+                console.print(f"[red]✗ Rollback failed: {rollback_error}[/red]")
         return False
 
 
@@ -631,6 +658,8 @@ def _build_template_context(
     version_for_config: str,
 ) -> dict[str, str]:
     """Build substitution context for template files."""
+    import platform
+
     project_section = _extract_project_section(existing_config)
 
     project_name = _coalesce(
@@ -660,6 +689,17 @@ def _build_template_context(
         default=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     )
 
+    # Detect OS for cross-platform Hook path configuration
+    hook_project_dir = (
+        "%CLAUDE_PROJECT_DIR%" if platform.system() == "Windows"
+        else "$CLAUDE_PROJECT_DIR"
+    )
+
+    # Extract language configuration
+    language_config = existing_config.get("language", {})
+    if not isinstance(language_config, dict):
+        language_config = {}
+
     return {
         "MOAI_VERSION": version_for_config,
         "PROJECT_NAME": project_name,
@@ -667,6 +707,12 @@ def _build_template_context(
         "PROJECT_DESCRIPTION": project_description,
         "PROJECT_VERSION": project_version,
         "CREATION_TIMESTAMP": created_at,
+        "HOOK_PROJECT_DIR": hook_project_dir,
+        "CONVERSATION_LANGUAGE": language_config.get("conversation_language", "en"),
+        "CONVERSATION_LANGUAGE_NAME": language_config.get("conversation_language_name", "English"),
+        "CODEBASE_LANGUAGE": project_section.get("language", "generic"),
+        "PROJECT_OWNER": project_section.get("author", "@user"),
+        "AUTHOR": project_section.get("author", "@user"),
     }
 
 
@@ -738,6 +784,88 @@ def _apply_context_to_file(processor: TemplateProcessor, target_path: Path) -> N
             console.print(f"   {warning}")
 
     target_path.write_text(substituted, encoding="utf-8")
+
+
+def _validate_template_substitution(project_path: Path) -> None:
+    """Validate that all template variables have been properly substituted."""
+    import re
+
+    # Files to check for unsubstituted variables
+    files_to_check = [
+        project_path / ".claude" / "settings.json",
+        project_path / "CLAUDE.md",
+    ]
+
+    issues_found = []
+
+    for file_path in files_to_check:
+        if not file_path.exists():
+            continue
+
+        try:
+            content = file_path.read_text(encoding='utf-8')
+            # Look for unsubstituted template variables
+            unsubstituted = re.findall(r'\{\{([A-Z_]+)\}\}', content)
+            if unsubstituted:
+                unique_vars = sorted(set(unsubstituted))
+                issues_found.append(f"{file_path.relative_to(project_path)}: {', '.join(unique_vars)}")
+        except Exception as e:
+            console.print(f"[yellow]⚠️ Could not validate {file_path.relative_to(project_path)}: {e}[/yellow]")
+
+    if issues_found:
+        console.print("[red]✗ Template substitution validation failed:[/red]")
+        for issue in issues_found:
+            console.print(f"   {issue}")
+        console.print("[yellow]💡 Run '/alfred:0-project' to fix template variables[/yellow]")
+    else:
+        console.print("[green]✅ Template substitution validation passed[/green]")
+
+
+def _validate_template_substitution_with_rollback(project_path: Path, backup_path: Path | None) -> bool:
+    """Validate template substitution with rollback capability.
+
+    Returns:
+        True if validation passed, False if failed (rollback handled by caller)
+    """
+    import re
+
+    # Files to check for unsubstituted variables
+    files_to_check = [
+        project_path / ".claude" / "settings.json",
+        project_path / "CLAUDE.md",
+    ]
+
+    issues_found = []
+
+    for file_path in files_to_check:
+        if not file_path.exists():
+            continue
+
+        try:
+            content = file_path.read_text(encoding='utf-8')
+            # Look for unsubstituted template variables
+            unsubstituted = re.findall(r'\{\{([A-Z_]+)\}\}', content)
+            if unsubstituted:
+                unique_vars = sorted(set(unsubstituted))
+                issues_found.append(f"{file_path.relative_to(project_path)}: {', '.join(unique_vars)}")
+        except Exception as e:
+            console.print(f"[yellow]⚠️ Could not validate {file_path.relative_to(project_path)}: {e}[/yellow]")
+
+    if issues_found:
+        console.print("[red]✗ Template substitution validation failed:[/red]")
+        for issue in issues_found:
+            console.print(f"   {issue}")
+
+        if backup_path:
+            console.print(f"[yellow]🔄 Rolling back due to validation failure...[/yellow]")
+        else:
+            console.print("[yellow]💡 Run '/alfred:0-project' to fix template variables[/yellow]")
+            console.print("[red]⚠️ No backup available - manual fix required[/red]")
+
+        return False
+    else:
+        console.print("[green]✅ Template substitution validation passed[/green]")
+        return True
 
 
 # @CODE:UPDATE-REFACTOR-002-003
