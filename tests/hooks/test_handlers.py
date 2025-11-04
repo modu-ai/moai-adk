@@ -189,7 +189,7 @@ class TestSessionStartHandler:
     ):
         """Major version update shows warning with release notes
 
-        @TEST:MAJOR-UPDATE-001-07
+        @TEST:MAJOR-UPDATE-007
 
         SPEC Requirements:
             - WHEN major version update is available (e.g., 0.8.1 → 1.0.0),
@@ -238,7 +238,7 @@ class TestSessionStartHandler:
     ):
         """Regular update shows version info with release notes
 
-        @TEST:REGULAR-UPDATE-001-08
+        @TEST:REGULAR-UPDATE-008
 
         SPEC Requirements:
             - WHEN minor/patch update is available (e.g., 0.8.1 → 0.9.0),

@@ -1,4 +1,4 @@
-# @TEST:TEST-COVERAGE-001 | SPEC: SPEC-TEST-COVERAGE-001.md
+# @TEST:VALIDATOR-COVERAGE-001 | SPEC: SPEC-TEST-COVERAGE-001.md
 # @TEST:INIT-004:VALIDATION | Chain: SPEC-INIT-004 -> CODE-INIT-004 -> TEST-INIT-004
 # @TEST:INIT-004:VERIFY-001 | Test verification of all required files upon successful completion
 # @TEST:INIT-004:VERIFY-002 | Test Alfred command files validation
