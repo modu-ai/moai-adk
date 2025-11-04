@@ -147,9 +147,22 @@ git-manager **recommends** GitFlow best practices with pre-push hooks, but respe
 
 **Detailed policy**: See Skill("moai-alfred-gitflow-policy")
 
-#### 🔄 Feature development workflow (feature/*)
+#### 🔄 Feature development workflow (spec_git_workflow driven)
 
-git-manager manages feature development in the following steps:
+git-manager manages feature development based on `.moai/config.json`'s `github.spec_git_workflow` setting.
+
+**Pre-check**: Read `.moai/config.json` and determine workflow type:
+```bash
+# Check spec_git_workflow setting
+spec_workflow=$(grep -o '"spec_git_workflow": "[^"]*"' .moai/config.json | cut -d'"' -f4)
+
+# Results:
+# - "feature_branch": Feature branch + PR workflow
+# - "develop_direct": Direct commit to develop
+# - "per_spec": Ask user per SPEC
+```
+
+**Workflow Option 1: Feature Branch + PR** (`spec_git_workflow: "feature_branch"`)
 
 **1. When writing a SPEC** (`/alfred:1-plan`):
 ```bash
@@ -163,7 +176,7 @@ gh pr create --draft --base develop --head feature/SPEC-{ID}
 
 **2. When implementing TDD** (`/alfred:2-run`):
 ```bash
-# RED → GREEN → REFACTOR Create commit 
+# RED → GREEN → REFACTOR commit
 git commit -m "🔴 RED: [Test description]"
 git commit -m "🟢 GREEN: [Implementation description]"
 git commit -m "♻️ REFACTOR: [Improvement description]"
@@ -180,6 +193,45 @@ gh pr merge --squash --delete-branch
 git checkout develop
 git pull origin develop
 ```
+
+---
+
+**Workflow Option 2: Direct Commit to Develop** (`spec_git_workflow: "develop_direct"`)
+
+**1. When writing a SPEC** (`/alfred:1-plan`):
+```bash
+# Skip branch creation, work directly on develop
+git checkout develop
+# SPEC documents created directly on develop
+```
+
+**2. When implementing TDD** (`/alfred:2-run`):
+```bash
+# RED → GREEN → REFACTOR commit directly to develop
+git commit -m "🔴 RED: [Test description]"
+git commit -m "🟢 GREEN: [Implementation description]"
+git commit -m "♻️ REFACTOR: [Improvement description]"
+```
+
+**3. When synchronization completes** (`/alfred:3-sync`):
+```bash
+# Direct push to develop (no PR)
+git push origin develop
+```
+
+---
+
+**Workflow Option 3: Ask Per SPEC** (`spec_git_workflow: "per_spec"`)
+
+**When writing each SPEC** (`/alfred:1-plan`):
+```
+Use AskUserQuestion to ask user:
+"Which git workflow for this SPEC?"
+Options:
+- Feature Branch + PR
+- Direct Commit to Develop
+```
+Then execute corresponding workflow above
 
 #### 🚀 Release workflow (release/*)
 
