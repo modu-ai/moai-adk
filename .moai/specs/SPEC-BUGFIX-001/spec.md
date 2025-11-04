@@ -3,7 +3,7 @@ title: Windows Compatibility - Cross-Platform Timeout Handler
 id: SPEC-BUGFIX-001
 type: bugfix
 priority: critical
-status: planning
+status: in-progress
 version: "0.11.0"
 affects: hooks system
 issue: "#129"

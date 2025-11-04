@@ -1,7 +1,7 @@
 ---
 id: UPDATE-002
 version: 0.1.0
-status: planning
+status: closed
 created: 2025-10-19
 updated: 2025-10-19
 author: @Goos

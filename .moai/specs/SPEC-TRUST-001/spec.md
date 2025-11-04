@@ -1,7 +1,7 @@
 ---
 id: TRUST-001
 version: 0.1.0
-status: in-progress
+status: closed
 created: 2025-10-16
 updated: 2025-10-16
 author: @Goos
