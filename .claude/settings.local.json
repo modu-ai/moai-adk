@@ -24,7 +24,11 @@
       "Read(//Users/goos/.local/share/uv/tools/moai-adk/**)",
       "Bash(claude --version)",
       "Bash(for:*)",
-      "Bash(do echo \"=== $file ===\" diff .claude/commands/alfred/$file src/moai_adk/templates/.claude/commands/alfred/$file)"
+      "Bash(do echo \"=== $file ===\" diff .claude/commands/alfred/$file src/moai_adk/templates/.claude/commands/alfred/$file)",
+      "Bash(/tmp/moai-adk-learning.md)",
+      "Bash(/tmp/study-with-alfred.md)",
+      "Bash(/tmp/package-agentic-coding.md)",
+      "Bash(/tmp/package-study-with-alfred.md)"
     ],
     "deny": [],
     "ask": []

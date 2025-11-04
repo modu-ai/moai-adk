@@ -450,11 +450,88 @@ AskUserQuestion: "이 SPEC의 git 워크플로우를 선택하세요"
 
 ---
 
+### 0.1.3.5 Report Generation Settings (All Modes - Optional)
+
+**Purpose**: Control automatic report generation frequency to manage token usage and improve performance.
+
+**When to ask**: After GitHub settings (team mode) or immediately after nickname (personal mode)
+
+**Batched Design**: 1 question with token cost warning
+
+**Important**: This question includes a detailed token warning to inform users about API costs before enabling automatic reports.
+
+**Example AskUserQuestion Call**:
+
+```python
+AskUserQuestion(
+    questions=[
+        {
+            "question": "How would you like to handle automatic report generation?\n\n⚠️ TOKEN COST WARNING:\n- Enable: ~50-60 tokens per report × 3-5 reports per command = 150-300 tokens/session\n- Minimal: ~20-30 tokens per report × 1-2 reports per command = 20-60 tokens/session\n- Disable: ~0 tokens (0 reports generated)\n\nFor Claude Pro $20 users: Token usage directly impacts API costs (~$0.02 per 1K tokens)",
+            "header": "Report Generation",
+            "multiSelect": false,
+            "options": [
+                {
+                    "label": "📊 Enable (Default)",
+                    "description": "Full analysis reports (50-60 tokens each). Best for detailed documentation. ~250-300 tokens/session"
+                },
+                {
+                    "label": "⚡ Minimal (Recommended)",
+                    "description": "Essential reports only, reduced output. ~40-60 tokens/session. 80% token reduction"
+                },
+                {
+                    "label": "🚫 Disable",
+                    "description": "No automatic reports. Fastest execution, zero report tokens. Manual generation available on request"
+                }
+            ]
+        }
+    ]
+)
+```
+
+**Response Processing**:
+
+The selected option determines `.moai/config.json` settings:
+
+| Selection | Saved Setting | Config Value | Effect |
+|-----------|---------------|--------------|--------|
+| **📊 Enable** | `enabled: true, auto_create: true` | Full reports | Normal behavior: 3-5 reports per command |
+| **⚡ Minimal** | `enabled: true, auto_create: false` | Essential only | 1-2 essential reports per command (~60-70% reduction) |
+| **🚫 Disable** | `enabled: false, auto_create: false` | No reports | Zero report generation unless explicitly requested |
+
+**Saved Configuration**:
+
+```json
+{
+  "report_generation": {
+    "enabled": true,
+    "auto_create": false,
+    "warn_user": true,
+    "user_choice": "Minimal",
+    "configured_at": "2025-11-04T12:00:00Z",
+    "allowed_locations": [
+      ".moai/docs/",
+      ".moai/reports/",
+      ".moai/analysis/",
+      ".moai/specs/SPEC-*/"
+    ]
+  }
+}
+```
+
+**Usage in sub-agents**:
+
+- Alfred commands check `report_generation.enabled` before generating reports
+- `/alfred:3-sync`: Respects this setting when creating sync reports
+- `doc-syncer` agent: Skips report generation if `enabled: false`
+- User can manually request reports at any time with explicit command (e.g., "generate analysis report")
+
+---
+
 ### 0.1.4 Domain Selection (Optional - All Modes)
 
 **Purpose**: Identify project domains to activate domain-expert agents for specialized guidance.
 
-**When to ask**: After language/nickname/GitHub settings complete
+**When to ask**: After language/nickname/GitHub settings/report generation settings complete
 
 **Batched Design**: Domain selection integrated into initial batch OR asked separately based on user preference
 

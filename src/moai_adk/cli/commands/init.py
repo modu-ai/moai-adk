@@ -288,17 +288,17 @@ def init(
                     f"  [blue]1.[/blue] Run [bold]cd {project_name}[/bold] to enter the project"
                 )
                 console.print(
-                    "  [blue]2.[/blue] Check [bold].moai/config.json[/bold] for configuration"
+                    "  [blue]2.[/blue] Run [bold]/alfred:0-project[/bold] in Claude Code for full setup"
                 )
                 console.print(
-                    "  [blue]3.[/blue] Read [bold]CLAUDE.md[/bold] for development guide\n"
+                    "     (Configure: mode, language, report generation, etc.)\n"
                 )
             else:
                 console.print(
-                    "  [blue]1.[/blue] Check [bold].moai/config.json[/bold] for configuration"
+                    "  [blue]1.[/blue] Run [bold]/alfred:0-project[/bold] in Claude Code for full setup"
                 )
                 console.print(
-                    "  [blue]2.[/blue] Read [bold]CLAUDE.md[/bold] for development guide\n"
+                    "     (Configure: mode, language, report generation, etc.)\n"
                 )
         else:
             console.print("\n[red bold]❌ Initialization Failed![/red bold]")
