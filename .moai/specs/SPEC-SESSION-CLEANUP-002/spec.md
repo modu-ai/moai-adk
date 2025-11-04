@@ -1,17 +1,9 @@
-# SPEC-SESSION-CLEANUP-002: Alfred 커맨드 파일 실제 구현 - Session Cleanup 패턴 적용
-
-<!-- @SPEC:SESSION-CLEANUP-002 -->
-
 ---
-
-## YAML Frontmatter
-
-```yaml
 id: SESSION-CLEANUP-002
 title: Alfred 커맨드 파일 실제 구현 - Session Cleanup 패턴 적용
 category: Implementation
 priority: high
-status: draft
+status: completed
 author: "@GoosLab"
 created: 2025-10-30
 updated: 2025-10-30
@@ -45,7 +37,11 @@ scope:
     - alfred-2-run.md
     - alfred-3-sync.md
     - agent-alfred.md
-```
+---
+
+# SPEC-SESSION-CLEANUP-002: Alfred 커맨드 파일 실제 구현 - Session Cleanup 패턴 적용
+
+<!-- @SPEC:SESSION-CLEANUP-002 -->
 
 ---
 
@@ -504,7 +500,7 @@ See acceptance.md for detailed test scenarios:
 - [ ] 변경사항 커밋 (branch: `feature/SPEC-SESSION-CLEANUP-002`)
 - [ ] CHANGELOG.md 업데이트
 - [ ] CLAUDE.md 검증
-
+status: completed
 ---
 
 **End of SPEC-SESSION-CLEANUP-002**

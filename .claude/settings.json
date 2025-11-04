@@ -1,17 +1,17 @@
 {
-  "env": {
-    "MOAI_RUNTIME": "python",
-    "MOAI_AUTO_ROUTING": "true",
-    "MOAI_PERFORMANCE_MONITORING": "true",
-    "PYTHON_ENV": "{{PROJECT_MODE}}"
-  },
   "hooks": {
     "SessionStart": [
       {
         "hooks": [
           {
             "command": "uv run .claude/hooks/alfred/session_start__show_project_info.py",
-            "type": "command"
+            "type": "command",
+            "description": "Display project info and language configuration at session start"
+          },
+          {
+            "command": "uv run .claude/hooks/alfred/session_start__daily_analysis.py",
+            "type": "command",
+            "description": "Run daily session analysis for previous day (silent background operation)"
           }
         ]
       }
@@ -21,7 +21,8 @@
         "hooks": [
           {
             "command": "uv run .claude/hooks/alfred/pre_tool__auto_checkpoint.py",
-            "type": "command"
+            "type": "command",
+            "description": "Create automatic checkpoint before file modifications"
           }
         ],
         "matcher": "Edit|Write|MultiEdit"
@@ -32,7 +33,8 @@
         "hooks": [
           {
             "command": "uv run .claude/hooks/alfred/user_prompt__jit_load_docs.py",
-            "type": "command"
+            "type": "command",
+            "description": "Load documentation on-demand based on user intent"
           }
         ]
       }
@@ -42,7 +44,8 @@
         "hooks": [
           {
             "command": "uv run .claude/hooks/alfred/session_end__cleanup.py",
-            "type": "command"
+            "type": "command",
+            "description": "Clean up session state and temporary files"
           }
         ]
       }
@@ -52,7 +55,8 @@
         "hooks": [
           {
             "command": "uv run .claude/hooks/alfred/post_tool__log_changes.py",
-            "type": "command"
+            "type": "command",
+            "description": "Log file changes for audit and tracking"
           }
         ],
         "matcher": "Edit|Write|MultiEdit"
@@ -75,7 +79,14 @@
       "WebSearch",
       "BashOutput",
       "KillShell",
-      "Bash(git:*)",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git branch:*)",
+      "Bash(git show:*)",
+      "Bash(git remote:*)",
+      "Bash(git tag:*)",
+      "Bash(git config:*)",
       "Bash(rg:*)",
       "Bash(ls:*)",
       "Bash(echo:*)",
@@ -94,7 +105,6 @@
       "Bash(gh pr create:*)",
       "Bash(gh pr view:*)",
       "Bash(gh pr list:*)",
-      "Bash(gh pr merge:*)",
       "Bash(gh repo view:*)",
       "Bash(gh issue:*)",
       "Bash(mkdir:*)",
@@ -108,8 +118,15 @@
       "Bash(uniq:*)"
     ],
     "ask": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(git merge:*)",
+      "Bash(git checkout:*)",
+      "Bash(git rebase:*)",
+      "Bash(git reset:*)",
+      "Bash(git stash:*)",
+      "Bash(git revert:*)",
       "Bash(gh pr merge:*)",
       "Bash(uv add:*)",
       "Bash(uv remove:*)",
@@ -138,7 +155,11 @@
       "Bash(mkfs:*)",
       "Bash(fdisk:*)",
       "Bash(reboot:*)",
-      "Bash(shutdown:*)"
+      "Bash(shutdown:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push --force-with-lease:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git rebase -i:*)"
     ]
   }
 }

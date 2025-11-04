@@ -1,5 +1,3 @@
-# @SPEC:LANGUAGE-DETECTION-EXTENDED-001: 11개 언어 전담 CI/CD 워크플로우 확장
-
 ---
 id: LANGUAGE-DETECTION-EXTENDED-001
 version: 1.0.0
@@ -11,6 +9,8 @@ priority: high
 category: feature
 depends_on: LANGUAGE-DETECTION-001
 ---
+
+# @SPEC:LANGUAGE-DETECTION-EXTENDED-001: 11개 언어 전담 CI/CD 워크플로우 확장
 
 ## HISTORY
 
@@ -545,7 +545,7 @@ def detect_build_tool(self, language: str) -> str:
 - `@TEST:LANGUAGE-DETECTION-EXTENDED-001` (테스트 작성 시)
 - `@CODE:LANGUAGE-DETECTION-EXTENDED-001` (구현 시)
 - `@DOC:LANGUAGE-DETECTION-EXTENDED-001` (문서 업데이트 시)
-
+status: completed
 ---
 
 **다음 단계**: `/alfred:2-run SPEC-LANGUAGE-DETECTION-EXTENDED-001`로 구현을 시작하세요.

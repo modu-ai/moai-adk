@@ -1,7 +1,7 @@
 ---
 id: EXPERT-TEST-001
 title: Full-Stack User Dashboard with Authentication
-status: draft
+status: completed
 version: 1.0.0
 created_date: 2025-11-04
 owner: Alfred

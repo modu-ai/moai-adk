@@ -18,6 +18,9 @@ node_modules/
 *.backup
 *.bak
 
+# MoAI cache (local runtime, not versioned)
+.moai/cache/
+
 # Test coverage
 .coverage
 .coverage.*

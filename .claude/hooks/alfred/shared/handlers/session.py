@@ -4,9 +4,12 @@
 SessionStart, SessionEnd event handling
 """
 
+import json
+from pathlib import Path
+
 from core import HookPayload, HookResult
 from core.checkpoint import list_checkpoints
-from core.project import count_specs, get_git_info, get_package_version_info
+from core.project import count_specs, get_git_info, get_package_version_info, find_project_root
 
 
 def handle_session_start(payload: HookPayload) -> HookResult:
@@ -51,11 +54,11 @@ def handle_session_start(payload: HookPayload) -> HookResult:
         - FIX: Prevent duplicate output of clear step (only compact step is displayed)
         - UPDATE: Migrated to Claude Code standard Hook schema
         - HOTFIX: Add graceful degradation for timeout scenarios (Issue #66)
-        - Phase 3: Add major version warning and release notes display (@TEST:MAJOR-UPDATE-001-07/08)
+        - Phase 3: Add major version warning and release notes display
+        - UPDATE: Add conversation_language support from config.json
 
     @TAG:CHECKPOINT-EVENT-001
     @TAG:HOOKS-TIMEOUT-001
-    @CODE:MAJOR-UPDATE-WARN-001
     """
     # Claude Code SessionStart runs in several stages (clear, compact, etc.)
     # Ignore the "clear" stage and output messages only at the "compact" stage
@@ -65,6 +68,21 @@ def handle_session_start(payload: HookPayload) -> HookResult:
         return HookResult(continue_execution=True)
 
     cwd = payload.get("cwd", ".")
+
+    # OPTIONAL: Language info - skip if timeout/failure
+    conversation_language = "en"
+    conversation_language_name = "English"
+    try:
+        project_root = find_project_root(cwd)
+        config_path = project_root / ".moai" / "config.json"
+        if config_path.exists():
+            config = json.loads(config_path.read_text(encoding="utf-8"))
+            lang_config = config.get("language", {})
+            conversation_language = lang_config.get("conversation_language", "en")
+            conversation_language_name = lang_config.get("conversation_language_name", "English")
+    except Exception:
+        # Graceful degradation - continue with defaults
+        pass
 
     # OPTIONAL: Git info - skip if timeout/failure
     git_info = {}
@@ -110,7 +128,10 @@ def handle_session_start(payload: HookPayload) -> HookResult:
         "",  # Blank line after title
     ]
 
-    # Add version info first (at the top, right after title)
+    # Add language info first (right after title)
+    lines.append(f"   🌍 Language: {conversation_language_name}")
+
+    # Add version info (at the top, right after language)
     if version_info and version_info.get("current") != "unknown":
         if version_info.get("update_available"):
             # Check if this is a major version update
