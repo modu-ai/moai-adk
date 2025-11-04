@@ -114,12 +114,26 @@ const answer = await AskUserQuestion({
 
 | Constraint | Reason |
 |-----------|--------|
+| **NO EMOJIS in JSON** | Causes encoding error (400 Bad Request) |
 | **1-4 questions max** | Avoid user fatigue |
-| **2-4 options per Q** | Prevent choice overload |
-| **Header ≤12 chars** | TUI layout fit |
-| **Label 1-5 words** | Quick scanning |
-| **Description required** | Enables informed choice |
+| **2-4 options per Q** | Prevent choice overload (use batching for 5+) |
+| **Header ≤12 chars** | TUI layout fit (text only, no emojis) |
+| **Label 1-5 words** | Quick scanning (text only, no emojis) |
+| **Description required** | Enables informed choice (text only, no emojis) |
 | **Auto "Other" option** | Always available for custom input |
+
+### 🚨 Critical: JSON Field Rules
+
+**NEVER use emojis in ANY field** (question, header, label, description):
+
+| Field | Emoji? | Example (WRONG) | Example (CORRECT) |
+|-------|--------|---|---|
+| question | ❌ | "🔐 Choose auth method?" | "Choose authentication method?" |
+| header | ❌ | "🔐 Auth" | "Auth" |
+| label | ❌ | "✅ Enable" | "Enable" |
+| description | ❌ | "📧 Email-based" | "Email-based" |
+
+**Result of emoji use**: API Error 400 → "invalid low surrogate in string" → Workflow halts
 
 ---
 
@@ -158,16 +172,24 @@ const answer = await AskUserQuestion({
 
 ## Best Practices Summary
 
+### ❌ CRITICAL: NO EMOJIS
+- **Never use emojis** in question, header, label, or description
+- Causes JSON encoding error → API 400 error → Workflow fails
+- Use plain text instead: "Enable", "Settings", "GitHub"
+
 ### ✅ DO
 - **Be specific**: "Which database type?" not "What should we use?"
 - **Provide context**: Include file names, scope, or impact
 - **Order logically**: General → Specific; safest option first
-- **Flag risks**: Use "NOT RECOMMENDED" or "CAUTION:" prefixes
+- **Flag risks**: Use text prefixes "NOT RECOMMENDED" or "CAUTION:" (no emojis)
 - **Explain trade-offs**: Mention time, resources, complexity
+- **Batch questions**: Ask 1-4 related questions per call
+- **Batch options**: Have 5+ options? Split into multiple AskUserQuestion calls
 
 ### ❌ DON'T
+- **Use emojis**: ❌ "✅ Enable" → Use "Enable" instead
 - **Overuse questions**: Only ask when ambiguous
-- **Too many options**: 2-4 per question max
+- **Too many options**: 2-4 per question max (batch for 5+)
 - **Vague labels**: "Option A", "Use tokens", "Option 2"
 - **Skip descriptions**: User needs rationale
 - **Hide trade-offs**: Always mention implications
