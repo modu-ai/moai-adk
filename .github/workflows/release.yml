@@ -1,10 +1,14 @@
 name: Release & Deploy to PyPI
 
 # 트리거: 버전 태그가 푸시되었을 때 (release event의 신뢰성 문제 해결)
+# 지원하는 태그 패턴:
+#   - v1.2.3           → PyPI 배포 (프로덕션)
+#   - v1.2.3-test      → TestPyPI 배포 (테스트)
 on:
   push:
     tags:
       - "v*.*.*"
+      - "v*.*.*-test"
 
 jobs:
   deploy:
@@ -37,35 +41,86 @@ jobs:
           echo "✅ Package built successfully"
           ls -lh dist/
 
-      - name: 🚀 Publish to PyPI
+      - name: 🚀 Publish to PyPI or TestPyPI
         env:
           UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+          UV_PUBLISH_TOKEN_TESTPYPI: ${{ secrets.TESTPYPI_API_TOKEN }}
         run: |
-          echo "📤 Publishing to PyPI..."
-          uv publish --publish-url https://upload.pypi.org/legacy/
-          echo "✅ Package published successfully"
+          # 태그에서 버전 추출
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
 
-      - name: 🔍 Verify PyPI deployment
+          # 배포 대상 결정 (-test suffix 확인)
+          if [[ "$TAG" == *"-test" ]]; then
+              # TestPyPI 배포
+              echo "🧪 Publishing to TestPyPI (test mode)..."
+
+              if [ -z "$UV_PUBLISH_TOKEN_TESTPYPI" ]; then
+                  echo "⚠️  TestPyPI token not configured in secrets"
+                  echo "→ Configure TESTPYPI_API_TOKEN in GitHub Actions secrets"
+                  echo "→ Skipping TestPyPI deployment"
+                  exit 0
+              fi
+
+              export UV_PUBLISH_TOKEN="$UV_PUBLISH_TOKEN_TESTPYPI"
+              uv publish --publish-url https://test.pypi.org/legacy/
+              echo "✅ Package published to TestPyPI successfully"
+              echo "→ Test installation: pip install --index-url https://test.pypi.org/simple/ moai-adk==${VERSION%-test}"
+          else
+              # 실제 PyPI 배포
+              echo "📤 Publishing to PyPI (production)..."
+
+              if [ -z "$UV_PUBLISH_TOKEN" ]; then
+                  echo "❌ PyPI token not configured in secrets"
+                  echo "→ Configure PYPI_API_TOKEN in GitHub Actions secrets"
+                  exit 1
+              fi
+
+              uv publish --publish-url https://upload.pypi.org/legacy/
+              echo "✅ Package published to PyPI successfully"
+          fi
+
+      - name: 🔍 Verify PyPI or TestPyPI deployment
         run: |
-          echo "🔍 Verifying PyPI deployment..."
+          # 태그에서 버전 추출
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+          VERSION="${VERSION%-test}"  # Remove -test suffix for version check
 
-          # Extract version from release tag (e.g., v0.14.0 → 0.14.0)
-          VERSION="${{ github.ref_name }}"
-          VERSION="${VERSION#v}"
+          # 배포 대상 결정
+          if [[ "$TAG" == *"-test" ]]; then
+              echo "🧪 Verifying TestPyPI deployment (moai-adk==$VERSION)..."
+              PYPI_URL="https://test.pypi.org/simple/"
+              PYPI_NAME="TestPyPI"
+          else
+              echo "📦 Verifying PyPI deployment (moai-adk==$VERSION)..."
+              PYPI_URL="https://pypi.org/simple/"
+              PYPI_NAME="PyPI"
+          fi
 
-          # Wait for PyPI CDN propagation (max 50 seconds)
+          # Wait for PyPI/TestPyPI CDN propagation (max 50 seconds)
           MAX_RETRIES=10
           RETRY_COUNT=0
           PACKAGE_FOUND=false
 
           while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
             RETRY_COUNT=$((RETRY_COUNT + 1))
-            echo "⏳ Checking PyPI... (attempt $RETRY_COUNT/$MAX_RETRIES)"
+            echo "⏳ Checking $PYPI_NAME... (attempt $RETRY_COUNT/$MAX_RETRIES)"
 
-            if pip index versions moai-adk 2>/dev/null | grep -q "$VERSION"; then
-              echo "✅ Package available on PyPI: moai-adk==$VERSION"
-              PACKAGE_FOUND=true
-              break
+            if [[ "$TAG" == *"-test" ]]; then
+              # TestPyPI verification
+              if pip index versions moai-adk --index-url "$PYPI_URL" 2>/dev/null | grep -q "$VERSION"; then
+                echo "✅ Package available on TestPyPI: moai-adk==$VERSION"
+                PACKAGE_FOUND=true
+                break
+              fi
+            else
+              # PyPI verification
+              if pip index versions moai-adk 2>/dev/null | grep -q "$VERSION"; then
+                echo "✅ Package available on PyPI: moai-adk==$VERSION"
+                PACKAGE_FOUND=true
+                break
+              fi
             fi
 
             if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
@@ -74,9 +129,13 @@ jobs:
           done
 
           if [ "$PACKAGE_FOUND" = "false" ]; then
-            echo "❌ Package not found on PyPI after 50 seconds"
-            echo "⚠️  Manual verification required: https://pypi.org/project/moai-adk/$VERSION/"
-            exit 1
+            echo "⚠️  Package not found on $PYPI_NAME after 50 seconds"
+            if [[ "$TAG" == *"-test" ]]; then
+              echo "→ Manual check: https://test.pypi.org/project/moai-adk/$VERSION/"
+            else
+              echo "→ Manual check: https://pypi.org/project/moai-adk/$VERSION/"
+            fi
+            echo "→ This may be due to CDN propagation delay. Check again in a few minutes."
           fi
 
           # Test installation in temporary environment

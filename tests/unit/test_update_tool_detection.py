@@ -1,4 +1,4 @@
-# @TEST:UPDATE-REFACTOR-002-001
+# @TEST:UPDATE-REFACTOR-001
 """Unit tests for update command tool detection
 
 Tests the _detect_tool_installer() function which detects

@@ -212,8 +212,10 @@ Invoke the tdd-implementer agent using the Task tool:
   - Set description to "Execute task with TDD implementation"
   - Pass prompt including:
     - SPEC ID ($ARGUMENTS)
-    - Language settings (conversation_language, conversation_language_name)
-    - Code and technical output must be in English
+    - Language settings:
+    - conversation_language: {{CONVERSATION_LANGUAGE}}
+    - conversation_language_name: {{CONVERSATION_LANGUAGE_NAME}}
+    - Code and technical output MUST be in English
     - Code comments language rules (local project vs package code)
     - Test descriptions and documentation language
     - Skill invocation instructions (moai-alfred-language-detection, language-specific skills, debug, refactor)
@@ -617,3 +619,15 @@ Only if the user selects **"Proceed"** or **"Start"** will Alfred call the tdd-i
 - After task execution is complete, document synchronization proceeds with `/alfred:3-sync`
 - All Git operations are dedicated to the git-manager agent to ensure consistency
 - Only command-level orchestration is used without direct calls between agents
+
+---
+
+## Final Step
+
+The implementation workflow is now complete. You have successfully:
+1. Executed the planned tasks according to the SPEC requirements
+2. Applied TDD methodology (RED → GREEN → REFACTOR) when applicable
+3. Created Git commits with proper tracking and history
+4. Generated implementation artifacts that satisfy the acceptance criteria
+
+The system is now ready for the next phase: documentation synchronization and quality assurance using `/alfred:3-sync`.

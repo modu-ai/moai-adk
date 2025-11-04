@@ -1,29 +1,109 @@
-# Alfred 리소스 개요
-
-Alfred SuperAgent는 `.claude/` 디렉터리에 있는 명령어, 서브 에이전트, Skills, Hooks, Output Style을 조합해 Plan → Run → Sync 워크플로우를 수행합니다. 각 리소스는 YAML/Markdown 템플릿으로 정의되어 있으며 `moai-adk update` 실행 시 최신 버전으로 동기화됩니다.
-
-## 핵심 구성요소
-
-| 분류 | 위치 | 역할 |
-| ---- | ---- | ---- |
-| 명령어 | `.claude/commands/alfred/*.md` | `/alfred:*` 명령의 런북과 허용 도구 정의 |
-| 서브 에이전트 | `.claude/agents/alfred/*.md` | 전문 역할(예: SPEC 작성, Git 관리)을 자동 수행 |
-| Skills | `.claude/skills/*` | Alfred와 에이전트가 참조하는 지식 베이스 |
-| Hooks | `.claude/hooks/alfred/*.py` | Claude Code 이벤트 기반 가드레일 및 자동화 |
-| Output Styles | `.claude/output-styles/alfred/*.md` | 보고서, 회고, 학습 등 응답 톤과 구성 |
-
-## 업데이트 흐름
-
-1. `moai-adk update` 실행 → 패키지 버전 확인
-2. 템플릿 버전이 변하면 `.claude/` 리소스를 백업 후 최신 템플릿으로 병합
-3. `.moai/config.json`의 `template_version`이 갱신되어 추후 비교에 활용
-
-## 문서에서 다루는 내용
-
-- [명령어 가이드](/alfred/commands): `/alfred:0-project`부터 `/alfred:9-feedback`까지 모든 명령어 요약
-- [서브 에이전트](/alfred/agents): 16개 에이전트의 역할, 호출 조건, 호환 Skills
-- [Skills 카탈로그](/alfred/skills): Foundation/Essentials/Domain/Language 계층 요약
-- [Claude Code Hooks](/alfred/hooks): 세션 시작, 도구 실행 전후, 사용자 입력 시 동작하는 안전 가드
-- [Output Styles](/alfred/output-styles): 학습/보고 모드를 선택하는 방법과 활용 팁
-
-각 페이지는 실제 템플릿 파일의 메타데이터와 내용을 분석하여 작성되었으며, 실전 작업에서 어떤 자원이 언제 호출되는지 빠르게 파악할 수 있도록 설계되었습니다.
+---
+title: "Alfred 슈퍼에이전트
+description: "Alfred SuperAgent와 19명의 에이전트 팀 구조, 역할 분담, 협업 방식 소개
+---
+"
+# 🎩 Alfred 슈퍼에이전트
+"
+Alfred는 MoAI-ADK의 슈퍼에이전트로, **19명의 전문 에이전트 팀**을 조율하여 SPEC → TDD → 문서 워크플로우를 자동화합니다. 각 에이전트는 명확한 역할과 전문성을 가지며, Alfred가 오케스트레이션하여 일관된 결과물을 만들어냅니다.
+"
+## 핵심 철학
+"
+Alfred는 다음 원칙에 따라 에이전트 팀을 운영합니다:
+"
+- **SPEC-First**: 모든 결정은 SPEC 요구사항에서 시작
+- **자동화-First**: 수동 검증보다 반복 가능한 파이프라인 신뢰
+- **투명성**: 모든 결정, 가정, 위험을 문서화
+- **추적성**: @TAG 시스템이 코드, 테스트, 문서, 이력을 연결
+"
+## 에이전트 팀 구조
+"
+Alfred는 **4계층 에이전트 스택**으로 구성됩니다:
+"
+### 1. 코어 에이전트 (10명)
+워크플로우의 기본 단계를 담당하는 핵심 에이전트들
+"
+| 에이전트 | 주요 역할 | 담당 단계 |
+| -------- | --------- | --------- |
+| `spec-builder` | EARS SPEC 작성, 요구사항 정제 | `/alfred:1-plan` |
+| `implementation-planner` | SPEC 분석, 구현 전략 수립 | `/alfred:2-run` Phase 1 |
+| `tdd-implementer` | RED → GREEN → REFACTOR 실행 | `/alfred:2-run` Phase 2 |
+| `quality-gate` | 코드 품질, 테스트 커버리지 검증 | `/alfred:2-run` Phase 2.5 |
+| `doc-syncer` | 문서 동기화, 보고서 생성 | `/alfred:3-sync` |
+| `tag-agent` | @TAG 체인 무결성 검증 | `/alfred:3-sync` |
+| `git-manager` | Git 워크플로우, 브랜치/PR 관리 | 전 단계 |
+| `project-manager` | 프로젝트 구조, 메타데이터 관리 | `/alfred:0-project` |
+| `debug-helper` | 오류 분석, 해결 전략 제시 | 오류 발생 시 |
+| `trust-checker` | TRUST 5 원칙 검증 | 품질 게이트 |
+"
+### 2. 전문가 에이전트 (6명)
+특정 도메인의 전문 지식을 제공하는 에이전트들
+"
+| 에이전트 | 전문 분야 | 트리거 키워드 |
+| -------- | --------- | ------------- |
+| `backend-expert` | API, 서버, 데이터베이스 | backend, api, server, database |
+| `frontend-expert` | UI 컴포넌트, 상태 관리 | frontend, ui, component, client-side |
+| `ui-ux-expert` | 디자인 시스템, 접근성, UX | design, ux, accessibility, prototype |
+| `devops-expert` | CI/CD, 인프라, 컨테이너 | deployment, docker, kubernetes |
+| `moai-domain-database` | 데이터베이스 설계, 스키마 | database, schema, migration |
+| `moai-domain-ml` | 머신러닝, 모델 학습, 배포 | ml, machine learning, model |
+"
+### 3. 관리 에이전트 (2명)
+시스템 운영과 리소스 관리를 담당
+"
+| 에이전트 | 관리 영역 |
+| -------- | --------- |
+| `cc-manager` | Claude Code 설정, 명령어/Skill 관리 |
+| `skill-factory` | Skill 생성, 베스트 프랙티스 수집 |
+"
+### 4. 내장 Claude 에이전트 (2명)
+Claude Code의 내장 기능 활용
+"
+| 에이전트 | 활용 목적 |
+| -------- | --------- |
+| `general-purpose` | 복잡한 탐색 및 리서치 |
+| `Explore` | 빠른 코드베이스 탐색 |
+"
+## 협업 방식
+"
+Alfred는 **Master-Clone** 패턴과 **Lead-Specialist** 패턴을 조합하여 효율적으로 에이전트들을 활용합니다:
+"
+### Master-Clone 패턴
+- **Alfred 복제본**을 생성하여 대규마이그레이션, 전체 리팩토링 등 복잡한 작업을 병렬 처리
+- 전체 프로젝트 컨텍스트 유지
+- 자율적 판단과 학습 능력
+"
+### Lead-Specialist 패턴
+- 전문 분야 필요 시 해당 전문가 에이전트에게 위임
+- 도메인 특화 지식 활용
+- 순차적 실행 중심의 전문성 강점
+"
+## 리소스 구조
+"
+Alfred는 `.claude/` 디렉터리에 있는 다음 리소스를 활용합니다:
+"
+| 리소스 | 위치 | 역할 |
+| ------ | ---- | ---- |
+| **명령어** | `.claude/commands/alfred/*.md` | `/alfred:*` 명령의 런북과 도구 정의 |
+| **에이전트** | `.claude/agents/alfred/*.md` | 전문 역할과 행동 지침 정의 |
+| **Skills** | `.claude/skills/*` | 지식 베이스, 베스트 프랙티스 |
+| **Hooks** | `.claude/hooks/alfred/*.py` | Claude Code 이벤트 기반 자동화 |
+| **출력 스타일** | `.claude/output-styles/alfred/*.md` | 보고서, 회고, 학습 등 응답 포맷 |
+"
+## 동기화 및 업데이트
+"
+`moai-adk update` 실행 시:
+"
+1. **백업 생성**: `.moai-backups/`에 현재 리소스 백업
+2. **템플릿 병합**: 최신 템플릿으로 `.claude/` 리소스 업데이트
+3. **버전 기록**: `.moai/config.json`의 `template_version` 갱신
+"
+---
+"
+다음 섹션에서 각 구성요소를 상세히 살펴보겠습니다:
+"
+- **[명령어](commands)** - `/alfred:*` 명령어 레퍼런스
+- **[에이전트](agents)** - 서브 에이전트 상세 설명
+- **[Skills](skills)** - 55개 Skills 카탈로그
+- **[Hooks](hooks)** - Claude Code Hooks 시스템
+- **[출력 스타일](output-styles)** - 응답 포맷 가이드

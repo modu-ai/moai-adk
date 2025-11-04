@@ -1,4 +1,4 @@
-# @TEST:UPDATE-REFACTOR-002-002
+# @TEST:UPDATE-REFACTOR-002
 """Unit tests for Phase 2: 2-Stage Workflow
 
 Tests for version management and 2-stage update workflow.
@@ -379,7 +379,7 @@ class TestTwoStageWorkflow:
             with patch('moai_adk.cli.commands.update._get_current_version') as mock_current, \
                  patch('moai_adk.cli.commands.update._get_latest_version') as mock_latest, \
                  patch('moai_adk.cli.commands.update._execute_upgrade') as mock_upgrade, \
-                 patch('moai_adk.cli.commands.update._sync_templates') as mock_sync:
+                 patch('moai_adk.cli.commands.update._sync_templates'):
 
                 mock_current.return_value = "0.7.0"
                 mock_latest.return_value = "0.6.2"

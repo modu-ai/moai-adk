@@ -1,4 +1,4 @@
-# @TEST:UPDATE-REFACTOR-002-005
+# @TEST:UPDATE-REFACTOR-005
 """Integration tests for Phase 5: Complete 2-Stage Workflow
 
 Tests for the end-to-end update process including tool detection,

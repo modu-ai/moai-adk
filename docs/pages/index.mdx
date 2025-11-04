@@ -1,35 +1,47 @@
-import { Callout } from 'nextra/components'
+---
+title: "소개"
+description: "MoAI-ADK - SPEC-First TDD 개발 프레임워크 (Alfred 슈퍼에이전트 포함)"
+---
 
-# MoAI-ADK 한국어 문서
+# MoAI-ADK (Aggressive Development Kit)
 
-**MoAI-ADK (Agentic Development Kit)** 는 Claude Code 환경에서 Alfred SuperAgent와 12개 이상의 서브 에이전트가 협업해 **SPEC → TDD → 코드 → 문서**를 자동으로 잇는 개발 프레임워크입니다. 이 온라인 문서는 한국어 기반으로 MoAI-ADK를 빠르게 이해하고 실무에 적용할 수 있도록 구성되어 있습니다.
+**MoAI-ADK**는 Claude Code 환경에서 🎩 Alfred SuperAgent와 19명의 에이전트 팀이 협업하여 **SPEC → TDD → 코드 → 문서**를 자연스럽게 잇는 개발 프레임워크입니다.
 
-## 왜 Alfred 기반 Agentic 워크플로우인가?
+## 핵심 가치
 
-- **SPEC-First 철학**: 기능을 시작하기 전에 요구사항을 명확하게 구조화하여 실패를 줄입니다.
-- **RED → GREEN → REFACTOR 자동화**: `/alfred:2-run`이 테스트 작성부터 구현, 리팩토링까지 주도합니다.
-- **Living Documentation**: `/alfred:3-sync`로 README, CHANGELOG, 보고서, TAG가 항상 최신 상태를 유지합니다.
-- **TRUST 5 원칙 준수**: Test, Readable, Unified, Secured, Trackable을 모든 단계에서 검증합니다.
-- **TAG 체계 추적성**: @SPEC ↔ @TEST ↔ @CODE ↔ @DOC 체인이 연결되어 변경 영향도를 즉시 파악합니다.
+- **SPEC-First 철학**: 요구사항을 먼저 정리하고 개발 실패를 최소화
+- **자동화된 TDD**: `/alfred:2-run`이 RED → GREEN → REFACTOR 사이클 자동 진행
+- **Living Document**: `/alfred:3-sync`가 문서를 항상 최신 상태로 유지
+- **완벽한 추적성**: `@SPEC ↔ @TEST ↔ @CODE ↔ @DOC` 체인으로 변경 영향도 즉시 파악
 
-<Callout type="info">
-이 문서는 `README.ko.md`, `src/moai_adk/` 패키지 코드, `.claude/`의 commands·agents·skills·hooks·output-styles를 기반으로 작성되었습니다.
-</Callout>
+## 🚀 빠른 시작
 
-## 문서 구성
+1. **설치**: `npm install -g moai-adk`
+2. **프로젝트 초기화**: `moai-adk init`
+3. **개발 시작**: `/alfred:1-plan "새 기능"`
 
-- [빠른 시작](/quick-start): UV 기반 설치부터 `/alfred:0-project` 실행까지 10분 완성 가이드
-- [Plan → Run → Sync](/workflow): Alfred가 반복하는 3단계 자동화 사이클
-- [Alfred 리소스](/alfred): 명령어, 서브 에이전트, Skills, Hooks, Output Style 등 핵심 자산 정리
-- [레퍼런스](/reference): `moai-adk` CLI와 프로젝트 구조 상세 설명
+## 🎯 주요 특징
 
-## 지금 바로 시작하기
+### 📋 SPEC-First 개발
+- 요구사항 먼저 정의 → 구현 실패 최소화
+- @TAG 체인으로 완벽한 추적성 보장
+- 명확한 수용 기준(DoD) 정의
 
-```bash
-uv tool install moai-adk
-moai-adk init hello-world
-claude
-/alfred:0-project
-```
+### 🔄 자동화 TDD
+- RED → GREEN → REFACTOR 사이클 자동화
+- 테스트 코드 먼저 작성 → 안정적인 구현
+- 리팩토링 전 품질 게이트 통과
 
-이후 `/alfred:1-plan "기능 설명"`으로 SPEC을 만들고, `/alfred:2-run SPEC-ID` → `/alfred:3-sync` 순서로 완전한 기능을 완성하세요.
+### 📚 Living Documentation
+- `/alfred:3-sync`로 문서 항상 최신 상태 유지
+- 코드 변경 → 문서 자동 업데이트
+- 기술 부쵝 최소화
+
+### 🔍 완벽한 추적성
+- @SPEC ↔ @TEST ↔ @CODE ↔ @DOC 체인
+- 변경 영향도 즉시 파악
+- Git 히스토리와의 연동
+
+---
+
+🤖 **MoAI-ADK와 함께 개발 생산성을 극대화하세요!**

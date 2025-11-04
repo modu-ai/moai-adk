@@ -1,6 +1,7 @@
 # @CODE:CORE-PROJECT-001 | SPEC: SPEC-CORE-PROJECT-001.md | TEST: tests/unit/test_language_detector.py
 # @CODE:LANG-DETECT-001 | SPEC: SPEC-LANG-DETECT-001.md | TEST: tests/unit/test_detector.py
-# @CODE:LDE-EXTENDED-001 | SPEC: SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md | TEST: tests/unit/test_language_detector_extended.py
+# @CODE:LDE-EXTENDED-001 | SPEC: SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md | \
+# TEST: tests/unit/test_language_detector_extended.py
 """Language detector module.
 
 Automatically detects 20 programming languages.

@@ -1,77 +1,15 @@
-# Alfred 명령어 가이드
-
-`.claude/commands/alfred/*.md` 파일은 각 `/alfred:*` 명령이 어떤 목적을 갖고 어떤 도구를 사용할 수 있는지 정의합니다. 명령을 실행하면 Alfred가 해당 런북을 따라 서브 에이전트와 Skills를 호출하고, Hooks가 안전장치를 제공합니다.
-
-## 요약 표
-
+---
+title: ""명령어"
+description: ""/alfred:* 명령어 레퍼런스와 사용법, 옵션, 활용 팁"
+---
+"
+Alfred 명령어는 `.claude/commands/alfred/*.md` 파일에 정의되어 있으며, 각 명령의 목적과 사용 가능한 도구를 명시합니다.
+"
+## 핵심 명령어
+"
 | 명령어 | 핵심 목적 | 주요 산출물 | 대표 서브 에이전트 |
-| ------ | -------- | ----------- | ------------------- |
-| `/alfred:0-project` | 프로젝트 초기화 | `.moai/` & `.claude/` 템플릿, CLAUDE.md | `project-manager`, `git-manager`, `cc-manager` |
-| `/alfred:1-plan` | 요구사항 정제 & SPEC 작성 | EARS SPEC, Draft PR, 작업 브랜치 | `spec-builder`, `implementation-planner`, `git-manager` |
-| `/alfred:2-run` | TDD 실행 및 구현 | 테스트/코드, 커밋, 품질 보고 | `implementation-planner`, `tdd-implementer`, `quality-gate` |
-| `/alfred:3-sync` | 문서 & TAG 동기화 | README/보고서 업데이트, TAG 검증 | `doc-syncer`, `tag-agent`, `quality-gate` |
-| `/alfred:9-feedback` | 회고 및 학습 | 회고 노트, TODO, Output Style 적용 | `doc-syncer`, `skill-factory` |
-| `/alfred:release-new` | 릴리스 브랜치/노트 준비 | 버전 검증, 릴리스 노트 초안 | `git-manager`, `quality-gate`, `doc-syncer` |
-
-## 각 명령어 세부 설명
-
-### `/alfred:0-project` — Project Bootstrap
-
-- **언제 사용**: 새 저장소 초기화 또는 기존 프로젝트를 Alfred 워크플로우에 맞추고 싶을 때
-- **주요 작업**:
-  - `.moai/` 프로젝트 메타데이터 생성 및 템플릿 채우기
-  - `.claude/` 명령어, 에이전트, Skills, Hooks 동기화
-  - 초기 Git 설정 점검 (브랜치, remote, ignore)
-- **Hooks 연동**: `session_start__show_project_info`가 초기 상태 요약을 제공합니다.
-
-### `/alfred:1-plan` — Plan 단계
-
-- **입력 인자**: `"기능 설명"` 또는 `SPEC-ID 개선 내용`
-- **주요 기능**:
-  - 아이디어 정제 → 요구사항 분해 → EARS SPEC 작성
-  - `AskUserQuestion`을 활용한 인터랙티브 질의
-  - Draft PR 생성 및 라벨링, SPEC 메타데이터 기록
-- **산출물**: `.moai/specs/SPEC-*/spec.md`, `.moai/memory/spec-metadata.md` 갱신, feature 브랜치
-
-### `/alfred:2-run` — Run 단계
-
-- **입력 인자**: `SPEC-ID`
-- **페이즈 구성**:
-  1. Implementation Plan 수립 (테스트 시나리오, 리스크 분석)
-  2. RED → GREEN → REFACTOR 사이클 반복
-  3. 품질 게이트 (테스트, 린트, 커버리지, 보안)
-  4. 커밋/체크포인트 작성과 TODO 정리
-- **특징**:
-  - 언어별 `moai-lang-*` Skills를 자동 로딩
-  - 실패 시 `debug-helper`가 호출되어 근본 원인 분석 지원
-
-### `/alfred:3-sync` — Sync 단계
-
-- **주요 기능**:
-  - README, CHANGELOG, Living Document, 보고서 업데이트
-  - `tag-agent`를 통한 TAG 무결성 검증 (고아 TAG 0개 보장)
-  - `.moai/reports/`에 분석 결과 저장 (`tag-inventory.md`, `sync-report.md` 등)
-  - Git 제외 목록(.gitignore) 검사 및 문서 상태 보고
-- **활용 예**: 기능 완료 후 PR 설명 강화, 릴리스 직전 문서 정비, 주간 보고 자동화
-
-### `/alfred:9-feedback` — 회고 & 학습
-
-- **목적**: 세션 종료 시 다음 액션과 학습 포인트 정리
-- **동작**:
-  - Output Style 중 `study-with-alfred`, `moai-adk-learning` 등을 적용
-  - 오늘의 성공/이슈/개선 제안을 구조화된 형식으로 정리
-  - TODO, 다음 단계 권장사항 자동 생성
-
-### `/alfred:release-new` — 릴리스 지원
-
-- **언제 사용**: 릴리스 브랜치를 준비하거나 PR에 릴리스 라벨을 붙이기 전
-- **주요 작업**:
-  - `pyproject.toml` 버전과 템플릿 버전 일치 여부 확인
-  - `scripts/check-version-sync.py` 실행으로 중복 버전 방지
-  - Git 태그와 CHANGELOG 초안 준비, 릴리스 노트 템플릿 제공
-
-## 실행 팁
-
-- **명령 미기억 방지**: `/alfred:?` 입력 시 명령어 요약을 즉시 확인할 수 있습니다.
-- **조건부 실행**: `--fast`, `--skip-sync` 등 옵션이 활성화된 경우 명령어 파일 상단 `argument-hint`와 설명에서 확인할 수 있습니다.
-- **커스터마이징**: 프로젝트별로 명령어를 수정하고 싶다면 `.claude/commands/alfred/*.md`를 편집한 뒤 PR에 변경이력으로 남기세요.
+|--------|----------|-------------|-------------------|
+| `/alfred:0-project` | 프로젝트 초기화 | `.moai/config.json` | project-setup |
+| `/alfred:1-plan` | 요구사항 정의 | SPEC 문서 | spec-builder |
+| `/alfred:2-run` | 구현 실행 | 코드 + 테스트 | tdd-implementer |
+| `/alfred:3-sync` | 동기화 | 문서 업데이트 | quality-gate |

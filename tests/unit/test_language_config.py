@@ -187,7 +187,7 @@ class TestTemplateVariableSubstitution:
         assert "ko" in result, "Should substitute known variable"
         assert "{{MISSING_VAR}}" in result, "Should not substitute missing variable"
         assert len(warnings) > 0, "Should have warnings for unsubstituted variables"
-        assert "MISSING_VAR" in warnings[0], "Warning should mention missing variable"
+        assert any("MISSING_VAR" in warning for warning in warnings), "Warning should mention missing variable"
 
 
 class TestPhaseExecutorResourcePhase:

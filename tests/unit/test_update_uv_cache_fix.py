@@ -18,7 +18,7 @@ def test_detect_stale_cache_true():
     WHEN: _detect_stale_cache() is called
     THEN: return True (cache is stale)
 
-    @TEST:UPDATE-CACHE-FIX-001-001-DETECT-STALE: Detect stale cache when version mismatch
+    @TEST:UPDATE-CACHE-FIX-001: Detect stale cache when version mismatch
     """
     from moai_adk.cli.commands.update import _detect_stale_cache
 
@@ -55,7 +55,7 @@ def test_detect_stale_cache_false():
     WHEN: _detect_stale_cache() is called
     THEN: return False (cache is not stale)
 
-    @TEST:UPDATE-CACHE-FIX-001-002-DETECT-FRESH: Detect fresh cache when no action
+    @TEST:UPDATE-CACHE-FIX-002: Detect fresh cache when no action
     """
     from moai_adk.cli.commands.update import _detect_stale_cache
 
@@ -108,7 +108,7 @@ def test_clear_cache_success(monkeypatch):
     WHEN: _clear_uv_package_cache() is called
     THEN: return True and log success at DEBUG level
 
-    @TEST:UPDATE-CACHE-FIX-001-003-CLEAR-SUCCESS: Clear cache successfully
+    @TEST:UPDATE-CACHE-FIX-003: Clear cache successfully
     """
     from moai_adk.cli.commands.update import _clear_uv_package_cache
 
@@ -137,7 +137,7 @@ def test_clear_cache_failure(monkeypatch):
     WHEN: _clear_uv_package_cache() is called
     THEN: return False and log warning
 
-    @TEST:UPDATE-CACHE-FIX-001-004-CLEAR-FAILURE: Handle cache clear failures
+    @TEST:UPDATE-CACHE-FIX-004: Handle cache clear failures
     """
     from moai_adk.cli.commands.update import _clear_uv_package_cache
 
@@ -189,7 +189,7 @@ def test_upgrade_with_retry_stale_cache(monkeypatch):
     THEN: cache is cleared and upgrade is retried
       AND: return True if second attempt succeeds
 
-    @TEST:UPDATE-CACHE-FIX-001-005-RETRY-SUCCESS: End-to-end retry succeeds
+    @TEST:UPDATE-CACHE-FIX-005: End-to-end retry succeeds
     """
     from moai_adk.cli.commands.update import _execute_upgrade_with_retry
 
@@ -238,7 +238,7 @@ def test_upgrade_without_retry_fresh_cache(monkeypatch):
     WHEN: _execute_upgrade_with_retry() is called
     THEN: return True without retry
 
-    @TEST:UPDATE-CACHE-FIX-001-005A-NO-RETRY: Fresh cache bypasses retry
+    @TEST:UPDATE-CACHE-FIX-006: Fresh cache bypasses retry
     """
     from moai_adk.cli.commands.update import _execute_upgrade_with_retry
 
@@ -275,7 +275,7 @@ def test_upgrade_fails_after_retry(monkeypatch):
     WHEN: _execute_upgrade_with_retry() is called
     THEN: return False after retry
 
-    @TEST:UPDATE-CACHE-FIX-001-005B-RETRY-FAIL: Retry fails on second attempt
+    @TEST:UPDATE-CACHE-FIX-007: Retry fails on second attempt
     """
     from moai_adk.cli.commands.update import _execute_upgrade_with_retry
 
@@ -324,7 +324,7 @@ def test_upgrade_cache_clear_fails(monkeypatch):
     WHEN: _execute_upgrade_with_retry() is called
     THEN: return False without retry
 
-    @TEST:UPDATE-CACHE-FIX-001-005C-CLEAR-ERROR: Handle clear failures gracefully
+    @TEST:UPDATE-CACHE-FIX-008: Handle clear failures gracefully
     """
     from moai_adk.cli.commands.update import _execute_upgrade_with_retry
 
