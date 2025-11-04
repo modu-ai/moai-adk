@@ -100,57 +100,63 @@ The user executes the `/alfred:0-project` command to start analyzing the project
 - **팀 모드 추가 배치**: 2개 질문을 1회 호출 (2 turns → 1 turn, **50% 상호작용 감소**)
 - **전체 효과**: 평균 **60% 상호작용 감소**, 사용자 경험 대폭 개선
 
-### 0.0 명령어 진입점: 서브커맨드 파싱 (신규)
+### 0.0 명령어 진입점: 서브커맨드 파싱 (신규 - 명령형 지침)
 
-**Purpose**: Parse subcommand to determine execution mode.
+**Your immediate task**: Detect which subcommand the user provided and route to the correct workflow.
 
-**Subcommand Parsing Logic**:
+#### ⚡ Step 1: Check what subcommand the user provided
 
-When `/alfred:0-project` is executed, Alfred checks for subcommands:
+**Look at the user's command carefully**:
+- Did they type `/alfred:0-project setting`?
+- Did they type `/alfred:0-project update`?
+- Did they type just `/alfred:0-project` (no subcommand)?
+- Did they type something invalid like `/alfred:0-project xyz`?
 
-1. **Parse `$ARGUMENTS` for subcommands**:
-   - IF `setting` → Execute Setting Mode (STEP 0-SETTING)
-   - ELSE IF `update` → Execute Update Mode (STEP 0-UPDATE)
-   - ELSE IF empty → Execute Default Mode
+#### ⚡ Step 2: Route based on subcommand
 
-2. **Default Mode Logic** (no subcommand):
-   - Check if `.moai/config.json` exists
-   - IF exists → Show "Already initialized" message + suggest `setting` or `update` (STEP 0.1 Already Initialized Check)
-   - ELSE → Execute first-time initialization (STEP 0.1 First-time Setup)
+**IF user typed: `/alfred:0-project setting`**:
+1. Print: "🔧 Entering Settings Mode - Modify existing project configuration"
+2. Jump to **STEP 0-SETTING** below
+3. Skip ALL other sections
+4. Stop after completing STEP 0-SETTING
+5. **DO NOT proceed** to STEP 1, 2, or 3
 
-**Subcommand Options**:
-- (No argument): Default initialization mode
-- `setting`: Modify existing project settings
-- `update`: Optimize templates after `moai-adk update`
+**ELSE IF user typed: `/alfred:0-project update`**:
+1. Print: "🔄 Entering Template Update Mode - Optimize templates after moai-adk update"
+2. Jump to **STEP 0-UPDATE** below
+3. Skip ALL other sections
+4. Stop after completing STEP 0-UPDATE
+5. **DO NOT proceed** to STEP 1, 2, or 3
 
-**Execution Flow Summary**:
+**ELSE IF user typed: `/alfred:0-project` (no subcommand, nothing after)**:
+1. Check if the file `.moai/config.json` exists in the current directory
+   - Read the file path: `.moai/config.json`
+   - IF file exists → Print "✅ Project is already initialized!" AND jump to **STEP 0.1.0**
+   - IF file does NOT exist → Print "🚀 Starting first-time project initialization..." AND jump to **STEP 0.1.1**
 
-| Command | Mode | Behavior |
-|---------|------|----------|
-| `/alfred:0-project` (first time) | Default | Initialize project (STEP 0.1 First-time Setup) |
-| `/alfred:0-project` (already initialized) | Default | Show options (STEP 0.1 Already Initialized Check) |
-| `/alfred:0-project setting` | Setting | Modify existing config (STEP 0-SETTING) |
-| `/alfred:0-project update` | Update | Merge backup templates (STEP 0-UPDATE) |
+**ELSE IF user typed an invalid subcommand** (like `/alfred:0-project xyz`):
+1. Print this error message:
+   ```
+   ❌ Unknown subcommand: xyz
 
-**Implementation Details**:
+   Valid subcommands:
+   /alfred:0-project          - Auto-detect mode (first-time or already initialized)
+   /alfred:0-project setting  - Modify existing settings
+   /alfred:0-project update   - Optimize templates after moai-adk update
 
-- **Default Mode (no subcommand)**:
-  1. Check if `.moai/config.json` exists
-  2. IF NOT exists → Proceed to STEP 0.1 First-time Setup
-  3. IF exists → Proceed to STEP 0.1 Already Initialized Check
+   Example: /alfred:0-project setting
+   ```
+2. Exit immediately
+3. **DO NOT make any changes**
 
-- **Setting Mode (`setting` subcommand)**:
-  1. Load current configuration from `.moai/config.json`
-  2. Ask user which settings to modify (multi-select)
-  3. Collect new values via batched AskUserQuestion
-  4. Update only modified fields in config.json
-  5. Preserve unchanged settings
+#### ⚡ Step 3: CRITICAL RULES
 
-- **Update Mode (`update` subcommand)**:
-  1. Check if backup exists (`.moai-backups/`)
-  2. Compare backup with current template
-  3. Merge user customizations with latest template
-  4. Set `optimized: true` in config.json
+⚠️ **IMPORTANT - Read this carefully**:
+- Execute ONLY ONE mode per command invocation
+- **DO NOT execute multiple modes** (e.g., do not run setting mode AND first-time setup in the same invocation)
+- Stop and exit immediately after completing the selected mode
+- **DO NOT jump to STEP 1 or later** unless that is the explicitly detected mode
+- **DO NOT guess** which mode the user wanted - always detect from their actual command
 
 ### 0.1 Already Initialized Check (conditional entry point)
 
@@ -194,86 +200,88 @@ When `/alfred:0-project` is executed, Alfred checks for subcommands:
 
 ---
 
-### 0.1.0 Already Initialized Flow (when config.json exists)
+### 0.1.0 Already Initialized Flow (when config.json exists) - 명령형 지침
 
-**Purpose**: Show options for an already-initialized project without running full initialization again.
+**Purpose**: Show options for an already-initialized project and handle user selection.
 
-**Call AskUserQuestion** to present options:
+#### Step 1: Load and display current configuration
 
-```python
-AskUserQuestion(
-    questions=[
-        {
-            "question": "Your project is already initialized. What would you like to do?",
-            "header": "Already Initialized",
-            "multiSelect": false,
-            "options": [
-                {
-                    "label": "🔧 Modify Settings",
-                    "description": "Change language, nickname, GitHub settings, or reports config. Runs /alfred:0-project setting mode"
-                },
-                {
-                    "label": "📋 Review Current Setup",
-                    "description": "Display current project settings and configuration"
-                },
-                {
-                    "label": "🔄 Re-initialize",
-                    "description": "Run full initialization again (warns before overwriting)"
-                },
-                {
-                    "label": "⏸️ Cancel",
-                    "description": "Exit without changes"
-                }
-            ]
-        }
-    ]
-)
-```
+1. **Read `.moai/config.json`** to get current settings
+2. **Extract and display** these values:
+   ```
+   ✅ **Language**: [value from language.conversation_language]
+   ✅ **Nickname**: [value from user.nickname]
+   ✅ **Agent Prompt Language**: [value from language.agent_prompt_language]
+   ✅ **GitHub Auto-delete Branches**: [value from github.auto_delete_branches]
+   ✅ **SPEC Git Workflow**: [value from github.spec_git_workflow]
+   ✅ **Report Generation**: [value from report_generation.user_choice]
+   ```
 
-**Response Processing**:
+#### Step 2: Ask the user what they want to do
 
-- **"🔧 Modify Settings"** → Proceed to STEP 0-SETTING (setting mode)
-  - Note: This is equivalent to running `/alfred:0-project setting`
-  - Load config.json and show modification options
+**Present these 4 options** to the user (let them choose one):
 
-- **"📋 Review Current Setup"** → Display current configuration:
-  ```markdown
-  ## Current Project Configuration
+1. **"🔧 Modify Settings"** - Change language, nickname, GitHub settings, or reports config
+2. **"📋 Review Current Setup"** - Display full current project configuration
+3. **"🔄 Re-initialize"** - Run full initialization again (with warning)
+4. **"⏸️ Cancel"** - Exit without making any changes
 
-  ✅ **Language**: 한국어 (ko)
-  ✅ **Nickname**: GOOS
-  ✅ **Agent Prompt Language**: Localized
-  ✅ **GitHub Auto-delete Branches**: true
-  ✅ **SPEC Git Workflow**: feature_branch
-  ✅ **Report Generation**: Minimal
-  ✅ **Selected Domains**: frontend, backend
+**Wait for the user to select one option**.
 
-  📝 Configuration saved in: .moai/config.json
-  📁 Project files: .moai/project/
+#### Step 3: Handle user's selection
 
-  To modify settings, run: /alfred:0-project setting
-  ```
-  Then exit after displaying.
+**IF user selected: "🔧 Modify Settings"**:
+1. Print: "🔧 Entering Settings Mode..."
+2. **Jump to STEP 0-SETTING** (same as `/alfred:0-project setting`)
+3. Let STEP 0-SETTING handle the rest
+4. Stop after STEP 0-SETTING completes
 
-- **"🔄 Re-initialize"** → Show warning and proceed to first-time setup:
-  ```markdown
-  ⚠️ WARNING: This will re-run the full project initialization
+**ELSE IF user selected: "📋 Review Current Setup"**:
+1. Print this header: `## Current Project Configuration`
+2. Show all current settings (from config.json):
+   ```
+   ✅ **Language**: [value]
+   ✅ **Nickname**: [value]
+   ✅ **Agent Prompt Language**: [value]
+   ✅ **GitHub Auto-delete Branches**: [value]
+   ✅ **SPEC Git Workflow**: [value]
+   ✅ **Report Generation**: [value]
 
-  Existing files will be preserved in:
-  - Backup: .moai-backups/[TIMESTAMP]/
-  - Current: .moai/project/*.md (will be updated)
+   📝 Configuration saved in: .moai/config.json
+   📁 Project files: .moai/project/
 
-  Are you sure you want to continue? (y/n)
-  ```
-  If user confirms, proceed to STEP 0.1.1 (First-time Setup)
+   To modify settings, run: /alfred:0-project setting
+   ```
+3. Print: "✅ Configuration review complete."
+4. Exit (stop the command)
 
-- **"⏸️ Cancel"** → Exit without any changes:
-  ```markdown
-  ✅ Exiting without changes.
+**ELSE IF user selected: "🔄 Re-initialize"**:
+1. Print this warning:
+   ```
+   ⚠️ WARNING: This will re-run the full project initialization
 
-  Your project remains initialized with current settings.
-  Run /alfred:0-project setting to modify settings later.
-  ```
+   Your existing files will be preserved in:
+   - Backup: .moai-backups/[TIMESTAMP]/
+   - Current: .moai/project/*.md (will be UPDATED)
+   ```
+2. **Ask the user**: "Are you sure you want to continue? Type 'yes' to confirm or anything else to cancel"
+3. **IF user typed 'yes'**:
+   - Print: "🔄 Starting full re-initialization..."
+   - **Jump to STEP 0.1.1** (First-time Setup)
+   - Let STEP 0.1.1 handle the rest
+4. **ELSE** (user typed anything else):
+   - Print: "✅ Re-initialization cancelled."
+   - Exit (stop the command)
+
+**ELSE IF user selected: "⏸️ Cancel"**:
+1. Print:
+   ```
+   ✅ Exiting without changes.
+
+   Your project remains initialized with current settings.
+   To modify settings later, run: /alfred:0-project setting
+   ```
+2. Exit immediately (stop the command)
 
 ---
 
@@ -918,63 +926,76 @@ Alfred가 선택된 언어, 닉네임, 그리고 팀 모드 설정을 다음과 
 
 ---
 
-## 🎛️ STEP 0-SETTING: Modify existing project settings (subcommand mode)
+## 🎛️ STEP 0-SETTING: Modify existing project settings (subcommand mode) - 명령형 지침
 
-**Purpose**: Modify one or more settings in an already-initialized project without re-running the full interview process.
+**Purpose**: User wants to change specific settings without re-running the full initialization.
 
-**Execution Condition**:
-- User executes `/alfred:0-project setting`
-- `.moai/config.json` already exists
-- User wants to change specific settings (language, nickname, GitHub settings, report generation, etc.)
+**When to execute this step**:
+- User runs `/alfred:0-project setting`
+- OR User selected "🔧 Modify Settings" from the Already Initialized menu
 
-**UX Improvement**:
-- **Multi-select filtering**: User selects which settings to modify (only 1 interaction)
-- **Batched questions**: Only the selected settings are presented (1 interaction per question group)
-- **Selective update**: Only modified fields updated in config.json; unchanged settings preserved
-- **Total interaction reduction**: ~60% fewer turns compared to re-running full initialization
+### 0-SETTING.1 Load and display current configuration
 
-### 0-SETTING.1 Load current configuration
+**Your task**: Read `.moai/config.json` and show the user what their current settings are.
 
-**Purpose**: Read and display the current project settings from `.moai/config.json`.
+**Steps**:
 
-**Implementation Steps**:
+1. **Read the configuration file**:
+   - Load the file: `.moai/config.json`
+   - Extract these values:
+     * Language: `language.conversation_language` (e.g., "ko", "en")
+     * Nickname: `user.nickname` (e.g., "GOOS")
+     * Agent Prompt Language: `language.agent_prompt_language` (e.g., "localized")
+     * GitHub auto-delete: `github.auto_delete_branches` (true/false)
+     * SPEC workflow: `github.spec_git_workflow` (e.g., "feature_branch")
+     * Report generation: `report_generation.user_choice` (e.g., "Minimal")
+     * Domains: `stack.selected_domains` (e.g., ["frontend", "backend"])
 
-1. **Read config.json**:
-   ```bash
-   Read .moai/config.json
+2. **Display to the user**:
    ```
-
-2. **Extract current values**:
-   - Language: `config.json.language.conversation_language`
-   - Nickname: `config.json.user.nickname`
-   - Agent Prompt Language: `config.json.language.agent_prompt_language`
-   - GitHub auto-delete branches: `config.json.github.auto_delete_branches`
-   - GitHub spec_git_workflow: `config.json.github.spec_git_workflow`
-   - Report generation: `config.json.report_generation.enabled`
-   - Selected domains: `config.json.stack.selected_domains` (if any)
-
-3. **Display current settings**:
-   ```markdown
    ## Current Project Settings
 
-   ✅ **Language**: 한국어 (ko)
-   ✅ **Nickname**: GOOS
-   ✅ **Agent Prompt Language**: Localized (한국어)
-   ✅ **GitHub Auto-delete Branches**: true
-   ✅ **SPEC Git Workflow**: feature_branch
-   ✅ **Report Generation**: Minimal
-   ✅ **Selected Domains**: frontend, backend
-
-   Which settings would you like to modify?
+   ✅ **Language**: [value from config.json]
+   ✅ **Nickname**: [value from config.json]
+   ✅ **Agent Prompt Language**: [value from config.json]
+   ✅ **GitHub Auto-delete Branches**: [value from config.json]
+   ✅ **SPEC Git Workflow**: [value from config.json]
+   ✅ **Report Generation**: [value from config.json]
+   ✅ **Selected Domains**: [value from config.json]
    ```
 
-### 0-SETTING.2 Multi-select: Choose which settings to modify
+3. **Tell the user**: "Which settings would you like to modify?"
 
-**Purpose**: Let user select which specific settings they want to change (not all).
+### 0-SETTING.2 Ask which settings to modify
 
-**Implementation Steps**:
+**Your task**: Ask the user to select which settings they want to change.
 
-Call `AskUserQuestion` with `multiSelect: true` to allow multiple selections:
+**Tell the user**: "Select the settings you want to modify (you can choose multiple):"
+
+**Present these 5 options** (allow multiple selections):
+
+1. **"🌍 Language & Agent Prompt Language"** - Change conversation language or agent language
+2. **"👤 Nickname"** - Change user nickname (max 20 characters)
+3. **"🔧 GitHub Settings"** - Change auto-delete branches or SPEC git workflow
+4. **"📊 Report Generation"** - Change report generation settings
+5. **"🎯 Project Domains"** - Add or remove project domain selections
+
+**Wait for the user to select one or more options**.
+
+**After the user selects**, determine which sections were chosen:
+- If "🌍 Language..." selected → Will ask in the LANGUAGE section
+- If "👤 Nickname" selected → Will ask in the NICKNAME section
+- If "🔧 GitHub Settings" selected → Will ask in the GITHUB section
+- If "📊 Report Generation" selected → Will ask in the REPORTS section
+- If "🎯 Project Domains" selected → Will ask in the DOMAINS section
+
+### 0-SETTING.3 Collect new values (batched questions)
+
+**Your task**: Based on user's selections, ask for new values.
+
+**IMPORTANT**: Only ask questions for the sections the user selected.
+
+#### IF user selected "🌍 Language & Agent Prompt Language":
 
 ```python
 AskUserQuestion(
