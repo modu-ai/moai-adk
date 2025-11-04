@@ -9,13 +9,15 @@
   },
   "dependencies": {
     "next": "14.2.15",
-    "nextra": "2.13.4",
-    "nextra-theme-docs": "2.13.4",
+    "nextra": "^4.6.0",
+    "nextra-theme-docs": "^4.6.0",
     "react": "18.2.0",
     "react-dom": "18.2.0"
   },
   "devDependencies": {
+    "@types/node": "24.10.0",
     "@types/react": "18.2.0",
-    "@types/react-dom": "18.2.0"
+    "@types/react-dom": "18.2.0",
+    "typescript": "5.9.3"
   }
 }
