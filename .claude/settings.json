@@ -1,4 +1,13 @@
 {
+  "companyAnnouncements": [
+    "🎩 SPEC-First: Always define requirements as SPEC before implementation (/alfred:1-plan)",
+    "✅ TRUST 5 Principles: Test First, Readable, Unified, Secured, Trackable",
+    "📝 TodoWrite Usage: Track all tasks and update in_progress/completed status immediately",
+    "🌍 Language Boundary: Use conversation_language for dialogs/documents, English for infrastructure",
+    "🔗 @TAG Chain: Maintain traceability SPEC→TEST→CODE→DOC",
+    "⚡ Parallel Execution: Independent tasks can run simultaneously (Task tool parallel calls)",
+    "💡 Skills First: Check appropriate Skill first for domain-specific tasks"
+  ],
   "hooks": {
     "SessionStart": [
       {
