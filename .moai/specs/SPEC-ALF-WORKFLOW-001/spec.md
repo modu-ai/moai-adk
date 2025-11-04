@@ -1,7 +1,7 @@
 ---
 id: ALF-WORKFLOW-001
 version: 0.1.0
-status: completed
+status: closed
 created: 2025-10-29
 updated: 2025-10-29
 author: @Goos

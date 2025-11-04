@@ -2,7 +2,7 @@
 # 필수 메타데이터
 id: DOCS-003
 version: 0.1.0
-status: completed
+status: closed
 created: 2025-10-17
 updated: 2025-10-17
 author: @Goos

@@ -1,7 +1,7 @@
 ---
 id: HOOKS-001
 version: 0.1.0
-status: completed
+status: implementation-complete
 created: 2025-10-16
 updated: 2025-10-16
 author: @Goos

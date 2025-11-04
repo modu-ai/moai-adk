@@ -1,7 +1,7 @@
 ---
 id: UPDATE-REFACTOR-002
 version: 0.0.3
-status: implementation-complete
+status: closed
 created: 2025-10-28
 updated: 2025-10-29
 author: @Goos

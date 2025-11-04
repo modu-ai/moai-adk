@@ -1,7 +1,7 @@
 ---
 id: INIT-004
 version: 0.0.1
-status: completed
+status: closed
 created: 2025-10-17
 updated: 2025-10-17
 author: @Goos

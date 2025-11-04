@@ -1,7 +1,7 @@
 ---
 id: INIT-001
 version: 0.2.0
-status: completed
+status: closed
 created: 2025-10-06
 updated: 2025-10-06
 completed: 2025-10-06

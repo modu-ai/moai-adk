@@ -1,7 +1,7 @@
 ---
 id: CLAUDE-COMMANDS-001
 version: 0.1.0
-status: completed
+status: implementation-complete
 created: 2025-10-18
 updated: 2025-10-18
 author: @Goos

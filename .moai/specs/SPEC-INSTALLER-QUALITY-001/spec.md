@@ -1,7 +1,7 @@
 ---
 id: INSTALLER-QUALITY-001
 version: 0.2.0
-status: completed
+status: implementation-complete
 created: 2025-10-06
 updated: 2025-10-18
 author: @Goos

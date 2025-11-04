@@ -1,7 +1,7 @@
 ---
 id: HOOKS-003
 version: 0.1.0
-status: completed
+status: planning
 created: 2025-10-16
 updated: 2025-10-18
 author: @Goos

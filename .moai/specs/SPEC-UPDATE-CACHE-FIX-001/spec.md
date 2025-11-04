@@ -1,7 +1,7 @@
 ---
 id: UPDATE-CACHE-FIX-001
 version: 0.1.0
-status: completed
+status: closed
 created: 2025-10-30
 updated: 2025-10-30
 author: "@goos"

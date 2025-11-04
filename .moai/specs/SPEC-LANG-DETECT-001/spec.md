@@ -1,7 +1,7 @@
 ---
 id: LANG-DETECT-001
 version: 0.1.0
-status: completed
+status: closed
 created: 2025-10-19
 updated: 2025-10-19
 author: @Alfred

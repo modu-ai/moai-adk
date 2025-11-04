@@ -6,7 +6,7 @@
 ---
 id: UPDATE-REFACTOR-001
 version: 0.2.0
-status: completed
+status: closed
 created: 2025-10-02
 updated: 2025-10-06
 completed: 2025-10-06
@@ -1146,7 +1146,7 @@ rg "@TEST:UPDATE-REFACTOR-001" -n
 # 체인 무결성 검증
 rg "@(SPEC|CODE|TEST):UPDATE-REFACTOR-001" -n
 ```
-
+status: closed
 ---
 
 **END OF SPEC**
