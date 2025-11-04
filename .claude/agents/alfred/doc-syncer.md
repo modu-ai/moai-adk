@@ -147,11 +147,16 @@ doc-syncer verifies the integrity of the primary chain with the rg command:
 - Check README example code executable
 - Check missing items in CHANGELOG
 
-**3. Generate sync report**
-- Create `.moai/reports/sync-report.md`
-- Summary of changes
-- TAG traceability statistics
-- Suggest next steps
+**3. Generate sync report** (controlled by config)
+- **Check report_generation.enabled in .moai/config.json**:
+  - If `enabled: false` → Skip report generation (0 tokens saved)
+  - If `enabled: true` and `auto_create: true` → Full report (50-60 tokens)
+  - If `enabled: true` and `auto_create: false` → Essential only (20-30 tokens)
+- When report generation is enabled, create `.moai/reports/sync-report-{date}.md`:
+  - Summary of changes
+  - TAG traceability statistics
+  - Suggest next steps
+- If `enabled: false`, display: "✅ Report generation disabled (saved ~50-60 tokens)"
 
 ## @TAG System Synchronization
 
