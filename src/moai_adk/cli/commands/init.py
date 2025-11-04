@@ -134,6 +134,10 @@ def init(
             )
             project_name = project_path.name if is_current_dir else path
             locale = locale or "en"
+            # Language detection happens in /alfred:0-project, so default to None here
+            # This will become "generic" internally, but Summary will show more helpful message
+            if not language:
+                language = None
         else:
             # Interactive Mode
             print_welcome_message()
@@ -244,7 +248,13 @@ def init(
             console.print(separator)
             console.print("\n[cyan]📊 Summary:[/cyan]")
             console.print(f"  [dim]📁 Location:[/dim]  {result.project_path}")
-            console.print(f"  [dim]🌐 Language:[/dim]  {result.language}")
+            # Show language more clearly - "generic" means auto-detect
+            language_display = (
+                "Auto-detect (use /alfred:0-project)"
+                if result.language == "generic"
+                else result.language
+            )
+            console.print(f"  [dim]🌐 Language:[/dim]  {language_display}")
             console.print(f"  [dim]🔧 Mode:[/dim]      {result.mode}")
             console.print(
                 f"  [dim]🌍 Locale:[/dim]    {result.locale}"
