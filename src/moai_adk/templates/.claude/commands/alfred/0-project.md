@@ -1047,7 +1047,7 @@ After project initialization, update .moai/config.json with announcements (base 
 
 **Translation Logic**:
 
-The `announcements.items` array in the base config (English) is **translated at runtime** to `{{CONVERSATION_LANGUAGE}}`:
+The `announcements.items` array in the base config (English) is **translated at runtime by Alfred** to `{{CONVERSATION_LANGUAGE}}`:
 
 ```
 English base announcements (single source of truth)
