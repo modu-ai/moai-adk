@@ -1042,7 +1042,7 @@ This command supports **4 operational modes**:
       - `subagent_type`: "Explore"
       - `prompt`:
         ```
-        You are frontend-expert providing sync documentation.
+        Act as frontend-expert. Provide sync documentation.
 
         Changed Files: [list frontend files from $CHANGED_FILES]
 
@@ -1062,7 +1062,7 @@ This command supports **4 operational modes**:
       - `subagent_type`: "Explore"
       - `prompt`:
         ```
-        You are backend-expert providing sync documentation.
+        Act as backend-expert. Provide sync documentation.
 
         Changed Files: [list backend files from $CHANGED_FILES]
 
@@ -1082,7 +1082,7 @@ This command supports **4 operational modes**:
       - `subagent_type`: "Explore"
       - `prompt`:
         ```
-        You are devops-expert providing sync documentation.
+        Act as devops-expert. Provide sync documentation.
 
         Changed Files: [list devops files from $CHANGED_FILES]
 
@@ -1102,7 +1102,7 @@ This command supports **4 operational modes**:
       - `subagent_type`: "Explore"
       - `prompt`:
         ```
-        You are database-expert providing sync documentation.
+        Act as database-expert. Provide sync documentation.
 
         Changed Files: [list database files from $CHANGED_FILES]
 
@@ -1122,7 +1122,7 @@ This command supports **4 operational modes**:
       - `subagent_type`: "Explore"
       - `prompt`:
         ```
-        You are datascience-expert providing sync documentation.
+        Act as datascience-expert. Provide sync documentation.
 
         Changed Files: [list data science files from $CHANGED_FILES]
 
@@ -1142,7 +1142,7 @@ This command supports **4 operational modes**:
       - `subagent_type`: "Explore"
       - `prompt`:
         ```
-        You are mobile-expert providing sync documentation.
+        Act as mobile-expert. Provide sync documentation.
 
         Changed Files: [list mobile files from $CHANGED_FILES]
 
