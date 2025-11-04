@@ -134,9 +134,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **Deprecations**: None
 **Migration Path**: Automatic - no action needed
 
+### 💻 Installation
+
+**Using uv tool** (recommended for CLI usage):
+```bash
+uv tool install moai-adk==0.16.0
+moai-adk --version
+```
+
+**Using pip** (if you need Python library):
+```bash
+pip install moai-adk==0.16.0
+```
+
+**Using uv pip** (faster Python library installation):
+```bash
+uv pip install moai-adk==0.16.0
+```
+
 ### 🔗 Related Links
 
-- Full Release Notes: Generated in GitHub Release
+- Full Release Notes: [GitHub Release v0.16.0](https://github.com/modu-ai/moai-adk/releases/tag/v0.16.0)
 - Feature Documentation: `.moai/docs/runtime-translation-flow.md`
 - Architecture Guide: `.moai/docs/clone-pattern.md`
 - Implementation Summary: `.moai/reports/implementation-summary-2024-11.md`
