@@ -675,7 +675,7 @@ MCP servers are automatically configured following Microsoft MCP standard in `.c
       "command": "npx",
       "args": [
         "-y",
-        "figma-developer-mcp"
+        "ai-figma-mcp"
       ],
       "env": {
         "FIGMA_ACCESS_TOKEN": "${FIGMA_ACCESS_TOKEN}"
