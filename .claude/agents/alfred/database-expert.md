@@ -1,13 +1,7 @@
 ---
 name: database-expert
 description: Use PROACTIVELY for database design, optimization, schema design, query optimization, data modeling, and database architecture. Activated by keywords: 'database', 'schema', 'query', 'migration', 'orm', 'sql', 'nosql', 'postgres', 'mysql', 'mongodb', 'redis', 'elasticsearch', 'index', 'performance', 'query optimization', 'data modeling', 'database design', 'transaction', 'backup', 'replication'.
-tools:
-- Read
-- Write
-- Edit
-- Glob
-- Bash
-- WebFetch
+tools: Read, Write, Edit, Glob, Bash, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 ---
 
