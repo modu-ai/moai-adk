@@ -1,6 +1,6 @@
 # MoAI-ADK (Agentic Development Kit)
 
-[한국어](README.ko.md) | [English](README.md)
+[한국어](README.ko.md) | [English](README.md) | [온라인 문서](https://adk.mo.ai.kr)
 
 [![PyPI version](https://img.shields.io/pypi/v/moai-adk)](https://pypi.org/project/moai-adk/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -9,6 +9,8 @@
 [![Coverage](https://img.shields.io/badge/coverage-97.7%25-brightgreen)](https://github.com/modu-ai/moai-adk)
 
 > **MoAI-ADK는 AI와 함께 명세(SPEC) → 테스트(TDD) → 코드 → 문서를 자연스럽게 잇는 개발 워크플로우를 제공합니다.**
+
+> **📚 자세한 문서는 [온라인 문서](https://adk.mo.ai.kr)에서 확인하세요.**
 
 ---
 
@@ -2672,35 +2674,43 @@ MoAI-ADK 내부 워크플로우 오케스트레이션 스킬
 
 #### Language Tier
 
-프로그래밍 언어별 최고 관행
+프로그래밍 언어별 최고 관행 및 Context7 MCP 통합
 
-**🏆 최고 수준 특화 언어 스킬 (5개)**:
+**🏆 Premium Edition 언어 스킬 (v3.0.0) - Context7 MCP 통합 완료**:
 
-| Skill                    | 설명                                                           | 특징 |
-| ------------------------ | -------------------------------------------------------------- | ---- |
-| `moai-lang-python`       | Python 3.13+, FastAPI, pytest, uv, asyncio 전문       | AI/ML, 백엔드 |
-| `moai-lang-typescript`  | TypeScript 5.6+, Next.js, React 19, E2E 타입 안전성     | 프론트엔드, 풀스택 |
-| `moai-lang-go`          | Go 1.25+, 마이크로서비스, 동시성, 클라우드 네이티브       | 백엔드, 시스템 |
-| `moai-lang-rust`        | Rust 1.91+, Actix-web, zero-cost 추상화, 메모리 안전성  | 시스템, 퍼포먼스 |
-| `moai-lang-javascript`  | Node.js 22.x, Express, 레거시 지원, 모던 마이그레이션    | 레거시, Node.js |
+| Skill                    | 설명                                                           | 특징 | 버전 |
+| ------------------------ | -------------------------------------------------------------- | ---- | ---- |
+| `moai-lang-python`       | Python 3.13+, FastAPI, pytest, uv, asyncio 전문       | AI/ML, 백엔드 | v3.0.0 |
+| `moai-lang-typescript`  | TypeScript 5.7+, Next.js, React 19, E2E 타입 안전성     | 프론트엔드, 풀스택 | v3.0.0 |
+| `moai-lang-go`          | Go 1.24+, 마이크로서비스, 동시성, 클라우드 네이티브       | 백엔드, 시스템 | v3.0.0 |
+| `moai-lang-rust`        | Rust 1.84+, Actix-web, zero-cost 추상화, 메모리 안전성  | 시스템, 퍼포먼스 | v3.0.0 |
+| `moai-lang-javascript`  | Node.js 22.x, Express, 레거시 지원, 모던 마이그레이션    | 레거시, Node.js | v3.0.0 |
+| `moai-lang-cpp`         | C++23, 현대 C++, CMake 3.31+, Context7 MCP 통합      | 시스템, 퍼포먼스 | v3.0.0 |
+| `moai-lang-c`           | C23, 엔터프라이즈 개발, Unity 테스트, Context7 MCP 통합 | 시스템, 임베디드 | v3.0.0 |
 
-**📋 템플릿 기반 언어 스킬 (13개)**:
+**📋 템플릿 기반 언어 스킬 (v2.1.0)**:
 
-| Skill                | 설명                                                      | 템플릿 기반 |
-| -------------------- | --------------------------------------------------------- | --------- |
-| `moai-lang-java`      | JUnit 5, Spring Boot, Maven/Gradle 자동 감지        | Java 템플릿 |
-| `moai-lang-kotlin`    | JUnit, Gradle, coroutines, Android 개발              | Kotlin 템플릿 |
-| `moai-lang-swift`     | XCTest, SwiftLint, iOS/macOS 개발 패턴                | Swift 템플릿 |
-| `moai-lang-csharp`    | xUnit, .NET, async/await 패턴                        | C# 템플릿 |
-| `moai-lang-dart`      | Flutter 3.x, Riverpod, Material Design 3             | Dart 템플릿 |
-| `moai-lang-cpp`       | Google Test, clang-format, 현대 C++ (C++17/20)       | C++ 템플릿 |
-| `moai-lang-c`         | Unity test, cppcheck, Make 빌드 시스템                  | C 템플릿 |
-| `moai-lang-ruby`      | RSpec, RuboCop, Rails 8 패턴                             | Ruby 템플릿 |
-| `moai-lang-php`       | PHPUnit, Composer, PSR 표준                            | PHP 템플릿 |
-| `moai-lang-scala`     | ScalaTest, sbt, 함수형 프로그래밍 패턴                   | Scala 템플릿 |
-| `moai-lang-sql`       | 데이터베이스 테스트, 쿼리 최적화, 마이그레이션 관리     | SQL 템플릿 |
-| `moai-lang-shell`     | bats, shellcheck, POSIX 준수                           | Shell 템플릿 |
-| `moai-lang-r`         | testthat, lintr, 데이터 분석 패턴                      | R 템플릿 |
+| Skill                | 설명                                                      | 템플릿 기반 | 버전 |
+| -------------------- | --------------------------------------------------------- | --------- | ---- |
+| `moai-lang-java`      | JUnit 5, Spring Boot, Maven/Gradle 자동 감지        | Java 템플릿 | v2.1.0 |
+| `moai-lang-kotlin`    | JUnit, Gradle, coroutines, Android 개발              | Kotlin 템플릿 | v2.1.0 |
+| `moai-lang-swift`     | XCTest, SwiftLint, iOS/macOS 개발 패턴                | Swift 템플릿 | v2.1.0 |
+| `moai-lang-csharp`    | xUnit, .NET, async/await 패턴                        | C# 템플릿 | v2.1.0 |
+| `moai-lang-dart`      | Flutter 3.x, Riverpod, Material Design 3             | Dart 템플릿 | v2.1.0 |
+| `moai-lang-ruby`      | RSpec, RuboCop, Rails 8 패턴                             | Ruby 템플릿 | v2.0.0 |
+| `moai-lang-php`       | PHPUnit, Composer, PSR 표준                            | PHP 템플릿 | v2.0.0 |
+| `moai-lang-scala`     | ScalaTest, sbt, 함수형 프로그래밍 패턴                   | Scala 템플릿 | v2.0.0 |
+| `moai-lang-sql`       | 데이터베이스 테스트, 쿼리 최적화, 마이그레이션 관리     | SQL 템플릿 | v2.0.0 |
+| `moai-lang-shell`     | bats, shellcheck, POSIX 준수                           | Shell 템플릿 | v2.0.0 |
+| `moai-lang-r`         | testthat, lintr, 데이터 분석 패턴                      | R 템플릿 | v2.0.0 |
+
+**🚀 v3.0.0 Premium Edition 주요 혁신**:
+
+1. **Context7 MCP 완전 통합**: 실시간 라이브러리 문서 조회
+2. **최신 언어 기능 지원**: C23, C++23, Python 3.13, TypeScript 5.7 등
+3. **엔터프라이즈급 패턴**: 프로덕션 레디 코드 예제와 아키텍처
+4. **메모리 안전성**: Rust所有权시스템, C bounds checking
+5. **비동기 프로그래밍**: Python TaskGroup, C++20 coroutines, Rust async/await
 
 #### Claude Code Ops
 
@@ -3289,6 +3299,10 @@ Alfred가 자동으로:
 
 | 버전        | 주요 기능                                                                                                         | 날짜       |
 | ----------- | ----------------------------------------------------------------------------------------------------------------- | ---------- |
+| **v0.18.0** | 🚀 **언어 스킬 Premium Edition v3.0.0** - C/C++/Python/TypeScript/Go/Rust/JavaScript Context7 MCP 통합 완료               | 2025-11-06 |
+|             | 🔧 **C23 & C++23 현대화** - 제네릭 선택, static assertions, 모듈 시스템, 코루틴, 컨셉트 지원                        |            |
+|             | 📚 **실시간 문서 조회** - Context7 MCP로 최신 라이브러리 문서 자동 액세스                                                 |            |
+|             | 🏗️ **엔터프라이즈 아키텍처** - 프로덕션 레디 코드 예제, 메모리 안전성, 스레드 안전성 패턴                              |            |
 | **v0.17.0** | 🌍 **다국어 린트/포맷 아키텍처** (Python, JS, TS, Go, Rust, Java, Ruby, PHP) - 자동 언어 감지 + Non-blocking 오류 | 2025-11-06 |
 |             | 📊 **세션 분석 CLI 명령어** - `moai-adk analyze session`으로 Claude Code 세션 분석 및 개선 제안 생성                          |            |
 |             | 🔄 **패키지 모듈 통합** - `session_analyzer.py`가 `moai_adk.core.analysis` 패키지로 이전, 훅 시스템 개선                   |            |
@@ -3300,6 +3314,71 @@ Alfred가 자동으로:
 | **v0.6.3**  | ⚡ 3단계 업데이트 워크플로우: 병렬 작업을 통한 70-80% 성능 개선                                                   | 2025-10-25 |
 
 > 📦 **지금 설치**: `uv tool install moai-adk` 또는 `pip install moai-adk`
+
+### 🎯 v0.18.0 주요 기능
+
+#### 1️⃣ 언어 스킬 Premium Edition v3.0.0 완료
+
+**7개 핵심 언어 스킬의 Premium Edition 업그레이드 완료**:
+
+- **C**: C23 현대화, 엔터프라이즈 패턴, Context7 MCP 통합
+- **C++**: C++23 최신 기능, 모듈 시스템, 컨셉트, 코루틴
+- **Python**: 3.13+ 최신 기능, TaskGroup, Context7 MCP
+- **TypeScript**: 5.7+, 엄격한 타입, 최신 프레임워크 지원
+- **Go**: 1.24+, 동시성 패턴, 클라우드 네이티브
+- **Rust**: 1.84+, zero-cost 추상화, 메모리 안전성
+- **JavaScript**: Node.js 22.x, 모던 마이그레이션
+
+#### 2️⃣ Context7 MCP 완전 통합
+
+**실시간 라이브러리 문서 조회 시스템**:
+
+```python
+# Context7 MCP를 통한 자동 문서 조회
+from context7 import get_library_docs
+
+# 최신 C++ 표준 라이브러리 문서 즉시 액세스
+cpp_docs = get_library_docs("/cpp/reference")
+
+# Python asyncio 최신 문서 확인
+asyncio_docs = get_library_docs("/python/asyncio")
+```
+
+**주요 이점**:
+- ✅ **실시간 문서**: 항상 최신 버전의 라이브러리 문서 자동 액세스
+- ✅ **코드 예제**: 프로덕션 레디 코드 예제와 최고 관행 제공
+- ✅ **버전 호환성**: 다양한 버전의 API 문서 지원
+- ✅ **지능형 검색**: 관련 문서와 예제 자동 추천
+
+#### 3️⃣ 현대 언어 기능 완전 지원
+
+**C23 & C++23 현대화**:
+
+```c
+// C23 제네릭 선택과 static assertions
+#define MAX(a, b) _Generic((a), \
+    int: ((a) > (b) ? (a) : (b)), \
+    float: ((a) > (b) ? (a) : (b)), \
+    default: ((a) > (b) ? (a) : (b))
+)
+
+static_assert(sizeof(int) >= 4, "int must be at least 4 bytes");
+```
+
+```cpp
+// C++23 모듈 시스템
+export module math_utils;
+
+export auto add(auto a, auto b) {
+    return a + b;
+}
+```
+
+**엔터프라이즈급 아키텍처 패턴**:
+- 메모리 안전성 및 bounds checking
+- 스레드 안전성과 동시성 패턴
+- 에러 핸들링과 리소스 관리
+- 성능 최적화와 SIMD 명령어
 
 ### 🎯 v0.17.0 주요 기능
 
@@ -3393,6 +3472,7 @@ go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest  # Go
 
 | 목적                      | 리소스                                                                    |
 | ------------------------- | ----------------------------------------------------------------------- |
+| 🌐 **온라인 문서**        | [https://adk.mo.ai.kr](https://adk.mo.ai.kr) (전체 문서)                   |
 | 📚 다국어 린팅 가이드     | `.claude/hooks/alfred/core/MULTILINGUAL_LINTING_GUIDE.md` (완전한 API)   |
 | 📖 다국어 설치 가이드     | `.claude/hooks/alfred/core/INSTALLATION_GUIDE.md` (각 언어별 설치)        |
 | 🧪 테스트 보고서          | `.moai/reports/MULTILINGUAL_LINTING_TEST_REPORT.md` (103/103 테스트 통과) |
@@ -3409,6 +3489,7 @@ go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest  # Go
 
 | 채널                     | 링크                                           |
 | ------------------------ | ---------------------------------------------- |
+| **🌐 온라인 문서**       | [https://adk.mo.ai.kr](https://adk.mo.ai.kr)    |
 | **GitHub Repository**    | https://github.com/modu-ai/moai-adk            |
 | **Issues & Discussions** | https://github.com/modu-ai/moai-adk/issues     |
 | **PyPI Package**         | https://pypi.org/project/moai-adk/             |
@@ -3438,6 +3519,8 @@ Alfred와 함께 **신뢰할 수 있는 AI 개발**의 새로운 경험을 시�
 - 📦 PyPI: https://pypi.org/project/moai-adk/
 - 🏠 GitHub: https://github.com/modu-ai/moai-adk
 - 📝 License: MIT
-- ⭐ Skills: 73+ Production-Ready Guides (다국어 린팅 등)
+- 🚀 Skills: 73+ Production-Ready Guides (v3.0.0 Premium Edition 언어 스킬 포함)
 - ✅ Tests: 570+ Passing (89%+ coverage - v0.17.0 103개 테스트 추가)
 - 🏷️ TAG Guard: Automatic @TAG validation in PreToolUse Hook
+- 📚 Context7 MCP: Real-time library documentation access
+- 🔧 Premium Edition: C23, C++23, Python 3.13+, TypeScript 5.7+ 지원
