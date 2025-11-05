@@ -1,318 +1,298 @@
-# @SPEC:DOCS-001: VitePress 문서 사이트 구축 - 구현 계획
+---
+id: DOCS-001
+version: 1.0.0
+status: draft
+created: 2025-01-06
+updated: 2025-01-06
+author: @Goos
+priority: high
+category: documentation
+phase: planning
+related_specs:
+  - SPEC-INSTALL-001
+  - SPEC-INIT-001
+  - SPEC-CONFIG-001
+traceability:
+  spec: "@SPEC:DOCS-001"
+  test: "@TEST:DOCS-001"
+  code: "@CODE:DOCS-001"
+---
 
-## 우선순위 기반 구현 계획
+# `@PLAN:DOCS-001: MoAI-ADK 문서 개선 실행 계획`
 
-이 문서는 SPEC-DOCS-001의 구현 계획을 우선순위 기반으로 정의합니다.
+## 요약 (Summary)
+
+README.ko.md(3295줄)를 주제별로 분할하고, 실제 코드 기반 예제와 Mermaid 다이어그램으로 문서를 개선하는 프로젝트입니다.
+
+## 목표 (Objectives)
+
+1. **문서 모듈화**: 거대한 README.ko.md를 관리 가능한 크기로 분할
+2. **실제 코드 기반**: 모든 예제를 실제 `src/moai_adk/` 코드와 연동
+3. **시각화 강화**: Mermaid 다이어그램으로 이해도 향상
+4. **다국어 지원**: 한국어 → 영어 → 일본어 → 중국어 순차 확장
+
+## 실행 단계 (Implementation Phases)
+
+### Phase 1: README.ko.md 분할 (우선순위: 높음)
+
+#### 1.1 분할 준비
+- [ ] **분할 섹션 식별**
+  - 빠른 시작 (라인 66-197)
+  - 핵심 개념 (라인 1423-1606)
+  - 워크플로우 (라인 99-131, 881-1104)
+  - 예제 및 튜토리얼 (라인 1610-2296)
+  - 자주 묻는 질문 (라인 3008-3019)
+  - 문제 해결 (라인 2551-2874)
+
+- [ ] **분할 스크립트 개발** (`scripts/split_readme.py`)
+  ```python
+  # README.ko.md를 섹션별로 분리하는 스크립트
+  # 각 섹션을 별도 .md 파일로 저장
+  # 링크 업데이트 및 내용 검증
+  ```
+
+- [ ] **Nextra 설정 업데이트**
+  ```javascript
+  // theme.config.cjs에 새 페이지 경로 추가
+  // 사이드바 메뉴 구조 정의
+  // 검색 인덱스 최적화
+  ```
+
+#### 1.2 문서 파일 생성
+- [ ] `docs/getting-started/`
+  - `installation.md` - 설치 가이드
+  - `quick-start.md` - 3분 초고속 시작
+  - `first-project.md` - 첫 프로젝트 생성
+  - `verification.md` - 설치 확인
+
+- [ ] `docs/concepts/`
+  - `spec-first.md` - SPEC-First 개념
+  - `tdd.md` - TDD 개념
+  - `tag-system.md` - @TAG 시스템
+  - `trust-principles.md` - TRUST 5원칙
+  - `alfred-superagent.md` - Alfred 슈퍼에이전트
+  - `workflow.md` - 4단계 워크플로우
+
+- [ ] `docs/guides/`
+  - `0-project.md` - 프로젝트 초기화 가이드
+  - `1-plan.md` - SPEC 작성 가이드
+  - `2-run.md` - TDD 구현 가이드
+  - `3-sync.md` - 동기화 가이드
+  - `best-practices.md` - 모범 사례
+
+#### 1.3 원본 업데이트
+- [ ] README.ko.md를 간결한 소개로 재구성
+- [ ] 분할된 문서로의 링크 추가
+- [ ] 배지 및 빠른 링크 유지
+
+### Phase 2: 실제 코드 기반 예제 (우선순위: 높음)
+
+#### 2.1 코드 예제 분석
+- [ ] `src/moai_adk/` 구조 분석
+  ```
+  src/moai_adk/
+  ├── cli/commands/      # CLI 명령어 구현
+  ├── core/              # 핵심 기능
+  ├── utils/             # 유틸리티 함수
+  └── __init__.py        # 패키지 초기화
+  ```
+
+- [ ] 문서화할 코드 후보 선정
+  - `init.py`: 프로젝트 초기화
+  - `update.py`: 업데이트 기능
+  - `template_engine.py`: 템플릿 처리
+  - `logger.py`: 로깅 설정
+
+#### 2.2 예제 문서 작성
+- [ ] 실제 코드 기반 예제 생성
+  ```python
+  # 실제 코드에서 발췌
+  from moai_adk.cli.commands.init import init_command
+
+  # 사용 예제
+  init_command("hello-world")
+  ```
+
+- [ ] 각 예제에 실행 방법 추가
+  ```bash
+  # 실행 명령어
+  python -m moai_adk init hello-world
+
+  # 검증 방법
+  ls -la hello-world/.moai/
+  ```
+
+- [ ] `@CODE:` 태그로 실제 파일 연결
+  ```markdown
+  <!-- 코드 예제 -->
+  `@CODE:DOCS-001:INIT-EXAMPLE | SPEC: SPEC-DOCS-001`
+  ```
+
+### Phase 3: Mermaid 다이어그램 (우선순위: 중간)
+
+#### 3.1 다이어그램 설계
+- [ ] 4단계 워크플로우 다이어그램
+  ```mermaid
+  graph TD
+      Start([사용자 요청]) --> Project[0.Project Init]
+      Project --> Plan[1.Plan & SPEC]
+      Plan --> Run[2.Run & TDD]
+      Run --> Sync[3.Sync & Docs]
+      Sync --> Plan
+      Sync -.-> End([릴리스])
+  ```
+
+- [ ] 에이전트 아키텍처 다이어그램
+  ```mermaid
+  graph BT
+      Alfred[Alfred SuperAgent]
+      Alfred --> SpecBuilder[spec-builder]
+      Alfred --> CodeBuilder[code-builder]
+      Alfred --> TestEngineer[test-engineer]
+      Alfred --> DocSyncer[doc-syncer]
+      Alfred --> GitManager[git-manager]
+  ```
+
+- [ ] TAG 체인 시스템 다이어그램
+  ```mermaid
+  graph LR
+      SPEC[@SPEC:ID] --> TEST[@TEST:ID]
+      TEST --> CODE[@CODE:ID]
+      CODE --> DOC[@DOC:ID]
+  ```
+
+#### 3.2 다이어그램 구현
+- [ ] Nextra Mermaid 플러그인 설정
+- [ ] 각 다이어그램을 관련 문서에 삽입
+- [ ] 대체 텍스트 및 설명 추가
+
+### Phase 4: 표 형식 정리 (우선순위: 중간)
+
+#### 4.1 명령어 요약표
+| 명령 | 기능 | 산출물 | 시간 |
+|------|------|--------|------|
+| `/alfred:0-project` | 프로젝트 초기화 | 설정 파일, 문서 | 30초 |
+| `/alfred:1-plan` | SPEC 작성 | `.moai/specs/` | 2-3분 |
+| `/alfred:2-run` | TDD 구현 | 테스트, 코드 | 5-10분 |
+| `/alfred:3-sync` | 동기화 | 문서 업데이트 | 1-2분 |
+
+#### 4.2 에이전트 목록표
+| 에이전트 | 역할 | 모델 | 전문 분야 |
+|----------|------|------|----------|
+| spec-builder | 명세 작성 | Sonnet | EARS, 요구사항 |
+| code-builder | TDD 구현 | Sonnet | Python, 테스트 |
+| test-engineer | 테스트 전략 | Sonnet | pytest, 커버리지 |
+| doc-syncer | 문서 동기화 | Haiku | Markdown, Nextra |
+
+#### 4.3 버전 히스토리표
+| 버전 | 주요 기능 | 날짜 |
+|------|----------|------|
+| v0.18.0 | 언어 스킬 v3.0.0 | 2025-11-06 |
+| v0.17.0 | 세션 분석 CLI | 2025-11-06 |
+| v0.16.x | Alfred 명령어 완성 | 2025-11-03 |
+
+### Phase 5: 다국어 지원 (우선순위: 낮음)
+
+#### 5.1 구조 준비
+- [ ] 다국어 디렉토리 구조
+  ```
+  docs/
+  ├── ko/    # 한국어 (기본)
+  ├── en/    # 영어
+  ├── ja/    # 일본어
+  └── zh/    # 중국어
+  ```
+
+- [ ] Nextra 국제화(i18n) 설정
+- [ ] 번역 템플릿 생성
+
+#### 5.2 번역 실행
+- [ ] 1단계: 한국어 문서 완성 검증
+- [ ] 2단계: 영어 번역
+  - 전문 번역가 또는 AI 번역
+  - 기술 용어 일관성 검증
+  - 코드 예제 영문화
+
+- [ ] 3단계: 일본어 번역
+- [ ] 4단계: 중국어 번역
+
+## 실행 계획 (Timeline)
+
+| 주차 | 작업 | 산출물 |
+|------|------|--------|
+| 1주차 | Phase 1: README 분할 | 분할된 문서 파일 |
+| 2주차 | Phase 2: 코드 예제 | 실제 코드 기반 예제 |
+| 3주차 | Phase 3: 다이어그램 | Mermaid 다이어그램 |
+| 4주차 | Phase 4: 표 정리 | 구조화된 표 |
+| 5-6주차 | Phase 5: 다국어 | 영어 번역 완료 |
+| 7-8주차 | 검증 및 수정 | 최종 문서 |
+
+## 위험 요소 및 대응 (Risks & Mitigations)
+
+### 위험 1: 내용 누락
+- **위험**: README 분할 시 중요 내용 누락
+- **대응**: 자동화된 검증 스크립트 개발
+- **조치**: 원본과 분할 후 내용 비교 검증
+
+### 위험 2: 코드 예제 부정확
+- **위험**: 실제 코드와 문서 불일치
+- **대응**: 자동화된 예제 실행 테스트
+- **조치**: CI/CD 파이프라인에 테스트 추가
+
+### 위험 3: 번역 품질
+- **위험**: 기술 용어 번역 부정확
+- **대응**: 전문 번역가 검수
+- **조치**: 용어 사전 및 가이드라인 제공
+
+## 필요한 리소스 (Required Resources)
+
+### 인적 리소스
+- 기술 작가 1명 (문서 작성)
+- 개발자 1명 (코드 예제 검증)
+- 번역가 1명 (다국어 지원)
+
+### 기술 리소스
+- Python 3.13+ 환경
+- Nextra 문서 사이트
+- Mermaid.js 지원
+- 자동화된 검증 스크립트
+
+### 외부 서비스
+- GitHub (코드 호스팅)
+- GitHub Actions (CI/CD)
+- Crowdin/Lokalise (번역 관리, 선택사항)
+
+## 성공 측정 (Success Metrics)
+
+### 정량적 지표
+- 문서 분할률: 3295줄 → 0줄 (README)
+- 새 문서 수: 20+개 파일
+- 코드 예제 수: 15+개 실제 예제
+- 다국어 진행률: 한(100%) → 영(80%)
+
+### 정성적 지표
+- 문서 명확도: 사용자 피드백 4.5/5.0
+- 예제 유용성: 실제 실행 성공률 95%
+- 검색 가능성: 핵심 정보 3클릭 내 접근
+
+## 다음 단계 (Next Steps)
+
+1. **즉시 실행**:
+   - README.ko.md 분할 스크립트 개발
+   - Phase 1 시작 (빠른 시작 가이드 분할)
+
+2. **1주 내**:
+   - Phase 1 완료 및 검증
+   - Phase 2 준비 (코드 예제 분석)
+
+3. **장기 계획**:
+   - 전체 Phase 완료 후 사용자 피드백 수집
+   - 지속적인 개선 및 업데이트
 
 ---
 
-## Phase 1: 핵심 경로 (P0 - 최우선)
-
-**목표**: 사용자가 MoAI-ADK를 처음 접하고 시작하는 데 필요한 최소한의 문서 제공
-
-**범위**: 5개 페이지
-
-### 1.1 홈페이지
-- **파일**: `docs/index.md`
-- **콘텐츠 소스**: README.md 1-85줄 (Alfred 소개, 핵심 가치)
-- **구성**:
-  - Hero 섹션: 타이틀, 서브타이틀, CTA 버튼
-  - Features 섹션: 4가지 핵심 가치 (일관성, 품질, 추적성, 범용성)
-  - Quick Links: Getting Started, Concepts, Examples
-- **우선순위**: P0 - 최우선
-
-### 1.2 Getting Started
-- **파일**: `docs/guide/getting-started.md`
-- **콘텐츠 소스**: README.md 87-156줄 (Quick Start)
-- **구성**:
-  - 준비물 (Bun, Claude Code, Git)
-  - 3단계 설치 및 초기화
-  - 첫 기능 개발 예제 (3단계 워크플로우)
-- **우선순위**: P0
-
-### 1.3 What is MoAI-ADK
-- **파일**: `docs/guide/what-is-moai-adk.md`
-- **콘텐츠 소스**: README.md 183-267줄 (The Problem, The Solution)
-- **구성**:
-  - 바이브 코딩의 한계 (5가지 문제)
-  - MoAI-ADK의 3단계 워크플로우
-  - Alfred SuperAgent 역할
-- **우선순위**: P0
-
-### 1.4 SPEC-First TDD
-- **파일**: `docs/concepts/spec-first-tdd.md`
-- **콘텐츠 소스**: development-guide.md 9-23줄 + README.md 관련 부분
-- **구성**:
-  - SPEC 우선 TDD 워크플로우
-  - 3단계 개발 루프 (SPEC → TDD → Sync)
-  - EARS 요구사항 작성법
-- **우선순위**: P0
-
-### 1.5 FAQ
-- **파일**: `docs/guide/faq.md`
-- **콘텐츠 소스**: README.md FAQ 섹션 (신규 작성 필요)
-- **구성**:
-  - 자주 묻는 질문 10개
-  - Q: MoAI-ADK는 무료인가요?
-  - Q: 어떤 언어를 지원하나요?
-  - Q: Team 모드와 Personal 모드 차이는?
-  - Q: 기존 프로젝트에 적용 가능한가요?
-- **우선순위**: P0
-
-**Phase 1 완료 기준**:
-- 5개 페이지 작성 완료
-- VitePress 빌드 성공
-- 로컬 개발 서버 정상 동작 (localhost:5173)
-
----
-
-## Phase 2: 학습 경로 (P1 - 높음)
-
-**목표**: 사용자가 MoAI-ADK의 핵심 개념과 사용법을 이해하도록 지원
-
-**범위**: 11개 페이지 (누적 16개)
-
-### 2.1 핵심 개념 (5개 페이지)
-- `docs/concepts/alfred-superagent.md` - Alfred의 역할과 10개 에이전트 생태계
-- `docs/concepts/trust-principles.md` - TRUST 5원칙 (Test, Readable, Unified, Secured, Trackable)
-- `docs/concepts/tag-system.md` - @TAG 시스템과 추적성
-- `docs/concepts/ears-syntax.md` - EARS 요구사항 작성 방법론
-- `docs/concepts/gitflow-integration.md` - GitFlow 워크플로우와 자동화
-
-**콘텐츠 소스**:
-- development-guide.md 핵심 개념 섹션
-- README.md Alfred 소개 및 TRUST 원칙
-
-### 2.2 설치 가이드 (6개 페이지)
-- `docs/installation/prerequisites.md` - 사전 준비사항 (Bun, Git, Claude Code)
-- `docs/installation/init-new-project.md` - 새 프로젝트 초기화
-- `docs/installation/init-existing-project.md` - 기존 프로젝트 통합
-- `docs/installation/init-options.md` - `moai init` 옵션 설명 (SPEC-INSTALL-001 참조)
-- `docs/installation/non-interactive.md` - 비대화형 초기화 (SPEC-INIT-001 참조)
-- `docs/installation/windows-wsl.md` - Windows/WSL 환경 설정 (SPEC-INIT-002 참조)
-
-**콘텐츠 소스**:
-- README.md Quick Start
-- SPEC-INSTALL-001, SPEC-INIT-001, SPEC-INIT-002
-
-**Phase 2 완료 기준**:
-- 11개 페이지 추가 작성 (누적 16개)
-- Sidebar 구성 완료 (guide, concepts, installation)
-- 내부 링크 유효성 검증
-
----
-
-## Phase 3: 실전 활용 (P1 - 높음)
-
-**목표**: 사용자가 실제 프로젝트에서 MoAI-ADK를 활용하도록 실전 가이드 제공
-
-**범위**: 29개 페이지 (누적 45개)
-
-### 3.1 CLI 레퍼런스 (10개 페이지)
-- `docs/cli-reference/init.md` - 프로젝트 초기화
-- `docs/cli-reference/doctor.md` - 시스템 진단
-- `docs/cli-reference/status.md` - 프로젝트 상태 확인
-- `docs/cli-reference/update.md` - 도구 업데이트
-- `docs/cli-reference/restore.md` - 프로젝트 복원
-- `docs/cli-reference/help.md` - 도움말 표시
-- `docs/cli-reference/version.md` - 버전 확인
-- `docs/cli-reference/alfred-1-spec.md` - /alfred:1-plan 명령어
-- `docs/cli-reference/alfred-2-build.md` - /alfred:2-run 명령어
-- `docs/cli-reference/alfred-3-sync.md` - /alfred:3-sync 명령어
-
-**콘텐츠 소스**:
-- development-guide.md CLI 명령어 섹션
-- README.md CLI Reference
-- 기존 CLI 도움말 출력
-
-### 3.2 언어별 가이드 (10개 페이지)
-- `docs/language-guides/typescript.md` - TypeScript 프로젝트
-- `docs/language-guides/python.md` - Python 프로젝트
-- `docs/language-guides/java.md` - Java 프로젝트
-- `docs/language-guides/go.md` - Go 프로젝트
-- `docs/language-guides/rust.md` - Rust 프로젝트
-- `docs/language-guides/dart-flutter.md` - Dart/Flutter 모바일
-- `docs/language-guides/swift-ios.md` - Swift/iOS
-- `docs/language-guides/kotlin-android.md` - Kotlin/Android
-- `docs/language-guides/react-native.md` - React Native
-- `docs/language-guides/csharp.md` - C#/.NET
-
-**콘텐츠 소스**:
-- development-guide.md 언어별 규칙
-- 신규 작성 (언어별 도구 체인, 예제 코드)
-
-### 3.3 실전 예제 (4개 페이지)
-- `docs/examples/jwt-auth.md` - JWT 인증 구현 예제
-- `docs/examples/rest-api.md` - REST API 서버 예제
-- `docs/examples/cli-tool.md` - CLI 도구 개발 예제
-- `docs/examples/mobile-app.md` - 모바일 앱 예제 (Flutter)
-
-**콘텐츠 소스**:
-- 기존 SPEC 문서 (AUTH-001 등)
-- 실제 구현 코드에서 추출
-
-### 3.4 레퍼런스 (5개 페이지)
-- `docs/reference/CONFIG-SCHEMA.md` - .moai/config.json 스키마 (SPEC-CONFIG-001 참조)
-- `docs/reference/spec-template.md` - SPEC 템플릿
-- `docs/reference/tag-reference.md` - @TAG 레퍼런스
-- `docs/reference/trust-checklist.md` - TRUST 체크리스트
-- `docs/reference/agent-api.md` - 에이전트 API (온디맨드 호출)
-
-**콘텐츠 소스**:
-- development-guide.md 레퍼런스 섹션
-- SPEC-CONFIG-001
-
-**Phase 3 완료 기준**:
-- 29개 페이지 추가 작성 (누적 45개)
-- 모든 CLI 명령어 문서화
-- 언어별 가이드 10개 완료
-- 실전 예제 4개 완료
-
----
-
-## Phase 4: 심화 및 기여 (P2 - 중간)
-
-**목표**: 고급 사용자와 기여자를 위한 심화 주제 제공
-
-**범위**: 13개 페이지 (누적 58개, 여유분 5개 포함)
-
-### 4.1 문제 해결 (4개 페이지)
-- `docs/troubleshooting/installation-errors.md` - 설치 오류 해결
-- `docs/troubleshooting/build-errors.md` - 빌드 에러 해결
-- `docs/troubleshooting/git-issues.md` - Git 관련 문제
-- `docs/troubleshooting/common-errors.md` - 자주 발생하는 에러
-
-**콘텐츠 소스**:
-- README.md 문제 해결 섹션
-- GitHub Issues 자주 묻는 질문
-
-### 4.2 고급 주제 (4개 페이지)
-- `docs/advanced/context-engineering.md` - 컨텍스트 엔지니어링
-- `docs/advanced/custom-agents.md` - 커스텀 에이전트 작성
-- `docs/advanced/multi-repo.md` - 멀티 리포지토리 관리
-- `docs/advanced/ci-cd-integration.md` - CI/CD 통합
-
-**콘텐츠 소스**:
-- development-guide.md Context Engineering 섹션
-- 신규 작성 (고급 활용법)
-
-### 4.3 기여하기 (5개 페이지)
-- `docs/contributing/index.md` - 기여 가이드 개요
-- `docs/contributing/code-contribution.md` - 코드 기여 방법
-- `docs/contributing/documentation.md` - 문서 기여 방법
-- `docs/contributing/bug-report.md` - 버그 리포트 작성
-- `docs/contributing/feature-request.md` - 기능 요청 작성
-
-**콘텐츠 소스**:
-- CONTRIBUTING.md (신규 작성 예정)
-- GitHub 기여 가이드 템플릿
-
-**Phase 4 완료 기준**:
-- 13개 페이지 추가 작성 (누적 58개)
-- 모든 섹션 완료 (8개 디렉토리)
-- 검색 기능 정상 동작
-- 콘텐츠 소스 비율 검증 (README 30%, dev-guide 60%, 신규 10%)
-
----
-
-## VitePress 설정 및 커스터마이징
-
-### config.ts 설정
-- **파일**: `docs/.vitepress/config.ts`
-- **설정 항목**:
-  - 사이트 메타데이터 (title, description)
-  - Sidebar 구성 (8개 섹션)
-  - Navbar 메뉴
-  - 검색 기능 (local search provider)
-  - Dark Mode (기본 활성화)
-  - 소셜 링크 (GitHub, Discord)
-
-### 테마 커스터마이징
-- **로고**: Alfred 로고 추가 (docs/public/alfred_logo.png)
-- **색상**: MoAI-ADK 브랜딩 컬러 적용
-- **폰트**: Pretendard (한글 최적화)
-
-### 빌드 스크립트
-- `bun run docs:dev` - 개발 서버 (핫 리로드)
-- `bun run docs:build` - 프로덕션 빌드
-- `bun run docs:preview` - 프로덕션 미리보기
-
----
-
-## 콘텐츠 마이그레이션 전략
-
-### README.md 활용 (30%)
-- **총 1097줄 중 330줄 활용**
-- **주요 섹션**:
-  - Alfred 소개 (1-85줄) → index.md, guide/what-is-moai-adk.md
-  - Quick Start (87-156줄) → guide/getting-started.md
-  - The Problem (183-267줄) → guide/what-is-moai-adk.md
-  - CLI Reference → cli-reference/*.md
-  - FAQ → guide/faq.md
-
-### development-guide.md 활용 (60%)
-- **총 391줄 중 235줄 활용**
-- **주요 섹션**:
-  - SPEC 우선 TDD (9-23줄) → concepts/spec-first-tdd.md
-  - EARS 작성법 (25-55줄) → concepts/ears-syntax.md
-  - Context Engineering (58-100줄) → advanced/context-engineering.md
-  - TRUST 원칙 → concepts/trust-principles.md
-  - @TAG 시스템 → concepts/tag-system.md
-
-### 신규 작성 (10%)
-- 언어별 가이드 (10개 페이지)
-- 실전 예제 (4개 페이지)
-- 기여 가이드 (5개 페이지)
-
----
-
-## 품질 보증 계획
-
-### 빌드 검증
-- VitePress 빌드 성공 확인 (`bun run docs:build`)
-- 빌드 에러 0개
-- 경고 최소화
-
-### 링크 검증
-- 모든 내부 링크 유효성 확인
-- 외부 링크 응답 확인 (선택적)
-- 깨진 링크 0개
-
-### 콘텐츠 검증
-- 맞춤법 검사 (한글, 영문)
-- 코드 예제 실행 가능성 확인
-- 스크린샷/이미지 최적화 (WebP 변환)
-
-### 성능 검증
-- 페이지 로딩 시간 < 2초
-- 검색 속도 < 500ms
-- 빌드 시간 < 30초
-
----
-
-## 배포 준비 (Phase 4 완료 후)
-
-### GitHub Pages 배포
-- `.github/workflows/deploy.yml` 작성
-- `gh-pages` 브랜치 자동 배포
-- 커스텀 도메인 설정 (선택적)
-
-### Vercel 배포 (대안)
-- Vercel 프로젝트 연결
-- 자동 빌드 및 배포
-- 프리뷰 환경 제공
-
----
-
-## 다음 단계 안내
-
-SPEC-DOCS-001 작성 완료 후:
-1. `/alfred:2-run DOCS-001` - VitePress 설정 및 Phase 1 페이지 작성
-2. `/alfred:3-sync` - 문서 동기화 및 TAG 체인 검증
-3. 반복 사이클: Phase 2-4 순차 진행
-
----
-
-**작성일**: 2025-10-06
-**버전**: 0.1.0
-**관련 SPEC**: @SPEC:DOCS-001
+## 연락 정보 (Contact)
+
+- **담당자**: @Goos
+- **리뷰어**: Alfred SuperAgent
+- **관련 SPEC**: SPEC-INSTALL-001, SPEC-INIT-001
