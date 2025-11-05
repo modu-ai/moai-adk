@@ -1,6 +1,7 @@
 {
-  "mcpServers": {
+  "servers": {
     "context7": {
+      "type": "stdio",
       "command": "npx",
       "args": [
         "-y",
@@ -9,16 +10,18 @@
       "env": {}
     },
     "figma": {
+      "type": "stdio",
       "command": "npx",
       "args": [
         "-y",
-        "figma-mcp-pro"
+        "@glips/figma-context-mcp"
       ],
       "env": {
         "FIGMA_ACCESS_TOKEN": "${FIGMA_ACCESS_TOKEN}"
       }
     },
     "playwright": {
+      "type": "stdio",
       "command": "npx",
       "args": [
         "-y",
@@ -27,6 +30,7 @@
       "env": {}
     },
     "sequential-thinking": {
+      "type": "stdio",
       "command": "npx",
       "args": [
         "-y",

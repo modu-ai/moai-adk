@@ -656,12 +656,13 @@ If you select Figma MCP, you'll need to configure an access token:
 
 #### MCP Configuration File
 
-MCP servers are automatically configured in `.claude/settings.json`:
+MCP servers are automatically configured following Microsoft MCP standard in `.claude/mcp.json`:
 
 ```json
 {
-  "mcpServers": {
+  "servers": {
     "context7": {
+      "type": "stdio",
       "command": "npx",
       "args": [
         "-y",
@@ -670,16 +671,18 @@ MCP servers are automatically configured in `.claude/settings.json`:
       "env": {}
     },
     "figma": {
+      "type": "stdio",
       "command": "npx",
       "args": [
         "-y",
-        "figma-mcp-pro"
+        "@glips/figma-context-mcp"
       ],
       "env": {
         "FIGMA_ACCESS_TOKEN": "${FIGMA_ACCESS_TOKEN}"
       }
     },
     "playwright": {
+      "type": "stdio",
       "command": "npx",
       "args": [
         "-y",
@@ -688,6 +691,7 @@ MCP servers are automatically configured in `.claude/settings.json`:
       "env": {}
     },
     "sequential-thinking": {
+      "type": "stdio",
       "command": "npx",
       "args": [
         "-y",
@@ -698,6 +702,12 @@ MCP servers are automatically configured in `.claude/settings.json`:
   }
 }
 ```
+
+**Configuration Standards**:
+- **File**: `.claude/mcp.json` (Microsoft MCP standard)
+- **Format**: `servers` object with `type: "stdio"` for each server
+- **Command**: All servers use `npx` with `-y` flag for automatic installation
+- **Backward Compatibility**: Also updates `.claude/settings.json` for legacy support
 
 #### How Agents Use MCP
 
