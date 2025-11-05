@@ -149,7 +149,7 @@ def test_login_with_valid_credentials():
 
 #### 1. Consistency
 
-**✅ Good**:
+**<span class="material-icons">check_circle</span> Good**:
 ```python
 # All related code uses same DOMAIN-ID
 @CODE:AUTH-001:MODEL
@@ -158,7 +158,7 @@ def test_login_with_valid_credentials():
 @CODE:AUTH-001:UTILS
 ```
 
-**❌ Bad**:
+**<span class="material-icons">cancel</span> Bad**:
 ```python
 # Inconsistent DOMAIN-ID usage
 @CODE:AUTH-001:MODEL
@@ -168,7 +168,7 @@ def test_login_with_valid_credentials():
 
 #### 2. Specificity
 
-**✅ Good**:
+**<span class="material-icons">check_circle</span> Good**:
 ```python
 # Specific subtypes for clear organization
 @CODE:AUTH-001:SERVICE
@@ -176,7 +176,7 @@ def test_login_with_valid_credentials():
 @CODE:AUTH-001:VALIDATOR
 ```
 
-**❌ Bad**:
+**<span class="material-icons">cancel</span> Bad**:
 ```python
 # Too generic - doesn't indicate file purpose
 @CODE:AUTH-001
@@ -186,13 +186,13 @@ def test_login_with_valid_credentials():
 
 #### 3. Traceability Links
 
-**✅ Good**:
+**<span class="material-icons">check_circle</span> Good**:
 ```python
 # Include links to related artifacts
 # @CODE:AUTH-001:SERVICE | SPEC: SPEC-AUTH-001.md | TEST: tests/test_auth.py
 ```
 
-**❌ Bad**:
+**<span class="material-icons">cancel</span> Bad**:
 ```python
 # Missing traceability information
 # @CODE:AUTH-001:SERVICE
@@ -265,9 +265,9 @@ Alfred automatically validates TAG chains:
 
 **Output Example**:
 ```
-🔍 TAG Chain Validation Report...
+<span class="material-icons">search</span> TAG Chain Validation Report...
 
-✅ Complete Chain: AUTH-001
+<span class="material-icons">check_circle</span> Complete Chain: AUTH-001
    @SPEC:AUTH-001 → .moai/specs/SPEC-AUTH-001/spec.md
    @TEST:AUTH-001 → tests/test_auth.py (5 test functions)
    @CODE:AUTH-001:MODEL → src/auth/models.py (2 classes)
@@ -275,9 +275,9 @@ Alfred automatically validates TAG chains:
    @CODE:AUTH-001:API → src/auth/api.py (1 endpoint)
    @DOC:AUTH-001 → docs/api/auth.md (complete API docs)
 
-📊 Chain Integrity: 100%
-🔗 Orphaned TAGs: 0
-⚠️  Missing References: 0
+<span class="material-icons">analytics</span> Chain Integrity: 100%
+<span class="material-icons">link</span> Orphaned TAGs: 0
+<span class="material-icons">warning</span>  Missing References: 0
 ```
 
 ### Orphaned TAG Detection
@@ -285,7 +285,7 @@ Alfred automatically validates TAG chains:
 Alfred identifies and helps fix orphaned TAGs:
 
 ```bash
-⚠️ Orphaned TAGs Detected:
+<span class="material-icons">warning</span> Orphaned TAGs Detected:
 
 Orphaned @CODE:AUTH-001:VALIDATOR in src/auth/validators.py
    Missing @TEST:AUTH-001:VALIDATOR
@@ -295,7 +295,7 @@ Orphaned @TEST:AUTH-002 in tests/test_auth_advanced.py
    Missing @SPEC:AUTH-002
    Recommendation: Create specification document
 
-🔧 Auto-fix Options:
+<span class="material-icons">settings</span> Auto-fix Options:
 [1] Create missing test file for @CODE:AUTH-001:VALIDATOR
 [2] Create specification for @TEST:AUTH-002
 [3] Manual review required
@@ -403,10 +403,10 @@ Add to `.gitconfig`:
 
 **Use Standard Format**:
 ```python
-# ✅ Correct format
+# <span class="material-icons">check_circle</span> Correct format
 @CODE:AUTH-001:SERVICE | SPEC: SPEC-AUTH-001.md | TEST: tests/test_auth.py
 
-# ❌ Incorrect formats
+# <span class="material-icons">cancel</span> Incorrect formats
 @code:auth-001:service  # Wrong case
 @CODE:auth-1:SERVICE    # Wrong format
 @CODE:AUTH-001         # Missing subtype
@@ -416,10 +416,10 @@ Add to `.gitconfig`:
 
 **Link All Related Artifacts**:
 ```python
-# ✅ Complete traceability
+# <span class="material-icons">check_circle</span> Complete traceability
 # @CODE:AUTH-001:SERVICE | SPEC: SPEC-AUTH-001.md | TEST: tests/test_auth.py
 
-# ❌ Missing links
+# <span class="material-icons">cancel</span> Missing links
 # @CODE:AUTH-001:SERVICE
 ```
 
@@ -427,7 +427,7 @@ Add to `.gitconfig`:
 
 **Group Related Code**:
 ```python
-# ✅ Logical grouping
+# <span class="material-icons">check_circle</span> Logical grouping
 src/
 ├── auth/
 │   ├── models.py      # @CODE:AUTH-001:MODEL
@@ -435,7 +435,7 @@ src/
 │   ├── api.py         # @CODE:AUTH-001:API
 │   └── utils.py       # @CODE:AUTH-001:UTILS
 
-# ❌ Random organization
+# <span class="material-icons">cancel</span> Random organization
 src/
 ├── models.py         # @CODE:AUTH-001:MODEL
 ├── auth_service.py   # @CODE:AUTH-001:SERVICE
@@ -447,16 +447,16 @@ src/
 
 **Right-sized Components**:
 ```python
-# ✅ Appropriate granularity
+# <span class="material-icons">check_circle</span> Appropriate granularity
 @CODE:AUTH-001:MODEL     # User, Session models
 @CODE:AUTH-001:SERVICE    # AuthService class
 @CODE:AUTH-001:API        # Login endpoint
 
-# ❌ Too granular
+# <span class="material-icons">cancel</span> Too granular
 @CODE:AUTH-001:MODEL:USER     # User model only
 @CODE:AUTH-001:MODEL:SESSION   # Session model only
 
-# ❌ Too broad
+# <span class="material-icons">cancel</span> Too broad
 @CODE:AUTH-001               # Everything in one file
 ```
 
@@ -589,13 +589,13 @@ Automated TAG validation in Git hooks:
 #!/bin/sh
 # .git/hooks/pre-commit
 
-echo "🔍 Validating TAG chains..."
+echo "<span class="material-icons">search</span> Validating TAG chains..."
 
 # Check for missing TAGs
 missing_tags=$(rg -L '@(SPEC|TEST|CODE|DOC):' --files-with-matching src/ tests/ docs/)
 
 if [ -n "$missing_tags" ]; then
-    echo "❌ Files missing TAGs:"
+    echo "<span class="material-icons">cancel</span> Files missing TAGs:"
     echo "$missing_tags"
     exit 1
 fi
@@ -604,12 +604,12 @@ fi
 orphans=$(moai-adk find-orphans)
 
 if [ -n "$orphans" ]; then
-    echo "⚠️ Orphaned TAGs detected:"
+    echo "<span class="material-icons">warning</span> Orphaned TAGs detected:"
     echo "$orphans"
     echo "Consider fixing these before committing."
 fi
 
-echo "✅ TAG validation passed"
+echo "<span class="material-icons">check_circle</span> TAG validation passed"
 ```
 
 ### CI/CD Integration
@@ -733,11 +733,11 @@ if __name__ == '__main__':
         if command == 'validate':
             incomplete = manager.validate_chains()
             if incomplete:
-                print("❌ Incomplete TAG chains:")
+                print("<span class="material-icons">cancel</span> Incomplete TAG chains:")
                 for item in incomplete:
                     print(f"  {item['domain']}: missing {', '.join(item['missing'])}")
             else:
-                print("✅ All TAG chains complete")
+                print("<span class="material-icons">check_circle</span> All TAG chains complete")
 
         elif command == 'list':
             tags = manager.find_all_tags()
@@ -773,13 +773,13 @@ find src/ tests/ docs/ -type f \( -name "*.py" -o -name "*.js" -o -name "*.md" \
 
 **Common Format Errors**:
 ```python
-# ❌ Wrong case
+# <span class="material-icons">cancel</span> Wrong case
 @code:auth-001:service
 
-# ❌ Wrong format
+# <span class="material-icons">cancel</span> Wrong format
 @CODE-AUTH-001-SERVICE
 
-# ❌ Missing parts
+# <span class="material-icons">cancel</span> Missing parts
 @CODE:AUTH-001
 ```
 
@@ -986,4 +986,4 @@ The @TAG system is the backbone of MoAI-ADK's traceability and quality assurance
 - **Quality is assured** - No orphaned code or missing tests
 - **Documentation stays current** - Automatic synchronization prevents drift
 
-Master the @TAG system, and you'll experience a new level of confidence and control in your software development process! 🎯
+Master the @TAG system, and you'll experience a new level of confidence and control in your software development process! <span class="material-icons">target</span>

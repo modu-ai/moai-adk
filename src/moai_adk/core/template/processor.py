@@ -311,7 +311,7 @@ class TemplateProcessor:
     def _copy_claude(self, silent: bool = False) -> None:
         """.claude/ directory copy with variable substitution (selective with alfred folder overwrite).
 
-        @CODE:INIT-004:ALFRED-001 | Copy all 4 Alfred command files from templates
+        @CODE:INIT-TEMPLATE-001:ALFRED-001 | Copy all 4 Alfred command files from templates
         @REQ:COMMAND-GENERATION-001 | SPEC-INIT-004: Automatic generation of Alfred command files
         @SPEC:TEMPLATE-PROCESSING-001 | Template processor integration for Alfred command files
 

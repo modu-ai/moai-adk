@@ -355,29 +355,29 @@ EARS（Easy Approach to Requirements Syntax）是一种结构化的需求描述�
 
 #### 清晰简洁
 ```yaml
-# ✅ 好的表达
+# <span class="material-icons">check_circle</span> 好的表达
 - 当用户提供有效邮箱和密码时，系统必须发放访问令牌
 
-# ❌ 避免的表达
+# <span class="material-icons">cancel</span> 避免的表达
 - 当用户输入正确的邮箱和密码后，系统要给用户一个令牌用来访问系统
 ```
 
 #### 具体明确
 ```yaml
-# ✅ 好的表达
+# <span class="material-icons">check_circle</span> 好的表达
 - 用户密码长度必须在 8-128 字符之间，包含大小写字母和数字
 
-# ❌ 模糊的表达
+# <span class="material-icons">cancel</span> 模糊的表达
 - 密码长度要合适，不要太短也不要太长
 ```
 
 #### 避免歧义
 ```yaml
-# ✅ 好的表达
+# <span class="material-icons">check_circle</span> 好的表达
 - 系统必须支持 JPEG、PNG、GIF 格式的图片上传
 - 图片文件大小不能超过 10MB
 
-# ❌ 有歧义的表达
+# <span class="material-icons">cancel</span> 有歧义的表达
 - 系统要支持图片，但不能太大
 ```
 
@@ -385,7 +385,7 @@ EARS（Easy Approach to Requirements Syntax）是一种结构化的需求描述�
 
 #### 逻辑分组
 ```yaml
-# ✅ 按功能分组
+# <span class="material-icons">check_circle</span> 按功能分组
 ## 用户管理
 - 用户注册
 - 用户登录
@@ -399,7 +399,7 @@ EARS（Easy Approach to Requirements Syntax）是一种结构化的需求描述�
 
 #### 优先级排序
 ```yaml
-# ✅ 按重要性排序
+# <span class="material-icons">check_circle</span> 按重要性排序
 ## 核心功能
 - 用户认证
 - 数据安全
@@ -417,19 +417,19 @@ EARS（Easy Approach to Requirements Syntax）是一种结构化的需求描述�
 
 #### 可测试性
 ```yaml
-# ✅ 可测试的验收标准
+# <span class="material-icons">check_circle</span> 可测试的验收标准
 - [ ] 用户可以使用邮箱和密码成功登录
 - [ ] 登录失败时显示错误信息
 - [ ] 令牌可以在 1 小时内有效访问受保护资源
 
-# ❌ 难以测试的标准
+# <span class="material-icons">cancel</span> 难以测试的标准
 - [ ] 系统应该运行良好
 - [ ] 用户体验应该不错
 ```
 
 #### 完整性
 ```yaml
-# ✅ 完整的验收标准
+# <span class="material-icons">check_circle</span> 完整的验收标准
 ### 功能验收
 - [ ] 用户注册流程完整
 - [ ] 输入验证有效
@@ -450,28 +450,28 @@ EARS（Easy Approach to Requirements Syntax）是一种结构化的需求描述�
 
 #### 风险识别
 ```yaml
-# ✅ 明确的风险识别
+# <span class="material-icons">check_circle</span> 明确的风险识别
 ### 技术风险
 - **JWT 令牌管理复杂性**
   - 影响：令牌泄露可能导致安全问题
   - 概率：中等
   - 缓解措施：使用成熟的 JWT 库，定期轮换密钥
 
-# ❌ 模糊的风险描述
+# <span class="material-icons">cancel</span> 模糊的风险描述
 ### 技术风险
 - 技术实现可能有困难
 ```
 
 #### 缓解措施具体化
 ```yaml
-# ✅ 具体的缓解措施
+# <span class="material-icons">check_circle</span> 具体的缓解措施
 **缓解措施**：
 1. 使用 `python-jose` 库处理 JWT 令牌
 2. 实施令牌自动轮换机制
 3. 添加令牌黑名单功能
 4. 定期安全审计和测试
 
-# ❌ 笼统的缓解措施
+# <span class="material-icons">cancel</span> 笼统的缓解措施
 - 加强安全措施
 - 注意安全性
 ```
@@ -505,21 +505,21 @@ stateDiagram-v2
     end note
 
     note right of draft
-        📝 起草阶段
+        <span class="material-icons">description</span> 起草阶段
         - 编写结构化需求
         - 定义验收标准
         - 识别风险和依赖
     end note
 
     note right of in_progress
-        🚀 开发阶段
+        <span class="material-icons">rocket_launch</span> 开发阶段
         - TDD 实现开发
         - 单元测试编写
         - 代码审查
     end note
 
     note right of completed
-        ✅ 完成阶段
+        <span class="material-icons">check_circle</span> 完成阶段
         - 集成测试
         - 文档同步
         - 发布准备
@@ -685,7 +685,7 @@ def test_user_login_with_valid_credentials():
 /alfred:3-sync --verify-tags
 
 # 输出：
-# ✅ TAG 链验证通过
+# <span class="material-icons">check_circle</span> TAG 链验证通过
 # SPEC:USER-AUTH-001 → TEST:USER-AUTH-001 → CODE:USER-AUTH-001 → DOC:USER-AUTH-001
 ```
 
@@ -794,12 +794,12 @@ def test_user_login_with_valid_credentials():
 
 ### 功能验收标准编写规则：
 1. **具体明确**：避免模糊描述
-   - ✅ "用户可以在 2 秒内完成登录"
-   - ❌ "登录要快一些"
+   - <span class="material-icons">check_circle</span> "用户可以在 2 秒内完成登录"
+   - <span class="material-icons">cancel</span> "登录要快一些"
 
 2. **可观察可验证**：必须有明确的验证方法
-   - ✅ "响应状态码为 200，包含用户信息"
-   - ❌ "登录成功"
+   - <span class="material-icons">check_circle</span> "响应状态码为 200，包含用户信息"
+   - <span class="material-icons">cancel</span> "登录成功"
 
 3. **使用 Gherkin 格式**：
    ```gherkin

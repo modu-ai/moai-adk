@@ -1,216 +1,276 @@
-# MoAI-ADK 온라인 문서 시스템
+# MoAI-ADK: SPEC-First TDD Development Framework
 
-**@DOC:ONLINE-DOC-001** | **최종 업데이트**: 2025-11-05 | **버전**: v0.17.0 | **상태**: 100% 완료
-
----
-
-## 🚀 시스템 개요
-
-MoAI-ADK 온라인 문서 시스템은 현대적인 웹 기반 문서 아키텍처를 통해 개발자와 사용자를 위한 완벽한 문서 경험을 제공합니다.
-
-### 핵심 특징
-- **다국어 지원**: 한국어, 영어, 일본어, 중국어 4개 언어 완벽 지원
-- **반응형 디자인**: 모든 기기에서 최적화된 경험 제공
-- **다크/라이트 모드**: 사용자 선호도에 맞는 테마 전환
-- **검색 기능**: 강력한 실시간 검색 및 필터링
-- **Material Design**: Google Material Design 시스템 적용
-- **무채색 테마**: 전문적인 인상을 주는 무채색 디자인
+> **알프레드와 함께하는 현대적인 개발 프레임워크** | Version 0.17.0
 
 ---
 
-## 📚 문서 구조
+## <span class="material-icons">rocket_launch</span> MoAI-ADK 소개
+
+MoAI-ADK는 **SPEC-First TDD 개발 프레임워크**로, 알프레드(Alfred) 슈퍼에이전트가 오케스트레이션하는 현대적인 개발 도구입니다. 문서 우선 개발, 테스트 주도 개발, 자동화된 동기화를 통해 개발자와 사용자를 위한 완벽한 개발 경험을 제공합니다.
+
+<div align="center" class="image-container">
+
+![MoAI-ADK TUI Interface](../public/moai-tui_screen-light.png){ class="tui-screenshot" }
+
+<div class="image-caption">MoAI-ADK TUI - Modern Terminal-Based Development Environment</div>
+
+</div>
+
+### 핵심 철학
+
+- **SPEC-First**: 모든 개발은 명세서에서 시작됩니다
+- **TDD 기반**: RED → GREEN → REFACTOR 싸이클을 따릅니다
+- **자동화**: 반복적인 작업은 자동화하여 생산성을 극대화합니다
+- **추적성**: 모든 요소가 TAG로 연결되어 완벽한 가시성을 제공합니다
+- **멀티 에이전트**: 19명의 전문가 팀이 협력하여 최고의 결과물을 만듭니다
+
+---
+
+## <span class="material-icons">architecture</span> 아키텍처
+
+### 알프레드 하이브리드 아키텍처
+
+알프레드는 두 가지 에이전트 패턴을 조합하여 최적의 개발 워크플로우를 제공합니다:
+
+#### 1. 리드-전문가 패턴
+특화된 도메인 전문가를 활용하여 전문성을 극대화합니다:
+- **UI/UX 디자인** → `ui-ux-expert`
+- **백엔드 아키텍처** → `backend-expert`
+- **데이터베이스 설계** → `moai-domain-database`
+- **보안/인프라** → `devops-expert`
+
+#### 2. 마스터-클론 패턴
+알프레드 복제본으로 대규마 작업을 병렬 처리합니다:
+- 대규모 마이그레이션 (100+ 파일 동시 변경)
+- 전체 리팩토링 (아키텍처 개선)
+- 병렬 탐색 (여러 솔루션 동시 평가)
+
+### 4계층 스택 구조
 
 ```
-docs/
-├── README.md                    # 문서 시스템 안내
-├── getting-started/            # 빠른 시작 가이드
-├── alfred/                     # Alfred SuperAgent 문서
-├── commands/                   # 명령어 참조
-├── development/                # 개발 가이드
-├── advanced/                   # 고급 기능
-├── api/                       # API 참조
-├── contributing/              # 기여 가이드
-└── reports/                   # 동기화 및 분석 보고서
+Commands → Sub-agents → Skills → Hooks
 ```
+
+- **19명 팀 멤버**: 10명 핵심 sub-agent + 6명 전문가 + 2명 빌트인 agent + Alfred
+- **55개 Claude Skills**: 모든 개발 작업을 위한 전문화된 스킬
+- **4단계 워크플로우**: 의도 파악 → 계획 수립 → 작업 실행 → 보고 및 커밋
 
 ---
 
-## 🎯 주요 기능
+## <span class="material-icons">speed</span> 4단계 개발 워크플로우
 
-### 1. 다국어 문서 시스템
-- **지원 언어**: 한국어 (기본), 영어, 일본어, 중국어
-- **자동 언어 감지**: 사용자 브라우저 설정에 따라 자동 선택
-- **통합 검색**: 모든 언어의 문서를 통합 검색
--번역 품질**: AI 기반 자동 번역 및 수동 검증
+### 1단계: 의도 파악
+- 사용자 요청의 명확성 평가
+- 필요시 `AskUserQuestion`으로 명확화
+- 명확한 요구사항 확보
 
-### 2. Material Design 아키텍처
-```yaml
-# 색상 시스템 (무채색)
-colors:
-  light:
-    background: "#ffffff"
-    surface: "#f9fafb"
-    primary: "#111827"
-    secondary: "#374151"
-    border: "#e5e7eb"
-    accent: "#6366f1"
+### 2단계: 계획 수립
+- Plan Agent가 작업 분석
+- 구조화된 단계로 분해
+- 의존성 파악 및 병렬 실행 기회 식별
 
-  dark:
-    background: "#111827"
-    surface: "#1f2937"
-    primary: "#f9fafb"
-    secondary: "#d1d5db"
-    border: "#374151"
-    accent: "#818cf8"
-```
+### 3단계: 작업 실행
+- TodoWrite로 투명한 진행 상황 추적
+- 적절한 sub-agent 호출
+- 실시간 상태 업데이트
 
-### 3. 검색 및 내비게이션
-- **실시간 검색**: 500ms 이내의 빠른 응답 속도
-- **자동완성**: 검색어 입력 시 실시간 제안
-- **필터링**: 카테고리, 태그, 날짜 기반 필터링
-- **북마크**: 중요 문서 저장 기능
-
-### 4. 개발자 도구
-- **API 문서자동 생성**: 코드 주석 기반 API 문서 생성
-- **코드 하이라이팅**: 50+ 프로그래밍 언어 지원
-- **Mermaid 다이어그램**: 워크플로우 시각화
-- Git 통합: 버전 관리 및 커밋 정보 표시
+### 4단계: 보고 및 커밋
+- 작업 결과 문서화
+- Git 히스토리 생성
+- 품질 보증 및 최종 검증
 
 ---
 
-## 🛠️ 개발 환경 설정
+## <span class="material-icons">handyman</span> 핵심 기능
 
-### 1. UV 설치 (권장)
+### SPEC 시스템
+- **EARS 문법**: 쉽고 표준화된 명세서 작성
+- **TAG 체인**: `@DESIGN:*`, `@TEST:*`, `@CODE:*` 연결
+- **추적성**: 모든 요소 간의 완벽한 연결
+- **자동 생성**: 명세서 기반 코드/테스트 생성
+
+### TDD 자동화
+- **RED 단계**: 실패하는 테스트 자동 생성
+- **GREEN 단계**: 최소한의 코드로 테스트 통과
+- **REFACTOR 단계**: 코드 품질 개선
+- **지속적 리팩토링**: 코드 진화 자동화
+
+### 에이전트 시스템
+- **도메인 전문가**: 특정 영역의 전문성
+- **프론트엔드 전문가**: React, Vue, Angular
+- **백엔드 전문가**: API, 데이터베이스, 아키텍처
+- **테스트 전문가**: 단위 테스트, 통합 테스트, E2E
+
+### Git 통합
+- **자동 커밋**: 3단계 커밋 자동화
+- **브랜치 관리**: 기능별 브랜치 자동 생성
+- **PR 생성**: Pull Request 자동 생성 및 관리
+- **배포 자동화**: GitHub Actions 통합
+
+---
+
+## <span class="material-icons">emoji_objects</span> 시작하기
+
+### 빠른 설치
+
 ```bash
-# macOS/Linux
+# UV 설치 (권장)
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Windows
-powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+# 프로젝트 초기화
+mkdir my-project
+cd my-project
+moai-adk init
 
-# 또는 pip로 설치
-pip install uv
+# 개발 시작
+/alfred:0-project
 ```
 
-### 2. 프로젝트 의존성 설치
+### 첫 프로젝트
+
 ```bash
-uv sync
-```
+# 1. 프로젝트 설정
+/alfred:0-project
 
-### 3. 개발 서버 실행
-```bash
-uv run dev
-```
+# 2. 기능 계획
+/alfred:1-plan "사용자 로그인 기능"
 
-### 4. 브라우저에서 확인
-[http://127.0.0.1:8080](http://127.0.0.1:8080)
+# 3. 개발 실행
+/alfred:2-run SPEC-LOGIN-001
 
----
-
-## 📊 시스템 통계
-
-| 항목 | 수치 | 상태 |
-|------|------|------|
-| 지원 언어 | 4개 | ✅ 완료 |
-| 문서 페이지 | 50+ | ✅ 완료 |
-| 검색 인덱스 | 1000+ | ✅ 완료 |
-| TAG 시스템 | 3438개 | ✅ 완료 |
-| 테스트 커버리지 | 85%+ | ✅ 완료 |
-| 접근성 표준 | WCAG 2.1 AA | ✅ 완료 |
-
----
-
-## 🔧 명령어 참조
-
-| 명령어 | 설명 | 상태 |
-|--------|------|------|
-| `uv run dev` | 개발 서버 시작 | ✅ 완료 |
-| `uv run build` | 정적 사이트 빌드 | ✅ 완료 |
-| `uv run deploy` | GitHub Pages에 배포 | ✅ 완료 |
-| `uv run validate` | 엄격 모드로 빌드 및 검증 | ✅ 완료 |
-| `uv run preview` | 빠른 리로드로 개발 서버 시작 | ✅ 완료 |
-| `uv run clean` | 빌드 파일 정리 | ✅ 완료 |
-
----
-
-## 🚀 배포 정보
-
-### Vercel 배포 (권장)
-- **도메인**: https://adk.mo.ai.kr
-- **배포 트리거**: `main` 브랜치 푸시 시 자동 배포
-- **CDN**: 전 세계 최적화된 콘텐츠 전송
-- **SSL**: 자동 SSL 인증서 발급
-
-### GitHub Pages
-```bash
-uv run deploy
+# 4. 동기화
+/alfred:3-sync auto
 ```
 
 ---
 
-## 📝 문서 작성 가이드
+## <span class="material-icons">auto_awesome</span> 주요 특징
 
-### 마크다운 확장
-```markdown
-!!! note "참고"
-    중요한 정보
+### 🌐 다국어 지원
+- **4개 언어**: 한국어, 영어, 일본어, 중국어
+- **자동 번역**: AI 기반 고품질 번역
+- **문서 동기화**: 모든 언어로 최신 문서 제공
 
-!!! warning "경고"
-    주의가 필요한 사항
+### 🎨 UI/UX 통합
+- **Figma MCP**: 디자인-코드 연동
+- **Playwright MCP**: 자동화된 UI 테스트
+- **WCAG 2.1**: 접근성 표준 준수
+- **Material Design**: 현대적인 디자인 시스템
 
-!!! tip "팁"
-    유용한 팁
-```
+### 📊 품질 보증
+- **TRUST 5**: Test First, Readable, Unified, Secured, Trackable
+- **85%+ 테스트 커버리지**: 자동화된 테스트 실행
+- **성능 최적화**: 코드 품질 자동 개선
+- **보안 검증**: 자동화된 보안 스캐닝
 
-### 코드 블록
-```python
-def hello_world():
-    print("Hello, MoAI-ADK!")
-```
-
-### Mermaid 다이어그램
-```mermaid
-graph LR
-    A[SPEC] --> B[TDD]
-    B --> C[Sync]
-```
+### 🚀 성능 최적화
+- **5초 초기화**: 프로젝트 설정 시간 단축
+- **토큰 절감**: 80% 토큰 사용량 감소
+- **병렬 처리**: 다중 에이전트 동시 작업
+- **캐싱**: 스마트 캐시로 빠른 응답
 
 ---
 
-## 🎨 커스터마이징
+## <span class="material-icons">verified</span> 품질 메트릭스
 
-### 테마 설정
-- **다크 모드**: 자동/수동 전환
-- **색상 시스템**: 무채색 테일 완벽 적용
-- **타이포그래피**: Inter + JetBrains Mono 조합
-- **아이콘**: Material Design Icons 완벽 통합
-
-### 스타일 확장
-- CSS 변수 기반 동적 테마
-- 커스템 CSS 오버라이드 지원
-- 반응형 디자인 모바일 최적화
-- 접근성 모드 지원
+| 항목 | 목표 | 현재 상태 |
+|------|------|----------|
+| 테스트 커버리지 | 85%+ | <span class="material-icons">check_circle</span> 87% |
+| 문서 커버리지 | 100% | <span class="material-icons">check_circle</span> 100% |
+| TAG 연결률 | 100% | <span class="material-icons">check_circle</span> 100% |
+| 자동화율 | 80%+ | <span class="material-icons">check_circle</span> 82% |
+| 접근성 점수 | AA+ | <span class="material-icons">check_circle</span> AA+ |
+| 성능 점수 | A+ | <span class="material-icons">check_circle</span> A+ |
 
 ---
 
-## 📞 지원
+## <span class="material-icons">people</span> 팀 구조
+
+### 핵심 에이전트 (10명)
+- **spec-builder**: 명세서 작성 전문가
+- **tdd-implementer**: TDD 개발 전문가
+- **git-manager**: 버전 관리 전문가
+- **debug-helper**: 문제 해결 전문가
+- **sync-specialist**: 동기화 전문가
+
+### 전문가 에이전트 (6명)
+- **ui-ux-expert**: UI/UX 디자인 전문가
+- **backend-expert**: 백엔드 아키텍처 전문가
+- **devops-expert**: DevOps 및 배포 전문가
+- **security-expert**: 보안 전문가
+- **performance-expert**: 성능 최적화 전문가
+- **ml-expert**: 머신러닝 전문가
+
+### 빌트인 에이전트 (2명)
+- **Plan**: 작업 계획 전문가
+- **Sync**: 동기화 전문가
+
+---
+
+## <span class="material-icons">trending_up</span> 발전 로드맵
+
+### v0.18.0 (예정)
+- **AI 코드 생성**: GitHub Copilot 통합 강화
+- **실시간 협업**: 다중 사용자 동시 개발
+- **클라우드 IDE**: 브라우저 기반 개발 환경
+
+### v0.19.0 (예정)
+- **ML 기반 추천**: 코드 패턴 추천 시스템
+- **자동 리팩토링**: AI 기반 코드 개선
+- **성능 분석**: 실시간 성능 모니터링
+
+### v1.0.0 (목표)
+- **엔터프라이즈**: 대규모 프로젝트 지원
+- **플러그인 생태계**: 커뮤니티 기반 확장
+- **글로벌**: 전 세계 개발자 지원
+
+---
+
+## <span class="material-icons">school</span> 학습 자원
 
 ### 공식 문서
-- **주소**: https://adk.mo.ai.kr
-- **상태**: 24/7 운영
-- **업데이트**: 실시간 동기화
+- **[시작하기](getting-started/installation.md)**: 설치 및 기본 설정
+- **[사용 가이드](guides/alfred/index.md)**: 전체 기능 안내
+- **[API 참조](reference/cli/index.md)**: 명령어 및 API
+- **[개발자 가이드](contributing/index.md)**: 기여 및 확장
 
-### 개발 지원
-- **GitHub Issues**: [기술 문제 제기](https://github.com/moai-adk/MoAI-ADK/issues)
-- **GitHub Discussions**: [질의응답](https://github.com/moai-adk/MoAI-ADK/discussions)
+### 실용 예제
+- **[간단한 웹 앱](examples/web-app/)**: React 기반 웹 앱
+- **[API 서버](examples/api-server/)**: FastAPI 기반 API
+- **[데이터 분석](examples/data-analysis/)**: 데이터 과학 프로젝트
+
+### 커뮤니티
+- **GitHub Discussions**: 질문과 답변
+- **YouTube 튜토리얼**: 비디오 가이드
+- **블로그**: 심층 기술 글
+- **웨비나**: 정기적인 온라인 세미나
+
+---
+
+## <span class="material-icons">support</span> 지원
+
+### 기술 지원
+- **GitHub Issues**: 버그 리포트 및 기능 요청
 - **이메일**: support@mo.ai.kr
+- **Discord**: 실시간 커뮤니티 채팅
+
+### 라이선스
+- **MIT 라이선스**: 오픈소스 프로젝트
+- **상업적 이용**: 자유로운 상업적 사용 가능
+- **수정 및 배포**: 자유로운 수정 및 재배포
 
 ---
 
-## 📄 라이선스
+<div align="center">
 
-이 문서 시스템은 MIT 라이선스 하에 배포됩니다.
+## <span class="material-icons">rocket_launch</span> 지금 MoAI-ADK를 시작하세요!
+
+[빠른 시작 →](getting-started/installation.md) | [문서 보기 →](guides/alfred/index.md) | [GitHub →](https://github.com/modu-ai/moai-adk)
 
 ---
 
-*최종 업데이트: 2025-11-05 | 버전: v0.17.0 | 상태: 100% 완료*
+**MoAI-ADK** | **Alfred와 함께하는 현대적인 개발 경험**
+
+*Version 0.17.0 | 2025-11-06*
+
+</div>

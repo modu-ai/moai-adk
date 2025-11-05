@@ -366,7 +366,7 @@ CREATE TABLE users (
 - @CODE:EX-AUTH-001:MODEL (예정)
 - @CODE:EX-AUTH-001:SERVICE (예정)
 - @CODE:EX-AUTH-001:ROUTES (예정)
-- @DOC:EX-AUTH-001 (예정)
+- @DOC:EX-AUTH-PLAN-001 (예정)
 ```
 
 ### 5단계: @TAG 할당
@@ -395,7 +395,7 @@ Alfred는 모든 산출물에 추적 가능한 @TAG를 자동으로 할당합니
     ↓
 @CODE:EX-AUTH-001:ROUTES (GREEN 단계)
     ↓
-@DOC:EX-AUTH-001 (SYNC 단계)
+@DOC:EX-AUTH-PLAN-001 (SYNC 단계)
 ```
 
 ### 6단계: Feature 브랜치 생성

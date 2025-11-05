@@ -7,16 +7,14 @@ restore broken TAG chains based on priority and domain.
 @SPEC:DOCS-004: TAG 체인 복구 및 자동 생성 도구
 """
 
-import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Tuple
 
 from moai_adk.core.analysis.tag_chain_analyzer import (
-    TagChain,
-    TagChainAnalyzer,
     ChainAnalysisResult,
+    TagChainAnalyzer,
 )
 
 
@@ -781,7 +779,7 @@ if __name__ == "__main__":
             elif "UTILS" in task.domain:
                 code_path = self.root_path / "src" / "moai_adk" / "utils" / f"{task.domain.lower()}.py"
             elif "CLI" in task.domain:
-                code_path = self.root_path / "src" / "moai_adk" / "cli" / f"commands" / f"{task.domain.lower()}.py"
+                code_path = self.root_path / "src" / "moai_adk" / "cli" / "commands" / f"{task.domain.lower()}.py"
             else:
                 code_path = self.root_path / "src" / "moai_adk" / "core" / f"{task.domain.lower()}.py"
 

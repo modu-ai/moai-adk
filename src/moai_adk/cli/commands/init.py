@@ -37,8 +37,8 @@ from rich.progress import BarColumn, Progress, SpinnerColumn, TaskID, TextColumn
 
 from moai_adk import __version__
 from moai_adk.cli.prompts import prompt_project_setup
-from moai_adk.core.project.initializer import ProjectInitializer
 from moai_adk.core.mcp.setup import MCPSetupManager
+from moai_adk.core.project.initializer import ProjectInitializer
 from moai_adk.utils.banner import print_banner, print_welcome_message
 
 console = Console()
@@ -302,7 +302,7 @@ def init(
 
             # MCP Setup (if servers selected)
             if mcp_servers:
-                console.print(f"\n[cyan]🔧 Setting up MCP servers...[/cyan]")
+                console.print("\n[cyan]🔧 Setting up MCP servers...[/cyan]")
                 mcp_manager = MCPSetupManager(project_path)
                 mcp_success = mcp_manager.setup_mcp_servers(mcp_servers)
                 if not mcp_success:

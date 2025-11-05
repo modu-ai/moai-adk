@@ -175,7 +175,7 @@ Alfred는 Sync 단계에서 다음 작업들을 처리합니다:
 ✅ @TEST:EX-AUTH-001 → tests/test_auth_service.py
 ✅ @CODE:EX-AUTH-001:SERVICE → src/auth/service.py
 ✅ @CODE:EX-AUTH-001:MODEL → src/auth/models.py
-✅ @DOC:EX-AUTH-001 → docs/api/authentication.md
+✅ @DOC:EX-AUTH-SYNC-001 → docs/api/authentication.md
 TAG Chain Integrity: 100%
 
 📊 Phase 3: 품질 보고서 생성 (1분)
@@ -220,7 +220,7 @@ Alfred의 `doc-syncer`가 구현된 코드로부터 다양한 문서를 자동�
 
 ```markdown
 <!-- docs/api/authentication.md -->
-# `@DOC:EX-AUTH-001: Authentication API Documentation
+# `@DOC:EX-AUTH-SYNC-001: Authentication API Documentation
 
 ## 개요
 
@@ -432,7 +432,7 @@ Strict-Transport-Security: max-age=31536000
 
 ```markdown
 <!-- docs/architecture/authentication.md -->
-# `@DOC:EX-AUTH-001: Authentication Architecture
+# `@DOC:EX-AUTH-SYNC-001: Authentication Architecture
 
 ## 개요
 
@@ -805,7 +805,7 @@ graph TD
     Test --> Code1[@CODE:EX-AUTH-001:MODEL<br/>Run-GREEN]
     Test --> Code2[@CODE:EX-AUTH-001:SERVICE<br/>Run-GREEN]
     Test --> Code3[@CODE:EX-AUTH-001:ROUTES<br/>Run-GREEN]
-    Code1 --> Doc[@DOC:EX-AUTH-001<br/>Sync 단계]
+    Code1 --> Doc[@DOC:EX-AUTH-SYNC-001<br/>Sync 단계]
     Code2 --> Doc
     Code3 --> Doc
 
@@ -861,7 +861,7 @@ Alfred는 다음 TAG 체인을 분석하고 검증합니다:
 ├─ 내용: 맞춤 예외 클래스
 └─ 상태: ✅ TRUST 준수
     ↓
-@DOC:EX-AUTH-001 (문서)
+@DOC:EX-AUTH-SYNC-001 (문서)
 ├─ 위치: docs/api/authentication.md
 ├─ 내용: API 문서, 사용 가이드
 └─ 상태: ✅ 자동 생성됨
@@ -904,7 +904,7 @@ Alfred의 `tag-agent`는 4단계 검증 프로세스를 실행합니다:
    커버리지: 100% (모든 테스트가 코드를 참조)
 
 ✅ CODE → DOC 연결 확인
-   @CODE:EX-AUTH-001:* → @DOC:EX-AUTH-001
+   @CODE:EX-AUTH-001:* → @DOC:EX-AUTH-SYNC-001
    연결된 문서: 1개 파일
    문서화 완성도: 100%
 
@@ -1002,7 +1002,7 @@ Alfred는 TAG 시스템의 상태를 시각적으로 보여줍니다:
 │         ↓             ↓             ↓                  │
 │    @CODE:EX-AUTH-001:ROUTES  @CODE:EX-AUTH-001:UTILS   │
 │                   ↓             ↓                       │
-│              @DOC:EX-AUTH-001 (최종)                    │
+│              @DOC:EX-AUTH-SYNC-001 (최종)                    │
 └─────────────────────────────────────────────────────────┘
 
 📈 통계 정보:
@@ -1052,7 +1052,7 @@ SPEC-AUTH-001 사용자 인증 시스템의 @TAG 체인 검증 결과
     ↓
 @CODE:EX-AUTH-001:EXCEPTIONS
     ↓
-@DOC:EX-AUTH-001
+@DOC:EX-AUTH-SYNC-001
 ```
 
 ## 추적성 검증
@@ -1339,9 +1339,9 @@ tests/auth/
 ### 문서 파일
 ```
 docs/
-├── api/authentication.md (@DOC:EX-AUTH-001)
-├── architecture/authentication.md (@DOC:EX-AUTH-001:ARCH)
-└── testing/authentication.md (@DOC:EX-AUTH-001:TEST)
+├── api/authentication.md (@DOC:EX-AUTH-SYNC-001)
+├── architecture/authentication.md (@DOC:EX-AUTH-SYNC-001:ARCH)
+└── testing/authentication.md (@DOC:EX-AUTH-SYNC-001:TEST)
 ```
 
 ### SPEC 파일
@@ -1379,7 +1379,7 @@ docs/
 ├── @CODE:EX-AUTH-001:SERVICE
 ├── @CODE:EX-AUTH-001:UTILS
 ├── @CODE:EX-AUTH-001:EXCEPTIONS
-└── @DOC:EX-AUTH-001
+└── @DOC:EX-AUTH-SYNC-001
 ```
 
 ### 추적성 메트릭

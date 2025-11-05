@@ -117,18 +117,18 @@ def test_scan_all_tags():
 
         test_file = temp_path / "tests" / "test.py"
         test_file.parent.mkdir(parents=True)
-        test_file.write_text("# @TEST:TEST-001")
+        test_file.write_text("# @TEST:ANALYZER-001")
 
         spec_file = temp_path / ".moai" / "specs" / "test.md"
         spec_file.parent.mkdir(parents=True)
-        spec_file.write_text("# @SPEC:TEST-001\n# @TEST:TEST-001")
+        spec_file.write_text("# @SPEC:TEST-001\n# @TEST:ANALYZER-001")
 
         analyzer = TagChainAnalyzer(temp_path)
         all_tags = analyzer._scan_all_tags()
 
         assert "@CODE:TEST-001" in all_tags
         assert "@SPEC:TEST-001" in all_tags
-        assert "@TEST:TEST-001" in all_tags
+        assert "@TEST:ANALYZER-001" in all_tags
 
 
 def test_group_chains_by_domain():
