@@ -26,3 +26,6 @@ mkdocs-git-authors-plugin>=0.7.0
 
 # Internationalization
 mkdocs-i18n>=0.5.0
+
+# UV package manager
+uv>=0.5.0

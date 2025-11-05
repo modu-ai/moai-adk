@@ -1,6 +1,6 @@
 # MoAI-ADK (Agentic Development Kit)
 
-[한국어](README.ko.md) | [English](README.md)
+[English](README.md) | [한국어](README.ko.md) | [日本語](README.ja.md) | [中文](README.zh.md)
 
 [![PyPI version](https://img.shields.io/pypi/v/moai-adk)](https://pypi.org/project/moai-adk/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -593,6 +593,104 @@ my-project/
 ├── docs/                           # Auto-generated documentation
 ├── CLAUDE.md                       # Alfred's core directives
 └── README.md
+```
+
+### MCP (Model Context Protocol) Integration
+
+MoAI-ADK supports automatic setup of MCP servers to enhance AI capabilities with external tools and services.
+
+#### Available MCP Servers
+
+| Server | Description | Use Case |
+|--------|-------------|----------|
+| **Context7** | Latest library documentation lookup | Get up-to-date API documentation for any library |
+| **Figma** | Design system and component specs | Extract designs, create components from Figma |
+| **Playwright** | Web E2E testing automation | Generate and run automated browser tests |
+
+#### Quick Setup with MCP
+
+**Option 1: Auto-install all recommended MCP servers**
+```bash
+moai-adk init my-project --mcp-auto
+```
+
+**Option 2: Select specific MCP servers**
+```bash
+moai-adk init my-project --with-mcp context7 --with-mcp figma
+```
+
+**Option 3: Interactive selection (default)**
+```bash
+moai-adk init my-project
+# → Select MCP servers from interactive checkbox menu
+```
+
+#### Figma Access Token Setup
+
+If you select Figma MCP, you'll need to configure an access token:
+
+1. **Create Figma Access Token**
+   - Visit: https://www.figma.com/developers/api#access-tokens
+   - Create a new access token
+
+2. **Configure Token** (choose one method)
+   ```bash
+   # Method 1: Environment variable (recommended)
+   export FIGMA_ACCESS_TOKEN=your_token_here
+
+   # Method 2: Add to shell profile
+   echo 'export FIGMA_ACCESS_TOKEN=your_token_here' >> ~/.zshrc  # or ~/.bashrc
+
+   # Method 3: Add to .env file
+   echo 'FIGMA_ACCESS_TOKEN=your_token_here' >> .env
+   ```
+
+3. **Restart Claude Code** to activate the token
+
+#### MCP Configuration File
+
+MCP servers are automatically configured in `.claude/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "context7": {
+      "command": "node",
+      "args": ["/usr/local/lib/node_modules/@upstash/context7-mcp/dist/index.js"],
+      "env": {}
+    },
+    "figma": {
+      "command": "node",
+      "args": ["/usr/local/lib/node_modules/figma-mcp-pro/dist/index.js"],
+      "env": {
+        "FIGMA_ACCESS_TOKEN": "${FIGMA_ACCESS_TOKEN}"
+      }
+    },
+    "playwright": {
+      "command": "node",
+      "args": ["/usr/local/lib/node_modules/@playwright/mcp/dist/index.js"],
+      "env": {}
+    }
+  }
+}
+```
+
+#### How Agents Use MCP
+
+- **UI/UX Expert**: Uses Figma MCP to extract designs and create component specs
+- **Backend Expert**: Uses Context7 MCP to access latest framework documentation
+- **Frontend Expert**: Uses Playwright MCP for automated testing
+- **All Agents**: Have fallback strategies when MCP is unavailable
+
+#### Manual MCP Management
+
+Add MCP servers to existing projects:
+```bash
+# Auto-install all servers
+moai-adk init . --mcp-auto
+
+# Add specific servers
+moai-adk init . --with-mcp context7 figma
 ```
 
 ---
