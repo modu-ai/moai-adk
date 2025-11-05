@@ -1,10 +1,10 @@
-# @CODE:VAL-001
+# @CODE:VAL-002
 """TAG chain analysis tool for identifying broken chains.
 
 Analyzes TAG chains across the codebase to identify broken links
 between SPEC, CODE, TEST, and DOC elements.
 
-@SPEC:DOCS-004: TAG 체인 분석 및 검증 도구
+@SPEC:DOCS-005: TAG 체인 분석 및 검증 도구
 """
 
 import json
@@ -213,7 +213,7 @@ class TagChainAnalyzer:
         return chains_by_domain
 
     def _extract_domain_from_tag(self, tag: str) -> str:
-        """Extract domain from TAG (e.g., "@SPEC:AUTH-001" -> "AUTH")."""
+        """Extract domain from TAG (e.g., "@SPEC:AUTH-004" -> "AUTH")."""
         match = re.match(r'@[A-Z]+:([A-Z0-9-]+)\d{3}', tag)
         if match:
             return match.group(1)

@@ -1,4 +1,4 @@
-# @CODE:INIT-003:PHASE | SPEC: .moai/specs/SPEC-INIT-003/spec.md | TEST: tests/unit/test_init_reinit.py
+# @CODE:INIT-005:PHASE | SPEC: .moai/specs/SPEC-INIT-003/spec.md | TEST: tests/unit/test_init_reinit.py
 # @CODE:TEST-COVERAGE-001 | SPEC: SPEC-TEST-COVERAGE-001.md | TEST: tests/unit/test_phase_executor.py
 """Phase-based installation executor (SPEC-INIT-003 v0.4.2)
 
@@ -264,7 +264,7 @@ class PhaseExecutor:
         """Phase 5: validation and wrap-up.
 
         @CODE:INIT-PHASE-001 | Phase 5 verification logic
-        @REQ:VALIDATION-001 | SPEC-INIT-004: Verify required files after initialization completion
+        @REQ:VALIDATION-002 | SPEC-INIT-004: Verify required files after initialization completion
 
         Args:
             project_path: Project path.

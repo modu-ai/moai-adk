@@ -433,8 +433,8 @@ graph TD
     Sync --> Completed[status: completed]
     Completed --> Plan
 
-    Sync -.-> PR[プルリクエスト<br/>Ready for Review]
-    PR -.-> Merge[マージ<br/>status: stable]
+    Sync -.-> PR[Pull Request<br/>Ready for Review]
+    PR -.-> Merge[Merge<br/>status: stable]
 ```
 
 ## ドキュメントタイプ

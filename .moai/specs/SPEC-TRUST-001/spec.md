@@ -53,9 +53,9 @@ scope:
   - tests/unit/core/quality/__init__.py
 - **TAG CHAIN**:
   - @SPEC:TRUST-001: 1개 (본 문서)
-  - @TEST:TRUST-001: 2개 (테스트 모듈)
-  - @CODE:TRUST-001: 4개 (구현 모듈)
-  - @CODE:TRUST-001:VALIDATOR: 1개 (Validator 프레임워크)
+  - @TEST:TRUST-002: 2개 (테스트 모듈)
+  - @CODE:TRUST-002: 4개 (구현 모듈)
+  - @CODE:TRUST-002:VALIDATOR: 1개 (Validator 프레임워크)
 - **SCOPE COMPLETION**:
   - R-001~R-003: ✅ 완료 (검증 기능, 도구 자동 선택, 보고서 생성)
   - R-004~R-008: ✅ 완료 (이벤트 기반 검증, 오류 메시지 표준)
@@ -184,7 +184,7 @@ scope:
     - 수정 방법 링크 제공
 
 14. **R-014**: IF TAG 체인이 끊어지면, 시스템은 `/alfred:3-sync` 실행을 차단해야 한다
-    - 끊어진 TAG 체인 표시 (예: `@SPEC:AUTH-001` → `@CODE:AUTH-001` 누락)
+    - 끊어진 TAG 체인 표시 (예: `@SPEC:AUTH-004` → `@CODE:AUTH-004` 누락)
     - 수정 명령 제안
 
 15. **R-015**: 전체 검증 시간은 10초를 초과하지 않아야 한다 (소규모 프로젝트 기준)

@@ -159,7 +159,7 @@ def another():
         """Test finding existing TAGs in project"""
         # Create test files with TAGs
         (temp_dir / "src").mkdir()
-        (temp_dir / "src" / "auth.py").write_text("# @CODE:AUTH-001")
+        (temp_dir / "src" / "auth.py").write_text("# @CODE:AUTH-004")
         (temp_dir / "src" / "api.py").write_text("# @CODE:API-001")
         (temp_dir / "README.md").write_text("# @DOC:README-001")
 
@@ -181,7 +181,7 @@ def another():
             spec_file = temp_dir / ".moai" / "specs" / "SPEC-AUTH-001" / "spec.md"
             assert spec_file.exists()
             content = spec_file.read_text()
-            assert "@SPEC:AUTH-001" in content
+            assert "@SPEC:AUTH-004" in content
 
     def test_create_missing_test_file(self, corrector, temp_dir):
         """Test creation of missing TEST files"""
@@ -190,11 +190,11 @@ def another():
         test_creator = TagAutoCorrector(config=config)
 
         with patch('Path.cwd', return_value=temp_dir):
-            correction = test_creator._create_missing_test_file("@CODE:AUTH-001")
+            correction = test_creator._create_missing_test_file("@CODE:AUTH-004")
 
             assert correction is not None
             assert correction.file_path.endswith("test_auth-001.py")
-            assert "@TEST:AUTH-001" in correction.corrected_content
+            assert "@TEST:AUTH-004" in correction.corrected_content
 
     def test_apply_corrections(self, corrector, temp_dir):
         """Test applying corrections to files"""

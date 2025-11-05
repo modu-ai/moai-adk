@@ -238,13 +238,6 @@ exclude_docs: |
   requirements.txt
   pyproject.toml
 
-# Page tree
-exclude_docs: |
-  .python-version
-  CNAME
-  requirements.txt
-  pyproject.toml
-
 # Validation
 validation:
   nav:
@@ -257,3 +250,4 @@ validation:
 # Custom CSS and JS
 extra_css:
   - https://fonts.googleapis.com/icon?family=Material+Icons
+  - stylesheets/extra.css

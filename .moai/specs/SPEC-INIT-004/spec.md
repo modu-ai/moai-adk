@@ -33,11 +33,11 @@ scope:
 ├─ Requirements
 │  ├─ @REQ:CLAUDE-MD-OPTIONAL-001: CLAUDE.md 선택적 파일화
 │  ├─ @REQ:COMMAND-GENERATION-001: Alfred 커맨드 파일 자동 생성
-│  └─ @REQ:VALIDATION-001: 초기화 완료 후 필수 파일 검증
+│  └─ @REQ:VALIDATION-002: 초기화 완료 후 필수 파일 검증
 └─ Specifications
    ├─ @SPEC:INIT-FLOW-001: 초기화 흐름 개선
    ├─ @SPEC:ERROR-HANDLING-001: 에러 처리 전략
-   └─ @SPEC:VERIFICATION-001: 검증 로직 추가
+   └─ @SPEC:VERIFICATION-002: 검증 로직 추가
 ```
 
 ## HISTORY
@@ -268,7 +268,7 @@ throw new InstallerError(
 );
 ```
 
-### @SPEC:VERIFICATION-001 검증 로직 추가
+### @SPEC:VERIFICATION-002 검증 로직 추가
 
 #### 4.5 검증 체크리스트
 

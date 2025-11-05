@@ -93,7 +93,7 @@ scope: "Phase 2 of 4-phase @DOC TAG automatic generation system"
 **WHEN** doc-syncer가 실행되면 **THE SYSTEM SHALL**:
 
 7. **자동 TAG 생성**: 누락된 @DOC TAG를 자동으로 생성해야 함 (Phase 2.5)
-8. **체인 참조 추가**: SPEC-DOC 매핑 시 Chain 참조를 포함해야 함 (예: `@SPEC:AUTH-001 -> @DOC:AUTH-001`)
+8. **체인 참조 추가**: SPEC-DOC 매핑 시 Chain 참조를 포함해야 함 (예: `@SPEC:AUTH-004 -> @DOC:AUTH-001`)
 
 ### State-Driven Requirements (상태 기반 요구사항)
 
@@ -208,7 +208,7 @@ Phase 3: 품질 검증 (기존)
 
 **예시**:
 ```markdown
-# @DOC:AUTH-001 | Chain: @SPEC:AUTH-001 -> @DOC:AUTH-001
+# @DOC:AUTH-001 | Chain: @SPEC:AUTH-004 -> @DOC:AUTH-001
 
 # 사용자 인증 가이드
 

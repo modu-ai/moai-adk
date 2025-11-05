@@ -1,4 +1,4 @@
-# @CODE:CORE-PROJECT-001 | @CODE:INIT-003:INIT
+# @CODE:CORE-PROJECT-001 | @CODE:INIT-005:INIT
 # SPEC: SPEC-CORE-PROJECT-001.md, SPEC-INIT-003.md
 # TEST: tests/unit/test_project_initializer.py, tests/unit/test_init_reinit.py
 """Project Initialization Module

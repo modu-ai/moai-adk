@@ -1,7 +1,7 @@
 # @CODE:CORE-PROJECT-003 | SPEC: SPEC-CORE-PROJECT-001.md, SPEC-INIT-004.md
 # @CODE:INIT-VALIDATOR-001:VALIDATION | Chain: SPEC-INIT-004 -> CODE-INIT-004 -> TEST-INIT-004
-# @REQ:VALIDATION-001 | SPEC-INIT-004: Initial verification after installation completion
-# @SPEC:VERIFICATION-001 | SPEC-INIT-004: Verification logic implementation
+# @REQ:VALIDATION-002 | SPEC-INIT-004: Initial verification after installation completion
+# @SPEC:VERIFICATION-002 | SPEC-INIT-004: Verification logic implementation
 """Project initialization validation module.
 
 Validates system requirements and installation results.
@@ -14,7 +14,7 @@ SPEC-INIT-004 Enhancement:
 TAG Chain:
   SPEC-INIT-004 (spec.md)
     └─> @CODE:INIT-VALIDATOR-001:VALIDATION (this file)
-        └─> @TEST:INIT-004:VALIDATION (test_validator.py)
+        └─> @TEST:INIT-005:VALIDATION (test_validator.py)
 """
 
 import shutil
@@ -99,8 +99,8 @@ class ProjectValidator:
         """Validate installation results.
 
         @CODE:INIT-VALIDATOR-001:VERIFY-001 | Verification of all required files upon successful completion
-        @SPEC:VERIFICATION-001 | SPEC-INIT-004: Verification checklist implementation
-        @REQ:VALIDATION-001 | UR-003: All required files verified after init completes
+        @SPEC:VERIFICATION-002 | SPEC-INIT-004: Verification checklist implementation
+        @REQ:VALIDATION-002 | UR-003: All required files verified after init completes
 
         Args:
             project_path: Project path.

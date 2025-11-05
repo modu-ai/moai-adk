@@ -270,7 +270,7 @@ class TestOrphanValidator:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             code1 = Path(tmpdir) / "auth.py"
-            code1.write_text("# @CODE:AUTH-001\n")
+            code1.write_text("# @CODE:AUTH-004\n")
 
             test1 = Path(tmpdir) / "test_payment.py"
             test1.write_text("# @TEST:PAY-001\n")

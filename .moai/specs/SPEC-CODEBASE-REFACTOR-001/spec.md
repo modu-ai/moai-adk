@@ -124,7 +124,7 @@ labels:
 ### 관련 기존 TAG
 
 - @SPEC:SKILL-REFACTOR-001 (완료된 Skills 리팩토링)
-- @SPEC:REFACTOR-001 (완료된 Git Manager 리팩토링)
+- @SPEC:REFACTOR-002 (완료된 Git Manager 리팩토링)
 - @SPEC:UPDATE-REFACTOR-001~003 (진행 중인 업데이트 리팩토링)
 
 ---

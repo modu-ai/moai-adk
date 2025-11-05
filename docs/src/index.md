@@ -10,7 +10,7 @@ MoAI-ADK는 **SPEC-First TDD 개발 프레임워크**로, 알프레드(Alfred) �
 
 <div align="center" class="image-container">
 
-![MoAI-ADK TUI Interface](../public/moai-tui_screen-light.png){ class="tui-screenshot" }
+![MoAI-ADK TUI Interface](../../public/moai-tui_screen-light.png){ class="tui-screenshot" }
 
 <div class="image-caption">MoAI-ADK TUI - Modern Terminal-Based Development Environment</div>
 
@@ -146,24 +146,24 @@ moai-adk init
 
 ## <span class="material-icons">auto_awesome</span> 주요 특징
 
-### 🌐 다국어 지원
+### <span class="material-icons">language</span> 다국어 지원
 - **4개 언어**: 한국어, 영어, 일본어, 중국어
 - **자동 번역**: AI 기반 고품질 번역
 - **문서 동기화**: 모든 언어로 최신 문서 제공
 
-### 🎨 UI/UX 통합
+### <span class="material-icons">palette</span> UI/UX 통합
 - **Figma MCP**: 디자인-코드 연동
 - **Playwright MCP**: 자동화된 UI 테스트
 - **WCAG 2.1**: 접근성 표준 준수
 - **Material Design**: 현대적인 디자인 시스템
 
-### 📊 품질 보증
+### <span class="material-icons">verified</span> 품질 보증
 - **TRUST 5**: Test First, Readable, Unified, Secured, Trackable
 - **85%+ 테스트 커버리지**: 자동화된 테스트 실행
 - **성능 최적화**: 코드 품질 자동 개선
 - **보안 검증**: 자동화된 보안 스캐닝
 
-### 🚀 성능 최적화
+### <span class="material-icons">speed</span> 성능 최적화
 - **5초 초기화**: 프로젝트 설정 시간 단축
 - **토큰 절감**: 80% 토큰 사용량 감소
 - **병렬 처리**: 다중 에이전트 동시 작업

@@ -1,4 +1,4 @@
-# @TEST:CLI-001 | SPEC: SPEC-CLI-001/spec.md
+# @TEST:CLI-003 | SPEC: SPEC-CLI-001/spec.md
 """Unit tests for status command
 
 Basic tests for CLI status functionality.
