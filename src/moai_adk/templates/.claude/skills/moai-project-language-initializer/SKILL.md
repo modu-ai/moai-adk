@@ -29,6 +29,7 @@ Handle all project setup workflows including:
 - Team mode configuration (GitHub settings, Git workflows)
 - Domain selection processes
 - Report generation settings with token cost warnings
+- MCP server configuration (Figma Access Token setup)
 
 ## Usage Patterns
 
@@ -38,7 +39,7 @@ Handle all project setup workflows including:
 # Complete setup workflow
 Skill("moai-project-language-initializer")
 
-# Executes: Basic Batch → Team Mode Batch (if applicable) → Report Generation → Domain Selection
+# Executes: Basic Batch → Team Mode Batch (if applicable) → Report Generation → Domain Selection → MCP Configuration (if applicable)
 ```
 
 ### Settings Modification
@@ -208,6 +209,68 @@ The skill automatically manages `.moai/config.json` persistence:
 - Enable auto-delete branches for repository hygiene
 - Select appropriate domains for expert agent routing
 - Configure consistent language settings across team
+- Set up MCP servers with proper authentication (Figma tokens)
+
+## MCP Server Configuration
+
+### Figma Access Token Setup
+
+When Figma MCP is detected in `.claude/settings.json`, guide users through token configuration:
+
+#### Detection Logic
+```python
+# Check if Figma MCP is configured
+settings_path = Path(".claude/settings.json")
+if settings_path.exists():
+    settings = json.loads(settings_path.read_text())
+    figma_configured = "mcpServers" in settings and "figma" in settings["mcpServers"]
+```
+
+#### Token Setup Workflow
+1. **Verify Figma MCP Installation**: Check for Figma in mcpServers configuration
+2. **Guide Token Creation**: Direct user to Figma developer portal
+3. **Secure Token Storage**: Configure environment variable or `.env` file
+4. **Validation**: Test Figma MCP connectivity
+
+#### User Guidance Messages
+```
+🔐 Figma Access Token Setup Required
+
+Your project has Figma MCP configured, but needs an access token:
+
+Steps:
+1. Visit: https://www.figma.com/developers/api#access-tokens
+2. Create a new access token
+3. Choose storage method:
+   - Environment variable (recommended): export FIGMA_ACCESS_TOKEN=your_token
+   - .env file: Add FIGMA_ACCESS_TOKEN=your_token to .env
+   - Shell profile: Add to ~/.zshrc or ~/.bashrc
+
+4. Restart Claude Code to activate token
+```
+
+#### Token Validation
+```python
+def validate_figma_token():
+    """Test Figma MCP connectivity with token"""
+    # Try to access Figma files via MCP
+    # Return success/failure with guidance
+```
+
+### MCP Server Status Checking
+
+Provide users with current MCP server status:
+
+```python
+def check_mcp_status():
+    """Check all configured MCP servers"""
+    servers = {
+        "context7": check_context7_mcp(),
+        "figma": check_figma_mcp(),
+        "playwright": check_playwright_mcp()
+    }
+    return servers
+```
 
 ## Implementation Notes
 

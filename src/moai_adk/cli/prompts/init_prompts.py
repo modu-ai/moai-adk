@@ -21,6 +21,7 @@ class ProjectSetupAnswers(TypedDict):
     locale: str  # ko | en (default from init)
     language: str | None  # Will be set in /alfred:0-project
     author: str  # Will be set in /alfred:0-project
+    mcp_servers: list[str]  # Selected MCP servers to install
 
 
 def prompt_project_setup(
@@ -49,6 +50,7 @@ def prompt_project_setup(
         "locale": "en",      # Default: will be configurable in /alfred:0-project
         "language": None,    # Will be detected in /alfred:0-project
         "author": "",        # Will be set in /alfred:0-project
+        "mcp_servers": [],   # Selected MCP servers
     }
 
     try:
@@ -80,6 +82,28 @@ def prompt_project_setup(
             console.print(
                 f"[cyan]📦 Project Name:[/cyan] {answers['project_name']} [dim](current directory)[/dim]"
             )
+
+        # MCP 서버 선택 프롬프트 추가
+        console.print("\n[blue]🔧 MCP (Model Context Protocol) Configuration[/blue]")
+        console.print("[dim]Enhance AI capabilities with MCP servers (optional)[/dim]\n")
+
+        mcp_result = questionary.checkbox(
+            "Select MCP servers to install:",
+            choices=[
+                ("context7", "Context7 - Latest library documentation lookup"),
+                ("figma", "Figma - Design system and component specs"),
+                ("playwright", "Playwright - Web E2E testing automation")
+            ],
+            validate=lambda choices: len(choices) > 0 or "Select at least one MCP server or skip with 'n'",
+        ).ask()
+
+        if mcp_result is None:
+            # User skipped MCP setup (Ctrl+C or 'n')
+            answers["mcp_servers"] = []
+            console.print("[yellow]⚠️  MCP servers: None selected (can be added later)[/yellow]")
+        else:
+            answers["mcp_servers"] = mcp_result
+            console.print(f"[green]✅ MCP servers selected: {', '.join(mcp_result)}[/green]")
 
         # NOTE: All other configuration (mode, language, author) is now handled in /alfred:0-project
         # This significantly reduces init time and improves UX
