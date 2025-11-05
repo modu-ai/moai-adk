@@ -18,7 +18,7 @@ allowed-tools:
 
 # 📋 MoAI-ADK Step 0: Initialize/Update Universal Language Support Project Documentation
 
-> **Note**: Interactive prompts use `AskUserQuestion 도구 (moai-alfred-ask-user-questions 스킬 참조)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
+> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
 ## 🎯 Command Purpose
 
@@ -30,26 +30,6 @@ Automatically analyzes the project environment to create/update product/structur
 **Step 2: Mode Execution** - Execute initialization, settings, or update workflow
 **Step 3: Skills Integration** - Use specialized skills for complex operations
 **Step 4: Completion** - Provide next step options to user
-
-## 🚀 Initialize Project with JIT Skills
-
-Before starting project initialization, load essential JIT skills for enhanced setup:
-
-```python
-# Load session information for comprehensive project context
-Skill("moai-session-info")
-
-# Load streaming UI for progress indication during setup
-Skill("moai-streaming-ui")
-
-# Load change logger for tracking initialization changes
-Skill("moai-change-logger")
-
-# Load learning optimizer for adaptive project setup
-Skill("moai-learning-optimizer")
-```
-
-This provides comprehensive context, progress tracking, change logging, and adaptive setup during project initialization.
 
 ## 🧠 Associated Skills & Agents
 

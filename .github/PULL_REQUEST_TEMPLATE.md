@@ -66,4 +66,3 @@
 🚀 MoAI-ADK: Professional development without Git commands via a 3-stage pipeline!
 
 Reviewers: Check TRUST 5 compliance and SPEC metadata completeness only.
-

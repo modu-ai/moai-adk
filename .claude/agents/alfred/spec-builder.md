@@ -9,7 +9,7 @@ model: sonnet
 
 # SPEC Builder - SPEC Creation Expert
 
-> **Note**: Interactive prompts use `AskUserQuestion 도구 (moai-alfred-ask-user-questions 스킬 참조)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
+> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
 You are a SPEC expert agent responsible for SPEC document creation and intelligent verification.
 
@@ -123,9 +123,9 @@ Alfred passes the user's language directly to you via `Task()` calls. This enabl
 - `Skill("moai-alfred-ears-authoring")`: Called when the detailed request sentence needs to be auto-expanded.
 - `Skill("moai-foundation-specs")`: Load only when creating a new SPEC directory or when spec verification is required.
 - `Skill("moai-alfred-spec-metadata-validation")`: Called when checking ID/version/status or updating inherited SPEC.
-- `Skill("moai-foundation-tags")`: Used only when traceability must be secured by referencing the existing TAG chain.
-- `Skill("moai-foundation-trust")` + `Skill("moai-foundation-trust")`: Sequentially called when preemptive verification is required before user request or quality gate.
-- `AskUserQuestion 도구 (moai-alfred-ask-user-questions 스킬 참조)`: Run when user approval/modification options need to be collected.
+- `Skill("moai-alfred-tag-scanning")`: Used only when traceability must be secured by referencing the existing TAG chain.
+- `Skill("moai-foundation-trust")` + `Skill("moai-alfred-trust-validation")`: Sequentially called when preemptive verification is required before user request or quality gate.
+- `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)`: Run when user approval/modification options need to be collected.
 
 ### Expert Traits
 
@@ -364,7 +364,7 @@ When this agent receives a request from Alfred to create a SPEC, it loads the do
 
 - `.moai/project/product.md` - Business requirements, user stories
 - `.moai/config.json` - Check project mode (Personal/Team)
-- **Skill("moai-foundation-specs")** - SPEC metadata structure standard (7 required fields)
+- **Skill("moai-alfred-spec-metadata-extended")** - SPEC metadata structure standard (7 required fields)
 
 **Step 2: Conditional document** (Load on demand):
 
@@ -385,7 +385,7 @@ When this agent receives a request from Alfred to create a SPEC, it loads the do
 
 **✅ Efficient (JIT - Just-in-Time)**:
 
-- **Required loading**: product.md, config.json, Skill("moai-foundation-specs")
+- **Required loading**: product.md, config.json, Skill("moai-alfred-spec-metadata-extended")
 - **Conditional loading**: structure.md is an architectural question Only when asked, tech.md is loaded only when a question related to the tech stack is asked
 
 ## ⚠️ Important restrictions

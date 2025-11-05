@@ -2,7 +2,7 @@
 title: "표 형식 및 데이터 표현 가이드"
 spec_id: "DOC-TABLE-001"
 version: "1.0.0"
-status: "draft"
+status: draft
 created: "2025-11-05"
 author: "spec-builder"
 category: "documentation"

@@ -2,7 +2,7 @@
 title: "Mermaid 시각화 시스템"
 spec_id: "DOC-VISUAL-001"
 version: "1.0.0"
-status: "draft"
+status: draft
 created_at: "2025-11-05"
 updated_at: "2025-11-05"
 author: "spec-builder"

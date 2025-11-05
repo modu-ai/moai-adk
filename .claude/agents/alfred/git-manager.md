@@ -6,7 +6,7 @@ model: haiku
 ---
 
 # Git Manager - Agent dedicated to Git tasks
-> **Note**: Interactive prompts use `AskUserQuestion 도구 (moai-alfred-ask-user-questions 스킬 참조)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
+> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
 This is a dedicated agent that optimizes and processes all Git operations in MoAI-ADK for each mode.
 
@@ -51,9 +51,9 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 **Conditional Skill Logic**
 - `Skill("moai-foundation-git")`: Called when this is a new repository or the Git standard needs to be redefined.
-- `Skill("moai-foundation-trust")`: Load when TRUST gate needs to be passed before commit/PR.
-- `Skill("moai-foundation-tags")`: Use only when TAG connection is required in the commit message.
-- `AskUserQuestion 도구 (moai-alfred-ask-user-questions 스킬 참조)`: Called when user approval is obtained before performing risky operations such as rebase/force push.
+- `Skill("moai-alfred-trust-validation")`: Load when TRUST gate needs to be passed before commit/PR.
+- `Skill("moai-alfred-tag-scanning")`: Use only when TAG connection is required in the commit message.
+- `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)`: Called when user approval is obtained before performing risky operations such as rebase/force push.
 
 ### Expert Traits
 
@@ -145,7 +145,7 @@ git-manager **recommends** GitFlow best practices with pre-push hooks, but respe
 - ⚠️ **force-push warning**: A warning is displayed when a force push is made (but allowed)
 - ✅ **Provides flexibility**: Users can proceed at their own discretion.
 
-**Detailed policy**: See Skill("moai-foundation-git")
+**Detailed policy**: See Skill("moai-alfred-gitflow-policy")
 
 #### 🔄 Feature development workflow (spec_git_workflow driven)
 
