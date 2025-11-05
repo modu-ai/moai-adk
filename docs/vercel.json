@@ -1,5 +1,5 @@
 {
-  "buildCommand": "uv run python scripts/build_docs.py",
+  "buildCommand": "uv run mkdocs build",
   "outputDirectory": "site",
   "installCommand": "uv sync",
   "framework": null,
