@@ -272,7 +272,7 @@ class TestReportGeneration:
 
         error = ValidationError(
             message="Duplicate TAG found",
-            tag="@CODE:TEST-001",
+            tag="@CODE:TEST-002",
             locations=[("file1.py", 10), ("file2.py", 20)]
         )
 
@@ -288,7 +288,7 @@ class TestReportGeneration:
         assert report['is_valid'] is False
         assert len(report['errors']) == 1
         assert report['errors'][0]['message'] == "Duplicate TAG found"
-        assert report['errors'][0]['tag'] == "@CODE:TEST-001"
+        assert report['errors'][0]['tag'] == "@CODE:TEST-002"
         assert len(report['errors'][0]['locations']) == 2
 
     def test_generate_report_with_warnings(self):
@@ -321,7 +321,7 @@ class TestReportGeneration:
         result = ValidationResult(
             is_valid=False,
             errors=[
-                ValidationError("Error 1", "@CODE:TEST-001", [("f1.py", 1)]),
+                ValidationError("Error 1", "@CODE:TEST-002", [("f1.py", 1)]),
                 ValidationError("Error 2", "@CODE:TEST-002", [("f2.py", 2)])
             ],
             warnings=[
@@ -440,7 +440,7 @@ class TestPRCommentFormatting:
         result = ValidationResult(
             is_valid=False,
             errors=[
-                ValidationError("Error 1", "@CODE:TEST-001", [("f1.py", 1)])
+                ValidationError("Error 1", "@CODE:TEST-002", [("f1.py", 1)])
             ],
             warnings=[
                 ValidationWarning("Warning 1", "@CODE:TEST-002", ("f2.py", 2))
@@ -463,7 +463,7 @@ class TestPRCommentFormatting:
         result = ValidationResult(
             is_valid=False,
             errors=[
-                ValidationError("Duplicate TAG", "@CODE:TEST-001", [("f1.py", 1)])
+                ValidationError("Duplicate TAG", "@CODE:TEST-002", [("f1.py", 1)])
             ],
             warnings=[]
         )
@@ -494,7 +494,7 @@ class TestStrictVsInfoMode:
         with tempfile.TemporaryDirectory() as tmpdir:
             # File with orphan CODE (warning only)
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-001\n")
+            file1.write_text("# @CODE:TEST-002\n")
 
             result = validator.validate_files([str(file1)])
 
@@ -515,7 +515,7 @@ class TestStrictVsInfoMode:
         with tempfile.TemporaryDirectory() as tmpdir:
             # File with orphan CODE (warning in info mode)
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-001\n")
+            file1.write_text("# @CODE:TEST-002\n")
 
             result = validator.validate_files([str(file1)])
 

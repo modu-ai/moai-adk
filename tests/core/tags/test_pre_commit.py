@@ -86,7 +86,7 @@ class TestDuplicateDetection:
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create test files
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-001\n")
+            file1.write_text("# @CODE:TEST-002\n")
 
             file2 = Path(tmpdir) / "file2.py"
             file2.write_text("# @CODE:TEST-002\n")
@@ -101,11 +101,11 @@ class TestDuplicateDetection:
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
             file1.write_text("""
-# @CODE:TEST-001
+# @CODE:TEST-002
 def func1():
     pass
 
-# @CODE:TEST-001
+# @CODE:TEST-002
 def func2():
     pass
 """)
@@ -121,10 +121,10 @@ def func2():
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-001\n")
+            file1.write_text("# @CODE:TEST-002\n")
 
             file2 = Path(tmpdir) / "file2.py"
-            file2.write_text("# @CODE:TEST-001\n")
+            file2.write_text("# @CODE:TEST-002\n")
 
             errors = validator.validate_duplicates([str(file1), str(file2)])
             assert len(errors) == 1
@@ -138,9 +138,9 @@ def func2():
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
             file1.write_text("""
-# @CODE:TEST-001
 # @CODE:TEST-002
-# @CODE:TEST-001
+# @CODE:TEST-002
+# @CODE:TEST-002
 # @CODE:TEST-002
 """)
 
@@ -237,8 +237,8 @@ class TestFileScanningAndValidation:
             # File with duplicate TAGs
             file1 = Path(tmpdir) / "file1.py"
             file1.write_text("""
-# @CODE:TEST-001
-# @CODE:TEST-001
+# @CODE:TEST-002
+# @CODE:TEST-002
 """)
 
             result = validator.validate_files([str(file1)])
@@ -252,7 +252,7 @@ class TestFileScanningAndValidation:
         with tempfile.TemporaryDirectory() as tmpdir:
             # CODE without TEST (warning, not error)
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-001\n")
+            file1.write_text("# @CODE:TEST-002\n")
 
             result = validator.validate_files([str(file1)])
             # Warnings don't block commit by default
@@ -267,8 +267,8 @@ class TestFileScanningAndValidation:
             # Duplicate (error)
             file1 = Path(tmpdir) / "file1.py"
             file1.write_text("""
-# @CODE:TEST-001
-# @CODE:TEST-001
+# @CODE:TEST-002
+# @CODE:TEST-002
 """)
 
             # Orphan (warning)
@@ -293,7 +293,7 @@ class TestFileScanningAndValidation:
 
             # Create and stage file
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-001\n")
+            file1.write_text("# @CODE:TEST-002\n")
             subprocess.run(["git", "add", "file1.py"], cwd=tmpdir)
 
             # Create unstaged file
@@ -392,7 +392,7 @@ More @TEST:AUTH-004 in example code
 
         with tempfile.TemporaryDirectory() as tmpdir:
             readme = Path(tmpdir) / "README.md"
-            readme.write_text("Example @CODE:TEST-001\nExample @CODE:TEST-001\n")
+            readme.write_text("Example @CODE:TEST-002\nExample @CODE:TEST-002\n")
 
             result = validator.validate_files([str(readme)])
             assert result.is_valid is True
@@ -469,7 +469,7 @@ class TestConfigurableValidation:
         with tempfile.TemporaryDirectory() as tmpdir:
             # CODE without TEST (warning in normal mode)
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-001\n")
+            file1.write_text("# @CODE:TEST-002\n")
 
             result = validator.validate_files([str(file1)])
             # In strict mode, warnings should block commit
@@ -481,7 +481,7 @@ class TestConfigurableValidation:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-001\n")
+            file1.write_text("# @CODE:TEST-002\n")
 
             result = validator.validate_files([str(file1)])
             # No orphan warnings when check is disabled

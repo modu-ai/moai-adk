@@ -1,9 +1,9 @@
 ---
 id: DOCS-001
 version: 1.0.0
-status: draft
+status: completed
 created: 2025-01-06
-updated: 2025-01-06
+updated: 2025-11-06
 author: @Goos
 priority: high
 category: documentation

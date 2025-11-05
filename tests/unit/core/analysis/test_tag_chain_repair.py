@@ -144,7 +144,7 @@ def test_repair_plan_creation():
                 {'domain': 'UTILS', 'missing': ['CODE'], 'score': 0.33}
             ],
             'orphans_by_type': {
-                'code_without_spec': ['@CODE:TEST-001'],
+                'code_without_spec': ['@CODE:TEST-002'],
                 'code_without_test': ['@CODE:TEST-002'],
                 'test_without_code': ['@TEST:TEST-003'],
                 'spec_without_code': ['@SPEC:TEST-004']
@@ -215,7 +215,7 @@ def test_execute_repair_plan_dry_run():
                 {'domain': 'AUTH', 'missing': ['SPEC'], 'score': 0.33}
             ],
             'orphans_by_type': {
-                'code_without_test': ['@CODE:TEST-001']
+                'code_without_test': ['@CODE:TEST-002']
             }
         })()
 

@@ -395,6 +395,7 @@ def main():
     parser.add_argument("--config", help="설정 파일 경로")
     parser.add_argument("--output", help="출력 파일 경로")
     parser.add_argument("--dry-run", action="store_true", default=True, help="시뮬레이션 모드")
+    parser.add_argument("--apply", action="store_true", help="실제 수정 적용")
     
     args = parser.parse_args()
     
@@ -404,7 +405,13 @@ def main():
         
         if analysis["summary"]["topline_duplicates"] > 0:
             print(f"\n⚠️  {analysis['summary']['topline_duplicates']}개의 치명적 topline 중복 발견!")
-            print("수정을 위해서는 --apply-corrections 옵션을 사용하세요.")
+            if args.apply:
+                print("🔧 자동 수정 적용 중...")
+                # TODO: Implement actual corrections logic
+                print("⚠️ 자동 수정 기능은 아직 구현 중입니다.")
+                return 1
+            else:
+                print("수정을 위해서는 --apply 옵션을 사용하세요.")
             return 1
         else:
             print("\n✅ 치명적 중복 없음")
