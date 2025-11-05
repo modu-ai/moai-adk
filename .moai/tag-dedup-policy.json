@@ -46,10 +46,12 @@
         "docs/getting-started/**",
         "templates/**",
         "**.template.*",
-        ".claude/**",
         "src/moai_adk/templates/.claude/**"
       ],
-      "reason": "Educational, template, and Claude Code configuration content allowed to have example tags. .claude/ directory needs local-template synchronization."
+      "excluded_from_validation": [
+        ".claude/**"
+      ],
+      "reason": "Educational and template content allowed to have example tags. Local .claude/ directories excluded from validation (development environment), while package templates retain full TAG structure for new project creation."
     }
   },
   "deduplication_strategy": {
@@ -83,7 +85,7 @@
     "topline_uniqueness": {
       "rule": "No duplicate topline tags across authority hierarchy",
       "check_method": "scan_first_20_lines",
-      "exclusions": ["whitelisted_paths", "example_blocks"]
+      "exclusions": ["whitelisted_paths", "example_blocks", "excluded_from_validation"]
     },
     "chain_integrity": {
       "rule": "SPEC → TEST → CODE → DOC chains must remain intact",
