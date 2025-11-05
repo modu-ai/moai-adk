@@ -42,7 +42,7 @@ jobs:
           cd docs
           echo "🚀 Building MoAI-ADK Documentation..."
           uv sync
-          uv run python scripts/build_docs.py
+          uv run mkdocs build
 
           # Build stats
           echo "📊 Build Statistics:"
