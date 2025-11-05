@@ -6,7 +6,7 @@
 **Last Updated**: 2025-11-05
 **Language**: 한국어, 영어, 일본어, 중국어
 
-# @CODE:DOCS-002
+# @CODE:DOCS-001
 
 ## 🚀 빠른 시작
 
