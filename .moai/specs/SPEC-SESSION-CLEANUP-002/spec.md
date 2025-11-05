@@ -11,12 +11,11 @@ id: SESSION-CLEANUP-002
 title: Alfred 커맨드 파일 실제 구현 - Session Cleanup 패턴 적용
 category: Implementation
 priority: high
-status: completed
+status: draft
 author: "@GoosLab"
 created: 2025-10-30
-updated: 2025-11-05
-version: 1.0.0
-related_issue: "139"
+updated: 2025-10-30
+version: 0.0.1
 tags:
   - alfred
   - implementation

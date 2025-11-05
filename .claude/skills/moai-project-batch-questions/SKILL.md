@@ -139,13 +139,13 @@ const teamModeBatch = {
 const reportGenerationBatch = {
   questions: [
     {
-      question: "Configure report generation:\n\n⚡ **Minimal (Recommended)**: Essential reports only (20-30 tokens)\n📊 **Enable**: Full analysis reports (50-60 tokens)\n🚫 **Disable**: No reports (0 tokens)\n\nAffects future /alfred:3-sync costs.",
+      question: "Configure report generation:\n\n**Minimal (Recommended)**: Essential reports only (20-30 tokens)\n**Enable**: Full analysis reports (50-60 tokens)\n**Disable**: No reports (0 tokens)\n\nAffects future /alfred:3-sync costs.",
       header: "Report Generation",
       multiSelect: false,
       options: [
-        { label: "⚡ Minimal (Recommended)", description: "80% token reduction, faster sync" },
+        { label: "Minimal (Recommended)", description: "80% token reduction, faster sync" },
         { label: "Enable", description: "Complete reports, higher token usage" },
-        { label: "🚫 Disable", description: "No automatic reports, zero cost" }
+        { label: "Disable", description: "No automatic reports, zero cost" }
       ]
     }
   ]

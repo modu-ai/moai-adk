@@ -68,47 +68,5 @@
     "files_processed": 0,
     "space_freed_mb": 0.0,
     "errors": []
-  },
-  {
-    "session_end": "2025-11-05T09:37:35.685370",
-    "project_root": "/Users/goos/MoAI/MoAI-ADK",
-    "cleanup_actions": [
-      "Cleaned .moai/temp/*",
-      "Cleaned .moai/cache/*.tmp",
-      "Cleaned *.tmp",
-      "Cleaned .pytest_cache/__pycache__/*",
-      "Cleaned .coverage.*.tmp"
-    ],
-    "files_processed": 0,
-    "space_freed_mb": 0.0,
-    "errors": []
-  },
-  {
-    "session_end": "2025-11-05T09:38:31.489854",
-    "project_root": "/Users/goos/MoAI/MoAI-ADK",
-    "cleanup_actions": [
-      "Cleaned .moai/temp/*",
-      "Cleaned .moai/cache/*.tmp",
-      "Cleaned *.tmp",
-      "Cleaned .pytest_cache/__pycache__/*",
-      "Cleaned .coverage.*.tmp"
-    ],
-    "files_processed": 0,
-    "space_freed_mb": 0.0,
-    "errors": []
-  },
-  {
-    "session_end": "2025-11-05T09:43:31.111210",
-    "project_root": "/Users/goos/MoAI/MoAI-ADK",
-    "cleanup_actions": [
-      "Cleaned .moai/temp/*",
-      "Cleaned .moai/cache/*.tmp",
-      "Cleaned *.tmp",
-      "Cleaned .pytest_cache/__pycache__/*",
-      "Cleaned .coverage.*.tmp"
-    ],
-    "files_processed": 0,
-    "space_freed_mb": 0.0,
-    "errors": []
   }
 ]

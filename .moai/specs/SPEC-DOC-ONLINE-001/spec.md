@@ -1,8 +1,8 @@
 ---
 title: "온라인 문서 아키텍처 시스템"
 spec_id: "DOC-ONLINE-001"
-version: "0.1.0"
-status: in_progress
+version: "1.0.0"
+status: "draft"
 created_at: "2025-11-05"
 updated_at: "2025-11-05"
 author: "spec-builder"
@@ -11,7 +11,6 @@ tags: ["DOC", "ONLINE", "ARCHITECTURE", "MONOCHROME", "MATERIAL-ICONS"]
 type: "feature"
 priority: "high"
 estimated_complexity: "medium"
-related_issue: "188"
 ---
 
 # 온라인 문서 아키텍처 시스템

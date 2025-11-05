@@ -1,0 +1,30 @@
+{
+  "generated_doc_tags": [],
+  "mappings": {
+    "spec_code": {},
+    "code_test": {},
+    "test_doc": {}
+  },
+  "repair_report": {
+    "repair_summary": {
+      "repaired_chains": 0,
+      "generated_doc_tags": 0,
+      "spec_code_mappings": 0,
+      "code_test_mappings": 0,
+      "test_doc_mappings": 0,
+      "total_tags_managed": 0
+    },
+    "integrity_metrics": {
+      "target_score": 0.85,
+      "current_score": 0.0,
+      "improvement_ratio": 0.0,
+      "achievement_status": "IN_PROGRESS"
+    },
+    "remaining_tasks": {
+      "orphan_code_tags": 56,
+      "orphan_test_tags": 243,
+      "incomplete_chains": 323
+    }
+  },
+  "generated_at": "2025-11-05"
+}
