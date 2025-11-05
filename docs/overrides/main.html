@@ -213,17 +213,43 @@
       transition: background-color var(--transition-normal), color var(--transition-normal);
     }
 
-    /* Force override with maximum specificity */
+    /* CRITICAL: UNIVERSAL ITALIC REMOVAL - 모든 요소에서 이탈릭체 제거 */
+    *,
+    *::before,
+    *::after,
+    html,
+    html *,
+    body,
+    body *,
+    div,
+    p,
+    span,
+    li,
+    td,
+    th,
+    h1, h2, h3, h4, h5, h6,
+    a,
+    strong,
+    em,
+    i {
+      font-style: normal !important;  /* 완벽한 이탤릭체 제거 */
+    }
+
+    /* Force override with maximum specificity - COMPLETE ITALIC REMOVAL */
+    html body,
+    html body *,
     html .md-typeset,
+    html .md-typeset *,
     html .md-content,
+    html .md-content *,
     html .md-main__inner,
+    html .md-main__inner *,
     html .md-container,
-    html [data-md-color-scheme="default"] .md-typeset,
-    html [data-md-color-scheme="default"] .md-content,
-    html [data-md-color-scheme="default"] .md-main__inner {
+    html .md-container *,
+    html [data-md-color-scheme="default"] * {
       background-color: #F2F1ED !important;  /* Bg Warm Off-White */
       color: #171612 !important;           /* Ink/Accent */
-      font-style: normal !important;       /* CRITICAL: Force normal font style */
+      font-style: normal !important;       /* CRITICAL: Complete italic removal */
     }
 
     /* Override header with maximum specificity */
@@ -236,16 +262,29 @@
       border-bottom: 1px solid #D5D4D0 !important; /* Border Light Gray */
     }
 
-    /* CRITICAL: Force header links to be bold */
+    /* CRITICAL: Force header links to be bold - 라이트/다크 모드 */
     html .md-header a,
     html .md-header__title,
-    html .md-header__inner a,
+    html .md-header__inner a {
+      font-weight: 700 !important;
+      text-decoration: none !important;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.1) !important;
+    }
+
+    /* 라이트 모드 헤더 링크 */
     html [data-md-color-scheme="default"] .md-header a,
     html [data-md-color-scheme="default"] .md-header__title,
     html [data-md-color-scheme="default"] .md-header__inner a {
-      font-weight: 700 !important;
-      color: var(--text-primary) !important;
-      text-decoration: none !important;
+      color: #171612 !important;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.1) !important;
+    }
+
+    /* 다크 모드 헤더 링크 */
+    html [data-md-color-scheme="slate"] .md-header a,
+    html [data-md-color-scheme="slate"] .md-header__title,
+    html [data-md-color-scheme="slate"] .md-header__inner a {
+      color: #F2F1ED !important;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.3) !important;
     }
 
     /* Override navigation */

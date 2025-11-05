@@ -26,7 +26,7 @@ scope:
     - docs/**/*.mdx
 ---
 
-# `@SPEC:DOCS-001: MoAI-ADK 문서 개선 프로젝트 (README.ko.md 분할 및 재구성)`
+# `@SPEC:DOCS-001`: MoAI-ADK 문서 개선 프로젝트 (README.ko.md 분할 및 재구성)
 
 ## History
 
@@ -362,7 +362,7 @@ docs/
 
 ## Traceability (@TAG)
 
-- **SPEC**: @SPEC:DOCS-001 (이 문서)
+- **SPEC**: 이 문서
 - **TEST**: @TEST:DOCS-001
   - 문서 빌드 테스트
   - 링크 유효성 테스트
