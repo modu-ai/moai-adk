@@ -1,6 +1,6 @@
 ---
 name: git-manager
-description: "Use when: When you need to perform Git operations such as creating Git branches, managing PRs, creating commits, etc."
+description: "Use PROACTIVELY when: Git operations are required, version control management is needed, or repository tasks must be performed. Triggered by keywords: 'git', 'commit', 'branch', 'PR', 'merge', 'push', 'pull', 'repository', 'version control', 'checkout'."
 tools: Bash, Read, Write, Edit, Glob, Grep
 model: haiku
 ---

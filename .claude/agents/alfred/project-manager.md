@@ -1,6 +1,6 @@
 ---
 name: project-manager
-description: "Use when: When initial project setup and .moai/ directory structure creation are required. Called from the /alfred:0-project command."
+description: "Use PROACTIVELY when: Initial project setup is required, .moai/ directory structure must be created, or project initialization is needed. Triggered by keywords: 'project', 'setup', 'init', 'initialize', '.moai', 'structure', 'configuration'. Automatically called from the /alfred:0-project command."
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite
 model: sonnet
 ---

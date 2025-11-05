@@ -1,6 +1,6 @@
 ---
 name: debug-helper
-description: "Use when: When a runtime error occurs and it is necessary to analyze the cause and suggest a solution."
+description: "Use PROACTIVELY when: Runtime errors occur, debugging is needed, or systematic troubleshooting is required. Triggered by keywords: 'error', 'debug', 'crash', 'exception', 'bug', 'issue', 'problem', 'troubleshoot'."
 tools: Read, Grep, Glob, Bash, TodoWrite
 model: sonnet
 ---

@@ -1,6 +1,6 @@
 ---
 name: trust-checker
-description: "Use when: When verification of compliance with TRUST 5 principles such as code quality, security, and test coverage is required."
+description: "Use PROACTIVELY when: Verification of compliance with TRUST 5 principles is required, quality checks are needed, or trust validation must be performed. Triggered by keywords: 'trust', 'quality', 'security', 'test coverage', 'TRUST', 'principles', 'verification', 'compliance'."
 tools: Read, Grep, Glob, Bash, TodoWrite
 model: haiku
 ---
