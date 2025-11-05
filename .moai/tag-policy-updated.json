@@ -62,7 +62,10 @@
     "tests/fixtures/**",
     "tests/snapshots/**",
     "templates/**",
-    "examples/**"
+    "examples/**",
+    "tests/**",
+    "src/moai_adk/core/tags/**",
+    "src/moai_adk/core/analysis/**"
   ],
   "whitelisted_paths": [
     "docs/guides/**",

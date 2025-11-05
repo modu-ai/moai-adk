@@ -1,13 +1,32 @@
 /* MoAI-ADK Documentation Custom Styles - UI/UX Optimized */
 
-/* CRITICAL: 콘텐츠 기본 스타일 - 이탤릭체 문제 해결 */
+/* CRITICAL: 모든 요소에서 이탤릭체 완전 제거 - UNIVERSAL FIX */
+*,
+*::before,
+*::after,
+html,
+body,
+body *,
 .md-content,
 .md-content *,
 .md-typeset,
 .md-typeset *,
 .md-main__inner,
-.md-main__inner * {
-  font-style: normal !important;  /* 기울임꼴 제거 - 최고 우선순위 */
+.md-main__inner *,
+.md-container,
+.md-container *,
+div,
+p,
+span,
+li,
+td,
+th,
+h1, h2, h3, h4, h5, h6,
+a,
+strong,
+em,
+i {
+  font-style: normal !important;  /* 모든 이탤릭체 완전 제거 */
 }
 
 /* CRITICAL: 콘텐츠 본문 */
@@ -21,18 +40,43 @@
   color: var(--md-default-fg-color);
 }
 
-/* CRITICAL: 헤더 링크 최적화 - 가독성 개선 */
+/* CRITICAL: 헤더 링크 최적화 - 라이트/다크 모드 가독성 개선 */
 .md-header a,
 .md-header a *,
 .md-header__title,
 .md-header__title *,
 .md-header__inner a,
 .md-header__inner a * {
-  color: var(--md-primary-fg-color) !important;
   text-decoration: none !important;
   font-weight: 700 !important;
   opacity: 1.0 !important;
   transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+/* 라이트 모드 헤더 링크 - 어두운 배경에 흰색 글자 (최고 가시성) */
+[data-md-color-scheme="default"] .md-header,
+[data-md-color-scheme="default"] .md-header * {
+  background-color: #14151A !important;
+}
+
+[data-md-color-scheme="default"] .md-header a,
+[data-md-color-scheme="default"] .md-header a *,
+[data-md-color-scheme="default"] .md-header__title,
+[data-md-color-scheme="default"] .md-header__title *,
+[data-md-color-scheme="default"] .md-header__inner a,
+[data-md-color-scheme="default"] .md-header__inner a * {
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8) !important;
+  font-style: normal !important;
+}
+
+/* 다크 모드 헤더 링크 */
+[data-md-color-scheme="slate"] .md-header a,
+[data-md-color-scheme="slate"] .md-header__title,
+[data-md-color-scheme="slate"] .md-header__inner a {
+  color: #F2F1ED !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3) !important;
 }
 
 .md-header a:hover {
@@ -56,7 +100,7 @@
   border-bottom-color: var(--md-accent-fg-color);
 }
 
-/* CRITICAL: 좌측 사이드바 메뉴 선명도 개선 */
+/* CRITICAL: 좌측 사이드바 메뉴 선명도 개선 - 라이트/다크 모드 */
 .md-sidebar a,
 .md-sidebar a *,
 .md-nav__link,
@@ -64,10 +108,39 @@
 .md-nav__item,
 .md-nav__item * {
   text-decoration: none !important;
-  color: var(--md-default-fg-color) !important;
   font-weight: 500 !important;
   opacity: 1.0 !important;
   transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+/* 라이트 모드 사이드바 - 최고 가시성 */
+[data-md-color-scheme="default"] .md-sidebar a,
+[data-md-color-scheme="default"] .md-sidebar a *,
+[data-md-color-scheme="default"] .md-nav__link,
+[data-md-color-scheme="default"] .md-nav__link *,
+[data-md-color-scheme="default"] .md-nav__item,
+[data-md-color-scheme="default"] .md-nav__item * {
+  color: #171612 !important;
+  font-weight: 600 !important;
+  font-style: normal !important;
+  opacity: 1.0 !important;
+}
+
+[data-md-color-scheme="default"] .md-nav--secondary,
+[data-md-color-scheme="default"] .md-nav--secondary * {
+  background-color: #F7F6F2 !important;
+  border: 2px solid #D5D4D0 !important;
+}
+
+/* 다크 모드 사이드바 */
+[data-md-color-scheme="slate"] .md-sidebar a,
+[data-md-color-scheme="slate"] .md-nav__link,
+[data-md-color-scheme="slate"] .md-nav__item {
+  color: #F2F1ED !important;
+}
+
+[data-md-color-scheme="slate"] .md-nav--secondary {
+  background-color: #1A1916 !important;
 }
 
 .md-sidebar a:hover,

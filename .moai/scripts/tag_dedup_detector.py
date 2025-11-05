@@ -184,7 +184,7 @@ class TagDedupDetector:
         print(f"✅ {len(self.duplicate_groups)}개의 중복 그룹 발견")
     
     def analyze_duplicates(self) -> Dict:
-        """중복 분석 리포트 생성"""
+        """중복 분석 리포트 생성 (Reference duplicates 구분)"""
         analysis = {
             "summary": {
                 "total_tags": len(self.all_tags),
@@ -192,16 +192,26 @@ class TagDedupDetector:
                 "duplicate_groups": len(self.duplicate_groups),
                 "total_duplicate_occurrences": sum(len(g.duplicates) for g in self.duplicate_groups),
                 "topline_duplicates": 0,
-                "reference_duplicates": 0
+                "reference_duplicates": 0,
+                "allowed_reference_duplicates": 0,
+                "critical_duplicates": 0
             },
             "duplicate_groups": [],
             "recommended_actions": []
         }
-        
+
+        # 정책 설정 확인
+        ref_dup_allowed = self.config.get("deduplication_policy", {}).get("reference_duplicates", {}).get("allowed", False)
+
         for group in self.duplicate_groups:
+            # 중복 유형 분류
+            has_topline = group.primary_candidate.is_topline or any(dup.is_topline for dup in group.duplicates)
+
             group_info = {
                 "tag_pattern": group.tag_pattern,
                 "total_occurrences": len(group.occurrences),
+                "duplicate_type": "topline" if has_topline else "reference",
+                "severity": "critical" if has_topline else ("info" if ref_dup_allowed else "warning"),
                 "primary_candidate": {
                     "file": group.primary_candidate.file_path,
                     "line": group.primary_candidate.line_number,
@@ -219,28 +229,48 @@ class TagDedupDetector:
                 ]
             }
             analysis["duplicate_groups"].append(group_info)
-            
-            # Topline 중복 카운트
-            if group.primary_candidate.is_topline or any(dup.is_topline for dup in group.duplicates):
+
+            # 중복 유형별 카운트
+            if has_topline:
                 analysis["summary"]["topline_duplicates"] += 1
+                analysis["summary"]["critical_duplicates"] += 1
             else:
-                analysis["summary"]["reference_duplicates"] += 1
-        
-        # 추천 액션 생성
+                if ref_dup_allowed:
+                    analysis["summary"]["allowed_reference_duplicates"] += 1
+                else:
+                    analysis["summary"]["reference_duplicates"] += 1
+
+        # 추천 액션 생성 (정책 기반)
         if analysis["summary"]["topline_duplicates"] > 0:
             analysis["recommended_actions"].append({
                 "priority": "critical",
                 "action": "renumber_or_remove_topline_duplicates",
-                "description": f"{analysis['summary']['topline_duplicates']}개의 topline 중복 처리 필요"
+                "description": f"{analysis['summary']['topline_duplicates']}개의 topline 중복은 즉시 처리 필요"
             })
-        
-        if analysis["summary"]["reference_duplicates"] > 0:
-            analysis["recommended_actions"].append({
-                "priority": "info", 
-                "action": "track_reference_duplicates",
-                "description": f"{analysis['summary']['reference_duplicates']}개의 참조 중복은 추적만 필요"
-            })
-        
+
+        # Reference duplicates 처리
+        if ref_dup_allowed:
+            if analysis["summary"]["allowed_reference_duplicates"] > 0:
+                analysis["recommended_actions"].append({
+                    "priority": "info",
+                    "action": "acknowledge_reference_duplicates",
+                    "description": f"{analysis['summary']['allowed_reference_duplicates']}개의 참조 중복은 정책상 허용됨 (TRACEABILITY용)"
+                })
+        else:
+            if analysis["summary"]["reference_duplicates"] > 0:
+                analysis["recommended_actions"].append({
+                    "priority": "warning",
+                    "action": "review_reference_duplicates",
+                    "description": f"{analysis['summary']['reference_duplicates']}개의 참조 중복 검토 필요"
+                })
+
+        # 정책 준수 여부 판단
+        analysis["policy_compliance"] = {
+            "compliant": analysis["summary"]["critical_duplicates"] == 0,
+            "critical_issues": analysis["summary"]["topline_duplicates"],
+            "allowed_reference_count": analysis["summary"]["allowed_reference_duplicates"]
+        }
+
         return analysis
     
     def generate_correction_plan(self, analysis: Dict) -> Dict:

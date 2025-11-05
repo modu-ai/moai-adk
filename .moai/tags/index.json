@@ -79,5 +79,20 @@
     "state": "active",
     "created": "2025-11-06T17:53:00Z",
     "domain": "AUTH"
+  },
+  "@SPEC:DOCS-001": {
+    "id": "@SPEC:DOCS-001",
+    "type": "SPEC",
+    "primary_path": ".moai/specs/SPEC-DOCS-001/spec.md",
+    "related_paths": [],
+    "links": {
+      "SPEC": [],
+      "TEST": [],
+      "CODE": [],
+      "DOC": []
+    },
+    "state": "active",
+    "created": "2025-11-06T17:00:00Z",
+    "domain": "DOCS"
   }
 }
