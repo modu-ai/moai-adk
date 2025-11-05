@@ -1,0 +1,42 @@
+{
+  "phase1_critical_consolidation": {
+    "delete_redundant_skills": [
+      "moai-alfred-persona-roles",
+      "moai-alfred-ears-authoring",
+      "moai-alfred-spec-metadata-extended",
+      "moai-alfred-spec-metadata-validation",
+      "moai-alfred-git-workflow",
+      "moai-alfred-gitflow-policy"
+    ],
+    "merge_overlapping_skills": [
+      {
+        "primary": "moai-foundation-tags",
+        "secondary": "moai-alfred-tag-scanning",
+        "result": "unified-tag-management"
+      },
+      {
+        "primary": "moai-foundation-trust",
+        "secondary": "moai-alfred-trust-validation",
+        "result": "unified-trust-validation"
+      }
+    ],
+    "enhance_primary_skills": [
+      "moai-alfred-personas",
+      "moai-foundation-git",
+      "moai-foundation-specs"
+    ]
+  },
+  "phase2_quality_enhancement": {
+    "improve_minimal_content": [
+      "moai-alfred-context-budget",
+      "moai-alfred-session-state",
+      "moai-alfred-proactive-suggestions",
+      "moai-alfred-expertise-detection"
+    ],
+    "standardize_metadata": "all_skills"
+  },
+  "phase3_architectural_review": {
+    "verify_dependencies": "all_skill_references",
+    "create_skill_map": true
+  }
+}

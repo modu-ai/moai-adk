@@ -699,7 +699,7 @@ except Exception as e:
    ```
 
 2. **Ask user for approval using AskUserQuestion**:
-   - **Your task**: Use the AskUserQuestion 도구 to gather user decision
+   - **Your task**: Use the AskUserQuestion tool to gather user decision
    - Tool call:
      - `questions`: Array with 1 question
      - Question details:
@@ -1821,7 +1821,7 @@ except Exception as e:
    ```
 
 3. **Ask user for next action using AskUserQuestion**:
-   - **Your task**: Use the AskUserQuestion 도구 to gather user's next step
+   - **Your task**: Use the AskUserQuestion tool to gather user's next step
    - Tool call:
      - `questions`: Array with 1 question
      - Question details:

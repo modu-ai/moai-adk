@@ -387,6 +387,63 @@ MoAI-ADK v0.7.0 introduced a **two-layer language architecture** that enables gl
 When configured, Alfred will:
 - Respond in Korean (모든 대화)
 - Generate SPECs in Korean
+
+### Memory Stability Configuration
+
+#### Custom Hook Timeouts
+
+For enhanced memory stability and to prevent Bun segmentation faults, custom hook timeouts are configured:
+
+**`.moai/config.json`**:
+```json
+{
+  "hooks": {
+    "timeout_ms": 3000,
+    "graceful_degradation": true,
+    "notes": "Hook execution timeout (milliseconds). Reduced from 5000ms to 3000ms for memory stability. Set graceful_degradation to true to continue even if a hook fails."
+  }
+}
+```
+
+**`.claude/settings.json`** - Memory monitoring hooks:
+```json
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session_start__memory_monitor.py",
+            "type": "command"
+          },
+          {
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session_start__runtime_fallback.py",
+            "type": "command"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+#### Memory Monitoring Features
+
+- **Real-time monitoring**: System and process memory usage tracking
+- **Multi-level alerts**: 70%/80%/90% system memory thresholds
+- **Process monitoring**: 2GB/4GB/8GB process memory thresholds
+- **Runtime fallback**: Automatic Node.js fallback when Bun shows memory issues
+- **Automatic health checks**: Runtime validation during session start
+
+#### Why 3000ms Timeout?
+
+- **Default**: Claude Code typically uses 5000ms (5 seconds)
+- **Our setting**: 3000ms (3 seconds) for memory stability
+- **Reason**: Prevents extended memory usage in Hook operations
+- **Benefit**: Reduces risk of Bun segmentation faults
+- **Safety**: Still provides adequate time for Hook completion
+
+This configuration is **specifically tuned** for memory stability and may differ from standard Claude Code installations.
 - Write code comments in Korean
 - Create Git commits in Korean
 - All while using English-only Skill() invocations internally

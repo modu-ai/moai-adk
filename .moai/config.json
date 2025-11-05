@@ -144,11 +144,11 @@
     "notes": "Hook execution timeout (milliseconds). Reduced from 5000ms to 3000ms for memory stability. Set graceful_degradation to true to continue even if a hook fails."
   },
   "report_generation": {
-    "enabled": true,
+    "enabled": false,
     "auto_create": false,
-    "warn_user": true,
-    "user_choice": "Minimal",
-    "configured_at": "2025-11-04T19:37:30+09:00",
+    "warn_user": false,
+    "user_choice": "Disable",
+    "configured_at": "2025-11-05T19:00:00+09:00",
     "allowed_locations": [
       ".moai/docs/",
       ".moai/reports/",

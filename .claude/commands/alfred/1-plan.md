@@ -99,6 +99,20 @@ Each phase contains explicit step-by-step instructions.
 
 PHASE 1 consists of **two independent sub-phases** to provide flexible workflow based on user request clarity:
 
+### 🚀 Initialize Session with JIT Skills
+
+Before starting PHASE 1, load essential JIT skills for enhanced context:
+
+```python
+# Load session information for project context
+Skill("moai-session-info")
+
+# Load JIT documentation capabilities for enhanced understanding
+Skill("moai-jit-docs-enhanced")
+```
+
+This provides immediate project context and enhances documentation understanding during planning.
+
 ### 📋 PHASE 1 Workflow Overview
 
 ```
@@ -433,7 +447,7 @@ YAML 프론트매터와 @TAG 식별자는 반드시 영어로 유지합니다.
 - Skill("moai-foundation-specs") - SPEC 구조 가이드
 - Skill("moai-foundation-ears") - EARS 문법 요구사항
 - Skill("moai-alfred-spec-metadata-validation") - 메타데이터 검증
-- Skill("moai-alfred-tag-scanning") - TAG 체인 참조
+- Skill("moai-foundation-tags") - TAG 체인 참조
 
 작업:
 STEP 1에서 승인된 계획에 따라 SPEC 문서를 작성해주세요.
@@ -782,7 +796,7 @@ For complete EARS syntax and examples, invoke: `Skill("moai-foundation-ears")`
 
 ### SPEC Metadata Standard
 
-For complete metadata field descriptions, validation rules, and version system guide, invoke: `Skill("moai-alfred-spec-metadata-extended")`
+For complete metadata field descriptions, validation rules, and version system guide, invoke: `Skill("moai-foundation-specs")`
 
 **Quick reference**:
 - **7 required fields**: id, version, status, created, updated, author, priority

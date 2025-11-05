@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# @CODE:AUTO-001
+# @CODE:TAG-AUTO-CORRECTOR-001 | @SPEC:TAG-AUTO-001
 """TAG 오류 자동 수정 시스템
 
 TAG 정책 위반을 자동으로 수정하고 스마트한 TAG를 생성하는 시스템.

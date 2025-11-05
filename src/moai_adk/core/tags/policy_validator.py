@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# @CODE:POLICY-001
+# @CODE:TAG-POLICY-VALIDATOR-001 | @SPEC:TAG-POLICY-001
 """TAG 정책 위반 실시간 검증 시스템
 
 MoAI-ADK의 SPEC-first 원칙을 강제하는 실시간 TAG 정책 검증기.

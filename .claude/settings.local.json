@@ -34,7 +34,8 @@
       "Bash(npm run dev:*)",
       "Bash(while read spec)",
       "Bash(done:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(bun:*)"
     ],
     "deny": [],
     "ask": []

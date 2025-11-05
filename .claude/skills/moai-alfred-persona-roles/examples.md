@@ -42,7 +42,7 @@ Why it matters:
 
 Related Skills:
 - Skill("moai-foundation-tags") - Full @TAG specification
-- Skill("moai-alfred-tag-scanning") - Validation rules
+- Skill("moai-foundation-tags") - Validation rules
 
 Would you like to see a complete example of creating a SPEC with @TAGs?
 ```
