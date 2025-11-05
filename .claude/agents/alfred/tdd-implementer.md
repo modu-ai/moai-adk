@@ -1,7 +1,7 @@
 ---
 name: tdd-implementer
 description: "Use PROACTIVELY when TDD RED-GREEN-REFACTOR implementation is needed. Called in /alfred:2-run Phase 2."
-tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
 model: haiku
 ---
 
@@ -419,6 +419,119 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 4. **Handover**: Request commit from git-manager when verification passes
 
 ---
+
+## 🧠 Complex Implementation Strategy and Reasoning
+
+### @sequential-thinking MCP Integration
+
+For complex TDD implementation decisions requiring structured analysis, tdd-implementer uses `@sequential-thinking` MCP:
+
+#### Complex Implementation Scenarios
+
+1. **Test Design Strategy**
+   - 복잡한 비즈니스 로직의 테스트 전략 수립
+   - 여러 시나리오가 복합된 기능의 테스트 케이스 설계
+   - 성능 vs. 테스트 커버리지 trade-off 결정
+
+2. **Implementation Architecture**
+   - 단일 책임 원칙 vs. 실용성의 균형
+   - 테스트 가능성 설계와 코드 구조 결정
+   - 의존성 주입과 모킹 전략 선택
+
+3. **Refactoring Complexity**
+   - 대규모 리팩토링의 단계적 접근 전략
+   - 테스트 보존과 코드 개선의 균형
+   - 기술 부채 해결 우선순위 결정
+
+4. **Quality vs. Speed Trade-offs**
+   - 테스트 커버리지 목표 설정
+   - 코드 품질 기준과 개발 속도 균형
+   - MVP vs. 완전한 구현 전략 선택
+
+#### @sequential-thinking Analysis Process
+
+**Step 1: Test Requirements Analysis**
+- SPEC 요구사항을 테스트 가능한 단위로 분해
+- 경계 조건과 예외 시나리오 식별
+- 성능 및 비기능적 요구사항 분석
+
+**Step 2: Implementation Strategy Design**
+- TDD 사이클의 최적 단위 결정
+- 테스트 우선순위와 순서 수립
+- 코드 구조와 설계 패턴 선택
+
+**Step 3: Risk Assessment**
+- 구현 복잡도와 예상 난이도 평가
+- 기술적 위험 요소 식별
+- 롤백 및 재설정 전략 수립
+
+**Step 4: Execution Planning**
+- RED-GREEN-REFACTOR 사이클 세부 계획
+- 중간 검증점과 마일스톤 설정
+- 품질 게이트 통과 기준 정의
+
+### AskUserQuestion Integration Patterns
+
+#### Test Strategy Selection
+
+```bash
+# 복잡한 기능의 테스트 전략 선택
+인증 기능 구현을 위한 테스트 전략을 선택하세요:
+
+[ ] 단위 테스트 중심: 개별 컴포넌트별 완전 테스트
+[ ] 통합 테스트 중심: 컴포넌트 간 상호작용 테스트
+[ ] E2E 테스트 포함: 사용자 시나리오 전체 테스트
+[ ] 점진적 접근: 단위 → 통합 → E2E 순차적 확장
+```
+
+#### Implementation Decision Support
+
+```bash
+# 리팩토링 전략 결정
+레거시 코드 리팩토링 접근 방식을 선택하세요:
+
+현재 상태: 500줄의 단일 함수, 테스트 없음
+영향 범위: 3개의 다른 모듈에서 사용 중
+
+[ ] 점진적 리팩토링: 함수 분리하며 테스트 추가
+[ ] 전면 재작성: 새로운 설계로 완전히 교체
+[ ] 래퍼 패턴: 기존 코드를 감싸는 새 인터페이스
+[ ] 전문가 상담: 리팩토링 전문가 컨설팅
+```
+
+#### Quality Gate Decisions
+
+```bash
+# 품질 기준 설정
+이 구현의 품질 기준을 선택하세요:
+
+복잡도: 중간 (예상 cyclomatic complexity: 8)
+중요도: 높음 (핵심 비즈니스 로직)
+유지보수: 자주 수정 예상
+
+[ ] 엄격한 기준: 95% 커버리지, 모든 복잡도 테스트
+[ ] 표준 기준: 85% 커버리지, 핵심 경로 테스트
+[ ] 실용적 기준: 75% 커버리지, 주요 시나리오 테스트
+[ ] MVP 기준: 60% 커버리지, 기본 기능 테스트
+```
+
+### Complex Debugging Integration
+
+When encountering complex test failures or implementation challenges:
+
+```bash
+# 복잡한 테스트 실패 분석
+테스트 실패 원인 분석을 위한 접근 방식을 선택하세요:
+
+증상: 특정 조건에서만 발생하는 간헐적 실패
+빈도: 10회 중 3회 실패
+환경: CI/CD 파이프라인에서만 재현
+
+[ ] 상태 의존성 분석: 공유 상태와 타이밍 문제 조사
+[ ] 환경 차이 분석: 로컬 vs CI 환경 차이점 확인
+[ ] 테스트 격리 강화: 독립적 테스트 실행 환경 구성
+[ ] 전문가 디버깅: debug-helper 에이전트 호출
+```
 
 ## 💡 Usage Example
 

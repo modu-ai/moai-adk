@@ -1,0 +1,127 @@
+{
+  "schema_version": "1.2",
+  "policy_mode": "balanced",
+  "id_pattern": "^@[A-Z]+:[A-Z_]+-[0-9]{3,}$",
+  "eligible": [
+    ".moai/specs/*/spec.md",
+    "tests/**/*.py",
+    "src/**/*.py",
+    "docs/api/**/*.md",
+    "docs/reference/**/*.md"
+  ],
+  "excluded": [
+    "README*.md",
+    "README.*.md",
+    "CLAUDE.md",
+    ".claude/**",
+    "docs/guides/**",
+    "docs/getting-started/**",
+    "generated/**",
+    "dist/**",
+    "build/**",
+    "tests/fixtures/**",
+    "tests/snapshots/**",
+    "templates/**"
+  ],
+  "primary_per_type": true,
+  "allow_related_without_topline": true,
+  "required_chains": [
+    {
+      "from": "@SPEC",
+      "to": ["@TEST", "@CODE"],
+      "severity_by_mode": {
+        "minimal": "warn",
+        "balanced": "warn",
+        "strict": "error"
+      }
+    },
+    {
+      "from": "@TEST",
+      "to": ["@CODE"],
+      "severity_by_mode": {
+        "minimal": "warn",
+        "balanced": "warn",
+        "strict": "error"
+      }
+    },
+    {
+      "from": "@CODE",
+      "to": ["@DOC"],
+      "optional": true,
+      "severity_by_mode": {
+        "minimal": "info",
+        "balanced": "warn",
+        "strict": "warn"
+      }
+    }
+  ],
+  "autoplan": {
+    "reserve_on_code_first": true,
+    "expire_hours_warn": 24,
+    "expire_hours_block": 72,
+    "spec_stub_template": ".moai/templates/spec_stub.md"
+  },
+  "migrate": {
+    "allow": true,
+    "record_required": true
+  },
+  "deprecated": {
+    "record_required": true
+  },
+  "rescind": {
+    "enabled": true,
+    "reason_default": "expired"
+  },
+  "batch_guard": {
+    "file_threshold": 25
+  },
+  "domains_map": [
+    {
+      "glob": "packages/*/src/auth/**",
+      "domain": "AUTH"
+    },
+    {
+      "glob": "packages/*/src/user/**",
+      "domain": "USER"
+    },
+    {
+      "glob": "packages/*/src/payment/**",
+      "domain": "PAY"
+    },
+    {
+      "glob": "packages/*/src/core/**",
+      "domain": "CORE"
+    },
+    {
+      "glob": "src/auth/**",
+      "domain": "AUTH"
+    },
+    {
+      "glob": "src/user/**",
+      "domain": "USER"
+    },
+    {
+      "glob": "src/payment/**",
+      "domain": "PAY"
+    },
+    {
+      "glob": "src/core/**",
+      "domain": "CORE"
+    }
+  ],
+  "topline_rules": {
+    "skip_shebang": true,
+    "skip_header_block": ["license", "copyright", "(c)", "©"],
+    "block_comments": ["/*", "*/", "'''", "\"\"\""],
+    "max_scan_lines": 20
+  },
+  "relates": {
+    "max_per_file": 3,
+    "required_on_related": true,
+    "pattern": "^(# |// |<!-- )Relates: (@[A-Z]+:[A-Z_]+-[0-9]{3,})(, @[A-Z]+:[A-Z_]+-[0-9]{3,})*$"
+  },
+  "renumber": {
+    "enabled": true,
+    "command": "/alfred:tag-renumber --domain {domain}"
+  }
+}
