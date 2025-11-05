@@ -17,7 +17,6 @@ copyright: |
 theme:
   name: material
   language: ko
-  custom_dir: overrides
   features:
     - announce.dismiss
     - content.action.edit
@@ -73,6 +72,9 @@ theme:
     logo: material/format-text
     repo: fontawesome/brands/github
 
+# Documentation directory
+docs_dir: src
+
 # Plugins
 plugins:
   - search:
@@ -81,15 +83,6 @@ plugins:
         - en
         - ja
         - zh
-  - minify:
-      minify_html: true
-  - git-revision-date-localized:
-      type: datetime
-      timezone: Asia/Seoul
-      locale: ko
-      enable_creation_date: true
-  - awesome-pages
-  - macros
 
 # Customization
 extra:
@@ -127,8 +120,8 @@ markdown_extensions:
   - pymdownx.caret
   - pymdownx.details
   - pymdownx.emoji:
-      emoji_generator: !!python/name:materialx.emoji.to_svg
-      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
   - pymdownx.highlight:
       anchor_linenums: true
       line_spans: __span
@@ -162,10 +155,10 @@ nav:
   - 사용 가이드:
     - Alfred 워크플로우:
       - 개요: guides/alfred/index.md
-      - 1단계: 계획 (Plan): guides/alfred/1-plan.md
-      - 2단계: 실행 (Run): guides/alfred/2-run.md
-      - 3단계: 동기화 (Sync): guides/alfred/3-sync.md
-      - 9단계: 피드백: guides/alfred/9-feedback.md
+      - "1단계: 계획 (Plan)": guides/alfred/1-plan.md
+      - "2단계: 실행 (Run)": guides/alfred/2-run.md
+      - "3단계: 동기화 (Sync)": guides/alfred/3-sync.md
+      - "9단계: 피드백": guides/alfred/9-feedback.md
     - SPEC 작성:
       - SPEC 기초: guides/specs/basics.md
       - EARS 문법: guides/specs/ears.md
@@ -213,12 +206,12 @@ nav:
     - 코드 스타일: contributing/style.md
 
 # Page tree
-exclude_docs:
-  - overrides/
-  - .python-version
-  - CNAME
-  - requirements.txt
-  - pyproject.toml
+exclude_docs: |
+  overrides/
+  .python-version
+  CNAME
+  requirements.txt
+  pyproject.toml
 
 # Validation
 validation:
@@ -228,4 +221,3 @@ validation:
     absolute_links: warn
   links:
     not_found: warn
-    invalidanchors: warn

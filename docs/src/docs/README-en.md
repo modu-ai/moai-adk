@@ -6,7 +6,7 @@ This directory contains the official MoAI-ADK documentation built with MkDocs.
 **Last Updated**: 2025-11-05
 **Language**: English
 
-# @CODE:DOCS-003
+# @CODE:DOC-ONLINE-001:EN
 
 ## 🚀 Quick Start
 
