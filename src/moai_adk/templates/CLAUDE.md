@@ -6,8 +6,11 @@
 > **Project Owner**: {{PROJECT_OWNER}}
 > **Config**: `.moai/config.json`
 > **Version**: {{MOAI_VERSION}} (from .moai/config.json)
+> **Current Conversation Language**: {{CONVERSATION_LANGUAGE_NAME}} (`conversation_language: "{{CONVERSATION_LANGUAGE}}"`)
 >
 > **Note**: `Skill("moai-alfred-ask-user-questions")` provides TUI-based responses when user interaction is needed. The skill loads on-demand.
+
+**🌐 Check My Conversation Language**: `cat .moai/config.json | jq '.language.conversation_language'`
 
 ---
 
@@ -714,7 +717,7 @@ python3 .moai/scripts/session_analyzer.py --days 30 --verbose
 
 - **Name**: {{PROJECT_NAME}}
 - **Description**: {{PROJECT_DESCRIPTION}}
-- **Version**: 0.17.0 (Latest)
+- **Version**: {{MOAI_VERSION}}
 - **Mode**: {{PROJECT_MODE}}
 - **Codebase Language**: {{CODEBASE_LANGUAGE}}
 - **Toolchain**: Automatically selects the best tools for {{CODEBASE_LANGUAGE}}
@@ -726,6 +729,133 @@ python3 .moai/scripts/session_analyzer.py --days 30 --verbose
 - **Code Comments**: English for global consistency
 - **Commit Messages**: English for global git history
 - **Generated Documentation**: User's configured language (product.md, structure.md, tech.md)
+
+---
+
+## 🌐 conversation_language Complete Guide
+
+### ❓ What is conversation_language?
+
+**Simply put**: This is the language setting for how Alfred communicates with you.
+- English: `"en"`
+- Korean: `"ko"`
+- Japanese: `"ja"`
+- Spanish: `"es"`
+- And 23+ other languages supported
+
+**Important**: This is NOT a Claude Code native setting - it's **MoAI-ADK specific**.
+
+### 🔍 How to Check Your conversation_language
+
+**View your current project setting**:
+```bash
+cat .moai/config.json | jq '.language.conversation_language'
+```
+
+**Example value**:
+```json
+{
+  "language": {
+    "conversation_language": "en",
+    "conversation_language_name": "English"
+  }
+}
+```
+
+This tells you exactly what language Alfred will use when responding to you!
+
+### 🎯 Where conversation_language is Used
+
+**Alfred uses this for ALL user-facing content**:
+- ✅ All responses and explanations
+- ✅ Generated SPEC documents
+- ✅ Reports and analysis results
+- ✅ Questions and guidance messages
+- ✅ Code comments (in local projects)
+- ✅ Git commit messages (in local projects)
+
+**What stays in English**:
+- ❌ Skill invocations: `Skill("skill-name")`
+- ❌ `.claude/` directory files
+- ❌ Technical function/variable names
+- ❌ @TAG identifiers
+
+### ⚙️ How to Change conversation_language
+
+**Method 1: Direct Edit**
+```bash
+# Open .moai/config.json file
+code .moai/config.json
+
+# Change conversation_language value
+"conversation_language": "ja",
+"conversation_language_name": "Japanese"
+```
+
+**Method 2: During Project Initialization**
+```bash
+/alfred:0-project
+```
+→ Language selection available at startup
+
+### 🔄 How Alfred Uses This Internally
+
+1. **Hook Scripts Read Configuration**
+   ```python
+   config = json.loads(Path(".moai/config.json").read_text())
+   lang = config["language"]["conversation_language"]  # "en", "ko", "ja", etc.
+   ```
+
+2. **User Gets Responses in Their Language**
+   - English setting → Alfred responds in English
+   - Korean setting → Alfred responds in Korean
+   - Japanese setting → Alfred responds in Japanese
+
+3. **Language Parameter Passed to Sub-agents**
+   ```python
+   Task(
+       prompt="Task prompt",
+       subagent_type="spec-builder",
+       language="en"  # conversation_language value passed
+   )
+   ```
+
+### 💡 Frequently Asked Questions (FAQ)
+
+**Q: How do I know what my conversation_language is?**
+A: Run `cat .moai/config.json | jq '.language'` to check your current setting.
+
+**Q: I want to change to English**
+A: Change `"conversation_language": "en"` in `.moai/config.json`.
+
+**Q: Can I mix languages?**
+A: User-facing content uses your chosen language, technical infrastructure stays in English.
+
+**Q: How do I add a new language?**
+A: Use any supported ISO 639-1 language code in config.json.
+
+### 🎭 Real-World Examples
+
+```bash
+# With English setting
+User: "Check code quality"
+Alfred: "I'll check your code quality..."  # English response
+
+# With Korean setting
+User: "코드 품질 검사해줘"
+Alfred: "코드 품질을 검사하겠습니다..."  # Korean response
+
+# With Japanese setting
+User: "コード品質をチェック"
+Alfred: "コード品質をチェックします..."  # Japanese response
+```
+
+### 📍 Configuration Location Summary
+
+**File**: `.moai/config.json`
+**Path**: `language.conversation_language`
+**Format**: ISO 639-1 language code (2 letters)
+**Example**: `"en"`, `"ko"`, `"ja"`, `"es"`
 
 ### Critical Rule: English-Only Core Files
 
