@@ -30,7 +30,7 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from handlers import handle_auto_cleanup
-from moai_adk.utils.common import load_hook_timeout
+from ..utils.hook_config import load_hook_timeout
 
 
 def main() -> None:

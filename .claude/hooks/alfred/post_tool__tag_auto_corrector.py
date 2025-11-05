@@ -39,7 +39,7 @@ from moai_adk.core.tags.rollback_manager import (
     RollbackConfig
 )
 
-from moai_adk.utils.common import load_hook_timeout, get_graceful_degradation
+from ..utils.hook_config import load_hook_timeout, get_graceful_degradation
 
 
 def load_config() -> Dict[str, Any]:
