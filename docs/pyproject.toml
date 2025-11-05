@@ -1,0 +1,83 @@
+[project]
+name = "moai-adk-docs"
+version = "0.17.0"
+description = "MoAI-ADK TDD Framework Complete Documentation System"
+authors = [
+    {name = "GoosLab", email = "goos@gooslab.ai"}
+]
+requires-python = ">=3.13"
+license = {text = "MIT"}
+keywords = ["documentation", "tdd", "framework", "ai", "development"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Documentation",
+    "Topic :: Software Development :: Documentation",
+]
+
+dependencies = [
+    # MkDocs Material Theme
+    "mkdocs-material==9.5.49",
+
+    # MkDocs Core
+    "mkdocs==1.6.1",
+    "mkdocs-minify-plugin==0.8.0",
+
+    # Python dependencies
+    "click==8.1.7",
+    "rich==13.9.4",
+    "pyyaml==6.0.2",
+    "jinja2==3.1.4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "uv>=0.5.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+
+[project.urls]
+Homepage = "https://moai-adk.gooslab.ai"
+Documentation = "https://moai-adk.gooslab.ai"
+Repository = "https://github.com/modu-ai/moai-adk"
+Issues = "https://github.com/modu-ai/moai-adk/issues"
+
+[project.scripts]
+moai-docs-build = "scripts.build_docs:main"
+moai-docs-serve = "scripts.serve_docs:main"
+moai-docs-deploy = "scripts.deploy_docs:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["scripts"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+select = ["E", "F", "W", "I", "N", "B"]
+ignore = ["E501", "B008"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.13"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[dependency-groups]
+dev = [
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+    "pytest>=8.0.0",
+    "pytest-cov>=4.0.0",
+]

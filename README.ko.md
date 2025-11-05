@@ -1363,6 +1363,7 @@ grep -r "status:.*completed" .moai/specs/
 | `/alfred:2-run <SPEC-ID>`   | TDD 실행, 테스트/구현/리팩토링, 품질 검증                              | `tests/`, `src/` 구현, 품질 리포트, TAG 연결                       |
 | `/alfred:3-sync`            | 문서/README/CHANGELOG 동기화, TAG/PR 상태 정리                         | `docs/`, `.moai/reports/sync-report.md`, Ready PR                  |
 | `/alfred:9-feedback`        | MoAI-ADK 개선 피드백 GitHub Issue 생성 (타입 → 제목 → 설명 → 우선순위) | GitHub Issue + 자동 라벨 + 우선순위 + URL                          |
+| `moai-adk analyze session` | Claude Code 세션 분석 및 개선 제안 생성                              | `.moai/reports/daily-YYYY-MM-DD.md`, 분석 리포트                   |
 
 > ❗ 모든 명령은 **Phase 0(선택) → Phase 1 → Phase 2 → Phase 3** 순환 구조를 유지합니다. 실행 중 상태와 다음 단계 제안은 Alfred가 자동으로 보고합니다.
 
@@ -1588,6 +1589,109 @@ Alfred: 우선순위를 선택하세요
 - 최적 사례 및 팁
 - 문제 해결 가이드
 - SPEC 문서와의 통합
+
+---
+
+## 📊 세션 분석 시스템 (v0.17.0)
+
+MoAI-ADK는 Claude Code 세션 로그를 자동 분석하여 데이터 기반으로 설정과 규칙을 지속 개선합니다.
+
+### CLI 명령어로 세션 분석
+
+**새로운 명령어**: `moai-adk analyze session`
+
+```bash
+# 기본 분석 (최근 7일)
+moai-adk analyze session
+
+# 옵션 지정
+moai-adk analyze session --days 14 --verbose --output custom-report.md
+
+# 프로젝트 경로 지정
+moai-adk analyze session --project-path /path/to/project
+
+# 보고서만 생성 (콘솔 출력 없음)
+moai-adk analyze session --report-only --output .moai/reports/weekly-analysis.md
+```
+
+**주요 옵션**:
+- `--days, -d`: 분석 기간 (기본값: 7일)
+- `--output, -o`: 보고서 저장 경로 (기본값: 자동 생성)
+- `--verbose, -v`: 상세 출력
+- `--report-only, -r`: 보고서만 생성
+- `--project-path, -p`: 프로젝트 경로 지정
+
+### 분석 결과 예시
+
+**콘솔 출력**:
+```
+📊 Analyzing sessions from last 7 days...
+✅ Analyzed 15 sessions
+   Total events: 234
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┓
+┃ Metric                                    ┃ Value   ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━┩
+│ Total Sessions                           │   15    │
+│ Total Events                             │  234    │
+│ Failed Sessions                          │   2     │
+│ Success Rate                             │ 86.7%   │
+└──────────────────────────────────────────┴────────┘
+
+🔧 Top Tools Used:
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┓
+┃ Tool                                     ┃ Usage   ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━┩
+│ `Read`                                   │   89    │
+│ `Edit`                                   │   67    │
+│ `Bash`                                   │   34    │
+│ `Grep`                                   │   23    │
+└──────────────────────────────────────────┴────────┘
+
+📄 Report saved: .moai/reports/daily-2025-11-06.md
+```
+
+### 분석 항목
+
+1. **📈 Tool 사용 패턴**: 가장 자주 사용되는 도구 TOP 10, Tool별 사용 빈도
+2. **⚠️ 오류 패턴**: 반복되는 Tool 실패, 가장 흔한 오류 메시지
+3. **🪝 Hook 실패 분석**: SessionStart, PreToolUse, PostToolUse 등 Hook 실패
+4. **🔐 권한 요청 분석**: 가장 자주 요청되는 권한, 권한 타입별 요청 빈도
+
+### 개선 피드백 루프
+
+```
+1️⃣ 높은 권한 요청 발견
+   ↓
+2️⃣ .claude/settings.json의 permissions 재조정
+   - allow → ask로 변경
+   - 또는 새로운 Bash 도구 규칙 추가
+   ↓
+3️⃣ 오류 패턴 발견
+   ↓
+4️⃣ CLAUDE.md에 회피 전략 추가
+   - "X 오류 시 Y를 시도하세요"
+   - 새로운 Skill 또는 도구 추천
+   ↓
+5️⃣ Hook 실패 발견
+   ↓
+6️⃣ .claude/hooks/ 디버깅 및 개선
+```
+
+### 기술적 개선 사항
+
+**패키지 모듈 통합**:
+- **패키지 이전**: `session_analyzer.py`가 `moai_adk.core.analysis` 패키지 모듈로 이전
+- **훅 시스템 개선**: 스크립트 호출 대신 패키지 임포트 방식 사용
+- **템플릿 동기화**: 패키지 템플릿에 최신 버전 포함
+
+```python
+# 기존 방식 (스크립트 호출)
+from session_analyzer import SessionAnalyzer
+
+# 새로운 방식 (패키지 임포트)
+from moai_adk.core.analysis import SessionAnalyzer
+```
 
 ---
 
@@ -2486,6 +2590,7 @@ Alfred는 여러 전문 에이전트와 Claude Skills를 조합해 작업합니�
 | trust-checker ✅   | Haiku  | TRUST 5 품질 게이트                                          |
 | quality-gate 🛡️    | Haiku  | 커버리지 변화 및 릴리스 차단 조건 검토                       |
 | cc-manager 🛠️      | Sonnet | Claude Code 세션 최적화, Skill 배포                          |
+| skill-factory 🏭  | Sonnet | Skills 생성 및 관리, 69개 Skills 생태계 유지               |
 
 ### 전문가 에이전트 (SPEC 키워드로 자동 활성화)
 
@@ -2569,26 +2674,33 @@ MoAI-ADK 내부 워크플로우 오케스트레이션 스킬
 
 프로그래밍 언어별 최고 관행
 
-| Skill                  | 설명                                                   |
-| ---------------------- | ------------------------------------------------------ |
-| `moai-lang-python`     | pytest, mypy, ruff, black, uv 패키지 관리              |
-| `moai-lang-typescript` | Vitest, Biome, strict typing, npm/pnpm                 |
-| `moai-lang-javascript` | Jest, ESLint, Prettier, npm 패키지 관리                |
-| `moai-lang-go`         | go test, golint, gofmt, 표준 라이브러리                |
-| `moai-lang-rust`       | cargo test, clippy, rustfmt, ownership/borrow checker  |
-| `moai-lang-java`       | JUnit, Maven/Gradle, Checkstyle, Spring Boot 패턴      |
-| `moai-lang-kotlin`     | JUnit, Gradle, ktlint, coroutines, extension functions |
-| `moai-lang-swift`      | XCTest, SwiftLint, iOS/macOS 개발 패턴                 |
-| `moai-lang-dart`       | flutter test, dart analyze, Flutter widget 패턴        |
-| `moai-lang-csharp`     | xUnit, .NET tooling, LINQ, async/await 패턴            |
-| `moai-lang-cpp`        | Google Test, clang-format, 현대 C++ (C++17/20)         |
-| `moai-lang-c`          | Unity test framework, cppcheck, Make 빌드 시스템       |
-| `moai-lang-scala`      | ScalaTest, sbt, 함수형 프로그래밍 패턴                 |
-| `moai-lang-ruby`       | RSpec, RuboCop, Bundler, Rails 패턴                    |
-| `moai-lang-php`        | PHPUnit, Composer, PSR 표준                            |
-| `moai-lang-sql`        | 테스트 프레임워크, 쿼리 최적화, 마이그레이션 관리      |
-| `moai-lang-shell`      | bats, shellcheck, POSIX 준수                           |
-| `moai-lang-r`          | testthat, lintr, 데이터 분석 패턴                      |
+**🏆 최고 수준 특화 언어 스킬 (5개)**:
+
+| Skill                    | 설명                                                           | 특징 |
+| ------------------------ | -------------------------------------------------------------- | ---- |
+| `moai-lang-python`       | Python 3.13+, FastAPI, pytest, uv, asyncio 전문       | AI/ML, 백엔드 |
+| `moai-lang-typescript`  | TypeScript 5.6+, Next.js, React 19, E2E 타입 안전성     | 프론트엔드, 풀스택 |
+| `moai-lang-go`          | Go 1.25+, 마이크로서비스, 동시성, 클라우드 네이티브       | 백엔드, 시스템 |
+| `moai-lang-rust`        | Rust 1.91+, Actix-web, zero-cost 추상화, 메모리 안전성  | 시스템, 퍼포먼스 |
+| `moai-lang-javascript`  | Node.js 22.x, Express, 레거시 지원, 모던 마이그레이션    | 레거시, Node.js |
+
+**📋 템플릿 기반 언어 스킬 (13개)**:
+
+| Skill                | 설명                                                      | 템플릿 기반 |
+| -------------------- | --------------------------------------------------------- | --------- |
+| `moai-lang-java`      | JUnit 5, Spring Boot, Maven/Gradle 자동 감지        | Java 템플릿 |
+| `moai-lang-kotlin`    | JUnit, Gradle, coroutines, Android 개발              | Kotlin 템플릿 |
+| `moai-lang-swift`     | XCTest, SwiftLint, iOS/macOS 개발 패턴                | Swift 템플릿 |
+| `moai-lang-csharp`    | xUnit, .NET, async/await 패턴                        | C# 템플릿 |
+| `moai-lang-dart`      | Flutter 3.x, Riverpod, Material Design 3             | Dart 템플릿 |
+| `moai-lang-cpp`       | Google Test, clang-format, 현대 C++ (C++17/20)       | C++ 템플릿 |
+| `moai-lang-c`         | Unity test, cppcheck, Make 빌드 시스템                  | C 템플릿 |
+| `moai-lang-ruby`      | RSpec, RuboCop, Rails 8 패턴                             | Ruby 템플릿 |
+| `moai-lang-php`       | PHPUnit, Composer, PSR 표준                            | PHP 템플릿 |
+| `moai-lang-scala`     | ScalaTest, sbt, 함수형 프로그래밍 패턴                   | Scala 템플릿 |
+| `moai-lang-sql`       | 데이터베이스 테스트, 쿼리 최적화, 마이그레이션 관리     | SQL 템플릿 |
+| `moai-lang-shell`     | bats, shellcheck, POSIX 준수                           | Shell 템플릿 |
+| `moai-lang-r`         | testthat, lintr, 데이터 분석 패턴                      | R 템플릿 |
 
 #### Claude Code Ops
 
@@ -2598,7 +2710,28 @@ Claude Code 세션 관리
 | ------------------ | ------------------------------------------------------------------------ |
 | `moai-claude-code` | Claude Code agents, commands, skills, plugins, settings 스캐폴딩 및 감시 |
 
-> Claude Skills가 4-tier 아키텍처로 구성되었습니다 (v0.4.10에서 100% 완성). 각 Skill은 Progressive Disclosure를 통해 필요할 때만 로드되어 컨텍스트 비용을 최소화합니다. Foundation → Essentials → Alfred → Domain/Language/Ops 계층으로 구성되어 있으며, 모든 스킬이 프로덕션급 문서와 실행 가능한 TDD 예제를 포함합니다.
+> Claude Skills가 4-tier 아키텍처로 구성되었습니다 (v0.17.0에서 100% 완성). 각 Skill은 Progressive Disclosure를 통해 필요할 때만 로드되어 컨텍스트 비용을 최소화합니다. Foundation → Essentials → Alfred → Domain/Language/Ops 계층으로 구성되어 있으며, **69개의 고품질 Skills**이 프로덕션급 문서와 실행 가능한 예제를 포함합니다.
+
+## 🎯 Skills System 최신 개선 사항 (v0.17.0)
+
+### ✅ 완료된 대규모 개선
+
+**🔄 스킬 통합 및 정리**:
+- **스킬 수**: 80개 → **69개** (13.75% 감소)
+- **중복 제거**: 13개 중복/불필요 스킬 정리
+- **통합 스킬**: 5개 핵심 통합 스킬 생성
+
+**🚀 언어 스킬 시스템 혁신**:
+- **5개 최고 수준 특화 스킬**: Python, TypeScript, Go, Rust, JavaScript
+- **언어 템플릿 시스템**: 13개 추가 언어 지원 (Java, Kotlin, Swift 등)
+- **Context7 MCP 연동**: 최신 라이브러리 문서 자동 조회
+
+**📋 신규 통합 스킬**:
+1. **moai-alfred-workflow-core**: 4단계 워크플로우 실행
+2. **moai-alfred-best-practices**: TRUST 5, 품질 게이트
+3. **moai-spec-management**: SPEC 생명주기 전체 관리
+4. **moai-cc-configuration**: Claude Code 완전 설정
+5. **moai-cc-skill-factory**: 스킬 생성 시스템 강화
 
 ---
 
@@ -3156,7 +3289,9 @@ Alfred가 자동으로:
 
 | 버전        | 주요 기능                                                                                                         | 날짜       |
 | ----------- | ----------------------------------------------------------------------------------------------------------------- | ---------- |
-| **v0.17.0** | 🌍 **다국어 린트/포맷 아키텍처** (Python, JS, TS, Go, Rust, Java, Ruby, PHP) - 자동 언어 감지 + Non-blocking 오류 | 2025-11-04 |
+| **v0.17.0** | 🌍 **다국어 린트/포맷 아키텍처** (Python, JS, TS, Go, Rust, Java, Ruby, PHP) - 자동 언어 감지 + Non-blocking 오류 | 2025-11-06 |
+|             | 📊 **세션 분석 CLI 명령어** - `moai-adk analyze session`으로 Claude Code 세션 분석 및 개선 제안 생성                          |            |
+|             | 🔄 **패키지 모듈 통합** - `session_analyzer.py`가 `moai_adk.core.analysis` 패키지로 이전, 훅 시스템 개선                   |            |
 | **v0.16.x** | ✅ 4개 Alfred 명령어 100% 명령형 지침 완성 + Hook 아키텍처 안정화                                                  | 2025-11-03 |
 | **v0.8.2**  | 📖 EARS 용어 업데이트: "Constraints" → "Unwanted Behaviors" (명확성 개선)                                         | 2025-10-29 |
 | **v0.8.1**  | 🔄 명령어 변경: `/alfred:9-help` → `/alfred:9-feedback` + 사용자 피드백 워크플로우 개선                           | 2025-10-28 |
@@ -3168,7 +3303,46 @@ Alfred가 자동으로:
 
 ### 🎯 v0.17.0 주요 기능
 
-#### 1️⃣ 다국어 린트/포맷 자동화 (11개 언어)
+#### 1️⃣ 세션 분석 CLI 명령어
+
+**새로운 명령어**: `moai-adk analyze session`
+
+Claude Code 세션 로그를 분석하여 개선 제안을 생성하는 새로운 CLI 명령어입니다.
+
+**주요 특징**:
+- ✅ **직관적인 CLI**: Rich 콘솔 출력으로 보기 쉬운 테이블 형식
+- ✅ **유연한 옵션**: 분석 기간, 출력 경로, 상세 모드 등 설정 가능
+- ✅ **자동 보고서**: `.moai/reports/daily-YYYY-MM-DD.md`에 자동 저장
+- ✅ **개선 제안**: 권한 설정, 오류 패턴, Hook 실패에 대한 구체적인 조치 사항 제공
+
+**사용 예시**:
+```bash
+# 기본 사용
+moai-adk analyze session
+
+# 상세 분석 (14일간)
+moai-adk analyze session --days 14 --verbose
+
+# 보고서만 생성
+moai-adk analyze session --report-only --output custom-report.md
+```
+
+#### 2️⃣ 패키지 모듈 통합
+
+**세션 분석기 패키지화**: `session_analyzer.py`가 `moai_adk.core.analysis` 패키지 모듈로 이전
+
+**기술적 개선**:
+- **패키지 임포트**: `from moai_adk.core.analysis import SessionAnalyzer`
+- **훅 시스템 개선**: 스크립트 호출 대신 패키지 임포트 방식 사용
+- **템플릿 동기화**: 패키지 템플릿에 최신 버전 포함
+- **하위 호환성**: 기존 방식과의 호환성 유지
+
+**이점**:
+- 더 나은 코드 재사용성
+- 표준화된 패키지 구조
+- 향상된 유지보수성
+
+#### 3️⃣ 다국어 린트/포맷 자동화 (11개 언어)
 
 이제 **어떤 언어로 프로젝트를 작성하든 자동으로 린팅과 포매팅**이 수행됩니다.
 
