@@ -10,14 +10,10 @@
       "env": {}
     },
     "figma": {
-      "type": "stdio",
-      "command": "npx",
-      "args": [
-        "-y",
-        "ai-figma-mcp"
-      ],
-      "env": {
-        "FIGMA_ACCESS_TOKEN": "${FIGMA_ACCESS_TOKEN}"
+      "type": "http",
+      "url": "https://mcp.figma.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${FIGMA_ACCESS_TOKEN}"
       }
     },
     "playwright": {
