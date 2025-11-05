@@ -286,6 +286,75 @@ moai-adk doctor        # 시스템 진단
 moai-adk update        # 최신 버전으로 업데이트
 ```
 
+### MCP (Model Context Protocol) 설정 가이드
+
+MoAI-ADK는 3가지 핵심 MCP 서버를 사용하여 AI 개발 경험을 극대화합니다:
+
+#### 🔧 MCP 서버 종류 및 용도
+
+| MCP 서비스 | 주요 기능 | 대상 에이전트 | 설치 방법 |
+|-----------|-----------|--------------|-----------|
+| **Context7** | 최신 라이브러리 문서 검색 | 모든 전문가 에이전트 | `npm install -g @context7/mcp-server` |
+| **Figma** | 디자인 시스템 및 컴포넌트 사양 | ui-ux-expert | `npm install -g @figma/mcp-server` |
+| **Playwright** | 웹 E2E 테스트 자동화 | frontend-expert, tdd-implementer, quality-gate | `npm install -g @playwright/mcp-server` |
+
+#### 📦 MCP 서버 설치 방법
+
+**1. Claude Code 설정 열기**:
+```bash
+# Claude Code 설정 파일 열기
+claude-code settings
+```
+
+**2. MCP 서버 설정 추가**:
+```json
+{
+  "mcpServers": {
+    "context7": {
+      "command": "node",
+      "args": ["node_modules/@context7/mcp-server/dist/index.js"],
+      "env": {}
+    },
+    "figma": {
+      "command": "node",
+      "args": ["node_modules/@figma/mcp-server/dist/index.js"],
+      "env": {
+        "FIGMA_ACCESS_TOKEN": "your_figma_token_here"
+      }
+    },
+    "playwright": {
+      "command": "node",
+      "args": ["node_modules/@playwright/mcp-server/dist/index.js"],
+      "env": {}
+    }
+  }
+}
+```
+
+**3. 토큰 설정 (Figma만 해당)**:
+- Figma → Account Settings → Personal Access Tokens
+- `FIGMA_DESIGN_TOKEN` 생성 후 설정 파일에 추가
+
+#### ✅ 설치 확인
+
+MCP 서버가 정상적으로 설치되면 다음 에이전트들이 자동으로 기능 확장됩니다:
+
+- **ui-ux-expert**: Figma 디자인 시스템 연동
+- **frontend-expert**: Context7로 최신 문서 참조
+- **tdd-implementer**: Playwright로 테스트 자동 생성
+- **quality-gate**: 웹 품질 검증 자동화
+- **모든 전문가**: Context7로 실시간 문서 조회
+
+#### 🔍 문제 해결
+
+**MCP 서버가 보이지 않을 경우**:
+1. Claude Code 재시작
+2. 설정 파일 문법 확인
+3. `claude-code --version`으로 Claude Code 버전 확인
+4. `node --version`으로 Node.js 버전 확인 (18+ 필요)
+
+**자세한 MCP 설정 가이드**: [Claude Code MCP Documentation](https://docs.claude.com/mcp)
+
 ### 프로젝트 생성 상세 가이드
 
 **새 프로젝트 생성**:

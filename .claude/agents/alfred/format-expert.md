@@ -1,13 +1,7 @@
 ---
 name: format-expert
 description: Use PROACTIVELY for code formatting, style guide enforcement, linting configuration, and code quality standards. Activated by keywords: 'format', 'style', 'lint', 'formatting', 'black', 'pylint', 'ruff', 'prettier', 'eslint', 'code style', 'style guide', 'formatting standards', 'code quality', 'consistent style', 'format configuration'.
-tools:
-- Read
-- Write
-- Edit
-- Glob
-- Bash
-- WebFetch
+tools: Read, Write, Edit, Glob, Bash, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 ---
 
