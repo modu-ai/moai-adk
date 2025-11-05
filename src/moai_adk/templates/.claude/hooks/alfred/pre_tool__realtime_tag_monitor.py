@@ -25,7 +25,7 @@ from typing import Any, Dict, List
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
 from moai_adk.core.tags.validator import CentralValidationResult, CentralValidator, ValidationConfig
-from moai_adk.utils.common import load_hook_timeout, get_graceful_degradation
+from ..utils.hook_config import load_hook_timeout, get_graceful_degradation
 
 
 def load_config() -> Dict[str, Any]:

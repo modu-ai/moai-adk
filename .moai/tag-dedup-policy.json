@@ -41,13 +41,15 @@
     "exception_whitelist": {
       "paths": [
         "generated/**",
-        "examples/**", 
+        "examples/**",
         "docs/guides/**",
         "docs/getting-started/**",
         "templates/**",
-        "**.template.*"
+        "**.template.*",
+        ".claude/**",
+        "src/moai_adk/templates/.claude/**"
       ],
-      "reason": "Educational and template content allowed to have example tags"
+      "reason": "Educational, template, and Claude Code configuration content allowed to have example tags. .claude/ directory needs local-template synchronization."
     }
   },
   "deduplication_strategy": {
