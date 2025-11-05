@@ -25,6 +25,7 @@ from typing import Any, Dict, List
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
 from moai_adk.core.tags.validator import CentralValidationResult, CentralValidator, ValidationConfig
+from moai_adk.utils.common import load_hook_timeout, get_graceful_degradation
 
 
 def load_config() -> Dict[str, Any]:
@@ -219,6 +220,10 @@ def create_health_check_result(issues_count: int,
 def main() -> None:
     """메인 함수"""
     try:
+        # 설정에서 타임아웃 값 로드 (밀리초 → 초)
+        timeout_seconds = load_hook_timeout() / 1000
+        graceful_degradation = get_graceful_degradation()
+
         # 인자 파싱
         if len(sys.argv) < 3:
             print(json.dumps({
@@ -260,18 +265,28 @@ def main() -> None:
         # 검증기 생성
         validator = create_validator()
 
-        # 빠른 검증 실행 (타임아웃 3초)
+        # 빠른 검증 실행 (설정된 타임아웃 사용)
         try:
+            # 타임아웃 체크
+            if time.time() - start_time > timeout_seconds:
+                raise TimeoutError("Real-time monitoring timeout")
+
             validation_result = validator.validate_files(files_to_scan)
         except Exception as e:
             # 검증 실패시 타임아웃 처리
             scan_time = (time.time() - start_time) * 1000
-            print(json.dumps({
+            error_response = {
                 "quick_scan_completed": False,
                 "error": f"검증 타임아웃: {str(e)}",
                 "scan_time_ms": scan_time,
                 "message": "실시간 검증 타임아웃 - 정상 작동으로 간주"
-            }, ensure_ascii=False))
+            }
+
+            if graceful_degradation:
+                error_response["graceful_degradation"] = True
+                error_response["message"] = "Real-time monitoring timeout but continuing due to graceful degradation"
+
+            print(json.dumps(error_response, ensure_ascii=False))
             sys.exit(0)
 
         scan_time_ms = (time.time() - start_time) * 1000
@@ -294,18 +309,25 @@ def main() -> None:
         }
 
         # 타임아웃 경고
-        if scan_time_ms > 3000:  # 3초 초과
-            response["performance_warning"] = "스캔 시간이 3초를 초과했습니다"
+        timeout_warning_ms = timeout_seconds * 1000 * 0.8  # 80% of timeout
+        if scan_time_ms > timeout_warning_ms:
+            response["performance_warning"] = f"스캔 시간이 설정된 타임아웃의 80%를 초과했습니다 ({scan_time_ms:.0f}ms / {timeout_warning_ms:.0f}ms)"
 
         print(json.dumps(response, ensure_ascii=False, indent=2))
 
     except Exception as e:
         # 예외 발생시 기본 응답
-        print(json.dumps({
+        error_response = {
             "quick_scan_completed": False,
             "error": f"Hook execution error: {str(e)}",
             "message": "실시간 모니터링 오류 - 정상 작동으로 간주"
-        }, ensure_ascii=False))
+        }
+
+        if graceful_degradation:
+            error_response["graceful_degradation"] = True
+            error_response["message"] = "Real-time monitoring failed but continuing due to graceful degradation"
+
+        print(json.dumps(error_response, ensure_ascii=False))
 
 
 if __name__ == "__main__":
