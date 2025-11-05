@@ -1,7 +1,7 @@
 ---
 name: spec-builder
 description: "Use PROACTIVELY when: EARS-style SPEC document creation is required, requirements specification is needed, or detailed documentation must be created. Triggered by keywords: 'SPEC', 'specification', 'requirements', 'document', 'EARS', 'documentation', 'details'. Automatically called from the /alfred:1-plan command."
-tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch
+tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch, mcp__sequential_thinking_think
 model: sonnet
 ---
 

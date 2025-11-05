@@ -606,6 +606,7 @@ MoAI-ADK supports automatic setup of MCP servers to enhance AI capabilities with
 | **Context7** | Latest library documentation lookup | Get up-to-date API documentation for any library |
 | **Figma** | Design system and component specs | Extract designs, create components from Figma |
 | **Playwright** | Web E2E testing automation | Generate and run automated browser tests |
+| **Sequential Thinking** | Enhanced reasoning and step-by-step analysis | Improve complex problem-solving and logical reasoning |
 
 #### Quick Setup with MCP
 
@@ -616,13 +617,19 @@ moai-adk init my-project --mcp-auto
 
 **Option 2: Select specific MCP servers**
 ```bash
-moai-adk init my-project --with-mcp context7 --with-mcp figma
+moai-adk init my-project --with-mcp context7 --with-mcp figma --with-mcp sequential-thinking
 ```
 
 **Option 3: Interactive selection (default)**
 ```bash
 moai-adk init my-project
 # → Select MCP servers from interactive checkbox menu
+```
+
+**Option 4: Add Sequential Thinking for enhanced reasoning**
+```bash
+# Add Sequential Thinking to existing project
+moai-adk init . --with-mcp sequential-thinking
 ```
 
 #### Figma Access Token Setup
@@ -655,20 +662,37 @@ MCP servers are automatically configured in `.claude/settings.json`:
 {
   "mcpServers": {
     "context7": {
-      "command": "node",
-      "args": ["/usr/local/lib/node_modules/@upstash/context7-mcp/dist/index.js"],
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp"
+      ],
       "env": {}
     },
     "figma": {
-      "command": "node",
-      "args": ["/usr/local/lib/node_modules/figma-mcp-pro/dist/index.js"],
+      "command": "npx",
+      "args": [
+        "-y",
+        "figma-mcp-pro"
+      ],
       "env": {
         "FIGMA_ACCESS_TOKEN": "${FIGMA_ACCESS_TOKEN}"
       }
     },
     "playwright": {
-      "command": "node",
-      "args": ["/usr/local/lib/node_modules/@playwright/mcp/dist/index.js"],
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp"
+      ],
+      "env": {}
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ],
       "env": {}
     }
   }
@@ -680,6 +704,7 @@ MCP servers are automatically configured in `.claude/settings.json`:
 - **UI/UX Expert**: Uses Figma MCP to extract designs and create component specs
 - **Backend Expert**: Uses Context7 MCP to access latest framework documentation
 - **Frontend Expert**: Uses Playwright MCP for automated testing
+- **All Reasoning Agents**: Use Sequential Thinking MCP for enhanced step-by-step analysis
 - **All Agents**: Have fallback strategies when MCP is unavailable
 
 #### Manual MCP Management
