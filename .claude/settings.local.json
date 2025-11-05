@@ -4,7 +4,9 @@
       "Bash(/tmp/local_commands.txt)",
       "Bash(/tmp/package_commands.txt:*)",
       "Bash(/tmp/local_hooks.txt)",
-      "Bash(/tmp/package_hooks.txt)"
+      "Bash(/tmp/package_hooks.txt)",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs"
     ]
   },
   "local": true

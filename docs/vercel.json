@@ -1,0 +1,13 @@
+{
+  "buildCommand": "mkdocs build",
+  "outputDirectory": "site",
+  "installCommand": "pip install -r requirements.txt",
+  "framework": null,
+  "functions": {},
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/index.html"
+    }
+  ]
+}
