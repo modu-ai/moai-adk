@@ -85,7 +85,24 @@ def should_validate_tool(tool_name: str, tool_args: Dict[str, Any]) -> bool:
     """
     # 파일 조작 툴만 검증
     validation_tools = {"Edit", "Write", "MultiEdit"}
-    return tool_name in validation_tools
+    if tool_name not in validation_tools:
+        return False
+
+    # CLAUDE.md 파일은 TAG 검증에서 제외
+    if tool_name in {"Edit", "Write"}:
+        file_path = tool_args.get("file_path", "")
+        if file_path.endswith("CLAUDE.md"):
+            return False
+
+    # MultiEdit의 경우 CLAUDE.md 포함 여부 확인
+    if tool_name == "MultiEdit":
+        edits = tool_args.get("edits", [])
+        for edit in edits:
+            file_path = edit.get("file_path", "")
+            if file_path.endswith("CLAUDE.md"):
+                return False
+
+    return True
 
 
 def extract_file_paths(tool_name: str, tool_args: Dict[str, Any]) -> List[str]:
