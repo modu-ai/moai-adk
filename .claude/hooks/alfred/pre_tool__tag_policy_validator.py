@@ -28,8 +28,10 @@ from moai_adk.core.tags.policy_validator import (
     PolicyViolation,
     PolicyValidationConfig,
     TagPolicyValidator,
-    PolicyViolationLevel
 )
+
+from moai_adk.utils.common import load_hook_timeout, get_graceful_degradation
+from moai_adk.core.tags.policy_validator import PolicyViolationLevel
 
 
 def load_config() -> Dict[str, Any]:
@@ -252,9 +254,13 @@ def main() -> None:
 
         # 모든 파일에 대해 검증
         all_violations = []
+
+        # 설정에서 타임아웃 값 로드 (밀리초 → 초)
+        timeout_seconds = load_hook_timeout() / 1000
+
         for file_path in file_paths:
             # 타임아웃 체크
-            if time.time() - start_time > 10:  # 10초 타임아웃
+            if time.time() - start_time > timeout_seconds:
                 break
 
             # 파일 내용 가져오기

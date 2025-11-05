@@ -223,6 +223,7 @@
     html [data-md-color-scheme="default"] .md-main__inner {
       background-color: #F2F1ED !important;  /* Bg Warm Off-White */
       color: #171612 !important;           /* Ink/Accent */
+      font-style: normal !important;       /* CRITICAL: Force normal font style */
     }
 
     /* Override header with maximum specificity */
@@ -233,6 +234,18 @@
       background-color: #F7F6F2 !important;  /* Surface Very Light */
       color: #171612 !important;           /* Ink/Accent */
       border-bottom: 1px solid #D5D4D0 !important; /* Border Light Gray */
+    }
+
+    /* CRITICAL: Force header links to be bold */
+    html .md-header a,
+    html .md-header__title,
+    html .md-header__inner a,
+    html [data-md-color-scheme="default"] .md-header a,
+    html [data-md-color-scheme="default"] .md-header__title,
+    html [data-md-color-scheme="default"] .md-header__inner a {
+      font-weight: 700 !important;
+      color: var(--text-primary) !important;
+      text-decoration: none !important;
     }
 
     /* Override navigation */
@@ -587,17 +600,35 @@
       letter-spacing: -0.025em;
     }
 
-    /* Navigation links improved */
-    .md-nav__link {
+    /* CRITICAL: Navigation links improved - Clear visibility */
+    html .md-nav__link,
+    html .md-nav__item,
+    html [data-md-color-scheme="default"] .md-nav__link,
+    html [data-md-color-scheme="default"] .md-nav__item {
       font-size: 0.9rem !important;
       line-height: 1.4 !important;
       padding: 0.5rem 0.75rem !important;
       border-radius: 4px !important;
       transition: all 0.2s ease !important;
+      font-weight: 500 !important;
+      color: var(--text-primary) !important;
+      opacity: 1.0 !important;
     }
 
-    .md-nav__link:hover {
+    html .md-nav__link:hover,
+    html [data-md-color-scheme="default"] .md-nav__link:hover {
       background-color: var(--bg-surface-muted) !important;
+      color: var(--accent-primary) !important;
+    }
+
+    html .md-nav__item--active,
+    html .md-nav__link--active,
+    html [data-md-color-scheme="default"] .md-nav__item--active,
+    html [data-md-color-scheme="default"] .md-nav__link--active {
+      font-weight: 700 !important;
+      color: var(--accent-primary) !important;
+      background-color: var(--bg-surface-muted) !important;
+      opacity: 1.0 !important;
     }
 
     /* Footer with neutral styling */

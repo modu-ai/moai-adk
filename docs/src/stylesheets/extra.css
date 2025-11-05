@@ -1,18 +1,37 @@
 /* MoAI-ADK Documentation Custom Styles - UI/UX Optimized */
 
-/* 콘텐츠 기본 스타일 - 이탤릭체 문제 해결 */
-.md-content {
-  font-style: normal !important;  /* 기울임꼴 제거 */
+/* CRITICAL: 콘텐츠 기본 스타일 - 이탤릭체 문제 해결 */
+.md-content,
+.md-content *,
+.md-typeset,
+.md-typeset *,
+.md-main__inner,
+.md-main__inner * {
+  font-style: normal !important;  /* 기울임꼴 제거 - 최고 우선순위 */
+}
+
+/* CRITICAL: 콘텐츠 본문 */
+.md-content p,
+.md-content div,
+.md-content span,
+.md-content li,
+.md-content td {
+  font-style: normal !important;
   line-height: 1.6;
   color: var(--md-default-fg-color);
 }
 
-/* 헤더 링크 최적화 - 가독성 개선 */
-.md-header a {
+/* CRITICAL: 헤더 링크 최적화 - 가독성 개선 */
+.md-header a,
+.md-header a *,
+.md-header__title,
+.md-header__title *,
+.md-header__inner a,
+.md-header__inner a * {
   color: var(--md-primary-fg-color) !important;
   text-decoration: none !important;
-  font-weight: 600 !important;
-  opacity: 0.9;
+  font-weight: 700 !important;
+  opacity: 1.0 !important;
   transition: opacity 0.2s ease, color 0.2s ease;
 }
 
@@ -37,13 +56,17 @@
   border-bottom-color: var(--md-accent-fg-color);
 }
 
-/* 좌측 사이드바 메뉴 선명도 개선 */
+/* CRITICAL: 좌측 사이드바 메뉴 선명도 개선 */
 .md-sidebar a,
-.md-nav__link {
+.md-sidebar a *,
+.md-nav__link,
+.md-nav__link *,
+.md-nav__item,
+.md-nav__item * {
   text-decoration: none !important;
   color: var(--md-default-fg-color) !important;
-  font-weight: 400 !important;
-  opacity: 0.85;
+  font-weight: 500 !important;
+  opacity: 1.0 !important;
   transition: opacity 0.2s ease, color 0.2s ease;
 }
 
