@@ -23,7 +23,14 @@ SHARED_DIR = HOOKS_DIR / "shared"
 if str(SHARED_DIR) not in sys.path:
     sys.path.insert(0, str(SHARED_DIR))
 
+# Setup import path for moai_adk modules
+PROJECT_ROOT = HOOKS_DIR.parent.parent.parent
+SRC_DIR = PROJECT_ROOT / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+
 from handlers import handle_auto_cleanup
+from moai_adk.utils.common import load_hook_timeout
 
 
 def main() -> None:
@@ -39,8 +46,9 @@ def main() -> None:
         0: Success (cleanup completed or skipped)
         1: Error (timeout, JSON parse failure, handler exception)
     """
-    # Set 5-second timeout
-    timeout = CrossPlatformTimeout(5)
+    # Load timeout from config (milliseconds to seconds)
+    timeout_seconds = load_hook_timeout() / 1000
+    timeout = CrossPlatformTimeout(timeout_seconds)
     timeout.start()
 
     try:
@@ -62,7 +70,7 @@ def main() -> None:
             "systemMessage": "⚠️ Auto-cleanup timeout - continuing session",
         }
         print(json.dumps(timeout_response))
-        print("SessionStart auto-cleanup timeout after 5 seconds", file=sys.stderr)
+        print(f"SessionStart auto-cleanup timeout after {timeout_seconds:.1f} seconds", file=sys.stderr)
         sys.exit(1)
 
     except json.JSONDecodeError as e:

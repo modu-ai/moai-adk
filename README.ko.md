@@ -1,6 +1,6 @@
 # MoAI-ADK (Agentic Development Kit)
 
-[한국어](README.ko.md) | [English](README.md) | [온라인 문서](https://adk.mo.ai.kr)
+**AI 슈퍼에이전트가 주도하는 SPEC-First TDD 개발 프레임워크**
 
 [![PyPI version](https://img.shields.io/pypi/v/moai-adk)](https://pypi.org/project/moai-adk/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -8,36 +8,97 @@
 [![Tests](https://github.com/modu-ai/moai-adk/actions/workflows/moai-gitflow.yml/badge.svg)](https://github.com/modu-ai/moai-adk/actions/workflows/moai-gitflow.yml)
 [![Coverage](https://img.shields.io/badge/coverage-97.7%25-brightgreen)](https://github.com/modu-ai/moai-adk)
 
-> **MoAI-ADK는 AI와 함께 명세(SPEC) → 테스트(TDD) → 코드 → 문서를 자연스럽게 잇는 개발 워크플로우를 제공합니다.**
-
-> **📚 자세한 문서는 [온라인 문서](https://adk.mo.ai.kr)에서 확인하세요.**
->
-> > **🔗 강화된 포털 기능**: 자동 링크 검증, 사용자 친화적 네비게이션, 검색 기능, 다국어 지원, 실시간 문서 업데이트
+> **명세(SPEC) → 테스트(TDD) → 코드 → 문서가 완벽하게 동기화되는 AI 개발 생태계**
 
 ---
 
-## 1. MoAI-ADK 한눈에 보기
+## 📚 빠른 시작
 
-MoAI-ADK는 세 가지 핵심 원칙으로 AI 협력 개발을 혁신합니다. 아래 네비게이션으로 당신의 상황에 맞는 섹션으로 이동하세요.
-
-만약 MoAI-ADK를 **처음 접한다면** "MoAI-ADK란?"부터 시작하세요.
-**빨리 시작하고 싶다면** "5분 Quick Start"로 바로 진행할 수 있습니다.
-**이미 설치했고 개념을 이해하고 싶다면** "핵심 개념 쉽게 이해하기"를 추천합니다.
-
-| 질문                                    | 바로 보기                                             |
-| --------------------------------------- | ----------------------------------------------------- |
-| 처음 접했는데 무엇인가요?               | [MoAI-ADK란?](#moai-adk란)                            |
-| 어떻게 시작하나요?                      | [5분 Quick Start](#5-분-quick-start)                  |
-| 기본 흐름이 궁금해요                    | [기본 워크플로우 (0 → 3)](#기본-워크플로우-0--3)      |
-| Plan / Run / Sync 명령은 무엇을 하나요? | [핵심 명령 요약](#핵심-명령-요약)                     |
-| SPEC·TDD·TAG가 뭐죠?                    | [핵심 개념 쉽게 이해하기](#핵심-개념-쉽게-이해하기)   |
-| 에이전트/Skills가 궁금해요              | [Sub-agent & Skills 개요](#sub-agent--skills-개요)    |
-| Claude Code Hooks가 궁금해요            | [Claude Code Hooks 가이드](#claude-code-hooks-가이드) |
-| 더 깊이 공부하고 싶어요                 | [추가 자료](#추가-자료)                               |
+- **🚀 5분 퀵스타트**: [3분으로 시작하기](#-3분-초고속-시작)
+- **📖 상세 가이드**: [핵심 개념 이해하기](#-핵심-개념-쉽게-이해하기)
+- **🌐 온라인 문서**: [adk.mo.ai.kr](https://adk.mo.ai.kr) - 종합 문서 및 튜토리얼
+- **💡 예제 학습**: [첫 10분 실습](#-첫-10분-실습-hello-world-api)
 
 ---
 
-## MoAI-ADK란?
+## 🎯 MoAI-ADK란?
+
+### 문제: AI 개발의 신뢰성 위기
+
+오늘날 수많은 개발자들이 Claude나 ChatGPT의 도움을 받고 싶어 하지만, 한 가지 근본적인 의심을 떨쳐내지 못합니다. **"이 AI가 만든 코드를 정말 믿을 수 있을까?"**
+
+현실은 이렇습니다. AI에게 "로그인 기능을 만들어줘"라고 하면, 문법적으로 완벽한 코드가 나옵니다. 하지만 다음과 같은 문제들이 반복됩니다:
+
+- **요구사항 불명확**: "정확히 무엇을 만들어야 하는가?"라는 기본 질문이 답변되지 않습니다.
+- **테스트 누락**: 대부분의 AI는 "happy path"만 테스트합니다. 프로덕션에서 버그가 터집니다.
+- **문서 불일치**: 코드가 수정되어도 문서는 그대로입니다. "이 코드가 왜 여기 있지?"라는 질문이 반복됩니다.
+- **컨텍스트 손실**: 같은 프로젝트에서도 매번 처음부터 설명해야 합니다.
+
+### 해결책: SPEC-First TDD with Alfred SuperAgent
+
+**MoAI-ADK**는 이 문제들을 **체계적으로 해결**하도록 설계된 오픈소스 프레임워크입니다.
+
+핵심 원리는 단순하지만 강력합니다:
+
+> **"코드 없이는 테스트도 없고, 테스트 없이는 SPEC도 없다"**
+
+더 정확히는 역순입니다:
+
+> **"SPEC이 먼저 나온다. SPEC 없이는 테스트도 없다. 테스트와 코드가 없으면 문서도 완성이 아니다."**
+
+---
+
+## 🎯 핵심 3대 약속
+
+이 순서를 지킬 때, 실패하지 않는 AI 개발 경험을 하실 수 있습니다:
+
+### 1️⃣ 명확한 요구사항 (SPEC-First)
+`/alfred:1-plan` 명령어로 SPEC을 먼저 작성합니다. "로그인 기능"이라는 모호한 요청이 "WHEN 유효한 자격증명이 제공되면 JWT 토큰을 발급해야 한다"는 **명확한 요구사항**으로 변환됩니다. Alfred의 spec-builder가 EARS 문법을 사용해 단 3분 만에 전문적인 SPEC을 만들어줍니다.
+
+### 2️⃣ 테스트 보증 (TDD)
+`/alfred:2-run`에서 자동으로 테스트 주도 개발(TDD)을 진행합니다. RED(실패하는 테스트) → GREEN(최소 구현) → REFACTOR(코드 정리) 순서로 진행되며, **테스트 커버리지는 87% 이상을 보증**합니다. 더 이상 "나중에 테스트"는 없습니다. 테스트가 코드 작성을 이끕니다.
+
+### 3️⃣ 문서 자동 동기화
+`/alfred:3-sync` 명령어 하나로 코드, 테스트, 문서가 모두 **최신 상태로 동기화**됩니다. README, CHANGELOG, API 문서, Living Document까지 자동으로 업데이트됩니다. 6개월 후에도 코드와 문서는 항상 일치합니다.
+
+---
+
+## 🚀 3분 초고속 시작
+
+MoAI-ADK로 **3단계 만에** 첫 프로젝트를 시작하세요. 초보자도 5분 안에 완성할 수 있습니다.
+
+### 단계 1️⃣: 설치 (약 1분)
+
+```bash
+# macOS/Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows (PowerShell)
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# MoAI-ADK 설치
+uv tool install moai-adk
+```
+
+### 단계 2️⃣: 프로젝트 생성 (약 2분)
+
+```bash
+moai-adk init hello-world
+cd hello-world
+```
+
+### 단계 3️⃣: Alfred 시작 (약 1-2분)
+
+```bash
+claude
+/alfred:0-project
+```
+
+---
+
+## 🔄 기본 워크플로우 (Project > Plan > Run > Sync)
+
+Alfred는 네 개의 명령으로 프로젝트를 반복 개발합니다.
 
 ### 문제: AI 개발의 신뢰성 위기
 

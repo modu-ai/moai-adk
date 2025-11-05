@@ -39,6 +39,8 @@ from moai_adk.core.tags.rollback_manager import (
     RollbackConfig
 )
 
+from moai_adk.utils.common import load_hook_timeout, get_graceful_degradation
+
 
 def load_config() -> Dict[str, Any]:
     """설정 파일 로드
@@ -350,9 +352,12 @@ def main() -> None:
         all_violations = []
         all_corrections = []
 
+        # 설정에서 타임아웃 값 로드 (밀리초 → 초)
+        timeout_seconds = load_hook_timeout() / 1000
+
         for file_path in file_paths:
             # 타임아웃 체크
-            if time.time() - start_time > 15:  # 15초 타임아웃
+            if time.time() - start_time > timeout_seconds:
                 break
 
             # 현재 파일 내용 가져오기
