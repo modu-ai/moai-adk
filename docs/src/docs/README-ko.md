@@ -6,7 +6,7 @@
 **Last Updated**: 2025-11-05
 **Language**: 한국어
 
-# @CODE:DOCS-003
+# @CODE:DOC-ONLINE-001:KO
 
 ## 🚀 빠른 시작
 

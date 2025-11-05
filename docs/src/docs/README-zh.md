@@ -6,7 +6,7 @@
 **Last Updated**: 2025-11-05
 **Language**: 中文
 
-# @CODE:DOCS-003
+# @CODE:DOC-ONLINE-001:ZH
 
 ## 🚀 快速开始
 
