@@ -5,7 +5,7 @@
 > **문서 언어**: 한국어
 > **프로젝트 소유자**: GOOS
 > **설정**: `.moai/config.json`
-> **버전**: 0.15.2 (현재 개발 버전: 0.17.0)
+> **버전**: `.moai/config.json`의 `moai.version` 참조
 >
 > **참고**: `Skill("moai-alfred-ask-user-questions")`는 사용자 상호작용이 필요할 때 TUI 기반 응답을 제공합니다. 이 Skill은 필요에 따라 자동으로 로드됩니다.
 
