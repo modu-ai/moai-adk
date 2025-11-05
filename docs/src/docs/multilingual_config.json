@@ -1,0 +1,160 @@
+{
+  "default_language": "ko",
+  "version": "0.9.0",
+  "last_updated": "2025-11-05",
+  "project": {
+    "name": "MoAI-ADK",
+    "description": "MoAI-ADK Documentation System",
+    "repository": "https://github.com/modu-ai/moai-adk",
+    "homepage": "https://moai-adk.gooslab.ai"
+  },
+  "languages": {
+    "ko": {
+      "name": "한국어",
+      "display_name": "Korean",
+      "file_suffix": "-ko.md",
+      "encoding": "utf-8",
+      "direction": "ltr",
+      "locale": "ko-KR",
+      "enabled": true,
+      "is_primary": true,
+      "tag": "@CODE:DOC-ONLINE-001:KO"
+    },
+    "en": {
+      "name": "English",
+      "display_name": "English",
+      "file_suffix": "-en.md",
+      "encoding": "utf-8",
+      "direction": "ltr",
+      "locale": "en-US",
+      "enabled": true,
+      "is_primary": false,
+      "tag": "@CODE:DOC-ONLINE-001:EN"
+    },
+    "ja": {
+      "name": "日本語",
+      "display_name": "Japanese",
+      "file_suffix": "-ja.md",
+      "encoding": "utf-8",
+      "direction": "ltr",
+      "locale": "ja-JP",
+      "enabled": true,
+      "is_primary": false,
+      "tag": "@CODE:DOC-ONLINE-001:JA"
+    },
+    "zh": {
+      "name": "中文",
+      "display_name": "Chinese",
+      "file_suffix": "-zh.md",
+      "encoding": "utf-8",
+      "direction": "ltr",
+      "locale": "zh-CN",
+      "enabled": true,
+      "is_primary": false,
+      "tag": "@CODE:DOC-ONLINE-001:ZH"
+    }
+  },
+  "tag_system": {
+    "enabled": true,
+    "prefixes": ["@SPEC", "@CODE", "@TEST", "@DOC"],
+    "spec_id": "DOC-ONLINE-001",
+    "primary_tag": "@CODE:DOC-ONLINE-001:MAIN",
+    "auto_validation": true,
+    "tag_migration": {
+      "deprecated_tags": ["@CODE:DOCS-001", "@CODE:DOCS-002"],
+      "migration_complete": true
+    }
+  },
+  "documentation_structure": {
+    "base_path": "docs/src/docs/",
+    "output_path": "docs/_site/",
+    "main_readme": "README.md",
+    "language_readmes": {
+      "ko": "README-ko.md",
+      "en": "README-en.md",
+      "ja": "README-ja.md",
+      "zh": "README-zh.md"
+    }
+  },
+  "features": {
+    "search_enabled": true,
+    "theme_switcher": true,
+    "responsive_design": true,
+    "accessibility": {
+      "wcag_level": "AA",
+      "keyboard_navigation": true,
+      "screen_reader_support": true
+    },
+    "monochrome_theme": {
+      "enabled": true,
+      "primary_colors": {
+        "background": "#ffffff",
+        "surface": "#f9fafb",
+        "primary": "#111827",
+        "secondary": "#374151",
+        "border": "#e5e7eb",
+        "accent": "#6366f1"
+      },
+      "dark_colors": {
+        "background": "#111827",
+        "surface": "#1f2937",
+        "primary": "#f9fafb",
+        "secondary": "#d1d5db",
+        "border": "#374151",
+        "accent": "#818cf8"
+      }
+    },
+    "material_icons": {
+      "enabled": true,
+      "library": "material-design-icons",
+      "sizes": {
+        "small": "16px",
+        "medium": "24px",
+        "large": "32px"
+      }
+    }
+  },
+  "build_settings": {
+    "static_site_generator": "mkdocs",
+    "theme": "material",
+    "plugins": [
+      "search",
+      "minify",
+      "git-revision-date-localized"
+    ],
+    "markdown_extensions": [
+      "admonition",
+      "codehilite",
+      "toc",
+      "tables",
+      "footnotes"
+    ]
+  },
+  "validation_rules": {
+    "required_sections": [
+      "title",
+      "version",
+      "last_updated",
+      "language",
+      "tag"
+    ],
+    "tag_validation": {
+      "require_spec_tag": true,
+      "require_code_tag": true,
+      "check_tag_references": true
+    },
+    "content_validation": {
+      "check_broken_links": true,
+      "validate_markdown": true,
+      "check_file_size": true,
+      "max_file_size_mb": 5
+    }
+  },
+  "sync_settings": {
+    "auto_sync": true,
+    "sync_on_commit": true,
+    "backup_enabled": true,
+    "backup_retention_days": 30,
+    "conflict_resolution": "manual"
+  }
+}
