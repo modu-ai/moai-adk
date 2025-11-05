@@ -1,4 +1,4 @@
-# @CODE:VAL-001
+# @CODE:VAL-002
 """TAG suggestion and validation orchestrator.
 
 Combines parser, generator, mapper, and inserter modules to provide
@@ -22,7 +22,7 @@ class TagSuggestion:
 
     Attributes:
         tag_id: Generated TAG ID (e.g., "@DOC:AUTH-001")
-        chain_ref: Chain reference to SPEC (e.g., "@SPEC:AUTH-001")
+        chain_ref: Chain reference to SPEC (e.g., "@SPEC:AUTH-004")
         confidence: Confidence score (0.0 to 1.0)
         domain: Extracted domain (e.g., "AUTH")
         file_path: Path to documentation file
@@ -55,7 +55,7 @@ def suggest_tag_for_file(
         >>> suggestion.tag_id
         '@DOC:AUTH-001'
         >>> suggestion.chain_ref
-        '@SPEC:AUTH-001'
+        '@SPEC:AUTH-004'
         >>> suggestion.confidence
         0.85
     """
@@ -119,13 +119,13 @@ def validate_tag_chain(tag_id: str, chain_ref: str) -> bool:
 
     Args:
         tag_id: TAG ID (e.g., "@DOC:AUTH-001")
-        chain_ref: Chain reference (e.g., "@SPEC:AUTH-001 -> @DOC:AUTH-001")
+        chain_ref: Chain reference (e.g., "@SPEC:AUTH-004 -> @DOC:AUTH-001")
 
     Returns:
         True if chain is valid
 
     Examples:
-        >>> validate_tag_chain("@DOC:AUTH-001", "@SPEC:AUTH-001 -> @DOC:AUTH-001")
+        >>> validate_tag_chain("@DOC:AUTH-001", "@SPEC:AUTH-004 -> @DOC:AUTH-001")
         True
         >>> validate_tag_chain("@DOC:AUTH-001", "@SPEC:API-001 -> @DOC:AUTH-001")
         False
@@ -137,7 +137,7 @@ def validate_tag_chain(tag_id: str, chain_ref: str) -> bool:
     # Extract TAG domain (e.g., "@DOC:AUTH-001" -> "AUTH")
     tag_domain = tag_id.split(":")[1].rsplit("-", 1)[0]
 
-    # Extract SPEC part from chain (e.g., "@SPEC:AUTH-001" or "@SPEC:API-001")
+    # Extract SPEC part from chain (e.g., "@SPEC:AUTH-004" or "@SPEC:API-001")
     import re
     spec_match = re.search(r"@SPEC:([A-Z0-9-]+)-\d{3}", chain_ref)
     if not spec_match:

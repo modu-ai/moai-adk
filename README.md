@@ -1,6 +1,6 @@
 # MoAI-ADK (Agentic Development Kit)
 
-[English](README.md) | [한국어](README.ko.md) | [日本語](README.ja.md) | [中文](README.zh.md) | **[Online Documentation](https://adk.mo.ai.kr)**
+**SPEC-First TDD with AI SuperAgent & Complete Skills**
 
 [![PyPI version](https://img.shields.io/pypi/v/moai-adk)](https://pypi.org/project/moai-adk/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -9,32 +9,60 @@
 [![codecov](https://codecov.io/gh/modu-ai/moai-adk/branch/develop/graph/badge.svg)](https://codecov.io/gh/modu-ai/moai-adk)
 [![Coverage](https://img.shields.io/badge/coverage-87.84%25-brightgreen)](https://github.com/modu-ai/moai-adk)
 
-> **MoAI-ADK delivers a seamless development workflow that naturally connects SPEC → TEST (TDD) → CODE → DOCUMENTATION with AI.**
-
-> **📚 For comprehensive documentation, visit [our online documentation](https://adk.mo.ai.kr).**
+> **A complete AI-powered development ecosystem that delivers SPEC → TEST → CODE → DOCUMENTATION in perfect sync.**
 
 ---
 
-## Quick Overview
+## 🌐 Quick Links
 
-**MoAI-ADK** is an open-source framework that revolutionizes AI-powered development with a **SPEC-First TDD** approach. Led by the Alfred SuperAgent and a team of 19 specialized AI agents, MoAI-ADK ensures every piece of code is traceable, tested, and documented.
-
-### Core Philosophy
-
-> **"No code without SPEC, no tests without code, no documentation without implementation"**
-
-### Key Features
-
-- 🎯 **SPEC-First Development**: Clear requirements before implementation
-- 🧪 **Auto TDD Workflow**: RED → GREEN → REFACTOR automatically
-- 🏷️ **@TAG System**: Complete traceability from requirements to code
-- 🤖 **Alfred SuperAgent**: AI team that remembers your project context
-- 📚 **Living Documentation**: Auto-synced docs that never drift from code
-- 🔧 **56 Specialized Skills**: Domain-specific AI capabilities
+- **📚 Comprehensive Documentation**: [https://adk.mo.ai.kr](https://adk.mo.ai.kr)
+- **🚀 Quick Start**: [Installation Guide](https://adk.mo.ai.kr/getting-started)
+- **📖 API Reference**: [Commands & Skills](https://adk.mo.ai.kr/api)
+- **💡 Examples & Tutorials**: [Learn More](https://adk.mo.ai.kr/examples)
+- **🐛 Troubleshooting**: [Help Guide](https://adk.mo.ai.kr/troubleshooting)
 
 ---
 
-## Installation
+## 🎯 Core Philosophy
+
+**"No code without SPEC, no tests without code, no documentation without implementation"**
+
+MoAI-ADK is an open-source framework that revolutionizes AI-powered development with a **SPEC-First TDD** approach. Led by the Alfred SuperAgent and a team of specialized AI agents, MoAI-ADK ensures every piece of code is traceable, tested, and documented.
+
+---
+
+## Key Features
+
+### 🎯 SPEC-First Development
+- Clear requirements before implementation
+- EARS format for structured specifications
+- Complete traceability from requirements to code
+
+### 🧪 Auto TDD Workflow
+- RED → GREEN → REFACTOR automatically
+- 87.84%+ test coverage guaranteed
+- Quality gates with TRUST 5 principles
+
+### 🏷️ @TAG System
+- Complete traceability from requirements to code
+- Automatic impact analysis
+- Orphan detection and chain validation
+
+### 🤖 Alfred SuperAgent
+- AI team that remembers your project context
+- 19 specialized agents with 73+ production-ready skills
+- Progressive skill loading for optimal performance
+
+### 📚 Living Documentation
+- Auto-synced docs that never drift from code
+- Real-time documentation generation
+- Multi-language support (Python, TypeScript, Go, Rust, etc.)
+
+---
+
+## 🚀 Getting Started
+
+### Installation
 
 ```bash
 # Install using uv (recommended)
@@ -44,11 +72,11 @@ uv install moai-adk
 pip install moai-adk
 ```
 
-### Quick Start
+### 5-Minute Quick Start
 
 ```bash
 # 1. Initialize your project
-moai-adk init
+moai-adk init my-project
 
 # 2. Create a specification
 /alfred:1-plan "user authentication system"
@@ -62,7 +90,7 @@ moai-adk init
 
 ---
 
-## Core Workflow
+## 🎯 The 4-Step Development Workflow
 
 MoAI-ADK follows a simple 4-step workflow:
 
@@ -70,8 +98,6 @@ MoAI-ADK follows a simple 4-step workflow:
 2. **`/alfred:1-plan`** - Create specifications using EARS format
 3. **`/alfred:2-run`** - TDD implementation (RED → GREEN → REFACTOR)
 4. **`/alfred:3-sync`** - Synchronize documentation and validate
-
-Each step builds upon the previous one, ensuring complete traceability and quality.
 
 ---
 
@@ -96,27 +122,29 @@ This creates complete traceability, allowing you to:
 
 ---
 
-## Key Components
+## 🏗️ Core Architecture
 
 ### Alfred SuperAgent
-The orchestrator that manages 19 specialized agents and 56 skills, ensuring consistent, high-quality development.
+The orchestrator that manages 19 specialized agents and 73+ skills, ensuring consistent, high-quality development.
 
 ### Specialized Agents
 - **spec-builder**: Creates detailed specifications
 - **code-builder**: Implements TDD workflows
 - **test-engineer**: Ensures comprehensive testing
 - **git-manager**: Handles version control workflows
-- And 15 more domain-specific experts
+- **doc-syncer**: Manages documentation synchronization
+- And 15+ domain-specific experts
 
 ### Claude Skills
-56 specialized capabilities that provide:
+73+ specialized capabilities that provide:
 - Domain expertise (UI/UX, backend, security)
 - Technical skills (testing, documentation, deployment)
 - Quality assurance (linting, validation, compliance)
+- Language-specific support (Python, TypeScript, Go, Rust, etc.)
 
 ---
 
-## Why MoAI-ADK?
+## 🚀 Why MoAI-ADK?
 
 ### Traditional AI Development Problems
 - ❌ Unclear requirements leading to wrong implementations
@@ -134,33 +162,18 @@ The orchestrator that manages 19 specialized agents and 56 skills, ensuring cons
 
 ---
 
-## Resources & Documentation
+## 🌐 Community & Support
 
-### 🌐 Online Documentation
-Visit **[https://adk.mo.ai.kr](https://adk.mo.ai.kr)** for comprehensive guides including:
-
-- **Getting Started**: Installation and basic usage
-- **Guides**: Detailed tutorials for all features
-- **Reference**: Complete API documentation
-- **Examples**: Real-world implementation patterns
-
-### Core Topics in Documentation
-- **SPEC System**: EARS format and specification writing
-- **TDD Workflow**: Test-Driven Development with AI
-- **@TAG System**: Complete traceability guide
-- **Alfred Commands**: Detailed command reference
-- **Skills & Agents**: Understanding AI capabilities
-- **Best Practices**: Team workflows and patterns
-
-### Community & Support
-- 🏠 **GitHub**: https://github.com/modu-ai/moai-adk
-- 🐛 **Issues**: https://github.com/modu-ai/moai-adk/issues
-- 📦 **PyPI**: https://pypi.org/project/moai-adk/
-- 📚 **Documentation**: https://adk.mo.ai.kr
+| Resource | Description |
+|----------|-------------|
+| **📚 Online Documentation** | [https://adk.mo.ai.kr](https://adk.mo.ai.kr) - Comprehensive guides and tutorials |
+| **🏠 GitHub Repository** | [https://github.com/modu-ai/moai-adk](https://github.com/modu-ai/moai-adk) - Source code and issues |
+| **🐛 Issues & Discussions** | [https://github.com/modu-ai/moai-adk/issues](https://github.com/modu-ai/moai-adk/issues) - Bug reports and feature requests |
+| **📦 PyPI Package** | [https://pypi.org/project/moai-adk/](https://pypi.org/project/moai-adk/) - Installation |
 
 ---
 
-## License
+## 📋 License
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
@@ -170,4 +183,4 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 > Build trustworthy AI-powered software with complete traceability, guaranteed testing, and living documentation.
 
-> **🚀 Get started now: `uv install moai-adk` and visit [https://adk.mo.ai.kr](https://adk.mo.ai.kr)**
+> **🚀 Get started now: `uv install moai-adk` and explore [https://adk.mo.ai.kr](https://adk.mo.ai.kr)**

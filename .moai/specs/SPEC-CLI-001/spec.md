@@ -292,7 +292,7 @@ scope:
 
 ### AC-11: status TAG 체인 끊어짐 감지
 
-- **Given**: CODE에 `@CODE:AUTH-001`이 있지만 SPEC이 없을 때
+- **Given**: CODE에 `@CODE:AUTH-004`이 있지만 SPEC이 없을 때
 - **When**: `moai status --detail` 실행
 - **Then**:
   - TAG 체인 무결성: "⚠ 1 broken chain"

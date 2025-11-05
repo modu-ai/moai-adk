@@ -23,7 +23,7 @@ def format_tag_header(tag_id: str, chain_ref: Optional[str] = None) -> str:
 
     Examples:
         >>> format_tag_header("AUTH-001", "AUTH-001")
-        '# @DOC:AUTH-001 | Chain: @SPEC:AUTH-001 -> @DOC:AUTH-001'
+        '# @DOC:AUTH-001 | Chain: @SPEC:AUTH-004 -> @DOC:AUTH-001'
     """
     if chain_ref:
         return f"# {tag_id} | Chain: {chain_ref} -> {tag_id}"
@@ -47,7 +47,7 @@ def insert_tag_to_markdown(
         True if successful, False on error
 
     Examples:
-        >>> insert_tag_to_markdown(Path("guide.md"), "@DOC:AUTH-001", "@SPEC:AUTH-001")
+        >>> insert_tag_to_markdown(Path("guide.md"), "@DOC:AUTH-001", "@SPEC:AUTH-004")
         True
     """
     try:

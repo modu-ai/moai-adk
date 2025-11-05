@@ -676,7 +676,7 @@ function mergeJSON(backupFile: string, currentFile: string): object {
 #### 1. BackupMerger 클래스 설계
 
 ```python
-# @CODE:INIT-003:MERGE | SPEC: .moai/specs/SPEC-INIT-003/spec.md
+# @CODE:INIT-005:MERGE | SPEC: .moai/specs/SPEC-INIT-003/spec.md
 """백업 병합 모듈 (SPEC-INIT-003 v0.3.1)
 
 백업의 프로젝트 문서를 현재 템플릿에 지능형 병합.
@@ -1020,23 +1020,23 @@ Then:
 
 **Phase A 구현 위치** (v0.2.1까지, TypeScript):
 
-- `@CODE:INIT-003:BACKUP` → `moai-adk-ts/src/core/installer/phase-executor.ts` (deprecated)
-- `@CODE:INIT-003:DATA` → `moai-adk-ts/src/core/installer/backup-metadata.ts` (deprecated)
+- `@CODE:INIT-005:BACKUP` → `moai-adk-ts/src/core/installer/phase-executor.ts` (deprecated)
+- `@CODE:INIT-005:DATA` → `moai-adk-ts/src/core/installer/backup-metadata.ts` (deprecated)
 - `@TEST:INIT-003:BACKUP` → `moai-adk-ts/__tests__/core/installer/phase-executor.test.ts` (deprecated)
 
 **Phase B 구현 위치** (v0.2.1까지, TypeScript):
 
-- `@CODE:INIT-003:MERGE` → `moai-adk-ts/src/cli/commands/project/backup-merger.ts` (deprecated)
-- `@CODE:INIT-003:DATA` → `moai-adk-ts/src/cli/commands/project/merge-strategies/` (deprecated)
-- `@CODE:INIT-003:UI` → `moai-adk-ts/src/cli/commands/project/merge-report.ts` (deprecated)
+- `@CODE:INIT-005:MERGE` → `moai-adk-ts/src/cli/commands/project/backup-merger.ts` (deprecated)
+- `@CODE:INIT-005:DATA` → `moai-adk-ts/src/cli/commands/project/merge-strategies/` (deprecated)
+- `@CODE:INIT-005:UI` → `moai-adk-ts/src/cli/commands/project/merge-report.ts` (deprecated)
 - `@TEST:INIT-003:MERGE` → `moai-adk-ts/__tests__/cli/commands/project/backup-merger.test.ts` (deprecated)
 
 **Phase C 구현 위치** (v0.3.1, Python, 신규):
 
-- `@CODE:INIT-003:MERGE` → `src/moai_adk/core/project/backup_merger.py`
-- `@CODE:INIT-003:CONFIG` → `src/moai_adk/core/project/phase_executor.py` (Phase 4 수정)
-- `@CODE:INIT-003:REINIT` → `src/moai_adk/cli/commands/init.py` (reinit 로직)
-- `@CODE:INIT-003:TEMPLATE` → `src/moai_adk/templates/.moai/config.json`
+- `@CODE:INIT-005:MERGE` → `src/moai_adk/core/project/backup_merger.py`
+- `@CODE:INIT-005:CONFIG` → `src/moai_adk/core/project/phase_executor.py` (Phase 4 수정)
+- `@CODE:INIT-005:REINIT` → `src/moai_adk/cli/commands/init.py` (reinit 로직)
+- `@CODE:INIT-005:TEMPLATE` → `src/moai_adk/templates/.moai/config.json`
 - `@TEST:INIT-003:MERGE` → `tests/unit/test_backup_merger.py`
 
 ### 의존성 체인

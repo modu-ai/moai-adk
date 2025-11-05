@@ -9,7 +9,7 @@ author: @goos
 priority: high
 ---
 
-# @SPEC:REFACTOR-001: Git Manager 리팩토링
+# @SPEC:REFACTOR-002: Git Manager 리팩토링
 
 ## HISTORY
 
@@ -34,7 +34,7 @@ priority: high
 ## TAG BLOCK
 
 ```text
-# @SPEC:REFACTOR-001: Git Manager 리팩토링
+# @SPEC:REFACTOR-002: Git Manager 리팩토링
 # Related: @CODE:REFACTOR-001:*, @TEST:REFACTOR-001:*
 ```
 
@@ -328,8 +328,8 @@ __tests__/core/git/
 ### TAG 체인
 
 ```
-@SPEC:REFACTOR-001 (요구사항)
-  └─> @SPEC:REFACTOR-001 (설계)
+@SPEC:REFACTOR-002 (요구사항)
+  └─> @SPEC:REFACTOR-002 (설계)
         └─> @CODE:REFACTOR-001 (작업)
               └─> @TEST:REFACTOR-001 (검증)
 ```

@@ -209,7 +209,7 @@ class TestOrphanDetection:
         with tempfile.TemporaryDirectory() as tmpdir:
             # CODE without TEST
             code1 = Path(tmpdir) / "auth.py"
-            code1.write_text("# @CODE:AUTH-001\n")
+            code1.write_text("# @CODE:AUTH-004\n")
 
             # TEST without CODE
             test1 = Path(tmpdir) / "test_payment.py"
@@ -374,11 +374,11 @@ class TestDocumentFileExclusion:
             md_file.write_text("""
 # Contributing Guide
 
-Example @CODE:AUTH-001 in markdown
-More @CODE:AUTH-001 elsewhere
+Example @CODE:AUTH-004 in markdown
+More @CODE:AUTH-004 elsewhere
 
-Example @TEST:AUTH-001 in docs
-More @TEST:AUTH-001 in example code
+Example @TEST:AUTH-004 in docs
+More @TEST:AUTH-004 in example code
 """)
 
             # Duplicate TAGs in markdown should NOT be flagged
@@ -425,11 +425,11 @@ More @TEST:AUTH-001 in example code
         with tempfile.TemporaryDirectory() as tmpdir:
             py_file = Path(tmpdir) / "auth.py"
             py_file.write_text("""
-# @CODE:AUTH-001
+# @CODE:AUTH-004
 def login():
     pass
 
-# @CODE:AUTH-001  <- Duplicate in code file
+# @CODE:AUTH-004  <- Duplicate in code file
 def verify():
     pass
 """)

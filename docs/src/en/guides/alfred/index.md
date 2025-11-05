@@ -1,7 +1,7 @@
 ---
-title: Alfredコマンドガイド
-description: MoAI-ADKの4つの核心Alfredコマンドの完全ガイド
-lang: ja
+title: Alfred Command Guide
+description: Complete guide to MoAI-ADK's 4 core Alfred commands
+lang: en
 ---
 
 # Alfredコマンドガイド
@@ -22,12 +22,12 @@ AlfredはMoAI-ADKのスーパーエージェントで、4つの核心コマン�
 ```mermaid
 %%{init: {'theme':'neutral'}}%%
 graph TD
-    Start([ユーザー要求]) --> Project[0.Project Init<br/>/alfred:0-project]
+    Start([User Request]) --> Project[0.Project Init<br/>/alfred:0-project]
     Project --> Plan[1.Plan & SPEC<br/>/alfred:1-plan]
     Plan --> Run[2.Run & TDD<br/>/alfred:2-run]
     Run --> Sync[3.Sync & Docs<br/>/alfred:3-sync]
     Sync --> Plan
-    Sync -.-> End([リリース])
+    Sync -.-> End([Release])
 ```
 
 ## 基本使用法
@@ -77,45 +77,45 @@ MoAI-ADKはSPEC文書の**状態遷移**を通じて開発進行状況を体系�
 %%{init: {'theme':'neutral'}}%%
 stateDiagram-v2
     [*] --> planning: /alfred:1-plan
-    planning --> draft: SPEC作成完了
+    planning --> draft: SPEC created
     draft --> in_progress: /alfred:2-run
-    in_progress --> testing: 実装完了
+    in_progress --> testing: Implementation complete
     testing --> completed: /alfred:3-sync
-    completed --> deprecated: 機能廃止
+    completed --> deprecated: Feature retired
 
     note right of planning
-        📋 計画段階
-        - 要件収集
-        - アーキテクチャ設計
-        - 技術スタック決定
+        📋 Planning Phase
+        - Requirements gathering
+        - Architecture design
+        - Technology stack decisions
     end note
 
     note right of draft
-        <span class="material-icons">description</span> 草稿段階
-        - EARS形式でSPEC作成
-        - Plan Board作成
-        - レビュー準備完了
+        <span class="material-icons">description</span> Draft Phase
+        - EARS format SPEC creation
+        - Plan Board creation
+        - Review preparation complete
     end note
 
     note right of in_progress
-        <span class="material-icons">rocket_launch</span> 開発段階
-        - TDD実行 (RED→GREEN→REFACTOR)
-        - 実装・テストコード作成
-        - 品質検証通過
+        <span class="material-icons">rocket_launch</span> Development Phase
+        - TDD execution (RED→GREEN→REFACTOR)
+        - Implementation and test code creation
+        - Quality validation passed
     end note
 
     note right of testing
-        🧪 テスト段階
-        - 単体テスト完了
-        - 統合テスト進行
-        - QA検証実行
+        🧪 Testing Phase
+        - Unit tests complete
+        - Integration tests in progress
+        - QA validation execution
     end note
 
     note right of completed
-        <span class="material-icons">check_circle</span> 完了段階
-        - ドキュメント同期完了
-        - デプロイ準備完了
-        - 運用環境適用
+        <span class="material-icons">check_circle</span> Completed Phase
+        - Documentation sync complete
+        - Deployment preparation complete
+        - Production environment applied
     end note
 ```
 

@@ -171,7 +171,7 @@ scope: package-upgrade-detection, ux-improvement-strategy, template-version-mana
 
 **SPEC Chain**:
 - **SPEC**: @SPEC:UPDATE-REFACTOR-002 (this document)
-- **Related SPEC**: @SPEC:INIT-001 (initialization system)
+- **Related SPEC**: @SPEC:INIT-005 (initialization system)
 
 **Implementation Chain** (to be populated in Phase 2):
 - **TEST**: `tests/cli/commands/test_update.py`

@@ -4,7 +4,7 @@
 Tests TAG chain analysis functionality including chain detection,
 orphan identification, and completeness scoring.
 
-@SPEC:DOCS-004: TAG 체인 분석 및 검증 도구
+@SPEC:DOCS-005: TAG 체인 분석 및 검증 도구
 """
 
 import json
@@ -24,9 +24,9 @@ def test_tag_chain_completeness():
     # Complete chain
     complete_chain = TagChain(
         domain="AUTH",
-        spec_id="@SPEC:AUTH-001",
-        code_id="@CODE:AUTH-001",
-        test_id="@TEST:AUTH-001"
+        spec_id="@SPEC:AUTH-004",
+        code_id="@CODE:AUTH-004",
+        test_id="@TEST:AUTH-004"
     )
     assert complete_chain.is_complete
     assert complete_chain.completeness_score == 1.0
@@ -35,8 +35,8 @@ def test_tag_chain_completeness():
     # Partial chain
     partial_chain = TagChain(
         domain="AUTH",
-        spec_id="@SPEC:AUTH-001",
-        code_id="@CODE:AUTH-001",
+        spec_id="@SPEC:AUTH-004",
+        code_id="@CODE:AUTH-004",
         test_id=None
     )
     assert not partial_chain.is_complete
@@ -59,8 +59,8 @@ def test_extract_domain_from_tag():
     """Test domain extraction from TAG."""
     analyzer = TagChainAnalyzer()
 
-    assert analyzer._extract_domain_from_tag("@SPEC:AUTH-001") == "AUTH"
-    assert analyzer._extract_domain_from_tag("@CODE:CLI-001") == "CLI"
+    assert analyzer._extract_domain_from_tag("@SPEC:AUTH-004") == "AUTH"
+    assert analyzer._extract_domain_from_tag("@CODE:CLI-003") == "CLI"
     assert analyzer._extract_domain_from_tag("@TEST:LDE-PRIORITY-001") == "LDE-PRIORITY"
     assert analyzer._extract_domain_from_tag("@DOC:INSTALLER-QUALITY-001") == "INSTALLER-QUALITY"
 
@@ -69,8 +69,8 @@ def test_get_max_number():
     """Test maximum number extraction from tags."""
     analyzer = TagChainAnalyzer()
 
-    spec_tags = ["@SPEC:AUTH-001", "@SPEC:AUTH-002"]
-    code_tags = ["@CODE:AUTH-001", "@CODE:AUTH-003"]
+    spec_tags = ["@SPEC:AUTH-004", "@SPEC:AUTH-002"]
+    code_tags = ["@CODE:AUTH-004", "@CODE:AUTH-003"]
     test_tags = ["@TEST:AUTH-002"]
 
     max_num = analyzer._get_max_number(spec_tags, code_tags, test_tags)
@@ -81,9 +81,9 @@ def test_identify_orphans():
     """Test orphan identification."""
     # Create test data
     all_tags = {
-        "@CODE:AUTH-001": ["file1.py"],
+        "@CODE:AUTH-004": ["file1.py"],
         "@CODE:AUTH-002": ["file2.py"],
-        "@TEST:AUTH-001": ["test1.py"],
+        "@TEST:AUTH-004": ["test1.py"],
         "@TEST:AUTH-003": ["test2.py"],
         "@SPEC:AUTH-002": ["spec1.md"],
         "@SPEC:API-001": ["spec2.md"],
@@ -92,8 +92,8 @@ def test_identify_orphans():
     analyzer = TagChainAnalyzer()
     orphans = analyzer._identify_orphans(all_tags)
 
-    # CODE without SPEC: AUTH-001 (no @SPEC:AUTH-001)
-    assert "@CODE:AUTH-001" in orphans["code_without_spec"]
+    # CODE without SPEC: AUTH-001 (no @SPEC:AUTH-004)
+    assert "@CODE:AUTH-004" in orphans["code_without_spec"]
 
     # CODE without TEST: AUTH-002 (no @TEST:AUTH-002)
     assert "@CODE:AUTH-002" in orphans["code_without_test"]
@@ -139,15 +139,15 @@ def test_group_chains_by_domain():
         # Create test files
         src_file = temp_path / "src" / "auth.py"
         src_file.parent.mkdir(parents=True)
-        src_file.write_text("# @CODE:AUTH-001\n# @CODE:AUTH-002")
+        src_file.write_text("# @CODE:AUTH-004\n# @CODE:AUTH-002")
 
         test_file = temp_path / "tests" / "auth_test.py"
         test_file.parent.mkdir(parents=True)
-        test_file.write_text("# @TEST:AUTH-001\n# @TEST:AUTH-003")
+        test_file.write_text("# @TEST:AUTH-004\n# @TEST:AUTH-003")
 
         spec_file = temp_path / ".moai" / "specs" / "auth.md"
         spec_file.parent.mkdir(parents=True)
-        spec_file.write_text("# @SPEC:AUTH-001\n# @SPEC:AUTH-002")
+        spec_file.write_text("# @SPEC:AUTH-004\n# @SPEC:AUTH-002")
 
         analyzer = TagChainAnalyzer(temp_path)
         all_tags = analyzer._scan_all_tags()
@@ -158,9 +158,9 @@ def test_group_chains_by_domain():
         assert len(chains_by_domain["AUTH"]) == 3
 
         # Chain 001: Complete
-        chain_001 = next(c for c in chains_by_domain["AUTH"] if c.code_id == "@CODE:AUTH-001")
-        assert chain_001.spec_id == "@SPEC:AUTH-001"
-        assert chain_001.test_id == "@TEST:AUTH-001"
+        chain_001 = next(c for c in chains_by_domain["AUTH"] if c.code_id == "@CODE:AUTH-004")
+        assert chain_001.spec_id == "@SPEC:AUTH-004"
+        assert chain_001.test_id == "@TEST:AUTH-004"
         assert chain_001.is_complete
 
         # Chain 002: Missing TEST
@@ -184,15 +184,15 @@ def test_analyze_all_chains():
         # Create test files with known state
         src_file = temp_path / "src" / "auth.py"
         src_file.parent.mkdir(parents=True)
-        src_file.write_text("# @CODE:AUTH-001\n# @CODE:AUTH-002")
+        src_file.write_text("# @CODE:AUTH-004\n# @CODE:AUTH-002")
 
         test_file = temp_path / "tests" / "auth_test.py"
         test_file.parent.mkdir(parents=True)
-        test_file.write_text("# @TEST:AUTH-001\n# @TEST:AUTH-003")
+        test_file.write_text("# @TEST:AUTH-004\n# @TEST:AUTH-003")
 
         spec_file = temp_path / ".moai" / "specs" / "auth.md"
         spec_file.parent.mkdir(parents=True)
-        spec_file.write_text("# @SPEC:AUTH-001")
+        spec_file.write_text("# @SPEC:AUTH-004")
 
         analyzer = TagChainAnalyzer(temp_path)
         result = analyzer.analyze_all_chains()
@@ -222,11 +222,11 @@ def test_generate_report():
         # Create test files
         src_file = temp_path / "src" / "auth.py"
         src_file.parent.mkdir(parents=True)
-        src_file.write_text("# @CODE:AUTH-001")
+        src_file.write_text("# @CODE:AUTH-004")
 
         test_file = temp_path / "tests" / "auth_test.py"
         test_file.parent.mkdir(parents=True)
-        test_file.write_text("# @TEST:AUTH-001")
+        test_file.write_text("# @TEST:AUTH-004")
 
         analyzer = TagChainAnalyzer(temp_path)
         result = analyzer.analyze_all_chains()

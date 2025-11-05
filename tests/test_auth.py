@@ -1,6 +1,6 @@
-# @TEST:AUTH-001
+# @TEST:AUTH-004
 
-# SPEC:@SPEC:AUTH-001
+# SPEC:@SPEC:AUTH-004
 
 import unittest
 from src.auth.example import example_function

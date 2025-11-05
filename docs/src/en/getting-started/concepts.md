@@ -347,4 +347,4 @@ graph TD
 
 ---
 
-**🎓 これで5つの核心概念を理解しました！** 次は[Alfredコマンドガイド](../guides/alfred/index.md)で実際の使用方法を学び、[TDDガイド](../guides/tdd/index.md)で実践的なテクニックを習得しましょう。
+**🎓 これで5つの核心概念を理解しました！** 次は[Alfredコマンドガイド](../../guides/alfred/index.md)で実際の使用方法を学び、[TDDガイド](../../guides/tdd/index.md)で実践的なテクニックを習得しましょう。

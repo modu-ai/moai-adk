@@ -177,11 +177,11 @@ class TestPRValidation:
             # Create test file with valid TAGs
             test_file = Path(tmpdir) / "test_file.py"
             test_file.write_text("""
-# @CODE:AUTH-001
+# @CODE:AUTH-004
 def authenticate():
     pass
 
-# @TEST:AUTH-001
+# @TEST:AUTH-004
 def test_authenticate():
     pass
 """)
@@ -222,11 +222,11 @@ def test_authenticate():
             # Create test file with duplicate TAGs
             test_file = Path(tmpdir) / "test_file.py"
             test_file.write_text("""
-# @CODE:AUTH-001
+# @CODE:AUTH-004
 def func1():
     pass
 
-# @CODE:AUTH-001
+# @CODE:AUTH-004
 def func2():
     pass
 """)
@@ -297,7 +297,7 @@ class TestReportGeneration:
 
         warning = ValidationWarning(
             message="CODE TAG without corresponding TEST",
-            tag="@CODE:AUTH-001",
+            tag="@CODE:AUTH-004",
             location=("auth.py", 15)
         )
 
@@ -387,7 +387,7 @@ class TestPRCommentFormatting:
 
         error = ValidationError(
             message="Duplicate TAG found",
-            tag="@CODE:AUTH-001",
+            tag="@CODE:AUTH-004",
             locations=[("auth.py", 10), ("auth_v2.py", 20)]
         )
 
@@ -404,7 +404,7 @@ class TestPRCommentFormatting:
 
         assert "❌" in comment or "error" in comment.lower()
         assert "Duplicate TAG" in comment
-        assert "@CODE:AUTH-001" in comment
+        assert "@CODE:AUTH-004" in comment
         assert "auth.py" in comment
         assert "auth_v2.py" in comment
 
@@ -414,7 +414,7 @@ class TestPRCommentFormatting:
 
         warning = ValidationWarning(
             message="CODE TAG without corresponding TEST",
-            tag="@CODE:AUTH-001",
+            tag="@CODE:AUTH-004",
             location=("auth.py", 15)
         )
 
@@ -431,7 +431,7 @@ class TestPRCommentFormatting:
 
         assert "⚠️" in comment or "warning" in comment.lower()
         assert "CODE TAG without corresponding TEST" in comment
-        assert "@CODE:AUTH-001" in comment
+        assert "@CODE:AUTH-004" in comment
 
     def test_format_pr_comment_includes_table(self):
         """Should include results table in comment"""
@@ -598,7 +598,7 @@ class TestIntegrationWorkflow:
             # Create test file
             test_file = Path(tmpdir) / "src" / "auth.py"
             test_file.parent.mkdir(parents=True)
-            test_file.write_text("# @CODE:AUTH-001\n# @TEST:AUTH-001\n")
+            test_file.write_text("# @CODE:AUTH-004\n# @TEST:AUTH-004\n")
 
             # Mock file resolution
             with patch.object(Path, 'exists', return_value=True), \

@@ -10,7 +10,7 @@ related_issue: "https://github.com/modu-ai/moai-adk/issues/2"
 priority: high
 ---
 
-# @SPEC:INIT-001: moai init 비대화형 환경 지원 및 의존성 자동 설치
+# @SPEC:INIT-005: moai init 비대화형 환경 지원 및 의존성 자동 설치
 
 ## HISTORY
 
@@ -460,7 +460,7 @@ AND .moai/config.json 생성 확인
 
 ### TAG 체인 구조
 ```
-@SPEC:INIT-001 (본 문서)
+@SPEC:INIT-005 (본 문서)
   ↓
 @TEST:INIT-001 (tests/cli/init.test.ts)
   ↓
@@ -476,7 +476,7 @@ AND .moai/config.json 생성 확인
 ### 검증 명령어
 ```bash
 # SPEC 문서 확인
-rg '@SPEC:INIT-001' -n .moai/specs/
+rg '@SPEC:INIT-005' -n .moai/specs/
 
 # 테스트 파일 확인
 rg '@TEST:INIT-001' -n tests/

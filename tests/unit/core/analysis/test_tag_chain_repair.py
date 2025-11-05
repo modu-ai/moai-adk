@@ -1,10 +1,10 @@
-# @TEST:VAL-001
+# @TEST:VAL-002
 """Test suite for TAG chain repair tool.
 
 Tests TAG chain repair functionality including plan creation,
 template generation, and repair execution.
 
-@SPEC:DOCS-004: TAG 체인 복구 및 자동 생성 도구
+@SPEC:DOCS-005: TAG 체인 복구 및 자동 생성 도구
 """
 
 import tempfile
@@ -73,7 +73,7 @@ def test_extract_domain_from_tag():
     """Test domain extraction from TAG strings."""
     repairer = TagChainRepairer()
 
-    assert repairer._extract_domain_from_tag("@SPEC:AUTH-001") == "AUTH"
+    assert repairer._extract_domain_from_tag("@SPEC:AUTH-004") == "AUTH"
     assert repairer._extract_domain_from_tag("@CODE:LDE-PRIORITY-005") == "LDE-PRIORITY"
     assert repairer._extract_domain_from_tag("@TEST:CLI-002") == "CLI"
 
@@ -124,7 +124,7 @@ def test_create_test_template():
     repairer = TagChainRepairer()
 
     template = repairer._create_test_template("AUTH", 1)
-    assert "@TEST:AUTH-001" in template
+    assert "@TEST:AUTH-004" in template
     assert "class TestAuth:" in template
     assert "def test_auth_function_basic(self):" in template
     assert "import pytest" in template

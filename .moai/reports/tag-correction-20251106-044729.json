@@ -1,0 +1,5067 @@
+{
+  "timestamp": "2025-11-06T04:47:29.075737",
+  "dry_run": false,
+  "total_corrections": 561,
+  "results": [
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/quality/test_trust_checker.py",
+        "line_number": 1,
+        "old_tag": "@TEST:TRUST-001",
+        "new_tag": "@TEST:TRUST-002",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @TEST:TRUST-001 → @TEST:TRUST-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-TRUST-001/spec.md",
+        "line_number": 56,
+        "old_tag": "@TEST:TRUST-001",
+        "new_tag": "@TEST:TRUST-002",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:TRUST-001 → @TEST:TRUST-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/quality/test_trust_checker.py",
+        "line_number": 24,
+        "old_tag": "@TEST:TRUST-001",
+        "new_tag": "@TEST:TRUST-002",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:TRUST-001 → @TEST:TRUST-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/quality/__init__.py",
+        "line_number": 1,
+        "old_tag": "@TEST:TRUST-001",
+        "new_tag": "@TEST:TRUST-002",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @TEST:TRUST-001 → @TEST:TRUST-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-TRUST-001/spec.md",
+        "line_number": 56,
+        "old_tag": "@TEST:TRUST-001",
+        "new_tag": "@TEST:TRUST-002",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:TRUST-001 → @TEST:TRUST-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/quality/test_trust_checker.py",
+        "line_number": 24,
+        "old_tag": "@TEST:TRUST-001",
+        "new_tag": "@TEST:TRUST-002",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:TRUST-001 → @TEST:TRUST-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/quality/trust_checker.py",
+        "line_number": 1,
+        "old_tag": "@CODE:TRUST-001",
+        "new_tag": "@CODE:TRUST-002",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @CODE:TRUST-001 → @CODE:TRUST-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-TRUST-001/spec.md",
+        "line_number": 57,
+        "old_tag": "@CODE:TRUST-001",
+        "new_tag": "@CODE:TRUST-002",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:TRUST-001 → @CODE:TRUST-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-TRUST-001/spec.md",
+        "line_number": 58,
+        "old_tag": "@CODE:TRUST-001",
+        "new_tag": "@CODE:TRUST-002",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:TRUST-001 → @CODE:TRUST-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/quality/__init__.py",
+        "line_number": 1,
+        "old_tag": "@CODE:TRUST-001",
+        "new_tag": "@CODE:TRUST-002",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @CODE:TRUST-001 → @CODE:TRUST-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-TRUST-001/spec.md",
+        "line_number": 57,
+        "old_tag": "@CODE:TRUST-001",
+        "new_tag": "@CODE:TRUST-002",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:TRUST-001 → @CODE:TRUST-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-TRUST-001/spec.md",
+        "line_number": 58,
+        "old_tag": "@CODE:TRUST-001",
+        "new_tag": "@CODE:TRUST-002",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:TRUST-001 → @CODE:TRUST-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/quality/validators/__init__.py",
+        "line_number": 1,
+        "old_tag": "@CODE:TRUST-001",
+        "new_tag": "@CODE:TRUST-002",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @CODE:TRUST-001 → @CODE:TRUST-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-TRUST-001/spec.md",
+        "line_number": 57,
+        "old_tag": "@CODE:TRUST-001",
+        "new_tag": "@CODE:TRUST-002",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:TRUST-001 → @CODE:TRUST-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-TRUST-001/spec.md",
+        "line_number": 58,
+        "old_tag": "@CODE:TRUST-001",
+        "new_tag": "@CODE:TRUST-002",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:TRUST-001 → @CODE:TRUST-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/quality/validators/base_validator.py",
+        "line_number": 1,
+        "old_tag": "@CODE:TRUST-001",
+        "new_tag": "@CODE:TRUST-002",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @CODE:TRUST-001 → @CODE:TRUST-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-TRUST-001/spec.md",
+        "line_number": 57,
+        "old_tag": "@CODE:TRUST-001",
+        "new_tag": "@CODE:TRUST-002",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:TRUST-001 → @CODE:TRUST-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-TRUST-001/spec.md",
+        "line_number": 58,
+        "old_tag": "@CODE:TRUST-001",
+        "new_tag": "@CODE:TRUST-002",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:TRUST-001 → @CODE:TRUST-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-AUTH-001/spec.md",
+        "line_number": 1,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-TRUST-001/spec.md",
+        "line_number": 187,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOC-TAG-001/spec.md",
+        "line_number": 123,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOC-TAG-001/spec.md",
+        "line_number": 131,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOC-TAG-001/spec.md",
+        "line_number": 131,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOC-TAG-001/spec.md",
+        "line_number": 136,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOC-TAG-001/spec.md",
+        "line_number": 136,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-ALF-WORKFLOW-001/spec.md",
+        "line_number": 464,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOC-TAG-002/spec.md",
+        "line_number": 96,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOC-TAG-002/spec.md",
+        "line_number": 211,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOC-TAG-004/spec.md",
+        "line_number": 102,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOC-TAG-004/spec.md",
+        "line_number": 297,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOC-TAG-004/spec.md",
+        "line_number": 307,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOC-TAG-004/spec.md",
+        "line_number": 405,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_reporter.py",
+        "line_number": 134,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_reporter.py",
+        "line_number": 182,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 27,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 38,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 62,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 72,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 95,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 150,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 162,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 195,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_repair.py",
+        "line_number": 76,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/quality/test_trust_checker.py",
+        "line_number": 285,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/quality/test_trust_checker.py",
+        "line_number": 298,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/tags/test_parser.py",
+        "line_number": 23,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/tags/test_auto_corrector.py",
+        "line_number": 184,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/tags/test_tags.py",
+        "line_number": 29,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/tags/test_tags.py",
+        "line_number": 76,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/tags/test_tags.py",
+        "line_number": 92,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/tags/test_tags.py",
+        "line_number": 100,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/tags/test_tags.py",
+        "line_number": 107,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/tags/test_inserter.py",
+        "line_number": 29,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/tags/test_inserter.py",
+        "line_number": 36,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/tags/test_inserter.py",
+        "line_number": 41,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/tags/test_inserter.py",
+        "line_number": 42,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/tags/test_inserter.py",
+        "line_number": 51,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/tags/test_inserter.py",
+        "line_number": 64,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/analysis/tag_chain_analyzer.py",
+        "line_number": 216,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/tags.py",
+        "line_number": 25,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/tags.py",
+        "line_number": 58,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/tags.py",
+        "line_number": 122,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/tags.py",
+        "line_number": 128,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/tags.py",
+        "line_number": 140,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/inserter.py",
+        "line_number": 26,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/inserter.py",
+        "line_number": 50,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/test_auth.py",
+        "line_number": 3,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-TRUST-001/spec.md",
+        "line_number": 187,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOC-TAG-001/spec.md",
+        "line_number": 123,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOC-TAG-001/spec.md",
+        "line_number": 131,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOC-TAG-001/spec.md",
+        "line_number": 131,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOC-TAG-001/spec.md",
+        "line_number": 136,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOC-TAG-001/spec.md",
+        "line_number": 136,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-ALF-WORKFLOW-001/spec.md",
+        "line_number": 464,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOC-TAG-002/spec.md",
+        "line_number": 96,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOC-TAG-002/spec.md",
+        "line_number": 211,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOC-TAG-004/spec.md",
+        "line_number": 102,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOC-TAG-004/spec.md",
+        "line_number": 297,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOC-TAG-004/spec.md",
+        "line_number": 307,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOC-TAG-004/spec.md",
+        "line_number": 405,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_reporter.py",
+        "line_number": 134,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_reporter.py",
+        "line_number": 182,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 27,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 38,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 62,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 72,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 95,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 150,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 162,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 195,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_repair.py",
+        "line_number": 76,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/quality/test_trust_checker.py",
+        "line_number": 285,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/quality/test_trust_checker.py",
+        "line_number": 298,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/tags/test_parser.py",
+        "line_number": 23,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/tags/test_auto_corrector.py",
+        "line_number": 184,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/tags/test_tags.py",
+        "line_number": 29,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/tags/test_tags.py",
+        "line_number": 76,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/tags/test_tags.py",
+        "line_number": 92,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/tags/test_tags.py",
+        "line_number": 100,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/tags/test_tags.py",
+        "line_number": 107,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/tags/test_inserter.py",
+        "line_number": 29,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/tags/test_inserter.py",
+        "line_number": 36,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/tags/test_inserter.py",
+        "line_number": 41,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/tags/test_inserter.py",
+        "line_number": 42,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/tags/test_inserter.py",
+        "line_number": 51,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/tags/test_inserter.py",
+        "line_number": 64,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/analysis/tag_chain_analyzer.py",
+        "line_number": 216,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/tags.py",
+        "line_number": 25,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/tags.py",
+        "line_number": 58,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/tags.py",
+        "line_number": 122,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/tags.py",
+        "line_number": 128,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/tags.py",
+        "line_number": 140,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/inserter.py",
+        "line_number": 26,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/inserter.py",
+        "line_number": 50,
+        "old_tag": "@SPEC:AUTH-001",
+        "new_tag": "@SPEC:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:AUTH-001 → @SPEC:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/auth/example.py",
+        "line_number": 1,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-TRUST-001/spec.md",
+        "line_number": 187,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-CLI-001/spec.md",
+        "line_number": 295,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-ALF-WORKFLOW-001/spec.md",
+        "line_number": 477,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-ALF-WORKFLOW-001/spec.md",
+        "line_number": 490,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOC-TAG-004/spec.md",
+        "line_number": 102,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOC-TAG-004/spec.md",
+        "line_number": 405,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOC-TAG-004/spec.md",
+        "line_number": 432,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/ci/test_tag_validation.py",
+        "line_number": 180,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/ci/test_tag_validation.py",
+        "line_number": 225,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/ci/test_tag_validation.py",
+        "line_number": 229,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/ci/test_tag_validation.py",
+        "line_number": 300,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/ci/test_tag_validation.py",
+        "line_number": 390,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/ci/test_tag_validation.py",
+        "line_number": 407,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/ci/test_tag_validation.py",
+        "line_number": 417,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/ci/test_tag_validation.py",
+        "line_number": 434,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/ci/test_tag_validation.py",
+        "line_number": 601,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_reporter.py",
+        "line_number": 135,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_validator.py",
+        "line_number": 273,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_pre_commit.py",
+        "line_number": 212,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_pre_commit.py",
+        "line_number": 377,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_pre_commit.py",
+        "line_number": 378,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_pre_commit.py",
+        "line_number": 428,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_pre_commit.py",
+        "line_number": 432,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 28,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 39,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 73,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 84,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 96,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 142,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 161,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 187,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 225,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/quality/test_trust_checker.py",
+        "line_number": 286,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/quality/test_trust_checker.py",
+        "line_number": 298,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/quality/test_trust_checker.py",
+        "line_number": 303,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/tags/test_auto_corrector.py",
+        "line_number": 162,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/tags/test_auto_corrector.py",
+        "line_number": 193,
+        "old_tag": "@CODE:AUTH-001",
+        "new_tag": "@CODE:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:AUTH-001 → @CODE:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-001/spec.md",
+        "line_number": 13,
+        "old_tag": "@SPEC:INIT-001",
+        "new_tag": "@SPEC:INIT-005",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @SPEC:INIT-001 → @SPEC:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-UPDATE-REFACTOR-002/spec.md",
+        "line_number": 174,
+        "old_tag": "@SPEC:INIT-001",
+        "new_tag": "@SPEC:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:INIT-001 → @SPEC:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-001/spec.md",
+        "line_number": 463,
+        "old_tag": "@SPEC:INIT-001",
+        "new_tag": "@SPEC:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:INIT-001 → @SPEC:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-001/spec.md",
+        "line_number": 479,
+        "old_tag": "@SPEC:INIT-001",
+        "new_tag": "@SPEC:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:INIT-001 → @SPEC:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/cli/commands/init.py",
+        "line_number": 1,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 679,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1023,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1024,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1029,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1030,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1031,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1036,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1037,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1038,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1039,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/project/backup_utils.py",
+        "line_number": 1,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 679,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1023,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1024,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1029,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1030,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1031,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1036,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1037,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1038,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1039,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/project/phase_executor.py",
+        "line_number": 1,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 679,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1023,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1024,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1029,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1030,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1031,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1036,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1037,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1038,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1039,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/project/initializer.py",
+        "line_number": 1,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 679,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1023,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1024,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1029,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1030,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1031,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1036,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1037,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1038,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
+        "line_number": 1039,
+        "old_tag": "@CODE:INIT-003",
+        "new_tag": "@CODE:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:INIT-003 → @CODE:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/project/validator.py",
+        "line_number": 3,
+        "old_tag": "@REQ:VALIDATION-001",
+        "new_tag": "@REQ:VALIDATION-002",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @REQ:VALIDATION-001 → @REQ:VALIDATION-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-004/spec.md",
+        "line_number": 36,
+        "old_tag": "@REQ:VALIDATION-001",
+        "new_tag": "@REQ:VALIDATION-002",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @REQ:VALIDATION-001 → @REQ:VALIDATION-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/project/validator.py",
+        "line_number": 103,
+        "old_tag": "@REQ:VALIDATION-001",
+        "new_tag": "@REQ:VALIDATION-002",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @REQ:VALIDATION-001 → @REQ:VALIDATION-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/project/phase_executor.py",
+        "line_number": 267,
+        "old_tag": "@REQ:VALIDATION-001",
+        "new_tag": "@REQ:VALIDATION-002",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @REQ:VALIDATION-001 → @REQ:VALIDATION-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/project/validator.py",
+        "line_number": 4,
+        "old_tag": "@SPEC:VERIFICATION-001",
+        "new_tag": "@SPEC:VERIFICATION-002",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @SPEC:VERIFICATION-001 → @SPEC:VERIFICATION-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-004/spec.md",
+        "line_number": 40,
+        "old_tag": "@SPEC:VERIFICATION-001",
+        "new_tag": "@SPEC:VERIFICATION-002",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:VERIFICATION-001 → @SPEC:VERIFICATION-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-004/spec.md",
+        "line_number": 271,
+        "old_tag": "@SPEC:VERIFICATION-001",
+        "new_tag": "@SPEC:VERIFICATION-002",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:VERIFICATION-001 → @SPEC:VERIFICATION-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/project/validator.py",
+        "line_number": 102,
+        "old_tag": "@SPEC:VERIFICATION-001",
+        "new_tag": "@SPEC:VERIFICATION-002",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:VERIFICATION-001 → @SPEC:VERIFICATION-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-REFACTOR-001/spec.md",
+        "line_number": 12,
+        "old_tag": "@SPEC:REFACTOR-001",
+        "new_tag": "@SPEC:REFACTOR-002",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @SPEC:REFACTOR-001 → @SPEC:REFACTOR-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-UPDATE-REFACTOR-001/spec.md",
+        "line_number": 1032,
+        "old_tag": "@SPEC:REFACTOR-001",
+        "new_tag": "@SPEC:REFACTOR-002",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:REFACTOR-001 → @SPEC:REFACTOR-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-REFACTOR-001/spec.md",
+        "line_number": 37,
+        "old_tag": "@SPEC:REFACTOR-001",
+        "new_tag": "@SPEC:REFACTOR-002",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:REFACTOR-001 → @SPEC:REFACTOR-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-REFACTOR-001/spec.md",
+        "line_number": 331,
+        "old_tag": "@SPEC:REFACTOR-001",
+        "new_tag": "@SPEC:REFACTOR-002",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:REFACTOR-001 → @SPEC:REFACTOR-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-REFACTOR-001/spec.md",
+        "line_number": 332,
+        "old_tag": "@SPEC:REFACTOR-001",
+        "new_tag": "@SPEC:REFACTOR-002",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:REFACTOR-001 → @SPEC:REFACTOR-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-CODEBASE-REFACTOR-001/spec.md",
+        "line_number": 127,
+        "old_tag": "@SPEC:REFACTOR-001",
+        "new_tag": "@SPEC:REFACTOR-002",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:REFACTOR-001 → @SPEC:REFACTOR-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 7,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 25,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 40,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 129,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 138,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 147,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 158,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 174,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 185,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 197,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_repair.py",
+        "line_number": 7,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 25,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 40,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 129,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 138,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 147,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 158,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 174,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 185,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 197,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/analysis/tag_chain_repair.py",
+        "line_number": 7,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 25,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 40,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 129,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 138,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 147,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 158,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 174,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 185,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 197,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/analysis/tag_chain_analyzer.py",
+        "line_number": 7,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 25,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 40,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 129,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 138,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 147,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 158,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 174,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 185,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
+        "line_number": 197,
+        "old_tag": "@SPEC:DOCS-004",
+        "new_tag": "@SPEC:DOCS-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @SPEC:DOCS-004 → @SPEC:DOCS-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/test_auth.py",
+        "line_number": 1,
+        "old_tag": "@TEST:AUTH-001",
+        "new_tag": "@TEST:AUTH-004",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @TEST:AUTH-001 → @TEST:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOC-TAG-004/spec.md",
+        "line_number": 102,
+        "old_tag": "@TEST:AUTH-001",
+        "new_tag": "@TEST:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:AUTH-001 → @TEST:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOC-TAG-004/spec.md",
+        "line_number": 307,
+        "old_tag": "@TEST:AUTH-001",
+        "new_tag": "@TEST:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:AUTH-001 → @TEST:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOC-TAG-004/spec.md",
+        "line_number": 405,
+        "old_tag": "@TEST:AUTH-001",
+        "new_tag": "@TEST:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:AUTH-001 → @TEST:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/ci/test_tag_validation.py",
+        "line_number": 184,
+        "old_tag": "@TEST:AUTH-001",
+        "new_tag": "@TEST:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:AUTH-001 → @TEST:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/ci/test_tag_validation.py",
+        "line_number": 601,
+        "old_tag": "@TEST:AUTH-001",
+        "new_tag": "@TEST:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:AUTH-001 → @TEST:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_reporter.py",
+        "line_number": 138,
+        "old_tag": "@TEST:AUTH-001",
+        "new_tag": "@TEST:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:AUTH-001 → @TEST:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_pre_commit.py",
+        "line_number": 380,
+        "old_tag": "@TEST:AUTH-001",
+        "new_tag": "@TEST:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:AUTH-001 → @TEST:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_pre_commit.py",
+        "line_number": 381,
+        "old_tag": "@TEST:AUTH-001",
+        "new_tag": "@TEST:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:AUTH-001 → @TEST:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 29,
+        "old_tag": "@TEST:AUTH-001",
+        "new_tag": "@TEST:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:AUTH-001 → @TEST:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 86,
+        "old_tag": "@TEST:AUTH-001",
+        "new_tag": "@TEST:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:AUTH-001 → @TEST:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 146,
+        "old_tag": "@TEST:AUTH-001",
+        "new_tag": "@TEST:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:AUTH-001 → @TEST:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 163,
+        "old_tag": "@TEST:AUTH-001",
+        "new_tag": "@TEST:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:AUTH-001 → @TEST:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 191,
+        "old_tag": "@TEST:AUTH-001",
+        "new_tag": "@TEST:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:AUTH-001 → @TEST:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 229,
+        "old_tag": "@TEST:AUTH-001",
+        "new_tag": "@TEST:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:AUTH-001 → @TEST:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_repair.py",
+        "line_number": 127,
+        "old_tag": "@TEST:AUTH-001",
+        "new_tag": "@TEST:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:AUTH-001 → @TEST:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/quality/test_trust_checker.py",
+        "line_number": 287,
+        "old_tag": "@TEST:AUTH-001",
+        "new_tag": "@TEST:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:AUTH-001 → @TEST:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/tags/test_auto_corrector.py",
+        "line_number": 197,
+        "old_tag": "@TEST:AUTH-001",
+        "new_tag": "@TEST:AUTH-004",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:AUTH-001 → @TEST:AUTH-004"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_cli_status.py",
+        "line_number": 1,
+        "old_tag": "@TEST:CLI-001",
+        "new_tag": "@TEST:CLI-003",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @TEST:CLI-001 → @TEST:CLI-003"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_doctor.py",
+        "line_number": 1,
+        "old_tag": "@TEST:CLI-001",
+        "new_tag": "@TEST:CLI-003",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @TEST:CLI-001 → @TEST:CLI-003"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_cli_backup.py",
+        "line_number": 1,
+        "old_tag": "@TEST:CLI-001",
+        "new_tag": "@TEST:CLI-003",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @TEST:CLI-001 → @TEST:CLI-003"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 3,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 23,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 24,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 25,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 190,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 191,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 192,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 198,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 199,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 4,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 23,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 24,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 25,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 190,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 191,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 192,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 198,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 199,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 5,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 23,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 24,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 25,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 190,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 191,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 192,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 198,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 199,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 20,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 23,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 24,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 25,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 190,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 191,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 192,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 198,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 199,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/project/validator.py",
+        "line_number": 17,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 23,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 24,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 25,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 190,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 191,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 192,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 198,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
+        "line_number": 199,
+        "old_tag": "@TEST:INIT-004",
+        "new_tag": "@TEST:INIT-005",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @TEST:INIT-004 → @TEST:INIT-005"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/integration/test_language_detection_scenarios.py",
+        "line_number": 1,
+        "old_tag": "@TEST:LANG-004",
+        "new_tag": "@TEST:LANG-006",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @TEST:LANG-004 → @TEST:LANG-006"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_repair.py",
+        "line_number": 1,
+        "old_tag": "@TEST:VAL-001",
+        "new_tag": "@TEST:VAL-002",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @TEST:VAL-001 → @TEST:VAL-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/tags/test_tags.py",
+        "line_number": 1,
+        "old_tag": "@TEST:VAL-001",
+        "new_tag": "@TEST:VAL-002",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @TEST:VAL-001 → @TEST:VAL-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/cli/commands/__init__.py",
+        "line_number": 1,
+        "old_tag": "@CODE:CLI-001",
+        "new_tag": "@CODE:CLI-003",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @CODE:CLI-001 → @CODE:CLI-003"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 63,
+        "old_tag": "@CODE:CLI-001",
+        "new_tag": "@CODE:CLI-003",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:CLI-001 → @CODE:CLI-003"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/project/checker.py",
+        "line_number": 27,
+        "old_tag": "@CODE:CLI-001",
+        "new_tag": "@CODE:CLI-003",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:CLI-001 → @CODE:CLI-003"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/cli/commands/init.py",
+        "line_number": 1,
+        "old_tag": "@CODE:CLI-001",
+        "new_tag": "@CODE:CLI-003",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @CODE:CLI-001 → @CODE:CLI-003"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 63,
+        "old_tag": "@CODE:CLI-001",
+        "new_tag": "@CODE:CLI-003",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:CLI-001 → @CODE:CLI-003"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/project/checker.py",
+        "line_number": 27,
+        "old_tag": "@CODE:CLI-001",
+        "new_tag": "@CODE:CLI-003",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:CLI-001 → @CODE:CLI-003"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/cli/commands/doctor.py",
+        "line_number": 1,
+        "old_tag": "@CODE:CLI-001",
+        "new_tag": "@CODE:CLI-003",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @CODE:CLI-001 → @CODE:CLI-003"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 63,
+        "old_tag": "@CODE:CLI-001",
+        "new_tag": "@CODE:CLI-003",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:CLI-001 → @CODE:CLI-003"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/project/checker.py",
+        "line_number": 27,
+        "old_tag": "@CODE:CLI-001",
+        "new_tag": "@CODE:CLI-003",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:CLI-001 → @CODE:CLI-003"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/project/checker.py",
+        "line_number": 1,
+        "old_tag": "@CODE:CLI-001",
+        "new_tag": "@CODE:CLI-003",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @CODE:CLI-001 → @CODE:CLI-003"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
+        "line_number": 63,
+        "old_tag": "@CODE:CLI-001",
+        "new_tag": "@CODE:CLI-003",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:CLI-001 → @CODE:CLI-003"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "update_reference",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/project/checker.py",
+        "line_number": 27,
+        "old_tag": "@CODE:CLI-001",
+        "new_tag": "@CODE:CLI-003",
+        "confidence": 0.9,
+        "impact": "medium",
+        "description": "관련 참조 업데이트: @CODE:CLI-001 → @CODE:CLI-003"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/analysis/tag_chain_analyzer.py",
+        "line_number": 1,
+        "old_tag": "@CODE:VAL-001",
+        "new_tag": "@CODE:VAL-002",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @CODE:VAL-001 → @CODE:VAL-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    },
+    {
+      "action": {
+        "type": "renumber",
+        "file_path": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/tags.py",
+        "line_number": 1,
+        "old_tag": "@CODE:VAL-001",
+        "new_tag": "@CODE:VAL-002",
+        "confidence": 0.9,
+        "impact": "high",
+        "description": "Topline 중복 처리: @CODE:VAL-001 → @CODE:VAL-002"
+      },
+      "success": true,
+      "error_message": null,
+      "backup_path": "TAG-DEDUP-BACKUP-20251106-044728"
+    }
+  ],
+  "summary": {
+    "total": 337,
+    "successful": 337,
+    "failed": 0
+  }
+}

@@ -1,4 +1,4 @@
-# SPEC @SPEC:AUTH-001 — JWT 인증 시스템
+# SPEC @SPEC:AUTH-004 — JWT 인증 시스템
 
 ## 목적 (Purpose)
 안전한 JWT(JSON Web Token) 기반 인증 시스템을 구현하여 사용자 인증과 권한 부여를 관리합니다.

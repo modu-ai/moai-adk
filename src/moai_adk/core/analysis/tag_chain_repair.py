@@ -4,7 +4,7 @@
 Automatically creates missing SPEC, CODE, and TEST elements to
 restore broken TAG chains based on priority and domain.
 
-@SPEC:DOCS-004: TAG 체인 복구 및 자동 생성 도구
+@SPEC:DOCS-005: TAG 체인 복구 및 자동 생성 도구
 """
 
 import re

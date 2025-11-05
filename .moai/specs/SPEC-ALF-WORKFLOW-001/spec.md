@@ -461,7 +461,7 @@ git-manager (실행):
 │   - Add test_jwt_service.py with token generation tests
 │   - Add test cases for token expiration and refresh
 │
-│   Refs: @SPEC:AUTH-001
+│   Refs: @SPEC:AUTH-004
 │
 │   🤖 Generated with [Claude Code](https://claude.com/claude-code)
 │
@@ -474,7 +474,7 @@ git-manager (실행):
 │   - Add middleware for token validation
 │   - Support 30-minute token expiration and refresh
 │
-│   Refs: @CODE:AUTH-001
+│   Refs: @CODE:AUTH-004
 │
 │   🤖 Generated with [Claude Code](https://claude.com/claude-code)
 │
@@ -487,7 +487,7 @@ git-manager (실행):
     - Add comprehensive error handling
     - Improve type hints for better IDE support
 
-    Refs: @CODE:AUTH-001
+    Refs: @CODE:AUTH-004
 
     🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
