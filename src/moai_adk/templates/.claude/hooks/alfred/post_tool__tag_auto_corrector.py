@@ -27,6 +27,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 from moai_adk.core.tags.auto_corrector import AutoCorrection, AutoCorrectionConfig, TagAutoCorrector
 from moai_adk.core.tags.policy_validator import PolicyValidationConfig, PolicyViolation, TagPolicyValidator
 from moai_adk.core.tags.rollback_manager import RollbackConfig, RollbackManager
+from moai_adk.utils.common import load_hook_timeout, get_graceful_degradation
 
 
 def load_config() -> Dict[str, Any]:
@@ -288,6 +289,10 @@ def create_monitoring_response(
 def main() -> None:
     """메인 함수"""
     try:
+        # 설정에서 타임아웃 값 로드 (밀리초 → 초)
+        timeout_seconds = load_hook_timeout() / 1000
+        graceful_degradation = get_graceful_degradation()
+
         # 인자 파싱
         if len(sys.argv) < 4:
             print(json.dumps({
@@ -341,7 +346,7 @@ def main() -> None:
 
         for file_path in file_paths:
             # 타임아웃 체크
-            if time.time() - start_time > 15:  # 15초 타임아웃
+            if time.time() - start_time > timeout_seconds:
                 break
 
             # 현재 파일 내용 가져오기
@@ -384,11 +389,17 @@ def main() -> None:
 
     except Exception as e:
         # 예외 발생 시 로그만 남기고 계속 진행
-        print(json.dumps({
+        error_response = {
             "monitoring_completed": False,
             "error": f"Hook execution error: {str(e)}",
             "message": "Hook 실행 중 오류가 발생했지만 정상 처리됨"
-        }, ensure_ascii=False))
+        }
+
+        if graceful_degradation:
+            error_response["graceful_degradation"] = True
+            error_response["message"] = "Hook failed but continuing due to graceful degradation"
+
+        print(json.dumps(error_response, ensure_ascii=False))
 
 
 if __name__ == "__main__":
