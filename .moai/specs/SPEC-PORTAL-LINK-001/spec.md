@@ -1,7 +1,7 @@
 ---
 id: PORTAL-LINK-001
 version: 0.1.0
-status: draft
+status: completed
 created: 2025-11-06
 updated: 2025-11-06
 author: GOOS

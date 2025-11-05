@@ -1,34 +1,20 @@
 {
   "summary": {
-    "total_tags": 773,
-    "unique_patterns": 255,
-    "duplicate_groups": 88,
-    "total_duplicate_occurrences": 514,
-    "topline_duplicates": 30,
-    "reference_duplicates": 58
+    "total_tags": 736,
+    "unique_patterns": 248,
+    "duplicate_groups": 85,
+    "total_duplicate_occurrences": 484,
+    "topline_duplicates": 28,
+    "reference_duplicates": 0,
+    "allowed_reference_duplicates": 57,
+    "critical_duplicates": 28
   },
   "duplicate_groups": [
     {
-      "tag_pattern": "SPEC:DOCS-001",
-      "total_occurrences": 2,
-      "primary_candidate": {
-        "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-001/spec.md",
-        "line": 28,
-        "authority_score": 100,
-        "is_topline": false
-      },
-      "duplicates": [
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-001/spec.md",
-          "line": 243,
-          "authority_score": 100,
-          "is_topline": false
-        }
-      ]
-    },
-    {
       "tag_pattern": "SPEC:TRUST-001",
       "total_occurrences": 4,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-TRUST-001/spec.md",
         "line": 30,
@@ -59,6 +45,8 @@
     {
       "tag_pattern": "TEST:TRUST-002",
       "total_occurrences": 4,
+      "duplicate_type": "topline",
+      "severity": "critical",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-TRUST-001/spec.md",
         "line": 56,
@@ -89,6 +77,8 @@
     {
       "tag_pattern": "CODE:TRUST-002",
       "total_occurrences": 6,
+      "duplicate_type": "topline",
+      "severity": "critical",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-TRUST-001/spec.md",
         "line": 57,
@@ -130,7 +120,9 @@
     },
     {
       "tag_pattern": "SPEC:AUTH-004",
-      "total_occurrences": 49,
+      "total_occurrences": 40,
+      "duplicate_type": "topline",
+      "severity": "critical",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-TRUST-001/spec.md",
         "line": 187,
@@ -215,12 +207,6 @@
           "line": 405,
           "authority_score": 100,
           "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/tests/test_auth.py",
-          "line": 3,
-          "authority_score": 20,
-          "is_topline": true
         },
         {
           "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_reporter.py",
@@ -377,60 +363,14 @@
           "line": 64,
           "authority_score": 20,
           "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/analysis/tag_chain_analyzer.py",
-          "line": 216,
-          "authority_score": 20,
-          "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/tags.py",
-          "line": 25,
-          "authority_score": 20,
-          "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/tags.py",
-          "line": 58,
-          "authority_score": 20,
-          "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/tags.py",
-          "line": 122,
-          "authority_score": 20,
-          "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/tags.py",
-          "line": 128,
-          "authority_score": 20,
-          "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/tags.py",
-          "line": 140,
-          "authority_score": 20,
-          "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/inserter.py",
-          "line": 26,
-          "authority_score": 20,
-          "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/inserter.py",
-          "line": 50,
-          "authority_score": 20,
-          "is_topline": false
         }
       ]
     },
     {
       "tag_pattern": "CODE:AUTH-004",
       "total_occurrences": 38,
+      "duplicate_type": "topline",
+      "severity": "critical",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-TRUST-001/spec.md",
         "line": 187,
@@ -665,6 +605,8 @@
     {
       "tag_pattern": "CODE:AUTH-003",
       "total_occurrences": 4,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-TRUST-001/spec.md",
         "line": 301,
@@ -695,6 +637,8 @@
     {
       "tag_pattern": "SPEC:AUTH-003",
       "total_occurrences": 2,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-TRUST-001/spec.md",
         "line": 301,
@@ -713,6 +657,8 @@
     {
       "tag_pattern": "SPEC:USER-005",
       "total_occurrences": 2,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-TRUST-001/spec.md",
         "line": 302,
@@ -731,6 +677,8 @@
     {
       "tag_pattern": "CODE:USER-005",
       "total_occurrences": 3,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-TRUST-001/spec.md",
         "line": 302,
@@ -755,6 +703,8 @@
     {
       "tag_pattern": "SPEC:INIT-005",
       "total_occurrences": 4,
+      "duplicate_type": "topline",
+      "severity": "critical",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-UPDATE-REFACTOR-002/spec.md",
         "line": 174,
@@ -785,6 +735,8 @@
     {
       "tag_pattern": "SPEC:INIT-002",
       "total_occurrences": 2,
+      "duplicate_type": "topline",
+      "severity": "critical",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-002/spec.md",
         "line": 12,
@@ -803,6 +755,8 @@
     {
       "tag_pattern": "CODE:INIT-002",
       "total_occurrences": 3,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-002/spec.md",
         "line": 28,
@@ -827,6 +781,8 @@
     {
       "tag_pattern": "SPEC:INIT-003",
       "total_occurrences": 2,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
         "line": 29,
@@ -845,6 +801,8 @@
     {
       "tag_pattern": "CODE:INIT-005",
       "total_occurrences": 14,
+      "duplicate_type": "topline",
+      "severity": "critical",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
         "line": 679,
@@ -935,6 +893,8 @@
     {
       "tag_pattern": "TEST:INIT-003",
       "total_occurrences": 4,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-003/spec.md",
         "line": 857,
@@ -965,6 +925,8 @@
     {
       "tag_pattern": "SPEC:HOOKS-003",
       "total_occurrences": 2,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-HOOKS-003/spec.md",
         "line": 30,
@@ -983,6 +945,8 @@
     {
       "tag_pattern": "TEST:HOOKS-003",
       "total_occurrences": 2,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-HOOKS-003/spec.md",
         "line": 368,
@@ -1001,6 +965,8 @@
     {
       "tag_pattern": "CODE:HOOKS-003",
       "total_occurrences": 4,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-HOOKS-003/spec.md",
         "line": 369,
@@ -1031,6 +997,8 @@
     {
       "tag_pattern": "SPEC:HOOKS-001",
       "total_occurrences": 3,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-HOOKS-003/spec.md",
         "line": 372,
@@ -1055,6 +1023,8 @@
     {
       "tag_pattern": "SPEC:INIT-004",
       "total_occurrences": 2,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-004/spec.md",
         "line": 25,
@@ -1073,6 +1043,8 @@
     {
       "tag_pattern": "REQ:VALIDATION-002",
       "total_occurrences": 4,
+      "duplicate_type": "topline",
+      "severity": "critical",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-004/spec.md",
         "line": 36,
@@ -1103,6 +1075,8 @@
     {
       "tag_pattern": "SPEC:VERIFICATION-002",
       "total_occurrences": 4,
+      "duplicate_type": "topline",
+      "severity": "critical",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-004/spec.md",
         "line": 40,
@@ -1133,6 +1107,8 @@
     {
       "tag_pattern": "SPEC:INSTALL-001",
       "total_occurrences": 4,
+      "duplicate_type": "topline",
+      "severity": "critical",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INSTALL-001/spec.md",
         "line": 17,
@@ -1163,6 +1139,8 @@
     {
       "tag_pattern": "TEST:INSTALL-001",
       "total_occurrences": 3,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INSTALL-001/spec.md",
         "line": 32,
@@ -1187,6 +1165,8 @@
     {
       "tag_pattern": "CODE:INSTALL-001",
       "total_occurrences": 3,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INSTALL-001/spec.md",
         "line": 32,
@@ -1211,6 +1191,8 @@
     {
       "tag_pattern": "DESIGN:ARCHITECTURE-001",
       "total_occurrences": 2,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOC-ONLINE-001/spec.md",
         "line": 29,
@@ -1229,6 +1211,8 @@
     {
       "tag_pattern": "IMP:STYLING-001",
       "total_occurrences": 2,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOC-ONLINE-001/spec.md",
         "line": 30,
@@ -1247,6 +1231,8 @@
     {
       "tag_pattern": "SPEC:CONFIG-001",
       "total_occurrences": 2,
+      "duplicate_type": "topline",
+      "severity": "critical",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-CONFIG-001/spec.md",
         "line": 11,
@@ -1265,6 +1251,8 @@
     {
       "tag_pattern": "DOC:CONFIG-001",
       "total_occurrences": 2,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-CONFIG-001/spec.md",
         "line": 272,
@@ -1283,6 +1271,8 @@
     {
       "tag_pattern": "SPEC:BRAND-001",
       "total_occurrences": 3,
+      "duplicate_type": "topline",
+      "severity": "critical",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-BRAND-001/spec.md",
         "line": 12,
@@ -1307,6 +1297,8 @@
     {
       "tag_pattern": "DOC:API-001",
       "total_occurrences": 6,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOC-TAG-001/spec.md",
         "line": 115,
@@ -1349,6 +1341,8 @@
     {
       "tag_pattern": "SPEC:CLI-001",
       "total_occurrences": 2,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-CLI-001/spec.md",
         "line": 29,
@@ -1367,6 +1361,8 @@
     {
       "tag_pattern": "SPEC:DOCS-002",
       "total_occurrences": 2,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-002/spec.md",
         "line": 28,
@@ -1385,6 +1381,8 @@
     {
       "tag_pattern": "SPEC:EXAMPLE-001",
       "total_occurrences": 3,
+      "duplicate_type": "topline",
+      "severity": "critical",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-EXAMPLE-001/spec.md",
         "line": 10,
@@ -1409,6 +1407,8 @@
     {
       "tag_pattern": "CODE:EXAMPLE-001",
       "total_occurrences": 20,
+      "duplicate_type": "topline",
+      "severity": "critical",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-EXAMPLE-001/spec.md",
         "line": 11,
@@ -1535,6 +1535,8 @@
     {
       "tag_pattern": "TEST:EXAMPLE-001",
       "total_occurrences": 2,
+      "duplicate_type": "topline",
+      "severity": "critical",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-EXAMPLE-001/spec.md",
         "line": 12,
@@ -1553,6 +1555,8 @@
     {
       "tag_pattern": "SPEC:REFACTOR-002",
       "total_occurrences": 6,
+      "duplicate_type": "topline",
+      "severity": "critical",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-UPDATE-REFACTOR-001/spec.md",
         "line": 1032,
@@ -1595,6 +1599,8 @@
     {
       "tag_pattern": "SPEC:DOCS-003",
       "total_occurrences": 3,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-003/spec.md",
         "line": 70,
@@ -1619,6 +1625,8 @@
     {
       "tag_pattern": "REQ:DOCS-003",
       "total_occurrences": 32,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-003/spec.md",
         "line": 103,
@@ -1817,6 +1825,8 @@
     {
       "tag_pattern": "CONS:DOCS-003",
       "total_occurrences": 6,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-003/spec.md",
         "line": 187,
@@ -1858,7 +1868,9 @@
     },
     {
       "tag_pattern": "SPEC:DOCS-005",
-      "total_occurrences": 13,
+      "total_occurrences": 11,
+      "duplicate_type": "topline",
+      "severity": "critical",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
         "line": 25,
@@ -1925,24 +1937,14 @@
           "line": 7,
           "authority_score": 20,
           "is_topline": true
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/analysis/tag_chain_repair.py",
-          "line": 7,
-          "authority_score": 20,
-          "is_topline": true
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/analysis/tag_chain_analyzer.py",
-          "line": 7,
-          "authority_score": 20,
-          "is_topline": true
         }
       ]
     },
     {
       "tag_pattern": "TEST:DOCS-004",
       "total_occurrences": 2,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
         "line": 42,
@@ -1961,6 +1963,8 @@
     {
       "tag_pattern": "REQ:DOCS-004",
       "total_occurrences": 8,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
         "line": 70,
@@ -2015,6 +2019,8 @@
     {
       "tag_pattern": "UB:DOCS-004",
       "total_occurrences": 6,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOCS-004/spec.md",
         "line": 223,
@@ -2057,6 +2063,8 @@
     {
       "tag_pattern": "CODE:INIT-001",
       "total_occurrences": 7,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-001/spec.md",
         "line": 29,
@@ -2105,6 +2113,8 @@
     {
       "tag_pattern": "TEST:INIT-001",
       "total_occurrences": 2,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-001/spec.md",
         "line": 465,
@@ -2123,6 +2133,8 @@
     {
       "tag_pattern": "DOC:INIT-001",
       "total_occurrences": 2,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-INIT-001/spec.md",
         "line": 473,
@@ -2141,6 +2153,8 @@
     {
       "tag_pattern": "SPEC:UPDATE-004",
       "total_occurrences": 3,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-UPDATE-004/spec.md",
         "line": 30,
@@ -2165,6 +2179,8 @@
     {
       "tag_pattern": "SPEC:UPDATE-002",
       "total_occurrences": 3,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-UPDATE-004/spec.md",
         "line": 513,
@@ -2189,6 +2205,8 @@
     {
       "tag_pattern": "CODE:HOOKS-001",
       "total_occurrences": 22,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-HOOKS-001/spec.md",
         "line": 210,
@@ -2327,6 +2345,8 @@
     {
       "tag_pattern": "CODE:REFACTOR-001",
       "total_occurrences": 5,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-REFACTOR-001/spec.md",
         "line": 26,
@@ -2363,6 +2383,8 @@
     {
       "tag_pattern": "TEST:REFACTOR-001",
       "total_occurrences": 3,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-REFACTOR-001/spec.md",
         "line": 38,
@@ -2387,6 +2409,8 @@
     {
       "tag_pattern": "CODE:GIT-001",
       "total_occurrences": 3,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-REFACTOR-001/spec.md",
         "line": 341,
@@ -2411,6 +2435,8 @@
     {
       "tag_pattern": "SPEC:GIT-001",
       "total_occurrences": 2,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-REFACTOR-001/spec.md",
         "line": 349,
@@ -2428,7 +2454,9 @@
     },
     {
       "tag_pattern": "DOC:AUTH-001",
-      "total_occurrences": 40,
+      "total_occurrences": 27,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOC-TAG-002/spec.md",
         "line": 96,
@@ -2591,90 +2619,14 @@
           "line": 63,
           "authority_score": 20,
           "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/tags.py",
-          "line": 24,
-          "authority_score": 20,
-          "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/tags.py",
-          "line": 56,
-          "authority_score": 20,
-          "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/tags.py",
-          "line": 121,
-          "authority_score": 20,
-          "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/tags.py",
-          "line": 122,
-          "authority_score": 20,
-          "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/tags.py",
-          "line": 128,
-          "authority_score": 20,
-          "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/tags.py",
-          "line": 128,
-          "authority_score": 20,
-          "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/tags.py",
-          "line": 130,
-          "authority_score": 20,
-          "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/tags.py",
-          "line": 130,
-          "authority_score": 20,
-          "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/tags.py",
-          "line": 137,
-          "authority_score": 20,
-          "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/generator.py",
-          "line": 37,
-          "authority_score": 20,
-          "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/inserter.py",
-          "line": 26,
-          "authority_score": 20,
-          "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/inserter.py",
-          "line": 26,
-          "authority_score": 20,
-          "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/inserter.py",
-          "line": 50,
-          "authority_score": 20,
-          "is_topline": false
         }
       ]
     },
     {
       "tag_pattern": "TEST:AUTH-004",
-      "total_occurrences": 18,
+      "total_occurrences": 17,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-DOC-TAG-004/spec.md",
         "line": 102,
@@ -2693,12 +2645,6 @@
           "line": 405,
           "authority_score": 100,
           "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/tests/test_auth.py",
-          "line": 1,
-          "authority_score": 20,
-          "is_topline": true
         },
         {
           "file": "/Users/goos/MoAI/MoAI-ADK/tests/ci/test_tag_validation.py",
@@ -2789,6 +2735,8 @@
     {
       "tag_pattern": "TEST:CLI-003",
       "total_occurrences": 3,
+      "duplicate_type": "topline",
+      "severity": "critical",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_cli_status.py",
         "line": 1,
@@ -2813,6 +2761,8 @@
     {
       "tag_pattern": "TEST:LANG-002",
       "total_occurrences": 2,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_detector.py",
         "line": 278,
@@ -2831,6 +2781,8 @@
     {
       "tag_pattern": "TEST:CONFIG-001",
       "total_occurrences": 10,
+      "duplicate_type": "topline",
+      "severity": "critical",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_version_check_config.py",
         "line": 9,
@@ -2891,6 +2843,8 @@
     {
       "tag_pattern": "TEST:INIT-005",
       "total_occurrences": 13,
+      "duplicate_type": "topline",
+      "severity": "critical",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_validator.py",
         "line": 3,
@@ -2975,6 +2929,8 @@
     {
       "tag_pattern": "TEST:CACHE-001",
       "total_occurrences": 3,
+      "duplicate_type": "topline",
+      "severity": "critical",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_version_cache.py",
         "line": 1,
@@ -2999,6 +2955,8 @@
     {
       "tag_pattern": "TEST:CACHE-002",
       "total_occurrences": 3,
+      "duplicate_type": "topline",
+      "severity": "critical",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_version_cache.py",
         "line": 1,
@@ -3023,6 +2981,8 @@
     {
       "tag_pattern": "TEST:CACHE-003",
       "total_occurrences": 3,
+      "duplicate_type": "topline",
+      "severity": "critical",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_version_cache.py",
         "line": 1,
@@ -3047,6 +3007,8 @@
     {
       "tag_pattern": "TEST:CACHE-004",
       "total_occurrences": 3,
+      "duplicate_type": "topline",
+      "severity": "critical",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_version_cache.py",
         "line": 1,
@@ -3071,6 +3033,8 @@
     {
       "tag_pattern": "TEST:CACHE-005",
       "total_occurrences": 3,
+      "duplicate_type": "topline",
+      "severity": "critical",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/tests/unit/test_version_cache.py",
         "line": 1,
@@ -3093,8 +3057,10 @@
       ]
     },
     {
-      "tag_pattern": "CODE:TEST-001",
-      "total_occurrences": 66,
+      "tag_pattern": "CODE:TEST-002",
+      "total_occurrences": 79,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/tests/ci/test_tag_validation.py",
         "line": 275,
@@ -3116,7 +3082,19 @@
         },
         {
           "file": "/Users/goos/MoAI/MoAI-ADK/tests/ci/test_tag_validation.py",
+          "line": 325,
+          "authority_score": 80,
+          "is_topline": false
+        },
+        {
+          "file": "/Users/goos/MoAI/MoAI-ADK/tests/ci/test_tag_validation.py",
           "line": 443,
+          "authority_score": 80,
+          "is_topline": false
+        },
+        {
+          "file": "/Users/goos/MoAI/MoAI-ADK/tests/ci/test_tag_validation.py",
+          "line": 446,
           "authority_score": 80,
           "is_topline": false
         },
@@ -3176,6 +3154,12 @@
         },
         {
           "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_validator.py",
+          "line": 152,
+          "authority_score": 20,
+          "is_topline": false
+        },
+        {
+          "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_validator.py",
           "line": 164,
           "authority_score": 20,
           "is_topline": false
@@ -3206,7 +3190,19 @@
         },
         {
           "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_validator.py",
+          "line": 203,
+          "authority_score": 20,
+          "is_topline": false
+        },
+        {
+          "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_validator.py",
           "line": 204,
+          "authority_score": 20,
+          "is_topline": false
+        },
+        {
+          "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_validator.py",
+          "line": 205,
           "authority_score": 20,
           "is_topline": false
         },
@@ -3338,6 +3334,18 @@
         },
         {
           "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_validator.py",
+          "line": 798,
+          "authority_score": 20,
+          "is_topline": false
+        },
+        {
+          "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_validator.py",
+          "line": 798,
+          "authority_score": 20,
+          "is_topline": false
+        },
+        {
+          "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_validator.py",
           "line": 812,
           "authority_score": 20,
           "is_topline": false
@@ -3351,6 +3359,12 @@
         {
           "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_pre_commit.py",
           "line": 89,
+          "authority_score": 20,
+          "is_topline": false
+        },
+        {
+          "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_pre_commit.py",
+          "line": 92,
           "authority_score": 20,
           "is_topline": false
         },
@@ -3386,7 +3400,19 @@
         },
         {
           "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_pre_commit.py",
+          "line": 142,
+          "authority_score": 20,
+          "is_topline": false
+        },
+        {
+          "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_pre_commit.py",
           "line": 143,
+          "authority_score": 20,
+          "is_topline": false
+        },
+        {
+          "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_pre_commit.py",
+          "line": 144,
           "authority_score": 20,
           "is_topline": false
         },
@@ -3422,7 +3448,19 @@
         },
         {
           "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_pre_commit.py",
+          "line": 276,
+          "authority_score": 20,
+          "is_topline": false
+        },
+        {
+          "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_pre_commit.py",
           "line": 296,
+          "authority_score": 20,
+          "is_topline": false
+        },
+        {
+          "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_pre_commit.py",
+          "line": 301,
           "authority_score": 20,
           "is_topline": false
         },
@@ -3476,6 +3514,12 @@
         },
         {
           "file": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_repair.py",
+          "line": 148,
+          "authority_score": 20,
+          "is_topline": false
+        },
+        {
+          "file": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_repair.py",
           "line": 218,
           "authority_score": 20,
           "is_topline": false
@@ -3483,96 +3527,6 @@
         {
           "file": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/tags/test_auto_corrector.py",
           "line": 259,
-          "authority_score": 20,
-          "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/validator.py",
-          "line": 68,
-          "authority_score": 20,
-          "is_topline": false
-        }
-      ]
-    },
-    {
-      "tag_pattern": "CODE:TEST-002",
-      "total_occurrences": 14,
-      "primary_candidate": {
-        "file": "/Users/goos/MoAI/MoAI-ADK/tests/ci/test_tag_validation.py",
-        "line": 325,
-        "authority_score": 80,
-        "is_topline": false
-      },
-      "duplicates": [
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/tests/ci/test_tag_validation.py",
-          "line": 446,
-          "authority_score": 80,
-          "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_validator.py",
-          "line": 152,
-          "authority_score": 20,
-          "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_validator.py",
-          "line": 203,
-          "authority_score": 20,
-          "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_validator.py",
-          "line": 205,
-          "authority_score": 20,
-          "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_validator.py",
-          "line": 798,
-          "authority_score": 20,
-          "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_validator.py",
-          "line": 798,
-          "authority_score": 20,
-          "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_pre_commit.py",
-          "line": 92,
-          "authority_score": 20,
-          "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_pre_commit.py",
-          "line": 142,
-          "authority_score": 20,
-          "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_pre_commit.py",
-          "line": 144,
-          "authority_score": 20,
-          "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_pre_commit.py",
-          "line": 276,
-          "authority_score": 20,
-          "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_pre_commit.py",
-          "line": 301,
-          "authority_score": 20,
-          "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_repair.py",
-          "line": 148,
           "authority_score": 20,
           "is_topline": false
         },
@@ -3587,6 +3541,8 @@
     {
       "tag_pattern": "TEST:VALIDATOR-001",
       "total_occurrences": 6,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_validator.py",
         "line": 121,
@@ -3629,6 +3585,8 @@
     {
       "tag_pattern": "TEST:PAY-001",
       "total_occurrences": 2,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_validator.py",
         "line": 276,
@@ -3647,6 +3605,8 @@
     {
       "tag_pattern": "SPEC:AUTH-002",
       "total_occurrences": 6,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_validator.py",
         "line": 392,
@@ -3689,6 +3649,8 @@
     {
       "tag_pattern": "CODE:AUTH-002",
       "total_occurrences": 7,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_validator.py",
         "line": 392,
@@ -3737,6 +3699,8 @@
     {
       "tag_pattern": "TEST:TEST-002",
       "total_occurrences": 2,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_validator.py",
         "line": 815,
@@ -3748,6 +3712,8 @@
     {
       "tag_pattern": "CODE:BUG-001",
       "total_occurrences": 4,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_pre_commit.py",
         "line": 409,
@@ -3778,6 +3744,8 @@
     {
       "tag_pattern": "TEST:FEAT-001",
       "total_occurrences": 2,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_pre_commit.py",
         "line": 414,
@@ -3796,6 +3764,8 @@
     {
       "tag_pattern": "CODE:FEAT-001",
       "total_occurrences": 2,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/tests/core/tags/test_pre_commit.py",
         "line": 449,
@@ -3807,6 +3777,8 @@
     {
       "tag_pattern": "CODE:CLI-003",
       "total_occurrences": 6,
+      "duplicate_type": "topline",
+      "severity": "critical",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
         "line": 63,
@@ -3849,6 +3821,8 @@
     {
       "tag_pattern": "TEST:AUTH-002",
       "total_occurrences": 2,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
         "line": 74,
@@ -3867,6 +3841,8 @@
     {
       "tag_pattern": "TEST:AUTH-003",
       "total_occurrences": 6,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
         "line": 87,
@@ -3908,7 +3884,9 @@
     },
     {
       "tag_pattern": "SPEC:API-001",
-      "total_occurrences": 5,
+      "total_occurrences": 3,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
         "line": 89,
@@ -3927,24 +3905,14 @@
           "line": 84,
           "authority_score": 20,
           "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/tags.py",
-          "line": 130,
-          "authority_score": 20,
-          "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/tags.py",
-          "line": 140,
-          "authority_score": 20,
-          "is_topline": false
         }
       ]
     },
     {
       "tag_pattern": "CODE:API-001",
       "total_occurrences": 2,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
         "line": 104,
@@ -3963,6 +3931,8 @@
     {
       "tag_pattern": "SPEC:TEST-001",
       "total_occurrences": 3,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
         "line": 116,
@@ -3987,6 +3957,8 @@
     {
       "tag_pattern": "TEST:ANALYZER-001",
       "total_occurrences": 3,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_analyzer.py",
         "line": 120,
@@ -4011,6 +3983,8 @@
     {
       "tag_pattern": "TEST:VAL-002",
       "total_occurrences": 2,
+      "duplicate_type": "topline",
+      "severity": "critical",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/analysis/test_tag_chain_repair.py",
         "line": 1,
@@ -4029,6 +4003,8 @@
     {
       "tag_pattern": "TEST:PAR-001",
       "total_occurrences": 2,
+      "duplicate_type": "topline",
+      "severity": "critical",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/tags/test_parser.py",
         "line": 1,
@@ -4039,7 +4015,9 @@
     },
     {
       "tag_pattern": "DOC:AUTH-002",
-      "total_occurrences": 7,
+      "total_occurrences": 6,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/tags/test_generator.py",
         "line": 26,
@@ -4076,18 +4054,14 @@
           "line": 91,
           "authority_score": 20,
           "is_topline": false
-        },
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/generator.py",
-          "line": 37,
-          "authority_score": 20,
-          "is_topline": false
         }
       ]
     },
     {
       "tag_pattern": "DOC:AUTH-003",
       "total_occurrences": 6,
+      "duplicate_type": "reference",
+      "severity": "info",
       "primary_candidate": {
         "file": "/Users/goos/MoAI/MoAI-ADK/tests/unit/core/tags/test_generator.py",
         "line": 28,
@@ -4126,36 +4100,23 @@
           "is_topline": false
         }
       ]
-    },
-    {
-      "tag_pattern": "CODE:VAL-002",
-      "total_occurrences": 2,
-      "primary_candidate": {
-        "file": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/analysis/tag_chain_analyzer.py",
-        "line": 1,
-        "authority_score": 20,
-        "is_topline": true
-      },
-      "duplicates": [
-        {
-          "file": "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/tags/tags.py",
-          "line": 1,
-          "authority_score": 20,
-          "is_topline": true
-        }
-      ]
     }
   ],
   "recommended_actions": [
     {
       "priority": "critical",
       "action": "renumber_or_remove_topline_duplicates",
-      "description": "30개의 topline 중복 처리 필요"
+      "description": "28개의 topline 중복은 즉시 처리 필요"
     },
     {
       "priority": "info",
-      "action": "track_reference_duplicates",
-      "description": "58개의 참조 중복은 추적만 필요"
+      "action": "acknowledge_reference_duplicates",
+      "description": "57개의 참조 중복은 정책상 허용됨 (TRACEABILITY용)"
     }
-  ]
+  ],
+  "policy_compliance": {
+    "compliant": false,
+    "critical_issues": 28,
+    "allowed_reference_count": 57
+  }
 }

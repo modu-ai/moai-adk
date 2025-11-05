@@ -101,7 +101,7 @@ class TestValidationIssue:
         issue = ValidationIssue(
             severity="error",
             type="duplicate",
-            tag="@CODE:TEST-001",
+            tag="@CODE:TEST-002",
             message="Duplicate TAG found",
             locations=[("file1.py", 10), ("file2.py", 20)],
             suggestion="Remove duplicate TAG declarations"
@@ -115,7 +115,7 @@ class TestValidationIssue:
         issue = ValidationIssue(
             severity="warning",
             type="orphan",
-            tag="@CODE:TEST-001",
+            tag="@CODE:TEST-002",
             message="CODE TAG without corresponding TEST",
             locations=[("file1.py", 10)],
             suggestion="Add @TEST:VALIDATOR-001 for this code"
@@ -128,7 +128,7 @@ class TestValidationIssue:
         issue = ValidationIssue(
             severity="info",
             type="chain",
-            tag="@CODE:TEST-001",
+            tag="@CODE:TEST-002",
             message="Complete chain detected",
             locations=[],
             suggestion=""
@@ -146,7 +146,7 @@ class TestDuplicateValidator:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-001\n")
+            file1.write_text("# @CODE:TEST-002\n")
 
             file2 = Path(tmpdir) / "file2.py"
             file2.write_text("# @CODE:TEST-002\n")
@@ -161,11 +161,11 @@ class TestDuplicateValidator:
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
             file1.write_text("""
-# @CODE:TEST-001
+# @CODE:TEST-002
 def func1():
     pass
 
-# @CODE:TEST-001
+# @CODE:TEST-002
 def func2():
     pass
 """)
@@ -182,10 +182,10 @@ def func2():
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-001\n")
+            file1.write_text("# @CODE:TEST-002\n")
 
             file2 = Path(tmpdir) / "file2.py"
-            file2.write_text("# @CODE:TEST-001\n")
+            file2.write_text("# @CODE:TEST-002\n")
 
             issues = validator.validate([str(file1), str(file2)])
             assert len(issues) == 1
@@ -199,9 +199,9 @@ def func2():
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
             file1.write_text("""
-# @CODE:TEST-001
 # @CODE:TEST-002
-# @CODE:TEST-001
+# @CODE:TEST-002
+# @CODE:TEST-002
 # @CODE:TEST-002
 """)
 
@@ -426,7 +426,7 @@ class TestCentralValidator:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-001\n")
+            file1.write_text("# @CODE:TEST-002\n")
 
             result = validator.validate_files([str(file1)])
             assert isinstance(result, CentralValidationResult)
@@ -438,7 +438,7 @@ class TestCentralValidator:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-001\n")
+            file1.write_text("# @CODE:TEST-002\n")
 
             file2 = Path(tmpdir) / "file2.py"
             file2.write_text("# @TEST:VALIDATOR-001\n")
@@ -452,7 +452,7 @@ class TestCentralValidator:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-001\n")
+            file1.write_text("# @CODE:TEST-002\n")
 
             file2 = Path(tmpdir) / "file2.py"
             file2.write_text("# @TEST:VALIDATOR-001\n")
@@ -467,8 +467,8 @@ class TestCentralValidator:
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
             file1.write_text("""
-# @CODE:TEST-001
-# @CODE:TEST-001
+# @CODE:TEST-002
+# @CODE:TEST-002
 """)
 
             result = validator.validate_files([str(file1)])
@@ -481,7 +481,7 @@ class TestCentralValidator:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-001\n")
+            file1.write_text("# @CODE:TEST-002\n")
 
             result = validator.validate_files([str(file1)])
             assert len(result.warnings) > 0
@@ -493,7 +493,7 @@ class TestCentralValidator:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-001\n")  # Orphan - warning normally
+            file1.write_text("# @CODE:TEST-002\n")  # Orphan - warning normally
 
             result = validator.validate_files([str(file1)])
             assert result.is_valid is False
@@ -557,7 +557,7 @@ class TestCentralValidationResult:
         error = ValidationIssue(
             severity="error",
             type="duplicate",
-            tag="@CODE:TEST-001",
+            tag="@CODE:TEST-002",
             message="Duplicate TAG",
             locations=[("file1.py", 1)],
             suggestion="Remove duplicate"
@@ -586,7 +586,7 @@ class TestCentralValidationResult:
         warning = ValidationIssue(
             severity="warning",
             type="orphan",
-            tag="@CODE:TEST-001",
+            tag="@CODE:TEST-002",
             message="CODE without TEST",
             locations=[("file1.py", 1)],
             suggestion="Add corresponding TEST"
@@ -669,7 +669,7 @@ class TestReportGeneration:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-001\n# @TEST:VALIDATOR-001\n")
+            file1.write_text("# @CODE:TEST-002\n# @TEST:VALIDATOR-001\n")
 
             result = validator.validate_files([str(file1)])
             report = validator.create_report(result, format="detailed")
@@ -683,7 +683,7 @@ class TestReportGeneration:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-001\n# @TEST:VALIDATOR-001\n")
+            file1.write_text("# @CODE:TEST-002\n# @TEST:VALIDATOR-001\n")
 
             result = validator.validate_files([str(file1)])
             report = validator.create_report(result, format="summary")
@@ -697,7 +697,7 @@ class TestReportGeneration:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-001\n# @TEST:VALIDATOR-001\n")
+            file1.write_text("# @CODE:TEST-002\n# @TEST:VALIDATOR-001\n")
 
             result = validator.validate_files([str(file1)])
             report = validator.create_report(result, format="json")
@@ -714,7 +714,7 @@ class TestReportGeneration:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-001\n")
+            file1.write_text("# @CODE:TEST-002\n")
 
             result = validator.validate_files([str(file1)])
             report = validator.create_report(result, format="json")
@@ -730,7 +730,7 @@ class TestReportGeneration:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-001\n# @CODE:TEST-001\n")
+            file1.write_text("# @CODE:TEST-002\n# @CODE:TEST-002\n")
 
             result = validator.validate_files([str(file1)])
             report = validator.create_report(result, format="json")
@@ -751,7 +751,7 @@ class TestConfigurableValidation:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-001\n# @CODE:TEST-001\n")
+            file1.write_text("# @CODE:TEST-002\n# @CODE:TEST-002\n")
 
             result = validator.validate_files([str(file1)])
             # No duplicate errors when check is disabled
@@ -764,7 +764,7 @@ class TestConfigurableValidation:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-001\n")
+            file1.write_text("# @CODE:TEST-002\n")
 
             result = validator.validate_files([str(file1)])
             # No orphan warnings when check is disabled
@@ -778,7 +778,7 @@ class TestConfigurableValidation:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-001\n")
+            file1.write_text("# @CODE:TEST-002\n")
 
             result = validator.validate_files([str(file1)])
             # No chain warnings when check is disabled
@@ -792,7 +792,7 @@ class TestConfigurableValidation:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             py_file = Path(tmpdir) / "file1.py"
-            py_file.write_text("# @CODE:TEST-001\n# @CODE:TEST-001\n")
+            py_file.write_text("# @CODE:TEST-002\n# @CODE:TEST-002\n")
 
             js_file = Path(tmpdir) / "file2.js"
             js_file.write_text("// @CODE:TEST-002\n// @CODE:TEST-002\n")
@@ -809,7 +809,7 @@ class TestConfigurableValidation:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "main.py"
-            file1.write_text("# @CODE:TEST-001\n# @CODE:TEST-001\n")
+            file1.write_text("# @CODE:TEST-002\n# @CODE:TEST-002\n")
 
             file2 = Path(tmpdir) / "test_main.py"
             file2.write_text("# @TEST:TEST-002\n# @TEST:TEST-002\n")

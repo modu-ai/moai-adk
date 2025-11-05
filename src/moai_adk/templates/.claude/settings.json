@@ -1,34 +1,34 @@
 {
   "companyAnnouncements": [
-    " 계획부터 차근차근: 무엇을 만들지 먼저 적으면 헷갈리지 않아요 (/alfred:1-plan)",
-    "✅ 5가지 약속: 테스트 먼저 + 알기 쉬운 코드 + 깔끔한 정리 + 안전 + 추적",
-    " 할 일 목록: 지금 뭘 하는지 계속 보여주면 놓치는 게 없어요",
-    " 언어 구분: 우리는 한국어로 대화하고, 컴퓨터는 영어로 이해해요",
-    " 서로 연결: 계획→테스트→코드→문서가 모두 연결되어 있어요",
-    "⚡ 여러 개 동시에: 따로따로 할 수 있는 일들은 동시에 처리할 수 있어요",
-    " 도구 먼저: 어떤 일을 할 때 필요한 도구를 먼저 찾아보세요",
-    " 순서대로 해요: 뭘 원하는지→계획하기→실행하기→결과보고",
-    " 자동 목록: 계획을 세우면 할 일 목록이 자동으로 만들어져요",
-    "❓ 헷갈리면 물어보기: 무슨 말인지 잘 모르면 바로 물어봐 주세요",
-    "🧪 품질 자동 검사: 코드가 5가지 약속을 잘 지키는지 자동으로 확인해줘요",
-    " 여러 언어 지원: Python, JavaScript 등 다양한 언어를 자동으로 검사해줘요",
-    "⚡ 멈추지 않아요: 도구가 없어도 계속 진행할 수 있어요",
-    " 마음대로 골라요: 팀으로 할지, 혼자 할지, 그때그때 정할 수 있어요",
-    "🧹 뒷정리 자동: 작업이 끝나면 필요 없는 것들을 자동으로 정리해줘요",
-    "⚡ 빠른 업데이트: 새 버전이 있으면 3초 만에 확인하고 필요한 것만 가져와요",
-    " 필요할 때만: 지금 필요한 도구만 가져와서 메모리를 아껴요",
-    " 모든 기록: 계획부터 코드까지 모든 과정이 남아서 나중에 찾기 쉬워요",
-    " 문제 신고: 30초 만에 버그 신고를 GitHub에 올릴 수 있어요",
-    "🩺 건강 확인: moai-adk doctor로 지금 상태가 괜찮은지 바로 확인해요",
-    " 안전한 업데이트: moai-adk update로 새 기능을 안전하게 추가할 수 있어요",
-    "🧹 작업 끝났을 때: /clear 로 대화를 깨끔하게 정리하면 다음 작업이 편해요"
+    "Start with a plan: Write down what you want to build first to avoid confusion (/alfred:1-plan)",
+    "✅ 5 promises: Test-first + Easy-to-read code + Clean organization + Secure + Trackable",
+    "Task list: Continuous progress tracking ensures nothing gets missed",
+    "Language separation: We communicate in your language, computers understand in English",
+    "Everything connected: Plan→Test→Code→Docs are all linked together",
+    "⚡ Parallel processing: Independent tasks can be handled simultaneously",
+    "Tools first: Find the right tools before starting any work",
+    "Step by step: What you want→Plan→Execute→Report results",
+    "Auto-generated lists: Planning automatically creates task lists",
+    "❓ Ask when confused: If something isn't clear, just ask right away",
+    "🧪 Automatic quality checks: Code automatically verified against 5 core principles",
+    "Multi-language support: Automatic validation for Python, JavaScript, and more",
+    "⚡ Never stops: Can continue even when tools are unavailable",
+    "Flexible approach: Choose between team collaboration or individual work as needed",
+    "🧹 Auto cleanup: Automatically removes unnecessary items when work is complete",
+    "⚡ Quick updates: New versions detected in 3 seconds, only fetch what's needed",
+    "On-demand loading: Only loads current tools to save memory",
+    "Complete history: All steps from planning to code are recorded for easy reference",
+    "Bug reporting: File bug reports to GitHub in 30 seconds",
+    "🩺 Health check: Use 'moai-adk doctor' to instantly check current status",
+    "Safe updates: Use 'moai-adk update' to safely add new features",
+    "🧹 When work is done: Use '/clear' to clean up conversation for the next task"
   ],
   "hooks": {
     "SessionStart": [
       {
         "hooks": [
           {
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session_start__show_project_info.py",
+            "command": "uv run {{HOOK_PROJECT_DIR}}/.claude/hooks/alfred/session_start__show_project_info.py",
             "type": "command",
             "description": "Display project info and language configuration at session start"
           }
@@ -39,7 +39,7 @@
       {
         "hooks": [
           {
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/pre_tool__auto_checkpoint.py",
+            "command": "uv run {{HOOK_PROJECT_DIR}}/.claude/hooks/alfred/pre_tool__auto_checkpoint.py",
             "type": "command",
             "description": "Create automatic checkpoint before file modifications"
           }
@@ -51,7 +51,7 @@
       {
         "hooks": [
           {
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/user_prompt__jit_load_docs.py",
+            "command": "uv run {{HOOK_PROJECT_DIR}}/.claude/hooks/alfred/user_prompt__jit_load_docs.py",
             "type": "command",
             "description": "Load documentation on-demand based on user intent"
           }
@@ -62,7 +62,7 @@
       {
         "hooks": [
           {
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session_end__cleanup.py",
+            "command": "uv run {{HOOK_PROJECT_DIR}}/.claude/hooks/alfred/session_end__cleanup.py",
             "type": "command",
             "description": "Clean up session state and temporary files"
           }
@@ -73,7 +73,7 @@
       {
         "hooks": [
           {
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/post_tool__log_changes.py",
+            "command": "uv run {{HOOK_PROJECT_DIR}}/.claude/hooks/alfred/post_tool__log_changes.py",
             "type": "command",
             "description": "Log file changes for audit and tracking"
           }

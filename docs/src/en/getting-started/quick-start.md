@@ -1,20 +1,22 @@
 ---
-title: クイックスタート
-description: 5分でMoAI-ADKの基本ワークフローを体験するガイド
-lang: ja
+title: Quick Start
+description: Experience MoAI-ADK's basic workflow in 5 minutes
+lang: en
 ---
 
-# クイックスタートガイド
+# Quick Start Guide
 
-MoAI-ADKで**3ステップだけ**で最初のプロジェクトを始めましょう。初心者でも5分以内に完了できます。
+Get started with your first project in MoAI-ADK with just **3 steps**. Beginners can complete it in under 5 minutes.
 
-## 前提条件
+## Prerequisites
 
-- <span class="material-icons">check_circle</span> MoAI-ADKインストール完了
-- <span class="material-icons">check_circle</span> Claude Codeインストール済み
-- <span class="material-icons">check_circle</span> Git初期化済み
+Before you start, ensure you have:
 
-まだの場合は[インストールガイド](installation.md)を参照してください。
+- <span class="material-icons">check_circle</span> **MoAI-ADK installed**: `uv tool install moai-adk`
+- <span class="material-icons">check_circle</span> **Claude Code installed**: Available in your terminal
+- <span class="material-icons">check_circle</span> **Git initialized**: Repository ready
+
+If not, check the [installation guide](installation.md).
 
 ---
 

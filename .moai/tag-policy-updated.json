@@ -54,22 +54,18 @@
     "README.*.md",
     "CLAUDE.md",
     ".claude/**",
-    "docs/guides/**",
     "docs/getting-started/**",
     "generated/**",
     "dist/**",
     "build/**",
     "tests/fixtures/**",
     "tests/snapshots/**",
-    "templates/**",
-    "examples/**",
     "tests/**",
     "src/moai_adk/core/tags/**",
     "src/moai_adk/core/analysis/**"
   ],
   "whitelisted_paths": [
     "docs/guides/**",
-    "docs/getting-started/**", 
     "examples/**",
     "templates/**"
   ],

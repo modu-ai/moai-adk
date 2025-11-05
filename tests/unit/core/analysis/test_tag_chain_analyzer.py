@@ -113,7 +113,7 @@ def test_scan_all_tags():
         # Create test files
         src_file = temp_path / "src" / "test.py"
         src_file.parent.mkdir(parents=True)
-        src_file.write_text("# @CODE:TEST-001\n# @SPEC:TEST-001")
+        src_file.write_text("# @CODE:TEST-002\n# @SPEC:TEST-001")
 
         test_file = temp_path / "tests" / "test.py"
         test_file.parent.mkdir(parents=True)
@@ -126,7 +126,7 @@ def test_scan_all_tags():
         analyzer = TagChainAnalyzer(temp_path)
         all_tags = analyzer._scan_all_tags()
 
-        assert "@CODE:TEST-001" in all_tags
+        assert "@CODE:TEST-002" in all_tags
         assert "@SPEC:TEST-001" in all_tags
         assert "@TEST:ANALYZER-001" in all_tags
 
@@ -249,7 +249,7 @@ def test_convenience_function():
         # Create minimal test structure
         src_file = temp_path / "src" / "test.py"
         src_file.parent.mkdir(parents=True)
-        src_file.write_text("# @CODE:TEST-001")
+        src_file.write_text("# @CODE:TEST-002")
 
         result = analyze_tag_chains(temp_path)
 

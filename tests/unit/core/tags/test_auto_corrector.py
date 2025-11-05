@@ -256,7 +256,7 @@ def another():
             AutoCorrection(
                 file_path="test1.py",
                 original_content="def test1(): pass",
-                corrected_content="# @CODE:TEST-001\ndef test1(): pass",
+                corrected_content="# @CODE:TEST-002\ndef test1(): pass",
                 description="Add TAG",
                 confidence=0.7,  # Below threshold
                 requires_review=True

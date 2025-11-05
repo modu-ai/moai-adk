@@ -85,7 +85,7 @@ class TestTagInventory:
                 tag_id="TEST-001",
                 file_path="/test.py",
                 line_number=1,
-                context="# @CODE:TEST-001",
+                context="# @CODE:TEST-002",
                 related_tags=[],
                 last_modified=datetime.now(),
                 status=status
@@ -518,7 +518,7 @@ class TestReportGenerator:
         """Test inventory report generation"""
         with tempfile.TemporaryDirectory() as tmpdir:
             test_file = Path(tmpdir) / "test.py"
-            test_file.write_text("# @CODE:TEST-001")
+            test_file.write_text("# @CODE:TEST-002")
 
             generator = ReportGenerator()
             report = generator.generate_inventory_report(tmpdir)

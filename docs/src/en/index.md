@@ -1,7 +1,7 @@
 ---
 title: MoAI-ADK (Agentic Development Kit)
-description: AIと協力して仕様(SPEC)→テスト(TDD)→コード→ドキュメントを自然に繋ぐ開発ワークフローを提供するオープンソースフレームワーク
-lang: ja
+description: AI-driven SPEC-First TDD development framework providing seamless workflow from specifications through testing, coding, and documentation
+lang: en
 ---
 
 # MoAI-ADK (Agentic Development Kit)
