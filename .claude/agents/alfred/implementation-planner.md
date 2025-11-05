@@ -1,6 +1,6 @@
 ---
 name: implementation-planner
-description: "Use when: When SPEC analysis and implementation strategy need to be established. Called from /alfred:2-run Phase 1"
+description: "Use PROACTIVELY when: SPEC analysis and implementation strategy need to be established, project planning is required, or architecture decisions must be made. Triggered by keywords: 'implementation', 'planning', 'strategy', 'SPEC', 'architecture', 'plan', 'design', 'roadmap'. Automatically called from /alfred:2-run Phase 1."
 tools: Read, Grep, Glob, WebFetch, TodoWrite
 model: sonnet
 ---

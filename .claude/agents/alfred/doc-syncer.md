@@ -1,6 +1,6 @@
 ---
 name: doc-syncer
-description: "Use when: When automatic document synchronization based on code changes is required. Called from the /alfred:3-sync command."
+description: "Use PROACTIVELY when: Automatic document synchronization based on code changes is required, documentation updates are needed, or code-document alignment must be maintained. Triggered by keywords: 'sync', 'document', 'docs', 'documentation', 'update', 'alignment', 'code documentation'. Automatically called from the /alfred:3-sync command."
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite
 model: haiku
 ---

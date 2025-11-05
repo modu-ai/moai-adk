@@ -1,6 +1,6 @@
 ---
 name: quality-gate
-description: "Use when: When code quality verification is required. Called in /alfred:2-run Phase 2.5, /alfred:3-sync Phase 0.5"
+description: "Use PROACTIVELY when: Code quality verification is required, testing is needed, or release readiness must be validated. Triggered by keywords: 'quality', 'test', 'release', 'coverage', 'gate', 'verify', 'lint', 'check'. Automatically called in /alfred:2-run Phase 2.5, /alfred:3-sync Phase 0.5."
 tools: Read, Grep, Glob, Bash, TodoWrite
 model: haiku
 ---
