@@ -70,7 +70,7 @@ class MCPSetupManager:
 
         package_mapping = {
             "context7": "@upstash/context7-mcp",
-            "figma": "figma-mcp-pro",
+            "figma": "@glips/figma-context-mcp",
             "playwright": "@playwright/mcp",
             "sequential-thinking": "@modelcontextprotocol/server-sequential-thinking"
         }
@@ -90,7 +90,7 @@ class MCPSetupManager:
 
         package_mapping = {
             "context7": ("@upstash/context7-mcp", "Context7 MCP"),
-            "figma": ("figma-mcp-pro", "Figma MCP Pro"),
+            "figma": ("@glips/figma-context-mcp", "Figma Context MCP"),
             "playwright": ("@playwright/mcp", "Playwright MCP"),
             "sequential-thinking": ("@modelcontextprotocol/server-sequential-thinking", "Sequential Thinking MCP")
         }
@@ -106,13 +106,13 @@ class MCPSetupManager:
         return results
 
     def generate_mcp_config(self, installed_servers: Dict[str, bool]) -> Dict:
-        """Generate MCP configuration"""
-        config = {}
-        npm_path = self.get_npm_global_path()
+        """Generate MCP configuration following Microsoft MCP standard"""
+        config = {"servers": {}}
 
         # Context7 MCP
         if installed_servers.get("context7", False):
-            config["context7"] = {
+            config["servers"]["context7"] = {
+                "type": "stdio",
                 "command": "npx",
                 "args": [
                     "-y",
@@ -123,11 +123,12 @@ class MCPSetupManager:
 
         # Figma MCP
         if installed_servers.get("figma", False):
-            config["figma"] = {
+            config["servers"]["figma"] = {
+                "type": "stdio",
                 "command": "npx",
                 "args": [
                     "-y",
-                    "figma-mcp-pro"
+                    "@glips/figma-context-mcp"
                 ],
                 "env": {
                     "FIGMA_ACCESS_TOKEN": "${FIGMA_ACCESS_TOKEN}"
@@ -136,7 +137,8 @@ class MCPSetupManager:
 
         # Playwright MCP
         if installed_servers.get("playwright", False):
-            config["playwright"] = {
+            config["servers"]["playwright"] = {
+                "type": "stdio",
                 "command": "npx",
                 "args": [
                     "-y",
@@ -147,7 +149,8 @@ class MCPSetupManager:
 
         # Sequential Thinking MCP
         if installed_servers.get("sequential-thinking", False):
-            config["sequential-thinking"] = {
+            config["servers"]["sequential-thinking"] = {
+                "type": "stdio",
                 "command": "npx",
                 "args": [
                     "-y",
@@ -172,8 +175,28 @@ class MCPSetupManager:
                 return False
         return True
 
+    def update_mcp_file(self, mcp_config: Dict) -> bool:
+        """Update MCP configuration file following Microsoft MCP standard"""
+        try:
+            # Create .claude/mcp.json path
+            mcp_path = self.project_path / ".claude" / "mcp.json"
+
+            # Ensure directory exists
+            mcp_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Write MCP configuration
+            with open(mcp_path, 'w') as f:
+                json.dump(mcp_config, f, indent=2)
+
+            console.print("✅ MCP configuration file updated (.claude/mcp.json)")
+            return True
+
+        except Exception as e:
+            console.print(f"❌ Failed to update MCP configuration: {e}")
+            return False
+
     def update_settings_file(self, mcp_config: Dict) -> bool:
-        """Update Claude Code settings file with MCP configuration"""
+        """Update Claude Code settings file with MCP configuration (legacy)"""
         try:
             # Load existing settings or create new
             if self.settings_path.exists():
@@ -182,8 +205,8 @@ class MCPSetupManager:
             else:
                 settings = {}
 
-            # Add or update mcpServers
-            settings["mcpServers"] = mcp_config
+            # Add or update mcpServers (for backward compatibility)
+            settings["mcpServers"] = mcp_config.get("servers", {})
 
             # Ensure directory exists
             self.settings_path.parent.mkdir(parents=True, exist_ok=True)
@@ -235,9 +258,12 @@ class MCPSetupManager:
             progress.update(task, completed=80, description="Backing up settings...")
             self.backup_settings()
 
-            # Step 5: Update settings file
-            progress.update(task, completed=90, description="Updating settings file...")
-            success = self.update_settings_file(mcp_config)
+            # Step 5: Update MCP configuration file (Microsoft standard)
+            progress.update(task, completed=90, description="Updating MCP configuration...")
+            success = self.update_mcp_file(mcp_config)
+
+            # Also update legacy settings for backward compatibility
+            self.update_settings_file(mcp_config)
 
             # Step 6: Final verification
             progress.update(task, completed=100, description="Final verification...")
@@ -261,6 +287,35 @@ class MCPSetupManager:
 
     def get_installed_servers(self) -> List[str]:
         """Get list of currently installed MCP servers"""
-        all_servers = ["context7", "figma", "playwright"]
+        all_servers = ["context7", "figma", "playwright", "sequential-thinking"]
         status = self.detect_mcp_servers(all_servers)
         return [server for server, installed in status.items() if installed]
+
+    def verify_mcp_configuration(self) -> Dict[str, bool]:
+        """Verify MCP configuration and server availability"""
+        mcp_path = self.project_path / ".claude" / "mcp.json"
+
+        if not mcp_path.exists():
+            return {"config_exists": False, "servers_configured": 0}
+
+        try:
+            with open(mcp_path, 'r') as f:
+                config = json.load(f)
+
+            servers = config.get("servers", {})
+            installed_servers = self.get_installed_servers()
+
+            verification = {
+                "config_exists": True,
+                "servers_configured": len(servers),
+                "servers_available": len(installed_servers),
+                "server_status": {}
+            }
+
+            for server_name in servers.keys():
+                verification["server_status"][server_name] = server_name in installed_servers
+
+            return verification
+
+        except Exception as e:
+            return {"config_exists": False, "error": str(e)}
