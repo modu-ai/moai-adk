@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# @TEST:DOC-TAG-004 | Component 1: Pre-commit validator tests
+# @TEST:PRECOMMIT-001 | Component 1: Pre-commit validator tests
 """Test suite for pre-commit TAG validation
 
 This module tests the pre-commit validator that checks:
@@ -165,7 +165,7 @@ class TestOrphanDetection:
             code_file.write_text("# @CODE:USER-REG-001\n")
 
             test_file = Path(tmpdir) / "test_auth.py"
-            test_file.write_text("# @TEST:USER-REG-001\n")
+            test_file.write_text("# @TEST:USER-REG-PRECOMMIT-001\n")
 
             doc_file = Path(tmpdir) / "README.md"
             doc_file.write_text("# @DOC:USER-REG-001\n")
@@ -195,7 +195,7 @@ class TestOrphanDetection:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             test_file = Path(tmpdir) / "test_auth.py"
-            test_file.write_text("# @TEST:USER-REG-001\n")
+            test_file.write_text("# @TEST:USER-REG-PRECOMMIT-001\n")
 
             warnings = validator.validate_orphans([str(test_file)])
             assert len(warnings) >= 1

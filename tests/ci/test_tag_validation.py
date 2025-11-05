@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# @TEST:DOC-TAG-004 | Component 2: CI validator tests
+# @TEST:CI-TAG-VALIDATION-001 | Component 2: CI validator tests
 """Test suite for CI/CD TAG validation
 
 This module tests the CIValidator that integrates with GitHub Actions:

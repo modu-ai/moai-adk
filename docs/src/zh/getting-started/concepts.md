@@ -173,21 +173,21 @@ stateDiagram-v2
     end note
 
     note right of draft
-        📝 起草阶段
+        <span class="material-icons">description</span> 起草阶段
         - EARS 格式编写
         - 验收标准定义
         - 风险评估
     end note
 
     note right of in_progress
-        🚀 开发阶段
+        <span class="material-icons">rocket_launch</span> 开发阶段
         - TDD 实现
         - 代码审查
         - 单元测试
     end note
 
     note right of completed
-        ✅ 完成阶段
+        <span class="material-icons">check_circle</span> 完成阶段
         - 文档同步
         - 集成测试
         - 部署就绪
@@ -260,7 +260,7 @@ def login(credentials: dict):
     return {"error": "Invalid credentials"}
 ```
 
-#### ♻️ REFACTOR 阶段：重构改进
+#### <span class="material-icons">recycling</span> REFACTOR 阶段：重构改进
 
 **目标**：改进代码质量，同时保持测试通过。
 
@@ -473,7 +473,7 @@ MoAI-ADK 包含自动的 TAG Guard 系统，在 PreToolUse Hook 中运行：
 
 #### 警告示例
 ```
-⚠️ TAG 检测警告：
+<span class="material-icons">warning</span> TAG 检测警告：
 发现以下文件缺少 @TAG：
  - src/user/service.py → 期望标签：@CODE:
  - tests/test_user.py → 期望标签：@TEST:
@@ -497,7 +497,7 @@ TRUST 5 原则是 MoAI-ADK 的代码质量标准，确保所有代码都达到�
 - **S**ecured（安全性）
 - **T**rackable（可追踪性）
 
-### 1️⃣ Test First（测试优先）
+### <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_one</span> Test First（测试优先）
 
 #### 要求
 - **测试覆盖率 ≥ 85%**：所有代码必须有对应的测试
@@ -516,20 +516,20 @@ pytest --cov=src --cov-report=term-missing
 
 #### 实践指导
 ```python
-# ✅ 好的实践：每个功能都有测试
+# <span class="material-icons">check_circle</span> 好的实践：每个功能都有测试
 def calculate_discount(price: float, customer_level: str) -> float:
     """计算客户折扣"""
     # 测试会覆盖这个逻辑
     pass
 
-# ❌ 避免：无测试的复杂逻辑
+# <span class="material-icons">cancel</span> 避免：无测试的复杂逻辑
 def complex_calculation(params: dict) -> float:
     """复杂的业务逻辑，但没有测试"""
     # 这会在 TRUST 验证中失败
     pass
 ```
 
-### 2️⃣ Readable（可读性）
+### <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_two</span> Readable（可读性）
 
 #### 要求
 - **函数长度 ≤ 50 行**：单个函数不超过 50 行
@@ -539,7 +539,7 @@ def complex_calculation(params: dict) -> float:
 
 #### 验证标准
 ```python
-# ✅ 好的实践：清晰命名和适当长度
+# <span class="material-icons">check_circle</span> 好的实践：清晰命名和适当长度
 def calculate_user_age(birth_date: datetime) -> int:
     """根据出生日期计算用户年龄
 
@@ -555,7 +555,7 @@ def calculate_user_age(birth_date: datetime) -> int:
         age -= 1
     return age
 
-# ❌ 避免：过长函数和模糊命名
+# <span class="material-icons">cancel</span> 避免：过长函数和模糊命名
 def process(data):
     """处理数据（函数过长，命名不清晰）"""
     # 超过 50 行的复杂逻辑
@@ -573,7 +573,7 @@ eslint src/
 prettier --check src/
 ```
 
-### 3️⃣ Unified（一致性）
+### <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_3</span> Unified（一致性）
 
 #### 要求
 - **架构一致**：遵循 SPEC 定义的架构
@@ -583,7 +583,7 @@ prettier --check src/
 
 #### 验证标准
 ```python
-# ✅ 好的实践：统一的 API 模式
+# <span class="material-icons">check_circle</span> 好的实践：统一的 API 模式
 class UserService:
     """用户服务 - 统一的 CRUD 模式"""
 
@@ -610,7 +610,7 @@ class ProductService:
     pass
 ```
 
-### 4️⃣ Secured（安全性）
+### <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_4</span> Secured（安全性）
 
 #### 要求
 - **输入验证**：所有用户输入必须验证
@@ -620,7 +620,7 @@ class ProductService:
 
 #### 验证标准
 ```python
-# ✅ 好的实践：安全输入验证
+# <span class="material-icons">check_circle</span> 好的实践：安全输入验证
 from pydantic import BaseModel, validator
 import bcrypt
 
@@ -648,7 +648,7 @@ def hash_password(password: str) -> str:
     salt = bcrypt.gensalt()
     return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
 
-# ❌ 避免：不安全的直接处理
+# <span class="material-icons">cancel</span> 避免：不安全的直接处理
 def insecure_login(email: str, password: str):
     """不安全的登录实现"""
     # 直接查询数据库，没有输入验证
@@ -656,7 +656,7 @@ def insecure_login(email: str, password: str):
     pass
 ```
 
-### 5️⃣ Trackable（可追踪性）
+### <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_5</span> Trackable（可追踪性）
 
 #### 要求
 - **@TAG 标记**：所有代码必须有 @TAG
@@ -709,14 +709,14 @@ MoAI-ADK 在 `/alfred:3-sync` 时自动执行 TRUST 验证：
 /alfred:3-sync --trust-only
 
 # 输出示例：
-🔍 TRUST 5 原则验证
-✅ Test First: 测试覆盖率 87%
-✅ Readable: 代码风格检查通过
-✅ Unified: 架构一致性验证通过
-✅ Secured: 安全检查通过
-✅ Trackable: @TAG 完整性验证通过
+<span class="material-icons">search</span> TRUST 5 原则验证
+<span class="material-icons">check_circle</span> Test First: 测试覆盖率 87%
+<span class="material-icons">check_circle</span> Readable: 代码风格检查通过
+<span class="material-icons">check_circle</span> Unified: 架构一致性验证通过
+<span class="material-icons">check_circle</span> Secured: 安全检查通过
+<span class="material-icons">check_circle</span> Trackable: @TAG 完整性验证通过
 
-📊 TRUST 评分: 92/100
+<span class="material-icons">analytics</span> TRUST 评分: 92/100
 ```
 
 ---
@@ -928,10 +928,10 @@ Alfred 首先理解用户的请求和项目上下文：
 使用清晰的指令告诉 Alfred 您想要什么：
 
 ```bash
-# ✅ 好的指令
+# <span class="material-icons">check_circle</span> 好的指令
 /alfred:1-plan "创建用户认证系统，支持邮箱登录和密码重置"
 
-# ❌ 模糊的指令
+# <span class="material-icons">cancel</span> 模糊的指令
 /alfred:1-plan "做一个登录功能"
 ```
 
@@ -939,11 +939,11 @@ Alfred 首先理解用户的请求和项目上下文：
 提供足够的上下文信息：
 
 ```bash
-# ✅ 提供上下文
+# <span class="material-icons">check_circle</span> 提供上下文
 /alfred:2-run AUTH-001
 # Alfred 会自动读取 SPEC-AUTH-001.md 了解详细需求
 
-# ❌ 缺少上下文
+# <span class="material-icons">cancel</span> 缺少上下文
 /alfred:2-run
 # Alfred 不知道要实现什么
 ```
@@ -952,13 +952,13 @@ Alfred 首先理解用户的请求和项目上下文：
 将大功能分解为小步骤：
 
 ```bash
-# ✅ 渐进式
+# <span class="material-icons">check_circle</span> 渐进式
 /alfred:1-plan "用户基础信息管理"
 /alfred:2-run USER-001
 /alfred:1-plan "用户权限管理"
 /alfred:2-run USER-002
 
-# ❌ 一次性太多
+# <span class="material-icons">cancel</span> 一次性太多
 /alfred:1-plan "完整的用户管理系统包括权限、角色、审批流程等"
 ```
 

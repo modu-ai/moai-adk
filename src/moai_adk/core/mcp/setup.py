@@ -7,10 +7,10 @@ Handles MCP server installation, configuration, and management for MoAI-ADK proj
 import json
 import subprocess
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from rich.console import Console
-from rich.progress import BarColumn, Progress, SpinnerColumn, TaskID, TextColumn
+from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
 
 console = Console()
 

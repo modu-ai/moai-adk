@@ -20,7 +20,6 @@ from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
 from .policy_validator import PolicyViolation, PolicyViolationType
-from .tags import suggest_tag_for_file
 
 
 @dataclass
@@ -125,7 +124,7 @@ class TagAutoCorrector:
                         corrected_content = correction.corrected_content
                         corrections.append(correction)
 
-            except Exception as e:
+            except Exception:
                 # 파일 읽기 실패 시 건너뛰기
                 continue
 

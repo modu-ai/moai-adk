@@ -271,17 +271,17 @@ Alfred와의 모든 상호작용에 사용되는 언어입니다.
 
 | 언어 | 자동 감지 파일 | 기본 도구 | 템플릿 지원 |
 |------|----------------|----------|------------|
-| python | pyproject.toml, setup.py, requirements.txt | pytest, ruff, mypy | ✅ |
-| javascript | package.json, yarn.lock | jest, eslint, prettier | ✅ |
-| typescript | tsconfig.json, package.json | typescript, eslint, prettier | ✅ |
-| go | go.mod, go.sum | go test, golint, gofmt | ✅ |
-| rust | Cargo.toml | cargo test, clippy, rustfmt | ✅ |
-| java | pom.xml, build.gradle | junit, maven, gradle | ✅ |
-| kotlin | build.gradle.kts | junit, ktlint | ✅ |
-| ruby | Gemfile | rspec, rubocop | ✅ |
-| php | composer.json | phpunit, phpstan | ✅ |
-| csharp | *.csproj, *.sln | xunit, dotnet | ✅ |
-| sql | *.sql, schema.sql | - | ⚠️ 제한적 |
+| python | pyproject.toml, setup.py, requirements.txt | pytest, ruff, mypy | <span class="material-icons">check_circle</span> |
+| javascript | package.json, yarn.lock | jest, eslint, prettier | <span class="material-icons">check_circle</span> |
+| typescript | tsconfig.json, package.json | typescript, eslint, prettier | <span class="material-icons">check_circle</span> |
+| go | go.mod, go.sum | go test, golint, gofmt | <span class="material-icons">check_circle</span> |
+| rust | Cargo.toml | cargo test, clippy, rustfmt | <span class="material-icons">check_circle</span> |
+| java | pom.xml, build.gradle | junit, maven, gradle | <span class="material-icons">check_circle</span> |
+| kotlin | build.gradle.kts | junit, ktlint | <span class="material-icons">check_circle</span> |
+| ruby | Gemfile | rspec, rubocop | <span class="material-icons">check_circle</span> |
+| php | composer.json | phpunit, phpstan | <span class="material-icons">check_circle</span> |
+| csharp | *.csproj, *.sln | xunit, dotnet | <span class="material-icons">check_circle</span> |
+| sql | *.sql, schema.sql | - | <span class="material-icons">warning</span> 제한적 |
 
 #### locale 설정
 
@@ -904,20 +904,20 @@ def main():
         print(f"📋 프로젝트: {config['project']['name']}")
         print(f"🌍 언어: {config['language']['conversation_language_name']}")
         print(f"👤 소유자: {config['project']['owner']}")
-        print(f"🔧 모드: {config['project']['mode']}")
+        print(f"<span class="material-icons">settings</span> 모드: {config['project']['mode']}")
 
         # SPEC 상태 요약
         specs_dir = Path(project_dir) / '.moai' / 'specs'
         if specs_dir.exists():
             spec_count = len([d for d in specs_dir.iterdir() if d.is_dir()])
-            print(f"📝 SPEC 문서: {spec_count}개")
+            print(f"<span class="material-icons">description</span> SPEC 문서: {spec_count}개")
 
         # Git 상태 확인
         os.system('git status --porcelain | wc -l | xargs echo "🔄 변경된 파일:"')
 
         # 최근 활동
         print(f"🕐 마지막 업데이트: {config['project']['updated_at']}")
-        print("✅ Alfred 준비 완료")
+        print("<span class="material-icons">check_circle</span> Alfred 준비 완료")
 
 if __name__ == "__main__":
     main()
@@ -968,7 +968,7 @@ def validate_tags(file_path: str) -> list:
             '.moai/specs': '@SPEC:'
         }.get(file_type, '')
 
-        return [f"⚠️ TAG 누락: {file_path} (기대: {expected_tag})"]
+        return [f"<span class="material-icons">warning</span> TAG 누락: {file_path} (기대: {expected_tag})"]
 
     return []
 
@@ -981,7 +981,7 @@ def main():
     # 위험도 평가
     risk = check_risk(tool_name, tool_args)
     if risk['level'] in ['high', 'medium']:
-        print(f"⚠️ 위험 감지: {risk['level']} - {risk['pattern']}")
+        print(f"<span class="material-icons">warning</span> 위험 감지: {risk['level']} - {risk['pattern']}")
         if risk['level'] == 'high':
             response = input("계속하시겠습니까? (y/N): ")
             if response.lower() != 'y':
@@ -1082,9 +1082,9 @@ def main():
             if 'tests' in file_path:
                 test_result = run_tests_if_needed(file_path)
                 if test_result['status'] == 'success':
-                    print(f"✅ 테스트 통과")
+                    print(f"<span class="material-icons">check_circle</span> 테스트 통과")
                 else:
-                    print(f"❌ 테스트 실패")
+                    print(f"<span class="material-icons">cancel</span> 테스트 실패")
 
 if __name__ == "__main__":
     main()
@@ -1692,7 +1692,7 @@ Files included:
 - .moai/memory/
 EOF
 
-echo "✅ Backup created: ${BACKUP_DIR}/${BACKUP_NAME}.tar.gz"
+echo "<span class="material-icons">check_circle</span> Backup created: ${BACKUP_DIR}/${BACKUP_NAME}.tar.gz"
 
 # 오래된 백업 정리
 cd "${BACKUP_DIR}"
@@ -1724,7 +1724,7 @@ fi
 BACKUP_FILE=$(ls "${BACKUP_DIR}"/config_backup_*.tar.gz | sed -n "${SELECTION}p")
 
 if [ ! -f "$BACKUP_FILE" ]; then
-    echo "❌ Invalid backup selection"
+    echo "<span class="material-icons">cancel</span> Invalid backup selection"
     exit 1
 fi
 
@@ -1743,7 +1743,7 @@ tar -czf "${BACKUP_DIR}/${PRE_RESTORE_BACKUP}.tar.gz" \
 # 복원 실행
 tar -xzf "$BACKUP_FILE" -C .
 
-echo "✅ Configuration restored"
+echo "<span class="material-icons">check_circle</span> Configuration restored"
 echo "💾 Pre-restore backup: ${PRE_RESTORE_BACKUP}.tar.gz"
 ```
 
@@ -1891,7 +1891,7 @@ claude
 #!/bin/bash
 # diagnose-config.sh
 
-echo "🔍 MoAI-ADK Configuration Diagnostics"
+echo "<span class="material-icons">search</span> MoAI-ADK Configuration Diagnostics"
 echo "======================================"
 
 # 1. 기본 파일 존재 확인
@@ -1905,9 +1905,9 @@ files=(
 
 for file in "${files[@]}"; do
     if [ -f "$file" ]; then
-        echo "✅ $file exists"
+        echo "<span class="material-icons">check_circle</span> $file exists"
     else
-        echo "❌ $file missing"
+        echo "<span class="material-icons">cancel</span> $file missing"
     fi
 done
 
@@ -1916,9 +1916,9 @@ echo -e "\n📋 Validating JSON files..."
 for json_file in .moai/config.json .claude/settings.json; do
     if [ -f "$json_file" ]; then
         if python3 -c "import json; json.load(open('$json_file'))" 2>/dev/null; then
-            echo "✅ $json_file is valid JSON"
+            echo "<span class="material-icons">check_circle</span> $json_file is valid JSON"
         else
-            echo "❌ $json_file has invalid JSON"
+            echo "<span class="material-icons">cancel</span> $json_file has invalid JSON"
         fi
     fi
 done
@@ -1929,9 +1929,9 @@ for file in .moai/config.json .claude/settings.json; do
     if [ -f "$file" ]; then
         permissions=$(stat -f "%Lp" "$file" 2>/dev/null || stat -c "%a" "$file" 2>/dev/null)
         if [ "$permissions" = "644" ]; then
-            echo "✅ $file has correct permissions ($permissions)"
+            echo "<span class="material-icons">check_circle</span> $file has correct permissions ($permissions)"
         else
-            echo "⚠️  $file has unusual permissions ($permissions)"
+            echo "<span class="material-icons">warning</span>  $file has unusual permissions ($permissions)"
         fi
     fi
 done
@@ -1940,17 +1940,17 @@ done
 echo -e "\n🪝 Checking hooks..."
 if [ -f ".claude/hooks/alfred/alfred_hooks.py" ]; then
     if [ -x ".claude/hooks/alfred/alfred_hooks.py" ]; then
-        echo "✅ Hook script is executable"
+        echo "<span class="material-icons">check_circle</span> Hook script is executable"
     else
-        echo "❌ Hook script is not executable"
+        echo "<span class="material-icons">cancel</span> Hook script is not executable"
         echo "   Run: chmod +x .claude/hooks/alfred/alfred_hooks.py"
     fi
 else
-    echo "❌ Hook script missing"
+    echo "<span class="material-icons">cancel</span> Hook script missing"
 fi
 
 # 5. 버전 호환성 확인
-echo -e "\n🔍 Checking version compatibility..."
+echo -e "\n<span class="material-icons">search</span> Checking version compatibility..."
 if [ -f ".moai/config.json" ]; then
     moai_version=$(python3 -c "import json; print(json.load(open('.moai/config.json')).get('moai', {}).get('version', 'unknown'))" 2>/dev/null)
     echo "📦 MoAI-ADK version in config: $moai_version"
@@ -1959,12 +1959,12 @@ if [ -f ".moai/config.json" ]; then
     echo "📦 Installed MoAI-ADK version: $current_version"
 
     if [ "$moai_version" != "$current_version" ] && [ "$moai_version" != "unknown" ] && [ "$current_version" != "unknown" ]; then
-        echo "⚠️  Version mismatch detected"
+        echo "<span class="material-icons">warning</span>  Version mismatch detected"
         echo "   Run: moai-adk update"
     fi
 fi
 
-echo -e "\n🎯 Diagnostics complete!"
+echo -e "\n<span class="material-icons">target</span> Diagnostics complete!"
 ```
 
 ---

@@ -136,19 +136,19 @@ Alfred creates a complete specification package:
 
 **Too Vague**:
 ```bash
-# ❌ Too general
+# <span class="material-icons">cancel</span> Too general
 /alfred:1-plan "Make a login system"
 ```
 
 **Multiple Features**:
 ```bash
-# ❌ Combine multiple ideas
+# <span class="material-icons">cancel</span> Combine multiple ideas
 /alfred:1-plan "Login, registration, profile, and admin dashboard"
 ```
 
 **Missing Context**:
 ```bash
-# ❌ No details about requirements
+# <span class="material-icons">cancel</span> No details about requirements
 /alfred:1-plan "API endpoint"
 ```
 
@@ -397,4 +397,4 @@ After creating your SPEC:
 3. **Implementation**: Begin TDD with `/alfred:2-run SPEC-ID`
 4. **Documentation**: Let Alfred sync docs with `/alfred:3-sync`
 
-Remember: A well-written SPEC is the foundation of successful software development. Take the time to get it right, and the rest of the development process will flow smoothly! 🎯
+Remember: A well-written SPEC is the foundation of successful software development. Take the time to get it right, and the rest of the development process will flow smoothly! <span class="material-icons">target</span>

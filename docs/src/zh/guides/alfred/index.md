@@ -130,10 +130,10 @@ graph TD
 
 **输出示例**：
 ```
-✅ 项目初始化完成
-✅ 配置保存到 .moai/config.json
-✅ 开发环境配置完成
-✅ 推荐技能包：Python + FastAPI + Testing
+<span class="material-icons">check_circle</span> 项目初始化完成
+<span class="material-icons">check_circle</span> 配置保存到 .moai/config.json
+<span class="material-icons">check_circle</span> 开发环境配置完成
+<span class="material-icons">check_circle</span> 推荐技能包：Python + FastAPI + Testing
 ```
 
 #### 2. spec-builder（规格构建者）
@@ -752,13 +752,13 @@ def validate_trust_standards(artifacts):
 
 ```yaml
 质量门禁检查:
-✅ 测试覆盖率: 87% (≥85%)
-✅ 代码风格检查: 通过
-✅ 安全扫描: 无高危漏洞
-✅ 依赖检查: 无已知漏洞
-✅ 文档完整性: 100%
-✅ @TAG 链: 完整
-✅ 性能基准: 通过
+<span class="material-icons">check_circle</span> 测试覆盖率: 87% (≥85%)
+<span class="material-icons">check_circle</span> 代码风格检查: 通过
+<span class="material-icons">check_circle</span> 安全扫描: 无高危漏洞
+<span class="material-icons">check_circle</span> 依赖检查: 无已知漏洞
+<span class="material-icons">check_circle</span> 文档完整性: 100%
+<span class="material-icons">check_circle</span> @TAG 链: 完整
+<span class="material-icons">check_circle</span> 性能基准: 通过
 
 🎉 质量门禁通过，可以发布！
 ```
@@ -771,33 +771,33 @@ def validate_trust_standards(artifacts):
 
 #### 明确具体的指令
 ```bash
-# ✅ 好的指令
+# <span class="material-icons">check_circle</span> 好的指令
 /alfred:1-plan "创建用户认证系统，支持邮箱登录、密码重置和 JWT 令牌管理"
 
-# ❌ 模糊的指令
+# <span class="material-icons">cancel</span> 模糊的指令
 /alfred:1-plan "做个登录功能"
 ```
 
 #### 提供充分的上下文
 ```bash
-# ✅ 提供上下文
+# <span class="material-icons">check_circle</span> 提供上下文
 /alfred:2-run AUTH-001
 # Alfred 会自动读取 SPEC-AUTH-001.md 了解详细需求
 
-# ❌ 缺少上下文
+# <span class="material-icons">cancel</span> 缺少上下文
 /alfred:2-run
 # Alfred 不知道要实现什么
 ```
 
 #### 渐进式开发
 ```bash
-# ✅ 渐进式，小步骤
+# <span class="material-icons">check_circle</span> 渐进式，小步骤
 /alfred:1-plan "用户基础信息管理"
 /alfred:2-run USER-001
 /alfred:1-plan "用户权限管理"
 /alfred:2-run USER-002
 
-# ❌ 一次性太多
+# <span class="material-icons">cancel</span> 一次性太多
 /alfred:1-plan "完整的用户管理系统包括权限、角色、审批流程等"
 ```
 

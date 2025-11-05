@@ -8,11 +8,10 @@ and generating improvement suggestions based on usage patterns.
 """
 
 import json
-import sys
-from pathlib import Path
 from collections import defaultdict
 from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional
+from pathlib import Path
+from typing import Any, Dict, Optional
 
 
 class SessionAnalyzer:

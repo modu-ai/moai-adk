@@ -11,6 +11,8 @@
 > **MoAI-ADK는 AI와 함께 명세(SPEC) → 테스트(TDD) → 코드 → 문서를 자연스럽게 잇는 개발 워크플로우를 제공합니다.**
 
 > **📚 자세한 문서는 [온라인 문서](https://adk.mo.ai.kr)에서 확인하세요.**
+>
+> > **🔗 강화된 포털 기능**: 자동 링크 검증, 사용자 친화적 네비게이션, 검색 기능, 다국어 지원, 실시간 문서 업데이트
 
 ---
 
@@ -3473,15 +3475,60 @@ go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest  # Go
 | 목적                      | 리소스                                                                    |
 | ------------------------- | ----------------------------------------------------------------------- |
 | 🌐 **온라인 문서**        | [https://adk.mo.ai.kr](https://adk.mo.ai.kr) (전체 문서)                   |
-| 📚 다국어 린팅 가이드     | `.claude/hooks/alfred/core/MULTILINGUAL_LINTING_GUIDE.md` (완전한 API)   |
-| 📖 다국어 설치 가이드     | `.claude/hooks/alfred/core/INSTALLATION_GUIDE.md` (각 언어별 설치)        |
-| 🧪 테스트 보고서          | `.moai/reports/MULTILINGUAL_LINTING_TEST_REPORT.md` (103/103 테스트 통과) |
-| 🎯 구현 요약              | `.moai/reports/MULTILINGUAL_LINTING_IMPLEMENTATION_SUMMARY.md`            |
-| Skills 세부 구조          | `.claude/skills/` 디렉터리 (74개 Skills)                                  |
-| Sub-agent 상세            | `.claude/agents/alfred/` 디렉터리 (16개 agents + 4개 명령어)              |
-| 워크플로우 가이드         | `.claude/commands/alfred/` (4개 명령: 0-project ~ 3-sync)                 |
-| Alfred 명령어 명령형 지침 | `.claude/commands/alfred/` (0-project ~ 3-sync, 100% 명령형)              |
-| 릴리즈 노트               | GitHub Releases: https://github.com/modu-ai/moai-adk/releases              |
+| 🚀 **빠른 시작 가이드**    | [https://adk.mo.ai.kr/getting-started](https://adk.mo.ai.kr/getting-started) |
+| 🔧 **API 문서**           | [https://adk.mo.ai.kr/api](https://adk.mo.ai.kr/api)                     |
+| 📖 **개발 가이드**         | [https://adk.mo.ai.kr/guides](https://adk.mo.ai.kr/guides)                |
+| 💡 **예제 및 튜토리얼**    | [https://adk.mo.ai.kr/examples](https://adk.mo.ai.kr/examples)            |
+| 🐛 **문제 해결 가이드**    | [https://adk.mo.ai.kr/troubleshooting](https://adk.mo.ai.kr/troubleshooting) |
+| 📚 **다국어 린팅 가이드** | `.claude/hooks/alfred/core/MULTILINGUAL_LINTING_GUIDE.md` (완전한 API)   |
+| 📖 **다국어 설치 가이드** | `.claude/hooks/alfred/core/INSTALLATION_GUIDE.md` (각 언어별 설치)        |
+| 🧪 **테스트 보고서**      | `.moai/reports/MULTILINGUAL_LINTING_TEST_REPORT.md` (103/103 테스트 통과) |
+| 🎯 **구현 요약**          | `.moai/reports/MULTILINGUAL_LINTING_IMPLEMENTATION_SUMMARY.md`            |
+| 🏷️ **Skills 세부 구조**  | `.claude/skills/` 디렉터리 (74개 Skills)                                  |
+| 👥 **Sub-agent 상세**     | `.claude/agents/alfred/` 디렉터리 (16개 agents + 4개 명령어)             |
+| 📋 **워크플로우 가이드**   | `.claude/commands/alfred/` (4개 명령: 0-project ~ 3-sync)                |
+| ⚙️ **Alfred 명령어 지침** | `.claude/commands/alfred/` (0-project ~ 3-sync, 100% 명령형)           |
+| 📦 **릴리즈 노트**         | GitHub Releases: https://github.com/modu-ai/moai-adk/releases             |
+| 🔍 **Changelog**           | [CHANGELOG.md](CHANGELOG.md)                                             |
+
+---
+
+## 🌐 온라인 문서 포털
+
+MoAI-ADK의 온라인 문서 포털은 사용자를 위한 강화된 기능을 제공합니다:
+
+### ✨ 주요 기능
+- **🔗 자동 링크 검증**: 모든 외부 링크의 안정성을 실시간으로 모니터링
+- **🎯 사용자 친화적 네비게이션**: 계층적 메뉴 구조로 빠른 문서 탐색
+- **🔍 강력한 검색 기능**: 실시간 자완성 및 정확한 검색 결과 제공
+- **🌍 다국어 지원**: 한국어, 영어, 일본어, 중국어 등 5개 언어 지원
+- **⚡ 실시간 문서 업데이트**: 코드 변경 시 자동으로 문서 동기화
+- **📱 반응형 디자인**: 모바일, 태블릿, 데스크톱 최적화
+
+### 📚 문서 네비게이션
+```
+🏠 홈
+├── 🚀 빠른 시작
+│   ├── 3분 초고속 시작
+│   ├── 5분 Quick Start
+│   └── 첫 10분 실습
+├── 🔧 API 문서
+│   ├── 핵심 명령
+│   ├── Sub-agent & Skills
+│   └── Claude Code Hooks
+├── 📖 개발 가이드
+│   ├── SPEC-First TDD
+│   ├── 워크플로우 가이드
+│   └── 문제 해결
+├── 💡 예제 및 튜토리얼
+└── 🐛 문제 해결 가이드
+```
+
+### 🔗 접근성
+- **URL**: https://adk.mo.ai.kr
+- **문서 버전**: 항상 최신 stable 버전 제공
+- **검색 엔진 최적화**: 모든 문서가 검색 엔진에 노출
+- **API 문서 자동 생성**: 코드 변경 시 실시간 업데이트
 
 ---
 

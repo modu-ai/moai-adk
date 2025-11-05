@@ -1231,7 +1231,7 @@ GREEN 단계는 TDD 사이클에서 **실제 기능을 구현하는 첫 단계**
 
 GREEN 단계에서 가장 중요한 것은 **"완벽한 구현이 아니라 통과하는 구현"**이라는 사실을 기억하는 것입니다.
 
-**GREEN 단계의 성공은 REFACTOR 단계의 성공을 보장합니다!** 🚀
+**GREEN 단계의 성공은 REFACTOR 단계의 성공을 보장합니다!** <span class="material-icons">rocket_launch</span>
 
 ---
 
