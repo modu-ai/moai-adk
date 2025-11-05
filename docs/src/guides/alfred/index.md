@@ -1,5 +1,13 @@
 # Alfred Workflow Guide
 
+<div align="center" class="image-container">
+
+![Alfred Logo](../../../public/alfred_logo.png){ class="alfred-logo" }
+
+<div class="image-caption">Alfred - Your AI Development Partner</div>
+
+</div>
+
 Alfred is the SuperAgent that orchestrates the entire MoAI-ADK development workflow. This guide explains how to use Alfred's four core commands to create a seamless development experience.
 
 ## Overview
@@ -34,21 +42,21 @@ Alfred coordinates multiple specialized agents and skills:
 Alfred SuperAgent (Orchestration Layer)
     ├── Core Sub-agents (Workflow Execution)
     │   ├── project-manager 📋 - Project initialization and setup
-    │   ├── spec-builder 🏗️ - SPEC creation with EARS syntax
-    │   ├── implementation-planner 📊 - Architecture and planning
+    │   ├── spec-builder <span class="material-icons">construction</span> - SPEC creation with EARS syntax
+    │   ├── implementation-planner <span class="material-icons">analytics</span> - Architecture and planning
     │   ├── tdd-implementer 💎 - TDD cycle execution
-    │   ├── doc-syncer 📖 - Documentation synchronization
-    │   ├── tag-agent 🏷️ - TAG system management
-    │   ├── git-manager 🚀 - Git workflow automation
-    │   ├── trust-checker ✅ - Quality validation
-    │   └── quality-gate 🛡️ - Release readiness checks
+    │   ├── doc-syncer <span class="material-icons">auto_stories</span> - Documentation synchronization
+    │   ├── tag-agent <span class="material-icons">label</span> - TAG system management
+    │   ├── git-manager <span class="material-icons">rocket_launch</span> - Git workflow automation
+    │   ├── trust-checker <span class="material-icons">check_circle</span> - Quality validation
+    │   └── quality-gate <span class="material-icons">shield</span> - Release readiness checks
     ├── Expert Agents (Domain Knowledge)
-    │   ├── backend-expert 🔧 - Backend architecture and APIs
+    │   ├── backend-expert <span class="material-icons">settings</span> - Backend architecture and APIs
     │   ├── frontend-expert 💻 - Frontend development and UX
-    │   ├── devops-expert 🚀 - Deployment and infrastructure
-    │   ├── ui-ux-expert 🎨 - Design systems and accessibility
-    │   ├── security-expert 🔒 - Security analysis and best practices
-    │   └── database-expert 🗄️ - Database design and optimization
+    │   ├── devops-expert <span class="material-icons">rocket_launch</span> - Deployment and infrastructure
+    │   ├── ui-ux-expert <span class="material-icons">palette</span> - Design systems and accessibility
+    │   ├── security-expert <span class="material-icons">lock</span> - Security analysis and best practices
+    │   └── database-expert <span class="material-icons">storage</span> - Database design and optimization
     └── Skills Library (69+ Production Guides)
         ├── Foundation Skills (Core principles)
         ├── Essential Skills (Daily tools)
@@ -207,7 +215,7 @@ Alfred uses a just-in-time loading system to provide relevant skills when needed
 - Ensure all tests pass
 - Commit with `feat()` message
 
-**♻️ REFACTOR Phase**:
+**<span class="material-icons">recycling</span> REFACTOR Phase**:
 - Improve code quality and structure
 - Apply TRUST 5 principles
 - Maintain test coverage
@@ -314,14 +322,14 @@ stateDiagram-v2
     end note
 
     note right of draft
-        📝 Draft Phase
+        <span class="material-icons">description</span> Draft Phase
         - EARS requirements
         - Acceptance criteria
         - Risk assessment
     end note
 
     note right of in_progress
-        🚀 Development Phase
+        <span class="material-icons">rocket_launch</span> Development Phase
         - TDD execution
         - Code implementation
         - Quality validation
@@ -335,7 +343,7 @@ stateDiagram-v2
     end note
 
     note right of completed
-        ✅ Completed Phase
+        <span class="material-icons">check_circle</span> Completed Phase
         - Documentation sync
         - Release ready
         - Production deployment
@@ -525,4 +533,4 @@ Now that you understand Alfred's workflow, explore these guides:
 - **[TAG System](../../reference/tags/index.md)** - Understand traceability
 - **[Project Configuration](../project/config.md)** - Customize your setup
 
-Alfred is your partner in creating reliable, maintainable software. Trust the process, follow the workflow, and enjoy the confidence that comes with systematic development! 🚀
+Alfred is your partner in creating reliable, maintainable software. Trust the process, follow the workflow, and enjoy the confidence that comes with systematic development! <span class="material-icons">rocket_launch</span>

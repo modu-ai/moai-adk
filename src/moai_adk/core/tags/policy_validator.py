@@ -14,16 +14,12 @@ Pre-Tool-Use 훅과 통합하여 SPEC-less 코드 생성을 원천적으로 차�
 @SPEC:TAG-POLICY-001
 """
 
-import json
 import re
 import time
 from dataclasses import dataclass, field
-from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
-
-from .validator import ValidationIssue, ValidationConfig
+from typing import Any, Dict, List, Optional, Set
 
 
 class PolicyViolationLevel(Enum):
@@ -277,7 +273,7 @@ class TagPolicyValidator:
                     message="CODE 파일에 @TAG가 없습니다",
                     file_path=file_path,
                     action="block",
-                    guidance="CODE 파일은 반드시 @CODE:DOMAIN-NNN 형식의 TAG를 가져야 합니다. 먼저 SPEC을 생성하세요.",
+                    guidance="CODE 파일은 반드시 @CODE:DOMAIN-XXX 형식의 TAG를 가져야 합니다. 먼저 SPEC을 생성하세요.",
                     auto_fix_possible=False
                 ))
             else:
@@ -364,7 +360,7 @@ class TagPolicyValidator:
                 message="CODE 파일에 @TAG가 누락되었습니다",
                 file_path=file_path,
                 action="suggest",
-                guidance="파일 상단에 @CODE:DOMAIN-NNN 형식의 TAG를 추가하세요.",
+                guidance="파일 상단에 @CODE:DOMAIN-XXX 형식의 TAG를 추가하세요.",
                 auto_fix_possible=True
             ))
 

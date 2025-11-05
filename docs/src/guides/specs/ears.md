@@ -504,12 +504,12 @@ Requirements that depend on context:
 
 ### Mistake 1: Mixing Patterns
 
-**❌ Incorrect**:
+**<span class="material-icons">cancel</span> Incorrect**:
 ```markdown
 WHEN user logs in, the system SHALL NOT allow weak passwords
 ```
 
-**✅ Correct**:
+**<span class="material-icons">check_circle</span> Correct**:
 ```markdown
 WHEN user attempts to login with weak password, the system SHALL reject authentication
 Passwords SHALL NOT be less than 8 characters
@@ -517,24 +517,24 @@ Passwords SHALL NOT be less than 8 characters
 
 ### Mistake 2: Ambiguous Language
 
-**❌ Incorrect**:
+**<span class="material-icons">cancel</span> Incorrect**:
 ```markdown
 The system SHALL be fast
 ```
 
-**✅ Correct**:
+**<span class="material-icons">check_circle</span> Correct**:
 ```markdown
 The system SHALL respond to user requests within 2 seconds
 ```
 
 ### Mistake 3: Multiple Requirements in One Statement
 
-**❌ Incorrect**:
+**<span class="material-icons">cancel</span> Incorrect**:
 ```markdown
 WHEN user registers, the system SHALL create account, send welcome email, and set default preferences
 ```
 
-**✅ Correct**:
+**<span class="material-icons">check_circle</span> Correct**:
 ```markdown
 WHEN user registration completes, the system SHALL create user account
 WHEN user account is created, the system SHALL send welcome email
@@ -543,12 +543,12 @@ WHEN welcome email is sent, the system SHALL set default user preferences
 
 ### Mistake 4: Missing Error Conditions
 
-**❌ Incorrect**:
+**<span class="material-icons">cancel</span> Incorrect**:
 ```markdown
 WHEN user submits valid credentials, the system SHALL authenticate user
 ```
 
-**✅ Correct**:
+**<span class="material-icons">check_circle</span> Correct**:
 ```markdown
 WHEN valid credentials are provided, the system SHALL authenticate user
 WHEN invalid credentials are provided, the system SHALL return 401 error
@@ -557,12 +557,12 @@ WHEN authentication service is unavailable, the system SHALL return 503 error
 
 ### Mistake 5: Implementation Details in Requirements
 
-**❌ Incorrect**:
+**<span class="material-icons">cancel</span> Incorrect**:
 ```markdown
 The system SHALL use bcrypt with 12 rounds to hash passwords in PostgreSQL users table
 ```
 
-**✅ Correct**:
+**<span class="material-icons">check_circle</span> Correct**:
 ```markdown
 The system SHALL hash passwords using secure algorithm with minimum 12 rounds
 The system SHALL store password hashes securely in the database
@@ -733,4 +733,4 @@ The system SHALL NOT [constraint]
 - Search functionality
 - Reporting and analytics
 
-Mastering EARS syntax enables you to write clear, unambiguous, and testable requirements that serve as the foundation for successful software development. Practice these patterns, and they'll become second nature in your specification writing! 🎯
+Mastering EARS syntax enables you to write clear, unambiguous, and testable requirements that serve as the foundation for successful software development. Practice these patterns, and they'll become second nature in your specification writing! <span class="material-icons">target</span>

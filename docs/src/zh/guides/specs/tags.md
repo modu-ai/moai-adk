@@ -177,35 +177,35 @@ SUBTYPE (子类型):
 基本格式: @DOC:DOMAIN-ID[:SUBTYPE]
 用途: 标记技术文档文件
 示例:
-  - @DOC:USER-AUTH-001: 用户认证技术文档
+  - @DOC:USER-AUTH-API-001: 用户认证技术文档
   - @DOC:ORDER-MGT-001:api-docs - API 文档
   - @DOC:PAYMENT-001:deployment - 部署文档
 
 子类型分类:
   API 文档:
-    - @DOC:USER-AUTH-001:api-docs - API 文档
-    - @DOC:USER-AUTH-001:openapi - OpenAPI 规范
-    - @DOC:USER-AUTH-001:postman - Postman 集合
+    - @DOC:USER-AUTH-API-001:api-docs - API 文档
+    - @DOC:USER-AUTH-API-001:openapi - OpenAPI 规范
+    - @DOC:USER-AUTH-API-001:postman - Postman 集合
 
   架构文档:
-    - @DOC:USER-AUTH-001:architecture - 架构设计
-    - @DOC:USER-AUTH-001:design - 设计文档
-    - @DOC:USER-AUTH-001:pattern - 设计模式
+    - @DOC:USER-AUTH-API-001:architecture - 架构设计
+    - @DOC:USER-AUTH-API-001:design - 设计文档
+    - @DOC:USER-AUTH-API-001:pattern - 设计模式
 
   部署文档:
-    - @DOC:USER-AUTH-001:deployment - 部署指南
-    - @DOC:USER-AUTH-001:infrastructure - 基础设施
-    - @DOC:USER-AUTH-001:monitoring - 监控配置
+    - @DOC:USER-AUTH-API-001:deployment - 部署指南
+    - @DOC:USER-AUTH-API-001:infrastructure - 基础设施
+    - @DOC:USER-AUTH-API-001:monitoring - 监控配置
 
   用户文档:
-    - @DOC:USER-AUTH-001:user-guide - 用户指南
-    - @DOC:USER-AUTH-001:tutorial - 教程文档
-    - @DOC:USER-AUTH-001:faq - 常见问题
+    - @DOC:USER-AUTH-API-001:user-guide - 用户指南
+    - @DOC:USER-AUTH-API-001:tutorial - 教程文档
+    - @DOC:USER-AUTH-API-001:faq - 常见问题
 
   开发文档:
-    - @DOC:USER-AUTH-001:dev-guide - 开发指南
-    - @DOC:USER-AUTH-001:contributing - 贡献指南
-    - @DOC:USER-AUTH-001:changelog - 变更日志
+    - @DOC:USER-AUTH-API-001:dev-guide - 开发指南
+    - @DOC:USER-AUTH-API-001:contributing - 贡献指南
+    - @DOC:USER-AUTH-API-001:changelog - 变更日志
 ```
 
 #### 5. @DEPLOY - 部署配置
@@ -374,13 +374,13 @@ ZZZ (序列号):
 
 #### 链接语法
 ```markdown
-@SPEC:USER-AUTH-001 → @TEST:USER-AUTH-001 → @CODE:USER-AUTH-001 → @DOC:USER-AUTH-001
+@SPEC:USER-AUTH-001 → @TEST:USER-AUTH-001 → @CODE:USER-AUTH-001 → @DOC:USER-AUTH-API-001
 ```
 
 #### 链接类型
 ```yaml
 1. 完整链 (推荐):
-   @SPEC:USER-AUTH-001 → @TEST:USER-AUTH-001 → @CODE:USER-AUTH-001 → @DOC:USER-AUTH-001
+   @SPEC:USER-AUTH-001 → @TEST:USER-AUTH-001 → @CODE:USER-AUTH-001 → @DOC:USER-AUTH-API-001
 
 2. 部分链:
    @SPEC:USER-AUTH-001 → @CODE:USER-AUTH-001:api
@@ -568,7 +568,7 @@ class TestUserService:
 
 本文档描述了用户认证 API 的详细规范。
 
-@DOC:USER-AUTH-001:api-docs
+@DOC:USER-AUTH-API-001:api-docs
 对应规格: @SPEC:USER-AUTH-001
 实现代码: @CODE:USER-AUTH-001:api
 测试覆盖: @TEST:USER-AUTH-001:integration
@@ -613,16 +613,16 @@ class TestUserService:
 
 #### 保持链接完整性
 ```yaml
-✅ 完整的 @TAG 链:
+<span class="material-icons">check_circle</span> 完整的 @TAG 链:
   SPEC: @SPEC:USER-AUTH-001
   CODE: @CODE:USER-AUTH-001:service, @CODE:USER-AUTH-001:api
   TEST: @TEST:USER-AUTH-001:unit, @TEST:USER-AUTH-001:integration
-  DOC: @DOC:USER-AUTH-001:api-docs
+  DOC: @DOC:USER-AUTH-API-001:api-docs
 
-✅ 一致的 DOMAIN-ID:
+<span class="material-icons">check_circle</span> 一致的 DOMAIN-ID:
   所有相关元素使用相同的 DOMAIN-ID (USER-AUTH-001)
 
-❌ 避免不一致:
+<span class="material-icons">cancel</span> 避免不一致:
   @SPEC:USER-AUTH-001
   @CODE:USER-AUTH-002 (不匹配的 ID)
   @TEST:USER-AUTH-001:unit
@@ -630,17 +630,17 @@ class TestUserService:
 
 #### 适当的粒度
 ```yaml
-✅ 合理的粒度:
+<span class="material-icons">check_circle</span> 合理的粒度:
   @CODE:USER-AUTH-001:service - 完整的服务类
   @CODE:USER-AUTH-001:api - API 端点集合
   @TEST:USER-AUTH-001:unit - 单元测试套件
 
-✅ 过细的粒度 (避免):
+<span class="material-icons">check_circle</span> 过细的粒度 (避免):
   @CODE:USER-AUTH-001:method-1 - 单个方法
   @CODE:USER-AUTH-001:line-123 - 代码行
   @TEST:USER-AUTH-001:test-case-1 - 单个测试用例
 
-✅ 过粗的粒度 (避免):
+<span class="material-icons">check_circle</span> 过粗的粒度 (避免):
   @CODE:USER-AUTH - 整个用户模块
   @TEST:ALL-TESTS - 所有测试
 ```
@@ -685,12 +685,12 @@ class TestUserService:
 /alfred:check-tags
 
 # 输出示例:
-✅ @TAG 语法检查通过
-✅ 链接完整性验证通过
-⚠️ 发现 2 个孤立 @TAG
+<span class="material-icons">check_circle</span> @TAG 语法检查通过
+<span class="material-icons">check_circle</span> 链接完整性验证通过
+<span class="material-icons">warning</span> 发现 2 个孤立 @TAG
   - @CODE:ORDER-MGT-003:service (缺少对应 @SPEC)
   - @TEST:USER-PREF-002 (缺少对应 @CODE)
-✅ @TAG 覆盖率: 87%
+<span class="material-icons">check_circle</span> @TAG 覆盖率: 87%
 ```
 
 #### @TAG 生成命令
@@ -877,7 +877,7 @@ jobs:
 
 依赖: @CODE:USER-AUTH-001:dependency
 测试: @TEST:USER-AUTH-001:unit, @TEST:USER-AUTH-001:integration
-文档: @DOC:USER-AUTH-001:api-docs
+文档: @DOC:USER-AUTH-API-001:api-docs
 """
 
 class UserAuthService:
@@ -938,7 +938,7 @@ class TestUserAuthService:
 ↓ 单元测试
 @TEST:USER-AUTH-001:integration
 ↓ 集成测试
-@DOC:USER-AUTH-001:api-docs
+@DOC:USER-AUTH-API-001:api-docs
 ↓ API 文档
 @DEPLOY:USER-AUTH-001:k8s
 ↓ 部署配置
@@ -1152,14 +1152,14 @@ logging:
 
 #### 常见错误类型
 ```yaml
-❌ 语法错误示例:
+<span class="material-icons">cancel</span> 语法错误示例:
 - @spec:user-auth-001 (小写字母)
 - @SPEC:USER_AUTH_001 (下划线)
 - @SPEC:USER-AUTH-1 (不足3位)
 - @SPEC:USER-AUTH-001: (冒号结尾)
 - @CODE:USER-AUTH-001:API (大写子类型)
 
-✅ 正确语法:
+<span class="material-icons">check_circle</span> 正确语法:
 - @SPEC:USER-AUTH-001
 - @CODE:USER-AUTH-001:api
 - @TEST:USER-AUTH-001:unit

@@ -61,7 +61,7 @@ description: 学习如何使用 Alfred 的 9-feedback 命令快速创建 GitHub 
 📋 请输入问题标题（简洁明确）：
 示例：登录页面在移动设备上崩溃
 
-📝 请详细描述问题（可选，按 Enter 跳过）：
+<span class="material-icons">description</span> 请详细描述问题（可选，按 Enter 跳过）：
 示例：
 当使用 iPhone 13 访问登录页面时，点击登录按钮会导致应用崩溃。
 复现步骤：
@@ -80,7 +80,7 @@ description: 学习如何使用 Alfred 的 9-feedback 命令快速创建 GitHub 
 - 网络环境：WiFi 4G
 - 发生时间：2025-01-15 14:30
 
-🎯 请选择问题优先级：
+<span class="material-icons">target</span> 请选择问题优先级：
 [ ] 🔴 Critical - 系统崩溃、数据丢失、安全问题
 [ ] 🟠 High - 主要功能无法使用
 [✓] 🟡 Medium - 一般功能受影响（默认）
@@ -136,8 +136,8 @@ bug, mobile, crash, login, priority-medium
 
 ---
 
-📝 此 Issue 由 Alfred 自动生成，基于用户提供的信息
-🔗 相关代码：`@CODE:USER-AUTH-001:API`
+<span class="material-icons">description</span> 此 Issue 由 Alfred 自动生成，基于用户提供的信息
+<span class="material-icons">link</span> 相关代码：`@CODE:USER-AUTH-001:API`
 🐛 问题追踪：需要 iOS 团队调查和修复
 ```
 
@@ -161,7 +161,7 @@ bug, mobile, crash, login, priority-medium
 💡 请输入功能请求标题（简洁明确）：
 示例：添加暗黑模式支持
 
-📝 请详细描述功能需求（可选，按 Enter 跳过）：
+<span class="material-icons">description</span> 请详细描述功能需求（可选，按 Enter 跳过）：
 示例：
 希望应用支持暗黑模式，提高用户在不同光线条件下的使用体验。
 
@@ -183,7 +183,7 @@ bug, mobile, crash, login, priority-medium
 - 确保所有组件都支持两种主题
 - 测试在不同设备上的显示效果
 
-🎯 请选择功能优先级：
+<span class="material-icons">target</span> 请选择功能优先级：
 [ ] 🔴 Critical - 核心功能，必须立即实现
 [ ] 🟠 High - 重要功能，近期实现
 [✓] 🟡 Medium - 有价值的功能，计划中实现
@@ -198,10 +198,10 @@ bug, mobile, crash, login, priority-medium
 为应用添加暗黑模式支持，提供更好的用户体验和视觉舒适度。
 
 ## 用户价值
-- ✅ 减少眼部疲劳，特别是在低光环境下
-- ✅ 改善夜间使用体验
-- ✅ 提升应用现代化感和专业度
-- ✅ 符合现代设计规范和用户期望
+- <span class="material-icons">check_circle</span> 减少眼部疲劳，特别是在低光环境下
+- <span class="material-icons">check_circle</span> 改善夜间使用体验
+- <span class="material-icons">check_circle</span> 提升应用现代化感和专业度
+- <span class="material-icons">check_circle</span> 符合现代设计规范和用户期望
 
 ## 功能需求
 ### 核心功能
@@ -271,7 +271,7 @@ feature, enhancement, ui, theme, dark-mode, accessibility
 ---
 
 💡 此 Issue 由 Alfred 自动生成
-🎨 需要设计团队提供暗黑主题设计稿
+<span class="material-icons">palette</span> 需要设计团队提供暗黑主题设计稿
 📱 需要在所有平台上测试主题显示效果
 ♿ 确保符合可访问性标准
 ```
@@ -296,7 +296,7 @@ feature, enhancement, ui, theme, dark-mode, accessibility
 ⚡ 请输入改进建议标题（简洁明确）：
 示例：优化搜索功能性能
 
-📝 请详细描述改进建议（可选，按 Enter 跳过）：
+<span class="material-icons">description</span> 请详细描述改进建议（可选，按 Enter 跳过）：
 示例：
 当前搜索功能在大数据量情况下响应较慢，需要进行性能优化。
 
@@ -331,7 +331,7 @@ feature, enhancement, ui, theme, dark-mode, accessibility
 - 系统负载降低
 - 功能更加完善
 
-🎯 请选择改进优先级：
+<span class="material-icons">target</span> 请选择改进优先级：
 [ ] 🔴 Critical - 严重影响用户使用
 [ ] 🟠 High - 重要改进，近期处理
 [✓] 🟡 Medium - 有价值的改进，计划中处理
@@ -372,10 +372,10 @@ feature, enhancement, ui, theme, dark-mode, accessibility
 - **分析监控**: 添加搜索性能监控和分析
 
 ## 预期效果
-- ✅ 搜索响应时间 < 500ms (当前 > 3000ms)
-- ✅ 用户体验明显提升
-- ✅ 系统负载降低 40%
-- ✅ 功能更加完善和易用
+- <span class="material-icons">check_circle</span> 搜索响应时间 < 500ms (当前 > 3000ms)
+- <span class="material-icons">check_circle</span> 用户体验明显提升
+- <span class="material-icons">check_circle</span> 系统负载降低 40%
+- <span class="material-icons">check_circle</span> 功能更加完善和易用
 
 ## 技术方案详情
 
@@ -441,9 +441,9 @@ improvement, performance, optimization, search, cache, user-experience
 ---
 
 ⚡ 此 Issue 由 Alfred 自动生成
-🔧 建议由后端团队负责性能优化部分
-🎨 建议由前端团队负责用户体验改进部分
-📊 建议实施后进行性能基准测试
+<span class="material-icons">settings</span> 建议由后端团队负责性能优化部分
+<span class="material-icons">palette</span> 建议由前端团队负责用户体验改进部分
+<span class="material-icons">analytics</span> 建议实施后进行性能基准测试
 ```
 
 ### 4. 问题讨论 (Question/Discussion)
@@ -466,7 +466,7 @@ improvement, performance, optimization, search, cache, user-experience
 ❓ 请输入讨论主题（简洁明确）：
 示例：关于微服务架构的技术选型讨论
 
-📝 请详细描述讨论内容（可选，按 Enter 跳过）：
+<span class="material-icons">description</span> 请详细描述讨论内容（可选，按 Enter 跳过）：
 示例：
 我们正在讨论新功能的微服务架构设计，需要团队就技术选型达成共识。
 
@@ -527,7 +527,7 @@ improvement, performance, optimization, search, cache, user-experience
 - 维护成本和技术支持
 - 长期发展考虑
 
-🎯 请选择讨论优先级：
+<span class="material-icons">target</span> 请选择讨论优先级：
 [ ] 🔴 Critical - 关键决策，需要尽快确定
 [ ] 🟠 High - 重要决策，本周内确定
 [✓] 🟡 Medium - 一般讨论，可适当安排
@@ -557,15 +557,15 @@ improvement, performance, optimization, search, cache, user-experience
 - 容器化：Docker + Kubernetes
 
 **优势**:
-✅ 团队熟悉 Python 生态，学习成本低
-✅ FastAPI 性能优秀，API 文档自动生成
-✅ 丰富的第三方库，开发效率高
-✅ 异步支持良好，适合 I/O 密集型应用
+<span class="material-icons">check_circle</span> 团队熟悉 Python 生态，学习成本低
+<span class="material-icons">check_circle</span> FastAPI 性能优秀，API 文档自动生成
+<span class="material-icons">check_circle</span> 丰富的第三方库，开发效率高
+<span class="material-icons">check_circle</span> 异步支持良好，适合 I/O 密集型应用
 
 **挑战**:
-⚠️ Python 性能相对较低，CPU 密集型任务可能有瓶颈
-⚠️ 内存使用相对较高，需要优化资源配置
-⚠️ GIL 限制，真正的并行计算受限
+<span class="material-icons">warning</span> Python 性能相对较低，CPU 密集型任务可能有瓶颈
+<span class="material-icons">warning</span> 内存使用相对较高，需要优化资源配置
+<span class="material-icons">warning</span> GIL 限制，真正的并行计算受限
 
 ### 选项 B: Go + Gin
 **技术栈**:
@@ -576,15 +576,15 @@ improvement, performance, optimization, search, cache, user-experience
 - 容器化：Docker + Kubernetes
 
 **优势**:
-✅ Go 性能优秀，并发处理能力强
-✅ 内存占用低，资源利用率高
-✅ 编译型语言，部署简单
-✅ 原生并发支持，无需额外框架
+<span class="material-icons">check_circle</span> Go 性能优秀，并发处理能力强
+<span class="material-icons">check_circle</span> 内存占用低，资源利用率高
+<span class="material-icons">check_circle</span> 编译型语言，部署简单
+<span class="material-icons">check_circle</span> 原生并发支持，无需额外框架
 
 **挑战**:
-⚠️ 团队需要学习 Go 语言，初期开发效率可能较低
-⚠️ 生态相对较小，第三方库选择有限
-⚠️ Web 框架功能相对简单，需要更多自定义开发
+<span class="material-icons">warning</span> 团队需要学习 Go 语言，初期开发效率可能较低
+<span class="material-icons">warning</span> 生态相对较小，第三方库选择有限
+<span class="material-icons">warning</span> Web 框架功能相对简单，需要更多自定义开发
 
 ### 选项 C: Java + Spring Boot
 **技术栈**:
@@ -595,15 +595,15 @@ improvement, performance, optimization, search, cache, user-experience
 - 容器化：Docker + Kubernetes
 
 **优势**:
-✅ Java 生态成熟，企业级应用广泛
-✅ Spring Boot 功能丰富，开发效率高
-✅ 性能优秀，稳定性好
-✅ 社区支持好，技术资料丰富
+<span class="material-icons">check_circle</span> Java 生态成熟，企业级应用广泛
+<span class="material-icons">check_circle</span> Spring Boot 功能丰富，开发效率高
+<span class="material-icons">check_circle</span> 性能优秀，稳定性好
+<span class="material-icons">check_circle</span> 社区支持好，技术资料丰富
 
 **挑战**:
-⚠️ 开发效率相对较低，代码量较大
-⚠️ 内存占用较高，资源配置需要优化
-⚠️ 启动时间较长，微服务实例启动慢
+<span class="material-icons">warning</span> 开发效率相对较低，代码量较大
+<span class="material-icons">warning</span> 内存占用较高，资源配置需要优化
+<span class="material-icons">warning</span> 启动时间较长，微服务实例启动慢
 
 ## 决策考虑因素
 
@@ -672,7 +672,7 @@ discussion, architecture, technology-stack, microservices, decision
 ❓ 此 Issue 由 Alfred 自动生成
 🤝 需要团队成员积极参与讨论
 📋 请在截止日期前完成讨论并做出决策
-📝 所有讨论内容将记录在决策文档中
+<span class="material-icons">description</span> 所有讨论内容将记录在决策文档中
 ```
 
 ---
@@ -885,14 +885,14 @@ def route_feedback(feedback):
 
 ## 趋势分析
 ### 积极趋势
-- ✅ Bug 报告响应时间缩短 15%
-- ✅ Critical 问题解决率提升到 87%
-- ✅ 平均修复时间减少 20%
+- <span class="material-icons">check_circle</span> Bug 报告响应时间缩短 15%
+- <span class="material-icons">check_circle</span> Critical 问题解决率提升到 87%
+- <span class="material-icons">check_circle</span> 平均修复时间减少 20%
 
 ### 需要关注
-- ⚠️ Feature Request 处理时间增长
-- ⚠️ Low 优先级问题积压增加
-- ⚠️ 部分组件问题重复出现
+- <span class="material-icons">warning</span> Feature Request 处理时间增长
+- <span class="material-icons">warning</span> Low 优先级问题积压增加
+- <span class="material-icons">warning</span> 部分组件问题重复出现
 
 ## 改进建议
 1. **优化流程**
@@ -927,11 +927,11 @@ def route_feedback(feedback):
 /alfred:9-feedback
 
 # 输出：
-✅ GitHub Issue #245 创建成功
+<span class="material-icons">check_circle</span> GitHub Issue #245 创建成功
 🐛 标题: [BUG] 登录按钮在移动设备上无响应
 🟠 优先级: High
-🏷️ 标签: bug, mobile, login, ui, priority-high
-🔗 链接: https://github.com/company/repo/issues/245
+<span class="material-icons">label</span> 标签: bug, mobile, login, ui, priority-high
+<span class="material-icons">link</span> 链接: https://github.com/company/repo/issues/245
 ```
 
 ### 示例 2：功能请求
@@ -940,11 +940,11 @@ def route_feedback(feedback):
 /alfred:9-feedback
 
 # 输出：
-✅ GitHub Issue #246 创建成功
+<span class="material-icons">check_circle</span> GitHub Issue #246 创建成功
 ✨ 标题: [FEATURE] 添加数据导出功能
 🟡 优先级: Medium
-🏷️ 标签: feature, enhancement, data-export, reporting
-🔗 链接: https://github.com/company/repo/issues/246
+<span class="material-icons">label</span> 标签: feature, enhancement, data-export, reporting
+<span class="material-icons">link</span> 链接: https://github.com/company/repo/issues/246
 ```
 
 ### 示例 3：团队讨论
@@ -953,11 +953,11 @@ def route_feedback(feedback):
 /alfred:9-feedback
 
 # 输出：
-✅ GitHub Discussion #123 创建成功
+<span class="material-icons">check_circle</span> GitHub Discussion #123 创建成功
 ❓ 标题: [DISCUSSION] 关于 API 版本管理策略
 🟡 优先级: Medium
-🏷️ 标签: discussion, architecture, api, versioning
-🔗 链接: https://github.com/company/repo/discussions/123
+<span class="material-icons">label</span> 标签: discussion, architecture, api, versioning
+<span class="material-icons">link</span> 链接: https://github.com/company/repo/discussions/123
 ```
 
 ### 示例 4：批量反馈处理
@@ -966,11 +966,11 @@ def route_feedback(feedback):
 /alfred:9-feedback --batch-file team_feedback.txt
 
 # 输出：
-✅ 批量创建 5 个 Issues
-✅ Bug Reports: 3 个
-✅ Feature Requests: 2 个
-✅ 自动分配给相应团队
-✅ 设置适当标签和优先级
+<span class="material-icons">check_circle</span> 批量创建 5 个 Issues
+<span class="material-icons">check_circle</span> Bug Reports: 3 个
+<span class="material-icons">check_circle</span> Feature Requests: 2 个
+<span class="material-icons">check_circle</span> 自动分配给相应团队
+<span class="material-icons">check_circle</span> 设置适当标签和优先级
 📋 详细报告: .moai/reports/batch-feedback-2025-01-15.md
 ```
 
@@ -1037,7 +1037,7 @@ jobs:
 
 #### Bug 报告最佳实践
 ```bash
-# ✅ 好的 Bug 报告
+# <span class="material-icons">check_circle</span> 好的 Bug 报告
 标题: [BUG] 登录页面在 Safari 浏览器上显示异常
 
 描述:
@@ -1048,14 +1048,14 @@ jobs:
 - 影响版本：v2.1.0
 - 复现频率：100%
 
-# ❌ 不好的 Bug 报告
+# <span class="material-icons">cancel</span> 不好的 Bug 报告
 标题: 登录有问题
 描述: 登录不好用
 ```
 
 #### 功能请求最佳实践
 ```bash
-# ✅ 好的功能请求
+# <span class="material-icons">check_circle</span> 好的功能请求
 标题: [FEATURE] 支持多种语言界面切换
 
 描述:
@@ -1071,7 +1071,7 @@ jobs:
 - 保存用户语言偏好
 - 所有界面元素都支持多语言
 
-# ❌ 不好的功能请求
+# <span class="material-icons">cancel</span> 不好的功能请求
 标题: 要多语言支持
 描述: 希望支持多种语言
 ```

@@ -540,13 +540,44 @@ After spec-builder completes:
 
 ---
 
-## 🚀 PHASE 3: Git Branch & PR Setup (STEP 2 continuation)
+## 🚀 PHASE 3: Git Setup based on spec_git_workflow (STEP 2 continuation)
 
 This phase ONLY executes IF PHASE 2 completed successfully and all SPEC files were created.
 
-Your task is to create a Git branch and GitHub Pull Request for the SPEC.
+Your task is to handle Git operations based on the project's `spec_git_workflow` setting.
 
-### Step 1: Invoke git-manager agent
+### Step 1: Check spec_git_workflow setting
+
+First, read the current workflow configuration:
+
+```bash
+# Check spec_git_workflow setting from .moai/config.json
+spec_workflow=$(grep -o '"spec_git_workflow": "[^"]*"' .moai/config.json | cut -d'"' -f4)
+echo "Current SPEC Git workflow: $spec_workflow"
+```
+
+### Step 2: Execute workflow-specific actions
+
+**IF `spec_workflow` is "develop_direct":**
+1. Print: "✅ Direct commit mode: Staying on develop branch (feature branch creation skipped)"
+2. Skip feature branch creation
+3. Skip PR creation
+4. Proceed to completion message
+
+**IF `spec_workflow` is "feature_branch":**
+1. Proceed to Step 3: Create feature branch and PR
+
+**IF `spec_workflow` is "per_spec":**
+1. Ask user: "Which workflow do you want for this SPEC?"
+   - Options: ["Create feature branch + PR", "Direct commit to develop"]
+2. IF user chooses "Create feature branch + PR" → proceed to Step 3
+3. IF user chooses "Direct commit to develop" → skip branch creation
+
+### Step 3: Create Git branch & PR (only for feature_branch workflow)
+
+**This step only executes if workflow requires feature branch creation**
+
+Invoke git-manager agent:
 
 Use the Task tool to call the git-manager agent:
 

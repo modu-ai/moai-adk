@@ -4,13 +4,13 @@
 
 ---
 
-## 🎯 목표
+## <span class="material-icons">target</span> 목표
 
 이 가이드를 통해 MoAI-ADK 온라인 문서 시스템을 완벽하게 설정하고 실행하는 방법을 배웁니다.
 
 ---
 
-## 🚀 1단계: 시스템 요구사항
+## <span class="material-icons">rocket_launch</span> 1단계: 시스템 요구사항
 
 ### 필수 요구사항
 - **Python**: 3.13 이상
@@ -62,7 +62,7 @@ uv run build
 
 ---
 
-## 🎨 3단계: 문서 시스템 구축
+## <span class="material-icons">palette</span> 3단계: 문서 시스템 구축
 
 ### MkDocs 설정
 ```bash
@@ -106,7 +106,7 @@ theme:
 
 ---
 
-## 🔍 4단계: 검색 및 내비게이션
+## <span class="material-icons">search</span> 4단계: 검색 및 내비게이션
 
 ### 검색 시스템 활성화
 ```bash
@@ -150,7 +150,7 @@ ls -la site/getting-started/
 
 ---
 
-## 📊 6단계: 배포 준비
+## <span class="material-icons">analytics</span> 6단계: 배포 준비
 
 ### 로컬 빌드
 ```bash
@@ -229,7 +229,7 @@ uv run build --strict
 
 ---
 
-## 🚀 다음 단계
+## <span class="material-icons">rocket_launch</span> 다음 단계
 
 ### 1. 커스터마이징
 - 디자인 시스템 수정

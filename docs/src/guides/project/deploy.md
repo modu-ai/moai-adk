@@ -1437,7 +1437,7 @@ volumes:
 
 set -e
 
-echo "🚀 Deploying to development environment..."
+echo "<span class="material-icons">rocket_launch</span> Deploying to development environment..."
 
 # 환경 변수 설정
 export COMPOSE_PROJECT_NAME="myapp-dev"
@@ -1452,11 +1452,11 @@ echo "🔨 Building development images..."
 docker-compose build
 
 # 데이터베이스 마이그레이션
-echo "📊 Running database migrations..."
+echo "<span class="material-icons">analytics</span> Running database migrations..."
 docker-compose run --rm app alembic upgrade head
 
 # 서비스 시작
-echo "🚀 Starting development services..."
+echo "<span class="material-icons">rocket_launch</span> Starting development services..."
 docker-compose up -d
 
 # 상태 확인
@@ -1465,13 +1465,13 @@ sleep 10
 docker-compose ps
 
 # 상태 검사
-echo "🔍 Running health checks..."
+echo "<span class="material-icons">search</span> Running health checks..."
 ./scripts/health-checks.sh dev
 
-echo "✅ Development environment deployed successfully!"
-echo "📊 App available at: http://localhost:8000"
-echo "🗄️  Database available at: localhost:5432"
-echo "🔧 Redis available at: localhost:6379"
+echo "<span class="material-icons">check_circle</span> Development environment deployed successfully!"
+echo "<span class="material-icons">analytics</span> App available at: http://localhost:8000"
+echo "<span class="material-icons">storage</span>  Database available at: localhost:5432"
+echo "<span class="material-icons">settings</span> Redis available at: localhost:6379"
 echo "🎛️  Adminer available at: http://localhost:8080"
 echo "📱 Redis Commander available at: http://localhost:8081"
 ```
@@ -1593,7 +1593,7 @@ set -e
 VERSION=${1:-latest}
 ENVIRONMENT="staging"
 
-echo "🚀 Deploying version $VERSION to staging environment..."
+echo "<span class="material-icons">rocket_launch</span> Deploying version $VERSION to staging environment..."
 
 # 환경 변수 로드
 source .env.staging
@@ -1620,7 +1620,7 @@ if [ -n "$CURRENT_SERVICE" ]; then
     VERSION=$VERSION docker-compose -f docker-compose.staging.yml up -d app
 
     # 상태 검사
-    echo "🔍 Running health checks on new service..."
+    echo "<span class="material-icons">search</span> Running health checks on new service..."
     ./scripts/wait-for-health.sh http://staging-api.myapp.com/health
 
     # 스모크 테스트
@@ -1640,9 +1640,9 @@ else
 fi
 
 # 배포 확인
-echo "✅ Deployment completed successfully!"
-echo "🌐 Application available at: https://staging-api.myapp.com"
-echo "📊 Monitoring available at: https://staging-grafana.myapp.com"
+echo "<span class="material-icons">check_circle</span> Deployment completed successfully!"
+echo "<span class="material-icons">language</span> Application available at: https://staging-api.myapp.com"
+echo "<span class="material-icons">analytics</span> Monitoring available at: https://staging-grafana.myapp.com"
 
 # 알림 발송
 ./scripts/notify-deployment.sh $ENVIRONMENT $VERSION success
@@ -1881,7 +1881,7 @@ sed -i "s/ENVIRONMENT=.*/ENVIRONMENT=$NEW_ENV/" .env.$ENVIRONMENT
 sed -i "s/VERSION=.*/VERSION=$VERSION/" .env.$ENVIRONMENT
 
 # 새 환경 배포
-echo "🚀 Starting $NEW_ENV environment..."
+echo "<span class="material-icons">rocket_launch</span> Starting $NEW_ENV environment..."
 docker-compose -f docker-compose.$ENVIRONMENT.yml up -d
 
 # 상태 검사 대기
@@ -1897,13 +1897,13 @@ echo "🔄 Switching traffic to $NEW_ENV..."
 ./scripts/switch-traffic.sh $ENVIRONMENT $NEW_ENV
 
 # 트래픽 전환 확인
-echo "✅ Traffic switched to $NEW_ENV"
+echo "<span class="material-icons">check_circle</span> Traffic switched to $NEW_ENV"
 sleep 30
 
 # 최종 상태 검사
-echo "🔍 Final health check..."
+echo "<span class="material-icons">search</span> Final health check..."
 curl -f https://api.myapp.com/health || {
-    echo "❌ Health check failed, rolling back..."
+    echo "<span class="material-icons">cancel</span> Health check failed, rolling back..."
     ./scripts/switch-traffic.sh $ENVIRONMENT $OLD_ENV
     exit 1
 }
@@ -1912,9 +1912,9 @@ curl -f https://api.myapp.com/health || {
 echo "🧹 Cleaning up $OLD_ENV environment..."
 docker-compose -f docker-compose.$ENVIRONMENT.yml stop
 
-echo "✅ Blue-Green deployment completed successfully!"
-echo "🌐 Application running on: https://api.myapp.com"
-echo "📊 Environment: $NEW_ENV"
+echo "<span class="material-icons">check_circle</span> Blue-Green deployment completed successfully!"
+echo "<span class="material-icons">language</span> Application running on: https://api.myapp.com"
+echo "<span class="material-icons">analytics</span> Environment: $NEW_ENV"
 ```
 
 ### Canary 배포
@@ -2509,7 +2509,7 @@ jobs:
           if (fs.existsSync('bandit-report.json')) {
             const bandit = JSON.parse(fs.readFileSync('bandit-report.json', 'utf8'));
             if (bandit.results.length > 0) {
-              const comment = `## 🔒 Security Scan Results\n\n**Bandit found ${bandit.results.length} issues:**\n\n${bandit.results.map(issue => `- **${issue.test_name}**: ${issue.issue_text} (${issue.filename}:${issue.line_number})`).join('\n')}`;
+              const comment = `## <span class="material-icons">lock</span> Security Scan Results\n\n**Bandit found ${bandit.results.length} issues:**\n\n${bandit.results.map(issue => `- **${issue.test_name}**: ${issue.issue_text} (${issue.filename}:${issue.line_number})`).join('\n')}`;
               github.rest.issues.createComment({
                 issue_number: context.issue.number,
                 owner: context.repo.owner,
@@ -2535,13 +2535,13 @@ ENVIRONMENT=${1:-staging}
 VERSION=${2:-latest}
 STRATEGY=${3:-rolling}
 
-echo "🚀 Starting deployment pipeline"
+echo "<span class="material-icons">rocket_launch</span> Starting deployment pipeline"
 echo "📋 Environment: $ENVIRONMENT"
-echo "🏷️  Version: $VERSION"
+echo "<span class="material-icons">label</span>  Version: $VERSION"
 echo "🔄 Strategy: $STRATEGY"
 
 # 1. 사전 검사
-echo "🔍 Running pre-deployment checks..."
+echo "<span class="material-icons">search</span> Running pre-deployment checks..."
 ./scripts/pre-deployment-checks.sh $ENVIRONMENT
 
 # 2. 백업 생성
@@ -2558,7 +2558,7 @@ if [ "$ENVIRONMENT" != "production" ]; then
 fi
 
 # 4. 대상 환경 배포
-echo "🚀 Deploying to $ENVIRONMENT environment..."
+echo "<span class="material-icons">rocket_launch</span> Deploying to $ENVIRONMENT environment..."
 
 case $STRATEGY in
     "rolling")
@@ -2571,30 +2571,30 @@ case $STRATEGY in
         ./scripts/canary-deploy.sh $ENVIRONMENT $VERSION
         ;;
     *)
-        echo "❌ Unknown deployment strategy: $STRATEGY"
+        echo "<span class="material-icons">cancel</span> Unknown deployment strategy: $STRATEGY"
         exit 1
         ;;
 esac
 
 # 5. 배포 후 검증
-echo "🔍 Running post-deployment validation..."
+echo "<span class="material-icons">search</span> Running post-deployment validation..."
 ./scripts/post-deployment-checks.sh $ENVIRONMENT
 
 # 6. 성능 테스트
 if [ "$ENVIRONMENT" = "staging" ]; then
-    echo "📊 Running performance tests..."
+    echo "<span class="material-icons">analytics</span> Running performance tests..."
     ./scripts/performance-tests.sh $ENVIRONMENT
 fi
 
 # 7. 보안 검사
-echo "🔒 Running security validation..."
+echo "<span class="material-icons">lock</span> Running security validation..."
 ./scripts/security-validation.sh $ENVIRONMENT
 
 # 8. 알림 발송
 echo "📧 Sending deployment notifications..."
 ./scripts/notify-deployment.sh $ENVIRONMENT $VERSION success
 
-echo "✅ Deployment pipeline completed successfully!"
+echo "<span class="material-icons">check_circle</span> Deployment pipeline completed successfully!"
 ```
 
 ### 멀티 환경 배포 관리
@@ -2781,22 +2781,22 @@ class DeploymentTracker:
 
     def format_notification_message(self, deployment: Dict) -> str:
         """알림 메시지 포맷팅"""
-        status_emoji = "✅" if deployment["status"] == "success" else "❌"
+        status_emoji = "<span class="material-icons">check_circle</span>" if deployment["status"] == "success" else "<span class="material-icons">cancel</span>"
 
         message = f"""
 {status_emoji} Deployment {deployment['status'].upper()}
 
 📋 Environment: {deployment['environment']}
-🏷️  Version: {deployment['version']}
+<span class="material-icons">label</span>  Version: {deployment['version']}
 🔄 Strategy: {deployment['strategy']}
 ⏰ Duration: {deployment.get('duration', 'N/A')}
-📊 Success Rate: {deployment.get('success_rate', 'N/A')}%
+<span class="material-icons">analytics</span> Success Rate: {deployment.get('success_rate', 'N/A')}%
 
 Steps:
 """
 
         for step in deployment["steps"]:
-            step_emoji = "✅" if step["status"] == "success" else "❌"
+            step_emoji = "<span class="material-icons">check_circle</span>" if step["status"] == "success" else "<span class="material-icons">cancel</span>"
             message += f"{step_emoji} {step['name']}\n"
 
         return message
@@ -3011,7 +3011,7 @@ ENVIRONMENT=${1:-staging}
 TARGET_VERSION=${2:-previous}
 
 echo "🔄 Starting rollback for $ENVIRONMENT environment"
-echo "🎯 Target version: $TARGET_VERSION"
+echo "<span class="material-icons">target</span> Target version: $TARGET_VERSION"
 
 # 현재 상태 백업
 echo "💾 Backing up current state..."
@@ -3030,7 +3030,7 @@ case $TARGET_VERSION in
         ;;
 esac
 
-echo "🏷️  Rolling back to version: $VERSION"
+echo "<span class="material-icons">label</span>  Rolling back to version: $VERSION"
 
 # 롤백 실행
 echo "🔄 Executing rollback..."
@@ -3040,21 +3040,21 @@ echo "⏸️  Stopping current deployment..."
 ./scripts/stop-deployment.sh $ENVIRONMENT
 
 # 2. 이전 버전 배포
-echo "🚀 Deploying previous version..."
+echo "<span class="material-icons">rocket_launch</span> Deploying previous version..."
 ./scripts/deploy-version.sh $ENVIRONMENT $VERSION
 
 # 3. 상태 검증
-echo "🔍 Validating rollback..."
+echo "<span class="material-icons">search</span> Validating rollback..."
 ./scripts/validate-rollback.sh $ENVIRONMENT $VERSION
 
 # 4. 데이터베이스 마이그레이션 (필요시)
-echo "📊 Running database migrations..."
+echo "<span class="material-icons">analytics</span> Running database migrations..."
 ./scripts/migrate-database.sh $ENVIRONMENT rollback
 
 # 5. 롤백 완료 확인
-echo "✅ Rollback completed successfully!"
-echo "🌐 Application running on: https://api.myapp.com"
-echo "🏷️  Current version: $VERSION"
+echo "<span class="material-icons">check_circle</span> Rollback completed successfully!"
+echo "<span class="material-icons">language</span> Application running on: https://api.myapp.com"
+echo "<span class="material-icons">label</span>  Current version: $VERSION"
 
 # 알림 발송
 ./scripts/notify-rollback.sh $ENVIRONMENT $VERSION
@@ -3164,7 +3164,7 @@ incident_response:
       **Next Update**: {next_update_time}
 
     resolution: |
-      ✅ **Incident Resolved**
+      <span class="material-icons">check_circle</span> **Incident Resolved**
 
       **Incident ID**: {incident_id}
       **Resolution Time**: {resolution_time}
@@ -3183,28 +3183,28 @@ incident_response:
 ```markdown
 ## 📋 Pre-Deployment Checklist
 
-### ✅ 코드 준비
+### <span class="material-icons">check_circle</span> 코드 준비
 - [ ] 모든 테스트 통과 (단위, 통합, E2E)
 - [ ] 코드 리뷰 완료 및 승인
 - [ ] 보안 스캔 통과
 - [ ] 성능 테스트 통과
 - [ ] 문서 업데이트 완료
 
-### ✅ 환경 준비
+### <span class="material-icons">check_circle</span> 환경 준비
 - [ ] 타겟 환경 상태 정상
 - [ ] 데이터베이스 백업 완료
 - [ ] 설정 파일 검증 완료
 - [ ] 리소스 용량 확인
 - [ ] 네트워크 연결 확인
 
-### ✅ 배포 계획
+### <span class="material-icons">check_circle</span> 배포 계획
 - [ ] 롤백 계획 수립
 - [ ] 배포 시간 창 확보
 - [ ] 관련팀 통지 완료
 - [ ] 모니터링 시스템 준비
 - [ ] 알림 채널 설정
 
-### ✅ 보안 및 규제
+### <span class="material-icons">check_circle</span> 보안 및 규제
 - [ ] 접근 권한 확인
 - [ ] 보안 정책 준수
 - [ ] 규제 요구사항 검증
@@ -3215,30 +3215,30 @@ incident_response:
 #### 배포 후 확인사항
 
 ```markdown
-## ✅ Post-Deployment Checklist
+## <span class="material-icons">check_circle</span> Post-Deployment Checklist
 
-### 🚀 배포 상태 확인
+### <span class="material-icons">rocket_launch</span> 배포 상태 확인
 - [ ] 애플리케이션 정상 시작
 - [ ] 헬스 체크 통과
 - [ ] 로그 에러 없음
 - [ ] 데이터베이스 연결 정상
 - [ ] 외부 API 연동 정상
 
-### 📊 기능 검증
+### <span class="material-icons">analytics</span> 기능 검증
 - [ ] 주요 기능 동작 확인
 - [ ] API 엔드포인트 응답 정상
 - [ ] 사용자 인증 작동
 - [ ] 데이터 CRUD 작업 정상
 - [ ] 파일 업로드/다운로드 정상
 
-### 🔍 성능 모니터링
+### <span class="material-icons">search</span> 성능 모니터링
 - [ ] 응답 시간 정상 범위
 - [ ] CPU/메모리 사용량 정상
 - [ ] 데이터베이스 쿼리 성능 양호
 - [ ] 캐시 적중률 정상
 - [ ] 에러률 임계치 이하
 
-### 📈 모니터링 알림
+### <span class="material-icons">trending_up</span> 모니터링 알림
 - [ ] Prometheus 메트릭 수집
 - [ ] Grafana 대시보드 정상
 - [ ] 로그 수집 및 분석

@@ -8,7 +8,7 @@
 
 # @CODE:DOC-ONLINE-001:ZH
 
-## 🚀 快速开始
+## <span class="material-icons">rocket_launch</span> 快速开始
 
 ### 1. UV 安装（推荐）
 ```bash
@@ -35,7 +35,7 @@ uv run dev
 ### 4. 在浏览器中查看
 [http://127.0.0.1:8080](http://127.0.0.1:8080)
 
-## 📚 可用命令
+## <span class="material-icons">menu_book</span> 可用命令
 
 | 命令 | 描述 |
 |--------|------|
@@ -70,7 +70,7 @@ docs/
 └── overrides/             # 主题覆盖
 ```
 
-## 🎨 定制
+## <span class="material-icons">palette</span> 定制
 
 ### 主题设置
 - **Material Design**: 基于 Google Material Design
@@ -83,7 +83,7 @@ docs/
 - **搜索**: 专业搜索和自动完成
 - **Git 集成**: 提交信息和版本管理
 
-## 📝 文档编写指南
+## <span class="material-icons">description</span> 文档编写指南
 
 ### Markdown 扩展
 ```markdown
@@ -110,7 +110,7 @@ graph LR
     B --> C[Sync]
 ```
 
-## 🚀 部署
+## <span class="material-icons">rocket_launch</span> 部署
 
 ### Vercel 部署（推荐）
 ```bash
@@ -140,7 +140,7 @@ uv run build
 # 将 site/ 目录上传到您选择的托管服务
 ```
 
-## 🔧 开发
+## <span class="material-icons">settings</span> 开发
 
 ### 本地开发环境
 ```bash
@@ -185,7 +185,7 @@ uv run clean
 mkdocs build --strict
 ```
 
-## 📊 监控
+## <span class="material-icons">analytics</span> 监控
 
 ### 构建统计
 ```bash

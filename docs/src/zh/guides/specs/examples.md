@@ -605,7 +605,7 @@ estimated_complexity: high
 
 #### 避免 EARS 常见错误
 ```yaml
-❌ 常见错误:
+<span class="material-icons">cancel</span> 常见错误:
 
 1. 模式选择错误
    "当系统启动时，系统必须提供用户注册" → 应该是 Ubiquitous
@@ -619,7 +619,7 @@ estimated_complexity: high
 4. 约束条件不量化
    "系统响应时间要快" → 缺少量化指标
 
-✅ 正确写法:
+<span class="material-icons">check_circle</span> 正确写法:
 
 1. 正确的模式选择
    "系统必须提供用户注册功能" → Ubiquitous Requirements
@@ -639,24 +639,24 @@ estimated_complexity: high
 #### SMART 原则应用
 ```yaml
 Specific (具体的):
-  ❌ "系统应该运行良好"
-  ✅ "用户登录 API 响应时间必须小于 200ms"
+  <span class="material-icons">cancel</span> "系统应该运行良好"
+  <span class="material-icons">check_circle</span> "用户登录 API 响应时间必须小于 200ms"
 
 Measurable (可测量的):
-  ❌ "提高系统性能"
-  ✅ "系统必须支持 1000 并发用户"
+  <span class="material-icons">cancel</span> "提高系统性能"
+  <span class="material-icons">check_circle</span> "系统必须支持 1000 并发用户"
 
 Achievable (可实现的):
-  ❌ "系统响应时间为 0ms"
-  ✅ "系统响应时间小于 100ms"
+  <span class="material-icons">cancel</span> "系统响应时间为 0ms"
+  <span class="material-icons">check_circle</span> "系统响应时间小于 100ms"
 
 Relevant (相关的):
-  ❌ "界面颜色要美观"
-  ✅ "错误提示信息要清晰易懂"
+  <span class="material-icons">cancel</span> "界面颜色要美观"
+  <span class="material-icons">check_circle</span> "错误提示信息要清晰易懂"
 
 Time-bound (有时间限制的):
-  ❌ "系统要尽快优化"
-  ✅ "页面加载时间必须在 3 秒内完成"
+  <span class="material-icons">cancel</span> "系统要尽快优化"
+  <span class="material-icons">check_circle</span> "页面加载时间必须在 3 秒内完成"
 ```
 
 #### 测试驱动验收标准

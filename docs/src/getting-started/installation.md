@@ -1,34 +1,34 @@
-# Installation Guide
+# 설치 가이드
 
-Get MoAI-ADK up and running on your system in just a few minutes. This guide covers system requirements, installation methods, and verification steps.
+몇 분 만에 시스템에 MoAI-ADK를 설치하고 실행하세요. 이 가이드는 시스템 요구사항, 설치 방법, 확인 단계를 다룹니다.
 
-## System Requirements
+## 시스템 요구사항
 
-### Minimum Requirements
+### 최소 요구사항
 
-- **Python**: 3.13 or higher
-- **Operating System**:
+- **Python**: 3.13 이상
+- **운영체제**:
   - macOS (10.15+)
   - Linux (Ubuntu 20.04+, CentOS 8+, Debian 11+)
-  - Windows 10+ (PowerShell recommended)
-- **Git**: 2.25 or higher
-- **Memory**: 4GB RAM minimum, 8GB recommended
-- **Storage**: 500MB free space
+  - Windows 10+ (PowerShell 권장)
+- **Git**: 2.25 이상
+- **메모리**: 4GB RAM 최소, 8GB 권장
+- **저장공간**: 500MB 여유 공간
 
-### Recommended Requirements
+### 권장 요구사항
 
-- **Python**: 3.13+ (latest stable)
-- **Package Manager**: UV 0.5.0+ (recommended) or pip 24.0+
-- **IDE**: VS Code with Claude Code extension, or your preferred editor
-- **Terminal**: Modern terminal with UTF-8 support
+- **Python**: 3.13+ (최신 안정 버전)
+- **패키지 관리자**: UV 0.5.0+ (권장) 또는 pip 24.0+
+- **IDE**: Claude Code 확장 프로그램이 설치된 VS Code 또는 선호하는 편집기
+- **터미널**: UTF-8을 지원하는 현대적 터미널
 
-## Installation Methods
+## 설치 방법
 
-### Method 1: UV Package Manager (Recommended)
+### 방법 1: UV 패키지 관리자 (권장)
 
-UV is the fastest and most reliable way to install MoAI-ADK. It provides automatic dependency management and virtual environment handling.
+UV는 MoAI-ADK를 설치하는 가장 빠르고 신뢰할 수 있는 방법입니다. 자동 의존성 관리와 가상 환경 처리를 제공합니다.
 
-#### Step 1: Install UV
+#### 1단계: UV 설치
 
 **macOS/Linux:**
 ```bash
@@ -40,93 +40,93 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-#### Step 2: Verify UV Installation
+#### 2단계: UV 설치 확인
 
 ```bash
 uv --version
-# Expected output: uv 0.5.1 or higher
+# 예상 출력: uv 0.5.1 이상
 ```
 
-#### Step 3: Install MoAI-ADK
+#### 3단계: MoAI-ADK 설치
 
 ```bash
 uv tool install moai-adk
 ```
 
-#### Step 4: Verify Installation
+#### 4단계: 설치 확인
 
 ```bash
 moai-adk --version
-# Expected output: MoAI-ADK v1.0.0 or higher
+# 예상 출력: MoAI-ADK v1.0.0 이상
 ```
 
-### Method 2: PyPI Installation (Alternative)
+### 방법 2: PyPI 설치 (대안)
 
-If you prefer using pip or UV is not available in your environment.
+pip를 사용하거나 UV를 사용할 수 없는 경우입니다.
 
-#### Step 1: Upgrade pip (if needed)
+#### 1단계: pip 업그레이드 (필요한 경우)
 
 ```bash
 python -m pip install --upgrade pip
 ```
 
-#### Step 2: Install MoAI-ADK
+#### 2단계: MoAI-ADK 설치
 
 ```bash
 pip install moai-adk
 ```
 
-#### Step 3: Verify Installation
+#### 3단계: 설치 확인
 
 ```bash
 moai-adk --version
 ```
 
-### Method 3: Development Installation
+### 방법 3: 개발용 설치
 
-For developers who want to contribute to MoAI-ADK.
+MoAI-ADK에 기여하고 싶은 개발자용입니다.
 
-#### Step 1: Clone Repository
+#### 1단계: 저장소 클론
 
 ```bash
 git clone https://github.com/modu-ai/moai-adk.git
 cd moai-adk
 ```
 
-#### Step 2: Install in Development Mode
+#### 2단계: 개발 모드로 설치
 
 ```bash
-# Using UV (recommended)
+# UV 사용 (권장)
 uv pip install -e .
 
-# Or using pip
+# 또는 pip 사용
 pip install -e .
 ```
 
-#### Step 3: Verify Installation
+#### 3단계: 설치 확인
 
 ```bash
 moai-adk --version
 ```
 
-## Post-Installation Setup
+## 설치 후 설정
 
-### Environment Variables
+### 환경 변수
 
-Optional but recommended environment variables:
+선택적이지만 권장되는 환경 변수:
 
 ```bash
-# Add to your shell profile (~/.bashrc, ~/.zshrc, etc.)
+# 셸 프로필에 추가 (~/.bashrc, ~/.zshrc 등)
 export MOAI_LOG_LEVEL=INFO
 export MOAI_CACHE_DIR="$HOME/.moai/cache"
 export CLAUDE_PROJECT_DIR=$(pwd)
 ```
 
-### Claude Code Integration
+### Claude Code 통합
 
-MoAI-ADK requires Claude Code for the full experience.
+MoAI-ADK는 전체 경험을 위해 Claude Code가 필요합니다.
 
-#### Install Claude Code
+#### Claude Code 설치
 
 ```bash
 # macOS
@@ -139,157 +139,157 @@ curl -fsSL https://claude.ai/install.sh | sh
 winget install Anthropic.Claude
 ```
 
-#### Verify Claude Code
+#### Claude Code 확인
 
 ```bash
 claude --version
-# Expected: Claude Code v1.5.0 or higher
+# 예상: Claude Code v1.5.0 이상
 ```
 
-### Optional MCP Servers
+### 선택적 MCP 서버
 
-MoAI-ADK supports Model Context Protocol (MCP) servers for enhanced functionality.
+MoAI-ADK는 향상된 기능을 위해 Model Context Protocol (MCP) 서버를 지원합니다.
 
-#### Install Recommended MCP Servers
+#### 권장 MCP 서버 설치
 
 ```bash
-# Context7 - Latest library documentation
+# Context7 - 최신 라이브러리 문서
 npx -y @upstash/context7-mcp
 
-# Playwright - Web E2E testing
+# Playwright - 웹 E2E 테스트
 npx -y @playwright/mcp
 
-# Sequential Thinking - Complex reasoning
+# Sequential Thinking - 복잡한 추론
 npx -y @modelcontextprotocol/server-sequential-thinking
 ```
 
-## Verification
+## 확인
 
-### System Health Check
+### 시스템 상태 확인
 
-Run the built-in doctor command to verify your installation:
+내장된 doctor 명령어를 실행하여 설치를 확인하세요:
 
 ```bash
 moai-adk doctor
 ```
 
-**Expected Output:**
+**예상 출력:**
 ```
-Running system diagnostics...
+시스템 진단 실행 중...
 
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┓
-┃ Check                                    ┃ Status ┃
+┃ 확인                                    ┃ 상태 ┃
 ┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━┩
 │ Python >= 3.13                           │   ✓    │
-│ uv installed                             │   ✓    │
-│ Git installed                            │   ✓    │
-│ Claude Code available                    │   ✓    │
-│ Package registry accessible              │   ✓    │
+│ uv 설치됨                               │   ✓    │
+│ Git 설치됨                              │   ✓    │
+│ Claude Code 사용 가능                    │   ✓    │
+│ 패키지 레지스트리 접근 가능              │   ✓    │
 └──────────────────────────────────────────┴────────┘
 
-✅ All checks passed!
+<span class="material-icons">check_circle</span> 모든 검사 통과!
 ```
 
-### Create Test Project
+### 테스트 프로젝트 생성
 
-Create a simple test project to verify everything works:
+모든 것이 작동하는지 확인하기 위해 간단한 테스트 프로젝트를 생성하세요:
 
 ```bash
-# Create test project
+# 테스트 프로젝트 생성
 moai-adk init test-project
 cd test-project
 
-# Start Claude Code
+# Claude Code 시작
 claude
 
-# In Claude Code, run:
+# Claude Code에서 다음 실행:
 /alfred:0-project
 ```
 
-## Troubleshooting
+## 문제 해결
 
-### Common Issues
+### 일반적인 문제
 
-#### Issue: "uv: command not found"
+#### 문제: "uv: command not found"
 
-**Solution:**
-1. Ensure UV is installed correctly
-2. Add UV to your PATH:
+**해결책:**
+1. UV가 올바르게 설치되었는지 확인
+2. UV를 PATH에 추가:
    ```bash
    export PATH="$HOME/.cargo/bin:$PATH"
    ```
-3. Restart your terminal
+3. 터미널 재시작
 
-#### Issue: "Python 3.8 found, but 3.13+ required"
+#### 문제: "Python 3.8 found, but 3.13+ required"
 
-**Solution:**
+**해결책:**
 ```bash
-# Using pyenv
+# pyenv 사용
 curl https://pyenv.run | bash
 pyenv install 3.13
 pyenv global 3.13
 
-# Or using UV
+# 또는 UV 사용
 uv python install 3.13
 uv python pin 3.13
 ```
 
-#### Issue: "Permission denied" during installation
+#### 문제: 설치 중 "Permission denied"
 
-**Solution:**
+**해결책:**
 ```bash
-# Use user installation
+# 사용자 설치 사용
 pip install --user moai-adk
 
-# Or use sudo (Linux/macOS)
+# 또는 sudo 사용 (Linux/macOS)
 sudo pip install moai-adk
 ```
 
-#### Issue: Claude Code not recognized
+#### 문제: Claude Code를 인식하지 못함
 
-**Solution:**
-1. Verify Claude Code installation: `claude --version`
-2. Ensure it's in your PATH
-3. Reinstall if necessary
+**해결책:**
+1. Claude Code 설치 확인: `claude --version`
+2. PATH에 있는지 확인
+3. 필요한 경우 재설치
 
-#### Issue: ModuleNotFoundError for dependencies
+#### 문제: 의존성에 대한 ModuleNotFoundError
 
-**Solution:**
+**해결책:**
 ```bash
-# In your project directory
+# 프로젝트 디렉터리에서
 uv sync
 
-# Or install specific dependencies
+# 또는 특정 의존성 설치
 uv add fastapi pytest
 ```
 
-### Getting Help
+### 도움 얻기
 
-If you encounter issues not covered here:
+여기에서 다루지 않는 문제가 발생한 경우:
 
-1. **Check GitHub Issues**: Search existing issues at https://github.com/modu-ai/moai-adk/issues
-2. **Run verbose diagnostics**: `moai-adk doctor --verbose`
-3. **Create an issue**: Use `/alfred:9-feedback` in Claude Code to automatically create a GitHub issue
+1. **GitHub Issues 확인**: https://github.com/modu-ai/moai-adk/issues에서 기존 이슈 검색
+2. **상세 진단 실행**: `moai-adk doctor --verbose`
+3. **이슈 생성**: Claude Code에서 `/alfred:9-feedback`를 사용하여 자동으로 GitHub 이슈 생성
 
-## Next Steps
+## 다음 단계
 
-After successful installation:
+성공적인 설치 후:
 
-1. **[Quick Start Guide](quick-start.md)** - Get your first project running in 10 minutes
-2. **[Core Concepts](concepts.md)** - Understand SPEC-First, TDD, @TAG, and TRUST 5 principles
-3. **[Project Initialization](../guides/project/init.md)** - Learn about project setup and configuration
+1. **[빠른 시작 가이드](quick-start.md)** - 10분 안에 첫 프로젝트 실행
+2. **[핵심 개념](concepts.md)** - SPEC-First, TDD, @TAG, TRUST 5 원칙 이해
+3. **[프로젝트 초기화](../guides/project/init.md)** - 프로젝트 설정 및 구성 학습
 
-## Installation Summary
+## 설치 요약
 
 ```bash
-# One-line installation (recommended)
+# 원라인 설치 (권장)
 curl -LsSf https://astral.sh/uv/install.sh | sh && uv tool install moai-adk
 
-# Verify installation
+# 설치 확인
 moai-adk doctor
 
-# Create first project
+# 첫 프로젝트 생성
 moai-adk init my-project && cd my-project && claude
 ```
 
-You're now ready to experience the power of SPEC-First TDD development with Alfred SuperAgent! 🚀
+이제 Alfred SuperAgent와 함께 SPEC-First TDD 개발의 강력한 기능을 경험할 준비가 되었습니다! <span class="material-icons">rocket_launch</span>

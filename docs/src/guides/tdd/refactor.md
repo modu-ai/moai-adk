@@ -1699,7 +1699,7 @@ REFACTOR 단계 커밋은 코드 개선을 명확히 표시해야 합니다:
 
 ```bash
 # 좋은 커밋 메시지 예시
-git commit -m "♻️ refactor(AUTH-001): improve authentication service architecture
+git commit -m "<span class="material-icons">recycling</span> refactor(AUTH-001): improve authentication service architecture
 
 - Extract interfaces for UserRepository, PasswordHasher, TokenGenerator
 - Implement BCrypt password hashing instead of plain text comparison
@@ -1711,10 +1711,10 @@ Breaking changes: None
 Tests: All passing, coverage improved from 85% to 95%"
 
 # 작은 단계 리팩토링
-git commit -m "♻️ refactor(AUTH-001): extract email validation to separate method"
+git commit -m "<span class="material-icons">recycling</span> refactor(AUTH-001): extract email validation to separate method"
 
 # 성능 개선
-git commit -m "♻️ refactor(AUTH-001): add JWT token caching for improved performance"
+git commit -m "<span class="material-icons">recycling</span> refactor(AUTH-001): add JWT token caching for improved performance"
 ```
 
 ### 2. 커밋 단위와 그래뉼리티
@@ -1723,19 +1723,19 @@ git commit -m "♻️ refactor(AUTH-001): add JWT token caching for improved per
 
 ```bash
 # 1. 구조적 리팩토링 (가장 큰 변경)
-git commit -m "♻️ refactor(AUTH-001): extract authentication interfaces"
+git commit -m "<span class="material-icons">recycling</span> refactor(AUTH-001): extract authentication interfaces"
 
 # 2. 구현 개선
-git commit -m "♻️ refactor(AUTH-001): implement BCrypt password hashing"
+git commit -m "<span class="material-icons">recycling</span> refactor(AUTH-001): implement BCrypt password hashing"
 
 # 3. 에러 핸들링 개선
-git commit -m "♻️ refactor(AUTH-001): add custom exception types"
+git commit -m "<span class="material-icons">recycling</span> refactor(AUTH-001): add custom exception types"
 
 # 4. 성능 최적화
-git commit -m "♻️ refactor(AUTH-001): add token caching mechanism"
+git commit -m "<span class="material-icons">recycling</span> refactor(AUTH-001): add token caching mechanism"
 
 # 5. 코드 스타일 개선
-git commit -m "♻️ refactor(AUTH-001): improve code formatting and naming"
+git commit -m "<span class="material-icons">recycling</span> refactor(AUTH-001): improve code formatting and naming"
 ```
 
 ### 3. 브랜치 관리
@@ -1857,7 +1857,7 @@ REFACTOR 단계는 TDD 사이클의 마지막 단계로, **동작하는 코드�
 
 리팩토링의 핵심은 **"작은 단계, 안전한 개선, 지속적 품질 향상"**입니다. 테스트 보호 하에 신중하게 진행하고, 항상 코드를 더 나은 상태로 남기는 것이 중요합니다.
 
-**REFACTOR 단계의 성공은 지속 가능한 소프트웨어 개발의 기반을 마련합니다!** 🔧✨
+**REFACTOR 단계의 성공은 지속 가능한 소프트웨어 개발의 기반을 마련합니다!** <span class="material-icons">settings</span>✨
 
 ---
 

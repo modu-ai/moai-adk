@@ -11,15 +11,15 @@ description: 5分钟内创建第一个 MoAI-ADK 项目并体验 AI 驱动的 TDD
 
 开始之前，请确保：
 
-- ✅ 已安装 [MoAI-ADK](installation.md)
-- ✅ 已安装 [Claude Code](installation.md#claude-code-设置)
-- ✅ 有基本的 Python 和 Git 知识
+- <span class="material-icons">check_circle</span> 已安装 [MoAI-ADK](installation.md)
+- <span class="material-icons">check_circle</span> 已安装 [Claude Code](installation.md#claude-code-设置)
+- <span class="material-icons">check_circle</span> 有基本的 Python 和 Git 知识
 
 ---
 
 ## 5 分钟快速流程
 
-### 步骤 1️⃣：创建项目（1 分钟）
+### 步骤 <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_one</span>：创建项目（1 分钟）
 
 ```bash
 # 创建新项目
@@ -33,12 +33,12 @@ cd hello-world
 
 ```
 hello-world/
-├── .moai/              ✅ Alfred 配置
-├── .claude/            ✅ Claude Code 自动化
-└── CLAUDE.md           ✅ 项目指南
+├── .moai/              <span class="material-icons">check_circle</span> Alfred 配置
+├── .claude/            <span class="material-icons">check_circle</span> Claude Code 自动化
+└── CLAUDE.md           <span class="material-icons">check_circle</span> 项目指南
 ```
 
-### 步骤 2️⃣：验证安装（30 秒）
+### 步骤 <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_two</span>：验证安装（30 秒）
 
 ```bash
 # 运行系统诊断
@@ -48,23 +48,23 @@ moai-adk doctor
 **预期输出**：
 
 ```
-✅ Python 3.13.0
-✅ uv 0.5.1
-✅ .moai/ directory initialized
-✅ .claude/ directory ready
-✅ 16 agents configured
-✅ 74 skills loaded
-✅ 5 hooks active
+<span class="material-icons">check_circle</span> Python 3.13.0
+<span class="material-icons">check_circle</span> uv 0.5.1
+<span class="material-icons">check_circle</span> .moai/ directory initialized
+<span class="material-icons">check_circle</span> .claude/ directory ready
+<span class="material-icons">check_circle</span> 16 agents configured
+<span class="material-icons">check_circle</span> 74 skills loaded
+<span class="material-icons">check_circle</span> 5 hooks active
 ```
 
-### 步骤 3️⃣：启动 Claude Code（30 秒）
+### 步骤 <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_3</span>：启动 Claude Code（30 秒）
 
 ```bash
 # 启动 Claude Code
 claude
 ```
 
-### 步骤 4️⃣：初始化项目（2 分钟）
+### 步骤 <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_4</span>：初始化项目（2 分钟）
 
 在 Claude Code 中运行：
 
@@ -91,15 +91,15 @@ A: personal
 **完成后会看到**：
 
 ```
-✅ 项目初始化完成
-✅ 配置保存到 .moai/config.json
-✅ 在 .moai/project/ 中创建文档
-✅ Alfred 完成技能推荐
+<span class="material-icons">check_circle</span> 项目初始化完成
+<span class="material-icons">check_circle</span> 配置保存到 .moai/config.json
+<span class="material-icons">check_circle</span> 在 .moai/project/ 中创建文档
+<span class="material-icons">check_circle</span> Alfred 完成技能推荐
 
 下一步: /alfred:1-plan "第一个功能说明"
 ```
 
-### 步骤 5️⃣：创建第一个功能（1 分钟）
+### 步骤 <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_5</span>：创建第一个功能（1 分钟）
 
 继续在 Claude Code 中：
 
@@ -118,7 +118,7 @@ Alfred 会自动：
 
 现在让我们完整体验 MoAI-ADK 的核心工作流程。
 
-### 1️⃣ 规划：创建 SPEC（2 分钟）
+### <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_one</span> 规划：创建 SPEC（2 分钟）
 
 ```bash
 /alfred:1-plan "创建 Hello World API，接收名字参数返回个性化问候语"
@@ -127,9 +127,9 @@ Alfred 会自动：
 **Alfred 创建的内容**：
 
 ```
-✅ SPEC ID: HELLO-001
-✅ 文件: .moai/specs/SPEC-HELLO-001/spec.md
-✅ 分支: feature/SPEC-HELLO-001
+<span class="material-icons">check_circle</span> SPEC ID: HELLO-001
+<span class="material-icons">check_circle</span> 文件: .moai/specs/SPEC-HELLO-001/spec.md
+<span class="material-icons">check_circle</span> 分支: feature/SPEC-HELLO-001
 ```
 
 **查看生成的 SPEC**：
@@ -161,7 +161,7 @@ priority: high
 - 响应必须是 JSON 格式
 ```
 
-### 2️⃣ 运行：TDD 实现（5 分钟）
+### <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_two</span> 运行：TDD 实现（5 分钟）
 
 ```bash
 /alfred:2-run HELLO-001
@@ -198,7 +198,7 @@ def test_hello_without_name_should_return_default_greeting():
 运行测试（预期失败）：
 ```bash
 pytest tests/test_hello.py -v
-# ❌ FAILED - No module named 'fastapi'
+# <span class="material-icons">cancel</span> FAILED - No module named 'fastapi'
 ```
 
 #### 🟢 GREEN 阶段：最小实现
@@ -222,10 +222,10 @@ def hello(name: str = "World"):
 ```bash
 uv add fastapi pytest
 pytest tests/test_hello.py -v
-# ✅ PASSED - 所有测试通过
+# <span class="material-icons">check_circle</span> PASSED - 所有测试通过
 ```
 
-#### ♻️ REFACTOR 阶段：代码改进
+#### <span class="material-icons">recycling</span> REFACTOR 阶段：代码改进
 
 添加验证逻辑：
 ```python
@@ -254,10 +254,10 @@ def test_hello_with_long_name_should_return_400():
 最终测试验证：
 ```bash
 pytest tests/test_hello.py -v
-# ✅ PASSED - 所有测试通过，包括边界测试
+# <span class="material-icons">check_circle</span> PASSED - 所有测试通过，包括边界测试
 ```
 
-### 3️⃣ 同步：文档自动生成（1 分钟）
+### <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_3</span> 同步：文档自动生成（1 分钟）
 
 ```bash
 /alfred:3-sync
@@ -266,10 +266,10 @@ pytest tests/test_hello.py -v
 **Alfred 自动完成**：
 
 ```
-✅ docs/api/hello.md - API 文档生成
-✅ README.md - API 使用方法添加
-✅ CHANGELOG.md - v0.1.0 发布说明添加
-✅ TAG 链验证 - 所有 @TAG 确认
+<span class="material-icons">check_circle</span> docs/api/hello.md - API 文档生成
+<span class="material-icons">check_circle</span> README.md - API 使用方法添加
+<span class="material-icons">check_circle</span> CHANGELOG.md - v0.1.0 发布说明添加
+<span class="material-icons">check_circle</span> TAG 链验证 - 所有 @TAG 确认
 ```
 
 **查看生成的 API 文档**：
@@ -278,7 +278,7 @@ pytest tests/test_hello.py -v
 cat docs/api/hello.md
 ```
 
-### 4️⃣ 验证：TAG 链追踪（1 分钟）
+### <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_4</span> 验证：TAG 链追踪（1 分钟）
 
 检查完整的 TAG 链：
 ```bash
@@ -340,8 +340,8 @@ git log --oneline
 
 输出：
 ```
-a1b2c3d ✅ sync(HELLO-001): update docs and changelog
-b2c3d4e ♻️ refactor(HELLO-001): add name length validation
+a1b2c3d <span class="material-icons">check_circle</span> sync(HELLO-001): update docs and changelog
+b2c3d4e <span class="material-icons">recycling</span> refactor(HELLO-001): add name length validation
 c3d4e5f 🟢 feat(HELLO-001): implement hello API
 d4e5f6g 🔴 test(HELLO-001): add failing hello API tests
 e5f6g7h 🌿 Create feature/SPEC-HELLO-001 branch
@@ -350,11 +350,11 @@ f6g7h8i 📋 Initial project setup
 
 ### 核心体验
 
-- ✅ **SPEC-First**：用 EARS 格式明确定义需求
-- ✅ **TDD 流程**：RED → GREEN → REFACTOR 完整体验
-- ✅ **自动化**：文档与代码同步生成
-- ✅ **可追踪性**：@TAG 系统连接所有开发产物
-- ✅ **质量保证**：测试覆盖率 100%，代码质量验证
+- <span class="material-icons">check_circle</span> **SPEC-First**：用 EARS 格式明确定义需求
+- <span class="material-icons">check_circle</span> **TDD 流程**：RED → GREEN → REFACTOR 完整体验
+- <span class="material-icons">check_circle</span> **自动化**：文档与代码同步生成
+- <span class="material-icons">check_circle</span> **可追踪性**：@TAG 系统连接所有开发产物
+- <span class="material-icons">check_circle</span> **质量保证**：测试覆盖率 100%，代码质量验证
 
 ---
 
@@ -470,4 +470,4 @@ A: 编辑 `.claude/agents/` 和 `.claude/skills/` 目录中的文件。详见 [�
 
 **恭喜！您已经成功完成了 MoAI-ADK 的快速入门。现在您拥有了一个完整的、文档化的、测试覆盖的 API 项目，体验了 AI 驱动的现代化开发流程。**
 
-继续探索，发现更多可能！🚀
+继续探索，发现更多可能！<span class="material-icons">rocket_launch</span>
