@@ -71,7 +71,8 @@ class MCPSetupManager:
         package_mapping = {
             "context7": "@upstash/context7-mcp",
             "figma": "figma-mcp-pro",
-            "playwright": "@playwright/mcp"
+            "playwright": "@playwright/mcp",
+            "sequential-thinking": "@modelcontextprotocol/server-sequential-thinking"
         }
 
         for server in servers:
@@ -90,7 +91,8 @@ class MCPSetupManager:
         package_mapping = {
             "context7": ("@upstash/context7-mcp", "Context7 MCP"),
             "figma": ("figma-mcp-pro", "Figma MCP Pro"),
-            "playwright": ("@playwright/mcp", "Playwright MCP")
+            "playwright": ("@playwright/mcp", "Playwright MCP"),
+            "sequential-thinking": ("@modelcontextprotocol/server-sequential-thinking", "Sequential Thinking MCP")
         }
 
         for server in servers:
@@ -111,16 +113,22 @@ class MCPSetupManager:
         # Context7 MCP
         if installed_servers.get("context7", False):
             config["context7"] = {
-                "command": "node",
-                "args": [f"{npm_path}/@upstash/context7-mcp/dist/index.js"],
+                "command": "npx",
+                "args": [
+                    "-y",
+                    "@upstash/context7-mcp"
+                ],
                 "env": {}
             }
 
         # Figma MCP
         if installed_servers.get("figma", False):
             config["figma"] = {
-                "command": "node",
-                "args": [f"{npm_path}/figma-mcp-pro/dist/index.js"],
+                "command": "npx",
+                "args": [
+                    "-y",
+                    "figma-mcp-pro"
+                ],
                 "env": {
                     "FIGMA_ACCESS_TOKEN": "${FIGMA_ACCESS_TOKEN}"
                 }
@@ -129,8 +137,22 @@ class MCPSetupManager:
         # Playwright MCP
         if installed_servers.get("playwright", False):
             config["playwright"] = {
-                "command": "node",
-                "args": [f"{npm_path}/@playwright/mcp/dist/index.js"],
+                "command": "npx",
+                "args": [
+                    "-y",
+                    "@playwright/mcp"
+                ],
+                "env": {}
+            }
+
+        # Sequential Thinking MCP
+        if installed_servers.get("sequential-thinking", False):
+            config["sequential-thinking"] = {
+                "command": "npx",
+                "args": [
+                    "-y",
+                    "@modelcontextprotocol/server-sequential-thinking"
+                ],
                 "env": {}
             }
 

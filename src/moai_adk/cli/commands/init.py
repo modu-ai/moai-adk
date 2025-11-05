@@ -99,7 +99,7 @@ def create_progress_callback(progress: Progress, task_ids: Sequence[TaskID]):
 @click.option(
     "--with-mcp",
     multiple=True,
-    type=click.Choice(["context7", "figma", "playwright"]),
+    type=click.Choice(["context7", "figma", "playwright", "sequential-thinking"]),
     help="Install MCP servers automatically (can be used multiple times)",
 )
 @click.option(
@@ -157,7 +157,7 @@ def init(
 
             # Handle MCP options in non-interactive mode
             if mcp_auto:
-                mcp_servers = ["context7", "figma", "playwright"]
+                mcp_servers = ["context7", "figma", "playwright", "sequential-thinking"]
                 console.print("[cyan]🔧 MCP servers:[/cyan] Auto-installing all recommended servers")
             elif with_mcp:
                 mcp_servers = list(with_mcp)

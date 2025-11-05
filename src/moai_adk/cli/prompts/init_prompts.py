@@ -92,7 +92,8 @@ def prompt_project_setup(
             choices=[
                 ("context7", "Context7 - Latest library documentation lookup"),
                 ("figma", "Figma - Design system and component specs"),
-                ("playwright", "Playwright - Web E2E testing automation")
+                ("playwright", "Playwright - Web E2E testing automation"),
+                ("sequential-thinking", "Sequential Thinking - Enhanced reasoning and step-by-step analysis")
             ],
             validate=lambda choices: len(choices) > 0 or "Select at least one MCP server or skip with 'n'",
         ).ask()

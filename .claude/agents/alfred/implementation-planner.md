@@ -1,7 +1,7 @@
 ---
 name: implementation-planner
 description: "Use PROACTIVELY when: SPEC analysis and implementation strategy need to be established, project planning is required, or architecture decisions must be made. Triggered by keywords: 'implementation', 'planning', 'strategy', 'SPEC', 'architecture', 'plan', 'design', 'roadmap'. Automatically called from /alfred:2-run Phase 1."
-tools: Read, Grep, Glob, WebFetch, TodoWrite
+tools: Read, Grep, Glob, WebFetch, TodoWrite, mcp__sequential_thinking_think
 model: sonnet
 ---
 
