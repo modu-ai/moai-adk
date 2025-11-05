@@ -1,10 +1,10 @@
 ---
 name: moai-alfred-personas
-version: 1.0.0
+version: 1.1.0
 created: 2025-11-05
 updated: 2025-11-05
 status: active
-description: Adaptive communication patterns and role selection based on user expertise level and request type
+description: Adaptive communication patterns and role selection based on user expertise level and request type (Consolidated from moai-alfred-persona-roles)
 keywords: ['personas', 'communication', 'expertise-detection', 'roles', 'adaptive']
 allowed-tools:
   - Read

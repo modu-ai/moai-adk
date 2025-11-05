@@ -1,9 +1,9 @@
 ---
 id: CLAUDE-CODE-FEATURES-001
-version: 0.0.1
-status: draft
+version: 0.1.0
+status: completed
 created: 2025-11-02
-updated: 2025-11-02
+updated: 2025-11-05
 author: @GOOS
 priority: high
 category: feature
@@ -12,9 +12,17 @@ labels:
   - optimization
   - cost-reduction
   - performance
+related_issue: "167"
 ---
 
 ## HISTORY
+
+### v0.1.0 (2025-11-05)
+- **COMPLETED**: Claude Code v2.0.30+ 기능 통합 완료
+- **IMPLEMENTED**: 3개 핵심 기능 통합 및 문서화 완료
+- **VERIFIED**: GitHub Issue #167 해결 및 PR 병합 완료
+- **DOCS**: 완전한 문서화 및 검증 완료
+- **AUTHOR**: @GOOS
 
 ### v0.0.1 (2025-11-02)
 - **INITIAL**: MoAI-ADK v0.9.0을 위해 Claude Code v2.0.30+ 신규 기능 6개 통합

@@ -1,7 +1,7 @@
 ---
 id: DOC-INTEGRATION-001
 version: "1.0"
-status: "draft"
+status: draft
 title: 코드-문서 자동 연동 시스템
 description: 코드 스캐닝, AST 분석, 자동 문서 생성, TAG 체인 연동을 통합한 완전한 문서 자동화 시스템
 author: "spec-builder"
