@@ -7,7 +7,6 @@ Analyze Claude Code sessions and generate improvement suggestions.
 
 # @CODE:CLI-002 | SPEC: SPEC-CLI-001/spec.md | TEST: tests/unit/test_cli_commands.py
 
-import argparse
 from pathlib import Path
 from typing import Optional
 
@@ -49,7 +48,7 @@ def analyze(
 
     # Validate project path
     if not (project_path / ".moai").exists():
-        console.print(f"[red]Error:[/red] Not a MoAI-ADK project (missing .moai directory)")
+        console.print("[red]Error:[/red] Not a MoAI-ADK project (missing .moai directory)")
         console.print(f"[blue]Current path:[/blue] {project_path}")
         return
 

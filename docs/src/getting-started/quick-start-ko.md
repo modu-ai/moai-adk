@@ -1,25 +1,25 @@
-# 🚀 10분 완전 실습: Hello World API
+# <span class="material-icons">rocket_launch</span> 10분 완전 실습: Hello World API
 
 > **목표**: MoAI-ADK의 전체 워크플로우를 10분 안에 경험하기
 > **배우는 것**: SPEC 작성, TDD 구현, 문서 자동화, @TAG 시스템
 > **난이도**: 초급 (프로그래밍 기초 지식 필요)
 
-## 🎯 이 실습으로 얻을 수 있는 것
+## <span class="material-icons">target</span> 이 실습으로 얻을 수 있는 것
 
-- ✅ **SPEC**: EARS 형식으로 요구사항을 명확히 정의
-- ✅ **TDD**: RED → GREEN → REFACTOR 사이클 경험
-- ✅ **자동화**: 문서가 코드와 함께 자동 생성됨
-- ✅ **추적성**: @TAG 시스템으로 모든 단계가 연결됨
-- ✅ **품질**: 테스트 100%, 명확한 구현, 자동 문서화
+- <span class="material-icons">check_circle</span> **SPEC**: EARS 형식으로 요구사항을 명확히 정의
+- <span class="material-icons">check_circle</span> **TDD**: RED → GREEN → REFACTOR 사이클 경험
+- <span class="material-icons">check_circle</span> **자동화**: 문서가 코드와 함께 자동 생성됨
+- <span class="material-icons">check_circle</span> **추적성**: @TAG 시스템으로 모든 단계가 연결됨
+- <span class="material-icons">check_circle</span> **품질**: 테스트 100%, 명확한 구현, 자동 문서화
 
 ## 📋 사전 준비물
 
 이 실습을 시작하기 전에 다음이 준비되어 있어야 합니다:
 
-- ✅ **MoAI-ADK 설치 완료** (`moai-adk --version` 확인)
-- ✅ **프로젝트 생성 완료** (`moai-adk init hello-world`)
-- ✅ **Claude Code 실행 중** (`claude` 명령어)
-- ✅ **UV 설치** (Python 패키지 관리)
+- <span class="material-icons">check_circle</span> **MoAI-ADK 설치 완료** (`moai-adk --version` 확인)
+- <span class="material-icons">check_circle</span> **프로젝트 생성 완료** (`moai-adk init hello-world`)
+- <span class="material-icons">check_circle</span> **Claude Code 실행 중** (`claude` 명령어)
+- <span class="material-icons">check_circle</span> **UV 설치** (Python 패키지 관리)
 
 ```bash
 # 설치 확인
@@ -33,7 +33,7 @@ ls -la .moai/ .claude/
 
 ---
 
-## 🏗️ 전체 워크플로우 개요
+## <span class="material-icons">construction</span> 전체 워크플로우 개요
 
 MoAI-ADK의 개발은 4단계 워크플로우를 따릅니다:
 
@@ -54,7 +54,7 @@ graph TD
 
 ---
 
-## 📝 Step 1️⃣: SPEC 작성 (2분)
+## <span class="material-icons">description</span> Step <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_one</span>: SPEC 작성 (2분)
 
 ### 명령어 실행
 
@@ -69,11 +69,11 @@ Claude Code에서 다음 명령어를 실행하세요:
 Alfred는 다음을 자동으로 생성하고 설정합니다:
 
 ```
-✅ SPEC ID: HELLO-001
-✅ 파일: .moai/specs/SPEC-HELLO-001/spec.md
-✅ 브랜치: feature/SPEC-HELLO-001 (Team 모드)
-✅ Plan Board: 구현 아이디어와 위험 요소
-✅ Acceptance Criteria: 검증 기준
+<span class="material-icons">check_circle</span> SPEC ID: HELLO-001
+<span class="material-icons">check_circle</span> 파일: .moai/specs/SPEC-HELLO-001/spec.md
+<span class="material-icons">check_circle</span> 브랜치: feature/SPEC-HELLO-001 (Team 모드)
+<span class="material-icons">check_circle</span> Plan Board: 구현 아이디어와 위험 요소
+<span class="material-icons">check_circle</span> Acceptance Criteria: 검증 기준
 ```
 
 ### 생성된 SPEC 확인
@@ -168,7 +168,7 @@ tags: ["API", "HELLO", "FASTAPI"]
 ---
 ```
 
-### ✅ Step 1 완료 확인
+### <span class="material-icons">check_circle</span> Step 1 완료 확인
 
 ```bash
 # SPEC 파일이 생성되었는지 확인
@@ -182,7 +182,7 @@ grep "@SPEC:HELLO-001" .moai/specs/SPEC-HELLO-001/spec.md
 
 ---
 
-## 🧪 Step 2️⃣: TDD 구현 (5분)
+## 🧪 Step <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_two</span>: TDD 구현 (5분)
 
 ### 명령어 실행
 
@@ -248,7 +248,7 @@ def test_hello_with_long_name_should_be_limited():
 pytest tests/test_hello_api.py -v
 ```
 
-**결과**: ❌ **FAILED (정상!)** - app가 없으므로 실패
+**결과**: <span class="material-icons">cancel</span> **FAILED (정상!)** - app가 없으므로 실패
 
 **Git 커밋**:
 
@@ -324,7 +324,7 @@ def hello(name: Optional[str] = None) -> HelloResponse:
 pytest tests/test_hello_api.py -v
 ```
 
-**결과**: ✅ **PASSED (모두 통과!)**
+**결과**: <span class="material-icons">check_circle</span> **PASSED (모두 통과!)**
 
 **Git 커밋**:
 
@@ -341,7 +341,7 @@ git commit -m "🟢 feat(HELLO-001): implement minimal hello API
 @CODE:HELLO-001:API"
 ```
 
-### ♻️ REFACTOR Phase: 코드 개선
+### <span class="material-icons">recycling</span> REFACTOR Phase: 코드 개선
 
 이제 코드를 개선하고 품질을 높입니다.
 
@@ -439,13 +439,13 @@ def health_check():
 pytest tests/test_hello_api.py -v
 ```
 
-**결과**: ✅ **여전히 PASSED** (개선 후에도 테스트 통과)
+**결과**: <span class="material-icons">check_circle</span> **여전히 PASSED** (개선 후에도 테스트 통과)
 
 **Git 커밋**:
 
 ```bash
 git add src/hello/api.py
-git commit -m "♻️ refactor(HELLO-001): enhance code quality
+git commit -m "<span class="material-icons">recycling</span> refactor(HELLO-001): enhance code quality
 
 - Pydantic 모델로 입력 유효성 검증 자동화
 - 명확한 에러 처리 및 HTTP 상태 코드
@@ -456,7 +456,7 @@ git commit -m "♻️ refactor(HELLO-001): enhance code quality
 @CODE:HELLO-001:API"
 ```
 
-### ✅ Step 2 완료 확인
+### <span class="material-icons">check_circle</span> Step 2 완료 확인
 
 ```bash
 # 최종 테스트 결과 확인
@@ -474,7 +474,7 @@ git log --oneline | head -4
 
 ---
 
-## 📚 Step 3️⃣: 문서 동기화 (2분)
+## <span class="material-icons">menu_book</span> Step <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_3</span>: 문서 동기화 (2분)
 
 ### 명령어 실행
 
@@ -487,11 +487,11 @@ Alfred가 자동으로 처리하는 것들:
 ### 자동 생성되는 문서들
 
 ```
-✅ docs/api/hello.md - 상세 API 문서 생성
-✅ README.md - 프로젝트 README 업데이트
-✅ CHANGELOG.md - v0.1.0 릴리즈 노트 추가
-✅ docs/getting-started/examples/hello-api.md - 실습 가이드
-✅ TAG 체인 검증 - 모든 @TAG 연결 확인
+<span class="material-icons">check_circle</span> docs/api/hello.md - 상세 API 문서 생성
+<span class="material-icons">check_circle</span> README.md - 프로젝트 README 업데이트
+<span class="material-icons">check_circle</span> CHANGELOG.md - v0.1.0 릴리즈 노트 추가
+<span class="material-icons">check_circle</span> docs/getting-started/examples/hello-api.md - 실습 가이드
+<span class="material-icons">check_circle</span> TAG 체인 검증 - 모든 @TAG 연결 확인
 ```
 
 ### 생성된 API 문서 확인
@@ -644,7 +644,7 @@ fetch('/hello?name=Alice')
 ```markdown
 ## Features
 
-### ✅ Hello World API (HELLO-001)
+### <span class="material-icons">check_circle</span> Hello World API (HELLO-001)
 - **기능**: GET /hello 엔드포인트로 개인화된 인사말 반환
 - **구현**: FastAPI + Pydantic 유효성 검증
 - **테스트**: 4개 테스트 케이스 (100% 커버리지)
@@ -694,7 +694,7 @@ curl "http://localhost:8000/hello?name=MoAI-ADK"
 - **Security**: Input validation and XSS protection
 ```
 
-### ✅ Step 3 완료 확인
+### <span class="material-icons">check_circle</span> Step 3 완료 확인
 
 ```bash
 # 생성된 문서 확인
@@ -711,7 +711,7 @@ cat CHANGELOG.md | grep -A 10 "0.1.0"
 
 ---
 
-## 🔗 Step 4️⃣: TAG 체인 검증 (1분)
+## <span class="material-icons">link</span> Step <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_4</span>: TAG 체인 검증 (1분)
 
 ### TAG 체인 완전성 확인
 
@@ -731,39 +731,39 @@ docs/api/hello.md:326:- **@CODE:HELLO-001:API**: API 구현
 docs/api/hello.md:327:- **@DOC:HELLO-001**: 이 문서
 ```
 
-### ✅ TAG 체인 분석
+### <span class="material-icons">check_circle</span> TAG 체인 분석
 
 **완벽한 추적성**:
-- ✅ **@SPEC:HELLO-001** → 요구사항 문서 (`.moai/specs/SPEC-HELLO-001/spec.md`)
-- ✅ **@TEST:HELLO-001** → 테스트 코드 (`tests/test_hello_api.py`)
-- ✅ **@CODE:HELLO-001:API** → 구현 코드 (`src/hello/api.py`)
-- ✅ **@DOC:HELLO-001** → API 문서 (`docs/api/hello.md`)
+- <span class="material-icons">check_circle</span> **@SPEC:HELLO-001** → 요구사항 문서 (`.moai/specs/SPEC-HELLO-001/spec.md`)
+- <span class="material-icons">check_circle</span> **@TEST:HELLO-001** → 테스트 코드 (`tests/test_hello_api.py`)
+- <span class="material-icons">check_circle</span> **@CODE:HELLO-001:API** → 구현 코드 (`src/hello/api.py`)
+- <span class="material-icons">check_circle</span> **@DOC:HELLO-001** → API 문서 (`docs/api/hello.md`)
 
 **의미**: 요구사항 → 테스트 → 구현 → 문서가 완벽하게 연결됨!
 
-### 🎯 최종 검증
+### <span class="material-icons">target</span> 최종 검증
 
 ```bash
-# 1️⃣ 테스트 실행
+# <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_one</span> 테스트 실행
 pytest tests/test_hello_api.py -v
-# ✅ test_hello_with_name_should_return_personalized_greeting PASSED
-# ✅ test_hello_without_name_should_return_default_greeting PASSED
-# ✅ test_hello_with_empty_name_should_return_default PASSED
-# ✅ test_hello_with_long_name_should_be_limited PASSED
-# ✅ 4 passed in 0.03s
+# <span class="material-icons">check_circle</span> test_hello_with_name_should_return_personalized_greeting PASSED
+# <span class="material-icons">check_circle</span> test_hello_without_name_should_return_default_greeting PASSED
+# <span class="material-icons">check_circle</span> test_hello_with_empty_name_should_return_default PASSED
+# <span class="material-icons">check_circle</span> test_hello_with_long_name_should_be_limited PASSED
+# <span class="material-icons">check_circle</span> 4 passed in 0.03s
 
-# 2️⃣ API 서버 실행 테스트
+# <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_two</span> API 서버 실행 테스트
 uvicorn src.hello.api:app --reload --port 8000 &
 sleep 2
 curl "http://localhost:8000/hello?name=MoAI-ADK"
 # 출력: {"message":"Hello, MoAI-ADK!","request_name":"MoAI-ADK"}
 pkill uvicorn
 
-# 3️⃣ 생성된 문서 확인
+# <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_3</span> 생성된 문서 확인
 cat docs/api/hello.md | head -10
 # 출력: # Hello API Documentation
 
-# 4️⃣ Git 히스토리 확인
+# <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_4</span> Git 히스토리 확인
 git log --oneline | head -5
 # 출력: 4개의 커밋 (SPEC → TEST → CODE → REFACTOR → SYNC)
 ```
@@ -792,7 +792,7 @@ hello-world/
 └── .git/                   ← Git 히스토리 (4개 커밋)
 ```
 
-### 📊 Git 히스토리
+### <span class="material-icons">analytics</span> Git 히스토리
 
 ```bash
 git log --oneline | head -4
@@ -801,47 +801,47 @@ git log --oneline | head -4
 **출력**:
 
 ```
-a1b2c3d ✅ sync(HELLO-001): update docs and changelog
-f4e5d6c ♻️ refactor(HELLO-001): enhance code quality
+a1b2c3d <span class="material-icons">check_circle</span> sync(HELLO-001): update docs and changelog
+f4e5d6c <span class="material-icons">recycling</span> refactor(HELLO-001): enhance code quality
 7g8h9i0 🟢 feat(HELLO-001): implement minimal API
 1j2k3l4 🔴 test(HELLO-001): add failing tests
 5m6n7o8 🌿 Create feature/SPEC-HELLO-001 branch
 ```
 
-### 🎯 배운 것 정리
+### <span class="material-icons">target</span> 배운 것 정리
 
 이 10분 실습을 통해 다음을 경험했습니다:
 
-#### ✅ SPEC-First 개발
+#### <span class="material-icons">check_circle</span> SPEC-First 개발
 - **EARS 문법**: 명확한 요구사항 정의 (UBQ, EVT, STA, OPT, UB)
 - **요구사항 문서화**: `.moai/specs/SPEC-HELLO-001/spec.md`
 - **추적성 시작**: @SPEC:HELLO-001 TAG 할당
 
-#### ✅ TDD 사이클 완전 경험
+#### <span class="material-icons">check_circle</span> TDD 사이클 완전 경험
 - **🔴 RED**: 실패하는 테스트 먼저 작성
 - **🟢 GREEN**: 최소 구현으로 테스트 통과
-- **♻️ REFACTOR**: 코드 품질 개선 (Pydantic, 에러 처리)
+- **<span class="material-icons">recycling</span> REFACTOR**: 코드 품질 개선 (Pydantic, 에러 처리)
 - **커밋 전략**: 각 단계별로 명확한 커밋 메시지
 
-#### ✅ 자동화된 문서 시스템
+#### <span class="material-icons">check_circle</span> 자동화된 문서 시스템
 - **API 문서**: OpenAPI 스타일의 상세 문서 자동 생성
 - **README 업데이트**: 프로젝트 기능 설명 자동 추가
 - **CHANGELOG**: 버전별 변경 이력 자동 기록
 - **TAG 체인**: @TAG 기반 완벽한 추적 시스템
 
-#### ✅ 품질 보증
+#### <span class="material-icons">check_circle</span> 품질 보증
 - **테스트 커버리지**: 100%
 - **코드 품질**: ruff, mypy 통과
 - **유효성 검증**: Pydantic 기반 입력 검증
 - **보안**: XSS 방지, 입력 길이 제한
 
-#### ✅ 실무 역량
+#### <span class="material-icons">check_circle</span> 실무 역량
 - **FastAPI**: 현대적인 Python 웹 프레임워크
 - **Pydantic**: 데이터 유효성 검증
 - **Git 워크플로우**: feature 브랜치, 명확한 커밋
 - **CI/CD 준비**: 자동화된 테스트와 문서
 
-### 🚀 다음 단계
+### <span class="material-icons">rocket_launch</span> 다음 단계
 
 이제 더 복잡한 기능을 만들어보세요:
 
@@ -870,7 +870,7 @@ SPEC → TEST → CODE → DOC가 **일관되게 연결된 완전한 개발 아�
 - 📋 **명확한 요구사항**: 모호함 없는 SPEC 문서
 - 🧪 **신뢰할 수 있는 테스트**: 100% 커버리지 보장
 - 💎 **프로덕션 품질 코드**: 유효성 검증, 에러 처리
-- 📖 **최신 문서**: 코드와 항상 동기화
-- 🔗 **완벽한 추적성**: @TAG로 모든 단계 연결
+- <span class="material-icons">auto_stories</span> **최신 문서**: 코드와 항상 동기화
+- <span class="material-icons">link</span> **완벽한 추적성**: @TAG로 모든 단계 연결
 
 이것이 MoAI-ADK가 제공하는 **신뢰할 수 있는 AI 개발**의 새로운 경험입니다! 🤖

@@ -109,7 +109,7 @@ EARS 是由 The University of Manchester 开发的需求工程方法，旨在解
 
 #### 编写技巧
 
-**✅ 好的实践**：
+**<span class="material-icons">check_circle</span> 好的实践**：
 ```yaml
 # 具体明确
 - 系统必须支持 JPEG、PNG、GIF 格式的图片上传
@@ -124,7 +124,7 @@ EARS 是由 The University of Manchester 开发的需求工程方法，旨在解
 - 系统必须支持最大 100MB 的文件上传
 ```
 
-**❌ 避免的做法**：
+**<span class="material-icons">cancel</span> 避免的做法**：
 ```yaml
 # 过于模糊
 - 系统应该支持图片
@@ -234,7 +234,7 @@ EARS 是由 The University of Manchester 开发的需求工程方法，旨在解
 
 #### 编写技巧
 
-**✅ 好的实践**：
+**<span class="material-icons">check_circle</span> 好的实践**：
 ```yaml
 # 明确的触发条件
 - 当用户输入错误的登录凭证时，系统必须显示错误信息
@@ -249,7 +249,7 @@ EARS 是由 The University of Manchester 开发的需求工程方法，旨在解
 - 当用户连续输入错误密码 5 次时，系统必须永久锁定账户
 ```
 
-**❌ 避免的做法**：
+**<span class="material-icons">cancel</span> 避免的做法**：
 ```yaml
 # 触发条件模糊
 - 当有问题时，系统要处理
@@ -364,7 +364,7 @@ EARS 是由 The University of Manchester 开发的需求工程方法，旨在解
 
 #### 编写技巧
 
-**✅ 好的实践**：
+**<span class="material-icons">check_circle</span> 好的实践**：
 ```yaml
 # 明确定义状态
 - 当用户处于"未验证邮箱"状态时，系统必须限制高级功能
@@ -379,7 +379,7 @@ EARS 是由 The University of Manchester 开发的需求工程方法，旨在解
 - 当系统处于"只读"模式时，系统必须允许查询但禁止任何修改操作
 ```
 
-**❌ 避免的做法**：
+**<span class="material-icons">cancel</span> 避免的做法**：
 ```yaml
 # 状态定义模糊
 - 当用户有问题时，系统要限制
@@ -502,7 +502,7 @@ EARS 是由 The University of Manchester 开发的需求工程方法，旨在解
 
 #### 编写技巧
 
-**✅ 好的实践**：
+**<span class="material-icons">check_circle</span> 好的实践**：
 ```yaml
 # 明确的前置条件
 - 如果配置了 Redis 缓存服务，系统可以实现查询结果缓存
@@ -517,7 +517,7 @@ EARS 是由 The University of Manchester 开发的需求工程方法，旨在解
 - 如果第一版本发布成功，系统可以在第二版本添加移动端支持
 ```
 
-**❌ 避免的做法**：
+**<span class="material-icons">cancel</span> 避免的做法**：
 ```yaml
 # 条件模糊
 - 如果可能，系统可以添加新功能
@@ -675,7 +675,7 @@ EARS 是由 The University of Manchester 开发的需求工程方法，旨在解
 
 #### 编写技巧
 
-**✅ 好的实践**：
+**<span class="material-icons">check_circle</span> 好的实践**：
 ```yaml
 # 具体可测量
 - API 响应时间必须在 95% 的情况下小于 200ms
@@ -690,7 +690,7 @@ EARS 是由 The University of Manchester 开发的需求工程方法，旨在解
 - 用户密码必须包含至少一个数字和一个特殊字符
 ```
 
-**❌ 避免的做法**：
+**<span class="material-icons">cancel</span> 避免的做法**：
 ```yaml
 # 模糊不清
 - 系统应该运行良好
@@ -751,12 +751,12 @@ flowchart TD
 
 **使用精确词汇**：
 ```yaml
-# ✅ 使用精确动词
+# <span class="material-icons">check_circle</span> 使用精确动词
 - 系统必须验证用户输入的邮箱格式
 - 系统必须记录所有登录尝试
 - 系统必须缓存频繁访问的数据
 
-# ❌ 避免模糊动词
+# <span class="material-icons">cancel</span> 避免模糊动词
 - 系统要处理用户输入
 - 系统要注意登录情况
 - 系统要优化性能
@@ -764,12 +764,12 @@ flowchart TD
 
 **明确时间要求**：
 ```yaml
-# ✅ 包含时间约束
+# <span class="material-icons">check_circle</span> 包含时间约束
 - 系统必须在 2 秒内完成用户认证
 - 系统应该在 5 分钟内发送验证邮件
 - 系统必须每 24 小时备份一次数据
 
-# ❌ 缺少时间要求
+# <span class="material-icons">cancel</span> 缺少时间要求
 - 系统要快速完成认证
 - 系统要尽快发送邮件
 - 系统要定期备份数据
@@ -779,20 +779,20 @@ flowchart TD
 
 **包含所有必要条件**：
 ```yaml
-# ✅ 完整的触发条件
+# <span class="material-icons">check_circle</span> 完整的触发条件
 - 当用户提供有效的邮箱和符合密码强度规则的密码时，系统必须创建用户账户并发送验证邮件
 
-# ❌ 条件不完整
+# <span class="material-icons">cancel</span> 条件不完整
 - 当用户注册时，系统要创建账户
 ```
 
 **考虑边界情况**：
 ```yaml
-# ✅ 包含边界处理
+# <span class="material-icons">check_circle</span> 包含边界处理
 - 当用户连续输入错误密码 5 次时，系统必须锁定账户 15 分钟
 - 当用户在 24 小时内尝试登录失败 10 次时，系统必须永久锁定账户
 
-# ❌ 忽略边界情况
+# <span class="material-icons">cancel</span> 忽略边界情况
 - 当用户密码错误时，系统要提示错误
 ```
 
@@ -830,17 +830,17 @@ flowchart TD
   可追溯性: 需求可追溯到业务目标
 
 # 检查示例
-✅ 用户认证相关的需求都使用"用户"而不是"客户"
-✅ 登录和注销的需求逻辑一致
-✅ 覆盖了注册、登录、重置密码等完整流程
-✅ 每个需求都能对应到具体的业务价值
+<span class="material-icons">check_circle</span> 用户认证相关的需求都使用"用户"而不是"客户"
+<span class="material-icons">check_circle</span> 登录和注销的需求逻辑一致
+<span class="material-icons">check_circle</span> 覆盖了注册、登录、重置密码等完整流程
+<span class="material-icons">check_circle</span> 每个需求都能对应到具体的业务价值
 ```
 
 ### 4. 常见错误和避免方法
 
 #### 语法错误
 
-**❌ 常见语法错误**：
+**<span class="material-icons">cancel</span> 常见语法错误**：
 ```yaml
 # 1. 缺少主语
 - 应该支持用户注册
@@ -856,7 +856,7 @@ flowchart TD
 - 建议适当优化
 ```
 
-**✅ 正确的语法**：
+**<span class="material-icons">check_circle</span> 正确的语法**：
 ```yaml
 # 1. 完整的主谓宾结构
 - 系统必须支持用户注册功能
@@ -874,7 +874,7 @@ flowchart TD
 
 #### 逻辑错误
 
-**❌ 常见逻辑错误**：
+**<span class="material-icons">cancel</span> 常见逻辑错误**：
 ```yaml
 # 1. 循环依赖
 - 当用户登录时，系统必须验证邮箱
@@ -889,7 +889,7 @@ flowchart TD
 - 系统必须立即响应所有请求
 ```
 
-**✅ 正确的逻辑**：
+**<span class="material-icons">check_circle</span> 正确的逻辑**：
 ```yaml
 # 1. 清晰的流程
 - 当用户注册时，系统必须创建账户并发送验证邮件

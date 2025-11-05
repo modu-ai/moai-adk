@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# @TEST:DOC-TAG-004 | Component 3: Central validation system tests
+# @TEST:VALIDATOR-CORE-001 | Component 3: Central validation system tests
 """Test suite for central validation system
 
 This module tests the unified CentralValidator that:
@@ -118,7 +118,7 @@ class TestValidationIssue:
             tag="@CODE:TEST-001",
             message="CODE TAG without corresponding TEST",
             locations=[("file1.py", 10)],
-            suggestion="Add @TEST:TEST-001 for this code"
+            suggestion="Add @TEST:VALIDATOR-001 for this code"
         )
         assert issue.severity == "warning"
         assert issue.type == "orphan"
@@ -232,7 +232,7 @@ class TestOrphanValidator:
             code_file.write_text("# @CODE:USER-REG-001\n")
 
             test_file = Path(tmpdir) / "test_auth.py"
-            test_file.write_text("# @TEST:USER-REG-001\n")
+            test_file.write_text("# @TEST:USER-REG-VALIDATOR-001\n")
 
             issues = validator.validate([str(code_file), str(test_file)])
             assert len(issues) == 0
@@ -257,7 +257,7 @@ class TestOrphanValidator:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             test_file = Path(tmpdir) / "test_auth.py"
-            test_file.write_text("# @TEST:USER-REG-001\n")
+            test_file.write_text("# @TEST:USER-REG-VALIDATOR-001\n")
 
             issues = validator.validate([str(test_file)])
             assert len(issues) >= 1
@@ -305,7 +305,7 @@ class TestChainValidator:
             code_file.write_text("# @CODE:USER-REG-001\n")
 
             test_file = Path(tmpdir) / "test_auth.py"
-            test_file.write_text("# @TEST:USER-REG-001\n")
+            test_file.write_text("# @TEST:USER-REG-VALIDATOR-001\n")
 
             doc_file = Path(tmpdir) / "README.md"
             doc_file.write_text("# @DOC:USER-REG-001\n")
@@ -324,7 +324,7 @@ class TestChainValidator:
             code_file.write_text("# @CODE:USER-REG-001\n")
 
             test_file = Path(tmpdir) / "test_auth.py"
-            test_file.write_text("# @TEST:USER-REG-001\n")
+            test_file.write_text("# @TEST:USER-REG-VALIDATOR-001\n")
 
             issues = validator.validate([str(code_file), str(test_file)])
             assert any("SPEC" in issue.message for issue in issues)
@@ -339,7 +339,7 @@ class TestChainValidator:
             spec_file.write_text("# @SPEC:USER-REG-001\n")
 
             test_file = Path(tmpdir) / "test_auth.py"
-            test_file.write_text("# @TEST:USER-REG-001\n")
+            test_file.write_text("# @TEST:USER-REG-VALIDATOR-001\n")
 
             issues = validator.validate([str(spec_file), str(test_file)])
             assert any("CODE" in issue.message or "implementation" in issue.message.lower() for issue in issues)
@@ -370,7 +370,7 @@ class TestChainValidator:
             code_file.write_text("# @CODE:USER-REG-001\n")
 
             test_file = Path(tmpdir) / "test_auth.py"
-            test_file.write_text("# @TEST:USER-REG-001\n")
+            test_file.write_text("# @TEST:USER-REG-VALIDATOR-001\n")
 
             issues = validator.validate([str(spec_file), str(code_file), str(test_file)])
             # DOC is optional, but info message may be generated
@@ -385,7 +385,7 @@ class TestChainValidator:
         with tempfile.TemporaryDirectory() as tmpdir:
             # Complete chain for USER-REG-001
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @SPEC:USER-REG-001\n# @CODE:USER-REG-001\n# @TEST:USER-REG-001\n")
+            file1.write_text("# @SPEC:USER-REG-001\n# @CODE:USER-REG-001\n# @TEST:USER-REG-VALIDATOR-001\n")
 
             # Incomplete chain for AUTH-002 (missing TEST)
             file2 = Path(tmpdir) / "file2.py"
@@ -441,7 +441,7 @@ class TestCentralValidator:
             file1.write_text("# @CODE:TEST-001\n")
 
             file2 = Path(tmpdir) / "file2.py"
-            file2.write_text("# @TEST:TEST-001\n")
+            file2.write_text("# @TEST:VALIDATOR-001\n")
 
             result = validator.validate_files([str(file1), str(file2)])
             assert isinstance(result, CentralValidationResult)
@@ -455,7 +455,7 @@ class TestCentralValidator:
             file1.write_text("# @CODE:TEST-001\n")
 
             file2 = Path(tmpdir) / "file2.py"
-            file2.write_text("# @TEST:TEST-001\n")
+            file2.write_text("# @TEST:VALIDATOR-001\n")
 
             result = validator.validate_directory(tmpdir)
             assert isinstance(result, CentralValidationResult)
@@ -669,7 +669,7 @@ class TestReportGeneration:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-001\n# @TEST:TEST-001\n")
+            file1.write_text("# @CODE:TEST-001\n# @TEST:VALIDATOR-001\n")
 
             result = validator.validate_files([str(file1)])
             report = validator.create_report(result, format="detailed")
@@ -683,7 +683,7 @@ class TestReportGeneration:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-001\n# @TEST:TEST-001\n")
+            file1.write_text("# @CODE:TEST-001\n# @TEST:VALIDATOR-001\n")
 
             result = validator.validate_files([str(file1)])
             report = validator.create_report(result, format="summary")
@@ -697,7 +697,7 @@ class TestReportGeneration:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-001\n# @TEST:TEST-001\n")
+            file1.write_text("# @CODE:TEST-001\n# @TEST:VALIDATOR-001\n")
 
             result = validator.validate_files([str(file1)])
             report = validator.create_report(result, format="json")

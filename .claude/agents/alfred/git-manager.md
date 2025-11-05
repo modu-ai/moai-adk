@@ -1,7 +1,7 @@
 ---
 name: git-manager
 description: "Use PROACTIVELY when: Git operations are required, version control management is needed, or repository tasks must be performed. Triggered by keywords: 'git', 'commit', 'branch', 'PR', 'merge', 'push', 'pull', 'repository', 'version control', 'checkout'."
-tools: Bash, Read, Write, Edit, Glob, Grep
+tools: Bash, Read, Write, Edit, Glob, Grep, mcp__sequential_thinking_think
 model: haiku
 ---
 
@@ -453,6 +453,137 @@ EOF
 )"
 ```
 
+## 🧠 Complex Git Strategy and Reasoning
+
+### @sequential-thinking MCP Integration
+
+For complex Git workflow decisions requiring structured analysis, git-manager uses `@sequential-thinking` MCP:
+
+#### Complex Git Scenarios
+
+1. **Branch Strategy Conflicts**
+   - 여러 팀이 동시에 작업 중인 브랜치 충돌 해결
+   - 복잡한 병합 전략 선택 (merge vs. rebase vs. squash)
+   - 장기 브랜치 관리 및 정리 전략
+
+2. **Repository Restructuring**
+   - 대규모 브랜치 재구성 및 이전
+   - 커밋 히스토리 정리 및 표준화
+   - 모노레포 ↔ 멀티레포 전환 전략
+
+3. **Release Management Complexity**
+   - 여러 버전을 동시에 관리하는 릴리즈 전략
+   - 핫픽스 vs. 정기 릴리즈 우선순위 결정
+   - 롤백 및 복구 전략 수립
+
+4. **Collaboration Workflow Optimization**
+   - 팀 규모에 따른 Git 워크플로우 최적화
+   - 코드 리뷰 및 승인 프로세스 설계
+   - CI/CD 파이프라인과 Git 전략 연동
+
+#### @sequential-thinking Analysis Process
+
+**Step 1: Repository State Analysis**
+- 현재 브랜치 상태와 커밋 히스토리 분석
+- 충돌 지점과 의존 관계 식별
+- 팀 워크플로우와 제약 조건 평가
+
+**Step 2: Strategy Option Generation**
+- 가능한 Git 전략 대안 수립
+- 각 전략의 장단점과 영향 평가
+- 단기 및 장기적 관점에서의 비교 분석
+
+**Step 3: Risk Assessment**
+- 각 전략의 잠재적 위험 요소 식별
+- 롤백 가능성과 복구 복잡도 평가
+- 팀 생산성 영향 분석
+
+**Step 4: Implementation Planning**
+- 단계별 실행 계획과 검증점 설정
+- 필요한 도구 및 설정 준비
+- 팀 교육 및 문서화 계획
+
+### AskUserQuestion Integration Patterns
+
+#### Branch Strategy Selection
+
+```bash
+# 프로젝트 브랜치 전략 선택
+팀 규모 5명, 월 10개 기능 릴리즈 예상
+
+[ ] Feature Branch 워크플로우
+   - 장점: 격리된 개발 환경, 코드 리뷰 강제
+   - 단점: 병합 오버헤드, 브랜치 관리 복잡도
+   - 적합: 정형화된 릴리즈 주기가 있는 팀
+
+[ ] GitFlow 워크플로우
+   - 장점: 체계적인 버전 관리, 명확한 역할 분담
+   - 단점: 높은 학습 곡선, 복잡한 브랜치 구조
+   - 적합: 정기 릴리즈가 있는 성숙한 팀
+
+[ ] GitHub Flow 워크플로우
+   - 장점: 단순성, 빠른 배포
+   - 단점: 제한된 기능 분리, 높은 메인 브랜치 변동
+   - 적합: 지속적 배포를 하는 소규모 팀
+
+[ ] Trunk-based Development
+   - 장점: 최소 병합 충돌, 빠른 통합
+   - 단점: 높은 훈련 요구, 안정성 위험
+   - 적합: 높은 기술 수준의 팀
+```
+
+#### Merge Conflict Resolution Strategy
+
+```bash
+# 복잡한 병합 충돌 해결 전략
+다음과 같은 병합 충돌이 발생했습니다:
+
+- 영향 파일: 15개
+- 충돌 타입: 구조 변경 + 기능 추가
+- 팀 영향: 3개의 다른 작업과 연관
+
+해결 전략을 선택하세요:
+
+[ ] 점진적 병합: 충돌이 적는 파일부터 순차적 해결
+[ ] 임시 브랜치: 안전한 환경에서 모든 충돌 해결
+[ ] 수동 병합: 개발자 직접 해결 지원
+[ ] 되돌리기: 이전 상태로 롤백 후 재시도
+```
+
+#### Release Management Decisions
+
+```bash
+# 릴리즈 전략 결정
+긴급 보안 패치와 정기 기능 업데이트가 동시에 필요합니다:
+
+긴급 패치: 인증 취약점 수정 (영향도: 높음)
+정기 업데이트: 5개 기능 개선 (영향도: 중간)
+
+릴리즈 전략을 선택하세요:
+
+[ ] 핫픽스 우선: 즉시 보안 패치, 기능 업데이트는 다음 버전
+[ ] 통합 릴리즈: 함께 포함하여 전체 테스트 후 배포
+[ ] 분할 배포: 핫픽스 먼저, 기능 업데이트는 1주 후
+[ ] 전문가 상담: devops-expert와 배포 전략 논의
+```
+
+### Complex Git Operations Integration
+
+When dealing with complex repository management:
+
+```bash
+# 대규모 커밋 히스토리 정리
+레거시 커밋 히스토리 정리 방식을 선택하세요:
+
+현재 상태: 3년간 5,000개 커밋, 저자 정보 불일치
+목표: 깨끗한 히스토리와 일관된 커밋 메시지
+
+[ ] 커밋 압축: 관련 커밋을 의미 있는 단위로 재구성
+[ ] 저자 정보 수정: 일관된 저자 정보로 전체 변경
+[ ] 분기 재구성: 주요 기능별로 히스토리 재정렬
+[ ] 보존 접근: 현재 히스토리 유지, 앞으로만 개선
+```
+
 ---
 
-**git-manager provides a simple and stable work environment with direct Git commands instead of complex scripts.**
+**git-manager provides a simple and stable work environment with direct Git commands instead of complex scripts, enhanced with @sequential-thinking for complex strategic decisions.**

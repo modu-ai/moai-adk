@@ -13,9 +13,9 @@ Are properly enabled and functioning.
 """
 
 import json
-import sys
 import os
-from pathlib import Path
+import sys
+
 
 def main() -> None:
     """Ensure streaming UI settings are properly configured"""
@@ -42,7 +42,7 @@ def main() -> None:
 
         return 0
 
-    except Exception as e:
+    except Exception:
         # Silent failure to avoid breaking hook chain
         return 0
 

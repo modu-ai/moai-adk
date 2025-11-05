@@ -89,7 +89,7 @@ Alfred presents a clear, structured menu:
 Alfred prompts for a clear, descriptive title:
 
 ```
-📝 Enter a concise issue title (max 100 characters):
+<span class="material-icons">description</span> Enter a concise issue title (max 100 characters):
 
 Examples:
 🐛 "Login API returns 500 error for invalid email format"
@@ -172,7 +172,7 @@ Technical considerations:
 Alfred helps prioritize the issue:
 
 ```
-🎯 Select priority level:
+<span class="material-icons">target</span> Select priority level:
 
 [ ] 🔴 Critical - System down, data loss, security breach
 [ ] 🟠 High - Major functionality broken, significant impact
@@ -273,7 +273,7 @@ bug, authentication, high-priority, backend, v0.17.0
 ---
 📅 Created: 2025-01-15 14:30:00 UTC
 🤖 Generated with Alfred SuperAgent
-🔗 Related SPEC: @SPEC:AUTH-001
+<span class="material-icons">link</span> Related SPEC: @SPEC:AUTH-001
 ```
 
 ### 2. Applies Intelligent Labels
@@ -532,16 +532,16 @@ notifications:
 
 **Issue Quality Checklist**:
 ```bash
-✅ Title is descriptive and under 100 characters
-✅ Priority level is appropriate for impact
-✅ Description includes reproduction steps
-✅ Expected behavior is clearly stated
-✅ Actual behavior is documented
-✅ Environment details are included
-✅ Error messages or logs are provided
-✅ Impact on users/system is assessed
-✅ Related components or features are mentioned
-✅ Labels are relevant and helpful
+<span class="material-icons">check_circle</span> Title is descriptive and under 100 characters
+<span class="material-icons">check_circle</span> Priority level is appropriate for impact
+<span class="material-icons">check_circle</span> Description includes reproduction steps
+<span class="material-icons">check_circle</span> Expected behavior is clearly stated
+<span class="material-icons">check_circle</span> Actual behavior is documented
+<span class="material-icons">check_circle</span> Environment details are included
+<span class="material-icons">check_circle</span> Error messages or logs are provided
+<span class="material-icons">check_circle</span> Impact on users/system is assessed
+<span class="material-icons">check_circle</span> Related components or features are mentioned
+<span class="material-icons">check_circle</span> Labels are relevant and helpful
 ```
 
 ### Issue Triage Process
@@ -575,7 +575,7 @@ Alfred tracks issue creation patterns:
 
 ```bash
 # Weekly issue creation report
-📊 Issue Creation Analytics (Week of Jan 15-21)
+<span class="material-icons">analytics</span> Issue Creation Analytics (Week of Jan 15-21)
 
 Issues Created: 12
 ├── 🐛 Bug Reports: 5 (42%)
@@ -597,7 +597,7 @@ Context Switching Saved: ~3.5 hours
 
 ```bash
 # Team productivity insights
-🎯 Team Productivity Metrics
+<span class="material-icons">target</span> Team Productivity Metrics
 
 Issues per Developer:
 - @alice: 4 issues (33%)
@@ -659,7 +659,7 @@ gh api rate_limit
 **Failed issue creation**:
 ```bash
 # Alfred provides detailed error messages
-❌ Issue creation failed: Validation error
+<span class="material-icons">cancel</span> Issue creation failed: Validation error
 
 Details:
 - Title too long (125 characters, max 100)
@@ -766,4 +766,4 @@ moai-adk validate-templates
 4. **Provide Training**: Ensure team members understand effective issue creation
 5. **Iterate and Improve**: Continuously refine the issue management process
 
-The `/alfred:9-feedback` command transforms issue creation from a disruptive task into a seamless part of your development workflow, ensuring nothing gets lost while maintaining your coding flow! 🚀
+The `/alfred:9-feedback` command transforms issue creation from a disruptive task into a seamless part of your development workflow, ensuring nothing gets lost while maintaining your coding flow! <span class="material-icons">rocket_launch</span>

@@ -8,7 +8,7 @@
 
 # @CODE:DOC-ONLINE-001:JA
 
-## 🚀 クイックスタート
+## <span class="material-icons">rocket_launch</span> クイックスタート
 
 ### 1. UVのインストール（推奨）
 ```bash
@@ -35,7 +35,7 @@ uv run dev
 ### 4. ブラウザで確認
 [http://127.0.0.1:8080](http://127.0.0.1:8080)
 
-## 📚 利用可能なコマンド
+## <span class="material-icons">menu_book</span> 利用可能なコマンド
 
 | コマンド | 説明 |
 |--------|------|
@@ -70,7 +70,7 @@ docs/
 └── overrides/             # テーマのオーバーライド
 ```
 
-## 🎨 カスタマイズ
+## <span class="material-icons">palette</span> カスタマイズ
 
 ### テーマ設定
 - **Material Design**: Google Material Designベース
@@ -83,7 +83,7 @@ docs/
 - **検索**: 専門的な検索とオートコンプリート
 - **Git統合**: コミット情報とバージョン管理
 
-## 📝 ドキュメント作成ガイド
+## <span class="material-icons">description</span> ドキュメント作成ガイド
 
 ### Markdown拡張
 ```markdown
@@ -110,7 +110,7 @@ graph LR
     B --> C[Sync]
 ```
 
-## 🚀 デプロイ
+## <span class="material-icons">rocket_launch</span> デプロイ
 
 ### Vercelデプロイ（推奨）
 ```bash
@@ -140,7 +140,7 @@ uv run build
 # site/ディレクトリを希望のホスティングサービスにアップロード
 ```
 
-## 🔧 開発
+## <span class="material-icons">settings</span> 開発
 
 ### ローカル開発環境
 ```bash
@@ -185,7 +185,7 @@ uv run clean
 mkdocs build --strict
 ```
 
-## 📊 モニタリング
+## <span class="material-icons">analytics</span> モニタリング
 
 ### ビルド統計
 ```bash
