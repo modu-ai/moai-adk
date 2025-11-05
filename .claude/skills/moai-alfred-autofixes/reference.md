@@ -32,7 +32,7 @@ Proposed Solution:
 ### 2. User Confirmation
 
 **AskUserQuestion Pattern:**
-Use AskUserQuestion 도구 to get explicit approval:
+Use AskUserQuestion tool to get explicit approval:
 - question: "Analysis complete. Should I proceed with the fix?"
 - options: ["YES - Apply the proposed fix", "NO - Let me review manually"]
 

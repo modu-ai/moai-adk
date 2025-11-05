@@ -20,16 +20,15 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from utils.timeout import CrossPlatformTimeout
-from utils.timeout import TimeoutError as PlatformTimeoutError
-
 # Setup import path for shared modules
 HOOKS_DIR = Path(__file__).parent
 SHARED_DIR = HOOKS_DIR / "shared"
 if str(SHARED_DIR) not in sys.path:
     sys.path.insert(0, str(SHARED_DIR))
 
-from handlers import handle_pre_tool_use
+from handlers import handle_pre_tool_use  # noqa: E402
+from utils.timeout import CrossPlatformTimeout  # noqa: E402
+from utils.timeout import TimeoutError as PlatformTimeoutError  # noqa: E402
 
 
 def main() -> None:

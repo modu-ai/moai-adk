@@ -1035,6 +1035,160 @@ graph TD
     Sync -.-> End([릴리스])
 ```
 
+### 🔄 워크플로우 상태 전환 시스템
+
+MoAI-ADK는 SPEC 문서의 **상태 전환**을 통해 개발 진행 상황을 체계적으로 관리합니다. 각 단계별로 SPEC의 상태가 명확하게 정의되어 있어, 팀 전체가 현재 진행 상황을 즉시 파악할 수 있습니다.
+
+#### SPEC 상태 라이프사이클
+
+```mermaid
+%%{init: {'theme':'neutral'}}%%
+stateDiagram-v2
+    [*] --> planning: /alfred:1-plan
+    planning --> draft: SPEC 작성 완료
+    draft --> in_progress: /alfred:2-run
+    in_progress --> testing: 구현 완료
+    testing --> completed: /alfred:3-sync
+    completed --> deprecated: 기능 폐기
+
+    note right of planning
+        📋 기획 단계
+        - 요구사항 수집
+        - 아키텍처 설계
+        - 기술 스택 결정
+    end note
+
+    note right of draft
+        📝 초안 단계
+        - EARS 형식으로 SPEC 작성
+        - Plan Board 생성
+        - 검토 준비 완료
+    end note
+
+    note right of in_progress
+        🚀 개발 단계
+        - TDD 실행 (RED→GREEN→REFACTOR)
+        - 구현 및 테스트 코드 작성
+        - 품질 검증 통과
+    end note
+
+    note right of testing
+        🧪 테스트 단계
+        - 단위 테스트 완료
+        - 통합 테스트 진행
+        - QA 검증 수행
+    end note
+
+    note right of completed
+        ✅ 완료 단계
+        - 문서 동기화 완료
+        - 배포 준비 완료
+        - 운영 환경 적용
+    end note
+```
+
+#### 상태별 상세 설명
+
+**📋 Planning (기획 단계)**
+- **조건**: `/alfred:1-plan` 명령 실행 직후
+- **활동**: 요구사항 분석, 기술 스택 결정, 아키텍처 설계
+- **산출물**: `@SPEC:ID` 할당, 기본 구조 정의
+- **다음 단계**: EARS 형식으로 SPEC 문서화
+
+**📝 Draft (초안 단계)**
+- **조건**: SPEC 문서 작성 완료, Plan Board 생성
+- **활동**: 상세 요구사항 정의, 검토 준비
+- **산출물**: `.moai/specs/SPEC-*/spec.md`, acceptance criteria
+- **다음 단계**: `/alfred:2-run`으로 구현 시작
+
+**🚀 In Progress (개발 단계)**
+- **조건**: `/alfred:2-run` 실행 중
+- **활동**: TDD 사이클 실행, 코드 구현, 테스트 작성
+- **산출물**: `tests/`, `src/` 파일들, `@TEST:ID`, `@CODE:ID`
+- **다음 단계**: 품질 검증 및 테스트 완료
+
+**🧪 Testing (테스트 단계)**
+- **조건**: 구현 완료, 단위 테스트 통과
+- **활동**: 통합 테스트, QA 검증, 성능 테스트
+- **산출물**: 테스트 리포트, 커버리지 보고서
+- **다음 단계**: `/alfred:3-sync`으로 문서 동기화
+
+**✅ Completed (완료 단계)**
+- **조건**: `/alfred:3-sync` 완료, 모든 검증 통과
+- **활동**: 문서 동기화, 배포 준비, 최종 검토
+- **산출물**: `docs/`, README 업데이트, CHANGELOG
+- **다음 단계**: 배포 또는 다음 기능 개발
+
+**🗑️ Deprecated (폐기 단계)**
+- **조건**: 기능 폐기 또는 대체 필요
+- **활동**: 레거시 코드 정리, 마이그레이션 가이드 작성
+- **산출물**: 폐기 문서, 대체 계획
+- **다음 단계**: 완전한 제거 또는 유지 보수
+
+#### 상태 전환 트리거
+
+| 현재 상태 | 다음 상태 | 트리거 명령 | 조건 |
+|----------|----------|-------------|------|
+| planning | draft | SPEC 작성 완료 | EARS 형식 요구사항 정의 |
+| draft | in_progress | `/alfred:2-run SPEC-ID` | 구현 시작 결정 |
+| in_progress | testing | TDD 완료 | 모든 테스트 통과 |
+| testing | completed | `/alfred:3-sync` | 문서 동기화 완료 |
+| completed | planning | 새 기능 계획 | 다음 개발 사이클 |
+| any | deprecated | 기능 폐기 결정 | 레거시 처리 필요 |
+
+#### 실제 워크플로우 예시
+
+```bash
+# 1️⃣ Planning → Draft
+/alfred:1-plan "사용자 인증 기능"
+# 상태: planning → draft
+# 산출물: SPEC-AUTH-001.md (draft 상태)
+
+# 2️⃣ Draft → In Progress
+/alfred:2-run AUTH-001
+# 상태: draft → in_progress
+# 산출물: 테스트 코드, 구현 코드
+
+# 3️⃣ In Progress → Testing
+# TDD 사이클 완료 (RED→GREEN→REFACTOR)
+# 상태: in_progress → testing
+# 산출물: 통합 테스트 통과
+
+# 4️⃣ Testing → Completed
+/alfred:3-sync
+# 상태: testing → completed
+# 산출물: API 문서, README 업데이트
+
+# 5️⃣ 새로운 사이클
+/alfred:1-plan "권한 관리 기능"
+# 상태: completed → planning (새 기능)
+```
+
+#### 상태 추적 및 관리
+
+**상태 확인 방법**:
+```bash
+# 현재 프로젝트의 모든 SPEC 상태 확인
+find .moai/specs -name "spec.md" -exec grep -l "status:" {} \; | xargs grep "status:"
+
+# 특정 상태의 SPEC만 필터링
+grep -r "status:.*completed" .moai/specs/
+```
+
+**상태 전환 규칙**:
+- 모든 상태 전환은 **Alfred 명령**을 통해 자동으로 관리
+- 상태 정보는 SPEC 파일의 YAML frontmatter에 저장
+- `/alfred:3-sync` 실행 시 상태 일관성 자동 검증
+- Git 커밋 메시지에 상태 정보 포함 (선택 사항)
+
+**팀 협업 이점**:
+- **가시성**: 모든 팀원이 실시간 진행 상황 파악
+- **예측성**: 다음 단계와 예상 완료 시간 명확
+- **책임성**: 상태 전화 시 담당자와 시간 기록
+- **품질 보증**: 각 상태별 검증 기준 충족 보장
+
+---
+
 ### 0. PROJECT — 프로젝트 준비
 
 - 프로젝트 소개, 타깃, 언어, 모드(locale) 질문
@@ -1047,18 +1201,21 @@ graph TD
 - EARS 템플릿으로 SPEC 작성 (`@SPEC:ID` 포함)
 - Plan Board, 구현 아이디어, 위험 요소 정리
 - Team 모드라면 브랜치/초기 Draft PR 자동 생성
+- **상태 전환**: `planning` → `draft`
 
 ### 2. RUN — 테스트 주도 개발(TDD)
 
 - Phase 1 `implementation-planner`: 라이브러리, 폴더, TAG 설계
 - Phase 2 `tdd-implementer`: RED(실패 테스트) → GREEN(최소 구현) → REFACTOR(정리)
 - quality-gate가 TRUST 5 원칙, 커버리지 변화를 검증
+- **상태 전환**: `draft` → `in_progress` → `testing`
 
 ### 3. SYNC — 문서 & PR 정리
 
 - Living Document, README, CHANGELOG 등 문서 동기화
 - TAG 체인 검증 및 orphan TAG 복구
 - Sync Report 생성, Draft → Ready for Review 전환, `--auto-merge` 옵션 지원
+- **상태 전환**: `testing` → `completed`
 
 ---
 
