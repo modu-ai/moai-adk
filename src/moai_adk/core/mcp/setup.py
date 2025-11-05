@@ -70,7 +70,7 @@ class MCPSetupManager:
 
         package_mapping = {
             "context7": "@upstash/context7-mcp",
-            "figma": "figma-developer-mcp",
+            "figma": "ai-figma-mcp",
             "playwright": "@playwright/mcp",
             "sequential-thinking": "@modelcontextprotocol/server-sequential-thinking"
         }
@@ -90,7 +90,7 @@ class MCPSetupManager:
 
         package_mapping = {
             "context7": ("@upstash/context7-mcp", "Context7 MCP"),
-            "figma": ("figma-developer-mcp", "Figma Developer MCP"),
+            "figma": ("ai-figma-mcp", "AI Figma MCP"),
             "playwright": ("@playwright/mcp", "Playwright MCP"),
             "sequential-thinking": ("@modelcontextprotocol/server-sequential-thinking", "Sequential Thinking MCP")
         }
@@ -128,7 +128,7 @@ class MCPSetupManager:
                 "command": "npx",
                 "args": [
                     "-y",
-                    "figma-developer-mcp"
+                    "ai-figma-mcp"
                 ],
                 "env": {
                     "FIGMA_ACCESS_TOKEN": "${FIGMA_ACCESS_TOKEN}"
