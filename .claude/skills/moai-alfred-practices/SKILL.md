@@ -53,7 +53,7 @@ Edge cases           → Known bugs, constraints, SLAs
 
 ```bash
 /alfred:1-plan "Feature name"
-  → Skill("moai-alfred-spec-metadata-extended") validation
+  → Skill("moai-alfred-spec-metadata") validation
   → SPEC 생성
 
 /alfred:2-run SPEC-ID

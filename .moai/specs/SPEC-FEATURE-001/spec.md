@@ -3,7 +3,7 @@ title: Dynamic Document Reference for spec-builder
 id: SPEC-FEATURE-001
 type: feature
 priority: medium
-status: draft
+status: planned
 affects: spec-builder agent, project structure
 discussion: #130
 ---

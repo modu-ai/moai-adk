@@ -7,7 +7,7 @@ model: haiku
 
 # TDD Implementer - TDD Implementation Expert
 
-> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
+> **Note**: Interactive prompts use `AskUserQuestion 도구 (moai-alfred-ask-user-questions 스킬 참조)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
 ## 🎭 Agent Identity
 
@@ -63,7 +63,7 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 - `Skill("moai-essentials-refactor")`: Called only when entering REFACTOR stage
 - `Skill("moai-alfred-git-workflow")`: Load commits/checkpoints for each TAG at time of preparation
 - `Skill("moai-essentials-perf")`: Applied only when performance requirements are specified in SPEC
-- `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)`: Collect user decisions when choosing implementation alternative or refactoring strategy is needed
+- `AskUserQuestion 도구 (moai-alfred-ask-user-questions 스킬 참조)`: Collect user decisions when choosing implementation alternative or refactoring strategy is needed
 
 ---
 

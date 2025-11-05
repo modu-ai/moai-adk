@@ -1,11 +1,11 @@
 ---
 name: moai-cc-skill-factory
-version: 2.2.0
+version: 2.1.0
 created: 2025-10-22
-updated: 2025-11-05
+updated: 2025-11-02
 status: active
-description: Create and maintain high-quality Claude Code Skills through interactive discovery, web research, and comprehensive description writing standards. Use when building new Skills, researching latest best practices, updating existing Skills, writing skill descriptions with proper trigger keywords, or generating Skill packages backed by official documentation and real-world examples.
-keywords: [skill-creation, claude-skills, best-practices, web-research, interactive-discovery, skill-updates, description-writing, metadata-standards]
+description: Create and maintain high-quality Claude Code Skills through interactive discovery, web research, and continuous updates. Use when building new Skills, researching latest best practices, updating existing Skills with current information, or generating Skill packages backed by official documentation and real-world examples.
+keywords: [skill-creation, claude-skills, best-practices, web-research, interactive-discovery, skill-updates]
 allowed-tools:
   - Read
   - Write
@@ -119,8 +119,6 @@ allowed-tools: "Tool1, Tool2, Tool3"
 - Max 1024 characters
 - Format: Third person, action-oriented
 - Must include: capabilities + trigger scenarios + 3+ keywords
-- **Critical**: Use "Use when" pattern with 3-5 trigger keywords
-- **For complete description writing guidelines**: See [Description Writing Standards](reference.md#description-writing-standards)
 
 **`allowed-tools`** (Recommended):
 - Minimal principle: Only tools actually used

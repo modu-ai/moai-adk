@@ -167,8 +167,145 @@ def handle_session_start(payload: HookPayload) -> HookResult:
 
 
 def handle_session_end(payload: HookPayload) -> HookResult:
-    """SessionEnd event handler (default implementation)"""
-    return HookResult()
+    """SessionEnd event handler with session cleanup functionality
+
+    Performs comprehensive session cleanup:
+    - Save session metrics to .moai/session_metrics.json
+    - Clean up temporary files and caches
+    - Log session summary for analysis
+    - Prepare session handoff notes
+
+    Args:
+        payload: Claude Code event payload
+
+    Returns:
+        HookResult(system_message=session cleanup summary)
+
+    @TAG:SESSION-CLEANUP-001
+    """
+    import json
+    import os
+    import shutil
+    import glob
+    from datetime import datetime
+    from pathlib import Path
+
+    cwd = payload.get("cwd", ".")
+    project_root = Path(cwd)
+
+    # Collect session metrics
+    session_metrics = {
+        "session_end": datetime.now().isoformat(),
+        "project_root": str(project_root),
+        "cleanup_actions": [],
+        "files_processed": 0,
+        "space_freed_mb": 0.0,
+        "errors": []
+    }
+
+    try:
+        # 1. Clean up temporary files
+        temp_patterns = [
+            ".moai/temp/*",
+            ".moai/cache/*.tmp",
+            "*.tmp",
+            ".pytest_cache/__pycache__/*",
+            ".coverage.*.tmp"
+        ]
+
+        for pattern in temp_patterns:
+            try:
+                temp_files = list(project_root.glob(pattern))
+                for temp_file in temp_files:
+                    if temp_file.is_file():
+                        file_size_mb = temp_file.stat().st_size / (1024 * 1024)
+                        temp_file.unlink()
+                        session_metrics["space_freed_mb"] += file_size_mb
+                        session_metrics["files_processed"] += 1
+
+                session_metrics["cleanup_actions"].append(f"Cleaned {pattern}")
+            except Exception as e:
+                session_metrics["errors"].append(f"Failed to clean {pattern}: {str(e)}")
+
+        # 2. Clean up old checkpoints (keep latest 5)
+        checkpoint_dir = project_root / ".moai" / "checkpoints"
+        if checkpoint_dir.exists():
+            try:
+                checkpoints = list(checkpoint_dir.glob("checkpoint-*"))
+                checkpoints.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+
+                for old_checkpoint in checkpoints[5:]:  # Keep latest 5
+                    if old_checkpoint.is_dir():
+                        shutil.rmtree(old_checkpoint)
+                        session_metrics["files_processed"] += 1
+                        session_metrics["cleanup_actions"].append("Removed old checkpoint")
+            except Exception as e:
+                session_metrics["errors"].append(f"Failed to clean checkpoints: {str(e)}")
+
+        # 3. Save session metrics
+        try:
+            metrics_dir = project_root / ".moai"
+            metrics_dir.mkdir(exist_ok=True)
+            metrics_file = metrics_dir / "session_metrics.json"
+
+            # Load existing metrics or create new
+            existing_metrics = []
+            if metrics_file.exists():
+                try:
+                    with open(metrics_file, 'r') as f:
+                        existing_metrics = json.load(f)
+                        if not isinstance(existing_metrics, list):
+                            existing_metrics = []
+                except:
+                    existing_metrics = []
+
+            # Add current session metrics (keep last 10 sessions)
+            existing_metrics.append(session_metrics)
+            if len(existing_metrics) > 10:
+                existing_metrics = existing_metrics[-10:]
+
+            with open(metrics_file, 'w') as f:
+                json.dump(existing_metrics, f, indent=2)
+
+            session_metrics["cleanup_actions"].append("Saved session metrics")
+        except Exception as e:
+            session_metrics["errors"].append(f"Failed to save metrics: {str(e)}")
+
+        # 4. Create session summary message
+        summary_lines = [
+            "🧹 Session Cleanup Complete",
+            "",
+            f"   📁 Files processed: {session_metrics['files_processed']}",
+            f"   💾 Space freed: {session_metrics['space_freed_mb']:.1f}MB",
+        ]
+
+        if session_metrics["cleanup_actions"]:
+            summary_lines.append("   ✅ Actions completed:")
+            for action in session_metrics["cleanup_actions"]:
+                summary_lines.append(f"      • {action}")
+
+        if session_metrics["errors"]:
+            summary_lines.append("   ⚠️  Errors encountered:")
+            for error in session_metrics["errors"]:
+                summary_lines.append(f"      • {error}")
+
+        summary_lines.extend([
+            "",
+            "   📊 Session metrics saved to .moai/session_metrics.json",
+            "   🔄 Ready for next session",
+        ])
+
+        system_message = "\n".join(summary_lines)
+
+        return HookResult(system_message=system_message)
+
+    except Exception as e:
+        # Fallback error handling
+        error_message = f"Session cleanup failed: {str(e)}"
+        return HookResult(
+            system_message=f"⚠️  {error_message}",
+            hook_specific_output={"error": error_message}
+        )
 
 
 __all__ = ["handle_session_start", "handle_session_end"]

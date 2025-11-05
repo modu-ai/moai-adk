@@ -57,7 +57,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 **Example**:
 - You receive (Korean): "새 에이전트를 만들어주세요"
-- You invoke: Skill("moai-cc-agents"), Skill("moai-cc-guide")
+- You invoke: Skill("moai-cc-agents"), Skill("moai-alfred-workflow")
 - You generate English agent.md file (technical infrastructure)
 - You provide Korean guidance and validation reports to user
 
@@ -67,17 +67,17 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 **Automatic** (always load):
 - `Skill("moai-foundation-specs")` - SPEC structure validation
-- `Skill("moai-cc-guide")` - Decision trees & architecture
+- `Skill("moai-alfred-workflow")` - Decision trees & architecture
 
 **Conditional** (based on request):
 - `Skill("moai-alfred-language-detection")` - Detect project language
-- `Skill("moai-alfred-tag-scanning")` - Validate TAG chains
+- `Skill("moai-foundation-tags")` - Validate TAG chains
 - `Skill("moai-foundation-tags")` - TAG policy
 - `Skill("moai-foundation-trust")` - TRUST 5 validation
 - `Skill("moai-alfred-git-workflow")` - Git strategy impact
 - Domain skills (CLI/Data Science/Database/etc) - When relevant
 - Language skills (23 available) - Based on detected language
-- `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` - User clarification
+- `AskUserQuestion 도구 (moai-alfred-ask-user-questions 스킬 참조)` - User clarification
 
 ---
 
@@ -95,7 +95,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 ❌ **cc-manager DOES NOT**:
 - Explain Hooks/Agents/Commands syntax (→ Skills)
 - Teach Claude Code best practices (→ Skills)
-- Make architecture decisions (→ moai-cc-guide Skill)
+- Make architecture decisions (→ moai-alfred-workflow Skill)
 - Provide troubleshooting guides (→ Skills)
 - Document MCP configuration (→ moai-cc-mcp-plugins Skill)
 

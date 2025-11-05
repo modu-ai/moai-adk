@@ -273,31 +273,6 @@ allowed-tools: Read, Bash
 
 ---
 
-## Quick Skill Description Creation Examples
-
-### Foundation Skill Description
-```yaml
-description: Validates SPEC YAML frontmatter (7 required fields id, version, status, created, updated, author, priority) and HISTORY section. Use when creating SPEC documents, validating SPEC metadata, checking SPEC structure, or authoring specifications.
-```
-
-### Alfred Skill Description
-```yaml
-description: Generates descriptive commit messages by analyzing git diffs. Use when writing commit messages, reviewing staged changes, or summarizing code modifications. Automatically activates git-workflow skill for advanced patterns.
-```
-
-### Language Skill Description
-```yaml
-description: TypeScript best practices with Vitest, Biome, strict typing. Use when implementing TypeScript code, writing tests, checking code quality, or applying type safety patterns.
-```
-
-### Domain Skill Description
-```yaml
-description: REST API design patterns with authentication, versioning, error handling. Use when designing REST APIs, implementing authentication, building backend services, or managing API versions.
-```
-
----
-
-**Last Updated**: 2025-11-05
-**Version**: 2.2.0 (Integrated Description Writing Standards)
-**Examples**: 3 complete workflows + description writing examples + mistake patterns
+**Last Updated**: 2025-10-22
+**Examples**: 3 complete workflows + mistake patterns
 **Maintained by**: MoAI-ADK Foundation Team

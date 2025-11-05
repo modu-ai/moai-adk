@@ -35,6 +35,26 @@ Execute planned tasks based on SPEC document analysis. Supports TDD implementati
 
 **Run on**: $ARGUMENTS
 
+## 🚀 Initialize Implementation with JIT Skills
+
+Before starting implementation, load essential JIT skills for enhanced execution:
+
+```python
+# Load session information and current project status
+Skill("moai-session-info")
+
+# Load streaming UI for progress indication during implementation
+Skill("moai-streaming-ui")
+
+# Load change logger for tracking implementation changes
+Skill("moai-change-logger")
+
+# Load TAG policy validator for ensuring compliance during implementation
+Skill("moai-tag-policy-validator")
+```
+
+This provides comprehensive context, progress tracking, change logging, and TAG compliance during implementation.
+
 ## 💡 Execution philosophy: "Plan → Run → Sync"
 
 `/alfred:2-run` performs planned tasks through various execution strategies.
@@ -72,16 +92,12 @@ Execute planned tasks based on SPEC document analysis. Supports TDD implementati
 
 ## 🧠 Associated Skills & Agents
 
-| Agent                  | Core Skill(s)                                                                | Purpose                                 |
-| ---------------------- | ---------------------------------------------------------------------------- | --------------------------------------- |
-| implementation-planner | `moai-alfred-language-detection`, `moai-alfred-agent-guide`                   | Detect language and design architecture |
-| tdd-implementer        | `moai-essentials-debug`, `moai-lang-*`, `moai-foundation-trust`               | Implement TDD (RED → GREEN → REFACTOR)  |
-| **lint-expert**        | `moai-lang-*`, `moai-essentials-debug`, `moai-domain-security`                 | **Parallel linting validation**         |
-| **format-expert**      | `moai-lang-*`, `moai-cc-hooks`, `moai-domain-frontend`                        | **Parallel formatting validation**      |
-| **security-expert**    | `moai-domain-security`, `moai-foundation-trust`, `moai-lang-*`                 | **Parallel security analysis**          |
-| **test-coverage-expert** | `moai-lang-*`, `moai-foundation-trust`, `moai-essentials-perf`               | **Parallel coverage analysis**          |
-| quality-gate           | `moai-alfred-trust-validation`, `moai-foundation-tags`, `moai-alfred-reporting` | Coordinate parallel validation          |
-| git-manager            | `moai-alfred-git-workflow`                                                     | Commit and manage Git workflows         |
+| Agent                  | Core Skill                       | Purpose                                 |
+| ---------------------- | -------------------------------- | --------------------------------------- |
+| implementation-planner | `moai-alfred-language-detection` | Detect language and design architecture |
+| tdd-implementer        | `moai-essentials-debug`          | Implement TDD (RED → GREEN → REFACTOR)  |
+| quality-gate           | `moai-alfred-trust-validation`   | Verify TRUST 5 principles               |
+| git-manager            | `moai-alfred-git-workflow`       | Commit and manage Git workflows         |
 
 **Note**: TUI Survey Skill is used for user confirmations during the run phase and is shared across all interactive prompts.
 
@@ -105,7 +121,41 @@ Users can run commands as follows:
 
 Your task is to analyze SPEC requirements and create an execution plan. Follow these steps:
 
-### STEP 1.1: Determine if Codebase Exploration is Needed
+### STEP 1.1: SPEC Document Analysis and TAG Policy Validation
+
+**CRITICAL**: First validate TAG policy compliance before proceeding.
+
+1. **Read SPEC document**: `.moai/specs/SPEC-$ARGUMENTS/spec.md`
+
+2. **TAG Policy Validation** (Mandatory):
+   ```bash
+   # Verify SPEC exists and TAG policy compliance
+   python3 -c "
+import sys
+sys.path.insert(0, 'src')
+from moai_adk.core.tags.policy_validator import TagPolicyValidator
+from pathlib import Path
+
+spec_file = Path('.moai/specs/SPEC-$ARGUMENTS/spec.md')
+if not spec_file.exists():
+    print('❌ SPEC 파일이 존재하지 않습니다')
+    sys.exit(1)
+
+content = spec_file.read_text(encoding='utf-8')
+validator = TagPolicyValidator()
+violations = validator.validate_before_creation(str(spec_file), content)
+
+if violations:
+    print('❌ TAG 정책 위반 발견:')
+    for v in violations:
+        print(f'  - {v.message}')
+    sys.exit(1)
+else:
+    print('✅ SPEC TAG 정책 준수 확인')
+"
+   ```
+
+3. **Proceed with Exploration** (only if TAG validation passes):
 
 Read the SPEC document at `.moai/specs/SPEC-$ARGUMENTS/spec.md`.
 
@@ -196,12 +246,12 @@ Read the SPEC metadata to identify required domains.
 
 IF SPEC frontmatter contains `domains:` field OR `.moai/config.json` has `stack.selected_domains`, THEN:
   - For each domain in the list:
-    - IF domain is "frontend", THEN invoke Task with subagent_type "Explore" and prompt: "You are consulting as frontend-expert for TDD implementation. SPEC: [SPEC-{ID}]. Provide implementation readiness check: Component structure recommendations, State management approach, Testing strategy, Accessibility requirements, Performance optimization tips. Output: Brief advisory for tdd-implementer (3-4 key points)"
-    - IF domain is "backend", THEN invoke Task with subagent_type "Explore" and prompt: "You are consulting as backend-expert for TDD implementation. SPEC: [SPEC-{ID}]. Provide implementation readiness check: API contract validation, Database schema requirements, Authentication/authorization patterns, Error handling strategy, Async processing considerations. Output: Brief advisory for tdd-implementer (3-4 key points)"
-    - IF domain is "devops", THEN invoke Task with subagent_type "Explore" and domain-specific readiness check
-    - IF domain is "database", THEN invoke Task with subagent_type "Explore" and database-specific readiness check
-    - IF domain is "data-science", THEN invoke Task with subagent_type "Explore" and data-science-specific readiness check
-    - IF domain is "mobile", THEN invoke Task with subagent_type "Explore" and mobile-specific readiness check
+    - IF domain is "frontend", THEN invoke Explore agent with prompt: "You are consulting as frontend-expert for TDD implementation. SPEC: [SPEC-{ID}]. Provide implementation readiness check: Component structure recommendations, State management approach, Testing strategy, Accessibility requirements, Performance optimization tips. Output: Brief advisory for tdd-implementer (3-4 key points)"
+    - IF domain is "backend", THEN invoke Explore agent with prompt: "You are consulting as backend-expert for TDD implementation. SPEC: [SPEC-{ID}]. Provide implementation readiness check: API contract validation, Database schema requirements, Authentication/authorization patterns, Error handling strategy, Async processing considerations. Output: Brief advisory for tdd-implementer (3-4 key points)"
+    - IF domain is "devops", THEN invoke Explore agent with devops-specific readiness check
+    - IF domain is "database", THEN invoke Explore agent with database-specific readiness check
+    - IF domain is "data-science", THEN invoke Explore agent with data-science-specific readiness check
+    - IF domain is "mobile", THEN invoke Explore agent with mobile-specific readiness check
   - Store all domain expert feedback in memory
   - Save advisory to `.moai/specs/SPEC-{ID}/plan.md` under "## Domain Expert Advisory (Implementation Phase)" section
 
@@ -209,7 +259,36 @@ IF no domains specified OR domain expert unavailable, THEN:
   - Skip advisory phase
   - Continue to STEP 2.2 (implementation proceeds regardless)
 
-### STEP 2.2: Invoke TDD Implementer Agent
+### STEP 2.2: TAG Policy Check Before Implementation
+
+**CRITICAL**: Verify SPEC → CODE → TAG chain before implementation.
+
+```bash
+# Ensure SPEC exists and has valid @TAG
+python3 -c "
+import sys
+sys.path.insert(0, 'src')
+from moai_adk.core.tags.policy_validator import TagPolicyValidator
+from pathlib import Path
+import re
+
+spec_file = Path('.moai/specs/SPEC-$ARGUMENTS/spec.md')
+if not spec_file.exists():
+    print('❌ SPEC 파일이 존재하지 않습니다')
+    sys.exit(1)
+
+content = spec_file.read_text(encoding='utf-8')
+
+# Check for @SPEC: tag
+if not re.search(r'@SPEC:[A-Z0-9-]+-\d{3}', content):
+    print('❌ SPEC 파일에 @TAG가 없습니다')
+    sys.exit(1)
+
+print('✅ SPEC TAG 확인 완료 - 구현 시작 가능')
+"
+```
+
+### STEP 2.3: Invoke TDD Implementer Agent
 
 Invoke the tdd-implementer agent using the Task tool:
   - Set subagent_type to "tdd-implementer"
@@ -217,6 +296,11 @@ Invoke the tdd-implementer agent using the Task tool:
   - Pass prompt including:
     - SPEC ID ($ARGUMENTS)
     - Language settings (conversation_language, conversation_language_name)
+    - **CRITICAL**: TAG policy enforcement instructions
+      - "All CODE files MUST include @CODE: tag referencing the SPEC"
+      - "All TEST files MUST include @TEST: tag referencing the SPEC"
+      - "Maintain SPEC → CODE → TEST → DOC chain integrity"
+      - "Follow TAG format: @(TYPE):DOMAIN-NNN"
     - Code and technical output must be in English
     - Code comments language rules (local project vs package code)
     - Test descriptions and documentation language
@@ -253,97 +337,19 @@ IF tdd-implementer encounters errors or test failures, THEN:
   - Attempt fix and retry
   - IF error persists after retry, THEN escalate to user for manual intervention
 
-### STEP 2.4: Parallel Quality Gate Verification (Skill-Powered)
+### STEP 2.4: Quality Gate Verification (Automatic)
 
-After tdd-implementer completes all tasks, invoke comprehensive parallel validation with full skill integration:
+After tdd-implementer completes all tasks, automatically invoke the quality-gate agent:
+  - Set subagent_type to "quality-gate"
+  - Set description to "TRUST principle verification and quality validation"
+  - Pass prompt to verify:
+    - TRUST principles (Test coverage ≥ 85%, Readable code, Unified architecture, Secured, Traceable @TAG chain)
+    - Code style (run linter: ESLint/Pylint)
+    - Test coverage (run language-specific coverage tools)
+    - TAG chain integrity (check orphan TAGs, missing TAGs)
+    - Dependency security (check vulnerabilities)
 
-#### Required Skills for Quality Gate Coordination
-**Invoke these skills first for quality gate orchestration**:
-- `Skill("moai-alfred-agent-guide")` - Agent selection and parallel coordination
-- `Skill("moai-alfred-workflow")` - Complete workflow decision trees
-- `Skill("moai-foundation-trust")` - TRUST 5 principles validation framework
-- `Skill("moai-alfred-reporting")` - Structured quality report generation
-- `Skill("moai-alfred-language-detection")` - Multi-language project analysis
-
-#### Parallel Quality Validation Execution
-
-**Execute these specialized agents simultaneously**:
-
-1. **quality-gate (Coordinator)**:
-   - **Primary Skills**: `Skill("moai-alfred-trust-validation")`, `Skill("moai-foundation-tags")`
-   - **Description**: "TRUST principles validation and results aggregation"
-   - **Focus**: Test coverage ≥85%, Readable code, Unified architecture, Secured, Trackable @TAG chain
-   - **Secondary Skills**: `Skill("moai-domain-security")`, `Skill("moai-essentials-perf")`
-
-2. **lint-expert (Code Quality)**:
-   - **Primary Skills**: `Skill("moai-lang-python")`, `Skill("moai-lang-typescript")`, `Skill("moai-lang-go")`, etc.
-   - **Description**: "Comprehensive linting with complete language ecosystem support"
-   - **Focus**: Static analysis, security vulnerability detection, performance bottlenecks
-   - **Secondary Skills**: `Skill("moai-essentials-debug")`, `Skill("moai-essentials-refactor")`
-
-3. **format-expert (Style Consistency)**:
-   - **Primary Skills**: `Skill("moai-lang-python")`, `Skill("moai-lang-typescript")`, `Skill("moai-lang-go")`, etc.
-   - **Description**: "Advanced multi-language formatting with IDE integration"
-   - **Focus**: Code style consistency, automated formatting, team standards enforcement
-   - **Secondary Skills**: `Skill("moai-cc-hooks")`, `Skill("moai-cc-settings")`, `Skill("moai-domain-frontend")`
-
-4. **security-expert (Security Analysis)**:
-   - **Primary Skills**: `Skill("moai-domain-security")`, `Skill("moai-foundation-trust")`
-   - **Description**: "Comprehensive security vulnerability assessment"
-   - **Focus**: OWASP Top 10, dependency scanning, secrets detection, security patterns
-   - **Secondary Skills**: `Skill("moai-domain-backend")`, `Skill("moai-lang-python")`
-
-5. **test-coverage-expert (Coverage Analysis)**:
-   - **Primary Skills**: `Skill("moai-lang-python")`, `Skill("moai-lang-typescript")`, `Skill("moai-foundation-trust")`
-   - **Description**: "Advanced test coverage analysis with quality metrics"
-   - **Focus**: Coverage gaps, test effectiveness, quality trends
-   - **Secondary Skills**: `Skill("moai-essentials-perf")`, `Skill("moai-essentials-debug")`
-
-#### Parallel Execution Pattern
-
-```python
-# Skill-powered parallel execution
-parallel_tasks = [
-    {
-        "agent": "quality-gate",
-        "skills": ["moai-alfred-trust-validation", "moai-foundation-tags"],
-        "prompt": f"Execute TRUST 5 validation for SPEC-{ARGUMENTS} with full skill integration"
-    },
-    {
-        "agent": "lint-expert",
-        "skills": ["moai-lang-python", "moai-lang-typescript", "moai-essentials-debug"],
-        "prompt": f"Execute comprehensive linting for SPEC-{ARGUMENTS} using complete language ecosystem"
-    },
-    {
-        "agent": "format-expert",
-        "skills": ["moai-lang-python", "moai-lang-typescript", "moai-cc-hooks"],
-        "prompt": f"Execute advanced formatting for SPEC-{ARGUMENTS} with IDE integration support"
-    },
-    {
-        "agent": "security-expert",
-        "skills": ["moai-domain-security", "moai-foundation-trust"],
-        "prompt": f"Execute security analysis for SPEC-{ARGUMENTS} with OWASP compliance"
-    },
-    {
-        "agent": "test-coverage-expert",
-        "skills": ["moai-lang-python", "moai-foundation-trust"],
-        "prompt": f"Execute coverage analysis for SPEC-{ARGUMENTS} with quality metrics"
-    }
-]
-
-# Execute all tasks in parallel with skill orchestration
-results = execute_parallel_with_skills(parallel_tasks)
-```
-
-#### Results Aggregation (Skill-Powered)
-
-**Use these skills for intelligent result processing**:
-- `Skill("moai-alfred-reporting")` - Generate consolidated quality report
-- `Skill("moai-foundation-trust")` - Apply TRUST 5 decision framework
-- `Skill("moai-essentials-debug")` - Analyze and resolve any conflicts
-- `Skill("moai-alfred-agent-guide")` - Coordinate follow-up actions if needed
-
-The quality-gate coordinator will aggregate all parallel results and generate a comprehensive verification report using full skill integration.
+The quality-gate agent will generate a verification report.
 
 **Handle verification results:**
 

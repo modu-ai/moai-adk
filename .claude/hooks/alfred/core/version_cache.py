@@ -5,7 +5,7 @@
 TTL-based caching system for version check results to minimize network calls
 during SessionStart hook execution.
 
-SPEC: SPEC-UPDATE-ENHANCE-001 - SessionStart version check system enhancement
+SPEC: SPEC-UPDATE-ENHANCE-001 - SessionStart 버전 체크 시스템 강화
 Phase 1: Cache System Implementation
 """
 
