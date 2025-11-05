@@ -288,58 +288,119 @@ moai-adk update        # 최신 버전으로 업데이트
 
 ### MCP (Model Context Protocol) 설정 가이드
 
-MoAI-ADK는 3가지 핵심 MCP 서버를 사용하여 AI 개발 경험을 극대화합니다:
+MoAI-ADK는 Microsoft MCP 표준을 따르는 4가지 핵심 MCP 서버를 자동으로 설치하고 설정합니다.
 
 #### 🔧 MCP 서버 종류 및 용도
 
-| MCP 서비스 | 주요 기능 | 대상 에이전트 | 설치 방법 |
+| MCP 서비스 | 주요 기능 | 대상 에이전트 | 설치 방식 |
 |-----------|-----------|--------------|-----------|
-| **Context7** | 최신 라이브러리 문서 검색 | 모든 전문가 에이전트 | `npm install -g @context7/mcp-server` |
-| **Figma** | 디자인 시스템 및 컴포넌트 사양 | ui-ux-expert | `npm install -g @figma/mcp-server` |
-| **Playwright** | 웹 E2E 테스트 자동화 | frontend-expert, tdd-implementer, quality-gate | `npm install -g @playwright/mcp-server` |
+| **Context7** | 최신 라이브러리 문서 검색 | 모든 전문가 에이전트 | NPX 자동 설치 |
+| **Figma** | 디자인 시스템 및 컴포넌트 사양 | ui-ux-expert | Claude Code 공식 원격 서버 |
+| **Playwright** | 웹 E2E 테스트 자동화 | frontend-expert, tdd-implementer, quality-gate | NPX 자동 설치 |
+| **Sequential Thinking** | 복잡한 추론 및 논리 분석 | spec-builder, implementation-planner, security-expert | NPX 자동 설치 |
 
-#### 📦 MCP 서버 설치 방법
+#### 🚀 자동 MCP 설정 (moai-adk init)
 
-**1. Claude Code 설정 열기**:
+**moai-adk init 실행 시 자동으로 MCP 서버 설치**:
+
 ```bash
-# Claude Code 설정 파일 열기
-claude-code settings
+# MCP 서버 포함 프로젝트 초기화
+moai-adk init my-project --with-mcp
+
+# 또는 기존 프로젝트에 MCP 추가
+cd your-project
+moai-adk init . --with-mcp
 ```
 
-**2. MCP 서버 설정 추가**:
+**자동 생성되는 MCP 설정 파일 (.claude/mcp.json)**:
+
 ```json
 {
-  "mcpServers": {
+  "servers": {
     "context7": {
-      "command": "node",
-      "args": ["node_modules/@context7/mcp-server/dist/index.js"],
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp"
+      ],
       "env": {}
     },
     "figma": {
-      "command": "node",
-      "args": ["node_modules/@figma/mcp-server/dist/index.js"],
-      "env": {
-        "FIGMA_ACCESS_TOKEN": "your_figma_token_here"
+      "type": "http",
+      "url": "https://mcp.figma.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${FIGMA_ACCESS_TOKEN}"
       }
     },
     "playwright": {
-      "command": "node",
-      "args": ["node_modules/@playwright/mcp-server/dist/index.js"],
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp"
+      ],
+      "env": {}
+    },
+    "sequential-thinking": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ],
       "env": {}
     }
   }
 }
 ```
 
-**3. 토큰 설정 (Figma만 해당)**:
-- Figma → Account Settings → Personal Access Tokens
-- `FIGMA_DESIGN_TOKEN` 생성 후 설정 파일에 추가
+#### 🔧 Figma Access Token 설정
 
-#### ✅ 설치 확인
+**Claude Code 공식 Figma MCP는 원격 서버를 사용합니다**:
+
+1. **Figma Access Token 생성**
+   - 방문: https://www.figma.com/developers/api#access-tokens
+   - 적절한 권한으로 새 Access Token 생성
+
+2. **토큰 설정** (선택 방법 중 하나)
+
+   **환경변수 방법 (권장)**:
+   ```bash
+   # 셸 프로필에 추가 (~/.zshrc 또는 ~/.bashrc)
+   export FIGMA_ACCESS_TOKEN="your_figma_token_here"
+
+   # 즉시 적용
+   source ~/.zshrc  # 또는 source ~/.bashrc
+   ```
+
+   **Claude Code 설정 방법**:
+   ```bash
+   claude-code settings
+   ```
+
+3. **Claude Code 재시작**으로 토큰 활성화
+
+**참고**: Figma MCP는 Claude Code 공식 원격 서버(https://mcp.figma.com/mcp)를 사용하므로 별도의 로컬 설치가 필요 없습니다.
+
+#### 🎯 Microsoft MCP 표준 준수
+
+**설정 표준**:
+- **파일**: `.claude/mcp.json` (Microsoft MCP 표준)
+- **형식**: `servers` 객체에 각 서버 `type: "stdio"` 또는 `type: "http"` 명시
+- **명령어**: 모든 로컬 서버는 `npx` with `-y` 플래그로 자동 설치
+- **하위 호환성**: `.claude/settings.json`에도 레거시 지원으로 설정 복사
+
+#### ✅ 에이전트 기능 확장
 
 MCP 서버가 정상적으로 설치되면 다음 에이전트들이 자동으로 기능 확장됩니다:
 
-- **ui-ux-expert**: Figma 디자인 시스템 연동
+- **ui-ux-expert**: Figma 디자인 시스템 연동 (공식 원격 서버)
+- **spec-builder**: Sequential Thinking으로 복잡한 SPEC 작성 지원
+- **implementation-planner**: 다단계 계획 수립 시 추론 강화
+- **backend-expert**: 아키텍처 설계 시 체계적 사고 지원
+- **database-expert**: 스키마 설계 시 논리적 분석 추가
+- **security-expert**: 위협 분석 시 단계별 사고 과정 지원
 - **frontend-expert**: Context7로 최신 문서 참조
 - **tdd-implementer**: Playwright로 테스트 자동 생성
 - **quality-gate**: 웹 품질 검증 자동화
@@ -349,11 +410,14 @@ MCP 서버가 정상적으로 설치되면 다음 에이전트들이 자동으�
 
 **MCP 서버가 보이지 않을 경우**:
 1. Claude Code 재시작
-2. 설정 파일 문법 확인
-3. `claude-code --version`으로 Claude Code 버전 확인
-4. `node --version`으로 Node.js 버전 확인 (18+ 필요)
+2. `.claude/mcp.json` 파일 문법 확인
+3. `claude-code --version`으로 Claude Code 버전 확인 (v1.5.0+ 필요)
+4. `npx --version`으로 npm/npx 버전 확인
+5. Figma Access Token이 올바르게 설정되었는지 확인
 
-**자세한 MCP 설정 가이드**: [Claude Code MCP Documentation](https://docs.claude.com/mcp)
+**자세한 MCP 설정 가이드**:
+- [Claude Code MCP Documentation (한국어)](https://docs.claude.com/ko/docs/claude-code/mcp)
+- [Microsoft MCP Standard](https://modelcontextprotocol.io)
 
 ### 프로젝트 생성 상세 가이드
 
@@ -2493,7 +2557,7 @@ MoAI-ADK 내부 워크플로우 오케스트레이션 스킬
 | `moai-domain-cli-tool`       | CLI 도구 개발, 인자 파싱, POSIX 준수, 사용자친화적 help 메시지                    |
 | `moai-domain-data-science`   | 데이터 분석, 시각화, 통계 모델링, 재현 가능한 연구 워크플로우                     |
 | `moai-domain-database`       | 데이터베이스 설계, 스키마 최적화, 인덱싱 전략, 마이그레이션 관리                  |
-| `moai-domain-design-systems` | 디자인 시스템 아키텍처, W3C DTCG 토큰, WCAG 2.2 접근성, 디자인-투-코드, Figma MCP |
+| `moai-domain-design-systems` | 디자인 시스템 아키텍처, W3C DTCG 토큰, WCAG 2.2 접근성, 디자인-투-코드, Claude Code 공식 Figma MCP |
 | `moai-domain-devops`         | CI/CD 파이프라인, Docker containerization, Kubernetes 오케스트레이션, IaC         |
 | `moai-domain-frontend`       | React/Vue/Angular 개발, 상태 관리, 성능 최적화, 접근성                            |
 | `moai-domain-ml`             | 머신러닝 모델 학습, 평가, 배포, MLOps 워크플로우                                  |
