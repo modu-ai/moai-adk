@@ -27,7 +27,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 from moai_adk.core.tags.auto_corrector import AutoCorrection, AutoCorrectionConfig, TagAutoCorrector
 from moai_adk.core.tags.policy_validator import PolicyValidationConfig, PolicyViolation, TagPolicyValidator
 from moai_adk.core.tags.rollback_manager import RollbackConfig, RollbackManager
-from moai_adk.utils.common import load_hook_timeout, get_graceful_degradation
+from ..utils.hook_config import load_hook_timeout, get_graceful_degradation
 
 
 def load_config() -> Dict[str, Any]:
