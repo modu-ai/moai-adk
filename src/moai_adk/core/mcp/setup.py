@@ -121,17 +121,13 @@ class MCPSetupManager:
                 "env": {}
             }
 
-        # Figma MCP
+        # Figma MCP (Claude Code 공식 HTTP 방식)
         if installed_servers.get("figma", False):
             config["servers"]["figma"] = {
-                "type": "stdio",
-                "command": "npx",
-                "args": [
-                    "-y",
-                    "ai-figma-mcp"
-                ],
-                "env": {
-                    "FIGMA_ACCESS_TOKEN": "${FIGMA_ACCESS_TOKEN}"
+                "type": "http",
+                "url": "https://mcp.figma.com/mcp",
+                "headers": {
+                    "Authorization": "Bearer ${FIGMA_ACCESS_TOKEN}"
                 }
             }
 

@@ -634,11 +634,11 @@ moai-adk init . --with-mcp sequential-thinking
 
 #### Figma Access Token Setup
 
-If you select Figma MCP, you'll need to configure an access token:
+Claude Code 공식 Figma MCP는 원격 HTTP 서버를 사용합니다:
 
 1. **Create Figma Access Token**
    - Visit: https://www.figma.com/developers/api#access-tokens
-   - Create a new access token
+   - Create a new access token with appropriate permissions
 
 2. **Configure Token** (choose one method)
    ```bash
@@ -653,6 +653,8 @@ If you select Figma MCP, you'll need to configure an access token:
    ```
 
 3. **Restart Claude Code** to activate the token
+
+**Note**: Figma MCP는 Claude Code 공식 원격 서버(https://mcp.figma.com/mcp)를 사용하므로 별도의 로컬 설치가 필요 없습니다.
 
 #### MCP Configuration File
 
@@ -671,14 +673,10 @@ MCP servers are automatically configured following Microsoft MCP standard in `.c
       "env": {}
     },
     "figma": {
-      "type": "stdio",
-      "command": "npx",
-      "args": [
-        "-y",
-        "ai-figma-mcp"
-      ],
-      "env": {
-        "FIGMA_ACCESS_TOKEN": "${FIGMA_ACCESS_TOKEN}"
+      "type": "http",
+      "url": "https://mcp.figma.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${FIGMA_ACCESS_TOKEN}"
       }
     },
     "playwright": {
