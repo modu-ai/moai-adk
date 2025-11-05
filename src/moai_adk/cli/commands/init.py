@@ -1,4 +1,4 @@
-#  | @CODE:INIT-003:CLI
+# @CODE:CLI-001 | @CODE:INIT-003:CLI
 # SPEC: SPEC-CLI-001.md, SPEC-INIT-003.md
 # TEST: tests/unit/test_cli_commands.py, tests/unit/test_init_reinit.py
 """MoAI-ADK init command
