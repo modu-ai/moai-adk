@@ -38,6 +38,7 @@ from rich.progress import BarColumn, Progress, SpinnerColumn, TaskID, TextColumn
 from moai_adk import __version__
 from moai_adk.cli.prompts import prompt_project_setup
 from moai_adk.core.project.initializer import ProjectInitializer
+from moai_adk.core.mcp.setup import MCPSetupManager
 from moai_adk.utils.banner import print_banner, print_welcome_message
 
 console = Console()
@@ -96,6 +97,17 @@ def create_progress_callback(progress: Progress, task_ids: Sequence[TaskID]):
     help="Programming language (auto-detect if not specified)",
 )
 @click.option(
+    "--with-mcp",
+    multiple=True,
+    type=click.Choice(["context7", "figma", "playwright"]),
+    help="Install MCP servers automatically (can be used multiple times)",
+)
+@click.option(
+    "--mcp-auto",
+    is_flag=True,
+    help="Auto-install all recommended MCP servers",
+)
+@click.option(
     "--force",
     is_flag=True,
     help="Force reinitialize without confirmation",
@@ -106,6 +118,8 @@ def init(
     mode: str,
     locale: str,
     language: str | None,
+    with_mcp: tuple,
+    mcp_auto: bool,
     force: bool,
 ) -> None:
     """Initialize a new MoAI-ADK project
@@ -116,6 +130,8 @@ def init(
         mode: Project mode (personal/team)
         locale: Preferred language (ko/en). When omitted, defaults to en.
         language: Programming language
+        with_mcp: Install specific MCP servers (can be used multiple times)
+        mcp_auto: Auto-install all recommended MCP servers
         force: Force reinitialize without confirmation
     """
     try:
@@ -138,9 +154,24 @@ def init(
             # This will become "generic" internally, but Summary will show more helpful message
             if not language:
                 language = None
+
+            # Handle MCP options in non-interactive mode
+            if mcp_auto:
+                mcp_servers = ["context7", "figma", "playwright"]
+                console.print("[cyan]🔧 MCP servers:[/cyan] Auto-installing all recommended servers")
+            elif with_mcp:
+                mcp_servers = list(with_mcp)
+                console.print(f"[cyan]🔧 MCP servers:[/cyan] {', '.join(mcp_servers)}")
+            else:
+                mcp_servers = []
         else:
             # Interactive Mode
             print_welcome_message()
+
+            # Check for MCP CLI options in interactive mode (warn user)
+            if mcp_auto or with_mcp:
+                console.print("[yellow]⚠️  MCP options ignored in interactive mode[/yellow]")
+                console.print("   Please use the interactive prompts instead.\n")
 
             # Interactive prompt
             answers = prompt_project_setup(
@@ -155,6 +186,7 @@ def init(
             locale = answers["locale"]
             language = answers["language"]
             project_name = answers["project_name"]
+            mcp_servers = answers.get("mcp_servers", [])
 
             console.print("\n[cyan]🚀 Starting installation...[/cyan]\n")
 
@@ -264,6 +296,18 @@ def init(
             )
             console.print(f"  [dim]⏱️  Duration:[/dim]  {result.duration}ms")
 
+            # Show MCP setup info
+            if mcp_servers:
+                console.print(f"  [dim]🔧 MCP Servers:[/dim] {', '.join(mcp_servers)}")
+
+            # MCP Setup (if servers selected)
+            if mcp_servers:
+                console.print(f"\n[cyan]🔧 Setting up MCP servers...[/cyan]")
+                mcp_manager = MCPSetupManager(project_path)
+                mcp_success = mcp_manager.setup_mcp_servers(mcp_servers)
+                if not mcp_success:
+                    console.print("[yellow]⚠️  MCP setup completed with warnings[/yellow]")
+
             # Show backup info if reinitialized
             if is_reinit:
                 backup_dir = project_path / ".moai-backups"
@@ -291,15 +335,29 @@ def init(
                     "  [blue]2.[/blue] Run [bold]/alfred:0-project[/bold] in Claude Code for full setup"
                 )
                 console.print(
-                    "     (Configure: mode, language, report generation, etc.)\n"
+                    "     (Configure: mode, language, report generation, etc.)"
                 )
             else:
                 console.print(
                     "  [blue]1.[/blue] Run [bold]/alfred:0-project[/bold] in Claude Code for full setup"
                 )
                 console.print(
-                    "     (Configure: mode, language, report generation, etc.)\n"
+                    "     (Configure: mode, language, report generation, etc.)"
                 )
+
+            # Figma token setup guidance
+            if mcp_servers and "figma" in mcp_servers:
+                console.print("\n[yellow]🔐 Figma Access Token Setup:[/yellow]")
+                console.print("  [dim]Figma MCP requires an access token to function:[/dim]")
+                console.print("  1. Visit: https://www.figma.com/developers/api#access-tokens")
+                console.print("  2. Create a new access token")
+                console.print("  3. Run [bold]/alfred:0-project[/bold] and follow the Figma setup prompts")
+                console.print("  4. The token will be securely stored in your environment\n")
+
+            if not is_current_dir:
+                console.print("  [blue]3.[/blue] Start developing with MoAI-ADK!\n")
+            else:
+                console.print("  [blue]2.[/blue] Start developing with MoAI-ADK!\n")
         else:
             console.print("\n[red bold]❌ Initialization Failed![/red bold]")
             if result.errors:
