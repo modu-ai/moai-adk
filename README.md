@@ -2551,6 +2551,7 @@ Alfred works by combining multiple specialized agents with Claude Skills.
 | trust-checker ✅   | Haiku  | TRUST 5 quality gate                                                    |
 | quality-gate 🛡️    | Haiku  | Coverage change and release blocker review                              |
 | cc-manager 🛠️      | Sonnet | Claude Code session optimization, Skill deployment                      |
+| skill-factory 🏭  | Sonnet | Skills creation and management, 69 Skills ecosystem maintenance           |
 
 ### Expert Agents (Proactively Triggered by SPEC Keywords)
 
@@ -2633,26 +2634,33 @@ Specialized domain expertise
 
 Programming language-specific best practices
 
-| Skill                  | Description                                               |
-| ---------------------- | --------------------------------------------------------- |
-| `moai-lang-python`     | pytest, mypy, ruff, black, uv package management          |
-| `moai-lang-typescript` | Vitest, Biome, strict typing, npm/pnpm                    |
-| `moai-lang-javascript` | Jest, ESLint, Prettier, npm package management            |
-| `moai-lang-go`         | go test, golint, gofmt, standard library                  |
-| `moai-lang-rust`       | cargo test, clippy, rustfmt, ownership/borrow checker     |
-| `moai-lang-java`       | JUnit, Maven/Gradle, Checkstyle, Spring Boot patterns     |
-| `moai-lang-kotlin`     | JUnit, Gradle, ktlint, coroutines, extension functions    |
-| `moai-lang-swift`      | XCTest, SwiftLint, iOS/macOS development patterns         |
-| `moai-lang-dart`       | flutter test, dart analyze, Flutter widget patterns       |
-| `moai-lang-csharp`     | xUnit, .NET tooling, LINQ, async/await patterns           |
-| `moai-lang-cpp`        | Google Test, clang-format, modern C++ (C++17/20)          |
-| `moai-lang-c`          | Unity test framework, cppcheck, Make build system         |
-| `moai-lang-scala`      | ScalaTest, sbt, functional programming patterns           |
-| `moai-lang-ruby`       | RSpec, RuboCop, Bundler, Rails patterns                   |
-| `moai-lang-php`        | PHPUnit, Composer, PSR standards                          |
-| `moai-lang-sql`        | Test frameworks, query optimization, migration management |
-| `moai-lang-shell`      | bats, shellcheck, POSIX compliance                        |
-| `moai-lang-r`          | testthat, lintr, data analysis patterns                   |
+**🏆 Premium Specialized Language Skills (5 skills)**:
+
+| Skill                    | Description                                                     | Features |
+| ------------------------ | --------------------------------------------------------------- | -------- |
+| `moai-lang-python`       | Python 3.13+, FastAPI, pytest, uv, asyncio expertise      | AI/ML, Backend |
+| `moai-lang-typescript`  | TypeScript 5.6+, Next.js, React 19, E2E type safety          | Frontend, Full-stack |
+| `moai-lang-go`          | Go 1.25+, microservices, concurrency, cloud-native           | Backend, Systems |
+| `moai-lang-rust`        | Rust 1.91+, Actix-web, zero-cost abstractions, memory safety  | Systems, Performance |
+| `moai-lang-javascript`  | Node.js 22.x, Express, legacy support, modern migration      | Legacy, Node.js |
+
+**📋 Template-Based Language Skills (13 skills)**:
+
+| Skill                | Description                                                     | Template-based |
+| -------------------- | --------------------------------------------------------------- | ------------ |
+| `moai-lang-java`      | JUnit 5, Spring Boot, Maven/Gradle auto-detection          | Java template |
+| `moai-lang-kotlin`    | JUnit, Gradle, coroutines, Android development              | Kotlin template |
+| `moai-lang-swift`     | XCTest, SwiftLint, iOS/macOS development patterns          | Swift template |
+| `moai-lang-csharp`    | xUnit, .NET, async/await patterns                           | C# template |
+| `moai-lang-dart`      | Flutter 3.x, Riverpod, Material Design 3                     | Dart template |
+| `moai-lang-cpp`       | Google Test, clang-format, modern C++ (C++17/20)           | C++ template |
+| `moai-lang-c`         | Unity test, cppcheck, CMake build system                        | C template |
+| `moai-lang-ruby`      | RSpec, RuboCop, Rails 8 patterns                             | Ruby template |
+| `moai-lang-php`        | PHPUnit, Composer, PSR standards                        | PHP template |
+| `moai-lang-scala`     | ScalaTest, sbt, functional programming patterns            | Scala template |
+| `moai-lang-sql`        | Database tests, query optimization, migration management | SQL template |
+| `moai-lang-shell`     | bats, shellcheck, POSIX compliance                       | Shell template |
+| `moai-lang-r`          | testthat, lintr, data analysis patterns                   | R template |
 
 #### Claude Code Ops
 
@@ -2662,7 +2670,28 @@ Claude Code session management
 | ------------------ | ---------------------------------------------------------------------------------- |
 | `moai-claude-code` | Claude Code agents, commands, skills, plugins, settings scaffolding and monitoring |
 
-> **v0.4.6 New Feature**: Claude Skills organized in 4-tier architecture (100% complete in v0.4.6). Each Skill loads via Progressive Disclosure only when needed to minimize context cost. Organized in Foundation → Essentials → Alfred → Domain/Language/Ops tiers, with all skills including production-grade documentation and executable TDD examples.
+> **v0.17.0 Major Update**: Claude Skills organized in 4-tier architecture (100% complete). Each Skill loads via Progressive Disclosure only when needed to minimize context cost. **69 high-quality Skills** organized in Foundation → Essentials → Alfred → Domain/Language/Ops tiers, with all skills including production-grade documentation and executable examples.
+
+## 🎯 Skills System Major Improvements (v0.17.0)
+
+### ✅ Completed Large-Scale Improvements
+
+**🔄 Skills Consolidation & Cleanup**:
+- **Skill Count**: 80 → **69** (13.75% reduction)
+- **Duplicate Removal**: 13 duplicate/unnecessary skills cleaned up
+- **Consolidated Skills**: 5 key integrated skills created
+
+**🚀 Language Skills System Innovation**:
+- **5 Premium Specialized Skills**: Python, TypeScript, Go, Rust, JavaScript
+- **Language Template System**: 13 additional languages supported (Java, Kotlin, Swift, etc.)
+- **Context7 MCP Integration**: Latest library documentation auto-lookup
+
+**📋 New Consolidated Skills**:
+1. **moai-alfred-workflow-core**: 4-step workflow execution
+2. **moai-alfred-best-practices**: TRUST 5, quality gates
+3. **moai-spec-management**: Complete SPEC lifecycle management
+4. **moai-cc-configuration**: Complete Claude Code setup
+5. **moai-cc-skill-factory**: Enhanced skill creation system
 
 ---
 

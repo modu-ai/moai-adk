@@ -79,3 +79,4 @@ CLAUDE.md.local
 # Local users should not commit these files - sync from package template
 .claude/commands/alfred/release-new.md
 .claude/commands/alfred/awesome-release-new.md
+.vercel

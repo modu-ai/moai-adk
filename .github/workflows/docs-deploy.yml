@@ -1,0 +1,143 @@
+name: Deploy Documentation to Vercel
+
+# 트리거: main/develop 브랜치에 푸시되거나 PR이 생성되었을 때
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - "docs/**"
+      - ".github/workflows/docs-deploy.yml"
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - "docs/**"
+      - ".github/workflows/docs-deploy.yml"
+
+jobs:
+  deploy:
+    name: 📚 Deploy Documentation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: 📦 Install uv
+        uses: astral-sh/setup-uv@v2
+        with:
+          enable-cache: true
+          cache-dependency-glob: "docs/pyproject.toml"
+
+      - name: 🏗️ Build documentation
+        run: |
+          cd docs
+          echo "🚀 Building MoAI-ADK Documentation..."
+          uv sync
+          uv run python scripts/build_docs.py
+
+          # Build stats
+          echo "📊 Build Statistics:"
+          echo "HTML files: $(find site -name "*.html" | wc -l)"
+          echo "Total size: $(du -sh site | cut -f1)"
+
+          # Verify multilingual structure
+          echo ""
+          echo "🌍 Multilingual Structure:"
+          for lang in "" en ja zh; do
+            if [ -n "$lang" ]; then
+              count=$(find site/$lang -name "*.html" 2>/dev/null | wc -l)
+              echo "  $lang: $count HTML files"
+            else
+              count=$(find site -maxdepth 1 -name "*.html" | wc -l)
+              echo "  Korean (default): $count HTML files"
+            fi
+          done
+
+      - name: 🔍 Verify build quality
+        run: |
+          cd docs
+
+          # Check critical files exist
+          critical_files=("site/index.html" "site/sitemap.xml")
+          for file in "${critical_files[@]}"; do
+            if [ -f "$file" ]; then
+              echo "✅ $file exists"
+            else
+              echo "❌ $file missing"
+              exit 1
+            fi
+          done
+
+          # Check file sizes (should be reasonable)
+          index_size=$(stat -f%z "site/index.html" 2>/dev/null || stat -c%s "site/index.html" 2>/dev/null || echo 0)
+          if [ "$index_size" -gt 1000 ]; then
+            echo "✅ Index.html size: $index_size bytes"
+          else
+            echo "❌ Index.html too small: $index_size bytes"
+            exit 1
+          fi
+
+          # Check for CSS/JS assets
+          if [ -d "site/assets" ]; then
+            asset_count=$(find site/assets -type f | wc -l)
+            echo "✅ Assets directory: $asset_count files"
+          else
+            echo "❌ Assets directory missing"
+            exit 1
+          fi
+
+      - name: 🚀 Deploy to Vercel
+        id: deploy
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          working-directory: ./docs
+          vercel-args: '--prod'
+
+      - name: 🔗 Get deployment URL
+        if: steps.deploy.outputs.preview-url != ''
+        run: |
+          echo "🌐 Documentation deployed successfully!"
+          echo "📖 URL: ${{ steps.deploy.outputs.preview-url }}"
+          echo ""
+          echo "🌍 Multilingual URLs:"
+          echo "  🇰🇷 Korean: ${{ steps.deploy.outputs.preview-url }}/"
+          echo "  🇺🇸 English: ${{ steps.deploy.outputs.preview-url }}/en/"
+          echo "  🇯🇵 Japanese: ${{ steps.deploy.outputs.preview-url }}/ja/"
+          echo "  🇨🇳 Chinese: ${{ steps.deploy.outputs.preview-url }}/zh/"
+
+      - name: ✅ Deployment complete
+        if: success()
+        run: |
+          echo "🎉 Documentation deployment complete!"
+          echo ""
+          echo "📊 Summary:"
+          echo "  • Repository: ${{ github.repository }}"
+          echo "  • Branch: ${{ github.ref_name }}"
+          echo "  • Commit: ${{ github.sha }}"
+          echo "  • URL: ${{ steps.deploy.outputs.preview-url }}"
+          echo ""
+          echo "🌐 Access documentation at: ${{ steps.deploy.outputs.preview-url }}"
+
+      - name: ❌ Deployment failed
+        if: failure()
+        run: |
+          echo "❌ Documentation deployment failed!"
+          echo ""
+          echo "🔍 Debug information:"
+          echo "  • Repository: ${{ github.repository }}"
+          echo "  • Branch: ${{ github.ref_name }}"
+          echo "  • Commit: ${{ github.sha }}"
+          echo ""
+          echo "Check the logs above for details."

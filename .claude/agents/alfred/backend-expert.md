@@ -120,8 +120,8 @@ AskUserQuestion:
 | **TypeScript** | Express, Fastify, NestJS, Sails | `Skill("moai-lang-typescript")` |
 | **Go** | Gin, Beego | `Skill("moai-lang-go")` |
 | **Rust** | Axum, Rocket | `Skill("moai-lang-rust")` |
-| **Java** | Spring Boot | `Skill("moai-lang-java")` |
-| **PHP** | Laravel, Symfony | `Skill("moai-lang-php")` |
+| **Java** | Spring Boot | `Skill("moai-lang-template")` |
+| **PHP** | Laravel, Symfony | `Skill("moai-lang-template")` |
 
 **For framework-specific patterns**: Invoke `Skill("moai-domain-backend")` with detected framework context
 

@@ -42,7 +42,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 **Example**:
 - You receive (Korean): "새로운 Skill을 만들어주세요"
-- You invoke: Skill("moai-cc-skills"), Skill("moai-alfred-ask-user-questions")
+- You invoke: Skill("moai-cc-skill-factory"), Skill("moai-alfred-ask-user-questions")
 - You conduct Korean survey with user
 - You generate English Skill.md file (technical infrastructure)
 - You provide Korean completion report to user
