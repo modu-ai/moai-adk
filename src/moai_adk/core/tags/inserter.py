@@ -1,10 +1,10 @@
-# @CODE:TAG-INSERTER-001, @CODE:TAG-INSERTER-002
+# @CODE:TAG-INSERTER-001 | @SPEC:DOC-TAG-001
 """Markdown TAG insertion and file operations.
 
 Inserts @DOC tags into markdown file headers with chain references
 and provides backup/recovery functionality.
 
-@SPEC:TAG-DOC-INSERTION-001: @DOC tag automatic generation infrastructure
+@SPEC:DOC-TAG-001: @DOC 태그 자동 생성 인프라
 """
 
 from pathlib import Path

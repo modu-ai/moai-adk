@@ -1,10 +1,10 @@
-# @CODE:MAP-001, @CODE:MAP-002
+# @CODE:TAG-MAPPER-001 | @SPEC:DOC-TAG-001
 """SPEC-DOC mapping and confidence scoring.
 
 Maps documentation files to related SPEC IDs based on domain matching
 and calculates confidence scores for chain references.
 
-@SPEC:DOC-TAG-001: @DOC tag automatic generation infrastructure
+@SPEC:DOC-TAG-001: @DOC 태그 자동 생성 인프라
 """
 
 import re

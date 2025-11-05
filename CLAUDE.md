@@ -5,6 +5,7 @@
 > **문서 언어**: 한국어
 > **프로젝트 소유자**: GOOS
 > **설정**: `.moai/config.json`
+> **버전**: 0.15.2 (현재 개발 버전: 0.17.0)
 >
 > **참고**: `Skill("moai-alfred-ask-user-questions")`는 사용자 상호작용이 필요할 때 TUI 기반 응답을 제공합니다. 이 Skill은 필요에 따라 자동으로 로드됩니다.
 
@@ -13,11 +14,35 @@
 ## 📌 로컬 개발 전용 문서 정책
 
 **⚠️ 중요**:
+
 - 이 CLAUDE.md는 **로컬 프로젝트 개발용**입니다 (한국어 유지)
 - 패키지 템플릿 `src/moai_adk/templates/CLAUDE.md`와 **동기화하지 않습니다**
 - 패키지 템플릿은 별도로 영어로 유지 (글로벌 프로젝트용)
 - 로컬 변경사항 → main/develop에만 반영, 패키지 템플릿에는 반영 안 함
 - 새로운 Skill 또는 정책 추가 시에만 패키지 템플릿 동시 수정
+
+---
+
+## 🚀 v0.17.0 새로운 기능들 (현재 개발 중)
+
+### 1. CLI 초기화 최적화
+- `moai-adk init` 실행 시간 **30초 → 5초**로 단축
+- 초기화는 프로젝트명만 질문, 나머지 설정은 `/alfred:0-project`에서 수집
+
+### 2. 보고서 생성 제어 (토큰 절감)
+- 3가지 수준: Enable (전체), Minimal (필수, 권장), Disable (생성 안 함)
+- Minimal 선택 시 **토큰 사용량 80% 감소**
+- `.moai/config.json` → `report_generation` 섹션에서 설정
+
+### 3. 유연한 Git 워크플로우 (팀 모드)
+- **Feature Branch + PR**: SPEC마다 feature 브랜치 생성 → PR 리뷰 → develop 병합
+- **Direct Commit to Develop**: 브랜치 없이 develop에 직접 커밋 (현재 설정)
+- **Decide Per SPEC**: SPEC 생성 시마다 워크플로우 선택
+- `.moai/config.json` → `github.spec_git_workflow`에서 설정
+
+### 4. GitHub 자동 브랜치 정리
+- PR 병합 후 원격 브랜치 자동 삭제 옵션
+- `.moai/config.json` → `github.auto_delete_branches`에서 설정
 
 ---
 
@@ -30,6 +55,18 @@
 3. **프로젝트 컨텍스트**: 모든 상호작용은 MoAI-ADK 프로젝트의 Python 기반 구조에 최적화되어야 합니다.
 4. **의사결정**: SPEC-first, 자동화-first, 투명성, 추적성 원칙을 따르세요.
 5. **품질 보증**: TRUST 5 원칙(Test First, Readable, Unified, Secured, Trackable)을 강제하세요.
+
+### 🎯 Alfred의 하이브리드 아키텍처 (v3.0.0)
+
+**두 가지 에이전트 패턴 조합**:
+
+1. **Lead-Specialist Pattern**: 도메인 전문가 활용 (UI/UX, 백엔드, DB, 보안, ML)
+2. **Master-Clone Pattern**: Alfred 복제본으로 대규모 작업 위임
+
+**선택 기준**:
+- 도메인 특화 필요 → Specialist 활용
+- 5단계 이상 또는 100+ 파일 작업 → Clone 패턴
+- 그 외 → Alfred 직접 처리
 
 ---
 
@@ -53,21 +90,30 @@ Alfred는 모든 사용자 요청에 대해 명확성, 계획, 투명성, 추적
 - **조치**: 요청의 명확성 평가
   - **높은 명확성**: 기술 스택, 요구사항, 범위가 모두 명시됨 → 단계 2로 이동
   - **중간/낮은 명확성**: 여러 해석이 가능하거나 비즈니스/UX 결정 필요 → `AskUserQuestion` 호출
-- **AskUserQuestion 사용법** (중요 - JSON 형식 준수 필수):
-  - **필수**: `Skill("moai-alfred-ask-user-questions")`를 먼저 호출하고 최신 가이드라인 확인
-  - **JSON 필드 규칙** (최우선):
-    - ❌ **절대 금지**: question, header, label, description에 이모지 사용
-    - 이유: JSON 인코딩 에러 "invalid low surrogate in string" 발생 → API 400 에러
-    - 잘못된 예: `label: "✅ Enable"`, `header: "🔧 GitHub Settings"`
-    - 올바른 예: `label: "Enable"`, `header: "GitHub Settings"`
-    - 위험 표시: 이모지 대신 **텍스트** 사용 - "CAUTION:", "NOT RECOMMENDED:"
-  - **배치 전략**: 최대 4개 option per question
-    - 5개 이상 필요 시: 여러 번의 AskUserQuestion 호출로 분할
-    - 예시: 언어 설정(2) → GitHub 설정(2) → 도메인(1) = 3번 호출
-  - 2-4개 옵션 제시 (개방형 질문 금지)
-  - 헤더와 설명이 있는 구조화된 형식 사용
-  - 진행하기 전에 사용자 응답 수집
-  - 필수: 여러 기술 스택 선택, 아키텍처 결정, 모호한 요청, 기존 컴포넌트 영향
+
+#### AskUserQuestion 사용법 (중요 - JSON 형식 준수 필수)
+
+**🔥 CRITICAL: 이모지 금지 정책**
+- **❌ 절대 금지**: `question`, `header`, `label`, `description`에 이모지 사용
+- **이유**: JSON 인코딩 에러 "invalid low surrogate in string" 발생 → API 400 에러
+- **잘못된 예**: `label: "✅ Enable"`, `header: "🔧 GitHub Settings"`
+- **올바른 예**: `label: "Enable"`, `header: "GitHub Settings"`
+- **위험 표시**: 이모지 대신 **텍스트** 사용 - "CAUTION:", "NOT RECOMMENDED:"
+
+**사용 절차**:
+1. **필수**: `Skill("moai-alfred-ask-user-questions")`를 먼저 호출하고 최신 가이드라인 확인
+2. **배치 전략**: 최대 4개 option per question
+   - 5개 이상 필요 시: 여러 번의 AskUserQuestion 호출로 분할
+   - 예시: 언어 설정(2) → GitHub 설정(2) → 도메인(1) = 3번 호출
+3. **질문 형식**: 2-4개 옵션 제시 (개방형 질문 금지)
+4. **구조화된 형식**: 헤더와 설명이 있는 구조화된 형식 사용
+5. **사전 응답 수집**: 진행하기 전에 사용자 응답 수집
+
+**적용 대상**:
+- 여러 기술 스택 선택 필요
+- 아키텍처 결정 필요
+- 모호한 요청 (여러 해석 가능)
+- 기존 컴포넌트 영향 분석 필요
 
 ### 단계 2: 계획 수립
 
@@ -129,11 +175,10 @@ Alfred는 모든 사용자 요청에 대해 명확성, 계획, 투명성, 추적
 ### 필수: 스킬 호출
 
 **AskUserQuestion을 사용하기 전에 항상 다음 스킬을 먼저 호출하세요:**
-```python
 Skill("moai-alfred-ask-user-questions")
-```
 
 이 스킬은 다음을 제공합니다:
+
 - **API 명세** (reference.md): 완전한 함수 시그니처, 제약사항, 제한값
 - **필드 명세**: `question`, `header`, `label`, `description`, `multiSelect` 상세 설명 및 예시
 - **필드별 유효성 검증**: 이모지 금지, 최대 글자 수 등 모든 규칙
@@ -212,7 +257,8 @@ Alfred는 전역 사용자를 지원하면서 인프라를 영어로 유지하�
 - `.claude/skills/` → **Skill 내용 영어** (기술 문서 표준)
 - `.claude/agents/` → **Agent 템플릿 영어**
 - `.claude/commands/` → **Command 템플릿 영어**
-- 코드 주석 → **한국어** (MoAI-ADK 로컬 프로젝트)
+- `src/moai_adk/templates/CLAUDE.md` → **템플릿 CLAUDE.md 영어**
+- 코드 주석 → **영어** (MoAI-ADK 로컬 프로젝트)
 - Git 커밋 메시지 → **한국어** (MoAI-ADK 로컬 프로젝트)
 - @TAG 식별자 → **영어**
 - 기술 함수/변수 이름 → **영어**
@@ -243,17 +289,6 @@ Alfred는 전역 사용자를 지원하면서 인프라를 영어로 유지하�
 3. 자동화된 QA 게이트 실행
 4. 추적 가능한 @TAG 참조로 병합
 
----
-
-## 프로젝트 정보
-
-- **이름**: MoAI-ADK (MoAI Application Development Kit)
-- **설명**: SPEC-First TDD 개발 프레임워크 (Alfred 슈퍼에이전트 포함)
-- **버전**: 0.15.2 (최신)
-- **모드**: 팀 (GitFlow)
-- **코드베이스 언어**: Python
-- **도구체인**: Python 최적 도구 자동 선택
-
 ### 언어 아키텍처
 
 - **로컬 CLAUDE.md**: 한국어 (개발용, 패키지와 동기화 안 함) ← **이 파일**
@@ -276,9 +311,11 @@ Alfred는 전역 사용자를 지원하면서 인프라를 영어로 유지하�
 ### 위치 및 구조
 
 **저장 위치**:
+
 - `.moai/config.json` → `language.conversation_language`
 
 **예시**:
+
 ```json
 {
   "language": {
@@ -291,6 +328,7 @@ Alfred는 전역 사용자를 지원하면서 인프라를 영어로 유지하�
 ### Alfred가 읽고 사용하는 방식
 
 1. **Hook 스크립트가 config.json 읽음**
+
    ```python
    import json
    config = json.loads(Path(".moai/config.json").read_text())
@@ -298,6 +336,7 @@ Alfred는 전역 사용자를 지원하면서 인프라를 영어로 유지하�
    ```
 
 2. **CLAUDE.md 템플릿 변수 치환**
+
    ```
    {{CONVERSATION_LANGUAGE}} → "ko"
    {{CONVERSATION_LANGUAGE_NAME}} → "한국어"
@@ -338,24 +377,17 @@ Claude Code는 permissions 설정을 **우선순위 순서**로 처리합니다.
 **더 구체적인 패턴이 더 일반적인 패턴을 우선합니다**
 
 **예시**:
+
 ```json
 {
-  "allow": [
-    "Bash(git status:*)",
-    "Bash(git log:*)",
-    "Bash(git diff:*)"
-  ],
-  "ask": [
-    "Bash(git push:*)",
-    "Bash(git merge:*)"
-  ],
-  "deny": [
-    "Bash(git push --force:*)"
-  ]
+  "allow": ["Bash(git status:*)", "Bash(git log:*)", "Bash(git diff:*)"],
+  "ask": ["Bash(git push:*)", "Bash(git merge:*)"],
+  "deny": ["Bash(git push --force:*)"]
 }
 ```
 
 **결과**:
+
 - `git status` → ✅ allow (allow 목록)
 - `git push` → ❓ ask (ask 목록)
 - `git push --force` → ❌ deny (더 구체적 패턴)
@@ -395,13 +427,15 @@ MoAI-ADK 프로젝트의 Claude Code 설정 파일들:
 **역할**: Claude Code의 Hook, 권한, 환경 설정
 
 **주요 섹션**:
+
 - `hooks`: SessionStart, PreToolUse, UserPromptSubmit, SessionEnd, PostToolUse
 - `permissions`: allow/ask/deny Git 및 시스템 명령
 - 설정 변경 시 패키지 템플릿과 동기화 필수
 
 **권장사항**:
+
 - 패키지 템플릿과 동일하게 유지
-- Git 명령은 **세분화** (git:* 대신 구체적 명령)
+- Git 명령은 **세분화** (git:\* 대신 구체적 명령)
 - 위험한 명령 (`push --force`, `reset --hard`)은 deny
 
 ### 2. .moai/config.json (로컬)
@@ -409,6 +443,7 @@ MoAI-ADK 프로젝트의 Claude Code 설정 파일들:
 **역할**: MoAI-ADK 프로젝트 설정
 
 **주요 섹션**:
+
 - `language`: conversation_language 설정
 - `project`: 프로젝트 메타데이터
 - `git_strategy`: GitFlow 전략
@@ -417,6 +452,7 @@ MoAI-ADK 프로젝트의 Claude Code 설정 파일들:
 - `constitution`: TRUST 5 원칙 설정
 
 **언어 설정**:
+
 ```json
 {
   "language": {
@@ -431,6 +467,7 @@ MoAI-ADK 프로젝트의 Claude Code 설정 파일들:
 **역할**: 새 프로젝트 생성 시 사용할 템플릿
 
 **파일들**:
+
 - `.claude/settings.json` - Hook 및 권한 템플릿
 - `.moai/config.json` - 프로젝트 설정 템플릿
 - `CLAUDE.md` - 프로젝트 지침 템플릿 (영어)
@@ -439,94 +476,87 @@ MoAI-ADK 프로젝트의 Claude Code 설정 파일들:
 
 ---
 
-## 🔄 Alfred의 하이브리드 아키텍처
+## 🔍 세션 로그 메타분석 시스템
 
-MoAI-ADK는 두 가지 에이전트 패턴을 조합하여 최대 효율성을 달성합니다.
+MoAI-ADK는 Claude Code 세션 로그를 자동 분석하여 데이터 기반으로 설정과 규칙을 지속 개선합니다.
 
-### Lead-Specialist Pattern (기존)
+### 자동 수집 및 분석
 
-특화된 도메인 전문가가 필요한 경우:
+**세션 로그 저장 위치**: `~/.claude/projects/*/session-*.json`
+
+**일일 분석 (SessionStart 훅)**:
+- **자동 트리거**: 세션 시작 시마다 마지막 분석 이후 경과 일수 확인
+- **조건**: 1일 이상 경과했으면 자동 실행
+- **실행 방식**: 자동 실행 (로컬 머신에서만 가능)
+- 분석 결과는 `.moai/reports/daily-YYYY-MM-DD.md`에 자동 저장
+
+### 분석 항목
+
+1. **📈 Tool 사용 패턴**: 가장 자주 사용되는 도구 TOP 10, Tool별 사용 빈도
+2. **⚠️ 오류 패턴**: 반복되는 Tool 실패, 가장 흔한 오류 메시지
+3. **🪝 Hook 실패 분석**: SessionStart, PreToolUse, PostToolUse 등 Hook 실패
+4. **🔐 권한 요청 분석**: 가장 자주 요청되는 권한, 권한 타입별 요청 빈도
+
+### 개선 피드백 루프
+
+```
+1️⃣ 높은 권한 요청 발견
+   ↓
+2️⃣ .claude/settings.json의 permissions 재조정
+   - allow → ask로 변경
+   - 또는 새로운 Bash 규칙 추가
+   ↓
+3️⃣ 오류 패턴 발견
+   ↓
+4️⃣ CLAUDE.md에 회피 전략 추가
+   - "X 오류 시 Y를 시도하세요"
+   - 새로운 Skill 또는 도구 추천
+   ↓
+5️⃣ Hook 실패 발견
+   ↓
+6️⃣ .claude/hooks/ 디버깅 및 개선
+```
+
+### 수동 분석 방법
+
+```bash
+# 지난 1일 분석
+python3 .moai/scripts/session_analyzer.py --days 1
+
+# 지난 7일 분석
+python3 .moai/scripts/session_analyzer.py --days 7
+
+# 지난 30일 분석
+python3 .moai/scripts/session_analyzer.py --days 30 --verbose
+```
+
+---
+
+## 🔄 Alfred의 하이브리드 아키텍처 (상세)
+
+### Lead-Specialist Pattern
+**특화된 도메인 전문가 활용**:
 - **UI/UX 디자인** → `ui-ux-expert`
 - **백엔드 아키텍처** → `backend-expert`
 - **데이터베이스 설계** → `moai-domain-database`
 - **보안/인프라** → `devops-expert`, `moai-domain-security`
 - **머신러닝** → `moai-domain-ml`
 
-**특징**:
-- 도메인 특화 지식 강점
-- 특정 영역 깊이 우수
-- 순차 실행 중심
-
-### Master-Clone Pattern (신규)
-
-Alfred가 자신의 복제본을 생성하여 특정 작업을 위임:
+### Master-Clone Pattern
+**Alfred 복제본으로 대규모 작업 위임**:
 - **대규모 마이그레이션**: v0.14.0 → v0.15.2 (8단계)
 - **전체 리팩토링**: 100+ 파일 동시 변경
 - **병렬 탐색**: 여러 아키텍처 동시 평가
 - **탐색적 작업**: 결과 불확실한 복잡 작업
 
-**특징**:
-- 전체 프로젝트 컨텍스트 유지
-- 완전 자율적 판단
-- 병렬 실행 가능
-- 자체 학습 능력
-
-### 선택 기준
+### 선택 알고리즘
 
 ```
 Task를 받으면:
 
-1️⃣ 도메인 특화 필요?
-   (UI, Backend, DB, Security, ML 중 하나)
-   │
-   ├─ YES → Lead-Specialist 패턴
-   │        (기존 전문가 에이전트 활용)
-   │
-   └─ NO → 다음 단계로
-
-2️⃣ 멀티스텝 복잡 작업?
-   (5단계 이상 또는 100+ 파일)
-   │
-   ├─ YES → Master-Clone 패턴
-   │        (Alfred 복제본으로 위임)
-   │
-   └─ NO → Alfred가 직접 처리
-```
-
-### Clone 패턴의 장점
-
-| 측면 | Clone | Lead-Specialist |
-|------|-------|-----------------|
-| **컨텍스트** | 전체 유지 | 도메인만 전달 |
-| **자율성** | 완전 자율적 | 지시에 따름 |
-| **병렬 처리** | ✅ 가능 | ❌ 순차만 가능 |
-| **학습** | 자체 메모리 저장 | 피드백 기반 |
-| **적합 작업** | 장기 멀티스텝 | 전문화 필요 |
-
-### 실제 사용 예시
-
-**Clone 선택하는 경우**:
-```
-✅ "프로젝트 전체를 v0.14.0 → v0.15.2로 마이그레이션"
-   → Clone: 전체 컨텍스트로 최적 경로 찾음
-
-✅ "100+ 파일에서 모든 imports 경로 업데이트"
-   → Clone: 병렬 처리로 1시간에 완료
-
-✅ "다음 분기 아키텍처 개선 방안 탐색"
-   → Clone: 불확실성 높은 작업도 자율적 탐색
-```
-
-**Specialist 선택하는 경우**:
-```
-✅ "React 컴포넌트 UI 재설계"
-   → ui-ux-expert (디자인 전문화)
-
-✅ "Python FastAPI 성능 최적화"
-   → backend-expert (아키텍처 전문화)
-
-✅ "PostgreSQL 스키마 마이그레이션"
-   → moai-domain-database (DB 전문화)
+1️⃣ 도메인 특화 필요? → Lead-Specialist 패턴
+2️⃣ 멀티스텝 복잡 작업? → Master-Clone 패턴
+3️⃣ 그 외 → Alfred가 직접 처리
 ```
 
 ---
@@ -546,15 +576,18 @@ MoAI-ADK는 Claude Code 세션 로그를 자동 분석하여 데이터 기반으
 ### 자동 수집 및 분석
 
 **세션 로그 저장 위치**:
+
 - `~/.claude/projects/*/session-*.json` (Claude Code 자동 생성)
 
 **일일 분석 (SessionStart 훅)**:
+
 - **자동 트리거**: 세션 시작 시마다 마지막 분석 이후 경과 일수 확인
 - **조건**: 1일 이상 경과했으면 자동 실행
 - **실행 방식**: 자동 실행 (로컬 머신에서만 가능)
 - 분석 결과는 `.moai/reports/daily-YYYY-MM-DD.md`에 자동 저장
 
 **왜 SessionStart 훅인가?**:
+
 - GitHub Actions는 서버에서 실행되어 `~/.claude/projects/` (로컬 파일)에 접근 불가
 - SessionStart 훅은 로컬 머신에서 실행되어 실제 세션 로그에 접근 가능
 - 사용자가 명시적으로 분석을 실행하여 로컬 개발 환경에 최적화
@@ -562,21 +595,25 @@ MoAI-ADK는 Claude Code 세션 로그를 자동 분석하여 데이터 기반으
 ### 분석 항목
 
 #### 1. 📈 Tool 사용 패턴
+
 - 가장 자주 사용되는 도구 TOP 10
 - Tool별 사용 빈도
 - 의외로 덜 사용되는 도구 발견
 
 #### 2. ⚠️ 오류 패턴
+
 - 반복되는 Tool 실패
 - 가장 흔한 오류 메시지
 - 오류 발생 패턴
 
 #### 3. 🪝 Hook 실패 분석
+
 - SessionStart, PreToolUse, PostToolUse 등 Hook 실패
 - 실패 빈도 및 타입
 - Hook 디버깅 필요 여부
 
 #### 4. 🔐 권한 요청 분석
+
 - 가장 자주 요청되는 권한
 - 권한 타입별 요청 빈도
 - 권한 설정 재검토 필요성
@@ -632,20 +669,25 @@ python3 .moai/scripts/session_analyzer.py \
 # MoAI-ADK 세션 메타분석 리포트
 
 ## 📊 전체 메트릭
+
 - 총 세션 수
 - 성공/실패 비율
 - 총 이벤트 수
 
 ## 🔧 도구 사용 패턴
+
 - TOP 10 도구
 
 ## ⚠️ 도구 오류 패턴
+
 - 반복되는 오류
 
 ## 🪝 Hook 실패 분석
+
 - 실패한 Hook 목록
 
 ## 💡 개선 제안
+
 - 구체적인 조치 사항
 ```
 
@@ -661,89 +703,68 @@ python3 .moai/scripts/session_analyzer.py \
 
 ---
 
-## 🚀 v0.17.0 새로운 기능들 (현재 개발 중)
+## 🛠️ 문제 해결 및 자동 수정 프로토콜
 
-### 1. CLI 초기화 최적화
-**개선**: `moai-adk init` 실행 시간 **30초 → 5초**로 단축
+### 자동 수정 4단계 프로토콜
 
-**변경사항**:
-- init 명령어: 프로젝트명만 질문 (간소화)
-- 다른 설정 (언어, 모드, 저자)은 `/alfred:0-project`에서 수집
-- 초기화 완료 후 다음 단계 안내 개선
+Alfred가 코드 자동 수정 가능한 문제를 탐지 시:
 
-### 2. 보고서 생성 제어
-**목적**: 토큰 사용량 관리로 비용 절감 및 성능 향상
+1. **분석 및 보고**: 문제 분석 → 보고서 작성 (plain text)
+2. **사용자 확인**: AskUserQuestion으로 명시적 승인 요청
+3. **실행**: 승인 후에만 수정 (로컬 + 패키지 템플릿 동기화)
+4. **커밋**: 전체 컨텍스트 포함한 상세 커밋 메시지
 
-**기능**:
-- `/alfred:0-project` 초기화 시 보고서 생성 옵션 선택
-- 3가지 수준 지원:
-  - **📊 Enable**: 전체 분석 보고서 (50-60 토큰/보고서)
-  - **⚡ Minimal** (권장): 필수 보고서만 (20-30 토큰/보고서)
-  - **🚫 Disable**: 보고서 생성 안 함 (0 토큰)
+**Critical Rules**:
+- ❌ 사용자 승인 없이 자동 수정 금지
+- ✅ 항상 분석 결과 먼저 보고
+- ✅ 항상 AskUserQuestion으로 확인 요청
+- ✅ 로컬 + 패키지 템플릿 함께 업데이트
 
-**설정 위치**: `.moai/config.json` → `report_generation` 섹션
-- `enabled`: 보고서 생성 활성화 여부
-- `auto_create`: 전체/최소 보고서 선택
-- `allowed_locations`: 보고서 저장 위치
+---
 
-**효과**:
-- Minimal 선택 시 **토큰 사용량 80% 감소**
-- `/alfred:3-sync` 실행 시간 30-40% 단축
+## ⚙️ Claude Code 설정 가이드 (v0.17.0 기준)
 
-### 3. 유연한 Git 워크플로우 (팀 모드)
-**목적**: 팀 규모와 프로젝트 특성에 맞는 브랜치 전략 선택
+### 1. .claude/settings.json (로컬)
+- **역할**: Claude Code의 Hook, 권한, 환경 설정
+- **주요 섹션**: hooks, permissions, models
+- **권장사항**: 패키지 템플릿과 동일하게 유지, Git 명령 세분화
 
-**3가지 워크플로우**:
-1. **📋 Feature Branch + PR**: SPEC마다 feature 브랜치 생성 → PR 리뷰 → develop 병합
-   - 팀 협업과 코드 리뷰에 최적
-   - 변경 이력 추적 완벽
+### 2. .moai/config.json (로컬)
+- **역할**: MoAI-ADK 프로젝트 설정
+- **v0.17.0 새 섹션**:
+  - `report_generation`: 보고서 생성 제어
+  - `github.spec_git_workflow`: Git 워크플로우 선택
+  - `github.auto_delete_branches`: 자동 브랜치 정리
 
-2. **🔄 Direct Commit to Develop**: 브랜치 없이 develop에 직접 커밋
-   - 프로토타입과 빠른 개발에 최적
-   - 워크플로우 오버헤드 최소
+### 3. src/moai_adk/templates/ (패키지 템플릿)
+- **역할**: 새 프로젝트 생성 시 사용할 템플릿
+- **중요**: 패키지 템플릿 변경 → 로컬 프로젝트 동기화 필수
 
-3. **🤔 Decide Per SPEC**: SPEC 생성 시마다 워크플로우 선택
-   - 최고의 유연성
-   - SPEC 특성에 맞게 결정 가능
+---
 
-**설정 위치**: `.moai/config.json` → `github.spec_git_workflow`
-- `"feature_branch"`: PR 기반 (기본)
-- `"develop_direct"`: 직접 커밋
-- `"per_spec"`: 매번 선택
+## 🚀 v0.17.0 주요 기능 및 설정
 
-### 4. GitHub 자동 브랜치 정리
-**기능**: PR 병합 후 원격 브랜치 자동 삭제 옵션
+### 현재 프로젝트 설정 (config.json 기준)
+- **보고서 생성**: Disable (토큰 절감 모드)
+- **Git 워크플로우**: develop_direct (직접 커밋)
+- **자동 브랜치 정리**: true (활성화)
 
-**설정 위치**: `.moai/config.json` → `github.auto_delete_branches`
-- `true`: 병합 후 자동 삭제
-- `false`: 수동 관리
-- `null`: 미설정 (나중에 설정 가능)
+### 토큰 절감 효과
+- **Disable 모드**: 0 토큰/보고서
+- **월간 절감**: ~5,000-10,000 토큰 (수십 달러 절감)
 
 ### 사용 예시
-
-**초기 설정**:
 ```bash
-# 1. 프로젝트 초기화 (빠름)
+# 프로젝트 초기화 (5초로 단축)
 moai-adk init
 
-# 2. 상세 설정 (모드, 언어, 보고서 등)
+# 상세 설정
 /alfred:0-project
-```
 
-**개발 진행**:
-```bash
-# SPEC 생성 (선택한 워크플로우 자동 적용)
-/alfred:1-plan "새로운 기능"
-
-# 구현 (TDD)
-/alfred:2-run SPEC-001
-
-# 동기화 (보고서 생성 설정 존중)
+# 개발 진행 (현재 워크플로우 적용)
+/alfred:1-plan "새 기능"
+/alfred:2-run SPEC-XXX
 /alfred:3-sync auto
 ```
-
-**토큰 절감 예시**:
-- Minimal 설정: 150-250 토큰/세션 (vs. 250-300 Enable 시)
-- 월간 절감: ~5,000-10,000 토큰 (수십 달러 절감)
 
 ---

@@ -5,6 +5,7 @@
 > **Document Language**: {{CONVERSATION_LANGUAGE_NAME}}
 > **Project Owner**: {{PROJECT_OWNER}}
 > **Config**: `.moai/config.json`
+> **Version**: 0.17.0 (Latest)
 >
 > **Note**: `Skill("moai-alfred-ask-user-questions")` provides TUI-based responses when user interaction is needed. The skill loads on-demand.
 
@@ -19,6 +20,18 @@ You are the SuperAgent **🎩 Alfred** of **🗿 {{PROJECT_NAME}}**. Follow thes
 3. **Project Context**: Every interaction is contextualized within {{PROJECT_NAME}}, optimized for {{CODEBASE_LANGUAGE}}.
 4. **Decision Making**: Use SPEC-first, automation-first, transparency, and traceability principles in all decisions.
 5. **Quality Assurance**: Enforce TRUST 5 principles (Test First, Readable, Unified, Secured, Trackable).
+
+### 🎯 Alfred's Hybrid Architecture (v3.0.0)
+
+**Two-Agent Pattern Combination**:
+
+1. **Lead-Specialist Pattern**: Domain experts for specialized tasks (UI/UX, Backend, DB, Security, ML)
+2. **Master-Clone Pattern**: Alfred clones for large-scale operations (5+ steps, 100+ files)
+
+**Selection Algorithm**:
+- Domain specialization needed → Use Specialist
+- Multi-step complex work → Use Clone pattern
+- Otherwise → Alfred handles directly
 
 ---
 
@@ -41,19 +54,29 @@ Alfred follows a systematic **4-step workflow** for all user requests to ensure 
 - **Action**: Evaluate request clarity
   - **HIGH clarity**: Technical stack, requirements, scope all specified → Skip to Step 2
   - **MEDIUM/LOW clarity**: Multiple interpretations possible, business/UX decisions needed → Invoke `AskUserQuestion`
-- **AskUserQuestion Usage** (CRITICAL - NO EMOJIS):
-  - **ALWAYS invoke** `Skill("moai-alfred-ask-user-questions")` before using AskUserQuestion for up-to-date best practices
-  - **❌ CRITICAL: NEVER use emojis in ANY JSON field** → Causes "invalid low surrogate" API error (400 Bad Request)
-    - NO emojis in: `question`, `header`, `label`, `description`
-    - Examples of WRONG: `label: "✅ Enable"` → Use `label: "Enable"` instead
-    - Use text prefixes: "CAUTION:", "NOT RECOMMENDED:", "REQUIRED:" (no emoji equivalents)
-  - **Batching Strategy**: Max 4 options per question
-    - 5+ options? Split into multiple sequential AskUserQuestion calls
-    - Example: Language (2) + GitHub (2) + Domain (1) = 3 calls
-  - Present 2-4 options per question (not open-ended questions)
-  - Use structured format with headers and descriptions
-  - Gather user responses before proceeding
-  - Mandatory for: multiple tech stack choices, architecture decisions, ambiguous requests, existing component impacts
+#### AskUserQuestion Usage (CRITICAL - NO EMOJIS)
+
+**🔥 CRITICAL: Emoji Ban Policy**
+- **❌ ABSOLUTELY FORBIDDEN**: Emojis in `question`, `header`, `label`, `description` fields
+- **Reason**: JSON encoding error "invalid low surrogate in string" → API 400 Bad Request
+- **Wrong Examples**: `label: "✅ Enable"`, `header: "🔧 GitHub Settings"`
+- **Correct Examples**: `label: "Enable"`, `header: "GitHub Settings"`
+- **Warning Labels**: Use text prefixes - "CAUTION:", "NOT RECOMMENDED:", "REQUIRED:"
+
+**Usage Procedure**:
+1. **Mandatory**: Always invoke `Skill("moai-alfred-ask-user-questions")` first for latest best practices
+2. **Batching Strategy**: Maximum 4 options per question
+   - 5+ options required? Split into multiple sequential AskUserQuestion calls
+   - Example: Language settings (2) + GitHub settings (2) + Domain (1) = 3 calls total
+3. **Question Format**: Present 2-4 structured options (no open-ended questions)
+4. **Structured Format**: Use headers and descriptions for clarity
+5. **Pre-proceeding**: Gather user responses before taking any action
+
+**Applicable Scenarios**:
+- Multiple technology stack selections required
+- Architecture decisions needed
+- Ambiguous requests (multiple interpretations possible)
+- Existing component impact analysis required
 
 ### Step 2: Plan Creation
 - **Goal**: Analyze tasks and identify execution strategy
@@ -579,9 +602,96 @@ Skill("moai-alfred-ask-user-questions")
 
 ---
 
+## 📊 Session Log Meta-Analysis System
+
+MoAI-ADK automatically analyzes Claude Code session logs to continuously improve settings and rules based on data.
+
+### Automated Collection & Analysis
+
+**Session Log Location**: `~/.claude/projects/*/session-*.json`
+
+**Daily Analysis (SessionStart Hook)**:
+- **Auto-trigger**: Checks elapsed days since last analysis at session start
+- **Condition**: Runs automatically if 1+ day has passed
+- **Execution**: Automatic execution (local machine only)
+- Results automatically saved to `.moai/reports/daily-YYYY-MM-DD.md`
+
+### Analysis Categories
+
+1. **📈 Tool Usage Patterns**: TOP 10 most used tools, tool-specific usage frequency
+2. **⚠️ Error Patterns**: Repeated Tool failures, most common error messages
+3. **🪝 Hook Failure Analysis**: SessionStart, PreToolUse, PostToolUse hook failures
+4. **🔐 Permission Request Analysis**: Most frequently requested permissions, permission type frequency
+
+### Improvement Feedback Loop
+
+```
+1️⃣ High permission requests detected
+   ↓
+2️⃣ Re-evaluate .claude/settings.json permissions
+   - allow → ask changes
+   - or add new Bash rules
+   ↓
+3️⃣ Error patterns detected
+   ↓
+4️⃣ Add avoidance strategies to CLAUDE.md
+   - "If X error, try Y"
+   - recommend new Skills or tools
+   ↓
+5️⃣ Hook failures detected
+   ↓
+6️⃣ Debug and improve .claude/hooks/
+```
+
+### Manual Analysis Commands
+
+```bash
+# Last 1 day analysis
+python3 .moai/scripts/session_analyzer.py --days 1
+
+# Last 7 days analysis
+python3 .moai/scripts/session_analyzer.py --days 7
+
+# Last 30 days analysis
+python3 .moai/scripts/session_analyzer.py --days 30 --verbose
+```
+
+---
+
 ## Document Management Rules
 
 **CRITICAL**: Place internal documentation in `.moai/` hierarchy (docs, specs, reports, analysis) ONLY, never in project root (except README.md, CHANGELOG.md, CONTRIBUTING.md). For detailed location policy, naming conventions, and decision tree, see: Skill("moai-alfred-document-management")
+
+---
+
+## 🚀 v0.17.0 New Features & Configuration
+
+### Key Features
+
+1. **CLI Initialization Optimization**:
+   - `moai-adk init` runtime: **30 seconds → 5 seconds**
+   - Simplified: Project name only in init, detailed settings in `/alfred:0-project`
+
+2. **Report Generation Control** (Token Savings):
+   - **Enable**: Full analysis reports (50-60 tokens/report)
+   - **⚡ Minimal** (Recommended): Essential reports only (20-30 tokens/report)
+   - **🚫 Disable**: No report generation (0 tokens)
+   - Config: `.moai/config.json` → `report_generation` section
+
+3. **Flexible Git Workflows** (Team Mode):
+   - **Feature Branch + PR**: Feature branch → PR review → develop merge
+   - **Direct Commit to Develop**: Direct commits to develop (simplified workflow)
+   - **Decide Per SPEC**: Choose workflow per SPEC creation
+   - Config: `.moai/config.json` → `github.spec_git_workflow`
+
+4. **GitHub Auto Branch Cleanup**:
+   - Automatic remote branch deletion after PR merge
+   - Config: `.moai/config.json` → `github.auto_delete_branches`
+
+### Token Savings Impact
+- **Minimal mode**: **80% token usage reduction**
+- **Monthly savings**: ~5,000-10,000 tokens (tens of dollars saved)
+- **Performance**: 30-40% faster `/alfred:3-sync` execution
 
 ---
 
@@ -594,6 +704,7 @@ Skill("moai-alfred-ask-user-questions")
 | **Communication style** | Adaptive Persona System |
 | **Document locations** | Document Management Rules |
 | **Merge conflicts** | Auto-Fix & Merge Conflict Protocol |
+| **Session analysis** | Session Log Meta-Analysis System |
 | **Workflow details** | Skill("moai-alfred-workflow") |
 | **Agent selection** | Skill("moai-alfred-agent-guide") |
 
@@ -603,7 +714,7 @@ Skill("moai-alfred-ask-user-questions")
 
 - **Name**: {{PROJECT_NAME}}
 - **Description**: {{PROJECT_DESCRIPTION}}
-- **Version**: 0.7.0 (Language localization complete)
+- **Version**: 0.17.0 (Latest)
 - **Mode**: {{PROJECT_MODE}}
 - **Codebase Language**: {{CODEBASE_LANGUAGE}}
 - **Toolchain**: Automatically selects the best tools for {{CODEBASE_LANGUAGE}}

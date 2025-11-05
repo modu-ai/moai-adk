@@ -1,10 +1,10 @@
-# @CODE:TAG-PARSER-001 | Chain: @SPEC:TAG-ID-GENERATION-001 -> @CODE:TAG-PARSER-001
+# @CODE:TAG-PARSER-001 | @SPEC:DOC-TAG-001
 """SPEC parser utilities for TAG generation system.
 
 This module extracts SPEC metadata (ID, domain, title) from SPEC documents
 for use in TAG generation and SPEC-DOC mapping.
 
-@SPEC:TAG-GENERATION-001: @DOC tag automatic generation infrastructure
+@SPEC:DOC-TAG-001: @DOC 태그 자동 생성 인프라
 """
 
 import re

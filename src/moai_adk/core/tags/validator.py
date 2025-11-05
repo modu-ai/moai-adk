@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# @CODE:DOC-TAG-004 | Component 3: Central validation system
+# @CODE:TAG-VALIDATOR-001 | @SPEC:DOC-TAG-001
 """Central TAG validation system for MoAI-ADK
 
 This module provides a unified, extensible validation engine that:

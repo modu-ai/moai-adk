@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# @CODE:ROLLBACK-001
+# @CODE:TAG-ROLLBACK-MANAGER-001 | @SPEC:TAG-ROLLBACK-001
 """TAG 시스템 롤백 관리자
 
 TAG 정책 시스템에서 문제 발생 시 안전한 롤백을 제공하는 관리자.
