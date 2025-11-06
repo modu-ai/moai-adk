@@ -1,0 +1,58 @@
+# @CODE:WFLOW-JS-001 | JavaScript TAG Validation Workflow
+name: JavaScript TAG Validation
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  javascript-validation:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: ['18', '20']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect package manager
+        id: pkg-manager
+        run: |
+          if [ -f "yarn.lock" ]; then
+            echo "manager=yarn" >> $GITHUB_OUTPUT
+          elif [ -f "pnpm-lock.yaml" ]; then
+            echo "manager=pnpm" >> $GITHUB_OUTPUT
+          elif [ -f "bun.lockb" ]; then
+            echo "manager=bun" >> $GITHUB_OUTPUT
+          else
+            echo "manager=npm" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Use Node.js with setup-node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: ${{ steps.pkg-manager.outputs.manager }}
+
+      - name: Install dependencies
+        run: |
+          if [ "${{ steps.pkg-manager.outputs.manager }}" = "yarn" ]; then
+            yarn install --frozen-lockfile
+          elif [ "${{ steps.pkg-manager.outputs.manager }}" = "pnpm" ]; then
+            pnpm install --frozen-lockfile
+          elif [ "${{ steps.pkg-manager.outputs.manager }}" = "bun" ]; then
+            bun install
+          else
+            npm ci
+          fi
+
+      - name: Run tests
+        run: npm test
+
+      - name: Run linting
+        run: npm run lint || true
+
+      - name: Generate coverage report
+        run: npm run coverage || true

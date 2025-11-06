@@ -1,24 +1,23 @@
----
-title: Quick Start
-description: Experience MoAI-ADK's basic workflow in 5 minutes
-lang: en
----
+______________________________________________________________________
+
+## title: Quick Start description: Experience MoAI-ADK's basic workflow in 5 minutes lang: en
 
 # Quick Start Guide
 
-Get started with your first project in MoAI-ADK with just **3 steps**. Beginners can complete it in under 5 minutes.
+Get started with your first project in MoAI-ADK with just **3 steps**. Beginners can complete it in
+under 5 minutes.
 
 ## Prerequisites
 
 Before you start, ensure you have:
 
-- <span class="material-icons">check_circle</span> **MoAI-ADK installed**: `uv tool install moai-adk`
-- <span class="material-icons">check_circle</span> **Claude Code installed**: Available in your terminal
-- <span class="material-icons">check_circle</span> **Git initialized**: Repository ready
+- ✅ **MoAI-ADK installed**: `uv tool install moai-adk`
+- ✅ **Claude Code installed**: Available in your terminal
+- ✅ **Git initialized**: Repository ready
 
 If not, check the [installation guide](installation.md).
 
----
+______________________________________________________________________
 
 ## ステップ<span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_one</span>：プロジェクト作成（2分）
 
@@ -37,9 +36,9 @@ ls -la
 
 ```
 hello-api/
-├── .moai/              <span class="material-icons">check_circle</span> Alfred設定
-├── .claude/            <span class="material-icons">check_circle</span> Claude Code自動化
-└── CLAUDE.md           <span class="material-icons">check_circle</span> プロジェクトガイド
+├── .moai/              ✅ Alfred設定
+├── .claude/            ✅ Claude Code自動化
+└── CLAUDE.md           ✅ プロジェクトガイド
 ```
 
 ### 検証
@@ -50,16 +49,17 @@ moai-adk doctor
 ```
 
 期待される出力：
+
 ```
-<span class="material-icons">check_circle</span> Python 3.13.0
-<span class="material-icons">check_circle</span> uv 0.5.1
-<span class="material-icons">check_circle</span> .moai/ directory initialized
-<span class="material-icons">check_circle</span> .claude/ directory ready
-<span class="material-icons">check_circle</span> 16 agents configured
-<span class="material-icons">check_circle</span> 74 skills loaded
+✅ Python 3.13.0
+✅ uv 0.5.1
+✅ .moai/ directory initialized
+✅ .claude/ directory ready
+✅ 16 agents configured
+✅ 74 skills loaded
 ```
 
----
+______________________________________________________________________
 
 ## ステップ<span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_two</span>：Alfred開始（1分）
 
@@ -94,13 +94,13 @@ A: personal (ローカル開発用)
 ### 結果確認
 
 ```
-<span class="material-icons">check_circle</span> プロジェクト初期化完了
-<span class="material-icons">check_circle</span> 設定が.moai/config.jsonに保存
-<span class="material-icons">check_circle</span> .moai/project/にドキュメント作成
-<span class="material-icons">check_circle</span> Alfredがスキル推薦完了
+✅ プロジェクト初期化完了
+✅ 設定が.moai/config.jsonに保存
+✅ .moai/project/にドキュメント作成
+✅ Alfredがスキル推薦完了
 ```
 
----
+______________________________________________________________________
 
 ## ステップ<span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_3</span>：最初の機能作成（5分）
 
@@ -111,10 +111,11 @@ A: personal (ローカル開発用)
 ```
 
 Alfredが自動生成：
+
 ```
-<span class="material-icons">check_circle</span> SPEC ID: HELLO-001
-<span class="material-icons">check_circle</span> ファイル: .moai/specs/SPEC-HELLO-001/spec.md
-<span class="material-icons">check_circle</span> ブランチ: feature/SPEC-HELLO-001
+✅ SPEC ID: HELLO-001
+✅ ファイル: .moai/specs/SPEC-HELLO-001/spec.md
+✅ ブランチ: feature/SPEC-HELLO-001
 ```
 
 ### TDD実装（3分）
@@ -124,9 +125,10 @@ Alfredが自動生成：
 ```
 
 AlfredがTDDサイクルを自動実行：
+
 - 🔴 **RED**: 失敗するテストを先に作成
 - 🟢 **GREEN**: テストを通過させる最小実装
-- <span class="material-icons">recycling</span> **REFACTOR**: コードを整理・改善
+- ♻️ **REFACTOR**: コードを整理・改善
 
 ### ドキュメント同期（1分）
 
@@ -135,14 +137,15 @@ AlfredがTDDサイクルを自動実行：
 ```
 
 自動的に実行：
+
 ```
-<span class="material-icons">check_circle</span> docs/api/hello.md - APIドキュメント作成
-<span class="material-icons">check_circle</span> README.md - API使用法追加
-<span class="material-icons">check_circle</span> CHANGELOG.md - v0.1.0リリースノート追加
-<span class="material-icons">check_circle</span> @TAGチェーン検証 - すべての@TAG確認
+✅ docs/api/hello.md - APIドキュメント作成
+✅ README.md - API使用法追加
+✅ CHANGELOG.md - v0.1.0リリースノート追加
+✅ @TAGチェーン検証 - すべての@TAG確認
 ```
 
----
+______________________________________________________________________
 
 ## 🎉 5分後：あなたが得たもの
 
@@ -169,8 +172,9 @@ git log --oneline | head -4
 ```
 
 期待される出力：
+
 ```
-c1d2e3f <span class="material-icons">recycling</span> refactor(HELLO-001): add name length validation
+c1d2e3f ♻️ refactor(HELLO-001): add name length validation
 b2c3d4e 🟢 feat(HELLO-001): implement hello API
 a3b4c5d 🔴 test(HELLO-001): add failing hello API tests
 d4e5f6g Merge branch 'develop'
@@ -178,13 +182,13 @@ d4e5f6g Merge branch 'develop'
 
 ### 学んだこと
 
-- <span class="material-icons">check_circle</span> **SPEC**: EARS形式で要件を明確に定義
-- <span class="material-icons">check_circle</span> **TDD**: RED → GREEN → REFACTORサイクル体験
-- <span class="material-icons">check_circle</span> **自動化**: ドキュメントがコードと一緒に自動生成
-- <span class="material-icons">check_circle</span> **追跡性**: @TAGシステムですべてのステップが連結
-- <span class="material-icons">check_circle</span> **品質**: テスト100%、明確な実装、自動ドキュメント化
+- ✅ **SPEC**: EARS形式で要件を明確に定義
+- ✅ **TDD**: RED → GREEN → REFACTORサイクル体験
+- ✅ **自動化**: ドキュメントがコードと一緒に自動生成
+- ✅ **追跡性**: @TAGシステムですべてのステップが連結
+- ✅ **品質**: テスト100%、明確な実装、自動ドキュメント化
 
----
+______________________________________________________________________
 
 ## <span class="material-icons">search</span> 検証してみよう
 
@@ -195,11 +199,12 @@ pytest tests/test_hello.py -v
 ```
 
 期待される出力：
+
 ```
-<span class="material-icons">check_circle</span> test_hello_with_name_should_return_personalized_greeting PASSED
-<span class="material-icons">check_circle</span> test_hello_without_name_should_return_default_greeting PASSED
-<span class="material-icons">check_circle</span> test_hello_with_long_name_should_return_400 PASSED
-<span class="material-icons">check_circle</span> 3 passed in 0.05s
+✅ test_hello_with_name_should_return_personalized_greeting PASSED
+✅ test_hello_without_name_should_return_default_greeting PASSED
+✅ test_hello_with_long_name_should_return_400 PASSED
+✅ 3 passed in 0.05s
 ```
 
 ### @TAGチェーン確認
@@ -209,6 +214,7 @@ rg '@(SPEC|TEST|CODE|DOC):HELLO-001' -n
 ```
 
 期待される出力：
+
 ```
 .moai/specs/SPEC-HELLO-001/spec.md:7:# @SPEC:EX-HELLO-001: Hello World API
 tests/test_hello.py:3:# @TEST:EX-HELLO-002 | SPEC: SPEC-HELLO-001.md
@@ -224,9 +230,9 @@ cat README.md
 cat CHANGELOG.md
 ```
 
----
+______________________________________________________________________
 
-## <span class="material-icons">rocket_launch</span> 次のステップ
+## 🚀 次のステップ
 
 ### もっと複雑な機能に挑戦
 
@@ -247,7 +253,7 @@ cat CHANGELOG.md
 - **認証システム**: 複雑な認証機能の実装
 - **データベース連携**: 永続化データの実装
 
----
+______________________________________________________________________
 
 ## 💡 ヒントとコツ
 
@@ -261,28 +267,26 @@ cat CHANGELOG.md
 
 ### よくある質問
 
-**Q: 既存プロジェクトに追加できますか？**
-A: はい。`moai-adk init .`で既存コードを変更せずに`.moai/`構造のみ追加します。
+**Q: 既存プロジェクトに追加できますか？** A: はい。`moai-adk init .`で既存コードを変更せずに`.moai/`構造のみ追加します。
 
-**Q: テストはどのように実行しますか？**
-A: `/alfred:2-run`が先に実行し、必要なら`pytest`などを再実行します。
+**Q: テストはどのように実行しますか？** A: `/alfred:2-run`が先に実行し、必要なら`pytest`などを再実行します。
 
-**Q: ドキュメントが常に最新であることを確認する方法は？**
-A: `/alfred:3-sync`が同期レポートを作成します。プルリクエストでレポートを確認してください。
+**Q: ドキュメントが常に最新であることを確認する方法は？** A: `/alfred:3-sync`が同期レポートを作成します。プルリクエストでレポートを確認してください。
 
----
+______________________________________________________________________
 
-## <span class="material-icons">target</span> 成功基準
+## 🎯 成功基準
 
 5分後、以下が達成できれば成功です：
 
-- <span class="material-icons">check_circle</span> MoAI-ADKプロジェクト作成完了
-- <span class="material-icons">check_circle</span> 最初のAPI機能実装完了
-- <span class="material-icons">check_circle</span> テスト100%通過
-- <span class="material-icons">check_circle</span> 自動生成されたドキュメント確認
-- <span class="material-icons">check_circle</span> @TAGシステム理解
-- <span class="material-icons">check_circle</span> Git履歴にTDDサイクル記録
+- ✅ MoAI-ADKプロジェクト作成完了
+- ✅ 最初のAPI機能実装完了
+- ✅ テスト100%通過
+- ✅ 自動生成されたドキュメント確認
+- ✅ @TAGシステム理解
+- ✅ Git履歴にTDDサイクル記録
 
----
+______________________________________________________________________
 
-**🎊 おめでとうございます！** あなたは5分でMoAI-ADKの基本ワークフローをマスターしました。次は[概念ガイド](concepts.md)で背后的な原理を学び、より高度な機能に挑戦しましょう。
+**🎊 おめでとうございます！**
+あなたは5分でMoAI-ADKの基本ワークフローをマスターしました。次は[概念ガイド](concepts.md)で背后的な原理を学び、より高度な機能に挑戦しましょう。

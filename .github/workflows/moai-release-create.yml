@@ -92,7 +92,6 @@ jobs:
           body: ${{ steps.release_notes.outputs.notes }}
           draft: false  # 자동으로 published 상태로 생성
           prerelease: false
-          make_latest: true
 
       - name: ✨ Release created successfully
         run: |

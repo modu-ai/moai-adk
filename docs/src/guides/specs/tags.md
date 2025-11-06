@@ -1,16 +1,20 @@
 # TAG System: Complete Traceability Guide
 
-Master the @TAG system that creates complete traceability from specifications through implementation, testing, and documentation. This guide covers TAG creation, management, validation, and best practices.
+Master the @TAG system that creates complete traceability from specifications through
+implementation, testing, and documentation. This guide covers TAG creation, management, validation,
+and best practices.
 
-**Last Updated**: 2025-11-06
-**Online Documentation**: [TAG System Guide](https://adk.mo.ai.kr/guides/specs/tags)
-**Related SPEC**: [SPEC-PORTAL-LINK-001](https://adk.mo.ai.kr/specs/PORTAL-LINK-001) - Online Documentation Portal Integration
+**Last Updated**: 2025-11-06 **Online Documentation**:
+[TAG System Guide](https://adk.mo.ai.kr/guides/specs/tags) **Related SPEC**:
+[SPEC-PORTAL-LINK-001](https://adk.mo.ai.kr/specs/PORTAL-LINK-001) - Online Documentation Portal
+Integration
 
----
+______________________________________________________________________
 
 ## 🌐 Online Documentation Integration
 
-This TAG system guide is seamlessly integrated with the online documentation portal at https://adk.mo.ai.kr. The portal provides:
+This TAG system guide is seamlessly integrated with the online documentation portal at
+https://adk.mo.ai.kr. The portal provides:
 
 - **Interactive Navigation**: Cross-references between TAG types and real-time search
 - **Live Examples**: Working code examples with live testing
@@ -33,17 +37,21 @@ This TAG system guide is seamlessly integrated with the online documentation por
 
 ## What is the @TAG System?
 
-The @TAG system is MoAI-ADK's traceability mechanism that links every project artifact through unique identifiers. It ensures that requirements, tests, code, and documentation remain connected throughout the development lifecycle.
+The @TAG system is MoAI-ADK's traceability mechanism that links every project artifact through
+unique identifiers. It ensures that requirements, tests, code, and documentation remain connected
+throughout the development lifecycle.
 
 ### Why @TAGs Matter
 
 **Traditional Development Problems**:
+
 - "Why was this code written?" → Lost context, forgotten requirements
 - "What tests cover this feature?" → Incomplete test coverage discovery
 - "Where is the documentation for this?" → Scattered or outdated docs
 - "What code needs to change for this requirement update?" → Manual impact analysis
 
 **@TAG System Solutions**:
+
 - **Complete Traceability**: Every artifact is linked to its source
 - **Impact Analysis**: Instant identification of affected code
 - **Living Documentation**: Docs stay synchronized with code
@@ -69,6 +77,7 @@ The @TAG system is MoAI-ADK's traceability mechanism that links every project ar
 **Standard Format**: `@TYPE:DOMAIN-ID[:SUBTYPE]`
 
 **Components**:
+
 - **`@`**: TAG indicator (required)
 - **`TYPE`**: Artifact type (SPEC, TEST, CODE, DOC)
 - **`DOMAIN`**: Functional area (AUTH, USER, API, etc.)
@@ -77,60 +86,60 @@ The @TAG system is MoAI-ADK's traceability mechanism that links every project ar
 
 ### Type Definitions
 
-| Type | Purpose | Examples |
-|------|---------|----------|
-| **SPEC** | Requirements and specifications | `@SPEC:AUTH-001` |
-| **TEST** | Test cases and test suites | `@TEST:AUTH-001` |
-| **CODE** | Implementation code | `@CODE:AUTH-001:SERVICE` |
-| **DOC** | Documentation and guides | `@DOC:AUTH-001` |
+| Type     | Purpose                         | Examples                 |
+| -------- | ------------------------------- | ------------------------ |
+| **SPEC** | Requirements and specifications | `@SPEC:AUTH-001`         |
+| **TEST** | Test cases and test suites      | `@TEST:AUTH-001`         |
+| **CODE** | Implementation code             | `@CODE:AUTH-001:SERVICE` |
+| **DOC**  | Documentation and guides        | `@DOC:AUTH-001`          |
 
 ### Domain Categories
 
-| Domain | Description | Examples |
-|--------|-------------|----------|
-| **AUTH** | Authentication & authorization | `@SPEC:AUTH-001` |
-| **USER** | User management & profiles | `@SPEC:USER-001` |
-| **API** | REST APIs & interfaces | `@SPEC:API-001` |
-| **DB** | Database & persistence | `@SPEC:DB-001` |
-| **UI** | User interface & components | `@SPEC:UI-001` |
-| **SEC** | Security & compliance | `@SPEC:SEC-001` |
-| **PERF** | Performance & optimization | `@SPEC:PERF-001` |
-| **INT** | Integrations & external systems | `@SPEC:INT-001` |
-| **CONFIG** | Configuration & settings | `@SPEC:CONFIG-001` |
+| Domain     | Description                     | Examples           |
+| ---------- | ------------------------------- | ------------------ |
+| **AUTH**   | Authentication & authorization  | `@SPEC:AUTH-001`   |
+| **USER**   | User management & profiles      | `@SPEC:USER-001`   |
+| **API**    | REST APIs & interfaces          | `@SPEC:API-001`    |
+| **DB**     | Database & persistence          | `@SPEC:DB-001`     |
+| **UI**     | User interface & components     | `@SPEC:UI-001`     |
+| **SEC**    | Security & compliance           | `@SPEC:SEC-001`    |
+| **PERF**   | Performance & optimization      | `@SPEC:PERF-001`   |
+| **INT**    | Integrations & external systems | `@SPEC:INT-001`    |
+| **CONFIG** | Configuration & settings        | `@SPEC:CONFIG-001` |
 
 ### Subtype Classifications
 
 #### CODE Subtypes
 
-| Subtype | When to Use | Examples |
-|---------|-------------|----------|
-| **MODEL** | Data models, schemas, classes | `@CODE:USER-001:MODEL` |
-| **SERVICE** | Business logic, services | `@CODE:AUTH-001:SERVICE` |
-| **API** | HTTP endpoints, controllers | `@CODE:API-001:ENDPOINT` |
-| **REPO** | Repository pattern, data access | `@CODE:DB-001:REPO` |
-| **UTILS** | Utility functions, helpers | `@CODE:AUTH-001:UTILS` |
-| **CONFIG** | Configuration classes | `@CODE:CONFIG-001:SETTINGS` |
-| **MIDDLEWARE** | Middleware, interceptors | `@CODE:API-001:MIDDLEWARE` |
-| **VALIDATOR** | Validation logic | `@CODE:USER-001:VALIDATOR` |
+| Subtype        | When to Use                     | Examples                    |
+| -------------- | ------------------------------- | --------------------------- |
+| **MODEL**      | Data models, schemas, classes   | `@CODE:USER-001:MODEL`      |
+| **SERVICE**    | Business logic, services        | `@CODE:AUTH-001:SERVICE`    |
+| **API**        | HTTP endpoints, controllers     | `@CODE:API-001:ENDPOINT`    |
+| **REPO**       | Repository pattern, data access | `@CODE:DB-001:REPO`         |
+| **UTILS**      | Utility functions, helpers      | `@CODE:AUTH-001:UTILS`      |
+| **CONFIG**     | Configuration classes           | `@CODE:CONFIG-001:SETTINGS` |
+| **MIDDLEWARE** | Middleware, interceptors        | `@CODE:API-001:MIDDLEWARE`  |
+| **VALIDATOR**  | Validation logic                | `@CODE:USER-001:VALIDATOR`  |
 
 #### TEST Subtypes
 
-| Subtype | When to Use | Examples |
-|---------|-------------|----------|
-| **UNIT** | Unit tests | `@TEST:AUTH-001:UNIT` |
+| Subtype         | When to Use       | Examples                    |
+| --------------- | ----------------- | --------------------------- |
+| **UNIT**        | Unit tests        | `@TEST:AUTH-001:UNIT`       |
 | **INTEGRATION** | Integration tests | `@TEST:API-001:INTEGRATION` |
-| **E2E** | End-to-end tests | `@TEST:USER-001:E2E` |
-| **PERFORMANCE** | Performance tests | `@TEST:API-001:PERF` |
-| **SECURITY** | Security tests | `@TEST:AUTH-001:SECURITY` |
+| **E2E**         | End-to-end tests  | `@TEST:USER-001:E2E`        |
+| **PERFORMANCE** | Performance tests | `@TEST:API-001:PERF`        |
+| **SECURITY**    | Security tests    | `@TEST:AUTH-001:SECURITY`   |
 
 #### DOC Subtypes
 
-| Subtype | When to Use | Examples |
-|---------|-------------|----------|
-| **API** | API documentation | `@DOC:API-001:API` |
-| **GUIDE** | User guides, tutorials | `@DOC:USER-001:GUIDE` |
-| **REFERENCE** | Technical reference | `@DOC:AUTH-001:REFERENCE` |
-| **DEPLOYMENT** | Deployment guides | `@DOC:INT-001:DEPLOYMENT` |
+| Subtype        | When to Use            | Examples                  |
+| -------------- | ---------------------- | ------------------------- |
+| **API**        | API documentation      | `@DOC:API-001:API`        |
+| **GUIDE**      | User guides, tutorials | `@DOC:USER-001:GUIDE`     |
+| **REFERENCE**  | Technical reference    | `@DOC:AUTH-001:REFERENCE` |
+| **DEPLOYMENT** | Deployment guides      | `@DOC:INT-001:DEPLOYMENT` |
 
 ## @TAG Creation and Assignment
 
@@ -178,7 +187,8 @@ def test_login_with_valid_credentials():
 
 #### 1. Consistency
 
-**<span class="material-icons">check_circle</span> Good**:
+**✅ Good**:
+
 ```python
 # All related code uses same DOMAIN-ID
 @CODE:AUTH-001:MODEL
@@ -188,6 +198,7 @@ def test_login_with_valid_credentials():
 ```
 
 **<span class="material-icons">cancel</span> Bad**:
+
 ```python
 # Inconsistent DOMAIN-ID usage
 @CODE:AUTH-001:MODEL
@@ -197,7 +208,8 @@ def test_login_with_valid_credentials():
 
 #### 2. Specificity
 
-**<span class="material-icons">check_circle</span> Good**:
+**✅ Good**:
+
 ```python
 # Specific subtypes for clear organization
 @CODE:AUTH-001:SERVICE
@@ -206,6 +218,7 @@ def test_login_with_valid_credentials():
 ```
 
 **<span class="material-icons">cancel</span> Bad**:
+
 ```python
 # Too generic - doesn't indicate file purpose
 @CODE:AUTH-001
@@ -215,13 +228,15 @@ def test_login_with_valid_credentials():
 
 #### 3. Traceability Links
 
-**<span class="material-icons">check_circle</span> Good**:
+**✅ Good**:
+
 ```python
 # Include links to related artifacts
 # @CODE:AUTH-001:SERVICE | SPEC: SPEC-AUTH-001.md | TEST: tests/test_auth.py
 ```
 
 **<span class="material-icons">cancel</span> Bad**:
+
 ```python
 # Missing traceability information
 # @CODE:AUTH-001:SERVICE
@@ -293,6 +308,7 @@ Alfred automatically validates TAG chains with enhanced GPT-5 Pro analysis:
 ```
 
 **Enhanced Output Example**:
+
 ```
 🔍 TAG Chain Validation Report (GPT-5 Pro Enhanced)
 
@@ -439,8 +455,9 @@ Add to `.gitconfig`:
 ### 1. Consistent Formatting
 
 **Use Standard Format**:
+
 ```python
-# <span class="material-icons">check_circle</span> Correct format
+# ✅ Correct format
 @CODE:AUTH-001:SERVICE | SPEC: SPEC-AUTH-001.md | TEST: tests/test_auth.py
 
 # <span class="material-icons">cancel</span> Incorrect formats
@@ -452,8 +469,9 @@ Add to `.gitconfig`:
 ### 2. Complete Traceability (Enhanced)
 
 **Link All Related Artifacts**:
+
 ```python
-# <span class="material-icons">check_circle</span> Complete traceability with AI enhancement
+# ✅ Complete traceability with AI enhancement
 # @CODE:AUTH-001:SERVICE | SPEC: SPEC-AUTH-001.md | TEST: tests/test_auth.py
 # AI-MONITORING: Quality score 95/100 | Last validated: 2025-11-06
 # ONLINE-PORTAL: https://adk.mo.ai.kr/trace/AUTH-001
@@ -465,8 +483,9 @@ Add to `.gitconfig`:
 ### 3. Logical Organization (AI-Optimized)
 
 **Group Related Code with AI suggestions**:
+
 ```python
-# <span class="material-icons">check_circle</span> AI-recommended logical grouping
+# ✅ AI-recommended logical grouping
 src/
 ├── auth/
 │   ├── models.py      # @CODE:AUTH-001:MODEL | AI: Optimal structure detected
@@ -485,8 +504,9 @@ src/
 ### 4. Appropriate Granularity (AI-Assisted)
 
 **Right-sized Components with AI analysis**:
+
 ```python
-# <span class="material-icons">check_circle</span> AI-validated appropriate granularity
+# ✅ AI-validated appropriate granularity
 @CODE:AUTH-001:MODEL     # User, Session models | AI: Single responsibility
 @CODE:AUTH-001:SERVICE    # AuthService class | AI: Business logic encapsulated
 @CODE:AUTH-001:API        # Login endpoint | AI: RESTful principles
@@ -502,6 +522,7 @@ src/
 ### 5. Regular Maintenance (AI-Powered)
 
 **Keep Chains Updated with AI assistance**:
+
 ```bash
 # AI-enhanced validation
 /alfred:3-sync --ai-mode --auto-suggestions
@@ -519,6 +540,7 @@ moai-adk optimize-tags --gpt5-enhanced --quality-metrics
 ### 6. Online Portal Integration
 
 **Maintain portal synchronization**:
+
 ```bash
 # Portal sync validation
 /alfred:3-sync --portal-sync --validate-links
@@ -548,6 +570,7 @@ moai-adk update-portal-tags --ai-enhanced --real-time
 ### 8. Quality Metrics (AI-Tracked)
 
 **Maintain AI-powered quality metrics**:
+
 ```bash
 # Generate comprehensive quality report
 moai-adk tag-quality --ai-analysis --trend-tracking --portal-integration
@@ -993,7 +1016,7 @@ if __name__ == '__main__':
                 for item in incomplete:
                     print(f"  {item['domain']}: missing {', '.join(item['missing'])}")
             else:
-                print("<span class="material-icons">check_circle</span> All TAG chains complete")
+                print("✅ All TAG chains complete")
 
         elif command == 'list':
             tags = manager.find_all_tags()
@@ -1008,10 +1031,12 @@ if __name__ == '__main__':
 #### 1. Missing TAGs
 
 **Symptoms**:
+
 - Files not appearing in search results
 - Incomplete traceability chains
 
 **Solutions**:
+
 ```bash
 # Find files without TAGs
 find src/ tests/ docs/ -type f \( -name "*.py" -o -name "*.js" -o -name "*.md" \) -exec grep -L '@(SPEC|TEST|CODE|DOC):' {} \;
@@ -1024,10 +1049,12 @@ find src/ tests/ docs/ -type f \( -name "*.py" -o -name "*.js" -o -name "*.md" \
 #### 2. Incorrect TAG Format
 
 **Symptoms**:
+
 - TAGs not being recognized
 - Validation errors
 
 **Common Format Errors**:
+
 ```python
 # <span class="material-icons">cancel</span> Wrong case
 @code:auth-001:service
@@ -1040,6 +1067,7 @@ find src/ tests/ docs/ -type f \( -name "*.py" -o -name "*.js" -o -name "*.md" \
 ```
 
 **Solutions**:
+
 ```bash
 # Find and fix format issues
 rg '@[a-zA-Z]+:[a-zA-Z]+-\d+' --files-with-matching
@@ -1051,10 +1079,12 @@ moai-adk fix-tag-format
 #### 3. Orphaned TAGs
 
 **Symptoms**:
+
 - Broken chains in validation reports
 - Missing related artifacts
 
 **Solutions**:
+
 ```bash
 # Find orphaned CODE (no matching TEST)
 rg '@CODE:[A-Z]+-\d+' --files-with-matching | while read file; do
@@ -1072,10 +1102,12 @@ done
 #### 4. Duplicate TAGs
 
 **Symptoms**:
+
 - Confusion in traceability
 - Multiple files with same TAG
 
 **Solutions**:
+
 ```bash
 # Find duplicate TAGs
 rg '@CODE:[A-Z]+-\d+' --files-with-matching | sort | uniq -d
@@ -1197,6 +1229,7 @@ moai-adk tag-report --format=html > tag-report.html
 ```
 
 **Report Contents**:
+
 - Overall chain completeness statistics
 - Domain-specific analysis
 - Orphaned TAG identification
@@ -1235,66 +1268,81 @@ moai-adk tag-quality --by-domain --format=comparison
 
 ## Summary (Enhanced with GPT-5 Pro Integration)
 
-The @TAG system is the backbone of MoAI-ADK's traceability and quality assurance, now enhanced with GPT-5 Pro intelligence and online portal integration. By maintaining complete chains from specifications through implementation, testing, and documentation, you create a development environment where:
+The @TAG system is the backbone of MoAI-ADK's traceability and quality assurance, now enhanced with
+GPT-5 Pro intelligence and online portal integration. By maintaining complete chains from
+specifications through implementation, testing, and documentation, you create a development
+environment where:
 
 ### Core Benefits
+
 - **🎯 Nothing gets lost** - All code is traceable to requirements with AI-powered validation
-- **⚡ Impact analysis is instant** - Know exactly what to change when requirements evolve with AI impact assessment
+- **⚡ Impact analysis is instant** - Know exactly what to change when requirements evolve with AI
+  impact assessment
 - **🛡️ Quality is assured** - No orphaned code or missing tests with AI quality monitoring
 - **📚 Documentation stays current** - Automatic synchronization prevents drift with AI maintenance
 
 ### GPT-5 Pro Enhanced Features
+
 - **🤖 AI-Powered Validation** - Real-time TAG validation with intelligent suggestions
 - **📊 Quality Metrics** - AI-calculated quality scores with actionable recommendations
 - **🌐 Portal Integration** - Seamless synchronization with online documentation portal
 - **🔍 Advanced Analytics** - AI-powered insights for continuous improvement
 
 ### Online Portal Integration Benefits
+
 - **🌐 Interactive Navigation** - Cross-references and real-time search capabilities
 - **📈 Live Coverage Metrics** - Dynamic TAG chain completion statistics
 - **🎨 Visual Traceability** - Interactive TAG chain diagrams and mappings
 - **🔄 Automated Updates** - Synchronized with GitHub repository changes
 
 ### Getting Started
+
 1. **Read the Online Guide**: [TAG System Overview](https://adk.mo.ai.kr/guides/specs/tags)
 2. **Explore Interactive Matrix**: [TAG Coverage Matrix](https://adk.mo.ai.kr/matrix/tag-coverage)
 3. **Try AI-Powered Validation**: `/alfred:3-sync --ai-mode --auto-suggestions`
 4. **Access Live Examples**: [Online TAG Examples](https://adk.mo.ai.kr/examples/tags)
 
 ### Quality Thresholds (AI-Recommended)
+
 - **Chain Completeness**: >90% (AI-enforced)
 - **Quality Score**: >85/100 (AI-calculated)
 - **Portal Sync**: 100% (AI-validated)
 - **Orphan Detection**: 0 (AI-monitored)
 
 ### Continuous Improvement
-Master the @TAG system with AI assistance, and you'll experience a new level of confidence and control in your software development process! The system continuously learns and improves with GPT-5 Pro integration, ensuring your development workflow remains at the cutting edge of AI-powered software engineering.
 
-**Start your AI-enhanced TAG journey today** - [Begin Tutorial](https://adk.mo.ai.kr/tutorials/tag-system) 🚀
+Master the @TAG system with AI assistance, and you'll experience a new level of confidence and
+control in your software development process! The system continuously learns and improves with GPT-5
+Pro integration, ensuring your development workflow remains at the cutting edge of AI-powered
+software engineering.
 
----
+**Start your AI-enhanced TAG journey today** -
+[Begin Tutorial](https://adk.mo.ai.kr/tutorials/tag-system) 🚀
+
+______________________________________________________________________
 
 ## Additional Resources
 
 ### Online Documentation
+
 - [TAG System Guide](https://adk.mo.ai.kr/guides/specs/tags) - Interactive guide with live examples
 - [TAG Policy Reference](https://adk.mo.ai.kr/reference/tags/policy) - Detailed policy documentation
 - [TAG Coverage Matrix](https://adk.mo.ai.kr/matrix/tag-coverage) - Live coverage statistics
 - [Portal Status Dashboard](https://adk.mo.ai.kr/dashboard/status) - Real-time system status
 
 ### AI-Enhanced Tools
+
 - **TAG AI Assistant**: `/alfred:tag-ai --help`
 - **Quality Analyzer**: `moai-adk quality --ai-mode`
 - **Portal Sync Tool**: `moai-adk portal-sync --ai-enhanced`
 - **Report Generator**: `moai-adk report --ai-analysis --portal`
 
 ### Community and Support
+
 - **GitHub Issues**: [TAG System Bugs](https://github.com/modu-ai/moai-adk/issues)
 - **Discussions**: [TAG System Community](https://github.com/modu-ai/moai-adk/discussions)
 - **Discord**: [MoAI Community](https://discord.gg/moai)
 - **Portal Feedback**: [Online Feedback](https://adk.mo.ai.kr/feedback)
 
-**Last Updated**: 2025-11-06
-**Version**: v0.17.0
-**AI Model**: GPT-5 Pro Integration
-**Portal**: https://adk.mo.ai.kr <span class="material-icons">stars</span>
+**Last Updated**: 2025-11-06 **Version**: v0.17.0 **AI Model**: GPT-5 Pro Integration **Portal**:
+https://adk.mo.ai.kr <span class="material-icons">stars</span>

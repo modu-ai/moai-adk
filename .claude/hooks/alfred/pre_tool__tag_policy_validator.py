@@ -25,13 +25,13 @@ from typing import Any, Dict, List
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
 from moai_adk.core.tags.policy_validator import (
-    PolicyViolation,
     PolicyValidationConfig,
+    PolicyViolation,
+    PolicyViolationLevel,
     TagPolicyValidator,
 )
 
-from ..utils.hook_config import load_hook_timeout, get_graceful_degradation
-from moai_adk.core.tags.policy_validator import PolicyViolationLevel
+from ..utils.hook_config import get_graceful_degradation, load_hook_timeout
 
 
 def load_config() -> Dict[str, Any]:
@@ -234,6 +234,10 @@ def create_success_response() -> Dict[str, Any]:
 def main() -> None:
     """메인 함수"""
     try:
+        # 설정에서 타임아웃 값 로드 (밀리초 → 초)
+        timeout_seconds = load_hook_timeout() / 1000
+        graceful_degradation = get_graceful_degradation()
+
         # 인자 파싱
         if len(sys.argv) < 3:
             print(json.dumps({
@@ -271,10 +275,6 @@ def main() -> None:
 
         # 모든 파일에 대해 검증
         all_violations = []
-
-        # 설정에서 타임아웃 값 로드 (밀리초 → 초)
-        timeout_seconds = load_hook_timeout() / 1000
-
         for file_path in file_paths:
             # 타임아웃 체크
             if time.time() - start_time > timeout_seconds:
@@ -308,11 +308,17 @@ def main() -> None:
 
     except Exception as e:
         # 예외 발생 시 차단하지 않고 로그만 남김
-        print(json.dumps({
+        error_response = {
             "block_execution": False,
             "error": f"Hook execution error: {str(e)}",
             "message": "Hook 실행 중 오류가 발생했지만 작업을 진행합니다."
-        }, ensure_ascii=False))
+        }
+
+        if graceful_degradation:
+            error_response["graceful_degradation"] = True
+            error_response["message"] = "Hook failed but continuing due to graceful degradation"
+
+        print(json.dumps(error_response, ensure_ascii=False))
 
 
 if __name__ == "__main__":

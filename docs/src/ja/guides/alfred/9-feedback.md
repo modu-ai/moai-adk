@@ -1,8 +1,6 @@
----
-title: /alfred:9-feedback コマンド
-description: GitHub Issue自動作成とフィードバック収集のための完全ガイド
-lang: ja
----
+______________________________________________________________________
+
+## title: /alfred:9-feedback コマンド description: GitHub Issue自動作成とフィードバック収集のための完全ガイド lang: ja
 
 # /alfred:9-feedback - フィードバックコマンド
 
@@ -10,9 +8,7 @@ lang: ja
 
 ## 概要
 
-**目的**: GitHub Issue自動作成とフィードバック収集
-**実行時間**: 約30秒
-**主要成果**: GitHub Issue、自動ラベル付与、チーム通知
+**目的**: GitHub Issue自動作成とフィードバック収集 **実行時間**: 約30秒 **主要成果**: GitHub Issue、自動ラベル付与、チーム通知
 
 ## 基本使用法
 
@@ -68,6 +64,7 @@ Alfred: 優先順位レベルを選択してください:
 ### ステップ5: 自動Issue作成
 
 Alfredが自動的に実行：
+
 1. タイプと優先順位による適切なラベル決定
 2. 絵文字付きタイトルフォーマット
 3. GitHub Issue作成
@@ -96,12 +93,12 @@ Alfred: 詳細な説明を入力してください（Enterキーで省略可能�
 Alfred: 優先順位レベルを選択してください
 > 🟠 High
 
-<span class="material-icons">check_circle</span> GitHub Issue #234 作成完了！
+✅ GitHub Issue #234 作成完了！
 
 📋 タイトル: 🐛 [BUG] モバイルでログインボタンクラッシュ発生
 🟠 優先順位: High
-<span class="material-icons">label</span>  ラベル: bug, reported, priority-high
-<span class="material-icons">link</span> URL: https://github.com/owner/repo/issues/234
+🏷️  ラベル: bug, reported, priority-high
+🔗 URL: https://github.com/owner/repo/issues/234
 
 💡 次へ: 作業を続行してください - Issueは追跡されています！
 ```
@@ -125,12 +122,12 @@ Alfred: 詳細な説明を入力してください（Enterキーで省略可能�
 Alfred: 優先順位レベルを選択してください
 > 🟡 Medium
 
-<span class="material-icons">check_circle</span> GitHub Issue #235 作成完了！
+✅ GitHub Issue #235 作成完了！
 
 📋 タイトル: ✨ [FEATURE] moai-adk updateに--dry-runオプション追加
 🟡 優先順位: Medium
-<span class="material-icons">label</span>  ラベル: enhancement, feature-request, priority-medium
-<span class="material-icons">link</span> URL: https://github.com/owner/repo/issues/235
+🏷️  ラベル: enhancement, feature-request, priority-medium
+🔗 URL: https://github.com/owner/repo/issues/235
 ```
 
 ## 主な機能
@@ -141,23 +138,23 @@ Alfred: 優先順位レベルを選択してください
 - **中断なし**: 開発フローを維持
 - **自動化**: 手動作業不要
 
-### 2. <span class="material-icons">label</span> 自動ラベリング
+### 2. 🏷️ 自動ラベリング
 
-| Issueタイプ | 付与されるラベル |
-|-----------|----------------|
-| 🐛 Bug Report | `bug`, `reported` |
-| ✨ Feature Request | `enhancement`, `feature-request` |
-| ⚡ Improvement | `enhancement`, `improvement` |
-| ❓ Question/Discussion | `question`, `discussion` |
+| Issueタイプ            | 付与されるラベル                 |
+| ---------------------- | -------------------------------- |
+| 🐛 Bug Report          | `bug`, `reported`                |
+| ✨ Feature Request     | `enhancement`, `feature-request` |
+| ⚡ Improvement         | `enhancement`, `improvement`     |
+| ❓ Question/Discussion | `question`, `discussion`         |
 
-| 優先順位 | 付与されるラベル |
-|---------|----------------|
+| 優先順位    | 付与されるラベル    |
+| ----------- | ------------------- |
 | 🔴 Critical | `priority-critical` |
-| 🟠 High | `priority-high` |
-| 🟡 Medium | `priority-medium` |
-| 🟢 Low | `priority-low` |
+| 🟠 High     | `priority-high`     |
+| 🟡 Medium   | `priority-medium`   |
+| 🟢 Low      | `priority-low`      |
 
-### 3. <span class="material-icons">target</span> 優先順位選択
+### 3. 🎯 優先順位選択
 
 #### Critical (🔴)
 
@@ -166,6 +163,7 @@ Alfred: 優先順位レベルを選択してください
 - **セキュリティ問題**: 脆弱性発見
 
 **例**:
+
 ```
 🔴 [CRITICAL] 本番環境でデータベース接続がすべて失われました
 ```
@@ -177,6 +175,7 @@ Alfred: 優先順位レベルを選択してください
 - **代替案なし**: 回避策がない
 
 **例**:
+
 ```
 🟠 [HIGH] ユーザーログイン機能が完全に動作しません
 ```
@@ -188,6 +187,7 @@ Alfred: 優先順位レベルを選択してください
 - **代替案あり**: 一時的な回避策可能
 
 **例**:
+
 ```
 🟡 [MEDIUM] APIレスポンス時間が遅い（約2秒）
 ```
@@ -199,11 +199,12 @@ Alfred: 優先順位レベルを選択してください
 - **あれば良い**: なくても問題ない
 
 **例**:
+
 ```
 🟢 [LOW] ダッシュボードの配色変更提案
 ```
 
-### 4. <span class="material-icons">link</span> チーム可視性
+### 4. 🔗 チーム可視性
 
 - **即時通知**: Issue作成後すぐにチーム全員に通知
 - **追跡可能**: GitHubネイティブな追跡機能
@@ -321,8 +322,8 @@ custom_labels:
 
 # テンプレート選択
 [ ] 🐛 General Bug
-[ ] <span class="material-icons">lock</span> Security Issue
-[ ] <span class="material-icons">rocket_launch</span> Performance Issue
+[ ] 🔒 Security Issue
+[ ] 🚀 Performance Issue
 [ ] <span class="material-icons">menu_book</span> Documentation Issue
 ```
 
@@ -337,7 +338,7 @@ Issue 1/3: タイトルを入力 > API認証エラー
 Issue 2/3: タイトルを入力 > データベース接続タイムアウト
 Issue 3/3: タイトルを入力 > フロントエンド表示崩れ
 
-<span class="material-icons">check_circle</span> 3個のIssueを作成しました: #456, #457, #458
+✅ 3個のIssueを作成しました: #456, #457, #458
 ```
 
 ## 設定とカスタマイズ
@@ -384,6 +385,7 @@ gh repo view
 ### 1. 良いIssueタイトル
 
 **悪い例**:
+
 ```
 - 問題です
 - 動きません
@@ -391,6 +393,7 @@ gh repo view
 ```
 
 **良い例**:
+
 ```
 - 🐛 [BUG] モバイルでログインボタンクラッシュ発生
 - ✨ [FEATURE] moai-adk updateに--dry-runオプション追加
@@ -400,12 +403,14 @@ gh repo view
 ### 2. 詳細な説明
 
 **最小限の情報**:
+
 - 環境情報 (OS, バージョン)
 - 再現手順
 - 期待動作 vs 実際動作
 - エラーメッセージ（ある場合）
 
 **追加情報**:
+
 - スクリーンショット
 - ログファイル
 - コードスニペット
@@ -436,6 +441,7 @@ gh repo view
 ### よくある問題
 
 **GitHub認証エラー**:
+
 ```bash
 # GitHub CLI再認証
 gh auth login
@@ -445,6 +451,7 @@ gh auth status
 ```
 
 **リポジトリアクセス権限なし**:
+
 ```bash
 # リポジトリ権限確認
 gh repo view
@@ -453,6 +460,7 @@ gh repo view
 ```
 
 **ラベルが付与されない**:
+
 ```bash
 # リポジトリラベル確認
 gh label list
@@ -462,6 +470,7 @@ gh label create priority-high --color "d73a4a"
 ```
 
 **Issue作成失敗**:
+
 ```bash
 # ネットワーク接続確認
 ping github.com
@@ -514,7 +523,7 @@ jobs:
 /alfred:9-feedback --analytics
 
 # 出力例:
-<span class="material-icons">analytics</span> フィードバック分析 (過去30日間)
+📊 フィードバック分析 (過去30日間)
 - 総Issue数: 15個
 - バグ報告: 8個 (53%)
 - 機能要求: 4個 (27%)
@@ -535,9 +544,10 @@ jobs:
 - 最も複雑なIssue: 認証システム再設計 (15コメント)
 ```
 
----
+______________________________________________________________________
 
-**<span class="material-icons">auto_stories</span> 次のステップ**:
+**📚 次のステップ**:
+
 - [プロジェクトガイド](../project/index.md)でプロジェクト管理
 - [品質ガイド](../project/config.md)で品質管理
 - [デプロイガイド](../project/deploy.md)で本番環境展開

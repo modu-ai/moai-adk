@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# @CODE:HOOKS-CLARITY-001 | SPEC: Individual hook files for better UX
+# SessionStart Hook: Enhanced Project Information
 """SessionStart Hook: Enhanced Project Information
 
 Claude Code Event: SessionStart
@@ -31,8 +31,6 @@ try:
     from utils.timeout import TimeoutError as PlatformTimeoutError
 except ImportError:
     # Fallback timeout implementation
-    import time
-    import signal
 
     class CrossPlatformTimeout:
         def __init__(self, seconds):

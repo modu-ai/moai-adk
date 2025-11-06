@@ -19,7 +19,7 @@ allowed-tools:
 
 # 📚 MoAI-ADK Step 3: Document Synchronization (+Optional PR Ready)
 
-> **Note**: Interactive prompts use `AskUserQuestion 도구 (moai-alfred-ask-user-questions 스킬 참조)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
+> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 >
 > **Batched Design**: All AskUserQuestion calls follow batched design principles (1-4 questions per call) to minimize user interaction turns. See CLAUDE.md section "Alfred Command Completion Pattern" for details.
 
@@ -36,32 +36,6 @@ Synchronize code changes to Living Documents and verify @TAG system to ensure co
 **Document sync to**: $ARGUMENTS
 
 > **Standard workflow**: STEP 1 (Analysis & Planning) → User Approval → STEP 2 (Document Sync) → STEP 3 (Git Commit & PR)
-
-## 🚀 Initialize Synchronization with JIT Skills
-
-Before starting synchronization, load essential JIT skills for enhanced documentation and validation:
-
-```python
-# Load session information and current implementation status
-Skill("moai-session-info")
-
-# Load streaming UI for progress indication during sync operations
-Skill("moai-streaming-ui")
-
-# Load change logger for comprehensive audit trail
-Skill("moai-change-logger")
-
-# Load enhanced JIT documentation for intelligent doc updates
-Skill("moai-jit-docs-enhanced")
-
-# Load TAG policy validator for ensuring TAG compliance
-Skill("moai-tag-policy-validator")
-
-# Load learning optimizer for continuous improvement
-Skill("moai-learning-optimizer")
-```
-
-This provides comprehensive context, progress tracking, intelligent documentation, TAG validation, and learning optimization during synchronization.
 
 ---
 
@@ -94,8 +68,6 @@ This command supports **4 operational modes**:
 | quality-gate | `moai-alfred-trust-validation` | Check code quality before sync |
 | doc-syncer | `moai-alfred-tag-scanning` | Synchronize Living Documents |
 | git-manager | `moai-alfred-git-workflow` | Handle Git operations |
-| **NEW: policy-validator** | `moai-alfred-tag-policy-enforcer` | **Enforce TAG policy compliance** |
-| **NEW: tag-dedup-agent** | `moai-tag-dedup` | **Remove duplicate TAGs automatically** |
 
 **Note**: TUI Survey Skill is loaded once at Phase 0 and reused throughout all user interactions.
 
@@ -112,13 +84,12 @@ This command supports **4 operational modes**:
                           ↓
 ┌──────────────────────────────────────────────────────────┐
 │ STEP 1: Analysis & Planning                             │
-│  STEP 1.1: **TAG Policy Compliance Check** (CRITICAL)   │
-│  STEP 1.2: Verify prerequisites                         │
-│  STEP 1.3: Analyze project status (Git + TAG)           │
-│  STEP 1.4: Determine sync scope (mode-specific)         │
-│  STEP 1.5: (Optional) TAG chain navigation              │
-│  STEP 1.6: Create synchronization plan                  │
-│  STEP 1.7: Request user approval (AskUserQuestion)      │
+│  STEP 1.1: Verify prerequisites                         │
+│  STEP 1.2: Analyze project status (Git + TAG)           │
+│  STEP 1.3: Determine sync scope (mode-specific)         │
+│  STEP 1.4: (Optional) TAG chain navigation              │
+│  STEP 1.5: Create synchronization plan                  │
+│  STEP 1.6: Request user approval (AskUserQuestion)      │
 └──────────────────────────────────────────────────────────┘
                           ↓
           ┌───────────────┴───────────────┐
@@ -173,121 +144,7 @@ This command supports **4 operational modes**:
 
 ## 📊 STEP 1: Analysis & Planning
 
-### STEP 1.1: **TAG Policy Compliance Check** (CRITICAL)
-
-**Your task**: Perform comprehensive TAG policy validation before any synchronization.
-
-**CRITICAL STEPS**:
-
-1. **Complete TAG Policy Validation**:
-   ```bash
-   # Run comprehensive TAG policy validation
-   python3 -c "
-import sys
-sys.path.insert(0, 'src')
-from moai_adk.core.tags.validator import CentralValidator
-from moai_adk.core.tags.policy_validator import TagPolicyValidator
-
-print('🔍 전체 TAG 정책 검증 시작...')
-
-# 1. Central validation (duplicates, orphans, chains)
-central_validator = CentralValidator()
-central_result = central_validator.validate_directory('.')
-print(f'✅ 중앙 검증 완료: {central_result.statistics.total_files_scanned}개 파일, {central_result.statistics.total_issues}개 이슈')
-
-# 2. Policy validation (SPEC-first enforcement)
-policy_validator = TagPolicyValidator()
-print('✅ 정책 검증 준비 완료')
-
-if central_result.statistics.error_count > 0:
-    print(f'❌ 치명적 TAG 문제: {central_result.statistics.error_count}개')
-    for error in central_result.errors[:3]:
-        print(f'  - {error.message}')
-    sys.exit(1)
-else:
-    print('✅ TAG 정책 준수 확인 - 동기화 가능')
-"
-   ```
-
-2. **TAG 중복 제거 검증 (NEW)**:
-   ```bash
-   # Check for TAG duplicates and invoke deduplication if needed
-   python3 -c "
-import sys
-import json
-sys.path.insert(0, 'src')
-
-print('🔍 TAG 중복 검사 시작...')
-
-# Check if deduplication is needed
-try:
-    with open('.moai/tag-dedup-policy.json', 'r') as f:
-        dedup_policy = json.load(f)
-
-    # Run tag-dedup command in scan-only mode
-    import subprocess
-    result = subprocess.run([
-        'python3', '.claude/commands/alfred/tag-dedup.py', '--scan-only'
-    ], capture_output=True, text=True)
-
-    if result.returncode == 1:
-        print('⚠️ TAG 중복 발견 - 자동 정리 권장')
-        print('중복 제거를 실행하려면: /alfred:tag-dedup --dry-run')
-    else:
-        print('✅ TAG 중복 없음 - 시스템 정상')
-
-except Exception as e:
-    print(f'⚠️ TAG 중복 검사 실패: {e}')
-    print('계속 진행합니다...')
-"
-   ```
-
-2. **TAG Chain Integrity Verification**:
-   ```bash
-   # Verify SPEC → CODE → TEST → DOC chains
-   python3 -c "
-import sys
-sys.path.insert(0, 'src')
-from moai_adk.core.tags.validator import CentralValidator
-
-validator = CentralValidator()
-result = validator.validate_directory('.')
-
-# Check for broken chains
-broken_chains = [i for i in result.issues if i.type == 'chain']
-if broken_chains:
-    print(f'⚠️ 끊어진 TAG 체인: {len(broken_chains)}개')
-    print('동기화 전에 수정할 것을 권장합니다')
-else:
-    print('✅ TAG 체인 무결성 확인')
-"
-   ```
-
-3. **Checkpoint Creation** (for safety):
-   ```bash
-   # Create safety checkpoint before sync
-   python3 -c "
-import sys
-sys.path.insert(0, 'src')
-from moai_adk.core.tags.rollback_manager import RollbackManager
-
-try:
-    rollback_manager = RollbackManager()
-    checkpoint_id = rollback_manager.create_checkpoint(
-        '동기화 전 안전 체크포인트',
-        metadata={'command': 'alfred:3-sync'}
-    )
-    print(f'✅ 안전 체크포인트 생성: {checkpoint_id}')
-except Exception as e:
-    print(f'⚠️ 체크포인트 생성 실패: {e}')
-"
-   ```
-
-**Result**: TAG policy validated, checkpoint created, ready for sync.
-
-**Next step**: Go to STEP 1.2
-
-### STEP 1.2: Verify Prerequisites
+### STEP 1.1: Verify Prerequisites
 
 **Your task**: Check that all required components exist before starting synchronization analysis.
 
@@ -526,25 +383,25 @@ except Exception as e:
      - `description`: "Scan entire TAG system across project"
      - `prompt`:
        ```
-       프로젝트 전체에서 @TAG 시스템을 스캔해주세요:
+       Please scan the entire @TAG system across the project:
 
-       스캔 범위:
-       - @SPEC TAG 위치 (.moai/specs/)
-       - @TEST TAG 위치 (tests/)
-       - @CODE TAG 위치 (src/)
-       - @DOC TAG 위치 (docs/)
+       Scan scope:
+       - @SPEC TAG locations (.moai/specs/)
+       - @TEST TAG locations (tests/)
+       - @CODE TAG locations (src/)
+       - @DOC TAG locations (docs/)
 
-       검증 항목:
-       - 고아 TAG (orphan TAGs) 감지
-       - 끊긴 참조 (broken references) 감지
-       - 중복 TAG (duplicate TAGs) 감지
+       Validation items:
+       - Detect orphan TAGs
+       - Detect broken references
+       - Detect duplicate TAGs
 
-       상세도 수준: very thorough
+       Thoroughness level: very thorough
 
-       출력 형식:
-       - TAG 인벤토리 전체 목록
-       - 문제 TAG 목록 (위치 포함)
-       - 추천 수정 사항
+       Output format:
+       - Complete TAG inventory list
+       - List of problematic TAGs (with locations)
+       - Recommended fixes
        ```
 
 4. **Store Explore agent results**:
@@ -581,9 +438,9 @@ except Exception as e:
 
 ### STEP 1.5: Create Synchronization Plan
 
-**Your task**: Call tag-agent, tag-dedup-agent, and doc-syncer to verify TAG integrity, remove duplicates, and establish a detailed synchronization plan.
+**Your task**: Call tag-agent and doc-syncer to verify TAG integrity and establish a detailed synchronization plan.
 
-**This phase runs THREE agents sequentially**:
+**This phase runs TWO agents sequentially**:
 
 1. **Tag-agent call (TAG verification across ENTIRE PROJECT)**:
 
@@ -593,27 +450,27 @@ except Exception as e:
      - `description`: "Verify TAG system across entire project"
      - `prompt`:
        ```
-       전체 프로젝트에서 포괄적인 @TAG 시스템 검증을 수행해주세요.
+       Please perform comprehensive @TAG system verification across the entire project.
 
-       **필수 범위**: 변경된 파일만이 아니라 모든 소스 파일을 스캔합니다.
+       **Required Scope**: Scan ALL source files, not just changed files.
 
-       **검증 항목**:
-       1. .moai/specs/ 디렉토리의 @SPEC TAG
-       2. tests/ 디렉토리의 @TEST TAG
-       3. src/ 디렉토리의 @CODE TAG
-       4. docs/ 디렉토리의 @DOC TAG
+       **Verification Items**:
+       1. @SPEC TAGs in .moai/specs/ directory
+       2. @TEST TAGs in tests/ directory
+       3. @CODE TAGs in src/ directory
+       4. @DOC TAGs in docs/ directory
 
-       **고아 감지** (필수):
-       - 매칭되는 @SPEC이 없는 @CODE TAG 감지
-       - 매칭되는 @CODE가 없는 @SPEC TAG 감지
-       - 매칭되는 @SPEC이 없는 @TEST TAG 감지
-       - 매칭되는 @SPEC/@CODE가 없는 @DOC TAG 감지
+       **Orphan Detection** (Required):
+       - Detect @CODE TAGs with no matching @SPEC
+       - Detect @SPEC TAGs with no matching @CODE
+       - Detect @TEST TAGs with no matching @SPEC
+       - Detect @DOC TAGs with no matching @SPEC/@CODE
 
-       **출력 형식**:
-       - 고아 TAG의 전체 목록을 위치와 함께 제공합니다.
-       - TAG 체인 무결성 평가 (Healthy / Issues Detected)
+       **Output Format**:
+       - Provide complete list of orphan TAGs with locations
+       - TAG chain integrity assessment (Healthy / Issues Detected)
 
-       (선택사항) 탐색 결과: $EXPLORE_RESULTS
+       (Optional) Exploration results: $EXPLORE_RESULTS
        ```
 
    - **Wait for tag-agent response**
@@ -628,56 +485,9 @@ except Exception as e:
      - Orphan @CODE TAGs: [list]
      - Orphan @SPEC TAGs: [list]
      - Broken references: [list]
-     - Duplicate TAGs: [list]
      ```
 
-2. **Tag-dedup-agent call (TAG duplicate removal)**:
-
-   - **Your task**: Invoke tag-dedup-agent to remove duplicate TAGs if any found
-   - Use Task tool:
-     - `subagent_type`: "tag-dedup-agent"
-     - `description`: "Remove duplicate TAGs based on GPT-5 Pro analysis"
-     - `prompt`:
-       ```
-       당신은 tag-dedup-agent 에이전트입니다.
-
-       TAG 중복 제거 작업을 수행해주세요.
-
-       **전제 조건**:
-       - TAG 검증 결과: $TAG_VALIDATION_RESULTS
-       - 중복 정책: .moai/tag-dedup-policy.json
-       - 제외 경로: .claude/ (로컬 개발 환경)
-
-       **작업 순서**:
-       1. 중복 TAG 스캔 (--scan-only 모드)
-       2. 중복 발견 시 시뮬레이션 실행 (--dry-run)
-       3. 사용자 승인 후 실제 적용 (--apply --backup)
-
-       **안전 장치**:
-       - 항상 백업 생성
-       - TAG 체인 무결성 검증
-       - Confidence threshold 0.9 이상일 때만 적용
-
-       **결과 보고**:
-       - 제거된 중복 TAG 목록
-       - TAG 체인 무결성 상태
-       - 백업 위치
-
-       스킬 호출: Skill("moai-tag-dedup")
-       ```
-
-   - **Wait for tag-dedup-agent response**
-   - Store response in variable: `$TAG_DEDUP_RESULTS`
-   - Print summary:
-     ```
-     ✅ TAG 중복 제거 완료
-
-     Duplicate TAGs processed: [count]
-     TAG chains verified: [PASS/WARNING]
-     Backup created: [location]
-     ```
-
-3. **Doc-syncer call (synchronization plan establishment)**:
+2. **Doc-syncer call (synchronization plan establishment)**:
 
    - **Your task**: Invoke doc-syncer to analyze Git changes and create sync plan
    - Use Task tool:
@@ -685,37 +495,36 @@ except Exception as e:
      - `description`: "Establish a document synchronization plan"
      - `prompt`:
        ```
-       당신은 doc-syncer 에이전트입니다.
+       You are the doc-syncer agent.
 
-       언어 설정:
-       - 대화_언어: $LANG
-       - 언어명: [Korean/English/Japanese based on $LANG]
+       Language settings:
+       - conversation_language: $LANG
+       - language_name: [Korean/English/Japanese based on $LANG]
 
-       중요 지시사항:
-       문서 업데이트는 대화_언어를 반드시 존중해야 합니다:
-       - 사용자 대면 문서 (README, 가이드): $LANG
-       - SPEC 문서 (spec.md, plan.md, acceptance.md): $LANG
-       - 코드 주석: $LANG (기술 키워드 제외)
-       - 기술 문서 및 YAML 프론트매터: 영어
+       Important instructions:
+       Document updates must respect the conversation language:
+       - User-facing docs (README, guides): $LANG
+       - SPEC documents (spec.md, plan.md, acceptance.md): $LANG
+       - Code comments: $LANG (except technical keywords)
+       - Technical docs and YAML frontmatter: English
 
-       스킬 호출:
-       필요 시 명시적 Skill() 호출 사용:
-       - Skill("moai-foundation-tags") - TAG 체인 검증
-       - Skill("moai-foundation-trust") - 품질 게이트 검사
-       - Skill("moai-foundation-tags") - TAG 인벤토리 업데이트
+       Skill invocations:
+       Use explicit Skill() calls as needed:
+       - Skill("moai-foundation-tags") - TAG chain validation
+       - Skill("moai-foundation-trust") - Quality gate inspection
+       - Skill("moai-alfred-tag-scanning") - TAG inventory update
 
-       작업:
-       Git 변경사항을 분석하고 문서 동기화 계획을 수립해주세요.
-       모든 문서 업데이트가 대화_언어 설정과 일치하는지 확인합니다.
+       Tasks:
+       Analyze Git changes and establish document synchronization plan.
+       Ensure all document updates align with conversation language settings.
 
-       동기화 모드: $MODE
-       동기화 범위: $SYNC_SCOPE
-       대상 디렉토리: $TARGET_DIRS
-       변경된 파일: $CHANGED_FILES
+       Synchronization mode: $MODE
+       Synchronization scope: $SYNC_SCOPE
+       Target directories: $TARGET_DIRS
+       Changed files: $CHANGED_FILES
 
-       (필수) TAG 검증 결과: $TAG_VALIDATION_RESULTS
-       (필수) TAG 중복 제거 결과: $TAG_DEDUP_RESULTS
-       (선택사항) 탐색 결과: $EXPLORE_RESULTS
+       (Required) TAG verification results: $TAG_VALIDATION_RESULTS
+       (Optional) Exploration results: $EXPLORE_RESULTS
        ```
 
    - **Wait for doc-syncer response**
@@ -736,7 +545,7 @@ except Exception as e:
      - Estimated time: [based on change count]
      ```
 
-**Result**: TAG validation results, TAG deduplication results, and synchronization plan stored in variables.
+**Result**: TAG validation results and synchronization plan stored in variables.
 
 **Next step**: Go to STEP 1.6
 
@@ -770,7 +579,6 @@ except Exception as e:
    - TAG chain integrity: [Healthy / Issues Detected]
    - Orphan TAGs: [count]
    - Broken references: [count]
-   - Duplicate TAGs: [count from $TAG_DEDUP_RESULTS]
 
    ✅ Expected Deliverables:
    - sync-report.md: Summary of synchronization results
@@ -914,43 +722,43 @@ except Exception as e:
      - `description`: "Execute Living Document synchronization"
      - `prompt`:
        ```
-       당신은 doc-syncer 에이전트입니다.
+       You are the doc-syncer agent.
 
-       언어 설정:
-       - 대화_언어: $LANG
+       Language settings:
+       - conversation_language: $LANG
 
-       **승인된 동기화 계획 실행**:
+       **Execute Approved Synchronization Plan**:
 
-       이전 분석 결과:
-       - TAG 검증 결과: $TAG_VALIDATION_RESULTS
-       - 동기화 계획: $SYNC_PLAN
-       - 탐색 결과: $EXPLORE_RESULTS (if available)
+       Previous analysis results:
+       - TAG verification results: $TAG_VALIDATION_RESULTS
+       - Synchronization plan: $SYNC_PLAN
+       - Exploration results: $EXPLORE_RESULTS (if available)
 
-       **작업 지시**:
+       **Task Instructions**:
 
-       1. Living Document 동기화:
-          - 변경된 코드를 문서에 반영
-          - API 문서 자동 생성/업데이트
-          - README 업데이트 (if needed)
-          - Architecture 문서 동기화
+       1. Living Document synchronization:
+          - Reflect changed code in documentation
+          - Auto-generate/update API documentation
+          - Update README (if needed)
+          - Synchronize Architecture documents
 
-       2. @TAG 시스템 업데이트:
-          - TAG 인덱스 갱신 (.moai/indexes/tags.db)
-          - 고아 TAG 수리 (if possible)
-          - 끊긴 참조 복구
+       2. @TAG system updates:
+          - Update TAG index (.moai/indexes/tags.db)
+          - Repair orphan TAGs (if possible)
+          - Restore broken references
 
-       3. 문서-코드 일관성 검증:
-          - SPEC ↔ CODE 동기화 확인
-          - TEST ↔ CODE 매칭 확인
-          - DOC ↔ CODE 참조 확인
+       3. Document-code consistency verification:
+          - Verify SPEC ↔ CODE synchronization
+          - Verify TEST ↔ CODE matching
+          - Verify DOC ↔ CODE references
 
-       4. 동기화 리포트 생성:
-          - 파일 위치: .moai/reports/sync-report-$TIMESTAMP.md
-          - 포함 내용: 업데이트된 파일 목록, TAG 수리 내역, 남은 이슈
+       4. Generate synchronization report:
+          - File location: .moai/reports/sync-report-$TIMESTAMP.md
+          - Include content: Updated file list, TAG repair history, remaining issues
 
-       **중요**: 모든 문서 생성/수정은 대화_언어($LANG)를 사용하세요.
+       **Important**: Use conversation_language($LANG) for all document creation/modification.
 
-       승인된 계획을 정확히 실행하고, 결과를 상세히 보고해주세요.
+       Execute the approved plan precisely and report results in detail.
        ```
 
 2. **Wait for doc-syncer completion**:
@@ -1498,29 +1306,29 @@ except Exception as e:
      - `description`: "Commit document synchronization changes"
      - `prompt`:
        ```
-       당신은 git-manager 에이전트입니다.
+       You are the git-manager agent.
 
-       **작업**: 문서 동기화 변경사항을 Git 커밋으로 저장하세요.
+       **Task**: Commit document synchronization changes to Git.
 
-       **커밋 범위**:
-       - 변경된 모든 문서 파일
-       - .moai/reports/ 디렉토리
-       - .moai/indexes/ 디렉토리 (if changed)
+       **Commit Scope**:
+       - All changed document files
+       - .moai/reports/ directory
+       - .moai/indexes/ directory (if changed)
        - README.md (if changed)
-       - docs/ 디렉토리 (if changed)
+       - docs/ directory (if changed)
 
-       **커밋 메시지**:
+       **Commit Message**:
        $COMMIT_MESSAGE
 
-       **중요**:
-       - HEREDOC 형식으로 커밋 메시지 전달
-       - 모든 변경사항을 하나의 커밋으로 묶기
-       - 커밋 후 성공 여부 보고
+       **Important**:
+       - Pass commit message in HEREDOC format
+       - Bundle all changes into a single commit
+       - Report success after commit
 
-       **실행 순서**:
-       1. git add (변경된 문서 파일들)
+       **Execution Order**:
+       1. git add (changed document files)
        2. git commit -m (HEREDOC)
-       3. git log -1 (커밋 확인)
+       3. git log -1 (verify commit)
        ```
 
 3. **Wait for git-manager response**:
@@ -2268,9 +2076,9 @@ This command is **STEP 4** (Report & Commit):
 ## 📖 Related Documentation
 
 **Skills**:
-- `Skill("moai-foundation-tags")` - TAG system details
+- `Skill("moai-alfred-tag-scanning")` - TAG system details
 - `Skill("moai-alfred-git-workflow")` - Git operations
-- `Skill("moai-foundation-trust")` - Quality gates
+- `Skill("moai-alfred-trust-validation")` - Quality gates
 - `Skill("moai-alfred-ask-user-questions")` - TUI interactions
 
 **Workflows**:

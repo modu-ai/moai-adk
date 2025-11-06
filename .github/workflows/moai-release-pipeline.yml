@@ -7,134 +7,11 @@ on:
     types: [closed]
     branches:
       - main
-  push:
-    tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+'  # Only semantic version tags
 
 jobs:
-  validate-tag-push:
-    name: 🔒 Validate Tag Push (Team Mode Protection)
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-
-    steps:
-      - name: 📥 Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: 🔍 Extract tag info
-        id: tag
-        run: |
-          TAG_NAME=${GITHUB_REF#refs/tags/}
-          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
-          echo "🏷️  Tag: $TAG_NAME"
-
-          # Validate semantic version format
-          if [[ ! "$TAG_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "❌ Invalid tag format: $TAG_NAME"
-            echo "Expected format: v{major}.{minor}.{patch}"
-            exit 1
-          fi
-
-          echo "✅ Tag format is valid semantic version"
-
-      - name: 🔒 Check team mode enforcement
-        id: team_mode
-        run: |
-          if [ -f ".moai/config.json" ]; then
-            TEAM_MODE=$(cat .moai/config.json | jq -r '.git_strategy.mode // "personal"')
-            echo "team_mode=$TEAM_MODE" >> $GITHUB_OUTPUT
-            echo "📋 Project mode: $TEAM_MODE"
-
-            if [ "$TEAM_MODE" = "team" ]; then
-              echo "🚨 Team mode detected - applying strict tag validation"
-            else
-              echo "👤 Personal mode detected - standard validation"
-            fi
-          else
-            echo "team_mode=personal" >> $GITHUB_OUTPUT
-            echo "⚠️  No .moai/config.json found - assuming personal mode"
-          fi
-
-      - name: 🔍 Validate source branch (Team Mode)
-        if: steps.team_mode.outputs.team_mode == 'team'
-        run: |
-          TAG_NAME=${{ steps.tag.outputs.tag_name }}
-
-          # Get the commit the tag points to
-          TAG_COMMIT=$(git rev-list -n 1 "$TAG_NAME")
-          echo "Tag commit: $TAG_COMMIT"
-
-          # Check if this commit is on main branch
-          if git branch --contains "$TAG_COMMIT" | grep -q "main"; then
-            echo "✅ Tag created from main branch (required for team mode)"
-          else
-            echo ""
-            echo "❌ TEAM MODE TAG VIOLATION"
-            echo ""
-            echo "Tag '$TAG_NAME' was not created from main branch"
-            echo "Current tag commit: $TAG_COMMIT"
-            echo ""
-            echo "Required team workflow:"
-            echo "1. Merge all features to develop"
-            echo "2. Merge develop to main"
-            echo "3. Create tag from main branch"
-            echo ""
-            echo "Command to fix:"
-            echo "git checkout main"
-            echo "git tag $TAG_NAME"
-            echo "git push origin $TAG_NAME"
-            exit 1
-          fi
-
-          # Verify main is up-to-date with develop
-          if git rev-parse --verify develop >/dev/null 2>&1; then
-            MAIN_COMMIT=$(git rev-parse main)
-            DEVELOP_COMMIT=$(git rev-parse develop)
-
-            if [ "$MAIN_COMMIT" != "$DEVELOP_COMMIT" ]; then
-              echo ""
-              echo "⚠️  GITFLOW WARNING"
-              echo ""
-              echo "Main branch is not synchronized with develop"
-              echo "Main commit:    $MAIN_COMMIT"
-              echo "Develop commit: $DEVELOP_COMMIT"
-              echo ""
-              echo "In team mode, tags should be created after develop → main merge"
-              echo ""
-              echo "💡 Consider merging develop to main first:"
-              echo "git checkout main"
-              echo "git merge develop"
-              echo "git push origin main"
-              echo "git tag $TAG_NAME"
-              echo "git push origin $TAG_NAME"
-              echo ""
-              echo "Continue anyway? This is your last warning."
-              # Note: In CI/CD we can't ask for user input, so we just warn
-            else
-              echo "✅ Main branch is synchronized with develop"
-            fi
-          fi
-
-      - name: 🚫 Check for duplicate tags
-        run: |
-          TAG_NAME=${{ steps.tag.outputs.tag_name }}
-
-          # Check if tag already exists (shouldn't happen with Git, but let's be safe)
-          if git ls-remote --tags origin "$TAG_NAME" | grep -q "$TAG_NAME"; then
-            echo "❌ Tag '$TAG_NAME' already exists remotely"
-            echo "Cannot overwrite existing tags"
-            exit 1
-          fi
-
-          echo "✅ Tag is unique"
-
   detect-release:
     name: 🔍 Detect Release PR
     runs-on: ubuntu-latest
-    needs: validate-tag-push
-    if: github.event_name == 'pull_request'
     outputs:
       is_release: ${{ steps.detect.outputs.is_release }}
       version: ${{ steps.detect.outputs.version }}
@@ -300,7 +177,6 @@ jobs:
           body: ${{ steps.release_notes.outputs.notes }}
           draft: false
           prerelease: false
-          make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

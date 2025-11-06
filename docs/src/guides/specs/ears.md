@@ -1,20 +1,26 @@
 # EARS Syntax: Advanced Guide
 
-Master the Easy Approach to Requirements Syntax (EARS) for writing clear, testable, and unambiguous specifications. This comprehensive guide covers advanced patterns, best practices, and real-world examples.
+Master the Easy Approach to Requirements Syntax (EARS) for writing clear, testable, and unambiguous
+specifications. This comprehensive guide covers advanced patterns, best practices, and real-world
+examples.
 
 ## What is EARS?
 
-EARS (Easy Approach to Requirements Syntax) is a structured methodology for writing requirements that eliminates ambiguity and ensures testability. Developed through extensive research on requirement engineering, EARS provides 5 clear patterns that cover all types of system behavior.
+EARS (Easy Approach to Requirements Syntax) is a structured methodology for writing requirements
+that eliminates ambiguity and ensures testability. Developed through extensive research on
+requirement engineering, EARS provides 5 clear patterns that cover all types of system behavior.
 
 ### Why EARS Matters
 
 Traditional requirements often suffer from:
+
 - **Ambiguity**: "The system should be fast" → How fast? Under what conditions?
 - **Imprecision**: "Users should be able to login" → What methods? What error handling?
 - **Incompleteness**: Missing edge cases and error conditions
 - **Un-testability**: Requirements that cannot be objectively verified
 
 EARS solves these problems by providing:
+
 - **Structured Language**: Consistent patterns for all requirement types
 - **Clear Triggers**: Explicit conditions and events
 - **Complete Coverage**: Methods for expressing all system behaviors
@@ -29,12 +35,14 @@ EARS solves these problems by providing:
 **Syntax**: `The system SHALL <capability>`
 
 **When to Use**:
+
 - Core system features
 - Always-available functionality
 - Basic capabilities
 - System-wide behaviors
 
 **Structure**:
+
 ```
 The system SHALL [verb] [object] [condition/context]
 ```
@@ -42,6 +50,7 @@ The system SHALL [verb] [object] [condition/context]
 #### Examples
 
 **Basic Functionality**:
+
 ```markdown
 - The system SHALL provide user authentication via email and password
 - The system SHALL maintain user session state securely
@@ -51,6 +60,7 @@ The system SHALL [verb] [object] [condition/context]
 ```
 
 **Data Management**:
+
 ```markdown
 - The system SHALL store user data in encrypted format
 - The system SHALL maintain data integrity constraints
@@ -60,6 +70,7 @@ The system SHALL [verb] [object] [condition/context]
 ```
 
 **Security**:
+
 ```markdown
 - The system SHALL implement secure password hashing
 - The system SHALL use HTTPS for all communications
@@ -69,6 +80,7 @@ The system SHALL [verb] [object] [condition/context]
 ```
 
 **Performance**:
+
 ```markdown
 - The system SHALL respond to user requests within 2 seconds
 - The system SHALL support 1000 concurrent users
@@ -80,6 +92,7 @@ The system SHALL [verb] [object] [condition/context]
 #### Advanced Ubiquitous Patterns
 
 **Conditional Ubiquitous**:
+
 ```markdown
 - The system SHALL provide API access for authenticated users
 - The system SHALL enforce rate limits based on user tier
@@ -87,6 +100,7 @@ The system SHALL [verb] [object] [condition/context]
 ```
 
 **Qualified Ubiquitous**:
+
 ```markdown
 - The system SHALL process payments using PCI-compliant methods
 - The system SHALL store sensitive data using AES-256 encryption
@@ -100,6 +114,7 @@ The system SHALL [verb] [object] [condition/context]
 **Syntax**: `WHEN <trigger>, the system SHALL <response>`
 
 **When to Use**:
+
 - User actions and interactions
 - System events and notifications
 - External triggers
@@ -107,6 +122,7 @@ The system SHALL [verb] [object] [condition/context]
 - State changes
 
 **Structure**:
+
 ```
 WHEN [trigger condition], the system SHALL [response/action] [additional details]
 ```
@@ -114,6 +130,7 @@ WHEN [trigger condition], the system SHALL [response/action] [additional details
 #### Examples
 
 **User Actions**:
+
 ```markdown
 - WHEN a user submits login credentials, the system SHALL validate and authenticate
 - WHEN a user updates their profile, the system SHALL save changes and confirm success
@@ -123,6 +140,7 @@ WHEN [trigger condition], the system SHALL [response/action] [additional details
 ```
 
 **System Events**:
+
 ```markdown
 - WHEN system memory exceeds 80% usage, the system SHALL trigger cleanup procedures
 - WHEN database connection fails, the system SHALL attempt reconnection with exponential backoff
@@ -132,6 +150,7 @@ WHEN [trigger condition], the system SHALL [response/action] [additional details
 ```
 
 **External Triggers**:
+
 ```markdown
 - WHEN webhook is received from payment provider, the system SHALL update subscription status
 - WHEN email bounce occurs, the system SHALL update user email status
@@ -141,6 +160,7 @@ WHEN [trigger condition], the system SHALL [response/action] [additional details
 ```
 
 **Time-based Events**:
+
 ```markdown
 - WHEN user session expires, the system SHALL require re-authentication
 - WHEN scheduled report is due, the system SHALL generate and deliver report
@@ -152,6 +172,7 @@ WHEN [trigger condition], the system SHALL [response/action] [additional details
 #### Advanced Event-driven Patterns
 
 **Multiple Triggers**:
+
 ```markdown
 - WHEN user login fails OR account is locked, the system SHALL send security alert
 - WHEN file upload completes AND virus scan passes, the system SHALL process file
@@ -159,6 +180,7 @@ WHEN [trigger condition], the system SHALL [response/action] [additional details
 ```
 
 **Cascading Events**:
+
 ```markdown
 - WHEN user registration completes, the system SHALL create user profile, send welcome email, AND initialize user preferences
 - WHEN payment is processed, the system SHALL update subscription, send receipt, AND extend access
@@ -166,6 +188,7 @@ WHEN [trigger condition], the system SHALL [response/action] [additional details
 ```
 
 **Complex Conditions**:
+
 ```markdown
 - WHEN user attempts login from new device AND location differs from usual, the system SHALL require additional verification
 - WHEN API request exceeds rate limit AND user is not premium, the system SHALL throttle requests
@@ -179,6 +202,7 @@ WHEN [trigger condition], the system SHALL [response/action] [additional details
 **Syntax**: `WHILE <condition>, the system SHALL <behavior>`
 
 **When to Use**:
+
 - Continuous behaviors
 - State-dependent functionality
 - Context-aware operations
@@ -186,6 +210,7 @@ WHEN [trigger condition], the system SHALL [response/action] [additional details
 - Persistent modes
 
 **Structure**:
+
 ```
 WHILE [state/condition exists], the system SHALL [continuous behavior] [constraints/details]
 ```
@@ -193,6 +218,7 @@ WHILE [state/condition exists], the system SHALL [continuous behavior] [constrai
 #### Examples
 
 **Authentication States**:
+
 ```markdown
 - WHILE a user is authenticated, the system SHALL allow access to protected resources
 - WHILE a user session is active, the system SHALL maintain user context and preferences
@@ -202,6 +228,7 @@ WHILE [state/condition exists], the system SHALL [continuous behavior] [constrai
 ```
 
 **System Modes**:
+
 ```markdown
 - WHILE maintenance mode is active, the system SHALL allow admin access only
 - WHILE read-only mode is enabled, the system SHALL reject all write operations
@@ -211,6 +238,7 @@ WHILE [state/condition exists], the system SHALL [continuous behavior] [constrai
 ```
 
 **Business Conditions**:
+
 ```markdown
 - WHILE subscription is active, the system SHALL provide premium features
 - WHILE trial period is active, the system SHALL display trial notifications
@@ -220,6 +248,7 @@ WHILE [state/condition exists], the system SHALL [continuous behavior] [constrai
 ```
 
 **Resource States**:
+
 ```markdown
 - WHILE disk space is below 10%, the system SHALL alert administrators
 - WHILE memory usage is above 90%, the system SHALL garbage collect frequently
@@ -231,6 +260,7 @@ WHILE [state/condition exists], the system SHALL [continuous behavior] [constrai
 #### Advanced State-driven Patterns
 
 **Nested States**:
+
 ```markdown
 - WHILE user is authenticated AND subscription is active, the system SHALL provide full feature access
 - WHILE system is in maintenance mode AND user is administrator, the system SHALL allow read-only access
@@ -238,6 +268,7 @@ WHILE [state/condition exists], the system SHALL [continuous behavior] [constrai
 ```
 
 **State Transitions**:
+
 ```markdown
 - WHILE user status is "pending", the system SHALL send verification reminders weekly
 - WHILE order status is "processing", the system SHALL update progress every 5 minutes
@@ -245,6 +276,7 @@ WHILE [state/condition exists], the system SHALL [continuous behavior] [constrai
 ```
 
 **Conditional Persistence**:
+
 ```markdown
 - WHILE feature flag is enabled, the system SHALL use new authentication flow
 - WHILE A/B test is active, the system SHALL route traffic based on user segment
@@ -253,11 +285,13 @@ WHILE [state/condition exists], the system SHALL [continuous behavior] [constrai
 
 ### Pattern 4: Optional Requirements
 
-**Purpose**: Define nice-to-have features or conditional functionality that may not always be present.
+**Purpose**: Define nice-to-have features or conditional functionality that may not always be
+present.
 
 **Syntax**: `WHERE <condition is met>, the system MAY <optional behavior>`
 
 **When to Use**:
+
 - Optional features
 - Configuration-dependent functionality
 - Enhancement opportunities
@@ -265,6 +299,7 @@ WHILE [state/condition exists], the system SHALL [continuous behavior] [constrai
 - Conditional behaviors
 
 **Structure**:
+
 ```
 WHERE [condition exists], the system MAY [optional behavior] [implementation details]
 ```
@@ -272,6 +307,7 @@ WHERE [condition exists], the system MAY [optional behavior] [implementation det
 #### Examples
 
 **Feature Flags**:
+
 ```markdown
 - WHERE multi-factor authentication is enabled, the system MAY require additional verification
 - WHERE social login is configured, the system MAY support OAuth authentication
@@ -281,6 +317,7 @@ WHERE [condition exists], the system MAY [optional behavior] [implementation det
 ```
 
 **Configuration Options**:
+
 ```markdown
 - WHERE email notifications are enabled, the system MAY send real-time alerts
 - WHERE caching is configured, the system MAY store frequently accessed data
@@ -290,6 +327,7 @@ WHERE [condition exists], the system MAY [optional behavior] [implementation det
 ```
 
 **Integration Capabilities**:
+
 ```markdown
 - WHERE third-party calendar is connected, the system MAY sync events
 - WHERE payment gateway is available, the system MAY process transactions
@@ -299,6 +337,7 @@ WHERE [condition exists], the system MAY [optional behavior] [implementation det
 ```
 
 **Enhanced Features**:
+
 ```markdown
 - WHERE user preferences allow, the system MAY personalize content recommendations
 - WHERE device capabilities support, the system MAY enable advanced features
@@ -310,6 +349,7 @@ WHERE [condition exists], the system MAY [optional behavior] [implementation det
 #### Advanced Optional Patterns
 
 **Multiple Conditions**:
+
 ```markdown
 - WHERE user is premium AND advanced features are enabled, the system MAY provide priority support
 - WHERE mobile app is installed AND push notifications are enabled, the system MAY send mobile alerts
@@ -317,6 +357,7 @@ WHERE [condition exists], the system MAY [optional behavior] [implementation det
 ```
 
 **Hierarchical Options**:
+
 ```markdown
 - WHERE basic search is available, the system MAY provide text search
 - WHERE advanced search is enabled, the system MAY provide faceted search
@@ -324,6 +365,7 @@ WHERE [condition exists], the system MAY [optional behavior] [implementation det
 ```
 
 **Progressive Enhancement**:
+
 ```markdown
 - WHERE JavaScript is enabled, the system MAY provide interactive interface
 - WHERE WebAssembly is supported, the system MAY use client-side processing
@@ -337,6 +379,7 @@ WHERE [condition exists], the system MAY [optional behavior] [implementation det
 **Syntax**: `The system SHALL NOT <undesired behavior>` or `<parameter> SHALL NOT <constraint>`
 
 **When to Use**:
+
 - Security constraints
 - Business rules
 - Technical limitations
@@ -344,6 +387,7 @@ WHERE [condition exists], the system MAY [optional behavior] [implementation det
 - Regulatory compliance
 
 **Structure**:
+
 ```
 The system SHALL NOT [prohibited behavior]
 [Parameter] SHALL NOT [constraint/limitation]
@@ -352,6 +396,7 @@ The system SHALL NOT [prohibited behavior]
 #### Examples
 
 **Security Constraints**:
+
 ```markdown
 - The system SHALL NOT store passwords in plain text
 - The system SHALL NOT reveal sensitive information in error messages
@@ -361,6 +406,7 @@ The system SHALL NOT [prohibited behavior]
 ```
 
 **Data Constraints**:
+
 ```markdown
 - User passwords SHALL NOT be less than 8 characters
 - Email addresses SHALL NOT contain special characters
@@ -370,6 +416,7 @@ The system SHALL NOT [prohibited behavior]
 ```
 
 **Performance Constraints**:
+
 ```markdown
 - Response time SHALL NOT exceed 5 seconds for any request
 - Database queries SHALL NOT take longer than 2 seconds
@@ -379,6 +426,7 @@ The system SHALL NOT [prohibited behavior]
 ```
 
 **Business Rules**:
+
 ```markdown
 - The system SHALL NOT allow duplicate email addresses
 - The system SHALL NOT permit concurrent sessions with same credentials
@@ -388,6 +436,7 @@ The system SHALL NOT [prohibited behavior]
 ```
 
 **Technical Limitations**:
+
 ```markdown
 - The system SHALL NOT support Internet Explorer 11
 - The system SHALL NOT process more than 1000 requests per minute per IP
@@ -399,6 +448,7 @@ The system SHALL NOT [prohibited behavior]
 #### Advanced Constraint Patterns
 
 **Conditional Constraints**:
+
 ```markdown
 - WHERE user is not premium, the system SHALL NOT allow API access rate > 100/hour
 - WHERE system is in maintenance, the system SHALL NOT allow any write operations
@@ -406,6 +456,7 @@ The system SHALL NOT [prohibited behavior]
 ```
 
 **Complex Constraints**:
+
 ```markdown
 - The system SHALL NOT allow password reuse within last 5 passwords
 - The system SHALL NOT permit concurrent uploads from same user exceeding 5 files
@@ -413,6 +464,7 @@ The system SHALL NOT [prohibited behavior]
 ```
 
 **Regulatory Constraints**:
+
 ```markdown
 - The system SHALL NOT store personal data without explicit consent
 - The system SHALL NOT process payments without PCI compliance
@@ -505,11 +557,13 @@ Requirements that depend on context:
 ### Mistake 1: Mixing Patterns
 
 **<span class="material-icons">cancel</span> Incorrect**:
+
 ```markdown
 WHEN user logs in, the system SHALL NOT allow weak passwords
 ```
 
-**<span class="material-icons">check_circle</span> Correct**:
+**✅ Correct**:
+
 ```markdown
 WHEN user attempts to login with weak password, the system SHALL reject authentication
 Passwords SHALL NOT be less than 8 characters
@@ -518,11 +572,13 @@ Passwords SHALL NOT be less than 8 characters
 ### Mistake 2: Ambiguous Language
 
 **<span class="material-icons">cancel</span> Incorrect**:
+
 ```markdown
 The system SHALL be fast
 ```
 
-**<span class="material-icons">check_circle</span> Correct**:
+**✅ Correct**:
+
 ```markdown
 The system SHALL respond to user requests within 2 seconds
 ```
@@ -530,11 +586,13 @@ The system SHALL respond to user requests within 2 seconds
 ### Mistake 3: Multiple Requirements in One Statement
 
 **<span class="material-icons">cancel</span> Incorrect**:
+
 ```markdown
 WHEN user registers, the system SHALL create account, send welcome email, and set default preferences
 ```
 
-**<span class="material-icons">check_circle</span> Correct**:
+**✅ Correct**:
+
 ```markdown
 WHEN user registration completes, the system SHALL create user account
 WHEN user account is created, the system SHALL send welcome email
@@ -544,11 +602,13 @@ WHEN welcome email is sent, the system SHALL set default user preferences
 ### Mistake 4: Missing Error Conditions
 
 **<span class="material-icons">cancel</span> Incorrect**:
+
 ```markdown
 WHEN user submits valid credentials, the system SHALL authenticate user
 ```
 
-**<span class="material-icons">check_circle</span> Correct**:
+**✅ Correct**:
+
 ```markdown
 WHEN valid credentials are provided, the system SHALL authenticate user
 WHEN invalid credentials are provided, the system SHALL return 401 error
@@ -558,11 +618,13 @@ WHEN authentication service is unavailable, the system SHALL return 503 error
 ### Mistake 5: Implementation Details in Requirements
 
 **<span class="material-icons">cancel</span> Incorrect**:
+
 ```markdown
 The system SHALL use bcrypt with 12 rounds to hash passwords in PostgreSQL users table
 ```
 
-**<span class="material-icons">check_circle</span> Correct**:
+**✅ Correct**:
+
 ```markdown
 The system SHALL hash passwords using secure algorithm with minimum 12 rounds
 The system SHALL store password hashes securely in the database
@@ -590,24 +652,28 @@ moai-adk ears-quality-report
 For each requirement, verify:
 
 **Pattern Compliance**:
+
 - [ ] Uses correct EARS pattern for requirement type
 - [ ] Follows specified syntax structure
 - [ ] Contains appropriate trigger/condition
 - [ ] Specifies clear response/behavior
 
 **Clarity and Precision**:
+
 - [ ] Language is unambiguous
 - [ ] Technical terms are defined
 - [ ] Measurements are quantified
 - [ ] Scope is clearly bounded
 
 **Testability**:
+
 - [ ] Success criteria are defined
 - [ ] Test scenarios can be created
 - [ ] Expected outcomes are specified
 - [ ] Edge cases are considered
 
 **Completeness**:
+
 - [ ] All functional aspects covered
 - [ ] Error conditions included
 - [ ] Performance requirements specified
@@ -718,12 +784,14 @@ The system SHALL NOT [constraint]
 ### Training and Practice
 
 **EARS Writing Exercises**:
+
 1. Convert informal requirements to EARS format
 2. Identify appropriate patterns for different requirement types
 3. Practice combining patterns for complex scenarios
 4. Review and refine existing specifications
 
 **Common Scenarios for Practice**:
+
 - User registration and authentication
 - API endpoint design
 - Database operations
@@ -733,4 +801,6 @@ The system SHALL NOT [constraint]
 - Search functionality
 - Reporting and analytics
 
-Mastering EARS syntax enables you to write clear, unambiguous, and testable requirements that serve as the foundation for successful software development. Practice these patterns, and they'll become second nature in your specification writing! <span class="material-icons">target</span>
+Mastering EARS syntax enables you to write clear, unambiguous, and testable requirements that serve
+as the foundation for successful software development. Practice these patterns, and they'll become
+second nature in your specification writing! 🎯
