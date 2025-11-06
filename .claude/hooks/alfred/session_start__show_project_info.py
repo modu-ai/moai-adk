@@ -113,89 +113,25 @@ def get_test_info() -> dict[str, Any]:
     }
 
 
-def get_spec_progress() -> dict[str, Any]:
-    """Get SPEC progress information"""
-    try:
-        specs_dir = Path.cwd() / ".moai" / "specs"
-        if not specs_dir.exists():
-            return {"completed": 0, "total": 0, "percentage": 0}
-
-        spec_folders = [d for d in specs_dir.iterdir() if d.is_dir() and d.name.startswith("SPEC-")]
-        total = len(spec_folders)
-
-        # Simple completion check - look for spec.md files
-        completed = sum(1 for folder in spec_folders if (folder / "spec.md").exists())
-
-        percentage = (completed / total * 100) if total > 0 else 0
-
-        return {
-            "completed": completed,
-            "total": total,
-            "percentage": round(percentage, 0)
-        }
-
-    except Exception:
-        return {"completed": 0, "total": 0, "percentage": 0}
-
-
-def calculate_risk(git_info: dict, spec_progress: dict, test_info: dict) -> str:
-    """Calculate overall project risk level"""
-    risk_score = 0
-
-    # Git changes contribute to risk
-    if git_info["changes"] > 20:
-        risk_score += 10
-    elif git_info["changes"] > 10:
-        risk_score += 5
-
-    # SPEC progress contributes to risk
-    if spec_progress["percentage"] < 50:
-        risk_score += 15
-    elif spec_progress["percentage"] < 80:
-        risk_score += 8
-
-    # Test status contributes to risk
-    if test_info["status"] != "✅":
-        risk_score += 12
-    elif test_info["coverage"] == "unknown":
-        risk_score += 5
-
-    # Determine risk level
-    if risk_score >= 20:
-        return "HIGH"
-    elif risk_score >= 10:
-        return "MEDIUM"
-    else:
-        return "LOW"
 
 
 def format_session_output() -> str:
-    """Format the complete session start output"""
-    # Gather information
+    """Format minimal session start output (optimized for speed)
+
+    Only includes essential Git information.
+    Removed slow operations:
+    - SPEC progress scan
+    - Risk calculation
+    - Test coverage check
+    """
+    # Gather minimal information (fast)
     git_info = get_git_info()
-    test_info = get_test_info()
-    spec_progress = get_spec_progress()
-    risk_level = calculate_risk(git_info, spec_progress, test_info)
 
-    # Get MoAI version from config if available
-    moai_version = "unknown"
-    try:
-        config_path = Path.cwd() / ".moai" / "config.json"
-        if config_path.exists():
-            config = json.loads(config_path.read_text())
-            moai_version = config.get("moai", {}).get("version", "unknown")
-    except Exception:
-        pass
-
-    # Format output
+    # Format minimal output
     output = [
-        "🚀 MoAI-ADK Session Started",
-        "",
-        "📊 Project Status:",
-        f"🗿 Version: {moai_version} | 🌿 {git_info['branch']} ({git_info['branch'][:8] if git_info['branch'] != 'unknown' else 'unknown'})",
-        f"📝 Changes: {git_info['changes']} | 🧪 Tests: {test_info['coverage']} {test_info['status']}",
-        f"📋 SPEC Progress: {spec_progress['completed']}/{spec_progress['total']} ({spec_progress['percentage']}%) | 🚨 Risk: {risk_level}",
-        f"🔨 Last: {git_info['last_commit']} ({git_info['commit_time']})"
+        "🚀 MoAI-ADK Session",
+        f"🌿 {git_info['branch']} | 📝 {git_info['changes']} changes",
+        f"📌 {git_info['last_commit']} ({git_info['commit_time']})"
     ]
 
     return "\n".join(output)
