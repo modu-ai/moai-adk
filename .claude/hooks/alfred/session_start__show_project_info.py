@@ -49,14 +49,14 @@ except ImportError:
 
 
 def get_git_info() -> dict[str, Any]:
-    """Get comprehensive git information"""
+    """Get comprehensive git information - optimized for speed"""
     try:
         # Get current branch
         branch = subprocess.run(
             ["git", "branch", "--show-current"],
             capture_output=True,
             text=True,
-            timeout=3
+            timeout=0.5
         ).stdout.strip()
 
         # Get last commit hash and message
@@ -64,7 +64,7 @@ def get_git_info() -> dict[str, Any]:
             ["git", "log", "--pretty=format:%h %s", "-1"],
             capture_output=True,
             text=True,
-            timeout=3
+            timeout=0.5
         ).stdout.strip()
 
         # Get commit time (relative)
@@ -72,7 +72,7 @@ def get_git_info() -> dict[str, Any]:
             ["git", "log", "--pretty=format:%ar", "-1"],
             capture_output=True,
             text=True,
-            timeout=3
+            timeout=0.5
         ).stdout.strip()
 
         # Get number of changed files
@@ -80,7 +80,7 @@ def get_git_info() -> dict[str, Any]:
             ["git", "status", "--porcelain"],
             capture_output=True,
             text=True,
-            timeout=3
+            timeout=0.5
         ).stdout.strip()
         num_changes = len(changes.splitlines()) if changes else 0
 
@@ -101,41 +101,16 @@ def get_git_info() -> dict[str, Any]:
 
 
 def get_test_info() -> dict[str, Any]:
-    """Get test coverage and status information"""
-    try:
-        # Try to get test coverage (basic check)
-        coverage_result = subprocess.run(
-            ["python", "-m", "pytest", "--cov", "--tb=no", "-q"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-            cwd=Path.cwd()
-        )
+    """Get test coverage and status information
 
-        # Parse coverage from output (basic implementation)
-        coverage = "unknown"
-        if coverage_result.returncode == 0:
-            output = coverage_result.stdout
-            if "coverage:" in output.lower():
-                # Extract percentage from coverage output
-                import re
-                match = re.search(r'(\d+)%', output)
-                if match:
-                    coverage = f"{match.group(1)}%"
-
-        # Determine test status
-        test_status = "✅" if coverage_result.returncode == 0 else "❌"
-
-        return {
-            "coverage": coverage,
-            "status": test_status
-        }
-
-    except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError):
-        return {
-            "coverage": "unknown",
-            "status": "❓"
-        }
+    OPTIMIZATION: Skipped in SessionStart hook to avoid timeout
+    Reason: Running 1112+ tests on every session start (5+ seconds) is inefficient
+    Tests should be run on-demand via /alfred:2-run or explicit pytest commands
+    """
+    return {
+        "coverage": "run-on-demand",
+        "status": "⏭️"
+    }
 
 
 def get_spec_progress() -> dict[str, Any]:
@@ -240,8 +215,8 @@ def main() -> None:
         0: Success
         1: Error (timeout, JSON parse failure, handler exception)
     """
-    # Set 5-second timeout
-    timeout = CrossPlatformTimeout(5)
+    # Set 2-second timeout (optimized after removing pytest execution)
+    timeout = CrossPlatformTimeout(2)
     timeout.start()
 
     try:
@@ -268,7 +243,7 @@ def main() -> None:
             "systemMessage": "⚠️ Session start timeout - continuing without project info",
         }
         print(json.dumps(timeout_response))
-        print("SessionStart hook timeout after 5 seconds", file=sys.stderr)
+        print("SessionStart hook timeout after 2 seconds", file=sys.stderr)
         sys.exit(1)
 
     except json.JSONDecodeError as e:

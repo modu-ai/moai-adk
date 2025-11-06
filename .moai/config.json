@@ -143,9 +143,9 @@
     }
   },
   "hooks": {
-    "timeout_ms": 3000,
+    "timeout_ms": 2000,
     "graceful_degradation": true,
-    "notes": "Hook execution timeout (milliseconds). Reduced from 5000ms to 3000ms for memory stability. Set graceful_degradation to true to continue even if a hook fails."
+    "notes": "Hook execution timeout (milliseconds). Optimized to 2000ms after removing pytest from SessionStart hook. Set graceful_degradation to true to continue even if a hook fails."
   },
   "report_generation": {
     "enabled": false,
