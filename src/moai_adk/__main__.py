@@ -145,13 +145,3 @@ def sync_command_func(skip_docs, skip_tags, apply_dedup, dry_run):
     sys.exit(sync_cli(options))
 
 cli.add_command(sync_command_func)
-
-# Sync 명령어 추가
-def sync_command():
-    """Sync command wrapper"""
-    import sys
-    sys.path.insert(0, 'src')
-    from moai_adk.cli.commands.sync_main import main as sync_main
-    sys.exit(sync_main())
-
-cli.add_command(sync_command, name='sync')

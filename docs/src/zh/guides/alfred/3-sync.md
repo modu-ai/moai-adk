@@ -1,7 +1,6 @@
----
-title: 3-sync 命令指南
-description: 学习如何使用 Alfred 的 3-sync 命令进行文档同步、TAG 验证和质量保证
----
+______________________________________________________________________
+
+## title: 3-sync 命令指南 description: 学习如何使用 Alfred 的 3-sync 命令进行文档同步、TAG 验证和质量保证
 
 # 3-sync 命令指南
 
@@ -10,11 +9,13 @@ description: 学习如何使用 Alfred 的 3-sync 命令进行文档同步、TAG
 ## 命令概览
 
 ### 基本语法
+
 ```bash
 /alfred:3-sync [options]
 ```
 
 ### 命令目的
+
 - 同步所有项目文档
 - 验证 @TAG 链完整性
 - 执行 TRUST 5 原则检查
@@ -22,25 +23,28 @@ description: 学习如何使用 Alfred 的 3-sync 命令进行文档同步、TAG
 - 更新 README 和 CHANGELOG
 
 ### 触发的代理
+
 - **doc-syncer**：主导文档同步
 - **tag-agent**：@TAG 系统验证
 - **trust-checker**：TRUST 5 原则验证
 - **quality-gate**：质量门禁检查
 - **git-manager**：Git 工作流管理
 
----
+______________________________________________________________________
 
 ## 文档同步详解
 
 ### 1. Living Documents 生成
 
 #### 什么是 Living Documents？
+
 Living Documents 是与代码同步更新的"活文档"，确保文档始终反映代码的实际状态。
 
 #### 文档类型和内容
 
 ##### API 文档
-```markdown
+
+````markdown
 # `@DOC:USER-AUTH-001:API | SPEC: SPEC-USER-AUTH-001.md | CODE: src/auth/api.py
 
 # 用户认证 API 文档
@@ -71,16 +75,18 @@ Living Documents 是与代码同步更新的"活文档"，确保文档始终反�
   "password": "SecurePass123!",
   "full_name": "张三"
 }
-```
+````
 
 **请求参数**:
-| 参数 | 类型 | 必需 | 描述 | 约束 |
-|------|------|------|------|------|
-| email | string | 是 | 用户邮箱地址 | 有效邮箱格式，唯一 |
-| password | string | 是 | 用户密码 | 8-128 字符，包含大小写字母和数字 |
-| full_name | string | 是 | 用户全名 | 1-255 字符 |
+
+| 参数      | 类型   | 必需 | 描述         | 约束                             |
+| --------- | ------ | ---- | ------------ | -------------------------------- |
+| email     | string | 是   | 用户邮箱地址 | 有效邮箱格式，唯一               |
+| password  | string | 是   | 用户密码     | 8-128 字符，包含大小写字母和数字 |
+| full_name | string | 是   | 用户全名     | 1-255 字符                       |
 
 **响应**:
+
 ```json
 {
   "id": 1,
@@ -93,11 +99,13 @@ Living Documents 是与代码同步更新的"活文档"，确保文档始终反�
 ```
 
 **状态码**:
+
 - `201 Created`: 注册成功
 - `400 Bad Request`: 请求数据无效
 - `422 Unprocessable Entity`: 验证失败
 
 **错误响应**:
+
 ```json
 {
   "detail": [
@@ -117,6 +125,7 @@ Living Documents 是与代码同步更新的"活文档"，确保文档始终反�
 **描述**: 使用邮箱和密码进行身份验证，成功后返回 JWT 访问令牌。
 
 **请求体**:
+
 ```json
 {
   "email": "user@example.com",
@@ -125,6 +134,7 @@ Living Documents 是与代码同步更新的"活文档"，确保文档始终反�
 ```
 
 **响应**:
+
 ```json
 {
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -145,11 +155,13 @@ Living Documents 是与代码同步更新的"活文档"，确保文档始终反�
 **描述**: 获取当前认证用户的详细信息。需要有效的 JWT 令牌。
 
 **请求头**:
+
 ```
 Authorization: Bearer <jwt_token>
 ```
 
 **响应**:
+
 ```json
 {
   "id": 1,
@@ -165,6 +177,7 @@ Authorization: Bearer <jwt_token>
 ## 错误处理
 
 ### 标准错误格式
+
 ```json
 {
   "detail": "错误描述",
@@ -174,30 +187,34 @@ Authorization: Bearer <jwt_token>
 ```
 
 ### 常见错误代码
-| 错误代码 | HTTP 状态码 | 描述 |
-|----------|-------------|------|
-| INVALID_CREDENTIALS | 401 | 邮箱或密码错误 |
-| ACCOUNT_INACTIVE | 401 | 账户未激活 |
-| TOKEN_EXPIRED | 401 | 令牌已过期 |
-| INVALID_TOKEN | 401 | 令牌无效 |
-| USER_NOT_FOUND | 404 | 用户不存在 |
-| EMAIL_ALREADY_EXISTS | 400 | 邮箱已存在 |
+
+| 错误代码             | HTTP 状态码 | 描述           |
+| -------------------- | ----------- | -------------- |
+| INVALID_CREDENTIALS  | 401         | 邮箱或密码错误 |
+| ACCOUNT_INACTIVE     | 401         | 账户未激活     |
+| TOKEN_EXPIRED        | 401         | 令牌已过期     |
+| INVALID_TOKEN        | 401         | 令牌无效       |
+| USER_NOT_FOUND       | 404         | 用户不存在     |
+| EMAIL_ALREADY_EXISTS | 400         | 邮箱已存在     |
 
 ## 安全考虑
 
 ### 密码安全
+
 - 密码使用 bcrypt 加密存储
 - 最小长度 8 字符
 - 必须包含大小写字母和数字
 - 不在响应中返回密码
 
 ### 令牌安全
+
 - JWT 令牌使用 HS256 算法签名
 - 令牌默认 1 小时过期
 - 支持令牌刷新机制
 - 令牌包含必要用户信息
 
 ### 输入验证
+
 - 所有输入都经过严格验证
 - 防止 SQL 注入攻击
 - 防止 XSS 攻击
@@ -206,6 +223,7 @@ Authorization: Bearer <jwt_token>
 ## 使用示例
 
 ### 注册新用户
+
 ```bash
 curl -X POST "http://localhost:8000/api/v1/auth/register" \
   -H "Content-Type: application/json" \
@@ -217,6 +235,7 @@ curl -X POST "http://localhost:8000/api/v1/auth/register" \
 ```
 
 ### 用户登录
+
 ```bash
 curl -X POST "http://localhost:8000/api/v1/auth/login" \
   -H "Content-Type: application/json" \
@@ -227,6 +246,7 @@ curl -X POST "http://localhost:8000/api/v1/auth/login" \
 ```
 
 ### 获取用户信息
+
 ```bash
 curl -X GET "http://localhost:8000/api/v1/auth/me" \
   -H "Authorization: Bearer <your_jwt_token>"
@@ -235,16 +255,20 @@ curl -X GET "http://localhost:8000/api/v1/auth/me" \
 ## 实现追踪
 
 此 API 实现基于以下 SPEC：
+
 - `@SPEC:USER-AUTH-001`: 用户认证系统规格说明
 
 测试覆盖：
+
 - `@TEST:USER-AUTH-001`: 认证功能测试套件
 
 代码实现：
+
 - `@CODE:USER-AUTH-001:API`: API 端点实现
 - `@CODE:USER-AUTH-001:SERVICE`: 业务逻辑实现
 - `@CODE:USER-AUTH-001:MODEL`: 数据模型实现
-```
+
+````
 
 ##### 架构文档
 ```markdown
@@ -276,11 +300,12 @@ graph TB
     Repository --> DB
     Security --> Cache
     Services --> Email
-```
+````
 
 ## 组件架构
 
 ### 分层架构
+
 ```yaml
 用户认证系统采用分层架构模式:
 
@@ -312,64 +337,78 @@ graph TB
 ### 核心组件
 
 #### 1. API 层
+
 **文件**: `src/auth/api.py`
 
 **职责**:
+
 - 处理 HTTP 请求和响应
 - 输入验证和序列化
 - 错误处理和状态码返回
 - 认证中间件集成
 
 **设计模式**:
+
 - 依赖注入
 - 控制器模式
 - 中间件链
 
 #### 2. 服务层
+
 **文件**: `src/auth/services.py`
 
 **职责**:
+
 - 实现业务逻辑
 - 协调多个数据源
 - 事务管理
 - 业务规则验证
 
 **设计模式**:
+
 - 服务层模式
 - 策略模式
 - 工厂模式
 
 #### 3. 仓库层
+
 **文件**: `src/auth/repository.py`
 
 **职责**:
+
 - 数据库操作抽象
 - 查询优化
 - 缓存集成
 - 数据映射
 
 **设计模式**:
+
 - 仓库模式
 - 单元工作模式
 - 数据映射器模式
 
 #### 4. 模型层
+
 **文件**: `src/auth/models.py`
 
 **职责**:
+
 - 数据模型定义
 - 关系映射
 - 约束定义
 - 序列化支持
 
 **设计模式**:
+
 - 活动记录模式
 - 数据传输对象
 
 ### 技术栈选择
 
 #### 后端框架: FastAPI
+
 **选择理由**:
+
 - 自动 API 文档生成
 - 类型提示支持
 - 高性能异步支持
@@ -377,13 +416,16 @@ graph TB
 - 丰富的验证功能
 
 **优势**:
+
 - 开发效率高
 - 性能优秀
 - 文档自动生成
 - 类型安全
 
 #### 数据库: PostgreSQL
+
 **选择理由**:
+
 - ACID 事务支持
 - JSON 数据类型支持
 - 丰富的索引类型
@@ -391,13 +433,16 @@ graph TB
 - 良好的 Python 支持
 
 **优势**:
+
 - 数据一致性保证
 - 复杂查询支持
 - 扩展性好
 - 可靠性高
 
 #### 认证方案: JWT
+
 **选择理由**:
+
 - 无状态认证
 - 易于分布式部署
 - 标准化实现
@@ -405,6 +450,7 @@ graph TB
 - 细粒度权限控制
 
 **优势**:
+
 - 可扩展性强
 - 性能优秀
 - 安全性高
@@ -413,6 +459,7 @@ graph TB
 ### 数据库设计
 
 #### 用户表 (users)
+
 ```sql
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
@@ -432,6 +479,7 @@ CREATE INDEX idx_users_created_at ON users(created_at);
 ```
 
 #### 用户会话表 (user_sessions)
+
 ```sql
 CREATE TABLE user_sessions (
     id SERIAL PRIMARY KEY,
@@ -451,6 +499,7 @@ CREATE INDEX idx_user_sessions_expires_at ON user_sessions(expires_at);
 ### 安全架构
 
 #### 认证流程
+
 ```mermaid
 %%{init: {'theme':'neutral'}}%%
 sequenceDiagram
@@ -474,6 +523,7 @@ sequenceDiagram
 ```
 
 #### 授权机制
+
 ```python
 # 基于角色的访问控制 (RBAC)
 class UserRole(str, Enum):
@@ -510,6 +560,7 @@ ROLE_PERMISSIONS = {
 ### 性能优化
 
 #### 数据库优化
+
 ```sql
 -- 查询优化示例
 CREATE INDEX CONCURRENTLY idx_users_email_active
@@ -526,6 +577,7 @@ FOR VALUES FROM ('2025-01-01') TO ('2025-04-01');
 ```
 
 #### 缓存策略
+
 ```python
 # 多层缓存架构
 class CacheStrategy:
@@ -558,6 +610,7 @@ class CacheStrategy:
 ### 监控和日志
 
 #### 关键指标监控
+
 ```python
 # 性能监控指标
 METRICS = {
@@ -589,12 +642,14 @@ def log_auth_event(event_type: str, user_id: int, **kwargs):
 ## 扩展性考虑
 
 ### 水平扩展
+
 - 无状态设计便于负载均衡
 - 数据库读写分离
 - 缓存分布式部署
 - 微服务架构支持
 
 ### 功能扩展
+
 - 多因子认证 (MFA)
 - 社交登录集成
 - 单点登录 (SSO)
@@ -604,6 +659,7 @@ def log_auth_event(event_type: str, user_id: int, **kwargs):
 ## 实现细节追踪
 
 ### 代码文件结构
+
 ```
 src/auth/
 ├── __init__.py
@@ -618,6 +674,7 @@ src/auth/
 ```
 
 ### 测试文件结构
+
 ```
 tests/auth/
 ├── __init__.py
@@ -629,6 +686,7 @@ tests/auth/
 ```
 
 ### 文档文件结构
+
 ```
 docs/auth/
 ├── api.md               # `@DOC:USER-AUTH-001:API`
@@ -636,7 +694,8 @@ docs/auth/
 ├── deployment.md        # `@DOC:USER-AUTH-001:DEPLOYMENT`
 └── troubleshooting.md   # `@DOC:USER-AUTH-001:TROUBLESHOOTING`
 ```
-```
+
+````
 
 ### 2. README 更新
 
@@ -649,11 +708,11 @@ Alfred 会自动更新 README.md，添加新功能说明：
 ## 功能特性
 
 ### 🔐 用户认证系统
-- <span class="material-icons">check_circle</span> 用户注册和邮箱验证
-- <span class="material-icons">check_circle</span> 安全的用户登录（JWT 令牌）
-- <span class="material-icons">check_circle</span> 密码重置功能
-- <span class="material-icons">check_circle</span> 用户信息管理
-- <span class="material-icons">check_circle</span> 细粒度权限控制
+- ✅ 用户注册和邮箱验证
+- ✅ 安全的用户登录（JWT 令牌）
+- ✅ 密码重置功能
+- ✅ 用户信息管理
+- ✅ 细粒度权限控制
 
 **技术实现**:
 - FastAPI RESTful API
@@ -687,15 +746,18 @@ curl -X POST "http://localhost:8000/auth/register" \
 curl -X POST "http://localhost:8000/auth/login" \
   -H "Content-Type: application/json" \
   -d '{"email":"user@example.com","password":"SecurePass123!"}'
-```
+````
 
 **相关链接**:
+
 - [API 文档](docs/auth/api.md)
 - [架构设计](docs/auth/architecture.md)
 - [开发指南](docs/development.md)
 
-**实现追踪**: `@SPEC:USER-AUTH-001` → `@TEST:USER-AUTH-001` → `@CODE:USER-AUTH-001` → `@DOC:USER-AUTH-001`
-```
+**实现追踪**: `@SPEC:USER-AUTH-001` → `@TEST:USER-AUTH-001` → `@CODE:USER-AUTH-001` →
+`@DOC:USER-AUTH-001`
+
+````
 
 ### 3. CHANGELOG 生成
 
@@ -717,30 +779,30 @@ Alfred 自动维护 CHANGELOG.md：
 
 ### Changed
 - <span class="material-icons">menu_book</span> 更新 API 文档，添加认证相关端点说明
-- <span class="material-icons">settings</span> 优化数据库连接池配置
-- <span class="material-icons">shield</span> 增强安全验证机制
+- ⚙️ 优化数据库连接池配置
+- 🛡️ 增强安全验证机制
 
 ### Security
-- <span class="material-icons">lock</span> 实施 bcrypt 密码加密
-- <span class="material-icons">shield</span> 添加输入验证和清理
+- 🔒 实施 bcrypt 密码加密
+- 🛡️ 添加输入验证和清理
 - 🚨 实现速率限制保护
 - 🔐 增强 JWT 令牌安全性
 
 ### Performance
 - ⚡ 实现 Redis 缓存层
-- <span class="material-icons">analytics</span> 优化数据库查询性能
-- <span class="material-icons">rocket_launch</span> 添加 API 响应时间监控
+- 📊 优化数据库查询性能
+- 🚀 添加 API 响应时间监控
 - 💾 优化内存使用效率
 
 ### Tests
-- <span class="material-icons">check_circle</span> 添加用户认证完整测试套件 (`@TEST:USER-AUTH-001`)
+- ✅ 添加用户认证完整测试套件 (`@TEST:USER-AUTH-001`)
 - 🧪 实现单元测试、集成测试和端到端测试
 - <span class="material-icons">trending_up</span> 测试覆盖率达到 95%
-- <span class="material-icons">lock</span> 添加安全测试用例
+- 🔒 添加安全测试用例
 
 ### Documentation
-- <span class="material-icons">auto_stories</span> 更新用户认证 API 文档
-- <span class="material-icons">construction</span> 添加系统架构设计文档
+- 📚 更新用户认证 API 文档
+- 🏗️ 添加系统架构设计文档
 - 📋 创建部署和运维指南
 - <span class="material-icons">search</span> 完善故障排除文档
 
@@ -764,15 +826,16 @@ Alfred 自动维护 CHANGELOG.md：
 - `passlib[bcrypt]` - Password hashing
 - `python-multipart` - Form data handling
 - `aioredis` - Redis client for async operations
-```
+````
 
----
+______________________________________________________________________
 
 ## @TAG 系统验证
 
 ### 1. TAG 链完整性检查
 
 #### 验证算法
+
 ```python
 def validate_tag_integrity():
     """验证 @TAG 链完整性"""
@@ -815,36 +878,37 @@ def validate_tag_chain(spec_id):
 ```
 
 #### 验证结果示例
+
 ```yaml
 TAG 验证报告:
-<span class="material-icons">check_circle</span> 总体状态: 通过
-<span class="material-icons">check_circle</span> 发现 TAG 总数: 156
-<span class="material-icons">check_circle</span> 完整链数量: 12
+✅ 总体状态: 通过
+✅ 发现 TAG 总数: 156
+✅ 完整链数量: 12
 <span class="material-icons">warning</span> 孤立 TAG: 2
 <span class="material-icons">warning</span> 缺失 TAG: 3
 <span class="material-icons">cancel</span> 不一致 TAG: 0
 
 详细结果:
 SPEC TAGs:
-  - @SPEC:USER-AUTH-001 <span class="material-icons">check_circle</span>
-  - @SPEC:PRODUCT-001 <span class="material-icons">check_circle</span>
-  - @SPEC:ORDER-001 <span class="material-icons">check_circle</span>
+  - @SPEC:USER-AUTH-001 ✅
+  - @SPEC:PRODUCT-001 ✅
+  - @SPEC:ORDER-001 ✅
 
 TEST TAGs:
-  - @TEST:USER-AUTH-001 <span class="material-icons">check_circle</span>
-  - @TEST:PRODUCT-001 <span class="material-icons">check_circle</span>
-  - @TEST:ORDER-001 <span class="material-icons">check_circle</span>
+  - @TEST:USER-AUTH-001 ✅
+  - @TEST:PRODUCT-001 ✅
+  - @TEST:ORDER-001 ✅
 
 CODE TAGs:
-  - @CODE:USER-AUTH-001:API <span class="material-icons">check_circle</span>
-  - @CODE:USER-AUTH-001:SERVICE <span class="material-icons">check_circle</span>
-  - @CODE:PRODUCT-001:MODEL <span class="material-icons">check_circle</span>
-  - @CODE:ORDER-001:REPOSITORY <span class="material-icons">check_circle</span>
+  - @CODE:USER-AUTH-001:API ✅
+  - @CODE:USER-AUTH-001:SERVICE ✅
+  - @CODE:PRODUCT-001:MODEL ✅
+  - @CODE:ORDER-001:REPOSITORY ✅
 
 DOC TAGs:
-  - @DOC:USER-AUTH-001 <span class="material-icons">check_circle</span>
-  - @DOC:PRODUCT-001 <span class="material-icons">check_circle</span>
-  - @DOC:ORDER-001 <span class="material-icons">check_circle</span>
+  - @DOC:USER-AUTH-001 ✅
+  - @DOC:PRODUCT-001 ✅
+  - @DOC:ORDER-001 ✅
 
 孤立 TAGs:
   - @TEST:OLD-FEATURE-001 (对应的 SPEC 已删除)
@@ -859,6 +923,7 @@ DOC TAGs:
 ### 2. 自动修复功能
 
 #### 孤立 TAG 处理
+
 ```python
 def fix_orphan_tags():
     """修复孤立 TAG"""
@@ -884,6 +949,7 @@ def fix_orphan_tags():
 ```
 
 #### 缺失 TAG 补充
+
 ```python
 def add_missing_tags():
     """补充缺失的 TAG"""
@@ -910,6 +976,7 @@ def add_missing_tags():
 ### 3. TAG 一致性检查
 
 #### 格式验证
+
 ```python
 def validate_tag_format(tag_string):
     """验证 TAG 格式"""
@@ -954,11 +1021,12 @@ def validate_subtype(subtype):
 ```
 
 #### 一致性报告
+
 ```yaml
 TAG 一致性报告:
-<span class="material-icons">check_circle</span> 格式验证: 156/156 通过
-<span class="material-icons">check_circle</span> 域 ID 验证: 156/156 通过
-<span class="material-icons">check_circle</span> 子类型验证: 89/89 通过
+✅ 格式验证: 156/156 通过
+✅ 域 ID 验证: 156/156 通过
+✅ 子类型验证: 89/89 通过
 <span class="material-icons">warning</span> 大小写问题: 3 个 TAG
 <span class="material-icons">cancel</span> 格式错误: 0 个 TAG
 
@@ -972,13 +1040,14 @@ TAG 一致性报告:
 - 或手动更正格式问题
 ```
 
----
+______________________________________________________________________
 
 ## TRUST 5 原则验证
 
 ### 1. Test First 验证
 
 #### 测试覆盖率检查
+
 ```python
 def check_test_coverage():
     """检查测试覆盖率"""
@@ -1010,13 +1079,14 @@ def validate_test_structure():
 ```
 
 #### 测试质量评估
+
 ```yaml
 测试质量报告:
-<span class="material-icons">check_circle</span> 测试覆盖率: 94% (目标: ≥85%)
-<span class="material-icons">check_circle</span> 单元测试: 45 个
-<span class="material-icons">check_circle</span> 集成测试: 12 个
-<span class="material-icons">check_circle</span> 端到端测试: 8 个
-<span class="material-icons">check_circle</span> 测试文件分布: 均匀
+✅ 测试覆盖率: 94% (目标: ≥85%)
+✅ 单元测试: 45 个
+✅ 集成测试: 12 个
+✅ 端到端测试: 8 个
+✅ 测试文件分布: 均匀
 <span class="material-icons">warning</span> 缺失测试类型: 性能测试
 
 详细分析:
@@ -1043,6 +1113,7 @@ def validate_test_structure():
 ### 2. Readable 验证
 
 #### 代码可读性检查
+
 ```python
 def check_code_readability():
     """检查代码可读性"""
@@ -1085,12 +1156,13 @@ def validate_naming_conventions():
 ```
 
 #### 可读性报告
+
 ```yaml
 代码可读性报告:
-<span class="material-icons">check_circle</span> 函数平均长度: 18 行 (目标: <50)
-<span class="material-icons">check_circle</span> 类平均长度: 120 行 (目标: <300)
-<span class="material-icons">check_circle</span> 文件平均长度: 180 行 (目标: <500)
-<span class="material-icons">check_circle</span> 命名约定: 95% 符合规范
+✅ 函数平均长度: 18 行 (目标: <50)
+✅ 类平均长度: 120 行 (目标: <300)
+✅ 文件平均长度: 180 行 (目标: <500)
+✅ 命名约定: 95% 符合规范
 <span class="material-icons">warning</span> 注释覆盖率: 72% (目标: >80%)
 
 详细指标:
@@ -1125,6 +1197,7 @@ def validate_naming_conventions():
 ### 3. Unified 验证
 
 #### 架构一致性检查
+
 ```python
 def check_architecture_consistency():
     """检查架构一致性"""
@@ -1155,12 +1228,13 @@ def check_pattern_consistency():
 ```
 
 #### 一致性报告
+
 ```yaml
 架构一致性报告:
-<span class="material-icons">check_circle</span> 层次结构: 无违规
-<span class="material-icons">check_circle</span> 设计模式: 90% 一致
-<span class="material-icons">check_circle</span> API 设计: 统一规范
-<span class="material-icons">check_circle</span> 数据模型: 一致性良好
+✅ 层次结构: 无违规
+✅ 设计模式: 90% 一致
+✅ API 设计: 统一规范
+✅ 数据模型: 一致性良好
 <span class="material-icons">warning</span> 依赖管理: 2 处不一致
 
 设计模式分析:
@@ -1202,6 +1276,7 @@ API 设计一致性:
 ### 4. Secured 验证
 
 #### 安全性检查
+
 ```python
 def check_security_measures():
     """检查安全措施"""
@@ -1234,14 +1309,15 @@ def check_input_validation():
 ```
 
 #### 安全报告
+
 ```yaml
 安全检查报告:
-<span class="material-icons">check_circle</span> 输入验证: 完整
-<span class="material-icons">check_circle</span> SQL 注入防护: 有效
-<span class="material-icons">check_circle</span> XSS 攻击防护: 启用
-<span class="material-icons">check_circle</span> 认证机制: 强健
-<span class="material-icons">check_circle</span> 授权控制: 细粒度
-<span class="material-icons">check_circle</span> 数据加密: 适当
+✅ 输入验证: 完整
+✅ SQL 注入防护: 有效
+✅ XSS 攻击防护: 启用
+✅ 认证机制: 强健
+✅ 授权控制: 细粒度
+✅ 数据加密: 适当
 <span class="material-icons">warning</span> 错误处理: 2 处信息泄露风险
 
 输入验证:
@@ -1282,6 +1358,7 @@ def check_input_validation():
 ### 5. Trackable 验证
 
 #### 可追踪性检查
+
 ```python
 def check_traceability():
     """检查可追踪性"""
@@ -1313,12 +1390,13 @@ def check_tag_coverage():
 ```
 
 #### 可追踪性报告
+
 ```yaml
 可追踪性报告:
-<span class="material-icons">check_circle</span> TAG 覆盖率: 96% (目标: 100%)
-<span class="material-icons">check_circle</span> 提交信息质量: 92% 符合规范
-<span class="material-icons">check_circle</span> 文档代码链接: 完整
-<span class="material-icons">check_circle</span> 需求追踪: 100% 覆盖
+✅ TAG 覆盖率: 96% (目标: 100%)
+✅ 提交信息质量: 92% 符合规范
+✅ 文档代码链接: 完整
+✅ 需求追踪: 100% 覆盖
 <span class="material-icons">warning</span> 决策追踪: 85% 覆盖
 
 TAG 覆盖分析:
@@ -1355,11 +1433,12 @@ TAG 分布:
 - 增强变更影响分析
 ```
 
----
+______________________________________________________________________
 
 ## 质量门禁检查
 
 ### 综合质量评估
+
 ```python
 def run_quality_gate():
     """运行质量门禁检查"""
@@ -1389,15 +1468,16 @@ def run_quality_gate():
 ```
 
 ### 质量报告示例
+
 ```yaml
 质量门禁报告:
-<span class="material-icons">target</span> 综合评分: 91/100 (通过)
-<span class="material-icons">check_circle</span> TRUST 原则: 96/100
-<span class="material-icons">check_circle</span> 性能指标: 88/100
-<span class="material-icons">check_circle</span> 安全检查: 94/100
-<span class="material-icons">check_circle</span> 兼容性测试: 90/100
-<span class="material-icons">check_circle</span> 文档完整性: 95/100
-<span class="material-icons">check_circle</span> 部署就绪: 85/100
+🎯 综合评分: 91/100 (通过)
+✅ TRUST 原则: 96/100
+✅ 性能指标: 88/100
+✅ 安全检查: 94/100
+✅ 兼容性测试: 90/100
+✅ 文档完整性: 95/100
+✅ 部署就绪: 85/100
 
 详细评分:
 TRUST 5 原则:
@@ -1420,7 +1500,7 @@ TRUST 5 原则:
   - 数据保护: 92/100 (适当加密)
 
 发布建议:
-<span class="material-icons">check_circle</span> 代码质量优秀，可以发布
+✅ 代码质量优秀，可以发布
 <span class="material-icons">warning</span> 建议在发布前修复中危依赖漏洞
 📋 完成性能基准测试
 📋 更新部署文档
@@ -1432,21 +1512,22 @@ TRUST 5 原则:
 - 收集用户反馈
 ```
 
----
+______________________________________________________________________
 
 ## 使用示例
 
 ### 基本同步操作
+
 ```bash
 # 执行完整的文档同步和质量检查
 /alfred:3-sync
 
 # 输出示例：
-<span class="material-icons">check_circle</span> 文档同步完成
-<span class="material-icons">check_circle</span> TAG 验证通过 (98% 完整性)
-<span class="material-icons">check_circle</span> TRUST 5 原则验证通过 (94/100 分)
-<span class="material-icons">check_circle</span> 质量门禁检查通过 (91/100 分)
-<span class="material-icons">check_circle</span> 同步报告已生成: .moai/reports/sync-report-2025-01-15.md
+✅ 文档同步完成
+✅ TAG 验证通过 (98% 完整性)
+✅ TRUST 5 原则验证通过 (94/100 分)
+✅ 质量门禁检查通过 (91/100 分)
+✅ 同步报告已生成: .moai/reports/sync-report-2025-01-15.md
 
 更新内容:
 - API 文档: docs/api/auth.md (更新)
@@ -1456,6 +1537,7 @@ TRUST 5 原则:
 ```
 
 ### 特定验证操作
+
 ```bash
 # 只验证 TAG 系统完整性
 /alfred:3-sync --verify-tags
@@ -1474,6 +1556,7 @@ TRUST 5 原则:
 ```
 
 ### 高级同步操作
+
 ```bash
 # 完整同步 + 质量优化
 /alfred:3-sync --optimize-quality
@@ -1488,11 +1571,12 @@ TRUST 5 原则:
 /alfred:3-sync --deployment-ready
 ```
 
----
+______________________________________________________________________
 
 ## 同步报告生成
 
 ### 报告结构
+
 ```markdown
 # Alfred 同步报告
 
@@ -1500,46 +1584,46 @@ TRUST 5 原则:
 - 执行时间: 2025-01-15 14:30:00
 - 总耗时: 2 分 45 秒
 - 总体评分: 91/100
-- 状态: <span class="material-icons">check_circle</span> 通过
+- 状态: ✅ 通过
 
 ## 主要更新
 ### 文档更新
-- <span class="material-icons">check_circle</span> 新增 API 文档: docs/api/auth.md
-- <span class="material-icons">check_circle</span> 更新 README.md
-- <span class="material-icons">check_circle</span> 生成 CHANGELOG.md v1.2.0
-- <span class="material-icons">check_circle</span> 创建架构文档: docs/architecture/auth.md
+- ✅ 新增 API 文档: docs/api/auth.md
+- ✅ 更新 README.md
+- ✅ 生成 CHANGELOG.md v1.2.0
+- ✅ 创建架构文档: docs/architecture/auth.md
 
 ### TAG 系统
-- <span class="material-icons">check_circle</span> TAG 完整性: 98%
-- <span class="material-icons">check_circle</span> 新增 TAG: 8 个
-- <span class="material-icons">check_circle</span> 修复孤立 TAG: 2 个
-- <span class="material-icons">check_circle</span> 补充缺失 TAG: 3 个
+- ✅ TAG 完整性: 98%
+- ✅ 新增 TAG: 8 个
+- ✅ 修复孤立 TAG: 2 个
+- ✅ 补充缺失 TAG: 3 个
 
 ### 质量指标
-- <span class="material-icons">check_circle</span> 测试覆盖率: 94% → 96%
-- <span class="material-icons">check_circle</span> 代码质量: 92/100 → 94/100
-- <span class="material-icons">check_circle</span> 安全评分: 90/100 → 94/100
-- <span class="material-icons">check_circle</span> 性能基准: 88/100 → 92/100
+- ✅ 测试覆盖率: 94% → 96%
+- ✅ 代码质量: 92/100 → 94/100
+- ✅ 安全评分: 90/100 → 94/100
+- ✅ 性能基准: 88/100 → 92/100
 
 ## 质量检查详情
 ### TRUST 5 原则
-- Test First: 95/100 (<span class="material-icons">check_circle</span> 通过)
-- Readable: 94/100 (<span class="material-icons">check_circle</span> 通过)
-- Unified: 98/100 (<span class="material-icons">check_circle</span> 通过)
-- Secured: 96/100 (<span class="material-icons">check_circle</span> 通过)
-- Trackable: 96/100 (<span class="material-icons">check_circle</span> 通过)
+- Test First: 95/100 (✅ 通过)
+- Readable: 94/100 (✅ 通过)
+- Unified: 98/100 (✅ 通过)
+- Secured: 96/100 (✅ 通过)
+- Trackable: 96/100 (✅ 通过)
 
 ### 性能指标
-- API 平均响应时间: 45ms <span class="material-icons">check_circle</span>
-- 数据库查询时间: 25ms <span class="material-icons">check_circle</span>
-- 内存使用: 512MB <span class="material-icons">check_circle</span>
-- CPU 使用率: 35% <span class="material-icons">check_circle</span>
+- API 平均响应时间: 45ms ✅
+- 数据库查询时间: 25ms ✅
+- 内存使用: 512MB ✅
+- CPU 使用率: 35% ✅
 
 ### 安全检查
-- 漏洞扫描: 无高危漏洞 <span class="material-icons">check_circle</span>
+- 漏洞扫描: 无高危漏洞 ✅
 - 依赖安全: 2个中危需要关注 <span class="material-icons">warning</span>
-- 认证强度: 强 <span class="material-icons">check_circle</span>
-- 数据保护: 适当加密 <span class="material-icons">check_circle</span>
+- 认证强度: 强 ✅
+- 数据保护: 适当加密 ✅
 
 ## 问题与建议
 ### 需要关注的问题
@@ -1574,13 +1658,14 @@ TRUST 5 原则:
 - 无
 ```
 
----
+______________________________________________________________________
 
 ## 最佳实践
 
 ### 1. 定期同步策略
 
 #### 开发阶段同步
+
 ```bash
 # 每个功能完成后
 /alfred:3-sync
@@ -1593,6 +1678,7 @@ TRUST 5 原则:
 ```
 
 #### 发布前同步
+
 ```bash
 # 功能开发完成，准备合并前
 /alfred:3-sync --deployment-ready
@@ -1607,6 +1693,7 @@ TRUST 5 原则:
 ### 2. 同步频率建议
 
 #### 根据项目阶段调整
+
 ```yaml
 项目阶段同步频率:
 
@@ -1629,6 +1716,7 @@ TRUST 5 原则:
 ### 3. 团队协作同步
 
 #### 多人开发团队
+
 ```bash
 # 集成团队成员的更改前
 /alfred:3-sync --team-sync
@@ -1641,6 +1729,7 @@ TRUST 5 原则:
 ```
 
 #### 代码审查集成
+
 ```yaml
 PR 工作流集成:
 1. 开发者提交 PR
@@ -1650,16 +1739,18 @@ PR 工作流集成:
 5. 批准合并
 ```
 
----
+______________________________________________________________________
 
 ## 故障排除
 
 ### 常见问题
 
 #### 1. 同步失败
+
 **症状**: `/alfred:3-sync` 执行失败
 
 **解决方案**:
+
 ```bash
 # 检查项目状态
 moai-adk doctor
@@ -1675,9 +1766,11 @@ chmod +x .moai/scripts/sync.sh
 ```
 
 #### 2. TAG 验证失败
+
 **症状**: @TAG 系统验证不通过
 
 **解决方案**:
+
 ```bash
 # 查看详细的 TAG 问题
 /alfred:3-sync --tag-report
@@ -1690,9 +1783,11 @@ chmod +x .moai/scripts/sync.sh
 ```
 
 #### 3. 质量检查不通过
+
 **症状**: TRUST 5 原则或质量门禁失败
 
 **解决方案**:
+
 ```bash
 # 查看详细质量报告
 /alfred:3-sync --quality-report
@@ -1707,6 +1802,7 @@ chmod +x .moai/scripts/sync.sh
 ### 调试技巧
 
 #### 1. 启用详细日志
+
 ```bash
 # 启用调试模式
 export ALFRED_DEBUG=true
@@ -1717,6 +1813,7 @@ export ALFRED_DEBUG=true
 ```
 
 #### 2. 分步执行
+
 ```bash
 # 只执行文档同步
 /alfred:3-sync --docs-only
@@ -1729,6 +1826,7 @@ export ALFRED_DEBUG=true
 ```
 
 #### 3. 跳过某些步骤
+
 ```bash
 # 跳过性能测试
 /alfred:3-sync --skip-performance
@@ -1740,7 +1838,7 @@ export ALFRED_DEBUG=true
 /alfred:3-sync --skip-docs
 ```
 
----
+______________________________________________________________________
 
 ## 总结
 

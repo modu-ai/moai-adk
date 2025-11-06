@@ -1,8 +1,6 @@
----
-title: Alfred Command Guide
-description: Complete guide to MoAI-ADK's 4 core Alfred commands
-lang: en
----
+______________________________________________________________________
+
+## title: Alfred Command Guide description: Complete guide to MoAI-ADK's 4 core Alfred commands lang: en
 
 # Alfredコマンドガイド
 
@@ -10,12 +8,12 @@ AlfredはMoAI-ADKのスーパーエージェントで、4つの核心コマン�
 
 ## コマンド概要
 
-| コマンド | 段階 | 説明 | 主な機能 | 実行時間 |
-|---------|------|------|----------|----------|
-| `/alfred:0-project` | 準備 | プロジェクト初期化と設定 | プロジェクトセットアップ、設定収集 | 2-3分 |
-| `/alfred:1-plan` | 計画 | SPEC作成と要件定義 | EARS形式SPEC、プランボード作成 | 2分 |
-| `/alfred:2-run` | 実行 | TDD実装と品質検証 | RED→GREEN→REFACTORサイクル | 5分 |
-| `/alfred:3-sync` | 同期 | ドキュメント同期と整理 | Living Document、TAG検証 | 1分 |
+| コマンド            | 段階 | 説明                     | 主な機能                           | 実行時間 |
+| ------------------- | ---- | ------------------------ | ---------------------------------- | -------- |
+| `/alfred:0-project` | 準備 | プロジェクト初期化と設定 | プロジェクトセットアップ、設定収集 | 2-3分    |
+| `/alfred:1-plan`    | 計画 | SPEC作成と要件定義       | EARS形式SPEC、プランボード作成     | 2分      |
+| `/alfred:2-run`     | 実行 | TDD実装と品質検証        | RED→GREEN→REFACTORサイクル         | 5分      |
+| `/alfred:3-sync`    | 同期 | ドキュメント同期と整理   | Living Document、TAG検証           | 1分      |
 
 ## ワークフロー全体
 
@@ -91,14 +89,14 @@ stateDiagram-v2
     end note
 
     note right of draft
-        <span class="material-icons">description</span> Draft Phase
+        📄 Draft Phase
         - EARS format SPEC creation
         - Plan Board creation
         - Review preparation complete
     end note
 
     note right of in_progress
-        <span class="material-icons">rocket_launch</span> Development Phase
+        🚀 Development Phase
         - TDD execution (RED→GREEN→REFACTOR)
         - Implementation and test code creation
         - Quality validation passed
@@ -112,7 +110,7 @@ stateDiagram-v2
     end note
 
     note right of completed
-        <span class="material-icons">check_circle</span> Completed Phase
+        ✅ Completed Phase
         - Documentation sync complete
         - Deployment preparation complete
         - Production environment applied
@@ -122,57 +120,69 @@ stateDiagram-v2
 ## コマンド詳細ガイド
 
 ### [/alfred:0-project](0-project.md)
+
 **目的**: プロジェクト初期化と設定管理
 
 **機能**:
+
 - プロジェクトメタデータ収集
 - 言語自動検出
 - スキルパッケージ推薦
 - 設定ファイル生成
 
 **使用時期**:
+
 - 新規プロジェクト作成時
 - プロジェクト設定変更時
 - テンプレート更新後
 
 ### [/alfred:1-plan](1-plan.md)
+
 **目的**: SPEC作成と要件定義
 
 **機能**:
+
 - EARS形式SPEC作成
 - プランボード生成
 - 専門家コンサルテーション
 - ブランチ自動作成
 
 **使用時期**:
+
 - 新機能開発開始時
 - 要件変更が必要時
 - 計画段階
 
 ### [/alfred:2-run](2-run.md)
+
 **目的**: TDD実装と品質保証
 
 **機能**:
+
 - 実装計画立案
 - TDDサイクル自動実行
 - 品質ゲート検証
 - TRUST 5原則適用
 
 **使用時期**:
+
 - 実装段階
 - テスト作成時
 - コード品質検証時
 
 ### [/alfred:3-sync](3-sync.md)
+
 **目的**: ドキュメント同期と状態管理
 
 **機能**:
+
 - Living Document生成
 - TAGチェーン検証
 - README/CHANGELOG更新
 - PR状態管理
 
 **使用時期**:
+
 - 実装完了後
 - コミット前
 - リリース準備時
@@ -186,6 +196,7 @@ stateDiagram-v2
 ```
 
 **機能**:
+
 - GitHub Issue自動作成
 - バグ報告
 - 機能要求
@@ -256,6 +267,7 @@ done
 ### よくある問題
 
 **コマンドが認識されない場合**:
+
 ```bash
 # Claude Code再起動
 exit
@@ -266,6 +278,7 @@ ls .claude/commands/
 ```
 
 **SPECが作成されない場合**:
+
 ```bash
 # プロジェクト状態確認
 moai-adk doctor
@@ -275,6 +288,7 @@ moai-adk doctor
 ```
 
 **TDDが失敗する場合**:
+
 ```bash
 # 依存関係確認
 uv sync
@@ -289,7 +303,7 @@ pytest tests/ -v
 
 - **並列処理**: 複数SPECで同時実行
 - **キャッシュ活用**: 以前の結果再利用
-- ** selective実行**: 必要な部分のみ実行
+- \*\* selective実行\*\*: 必要な部分のみ実行
 
 ### リソース管理
 
@@ -315,9 +329,9 @@ ls .claude/skills/
 # .claude/skills/custom/に新規ファイル作成
 ```
 
----
+______________________________________________________________________
 
-**<span class="material-icons">auto_stories</span> 次は個別コマンド詳細ガイドを参照してください**:
+**📚 次は個別コマンド詳細ガイドを参照してください**:
 
 - [0-project詳細](0-project.md) - プロジェクト初期化と設定
 - [1-plan詳細](1-plan.md) - SPEC作成と計画

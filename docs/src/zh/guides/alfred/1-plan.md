@@ -1,7 +1,6 @@
----
-title: 1-plan 命令指南
-description: 学习如何使用 Alfred 的 1-plan 命令进行需求分析和规格说明编写
----
+______________________________________________________________________
+
+## title: 1-plan 命令指南 description: 学习如何使用 Alfred 的 1-plan 命令进行需求分析和规格说明编写
 
 # 1-plan 命令指南
 
@@ -10,11 +9,13 @@ description: 学习如何使用 Alfred 的 1-plan 命令进行需求分析和规
 ## 命令概览
 
 ### 基本语法
+
 ```bash
 /alfred:1-plan "功能描述"
 ```
 
 ### 命令目的
+
 - 分析用户需求
 - 创建结构化 SPEC 文档
 - 设计验收标准
@@ -22,17 +23,19 @@ description: 学习如何使用 Alfred 的 1-plan 命令进行需求分析和规
 - 制定实现计划
 
 ### 触发的代理
+
 - **spec-builder**：主导 SPEC 编写
 - **project-manager**：项目上下文分析
 - **domain-experts**：领域专业知识支持
 
----
+______________________________________________________________________
 
 ## 工作流程详解
 
 ### 1. 需求理解阶段
 
 #### 用户输入分析
+
 Alfred 首先分析用户的输入，提取关键信息：
 
 ```python
@@ -49,6 +52,7 @@ def analyze_user_input(user_input):
 ```
 
 #### 上下文信息收集
+
 Alfred 会收集项目上下文信息：
 
 ```yaml
@@ -73,6 +77,7 @@ Alfred 会收集项目上下文信息：
 ### 2. 需求澄清阶段
 
 #### 互动式提问
+
 如果需求不够明确，Alfred 会提出澄清问题：
 
 ```bash
@@ -97,6 +102,7 @@ Q3: 性能要求是什么？
 ```
 
 #### 需求边界确定
+
 Alfred 帮助明确功能边界：
 
 ```yaml
@@ -122,6 +128,7 @@ Alfred 帮助明确功能边界：
 ### 3. SPEC 编写阶段
 
 #### SPEC 结构生成
+
 Alfred 自动生成标准的 SPEC 文档结构：
 
 ```yaml
@@ -225,6 +232,7 @@ tags: [authentication, user-management, security]
 ```
 
 #### EARS 语法应用
+
 Alfred 自动应用 EARS 语法确保需求清晰：
 
 ```yaml
@@ -253,6 +261,7 @@ EARS 语法示例:
 ### 4. 验证与确认阶段
 
 #### SPEC 质量检查
+
 Alfred 自动检查 SPEC 质量：
 
 ```python
@@ -268,6 +277,7 @@ def validate_spec_quality(spec):
 ```
 
 #### 验收标准生成
+
 Alfred 自动生成可测试的验收标准：
 
 ```yaml
@@ -295,28 +305,32 @@ Scenario: 成功的用户登录
 ### 5. 输出生成阶段
 
 #### 主要输出
+
 1. **SPEC 文档**：完整的规格说明文档
 2. **实现计划**：技术实现建议
 3. **风险评估**：潜在风险和缓解措施
 4. **验收标准**：可测试的验收条件
 
 #### 辅助输出
+
 1. **Git 分支**：自动创建功能分支
 2. **任务清单**：详细的实现任务列表
 3. **资源清单**：需要的工具和依赖
 
----
+______________________________________________________________________
 
 ## 使用示例
 
 ### 示例 1：Web API 功能
 
 #### 用户输入
+
 ```bash
 /alfred:1-plan "创建产品管理 API，支持产品的增删改查操作"
 ```
 
 #### Alfred 处理过程
+
 1. **需求分析**：识别 CRUD 操作需求
 2. **上下文收集**：检查现有产品相关代码
 3. **需求澄清**：询问产品属性、权限要求等
@@ -325,11 +339,11 @@ Scenario: 成功的用户登录
 
 ```yaml
 输出结果:
-<span class="material-icons">check_circle</span> SPEC ID: PRODUCT-001
-<span class="material-icons">check_circle</span> 文件位置: .moai/specs/SPEC-PRODUCT-001/spec.md
-<span class="material-icons">check_circle</span> 功能分支: feature/SPEC-PRODUCT-001
-<span class="material-icons">check_circle</span> 实现计划: 3个阶段，预计 5 天完成
-<span class="material-icons">check_circle</span> 风险评估: 低风险，现有技术栈完全支持
+✅ SPEC ID: PRODUCT-001
+✅ 文件位置: .moai/specs/SPEC-PRODUCT-001/spec.md
+✅ 功能分支: feature/SPEC-PRODUCT-001
+✅ 实现计划: 3个阶段，预计 5 天完成
+✅ 风险评估: 低风险，现有技术栈完全支持
 
 主要功能:
 - POST /products - 创建产品
@@ -348,11 +362,13 @@ Scenario: 成功的用户登录
 ### 示例 2：数据处理功能
 
 #### 用户输入
+
 ```bash
 /alfred:1-plan "实现用户行为数据分析功能，生成用户活跃度报告"
 ```
 
 #### Alfred 处理过程
+
 1. **领域识别**：数据分析和报告生成
 2. **专家激活**：data-science-expert 自动参与
 3. **技术分析**：评估数据处理需求
@@ -360,11 +376,11 @@ Scenario: 成功的用户登录
 
 ```yaml
 输出结果:
-<span class="material-icons">check_circle</span> SPEC ID: ANALYTICS-001
-<span class="material-icons">check_circle</span> 专家参与: data-science-expert
-<span class="material-icons">check_circle</span> 技术推荐: pandas + matplotlib + Redis 缓存
-<span class="material-icons">check_circle</span> 实现复杂度: 中等
-<span class="material-icons">check_circle</span> 预计工期: 2 周
+✅ SPEC ID: ANALYTICS-001
+✅ 专家参与: data-science-expert
+✅ 技术推荐: pandas + matplotlib + Redis 缓存
+✅ 实现复杂度: 中等
+✅ 预计工期: 2 周
 
 核心功能:
 - 用户行为数据收集
@@ -383,11 +399,13 @@ Scenario: 成功的用户登录
 ### 示例 3：集成功能
 
 #### 用户输入
+
 ```bash
 /alfred:1-plan "集成第三方支付系统，支持信用卡和移动支付"
 ```
 
 #### Alfred 处理过程
+
 1. **外部依赖识别**：第三方支付服务
 2. **安全要求评估**：PCI DSS 合规性
 3. **专家激活**：security-expert, devops-expert 参与
@@ -395,11 +413,11 @@ Scenario: 成功的用户登录
 
 ```yaml
 输出结果:
-<span class="material-icons">check_circle</span> SPEC ID: PAYMENT-001
-<span class="material-icons">check_circle</span> 安全级别: 高
-<span class="material-icons">check_circle</span> 专家参与: security-expert, devops-expert
-<span class="material-icons">check_circle</span> 合规要求: PCI DSS Level 1
-<span class="material-icons">check_circle</span> 风险评估: 高风险，需要额外安全措施
+✅ SPEC ID: PAYMENT-001
+✅ 安全级别: 高
+✅ 专家参与: security-expert, devops-expert
+✅ 合规要求: PCI DSS Level 1
+✅ 风险评估: 高风险，需要额外安全措施
 
 关键考虑:
 - 支付数据加密
@@ -415,19 +433,22 @@ Scenario: 成功的用户登录
 - 定期安全审计
 ```
 
----
+______________________________________________________________________
 
 ## 高级功能
 
 ### 1. 批量需求处理
 
 #### 语法
+
 ```bash
 /alfred:1-plan "功能1描述" "功能2描述" "功能3描述"
 ```
 
 #### 处理方式
+
 Alfred 会：
+
 1. 分析功能之间的关联性
 2. 确定实现优先级
 3. 创建多个 SPEC 或合并 SPEC
@@ -436,11 +457,13 @@ Alfred 会：
 ### 2. 从文件导入需求
 
 #### 语法
+
 ```bash
 /alfred:1-plan --file requirements.txt
 ```
 
 #### 文件格式
+
 ```markdown
 # requirements.txt
 用户管理系统
@@ -457,24 +480,27 @@ Alfred 会：
 ### 3. 更新现有 SPEC
 
 #### 语法
+
 ```bash
 /alfred:1-plan --update SPEC-001 "新的需求描述"
 ```
 
 #### 处理流程
+
 1. 读取现有 SPEC
 2. 分析变更内容
 3. 更新相关部分
 4. 版本控制
 5. 影响分析
 
----
+______________________________________________________________________
 
 ## 最佳实践
 
 ### 1. 编写有效的需求描述
 
-#### <span class="material-icons">check_circle</span> 好的实践
+#### ✅ 好的实践
+
 ```bash
 # 具体明确
 /alfred:1-plan "创建用户认证 API，支持邮箱注册、JWT 令牌、密码重置"
@@ -487,6 +513,7 @@ Alfred 会：
 ```
 
 #### <span class="material-icons">cancel</span> 避免的做法
+
 ```bash
 # 过于模糊
 /alfred:1-plan "做个登录功能"
@@ -501,6 +528,7 @@ Alfred 会：
 ### 2. 提供充分的上下文
 
 #### 在对话中提供背景信息
+
 ```bash
 # 在执行 1-plan 之前提供上下文
 "我们正在开发一个在线教育平台，主要面向大学生。现有用户系统使用 Django 开发，现在需要添加实时聊天功能以提高学生和老师的互动体验。"
@@ -510,6 +538,7 @@ Alfred 会：
 ```
 
 #### 使用项目标签
+
 ```bash
 /alfred:1-plan "添加用户个人资料管理功能" --context="社交媒体应用" --priority="high"
 ```
@@ -517,6 +546,7 @@ Alfred 会：
 ### 3. 渐进式需求定义
 
 #### 分阶段定义复杂功能
+
 ```bash
 # 第一阶段：核心功能
 /alfred:1-plan "实现基础聊天功能，支持文本消息和表情"
@@ -531,6 +561,7 @@ Alfred 会：
 ### 4. 利用反馈循环
 
 #### 确认理解
+
 ```bash
 用户: /alfred:1-plan "实现用户管理系统"
 
@@ -546,16 +577,18 @@ Alfred: 我理解您需要实现用户管理系统，包括：
 Alfred: 好的，我会添加第三方登录功能。您希望支持哪些平台？
 ```
 
----
+______________________________________________________________________
 
 ## 故障排除
 
 ### 常见问题
 
 #### 1. Alfred 无法理解需求
+
 **症状**：生成的 SPEC 与预期不符
 
 **解决方案**：
+
 ```bash
 # 提供更具体的描述
 /alfred:1-plan "详细描述功能，包括具体场景和验收条件"
@@ -568,9 +601,11 @@ Alfred: 好的，我会添加第三方登录功能。您希望支持哪些平台
 ```
 
 #### 2. SPEC 过于复杂
+
 **症状**：生成的 SPEC 包含过多功能
 
 **解决方案**：
+
 ```bash
 # 明确范围
 /alfred:1-plan "实现最小可行产品版本" --scope="mvp"
@@ -583,9 +618,11 @@ Alfred: 好的，我会添加第三方登录功能。您希望支持哪些平台
 ```
 
 #### 3. 技术可行性问题
+
 **症状**：Alfred 提示技术风险过高
 
 **解决方案**：
+
 ```bash
 # 请求简化方案
 /alfred:1-plan "简化版功能，降低技术复杂度"
@@ -600,6 +637,7 @@ Alfred: 好的，我会添加第三方登录功能。您希望支持哪些平台
 ### 调试技巧
 
 #### 1. 查看中间结果
+
 ```bash
 # 检查需求分析结果
 /alfred:1-plan "描述" --show-analysis
@@ -612,6 +650,7 @@ Alfred: 好的，我会添加第三方登录功能。您希望支持哪些平台
 ```
 
 #### 2. 分步执行
+
 ```bash
 # 只执行需求分析
 /alfred:1-plan "描述" --analysis-only
@@ -623,11 +662,12 @@ Alfred: 好的，我会添加第三方登录功能。您希望支持哪些平台
 /alfred:1-plan "描述" --skip-risk-assessment
 ```
 
----
+______________________________________________________________________
 
 ## 与其他命令的集成
 
 ### 与 2-run 的集成
+
 ```bash
 # 完整的工作流程
 /alfred:1-plan "用户认证功能"
@@ -638,6 +678,7 @@ Alfred: 好的，我会添加第三方登录功能。您希望支持哪些平台
 ```
 
 ### 与 3-sync 的集成
+
 ```bash
 # 更新需求
 /alfred:1-plan --update AUTH-001 "添加双因子认证"
@@ -648,6 +689,7 @@ Alfred: 好的，我会添加第三方登录功能。您希望支持哪些平台
 ```
 
 ### 与 0-project 的集成
+
 ```bash
 # 项目初始化时定义核心需求
 /alfred:0-project
@@ -657,7 +699,7 @@ Alfred: 好的，我会添加第三方登录功能。您希望支持哪些平台
 # 定义项目的主要功能需求
 ```
 
----
+______________________________________________________________________
 
 ## 总结
 

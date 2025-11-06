@@ -1,236 +1,348 @@
 ---
-name: moai-lang-template
-version: 1.0.0
+name: moai-lang-{{LANGUAGE_SLUG}}
+version: 2.0.0
 created: 2025-11-06
 updated: 2025-11-06
 status: active
-description: Parameterized template for 13 additional languages with Context7 MCP integration and standardized best practices.
-keywords: ['template', 'language', 'parameterized', 'context7', 'mcp']
+description: "{{LANGUAGE_NAME}} best practices with modern frameworks, {{PRIMARY_DOMAIN}}, and performance optimization for 2025"
+keywords: [{{LANGUAGE_SLUG}}, programming, {{PRIMARY_PARADIGMS}}, {{ECOSYSTEM_KEYWORDS}}]
 allowed-tools:
   - Read
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+  - Write
+  - Edit
+  - Bash
+  - WebFetch
+  - WebSearch
 ---
 
-# Lang Template Skill - Parameterized Language Support
+# {{LANGUAGE_NAME}} Development Mastery
 
-## Skill Metadata
+**Modern {{LANGUAGE_NAME}} Development with 2025 Best Practices**
 
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-lang-template |
-| **Version** | 1.0.0 (2025-11-06) |
-| **Allowed tools** | Read, Context7 MCP integration |
-| **Auto-load** | On demand for supported languages |
-| **Tier** | Language |
-
----
+> Comprehensive {{LANGUAGE_NAME}} development guidance covering {{PRIMARY_DOMAIN}} applications, {{LANGUAGE_PARADIGMS}} patterns, and production-ready development using the latest tools and frameworks.
 
 ## What It Does
 
-Parameterized template supporting 13 programming languages with Context7 MCP integration for up-to-date documentation and standardized best practices.
+{{#if BACKEND_FOCUS}}
+- **Backend API Development**: {{WEB_FRAMEWORKS}} applications with modern patterns
+- **Database Integration**: {{DATABASE_FRAMEWORKS}} with query optimization
+- **API Development**: REST and GraphQL services with authentication
+- **Testing & Quality**: {{TEST_FRAMEWORK}} with mocking and integration tests
+- **Performance Optimization**: Caching, async patterns, memory management
+- **Production Deployment**: Docker, CI/CD, monitoring, scaling
+- **Security Best Practices**: Input validation, authentication, dependency scanning
+- **Code Quality**: Static analysis, formatting, pre-commit hooks
+{{/if}}
 
-## Supported Languages
+{{#if MOBILE_FOCUS}}
+- **Mobile App Development**: {{MOBILE_FRAMEWORKS}} applications with platform-specific patterns
+- **UI/UX Integration**: Modern UI frameworks and design systems
+- **Platform Services**: Native APIs, push notifications, app store integration
+- **Testing & Quality**: Unit tests, UI tests, device testing
+- **Performance Optimization**: Memory management, battery optimization
+- **Production Deployment**: App store releases, CI/CD, analytics
+- **Security Best Practices**: Data encryption, authentication, secure storage
+- **Code Quality**: Linting, formatting, modular architecture
+{{/if}}
 
-| Language | Version Range | Primary Use Cases |
-| -------- | ------------- | ---------------- |
-| Java | 17+ | Enterprise applications, Spring Boot |
-| Kotlin | 1.9+ | Android, JVM backend, coroutines |
-| Swift | 5.9+ | iOS, macOS applications |
-| C# | 11+ | .NET applications, Unity |
-| Dart | 3.0+ | Flutter cross-platform |
-| C++ | 17/20 | Systems programming, performance |
-| C | C11/C17 | Embedded systems, low-level |
-| Ruby | 3.2+ | Rails, web applications |
-| PHP | 8.2+ | Web backend, Laravel |
-| Scala | 3.x | Functional programming, Spark |
-| SQL | ANSI SQL | Database queries, migrations |
-| Shell | POSIX | DevOps, automation |
-| R | 4.4+ | Data analysis, statistics |
+{{#if SYSTEMS_FOCUS}}
+- **Systems Programming**: Low-level development with performance optimization
+- **Memory Management**: Smart pointers, RAII, resource management
+- **Performance Engineering**: Profiling, optimization, benchmarks
+- **Cross-Platform Development**: Multi-platform builds and toolchains
+- **Testing & Quality**: Unit tests, integration tests, property-based testing
+- **Library Development**: API design, ABI compatibility, versioning
+- **Security Best Practices**: Memory safety, input validation, secure coding
+- **Code Quality**: Static analysis, formatting, code review
+{{/if}}
 
----
+{{#if DATA_FOCUS}}
+- **Data Processing**: {{DATA_FRAMEWORKS}} for analytics and manipulation
+- **Statistical Computing**: {{STATISTICS_FRAMEWORKS}} with modern methods
+- **Data Visualization**: {{VISUALIZATION_FRAMEWORKS}} for insights and reporting
+- **Database Integration**: SQL and NoSQL database connectivity
+- **Testing & Quality**: Unit tests, data validation, reproducible research
+- **Performance Optimization**: Vectorized operations, parallel processing
+- **Production Deployment**: Scheduled jobs, monitoring, data pipelines
+- **Code Quality**: Documentation, reproducible workflows, version control
+{{/if}}
 
-## Template Variables
+## When to Use
 
-The skill uses parameterized variables that adapt to each language:
+### Perfect Scenarios
+{{#if BACKEND_FOCUS}}
+- **Building REST APIs and microservices**
+- **Developing web applications and services**
+- **Creating database-driven applications**
+- **Integrating with third-party services**
+- **Automating backend workflows**
+- **Deploying scalable server applications**
+- **Enterprise application development**
+{{/if}}
 
-### Core Variables
-```
-{{LANGUAGE_NAME}} - Full language name (e.g., "Python", "Java")
-{{LANGUAGE_VERSION}} - Current stable version
-{{TEST_FRAMEWORK}} - Primary testing framework
-{{BUILD_TOOL}} - Build/package management
-{{LINTER}} - Code quality tool
-{{PACKAGE_MANAGER}} - Dependency management
-```
+{{#if MOBILE_FOCUS}}
+- **Building mobile applications**
+- **Creating platform-specific user interfaces**
+- **Integrating with device hardware and sensors**
+- **Developing cross-platform mobile apps**
+- **Implementing push notifications and background tasks**
+- **Publishing to app stores**
+- **Mobile-first application development**
+{{/if}}
 
-### Context7 Integration
-- **Auto-documentation fetch**: Uses Context7 MCP to retrieve latest documentation
-- **Version-specific guidance**: Always current with latest releases
-- **Official source prioritization**: Primary documentation over tutorials
+{{#if SYSTEMS_FOCUS}}
+- **Performance-critical applications**
+- **Systems programming and embedded development**
+- **Game development and graphics programming**
+- **Library and framework development**
+- **Cross-platform application development**
+- **Memory-sensitive applications**
+- **High-performance computing**
+{{/if}}
 
----
+{{#if DATA_FOCUS}}
+- **Data analysis and statistical computing**
+- **Machine learning and data science workflows**
+- **Business intelligence and reporting**
+- **Data visualization and dashboarding**
+- **Research and academic computing**
+- **Big data processing and analytics**
+- **Statistical modeling and forecasting**
+{{/if}}
 
-## Usage Pattern
+### Common Triggers
+- "Create {{LANGUAGE_NAME}} {{PRIMARY_DOMAIN}}"
+- "Set up {{LANGUAGE_NAME}} project"
+- "Optimize {{LANGUAGE_NAME}} performance"
+- "Test {{LANGUAGE_NAME}} code"
+- "Deploy {{LANGUAGE_NAME}} application"
+- "{{LANGUAGE_NAME}} best practices"
+- "{{LANGUAGE_NAME}} {{WEB_FRAMEWORKS}} application"
 
-```python
-# For any supported language
-Skill("moai-lang-template")
+## Tool Version Matrix (2025-11-06)
 
-# Skill automatically:
-# 1. Detects target language from context
-# 2. Loads language-specific parameters
-# 3. Fetches latest docs via Context7
-# 4. Provides current best practices
-```
+### Core {{LANGUAGE_NAME}}
+- **{{LANGUAGE_NAME}}**: {{LATEST_VERSION}} (current) / {{LTS_VERSION}} (LTS)
+- **Package Manager**: {{PACKAGE_MANAGER}} {{PACKAGE_MANAGER_VERSION}}
+- **Runtime/Compiler**: {{RUNTIME_COMPILER}} {{RUNTIME_VERSION}}
 
----
+{{#if WEB_FRAMEWORKS_AVAILABLE}}
+### Web Frameworks
+{{#each WEB_FRAMEWORKS_AVAILABLE}}
+- **{{name}}**: {{version}} - {{description}}
+{{/each}}
+{{/if}}
 
-## Language-Specific Examples
+{{#if TESTING_TOOLS}}
+### Testing Tools
+{{#each TESTING_TOOLS}}
+- **{{name}}**: {{version}} - {{description}}
+{{/each}}
+{{/if}}
 
-### Example Usage (Java)
-```python
-# User asks about Java testing
-Skill("moai-lang-template")
-
-# Skill provides:
-# - JUnit 5 best practices
-# - Maven/Gradle configuration
-# - Test coverage strategies
-# - Context7-fetched latest docs
-```
-
-### Example Usage (TypeScript)
-```python
-# User asks about TypeScript patterns
-Skill("moai-lang-template")
-
-# Skill provides:
-# - TypeScript 5.x strict typing
-# - Node.js integration patterns
-# - E2E type safety
-# - Context7-fetched latest docs
-```
-
----
-
-## Context7 MCP Integration
-
-This skill integrates with Context7 MCP for always-current documentation:
-
-### Documentation Sources
-- **Official language docs** (python.org, nodejs.org, etc.)
-- **Framework documentation** (Spring, Rails, Laravel, etc.)
-- **Community standards** (style guides, conventions)
-
-### Auto-Update Process
-1. **Language detection**: Automatically identify target language
-2. **Documentation fetch**: Use Context7 to get latest official docs
-3. **Best practices extraction**: Extract current recommended patterns
-4. **Version awareness**: Always provide version-specific guidance
-
----
-
-## Best Practices By Category
-
-### Testing Strategies
-- **Unit testing**: Language-specific testing frameworks
-- **Integration testing**: Database and API testing patterns
-- **E2E testing**: Full application testing approaches
-
+{{#if CODE_QUALITY_TOOLS}}
 ### Code Quality
-- **Linting**: Language-specific linters and formatters
-- **Static analysis**: Type checking and security scanning
-- **Code review**: Language-agnostic review patterns
+{{#each CODE_QUALITY_TOOLS}}
+- **{{name}}**: {{version}} - {{description}}
+{{/each}}
+{{/if}}
 
-### Performance Optimization
-- **Profiling**: Language-specific profiling tools
-- **Memory management**: Garbage collection and memory patterns
-- **Concurrency**: Multi-threading and async patterns
+{{#if SPECIALIZED_TOOLS}}
+### Specialized Tools
+{{#each SPECIALIZED_TOOLS}}
+- **{{name}}**: {{version}} - {{description}}
+{{/each}}
+{{/if}}
 
-### Security
-- **Input validation**: Language-specific validation libraries
-- **Authentication**: JWT, OAuth2 implementation patterns
-- **Data protection**: Encryption and secure storage
+## Ecosystem Overview
 
----
+### Package Management
 
-## Progressive Disclosure Structure
+{{#if PACKAGE_MANAGEMENT_COMMANDS}}
+```bash
+{{#each PACKAGE_MANAGEMENT_COMMANDS}}
+{{this}}
+{{/each}}
+```
+{{/if}}
 
-### High Freedom (10-15 tokens)
-Quick guidance and pattern identification:
-```python
-# Example: Testing setup
-"Use pytest with fixtures and parameterized tests for Python testing."
+### Project Structure (2025 Best Practice)
+
+```
+{{PROJECT_STRUCTURE}}
 ```
 
-### Medium Freedom (30-40 tokens)
-Detailed guidance with framework-specific recommendations:
-```python
-# Example: Java testing strategy
-"Set up JUnit 5 with Jupiter, use @ParameterizedTest for data-driven tests,
-and integrate with Mockito for mocking in Spring Boot applications."
+## Modern Development Patterns
+
+### {{LANGUAGE_TYPE_SYSTEM}} Best Practices
+
+{{#if TYPE_EXAMPLES}}
+{{#each TYPE_EXAMPLES}}
+```{{../LANGUAGE_EXTENSION}}
+{{this}}
 ```
+{{/each}}
+{{/if}}
 
-### Low Freedom (60-80 tokens)
-Comprehensive guidance with latest Context7 documentation:
-```python
-# Example: Complete testing setup
-"Configure pytest.ini with testpaths and python_files,
-create conftest.py with database fixtures,
-use pytest-cov for coverage reporting,
-and integrate with GitHub Actions for CI/CD.
-Latest pytest 8.0 features include async fixtures and improved parametrization."
+### {{PRIMARY_PARADIGMS}} Patterns
+
+{{#if PARADIGM_EXAMPLES}}
+{{#each PARADIGM_EXAMPLES}}
+```{{../LANGUAGE_EXTENSION}}
+{{this}}
 ```
+{{/each}}
+{{/if}}
+
+{{#if ASYNC_PATTERNS_AVAILABLE}}
+### Asynchronous Programming Patterns
+
+```{{LANGUAGE_EXTENSION}}
+{{ASYNC_PATTERN_EXAMPLE}}
+```
+{{/if}}
+
+### Data Structures and Patterns
+
+{{#if DATA_STRUCTURE_EXAMPLES}}
+{{#each DATA_STRUCTURE_EXAMPLES}}
+```{{../LANGUAGE_EXTENSION}}
+{{this}}
+```
+{{/each}}
+{{/if}}
+
+## Performance Considerations
+
+{{#if PERFORMANCE_EXAMPLES}}
+{{#each PERFORMANCE_EXAMPLES}}
+### {{title}}
+
+```{{../LANGUAGE_EXTENSION}}
+{{code}}
+```
+{{/each}}
+{{/if}}
+
+### Profiling and Monitoring
+
+{{#if PROFILING_COMMANDS}}
+```bash
+{{#each PROFILING_COMMANDS}}
+{{this}}
+{{/each}}
+```
+{{/if}}
+
+## Testing Strategy
+
+{{#if TESTING_CONFIGURATION}}
+### {{TEST_FRAMEWORK}} Configuration
+
+{{TESTING_CONFIGURATION}}
+{{/if}}
+
+### Modern Testing Patterns
+
+{{#if TESTING_EXAMPLES}}
+{{#each TESTING_EXAMPLES}}
+```{{../LANGUAGE_EXTENSION}}
+{{this}}
+```
+{{/each}}
+{{/if}}
+
+{{#if INTEGRATION_TESTING_AVAILABLE}}
+### Integration Testing
+
+```{{LANGUAGE_EXTENSION}}
+{{INTEGRATION_TESTING_EXAMPLE}}
+```
+{{/if}}
+
+## Security Best Practices
+
+### Input Validation and Sanitization
+
+{{#if SECURITY_EXAMPLES}}
+{{#each SECURITY_EXAMPLES}}
+```{{../LANGUAGE_EXTENSION}}
+{{this}}
+```
+{{/each}}
+{{/if}}
+
+{{#if AUTHENTICATION_PATTERNS}}
+### Authentication and Authorization
+
+```{{LANGUAGE_EXTENSION}}
+{{AUTHENTICATION_PATTERNS}}
+```
+{{/if}}
+
+{{#if SECURITY_TOOLS}}
+### Dependency Security Scanning
+
+```bash
+{{#each SECURITY_TOOLS}}
+{{this}}
+{{/each}}
+```
+{{/if}}
+
+## Integration Patterns
+
+{{#if INTEGRATION_EXAMPLES}}
+{{#each INTEGRATION_EXAMPLES}}
+### {{title}}
+
+```{{../LANGUAGE_EXTENSION}}
+{{code}}
+```
+{{/each}}
+{{/if}}
+
+## Modern Development Workflow
+
+{{#if PROJECT_CONFIGURATION}}
+### Project Configuration
+
+{{PROJECT_CONFIGURATION}}
+{{/if}}
+
+{{#if PRECOMMIT_CONFIG}}
+### Pre-commit Configuration
+
+```yaml
+{{PRECOMMIT_CONFIG}}
+```
+{{/if}}
+
+{{#if DOCKER_EXAMPLE}}
+### Docker Best Practices
+
+```dockerfile
+{{DOCKER_EXAMPLE}}
+```
+{{/if}}
+
+{{#if DOMAIN_SPECIFIC_PATTERNS}}
+## {{PRIMARY_DOMAIN}} Development
+
+{{#each DOMAIN_SPECIFIC_PATTERNS}}
+### {{title}}
+
+```{{../LANGUAGE_EXTENSION}}
+{{code}}
+```
+{{/each}}
+{{/if}}
 
 ---
 
-## Works Well With
+**Created by**: MoAI Language Skill Factory  
+**Last Updated**: 2025-11-06  
+**Version**: 2.0.0  
+**{{LANGUAGE_NAME}} Target**: {{LATEST_VERSION}} with modern {{PRIMARY_PARADIGMS}} features  
 
-### Core Skills
-- `Skill("moai-domain-backend")` - Backend architecture patterns
-- `Skill("moai-domain-frontend")` - Frontend integration patterns
-- `Skill("moai-foundation-trust")` - TRUST 5 compliance
-
-### Language-Specific Skills
-- `Skill("moai-lang-python")` - Python expertise (premium)
-- `Skill("moai-lang-typescript")` - TypeScript expertise (premium)
-- `Skill("moai-lang-go")` - Go expertise (premium)
-- `Skill("moai-lang-rust")` - Rust expertise (premium)
-- `Skill("moai-lang-javascript")` - JavaScript expertise (premium)
-
-### Tools Integration
-- **Context7 MCP**: Latest documentation retrieval
-- **GitHub Actions**: CI/CD pipeline setup
-- **Docker**: Containerization patterns
-
----
-
-## Model Recommendations
-
-- **Haiku**: Quick pattern identification and basic guidance
-- **Sonnet**: Detailed best practices with Context7 integration
-- **Opus**: Complex architectural decisions and migration strategies
-
----
-
-## Quality Assurance
-
-### Validation Checklist
-- [ ] Language correctly detected from context
-- [ ] Context7 documentation successfully retrieved
-- [ ] Version-specific guidance provided
-- [ ] Best practices are current and official
-- [ ] Examples are functional and tested
-
-### Self-Correction
-- If Context7 fails → Use cached documentation with version disclaimer
-- If language ambiguous → Ask for clarification with supported options
-- If outdated patterns detected → Flag and provide current alternatives
-
----
-
-**Last Updated**: 2025-11-06
-**Version**: 1.0.0 (Parameterized template system)
-**Context7 Integration**: Enabled for all 13 supported languages
-**Status**: Production Ready
+This skill provides comprehensive {{LANGUAGE_NAME}} development guidance with 2025 best practices, covering everything from basic project setup to advanced {{PRIMARY_DOMAIN}} integration and production deployment patterns.

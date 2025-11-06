@@ -1,8 +1,6 @@
----
-title: インストールガイド
-description: MoAI-ADKのインストールと初期設定の完全ガイド
-lang: ja
----
+______________________________________________________________________
+
+## title: インストールガイド description: MoAI-ADKのインストールと初期設定の完全ガイド lang: ja
 
 # インストールガイド
 
@@ -101,6 +99,7 @@ python --version
 ### Gitのインストール
 
 **macOS**：
+
 ```bash
 # Homebrewでインストール
 brew install git
@@ -110,12 +109,14 @@ xcode-select --install
 ```
 
 **Ubuntu/Debian**：
+
 ```bash
 sudo apt update
 sudo apt install git -y
 ```
 
 **Windows**：
+
 ```powershell
 winget install Git.Git
 ```
@@ -132,11 +133,13 @@ git --version
 ### インストール
 
 **macOS**：
+
 ```bash
 brew install claude-code
 ```
 
 **他のプラットフォーム**：
+
 ```bash
 npm install -g @anthropic-ai/claude-code
 ```
@@ -226,11 +229,13 @@ hello-world/
 #### 1. uvが見つからない
 
 **症状**：
+
 ```bash
 bash: uv: command not found
 ```
 
 **解決策**：
+
 ```bash
 # PATHに手動で追加
 export PATH="$HOME/.cargo/bin:$PATH"
@@ -242,11 +247,13 @@ source ~/.bashrc  # または ~/.zshrc
 #### 2. Pythonバージョンが古い
 
 **症状**：
+
 ```
 Python 3.8 found, but 3.13+ required
 ```
 
 **解決策**：
+
 ```bash
 # pyenvでPython 3.13をインストール
 pyenv install 3.13
@@ -256,11 +263,13 @@ pyenv global 3.13
 #### 3. Claude Codeが認識されない
 
 **症状**：
+
 ```
 Command not found: claude
 ```
 
 **解決策**：
+
 ```bash
 # 再インストール
 npm install -g @anthropic-ai/claude-code
@@ -272,11 +281,13 @@ claude auth login
 #### 4. プロジェクト初期化エラー
 
 **症状**：
+
 ```
 Error: .moai directory already exists
 ```
 
 **解決策**：
+
 ```bash
 # 既存プロジェクトの場合
 cd your-project
@@ -318,6 +329,6 @@ moai-adk doctor --verbose
 2. **概念学習**：[概念ガイド](concepts.md)で核心概念を理解
 3. **Alfredコマンド**：[Alfredガイド](../guides/alfred/index.md)でコマンドを学習
 
----
+______________________________________________________________________
 
-**<span class="material-icons">check_circle</span> おめでとうございます！** MoAI-ADKのインストールが完了しました。次は[クイックスタート](quick-start.md)で最初のプロジェクトを始めましょう。
+**✅ おめでとうございます！** MoAI-ADKのインストールが完了しました。次は[クイックスタート](quick-start.md)で最初のプロジェクトを始めましょう。

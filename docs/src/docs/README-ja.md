@@ -2,15 +2,14 @@
 
 このディレクトリには、MkDocsを使用して構築されたMoAI-ADK公式ドキュメントが含まれています。
 
-**Version**: v0.9.0
-**Last Updated**: 2025-11-05
-**Language**: 日本語
+**Version**: v0.9.0 **Last Updated**: 2025-11-05 **Language**: 日本語
 
 # @CODE:DOC-ONLINE-001:JA
 
-## <span class="material-icons">rocket_launch</span> クイックスタート
+## 🚀 クイックスタート
 
 ### 1. UVのインストール（推奨）
+
 ```bash
 # macOS/Linux
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -23,31 +22,34 @@ pip install uv
 ```
 
 ### 2. 依存関係のインストール
+
 ```bash
 uv sync
 ```
 
 ### 3. 開発サーバーの起動
+
 ```bash
 uv run dev
 ```
 
 ### 4. ブラウザで確認
+
 [http://127.0.0.1:8080](http://127.0.0.1:8080)
 
 ## <span class="material-icons">menu_book</span> 利用可能なコマンド
 
-| コマンド | 説明 |
-|--------|------|
-| `uv run dev` | 開発サーバーを起動 |
-| `uv run build` | 静的サイトをビルド |
-| `uv run deploy` | GitHub Pagesにデプロイ |
-| `uv run clean` | ビルドファイルをクリーンアップ |
-| `uv run validate` | 厳格モードでビルドと検証 |
-| `uv run preview` | ファストリロードで開発サーバーを起動 |
-| `uv sync` | 依存関係を同期 |
-| `uv lock` | ロックファイルを生成 |
-| `uv lock --upgrade` | 依存関係をアップグレード |
+| コマンド            | 説明                                 |
+| ------------------- | ------------------------------------ |
+| `uv run dev`        | 開発サーバーを起動                   |
+| `uv run build`      | 静的サイトをビルド                   |
+| `uv run deploy`     | GitHub Pagesにデプロイ               |
+| `uv run clean`      | ビルドファイルをクリーンアップ       |
+| `uv run validate`   | 厳格モードでビルドと検証             |
+| `uv run preview`    | ファストリロードで開発サーバーを起動 |
+| `uv sync`           | 依存関係を同期                       |
+| `uv lock`           | ロックファイルを生成                 |
+| `uv lock --upgrade` | 依存関係をアップグレード             |
 
 ## 📁 ディレクトリ構造
 
@@ -70,22 +72,25 @@ docs/
 └── overrides/             # テーマのオーバーライド
 ```
 
-## <span class="material-icons">palette</span> カスタマイズ
+## 🎨 カスタマイズ
 
 ### テーマ設定
+
 - **Material Design**: Google Material Designベース
 - **ダークモード**: 自動/手動テーマ切り替え
 - **多言語サポート**: 韓国語、英語、日本語など
 
 ### 拡張機能
+
 - **Mermaidダイアグラム**: ワークフローの可視化
 - **コードハイライト**: 50+プログラミング言語
 - **検索**: 専門的な検索とオートコンプリート
 - **Git統合**: コミット情報とバージョン管理
 
-## <span class="material-icons">description</span> ドキュメント作成ガイド
+## 📄 ドキュメント作成ガイド
 
 ### Markdown拡張
+
 ```markdown
 !!! note "注意"
     重要な情報
@@ -98,21 +103,24 @@ docs/
 ```
 
 ### コードブロック
+
 ```python
 def hello_world():
     print("Hello, MoAI-ADK!")
 ```
 
 ### Mermaidダイアグラム
+
 ```mermaid
 graph LR
     A[SPEC] --> B[TDD]
     B --> C[Sync]
 ```
 
-## <span class="material-icons">rocket_launch</span> デプロイ
+## 🚀 デプロイ
 
 ### Vercelデプロイ（推奨）
+
 ```bash
 # 1. Vercel CLIをインストール
 npm i -g vercel
@@ -125,24 +133,28 @@ vercel --prod
 ```
 
 ### 自動デプロイ設定
+
 - VercelダッシュボードでGitHubリポジトリを接続
 - `main`ブランチへのプッシュ時に自動デプロイ
 - ドメイン: `https://adk.mo.ai.kr`
 
 ### GitHub Pages
+
 ```bash
 uv run deploy
 ```
 
 ### その他のホスティング
+
 ```bash
 uv run build
 # site/ディレクトリを希望のホスティングサービスにアップロード
 ```
 
-## <span class="material-icons">settings</span> 開発
+## ⚙️ 開発
 
 ### ローカル開発環境
+
 ```bash
 # UVのインストール（既にインストールされている場合はスキップ）
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -160,6 +172,7 @@ uv run dev
 ```
 
 ### UVベースのワークフロー
+
 ```bash
 # 依存関係の追加
 uv add mkdocs-material
@@ -181,18 +194,21 @@ uv run clean
 ```
 
 ### ドキュメントの検証
+
 ```bash
 mkdocs build --strict
 ```
 
-## <span class="material-icons">analytics</span> モニタリング
+## 📊 モニタリング
 
 ### ビルド統計
+
 ```bash
 find site/ -name "*.html" | wc -l
 ```
 
 ### サイズ確認
+
 ```bash
 du -sh site/
 ```
@@ -202,6 +218,7 @@ du -sh site/
 ### 一般的な問題
 
 #### ビルドエラー
+
 ```bash
 # キャッシュのクリーンアップ
 rm -rf site/ .doit_db/
@@ -211,12 +228,14 @@ mkdocs build
 ```
 
 #### プラグインエラー
+
 ```bash
 # プラグインの再インストール
 pip install --upgrade mkdocs-material
 ```
 
 #### スタイル読み込みの問題
+
 ```bash
 # ブラウザキャッシュのクリーンアップ
 # 開発者ツールで強制リロード

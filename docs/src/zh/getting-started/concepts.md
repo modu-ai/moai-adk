@@ -1,13 +1,12 @@
----
-title: 核心概念
-description: 深入理解 MoAI-ADK 的五大核心概念：SPEC-First、TDD、@TAG 系统、TRUST 原则和 Alfred 超级代理
----
+______________________________________________________________________
+
+## title: 核心概念 description: 深入理解 MoAI-ADK 的五大核心概念：SPEC-First、TDD、@TAG 系统、TRUST 原则和 Alfred 超级代理
 
 # 核心概念
 
 MoAI-ADK 基于五个核心概念构建，这些概念相互配合，创建了一个完整的 AI 驱动开发生态系统。
 
----
+______________________________________________________________________
 
 ## 1. SPEC-First（规格说明优先）
 
@@ -18,12 +17,14 @@ SPEC-First 是一种开发方法论，强调**在编写任何代码之前，必�
 ### 为什么重要？
 
 **传统开发的问题**：
+
 - 需求模糊导致实现偏差
 - 缺乏明确的验收标准
 - 团队成员理解不一致
 - 变更时影响评估困难
 
 **SPEC-First 的解决方案**：
+
 - 明确的需求定义
 - 可测试的验收标准
 - 统一的理解基础
@@ -34,11 +35,13 @@ SPEC-First 是一种开发方法论，强调**在编写任何代码之前，必�
 MoAI-ADK 使用 EARS（Easy Approach to Requirements Syntax）语法编写 SPEC，它提供了 5 种清晰的模式：
 
 #### 1. Ubiquitous Requirements（普遍需求）
+
 描述系统必须具备的基本功能。
 
 **语法**：`系统必须 [动词] [对象]`
 
 **示例**：
+
 ```yaml
 - 系统必须提供用户认证功能
 - 系统必须支持多语言界面
@@ -46,11 +49,13 @@ MoAI-ADK 使用 EARS（Easy Approach to Requirements Syntax）语法编写 SPEC�
 ```
 
 #### 2. Event-driven Requirements（事件驱动需求）
+
 描述当特定事件发生时系统应该如何响应。
 
 **语法**：`当 [条件] 时，系统必须 [动作]`
 
 **示例**：
+
 ```yaml
 - 当用户提供有效凭证时，系统必须发放 JWT 令牌
 - 当检测到异常访问时，系统必须发送安全警报
@@ -58,11 +63,13 @@ MoAI-ADK 使用 EARS（Easy Approach to Requirements Syntax）语法编写 SPEC�
 ```
 
 #### 3. State-driven Requirements（状态驱动需求）
+
 描述系统在特定状态下应该保持的行为。
 
 **语法**：`当系统处于 [状态] 时，系统必须 [行为]`
 
 **示例**：
+
 ```yaml
 - 当用户处于登录状态时，系统必须允许访问受保护资源
 - 当系统处于维护模式时，系统必须拒绝所有写操作
@@ -70,11 +77,13 @@ MoAI-ADK 使用 EARS（Easy Approach to Requirements Syntax）语法编写 SPEC�
 ```
 
 #### 4. Optional Requirements（可选需求）
+
 描述在特定条件下可选执行的功能。
 
 **语法**：`如果 [条件]，系统可以 [可选动作]`
 
 **示例**：
+
 ```yaml
 - 如果用户有头像文件，系统可以显示用户头像
 - 如果支持缓存，系统可以使用 Redis 缓存会话
@@ -82,11 +91,13 @@ MoAI-ADK 使用 EARS（Easy Approach to Requirements Syntax）语法编写 SPEC�
 ```
 
 #### 5. Constraints（约束）
+
 描述系统必须遵守的限制条件。
 
 **语法**：`[约束对象] 必须/不应该 [约束条件]`
 
 **示例**：
+
 ```yaml
 - 用户密码长度必须在 8-128 字符之间
 - API 响应时间不应该超过 2 秒
@@ -173,28 +184,28 @@ stateDiagram-v2
     end note
 
     note right of draft
-        <span class="material-icons">description</span> 起草阶段
+        📄 起草阶段
         - EARS 格式编写
         - 验收标准定义
         - 风险评估
     end note
 
     note right of in_progress
-        <span class="material-icons">rocket_launch</span> 开发阶段
+        🚀 开发阶段
         - TDD 实现
         - 代码审查
         - 单元测试
     end note
 
     note right of completed
-        <span class="material-icons">check_circle</span> 完成阶段
+        ✅ 完成阶段
         - 文档同步
         - 集成测试
         - 部署就绪
     end note
 ```
 
----
+______________________________________________________________________
 
 ## 2. TDD（测试驱动开发）
 
@@ -209,11 +220,13 @@ TDD（Test-Driven Development）是一种开发方法，要求**在编写功能�
 **目标**：编写一个描述预期行为的测试，但这个测试会失败（因为功能还未实现）。
 
 **原则**：
+
 - 只编写足够失败的代码
 - 测试应该明确表达需求
 - 失败的原因是功能不存在，而不是语法错误
 
 **示例**：
+
 ```python
 # `@TEST:EX-AUTH-001 | SPEC: SPEC-AUTH-001.md
 
@@ -236,11 +249,13 @@ def test_user_login_with_valid_credentials_should_return_token():
 **目标**：编写最简单的代码让测试通过。
 
 **原则**：
+
 - 只编写足够通过的代码
 - 不要追求完美，先让测试通过
 - 可以使用硬编码、临时解决方案
 
 **示例**：
+
 ```python
 # `@CODE:EX-AUTH-001:API | SPEC: SPEC-AUTH-001.md | TEST: tests/test_auth.py
 
@@ -260,17 +275,19 @@ def login(credentials: dict):
     return {"error": "Invalid credentials"}
 ```
 
-#### <span class="material-icons">recycling</span> REFACTOR 阶段：重构改进
+#### ♻️ REFACTOR 阶段：重构改进
 
 **目标**：改进代码质量，同时保持测试通过。
 
 **原则**：
+
 - 测试必须继续通过
 - 消除代码重复
 - 提高可读性和可维护性
 - 应用设计模式
 
 **示例**：
+
 ```python
 # `@CODE:EX-AUTH-001:API | SPEC: SPEC-AUTH-001.md | TEST: tests/test_auth.py
 
@@ -316,21 +333,25 @@ def login(credentials: dict):
 ### TDD 的优势
 
 #### 1. 设计驱动
+
 - 迫使思考接口和使用方式
 - 产生更简洁、更专注的 API
 - 自然形成模块化设计
 
 #### 2. 质量保证
+
 - 100% 测试覆盖率
 - 回归测试保护
 - 代码质量持续改进
 
 #### 3. 开发效率
+
 - 快速反馈循环
 - 减少调试时间
 - 明确的完成标准
 
 #### 4. 文档价值
+
 - 测试即文档
 - 使用示例清晰
 - API 行为明确
@@ -345,6 +366,7 @@ def login(credentials: dict):
 ```
 
 Alfred 会：
+
 1. **分析 SPEC**：提取验收标准
 2. **设计测试**：创建测试用例
 3. **执行 RED**：编写失败测试
@@ -352,7 +374,7 @@ Alfred 会：
 5. **执行 REFACTOR**：代码改进
 6. **质量验证**：TRUST 5 原则检查
 
----
+______________________________________________________________________
 
 ## 3. @TAG 系统
 
@@ -363,11 +385,13 @@ Alfred 会：
 ### TAG 格式规范
 
 #### 基本格式
+
 ```
 @TYPE:DOMAIN-ID[:SUBTYPE]
 ```
 
 #### 组件说明
+
 - **TYPE**：产物类型
   - `@SPEC`：规格说明
   - `@TEST`：测试用例
@@ -402,16 +426,19 @@ Alfred 会：
 ### TAG 使用规范
 
 #### 1. 分配原则
+
 - **一次分配，永不更改**：TAG ID 一旦分配，不能更改
 - **按领域分组**：同一业务领域的功能使用相同的 DOMAIN
 - **顺序递增**：ID 按创建顺序递增（001, 002, 003...）
 
 #### 2. 放置位置
+
 - **文件头部**：在文件的第一行注释中
 - **函数/类注释**：在重要函数或类的文档字符串中
 - **提交信息**：在 Git 提交信息中引用相关 TAG
 
 #### 3. 引用格式
+
 ```python
 # `@CODE:AUTH-001:API | SPEC: SPEC-AUTH-001.md | TEST: tests/test_auth.py
 
@@ -427,6 +454,7 @@ def login_user(credentials: LoginRequest):
 ### TAG 追踪能力
 
 #### 查找相关代码
+
 ```bash
 # 查找 AUTH-001 相关的所有内容
 rg '@(SPEC|TEST|CODE|DOC):AUTH-001' -n
@@ -437,7 +465,9 @@ rg '@TEST:AUTH-001' -n
 ```
 
 #### 影响分析
+
 当需求变更时：
+
 ```bash
 # 1. 找到相关 SPEC
 rg '@SPEC:AUTH-001' .moai/specs/
@@ -453,6 +483,7 @@ rg '@DOC:AUTH-001' docs/
 ```
 
 #### 统计和报告
+
 ```bash
 # 统计 TAG 分布
 rg '@(SPEC|TEST|CODE|DOC):' -n | cut -d: -f1 | sort | uniq -c
@@ -466,12 +497,14 @@ rg '@(SPEC|TEST|CODE|DOC):' -n | cut -d: -f1 | sort | uniq -c
 MoAI-ADK 包含自动的 TAG Guard 系统，在 PreToolUse Hook 中运行：
 
 #### 检测规则
+
 1. **新增文件必须有 TAG**：创建的新文件必须包含适当的 @TAG
 2. **TAG 必须成对出现**：@CODE 必须有对应的 @TEST
 3. **TAG 格式必须正确**：遵循 @TYPE:DOMAIN-ID 格式
 4. **TAG 不能重复**：相同 ID 不能用于不同功能
 
 #### 警告示例
+
 ```
 <span class="material-icons">warning</span> TAG 检测警告：
 发现以下文件缺少 @TAG：
@@ -483,7 +516,7 @@ MoAI-ADK 包含自动的 TAG Guard 系统，在 PreToolUse Hook 中运行：
  2. 运行 /alfred:3-sync 验证 TAG 链
 ```
 
----
+______________________________________________________________________
 
 ## 4. TRUST 5 原则
 
@@ -500,11 +533,13 @@ TRUST 5 原则是 MoAI-ADK 的代码质量标准，确保所有代码都达到�
 ### <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_one</span> Test First（测试优先）
 
 #### 要求
+
 - **测试覆盖率 ≥ 85%**：所有代码必须有对应的测试
 - **先写测试**：遵循 TDD 红绿重构循环
 - **测试分层**：单元测试、集成测试、端到端测试
 
 #### 验证标准
+
 ```bash
 # 检查测试覆盖率
 pytest --cov=src --cov-report=term-missing
@@ -515,8 +550,9 @@ pytest --cov=src --cov-report=term-missing
 ```
 
 #### 实践指导
+
 ```python
-# <span class="material-icons">check_circle</span> 好的实践：每个功能都有测试
+# ✅ 好的实践：每个功能都有测试
 def calculate_discount(price: float, customer_level: str) -> float:
     """计算客户折扣"""
     # 测试会覆盖这个逻辑
@@ -532,14 +568,16 @@ def complex_calculation(params: dict) -> float:
 ### <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_two</span> Readable（可读性）
 
 #### 要求
+
 - **函数长度 ≤ 50 行**：单个函数不超过 50 行
 - **文件长度 ≤ 300 行**：单个文件不超过 300 行
 - **命名清晰**：变量、函数、类名要体现意图
 - **注释充分**：复杂逻辑要有清晰注释
 
 #### 验证标准
+
 ```python
-# <span class="material-icons">check_circle</span> 好的实践：清晰命名和适当长度
+# ✅ 好的实践：清晰命名和适当长度
 def calculate_user_age(birth_date: datetime) -> int:
     """根据出生日期计算用户年龄
 
@@ -563,6 +601,7 @@ def process(data):
 ```
 
 #### 工具支持
+
 ```bash
 # Python 代码风格检查
 ruff check src/
@@ -576,14 +615,16 @@ prettier --check src/
 ### <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_3</span> Unified（一致性）
 
 #### 要求
+
 - **架构一致**：遵循 SPEC 定义的架构
 - **模式统一**：相同功能使用相同实现模式
 - **风格统一**：代码风格保持一致
 - **接口统一**：API 设计遵循统一规范
 
 #### 验证标准
+
 ```python
-# <span class="material-icons">check_circle</span> 好的实践：统一的 API 模式
+# ✅ 好的实践：统一的 API 模式
 class UserService:
     """用户服务 - 统一的 CRUD 模式"""
 
@@ -613,14 +654,16 @@ class ProductService:
 ### <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_4</span> Secured（安全性）
 
 #### 要求
+
 - **输入验证**：所有用户输入必须验证
 - **权限控制**：实现适当的访问控制
 - **数据保护**：敏感数据加密存储
 - **错误处理**：不暴露系统内部信息
 
 #### 验证标准
+
 ```python
-# <span class="material-icons">check_circle</span> 好的实践：安全输入验证
+# ✅ 好的实践：安全输入验证
 from pydantic import BaseModel, validator
 import bcrypt
 
@@ -659,12 +702,14 @@ def insecure_login(email: str, password: str):
 ### <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_5</span> Trackable（可追踪性）
 
 #### 要求
+
 - **@TAG 标记**：所有代码必须有 @TAG
 - **提交信息**：Git 提交包含相关 TAG
 - **文档更新**：代码变更同步更新文档
 - **决策记录**：重要设计决策要有记录
 
 #### 验证标准
+
 ```python
 # `@CODE:USER-001:SERVICE | SPEC: SPEC-USER-001.md | TEST: tests/test_user.py
 
@@ -710,22 +755,23 @@ MoAI-ADK 在 `/alfred:3-sync` 时自动执行 TRUST 验证：
 
 # 输出示例：
 <span class="material-icons">search</span> TRUST 5 原则验证
-<span class="material-icons">check_circle</span> Test First: 测试覆盖率 87%
-<span class="material-icons">check_circle</span> Readable: 代码风格检查通过
-<span class="material-icons">check_circle</span> Unified: 架构一致性验证通过
-<span class="material-icons">check_circle</span> Secured: 安全检查通过
-<span class="material-icons">check_circle</span> Trackable: @TAG 完整性验证通过
+✅ Test First: 测试覆盖率 87%
+✅ Readable: 代码风格检查通过
+✅ Unified: 架构一致性验证通过
+✅ Secured: 安全检查通过
+✅ Trackable: @TAG 完整性验证通过
 
-<span class="material-icons">analytics</span> TRUST 评分: 92/100
+📊 TRUST 评分: 92/100
 ```
 
----
+______________________________________________________________________
 
 ## 5. Alfred 超级代理
 
 ### 什么是 Alfred 超级代理？
 
-Alfred 是 MoAI-ADK 的核心 orchestrator（编排器），它不是单个 AI，而是一个由多个专业代理组成的协作系统。Alfred 负责协调整个开发流程，从需求分析到代码实现再到文档同步。
+Alfred 是 MoAI-ADK 的核心 orchestrator（编排器），它不是单个 AI，而是一个由多个专业代理组成的协作系统。Alfred
+负责协调整个开发流程，从需求分析到代码实现再到文档同步。
 
 ### Alfred 的架构
 
@@ -767,6 +813,7 @@ graph TB
 ### 核心子代理
 
 #### 1. project-manager（项目管理者）
+
 **职责**：项目初始化和配置管理
 
 ```bash
@@ -775,12 +822,14 @@ graph TB
 ```
 
 **功能**：
+
 - 收集项目元数据
 - 配置开发环境
 - 推荐技能包
 - 初始化项目结构
 
 #### 2. spec-builder（规格构建者）
+
 **职责**：需求分析和 SPEC 编写
 
 ```bash
@@ -789,12 +838,14 @@ graph TB
 ```
 
 **功能**：
+
 - 分析用户需求
 - 使用 EARS 语法编写 SPEC
 - 设计验收标准
 - 评估技术风险
 
 #### 3. code-builder（代码构建者）
+
 **职责**：TDD 实现和质量保证
 
 ```bash
@@ -803,12 +854,14 @@ graph TB
 ```
 
 **功能**：
+
 - 制定实现计划
 - 执行 TDD 循环
 - 应用 TRUST 原则
 - 代码质量验证
 
 #### 4. doc-syncer（文档同步者）
+
 **职责**：文档生成和同步
 
 ```bash
@@ -817,6 +870,7 @@ graph TB
 ```
 
 **功能**：
+
 - 生成 API 文档
 - 同步 README
 - 更新 CHANGELOG
@@ -827,36 +881,44 @@ graph TB
 专家代理在特定领域触发时自动激活：
 
 #### backend-expert（后端专家）
+
 **触发关键字**：`backend`, `api`, `server`, `database`, `deployment`
 
 **专业领域**：
+
 - API 设计和架构
 - 数据库设计和优化
 - 微服务架构
 - 性能优化
 
 #### frontend-expert（前端专家）
+
 **触发关键字**：`frontend`, `ui`, `component`, `web`
 
 **专业领域**：
+
 - 组件设计
 - 状态管理
 - 性能优化
 - 用户体验
 
 #### devops-expert（运维专家）
+
 **触发关键字**：`deployment`, `docker`, `kubernetes`, `ci/cd`
 
 **专业领域**：
+
 - 容器化部署
 - CI/CD 流水线
 - 监控和日志
 - 基础设施即代码
 
 #### ui-ux-expert（UI/UX 专家）
+
 **触发关键字**：`design`, `ux`, `accessibility`, `figma`
 
 **专业领域**：
+
 - 用户界面设计
 - 用户体验优化
 - 可访问性设计
@@ -867,24 +929,28 @@ graph TB
 Skills 是 Alfred 的知识库，提供特定领域的最佳实践和指导：
 
 #### Foundation Skills（基础技能）
+
 - `moai-foundation-trust`：TRUST 5 原则
 - `moai-foundation-tags`：@TAG 系统使用
 - `moai-foundation-specs`：SPEC 编写规范
 - `moai-foundation-ears`：EARS 语法指南
 
 #### Essential Skills（核心技能）
+
 - `moai-essentials-debug`：调试技巧
 - `moai-essentials-perf`：性能优化
 - `moai-essentials-refactor`：重构策略
 - `moai-essentials-review`：代码审查
 
 #### Domain Skills（领域技能）
+
 - `moai-domain-backend`：后端开发指南
 - `moai-domain-frontend`：前端开发指南
 - `moai-domain-security`：安全最佳实践
 - `moai-domain-database`：数据库设计
 
 #### Language Skills（语言技能）
+
 - `moai-lang-python`：Python 开发
 - `moai-lang-typescript`：TypeScript 开发
 - `moai-lang-go`：Go 开发
@@ -893,31 +959,41 @@ Skills 是 Alfred 的知识库，提供特定领域的最佳实践和指导：
 ### Alfred 的工作流程
 
 #### 1. 上下文理解
+
 Alfred 首先理解用户的请求和项目上下文：
+
 - 分析历史对话
 - 读取项目配置
 - 理解当前状态
 
 #### 2. 任务分解
+
 将复杂任务分解为可执行的步骤：
+
 - 识别子任务
 - 确定依赖关系
 - 估算工作量
 
 #### 3. 团队组建
+
 根据任务需求组建合适的团队：
+
 - 激活核心子代理
 - 调用专家代理
 - 加载相关 Skills
 
 #### 4. 执行协调
+
 协调整个执行过程：
+
 - 分配任务给合适的代理
 - 监控执行进度
 - 处理异常情况
 
 #### 5. 质量保证
+
 确保输出质量：
+
 - 应用 TRUST 原则
 - 验证 @TAG 完整性
 - 检查文档一致性
@@ -925,10 +1001,11 @@ Alfred 首先理解用户的请求和项目上下文：
 ### 与 Alfred 交互的最佳实践
 
 #### 1. 明确的指令
+
 使用清晰的指令告诉 Alfred 您想要什么：
 
 ```bash
-# <span class="material-icons">check_circle</span> 好的指令
+# ✅ 好的指令
 /alfred:1-plan "创建用户认证系统，支持邮箱登录和密码重置"
 
 # <span class="material-icons">cancel</span> 模糊的指令
@@ -936,10 +1013,11 @@ Alfred 首先理解用户的请求和项目上下文：
 ```
 
 #### 2. 适当的上下文
+
 提供足够的上下文信息：
 
 ```bash
-# <span class="material-icons">check_circle</span> 提供上下文
+# ✅ 提供上下文
 /alfred:2-run AUTH-001
 # Alfred 会自动读取 SPEC-AUTH-001.md 了解详细需求
 
@@ -949,10 +1027,11 @@ Alfred 首先理解用户的请求和项目上下文：
 ```
 
 #### 3. 渐进式开发
+
 将大功能分解为小步骤：
 
 ```bash
-# <span class="material-icons">check_circle</span> 渐进式
+# ✅ 渐进式
 /alfred:1-plan "用户基础信息管理"
 /alfred:2-run USER-001
 /alfred:1-plan "用户权限管理"
@@ -963,6 +1042,7 @@ Alfred 首先理解用户的请求和项目上下文：
 ```
 
 #### 4. 及时反馈
+
 在执行过程中提供反馈：
 
 ```bash
@@ -971,7 +1051,7 @@ Alfred 首先理解用户的请求和项目上下文：
 "测试覆盖率不够，请增加边界条件测试"
 ```
 
----
+______________________________________________________________________
 
 ## 概念之间的协作
 
@@ -998,6 +1078,7 @@ graph LR
 让我们通过一个完整的例子看这些概念如何协作：
 
 #### 1. SPEC-First：明确需求
+
 ```yaml
 # .moai/specs/SPEC-ORDER-001/spec.md
 ---
@@ -1014,6 +1095,7 @@ status: draft
 ```
 
 #### 2. TDD：测试驱动开发
+
 ```python
 # `@TEST:ORDER-001 | SPEC: SPEC-ORDER-001.md
 
@@ -1026,6 +1108,7 @@ def test_create_order_should_return_order_number():
 ```
 
 #### 3. @TAG：追踪关系
+
 ```python
 # `@CODE:ORDER-001:SERVICE | SPEC: SPEC-ORDER-001.md | TEST: tests/test_orders.py
 
@@ -1043,6 +1126,7 @@ class OrderService:
 ```
 
 #### 4. TRUST：质量保证
+
 ```python
 # 代码满足 TRUST 原则：
 # - Test First: 有对应测试
@@ -1053,6 +1137,7 @@ class OrderService:
 ```
 
 #### 5. Alfred：自动化协调
+
 ```bash
 # Alfred 自动协调整个流程
 /alfred:1-plan "订单管理系统"      # spec-builder 创建 SPEC

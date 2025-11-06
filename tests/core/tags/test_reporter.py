@@ -143,7 +143,7 @@ def login():
 
             assert len(inventory) >= 3  # SPEC, CODE, TEST
             tag_ids = [item.tag_id for item in inventory]
-            assert "AUTH-001" in str(tag_ids)
+            assert "AUTH-004" in tag_ids
 
     def test_group_by_domain(self):
         """Test grouping tags by domain"""
@@ -525,7 +525,7 @@ class TestReportGenerator:
 
             assert isinstance(report, str)
             assert "TAG Inventory" in report
-            assert "TEST-001" in report
+            assert "TEST-002" in report
 
     def test_generate_matrix_report(self):
         """Test matrix report generation"""

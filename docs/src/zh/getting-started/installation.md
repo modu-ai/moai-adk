@@ -1,7 +1,6 @@
----
-title: 安装指南
-description: 完整的 MoAI-ADK 安装和配置指南，支持多种操作系统和 Python 版本
----
+______________________________________________________________________
+
+## title: 安装指南 description: 完整的 MoAI-ADK 安装和配置指南，支持多种操作系统和 Python 版本
 
 # 安装指南
 
@@ -24,7 +23,7 @@ description: 完整的 MoAI-ADK 安装和配置指南，支持多种操作系统
 - **Claude Code**: 1.5.0 或更高版本
 - **IDE**: VS Code、PyCharm 或其他支持 Python 的编辑器
 
----
+______________________________________________________________________
 
 ## 方法一：使用 UV（推荐）
 
@@ -80,7 +79,7 @@ export PATH="$HOME/.cargo/bin:$PATH"
 $env:PATH = "$env:USERPROFILE\.cargo\bin;$env:PATH"
 ```
 
----
+______________________________________________________________________
 
 ## 方法二：使用 Pip
 
@@ -122,7 +121,7 @@ pip install moai-adk
 moai-adk --version
 ```
 
----
+______________________________________________________________________
 
 ## 方法三：从源码安装
 
@@ -155,7 +154,7 @@ pytest
 python -m moai_adk --version
 ```
 
----
+______________________________________________________________________
 
 ## 安装后验证
 
@@ -196,7 +195,7 @@ moai-adk init --help
 moai-adk doctor --help
 ```
 
----
+______________________________________________________________________
 
 ## Claude Code 设置
 
@@ -233,7 +232,7 @@ claude
 claude-code settings
 ```
 
----
+______________________________________________________________________
 
 ## MCP 服务器配置
 
@@ -271,13 +270,14 @@ exit
 claude
 ```
 
----
+______________________________________________________________________
 
 ## 常见安装问题
 
 ### 问题 1：uv 命令未找到
 
 **症状**：
+
 ```bash
 uv: command not found
 ```
@@ -303,6 +303,7 @@ source ~/.bashrc  # 或 source ~/.zshrc
 ### 问题 2：Python 版本不兼容
 
 **症状**：
+
 ```bash
 Python 3.12 found, but 3.13+ required
 ```
@@ -347,6 +348,7 @@ python --version
 ### 问题 3：权限错误
 
 **症状**：
+
 ```bash
 Permission denied: '/usr/local/bin/moai-adk'
 ```
@@ -364,6 +366,7 @@ uv tool install moai-adk
 ### 问题 4：网络连接问题
 
 **症状**：
+
 ```bash
 Could not fetch URL https://pypi.org/simple/moai-adk/
 ```
@@ -381,6 +384,7 @@ pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
 ### 问题 5：Windows 权限问题
 
 **症状**：
+
 ```bash
 'uv' is not recognized as an internal or external command
 ```
@@ -399,7 +403,7 @@ $env:PATH = "$env:USERPROFILE\.cargo\bin;$env:PATH"
 # 系统属性 → 环境变量 → PATH → 添加 %USERPROFILE%\.cargo\bin
 ```
 
----
+______________________________________________________________________
 
 ## 升级 MoAI-ADK
 
@@ -446,7 +450,7 @@ moai-adk update
 moai-adk doctor
 ```
 
----
+______________________________________________________________________
 
 ## 卸载
 
@@ -482,7 +486,7 @@ rm -rf ~/.config/moai-adk/
 # rm -rf .moai/ .claude/
 ```
 
----
+______________________________________________________________________
 
 ## 下一步
 
@@ -492,7 +496,7 @@ rm -rf ~/.config/moai-adk/
 2. [学习核心概念](../guides/concepts.md)
 3. [查看命令参考](../reference/cli/)
 
----
+______________________________________________________________________
 
 ## 获取帮助
 

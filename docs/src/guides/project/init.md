@@ -145,10 +145,10 @@ moai-adk init --help
 
 ```bash
 $ moai-adk init hello-world
-<span class="material-icons">rocket_launch</span> MoAI-ADK v0.17.0 프로젝트 초기화 시작...
+🚀 MoAI-ADK v0.17.0 프로젝트 초기화 시작...
 
 📁 생성 위치: /Users/username/projects/hello-world
-<span class="material-icons">settings</span> 템플릿: auto-detect (기본값)
+⚙️ 템플릿: auto-detect (기본값)
 🌍 언어: 자동 감지 예정
 ```
 
@@ -156,30 +156,30 @@ $ moai-adk init hello-world
 
 ```bash
 📂 디렉토리 구조 생성 중...
-<span class="material-icons">check_circle</span> .moai/ - MoAI-ADK 프로젝트 설정
-<span class="material-icons">check_circle</span> .claude/ - Claude Code 자동화
-<span class="material-icons">check_circle</span> src/ - 소스 코드 디렉토리
-<span class="material-icons">check_circle</span> tests/ - 테스트 디렉토리
-<span class="material-icons">check_circle</span> docs/ - 문서 디렉토리
+✅ .moai/ - MoAI-ADK 프로젝트 설정
+✅ .claude/ - Claude Code 자동화
+✅ src/ - 소스 코드 디렉토리
+✅ tests/ - 테스트 디렉토리
+✅ docs/ - 문서 디렉토리
 ```
 
 #### 3단계: 설정 파일 생성
 
 ```bash
 ⚙️  설정 파일 생성 중...
-<span class="material-icons">check_circle</span> .moai/config.json - 프로젝트 설정
-<span class="material-icons">check_circle</span> .moai/project/ - 프로젝트 정보
-<span class="material-icons">check_circle</span> .claude/settings.json - Claude Code 설정
-<span class="material-icons">check_circle</span> CLAUDE.md - 프로젝트 가이드
+✅ .moai/config.json - 프로젝트 설정
+✅ .moai/project/ - 프로젝트 정보
+✅ .claude/settings.json - Claude Code 설정
+✅ CLAUDE.md - 프로젝트 가이드
 ```
 
 #### 4단계: 에이전트 및 스킬 설치
 
 ```bash
 🤖 AI 에이전트 설정 중...
-<span class="material-icons">check_circle</span> 16개 Sub-agent 설치 완료
-<span class="material-icons">check_circle</span> 74개 Claude Skills 로드 완료
-<span class="material-icons">check_circle</span> 5개 Claude Code Hooks 활성화
+✅ 16개 Sub-agent 설치 완료
+✅ 74개 Claude Skills 로드 완료
+✅ 5개 Claude Code Hooks 활성화
 ```
 
 #### 5단계: 초기화 완료
@@ -231,9 +231,9 @@ cp -r . /backup/your-project-$(date +%Y%m%d)
 
 ```bash
 <span class="material-icons">search</span> 기존 프로젝트 분석 중...
-<span class="material-icons">check_circle</span> Python 프로젝트 감지 (pyproject.toml 발견)
-<span class="material-icons">check_circle</span> FastAPI 프레임워크 감지
-<span class="material-icons">check_circle</span> 이미 25개의 Python 파일 존재
+✅ Python 프로젝트 감지 (pyproject.toml 발견)
+✅ FastAPI 프레임워크 감지
+✅ 이미 25개의 Python 파일 존재
 <span class="material-icons">warning</span>  tests/ 디렉토리 발견 (기존 테스트 보존)
 ```
 
@@ -241,9 +241,9 @@ cp -r . /backup/your-project-$(date +%Y%m%d)
 
 ```bash
 📂 MoAI-ADK 파일 추가 중...
-<span class="material-icons">check_circle</span> .moai/ - 새로 생성
-<span class="material-icons">check_circle</span> .claude/ - 새로 생성
-<span class="material-icons">check_circle</span> CLAUDE.md - 새로 생성
+✅ .moai/ - 새로 생성
+✅ .claude/ - 새로 생성
+✅ CLAUDE.md - 새로 생성
 <span class="material-icons">warning</span>  src/, tests/, docs/ 기존 파일 유지
 ```
 
@@ -251,10 +251,10 @@ cp -r . /backup/your-project-$(date +%Y%m%d)
 
 ```bash
 ⚙️  기존 프로젝트에 맞게 설정 최적화...
-<span class="material-icons">check_circle</span> 언어: python (감지됨)
-<span class="material-icons">check_circle</span> 프레임워크: fastapi (감지됨)
-<span class="material-icons">check_circle</span> 테스트 도구: pytest (기존 설정 유지)
-<span class="material-icons">check_circle</span> 문서 형식: markdown (기존 문서 유지)
+✅ 언어: python (감지됨)
+✅ 프레임워크: fastapi (감지됨)
+✅ 테스트 도구: pytest (기존 설정 유지)
+✅ 문서 형식: markdown (기존 문서 유지)
 ```
 
 ### 기존 프로젝트와의 통합 예시
@@ -277,24 +277,24 @@ my-api/
 #### MoAI-ADK 추가 후 구조
 ```
 my-api/
-├── .moai/                    # <span class="material-icons">check_circle</span> 새로 추가
+├── .moai/                    # ✅ 새로 추가
 │   ├── config.json
 │   ├── project/
 │   ├── memory/
 │   ├── specs/
 │   └── reports/
-├── .claude/                  # <span class="material-icons">check_circle</span> 새로 추가
+├── .claude/                  # ✅ 새로 추가
 │   ├── agents/
 │   ├── commands/
 │   ├── skills/
 │   ├── hooks/
 │   └── settings.json
-├── CLAUDE.md                 # <span class="material-icons">check_circle</span> 새로 추가
-├── app/                      # <span class="material-icons">check_circle</span> 기존 유지
+├── CLAUDE.md                 # ✅ 새로 추가
+├── app/                      # ✅ 기존 유지
 │   ├── main.py
 │   ├── models/
 │   └── routes/
-├── tests/                    # <span class="material-icons">check_circle</span> 기존 유지
+├── tests/                    # ✅ 기존 유지
 │   ├── test_main.py
 │   └── conftest.py
 ├── requirements.txt
@@ -1091,7 +1091,7 @@ export MOAI_DEFAULT_OWNER="$(git config user.name)"
 export MOAI_GITHUB_ENABLED="true"
 
 # 프로젝트 생성
-echo "<span class="material-icons">rocket_launch</span> Creating MoAI-ADK project: $PROJECT_NAME"
+echo "🚀 Creating MoAI-ADK project: $PROJECT_NAME"
 moai-adk init "$PROJECT_NAME" --template "$TEMPLATE"
 
 # 프로젝트 디렉토리 이동
@@ -1112,7 +1112,7 @@ if [ "$TEMPLATE" = "web-api" ] || [ "$TEMPLATE" = "default" ]; then
 fi
 
 # 안내 메시지
-echo "<span class="material-icons">check_circle</span> Project '$PROJECT_NAME' created successfully!"
+echo "✅ Project '$PROJECT_NAME' created successfully!"
 echo "📋 Next steps:"
 echo "   1. cd $PROJECT_NAME"
 echo "   2. claude"
@@ -1394,7 +1394,7 @@ echo "🔄 Retrying initialization..."
 moai-adk init "$PROJECT_NAME"
 
 # 검증
-echo "<span class="material-icons">check_circle</span> Verifying initialization..."
+echo "✅ Verifying initialization..."
 cd "$PROJECT_NAME"
 moai-adk doctor
 ```
@@ -1460,21 +1460,21 @@ moai-adk init my-app-v2.0.1-beta
 #### 성공적인 프로젝트 구조
 ```
 awesome-api/
-├── .moai/                   # <span class="material-icons">check_circle</span> 명확한 MoAI-ADK 설정
-├── .claude/                 # <span class="material-icons">check_circle</span> Claude Code 자동화
-├── src/                     # <span class="material-icons">check_circle</span> 소스 코드 논리적 분리
-│   ├── core/               # <span class="material-icons">check_circle</span> 핵심 비즈니스 로직
-│   ├── api/                # <span class="material-icons">check_circle</span> API 계층
-│   ├── models/             # <span class="material-icons">check_circle</span> 데이터 모델
-│   └── services/           # <span class="material-icons">check_circle</span> 서비스 계층
-├── tests/                   # <span class="material-icons">check_circle</span> 테스트 코드 분리
-│   ├── unit/               # <span class="material-icons">check_circle</span> 단위 테스트
-│   ├── integration/        # <span class="material-icons">check_circle</span> 통합 테스트
-│   └── e2e/                # <span class="material-icons">check_circle</span> 엔드투엔드 테스트
-├── docs/                    # <span class="material-icons">check_circle</span> 문서화
-├── scripts/                 # <span class="material-icons">check_circle</span> 유틸리티 스크립트
-├── docker/                  # <span class="material-icons">check_circle</span> Docker 설정
-└── README.md                # <span class="material-icons">check_circle</span> 프로젝트 설명
+├── .moai/                   # ✅ 명확한 MoAI-ADK 설정
+├── .claude/                 # ✅ Claude Code 자동화
+├── src/                     # ✅ 소스 코드 논리적 분리
+│   ├── core/               # ✅ 핵심 비즈니스 로직
+│   ├── api/                # ✅ API 계층
+│   ├── models/             # ✅ 데이터 모델
+│   └── services/           # ✅ 서비스 계층
+├── tests/                   # ✅ 테스트 코드 분리
+│   ├── unit/               # ✅ 단위 테스트
+│   ├── integration/        # ✅ 통합 테스트
+│   └── e2e/                # ✅ 엔드투엔드 테스트
+├── docs/                    # ✅ 문서화
+├── scripts/                 # ✅ 유틸리티 스크립트
+├── docker/                  # ✅ Docker 설정
+└── README.md                # ✅ 프로젝트 설명
 ```
 
 ### 초기화 체크리스트

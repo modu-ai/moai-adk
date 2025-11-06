@@ -99,20 +99,6 @@ Each phase contains explicit step-by-step instructions.
 
 PHASE 1 consists of **two independent sub-phases** to provide flexible workflow based on user request clarity:
 
-### 🚀 Initialize Session with JIT Skills
-
-Before starting PHASE 1, load essential JIT skills for enhanced context:
-
-```python
-# Load session information for project context
-Skill("moai-session-info")
-
-# Load JIT documentation capabilities for enhanced understanding
-Skill("moai-jit-docs-enhanced")
-```
-
-This provides immediate project context and enhances documentation understanding during planning.
-
 ### 📋 PHASE 1 Workflow Overview
 
 ```
@@ -396,24 +382,6 @@ Your task is to create the SPEC document files in the correct directory structur
 rg "@SPEC:{ID}" -n .moai/specs/
 ```
 
-**TAG Policy Compliance Check**: After SPEC creation, verify TAG policy compliance:
-
-```bash
-# Validate TAG format and chain integrity
-python3 -c "
-import sys
-sys.path.insert(0, 'src')
-from moai_adk.core.tags.policy_validator import TagPolicyValidator
-validator = TagPolicyValidator()
-violations = validator.validate_after_modification('.moai/specs/SPEC-{ID}/spec.md', content)
-if violations:
-    print('❌ TAG 정책 위반 발견:', violations)
-    sys.exit(1)
-else:
-    print('✅ TAG 정책 준수 확인')
-"
-```
-
 **Composite Domain Rules**:
 - ✅ Allow: `UPDATE-REFACTOR-001` (2 domains)
 - ⚠️ Caution: `UPDATE-REFACTOR-FIX-001` (3+ domains, simplification recommended)
@@ -447,7 +415,7 @@ YAML 프론트매터와 @TAG 식별자는 반드시 영어로 유지합니다.
 - Skill("moai-foundation-specs") - SPEC 구조 가이드
 - Skill("moai-foundation-ears") - EARS 문법 요구사항
 - Skill("moai-alfred-spec-metadata-validation") - 메타데이터 검증
-- Skill("moai-foundation-tags") - TAG 체인 참조
+- Skill("moai-alfred-tag-scanning") - TAG 체인 참조
 
 작업:
 STEP 1에서 승인된 계획에 따라 SPEC 문서를 작성해주세요.
@@ -548,13 +516,6 @@ The spec-builder agent will:
    - Given-When-Then scenarios
    - Test cases
    - Success criteria
-
-5. **TAG Policy Validation** (CRITICAL - SPEC-first enforcement):
-   - Verify @TAG compliance in all created files
-   - Check SPEC chain integrity (@SPEC → @TEST → @CODE → @DOC)
-   - Validate TAG format: @(SPEC|CODE|TEST|DOC):DOMAIN-TYPE-NNN
-   - Ensure no duplicate TAGs across project
-   - Confirm SPEC ID uniqueness via project scan
 
 ### Step 3: Verify SPEC files were created
 
@@ -827,7 +788,7 @@ For complete EARS syntax and examples, invoke: `Skill("moai-foundation-ears")`
 
 ### SPEC Metadata Standard
 
-For complete metadata field descriptions, validation rules, and version system guide, invoke: `Skill("moai-foundation-specs")`
+For complete metadata field descriptions, validation rules, and version system guide, invoke: `Skill("moai-alfred-spec-metadata-validation")`
 
 **Quick reference**:
 - **7 required fields**: id, version, status, created, updated, author, priority

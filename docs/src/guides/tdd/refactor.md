@@ -2,23 +2,23 @@
 
 ## 목차
 
-1. [REFACTOR 단계의 목표와 타이밍](#refactor-단계의-목표와-타이밍)
-2. [코드 냄새와 중복 제거](#코드-냄새와-중복-제거)
-3. [성능 최적화 기법](#성능-최적화-기법)
-4. [가독성 향상 전략](#가독성-향상-전략)
-5. [SOLID 원칙 적용](#solid-원칙-적용)
-6. [안전한 리팩토링 기법](#안전한-리팩토링-기법)
-7. [실전 코드 예시 (전후 비교)](#실전-코드-예시-전후-비교)
-8. [Git 커밋 전략 (REFACTOR 단계)](#git-커밋-전략-refactor-단계)
-9. [REFACTOR 단계 체크리스트](#refactor-단계-체크리스트)
+1. [REFACTOR 단계의 목표와 타이밍](#refactor-%EB%8B%A8%EA%B3%84%EC%9D%98-%EB%AA%A9%ED%91%9C%EC%99%80-%ED%83%80%EC%9D%B4%EB%B0%8D)
+2. [코드 냄새와 중복 제거](#%EC%BD%94%EB%93%9C-%EB%83%84%EC%83%88%EC%99%80-%EC%A4%91%EB%B3%B5-%EC%A0%9C%EA%B1%B0)
+3. [성능 최적화 기법](#%EC%84%B1%EB%8A%A5-%EC%B5%9C%EC%A0%81%ED%99%94-%EA%B8%B0%EB%B2%95)
+4. [가독성 향상 전략](#%EA%B0%80%EB%8F%85%EC%84%B1-%ED%96%A5%EC%83%81-%EC%A0%84%EB%9E%B5)
+5. [SOLID 원칙 적용](#solid-%EC%9B%90%EC%B9%99-%EC%A0%81%EC%9A%A9)
+6. [안전한 리팩토링 기법](#%EC%95%88%EC%A0%84%ED%95%9C-%EB%A6%AC%ED%8C%A9%ED%86%A0%EB%A7%81-%EA%B8%B0%EB%B2%95)
+7. [실전 코드 예시 (전후 비교)](#%EC%8B%A4%EC%A0%84-%EC%BD%94%EB%93%9C-%EC%98%88%EC%8B%9C-%EC%A0%84%ED%9B%84-%EB%B9%84%EA%B5%90)
+8. [Git 커밋 전략 (REFACTOR 단계)](#git-%EC%BB%A4%EB%B0%8B-%EC%A0%84%EB%9E%B5-refactor-%EB%8B%A8%EA%B3%84)
+9. [REFACTOR 단계 체크리스트](#refactor-%EB%8B%A8%EA%B3%84-%EC%B2%B4%ED%81%AC%EB%A6%AC%EC%8A%A4%ED%8A%B8)
 
----
+______________________________________________________________________
 
 ## REFACTOR 단계의 목표와 타이밍
 
 ### REFACTOR 단계의 핵심 목표
 
-REFACTOR 단계는 **"동작하는 코드를 더 잘 만드는 것"**입니다. 핵심 목표는:
+REFACTOR 단계는 \*\*"동작하는 코드를 더 잘 만드는 것"\*\*입니다. 핵심 목표는:
 
 ```mermaid
 graph TD
@@ -41,11 +41,13 @@ graph TD
 ### 1. 리팩토링의 정의
 
 **리팩토링이란:**
+
 - **외부 동작을 변경하지 않고** 코드의 내부 구조를 개선하는 과정
 - 코드의 이해도, 유지보수성, 성능을 향상시키는 활동
 - **테스트 보호 하에** 안전하게 진행되는 코드 개선
 
 **리팩토링이 아닌 것:**
+
 - 기능 추가/삭제
 - 버그 수정
 - API 변경
@@ -76,16 +78,19 @@ def process_user_data(user_list):
 #### ⚡ 즉시 리팩토링해야 할 상황
 
 1. **코드 냄새(Code Smells) 발견 시**
+
    - 중복 코드 (DRY 위반)
    - 긴 메소드/함수
    - 거대한 클래스
    - 긴 매개변수 목록
 
 2. **테스트 통과 직후**
+
    - GREEN 단계 완료 직후가 가장 이상적
    - 코드가 신선하고 맥락이 명확할 때
 
 3. **코드 리뷰 시**
+
    - 동료가 지적한 개선점
    - 복잡하다고 느껴지는 부분
 
@@ -121,7 +126,7 @@ def get_discount_rate(customer_type, years_loyal):
     pass
 ```
 
----
+______________________________________________________________________
 
 ## 코드 냄새와 중복 제거
 
@@ -469,7 +474,7 @@ order = (OrderBuilder()
     .build())
 ```
 
----
+______________________________________________________________________
 
 ## 성능 최적화 기법
 
@@ -717,7 +722,7 @@ class ReportGenerator:
         return total_sales, avg_sale_amount
 ```
 
----
+______________________________________________________________________
 
 ## 가독성 향상 전략
 
@@ -901,7 +906,7 @@ def _get_base_shipping_cost(weight):
             return cost
 ```
 
----
+______________________________________________________________________
 
 ## SOLID 원칙 적용
 
@@ -1150,7 +1155,7 @@ def make_bird_walk(bird: WalkingBird):
     return bird.walk()  # 걸을 수 있는 새만 들어옴
 ```
 
----
+______________________________________________________________________
 
 ## 안전한 리팩토링 기법
 
@@ -1256,7 +1261,7 @@ git checkout main
 git merge refactor/improve-user-service-validation
 ```
 
----
+______________________________________________________________________
 
 ## 실전 코드 예시 (전후 비교)
 
@@ -1659,14 +1664,14 @@ async def get_current_user(
 
 #### 코드 품질 지표 비교
 
-| 지표 | BEFORE | AFTER | 개선 |
-|------|--------|-------|------|
-| **메소드 평균 길이** | 25줄 | 12줄 | 52% 감소 |
-| **클래스 책임 수** | 4개 | 1개 | 75% 감소 |
-| **테스트 커버리지** | 85% | 95% | 10% 향상 |
-| **의존성 결합도** | 높음 | 낮음 | DI 도입 |
-| **코드 중복** | 30% | 5% | 83% 감소 |
-| **인터페이스 분리** | 없음 | 3개 | 명확한 경계 |
+| 지표                 | BEFORE | AFTER | 개선        |
+| -------------------- | ------ | ----- | ----------- |
+| **메소드 평균 길이** | 25줄   | 12줄  | 52% 감소    |
+| **클래스 책임 수**   | 4개    | 1개   | 75% 감소    |
+| **테스트 커버리지**  | 85%    | 95%   | 10% 향상    |
+| **의존성 결합도**    | 높음   | 낮음  | DI 도입     |
+| **코드 중복**        | 30%    | 5%    | 83% 감소    |
+| **인터페이스 분리**  | 없음   | 3개   | 명확한 경계 |
 
 #### 유지보수성 향상
 
@@ -1689,7 +1694,7 @@ class AuthService:
         self.social_providers[provider.name] = provider
 ```
 
----
+______________________________________________________________________
 
 ## Git 커밋 전략 (REFACTOR 단계)
 
@@ -1699,7 +1704,7 @@ REFACTOR 단계 커밋은 코드 개선을 명확히 표시해야 합니다:
 
 ```bash
 # 좋은 커밋 메시지 예시
-git commit -m "<span class="material-icons">recycling</span> refactor(AUTH-001): improve authentication service architecture
+git commit -m "♻️ refactor(AUTH-001): improve authentication service architecture
 
 - Extract interfaces for UserRepository, PasswordHasher, TokenGenerator
 - Implement BCrypt password hashing instead of plain text comparison
@@ -1711,10 +1716,10 @@ Breaking changes: None
 Tests: All passing, coverage improved from 85% to 95%"
 
 # 작은 단계 리팩토링
-git commit -m "<span class="material-icons">recycling</span> refactor(AUTH-001): extract email validation to separate method"
+git commit -m "♻️ refactor(AUTH-001): extract email validation to separate method"
 
 # 성능 개선
-git commit -m "<span class="material-icons">recycling</span> refactor(AUTH-001): add JWT token caching for improved performance"
+git commit -m "♻️ refactor(AUTH-001): add JWT token caching for improved performance"
 ```
 
 ### 2. 커밋 단위와 그래뉼리티
@@ -1723,19 +1728,19 @@ git commit -m "<span class="material-icons">recycling</span> refactor(AUTH-001):
 
 ```bash
 # 1. 구조적 리팩토링 (가장 큰 변경)
-git commit -m "<span class="material-icons">recycling</span> refactor(AUTH-001): extract authentication interfaces"
+git commit -m "♻️ refactor(AUTH-001): extract authentication interfaces"
 
 # 2. 구현 개선
-git commit -m "<span class="material-icons">recycling</span> refactor(AUTH-001): implement BCrypt password hashing"
+git commit -m "♻️ refactor(AUTH-001): implement BCrypt password hashing"
 
 # 3. 에러 핸들링 개선
-git commit -m "<span class="material-icons">recycling</span> refactor(AUTH-001): add custom exception types"
+git commit -m "♻️ refactor(AUTH-001): add custom exception types"
 
 # 4. 성능 최적화
-git commit -m "<span class="material-icons">recycling</span> refactor(AUTH-001): add token caching mechanism"
+git commit -m "♻️ refactor(AUTH-001): add token caching mechanism"
 
 # 5. 코드 스타일 개선
-git commit -m "<span class="material-icons">recycling</span> refactor(AUTH-001): improve code formatting and naming"
+git commit -m "♻️ refactor(AUTH-001): improve code formatting and naming"
 ```
 
 ### 3. 브랜치 관리
@@ -1790,7 +1795,7 @@ REFACTOR 단계 코드 리뷰 체크리스트:
 - [ ] 테스트 가독성이 개선되었는가?
 ```
 
----
+______________________________________________________________________
 
 ## REFACTOR 단계 체크리스트
 
@@ -1844,7 +1849,7 @@ REFACTOR 단계 코드 리뷰 체크리스트:
 - [ ] **사용성**: API 사용 편의성이 개선되었는가?
 - [ ] **문서 업데이트**: 관련 문서가 업데이트되었는가?
 
----
+______________________________________________________________________
 
 ## 결론
 
@@ -1855,11 +1860,11 @@ REFACTOR 단계는 TDD 사이클의 마지막 단계로, **동작하는 코드�
 3. **성능 최적화**: 효율적인 알고리즘과 자원 사용
 4. **미래 준비**: 새로운 요구사항에 쉽게 대응 가능한 구조
 
-리팩토링의 핵심은 **"작은 단계, 안전한 개선, 지속적 품질 향상"**입니다. 테스트 보호 하에 신중하게 진행하고, 항상 코드를 더 나은 상태로 남기는 것이 중요합니다.
+리팩토링의 핵심은 \*\*"작은 단계, 안전한 개선, 지속적 품질 향상"\*\*입니다. 테스트 보호 하에 신중하게 진행하고, 항상 코드를 더 나은 상태로 남기는 것이 중요합니다.
 
-**REFACTOR 단계의 성공은 지속 가능한 소프트웨어 개발의 기반을 마련합니다!** <span class="material-icons">settings</span>✨
+**REFACTOR 단계의 성공은 지속 가능한 소프트웨어 개발의 기반을 마련합니다!** ⚙️✨
 
----
+______________________________________________________________________
 
 ## 다음 단계
 

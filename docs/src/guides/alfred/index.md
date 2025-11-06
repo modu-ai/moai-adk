@@ -8,7 +8,8 @@
 
 </div>
 
-Alfred is the SuperAgent that orchestrates the entire MoAI-ADK development workflow. This guide explains how to use Alfred's four core commands to create a seamless development experience.
+Alfred is the SuperAgent that orchestrates the entire MoAI-ADK development workflow. This guide
+explains how to use Alfred's four core commands to create a seamless development experience.
 
 ## Overview
 
@@ -42,21 +43,21 @@ Alfred coordinates multiple specialized agents and skills:
 Alfred SuperAgent (Orchestration Layer)
     ├── Core Sub-agents (Workflow Execution)
     │   ├── project-manager 📋 - Project initialization and setup
-    │   ├── spec-builder <span class="material-icons">construction</span> - SPEC creation with EARS syntax
-    │   ├── implementation-planner <span class="material-icons">analytics</span> - Architecture and planning
+    │   ├── spec-builder 🏗️ - SPEC creation with EARS syntax
+    │   ├── implementation-planner 📊 - Architecture and planning
     │   ├── tdd-implementer 💎 - TDD cycle execution
-    │   ├── doc-syncer <span class="material-icons">auto_stories</span> - Documentation synchronization
-    │   ├── tag-agent <span class="material-icons">label</span> - TAG system management
-    │   ├── git-manager <span class="material-icons">rocket_launch</span> - Git workflow automation
-    │   ├── trust-checker <span class="material-icons">check_circle</span> - Quality validation
-    │   └── quality-gate <span class="material-icons">shield</span> - Release readiness checks
+    │   ├── doc-syncer 📚 - Documentation synchronization
+    │   ├── tag-agent 🏷️ - TAG system management
+    │   ├── git-manager 🚀 - Git workflow automation
+    │   ├── trust-checker ✅ - Quality validation
+    │   └── quality-gate 🛡️ - Release readiness checks
     ├── Expert Agents (Domain Knowledge)
-    │   ├── backend-expert <span class="material-icons">settings</span> - Backend architecture and APIs
+    │   ├── backend-expert ⚙️ - Backend architecture and APIs
     │   ├── frontend-expert 💻 - Frontend development and UX
-    │   ├── devops-expert <span class="material-icons">rocket_launch</span> - Deployment and infrastructure
-    │   ├── ui-ux-expert <span class="material-icons">palette</span> - Design systems and accessibility
-    │   ├── security-expert <span class="material-icons">lock</span> - Security analysis and best practices
-    │   └── database-expert <span class="material-icons">storage</span> - Database design and optimization
+    │   ├── devops-expert 🚀 - Deployment and infrastructure
+    │   ├── ui-ux-expert 🎨 - Design systems and accessibility
+    │   ├── security-expert 🔒 - Security analysis and best practices
+    │   └── database-expert 💾 - Database design and optimization
     └── Skills Library (69+ Production Guides)
         ├── Foundation Skills (Core principles)
         ├── Essential Skills (Daily tools)
@@ -81,6 +82,7 @@ Alfred uses a just-in-time loading system to provide relevant skills when needed
 **Purpose**: Initialize projects, manage settings, and optimize templates.
 
 **Usage Scenarios**:
+
 - New project setup
 - Configuration changes
 - Template updates after package upgrades
@@ -88,29 +90,36 @@ Alfred uses a just-in-time loading system to provide relevant skills when needed
 **Three Execution Modes**:
 
 1. **Basic Mode** (Smart Auto-Detection)
+
    ```bash
    /alfred:0-project
    ```
+
    - First run: Project initialization
    - Subsequent runs: "Already Initialized" menu
 
 2. **Setting Mode** (Modify Existing Configuration)
+
    ```bash
    /alfred:0-project setting
    ```
+
    - Change language, nickname, GitHub settings
    - Batch questions for efficiency
    - Preserves other settings
 
 3. **Update Mode** (Template Optimization)
+
    ```bash
    /alfred:0-project update
    ```
+
    - Merge new templates after `moai-adk update`
    - Preserve user customizations
    - Resolve conflicts intelligently
 
 **Key Activities**:
+
 - Collect project metadata (name, goals, language, mode)
 - Generate `.moai/config.json` and `.moai/project/*` documents
 - Recommend and configure skill packs
@@ -122,12 +131,14 @@ Alfred uses a just-in-time loading system to provide relevant skills when needed
 **Purpose**: Transform ideas into clear, executable specifications.
 
 **Usage Scenarios**:
+
 - New feature requirements
 - API endpoint definitions
 - User story elaboration
 - Architecture planning
 
 **Command Format**:
+
 ```bash
 /alfred:1-plan "Brief description of what you want to build"
 ```
@@ -135,29 +146,34 @@ Alfred uses a just-in-time loading system to provide relevant skills when needed
 **Alfred's Process**:
 
 1. **Requirement Analysis**
+
    - Parse user input for key requirements
    - Identify domain keywords for expert activation
    - Determine scope and complexity
 
 2. **SPEC Creation**
+
    - Generate unique SPEC ID (DOMAIN-001 format)
    - Write EARS-format requirements
    - Define acceptance criteria
    - Create implementation plan
 
 3. **Expert Consultation**
+
    - Activate relevant domain experts
    - Gather architectural recommendations
    - Identify risks and dependencies
    - Document expert opinions with `@EXPERT:` tags
 
 4. **Deliverables Generation**
+
    - `.moai/specs/SPEC-*/spec.md` - Main specification
    - `.moai/specs/SPEC-*/plan.md` - Implementation plan
    - Feature branch (team mode)
    - Initial project structure
 
 **SPEC Components**:
+
 - **YAML Frontmatter**: ID, version, status, priority
 - **EARS Requirements**: Clear, testable requirements
 - **Acceptance Criteria**: Success conditions
@@ -169,12 +185,14 @@ Alfred uses a just-in-time loading system to provide relevant skills when needed
 **Purpose**: Execute TDD cycles to implement specifications.
 
 **Usage Scenarios**:
+
 - Feature implementation
 - Bug fixes
 - Refactoring tasks
 - Performance improvements
 
 **Command Format**:
+
 ```bash
 /alfred:2-run SPEC-ID
 ```
@@ -182,6 +200,7 @@ Alfred uses a just-in-time loading system to provide relevant skills when needed
 **Alfred's Process**:
 
 1. **Phase 1: Implementation Planning**
+
    - **implementation-planner** analyzes SPEC
    - Determines architecture and libraries
    - Designs folder structure
@@ -189,6 +208,7 @@ Alfred uses a just-in-time loading system to provide relevant skills when needed
    - Activates domain experts
 
 2. **Phase 2: TDD Execution**
+
    - **tdd-implementer** executes RED→GREEN→REFACTOR
    - Creates failing tests (RED)
    - Implements minimal solution (GREEN)
@@ -196,6 +216,7 @@ Alfred uses a just-in-time loading system to provide relevant skills when needed
    - Validates against TRUST 5 principles
 
 3. **Phase 3: Quality Assurance**
+
    - **trust-checker** validates code quality
    - **quality-gate** ensures release readiness
    - Automated testing and coverage checks
@@ -204,18 +225,21 @@ Alfred uses a just-in-time loading system to provide relevant skills when needed
 **TDD Cycle Details**:
 
 **🔴 RED Phase**:
+
 - Write comprehensive tests first
 - Tests MUST fail initially
 - Cover all acceptance criteria
 - Include edge cases and error conditions
 
 **🟢 GREEN Phase**:
+
 - Implement minimal code to pass tests
 - Focus on functionality over perfection
 - Ensure all tests pass
 - Commit with `feat()` message
 
-**<span class="material-icons">recycling</span> REFACTOR Phase**:
+**♻️ REFACTOR Phase**:
+
 - Improve code quality and structure
 - Apply TRUST 5 principles
 - Maintain test coverage
@@ -227,12 +251,14 @@ Alfred uses a just-in-time loading system to provide relevant skills when needed
 **Purpose**: Synchronize documentation and validate system integrity.
 
 **Usage Scenarios**:
+
 - After feature completion
 - Before releases
 - Documentation updates
 - Quality audits
 
 **Command Format**:
+
 ```bash
 /alfred:3-sync
 # or with options
@@ -243,30 +269,35 @@ Alfred uses a just-in-time loading system to provide relevant skills when needed
 **Alfred's Process**:
 
 1. **TAG Chain Validation**
+
    - **tag-agent** scans all @TAG markers
    - Verifies complete SPEC→TEST→CODE→DOC chains
    - Detects orphaned TAGs
    - Reports chain integrity metrics
 
 2. **Documentation Synchronization**
+
    - **doc-syncer** generates/updates documentation
    - Creates API docs from code annotations
    - Updates README and CHANGELOG
    - Generates living documents
 
 3. **Quality Gate Validation**
+
    - **trust-checker** validates TRUST 5 compliance
    - **quality-gate** checks release readiness
    - Test coverage analysis
    - Security vulnerability scans
 
 4. **Git Workflow Management**
+
    - **git-manager** handles branch operations
    - Creates draft PRs (team mode)
    - Manages auto-merge settings
    - Generates sync reports
 
 **Synchronization Results**:
+
 - **Documentation**: Always up-to-date with code
 - **TAG Integrity**: Complete traceability maintained
 - **Quality**: TRUST 5 compliance verified
@@ -277,17 +308,20 @@ Alfred uses a just-in-time loading system to provide relevant skills when needed
 **Purpose**: Create GitHub issues for bugs, features, and improvements.
 
 **Usage Scenarios**:
+
 - Bug reports during development
 - Feature ideas and suggestions
 - Process improvements
 - Team discussions
 
 **Command Format**:
+
 ```bash
 /alfred:9-feedback
 ```
 
 **Interactive Process**:
+
 1. Select issue type (Bug/Feature/Improvement/Question)
 2. Enter descriptive title
 3. Add detailed description (optional)
@@ -295,6 +329,7 @@ Alfred uses a just-in-time loading system to provide relevant skills when needed
 5. Automatic GitHub issue creation
 
 **Benefits**:
+
 - Immediate issue creation without context switching
 - Standardized issue format with labels
 - Team visibility and tracking
@@ -322,14 +357,14 @@ stateDiagram-v2
     end note
 
     note right of draft
-        <span class="material-icons">description</span> Draft Phase
+        📄 Draft Phase
         - EARS requirements
         - Acceptance criteria
         - Risk assessment
     end note
 
     note right of in_progress
-        <span class="material-icons">rocket_launch</span> Development Phase
+        🚀 Development Phase
         - TDD execution
         - Code implementation
         - Quality validation
@@ -343,7 +378,7 @@ stateDiagram-v2
     end note
 
     note right of completed
-        <span class="material-icons">check_circle</span> Completed Phase
+        ✅ Completed Phase
         - Documentation sync
         - Release ready
         - Production deployment
@@ -352,19 +387,20 @@ stateDiagram-v2
 
 ### State Transitions
 
-| Current State | Next State | Trigger | Conditions |
-|---------------|------------|---------|------------|
-| planning | draft | SPEC completion | EARS requirements defined |
-| draft | in_progress | `/alfred:2-run` | Implementation approved |
-| in_progress | testing | TDD complete | All tests passing |
-| testing | completed | `/alfred:3-sync` | Documentation synchronized |
-| completed | planning | New feature | Next development cycle |
+| Current State | Next State  | Trigger          | Conditions                 |
+| ------------- | ----------- | ---------------- | -------------------------- |
+| planning      | draft       | SPEC completion  | EARS requirements defined  |
+| draft         | in_progress | `/alfred:2-run`  | Implementation approved    |
+| in_progress   | testing     | TDD complete     | All tests passing          |
+| testing       | completed   | `/alfred:3-sync` | Documentation synchronized |
+| completed     | planning    | New feature      | Next development cycle     |
 
 ## Best Practices
 
 ### Command Usage Patterns
 
 **New Feature Development**:
+
 ```bash
 /alfred:1-plan "Feature description"
 /alfred:2-run FEATURE-ID
@@ -372,6 +408,7 @@ stateDiagram-v2
 ```
 
 **Bug Fix Process**:
+
 ```bash
 /alfred:9-feedback  # Create bug issue
 /alfred:1-plan "Bug fix for ISSUE-XXX"
@@ -380,6 +417,7 @@ stateDiagram-v2
 ```
 
 **Project Maintenance**:
+
 ```bash
 moai-adk update
 /alfred:0-project update
@@ -399,11 +437,13 @@ Always ensure these checks pass before considering work complete:
 ### Team Collaboration
 
 **Individual Mode**:
+
 - Direct commits to develop branch
 - Personal project settings
 - Local documentation
 
 **Team Mode**:
+
 - Feature branches with PRs
 - Shared project configuration
 - Collaborative reviews
@@ -476,21 +516,25 @@ moai-adk doctor
 ### Common Issues
 
 **Command not recognized**:
+
 - Verify Claude Code version (v1.5.0+)
 - Check `.claude/commands/` directory exists
 - Restart Claude Code
 
 **SPEC creation fails**:
+
 - Check network connection
 - Verify `.moai/` directory permissions
 - Run `moai-adk doctor`
 
 **TDD cycle issues**:
+
 - Check dependencies installed: `uv sync`
 - Verify test framework: `pytest --version`
 - Check Python path: `which python`
 
 **Sync problems**:
+
 - Verify TAG format: `@TYPE:DOMAIN-001`
 - Check file permissions
 - Run `/alfred:3-sync --force`
@@ -533,4 +577,5 @@ Now that you understand Alfred's workflow, explore these guides:
 - **[TAG System](../../reference/tags/index.md)** - Understand traceability
 - **[Project Configuration](../project/config.md)** - Customize your setup
 
-Alfred is your partner in creating reliable, maintainable software. Trust the process, follow the workflow, and enjoy the confidence that comes with systematic development! <span class="material-icons">rocket_launch</span>
+Alfred is your partner in creating reliable, maintainable software. Trust the process, follow the
+workflow, and enjoy the confidence that comes with systematic development! 🚀
