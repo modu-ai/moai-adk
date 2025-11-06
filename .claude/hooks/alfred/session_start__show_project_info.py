@@ -118,7 +118,7 @@ def get_test_info() -> dict[str, Any]:
 def format_session_output() -> str:
     """Format minimal session start output (optimized for speed)
 
-    Only includes essential Git information.
+    Only includes essential Git information + version.
     Removed slow operations:
     - SPEC progress scan
     - Risk calculation
@@ -127,10 +127,20 @@ def format_session_output() -> str:
     # Gather minimal information (fast)
     git_info = get_git_info()
 
+    # Get MoAI version from config (fast, single file read)
+    moai_version = "unknown"
+    try:
+        config_path = Path.cwd() / ".moai" / "config.json"
+        if config_path.exists():
+            config = json.loads(config_path.read_text())
+            moai_version = config.get("moai", {}).get("version", "unknown")
+    except Exception:
+        pass
+
     # Format minimal output
     output = [
-        "🚀 MoAI-ADK Session",
-        f"🌿 {git_info['branch']} | 📝 {git_info['changes']} changes",
+        f"🗿 Version: {moai_version} | 🌿 {git_info['branch']} ({git_info['branch'][:4] if git_info['branch'] != 'unknown' else 'unknown'})",
+        f"📝 Changes: {git_info['changes']}",
         f"📌 {git_info['last_commit']} ({git_info['commit_time']})"
     ]
 
