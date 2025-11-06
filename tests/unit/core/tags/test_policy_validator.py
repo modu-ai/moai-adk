@@ -43,12 +43,11 @@ class TestTagPolicyValidator:
 
     def test_detect_specless_code_violation(self, validator, temp_dir):
         """Test detection of CODE files without SPEC"""
-        # Create a code file without TAG
+        # Create a code file without TAG (don't write yet - validate before creation)
         code_file = temp_dir / "src" / "example.py"
         code_file.parent.mkdir(parents=True)
-        code_file.write_text("def example(): pass")
 
-        # Should detect SPEC-less code violation
+        # Should detect SPEC-less code violation for new file
         violations = validator.validate_before_creation(str(code_file), "def example(): pass")
 
         assert len(violations) > 0
@@ -59,11 +58,10 @@ class TestTagPolicyValidator:
 
     def test_detect_missing_spec_reference(self, validator, temp_dir):
         """Test detection of CODE with TAG but missing SPEC reference"""
-        # Create a code file with TAG but no SPEC
+        # Create a code file with TAG but no SPEC (don't write - validate before creation)
         code_file = temp_dir / "src" / "example.py"
         code_file.parent.mkdir(parents=True)
         content = "# @CODE:EXAMPLE-001\ndef example(): pass"
-        code_file.write_text(content)
 
         violations = validator.validate_before_creation(str(code_file), content)
 
