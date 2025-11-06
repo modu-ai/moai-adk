@@ -1,10 +1,13 @@
 # SPEC Writing Basics
 
-Learn how to write clear, executable specifications using the EARS (Easy Approach to Requirements Syntax) format. Good specifications are the foundation of successful software development.
+Learn how to write clear, executable specifications using the EARS (Easy Approach to Requirements
+Syntax) format. Good specifications are the foundation of successful software development.
 
 ## Overview
 
-A SPEC (Specification) in MoAI-ADK is a structured document that defines what needs to be built, how it should behave, and what constraints apply. SPECs follow the EARS methodology to ensure clarity, testability, and completeness.
+A SPEC (Specification) in MoAI-ADK is a structured document that defines what needs to be built, how
+it should behave, and what constraints apply. SPECs follow the EARS methodology to ensure clarity,
+testability, and completeness.
 
 ### What Makes a Good SPEC?
 
@@ -18,7 +21,8 @@ A SPEC (Specification) in MoAI-ADK is a structured document that defines what ne
 
 > "No code without specifications, no tests without clear requirements"
 
-SPECs are written **before** any code is created, ensuring that everyone understands exactly what needs to be built and how success will be measured.
+SPECs are written **before** any code is created, ensuring that everyone understands exactly what
+needs to be built and how success will be measured.
 
 ## SPEC Structure and Components
 
@@ -49,7 +53,8 @@ milestone: "Sprint 23 - Q1 2025"
 
 - **`id`**: Unique identifier in `DOMAIN-NNN` format
 - **`version`**: Semantic version following `MAJOR.MINOR.PATCH`
-- **`status`**: Current state (draft, in_review, approved, in_progress, completed, stable, deprecated)
+- **`status`**: Current state (draft, in_review, approved, in_progress, completed, stable,
+  deprecated)
 - **`priority`**: Importance level (critical, high, medium, low)
 - **`domain`**: Functional area (authentication, user_management, api, database, etc.)
 - **`complexity`**: Implementation difficulty (simple, medium, complex, expert)
@@ -90,7 +95,8 @@ Technical considerations and recommendations from experts.
 
 ## EARS Syntax: The 5 Patterns
 
-EARS (Easy Approach to Requirements Syntax) provides 5 clear patterns for writing requirements. Each pattern serves a specific purpose and uses consistent language.
+EARS (Easy Approach to Requirements Syntax) provides 5 clear patterns for writing requirements. Each
+pattern serves a specific purpose and uses consistent language.
 
 ### 1. Ubiquitous Requirements
 
@@ -99,6 +105,7 @@ EARS (Easy Approach to Requirements Syntax) provides 5 clear patterns for writin
 **Pattern**: `The system SHALL <capability>`
 
 **Examples**:
+
 ```markdown
 - The system SHALL provide user authentication via email and password
 - The system SHALL support JWT token-based session management
@@ -108,6 +115,7 @@ EARS (Easy Approach to Requirements Syntax) provides 5 clear patterns for writin
 ```
 
 **Characteristics**:
+
 - Always active functionality
 - Core system capabilities
 - No conditions or triggers
@@ -120,6 +128,7 @@ EARS (Easy Approach to Requirements Syntax) provides 5 clear patterns for writin
 **Pattern**: `WHEN <trigger occurs>, the system SHALL <response>`
 
 **Examples**:
+
 ```markdown
 - WHEN valid credentials are provided, the system SHALL issue access and refresh tokens
 - WHEN invalid credentials are provided, the system SHALL return a 401 error
@@ -129,6 +138,7 @@ EARS (Easy Approach to Requirements Syntax) provides 5 clear patterns for writin
 ```
 
 **Characteristics**:
+
 - Clear trigger-response relationship
 - Event-driven behavior
 - Specific conditions and outcomes
@@ -141,6 +151,7 @@ EARS (Easy Approach to Requirements Syntax) provides 5 clear patterns for writin
 **Pattern**: `WHILE <condition exists>, the system SHALL <behavior>`
 
 **Examples**:
+
 ```markdown
 - WHILE a user is authenticated, the system SHALL allow access to protected resources
 - WHILE a session is active, the system SHALL maintain user context
@@ -150,6 +161,7 @@ EARS (Easy Approach to Requirements Syntax) provides 5 clear patterns for writin
 ```
 
 **Characteristics**:
+
 - Continuous behavior while condition exists
 - State-dependent functionality
 - Context-aware operations
@@ -162,6 +174,7 @@ EARS (Easy Approach to Requirements Syntax) provides 5 clear patterns for writin
 **Pattern**: `WHERE <condition is met>, the system MAY <optional behavior>`
 
 **Examples**:
+
 ```markdown
 - WHERE multi-factor authentication is enabled, the system MAY require additional verification
 - WHERE social login providers are configured, the system MAY support OAuth authentication
@@ -171,6 +184,7 @@ EARS (Easy Approach to Requirements Syntax) provides 5 clear patterns for writin
 ```
 
 **Characteristics**:
+
 - Conditional functionality
 - Optional features
 - Enhancement capabilities
@@ -183,6 +197,7 @@ EARS (Easy Approach to Requirements Syntax) provides 5 clear patterns for writin
 **Pattern**: `The system SHALL NOT <undesired behavior>` or `<parameter> SHALL NOT <constraint>`
 
 **Examples**:
+
 ```markdown
 - The system SHALL NOT store passwords in plain text
 - The system SHALL NOT reveal whether an email address is registered
@@ -194,6 +209,7 @@ EARS (Easy Approach to Requirements Syntax) provides 5 clear patterns for writin
 ```
 
 **Characteristics**:
+
 - Security constraints
 - Business rules
 - Technical limitations
@@ -206,24 +222,28 @@ EARS (Easy Approach to Requirements Syntax) provides 5 clear patterns for writin
 For each requirement, verify:
 
 **Clarity**:
+
 - [ ] Language is unambiguous
 - [ ] Technical terms are defined
 - [ ] Acronyms are explained
 - [ ] Context is clear
 
 **Testability**:
+
 - [ ] Success criteria are defined
 - [ ] Test scenarios can be created
 - [ ] Expected outcomes are specified
 - [ ] Edge cases are considered
 
 **Completeness**:
+
 - [ ] All functional aspects covered
 - [ ] Error conditions included
 - [ ] Performance requirements specified
 - [ ] Security considerations addressed
 
 **Consistency**:
+
 - [ ] Language follows EARS patterns
 - [ ] Terminology is consistent
 - [ ] Requirements don't conflict
@@ -232,21 +252,25 @@ For each requirement, verify:
 ### Common Mistakes to Avoid
 
 **<span class="material-icons">cancel</span> Vague Language**:
+
 ```
 The system should handle user authentication well.
 ```
 
 **✅ Specific Language**:
+
 ```
 The system SHALL authenticate users via email/password credentials within 500ms.
 ```
 
 **<span class="material-icons">cancel</span> Multiple Requirements in One**:
+
 ```
 WHEN users login, the system SHALL issue tokens and log the attempt and update the user profile.
 ```
 
 **✅ Separate Requirements**:
+
 ```
 WHEN valid credentials are provided, the system SHALL issue JWT tokens.
 WHEN authentication occurs, the system SHALL log the attempt with timestamp.
@@ -254,22 +278,26 @@ WHEN users authenticate successfully, the system SHALL update last login timesta
 ```
 
 **<span class="material-icons">cancel</span> Implementation Details**:
+
 ```
 The system SHALL use bcrypt with 12 rounds to hash passwords in the PostgreSQL database.
 ```
 
 **✅ Behavioral Requirements**:
+
 ```
 The system SHALL hash passwords using a secure algorithm with minimum 12 rounds.
 The system SHALL store password hashes securely in the database.
 ```
 
 **<span class="material-icons">cancel</span> Missing Error Conditions**:
+
 ```
 WHEN users login with valid credentials, the system SHALL issue tokens.
 ```
 
 **✅ Complete Coverage**:
+
 ```
 WHEN valid credentials are provided, the system SHALL issue JWT tokens.
 WHEN invalid credentials are provided, the system SHALL return a 401 error.
@@ -286,17 +314,17 @@ WHEN the authentication service is unavailable, the system SHALL return a 503 er
 
 ### Domain Categories
 
-| Domain | Description | Examples |
-|--------|-------------|----------|
-| **AUTH** | Authentication and authorization | Login, registration, permissions |
-| **USER** | User management and profiles | Profile creation, user settings |
-| **API** | REST API endpoints and interfaces | HTTP endpoints, request/response formats |
-| **DB** | Database schemas and operations | Tables, queries, migrations |
-| **UI** | User interface components | Forms, pages, interactions |
-| **SEC** | Security features and controls | Encryption, auditing, compliance |
-| **PERF** | Performance and optimization | Caching, load balancing, monitoring |
-| **INT** | Integration with external systems | Third-party APIs, webhooks |
-| **CONFIG** | Configuration and settings | Environment variables, feature flags |
+| Domain     | Description                       | Examples                                 |
+| ---------- | --------------------------------- | ---------------------------------------- |
+| **AUTH**   | Authentication and authorization  | Login, registration, permissions         |
+| **USER**   | User management and profiles      | Profile creation, user settings          |
+| **API**    | REST API endpoints and interfaces | HTTP endpoints, request/response formats |
+| **DB**     | Database schemas and operations   | Tables, queries, migrations              |
+| **UI**     | User interface components         | Forms, pages, interactions               |
+| **SEC**    | Security features and controls    | Encryption, auditing, compliance         |
+| **PERF**   | Performance and optimization      | Caching, load balancing, monitoring      |
+| **INT**    | Integration with external systems | Third-party APIs, webhooks               |
+| **CONFIG** | Configuration and settings        | Environment variables, feature flags     |
 
 ### ID Assignment Process
 
@@ -306,6 +334,7 @@ WHEN the authentication service is unavailable, the system SHALL return a 503 er
 4. **Record in Registry**: Update `.moai/specs/registry.json`
 
 **Example Registry Entry**:
+
 ```json
 {
   "AUTH-001": {
@@ -396,6 +425,7 @@ Each acceptance criterion should be:
 ### Types of Dependencies
 
 **Functional Dependencies**:
+
 ```markdown
 ## Dependencies
 - USER-001: User management system (required for authentication)
@@ -404,6 +434,7 @@ Each acceptance criterion should be:
 ```
 
 **Technical Dependencies**:
+
 ```markdown
 ## Technical Dependencies
 - PostgreSQL database (version 13+)
@@ -413,6 +444,7 @@ Each acceptance criterion should be:
 ```
 
 **External Dependencies**:
+
 ```markdown
 ## External Dependencies
 - OAuth providers (Google, GitHub) for social login
@@ -433,18 +465,21 @@ Each acceptance criterion should be:
 ### Common Risk Categories
 
 **Technical Risks**:
+
 - Implementation complexity
 - Performance bottlenecks
 - Security vulnerabilities
 - Integration challenges
 
 **Business Risks**:
+
 - Changing requirements
 - Timeline constraints
 - Resource availability
 - User adoption
 
 **Operational Risks**:
+
 - Deployment challenges
 - Monitoring gaps
 - Maintenance overhead
@@ -478,6 +513,7 @@ Each acceptance criterion should be:
 ### Review Checklist
 
 **Content Review**:
+
 - [ ] Requirements are clear and unambiguous
 - [ ] All use cases are covered
 - [ ] Error conditions are specified
@@ -485,6 +521,7 @@ Each acceptance criterion should be:
 - [ ] Dependencies are identified
 
 **Format Review**:
+
 - [ ] YAML frontmatter is complete and valid
 - [ ] EARS patterns are used correctly
 - [ ] Language is consistent
@@ -492,6 +529,7 @@ Each acceptance criterion should be:
 - [ ] TAG references are correct
 
 **Quality Review**:
+
 - [ ] Technical feasibility is confirmed
 - [ ] Security considerations are addressed
 - [ ] Performance requirements are realistic
@@ -541,6 +579,7 @@ Brief description of the API endpoint functionality.
 ### Validation Tools
 
 **Built-in Validation**:
+
 ```bash
 # Validate SPEC syntax and structure
 moai-adk validate-spec .moai/specs/SPEC-AUTH-001/spec.md
@@ -553,6 +592,7 @@ moai-adk spec-stats
 ```
 
 **Integration with Alfred**:
+
 ```bash
 # Alfred automatically validates SPECs during creation
 /alfred:1-plan "Feature description"
@@ -587,4 +627,5 @@ moai-adk spec-stats
 4. **Knowledge Sharing**: Use SPECs as learning documents
 5. **Quality Standards**: Maintain high standards for all SPECs
 
-Remember: A well-written SPEC is an investment in project success. It prevents misunderstandings, reduces rework, and ensures that everyone is building the same thing! 🎯
+Remember: A well-written SPEC is an investment in project success. It prevents misunderstandings,
+reduces rework, and ensures that everyone is building the same thing! 🎯

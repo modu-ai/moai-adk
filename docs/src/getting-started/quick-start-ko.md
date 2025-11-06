@@ -1,8 +1,7 @@
 # 🚀 10분 완전 실습: Hello World API
 
-> **목표**: MoAI-ADK의 전체 워크플로우를 10분 안에 경험하기
-> **배우는 것**: SPEC 작성, TDD 구현, 문서 자동화, @TAG 시스템
-> **난이도**: 초급 (프로그래밍 기초 지식 필요)
+> **목표**: MoAI-ADK의 전체 워크플로우를 10분 안에 경험하기 **배우는 것**: SPEC 작성, TDD 구현, 문서 자동화, @TAG 시스템 **난이도**: 초급
+> (프로그래밍 기초 지식 필요)
 
 ## 🎯 이 실습으로 얻을 수 있는 것
 
@@ -31,7 +30,7 @@ cd hello-world
 ls -la .moai/ .claude/
 ```
 
----
+______________________________________________________________________
 
 ## 🏗️ 전체 워크플로우 개요
 
@@ -52,7 +51,7 @@ graph TD
     style Step4 fill:#fce4ec
 ```
 
----
+______________________________________________________________________
 
 ## 📄 Step <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_one</span>: SPEC 작성 (2분)
 
@@ -180,7 +179,7 @@ grep "@SPEC:HELLO-001" .moai/specs/SPEC-HELLO-001/spec.md
 # 출력: # @SPEC:HELLO-001: Hello World API
 ```
 
----
+______________________________________________________________________
 
 ## 🧪 Step <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_two</span>: TDD 구현 (5분)
 
@@ -472,7 +471,7 @@ git log --oneline | head -4
 # 출력: 3개의 커밋 (RED → GREEN → REFACTOR)
 ```
 
----
+______________________________________________________________________
 
 ## <span class="material-icons">menu_book</span> Step <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_3</span>: 문서 동기화 (2분)
 
@@ -502,7 +501,7 @@ cat docs/api/hello.md
 
 **생성된 API 문서 내용**:
 
-```markdown
+````markdown
 # Hello API Documentation
 
 ## Overview
@@ -529,11 +528,12 @@ curl "http://localhost:8000/hello"
 
 # 개인화된 인사말
 curl "http://localhost:8000/hello?name=철수"
-```
+````
 
 #### Response Examples
 
 **200 OK - 기본 인사말**:
+
 ```json
 {
   "message": "Hello, World!",
@@ -542,6 +542,7 @@ curl "http://localhost:8000/hello?name=철수"
 ```
 
 **200 OK - 개인화된 인사말**:
+
 ```json
 {
   "message": "Hello, 철수!",
@@ -550,6 +551,7 @@ curl "http://localhost:8000/hello?name=철수"
 ```
 
 **400 Bad Request - 이름이 너무 김**:
+
 ```json
 {
   "detail": "Validation error: Name too long (max 50 characters, got 51)"
@@ -579,6 +581,7 @@ API 상태를 확인합니다.
 #### Response Examples
 
 **200 OK**:
+
 ```json
 {
   "status": "healthy",
@@ -637,7 +640,8 @@ fetch('/hello?name=Alice')
   .then(response => response.json())
   .then(data => console.log(data.message)); // "Hello, Alice!"
 ```
-```
+
+````
 
 ### README 업데이트 내용
 
@@ -659,8 +663,9 @@ uvicorn src.hello.api:app --reload
 # 2. API 테스트
 curl "http://localhost:8000/hello?name=MoAI-ADK"
 # 출력: {"message": "Hello, MoAI-ADK!"}
-```
-```
+````
+
+````
 
 ### CHANGELOG 업데이트
 
@@ -692,7 +697,7 @@ curl "http://localhost:8000/hello?name=MoAI-ADK"
 - **Code Quality**: A+ (ruff, mypy pass)
 - **Documentation**: Complete API docs with examples
 - **Security**: Input validation and XSS protection
-```
+````
 
 ### ✅ Step 3 완료 확인
 
@@ -709,7 +714,7 @@ grep "HELLO-001" README.md
 cat CHANGELOG.md | grep -A 10 "0.1.0"
 ```
 
----
+______________________________________________________________________
 
 ## 🔗 Step <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_4</span>: TAG 체인 검증 (1분)
 
@@ -734,6 +739,7 @@ docs/api/hello.md:327:- **@DOC:HELLO-001**: 이 문서
 ### ✅ TAG 체인 분석
 
 **완벽한 추적성**:
+
 - ✅ **@SPEC:HELLO-001** → 요구사항 문서 (`.moai/specs/SPEC-HELLO-001/spec.md`)
 - ✅ **@TEST:HELLO-001** → 테스트 코드 (`tests/test_hello_api.py`)
 - ✅ **@CODE:HELLO-001:API** → 구현 코드 (`src/hello/api.py`)
@@ -768,7 +774,7 @@ git log --oneline | head -5
 # 출력: 4개의 커밋 (SPEC → TEST → CODE → REFACTOR → SYNC)
 ```
 
----
+______________________________________________________________________
 
 ## 🎉 10분 후: 완전한 시스템
 
@@ -813,29 +819,34 @@ f4e5d6c ♻️ refactor(HELLO-001): enhance code quality
 이 10분 실습을 통해 다음을 경험했습니다:
 
 #### ✅ SPEC-First 개발
+
 - **EARS 문법**: 명확한 요구사항 정의 (UBQ, EVT, STA, OPT, UB)
 - **요구사항 문서화**: `.moai/specs/SPEC-HELLO-001/spec.md`
 - **추적성 시작**: @SPEC:HELLO-001 TAG 할당
 
 #### ✅ TDD 사이클 완전 경험
+
 - **🔴 RED**: 실패하는 테스트 먼저 작성
 - **🟢 GREEN**: 최소 구현으로 테스트 통과
 - **♻️ REFACTOR**: 코드 품질 개선 (Pydantic, 에러 처리)
 - **커밋 전략**: 각 단계별로 명확한 커밋 메시지
 
 #### ✅ 자동화된 문서 시스템
+
 - **API 문서**: OpenAPI 스타일의 상세 문서 자동 생성
 - **README 업데이트**: 프로젝트 기능 설명 자동 추가
 - **CHANGELOG**: 버전별 변경 이력 자동 기록
 - **TAG 체인**: @TAG 기반 완벽한 추적 시스템
 
 #### ✅ 품질 보증
+
 - **테스트 커버리지**: 100%
 - **코드 품질**: ruff, mypy 통과
 - **유효성 검증**: Pydantic 기반 입력 검증
 - **보안**: XSS 방지, 입력 길이 제한
 
 #### ✅ 실무 역량
+
 - **FastAPI**: 현대적인 Python 웹 프레임워크
 - **Pydantic**: 데이터 유효성 검증
 - **Git 워크플로우**: feature 브랜치, 명확한 커밋
@@ -857,7 +868,7 @@ f4e5d6c ♻️ refactor(HELLO-001): enhance code quality
 - **비동기 처리**: Celery + Redis
 - **컨테이너화**: Docker + Kubernetes
 
----
+______________________________________________________________________
 
 ## 💡 MoAI-ADK의 진정한 힘
 

@@ -1,8 +1,6 @@
----
-title: クイックスタート
-description: 5分でMoAI-ADKの基本ワークフローを体験するガイド
-lang: ja
----
+______________________________________________________________________
+
+## title: クイックスタート description: 5分でMoAI-ADKの基本ワークフローを体験するガイド lang: ja
 
 # クイックスタートガイド
 
@@ -16,7 +14,7 @@ MoAI-ADKで**3ステップだけ**で最初のプロジェクトを始めまし�
 
 まだの場合は[インストールガイド](installation.md)を参照してください。
 
----
+______________________________________________________________________
 
 ## ステップ<span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_one</span>：プロジェクト作成（2分）
 
@@ -48,6 +46,7 @@ moai-adk doctor
 ```
 
 期待される出力：
+
 ```
 ✅ Python 3.13.0
 ✅ uv 0.5.1
@@ -57,7 +56,7 @@ moai-adk doctor
 ✅ 74 skills loaded
 ```
 
----
+______________________________________________________________________
 
 ## ステップ<span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_two</span>：Alfred開始（1分）
 
@@ -98,7 +97,7 @@ A: personal (ローカル開発用)
 ✅ Alfredがスキル推薦完了
 ```
 
----
+______________________________________________________________________
 
 ## ステップ<span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_3</span>：最初の機能作成（5分）
 
@@ -109,6 +108,7 @@ A: personal (ローカル開発用)
 ```
 
 Alfredが自動生成：
+
 ```
 ✅ SPEC ID: HELLO-001
 ✅ ファイル: .moai/specs/SPEC-HELLO-001/spec.md
@@ -122,6 +122,7 @@ Alfredが自動生成：
 ```
 
 AlfredがTDDサイクルを自動実行：
+
 - 🔴 **RED**: 失敗するテストを先に作成
 - 🟢 **GREEN**: テストを通過させる最小実装
 - ♻️ **REFACTOR**: コードを整理・改善
@@ -133,6 +134,7 @@ AlfredがTDDサイクルを自動実行：
 ```
 
 自動的に実行：
+
 ```
 ✅ docs/api/hello.md - APIドキュメント作成
 ✅ README.md - API使用法追加
@@ -140,7 +142,7 @@ AlfredがTDDサイクルを自動実行：
 ✅ @TAGチェーン検証 - すべての@TAG確認
 ```
 
----
+______________________________________________________________________
 
 ## 🎉 5分後：あなたが得たもの
 
@@ -167,6 +169,7 @@ git log --oneline | head -4
 ```
 
 期待される出力：
+
 ```
 c1d2e3f ♻️ refactor(HELLO-001): add name length validation
 b2c3d4e 🟢 feat(HELLO-001): implement hello API
@@ -182,7 +185,7 @@ d4e5f6g Merge branch 'develop'
 - ✅ **追跡性**: @TAGシステムですべてのステップが連結
 - ✅ **品質**: テスト100%、明確な実装、自動ドキュメント化
 
----
+______________________________________________________________________
 
 ## <span class="material-icons">search</span> 検証してみよう
 
@@ -193,6 +196,7 @@ pytest tests/test_hello.py -v
 ```
 
 期待される出力：
+
 ```
 ✅ test_hello_with_name_should_return_personalized_greeting PASSED
 ✅ test_hello_without_name_should_return_default_greeting PASSED
@@ -207,6 +211,7 @@ rg '@(SPEC|TEST|CODE|DOC):HELLO-001' -n
 ```
 
 期待される出力：
+
 ```
 .moai/specs/SPEC-HELLO-001/spec.md:7:# @SPEC:EX-HELLO-001: Hello World API
 tests/test_hello.py:3:# @TEST:EX-HELLO-002 | SPEC: SPEC-HELLO-001.md
@@ -222,7 +227,7 @@ cat README.md
 cat CHANGELOG.md
 ```
 
----
+______________________________________________________________________
 
 ## 🚀 次のステップ
 
@@ -245,7 +250,7 @@ cat CHANGELOG.md
 - **認証システム**: 複雑な認証機能の実装
 - **データベース連携**: 永続化データの実装
 
----
+______________________________________________________________________
 
 ## 💡 ヒントとコツ
 
@@ -259,16 +264,13 @@ cat CHANGELOG.md
 
 ### よくある質問
 
-**Q: 既存プロジェクトに追加できますか？**
-A: はい。`moai-adk init .`で既存コードを変更せずに`.moai/`構造のみ追加します。
+**Q: 既存プロジェクトに追加できますか？** A: はい。`moai-adk init .`で既存コードを変更せずに`.moai/`構造のみ追加します。
 
-**Q: テストはどのように実行しますか？**
-A: `/alfred:2-run`が先に実行し、必要なら`pytest`などを再実行します。
+**Q: テストはどのように実行しますか？** A: `/alfred:2-run`が先に実行し、必要なら`pytest`などを再実行します。
 
-**Q: ドキュメントが常に最新であることを確認する方法は？**
-A: `/alfred:3-sync`が同期レポートを作成します。プルリクエストでレポートを確認してください。
+**Q: ドキュメントが常に最新であることを確認する方法は？** A: `/alfred:3-sync`が同期レポートを作成します。プルリクエストでレポートを確認してください。
 
----
+______________________________________________________________________
 
 ## 🎯 成功基準
 
@@ -281,6 +283,7 @@ A: `/alfred:3-sync`が同期レポートを作成します。プルリクエス�
 - ✅ @TAGシステム理解
 - ✅ Git履歴にTDDサイクル記録
 
----
+______________________________________________________________________
 
-**🎊 おめでとうございます！** あなたは5分でMoAI-ADKの基本ワークフローをマスターしました。次は[概念ガイド](concepts.md)で背后的な原理を学び、より高度な機能に挑戦しましょう。
+**🎊 おめでとうございます！**
+あなたは5分でMoAI-ADKの基本ワークフローをマスターしました。次は[概念ガイド](concepts.md)で背后的な原理を学び、より高度な機能に挑戦しましょう。

@@ -1,7 +1,6 @@
----
-title: 快速入门
-description: 5分钟内创建第一个 MoAI-ADK 项目并体验 AI 驱动的 TDD 开发流程
----
+______________________________________________________________________
+
+## title: 快速入门 description: 5分钟内创建第一个 MoAI-ADK 项目并体验 AI 驱动的 TDD 开发流程
 
 # 快速入门
 
@@ -12,10 +11,10 @@ description: 5分钟内创建第一个 MoAI-ADK 项目并体验 AI 驱动的 TDD
 开始之前，请确保：
 
 - ✅ 已安装 [MoAI-ADK](installation.md)
-- ✅ 已安装 [Claude Code](installation.md#claude-code-设置)
+- ✅ 已安装 [Claude Code](installation.md#claude-code-%E8%AE%BE%E7%BD%AE)
 - ✅ 有基本的 Python 和 Git 知识
 
----
+______________________________________________________________________
 
 ## 5 分钟快速流程
 
@@ -108,11 +107,12 @@ A: personal
 ```
 
 Alfred 会自动：
+
 - 创建 SPEC 文档
 - 分配 SPEC ID（如 HELLO-001）
 - 生成功能分支
 
----
+______________________________________________________________________
 
 ## 第一次实践：Hello World API
 
@@ -196,6 +196,7 @@ def test_hello_without_name_should_return_default_greeting():
 ```
 
 运行测试（预期失败）：
+
 ```bash
 pytest tests/test_hello.py -v
 # <span class="material-icons">cancel</span> FAILED - No module named 'fastapi'
@@ -219,6 +220,7 @@ def hello(name: str = "World"):
 ```
 
 安装依赖并运行测试：
+
 ```bash
 uv add fastapi pytest
 pytest tests/test_hello.py -v
@@ -228,6 +230,7 @@ pytest tests/test_hello.py -v
 #### ♻️ REFACTOR 阶段：代码改进
 
 添加验证逻辑：
+
 ```python
 from fastapi import FastAPI, HTTPException
 
@@ -242,6 +245,7 @@ def hello(name: str = "World"):
 ```
 
 添加边界测试：
+
 ```python
 def test_hello_with_long_name_should_return_400():
     """name 超过 50 字符时必须返回 400 错误"""
@@ -252,6 +256,7 @@ def test_hello_with_long_name_should_return_400():
 ```
 
 最终测试验证：
+
 ```bash
 pytest tests/test_hello.py -v
 # ✅ PASSED - 所有测试通过，包括边界测试
@@ -281,11 +286,13 @@ cat docs/api/hello.md
 ### <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_4</span> 验证：TAG 链追踪（1 分钟）
 
 检查完整的 TAG 链：
+
 ```bash
 rg '@(SPEC|TEST|CODE|DOC):HELLO-001' -n
 ```
 
 **输出**：
+
 ```
 .moai/specs/SPEC-HELLO-001/spec.md:7:# `@SPEC:EX-HELLO-001: Hello World API
 tests/test_hello.py:3:# `@TEST:EX-HELLO-002 | SPEC: SPEC-HELLO-001.md
@@ -295,7 +302,7 @@ docs/api/hello.md:24:- `@SPEC:EX-HELLO-001
 
 **意义**：需求 → 测试 → 实现 → 文档完美连接！
 
----
+______________________________________________________________________
 
 ## 🎉 5 分钟后您获得了什么？
 
@@ -339,6 +346,7 @@ git log --oneline
 ```
 
 输出：
+
 ```
 a1b2c3d ✅ sync(HELLO-001): update docs and changelog
 b2c3d4e ♻️ refactor(HELLO-001): add name length validation
@@ -356,7 +364,7 @@ f6g7h8i 📋 Initial project setup
 - ✅ **可追踪性**：@TAG 系统连接所有开发产物
 - ✅ **质量保证**：测试覆盖率 100%，代码质量验证
 
----
+______________________________________________________________________
 
 ## 运行您的第一个 API
 
@@ -395,7 +403,7 @@ open http://localhost:8000/docs
 
 您将看到 FastAPI 自动生成的交互式 API 文档！
 
----
+______________________________________________________________________
 
 ## 下一步
 
@@ -409,11 +417,13 @@ open http://localhost:8000/docs
 ### 实践建议
 
 1. **创建下一个功能**：
+
    ```bash
    /alfred:1-plan "用户管理 API - 注册、登录、个人信息"
    ```
 
 2. **尝试不同项目类型**：
+
    ```bash
    # Web 应用
    moai-adk init my-webapp --template web
@@ -426,6 +436,7 @@ open http://localhost:8000/docs
    ```
 
 3. **探索高级功能**：
+
    - [多语言支持](../advanced/i18n.md)
    - [性能优化](../advanced/performance.md)
    - [安全最佳实践](../advanced/security.md)
@@ -436,13 +447,14 @@ open http://localhost:8000/docs
 - **讨论**: [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions)
 - **问题反馈**: [GitHub Issues](https://github.com/modu-ai/moai-adk/issues)
 
----
+______________________________________________________________________
 
 ## 常见问题
 
 ### Q: 可以在现有项目中使用 MoAI-ADK 吗？
 
 A: 可以！在现有项目目录中运行：
+
 ```bash
 moai-adk init .
 ```
@@ -450,6 +462,7 @@ moai-adk init .
 ### Q: 如何切换到不同的编程语言？
 
 A: 在 `/alfred:0-project` 时选择相应的语言，或手动修改 `.moai/config.json`：
+
 ```json
 {
   "language": {
@@ -466,7 +479,7 @@ A: 所有团队成员使用相同的 `/alfred` 命令，TAG 系统确保代码�
 
 A: 编辑 `.claude/agents/` 和 `.claude/skills/` 目录中的文件。详见 [自定义指南](../advanced/customization.md)。
 
----
+______________________________________________________________________
 
 **恭喜！您已经成功完成了 MoAI-ADK 的快速入门。现在您拥有了一个完整的、文档化的、测试覆盖的 API 项目，体验了 AI 驱动的现代化开发流程。**
 

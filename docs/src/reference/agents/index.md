@@ -31,31 +31,31 @@ Alfred는 **19명의 전문가 팀**을 조율하는 슈퍼에이전트입니다
 
 프로젝트 전체 생명주기를 관리합니다:
 
-| 에이전트 | 역할 | 활성화 조건 |
-|---------|------|----------|
-| **project-manager** | 프로젝트 초기화 및 설정 | `/alfred:0-project` |
-| **spec-builder** | SPEC 작성 (EARS 문법) | `/alfred:1-plan` |
-| **implementation-planner** | 아키텍처 및 구현 계획 | `/alfred:2-run` 시작 |
-| **tdd-implementer** | RED→GREEN→REFACTOR 실행 | `/alfred:2-run` 중 |
-| **doc-syncer** | 문서 자동 생성 및 동기화 | `/alfred:3-sync` |
-| **tag-agent** | TAG 검증 및 추적성 관리 | `/alfred:3-sync` |
-| **git-manager** | Git 워크플로우 자동화 | 모든 단계 |
-| **trust-checker** | TRUST 5 원칙 검증 | `/alfred:2-run` 완료 |
-| **quality-gate** | 릴리즈 준비 상태 확인 | `/alfred:3-sync` |
-| **debug-helper** | 오류 분석 및 해결 | 필요시 자동 활성화 |
+| 에이전트                   | 역할                     | 활성화 조건          |
+| -------------------------- | ------------------------ | -------------------- |
+| **project-manager**        | 프로젝트 초기화 및 설정  | `/alfred:0-project`  |
+| **spec-builder**           | SPEC 작성 (EARS 문법)    | `/alfred:1-plan`     |
+| **implementation-planner** | 아키텍처 및 구현 계획    | `/alfred:2-run` 시작 |
+| **tdd-implementer**        | RED→GREEN→REFACTOR 실행  | `/alfred:2-run` 중   |
+| **doc-syncer**             | 문서 자동 생성 및 동기화 | `/alfred:3-sync`     |
+| **tag-agent**              | TAG 검증 및 추적성 관리  | `/alfred:3-sync`     |
+| **git-manager**            | Git 워크플로우 자동화    | 모든 단계            |
+| **trust-checker**          | TRUST 5 원칙 검증        | `/alfred:2-run` 완료 |
+| **quality-gate**           | 릴리즈 준비 상태 확인    | `/alfred:3-sync`     |
+| **debug-helper**           | 오류 분석 및 해결        | 필요시 자동 활성화   |
 
 ### 2️⃣ 전문가 Agents (6명)
 
 도메인 특화 작업을 지원합니다:
 
-| 에이전트 | 도메인 | 활성화 조건 |
-|---------|--------|----------|
-| **backend-expert** | API, 서버, DB 아키텍처 | SPEC에 서버/API 키워드 |
-| **frontend-expert** | UI, 상태관리, 성능 | SPEC에 프론트엔드 키워드 |
-| **devops-expert** | 배포, CI/CD, 인프라 | SPEC에 배포 키워드 |
-| **ui-ux-expert** | 디자인 시스템, 접근성 | SPEC에 디자인 키워드 |
-| **security-expert** | 보안 분석, 취약점 진단 | SPEC에 보안 키워드 |
-| **database-expert** | DB 설계, 최적화, 마이그레이션 | SPEC에 DB 키워드 |
+| 에이전트            | 도메인                        | 활성화 조건              |
+| ------------------- | ----------------------------- | ------------------------ |
+| **backend-expert**  | API, 서버, DB 아키텍처        | SPEC에 서버/API 키워드   |
+| **frontend-expert** | UI, 상태관리, 성능            | SPEC에 프론트엔드 키워드 |
+| **devops-expert**   | 배포, CI/CD, 인프라           | SPEC에 배포 키워드       |
+| **ui-ux-expert**    | 디자인 시스템, 접근성         | SPEC에 디자인 키워드     |
+| **security-expert** | 보안 분석, 취약점 진단        | SPEC에 보안 키워드       |
+| **database-expert** | DB 설계, 최적화, 마이그레이션 | SPEC에 DB 키워드         |
 
 ### 3️⃣ 빌트인 Claude Agents (2명)
 
@@ -83,6 +83,7 @@ Alfred (Lead)
 ```
 
 **사용 사례**:
+
 - UI 컴포넌트 설계 필요 → UI/UX Expert
 - DB 성능 최적화 → Database Expert
 - 보안 검토 → Security Expert
@@ -103,6 +104,7 @@ Master Alfred (조율)
 ```
 
 **사용 사례**:
+
 - 대규모 마이그레이션 (v1.0 → v2.0)
 - 전체 아키텍처 리팩토링
 - 다중 도메인 동시 작업
@@ -218,6 +220,6 @@ def select_agents(user_request):
 - [Skills 시스템](../skills/index.md) - 55개+ Claude Skills
 - [아키텍처 설명](../../advanced/architecture.md) - 4계층 스택 구조
 
----
+______________________________________________________________________
 
 **다음**: [핵심 Sub-agents](core.md) 또는 [전문가 Agents](experts.md)

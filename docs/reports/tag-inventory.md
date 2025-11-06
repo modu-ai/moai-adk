@@ -1,7 +1,6 @@
 # TAG Inventory
 
-Generated: 2025-11-06 07:50:25
-Total TAGs: 4702
+Generated: 2025-11-06 07:50:25 Total TAGs: 4702
 
 ## By Domain
 
@@ -666,7 +665,8 @@ Total TAGs: 4702
 - **AUTH-001** (`src/moai_adk/templates/.claude/commands/alfred/release-new.md:1634`)
 - **AUTH-001** (`src/moai_adk/templates/.claude/agents/alfred/spec-builder.md:279`)
 - **AUTH-001** (`src/moai_adk/templates/.claude/agents/alfred/tag-agent.md:108`)
-- **AUTH-001** (`src/moai_adk/templates/.claude/output-styles/alfred/alfred-moai-adk-beginner.md:195`)
+- **AUTH-001**
+  (`src/moai_adk/templates/.claude/output-styles/alfred/alfred-moai-adk-beginner.md:195`)
 - **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-dev-guide/reference.md:57`)
 - **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-dev-guide/reference.md:59`)
 - **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-dev-guide/reference.md:74`)
@@ -707,11 +707,16 @@ Total TAGs: 4702
 - **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-rules/reference.md:462`)
 - **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-rules/reference.md:471`)
 - **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-rules/reference.md:472`)
-- **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-cc-skill-factory/PARALLEL-ANALYSIS-REPORT.md:118`)
-- **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-cc-skill-factory/PARALLEL-ANALYSIS-REPORT.md:132`)
-- **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-cc-skill-factory/PARALLEL-ANALYSIS-REPORT.md:132`)
-- **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-cc-skill-factory/PARALLEL-ANALYSIS-REPORT.md:132`)
-- **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-cc-skill-factory/PARALLEL-ANALYSIS-REPORT.md:132`)
+- **AUTH-001**
+  (`src/moai_adk/templates/.claude/skills/moai-cc-skill-factory/PARALLEL-ANALYSIS-REPORT.md:118`)
+- **AUTH-001**
+  (`src/moai_adk/templates/.claude/skills/moai-cc-skill-factory/PARALLEL-ANALYSIS-REPORT.md:132`)
+- **AUTH-001**
+  (`src/moai_adk/templates/.claude/skills/moai-cc-skill-factory/PARALLEL-ANALYSIS-REPORT.md:132`)
+- **AUTH-001**
+  (`src/moai_adk/templates/.claude/skills/moai-cc-skill-factory/PARALLEL-ANALYSIS-REPORT.md:132`)
+- **AUTH-001**
+  (`src/moai_adk/templates/.claude/skills/moai-cc-skill-factory/PARALLEL-ANALYSIS-REPORT.md:132`)
 - **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/reference.md:720`)
 - **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/examples.md:50`)
 - **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/examples.md:66`)
@@ -725,21 +730,34 @@ Total TAGs: 4702
 - **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/examples.md:233`)
 - **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/examples.md:234`)
 - **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/examples.md:235`)
-- **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:50`)
-- **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:66`)
-- **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:86`)
-- **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:121`)
-- **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:132`)
-- **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:141`)
-- **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:148`)
-- **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:155`)
-- **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:164`)
-- **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:233`)
-- **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:234`)
-- **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:235`)
+- **AUTH-001**
+  (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:50`)
+- **AUTH-001**
+  (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:66`)
+- **AUTH-001**
+  (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:86`)
+- **AUTH-001**
+  (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:121`)
+- **AUTH-001**
+  (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:132`)
+- **AUTH-001**
+  (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:141`)
+- **AUTH-001**
+  (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:148`)
+- **AUTH-001**
+  (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:155`)
+- **AUTH-001**
+  (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:164`)
+- **AUTH-001**
+  (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:233`)
+- **AUTH-001**
+  (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:234`)
+- **AUTH-001**
+  (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:235`)
 - **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/SKILL.md:142`)
 - **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/SKILL.md:143`)
-- **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-expertise-detection/examples.md:99`)
+- **AUTH-001**
+  (`src/moai_adk/templates/.claude/skills/moai-alfred-expertise-detection/examples.md:99`)
 - **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-spec-authoring/reference.md:15`)
 - **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-spec-authoring/reference.md:504`)
 - **AUTH-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-spec-authoring/reference.md:505`)
@@ -1043,9 +1061,12 @@ Total TAGs: 4702
 - **AUTH-LOGIN-001** (`tests/core/tags/test_reporter.py:733`)
 - **AUTH-LOGIN-001** (`tests/core/tags/test_reporter.py:742`)
 - **AUTH-TIMEOUT-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:4772`)
-- **AUTH-TIMEOUT-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-practices/reference.md:223`)
-- **AUTH-TIMEOUT-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-practices/reference.md:224`)
-- **AUTH-TIMEOUT-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-practices/reference.md:225`)
+- **AUTH-TIMEOUT-001**
+  (`src/moai_adk/templates/.claude/skills/moai-alfred-practices/reference.md:223`)
+- **AUTH-TIMEOUT-001**
+  (`src/moai_adk/templates/.claude/skills/moai-alfred-practices/reference.md:224`)
+- **AUTH-TIMEOUT-001**
+  (`src/moai_adk/templates/.claude/skills/moai-alfred-practices/reference.md:225`)
 
 ### AUTO
 
@@ -1359,7 +1380,8 @@ Total TAGs: 4702
 - **CONFIG-INTEGRATION-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:9666`)
 - **CONFIG-INTEGRATION-001** (`tests/unit/test_version_check_config.py:62`)
 - **CONFIG-INTEGRATION-001** (`src/moai_adk/templates/.claude/hooks/alfred/core/project.py:409`)
-- **CONFIG-INTEGRATION-001** (`src/moai_adk/templates/.claude/hooks/alfred/shared/core/project.py:404`)
+- **CONFIG-INTEGRATION-001**
+  (`src/moai_adk/templates/.claude/hooks/alfred/shared/core/project.py:404`)
 - **CONFIG-STRUCTURE-001** (`.moai/config.json:3`)
 - **CONFIG-STRUCTURE-001** (`.claude/skills/moai-alfred-config-schema/reference.md:47`)
 - **CONFIG-STRUCTURE-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:4212`)
@@ -1368,7 +1390,8 @@ Total TAGs: 4702
 - **CONFIG-STRUCTURE-001** (`.moai/specs/SPEC-CONFIG-001/spec.md:118`)
 - **CONFIG-STRUCTURE-001** (`.moai/specs/SPEC-CONFIG-001/spec.md:271`)
 - **CONFIG-STRUCTURE-001** (`src/moai_adk/templates/.moai/config.json:3`)
-- **CONFIG-STRUCTURE-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-config-schema/reference.md:47`)
+- **CONFIG-STRUCTURE-001**
+  (`src/moai_adk/templates/.claude/skills/moai-alfred-config-schema/reference.md:47`)
 
 ### CONFTEST
 
@@ -2469,18 +2492,23 @@ Total TAGs: 4702
 
 - **HOOK-001** (`.moai/specs/SPEC-DOCS-003/spec.md:266`)
 - **HOOK-BASH-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:4587`)
-- **HOOK-BASH-001** (`src/moai_adk/templates/.claude/skills/moai-cc-hooks/scripts/validate-bash-command.py:2`)
+- **HOOK-BASH-001**
+  (`src/moai_adk/templates/.claude/skills/moai-cc-hooks/scripts/validate-bash-command.py:2`)
 - **HOOK-POST-TAG-001** (`.claude/hooks/alfred/post_tool__tag_auto_corrector.py:2`)
 - **HOOK-POST-TAG-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:4417`)
-- **HOOK-POST-TAG-001** (`src/moai_adk/templates/.claude/hooks/alfred/post_tool__tag_auto_corrector.py:2`)
+- **HOOK-POST-TAG-001**
+  (`src/moai_adk/templates/.claude/hooks/alfred/post_tool__tag_auto_corrector.py:2`)
 - **HOOK-PRE-TAG-001** (`.claude/hooks/alfred/pre_tool__tag_policy_validator.py:2`)
 - **HOOK-PRE-TAG-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:4427`)
-- **HOOK-PRE-TAG-001** (`src/moai_adk/templates/.claude/hooks/alfred/pre_tool__tag_policy_validator.py:2`)
+- **HOOK-PRE-TAG-001**
+  (`src/moai_adk/templates/.claude/hooks/alfred/pre_tool__tag_policy_validator.py:2`)
 - **HOOK-REALTIME-001** (`.claude/hooks/alfred/pre_tool__realtime_tag_monitor.py:2`)
 - **HOOK-REALTIME-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:4437`)
-- **HOOK-REALTIME-001** (`src/moai_adk/templates/.claude/hooks/alfred/pre_tool__realtime_tag_monitor.py:2`)
+- **HOOK-REALTIME-001**
+  (`src/moai_adk/templates/.claude/hooks/alfred/pre_tool__realtime_tag_monitor.py:2`)
 - **HOOK-SESSION-START-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:4412`)
-- **HOOK-SESSION-START-001** (`src/moai_adk/templates/.claude/hooks/alfred/session_start__auto_cleanup.py:2`)
+- **HOOK-SESSION-START-001**
+  (`src/moai_adk/templates/.claude/hooks/alfred/session_start__auto_cleanup.py:2`)
 - **HOOK-TAG-001** (`.claude/hooks/alfred/shared/core/tags.py:2`)
 - **HOOK-TAG-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:4502`)
 - **HOOK-TAG-001** (`src/moai_adk/templates/.claude/hooks/alfred/shared/core/tags.py:2`)
@@ -2895,7 +2923,8 @@ Total TAGs: 4702
 - **JSON-CONFIG-001** (`.claude/skills/moai-alfred-config-schema/reference.md:47`)
 - **JSON-CONFIG-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:10070`)
 - **JSON-CONFIG-001** (`src/moai_adk/templates/.moai/config.json:3`)
-- **JSON-CONFIG-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-config-schema/reference.md:47`)
+- **JSON-CONFIG-001**
+  (`src/moai_adk/templates/.claude/skills/moai-alfred-config-schema/reference.md:47`)
 
 ### LANG
 
@@ -2951,25 +2980,43 @@ Total TAGs: 4702
 - **LANGUAGE-DETECTION-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:8789`)
 - **LANGUAGE-DETECTION-001** (`.moai/specs/SPEC-LANGUAGE-DETECTION-001/spec.md:1`)
 - **LANGUAGE-DETECTION-001** (`.moai/specs/SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md:512`)
-- **LANGUAGE-DETECTION-EXTENDED-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:1543`)
-- **LANGUAGE-DETECTION-EXTENDED-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:1548`)
-- **LANGUAGE-DETECTION-EXTENDED-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:1558`)
-- **LANGUAGE-DETECTION-EXTENDED-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:1563`)
-- **LANGUAGE-DETECTION-EXTENDED-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:6353`)
-- **LANGUAGE-DETECTION-EXTENDED-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:8759`)
-- **LANGUAGE-DETECTION-EXTENDED-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:8769`)
-- **LANGUAGE-DETECTION-EXTENDED-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:8779`)
-- **LANGUAGE-DETECTION-EXTENDED-001** (`.moai/specs/SPEC-LANGUAGE-DETECTION-EXTENDED-001/acceptance.md:868`)
-- **LANGUAGE-DETECTION-EXTENDED-001** (`.moai/specs/SPEC-LANGUAGE-DETECTION-EXTENDED-001/acceptance.md:870`)
-- **LANGUAGE-DETECTION-EXTENDED-001** (`.moai/specs/SPEC-LANGUAGE-DETECTION-EXTENDED-001/acceptance.md:871`)
-- **LANGUAGE-DETECTION-EXTENDED-001** (`.moai/specs/SPEC-LANGUAGE-DETECTION-EXTENDED-001/plan.md:796`)
-- **LANGUAGE-DETECTION-EXTENDED-001** (`.moai/specs/SPEC-LANGUAGE-DETECTION-EXTENDED-001/plan.md:797`)
-- **LANGUAGE-DETECTION-EXTENDED-001** (`.moai/specs/SPEC-LANGUAGE-DETECTION-EXTENDED-001/plan.md:798`)
+- **LANGUAGE-DETECTION-EXTENDED-001**
+  (`.moai/reports/tag-system-analysis-20251106-060000.json:1543`)
+- **LANGUAGE-DETECTION-EXTENDED-001**
+  (`.moai/reports/tag-system-analysis-20251106-060000.json:1548`)
+- **LANGUAGE-DETECTION-EXTENDED-001**
+  (`.moai/reports/tag-system-analysis-20251106-060000.json:1558`)
+- **LANGUAGE-DETECTION-EXTENDED-001**
+  (`.moai/reports/tag-system-analysis-20251106-060000.json:1563`)
+- **LANGUAGE-DETECTION-EXTENDED-001**
+  (`.moai/reports/tag-system-analysis-20251106-060000.json:6353`)
+- **LANGUAGE-DETECTION-EXTENDED-001**
+  (`.moai/reports/tag-system-analysis-20251106-060000.json:8759`)
+- **LANGUAGE-DETECTION-EXTENDED-001**
+  (`.moai/reports/tag-system-analysis-20251106-060000.json:8769`)
+- **LANGUAGE-DETECTION-EXTENDED-001**
+  (`.moai/reports/tag-system-analysis-20251106-060000.json:8779`)
+- **LANGUAGE-DETECTION-EXTENDED-001**
+  (`.moai/specs/SPEC-LANGUAGE-DETECTION-EXTENDED-001/acceptance.md:868`)
+- **LANGUAGE-DETECTION-EXTENDED-001**
+  (`.moai/specs/SPEC-LANGUAGE-DETECTION-EXTENDED-001/acceptance.md:870`)
+- **LANGUAGE-DETECTION-EXTENDED-001**
+  (`.moai/specs/SPEC-LANGUAGE-DETECTION-EXTENDED-001/acceptance.md:871`)
+- **LANGUAGE-DETECTION-EXTENDED-001**
+  (`.moai/specs/SPEC-LANGUAGE-DETECTION-EXTENDED-001/plan.md:796`)
+- **LANGUAGE-DETECTION-EXTENDED-001**
+  (`.moai/specs/SPEC-LANGUAGE-DETECTION-EXTENDED-001/plan.md:797`)
+- **LANGUAGE-DETECTION-EXTENDED-001**
+  (`.moai/specs/SPEC-LANGUAGE-DETECTION-EXTENDED-001/plan.md:798`)
 - **LANGUAGE-DETECTION-EXTENDED-001** (`.moai/specs/SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md:1`)
-- **LANGUAGE-DETECTION-EXTENDED-001** (`.moai/specs/SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md:544`)
-- **LANGUAGE-DETECTION-EXTENDED-001** (`.moai/specs/SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md:545`)
-- **LANGUAGE-DETECTION-EXTENDED-001** (`.moai/specs/SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md:546`)
-- **LANGUAGE-DETECTION-EXTENDED-001** (`.moai/specs/SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md:547`)
+- **LANGUAGE-DETECTION-EXTENDED-001**
+  (`.moai/specs/SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md:544`)
+- **LANGUAGE-DETECTION-EXTENDED-001**
+  (`.moai/specs/SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md:545`)
+- **LANGUAGE-DETECTION-EXTENDED-001**
+  (`.moai/specs/SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md:546`)
+- **LANGUAGE-DETECTION-EXTENDED-001**
+  (`.moai/specs/SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md:547`)
 
 ### LDE
 
@@ -3091,7 +3138,8 @@ Total TAGs: 4702
 - **MAJOR-UPDATE-WARN-001** (`.moai/specs/SPEC-UPDATE-ENHANCE-001/plan.md:516`)
 - **MAJOR-UPDATE-WARN-001** (`.moai/specs/SPEC-UPDATE-ENHANCE-001/spec.md:369`)
 - **MAJOR-UPDATE-WARN-001** (`tests/unit/test_alfred_hooks_core_project.py:187`)
-- **MAJOR-UPDATE-WARN-001** (`src/moai_adk/templates/.claude/hooks/alfred/shared/handlers/session.py:58`)
+- **MAJOR-UPDATE-WARN-001**
+  (`src/moai_adk/templates/.claude/hooks/alfred/shared/handlers/session.py:58`)
 
 ### MAP
 
@@ -3133,7 +3181,8 @@ Total TAGs: 4702
 - **MOAI-CONFIG-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:8092`)
 - **MOAI-CONFIG-001** (`.moai/specs/SPEC-UPDATE-ENHANCE-001/spec.md:377`)
 - **MOAI-CONFIG-001** (`src/moai_adk/templates/.moai/config.json:4`)
-- **MOAI-CONFIG-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-config-schema/reference.md:48`)
+- **MOAI-CONFIG-001**
+  (`src/moai_adk/templates/.claude/skills/moai-alfred-config-schema/reference.md:48`)
 
 ### NETWORK
 
@@ -3335,13 +3384,20 @@ Total TAGs: 4702
 - **PAY-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/examples.md:662`)
 - **PAY-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/examples.md:671`)
 - **PAY-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/examples.md:727`)
-- **PAY-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:591`)
-- **PAY-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:610`)
-- **PAY-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:628`)
-- **PAY-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:635`)
-- **PAY-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:662`)
-- **PAY-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:671`)
-- **PAY-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:727`)
+- **PAY-001**
+  (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:591`)
+- **PAY-001**
+  (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:610`)
+- **PAY-001**
+  (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:628`)
+- **PAY-001**
+  (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:635`)
+- **PAY-001**
+  (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:662`)
+- **PAY-001**
+  (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:671`)
+- **PAY-001**
+  (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:727`)
 
 ### PAYMENT
 
@@ -3371,7 +3427,8 @@ Total TAGs: 4702
 - **PAYMENT-005** (`.moai/reports/tag-system-analysis-20251106-060000.json:4292`)
 - **PAYMENT-005** (`.moai/reports/tag-system-analysis-20251106-060000.json:4642`)
 - **PAYMENT-005** (`.moai/reports/tag-system-analysis-20251106-060000.json:10107`)
-- **PAYMENT-005** (`src/moai_adk/templates/.claude/skills/moai-cc-skill-factory/PARALLEL-ANALYSIS-REPORT.md:135`)
+- **PAYMENT-005**
+  (`src/moai_adk/templates/.claude/skills/moai-cc-skill-factory/PARALLEL-ANALYSIS-REPORT.md:135`)
 - **PAYMENT-007** (`.moai/reports/tag-system-analysis-20251106-060000.json:273`)
 - **PAYMENT-007** (`.moai/reports/tag-system-analysis-20251106-060000.json:278`)
 - **PAYMENT-007** (`.moai/reports/tag-system-analysis-20251106-060000.json:5918`)
@@ -3537,7 +3594,8 @@ Total TAGs: 4702
 - **PROJECT-CONFIG-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:7419`)
 - **PROJECT-CONFIG-001** (`.moai/specs/SPEC-CONFIG-001/spec.md:119`)
 - **PROJECT-CONFIG-001** (`src/moai_adk/templates/.moai/config.json:4`)
-- **PROJECT-CONFIG-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-config-schema/reference.md:48`)
+- **PROJECT-CONFIG-001**
+  (`src/moai_adk/templates/.claude/skills/moai-alfred-config-schema/reference.md:48`)
 - **PROJECT-FEAT-001** (`tests/core/tags/test_pre_commit.py:498`)
 - **PROJECT-INIT-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:1603`)
 - **PROJECT-INIT-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:5998`)
@@ -3716,15 +3774,24 @@ Total TAGs: 4702
 - **SESSION-CLEANUP-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:10300`)
 - **SESSION-CLEANUP-001** (`.moai/specs/SPEC-SESSION-CLEANUP-001/spec.md:3`)
 - **SESSION-CLEANUP-001** (`.moai/specs/SPEC-SESSION-CLEANUP-002/spec.md:405`)
-- **SESSION-CLEANUP-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-session-state/reference.md:29`)
-- **SESSION-CLEANUP-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-session-state/reference.md:30`)
-- **SESSION-CLEANUP-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-session-state/reference.md:31`)
-- **SESSION-CLEANUP-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-session-state/reference.md:32`)
-- **SESSION-CLEANUP-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-session-state/reference.md:33`)
-- **SESSION-CLEANUP-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-session-state/reference.md:34`)
-- **SESSION-CLEANUP-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-session-state/reference.md:36`)
-- **SESSION-CLEANUP-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-session-state/reference.md:36`)
-- **SESSION-CLEANUP-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-session-state/reference.md:36`)
+- **SESSION-CLEANUP-001**
+  (`src/moai_adk/templates/.claude/skills/moai-alfred-session-state/reference.md:29`)
+- **SESSION-CLEANUP-001**
+  (`src/moai_adk/templates/.claude/skills/moai-alfred-session-state/reference.md:30`)
+- **SESSION-CLEANUP-001**
+  (`src/moai_adk/templates/.claude/skills/moai-alfred-session-state/reference.md:31`)
+- **SESSION-CLEANUP-001**
+  (`src/moai_adk/templates/.claude/skills/moai-alfred-session-state/reference.md:32`)
+- **SESSION-CLEANUP-001**
+  (`src/moai_adk/templates/.claude/skills/moai-alfred-session-state/reference.md:33`)
+- **SESSION-CLEANUP-001**
+  (`src/moai_adk/templates/.claude/skills/moai-alfred-session-state/reference.md:34`)
+- **SESSION-CLEANUP-001**
+  (`src/moai_adk/templates/.claude/skills/moai-alfred-session-state/reference.md:36`)
+- **SESSION-CLEANUP-001**
+  (`src/moai_adk/templates/.claude/skills/moai-alfred-session-state/reference.md:36`)
+- **SESSION-CLEANUP-001**
+  (`src/moai_adk/templates/.claude/skills/moai-alfred-session-state/reference.md:36`)
 - **SESSION-CLEANUP-002** (`.moai/reports/tag-system-analysis-20251106-060000.json:1468`)
 - **SESSION-CLEANUP-002** (`.moai/reports/tag-system-analysis-20251106-060000.json:6288`)
 - **SESSION-CLEANUP-002** (`.moai/specs/SPEC-SESSION-CLEANUP-002/spec.md:3`)
@@ -4483,7 +4550,8 @@ Total TAGs: 4702
 - **UPDATE-SYNC-006** (`src/moai_adk/cli/commands/update.py:241`)
 - **UPDATE-TEMPLATE-004** (`.moai/reports/tag-system-analysis-20251106-060000.json:4092`)
 - **UPDATE-TEMPLATE-004** (`src/moai_adk/cli/commands/update.py:67`)
-- **UPDATE-THREE-STAGE-WORKFLOW-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:2680`)
+- **UPDATE-THREE-STAGE-WORKFLOW-001**
+  (`.moai/reports/tag-system-analysis-20251106-060000.json:2680`)
 - **UPDATE-THREE-STAGE-WORKFLOW-001** (`tests/unit/test_update.py:581`)
 - **UPDATE-VERSION-002** (`.moai/reports/tag-system-analysis-20251106-060000.json:4102`)
 - **UPDATE-VERSION-002** (`src/moai_adk/cli/commands/update.py:184`)
@@ -4568,19 +4636,32 @@ Total TAGs: 4702
 - **USER-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/examples.md:543`)
 - **USER-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/examples.md:544`)
 - **USER-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/examples.md:545`)
-- **USER-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:286`)
-- **USER-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:302`)
-- **USER-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:325`)
-- **USER-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:339`)
-- **USER-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:377`)
-- **USER-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:385`)
-- **USER-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:401`)
-- **USER-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:411`)
-- **USER-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:422`)
-- **USER-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:433`)
-- **USER-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:543`)
-- **USER-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:544`)
-- **USER-001** (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:545`)
+- **USER-001**
+  (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:286`)
+- **USER-001**
+  (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:302`)
+- **USER-001**
+  (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:325`)
+- **USER-001**
+  (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:339`)
+- **USER-001**
+  (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:377`)
+- **USER-001**
+  (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:385`)
+- **USER-001**
+  (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:401`)
+- **USER-001**
+  (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:411`)
+- **USER-001**
+  (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:422`)
+- **USER-001**
+  (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:433`)
+- **USER-001**
+  (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:543`)
+- **USER-001**
+  (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:544`)
+- **USER-001**
+  (`src/moai_adk/templates/.claude/skills/moai-foundation-trust/.!11330!examples.md:545`)
 - **USER-002** (`.moai/reports/tag-system-analysis-20251106-060000.json:4697`)
 - **USER-002** (`src/moai_adk/templates/.claude/skills/moai-alfred-rules/examples.md:122`)
 - **USER-002** (`src/moai_adk/templates/.claude/skills/moai-alfred-rules/examples.md:122`)
@@ -4933,27 +5014,42 @@ Total TAGs: 4702
 - **USER-DASHBOARD-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:10357`)
 - **USER-DASHBOARD-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:10365`)
 - **USER-DASHBOARD-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:10373`)
-- **USER-DASHBOARD-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-practices/reference.md:114`)
-- **USER-DASHBOARD-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-practices/reference.md:129`)
-- **USER-DASHBOARD-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-practices/reference.md:129`)
-- **USER-DASHBOARD-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-practices/reference.md:147`)
-- **USER-DASHBOARD-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-practices/reference.md:148`)
-- **USER-DASHBOARD-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-practices/reference.md:149`)
-- **USER-DASHBOARD-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-practices/reference.md:150`)
-- **USER-DASHBOARD-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-practices/reference.md:151`)
-- **USER-DASHBOARD-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-practices/reference.md:269`)
-- **USER-DASHBOARD-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-practices/reference.md:269`)
-- **USER-DASHBOARD-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-practices/reference.md:270`)
-- **USER-DASHBOARD-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-practices/reference.md:270`)
-- **USER-DASHBOARD-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-practices/reference.md:271`)
-- **USER-DASHBOARD-001** (`src/moai_adk/templates/.claude/skills/moai-alfred-practices/reference.md:271`)
+- **USER-DASHBOARD-001**
+  (`src/moai_adk/templates/.claude/skills/moai-alfred-practices/reference.md:114`)
+- **USER-DASHBOARD-001**
+  (`src/moai_adk/templates/.claude/skills/moai-alfred-practices/reference.md:129`)
+- **USER-DASHBOARD-001**
+  (`src/moai_adk/templates/.claude/skills/moai-alfred-practices/reference.md:129`)
+- **USER-DASHBOARD-001**
+  (`src/moai_adk/templates/.claude/skills/moai-alfred-practices/reference.md:147`)
+- **USER-DASHBOARD-001**
+  (`src/moai_adk/templates/.claude/skills/moai-alfred-practices/reference.md:148`)
+- **USER-DASHBOARD-001**
+  (`src/moai_adk/templates/.claude/skills/moai-alfred-practices/reference.md:149`)
+- **USER-DASHBOARD-001**
+  (`src/moai_adk/templates/.claude/skills/moai-alfred-practices/reference.md:150`)
+- **USER-DASHBOARD-001**
+  (`src/moai_adk/templates/.claude/skills/moai-alfred-practices/reference.md:151`)
+- **USER-DASHBOARD-001**
+  (`src/moai_adk/templates/.claude/skills/moai-alfred-practices/reference.md:269`)
+- **USER-DASHBOARD-001**
+  (`src/moai_adk/templates/.claude/skills/moai-alfred-practices/reference.md:269`)
+- **USER-DASHBOARD-001**
+  (`src/moai_adk/templates/.claude/skills/moai-alfred-practices/reference.md:270`)
+- **USER-DASHBOARD-001**
+  (`src/moai_adk/templates/.claude/skills/moai-alfred-practices/reference.md:270`)
+- **USER-DASHBOARD-001**
+  (`src/moai_adk/templates/.claude/skills/moai-alfred-practices/reference.md:271`)
+- **USER-DASHBOARD-001**
+  (`src/moai_adk/templates/.claude/skills/moai-alfred-practices/reference.md:271`)
 - **USER-EXPERIENCE-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:1613`)
 - **USER-EXPERIENCE-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:6208`)
 - **USER-EXPERIENCE-001** (`.moai/specs/SPEC-PORTAL-LINK-001/spec.md:125`)
 - **USER-EXPERIENCE-CLI-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:4167`)
 - **USER-EXPERIENCE-CLI-001** (`src/moai_adk/cli/commands/improve_user_experience.py:1`)
 - **USER-EXPERIENCE-CLI-001** (`src/moai_adk/cli/commands/improve_user_experience.py:1`)
-- **USER-EXPERIENCE-IMPROVEMENT-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:4012`)
+- **USER-EXPERIENCE-IMPROVEMENT-001**
+  (`.moai/reports/tag-system-analysis-20251106-060000.json:4012`)
 - **USER-EXPERIENCE-IMPROVEMENT-001** (`src/moai_adk/utils/user_experience.py:1`)
 - **USER-EXPERIENCE-IMPROVEMENT-001** (`src/moai_adk/utils/user_experience.py:1`)
 - **USER-PREF-002** (`docs/src/zh/guides/specs/tags.md:692`)
@@ -5009,7 +5105,8 @@ Total TAGs: 4702
 
 - **UTIL-003** (`.claude/skills/moai-cc-skill-factory/PARALLEL-ANALYSIS-REPORT.md:138`)
 - **UTIL-003** (`.moai/reports/tag-system-analysis-20251106-060000.json:4647`)
-- **UTIL-003** (`src/moai_adk/templates/.claude/skills/moai-cc-skill-factory/PARALLEL-ANALYSIS-REPORT.md:138`)
+- **UTIL-003**
+  (`src/moai_adk/templates/.claude/skills/moai-cc-skill-factory/PARALLEL-ANALYSIS-REPORT.md:138`)
 
 ### UTILS
 
@@ -5077,7 +5174,8 @@ Total TAGs: 4702
 
 - **VERSION-ALWAYS-VALID-001** (`.claude/hooks/alfred/shared/core/project.py:597`)
 - **VERSION-ALWAYS-VALID-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:4532`)
-- **VERSION-ALWAYS-VALID-001** (`src/moai_adk/templates/.claude/hooks/alfred/shared/core/project.py:597`)
+- **VERSION-ALWAYS-VALID-001**
+  (`src/moai_adk/templates/.claude/hooks/alfred/shared/core/project.py:597`)
 - **VERSION-CACHE-001** (`.claude/hooks/alfred/core/version_cache.py:2`)
 - **VERSION-CACHE-001** (`.claude/hooks/alfred/shared/core/version_cache.py:2`)
 - **VERSION-CACHE-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:4492`)
@@ -5092,7 +5190,8 @@ Total TAGs: 4702
 - **VERSION-CACHE-001** (`.moai/specs/SPEC-UPDATE-ENHANCE-001/spec.md:364`)
 - **VERSION-CACHE-001** (`.moai/specs/SPEC-UPDATE-ENHANCE-001/spec.md:367`)
 - **VERSION-CACHE-001** (`src/moai_adk/templates/.claude/hooks/alfred/core/version_cache.py:2`)
-- **VERSION-CACHE-001** (`src/moai_adk/templates/.claude/hooks/alfred/shared/core/version_cache.py:2`)
+- **VERSION-CACHE-001**
+  (`src/moai_adk/templates/.claude/hooks/alfred/shared/core/version_cache.py:2`)
 - **VERSION-CACHE-INTEGRATION-001** (`.claude/hooks/alfred/core/project.py:563`)
 - **VERSION-CACHE-INTEGRATION-001** (`.claude/hooks/alfred/shared/core/project.py:558`)
 - **VERSION-CACHE-INTEGRATION-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:1843`)
@@ -5104,8 +5203,10 @@ Total TAGs: 4702
 - **VERSION-CACHE-INTEGRATION-001** (`.moai/specs/SPEC-CODEBASE-REFACTOR-001/spec.md:141`)
 - **VERSION-CACHE-INTEGRATION-001** (`.moai/specs/SPEC-CODEBASE-REFACTOR-001/spec.md:141`)
 - **VERSION-CACHE-INTEGRATION-001** (`.moai/specs/SPEC-CODEBASE-REFACTOR-001/spec.md:141`)
-- **VERSION-CACHE-INTEGRATION-001** (`src/moai_adk/templates/.claude/hooks/alfred/core/project.py:563`)
-- **VERSION-CACHE-INTEGRATION-001** (`src/moai_adk/templates/.claude/hooks/alfred/shared/core/project.py:558`)
+- **VERSION-CACHE-INTEGRATION-001**
+  (`src/moai_adk/templates/.claude/hooks/alfred/core/project.py:563`)
+- **VERSION-CACHE-INTEGRATION-001**
+  (`src/moai_adk/templates/.claude/hooks/alfred/shared/core/project.py:558`)
 - **VERSION-CHECK-CONFIG-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:7978`)
 - **VERSION-CHECK-CONFIG-001** (`.moai/specs/SPEC-UPDATE-ENHANCE-001/plan.md:620`)
 - **VERSION-CHECK-CONFIG-001** (`.moai/specs/SPEC-UPDATE-ENHANCE-001/spec.md:370`)
@@ -5116,14 +5217,17 @@ Total TAGs: 4702
 - **VERSION-DETECT-MAJOR-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:4517`)
 - **VERSION-DETECT-MAJOR-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:10271`)
 - **VERSION-DETECT-MAJOR-001** (`src/moai_adk/templates/.claude/hooks/alfred/core/project.py:516`)
-- **VERSION-DETECT-MAJOR-001** (`src/moai_adk/templates/.claude/hooks/alfred/shared/core/project.py:511`)
+- **VERSION-DETECT-MAJOR-001**
+  (`src/moai_adk/templates/.claude/hooks/alfred/shared/core/project.py:511`)
 - **VERSION-INTEGRATE-FIELDS-001** (`.claude/hooks/alfred/core/project.py:596`)
 - **VERSION-INTEGRATE-FIELDS-001** (`.claude/hooks/alfred/shared/core/project.py:596`)
 - **VERSION-INTEGRATE-FIELDS-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:4487`)
 - **VERSION-INTEGRATE-FIELDS-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:4527`)
 - **VERSION-INTEGRATE-FIELDS-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:10280`)
-- **VERSION-INTEGRATE-FIELDS-001** (`src/moai_adk/templates/.claude/hooks/alfred/core/project.py:596`)
-- **VERSION-INTEGRATE-FIELDS-001** (`src/moai_adk/templates/.claude/hooks/alfred/shared/core/project.py:596`)
+- **VERSION-INTEGRATE-FIELDS-001**
+  (`src/moai_adk/templates/.claude/hooks/alfred/core/project.py:596`)
+- **VERSION-INTEGRATE-FIELDS-001**
+  (`src/moai_adk/templates/.claude/hooks/alfred/shared/core/project.py:596`)
 
 ### VISUAL
 

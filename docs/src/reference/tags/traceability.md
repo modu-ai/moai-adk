@@ -97,7 +97,7 @@ def request_password_reset(email):
 
 ### Step 4: @DOC 작성
 
-```markdown
+````markdown
 # 사용자 인증 API @DOC:SPEC-001:api_docs
 
 이 문서는 @SPEC-001의 구현을 설명합니다.
@@ -109,12 +109,11 @@ def request_password_reset(email):
 
 ```bash
 POST /api/auth/login
-```
+````
 
 ## 회원가입 엔드포인트
 
-**구현**: @CODE:SPEC-001:register
-**테스트**: @TEST:SPEC-001:register_success
+**구현**: @CODE:SPEC-001:register **테스트**: @TEST:SPEC-001:register_success
 
 ```bash
 POST /api/auth/register
@@ -122,13 +121,13 @@ POST /api/auth/register
 
 ## 비밀번호 초기화
 
-**구현**: @CODE:SPEC-001:password_reset
-**테스트**: @TEST:SPEC-001:password_reset_success
+**구현**: @CODE:SPEC-001:password_reset **테스트**: @TEST:SPEC-001:password_reset_success
 
 ```bash
 POST /api/auth/reset-password
 ```
-```
+
+````
 
 ## ✅ 추적성 검증
 
@@ -145,7 +144,7 @@ moai-adk tag-agent
 5. 체인 완성: 완료 ✅
 
 결과: SPEC-001 추적성 100%
-```
+````
 
 ### 매뉴얼 검증
 
@@ -164,6 +163,7 @@ SPEC-001: 사용자 인증
 ## 🚨 추적성 문제 진단
 
 ### Problem 1: 고아 TAG
+
 ```python
 # ❌ 문제: SPEC이 없는 TAG
 @CODE:SPEC-999:orphan_function
@@ -174,6 +174,7 @@ def some_function():
 ```
 
 ### Problem 2: 불완전한 체인
+
 ```python
 # ❌ 문제: TEST와 CODE는 있지만 DOC 없음
 @TEST:SPEC-001:test
@@ -188,6 +189,7 @@ def feature():
 ```
 
 ### Problem 3: TAG 중복
+
 ```python
 # ❌ 문제: 같은 TAG가 여러 파일에 있음
 # file1.py:
@@ -232,13 +234,13 @@ def feature():
 
 ### 목표
 
-| Level | Traceability | Status |
-|-------|-------------|--------|
-| Excellent | 100% | ✅ 배포 가능 |
-| Good | 90%+ | ⚠️ 검토 필요 |
-| Fair | 70%+ | 🚨 개선 필요 |
-| Poor | <70% | ❌ 배포 불가 |
+| Level     | Traceability | Status       |
+| --------- | ------------ | ------------ |
+| Excellent | 100%         | ✅ 배포 가능 |
+| Good      | 90%+         | ⚠️ 검토 필요 |
+| Fair      | 70%+         | 🚨 개선 필요 |
+| Poor      | \<70%        | ❌ 배포 불가 |
 
----
+______________________________________________________________________
 
 **다음**: [TAG 타입](types.md) 또는 [TAG 개요](index.md)

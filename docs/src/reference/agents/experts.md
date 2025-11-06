@@ -4,16 +4,16 @@ Alfred의 6명 도메인 전문가에 대한 완전한 참고서입니다.
 
 ## 개요
 
-| # | 전문가 | 도메인 | 활성화 키워드 | 스킬 수 |
-|---|--------|--------|------------|--------|
-| 1 | backend-expert | API, 서버, DB | server, api, database, microservice | 12개 |
-| 2 | frontend-expert | UI, 상태관리, 성능 | frontend, ui, component, state | 10개 |
-| 3 | devops-expert | 배포, CI/CD, 인프라 | deploy, docker, kubernetes, ci/cd | 14개 |
-| 4 | ui-ux-expert | 디자인 시스템, 접근성 | design, ux, accessibility, figma | 8개 |
-| 5 | security-expert | 보안, 인증 | security, auth, encryption, owasp | 11개 |
-| 6 | database-expert | DB 설계, 최적화 | database, schema, query, index | 9개 |
+| #   | 전문가          | 도메인                | 활성화 키워드                       | 스킬 수 |
+| --- | --------------- | --------------------- | ----------------------------------- | ------- |
+| 1   | backend-expert  | API, 서버, DB         | server, api, database, microservice | 12개    |
+| 2   | frontend-expert | UI, 상태관리, 성능    | frontend, ui, component, state      | 10개    |
+| 3   | devops-expert   | 배포, CI/CD, 인프라   | deploy, docker, kubernetes, ci/cd   | 14개    |
+| 4   | ui-ux-expert    | 디자인 시스템, 접근성 | design, ux, accessibility, figma    | 8개     |
+| 5   | security-expert | 보안, 인증            | security, auth, encryption, owasp   | 11개    |
+| 6   | database-expert | DB 설계, 최적화       | database, schema, query, index      | 9개     |
 
----
+______________________________________________________________________
 
 ## 1. backend-expert
 
@@ -22,35 +22,39 @@ Alfred의 6명 도메인 전문가에 대한 완전한 참고서입니다.
 ### 활성화 조건
 
 다음 키워드가 SPEC에 포함되면 자동 활성화:
+
 - `server`, `api`, `endpoint`, `microservice`
 - `authentication`, `authorization`
 - `database`, `ORM`
 
 ### 전문 분야
 
-| 영역 | 기술 스택 | 책임 |
-|------|---------|------|
-| **API 설계** | REST, GraphQL | OpenAPI 3.1 명세 작성 |
-| **프레임워크** | FastAPI, Flask, Django | 프레임워크 선택 및 구조 설계 |
-| **인증** | JWT, OAuth 2.0, Session | 안전한 인증 시스템 구현 |
-| **마이크로서비스** | Celery, RabbitMQ | 비동기 작업 처리 |
-| **캐싱** | Redis, Memcached | 성능 최적화 |
+| 영역               | 기술 스택               | 책임                         |
+| ------------------ | ----------------------- | ---------------------------- |
+| **API 설계**       | REST, GraphQL           | OpenAPI 3.1 명세 작성        |
+| **프레임워크**     | FastAPI, Flask, Django  | 프레임워크 선택 및 구조 설계 |
+| **인증**           | JWT, OAuth 2.0, Session | 안전한 인증 시스템 구현      |
+| **마이크로서비스** | Celery, RabbitMQ        | 비동기 작업 처리             |
+| **캐싱**           | Redis, Memcached        | 성능 최적화                  |
 
 ### 주요 책임
 
 1. **API 설계**
+
    - RESTful 원칙 준수
    - 엔드포인트 구조 설계
    - 요청/응답 스키마 정의
    - 에러 처리 전략
 
 2. **데이터 모델링**
+
    - Entity-Relationship 다이어그램
    - ORM 모델 설계
    - 관계 설정 (1:1, 1:N, N:N)
    - 인덱싱 전략
 
 3. **성능 최적화**
+
    - 쿼리 최적화
    - 데이터베이스 인덱싱
    - 캐싱 전략
@@ -121,7 +125,7 @@ async def delete_todo(todo_id: int, db: Session = Depends(get_db)):
 - 에러 코드 문서
 - 인증 플로우
 
----
+______________________________________________________________________
 
 ## 2. frontend-expert
 
@@ -130,33 +134,37 @@ async def delete_todo(todo_id: int, db: Session = Depends(get_db)):
 ### 활성화 조건
 
 다음 키워드가 SPEC에 포함되면 자동 활성화:
+
 - `frontend`, `ui`, `component`, `page`
 - `state`, `store`, `context`
 - `performance`, `optimization`
 
 ### 전문 분야
 
-| 영역 | 기술 스택 | 책임 |
-|------|---------|------|
+| 영역           | 기술 스택                     | 책임                    |
+| -------------- | ----------------------------- | ----------------------- |
 | **프레임워크** | React 19, Vue 3.5, Angular 19 | 프레임워크 선택 및 구조 |
-| **상태관리** | Redux, Zustand, Pinia | 전역 상태 설계 |
-| **컴포넌트** | Composition, Hooks | 재사용 가능한 컴포넌트 |
-| **성능** | 번들 최적화, 지연 로딩 | 렌더링 성능 개선 |
-| **접근성** | WCAG 2.2, ARIA | 모든 사용자 지원 |
+| **상태관리**   | Redux, Zustand, Pinia         | 전역 상태 설계          |
+| **컴포넌트**   | Composition, Hooks            | 재사용 가능한 컴포넌트  |
+| **성능**       | 번들 최적화, 지연 로딩        | 렌더링 성능 개선        |
+| **접근성**     | WCAG 2.2, ARIA                | 모든 사용자 지원        |
 
 ### 주요 책임
 
 1. **컴포넌트 설계**
+
    - 재사용 가능한 컴포넌트 구조
    - Props 인터페이스 정의
    - 스타일링 전략 (CSS-in-JS, Tailwind)
 
 2. **상태 관리**
+
    - 전역 상태 구조
    - 상태 업데이트 로직
    - 성능 최적화 (메모이제이션)
 
 3. **성능 최적화**
+
    - 번들 크기 최소화
    - 렌더링 최적화
    - 이미지 최적화
@@ -234,7 +242,7 @@ export const TodoList = () => {
 - 성능 최적화 보고서
 - 접근성 검사 결과
 
----
+______________________________________________________________________
 
 ## 3. devops-expert
 
@@ -243,33 +251,37 @@ export const TodoList = () => {
 ### 활성화 조건
 
 다음 키워드가 SPEC에 포함되면 자동 활성화:
+
 - `deploy`, `deployment`, `ci/cd`
 - `docker`, `kubernetes`
 - `infrastructure`, `cloud`
 
 ### 전문 분야
 
-| 영역 | 기술 스택 | 책임 |
-|------|---------|------|
-| **컨테이너** | Docker, Docker Compose | Dockerfile 및 이미지 관리 |
-| **오케스트레이션** | Kubernetes, Helm | 배포 및 스케일링 |
-| **CI/CD** | GitHub Actions, GitLab CI | 자동화 파이프라인 |
-| **클라우드** | AWS, GCP, Azure | 인프라 코드 작성 |
-| **모니터링** | Prometheus, Grafana | 성능 모니터링 |
+| 영역               | 기술 스택                 | 책임                      |
+| ------------------ | ------------------------- | ------------------------- |
+| **컨테이너**       | Docker, Docker Compose    | Dockerfile 및 이미지 관리 |
+| **오케스트레이션** | Kubernetes, Helm          | 배포 및 스케일링          |
+| **CI/CD**          | GitHub Actions, GitLab CI | 자동화 파이프라인         |
+| **클라우드**       | AWS, GCP, Azure           | 인프라 코드 작성          |
+| **모니터링**       | Prometheus, Grafana       | 성능 모니터링             |
 
 ### 주요 책임
 
 1. **배포 파이프라인 설계**
+
    - 테스트 → 빌드 → 배포 자동화
    - 카나리 배포 및 롤백 전략
    - 무중단 배포
 
 2. **인프라 구성**
+
    - 프로덕션 환경 설정
    - 로드 밸런싱
    - 데이터베이스 백업/복구
 
 3. **모니터링 & 로깅**
+
    - 애플리케이션 성능 모니터링
    - 로그 수집 및 분석
    - 알림 설정
@@ -335,7 +347,7 @@ jobs:
 - 배포 가이드
 - 모니터링 구성
 
----
+______________________________________________________________________
 
 ## 4. ui-ux-expert
 
@@ -344,32 +356,36 @@ jobs:
 ### 활성화 조건
 
 다음 키워드가 SPEC에 포함되면 자동 활성화:
+
 - `design`, `ui`, `ux`
 - `accessibility`, `a11y`
 - `figma`, `design-system`
 
 ### 전문 분야
 
-| 영역 | 기술 스택 | 책임 |
-|------|---------|------|
-| **디자인 시스템** | Figma, Storybook | 컴포넌트 라이브러리 |
-| **접근성** | WCAG 2.2, ARIA | 모든 사용자 포용 |
-| **사용자 연구** | 유저 테스트, 분석 | UX 개선 |
-| **성능** | 로딩 시간, 반응성 | 사용자 만족도 |
+| 영역              | 기술 스택         | 책임                |
+| ----------------- | ----------------- | ------------------- |
+| **디자인 시스템** | Figma, Storybook  | 컴포넌트 라이브러리 |
+| **접근성**        | WCAG 2.2, ARIA    | 모든 사용자 포용    |
+| **사용자 연구**   | 유저 테스트, 분석 | UX 개선             |
+| **성능**          | 로딩 시간, 반응성 | 사용자 만족도       |
 
 ### 주요 책임
 
 1. **디자인 시스템 구축**
+
    - 색상, 타이포그래피, 간격 정의
    - 컴포넌트 라이브러리
    - 디자인 토큰
 
 2. **접근성 보장**
+
    - 스크린 리더 지원
    - 키보드 네비게이션
    - 색상 명도 대비
 
 3. **사용자 경험 개선**
+
    - 사용자 테스트
    - 피드백 수집
    - 지속적 개선
@@ -408,7 +424,7 @@ jobs:
 - 접근성 감사 보고서
 - 사용자 테스트 결과
 
----
+______________________________________________________________________
 
 ## 5. security-expert
 
@@ -417,34 +433,38 @@ jobs:
 ### 활성화 조건
 
 다음 키워드가 SPEC에 포함되면 자동 활성화:
+
 - `security`, `auth`, `encryption`
 - `vulnerability`, `owasp`
 - `compliance`, `privacy`
 
 ### 전문 분야
 
-| 영역 | 기술 스택 | 책임 |
-|------|---------|------|
-| **인증** | JWT, OAuth 2.0, SAML | 보안 인증 시스템 |
-| **암호화** | AES-256, RSA, HTTPS | 데이터 보호 |
-| **OWASP** | Top 10, SAST/DAST | 취약점 방지 |
-| **접근 제어** | RBAC, ABAC | 권한 관리 |
-| **감사** | 로깅, 모니터링 | 보안 이벤트 추적 |
+| 영역          | 기술 스택            | 책임             |
+| ------------- | -------------------- | ---------------- |
+| **인증**      | JWT, OAuth 2.0, SAML | 보안 인증 시스템 |
+| **암호화**    | AES-256, RSA, HTTPS  | 데이터 보호      |
+| **OWASP**     | Top 10, SAST/DAST    | 취약점 방지      |
+| **접근 제어** | RBAC, ABAC           | 권한 관리        |
+| **감사**      | 로깅, 모니터링       | 보안 이벤트 추적 |
 
 ### 주요 책임
 
 1. **보안 설계**
+
    - 위협 모델링
    - 보안 아키텍처
    - 침입 방지 전략
 
 2. **취약점 방지**
+
    - SQL injection 방지
    - XSS 방지
    - CSRF 토큰
    - 입력 검증
 
 3. **보안 감시**
+
    - 로그 분석
    - 침입 탐지
    - 사고 대응
@@ -514,7 +534,7 @@ def secure_headers(response):
 - 침입 테스트 보고서
 - 컴플라이언스 문서 (GDPR, HIPAA)
 
----
+______________________________________________________________________
 
 ## 6. database-expert
 
@@ -523,33 +543,37 @@ def secure_headers(response):
 ### 활성화 조건
 
 다음 키워드가 SPEC에 포함되면 자동 활성화:
+
 - `database`, `db`, `schema`
 - `query`, `index`, `migration`
 - `optimization`, `performance`
 
 ### 전문 분야
 
-| 영역 | 기술 스택 | 책임 |
-|------|---------|------|
-| **설계** | PostgreSQL, MySQL, MongoDB | 스키마 설계 |
-| **최적화** | 인덱싱, 쿼리 튜닝 | 성능 개선 |
-| **마이그레이션** | Alembic, Flyway | 버전 관리 |
-| **확장성** | 파티셔닝, 샤딩 | 대규모 데이터 처리 |
-| **백업** | PITR, 복제 | 데이터 안전성 |
+| 영역             | 기술 스택                  | 책임               |
+| ---------------- | -------------------------- | ------------------ |
+| **설계**         | PostgreSQL, MySQL, MongoDB | 스키마 설계        |
+| **최적화**       | 인덱싱, 쿼리 튜닝          | 성능 개선          |
+| **마이그레이션** | Alembic, Flyway            | 버전 관리          |
+| **확장성**       | 파티셔닝, 샤딩             | 대규모 데이터 처리 |
+| **백업**         | PITR, 복제                 | 데이터 안전성      |
 
 ### 주요 책임
 
 1. **데이터베이스 설계**
+
    - Entity-Relationship 다이어그램
    - 정규화 (1NF ~ 3NF)
    - 제약조건 설정
 
 2. **성능 최적화**
+
    - 적절한 인덱스 생성
    - 쿼리 최적화
    - 실행 계획 분석
 
 3. **마이그레이션 관리**
+
    - 버전 제어
    - 롤백 전략
    - 무중단 마이그레이션
@@ -594,19 +618,19 @@ CREATE TABLE todos (
 - 성능 튜닝 보고서
 - 백업/복구 계획
 
----
+______________________________________________________________________
 
 ## 전문가 활성화 매트릭스
 
 | SPEC 키워드 | backend | frontend | devops | ui-ux | security | database |
-|-----------|---------|----------|--------|-------|----------|----------|
-| API | ✅ | | | | | |
-| Frontend | | ✅ | | ✅ | | |
-| Database | ✅ | | | | | ✅ |
-| Deploy | | | ✅ | | | |
-| Security | | | | | ✅ | |
-| Performance | ✅ | ✅ | | ✅ | | ✅ |
+| ----------- | ------- | -------- | ------ | ----- | -------- | -------- |
+| API         | ✅      |          |        |       |          |          |
+| Frontend    |         | ✅       |        | ✅    |          |          |
+| Database    | ✅      |          |        |       |          | ✅       |
+| Deploy      |         |          | ✅     |       |          |          |
+| Security    |         |          |        |       | ✅       |          |
+| Performance | ✅      | ✅       |        | ✅    |          | ✅       |
 
----
+______________________________________________________________________
 
 **다음**: [핵심 Sub-agents](core.md) 또는 [Agents 개요](index.md)

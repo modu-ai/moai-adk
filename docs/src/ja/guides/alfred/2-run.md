@@ -1,8 +1,6 @@
----
-title: /alfred:2-run コマンド
-description: TDD実装と品質保証のための完全ガイド
-lang: ja
----
+______________________________________________________________________
+
+## title: /alfred:2-run コマンド description: TDD実装と品質保証のための完全ガイド lang: ja
 
 # /alfred:2-run - TDD実装コマンド
 
@@ -10,9 +8,7 @@ lang: ja
 
 ## 概要
 
-**目的**: TDDサイクル実行と品質保証
-**実行時間**: 約5分
-**主要成果**: テストコード、実装コード、品質レポート
+**目的**: TDDサイクル実行と品質保証 **実行時間**: 約5分 **主要成果**: テストコード、実装コード、品質レポート
 
 ## 基本使用法
 
@@ -57,16 +53,13 @@ lang: ja
 
 ## フォルダ構造
 ```
-src/hello/
-├── __init__.py
-├── api.py          # @CODE:EX-HELLO-001:API
-├── models.py       # @CODE:EX-HELLO-001:MODEL
-└── services.py     # @CODE:EX-HELLO-001:SERVICE
 
-tests/hello/
-├── __init__.py
-├── test_api.py     # @TEST:EX-HELLO-001
-└── test_models.py  # @TEST:EX-HELLO-002
+src/hello/ ├── __init__.py ├── api.py # @CODE:EX-HELLO-001:API ├── models.py #
+@CODE:EX-HELLO-001:MODEL └── services.py # @CODE:EX-HELLO-001:SERVICE
+
+tests/hello/ ├── __init__.py ├── test_api.py # @TEST:EX-HELLO-001 └── test_models.py #
+@TEST:EX-HELLO-002
+
 ```
 
 ## TAG設計
@@ -121,6 +114,7 @@ def test_hello_with_invalid_chars_should_return_400():
 **実行結果**: <span class="material-icons">cancel</span> FAILED (予期通り - 実装がまだない)
 
 **Gitコミット**:
+
 ```bash
 git add tests/test_hello.py
 git commit -m "🔴 test(HELLO-001): add failing hello API tests"
@@ -161,6 +155,7 @@ def hello(name: str = "World"):
 **実行結果**: ✅ PASSED (すべてのテスト通過)
 
 **Gitコミット**:
+
 ```bash
 git add src/hello/api.py
 git commit -m "🟢 feat(HELLO-001): implement hello API with validation"
@@ -253,6 +248,7 @@ def hello(
 **実行結果**: ✅ PASSED (すべてのテスト依然として通過)
 
 **Gitコミット**:
+
 ```bash
 git add src/hello/models.py src/hello/services.py src/hello/api.py
 git commit -m "♻️ refactor(HELLO-001): improve code structure with TRUST principles"
@@ -332,12 +328,12 @@ def test_user_crud_with_database():
 
 特定の状況で専門家を自動的に活性化：
 
-| 状況 | 活性化される専門家 | 提供内容 |
-|------|------------------|----------|
-| データベース関連機能 | database-expert | スキーマ設計、クエリ最適化 |
-| 認証・認可機能 | security-expert | セキュリティ実装、脆弱性分析 |
-| APIエンドポイント | backend-expert | API設計、ドキュメンテーション |
-| パフォーマンス要件 | devops-expert | 性能最適化、スケーリング |
+| 状況                 | 活性化される専門家 | 提供内容                      |
+| -------------------- | ------------------ | ----------------------------- |
+| データベース関連機能 | database-expert    | スキーマ設計、クエリ最適化    |
+| 認証・認可機能       | security-expert    | セキュリティ実装、脆弱性分析  |
+| APIエンドポイント    | backend-expert     | API設計、ドキュメンテーション |
+| パフォーマンス要件   | devops-expert      | 性能最適化、スケーリング      |
 
 ### 専門家アドバイス統合
 
@@ -459,6 +455,7 @@ class User(BaseModel):
 ### よくある問題
 
 **テストが失敗し続ける**:
+
 ```bash
 # テストデバッグ
 pytest tests/test_hello.py -v -s
@@ -468,6 +465,7 @@ pytest tests/test_hello.py::test_hello_with_name_should_return_personalized_gree
 ```
 
 **モジュールインポートエラー**:
+
 ```bash
 # 依存関係インストール
 uv add fastapi pytest
@@ -477,6 +475,7 @@ python -c "import sys; print(sys.path)"
 ```
 
 **カバレッジ不足**:
+
 ```bash
 # カバレッジレポート確認
 coverage report -m
@@ -574,9 +573,10 @@ jobs:
           coverage report --fail-under=85
 ```
 
----
+______________________________________________________________________
 
 **📚 次のステップ**:
+
 - [/alfred:3-sync](3-sync.md)でドキュメント同期
 - [TDDガイド](../tdd/index.md)でテスト駆動開発技術
 - [品質ガイド](../project/deploy.md)でプロダクション展開
