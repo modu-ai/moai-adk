@@ -10,8 +10,6 @@ Post-Tool-Use 훅과 통합하여 실시간으로 TAG 오류를 교정.
 - 중복 TAG 자동 제거
 - TAG 체인 연결 자동 복구
 - 스마트 TAG 제안 시스템
-
-@SPEC:TAG-AUTO-001
 """
 
 import re
@@ -427,6 +425,12 @@ class TagAutoCorrector:
     def _extract_domain_from_path(self, path: Path) -> Optional[str]:
         """파일 경로에서 도메인 추출
 
+        Extract domain from file path:
+        - test files (tests/ or test_*.py) → None
+        - src/domain/... → domain (uppercase)
+        - lib/domain/... → domain (uppercase)
+        - filename (no parent dir) → filename stem (uppercase)
+
         Args:
             path: 파일 경로
 
@@ -434,34 +438,28 @@ class TagAutoCorrector:
             도메인 문자열 또는 None
         """
         parts = path.parts
+        filename = path.name
 
-        # src/ 밑의 첫 번째 디렉토리를 도메인으로 사용
+        # Test files should not have domain extraction
+        if "tests" in parts or filename.startswith("test_"):
+            return None
+
+        # For src/ paths, extract first directory after src
         if "src" in parts:
             src_index = parts.index("src")
             if src_index + 1 < len(parts):
                 domain_part = parts[src_index + 1]
                 return domain_part.upper().replace("_", "-")
 
-        # 파일 이름에서 도메인 추출
+        # For lib/ paths or other paths, extract parent directory
+        if len(parts) > 1:
+            parent_dir = parts[-2]  # Parent directory
+            return parent_dir.upper().replace("_", "-")
+
+        # For single files with no parent directory, use filename stem
         stem = path.stem.upper()
-        # 일반적인 패턴 변환
-        replacements = {
-            "_": "-",
-            "AUTH": "AUTH",
-            "USER": "USER",
-            "LOGIN": "LOGIN",
-            "API": "API",
-            "CLI": "CLI",
-            "UTIL": "UTILS",
-            "HELPER": "HELPERS"
-        }
-
-        for old, new in replacements.items():
-            stem = stem.replace(old, new)
-
-        # 유효한 도메인 형식 확인
-        if re.match(r'^[A-Z-]+$', stem):
-            return stem
+        if stem and re.match(r'^[A-Z-]+$', stem.replace("-", "")):
+            return stem.replace("_", "-")
 
         return None
 
