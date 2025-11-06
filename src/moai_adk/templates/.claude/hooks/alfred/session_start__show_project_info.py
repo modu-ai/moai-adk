@@ -31,8 +31,6 @@ try:
     from utils.timeout import TimeoutError as PlatformTimeoutError
 except ImportError:
     # Fallback timeout implementation
-    import time
-    import signal
 
     class CrossPlatformTimeout:
         def __init__(self, seconds):

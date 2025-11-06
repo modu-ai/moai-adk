@@ -23,16 +23,9 @@ from typing import Dict, List, Optional
 # 모듈 경로 추가
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
-from moai_adk.utils.common import (
-    create_report_path,
-    format_duration,
-    get_summary_stats,
-    RateLimiter
-)
-from ..utils.hook_config import (
-    load_hook_timeout,
-    get_graceful_degradation
-)
+from moai_adk.utils.common import format_duration, get_summary_stats
+
+from ..utils.hook_config import get_graceful_degradation, load_hook_timeout
 
 logger = logging.getLogger(__name__)
 
@@ -429,8 +422,8 @@ def format_analysis_report(analysis_data: Dict) -> str:
     report_lines.extend([
         "",
         "---",
-        f"*보고서는 Alfred의 SessionStart Hook으로 자동 생성되었습니다*",
-        f"*분석 설정은 `.moai/config.json`의 `daily_analysis` 섹션에서 관리할 수 있습니다*"
+        "*보고서는 Alfred의 SessionStart Hook으로 자동 생성되었습니다*",
+        "*분석 설정은 `.moai/config.json`의 `daily_analysis` 섹션에서 관리할 수 있습니다*"
     ])
 
     return "\n".join(report_lines)
@@ -489,8 +482,8 @@ def main():
         graceful_degradation = get_graceful_degradation()
 
         # 타임아웃 체크
-        import time
         import signal
+        import time
 
         def timeout_handler(signum, frame):
             raise TimeoutError("Hook execution timeout")
@@ -584,5 +577,4 @@ def main():
 
 
 if __name__ == "__main__":
-    import sys
     main()

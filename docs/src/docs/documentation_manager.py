@@ -9,12 +9,11 @@ including multilingual support, validation, and TAG system integration.
 """
 
 import json
-import os
-import re
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple
-from datetime import datetime
 import logging
+import re
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Tuple
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -133,14 +132,14 @@ class DocumentationManager:
         """Validate TAG consistency across all documentation files."""
         issues = []
 
-        # Define expected TAGs for this SPEC
-        expected_tags = [
-            "@CODE:DOC-ONLINE-001:MAIN",
-            "@CODE:DOC-ONLINE-001:KO",
-            "@CODE:DOC-ONLINE-001:EN",
-            "@CODE:DOC-ONLINE-001:JA",
-            "@CODE:DOC-ONLINE-001:ZH"
-        ]
+        # TODO: Define expected TAGs for this SPEC when needed
+        # expected_tags = [
+        #     "@CODE:DOC-ONLINE-001:MAIN",
+        #     "@CODE:DOC-ONLINE-001:KO",
+        #     "@CODE:DOC-ONLINE-001:EN",
+        #     "@CODE:DOC-ONLINE-001:JA",
+        #     "@CODE:DOC-ONLINE-001:ZH"
+        # ]
 
         # Check each language file for appropriate TAGs
         language_tag_mapping = {
@@ -281,14 +280,14 @@ def main():
 
     # Generate stats
     stats = manager.get_documentation_stats()
-    print(f"\nStatistics:")
+    print("\nStatistics:")
     print(f"  Files: {stats['total_files']}")
     print(f"  Size: {stats['total_size_bytes']} bytes")
     print(f"  TAGs: {stats['tag_count']}")
 
     # Generate sync report
     report = manager.generate_sync_report()
-    print(f"\nSync Report Generated:")
+    print("\nSync Report Generated:")
     print(f"  Status: {report['validation_status']}")
     print(f"  Issues: {len(report['issues'])}")
 

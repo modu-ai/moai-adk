@@ -157,7 +157,7 @@ def init(
 
             # Handle MCP options in non-interactive mode
             if mcp_auto:
-                mcp_servers = ["context7", "figma", "playwright", "sequential-thinking"]
+                mcp_servers = ["context7", "playwright", "sequential-thinking"]
                 console.print("[cyan]🔧 MCP servers:[/cyan] Auto-installing all recommended servers")
             elif with_mcp:
                 mcp_servers = list(with_mcp)

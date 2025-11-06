@@ -1,0 +1,31 @@
+{
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp@latest"],
+      "env": {
+        "NODE_OPTIONS": "--max-old-space-size=2048"
+      },
+      "timeout": 15000,
+      "retries": 2
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"],
+      "env": {
+        "NODE_OPTIONS": "--max-old-space-size=2048"
+      },
+      "timeout": 15000,
+      "retries": 2
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking@latest"],
+      "env": {
+        "NODE_OPTIONS": "--max-old-space-size=2048"
+      },
+      "timeout": 15000,
+      "retries": 2
+    }
+  }
+}

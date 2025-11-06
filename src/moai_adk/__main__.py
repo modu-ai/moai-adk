@@ -140,7 +140,7 @@ def sync_command_func(skip_docs, skip_tags, apply_dedup, dry_run):
         "apply_dedup": apply_dedup,
         "dry_run": dry_run
     }
-    
+
     from moai_adk.cli.commands.sync import sync as sync_cli
     sys.exit(sync_cli(options))
 

@@ -83,28 +83,12 @@ def prompt_project_setup(
                 f"[cyan]📦 Project Name:[/cyan] {answers['project_name']} [dim](current directory)[/dim]"
             )
 
-        # MCP 서버 선택 프롬프트 추가
+        # MCP 서버 자동 설치
+        mcp_servers = ["context7", "playwright", "sequential-thinking"]
+        answers["mcp_servers"] = mcp_servers
         console.print("\n[blue]🔧 MCP (Model Context Protocol) Configuration[/blue]")
-        console.print("[dim]Enhance AI capabilities with MCP servers (optional)[/dim]\n")
-
-        mcp_result = questionary.checkbox(
-            "Select MCP servers to install:",
-            choices=[
-                ("context7", "Context7 - Latest library documentation lookup"),
-                ("figma", "Figma - Design system and component specs"),
-                ("playwright", "Playwright - Web E2E testing automation"),
-                ("sequential-thinking", "Sequential Thinking - Enhanced reasoning and step-by-step analysis")
-            ],
-            validate=lambda choices: len(choices) > 0 or "Select at least one MCP server or skip with 'n'",
-        ).ask()
-
-        if mcp_result is None:
-            # User skipped MCP setup (Ctrl+C or 'n')
-            answers["mcp_servers"] = []
-            console.print("[yellow]⚠️  MCP servers: None selected (can be added later)[/yellow]")
-        else:
-            answers["mcp_servers"] = mcp_result
-            console.print(f"[green]✅ MCP servers selected: {', '.join(mcp_result)}[/green]")
+        console.print("[dim]Enhance AI capabilities with MCP servers (auto-installing recommended servers)[/dim]\n")
+        console.print(f"[green]✅ MCP servers auto-installed: {', '.join(mcp_servers)}[/green]")
 
         # NOTE: All other configuration (mode, language, author) is now handled in /alfred:0-project
         # This significantly reduces init time and improves UX

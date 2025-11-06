@@ -23,26 +23,31 @@
 
 ---
 
-## 🚀 v0.17.0 새로운 기능들 (현재 개발 중)
+## 🚀 v0.20.0 MCP 통합 기능
 
-### 1. CLI 초기화 최적화
-- `moai-adk init` 실행 시간 **30초 → 5초**로 단축
-- 초기화는 프로젝트명만 질문, 나머지 설정은 `/alfred:0-project`에서 수집
+### 핵심 기능
+- **MCP 서버 선택**: `moai-adk init` 시 인터랙티브 및 CLI 옵션 제공
+- **사전 설정된 서버**: context7, figma, playwright, sequential-thinking
+- **자동 설정**: `--mcp-auto` 플래그로 추천 서버 자동 설치
+- **템플릿 통합**: `.claude/mcp.json` 자동 생성
 
-### 2. 보고서 생성 제어 (토큰 절감)
-- 3가지 수준: Enable (전체), Minimal (필수, 권장), Disable (생성 안 함)
-- Minimal 선택 시 **토큰 사용량 80% 감소**
-- `.moai/config.json` → `report_generation` 섹션에서 설정
+### 사용 예시
+```bash
+# 인터랙티브 선택
+moai-adk init
 
-### 3. 유연한 Git 워크플로우 (팀 모드)
-- **Feature Branch + PR**: SPEC마다 feature 브랜치 생성 → PR 리뷰 → develop 병합
-- **Direct Commit to Develop**: 브랜치 없이 develop에 직접 커밋 (현재 설정)
-- **Decide Per SPEC**: SPEC 생성 시마다 워크플로우 선택
-- `.moai/config.json` → `github.spec_git_workflow`에서 설정
+# CLI로 개별 서버 선택
+moai-adk init --with-mcp context7 --with-mcp figma
 
-### 4. GitHub 자동 브랜치 정리
-- PR 병합 후 원격 브랜치 자동 삭제 옵션
-- `.moai/config.json` → `github.auto_delete_branches`에서 설정
+# 모든 서버 자동 설치
+moai-adk init --mcp-auto
+```
+
+### MCP 서버 안내
+- **context7**: 최신 라이브러리 문서 조회
+- **figma**: 디자인 시스템 및 컴포넌트 명세
+- **playwright**: 웹 E2E 테스트 자동화
+- **sequential-thinking**: 향상된 추론 및 단계별 분석
 
 ---
 
@@ -280,53 +285,16 @@ Alfred는 모든 사용자 요청에 대해 명확성, 계획, 투명성, 추적
 - ✅ **품질 보증**: 모든 테스트가 통과하고 코드 품질이 보증되었는가?
 - ✅ **정리 완료**: 불필요한 파일이 정리되고 프로젝트가 깨끗한 상태인가?
 
-## 🔄 Alfred 품질 보증 시스템 (New in v4.0.0)
+## 🔄 Alfred 품질 보증 시스템
 
-### 단계별 자가 점검 체크리스트
-
-Alfred는 각 단계 완료 시 반드시 다음 5가지 질문에 답해야 합니다:
-
-**의도 파악 단계 체크리스트**:
-- [ ] 사용자 의도가 명확하게 정의되었는가?
-- [ ] AskUserQuestion으로 명확성 확보가 완료되었는가?
-- [ ] 기술 스택과 범위가 명시되었는가?
-- [ ] 모호성이 완전히 해소되었는가?
-- [ ] 다음 단계로 진행할 준비가 되었는가?
-
-**계획 수립 단계 체크리스트**:
-- [ ] Plan Agent가 호출되었는가?
-- [ ] 구조화된 계획이 생성되었는가?
-- [ ] 파일 변경 목록이 명확히 명시되었는가?
-- [ ] 사용자 승인을 받았는가?
-- [ ] TodoWrite가 초기화되었는가?
-
-**작업 실행 단계 체크리스트**:
-- [ ] TDD RED-GREEN-REFACTOR가 준수되었는가?
-- [ ] TodoWrite가 실시간으로 추적되었는가?
-- [ ] 한 번에 하나의 작업만 진행되었는가?
-- [ ] 모든 테스트가 통과했는가?
-- [ ] 코드 품질이 보증되었는가?
-
-**보고 및 커밋 단계 체크리스트**:
-- [ ] .moai/config.json 설정이 준수되었는가?
-- [ ] 명시적 요청 시에만 보고서가 생성되었는가?
-- [ ] Git 커밋이 완료되었는가?
-- [ ] 불필요한 파일이 정리되었는가?
-- [ ] 프로젝트가 깨끗한 상태인가?
-- [ ] 워크플로우 검증이 통과했는가?
-
-### 워크플로우 감사 및 개선
-
-**매 작업 완료 후 자동 수행**:
-1. **프세스 검토**: 각 단계의 준수 여부 검토
-2. **개선점 식별**: 비효율적인 부분 즉시 파악
-3. **다음 작업 레슨 러닝**: 향후 작업을 위한 개선 사항 기록
-4. **사용자 피드백 수렴**: 만족도 확인 및 개선 제안 적극 수렴
-
-**지속 개선 메커니즘**:
-- 주간 워크플로우 효율 분석
-- 월간 품질 메트릭 추적
-- 분기별 프로세스 개선 계획 수립
+### 핵심 워크플로우 검증
+- ✅ **의도 파악**: 사용자 의도가 명확히 정의되고 승인받았는가?
+- ✅ **계획 수립**: Plan Agent 계획이 생성되고 사용자 승인을 받았는가?
+- ✅ **TDD 준수**: RED-GREEN-REFACTOR 사이클이 엄격히 준수되었는가?
+- ✅ **실시간 추적**: TodoWrite로 모든 작업이 투명하게 추적되었는가?
+- ✅ **설정 준수**: `.moai/config.json` 설정이 엄격히 준수되었는가?
+- ✅ **품질 보증**: 모든 테스트가 통과하고 코드 품질이 보증되었는가?
+- ✅ **정리 완료**: 불필요한 파일이 정리되고 프로젝트가 깨끗한 상태인가?
 
 ---
 
@@ -932,29 +900,24 @@ Alfred가 코드 자동 수정 가능한 문제를 탐지 시:
 
 ---
 
-## 🚀 v0.17.0 주요 기능 및 설정
+## 🚀 v0.20.0 주요 기능 및 설정
 
 ### 현재 프로젝트 설정 (config.json 기준)
+- **MCP 통합**: context7, figma, playwright, sequential-thinking 서버 지원
 - **보고서 생성**: Disable (토큰 절감 모드)
 - **Git 워크플로우**: develop_direct (직접 커밋)
 - **자동 브랜치 정리**: true (활성화)
 
-### 토큰 절감 효과
-- **Disable 모드**: 0 토큰/보고서
-- **월간 절감**: ~5,000-10,000 토큰 (수십 달러 절감)
-
-### 사용 예시
+### MCP 설정 예시
 ```bash
-# 프로젝트 초기화 (5초로 단축)
-moai-adk init
+# 프로젝트 초기화 (MCP 서버 선택)
+moai-adk init --with-mcp context7 --with-mcp figma
 
-# 상세 설정
-/alfred:0-project
-
-# 개발 진행 (현재 워크플로우 적용)
-/alfred:1-plan "새 기능"
-/alfred:2-run SPEC-XXX
-/alfred:3-sync auto
+# 개발 진행 (MCP 활용)
+/alfred:0-project    # 전체 설정
+/alfred:1-plan "AI 기능 추가"  # SPEC 작성
+/alfred:2-run SPEC-XXX         # TDD 개발
+/alfred:3-sync auto SPEC-XXX    # 동기화
 ```
 
 ---
