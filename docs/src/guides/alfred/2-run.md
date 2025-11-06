@@ -331,7 +331,7 @@ git add src/auth/
 git commit -m "🟢 feat(AUTH-001): implement authentication service"
 ```
 
-#### <span class="material-icons">recycling</span> REFACTOR Phase - Code Quality Improvement
+#### ♻️ REFACTOR Phase - Code Quality Improvement
 
 **Objective**: Improve code quality while maintaining 100% test coverage.
 
@@ -505,7 +505,7 @@ pytest tests/ -v --cov=src
 **Commit REFACTOR Phase**:
 ```bash
 git add src/auth/
-git commit -m "<span class="material-icons">recycling</span> refactor(AUTH-001): improve code quality and security"
+git commit -m "♻️ refactor(AUTH-001): improve code quality and security"
 ```
 
 ### Phase 3: Quality Validation
@@ -514,27 +514,27 @@ Alfred's **trust-checker** and **quality-gate** validate the implementation agai
 
 #### TRUST 5 Validation
 
-1. **Test First <span class="material-icons">check_circle</span>**
+1. **Test First ✅**
    - Test coverage: 100% for new code
    - All tests passing
    - Edge cases covered
 
-2. **Readable <span class="material-icons">check_circle</span>**
+2. **Readable ✅**
    - Function length < 50 lines
    - Clear variable names
    - Proper documentation
 
-3. **Unified <span class="material-icons">check_circle</span>**
+3. **Unified ✅**
    - Consistent API patterns
    - Proper error handling
    - Type safety
 
-4. **Secured <span class="material-icons">check_circle</span>**
+4. **Secured ✅**
    - Input validation
    - Secure password handling
    - Rate limiting
 
-5. **Trackable <span class="material-icons">check_circle</span>**
+5. **Trackable ✅**
    - All code tagged with @CODE:AUTH-001
    - Git history clean
    - Documentation linked
@@ -543,18 +543,18 @@ Alfred's **trust-checker** and **quality-gate** validate the implementation agai
 
 ```python
 # Security validation
-<span class="material-icons">check_circle</span> Passwords hashed with bcrypt (12 rounds)
-<span class="material-icons">check_circle</span> JWT tokens use proper signing
-<span class="material-icons">check_circle</span> Rate limiting implemented
-<span class="material-icons">check_circle</span> Input validation on all endpoints
-<span class="material-icons">check_circle</span> SQL injection protection
-<span class="material-icons">check_circle</span> XSS prevention in error messages
+✅ Passwords hashed with bcrypt (12 rounds)
+✅ JWT tokens use proper signing
+✅ Rate limiting implemented
+✅ Input validation on all endpoints
+✅ SQL injection protection
+✅ XSS prevention in error messages
 
 # Performance validation
-<span class="material-icons">check_circle</span> Login response time < 500ms
-<span class="material-icons">check_circle</span> Token validation < 100ms
-<span class="material-icons">check_circle</span> Database queries optimized
-<span class="material-icons">check_circle</span> Memory usage within limits
+✅ Login response time < 500ms
+✅ Token validation < 100ms
+✅ Database queries optimized
+✅ Memory usage within limits
 ```
 
 ## Advanced TDD Patterns
@@ -799,4 +799,4 @@ After completing `/alfred:2-run`:
 3. **Documentation Sync**: Run `/alfred:3-sync` to update documentation
 4. **Code Review**: Share with team for review (if applicable)
 
-The TDD implementation phase ensures your code is robust, well-tested, and meets production standards. By following the RED→GREEN→REFACTOR cycle, you create software that is maintainable, secure, and reliable! <span class="material-icons">rocket_launch</span>
+The TDD implementation phase ensures your code is robust, well-tested, and meets production standards. By following the RED→GREEN→REFACTOR cycle, you create software that is maintainable, secure, and reliable! 🚀

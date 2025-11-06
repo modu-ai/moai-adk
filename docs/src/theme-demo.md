@@ -2,7 +2,7 @@
 
 이 페이지는 MoAI-ADK 문서 사이트에 적용된 뉴트럴 컬러 팔레트를 보여주는 데모 페이지입니다.
 
-## <span class="material-icons">palette</span> 적용된 컬러 팔레트
+## 🎨 적용된 컬러 팔레트
 
 ### 라이트 테마 컬러
 - **Bg Warm Off-White**: `#F2F1ED` - 메인 배경색
@@ -21,7 +21,7 @@
 - **Dark Text**: `#EEEDE8` - 다크 텍스트
 - **Dark Accent**: `#F2F1ED` - 다크 테마 액센트
 
-## <span class="material-icons">description</span> 텍스트 스타일링
+## 📄 텍스트 스타일링
 
 이것은 **일반 텍스트**입니다. _이탤릭 텍스트_도 지원됩니다. `코드 인라인`은 다음과 같이 보입니다.
 
@@ -60,23 +60,23 @@ def apply_neutral_theme():
 !!! danger "주의"
     색상 접근성을 위해 충분한 대비율을 유지했습니다.
 
-## <span class="material-icons">link</span> 링크 스타일링
+## 🔗 링크 스타일링
 
 - [기본 링크](index.md) - 액센트 컬러로 표시
 - [호버 효과](#) - 마우스 오버시 색상 변경
 
-## <span class="material-icons">target</span> 버튼 스타일링
+## 🎯 버튼 스타일링
 
 [데모 버튼](#){: .md-button }
 [다른 버튼](#){: .md-button .md-button--primary }
 
-## <span class="material-icons">description</span> 인용구
+## 📄 인용구
 
 > 뉴트럴 컬러 팔레트는 따뜻하면서도 전문적인 느낌을 주는 밸런스를 제공합니다.
 >
 > — 프론트엔드 전문가
 
-## <span class="material-icons">check_circle</span> 구현 완료된 기능
+## ✅ 구현 완료된 기능
 
 1. **CSS 변수 시스템**: 모든 색상을 CSS 변수로 관리
 2. **라이트/다크 테마**: 부드러운 테마 전환

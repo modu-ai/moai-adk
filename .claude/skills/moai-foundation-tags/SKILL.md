@@ -1,10 +1,10 @@
 ---
 name: moai-foundation-tags
-version: 2.0.0
+version: 2.1.0
 created: 2025-10-22
-updated: 2025-10-22
+updated: 2025-11-05
 status: active
-description: TAG inventory management and orphan detection (CODE-FIRST principle).
+description: TAG inventory management, scanning, and orphan detection (Consolidated from moai-alfred-tag-scanning).
 keywords: ['tag', 'inventory', 'traceability', 'code-first']
 allowed-tools:
   - Read

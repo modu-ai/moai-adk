@@ -325,11 +325,11 @@ Scenario: 成功的用户登录
 
 ```yaml
 输出结果:
-<span class="material-icons">check_circle</span> SPEC ID: PRODUCT-001
-<span class="material-icons">check_circle</span> 文件位置: .moai/specs/SPEC-PRODUCT-001/spec.md
-<span class="material-icons">check_circle</span> 功能分支: feature/SPEC-PRODUCT-001
-<span class="material-icons">check_circle</span> 实现计划: 3个阶段，预计 5 天完成
-<span class="material-icons">check_circle</span> 风险评估: 低风险，现有技术栈完全支持
+✅ SPEC ID: PRODUCT-001
+✅ 文件位置: .moai/specs/SPEC-PRODUCT-001/spec.md
+✅ 功能分支: feature/SPEC-PRODUCT-001
+✅ 实现计划: 3个阶段，预计 5 天完成
+✅ 风险评估: 低风险，现有技术栈完全支持
 
 主要功能:
 - POST /products - 创建产品
@@ -360,11 +360,11 @@ Scenario: 成功的用户登录
 
 ```yaml
 输出结果:
-<span class="material-icons">check_circle</span> SPEC ID: ANALYTICS-001
-<span class="material-icons">check_circle</span> 专家参与: data-science-expert
-<span class="material-icons">check_circle</span> 技术推荐: pandas + matplotlib + Redis 缓存
-<span class="material-icons">check_circle</span> 实现复杂度: 中等
-<span class="material-icons">check_circle</span> 预计工期: 2 周
+✅ SPEC ID: ANALYTICS-001
+✅ 专家参与: data-science-expert
+✅ 技术推荐: pandas + matplotlib + Redis 缓存
+✅ 实现复杂度: 中等
+✅ 预计工期: 2 周
 
 核心功能:
 - 用户行为数据收集
@@ -395,11 +395,11 @@ Scenario: 成功的用户登录
 
 ```yaml
 输出结果:
-<span class="material-icons">check_circle</span> SPEC ID: PAYMENT-001
-<span class="material-icons">check_circle</span> 安全级别: 高
-<span class="material-icons">check_circle</span> 专家参与: security-expert, devops-expert
-<span class="material-icons">check_circle</span> 合规要求: PCI DSS Level 1
-<span class="material-icons">check_circle</span> 风险评估: 高风险，需要额外安全措施
+✅ SPEC ID: PAYMENT-001
+✅ 安全级别: 高
+✅ 专家参与: security-expert, devops-expert
+✅ 合规要求: PCI DSS Level 1
+✅ 风险评估: 高风险，需要额外安全措施
 
 关键考虑:
 - 支付数据加密
@@ -474,7 +474,7 @@ Alfred 会：
 
 ### 1. 编写有效的需求描述
 
-#### <span class="material-icons">check_circle</span> 好的实践
+#### ✅ 好的实践
 ```bash
 # 具体明确
 /alfred:1-plan "创建用户认证 API，支持邮箱注册、JWT 令牌、密码重置"

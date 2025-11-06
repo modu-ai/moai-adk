@@ -236,7 +236,7 @@ For each requirement, verify:
 The system should handle user authentication well.
 ```
 
-**<span class="material-icons">check_circle</span> Specific Language**:
+**✅ Specific Language**:
 ```
 The system SHALL authenticate users via email/password credentials within 500ms.
 ```
@@ -246,7 +246,7 @@ The system SHALL authenticate users via email/password credentials within 500ms.
 WHEN users login, the system SHALL issue tokens and log the attempt and update the user profile.
 ```
 
-**<span class="material-icons">check_circle</span> Separate Requirements**:
+**✅ Separate Requirements**:
 ```
 WHEN valid credentials are provided, the system SHALL issue JWT tokens.
 WHEN authentication occurs, the system SHALL log the attempt with timestamp.
@@ -258,7 +258,7 @@ WHEN users authenticate successfully, the system SHALL update last login timesta
 The system SHALL use bcrypt with 12 rounds to hash passwords in the PostgreSQL database.
 ```
 
-**<span class="material-icons">check_circle</span> Behavioral Requirements**:
+**✅ Behavioral Requirements**:
 ```
 The system SHALL hash passwords using a secure algorithm with minimum 12 rounds.
 The system SHALL store password hashes securely in the database.
@@ -269,7 +269,7 @@ The system SHALL store password hashes securely in the database.
 WHEN users login with valid credentials, the system SHALL issue tokens.
 ```
 
-**<span class="material-icons">check_circle</span> Complete Coverage**:
+**✅ Complete Coverage**:
 ```
 WHEN valid credentials are provided, the system SHALL issue JWT tokens.
 WHEN invalid credentials are provided, the system SHALL return a 401 error.
@@ -587,4 +587,4 @@ moai-adk spec-stats
 4. **Knowledge Sharing**: Use SPECs as learning documents
 5. **Quality Standards**: Maintain high standards for all SPECs
 
-Remember: A well-written SPEC is an investment in project success. It prevents misunderstandings, reduces rework, and ensures that everyone is building the same thing! <span class="material-icons">target</span>
+Remember: A well-written SPEC is an investment in project success. It prevents misunderstandings, reduces rework, and ensures that everyone is building the same thing! 🎯

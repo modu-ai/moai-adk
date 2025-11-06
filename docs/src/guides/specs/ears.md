@@ -509,7 +509,7 @@ Requirements that depend on context:
 WHEN user logs in, the system SHALL NOT allow weak passwords
 ```
 
-**<span class="material-icons">check_circle</span> Correct**:
+**✅ Correct**:
 ```markdown
 WHEN user attempts to login with weak password, the system SHALL reject authentication
 Passwords SHALL NOT be less than 8 characters
@@ -522,7 +522,7 @@ Passwords SHALL NOT be less than 8 characters
 The system SHALL be fast
 ```
 
-**<span class="material-icons">check_circle</span> Correct**:
+**✅ Correct**:
 ```markdown
 The system SHALL respond to user requests within 2 seconds
 ```
@@ -534,7 +534,7 @@ The system SHALL respond to user requests within 2 seconds
 WHEN user registers, the system SHALL create account, send welcome email, and set default preferences
 ```
 
-**<span class="material-icons">check_circle</span> Correct**:
+**✅ Correct**:
 ```markdown
 WHEN user registration completes, the system SHALL create user account
 WHEN user account is created, the system SHALL send welcome email
@@ -548,7 +548,7 @@ WHEN welcome email is sent, the system SHALL set default user preferences
 WHEN user submits valid credentials, the system SHALL authenticate user
 ```
 
-**<span class="material-icons">check_circle</span> Correct**:
+**✅ Correct**:
 ```markdown
 WHEN valid credentials are provided, the system SHALL authenticate user
 WHEN invalid credentials are provided, the system SHALL return 401 error
@@ -562,7 +562,7 @@ WHEN authentication service is unavailable, the system SHALL return 503 error
 The system SHALL use bcrypt with 12 rounds to hash passwords in PostgreSQL users table
 ```
 
-**<span class="material-icons">check_circle</span> Correct**:
+**✅ Correct**:
 ```markdown
 The system SHALL hash passwords using secure algorithm with minimum 12 rounds
 The system SHALL store password hashes securely in the database
@@ -733,4 +733,4 @@ The system SHALL NOT [constraint]
 - Search functionality
 - Reporting and analytics
 
-Mastering EARS syntax enables you to write clear, unambiguous, and testable requirements that serve as the foundation for successful software development. Practice these patterns, and they'll become second nature in your specification writing! <span class="material-icons">target</span>
+Mastering EARS syntax enables you to write clear, unambiguous, and testable requirements that serve as the foundation for successful software development. Practice these patterns, and they'll become second nature in your specification writing! 🎯

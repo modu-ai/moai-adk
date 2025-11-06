@@ -6,9 +6,9 @@
 
 시작하기 전에 다음을 확인하세요:
 
-- <span class="material-icons">check_circle</span> **MoAI-ADK 설치됨**: `uv tool install moai-adk`
-- <span class="material-icons">check_circle</span> **Claude Code 설치됨**: 터미널에서 사용 가능
-- <span class="material-icons">check_circle</span> **10분의 방해받지 않는 시간**
+- ✅ **MoAI-ADK 설치됨**: `uv tool install moai-adk`
+- ✅ **Claude Code 설치됨**: 터미널에서 사용 가능
+- ✅ **10분의 방해받지 않는 시간**
 
 ## 0단계: 프로젝트 초기화 (1분)
 
@@ -171,7 +171,7 @@ git add src/hello/api.py
 git commit -m "🟢 feat(HELLO-001): implement hello API"
 ```
 
-### 3단계: <span class="material-icons">recycling</span> REFACTOR - 코드 품질 개선
+### 3단계: ♻️ REFACTOR - 코드 품질 개선
 
 Alfred가 TRUST 5 원칙을 적용하여 코드를 개선합니다:
 
@@ -224,7 +224,7 @@ pytest tests/test_hello.py -v
 **REFACTOR 단계 커밋**:
 ```bash
 git add src/hello/models.py src/hello/api.py
-git commit -m "<span class="material-icons">recycling</span> refactor(HELLO-001): add models and improve validation"
+git commit -m "♻️ refactor(HELLO-001): add models and improve validation"
 ```
 
 ## 3단계: 문서 동기화 (1분)
@@ -273,10 +273,10 @@ git commit -m "<span class="material-icons">recycling</span> refactor(HELLO-001)
 
 4. **TAG 체인 무결성 검증**:
    ```
-   <span class="material-icons">check_circle</span> @SPEC:EX-HELLO-001 → .moai/specs/SPEC-HELLO-001/spec.md
-   <span class="material-icons">check_circle</span> @TEST:EX-HELLO-001 → tests/test_hello.py
-   <span class="material-icons">check_circle</span> @CODE:EX-HELLO-001 → src/hello/ (3개 파일)
-   <span class="material-icons">check_circle</span> @DOC:EX-HELLO-001 → docs/api/hello.md (자동 생성)
+   ✅ @SPEC:EX-HELLO-001 → .moai/specs/SPEC-HELLO-001/spec.md
+   ✅ @TEST:EX-HELLO-001 → tests/test_hello.py
+   ✅ @CODE:EX-HELLO-001 → src/hello/ (3개 파일)
+   ✅ @DOC:EX-HELLO-001 → docs/api/hello.md (자동 생성)
 
    TAG 체인 무결성: 100%
    고아 TAG: 없음
@@ -284,11 +284,11 @@ git commit -m "<span class="material-icons">recycling</span> refactor(HELLO-001)
 
 5. **TRUST 5 준수 검증**:
    ```
-   <span class="material-icons">check_circle</span> Test First: 100% 커버리지 (3/3 테스트 통과)
-   <span class="material-icons">check_circle</span> Readable: 모든 함수 < 50줄
-   <span class="material-icons">check_circle</span> Unified: FastAPI 패턴 일관성
-   <span class="material-icons">check_circle</span> Secured: 입력 검증 구현됨
-   <span class="material-icons">check_circle</span> Trackable: 모든 코드에 @CODE:HELLO-001 태그됨
+   ✅ Test First: 100% 커버리지 (3/3 테스트 통과)
+   ✅ Readable: 모든 함수 < 50줄
+   ✅ Unified: FastAPI 패턴 일관성
+   ✅ Secured: 입력 검증 구현됨
+   ✅ Trackable: 모든 코드에 @CODE:HELLO-001 태그됨
    ```
 
 ## 4단계: 검증 및 축하 (1분)
@@ -342,8 +342,8 @@ git log --oneline | head -5
 
 예상 출력:
 ```
-a1b2c3d <span class="material-icons">check_circle</span> sync(HELLO-001): update docs and changelog
-d4e5f6c <span class="material-icons">recycling</span> refactor(HELLO-001): add models and improve validation
+a1b2c3d ✅ sync(HELLO-001): update docs and changelog
+d4e5f6c ♻️ refactor(HELLO-001): add models and improve validation
 b2c3d4e 🟢 feat(HELLO-001): implement hello API
 a3b4c5d 🔴 test(HELLO-001): add failing hello API tests
 e5f6g7h 🌿 Create feature/SPEC-HELLO-001 branch
@@ -353,11 +353,11 @@ e5f6g7h 🌿 Create feature/SPEC-HELLO-001 branch
 
 ### 경험한 개념
 
-<span class="material-icons">check_circle</span> **SPEC-First**: 코딩 전에 명확한 요구사항 생성
-<span class="material-icons">check_circle</span> **TDD**: 100% 테스트 커버리지로 RED → GREEN → REFACTOR 사이클
-<span class="material-icons">check_circle</span> **@TAG 시스템**: 요구사항부터 문서까지 완전한 추적성
-<span class="material-icons">check_circle</span> **TRUST 5**: 검증과 오류 처리를 포함한 프로덕션 품질 코드
-<span class="material-icons">check_circle</span> **Alfred 워크플로우**: 자동화된 문서화와 품질 검사
+✅ **SPEC-First**: 코딩 전에 명확한 요구사항 생성
+✅ **TDD**: 100% 테스트 커버리지로 RED → GREEN → REFACTOR 사이클
+✅ **@TAG 시스템**: 요구사항부터 문서까지 완전한 추적성
+✅ **TRUST 5**: 검증과 오류 처리를 포함한 프로덕션 품질 코드
+✅ **Alfred 워크플로우**: 자동화된 문서화와 품질 검사
 
 ### 얻은 기술
 
@@ -432,13 +432,13 @@ moai-adk doctor
 
 단 10분 만에 다음을 완료했습니다:
 
-1. <span class="material-icons">check_circle</span> **명확한 요구사항 정의** (SPEC과 EARS 구문 사용)
-2. <span class="material-icons">check_circle</span> **TDD로 구현** (100% 테스트 커버리지 달성)
-3. <span class="material-icons">check_circle</span> **프로덕션 품질 코드 생성** (검증과 오류 처리 포함)
-4. <span class="material-icons">check_circle</span> **완전한 문서 생성** (동기화 유지)
-5. <span class="material-icons">check_circle</span> **완전한 추적성 유지** (@TAG 시스템으로)
-6. <span class="material-icons">check_circle</span> **모범 사례 준수** (TRUST 5 원칙으로)
+1. ✅ **명확한 요구사항 정의** (SPEC과 EARS 구문 사용)
+2. ✅ **TDD로 구현** (100% 테스트 커버리지 달성)
+3. ✅ **프로덕션 품질 코드 생성** (검증과 오류 처리 포함)
+4. ✅ **완전한 문서 생성** (동기화 유지)
+5. ✅ **완전한 추적성 유지** (@TAG 시스템으로)
+6. ✅ **모범 사례 준수** (TRUST 5 원칙으로)
 
-이것이 MoAI-ADK의 힘입니다: 전통적인 방법보다 더 빠르게 신뢰할 수 있고, 유지보수가 쉬우며, 잘 문서화된 코드를 생성하세요. 이제 자신감 있게 복잡한 애플리케이션을 빌드할 준비가 되었습니다! <span class="material-icons">rocket_launch</span>
+이것이 MoAI-ADK의 힘입니다: 전통적인 방법보다 더 빠르게 신뢰할 수 있고, 유지보수가 쉬우며, 잘 문서화된 코드를 생성하세요. 이제 자신감 있게 복잡한 애플리케이션을 빌드할 준비가 되었습니다! 🚀
 
 [Alfred 워크플로우 가이드](../../guides/alfred/index.md)로 여정을 계속하거나 관심 있는 특정 주제를 탐색하세요.

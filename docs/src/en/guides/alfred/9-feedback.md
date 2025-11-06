@@ -96,12 +96,12 @@ Alfred: 詳細な説明を入力してください（Enterキーで省略可能�
 Alfred: 優先順位レベルを選択してください
 > 🟠 High
 
-<span class="material-icons">check_circle</span> GitHub Issue #234 作成完了！
+✅ GitHub Issue #234 作成完了！
 
 📋 タイトル: 🐛 [BUG] モバイルでログインボタンクラッシュ発生
 🟠 優先順位: High
-<span class="material-icons">label</span>  ラベル: bug, reported, priority-high
-<span class="material-icons">link</span> URL: https://github.com/owner/repo/issues/234
+🏷️  ラベル: bug, reported, priority-high
+🔗 URL: https://github.com/owner/repo/issues/234
 
 💡 次へ: 作業を続行してください - Issueは追跡されています！
 ```
@@ -125,12 +125,12 @@ Alfred: 詳細な説明を入力してください（Enterキーで省略可能�
 Alfred: 優先順位レベルを選択してください
 > 🟡 Medium
 
-<span class="material-icons">check_circle</span> GitHub Issue #235 作成完了！
+✅ GitHub Issue #235 作成完了！
 
 📋 タイトル: ✨ [FEATURE] moai-adk updateに--dry-runオプション追加
 🟡 優先順位: Medium
-<span class="material-icons">label</span>  ラベル: enhancement, feature-request, priority-medium
-<span class="material-icons">link</span> URL: https://github.com/owner/repo/issues/235
+🏷️  ラベル: enhancement, feature-request, priority-medium
+🔗 URL: https://github.com/owner/repo/issues/235
 ```
 
 ## 主な機能
@@ -141,7 +141,7 @@ Alfred: 優先順位レベルを選択してください
 - **中断なし**: 開発フローを維持
 - **自動化**: 手動作業不要
 
-### 2. <span class="material-icons">label</span> 自動ラベリング
+### 2. 🏷️ 自動ラベリング
 
 | Issueタイプ | 付与されるラベル |
 |-----------|----------------|
@@ -157,7 +157,7 @@ Alfred: 優先順位レベルを選択してください
 | 🟡 Medium | `priority-medium` |
 | 🟢 Low | `priority-low` |
 
-### 3. <span class="material-icons">target</span> 優先順位選択
+### 3. 🎯 優先順位選択
 
 #### Critical (🔴)
 
@@ -203,7 +203,7 @@ Alfred: 優先順位レベルを選択してください
 🟢 [LOW] ダッシュボードの配色変更提案
 ```
 
-### 4. <span class="material-icons">link</span> チーム可視性
+### 4. 🔗 チーム可視性
 
 - **即時通知**: Issue作成後すぐにチーム全員に通知
 - **追跡可能**: GitHubネイティブな追跡機能
@@ -321,8 +321,8 @@ custom_labels:
 
 # テンプレート選択
 [ ] 🐛 General Bug
-[ ] <span class="material-icons">lock</span> Security Issue
-[ ] <span class="material-icons">rocket_launch</span> Performance Issue
+[ ] 🔒 Security Issue
+[ ] 🚀 Performance Issue
 [ ] <span class="material-icons">menu_book</span> Documentation Issue
 ```
 
@@ -337,7 +337,7 @@ Issue 1/3: タイトルを入力 > API認証エラー
 Issue 2/3: タイトルを入力 > データベース接続タイムアウト
 Issue 3/3: タイトルを入力 > フロントエンド表示崩れ
 
-<span class="material-icons">check_circle</span> 3個のIssueを作成しました: #456, #457, #458
+✅ 3個のIssueを作成しました: #456, #457, #458
 ```
 
 ## 設定とカスタマイズ
@@ -514,7 +514,7 @@ jobs:
 /alfred:9-feedback --analytics
 
 # 出力例:
-<span class="material-icons">analytics</span> フィードバック分析 (過去30日間)
+📊 フィードバック分析 (過去30日間)
 - 総Issue数: 15個
 - バグ報告: 8個 (53%)
 - 機能要求: 4個 (27%)
@@ -537,7 +537,7 @@ jobs:
 
 ---
 
-**<span class="material-icons">auto_stories</span> 次のステップ**:
+**📚 次のステップ**:
 - [プロジェクトガイド](../project/index.md)でプロジェクト管理
 - [品質ガイド](../project/config.md)で品質管理
 - [デプロイガイド](../project/deploy.md)で本番環境展開

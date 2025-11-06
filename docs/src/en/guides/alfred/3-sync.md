@@ -36,32 +36,32 @@ lang: ja
 #### tag-agentが自動実行
 
 ```bash
-<span class="material-icons">label</span> tag-agentのTAGチェーン検証:
+🏷️ tag-agentのTAGチェーン検証:
 
 ## スキャン結果
 スキャン対象: .moai/, src/, tests/, docs/
 検出されたTAG: 12個
 
 ## TAGチェーン整合性検証
-<span class="material-icons">check_circle</span> @SPEC:EX-HELLO-001 → .moai/specs/SPEC-HELLO-001/spec.md (存在)
-<span class="material-icons">check_circle</span> @TEST:EX-HELLO-001 → tests/test_hello.py (存在)
-<span class="material-icons">check_circle</span> @CODE:EX-HELLO-001:API → src/hello/api.py (存在)
-<span class="material-icons">check_circle</span> @CODE:EX-HELLO-001:MODEL → src/hello/models.py (存在)
-<span class="material-icons">check_circle</span> @DOC:EX-HELLO-001 → docs/api/hello.md (生成予定)
+✅ @SPEC:EX-HELLO-001 → .moai/specs/SPEC-HELLO-001/spec.md (存在)
+✅ @TEST:EX-HELLO-001 → tests/test_hello.py (存在)
+✅ @CODE:EX-HELLO-001:API → src/hello/api.py (存在)
+✅ @CODE:EX-HELLO-001:MODEL → src/hello/models.py (存在)
+✅ @DOC:EX-HELLO-001 → docs/api/hello.md (生成予定)
 
 ## Orphan TAG検出
 <span class="material-icons">cancel</span> 検出されたOrphan TAG: 0個
-<span class="material-icons">check_circle</span> すべてのTAGが適切に連結されています
+✅ すべてのTAGが適切に連結されています
 
 ## TAG一貫性検証
-<span class="material-icons">check_circle</span> すべてのTAGが同じIDを使用 (HELLO-001)
-<span class="material-icons">check_circle</span> TAG形式が標準に準拠 (@TYPE:EX-DOMAIN-NNN)
+✅ すべてのTAGが同じIDを使用 (HELLO-001)
+✅ TAG形式が標準に準拠 (@TYPE:EX-DOMAIN-NNN)
 ```
 
 #### Orphan TAG回復
 
 ```
-<span class="material-icons">settings</span> Orphan TAG回復処理:
+⚙️ Orphan TAG回復処理:
 
 検出された問題:
 <span class="material-icons">cancel</span> @CODE:EX-USER-005 (参照先SPECが存在しません)
@@ -163,11 +163,11 @@ lang: ja
 
 ### TRUST 5原則準拠
 
-<span class="material-icons">check_circle</span> **Test First**: 95%カバレッジ達成
-<span class="material-icons">check_circle</span> **Readable**: クリアなコード構造
-<span class="material-icons">check_circle</span> **Unified**: 一貫したアーキテクチャ
-<span class="material-icons">check_circle</span> **Secured**: 入力検証とXSS防止
-<span class="material-icons">check_circle</span> **Trackable**: 完全なTAG連鎖
+✅ **Test First**: 95%カバレッジ達成
+✅ **Readable**: クリアなコード構造
+✅ **Unified**: 一貫したアーキテクチャ
+✅ **Secured**: 入力検証とXSS防止
+✅ **Trackable**: 完全なTAG連鎖
 
 ## デプロイメント
 
@@ -204,7 +204,7 @@ GET /health
 
 ## 機能
 
-### <span class="material-icons">check_circle</span> Hello World API (HELLO-001)
+### ✅ Hello World API (HELLO-001)
 - パーソナライズされた挨拶メッセージ提供
 - クエリパラメータnameをサポート
 - 入力検証とエラーハンドリング
@@ -213,7 +213,7 @@ GET /health
 **ドキュメント**: [APIドキュメント](docs/api/hello.md)
 **テストカバレッジ**: 95%
 
-### <span class="material-icons">construction</span> User Authentication (AUTH-001) - 進行中
+### 🏗️ User Authentication (AUTH-001) - 進行中
 - JWTベース認証システム
 - メール/パスワード認証
 - トークンリフレッシュ機能
@@ -287,7 +287,7 @@ curl "http://localhost:8000/hello?name=田中"
 #### git-managerが自動実行
 
 ```bash
-<span class="material-icons">rocket_launch</span> git-managerの状態管理:
+🚀 git-managerの状態管理:
 
 ## 変更検出
 検出された変更:
@@ -298,8 +298,8 @@ curl "http://localhost:8000/hello?name=田中"
   Modified: CHANGELOG.md
 
 ## コミット推奨
-<span class="material-icons">description</span> 推奨コミットメッセージ:
-<span class="material-icons">check_circle</span> docs(HELLO-001): sync documentation and update project files
+📄 推奨コミットメッセージ:
+✅ docs(HELLO-001): sync documentation and update project files
 
 変更内容:
 - Living Document生成 (docs/api/hello.md)
@@ -364,7 +364,7 @@ report_format:
 ### レポート内容
 
 ```
-<span class="material-icons">analytics</span> 同期レポート (2025-01-06 10:00:00)
+📊 同期レポート (2025-01-06 10:00:00)
 
 ## 実行概要
 - 実行時間: 45秒
@@ -388,9 +388,9 @@ report_format:
 3. 次のリリース準備完了
 
 ## 次のステップ
-<span class="material-icons">check_circle</span> プルリクエスト作成準備完了
-<span class="material-icons">check_circle</span> コミット推奨
-<span class="material-icons">check_circle</span> デプロイ可能な状態
+✅ プルリクエスト作成準備完了
+✅ コミット推奨
+✅ デプロイ可能な状態
 ```
 
 ### レポート出力形式
@@ -500,22 +500,22 @@ graph TD
 ### ドキュメント品質検証
 
 ```bash
-<span class="material-icons">auto_stories</span> doc-syncerの品質検証:
+📚 doc-syncerの品質検証:
 
 ## ドキュメント完全性
-<span class="material-icons">check_circle</span> すべての@SPECに対応する@DOCが存在
-<span class="material-icons">check_circle</span> すべての@CODEにドキュメント化済み
-<span class="material-icons">check_circle</span> すべての@TESTに使用例が記載
+✅ すべての@SPECに対応する@DOCが存在
+✅ すべての@CODEにドキュメント化済み
+✅ すべての@TESTに使用例が記載
 
 ## ドキュメント一貫性
-<span class="material-icons">check_circle</span> 用語と命名規則の一貫性
-<span class="material-icons">check_circle</span> フォーマットと構造の統一性
-<span class="material-icons">check_circle</span> バージョン情報の正確性
+✅ 用語と命名規則の一貫性
+✅ フォーマットと構造の統一性
+✅ バージョン情報の正確性
 
 ## ドキュメントアクセシビリティ
-<span class="material-icons">check_circle</span> 見出しと目次の完成度
-<span class="material-icons">check_circle</span> コード例の実行可能性
-<span class="material-icons">check_circle</span> 外部リンクの有効性
+✅ 見出しと目次の完成度
+✅ コード例の実行可能性
+✅ 外部リンクの有効性
 ```
 
 ### リンク検証
@@ -643,7 +643,7 @@ jobs:
 
 ---
 
-**<span class="material-icons">auto_stories</span> 次のステップ**:
+**📚 次のステップ**:
 - [プロジェクトガイド](../project/index.md)でプロジェクト管理
 - [デプロイガイド](../project/deploy.md)で本番環境展開
 - [品質ガイド](../project/config.md)で品質管理

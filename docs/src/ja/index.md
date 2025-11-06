@@ -156,7 +156,7 @@ uv 0.5.1
 ```bash
 uv tool install moai-adk
 
-# 結果: <span class="material-icons">check_circle</span> Installed moai-adk
+# 結果: ✅ Installed moai-adk
 ```
 
 **検証**：
@@ -181,17 +181,17 @@ cd hello-world
 
 ```
 hello-world/
-├── .moai/              <span class="material-icons">check_circle</span> Alfred設定
-├── .claude/            <span class="material-icons">check_circle</span> Claude Code自動化
-└── CLAUDE.md           <span class="material-icons">check_circle</span> プロジェクトガイド
+├── .moai/              ✅ Alfred設定
+├── .claude/            ✅ Claude Code自動化
+└── CLAUDE.md           ✅ プロジェクトガイド
 ```
 
 #### 検証：核心ファイル確認
 
 ```bash
 # 核心設定ファイル確認
-ls -la .moai/config.json  # <span class="material-icons">check_circle</span> 存在するか？
-ls -la .claude/commands/  # <span class="material-icons">check_circle</span> コマンドがあるか？
+ls -la .moai/config.json  # ✅ 存在するか？
+ls -la .claude/commands/  # ✅ コマンドがあるか？
 
 # または一度に確認
 moai-adk doctor
@@ -200,12 +200,12 @@ moai-adk doctor
 **出力例**：
 
 ```
-<span class="material-icons">check_circle</span> Python 3.13.0
-<span class="material-icons">check_circle</span> uv 0.5.1
-<span class="material-icons">check_circle</span> .moai/ directory initialized
-<span class="material-icons">check_circle</span> .claude/ directory ready
-<span class="material-icons">check_circle</span> 16 agents configured
-<span class="material-icons">check_circle</span> 74 skills loaded
+✅ Python 3.13.0
+✅ uv 0.5.1
+✅ .moai/ directory initialized
+✅ .claude/ directory ready
+✅ 16 agents configured
+✅ 74 skills loaded
 ```
 
 ---
@@ -240,20 +240,20 @@ Q4: モードは？
 A: personal (ローカル開発用)
 ```
 
-#### 結果：プロジェクト準備完了！ <span class="material-icons">check_circle</span>
+#### 結果：プロジェクト準備完了！ ✅
 
 ```
-<span class="material-icons">check_circle</span> プロジェクト初期化完了
-<span class="material-icons">check_circle</span> .moai/config.jsonに設定保存
-<span class="material-icons">check_circle</span> .moai/project/にドキュメント作成
-<span class="material-icons">check_circle</span> Alfredがスキル推薦完了
+✅ プロジェクト初期化完了
+✅ .moai/config.jsonに設定保存
+✅ .moai/project/にドキュメント作成
+✅ Alfredがスキル推薦完了
 
 次のステップ: /alfred:1-plan "最初の機能説明"
 ```
 
 ---
 
-## <span class="material-icons">rocket_launch</span> 次へ：10分で最初の機能完成
+## 🚀 次へ：10分で最初の機能完成
 
 今実際に**機能を作ってドキュメントも自動生成**してみましょう！
 
@@ -261,10 +261,10 @@ A: personal (ローカル開発用)
 
 このセクションでは：
 
-- <span class="material-icons">check_circle</span> 簡単なAPIをSPECで定義する
-- <span class="material-icons">check_circle</span> TDD (RED → GREEN → REFACTOR)完全体験
-- <span class="material-icons">check_circle</span> 自動ドキュメント生成体験
-- <span class="material-icons">check_circle</span> @TAGシステム理解
+- ✅ 簡単なAPIをSPECで定義する
+- ✅ TDD (RED → GREEN → REFACTOR)完全体験
+- ✅ 自動ドキュメント生成体験
+- ✅ @TAGシステム理解
 
 ---
 

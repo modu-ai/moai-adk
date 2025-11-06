@@ -613,13 +613,13 @@ class TestUserService:
 
 #### 保持链接完整性
 ```yaml
-<span class="material-icons">check_circle</span> 完整的 @TAG 链:
+✅ 完整的 @TAG 链:
   SPEC: @SPEC:USER-AUTH-001
   CODE: @CODE:USER-AUTH-001:service, @CODE:USER-AUTH-001:api
   TEST: @TEST:USER-AUTH-001:unit, @TEST:USER-AUTH-001:integration
   DOC: @DOC:USER-AUTH-API-001:api-docs
 
-<span class="material-icons">check_circle</span> 一致的 DOMAIN-ID:
+✅ 一致的 DOMAIN-ID:
   所有相关元素使用相同的 DOMAIN-ID (USER-AUTH-001)
 
 <span class="material-icons">cancel</span> 避免不一致:
@@ -630,17 +630,17 @@ class TestUserService:
 
 #### 适当的粒度
 ```yaml
-<span class="material-icons">check_circle</span> 合理的粒度:
+✅ 合理的粒度:
   @CODE:USER-AUTH-001:service - 完整的服务类
   @CODE:USER-AUTH-001:api - API 端点集合
   @TEST:USER-AUTH-001:unit - 单元测试套件
 
-<span class="material-icons">check_circle</span> 过细的粒度 (避免):
+✅ 过细的粒度 (避免):
   @CODE:USER-AUTH-001:method-1 - 单个方法
   @CODE:USER-AUTH-001:line-123 - 代码行
   @TEST:USER-AUTH-001:test-case-1 - 单个测试用例
 
-<span class="material-icons">check_circle</span> 过粗的粒度 (避免):
+✅ 过粗的粒度 (避免):
   @CODE:USER-AUTH - 整个用户模块
   @TEST:ALL-TESTS - 所有测试
 ```
@@ -685,12 +685,12 @@ class TestUserService:
 /alfred:check-tags
 
 # 输出示例:
-<span class="material-icons">check_circle</span> @TAG 语法检查通过
-<span class="material-icons">check_circle</span> 链接完整性验证通过
+✅ @TAG 语法检查通过
+✅ 链接完整性验证通过
 <span class="material-icons">warning</span> 发现 2 个孤立 @TAG
   - @CODE:ORDER-MGT-003:service (缺少对应 @SPEC)
   - @TEST:USER-PREF-002 (缺少对应 @CODE)
-<span class="material-icons">check_circle</span> @TAG 覆盖率: 87%
+✅ @TAG 覆盖率: 87%
 ```
 
 #### @TAG 生成命令
@@ -1159,7 +1159,7 @@ logging:
 - @SPEC:USER-AUTH-001: (冒号结尾)
 - @CODE:USER-AUTH-001:API (大写子类型)
 
-<span class="material-icons">check_circle</span> 正确语法:
+✅ 正确语法:
 - @SPEC:USER-AUTH-001
 - @CODE:USER-AUTH-001:api
 - @TEST:USER-AUTH-001:unit

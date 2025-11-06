@@ -672,4 +672,4 @@ When writing your own SPEC, follow this process:
 - Version control the SPEC
 - Share with implementation team
 
-Remember: A good SPEC is an investment in project success. Take the time to get it right, and the implementation phase will be much smoother! <span class="material-icons">target</span>
+Remember: A good SPEC is an investment in project success. Take the time to get it right, and the implementation phase will be much smoother! 🎯

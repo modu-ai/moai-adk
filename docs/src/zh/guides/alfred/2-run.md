@@ -102,27 +102,27 @@ Alfred 会推荐最适合的技术栈：
 
 Web 框架选择:
 FastAPI:
-  <span class="material-icons">check_circle</span> 自动 API 文档生成
-  <span class="material-icons">check_circle</span> 类型提示支持
-  <span class="material-icons">check_circle</span> 高性能异步支持
-  <span class="material-icons">check_circle</span> 易于测试
-  <span class="material-icons">check_circle</span> 丰富的验证功能
+  ✅ 自动 API 文档生成
+  ✅ 类型提示支持
+  ✅ 高性能异步支持
+  ✅ 易于测试
+  ✅ 丰富的验证功能
 
 数据库选择:
 PostgreSQL:
-  <span class="material-icons">check_circle</span> 强一致性保证
-  <span class="material-icons">check_circle</span> JSON 数据类型支持
-  <span class="material-icons">check_circle</span> 丰富的索引类型
-  <span class="material-icons">check_circle</span> 成熟的生态系统
-  <span class="material-icons">check_circle</span> 良好的 Python 支持
+  ✅ 强一致性保证
+  ✅ JSON 数据类型支持
+  ✅ 丰富的索引类型
+  ✅ 成熟的生态系统
+  ✅ 良好的 Python 支持
 
 认证方案:
 JWT:
-  <span class="material-icons">check_circle</span> 无状态认证
-  <span class="material-icons">check_circle</span> 易于分布式部署
-  <span class="material-icons">check_circle</span> 标准化实现
-  <span class="material-icons">check_circle</span> 移动端友好
-  <span class="material-icons">check_circle</span> 细粒度权限控制
+  ✅ 无状态认证
+  ✅ 易于分布式部署
+  ✅ 标准化实现
+  ✅ 移动端友好
+  ✅ 细粒度权限控制
 ```
 
 ### 阶段 2：TDD 循环执行
@@ -625,7 +625,7 @@ git add src/auth/ tests/test_auth.py
 git commit -m "🟢 feat(USER-AUTH-001): implement authentication API"
 ```
 
-#### <span class="material-icons">recycling</span> REFACTOR 阶段：代码改进
+#### ♻️ REFACTOR 阶段：代码改进
 
 ##### 代码质量分析
 Alfred 分析代码质量并识别改进机会：
@@ -925,7 +925,7 @@ pytest tests/test_auth.py -v --cov=src.auth
 **Git 提交 REFACTOR 阶段**：
 ```bash
 git add src/auth/ tests/
-git commit -m "<span class="material-icons">recycling</span> refactor(USER-AUTH-001): improve code quality and performance"
+git commit -m "♻️ refactor(USER-AUTH-001): improve code quality and performance"
 ```
 
 ### 阶段 3：质量保证与验证
@@ -935,20 +935,20 @@ Alfred 自动验证代码是否符合 TRUST 5 原则：
 
 ```yaml
 TRUST 验证结果:
-<span class="material-icons">check_circle</span> Test First: 测试覆盖率 95% (≥85%)
-<span class="material-icons">check_circle</span> Readable: 代码风格检查通过
+✅ Test First: 测试覆盖率 95% (≥85%)
+✅ Readable: 代码风格检查通过
    - 函数长度平均 15 行 (<50)
    - 类复杂度适中
    - 命名清晰明确
-<span class="material-icons">check_circle</span> Unified: 架构一致性验证通过
+✅ Unified: 架构一致性验证通过
    - 遵循仓库模式
    - 统一的错误处理
    - 一致的 API 设计
-<span class="material-icons">check_circle</span> Secured: 安全检查通过
+✅ Secured: 安全检查通过
    - 密码加密存储
    - 输入验证完整
    - JWT 安全实现
-<span class="material-icons">check_circle</span> Trackable: @TAG 完整性验证通过
+✅ Trackable: @TAG 完整性验证通过
    - 所有代码都有 @TAG 标记
    - TAG 链完整无断裂
    - 提交信息规范
@@ -992,9 +992,9 @@ print(f"Registration average: {performance_results['registration_avg_ms']:.2f}ms
 print(f"Token validation average: {performance_results['token_validation_avg_ms']:.2f}ms")
 
 # 输出：
-# Login average: 12.34ms (< 200ms <span class="material-icons">check_circle</span>)
-# Registration average: 45.67ms (< 500ms <span class="material-icons">check_circle</span>)
-# Token validation average: 2.89ms (< 10ms <span class="material-icons">check_circle</span>)
+# Login average: 12.34ms (< 200ms ✅)
+# Registration average: 45.67ms (< 500ms ✅)
+# Token validation average: 2.89ms (< 10ms ✅)
 ```
 
 #### 安全扫描
@@ -1029,11 +1029,11 @@ semgrep --config=auto src/auth/
 
 ```yaml
 输出结果:
-<span class="material-icons">check_circle</span> SPEC: PRODUCT-001 分析完成
-<span class="material-icons">check_circle</span> 架构设计：RESTful API + 仓储模式
-<span class="material-icons">check_circle</span> TDD 循环：15 个测试用例全部通过
-<span class="material-icons">check_circle</span> 代码覆盖率：92%
-<span class="material-icons">check_circle</span> TRUST 评分：94/100
+✅ SPEC: PRODUCT-001 分析完成
+✅ 架构设计：RESTful API + 仓储模式
+✅ TDD 循环：15 个测试用例全部通过
+✅ 代码覆盖率：92%
+✅ TRUST 评分：94/100
 
 实现内容:
 - 产品模型 (Product)
@@ -1065,11 +1065,11 @@ semgrep --config=auto src/auth/
 
 ```yaml
 输出结果:
-<span class="material-icons">check_circle</span> SPEC: ORDER-002 分析完成
-<span class="material-icons">check_circle</span> 专家参与: backend-expert
-<span class="material-icons">check_circle</span> 复杂度评估: 中等
-<span class="material-icons">check_circle</span> 实现策略: 分阶段开发
-<span class="material-icons">check_circle</span> 测试策略: 多层次测试
+✅ SPEC: ORDER-002 分析完成
+✅ 专家参与: backend-expert
+✅ 复杂度评估: 中等
+✅ 实现策略: 分阶段开发
+✅ 测试策略: 多层次测试
 
 实现阶段:
 阶段 1: 基础订单模型 (已完成)
@@ -1099,11 +1099,11 @@ semgrep --config=auto src/auth/
 
 ```yaml
 输出结果:
-<span class="material-icons">check_circle</span> SPEC: SEARCH-003 分析完成
-<span class="material-icons">check_circle</span> 性能目标: 10万 QPS
-<span class="material-icons">check_circle</span> 技术选型: Elasticsearch + Redis
-<span class="material-icons">check_circle</span> 优化策略: 多层缓存 + 数据库优化
-<span class="material-icons">check_circle</span> 性能测试: 通过所有基准
+✅ SPEC: SEARCH-003 分析完成
+✅ 性能目标: 10万 QPS
+✅ 技术选型: Elasticsearch + Redis
+✅ 优化策略: 多层缓存 + 数据库优化
+✅ 性能测试: 通过所有基准
 
 性能优化措施:
 - 数据库索引优化
