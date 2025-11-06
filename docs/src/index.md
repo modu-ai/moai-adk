@@ -4,7 +4,7 @@
 
 ---
 
-## <span class="material-icons">rocket_launch</span> MoAI-ADK 소개
+## 🚀 MoAI-ADK 소개
 
 MoAI-ADK는 **SPEC-First TDD 개발 프레임워크**로, 알프레드(Alfred) 슈퍼에이전트가 오케스트레이션하는 현대적인 개발 도구입니다. 문서 우선 개발, 테스트 주도 개발, 자동화된 동기화를 통해 개발자와 사용자를 위한 완벽한 개발 경험을 제공합니다.
 
@@ -26,7 +26,7 @@ MoAI-ADK는 **SPEC-First TDD 개발 프레임워크**로, 알프레드(Alfred) �
 
 ---
 
-## <span class="material-icons">architecture</span> 아키텍처
+## 🏗️ 아키텍처
 
 ### 알프레드 하이브리드 아키텍처
 
@@ -57,7 +57,7 @@ Commands → Sub-agents → Skills → Hooks
 
 ---
 
-## <span class="material-icons">speed</span> 4단계 개발 워크플로우
+## ⚡ 4단계 개발 워크플로우
 
 ### 1단계: 의도 파악
 - 사용자 요청의 명확성 평가
@@ -81,7 +81,7 @@ Commands → Sub-agents → Skills → Hooks
 
 ---
 
-## <span class="material-icons">handyman</span> 핵심 기능
+## 🔧 핵심 기능
 
 ### SPEC 시스템
 - **EARS 문법**: 쉽고 표준화된 명세서 작성
@@ -109,7 +109,7 @@ Commands → Sub-agents → Skills → Hooks
 
 ---
 
-## <span class="material-icons">emoji_objects</span> 시작하기
+## 💡 시작하기
 
 ### 빠른 설치
 
@@ -144,26 +144,26 @@ moai-adk init
 
 ---
 
-## <span class="material-icons">auto_awesome</span> 주요 특징
+## ✨ 주요 특징
 
-### <span class="material-icons">language</span> 다국어 지원
+### 🌐 다국어 지원
 - **4개 언어**: 한국어, 영어, 일본어, 중국어
 - **자동 번역**: AI 기반 고품질 번역
 - **문서 동기화**: 모든 언어로 최신 문서 제공
 
-### <span class="material-icons">palette</span> UI/UX 통합
+### 🎨 UI/UX 통합
 - **Figma MCP**: 디자인-코드 연동
 - **Playwright MCP**: 자동화된 UI 테스트
 - **WCAG 2.1**: 접근성 표준 준수
 - **Material Design**: 현대적인 디자인 시스템
 
-### <span class="material-icons">verified</span> 품질 보증
+### ✅ 품질 보증
 - **TRUST 5**: Test First, Readable, Unified, Secured, Trackable
 - **85%+ 테스트 커버리지**: 자동화된 테스트 실행
 - **성능 최적화**: 코드 품질 자동 개선
 - **보안 검증**: 자동화된 보안 스캐닝
 
-### <span class="material-icons">speed</span> 성능 최적화
+### ⚡ 성능 최적화
 - **5초 초기화**: 프로젝트 설정 시간 단축
 - **토큰 절감**: 80% 토큰 사용량 감소
 - **병렬 처리**: 다중 에이전트 동시 작업
@@ -171,20 +171,20 @@ moai-adk init
 
 ---
 
-## <span class="material-icons">verified</span> 품질 메트릭스
+## ✅ 품질 메트릭스
 
 | 항목 | 목표 | 현재 상태 |
 |------|------|----------|
-| 테스트 커버리지 | 85%+ | <span class="material-icons">check_circle</span> 87% |
-| 문서 커버리지 | 100% | <span class="material-icons">check_circle</span> 100% |
-| TAG 연결률 | 100% | <span class="material-icons">check_circle</span> 100% |
-| 자동화율 | 80%+ | <span class="material-icons">check_circle</span> 82% |
-| 접근성 점수 | AA+ | <span class="material-icons">check_circle</span> AA+ |
-| 성능 점수 | A+ | <span class="material-icons">check_circle</span> A+ |
+| 테스트 커버리지 | 85%+ | ✅ 87% |
+| 문서 커버리지 | 100% | ✅ 100% |
+| TAG 연결률 | 100% | ✅ 100% |
+| 자동화율 | 80%+ | ✅ 82% |
+| 접근성 점수 | AA+ | ✅ AA+ |
+| 성능 점수 | A+ | ✅ A+ |
 
 ---
 
-## <span class="material-icons">people</span> 팀 구조
+## 👥 팀 구조
 
 ### 핵심 에이전트 (10명)
 - **spec-builder**: 명세서 작성 전문가
@@ -263,7 +263,7 @@ moai-adk init
 
 <div align="center">
 
-## <span class="material-icons">rocket_launch</span> 지금 MoAI-ADK를 시작하세요!
+## 🚀 지금 MoAI-ADK를 시작하세요!
 
 [빠른 시작 →](getting-started/installation.md) | [문서 보기 →](guides/alfred/index.md) | [GitHub →](https://github.com/modu-ai/moai-adk)
 

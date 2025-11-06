@@ -123,12 +123,12 @@ author: @user
 #### 専門家アドバイス例
 
 ```
-<span class="material-icons">settings</span> backend-expertのアドバイス:
+⚙️ backend-expertのアドバイス:
 - FastAPIは良い選択です。自動APIドキュメンテーション機能があります
 - エンドポイントのバージョニングを検討してください
 - レート制限の実装を推奨します
 
-<span class="material-icons">lock</span> security-expertのアドバイス:
+🔒 security-expertのアドバイス:
 - 入力検証は重要です。すべてのユーザー入力を検証してください
 - エラーメッセージは情報漏洩しないように一般的な内容にしてください
 - ログ記録を通じてセキュリティイベントを監視してください
@@ -223,11 +223,11 @@ grep "status:" .moai/specs/SPEC-HELLO-001/spec.md
 
 ### SPEC品質チェックリスト
 
-- <span class="material-icons">check_circle</span> **明確性**: すべての要件が明確で曖昧さがない
-- <span class="material-icons">check_circle</span> **完全性**: 必要なすべての機能が含まれている
-- <span class="material-icons">check_circle</span> **一貫性**: 用語と構造が一貫している
-- <span class="material-icons">check_circle</span> **検証可能性**: 各要件がテスト可能
-- <span class="material-icons">check_circle</span> **追跡可能性**: @TAGで追跡可能
+- ✅ **明確性**: すべての要件が明確で曖昧さがない
+- ✅ **完全性**: 必要なすべての機能が含まれている
+- ✅ **一貫性**: 用語と構造が一貫している
+- ✅ **検証可能性**: 各要件がテスト可能
+- ✅ **追跡可能性**: @TAGで追跡可能
 
 ### EARSパターン検証
 
@@ -351,7 +351,7 @@ ls .claude/agents/ .claude/skills/
 
 ---
 
-**<span class="material-icons">auto_stories</span> 次のステップ**:
+**📚 次のステップ**:
 - [/alfred:2-run](2-run.md)でTDD実装
 - [TDDガイド](../tdd/index.md)でテスト駆動開発
 - [SPECガイド](../specs/basics.md)で仕様書作成技術

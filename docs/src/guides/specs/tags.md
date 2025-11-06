@@ -178,7 +178,7 @@ def test_login_with_valid_credentials():
 
 #### 1. Consistency
 
-**<span class="material-icons">check_circle</span> Good**:
+**✅ Good**:
 ```python
 # All related code uses same DOMAIN-ID
 @CODE:AUTH-001:MODEL
@@ -197,7 +197,7 @@ def test_login_with_valid_credentials():
 
 #### 2. Specificity
 
-**<span class="material-icons">check_circle</span> Good**:
+**✅ Good**:
 ```python
 # Specific subtypes for clear organization
 @CODE:AUTH-001:SERVICE
@@ -215,7 +215,7 @@ def test_login_with_valid_credentials():
 
 #### 3. Traceability Links
 
-**<span class="material-icons">check_circle</span> Good**:
+**✅ Good**:
 ```python
 # Include links to related artifacts
 # @CODE:AUTH-001:SERVICE | SPEC: SPEC-AUTH-001.md | TEST: tests/test_auth.py
@@ -440,7 +440,7 @@ Add to `.gitconfig`:
 
 **Use Standard Format**:
 ```python
-# <span class="material-icons">check_circle</span> Correct format
+# ✅ Correct format
 @CODE:AUTH-001:SERVICE | SPEC: SPEC-AUTH-001.md | TEST: tests/test_auth.py
 
 # <span class="material-icons">cancel</span> Incorrect formats
@@ -453,7 +453,7 @@ Add to `.gitconfig`:
 
 **Link All Related Artifacts**:
 ```python
-# <span class="material-icons">check_circle</span> Complete traceability with AI enhancement
+# ✅ Complete traceability with AI enhancement
 # @CODE:AUTH-001:SERVICE | SPEC: SPEC-AUTH-001.md | TEST: tests/test_auth.py
 # AI-MONITORING: Quality score 95/100 | Last validated: 2025-11-06
 # ONLINE-PORTAL: https://adk.mo.ai.kr/trace/AUTH-001
@@ -466,7 +466,7 @@ Add to `.gitconfig`:
 
 **Group Related Code with AI suggestions**:
 ```python
-# <span class="material-icons">check_circle</span> AI-recommended logical grouping
+# ✅ AI-recommended logical grouping
 src/
 ├── auth/
 │   ├── models.py      # @CODE:AUTH-001:MODEL | AI: Optimal structure detected
@@ -486,7 +486,7 @@ src/
 
 **Right-sized Components with AI analysis**:
 ```python
-# <span class="material-icons">check_circle</span> AI-validated appropriate granularity
+# ✅ AI-validated appropriate granularity
 @CODE:AUTH-001:MODEL     # User, Session models | AI: Single responsibility
 @CODE:AUTH-001:SERVICE    # AuthService class | AI: Business logic encapsulated
 @CODE:AUTH-001:API        # Login endpoint | AI: RESTful principles
@@ -993,7 +993,7 @@ if __name__ == '__main__':
                 for item in incomplete:
                     print(f"  {item['domain']}: missing {', '.join(item['missing'])}")
             else:
-                print("<span class="material-icons">check_circle</span> All TAG chains complete")
+                print("✅ All TAG chains complete")
 
         elif command == 'list':
             tags = manager.find_all_tags()

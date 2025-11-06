@@ -320,4 +320,4 @@ moai-adk doctor --verbose
 
 ---
 
-**<span class="material-icons">check_circle</span> おめでとうございます！** MoAI-ADKのインストールが完了しました。次は[クイックスタート](quick-start.md)で最初のプロジェクトを始めましょう。
+**✅ おめでとうございます！** MoAI-ADKのインストールが完了しました。次は[クイックスタート](quick-start.md)で最初のプロジェクトを始めましょう。

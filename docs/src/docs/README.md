@@ -8,7 +8,7 @@
 
 # @CODE:DOC-ONLINE-001:MAIN
 
-## <span class="material-icons">rocket_launch</span> 빠른 시작
+## 🚀 빠른 시작
 
 ### 1. UV 설치 (권장)
 ```bash
@@ -70,7 +70,7 @@ docs/
 └── overrides/             # 테마 오버라이드
 ```
 
-## <span class="material-icons">palette</span> 커스터마이징
+## 🎨 커스터마이징
 
 ### 테마 설정
 - **Material Design**: Google Material Design 기반
@@ -83,7 +83,7 @@ docs/
 - **검색**: 전문 검색 및 자동 완성
 - **Git 통합**: 커밋 정보 및 버전 관리
 
-## <span class="material-icons">description</span> 문서 작성 가이드
+## 📄 문서 작성 가이드
 
 ### 마크다드 확장
 ```markdown
@@ -110,7 +110,7 @@ graph LR
     B --> C[Sync]
 ```
 
-## <span class="material-icons">rocket_launch</span> 배포
+## 🚀 배포
 
 ### Vercel 배포 (권장)
 ```bash
@@ -140,7 +140,7 @@ uv run build
 # site/ 디렉토리를 원하는 호스팅 서비스에 업로드
 ```
 
-## <span class="material-icons">settings</span> 개발
+## ⚙️ 개발
 
 ### 로컬 개발 환경
 ```bash
@@ -185,7 +185,7 @@ uv run clean
 mkdocs build --strict
 ```
 
-## <span class="material-icons">analytics</span> 모니터링
+## 📊 모니터링
 
 ### 빌드 통계
 ```bash

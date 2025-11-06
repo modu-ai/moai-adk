@@ -309,31 +309,31 @@ tests/auth/
 
 ### 2. 完全性 (Completeness)
 
-- <span class="material-icons">check_circle</span> すべての機能要件が含まれている
-- <span class="material-icons">check_circle</span> エラーケースが考慮されている
-- <span class="material-icons">check_circle</span> 制約事項が明記されている
-- <span class="material-icons">check_circle</span> 境界条件が定義されている
+- ✅ すべての機能要件が含まれている
+- ✅ エラーケースが考慮されている
+- ✅ 制約事項が明記されている
+- ✅ 境界条件が定義されている
 
 ### 3. 一貫性 (Consistency)
 
-- <span class="material-icons">check_circle</span> 用語が一貫して使用されている
-- <span class="material-icons">check_circle</span> 命名規則が統一されている
-- <span class="material-icons">check_circle</span> 構造が標準化されている
-- <span class="material-icons">check_circle</span> 形式が統一されている
+- ✅ 用語が一貫して使用されている
+- ✅ 命名規則が統一されている
+- ✅ 構造が標準化されている
+- ✅ 形式が統一されている
 
 ### 4. 検証可能性 (Verifiability)
 
-- <span class="material-icons">check_circle</span> 各要件がテスト可能
-- <span class="material-icons">check_circle</span> 成功基準が明確
-- <span class="material-icons">check_circle</span> 失敗条件が定義されている
-- <span class="material-icons">check_circle</span> 測定可能な指標がある
+- ✅ 各要件がテスト可能
+- ✅ 成功基準が明確
+- ✅ 失敗条件が定義されている
+- ✅ 測定可能な指標がある
 
 ### 5. 追跡可能性 (Traceability)
 
-- <span class="material-icons">check_circle</span> @TAGで他の成果物と連結
-- <span class="material-icons">check_circle</span> 変更履歴が記録されている
-- <span class="material-icons">check_circle</span> 依存関係が明記されている
-- <span class="material-icons">check_circle</span> バージョン管理がされている
+- ✅ @TAGで他の成果物と連結
+- ✅ 変更履歴が記録されている
+- ✅ 依存関係が明記されている
+- ✅ バージョン管理がされている
 
 ## SPEC管理のベストプラクティス
 
@@ -417,7 +417,7 @@ moai-adk spec template --type=database
 
 ---
 
-**<span class="material-icons">auto_stories</span> 次のステップ**:
+**📚 次のステップ**:
 - [EARS詳細ガイド](ears.md)で要件記述技術
 - [TAGシステム](tags.md)で追跡可能性管理
 - [TDDガイド](../tdd/index.md)でテスト駆動実装

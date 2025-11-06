@@ -18,9 +18,13 @@
 - [🚀 **Hello World API**](https://adk.mo.ai.kr/tutorials/hello-world-api) - 첫 10분 실습
 - [🔧 **문제 해결 가이드**](https://adk.mo.ai.kr/troubleshooting) - 자주 발생하는 문제 해결
 
-### 📖 상세 문서
-- **전체 문서**: [docs/split/](docs/split/) 디렉토리 (GitHub 소스 문서)
-- **실시간 온라인 문서**: [https://adk.mo.ai.kr](https://adk.mo.ai.kr) (최신 정보)
+### 📖 문서 접근 방법
+
+**온라인 문서 (추천)** - 최신 정보, 검색 기능, 다국어 지원
+- [adk.mo.ai.kr](https://adk.mo.ai.kr)
+
+**로컬 문서** - 오프라인 참조용 마크다운
+- `docs/src/` 디렉토리
 
 ## 🔍 찾고 계신가요?
 
@@ -32,15 +36,22 @@
 
 ---
 
-## 📚 문서 목록
+## 📚 온라인 문서 주요 페이지
 
-- [🎯 MoAI-ADK란?](docs/split/모ai-adk란.md)
-- [🚀 3분 초고속 시작](docs/split/3분-초고속-시작.md)
-- [🔄 4단계 개발 워크플로우](docs/split/4단계-개발-워크플로우.md)
-- [🏗️ 핵심 아키텍처](docs/split/핵심-아키텍처.md)
-- [🚀 첫 10분 실습: Hello World API](docs/split/첫-10분-실습-hello-world-api.md)
-- [🔧 초보자를 위한 문제 해결](docs/split/초보자를-위한-문제-해결.md)
-- [🌐 온라인 문서 포털](docs/split/온라인-문서-포털.md)
+**소개**: MoAI-ADK의 핵심 개념과 철학
+- [개요](https://adk.mo.ai.kr/introduction/overview.md)
+- [왜 SPEC-First인가?](https://adk.mo.ai.kr/introduction/why-spec-first.md)
+- [아키텍처](https://adk.mo.ai.kr/introduction/architecture.md)
+
+**시작하기**: 빠른 온보딩 및 설정
+- [3분 초고속 시작](https://adk.mo.ai.kr/getting-started/3-minute-start.md)
+- [설치 가이드](https://adk.mo.ai.kr/getting-started/installation.md)
+- [첫 프로젝트](https://adk.mo.ai.kr/getting-started/first-project.md)
+
+**학습**: 실습 및 심화 학습
+- [Hello World API](https://adk.mo.ai.kr/tutorials/hello-world-api.md)
+- [4단계 개발 워크플로우](https://adk.mo.ai.kr/guides/alfred/4-steps.md)
+- [SPEC 작성 가이드](https://adk.mo.ai.kr/guides/specs/basics.md)
 
 ## 🎯 핵심 가치
 

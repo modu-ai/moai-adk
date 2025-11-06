@@ -173,21 +173,21 @@ stateDiagram-v2
     end note
 
     note right of draft
-        <span class="material-icons">description</span> 起草阶段
+        📄 起草阶段
         - EARS 格式编写
         - 验收标准定义
         - 风险评估
     end note
 
     note right of in_progress
-        <span class="material-icons">rocket_launch</span> 开发阶段
+        🚀 开发阶段
         - TDD 实现
         - 代码审查
         - 单元测试
     end note
 
     note right of completed
-        <span class="material-icons">check_circle</span> 完成阶段
+        ✅ 完成阶段
         - 文档同步
         - 集成测试
         - 部署就绪
@@ -260,7 +260,7 @@ def login(credentials: dict):
     return {"error": "Invalid credentials"}
 ```
 
-#### <span class="material-icons">recycling</span> REFACTOR 阶段：重构改进
+#### ♻️ REFACTOR 阶段：重构改进
 
 **目标**：改进代码质量，同时保持测试通过。
 
@@ -516,7 +516,7 @@ pytest --cov=src --cov-report=term-missing
 
 #### 实践指导
 ```python
-# <span class="material-icons">check_circle</span> 好的实践：每个功能都有测试
+# ✅ 好的实践：每个功能都有测试
 def calculate_discount(price: float, customer_level: str) -> float:
     """计算客户折扣"""
     # 测试会覆盖这个逻辑
@@ -539,7 +539,7 @@ def complex_calculation(params: dict) -> float:
 
 #### 验证标准
 ```python
-# <span class="material-icons">check_circle</span> 好的实践：清晰命名和适当长度
+# ✅ 好的实践：清晰命名和适当长度
 def calculate_user_age(birth_date: datetime) -> int:
     """根据出生日期计算用户年龄
 
@@ -583,7 +583,7 @@ prettier --check src/
 
 #### 验证标准
 ```python
-# <span class="material-icons">check_circle</span> 好的实践：统一的 API 模式
+# ✅ 好的实践：统一的 API 模式
 class UserService:
     """用户服务 - 统一的 CRUD 模式"""
 
@@ -620,7 +620,7 @@ class ProductService:
 
 #### 验证标准
 ```python
-# <span class="material-icons">check_circle</span> 好的实践：安全输入验证
+# ✅ 好的实践：安全输入验证
 from pydantic import BaseModel, validator
 import bcrypt
 
@@ -710,13 +710,13 @@ MoAI-ADK 在 `/alfred:3-sync` 时自动执行 TRUST 验证：
 
 # 输出示例：
 <span class="material-icons">search</span> TRUST 5 原则验证
-<span class="material-icons">check_circle</span> Test First: 测试覆盖率 87%
-<span class="material-icons">check_circle</span> Readable: 代码风格检查通过
-<span class="material-icons">check_circle</span> Unified: 架构一致性验证通过
-<span class="material-icons">check_circle</span> Secured: 安全检查通过
-<span class="material-icons">check_circle</span> Trackable: @TAG 完整性验证通过
+✅ Test First: 测试覆盖率 87%
+✅ Readable: 代码风格检查通过
+✅ Unified: 架构一致性验证通过
+✅ Secured: 安全检查通过
+✅ Trackable: @TAG 完整性验证通过
 
-<span class="material-icons">analytics</span> TRUST 评分: 92/100
+📊 TRUST 评分: 92/100
 ```
 
 ---
@@ -928,7 +928,7 @@ Alfred 首先理解用户的请求和项目上下文：
 使用清晰的指令告诉 Alfred 您想要什么：
 
 ```bash
-# <span class="material-icons">check_circle</span> 好的指令
+# ✅ 好的指令
 /alfred:1-plan "创建用户认证系统，支持邮箱登录和密码重置"
 
 # <span class="material-icons">cancel</span> 模糊的指令
@@ -939,7 +939,7 @@ Alfred 首先理解用户的请求和项目上下文：
 提供足够的上下文信息：
 
 ```bash
-# <span class="material-icons">check_circle</span> 提供上下文
+# ✅ 提供上下文
 /alfred:2-run AUTH-001
 # Alfred 会自动读取 SPEC-AUTH-001.md 了解详细需求
 
@@ -952,7 +952,7 @@ Alfred 首先理解用户的请求和项目上下文：
 将大功能分解为小步骤：
 
 ```bash
-# <span class="material-icons">check_circle</span> 渐进式
+# ✅ 渐进式
 /alfred:1-plan "用户基础信息管理"
 /alfred:2-run USER-001
 /alfred:1-plan "用户权限管理"

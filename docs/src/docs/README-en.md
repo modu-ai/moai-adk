@@ -8,7 +8,7 @@ This directory contains the official MoAI-ADK documentation built with MkDocs.
 
 # @CODE:DOC-ONLINE-001:EN
 
-## <span class="material-icons">rocket_launch</span> Quick Start
+## 🚀 Quick Start
 
 ### 1. UV Installation (Recommended)
 ```bash
@@ -70,7 +70,7 @@ docs/
 └── overrides/             # Theme overrides
 ```
 
-## <span class="material-icons">palette</span> Customization
+## 🎨 Customization
 
 ### Theme Settings
 - **Material Design**: Google Material Design based
@@ -83,7 +83,7 @@ docs/
 - **Search**: Professional search with auto-completion
 - **Git Integration**: Commit information and version management
 
-## <span class="material-icons">description</span> Documentation Guide
+## 📄 Documentation Guide
 
 ### Markdown Extensions
 ```markdown
@@ -110,7 +110,7 @@ graph LR
     B --> C[Sync]
 ```
 
-## <span class="material-icons">rocket_launch</span> Deployment
+## 🚀 Deployment
 
 ### Vercel Deployment (Recommended)
 ```bash
@@ -140,7 +140,7 @@ uv run build
 # Upload site/ directory to your hosting service
 ```
 
-## <span class="material-icons">settings</span> Development
+## ⚙️ Development
 
 ### Local Development Environment
 ```bash
@@ -185,7 +185,7 @@ uv run clean
 mkdocs build --strict
 ```
 
-## <span class="material-icons">analytics</span> Monitoring
+## 📊 Monitoring
 
 ### Build Statistics
 ```bash

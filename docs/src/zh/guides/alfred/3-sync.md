@@ -649,11 +649,11 @@ Alfred 会自动更新 README.md，添加新功能说明：
 ## 功能特性
 
 ### 🔐 用户认证系统
-- <span class="material-icons">check_circle</span> 用户注册和邮箱验证
-- <span class="material-icons">check_circle</span> 安全的用户登录（JWT 令牌）
-- <span class="material-icons">check_circle</span> 密码重置功能
-- <span class="material-icons">check_circle</span> 用户信息管理
-- <span class="material-icons">check_circle</span> 细粒度权限控制
+- ✅ 用户注册和邮箱验证
+- ✅ 安全的用户登录（JWT 令牌）
+- ✅ 密码重置功能
+- ✅ 用户信息管理
+- ✅ 细粒度权限控制
 
 **技术实现**:
 - FastAPI RESTful API
@@ -717,30 +717,30 @@ Alfred 自动维护 CHANGELOG.md：
 
 ### Changed
 - <span class="material-icons">menu_book</span> 更新 API 文档，添加认证相关端点说明
-- <span class="material-icons">settings</span> 优化数据库连接池配置
-- <span class="material-icons">shield</span> 增强安全验证机制
+- ⚙️ 优化数据库连接池配置
+- 🛡️ 增强安全验证机制
 
 ### Security
-- <span class="material-icons">lock</span> 实施 bcrypt 密码加密
-- <span class="material-icons">shield</span> 添加输入验证和清理
+- 🔒 实施 bcrypt 密码加密
+- 🛡️ 添加输入验证和清理
 - 🚨 实现速率限制保护
 - 🔐 增强 JWT 令牌安全性
 
 ### Performance
 - ⚡ 实现 Redis 缓存层
-- <span class="material-icons">analytics</span> 优化数据库查询性能
-- <span class="material-icons">rocket_launch</span> 添加 API 响应时间监控
+- 📊 优化数据库查询性能
+- 🚀 添加 API 响应时间监控
 - 💾 优化内存使用效率
 
 ### Tests
-- <span class="material-icons">check_circle</span> 添加用户认证完整测试套件 (`@TEST:USER-AUTH-001`)
+- ✅ 添加用户认证完整测试套件 (`@TEST:USER-AUTH-001`)
 - 🧪 实现单元测试、集成测试和端到端测试
 - <span class="material-icons">trending_up</span> 测试覆盖率达到 95%
-- <span class="material-icons">lock</span> 添加安全测试用例
+- 🔒 添加安全测试用例
 
 ### Documentation
-- <span class="material-icons">auto_stories</span> 更新用户认证 API 文档
-- <span class="material-icons">construction</span> 添加系统架构设计文档
+- 📚 更新用户认证 API 文档
+- 🏗️ 添加系统架构设计文档
 - 📋 创建部署和运维指南
 - <span class="material-icons">search</span> 完善故障排除文档
 
@@ -817,34 +817,34 @@ def validate_tag_chain(spec_id):
 #### 验证结果示例
 ```yaml
 TAG 验证报告:
-<span class="material-icons">check_circle</span> 总体状态: 通过
-<span class="material-icons">check_circle</span> 发现 TAG 总数: 156
-<span class="material-icons">check_circle</span> 完整链数量: 12
+✅ 总体状态: 通过
+✅ 发现 TAG 总数: 156
+✅ 完整链数量: 12
 <span class="material-icons">warning</span> 孤立 TAG: 2
 <span class="material-icons">warning</span> 缺失 TAG: 3
 <span class="material-icons">cancel</span> 不一致 TAG: 0
 
 详细结果:
 SPEC TAGs:
-  - @SPEC:USER-AUTH-001 <span class="material-icons">check_circle</span>
-  - @SPEC:PRODUCT-001 <span class="material-icons">check_circle</span>
-  - @SPEC:ORDER-001 <span class="material-icons">check_circle</span>
+  - @SPEC:USER-AUTH-001 ✅
+  - @SPEC:PRODUCT-001 ✅
+  - @SPEC:ORDER-001 ✅
 
 TEST TAGs:
-  - @TEST:USER-AUTH-001 <span class="material-icons">check_circle</span>
-  - @TEST:PRODUCT-001 <span class="material-icons">check_circle</span>
-  - @TEST:ORDER-001 <span class="material-icons">check_circle</span>
+  - @TEST:USER-AUTH-001 ✅
+  - @TEST:PRODUCT-001 ✅
+  - @TEST:ORDER-001 ✅
 
 CODE TAGs:
-  - @CODE:USER-AUTH-001:API <span class="material-icons">check_circle</span>
-  - @CODE:USER-AUTH-001:SERVICE <span class="material-icons">check_circle</span>
-  - @CODE:PRODUCT-001:MODEL <span class="material-icons">check_circle</span>
-  - @CODE:ORDER-001:REPOSITORY <span class="material-icons">check_circle</span>
+  - @CODE:USER-AUTH-001:API ✅
+  - @CODE:USER-AUTH-001:SERVICE ✅
+  - @CODE:PRODUCT-001:MODEL ✅
+  - @CODE:ORDER-001:REPOSITORY ✅
 
 DOC TAGs:
-  - @DOC:USER-AUTH-001 <span class="material-icons">check_circle</span>
-  - @DOC:PRODUCT-001 <span class="material-icons">check_circle</span>
-  - @DOC:ORDER-001 <span class="material-icons">check_circle</span>
+  - @DOC:USER-AUTH-001 ✅
+  - @DOC:PRODUCT-001 ✅
+  - @DOC:ORDER-001 ✅
 
 孤立 TAGs:
   - @TEST:OLD-FEATURE-001 (对应的 SPEC 已删除)
@@ -956,9 +956,9 @@ def validate_subtype(subtype):
 #### 一致性报告
 ```yaml
 TAG 一致性报告:
-<span class="material-icons">check_circle</span> 格式验证: 156/156 通过
-<span class="material-icons">check_circle</span> 域 ID 验证: 156/156 通过
-<span class="material-icons">check_circle</span> 子类型验证: 89/89 通过
+✅ 格式验证: 156/156 通过
+✅ 域 ID 验证: 156/156 通过
+✅ 子类型验证: 89/89 通过
 <span class="material-icons">warning</span> 大小写问题: 3 个 TAG
 <span class="material-icons">cancel</span> 格式错误: 0 个 TAG
 
@@ -1012,11 +1012,11 @@ def validate_test_structure():
 #### 测试质量评估
 ```yaml
 测试质量报告:
-<span class="material-icons">check_circle</span> 测试覆盖率: 94% (目标: ≥85%)
-<span class="material-icons">check_circle</span> 单元测试: 45 个
-<span class="material-icons">check_circle</span> 集成测试: 12 个
-<span class="material-icons">check_circle</span> 端到端测试: 8 个
-<span class="material-icons">check_circle</span> 测试文件分布: 均匀
+✅ 测试覆盖率: 94% (目标: ≥85%)
+✅ 单元测试: 45 个
+✅ 集成测试: 12 个
+✅ 端到端测试: 8 个
+✅ 测试文件分布: 均匀
 <span class="material-icons">warning</span> 缺失测试类型: 性能测试
 
 详细分析:
@@ -1087,10 +1087,10 @@ def validate_naming_conventions():
 #### 可读性报告
 ```yaml
 代码可读性报告:
-<span class="material-icons">check_circle</span> 函数平均长度: 18 行 (目标: <50)
-<span class="material-icons">check_circle</span> 类平均长度: 120 行 (目标: <300)
-<span class="material-icons">check_circle</span> 文件平均长度: 180 行 (目标: <500)
-<span class="material-icons">check_circle</span> 命名约定: 95% 符合规范
+✅ 函数平均长度: 18 行 (目标: <50)
+✅ 类平均长度: 120 行 (目标: <300)
+✅ 文件平均长度: 180 行 (目标: <500)
+✅ 命名约定: 95% 符合规范
 <span class="material-icons">warning</span> 注释覆盖率: 72% (目标: >80%)
 
 详细指标:
@@ -1157,10 +1157,10 @@ def check_pattern_consistency():
 #### 一致性报告
 ```yaml
 架构一致性报告:
-<span class="material-icons">check_circle</span> 层次结构: 无违规
-<span class="material-icons">check_circle</span> 设计模式: 90% 一致
-<span class="material-icons">check_circle</span> API 设计: 统一规范
-<span class="material-icons">check_circle</span> 数据模型: 一致性良好
+✅ 层次结构: 无违规
+✅ 设计模式: 90% 一致
+✅ API 设计: 统一规范
+✅ 数据模型: 一致性良好
 <span class="material-icons">warning</span> 依赖管理: 2 处不一致
 
 设计模式分析:
@@ -1236,12 +1236,12 @@ def check_input_validation():
 #### 安全报告
 ```yaml
 安全检查报告:
-<span class="material-icons">check_circle</span> 输入验证: 完整
-<span class="material-icons">check_circle</span> SQL 注入防护: 有效
-<span class="material-icons">check_circle</span> XSS 攻击防护: 启用
-<span class="material-icons">check_circle</span> 认证机制: 强健
-<span class="material-icons">check_circle</span> 授权控制: 细粒度
-<span class="material-icons">check_circle</span> 数据加密: 适当
+✅ 输入验证: 完整
+✅ SQL 注入防护: 有效
+✅ XSS 攻击防护: 启用
+✅ 认证机制: 强健
+✅ 授权控制: 细粒度
+✅ 数据加密: 适当
 <span class="material-icons">warning</span> 错误处理: 2 处信息泄露风险
 
 输入验证:
@@ -1315,10 +1315,10 @@ def check_tag_coverage():
 #### 可追踪性报告
 ```yaml
 可追踪性报告:
-<span class="material-icons">check_circle</span> TAG 覆盖率: 96% (目标: 100%)
-<span class="material-icons">check_circle</span> 提交信息质量: 92% 符合规范
-<span class="material-icons">check_circle</span> 文档代码链接: 完整
-<span class="material-icons">check_circle</span> 需求追踪: 100% 覆盖
+✅ TAG 覆盖率: 96% (目标: 100%)
+✅ 提交信息质量: 92% 符合规范
+✅ 文档代码链接: 完整
+✅ 需求追踪: 100% 覆盖
 <span class="material-icons">warning</span> 决策追踪: 85% 覆盖
 
 TAG 覆盖分析:
@@ -1391,13 +1391,13 @@ def run_quality_gate():
 ### 质量报告示例
 ```yaml
 质量门禁报告:
-<span class="material-icons">target</span> 综合评分: 91/100 (通过)
-<span class="material-icons">check_circle</span> TRUST 原则: 96/100
-<span class="material-icons">check_circle</span> 性能指标: 88/100
-<span class="material-icons">check_circle</span> 安全检查: 94/100
-<span class="material-icons">check_circle</span> 兼容性测试: 90/100
-<span class="material-icons">check_circle</span> 文档完整性: 95/100
-<span class="material-icons">check_circle</span> 部署就绪: 85/100
+🎯 综合评分: 91/100 (通过)
+✅ TRUST 原则: 96/100
+✅ 性能指标: 88/100
+✅ 安全检查: 94/100
+✅ 兼容性测试: 90/100
+✅ 文档完整性: 95/100
+✅ 部署就绪: 85/100
 
 详细评分:
 TRUST 5 原则:
@@ -1420,7 +1420,7 @@ TRUST 5 原则:
   - 数据保护: 92/100 (适当加密)
 
 发布建议:
-<span class="material-icons">check_circle</span> 代码质量优秀，可以发布
+✅ 代码质量优秀，可以发布
 <span class="material-icons">warning</span> 建议在发布前修复中危依赖漏洞
 📋 完成性能基准测试
 📋 更新部署文档
@@ -1442,11 +1442,11 @@ TRUST 5 原则:
 /alfred:3-sync
 
 # 输出示例：
-<span class="material-icons">check_circle</span> 文档同步完成
-<span class="material-icons">check_circle</span> TAG 验证通过 (98% 完整性)
-<span class="material-icons">check_circle</span> TRUST 5 原则验证通过 (94/100 分)
-<span class="material-icons">check_circle</span> 质量门禁检查通过 (91/100 分)
-<span class="material-icons">check_circle</span> 同步报告已生成: .moai/reports/sync-report-2025-01-15.md
+✅ 文档同步完成
+✅ TAG 验证通过 (98% 完整性)
+✅ TRUST 5 原则验证通过 (94/100 分)
+✅ 质量门禁检查通过 (91/100 分)
+✅ 同步报告已生成: .moai/reports/sync-report-2025-01-15.md
 
 更新内容:
 - API 文档: docs/api/auth.md (更新)
@@ -1500,46 +1500,46 @@ TRUST 5 原则:
 - 执行时间: 2025-01-15 14:30:00
 - 总耗时: 2 分 45 秒
 - 总体评分: 91/100
-- 状态: <span class="material-icons">check_circle</span> 通过
+- 状态: ✅ 通过
 
 ## 主要更新
 ### 文档更新
-- <span class="material-icons">check_circle</span> 新增 API 文档: docs/api/auth.md
-- <span class="material-icons">check_circle</span> 更新 README.md
-- <span class="material-icons">check_circle</span> 生成 CHANGELOG.md v1.2.0
-- <span class="material-icons">check_circle</span> 创建架构文档: docs/architecture/auth.md
+- ✅ 新增 API 文档: docs/api/auth.md
+- ✅ 更新 README.md
+- ✅ 生成 CHANGELOG.md v1.2.0
+- ✅ 创建架构文档: docs/architecture/auth.md
 
 ### TAG 系统
-- <span class="material-icons">check_circle</span> TAG 完整性: 98%
-- <span class="material-icons">check_circle</span> 新增 TAG: 8 个
-- <span class="material-icons">check_circle</span> 修复孤立 TAG: 2 个
-- <span class="material-icons">check_circle</span> 补充缺失 TAG: 3 个
+- ✅ TAG 完整性: 98%
+- ✅ 新增 TAG: 8 个
+- ✅ 修复孤立 TAG: 2 个
+- ✅ 补充缺失 TAG: 3 个
 
 ### 质量指标
-- <span class="material-icons">check_circle</span> 测试覆盖率: 94% → 96%
-- <span class="material-icons">check_circle</span> 代码质量: 92/100 → 94/100
-- <span class="material-icons">check_circle</span> 安全评分: 90/100 → 94/100
-- <span class="material-icons">check_circle</span> 性能基准: 88/100 → 92/100
+- ✅ 测试覆盖率: 94% → 96%
+- ✅ 代码质量: 92/100 → 94/100
+- ✅ 安全评分: 90/100 → 94/100
+- ✅ 性能基准: 88/100 → 92/100
 
 ## 质量检查详情
 ### TRUST 5 原则
-- Test First: 95/100 (<span class="material-icons">check_circle</span> 通过)
-- Readable: 94/100 (<span class="material-icons">check_circle</span> 通过)
-- Unified: 98/100 (<span class="material-icons">check_circle</span> 通过)
-- Secured: 96/100 (<span class="material-icons">check_circle</span> 通过)
-- Trackable: 96/100 (<span class="material-icons">check_circle</span> 通过)
+- Test First: 95/100 (✅ 通过)
+- Readable: 94/100 (✅ 通过)
+- Unified: 98/100 (✅ 通过)
+- Secured: 96/100 (✅ 通过)
+- Trackable: 96/100 (✅ 通过)
 
 ### 性能指标
-- API 平均响应时间: 45ms <span class="material-icons">check_circle</span>
-- 数据库查询时间: 25ms <span class="material-icons">check_circle</span>
-- 内存使用: 512MB <span class="material-icons">check_circle</span>
-- CPU 使用率: 35% <span class="material-icons">check_circle</span>
+- API 平均响应时间: 45ms ✅
+- 数据库查询时间: 25ms ✅
+- 内存使用: 512MB ✅
+- CPU 使用率: 35% ✅
 
 ### 安全检查
-- 漏洞扫描: 无高危漏洞 <span class="material-icons">check_circle</span>
+- 漏洞扫描: 无高危漏洞 ✅
 - 依赖安全: 2个中危需要关注 <span class="material-icons">warning</span>
-- 认证强度: 强 <span class="material-icons">check_circle</span>
-- 数据保护: 适当加密 <span class="material-icons">check_circle</span>
+- 认证强度: 强 ✅
+- 数据保护: 适当加密 ✅
 
 ## 问题与建议
 ### 需要关注的问题

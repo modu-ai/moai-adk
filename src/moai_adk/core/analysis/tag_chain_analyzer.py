@@ -214,7 +214,8 @@ class TagChainAnalyzer:
 
     def _extract_domain_from_tag(self, tag: str) -> str:
         """Extract domain from TAG (e.g., "@SPEC:AUTH-004" -> "AUTH")."""
-        match = re.match(r'@[A-Z]+:([A-Z0-9-]+)\d{3}', tag)
+        # Match pattern: @TYPE:DOMAIN-NUMBER where NUMBER is exactly 3 digits
+        match = re.match(r'@[A-Z]+:(.+?)-\d{3}', tag)
         if match:
             return match.group(1)
         return tag.split(":")[1].rsplit("-", 1)[0]

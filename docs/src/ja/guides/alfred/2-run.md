@@ -47,7 +47,7 @@ lang: ja
 #### 計画出力例
 
 ```
-<span class="material-icons">construction</span> implementation-plannerの分析結果:
+🏗️ implementation-plannerの分析結果:
 
 ## 技術スタック選定
 - **フレームワーク**: FastAPI (高性能、自動ドキュメンテーション)
@@ -158,7 +158,7 @@ def hello(name: str = "World"):
     return {"message": f"Hello, {name}!"}
 ```
 
-**実行結果**: <span class="material-icons">check_circle</span> PASSED (すべてのテスト通過)
+**実行結果**: ✅ PASSED (すべてのテスト通過)
 
 **Gitコミット**:
 ```bash
@@ -166,7 +166,7 @@ git add src/hello/api.py
 git commit -m "🟢 feat(HELLO-001): implement hello API with validation"
 ```
 
-#### <span class="material-icons">recycling</span> REFACTOR: コード改善
+#### ♻️ REFACTOR: コード改善
 
 TRUST 5原則を適用してコードを改善：
 
@@ -250,12 +250,12 @@ def hello(
         raise HTTPException(status_code=400, detail=str(e))
 ```
 
-**実行結果**: <span class="material-icons">check_circle</span> PASSED (すべてのテスト依然として通過)
+**実行結果**: ✅ PASSED (すべてのテスト依然として通過)
 
 **Gitコミット**:
 ```bash
 git add src/hello/models.py src/hello/services.py src/hello/api.py
-git commit -m "<span class="material-icons">recycling</span> refactor(HELLO-001): improve code structure with TRUST principles"
+git commit -m "♻️ refactor(HELLO-001): improve code structure with TRUST principles"
 ```
 
 ### フェーズ3: 品質検証
@@ -263,14 +263,14 @@ git commit -m "<span class="material-icons">recycling</span> refactor(HELLO-001)
 #### quality-gateが自動検証実行
 
 ```
-<span class="material-icons">shield</span> quality-gateの検証結果:
+🛡️ quality-gateの検証結果:
 
 ## TRUST 5原則検証
-<span class="material-icons">check_circle</span> Test First: カバレッジ 95% (最小要件: 85%)
-<span class="material-icons">check_circle</span> Readable: すべての関数 < 30行、変数名が意図を表す
-<span class="material-icons">check_circle</span> Unified: SPECベースアーキテクチャ維持、一貫したパターン
-<span class="material-icons">check_circle</span> Secured: 入力検証完了、XSS防止、エラーメッセージ安全
-<span class="material-icons">check_circle</span> Trackable: すべてのファイルに@TAG割り当て完了
+✅ Test First: カバレッジ 95% (最小要件: 85%)
+✅ Readable: すべての関数 < 30行、変数名が意図を表す
+✅ Unified: SPECベースアーキテクチャ維持、一貫したパターン
+✅ Secured: 入力検証完了、XSS防止、エラーメッセージ安全
+✅ Trackable: すべてのファイルに@TAG割り当て完了
 
 ## コード品質メトリクス
 - サイクロマティック複雑度: 3 (優秀)
@@ -342,17 +342,17 @@ def test_user_crud_with_database():
 ### 専門家アドバイス統合
 
 ```
-<span class="material-icons">settings</span> backend-expertの実装アドバイス:
+⚙️ backend-expertの実装アドバイス:
 - APIバージョニングを追加することを推奨
 - レート制限ミドルウェアを検討
 - OpenAPIドキュメンテーションを自動生成
 
-<span class="material-icons">storage</span> database-expertのアドバイス:
+💾 database-expertのアドバイス:
 - ユニーク制約とインデックスを追加
 - トランザクション管理を検討
 - データベースマイグレーション戦略が必要
 
-<span class="material-icons">lock</span> security-expertのアドバイス:
+🔒 security-expertのアドバイス:
 - ログ記録と監査を追加
 - レート制限で悪用防止
 - エラーメッセージから情報漏洩防止
@@ -398,7 +398,7 @@ coverage html
 # HTMLレポート生成: htmlcov/index.html
 ```
 
-#### <span class="material-icons">auto_stories</span> Readable
+#### 📚 Readable
 
 ```python
 # 良い例: 明確な関数名と変数名
@@ -413,13 +413,13 @@ def process(data):
     return something
 ```
 
-#### <span class="material-icons">target</span> Unified
+#### 🎯 Unified
 
 - **アーキテクチャ一貫性**: すべてのレイヤーで同じパターン使用
 - **命名規則**: ファイル、関数、変数名の一貫性
 - **エラー処理**: 全体的なエラー処理戦略
 
-#### <span class="material-icons">lock</span> Secured
+#### 🔒 Secured
 
 ```python
 # 入力検証例
@@ -443,7 +443,7 @@ class UserInput(BaseModel):
         return v
 ```
 
-#### <span class="material-icons">link</span> Trackable
+#### 🔗 Trackable
 
 ```python
 # すべてのファイルにTAG付与
@@ -576,7 +576,7 @@ jobs:
 
 ---
 
-**<span class="material-icons">auto_stories</span> 次のステップ**:
+**📚 次のステップ**:
 - [/alfred:3-sync](3-sync.md)でドキュメント同期
 - [TDDガイド](../tdd/index.md)でテスト駆動開発技術
 - [品質ガイド](../project/deploy.md)でプロダクション展開

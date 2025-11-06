@@ -397,4 +397,4 @@ After creating your SPEC:
 3. **Implementation**: Begin TDD with `/alfred:2-run SPEC-ID`
 4. **Documentation**: Let Alfred sync docs with `/alfred:3-sync`
 
-Remember: A well-written SPEC is the foundation of successful software development. Take the time to get it right, and the rest of the development process will flow smoothly! <span class="material-icons">target</span>
+Remember: A well-written SPEC is the foundation of successful software development. Take the time to get it right, and the rest of the development process will flow smoothly! 🎯

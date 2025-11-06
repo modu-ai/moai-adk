@@ -74,7 +74,7 @@ Alfred의 spec-builder는 EARS 형식을 사용하여 전문적 SPEC을 자동�
        return {"error": "Invalid credentials"}
    ```
 
-3. **<span class="material-icons">recycling</span> REFACTOR**: 테스트 커버리지를 유지하면서 코드 품질 개선
+3. **♻️ REFACTOR**: 테스트 커버리지를 유지하면서 코드 품질 개선
    ```python
    class AuthService:
        def authenticate(self, email: str, password: str) -> AuthResult:
@@ -151,22 +151,22 @@ Alfred는 자동으로 TAG 체인을 검증하고 고아 TAG를 감지합니다.
    - 모든 코드가 테스트로 보호됨
    - 기능 추가 = 테스트 추가
 
-2. **<span class="material-icons">auto_stories</span> Readable**
+2. **📚 Readable**
    - 함수 ≤ 50줄, 파일 ≤ 300줄
    - 변수 이름이 의도를 드러냄
    - 린터 준수 (ESLint/ruff/clippy)
 
-3. **<span class="material-icons">target</span> Unified**
+3. **🎯 Unified**
    - SPEC 기반 아키텍처 일관성
    - 반복 패턴 (학습 곡선 감소)
    - 타입 안전성 또는 런타임 검증
 
-4. **<span class="material-icons">lock</span> Secured**
+4. **🔒 Secured**
    - 입력 검증 (XSS, SQL 인젝션 방지)
    - 비밀번호 해싱 (bcrypt, Argon2)
    - 민감한 데이터 보호 (환경 변수)
 
-5. **<span class="material-icons">link</span> Trackable**
+5. **🔗 Trackable**
    - @TAG 시스템 사용
    - Git 커밋에 TAG 참조 포함
    - 모든 결정 문서화됨
@@ -193,15 +193,15 @@ Alfred는 자동으로 TRUST 5 준수를 검증합니다.
 Alfred SuperAgent (오케스트레이션)
     ├── Core Sub-agents (프로젝트 워크플로우)
     │   ├── project-manager 📋
-    │   ├── spec-builder <span class="material-icons">construction</span>
+    │   ├── spec-builder 🏗️
     │   ├── code-builder 💎
-    │   ├── doc-syncer <span class="material-icons">auto_stories</span>
-    │   └── quality-gate <span class="material-icons">shield</span>
+    │   ├── doc-syncer 📚
+    │   └── quality-gate 🛡️
     ├── Expert Agents (도메인 전문가)
-    │   ├── backend-expert <span class="material-icons">settings</span>
+    │   ├── backend-expert ⚙️
     │   ├── frontend-expert 💻
-    │   ├── devops-expert <span class="material-icons">rocket_launch</span>
-    │   └── ui-ux-expert <span class="material-icons">palette</span>
+    │   ├── devops-expert 🚀
+    │   └── ui-ux-expert 🎨
     └── Built-in Claude Agents (일반 지원)
         ├── Code understanding
         ├── Debugging

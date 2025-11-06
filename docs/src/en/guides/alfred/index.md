@@ -91,14 +91,14 @@ stateDiagram-v2
     end note
 
     note right of draft
-        <span class="material-icons">description</span> Draft Phase
+        📄 Draft Phase
         - EARS format SPEC creation
         - Plan Board creation
         - Review preparation complete
     end note
 
     note right of in_progress
-        <span class="material-icons">rocket_launch</span> Development Phase
+        🚀 Development Phase
         - TDD execution (RED→GREEN→REFACTOR)
         - Implementation and test code creation
         - Quality validation passed
@@ -112,7 +112,7 @@ stateDiagram-v2
     end note
 
     note right of completed
-        <span class="material-icons">check_circle</span> Completed Phase
+        ✅ Completed Phase
         - Documentation sync complete
         - Deployment preparation complete
         - Production environment applied
@@ -317,7 +317,7 @@ ls .claude/skills/
 
 ---
 
-**<span class="material-icons">auto_stories</span> 次は個別コマンド詳細ガイドを参照してください**:
+**📚 次は個別コマンド詳細ガイドを参照してください**:
 
 - [0-project詳細](0-project.md) - プロジェクト初期化と設定
 - [1-plan詳細](1-plan.md) - SPEC作成と計画
