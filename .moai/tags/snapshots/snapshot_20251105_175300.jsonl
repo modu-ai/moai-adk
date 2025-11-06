@@ -1,0 +1,5 @@
+{"ts":"2025-11-06T17:50:00Z","op":"CREATE","id":"@SPEC:AUTH-001","actor":"alfred","paths":[".moai/specs/AUTH-001/spec.md"],"state":"active","domain":"AUTH"}
+{"ts":"2025-11-06T17:51:00Z","op":"CREATE","id":"@CODE:AUTH-001","actor":"alfred","primary_path":"src/auth/example.py","links":{"SPEC":["@SPEC:AUTH-001"]},"state":"active","domain":"AUTH"}
+{"ts":"2025-11-06T17:52:00Z","op":"CREATE","id":"@TEST:AUTH-001","actor":"alfred","primary_path":"tests/test_auth.py","links":{"SPEC":["@SPEC:AUTH-001"],"CODE":["@CODE:AUTH-001"]},"state":"active","domain":"AUTH"}
+{"ts":"2025-11-06T17:53:00Z","op":"CREATE","id":"@DOC:AUTH-001","actor":"alfred","primary_path":"docs/auth.md","links":{"SPEC":["@SPEC:AUTH-001"],"TEST":["@TEST:AUTH-001"],"CODE":["@CODE:AUTH-001"]},"state":"active","domain":"AUTH"}
+{"ts":"2025-11-05T17:51:53.958510Z","op":"RESERVE","id":"@SPEC:PAY-001","actor":"alfred","paths":[".moai/specs/PAY-001/spec.md"],"state":"reserved","domain":"PAY","reserved_until":"2025-11-08T17:51:53.958724Z"}

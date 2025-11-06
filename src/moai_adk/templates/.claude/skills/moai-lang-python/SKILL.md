@@ -1,433 +1,765 @@
 ---
-
 name: moai-lang-python
-version: 2.1.0
-created: 2025-10-22
-updated: 2025-11-02
+version: 2.0.0
+created: 2025-11-06
+updated: 2025-11-06
 status: active
-description: Python 3.13+ best practices with pytest 8.4.2, mypy 1.8.0, ruff 0.13.1, uv 0.9.3, and backend frameworks (FastAPI, Flask, Django).
-keywords: [python, testing, pytest, mypy, ruff, uv, async, fastapi, flask, django, pydantic]
+description: "Python best practices with modern frameworks, AI/ML integration, and performance optimization for 2025"
+keywords: [python, programming, backend, ai, ml, data-science, fastapi, django, testing]
 allowed-tools:
   - Read
+  - Write
+  - Edit
   - Bash
+  - WebFetch
+  - WebSearch
 ---
 
-# Python 3.13 Expert Skill
+# Python Development Mastery
 
-## Skill Metadata
+**Modern Python Development with 2025 Best Practices**
 
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-lang-python |
-| **Version** | 2.1.0 (2025-11-02) |
-| **Python Support** | 3.13.1 (latest), 3.12.7 (LTS), 3.11.10 (maintenance) |
-| **Allowed tools** | Read (read_file), Bash (terminal) |
-| **Auto-load** | On demand when language keywords detected |
-| **Trigger cues** | `.py` files, Python frameworks, TDD discussions, async patterns |
-| **Tier** | Language / Fullstack backends (FastAPI, Flask, Django) |
-
----
+> Comprehensive Python development guidance covering backend APIs, AI/ML integration, data science, and production-ready applications using the latest tools and frameworks.
 
 ## What It Does
 
-Provides **Python 3.13+ expertise** for modern TDD development, including:
-
-- ✅ **Testing Framework**: pytest 8.4.2 (fixtures, asyncio, parametrization)
-- ✅ **Code Quality**: ruff 0.13.1 (unified linter + formatter, replaces black/pylint)
-- ✅ **Type Safety**: mypy 1.8.0 + Pydantic 2.7.0 (static + runtime validation)
-- ✅ **Package Management**: uv 0.9.3 (10x faster than pip)
-- ✅ **Python 3.13 Features**: PEP 695 (type params), PEP 701 (f-strings), PEP 698 (@override)
-- ✅ **Async/Await**: asyncio.TaskGroup, context variables, concurrent patterns
-- ✅ **Security**: Secrets module, secure hashing, SQLAlchemy 2.0.28
-
----
+- **Backend API Development**: FastAPI, Django, Flask applications with modern async patterns
+- **AI/ML Integration**: TensorFlow, PyTorch, scikit-learn with deployment strategies
+- **Data Science Pipelines**: Pandas, NumPy, Polars for high-performance data processing
+- **Testing & Quality**: pytest, coverage, type checking with mypy and ruff
+- **Performance Optimization**: Async programming, profiling, memory optimization
+- **Production Deployment**: Docker, Kubernetes, CI/CD pipelines, monitoring
+- **Security Best Practices**: Input validation, authentication, dependency scanning
+- **Code Quality**: Type hints, formatting, linting, pre-commit hooks
 
 ## When to Use
 
-**Automatic triggers**:
-- Python code discussions, `.py` files, framework guidance
-- "Writing Python tests", "How to use pytest", "Python type hints"
-- Python SPEC implementation (`/alfred:2-run`)
-- Async pattern requests
+### Perfect Scenarios
+- **Building REST APIs and microservices**
+- **Developing AI/ML models and data pipelines**
+- **Creating web applications with Django/Flask**
+- **Data analysis and scientific computing**
+- **Automating workflows and DevOps tasks**
+- **Prototyping and rapid development**
+- **Integrating with cloud services (AWS, GCP, Azure)**
 
-**Manual invocation**:
-- Review Python code for TRUST 5 compliance
-- Design Python microservices (FastAPI 0.115.0 recommended)
-- Upgrade from Python 3.12 to 3.13
-- Refactor async code to use TaskGroup
+### Common Triggers
+- "Create a Python API"
+- "Set up Django project"
+- "Optimize Python performance"
+- "Test Python code"
+- "Deploy Python application"
+- "Python best practices"
+- "AI/ML with Python"
 
----
+## Tool Version Matrix (2025-11-06)
 
-## How It Works (Best Practices)
+### Core Python
+- **Python**: 3.13.0 (latest) / 3.12.x (LTS)
+- **Package Managers**: uv 0.5.x (primary), pip 24.x, poetry 1.8.x
+- **Virtual Environment**: venv (built-in), conda 24.x, uv venv
 
-### 1. TDD Framework (pytest 8.4.2)
+### Web Frameworks
+- **FastAPI**: 0.115.x - High-performance async APIs
+- **Django**: 5.1.x - Full-stack web framework
+- **Flask**: 3.1.x - Lightweight web framework
+- **Starlette**: 0.41.x - ASGI toolkit
+
+### Testing Tools
+- **pytest**: 8.3.x - Primary testing framework
+- **pytest-asyncio**: 0.24.x - Async testing support
+- **coverage**: 7.6.x - Code coverage analysis
+- **tox**: 4.23.x - Multi-environment testing
+
+### Code Quality
+- **ruff**: 0.7.x - Fast linter and formatter
+- **black**: 24.x - Code formatting
+- **mypy**: 1.13.x - Static type checking
+- **pre-commit**: 4.0.x - Git hooks
+
+### AI/ML Stack
+- **TensorFlow**: 2.18.x - Deep learning
+- **PyTorch**: 2.5.x - Deep learning framework
+- **scikit-learn**: 1.6.x - Machine learning
+- **pandas**: 2.2.x - Data manipulation
+- **polars**: 1.9.x - High-performance dataframes
+
+### Performance Tools
+- **py-spy**: 0.3.x - Sampling profiler
+- **memory-profiler**: 0.64.x - Memory profiling
+- **line-profiler**: 4.2.x - Line-by-line profiling
+
+## Ecosystem Overview
+
+### Package Management
+
+```bash
+# Modern Python with uv (recommended)
+uv init project-name
+uv add fastapi uvicorn pytest ruff mypy
+uv run python main.py
+
+# Traditional approach
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+### Project Structure (2025 Best Practice)
+
+```
+my-python-project/
+├── pyproject.toml          # Modern project configuration
+├── src/
+│   └── my_project/
+│       ├── __init__.py
+│       ├── main.py         # Application entry point
+│       ├── api/            # API endpoints
+│       ├── models/         # Data models
+│       ├── services/       # Business logic
+│       └── utils/          # Utilities
+├── tests/
+│   ├── unit/               # Unit tests
+│   ├── integration/        # Integration tests
+│   └── conftest.py         # pytest configuration
+├── .github/
+│   └── workflows/          # CI/CD pipelines
+├── Dockerfile
+├── README.md
+└── .pre-commit-config.yaml
+```
+
+## Modern Development Patterns
+
+### Type-Driven Development with PEP 695
 
 ```python
-# Test discovery & fixtures
-import pytest
-from src.calculator import add
+from typing import TypeVar, Iterable, Protocol
+from collections.abc import Sequence
 
-def test_add_positive_numbers():
-    """Verify addition of positive integers."""
-    assert add(2, 3) == 5
+# New type parameter syntax (Python 3.12+)
+def max[T](args: Iterable[T]) -> T: ...
+type Point = tuple[float, float]
 
-@pytest.mark.asyncio
-async def test_async_operation():
-    """Test async functions with pytest-asyncio."""
-    result = await async_fetch_data()
-    assert result is not None
+# Runtime-checkable protocols
+class Drawable(Protocol):
+    def draw(self) -> None: ...
+
+class Shape:
+    def draw(self) -> None:
+        print("Drawing shape")
+
+def render(obj: Drawable) -> None:
+    obj.draw()
 ```
 
-**Key Points**:
-- ✅ Use pytest 8.4.2+ (not unittest)
-- ✅ One assertion per test (clarity)
-- ✅ Fixtures for setup/teardown
-- ✅ `pytest.mark.asyncio` for async tests
-- ✅ `pytest-mock` for mocking (not mock.patch)
-- ✅ Coverage ≥85% enforced by quality gate
-
-**CLI Commands**:
-```bash
-pytest                              # Run all tests
-pytest -v                           # Verbose output
-pytest --cov=src --cov-report=term # Coverage report (≥85% required)
-pytest -k "pattern"                 # Run matching tests
-pytest -m asyncio                   # Run async tests only
-```
-
-### 2. Code Quality (ruff 0.13.1 — NEW STANDARD)
-
-**⚠️ BREAKING CHANGE**: Ruff 0.13.1 replaces black + pylint + isort. Update workflows:
-
-```yaml
-# OLD (deprecated)
-- black .                           # Format
-- pylint src/                       # Lint
-- isort .                           # Import sort
-
-# NEW (ruff 0.13.1)
-- ruff check . --fix                # Lint + fix
-- ruff format .                     # Format (replaces black)
-```
-
-**Configuration** (`pyproject.toml`):
-```toml
-[tool.ruff]
-line-length = 100
-target-version = "py313"
-
-[tool.ruff.lint]
-select = ["E", "F", "W"]  # Errors, formatting, warnings
-extend-select = ["I"]     # Import sorting (replaces isort)
-```
-
-**CLI Commands**:
-```bash
-ruff check .                        # Lint all files
-ruff format .                       # Format with auto-fix
-ruff check --show-fixes .           # Show what would be fixed
-ruff check --select E501 .          # Check specific rule (line length)
-```
-
-### 3. Type Safety (mypy 1.8.0 + Pydantic 2.7.0)
-
-**Static Type Checking** (mypy):
-
-```python
-from typing import override
-
-class Parent:
-    def method(self, x: int) -> str: ...
-
-class Child(Parent):
-    @override  # NEW in Python 3.13 — mypy validates this
-    def method(self, x: int) -> str:
-        return str(x)
-```
-
-**Runtime Validation** (Pydantic 2.7.0):
-
-```python
-from pydantic import BaseModel, Field
-
-class User(BaseModel):
-    id: int = Field(gt=0)           # Must be > 0
-    name: str = Field(min_length=1)
-    email: str                      # Auto-validated as email
-```
-
-**CLI Commands**:
-```bash
-mypy .                              # Run type checker
-mypy --strict .                     # Strict mode (recommended)
-mypy --show-column-numbers .        # Precise error locations
-```
-
-### 4. Package Management (uv 0.9.3)
-
-**Why uv?**: 10x faster than pip, integrated with ruff + pytest
-
-```bash
-# Create virtual environment
-uv venv                             # Create .venv/
-source .venv/bin/activate           # Activate
-
-# Install dependencies
-uv add pytest ruff mypy             # Add to pyproject.toml
-uv add --dev pytest-asyncio         # Add as dev dependency
-uv sync                             # Install all (from lock file)
-
-# Publish
-uv publish                          # Push to PyPI
-```
-
-**pyproject.toml** (uv config):
-```toml
-[project]
-name = "my-project"
-version = "2.0.0"
-requires-python = ">=3.13"
-
-[project.optional-dependencies]
-dev = ["pytest>=8.4.2", "ruff>=0.13.1", "mypy>=1.8.0"]
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-```
-
-### 5. Async Patterns (Python 3.13)
-
-**TaskGroup** (cleaner than `asyncio.gather`):
+### Async Programming Patterns
 
 ```python
 import asyncio
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from typing import AsyncGenerator
 
-async def main():
-    async with asyncio.TaskGroup() as tg:
-        task1 = tg.create_task(fetch_user(1))
-        task2 = tg.create_task(fetch_posts(1))
-        # Tasks run concurrently
-        # Exceptions propagate automatically (no need for gather)
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    # Startup
+    print("Application starting...")
+    yield
+    # Shutdown
+    print("Application shutting down...")
 
-asyncio.run(main())
+app = FastAPI(lifespan=lifespan)
+
+# Efficient async patterns
+async def process_items(items: Sequence[str]) -> list[str]:
+    # Process items concurrently
+    semaphore = asyncio.Semaphore(10)  # Limit concurrency
+    async def process_item(item: str) -> str:
+        async with semaphore:
+            return await expensive_operation(item)
+    
+    tasks = [process_item(item) for item in items]
+    return await asyncio.gather(*tasks)
 ```
 
-**Context Variables** (thread-safe in async):
+### Data Class Patterns with Pydantic v2
 
 ```python
-from contextvars import ContextVar
+from pydantic import BaseModel, Field, field_validator, computed_field
+from datetime import datetime
+from typing import Optional
 
-request_id = ContextVar('request_id', default=None)
-
-async def handle_request(req_id):
-    token = request_id.set(req_id)
-    # All spawned tasks inherit this context var
-    await process_async()
+class User(BaseModel):
+    id: int
+    username: str = Field(min_length=3, max_length=50)
+    email: str = Field(pattern=r"[^@]+@[^@]+\.[^@]+")
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    
+    @field_validator('username')
+    @classmethod
+    def username_must_be_alpha(cls, v: str) -> str:
+        if not v.isalnum():
+            raise ValueError('Username must be alphanumeric')
+        return v.lower()
+    
+    @computed_field
+    @property
+    def display_name(self) -> str:
+        return self.username.title()
 ```
 
-### 6. Security Best Practices
+## Performance Considerations
 
-**Secrets Module** (token generation):
-```python
-import secrets
-
-api_key = secrets.token_urlsafe(32)  # Safe random tokens
-nonce = secrets.token_bytes(16)       # Cryptographic nonce
-```
-
-**Secure Hashing** (sha256, not md5):
-```python
-import hashlib
-
-# ✅ SECURE
-hash_obj = hashlib.sha256(b"password")
-
-# ❌ INSECURE (removed in Python 3.13)
-hash_obj = hashlib.md5(b"password")   # ValueError!
-```
-
----
-
-## Python 3.13 New Features
-
-### PEP 695 — Type Parameter Syntax
+### Algorithmic Optimization
 
 ```python
-# OLD (3.12)
-from typing import TypeVar, Generic
-T = TypeVar('T')
-class Stack(Generic[T]):
-    def push(self, item: T) -> None: ...
+# Use built-in functions and comprehensions
+def process_data_fast(data: list[int]) -> list[int]:
+    # List comprehensions are optimized in Python 3.12+
+    return [x * 2 for x in data if x % 2 == 0]
 
-# NEW (3.13)
-class Stack[T]:
-    def push(self, item: T) -> None: ...
+# Use efficient data structures
+from collections import deque
+from typing import Deque
+
+def sliding_window(items: list[int], window_size: int) -> list[int]:
+    window: Deque[int] = deque(maxlen=window_size)
+    results = []
+    for item in items:
+        window.append(item)
+        if len(window) == window_size:
+            results.append(sum(window))
+    return results
 ```
 
-### PEP 701 — Improved F-Strings
+### Memory Optimization
 
 ```python
-# NEW: Nested f-strings, arbitrary expressions
-user = {"name": "Alice", "age": 30}
-print(f"User: {user['name']}, Age: {user['age']}")  # Works!
+import gc
+import weakref
+from dataclasses import dataclass
+from typing import Optional
 
-# Nested f-strings
-x = 10
-print(f"Result: {f'{x:>10}'}")  # Works in 3.13!
+@dataclass(slots=True)  # Memory-efficient dataclass
+class Point:
+    x: float
+    y: float
+
+# Use generators for large datasets
+def process_large_file(filename: str) -> None:
+    with open(filename) as file:
+        for line in file:  # Generator pattern
+            yield process_line(line)
+
+# Weak references to avoid memory leaks
+class Cache:
+    def __init__(self):
+        self._cache = weakref.WeakValueDictionary()
+    
+    def get(self, key: str) -> Optional[object]:
+        return self._cache.get(key)
 ```
 
-### PEP 698 — Override Decorator
+### Profiling and Monitoring
 
-```python
-from typing import override
-
-class Parent:
-    def method(self) -> None: ...
-
-class Child(Parent):
-    @override  # mypy checks this is actually overriding
-    def method(self) -> None: ...
-```
-
----
-
-## Example Workflow
-
-**Setup** (uv + Python 3.13):
 ```bash
-uv venv --python 3.13               # Create venv with Python 3.13
-source .venv/bin/activate
-uv add pytest ruff mypy fastapi pydantic
+# Performance profiling
+py-spy top -- python my_app.py
+py-spy record -o profile.svg -- python my_app.py
+
+# Memory profiling
+python -m memory_profiler my_app.py
+
+# Line-by-line profiling
+kernprof -l -v my_script.py
 ```
 
-**TDD Loop** (pytest):
+## Testing Strategy
+
+### pytest Configuration (pyproject.toml)
+
+```toml
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--cov=src",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-report=xml",
+]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+markers = [
+    "slow: marks tests as slow",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+```
+
+### Modern Testing Patterns
+
+```python
+import pytest
+from unittest.mock import AsyncMock, patch
+from httpx import AsyncClient
+from typing import Generator
+
+# Fixtures with dependency injection
+@pytest.fixture
+async def async_client() -> AsyncGenerator[AsyncClient, None]:
+    from my_app.main import app
+    async with AsyncClient(app=app, base_url="http://test") as ac:
+        yield ac
+
+# Async testing
+@pytest.mark.asyncio
+async def test_create_user(async_client: AsyncClient) -> None:
+    response = await async_client.post(
+        "/users",
+        json={"username": "testuser", "email": "test@example.com"}
+    )
+    assert response.status_code == 201
+    assert response.json()["username"] == "testuser"
+
+# Property-based testing with hypothesis
+from hypothesis import given, strategies as st
+
+@given(st.lists(st.integers(), min_size=1))
+def test_sort_preserves_length(numbers: list[int]) -> None:
+    sorted_numbers = sorted(numbers)
+    assert len(sorted_numbers) == len(numbers)
+```
+
+### Integration Testing
+
+```python
+import pytest
+from testcontainers.compose import DockerCompose
+from testcontainers.postgres import PostgresContainer
+import asyncio
+
+@pytest.fixture(scope="session")
+async def postgres_container() -> AsyncGenerator[str, None]:
+    with PostgresContainer("postgres:16") as postgres:
+        yield postgres.get_connection_url()
+
+@pytest.mark.integration
+async def test_database_operations(postgres_container: str) -> None:
+    # Test with real database
+    await setup_database(postgres_container)
+    result = await perform_database_operation()
+    assert result.success
+```
+
+## Security Best Practices
+
+### Input Validation and Sanitization
+
+```python
+from pydantic import BaseModel, Field, validator
+import bleach
+import re
+
+class UserInput(BaseModel):
+    content: str = Field(max_length=10000)
+    
+    @validator('content')
+    def sanitize_content(cls, v: str) -> str:
+        # Remove HTML tags and scripts
+        return bleach.clean(v, tags=[], attributes={})
+
+class SecureForm(BaseModel):
+    email: str = Field(regex=r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
+    phone: Optional[str] = Field(regex=r"^\+?1?\d{9,15}$")
+    
+    @validator('phone')
+    def validate_phone(cls, v: Optional[str]) -> Optional[str]:
+        if v and not re.match(r"^\+?1?\d{9,15}$", v):
+            raise ValueError("Invalid phone number format")
+        return v
+```
+
+### Authentication and Authorization
+
+```python
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from datetime import datetime, timedelta
+
+SECRET_KEY = "your-secret-key-here"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password: str) -> str:
+    return pwd_context.hash(password)
+
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    
+    user = get_user(username)
+    if user is None:
+        raise credentials_exception
+    return user
+```
+
+### Dependency Security Scanning
+
 ```bash
-pytest                              # RED: Watch tests fail
-# [implement code]
-pytest                              # GREEN: Watch tests pass
-ruff check --fix .                  # REFACTOR: Fix code quality
+# Add to pyproject.toml
+[tool.pip-audit]
+requirements = ["pyproject.toml"]
+ignore-vulns = []
+
+# Regular security scanning
+pip-audit --requirement pyproject.toml
+safety check --json
+bandit -r src/ -f json
 ```
 
-**Quality Gate** (before commit):
-```bash
-pytest --cov=src --cov-report=term # Coverage ≥85%?
-ruff check .                        # Lint pass?
-mypy --strict .                     # Type check pass?
+## Integration Patterns
+
+### Database Integration
+
+```python
+# SQLAlchemy 2.0 async patterns
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy import Column, Integer, String, DateTime
+
+Base = declarative_base()
+
+class User(Base):
+    __tablename__ = "users"
+    
+    id = Column(Integer, primary_key=True)
+    username = Column(String, unique=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+# Async database session
+async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
+    engine = create_async_engine("postgresql+asyncpg://user:pass@localhost/db")
+    async_session = sessionmaker(
+        engine, class_=AsyncSession, expire_on_commit=False
+    )
+    async with async_session() as session:
+        yield session
+
+# Usage in FastAPI
+@app.get("/users/{user_id}")
+async def get_user(user_id: int, db: AsyncSession = Depends(get_async_session)):
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+```
+
+### Cloud Service Integration
+
+```python
+# AWS S3 with boto3
+import boto3
+from botocore.exceptions import ClientError
+import io
+
+class S3Service:
+    def __init__(self, bucket_name: str):
+        self.s3_client = boto3.client("s3")
+        self.bucket_name = bucket_name
+    
+    async def upload_file(self, key: str, file_data: bytes) -> bool:
+        try:
+            self.s3_client.put_object(
+                Bucket=self.bucket_name,
+                Key=key,
+                Body=file_data
+            )
+            return True
+        except ClientError:
+            return False
+
+# Redis with aioredis
+import aioredis
+from typing import Optional
+
+class CacheService:
+    def __init__(self, redis_url: str):
+        self.redis_url = redis_url
+        self._redis: Optional[aioredis.Redis] = None
+    
+    async def connect(self) -> None:
+        self._redis = await aioredis.from_url(self.redis_url)
+    
+    async def get(self, key: str) -> Optional[str]:
+        if self._redis:
+            return await self._redis.get(key)
+        return None
+    
+    async def set(self, key: str, value: str, expire: int = 3600) -> None:
+        if self._redis:
+            await self._redis.setex(key, expire, value)
+```
+
+### Message Queue Integration
+
+```python
+# Celery with Redis
+from celery import Celery
+from celery.result import AsyncResult
+
+celery_app = Celery(
+    "tasks",
+    broker="redis://localhost:6379/0",
+    backend="redis://localhost:6379/1"
+)
+
+@celery_app.task
+def process_data_task(data: dict) -> dict:
+    # Heavy processing task
+    result = expensive_computation(data)
+    return {"result": result, "status": "completed"}
+
+# In FastAPI
+@app.post("/process")
+async def start_processing(data: dict):
+    task = process_data_task.delay(data)
+    return {"task_id": task.id, "status": "processing"}
+
+@app.get("/task/{task_id}")
+async def get_task_status(task_id: str):
+    result = AsyncResult(task_id)
+    return {
+        "task_id": task_id,
+        "status": result.status,
+        "result": result.result if result.successful() else None
+    }
+```
+
+## Modern Development Workflow
+
+### pyproject.toml Configuration
+
+```toml
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "my-python-project"
+version = "0.1.0"
+description = "Modern Python project"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "pydantic>=2.9.0",
+    "sqlalchemy>=2.0.0",
+    "alembic>=1.13.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=5.0.0",
+    "ruff>=0.7.0",
+    "mypy>=1.13.0",
+    "black>=24.0.0",
+    "pre-commit>=4.0.0",
+]
+test = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=5.0.0",
+    "httpx>=0.28.0",
+    "testcontainers>=3.7.0",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+select = ["E", "F", "W", "I", "N", "B", "C90", "UP"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+```
+
+### Pre-commit Configuration
+
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.7.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        additional_dependencies: [types-all]
+
+  - repo: https://github.com/pycqa/bandit
+    rev: 1.7.6
+    hooks:
+      - id: bandit
+        args: [-r, src/]
+```
+
+### Docker Best Practices
+
+```dockerfile
+# Multi-stage build
+FROM python:3.13-slim as builder
+
+WORKDIR /app
+COPY pyproject.toml .
+RUN pip install --no-cache-dir uv && \
+    uv pip install --no-deps -r <(uv pip compile pyproject.toml)
+
+FROM python:3.13-slim as runtime
+
+# Security best practices
+RUN adduser --disabled-password --gecos '' appuser && \
+    mkdir -p /app && chown -R appuser:appuser /app
+
+WORKDIR /app
+COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+COPY --chown=appuser:appuser . .
+
+USER appuser
+EXPOSE 8000
+
+CMD ["uvicorn", "my_project.main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+## AI/ML Integration
+
+### Model Deployment with FastAPI
+
+```python
+import torch
+import numpy as np
+from fastapi import FastAPI, File, UploadFile
+from PIL import Image
+import io
+
+app = FastAPI()
+
+# Load model at startup
+model = None
+
+@app.on_event("startup")
+async def load_model():
+    global model
+    model = torch.load("model.pth")
+    model.eval()
+
+@app.post("/predict")
+async def predict(file: UploadFile = File(...)):
+    # Preprocess image
+    image = Image.open(io.BytesIO(await file.read()))
+    image = preprocess_image(image)
+    
+    # Make prediction
+    with torch.no_grad():
+        tensor = torch.tensor(image).unsqueeze(0)
+        prediction = model(tensor)
+    
+    return {
+        "prediction": prediction.tolist(),
+        "confidence": torch.softmax(prediction, dim=1).max().item()
+    }
+
+def preprocess_image(image: Image.Image) -> np.ndarray:
+    # Image preprocessing logic
+    image = image.resize((224, 224))
+    image_array = np.array(image) / 255.0
+    return image_array.transpose(2, 0, 1)
+```
+
+### Data Pipeline with Polars
+
+```python
+import polars as pl
+from typing import Optional
+
+class DataProcessor:
+    def __init__(self, data_path: str):
+        self.data_path = data_path
+        self.df: Optional[pl.DataFrame] = None
+    
+    def load_data(self) -> None:
+        """Load data using high-performance polars"""
+        self.df = pl.read_parquet(self.data_path)
+    
+    def process_data(self) -> pl.DataFrame:
+        """Process data with polars lazy evaluation"""
+        return (
+            self.df.lazy()
+            .filter(pl.col("value") > 0)
+            .group_by("category")
+            .agg([
+                pl.mean("value").alias("avg_value"),
+                pl.std("value").alias("std_value"),
+                pl.len().alias("count")
+            ])
+            .sort("avg_value", descending=True)
+            .collect()
+        )
+    
+    def export_results(self, output_path: str) -> None:
+        """Export processed data"""
+        processed = self.process_data()
+        processed.write_csv(output_path)
 ```
 
 ---
 
-## Tool Version Matrix (2025-11-02)
+**Created by**: MoAI Language Skill Factory  
+**Last Updated**: 2025-11-06  
+**Version**: 2.0.0  
+**Python Target**: 3.12+ with modern async and type features  
 
-| Tool | Version | Purpose | Status |
-|------|---------|---------|--------|
-| **Python** | 3.13.1 | Runtime | ✅ Latest |
-| **pytest** | 8.4.2 | Testing | ✅ Current |
-| **ruff** | 0.13.1 | Lint/Format | ✅ New standard |
-| **mypy** | 1.8.0 | Type checking | ✅ Current |
-| **uv** | 0.9.3 | Package manager | ✅ Recommended |
-| **FastAPI** | 0.115.0 | API framework | ✅ Latest |
-| **Flask** | 3.1.2 | Micro-framework | ✅ Current |
-| **Django** | 5.2.7 LTS | Fullstack framework | ✅ LTS |
-| **Pydantic** | 2.7.0 | Validation | ✅ Latest |
-| **SQLAlchemy** | 2.0.28 | ORM | ✅ Latest |
-
----
-
-## Inputs
-
-- Python source directories (e.g., `src/`, `app/`)
-- Configuration files (`pyproject.toml`, `pytest.ini`)
-- Test suites and sample data
-- Existing CI/CD workflows
-
-## Outputs
-
-- Test/lint execution plan for Python 3.13
-- Code review checklist (TRUST 5 principles)
-- Migration guide (3.12 → 3.13)
-- Performance optimization recommendations
-
-## Failure Modes
-
-- ❌ Python 3.13 not installed → Recommend `uv venv --python 3.13`
-- ❌ Dependencies missing → Run `uv sync`
-- ❌ Tests fail → Use `debug-helper` agent for triage
-
----
-
-## Inputs
-
-- Language-specific source directories (e.g. `src/`, `app/`).
-- Language-specific build/test configuration files (e.g. `pyproject.toml`).
-- Relevant test suites and sample data.
-
-## Outputs
-
-- Test/lint execution plan tailored to Python 3.13+.
-- TRUST 5 review checkpoints (coverage, linting, types, security, tags).
-- Migration path from older Python versions.
-
-## Failure Modes
-
-- When Python 3.13 runtime is not installed.
-- When project dependencies are not in pyproject.toml.
-- When test coverage falls below 85%.
-
-## Dependencies
-
-- Access to the project file is required using the Read/Bash tools.
-- Integration with `moai-foundation-langs` for language detection.
-- Integration with `moai-foundation-trust` for quality gate enforcement.
-
----
-
-## References (Latest Documentation)
-
-- **Python 3.13**: https://docs.python.org/3.13/ (accessed 2025-10-22)
-- **pytest 8.4.2**: https://docs.pytest.org/en/stable/ (accessed 2025-10-22)
-- **ruff 0.13.1**: https://docs.astral.sh/ruff/ (accessed 2025-10-22)
-- **mypy 1.8.0**: https://mypy.readthedocs.io/ (accessed 2025-10-22)
-- **uv 0.9.3**: https://docs.astral.sh/uv/ (accessed 2025-10-22)
-- **FastAPI 0.115.0**: https://fastapi.tiangolo.com/ (accessed 2025-10-22)
-- **Pydantic 2.7.0**: https://docs.pydantic.dev/ (accessed 2025-10-22)
-
----
-
-## Changelog
-
-- **v2.0.0** (2025-10-22): Major update with Python 3.13 support, ruff 0.13.1 standard, uv 0.9.3 package manager, async/await TaskGroup patterns, security best practices, PEP 695/701/698 features
-- **v1.0.0** (2025-03-29): Initial Skill with pytest, mypy, ruff, black, uv coverage
-
----
-
-## Works Well With
-
-- `moai-foundation-trust` (coverage verification, quality gates)
-- `moai-alfred-code-reviewer` (Python-specific code review)
-- `moai-alfred-debugger-pro` (Python debugging with pdb, pudb)
-- `moai-lang-sql` (SQLAlchemy integration)
-- `moai-domain-backend` (FastAPI microservices)
-
----
-
-## Best Practices
-
-✅ **DO**:
-- Use ruff 0.13.1 as linter + formatter (not black + pylint)
-- Specify exact Python version: `requires-python = "^3.13"`
-- Use pytest 8.4.2 for all tests
-- Enable type checking: mypy --strict
-- Run quality gate before each commit
-- Use uv for package management (10x faster)
-- Add docstrings to public APIs
-- Use f-strings (PEP 701 supports nested expressions)
-
-❌ **DON'T**:
-- Use black + pylint (deprecated, use ruff instead)
-- Use md5 hashing (removed in Python 3.13)
-- Mix pytest with unittest
-- Ignore coverage requirements (<85% fails)
-- Use old type hint syntax (use PEP 695 `class Foo[T]:`)
-- Use `asyncio.gather` without error handling (use TaskGroup instead)
+This skill provides comprehensive Python development guidance with 2025 best practices, covering everything from basic project setup to advanced AI/ML integration and production deployment patterns.

@@ -85,7 +85,7 @@ class TestTagInventory:
                 tag_id="TEST-001",
                 file_path="/test.py",
                 line_number=1,
-                context="# @CODE:TEST-001",
+                context="# @CODE:TEST-002",
                 related_tags=[],
                 last_modified=datetime.now(),
                 status=status
@@ -131,11 +131,11 @@ class TestInventoryGenerator:
             # Create test files with TAGs
             test_file = Path(tmpdir) / "test.py"
             test_file.write_text("""
-# @SPEC:AUTH-001 | Authentication specification
-# @CODE:AUTH-001 | Login implementation
+# @SPEC:AUTH-004 | Authentication specification
+# @CODE:AUTH-004 | Login implementation
 def login():
     pass
-# @TEST:AUTH-001 | Login tests
+# @TEST:AUTH-004 | Login tests
             """)
 
             generator = InventoryGenerator()
@@ -179,7 +179,7 @@ def login():
             "AUTH": [
                 TagInventory(
                     tag_id="AUTH-001", file_path="/auth.py", line_number=1,
-                    context="# @SPEC:AUTH-001", related_tags=[],
+                    context="# @SPEC:AUTH-004", related_tags=[],
                     last_modified=datetime.now(), status="active"
                 )
             ]
@@ -518,7 +518,7 @@ class TestReportGenerator:
         """Test inventory report generation"""
         with tempfile.TemporaryDirectory() as tmpdir:
             test_file = Path(tmpdir) / "test.py"
-            test_file.write_text("# @CODE:TEST-001")
+            test_file.write_text("# @CODE:TEST-002")
 
             generator = ReportGenerator()
             report = generator.generate_inventory_report(tmpdir)

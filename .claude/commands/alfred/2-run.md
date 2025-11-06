@@ -35,6 +35,26 @@ Execute planned tasks based on SPEC document analysis. Supports TDD implementati
 
 **Run on**: $ARGUMENTS
 
+## 🚀 Initialize Implementation with JIT Skills
+
+Before starting implementation, load essential JIT skills for enhanced execution:
+
+```python
+# Load session information and current project status
+Skill("moai-session-info")
+
+# Load streaming UI for progress indication during implementation
+Skill("moai-streaming-ui")
+
+# Load change logger for tracking implementation changes
+Skill("moai-change-logger")
+
+# Load TAG policy validator for ensuring compliance during implementation
+Skill("moai-tag-policy-validator")
+```
+
+This provides comprehensive context, progress tracking, change logging, and TAG compliance during implementation.
+
 ## 💡 Execution philosophy: "Plan → Run → Sync"
 
 `/alfred:2-run` performs planned tasks through various execution strategies.
@@ -101,7 +121,41 @@ Users can run commands as follows:
 
 Your task is to analyze SPEC requirements and create an execution plan. Follow these steps:
 
-### STEP 1.1: Determine if Codebase Exploration is Needed
+### STEP 1.1: SPEC Document Analysis and TAG Policy Validation
+
+**CRITICAL**: First validate TAG policy compliance before proceeding.
+
+1. **Read SPEC document**: `.moai/specs/SPEC-$ARGUMENTS/spec.md`
+
+2. **TAG Policy Validation** (Mandatory):
+   ```bash
+   # Verify SPEC exists and TAG policy compliance
+   python3 -c "
+import sys
+sys.path.insert(0, 'src')
+from moai_adk.core.tags.policy_validator import TagPolicyValidator
+from pathlib import Path
+
+spec_file = Path('.moai/specs/SPEC-$ARGUMENTS/spec.md')
+if not spec_file.exists():
+    print('❌ SPEC 파일이 존재하지 않습니다')
+    sys.exit(1)
+
+content = spec_file.read_text(encoding='utf-8')
+validator = TagPolicyValidator()
+violations = validator.validate_before_creation(str(spec_file), content)
+
+if violations:
+    print('❌ TAG 정책 위반 발견:')
+    for v in violations:
+        print(f'  - {v.message}')
+    sys.exit(1)
+else:
+    print('✅ SPEC TAG 정책 준수 확인')
+"
+   ```
+
+3. **Proceed with Exploration** (only if TAG validation passes):
 
 Read the SPEC document at `.moai/specs/SPEC-$ARGUMENTS/spec.md`.
 
@@ -205,17 +259,49 @@ IF no domains specified OR domain expert unavailable, THEN:
   - Skip advisory phase
   - Continue to STEP 2.2 (implementation proceeds regardless)
 
-### STEP 2.2: Invoke TDD Implementer Agent
+### STEP 2.2: TAG Policy Check Before Implementation
+
+**CRITICAL**: Verify SPEC → CODE → TAG chain before implementation.
+
+```bash
+# Ensure SPEC exists and has valid @TAG
+python3 -c "
+import sys
+sys.path.insert(0, 'src')
+from moai_adk.core.tags.policy_validator import TagPolicyValidator
+from pathlib import Path
+import re
+
+spec_file = Path('.moai/specs/SPEC-$ARGUMENTS/spec.md')
+if not spec_file.exists():
+    print('❌ SPEC 파일이 존재하지 않습니다')
+    sys.exit(1)
+
+content = spec_file.read_text(encoding='utf-8')
+
+# Check for @SPEC: tag
+if not re.search(r'@SPEC:[A-Z0-9-]+-\d{3}', content):
+    print('❌ SPEC 파일에 @TAG가 없습니다')
+    sys.exit(1)
+
+print('✅ SPEC TAG 확인 완료 - 구현 시작 가능')
+"
+```
+
+### STEP 2.3: Invoke TDD Implementer Agent
 
 Invoke the tdd-implementer agent using the Task tool:
   - Set subagent_type to "tdd-implementer"
   - Set description to "Execute task with TDD implementation"
   - Pass prompt including:
     - SPEC ID ($ARGUMENTS)
-    - Language settings:
-    - conversation_language: {{CONVERSATION_LANGUAGE}}
-    - conversation_language_name: {{CONVERSATION_LANGUAGE_NAME}}
-    - Code and technical output MUST be in English
+    - Language settings (conversation_language, conversation_language_name)
+    - **CRITICAL**: TAG policy enforcement instructions
+      - "All CODE files MUST include @CODE: tag referencing the SPEC"
+      - "All TEST files MUST include @TEST: tag referencing the SPEC"
+      - "Maintain SPEC → CODE → TEST → DOC chain integrity"
+      - "Follow TAG format: @(TYPE):DOMAIN-NNN"
+    - Code and technical output must be in English
     - Code comments language rules (local project vs package code)
     - Test descriptions and documentation language
     - Skill invocation instructions (moai-alfred-language-detection, language-specific skills, debug, refactor)
@@ -619,15 +705,3 @@ Only if the user selects **"Proceed"** or **"Start"** will Alfred call the tdd-i
 - After task execution is complete, document synchronization proceeds with `/alfred:3-sync`
 - All Git operations are dedicated to the git-manager agent to ensure consistency
 - Only command-level orchestration is used without direct calls between agents
-
----
-
-## Final Step
-
-The implementation workflow is now complete. You have successfully:
-1. Executed the planned tasks according to the SPEC requirements
-2. Applied TDD methodology (RED → GREEN → REFACTOR) when applicable
-3. Created Git commits with proper tracking and history
-4. Generated implementation artifacts that satisfy the acceptance criteria
-
-The system is now ready for the next phase: documentation synchronization and quality assurance using `/alfred:3-sync`.

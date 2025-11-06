@@ -1,4 +1,4 @@
-# @CODE:TRUST-001 | SPEC: SPEC-TRUST-001/spec.md | TEST: tests/unit/core/quality/test_trust_checker.py
+# @CODE:TRUST-002 | SPEC: SPEC-TRUST-001/spec.md | TEST: tests/unit/core/quality/test_trust_checker.py
 """
 Integrated TRUST principle validation system
 

@@ -1,7 +1,7 @@
 ---
 id: DOC-TAG-001
 version: 0.0.1
-status: draft
+status: completed
 created: 2025-10-29
 updated: 2025-10-29
 author: @Goos
@@ -120,7 +120,7 @@ scope: "Phase 1 of 4-phase @DOC TAG automatic generation system"
   1. 파일의 첫 번째 `#` 헤더 라인 탐지
   2. 헤더를 `# @DOC:XXX | Chain: @SPEC:YYY -> @DOC:XXX` 형식으로 변경
   3. 파일 저장 후 성공/실패 상태 반환
-- **EXAMPLE**: `# API Authentication` → `# @DOC:API-001 | Chain: @SPEC:AUTH-001 -> @DOC:API-001`
+- **EXAMPLE**: `# API Authentication` → `# @DOC:API-001 | Chain: @SPEC:AUTH-004 -> @DOC:API-001`
 
 **ER-3: SPEC 매핑 트리거**
 - **WHEN** 사용자가 `map_spec_to_doc(file_path)` 호출
@@ -128,12 +128,12 @@ scope: "Phase 1 of 4-phase @DOC TAG automatic generation system"
   1. 파일 경로 및 내용 분석
   2. 관련 SPEC ID 추출 (파일 내 `@SPEC:XXX` 참조 검색)
   3. SPEC ID 리스트 또는 빈 리스트 반환
-- **EXAMPLE**: `docs/api/auth.md` 내 `@SPEC:AUTH-001` 참조 → `["@SPEC:AUTH-001"]`
+- **EXAMPLE**: `docs/api/auth.md` 내 `@SPEC:AUTH-004` 참조 → `["@SPEC:AUTH-004"]`
 
 **ER-4: SPEC ID 파싱 트리거**
 - **WHEN** 사용자가 `parse_spec_id_from_content(content)` 호출
 - **SYSTEM SHALL** 정규식으로 `@SPEC:DOMAIN-NNN` 패턴 추출
-- **EXAMPLE**: `"See @SPEC:AUTH-001 for details"` → `["@SPEC:AUTH-001"]`
+- **EXAMPLE**: `"See @SPEC:AUTH-004 for details"` → `["@SPEC:AUTH-004"]`
 
 **ER-5: 검증 hook 통합**
 - **WHEN** `tags.py`의 `suggest_tag_for_file(file_path)` 호출

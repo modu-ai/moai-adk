@@ -96,7 +96,7 @@ Executing `/alfred:2-run` command fails at the TAG validation step.
 ## 💥 Expected vs Actual Behavior
 
 - **Expected Behavior**: TDD cycle should complete successfully
-- **Actual Behavior**: ``@TEST:AUTH-001` not found` error occurs
+- **Actual Behavior**: Example error (TAG ID varies by implementation)
 
 ## 🖥️ Environment Information
 
@@ -108,7 +108,7 @@ Executing `/alfred:2-run` command fails at the TAG validation step.
 
 ```bash
 Error: TAG validation failed
-`@TEST:AUTH-001` not found in tests/ directory
+TAG not found in tests/ directory (TAG ID varies by implementation)
 ```
 ```
 
@@ -359,7 +359,7 @@ MoAI-ADK follows the **SPEC-First TDD** methodology. All code changes must follo
 **@TAG Usage Example**:
 ```typescript
 // Example of proper @TAG annotation in code
-// In real implementation: `@CODE:AUTH-001` | SPEC: SPEC-AUTH-001.md | TEST: tests/auth.test.ts
+// In real implementation: `@CODE:ID` | SPEC: SPEC-ID.md | TEST: tests/test_file.py
 export class AuthService {
   // Implementation with @TAG markers
   async login(username: string, password: string): Promise<Token> {
@@ -518,7 +518,7 @@ Error: Cannot find module '...'
 
 ```bash
 Error: TAG validation failed
-`@TEST:AUTH-001` not found in tests/ directory
+TAG not found in tests/ directory (TAG ID varies by implementation)
 ```
 ```
 
@@ -769,7 +769,7 @@ MoAI-ADK는 **SPEC-First TDD** 방법론을 따릅니다. 모든 코드 변경�
 **@TAG 사용 예제**:
 ```typescript
 // 코드에서 @TAG 애노테이션을 올바르게 사용하는 예제
-// 실제 구현 시: `@CODE:AUTH-001` | SPEC: SPEC-AUTH-001.md | TEST: tests/auth.test.ts
+// 실제 구현 시: `@CODE:ID` | SPEC: SPEC-ID.md | TEST: tests/test_file.py
 export class AuthService {
   // @TAG 마커를 포함한 구현
   async login(username: string, password: string): Promise<Token> {

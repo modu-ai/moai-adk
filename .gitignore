@@ -74,3 +74,9 @@ CLAUDE.md.local
 
 # Runtime session and memory files (auto-generated per user/session)
 # These files are created during package initialization and updated at runtime
+
+# Package template commands (should only exist in src/moai_adk/templates/)
+# Local users should not commit these files - sync from package template
+.claude/commands/alfred/release-new.md
+.claude/commands/alfred/awesome-release-new.md
+.vercel

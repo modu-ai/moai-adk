@@ -99,6 +99,20 @@ Each phase contains explicit step-by-step instructions.
 
 PHASE 1 consists of **two independent sub-phases** to provide flexible workflow based on user request clarity:
 
+### 🚀 Initialize Session with JIT Skills
+
+Before starting PHASE 1, load essential JIT skills for enhanced context:
+
+```python
+# Load session information for project context
+Skill("moai-session-info")
+
+# Load JIT documentation capabilities for enhanced understanding
+Skill("moai-jit-docs-enhanced")
+```
+
+This provides immediate project context and enhances documentation understanding during planning.
+
 ### 📋 PHASE 1 Workflow Overview
 
 ```
@@ -382,6 +396,24 @@ Your task is to create the SPEC document files in the correct directory structur
 rg "@SPEC:{ID}" -n .moai/specs/
 ```
 
+**TAG Policy Compliance Check**: After SPEC creation, verify TAG policy compliance:
+
+```bash
+# Validate TAG format and chain integrity
+python3 -c "
+import sys
+sys.path.insert(0, 'src')
+from moai_adk.core.tags.policy_validator import TagPolicyValidator
+validator = TagPolicyValidator()
+violations = validator.validate_after_modification('.moai/specs/SPEC-{ID}/spec.md', content)
+if violations:
+    print('❌ TAG 정책 위반 발견:', violations)
+    sys.exit(1)
+else:
+    print('✅ TAG 정책 준수 확인')
+"
+```
+
 **Composite Domain Rules**:
 - ✅ Allow: `UPDATE-REFACTOR-001` (2 domains)
 - ⚠️ Caution: `UPDATE-REFACTOR-FIX-001` (3+ domains, simplification recommended)
@@ -415,7 +447,7 @@ YAML 프론트매터와 @TAG 식별자는 반드시 영어로 유지합니다.
 - Skill("moai-foundation-specs") - SPEC 구조 가이드
 - Skill("moai-foundation-ears") - EARS 문법 요구사항
 - Skill("moai-alfred-spec-metadata-validation") - 메타데이터 검증
-- Skill("moai-alfred-tag-scanning") - TAG 체인 참조
+- Skill("moai-foundation-tags") - TAG 체인 참조
 
 작업:
 STEP 1에서 승인된 계획에 따라 SPEC 문서를 작성해주세요.
@@ -517,6 +549,13 @@ The spec-builder agent will:
    - Test cases
    - Success criteria
 
+5. **TAG Policy Validation** (CRITICAL - SPEC-first enforcement):
+   - Verify @TAG compliance in all created files
+   - Check SPEC chain integrity (@SPEC → @TEST → @CODE → @DOC)
+   - Validate TAG format: @(SPEC|CODE|TEST|DOC):DOMAIN-TYPE-NNN
+   - Ensure no duplicate TAGs across project
+   - Confirm SPEC ID uniqueness via project scan
+
 ### Step 3: Verify SPEC files were created
 
 After spec-builder completes:
@@ -540,13 +579,44 @@ After spec-builder completes:
 
 ---
 
-## 🚀 PHASE 3: Git Branch & PR Setup (STEP 2 continuation)
+## 🚀 PHASE 3: Git Setup based on spec_git_workflow (STEP 2 continuation)
 
 This phase ONLY executes IF PHASE 2 completed successfully and all SPEC files were created.
 
-Your task is to create a Git branch and GitHub Pull Request for the SPEC.
+Your task is to handle Git operations based on the project's `spec_git_workflow` setting.
 
-### Step 1: Invoke git-manager agent
+### Step 1: Check spec_git_workflow setting
+
+First, read the current workflow configuration:
+
+```bash
+# Check spec_git_workflow setting from .moai/config.json
+spec_workflow=$(grep -o '"spec_git_workflow": "[^"]*"' .moai/config.json | cut -d'"' -f4)
+echo "Current SPEC Git workflow: $spec_workflow"
+```
+
+### Step 2: Execute workflow-specific actions
+
+**IF `spec_workflow` is "develop_direct":**
+1. Print: "✅ Direct commit mode: Staying on develop branch (feature branch creation skipped)"
+2. Skip feature branch creation
+3. Skip PR creation
+4. Proceed to completion message
+
+**IF `spec_workflow` is "feature_branch":**
+1. Proceed to Step 3: Create feature branch and PR
+
+**IF `spec_workflow` is "per_spec":**
+1. Ask user: "Which workflow do you want for this SPEC?"
+   - Options: ["Create feature branch + PR", "Direct commit to develop"]
+2. IF user chooses "Create feature branch + PR" → proceed to Step 3
+3. IF user chooses "Direct commit to develop" → skip branch creation
+
+### Step 3: Create Git branch & PR (only for feature_branch workflow)
+
+**This step only executes if workflow requires feature branch creation**
+
+Invoke git-manager agent:
 
 Use the Task tool to call the git-manager agent:
 
@@ -757,7 +827,7 @@ For complete EARS syntax and examples, invoke: `Skill("moai-foundation-ears")`
 
 ### SPEC Metadata Standard
 
-For complete metadata field descriptions, validation rules, and version system guide, invoke: `Skill("moai-alfred-spec-metadata-extended")`
+For complete metadata field descriptions, validation rules, and version system guide, invoke: `Skill("moai-foundation-specs")`
 
 **Quick reference**:
 - **7 required fields**: id, version, status, created, updated, author, priority
@@ -820,15 +890,6 @@ Before you consider this command complete, verify:
 IF all checkboxes are checked → Command execution successful
 
 IF any checkbox is unchecked → Identify missing step and complete it before ending
-
-## Final Step
-
-The workflow is now complete. You have successfully:
-1. Created a comprehensive SPEC document using EARS syntax
-2. Established implementation plan and acceptance criteria
-3. Set up Git branch and GitHub PR for team collaboration
-
-The system is now ready for the next phase: implementation with TDD methodology using `/alfred:2-run`.
 
 ---
 

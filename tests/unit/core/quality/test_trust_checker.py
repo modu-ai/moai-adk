@@ -1,4 +1,4 @@
-# @TEST:TRUST-001 | SPEC: SPEC-TRUST-001/spec.md
+# @TEST:TRUST-002 | SPEC: SPEC-TRUST-001/spec.md
 """
 TRUST 원칙 통합 검증 테스트
 
@@ -21,7 +21,7 @@ import pytest
 
 
 class TestTrustChecker:
-    """@TEST:TRUST-001: TRUST 원칙 통합 검증"""
+    """@TEST:TRUST-002: TRUST 원칙 통합 검증"""
 
     @pytest.fixture
     def trust_checker(self):
@@ -282,9 +282,9 @@ def complex_function(x):
         """
         # Arrange
         (sample_project_path / ".moai" / "specs").mkdir(parents=True)
-        (sample_project_path / ".moai" / "specs" / "SPEC-AUTH-001.md").write_text("# @SPEC:AUTH-001")
-        (sample_project_path / "src" / "auth.py").write_text("# @CODE:AUTH-001")
-        (sample_project_path / "tests" / "test_auth.py").write_text("# @TEST:AUTH-001")
+        (sample_project_path / ".moai" / "specs" / "SPEC-AUTH-001.md").write_text("# @SPEC:AUTH-004")
+        (sample_project_path / "src" / "auth.py").write_text("# @CODE:AUTH-004")
+        (sample_project_path / "tests" / "test_auth.py").write_text("# @TEST:AUTH-004")
 
         # Act
         result = trust_checker.validate_tag_chain(sample_project_path)
@@ -295,12 +295,12 @@ def complex_function(x):
 
     def test_should_fail_when_tag_chain_broken(self, trust_checker, sample_project_path):
         """
-        Given: @CODE:AUTH-001은 있으나 @SPEC:AUTH-001이 없음
+        Given: @CODE:AUTH-004은 있으나 @SPEC:AUTH-004이 없음
         When: trust_checker.validate_tag_chain() 실행
         Then: ValidationResult.passed = False, 끊어진 체인 표시
         """
         # Arrange
-        (sample_project_path / "src" / "auth.py").write_text("# @CODE:AUTH-001")
+        (sample_project_path / "src" / "auth.py").write_text("# @CODE:AUTH-004")
 
         # Act
         result = trust_checker.validate_tag_chain(sample_project_path)

@@ -176,7 +176,7 @@ gh pr create --draft --base develop --head feature/SPEC-{ID}
 
 **2. When implementing TDD** (`/alfred:2-run`):
 ```bash
-# RED → GREEN → REFACTOR commit
+# RED → GREEN → REFACTOR Create commit
 git commit -m "🔴 RED: [Test description]"
 git commit -m "🟢 GREEN: [Implementation description]"
 git commit -m "♻️ REFACTOR: [Improvement description]"

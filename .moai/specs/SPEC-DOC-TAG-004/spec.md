@@ -1,7 +1,7 @@
 ---
 id: DOC-TAG-004
 version: 0.0.1
-status: draft
+status: completed
 created: 2025-10-29
 updated: 2025-10-29
 author: "@Goos"
@@ -99,7 +99,7 @@ scope: "Phase 4 of 4-phase @DOC TAG automatic generation system - Quality gates 
 
 **REQ-2**: 시스템은 TAG 중복, 누락, 고아 TAG를 자동으로 감지해야 한다.
 
-**REQ-3**: 시스템은 TAG 체인의 완전성을 검증해야 한다 (예: `@SPEC:AUTH-001` → `@TEST:AUTH-001` → `@CODE:AUTH-001` 연결).
+**REQ-3**: 시스템은 TAG 체인의 완전성을 검증해야 한다 (예: `@SPEC:AUTH-004` → `@TEST:AUTH-004` → `@CODE:AUTH-004` 연결).
 
 **REQ-4**: 시스템은 검증 실패 시 명확한 오류 메시지와 수정 가이드를 제공해야 한다.
 
@@ -294,7 +294,7 @@ src/moai_adk/core/tags/
 
 2. **중복 검증** (`duplicate_detector.py`):
    - 동일한 TAG ID가 여러 파일에 존재하는지 확인.
-   - 예외 케이스: 문서 참조는 중복 허용 (예: `plan.md`에서 `@SPEC:AUTH-001` 참조).
+   - 예외 케이스: 문서 참조는 중복 허용 (예: `plan.md`에서 `@SPEC:AUTH-004` 참조).
    - 검증 로직:
      ```python
      def detect_duplicates(tags: List[TAGInfo]) -> List[DuplicateIssue]:
@@ -304,7 +304,7 @@ src/moai_adk/core/tags/
      ```
 
 3. **고아 TAG 검증** (`orphan_detector.py`):
-   - TAG 체인이 끊긴 TAG 발견 (예: `@TEST:AUTH-001` 존재, `@SPEC:AUTH-001` 부재).
+   - TAG 체인이 끊긴 TAG 발견 (예: `@TEST:AUTH-004` 존재, `@SPEC:AUTH-004` 부재).
    - 체인 복구 제안 생성:
      ```python
      def detect_orphans(tags: List[TAGInfo]) -> List[OrphanIssue]:
@@ -402,7 +402,7 @@ docs/
 
      | SPEC | TEST | CODE | DOC | Status |
      |------|------|------|-----|--------|
-     | @SPEC:AUTH-001 | @TEST:AUTH-001 | @CODE:AUTH-001 | @DOC:AUTH-001 | ✅ Complete |
+     | @SPEC:AUTH-004 | @TEST:AUTH-004 | @CODE:AUTH-004 | @DOC:AUTH-001 | ✅ Complete |
      | @SPEC:DOC-TAG-001 | @TEST:DOC-TAG-001 | @CODE:DOC-TAG-001 | - | ⚠️ Missing DOC |
 
      ...
@@ -429,7 +429,7 @@ docs/
      ## Issues
 
      ### Error: Duplicate TAG detected
-     - **TAG**: @CODE:AUTH-001
+     - **TAG**: @CODE:AUTH-004
      - **Files**:
        - src/auth/login.py (Line 45)
        - src/auth/token.py (Line 12)

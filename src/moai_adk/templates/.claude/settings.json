@@ -1,12 +1,27 @@
 {
   "companyAnnouncements": [
-    "🎩 SPEC-First: Always define requirements as SPEC before implementation (/alfred:1-plan)",
-    "✅ TRUST 5 Principles: Test First, Readable, Unified, Secured, Trackable",
-    "📝 TodoWrite Usage: Track all tasks and update in_progress/completed status immediately",
-    "🌍 Language Boundary: Use conversation_language for dialogs/documents, English for infrastructure",
-    "🔗 @TAG Chain: Maintain traceability SPEC→TEST→CODE→DOC",
-    "⚡ Parallel Execution: Independent tasks can run simultaneously (Task tool parallel calls)",
-    "💡 Skills First: Check appropriate Skill first for domain-specific tasks"
+    "Start with a plan: Write down what you want to build first to avoid confusion (/alfred:1-plan)",
+    "✅ 5 promises: Test-first + Easy-to-read code + Clean organization + Secure + Trackable",
+    "Task list: Continuous progress tracking ensures nothing gets missed",
+    "Language separation: We communicate in your language, computers understand in English",
+    "Everything connected: Plan→Test→Code→Docs are all linked together",
+    "⚡ Parallel processing: Independent tasks can be handled simultaneously",
+    "Tools first: Find the right tools before starting any work",
+    "Step by step: What you want→Plan→Execute→Report results",
+    "Auto-generated lists: Planning automatically creates task lists",
+    "❓ Ask when confused: If something isn't clear, just ask right away",
+    "🧪 Automatic quality checks: Code automatically verified against 5 core principles",
+    "Multi-language support: Automatic validation for Python, JavaScript, and more",
+    "⚡ Never stops: Can continue even when tools are unavailable",
+    "Flexible approach: Choose between team collaboration or individual work as needed",
+    "🧹 Auto cleanup: Automatically removes unnecessary items when work is complete",
+    "⚡ Quick updates: New versions detected in 3 seconds, only fetch what's needed",
+    "On-demand loading: Only loads current tools to save memory",
+    "Complete history: All steps from planning to code are recorded for easy reference",
+    "Bug reporting: File bug reports to GitHub in 30 seconds",
+    "🩺 Health check: Use 'moai-adk doctor' to instantly check current status",
+    "Safe updates: Use 'moai-adk update' to safely add new features",
+    "🧹 When work is done: Use '/clear' to clean up conversation for the next task"
   ],
   "hooks": {
     "SessionStart": [
@@ -165,5 +180,7 @@
       "Bash(git reset --hard:*)",
       "Bash(git rebase -i:*)"
     ]
-  }
+  },
+  "spinnerTipsEnabled": true,
+  "outputStyle": "streaming"
 }

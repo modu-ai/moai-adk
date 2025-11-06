@@ -182,3 +182,52 @@ class TemplateMerger:
             json.dumps(merged, indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8"
         )
+
+    def merge_github_workflows(self, template_dir: Path, existing_dir: Path) -> None:
+        """Smart merge for .github/workflows/ directory.
+
+        Rules:
+        - Preserve existing user workflows (never delete)
+        - Add/update only MoAI-ADK managed workflows (moai-*.yml)
+        - Copy other template directories (ISSUE_TEMPLATE/, PULL_REQUEST_TEMPLATE.md)
+
+        Args:
+            template_dir: Template .github directory.
+            existing_dir: Existing .github directory.
+        """
+        import shutil
+
+        # Ensure workflows directory exists
+        workflows_dir = existing_dir / "workflows"
+        workflows_dir.mkdir(exist_ok=True)
+
+        # Track existing user workflows for preservation
+        user_workflows = set()
+        if workflows_dir.exists():
+            for workflow_file in workflows_dir.glob("*.yml"):
+                user_workflows.add(workflow_file.name)
+
+        # Copy template contents with smart merge for workflows
+        for item in template_dir.rglob("*"):
+            if item.is_file():
+                rel_path = item.relative_to(template_dir)
+                dst_item = existing_dir / rel_path
+
+                # Handle workflow files specially
+                if rel_path.parent.name == "workflows" and rel_path.name.endswith(".yml"):
+                    # Only update MoAI-ADK managed workflows (moai-*.yml)
+                    if rel_path.name.startswith("moai-"):
+                        dst_item.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copy2(item, dst_item)
+                    # Skip non-moai workflows to preserve user custom workflows
+                    continue
+
+                # Copy non-workflow files normally
+                dst_item.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(item, dst_item)
+
+            elif item.is_dir():
+                # Create directories as needed
+                rel_path = item.relative_to(template_dir)
+                dst_item = existing_dir / rel_path
+                dst_item.mkdir(parents=True, exist_ok=True)

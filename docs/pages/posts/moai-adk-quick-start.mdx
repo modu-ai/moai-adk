@@ -1,9 +1,9 @@
 import { Callout, Steps } from 'nextra/components'
 "
 ---
-title: "MoAI-ADK 빠른 시작
+title: "MoAI-ADK 빠른 시작"
 date: 2025-10-30
-description: "설치부터 `/alfred:0-project` 실행까지 10분 만에 따라 하는 세팅 가이드
+description: "설치부터 alfred-0-project 실행까지 10분 만에 따라 하는 세팅 가이드"
 type: post
 tag:
   - Guide
@@ -80,7 +80,7 @@ moai-adk doctor
 ```bash
 claude
 # Claude Code가 열리면
-/alfred:0-project
+alfred:0-project
 ```
 "
 Alfred는 다음 정보를 질문합니다.
@@ -107,7 +107,7 @@ Alfred는 다음 정보를 질문합니다.
 | 1 | `uv tool install moai-adk` | 패키지 설치 | `moai-adk --version` |
 | 2 | `moai-adk init hello-world` | 템플릿 구조 생성 | `.moai/`, `.claude/` 디렉터리 |
 | 3 | `moai-adk doctor` | 환경 검증 | 체크리스트 ✅ |
-| 4 | `claude` → `/alfred:0-project` | Alfred 부팅 & 초기 설정 | `.moai/config.json` 업데이트 |
+| 4 | `claude` → `alfred:0-project` | Alfred 부팅 & 초기 설정 | `.moai/config.json` 업데이트 |
 "
 초기화가 완료되면 `.moai/config.json`, `.moai/project/*.md`, `.claude/settings.json`이 최신 템플릿에 맞춰 채워집니다.
 "
@@ -115,9 +115,9 @@ Alfred는 다음 정보를 질문합니다.
 "
 | 단계 | 명령어 | 설명 | 예상 시간 |
 | ---- | ------ | ---- | -------- |
-| 1 | `/alfred:1-plan "기능 설명"` | 요구사항 정제, EARS SPEC 작성, Draft PR 준비 | 2분 |
-| 2 | `/alfred:2-run SPEC-ID` | RED → GREEN → REFACTOR TDD 자동화 | 5분 |
-| 3 | `/alfred:3-sync` | README, TAG, 보고서 등 문서 동기화 | 1분 |
+| 1 | `alfred:1-plan "기능 설명"` | 요구사항 정제, EARS SPEC 작성, Draft PR 준비 | 2분 |
+| 2 | `alfred:2-run SPEC-ID` | RED → GREEN → REFACTOR TDD 자동화 | 5분 |
+| 3 | `alfred:3-sync` | README, TAG, 보고서 등 문서 동기화 | 1분 |
 "
 > SPEC ID는 `/alfred:1-plan` 결과로 생성되는 `@SPEC:ABC-123` 형태입니다.
 "

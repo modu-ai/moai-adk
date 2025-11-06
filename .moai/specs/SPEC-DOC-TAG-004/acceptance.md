@@ -80,7 +80,7 @@
   - TAG: @SPEC:AUTH_001
   - File: .moai/specs/SPEC-AUTH-001/spec.md (Line 10)
   - Expected format: @{TYPE}:{DOMAIN}-{ID}
-  - Suggestion: Change to '@SPEC:AUTH-001' (use hyphen instead of underscore)
+  - Suggestion: Change to '@SPEC:EXAMPLE-AUTH-001' (use hyphen instead of underscore)
   ```
 
 **Acceptance**:
@@ -175,7 +175,7 @@
   ```markdown
   | SPEC | TEST | CODE | DOC | Status |
   |------|------|------|-----|--------|
-  | @SPEC:AUTH-001 | @TEST:AUTH-001 | @CODE:AUTH-001 | @DOC:AUTH-001 | ✅ Complete |
+  | @SPEC:EXAMPLE-AUTH-001 | @TEST:AUTH-001 | @CODE:AUTH-001 | @DOC:AUTH-001 | ✅ Complete |
   ```
 
 **Acceptance**:
@@ -245,7 +245,7 @@
 
   | SPEC | TEST | CODE | DOC | Status |
   |------|------|------|-----|--------|
-  | @SPEC:AUTH-001 | @TEST:AUTH-001 | @CODE:AUTH-001 | @DOC:AUTH-001 | ✅ Complete |
+  | @SPEC:EXAMPLE-AUTH-001 | @TEST:AUTH-001 | @CODE:AUTH-001 | @DOC:AUTH-001 | ✅ Complete |
   | @SPEC:AUTH-002 | @TEST:AUTH-002 | - | - | ⚠️ Missing CODE, DOC |
   | @SPEC:DOC-TAG-001 | @TEST:DOC-TAG-001 | @CODE:DOC-TAG-001 | - | ⚠️ Missing DOC |
   ```

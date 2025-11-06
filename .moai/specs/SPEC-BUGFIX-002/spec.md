@@ -3,7 +3,7 @@ title: Smart Merge for .github Directory - Preserve User Workflows
 id: SPEC-BUGFIX-002
 type: bugfix
 priority: high
-status: planned
+status: completed
 affects: template processor, initialization system
 discussion: #119
 ---

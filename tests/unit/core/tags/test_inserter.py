@@ -26,20 +26,20 @@ This is a guide.
         result = insert_tag_to_markdown(
             Path("guide.md"),
             "@DOC:AUTH-001",
-            "@SPEC:AUTH-001"
+            "@SPEC:AUTH-004"
         )
 
         assert result is True
         mock_write.assert_called_once()
         written_content = mock_write.call_args[0][0]
         assert "@DOC:AUTH-001" in written_content
-        assert "Chain: @SPEC:AUTH-001" in written_content
+        assert "Chain: @SPEC:AUTH-004" in written_content
 
 
 def test_format_tag_header():
     """Format TAG header with chain reference"""
-    header = format_tag_header("@DOC:AUTH-001", "@SPEC:AUTH-001")
-    assert header == "# @DOC:AUTH-001 | Chain: @SPEC:AUTH-001 -> @DOC:AUTH-001"
+    header = format_tag_header("@DOC:AUTH-001", "@SPEC:AUTH-004")
+    assert header == "# @DOC:AUTH-001 | Chain: @SPEC:AUTH-004 -> @DOC:AUTH-001"
 
 
 def test_insert_tag_file_not_found():
@@ -48,7 +48,7 @@ def test_insert_tag_file_not_found():
         result = insert_tag_to_markdown(
             Path("missing.md"),
             "@DOC:AUTH-001",
-            "@SPEC:AUTH-001"
+            "@SPEC:AUTH-004"
         )
         assert result is False
 
@@ -61,6 +61,6 @@ def test_insert_tag_permission_error():
         result = insert_tag_to_markdown(
             Path("readonly.md"),
             "@DOC:AUTH-001",
-            "@SPEC:AUTH-001"
+            "@SPEC:AUTH-004"
         )
         assert result is False

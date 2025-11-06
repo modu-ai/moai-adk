@@ -32,7 +32,119 @@ NC='\033[0m' # No Color
 TEAM_MODE=false
 is_team_mode && TEAM_MODE=true
 
-# Read from stdin (git sends remote, local ref info)
+# STRICT TAG VALIDATION - Check all refs for tags first
+for ref_line in $(cat); do
+    local_ref=$(echo "$ref_line" | awk '{print $1}')
+    remote_ref=$(echo "$ref_line" | awk '{print $3}')
+
+    # Check if this is a tag push (refs/tags/)
+    if [[ "$remote_ref" == refs/tags/* ]]; then
+        tag_name=$(echo "$remote_ref" | sed 's|refs/tags/||')
+        echo "🏷️  Tag push detected: $tag_name"
+
+        if [[ "$TEAM_MODE" == true ]]; then
+            # In team mode, tags must follow strict GitFlow rules
+
+            # Validate tag format (must be semantic version: v1.2.3)
+            if [[ ! "$tag_name" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                echo ""
+                echo -e "${RED}❌ TAG POLICY VIOLATION${NC}"
+                echo ""
+                echo "Invalid tag format: $tag_name"
+                echo "Allowed format: v{major}.{minor}.{patch}"
+                echo "Examples: v1.0.0, v1.2.3, v2.0.0"
+                echo ""
+                echo "Tags must follow semantic versioning in team mode"
+                exit 1
+            fi
+
+            # Get current branch for validation
+            current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+
+            # Tags can only be created from main branch in team mode
+            if [[ "$current_branch" != "main" ]]; then
+                echo ""
+                echo -e "${RED}❌ TAG POLICY VIOLATION${NC}"
+                echo ""
+                echo "Tags must be created from 'main' branch in team mode"
+                echo "Current branch: $current_branch"
+                echo "Required branch: main"
+                echo ""
+                echo -e "${BLUE}Proper GitFlow tag creation:${NC}"
+                echo "1. Ensure all features are merged to develop"
+                echo "2. Merge develop to main"
+                echo "3. Create tag from main branch"
+                echo ""
+                echo "Command: git checkout main && git tag $tag_name"
+                exit 1
+            fi
+
+            # Verify main branch is up-to-date with develop
+            if git rev-parse --verify develop >/dev/null 2>&1; then
+                main_commit=$(git rev-parse main)
+                develop_commit=$(git rev-parse develop)
+
+                if [[ "$main_commit" != "$develop_commit" ]]; then
+                    echo ""
+                    echo -e "${YELLOW}⚠️  GITFLOW WARNING${NC}"
+                    echo ""
+                    echo "Main branch is not synchronized with develop"
+                    echo "Main commit:    $main_commit"
+                    echo "Develop commit: $develop_commit"
+                    echo ""
+                    echo "In team mode, tags should only be created after develop → main merge"
+                    echo ""
+                    read -p "Continue anyway? (y/N): " -n 1 -r
+                    echo
+                    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                        echo "Tag push cancelled"
+                        exit 1
+                    fi
+                fi
+            fi
+
+            # Check if tag already exists remotely
+            if git ls-remote --tags origin "$tag_name" | grep -q "$tag_name"; then
+                echo ""
+                echo -e "${RED}❌ TAG POLICY VIOLATION${NC}"
+                echo ""
+                echo "Tag '$tag_name' already exists remotely"
+                echo "Cannot overwrite existing tags in team mode"
+                echo ""
+                echo "Use different version number or delete remote tag first:"
+                echo "git tag -d $tag_name"
+                echo "git push origin :refs/tags/$tag_name"
+                exit 1
+            fi
+
+            echo ""
+            echo -e "${GREEN}✅ Tag validation passed (team mode)${NC}"
+            echo "  - Format: semantic version ✓"
+            echo "  - Source: main branch ✓"
+            echo "  - Unique: new tag ✓"
+            echo ""
+
+        else
+            # Personal mode - more permissive but still validate format
+            if [[ ! "$tag_name" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                echo ""
+                echo -e "${YELLOW}⚠️  Advisory: Tag format should be semantic version (v1.2.3)${NC}"
+                echo "Current tag: $tag_name"
+                echo ""
+                read -p "Continue with non-standard tag? (y/N): " -n 1 -r
+                echo
+                if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                    echo "Tag push cancelled"
+                    exit 1
+                fi
+            fi
+
+            echo -e "${GREEN}✅ Tag push allowed (personal mode)${NC}"
+        fi
+    fi
+done
+
+# Now read from stdin again for branch validation
 # Format: <local ref> <local oid> <remote ref> <remote oid>
 while read local_ref local_oid remote_ref remote_oid; do
     # Extract the remote branch name from the reference

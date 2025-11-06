@@ -311,7 +311,7 @@ class TemplateProcessor:
     def _copy_claude(self, silent: bool = False) -> None:
         """.claude/ directory copy with variable substitution (selective with alfred folder overwrite).
 
-        @CODE:INIT-004:ALFRED-001 | Copy all 4 Alfred command files from templates
+        @CODE:INIT-TEMPLATE-001:ALFRED-001 | Copy all 4 Alfred command files from templates
         @REQ:COMMAND-GENERATION-001 | SPEC-INIT-004: Automatic generation of Alfred command files
         @SPEC:TEMPLATE-PROCESSING-001 | Template processor integration for Alfred command files
 
@@ -444,7 +444,7 @@ class TemplateProcessor:
             console.print("   ✅ .moai/ copy complete (variables substituted)")
 
     def _copy_github(self, silent: bool = False) -> None:
-        """.github/ directory copy with variable substitution."""
+        """.github/ directory copy with smart merge (preserves user workflows)."""
         src = self.template_root / ".github"
         dst = self.target_path / ".github"
 
@@ -453,13 +453,15 @@ class TemplateProcessor:
                 console.print("⚠️ .github/ template not found")
             return
 
+        # Smart merge: preserve existing user workflows
         if dst.exists():
-            shutil.rmtree(dst)
-
-        self._copy_dir_with_substitution(src, dst)
+            self._merge_github_workflows(src, dst)
+        else:
+            # First time: just copy
+            self._copy_dir_with_substitution(src, dst)
 
         if not silent:
-            console.print("   ✅ .github/ copy complete (variables substituted)")
+            console.print("   🔄 .github/ merged (user workflows preserved, variables substituted)")
 
     def _copy_claude_md(self, silent: bool = False) -> None:
         """Copy CLAUDE.md with smart merge (preserves \"## Project Information\" section)."""
@@ -499,6 +501,15 @@ class TemplateProcessor:
             dst: Project CLAUDE.md.
         """
         self.merger.merge_claude_md(src, dst)
+
+    def _merge_github_workflows(self, src: Path, dst: Path) -> None:
+        """Delegate the smart merge for .github/workflows/.
+
+        Args:
+            src: Template .github directory.
+            dst: Project .github directory.
+        """
+        self.merger.merge_github_workflows(src, dst)
 
     def _merge_settings_json(self, src: Path, dst: Path) -> None:
         """Delegate the smart merge for settings.json.
