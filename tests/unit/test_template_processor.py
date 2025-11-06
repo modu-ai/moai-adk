@@ -78,20 +78,36 @@ class TestCopyTemplates:
         # Console.print should not be called in silent mode
         mock_console.return_value.print.assert_not_called()
 
-    def test_copy_github_overwrites_existing_directory(self, tmp_path: Path) -> None:
-        """Should replace existing .github directory with template version"""
+    def test_copy_github_preserves_user_workflows(self, tmp_path: Path) -> None:
+        """Should preserve existing user workflows while adding MoAI-ADK workflows"""
         github_dir = tmp_path / ".github"
         workflows_dir = github_dir / "workflows"
         workflows_dir.mkdir(parents=True)
-        # create stale file
-        stale = workflows_dir / "old.yml"
-        stale.write_text("# old workflow")
+
+        # Create user workflows (should be preserved)
+        user_ci = workflows_dir / "ci.yml"
+        user_ci.write_text("# user CI workflow")
+        user_e2e = workflows_dir / "e2e.yml"
+        user_e2e.write_text("# user E2E workflow")
+
+        # Create user moai workflow (should be updated)
+        user_moai = workflows_dir / "moai-gitflow.yml"
+        user_moai.write_text("# old moai workflow")
 
         processor = TemplateProcessor(tmp_path)
         processor._copy_github(silent=True)
 
-        assert not stale.exists()
+        # User workflows should be preserved
+        assert user_ci.exists()
+        assert user_e2e.exists()
+        assert "# user CI workflow" in user_ci.read_text()
+        assert "# user E2E workflow" in user_e2e.read_text()
+
+        # MoAI-ADK workflows should be added/updated
         assert (github_dir / "workflows" / "moai-gitflow.yml").exists()
+        moai_content = (github_dir / "workflows" / "moai-gitflow.yml").read_text()
+        assert "# old moai workflow" not in moai_content
+        assert "name:" in moai_content  # Template content present
 
 
 class TestClaudeTemplate:

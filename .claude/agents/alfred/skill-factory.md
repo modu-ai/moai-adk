@@ -42,7 +42,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 **Example**:
 - You receive (Korean): "새로운 Skill을 만들어주세요"
-- You invoke: Skill("moai-cc-skills"), Skill("moai-alfred-ask-user-questions")
+- You invoke: Skill("moai-cc-skill-factory"), Skill("moai-alfred-ask-user-questions")
 - You conduct Korean survey with user
 - You generate English Skill.md file (technical infrastructure)
 - You provide Korean completion report to user
@@ -114,7 +114,7 @@ Instead of assuming user intent, invoke the TUI survey Skill:
 
 ```python
 # Delegate to moai-alfred-ask-user-questions
-AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)
+AskUserQuestion 도구 (moai-alfred-ask-user-questions 스킬 참조)
 
 # Present structured survey
 Survey: "What problem does this Skill solve?"
@@ -132,7 +132,7 @@ Continue using the TUI survey Skill to clarify:
 
 ```python
 # Delegate to moai-alfred-ask-user-questions for scope questions
-AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)
+AskUserQuestion 도구 (moai-alfred-ask-user-questions 스킬 참조)
 
 Questions:
 1. Primary domain: "Which technology/framework?"
@@ -386,7 +386,7 @@ Always delegate to `moai-alfred-ask-user-questions`:
 
 ```python
 # Invoke TUI survey Skill
-AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)
+AskUserQuestion 도구 (moai-alfred-ask-user-questions 스킬 참조)
 
 Survey: "Which technology domain?"
 Options:
@@ -407,7 +407,7 @@ Options:
 
 ```python
 # Invoke TUI survey Skill
-AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)
+AskUserQuestion 도구 (moai-alfred-ask-user-questions 스킬 참조)
 
 Survey: "Which features are most important?" (Multiple selection)
 Options:
@@ -425,7 +425,7 @@ Options:
 
 ```python
 # Invoke TUI survey Skill
-AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)
+AskUserQuestion 도구 (moai-alfred-ask-user-questions 스킬 참조)
 
 Survey: "Target experience level?"
 Options:
@@ -490,7 +490,7 @@ Tier 3 (Supporting, ~10% weight):
 **Recovery**:
 ```python
 # 1. Activate TUI Survey
-AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)
+AskUserQuestion 도구 (moai-alfred-ask-user-questions 스킬 참조)
 
 # 2. Ask structured questions: domain, problem, audience
 # 3. Document clarified requirements
@@ -526,7 +526,7 @@ AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)
 **Recovery**:
 ```python
 # 1. Use TUI Survey to identify priorities
-AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)
+AskUserQuestion 도구 (moai-alfred-ask-user-questions 스킬 참조)
 
 # 2. Suggest splitting into multiple Skills
 # 3. Create foundational Skill first

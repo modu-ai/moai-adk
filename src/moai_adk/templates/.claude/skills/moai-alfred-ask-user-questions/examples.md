@@ -624,7 +624,7 @@ For Claude Pro $20/month users: Token usage directly impacts API costs (~$0.02 p
     multiSelect: false,
     options: [
       {
-        label: "📊 Enable (Default)",
+        label: "Enable (Default)",
         description: "Full analysis reports for every sync. Best for understanding project changes. (High token usage)"
       },
       {
@@ -715,7 +715,7 @@ const answers = await AskUserQuestion({
       multiSelect: false,
       options: [
         {
-          label: "📊 Enable",
+          label: "Enable",
           description: "Full analysis reports. (150-300 tokens/session)"
         },
         {

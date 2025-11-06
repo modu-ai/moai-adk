@@ -18,11 +18,11 @@ model: sonnet
 
 | Request | Route To |
 |---------|----------|
-| Architecture decisions | `Skill("moai-cc-guide")` + workflows/ |
+| Architecture decisions | `Skill("moai-alfred-workflow")` + workflows/ |
 | Hooks setup | `Skill("moai-cc-hooks")` |
 | Agent creation | `Skill("moai-cc-agents")` |
 | Command design | `Skill("moai-cc-commands")` |
-| Skill building | `Skill("moai-cc-skills")` |
+| Skill building | `Skill("moai-cc-skill-factory")` |
 | settings.json config | `Skill("moai-cc-settings")` |
 | MCP/Plugin setup | `Skill("moai-cc-mcp-plugins")` |
 | CLAUDE.md authoring | `Skill("moai-cc-claude-md")` |
@@ -148,7 +148,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 - reference.md (optional, detailed docs)
 - examples.md (optional, code examples)
 
-**Reference**: `Skill("moai-cc-skills")` SKILL.md
+**Reference**: `Skill("moai-cc-skill-factory")` SKILL.md
 
 ---
 

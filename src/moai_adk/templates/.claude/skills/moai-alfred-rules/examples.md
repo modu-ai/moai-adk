@@ -193,7 +193,7 @@ Unwanted Behaviors:
 
 # Step 2: Write SPEC
 /alfred:1-plan "Email Verification"
-→ Skill("moai-alfred-spec-metadata") validates metadata
+→ Skill("moai-alfred-spec-metadata-extended") validates metadata
 → Skill("moai-foundation-ears") validates requirement syntax
 → Creates .moai/specs/SPEC-AUTH-015/
 

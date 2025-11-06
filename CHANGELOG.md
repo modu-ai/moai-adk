@@ -2,12 +2,22 @@
 
 All commits to MoAI-ADK are listed below in chronological order. Each entry shows the commit date, short hash, and an English summary derived from the original git log message.
 
+## Recent Releases
+
+### v0.20.0 (2025-11-06)
+
+- **MCP Configuration Fix**: Fixed critical MCP server configuration schema validation error
+- **Schema Compliance**: Changed root key from "servers" to "mcpServers" per official MCP specification
+- **Server Optimization**: Removed Figma from default installation (now optional), improved context7, playwright, sequential-thinking configurations
+- **Performance Enhancements**: Added timeout and retry configurations, NODE_OPTIONS memory settings for Node.js servers
+- **Template Synchronization**: Updated both local and package templates with corrected MCP configuration
+
 ## Commit History
 
 - 2025-09-16 | 3cbca5c7 | feat: initialize MoAI-ADK v0.1.16 project structure
 - 2025-09-16 | 0abe7914 | refactor: flatten project structure for better standardization
 - 2025-09-16 | 03c3b225 | feat(template-engine): add package fallback for templates and tests
-- 2025-09-16 | f05ddde2 | feat(templates-mode): add 'templates_mode' config and skip copying .moai/_templates when mode=package; update config output; add tests
+- 2025-09-16 | f05ddde2 | feat(templates-mode): add 'templates_mode' config and skip copying .moai/\_templates when mode=package; update config output; add tests
 - 2025-09-16 | 1b4171b8 | docs(templates): document package fallback and templates.mode
 - 2025-09-17 | ea4507c6 | docs(agents): remove commit log section; follow Gitflow process (no commit log in AGENTS.md)
 - 2025-09-17 | 471e1574 | merge: feature templateengine fallback + templates_mode into develop
@@ -216,7 +226,7 @@ All commits to MoAI-ADK are listed below in chronological order. Each entry show
 - 2025-09-26 | c43ee3ec | chore(release): Complete v0.1.19 system stability and documentation sync
 - 2025-09-26 | 1ff68dc5 | fix(compatibility): Restore Python 3.10 compatibility and improve TestPyPI deployment
 - 2025-09-26 | 4571fb5d | feat(v0.1.28): Complete backup scenarios refactor and TestPyPI deployment
-- 2025-09-26 | b190ca0a | fix(version): Correct version synchronization in _version.py
+- 2025-09-26 | b190ca0a | fix(version): Correct version synchronization in \_version.py
 - 2025-09-28 | 0eef0852 | feat(v0.1.28+): Complete comprehensive debugging and optimization
 - 2025-09-28 | 3b383012 | feat(SPEC-012): Completed TypeScript porting-based construction specifications and plan
 - 2025-09-28 | dce43baf | RED: Add failing tests for TypeScript foundation
@@ -575,7 +585,7 @@ All commits to MoAI-ADK are listed below in chronological order. Each entry show
 - 2025-10-21 | 17c709a5 | FIX: Fixed bugs in Issue #45, #46
 - 2025-10-21 | 4c02fb45 | FIX: GitHub Issue #48 Prevent regressions - add Alfred task completion principle
 - 2025-10-21 | 79cc1005 | RELEASE: v0.4.1
-- 2025-10-21 | 074122a6 | FIX: Implement SSOT principle - use dynamic version loading in __init__.py
+- 2025-10-21 | 074122a6 | FIX: Implement SSOT principle - use dynamic version loading in **init**.py
 - 2025-10-21 | 397d134d | ADD: Version sync validation script
 - 2025-10-22 | ad06ba6c | refactor: simplify backup system to single backup folder
 - 2025-10-22 | 898b877b | RELEASE: v0.4.3

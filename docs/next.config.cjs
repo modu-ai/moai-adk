@@ -1,6 +1,9 @@
 const withNextra = require('nextra')({
   theme: 'nextra-theme-docs',
-  themeConfig: './theme.config.jsx'
+  themeConfig: './theme.config.cjs'
 })
 
-module.exports = withNextra()
+module.exports = withNextra({
+  reactStrictMode: true,
+  swcMinify: true
+})

@@ -20,7 +20,7 @@ def test_extract_spec_id_from_spec_file():
 id: AUTH-001
 version: 0.0.1
 ---
-# @SPEC:AUTH-001: Authentication System
+# @SPEC:AUTH-004: Authentication System
 """
 
     # When: Extract ID from spec content

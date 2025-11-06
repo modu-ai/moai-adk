@@ -1,7 +1,7 @@
 ---
 id: DOCS-004
 version: 0.0.1
-status: draft
+status: completed
 created: 2025-10-29
 updated: 2025-10-29
 author: @GOOS
@@ -22,7 +22,7 @@ scope:
 
 # SPEC: README.md Documentation Update to v0.8.2
 
-**@SPEC:DOCS-004**
+**@SPEC:DOCS-005**
 
 ## Overview
 
@@ -37,7 +37,7 @@ Update README.md and all translated versions (ko, ja, zh) to accurately reflect 
 ## TAG BLOCK
 
 ```
-@SPEC:DOCS-004
+@SPEC:DOCS-005
 @DOC:README-VERSION-UPDATE-001
 @TEST:DOCS-004-README-VALIDATION
 ```
@@ -126,7 +126,7 @@ Update README.md and all translated versions (ko, ja, zh) to accurately reflect 
 
 ### SPEC-1: Version Reference Updates
 
-**@SPEC:DOCS-004-SPEC-001**: Install Command Version
+**@SPEC:DOCS-005-SPEC-001**: Install Command Version
 ```bash
 # OLD
 uv tool install moai-adk==0.4.11
@@ -135,7 +135,7 @@ uv tool install moai-adk==0.4.11
 uv tool install moai-adk==0.8.2
 ```
 
-**@SPEC:DOCS-004-SPEC-002**: PyPI Link Version
+**@SPEC:DOCS-005-SPEC-002**: PyPI Link Version
 ```markdown
 # OLD
 https://pypi.org/project/moai-adk/ (Latest: v0.4.11)
@@ -144,7 +144,7 @@ https://pypi.org/project/moai-adk/ (Latest: v0.4.11)
 https://pypi.org/project/moai-adk/ (Latest: v0.8.2)
 ```
 
-**@SPEC:DOCS-004-SPEC-003**: GitHub Release Link
+**@SPEC:DOCS-005-SPEC-003**: GitHub Release Link
 ```markdown
 # OLD
 https://github.com/modu-ai/moai-adk/releases/tag/v0.4.11
@@ -155,7 +155,7 @@ https://github.com/modu-ai/moai-adk/releases/tag/v0.8.2
 
 ### SPEC-2: Version History Expansion
 
-**@SPEC:DOCS-004-SPEC-004**: Latest Updates Table
+**@SPEC:DOCS-005-SPEC-004**: Latest Updates Table
 ```markdown
 | Version     | Key Features                                                                                     | Date       |
 | ----------- | ------------------------------------------------------------------------------------------------ | ---------- |
@@ -171,7 +171,7 @@ https://github.com/modu-ai/moai-adk/releases/tag/v0.8.2
 
 ### SPEC-3: Skills Count Standardization
 
-**@SPEC:DOCS-004-SPEC-005**: Skills Count References
+**@SPEC:DOCS-005-SPEC-005**: Skills Count References
 - Line 218: "58 Skills" → "55+ Skills"
 - Line 1290: "55 Claude Skills" → "55+ Claude Skills" (already correct)
 - Line 1978: "58 Skills" → "55+ Skills"
@@ -182,7 +182,7 @@ https://github.com/modu-ai/moai-adk/releases/tag/v0.8.2
 
 ### SPEC-4: Coverage Badge Update
 
-**@SPEC:DOCS-004-SPEC-006**: Badge Measurement Process
+**@SPEC:DOCS-005-SPEC-006**: Badge Measurement Process
 1. Run local coverage measurement: `pytest --cov=moai_adk --cov-report=term`
 2. Extract percentage from coverage report
 3. Update badge: `[![Coverage](https://img.shields.io/badge/coverage-XX.XX%25-brightgreen)](https://github.com/modu-ai/moai-adk)`
@@ -194,7 +194,7 @@ https://github.com/modu-ai/moai-adk/releases/tag/v0.8.2
 
 ### SPEC-5: Translation Updates
 
-**@SPEC:DOCS-004-SPEC-007**: Translation Workflow
+**@SPEC:DOCS-005-SPEC-007**: Translation Workflow
 1. **README.ko.md** (Korean):
    - Translate version history descriptions to Korean
    - Update version numbers (language-neutral)

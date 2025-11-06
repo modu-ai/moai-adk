@@ -1,0 +1,159 @@
+{
+  "schema_version": "2.0",
+  "policy_mode": "strict",
+  "id_pattern": "^@[A-Z]+:[A-Z_]+-[0-9]{3,}$",
+  "deduplication_enabled": true,
+  "deduplication_policy": {
+    "topline_duplicates": {
+      "allowed": false,
+      "severity": "critical",
+      "action": "auto_renumber",
+      "exclusions": ["examples/**", "templates/**", "docs/guides/**"]
+    },
+    "reference_duplicates": {
+      "allowed": true,
+      "severity": "info",
+      "action": "track_only"
+    },
+    "scoped_duplicates": {
+      "allowed": true,
+      "severity": "warning", 
+      "action": "validate_scope",
+      "pattern": "^[A-Z]+#[A-Z]+-[0-9]{3}$"
+    }
+  },
+  "primary_related_rules": {
+    "primary_per_id": true,
+    "primary_selection": "authority_based",
+    "related_unlimited": true,
+    "auto_promote_related": false
+  },
+  "monorepo_scoping": {
+    "enabled": true,
+    "domain_separator": "#",
+    "counter_per_domain": true,
+    "domain_map": {
+      "src/auth/**": "AUTH",
+      "src/user/**": "USER", 
+      "src/payment/**": "PAY",
+      "src/core/**": "CORE",
+      "src/api/**": "API",
+      "src/ui/**": "UI",
+      "src/data/**": "DATA"
+    }
+  },
+  "eligible": [
+    ".moai/specs/*/spec.md",
+    "tests/**/*.py",
+    "src/**/*.py",
+    "docs/api/**/*.md",
+    "docs/reference/**/*.md"
+  ],
+  "excluded": [
+    "README*.md",
+    "README.*.md",
+    "CLAUDE.md",
+    ".claude/**",
+    "docs/getting-started/**",
+    "generated/**",
+    "dist/**",
+    "build/**",
+    "tests/fixtures/**",
+    "tests/snapshots/**",
+    "tests/**",
+    "src/moai_adk/core/tags/**",
+    "src/moai_adk/core/analysis/**"
+  ],
+  "whitelisted_paths": [
+    "docs/guides/**",
+    "examples/**",
+    "templates/**"
+  ],
+  "required_chains": [
+    {
+      "from": "@SPEC",
+      "to": ["@TEST", "@CODE"],
+      "severity_by_mode": {
+        "minimal": "warn",
+        "balanced": "warn",
+        "strict": "error"
+      }
+    },
+    {
+      "from": "@TEST",
+      "to": ["@CODE"],
+      "severity_by_mode": {
+        "minimal": "warn",
+        "balanced": "warn",
+        "strict": "error"
+      }
+    },
+    {
+      "from": "@CODE",
+      "to": ["@DOC"],
+      "optional": true,
+      "severity_by_mode": {
+        "minimal": "info",
+        "balanced": "warn",
+        "strict": "warn"
+      }
+    }
+  ],
+  "autoplan": {
+    "reserve_on_code_first": true,
+    "expire_hours_warn": 24,
+    "expire_hours_block": 72,
+    "spec_stub_template": ".moai/templates/spec_stub.md"
+  },
+  "migrate": {
+    "allow": true,
+    "record_required": true
+  },
+  "deprecated": {
+    "record_required": true
+  },
+  "rescind": {
+    "enabled": true,
+    "reason_default": "expired"
+  },
+  "batch_guard": {
+    "file_threshold": 25
+  },
+  "topline_rules": {
+    "skip_shebang": true,
+    "skip_header_block": ["license", "copyright", "(c)", "©"],
+    "block_comments": ["/*", "*/", "'''", "\"\"\""],
+    "max_scan_lines": 20,
+    "uniqueness_check": true,
+    "authority_hierarchy": {
+      "highest": [".moai/specs/*/spec.md"],
+      "high": ["src/**/*.py", "tests/**/*.py"],
+      "medium": ["docs/api/**/*.md", "docs/reference/**/*.md"],
+      "low": ["docs/guides/**", "examples/**", "templates/**"]
+    }
+  },
+  "relates": {
+    "max_per_file": 3,
+    "required_on_related": true,
+    "pattern": "^(# |// |<!-- )Relates: (@[A-Z]+:[A-Z_]+-[0-9]{3,})(, @[A-Z]+:[A-Z_]+-[0-9]{3,})*$"
+  },
+  "renumber": {
+    "enabled": true,
+    "command": "/alfred:tag-renumber --domain {domain}",
+    "scope_aware": true,
+    "preserve_chains": true
+  },
+  "validation": {
+    "realtime": true,
+    "pre_commit": true,
+    "on_save": false,
+    "timeout_seconds": 5
+  },
+  "auto_correction": {
+    "enabled": true,
+    "dry_run_default": true,
+    "backup_required": true,
+    "approval_required": true,
+    "confidence_threshold": 0.9
+  }
+}

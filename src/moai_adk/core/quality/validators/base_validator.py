@@ -1,4 +1,4 @@
-# @CODE:TRUST-001:VALIDATOR | SPEC: SPEC-TRUST-001/spec.md
+# @CODE:TRUST-002:VALIDATOR | SPEC: SPEC-TRUST-001/spec.md
 """Base validator class and validation result"""
 
 from dataclasses import dataclass

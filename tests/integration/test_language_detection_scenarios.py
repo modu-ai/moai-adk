@@ -1,4 +1,4 @@
-# @TEST:LANG-004-SCENARIOS | SPEC: SPEC-LANGUAGE-DETECTION-001.md | CODE: src/moai_adk/core/project/detector.py
+# @TEST:LANG-006-SCENARIOS | SPEC: SPEC-LANGUAGE-DETECTION-001.md | CODE: src/moai_adk/core/project/detector.py
 """Comprehensive language detection scenarios and error handling tests.
 
 Tests workflow selection, error handling, and full integration scenarios

@@ -1,0 +1,253 @@
+site_name: MoAI-ADK Documentation
+site_description: MoAI-ADK TDD Framework Complete Documentation System
+site_author: GoosLab
+site_url: https://moai-adk.gooslab.ai
+
+# Repository
+repo_name: modu-ai/moai-adk
+repo_url: https://github.com/modu-ai/moai-adk
+edit_uri: edit/main/docs/src/
+
+# Copyright
+copyright: |
+  &copy; 2025 GoosLab -
+  <a href="#__consent">Change Cookie Settings</a>
+
+# Documentation directory
+docs_dir: src
+
+# Plugins
+plugins:
+  - search:
+      lang:
+        - ko
+        - en
+        - ja
+        - zh
+  - minify:
+      minify_html: true
+
+# Customization
+extra:
+  analytics:
+    provider: google
+    property: !ENV GOOGLE_ANALYTICS_KEY
+
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/modu-ai/moai-adk
+    - icon: fontawesome/brands/docker
+      link: https://hub.docker.com/r/gooslab/moai-adk
+
+  version:
+    provider: mike
+    default: stable
+    alias: true
+
+  # Enhanced color scheme based on screenshot analysis
+  status:
+    new: Recently added
+    deprecated: Deprecated
+
+  # Mermaid configuration
+  mermaid:
+    version: "10.9.1"
+    initialize: true
+
+# Configuration
+theme:
+  name: material
+  language: en
+
+  # Custom color definitions for Material theme
+  custom:
+    # Define our neutral palette colors
+    neutral-warm-off-white: "#F2F1ED"
+    surface-very-light: "#F7F6F2"
+    muted-surface: "#EFEEEA"
+    border-light-gray: "#D5D4D0"
+    neutral-mid: "#C9C8C4"
+    text-secondary: "#504F4B"
+    ink-accent: "#171612"
+
+  features:
+    - announce.dismiss
+    - content.action.edit
+    - content.action.view
+    - content.code.annotate
+    - content.code.copy
+    - content.code.select
+    - content.tabs.link
+    - content.tooltips
+    - header.autohide
+    - navigation.expand
+    - navigation.footer
+    - navigation.indexes
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.instant.progress
+    - navigation.prune
+    - navigation.sections
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.top
+    - navigation.tracking
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
+    - toc.integrate
+
+  palette:
+    # Neutral Light Theme (using exact extracted colors)
+    - scheme: default
+      primary: black
+      accent: grey
+      background: white
+      toggle:
+        icon: material/brightness-7
+        name: 다크 모드로 전환
+
+    # Neutral Dark Theme (inverted for dark mode)
+    - scheme: slate
+      primary: white
+      accent: grey
+      background: black
+      toggle:
+        icon: material/brightness-4
+        name: 라이트 모드로 전환
+
+  # Font customization removed - handled by custom overrides/main.html
+  # for multilingual font optimization
+
+  icon:
+    logo: material/format-text
+    repo: fontawesome/brands/github
+
+# Extensions
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - meta
+  - md_in_html
+  - toc:
+      permalink: true
+  - tables
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink:
+      repo_url_shorthand: true
+      user: modu-ai
+      repo: moai-adk
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+# Navigation - Multilingual Structure
+nav:
+  # Korean (Default)
+  - 홈: index.md
+  - 시작하기:
+    - 설치: getting-started/installation.md
+    - 빠른 시작: getting-started/quick-start.md
+    - 기본 개념: getting-started/concepts.md
+  - 사용 가이드:
+    - Alfred 워크플로우:
+      - 개요: guides/alfred/index.md
+      - "1단계: 계획 (Plan)": guides/alfred/1-plan.md
+      - "2단계: 실행 (Run)": guides/alfred/2-run.md
+      - "3단계: 동기화 (Sync)": guides/alfred/3-sync.md
+      - "9단계: 피드백": guides/alfred/9-feedback.md
+    - SPEC 작성:
+      - SPEC 기초: guides/specs/basics.md
+      - EARS 문법: guides/specs/ears.md
+      - TAG 시스템: guides/specs/tags.md
+      - 예제: guides/specs/examples.md
+    - TDD 개발:
+      - RED 단계: guides/tdd/red.md
+      - GREEN 단계: guides/tdd/green.md
+      - REFACTOR 단계: guides/tdd/refactor.md
+    - 프로젝트 관리:
+      - 초기화: guides/project/init.md
+      - 설정: guides/project/config.md
+      - 배포: guides/project/deploy.md
+  - 기술 참고:
+    - CLI 명령어:
+      - 개요: reference/cli/index.md
+      - moai-adk: reference/cli/moai-adk.md
+      - 서브커맨드: reference/cli/subcommands.md
+    - 에이전트 시스템:
+      - 개요: reference/agents/index.md
+      - 핵심 에이전트: reference/agents/core.md
+      - 전문가 에이전트: reference/agents/experts.md
+    - 스킬 시스템:
+      - 개요: reference/skills/index.md
+      - 기반 스킬: reference/skills/foundation.md
+      - 언어 스킬: reference/skills/languages.md
+      - 알프레드 스킬: reference/skills/alfred.md
+    - 훅 시스템:
+      - 개요: reference/hooks/index.md
+      - 세션 훅: reference/hooks/session.md
+      - 도구 훅: reference/hooks/tool.md
+    - TAG 시스템:
+      - 개요: reference/tags/index.md
+      - TAG 타입: reference/tags/types.md
+      - 추적성: reference/tags/traceability.md
+  - 고급 주제:
+    - 다국어 지원: advanced/i18n.md
+    - 성능 최적화: advanced/performance.md
+    - 보안: advanced/security.md
+    - 확장: advanced/extensions.md
+  - 개발자 가이드:
+    - 기여하기: contributing/index.md
+    - 개발 환경: contributing/development.md
+    - 릴리즈 프로세스: contributing/releases.md
+    - 코드 스타일: contributing/style.md
+  
+  
+  
+# Page tree
+exclude_docs: |
+  .python-version
+  CNAME
+  requirements.txt
+  pyproject.toml
+
+# Validation
+validation:
+  nav:
+    omitted_files: warn
+    not_found: warn
+    absolute_links: warn
+  links:
+    not_found: warn
+
+# Custom CSS and JS
+extra_css:
+  - https://fonts.googleapis.com/icon?family=Material+Icons
+  - stylesheets/extra.css

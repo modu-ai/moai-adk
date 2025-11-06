@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# @TEST:DOC-TAG-004 | Component 1: Pre-commit validator tests
+# @TEST:PRECOMMIT-001 | Component 1: Pre-commit validator tests
 """Test suite for pre-commit TAG validation
 
 This module tests the pre-commit validator that checks:
@@ -86,7 +86,7 @@ class TestDuplicateDetection:
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create test files
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-001\n")
+            file1.write_text("# @CODE:TEST-002\n")
 
             file2 = Path(tmpdir) / "file2.py"
             file2.write_text("# @CODE:TEST-002\n")
@@ -101,11 +101,11 @@ class TestDuplicateDetection:
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
             file1.write_text("""
-# @CODE:TEST-001
+# @CODE:TEST-002
 def func1():
     pass
 
-# @CODE:TEST-001
+# @CODE:TEST-002
 def func2():
     pass
 """)
@@ -121,10 +121,10 @@ def func2():
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-001\n")
+            file1.write_text("# @CODE:TEST-002\n")
 
             file2 = Path(tmpdir) / "file2.py"
-            file2.write_text("# @CODE:TEST-001\n")
+            file2.write_text("# @CODE:TEST-002\n")
 
             errors = validator.validate_duplicates([str(file1), str(file2)])
             assert len(errors) == 1
@@ -138,9 +138,9 @@ def func2():
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
             file1.write_text("""
-# @CODE:TEST-001
 # @CODE:TEST-002
-# @CODE:TEST-001
+# @CODE:TEST-002
+# @CODE:TEST-002
 # @CODE:TEST-002
 """)
 
@@ -165,7 +165,7 @@ class TestOrphanDetection:
             code_file.write_text("# @CODE:USER-REG-001\n")
 
             test_file = Path(tmpdir) / "test_auth.py"
-            test_file.write_text("# @TEST:USER-REG-001\n")
+            test_file.write_text("# @TEST:USER-REG-PRECOMMIT-001\n")
 
             doc_file = Path(tmpdir) / "README.md"
             doc_file.write_text("# @DOC:USER-REG-001\n")
@@ -195,7 +195,7 @@ class TestOrphanDetection:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             test_file = Path(tmpdir) / "test_auth.py"
-            test_file.write_text("# @TEST:USER-REG-001\n")
+            test_file.write_text("# @TEST:USER-REG-PRECOMMIT-001\n")
 
             warnings = validator.validate_orphans([str(test_file)])
             assert len(warnings) >= 1
@@ -209,7 +209,7 @@ class TestOrphanDetection:
         with tempfile.TemporaryDirectory() as tmpdir:
             # CODE without TEST
             code1 = Path(tmpdir) / "auth.py"
-            code1.write_text("# @CODE:AUTH-001\n")
+            code1.write_text("# @CODE:AUTH-004\n")
 
             # TEST without CODE
             test1 = Path(tmpdir) / "test_payment.py"
@@ -237,8 +237,8 @@ class TestFileScanningAndValidation:
             # File with duplicate TAGs
             file1 = Path(tmpdir) / "file1.py"
             file1.write_text("""
-# @CODE:TEST-001
-# @CODE:TEST-001
+# @CODE:TEST-002
+# @CODE:TEST-002
 """)
 
             result = validator.validate_files([str(file1)])
@@ -252,7 +252,7 @@ class TestFileScanningAndValidation:
         with tempfile.TemporaryDirectory() as tmpdir:
             # CODE without TEST (warning, not error)
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-001\n")
+            file1.write_text("# @CODE:TEST-002\n")
 
             result = validator.validate_files([str(file1)])
             # Warnings don't block commit by default
@@ -267,8 +267,8 @@ class TestFileScanningAndValidation:
             # Duplicate (error)
             file1 = Path(tmpdir) / "file1.py"
             file1.write_text("""
-# @CODE:TEST-001
-# @CODE:TEST-001
+# @CODE:TEST-002
+# @CODE:TEST-002
 """)
 
             # Orphan (warning)
@@ -293,7 +293,7 @@ class TestFileScanningAndValidation:
 
             # Create and stage file
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-001\n")
+            file1.write_text("# @CODE:TEST-002\n")
             subprocess.run(["git", "add", "file1.py"], cwd=tmpdir)
 
             # Create unstaged file
@@ -374,11 +374,11 @@ class TestDocumentFileExclusion:
             md_file.write_text("""
 # Contributing Guide
 
-Example @CODE:AUTH-001 in markdown
-More @CODE:AUTH-001 elsewhere
+Example @CODE:AUTH-004 in markdown
+More @CODE:AUTH-004 elsewhere
 
-Example @TEST:AUTH-001 in docs
-More @TEST:AUTH-001 in example code
+Example @TEST:AUTH-004 in docs
+More @TEST:AUTH-004 in example code
 """)
 
             # Duplicate TAGs in markdown should NOT be flagged
@@ -392,7 +392,7 @@ More @TEST:AUTH-001 in example code
 
         with tempfile.TemporaryDirectory() as tmpdir:
             readme = Path(tmpdir) / "README.md"
-            readme.write_text("Example @CODE:TEST-001\nExample @CODE:TEST-001\n")
+            readme.write_text("Example @CODE:TEST-002\nExample @CODE:TEST-002\n")
 
             result = validator.validate_files([str(readme)])
             assert result.is_valid is True
@@ -425,11 +425,11 @@ More @TEST:AUTH-001 in example code
         with tempfile.TemporaryDirectory() as tmpdir:
             py_file = Path(tmpdir) / "auth.py"
             py_file.write_text("""
-# @CODE:AUTH-001
+# @CODE:AUTH-004
 def login():
     pass
 
-# @CODE:AUTH-001  <- Duplicate in code file
+# @CODE:AUTH-004  <- Duplicate in code file
 def verify():
     pass
 """)
@@ -469,7 +469,7 @@ class TestConfigurableValidation:
         with tempfile.TemporaryDirectory() as tmpdir:
             # CODE without TEST (warning in normal mode)
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-001\n")
+            file1.write_text("# @CODE:TEST-002\n")
 
             result = validator.validate_files([str(file1)])
             # In strict mode, warnings should block commit
@@ -481,7 +481,7 @@ class TestConfigurableValidation:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-001\n")
+            file1.write_text("# @CODE:TEST-002\n")
 
             result = validator.validate_files([str(file1)])
             # No orphan warnings when check is disabled

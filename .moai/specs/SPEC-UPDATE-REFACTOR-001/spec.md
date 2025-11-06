@@ -1029,7 +1029,7 @@ Phase 6: 품질 검증
 
 - @SPEC:UPDATE-CONFIG-002 (UpdateConfiguration 타입)
 - @SPEC:UPDATE-RESULT-002 (UpdateResult 타입)
-- @SPEC:REFACTOR-001 (git-manager.ts 리팩토링 참고)
+- @SPEC:REFACTOR-002 (git-manager.ts 리팩토링 참고)
 
 ### 관련 코드
 

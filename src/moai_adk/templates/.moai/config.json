@@ -71,6 +71,7 @@
   "project": {
     "name": "{{PROJECT_NAME}}",
     "description": "{{PROJECT_DESCRIPTION}}",
+    "owner": "{{PROJECT_OWNER}}",
     "mode": "{{PROJECT_MODE}}",
     "locale": "{{CONVERSATION_LANGUAGE}}",
     "language": "{{CODEBASE_LANGUAGE}}",
@@ -103,9 +104,30 @@
     }
   },
   "hooks": {
-    "timeout_ms": 5000,
+    "timeout_ms": 3000,
     "graceful_degradation": true,
     "notes": "Hook execution timeout (milliseconds). Set graceful_degradation to true to continue even if a hook fails."
+  },
+  "auto_cleanup": {
+    "enabled": true,
+    "cleanup_days": 7,
+    "max_reports": 10,
+    "cleanup_targets": [
+      ".moai/reports/*.json",
+      ".moai/reports/*.md",
+      ".moai/cache/*",
+      ".moai/temp/*"
+    ]
+  },
+  "daily_analysis": {
+    "enabled": true,
+    "analysis_time": "00:00",
+    "analyze_sessions": true,
+    "analyze_tools": true,
+    "analyze_errors": true,
+    "analyze_permissions": true,
+    "auto_optimize": false,
+    "report_location": ".moai/reports/daily-"
   },
   "report_generation": {
     "enabled": true,

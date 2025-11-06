@@ -1,7 +1,7 @@
 ---
 name: devops-expert
 description: "Use PROACTIVELY when: Deployment configuration, CI/CD pipeline setup, containerization, cloud infrastructure, or DevOps automation is needed. Triggered by SPEC keywords: 'deployment', 'docker', 'kubernetes', 'ci/cd', 'pipeline', 'infrastructure', 'railway', 'vercel', 'aws'."
-tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, Task, mcp__github__create-or-update-file, mcp__github__push-files
+tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, Task, mcp__github__create-or-update-file, mcp__github__push-files, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 ---
 
