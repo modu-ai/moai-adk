@@ -1,15 +1,10 @@
 name: Deploy Documentation to Vercel
 
-# 트리거: main/develop 브랜치에 푸시되거나 PR이 생성되었을 때
+# GitFlow Strategy:
+# - main branch → Production (adk.mo.ai.kr)
+# - develop branch → Preview deployment
 on:
   push:
-    branches:
-      - main
-      - develop
-    paths:
-      - "docs/**"
-      - ".github/workflows/docs-deploy.yml"
-  pull_request:
     branches:
       - main
       - develop
@@ -95,8 +90,9 @@ jobs:
             exit 1
           fi
 
-      - name: 🚀 Deploy to Vercel
-        id: deploy
+      - name: 🚀 Deploy to Vercel (Production)
+        id: deploy-prod
+        if: github.ref == 'refs/heads/main'
         uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
@@ -105,30 +101,49 @@ jobs:
           working-directory: ./docs
           vercel-args: '--prod'
 
-      - name: 🔗 Get deployment URL
-        if: steps.deploy.outputs.preview-url != ''
-        run: |
-          echo "🌐 Documentation deployed successfully!"
-          echo "📖 URL: ${{ steps.deploy.outputs.preview-url }}"
-          echo ""
-          echo "🌍 Multilingual URLs:"
-          echo "  🇰🇷 Korean: ${{ steps.deploy.outputs.preview-url }}/"
-          echo "  🇺🇸 English: ${{ steps.deploy.outputs.preview-url }}/en/"
-          echo "  🇯🇵 Japanese: ${{ steps.deploy.outputs.preview-url }}/ja/"
-          echo "  🇨🇳 Chinese: ${{ steps.deploy.outputs.preview-url }}/zh/"
+      - name: 🔍 Deploy to Vercel (Preview)
+        id: deploy-preview
+        if: github.ref == 'refs/heads/develop'
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          working-directory: ./docs
 
-      - name: ✅ Deployment complete
-        if: success()
+      - name: 🔗 Production Deployment Complete
+        if: github.ref == 'refs/heads/main' && success()
         run: |
-          echo "🎉 Documentation deployment complete!"
+          echo "🎉 Production deployment complete!"
           echo ""
           echo "📊 Summary:"
           echo "  • Repository: ${{ github.repository }}"
-          echo "  • Branch: ${{ github.ref_name }}"
+          echo "  • Branch: main (production)"
           echo "  • Commit: ${{ github.sha }}"
-          echo "  • URL: ${{ steps.deploy.outputs.preview-url }}"
+          echo "  • Production URL: https://adk.mo.ai.kr"
           echo ""
-          echo "🌐 Access documentation at: ${{ steps.deploy.outputs.preview-url }}"
+          echo "🌍 Multilingual URLs:"
+          echo "  🇰🇷 Korean: https://adk.mo.ai.kr/"
+          echo "  🇺🇸 English: https://adk.mo.ai.kr/en/"
+          echo "  🇯🇵 Japanese: https://adk.mo.ai.kr/ja/"
+          echo "  🇨🇳 Chinese: https://adk.mo.ai.kr/zh/"
+
+      - name: 🔗 Preview Deployment Complete
+        if: github.ref == 'refs/heads/develop' && success()
+        run: |
+          echo "🔍 Preview deployment complete!"
+          echo ""
+          echo "📊 Summary:"
+          echo "  • Repository: ${{ github.repository }}"
+          echo "  • Branch: develop (preview)"
+          echo "  • Commit: ${{ github.sha }}"
+          echo "  • Preview URL: ${{ steps.deploy-preview.outputs.preview-url }}"
+          echo ""
+          echo "🌍 Multilingual Preview URLs:"
+          echo "  🇰🇷 Korean: ${{ steps.deploy-preview.outputs.preview-url }}/"
+          echo "  🇺🇸 English: ${{ steps.deploy-preview.outputs.preview-url }}/en/"
+          echo "  🇯🇵 Japanese: ${{ steps.deploy-preview.outputs.preview-url }}/ja/"
+          echo "  🇨🇳 Chinese: ${{ steps.deploy-preview.outputs.preview-url }}/zh/"
 
       - name: ❌ Deployment failed
         if: failure()

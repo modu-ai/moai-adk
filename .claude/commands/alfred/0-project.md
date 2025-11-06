@@ -18,38 +18,36 @@ allowed-tools:
 
 # 📋 MoAI-ADK Step 0: Initialize/Update Universal Language Support Project Documentation
 
-> **Note**: Interactive prompts use `AskUserQuestion 도구 (moai-alfred-ask-user-questions 스킬 참조)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
+> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
 ## 🎯 Command Purpose
 
-Automatically analyzes the project environment to create/update product/structure/tech.md documents and configure language-specific optimization settings.
+Automatically analyzes the project environment to create/update product/structure/tech.md documents and configure language-specific optimization settings with **language-first contextual flows**.
+
+## 🌐 Language-First Architecture (CRITICAL)
+
+**Core Principle**: Language selection ALWAYS happens BEFORE any other configuration or operations.
+
+### Language-First Flow Rules
+1. **Language First**: Language selection is the VERY FIRST step in ANY flow
+2. **Context Persistence**: Once selected, ALL subsequent interactions use that language
+3. **Flow Adaptation**: Each flow (fresh install/update/settings) adapts based on language context
+4. **Settings Respect**: Existing language settings are confirmed before any operations
+
+### Contextual Flow Differentiation
+| Context | Language Handling | Flow Type | Key Features |
+|---------|-------------------|-----------|--------------|
+| **Fresh Install** | Language selection FIRST | Installation questionnaire | Complete setup, language-aware documentation |
+| **Update Mode** | Language confirmation FIRST | Update/merge questionnaire | Template optimization, language-aware updates |
+| **Existing Project** | Language confirmation FIRST | Settings modification options | Language change priority, contextual settings |
 
 ## 📋 Execution Flow
 
 **Step 1: Command Routing** - Detect subcommand and route to appropriate workflow
-**Step 2: Mode Execution** - Execute initialization, settings, or update workflow
-**Step 3: Skills Integration** - Use specialized skills for complex operations
-**Step 4: Completion** - Provide next step options to user
-
-## 🚀 Initialize Project with JIT Skills
-
-Before starting project initialization, load essential JIT skills for enhanced setup:
-
-```python
-# Load session information for comprehensive project context
-Skill("moai-session-info")
-
-# Load streaming UI for progress indication during setup
-Skill("moai-streaming-ui")
-
-# Load change logger for tracking initialization changes
-Skill("moai-change-logger")
-
-# Load learning optimizer for adaptive project setup
-Skill("moai-learning-optimizer")
-```
-
-This provides comprehensive context, progress tracking, change logging, and adaptive setup during project initialization.
+**Step 2: Language Context Establishment** - ALWAYS determine/confirm language FIRST
+**Step 3: Contextual Flow Execution** - Execute appropriate contextual flow
+**Step 4: Skills Integration** - Use specialized skills with language context
+**Step 5: Completion** - Provide next step options in selected language
 
 ## 🧠 Associated Skills & Agents
 
@@ -128,23 +126,26 @@ The user executes the `/alfred:0-project` command to start analyzing the project
 
 **IF user typed: `/alfred:0-project setting`**:
 1. Print: "🔧 Entering Settings Mode - Modify existing project configuration"
-2. Jump to **SETTINGS MODE** below
-3. Skip ALL other sections
-4. Stop after completing SETTINGS MODE
-5. **DO NOT proceed** to other workflows
+2. **IMPORTANT**: Language context will be established in SETTINGS MODE
+3. Jump to **SETTINGS MODE** below
+4. Skip ALL other sections
+5. Stop after completing SETTINGS MODE
+6. **DO NOT proceed** to other workflows
 
 **ELSE IF user typed: `/alfred:0-project update`**:
 1. Print: "🔄 Entering Template Update Mode - Optimize templates after moai-adk update"
-2. Jump to **UPDATE MODE** below
-3. Skip ALL other sections
-4. Stop after completing UPDATE MODE
-5. **DO NOT proceed** to other workflows
+2. **IMPORTANT**: Language context will be established FIRST in UPDATE MODE
+3. Jump to **UPDATE MODE** below
+4. Skip ALL other sections
+5. Stop after completing UPDATE MODE
+6. **DO NOT proceed** to other workflows
 
 **ELSE IF user typed: `/alfred:0-project` (no subcommand, nothing after)**:
 1. Check if the file `.moai/config.json` exists in the current directory
    - Read the file path: `.moai/config.json`
    - IF file exists → Print "✅ Project is already initialized!" AND jump to **AUTO-DETECT MODE**
    - IF file does NOT exist → Print "🚀 Starting first-time project initialization..." AND jump to **INITIALIZATION MODE**
+   - **CRITICAL**: Both modes will establish language context FIRST
 
 **ELSE IF user typed an invalid subcommand** (like `/alfred:0-project xyz`):
 1. Print this error message:
@@ -176,36 +177,68 @@ The user executes the `/alfred:0-project` command to start analyzing the project
 
 **When to execute**: `/alfred:0-project setting` OR user selected "Modify Settings" from auto-detect mode
 
-### Step 1: Load and validate configuration
+### Step 1: Language-First Settings Context
+**IMPORTANT**: Always establish language context BEFORE any settings modifications.
+
+1. **Check `.moai/config.json`** for existing language settings
+2. **Language Confirmation** (in current language):
+   - If no config exists → **STOP** and redirect to INITIALIZATION MODE
+   - If config exists → Display current language and confirm
+3. **Set Settings Language Context**: ALL settings interactions in confirmed language
+
+### Step 2: Load and Display Current Configuration (in confirmed language)
 1. **Read `.moai/config.json`** to verify it exists and is valid JSON
-2. **Extract and display current settings**:
+2. **Extract and display current settings** (in confirmed language):
    ```
-   ✅ **Language**: [value from language.conversation_language]
-   ✅ **Nickname**: [value from user.nickname]
-   ✅ **Agent Prompt Language**: [value from language.agent_prompt_language]
-   ✅ **GitHub Auto-delete Branches**: [value from github.auto_delete_branches]
-   ✅ **SPEC Git Workflow**: [value from github.spec_git_workflow]
-   ✅ **Report Generation**: [value from report_generation.user_choice]
-   ✅ **Selected Domains**: [value from stack.selected_domains]
+   ✅ **언어**: [language.conversation_language_name]
+   ✅ **닉네임**: [user.nickname]
+   ✅ **에이전트 프롬프트 언어**: [language.agent_prompt_language]
+   ✅ **GitHub 자동 브랜치 삭제**: [github.auto_delete_branches]
+   ✅ **SPEC Git 워크플로우**: [github.spec_git_workflow]
+   ✅ **보고서 생성**: [report_generation.user_choice]
+   ✅ **선택된 도메인**: [stack.selected_domains]
    ```
 
-### Step 2: Use Config Manager Skill
+### Step 3: Language Change Option (CRITICAL)
+**Before showing other settings, offer language change first** (in confirmed language):
+
+1. **Language Priority Question**:
+   - "언어 설정을 변경하시겠습니까?" (in Korean)
+   - "Would you like to change language settings?" (in English)
+   - Options: "Change Language" | "Keep Current" | "Show All Settings"
+
+2. **IF user selects "Change Language"**:
+   ```python
+   Skill("moai-project-language-initializer", mode="language_change_only")
+   ```
+   - Update language context
+   - Restart settings mode in new language
+
+3. **IF user selects "Keep Current" or "Show All Settings"**:
+   - Continue with current language context
+   - Proceed to Step 4
+
+### Step 4: Use Config Manager Skill (Language-Aware)
 ```python
-Skill("moai-project-config-manager")
+Skill("moai-project-config-manager", language=confirmed_language)
 ```
 
-**Purpose**: Let the skill handle all configuration modification workflows
-**The skill will**:
-- Ask which settings to modify
-- Collect new values using batched questions
+**Purpose**: Let the skill handle all configuration modification workflows with language context
+**The skill will** (in confirmed language):
+- Ask which settings to modify (using batched questions in confirmed language)
+- Collect new values using batched questions in confirmed language
 - Update config.json with proper merge strategy
-- Handle validation and error recovery
-- Provide completion report
+- Handle validation and error recovery with language-appropriate messages
+- Provide completion report in confirmed language
 
-### Step 3: Exit after completion
-1. **Print**: "✅ Settings update completed!"
-2. **Do NOT proceed** to any other workflows
-3. **End command execution**
+### Step 5: Exit after completion (in confirmed language)
+1. **Print**: "✅ 설정 업데이트 완료!" (or equivalent in confirmed language)
+2. **Offer Next Steps** (in confirmed language):
+   - Option 1: "추가 설정 수정" → Continue settings mode
+   - Option 2: "프로젝트 문서 생성" → Guide to `/alfred:1-plan`
+   - Option 3: "종료" → End command
+3. **Do NOT proceed** to any other workflows
+4. **End command execution**
 
 ---
 
@@ -213,28 +246,66 @@ Skill("moai-project-config-manager")
 
 **When to execute**: `/alfred:0-project update` OR user selected template optimization
 
-### Step 1: Check for backups and templates
-1. **Check `.moai-backups/` directory** for existing backups
-2. **Check template versions** vs current project files
-3. **Analyze what needs optimization**
+### Step 1: Language-First Update Context Detection
+**IMPORTANT**: Always establish language context BEFORE any update operations.
 
-### Step 2: Use Template Optimizer Skill
+1. **Check `.moai/config.json`** for existing language settings
+2. **Language Confirmation** (in current language):
+   - If no config exists → Run language selection FIRST
+   - If config exists → Confirm current language settings
+3. **Set Update Language Context**: ALL update interactions in confirmed language
+
+### Step 2: Contextual Update Analysis
+**Analyze the update context** (in confirmed language):
+
+1. **Update Type Detection**:
+   ```
+   🔍 **업데이트 유형 분석 중...**
+   ✅ **moai-adk 버전 변경 감지**: [version detection]
+   ✅ **백업 파일 발견**: [backup analysis]
+   ✅ **템플릿 변경 사항**: [template differences]
+   ```
+
+2. **Backup Discovery**:
+   - Check `.moai-backups/` directory for existing backups
+   - Analyze backup versions and completeness
+   - Identify which backup to use for comparison
+
+3. **Template Comparison**:
+   - Check template versions vs current project files
+   - Analyze what needs optimization
+   - Detect user customizations vs template defaults
+
+### Step 3: Use Template Optimizer Skill (Language-Aware)
 ```python
-Skill("moai-project-template-optimizer")
+Skill("moai-project-template-optimizer", mode="update", language=confirmed_language)
 ```
 
-**Purpose**: Let the skill handle template comparison and optimization
-**The skill will**:
+**Purpose**: Let the skill handle template comparison and optimization with language context
+**The skill will** (in confirmed language):
 - Detect and analyze existing backups
 - Compare current templates with backup files
 - Perform smart merging to preserve user customizations
 - Update optimization flags in config.json
-- Generate completion report
+- Generate completion report in confirmed language
 
-### Step 3: Exit after completion
-1. **Print**: "✅ Template optimization completed!"
-2. **Do NOT proceed** to any other workflows
-3. **End command execution**
+### Step 4: Update Confirmation and Completion (in confirmed language)
+1. **Display Update Results** (in confirmed language):
+   ```
+   ✅ **템플릿 최적화 완료!**
+   📊 **업데이트된 파일**: [number]개
+   🔧 **사용자 정의 유지**: [number]개
+   📝 **생성된 보고서**: [report location]
+   ```
+
+2. **Ask for Next Steps** (in confirmed language):
+   - Option 1: "업데이트 내용 검토" → Show detailed changes
+   - Option 2: "설정 수정" → Go to settings mode
+   - Option 3: "종료" → End command
+
+3. **Exit after completion**
+4. **Do NOT proceed** to any other workflows
+5. **End command execution**
 
 ---
 
@@ -242,42 +313,65 @@ Skill("moai-project-template-optimizer")
 
 **When to execute**: `/alfred:0-project` with no existing config.json
 
-### Step 1: Project environment analysis
-1. **Display**: "🚀 Starting first-time project initialization..."
-2. **Analyze** project structure and detect:
-   - Project type (new vs existing)
-   - Codebase language (Python, TypeScript, etc.)
-   - Existing documentation status
+### Step 1: Language-First Initialization (CRITICAL)
+**IMPORTANT**: Language selection MUST happen BEFORE any other configuration.
 
-### Step 2: Use Language Initializer Skill
+1. **Display**: "🚀 Starting first-time project initialization..."
+2. **Immediate Language Selection**: Use Language Initializer Skill FIRST
+   ```python
+   Skill("moai-project-language-initializer", mode="language_first")
+   ```
+3. **Language Detection Strategy**:
+   - Check environment variables (LANG, locale)
+   - Detect from system settings
+   - Present language options immediately
+4. **Language Confirmation**: Display selected language and confirm
+5. **Set Language Context**: ALL subsequent interactions MUST use selected language
+
+### Step 2: Contextual Fresh Install Flow
+**After language selection, proceed with fresh install workflow**:
+
 ```python
-Skill("moai-project-language-initializer")
+Skill("moai-project-language-initializer", mode="fresh_install", language=selected_language)
 ```
 
-**Purpose**: Let the skill handle comprehensive project setup
-**The skill will**:
-- Collect language preferences
-- Set up user nickname and profile
-- Configure team mode settings if applicable
-- Select project domains
-- Configure report generation settings
-- Create initial `.moai/config.json`
+**Fresh Install Process**:
+1. **User Profile Collection** (in selected language):
+   - Nickname and user preferences
+   - Experience level and role
+   - Team vs personal mode selection
 
-### Step 3: Proceed to project documentation creation
+2. **Project Analysis** (language-aware):
+   - Detect project type and codebase language
+   - Analyze existing structure (if any)
+   - Identify technology stack
+
+3. **Comprehensive Configuration** (in selected language):
+   - Team settings (if team mode)
+   - Domain selection
+   - Report generation preferences
+   - GitHub and Git workflow configuration
+
+4. **Create Initial Configuration**:
+   - Generate complete `.moai/config.json`
+   - Validate all settings
+   - Set up language-specific configurations
+
+### Step 3: Project Documentation Creation (Language-Aware)
 1. **Invoke**: `Task` with `project-manager` agent
-2. **Purpose**: Create product/structure/tech.md documents
-3. **Parameters**: Pass language and user preferences from the language initializer
+2. **Pass Language Context**: Ensure all documentation in selected language
+3. **Parameters**: Language, user preferences, project context
 4. **The agent will**:
    - Conduct environmental analysis
-   - Create interview strategy
-   - Generate project documentation
+   - Create interview strategy in selected language
+   - Generate project documentation in selected language
 
-### Step 4: Completion and next steps
-1. **Print**: "✅ Project initialization completed!"
-2. **Ask user what to do next** using AskUserQuestion:
-   - Option 1: "Write Specifications" → Guide to `/alfred:1-plan`
-   - Option 2: "Review Project Structure" → Show current state
-   - Option 3: "Start New Session" → Guide to `/clear`
+### Step 4: Completion and Next Steps (in selected language)
+1. **Print**: "✅ 프로젝트 초기화가 완료되었습니다!" (or equivalent in selected language)
+2. **Ask user what to do next** using AskUserQuestion (in selected language):
+   - Option 1: "사양서 작성" → Guide to `/alfred:1-plan`
+   - Option 2: "프로젝트 구조 검토" → Show current state
+   - Option 3: "새 세션 시작" → Guide to `/clear`
 3. **End command execution**
 
 ---
@@ -286,28 +380,56 @@ Skill("moai-project-language-initializer")
 
 **When to execute**: `/alfred:0-project` with existing config.json
 
-### Step 1: Load and display current configuration
-1. **Read `.moai/config.json`** to get current settings
-2. **Display current project status**:
+### Step 1: Language-First Context Detection
+**IMPORTANT**: Always confirm/establish language context FIRST.
+
+1. **Read `.moai/config.json`** to get current language settings
+2. **Display Language Confirmation** (in current language):
    ```
-   ✅ **Language**: [value from language.conversation_language]
-   ✅ **Nickname**: [value from user.nickname]
-   ✅ **Agent Prompt Language**: [value from language.agent_prompt_language]
-   ✅ **GitHub Auto-delete Branches**: [value from github.auto_delete_branches]
-   ✅ **SPEC Git Workflow**: [value from github.spec_git_workflow]
-   ✅ **Report Generation**: [value from report_generation.user_choice]
-   ✅ **Selected Domains**: [value from stack.selected_domains]
+   ✅ **현재 언어 설정**: [language.conversation_language_name]
+   ✅ **대화 언어**: [language.conversation_language]
+   ```
+3. **Language Confirmation Question** (in current language):
+   - "현재 언어 설정을 계속 사용하시겠습니까?" (in Korean)
+   - "Continue using current language settings?" (in English)
+   - Options: "Continue" | "Change Language" | "Show Current Settings"
+
+### Step 2: Language Context Handling
+**IF user selects "Change Language"**:
+1. **Immediate Language Selection**:
+   ```python
+   Skill("moai-project-language-initializer", mode="language_change_only")
+   ```
+2. **Update Language Context**: Switch ALL subsequent interactions to new language
+3. **Update Configuration**: Save new language settings
+4. **Continue with new language context**
+
+**IF user selects "Continue" or "Show Current Settings"**:
+1. **Maintain Current Language Context**
+2. **Proceed to Step 3** with confirmed language
+
+### Step 3: Display Current Configuration (in confirmed language)
+1. **Read `.moai/config.json`** to get all current settings
+2. **Display current project status** (in confirmed language):
+   ```
+   ✅ **언어**: [language.conversation_language_name]
+   ✅ **닉네임**: [user.nickname]
+   ✅ **에이전트 프롬프트 언어**: [language.agent_prompt_language]
+   ✅ **GitHub 자동 브랜치 삭제**: [github.auto_delete_branches]
+   ✅ **SPEC Git 워크플로우**: [github.spec_git_workflow]
+   ✅ **보고서 생성**: [report_generation.user_choice]
+   ✅ **선택된 도메인**: [stack.selected_domains]
    ```
 
-### Step 2: Ask what user wants to do
-**Present these 4 options** to the user (let them choose one):
+### Step 4: Ask what user wants to do (in confirmed language)
+**Present these 4 options** to the user (in confirmed language):
 
-1. **"🔧 Modify Settings"** - Change language, nickname, GitHub settings, or reports config
-2. **"📋 Review Current Setup"** - Display full current project configuration
-3. **"🔄 Re-initialize"** - Run full initialization again (with warning)
-4. **"⏸️ Cancel"** - Exit without making any changes
+1. **"🔧 설정 수정"** - Change language, nickname, GitHub settings, or reports config
+2. **"📋 현재 설정 검토"** - Display full current project configuration
+3. **"🔄 다시 초기화"** - Run full initialization again (with warning)
+4. **"⏸️ 취소"** - Exit without making any changes
 
-### Step 3: Handle user selection
+### Step 6: Handle user selection
 
 **IF user selected: "🔧 Modify Settings"**:
 1. Print: "🔧 Entering Settings Mode..."
@@ -382,28 +504,31 @@ AskUserQuestion(
 
 ## 🎯 Key Improvements Achieved
 
+### ✅ Language-First Architecture
+- **Core Principle**: Language selection ALWAYS happens before any other configuration
+- **Context Persistence**: Once selected, ALL subsequent interactions use that language
+- **Flow Adaptation**: Each flow (fresh install/update/settings) adapts based on language context
+- **Improvement**: Eliminates language confusion and ensures consistent user experience
+
+### ✅ Contextual Flow Differentiation
+- **Fresh Install**: Language selection → Installation questionnaire → Setup completion
+- **Update Mode**: Language confirmation → Update/merge options → Optimization
+- **Existing Project**: Language confirmation → Settings options or re-initialization
+- **Improvement**: Clear separation between installation types with appropriate workflows
+
 ### ✅ Modular Architecture
 - **Original**: 3,647 lines in single monolithic file
-- **Optimized**: ~500 lines main router + 4 specialized skills
-- **Improvement**: 86% size reduction in main file
+- **Optimized**: ~600 lines main router + 4 specialized skills
+- **Improvement**: 83% size reduction in main file with enhanced functionality
 
 ### ✅ Skills-Based Delegation
-- **Language Initializer**: Handles all user setup workflows (70% smaller)
-- **Config Manager**: Manages all configuration operations
+- **Language Initializer**: Handles language-first project setup workflows
+- **Config Manager**: Manages all configuration operations with language context
 - **Template Optimizer**: Handles template comparison and optimization
-- **Batch Questions**: Standardizes user interaction patterns
+- **Batch Questions**: Standardizes user interaction patterns with language support
 
-### ✅ Simplified Routing
-- **Clear command parsing**: Detect subcommand and route directly
-- **Mode isolation**: Each mode runs independently
-- **Skill delegation**: Complex operations handled by specialized skills
-
-### ✅ Enhanced Maintainability
-- **Separation of concerns**: Each skill has clear responsibility
-- **Reusability**: Skills can be used by other commands
-- **Testability**: Each component can be tested independently
-
-### ✅ Improved User Experience
-- **Faster execution**: Skills optimized for specific tasks
-- **Better error handling**: Specialized error recovery in each skill
-- **Clearer workflows**: Direct routing without nested complexity
+### ✅ Enhanced User Experience
+- **Language-First Interactions**: All user-facing content respects language selection
+- **Contextual Workflows**: Each flow type provides appropriate options and guidance
+- **Faster Execution**: Skills optimized for specific tasks with language awareness
+- **Better Error Handling**: Specialized error recovery with language-appropriate messages

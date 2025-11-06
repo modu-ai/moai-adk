@@ -84,12 +84,12 @@ class TestDuplicateDetection:
         validator = PreCommitValidator()
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            # Create test files
+            # Create test files with UNIQUE TAGs
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-002\n")
+            file1.write_text("# @CODE:UNIQUE-001\n")
 
             file2 = Path(tmpdir) / "file2.py"
-            file2.write_text("# @CODE:TEST-002\n")
+            file2.write_text("# @CODE:UNIQUE-002\n")
 
             errors = validator.validate_duplicates([str(file1), str(file2)])
             assert len(errors) == 0
@@ -101,18 +101,18 @@ class TestDuplicateDetection:
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
             file1.write_text("""
-# @CODE:TEST-002
+# @CODE:DUPLIC-001
 def func1():
     pass
 
-# @CODE:TEST-002
+# @CODE:DUPLIC-001
 def func2():
     pass
 """)
 
             errors = validator.validate_duplicates([str(file1)])
             assert len(errors) == 1
-            assert "TEST-001" in errors[0].tag
+            assert "DUPLIC-001" in errors[0].tag
             assert "duplicate" in errors[0].message.lower()
 
     def test_duplicate_across_files(self):
@@ -121,14 +121,14 @@ def func2():
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-002\n")
+            file1.write_text("# @CODE:CROSS-001\n")
 
             file2 = Path(tmpdir) / "file2.py"
-            file2.write_text("# @CODE:TEST-002\n")
+            file2.write_text("# @CODE:CROSS-001\n")
 
             errors = validator.validate_duplicates([str(file1), str(file2)])
             assert len(errors) == 1
-            assert "TEST-001" in errors[0].tag
+            assert "CROSS-001" in errors[0].tag
             assert len(errors[0].locations) == 2
 
     def test_multiple_duplicates(self):
@@ -138,14 +138,17 @@ def func2():
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
             file1.write_text("""
-# @CODE:TEST-002
-# @CODE:TEST-002
-# @CODE:TEST-002
-# @CODE:TEST-002
+# @CODE:MULTI-001
+# @CODE:MULTI-001
+# @CODE:MULTI-002
+# @CODE:MULTI-002
 """)
 
             errors = validator.validate_duplicates([str(file1)])
-            assert len(errors) == 2  # TEST-001 and TEST-002 both duplicated
+            assert len(errors) == 2  # MULTI-001 and MULTI-002 both duplicated
+            tag_ids = {error.tag for error in errors}
+            assert any("MULTI-001" in tag for tag in tag_ids)
+            assert any("MULTI-002" in tag for tag in tag_ids)
 
 
 class TestOrphanDetection:
@@ -237,8 +240,8 @@ class TestFileScanningAndValidation:
             # File with duplicate TAGs
             file1 = Path(tmpdir) / "file1.py"
             file1.write_text("""
-# @CODE:TEST-002
-# @CODE:TEST-002
+# @CODE:ERROR-001
+# @CODE:ERROR-001
 """)
 
             result = validator.validate_files([str(file1)])
@@ -252,7 +255,7 @@ class TestFileScanningAndValidation:
         with tempfile.TemporaryDirectory() as tmpdir:
             # CODE without TEST (warning, not error)
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-002\n")
+            file1.write_text("# @CODE:WARN-001\n")
 
             result = validator.validate_files([str(file1)])
             # Warnings don't block commit by default
@@ -267,13 +270,13 @@ class TestFileScanningAndValidation:
             # Duplicate (error)
             file1 = Path(tmpdir) / "file1.py"
             file1.write_text("""
-# @CODE:TEST-002
-# @CODE:TEST-002
+# @CODE:MIXED-001
+# @CODE:MIXED-001
 """)
 
             # Orphan (warning)
             file2 = Path(tmpdir) / "file2.py"
-            file2.write_text("# @CODE:TEST-002\n")
+            file2.write_text("# @CODE:ORPH-001\n")
 
             result = validator.validate_files([str(file1), str(file2)])
             assert result.is_valid is False
@@ -293,12 +296,12 @@ class TestFileScanningAndValidation:
 
             # Create and stage file
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-002\n")
+            file1.write_text("# @CODE:STAGE-001\n")
             subprocess.run(["git", "add", "file1.py"], cwd=tmpdir)
 
             # Create unstaged file
             file2 = Path(tmpdir) / "file2.py"
-            file2.write_text("# @CODE:TEST-002\n")
+            file2.write_text("# @CODE:UNSTAGE-001\n")
 
             staged_files = validator.get_staged_files(tmpdir)
             assert "file1.py" in staged_files
@@ -392,7 +395,7 @@ More @TEST:AUTH-004 in example code
 
         with tempfile.TemporaryDirectory() as tmpdir:
             readme = Path(tmpdir) / "README.md"
-            readme.write_text("Example @CODE:TEST-002\nExample @CODE:TEST-002\n")
+            readme.write_text("Example @CODE:README-001\nExample @CODE:README-001\n")
 
             result = validator.validate_files([str(readme)])
             assert result.is_valid is True

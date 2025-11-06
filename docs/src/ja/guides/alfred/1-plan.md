@@ -1,8 +1,6 @@
----
-title: /alfred:1-plan コマンド
-description: SPEC作成と要件定義のための完全ガイド
-lang: ja
----
+______________________________________________________________________
+
+## title: /alfred:1-plan コマンド description: SPEC作成と要件定義のための完全ガイド lang: ja
 
 # /alfred:1-plan - SPEC作成コマンド
 
@@ -10,9 +8,7 @@ lang: ja
 
 ## 概要
 
-**目的**: 明確な要件定義と実装計画の作成
-**実行時間**: 約2分
-**主要成果**: SPEC文書、プランボード、ブランチ
+**目的**: 明確な要件定義と実装計画の作成 **実行時間**: 約2分 **主要成果**: SPEC文書、プランボード、ブランチ
 
 ## 基本使用法
 
@@ -112,23 +108,23 @@ author: @user
 
 特定のキーワードを検出して専門家を自動的に活性化：
 
-| キーワード | 活性化される専門家 | 提供内容 |
-|-----------|------------------|----------|
-| 'api', 'backend', 'server' | backend-expert | アーキテクチャ設計 |
-| 'database', 'storage' | database-expert | データモデリング |
-| 'security', 'auth' | security-expert | セキュリティ分析 |
-| 'frontend', 'ui' | frontend-expert | UI/UX設計 |
-| 'performance', 'scale' | devops-expert | 性能最適化 |
+| キーワード                 | 活性化される専門家 | 提供内容           |
+| -------------------------- | ------------------ | ------------------ |
+| 'api', 'backend', 'server' | backend-expert     | アーキテクチャ設計 |
+| 'database', 'storage'      | database-expert    | データモデリング   |
+| 'security', 'auth'         | security-expert    | セキュリティ分析   |
+| 'frontend', 'ui'           | frontend-expert    | UI/UX設計          |
+| 'performance', 'scale'     | devops-expert      | 性能最適化         |
 
 #### 専門家アドバイス例
 
 ```
-<span class="material-icons">settings</span> backend-expertのアドバイス:
+⚙️ backend-expertのアドバイス:
 - FastAPIは良い選択です。自動APIドキュメンテーション機能があります
 - エンドポイントのバージョニングを検討してください
 - レート制限の実装を推奨します
 
-<span class="material-icons">lock</span> security-expertのアドバイス:
+🔒 security-expertのアドバイス:
 - 入力検証は重要です。すべてのユーザー入力を検証してください
 - エラーメッセージは情報漏洩しないように一般的な内容にしてください
 - ログ記録を通じてセキュリティイベントを監視してください
@@ -138,24 +134,19 @@ author: @user
 
 ### 1. SPEC文書
 
-**場所**: `.moai/specs/SPEC-{ID}/spec.md`
-**内容**: EARS形式の要件定義
-**TAG**: `@SPEC:EX-{ID}`
+**場所**: `.moai/specs/SPEC-{ID}/spec.md` **内容**: EARS形式の要件定義 **TAG**: `@SPEC:EX-{ID}`
 
 ### 2. プランボード
 
-**場所**: `.moai/specs/SPEC-{ID}/plan.md`
-**内容**: 実装計画、リスク分析、解決戦略
+**場所**: `.moai/specs/SPEC-{ID}/plan.md` **内容**: 実装計画、リスク分析、解決戦略
 
 ### 3. 受諾基準
 
-**場所**: `.moai/specs/SPEC-{ID}/acceptance.md`
-**内容**: 検証基準、テストケース
+**場所**: `.moai/specs/SPEC-{ID}/acceptance.md` **内容**: 検証基準、テストケース
 
 ### 4. Gitブランチ（チームモード）
 
-**名前**: `feature/SPEC-{ID}`
-**用途**: 機能開発用分離ブランチ
+**名前**: `feature/SPEC-{ID}` **用途**: 機能開発用分離ブランチ
 
 ## 高度な機能
 
@@ -223,11 +214,11 @@ grep "status:" .moai/specs/SPEC-HELLO-001/spec.md
 
 ### SPEC品質チェックリスト
 
-- <span class="material-icons">check_circle</span> **明確性**: すべての要件が明確で曖昧さがない
-- <span class="material-icons">check_circle</span> **完全性**: 必要なすべての機能が含まれている
-- <span class="material-icons">check_circle</span> **一貫性**: 用語と構造が一貫している
-- <span class="material-icons">check_circle</span> **検証可能性**: 各要件がテスト可能
-- <span class="material-icons">check_circle</span> **追跡可能性**: @TAGで追跡可能
+- ✅ **明確性**: すべての要件が明確で曖昧さがない
+- ✅ **完全性**: 必要なすべての機能が含まれている
+- ✅ **一貫性**: 用語と構造が一貫している
+- ✅ **検証可能性**: 各要件がテスト可能
+- ✅ **追跡可能性**: @TAGで追跡可能
 
 ### EARSパターン検証
 
@@ -260,6 +251,7 @@ grep -E "(WHEN|WHILE|WHERE|システムは.*すべきである)" .moai/specs/SPE
 ### 1. 良い要件定義
 
 **悪い例**:
+
 ```
 - ユーザー機能
 - ログイン作成
@@ -267,6 +259,7 @@ grep -E "(WHEN|WHILE|WHERE|システムは.*すべきである)" .moai/specs/SPE
 ```
 
 **良い例**:
+
 ```
 - WHEN 有効なメールとパスワードが提供されたら、システムはJWTトークンを発行すべきである
 - WHILE ユーザーが認証されている時、保護されたリソースへのアクセスを許可すべきである
@@ -299,6 +292,7 @@ grep -E "(WHEN|WHILE|WHERE|システムは.*すべきである)" .moai/specs/SPE
 ### よくある問題
 
 **SPECが作成されない**:
+
 ```bash
 # プロジェクト状態確認
 moai-adk doctor
@@ -311,12 +305,14 @@ ls .claude/agents/ .claude/skills/
 ```
 
 **内容が不十分**:
+
 ```bash
 # より詳細な説明で再実行
 /alfred:1-plan "GET /users/{id} - パスパラメータでユーザーIDを受け取り、ユーザー情報をJSON形式で返す。存在しない場合は404エラーを返す"
 ```
 
 **専門家が活性化されない**:
+
 ```bash
 # キーワードを明確に含める
 /alfred:1-plan "API endpoint for user authentication with JWT tokens and database integration"
@@ -349,9 +345,10 @@ ls .claude/agents/ .claude/skills/
 → ラベル自動付与
 ```
 
----
+______________________________________________________________________
 
-**<span class="material-icons">auto_stories</span> 次のステップ**:
+**📚 次のステップ**:
+
 - [/alfred:2-run](2-run.md)でTDD実装
 - [TDDガイド](../tdd/index.md)でテスト駆動開発
 - [SPECガイド](../specs/basics.md)で仕様書作成技術

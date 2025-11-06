@@ -1,36 +1,43 @@
 # Phase 1: Plan - Specification Creation
 
-The `/alfred:1-plan` command transforms your ideas into clear, executable specifications using the EARS (Easy Approach to Requirements Syntax) format. This phase is critical for ensuring everyone understands exactly what needs to be built.
+The `/alfred:1-plan` command transforms your ideas into clear, executable specifications using the
+EARS (Easy Approach to Requirements Syntax) format. This phase is critical for ensuring everyone
+understands exactly what needs to be built.
 
 ## Overview
 
-**Purpose**: Create comprehensive specifications that serve as the foundation for implementation, testing, and documentation.
+**Purpose**: Create comprehensive specifications that serve as the foundation for implementation,
+testing, and documentation.
 
 **Command Format**:
+
 ```bash
 /alfred:1-plan "Brief description of what you want to build"
 ```
 
-**Typical Duration**: 2-5 minutes
-**Output**: Professional specification document with unique ID
+**Typical Duration**: 2-5 minutes **Output**: Professional specification document with unique ID
 
 ## Alfred's Planning Process
 
 ### Step 1: Requirement Analysis
 
-When you invoke `/alfred:1-plan`, Alfred's **spec-builder** analyzes your input through multiple lenses:
+When you invoke `/alfred:1-plan`, Alfred's **spec-builder** analyzes your input through multiple
+lenses:
 
 1. **Natural Language Processing**
+
    - Extract key requirements from your description
    - Identify entities, actions, and constraints
    - Detect implied requirements and edge cases
 
 2. **Domain Classification**
+
    - Categorize the request (API, UI, database, etc.)
    - Identify relevant domain experts to consult
    - Determine complexity and scope
 
 3. **Scope Definition**
+
    - Define what's in scope vs. out of scope
    - Estimate implementation complexity
    - Identify dependencies and prerequisites
@@ -40,6 +47,7 @@ When you invoke `/alfred:1-plan`, Alfred's **spec-builder** analyzes your input 
 Alfred automatically generates a complete specification with these components:
 
 #### YAML Frontmatter
+
 ```yaml
 ---
 id: AUTH-001
@@ -68,6 +76,7 @@ Alfred structures requirements using the 5 EARS patterns:
 5. **Unwanted Behaviors** (Constraints and limitations)
 
 #### Implementation Plan
+
 - Architecture recommendations
 - Technology stack suggestions
 - Risk assessment
@@ -78,24 +87,28 @@ Alfred structures requirements using the 5 EARS patterns:
 Based on domain classification, Alfred automatically consults relevant expert agents:
 
 **Backend Keywords** (`api`, `server`, `database`):
+
 ```bash
 # Triggers backend-expert
 /alfred:1-plan "REST API for user management with PostgreSQL database"
 ```
 
 **Frontend Keywords** (`ui`, `component`, `page`):
+
 ```bash
 # Triggers frontend-expert
 /alfred:1-plan "User dashboard with profile management interface"
 ```
 
 **Security Keywords** (`auth`, `security`, `encryption`):
+
 ```bash
 # Triggers security-expert
 /alfred:1-plan "Secure authentication system with MFA support"
 ```
 
 Each expert provides:
+
 - **Architecture recommendations**
 - **Technology suggestions**
 - **Risk analysis**
@@ -118,16 +131,19 @@ Alfred creates a complete specification package:
 ### Good Plan Requests
 
 **Specific and Clear**:
+
 ```bash
 /alfred:1-plan "REST API for user authentication with JWT tokens, email/password login, and refresh token support"
 ```
 
 **Includes Context**:
+
 ```bash
 /alfred:1-plan "Add password reset functionality to existing authentication system using email verification codes"
 ```
 
 **Specifies Constraints**:
+
 ```bash
 /alfred:1-plan "File upload API supporting images up to 10MB, with virus scanning and S3 storage"
 ```
@@ -135,18 +151,21 @@ Alfred creates a complete specification package:
 ### Poor Plan Requests
 
 **Too Vague**:
+
 ```bash
 # <span class="material-icons">cancel</span> Too general
 /alfred:1-plan "Make a login system"
 ```
 
 **Multiple Features**:
+
 ```bash
 # <span class="material-icons">cancel</span> Combine multiple ideas
 /alfred:1-plan "Login, registration, profile, and admin dashboard"
 ```
 
 **Missing Context**:
+
 ```bash
 # <span class="material-icons">cancel</span> No details about requirements
 /alfred:1-plan "API endpoint"
@@ -296,26 +315,31 @@ stateDiagram-v2
 ### EARS Pattern Usage
 
 **Use Ubiquitous for**:
+
 - Core functionality
 - Basic requirements
 - Essential features
 
 **Use Event-driven for**:
+
 - Conditional behavior
 - User interactions
 - System responses
 
 **Use State-driven for**:
+
 - Authentication states
 - User permissions
 - System modes
 
 **Use Optional for**:
+
 - Nice-to-have features
 - Future enhancements
 - Conditional functionality
 
 **Use Unwanted Behaviors for**:
+
 - Security constraints
 - Performance limits
 - Business rules
@@ -361,16 +385,19 @@ To get the most from expert consultations:
 ### Common Issues
 
 **SPEC creation fails**:
+
 - Check network connection
 - Verify `.moai/` directory exists
 - Run `moai-adk doctor`
 
 **Vague requirements**:
+
 - Be more specific in your request
 - Include constraints and requirements
 - Consider edge cases
 
 **Missing expert consultation**:
+
 - Include domain-specific keywords
 - Specify technical requirements
 - Mention integration points
@@ -397,4 +424,5 @@ After creating your SPEC:
 3. **Implementation**: Begin TDD with `/alfred:2-run SPEC-ID`
 4. **Documentation**: Let Alfred sync docs with `/alfred:3-sync`
 
-Remember: A well-written SPEC is the foundation of successful software development. Take the time to get it right, and the rest of the development process will flow smoothly! <span class="material-icons">target</span>
+Remember: A well-written SPEC is the foundation of successful software development. Take the time to
+get it right, and the rest of the development process will flow smoothly! 🎯

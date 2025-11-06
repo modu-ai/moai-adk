@@ -1,24 +1,28 @@
 # Phase 2: Run - TDD Implementation
 
-The `/alfred:2-run` command executes the complete Test-Driven Development cycle, transforming your specifications into production-ready code through the proven RED→GREEN→REFACTOR methodology.
+The `/alfred:2-run` command executes the complete Test-Driven Development cycle, transforming your
+specifications into production-ready code through the proven RED→GREEN→REFACTOR methodology.
 
 ## Overview
 
-**Purpose**: Implement specifications using rigorous TDD methodology with 85%+ test coverage guarantee.
+**Purpose**: Implement specifications using rigorous TDD methodology with 85%+ test coverage
+guarantee.
 
 **Command Format**:
+
 ```bash
 /alfred:2-run SPEC-ID
 ```
 
-**Typical Duration**: 5-15 minutes
-**Output**: Complete implementation with tests, documentation, and quality validation
+**Typical Duration**: 5-15 minutes **Output**: Complete implementation with tests, documentation,
+and quality validation
 
 ## Alfred's TDD Process
 
 ### Phase 1: Implementation Planning
 
-Before writing any code, Alfred's **implementation-planner** analyzes the specification and creates a detailed implementation strategy.
+Before writing any code, Alfred's **implementation-planner** analyzes the specification and creates
+a detailed implementation strategy.
 
 #### Architecture Analysis
 
@@ -29,12 +33,14 @@ Before writing any code, Alfred's **implementation-planner** analyzes the specif
 Alfred analyzes the SPEC and determines:
 
 1. **Technology Stack**
+
    - Primary framework (FastAPI, Express, etc.)
    - Database requirements (PostgreSQL, MongoDB, etc.)
    - Authentication libraries (JWT, OAuth providers)
    - Testing frameworks (pytest, Jest, etc.)
 
 2. **Project Structure**
+
    ```
    src/
    ├── auth/
@@ -50,13 +56,14 @@ Alfred analyzes the SPEC and determines:
    ```
 
 3. **TAG Assignment Strategy**
+
    - `@CODE:AUTH-001:MODEL` - Data models and schemas
    - `@CODE:AUTH-001:SERVICE` - Business logic layer
    - `@CODE:AUTH-001:API` - HTTP endpoint layer
    - `@CODE:AUTH-001:UTILS` - Utility functions
 
-4. **Expert Activation**
-   Based on SPEC keywords, Alfred activates relevant experts:
+4. **Expert Activation** Based on SPEC keywords, Alfred activates relevant experts:
+
    - **backend-expert**: For API design and architecture
    - **security-expert**: For authentication and security
    - **database-expert**: For data persistence
@@ -86,7 +93,8 @@ Alfred identifies potential implementation challenges:
 
 ### Phase 2: TDD Execution
 
-Alfred's **tdd-implementer** executes the complete TDD cycle with rigorous adherence to best practices.
+Alfred's **tdd-implementer** executes the complete TDD cycle with rigorous adherence to best
+practices.
 
 #### 🔴 RED Phase - Write Failing Tests
 
@@ -95,6 +103,7 @@ Alfred's **tdd-implementer** executes the complete TDD cycle with rigorous adher
 **Test Categories**:
 
 1. **Happy Path Tests**
+
    ```python
    def test_login_with_valid_credentials_should_return_tokens():
        """WHEN valid credentials provided, SHALL return access and refresh tokens"""
@@ -110,6 +119,7 @@ Alfred's **tdd-implementer** executes the complete TDD cycle with rigorous adher
    ```
 
 2. **Edge Case Tests**
+
    ```python
    def test_login_with_invalid_email_should_return_401():
        """WHEN invalid email format provided, SHALL return 401 error"""
@@ -130,6 +140,7 @@ Alfred's **tdd-implementer** executes the complete TDD cycle with rigorous adher
    ```
 
 3. **Security Tests**
+
    ```python
    def test_login_should_be_case_sensitive():
        """Email authentication SHALL be case sensitive"""
@@ -150,6 +161,7 @@ Alfred's **tdd-implementer** executes the complete TDD cycle with rigorous adher
    ```
 
 4. **Performance Tests**
+
    ```python
    def test_login_response_time_should_be_under_500ms():
        """Login response time SHALL be under 500ms"""
@@ -165,12 +177,14 @@ Alfred's **tdd-implementer** executes the complete TDD cycle with rigorous adher
    ```
 
 **Running RED Tests**:
+
 ```bash
 pytest tests/test_auth.py -v
 # Expected: All tests fail (No implementation yet)
 ```
 
 **Commit RED Phase**:
+
 ```bash
 git add tests/test_auth.py
 git commit -m "🔴 test(AUTH-001): add failing authentication tests"
@@ -183,6 +197,7 @@ git commit -m "🔴 test(AUTH-001): add failing authentication tests"
 **Implementation Strategy**:
 
 1. **Start with Data Models**
+
    ```python
    # src/auth/models.py
    # @CODE:AUTH-001:MODEL | SPEC: SPEC-AUTH-001.md | TEST: tests/test_auth.py
@@ -214,6 +229,7 @@ git commit -m "🔴 test(AUTH-001): add failing authentication tests"
    ```
 
 2. **Implement Business Logic**
+
    ```python
    # src/auth/service.py
    # @CODE:AUTH-001:SERVICE | SPEC: SPEC-AUTH-001.md | TEST: tests/test_auth.py
@@ -279,6 +295,7 @@ git commit -m "🔴 test(AUTH-001): add failing authentication tests"
    ```
 
 3. **Create API Endpoints**
+
    ```python
    # src/auth/api.py
    # @CODE:AUTH-001:API | SPEC: SPEC-AUTH-001.md | TEST: tests/test_auth.py
@@ -320,24 +337,27 @@ git commit -m "🔴 test(AUTH-001): add failing authentication tests"
    ```
 
 **Running GREEN Tests**:
+
 ```bash
 pytest tests/test_auth.py -v
 # Expected: All tests pass
 ```
 
 **Commit GREEN Phase**:
+
 ```bash
 git add src/auth/
 git commit -m "🟢 feat(AUTH-001): implement authentication service"
 ```
 
-#### <span class="material-icons">recycling</span> REFACTOR Phase - Code Quality Improvement
+#### ♻️ REFACTOR Phase - Code Quality Improvement
 
 **Objective**: Improve code quality while maintaining 100% test coverage.
 
 **Refactoring Activities**:
 
 1. **Apply SOLID Principles**
+
    ```python
    # Refactored service with dependency injection
    # src/auth/service.py (Improved)
@@ -416,6 +436,7 @@ git commit -m "🟢 feat(AUTH-001): implement authentication service"
    ```
 
 2. **Add Comprehensive Error Handling**
+
    ```python
    # src/auth/exceptions.py
    # @CODE:AUTH-001:EXCEPTIONS | SPEC: SPEC-AUTH-001.md
@@ -446,6 +467,7 @@ git commit -m "🟢 feat(AUTH-001): implement authentication service"
    ```
 
 3. **Implement Security Best Practices**
+
    ```python
    # src/auth/security.py
    # @CODE:AUTH-001:SECURITY | SPEC: SPEC-AUTH-001.md
@@ -495,6 +517,7 @@ git commit -m "🟢 feat(AUTH-001): implement authentication service"
    ```
 
 **Verify Refactored Code**:
+
 ```bash
 # Run all tests
 pytest tests/ -v --cov=src
@@ -503,38 +526,45 @@ pytest tests/ -v --cov=src
 ```
 
 **Commit REFACTOR Phase**:
+
 ```bash
 git add src/auth/
-git commit -m "<span class="material-icons">recycling</span> refactor(AUTH-001): improve code quality and security"
+git commit -m "♻️ refactor(AUTH-001): improve code quality and security"
 ```
 
 ### Phase 3: Quality Validation
 
-Alfred's **trust-checker** and **quality-gate** validate the implementation against production standards.
+Alfred's **trust-checker** and **quality-gate** validate the implementation against production
+standards.
 
 #### TRUST 5 Validation
 
-1. **Test First <span class="material-icons">check_circle</span>**
+1. **Test First ✅**
+
    - Test coverage: 100% for new code
    - All tests passing
    - Edge cases covered
 
-2. **Readable <span class="material-icons">check_circle</span>**
+2. **Readable ✅**
+
    - Function length < 50 lines
    - Clear variable names
    - Proper documentation
 
-3. **Unified <span class="material-icons">check_circle</span>**
+3. **Unified ✅**
+
    - Consistent API patterns
    - Proper error handling
    - Type safety
 
-4. **Secured <span class="material-icons">check_circle</span>**
+4. **Secured ✅**
+
    - Input validation
    - Secure password handling
    - Rate limiting
 
-5. **Trackable <span class="material-icons">check_circle</span>**
+5. **Trackable ✅**
+
    - All code tagged with @CODE:AUTH-001
    - Git history clean
    - Documentation linked
@@ -543,18 +573,18 @@ Alfred's **trust-checker** and **quality-gate** validate the implementation agai
 
 ```python
 # Security validation
-<span class="material-icons">check_circle</span> Passwords hashed with bcrypt (12 rounds)
-<span class="material-icons">check_circle</span> JWT tokens use proper signing
-<span class="material-icons">check_circle</span> Rate limiting implemented
-<span class="material-icons">check_circle</span> Input validation on all endpoints
-<span class="material-icons">check_circle</span> SQL injection protection
-<span class="material-icons">check_circle</span> XSS prevention in error messages
+✅ Passwords hashed with bcrypt (12 rounds)
+✅ JWT tokens use proper signing
+✅ Rate limiting implemented
+✅ Input validation on all endpoints
+✅ SQL injection protection
+✅ XSS prevention in error messages
 
 # Performance validation
-<span class="material-icons">check_circle</span> Login response time < 500ms
-<span class="material-icons">check_circle</span> Token validation < 100ms
-<span class="material-icons">check_circle</span> Database queries optimized
-<span class="material-icons">check_circle</span> Memory usage within limits
+✅ Login response time < 500ms
+✅ Token validation < 100ms
+✅ Database queries optimized
+✅ Memory usage within limits
 ```
 
 ## Advanced TDD Patterns
@@ -760,16 +790,19 @@ auth_config = AuthConfig()
 ### Common TDD Issues
 
 **Tests pass but implementation is incomplete**:
+
 - Add more comprehensive test cases
 - Test edge cases and error conditions
 - Include performance and security tests
 
 **Implementation becomes complex**:
+
 - Break down into smaller components
 - Use dependency injection
 - Apply SOLID principles
 
 **Test suite runs slowly**:
+
 - Use mocks for external dependencies
 - Optimize database operations
 - Run tests in parallel
@@ -799,4 +832,6 @@ After completing `/alfred:2-run`:
 3. **Documentation Sync**: Run `/alfred:3-sync` to update documentation
 4. **Code Review**: Share with team for review (if applicable)
 
-The TDD implementation phase ensures your code is robust, well-tested, and meets production standards. By following the RED→GREEN→REFACTOR cycle, you create software that is maintainable, secure, and reliable! <span class="material-icons">rocket_launch</span>
+The TDD implementation phase ensures your code is robust, well-tested, and meets production
+standards. By following the RED→GREEN→REFACTOR cycle, you create software that is maintainable,
+secure, and reliable! 🚀

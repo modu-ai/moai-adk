@@ -1,6 +1,7 @@
 # 핵심 개념
 
-MoAI-ADK는 신뢰할 수 있고, 추적 가능하며, 유지보수가 쉬운 개발 워크플로우를 만들기 위해 함께 작동하는 5가지 기본 개념을 기반으로 구축되었습니다. 이러한 개념을 이해하는 것이 AI 지원 개발의 잠재력을 완전히 활용하는 핵심입니다.
+MoAI-ADK는 신뢰할 수 있고, 추적 가능하며, 유지보수가 쉬운 개발 워크플로우를 만들기 위해 함께 작동하는 5가지 기본 개념을 기반으로 구축되었습니다. 이러한 개념을 이해하는
+것이 AI 지원 개발의 잠재력을 완전히 활용하는 핵심입니다.
 
 ## 문제: AI 개발에서의 신뢰
 
@@ -27,6 +28,7 @@ MoAI-ADK는 체계적인 접근을 통해 이러한 문제를 해결합니다:
 **정의**: 코드를 작성하기 전에 명확하고 실행 가능한 사양을 작성하는 것.
 
 **중요성**:
+
 - 무엇을 만들지에 대한 모호성을 제거
 - 자동화된 테스트를 위한 기반 제공
 - 요구사항에 대한 팀 정렬 보장
@@ -40,6 +42,7 @@ MoAI-ADK는 체계적인 접근을 통해 이러한 문제를 해결합니다:
 5. **Constraints** (제한): "토큰 만료 시간은 15분을 초과하지 않아야 함"
 
 **작동 방식**:
+
 ```bash
 /alfred:1-plan "JWT 토큰을 사용하는 사용자 인증"
 ```
@@ -51,6 +54,7 @@ Alfred의 spec-builder는 EARS 형식을 사용하여 전문적 SPEC을 자동�
 **정의**: RED-GREEN-REFACTOR 사이클을 따라 구현 코드보다 먼저 테스트를 작성하는 것.
 
 **중요성**:
+
 - 85%+ 테스트 커버리지 보장
 - 자신 있는 리팩토링 가능
 - 예상되는 동작에 대한 살아있는 문서 제공
@@ -58,6 +62,7 @@ Alfred의 spec-builder는 EARS 형식을 사용하여 전문적 SPEC을 자동�
 **TDD 사이클**:
 
 1. **🔴 RED**: 먼저 실패하는 테스트 작성
+
    ```python
    def test_login_with_valid_credentials_should_return_token():
        """유효한 자격 증명이 제공되면 시스템은 JWT 토큰을 발급해야 함"""
@@ -67,6 +72,7 @@ Alfred의 spec-builder는 EARS 형식을 사용하여 전문적 SPEC을 자동�
    ```
 
 2. **🟢 GREEN**: 테스트를 통과시키기 위한 최소 구현 작성
+
    ```python
    def login(email: str, password: str) -> dict:
        if validate_credentials(email, password):
@@ -74,7 +80,8 @@ Alfred의 spec-builder는 EARS 형식을 사용하여 전문적 SPEC을 자동�
        return {"error": "Invalid credentials"}
    ```
 
-3. **<span class="material-icons">recycling</span> REFACTOR**: 테스트 커버리지를 유지하면서 코드 품질 개선
+3. **♻️ REFACTOR**: 테스트 커버리지를 유지하면서 코드 품질 개선
+
    ```python
    class AuthService:
        def authenticate(self, email: str, password: str) -> AuthResult:
@@ -86,6 +93,7 @@ Alfred의 spec-builder는 EARS 형식을 사용하여 전문적 SPEC을 자동�
    ```
 
 **작동 방식**:
+
 ```bash
 /alfred:2-run SPEC-ID
 ```
@@ -97,11 +105,13 @@ Alfred는 자동으로 완전한 TDD 사이클을 실행합니다.
 **정의**: 사양, 테스트, 코드, 문서를 연결하는 고유 식별자 시스템.
 
 **중요성**:
+
 - 모든 프로젝트 아티팩트에 대한 완전한 추적성 활성화
 - 영향 분석을 간단하고 신뢰할 수 있게 만듦
 - 고아 코드와 잊어버린 요구사항 방지
 
 **TAG 체인**:
+
 ```
 @SPEC:EX-AUTH-001 (요구사항)
     ↓
@@ -117,6 +127,7 @@ Alfred는 자동으로 완전한 TDD 사이클을 실행합니다.
 예시: `AUTH-001`, `AUTH-002`, `USER-001`, `API-001`
 
 **사용 예시**:
+
 ```bash
 # 인증과 관련된 모든 코드 찾기
 rg '@(SPEC|TEST|CODE|DOC):AUTH-001' -n
@@ -129,6 +140,7 @@ rg '@(SPEC|TEST|CODE|DOC):AUTH-001' -n
 ```
 
 **작동 방식**:
+
 ```bash
 /alfred:3-sync
 ```
@@ -140,6 +152,7 @@ Alfred는 자동으로 TAG 체인을 검증하고 고아 TAG를 감지합니다.
 **정의**: 모든 코드가 프로덕션 표준을 충족하도록 보장하는 품질 프레임워크.
 
 **중요성**:
+
 - 프로젝트 전체에서 일관된 코드 품질 보장
 - 코드 리뷰를 위한 명확한 기준 제공
 - 일반적인 버그와 보안 문제 방지
@@ -147,31 +160,37 @@ Alfred는 자동으로 TAG 체인을 검증하고 고아 TAG를 감지합니다.
 **5가지 원칙**:
 
 1. **🧪 Test First**
+
    - 테스트 커버리지 ≥ 85%
    - 모든 코드가 테스트로 보호됨
    - 기능 추가 = 테스트 추가
 
-2. **<span class="material-icons">auto_stories</span> Readable**
+2. **📚 Readable**
+
    - 함수 ≤ 50줄, 파일 ≤ 300줄
    - 변수 이름이 의도를 드러냄
    - 린터 준수 (ESLint/ruff/clippy)
 
-3. **<span class="material-icons">target</span> Unified**
+3. **🎯 Unified**
+
    - SPEC 기반 아키텍처 일관성
    - 반복 패턴 (학습 곡선 감소)
    - 타입 안전성 또는 런타임 검증
 
-4. **<span class="material-icons">lock</span> Secured**
+4. **🔒 Secured**
+
    - 입력 검증 (XSS, SQL 인젝션 방지)
    - 비밀번호 해싱 (bcrypt, Argon2)
    - 민감한 데이터 보호 (환경 변수)
 
-5. **<span class="material-icons">link</span> Trackable**
+5. **🔗 Trackable**
+
    - @TAG 시스템 사용
    - Git 커밋에 TAG 참조 포함
    - 모든 결정 문서화됨
 
 **작동 방식**:
+
 ```bash
 /alfred:3-sync
 ```
@@ -183,6 +202,7 @@ Alfred는 자동으로 TRUST 5 준수를 검증합니다.
 **정의**: 개발 과정 전체에서 여러 전문화된 에이전트와 스킬을 조정하는 AI 오케스트레이션 시스템.
 
 **중요성**:
+
 - 프롬프트 엔지니어링 복잡성 제거
 - 세션 간 프로젝트 컨텍스트 유지
 - 일관되고 전문적 품질의 출력 제공
@@ -193,15 +213,15 @@ Alfred는 자동으로 TRUST 5 준수를 검증합니다.
 Alfred SuperAgent (오케스트레이션)
     ├── Core Sub-agents (프로젝트 워크플로우)
     │   ├── project-manager 📋
-    │   ├── spec-builder <span class="material-icons">construction</span>
+    │   ├── spec-builder 🏗️
     │   ├── code-builder 💎
-    │   ├── doc-syncer <span class="material-icons">auto_stories</span>
-    │   └── quality-gate <span class="material-icons">shield</span>
+    │   ├── doc-syncer 📚
+    │   └── quality-gate 🛡️
     ├── Expert Agents (도메인 전문가)
-    │   ├── backend-expert <span class="material-icons">settings</span>
+    │   ├── backend-expert ⚙️
     │   ├── frontend-expert 💻
-    │   ├── devops-expert <span class="material-icons">rocket_launch</span>
-    │   └── ui-ux-expert <span class="material-icons">palette</span>
+    │   ├── devops-expert 🚀
+    │   └── ui-ux-expert 🎨
     └── Built-in Claude Agents (일반 지원)
         ├── Code understanding
         ├── Debugging
@@ -217,6 +237,7 @@ Alfred SuperAgent (오케스트레이션)
 5. **Language**: 언어별 모범 사례 (Python/TS/Go/Rust)
 
 **작동 방식**:
+
 ```bash
 /alfred:0-project    # 프로젝트 초기화
 /alfred:1-plan      # 사양 생성
@@ -229,26 +250,32 @@ Alfred SuperAgent (오케스트레이션)
 ### 단계별 프로세스
 
 1. **PLAN** (2분)
+
    ```bash
    /alfred:1-plan "이메일/비밀번호를 사용하는 사용자 인증"
    ```
+
    - @SPEC:AUTH-001로 SPEC 생성
    - EARS 구문을 사용하여 요구사항 정의
    - 상태: `planning` → `draft`
 
 2. **RUN** (5분)
+
    ```bash
    /alfred:2-run AUTH-001
    ```
+
    - TDD 사이클 실행 (RED → GREEN → REFACTOR)
    - @TEST:AUTH-001로 테스트 생성
    - @CODE:AUTH-001로 구현 생성
    - 상태: `draft` → `in_progress` → `testing`
 
 3. **SYNC** (1분)
+
    ```bash
    /alfred:3-sync
    ```
+
    - @DOC:AUTH-001로 문서 생성
    - TAG 체인 무결성 검증
    - TRUST 5 준수 확인
@@ -291,14 +318,14 @@ Alfred SuperAgent (오케스트레이션)
 
 ## 전통적 개발과의 비교
 
-| 측면 | 전통적 접근 | MoAI-ADK 접근 |
-|--------|-------------|---------------|
-| 요구사항 | 구두 설명, 이메일 | EARS 구문을 사용하는 형식적 SPEC 문서 |
-| 테스트 | 구현 후, 종종 불완전 | 먼저, 85%+ 커버리지 보장 |
-| 문서화 | 별도로 작성, 종종 오래됨 | 코드와 자동 동기화 |
-| 추적성 | 수동적, 종종 손실됨 | @TAG 시스템이 완전한 체인 제공 |
-| 품질 | 개발자에 따라 다름 | TRUST 5 원칙이 일관성 보장 |
-| AI 사용 | 프롬프트 엔지니어링, 일관성 없음 | 신뢰할 수 있는 출력과 표준화된 명령어 |
+| 측면     | 전통적 접근                      | MoAI-ADK 접근                         |
+| -------- | -------------------------------- | ------------------------------------- |
+| 요구사항 | 구두 설명, 이메일                | EARS 구문을 사용하는 형식적 SPEC 문서 |
+| 테스트   | 구현 후, 종종 불완전             | 먼저, 85%+ 커버리지 보장              |
+| 문서화   | 별도로 작성, 종종 오래됨         | 코드와 자동 동기화                    |
+| 추적성   | 수동적, 종종 손실됨              | @TAG 시스템이 완전한 체인 제공        |
+| 품질     | 개발자에 따라 다름               | TRUST 5 원칙이 일관성 보장            |
+| AI 사용  | 프롬프트 엔지니어링, 일관성 없음 | 신뢰할 수 있는 출력과 표준화된 명령어 |
 
 ## 개념으로 시작하기
 
@@ -307,4 +334,5 @@ Alfred SuperAgent (오케스트레이션)
 3. **TDD 마스터**: [TDD 가이드](../../guides/tdd/red.md) 따르기
 4. **TAG 시스템 탐색**: [TAG 문서](../reference/tags/index.md) 읽기
 
-이러한 개념은 함께 작동하여 전통적 접근보다 더 신뢰할 수 있고, 유지보수가 쉬우며, 즐거운 개발 경험을 만듭니다. Alfred를 가이드로 삼아, 프로덕션 표준을 충족한다는 자신감을 가지고 더 나은 코드를 더 빨리 작성하게 될 것입니다.
+이러한 개념은 함께 작동하여 전통적 접근보다 더 신뢰할 수 있고, 유지보수가 쉬우며, 즐거운 개발 경험을 만듭니다. Alfred를 가이드로 삼아, 프로덕션 표준을 충족한다는
+자신감을 가지고 더 나은 코드를 더 빨리 작성하게 될 것입니다.

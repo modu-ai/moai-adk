@@ -1,7 +1,7 @@
 ---
 name: backend-expert
 description: "Use PROACTIVELY when: Backend architecture, API design, server implementation, database integration, or microservices architecture is needed. Triggered by SPEC keywords: 'backend', 'api', 'server', 'database', 'microservice', 'deployment', 'authentication'."
-tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
+tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 ---
 

@@ -6,6 +6,114 @@ _Last updated: 2025-10-22_
 
 ---
 
+## Description Writing Standards
+
+> Guidelines for crafting effective Skill descriptions that ensure discoverability and proper activation
+
+### Core Principles
+
+Every Skill description must include three essential components:
+
+```
+[What it does]: Clear functionality statement (8-12 words)
+[Key capabilities]: Core functionality list (2-3 items)
+[When to use]: Usage triggers (3-5 trigger keywords using "Use when" pattern)
+```
+
+### Description Templates
+
+**Basic Template**:
+```
+description: [Functionality]. [Key capabilities]. Use when [trigger1], [trigger2], or [trigger3].
+```
+
+**Extended Template** (when needed):
+```
+description: [Functionality]. [Key capability 1], [Key capability 2]. Use when [trigger1], [trigger2], [trigger3], or [trigger4]. Automatically activates [related Skills] for [purpose].
+```
+
+### Category-Specific Templates
+
+#### Foundation Skills (moai-foundation-*)
+```
+description: [Functionality]. [Key capabilities (e.g., validation, authoring)]. Use when [task1], [task2], [task3], or [task4].
+```
+**Example**:
+- ✅ "Validates SPEC YAML frontmatter (7 required fields id, version, status, created, updated, author, priority) and HISTORY section. Use when creating SPEC documents, validating SPEC metadata, checking SPEC structure, or authoring specifications."
+
+#### Alfred Skills (moai-alfred-*)
+```
+description: [Functionality]. [Key capabilities]. Use when [validation/analysis/management target], [condition], or [situation]. Automatically activates [related Skills] for [purpose].
+```
+**Example**:
+- ✅ "Validates TRUST 5-principles (Test 85%+, Code constraints, Architecture unity, Security, TAG trackability). Use when validating code quality, checking TRUST compliance, verifying test coverage, or analyzing security patterns. Automatically activates moai-foundation-trust and language-specific skills for comprehensive validation."
+
+#### Language Skills (moai-lang-*)
+```
+description: [Language] best practices with [key tools]. Use when [development activity], [pattern], or [special case].
+```
+**Example**:
+- ✅ "Python best practices with pytest, mypy, ruff, black. Use when writing Python code, implementing tests, type-checking, formatting code, or following PEP standards."
+
+#### Domain Skills (moai-domain-*)
+```
+description: [Domain] development with [key technologies/patterns]. Use when [domain activity1], [domain activity2], or [special situation].
+```
+**Example**:
+- ✅ "Backend API development with REST patterns, authentication, error handling. Use when designing REST APIs, implementing authentication, or building backend services."
+
+### Trigger Keyword Guidelines
+
+#### Action-Oriented Keywords
+- "creating [artifact]", "writing [code/docs]", "implementing [feature]"
+- "validating [aspect]", "checking [quality]", "verifying [compliance]"
+- "analyzing [code/data]", "debugging [issue]", "diagnosing [problem]"
+
+#### Condition-Oriented Keywords
+- "when working with [file type/framework]"
+- "when developing [feature/component]"
+- "when applying [pattern/practice]"
+
+#### Situation-Oriented Keywords
+- "for [workflow/process]", "during [phase/stage]"
+- "to [achieve goal/outcome]"
+
+### Anti-Patterns to Avoid
+
+❌ **Too Short**:
+```
+description: Helps with documents
+```
+
+❌ **Missing Trigger Keywords**:
+```
+description: PDF processing tool
+```
+
+❌ **First Person Usage** (avoid "I can", "You can"):
+```
+description: I help you process Excel files
+```
+
+❌ **Technical Details Only**:
+```
+description: Uses pdfplumber library
+```
+
+### Final Validation Checklist
+
+Ensure each Skill description meets these criteria:
+
+- [ ] **"What it does"**: Clear functionality statement (noun + verb)
+- [ ] **"Use when"**: 3-5 specific trigger keywords included
+- [ ] **Length**: Single line (150-200 characters recommended)
+- [ ] **Relationship**: Related Skills specified (optional)
+- [ ] **Discoverability**: Search keywords included (sub-agent can discover)
+- [ ] **First Person Avoidance**: No "I", "You", "Our" usage
+- [ ] **Technical Centrism Avoidance**: Prioritize function/purpose over library/tool names
+
+---
+
 ## Skill Creation Workflow
 
 ### Phase 1: Discovery (15 min)
@@ -78,6 +186,10 @@ _Last updated: 2025-10-22_
 ---
 
 ## Skill Metadata Design
+
+> Designing effective skill metadata that ensures discoverability and proper activation
+
+**For description writing standards**, see [Description Writing Standards](#description-writing-standards) section above.
 
 ### Name Format
 
@@ -460,6 +572,37 @@ Follow Semantic Versioning:
 
 ---
 
-**Last Updated**: 2025-10-22
-**Version**: 2.0.0
+## Changelog
+
+### v2.2.0 (2025-11-05)
+- **MERGE**: Integrated moai-cc-skill-descriptions content
+- **FEATURE**: Added comprehensive Description Writing Standards section
+- **FEATURE**: Included category-specific templates for all skill types
+- **FEATURE**: Added trigger keyword guidelines and anti-patterns
+- **REMOVAL**: Consolidated from 3 separate skill factory components into unified system
+- **IMPROVEMENT**: Enhanced metadata validation checklist with description standards
+
+### v2.1.0 (2025-11-02)
+- **FEATURE**: Interactive discovery via moai-alfred-ask-user-questions
+- **FEATURE**: Web research integration for latest best practices
+- **FEATURE**: Skill analysis and update recommendations
+- **IMPROVEMENT**: Progressive Disclosure pattern implementation
+
+### v2.0.0 (2025-10-22)
+- **BREAKING**: Complete restructure with freedom level framework
+- **FEATURE**: Web research integration
+- **FEATURE**: 5 new complete examples
+- **DOCUMENTATION**: Comprehensive reference and examples sections
+
+### v1.1.0 (2025-08-15)
+- **FEATURE**: Add Go examples
+- **FIX**: Clarify pseudocode notation
+
+### v1.0.0 (2025-06-01)
+- **INITIAL**: First production release
+
+---
+
+**Last Updated**: 2025-11-05
+**Version**: 2.2.0
 **Maintained by**: MoAI-ADK Foundation Team

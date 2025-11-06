@@ -1,7 +1,6 @@
----
-title: 9-feedback 命令指南
-description: 学习如何使用 Alfred 的 9-feedback 命令快速创建 GitHub Issues 和收集团队反馈
----
+______________________________________________________________________
+
+## title: 9-feedback 命令指南 description: 学习如何使用 Alfred 的 9-feedback 命令快速创建 GitHub Issues 和收集团队反馈
 
 # 9-feedback 命令指南
 
@@ -10,11 +9,13 @@ description: 学习如何使用 Alfred 的 9-feedback 命令快速创建 GitHub 
 ## 命令概览
 
 ### 基本语法
+
 ```bash
 /alfred:9-feedback
 ```
 
 ### 命令目的
+
 - 快速创建 GitHub Issues
 - 收集团队反馈和建议
 - 追踪问题和功能请求
@@ -22,24 +23,27 @@ description: 学习如何使用 Alfred 的 9-feedback 命令快速创建 GitHub 
 - 促进团队协作沟通
 
 ### 触发的代理
+
 - **feedback-collector**：主导反馈收集
 - **issue-manager**：GitHub Issue 管理
 - **team-coordinator**：团队协调
 - **quality-analyzer**：反馈质量分析
 
----
+______________________________________________________________________
 
 ## 反馈类型详解
 
 ### 1. Bug 报告 (Bug Report)
 
 #### 何时使用
+
 - 发现系统错误或异常行为
 - 功能不符合预期
 - 性能问题或崩溃
 - 安全漏洞或风险
 
 #### 交互流程
+
 ```bash
 # 启动反馈流程
 /alfred:9-feedback
@@ -61,7 +65,7 @@ description: 学习如何使用 Alfred 的 9-feedback 命令快速创建 GitHub 
 📋 请输入问题标题（简洁明确）：
 示例：登录页面在移动设备上崩溃
 
-<span class="material-icons">description</span> 请详细描述问题（可选，按 Enter 跳过）：
+📄 请详细描述问题（可选，按 Enter 跳过）：
 示例：
 当使用 iPhone 13 访问登录页面时，点击登录按钮会导致应用崩溃。
 复现步骤：
@@ -80,7 +84,7 @@ description: 学习如何使用 Alfred 的 9-feedback 命令快速创建 GitHub 
 - 网络环境：WiFi 4G
 - 发生时间：2025-01-15 14:30
 
-<span class="material-icons">target</span> 请选择问题优先级：
+🎯 请选择问题优先级：
 [ ] 🔴 Critical - 系统崩溃、数据丢失、安全问题
 [ ] 🟠 High - 主要功能无法使用
 [✓] 🟡 Medium - 一般功能受影响（默认）
@@ -88,6 +92,7 @@ description: 学习如何使用 Alfred 的 9-feedback 命令快速创建 GitHub 
 ```
 
 #### 自动生成的 GitHub Issue
+
 ```markdown
 # 🐛 [BUG] 登录页面在移动设备上崩溃
 
@@ -115,8 +120,9 @@ description: 学习如何使用 Alfred 的 9-feedback 命令快速创建 GitHub 
 
 ## 错误信息
 ```
-应用程序已停止
-进程 com.example.app 已停止
+
+应用程序已停止 进程 com.example.app 已停止
+
 ```
 
 ## 附件
@@ -136,20 +142,22 @@ bug, mobile, crash, login, priority-medium
 
 ---
 
-<span class="material-icons">description</span> 此 Issue 由 Alfred 自动生成，基于用户提供的信息
-<span class="material-icons">link</span> 相关代码：`@CODE:USER-AUTH-001:API`
+📄 此 Issue 由 Alfred 自动生成，基于用户提供的信息
+🔗 相关代码：`@CODE:USER-AUTH-001:API`
 🐛 问题追踪：需要 iOS 团队调查和修复
 ```
 
 ### 2. 功能请求 (Feature Request)
 
 #### 何时使用
+
 - 需要新功能或增强
 - 想改进用户体验
 - 需要新的集成或扩展
 - 有产品改进建议
 
 #### 交互流程
+
 ```bash
 # 启动反馈流程
 /alfred:9-feedback
@@ -161,7 +169,7 @@ bug, mobile, crash, login, priority-medium
 💡 请输入功能请求标题（简洁明确）：
 示例：添加暗黑模式支持
 
-<span class="material-icons">description</span> 请详细描述功能需求（可选，按 Enter 跳过）：
+📄 请详细描述功能需求（可选，按 Enter 跳过）：
 示例：
 希望应用支持暗黑模式，提高用户在不同光线条件下的使用体验。
 
@@ -183,7 +191,7 @@ bug, mobile, crash, login, priority-medium
 - 确保所有组件都支持两种主题
 - 测试在不同设备上的显示效果
 
-<span class="material-icons">target</span> 请选择功能优先级：
+🎯 请选择功能优先级：
 [ ] 🔴 Critical - 核心功能，必须立即实现
 [ ] 🟠 High - 重要功能，近期实现
 [✓] 🟡 Medium - 有价值的功能，计划中实现
@@ -191,6 +199,7 @@ bug, mobile, crash, login, priority-medium
 ```
 
 #### 自动生成的 GitHub Issue
+
 ```markdown
 # ✨ [FEATURE] 添加暗黑模式支持
 
@@ -198,10 +207,10 @@ bug, mobile, crash, login, priority-medium
 为应用添加暗黑模式支持，提供更好的用户体验和视觉舒适度。
 
 ## 用户价值
-- <span class="material-icons">check_circle</span> 减少眼部疲劳，特别是在低光环境下
-- <span class="material-icons">check_circle</span> 改善夜间使用体验
-- <span class="material-icons">check_circle</span> 提升应用现代化感和专业度
-- <span class="material-icons">check_circle</span> 符合现代设计规范和用户期望
+- ✅ 减少眼部疲劳，特别是在低光环境下
+- ✅ 改善夜间使用体验
+- ✅ 提升应用现代化感和专业度
+- ✅ 符合现代设计规范和用户期望
 
 ## 功能需求
 ### 核心功能
@@ -271,7 +280,7 @@ feature, enhancement, ui, theme, dark-mode, accessibility
 ---
 
 💡 此 Issue 由 Alfred 自动生成
-<span class="material-icons">palette</span> 需要设计团队提供暗黑主题设计稿
+🎨 需要设计团队提供暗黑主题设计稿
 📱 需要在所有平台上测试主题显示效果
 ♿ 确保符合可访问性标准
 ```
@@ -279,12 +288,14 @@ feature, enhancement, ui, theme, dark-mode, accessibility
 ### 3. 改进建议 (Improvement)
 
 #### 何时使用
+
 - 发现现有功能的改进机会
 - 有性能优化建议
 - 用户体验改进想法
 - 代码质量或架构改进建议
 
 #### 交互流程
+
 ```bash
 # 启动反馈流程
 /alfred:9-feedback
@@ -296,7 +307,7 @@ feature, enhancement, ui, theme, dark-mode, accessibility
 ⚡ 请输入改进建议标题（简洁明确）：
 示例：优化搜索功能性能
 
-<span class="material-icons">description</span> 请详细描述改进建议（可选，按 Enter 跳过）：
+📄 请详细描述改进建议（可选，按 Enter 跳过）：
 示例：
 当前搜索功能在大数据量情况下响应较慢，需要进行性能优化。
 
@@ -331,7 +342,7 @@ feature, enhancement, ui, theme, dark-mode, accessibility
 - 系统负载降低
 - 功能更加完善
 
-<span class="material-icons">target</span> 请选择改进优先级：
+🎯 请选择改进优先级：
 [ ] 🔴 Critical - 严重影响用户使用
 [ ] 🟠 High - 重要改进，近期处理
 [✓] 🟡 Medium - 有价值的改进，计划中处理
@@ -339,7 +350,8 @@ feature, enhancement, ui, theme, dark-mode, accessibility
 ```
 
 #### 自动生成的 GitHub Issue
-```markdown
+
+````markdown
 # ⚡ [IMPROVEMENT] 优化搜索功能性能
 
 ## 当前问题
@@ -372,10 +384,10 @@ feature, enhancement, ui, theme, dark-mode, accessibility
 - **分析监控**: 添加搜索性能监控和分析
 
 ## 预期效果
-- <span class="material-icons">check_circle</span> 搜索响应时间 < 500ms (当前 > 3000ms)
-- <span class="material-icons">check_circle</span> 用户体验明显提升
-- <span class="material-icons">check_circle</span> 系统负载降低 40%
-- <span class="material-icons">check_circle</span> 功能更加完善和易用
+- ✅ 搜索响应时间 < 500ms (当前 > 3000ms)
+- ✅ 用户体验明显提升
+- ✅ 系统负载降低 40%
+- ✅ 功能更加完善和易用
 
 ## 技术方案详情
 
@@ -387,9 +399,10 @@ cache_config = {
     "user_searches": {"ttl": 1800, "key_pattern": "search:user:{user_id}:*"},
     "result_cache": {"ttl": 600, "key_pattern": "search:result:{query_hash}"}
 }
-```
+````
 
 ### 数据库优化
+
 ```sql
 -- 添加搜索相关索引
 CREATE INDEX CONCURRENTLY idx_products_search_vector
@@ -405,46 +418,49 @@ ON products(category, is_active) WHERE is_active = true;
 ## 实施计划
 
 ### 第一阶段：性能优化 (1 周)
+
 - [ ] 引入 Redis 缓存
 - [ ] 优化数据库查询
 - [ ] 实现搜索结果分页
 - [ ] 性能测试和基准测试
 
 ### 第二阶段：功能增强 (1 周)
+
 - [ ] 实现搜索历史记录
 - [ ] 添加搜索建议功能
 - [ ] 优化搜索结果显示
 - [ ] 添加搜索过滤器
 
 ### 第三阶段：分析和监控 (0.5 周)
+
 - [ ] 添加搜索分析功能
 - [ ] 实现性能监控
 - [ ] 用户行为分析
 - [ ] 效果评估和优化
 
 ## 优先级
+
 🟡 Medium - 有价值的性能和用户体验改进
 
 ## 技术复杂度
-**预估工作量**: 2.5 周
-**复杂度**: 中等偏高
-**风险评估**: 低风险
+
+**预估工作量**: 2.5 周 **复杂度**: 中等偏高 **风险评估**: 低风险
 
 ## 相关链接
+
 - `@SPEC:SEARCH-001`: 搜索功能规格说明
 - `@CODE:SEARCH-001:API`: 搜索 API 实现
 - 性能基准测试报告: [link-to-performance-report]
 
 ## 标签
+
 improvement, performance, optimization, search, cache, user-experience
 
----
+______________________________________________________________________
 
-⚡ 此 Issue 由 Alfred 自动生成
-<span class="material-icons">settings</span> 建议由后端团队负责性能优化部分
-<span class="material-icons">palette</span> 建议由前端团队负责用户体验改进部分
-<span class="material-icons">analytics</span> 建议实施后进行性能基准测试
-```
+⚡ 此 Issue 由 Alfred 自动生成 ⚙️ 建议由后端团队负责性能优化部分 🎨 建议由前端团队负责用户体验改进部分 📊 建议实施后进行性能基准测试
+
+````
 
 ### 4. 问题讨论 (Question/Discussion)
 
@@ -458,7 +474,7 @@ improvement, performance, optimization, search, cache, user-experience
 ```bash
 # 启动反馈流程
 /alfred:9-feedback
-```
+````
 
 **选择 Question/Discussion 后**：
 
@@ -466,7 +482,7 @@ improvement, performance, optimization, search, cache, user-experience
 ❓ 请输入讨论主题（简洁明确）：
 示例：关于微服务架构的技术选型讨论
 
-<span class="material-icons">description</span> 请详细描述讨论内容（可选，按 Enter 跳过）：
+📄 请详细描述讨论内容（可选，按 Enter 跳过）：
 示例：
 我们正在讨论新功能的微服务架构设计，需要团队就技术选型达成共识。
 
@@ -527,7 +543,7 @@ improvement, performance, optimization, search, cache, user-experience
 - 维护成本和技术支持
 - 长期发展考虑
 
-<span class="material-icons">target</span> 请选择讨论优先级：
+🎯 请选择讨论优先级：
 [ ] 🔴 Critical - 关键决策，需要尽快确定
 [ ] 🟠 High - 重要决策，本周内确定
 [✓] 🟡 Medium - 一般讨论，可适当安排
@@ -535,6 +551,7 @@ improvement, performance, optimization, search, cache, user-experience
 ```
 
 #### 自动生成的 GitHub Issue
+
 ```markdown
 # ❓ [DISCUSSION] 关于微服务架构的技术选型讨论
 
@@ -557,10 +574,10 @@ improvement, performance, optimization, search, cache, user-experience
 - 容器化：Docker + Kubernetes
 
 **优势**:
-<span class="material-icons">check_circle</span> 团队熟悉 Python 生态，学习成本低
-<span class="material-icons">check_circle</span> FastAPI 性能优秀，API 文档自动生成
-<span class="material-icons">check_circle</span> 丰富的第三方库，开发效率高
-<span class="material-icons">check_circle</span> 异步支持良好，适合 I/O 密集型应用
+✅ 团队熟悉 Python 生态，学习成本低
+✅ FastAPI 性能优秀，API 文档自动生成
+✅ 丰富的第三方库，开发效率高
+✅ 异步支持良好，适合 I/O 密集型应用
 
 **挑战**:
 <span class="material-icons">warning</span> Python 性能相对较低，CPU 密集型任务可能有瓶颈
@@ -576,10 +593,10 @@ improvement, performance, optimization, search, cache, user-experience
 - 容器化：Docker + Kubernetes
 
 **优势**:
-<span class="material-icons">check_circle</span> Go 性能优秀，并发处理能力强
-<span class="material-icons">check_circle</span> 内存占用低，资源利用率高
-<span class="material-icons">check_circle</span> 编译型语言，部署简单
-<span class="material-icons">check_circle</span> 原生并发支持，无需额外框架
+✅ Go 性能优秀，并发处理能力强
+✅ 内存占用低，资源利用率高
+✅ 编译型语言，部署简单
+✅ 原生并发支持，无需额外框架
 
 **挑战**:
 <span class="material-icons">warning</span> 团队需要学习 Go 语言，初期开发效率可能较低
@@ -595,10 +612,10 @@ improvement, performance, optimization, search, cache, user-experience
 - 容器化：Docker + Kubernetes
 
 **优势**:
-<span class="material-icons">check_circle</span> Java 生态成熟，企业级应用广泛
-<span class="material-icons">check_circle</span> Spring Boot 功能丰富，开发效率高
-<span class="material-icons">check_circle</span> 性能优秀，稳定性好
-<span class="material-icons">check_circle</span> 社区支持好，技术资料丰富
+✅ Java 生态成熟，企业级应用广泛
+✅ Spring Boot 功能丰富，开发效率高
+✅ 性能优秀，稳定性好
+✅ 社区支持好，技术资料丰富
 
 **挑战**:
 <span class="material-icons">warning</span> 开发效率相对较低，代码量较大
@@ -672,16 +689,17 @@ discussion, architecture, technology-stack, microservices, decision
 ❓ 此 Issue 由 Alfred 自动生成
 🤝 需要团队成员积极参与讨论
 📋 请在截止日期前完成讨论并做出决策
-<span class="material-icons">description</span> 所有讨论内容将记录在决策文档中
+📄 所有讨论内容将记录在决策文档中
 ```
 
----
+______________________________________________________________________
 
 ## 高级功能
 
 ### 1. 批量反馈收集
 
 #### 语法
+
 ```bash
 # 从文件批量创建 Issues
 /alfred:9-feedback --batch-file feedback_list.txt
@@ -694,6 +712,7 @@ discussion, architecture, technology-stack, microservices, decision
 ```
 
 #### 文件格式示例
+
 ```markdown
 # feedback_list.txt
 
@@ -716,6 +735,7 @@ discussion, architecture, technology-stack, microservices, decision
 ### 2. 模板化反馈
 
 #### 语法
+
 ```bash
 # 使用预定义模板
 /alfred:9-feedback --template bug-report
@@ -728,6 +748,7 @@ discussion, architecture, technology-stack, microservices, decision
 ```
 
 #### 预定义模板示例
+
 ```yaml
 # bug-report 模板
 模板类型: bug-report
@@ -763,6 +784,7 @@ discussion, architecture, technology-stack, microservices, decision
 ### 3. 智能分类和路由
 
 #### 自动分类
+
 ```python
 def classify_feedback(feedback_text):
     """智能分类反馈"""
@@ -796,6 +818,7 @@ def classify_feedback(feedback_text):
 ```
 
 #### 智能路由
+
 ```python
 def route_feedback(feedback):
     """智能路由反馈给合适的团队"""
@@ -826,6 +849,7 @@ def route_feedback(feedback):
 ### 4. 反馈分析报告
 
 #### 生成统计报告
+
 ```bash
 # 生成反馈统计报告
 /alfred:9-feedback --analytics
@@ -838,6 +862,7 @@ def route_feedback(feedback):
 ```
 
 #### 分析报告示例
+
 ```markdown
 # 反馈分析报告
 
@@ -885,9 +910,9 @@ def route_feedback(feedback):
 
 ## 趋势分析
 ### 积极趋势
-- <span class="material-icons">check_circle</span> Bug 报告响应时间缩短 15%
-- <span class="material-icons">check_circle</span> Critical 问题解决率提升到 87%
-- <span class="material-icons">check_circle</span> 平均修复时间减少 20%
+- ✅ Bug 报告响应时间缩短 15%
+- ✅ Critical 问题解决率提升到 87%
+- ✅ 平均修复时间减少 20%
 
 ### 需要关注
 - <span class="material-icons">warning</span> Feature Request 处理时间增长
@@ -917,68 +942,73 @@ def route_feedback(feedback):
 - [ ] 更新反馈处理 SLA
 ```
 
----
+______________________________________________________________________
 
 ## 使用示例
 
 ### 示例 1：快速 Bug 报告
+
 ```bash
 # 快速报告发现的问题
 /alfred:9-feedback
 
 # 输出：
-<span class="material-icons">check_circle</span> GitHub Issue #245 创建成功
+✅ GitHub Issue #245 创建成功
 🐛 标题: [BUG] 登录按钮在移动设备上无响应
 🟠 优先级: High
-<span class="material-icons">label</span> 标签: bug, mobile, login, ui, priority-high
-<span class="material-icons">link</span> 链接: https://github.com/company/repo/issues/245
+🏷️ 标签: bug, mobile, login, ui, priority-high
+🔗 链接: https://github.com/company/repo/issues/245
 ```
 
 ### 示例 2：功能请求
+
 ```bash
 # 提出新功能建议
 /alfred:9-feedback
 
 # 输出：
-<span class="material-icons">check_circle</span> GitHub Issue #246 创建成功
+✅ GitHub Issue #246 创建成功
 ✨ 标题: [FEATURE] 添加数据导出功能
 🟡 优先级: Medium
-<span class="material-icons">label</span> 标签: feature, enhancement, data-export, reporting
-<span class="material-icons">link</span> 链接: https://github.com/company/repo/issues/246
+🏷️ 标签: feature, enhancement, data-export, reporting
+🔗 链接: https://github.com/company/repo/issues/246
 ```
 
 ### 示例 3：团队讨论
+
 ```bash
 # 发起技术讨论
 /alfred:9-feedback
 
 # 输出：
-<span class="material-icons">check_circle</span> GitHub Discussion #123 创建成功
+✅ GitHub Discussion #123 创建成功
 ❓ 标题: [DISCUSSION] 关于 API 版本管理策略
 🟡 优先级: Medium
-<span class="material-icons">label</span> 标签: discussion, architecture, api, versioning
-<span class="material-icons">link</span> 链接: https://github.com/company/repo/discussions/123
+🏷️ 标签: discussion, architecture, api, versioning
+🔗 链接: https://github.com/company/repo/discussions/123
 ```
 
 ### 示例 4：批量反馈处理
+
 ```bash
 # 批量处理团队反馈
 /alfred:9-feedback --batch-file team_feedback.txt
 
 # 输出：
-<span class="material-icons">check_circle</span> 批量创建 5 个 Issues
-<span class="material-icons">check_circle</span> Bug Reports: 3 个
-<span class="material-icons">check_circle</span> Feature Requests: 2 个
-<span class="material-icons">check_circle</span> 自动分配给相应团队
-<span class="material-icons">check_circle</span> 设置适当标签和优先级
+✅ 批量创建 5 个 Issues
+✅ Bug Reports: 3 个
+✅ Feature Requests: 2 个
+✅ 自动分配给相应团队
+✅ 设置适当标签和优先级
 📋 详细报告: .moai/reports/batch-feedback-2025-01-15.md
 ```
 
----
+______________________________________________________________________
 
 ## 与 GitHub 集成
 
 ### 1. GitHub Actions 集成
+
 ```yaml
 # .github/workflows/feedback-automation.yml
 name: 反馈自动化
@@ -1006,6 +1036,7 @@ jobs:
 ```
 
 ### 2. 项目管理工具集成
+
 ```bash
 # 与 Jira 集成
 /alfred:9-feedback --create-jira-ticket
@@ -1018,6 +1049,7 @@ jobs:
 ```
 
 ### 3. 通知集成
+
 ```bash
 # 发送 Slack 通知
 /alfred:9-feedback --notify-slack
@@ -1029,15 +1061,16 @@ jobs:
 /alfred:9-feedback --notify-teams
 ```
 
----
+______________________________________________________________________
 
 ## 最佳实践
 
 ### 1. 编写有效的反馈
 
 #### Bug 报告最佳实践
+
 ```bash
-# <span class="material-icons">check_circle</span> 好的 Bug 报告
+# ✅ 好的 Bug 报告
 标题: [BUG] 登录页面在 Safari 浏览器上显示异常
 
 描述:
@@ -1054,8 +1087,9 @@ jobs:
 ```
 
 #### 功能请求最佳实践
+
 ```bash
-# <span class="material-icons">check_circle</span> 好的功能请求
+# ✅ 好的功能请求
 标题: [FEATURE] 支持多种语言界面切换
 
 描述:
@@ -1079,6 +1113,7 @@ jobs:
 ### 2. 反馈时机
 
 #### 及时反馈
+
 ```bash
 # 发现问题立即反馈
 /alfred:9-feedback
@@ -1087,6 +1122,7 @@ jobs:
 ```
 
 #### 定期反馈收集
+
 ```bash
 # 每周团队会议收集反馈
 /alfred:9-feedback --team-meeting
@@ -1098,6 +1134,7 @@ jobs:
 ### 3. 团队协作
 
 #### 反馈循环
+
 ```yaml
 反馈处理流程:
 1. 收集反馈
@@ -1131,16 +1168,18 @@ jobs:
    - 预防类似问题
 ```
 
----
+______________________________________________________________________
 
 ## 故障排除
 
 ### 常见问题
 
 #### 1. GitHub 连接问题
+
 **症状**: 无法创建 GitHub Issue
 
 **解决方案**:
+
 ```bash
 # 检查 GitHub CLI 认证
 gh auth status
@@ -1156,9 +1195,11 @@ gh issue list
 ```
 
 #### 2. 分类不准确
+
 **症状**: 自动分类结果不准确
 
 **解决方案**:
+
 ```bash
 # 手动指定类型
 /alfred:9-feedback --type=bug
@@ -1171,9 +1212,11 @@ gh issue list
 ```
 
 #### 3. 模板问题
+
 **症状**: 模板格式不正确
 
 **解决方案**:
+
 ```bash
 # 验证模板格式
 /alfred:9-feedback --validate-template bug-report
@@ -1188,6 +1231,7 @@ gh issue list
 ### 调试技巧
 
 #### 1. 启用详细日志
+
 ```bash
 # 启用调试模式
 export ALFRED_DEBUG=true
@@ -1198,6 +1242,7 @@ export ALFRED_DEBUG=true
 ```
 
 #### 2. 预览功能
+
 ```bash
 # 预览将要创建的 Issue
 /alfred:9-feedback --preview
@@ -1207,6 +1252,7 @@ export ALFRED_DEBUG=true
 ```
 
 #### 3. 测试模式
+
 ```bash
 # 测试模式，不会实际创建 Issue
 /alfred:9-feedback --test-mode
@@ -1215,7 +1261,7 @@ export ALFRED_DEBUG=true
 /alfred:9-feedback --test-repo
 ```
 
----
+______________________________________________________________________
 
 ## 总结
 
