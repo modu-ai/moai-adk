@@ -195,9 +195,7 @@ class TemplateMerger:
             template_dir: Template .github directory.
             existing_dir: Existing .github directory.
         """
-        from pathlib import Path
         import shutil
-        import os
 
         # Ensure workflows directory exists
         workflows_dir = existing_dir / "workflows"

@@ -248,53 +248,16 @@ Alfred follows a systematic **4-step workflow** for all user requests to ensure 
 
 ---
 
-## 🔄 Alfred Quality Assurance System (New in v4.0.0)
+## 🔄 Alfred Quality Assurance System
 
-### Step-by-Step Self-Check Checklist
-
-Alfred must answer the following 5 questions after completing each step:
-
-**Intent Understanding Step Checklist**:
-- [ ] Is user intent clearly defined?
-- [ ] Has AskUserQuestion clarification been completed?
-- [ ] Are technical stack and scope specified?
-- [ ] Has all ambiguity been resolved?
-- [ ] Is preparation for next step complete?
-
-**Plan Creation Step Checklist**:
-- [ ] Was Plan Agent called?
-- [ ] Was a structured plan created?
-- [ ] Was file change list clearly specified?
-- [ ] Was user approval obtained?
-- [ ] Was TodoWrite initialized?
-
-**Task Execution Step Checklist**:
-- [ ] Was TDD RED-GREEN-REFACTOR followed?
-- [ ] Was TodoWrite tracked in real-time?
-- [ ] Was only one task progressed at a time?
-- [ ] Did all tests pass?
-- [ ] Was code quality guaranteed?
-
-**Report & Commit Step Checklist**:
-- [ ] Were `.moai/config.json` settings complied with?
-- [ ] Were reports generated only on explicit request?
-- [ ] Was Git commit completed?
-- [ ] Were unnecessary files cleaned up?
-- [ ] Is project in clean state?
-- [ ] Did workflow validation pass?
-
-### Workflow Audit & Improvement
-
-**Automatically executed after each task completion**:
-1. **Process Review**: Validate compliance of each step
-2. **Improvement Identification**: Immediately identify inefficiencies
-3. **Next Task Lessons Learned**: Record improvements for future work
-4. **User Feedback Collection**: Gather satisfaction and improvement suggestions
-
-**Continuous Improvement Mechanisms**:
-- Weekly workflow efficiency analysis
-- Monthly quality metrics tracking
-- Quarterly process improvement planning
+### Core Workflow Validation
+- ✅ **Intent Understanding**: User intent clearly defined and approved?
+- ✅ **Plan Creation**: Plan Agent plan created and user approved?
+- ✅ **TDD Compliance**: RED-GREEN-REFACTOR cycle strictly followed?
+- ✅ **Real-time Tracking**: All tasks transparently tracked with TodoWrite?
+- ✅ **Configuration Compliance**: `.moai/config.json` settings strictly followed?
+- ✅ **Quality Assurance**: All tests pass and code quality guaranteed?
+- ✅ **Cleanup Complete**: Unnecessary files cleaned and project in clean state?
 
 ---
 
@@ -669,190 +632,35 @@ Resolution:
 
 ## ⚡ Alfred Command Completion Pattern
 
-**CRITICAL RULE**: When any Alfred command (`/alfred:0-project`, `/alfred:1-plan`, `/alfred:2-run`, `/alfred:3-sync`) completes, **ALWAYS use `AskUserQuestion` tool** to ask the user what to do next.
+**CRITICAL**: When Alfred commands complete, **ALWAYS use `AskUserQuestion`** to ask next steps.
 
-### Batched Design Principle
+### Key Rules
+1. **NO EMOJIS** in fields (causes JSON encoding errors)
+2. **Batch questions** (1-4 questions per call)
+3. **Clear options** (3-4 choices, not open-ended)
+4. **User's language** for all content
+5. **Call Skill first**: `Skill("moai-alfred-ask-user-questions")`
 
-**Multi-question UX optimization**: Use batched AskUserQuestion calls (1-4 questions per call) to reduce user interaction turns:
-
-- ✅ **Batched** (RECOMMENDED): 2-4 related questions in 1 AskUserQuestion call
-- ❌ **Sequential** (AVOID): Multiple AskUserQuestion calls for independent questions
-
-**Example**:
-```python
-# ✅ CORRECT: Batch 2 questions in 1 call
-AskUserQuestion(
-    questions=[
-        {
-            "question": "What type of issue do you want to create?",
-            "header": "Issue Type",
-            "options": [...]
-        },
-        {
-            "question": "What is the priority level?",
-            "header": "Priority",
-            "options": [...]
-        }
-    ]
-)
-
-# ❌ WRONG: Sequential 2 calls
-AskUserQuestion(questions=[{"question": "Type?", ...}])
-AskUserQuestion(questions=[{"question": "Priority?", ...}])
-```
-
-### Pattern for Each Command
-
-#### `/alfred:0-project` Completion
-
-```
-After project initialization completes:
-├─ Use AskUserQuestion to ask:
-│  ├─ Option 1: Proceed to /alfred:1-plan (plan specifications)
-│  ├─ Option 2: Start new session with /clear
-│  └─ Option 3: Review project structure
-└─ DO NOT suggest multiple next steps in prose - use AskUserQuestion only
-```
-
-**Batched Implementation Example**:
-```python
-AskUserQuestion(
-    questions=[
-        {
-            "question": "Project initialization is complete. What would you like to do next?",
-            "header": "Next Step",
-            "options": [
-                {"label": "Write Specifications", "description": "Run /alfred:1-plan to define requirements"},
-                {"label": "Review Project Structure", "description": "Check current project state"},
-                {"label": "Start New Session", "description": "Run /clear to start fresh"}
-            ]
-        }
-    ]
-)
-```
-
-#### `/alfred:1-plan` Completion
-
-```
-After planning completes:
-├─ Use AskUserQuestion to ask:
-│  ├─ Option 1: Proceed to /alfred:2-run (implement SPEC)
-│  ├─ Option 2: Revise SPEC before implementation
-│  └─ Option 3: Start new session with /clear
-└─ DO NOT suggest multiple next steps in prose - use AskUserQuestion only
-```
-
-#### `/alfred:2-run` Completion
-
-```
-After implementation completes:
-├─ Use AskUserQuestion to ask:
-│  ├─ Option 1: Proceed to /alfred:3-sync (synchronize docs)
-│  ├─ Option 2: Run additional tests/validation
-│  └─ Option 3: Start new session with /clear
-└─ DO NOT suggest multiple next steps in prose - use AskUserQuestion only
-```
-
-#### `/alfred:3-sync` Completion
-
-```
-After sync completes:
-├─ Use AskUserQuestion to ask:
-│  ├─ Option 1: Return to /alfred:1-plan (next feature)
-│  ├─ Option 2: Merge PR to main
-│  └─ Option 3: Complete session
-└─ DO NOT suggest multiple next steps in prose - use AskUserQuestion only
-```
-
-### Implementation Rules
-
-1. **CRITICAL: NO EMOJIS** - Never use emojis in `label`, `header`, or `description` fields (causes JSON encoding errors)
-2. **Always use AskUserQuestion** - Never suggest next steps in prose (e.g., "You can now run `/alfred:1-plan`...")
-3. **Provide 3-4 clear options** - Not open-ended or free-form
-4. **Batch questions when possible** - Combine related questions in 1 call (1-4 questions max)
-5. **Language**: Present options in user's `conversation_language` (Korean, Japanese, etc.)
-6. **ALWAYS invoke moai-alfred-ask-user-questions Skill** - Call `Skill("moai-alfred-ask-user-questions")` before using AskUserQuestion for up-to-date best practices and field specifications
-
-### AskUserQuestion Field Specifications
-
-**For complete API specifications, field constraints, parameter validation, and detailed examples**, always call:
-
-```python
-Skill("moai-alfred-ask-user-questions")
-```
-
-This Skill provides:
-- **API Reference** (reference.md): Complete function signature, constraints, limits
-- **Field Specifications**: `question`, `header`, `label`, `description`, `multiSelect` with examples
-- **Best Practices**: DO/DON'T guide, common patterns, error handling
-- **Real-world Examples** (examples.md): 20+ complete working examples across different domains
-- **Integration Patterns**: How to use with Alfred commands (Plan/Run/Sync)
-
-### Pattern Examples
-
-For specific, production-tested examples of different question types (single-select, multi-select, conditional flows, etc.), **see the Skill examples**:
-
-```bash
-Skill("moai-alfred-ask-user-questions")
-# → reference.md (API + constraints)
-# → examples.md (20+ real-world patterns)
-```
+### Command Completion Flow
+- `/alfred:0-project` → Plan / Review / New session
+- `/alfred:1-plan` → Implement / Revise / New session
+- `/alfred:2-run` → Sync / Validate / New session
+- `/alfred:3-sync` → Next feature / Merge / Complete
 
 ---
 
-## 📊 Session Log Meta-Analysis System
+## 📊 Session Log Analysis
 
-MoAI-ADK automatically analyzes Claude Code session logs to continuously improve settings and rules based on data.
+MoAI-ADK automatically analyzes session logs to improve settings and rules.
 
-### Automated Collection & Analysis
+**Analysis Location**: `~/.claude/projects/*/session-*.json`
+**Auto-reports**: Saved to `.moai/reports/daily-YYYY-MM-DD.md`
 
-**Session Log Location**: `~/.claude/projects/*/session-*.json`
-
-**Daily Analysis (SessionStart Hook)**:
-- **Auto-trigger**: Checks elapsed days since last analysis at session start
-- **Condition**: Runs automatically if 1+ day has passed
-- **Execution**: Automatic execution (local machine only)
-- Results automatically saved to `.moai/reports/daily-YYYY-MM-DD.md`
-
-### Analysis Categories
-
-1. **📈 Tool Usage Patterns**: TOP 10 most used tools, tool-specific usage frequency
-2. **⚠️ Error Patterns**: Repeated Tool failures, most common error messages
-3. **🪝 Hook Failure Analysis**: SessionStart, PreToolUse, PostToolUse hook failures
-4. **🔐 Permission Request Analysis**: Most frequently requested permissions, permission type frequency
-
-### Improvement Feedback Loop
-
-```
-1️⃣ High permission requests detected
-   ↓
-2️⃣ Re-evaluate .claude/settings.json permissions
-   - allow → ask changes
-   - or add new Bash rules
-   ↓
-3️⃣ Error patterns detected
-   ↓
-4️⃣ Add avoidance strategies to CLAUDE.md
-   - "If X error, try Y"
-   - recommend new Skills or tools
-   ↓
-5️⃣ Hook failures detected
-   ↓
-6️⃣ Debug and improve .claude/hooks/
-```
-
-### Manual Analysis Commands
-
-```bash
-# Last 1 day analysis
-python3 .moai/scripts/session_analyzer.py --days 1
-
-# Last 7 days analysis
-python3 .moai/scripts/session_analyzer.py --days 7
-
-# Last 30 days analysis
-python3 .moai/scripts/session_analyzer.py --days 30 --verbose
-```
+**Key Metrics**:
+- Tool usage patterns
+- Error frequency analysis
+- Hook failure detection
+- Permission request trends
 
 ---
 
@@ -862,34 +670,25 @@ python3 .moai/scripts/session_analyzer.py --days 30 --verbose
 
 ---
 
-## 🚀 v0.17.0 New Features & Configuration
+## 🚀 v0.20.0 MCP Integration
 
 ### Key Features
+- **MCP Server Selection**: Interactive and CLI options during `moai-adk init`
+- **Pre-configured Servers**: context7, figma, playwright, sequential-thinking
+- **Auto-setup**: `--mcp-auto` flag for recommended server installation
+- **Template Integration**: `.claude/mcp.json` automatically generated
 
-1. **CLI Initialization Optimization**:
-   - `moai-adk init` runtime: **30 seconds → 5 seconds**
-   - Simplified: Project name only in init, detailed settings in `/alfred:0-project`
+### Usage Examples
+```bash
+# Interactive selection
+moai-adk init
 
-2. **Report Generation Control** (Token Savings):
-   - **Enable**: Full analysis reports (50-60 tokens/report)
-   - **⚡ Minimal** (Recommended): Essential reports only (20-30 tokens/report)
-   - **🚫 Disable**: No report generation (0 tokens)
-   - Config: `.moai/config.json` → `report_generation` section
+# CLI selection
+moai-adk init --with-mcp context7 --with-mcp figma
 
-3. **Flexible Git Workflows** (Team Mode):
-   - **Feature Branch + PR**: Feature branch → PR review → develop merge
-   - **Direct Commit to Develop**: Direct commits to develop (simplified workflow)
-   - **Decide Per SPEC**: Choose workflow per SPEC creation
-   - Config: `.moai/config.json` → `github.spec_git_workflow`
-
-4. **GitHub Auto Branch Cleanup**:
-   - Automatic remote branch deletion after PR merge
-   - Config: `.moai/config.json` → `github.auto_delete_branches`
-
-### Token Savings Impact
-- **Minimal mode**: **80% token usage reduction**
-- **Monthly savings**: ~5,000-10,000 tokens (tens of dollars saved)
-- **Performance**: 30-40% faster `/alfred:3-sync` execution
+# Auto-install all servers
+moai-adk init --mcp-auto
+```
 
 ---
 
@@ -929,144 +728,24 @@ python3 .moai/scripts/session_analyzer.py --days 30 --verbose
 
 ## 🌐 conversation_language Complete Guide
 
-### ❓ What is conversation_language?
 
-**Simply put**: This is the language setting for how Alfred communicates with you.
-- English: `"en"`
-- Korean: `"ko"`
-- Japanese: `"ja"`
-- Spanish: `"es"`
-- And 23+ other languages supported
+## 🌐 Language Configuration
 
-**Important**: This is NOT a Claude Code native setting - it's **MoAI-ADK specific**.
+### conversation_language
+**What**: Alfred's response language setting (MoAI-ADK specific)
 
-### 🔍 How to Check Your conversation_language
+**Supported**: "en", "ko", "ja", "es" + 23+ languages
 
-**View your current project setting**:
-```bash
-cat .moai/config.json | jq '.language.conversation_language'
-```
+**Check Current**: `cat .moai/config.json | jq '.language.conversation_language'`
 
-**Example value**:
-```json
-{
-  "language": {
-    "conversation_language": "en",
-    "conversation_language_name": "English"
-  }
-}
-```
+**Usage**:
+- User content: Your chosen language  
+- Infrastructure: English (Skills, agents, commands)
 
-This tells you exactly what language Alfred will use when responding to you!
+**Configuration**: `.moai/config.json` → `language.conversation_language`
 
-### 🎯 Where conversation_language is Used
+**Note**: Set during `/alfred:0-project` or edit config directly
 
-**Alfred uses this for ALL user-facing content**:
-- ✅ All responses and explanations
-- ✅ Generated SPEC documents
-- ✅ Reports and analysis results
-- ✅ Questions and guidance messages
-- ✅ Code comments (in local projects)
-- ✅ Git commit messages (in local projects)
+**English-Only Core Files**: `.claude/agents/`, `.claude/commands/`, `.claude/skills/` (global maintainability)
 
-**What stays in English**:
-- ❌ Skill invocations: `Skill("skill-name")`
-- ❌ `.claude/` directory files
-- ❌ Technical function/variable names
-- ❌ @TAG identifiers
 
-### ⚙️ How to Change conversation_language
-
-**Method 1: Direct Edit**
-```bash
-# Open .moai/config.json file
-code .moai/config.json
-
-# Change conversation_language value
-"conversation_language": "ja",
-"conversation_language_name": "Japanese"
-```
-
-**Method 2: During Project Initialization**
-```bash
-/alfred:0-project
-```
-→ Language selection available at startup
-
-### 🔄 How Alfred Uses This Internally
-
-1. **Hook Scripts Read Configuration**
-   ```python
-   config = json.loads(Path(".moai/config.json").read_text())
-   lang = config["language"]["conversation_language"]  # "en", "ko", "ja", etc.
-   ```
-
-2. **User Gets Responses in Their Language**
-   - English setting → Alfred responds in English
-   - Korean setting → Alfred responds in Korean
-   - Japanese setting → Alfred responds in Japanese
-
-3. **Language Parameter Passed to Sub-agents**
-   ```python
-   Task(
-       prompt="Task prompt",
-       subagent_type="spec-builder",
-       language="en"  # conversation_language value passed
-   )
-   ```
-
-### 💡 Frequently Asked Questions (FAQ)
-
-**Q: How do I know what my conversation_language is?**
-A: Run `cat .moai/config.json | jq '.language'` to check your current setting.
-
-**Q: I want to change to English**
-A: Change `"conversation_language": "en"` in `.moai/config.json`.
-
-**Q: Can I mix languages?**
-A: User-facing content uses your chosen language, technical infrastructure stays in English.
-
-**Q: How do I add a new language?**
-A: Use any supported ISO 639-1 language code in config.json.
-
-### 🎭 Real-World Examples
-
-```bash
-# With English setting
-User: "Check code quality"
-Alfred: "I'll check your code quality..."  # English response
-
-# With Korean setting
-User: "코드 품질 검사해줘"
-Alfred: "코드 품질을 검사하겠습니다..."  # Korean response
-
-# With Japanese setting
-User: "コード品質をチェック"
-Alfred: "コード品質をチェックします..."  # Japanese response
-```
-
-### 📍 Configuration Location Summary
-
-**File**: `.moai/config.json`
-**Path**: `language.conversation_language`
-**Format**: ISO 639-1 language code (2 letters)
-**Example**: `"en"`, `"ko"`, `"ja"`, `"es"`
-
-### Critical Rule: English-Only Core Files
-
-**All files in these directories MUST be in English:**
-
-- `.claude/agents/`
-- `.claude/commands/`
-- `.claude/skills/`
-
-**Rationale**: These files define system behavior, tool invocations, and internal infrastructure. English ensures:
-
-1. **Industry standard**: Technical documentation in English (single source of truth)
-2. **Global maintainability**: No translation burden for 55 Skills, 12 agents, 4 commands
-3. **Infinite scalability**: Support any user language without modifying infrastructure
-4. **Reliable invocation**: Explicit Skill("name") calls work regardless of prompt language
-
-**Note on CLAUDE.md**: This project guidance document is intentionally written in the user's `conversation_language` ({{CONVERSATION_LANGUAGE_NAME}}) to provide clear direction to the project owner. The critical infrastructure (agents, commands, skills, memory) stays in English to support global teams, but CLAUDE.md serves as the project's internal playbook in the team's working language.
-
-**Note**: The conversation language is selected at the beginning of `/alfred:0-project` and applies to all subsequent project initialization steps. For detailed configuration reference, see: Skill("moai-alfred-config-schema")

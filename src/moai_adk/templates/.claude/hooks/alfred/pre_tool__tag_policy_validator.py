@@ -30,7 +30,8 @@ from moai_adk.core.tags.policy_validator import (
     PolicyViolationLevel,
     TagPolicyValidator,
 )
-from ..utils.hook_config import load_hook_timeout, get_graceful_degradation
+
+from ..utils.hook_config import get_graceful_degradation, load_hook_timeout
 
 
 def load_config() -> Dict[str, Any]:
