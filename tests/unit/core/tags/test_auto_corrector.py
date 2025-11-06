@@ -138,7 +138,7 @@ def another():
 
         # Test with empty set
         existing_numbers = set()
-        next_number = correct._calculate_next_number(existing_numbers, domain)
+        next_number = corrector._calculate_next_number(existing_numbers, domain)
         assert next_number == 1
 
     def test_extract_domain_from_path(self, corrector):
