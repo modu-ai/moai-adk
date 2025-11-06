@@ -1,7 +1,6 @@
----
-title: MoAI-ADK (智能开发工具包)
-description: AI驱动的测试驱动开发框架，通过SPEC → TDD → 代码 → 文档的自然衔接，提供完整的AI协作开发工作流程
----
+______________________________________________________________________
+
+## title: MoAI-ADK (智能开发工具包) description: AI驱动的测试驱动开发框架，通过SPEC → TDD → 代码 → 文档的自然衔接，提供完整的AI协作开发工作流程
 
 # MoAI-ADK (智能开发工具包)
 
@@ -15,7 +14,7 @@ description: AI驱动的测试驱动开发框架，通过SPEC → TDD → 代码
 
 > **MoAI-ADK 提供自然衔接 AI 与 SPEC（规格说明）→ TDD（测试驱动开发）→ 代码 → 文档的开发工作流程。**
 
----
+______________________________________________________________________
 
 ## 1. MoAI-ADK 一览
 
@@ -23,18 +22,18 @@ MoAI-ADK 通过三个核心原则革新 AI 协作开发。通过下方导航，�
 
 如果您是**第一次接触 MoAI-ADK**，请从"什么是 MoAI-ADK"开始。想要**快速开始**，可以直接跳转到"5分钟快速入门"。已经**安装完成并理解概念**，推荐"核心概念轻松理解"。
 
-| 问题                                      | 快速导航                                          |
-| ----------------------------------------- | ------------------------------------------------- |
-| 初次接触，这是什么？                      | [什么是 MoAI-ADK？](#什么是-moai-adk)             |
-| 如何开始？                                | [5分钟快速入门](#5分钟快速入门)                   |
-| 想了解基本流程？                          | [基本工作流程 (0 → 3)](#基本工作流程-0--3)        |
-| Plan / Run / Sync 命令的作用是什么？       | [核心命令摘要](#核心命令摘要)                     |
-| SPEC·TDD·TAG 是什么？                     | [核心概念轻松理解](#核心概念轻松理解)             |
-| 对代理/Skills 感兴趣？                     | [子代理 & Skills 概述](#子代理--skills-概述)       |
-| 对 Claude Code Hooks 感兴趣？              | [Claude Hooks 指南](#claude-hooks-指南)           |
-| 想要深入学习？                            | [更多资源](#更多资源)                             |
+| 问题                                 | 快速导航                                                                                      |
+| ------------------------------------ | --------------------------------------------------------------------------------------------- |
+| 初次接触，这是什么？                 | [什么是 MoAI-ADK？](#%E4%BB%80%E4%B9%88%E6%98%AF-moai-adk)                                    |
+| 如何开始？                           | [5分钟快速入门](#5%E5%88%86%E9%92%9F%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8)                     |
+| 想了解基本流程？                     | [基本工作流程 (0 → 3)](#%E5%9F%BA%E6%9C%AC%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B-0--3)          |
+| Plan / Run / Sync 命令的作用是什么？ | [核心命令摘要](#%E6%A0%B8%E5%BF%83%E5%91%BD%E4%BB%A4%E6%91%98%E8%A6%81)                       |
+| SPEC·TDD·TAG 是什么？                | [核心概念轻松理解](#%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5%E8%BD%BB%E6%9D%BE%E7%90%86%E8%A7%A3) |
+| 对代理/Skills 感兴趣？               | [子代理 & Skills 概述](#%E5%AD%90%E4%BB%A3%E7%90%86--skills-%E6%A6%82%E8%BF%B0)               |
+| 对 Claude Code Hooks 感兴趣？        | [Claude Hooks 指南](#claude-hooks-%E6%8C%87%E5%8D%97)                                         |
+| 想要深入学习？                       | [更多资源](#%E6%9B%B4%E5%A4%9A%E8%B5%84%E6%BA%90)                                             |
 
----
+______________________________________________________________________
 
 ## 什么是 MoAI-ADK？
 
@@ -64,35 +63,36 @@ MoAI-ADK 通过三个核心原则革新 AI 协作开发。通过下方导航，�
 
 遵循这个顺序，您将体验到永不失败的代理式编码：
 
-**<span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_one</span> 明确的需求**
-使用 `/alfred:1-plan` 命令首先编写 SPEC。"登录功能"这个模糊请求转换为"当提供有效凭证时，必须发放 JWT 令牌"的**明确需求**。Alfred 的 spec-builder 使用 EARS 语法，短短 3 分钟就能创建专业的 SPEC。
+**<span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_one</span>
+明确的需求** 使用 `/alfred:1-plan` 命令首先编写 SPEC。"登录功能"这个模糊请求转换为"当提供有效凭证时，必须发放 JWT 令牌"的**明确需求**。Alfred 的
+spec-builder 使用 EARS 语法，短短 3 分钟就能创建专业的 SPEC。
 
-**<span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_two</span> 测试保证**
-在 `/alfred:2-run` 中自动进行测试驱动开发（TDD）。按照 RED（失败的测试）→ GREEN（最小实现）→ REFACTOR（代码整理）的顺序进行，**保证测试覆盖率在 85% 以上**。不再有"稍后测试"，测试引领代码编写。
+**<span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_two</span>
+测试保证** 在 `/alfred:2-run` 中自动进行测试驱动开发（TDD）。按照 RED（失败的测试）→ GREEN（最小实现）→ REFACTOR（代码整理）的顺序进行，**保证测试覆盖率在
+85% 以上**。不再有"稍后测试"，测试引领代码编写。
 
-**<span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_3</span> 文档自动同步**
-只需一个 `/alfred:3-sync` 命令，代码、测试、文档全部**保持最新状态同步**。README、CHANGELOG、API 文档，甚至动态文档都会自动更新。6 个月后，代码和文档仍然保持一致。
+**<span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_3</span>
+文档自动同步** 只需一个 `/alfred:3-sync` 命令，代码、测试、文档全部**保持最新状态同步**。README、CHANGELOG、API 文档，甚至动态文档都会自动更新。6
+个月后，代码和文档仍然保持一致。
 
-**<span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_4</span> @TAG 系统追踪**
-所有代码、测试、文档都加上 `@TAG:ID`。以后需求变更时，`rg "@SPEC:EX-AUTH-001"` 一个命令就能**找到所有相关**的测试、实现、文档。重构时充满信心。
+**<span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_4</span> @TAG
+系统追踪** 所有代码、测试、文档都加上 `@TAG:ID`。以后需求变更时，`rg "@SPEC:EX-AUTH-001"` 一个命令就能**找到所有相关**的测试、实现、文档。重构时充满信心。
 
-**<span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_5</span> Alfred 记住上下文**
-AI 代理协作，记住项目的**所有结构、决策原因、工作历史**。无需重复相同的问题。
+**<span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_5</span> Alfred
+记住上下文** AI 代理协作，记住项目的**所有结构、决策原因、工作历史**。无需重复相同的问题。
 
 ### MoAI-ADK 的三个核心承诺
 
 为了让初学者也能记住，MoAI-ADK 的价值简化为三条：
 
-**第一，SPEC 优先于代码**
-先明确定义要创建什么。编写 SPEC 的过程中，能在实现前发现问题。大幅减少与团队成员的沟通成本。
+**第一，SPEC 优先于代码** 先明确定义要创建什么。编写 SPEC 的过程中，能在实现前发现问题。大幅减少与团队成员的沟通成本。
 
-**第二，测试引领代码（TDD）**
-实现前先编写测试（RED）。通过最小实现让测试通过（GREEN）。然后整理代码（REFACTOR）。结果：bug 更少，重构更有信心，代码更易理解。
+**第二，测试引领代码（TDD）** 实现前先编写测试（RED）。通过最小实现让测试通过（GREEN）。然后整理代码（REFACTOR）。结果：bug 更少，重构更有信心，代码更易理解。
 
-**第三，文档与代码始终保持一致**
-只需一个 `/alfred:3-sync` 命令，所有文档自动更新。README、CHANGELOG、API 文档、动态文档始终与代码同步。修改 6 个月前的代码时不再绝望。
+**第三，文档与代码始终保持一致** 只需一个 `/alfred:3-sync` 命令，所有文档自动更新。README、CHANGELOG、API 文档、动态文档始终与代码同步。修改 6
+个月前的代码时不再绝望。
 
----
+______________________________________________________________________
 
 ## 为什么需要它？
 
@@ -100,14 +100,14 @@ AI 代理协作，记住项目的**所有结构、决策原因、工作历史**�
 
 现代 AI 协作开发面临多种挑战。MoAI-ADK **系统性地解决**所有这些问题：
 
-| 担忧                     | 传统方法的问题                  | MoAI-ADK 的解决方案                               |
-| ------------------------ | ------------------------------- | ------------------------------------------------ |
-| "无法信任 AI 代码"       | 无测试实现，验证方法不明确      | 强制 SPEC → TEST → CODE 顺序，保证覆盖率 85%+    |
-| "重复相同解释"           | 上下文丢失，项目历史未记录      | Alfred 记住所有信息，19 个 AI 团队协作           |
-| "编写提示词困难"         | 不知道如何编写好的提示词        | `/alfred` 命令自动提供标准化提示词               |
-| "文档总是过时"           | 代码修改后忘记更新文档          | `/alfred:3-sync` 一个命令自动同步                 |
-| "不知道在哪里修改"       | 代码搜索困难，意图不明确        | @TAG 链接 SPEC → TEST → CODE → DOC                |
-| "团队入职时间长"         | 新团队成员无法掌握代码上下文    | 阅读 SPEC 即可立即理解意图                       |
+| 担忧               | 传统方法的问题               | MoAI-ADK 的解决方案                           |
+| ------------------ | ---------------------------- | --------------------------------------------- |
+| "无法信任 AI 代码" | 无测试实现，验证方法不明确   | 强制 SPEC → TEST → CODE 顺序，保证覆盖率 85%+ |
+| "重复相同解释"     | 上下文丢失，项目历史未记录   | Alfred 记住所有信息，19 个 AI 团队协作        |
+| "编写提示词困难"   | 不知道如何编写好的提示词     | `/alfred` 命令自动提供标准化提示词            |
+| "文档总是过时"     | 代码修改后忘记更新文档       | `/alfred:3-sync` 一个命令自动同步             |
+| "不知道在哪里修改" | 代码搜索困难，意图不明确     | @TAG 链接 SPEC → TEST → CODE → DOC            |
+| "团队入职时间长"   | 新团队成员无法掌握代码上下文 | 阅读 SPEC 即可立即理解意图                    |
 
 ### 立即可体验的收益
 
@@ -119,7 +119,7 @@ AI 代理协作，记住项目的**所有结构、决策原因、工作历史**�
 - **维护成本降低**：代码与文档始终一致
 - **团队协作效率**：通过 SPEC 和 TAG 实现明确沟通
 
----
+______________________________________________________________________
 
 ## ⚡ 3 分钟极速入门
 
@@ -153,7 +153,7 @@ uv 0.5.1
 ```bash
 uv tool install moai-adk
 
-# 结果: <span class="material-icons">check_circle</span> Installed moai-adk
+# 结果: ✅ Installed moai-adk
 ```
 
 **验证**：
@@ -163,7 +163,7 @@ moai-adk --version
 # 输出: MoAI-ADK v1.0.0
 ```
 
----
+______________________________________________________________________
 
 ### 步骤 <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_two</span>：创建第一个项目（约 2 分钟）
 
@@ -178,17 +178,17 @@ cd hello-world
 
 ```
 hello-world/
-├── .moai/              <span class="material-icons">check_circle</span> Alfred 设置
-├── .claude/            <span class="material-icons">check_circle</span> Claude Code 自动化
-└── CLAUDE.md           <span class="material-icons">check_circle</span> 项目指南
+├── .moai/              ✅ Alfred 设置
+├── .claude/            ✅ Claude Code 自动化
+└── CLAUDE.md           ✅ 项目指南
 ```
 
 #### 验证：检查核心文件
 
 ```bash
 # 检查核心设置文件
-ls -la .moai/config.json  # <span class="material-icons">check_circle</span> 是否存在？
-ls -la .claude/commands/  # <span class="material-icons">check_circle</span> 是否有命令？
+ls -la .moai/config.json  # ✅ 是否存在？
+ls -la .claude/commands/  # ✅ 是否有命令？
 
 # 或一次检查
 moai-adk doctor
@@ -197,15 +197,15 @@ moai-adk doctor
 **输出示例**：
 
 ```
-<span class="material-icons">check_circle</span> Python 3.13.0
-<span class="material-icons">check_circle</span> uv 0.5.1
-<span class="material-icons">check_circle</span> .moai/ directory initialized
-<span class="material-icons">check_circle</span> .claude/ directory ready
-<span class="material-icons">check_circle</span> 16 agents configured
-<span class="material-icons">check_circle</span> 74 skills loaded
+✅ Python 3.13.0
+✅ uv 0.5.1
+✅ .moai/ directory initialized
+✅ .claude/ directory ready
+✅ 16 agents configured
+✅ 74 skills loaded
 ```
 
----
+______________________________________________________________________
 
 ### 步骤 3️�：启动 Alfred（约 1-2 分钟）
 
@@ -237,35 +237,36 @@ Q4: 模式？
 A: personal（用于本地开发）
 ```
 
-#### 结果：项目准备完成！<span class="material-icons">check_circle</span>
+#### 结果：项目准备完成！✅
 
 ```
-<span class="material-icons">check_circle</span> 项目初始化完成
-<span class="material-icons">check_circle</span> 设置保存到 .moai/config.json
-<span class="material-icons">check_circle</span> 在 .moai/project/ 中创建文档
-<span class="material-icons">check_circle</span> Alfred 完成技能推荐
+✅ 项目初始化完成
+✅ 设置保存到 .moai/config.json
+✅ 在 .moai/project/ 中创建文档
+✅ Alfred 完成技能推荐
 
 下一步: /alfred:1-plan "第一个功能说明"
 ```
 
----
+______________________________________________________________________
 
-## <span class="material-icons">rocket_launch</span> 下一步：10 分钟内完成第一个功能
+## 🚀 下一步：10 分钟内完成第一个功能
 
 现在来实际**创建功能并自动生成文档**！
 
-> **→ 转到下一节：["第一次 10 分钟实践：Hello World API"](#第一次-10-分钟实践hello-world-api)**
+> **→
+> 转到下一节：["第一次 10 分钟实践：Hello World API"](#%E7%AC%AC%E4%B8%80%E6%AC%A1-10-%E5%88%86%E9%92%9F%E5%AE%9E%E8%B7%B5hello-world-api)**
 
 本节包括：
 
-- <span class="material-icons">check_circle</span> 用 SPEC 定义简单 API
-- <span class="material-icons">check_circle</span> 完全体验 TDD（RED → GREEN → REFACTOR）
-- <span class="material-icons">check_circle</span> 体验自动文档生成
-- <span class="material-icons">check_circle</span> 理解 @TAG 系统
+- ✅ 用 SPEC 定义简单 API
+- ✅ 完全体验 TDD（RED → GREEN → REFACTOR）
+- ✅ 体验自动文档生成
+- ✅ 理解 @TAG 系统
 
----
+______________________________________________________________________
 
-## <span class="material-icons">auto_stories</span> 安装和项目设置完整指南
+## 📚 安装和项目设置完整指南
 
 快速入门后如需更详细说明，请参考下文。
 
@@ -293,16 +294,16 @@ moai-adk update        # 更新到最新版本
 
 MoAI-ADK 自动安装和配置遵循 Microsoft MCP 标准的 4 个核心 MCP 服务器。
 
-#### <span class="material-icons">settings</span> MCP 服务器类型和用途
+#### ⚙️ MCP 服务器类型和用途
 
-| MCP 服务    | 主要功能                     | 目标代理                     | 安装方式             |
-|-----------|----------------------------|----------------------------|--------------------|
-| **Context7** | 最新库文档搜索                 | 所有专家代理                   | NPX 自动安装         |
-| **Figma**    | 设计系统和组件规格              | ui-ux-expert               | Claude Code 官方远程服务器 |
-| **Playwright** | Web E2E 测试自动化           | frontend-expert, tdd-implementer, quality-gate | NPX 自动安装 |
-| **Sequential Thinking** | 复杂推理和逻辑分析        | spec-builder, implementation-planner, security-expert | NPX 自动安装 |
+| MCP 服务                | 主要功能           | 目标代理                                              | 安装方式                   |
+| ----------------------- | ------------------ | ----------------------------------------------------- | -------------------------- |
+| **Context7**            | 最新库文档搜索     | 所有专家代理                                          | NPX 自动安装               |
+| **Figma**               | 设计系统和组件规格 | ui-ux-expert                                          | Claude Code 官方远程服务器 |
+| **Playwright**          | Web E2E 测试自动化 | frontend-expert, tdd-implementer, quality-gate        | NPX 自动安装               |
+| **Sequential Thinking** | 复杂推理和逻辑分析 | spec-builder, implementation-planner, security-expert | NPX 自动安装               |
 
-#### <span class="material-icons">rocket_launch</span> 自动 MCP 设置（moai-adk init）
+#### 🚀 自动 MCP 设置（moai-adk init）
 
 **运行 moai-adk init 时自动安装 MCP 服务器**：
 
@@ -358,17 +359,19 @@ moai-adk init . --with-mcp
 }
 ```
 
-#### <span class="material-icons">settings</span> Figma Access Token 设置
+#### ⚙️ Figma Access Token 设置
 
 **Claude Code 官方 Figma MCP 使用远程服务器**：
 
 1. **生成 Figma Access Token**
+
    - 访问：https://www.figma.com/developers/api#access-tokens
    - 用适当权限创建新的 Access Token
 
 2. **设置令牌**（选择其中一种方法）
 
    **环境变量方法（推荐）**：
+
    ```bash
    # 添加到 shell 配置文件 (~/.zshrc 或 ~/.bashrc)
    export FIGMA_ACCESS_TOKEN="your_figma_token_here"
@@ -378,6 +381,7 @@ moai-adk init . --with-mcp
    ```
 
    **Claude Code 设置方法**：
+
    ```bash
    claude-code settings
    ```
@@ -386,15 +390,16 @@ moai-adk init . --with-mcp
 
 **注意**：Figma MCP 使用 Claude Code 官方远程服务器(https://mcp.figma.com/mcp)，无需单独本地安装。
 
-#### <span class="material-icons">target</span> 遵循 Microsoft MCP 标准
+#### 🎯 遵循 Microsoft MCP 标准
 
 **设置标准**：
+
 - **文件**：`.claude/mcp.json`（Microsoft MCP 标准）
 - **格式**：在 `servers` 对象中明确各服务器 `type: "stdio"` 或 `type: "http"`
 - **命令**：所有本地服务器使用 `npx` 和 `-y` 标志自动安装
 - **向后兼容**：在 `.claude/settings.json` 中也复制设置以支持旧版
 
-#### <span class="material-icons">check_circle</span> 代理功能扩展
+#### ✅ 代理功能扩展
 
 MCP 服务器正常安装后，以下代理会自动扩展功能：
 
@@ -412,6 +417,7 @@ MCP 服务器正常安装后，以下代理会自动扩展功能：
 #### <span class="material-icons">search</span> 问题解决
 
 **MCP 服务器不可见时**：
+
 1. 重启 Claude Code
 2. 检查 `.claude/mcp.json` 文件语法
 3. 用 `claude-code --version` 检查 Claude Code 版本（需要 v1.5.0+）
@@ -419,6 +425,7 @@ MCP 服务器正常安装后，以下代理会自动扩展功能：
 5. 确认 Figma Access Token 正确设置
 
 **详细 MCP 设置指南**：
+
 - [Claude Code MCP Documentation (English)](https://docs.claude.com/en/docs/claude-code/mcp)
 - [Microsoft MCP Standard](https://modelcontextprotocol.io)
 
@@ -460,21 +467,21 @@ my-project/
 └── CLAUDE.md                       # Alfred 的核心指令
 ```
 
----
+______________________________________________________________________
 
 ## 核心概念：3步循环
 
 设置完成后，所有功能开发都重复这 3 个步骤：
 
-| 步骤        | 命令                       | 执行工作                     | 时间 |
-| ----------- | -------------------------- | ---------------------------- | ---- |
-| 📋 **PLAN** | `/alfred:1-plan "功能说明"` | SPEC 编写（EARS 格式）         | 2分钟 |
-| 💻 **RUN**  | `/alfred:2-run SPEC-ID`    | TDD 实现（RED→GREEN→REFACTOR） | 5分钟 |
-| <span class="material-icons">menu_book</span> **SYNC** | `/alfred:3-sync`           | 文档自动同步                 | 1分钟 |
+| 步骤                                                   | 命令                        | 执行工作                       | 时间  |
+| ------------------------------------------------------ | --------------------------- | ------------------------------ | ----- |
+| 📋 **PLAN**                                            | `/alfred:1-plan "功能说明"` | SPEC 编写（EARS 格式）         | 2分钟 |
+| 💻 **RUN**                                             | `/alfred:2-run SPEC-ID`     | TDD 实现（RED→GREEN→REFACTOR） | 5分钟 |
+| <span class="material-icons">menu_book</span> **SYNC** | `/alfred:3-sync`            | 文档自动同步                   | 1分钟 |
 
 **一个循环 ≈ 8分钟** → **一天可完成 7-8 个功能** ⚡
 
----
+______________________________________________________________________
 
 ## 📦 保持 MoAI-ADK 最新版本
 
@@ -506,29 +513,29 @@ moai-adk update
 
 **更新了什么？**
 
-- <span class="material-icons">check_circle</span> `moai-adk` 包本身（PyPI 最新版本）
-- <span class="material-icons">check_circle</span> 16个子代理模板
-- <span class="material-icons">check_circle</span> 74个 Claude Skills
-- <span class="material-icons">check_circle</span> 5个 Claude Code Hooks
-- <span class="material-icons">check_circle</span> 4个 Alfred 命令定义
+- ✅ `moai-adk` 包本身（PyPI 最新版本）
+- ✅ 16个子代理模板
+- ✅ 74个 Claude Skills
+- ✅ 5个 Claude Code Hooks
+- ✅ 4个 Alfred 命令定义
 
----
+______________________________________________________________________
 
 ## 核心命令摘要
 
-| 命令                        | 作用是什么？                                                   | 主要输出                                                       |
-| --------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------- |
-| `/alfred:0-project`         | 项目初始化：设置收集、文档创建、技能推荐                        | `.moai/config.json`、`.moai/project/*`、初始报告              |
-| `/alfred:0-project setting` | 修改现有设置：语言、昵称、GitHub 设置、报告生成选项更改          | 更新的 `.moai/config.json`                                    |
-| `/alfred:0-project update`  | 模板优化：`moai-adk update` 后保留用户自定义                     | 合并的 `.claude/`、`.moai/` 模板文件                          |
-| `/alfred:1-plan <说明>`     | 需求分析、SPEC 草案、计划板编写                               | `.moai/specs/SPEC-*/spec.md`、计划/验收文档、功能分支          |
-| `/alfred:2-run <SPEC-ID>`   | TDD 执行、测试/实现/重构、质量验证                              | `tests/`、`src/` 实现、质量报告、TAG 链接                     |
-| `/alfred:3-sync`            | 文档/README/CHANGELOG 同步、TAG/PR 状态整理                      | `docs/`、`.moai/reports/sync-report.md`、Ready PR             |
-| `/alfred:9-feedback`        | MoAI-ADK 改进反馈 GitHub Issue 创建（类型 → 标题 → 说明 → 优先级） | GitHub Issue + 自动标签 + 优先级 + URL                       |
+| 命令                        | 作用是什么？                                                       | 主要输出                                              |
+| --------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------- |
+| `/alfred:0-project`         | 项目初始化：设置收集、文档创建、技能推荐                           | `.moai/config.json`、`.moai/project/*`、初始报告      |
+| `/alfred:0-project setting` | 修改现有设置：语言、昵称、GitHub 设置、报告生成选项更改            | 更新的 `.moai/config.json`                            |
+| `/alfred:0-project update`  | 模板优化：`moai-adk update` 后保留用户自定义                       | 合并的 `.claude/`、`.moai/` 模板文件                  |
+| `/alfred:1-plan <说明>`     | 需求分析、SPEC 草案、计划板编写                                    | `.moai/specs/SPEC-*/spec.md`、计划/验收文档、功能分支 |
+| `/alfred:2-run <SPEC-ID>`   | TDD 执行、测试/实现/重构、质量验证                                 | `tests/`、`src/` 实现、质量报告、TAG 链接             |
+| `/alfred:3-sync`            | 文档/README/CHANGELOG 同步、TAG/PR 状态整理                        | `docs/`、`.moai/reports/sync-report.md`、Ready PR     |
+| `/alfred:9-feedback`        | MoAI-ADK 改进反馈 GitHub Issue 创建（类型 → 标题 → 说明 → 优先级） | GitHub Issue + 自动标签 + 优先级 + URL                |
 
 > ❗ 所有命令都保持 **Phase 0(可选) → Phase 1 → Phase 2 → Phase 3** 循环结构。Alfred 会自动报告运行状态和下一步建议。
 
----
+______________________________________________________________________
 
 ## 核心概念轻松理解
 
@@ -538,7 +545,7 @@ MoAI-ADK 由 5 个核心概念组成。每个概念相互连接，共同作用�
 
 **比喻**：就像没有建筑师不能建房子一样，没有设计图就不能编码。
 
-**核心**：实现前明确**"要创建什么"**。这不是简单文档，而是团队和 AI 能共同理解的**可执行规格**。
+**核心**：实现前明确\*\*"要创建什么"**。这不是简单文档，而是团队和 AI 能共同理解的**可执行规格\*\*。
 
 **EARS 语法的 5 种模式**：
 
@@ -552,11 +559,11 @@ MoAI-ADK 由 5 个核心概念组成。每个概念相互连接，共同作用�
 
 **收获**：
 
-- <span class="material-icons">check_circle</span> 团队所有人都理解的明确需求
-- <span class="material-icons">check_circle</span> 基于 SPEC 的测试用例（已经定义要测试什么）
-- <span class="material-icons">check_circle</span> 需求变更时通过 `@SPEC:ID` TAG 追踪所有受影响的代码
+- ✅ 团队所有人都理解的明确需求
+- ✅ 基于 SPEC 的测试用例（已经定义要测试什么）
+- ✅ 需求变更时通过 `@SPEC:ID` TAG 追踪所有受影响的代码
 
----
+______________________________________________________________________
 
 ### 核心概念 2：TDD（测试驱动开发）
 
@@ -578,7 +585,8 @@ MoAI-ADK 由 5 个核心概念组成。每个概念相互连接，共同作用�
    - 通过优先于完美
    - Git 提交：`feat(AUTH-001): implement minimal solution`
 
-3. **<span class="material-icons">recycling</span> REFACTOR**：整理和改进代码
+3. **♻️ REFACTOR**：整理和改进代码
+
    - 应用 TRUST 5原则
    - 消除重复，提高可读性
    - 测试必须仍然通过
@@ -588,11 +596,11 @@ MoAI-ADK 由 5 个核心概念组成。每个概念相互连接，共同作用�
 
 **收获**：
 
-- <span class="material-icons">check_circle</span> 保证覆盖率 85% 以上（没有无测试的代码）
-- <span class="material-icons">check_circle</span> 重构信心（随时可以通过测试验证）
-- <span class="material-icons">check_circle</span> 明确的 Git 历史（追踪 RED → GREEN → REFACTOR 过程）
+- ✅ 保证覆盖率 85% 以上（没有无测试的代码）
+- ✅ 重构信心（随时可以通过测试验证）
+- ✅ 明确的 Git 历史（追踪 RED → GREEN → REFACTOR 过程）
 
----
+______________________________________________________________________
 
 ### 核心概念 3：@TAG 系统
 
@@ -632,11 +640,11 @@ rg '@TAG:AUTH-001' -n
 
 **收获**：
 
-- <span class="material-icons">check_circle</span> 所有代码意图明确（读 SPEC 就明白为什么有这段代码）
-- <span class="material-icons">check_circle</span> 重构时立即掌握所有受影响的代码
-- <span class="material-icons">check_circle</span> 3 个月后仍能理解代码（TAG → SPEC 追踪）
+- ✅ 所有代码意图明确（读 SPEC 就明白为什么有这段代码）
+- ✅ 重构时立即掌握所有受影响的代码
+- ✅ 3 个月后仍能理解代码（TAG → SPEC 追踪）
 
----
+______________________________________________________________________
 
 ### 核心概念 4：TRUST 5原则
 
@@ -650,25 +658,25 @@ rg '@TAG:AUTH-001' -n
    - 所有代码受测试保护
    - 功能添加 = 测试添加
 
-2. **<span class="material-icons">auto_stories</span> Readable**（可读代码）
+2. **📚 Readable**（可读代码）
 
    - 函数 ≤ 50行，文件 ≤ 300行
    - 变量名体现意图
    - 通过 linter（ESLint/ruff/clippy）
 
-3. **<span class="material-icons">target</span> Unified**（一致结构）
+3. **🎯 Unified**（一致结构）
 
    - 保持基于 SPEC 的架构
    - 相同模式重复（学习曲线降低）
    - 类型安全或运行时验证
 
-4. **<span class="material-icons">lock</span> Secured**（安全）
+4. **🔒 Secured**（安全）
 
    - 输入验证（防御 XSS、SQL Injection）
    - 密码哈希（bcrypt、Argon2）
    - 敏感信息保护（环境变量）
 
-5. **<span class="material-icons">link</span> Trackable**（可追踪）
+5. **🔗 Trackable**（可追踪）
 
    - 使用 @TAG 系统
    - Git 提交包含 TAG
@@ -678,11 +686,11 @@ rg '@TAG:AUTH-001' -n
 
 **收获**：
 
-- <span class="material-icons">check_circle</span> 保证生产级代码质量
-- <span class="material-icons">check_circle</span> 团队按相同标准开发
-- <span class="material-icons">check_circle</span> 减少 bug，预防安全漏洞
+- ✅ 保证生产级代码质量
+- ✅ 团队按相同标准开发
+- ✅ 减少 bug，预防安全漏洞
 
----
+______________________________________________________________________
 
 ### 核心概念 5：Alfred 超级代理
 
@@ -710,28 +718,27 @@ rg '@TAG:AUTH-001' -n
 
 **收获**：
 
-- <span class="material-icons">check_circle</span> 无需编写提示词（使用标准化命令）
-- <span class="material-icons">check_circle</span> 自动记忆项目上下文（不重复相同问题）
-- <span class="material-icons">check_circle</span> 自动配置最佳专家团队（按情况激活相应子代理）
+- ✅ 无需编写提示词（使用标准化命令）
+- ✅ 自动记忆项目上下文（不重复相同问题）
+- ✅ 自动配置最佳专家团队（按情况激活相应子代理）
 
 > **想深入了解？** 在 `.moai/memory/development-guide.md` 查看详细规则。
 
----
+______________________________________________________________________
 
 ## 第一次 10 分钟实践：Hello World API
 
-**目标**：10 分钟内体验 MoAI-ADK 的完整工作流程
-**学习内容**：SPEC 编写、TDD 实现、文档自动化、@TAG 系统
+**目标**：10 分钟内体验 MoAI-ADK 的完整工作流程 **学习内容**：SPEC 编写、TDD 实现、文档自动化、@TAG 系统
 
 > 如果已完成 3 分钟极速入门，可以从本节开始！
 
 ### 事前准备
 
-- <span class="material-icons">check_circle</span> MoAI-ADK 安装完成
-- <span class="material-icons">check_circle</span> 项目创建完成（`moai-adk init hello-world`）
-- <span class="material-icons">check_circle</span> Claude Code 运行中
+- ✅ MoAI-ADK 安装完成
+- ✅ 项目创建完成（`moai-adk init hello-world`）
+- ✅ Claude Code 运行中
 
----
+______________________________________________________________________
 
 ### Step <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_one</span>：编写 SPEC（2分钟）
 
@@ -744,9 +751,9 @@ rg '@TAG:AUTH-001' -n
 #### Alfred 自动生成
 
 ```
-<span class="material-icons">check_circle</span> SPEC ID: HELLO-001
-<span class="material-icons">check_circle</span> 文件: .moai/specs/SPEC-HELLO-001/spec.md
-<span class="material-icons">check_circle</span> 分支: feature/SPEC-HELLO-001
+✅ SPEC ID: HELLO-001
+✅ 文件: .moai/specs/SPEC-HELLO-001/spec.md
+✅ 分支: feature/SPEC-HELLO-001
 ```
 
 #### 确认生成的 SPEC
@@ -778,9 +785,9 @@ priority: high
 - 响应必须是 JSON 格式
 ```
 
-<span class="material-icons">check_circle</span> **验证**：`ls .moai/specs/SPEC-HELLO-001/`
+✅ **验证**：`ls .moai/specs/SPEC-HELLO-001/`
 
----
+______________________________________________________________________
 
 ### Step <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_two</span>：TDD 实现（5分钟）
 
@@ -831,7 +838,7 @@ git add tests/test_hello.py
 git commit -m "🔴 test(HELLO-001): add failing hello API tests"
 ```
 
----
+______________________________________________________________________
 
 #### 🟢 GREEN 阶段：最小实现
 
@@ -856,7 +863,7 @@ def hello(name: str = "World"):
 pytest tests/test_hello.py -v
 ```
 
-**结果**：<span class="material-icons">check_circle</span> PASSED（全部通过！）
+**结果**：✅ PASSED（全部通过！）
 
 **Git 提交**：
 
@@ -865,9 +872,9 @@ git add src/hello/api.py
 git commit -m "🟢 feat(HELLO-001): implement hello API"
 ```
 
----
+______________________________________________________________________
 
-#### <span class="material-icons">recycling</span> REFACTOR 阶段：代码改进
+#### ♻️ REFACTOR 阶段：代码改进
 
 **添加验证逻辑**：
 
@@ -900,16 +907,16 @@ def test_hello_with_long_name_should_return_400():
 pytest tests/test_hello.py -v
 ```
 
-**结果**：<span class="material-icons">check_circle</span> PASSED（全部通过！）
+**结果**：✅ PASSED（全部通过！）
 
 **Git 提交**：
 
 ```bash
 git add tests/test_hello.py src/hello/api.py
-git commit -m "<span class="material-icons">recycling</span> refactor(HELLO-001): add name length validation"
+git commit -m "♻️ refactor(HELLO-001): add name length validation"
 ```
 
----
+______________________________________________________________________
 
 ### Step <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_3</span>：文档同步（2分钟）
 
@@ -922,10 +929,10 @@ git commit -m "<span class="material-icons">recycling</span> refactor(HELLO-001)
 #### Alfred 自动处理
 
 ```
-<span class="material-icons">check_circle</span> docs/api/hello.md - API 文档生成
-<span class="material-icons">check_circle</span> README.md - API 使用方法添加
-<span class="material-icons">check_circle</span> CHANGELOG.md - v0.1.0 发布说明添加
-<span class="material-icons">check_circle</span> TAG 链验证 - 所有 @TAG 确认
+✅ docs/api/hello.md - API 文档生成
+✅ README.md - API 使用方法添加
+✅ CHANGELOG.md - v0.1.0 发布说明添加
+✅ TAG 链验证 - 所有 @TAG 确认
 ```
 
 #### 确认生成的 API 文档
@@ -975,14 +982,15 @@ curl "http://localhost:8000/hello"
 - `@CODE:EX-HELLO-001:API` - 实现
 ````
 
----
+______________________________________________________________________
 
 ### Step <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_4</span>：TAG 链验证（1分钟）
 
 #### 命令
+
 ```bash
 rg '@(SPEC|TEST|CODE|DOC):HELLO-001' -n
-````
+```
 
 #### 输出（完全可追踪）
 
@@ -993,9 +1001,9 @@ src/hello/api.py:3:# `@CODE:EX-HELLO-001:API | SPEC: SPEC-HELLO-001.md
 docs/api/hello.md:24:- `@SPEC:EX-HELLO-001`
 ```
 
-<span class="material-icons">check_circle</span> **意义**：需求 → 测试 → 实现 → 文档完美连接！
+✅ **意义**：需求 → 测试 → 实现 → 文档完美连接！
 
----
+______________________________________________________________________
 
 ### 🎉 10 分钟后：您获得的成果
 
@@ -1024,7 +1032,7 @@ git log --oneline | head -4
 **输出**：
 
 ```
-c1d2e3f <span class="material-icons">recycling</span> refactor(HELLO-001): add name length validation
+c1d2e3f ♻️ refactor(HELLO-001): add name length validation
 b2c3d4e 🟢 feat(HELLO-001): implement hello API
 a3b4c5d 🔴 test(HELLO-001): add failing hello API tests
 d4e5f6g Merge branch 'develop' (initial project commit)
@@ -1032,15 +1040,15 @@ d4e5f6g Merge branch 'develop' (initial project commit)
 
 #### 学习总结
 
-- <span class="material-icons">check_circle</span> **SPEC**：用 EARS 格式明确定义需求
-- <span class="material-icons">check_circle</span> **TDD**：体验 RED → GREEN → REFACTOR 循环
-- <span class="material-icons">check_circle</span> **自动化**：文档与代码一起自动生成
-- <span class="material-icons">check_circle</span> **可追踪性**：@TAG 系统连接所有步骤
-- <span class="material-icons">check_circle</span> **质量**：测试 100%、明确实现、自动文档化
+- ✅ **SPEC**：用 EARS 格式明确定义需求
+- ✅ **TDD**：体验 RED → GREEN → REFACTOR 循环
+- ✅ **自动化**：文档与代码一起自动生成
+- ✅ **可追踪性**：@TAG 系统连接所有步骤
+- ✅ **质量**：测试 100%、明确实现、自动文档化
 
----
+______________________________________________________________________
 
-## <span class="material-icons">rocket_launch</span> 下一步
+## 🚀 下一步
 
 现在创建更复杂的功能：
 
@@ -1051,7 +1059,7 @@ d4e5f6g Merge branch 'develop' (initial project commit)
 
 或需要深入示例，请参考下文。
 
----
+______________________________________________________________________
 
 ## 子代理 & Skills 概述
 
@@ -1059,30 +1067,30 @@ Alfred 结合多个专业代理和 Claude Skills 进行工作。
 
 ### 核心子代理（Plan → Run → Sync）
 
-| 子代理               | 模型   | 职责                                           |
-| ------------------- | ------ | ---------------------------------------------- |
-| project-manager 📋  | Sonnet | 项目初始化、元数据访谈                         |
-| spec-builder <span class="material-icons">construction</span>     | Sonnet | 计划板、EARS SPEC 编写、推荐专家咨询         |
-| code-builder 💎     | Sonnet | 用 `implementation-planner` + `tdd-implementer` 执行完整 TDD |
-| doc-syncer <span class="material-icons">auto_stories</span>       | Haiku  | 动态文档、README、CHANGELOG 同步              |
-| tag-agent <span class="material-icons">label</span>        | Haiku  | TAG 清单、孤立检测、@EXPERT TAG 验证          |
-| git-manager <span class="material-icons">rocket_launch</span>      | Haiku  | GitFlow、Draft/Ready、自动合并                |
-| debug-helper <span class="material-icons">search</span>     | Sonnet | 失败分析、forward-fix 策略                   |
-| trust-checker <span class="material-icons">check_circle</span>    | Haiku  | TRUST 5 质量门禁                               |
-| quality-gate <span class="material-icons">shield</span>     | Haiku  | 覆盖率变更和发布阻止条件审查                  |
-| cc-manager <span class="material-icons">build</span>       | Sonnet | Claude Code 会话优化、Skill 部署              |
-| skill-factory 🏭   | Sonnet | Skills 创建和管理、69个 Skills 生态系统维护 |
+| 子代理                                                  | 模型   | 职责                                                         |
+| ------------------------------------------------------- | ------ | ------------------------------------------------------------ |
+| project-manager 📋                                      | Sonnet | 项目初始化、元数据访谈                                       |
+| spec-builder 🏗️                                         | Sonnet | 计划板、EARS SPEC 编写、推荐专家咨询                         |
+| code-builder 💎                                         | Sonnet | 用 `implementation-planner` + `tdd-implementer` 执行完整 TDD |
+| doc-syncer 📚                                           | Haiku  | 动态文档、README、CHANGELOG 同步                             |
+| tag-agent 🏷️                                            | Haiku  | TAG 清单、孤立检测、@EXPERT TAG 验证                         |
+| git-manager 🚀                                          | Haiku  | GitFlow、Draft/Ready、自动合并                               |
+| debug-helper <span class="material-icons">search</span> | Sonnet | 失败分析、forward-fix 策略                                   |
+| trust-checker ✅                                        | Haiku  | TRUST 5 质量门禁                                             |
+| quality-gate 🛡️                                         | Haiku  | 覆盖率变更和发布阻止条件审查                                 |
+| cc-manager <span class="material-icons">build</span>    | Sonnet | Claude Code 会话优化、Skill 部署                             |
+| skill-factory 🏭                                        | Sonnet | Skills 创建和管理、69个 Skills 生态系统维护                  |
 
 ### 专家代理（根据 SPEC 关键字自动激活）
 
 专家代理在 `implementation-planner` 从 SPEC 文档检测到领域特定关键字时自动激活。每个专家提供自己领域的架构指南、技术推荐、风险分析。
 
-| 专家代理            | 模型   | 专业领域                             | 自动激活关键字                                                     |
-| ------------------- | ------ | ------------------------------------- | ------------------------------------------------------------------ |
-| backend-expert <span class="material-icons">settings</span>   | Sonnet | 后端架构、API 设计、DB               | 'backend', 'api', 'server', 'database', 'deployment', 'authentication' |
-| frontend-expert 💻  | Sonnet | 前端架构、组件、状态管理              | 'frontend', 'ui', 'page', 'component', 'client-side', 'web interface'  |
-| devops-expert <span class="material-icons">rocket_launch</span>    | Sonnet | DevOps、CI/CD、部署、容器             | 'deployment', 'docker', 'kubernetes', 'ci/cd', 'pipeline', 'aws'       |
-| ui-ux-expert <span class="material-icons">palette</span>     | Sonnet | UI/UX 设计、可访问性、设计系统        | 'design', 'ux', 'accessibility', 'a11y', 'figma', 'design system'      |
+| 专家代理           | 模型   | 专业领域                       | 自动激活关键字                                                         |
+| ------------------ | ------ | ------------------------------ | ---------------------------------------------------------------------- |
+| backend-expert ⚙️  | Sonnet | 后端架构、API 设计、DB         | 'backend', 'api', 'server', 'database', 'deployment', 'authentication' |
+| frontend-expert 💻 | Sonnet | 前端架构、组件、状态管理       | 'frontend', 'ui', 'page', 'component', 'client-side', 'web interface'  |
+| devops-expert 🚀   | Sonnet | DevOps、CI/CD、部署、容器      | 'deployment', 'docker', 'kubernetes', 'ci/cd', 'pipeline', 'aws'       |
+| ui-ux-expert 🎨    | Sonnet | UI/UX 设计、可访问性、设计系统 | 'design', 'ux', 'accessibility', 'a11y', 'figma', 'design system'      |
 
 **工作原理**：
 
@@ -1091,11 +1099,12 @@ Alfred 结合多个专业代理和 Claude Skills 进行工作。
 - 每个专家提供领域特定架构指南
 - 所有专家咨询用 `@EXPERT:DOMAIN` 标签标记以保持可追踪性
 
----
+______________________________________________________________________
 
 ## Claude Hooks 指南
 
-MoAI-ADK 提供 5 个与开发流程无缝集成的 Claude Code Hooks。这些 Hook 在会话开始/结束、工具执行前后、提示提交时自动运行，透明地处理检查点、JIT 上下文加载、会话管理等。
+MoAI-ADK 提供 5 个与开发流程无缝集成的 Claude Code Hooks。这些 Hook 在会话开始/结束、工具执行前后、提示提交时自动运行，透明地处理检查点、JIT
+上下文加载、会话管理等。
 
 ### Hook 是什么？
 
@@ -1103,17 +1112,17 @@ Hook 是响应 Claude Code 会话特定事件的事件驱动脚本。在不干�
 
 ### 安装的 Hooks（5个）
 
-| Hook          | 状态   | 功能                                                         |
-| ------------- | ------ | ------------------------------------------------------------ |
-| SessionStart  | <span class="material-icons">check_circle</span> 激活 | 语言/Git/SPEC 进度/检查点等 项目状态摘要                     |
-| PreToolUse    | <span class="material-icons">check_circle</span> 激活 | 风险检测 + 自动检查点(删除/合并/批量编辑/重要文件) + **TAG Guard**（检测缺失的 @TAG） |
-| UserPromptSubmit | <span class="material-icons">check_circle</span> 激活 | JIT 上下文加载（自动加载@SPEC·测试·代码·文档）                |
-| PostToolUse   | <span class="material-icons">check_circle</span> 激活 | 代码更改后自动测试（Python/TS/JS/Go/Rust/Java 等）          |
-| SessionEnd    | <span class="material-icons">check_circle</span> 激活 | 会话清理和状态保存                                           |
+| Hook             | 状态    | 功能                                                                                  |
+| ---------------- | ------- | ------------------------------------------------------------------------------------- |
+| SessionStart     | ✅ 激活 | 语言/Git/SPEC 进度/检查点等 项目状态摘要                                              |
+| PreToolUse       | ✅ 激活 | 风险检测 + 自动检查点(删除/合并/批量编辑/重要文件) + **TAG Guard**（检测缺失的 @TAG） |
+| UserPromptSubmit | ✅ 激活 | JIT 上下文加载（自动加载@SPEC·测试·代码·文档）                                        |
+| PostToolUse      | ✅ 激活 | 代码更改后自动测试（Python/TS/JS/Go/Rust/Java 等）                                    |
+| SessionEnd       | ✅ 激活 | 会话清理和状态保存                                                                    |
 
----
+______________________________________________________________________
 
-## <span class="material-icons">settings</span> 初学者问题解决
+## ⚙️ 初学者问题解决
 
 MoAI-ADK 开始时常见错误和解决方法。
 
@@ -1162,7 +1171,7 @@ export PATH="$HOME/.cargo/bin:$PATH"
 uv --version
 ```
 
----
+______________________________________________________________________
 
 ### <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_two</span> Python 版本不匹配
 
@@ -1201,7 +1210,7 @@ uv python pin 3.13
 python --version
 ```
 
----
+______________________________________________________________________
 
 ### <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_3</span> Git 未安装
 
@@ -1248,7 +1257,7 @@ winget install Git.Git
 git --version  # git version 2.x.x
 ```
 
----
+______________________________________________________________________
 
 ### <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_4</span> Claude Code 无法识别 .moai/ 文件夹
 
@@ -1282,10 +1291,10 @@ claude  # 重新启动 Claude Code
 
 ```bash
 moai-adk doctor
-# 所有项目应该显示 <span class="material-icons">check_circle</span>
+# 所有项目应该显示 ✅
 ```
 
----
+______________________________________________________________________
 
 ### <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_5</span> 测试运行时找不到模块
 
@@ -1313,7 +1322,7 @@ source .venv/bin/activate  # macOS/Linux
 pytest tests/ -v
 ```
 
----
+______________________________________________________________________
 
 ### 6️⃣ /alfred 命令不工作
 
@@ -1342,14 +1351,14 @@ exit
 claude
 ```
 
----
+______________________________________________________________________
 
 ### 7️⃣ TAG 链损坏
 
 **症状**：
 
 ```
-<span class="material-icons">check_circle</span> Fixed: @TEST:EX-HELLO-002 (TAG ID updated for consistency)
+✅ Fixed: @TEST:EX-HELLO-002 (TAG ID updated for consistency)
 ```
 
 **原因**：SPEC 被删除或 TAG 不一致
@@ -1373,7 +1382,7 @@ rg '@SPEC:EX-HELLO-001' -n .moai/specs/
 /alfred:3-sync
 ```
 
----
+______________________________________________________________________
 
 ### 8️⃣ 常用调试命令
 
@@ -1406,7 +1415,7 @@ git status
 git log --oneline -5
 ```
 
----
+______________________________________________________________________
 
 ### 💡 常用调试顺序
 
@@ -1421,7 +1430,7 @@ git log --oneline -5
 moai-adk doctor --verbose
 ```
 
----
+______________________________________________________________________
 
 ### 🆘 仍然无法解决？
 
@@ -1436,7 +1445,7 @@ moai-adk doctor --verbose
 3. 复现方法（执行了什么命令？）
 4. 操作系统和版本
 
----
+______________________________________________________________________
 
 ## 常见问题解答（FAQ）
 
@@ -1449,29 +1458,30 @@ moai-adk doctor --verbose
 - **Q. 可以手动进行吗？**
   - A. 可以，但必须保持 SPEC → TEST → CODE → DOC 顺序，并务必留下 TAG。
 
----
+______________________________________________________________________
 
 ## 最新更新
 
-| 版本        | 主要功能                                                                         | 日期       |
-| ----------- | ------------------------------------------------------------------------------- | ---------- |
+| 版本        | 主要功能                                                                                               | 日期       |
+| ----------- | ------------------------------------------------------------------------------------------------------ | ---------- |
 | **v0.17.0** | 🌍 **多语言 Lint/Format 架构**（Python、JS、TS、Go、Rust、Java、Ruby、PHP）- 自动语言检测 + 非阻塞错误 | 2025-11-04 |
-| **v0.16.x** | <span class="material-icons">check_circle</span> 4个 Alfred 命令 100% 命令式指南完成 + Hook 架构稳定化                          | 2025-11-03 |
-| **v0.8.2**  | <span class="material-icons">auto_stories</span> EARS 术语更新："Constraints" → "Unwanted Behaviors"（提高清晰度）              | 2025-10-29 |
-| **v0.8.1**  | 🔄 命令更改：`/alfred:9-help` → `/alfred:9-feedback` + 用户反馈工作流程改进         | 2025-10-28 |
-| **v0.8.0**  | <span class="material-icons">label</span> @DOC TAG 自动生成系统 + SessionStart 版本检查强化                            | 2025-10-27 |
-| **v0.7.0**  | 🌍 完整多语言支持系统（英语、韩语、日语、中文、西班牙语）                        | 2025-10-26 |
-| **v0.6.3**  | ⚡ 3步更新工作流程：并行操作提升 70-80% 性能                                   | 2025-10-25 |
+| **v0.16.x** | ✅ 4个 Alfred 命令 100% 命令式指南完成 + Hook 架构稳定化                                               | 2025-11-03 |
+| **v0.8.2**  | 📚 EARS 术语更新："Constraints" → "Unwanted Behaviors"（提高清晰度）                                   | 2025-10-29 |
+| **v0.8.1**  | 🔄 命令更改：`/alfred:9-help` → `/alfred:9-feedback` + 用户反馈工作流程改进                            | 2025-10-28 |
+| **v0.8.0**  | 🏷️ @DOC TAG 自动生成系统 + SessionStart 版本检查强化                                                   | 2025-10-27 |
+| **v0.7.0**  | 🌍 完整多语言支持系统（英语、韩语、日语、中文、西班牙语）                                              | 2025-10-26 |
+| **v0.6.3**  | ⚡ 3步更新工作流程：并行操作提升 70-80% 性能                                                           | 2025-10-25 |
 
 > 📦 **立即安装**：`uv tool install moai-adk` 或 `pip install moai-adk`
 
-### <span class="material-icons">target</span> v0.17.0 主要功能
+### 🎯 v0.17.0 主要功能
 
 #### <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_one</span> 多语言 Lint/Format 自动化（11种语言）
 
 现在无论用什么语言编写项目，都会**自动执行 linting 和格式化**。
 
 **支持语言**：
+
 - Python (ruff + mypy)
 - JavaScript (eslint + prettier)
 - TypeScript (tsc + eslint + prettier)
@@ -1485,62 +1495,63 @@ moai-adk doctor --verbose
 - SQL（迁移检测）
 
 **主要特性**：
-- <span class="material-icons">check_circle</span> **自动语言检测**：基于项目配置文件（pyproject.toml、package.json、go.mod 等）
-- <span class="material-icons">check_circle</span> **非阻塞错误处理**：工具缺失/错误时仍继续开发流程
-- <span class="material-icons">check_circle</span> **部署前错误检测**：Write/Edit 后自动运行 linting 检查
-- <span class="material-icons">check_circle</span> **自动代码格式化**：文件修改时自动应用格式化
 
----
+- ✅ **自动语言检测**：基于项目配置文件（pyproject.toml、package.json、go.mod 等）
+- ✅ **非阻塞错误处理**：工具缺失/错误时仍继续开发流程
+- ✅ **部署前错误检测**：Write/Edit 后自动运行 linting 检查
+- ✅ **自动代码格式化**：文件修改时自动应用格式化
+
+______________________________________________________________________
 
 ## 更多资源
 
-| 目的                      | 资源                                                                        |
-| ------------------------- | --------------------------------------------------------------------------- |
-| <span class="material-icons">menu_book</span> 多语言 Lint 指南       | `.claude/hooks/alfred/core/MULTILINGUAL_LINTING_GUIDE.md`（完整 API）        |
-| <span class="material-icons">auto_stories</span> 多语言安装指南         | `.claude/hooks/alfred/core/INSTALLATION_GUIDE.md`（各语言安装）             |
-| 🧪 测试报告              | `.moai/reports/MULTILINGUAL_LINTING_TEST_REPORT.md`（103/103 测试通过）       |
-| <span class="material-icons">target</span> 实现摘要              | `.moai/reports/MULTILINGUAL_LINTING_IMPLEMENTATION_SUMMARY.md`               |
-| Skills 详细结构          | `.claude/skills/` 目录（74个 Skills）                                        |
-| 子代理详细信息            | `.claude/agents/alfred/` 目录（16个代理 + 4个命令）                         |
-| 工作流程指南             | `.claude/commands/alfred/`（4个命令：0-project ~ 3-sync）                    |
-| Alfred 命令命令式指南     | `.claude/commands/alfred/`（0-project ~ 3-sync，100% 命令式）                |
-| 发布说明                 | GitHub Releases: https://github.com/modu-ai/moai-adk/releases               |
+| 目的                                                           | 资源                                                                    |
+| -------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| <span class="material-icons">menu_book</span> 多语言 Lint 指南 | `.claude/hooks/alfred/core/MULTILINGUAL_LINTING_GUIDE.md`（完整 API）   |
+| 📚 多语言安装指南                                              | `.claude/hooks/alfred/core/INSTALLATION_GUIDE.md`（各语言安装）         |
+| 🧪 测试报告                                                    | `.moai/reports/MULTILINGUAL_LINTING_TEST_REPORT.md`（103/103 测试通过） |
+| 🎯 实现摘要                                                    | `.moai/reports/MULTILINGUAL_LINTING_IMPLEMENTATION_SUMMARY.md`          |
+| Skills 详细结构                                                | `.claude/skills/` 目录（74个 Skills）                                   |
+| 子代理详细信息                                                 | `.claude/agents/alfred/` 目录（16个代理 + 4个命令）                     |
+| 工作流程指南                                                   | `.claude/commands/alfred/`（4个命令：0-project ~ 3-sync）               |
+| Alfred 命令命令式指南                                          | `.claude/commands/alfred/`（0-project ~ 3-sync，100% 命令式）           |
+| 发布说明                                                       | GitHub Releases: https://github.com/modu-ai/moai-adk/releases           |
 
----
+______________________________________________________________________
 
 ## 社区 & 支持
 
-| 渠道                      | 链接                                           |
-| ------------------------- | ---------------------------------------------- |
-| **GitHub Repository**     | https://github.com/modu-ai/moai-adk            |
-| **Issues & Discussions**  | https://github.com/modu-ai/moai-adk/issues     |
-| **PyPI Package**          | https://pypi.org/project/moai-adk/             |
-| **Latest Release**        | https://github.com/modu-ai/moai-adk/releases   |
-| **Documentation**         | 参考项目内 `.moai/`、`.claude/`、`docs/`       |
+| 渠道                     | 链接                                         |
+| ------------------------ | -------------------------------------------- |
+| **GitHub Repository**    | https://github.com/modu-ai/moai-adk          |
+| **Issues & Discussions** | https://github.com/modu-ai/moai-adk/issues   |
+| **PyPI Package**         | https://pypi.org/project/moai-adk/           |
+| **Latest Release**       | https://github.com/modu-ai/moai-adk/releases |
+| **Documentation**        | 参考项目内 `.moai/`、`.claude/`、`docs/`     |
 
----
+______________________________________________________________________
 
-## <span class="material-icons">rocket_launch</span> MoAI-ADK 的理念
+## 🚀 MoAI-ADK 的理念
 
 > **"没有 SPEC 就没有 CODE"**
 
 MoAI-ADK 不是简单的代码生成工具。Alfred 超级代理和 19 人团队、56 个 Claude Skills 共同保证：
 
-- <span class="material-icons">check_circle</span> **规格说明（SPEC）→ 测试（TDD）→ 代码（CODE）→ 文档（DOC）一致性**
-- <span class="material-icons">check_circle</span> **@TAG 系统追踪完整历史**
-- <span class="material-icons">check_circle</span> **保证覆盖率 87.84% 以上**
-- <span class="material-icons">check_circle</span> **4步工作流程（0-project → 1-plan → 2-run → 3-sync）循环开发**
-- <span class="material-icons">check_circle</span> **与 AI 协作但保持透明、可追踪的开发文化**
+- ✅ **规格说明（SPEC）→ 测试（TDD）→ 代码（CODE）→ 文档（DOC）一致性**
+- ✅ **@TAG 系统追踪完整历史**
+- ✅ **保证覆盖率 87.84% 以上**
+- ✅ **4步工作流程（0-project → 1-plan → 2-run → 3-sync）循环开发**
+- ✅ **与 AI 协作但保持透明、可追踪的开发文化**
 
 与 Alfred 一起开始**可信 AI 开发**的全新体验！🤖
 
----
+______________________________________________________________________
 
 **MoAI-ADK** — SPEC-First TDD with AI SuperAgent & Complete Skills + TAG Guard
 
 - 📦 PyPI: https://pypi.org/project/moai-adk/
 - 🏠 GitHub: https://github.com/modu-ai/moai-adk
-- <span class="material-icons">description</span> License: MIT
+- 📄 License: MIT
 - ⭐ Skills: 73+ 生产就绪指南（多语言 linting 等）
-- <span class="material-icons">check_circle</span> Tests: 570+ 通过（89%+ 覆盖率 - v0.17.0 新增 103 个测试）
-- <span class="material-icons">label</span> TAG Guard: PreToolUse Hook 中自动 @TAG 验证
+- ✅ Tests: 570+ 通过（89%+ 覆盖率 - v0.17.0 新增 103 个测试）
+- 🏷️ TAG Guard: PreToolUse Hook 中自动 @TAG 验证

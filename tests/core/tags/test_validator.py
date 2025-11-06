@@ -146,10 +146,10 @@ class TestDuplicateValidator:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-002\n")
+            file1.write_text("# @CODE:VALDUP-001\n")
 
             file2 = Path(tmpdir) / "file2.py"
-            file2.write_text("# @CODE:TEST-002\n")
+            file2.write_text("# @CODE:VALDUP-002\n")
 
             issues = validator.validate([str(file1), str(file2)])
             assert len(issues) == 0
@@ -161,11 +161,11 @@ class TestDuplicateValidator:
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
             file1.write_text("""
-# @CODE:TEST-002
+# @CODE:SAMDUP-001
 def func1():
     pass
 
-# @CODE:TEST-002
+# @CODE:SAMDUP-001
 def func2():
     pass
 """)
@@ -174,7 +174,7 @@ def func2():
             assert len(issues) == 1
             assert issues[0].severity == "error"
             assert issues[0].type == "duplicate"
-            assert "TEST-001" in issues[0].tag
+            assert "SAMDUP-001" in issues[0].tag
 
     def test_duplicates_across_files(self):
         """Duplicates across files should be detected"""
@@ -182,10 +182,10 @@ def func2():
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-002\n")
+            file1.write_text("# @CODE:CROSSVAL-001\n")
 
             file2 = Path(tmpdir) / "file2.py"
-            file2.write_text("# @CODE:TEST-002\n")
+            file2.write_text("# @CODE:CROSSVAL-001\n")
 
             issues = validator.validate([str(file1), str(file2)])
             assert len(issues) == 1
@@ -199,14 +199,17 @@ def func2():
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
             file1.write_text("""
-# @CODE:TEST-002
-# @CODE:TEST-002
-# @CODE:TEST-002
-# @CODE:TEST-002
+# @CODE:MULTDUP-001
+# @CODE:MULTDUP-001
+# @CODE:MULTDUP-002
+# @CODE:MULTDUP-002
 """)
 
             issues = validator.validate([str(file1)])
-            assert len(issues) == 2  # TEST-001 and TEST-002
+            assert len(issues) == 2  # MULTDUP-001 and MULTDUP-002
+            tag_ids = {issue.tag for issue in issues}
+            assert any("MULTDUP-001" in tag for tag in tag_ids)
+            assert any("MULTDUP-002" in tag for tag in tag_ids)
 
     def test_validator_name(self):
         """DuplicateValidator should return its name"""
@@ -229,10 +232,10 @@ class TestOrphanValidator:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             code_file = Path(tmpdir) / "auth.py"
-            code_file.write_text("# @CODE:USER-REG-001\n")
+            code_file.write_text("# @CODE:NOORPH-001\n")
 
             test_file = Path(tmpdir) / "test_auth.py"
-            test_file.write_text("# @TEST:USER-REG-VALIDATOR-001\n")
+            test_file.write_text("# @TEST:NOORPH-001\n")
 
             issues = validator.validate([str(code_file), str(test_file)])
             assert len(issues) == 0
@@ -257,11 +260,11 @@ class TestOrphanValidator:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             test_file = Path(tmpdir) / "test_auth.py"
-            test_file.write_text("# @TEST:USER-REG-VALIDATOR-001\n")
+            test_file.write_text("# @TEST:NOACODE-001\n")
 
             issues = validator.validate([str(test_file)])
             assert len(issues) >= 1
-            assert any("USER-REG-001" in issue.tag for issue in issues)
+            assert any("NOACODE-001" in issue.tag for issue in issues)
             assert any(issue.severity == "warning" for issue in issues)
 
     def test_multiple_orphans(self):
@@ -299,16 +302,16 @@ class TestChainValidator:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             spec_file = Path(tmpdir) / "spec.md"
-            spec_file.write_text("# @SPEC:USER-REG-001\n")
+            spec_file.write_text("# @SPEC:CHAIN-001\n")
 
             code_file = Path(tmpdir) / "auth.py"
-            code_file.write_text("# @CODE:USER-REG-001\n")
+            code_file.write_text("# @CODE:CHAIN-001\n")
 
             test_file = Path(tmpdir) / "test_auth.py"
-            test_file.write_text("# @TEST:USER-REG-VALIDATOR-001\n")
+            test_file.write_text("# @TEST:CHAIN-001\n")
 
             doc_file = Path(tmpdir) / "README.md"
-            doc_file.write_text("# @DOC:USER-REG-001\n")
+            doc_file.write_text("# @DOC:CHAIN-001\n")
 
             issues = validator.validate([
                 str(spec_file), str(code_file), str(test_file), str(doc_file)

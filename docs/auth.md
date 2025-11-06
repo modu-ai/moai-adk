@@ -16,6 +16,7 @@ MoAI-ADK 프로젝트의 JWT(JSON Web Token) 기반 인증 시스템에 대한 �
 ## API
 
 ### 사용자 인증
+
 ```python
 # 로그인
 POST /api/auth/login
@@ -48,6 +49,7 @@ result = example_function()
 ```
 
 ## Relates
+
 - @SPEC:AUTH-001
 - @TEST:AUTH-001
 - @CODE:AUTH-001

@@ -4,18 +4,12 @@
     "@SPEC:PROJECT-CONFIG-001": "@SPEC:MOAI-CONFIG-001"
   },
   "moai": {
-    "version": "0.20.0",
+    "version": "0.20.1",
     "update_check_frequency": "daily",
     "version_check": {
       "enabled": true,
       "cache_ttl_hours": 24
     }
-  },
-  "language": {
-    "conversation_language": "ko",
-    "conversation_language_name": "한국어",
-    "agent_prompt_language": "localized",
-    "agent_prompt_language_description": "All sub-agent prompts written in the selected language (localized)"
   },
   "constitution": {
     "enforce_tdd": true,
@@ -68,19 +62,23 @@
     ],
     "current_stage": "initialized"
   },
+  "language": {
+    "conversation_language": "ko",
+    "conversation_language_name": "한국어",
+    "agent_prompt_language": "{{AGENT_PROMPT_LANGUAGE}}",
+    "agent_prompt_language_description": "Language for sub-agent internal prompts (english=global standard, localized=user's conversation language)"
+  },
   "project": {
     "name": "MoAI-ADK",
     "description": "MoAI-Agentic Development Kit",
+    "owner": "@user",
     "mode": "team",
     "locale": "ko",
     "language": "python",
-    "user_nickname": "GOOS🪿엉아",
-    "template_version": "0.15.2",
     "created_at": "2025-10-27T12:34:56+09:00",
     "initialized": true,
     "optimized": false,
-    "last_optimization": "2025-11-05T18:30:00+09:00",
-    "optimization_notes": "STEP 0-UPDATE completed: Current configuration already optimized. Hook variables correctly use $CLAUDE_PROJECT_DIR, multilingual linting/formatting hooks already present. No changes needed - project state is optimal."
+    "template_version": "0.20.1"
   },
   "tags": {
     "auto_sync": true,
@@ -104,55 +102,40 @@
       ],
       "scan_command": "rg '@TAG' -n",
       "philosophy": "The source of truth for TAGs lives in the code itself"
-    },
-    "policy": {
-      "@CODE:TAG-POLICY-001": "@DOC:TAG-POLICY-CONFIG-001",
-      "enforcement_mode": "strict",
-      "require_spec_before_code": true,
-      "require_test_for_code": true,
-      "auto_generate_tags": true,
-      "violation_action": "block_with_guidance",
-      "validation_hooks": [
-        "pre_tool",
-        "post_tool",
-        "pre_commit"
-      ],
-      "auto_correction": {
-        "enabled": false,
-        "confidence_threshold": 0.8,
-        "create_missing_specs": false,
-        "create_missing_tests": false,
-        "remove_duplicates": true,
-        "backup_before_fix": true
-      },
-      "rollback": {
-        "enabled": true,
-        "max_checkpoints": 10,
-        "auto_cleanup": true,
-        "backup_before_rollback": true,
-        "rollback_timeout": 30
-      },
-      "realtime_validation": {
-        "enabled": true,
-        "strict_format": true,
-        "allow_without_spec": false,
-        "enforce_chains": true,
-        "validation_timeout": 5
-      },
-      "notes": "TAG 정책 위반 방지 시스템 설정. enforcement_mode: strict|lenient. violation_action: block|warn|log. 자동 수정 기능은 auto_correction.enabled=true로 활성화."
     }
   },
   "hooks": {
     "timeout_ms": 3000,
     "graceful_degradation": true,
-    "notes": "Hook execution timeout (milliseconds). Reduced from 5000ms to 3000ms for memory stability. Set graceful_degradation to true to continue even if a hook fails."
+    "notes": "Hook execution timeout (milliseconds). Set graceful_degradation to true to continue even if a hook fails."
+  },
+  "auto_cleanup": {
+    "enabled": true,
+    "cleanup_days": 7,
+    "max_reports": 10,
+    "cleanup_targets": [
+      ".moai/reports/*.json",
+      ".moai/reports/*.md",
+      ".moai/cache/*",
+      ".moai/temp/*"
+    ]
+  },
+  "daily_analysis": {
+    "enabled": true,
+    "analysis_time": "00:00",
+    "analyze_sessions": true,
+    "analyze_tools": true,
+    "analyze_errors": true,
+    "analyze_permissions": true,
+    "auto_optimize": false,
+    "report_location": ".moai/reports/daily-"
   },
   "report_generation": {
-    "enabled": false,
+    "enabled": true,
     "auto_create": false,
-    "warn_user": false,
-    "user_choice": "Disable",
-    "configured_at": "2025-11-05T19:00:00+09:00",
+    "warn_user": true,
+    "user_choice": "Minimal",
+    "configured_at": "2025-10-27T12:34:56+09:00",
     "allowed_locations": [
       ".moai/docs/",
       ".moai/reports/",
@@ -172,26 +155,12 @@
       "test_directory": "tests",
       "notes": "Configure GitHub templates for project customization. When enable_* flags are false, corresponding MoAI-specific sections are omitted from templates."
     },
-    "auto_delete_branches": true,
-    "auto_delete_branches_checked": true,
-    "auto_delete_branches_rationale": "PR 병합 후 원격 브랜치 자동 정리로 저장소 관리 단순화",
-    "spec_git_workflow": "develop_direct",
-    "spec_git_workflow_configured": true,
-    "spec_git_workflow_rationale": "Develop 브랜치에 직접 커밋하는 단순 워크플로우. 빠른 프로토타이핑과 단순 워크플로우에 최적",
+    "auto_delete_branches": null,
+    "auto_delete_branches_checked": false,
+    "auto_delete_branches_rationale": "Not configured",
+    "spec_git_workflow": "per_spec",
+    "spec_git_workflow_configured": false,
+    "spec_git_workflow_rationale": "Ask per SPEC (flexible, user controls each workflow)",
     "notes_new_fields": "auto_delete_branches: whether to auto-delete feature branches after merge. spec_git_workflow: 'feature_branch' (auto), 'develop_direct' (direct), 'per_spec' (ask per SPEC)"
-  },
-  "auto_cleanup": {
-    "enabled": true,
-    "retention_days": 30,
-    "max_reports": 50,
-    "configured_at": "2025-11-05T07:21:00+09:00",
-    "notes": "Automatic cleanup of old reports and .moai directory maintenance via hooks system"
-  },
-  "daily_analysis": {
-    "enabled": true,
-    "interval_days": 1,
-    "auto_commit": false,
-    "configured_at": "2025-11-05T07:25:00+09:00",
-    "notes": "Daily session analysis and improvement suggestions via hooks system"
   }
 }

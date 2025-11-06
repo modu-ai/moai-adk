@@ -1,14 +1,12 @@
----
-title: 核心概念
-description: MoAI-ADKの5つの核心概念と基本原則の理解
-lang: ja
----
+______________________________________________________________________
+
+## title: 核心概念 description: MoAI-ADKの5つの核心概念と基本原則の理解 lang: ja
 
 # 核心概念の理解
 
 MoAI-ADKは5つの核心概念で構成されています。各概念は相互に連結し、共に機能する時、強力な開発システムを作ります。
 
----
+______________________________________________________________________
 
 ## 概念1: SPEC-First (要件優先)
 
@@ -18,7 +16,7 @@ MoAI-ADKは5つの核心概念で構成されています。各概念は相互�
 
 ### 核心
 
-実装する前に**「何を作るか」を明確に定義**します。これは単なるドキュメントではなく、チームとAIが共同で理解できる**実行可能な仕様**です。
+実装する前に\*\*「何を作るか」を明確に定義**します。これは単なるドキュメントではなく、チームとAIが共同で理解できる**実行可能な仕様\*\*です。
 
 ### EARS文法の5つのパターン
 
@@ -34,9 +32,9 @@ MoAI-ADKは5つの核心概念で構成されています。各概念は相互�
 
 ### 得られるもの
 
-- <span class="material-icons">check_circle</span> チーム全員が理解する明確な要件
-- <span class="material-icons">check_circle</span> SPECベースのテストケース（何をテストするか既に定義済み）
-- <span class="material-icons">check_circle</span> 要件変更時`@SPEC:ID` TAGで影響を受けるすべてのコード追跡可能
+- ✅ チーム全員が理解する明確な要件
+- ✅ SPECベースのテストケース（何をテストするか既に定義済み）
+- ✅ 要件変更時`@SPEC:ID` TAGで影響を受けるすべてのコード追跡可能
 
 ### 実践例
 
@@ -62,7 +60,7 @@ priority: high
 - パスワードは最低8文字でなければならない
 ```
 
----
+______________________________________________________________________
 
 ## 概念2: TDD (テスト駆動開発)
 
@@ -108,7 +106,7 @@ def login(credentials: LoginRequest):
     return {"token": "fake_token_for_testing"}
 ```
 
-#### <span class="material-icons">recycling</span> REFACTOR: コードを整理・改善
+#### ♻️ REFACTOR: コードを整理・改善
 
 - TRUST 5原則適用
 - 重複排除、可読性向上
@@ -133,11 +131,11 @@ def login(credentials: LoginRequest):
 
 ### 得られるもの
 
-- <span class="material-icons">check_circle</span> カバレッジ85%以上保証（テストなしのコードなし）
-- <span class="material-icons">check_circle</span> リファクタリング自信（いつでもテストで検証可能）
-- <span class="material-icons">check_circle</span> 明確なGit履歴（RED → GREEN → REFACTOR過程追跡）
+- ✅ カバレッジ85%以上保証（テストなしのコードなし）
+- ✅ リファクタリング自信（いつでもテストで検証可能）
+- ✅ 明確なGit履歴（RED → GREEN → REFACTOR過程追跡）
 
----
+______________________________________________________________________
 
 ## 概念3: @TAGシステム
 
@@ -187,11 +185,11 @@ rg '@TAG:AUTH-001' -n
 
 ### 得られるもの
 
-- <span class="material-icons">check_circle</span> すべてのコードの意図が明確（SPECを読めばなぜこのコードがあるか理解）
-- <span class="material-icons">check_circle</span> リファクタリング時影響を受けるすべてのコードを即座把握
-- <span class="material-icons">check_circle</span> 3ヶ月後でもコード理解可能（TAG → SPEC追跡）
+- ✅ すべてのコードの意図が明確（SPECを読めばなぜこのコードがあるか理解）
+- ✅ リファクタリング時影響を受けるすべてのコードを即座把握
+- ✅ 3ヶ月後でもコード理解可能（TAG → SPEC追跡）
 
----
+______________________________________________________________________
 
 ## 概念4: TRUST 5原則
 
@@ -209,25 +207,25 @@ rg '@TAG:AUTH-001' -n
 - すべてのコードがテストで保護される
 - 機能追加 = テスト追加
 
-#### 2. <span class="material-icons">auto_stories</span> Readable (読みやすいコード)
+#### 2. 📚 Readable (読みやすいコード)
 
 - 関数 ≤ 50行、ファイル ≤ 300行
 - 変数名が意図を表す
 - リンター(ESLint/ruff/clippy)通過
 
-#### 3. <span class="material-icons">target</span> Unified (一貫した構造)
+#### 3. 🎯 Unified (一貫した構造)
 
 - SPECベースアーキテクチャ維持
 - 同じパターンが繰り返される（学習曲線減少）
 - タイプ安全性またはランタイム検証
 
-#### 4. <span class="material-icons">lock</span> Secured (セキュリティ)
+#### 4. 🔒 Secured (セキュリティ)
 
 - 入力検証（XSS, SQLインジェクション防御）
 - パスワードハッシュ（bcrypt, Argon2）
 - 機密情報保護（環境変数）
 
-#### 5. <span class="material-icons">link</span> Trackable (追跡可能)
+#### 5. 🔗 Trackable (追跡可能)
 
 - @TAGシステム使用
 - GitコミットにTAG含む
@@ -239,11 +237,11 @@ rg '@TAG:AUTH-001' -n
 
 ### 得られるもの
 
-- <span class="material-icons">check_circle</span> プロダクション品質のコード保証
-- <span class="material-icons">check_circle</span> チーム全体が同じ基準で開発
-- <span class="material-icons">check_circle</span> バグ減少、セキュリティ脆弱性事前防止
+- ✅ プロダクション品質のコード保証
+- ✅ チーム全体が同じ基準で開発
+- ✅ バグ減少、セキュリティ脆弱性事前防止
 
----
+______________________________________________________________________
 
 ## 概念5: Alfred SuperAgent
 
@@ -277,11 +275,11 @@ AIエージェントたちが協力して開発過程全体を自動化します
 
 ### 得られるもの
 
-- <span class="material-icons">check_circle</span> プロンプト作成不要（標準化されたコマンド使用）
-- <span class="material-icons">check_circle</span> プロジェクトコンテキスト自動記憶（同じ質問繰り返さず）
-- <span class="material-icons">check_circle</span> 最適の専門家チーム自動構成（状況に合ったサブエージェント活性化）
+- ✅ プロンプト作成不要（標準化されたコマンド使用）
+- ✅ プロジェクトコンテキスト自動記憶（同じ質問繰り返さず）
+- ✅ 最適の専門家チーム自動構成（状況に合ったサブエージェント活性化）
 
----
+______________________________________________________________________
 
 ## 🔄 5つの概念の連携
 
@@ -305,9 +303,9 @@ graph TD
 4. **TRUST検証** → 品質基準満たすか確認
 5. **Alfred自動化** → 全過程をAIが支援
 
----
+______________________________________________________________________
 
-## <span class="material-icons">target</span> 学習パス
+## 🎯 学習パス
 
 ### 初心者向け
 
@@ -327,7 +325,7 @@ graph TD
 2. **拡張** - 新しいスキルやエージェント追加
 3. **最適化** - チームワークフロー最適化
 
----
+______________________________________________________________________
 
 ## 💡 実践的ヒント
 
@@ -345,6 +343,7 @@ graph TD
 - **TRUST基準**: 品質基準チーム共通認識
 - **Alfred活用**: チームメンバー全員がAlfredコマンド習得
 
----
+______________________________________________________________________
 
-**🎓 これで5つの核心概念を理解しました！** 次は[Alfredコマンドガイド](../guides/alfred/index.md)で実際の使用方法を学び、[TDDガイド](../guides/tdd/index.md)で実践的なテクニックを習得しましょう。
+**🎓 これで5つの核心概念を理解しました！**
+次は[Alfredコマンドガイド](../guides/alfred/index.md)で実際の使用方法を学び、[TDDガイド](../guides/tdd/index.md)で実践的なテクニックを習得しましょう。

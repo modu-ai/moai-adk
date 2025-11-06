@@ -1,7 +1,6 @@
----
-title: @TAG 系统使用指南
-description: 掌握 MoAI-ADK 的 @TAG 追踪系统，建立从需求到代码的完整可追溯性链
----
+______________________________________________________________________
+
+## title: @TAG 系统使用指南 description: 掌握 MoAI-ADK 的 @TAG 追踪系统，建立从需求到代码的完整可追溯性链
 
 # @TAG 系统使用指南
 
@@ -21,35 +20,40 @@ description: 掌握 MoAI-ADK 的 @TAG 追踪系统，建立从需求到代码的
 ### @TAG 的价值
 
 #### 1. 完整可追溯性
+
 ```
 需求 SPEC → 设计 DOC → 代码 CODE → 测试 TEST → 部署 DEPLOY
 ```
 
 #### 2. 快速定位
+
 - 一键找到相关代码文件
 - 快速定位测试用例
 - 立即查看需求文档
 - 高效进行代码审查
 
 #### 3. 质量保证
+
 - 确保需求覆盖完整性
 - 验证测试覆盖率
 - 检查文档一致性
 - 识别缺失环节
 
 #### 4. 团队协作
+
 - 统一的元素标识
 - 清晰的依赖关系
 - 高效的沟通方式
 - 简化的交接流程
 
----
+______________________________________________________________________
 
 ## @TAG 语法规范
 
 ### 基本语法结构
 
 #### 标准 @TAG 格式
+
 ```
 @TYPE:DOMAIN-ID[:SUBTYPE]
 ```
@@ -82,6 +86,7 @@ SUBTYPE (子类型):
 ### @TAG 类型详解
 
 #### 1. @SPEC - 规格说明
+
 ```yaml
 基本格式: @SPEC:DOMAIN-ID
 用途: 标记需求规格说明文档
@@ -97,6 +102,7 @@ SUBTYPE (子类型):
 ```
 
 #### 2. @CODE - 代码实现
+
 ```yaml
 基本格式: @CODE:DOMAIN-ID[:SUBTYPE]
 用途: 标记代码实现文件
@@ -137,6 +143,7 @@ SUBTYPE (子类型):
 ```
 
 #### 3. @TEST - 测试用例
+
 ```yaml
 基本格式: @TEST:DOMAIN-ID[:SUBTYPE]
 用途: 标记测试用例文件
@@ -173,6 +180,7 @@ SUBTYPE (子类型):
 ```
 
 #### 4. @DOC - 技术文档
+
 ```yaml
 基本格式: @DOC:DOMAIN-ID[:SUBTYPE]
 用途: 标记技术文档文件
@@ -209,6 +217,7 @@ SUBTYPE (子类型):
 ```
 
 #### 5. @DEPLOY - 部署配置
+
 ```yaml
 基本格式: @DEPLOY:DOMAIN-ID[:SUBTYPE]
 用途: 标记部署配置文件
@@ -240,6 +249,7 @@ SUBTYPE (子类型):
 ```
 
 #### 6. @ISSUE - 问题追踪
+
 ```yaml
 基本格式: @ISSUE:DOMAIN-ID[:SUBTYPE]
 用途: 标记问题追踪项
@@ -271,6 +281,7 @@ SUBTYPE (子类型):
 ```
 
 #### 7. @TASK - 开发任务
+
 ```yaml
 基本格式: @TASK:DOMAIN-ID[:SUBTYPE]
 用途: 标记开发任务
@@ -301,18 +312,20 @@ SUBTYPE (子类型):
     - @TASK:USER-AUTH-001:maintenance - 维护任务
 ```
 
----
+______________________________________________________________________
 
 ## @TAG 命名规范
 
 ### DOMAIN-ID 命名规则
 
 #### 基本格式
+
 ```
 XXX-YYY-ZZZ
 ```
 
 #### 格式详解
+
 ```yaml
 XXX (领域域):
   3-10 个大写字母
@@ -350,6 +363,7 @@ ZZZ (序列号):
 ```
 
 #### 命名示例
+
 ```yaml
 用户管理领域:
   - USER-AUTH-001: 用户认证功能
@@ -373,11 +387,13 @@ ZZZ (序列号):
 ### @TAG 链接关系
 
 #### 链接语法
+
 ```markdown
 @SPEC:USER-AUTH-001 → @TEST:USER-AUTH-001 → @CODE:USER-AUTH-001 → @DOC:USER-AUTH-API-001
 ```
 
 #### 链接类型
+
 ```yaml
 1. 完整链 (推荐):
    @SPEC:USER-AUTH-001 → @TEST:USER-AUTH-001 → @CODE:USER-AUTH-001 → @DOC:USER-AUTH-API-001
@@ -395,13 +411,14 @@ ZZZ (序列号):
    @TEST:USER-AUTH-001 ← @CODE:USER-AUTH-001 (测试覆盖的代码)
 ```
 
----
+______________________________________________________________________
 
 ## @TAG 使用最佳实践
 
 ### 1. @TAG 放置位置
 
 #### 在代码文件中的放置
+
 ```python
 # 文件头部 @TAG
 """
@@ -474,6 +491,7 @@ class UserService:
 ```
 
 #### 在测试文件中的放置
+
 ```python
 # test_user_service.py
 """
@@ -561,7 +579,8 @@ class TestUserService:
 ```
 
 #### 在文档中的放置
-```markdown
+
+````markdown
 # 用户认证 API 文档
 
 ## 概述
@@ -589,9 +608,10 @@ class TestUserService:
   "email": "user@example.com",
   "password": "ValidPassword123!"
 }
-```
+````
 
 #### 响应示例
+
 ```json
 {
   "user_id": "user123",
@@ -604,43 +624,44 @@ class TestUserService:
 
 用户登录端点。
 
-**实现**: @CODE:USER-AUTH-001:endpoints
-**规格**: @SPEC:USER-AUTH-001 (用户认证功能)
-**测试**: @TEST:USER-AUTH-001:api, @TEST:USER-AUTH-001:integration
-```
+**实现**: @CODE:USER-AUTH-001:endpoints **规格**: @SPEC:USER-AUTH-001 (用户认证功能) **测试**:
+@TEST:USER-AUTH-001:api, @TEST:USER-AUTH-001:integration
+
+````
 
 ### 2. @TAG 一致性原则
 
 #### 保持链接完整性
 ```yaml
-<span class="material-icons">check_circle</span> 完整的 @TAG 链:
+✅ 完整的 @TAG 链:
   SPEC: @SPEC:USER-AUTH-001
   CODE: @CODE:USER-AUTH-001:service, @CODE:USER-AUTH-001:api
   TEST: @TEST:USER-AUTH-001:unit, @TEST:USER-AUTH-001:integration
   DOC: @DOC:USER-AUTH-API-001:api-docs
 
-<span class="material-icons">check_circle</span> 一致的 DOMAIN-ID:
+✅ 一致的 DOMAIN-ID:
   所有相关元素使用相同的 DOMAIN-ID (USER-AUTH-001)
 
 <span class="material-icons">cancel</span> 避免不一致:
   @SPEC:USER-AUTH-001
   @CODE:USER-AUTH-002 (不匹配的 ID)
   @TEST:USER-AUTH-001:unit
-```
+````
 
 #### 适当的粒度
+
 ```yaml
-<span class="material-icons">check_circle</span> 合理的粒度:
+✅ 合理的粒度:
   @CODE:USER-AUTH-001:service - 完整的服务类
   @CODE:USER-AUTH-001:api - API 端点集合
   @TEST:USER-AUTH-001:unit - 单元测试套件
 
-<span class="material-icons">check_circle</span> 过细的粒度 (避免):
+✅ 过细的粒度 (避免):
   @CODE:USER-AUTH-001:method-1 - 单个方法
   @CODE:USER-AUTH-001:line-123 - 代码行
   @TEST:USER-AUTH-001:test-case-1 - 单个测试用例
 
-<span class="material-icons">check_circle</span> 过粗的粒度 (避免):
+✅ 过粗的粒度 (避免):
   @CODE:USER-AUTH - 整个用户模块
   @TEST:ALL-TESTS - 所有测试
 ```
@@ -648,6 +669,7 @@ class TestUserService:
 ### 3. @TAG 维护策略
 
 #### 自动化检查
+
 ```bash
 # Alfred 提供的 @TAG 检查命令
 /alfred:check-tags
@@ -661,6 +683,7 @@ class TestUserService:
 ```
 
 #### 手动审查清单
+
 ```yaml
 定期检查项目:
 - [ ] 所有 @SPEC 都有对应的 @CODE
@@ -673,27 +696,29 @@ class TestUserService:
 - [ ] 文档更新及时
 ```
 
----
+______________________________________________________________________
 
 ## @TAG 工具和自动化
 
 ### 1. Alfred @TAG 命令
 
 #### @TAG 检查命令
+
 ```bash
 # 检查 @TAG 完整性
 /alfred:check-tags
 
 # 输出示例:
-<span class="material-icons">check_circle</span> @TAG 语法检查通过
-<span class="material-icons">check_circle</span> 链接完整性验证通过
+✅ @TAG 语法检查通过
+✅ 链接完整性验证通过
 <span class="material-icons">warning</span> 发现 2 个孤立 @TAG
   - @CODE:ORDER-MGT-003:service (缺少对应 @SPEC)
   - @TEST:USER-PREF-002 (缺少对应 @CODE)
-<span class="material-icons">check_circle</span> @TAG 覆盖率: 87%
+✅ @TAG 覆盖率: 87%
 ```
 
 #### @TAG 生成命令
+
 ```bash
 # 从现有代码生成 @TAG
 /alfred:generate-tags --scan-code
@@ -709,6 +734,7 @@ class TestUserService:
 ```
 
 #### @TAG 报告命令
+
 ```bash
 # 生成 @TAG 报告
 /alfred:report-tags
@@ -723,6 +749,7 @@ class TestUserService:
 ### 2. IDE 集成
 
 #### VS Code 扩展
+
 ```json
 // .vscode/settings.json
 {
@@ -740,6 +767,7 @@ class TestUserService:
 ```
 
 #### 快捷键配置
+
 ```json
 // .vscode/keybindings.json
 [
@@ -764,6 +792,7 @@ class TestUserService:
 ### 3. Git 钩子集成
 
 #### Pre-commit 钩子
+
 ```bash
 #!/bin/sh
 # .git/hooks/pre-commit
@@ -780,6 +809,7 @@ echo "@TAG 检查通过"
 ```
 
 #### Post-commit 钩子
+
 ```bash
 #!/bin/sh
 # .git/hooks/post-commit
@@ -794,6 +824,7 @@ alfred report-tags --output .moai/reports/tag-report.md
 ### 4. CI/CD 集成
 
 #### GitHub Actions 配置
+
 ```yaml
 # .github/workflows/tag-validation.yml
 name: @TAG 验证
@@ -834,13 +865,14 @@ jobs:
         path: tag-report.md
 ```
 
----
+______________________________________________________________________
 
 ## @TAG 实际应用案例
 
 ### 案例 1: 电商系统用户认证
 
 #### 需求规格
+
 ```markdown
 # @SPEC:USER-AUTH-001: 用户认证系统规格说明
 
@@ -869,6 +901,7 @@ jobs:
 ```
 
 #### 代码实现
+
 ```python
 # user_auth_service.py
 """
@@ -903,6 +936,7 @@ class UserAuthService:
 ```
 
 #### 测试覆盖
+
 ```python
 # test_user_auth.py
 """
@@ -927,6 +961,7 @@ class TestUserAuthService:
 ```
 
 #### 完整链接链
+
 ```markdown
 完整的可追溯性链:
 
@@ -947,6 +982,7 @@ class TestUserAuthService:
 ### 案例 2: 微服务架构中的跨服务依赖
 
 #### 订单创建依赖用户认证
+
 ```yaml
 # 订单创建需求
 @SPEC:ORDER-CREATE-001: 订单创建功能
@@ -961,6 +997,7 @@ class TestUserAuthService:
 ```
 
 #### API 网关路由配置
+
 ```yaml
 # gateway_config.yml
 """
@@ -988,6 +1025,7 @@ routes:
 ### 案例 3: 遗留系统改造
 
 #### 逐步引入 @TAG
+
 ```yaml
 阶段 1: 标识现有代码
 - 扫描代码库，识别主要功能模块
@@ -1011,6 +1049,7 @@ routes:
 ```
 
 #### 遗留代码标记示例
+
 ```python
 # legacy_payment_service.py
 """
@@ -1036,13 +1075,14 @@ class LegacyPaymentService:
         # 复杂的遗留代码...
 ```
 
----
+______________________________________________________________________
 
 ## @TAG 系统集成
 
 ### 1. 与项目管理工具集成
 
 #### Jira 集成
+
 ```yaml
 # Jira Ticket 链接
 @ISSUE:USER-AUTH-001:jira-123 → @SPEC:USER-AUTH-001
@@ -1055,6 +1095,7 @@ Jira Ticket 创建 → 自动生成 @ISSUE 标记
 ```
 
 #### GitHub Issues 集成
+
 ```yaml
 # GitHub Issue 链接
 @ISSUE:USER-AUTH-001:gh-789 → @SPEC:USER-AUTH-001
@@ -1069,6 +1110,7 @@ PR 描述中包含 @SPEC:USER-AUTH-001
 ### 2. 与 CI/CD 管道集成
 
 #### 部署流水线
+
 ```yaml
 # deployment-pipeline.yml
 stages:
@@ -1094,6 +1136,7 @@ deploy:
 ```
 
 #### 质量门禁
+
 ```yaml
 # quality-gates.yml
 quality_gates:
@@ -1113,6 +1156,7 @@ quality_gates:
 ### 3. 与监控系统集成
 
 #### 应用性能监控
+
 ```yaml
 # 监控配置
 monitoring:
@@ -1131,6 +1175,7 @@ monitoring:
 ```
 
 #### 日志聚合
+
 ```yaml
 # 日志配置
 logging:
@@ -1144,13 +1189,14 @@ logging:
       tags: ["@CODE:*", "@TEST:*"]
 ```
 
----
+______________________________________________________________________
 
 ## 常见问题和解决方案
 
 ### 1. @TAG 语法错误
 
 #### 常见错误类型
+
 ```yaml
 <span class="material-icons">cancel</span> 语法错误示例:
 - @spec:user-auth-001 (小写字母)
@@ -1159,13 +1205,14 @@ logging:
 - @SPEC:USER-AUTH-001: (冒号结尾)
 - @CODE:USER-AUTH-001:API (大写子类型)
 
-<span class="material-icons">check_circle</span> 正确语法:
+✅ 正确语法:
 - @SPEC:USER-AUTH-001
 - @CODE:USER-AUTH-001:api
 - @TEST:USER-AUTH-001:unit
 ```
 
 #### 自动修复工具
+
 ```bash
 # 自动修复语法错误
 alfred fix-tags --syntax-only
@@ -1177,6 +1224,7 @@ alfred check-tags --syntax-only --verbose
 ### 2. @TAG 链接断裂
 
 #### 孤立 @TAG 检测
+
 ```bash
 # 查找孤立的 @TAG
 alfred find-orphaned-tags
@@ -1194,6 +1242,7 @@ alfred find-orphaned-tags
 ```
 
 #### 链接修复策略
+
 ```yaml
 修复优先级:
 1. 高优先级: 缺少 @SPEC 的 @CODE
@@ -1209,6 +1258,7 @@ alfred find-orphaned-tags
 ### 3. @TAG 覆盖率不足
 
 #### 覆盖率分析
+
 ```bash
 # 生成覆盖率报告
 alfred coverage-report
@@ -1227,6 +1277,7 @@ alfred coverage-report
 ```
 
 #### 提高覆盖率的策略
+
 ```yaml
 短期策略:
 1. 为现有 @CODE 补充 @TEST
@@ -1247,6 +1298,7 @@ alfred coverage-report
 ### 4. 团队采用挑战
 
 #### 常见阻力
+
 ```yaml
 技术阻力:
 - 学习成本高
@@ -1265,6 +1317,7 @@ alfred coverage-report
 ```
 
 #### 解决方案
+
 ```yaml
 渐进式采用:
 阶段 1: 核心功能试点
@@ -1289,7 +1342,7 @@ alfred coverage-report
 - 合适的激励机制
 ```
 
----
+______________________________________________________________________
 
 ## 总结
 

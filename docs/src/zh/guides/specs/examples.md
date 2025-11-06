@@ -1,7 +1,6 @@
----
-title: SPEC 编写示例
-description: 通过实际案例学习如何编写高质量的 SPEC 文档，包括完整的 EARS 语法应用和最佳实践
----
+______________________________________________________________________
+
+## title: SPEC 编写示例 description: 通过实际案例学习如何编写高质量的 SPEC 文档，包括完整的 EARS 语法应用和最佳实践
 
 # SPEC 编写示例
 
@@ -27,13 +26,13 @@ description: 通过实际案例学习如何编写高质量的 SPEC 文档，包�
 - **部署**: Docker + Kubernetes
 - **测试**: pytest + Jest
 
----
+______________________________________________________________________
 
 ## 示例 1: 用户认证模块
 
 ### 完整 SPEC 文档
 
-```markdown
+````markdown
 ---
 id: USER-AUTH-001
 version: 1.0.0
@@ -317,7 +316,7 @@ Scenario: 账户安全保护
   When 他连续输入错误密码 5 次
   Then 我的账户应该被锁定 15 分钟
   And 我应该收到安全警报邮件
-```
+````
 
 ## 相关链接
 
@@ -328,7 +327,7 @@ Scenario: 账户安全保护
 - `@TEST:USER-AUTH-001`: 用户认证测试套件
 - `@DOC:USER-AUTH-001`: 用户认证技术文档
 
----
+______________________________________________________________________
 
 ## 示例 2: 图书管理模块
 
@@ -552,6 +551,7 @@ estimated_complexity: high
 ### 1. 需求分解技巧
 
 #### 自顶向下分解
+
 ```yaml
 第一层: 功能模块
   用户认证系统
@@ -570,6 +570,7 @@ estimated_complexity: high
 ```
 
 #### 按用户角色分解
+
 ```yaml
 用户角色:
   普通用户: 注册、登录、浏览、购买、评价
@@ -584,6 +585,7 @@ estimated_complexity: high
 ### 2. EARS 语法应用技巧
 
 #### 选择合适的模式
+
 ```yaml
 功能描述选择指南:
 
@@ -604,6 +606,7 @@ estimated_complexity: high
 ```
 
 #### 避免 EARS 常见错误
+
 ```yaml
 <span class="material-icons">cancel</span> 常见错误:
 
@@ -619,7 +622,7 @@ estimated_complexity: high
 4. 约束条件不量化
    "系统响应时间要快" → 缺少量化指标
 
-<span class="material-icons">check_circle</span> 正确写法:
+✅ 正确写法:
 
 1. 正确的模式选择
    "系统必须提供用户注册功能" → Ubiquitous Requirements
@@ -637,30 +640,32 @@ estimated_complexity: high
 ### 3. 验收标准编写技巧
 
 #### SMART 原则应用
+
 ```yaml
 Specific (具体的):
   <span class="material-icons">cancel</span> "系统应该运行良好"
-  <span class="material-icons">check_circle</span> "用户登录 API 响应时间必须小于 200ms"
+  ✅ "用户登录 API 响应时间必须小于 200ms"
 
 Measurable (可测量的):
   <span class="material-icons">cancel</span> "提高系统性能"
-  <span class="material-icons">check_circle</span> "系统必须支持 1000 并发用户"
+  ✅ "系统必须支持 1000 并发用户"
 
 Achievable (可实现的):
   <span class="material-icons">cancel</span> "系统响应时间为 0ms"
-  <span class="material-icons">check_circle</span> "系统响应时间小于 100ms"
+  ✅ "系统响应时间小于 100ms"
 
 Relevant (相关的):
   <span class="material-icons">cancel</span> "界面颜色要美观"
-  <span class="material-icons">check_circle</span> "错误提示信息要清晰易懂"
+  ✅ "错误提示信息要清晰易懂"
 
 Time-bound (有时间限制的):
   <span class="material-icons">cancel</span> "系统要尽快优化"
-  <span class="material-icons">check_circle</span> "页面加载时间必须在 3 秒内完成"
+  ✅ "页面加载时间必须在 3 秒内完成"
 ```
 
 #### 测试驱动验收标准
-```yaml
+
+````yaml
 每个验收标准对应可执行的测试:
 
 验收标准:
@@ -683,11 +688,12 @@ def test_user_login_success():
     assert response.status_code == 200
     assert "access_token" in response.json()
     assert response.json()["user"]["email"] == user_data["email"]
-```
+````
 
 ### 4. 风险评估技巧
 
 #### 风险矩阵应用
+
 ```yaml
 风险评估矩阵:
 
@@ -705,6 +711,7 @@ def test_user_login_success():
 ```
 
 #### 具体风险缓解措施
+
 ```yaml
 技术风险缓解:
 风险: JWT 令牌管理复杂性
@@ -726,6 +733,7 @@ def test_user_login_success():
 ### 5. 实施计划制定技巧
 
 #### 工作分解结构 (WBS)
+
 ```yaml
 WBS 分层结构:
 
@@ -743,6 +751,7 @@ WBS 分层结构:
 ```
 
 #### 关键路径法
+
 ```yaml
 关键路径识别:
 用户认证模块关键路径:
@@ -820,26 +829,31 @@ WBS 分层结构:
 通过这些实际示例，我们可以看到高质量 SPEC 文档的关键特征：
 
 ### 1. 完整性
+
 - 覆盖所有功能需求和非功能需求
 - 包含详细的验收标准和测试场景
 - 考虑边界条件和异常情况
 
 ### 2. 清晰性
+
 - 使用标准的 EARS 语法
 - 避免模糊和歧义的表达
 - 提供具体的、可测量的标准
 
 ### 3. 可实现性
+
 - 技术方案可行
 - 时间和资源估算合理
 - 风险识别和缓解措施充分
 
 ### 4. 可追溯性
+
 - 完整的 @TAG 链接
 - 清晰的依赖关系
 - 与其他文档的一致性
 
 ### 5. 实用性
+
 - 详细的实施计划
 - 清晰的验收标准
 - 实用的风险评估
