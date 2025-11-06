@@ -8,12 +8,12 @@ Claude Code의 Hook 시스템을 통한 자동 가드레일 및 컨텍스트 관
 
 ### Hook 종류
 
-| Hook | 시점 | 용도 | 타임아웃 |
-|------|------|------|--------|
-| **SessionStart** | 세션 시작 | 프로젝트 상태 확인 | 5초 |
-| **PreToolUse** | 도구 실행 전 | 위험 명령 차단 | 5초 |
-| **UserPromptSubmit** | 사용자 입력 후 | 입력 검증 | 5초 |
-| **PostToolUse** | 도구 실행 후 | 결과 분석 | 5초 |
+| Hook                 | 시점           | 용도               | 타임아웃 |
+| -------------------- | -------------- | ------------------ | -------- |
+| **SessionStart**     | 세션 시작      | 프로젝트 상태 확인 | 5초      |
+| **PreToolUse**       | 도구 실행 전   | 위험 명령 차단     | 5초      |
+| **UserPromptSubmit** | 사용자 입력 후 | 입력 검증          | 5초      |
+| **PostToolUse**      | 도구 실행 후   | 결과 분석          | 5초      |
 
 ## 📍 Hook 위치
 
@@ -112,6 +112,6 @@ bash .claude/hooks/session_start.sh
 - **[SessionStart Hook](session.md)** - 세션 시작 시 자동 실행
 - **[Tool Hooks](tool.md)** - 도구 실행 전/후 처리
 
----
+______________________________________________________________________
 
 **다음**: [SessionStart Hook](session.md) 또는 [Tool Hooks](tool.md)

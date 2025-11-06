@@ -20,16 +20,17 @@ SPEC-001 (요구사항)
 
 ## 📋 TAG 종류
 
-| TAG | 위치 | 용도 | 예시 |
-|-----|------|------|------|
-| **SPEC-ID** | .moai/specs/ | 요구사항 | SPEC-001 |
-| **@TEST** | tests/ | 테스트 코드 | @TEST:SPEC-001:* |
-| **@CODE** | src/ | 구현 코드 | @CODE:SPEC-001:* |
-| **@DOC** | docs/ | 문서 | @DOC:SPEC-001:* |
+| TAG         | 위치         | 용도        | 예시              |
+| ----------- | ------------ | ----------- | ----------------- |
+| **SPEC-ID** | .moai/specs/ | 요구사항    | SPEC-001          |
+| **@TEST**   | tests/       | 테스트 코드 | @TEST:SPEC-001:\* |
+| **@CODE**   | src/         | 구현 코드   | @CODE:SPEC-001:\* |
+| **@DOC**    | docs/        | 문서        | @DOC:SPEC-001:\*  |
 
 ## ✅ TAG 작성 규칙
 
 ### SPEC TAG
+
 ```
 SPEC-001: 첫 번째 스펙
 SPEC-002: 두 번째 스펙
@@ -37,6 +38,7 @@ SPEC-N: N번째 스펙
 ```
 
 ### @TEST TAG
+
 ```python
 # @TEST:SPEC-001:login_success
 def test_login_success():
@@ -48,6 +50,7 @@ def test_login_failure():
 ```
 
 ### @CODE TAG
+
 ```python
 # @CODE:SPEC-001:register_user
 def register_user(email, password):
@@ -59,6 +62,7 @@ def validate_email(email):
 ```
 
 ### @DOC TAG
+
 ```markdown
 # API 문서 @DOC:SPEC-001:api
 
@@ -67,12 +71,12 @@ def validate_email(email):
 
 ## 🔍 TAG 검증 규칙
 
-| 규칙 | 설명 | 위반 시 |
-|------|------|--------|
-| **고유성** | 같은 TAG가 중복되면 안 됨 | 오류 |
-| **완성성** | SPEC→TEST→CODE→DOC 모두 있어야 함 | 경고 |
-| **일관성** | TAG 형식 일관성 | 오류 |
-| **추적성** | 상호 참조 가능 | 경고 |
+| 규칙       | 설명                              | 위반 시 |
+| ---------- | --------------------------------- | ------- |
+| **고유성** | 같은 TAG가 중복되면 안 됨         | 오류    |
+| **완성성** | SPEC→TEST→CODE→DOC 모두 있어야 함 | 경고    |
+| **일관성** | TAG 형식 일관성                   | 오류    |
+| **추적성** | 상호 참조 가능                    | 경고    |
 
 ## 🚀 TAG 스캔 및 검증
 
@@ -96,6 +100,6 @@ moai-adk status --spec SPEC-001
 - **[TAG 타입](types.md)** - 각 TAG 타입 상세 설명
 - **[추적성 시스템](traceability.md)** - TAG 체인과 완전성 검증
 
----
+______________________________________________________________________
 
 **다음**: [TAG 타입](types.md) 또는 [추적성 시스템](traceability.md)

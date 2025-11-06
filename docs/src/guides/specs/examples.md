@@ -1,6 +1,7 @@
 # SPEC Examples: Real-World Scenarios
 
-Explore comprehensive examples of SPEC documents across different domains and complexity levels. These examples demonstrate best practices for writing clear, testable, and complete specifications.
+Explore comprehensive examples of SPEC documents across different domains and complexity levels.
+These examples demonstrate best practices for writing clear, testable, and complete specifications.
 
 ## Example Categories
 
@@ -13,13 +14,11 @@ Explore comprehensive examples of SPEC documents across different domains and co
 7. **File Management** - Upload, storage, and processing of files
 8. **Reporting & Analytics** - Dashboards, reports, and data visualization
 
----
+______________________________________________________________________
 
 ## Example 1: Authentication System (Medium Complexity)
 
-**Domain**: AUTH-001
-**Estimated Hours**: 12
-**Priority**: High
+**Domain**: AUTH-001 **Estimated Hours**: 12 **Priority**: High
 
 ```yaml
 ---
@@ -255,13 +254,11 @@ Provide secure, scalable user authentication with multiple authentication method
 - Security and performance baseline
 ```
 
----
+______________________________________________________________________
 
 ## Example 2: File Upload API (Simple Complexity)
 
-**Domain**: API-002
-**Estimated Hours**: 6
-**Priority**: Medium
+**Domain**: API-002 **Estimated Hours**: 6 **Priority**: Medium
 
 ```yaml
 ---
@@ -354,13 +351,11 @@ Provide secure file upload functionality with validation, virus scanning, and cl
 - User permission management
 ```
 
----
+______________________________________________________________________
 
 ## Example 3: User Profile Management (High Complexity)
 
-**Domain**: USER-002
-**Estimated Hours**: 20
-**Priority**: High
+**Domain**: USER-002 **Estimated Hours**: 20 **Priority**: High
 
 ```yaml
 ---
@@ -504,13 +499,11 @@ Provide complete user profile management system with personal information, prefe
 - Plan for data migration from legacy systems
 ```
 
----
+______________________________________________________________________
 
 ## Example 4: Background Job Processing (Medium Complexity)
 
-**Domain**: JOB-001
-**Estimated Hours**: 10
-**Priority**: Medium
+**Domain**: JOB-001 **Estimated Hours**: 10 **Priority**: Medium
 
 ```yaml
 ---
@@ -610,13 +603,14 @@ Provide reliable background job processing system with queue management, job mon
 - Job priority handling
 ```
 
----
+______________________________________________________________________
 
 ## SPEC Quality Checklist
 
 For each SPEC, ensure it meets these quality standards:
 
 ### Content Quality
+
 - [ ] Requirements are clear and unambiguous
 - [ ] All use cases are covered
 - [ ] Error conditions are specified
@@ -624,6 +618,7 @@ For each SPEC, ensure it meets these quality standards:
 - [ ] Dependencies are identified
 
 ### Format Compliance
+
 - [ ] YAML frontmatter is complete and valid
 - [ ] EARS patterns are used correctly
 - [ ] Language is consistent throughout
@@ -631,6 +626,7 @@ For each SPEC, ensure it meets these quality standards:
 - [ ] TAG references are correct
 
 ### Technical Feasibility
+
 - [ ] Requirements are technically achievable
 - [ ] Security considerations are addressed
 - [ ] Performance requirements are realistic
@@ -638,6 +634,7 @@ For each SPEC, ensure it meets these quality standards:
 - [ ] Risk assessment is comprehensive
 
 ### Review Process
+
 - [ ] Technical review completed
 - [ ] Domain expert validation
 - [ ] Security review (if applicable)
@@ -649,27 +646,32 @@ For each SPEC, ensure it meets these quality standards:
 When writing your own SPEC, follow this process:
 
 ### 1. Requirements Gathering
+
 - Talk to stakeholders
 - Document all use cases
 - Identify constraints and dependencies
 - Consider edge cases and error conditions
 
 ### 2. Draft the SPEC
+
 - Start with YAML frontmatter
 - Write EARS requirements systematically
 - Include technical requirements
 - Define acceptance criteria
 
 ### 3. Review and Refine
+
 - Get feedback from technical team
 - Validate with domain experts
 - Check for completeness and clarity
 - Ensure testability of all requirements
 
 ### 4. Finalize and Approve
+
 - Incorporate review feedback
 - Obtain stakeholder sign-off
 - Version control the SPEC
 - Share with implementation team
 
-Remember: A good SPEC is an investment in project success. Take the time to get it right, and the implementation phase will be much smoother! 🎯
+Remember: A good SPEC is an investment in project success. Take the time to get it right, and the
+implementation phase will be much smoother! 🎯

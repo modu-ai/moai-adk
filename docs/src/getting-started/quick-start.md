@@ -30,6 +30,7 @@ Claude Code에서 프로젝트 초기화 명령을 실행하세요:
 ```
 
 Alfred가 몇 가지 질문을 할 것입니다:
+
 - **프로젝트 이름**: hello-api
 - **프로젝트 목표**: MoAI-ADK 학습
 - **주요 언어**: python
@@ -48,8 +49,11 @@ Alfred의 spec-builder를 사용하여 만들 것을 정의하세요.
 ### Alfred가 하는 일
 
 1. **요청을 분석**하고 요구사항을 추출
+
 2. **SPEC ID 생성**: `HELLO-001`
+
 3. **EARS 형식 사양 생성**:
+
    ```yaml
    ---
    id: HELLO-001
@@ -72,6 +76,7 @@ Alfred의 spec-builder를 사용하여 만들 것을 정의하세요.
    ```
 
 4. **지원 파일 생성**:
+
    - `.moai/specs/SPEC-HELLO-001/spec.md` - 주요 사양
    - `.moai/specs/SPEC-HELLO-001/plan.md` - 구현 계획
    - 기능 브랜치: `feature/SPEC-HELLO-001` (팀 모드인 경우)
@@ -128,12 +133,14 @@ def test_hello_with_long_name_should_return_400():
 ```
 
 **테스트 실행** (실패할 것입니다 - 이것이 예상됨):
+
 ```bash
 pytest tests/test_hello.py -v
 # 결과: FAILED - No module named 'src.hello.api'
 ```
 
 **RED 단계 커밋**:
+
 ```bash
 git add tests/test_hello.py
 git commit -m "🔴 test(HELLO-001): add failing hello API tests"
@@ -160,12 +167,14 @@ def hello(name: str = "World"):
 ```
 
 **테스트 실행** (이제 통과해야 함):
+
 ```bash
 pytest tests/test_hello.py -v
 # 결과: PASSED - 모든 3개 테스트 통과
 ```
 
 **GREEN 단계 커밋**:
+
 ```bash
 git add src/hello/api.py
 git commit -m "🟢 feat(HELLO-001): implement hello API"
@@ -216,12 +225,14 @@ def hello(params: HelloRequest = Depends()):
 ```
 
 **테스트가 여전히 통과하는지 확인**:
+
 ```bash
 pytest tests/test_hello.py -v
 # 결과: PASSED - 모든 테스트 여전히 통과
 ```
 
 **REFACTOR 단계 커밋**:
+
 ```bash
 git add src/hello/models.py src/hello/api.py
 git commit -m "♻️ refactor(HELLO-001): add models and improve validation"
@@ -238,7 +249,8 @@ git commit -m "♻️ refactor(HELLO-001): add models and improve validation"
 ### Alfred가 하는 일
 
 1. **API 문서 생성**:
-   ```markdown
+
+   ````markdown
    # Hello API 문서
 
    ## GET /hello
@@ -252,19 +264,25 @@ git commit -m "♻️ refactor(HELLO-001): add models and improve validation"
    - **200**: 성공
      ```json
      {"message": "Hello, Alice!"}
-     ```
+   ````
+
    - **400**: 검증 오류
 
    ### 예제
+
    ```bash
    curl "http://localhost:8000/hello?name=Alice"
    # → {"message": "Hello, Alice!"}
    ```
 
    ### 추적성
+
    - @SPEC:EX-HELLO-001 - 요구사항
    - @TEST:EX-HELLO-001 - 테스트
    - @CODE:EX-HELLO-001 - 구현
+
+   ```
+
    ```
 
 2. **README.md 업데이트** (API 사용 예제 포함)
@@ -272,6 +290,7 @@ git commit -m "♻️ refactor(HELLO-001): add models and improve validation"
 3. **CHANGELOG.md 생성** (버전 기록 포함)
 
 4. **TAG 체인 무결성 검증**:
+
    ```
    ✅ @SPEC:EX-HELLO-001 → .moai/specs/SPEC-HELLO-001/spec.md
    ✅ @TEST:EX-HELLO-001 → tests/test_hello.py
@@ -283,6 +302,7 @@ git commit -m "♻️ refactor(HELLO-001): add models and improve validation"
    ```
 
 5. **TRUST 5 준수 검증**:
+
    ```
    ✅ Test First: 100% 커버리지 (3/3 테스트 통과)
    ✅ Readable: 모든 함수 < 50줄
@@ -341,6 +361,7 @@ git log --oneline | head -5
 ```
 
 예상 출력:
+
 ```
 a1b2c3d ✅ sync(HELLO-001): update docs and changelog
 d4e5f6c ♻️ refactor(HELLO-001): add models and improve validation
@@ -353,11 +374,9 @@ e5f6g7h 🌿 Create feature/SPEC-HELLO-001 branch
 
 ### 경험한 개념
 
-✅ **SPEC-First**: 코딩 전에 명확한 요구사항 생성
-✅ **TDD**: 100% 테스트 커버리지로 RED → GREEN → REFACTOR 사이클
-✅ **@TAG 시스템**: 요구사항부터 문서까지 완전한 추적성
-✅ **TRUST 5**: 검증과 오류 처리를 포함한 프로덕션 품질 코드
-✅ **Alfred 워크플로우**: 자동화된 문서화와 품질 검사
+✅ **SPEC-First**: 코딩 전에 명확한 요구사항 생성 ✅ **TDD**: 100% 테스트 커버리지로 RED → GREEN → REFACTOR 사이클 ✅ **@TAG
+시스템**: 요구사항부터 문서까지 완전한 추적성 ✅ **TRUST 5**: 검증과 오류 처리를 포함한 프로덕션 품질 코드 ✅ **Alfred 워크플로우**: 자동화된 문서화와 품질
+검사
 
 ### 얻은 기술
 
@@ -399,6 +418,7 @@ API에 더 많은 기능 추가:
 ### 일반적인 문제
 
 **가져오기 오류로 테스트 실패**:
+
 ```bash
 # 의존성 설치
 uv add fastapi pytest
@@ -406,6 +426,7 @@ uv sync
 ```
 
 **API가 시작되지 않음**:
+
 ```bash
 # 포트와 의존성 확인
 lsof -i :8000
@@ -413,6 +434,7 @@ uvicorn src.hello.api:app --reload --port 8001
 ```
 
 **문서가 생성되지 않음**:
+
 ```bash
 # 수동으로 동기화 실행
 /alfred:3-sync
@@ -439,6 +461,7 @@ moai-adk doctor
 5. ✅ **완전한 추적성 유지** (@TAG 시스템으로)
 6. ✅ **모범 사례 준수** (TRUST 5 원칙으로)
 
-이것이 MoAI-ADK의 힘입니다: 전통적인 방법보다 더 빠르게 신뢰할 수 있고, 유지보수가 쉬우며, 잘 문서화된 코드를 생성하세요. 이제 자신감 있게 복잡한 애플리케이션을 빌드할 준비가 되었습니다! 🚀
+이것이 MoAI-ADK의 힘입니다: 전통적인 방법보다 더 빠르게 신뢰할 수 있고, 유지보수가 쉬우며, 잘 문서화된 코드를 생성하세요. 이제 자신감 있게 복잡한 애플리케이션을 빌드할
+준비가 되었습니다! 🚀
 
 [Alfred 워크플로우 가이드](../../guides/alfred/index.md)로 여정을 계속하거나 관심 있는 특정 주제를 탐색하세요.

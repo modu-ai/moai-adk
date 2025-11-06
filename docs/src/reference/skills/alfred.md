@@ -4,15 +4,15 @@ Alfred와 서브에이전트들을 위한 5개 전문 스킬입니다.
 
 ## 개요
 
-| 스킬 | 설명 | 대상 | 버전 |
-|------|------|------|------|
-| **moai-alfred-agent-guide** | 19명 팀 구조, 의사결정 | Alfred | 4.0 |
-| **moai-alfred-ask-user-questions** | 사용자 상호작용 최적화 | 모든 에이전트 | 2.1 |
-| **moai-alfred-personas** | 적응형 커뮤니케이션 | Alfred | 3.0 |
-| **moai-alfred-best-practices** | TRUST, TAG, Skill 규칙 | 검증 | 5.0 |
-| **moai-alfred-context-budget** | Context window 최적화 | Alfred | 2.5 |
+| 스킬                               | 설명                   | 대상          | 버전 |
+| ---------------------------------- | ---------------------- | ------------- | ---- |
+| **moai-alfred-agent-guide**        | 19명 팀 구조, 의사결정 | Alfred        | 4.0  |
+| **moai-alfred-ask-user-questions** | 사용자 상호작용 최적화 | 모든 에이전트 | 2.1  |
+| **moai-alfred-personas**           | 적응형 커뮤니케이션    | Alfred        | 3.0  |
+| **moai-alfred-best-practices**     | TRUST, TAG, Skill 규칙 | 검증          | 5.0  |
+| **moai-alfred-context-budget**     | Context window 최적화  | Alfred        | 2.5  |
 
----
+______________________________________________________________________
 
 ## 1. moai-alfred-agent-guide
 
@@ -99,7 +99,7 @@ Alfred: 도메인 분석
 선택된 에이전트 활성화
 ```
 
----
+______________________________________________________________________
 
 ## 2. moai-alfred-ask-user-questions
 
@@ -150,12 +150,14 @@ Alfred: 도메인 분석
 ### 사용 시점
 
 #### ✅ 반드시 사용
+
 - 여러 기술 선택 필요 (3개 이상)
 - 아키텍처 결정 필요
 - 요청 모호함
 - 영향 범위 큼
 
 #### ❌ 사용하지 않음
+
 - 요청이 명확함
 - 단순 예/아니오 질문
 - 기술 결정 불필요
@@ -170,7 +172,7 @@ Alfred: 도메인 분석
 # 3개의 별도 AskUserQuestion 호출
 ```
 
----
+______________________________________________________________________
 
 ## 3. moai-alfred-personas
 
@@ -179,6 +181,7 @@ Alfred: 도메인 분석
 ### 사용자 수준 감지
 
 #### Beginner 수준
+
 ```
 특징:
 - MoAI-ADK 처음 사용
@@ -193,6 +196,7 @@ Alfred의 커뮤니케이션:
 ```
 
 #### Intermediate 수준
+
 ```
 특징:
 - Alfred 기본 사용 가능
@@ -207,6 +211,7 @@ Alfred의 커뮤니케이션:
 ```
 
 #### Expert 수준
+
 ```
 특징:
 - Alfred 숙련자
@@ -239,7 +244,7 @@ Expert 신호:
 - 성능 최적화
 ```
 
----
+______________________________________________________________________
 
 ## 4. moai-alfred-best-practices
 
@@ -291,7 +296,7 @@ Skill("moai-foundation-trust")
 Skill("moai-foundation-tags")
 ```
 
----
+______________________________________________________________________
 
 ## 5. moai-alfred-context-budget
 
@@ -349,7 +354,7 @@ Read("file2.py")  # 다음 필요 파일
 ✅ 메모리 파일 요약
 ```
 
----
+______________________________________________________________________
 
 ## Alfred Skills 통합 워크플로우
 
@@ -383,7 +388,7 @@ Skill("moai-alfred-best-practices")
 완료
 ```
 
----
+______________________________________________________________________
 
 ## Alfred Skills FAQ
 
@@ -403,6 +408,6 @@ Skill("moai-alfred-best-practices")
 
 → `Skill("moai-alfred-best-practices")`의 TRUST 섹션
 
----
+______________________________________________________________________
 
 **다음**: [Foundation Skills](foundation.md) 또는 [Skills 개요](index.md)

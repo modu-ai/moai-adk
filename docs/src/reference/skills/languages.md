@@ -66,7 +66,7 @@ def test_add():
     assert add(2, 3) == 5
 ```
 
----
+______________________________________________________________________
 
 ## 📘 TypeScript (웹 개발)
 
@@ -111,7 +111,7 @@ biome check src/
 biome format src/
 ```
 
----
+______________________________________________________________________
 
 ## 🦀 Rust (시스템 프로그래밍)
 
@@ -153,7 +153,7 @@ cargo fmt
 cargo build --release
 ```
 
----
+______________________________________________________________________
 
 ## 🐹 Go (백엔드)
 
@@ -196,41 +196,47 @@ gofmt -w .
 go build -o app
 ```
 
----
+______________________________________________________________________
 
 ## 📜 기타 인기 언어
 
 ### Java (21+)
+
 - 테스트: JUnit 5, Mockito
 - 빌드: Maven, Gradle
 - 린팅: Checkstyle, SpotBugs
 - 프레임워크: Spring Boot, Quarkus
 
 ### C# (13+)
+
 - 테스트: xUnit, NUnit
 - 빌드: .NET SDK
 - 린팅: StyleCop, FxCop
 - 프레임워크: ASP.NET Core, Blazor
 
 ### PHP (8.4+)
+
 - 테스트: PHPUnit 11
 - 패키지: Composer
 - 린팅: PHP_CodeSniffer, PHPStan
 - 프레임워크: Laravel 11, Symfony 7
 
 ### Ruby (3.4+)
+
 - 테스트: RSpec 4
 - 패키지: Bundler, RubyGems
 - 린팅: RuboCop 2
 - 프레임워크: Rails 8
 
 ### Kotlin (2.1+)
+
 - 테스트: KUnit, Mockk
 - 빌드: Gradle, Maven
 - 린팅: ktlint, detekt
 - 프레임워크: Spring Boot, Ktor
 
 ### Dart (3.x)
+
 - 테스트: Dart test
 - 빌드: Pub, Flutter
 - 린팅: analysis server
@@ -271,36 +277,42 @@ Skill("moai-lang-shell")
 
 ## 📊 언어 스킬 비교
 
-| 언어 | 버전 | 테스트 | 린팅 | 타입 | 성능 |
-|------|------|--------|------|------|------|
-| Python | 3.13+ | pytest | ruff | mypy | ⭐⭐⭐ |
-| TypeScript | 5.7+ | Vitest | Biome | Built-in | ⭐⭐⭐⭐ |
-| Rust | 1.84+ | cargo test | clippy | Built-in | ⭐⭐⭐⭐⭐ |
-| Go | 1.24+ | go test | golangci | Built-in | ⭐⭐⭐⭐⭐ |
-| Java | 21+ | JUnit | Checkstyle | Built-in | ⭐⭐⭐⭐ |
-| C# | 13+ | xUnit | StyleCop | Built-in | ⭐⭐⭐⭐ |
-| Ruby | 3.4+ | RSpec | RuboCop | Optional | ⭐⭐⭐ |
-| PHP | 8.4+ | PHPUnit | PHP_CodeSniffer | PHPStan | ⭐⭐⭐ |
-| Kotlin | 2.1+ | KUnit | ktlint | Built-in | ⭐⭐⭐⭐ |
+| 언어       | 버전  | 테스트     | 린팅            | 타입     | 성능       |
+| ---------- | ----- | ---------- | --------------- | -------- | ---------- |
+| Python     | 3.13+ | pytest     | ruff            | mypy     | ⭐⭐⭐     |
+| TypeScript | 5.7+  | Vitest     | Biome           | Built-in | ⭐⭐⭐⭐   |
+| Rust       | 1.84+ | cargo test | clippy          | Built-in | ⭐⭐⭐⭐⭐ |
+| Go         | 1.24+ | go test    | golangci        | Built-in | ⭐⭐⭐⭐⭐ |
+| Java       | 21+   | JUnit      | Checkstyle      | Built-in | ⭐⭐⭐⭐   |
+| C#         | 13+   | xUnit      | StyleCop        | Built-in | ⭐⭐⭐⭐   |
+| Ruby       | 3.4+  | RSpec      | RuboCop         | Optional | ⭐⭐⭐     |
+| PHP        | 8.4+  | PHPUnit    | PHP_CodeSniffer | PHPStan  | ⭐⭐⭐     |
+| Kotlin     | 2.1+  | KUnit      | ktlint          | Built-in | ⭐⭐⭐⭐   |
 
 ## 🎯 언어 선택 가이드
 
 ### API/백엔드
+
 추천: **Python** (FastAPI) > **Go** > **Rust** > **Java** > **TypeScript** (Node.js)
 
 ### 프론트엔드
+
 추천: **TypeScript** > **JavaScript** > **Dart** (Flutter)
 
 ### 모바일
+
 추천: **Kotlin** (Android) > **Swift** (iOS) > **Dart** (Flutter - 크로스플랫폼)
 
 ### 시스템 프로그래밍
+
 추천: **Rust** > **Go** > **C++** > **C**
 
 ### 데이터 과학/ML
+
 추천: **Python** > **R** > **Julia**
 
 ### 웹 풀스택
+
 추천: **TypeScript** (React/Node.js) > **Ruby** (Rails) > **Python** (Django)
 
 ## 🔗 언어별 모범 사례
@@ -327,6 +339,6 @@ Skill("moai-lang-shell")
 - **테스트**: 테스트 작성 패턴
 - **배포**: CI/CD 자동화
 
----
+______________________________________________________________________
 
 **다음**: [Alfred Skills](alfred.md) 또는 [Skills 개요](index.md)

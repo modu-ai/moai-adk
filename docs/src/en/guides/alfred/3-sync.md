@@ -1,8 +1,6 @@
----
-title: /alfred:3-sync コマンド
-description: ドキュメント同期と状態管理のための完全ガイド
-lang: ja
----
+______________________________________________________________________
+
+## title: /alfred:3-sync コマンド description: ドキュメント同期と状態管理のための完全ガイド lang: ja
 
 # /alfred:3-sync - ドキュメント同期コマンド
 
@@ -10,9 +8,7 @@ lang: ja
 
 ## 概要
 
-**目的**: ドキュメント同期と状態管理
-**実行時間**: 約1分
-**主要成果**: Living Document、同期レポート、TAG検証
+**目的**: ドキュメント同期と状態管理 **実行時間**: 約1分 **主要成果**: Living Document、同期レポート、TAG検証
 
 ## 基本使用法
 
@@ -78,7 +74,7 @@ lang: ja
 
 #### doc-syncerが自動実行
 
-```markdown
+````markdown
 # 生成されるLiving Document
 
 # `@DOC:EX-HELLO-001: Hello World API
@@ -123,7 +119,7 @@ lang: ja
 {
   "message": "Hello, 田中!"
 }
-```
+````
 
 #### エラー (400)
 
@@ -163,11 +159,8 @@ lang: ja
 
 ### TRUST 5原則準拠
 
-✅ **Test First**: 95%カバレッジ達成
-✅ **Readable**: クリアなコード構造
-✅ **Unified**: 一貫したアーキテクチャ
-✅ **Secured**: 入力検証とXSS防止
-✅ **Trackable**: 完全なTAG連鎖
+✅ **Test First**: 95%カバレッジ達成 ✅ **Readable**: クリアなコード構造 ✅ **Unified**: 一貫したアーキテクチャ ✅ **Secured**:
+入力検証とXSS防止 ✅ **Trackable**: 完全なTAG連鎖
 
 ## デプロイメント
 
@@ -193,7 +186,8 @@ GET /health
   "timestamp": "2025-01-06T10:00:00Z"
 }
 ```
-```
+
+````
 
 ### フェーズ3: プロジェクトドキュメント更新
 
@@ -233,8 +227,9 @@ curl "http://localhost:8000/hello"
 # パーソナライズされた挨拶
 curl "http://localhost:8000/hello?name=田中"
 # → {"message": "Hello, 田中!"}
-```
-```
+````
+
+````
 
 #### CHANGELOG.md自動更新
 
@@ -280,7 +275,7 @@ curl "http://localhost:8000/hello?name=田中"
 - Initial project setup
 - MoAI-ADK integration
 - Basic configuration
-```
+````
 
 ### フェーズ4: Git状態管理
 
@@ -317,6 +312,7 @@ curl "http://localhost:8000/hello?name=田中"
 ```
 
 **自動モード機能**:
+
 - 変更検出時に自動同期実行
 - バックグラウンドで定期的実行
 - PR作成時に自動実行
@@ -536,6 +532,7 @@ graph TD
 ### よくある問題
 
 **ドキュメントが生成されない**:
+
 ```bash
 # TAGチェーン確認
 rg '@(SPEC|TEST|CODE):' -n
@@ -548,6 +545,7 @@ rg '@(SPEC|TEST|CODE):' -n
 ```
 
 **Orphan TAGが多い**:
+
 ```bash
 # Orphan TAG分析
 /alfred:3-sync --analyze-orphans
@@ -557,6 +555,7 @@ rg '@(SPEC|TEST|CODE):' -n
 ```
 
 **ドキュメントフォーマットが壊れる**:
+
 ```bash
 # テンプレート再生成
 /alfred:3-sync --regenerate-templates
@@ -641,9 +640,10 @@ jobs:
 /alfred:3-sync --update-deployment-status
 ```
 
----
+______________________________________________________________________
 
 **📚 次のステップ**:
+
 - [プロジェクトガイド](../project/index.md)でプロジェクト管理
 - [デプロイガイド](../project/deploy.md)で本番環境展開
 - [品質ガイド](../project/config.md)で品質管理

@@ -1,28 +1,30 @@
 # 프로젝트 설정 완전 가이드
 
-MoAI-ADK 프로젝트의 모든 설정 옵션을 상세하게 설명하는 가이드입니다. 언어 설정부터 GitHub 통합, 에이전트 최적화, 개인화 설정까지 프로젝트 설정의 모든 측면을 다룹니다.
+MoAI-ADK 프로젝트의 모든 설정 옵션을 상세하게 설명하는 가이드입니다. 언어 설정부터 GitHub 통합, 에이전트 최적화, 개인화 설정까지 프로젝트 설정의 모든 측면을
+다룹니다.
 
 ## 목차
 
-1. [개요](#개요)
-2. [핵심 설정 파일](#핵심-설정-파일)
-3. [언어 및 지역화 설정](#언어-및-지역화-설정)
-4. [프로젝트 메타데이터 설정](#프로젝트-메타데이터-설정)
-5. [GitHub 통합 설정](#github-통합-설정)
-6. [보고서 생성 제어](#보고서-생성-제어)
-7. [Git 워크플로우 설정](#git-워크플로우-설정)
-8. [Hook 설정 최적화](#hook-설정-최적화)
-9. [에이전트 설정](#에이전트-설정)
-10. [TAG 시스템 설정](#tag-시스템-설정)
-11. [TRUST 5원칙 설정](#trust-5원칙-설정)
-12. [개인화 설정](#개인화-설정)
-13. [설정 파일 백업 및 복원](#설정-파일-백업-및-복원)
-14. [설정 최적화 전략](#설정-최적화-전략)
-15. [문제 해결](#문제-해결)
+01. [개요](#%EA%B0%9C%EC%9A%94)
+02. [핵심 설정 파일](#%ED%95%B5%EC%8B%AC-%EC%84%A4%EC%A0%95-%ED%8C%8C%EC%9D%BC)
+03. [언어 및 지역화 설정](#%EC%96%B8%EC%96%B4-%EB%B0%8F-%EC%A7%80%EC%97%AD%ED%99%94-%EC%84%A4%EC%A0%95)
+04. [프로젝트 메타데이터 설정](#%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8-%EB%A9%94%ED%83%80%EB%8D%B0%EC%9D%B4%ED%84%B0-%EC%84%A4%EC%A0%95)
+05. [GitHub 통합 설정](#github-%ED%86%B5%ED%95%A9-%EC%84%A4%EC%A0%95)
+06. [보고서 생성 제어](#%EB%B3%B4%EA%B3%A0%EC%84%9C-%EC%83%9D%EC%84%B1-%EC%A0%9C%EC%96%B4)
+07. [Git 워크플로우 설정](#git-%EC%9B%8C%ED%81%AC%ED%94%8C%EB%A1%9C%EC%9A%B0-%EC%84%A4%EC%A0%95)
+08. [Hook 설정 최적화](#hook-%EC%84%A4%EC%A0%95-%EC%B5%9C%EC%A0%81%ED%99%94)
+09. [에이전트 설정](#%EC%97%90%EC%9D%B4%EC%A0%84%ED%8A%B8-%EC%84%A4%EC%A0%95)
+10. [TAG 시스템 설정](#tag-%EC%8B%9C%EC%8A%A4%ED%85%9C-%EC%84%A4%EC%A0%95)
+11. [TRUST 5원칙 설정](#trust-5%EC%9B%90%EC%B9%99-%EC%84%A4%EC%A0%95)
+12. [개인화 설정](#%EA%B0%9C%EC%9D%B8%ED%99%94-%EC%84%A4%EC%A0%95)
+13. [설정 파일 백업 및 복원](#%EC%84%A4%EC%A0%95-%ED%8C%8C%EC%9D%BC-%EB%B0%B1%EC%97%85-%EB%B0%8F-%EB%B3%B5%EC%9B%90)
+14. [설정 최적화 전략](#%EC%84%A4%EC%A0%95-%EC%B5%9C%EC%A0%81%ED%99%94-%EC%A0%84%EB%9E%B5)
+15. [문제 해결](#%EB%AC%B8%EC%A0%9C-%ED%95%B4%EA%B2%B0)
 
 ## 개요
 
-MoAI-ADK의 설정 시스템은 유연성과 확장성을 중심으로 설계되었습니다. 단순한 환경 설정을 넘어, AI 에이전트의 동작 방식, 개발 워크플로우, 팀 협업 방식까지 모든 것을 제어할 수 있습니다.
+MoAI-ADK의 설정 시스템은 유연성과 확장성을 중심으로 설계되었습니다. 단순한 환경 설정을 넘어, AI 에이전트의 동작 방식, 개발 워크플로우, 팀 협업 방식까지 모든 것을
+제어할 수 있습니다.
 
 ### 설정 시스템의 핵심 원칙
 
@@ -238,15 +240,15 @@ Alfred와의 모든 상호작용에 사용되는 언어입니다.
 
 **지원되는 언어**:
 
-| 코드 | 언어 | 지원 수준 | 비고 |
-|------|------|-----------|------|
-| ko | 한국어 | 완전 | 기본 언어 |
-| en | English | 완전 | 글로벌 표준 |
-| ja | 日本語 | 완전 | 일본어 지원 |
-| zh | 中文 | 완전 | 중국어 간체/번체 지원 |
-| es | Español | 완전 | 스페인어 지원 |
-| fr | Français | 부분 | 프랑스어 (개발 중) |
-| de | Deutsch | 부분 | 독일어 (개발 중) |
+| 코드 | 언어     | 지원 수준 | 비고                  |
+| ---- | -------- | --------- | --------------------- |
+| ko   | 한국어   | 완전      | 기본 언어             |
+| en   | English  | 완전      | 글로벌 표준           |
+| ja   | 日本語   | 완전      | 일본어 지원           |
+| zh   | 中文     | 완전      | 중국어 간체/번체 지원 |
+| es   | Español  | 완전      | 스페인어 지원         |
+| fr   | Français | 부분      | 프랑스어 (개발 중)    |
+| de   | Deutsch  | 부분      | 독일어 (개발 중)      |
 
 #### code_language (프로그래밍 언어)
 
@@ -269,19 +271,19 @@ Alfred와의 모든 상호작용에 사용되는 언어입니다.
 
 **지원되는 프로그래밍 언어**:
 
-| 언어 | 자동 감지 파일 | 기본 도구 | 템플릿 지원 |
-|------|----------------|----------|------------|
-| python | pyproject.toml, setup.py, requirements.txt | pytest, ruff, mypy | ✅ |
-| javascript | package.json, yarn.lock | jest, eslint, prettier | ✅ |
-| typescript | tsconfig.json, package.json | typescript, eslint, prettier | ✅ |
-| go | go.mod, go.sum | go test, golint, gofmt | ✅ |
-| rust | Cargo.toml | cargo test, clippy, rustfmt | ✅ |
-| java | pom.xml, build.gradle | junit, maven, gradle | ✅ |
-| kotlin | build.gradle.kts | junit, ktlint | ✅ |
-| ruby | Gemfile | rspec, rubocop | ✅ |
-| php | composer.json | phpunit, phpstan | ✅ |
-| csharp | *.csproj, *.sln | xunit, dotnet | ✅ |
-| sql | *.sql, schema.sql | - | <span class="material-icons">warning</span> 제한적 |
+| 언어       | 자동 감지 파일                             | 기본 도구                    | 템플릿 지원                                        |
+| ---------- | ------------------------------------------ | ---------------------------- | -------------------------------------------------- |
+| python     | pyproject.toml, setup.py, requirements.txt | pytest, ruff, mypy           | ✅                                                 |
+| javascript | package.json, yarn.lock                    | jest, eslint, prettier       | ✅                                                 |
+| typescript | tsconfig.json, package.json                | typescript, eslint, prettier | ✅                                                 |
+| go         | go.mod, go.sum                             | go test, golint, gofmt       | ✅                                                 |
+| rust       | Cargo.toml                                 | cargo test, clippy, rustfmt  | ✅                                                 |
+| java       | pom.xml, build.gradle                      | junit, maven, gradle         | ✅                                                 |
+| kotlin     | build.gradle.kts                           | junit, ktlint                | ✅                                                 |
+| ruby       | Gemfile                                    | rspec, rubocop               | ✅                                                 |
+| php        | composer.json                              | phpunit, phpstan             | ✅                                                 |
+| csharp     | \*.csproj, \*.sln                          | xunit, dotnet                | ✅                                                 |
+| sql        | \*.sql, schema.sql                         | -                            | <span class="material-icons">warning</span> 제한적 |
 
 #### locale 설정
 
@@ -444,12 +446,12 @@ def detect_project_language(project_dir: Path) -> dict:
 
 **프로젝트 모드 종류**:
 
-| 모드 | 설명 | 적합한 상황 | 특징 |
-|------|------|-----------|------|
-| personal | 개인 프로젝트 | 개인 개발, 학습 | 단순한 설정, 빠른 시작 |
-| team | 팀 프로젝트 | 소규모 팀 개발 | 협업 기능, 코드 리뷰 |
-| enterprise | 기업 프로젝트 | 대규면 조직 | 보안, 규제 준수, 감사 |
-| open-source | 오픈소스 프로젝트 | 공개 프로젝트 | 커뮤니티, 투명성, 라이선스 |
+| 모드        | 설명              | 적합한 상황     | 특징                       |
+| ----------- | ----------------- | --------------- | -------------------------- |
+| personal    | 개인 프로젝트     | 개인 개발, 학습 | 단순한 설정, 빠른 시작     |
+| team        | 팀 프로젝트       | 소규모 팀 개발  | 협업 기능, 코드 리뷰       |
+| enterprise  | 기업 프로젝트     | 대규면 조직     | 보안, 규제 준수, 감사      |
+| open-source | 오픈소스 프로젝트 | 공개 프로젝트   | 커뮤니티, 투명성, 라이선스 |
 
 ## GitHub 통합 설정
 
@@ -508,12 +510,12 @@ def detect_project_language(project_dir: Path) -> dict:
 
 **Git 워크플로우 옵션**:
 
-| 워크플로우 | 설명 | 브랜치 전략 | PR 정책 |
-|-----------|------|-------------|----------|
-| develop_direct | develop 브랜치에 직접 커밋 | develop → main | Draft PR |
-| feature_branch | 기능별 브랜치 생성 | feature → develop → main | Full PR |
-| release_branch | 릴리즈 브랜치 사용 | feature → develop → release → main | Full PR + QA |
-| gitflow | 전통적 GitFlow | feature → develop → release → main → hotfix | Complex PR |
+| 워크플로우     | 설명                       | 브랜치 전략                                 | PR 정책      |
+| -------------- | -------------------------- | ------------------------------------------- | ------------ |
+| develop_direct | develop 브랜치에 직접 커밋 | develop → main                              | Draft PR     |
+| feature_branch | 기능별 브랜치 생성         | feature → develop → main                    | Full PR      |
+| release_branch | 릴리즈 브랜치 사용         | feature → develop → release → main          | Full PR + QA |
+| gitflow        | 전통적 GitFlow             | feature → develop → release → main → hotfix | Complex PR   |
 
 ### GitHub Actions 통합
 
@@ -607,12 +609,12 @@ def detect_project_language(project_dir: Path) -> dict:
 
 ### 보고서 레벨 설정
 
-| 레벨 | 설명 | 생성되는 보고서 | 토큰 사용량 |
-|------|------|----------------|------------|
-| disable | 보고서 생성 안 함 | 없음 | 0% |
-| minimal | 최소한의 보고서만 | 동기화 요약, TAG 상태 | 20% |
-| standard | 표준 보고서 | 동기화, 품질, 커버리지 | 60% |
-| comprehensive | 모든 보고서 | 모든 분석, 추천, 예측 | 100% |
+| 레벨          | 설명              | 생성되는 보고서        | 토큰 사용량 |
+| ------------- | ----------------- | ---------------------- | ----------- |
+| disable       | 보고서 생성 안 함 | 없음                   | 0%          |
+| minimal       | 최소한의 보고서만 | 동기화 요약, TAG 상태  | 20%         |
+| standard      | 표준 보고서       | 동기화, 품질, 커버리지 | 60%         |
+| comprehensive | 모든 보고서       | 모든 분석, 추천, 예측  | 100%        |
 
 #### Minimal 레벨 보고서
 
@@ -1837,11 +1839,13 @@ echo "💾 Pre-restore backup: ${PRE_RESTORE_BACKUP}.tar.gz"
 #### 1. 설정 파일 손상
 
 **증상**:
+
 ```
 Error: Invalid JSON in .moai/config.json
 ```
 
 **해결**:
+
 ```bash
 # 백업에서 복원
 ./restore-config.sh
@@ -1853,11 +1857,13 @@ moai-adk init . --restore-config
 #### 2. 권한 문제
 
 **증상**:
+
 ```
 Permission denied: .claude/settings.json
 ```
 
 **해결**:
+
 ```bash
 # 권한 수정
 chmod 644 .moai/config.json
@@ -1870,11 +1876,13 @@ ls -la .moai/ .claude/
 #### 3. Hook 동작 안 함
 
 **증상**:
+
 ```
 Hooks not responding
 ```
 
 **해결**:
+
 ```bash
 # Hook 스크립트 확인
 ls -la .claude/hooks/alfred/
@@ -1967,6 +1975,7 @@ fi
 echo -e "\n🎯 Diagnostics complete!"
 ```
 
----
+______________________________________________________________________
 
-이 가이드를 통해 MoAI-ADK 프로젝트의 모든 설정을 이해하고 최적화할 수 있습니다. 설정은 프로젝트의 성공에 중요한 역할을 하므로, 정기적으로 검토하고 필요에 따라 조정하는 것이 좋습니다.
+이 가이드를 통해 MoAI-ADK 프로젝트의 모든 설정을 이해하고 최적화할 수 있습니다. 설정은 프로젝트의 성공에 중요한 역할을 하므로, 정기적으로 검토하고 필요에 따라 조정하는
+것이 좋습니다.

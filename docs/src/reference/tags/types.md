@@ -7,11 +7,13 @@
 **요구사항 정의**
 
 ### 문법
+
 ```
 SPEC-{숫자}: 설명
 ```
 
 ### 위치
+
 ```
 .moai/specs/SPEC-001/
 ├── spec.md         ← SPEC-001
@@ -36,18 +38,20 @@ SPEC-{숫자}: 설명
 # 결과: SPEC-001 자동 생성
 ```
 
----
+______________________________________________________________________
 
 ## 2. @TEST TAG
 
 **테스트 코드 식별**
 
 ### 문법
+
 ```
 @TEST:SPEC-{숫자}:{테스트명}
 ```
 
 ### 위치
+
 ```
 tests/
 ├── test_auth.py
@@ -82,24 +86,26 @@ def test_password_reset():
 
 ### 명명 규칙
 
-| 테스트 타입 | 예시 |
-|-----------|------|
-| 정상 케이스 | @TEST:SPEC-001:success, @TEST:SPEC-001:valid |
+| 테스트 타입 | 예시                                           |
+| ----------- | ---------------------------------------------- |
+| 정상 케이스 | @TEST:SPEC-001:success, @TEST:SPEC-001:valid   |
 | 오류 케이스 | @TEST:SPEC-001:failure, @TEST:SPEC-001:invalid |
-| 엣지 케이스 | @TEST:SPEC-001:empty, @TEST:SPEC-001:boundary |
+| 엣지 케이스 | @TEST:SPEC-001:empty, @TEST:SPEC-001:boundary  |
 
----
+______________________________________________________________________
 
 ## 3. @CODE TAG
 
 **구현 코드 식별**
 
 ### 문법
+
 ```
 @CODE:SPEC-{숫자}:{기능명}
 ```
 
 ### 위치
+
 ```
 src/
 ├── auth.py
@@ -171,18 +177,20 @@ def register(email: str, password: str) -> User:
     return user
 ```
 
----
+______________________________________________________________________
 
 ## 4. @DOC TAG
 
 **문서 식별**
 
 ### 문법
+
 ```
 @DOC:SPEC-{숫자}:{문서명}
 ```
 
 ### 위치
+
 ```
 docs/
 ├── api/
@@ -195,7 +203,7 @@ docs/
 
 ### 예시
 
-```markdown
+````markdown
 # 사용자 인증 API @DOC:SPEC-001:api_documentation
 
 이 문서는 SPEC-001의 API 명세입니다.
@@ -213,9 +221,10 @@ docs/
   "email": "user@example.com",
   "password": "password123"
 }
-```
+````
 
 ### 응답
+
 ```json
 {
   "status": "success",
@@ -230,7 +239,8 @@ docs/
 ## DELETE /api/auth/logout @DOC:SPEC-001:logout_endpoint
 
 사용자 로그아웃
-```
+
+````
 
 ---
 
@@ -248,13 +258,14 @@ SPEC-001: 사용자 인증 시스템
 ├─ @CODE 태그: 8개
 ├─ @DOC 태그: 3개
 └─ ✅ 완성도: 100%
-```
+````
 
----
+______________________________________________________________________
 
 ## TAG 작성 팁
 
 ### ✅ Good
+
 ```python
 # @CODE:SPEC-001:validate_email
 def validate_email(email):
@@ -262,6 +273,7 @@ def validate_email(email):
 ```
 
 ### ❌ Bad
+
 ```python
 # @CODE:SPEC-001
 def validate_email(email):
@@ -271,6 +283,7 @@ def validate_email(email):
 ```
 
 ### ✅ Good
+
 ```python
 # @TEST:SPEC-001:email_validation_success
 def test_valid_email():
@@ -278,6 +291,7 @@ def test_valid_email():
 ```
 
 ### ❌ Bad
+
 ```python
 # @TEST:SPEC-001:test
 def test_valid_email():
@@ -286,6 +300,6 @@ def test_valid_email():
 # 문제: 너무 범용적
 ```
 
----
+______________________________________________________________________
 
 **다음**: [추적성 시스템](traceability.md) 또는 [TAG 개요](index.md)

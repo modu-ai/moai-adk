@@ -1,7 +1,6 @@
----
-title: 2-run 命令指南
-description: 学习如何使用 Alfred 的 2-run 命令执行完整的测试驱动开发（TDD）流程
----
+______________________________________________________________________
+
+## title: 2-run 命令指南 description: 学习如何使用 Alfred 的 2-run 命令执行完整的测试驱动开发（TDD）流程
 
 # 2-run 命令指南
 
@@ -10,11 +9,13 @@ description: 学习如何使用 Alfred 的 2-run 命令执行完整的测试驱�
 ## 命令概览
 
 ### 基本语法
+
 ```bash
 /alfred:2-run SPEC-ID
 ```
 
 ### 命令目的
+
 - 基于 SPEC 执行 TDD 开发流程
 - 实现高质量的代码
 - 确保测试覆盖率
@@ -22,6 +23,7 @@ description: 学习如何使用 Alfred 的 2-run 命令执行完整的测试驱�
 - 生成完整的实现方案
 
 ### 触发的代理
+
 - **code-builder**：主导 TDD 实现
   - **implementation-planner**：实现策略制定
   - **tdd-implementer**：TDD 循环执行
@@ -29,13 +31,14 @@ description: 学习如何使用 Alfred 的 2-run 命令执行完整的测试驱�
 - **trust-checker**：TRUST 5 原则验证
 - **domain-experts**：领域专业知识支持
 
----
+______________________________________________________________________
 
 ## TDD 工作流程详解
 
 ### 阶段 1：Implementation Planning（实现规划）
 
 #### SPEC 分析
+
 Alfred 首先深入分析 SPEC 文档：
 
 ```python
@@ -55,6 +58,7 @@ def analyze_spec(spec_id):
 ```
 
 #### 架构设计
+
 基于 SPEC 分析，Alfred 设计合适的架构：
 
 ```yaml
@@ -95,6 +99,7 @@ src/
 ```
 
 #### 技术选型
+
 Alfred 会推荐最适合的技术栈：
 
 ```yaml
@@ -130,6 +135,7 @@ JWT:
 #### 🔴 RED 阶段：编写失败测试
 
 ##### 测试策略制定
+
 Alfred 首先制定全面的测试策略：
 
 ```python
@@ -146,6 +152,7 @@ def design_test_strategy(spec_analysis):
 ```
 
 ##### 测试用例生成
+
 基于 SPEC 的验收标准生成测试用例：
 
 ```python
@@ -329,6 +336,7 @@ def create_expired_token() -> str:
 ```
 
 ##### 测试执行验证
+
 Alfred 验证测试能够正确失败：
 
 ```bash
@@ -344,6 +352,7 @@ pytest tests/test_auth.py -v
 ```
 
 **Git 提交 RED 阶段**：
+
 ```bash
 git add tests/test_auth.py
 git commit -m "🔴 test(USER-AUTH-001): add failing authentication tests"
@@ -352,6 +361,7 @@ git commit -m "🔴 test(USER-AUTH-001): add failing authentication tests"
 #### 🟢 GREEN 阶段：最小实现
 
 ##### 实现策略
+
 Alfred 制定最简单的实现策略：
 
 ```python
@@ -368,6 +378,7 @@ def design_minimal_implementation(test_requirements):
 ```
 
 ##### 数据模型实现
+
 ```python
 # `@CODE:USER-AUTH-001:MODEL | SPEC: SPEC-USER-AUTH-001.md | TEST: tests/test_auth.py
 
@@ -403,6 +414,7 @@ class User(Base):
 ```
 
 ##### API 模式定义
+
 ```python
 # `@CODE:USER-AUTH-001:SCHEMA | SPEC: SPEC-USER-AUTH-001.md | TEST: tests/test_auth.py
 
@@ -453,6 +465,7 @@ class TokenResponse(BaseModel):
 ```
 
 ##### 业务服务实现
+
 ```python
 # `@CODE:USER-AUTH-001:SERVICE | SPEC: SPEC-USER-AUTH-001.md | TEST: tests/test_auth.py
 
@@ -527,6 +540,7 @@ class AuthService:
 ```
 
 ##### API 端点实现
+
 ```python
 # `@CODE:USER-AUTH-001:API | SPEC: SPEC-USER-AUTH-001.md | TEST: tests/test_auth.py
 
@@ -598,6 +612,7 @@ def get_current_user(
 ```
 
 ##### 测试验证
+
 ```bash
 # 运行测试（预期全部通过）
 pytest tests/test_auth.py -v
@@ -620,6 +635,7 @@ pytest --cov=src.auth --cov-report=term-missing
 ```
 
 **Git 提交 GREEN 阶段**：
+
 ```bash
 git add src/auth/ tests/test_auth.py
 git commit -m "🟢 feat(USER-AUTH-001): implement authentication API"
@@ -628,6 +644,7 @@ git commit -m "🟢 feat(USER-AUTH-001): implement authentication API"
 #### ♻️ REFACTOR 阶段：代码改进
 
 ##### 代码质量分析
+
 Alfred 分析代码质量并识别改进机会：
 
 ```python
@@ -644,9 +661,11 @@ def analyze_code_quality(implementation):
 ```
 
 ##### 重构实施
+
 基于分析结果进行代码重构：
 
 ###### 1. 抽象通用功能
+
 ```python
 # `@CODE:USER-AUTH-001:REPOSITORY | SPEC: SPEC-USER-AUTH-001.md | TEST: tests/test_auth.py
 
@@ -712,6 +731,7 @@ class UserRepository(BaseRepository[User]):
 ```
 
 ###### 2. 改进错误处理
+
 ```python
 # `@CODE:USER-AUTH-001:EXCEPTIONS | SPEC: SPEC-USER-AUTH-001.md | TEST: tests/test_auth.py
 
@@ -750,6 +770,7 @@ class InvalidTokenError(AuthenticationError):
 ```
 
 ###### 3. 添加配置管理
+
 ```python
 # `@CODE:USER-AUTH-001:CONFIG | SPEC: SPEC-USER-AUTH-001.md | TEST: tests/test_auth.py
 
@@ -788,6 +809,7 @@ auth_settings = AuthSettings()
 ```
 
 ###### 4. 添加缓存支持
+
 ```python
 # `@CODE:USER-AUTH-001:CACHE | SPEC: SPEC-USER-AUTH-001.md | TEST: tests/test_auth.py
 
@@ -849,6 +871,7 @@ class CacheService:
 ```
 
 ###### 5. 性能优化
+
 ```python
 # `@CODE:USER-AUTH-001:PERFORMANCE | SPEC: SPEC-USER-AUTH-001.md | TEST: tests/test_auth.py
 
@@ -905,6 +928,7 @@ class OptimizedAuthService:
 ```
 
 ##### 重构后测试验证
+
 ```bash
 # 运行完整测试套件
 pytest tests/test_auth.py -v --cov=src.auth
@@ -923,6 +947,7 @@ pytest tests/test_auth.py -v --cov=src.auth
 ```
 
 **Git 提交 REFACTOR 阶段**：
+
 ```bash
 git add src/auth/ tests/
 git commit -m "♻️ refactor(USER-AUTH-001): improve code quality and performance"
@@ -931,6 +956,7 @@ git commit -m "♻️ refactor(USER-AUTH-001): improve code quality and performa
 ### 阶段 3：质量保证与验证
 
 #### TRUST 5 原则验证
+
 Alfred 自动验证代码是否符合 TRUST 5 原则：
 
 ```yaml
@@ -957,6 +983,7 @@ TRUST 总分: 96/100 🎉
 ```
 
 #### 性能基准测试
+
 ```python
 def run_performance_benchmarks():
     """运行性能基准测试"""
@@ -998,6 +1025,7 @@ print(f"Token validation average: {performance_results['token_validation_avg_ms'
 ```
 
 #### 安全扫描
+
 ```bash
 # 运行安全扫描工具
 bandit -r src/auth/
@@ -1010,18 +1038,20 @@ semgrep --config=auto src/auth/
 # 输出：无安全问题发现
 ```
 
----
+______________________________________________________________________
 
 ## 使用示例
 
 ### 示例 1：简单 CRUD 功能
 
 #### 用户输入
+
 ```bash
 /alfred:2-run PRODUCT-001
 ```
 
 #### Alfred 处理过程
+
 1. **SPEC 分析**：产品管理 CRUD 需求
 2. **架构设计**：FastAPI + SQLAlchemy
 3. **TDD 执行**：完整的 RED → GREEN → REFACTOR
@@ -1053,11 +1083,13 @@ semgrep --config=auto src/auth/
 ### 示例 2：复杂业务逻辑
 
 #### 用户输入
+
 ```bash
 /alfred:2-run ORDER-002
 ```
 
 #### Alfred 处理过程
+
 1. **复杂度分析**：涉及多个业务实体
 2. **专家激活**：backend-expert 参与
 3. **分阶段实现**：逐步构建复杂功能
@@ -1087,11 +1119,13 @@ semgrep --config=auto src/auth/
 ### 示例 3：性能优化
 
 #### 用户输入
+
 ```bash
 /alfred:2-run SEARCH-003 --optimize-performance
 ```
 
 #### Alfred 处理过程
+
 1. **性能需求分析**：高性能搜索功能
 2. **技术选型**：Elasticsearch + Redis 缓存
 3. **优化策略**：数据库索引、查询优化、缓存策略
@@ -1119,13 +1153,14 @@ semgrep --config=auto src/auth/
 - CPU 使用率: 45% (< 80%)
 ```
 
----
+______________________________________________________________________
 
 ## 高级功能
 
 ### 1. 增量开发
 
 #### 语法
+
 ```bash
 # 在现有实现基础上添加功能
 /alfred:2-run SPEC-001 --incremental
@@ -1135,7 +1170,9 @@ semgrep --config=auto src/auth/
 ```
 
 #### 处理方式
+
 Alfred 会：
+
 1. 分析现有实现
 2. 识别需要修改的部分
 3. 保留现有功能
@@ -1145,6 +1182,7 @@ Alfred 会：
 ### 2. 性能优化模式
 
 #### 语法
+
 ```bash
 # 专注于性能优化
 /alfred:2-run SPEC-001 --optimize-performance
@@ -1154,6 +1192,7 @@ Alfred 会：
 ```
 
 #### 优化策略
+
 - 数据库查询优化
 - 缓存策略实施
 - 异步处理
@@ -1163,6 +1202,7 @@ Alfred 会：
 ### 3. 安全强化模式
 
 #### 语法
+
 ```bash
 # 专注于安全性提升
 /alfred:2-run SPEC-001 --security-hardening
@@ -1172,6 +1212,7 @@ Alfred 会：
 ```
 
 #### 安全措施
+
 - 输入验证强化
 - 认证和授权改进
 - 数据加密
@@ -1181,6 +1222,7 @@ Alfred 会：
 ### 4. 测试驱动重构
 
 #### 语法
+
 ```bash
 # 基于测试重构现有代码
 /alfred:2-run SPEC-001 --refactor-with-tests
@@ -1190,19 +1232,21 @@ Alfred 会：
 ```
 
 #### 重构流程
+
 1. 分析现有代码
 2. 编写缺失测试
 3. 逐步重构
 4. 保持测试通过
 5. 验证改进效果
 
----
+______________________________________________________________________
 
 ## 最佳实践
 
 ### 1. 准备工作
 
 #### 确保 SPEC 完整
+
 ```bash
 # 在运行 2-run 前验证 SPEC
 /alfred:3-sync --verify-specs
@@ -1212,6 +1256,7 @@ cat .moai/specs/SPEC-XXX/spec.md
 ```
 
 #### 环境准备
+
 ```bash
 # 检查项目环境
 moai-adk doctor
@@ -1226,6 +1271,7 @@ uvicorn src.main:app --reload
 ### 2. 交互最佳实践
 
 #### 提供明确的指导
+
 ```bash
 # 指定实现重点
 /alfred:2-run AUTH-001 --focus="security"
@@ -1238,6 +1284,7 @@ uvicorn src.main:app --reload
 ```
 
 #### 及时反馈
+
 ```bash
 # 对实现方案提供反馈
 "这个架构设计很好，但请添加更多的错误处理"
@@ -1248,6 +1295,7 @@ uvicorn src.main:app --reload
 ### 3. 质量保证
 
 #### 定期验证
+
 ```bash
 # 每个阶段完成后验证
 /alfred:3-sync --trust-check
@@ -1260,6 +1308,7 @@ uvicorn src.main:app --reload
 ```
 
 #### 代码审查
+
 ```bash
 # 生成代码审查报告
 /alfred:3-sync --code-review
@@ -1268,16 +1317,18 @@ uvicorn src.main:app --reload
 /alfred:3-sync --quality-metrics
 ```
 
----
+______________________________________________________________________
 
 ## 故障排除
 
 ### 常见问题
 
 #### 1. 测试无法通过
+
 **症状**：GREEN 阶段测试仍然失败
 
 **解决方案**：
+
 ```bash
 # 检查测试错误信息
 pytest tests/test_spec.py -v
@@ -1290,9 +1341,11 @@ pytest tests/test_spec.py -v
 ```
 
 #### 2. 性能不达标
+
 **症状**：性能测试未通过基准
 
 **解决方案**：
+
 ```bash
 # 运行性能分析
 /alfred:2-run SPEC-001 --performance-analysis
@@ -1305,9 +1358,11 @@ pytest tests/test_spec.py -v
 ```
 
 #### 3. 安全问题
+
 **症状**：安全扫描发现漏洞
 
 **解决方案**：
+
 ```bash
 # 安全加固
 /alfred:2-run SPEC-001 --security-hardening
@@ -1322,6 +1377,7 @@ pytest tests/test_spec.py -v
 ### 调试技巧
 
 #### 1. 启用详细日志
+
 ```bash
 # 启用调试模式
 export ALFRED_DEBUG=true
@@ -1332,6 +1388,7 @@ export ALFRED_DEBUG=true
 ```
 
 #### 2. 分步执行
+
 ```bash
 # 只执行 RED 阶段
 /alfred:2-run SPEC-001 --red-only
@@ -1344,6 +1401,7 @@ export ALFRED_DEBUG=true
 ```
 
 #### 3. 跳过某些步骤
+
 ```bash
 # 跳过性能测试
 /alfred:2-run SPEC-001 --skip-performance
@@ -1355,11 +1413,12 @@ export ALFRED_DEBUG=true
 /alfred:2-run SPEC-001 --skip-refactor
 ```
 
----
+______________________________________________________________________
 
 ## 与其他工具的集成
 
 ### 与 CI/CD 集成
+
 ```yaml
 # .github/workflows/tdd.yml
 name: TDD Workflow
@@ -1402,6 +1461,7 @@ jobs:
 ```
 
 ### 与代码质量工具集成
+
 ```bash
 # 集成 pre-commit hooks
 pre-commit run --all-files
@@ -1414,7 +1474,7 @@ ruff check src/
 mypy src/
 ```
 
----
+______________________________________________________________________
 
 ## 总结
 

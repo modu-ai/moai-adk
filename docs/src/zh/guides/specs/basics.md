@@ -1,7 +1,6 @@
----
-title: SPEC 基础指南
-description: 学习 MoAI-ADK 中 SPEC 文档的基础知识、结构和最佳实践
----
+______________________________________________________________________
+
+## title: SPEC 基础指南 description: 学习 MoAI-ADK 中 SPEC 文档的基础知识、结构和最佳实践
 
 # SPEC 基础指南
 
@@ -16,18 +15,22 @@ SPEC（Specification）是一个**结构化的需求文档**，它清晰地定�
 ### SPEC 的重要性
 
 #### 1. 需求明确化
+
 - **传统问题**：模糊的需求导致开发偏离预期
 - **SPEC 解决方案**：结构化的需求确保理解一致
 
 #### 2. 验收标准
+
 - **传统问题**：没有明确的完成标准
 - **SPEC 解决方案**：可测试的验收标准确保质量
 
 #### 3. 变更管理
+
 - **传统问题**：需求变更时影响难以评估
 - **SPEC 解决方案**：结构化的变更追踪确保可控
 
 #### 4. 团队协作
+
 - **传统问题**：团队成员理解不一致
 - **SPEC 解决方案**：统一的文档促进协作
 
@@ -36,15 +39,18 @@ SPEC（Specification）是一个**结构化的需求文档**，它清晰地定�
 ### 文件命名规范
 
 #### 基本命名格式
+
 ```
 .moai/specs/SPEC-{DOMAIN}-{ID}/spec.md
 ```
 
 #### 命名规则
+
 - **DOMAIN**: 3-10 个大写字母，表示业务领域
 - **ID**: 3位数字，从 001 开始递增
 
 **示例**：
+
 ```
 .moai/specs/SPEC-USER-001/spec.md     # 用户管理功能
 .moai/specs/SPEC-AUTH-001/spec.md     # 认证授权功能
@@ -74,23 +80,24 @@ estimated_complexity: medium
 
 #### 字段说明
 
-| 字段 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| `id` | string | 是 | SPEC 唯一标识符，格式为 DOMAIN-ID |
-| `version` | string | 是 | 语义版本号 (遵循 SemVer) |
-| `status` | string | 是 | 当前状态：draft/in-review/in-progress/completed/deprecated |
-| `priority` | string | 是 | 优先级：critical/high/medium/low |
-| `created` | date | 是 | 创建日期 |
-| `updated` | date | 是 | 最后更新日期 |
-| `author` | string | 是 | 作者 GitHub 用户名 |
-| `reviewer` | string | 否 | 审查者 GitHub 用户名 |
-| `tags` | array | 否 | 标签列表，用于分类和搜索 |
-| `estimated_effort` | string | 否 | 预估工作量（如：3d, 2w, 1m） |
-| `estimated_complexity` | string | 否 | 复杂度：low/medium/high |
+| 字段                   | 类型   | 必需 | 说明                                                       |
+| ---------------------- | ------ | ---- | ---------------------------------------------------------- |
+| `id`                   | string | 是   | SPEC 唯一标识符，格式为 DOMAIN-ID                          |
+| `version`              | string | 是   | 语义版本号 (遵循 SemVer)                                   |
+| `status`               | string | 是   | 当前状态：draft/in-review/in-progress/completed/deprecated |
+| `priority`             | string | 是   | 优先级：critical/high/medium/low                           |
+| `created`              | date   | 是   | 创建日期                                                   |
+| `updated`              | date   | 是   | 最后更新日期                                               |
+| `author`               | string | 是   | 作者 GitHub 用户名                                         |
+| `reviewer`             | string | 否   | 审查者 GitHub 用户名                                       |
+| `tags`                 | array  | 否   | 标签列表，用于分类和搜索                                   |
+| `estimated_effort`     | string | 否   | 预估工作量（如：3d, 2w, 1m）                               |
+| `estimated_complexity` | string | 否   | 复杂度：low/medium/high                                    |
 
 ### 文档主体结构
 
 #### 1. 标题
+
 ```markdown
 # `@SPEC:DOMAIN-ID: SPEC 标题
 
@@ -99,12 +106,14 @@ estimated_complexity: medium
 ```
 
 #### 2. 概述（可选）
+
 ```markdown
 ## 概述
 简要描述功能的背景、目标和重要性。
 ```
 
 #### 3. EARS 需求部分
+
 ```markdown
 ## Ubiquitous Requirements
 - 系统必须 [基本功能]
@@ -128,6 +137,7 @@ estimated_complexity: medium
 ```
 
 #### 4. 验收标准
+
 ```markdown
 ## 验收标准
 
@@ -147,6 +157,7 @@ estimated_complexity: medium
 ```
 
 #### 5. 依赖关系
+
 ```markdown
 ## 依赖关系
 
@@ -164,6 +175,7 @@ estimated_complexity: medium
 ```
 
 #### 6. 风险评估
+
 ```markdown
 ## 风险评估
 
@@ -187,6 +199,7 @@ estimated_complexity: medium
 ```
 
 #### 7. 附录（可选）
+
 ```markdown
 ## 附录
 
@@ -202,7 +215,7 @@ estimated_complexity: medium
 - `@SPEC:RELATED-ID-001`：相关规格说明
 ```
 
----
+______________________________________________________________________
 
 ## EARS 语法详解
 
@@ -213,16 +226,19 @@ EARS（Easy Approach to Requirements Syntax）是一种结构化的需求描述�
 ### 1. Ubiquitous Requirements（普遍需求）
 
 #### 语法结构
+
 ```
 系统必须 [动词] [对象]
 ```
 
 #### 特点
+
 - **永恒性**：描述系统必须持续具备的功能
 - **无条件**：不需要特定触发条件
 - **核心功能**：描述系统的基本能力
 
 #### 示例
+
 ```yaml
 ## Ubiquitous Requirements
 - 系统必须提供用户注册功能
@@ -232,6 +248,7 @@ EARS（Easy Approach to Requirements Syntax）是一种结构化的需求描述�
 ```
 
 #### 使用场景
+
 - **核心业务功能**：系统必须具备的基础功能
 - **系统架构**：必须遵守的架构原则
 - **非功能性要求**：必须满足的质量标准
@@ -239,16 +256,19 @@ EARS（Easy Approach to Requirements Syntax）是一种结构化的需求描述�
 ### 2. Event-driven Requirements（事件驱动需求）
 
 #### 语法结构
+
 ```
 当 [条件] 时，系统必须 [响应]
 ```
 
 #### 特点
+
 - **条件性**：基于特定事件或条件
 - **响应性**：描述系统在特定情况下的行为
 - **因果关系**：明确的触发-响应关系
 
 #### 示例
+
 ```yaml
 ## Event-driven Requirements
 - 当用户提供有效邮箱时，系统必须发送验证邮件
@@ -259,6 +279,7 @@ EARS（Easy Approach to Requirements Syntax）是一种结构化的需求描述�
 ```
 
 #### 使用场景
+
 - **用户交互**：用户操作触发的系统响应
 - **系统事件**：内部事件触发的处理
 - **集成场景**：外部系统调用的响应
@@ -266,16 +287,19 @@ EARS（Easy Approach to Requirements Syntax）是一种结构化的需求描述�
 ### 3. State-driven Requirements（状态驱动需求）
 
 #### 语法结构
+
 ```
 当 [状态条件] 时，系统必须 [行为]
 ```
 
 #### 特点
+
 - **状态性**：基于系统当前状态的行为
 - **持续性**：状态持续期间的行为保持
 - **条件性**：特定状态下的功能限制
 
 #### 示例
+
 ```yaml
 ## State-driven Requirements
 - 当用户处于未认证状态时，系统必须限制访问受保护资源
@@ -286,6 +310,7 @@ EARS（Easy Approach to Requirements Syntax）是一种结构化的需求描述�
 ```
 
 #### 使用场景
+
 - **权限控制**：基于用户状态的功能限制
 - **业务流程**：业务流程中的状态约束
 - **系统状态**：系统运行状态下的行为控制
@@ -293,17 +318,20 @@ EARS（Easy Approach to Requirements Syntax）是一种结构化的需求描述�
 ### 4. Optional Requirements（可选需求）
 
 #### 语法结构
+
 ```
 如果 [可选条件]，系统可以 [可选功能]
 如果 [可选条件]，系统可能 [可选功能]
 ```
 
 #### 特点
+
 - **可选性**：不是必须实现的功能
 - **增强性**：为系统增加价值
 - **灵活性**：可以根据资源和优先级选择实现
 
 #### 示例
+
 ```yaml
 ## Optional Requirements
 - 如果配置了邮件服务，系统可以发送通知邮件
@@ -313,6 +341,7 @@ EARS（Easy Approach to Requirements Syntax）是一种结构化的需求描述�
 ```
 
 #### 使用场景
+
 - **增强功能**：提升用户体验的附加功能
 - **集成选项**：与外部系统的集成
 - **扩展能力**：未来可能实现的功能
@@ -320,17 +349,20 @@ EARS（Easy Approach to Requirements Syntax）是一种结构化的需求描述�
 ### 5. Constraints（约束）
 
 #### 语法结构
+
 ```
 [约束对象] 必须 [约束条件]
 [约束对象] 不应该 [禁止条件]
 ```
 
 #### 特点
+
 - **限制性**：对系统行为的限制
 - **必要性**：必须遵守的规则
 - **质量性**：保证系统质量的约束
 
 #### 示例
+
 ```yaml
 ## Constraints
 - 用户密码长度必须在 8-128 字符之间
@@ -342,18 +374,20 @@ EARS（Easy Approach to Requirements Syntax）是一种结构化的需求描述�
 ```
 
 #### 使用场景
+
 - **数据验证**：输入数据的格式和长度限制
 - **性能要求**：响应时间、吞吐量限制
 - **安全约束**：安全相关的规则和要求
 - **资源限制**：内存、存储、网络等资源限制
 
----
+______________________________________________________________________
 
 ## 编写最佳实践
 
 ### 1. 语言表达
 
 #### 清晰简洁
+
 ```yaml
 # ✅ 好的表达
 - 当用户提供有效邮箱和密码时，系统必须发放访问令牌
@@ -363,6 +397,7 @@ EARS（Easy Approach to Requirements Syntax）是一种结构化的需求描述�
 ```
 
 #### 具体明确
+
 ```yaml
 # ✅ 好的表达
 - 用户密码长度必须在 8-128 字符之间，包含大小写字母和数字
@@ -372,6 +407,7 @@ EARS（Easy Approach to Requirements Syntax）是一种结构化的需求描述�
 ```
 
 #### 避免歧义
+
 ```yaml
 # ✅ 好的表达
 - 系统必须支持 JPEG、PNG、GIF 格式的图片上传
@@ -384,6 +420,7 @@ EARS（Easy Approach to Requirements Syntax）是一种结构化的需求描述�
 ### 2. 结构组织
 
 #### 逻辑分组
+
 ```yaml
 # ✅ 按功能分组
 ## 用户管理
@@ -398,6 +435,7 @@ EARS（Easy Approach to Requirements Syntax）是一种结构化的需求描述�
 ```
 
 #### 优先级排序
+
 ```yaml
 # ✅ 按重要性排序
 ## 核心功能
@@ -416,6 +454,7 @@ EARS（Easy Approach to Requirements Syntax）是一种结构化的需求描述�
 ### 3. 验收标准
 
 #### 可测试性
+
 ```yaml
 # ✅ 可测试的验收标准
 - [ ] 用户可以使用邮箱和密码成功登录
@@ -428,6 +467,7 @@ EARS（Easy Approach to Requirements Syntax）是一种结构化的需求描述�
 ```
 
 #### 完整性
+
 ```yaml
 # ✅ 完整的验收标准
 ### 功能验收
@@ -449,6 +489,7 @@ EARS（Easy Approach to Requirements Syntax）是一种结构化的需求描述�
 ### 4. 风险评估
 
 #### 风险识别
+
 ```yaml
 # ✅ 明确的风险识别
 ### 技术风险
@@ -463,6 +504,7 @@ EARS（Easy Approach to Requirements Syntax）是一种结构化的需求描述�
 ```
 
 #### 缓解措施具体化
+
 ```yaml
 # ✅ 具体的缓解措施
 **缓解措施**：
@@ -476,7 +518,7 @@ EARS（Easy Approach to Requirements Syntax）是一种结构化的需求描述�
 - 注意安全性
 ```
 
----
+______________________________________________________________________
 
 ## SPEC 生命周期管理
 
@@ -529,6 +571,7 @@ stateDiagram-v2
 ### 状态详细说明
 
 #### Planning（规划阶段）
+
 - **触发条件**：`/alfred:1-plan` 命令执行
 - **主要活动**：
   - 收集和分析需求
@@ -541,6 +584,7 @@ stateDiagram-v2
   - 风险评估报告
 
 #### Draft（起草阶段）
+
 - **触发条件**：需求分析完成
 - **主要活动**：
   - 使用 EARS 语法编写需求
@@ -553,6 +597,7 @@ stateDiagram-v2
   - 实现计划建议
 
 #### In Review（审查阶段）
+
 - **触发条件**：提交给团队审查
 - **主要活动**：
   - 团队成员审查需求
@@ -565,6 +610,7 @@ stateDiagram-v2
   - 审查结论
 
 #### Approved（批准阶段）
+
 - **触发条件**：审查通过
 - **主要活动**：
   - 最终确认 SPEC 内容
@@ -577,6 +623,7 @@ stateDiagram-v2
   - 时间计划安排
 
 #### In Progress（开发阶段）
+
 - **触发条件**：`/alfred:2-run` 命令执行
 - **主要活动**：
   - 基于 SPEC 进行 TDD 开发
@@ -589,6 +636,7 @@ stateDiagram-v2
   - 开发文档
 
 #### Completed（完成阶段）
+
 - **触发条件**：开发完成并通过测试
 - **主要活动**：
   - 文档同步更新
@@ -601,6 +649,7 @@ stateDiagram-v2
   - 发布说明
 
 #### Stable（稳定阶段）
+
 - **触发条件**：成功发布到生产环境
 - **主要活动**：
   - 生产环境监控
@@ -613,6 +662,7 @@ stateDiagram-v2
   - 问题修复记录
 
 #### Deprecated（废弃阶段）
+
 - **触发条件**：功能被替代或不再需要
 - **主要活动**：
   - 废弃计划制定
@@ -624,13 +674,14 @@ stateDiagram-v2
   - 迁移指南
   - 最终通知
 
----
+______________________________________________________________________
 
 ## 与其他组件的集成
 
 ### 与 TDD 的集成
 
 #### SPEC 驱动 TDD
+
 ```bash
 # 1. 创建 SPEC
 /alfred:1-plan "用户认证功能"
@@ -646,6 +697,7 @@ stateDiagram-v2
 ```
 
 #### SPEC 验收标准指导测试
+
 ```yaml
 ## 验收标准
 ### 功能验收
@@ -669,6 +721,7 @@ def test_user_login_with_valid_credentials():
 ### 与 @TAG 系统的集成
 
 #### TAG 链接
+
 ```markdown
 # SPEC 文档
 # `@SPEC:USER-AUTH-001: 用户认证系统
@@ -680,6 +733,7 @@ def test_user_login_with_valid_credentials():
 ```
 
 #### 自动验证
+
 ```bash
 # Alfred 会自动验证 TAG 链的完整性
 /alfred:3-sync --verify-tags
@@ -692,6 +746,7 @@ def test_user_login_with_valid_credentials():
 ### 与 Alfred 命令的集成
 
 #### 1-plan 命令创建 SPEC
+
 ```bash
 /alfred:1-plan "用户认证功能"
 # Alfred 会：
@@ -703,6 +758,7 @@ def test_user_login_with_valid_credentials():
 ```
 
 #### 2-run 命令基于 SPEC 开发
+
 ```bash
 /alfred:2-run USER-AUTH-001
 # Alfred 会：
@@ -714,6 +770,7 @@ def test_user_login_with_valid_credentials():
 ```
 
 #### 3-sync 命令同步文档
+
 ```bash
 /alfred:3-sync
 # Alfred 会：
@@ -723,14 +780,16 @@ def test_user_login_with_valid_credentials():
 # 4. 生成同步报告
 ```
 
----
+______________________________________________________________________
 
 ## 常见问题与解决方案
 
 ### 1. SPEC 编写困难
 
 #### 问题：不知道如何开始写 SPEC
+
 **解决方案**：
+
 ```bash
 # 使用 Alfred 的交互式引导
 /alfred:1-plan "模糊的功能描述"
@@ -743,7 +802,9 @@ def test_user_login_with_valid_credentials():
 ```
 
 #### 问题：需求太复杂，难以结构化
+
 **解决方案**：
+
 ```bash
 # 分解复杂需求
 /alfred:1-plan "复杂功能的第一个部分"
@@ -755,7 +816,9 @@ def test_user_login_with_valid_credentials():
 ### 2. EARS 语法困惑
 
 #### 问题：不知道应该用哪种 EARS 模式
+
 **解决方案**：
+
 ```yaml
 # 参考以下决策指南：
 
@@ -788,8 +851,10 @@ def test_user_login_with_valid_credentials():
 ### 3. 验收标准设计
 
 #### 问题：不知道如何编写可测试的验收标准
+
 **解决方案**：
-```yaml
+
+````yaml
 ## 验收标准编写指南
 
 ### 功能验收标准编写规则：
@@ -807,13 +872,15 @@ def test_user_login_with_valid_credentials():
      When 用户输入正确的邮箱和密码
      Then 系统应该返回 JWT 令牌
      And 状态码应该是 200
-   ```
+````
 
 ### 验收测试要求：
+
 - 每个 Ubiquitous Requirement 都要有对应的测试
 - 关键的业务流程要有完整的端到端测试
 - 边界条件和异常情况也要有测试覆盖
-```
+
+````
 
 ### 4. 风险评估
 
@@ -846,30 +913,34 @@ def test_user_login_with_valid_credentials():
 2. **可执行性**：提供具体的实施步骤
 3. **可验证性**：能够验证措施是否有效
 4. **时效性**：在合理时间内能够实施
-```
+````
 
----
+______________________________________________________________________
 
 ## 总结
 
 SPEC 是 MoAI-ADK 开发流程的核心，它通过以下方式为项目带来价值：
 
 ### 1. 明确性
+
 - 结构化的需求描述避免理解偏差
 - EARS 语法提供清晰的表达模式
 - 验收标准确保可测试性
 
 ### 2. 可追踪性
+
 - @TAG 系统建立完整的追踪链
 - 从需求到代码到文档的完整关联
 - 变更影响的可评估性
 
 ### 3. 质量保证
+
 - 明确的验收标准确保功能正确实现
 - 风险评估帮助提前识别和规避问题
 - 结构化流程确保开发质量
 
 ### 4. 团队协作
+
 - 统一的文档格式促进团队沟通
 - 清晰的责任分配提高协作效率
 - 版本化管理支持演进控制

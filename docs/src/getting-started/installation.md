@@ -31,11 +31,13 @@ UV는 MoAI-ADK를 설치하는 가장 빠르고 신뢰할 수 있는 방법입�
 #### 1단계: UV 설치
 
 **macOS/Linux:**
+
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
 **Windows (PowerShell):**
+
 ```powershell
 powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
@@ -174,6 +176,7 @@ moai-adk doctor
 ```
 
 **예상 출력:**
+
 ```
 시스템 진단 실행 중...
 
@@ -213,6 +216,7 @@ claude
 #### 문제: "uv: command not found"
 
 **해결책:**
+
 1. UV가 올바르게 설치되었는지 확인
 2. UV를 PATH에 추가:
    ```bash
@@ -223,6 +227,7 @@ claude
 #### 문제: "Python 3.8 found, but 3.13+ required"
 
 **해결책:**
+
 ```bash
 # pyenv 사용
 curl https://pyenv.run | bash
@@ -237,6 +242,7 @@ uv python pin 3.13
 #### 문제: 설치 중 "Permission denied"
 
 **해결책:**
+
 ```bash
 # 사용자 설치 사용
 pip install --user moai-adk
@@ -248,6 +254,7 @@ sudo pip install moai-adk
 #### 문제: Claude Code를 인식하지 못함
 
 **해결책:**
+
 1. Claude Code 설치 확인: `claude --version`
 2. PATH에 있는지 확인
 3. 필요한 경우 재설치
@@ -255,6 +262,7 @@ sudo pip install moai-adk
 #### 문제: 의존성에 대한 ModuleNotFoundError
 
 **해결책:**
+
 ```bash
 # 프로젝트 디렉터리에서
 uv sync

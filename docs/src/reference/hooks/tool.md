@@ -5,13 +5,17 @@
 ## 🎯 목적
 
 ### PreToolUse Hook
+
 도구 실행 **전**:
+
 - 위험한 명령 차단 (git push --force, rm -rf)
 - 권한 검증
 - 컨텍스트 전달
 
 ### PostToolUse Hook
+
 도구 실행 **후**:
+
 - 결과 분석
 - 오류 감지
 - 자동 수정 제안
@@ -124,13 +128,13 @@ git merge feature/auth
 
 ## 🔍 Hook 검증 규칙
 
-| Tool | PreToolUse | PostToolUse |
-|------|-----------|-----------|
-| Bash | 명령 검증 | 종료 코드 확인 |
-| Git | 브랜치 확인 | 병합 상태 확인 |
-| Read | 파일 경로 확인 | 인코딩 검증 |
-| Write | 경로 검증 | 사이즈 제한 |
-| Edit | 파일 존재 확인 | 문법 검증 |
+| Tool  | PreToolUse     | PostToolUse    |
+| ----- | -------------- | -------------- |
+| Bash  | 명령 검증      | 종료 코드 확인 |
+| Git   | 브랜치 확인    | 병합 상태 확인 |
+| Read  | 파일 경로 확인 | 인코딩 검증    |
+| Write | 경로 검증      | 사이즈 제한    |
+| Edit  | 파일 존재 확인 | 문법 검증      |
 
 ## ⚙️ Hook 설정
 
@@ -211,6 +215,6 @@ cat ~/.claude/projects/*/hook-logs/*.log
 # "hooks.pre_tool_use.enabled": false
 ```
 
----
+______________________________________________________________________
 
 **다음**: [Hooks 개요](index.md) 또는 [SessionStart Hook](session.md)

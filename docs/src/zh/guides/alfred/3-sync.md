@@ -1,7 +1,6 @@
----
-title: 3-sync 命令指南
-description: 学习如何使用 Alfred 的 3-sync 命令进行文档同步、TAG 验证和质量保证
----
+______________________________________________________________________
+
+## title: 3-sync 命令指南 description: 学习如何使用 Alfred 的 3-sync 命令进行文档同步、TAG 验证和质量保证
 
 # 3-sync 命令指南
 
@@ -10,11 +9,13 @@ description: 学习如何使用 Alfred 的 3-sync 命令进行文档同步、TAG
 ## 命令概览
 
 ### 基本语法
+
 ```bash
 /alfred:3-sync [options]
 ```
 
 ### 命令目的
+
 - 同步所有项目文档
 - 验证 @TAG 链完整性
 - 执行 TRUST 5 原则检查
@@ -22,25 +23,28 @@ description: 学习如何使用 Alfred 的 3-sync 命令进行文档同步、TAG
 - 更新 README 和 CHANGELOG
 
 ### 触发的代理
+
 - **doc-syncer**：主导文档同步
 - **tag-agent**：@TAG 系统验证
 - **trust-checker**：TRUST 5 原则验证
 - **quality-gate**：质量门禁检查
 - **git-manager**：Git 工作流管理
 
----
+______________________________________________________________________
 
 ## 文档同步详解
 
 ### 1. Living Documents 生成
 
 #### 什么是 Living Documents？
+
 Living Documents 是与代码同步更新的"活文档"，确保文档始终反映代码的实际状态。
 
 #### 文档类型和内容
 
 ##### API 文档
-```markdown
+
+````markdown
 # `@DOC:USER-AUTH-001:API | SPEC: SPEC-USER-AUTH-001.md | CODE: src/auth/api.py
 
 # 用户认证 API 文档
@@ -71,16 +75,18 @@ Living Documents 是与代码同步更新的"活文档"，确保文档始终反�
   "password": "SecurePass123!",
   "full_name": "张三"
 }
-```
+````
 
 **请求参数**:
-| 参数 | 类型 | 必需 | 描述 | 约束 |
-|------|------|------|------|------|
-| email | string | 是 | 用户邮箱地址 | 有效邮箱格式，唯一 |
-| password | string | 是 | 用户密码 | 8-128 字符，包含大小写字母和数字 |
-| full_name | string | 是 | 用户全名 | 1-255 字符 |
+
+| 参数      | 类型   | 必需 | 描述         | 约束                             |
+| --------- | ------ | ---- | ------------ | -------------------------------- |
+| email     | string | 是   | 用户邮箱地址 | 有效邮箱格式，唯一               |
+| password  | string | 是   | 用户密码     | 8-128 字符，包含大小写字母和数字 |
+| full_name | string | 是   | 用户全名     | 1-255 字符                       |
 
 **响应**:
+
 ```json
 {
   "id": 1,
@@ -93,11 +99,13 @@ Living Documents 是与代码同步更新的"活文档"，确保文档始终反�
 ```
 
 **状态码**:
+
 - `201 Created`: 注册成功
 - `400 Bad Request`: 请求数据无效
 - `422 Unprocessable Entity`: 验证失败
 
 **错误响应**:
+
 ```json
 {
   "detail": [
@@ -117,6 +125,7 @@ Living Documents 是与代码同步更新的"活文档"，确保文档始终反�
 **描述**: 使用邮箱和密码进行身份验证，成功后返回 JWT 访问令牌。
 
 **请求体**:
+
 ```json
 {
   "email": "user@example.com",
@@ -125,6 +134,7 @@ Living Documents 是与代码同步更新的"活文档"，确保文档始终反�
 ```
 
 **响应**:
+
 ```json
 {
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -145,11 +155,13 @@ Living Documents 是与代码同步更新的"活文档"，确保文档始终反�
 **描述**: 获取当前认证用户的详细信息。需要有效的 JWT 令牌。
 
 **请求头**:
+
 ```
 Authorization: Bearer <jwt_token>
 ```
 
 **响应**:
+
 ```json
 {
   "id": 1,
@@ -165,6 +177,7 @@ Authorization: Bearer <jwt_token>
 ## 错误处理
 
 ### 标准错误格式
+
 ```json
 {
   "detail": "错误描述",
@@ -174,30 +187,34 @@ Authorization: Bearer <jwt_token>
 ```
 
 ### 常见错误代码
-| 错误代码 | HTTP 状态码 | 描述 |
-|----------|-------------|------|
-| INVALID_CREDENTIALS | 401 | 邮箱或密码错误 |
-| ACCOUNT_INACTIVE | 401 | 账户未激活 |
-| TOKEN_EXPIRED | 401 | 令牌已过期 |
-| INVALID_TOKEN | 401 | 令牌无效 |
-| USER_NOT_FOUND | 404 | 用户不存在 |
-| EMAIL_ALREADY_EXISTS | 400 | 邮箱已存在 |
+
+| 错误代码             | HTTP 状态码 | 描述           |
+| -------------------- | ----------- | -------------- |
+| INVALID_CREDENTIALS  | 401         | 邮箱或密码错误 |
+| ACCOUNT_INACTIVE     | 401         | 账户未激活     |
+| TOKEN_EXPIRED        | 401         | 令牌已过期     |
+| INVALID_TOKEN        | 401         | 令牌无效       |
+| USER_NOT_FOUND       | 404         | 用户不存在     |
+| EMAIL_ALREADY_EXISTS | 400         | 邮箱已存在     |
 
 ## 安全考虑
 
 ### 密码安全
+
 - 密码使用 bcrypt 加密存储
 - 最小长度 8 字符
 - 必须包含大小写字母和数字
 - 不在响应中返回密码
 
 ### 令牌安全
+
 - JWT 令牌使用 HS256 算法签名
 - 令牌默认 1 小时过期
 - 支持令牌刷新机制
 - 令牌包含必要用户信息
 
 ### 输入验证
+
 - 所有输入都经过严格验证
 - 防止 SQL 注入攻击
 - 防止 XSS 攻击
@@ -206,6 +223,7 @@ Authorization: Bearer <jwt_token>
 ## 使用示例
 
 ### 注册新用户
+
 ```bash
 curl -X POST "http://localhost:8000/api/v1/auth/register" \
   -H "Content-Type: application/json" \
@@ -217,6 +235,7 @@ curl -X POST "http://localhost:8000/api/v1/auth/register" \
 ```
 
 ### 用户登录
+
 ```bash
 curl -X POST "http://localhost:8000/api/v1/auth/login" \
   -H "Content-Type: application/json" \
@@ -227,6 +246,7 @@ curl -X POST "http://localhost:8000/api/v1/auth/login" \
 ```
 
 ### 获取用户信息
+
 ```bash
 curl -X GET "http://localhost:8000/api/v1/auth/me" \
   -H "Authorization: Bearer <your_jwt_token>"
@@ -235,16 +255,20 @@ curl -X GET "http://localhost:8000/api/v1/auth/me" \
 ## 实现追踪
 
 此 API 实现基于以下 SPEC：
+
 - `@SPEC:USER-AUTH-001`: 用户认证系统规格说明
 
 测试覆盖：
+
 - `@TEST:USER-AUTH-001`: 认证功能测试套件
 
 代码实现：
+
 - `@CODE:USER-AUTH-001:API`: API 端点实现
 - `@CODE:USER-AUTH-001:SERVICE`: 业务逻辑实现
 - `@CODE:USER-AUTH-001:MODEL`: 数据模型实现
-```
+
+````
 
 ##### 架构文档
 ```markdown
@@ -276,11 +300,12 @@ graph TB
     Repository --> DB
     Security --> Cache
     Services --> Email
-```
+````
 
 ## 组件架构
 
 ### 分层架构
+
 ```yaml
 用户认证系统采用分层架构模式:
 
@@ -312,64 +337,78 @@ graph TB
 ### 核心组件
 
 #### 1. API 层
+
 **文件**: `src/auth/api.py`
 
 **职责**:
+
 - 处理 HTTP 请求和响应
 - 输入验证和序列化
 - 错误处理和状态码返回
 - 认证中间件集成
 
 **设计模式**:
+
 - 依赖注入
 - 控制器模式
 - 中间件链
 
 #### 2. 服务层
+
 **文件**: `src/auth/services.py`
 
 **职责**:
+
 - 实现业务逻辑
 - 协调多个数据源
 - 事务管理
 - 业务规则验证
 
 **设计模式**:
+
 - 服务层模式
 - 策略模式
 - 工厂模式
 
 #### 3. 仓库层
+
 **文件**: `src/auth/repository.py`
 
 **职责**:
+
 - 数据库操作抽象
 - 查询优化
 - 缓存集成
 - 数据映射
 
 **设计模式**:
+
 - 仓库模式
 - 单元工作模式
 - 数据映射器模式
 
 #### 4. 模型层
+
 **文件**: `src/auth/models.py`
 
 **职责**:
+
 - 数据模型定义
 - 关系映射
 - 约束定义
 - 序列化支持
 
 **设计模式**:
+
 - 活动记录模式
 - 数据传输对象
 
 ### 技术栈选择
 
 #### 后端框架: FastAPI
+
 **选择理由**:
+
 - 自动 API 文档生成
 - 类型提示支持
 - 高性能异步支持
@@ -377,13 +416,16 @@ graph TB
 - 丰富的验证功能
 
 **优势**:
+
 - 开发效率高
 - 性能优秀
 - 文档自动生成
 - 类型安全
 
 #### 数据库: PostgreSQL
+
 **选择理由**:
+
 - ACID 事务支持
 - JSON 数据类型支持
 - 丰富的索引类型
@@ -391,13 +433,16 @@ graph TB
 - 良好的 Python 支持
 
 **优势**:
+
 - 数据一致性保证
 - 复杂查询支持
 - 扩展性好
 - 可靠性高
 
 #### 认证方案: JWT
+
 **选择理由**:
+
 - 无状态认证
 - 易于分布式部署
 - 标准化实现
@@ -405,6 +450,7 @@ graph TB
 - 细粒度权限控制
 
 **优势**:
+
 - 可扩展性强
 - 性能优秀
 - 安全性高
@@ -413,6 +459,7 @@ graph TB
 ### 数据库设计
 
 #### 用户表 (users)
+
 ```sql
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
@@ -432,6 +479,7 @@ CREATE INDEX idx_users_created_at ON users(created_at);
 ```
 
 #### 用户会话表 (user_sessions)
+
 ```sql
 CREATE TABLE user_sessions (
     id SERIAL PRIMARY KEY,
@@ -451,6 +499,7 @@ CREATE INDEX idx_user_sessions_expires_at ON user_sessions(expires_at);
 ### 安全架构
 
 #### 认证流程
+
 ```mermaid
 %%{init: {'theme':'neutral'}}%%
 sequenceDiagram
@@ -474,6 +523,7 @@ sequenceDiagram
 ```
 
 #### 授权机制
+
 ```python
 # 基于角色的访问控制 (RBAC)
 class UserRole(str, Enum):
@@ -510,6 +560,7 @@ ROLE_PERMISSIONS = {
 ### 性能优化
 
 #### 数据库优化
+
 ```sql
 -- 查询优化示例
 CREATE INDEX CONCURRENTLY idx_users_email_active
@@ -526,6 +577,7 @@ FOR VALUES FROM ('2025-01-01') TO ('2025-04-01');
 ```
 
 #### 缓存策略
+
 ```python
 # 多层缓存架构
 class CacheStrategy:
@@ -558,6 +610,7 @@ class CacheStrategy:
 ### 监控和日志
 
 #### 关键指标监控
+
 ```python
 # 性能监控指标
 METRICS = {
@@ -589,12 +642,14 @@ def log_auth_event(event_type: str, user_id: int, **kwargs):
 ## 扩展性考虑
 
 ### 水平扩展
+
 - 无状态设计便于负载均衡
 - 数据库读写分离
 - 缓存分布式部署
 - 微服务架构支持
 
 ### 功能扩展
+
 - 多因子认证 (MFA)
 - 社交登录集成
 - 单点登录 (SSO)
@@ -604,6 +659,7 @@ def log_auth_event(event_type: str, user_id: int, **kwargs):
 ## 实现细节追踪
 
 ### 代码文件结构
+
 ```
 src/auth/
 ├── __init__.py
@@ -618,6 +674,7 @@ src/auth/
 ```
 
 ### 测试文件结构
+
 ```
 tests/auth/
 ├── __init__.py
@@ -629,6 +686,7 @@ tests/auth/
 ```
 
 ### 文档文件结构
+
 ```
 docs/auth/
 ├── api.md               # `@DOC:USER-AUTH-001:API`
@@ -636,7 +694,8 @@ docs/auth/
 ├── deployment.md        # `@DOC:USER-AUTH-001:DEPLOYMENT`
 └── troubleshooting.md   # `@DOC:USER-AUTH-001:TROUBLESHOOTING`
 ```
-```
+
+````
 
 ### 2. README 更新
 
@@ -687,15 +746,18 @@ curl -X POST "http://localhost:8000/auth/register" \
 curl -X POST "http://localhost:8000/auth/login" \
   -H "Content-Type: application/json" \
   -d '{"email":"user@example.com","password":"SecurePass123!"}'
-```
+````
 
 **相关链接**:
+
 - [API 文档](docs/auth/api.md)
 - [架构设计](docs/auth/architecture.md)
 - [开发指南](docs/development.md)
 
-**实现追踪**: `@SPEC:USER-AUTH-001` → `@TEST:USER-AUTH-001` → `@CODE:USER-AUTH-001` → `@DOC:USER-AUTH-001`
-```
+**实现追踪**: `@SPEC:USER-AUTH-001` → `@TEST:USER-AUTH-001` → `@CODE:USER-AUTH-001` →
+`@DOC:USER-AUTH-001`
+
+````
 
 ### 3. CHANGELOG 生成
 
@@ -764,15 +826,16 @@ Alfred 自动维护 CHANGELOG.md：
 - `passlib[bcrypt]` - Password hashing
 - `python-multipart` - Form data handling
 - `aioredis` - Redis client for async operations
-```
+````
 
----
+______________________________________________________________________
 
 ## @TAG 系统验证
 
 ### 1. TAG 链完整性检查
 
 #### 验证算法
+
 ```python
 def validate_tag_integrity():
     """验证 @TAG 链完整性"""
@@ -815,6 +878,7 @@ def validate_tag_chain(spec_id):
 ```
 
 #### 验证结果示例
+
 ```yaml
 TAG 验证报告:
 ✅ 总体状态: 通过
@@ -859,6 +923,7 @@ DOC TAGs:
 ### 2. 自动修复功能
 
 #### 孤立 TAG 处理
+
 ```python
 def fix_orphan_tags():
     """修复孤立 TAG"""
@@ -884,6 +949,7 @@ def fix_orphan_tags():
 ```
 
 #### 缺失 TAG 补充
+
 ```python
 def add_missing_tags():
     """补充缺失的 TAG"""
@@ -910,6 +976,7 @@ def add_missing_tags():
 ### 3. TAG 一致性检查
 
 #### 格式验证
+
 ```python
 def validate_tag_format(tag_string):
     """验证 TAG 格式"""
@@ -954,6 +1021,7 @@ def validate_subtype(subtype):
 ```
 
 #### 一致性报告
+
 ```yaml
 TAG 一致性报告:
 ✅ 格式验证: 156/156 通过
@@ -972,13 +1040,14 @@ TAG 一致性报告:
 - 或手动更正格式问题
 ```
 
----
+______________________________________________________________________
 
 ## TRUST 5 原则验证
 
 ### 1. Test First 验证
 
 #### 测试覆盖率检查
+
 ```python
 def check_test_coverage():
     """检查测试覆盖率"""
@@ -1010,6 +1079,7 @@ def validate_test_structure():
 ```
 
 #### 测试质量评估
+
 ```yaml
 测试质量报告:
 ✅ 测试覆盖率: 94% (目标: ≥85%)
@@ -1043,6 +1113,7 @@ def validate_test_structure():
 ### 2. Readable 验证
 
 #### 代码可读性检查
+
 ```python
 def check_code_readability():
     """检查代码可读性"""
@@ -1085,6 +1156,7 @@ def validate_naming_conventions():
 ```
 
 #### 可读性报告
+
 ```yaml
 代码可读性报告:
 ✅ 函数平均长度: 18 行 (目标: <50)
@@ -1125,6 +1197,7 @@ def validate_naming_conventions():
 ### 3. Unified 验证
 
 #### 架构一致性检查
+
 ```python
 def check_architecture_consistency():
     """检查架构一致性"""
@@ -1155,6 +1228,7 @@ def check_pattern_consistency():
 ```
 
 #### 一致性报告
+
 ```yaml
 架构一致性报告:
 ✅ 层次结构: 无违规
@@ -1202,6 +1276,7 @@ API 设计一致性:
 ### 4. Secured 验证
 
 #### 安全性检查
+
 ```python
 def check_security_measures():
     """检查安全措施"""
@@ -1234,6 +1309,7 @@ def check_input_validation():
 ```
 
 #### 安全报告
+
 ```yaml
 安全检查报告:
 ✅ 输入验证: 完整
@@ -1282,6 +1358,7 @@ def check_input_validation():
 ### 5. Trackable 验证
 
 #### 可追踪性检查
+
 ```python
 def check_traceability():
     """检查可追踪性"""
@@ -1313,6 +1390,7 @@ def check_tag_coverage():
 ```
 
 #### 可追踪性报告
+
 ```yaml
 可追踪性报告:
 ✅ TAG 覆盖率: 96% (目标: 100%)
@@ -1355,11 +1433,12 @@ TAG 分布:
 - 增强变更影响分析
 ```
 
----
+______________________________________________________________________
 
 ## 质量门禁检查
 
 ### 综合质量评估
+
 ```python
 def run_quality_gate():
     """运行质量门禁检查"""
@@ -1389,6 +1468,7 @@ def run_quality_gate():
 ```
 
 ### 质量报告示例
+
 ```yaml
 质量门禁报告:
 🎯 综合评分: 91/100 (通过)
@@ -1432,11 +1512,12 @@ TRUST 5 原则:
 - 收集用户反馈
 ```
 
----
+______________________________________________________________________
 
 ## 使用示例
 
 ### 基本同步操作
+
 ```bash
 # 执行完整的文档同步和质量检查
 /alfred:3-sync
@@ -1456,6 +1537,7 @@ TRUST 5 原则:
 ```
 
 ### 特定验证操作
+
 ```bash
 # 只验证 TAG 系统完整性
 /alfred:3-sync --verify-tags
@@ -1474,6 +1556,7 @@ TRUST 5 原则:
 ```
 
 ### 高级同步操作
+
 ```bash
 # 完整同步 + 质量优化
 /alfred:3-sync --optimize-quality
@@ -1488,11 +1571,12 @@ TRUST 5 原则:
 /alfred:3-sync --deployment-ready
 ```
 
----
+______________________________________________________________________
 
 ## 同步报告生成
 
 ### 报告结构
+
 ```markdown
 # Alfred 同步报告
 
@@ -1574,13 +1658,14 @@ TRUST 5 原则:
 - 无
 ```
 
----
+______________________________________________________________________
 
 ## 最佳实践
 
 ### 1. 定期同步策略
 
 #### 开发阶段同步
+
 ```bash
 # 每个功能完成后
 /alfred:3-sync
@@ -1593,6 +1678,7 @@ TRUST 5 原则:
 ```
 
 #### 发布前同步
+
 ```bash
 # 功能开发完成，准备合并前
 /alfred:3-sync --deployment-ready
@@ -1607,6 +1693,7 @@ TRUST 5 原则:
 ### 2. 同步频率建议
 
 #### 根据项目阶段调整
+
 ```yaml
 项目阶段同步频率:
 
@@ -1629,6 +1716,7 @@ TRUST 5 原则:
 ### 3. 团队协作同步
 
 #### 多人开发团队
+
 ```bash
 # 集成团队成员的更改前
 /alfred:3-sync --team-sync
@@ -1641,6 +1729,7 @@ TRUST 5 原则:
 ```
 
 #### 代码审查集成
+
 ```yaml
 PR 工作流集成:
 1. 开发者提交 PR
@@ -1650,16 +1739,18 @@ PR 工作流集成:
 5. 批准合并
 ```
 
----
+______________________________________________________________________
 
 ## 故障排除
 
 ### 常见问题
 
 #### 1. 同步失败
+
 **症状**: `/alfred:3-sync` 执行失败
 
 **解决方案**:
+
 ```bash
 # 检查项目状态
 moai-adk doctor
@@ -1675,9 +1766,11 @@ chmod +x .moai/scripts/sync.sh
 ```
 
 #### 2. TAG 验证失败
+
 **症状**: @TAG 系统验证不通过
 
 **解决方案**:
+
 ```bash
 # 查看详细的 TAG 问题
 /alfred:3-sync --tag-report
@@ -1690,9 +1783,11 @@ chmod +x .moai/scripts/sync.sh
 ```
 
 #### 3. 质量检查不通过
+
 **症状**: TRUST 5 原则或质量门禁失败
 
 **解决方案**:
+
 ```bash
 # 查看详细质量报告
 /alfred:3-sync --quality-report
@@ -1707,6 +1802,7 @@ chmod +x .moai/scripts/sync.sh
 ### 调试技巧
 
 #### 1. 启用详细日志
+
 ```bash
 # 启用调试模式
 export ALFRED_DEBUG=true
@@ -1717,6 +1813,7 @@ export ALFRED_DEBUG=true
 ```
 
 #### 2. 分步执行
+
 ```bash
 # 只执行文档同步
 /alfred:3-sync --docs-only
@@ -1729,6 +1826,7 @@ export ALFRED_DEBUG=true
 ```
 
 #### 3. 跳过某些步骤
+
 ```bash
 # 跳过性能测试
 /alfred:3-sync --skip-performance
@@ -1740,7 +1838,7 @@ export ALFRED_DEBUG=true
 /alfred:3-sync --skip-docs
 ```
 
----
+______________________________________________________________________
 
 ## 总结
 

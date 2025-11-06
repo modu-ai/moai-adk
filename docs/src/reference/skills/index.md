@@ -4,7 +4,8 @@ MoAI-ADK의 55개+ Claude Skills 완전 가이드입니다.
 
 ## 🎯 개요
 
-**Claude Skills**는 Alfred가 활용하는 **재사용 가능한 지식 캡슐**입니다. 각 Skill은 특정 도메인이나 기술에 최적화된 프롬프트, 예시, 모범 사례를 포함합니다.
+**Claude Skills**는 Alfred가 활용하는 **재사용 가능한 지식 캡슐**입니다. 각 Skill은 특정 도메인이나 기술에 최적화된 프롬프트, 예시, 모범 사례를
+포함합니다.
 
 ### Skills의 특징
 
@@ -56,56 +57,61 @@ MoAI-ADK의 55개+ Claude Skills 완전 가이드입니다.
 
 **모든 프로젝트에 필수인 기본 스킬들**
 
-| 스킬 | 설명 | 문서 |
-|------|------|------|
-| **moai-foundation-trust** | TRUST 5 원칙 (Test, Readable, Unified, Secured, Trackable) | [TRUST 5](../foundations/trust.md) |
-| **moai-foundation-tags** | TAG 시스템 및 추적성 (@SPEC, @TEST, @CODE, @DOC) | [TAG 시스템](../foundations/tags.md) |
-| **moai-alfred-workflow** | Alfred 4단계 워크플로우 | [Workflow](../alfred/workflow.md) |
+| 스킬                      | 설명                                                       | 문서                                 |
+| ------------------------- | ---------------------------------------------------------- | ------------------------------------ |
+| **moai-foundation-trust** | TRUST 5 원칙 (Test, Readable, Unified, Secured, Trackable) | [TRUST 5](../foundations/trust.md)   |
+| **moai-foundation-tags**  | TAG 시스템 및 추적성 (@SPEC, @TEST, @CODE, @DOC)           | [TAG 시스템](../foundations/tags.md) |
+| **moai-alfred-workflow**  | Alfred 4단계 워크플로우                                    | [Workflow](../alfred/workflow.md)    |
 
 ### 2️⃣ Essentials (필수 스킬)
 
 **개발 중 자주 사용하는 스킬들**
 
-| 스킬 | 설명 | 사용 시점 |
-|------|------|---------|
-| **moai-essentials-debug** | 고급 디버깅, 스택 트레이스 분석 | 오류 발생 시 |
-| **moai-essentials-perf** | 성능 최적화, 병목 지점 분석 | 성능 개선 필요 시 |
-| **moai-essentials-refactor** | 리팩토링 가이드, 설계 패턴 | 코드 개선 필요 시 |
-| **moai-essentials-review** | 자동화된 코드 리뷰 | 커밋 전 검증 |
+| 스킬                         | 설명                            | 사용 시점         |
+| ---------------------------- | ------------------------------- | ----------------- |
+| **moai-essentials-debug**    | 고급 디버깅, 스택 트레이스 분석 | 오류 발생 시      |
+| **moai-essentials-perf**     | 성능 최적화, 병목 지점 분석     | 성능 개선 필요 시 |
+| **moai-essentials-refactor** | 리팩토링 가이드, 설계 패턴      | 코드 개선 필요 시 |
+| **moai-essentials-review**   | 자동화된 코드 리뷰              | 커밋 전 검증      |
 
 ### 3️⃣ Alfred (Alfred 전용)
 
 **Alfred와 서브에이전트를 위한 스킬들**
 
-| 스킬 | 설명 | 대상 |
-|------|------|------|
-| **moai-alfred-agent-guide** | 19명 팀 구조, 선택 알고리즘 | 에이전트 팀 관리 |
-| **moai-alfred-ask-user-questions** | AskUserQuestion 최적 사용법 | 사용자 상호작용 |
-| **moai-alfred-personas** | Alfred 적응형 페르소나 | 커뮤니케이션 스타일 |
-| **moai-alfred-best-practices** | TRUST, TAG, Skill 호출 규칙 | 품질 보증 |
-| **moai-alfred-context-budget** | Context window 최적화 | 메모리 관리 |
+| 스킬                               | 설명                        | 대상                |
+| ---------------------------------- | --------------------------- | ------------------- |
+| **moai-alfred-agent-guide**        | 19명 팀 구조, 선택 알고리즘 | 에이전트 팀 관리    |
+| **moai-alfred-ask-user-questions** | AskUserQuestion 최적 사용법 | 사용자 상호작용     |
+| **moai-alfred-personas**           | Alfred 적응형 페르소나      | 커뮤니케이션 스타일 |
+| **moai-alfred-best-practices**     | TRUST, TAG, Skill 호출 규칙 | 품질 보증           |
+| **moai-alfred-context-budget**     | Context window 최적화       | 메모리 관리         |
 
 ### 4️⃣ Domain (도메인 스킬)
 
 **특정 도메인 전문가 지식**
 
 #### 백엔드
+
 - **moai-domain-backend**: API, 서버, 마이크로서비스
 - **moai-domain-web-api**: REST API, GraphQL 설계
 
 #### 프론트엔드
+
 - **moai-domain-frontend**: React, Vue, Angular
 - **moai-design-systems**: 디자인 시스템, 접근성
 
 #### 데이터 & 성능
+
 - **moai-domain-database**: DB 설계, 최적화, 마이그레이션
 - **moai-domain-ml**: 머신러닝, 모델 학습, 배포
 
 #### 인프라 & 보안
+
 - **moai-domain-security**: OWASP, 보안 취약점, 컴플라이언스
 - **devops-expert**: Docker, Kubernetes, CI/CD
 
 #### 모바일
+
 - **moai-domain-mobile-app**: Flutter, React Native
 
 ### 5️⃣ Languages (언어 스킬)
@@ -113,6 +119,7 @@ MoAI-ADK의 55개+ Claude Skills 완전 가이드입니다.
 **프로그래밍 언어별 최적 사례**
 
 #### 인기 언어 (8개)
+
 - **moai-lang-python**: Python 3.13+ (pytest, mypy, ruff, uv)
 - **moai-lang-typescript**: TypeScript 5.7+ (Vitest, Biome)
 - **moai-lang-javascript**: JavaScript ES2024+ (Jest, ESLint, Prettier)
@@ -123,6 +130,7 @@ MoAI-ADK의 55개+ Claude Skills 완전 가이드입니다.
 - **moai-lang-csharp**: C# 13+ (.NET 8, xUnit)
 
 #### 기타 언어 (12개)
+
 - **moai-lang-php**: PHP 8.4+ (Laravel, Symfony)
 - **moai-lang-ruby**: Ruby 3.4+ (Rails, RSpec)
 - **moai-lang-sql**: SQL (pgTAP, sqlfluff)
@@ -140,12 +148,12 @@ MoAI-ADK의 55개+ Claude Skills 완전 가이드입니다.
 
 **Claude Code 설정 및 통합**
 
-| 스킬 | 설명 |
-|------|------|
-| **moai-cc-configuration** | settings.json, permissions, hooks |
-| **moai-cc-memory** | 세션 메모리, Context window 최적화 |
-| **moai-cc-skill-factory** | Skill 생성 및 유지보수 |
-| **moai-cc-claude-md** | CLAUDE.md 프로젝트 지침 작성 |
+| 스킬                      | 설명                               |
+| ------------------------- | ---------------------------------- |
+| **moai-cc-configuration** | settings.json, permissions, hooks  |
+| **moai-cc-memory**        | 세션 메모리, Context window 최적화 |
+| **moai-cc-skill-factory** | Skill 생성 및 유지보수             |
+| **moai-cc-claude-md**     | CLAUDE.md 프로젝트 지침 작성       |
 
 ## 🎯 Skill 선택 가이드
 
@@ -238,6 +246,6 @@ Alfred (의도 분석)
 
 → 예, 여러 Skill을 순차적으로 로드하여 조합 가능
 
----
+______________________________________________________________________
 
 **다음**: [Foundation Skills](foundation.md) 또는 [Language Skills](languages.md)
