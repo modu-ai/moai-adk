@@ -4,6 +4,23 @@ All commits to MoAI-ADK are listed below in chronological order. Each entry show
 
 ## Recent Releases
 
+### v0.21.1 (2025-11-07)
+
+**Patch Release: Bug Fixes & Test Corrections**
+
+- **Test Suite Fixes**: Fixed 28 failing tests (98% pass rate: 1,244/1,269 tests passing)
+- **TAG Domain Extraction**: Fixed regex pattern in `_extract_domain_from_tag()` for proper domain parsing
+- **Python 3.13 Compatibility**: Resolved API compatibility issues with `Path.touch()` and proper `os.utime()` usage
+- **Test Expectations**: Updated test assertions for consistency across TAG suggestion and chain validation tests
+- **Test Fixtures**: Improved fixture setup with proper parent directory creation in test cleanup
+- **Code Organization**: Removed duplicate hook from local `.claude/` directory (SSOT principle: package templates are source of truth)
+
+Quality Metrics:
+- Test Coverage: 98% (1,244/1,269 passing)
+- Linting: Pass (0 errors)
+- Type Checking: Pass
+- Security: Pass
+
 ### v0.20.0 (2025-11-06)
 
 - **MCP Configuration Fix**: Fixed critical MCP server configuration schema validation error
