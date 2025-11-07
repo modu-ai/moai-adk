@@ -12,16 +12,20 @@
       "Bash(for:*)",
       "Bash(do basename:*)",
       "Bash(done)",
-      "mcp__sequential-thinking__sequentialthinking"
+      "mcp__sequential-thinking__sequentialthinking",
+      "Bash(while read f)",
+      "Bash(do if ! rg -q '@TAG|@SPEC|@CODE|@TEST|@DOC' \"$f\")",
+      "Bash(then echo \"$f\")",
+      "Bash(fi)"
     ]
   },
   "enableAllProjectMcpServers": false,
-  "disabledMcpjsonServers": [],
-  "outputStyle": "🤖 R2-D2 Agentic Coding",
-  "local": true,
   "enabledMcpjsonServers": [
     "context7",
     "playwright",
     "sequential-thinking"
-  ]
+  ],
+  "disabledMcpjsonServers": [],
+  "outputStyle": "🤖 R2-D2 Agentic Coding",
+  "local": true
 }

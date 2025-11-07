@@ -1,0 +1,47 @@
+{
+  "ignorePatterns": [
+    {
+      "pattern": "^https://adk.mo.ai.kr"
+    },
+    {
+      "pattern": "^https://mo.ai.kr"
+    },
+    {
+      "pattern": "^https://moai-adk.gooslab.ai"
+    },
+    {
+      "pattern": "^http://localhost"
+    },
+    {
+      "pattern": "^https://hub.docker.com"
+    }
+  ],
+  "replacementPatterns": [
+    {
+      "pattern": "^/",
+      "replacement": "{{BASEURL}}/"
+    }
+  ],
+  "httpHeaders": [
+    {
+      "urls": ["https://github.com"],
+      "headers": {
+        "Accept": "text/html",
+        "User-Agent": "Mozilla/5.0 (compatible; markdown-link-check)"
+      }
+    },
+    {
+      "urls": ["https://pypi.org"],
+      "headers": {
+        "Accept": "text/html",
+        "User-Agent": "Mozilla/5.0 (compatible; markdown-link-check)"
+      }
+    }
+  ],
+  "timeout": "10s",
+  "retryOn429": true,
+  "retryCount": 3,
+  "fallbackRetryDelay": "5s",
+  "aliveStatusCodes": [200, 206, 301, 302, 307, 308, 401, 403],
+  "ignoreDisable": false
+}
