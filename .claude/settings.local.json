@@ -16,7 +16,8 @@
       "Bash(while read f)",
       "Bash(do if ! rg -q '@TAG|@SPEC|@CODE|@TEST|@DOC' \"$f\")",
       "Bash(then echo \"$f\")",
-      "Bash(fi)"
+      "Bash(fi)",
+      "SlashCommand(/alfred:2-run SPEC-CLAUDE-STATUSLINE-001)"
     ]
   },
   "enableAllProjectMcpServers": false,

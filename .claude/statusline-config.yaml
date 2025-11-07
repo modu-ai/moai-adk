@@ -1,0 +1,66 @@
+# MoAI-ADK Statusline Configuration for Claude Code
+# Claude Code 상태줄 통합 설정
+#
+# @DOC:STATUSLINE-CONFIG-001
+
+statusline:
+  enabled: true
+  script_path: "src/moai_adk/statusline/main.py"
+
+  # Display mode
+  # 디스플레이 모드: compact (80자) | extended (120자) | minimal (40자)
+  mode: "compact"
+
+  # Refresh interval in milliseconds
+  # 갱신 주기 (밀리초, Claude Code API 제약: 300ms)
+  refresh_interval_ms: 300
+
+  # Color configuration
+  # 색상 설정
+  colors:
+    enabled: true
+    theme: "auto"  # auto | light | dark | high-contrast
+    palette:
+      model: "38;5;33"        # Blue
+      feature_branch: "38;5;226"   # Yellow
+      develop_branch: "38;5;51"    # Cyan
+      main_branch: "38;5;46"       # Green
+      staged: "38;5;46"            # Green
+      modified: "38;5;208"         # Orange
+      untracked: "38;5;196"        # Red
+      update_available: "38;5;208" # Orange
+
+  # Caching configuration
+  # 캐싱 설정 (성능 최적화)
+  cache:
+    git_ttl_seconds: 5           # Git 명령 결과
+    metrics_ttl_seconds: 10      # 세션 메트릭
+    alfred_ttl_seconds: 1        # Alfred 작업 상태
+    version_ttl_seconds: 60      # 버전 정보
+    update_ttl_seconds: 300      # 업데이트 확인 (PyPI API)
+
+  # Information display settings
+  # 표시할 정보
+  display:
+    model: true                  # 모델명 (H 4.5, S 4.5)
+    duration: true               # 세션 경과 시간
+    directory: true              # 프로젝트명/디렉토리
+    version: true                # MoAI-ADK 버전
+    branch: true                 # Git branch
+    git_status: true             # Git 변경 사항
+    active_task: true            # Alfred 활성 작업
+    update_indicator: true       # 업데이트 안내
+
+  # Error handling
+  # 오류 처리 정책
+  error_handling:
+    graceful_degradation: true   # 오류 시 기본값 반환
+    log_level: "warning"         # warning | error
+    fallback_text: ""            # 오류 시 표시할 텍스트 (공백 권장)
+
+  # Format configuration
+  # 포맷 설정
+  format:
+    max_branch_length: 20        # 긴 branch 이름 축약
+    truncate_with: "..."         # 축약 기호
+    separator: " | "             # 섹션 구분자

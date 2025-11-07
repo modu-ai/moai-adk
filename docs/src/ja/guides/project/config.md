@@ -1,57 +1,57 @@
-# Complete Project Configuration Guide
+# プロジェクト設定完全ガイド
 
-A guide that explains in detail all configuration options for MoAI-ADK projects. Covers every aspect of project configuration from language settings to GitHub integration, agent optimization, and personalization settings.
+MoAI-ADKプロジェクトのすべての設定オプションを詳細に説明するガイドです。言語設定からGitHub統合、エージェント最適化、カスタマイズ設定まで、プロジェクト設定のあらゆる側面をカバーします。
 
-## Table of Contents
+## 目次
 
-01. [Overview](#overview)
-02. [Core Configuration Files](#core-configuration-files)
-03. [Language and Localization Settings](#language-and-localization-settings)
-04. [Project Metadata Configuration](#project-metadata-configuration)
-05. [GitHub Integration Settings](#github-integration-settings)
-06. [Report Generation Control](#report-generation-control)
-07. [Git Workflow Configuration](#git-workflow-configuration)
-08. [Hook Configuration Optimization](#hook-configuration-optimization)
-09. [Agent Configuration](#agent-configuration)
-10. [TAG System Configuration](#tag-system-configuration)
-11. [TRUST 5 Principles Configuration](#trust-5-principles-configuration)
-12. [Personalization Settings](#personalization-settings)
-13. [Configuration File Backup and Restore](#configuration-file-backup-and-restore)
-14. [Configuration Optimization Strategies](#configuration-optimization-strategies)
-15. [Troubleshooting](#troubleshooting)
+01. [概要](#概要)
+02. [コア設定ファイル](#コア設定ファイル)
+03. [言語およびローカライゼーション設定](#言語およびローカライゼーション設定)
+04. [プロジェクトメタデータ設定](#プロジェクトメタデータ設定)
+05. [GitHub統合設定](#github統合設定)
+06. [レポート生成制御](#レポート生成制御)
+07. [Gitワークフロー設定](#gitワークフロー設定)
+08. [Hook設定最適化](#hook設定最適化)
+09. [エージェント設定](#エージェント設定)
+10. [TAGシステム設定](#tagシステム設定)
+11. [TRUST 5原則設定](#trust-5原則設定)
+12. [カスタマイズ設定](#カスタマイズ設定)
+13. [設定ファイルのバックアップと復元](#設定ファイルのバックアップと復元)
+14. [設定最適化戦略](#設定最適化戦略)
+15. [トラブルシューティング](#トラブルシューティング)
 
-## Overview
+## 概要
 
-The MoAI-ADK configuration system is designed with flexibility and extensibility at its core. Beyond simple environment settings, you can control everything from AI agent behavior to development workflows and team collaboration methods.
+MoAI-ADKの設定システムは柔軟性と拡張性を中心に設計されています。単純な環境設定を超えて、AIエージェントの動作方式、開発ワークフロー、チーム協働方式まで、すべてを制御できます。
 
-### Core Principles of the Configuration System
+### 設定システムのコア原則
 
-1. **Hierarchical Structure**: Defaults → Project settings → User personalization
-2. **Auto-Detection**: Automatically detect as many settings as possible
-3. **Progressive Disclosure**: Expose only necessary settings, minimize complexity
-4. **Safe Defaults**: Default settings prioritizing security and stability
-5. **Team Compatibility**: Personal settings don't break team standards
+1. **階層構造**: デフォルト値 → プロジェクト設定 → ユーザーカスタマイズ
+2. **自動検出**: 可能な限り多くの設定を自動的に検出
+3. **段階的公開**: 必要な設定のみを公開し、複雑さを最小化
+4. **安全なデフォルト値**: セキュリティと安定性を優先するデフォルト設定
+5. **チーム互換性**: 個人設定がチーム標準を損なわない
 
-### Configuration File Structure
+### 設定ファイル構造
 
 ```
 .moai/
-├── config.json              # Main configuration file
-├── user-config.json         # User personal settings (optional)
-├── team-config.json         # Team common settings (optional)
-└── environment-config.json  # Environment-specific settings (optional)
+├── config.json              # メイン設定ファイル
+├── user-config.json         # ユーザー個人設定（オプション）
+├── team-config.json         # チーム共通設定（オプション）
+└── environment-config.json  # 環境別設定（オプション）
 
 .claude/
-├── settings.json            # Claude Code configuration
-├── mcp.json                 # MCP server configuration
-└── permissions.json         # Permission settings (optional)
+├── settings.json            # Claude Code設定
+├── mcp.json                 # MCPサーバー設定
+└── permissions.json         # 権限設定（オプション）
 ```
 
-## Core Configuration Files
+## コア設定ファイル
 
-### `.moai/config.json` - Main Configuration File
+### `.moai/config.json` - メイン設定ファイル
 
-File managing all core project settings.
+プロジェクトのすべてのコア設定を管理するファイルです。
 
 ```json
 {
@@ -71,7 +71,7 @@ File managing all core project settings.
   },
   "project": {
     "name": "my-awesome-project",
-    "description": "AI-based innovative project",
+    "description": "AIベースの革新的なプロジェクト",
     "owner": "username",
     "team": "development-team",
     "mode": "personal",
@@ -149,9 +149,9 @@ File managing all core project settings.
 }
 ```
 
-### `.claude/settings.json` - Claude Code Configuration
+### `.claude/settings.json` - Claude Code設定
 
-Configuration file controlling Claude Code behavior.
+Claude Codeの動作方式を制御する設定ファイルです。
 
 ```json
 {
@@ -212,13 +212,13 @@ Configuration file controlling Claude Code behavior.
 }
 ```
 
-## Language and Localization Settings
+## 言語およびローカライゼーション設定
 
-### Language Configuration Options
+### 言語設定オプション
 
-#### conversation_language (Conversation Language)
+#### conversation_language（会話言語）
 
-Language used for all interactions with Alfred.
+Alfredとのすべてのインタラクションに使用される言語です。
 
 ```json
 {
@@ -236,21 +236,21 @@ Language used for all interactions with Alfred.
 }
 ```
 
-**Supported Languages**:
+**サポートされる言語**:
 
-| Code | Language | Support Level | Notes                        |
-| ---- | -------- | ------------- | ---------------------------- |
-| ko   | 한국어   | Complete      | Default language             |
-| en   | English  | Complete      | Global standard              |
-| ja   | 日本語   | Complete      | Japanese support             |
-| zh   | 中文     | Complete      | Chinese simplified/traditional |
-| es   | Español  | Complete      | Spanish support              |
-| fr   | Français | Partial       | French (in development)      |
-| de   | Deutsch  | Partial       | German (in development)      |
+| コード | 言語     | サポートレベル | 備考                      |
+| ------ | -------- | -------------- | ------------------------- |
+| ko     | 한국어   | 完全           | デフォルト言語            |
+| en     | English  | 完全           | グローバル標準            |
+| ja     | 日本語   | 完全           | 日本語サポート            |
+| zh     | 中文     | 完全           | 中国語簡体字/繁体字サポート |
+| es     | Español  | 完全           | スペイン語サポート        |
+| fr     | Français | 部分的         | フランス語（開発中）      |
+| de     | Deutsch  | 部分的         | ドイツ語（開発中）        |
 
-#### code_language (Programming Language)
+#### code_language（プログラミング言語）
 
-Primary programming language setting for the project.
+プロジェクトの主要プログラミング言語設定です。
 
 ```json
 {
@@ -267,25 +267,25 @@ Primary programming language setting for the project.
 }
 ```
 
-**Supported Programming Languages**:
+**サポートされるプログラミング言語**:
 
-| Language   | Auto-detect Files                          | Default Tools            | Template Support |
-| ---------- | ------------------------------------------ | ------------------------ | ---------------- |
-| python     | pyproject.toml, setup.py, requirements.txt | pytest, ruff, mypy       | ✅               |
-| javascript | package.json, yarn.lock                    | jest, eslint, prettier   | ✅               |
-| typescript | tsconfig.json, package.json                | typescript, eslint, prettier | ✅           |
-| go         | go.mod, go.sum                             | go test, golint, gofmt   | ✅               |
-| rust       | Cargo.toml                                 | cargo test, clippy, rustfmt | ✅            |
-| java       | pom.xml, build.gradle                      | junit, maven, gradle     | ✅               |
-| kotlin     | build.gradle.kts                           | junit, ktlint            | ✅               |
-| ruby       | Gemfile                                    | rspec, rubocop           | ✅               |
-| php        | composer.json                              | phpunit, phpstan         | ✅               |
-| csharp     | *.csproj, *.sln                            | xunit, dotnet            | ✅               |
-| sql        | *.sql, schema.sql                          | -                        | ⚠️ Limited      |
+| 言語       | 自動検出ファイル                       | デフォルトツール          | テンプレートサポート                       |
+| ---------- | -------------------------------------- | ------------------------- | ------------------------------------------ |
+| python     | pyproject.toml, setup.py, requirements.txt | pytest, ruff, mypy        | ✅                                         |
+| javascript | package.json, yarn.lock                | jest, eslint, prettier    | ✅                                         |
+| typescript | tsconfig.json, package.json            | typescript, eslint, prettier | ✅                                         |
+| go         | go.mod, go.sum                         | go test, golint, gofmt    | ✅                                         |
+| rust       | Cargo.toml                             | cargo test, clippy, rustfmt | ✅                                         |
+| java       | pom.xml, build.gradle                  | junit, maven, gradle      | ✅                                         |
+| kotlin     | build.gradle.kts                       | junit, ktlint             | ✅                                         |
+| ruby       | Gemfile                                | rspec, rubocop            | ✅                                         |
+| php        | composer.json                          | phpunit, phpstan          | ✅                                         |
+| csharp     | \*.csproj, \*.sln                      | xunit, dotnet             | ✅                                         |
+| sql        | \*.sql, schema.sql                     | -                         | <span class="material-icons">warning</span> 制限付き |
 
-#### locale Settings
+#### locale設定
 
-Configure localization-related formatting rules.
+ローカライゼーションに関連するフォーマットルールを設定します。
 
 ```json
 {
@@ -303,9 +303,9 @@ Configure localization-related formatting rules.
 }
 ```
 
-### Language Configuration Optimization
+### 言語設定の最適化
 
-#### Automatic Language Detection
+#### 自動言語検出
 
 ```python
 # .claude/hooks/alfred/utils/language_detector.py
@@ -313,7 +313,7 @@ import os
 from pathlib import Path
 
 def detect_project_language(project_dir: Path) -> dict:
-    """Automatically detect project language"""
+    """プロジェクト言語の自動検出"""
     indicators = {
         'python': ['pyproject.toml', 'setup.py', 'requirements.txt', 'Pipfile'],
         'javascript': ['package.json', 'yarn.lock', 'package-lock.json'],
@@ -338,7 +338,7 @@ def detect_project_language(project_dir: Path) -> dict:
     return {'detected_language': 'python', 'confidence': 'low'}
 ```
 
-#### Multi-language Project Configuration
+#### 多言語プロジェクト設定
 
 ```json
 {
@@ -362,16 +362,16 @@ def detect_project_language(project_dir: Path) -> dict:
 }
 ```
 
-## Project Metadata Configuration
+## プロジェクトメタデータ設定
 
-### Basic Project Information
+### 基本プロジェクト情報
 
 ```json
 {
   "project": {
     "name": "my-awesome-project",
     "display_name": "My Awesome Project",
-    "description": "AI-based innovative web application",
+    "description": "AIベースの革新的なWebアプリケーション",
     "short_description": "AI-powered web application",
     "version": "1.0.0",
     "owner": "username",
@@ -387,7 +387,7 @@ def detect_project_language(project_dir: Path) -> dict:
 }
 ```
 
-### Project Classification
+### プロジェクト分類
 
 ```json
 {
@@ -419,7 +419,7 @@ def detect_project_language(project_dir: Path) -> dict:
 }
 ```
 
-### Project Mode Configuration
+### プロジェクトモード設定
 
 ```json
 {
@@ -442,18 +442,18 @@ def detect_project_language(project_dir: Path) -> dict:
 }
 ```
 
-**Project Mode Types**:
+**プロジェクトモードの種類**:
 
-| Mode        | Description        | Suitable Situations      | Features                            |
-| ----------- | ------------------ | ------------------------ | ----------------------------------- |
-| personal    | Personal project   | Individual development, learning | Simple setup, quick start      |
-| team        | Team project       | Small team development   | Collaboration features, code review |
-| enterprise  | Enterprise project | Large-scale organizations | Security, compliance, auditing     |
-| open-source | Open-source project | Public projects         | Community, transparency, licensing  |
+| モード      | 説明                   | 適した状況       | 特徴                           |
+| ----------- | ---------------------- | ---------------- | ------------------------------ |
+| personal    | 個人プロジェクト       | 個人開発、学習   | シンプルな設定、素早いスタート |
+| team        | チームプロジェクト     | 小規模チーム開発 | コラボレーション機能、コードレビュー |
+| enterprise  | エンタープライズプロジェクト | 大規模組織       | セキュリティ、規制遵守、監査   |
+| open-source | オープンソースプロジェクト | 公開プロジェクト | コミュニティ、透明性、ライセンス |
 
-## GitHub Integration Settings
+## GitHub統合設定
 
-### Basic GitHub Configuration
+### 基本GitHub設定
 
 ```json
 {
@@ -472,7 +472,7 @@ def detect_project_language(project_dir: Path) -> dict:
 }
 ```
 
-### Git Workflow Configuration
+### Gitワークフロー設定
 
 ```json
 {
@@ -506,16 +506,16 @@ def detect_project_language(project_dir: Path) -> dict:
 }
 ```
 
-**Git Workflow Options**:
+**Gitワークフローオプション**:
 
-| Workflow       | Description                   | Branch Strategy                        | PR Policy       |
-| -------------- | ----------------------------- | -------------------------------------- | --------------- |
-| develop_direct | Direct commits to develop     | develop → main                          | Draft PR        |
-| feature_branch | Create feature branches       | feature → develop → main                | Full PR         |
-| release_branch | Use release branches          | feature → develop → release → main      | Full PR + QA    |
-| gitflow        | Traditional GitFlow           | feature → develop → release → main → hotfix | Complex PR  |
+| ワークフロー   | 説明                         | ブランチ戦略                                | PRポリシー   |
+| -------------- | ---------------------------- | ------------------------------------------- | ------------ |
+| develop_direct | developブランチに直接コミット | develop → main                              | Draft PR     |
+| feature_branch | 機能別ブランチ作成           | feature → develop → main                    | Full PR      |
+| release_branch | リリースブランチ使用         | feature → develop → release → main          | Full PR + QA |
+| gitflow        | 従来のGitFlow                | feature → develop → release → main → hotfix | Complex PR   |
 
-### GitHub Actions Integration
+### GitHub Actions統合
 
 ```json
 {
@@ -548,7 +548,7 @@ def detect_project_language(project_dir: Path) -> dict:
 }
 ```
 
-### Issue and Project Management
+### イシューおよびプロジェクト管理
 
 ```json
 {
@@ -577,9 +577,9 @@ def detect_project_language(project_dir: Path) -> dict:
 }
 ```
 
-## Report Generation Control
+## レポート生成制御
 
-### Report Generation Configuration
+### レポート生成設定
 
 ```json
 {
@@ -605,64 +605,64 @@ def detect_project_language(project_dir: Path) -> dict:
 }
 ```
 
-### Report Level Configuration
+### レポートレベル設定
 
-| Level         | Description             | Generated Reports          | Token Usage |
-| ------------- | ----------------------- | -------------------------- | ----------- |
-| disable       | No report generation    | None                       | 0%          |
-| minimal       | Minimal reports only    | Sync summary, TAG status   | 20%         |
-| standard      | Standard reports        | Sync, quality, coverage    | 60%         |
-| comprehensive | All reports             | All analysis, recommendations, forecasts | 100% |
+| レベル        | 説明                   | 生成されるレポート     | トークン使用量 |
+| ------------- | ---------------------- | ---------------------- | -------------- |
+| disable       | レポート生成なし       | なし                   | 0%             |
+| minimal       | 最小限のレポートのみ   | 同期サマリー、TAG状態  | 20%            |
+| standard      | 標準レポート           | 同期、品質、カバレッジ | 60%            |
+| comprehensive | すべてのレポート       | すべての分析、推奨、予測 | 100%           |
 
-#### Minimal Level Report
-
-```markdown
-# Sync Report - 2025-11-06
-
-## Summary
-- Synced SPECs: 3
-- Generated TAGs: 12
-- Quality Validation: Passed
-
-## Changes
-- AUTH-001: User authentication completed
-- USER-002: User management implementation in progress
-- API-003: API documentation updated
-
-## Next Steps
-- Complete USER-002 implementation
-- API-003 review needed
-```
-
-#### Standard Level Report
+#### Minimalレベルレポート
 
 ```markdown
-# Detailed Project Report - 2025-11-06
+# 同期レポート - 2025-11-06
 
-## Project Overview
-- Name: My Awesome Project
-- Version: 1.0.0
-- Status: In development
+## サマリー
+- 同期されたSPEC: 3個
+- 生成されたTAG: 12個
+- 品質検証: 通過
 
-## Quality Metrics
-- Test Coverage: 87.5%
-- Code Quality Score: 92/100
-- Security Score: 95/100
+## 変更内容
+- AUTH-001: ユーザー認証完了
+- USER-002: ユーザー管理実装中
+- API-003: APIドキュメント更新
 
-## SPEC Status
-| ID | Title | Status | Progress |
-|----|-------|--------|----------|
-| AUTH-001 | User authentication | completed | 100% |
-| USER-002 | User management | in_progress | 75% |
-| API-003 | API documentation | draft | 30% |
-
-## Recommendations
-1. Improve test coverage for USER-002
-2. Clarify acceptance criteria for API-003
-3. Recommend shortening security review cycle
+## 次のステップ
+- USER-002実装完了
+- API-003レビュー必要
 ```
 
-### Report Format Configuration
+#### Standardレベルレポート
+
+```markdown
+# プロジェクト詳細レポート - 2025-11-06
+
+## プロジェクト概要
+- 名前: My Awesome Project
+- バージョン: 1.0.0
+- 状態: 開発中
+
+## 品質指標
+- テストカバレッジ: 87.5%
+- コード品質スコア: 92/100
+- セキュリティスコア: 95/100
+
+## SPEC状態
+| ID | タイトル | 状態 | 進捗率 |
+|----|----------|------|--------|
+| AUTH-001 | ユーザー認証 | completed | 100% |
+| USER-002 | ユーザー管理 | in_progress | 75% |
+| API-003 | APIドキュメント | draft | 30% |
+
+## 推奨事項
+1. USER-002のテストカバレッジ増加が必要
+2. API-003の受け入れ基準の明確化が必要
+3. セキュリティレビューサイクルの短縮を推奨
+```
+
+### レポート形式設定
 
 ```json
 {
@@ -694,9 +694,9 @@ def detect_project_language(project_dir: Path) -> dict:
 }
 ```
 
-## Git Workflow Configuration
+## Gitワークフロー設定
 
-### Workflow Strategy Selection
+### ワークフロー戦略の選択
 
 ```json
 {
@@ -715,24 +715,24 @@ def detect_project_language(project_dir: Path) -> dict:
 }
 ```
 
-### Branch Strategy Details
+### ブランチ戦略詳細
 
-#### Feature Branch Workflow
+#### Feature Branchワークフロー
 
 ```mermaid
 graph TD
-    A[Write SPEC] --> B[Create feature branch]
-    B --> C[TDD implementation]
-    C --> D[Create Draft PR]
-    D --> E[Code review]
-    E --> F[QA validation]
-    F --> G{Approved?}
-    G -->|Yes| H[Merge to develop branch]
-    G -->|No| I[Request changes]
+    A[SPEC作成] --> B[featureブランチ作成]
+    B --> C[TDD実装]
+    C --> D[Draft PR作成]
+    D --> E[コードレビュー]
+    E --> F[QA検証]
+    F --> G{承認?}
+    G -->|Yes| H[developブランチマージ]
+    G -->|No| I[修正要求]
     I --> C
-    H --> J[Prepare release]
-    J --> K[Merge to main branch]
-    K --> L[Auto-delete branch]
+    H --> J[リリース準備]
+    J --> K[mainブランチマージ]
+    K --> L[ブランチ自動削除]
 ```
 
 ```json
@@ -774,19 +774,19 @@ graph TD
 }
 ```
 
-#### Develop Direct Workflow
+#### Develop Directワークフロー
 
 ```mermaid
 graph TD
-    A[Write SPEC] --> B[Work directly on develop branch]
-    B --> C[TDD implementation]
-    C --> D[Commit]
-    D --> E[Automatic quality check]
-    E --> F{Passed?}
-    F -->|Yes| G[Next feature]
-    F -->|No| H[Fix]
+    A[SPEC作成] --> B[developブランチで直接作業]
+    B --> C[TDD実装]
+    C --> D[コミット]
+    D --> E[自動品質チェック]
+    E --> F{通過?}
+    F -->|Yes| G[次の機能]
+    F -->|No| H[修正]
     H --> C
-    G --> I[Periodic develop → main merge]
+    G --> I[定期的にdevelop → mainマージ]
 ```
 
 ```json
@@ -809,7 +809,7 @@ graph TD
 }
 ```
 
-### Commit Message Configuration
+### コミットメッセージ設定
 
 ```json
 {
@@ -830,11 +830,11 @@ graph TD
 }
 ```
 
-## Hook Configuration Optimization
+## Hook設定最適化
 
-### Hook System Overview
+### Hookシステム概要
 
-MoAI-ADK's Hook system automatically operates at all stages of the development flow to improve productivity and ensure quality.
+MoAI-ADKのHookシステムは、開発フローのすべての段階で自動的に動作して生産性を向上させ、品質を保証します。
 
 ```json
 {
@@ -892,7 +892,7 @@ from datetime import datetime
 from pathlib import Path
 
 def main():
-    """Summarize project status at session start"""
+    """セッション開始時のプロジェクト状態サマリー"""
     project_dir = os.environ.get('CLAUDE_PROJECT_DIR')
     config_path = Path(project_dir) / '.moai' / 'config.json'
 
@@ -900,24 +900,24 @@ def main():
         with open(config_path) as f:
             config = json.load(f)
 
-        # Print project information
-        print(f"📋 Project: {config['project']['name']}")
-        print(f"🌍 Language: {config['language']['conversation_language_name']}")
-        print(f"👤 Owner: {config['project']['owner']}")
-        print(f"⚙️ Mode: {config['project']['mode']}")
+        # プロジェクト情報出力
+        print(f"📋 プロジェクト: {config['project']['name']}")
+        print(f"🌍 言語: {config['language']['conversation_language_name']}")
+        print(f"👤 オーナー: {config['project']['owner']}")
+        print(f"⚙️ モード: {config['project']['mode']}")
 
-        # SPEC status summary
+        # SPEC状態サマリー
         specs_dir = Path(project_dir) / '.moai' / 'specs'
         if specs_dir.exists():
             spec_count = len([d for d in specs_dir.iterdir() if d.is_dir()])
-            print(f"📄 SPEC documents: {spec_count}")
+            print(f"📄 SPECドキュメント: {spec_count}個")
 
-        # Check Git status
-        os.system('git status --porcelain | wc -l | xargs echo "🔄 Changed files:"')
+        # Git状態確認
+        os.system('git status --porcelain | wc -l | xargs echo "🔄 変更されたファイル:"')
 
-        # Recent activity
-        print(f"🕐 Last updated: {config['project']['updated_at']}")
-        print("✅ Alfred ready")
+        # 最近のアクティビティ
+        print(f"🕐 最終更新: {config['project']['updated_at']}")
+        print("✅ Alfred準備完了")
 
 if __name__ == "__main__":
     main()
@@ -933,7 +933,7 @@ import re
 from pathlib import Path
 
 def check_risk(operation: str, target: str) -> dict:
-    """Assess risk level"""
+    """リスク評価"""
     risk_patterns = {
         'high': [r'rm\s+-rf', r'sudo', r'format', r'dd\s+if='],
         'medium': [r'git\s+push\s+--force', r'merge', r'reset'],
@@ -948,14 +948,14 @@ def check_risk(operation: str, target: str) -> dict:
     return {'level': 'safe'}
 
 def validate_tags(file_path: str) -> list:
-    """Validate TAG presence"""
+    """TAG欠落検証"""
     if not file_path.endswith(('.py', '.js', '.ts', '.md')):
         return []
 
     with open(file_path, 'r') as f:
         content = f.read()
 
-    # Search TAG pattern
+    # TAGパターン検索
     tag_pattern = r'@(SPEC|TEST|CODE|DOC):[A-Z]+-\d+'
     tags = re.findall(tag_pattern, content)
 
@@ -968,26 +968,26 @@ def validate_tags(file_path: str) -> list:
             '.moai/specs': '@SPEC:'
         }.get(file_type, '')
 
-        return [f"⚠️ TAG missing: {file_path} (expected: {expected_tag})"]
+        return [f"⚠️ TAG欠落: {file_path} (期待: {expected_tag})"]
 
     return []
 
 def main():
-    """PreToolUse Hook main logic"""
+    """PreToolUse Hookメインロジック"""
     tool_name = os.environ.get('CLAUDE_TOOL_NAME')
     tool_args = os.environ.get('CLAUDE_TOOL_ARGS', '')
     project_dir = os.environ.get('CLAUDE_PROJECT_DIR')
 
-    # Risk assessment
+    # リスク評価
     risk = check_risk(tool_name, tool_args)
     if risk['level'] in ['high', 'medium']:
-        print(f"⚠️ Risk detected: {risk['level']} - {risk['pattern']}")
+        print(f"⚠️ リスク検出: {risk['level']} - {risk['pattern']}")
         if risk['level'] == 'high':
-            response = input("Continue? (y/N): ")
+            response = input("続行しますか? (y/N): ")
             if response.lower() != 'y':
                 exit(1)
 
-    # TAG validation (when modifying files)
+    # TAG検証（ファイル修正時）
     if tool_name in ['Write', 'Edit']:
         file_path = tool_args.split()[0] if tool_args else ''
         full_path = Path(project_dir) / file_path
@@ -1011,7 +1011,7 @@ import subprocess
 from pathlib import Path
 
 def run_linting(file_path: str) -> dict:
-    """Run automatic linting based on file type"""
+    """ファイルタイプに応じた自動リンティング実行"""
     if file_path.endswith('.py'):
         return run_python_linting(file_path)
     elif file_path.endswith(('.js', '.ts')):
@@ -1022,34 +1022,34 @@ def run_linting(file_path: str) -> dict:
     return {'status': 'skipped', 'reason': 'unsupported_file_type'}
 
 def run_python_linting(file_path: str) -> dict:
-    """Python file linting"""
+    """Pythonファイルリンティング"""
     try:
-        # ruff formatting
+        # ruffフォーマット
         result = subprocess.run(['ruff', 'format', file_path],
                               capture_output=True, text=True)
 
         if result.returncode != 0:
             return {'status': 'error', 'message': result.stderr}
 
-        # ruff linting
+        # ruffリンティング
         result = subprocess.run(['ruff', 'check', '--fix', file_path],
                               capture_output=True, text=True)
 
         if result.returncode != 0:
             return {'status': 'warning', 'message': result.stderr}
 
-        return {'status': 'success', 'message': 'Formatting and linting completed'}
+        return {'status': 'success', 'message': 'フォーマットとリンティング完了'}
 
     except FileNotFoundError:
         return {'status': 'skipped', 'reason': 'ruff_not_installed'}
 
 def run_tests_if_needed(file_path: str) -> dict:
-    """Automatically run related tests"""
+    """関連テストの自動実行"""
     if 'tests' not in file_path:
         return {'status': 'skipped', 'reason': 'not_test_file'}
 
     try:
-        # Run test file
+        # テストファイル実行
         result = subprocess.run(['pytest', file_path, '-v'],
                               capture_output=True, text=True)
 
@@ -1063,7 +1063,7 @@ def run_tests_if_needed(file_path: str) -> dict:
         return {'status': 'skipped', 'reason': 'pytest_not_installed'}
 
 def main():
-    """PostToolUse Hook main logic"""
+    """PostToolUse Hookメインロジック"""
     tool_name = os.environ.get('CLAUDE_TOOL_NAME')
     tool_args = os.environ.get('CLAUDE_TOOL_ARGS', '')
     project_dir = os.environ.get('CLAUDE_PROJECT_DIR')
@@ -1073,26 +1073,26 @@ def main():
         full_path = Path(project_dir) / file_path
 
         if full_path.exists():
-            # Automatic linting
+            # 自動リンティング
             lint_result = run_linting(file_path)
             if lint_result['status'] == 'success':
                 print(f"✨ {lint_result['message']}")
 
-            # Run tests (if test file)
+            # テスト実行（テストファイルの場合）
             if 'tests' in file_path:
                 test_result = run_tests_if_needed(file_path)
                 if test_result['status'] == 'success':
-                    print(f"✅ Tests passed")
+                    print(f"✅ テスト合格")
                 else:
-                    print(f"❌ Tests failed")
+                    print(f"❌ テスト失敗")
 
 if __name__ == "__main__":
     main()
 ```
 
-## Agent Configuration
+## エージェント設定
 
-### AI Model Settings
+### AIモデル設定
 
 ```json
 {
@@ -1125,7 +1125,7 @@ if __name__ == "__main__":
 }
 ```
 
-### Agent-specific Settings
+### エージェント別設定
 
 ```json
 {
@@ -1166,7 +1166,7 @@ if __name__ == "__main__":
 }
 ```
 
-### Expert Agent Settings
+### エキスパートエージェント設定
 
 ```json
 {
@@ -1202,7 +1202,7 @@ if __name__ == "__main__":
 }
 ```
 
-### Agent Optimization Settings
+### エージェント最適化設定
 
 ```json
 {
@@ -1231,9 +1231,9 @@ if __name__ == "__main__":
 }
 ```
 
-## TAG System Configuration
+## TAGシステム設定
 
-### TAG Policy Settings
+### TAGポリシー設定
 
 ```json
 {
@@ -1249,20 +1249,20 @@ if __name__ == "__main__":
       "validate_domain": true
     },
     "domains": {
-      "AUTH": "Authentication and authorization",
-      "USER": "User management",
-      "API": "API endpoints",
-      "DB": "Database",
-      "UI": "User interface",
-      "SEC": "Security",
-      "PERF": "Performance",
-      "DOCS": "Documentation"
+      "AUTH": "認証および認可",
+      "USER": "ユーザー管理",
+      "API": "APIエンドポイント",
+      "DB": "データベース",
+      "UI": "ユーザーインターフェース",
+      "SEC": "セキュリティ",
+      "PERF": "パフォーマンス",
+      "DOCS": "ドキュメント"
     }
   }
 }
 ```
 
-### TAG Generation Rules
+### TAG生成ルール
 
 ```json
 {
@@ -1296,7 +1296,7 @@ if __name__ == "__main__":
 }
 ```
 
-### TAG Validation Settings
+### TAG検証設定
 
 ```python
 # .claude/hooks/alfred/core/tag_validator.py
@@ -1312,20 +1312,20 @@ class TagValidator:
         self.tag_policy = self.config.get('tags', {})
 
     def validate_tag_format(self, tag: str) -> Dict:
-        """Validate TAG format"""
+        """TAG形式検証"""
         pattern = self.tag_policy.get('format', r'@[A-Z]+:[A-Z]+-\d+')
 
         if not re.match(pattern, tag):
             return {
                 'valid': False,
-                'error': f'Invalid format. Expected: {pattern}',
+                'error': f'無効な形式です。期待される形式: {pattern}',
                 'tag': tag
             }
 
         return {'valid': True, 'tag': tag}
 
     def validate_tag_chain(self, project_dir: Path) -> Dict:
-        """Validate TAG chain integrity"""
+        """TAGチェーンの整合性検証"""
         spec_tags = self._find_tags(project_dir, pattern="@SPEC:")
         test_tags = self._find_tags(project_dir, pattern="@TEST:")
         code_tags = self._find_tags(project_dir, pattern="@CODE:")
@@ -1333,7 +1333,7 @@ class TagValidator:
 
         issues = []
 
-        # Check if each SPEC has corresponding TEST, CODE, DOC
+        # 各SPECに対応するTEST、CODE、DOCがあるか確認
         for spec_tag in spec_tags:
             spec_id = self._extract_tag_id(spec_tag)
 
@@ -1342,13 +1342,13 @@ class TagValidator:
             doc_match = any(spec_id in tag for tag in doc_tags)
 
             if not test_match:
-                issues.append(f"Missing TEST tag for {spec_tag}")
+                issues.append(f"{spec_tag}のTESTタグが不足しています")
             if not code_match:
-                issues.append(f"Missing CODE tag for {spec_tag}")
+                issues.append(f"{spec_tag}のCODEタグが不足しています")
             if not doc_match:
-                issues.append(f"Missing DOC tag for {spec_tag}")
+                issues.append(f"{spec_tag}のDOCタグが不足しています")
 
-        # Find orphan TAGs
+        # 孤立TAG検索
         orphan_tags = []
         all_spec_ids = {self._extract_tag_id(tag) for tag in spec_tags}
 
@@ -1365,7 +1365,7 @@ class TagValidator:
         }
 
     def _find_tags(self, directory: Path, pattern: str) -> List[str]:
-        """Search for TAG patterns in directory"""
+        """ディレクトリ内のTAGパターン検索"""
         tags = []
         regex_pattern = re.compile(pattern)
 
@@ -1382,7 +1382,7 @@ class TagValidator:
         return list(set(tags))
 
     def _should_search_file(self, file_path: Path) -> bool:
-        """Determine whether to search file"""
+        """ファイル検索の可否を決定"""
         exclude_patterns = {
             '.git', '__pycache__', 'node_modules', '.venv',
             '.DS_Store', '*.pyc', '*.log'
@@ -1394,14 +1394,14 @@ class TagValidator:
         )
 
     def _extract_tag_id(self, tag: str) -> str:
-        """Extract ID from TAG"""
+        """TAGからIDを抽出"""
         match = re.search(r'@[A-Z]+:([A-Z]+-\d+)', tag)
         return match.group(1) if match else tag
 ```
 
-## TRUST 5 Principles Configuration
+## TRUST 5原則設定
 
-### TRUST Principles Activation
+### TRUST原則の有効化
 
 ```json
 {
@@ -1456,7 +1456,7 @@ class TagValidator:
 }
 ```
 
-### Quality Gate Settings
+### 品質ゲート設定
 
 ```json
 {
@@ -1514,17 +1514,17 @@ class TagValidator:
 }
 ```
 
-## Personalization Settings
+## カスタマイズ設定
 
-### User Profile Settings
+### ユーザープロフィール設定
 
 ```json
 {
   "user_profile": {
-    "name": "User Name",
-    "nickname": "Developer",
+    "name": "ユーザー名",
+    "nickname": "開発者",
     "email": "user@example.com",
-    "timezone": "Asia/Seoul",
+    "timezone": "Asia/Tokyo",
     "preferred_working_hours": {
       "start": "09:00",
       "end": "18:00",
@@ -1533,7 +1533,7 @@ class TagValidator:
     "communication_style": {
       "formality": "casual",
       "verbosity": "detailed",
-      "language": "ko",
+      "language": "ja",
       "include_emoji": true
     },
     "expertise": {
@@ -1551,7 +1551,7 @@ class TagValidator:
 }
 ```
 
-### Shortcuts and Macros Settings
+### ショートカットおよびマクロ設定
 
 ```json
 {
@@ -1569,7 +1569,7 @@ class TagValidator:
       "todo": "// TODO: ",
       "fixme": "// FIXME: ",
       "note": "// NOTE: ",
-      "spec_template": "# `@SPEC:{DOMAIN}-{ID}: {TITLE}\\n\\n## Overview\\n\\n## Requirements\\n\\n## Acceptance Criteria"
+      "spec_template": "# @SPEC:{DOMAIN}-{ID}: {TITLE}\\n\\n## 概要\\n\\n## 要件\\n\\n## 受け入れ基準"
     },
     "workflow_shortcuts": {
       "new_feature": ["qp", "qr", "qs"],
@@ -1580,7 +1580,7 @@ class TagValidator:
 }
 ```
 
-### AI Response Style Settings
+### AI応答スタイル設定
 
 ```json
 {
@@ -1609,9 +1609,9 @@ class TagValidator:
 }
 ```
 
-## Configuration File Backup and Restore
+## 設定ファイルのバックアップと復元
 
-### Automatic Backup Settings
+### 自動バックアップ設定
 
 ```json
 {
@@ -1651,7 +1651,7 @@ class TagValidator:
 }
 ```
 
-### Backup Script
+### バックアップスクリプト
 
 ```bash
 #!/bin/bash
@@ -1664,12 +1664,12 @@ BACKUP_DIR=".moai/backups"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 BACKUP_NAME="config_backup_${TIMESTAMP}"
 
-echo "🔄 Creating configuration backup..."
+echo "🔄 設定バックアップを作成中..."
 
-# Create backup directory
+# バックアップディレクトリ作成
 mkdir -p "${BACKUP_DIR}"
 
-# Backup configuration files
+# 設定ファイルバックアップ
 tar -czf "${BACKUP_DIR}/${BACKUP_NAME}.tar.gz" \
     .moai/config.json \
     .claude/settings.json \
@@ -1679,28 +1679,28 @@ tar -czf "${BACKUP_DIR}/${BACKUP_NAME}.tar.gz" \
     --exclude='.moai/cache/' \
     --exclude='*.log'
 
-# Save backup information
+# バックアップ情報保存
 cat > "${BACKUP_DIR}/${BACKUP_NAME}.info" << EOF
-Backup created: $(date)
-Project: $(basename $PROJECT_DIR)
-Git branch: $(git branch --show-current 2>/dev/null || echo 'N/A')
-Git commit: $(git rev-parse --short HEAD 2>/dev/null || echo 'N/A')
-Files included:
+バックアップ作成日時: $(date)
+プロジェクト: $(basename $PROJECT_DIR)
+Gitブランチ: $(git branch --show-current 2>/dev/null || echo 'N/A')
+Gitコミット: $(git rev-parse --short HEAD 2>/dev/null || echo 'N/A')
+含まれるファイル:
 - .moai/config.json
 - .claude/settings.json
 - .moai/project/
 - .moai/memory/
 EOF
 
-echo "✅ Backup created: ${BACKUP_DIR}/${BACKUP_NAME}.tar.gz"
+echo "✅ バックアップ作成完了: ${BACKUP_DIR}/${BACKUP_NAME}.tar.gz"
 
-# Clean up old backups
+# 古いバックアップのクリーンアップ
 cd "${BACKUP_DIR}"
 ls -t config_backup_*.tar.gz | tail -n +11 | xargs -r rm
-echo "🧹 Old backups cleaned up"
+echo "🧹 古いバックアップをクリーンアップしました"
 ```
 
-### Restore Script
+### 復元スクリプト
 
 ```bash
 #!/bin/bash
@@ -1710,12 +1710,12 @@ set -e
 
 BACKUP_DIR=".moai/backups"
 
-# Display backup list
-echo "📋 Available backups:"
+# バックアップ一覧表示
+echo "📋 利用可能なバックアップ:"
 ls -la "${BACKUP_DIR}"/config_backup_*.tar.gz | nl
 
 if [ $# -eq 0 ]; then
-    echo -n "Select backup number (1-${#BACKUPS}): "
+    echo -n "バックアップ番号を選択してください (1-${#BACKUPS}): "
     read -r SELECTION
 else
     SELECTION=$1
@@ -1724,13 +1724,13 @@ fi
 BACKUP_FILE=$(ls "${BACKUP_DIR}"/config_backup_*.tar.gz | sed -n "${SELECTION}p")
 
 if [ ! -f "$BACKUP_FILE" ]; then
-    echo "❌ Invalid backup selection"
+    echo "❌ 無効なバックアップ選択です"
     exit 1
 fi
 
-echo "🔄 Restoring from: $(basename "$BACKUP_FILE")"
+echo "🔄 復元中: $(basename "$BACKUP_FILE")"
 
-# Backup current configuration
+# 現在の設定をバックアップ
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 PRE_RESTORE_BACKUP="pre_restore_${TIMESTAMP}"
 tar -czf "${BACKUP_DIR}/${PRE_RESTORE_BACKUP}.tar.gz" \
@@ -1740,16 +1740,16 @@ tar -czf "${BACKUP_DIR}/${PRE_RESTORE_BACKUP}.tar.gz" \
     .moai/memory/ \
     2>/dev/null || true
 
-# Execute restore
+# 復元実行
 tar -xzf "$BACKUP_FILE" -C .
 
-echo "✅ Configuration restored"
-echo "💾 Pre-restore backup: ${PRE_RESTORE_BACKUP}.tar.gz"
+echo "✅ 設定を復元しました"
+echo "💾 復元前バックアップ: ${PRE_RESTORE_BACKUP}.tar.gz"
 ```
 
-## Configuration Optimization Strategies
+## 設定最適化戦略
 
-### Performance Optimization
+### パフォーマンス最適化
 
 ```json
 {
@@ -1777,7 +1777,7 @@ echo "💾 Pre-restore backup: ${PRE_RESTORE_BACKUP}.tar.gz"
 }
 ```
 
-### Cost Optimization
+### コスト最適化
 
 ```json
 {
@@ -1808,7 +1808,7 @@ echo "💾 Pre-restore backup: ${PRE_RESTORE_BACKUP}.tar.gz"
 }
 ```
 
-### Workflow Optimization
+### ワークフロー最適化
 
 ```json
 {
@@ -1830,78 +1830,78 @@ echo "💾 Pre-restore backup: ${PRE_RESTORE_BACKUP}.tar.gz"
 }
 ```
 
-## Troubleshooting
+## トラブルシューティング
 
-### Common Configuration Issues
+### 一般的な設定問題
 
-#### 1. Configuration File Corruption
+#### 1. 設定ファイルの破損
 
-**Symptom**:
+**症状**:
 
 ```
 Error: Invalid JSON in .moai/config.json
 ```
 
-**Solution**:
+**解決**:
 
 ```bash
-# Restore from backup
+# バックアップから復元
 ./restore-config.sh
 
-# Or regenerate with defaults
+# またはデフォルト値で再生成
 moai-adk init . --restore-config
 ```
 
-#### 2. Permission Issues
+#### 2. 権限問題
 
-**Symptom**:
+**症状**:
 
 ```
 Permission denied: .claude/settings.json
 ```
 
-**Solution**:
+**解決**:
 
 ```bash
-# Fix permissions
+# 権限修正
 chmod 644 .moai/config.json
 chmod 644 .claude/settings.json
 
-# Check ownership
+# 所有者確認
 ls -la .moai/ .claude/
 ```
 
-#### 3. Hooks Not Working
+#### 3. Hook動作不良
 
-**Symptom**:
+**症状**:
 
 ```
 Hooks not responding
 ```
 
-**Solution**:
+**解決**:
 
 ```bash
-# Check hook scripts
+# Hookスクリプト確認
 ls -la .claude/hooks/alfred/
 chmod +x .claude/hooks/alfred/*.py
 
-# Restart Claude Code
+# Claude Code再起動
 exit
 claude
 ```
 
-### Configuration Diagnostics Tool
+### 設定診断ツール
 
 ```bash
 #!/bin/bash
 # diagnose-config.sh
 
-echo "🔍 MoAI-ADK Configuration Diagnostics"
+echo "🔍 MoAI-ADK設定診断"
 echo "======================================"
 
-# 1. Check essential files exist
-echo "📁 Checking essential files..."
+# 1. 基本ファイル存在確認
+echo "📁 必須ファイルを確認中..."
 files=(
     ".moai/config.json"
     ".claude/settings.json"
@@ -1911,68 +1911,68 @@ files=(
 
 for file in "${files[@]}"; do
     if [ -f "$file" ]; then
-        echo "✅ $file exists"
+        echo "✅ $file 存在"
     else
-        echo "❌ $file missing"
+        echo "❌ $file 不足"
     fi
 done
 
-# 2. Validate JSON files
-echo -e "\n📋 Validating JSON files..."
+# 2. JSON妥当性検査
+echo -e "\n📋 JSONファイルを検証中..."
 for json_file in .moai/config.json .claude/settings.json; do
     if [ -f "$json_file" ]; then
         if python3 -c "import json; json.load(open('$json_file'))" 2>/dev/null; then
-            echo "✅ $json_file is valid JSON"
+            echo "✅ $json_file は有効なJSON"
         else
-            echo "❌ $json_file has invalid JSON"
+            echo "❌ $json_file は無効なJSON"
         fi
     fi
 done
 
-# 3. Check permissions
-echo -e "\n🔐 Checking permissions..."
+# 3. 権限確認
+echo -e "\n🔐 権限を確認中..."
 for file in .moai/config.json .claude/settings.json; do
     if [ -f "$file" ]; then
         permissions=$(stat -f "%Lp" "$file" 2>/dev/null || stat -c "%a" "$file" 2>/dev/null)
         if [ "$permissions" = "644" ]; then
-            echo "✅ $file has correct permissions ($permissions)"
+            echo "✅ $file の権限は正しい ($permissions)"
         else
-            echo "⚠️ $file has unusual permissions ($permissions)"
+            echo "⚠️  $file の権限が異常 ($permissions)"
         fi
     fi
 done
 
-# 4. Check hook scripts
-echo -e "\n🪝 Checking hooks..."
+# 4. Hookスクリプト確認
+echo -e "\n🪝 Hookを確認中..."
 if [ -f ".claude/hooks/alfred/alfred_hooks.py" ]; then
     if [ -x ".claude/hooks/alfred/alfred_hooks.py" ]; then
-        echo "✅ Hook script is executable"
+        echo "✅ Hookスクリプトは実行可能"
     else
-        echo "❌ Hook script is not executable"
-        echo "   Run: chmod +x .claude/hooks/alfred/alfred_hooks.py"
+        echo "❌ Hookスクリプトが実行不可"
+        echo "   実行: chmod +x .claude/hooks/alfred/alfred_hooks.py"
     fi
 else
-    echo "❌ Hook script missing"
+    echo "❌ Hookスクリプトが不足"
 fi
 
-# 5. Check version compatibility
-echo -e "\n🔍 Checking version compatibility..."
+# 5. バージョン互換性確認
+echo -e "\n🔍 バージョン互換性を確認中..."
 if [ -f ".moai/config.json" ]; then
     moai_version=$(python3 -c "import json; print(json.load(open('.moai/config.json')).get('moai', {}).get('version', 'unknown'))" 2>/dev/null)
-    echo "📦 MoAI-ADK version in config: $moai_version"
+    echo "📦 設定ファイルのMoAI-ADKバージョン: $moai_version"
 
     current_version=$(moai-adk --version 2>/dev/null | cut -d' ' -f3 || echo "unknown")
-    echo "📦 Installed MoAI-ADK version: $current_version"
+    echo "📦 インストール済みMoAI-ADKバージョン: $current_version"
 
     if [ "$moai_version" != "$current_version" ] && [ "$moai_version" != "unknown" ] && [ "$current_version" != "unknown" ]; then
-        echo "⚠️ Version mismatch detected"
-        echo "   Run: moai-adk update"
+        echo "⚠️  バージョン不一致を検出"
+        echo "   実行: moai-adk update"
     fi
 fi
 
-echo -e "\n🎯 Diagnostics complete!"
+echo -e "\n🎯 診断完了!"
 ```
 
 ---
 
-This guide helps you understand and optimize all settings for MoAI-ADK projects. Since configuration plays a critical role in project success, it's recommended to review and adjust settings regularly as needed.
+このガイドを通じて、MoAI-ADKプロジェクトのすべての設定を理解し、最適化することができます。設定はプロジェクトの成功に重要な役割を果たすため、定期的にレビューし、必要に応じて調整することをお勧めします。

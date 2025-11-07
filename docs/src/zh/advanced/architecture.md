@@ -1,6 +1,6 @@
-# 核心架构: Alfred混合系统
+# 核心架构：Alfred 混合系统
 
-深入理解MoAI-ADK的核心——Alfred超级代理的架构。
+深入理解 MoAI-ADK 核心 Alfred 超级代理的架构。
 
 ## 🏗️ 整体结构
 
@@ -13,7 +13,7 @@
 └────────────────┬────────────────────────────┘
                  │
 ┌────────────────▼────────────────────────────┐
-│        Sub-agents (19人团队)                │
+│        Sub-agents (19人团队)                 │
 │   (Deep reasoning & Decision making)        │
 └────────────────┬────────────────────────────┘
                  │
@@ -30,241 +30,241 @@
 
 ______________________________________________________________________
 
-## 🎭 Alfred超级代理
+## 🎭 Alfred SuperAgent（超级代理）
 
-Alfred是协调**SPEC → TDD → Sync**工作流的中央协调器。
+Alfred 是协调 **SPEC → TDD → Sync** 工作流的中央协调者。
 
 ### 核心特性
 
-| 特性 | 描述 |
-| --- | --- |
-| **自主性** | 理解用户意图并独立决策 |
-| **推理能力** | 将复杂任务分解为具体步骤 |
-| **团队协调** | 优化配置19名专家 |
-| **学习能力** | 从会话日志持续改进 |
-| **透明度** | 所有决策可追溯记录 |
+| 特性       | 说明                       |
+| ---------- | -------------------------- |
+| **自主性** | 理解用户意图并独立决策     |
+| **推理能力** | 将复杂任务分解为步骤       |
+| **团队协调** | 优化配置 19 名专家         |
+| **学习**   | 从会话日志中持续改进       |
+| **透明性** | 所有决策可追溯记录         |
 
 ______________________________________________________________________
 
-## 👥 19人团队结构
+## 👥 19 人团队结构
 
-### 10个核心Sub-agents
+### 10 个核心 Sub-agents
 
-| Agent | 角色 | 激活条件 |
-| --- | --- | --- |
-| **project-manager** | 项目初始化与配置 | `/alfred:0-project` |
-| **spec-builder** | SPEC编写 (EARS语法) | `/alfred:1-plan` |
-| **implementation-planner** | 架构与实现规划 | `/alfred:2-run` 开始 |
-| **tdd-implementer** | RED→GREEN→REFACTOR执行 | `/alfred:2-run` 期间 |
-| **doc-syncer** | 文档自动生成与同步 | `/alfred:3-sync` |
-| **tag-agent** | TAG验证与可追溯性管理 | `/alfred:3-sync` |
-| **git-manager** | Git工作流自动化 | 所有阶段 |
-| **trust-checker** | TRUST 5原则验证 | `/alfred:2-run` 完成 |
-| **quality-gate** | 发布准备状态检查 | `/alfred:3-sync` |
-| **debug-helper** | 错误分析与解决 | 需要时自动激活 |
+| Agent                      | 角色                     | 激活条件          |
+| -------------------------- | ------------------------ | ----------------- |
+| **project-manager**        | 项目初始化和配置         | `/alfred:0-project`  |
+| **spec-builder**           | SPEC 编写（EARS 语法）   | `/alfred:1-plan`     |
+| **implementation-planner** | 架构和实现计划           | `/alfred:2-run` 开始 |
+| **tdd-implementer**        | RED→GREEN→REFACTOR 执行  | `/alfred:2-run` 中   |
+| **doc-syncer**             | 文档自动生成和同步       | `/alfred:3-sync`     |
+| **tag-agent**              | TAG 验证和可追溯性管理   | `/alfred:3-sync`     |
+| **git-manager**            | Git 工作流自动化         | 所有阶段          |
+| **trust-checker**          | TRUST 5 原则验证         | `/alfred:2-run` 完成 |
+| **quality-gate**           | 发布准备状态确认         | `/alfred:3-sync`     |
+| **debug-helper**           | 错误分析和解决           | 需要时自动激活    |
 
-### 6个专家Agents
+### 6 个专家 Agents
 
-| Expert | 领域 | 激活条件 |
-| --- | --- | --- |
-| **backend-expert** | API, 服务器, DB架构 | SPEC中有服务器/API关键字 |
-| **frontend-expert** | UI, 状态管理, 性能 | SPEC中有前端关键字 |
-| **devops-expert** | 部署, CI/CD, 基础设施 | SPEC中有部署关键字 |
-| **ui-ux-expert** | 设计系统, 可访问性 | SPEC中有设计关键字 |
-| **security-expert** | 安全分析, 漏洞诊断 | SPEC中有安全关键字 |
-| **database-expert** | DB设计, 优化, 迁移 | SPEC中有DB关键字 |
+| Expert              | 领域                      | 激活条件              |
+| ------------------- | ------------------------- | --------------------- |
+| **backend-expert**  | API、服务器、DB 架构      | SPEC 中有服务器/API 关键词 |
+| **frontend-expert** | UI、状态管理、性能        | SPEC 中有前端关键词   |
+| **devops-expert**   | 部署、CI/CD、基础设施     | SPEC 中有部署关键词   |
+| **ui-ux-expert**    | 设计系统、可访问性        | SPEC 中有设计关键词   |
+| **security-expert** | 安全分析、漏洞诊断        | SPEC 中有安全关键词   |
+| **database-expert** | DB 设计、优化、迁移       | SPEC 中有 DB 关键词   |
 
-### 2个内置Agents (Claude)
+### 2 个内置 Agents（Claude）
 
-- **Claude Opus/Sonnet**: 需要复杂推理时
-- **Claude Haiku**: 轻量级任务
+- **Claude Opus/Sonnet**：需要复杂推理时
+- **Claude Haiku**：轻量级任务
 
 ______________________________________________________________________
 
 ## 🧠 混合模式
 
-### Lead-Specialist模式
+### Lead-Specialist 模式
 
 专业领域专家支持主导代理。
 
 ```
 用户请求
     ↓
-Alfred (Lead)
-    ├─→ 检测到前端关键字
-    │   └─→ 激活 frontend-expert (Specialist)
-    ├─→ 检测到数据库关键字
-    │   └─→ 激活 database-expert (Specialist)
-    └─→ 检测到安全关键字
-        └─→ 激活 security-expert (Specialist)
+Alfred（Lead）
+    ├─→ 检测前端关键词
+    │   └─→ 激活 frontend-expert（Specialist）
+    ├─→ 检测数据库关键词
+    │   └─→ 激活 database-expert（Specialist）
+    └─→ 检测安全关键词
+        └─→ 激活 security-expert（Specialist）
 ```
 
-**使用场景**:
+**使用场景**：
 
-- 需要UI组件设计 → UI/UX Expert
-- DB性能优化 → Database Expert
+- 需要 UI 组件设计 → UI/UX Expert
+- DB 性能优化 → Database Expert
 - 安全审查 → Security Expert
 
-### Master-Clone模式
+### Master-Clone 模式
 
-大规模工作由Alfred的克隆体并行处理。
+大规模工作由 Alfred 的副本并行处理。
 
 ```
-大规模工作 (100+ 文件, 5+ 步骤)
+大规模工作（100+ 文件，5+ 步骤）
     ↓
-Master Alfred (协调)
-    ├─→ Clone-1: 重构模块A
-    ├─→ Clone-2: 重构模块B
-    └─→ Clone-3: 重构模块C
+Master Alfred（协调）
+    ├─→ Clone-1：重构模块 A
+    ├─→ Clone-2：重构模块 B
+    └─→ Clone-3：重构模块 C
     ↓
-合并与集成结果
+合并结果并集成
 ```
 
-**使用场景**:
+**使用场景**：
 
-- 大规模迁移 (v1.0 → v2.0)
+- 大规模迁移（v1.0 → v2.0）
 - 整体架构重构
 - 多领域并行工作
 
 ______________________________________________________________________
 
-## 🎯 四步工作流
+## 🎯 4 步工作流
 
-### 第一阶段: 意图理解 (Intent Understanding)
+### 阶段 1：意图理解（Intent Understanding）
 
 ```
 用户请求 → 评估清晰度
-├─ 清晰: 进入第二阶段
-└─ 不清晰: AskUserQuestion → 用户响应 → 进入第二阶段
+├─ 清晰：进入阶段 2
+└─ 不清晰：AskUserQuestion → 用户响应 → 进入阶段 2
 ```
 
-**Alfred的角色**:
+**Alfred 的角色**：
 
-- 分析并分类请求
+- 分析和分类请求
 - 必要时收集额外信息
 - 确定工作范围
 
-### 第二阶段: 制定计划 (Plan Creation)
+### 阶段 2：制定计划（Plan Creation）
 
 ```
-调用Plan Agent
+调用 Plan Agent
     ↓
-├─ 任务分解 (Decomposition)
-├─ 依赖分析 (Dependency Analysis)
-├─ 识别并行化机会 (Parallelization)
-├─ 明确文件列表 (File List)
-└─ 时间估算 (Time Estimation)
+├─ 任务分解（Decomposition）
+├─ 依赖分析（Dependency Analysis）
+├─ 识别并行化机会（Parallelization）
+├─ 明确文件列表（File List）
+└─ 时间估算（Time Estimation）
     ↓
-用户批准 (AskUserQuestion)
+用户批准（AskUserQuestion）
     ↓
-TodoWrite初始化
+初始化 TodoWrite
 ```
 
-### 第三阶段: 任务执行 (Execution)
+### 阶段 3：任务执行（Execution）
 
 ```
-RED阶段
+RED 阶段
 ├─ 编写测试
 └─ 确认全部失败
 
-GREEN阶段
+GREEN 阶段
 ├─ 最小实现
 └─ 确认全部通过
 
-REFACTOR阶段
-├─ 代码改进
-└─ 维护测试
+REFACTOR 阶段
+├─ 改进代码
+└─ 保持测试
 ```
 
-**TDD严格性**:
+**TDD 严格性**：
 
-- RED: 禁止实现代码
-- GREEN: 仅添加最小必要代码
-- REFACTOR: 维护测试
+- RED：禁止实现代码
+- GREEN：只添加最少必需
+- REFACTOR：保持测试
 
-### 第四阶段: 报告与提交 (Report & Commit)
+### 阶段 4：报告和提交（Report & Commit）
 
 ```
-工作完成
+任务完成
     ↓
-├─ 生成文档 (根据生成设置)
-├─ Git提交 (自动)
-├─ 创建PR (团队模式)
+├─ 生成文档（根据生成设置）
+├─ Git 提交（自动）
+├─ 创建 PR（团队模式）
 └─ 清理
 ```
 
 ______________________________________________________________________
 
-## 🔗 TAG系统 (可追溯性)
+## 🔗 TAG 系统（可追溯性）
 
-### TAG链
+### TAG 链
 
 ```
-SPEC-001 (需求)
+SPEC-001（需求）
     ↓
-@TEST:APP-001:* (测试)
+@TEST:APP-001:*（测试）
     ↓
-@CODE:APP-001:* (实现)
+@CODE:APP-001:*（实现）
     ↓
-@DOC:APP-001:* (文档)
+@DOC:APP-001:*（文档）
     ↓
-交叉引用 (完整可追溯性)
+交叉引用（完整可追溯性）
 ```
 
-### 保证可追溯性
+### 确保可追溯性
 
-| 产出物 | TAG | 用途 |
-| --- | --- | --- |
-| SPEC | `SPEC-001` | 需求定义 |
-| 测试 | `@TEST:SPEC-001` | 需求验证 |
+| 工件 | TAG                | 用途     |
+| ---- | ------------------ | -------- |
+| SPEC | `SPEC-001`         | 需求定义 |
+| 测试 | `@TEST:SPEC-001`   | 需求验证 |
 | 代码 | `@CODE:SPEC-001:*` | 实现追踪 |
-| 文档 | `@DOC:SPEC-001` | 文档同步 |
+| 文档 | `@DOC:SPEC-001`    | 文档同步 |
 
 ______________________________________________________________________
 
-## 💡 核心Skill系统
+## 💡 核心技能系统
 
-### 55+个Claude Skills
+### 55+ Claude Skills
 
-Skills遵循**渐进式披露**原则，仅在需要时加载。
+Skills 遵循 **Progressive Disclosure** 原则，仅在需要时加载。
 
-#### 基础Skills (Foundation)
+#### 基础技能（Foundation）
 
-- TRUST 5原则
-- TAG系统
-- SPEC编写方法
-- Git工作流
+- TRUST 5 原则
+- TAG 系统
+- SPEC 编写方法
+- Git 工作流
 
-#### 必备Skills (Essentials)
+#### 必备技能（Essentials）
 
 - 调试
 - 性能优化
 - 重构
 - 测试编写
 
-#### Alfred Skills (Alfred)
+#### Alfred 技能（Alfred）
 
 - 代理指南
 - 工作流
 - 决策原则
 
-#### 领域Skills (Domain)
+#### 领域技能（Domain）
 
 - 数据库
-- 后端API
-- 前端UI
+- 后端 API
+- 前端 UI
 - 安全
 
-#### 语言Skills (Language)
+#### 语言技能（Language）
 
 - Python 3.13+
 - TypeScript 5.7+
 - Go 1.24+
-- 其他20种语言
+- 其他 20 种语言
 
 ______________________________________________________________________
 
-## 🔒 安全机制 (Hooks)
+## 🔒 安全机制（Hooks）
 
 ### SessionStart Hook
 
@@ -275,14 +275,14 @@ ______________________________________________________________________
 ### PreToolUse Hook
 
 - 阻止危险命令
-- 权限验证
+- 验证权限
 - 传递上下文
 
 ### PostToolUse Hook
 
-- 结果分析
-- 错误检测
-- 自动修复建议
+- 分析结果
+- 检测错误
+- 建议自动修复
 
 ______________________________________________________________________
 
@@ -290,56 +290,56 @@ ______________________________________________________________________
 
 ### 预期执行时间
 
-| 阶段 | 平均时间 | 范围 |
-| --- | --- | --- |
-| 意图理解 | 1分钟 | 1-5分钟 |
-| 制定计划 | 2分钟 | 1-5分钟 |
-| RED阶段 | 3分钟 | 1-10分钟 |
-| GREEN阶段 | 5分钟 | 2-15分钟 |
-| REFACTOR阶段 | 5分钟 | 2-15分钟 |
-| 同步 | 2分钟 | 1-5分钟 |
-| **总计** | **18分钟** | **8-55分钟** |
+| 阶段        | 平均时间 | 范围       |
+| ----------- | -------- | ---------- |
+| 意图理解    | 1分钟    | 1-5分钟    |
+| 制定计划    | 2分钟    | 1-5分钟    |
+| RED 阶段    | 3分钟    | 1-10分钟   |
+| GREEN 阶段  | 5分钟    | 2-15分钟   |
+| REFACTOR 阶段 | 5分钟  | 2-15分钟   |
+| 同步        | 2分钟    | 1-5分钟    |
+| **总计**    | **18分钟** | **8-55分钟** |
 
 ### 生产力提升
 
-传统开发 vs MoAI-ADK:
+传统开发 vs MoAI-ADK：
 
-| 指标 | 传统 | MoAI-ADK | 改进率 |
-| --- | --- | --- | --- |
-| 开发速度 | 100% | 250% | **+150%** |
-| Bug减少 | 100% | 20% | **-80%** |
-| 文档时间 | 100% | 10% | **-90%** |
-| 测试覆盖率 | 60% | 95% | **+35%** |
+| 指标         | 传统 | MoAI-ADK | 提升      |
+| ------------ | ---- | -------- | --------- |
+| 开发速度     | 100% | 250%     | **+150%** |
+| 减少 Bug     | 100% | 20%      | **-80%**  |
+| 文档编写时间 | 100% | 10%      | **-90%**  |
+| 测试覆盖率   | 60%  | 95%      | **+35%**  |
 
 ______________________________________________________________________
 
 ## 🚀 可扩展性
 
-### 水平扩展 (Horizontal)
+### 横向扩展（Horizontal）
 
-通过Master-Clone模式实现无限并行化:
+Master-Clone 模式实现无限并行化：
 
-- 10个模块同时开发
-- 100+文件同时修改
-- 重写与迁移
+- 10 个模块同时开发
+- 100+ 文件同时修改
+- 重写和迁移
 
-### 垂直扩展 (Vertical)
+### 纵向扩展（Vertical）
 
-集成额外专家代理:
+集成额外专家代理：
 
-- 添加新领域专家
-- 扩展自定义Skills
+- 添加新的领域专家
+- 扩展自定义 Skills
 - 团队规模无限制
 
 ______________________________________________________________________
 
-## 📚 下一步学习
+## 📚 后续学习
 
-- [Alfred工作流](../guides/alfred/index.md) - 四步详细指南
-- [SPEC编写](../guides/specs/basics.md) - 掌握EARS语法
-- [TDD实现](../guides/tdd/index.md) - RED-GREEN-REFACTOR
-- [TAG系统](../guides/specs/tags.md) - 完整可追溯性
+- [Alfred 工作流](../guides/alfred/index.md) - 4 步详细指南
+- [SPEC 编写](../guides/specs/basics.md) - 掌握 EARS 语法
+- [TDD 实现](../guides/tdd/index.md) - RED-GREEN-REFACTOR
+- [TAG 系统](../guides/specs/tags.md) - 完整可追溯性
 
 ______________________________________________________________________
 
-**有疑问?** 访问[在线文档门户](https://adk.mo.ai.kr)。
+**有疑问？** 访问[在线文档门户](https://adk.mo.ai.kr)。

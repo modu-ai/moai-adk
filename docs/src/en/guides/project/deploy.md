@@ -1,52 +1,50 @@
-# 배포 완전 가이드
+# Complete Deployment Guide
 
-MoAI-ADK 프로젝트의 배포 과정을 포괄적으로 다루는 가이드입니다. Docker 컨테이너 배포부터 클라우드 서비스, CI/CD 파이프라인 구축까지 다양한 배포 환경과 현대적인
-DevOps 관행을 상세하게 설명합니다.
+A comprehensive guide covering the deployment process for MoAI-ADK projects. This document details everything from Docker container deployment to cloud services and CI/CD pipeline construction, explaining various deployment environments and modern DevOps practices.
 
-## 목차
+## Table of Contents
 
-01. [개요](#%EA%B0%9C%EC%9A%94)
-02. [배포 아키텍처](#%EB%B0%B0%ED%8F%AC-%EC%95%84%ED%82%A4%ED%85%8D%EC%B2%98)
-03. [Docker 컨테이너 배포](#docker-%EC%BB%A8%ED%85%8C%EC%9D%B4%EB%84%88-%EB%B0%B0%ED%8F%AC)
-04. [클라우드 플랫폼 배포](#%ED%81%B4%EB%9D%BC%EC%9A%B0%EB%93%9C-%ED%94%8C%EB%9E%AB%ED%8F%BC-%EB%B0%B0%ED%8F%AC)
-05. [CI/CD 파이프라인 구축](#cicd-%ED%8C%8C%EC%9D%B4%ED%94%84%EB%9D%BC%EC%9D%B8-%EA%B5%AC%EC%B6%95)
-06. [환경별 배포 전략](#%ED%99%98%EA%B2%BD%EB%B3%84-%EB%B0%B0%ED%8F%AC-%EC%A0%84%EB%9E%B5)
-07. [롤아웃 전략](#%EB%A1%A4%EC%95%84%EC%9B%83-%EC%A0%84%EB%9E%B5)
-08. [모니터링과 로깅](#%EB%AA%A8%EB%8B%88%ED%84%B0%EB%A7%81%EA%B3%BC-%EB%A1%9C%EA%B9%85)
-09. [보안 및 규제 준수](#%EB%B3%B4%EC%95%88-%EB%B0%8F-%EA%B7%9C%EC%A0%9C-%EC%A4%80%EC%88%98)
-10. [배포 자동화](#%EB%B0%B0%ED%8F%AC-%EC%9E%90%EB%8F%99%ED%99%94)
-11. [성능 최적화](#%EC%84%B1%EB%8A%A5-%EC%B5%9C%EC%A0%81%ED%99%94)
-12. [문제 해결 및 복구](#%EB%AC%B8%EC%A0%9C-%ED%95%B4%EA%B2%B0-%EB%B0%8F-%EB%B3%B5%EA%B5%AC)
-13. [모범 사례](#%EB%AA%A8%EB%B2%94-%EC%82%AC%EB%A1%80)
+01. [Overview](#overview)
+02. [Deployment Architecture](#deployment-architecture)
+03. [Docker Container Deployment](#docker-container-deployment)
+04. [Cloud Platform Deployment](#cloud-platform-deployment)
+05. [CI/CD Pipeline Construction](#cicd-pipeline-construction)
+06. [Environment-Specific Deployment Strategies](#environment-specific-deployment-strategies)
+07. [Rollout Strategies](#rollout-strategies)
+08. [Monitoring and Logging](#monitoring-and-logging)
+09. [Security and Compliance](#security-and-compliance)
+10. [Deployment Automation](#deployment-automation)
+11. [Performance Optimization](#performance-optimization)
+12. [Troubleshooting and Recovery](#troubleshooting-and-recovery)
+13. [Best Practices](#best-practices)
 
-## 개요
+## Overview
 
-MoAI-ADK 프로젝트의 배포는 단순히 코드를 서버에 올리는 것을 넘어, 안정적이고 확장 가능하며 안전한 시스템을 구축하는 과정입니다. Alfred의 SPEC-first 개발
-방식은 배포 과정에서도 일관성과 추적성을 보장합니다.
+Deploying a MoAI-ADK project goes beyond simply uploading code to a server—it's about building a stable, scalable, and secure system. Alfred's SPEC-first development approach ensures consistency and traceability throughout the deployment process.
 
-### 배포 시스템의 핵심 원칙
+### Core Principles of Deployment Systems
 
-1. **Automation First**: 모든 배포 과정은 자동화되어야 함
-2. **Zero Downtime**: 사용자에게 서비스 중단이 없어야 함
-3. **Rollback Ready**: 언제든지 이전 버전으로 롤백 가능해야 함
-4. **Observable**: 배포 상태와 시스템 건강 상태를 실시간으로 파악 가능해야 함
-5. **Secure**: 배포 과정 전체가 보안 규정을 준수해야 함
+1. **Automation First**: All deployment processes must be automated
+2. **Zero Downtime**: No service interruptions for users
+3. **Rollback Ready**: Must be able to rollback to previous versions at any time
+4. **Observable**: Real-time visibility into deployment status and system health
+5. **Secure**: The entire deployment process must comply with security regulations
 
-### MoAI-ADK 배포의 특징
+### MoAI-ADK Deployment Features
 
-- **SPEC-Driven Deployment**: SPEC 문서를 기반으로 한 배포 계획
-- **TAG-Based Tracking**: 배포된 모든 구성요소의 TAG 추적
-- **Automated Quality Gates**: 배포 전 자동 품질 검증
-- **Progressive Deployment**: 점진적 배포 지원
-- **Environment Consistency**: 모든 환경의 일관성 보장
+- **SPEC-Driven Deployment**: Deployment planning based on SPEC documents
+- **TAG-Based Tracking**: TAG tracking for all deployed components
+- **Automated Quality Gates**: Automated quality verification before deployment
+- **Progressive Deployment**: Support for gradual deployment
+- **Environment Consistency**: Ensuring consistency across all environments
 
-## 배포 아키텍처
+## Deployment Architecture
 
-### 현대적인 배포 아키텍처
+### Modern Deployment Architecture
 
 ```mermaid
 graph TD
-    A[개발자] --> B[Git Push]
+    A[Developer] --> B[Git Push]
     B --> C[CI/CD Pipeline]
     C --> D[Build & Test]
     D --> E[Security Scan]
@@ -63,11 +61,11 @@ graph TD
     O --> P[Alerting]
 ```
 
-### MoAI-ADK 배포 워크플로우
+### MoAI-ADK Deployment Workflow
 
 ```mermaid
 sequenceDiagram
-    participant Dev as 개발자
+    participant Dev as Developer
     participant Git as Git Repository
     participant CI as CI/CD Pipeline
     participant QA as Quality Gate
@@ -77,7 +75,7 @@ sequenceDiagram
     Dev->>Git: /alfred:3-sync
     Git->>CI: Trigger Pipeline
     CI->>CI: Build Application
-    CI->>CI: Run Tests (TRUST 검증)
+    CI->>CI: Run Tests (TRUST verification)
     CI->>QA: Quality Gate Check
     QA->>CI: Pass/Fail
     CI->>Deploy: Create Docker Image
@@ -89,84 +87,68 @@ sequenceDiagram
     Deploy->>Dev: Deployment Report
 ```
 
-## Docker 컨테이너 배포
+## Docker Container Deployment
 
-### 기본 Dockerfile 설정
+### Basic Dockerfile Configuration
 
-MoAI-ADK 프로젝트를 위한 최적화된 Dockerfile:
+Optimized Dockerfile for MoAI-ADK projects:
 
 ```dockerfile
 # Multi-stage build for production optimization
 FROM python:3.13-slim as builder
 
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV PIP_NO_CACHE_DIR=1
-ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+# Set working directory
+WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    build-essential \
-    curl \
+    gcc \
+    g++ \
+    make \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv for fast package management
-RUN pip install uv
-
-# Create virtual environment
-RUN uv venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-
-# Copy dependency files
+# Install Python dependencies
 COPY pyproject.toml uv.lock ./
-
-# Install dependencies
-RUN uv pip install --system -e .
+RUN pip install --no-cache-dir uv && \
+    uv pip install --system --no-cache -r <(uv pip compile pyproject.toml)
 
 # Production stage
-FROM python:3.13-slim as production
+FROM python:3.13-slim
 
-# Create non-root user
-RUN groupadd -r appuser && useradd -r -g appuser appuser
+WORKDIR /app
 
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV PATH="/opt/venv/bin:$PATH"
-
-# Install runtime dependencies
+# Install runtime dependencies only
 RUN apt-get update && apt-get install -y \
-    curl \
+    libpq5 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy virtual environment from builder stage
-COPY --from=builder /opt/venv /opt/venv
+# Copy installed packages from builder
+COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy application code
-WORKDIR /app
-COPY src/ ./src/
-COPY .moai/ ./.moai/
-COPY CLAUDE.md ./
+COPY . .
 
-# Set ownership
-RUN chown -R appuser:appuser /app
+# Create non-root user
+RUN useradd -m -u 1000 appuser && \
+    chown -R appuser:appuser /app
 USER appuser
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD python -c "import requests; requests.get('http://localhost:8000/health')"
 
 # Expose port
 EXPOSE 8000
 
-# Run application
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Start application
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
-### Docker Compose 설정
+### Docker Compose Configuration
 
-#### 개발 환경용 Docker Compose
+#### Development Environment
 
 ```yaml
 # docker-compose.dev.yml
@@ -176,33 +158,32 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile
-      target: builder
+      dockerfile: Dockerfile.dev
+    volumes:
+      - .:/app
+      - /app/.venv  # Exclude virtual environment
     ports:
       - "8000:8000"
     environment:
+      - ENVIRONMENT=development
       - DEBUG=true
-      - DATABASE_URL=postgresql://postgres:password@db:5432/myapp_dev
+      - DATABASE_URL=postgresql://dev:devpass@db:5432/moai_dev
       - REDIS_URL=redis://redis:6379/0
-    volumes:
-      - ./src:/app/src
-      - ./.moai:/app/.moai
-      - ./CLAUDE.md:/app/CLAUDE.md
     depends_on:
       - db
       - redis
-    command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
   db:
-    image: postgres:15
+    image: postgres:16-alpine
     environment:
-      - POSTGRES_DB=myapp_dev
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=password
-    ports:
-      - "5432:5432"
+      - POSTGRES_USER=dev
+      - POSTGRES_PASSWORD=devpass
+      - POSTGRES_DB=moai_dev
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
 
   redis:
     image: redis:7-alpine
@@ -211,31 +192,30 @@ services:
     volumes:
       - redis_data:/data
 
-  nginx:
-    image: nginx:alpine
+  mailhog:
+    image: mailhog/mailhog:latest
     ports:
-      - "80:80"
-    volumes:
-      - ./nginx/dev.conf:/etc/nginx/nginx.conf
-    depends_on:
-      - app
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
 
 volumes:
   postgres_data:
   redis_data:
 ```
 
-#### 프로덕션 환경용 Docker Compose
+#### Staging Environment
 
 ```yaml
-# docker-compose.prod.yml
+# docker-compose.staging.yml
 version: '3.8'
 
 services:
   app:
-    image: ${REGISTRY}/myapp:${VERSION}
-    restart: unless-stopped
+    image: ${DOCKER_REGISTRY}/moai-adk:${VERSION}
+    ports:
+      - "8000:8000"
     environment:
+      - ENVIRONMENT=staging
       - DEBUG=false
       - DATABASE_URL=${DATABASE_URL}
       - REDIS_URL=${REDIS_URL}
@@ -243,130 +223,239 @@ services:
     depends_on:
       - db
       - redis
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+    volumes:
+      - postgres_staging:/var/lib/postgresql/data
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_staging:/data
+    command: redis-server --appendonly yes
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - app
+
+volumes:
+  postgres_staging:
+  redis_staging:
+```
+
+#### Production Environment
+
+```yaml
+# docker-compose.prod.yml
+version: '3.8'
+
+services:
+  app:
+    image: ${DOCKER_REGISTRY}/moai-adk:${VERSION}
+    environment:
+      - ENVIRONMENT=production
+      - DEBUG=false
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - SECRET_KEY=${SECRET_KEY}
+      - SENTRY_DSN=${SENTRY_DSN}
+    deploy:
+      replicas: 5
+      update_config:
+        parallelism: 2
+        delay: 10s
+        failure_action: rollback
+        monitor: 30s
+      restart_policy:
+        condition: on-failure
+        max_attempts: 5
+        window: 120s
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-    deploy:
-      replicas: 3
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 512M
-        reservations:
-          cpus: '0.5'
-          memory: 256M
 
   db:
-    image: postgres:15
-    restart: unless-stopped
+    image: postgres:16-alpine
     environment:
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./backups:/backups
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      - postgres_prod:/var/lib/postgresql/data
+    deploy:
+      placement:
+        constraints:
+          - node.labels.type == database
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 4G
 
   redis:
     image: redis:7-alpine
-    restart: unless-stopped
-    command: redis-server --appendonly yes
     volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      - redis_prod:/data
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    deploy:
+      placement:
+        constraints:
+          - node.labels.type == cache
 
   nginx:
     image: nginx:alpine
-    restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/prod.conf:/etc/nginx/nginx.conf
-      - ./ssl:/etc/nginx/ssl
+      - ./nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - nginx_cache:/var/cache/nginx
     depends_on:
       - app
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
 
 volumes:
-  postgres_data:
-  redis_data:
+  postgres_prod:
+  redis_prod:
+  nginx_cache:
 ```
 
-### Kubernetes 배포 설정
+### Docker Build and Push
 
-#### 네임스페이스 및 ConfigMap
+```bash
+#!/bin/bash
+# scripts/docker-build.sh
+
+set -euo pipefail
+
+VERSION=${1:-latest}
+REGISTRY=${DOCKER_REGISTRY:-docker.io/myorg}
+IMAGE_NAME="moai-adk"
+
+echo "Building Docker image: ${REGISTRY}/${IMAGE_NAME}:${VERSION}"
+
+# Build multi-platform image
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  --tag "${REGISTRY}/${IMAGE_NAME}:${VERSION}" \
+  --tag "${REGISTRY}/${IMAGE_NAME}:latest" \
+  --push \
+  .
+
+echo "Image pushed successfully"
+
+# Scan for vulnerabilities
+docker scout cves "${REGISTRY}/${IMAGE_NAME}:${VERSION}"
+```
+
+## Kubernetes Deployment
+
+### Basic Kubernetes Configuration
+
+#### Namespace
 
 ```yaml
 # k8s/namespace.yaml
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: myapp-prod
+  name: moai-adk
   labels:
-    name: myapp-prod
+    name: moai-adk
     environment: production
+```
 
----
+#### ConfigMap
+
+```yaml
 # k8s/configmap.yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: myapp-config
-  namespace: myapp-prod
+  name: moai-adk-config
+  namespace: moai-adk
 data:
+  ENVIRONMENT: "production"
   DEBUG: "false"
   LOG_LEVEL: "INFO"
-  REDIS_URL: "redis://redis-service:6379/0"
-  SPEC_VERSION: "v1.0.0"
-  TRUST_LEVEL: "strict"
+  DATABASE_HOST: "postgres-service"
+  DATABASE_PORT: "5432"
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
 ```
 
-#### Secret 설정
+#### Secret
 
 ```yaml
 # k8s/secret.yaml
 apiVersion: v1
 kind: Secret
 metadata:
-  name: myapp-secrets
-  namespace: myapp-prod
+  name: moai-adk-secret
+  namespace: moai-adk
 type: Opaque
-data:
-  DATABASE_URL: <base64-encoded-database-url>
-  SECRET_KEY: <base64-encoded-secret-key>
-  JWT_SECRET: <base64-encoded-jwt-secret>
+stringData:
+  DATABASE_URL: "postgresql://user:password@postgres-service:5432/moai_prod"
+  SECRET_KEY: "your-secret-key-here"
+  REDIS_PASSWORD: "your-redis-password"
+  SENTRY_DSN: "https://your-sentry-dsn"
 ```
 
-#### Deployment 설정
+#### Deployment
 
 ```yaml
 # k8s/deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: myapp-deployment
-  namespace: myapp-prod
+  name: moai-adk
+  namespace: moai-adk
   labels:
-    app: myapp
+    app: moai-adk
     version: v1.0.0
-    spec-id: SPEC-DEPLOY-001
 spec:
   replicas: 3
   strategy:
@@ -376,127 +465,188 @@ spec:
       maxUnavailable: 0
   selector:
     matchLabels:
-      app: myapp
+      app: moai-adk
   template:
     metadata:
       labels:
-        app: myapp
+        app: moai-adk
         version: v1.0.0
-        spec-id: SPEC-DEPLOY-001
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
     spec:
+      serviceAccountName: moai-adk
       containers:
-      - name: myapp
-        image: myregistry.com/myapp:v1.0.0
+      - name: moai-adk
+        image: docker.io/myorg/moai-adk:v1.0.0
+        imagePullPolicy: Always
         ports:
         - containerPort: 8000
-        env:
-        - name: DATABASE_URL
-          valueFrom:
-            secretKeyRef:
-              name: myapp-secrets
-              key: DATABASE_URL
-        - name: SECRET_KEY
-          valueFrom:
-            secretKeyRef:
-              name: myapp-secrets
-              key: SECRET_KEY
+          name: http
+          protocol: TCP
         envFrom:
         - configMapRef:
-            name: myapp-config
+            name: moai-adk-config
+        - secretRef:
+            name: moai-adk-secret
         resources:
           requests:
-            memory: "256Mi"
-            cpu: "250m"
-          limits:
             memory: "512Mi"
             cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
         livenessProbe:
           httpGet:
             path: /health
             port: 8000
           initialDelaySeconds: 30
           periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
         readinessProbe:
           httpGet:
             path: /ready
             port: 8000
-          initialDelaySeconds: 5
+          initialDelaySeconds: 10
           periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
         lifecycle:
           preStop:
             exec:
               command: ["/bin/sh", "-c", "sleep 15"]
+      terminationGracePeriodSeconds: 30
 ```
 
-#### Service 및 Ingress 설정
+#### Service
 
 ```yaml
 # k8s/service.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: myapp-service
-  namespace: myapp-prod
+  name: moai-adk-service
+  namespace: moai-adk
   labels:
-    app: myapp
+    app: moai-adk
 spec:
-  selector:
-    app: myapp
-  ports:
-  - protocol: TCP
-    port: 80
-    targetPort: 8000
   type: ClusterIP
+  selector:
+    app: moai-adk
+  ports:
+  - port: 80
+    targetPort: 8000
+    protocol: TCP
+    name: http
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+```
 
----
+#### Ingress
+
+```yaml
 # k8s/ingress.yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: myapp-ingress
-  namespace: myapp-prod
+  name: moai-adk-ingress
+  namespace: moai-adk
   annotations:
-    kubernetes.io/ingress.class: nginx
-    cert-manager.io/cluster-issuer: letsencrypt-prod
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
     nginx.ingress.kubernetes.io/rate-limit: "100"
-    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    nginx.ingress.kubernetes.io/limit-connections: "10"
 spec:
   tls:
   - hosts:
-    - api.myapp.com
-    secretName: myapp-tls
+    - api.moai-adk.example.com
+    secretName: moai-adk-tls
   rules:
-  - host: api.myapp.com
+  - host: api.moai-adk.example.com
     http:
       paths:
       - path: /
         pathType: Prefix
         backend:
           service:
-            name: myapp-service
+            name: moai-adk-service
             port:
               number: 80
 ```
 
-## 클라우드 플랫폼 배포
+#### HorizontalPodAutoscaler
 
-### AWS 배포
+```yaml
+# k8s/hpa.yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: moai-adk-hpa
+  namespace: moai-adk
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: moai-adk
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 30
+      - type: Pods
+        value: 2
+        periodSeconds: 60
+      selectPolicy: Max
+```
 
-#### ECS Fargate 설정
+## Cloud Platform Deployment
+
+### AWS ECS Fargate
+
+#### Task Definition
 
 ```json
 {
-  "family": "myapp-task-definition",
+  "family": "moai-adk",
   "networkMode": "awsvpc",
   "requiresCompatibilities": ["FARGATE"],
-  "cpu": "512",
-  "memory": "1024",
-  "executionRoleArn": "arn:aws:iam::ACCOUNT:role/ecsTaskExecutionRole",
-  "taskRoleArn": "arn:aws:iam::ACCOUNT:role/ecsTaskRole",
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "arn:aws:iam::ACCOUNT_ID:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::ACCOUNT_ID:role/ecsTaskRole",
   "containerDefinitions": [
     {
-      "name": "myapp",
-      "image": "ACCOUNT.dkr.ecr.REGION.amazonaws.com/myapp:v1.0.0",
+      "name": "moai-adk",
+      "image": "ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/moai-adk:VERSION",
       "portMappings": [
         {
           "containerPort": 8000,
@@ -505,21 +655,25 @@ spec:
       ],
       "environment": [
         {
-          "name": "DEBUG",
-          "value": "false"
+          "name": "ENVIRONMENT",
+          "value": "production"
         }
       ],
       "secrets": [
         {
           "name": "DATABASE_URL",
-          "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT:secret:myapp/database-url"
+          "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:moai-adk/database-url"
+        },
+        {
+          "name": "SECRET_KEY",
+          "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:moai-adk/secret-key"
         }
       ],
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
-          "awslogs-group": "/ecs/myapp",
-          "awslogs-region": "us-west-2",
+          "awslogs-group": "/ecs/moai-adk",
+          "awslogs-region": "us-east-1",
           "awslogs-stream-prefix": "ecs"
         }
       },
@@ -535,162 +689,160 @@ spec:
 }
 ```
 
-#### CloudFormation 템플릿
+#### CloudFormation Template
 
 ```yaml
-# cloudformation.yml
+# cloudformation/moai-adk.yaml
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'MoAI-ADK Application Infrastructure'
+Description: 'MoAI-ADK ECS Fargate Deployment'
 
 Parameters:
-  Environment:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC ID
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Subnet IDs for ECS tasks
+  ImageVersion:
     Type: String
-    Default: production
-    AllowedValues: [development, staging, production]
-  Version:
-    Type: String
-    Default: v1.0.0
+    Default: latest
+    Description: Docker image version
 
 Resources:
-  VPC:
-    Type: AWS::EC2::VPC
-    Properties:
-      CidrBlock: 10.0.0.0/16
-      EnableDnsHostnames: true
-      EnableDnsSupport: true
-      Tags:
-        - Key: Name
-          Value: !Sub '${Environment}-myapp-vpc'
-        - Key: Project
-          Value: myapp
-        - Key: SPEC
-          Value: SPEC-INFRA-001
-
-  PublicSubnet1:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      CidrBlock: 10.0.1.0/24
-      AvailabilityZone: !Select [0, !GetAZs '']
-      MapPublicIpOnLaunch: true
-      Tags:
-        - Key: Name
-          Value: !Sub '${Environment}-public-subnet-1'
-
-  PublicSubnet2:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      CidrBlock: 10.0.2.0/24
-      AvailabilityZone: !Select [1, !GetAZs '']
-      MapPublicIpOnLaunch: true
-      Tags:
-        - Key: Name
-          Value: !Sub '${Environment}-public-subnet-2'
-
   ECSCluster:
     Type: AWS::ECS::Cluster
     Properties:
-      ClusterName: !Sub '${Environment}-myapp-cluster'
+      ClusterName: moai-adk-cluster
       CapacityProviders:
         - FARGATE
         - FARGATE_SPOT
       DefaultCapacityProviderStrategy:
         - CapacityProvider: FARGATE
           Weight: 1
+        - CapacityProvider: FARGATE_SPOT
+          Weight: 3
 
   TaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
-      Family: !Sub '${Environment}-myapp'
-      Cpu: 512
-      Memory: 1024
+      Family: moai-adk
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE
-      ExecutionRoleArn: !Ref ECSExecutionRole
-      TaskRoleArn: !Ref ECSTaskRole
+      Cpu: '1024'
+      Memory: '2048'
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt ECSTaskRole.Arn
       ContainerDefinitions:
-        - Name: myapp
-          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/myapp:${Version}'
+        - Name: moai-adk
+          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/moai-adk:${ImageVersion}'
           PortMappings:
             - ContainerPort: 8000
-          Environment:
-            - Name: ENVIRONMENT
-              Value: !Ref Environment
+              Protocol: tcp
           LogConfiguration:
             LogDriver: awslogs
             Options:
-              awslogs-group: !Ref CloudWatchLogsGroup
+              awslogs-group: !Ref LogGroup
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: ecs
 
   Service:
     Type: AWS::ECS::Service
+    DependsOn: LoadBalancerListener
     Properties:
-      ServiceName: !Sub '${Environment}-myapp-service'
+      ServiceName: moai-adk-service
       Cluster: !Ref ECSCluster
       TaskDefinition: !Ref TaskDefinition
-      DesiredCount: 2
+      DesiredCount: 3
       LaunchType: FARGATE
       NetworkConfiguration:
         AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets: !Ref SubnetIds
           SecurityGroups:
-            - !Ref SecurityGroup
-          Subnets:
-            - !Ref PublicSubnet1
-            - !Ref PublicSubnet2
-          AssignPublicIp: ENABLED
+            - !Ref ServiceSecurityGroup
       LoadBalancers:
-        - ContainerName: myapp
+        - ContainerName: moai-adk
           ContainerPort: 8000
           TargetGroupArn: !Ref TargetGroup
+      HealthCheckGracePeriodSeconds: 60
 
   LoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
-      Name: !Sub '${Environment}-myapp-alb'
-      Scheme: internet-facing
+      Name: moai-adk-alb
       Type: application
-      Subnets:
-        - !Ref PublicSubnet1
-        - !Ref PublicSubnet2
+      Scheme: internet-facing
+      Subnets: !Ref SubnetIds
       SecurityGroups:
         - !Ref LoadBalancerSecurityGroup
 
   TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      Name: !Sub '${Environment}-myapp-tg'
-      Port: 80
+      Name: moai-adk-tg
+      Port: 8000
       Protocol: HTTP
-      VpcId: !Ref VPC
-      HealthCheckProtocol: HTTP
-      HealthCheckPort: traffic-port
-      HealthCheckPath: /health
-      Matcher:
-        HttpCode: '200'
+      VpcId: !Ref VpcId
       TargetType: ip
+      HealthCheckPath: /health
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+
+  LoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !Ref Certificate
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+
+  AutoScalingTarget:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    Properties:
+      MaxCapacity: 10
+      MinCapacity: 3
+      ResourceId: !Sub 'service/${ECSCluster}/${Service.Name}'
+      RoleARN: !Sub 'arn:aws:iam::${AWS::AccountId}:role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService'
+      ScalableDimension: ecs:service:DesiredCount
+      ServiceNamespace: ecs
+
+  AutoScalingPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: moai-adk-scaling-policy
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref AutoScalingTarget
+      TargetTrackingScalingPolicyConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ECSServiceAverageCPUUtilization
+        TargetValue: 70.0
+        ScaleInCooldown: 300
+        ScaleOutCooldown: 60
 
 Outputs:
-  LoadBalancerDNS:
-    Description: Load Balancer DNS Name
+  LoadBalancerURL:
+    Description: URL of the load balancer
     Value: !GetAtt LoadBalancer.DNSName
-    Export:
-      Name: !Sub '${Environment}-LoadBalancerDNS'
 ```
 
-### Google Cloud 배포
+### Google Cloud Run
 
-#### Cloud Run 설정
+#### Service Configuration
 
 ```yaml
-# cloudrun.yaml
+# gcloud/service.yaml
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
-  name: myapp
-  namespace: production
+  name: moai-adk
+  namespace: default
   annotations:
     run.googleapis.com/ingress: all
     run.googleapis.com/execution-environment: gen2
@@ -698,54 +850,56 @@ spec:
   template:
     metadata:
       annotations:
-        run.googleapis.com/cpu-throttling: "false"
-        run.googleapis.com/memory: "512Mi"
-        run.googleapis.com/cpu: "1"
-        autoscaling.knative.dev/minScale: "1"
-        autoscaling.knative.dev/maxScale: "10"
+        autoscaling.knative.dev/minScale: '1'
+        autoscaling.knative.dev/maxScale: '100'
+        run.googleapis.com/cpu-throttling: 'false'
+        run.googleapis.com/startup-cpu-boost: 'true'
     spec:
-      containerConcurrency: 100
+      containerConcurrency: 80
       timeoutSeconds: 300
       containers:
-      - image: gcr.io/PROJECT_ID/myapp:v1.0.0
+      - image: gcr.io/PROJECT_ID/moai-adk:VERSION
         ports:
-        - containerPort: 8000
+        - name: http1
+          containerPort: 8000
         env:
         - name: ENVIRONMENT
-          value: "production"
+          value: production
         - name: DATABASE_URL
           valueFrom:
             secretKeyRef:
-              name: myapp-secrets
-              key: database-url
+              name: database-url
+              key: latest
         resources:
           limits:
-            cpu: "1"
-            memory: "512Mi"
+            cpu: '2000m'
+            memory: '2Gi'
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
         livenessProbe:
           httpGet:
             path: /health
             port: 8000
-          initialDelaySeconds: 10
+          initialDelaySeconds: 0
           periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /ready
-            port: 8000
-          initialDelaySeconds: 5
-          periodSeconds: 5
 ```
 
-#### Terraform 구성
+#### Terraform Configuration
 
 ```hcl
-# main.tf
+# terraform/gcp/main.tf
 terraform {
   required_version = ">= 1.0"
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "~> 4.0"
+      version = "~> 5.0"
     }
   }
 }
@@ -755,41 +909,14 @@ provider "google" {
   region  = var.region
 }
 
-# VPC 네트워크
-resource "google_compute_network" "vpc" {
-  name                    = "${var.environment}-myapp-vpc"
-  auto_create_subnetworks = false
-}
-
-# 서브넷
-resource "google_compute_subnetwork" "subnet" {
-  name          = "${var.environment}-myapp-subnet"
-  ip_cidr_range = "10.0.0.0/24"
-  region        = var.region
-  network       = google_compute_network.vpc.id
-}
-
-# Cloud Run 서비스
-resource "google_cloud_run_service" "myapp" {
-  name     = "${var.environment}-myapp"
+resource "google_cloud_run_service" "moai_adk" {
+  name     = "moai-adk"
   location = var.region
 
   template {
-    metadata {
-      annotations = {
-        "run.googleapis.com/ingress"                    = "all"
-        "run.googleapis.com/execution-environment"     = "gen2"
-        "autoscaling.knative.dev/minScale"             = "1"
-        "autoscaling.knative.dev/maxScale"             = "10"
-      }
-    }
-
     spec {
-      container_concurrency = 100
-      timeout_seconds        = 300
-
       containers {
-        image = "gcr.io/${var.project_id}/myapp:${var.version}"
+        image = "gcr.io/${var.project_id}/moai-adk:${var.image_version}"
 
         ports {
           container_port = 8000
@@ -797,14 +924,14 @@ resource "google_cloud_run_service" "myapp" {
 
         env {
           name  = "ENVIRONMENT"
-          value = var.environment
+          value = "production"
         }
 
         env {
           name = "DATABASE_URL"
           value_from {
             secret_key_ref {
-              name = google_secret_manager_secret_version.db_url.secret_id
+              name = google_secret_manager_secret.database_url.secret_id
               key  = "latest"
             }
           }
@@ -812,28 +939,23 @@ resource "google_cloud_run_service" "myapp" {
 
         resources {
           limits = {
-            cpu    = "1"
-            memory = "512Mi"
+            cpu    = "2000m"
+            memory = "2Gi"
           }
         }
+      }
 
-        liveness_probe {
-          http_get {
-            path = "/health"
-            port = 8000
-          }
-          initial_delay_seconds = 10
-          period_seconds        = 10
-        }
+      container_concurrency = 80
+      timeout_seconds      = 300
+    }
 
-        readiness_probe {
-          http_get {
-            path = "/ready"
-            port = 8000
-          }
-          initial_delay_seconds = 5
-          period_seconds        = 5
-        }
+    metadata {
+      annotations = {
+        "autoscaling.knative.dev/minScale"         = "1"
+        "autoscaling.knative.dev/maxScale"         = "100"
+        "run.googleapis.com/cpu-throttling"        = "false"
+        "run.googleapis.com/startup-cpu-boost"     = "true"
+        "run.googleapis.com/execution-environment" = "gen2"
       }
     }
   }
@@ -842,64 +964,71 @@ resource "google_cloud_run_service" "myapp" {
     percent         = 100
     latest_revision = true
   }
+
+  autogenerate_revision_name = true
 }
 
-# IAM 정책
 resource "google_cloud_run_service_iam_member" "public" {
-  location = google_cloud_run_service.myapp.location
-  project  = google_cloud_run_service.myapp.project
-  service  = google_cloud_run_service.myapp.name
+  service  = google_cloud_run_service.moai_adk.name
+  location = google_cloud_run_service.moai_adk.location
   role     = "roles/run.invoker"
   member   = "allUsers"
 }
 
-# Secret Manager
-resource "google_secret_manager_secret" "db_url" {
-  provider = google-beta
-  secret_id = "${var.environment}-myapp-db-url"
+resource "google_secret_manager_secret" "database_url" {
+  secret_id = "database-url"
 
   replication {
     automatic = true
   }
 }
 
-resource "google_secret_manager_secret_version" "db_url" {
-  secret      = google_secret_manager_secret.db_url.id
-  secret_data = var.database_url
+output "service_url" {
+  value = google_cloud_run_service.moai_adk.status[0].url
 }
 ```
 
-### Azure 배포
+### Azure Container Instances
 
-#### ARM 템플릿
+#### ARM Template
 
 ```json
 {
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
-    "environment": {
+    "containerGroupName": {
       "type": "string",
-      "defaultValue": "production",
-      "allowedValues": ["development", "staging", "production"]
+      "defaultValue": "moai-adk-group",
+      "metadata": {
+        "description": "Name for the container group"
+      }
     },
-    "version": {
+    "imageVersion": {
       "type": "string",
-      "defaultValue": "v1.0.0"
+      "defaultValue": "latest",
+      "metadata": {
+        "description": "Container image version"
+      }
     }
+  },
+  "variables": {
+    "containerName": "moai-adk",
+    "registryServer": "myregistry.azurecr.io",
+    "imageName": "[concat(variables('registryServer'), '/moai-adk:', parameters('imageVersion'))]"
   },
   "resources": [
     {
       "type": "Microsoft.ContainerInstance/containerGroups",
-      "apiVersion": "2021-09-01",
-      "name": "[concat(parameters('environment'), '-myapp-container-group')]",
+      "apiVersion": "2023-05-01",
+      "name": "[parameters('containerGroupName')]",
       "location": "[resourceGroup().location]",
       "properties": {
         "containers": [
           {
-            "name": "myapp",
+            "name": "[variables('containerName')]",
             "properties": {
-              "image": "[concat('.acr.io/myapp:', parameters('version'))]",
+              "image": "[variables('imageName')]",
               "ports": [
                 {
                   "port": 8000,
@@ -909,30 +1038,14 @@ resource "google_secret_manager_secret_version" "db_url" {
               "environmentVariables": [
                 {
                   "name": "ENVIRONMENT",
-                  "value": "[parameters('environment')]"
-                },
-                {
-                  "name": "DATABASE_URL",
-                  "secureValue": "[reference(resourceId('Microsoft.KeyVault/vaults/secrets', 'myapp-kv', 'database-url'), '2021-06-01-preview').value]"
+                  "value": "production"
                 }
               ],
               "resources": {
                 "requests": {
-                  "cpu": 1.0,
-                  "memoryInGB": 1.0
+                  "cpu": 2,
+                  "memoryInGb": 4
                 }
-              },
-              "livenessProbe": {
-                "exec": {
-                  "command": [
-                    "/bin/sh",
-                    "-c",
-                    "curl -f http://localhost:8000/health || exit 1"
-                  ]
-                },
-                "periodSeconds": 30,
-                "timeoutSeconds": 10,
-                "failureThreshold": 3
               }
             }
           }
@@ -946,91 +1059,120 @@ resource "google_secret_manager_secret_version" "db_url" {
               "port": 8000,
               "protocol": "TCP"
             }
-          ]
-        }
+          ],
+          "dnsNameLabel": "[parameters('containerGroupName')]"
+        },
+        "imageRegistryCredentials": [
+          {
+            "server": "[variables('registryServer')]",
+            "username": "[parameters('registryUsername')]",
+            "password": "[parameters('registryPassword')]"
+          }
+        ]
       }
     }
   ],
   "outputs": {
-    "containerGroupIP": {
+    "containerFQDN": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.ContainerInstance/containerGroups', concat(parameters('environment'), '-myapp-container-group')), '2021-09-01').ipAddress.ip]"
+      "value": "[reference(resourceId('Microsoft.ContainerInstance/containerGroups', parameters('containerGroupName'))).ipAddress.fqdn]"
     }
   }
 }
 ```
 
-## CI/CD 파이프라인 구축
+## CI/CD Pipeline Construction
 
-### GitHub Actions 워크플로우
+### GitHub Actions
 
-#### 메인 CI/CD 파이프라인
+#### Quality Check Workflow
 
 ```yaml
-# .github/workflows/deploy.yml
-name: Deploy Application
+# .github/workflows/quality-check.yml
+name: Quality Check
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop]
+
+jobs:
+  quality-check:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12', '3.13']
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+
+    - name: Set up Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        uv sync --all-extras --dev
+
+    - name: Run linting
+      run: |
+        uv run ruff check .
+        uv run ruff format --check .
+
+    - name: Run type checking
+      run: |
+        uv run mypy src/
+
+    - name: Run tests
+      run: |
+        uv run pytest --cov=src --cov-report=xml --cov-report=term
+
+    - name: Upload coverage
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+
+    - name: Security scan
+      run: |
+        uv run bandit -r src/ -f json -o bandit-report.json
+
+    - name: TRUST validation
+      run: |
+        uv run python scripts/validate_trust.py
+```
+
+#### Build and Push Image
+
+```yaml
+# .github/workflows/build-image.yml
+name: Build and Push Docker Image
 
 on:
   push:
-    branches: [main, develop]
-  pull_request:
     branches: [main]
+    tags:
+      - 'v*.*.*'
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # 코드 품질 및 보안 검사
-  quality-check:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.13'
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install -r requirements-dev.txt
-
-    - name: Run linting
-      run: |
-        ruff check src/
-        ruff format --check src/
-
-    - name: Run type checking
-      run: mypy src/
-
-    - name: Run security scan
-      run: |
-        bandit -r src/
-        safety check
-
-    - name: Run tests
-      run: |
-        pytest tests/ --cov=src/ --cov-report=xml
-
-    - name: Upload coverage
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.xml
-
-  # Docker 이미지 빌드
-  build-image:
-    needs: quality-check
+  build-and-push:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -1050,201 +1192,191 @@ jobs:
         tags: |
           type=ref,event=branch
           type=ref,event=pr
-          type=sha,prefix={{branch}}-
-          type=raw,value=latest,enable={{is_default_branch}}
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=sha
 
-    - name: Build and push Docker image
+    - name: Build and push
       uses: docker/build-push-action@v5
       with:
         context: .
+        platforms: linux/amd64,linux/arm64
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
-  # Staging 환경 배포
+    - name: Scan image
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload scan results
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: 'trivy-results.sarif'
+```
+
+#### Deploy to Staging
+
+```yaml
+# .github/workflows/deploy-staging.yml
+name: Deploy to Staging
+
+on:
+  workflow_run:
+    workflows: ["Build and Push Docker Image"]
+    types:
+      - completed
+    branches: [develop]
+
+jobs:
   deploy-staging:
-    needs: build-image
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/develop'
-    environment: staging
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    environment:
+      name: staging
+      url: https://staging.moai-adk.example.com
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-west-2
+        aws-region: us-east-1
 
-    - name: Deploy to ECS Staging
+    - name: Update ECS service
       run: |
         aws ecs update-service \
-          --cluster myapp-staging-cluster \
-          --service myapp-staging-service \
+          --cluster moai-adk-staging \
+          --service moai-adk-service \
           --force-new-deployment
 
     - name: Wait for deployment
       run: |
         aws ecs wait services-stable \
-          --cluster myapp-staging-cluster \
-          --services myapp-staging-service
+          --cluster moai-adk-staging \
+          --services moai-adk-service
 
     - name: Run smoke tests
       run: |
-        chmod +x ./scripts/smoke-tests.sh
-        ./scripts/smoke-tests.sh staging
-
-  # 프로덕션 환경 배포
-  deploy-production:
-    needs: build-image
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    environment: production
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-west-2
-
-    - name: Deploy to ECS Production
-      run: |
-        aws ecs update-service \
-          --cluster myapp-production-cluster \
-          --service myapp-production-service \
-          --force-new-deployment
-
-    - name: Wait for deployment
-      run: |
-        aws ecs wait services-stable \
-          --cluster myapp-production-cluster \
-          --services myapp-production-service
-
-    - name: Run health checks
-      run: |
-        chmod +x ./scripts/health-checks.sh
-        ./scripts/health-checks.sh production
+        curl -f https://staging.moai-adk.example.com/health || exit 1
 
     - name: Notify deployment
       uses: 8398a7/action-slack@v3
       with:
         status: ${{ job.status }}
-        channel: '#deployments'
+        text: 'Staging deployment completed'
         webhook_url: ${{ secrets.SLACK_WEBHOOK }}
 ```
 
-#### Blue-Green 배포 워크플로우
+#### Deploy to Production
 
 ```yaml
-# .github/workflows/blue-green-deploy.yml
-name: Blue-Green Deployment
+# .github/workflows/deploy-production.yml
+name: Deploy to Production
 
 on:
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Target environment'
-        required: true
-        default: 'staging'
-        type: choice
-        options:
-        - staging
-        - production
-      version:
-        description: 'Application version'
-        required: true
-        default: 'latest'
-
-env:
-  CLUSTER_NAME: myapp-cluster
-  SERVICE_NAME: myapp-service
+  push:
+    tags:
+      - 'v*.*.*'
 
 jobs:
-  deploy:
+  deploy-production:
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment }}
+    environment:
+      name: production
+      url: https://api.moai-adk.example.com
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-west-2
+        aws-region: us-east-1
 
     - name: Get current task definition
-      id: current-task
       run: |
-        TASK_DEF=$(aws ecs describe-services \
-          --cluster ${{ env.CLUSTER_NAME }} \
-          --services ${{ env.SERVICE_NAME }} \
-          --query 'services[0].taskDefinition' \
+        aws ecs describe-task-definition \
+          --task-definition moai-adk \
+          --query taskDefinition > task-definition.json
+
+    - name: Update image in task definition
+      run: |
+        NEW_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}"
+        jq --arg IMAGE "$NEW_IMAGE" \
+           '.containerDefinitions[0].image = $IMAGE' \
+           task-definition.json > new-task-definition.json
+
+    - name: Register new task definition
+      run: |
+        aws ecs register-task-definition \
+          --cli-input-json file://new-task-definition.json
+
+    - name: Blue-Green deployment
+      run: |
+        # Get current task count
+        DESIRED_COUNT=$(aws ecs describe-services \
+          --cluster moai-adk-prod \
+          --services moai-adk-service \
+          --query 'services[0].desiredCount' \
           --output text)
-        echo "task-definition=$TASK_DEF" >> $GITHUB_OUTPUT
 
-    - name: Create new task definition
-      id: new-task
-      run: |
-        # Create new task definition with new image version
-        NEW_TASK_DEF=$(aws ecs register-task-definition \
-          --cli-input-json "$(cat task-definition.json | \
-          jq '.containerDefinitions[0].image = "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.version }}"')" \
-          --query 'taskDefinition.taskDefinitionArn' \
-          --output text)
-        echo "task-definition=$NEW_TASK_DEF" >> $GITHUB_OUTPUT
-
-    - name: Update service with new task definition
-      run: |
+        # Deploy new version (green)
         aws ecs update-service \
-          --cluster ${{ env.CLUSTER_NAME }} \
-          --service ${{ env.SERVICE_NAME }} \
-          --task-definition ${{ steps.new-task.outputs.task-definition }} \
-          --force-new-deployment
+          --cluster moai-adk-prod \
+          --service moai-adk-service-green \
+          --task-definition moai-adk:$REVISION \
+          --desired-count $DESIRED_COUNT
 
-    - name: Wait for new tasks to start
-      run: |
+        # Wait for green to be stable
         aws ecs wait services-stable \
-          --cluster ${{ env.CLUSTER_NAME }} \
-          --services ${{ env.SERVICE_NAME }}
+          --cluster moai-adk-prod \
+          --services moai-adk-service-green
 
-    - name: Run smoke tests
-      run: |
-        chmod +x ./scripts/smoke-tests.sh
-        ./scripts/smoke-tests.sh ${{ github.event.inputs.environment }}
+        # Switch traffic to green
+        aws elbv2 modify-rule \
+          --rule-arn ${{ secrets.ALB_RULE_ARN }} \
+          --actions Type=forward,TargetGroupArn=${{ secrets.GREEN_TG_ARN }}
 
-    - name: Update DNS to point to new version
-      if: success()
-      run: |
-        # Update Route53 or load balancer target
-        ./scripts/update-dns.sh ${{ github.event.inputs.environment }} new
-
-    - name: Rollback on failure
-      if: failure()
-      run: |
+        # Scale down blue
         aws ecs update-service \
-          --cluster ${{ env.CLUSTER_NAME }} \
-          --service ${{ env.SERVICE_NAME }} \
-          --task-definition ${{ steps.current-task.outputs.task-definition }} \
-          --force-new-deployment
+          --cluster moai-adk-prod \
+          --service moai-adk-service-blue \
+          --desired-count 0
 
-        aws ecs wait services-stable \
-          --cluster ${{ env.CLUSTER_NAME }} \
-          --services ${{ env.SERVICE_NAME }}
+    - name: Run production tests
+      run: |
+        npm install -g newman
+        newman run tests/production-tests.json \
+          --environment production.json \
+          --reporters cli,json \
+          --reporter-json-export test-results.json
 
-        ./scripts/update-dns.sh ${{ github.event.inputs.environment }} old
+    - name: Create GitHub release
+      uses: softprops/action-gh-release@v1
+      with:
+        body_path: CHANGELOG.md
+        generate_release_notes: true
+
+    - name: Notify deployment
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        text: 'Production deployment completed: ${{ github.ref_name }}'
+        webhook_url: ${{ secrets.SLACK_WEBHOOK }}
 ```
 
-### GitLab CI/CD 설정
+### GitLab CI/CD
 
 ```yaml
 # .gitlab-ci.yml
@@ -1258,948 +1390,657 @@ stages:
 variables:
   DOCKER_DRIVER: overlay2
   DOCKER_TLS_CERTDIR: "/certs"
+  IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
 
-# 코드 품질 검증
+.python-base:
+  image: python:3.13-slim
+  before_script:
+    - pip install uv
+    - uv sync --all-extras --dev
+
 validate:
+  extends: .python-base
   stage: validate
-  image: python:3.13
-  before_script:
-    - pip install -r requirements-dev.txt
   script:
-    - ruff check src/
-    - ruff format --check src/
-    - mypy src/
-  artifacts:
-    reports:
-      junit: reports/junit.xml
-    paths:
-      - reports/
-    expire_in: 1 week
+    - uv run ruff check .
+    - uv run ruff format --check .
+    - uv run mypy src/
+  only:
+    - merge_requests
+    - develop
+    - main
 
-# 테스트 실행
 test:
+  extends: .python-base
   stage: test
-  image: python:3.13
-  services:
-    - postgres:15
-    - redis:7
-  variables:
-    POSTGRES_DB: test_db
-    POSTGRES_USER: test_user
-    POSTGRES_PASSWORD: test_pass
-    DATABASE_URL: postgresql://test_user:test_pass@postgres:5432/test_db
-    REDIS_URL: redis://redis:6379/0
-  before_script:
-    - pip install -r requirements.txt
-    - pip install -r requirements-dev.txt
   script:
-    - pytest tests/ --cov=src/ --cov-report=xml --cov-report=html --junitxml=reports/junit.xml
-  coverage: '/TOTAL.+?(\d+\%)$/'
+    - uv run pytest --cov=src --cov-report=xml --cov-report=term
+    - uv run bandit -r src/
+  coverage: '/^TOTAL.+?(\d+\%)$/'
   artifacts:
     reports:
-      junit: reports/junit.xml
       coverage_report:
         coverage_format: cobertura
         path: coverage.xml
-    paths:
-      - htmlcov/
-      - coverage.xml
-    expire_in: 1 week
+  only:
+    - merge_requests
+    - develop
+    - main
 
-# Docker 이미지 빌드
 build:
   stage: build
-  image: docker:24.0.5
+  image: docker:24-dind
   services:
-    - docker:24.0.5-dind
-  before_script:
-    - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+    - docker:24-dind
   script:
-    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA .
-    - docker build -t $CI_REGISTRY_IMAGE:latest .
-    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
-    - docker push $CI_REGISTRY_IMAGE:latest
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker build -t $IMAGE_TAG .
+    - docker push $IMAGE_TAG
+    - |
+      if [ "$CI_COMMIT_BRANCH" == "main" ]; then
+        docker tag $IMAGE_TAG $CI_REGISTRY_IMAGE:latest
+        docker push $CI_REGISTRY_IMAGE:latest
+      fi
   only:
-    - main
     - develop
+    - main
+    - tags
 
-# Staging 환경 배포
 deploy-staging:
   stage: deploy-staging
-  image: alpine:latest
-  before_script:
-    - apk add --no-cache curl
-    - curl -L https://github.com/aws/aws-cli/releases/download/v2.13.25/awscliv2.zip -o awscliv2.zip
-    - unzip awscliv2.zip
-    - ./aws/install
+  image: alpine/k8s:1.28.3
   script:
-    - aws ecs update-service --cluster myapp-staging --service myapp-service --force-new-deployment
-    - aws ecs wait services-stable --cluster myapp-staging --services myapp-service
+    - kubectl config use-context staging
+    - kubectl set image deployment/moai-adk moai-adk=$IMAGE_TAG -n moai-adk
+    - kubectl rollout status deployment/moai-adk -n moai-adk
+    - kubectl get pods -n moai-adk
   environment:
     name: staging
-    url: https://staging-api.myapp.com
+    url: https://staging.moai-adk.example.com
   only:
     - develop
 
-# 프로덕션 환경 배포
 deploy-production:
   stage: deploy-production
-  image: alpine:latest
-  before_script:
-    - apk add --no-cache curl
-    - curl -L https://github.com/aws/aws-cli/releases/download/v2.13.25/awscliv2.zip -o awscliv2.zip
-    - unzip awscliv2.zip
-    - ./aws/install
+  image: alpine/k8s:1.28.3
   script:
-    - aws ecs update-service --cluster myapp-production --service myapp-service --force-new-deployment
-    - aws ecs wait services-stable --cluster myapp-production --services myapp-service
+    - kubectl config use-context production
+    - |
+      # Blue-Green deployment
+      kubectl apply -f k8s/deployment-green.yaml
+      kubectl wait --for=condition=available --timeout=300s deployment/moai-adk-green -n moai-adk
+      kubectl patch service moai-adk-service -n moai-adk -p '{"spec":{"selector":{"version":"green"}}}'
+      kubectl scale deployment/moai-adk-blue --replicas=0 -n moai-adk
   environment:
     name: production
-    url: https://api.myapp.com
+    url: https://api.moai-adk.example.com
   when: manual
   only:
     - main
+    - tags
 ```
 
-## 환경별 배포 전략
+## Environment-Specific Deployment Strategies
 
-### 개발 환경 (Development)
+### Development Environment
 
-#### 목적 및 특징
+**Purpose**: Local development and debugging
 
-- **목적**: 개발자 빠른 피드백 루프
-- **특징**: 빠른 배포, 자동 재시작, 상세 로깅
+**Characteristics**:
+- Hot reload enabled
+- Debug mode on
+- Detailed logging
+- Local database
+- No authentication for some services
 
-#### 설정 예시
+**Configuration**:
 
 ```yaml
-# docker-compose.dev.yml
-version: '3.8'
-
-services:
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
-    ports:
-      - "8000:8000"
-    environment:
-      - DEBUG=true
-      - LOG_LEVEL=DEBUG
-      - RELOAD=true
-    volumes:
-      - ./src:/app/src
-      - ./.moai:/app/.moai
-    depends_on:
-      - db
-      - redis
-    command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
-
-  db:
-    image: postgres:15
-    environment:
-      - POSTGRES_DB=myapp_dev
-      - POSTGRES_USER=dev
-      - POSTGRES_PASSWORD=dev123
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_dev_data:/var/lib/postgresql/data
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-
-  # 개발 도구들
-  adminer:
-    image: adminer
-    ports:
-      - "8080:8080"
-    depends_on:
-      - db
-
-  redis-commander:
-    image: rediscommander/redis-commander:latest
-    environment:
-      - REDIS_HOSTS=local:redis:6379
-    ports:
-      - "8081:8081"
-    depends_on:
-      - redis
-
-volumes:
-  postgres_dev_data:
+# .env.development
+ENVIRONMENT=development
+DEBUG=true
+LOG_LEVEL=DEBUG
+DATABASE_URL=postgresql://dev:devpass@localhost:5432/moai_dev
+REDIS_URL=redis://localhost:6379/0
+ALLOWED_HOSTS=["localhost", "127.0.0.1"]
+CORS_ORIGINS=["http://localhost:3000", "http://localhost:8000"]
 ```
 
-#### 개발 환경 배포 스크립트
+**Deployment Command**:
+
+```bash
+# Using Docker Compose
+docker-compose -f docker-compose.dev.yml up
+
+# Or direct Python
+uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### Staging Environment
+
+**Purpose**: Pre-production testing with production-like data
+
+**Characteristics**:
+- Production-like configuration
+- Synthetic or anonymized data
+- Performance testing enabled
+- Full authentication
+- Monitoring enabled
+
+**Configuration**:
+
+```yaml
+# .env.staging
+ENVIRONMENT=staging
+DEBUG=false
+LOG_LEVEL=INFO
+DATABASE_URL=${STAGING_DATABASE_URL}
+REDIS_URL=${STAGING_REDIS_URL}
+ALLOWED_HOSTS=["staging.moai-adk.example.com"]
+CORS_ORIGINS=["https://staging-app.moai-adk.example.com"]
+SENTRY_DSN=${SENTRY_DSN}
+SENTRY_ENVIRONMENT=staging
+```
+
+**Deployment Strategy**:
+
+```bash
+# Deploy to staging
+kubectl apply -f k8s/staging/
+
+# Run integration tests
+npm run test:integration -- --env=staging
+
+# Smoke tests
+curl -f https://staging.moai-adk.example.com/health
+```
+
+### Production Environment
+
+**Purpose**: Live production serving real users
+
+**Characteristics**:
+- High availability (3+ replicas)
+- Auto-scaling enabled
+- Advanced monitoring and alerting
+- Strict security policies
+- Blue-green or canary deployments
+
+**Configuration**:
+
+```yaml
+# .env.production (stored in secrets management)
+ENVIRONMENT=production
+DEBUG=false
+LOG_LEVEL=WARNING
+DATABASE_URL=${PROD_DATABASE_URL}
+REDIS_URL=${PROD_REDIS_URL}
+ALLOWED_HOSTS=["api.moai-adk.example.com"]
+CORS_ORIGINS=["https://app.moai-adk.example.com"]
+SENTRY_DSN=${SENTRY_DSN}
+SENTRY_ENVIRONMENT=production
+SECRET_KEY=${SECRET_KEY}
+```
+
+**Deployment Strategy**:
+
+```bash
+# Blue-green deployment
+./scripts/deploy-blue-green.sh production v1.2.3
+
+# Verify health
+./scripts/health-check.sh production
+
+# Monitor metrics
+./scripts/monitor-deployment.sh production v1.2.3
+```
+
+## Rollout Strategies
+
+### Blue-Green Deployment
+
+Complete traffic switch between two identical environments.
+
+**Script**:
 
 ```bash
 #!/bin/bash
-# scripts/deploy-dev.sh
+# scripts/deploy-blue-green.sh
 
-set -e
+set -euo pipefail
 
-echo "🚀 Deploying to development environment..."
+ENVIRONMENT=$1
+VERSION=$2
+NAMESPACE="moai-adk"
 
-# 환경 변수 설정
-export COMPOSE_PROJECT_NAME="myapp-dev"
-export COMPOSE_FILE="docker-compose.dev.yml"
+echo "Starting blue-green deployment for ${ENVIRONMENT} (version: ${VERSION})"
 
-# 기존 컨테이너 정리
-echo "🧹 Cleaning up existing containers..."
-docker-compose down --remove-orphans
+# Identify current active deployment (blue or green)
+CURRENT_COLOR=$(kubectl get service moai-adk-service -n $NAMESPACE \
+  -o jsonpath='{.spec.selector.version}')
 
-# 최신 이미지 빌드
-echo "🔨 Building development images..."
-docker-compose build
-
-# 데이터베이스 마이그레이션
-echo "📊 Running database migrations..."
-docker-compose run --rm app alembic upgrade head
-
-# 서비스 시작
-echo "🚀 Starting development services..."
-docker-compose up -d
-
-# 상태 확인
-echo "📋 Checking service status..."
-sleep 10
-docker-compose ps
-
-# 상태 검사
-echo "<span class="material-icons">search</span> Running health checks..."
-./scripts/health-checks.sh dev
-
-echo "✅ Development environment deployed successfully!"
-echo "📊 App available at: http://localhost:8000"
-echo "💾  Database available at: localhost:5432"
-echo "⚙️ Redis available at: localhost:6379"
-echo "🎛️  Adminer available at: http://localhost:8080"
-echo "📱 Redis Commander available at: http://localhost:8081"
-```
-
-### 스테이징 환경 (Staging)
-
-#### 목적 및 특징
-
-- **목적**: 프로덕션 전 최종 검증
-- **특징**: 프로덕션과 유사한 환경, 자동화된 테스트
-
-#### 설정 예시
-
-```yaml
-# docker-compose.staging.yml
-version: '3.8'
-
-services:
-  app:
-    image: ${REGISTRY}/myapp:${VERSION}
-    restart: unless-stopped
-    environment:
-      - DEBUG=false
-      - LOG_LEVEL=INFO
-      - ENVIRONMENT=staging
-      - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=${REDIS_URL}
-      - SECRET_KEY=${SECRET_KEY}
-    depends_on:
-      - db
-      - redis
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-  db:
-    image: postgres:15
-    restart: unless-stopped
-    environment:
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-    volumes:
-      - postgres_staging_data:/var/lib/postgresql/data
-      - ./backups:/backups
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    command: redis-server --appendonly yes
-    volumes:
-      - redis_staging_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  nginx:
-    image: nginx:alpine
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/staging.conf:/etc/nginx/nginx.conf
-      - ./ssl/staging:/etc/nginx/ssl
-    depends_on:
-      - app
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # 모니터링
-  prometheus:
-    image: prom/prometheus:latest
-    restart: unless-stopped
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./monitoring/prometheus-staging.yml:/etc/prometheus/prometheus.yml
-      - prometheus_staging_data:/prometheus
-
-  grafana:
-    image: grafana/grafana:latest
-    restart: unless-stopped
-    ports:
-      - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
-    volumes:
-      - grafana_staging_data:/var/lib/grafana
-      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
-
-volumes:
-  postgres_staging_data:
-  redis_staging_data:
-  prometheus_staging_data:
-  grafana_staging_data:
-```
-
-#### 스테이징 배포 스크립트
-
-```bash
-#!/bin/bash
-# scripts/deploy-staging.sh
-
-set -e
-
-VERSION=${1:-latest}
-ENVIRONMENT="staging"
-
-echo "🚀 Deploying version $VERSION to staging environment..."
-
-# 환경 변수 로드
-source .env.staging
-
-# 이미지 풀
-echo "📦 Pulling application image..."
-docker pull ${REGISTRY}/myapp:${VERSION}
-
-# 데이터베이스 백업
-echo "💾 Creating database backup..."
-./scripts/backup-db.sh $ENVIRONMENT
-
-# 블루-그린 배포
-echo "🔄 Starting blue-green deployment..."
-
-# 현재 실행 중인 서비스 확인
-CURRENT_SERVICE=$(docker-compose -f docker-compose.staging.yml ps -q app)
-
-if [ -n "$CURRENT_SERVICE" ]; then
-    echo "📋 Current service found: $CURRENT_SERVICE"
-
-    # 새 서비스 시작 (green)
-    echo "🌱 Starting new service (green)..."
-    VERSION=$VERSION docker-compose -f docker-compose.staging.yml up -d app
-
-    # 상태 검사
-    echo "<span class="material-icons">search</span> Running health checks on new service..."
-    ./scripts/wait-for-health.sh http://staging-api.myapp.com/health
-
-    # 스모크 테스트
-    echo "🧪 Running smoke tests..."
-    ./scripts/smoke-tests.sh $ENVIRONMENT
-
-    # 트래픽 전환
-    echo "🔄 Switching traffic to new service..."
-    ./scripts/switch-traffic.sh $ENVIRONMENT new
-
-    # 이전 서비스 정리
-    echo "🧹 Cleaning up old service (blue)..."
-    docker-compose -f docker-compose.staging.yml stop app
+if [ "$CURRENT_COLOR" == "blue" ]; then
+  NEW_COLOR="green"
 else
-    echo "🌱 Starting initial service..."
-    VERSION=$VERSION docker-compose -f docker-compose.staging.yml up -d
+  NEW_COLOR="blue"
 fi
 
-# 배포 확인
-echo "✅ Deployment completed successfully!"
-echo "🌐 Application available at: https://staging-api.myapp.com"
-echo "📊 Monitoring available at: https://staging-grafana.myapp.com"
+echo "Current: $CURRENT_COLOR, Deploying: $NEW_COLOR"
 
-# 알림 발송
-./scripts/notify-deployment.sh $ENVIRONMENT $VERSION success
-```
+# Update the new deployment
+kubectl set image deployment/moai-adk-$NEW_COLOR \
+  moai-adk=myregistry/moai-adk:$VERSION \
+  -n $NAMESPACE
 
-### 프로덕션 환경 (Production)
+# Wait for new deployment to be ready
+kubectl rollout status deployment/moai-adk-$NEW_COLOR -n $NAMESPACE
 
-#### 목적 및 특징
+# Run smoke tests against new deployment
+NEW_POD=$(kubectl get pod -l app=moai-adk,version=$NEW_COLOR -n $NAMESPACE \
+  -o jsonpath='{.items[0].metadata.name}')
+kubectl port-forward $NEW_POD 8080:8000 -n $NAMESPACE &
+PF_PID=$!
+sleep 5
 
-- **목적**: 실제 서비스 운영
-- **특징**: 고가용성, 모니터링, 보안, 롤백 준비
-
-#### 설정 예시
-
-```yaml
-# docker-compose.prod.yml
-version: '3.8'
-
-services:
-  app:
-    image: ${REGISTRY}/myapp:${VERSION}
-    restart: unless-stopped
-    environment:
-      - DEBUG=false
-      - LOG_LEVEL=WARNING
-      - ENVIRONMENT=production
-      - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=${REDIS_URL}
-      - SECRET_KEY=${SECRET_KEY}
-      - SENTRY_DSN=${SENTRY_DSN}
-    depends_on:
-      - db
-      - redis
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    deploy:
-      replicas: 3
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
-        window: 120s
-
-  # 로드 밸런서 및 리버스 프록시
-  nginx:
-    image: nginx:alpine
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/prod.conf:/etc/nginx/nginx.conf
-      - ./ssl/prod:/etc/nginx/ssl
-      - ./logs/nginx:/var/log/nginx
-    depends_on:
-      - app
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 256M
-
-  # 데이터베이스 (PostgreSQL)
-  db:
-    image: postgres:15
-    restart: unless-stopped
-    environment:
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-    volumes:
-      - postgres_prod_data:/var/lib/postgresql/data
-      - ./backups:/backups
-      - ./postgresql/postgresql.conf:/etc/postgresql/postgresql.conf
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    deploy:
-      resources:
-        limits:
-          cpus: '2.0'
-          memory: 4G
-        reservations:
-          cpus: '1.0'
-          memory: 2G
-
-  # Redis (캐시 및 세션)
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    command: redis-server /usr/local/etc/redis/redis.conf
-    volumes:
-      - redis_prod_data:/data
-      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-
-  # 모니터링 스택
-  prometheus:
-    image: prom/prometheus:latest
-    restart: unless-stopped
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./monitoring/prometheus-prod.yml:/etc/prometheus/prometheus.yml
-      - prometheus_prod_data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
-      - '--storage.tsdb.retention.time=30d'
-      - '--web.enable-lifecycle'
-
-  grafana:
-    image: grafana/grafana:latest
-    restart: unless-stopped
-    ports:
-      - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
-      - GF_INSTALL_PLUGINS=grafana-piechart-panel
-    volumes:
-      - grafana_prod_data:/var/lib/grafana
-      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
-      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
-
-  # 로그 수집
-  loki:
-    image: grafana/loki:latest
-    restart: unless-stopped
-    ports:
-      - "3100:3100"
-    volumes:
-      - ./monitoring/loki-config.yml:/etc/loki/local-config.yaml
-      - loki_prod_data:/loki
-    command: -config.file=/etc/loki/local-config.yaml
-
-  promtail:
-    image: grafana/promtail:latest
-    restart: unless-stopped
-    volumes:
-      - ./monitoring/promtail-config.yml:/etc/promtail/config.yml
-      - ./logs:/var/log/app
-    command: -config.file=/etc/promtail/config.yml
-
-volumes:
-  postgres_prod_data:
-  redis_prod_data:
-  prometheus_prod_data:
-  grafana_prod_data:
-  loki_prod_data:
-```
-
-## 롤아웃 전략
-
-### Blue-Green 배포
-
-Blue-Green 배포는 두 개의 동일한 환경을 유지하며 트래픽을 전환하는 방식입니다.
-
-#### Blue-Green 배포 흐름
-
-```mermaid
-graph TD
-    A[현재 Blue 환경] --> B[Green 환경 구축]
-    B --> C[Green 환경 테스트]
-    C --> D{테스트 통과?}
-    D -->|Yes| E[트래픽을 Green으로 전환]
-    D -->|No| F[Green 환경 폐기]
-    E --> G[Blue 환경 대기]
-    G --> H[문제 발생 시]
-    H --> I[트래픽을 Blue로 롤백]
-    E --> J[Green을 새로운 Blue로]
-    F --> A
-    I --> A
-    J --> A
-```
-
-#### Blue-Green 배포 스크립트
-
-```bash
-#!/bin/bash
-# scripts/blue-green-deploy.sh
-
-set -e
-
-VERSION=${1:-latest}
-ENVIRONMENT=${2:-staging}
-
-echo "🔄 Starting Blue-Green deployment of version $VERSION to $ENVIRONMENT"
-
-# 설정 로드
-source .env.$ENVIRONMENT
-
-# 현재 활성 환경 확인
-CURRENT_ENV=$(curl -s https://api.myapp.com/info | jq -r '.environment')
-echo "📋 Current active environment: $CURRENT_ENV"
-
-if [ "$CURRENT_ENV" = "blue" ]; then
-    NEW_ENV="green"
-    OLD_ENV="blue"
-else
-    NEW_ENV="blue"
-    OLD_ENV="green"
+if ! curl -f http://localhost:8080/health; then
+  echo "Health check failed on new deployment"
+  kill $PF_PID
+  exit 1
 fi
+kill $PF_PID
 
-echo "🌱 Deploying to $NEW_ENV environment"
+# Switch traffic to new deployment
+kubectl patch service moai-adk-service -n $NAMESPACE \
+  -p "{\"spec\":{\"selector\":{\"version\":\"$NEW_COLOR\"}}}"
 
-# 새 환경 설정 업데이트
-sed -i "s/ENVIRONMENT=.*/ENVIRONMENT=$NEW_ENV/" .env.$ENVIRONMENT
-sed -i "s/VERSION=.*/VERSION=$VERSION/" .env.$ENVIRONMENT
+echo "Traffic switched to $NEW_COLOR"
 
-# 새 환경 배포
-echo "🚀 Starting $NEW_ENV environment..."
-docker-compose -f docker-compose.$ENVIRONMENT.yml up -d
+# Monitor for 5 minutes
+echo "Monitoring new deployment for 5 minutes..."
+sleep 300
 
-# 상태 검사 대기
-echo "⏳ Waiting for $NEW_ENV to be healthy..."
-./scripts/wait-for-health.sh https://$NEW_ENV-api.myapp.com/health
+# Scale down old deployment
+kubectl scale deployment/moai-adk-$CURRENT_COLOR --replicas=0 -n $NAMESPACE
 
-# 스모크 테스트
-echo "🧪 Running smoke tests on $NEW_ENV..."
-./scripts/smoke-tests.sh $NEW_ENV
-
-# 트래픽 전환
-echo "🔄 Switching traffic to $NEW_ENV..."
-./scripts/switch-traffic.sh $ENVIRONMENT $NEW_ENV
-
-# 트래픽 전환 확인
-echo "✅ Traffic switched to $NEW_ENV"
-sleep 30
-
-# 최종 상태 검사
-echo "<span class="material-icons">search</span> Final health check..."
-curl -f https://api.myapp.com/health || {
-    echo "<span class="material-icons">cancel</span> Health check failed, rolling back..."
-    ./scripts/switch-traffic.sh $ENVIRONMENT $OLD_ENV
-    exit 1
-}
-
-# 이전 환경 정리 (선택적)
-echo "🧹 Cleaning up $OLD_ENV environment..."
-docker-compose -f docker-compose.$ENVIRONMENT.yml stop
-
-echo "✅ Blue-Green deployment completed successfully!"
-echo "🌐 Application running on: https://api.myapp.com"
-echo "📊 Environment: $NEW_ENV"
+echo "Blue-green deployment completed successfully"
 ```
 
-### Canary 배포
+### Canary Deployment
 
-Canary 배포는 점진적으로 새 버전을 일부 사용자에게만 노출하는 방식입니다.
+Gradual traffic shift to new version using Argo Rollouts.
 
-#### Canary 배포 흐름
-
-```mermaid
-graph TD
-    A[현재 버전 100%] --> B[Canary 5% 배포]
-    B --> C[모니터링]
-    C --> D{상태 양호?}
-    D -->|Yes| E[Canary 25%]
-    D -->|No| F[롤백]
-    E --> G[모니터링]
-    G --> H{상태 양호?}
-    H -->|Yes| I[Canary 50%]
-    H -->|No| F
-    I --> J[모니터링]
-    J --> K{상태 양호?}
-    K -->|Yes| L[전체 배포 100%]
-    K -->|No| F
-    F --> A
-    L --> M[Canary 제거]
-```
-
-#### Canary 배포 설정
+**Rollout Configuration**:
 
 ```yaml
-# k8s/canary-deployment.yaml
+# k8s/rollout.yaml
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:
-  name: myapp-canary
-  namespace: production
+  name: moai-adk
+  namespace: moai-adk
 spec:
   replicas: 5
   strategy:
     canary:
       steps:
-      - setWeight: 5
+      - setWeight: 10
       - pause: {duration: 5m}
       - setWeight: 25
-      - pause: {duration: 10m}
+      - pause: {duration: 5m}
       - setWeight: 50
-      - pause: {duration: 15m}
+      - pause: {duration: 10m}
       - setWeight: 75
-      - pause: {duration: 20m}
-      canaryService: myapp-canary
-      stableService: myapp-stable
+      - pause: {duration: 5m}
+      canaryService: moai-adk-canary
+      stableService: moai-adk-stable
       trafficRouting:
-        istio:
-          virtualService:
-            name: myapp-vsvc
-            routes:
-            - primary
+        nginx:
+          stableIngress: moai-adk-stable
+          annotationPrefix: nginx.ingress.kubernetes.io
+      analysis:
+        templates:
+        - templateName: success-rate
+        - templateName: latency
+        args:
+        - name: service-name
+          value: moai-adk-canary
   selector:
     matchLabels:
-      app: myapp
-      version: canary
+      app: moai-adk
   template:
     metadata:
       labels:
-        app: myapp
-        version: canary
+        app: moai-adk
     spec:
       containers:
-      - name: myapp
-        image: myregistry.com/myapp:${CANARY_VERSION}
+      - name: moai-adk
+        image: myregistry/moai-adk:VERSION
         ports:
         - containerPort: 8000
-        env:
-        - name: VERSION
-          value: "${CANARY_VERSION}"
-        - name: ENVIRONMENT
-          value: "production"
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 8000
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /ready
-            port: 8000
-          initialDelaySeconds: 5
-          periodSeconds: 5
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "250m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
 ```
 
-### Rolling 배포
-
-Rolling 배포는 점진적으로 인스턴스를 교체하는 가장 일반적인 배포 방식입니다.
-
-#### Rolling 배포 설정
+**Analysis Template**:
 
 ```yaml
-# k8s/rolling-deployment.yaml
+# k8s/analysis-template.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: success-rate
+  namespace: moai-adk
+spec:
+  args:
+  - name: service-name
+  metrics:
+  - name: success-rate
+    interval: 1m
+    successCondition: result >= 0.95
+    failureLimit: 3
+    provider:
+      prometheus:
+        address: http://prometheus:9090
+        query: |
+          sum(rate(
+            http_requests_total{
+              service="{{args.service-name}}",
+              status=~"2.."
+            }[5m]
+          )) /
+          sum(rate(
+            http_requests_total{
+              service="{{args.service-name}}"
+            }[5m]
+          ))
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: latency
+  namespace: moai-adk
+spec:
+  args:
+  - name: service-name
+  metrics:
+  - name: p95-latency
+    interval: 1m
+    successCondition: result <= 500
+    failureLimit: 3
+    provider:
+      prometheus:
+        address: http://prometheus:9090
+        query: |
+          histogram_quantile(0.95,
+            sum(rate(
+              http_request_duration_seconds_bucket{
+                service="{{args.service-name}}"
+              }[5m]
+            )) by (le)
+          ) * 1000
+```
+
+### Rolling Update
+
+Kubernetes native rolling update strategy.
+
+```yaml
+# k8s/deployment-rolling.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: myapp-rolling
-  namespace: production
+  name: moai-adk
+  namespace: moai-adk
 spec:
   replicas: 5
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      maxSurge: 1        # 한 번에 추가되는 최대 Pod 수
-      maxUnavailable: 0  # 한 번에 중지되는 최대 Pod 수
+      maxSurge: 2        # Maximum 2 extra pods during update
+      maxUnavailable: 0  # Ensure zero downtime
   selector:
     matchLabels:
-      app: myapp
-      deployment: rolling
+      app: moai-adk
   template:
     metadata:
       labels:
-        app: myapp
-        deployment: rolling
-        version: v1.0.0
+        app: moai-adk
+        version: v1.2.3
     spec:
       containers:
-      - name: myapp
-        image: myregistry.com/myapp:v1.0.0
+      - name: moai-adk
+        image: myregistry/moai-adk:v1.2.3
         ports:
         - containerPort: 8000
-        env:
-        - name: ENVIRONMENT
-          value: "production"
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 5
         livenessProbe:
           httpGet:
             path: /health
             port: 8000
           initialDelaySeconds: 30
           periodSeconds: 10
-          timeoutSeconds: 5
-          successThreshold: 1
-          failureThreshold: 3
-        readinessProbe:
-          httpGet:
-            path: /ready
-            port: 8000
-          initialDelaySeconds: 5
-          periodSeconds: 5
-          timeoutSeconds: 3
-          successThreshold: 1
-          failureThreshold: 3
         lifecycle:
           preStop:
             exec:
               command: ["/bin/sh", "-c", "sleep 15"]
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "250m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
       terminationGracePeriodSeconds: 30
 ```
 
-## 모니터링과 로깅
+**Deployment Command**:
 
-### Prometheus 모니터링 설정
+```bash
+# Apply new version
+kubectl set image deployment/moai-adk \
+  moai-adk=myregistry/moai-adk:v1.2.3 \
+  -n moai-adk
+
+# Watch rollout progress
+kubectl rollout status deployment/moai-adk -n moai-adk
+
+# Rollback if needed
+kubectl rollout undo deployment/moai-adk -n moai-adk
+```
+
+## Monitoring and Logging
+
+### Prometheus Metrics
+
+**Application Metrics**:
+
+```python
+# src/monitoring/metrics.py
+from prometheus_client import Counter, Histogram, Gauge
+import time
+from functools import wraps
+
+# Define metrics
+http_requests_total = Counter(
+    'http_requests_total',
+    'Total HTTP requests',
+    ['method', 'endpoint', 'status']
+)
+
+http_request_duration_seconds = Histogram(
+    'http_request_duration_seconds',
+    'HTTP request duration in seconds',
+    ['method', 'endpoint']
+)
+
+active_connections = Gauge(
+    'active_connections',
+    'Number of active connections'
+)
+
+database_query_duration_seconds = Histogram(
+    'database_query_duration_seconds',
+    'Database query duration in seconds',
+    ['query_type']
+)
+
+def track_request_metrics(func):
+    """Decorator to track HTTP request metrics"""
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        start_time = time.time()
+
+        try:
+            response = await func(*args, **kwargs)
+            status = response.status_code
+
+            # Record metrics
+            http_requests_total.labels(
+                method=request.method,
+                endpoint=request.path,
+                status=status
+            ).inc()
+
+            duration = time.time() - start_time
+            http_request_duration_seconds.labels(
+                method=request.method,
+                endpoint=request.path
+            ).observe(duration)
+
+            return response
+
+        except Exception as e:
+            http_requests_total.labels(
+                method=request.method,
+                endpoint=request.path,
+                status=500
+            ).inc()
+            raise
+
+    return wrapper
+```
+
+**Prometheus Configuration**:
 
 ```yaml
-# monitoring/prometheus.yml
+# prometheus/prometheus.yml
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
-
-rule_files:
-  - "alert_rules.yml"
-
-scrape_configs:
-  - job_name: 'myapp'
-    static_configs:
-      - targets: ['app:8000']
-    metrics_path: '/metrics'
-    scrape_interval: 5s
-
-  - job_name: 'nginx'
-    static_configs:
-      - targets: ['nginx:9113']
-
-  - job_name: 'postgres'
-    static_configs:
-      - targets: ['postgres-exporter:9187']
-
-  - job_name: 'redis'
-    static_configs:
-      - targets: ['redis-exporter:9121']
+  external_labels:
+    cluster: 'moai-adk-prod'
+    environment: 'production'
 
 alerting:
   alertmanagers:
-    - static_configs:
-        - targets:
-          - alertmanager:9093
+  - static_configs:
+    - targets:
+      - alertmanager:9093
+
+rule_files:
+  - '/etc/prometheus/rules/*.yml'
+
+scrape_configs:
+  - job_name: 'moai-adk'
+    kubernetes_sd_configs:
+    - role: pod
+      namespaces:
+        names:
+        - moai-adk
+    relabel_configs:
+    - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+      action: keep
+      regex: true
+    - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+      action: replace
+      target_label: __metrics_path__
+      regex: (.+)
+    - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+      action: replace
+      regex: ([^:]+)(?::\d+)?;(\d+)
+      replacement: $1:$2
+      target_label: __address__
 ```
 
-#### 알림 규칙 설정
+**Alert Rules**:
 
 ```yaml
-# monitoring/alert_rules.yml
+# prometheus/rules/alerts.yml
 groups:
-  - name: myapp_alerts
+  - name: moai-adk-alerts
+    interval: 30s
     rules:
-      - alert: ApplicationDown
-        expr: up{job="myapp"} == 0
-        for: 1m
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m])) /
+          sum(rate(http_requests_total[5m])) > 0.05
+        for: 5m
         labels:
           severity: critical
-        annotations:
-          summary: "Application is down"
-          description: "Application {{ $labels.instance }} has been down for more than 1 minute."
-
-      - alert: HighErrorRate
-        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
-        for: 5m
-        labels:
-          severity: warning
+          component: application
         annotations:
           summary: "High error rate detected"
-          description: "Error rate is {{ $value }} errors per second."
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
 
-      - alert: HighResponseTime
-        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 1
+        for: 10m
+        labels:
+          severity: warning
+          component: application
+        annotations:
+          summary: "High latency detected"
+          description: "P95 latency is {{ $value }}s (threshold: 1s)"
+
+      - alert: PodCrashLooping
+        expr: |
+          rate(kube_pod_container_status_restarts_total{namespace="moai-adk"}[15m]) > 0
         for: 5m
         labels:
           severity: warning
+          component: infrastructure
         annotations:
-          summary: "High response time detected"
-          description: "95th percentile response time is {{ $value }} seconds."
+          summary: "Pod {{ $labels.pod }} is crash looping"
+          description: "Pod has restarted {{ $value }} times in the last 15 minutes"
 
-      - alert: DatabaseConnectionsHigh
-        expr: pg_stat_activity_count > 80
+      - alert: HighMemoryUsage
+        expr: |
+          container_memory_usage_bytes{namespace="moai-adk"} /
+          container_spec_memory_limit_bytes{namespace="moai-adk"} > 0.9
         for: 5m
         labels:
           severity: warning
+          component: infrastructure
         annotations:
-          summary: "High database connections"
-          description: "Database has {{ $value }} active connections."
+          summary: "High memory usage in {{ $labels.pod }}"
+          description: "Memory usage is {{ $value | humanizePercentage }}"
 ```
 
-### Grafana 대시보드 설정
+### Grafana Dashboards
+
+**Dashboard JSON** (excerpt):
 
 ```json
 {
   "dashboard": {
-    "title": "MyApp Application Dashboard",
+    "title": "MoAI-ADK Production Dashboard",
     "panels": [
       {
         "title": "Request Rate",
         "type": "graph",
         "targets": [
           {
-            "expr": "rate(http_requests_total[5m])",
-            "legendFormat": "{{method}} {{status}}"
+            "expr": "sum(rate(http_requests_total{namespace=\"moai-adk\"}[5m])) by (status)",
+            "legendFormat": "{{status}}"
           }
         ]
       },
       {
-        "title": "Response Time",
+        "title": "P95 Latency",
         "type": "graph",
         "targets": [
           {
-            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
-            "legendFormat": "95th percentile"
-          },
-          {
-            "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket[5m]))",
-            "legendFormat": "50th percentile"
+            "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{namespace=\"moai-adk\"}[5m])) by (le))",
+            "legendFormat": "P95"
           }
         ]
       },
@@ -2208,18 +2049,7 @@ groups:
         "type": "singlestat",
         "targets": [
           {
-            "expr": "rate(http_requests_total{status=~\"5..\"}[5m]) / rate(http_requests_total[5m])",
-            "legendFormat": "Error Rate"
-          }
-        ]
-      },
-      {
-        "title": "Application Health",
-        "type": "stat",
-        "targets": [
-          {
-            "expr": "up{job=\"myapp\"}",
-            "legendFormat": "Health Status"
+            "expr": "sum(rate(http_requests_total{namespace=\"moai-adk\",status=~\"5..\"}[5m])) / sum(rate(http_requests_total{namespace=\"moai-adk\"}[5m]))"
           }
         ]
       }
@@ -2228,1086 +2058,846 @@ groups:
 }
 ```
 
-### 구조화된 로깅
-
-#### Python 애플리케이션 로깅 설정
+### Structured Logging
 
 ```python
-# src/logging_config.py
-import logging
-import logging.config
+# src/logging/structured.py
 import json
+import logging
+import sys
 from datetime import datetime
+from typing import Any, Dict
 
-# 구조화된 로그 포매터
-class StructuredFormatter(logging.Formatter):
-    def format(self, record):
-        log_entry = {
-            "timestamp": datetime.utcnow().isoformat(),
-            "level": record.levelname,
-            "logger": record.name,
-            "message": record.getMessage(),
-            "module": record.module,
-            "function": record.funcName,
-            "line": record.lineno
-        }
+class StructuredLogger:
+    def __init__(self, name: str, level: str = "INFO"):
+        self.logger = logging.getLogger(name)
+        self.logger.setLevel(getattr(logging, level.upper()))
 
-        # 추가 컨텍스트 정보
-        if hasattr(record, 'request_id'):
-            log_entry['request_id'] = record.request_id
-        if hasattr(record, 'user_id'):
-            log_entry['user_id'] = record.user_id
-        if hasattr(record, 'spec_id'):
-            log_entry['spec_id'] = record.spec_id
+        # JSON formatter
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(self.JsonFormatter())
+        self.logger.addHandler(handler)
 
-        # 예외 정보
-        if record.exc_info:
-            log_entry['exception'] = self.formatException(record.exc_info)
+    class JsonFormatter(logging.Formatter):
+        def format(self, record: logging.LogRecord) -> str:
+            log_data: Dict[str, Any] = {
+                "timestamp": datetime.utcnow().isoformat(),
+                "level": record.levelname,
+                "logger": record.name,
+                "message": record.getMessage(),
+                "module": record.module,
+                "function": record.funcName,
+                "line": record.lineno,
+            }
 
-        return json.dumps(log_entry)
+            # Add extra fields
+            if hasattr(record, "extra"):
+                log_data.update(record.extra)
 
-# 로깅 설정
-LOGGING_CONFIG = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "structured": {
-            "()": StructuredFormatter
-        },
-        "detailed": {
-            "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        }
-    },
-    "handlers": {
-        "console": {
-            "class": "logging.StreamHandler",
-            "level": "INFO",
-            "formatter": "structured",
-            "stream": "ext://sys.stdout"
-        },
-        "file": {
-            "class": "logging.handlers.RotatingFileHandler",
-            "level": "DEBUG",
-            "formatter": "structured",
-            "filename": "/var/log/app/app.log",
-            "maxBytes": 10485760,  # 10MB
-            "backupCount": 5
-        }
-    },
-    "loggers": {
-        "": {
-            "level": "INFO",
-            "handlers": ["console", "file"],
-            "propagate": False
-        },
-        "uvicorn": {
-            "level": "INFO",
-            "handlers": ["console", "file"],
-            "propagate": False
-        },
-        "sqlalchemy.engine": {
-            "level": "WARNING",
-            "handlers": ["file"],
-            "propagate": False
-        }
-    }
-}
+            # Add exception info if present
+            if record.exc_info:
+                log_data["exception"] = self.formatException(record.exc_info)
+
+            return json.dumps(log_data)
+
+    def info(self, message: str, **kwargs):
+        self.logger.info(message, extra=kwargs)
+
+    def warning(self, message: str, **kwargs):
+        self.logger.warning(message, extra=kwargs)
+
+    def error(self, message: str, **kwargs):
+        self.logger.error(message, extra=kwargs)
+
+    def debug(self, message: str, **kwargs):
+        self.logger.debug(message, extra=kwargs)
+
+# Usage
+logger = StructuredLogger("moai-adk")
+
+logger.info(
+    "User login successful",
+    user_id="12345",
+    ip_address="192.168.1.1",
+    duration_ms=245
+)
 ```
 
-## 보안 및 규제 준수
+## Security and Compliance
 
-### 컨테이너 보안 설정
+### Container Security
+
+**Scan Dockerfile**:
+
+```bash
+# Scan with Trivy
+trivy image --severity HIGH,CRITICAL myregistry/moai-adk:v1.2.3
+
+# Scan with Snyk
+snyk container test myregistry/moai-adk:v1.2.3
+
+# Scan with Docker Scout
+docker scout cves myregistry/moai-adk:v1.2.3
+```
+
+**Security Best Practices**:
 
 ```dockerfile
-# Dockerfile.security
-FROM python:3.13-slim as security-base
+# Use minimal base images
+FROM python:3.13-slim
 
-# 비root 사용자 생성
-RUN groupadd -r appuser && useradd -r -g appuser appuser
-
-# 시스템 패키지 설치 (최소한)
-RUN apt-get update && apt-get install -y \
-    ca-certificates \
-    curl \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
-
-# Python 패키지 설치
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# 애플리케이션 복사
-COPY src/ /app/src/
-COPY --chown=appuser:appuser . /app/
-
-# 작업 디렉토리
-WORKDIR /app
-
-# 비root 사용자로 전환
+# Run as non-root user
+RUN useradd -m -u 1000 appuser
 USER appuser
 
-# 보안 관련 환경 변수
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PATH="/app/.venv/bin:$PATH"
+# Set security headers
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
-# 포트 (변경 가능)
-EXPOSE 8000
-
-# 헬스 체크
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
-
-# 애플리케이션 시작
-CMD ["python", "-m", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Limit resource usage
+LABEL com.docker.swarm.cpu-quota="1000000"
+LABEL com.docker.swarm.memory-limit="1073741824"
 ```
 
-### 네트워크 보안 설정
+### Network Policies
 
 ```yaml
-# docker-compose.security.yml
-version: '3.8'
-
-services:
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile.security
-    networks:
-      - frontend
-      - backend
-    user: "1000:1000"
-    read_only: true
-    tmpfs:
-      - /tmp
-      - /var/log/app
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    cap_add:
-      - CHOWN
-      - SETGID
-      - SETUID
-
-  nginx:
-    image: nginx:alpine
-    networks:
-      - frontend
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./ssl:/etc/nginx/ssl:ro
-      - ./static:/var/www/static:ro
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    cap_add:
-      - CHOWN
-      - SETGID
-      - NET_BIND_SERVICE
-
-  db:
-    image: postgres:15
-    networks:
-      - backend
-    environment:
-      - POSTGRES_DB_FILE=/run/secrets/postgres_db
-      - POSTGRES_USER_FILE=/run/secrets/postgres_user
-      - POSTGRES_PASSWORD_FILE=/run/secrets/postgres_password
-    secrets:
-      - postgres_db
-      - postgres_user
-      - postgres_password
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    security_opt:
-      - no-new-privileges:true
-
-networks:
-  frontend:
-    driver: bridge
-  backend:
-    driver: bridge
-    internal: true
-
-secrets:
-  postgres_db:
-    file: ./secrets/postgres_db.txt
-  postgres_user:
-    file: ./secrets/postgres_user.txt
-  postgres_password:
-    file: ./secrets/postgres_password.txt
-
-volumes:
-  postgres_data:
-    driver: local
+# k8s/network-policy.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: moai-adk-netpol
+  namespace: moai-adk
+spec:
+  podSelector:
+    matchLabels:
+      app: moai-adk
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 8000
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: moai-adk
+    ports:
+    - protocol: TCP
+      port: 5432  # PostgreSQL
+    - protocol: TCP
+      port: 6379  # Redis
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 443   # HTTPS external
+    - protocol: TCP
+      port: 53    # DNS
+    - protocol: UDP
+      port: 53
 ```
 
-### OWASP 보안 검사
-
-```yaml
-# .github/workflows/security.yml
-name: Security Scan
-
-on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main]
-  schedule:
-    - cron: '0 2 * * 1'  # 매주 월요일 새벽 2시
-
-jobs:
-  security-scan:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.13'
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install bandit safety safety-db
-
-    - name: Run Bandit security scan
-      run: |
-        bandit -r src/ -f json -o bandit-report.json
-        bandit -r src/
-
-    - name: Check dependencies for known vulnerabilities
-      run: |
-        safety check --json --output safety-report.json
-        safety check
-
-    - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@master
-      with:
-        scan-type: 'fs'
-        scan-ref: '.'
-        format: 'sarif'
-        output: 'trivy-results.sarif'
-
-    - name: OWASP ZAP Baseline Scan
-      uses: zaproxy/action-baseline@v0.7.0
-      with:
-        target: 'http://localhost:8000'
-        rules_file_name: '.zap/rules.tsv'
-        cmd_options: '-a'
-
-    - name: Upload security scan results
-      uses: github/codeql-action/upload-sarif@v2
-      with:
-        sarif_file: 'trivy-results.sarif'
-
-    - name: Comment security findings
-      uses: actions/github-script@v6
-      with:
-        script: |
-          const fs = require('fs');
-
-          if (fs.existsSync('bandit-report.json')) {
-            const bandit = JSON.parse(fs.readFileSync('bandit-report.json', 'utf8'));
-            if (bandit.results.length > 0) {
-              const comment = `## 🔒 Security Scan Results\n\n**Bandit found ${bandit.results.length} issues:**\n\n${bandit.results.map(issue => `- **${issue.test_name}**: ${issue.issue_text} (${issue.filename}:${issue.line_number})`).join('\n')}`;
-              github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: comment
-              });
-            }
-          }
-```
-
-## 배포 자동화
-
-### 배포 파이프라인 오케스트레이션
+### OWASP Security Scanning
 
 ```bash
 #!/bin/bash
-# scripts/deploy-pipeline.sh
+# scripts/security-scan.sh
 
-set -e
+set -euo pipefail
 
-# 인자 처리
-ENVIRONMENT=${1:-staging}
-VERSION=${2:-latest}
-STRATEGY=${3:-rolling}
+echo "Running OWASP security scans..."
 
-echo "🚀 Starting deployment pipeline"
-echo "📋 Environment: $ENVIRONMENT"
-echo "🏷️  Version: $VERSION"
-echo "🔄 Strategy: $STRATEGY"
+# Dependency check
+dependency-check \
+  --project "MoAI-ADK" \
+  --scan . \
+  --format HTML \
+  --format JSON \
+  --out reports/dependency-check
 
-# 1. 사전 검사
-echo "<span class="material-icons">search</span> Running pre-deployment checks..."
-./scripts/pre-deployment-checks.sh $ENVIRONMENT
+# ZAP scan
+docker run -v $(pwd):/zap/wrk/:rw \
+  -t owasp/zap2docker-stable zap-baseline.py \
+  -t https://staging.moai-adk.example.com \
+  -r zap-report.html
 
-# 2. 백업 생성
-echo "💾 Creating backups..."
-./scripts/backup-system.sh $ENVIRONMENT
+# Bandit Python security
+bandit -r src/ -f json -o reports/bandit-report.json
 
-# 3. 테스트 환경 배포
-if [ "$ENVIRONMENT" != "production" ]; then
-    echo "🧪 Deploying to test environment first..."
-    ./scripts/deploy-to-test.sh $VERSION
-
-    echo "🧪 Running integration tests..."
-    ./scripts/integration-tests.sh test
-fi
-
-# 4. 대상 환경 배포
-echo "🚀 Deploying to $ENVIRONMENT environment..."
-
-case $STRATEGY in
-    "rolling")
-        ./scripts/rolling-deploy.sh $ENVIRONMENT $VERSION
-        ;;
-    "blue-green")
-        ./scripts/blue-green-deploy.sh $ENVIRONMENT $VERSION
-        ;;
-    "canary")
-        ./scripts/canary-deploy.sh $ENVIRONMENT $VERSION
-        ;;
-    *)
-        echo "<span class="material-icons">cancel</span> Unknown deployment strategy: $STRATEGY"
-        exit 1
-        ;;
-esac
-
-# 5. 배포 후 검증
-echo "<span class="material-icons">search</span> Running post-deployment validation..."
-./scripts/post-deployment-checks.sh $ENVIRONMENT
-
-# 6. 성능 테스트
-if [ "$ENVIRONMENT" = "staging" ]; then
-    echo "📊 Running performance tests..."
-    ./scripts/performance-tests.sh $ENVIRONMENT
-fi
-
-# 7. 보안 검사
-echo "🔒 Running security validation..."
-./scripts/security-validation.sh $ENVIRONMENT
-
-# 8. 알림 발송
-echo "📧 Sending deployment notifications..."
-./scripts/notify-deployment.sh $ENVIRONMENT $VERSION success
-
-echo "✅ Deployment pipeline completed successfully!"
+echo "Security scan completed"
 ```
 
-### 멀티 환경 배포 관리
+## Deployment Automation
 
-```yaml
-# deploy-config.yml
-environments:
-  development:
-    type: "compose"
-    config_file: "docker-compose.dev.yml"
-    auto_deploy: true
-    health_check_timeout: 60
-    rollback_on_failure: false
-
-  staging:
-    type: "kubernetes"
-    namespace: "staging"
-    config_file: "k8s/staging/"
-    auto_deploy: true
-    health_check_timeout: 300
-    rollback_on_failure: true
-    tests:
-      - smoke
-      - integration
-      - performance
-
-  production:
-    type: "kubernetes"
-    namespace: "production"
-    config_file: "k8s/production/"
-    auto_deploy: false
-    health_check_timeout: 600
-    rollback_on_failure: true
-    approvals_required: 2
-    tests:
-      - smoke
-      - integration
-      - security
-      - performance
-
-strategies:
-  rolling:
-    default: true
-    max_unavailable: 0
-    max_surge: 1
-
-  blue_green:
-    default: false
-    switch_traffic_automatically: true
-    health_check_duration: 300
-
-  canary:
-    default: false
-    steps:
-      - weight: 5
-        duration: 300
-      - weight: 25
-        duration: 600
-      - weight: 50
-        duration: 900
-      - weight: 100
-        duration: 0
-
-notifications:
-  slack:
-    webhook_url: "${SLACK_WEBHOOK}"
-    channels:
-      development: "#dev-deployments"
-      staging: "#staging-deployments"
-      production: "#prod-deployments"
-
-  email:
-    smtp_server: "${SMTP_SERVER}"
-    recipients:
-      development: ["dev-team@company.com"]
-      staging: ["qa-team@company.com"]
-      production: ["ops-team@company.com", "management@company.com"]
-```
-
-### 배포 상태 추적
+### Pipeline Orchestration
 
 ```python
-# scripts/deployment_tracker.py
-import json
-import time
-import requests
+# scripts/deploy_pipeline.py
+import asyncio
+from dataclasses import dataclass
+from enum import Enum
+from typing import List, Optional
+
+class DeploymentStage(Enum):
+    VALIDATE = "validate"
+    BUILD = "build"
+    TEST = "test"
+    DEPLOY_STAGING = "deploy_staging"
+    INTEGRATION_TEST = "integration_test"
+    DEPLOY_PRODUCTION = "deploy_production"
+    SMOKE_TEST = "smoke_test"
+
+@dataclass
+class StageResult:
+    stage: DeploymentStage
+    success: bool
+    duration: float
+    message: str
+
+class DeploymentPipeline:
+    def __init__(self, version: str, environment: str):
+        self.version = version
+        self.environment = environment
+        self.results: List[StageResult] = []
+
+    async def run(self) -> bool:
+        """Execute full deployment pipeline"""
+        stages = [
+            self.validate_code,
+            self.build_image,
+            self.run_tests,
+            self.deploy_to_staging,
+            self.run_integration_tests,
+        ]
+
+        if self.environment == "production":
+            stages.extend([
+                self.deploy_to_production,
+                self.run_smoke_tests,
+            ])
+
+        for stage_func in stages:
+            result = await stage_func()
+            self.results.append(result)
+
+            if not result.success:
+                await self.rollback()
+                return False
+
+        return True
+
+    async def validate_code(self) -> StageResult:
+        """Validate code quality"""
+        start = time.time()
+
+        # Run linting
+        lint_result = await asyncio.create_subprocess_exec(
+            "uv", "run", "ruff", "check", ".",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        await lint_result.wait()
+
+        # Run type checking
+        mypy_result = await asyncio.create_subprocess_exec(
+            "uv", "run", "mypy", "src/",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        await mypy_result.wait()
+
+        success = lint_result.returncode == 0 and mypy_result.returncode == 0
+        duration = time.time() - start
+
+        return StageResult(
+            stage=DeploymentStage.VALIDATE,
+            success=success,
+            duration=duration,
+            message="Code validation completed" if success else "Code validation failed"
+        )
+
+    async def build_image(self) -> StageResult:
+        """Build Docker image"""
+        start = time.time()
+
+        process = await asyncio.create_subprocess_exec(
+            "docker", "build",
+            "-t", f"myregistry/moai-adk:{self.version}",
+            ".",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        await process.wait()
+
+        success = process.returncode == 0
+        duration = time.time() - start
+
+        return StageResult(
+            stage=DeploymentStage.BUILD,
+            success=success,
+            duration=duration,
+            message=f"Image built: {self.version}" if success else "Build failed"
+        )
+
+    async def rollback(self):
+        """Rollback deployment on failure"""
+        logger.error("Deployment failed, initiating rollback")
+
+        # Get previous version
+        previous_version = await self.get_previous_version()
+
+        # Rollback to previous version
+        await asyncio.create_subprocess_exec(
+            "kubectl", "rollout", "undo",
+            "deployment/moai-adk",
+            "-n", "moai-adk"
+        )
+
+        logger.info(f"Rolled back to version: {previous_version}")
+
+# Usage
+async def main():
+    pipeline = DeploymentPipeline(
+        version="v1.2.3",
+        environment="production"
+    )
+
+    success = await pipeline.run()
+
+    if success:
+        print("Deployment completed successfully")
+    else:
+        print("Deployment failed")
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+### Multi-Environment Management
+
+```python
+# scripts/environment_manager.py
+from dataclasses import dataclass
+from typing import Dict, List
+import yaml
+
+@dataclass
+class Environment:
+    name: str
+    namespace: str
+    replicas: int
+    resources: Dict[str, str]
+    database_url: str
+    redis_url: str
+
+class EnvironmentManager:
+    def __init__(self, config_path: str):
+        with open(config_path) as f:
+            self.config = yaml.safe_load(f)
+
+    def get_environment(self, name: str) -> Environment:
+        """Get environment configuration"""
+        env_config = self.config['environments'][name]
+
+        return Environment(
+            name=name,
+            namespace=env_config['namespace'],
+            replicas=env_config['replicas'],
+            resources=env_config['resources'],
+            database_url=env_config['database_url'],
+            redis_url=env_config['redis_url']
+        )
+
+    def deploy(self, environment: str, version: str):
+        """Deploy to specific environment"""
+        env = self.get_environment(environment)
+
+        # Generate Kubernetes manifests
+        manifests = self.generate_manifests(env, version)
+
+        # Apply manifests
+        for manifest in manifests:
+            self.apply_manifest(manifest, env.namespace)
+
+        # Wait for rollout
+        self.wait_for_rollout(env.namespace)
+
+    def generate_manifests(self, env: Environment, version: str) -> List[str]:
+        """Generate Kubernetes manifests for environment"""
+        # Implementation details...
+        pass
+
+# Usage
+manager = EnvironmentManager('config/environments.yaml')
+manager.deploy('production', 'v1.2.3')
+```
+
+### Deployment Tracking
+
+```python
+# src/deployment/tracker.py
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Optional
+from sqlalchemy import Column, String, DateTime, Boolean, Integer
+from database import Base
+
+class Deployment(Base):
+    __tablename__ = "deployments"
+
+    id = Column(Integer, primary_key=True)
+    version = Column(String, nullable=False)
+    environment = Column(String, nullable=False)
+    status = Column(String, nullable=False)  # pending, in_progress, succeeded, failed, rolled_back
+    started_at = Column(DateTime, default=datetime.utcnow)
+    completed_at = Column(DateTime, nullable=True)
+    deployed_by = Column(String, nullable=False)
+    commit_sha = Column(String, nullable=False)
+    rollback_version = Column(String, nullable=True)
 
 class DeploymentTracker:
-    def __init__(self, config_file: str = "deploy-config.yml"):
-        self.config = self.load_config(config_file)
+    def __init__(self, db_session):
+        self.db = db_session
 
-    def load_config(self, config_file: str) -> Dict:
-        """배포 설정 로드"""
-        with open(config_file, 'r') as f:
-            return yaml.safe_load(f)
+    def start_deployment(
+        self,
+        version: str,
+        environment: str,
+        deployed_by: str,
+        commit_sha: str
+    ) -> Deployment:
+        """Record deployment start"""
+        deployment = Deployment(
+            version=version,
+            environment=environment,
+            status="in_progress",
+            deployed_by=deployed_by,
+            commit_sha=commit_sha
+        )
 
-    def start_deployment(self, environment: str, version: str, strategy: str) -> str:
-        """배포 시작 추적"""
-        deployment_id = f"{environment}-{version}-{int(time.time())}"
+        self.db.add(deployment)
+        self.db.commit()
 
-        deployment = {
-            "id": deployment_id,
-            "environment": environment,
-            "version": version,
-            "strategy": strategy,
-            "status": "in_progress",
-            "started_at": datetime.utcnow().isoformat(),
-            "steps": []
-        }
+        return deployment
 
-        self.save_deployment(deployment)
-        return deployment_id
+    def complete_deployment(self, deployment_id: int, success: bool):
+        """Mark deployment as completed"""
+        deployment = self.db.query(Deployment).get(deployment_id)
+        deployment.status = "succeeded" if success else "failed"
+        deployment.completed_at = datetime.utcnow()
 
-    def add_step(self, deployment_id: str, step_name: str, status: str,
-                  details: Optional[Dict] = None):
-        """배포 단계 추가"""
-        deployment = self.get_deployment(deployment_id)
+        self.db.commit()
 
-        step = {
-            "name": step_name,
-            "status": status,
-            "timestamp": datetime.utcnow().isoformat(),
-            "details": details or {}
-        }
+    def get_current_version(self, environment: str) -> Optional[str]:
+        """Get currently deployed version"""
+        deployment = (
+            self.db.query(Deployment)
+            .filter_by(environment=environment, status="succeeded")
+            .order_by(Deployment.completed_at.desc())
+            .first()
+        )
 
-        deployment["steps"].append(step)
-        self.save_deployment(deployment)
-
-    def complete_deployment(self, deployment_id: str, status: str):
-        """배포 완료"""
-        deployment = self.get_deployment(deployment_id)
-        deployment["status"] = status
-        deployment["completed_at"] = datetime.utcnow().isoformat()
-
-        # 성공 메트릭 계산
-        if status == "success":
-            deployment["duration"] = self.calculate_duration(deployment)
-            deployment["success_rate"] = self.calculate_success_rate(deployment)
-
-        self.save_deployment(deployment)
-
-        # 알림 발송
-        self.send_notification(deployment)
-
-    def get_deployment(self, deployment_id: str) -> Dict:
-        """배포 정보 조회"""
-        deployments_file = "deployments.json"
-
-        if not os.path.exists(deployments_file):
-            return {}
-
-        with open(deployments_file, 'r') as f:
-            deployments = json.load(f)
-
-        return deployments.get(deployment_id, {})
-
-    def save_deployment(self, deployment: Dict):
-        """배포 정보 저장"""
-        deployments_file = "deployments.json"
-
-        deployments = {}
-        if os.path.exists(deployments_file):
-            with open(deployments_file, 'r') as f:
-                deployments = json.load(f)
-
-        deployments[deployment["id"]] = deployment
-
-        with open(deployments_file, 'w') as f:
-            json.dump(deployments, f, indent=2)
-
-    def send_notification(self, deployment: Dict):
-        """배포 알림 발송"""
-        message = self.format_notification_message(deployment)
-
-        # Slack 알림
-        if "slack" in self.config.get("notifications", {}):
-            self.send_slack_notification(message)
-
-        # Email 알림
-        if "email" in self.config.get("notifications", {}):
-            self.send_email_notification(deployment, message)
-
-    def format_notification_message(self, deployment: Dict) -> str:
-        """알림 메시지 포맷팅"""
-        status_emoji = "✅" if deployment["status"] == "success" else "<span class="material-icons">cancel</span>"
-
-        message = f"""
-{status_emoji} Deployment {deployment['status'].upper()}
-
-📋 Environment: {deployment['environment']}
-🏷️  Version: {deployment['version']}
-🔄 Strategy: {deployment['strategy']}
-⏰ Duration: {deployment.get('duration', 'N/A')}
-📊 Success Rate: {deployment.get('success_rate', 'N/A')}%
-
-Steps:
-"""
-
-        for step in deployment["steps"]:
-            step_emoji = "✅" if step["status"] == "success" else "<span class="material-icons">cancel</span>"
-            message += f"{step_emoji} {step['name']}\n"
-
-        return message
+        return deployment.version if deployment else None
 ```
 
-## 성능 최적화
+## Performance Optimization
 
-### 애플리케이션 성능 최적화
-
-```python
-# src/performance.py
-import asyncio
-import time
-from functools import wraps
-from typing import Callable, Any
-
-def performance_monitor(func: Callable) -> Callable:
-    """성능 모니터링 데코레이터"""
-    @wraps(func)
-    async def async_wrapper(*args, **kwargs):
-        start_time = time.time()
-        try:
-            result = await func(*args, **kwargs)
-            execution_time = time.time() - start_time
-
-            # 성능 메트릭 기록
-            record_performance_metric(func.__name__, execution_time, "success")
-
-            return result
-        except Exception as e:
-            execution_time = time.time() - start_time
-            record_performance_metric(func.__name__, execution_time, "error")
-            raise
-
-    @wraps(func)
-    def sync_wrapper(*args, **kwargs):
-        start_time = time.time()
-        try:
-            result = func(*args, **kwargs)
-            execution_time = time.time() - start_time
-
-            # 성능 메트릭 기록
-            record_performance_metric(func.__name__, execution_time, "success")
-
-            return result
-        except Exception as e:
-            execution_time = time.time() - start_time
-            record_performance_metric(func.__name__, execution_time, "error")
-            raise
-
-    return async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper
-
-def record_performance_metric(function_name: str, execution_time: float, status: str):
-    """성능 메트릭 기록"""
-    # Prometheus 메트릭 기록
-    from prometheus_client import Histogram, Counter
-
-    REQUEST_DURATION = Histogram(
-        'request_duration_seconds',
-        'Request duration',
-        ['function_name', 'status']
-    )
-
-    REQUEST_COUNT = Counter(
-        'request_count_total',
-        'Total requests',
-        ['function_name', 'status']
-    )
-
-    REQUEST_DURATION.labels(function_name=function_name, status=status).observe(execution_time)
-    REQUEST_COUNT.labels(function_name=function_name, status=status).inc()
-```
-
-### 데이터베이스 성능 최적화
+### Database Optimization
 
 ```sql
--- database/performance-optimizations.sql
+-- Create indexes for frequent queries
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_created_at ON users(created_at DESC);
+CREATE INDEX idx_orders_user_id ON orders(user_id);
+CREATE INDEX idx_orders_status ON orders(status) WHERE status != 'completed';
 
--- 인덱스 최적화
-CREATE INDEX CONCURRENTLY idx_users_email ON users(email);
-CREATE INDEX CONCURRENTLY idx_users_created_at ON users(created_at);
-CREATE INDEX CONCURRENTLY idx_posts_author_id ON posts(author_id);
-
--- 파티셔닝 (대용량 테이블)
-CREATE TABLE logs (
-    id SERIAL,
-    message TEXT,
-    level VARCHAR(10),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-) PARTITION BY RANGE (created_at);
-
--- 월별 파티션
-CREATE TABLE logs_2024_01 PARTITION OF logs
+-- Partition large tables by date
+CREATE TABLE orders_2024_01 PARTITION OF orders
     FOR VALUES FROM ('2024-01-01') TO ('2024-02-01');
 
--- 쿼리 최적화
-EXPLAIN (ANALYZE, BUFFERS)
-SELECT u.id, u.name, COUNT(p.id) as post_count
-FROM users u
-LEFT JOIN posts p ON u.id = p.author_id
-WHERE u.created_at >= '2024-01-01'
-GROUP BY u.id, u.name
-ORDER BY post_count DESC;
+-- Analyze query performance
+EXPLAIN ANALYZE
+SELECT * FROM orders
+WHERE user_id = 123 AND status = 'pending'
+ORDER BY created_at DESC
+LIMIT 10;
 
--- 커넥션 풀링 설정
--- postgresql.conf
-max_connections = 200
-shared_buffers = 256MB
-effective_cache_size = 1GB
-work_mem = 4MB
-maintenance_work_mem = 64MB
+-- Optimize with materialized view
+CREATE MATERIALIZED VIEW user_order_stats AS
+SELECT
+    user_id,
+    COUNT(*) as total_orders,
+    SUM(total_amount) as total_spent,
+    MAX(created_at) as last_order_date
+FROM orders
+GROUP BY user_id;
+
+CREATE INDEX idx_user_order_stats_user_id ON user_order_stats(user_id);
+
+-- Refresh materialized view
+REFRESH MATERIALIZED VIEW CONCURRENTLY user_order_stats;
 ```
 
-### 캐싱 전략
+```python
+# src/database/optimization.py
+from sqlalchemy import event
+from sqlalchemy.orm import Session
+from sqlalchemy.pool import Pool
+
+# Connection pooling configuration
+engine = create_engine(
+    DATABASE_URL,
+    pool_size=20,              # Number of connections to maintain
+    max_overflow=40,           # Maximum overflow connections
+    pool_timeout=30,           # Timeout for getting connection
+    pool_recycle=3600,         # Recycle connections after 1 hour
+    pool_pre_ping=True,        # Verify connection health
+    echo_pool=True,            # Log connection pool events
+)
+
+# Query optimization
+class QueryOptimizer:
+    @staticmethod
+    def optimize_select(query):
+        """Add query optimizations"""
+        return (
+            query
+            .with_hint(User, 'USE INDEX (idx_users_email)')
+            .execution_options(compiled_cache={})
+        )
+
+    @staticmethod
+    def batch_insert(session: Session, model, data: List[dict]):
+        """Optimized batch insert"""
+        session.bulk_insert_mappings(model, data)
+        session.commit()
+
+    @staticmethod
+    def batch_update(session: Session, model, data: List[dict]):
+        """Optimized batch update"""
+        session.bulk_update_mappings(model, data)
+        session.commit()
+```
+
+### Caching Strategy
 
 ```python
-# src/cache.py
+# src/cache/redis_cache.py
+from typing import Optional, Any
 import redis
-import json
 import pickle
-from typing import Any, Optional, Union
 from functools import wraps
 
-class CacheManager:
+class RedisCache:
     def __init__(self, redis_url: str):
-        self.redis_client = redis.from_url(redis_url)
+        self.redis = redis.from_url(redis_url)
 
-    def cache_result(self, key_prefix: str, ttl: int = 3600):
-        """결과 캐싱 데코레이터"""
+    def get(self, key: str) -> Optional[Any]:
+        """Get value from cache"""
+        value = self.redis.get(key)
+        return pickle.loads(value) if value else None
+
+    def set(self, key: str, value: Any, ttl: int = 3600):
+        """Set value in cache with TTL"""
+        self.redis.setex(key, ttl, pickle.dumps(value))
+
+    def delete(self, key: str):
+        """Delete key from cache"""
+        self.redis.delete(key)
+
+    def cached(self, ttl: int = 3600):
+        """Decorator for caching function results"""
         def decorator(func):
             @wraps(func)
             async def wrapper(*args, **kwargs):
-                # 캐시 키 생성
-                cache_key = f"{key_prefix}:{hash(str(args) + str(kwargs))}"
+                # Generate cache key
+                cache_key = f"{func.__name__}:{str(args)}:{str(kwargs)}"
 
-                # 캐시 조회
-                cached_result = self.get(cache_key)
-                if cached_result is not None:
-                    return cached_result
+                # Check cache
+                cached_value = self.get(cache_key)
+                if cached_value is not None:
+                    return cached_value
 
-                # 함수 실행
+                # Execute function
                 result = await func(*args, **kwargs)
 
-                # 결과 캐싱
+                # Store in cache
                 self.set(cache_key, result, ttl)
 
                 return result
             return wrapper
         return decorator
 
-    def get(self, key: str) -> Optional[Any]:
-        """캐시에서 값 조회"""
-        try:
-            value = self.redis_client.get(key)
-            if value:
-                return pickle.loads(value)
-        except Exception as e:
-            print(f"Cache get error: {e}")
-        return None
+# Usage
+cache = RedisCache("redis://localhost:6379/0")
 
-    def set(self, key: str, value: Any, ttl: int = 3600):
-        """캐시에 값 저장"""
-        try:
-            serialized_value = pickle.dumps(value)
-            self.redis_client.setex(key, ttl, serialized_value)
-        except Exception as e:
-            print(f"Cache set error: {e}")
-
-    def delete(self, key: str):
-        """캐시에서 값 삭제"""
-        try:
-            self.redis_client.delete(key)
-        except Exception as e:
-            print(f"Cache delete error: {e}")
-
-    def clear_pattern(self, pattern: str):
-        """패턴으로 캐시 정리"""
-        try:
-            keys = self.redis_client.keys(pattern)
-            if keys:
-                self.redis_client.delete(*keys)
-        except Exception as e:
-            print(f"Cache clear error: {e}")
-
-# 사용 예시
-cache_manager = CacheManager("redis://localhost:6379/0")
-
-@cache_manager.cache_result("user_profile", ttl=1800)
+@cache.cached(ttl=600)
 async def get_user_profile(user_id: int):
-    """사용자 프로필 조회 (30분 캐시)"""
-    # 데이터베이스 조회 로직
-    pass
+    # Expensive database query
+    return await db.fetch_one(
+        "SELECT * FROM users WHERE id = :user_id",
+        {"user_id": user_id}
+    )
+```
 
-@cache_manager.cache_result("popular_posts", ttl=3600)
-async def get_popular_posts(limit: int = 10):
-    """인기 포스트 조회 (1시간 캐시)"""
-    # 복잡한 쿼리 실행
+### Application Performance Monitoring
+
+```python
+# src/monitoring/performance.py
+import time
+from functools import wraps
+from typing import Callable
+
+def performance_monitor(threshold_ms: float = 1000):
+    """Monitor function performance and log slow operations"""
+    def decorator(func: Callable):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            start_time = time.time()
+
+            try:
+                result = await func(*args, **kwargs)
+                return result
+            finally:
+                duration_ms = (time.time() - start_time) * 1000
+
+                if duration_ms > threshold_ms:
+                    logger.warning(
+                        f"Slow operation detected: {func.__name__}",
+                        duration_ms=duration_ms,
+                        threshold_ms=threshold_ms,
+                        args=str(args),
+                        kwargs=str(kwargs)
+                    )
+
+        return wrapper
+    return decorator
+
+# Usage
+@performance_monitor(threshold_ms=500)
+async def process_large_dataset(data: List[dict]):
+    # Processing logic
     pass
 ```
 
-## 문제 해결 및 복구
+## Troubleshooting and Recovery
 
-### 롤백 전략
+### Rollback Scripts
 
 ```bash
 #!/bin/bash
 # scripts/rollback.sh
 
-set -e
+set -euo pipefail
 
-ENVIRONMENT=${1:-staging}
-TARGET_VERSION=${2:-previous}
+ENVIRONMENT=$1
+TARGET_VERSION=${2:-"previous"}
+NAMESPACE="moai-adk"
 
-echo "🔄 Starting rollback for $ENVIRONMENT environment"
-echo "🎯 Target version: $TARGET_VERSION"
+echo "Rolling back ${ENVIRONMENT} to ${TARGET_VERSION}"
 
-# 현재 상태 백업
-echo "💾 Backing up current state..."
-./scripts/backup-current-state.sh $ENVIRONMENT
+if [ "$TARGET_VERSION" == "previous" ]; then
+  # Rollback to previous revision
+  kubectl rollout undo deployment/moai-adk -n $NAMESPACE
+else
+  # Rollback to specific version
+  kubectl set image deployment/moai-adk \
+    moai-adk=myregistry/moai-adk:$TARGET_VERSION \
+    -n $NAMESPACE
+fi
 
-# 롤백 방식 선택
-case $TARGET_VERSION in
-    "previous")
-        VERSION=$(git describe --tags --abbrev=0 HEAD~1)
-        ;;
-    "stable")
-        VERSION=$(git tag --sort=-version:refname | head -n 1)
-        ;;
-    *)
-        VERSION=$TARGET_VERSION
-        ;;
-esac
+# Wait for rollout
+kubectl rollout status deployment/moai-adk -n $NAMESPACE
 
-echo "🏷️  Rolling back to version: $VERSION"
+# Verify health
+echo "Verifying health..."
+sleep 30
 
-# 롤백 실행
-echo "🔄 Executing rollback..."
-
-# 1. 배포 중지
-echo "⏸️  Stopping current deployment..."
-./scripts/stop-deployment.sh $ENVIRONMENT
-
-# 2. 이전 버전 배포
-echo "🚀 Deploying previous version..."
-./scripts/deploy-version.sh $ENVIRONMENT $VERSION
-
-# 3. 상태 검증
-echo "<span class="material-icons">search</span> Validating rollback..."
-./scripts/validate-rollback.sh $ENVIRONMENT $VERSION
-
-# 4. 데이터베이스 마이그레이션 (필요시)
-echo "📊 Running database migrations..."
-./scripts/migrate-database.sh $ENVIRONMENT rollback
-
-# 5. 롤백 완료 확인
-echo "✅ Rollback completed successfully!"
-echo "🌐 Application running on: https://api.myapp.com"
-echo "🏷️  Current version: $VERSION"
-
-# 알림 발송
-./scripts/notify-rollback.sh $ENVIRONMENT $VERSION
+HEALTH_URL="https://${ENVIRONMENT}.moai-adk.example.com/health"
+if curl -f $HEALTH_URL; then
+  echo "Rollback successful"
+else
+  echo "Health check failed after rollback"
+  exit 1
+fi
 ```
 
-### 장애 대응 절차
+### Incident Response Playbook
 
 ```yaml
-# incident-response.yml
-incident_response:
-  severity_levels:
-    critical:
-      response_time: 15  # 분
-      escalation_time: 30  # 분
-      notification_channels: ["slack", "email", "sms", "call"]
+# docs/incident-response.yaml
+playbooks:
+  - name: High Error Rate
+    trigger: Error rate > 5% for 5 minutes
+    severity: critical
+    steps:
+      - Check recent deployments (last 24 hours)
+      - Review error logs in Sentry/CloudWatch
+      - Check database connection pool status
+      - Verify external service dependencies
+      - If deployment-related, rollback to previous version
+      - If traffic spike, scale up resources
+      - Create incident report
 
-    high:
-      response_time: 30
-      escalation_time: 60
-      notification_channels: ["slack", "email"]
+  - name: High Latency
+    trigger: P95 latency > 1s for 10 minutes
+    severity: warning
+    steps:
+      - Check database query performance (slow query log)
+      - Review cache hit rate (Redis)
+      - Check external API latency
+      - Review recent code changes
+      - Analyze APM traces (Sentry/DataDog)
+      - Scale horizontally if traffic-related
+      - Optimize slow queries if database-related
 
-    medium:
-      response_time: 60
-      escalation_time: 120
-      notification_channels: ["slack"]
-
-    low:
-      response_time: 240
-      escalation_time: 480
-      notification_channels: ["slack"]
-
-  playbooks:
-    application_down:
-      detection:
-        - health_check_failure
-        - error_rate_threshold
-        - user_reports
-
-      immediate_actions:
-        - check_logs
-        - verify_system_resources
-        - check_external_dependencies
-
-      recovery_actions:
-        - restart_services
-        - rollback_deployment
-        - scale_up_resources
-
-      post_incident:
-        - root_cause_analysis
-        - prevention_measures
-        - documentation_update
-
-    performance_degradation:
-      detection:
-        - response_time_threshold
-        - cpu_memory_threshold
-        - database_slow_queries
-
-      immediate_actions:
-        - check_system_metrics
-        - identify_bottlenecks
-        - scale_resources
-
-      recovery_actions:
-        - optimize_queries
-        - add_caching
-        - scale_horizontally
-
-    security_incident:
-      detection:
-        - unusual_access_patterns
-        - security_scan_alerts
-        - data_breach_indicators
-
-      immediate_actions:
-        - isolate_affected_systems
-        - preserve_evidence
-        - notify_security_team
-
-      recovery_actions:
-        - patch_vulnerabilities
-        - reset_credentials
-        - restore_from_backup
-
-  communication_templates:
-    initial_alert: |
-      🚨 **Incident Alert**
-
-      **Severity**: {severity}
-      **Service**: {service}
-      **Impact**: {impact}
-      **Started**: {timestamp}
-
-      **Next Update**: {next_update_time}
-
-      **Response Team**: {team}
-
-    progress_update: |
-      📋 **Incident Update**
-
-      **Incident ID**: {incident_id}
-      **Status**: {status}
-      **Actions Taken**: {actions}
-      **ETA**: {eta}
-
-      **Next Update**: {next_update_time}
-
-    resolution: |
-      ✅ **Incident Resolved**
-
-      **Incident ID**: {incident_id}
-      **Resolution Time**: {resolution_time}
-      **Root Cause**: {root_cause}
-      **Prevention Measures**: {prevention}
-
-      **Post-Mortem**: {post_mortem_link}
+  - name: Service Down
+    trigger: Health check failing
+    severity: critical
+    steps:
+      - Check pod status (kubectl get pods)
+      - Review recent pod logs (kubectl logs)
+      - Check resource usage (CPU/memory)
+      - Verify network connectivity
+      - Check database connectivity
+      - Restart pods if necessary
+      - Rollback if deployment-related
+      - Escalate if infrastructure issue
 ```
 
-## 모범 사례
+### Diagnostic Commands
 
-### 배포 체크리스트
+```bash
+#!/bin/bash
+# scripts/diagnose.sh
 
-#### 사전 배포 확인사항
+NAMESPACE="moai-adk"
 
-```markdown
-## 📋 Pre-Deployment Checklist
+echo "=== Pod Status ==="
+kubectl get pods -n $NAMESPACE
 
-### ✅ 코드 준비
-- [ ] 모든 테스트 통과 (단위, 통합, E2E)
-- [ ] 코드 리뷰 완료 및 승인
-- [ ] 보안 스캔 통과
-- [ ] 성능 테스트 통과
-- [ ] 문서 업데이트 완료
+echo -e "\n=== Recent Events ==="
+kubectl get events -n $NAMESPACE --sort-by='.lastTimestamp' | tail -20
 
-### ✅ 환경 준비
-- [ ] 타겟 환경 상태 정상
-- [ ] 데이터베이스 백업 완료
-- [ ] 설정 파일 검증 완료
-- [ ] 리소스 용량 확인
-- [ ] 네트워크 연결 확인
+echo -e "\n=== Resource Usage ==="
+kubectl top pods -n $NAMESPACE
 
-### ✅ 배포 계획
-- [ ] 롤백 계획 수립
-- [ ] 배포 시간 창 확보
-- [ ] 관련팀 통지 완료
-- [ ] 모니터링 시스템 준비
-- [ ] 알림 채널 설정
+echo -e "\n=== Pod Logs (last 100 lines) ==="
+POD=$(kubectl get pod -n $NAMESPACE -l app=moai-adk -o jsonpath='{.items[0].metadata.name}')
+kubectl logs $POD -n $NAMESPACE --tail=100
 
-### ✅ 보안 및 규제
-- [ ] 접근 권한 확인
-- [ ] 보안 정책 준수
-- [ ] 규제 요구사항 검증
-- [ ] 감사 로그 활성화
-- [ ] 민감정보 처리 확인
+echo -e "\n=== Service Endpoints ==="
+kubectl get endpoints -n $NAMESPACE
+
+echo -e "\n=== Ingress Status ==="
+kubectl get ingress -n $NAMESPACE
+
+echo -e "\n=== Recent Deployments ==="
+kubectl rollout history deployment/moai-adk -n $NAMESPACE
 ```
 
-#### 배포 후 확인사항
+## Best Practices
 
-```markdown
-## ✅ Post-Deployment Checklist
+### Pre-Deployment Checklist
 
-### 🚀 배포 상태 확인
-- [ ] 애플리케이션 정상 시작
-- [ ] 헬스 체크 통과
-- [ ] 로그 에러 없음
-- [ ] 데이터베이스 연결 정상
-- [ ] 외부 API 연동 정상
+- [ ] **Code Quality**
+  - [ ] All tests passing (unit, integration, e2e)
+  - [ ] Code coverage > 80%
+  - [ ] Linting and type checking passed
+  - [ ] Security scan completed (no HIGH/CRITICAL vulnerabilities)
+  - [ ] TRUST 5 validation passed
 
-### 📊 기능 검증
-- [ ] 주요 기능 동작 확인
-- [ ] API 엔드포인트 응답 정상
-- [ ] 사용자 인증 작동
-- [ ] 데이터 CRUD 작업 정상
-- [ ] 파일 업로드/다운로드 정상
+- [ ] **Configuration**
+  - [ ] Environment variables configured
+  - [ ] Secrets properly managed (not in code)
+  - [ ] Database migrations prepared
+  - [ ] Feature flags configured
+  - [ ] Monitoring alerts configured
 
-### <span class="material-icons">search</span> 성능 모니터링
-- [ ] 응답 시간 정상 범위
-- [ ] CPU/메모리 사용량 정상
-- [ ] 데이터베이스 쿼리 성능 양호
-- [ ] 캐시 적중률 정상
-- [ ] 에러률 임계치 이하
+- [ ] **Documentation**
+  - [ ] SPEC documents updated
+  - [ ] API documentation generated
+  - [ ] Deployment runbook updated
+  - [ ] Rollback plan documented
 
-### <span class="material-icons">trending_up</span> 모니터링 알림
-- [ ] Prometheus 메트릭 수집
-- [ ] Grafana 대시보드 정상
-- [ ] 로그 수집 및 분석
-- [ ] 알림 규칙 동작 확인
-- [ ] SLA 지표 충족
+- [ ] **Infrastructure**
+  - [ ] Resource limits configured
+  - [ ] Auto-scaling policies set
+  - [ ] Backup strategy verified
+  - [ ] Disaster recovery plan reviewed
 
-### 🔄 롤백 준비
-- [ ] 이전 버전 이미지 보관
-- [ ] 롤백 스크립트 검증
-- [ ] 데이터베이스 마이그레이션 스크립트 준비
-- [ ] 롤백 시나리오 테스트 완료
-- [ ] 긴급 연락망 확인
-```
+- [ ] **Communication**
+  - [ ] Stakeholders notified of deployment window
+  - [ ] Maintenance page ready (if needed)
+  - [ ] Rollback team on standby
+  - [ ] Incident response contacts verified
 
-### 배포 성공 지표
+### Post-Deployment Checklist
 
-```yaml
-# deployment-metrics.yml
-success_metrics:
-  deployment_success_rate:
-    target: 95%
-    measurement: "Successful deployments / Total deployments"
+- [ ] **Health Verification**
+  - [ ] Health check endpoints responding
+  - [ ] All pods running and ready
+  - [ ] No error spikes in logs
+  - [ ] Metrics within normal range
 
-  deployment_time:
-    target: 15  # minutes
-    measurement: "Time from commit to production"
+- [ ] **Smoke Tests**
+  - [ ] Critical user flows tested
+  - [ ] API endpoints responding
+  - [ ] Database connections working
+  - [ ] External integrations functional
 
-  rollback_rate:
-    target: 5%
-    measurement: "Rollbacks / Total deployments"
+- [ ] **Monitoring**
+  - [ ] Metrics dashboard reviewed
+  - [ ] Error rates normal
+  - [ ] Latency within SLA
+  - [ ] Resource usage acceptable
 
-  downtime_per_deployment:
-    target: 30  # seconds
-    measurement: "Service unavailability during deployment"
+- [ ] **Documentation**
+  - [ ] Deployment recorded in tracking system
+  - [ ] Release notes published
+  - [ ] Known issues documented
+  - [ ] Rollback plan confirmed
 
-  post_deployment_issues:
-    target: 2
-    measurement: "Critical issues in first 24 hours"
+- [ ] **Communication**
+  - [ ] Stakeholders notified of completion
+  - [ ] Support team briefed on changes
+  - [ ] Status page updated
 
-  performance_regression:
-    target: 5%
-    measurement: "Performance degradation after deployment"
+### Deployment Success Metrics
 
-monitoring:
-  real_time_alerts:
-    - deployment_failure
-    - health_check_failure
-    - error_rate_spike
-    - response_time_degradation
+| Metric | Target | Critical Threshold |
+|--------|--------|--------------------|
+| Deployment Frequency | > 10/week | < 1/week |
+| Lead Time for Changes | < 1 hour | > 1 day |
+| Mean Time to Recovery (MTTR) | < 15 minutes | > 1 hour |
+| Change Failure Rate | < 5% | > 15% |
+| Deployment Success Rate | > 95% | < 85% |
+| Rollback Rate | < 5% | > 15% |
+| P95 Deployment Duration | < 30 minutes | > 2 hours |
 
-  daily_reports:
-    - deployment_summary
-    - performance_metrics
-    - error_analysis
-    - user_impact_assessment
+---
 
-  weekly_reviews:
-    - deployment_process_review
-    - incident_postmortem
-    - optimization_opportunities
-    - team_feedback
-```
+## Summary
 
-______________________________________________________________________
+This deployment guide covers the complete lifecycle of deploying MoAI-ADK projects:
 
-이 가이드를 통해 MoAI-ADK 프로젝트를 안전하고 효율적으로 배포할 수 있습니다. 현대적인 DevOps 관행과 자동화된 워크플로우를 통해 안정적인 서비스 운영을 달성할 수 있을
-것입니다.
+1. **Containerization**: Docker multi-stage builds with security best practices
+2. **Orchestration**: Kubernetes, Docker Compose, and cloud-native solutions
+3. **Cloud Platforms**: AWS ECS, Google Cloud Run, Azure Container Instances
+4. **CI/CD**: GitHub Actions and GitLab CI/CD pipelines
+5. **Environment Management**: Development, staging, and production configurations
+6. **Rollout Strategies**: Blue-green, canary, and rolling deployments
+7. **Monitoring**: Prometheus metrics, Grafana dashboards, structured logging
+8. **Security**: Container scanning, network policies, OWASP compliance
+9. **Automation**: Pipeline orchestration and deployment tracking
+10. **Performance**: Database optimization, caching, and APM
+11. **Recovery**: Rollback procedures and incident response
+12. **Best Practices**: Comprehensive checklists and success metrics
+
+By following these patterns and practices, teams can achieve reliable, secure, and efficient deployments that align with MoAI-ADK's SPEC-first philosophy and TRUST 5 principles.
