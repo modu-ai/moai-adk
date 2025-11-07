@@ -40,7 +40,7 @@
 1. "New repository secret" 클릭
 2. 정보 입력:
    Name: ANTHROPIC_API_KEY
-   Secret: sk-ant-api03-**[YOUR-API-KEY-HERE]** (Anthropic에서 발급받은 API Key)
+   Secret: `[YOUR-ANTHROPIC-API-KEY]` (Anthropic에서 발급받은 API Key)
 3. "Add secret" 클릭
 4. 확인: Settings → Secrets에서 ANTHROPIC_API_KEY 표시됨
 
