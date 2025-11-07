@@ -211,7 +211,11 @@ The user executes the `/alfred:0-project` command to start analyzing the project
    ```python
    Skill("moai-project-language-initializer", mode="language_change_only")
    ```
-   - Update language context
+   - Update language context in config.json
+   - **Auto-Translate Announcements** (CRITICAL):
+     ```bash
+     uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/shared/utils/announcement_translator.py
+     ```
    - Restart settings mode in new language
 
 3. **IF user selects "Keep Current" or "Show All Settings"**:
@@ -298,14 +302,20 @@ Skill("moai-project-template-optimizer", mode="update", language=confirmed_langu
    📝 **생성된 보고서**: [report location]
    ```
 
-2. **Ask for Next Steps** (in confirmed language):
+2. **Auto-Translate Announcements** (CRITICAL):
+   ```bash
+   # Ensure announcements match current language after template update
+   uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/shared/utils/announcement_translator.py
+   ```
+
+3. **Ask for Next Steps** (in confirmed language):
    - Option 1: "업데이트 내용 검토" → Show detailed changes
    - Option 2: "설정 수정" → Go to settings mode
    - Option 3: "종료" → End command
 
-3. **Exit after completion**
-4. **Do NOT proceed** to any other workflows
-5. **End command execution**
+4. **Exit after completion**
+5. **Do NOT proceed** to any other workflows
+6. **End command execution**
 
 ---
 
@@ -357,6 +367,15 @@ Skill("moai-project-language-initializer", mode="fresh_install", language=select
    - Validate all settings
    - Set up language-specific configurations
 
+5. **Auto-Translate Announcements** (CRITICAL - NEW):
+   ```bash
+   # After config.json is created, auto-translate companyAnnouncements
+   uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/shared/utils/announcement_translator.py
+   ```
+   - Reads `conversation_language` from `.moai/config.json`
+   - Translates 22 announcements to selected language
+   - Updates `.claude/settings.json` automatically
+
 ### Step 3: Project Documentation Creation (Language-Aware)
 1. **Invoke**: `Task` with `project-manager` agent
 2. **Pass Language Context**: Ensure all documentation in selected language
@@ -402,11 +421,21 @@ Skill("moai-project-language-initializer", mode="fresh_install", language=select
    ```
 2. **Update Language Context**: Switch ALL subsequent interactions to new language
 3. **Update Configuration**: Save new language settings
-4. **Continue with new language context**
+4. **Auto-Translate Announcements** (CRITICAL):
+   ```bash
+   # After language change, update announcements
+   uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/shared/utils/announcement_translator.py
+   ```
+5. **Continue with new language context**
 
 **IF user selects "Continue" or "Show Current Settings"**:
 1. **Maintain Current Language Context**
-2. **Proceed to Step 3** with confirmed language
+2. **Ensure Announcements Match Language** (CRITICAL):
+   ```bash
+   # Verify announcements are in current language
+   uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/shared/utils/announcement_translator.py
+   ```
+3. **Proceed to Step 3** with confirmed language
 
 ### Step 3: Display Current Configuration (in confirmed language)
 1. **Read `.moai/config.json`** to get all current settings
@@ -554,38 +583,30 @@ AskUserQuestion(
 
 #### 1. INITIALIZATION MODE
 After `Skill("moai-project-language-initializer", mode="language_first")` completes:
-```python
-# Step: After language selection, translate announcements
-selected_language = confirmed_language  # e.g., "ko", "en", "ja"
-translated_announcements = translate_announcements(selected_language)
-update_settings_json(companyAnnouncements=translated_announcements)
+```bash
+# Step: After language selection, translate and update announcements
+uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/shared/utils/announcement_translator.py
 ```
 
 #### 2. AUTO-DETECT MODE
 After language confirmation in Step 2:
-```python
+```bash
 # Apply language-specific announcements from config
-current_language = config.language.conversation_language
-translated_announcements = translate_announcements(current_language)
-update_settings_json(companyAnnouncements=translated_announcements)
+uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/shared/utils/announcement_translator.py
 ```
 
 #### 3. SETTINGS MODE
-When user changes language in Step 4:
-```python
-# After Config Manager skill updates language in config.json
-new_language = updated_config.language.conversation_language
-translated_announcements = translate_announcements(new_language)
-update_settings_json(companyAnnouncements=translated_announcements)
+When user changes language (after Config Manager skill updates config.json):
+```bash
+# Update announcements to match new language setting
+uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/shared/utils/announcement_translator.py
 ```
 
 #### 4. UPDATE MODE
 Final step after template optimization:
-```python
+```bash
 # Ensure announcements match current language
-current_language = config.language.conversation_language
-translated_announcements = translate_announcements(current_language)
-update_settings_json(companyAnnouncements=translated_announcements)
+uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/shared/utils/announcement_translator.py
 ```
 
 ### Supported Translation Sources
