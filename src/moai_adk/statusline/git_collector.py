@@ -148,7 +148,8 @@ class GitCollector:
                 staged += 1
 
             # Check unstaged/working directory changes (second character)
-            if len(status) > 1 and status[1] == self._STATUS_MODIFIED:
+            # Detects: M(modified), D(deleted), A(added), R(renamed), C(copied), T(type changed)
+            if len(status) > 1 and status[1] not in (' ', '.'):
                 modified += 1
 
             # Check untracked files
