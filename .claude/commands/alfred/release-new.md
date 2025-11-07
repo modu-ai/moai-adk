@@ -2298,12 +2298,9 @@ Co-Authored-By: Alfred <alfred@mo.ai.kr>
 - ✅ **Include accurate metrics** (test pass rate, coverage)
 - ✅ **Verify links** (v[PREV] and v[VERSION] accurately)
 
-**Create Release with gh CLI** (English only - GitHub Actions에서 자동 생성됨):
+**Create Release with gh CLI** (English only):
 ```bash
-# ⚠️ 주의: 이 단계는 GitHub Actions 워크플로우에서 자동으로 처리됩니다
-# (moai-release-pipeline.yml의 "Create GitHub Release" 스텝 참고)
-
-# 로컬에서 수동 배포하는 경우에만 이 명령을 사용하세요:
+# Generate release notes (use template above)
 release_title="🔖 v{new_version} | {VERSION_TYPE} | {Release Title}"
 
 release_notes="# 🎉 Release v{new_version} | {VERSION_TYPE}
@@ -2366,102 +2363,59 @@ Thanks to all contributors who made this release possible.
 
 Co-Authored-By: Alfred <alfred@mo.ai.kr>"
 
-# ✅ GitHub Release는 GitHub Actions에서 자동으로 Published 상태로 생성됨
-# (draft: false로 설정, moai-release-pipeline.yml 참고)
-#
-# 만약 수동으로 생성해야 하는 경우:
+# Create GitHub Release (Draft, English only)
 gh release create "v{new_version}" \
   --title "$release_title" \
   --notes "$release_notes" \
-  --draft=false
+  --draft
 
-echo "✅ GitHub Release 생성 완료 (자동 published 상태)"
+echo "ℹ️ GitHub Release created as Draft"
 echo "→ https://github.com/modu-ai/moai-adk/releases/tag/v{new_version}"
-echo "→ Release 페이지에서 내용 확인 가능"
+echo "→ Verify content and publish the release..."
 ```
 
-### Step 3.7: GitHub Release 자동 공개 확인 (GitHub Actions)
+### Step 3.7: Publish GitHub Release (Draft → Published)
 
-**⚠️ 중요: 이 단계는 GitHub Actions에서 자동으로 처리됩니다**
-
-```
-GitHub Actions 워크플로우 자동화:
-- moai-release-pipeline.yml이 Release PR 병합 감지
-- 자동으로 v{new_version} 태그 생성
-- GitHub Release를 published 상태(draft: false)로 자동 생성
-- 사용자 개입 없음
-```
-
-**✅ 자동 공개 확인**:
+**Convert Draft Release to Published**:
 ```bash
-# GitHub Release가 published 상태인지 확인
-gh release view v{new_version} --json isDraft -q '.isDraft'
+# Change GitHub Release Draft to Published
+echo "📢 Publishing GitHub Release..."
+gh release edit "v{new_version}" --draft=false
 
-# 출력: false (= published 상태)
-# 또는 GitHub 웹에서 "Latest" 배지가 표시되는지 확인
+if [ $? -ne 0 ]; then
+    echo "❌ Failed to publish GitHub Release"
+    echo "→ Check: gh CLI authentication status"
+    echo "→ Solution: gh auth login or gh auth refresh"
+    exit 1
+fi
+
+echo "✅ GitHub Release Published!"
+echo "→ Latest releases: https://github.com/modu-ai/moai-adk/releases"
+echo "→ Release page: https://github.com/modu-ai/moai-adk/releases/tag/v{new_version}"
 ```
 
 **Verification Checklist**:
-- ✅ GitHub Actions 워크플로우 실행 확인 (moai-release-pipeline.yml)
-- ✅ Release가 published 상태 확인 (draft: false)
-- ✅ "Latest" 배지가 새 버전에 표시되는지 확인
+- ✅ Verify Draft status before publishing
+- ✅ Confirm "Latest" release is updated
+- ✅ Verify GitHub Release page is public
 
 ---
 
-### Step 3.8: GitHub Actions 완료 확인
-
-**GitHub Release 자동 생성 확인**:
-```bash
-# 1. GitHub Actions 워크플로우 실행 상태 확인
-gh run list --branch main --limit 3 --json name,status,conclusion
-
-# 출력 예:
-# moai-release-pipeline.yml ... completed success
-# moai-gitflow.yml         ... completed success
-# release.yml              ... completed success
-
-# 2. Release가 published 상태인지 확인
-gh release view v{new_version} --json isDraft
-
-# 출력: {"isDraft": false} (자동 공개됨)
-
-# 3. GitHub 웹에서 확인
-open "https://github.com/modu-ai/moai-adk/releases/tag/v{new_version}"
-
-# "Latest" 배지가 표시되면 자동 공개 성공
-```
-
-**⚠️ GitHub Release가 Draft 상태인 경우 (매우 드문 경우)**:
-```bash
-# 수동으로 published로 변환 (긴급용)
-gh release edit v{new_version} --draft=false
-
-echo "✅ Release published"
-```
-
-### Step 3.9: Final Report
+### Step 3.8: Final Report
 
 ```markdown
 # ✅ Release Complete: v{new_version}
 
 ## Release Results
 ✅ Version updated (pyproject.toml)
-✅ Git tag created and pushed: v{new_version} (by GitHub Actions)
+✅ Git tag created and pushed: v{new_version}
 ✅ Package built (dist/)
 ✅ Deployed to PyPI (https://pypi.org/project/moai-adk/{new_version}/)
-✅ GitHub Release auto-published (https://github.com/modu-ai/moai-adk/releases/tag/v{new_version})
-✅ GitHub Actions workflows completed successfully
-
-## Release Automation Timeline
-- PR 병합 → moai-release-pipeline.yml 자동 실행
-- Git 태그 자동 생성 (GitHub Actions)
-- GitHub Release 자동 생성 및 published 상태로 설정 (GitHub Actions)
-- PyPI 배포 자동 실행 (GitHub Actions)
-- 모든 과정 완전 자동화 (수동 개입 불필요)
+✅ GitHub Release published (https://github.com/modu-ai/moai-adk/releases/tag/v{new_version})
 
 ## Next Steps
-1. Verify GitHub Release page (자동 published 확인)
-2. Execute Step 3.10: Post-Release Cleanup
+1. Verify GitHub Release page
+2. Execute Step 3.9: Post-Release Cleanup
 3. Start planning next feature with /alfred:1-plan
 
 ## Installation Test
@@ -2476,7 +2430,7 @@ moai-adk --version
 ```
 ```
 
-### Step 3.11: 패키지 템플릿 동기화 및 변수 최적화 (필수)
+### Step 3.10: 패키지 템플릿 동기화 및 변수 최적화 (필수)
 
 **⚠️ CRITICAL**: PyPI 배포 완료 후 반드시 실행. 로컬 프로젝트에 최신 패키지 템플릿을 동기화합니다.
 
@@ -2662,7 +2616,7 @@ echo "→ 다음 단계: Git 커밋 (Step 3.11)"
 
 ---
 
-### Step 3.12: 패키지 템플릿 동기화 커밋 (필수)
+### Step 3.11: 패키지 템플릿 동기화 커밋 (필수)
 
 **목적**:
 - Step 3.10에서 동기화한 패키지 템플릿을 Git에 커밋
@@ -2744,7 +2698,7 @@ echo "→ 다음 단계: Push to remote (선택 사항) 또는 Step 3.12 (Post-R
 
 ---
 
-### Step 3.13: Post-Release Cleanup (필수)
+### Step 3.12: Post-Release Cleanup (필수)
 - 저장소 상태 정리
 - 다음 개발 사이클 준비
 
