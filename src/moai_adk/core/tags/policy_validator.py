@@ -232,7 +232,31 @@ class TagPolicyValidator:
         """
         path = Path(file_path)
         suffix = path.suffix.lstrip(".")
-        return suffix in self.config.file_types_to_validate
+
+        # 파일 확장자 확인
+        if suffix not in self.config.file_types_to_validate:
+            return False
+
+        # 선택적 파일 패턴 제외 (TAG 검증 대상 아님)
+        optional_patterns = [
+            "CLAUDE.md",
+            "README.md",
+            "CHANGELOG.md",
+            "CONTRIBUTING.md",
+            ".claude/",
+            ".moai/docs/",
+            ".moai/reports/",
+            ".moai/analysis/",
+            "docs/",
+            "templates/",
+            "examples/",
+        ]
+
+        file_path_str = str(path)
+        if any(pattern in file_path_str for pattern in optional_patterns):
+            return False
+
+        return True
 
     def _extract_tags_from_content(self, content: str) -> Dict[str, List[str]]:
         """내용에서 TAG 추출

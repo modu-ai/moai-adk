@@ -102,12 +102,50 @@
       ],
       "scan_command": "rg '@TAG' -n",
       "philosophy": "The source of truth for TAGs lives in the code itself"
+    },
+    "policy": {
+      "enforcement_mode": "strict",
+      "require_spec_before_code": true,
+      "require_test_for_code": true,
+      "enforce_chains": true,
+      "mandatory_directories": [
+        "src/",
+        "tests/",
+        ".moai/specs/"
+      ],
+      "optional_directories": [
+        "CLAUDE.md",
+        "README.md",
+        "CHANGELOG.md",
+        "CONTRIBUTING.md",
+        ".claude/",
+        ".moai/docs/",
+        ".moai/reports/",
+        ".moai/analysis/",
+        "docs/",
+        "templates/",
+        "examples/"
+      ],
+      "auto_correction": {
+        "enabled": false,
+        "confidence_threshold": 0.8,
+        "create_missing_specs": false,
+        "create_missing_tests": false,
+        "remove_duplicates": true,
+        "backup_before_fix": true
+      },
+      "realtime_validation": {
+        "enabled": true,
+        "validation_timeout": 5,
+        "enforce_chains": true,
+        "quick_scan_max_files": 30
+      }
     }
   },
   "hooks": {
-    "timeout_ms": 3000,
+    "timeout_ms": 2000,
     "graceful_degradation": true,
-    "notes": "Hook execution timeout (milliseconds). Set graceful_degradation to true to continue even if a hook fails."
+    "notes": "Hook execution timeout (milliseconds). Set graceful_degradation to true to continue even if a hook fails. Optimized to 2 seconds for faster performance."
   },
   "session_end": {
     "enabled": true,
