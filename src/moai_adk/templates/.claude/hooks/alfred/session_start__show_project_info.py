@@ -174,9 +174,7 @@ def format_session_output() -> str:
     """Format the complete session start output"""
     # Gather information
     git_info = get_git_info()
-    test_info = get_test_info()
     spec_progress = get_spec_progress()
-    risk_level = calculate_risk(git_info, spec_progress, test_info)
 
     # Get MoAI version from config if available
     moai_version = "unknown"
@@ -192,10 +190,9 @@ def format_session_output() -> str:
     output = [
         "🚀 MoAI-ADK Session Started",
         "",
-        "📊 Project Status:",
-        f"🗿 Version: {moai_version} | 🌿 {git_info['branch']} ({git_info['branch'][:8] if git_info['branch'] != 'unknown' else 'unknown'})",
-        f"📝 Changes: {git_info['changes']} | 🧪 Tests: {test_info['coverage']} {test_info['status']}",
-        f"📋 SPEC Progress: {spec_progress['completed']}/{spec_progress['total']} ({spec_progress['percentage']}%) | 🚨 Risk: {risk_level}",
+        f"🗿 Version: {moai_version} | 🌿 {git_info['branch']}",
+        f"📝 Changes: {git_info['changes']}",
+        f"📋 SPEC Progress: {spec_progress['completed']}/{spec_progress['total']} ({spec_progress['percentage']}%)",
         f"🔨 Last: {git_info['last_commit']} ({git_info['commit_time']})"
     ]
 
