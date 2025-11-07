@@ -425,48 +425,45 @@ flowchart TD
 ### 시스템 구성
 
 ```mermaid
-graph TB
-    Alfred["🎩 Alfred 슈퍼에이전트<br/><br/>중앙 오케스트레이터<br/>적응형 학습<br/>상황 인식 의사결정"]
+graph TD
+    Alfred["🎩 Alfred 슈퍼에이전트<br/>중앙 오케스트레이터"]
 
-    Alfred -->|관리| Agents["<b>에이전트 계층</b><br/>19명의 전문 AI"]
-    Alfred -->|활성화| Skills["<b>스킬 계층</b><br/>73개 이상 재사용 가능한 지식"]
-    Alfred -->|강제| Hooks["<b>훅 계층</b><br/>안전 보호 및 검증"]
+    subgraph Agents["⚙️ 에이전트 계층 - 19명의 전문가"]
+        A1["spec-builder<br/>code-builder"]
+        A2["test-engineer<br/>doc-syncer"]
+        A3["git-manager<br/>security-expert"]
+        A4["backend/frontend/database<br/>devops-expert + 9명"]
+    end
 
-    Agents --> A1["spec-builder"]
-    Agents --> A2["code-builder"]
-    Agents --> A3["test-engineer"]
-    Agents --> A4["doc-syncer"]
-    Agents --> A5["git-manager"]
-    Agents --> A6["security-expert"]
-    Agents --> A7["backend-expert"]
-    Agents --> A8["frontend-expert"]
-    Agents --> A9["database-expert"]
-    Agents --> A10["devops-expert"]
-    Agents --> A11["+ 9명 추가"]
+    subgraph Skills["📚 스킬 계층 - 73개 이상"]
+        S1["기초<br/>SPEC·TDD·TAGs"]
+        S2["필수<br/>Testing·Debug·Perf"]
+        S3["도메인<br/>Backend·Frontend·DB"]
+        S4["언어<br/>Python·TS·Go·Rust<br/>Alfred·운영"]
+    end
 
-    Skills --> S1["기초<br/>SPEC·TDD·TAGs"]
-    Skills --> S2["필수<br/>Testing·Debug·Perf"]
-    Skills --> S3["도메인<br/>Backend·Frontend·DB"]
-    Skills --> S4["언어<br/>Python·TS·Go·Rust"]
-    Skills --> S5["Alfred<br/>워크플로우·오케스트레이션"]
-    Skills --> S6["운영<br/>배포·모니터링"]
+    subgraph Hooks["🛡️ 훅 계층 - 안전 보호"]
+        H1["SessionStart"]
+        H2["PreToolUse"]
+        H3["PostToolUse"]
+        H4["검증"]
+    end
 
-    Hooks --> H1["SessionStart"]
-    Hooks --> H2["PreToolUse"]
-    Hooks --> H3["PostToolUse"]
-    Hooks --> H4["검증"]
+    Alfred -->|관리| Agents
+    Alfred -->|활성화| Skills
+    Alfred -->|강제| Hooks
 
     classDef alfredStyle fill:#ffc107,stroke:#f57c00,stroke-width:3px,color:#000
-    classDef layerStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:2px,color:#000
-    classDef agentStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1px,color:#000
-    classDef skillStyle fill:#e8f5e9,stroke:#388e3c,stroke-width:1px,color:#000
-    classDef hookStyle fill:#fff3e0,stroke:#f57c00,stroke-width:1px,color:#000
+    classDef agentGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
+    classDef skillGroup fill:#e8f5e9,stroke:#388e3c,stroke-width:2px,color:#000
+    classDef hookGroup fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000
+    classDef nodeStyle fill:#fff,stroke:#666,stroke-width:1px,color:#000
 
     class Alfred alfredStyle
-    class Agents,Skills,Hooks layerStyle
-    class A1,A2,A3,A4,A5,A6,A7,A8,A9,A10,A11 agentStyle
-    class S1,S2,S3,S4,S5,S6 skillStyle
-    class H1,H2,H3,H4 hookStyle
+    class Agents agentGroup
+    class Skills skillGroup
+    class Hooks hookGroup
+    class A1,A2,A3,A4,S1,S2,S3,S4,H1,H2,H3,H4 nodeStyle
 ```
 
 ### 주요 구성 요소
