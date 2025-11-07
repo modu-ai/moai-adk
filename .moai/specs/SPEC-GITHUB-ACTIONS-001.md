@@ -9,6 +9,8 @@ priority: high
 version: 1.0.0
 ---
 
+@SPEC:GITHUB-ACTIONS-001
+
 # SPEC-GITHUB-ACTIONS-001: Claude Code GitHub Actions 통합
 
 > GitHub Actions에서 Claude가 자동으로 PR을 처리하고 CodeRabbit과 함께 작업하도록 통합
