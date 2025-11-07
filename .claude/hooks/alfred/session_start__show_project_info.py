@@ -99,41 +99,19 @@ def get_git_info() -> dict[str, Any]:
 
 
 def get_test_info() -> dict[str, Any]:
-    """Get test coverage and status information"""
-    try:
-        # Try to get test coverage (basic check)
-        coverage_result = subprocess.run(
-            ["python", "-m", "pytest", "--cov", "--tb=no", "-q"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-            cwd=Path.cwd()
-        )
+    """Get test coverage and status information
 
-        # Parse coverage from output (basic implementation)
-        coverage = "unknown"
-        if coverage_result.returncode == 0:
-            output = coverage_result.stdout
-            if "coverage:" in output.lower():
-                # Extract percentage from coverage output
-                import re
-                match = re.search(r'(\d+)%', output)
-                if match:
-                    coverage = f"{match.group(1)}%"
+    NOTE: SessionStart hook must complete quickly (<0.5s).
+    Running pytest is too slow (5+ seconds), so we skip it and return unknown status.
+    Users can run tests manually with: pytest --cov
 
-        # Determine test status
-        test_status = "✅" if coverage_result.returncode == 0 else "❌"
-
-        return {
-            "coverage": coverage,
-            "status": test_status
-        }
-
-    except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError):
-        return {
-            "coverage": "unknown",
-            "status": "❓"
-        }
+    To check test status, use: /alfred:test-status (future feature)
+    """
+    # Skip pytest execution - it's too slow for SessionStart
+    return {
+        "coverage": "unknown",
+        "status": "❓"
+    }
 
 
 def get_spec_progress() -> dict[str, Any]:

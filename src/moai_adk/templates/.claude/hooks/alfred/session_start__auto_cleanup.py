@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# @CODE:HOOK-SESSION-START-001 | SPEC: SESSION-START-HOOK-001 | TEST: tests/hooks/test_session_start_auto_cleanup.py
+# @CODE:HOOK-SESSION-START-TEMPLATE-001 | SPEC: SESSION-START-HOOK-001
 
 """SessionStart Hook: 자동 정리 및 보고서 생성
 
@@ -16,6 +16,7 @@
 import json
 import logging
 import shutil
+import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -23,11 +24,59 @@ from typing import Dict, List, Optional
 # 모듈 경로 추가
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
-from moai_adk.utils.common import format_duration, get_summary_stats
+try:
+    from moai_adk.utils.common import format_duration, get_summary_stats
+except ImportError:
+    # Fallback implementations if module not found
+    def format_duration(seconds):
+        """Format duration in seconds to readable string"""
+        if seconds < 60:
+            return f"{seconds:.1f}s"
+        minutes = seconds / 60
+        if minutes < 60:
+            return f"{minutes:.1f}m"
+        hours = minutes / 60
+        return f"{hours:.1f}h"
 
-from ..utils.hook_config import get_graceful_degradation, load_hook_timeout
+    def get_summary_stats(values):
+        """Get summary statistics for a list of values"""
+        if not values:
+            return {"mean": 0, "min": 0, "max": 0, "std": 0}
+        import statistics
+        return {
+            "mean": statistics.mean(values),
+            "min": min(values),
+            "max": max(values),
+            "std": statistics.stdev(values) if len(values) > 1 else 0
+        }
 
 logger = logging.getLogger(__name__)
+
+
+def load_hook_timeout() -> int:
+    """Load hook timeout from config.json (default: 3000ms)"""
+    try:
+        config_file = Path(".moai/config.json")
+        if config_file.exists():
+            with open(config_file, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+                return config.get("hooks", {}).get("timeout_ms", 3000)
+    except Exception:
+        pass
+    return 3000
+
+
+def get_graceful_degradation() -> bool:
+    """Load graceful_degradation setting from config.json (default: true)"""
+    try:
+        config_file = Path(".moai/config.json")
+        if config_file.exists():
+            with open(config_file, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+                return config.get("hooks", {}).get("graceful_degradation", True)
+    except Exception:
+        pass
+    return True
 
 
 def load_config() -> Dict:
