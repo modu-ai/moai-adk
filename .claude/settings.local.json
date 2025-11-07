@@ -15,8 +15,13 @@
       "mcp__sequential-thinking__sequentialthinking"
     ]
   },
+  "enableAllProjectMcpServers": false,
   "disabledMcpjsonServers": [],
   "outputStyle": "🤖 R2-D2 Agentic Coding",
   "local": true,
-  "enableAllProjectMcpServers": false
+  "enabledMcpjsonServers": [
+    "context7",
+    "playwright",
+    "sequential-thinking"
+  ]
 }
