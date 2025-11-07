@@ -120,12 +120,26 @@ uv tool upgrade moai-adk
 uv tool install --force moai-adk
 ```
 
+#### ⚠️ Important: Setup Optimization
+
+After installation or upgrade, you **MUST** run setup optimization to configure your project:
+
+```bash
+# Configure project settings and optimize for your environment
+/alfred:0-project
+```
+
+This command initializes project metadata, language settings, and development configuration. Run this first before starting any development!
+
 ### 5-Minute Quick Start
 
 ```bash
-# 1. Create and initialize a new project
+# 0. Create and initialize a new project
 moai-adk init my-awesome-project
 cd my-awesome-project
+
+# 1. Optimize project configuration
+/alfred:0-project
 
 # 2. Create a SPEC for a feature
 /alfred:1-plan "User authentication with JWT"
@@ -149,7 +163,6 @@ That's it! You now have:
 - 📖 **Learn the workflow**: [4-Step Development Process](#how-alfred-processes-your-instructions)
 - 🏗️ **Understand architecture**: [Core Architecture](#-core-architecture)
 - 💡 **See examples**: [Example Projects](https://adk.mo.ai.kr/examples)
-- 🤝 **Join community**: [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions)
 
 ---
 

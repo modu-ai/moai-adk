@@ -120,12 +120,26 @@ uv tool upgrade moai-adk
 uv tool install --force moai-adk
 ```
 
+#### ⚠️ 중요: 설정 최적화
+
+설치 또는 업그레이드 후 **반드시** 설정 최적화를 실행하여 프로젝트를 구성해야 합니다:
+
+```bash
+# 프로젝트 설정 최적화 및 환경 구성
+/alfred:0-project
+```
+
+이 명령어는 프로젝트 메타데이터, 언어 설정, 개발 구성을 초기화합니다. 개발을 시작하기 전에 먼저 실행하세요!
+
 ### 5분 빠른 시작
 
 ```bash
-# 1. 새 프로젝트 생성 및 초기화
+# 0. 새 프로젝트 생성 및 초기화
 moai-adk init my-awesome-project
 cd my-awesome-project
+
+# 1. 프로젝트 설정 최적화
+/alfred:0-project
 
 # 2. 기능에 대한 SPEC 작성
 /alfred:1-plan "JWT를 사용한 사용자 인증 시스템"
@@ -149,7 +163,6 @@ cd my-awesome-project
 - 📖 **워크플로우 배우기**: [4단계 개발 프로세스](#alfred가-사용자-지시를-처리하는-방식---상세-워크플로우-분석)
 - 🏗️ **아키텍처 이해하기**: [핵심 아키텍처](#️-핵심-아키텍처)
 - 💡 **예제 보기**: [예제 프로젝트](https://adk.mo.ai.kr/examples)
-- 🤝 **커뮤니티 참여**: [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions)
 
 ---
 
