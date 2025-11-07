@@ -5,11 +5,11 @@ Tests for AlfredDetector - Alfred 작업 감지
 @TEST:ALFRED-DETECTOR-002 - 미활성 상태
 """
 
-import pytest
-from unittest.mock import patch, MagicMock
 import json
 import tempfile
 from pathlib import Path
+
+import pytest
 
 
 class TestAlfredDetector:

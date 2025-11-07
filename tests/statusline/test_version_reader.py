@@ -5,10 +5,11 @@ Tests for VersionReader - MoAI-ADK 버전 읽기
 @TEST:VERSION-READER-002 - 60초 캐싱
 """
 
-import pytest
 import json
 import tempfile
 from pathlib import Path
+
+import pytest
 
 
 class TestVersionReader:

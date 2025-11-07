@@ -3,6 +3,7 @@
 # SPEC:@SPEC:AUTH-004
 
 import unittest
+
 # from src.auth.example import example_function  # TODO: Fix import path
 
 

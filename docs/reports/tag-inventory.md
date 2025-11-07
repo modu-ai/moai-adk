@@ -1,7 +1,7 @@
 # TAG Inventory
 
-Generated: 2025-11-07 20:18:16
-Total TAGs: 5492
+Generated: 2025-11-07 20:24:40
+Total TAGs: 5491
 
 ## By Domain
 
@@ -2859,12 +2859,12 @@ Total TAGs: 5492
 ### GITHUB
 
 - **GITHUB-ACTIONS-001** (`.moai/specs/SPEC-GITHUB-ACTIONS-001.md:12`)
-- **GITHUB-CONFIG-001** (`.moai/config.json:255`)
+- **GITHUB-CONFIG-001** (`.moai/config.json:254`)
 - **GITHUB-CONFIG-001** (`.moai/specs/SPEC-UPDATE-ENHANCE-001/spec.md:376`)
 - **GITHUB-CONFIG-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:4217`)
 - **GITHUB-CONFIG-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:8083`)
 - **GITHUB-CONFIG-001** (`src/moai_adk/templates/.moai/config.json:254`)
-- **GITHUB-TEMPLATES-001** (`.moai/config.json:255`)
+- **GITHUB-TEMPLATES-001** (`.moai/config.json:254`)
 - **GITHUB-TEMPLATES-001** (`src/moai_adk/templates/.moai/config.json:254`)
 
 ### GUIDE
@@ -3002,14 +3002,15 @@ Total TAGs: 5492
 - **HOOK-PRE-TAG-001** (`.claude/hooks/alfred/pre_tool__tag_policy_validator.py:2`)
 - **HOOK-PRE-TAG-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:4427`)
 - **HOOK-PRE-TAG-001** (`src/moai_adk/templates/.claude/hooks/alfred/pre_tool__tag_policy_validator.py:2`)
+- **HOOK-REALTIME-001** (`.claude/hooks/alfred/pre_tool__realtime_tag_monitor.py:2`)
 - **HOOK-REALTIME-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:4437`)
 - **HOOK-REALTIME-001** (`src/moai_adk/templates/.claude/hooks/alfred/pre_tool__realtime_tag_monitor.py:2`)
 - **HOOK-SCAN-FILTER-001** (`tests/hooks/test_realtime_monitor_improved.py:2`)
-- **HOOK-SESSION-END-001** (`.claude/hooks/alfred/session_end__auto_cleanup.py:2`)
 - **HOOK-SESSION-END-001** (`tests/hooks/test_session_end_auto_cleanup.py:2`)
+- **HOOK-SESSION-END-TEMPLATE-001** (`.claude/hooks/alfred/session_end__auto_cleanup.py:2`)
 - **HOOK-SESSION-END-TEMPLATE-001** (`src/moai_adk/templates/.claude/hooks/alfred/session_end__auto_cleanup.py:2`)
-- **HOOK-SESSION-START-001** (`.claude/hooks/alfred/session_start__auto_cleanup.py:2`)
 - **HOOK-SESSION-START-001** (`.moai/reports/tag-system-analysis-20251106-060000.json:4412`)
+- **HOOK-SESSION-START-TEMPLATE-001** (`.claude/hooks/alfred/session_start__auto_cleanup.py:2`)
 - **HOOK-SESSION-START-TEMPLATE-001** (`src/moai_adk/templates/.claude/hooks/alfred/session_start__auto_cleanup.py:2`)
 - **HOOK-SPEC-WORKFLOW-001** (`tests/hooks/test_spec_generation_workflow.py:2`)
 - **HOOK-TAG-001** (`.claude/hooks/alfred/shared/core/tags.py:2`)
@@ -4335,11 +4336,9 @@ Total TAGs: 5492
 - **SESSION-CLEANUP-002** (`.moai/specs/SPEC-SESSION-CLEANUP-002/spec.md:3`)
 - **SESSION-CLEANUP-002** (`.moai/reports/tag-system-analysis-20251106-060000.json:1468`)
 - **SESSION-CLEANUP-002** (`.moai/reports/tag-system-analysis-20251106-060000.json:6288`)
-- **SESSION-END-CLEANUP-001** (`.claude/hooks/alfred/session_end__auto_cleanup.py:2`)
 - **SESSION-END-CLEANUP-001** (`tests/hooks/test_session_end_auto_cleanup.py:2`)
 - **SESSION-METRICS-001** (`.moai/specs/SPEC-CLAUDE-STATUSLINE-001/spec.md:406`)
 - **SESSION-NOTICE-001** (`.moai/specs/SPEC-INIT-002/plan.md:76`)
-- **SESSION-START-CLEANUP-001** (`.claude/hooks/alfred/session_start__auto_cleanup.py:2`)
 
 ### SKILL
 

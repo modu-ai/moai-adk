@@ -6,9 +6,9 @@ Tests for StatuslineRenderer - Compact 모드에서 기본 정보 포맷팅 기�
 @TEST:STATUSLINE-RENDERER-003 - 정보 순서 검증
 """
 
-import pytest
 from dataclasses import dataclass
-from datetime import datetime
+
+import pytest
 
 
 @dataclass

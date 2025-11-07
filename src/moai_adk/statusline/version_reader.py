@@ -6,9 +6,9 @@ Version reader for MoAI-ADK from config.json
 
 import json
 import logging
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
-from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 

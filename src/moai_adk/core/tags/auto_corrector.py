@@ -292,7 +292,6 @@ class TagAutoCorrector:
         # 중복 TAG 제거 (첫 번째만 유지)
         tag = violation.tag
         corrected_content = content
-        found_first = False
 
         # 정규식으로 모든 TAG 찾기
         pattern = re.compile(re.escape(tag))

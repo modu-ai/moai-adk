@@ -7,12 +7,12 @@ Provides real-time status information display in Claude Code terminal
 
 __version__ = "0.1.0"
 
-from .renderer import StatuslineRenderer, StatuslineData
+from .alfred_detector import AlfredDetector, AlfredTask
 from .git_collector import GitCollector, GitInfo
 from .metrics_tracker import MetricsTracker
-from .alfred_detector import AlfredDetector, AlfredTask
-from .version_reader import VersionReader
+from .renderer import StatuslineData, StatuslineRenderer
 from .update_checker import UpdateChecker, UpdateInfo
+from .version_reader import VersionReader
 
 __all__ = [
     "StatuslineRenderer",

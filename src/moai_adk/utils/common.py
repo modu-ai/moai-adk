@@ -9,7 +9,7 @@ import asyncio
 import json
 import logging
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -28,7 +28,7 @@ class HTTPResponse:
     load_time: float
     success: bool
     error_message: Optional[str] = None
-    timestamp: datetime = None
+    timestamp: datetime = field(default_factory=datetime.now)
 
     def __post_init__(self):
         if self.timestamp is None:
@@ -64,6 +64,14 @@ class HTTPClient:
     async def fetch_url(self, url: str) -> HTTPResponse:
         """단일 URL 가져오기"""
         try:
+            if self.session is None:
+                return HTTPResponse(
+                    status_code=0,
+                    url=url,
+                    load_time=0,
+                    success=False,
+                    error_message="Session not initialized"
+                )
             start_time = asyncio.get_event_loop().time()
             async with self.session.get(url, allow_redirects=True) as response:
                 load_time = asyncio.get_event_loop().time() - start_time
@@ -106,7 +114,7 @@ class HTTPClient:
             return await asyncio.gather(*tasks)
 
 
-def extract_links_from_text(text: str, base_url: str = None) -> List[str]:
+def extract_links_from_text(text: str, base_url: Optional[str] = None) -> List[str]:
     """텍스트에서 링크 추출"""
     links = []
 
@@ -212,7 +220,7 @@ class RateLimiter:
     def __init__(self, max_requests: int = 10, time_window: int = 60):
         self.max_requests = max_requests
         self.time_window = time_window
-        self.requests = []
+        self.requests: List[datetime] = []
 
     def can_make_request(self) -> bool:
         """요청 가능 여부 확인"""

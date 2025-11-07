@@ -19,7 +19,7 @@ Strategy:
 """
 
 import ast
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional
 
 
 class FastASTVisitor(ast.NodeVisitor):
@@ -224,7 +224,7 @@ class Class2:
     # Benchmark FastVisitor
     start = time.perf_counter()
     for _ in range(100):
-        result = analyze_python_fast(code)
+        analyze_python_fast(code)
     time_fast = (time.perf_counter() - start) * 1000
 
     # Benchmark ast.walk() approach
@@ -249,12 +249,12 @@ class Class2:
 
     start = time.perf_counter()
     for _ in range(100):
-        result = analyze_python_slow(code)
+        analyze_python_slow(code)
     time_slow = (time.perf_counter() - start) * 1000
 
     improvement = (time_slow - time_fast) / time_slow * 100
 
-    print(f"\n📊 FastVisitor Performance Benchmark:")
+    print("\n📊 FastVisitor Performance Benchmark:")
     print(f"  - ast.walk() approach: {time_slow:.2f}ms (100 iterations)")
     print(f"  - FastVisitor approach: {time_fast:.2f}ms (100 iterations)")
     print(f"  - Improvement: {improvement:.1f}% faster")
