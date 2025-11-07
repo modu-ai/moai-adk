@@ -202,19 +202,6 @@ The user executes the `/alfred:0-project` command to start analyzing the project
    - Update config.json
    - Provide completion report
 
-### Step 2-OLD: Load and Display Current Configuration (in confirmed language)
-1. **Read `.moai/config.json`** to verify it exists and is valid JSON
-2. **Extract and display current settings** (in confirmed language):
-   ```
-   ✅ **언어**: [language.conversation_language_name]
-   ✅ **닉네임**: [user.nickname]
-   ✅ **에이전트 프롬프트 언어**: [language.agent_prompt_language]
-   ✅ **GitHub 자동 브랜치 삭제**: [github.auto_delete_branches]
-   ✅ **SPEC Git 워크플로우**: [github.spec_git_workflow]
-   ✅ **보고서 생성**: [report_generation.user_choice]
-   ✅ **선택된 도메인**: [stack.selected_domains]
-   ```
-
 ### Step 3: Agent Handles All Settings Interactions
 **Project Manager Agent will internally**:
 - Invoke `Skill("moai-project-language-initializer", mode="language_change_only")` if needed
@@ -270,14 +257,20 @@ The user executes the `/alfred:0-project` command to start analyzing the project
    📝 **생성된 보고서**: [report location]
    ```
 
-2. **Ask for Next Steps** (in confirmed language):
+2. **Auto-Translate Announcements** (CRITICAL):
+   ```bash
+   # Ensure announcements match current language after template update
+   uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/shared/utils/announcement_translator.py
+   ```
+
+3. **Ask for Next Steps** (in confirmed language):
    - Option 1: "업데이트 내용 검토" → Show detailed changes
    - Option 2: "설정 수정" → Go to settings mode
    - Option 3: "종료" → End command
 
-3. **Exit after completion**
-4. **Do NOT proceed** to any other workflows
-5. **End command execution**
+4. **Exit after completion**
+5. **Do NOT proceed** to any other workflows
+6. **End command execution**
 
 ---
 
@@ -332,6 +325,15 @@ The user executes the `/alfred:0-project` command to start analyzing the project
    - Generate complete `.moai/config.json`
    - Validate all settings
    - Set up language-specific configurations
+
+5. **Auto-Translate Announcements** (CRITICAL - NEW):
+   ```bash
+   # After config.json is created, auto-translate companyAnnouncements
+   uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/shared/utils/announcement_translator.py
+   ```
+   - Reads `conversation_language` from `.moai/config.json`
+   - Translates 22 announcements to selected language
+   - Updates `.claude/settings.json` automatically
 
 ### Step 3: Project Documentation Creation (Language-Aware)
 1. **Invoke**: `Task` with `project-manager` agent
@@ -513,3 +515,124 @@ AskUserQuestion(
 - **Contextual Workflows**: Each flow type provides appropriate options and guidance
 - **Faster Execution**: Skills optimized for specific tasks with language awareness
 - **Better Error Handling**: Specialized error recovery with language-appropriate messages
+
+---
+
+## 🌍 Language-Specific CompanyAnnouncements
+
+### Auto-Translation Strategy
+
+**Principle**: `.claude/settings.json` contains `companyAnnouncements` automatically translated to the user's selected language.
+
+**How it works**:
+1. During 0-project setup, user selects their preferred language
+2. After language selection, ALL workflow modes (INITIALIZATION/AUTO-DETECT/UPDATE) trigger auto-translation
+3. Announcement strings are translated to selected language
+4. Translated announcements written to `.claude/settings.json`
+5. Current language stored in `.moai/config.json` → `language.conversation_language`
+
+### Implementation in All Workflow Modes
+
+**Trigger Points** - Auto-translate and update `.claude/settings.json` in:
+
+#### 1. INITIALIZATION MODE
+After `Skill("moai-project-language-initializer", mode="language_first")` completes:
+```bash
+# Step: After language selection, translate and update announcements
+uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/shared/utils/announcement_translator.py
+```
+
+#### 2. AUTO-DETECT MODE
+After language confirmation in Step 2:
+```bash
+# Apply language-specific announcements from config
+uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/shared/utils/announcement_translator.py
+```
+
+#### 3. SETTINGS MODE
+When user changes language (after Config Manager skill updates config.json):
+```bash
+# Update announcements to match new language setting
+uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/shared/utils/announcement_translator.py
+```
+
+#### 4. UPDATE MODE
+Final step after template optimization:
+```bash
+# Ensure announcements match current language
+uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/shared/utils/announcement_translator.py
+```
+
+### Supported Translation Sources
+
+**Reference Announcements** (English baseline - 22 strings):
+```
+1. Start with a plan: Write down what you want to build first to avoid confusion (/alfred:1-plan)
+2. ✅ 5 promises: Test-first + Easy-to-read code + Clean organization + Secure + Trackable
+3. Task list: Continuous progress tracking ensures nothing gets missed
+4. Language separation: We communicate in your language, computers understand in English
+5. Everything connected: Plan→Test→Code→Docs are all linked together
+6. ⚡ Parallel processing: Independent tasks can be handled simultaneously
+7. Tools first: Find the right tools before starting any work
+8. Step by step: What you want→Plan→Execute→Report results
+9. Auto-generated lists: Planning automatically creates task lists
+10. ❓ Ask when confused: If something isn't clear, just ask right away
+11. 🧪 Automatic quality checks: Code automatically verified against 5 core principles
+12. Multi-language support: Automatic validation for Python, JavaScript, and more
+13. ⚡ Never stops: Can continue even when tools are unavailable
+14. Flexible approach: Choose between team collaboration or individual work as needed
+15. 🧹 Auto cleanup: Automatically removes unnecessary items when work is complete
+16. ⚡ Quick updates: New versions detected in 3 seconds, only fetch what's needed
+17. On-demand loading: Only loads current tools to save memory
+18. Complete history: All steps from planning to code are recorded for easy reference
+19. Bug reporting: File bug reports to GitHub in 30 seconds
+20. 🩺 Health check: Use 'moai-adk doctor' to instantly check current status
+21. Safe updates: Use 'moai-adk update' to safely add new features
+22. 🧹 When work is done: Use '/clear' to clean up conversation for the next task
+```
+
+**Currently Supported Languages**:
+- **ko** (Korean/한국어): Culturally localized translations with appropriate verb forms and expressions
+- **en** (English): Baseline/reference version
+- **ja** (Japanese/日本語): Formal/polite expressions suitable for Japanese audience
+
+### Adding New Languages
+
+When supporting a new language (e.g., **es** for Spanish):
+
+1. **Translation Requirements**:
+   - Translate all 22 announcement strings to target language
+   - Preserve emoji and special characters (✅, ⚡, 🧪, 🧹, 🩺, →)
+   - Maintain tone: Encouraging, action-oriented, user-friendly
+   - Keep command references intact: `/alfred:1-plan`, `moai-adk doctor`, `/clear`
+
+2. **Implementation**:
+   - Add language mapping in 0-project command or language initializer
+   - Create translation dictionary/storage for new language
+   - Ensure `translate_announcements("es")` returns Spanish strings
+
+3. **Validation**:
+   - Test in INITIALIZATION MODE with new language selection
+   - Verify announcements appear in `.claude/settings.json` with correct language
+   - Confirm emoji display correctly in Claude Code UI
+   - Check command references are readable in context
+
+### User Experience Flow
+
+```
+User runs: /alfred:0-project
+    ↓
+Skill("moai-project-language-initializer")
+    → User selects: "Korean (한국어)"
+    ↓
+translate_announcements("ko") returns Korean strings
+    ↓
+.claude/settings.json updated with:
+    "companyAnnouncements": [
+        "계획 우선: 혼란을 피하기 위해...",
+        "✅ 5가지 약속: 테스트 우선...",
+        ...
+    ]
+    ↓
+User sees Korean announcements on Claude Code startup ✓
+```

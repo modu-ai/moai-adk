@@ -111,8 +111,8 @@ Skills             | Content analysis        | Template defaults
 ```
 Template Indicators          | User Content Indicators
 ---------------------------- | -------------------------
-"MoAI-ADK"          | Specific project names
-"ko" | Actual language codes
+"{{PROJECT_NAME}}"          | Specific project names
+"{{CONVERSATION_LANGUAGE}}" | Actual language codes
 "src/moai_adk/templates/"  | Custom file paths
 Template placeholders       | Real configuration values
 Default examples           | Custom implementations
