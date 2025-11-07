@@ -75,7 +75,7 @@ class StatuslineRenderer:
     def _build_compact_parts(self, data: StatuslineData) -> List[str]:
         """
         Build parts list for compact mode with labeled sections
-        Format: 🤖 Model | 🗿 Ver Version | 📊 Git: Branch | GitStatus
+        Format: 🤖 Model | 🗿 Ver Version | 📊 Git: Branch | Changes: +staged M modified ? untracked
 
         Args:
             data: StatuslineData instance
@@ -90,7 +90,7 @@ class StatuslineRenderer:
         ]
 
         if data.git_status:
-            parts.append(data.git_status)
+            parts.append(f"Changes: {data.git_status}")
 
         # Only add active_task if it's not empty
         if data.active_task.strip():
@@ -101,7 +101,7 @@ class StatuslineRenderer:
     def _fit_to_constraint(self, data: StatuslineData, max_length: int) -> str:
         """
         Fit statusline to character constraint by truncating
-        Format: 🤖 Model | 🗿 Ver Version | 📊 Git: Branch | GitStatus
+        Format: 🤖 Model | 🗿 Ver Version | 📊 Git: Branch | Changes: +staged M modified ? untracked
 
         Args:
             data: StatuslineData instance
@@ -119,7 +119,7 @@ class StatuslineRenderer:
         ]
 
         if data.git_status:
-            parts.append(data.git_status)
+            parts.append(f"Changes: {data.git_status}")
 
         # Only add active_task if it's not empty
         if data.active_task.strip():
@@ -136,7 +136,7 @@ class StatuslineRenderer:
                 f"📊 Git: {truncated_branch}",
             ]
             if data.git_status:
-                parts.append(data.git_status)
+                parts.append(f"Changes: {data.git_status}")
             if data.active_task.strip():
                 parts.append(data.active_task)
             result = " | ".join(parts)
@@ -149,7 +149,7 @@ class StatuslineRenderer:
                 f"📊 Git: {truncated_branch}",
             ]
             if data.git_status:
-                parts.append(data.git_status)
+                parts.append(f"Changes: {data.git_status}")
             result = " | ".join(parts)
 
         # Final fallback to minimal if still too long
@@ -162,7 +162,7 @@ class StatuslineRenderer:
         """
         Render extended mode: Full path and detailed info with labels
         Constraint: <= 120 characters
-        Format: 🤖 Model | 🗿 Ver Version | 📊 Git: Branch | Status
+        Format: 🤖 Model | 🗿 Ver Version | 📊 Git: Branch | Changes: +staged M modified ? untracked
 
         Args:
             data: StatuslineData instance
@@ -179,7 +179,7 @@ class StatuslineRenderer:
         ]
 
         if data.git_status:
-            parts.append(data.git_status)
+            parts.append(f"Changes: {data.git_status}")
 
         if data.active_task.strip():
             parts.append(data.active_task)
@@ -195,7 +195,7 @@ class StatuslineRenderer:
                 f"📊 Git: {branch}",
             ]
             if data.git_status:
-                parts.append(data.git_status)
+                parts.append(f"Changes: {data.git_status}")
             if data.active_task.strip():
                 parts.append(data.active_task)
             result = " | ".join(parts)
@@ -206,7 +206,7 @@ class StatuslineRenderer:
         """
         Render minimal mode: Extreme space constraint with minimal labels
         Constraint: <= 40 characters
-        Format: 🤖 Model | 🗿 Ver Version | Status
+        Format: 🤖 Model | 🗿 Ver Version | Changes: +staged M modified ? untracked
 
         Args:
             data: StatuslineData instance
@@ -221,9 +221,11 @@ class StatuslineRenderer:
 
         result = " | ".join(parts)
 
-        # Add git_status if it fits
-        if data.git_status and len(result) + len(data.git_status) + 3 <= 40:
-            result += f" | {data.git_status}"
+        # Add git_status if it fits (use abbreviated format for minimal)
+        if data.git_status:
+            status_label = f"Chg: {data.git_status}"
+            if len(result) + len(status_label) + 3 <= 40:
+                result += f" | {status_label}"
 
         return result
 
