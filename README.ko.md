@@ -259,17 +259,6 @@ moai-adk init my-awesome-project
 cd my-awesome-project
 ```
 
-#### 대체: pip 사용
-
-```bash
-# 전통적인 pip 설치
-pip install moai-adk
-
-# 새 프로젝트 초기화
-moai-adk init my-awesome-project
-cd my-awesome-project
-```
-
 #### 최신 버전으로 업그레이드
 
 ```bash
@@ -280,16 +269,161 @@ uv tool upgrade moai-adk
 uv tool install --force moai-adk
 ```
 
-#### ⚠️ 중요: 설정 최적화
+#### ⚠️ 중요: 프로젝트 설정 및 최적화
 
-설치 또는 업그레이드 후 **반드시** 설정 최적화를 실행하여 프로젝트를 구성해야 합니다:
+설치 또는 업그레이드 후 **반드시** `/alfred:0-project` 명령어를 실행하여 프로젝트를 초기화하고 구성해야 합니다.
+
+##### 1️⃣ 프로젝트 초기화 명령어
 
 ```bash
 # 프로젝트 설정 최적화 및 환경 구성
 /alfred:0-project
 ```
 
-이 명령어는 프로젝트 메타데이터, 언어 설정, 개발 구성을 초기화합니다. 개발을 시작하기 전에 먼저 실행하세요!
+##### 2️⃣ 프로젝트 설정이 수행하는 작업
+
+`/alfred:0-project` 명령어는 다음 작업들을 자동으로 수행합니다:
+
+**프로젝트 메타데이터 설정**
+- 프로젝트 이름, 설명, 소유자 정보 입력
+- 개발 모드 선택 (personal 또는 team)
+- 프로젝트 로케일 및 언어 설정
+
+**개발 구성**
+- 프로그래밍 언어 감지 및 설정 (Python, TypeScript, Go 등)
+- 개발 프레임워크 및 도구 자동 감지
+- Git 전략 설정 (GitFlow, feature branch 구성)
+- 브랜치 네이밍 규칙 설정 (예: `feature/SPEC-001`)
+
+**언어 및 국제화**
+- Alfred의 응답 언어 설정 (한국어, 영어, 일본어 등 25개 이상 언어 지원)
+- 코드 주석 및 커밋 메시지 언어 설정
+- 생성되는 문서의 언어 설정
+
+**MoAI-ADK 프레임워크 구성**
+- `.moai/` 디렉토리 생성 및 설정 파일 초기화
+- `.claude/` 디렉토리 구성 (agents, commands, skills, hooks)
+- SPEC 저장소 생성 (`.moai/specs/`)
+- 테스트 디렉토리 구성
+
+**파이프라인 상태 초기화**
+- 프로젝트 파이프라인 상태를 "initialized"로 설정
+- Alfred 작업 추적 시스템 활성화
+- Git 히스토리 및 TAG 시스템 준비
+
+##### 3️⃣ 프로젝트 설정 파일 구조
+
+초기화 후 생성되는 주요 설정 파일들:
+
+**`.moai/config.json`** - 프로젝트 중앙 설정 파일
+```json
+{
+  "project": {
+    "name": "my-awesome-project",
+    "description": "프로젝트 설명",
+    "mode": "personal",              // personal | team
+    "language": "python",             // 감지된 프로그래밍 언어
+    "locale": "ko"                    // 프로젝트 기본 로케일
+  },
+  "language": {
+    "conversation_language": "ko",    // Alfred 응답 언어
+    "agent_prompt_language": "ko"     // Sub-agent 프롬프트 언어
+  },
+  "git_strategy": {
+    "personal": {
+      "branch_prefix": "feature/",
+      "develop_branch": "develop",
+      "main_branch": "main"
+    }
+  },
+  "constitution": {
+    "enforce_tdd": true,              // TDD 강제 적용
+    "test_coverage_target": 85,       // 테스트 커버리지 목표
+    "require_tags": true              // @TAG 시스템 필수
+  }
+}
+```
+
+**`.claude/statusline-config.yaml`** - Claude Code 상태바 설정
+- 프로젝트 상태 실시간 표시
+- 모델, 브랜치, Git 변경사항 표시
+- 새 버전 알림 구성
+
+##### 4️⃣ 설정 커스터마이징
+
+프로젝트 초기화 후 추가 커스터마이징:
+
+**언어 변경**
+```bash
+# .moai/config.json 편집
+# language.conversation_language을 원하는 언어로 변경
+# 예: "ko" → "en" (한국어 → 영어)
+```
+
+**Git 전략 변경**
+```bash
+# .moai/config.json 편집
+# git_strategy 섹션 수정
+# - personal: 개인 프로젝트 (로컬 브랜치, auto-commit)
+# - team: 팀 프로젝트 (GitFlow, auto-PR)
+```
+
+**테스트 커버리지 목표 설정**
+```bash
+# .moai/config.json 편집
+# constitution.test_coverage_target: 85 (기본값)
+# 프로젝트의 요구에 맞춰 조정
+```
+
+##### 5️⃣ 업데이트 및 재설정
+
+**Minor 업그레이드 후 설정 확인**
+```bash
+# 새 버전의 기능 확인
+moai-adk --version
+
+# 필요시 설정 재최적화 (기존 설정 유지)
+/alfred:0-project
+```
+
+**Major 버전 업그레이드 후 마이그레이션**
+```bash
+# 1. 새 버전 설치
+uv tool upgrade moai-adk
+
+# 2. 프로젝트 설정 마이그레이션
+/alfred:0-project
+
+# 3. 변경사항 검토
+git diff .moai/config.json
+
+# 4. 커밋 및 진행
+git add .moai/config.json
+git commit -m "Upgrade MoAI-ADK configuration"
+```
+
+**설정 초기화 (기존 설정 재구성)**
+```bash
+# 주의: 기존 설정을 백업한 후 실행
+cp .moai/config.json .moai/config.json.backup
+
+# 설정 초기화
+/alfred:0-project --reset
+```
+
+**⚠️ 중요 참고사항**
+
+개발을 시작하기 전에 반드시 `/alfred:0-project`를 실행하세요. 이 명령어가 수행하는 작업:
+- ✅ 프로젝트 메타데이터 및 구조 생성
+- ✅ 언어, Git, TDD 정책 설정
+- ✅ Alfred 작업 추적 시스템 초기화
+- ✅ 파이프라인 상태 설정 (이후 `/alfred:1-plan`, `/alfred:2-run` 등으로 업데이트)
+- ✅ 상태바 및 모니터링 시스템 구성
+
+설정을 건너뛸 경우:
+- ❌ Alfred 명령어들 (`/alfred:1-plan`, `/alfred:2-run` 등) 실행 불가
+- ❌ 파이프라인 상태 추적 불가
+- ❌ 자동화된 TDD 워크플로우 사용 불가
 
 ### 5분 빠른 시작
 
