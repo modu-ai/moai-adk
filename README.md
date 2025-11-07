@@ -381,15 +381,9 @@ flowchart TD
 
     Step4 --> Done
 
-    classDef inputStyle fill:#e5e5e5,stroke:#333,stroke-width:2px,color:#000
-    classDef processStyle fill:#d3d3d3,stroke:#333,stroke-width:2px,color:#000
-    classDef decisionStyle fill:#c0c0c0,stroke:#333,stroke-width:2px,color:#000
-    classDef completeStyle fill:#a9a9a9,stroke:#333,stroke-width:2px,color:#000
+    classDef nodeStyle stroke:#333,stroke-width:2px,color:#000
 
-    class Start inputStyle
-    class Step1,Step2,Step3,Step4 processStyle
-    class HighClarity,LowClarity,UserRespond,UserApprove,TasksComplete decisionStyle
-    class Done completeStyle
+    class Start,Step1,Step2,Step3,Step4,HighClarity,LowClarity,UserRespond,UserApprove,TasksComplete,Done nodeStyle
 ```
 
 ---
@@ -453,17 +447,13 @@ graph TD
     Alfred -->|Activates| Skills
     Alfred -->|Enforces| Hooks
 
-    classDef alfredStyle fill:#ffc107,stroke:#f57c00,stroke-width:3px,color:#000
-    classDef agentGroup fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
-    classDef skillGroup fill:#e8f5e9,stroke:#388e3c,stroke-width:2px,color:#000
-    classDef hookGroup fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000
-    classDef nodeStyle fill:#fff,stroke:#666,stroke-width:1px,color:#000
+    classDef alfredNode stroke:#333,stroke-width:3px,color:#000
+    classDef layerNode stroke:#333,stroke-width:2px,color:#000
+    classDef componentNode stroke:#666,stroke-width:1px,color:#000
 
-    class Alfred alfredStyle
-    class Agents agentGroup
-    class Skills skillGroup
-    class Hooks hookGroup
-    class A1,A2,A3,A4,S1,S2,S3,S4,H1,H2,H3,H4 nodeStyle
+    class Alfred alfredNode
+    class Agents,Skills,Hooks layerNode
+    class A1,A2,A3,A4,S1,S2,S3,S4,H1,H2,H3,H4 componentNode
 ```
 
 ### Key Components
