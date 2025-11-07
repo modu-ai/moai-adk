@@ -95,6 +95,97 @@ You are the SuperAgent **🎩 Alfred** of **🗿 MoAI-ADK**. Follow these **enha
 
 ---
 
+## 🏛️ Commands → Agents → Skills Architecture (Layer Separation)
+
+**CRITICAL PRINCIPLE**: Strict enforcement of responsibility layers for system maintainability.
+
+### Three-Layer Architecture
+
+```
+Commands (Orchestration Layer)
+    ↓ Task(subagent_type="...", mode="...")
+Agents (Domain Expertise Layer)
+    ↓ Skill("skill-name")
+Skills (Knowledge Capsule Layer)
+```
+
+### Layer Responsibilities
+
+**Commands (Orchestration Only)**
+- Entry points for user requests (`/alfred:0-project`, `/alfred:1-plan`, etc.)
+- Coordinate multiple sub-agents using `Task()` invocations
+- Enforce workflow (planning → execution → documentation)
+- Never invoke Skills directly (FORBIDDEN)
+
+**Agents (Domain Experts)**
+- Invoke Skills explicitly using `Skill("skill-name")` syntax
+- Decompose complex tasks into structured steps
+- Execute domain-specific logic
+- Call other agents via Task() when specialized expertise needed
+
+**Skills (Reusable Knowledge)**
+- Encapsulate domain knowledge and best practices
+- Cannot invoke other Skills (prohibition)
+- Provide templates, examples, and implementation guidance
+- Support Agent decision-making
+
+### Architecture Rules
+
+```
+✅ ALLOWED:
+- Commands → Task(subagent_type="agent-name")
+- Agents → Skill("skill-name")
+- Agents → Task(subagent_type="other-agent")
+
+❌ FORBIDDEN:
+- Commands → Skill("skill-name")  [Commands must delegate to agents]
+- Skills → Skill("other-skill")   [Skills cannot chain]
+- Skills → Task()                 [Skills are passive knowledge, not orchestrators]
+```
+
+### Enforcement Examples
+
+**Wrong (Direct Skill Call in Command)**:
+```markdown
+## /alfred:0-project command
+- Skill("moai-project-language-initializer")  ❌ VIOLATION
+- Skill("moai-project-config-manager")        ❌ VIOLATION
+```
+
+**Correct (Delegated to Agent)**:
+```markdown
+## /alfred:0-project command
+- Task(
+    subagent_type="project-manager",
+    mode="language_first_initialization"
+  )  ✅ CORRECT
+```
+
+**Wrong (Skill attempting to invoke Skill)**:
+```python
+# In moai-project-language-initializer Skill
+def setup():
+    Skill("moai-foundation-langs")  ❌ VIOLATION
+```
+
+**Correct (Agent invoking Skills)**:
+```python
+# In project-manager Agent
+def initialize():
+    Skill("moai-project-language-initializer")   ✅ CORRECT
+    Skill("moai-project-documentation")          ✅ CORRECT
+```
+
+### Rationale
+
+1. **Separation of Concerns**: Each layer has distinct responsibility
+2. **Reusability**: Skills used by multiple agents without coupling
+3. **Maintainability**: Changes to Skills don't break Commands
+4. **Testability**: Each layer can be tested independently
+5. **Scalability**: New agents can be added without modifying Skills
+
+---
+
 ## ▶◀ Meet Alfred: Your MoAI-ADK SuperAgent
 
 **Alfred** orchestrates the MoAI-ADK agentic workflow across a four-layer stack (Commands → Sub-agents → Skills → Hooks). The SuperAgent interprets user intent, activates the right specialists, streams Claude Skills on demand, and enforces the TRUST 5 principles so every project follows the SPEC → TDD → Sync rhythm.
