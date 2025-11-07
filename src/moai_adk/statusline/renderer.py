@@ -171,22 +171,40 @@ class StatuslineRenderer:
         Returns:
             Formatted statusline string (max 120 chars)
         """
+        # Use shorter branch name for extended mode if needed
+        branch = self._truncate_branch(data.branch, max_length=25)
+
         parts = [
             f"🤖 Model: {data.model}",
             f"⏱️ Time: {data.duration}",
             f"📁 Proj: {data.directory}",
             f"Ver: {data.version}",
-            f"Git: {data.branch}",
+            f"Git: {branch}",
         ]
 
         if data.git_status:
             parts.append(f"📊 {data.git_status}")
 
-        # Only add active_task if it's not empty
-        if data.active_task.strip():
-            parts.append(data.active_task)
+        result = " | ".join(parts)
 
-        return " | ".join(parts)
+        # Only add active_task if it fits
+        if data.active_task.strip() and len(result) + len(data.active_task) + 3 <= 120:
+            result += f" | {data.active_task}"
+
+        # If still too long, remove git_status
+        if len(result) > 120 and data.git_status:
+            parts = [
+                f"🤖 Model: {data.model}",
+                f"⏱️ Time: {data.duration}",
+                f"📁 Proj: {data.directory}",
+                f"Ver: {data.version}",
+                f"Git: {branch}",
+            ]
+            if data.active_task.strip():
+                parts.append(data.active_task)
+            result = " | ".join(parts)
+
+        return result
 
     def _render_minimal(self, data: StatuslineData) -> str:
         """
