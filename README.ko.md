@@ -31,12 +31,12 @@ MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 
 
 ### MoAI-ADK의 해결책
 
-✅ **SPEC-First**: 코드 작성 전 명확한 요구사항 정의
-✅ **보증된 테스트**: 자동 TDD를 통해 85%+ 테스트 커버리지 달성
-✅ **살아있는 문서**: 자동 동기화되어 절대 떨어지지 않는 문서
-✅ **지속적인 컨텍스트**: Alfred가 프로젝트 이력과 패턴을 기억
-✅ **완전한 추적성**: `@TAG` 시스템으로 모든 산출물 연결
-✅ **품질 자동화**: TRUST 5 원칙을 자동으로 강제
+- ✅ **SPEC-First**: 코드 작성 전 명확한 요구사항 정의
+- ✅ **보증된 테스트**: 자동 TDD를 통해 85%+ 테스트 커버리지 달성
+- ✅ **살아있는 문서**: 자동 동기화되어 절대 떨어지지 않는 문서
+- ✅ **지속적인 컨텍스트**: Alfred가 프로젝트 이력과 패턴을 기억
+- ✅ **완전한 추적성**: `@TAG` 시스템으로 모든 산출물 연결
+- ✅ **품질 자동화**: TRUST 5 원칙을 자동으로 강제
 
 ---
 
@@ -285,28 +285,33 @@ uv tool install --force moai-adk
 `/alfred:0-project` 명령어는 다음 작업들을 자동으로 수행합니다:
 
 **프로젝트 메타데이터 설정**
+
 - 프로젝트 이름, 설명, 소유자 정보 입력
 - 개발 모드 선택 (personal 또는 team)
 - 프로젝트 로케일 및 언어 설정
 
 **개발 구성**
+
 - 프로그래밍 언어 감지 및 설정 (Python, TypeScript, Go 등)
 - 개발 프레임워크 및 도구 자동 감지
 - Git 전략 설정 (GitFlow, feature branch 구성)
 - 브랜치 네이밍 규칙 설정 (예: `feature/SPEC-001`)
 
 **언어 및 국제화**
+
 - Alfred의 응답 언어 설정 (한국어, 영어, 일본어 등 25개 이상 언어 지원)
 - 코드 주석 및 커밋 메시지 언어 설정
 - 생성되는 문서의 언어 설정
 
 **MoAI-ADK 프레임워크 구성**
+
 - `.moai/` 디렉토리 생성 및 설정 파일 초기화
 - `.claude/` 디렉토리 구성 (agents, commands, skills, hooks)
 - SPEC 저장소 생성 (`.moai/specs/`)
 - 테스트 디렉토리 구성
 
 **파이프라인 상태 초기화**
+
 - 프로젝트 파이프라인 상태를 "initialized"로 설정
 - Alfred 작업 추적 시스템 활성화
 - Git 히스토리 및 TAG 시스템 준비
@@ -316,18 +321,19 @@ uv tool install --force moai-adk
 초기화 후 생성되는 주요 설정 파일들:
 
 **`.moai/config.json`** - 프로젝트 중앙 설정 파일
+
 ```json
 {
   "project": {
     "name": "my-awesome-project",
     "description": "프로젝트 설명",
-    "mode": "personal",              // personal | team
-    "language": "python",             // 감지된 프로그래밍 언어
-    "locale": "ko"                    // 프로젝트 기본 로케일
+    "mode": "personal", // personal | team
+    "language": "python", // 감지된 프로그래밍 언어
+    "locale": "ko" // 프로젝트 기본 로케일
   },
   "language": {
-    "conversation_language": "ko",    // Alfred 응답 언어
-    "agent_prompt_language": "ko"     // Sub-agent 프롬프트 언어
+    "conversation_language": "ko", // Alfred 응답 언어
+    "agent_prompt_language": "ko" // Sub-agent 프롬프트 언어
   },
   "git_strategy": {
     "personal": {
@@ -337,14 +343,15 @@ uv tool install --force moai-adk
     }
   },
   "constitution": {
-    "enforce_tdd": true,              // TDD 강제 적용
-    "test_coverage_target": 85,       // 테스트 커버리지 목표
-    "require_tags": true              // @TAG 시스템 필수
+    "enforce_tdd": true, // TDD 강제 적용
+    "test_coverage_target": 85, // 테스트 커버리지 목표
+    "require_tags": true // @TAG 시스템 필수
   }
 }
 ```
 
 **`.claude/statusline-config.yaml`** - Claude Code 상태바 설정
+
 - 프로젝트 상태 실시간 표시
 - 모델, 브랜치, Git 변경사항 표시
 - 새 버전 알림 구성
@@ -354,6 +361,7 @@ uv tool install --force moai-adk
 프로젝트 초기화 후 추가 커스터마이징:
 
 **언어 변경**
+
 ```bash
 # .moai/config.json 편집
 # language.conversation_language을 원하는 언어로 변경
@@ -361,6 +369,7 @@ uv tool install --force moai-adk
 ```
 
 **Git 전략 변경**
+
 ```bash
 # .moai/config.json 편집
 # git_strategy 섹션 수정
@@ -369,6 +378,7 @@ uv tool install --force moai-adk
 ```
 
 **테스트 커버리지 목표 설정**
+
 ```bash
 # .moai/config.json 편집
 # constitution.test_coverage_target: 85 (기본값)
@@ -378,6 +388,7 @@ uv tool install --force moai-adk
 ##### 5️⃣ 업데이트 및 재설정
 
 **Minor 업그레이드 후 설정 확인**
+
 ```bash
 # 새 버전의 기능 확인
 moai-adk --version
@@ -387,6 +398,7 @@ moai-adk --version
 ```
 
 **Major 버전 업그레이드 후 마이그레이션**
+
 ```bash
 # 1. 새 버전 설치
 uv tool upgrade moai-adk
@@ -403,6 +415,7 @@ git commit -m "Upgrade MoAI-ADK configuration"
 ```
 
 **설정 초기화 (기존 설정 재구성)**
+
 ```bash
 # 주의: 기존 설정을 백업한 후 실행
 cp .moai/config.json .moai/config.json.backup
@@ -414,6 +427,7 @@ cp .moai/config.json .moai/config.json.backup
 **⚠️ 중요 참고사항**
 
 개발을 시작하기 전에 반드시 `/alfred:0-project`를 실행하세요. 이 명령어가 수행하는 작업:
+
 - ✅ 프로젝트 메타데이터 및 구조 생성
 - ✅ 언어, Git, TDD 정책 설정
 - ✅ Alfred 작업 추적 시스템 초기화
@@ -421,6 +435,7 @@ cp .moai/config.json .moai/config.json.backup
 - ✅ 상태바 및 모니터링 시스템 구성
 
 설정을 건너뛸 경우:
+
 - ❌ Alfred 명령어들 (`/alfred:1-plan`, `/alfred:2-run` 등) 실행 불가
 - ❌ 파이프라인 상태 추적 불가
 - ❌ 자동화된 TDD 워크플로우 사용 불가
@@ -431,12 +446,12 @@ Claude Code 세션이 시작될 때마다 MoAI-ADK는 **자동으로** 프로젝
 
 **자동 체크 항목**
 
-| 항목 | 확인 사항 | 상황 |
-|------|---------|------|
-| 설정 존재 여부 | `.moai/config.json` 파일 존재 확인 | 없으면 제안 표시 |
-| 설정 완성도 | 필수 설정 섹션(project, language, git_strategy 등) 확인 | 누락되면 제안 표시 |
-| 설정 업데이트 | 설정 파일 생성 시간 확인 (30일 이상 오래된 경우) | 30일 이상 오래되면 제안 표시 |
-| 버전 일치 | 설치된 moai-adk 버전과 설정 버전 비교 | 불일치 시 제안 표시 |
+| 항목           | 확인 사항                                               | 상황                         |
+| -------------- | ------------------------------------------------------- | ---------------------------- |
+| 설정 존재 여부 | `.moai/config.json` 파일 존재 확인                      | 없으면 제안 표시             |
+| 설정 완성도    | 필수 설정 섹션(project, language, git_strategy 등) 확인 | 누락되면 제안 표시           |
+| 설정 업데이트  | 설정 파일 생성 시간 확인 (30일 이상 오래된 경우)        | 30일 이상 오래되면 제안 표시 |
+| 버전 일치      | 설치된 moai-adk 버전과 설정 버전 비교                   | 불일치 시 제안 표시          |
 
 **SessionStart Hook 사용자 상호작용**
 
@@ -472,11 +487,11 @@ All settings are healthy!
 
 **선택 항목 설명**
 
-| 선택 | 용도 | 언제 사용 |
-|------|------|---------|
-| **Initialize Project** | 새로운 프로젝트 설정 생성 | 처음 프로젝트를 시작할 때 |
-| **Update Settings** | 기존 설정 업데이트/검증 | 버전 업그레이드 후, 설정 수정 시, 30일 이상 오래됨 |
-| **Skip for Now** | 제안 무시하고 계속 진행 | 설정 수정 중단, 다른 작업 진행 (⚠️ 권장 안 함) |
+| 선택                   | 용도                      | 언제 사용                                          |
+| ---------------------- | ------------------------- | -------------------------------------------------- |
+| **Initialize Project** | 새로운 프로젝트 설정 생성 | 처음 프로젝트를 시작할 때                          |
+| **Update Settings**    | 기존 설정 업데이트/검증   | 버전 업그레이드 후, 설정 수정 시, 30일 이상 오래됨 |
+| **Skip for Now**       | 제안 무시하고 계속 진행   | 설정 수정 중단, 다른 작업 진행 (⚠️ 권장 안 함)     |
 
 **자동 설정 제안의 이점**
 
@@ -783,13 +798,13 @@ flowchart TD
 
 4 단계 모두 완료 후 Alfred가 검증:
 
-✅ **지시 의도 파악**: 사용자 의도가 명확하고 승인되었는가?
-✅ **계획 수립**: Plan Agent 계획이 수립되고 사용자가 승인했는가?
-✅ **TDD 준수**: RED-GREEN-REFACTOR 사이클을 엄격히 따랐는가?
-✅ **실시간 추적**: 모든 작업이 TodoWrite로 투명하게 추적되었는가?
-✅ **설정 준수**: `.moai/config.json` 설정을 엄격히 따랐는가?
-✅ **품질 보증**: 모든 테스트가 통과하고 코드 품질이 보증되었는가?
-✅ **정리 완료**: 불필요한 파일이 삭제되고 프로젝트가 깔끔한가?
+- ✅ **지시 의도 파악**: 사용자 의도가 명확하고 승인되었는가?
+- ✅ **계획 수립**: Plan Agent 계획이 수립되고 사용자가 승인했는가?
+- ✅ **TDD 준수**: RED-GREEN-REFACTOR 사이클을 엄격히 따랐는가?
+- ✅ **실시간 추적**: 모든 작업이 TodoWrite로 투명하게 추적되었는가?
+- ✅ **설정 준수**: `.moai/config.json` 설정을 엄격히 따랐는가?
+- ✅ **품질 보증**: 모든 테스트가 통과하고 코드 품질이 보증되었는가?
+- ✅ **정리 완료**: 불필요한 파일이 삭제되고 프로젝트가 깔끔한가?
 
 ---
 
@@ -935,7 +950,7 @@ MIT 라이선스 - 자세한 내용은 [LICENSE](LICENSE)를 참조하세요.
 ## 📞 지원 및 커뮤니티
 
 - **🐛 Issue Tracker**: 버그를 보고하고 기능을 요청하세요
-- **📧 이메일**: support@mo.ai.kr
+- **📧 이메일**: <support@mo.ai.kr>
 - **🌐 웹사이트**: [adk.mo.ai.kr](https://adk.mo.ai.kr)
 - **💬 커뮤니티**: [mo.ai.kr](https://mo.ai.kr) (11월 오픈 예정 - 개발 중)
 

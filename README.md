@@ -286,28 +286,33 @@ After installation or upgrade, you **MUST** run `/alfred:0-project` to initializ
 The `/alfred:0-project` command automatically performs the following tasks:
 
 **Project Metadata Setup**
+
 - Input project name, description, and owner information
 - Select development mode (personal or team)
 - Set project locale and language preferences
 
 **Development Configuration**
+
 - Detect and configure programming language (Python, TypeScript, Go, etc.)
 - Auto-detect development framework and tools
 - Configure Git strategy (GitFlow, feature branch naming)
 - Set branch naming conventions (e.g., `feature/SPEC-001`)
 
 **Language and Internationalization**
+
 - Configure Alfred response language (25+ languages supported: Korean, English, Japanese, Spanish, etc.)
 - Set code comments and commit message language
 - Configure generated documentation language
 
 **MoAI-ADK Framework Setup**
+
 - Create and initialize `.moai/` directory with configuration files
 - Configure `.claude/` directory (agents, commands, skills, hooks)
 - Create SPEC repository (`.moai/specs/`)
 - Set up test directory structure
 
 **Pipeline State Initialization**
+
 - Set project pipeline state to "initialized"
 - Activate Alfred task tracking system
 - Prepare Git history and TAG system
@@ -317,18 +322,19 @@ The `/alfred:0-project` command automatically performs the following tasks:
 Primary configuration file created after initialization:
 
 **`.moai/config.json`** - Central project configuration file
+
 ```json
 {
   "project": {
     "name": "my-awesome-project",
     "description": "Project description",
-    "mode": "personal",              // personal | team
-    "language": "python",             // Detected programming language
-    "locale": "en"                    // Project default locale
+    "mode": "personal", // personal | team
+    "language": "python", // Detected programming language
+    "locale": "en" // Project default locale
   },
   "language": {
-    "conversation_language": "en",    // Alfred response language
-    "agent_prompt_language": "en"     // Sub-agent prompt language
+    "conversation_language": "en", // Alfred response language
+    "agent_prompt_language": "en" // Sub-agent prompt language
   },
   "git_strategy": {
     "personal": {
@@ -338,14 +344,15 @@ Primary configuration file created after initialization:
     }
   },
   "constitution": {
-    "enforce_tdd": true,              // Enforce TDD principles
-    "test_coverage_target": 85,       // Test coverage goal
-    "require_tags": true              // Require @TAG system
+    "enforce_tdd": true, // Enforce TDD principles
+    "test_coverage_target": 85, // Test coverage goal
+    "require_tags": true // Require @TAG system
   }
 }
 ```
 
 **`.claude/statusline-config.yaml`** - Claude Code status bar configuration
+
 - Real-time project status display
 - Model, branch, and Git changes display
 - New version notifications
@@ -355,6 +362,7 @@ Primary configuration file created after initialization:
 After project initialization, you can customize settings:
 
 **Change Language**
+
 ```bash
 # Edit .moai/config.json
 # Change language.conversation_language to desired language
@@ -362,6 +370,7 @@ After project initialization, you can customize settings:
 ```
 
 **Change Git Strategy**
+
 ```bash
 # Edit .moai/config.json
 # Modify git_strategy section
@@ -370,6 +379,7 @@ After project initialization, you can customize settings:
 ```
 
 **Set Test Coverage Goal**
+
 ```bash
 # Edit .moai/config.json
 # constitution.test_coverage_target: 85 (default)
@@ -379,6 +389,7 @@ After project initialization, you can customize settings:
 ##### 5️⃣ Update and Reconfiguration
 
 **After Minor Upgrade - Verify Settings**
+
 ```bash
 # Check new version features
 moai-adk --version
@@ -388,6 +399,7 @@ moai-adk --version
 ```
 
 **After Major Version Upgrade - Configuration Migration**
+
 ```bash
 # 1. Install new version
 uv tool upgrade moai-adk
@@ -404,6 +416,7 @@ git commit -m "Upgrade MoAI-ADK configuration"
 ```
 
 **Reset Configuration (Reconfigure from Scratch)**
+
 ```bash
 # Warning: Backup existing config before running
 cp .moai/config.json .moai/config.json.backup
@@ -418,12 +431,12 @@ Every time a Claude Code session starts, MoAI-ADK **automatically** verifies pro
 
 **Auto Health Check Items**
 
-| Item | What It Checks | When Issues Detected |
-|------|----------------|----------------------|
-| Configuration Exists | Verify `.moai/config.json` file exists | If missing: must run `/alfred:0-project` |
+| Item                   | What It Checks                                                  | When Issues Detected                           |
+| ---------------------- | --------------------------------------------------------------- | ---------------------------------------------- |
+| Configuration Exists   | Verify `.moai/config.json` file exists                          | If missing: must run `/alfred:0-project`       |
 | Configuration Complete | Check required sections (project, language, git_strategy, etc.) | If incomplete: must re-run `/alfred:0-project` |
-| Configuration Age | Check file modification time (30+ days detected) | If outdated: update recommended |
-| Version Match | Compare installed moai-adk version with config version | If mismatch: must re-run `/alfred:0-project` |
+| Configuration Age      | Check file modification time (30+ days detected)                | If outdated: update recommended                |
+| Version Match          | Compare installed moai-adk version with config version          | If mismatch: must re-run `/alfred:0-project`   |
 
 **SessionStart Hook User Interaction**
 
@@ -459,11 +472,11 @@ All settings are healthy!
 
 **Action Choices Explained**
 
-| Choice | Purpose | When to Use |
-|--------|---------|-----------|
-| **Initialize Project** | Create new project configuration | When starting a new project |
-| **Update Settings** | Update/verify existing configuration | After version upgrade, configuration changes, 30+ days since setup |
-| **Skip for Now** | Proceed without configuration update | When making configuration changes, need to continue work (not recommended) |
+| Choice                 | Purpose                              | When to Use                                                                |
+| ---------------------- | ------------------------------------ | -------------------------------------------------------------------------- |
+| **Initialize Project** | Create new project configuration     | When starting a new project                                                |
+| **Update Settings**    | Update/verify existing configuration | After version upgrade, configuration changes, 30+ days since setup         |
+| **Skip for Now**       | Proceed without configuration update | When making configuration changes, need to continue work (not recommended) |
 
 **Benefits of Automatic Configuration Management**
 
@@ -476,6 +489,7 @@ All settings are healthy!
 **⚠️ Important Notes**
 
 Before starting development, you **MUST** run `/alfred:0-project`. This command:
+
 - ✅ Creates project metadata and structure
 - ✅ Sets language, Git, and TDD policies
 - ✅ Initializes Alfred task tracking system
@@ -483,6 +497,7 @@ Before starting development, you **MUST** run `/alfred:0-project`. This command:
 - ✅ Sets up status bar and monitoring systems
 
 If you skip configuration:
+
 - ❌ Alfred commands (`/alfred:1-plan`, `/alfred:2-run`, etc.) won't work
 - ❌ Pipeline state tracking unavailable
 - ❌ Automated TDD workflow unavailable
@@ -564,6 +579,7 @@ Action: Ask clarifying questions via AskUserQuestion
 **Process:**
 
 1. **Mandatory Plan Agent Invocation**: Alfred calls the Plan agent to:
+
    - Decompose tasks into structured steps
    - Identify dependencies between tasks
    - Determine single vs parallel execution opportunities
@@ -571,6 +587,7 @@ Action: Ask clarifying questions via AskUserQuestion
    - Estimate work scope and expected time
 
 2. **User Plan Approval**: Alfred presents the plan via AskUserQuestion:
+
    - Share the complete file change list in advance
    - Explain implementation approach clearly
    - Disclose risk factors in advance
@@ -782,13 +799,13 @@ flowchart TD
 
 After all 4 steps complete, Alfred validates:
 
-✅ **Intent Understanding**: User intent clearly defined and approved?
-✅ **Plan Creation**: Plan Agent plan created and user approved?
-✅ **TDD Compliance**: RED-GREEN-REFACTOR cycle strictly followed?
-✅ **Real-time Tracking**: All tasks transparently tracked with TodoWrite?
-✅ **Configuration Compliance**: `.moai/config.json` settings strictly followed?
-✅ **Quality Assurance**: All tests pass and code quality guaranteed?
-✅ **Cleanup Complete**: Unnecessary files cleaned and project in clean state?
+- ✅ **Intent Understanding**: User intent clearly defined and approved?
+- ✅ **Plan Creation**: Plan Agent plan created and user approved?
+- ✅ **TDD Compliance**: RED-GREEN-REFACTOR cycle strictly followed?
+- ✅ **Real-time Tracking**: All tasks transparently tracked with TodoWrite?
+- ✅ **Configuration Compliance**: `.moai/config.json` settings strictly followed?
+- ✅ **Quality Assurance**: All tests pass and code quality guaranteed?
+- ✅ **Cleanup Complete**: Unnecessary files cleaned and project in clean state?
 
 ---
 
