@@ -1,0 +1,192 @@
+# EARS構文: 上級ガイド
+
+明確でテスト可能、かつ曖昧さのない仕様を書くためのEARS (Easy Approach to Requirements Syntax) をマスターしましょう。この包括的なガイドでは、高度なパターン、ベストプラクティス、実世界の例を扱います。
+
+## EARSとは?
+
+EARS (Easy Approach to Requirements Syntax) は、曖昧さを排除しテスト可能性を保証する要件記述のための構造化手法です。要件工学に関する広範な研究を通じて開発されたEARSは、すべてのタイプのシステム動作をカバーする5つの明確なパターンを提供します。
+
+### EARSが重要な理由
+
+従来の要件は以下の問題を抱えています:
+
+- **曖昧さ**: 「システムは高速であるべき」→ どれくらい高速? どのような条件下で?
+- **不正確さ**: 「ユーザーはログインできるべき」→ どの方法で? エラー処理は?
+- **不完全性**: エッジケースやエラー条件の欠落
+- **テスト不可能性**: 客観的に検証できない要件
+
+EARSはこれらの問題を以下によって解決します:
+
+- **構造化言語**: すべての要件タイプに一貫したパターン
+- **明確なトリガー**: 明示的な条件とイベント
+- **完全なカバレッジ**: すべてのシステム動作を表現する方法
+- **テスト可能性**: すべての要件をテストケースに変換可能
+
+## 5つのEARSパターン
+
+### パターン1: 遍在的要件 (Ubiquitous Requirements)
+
+**目的**: 常に利用可能なシステム機能またはコア機能を定義します。
+
+**構文**: `The system SHALL <capability>`
+
+**使用時期**:
+
+- コアシステム機能
+- 常に利用可能な機能
+- 基本機能
+- システム全体の動作
+
+**構造**:
+
+```
+The system SHALL [動詞] [対象] [条件/コンテキスト]
+```
+
+#### 例
+
+**基本機能**:
+
+```markdown
+- The system SHALL provide user authentication via email and password
+- The system SHALL maintain user session state securely
+- The system SHALL validate all user input before processing
+- The system SHALL log all system events with timestamps
+- The system SHALL support concurrent user sessions
+```
+
+**データ管理**:
+
+```markdown
+- The system SHALL store user data in encrypted format
+- The system SHALL maintain data integrity constraints
+- The system SHALL provide data backup functionality
+- The system SHALL support data rollback operations
+- The system SHALL enforce referential integrity
+```
+
+**セキュリティ**:
+
+```markdown
+- The system SHALL implement secure password hashing
+- The system SHALL use HTTPS for all communications
+- The system SHALL protect against SQL injection attacks
+- The system SHALL implement rate limiting for API endpoints
+- The system SHALL provide audit logging for security events
+```
+
+**パフォーマンス**:
+
+```markdown
+- The system SHALL respond to user requests within 2 seconds
+- The system SHALL support 1000 concurrent users
+- The system SHALL maintain 99.9% uptime
+- The system SHALL cache frequently accessed data
+- The system SHALL optimize database queries automatically
+```
+
+#### 高度な遍在的パターン
+
+**条件付き遍在的**:
+
+```markdown
+- The system SHALL provide API access for authenticated users
+- The system SHALL enforce rate limits based on user tier
+- The system SHALL scale horizontally based on load
+```
+
+**修飾された遍在的**:
+
+```markdown
+- The system SHALL process payments using PCI-compliant methods
+- The system SHALL store sensitive data using AES-256 encryption
+- The system SHALL validate input using OWASP security guidelines
+```
+
+### パターン2: イベント駆動要件 (Event-driven Requirements)
+
+**目的**: 特定のイベント、トリガー、または条件に対するシステムの応答を定義します。
+
+**構文**: `WHEN <trigger>, the system SHALL <response>`
+
+**使用時期**:
+
+- ユーザーのアクションと操作
+- システムイベントと通知
+- 外部トリガー
+- 時間ベースのイベント
+- 状態変更
+
+**構造**:
+
+```
+WHEN [トリガー条件], the system SHALL [応答/アクション] [追加詳細]
+```
+
+#### 例
+
+**ユーザーアクション**:
+
+```markdown
+- WHEN a user submits login credentials, the system SHALL validate and authenticate
+- WHEN a user updates their profile, the system SHALL save changes and confirm success
+- WHEN a user requests password reset, the system SHALL send reset email
+- WHEN a user uploads a file, the system SHALL validate file type and size
+- WHEN a user logs out, the system SHALL invalidate all active sessions
+```
+
+**システムイベント**:
+
+```markdown
+- WHEN system memory exceeds 80% usage, the system SHALL trigger cleanup procedures
+- WHEN database connection fails, the system SHALL attempt reconnection with exponential backoff
+- WHEN scheduled maintenance begins, the system SHALL enter maintenance mode
+- WHEN security breach is detected, the system SHALL lock affected accounts
+- WHEN backup process completes, the system SHALL verify backup integrity
+```
+
+**外部トリガー**:
+
+```markdown
+- WHEN webhook is received from payment provider, the system SHALL update subscription status
+- WHEN email bounce occurs, the system SHALL update user email status
+- WHEN API rate limit is exceeded, the system SHALL return 429 status code
+- WHEN SSL certificate expires, the system SHALL alert administrators
+- WHEN third-party service is unavailable, the system SHALL enable fallback mode
+```
+
+**時間ベースのイベント**:
+
+```markdown
+- WHEN user session expires, the system SHALL require re-authentication
+- WHEN scheduled report is due, the system SHALL generate and deliver report
+- WHEN trial period ends, the system SHALL notify user and restrict access
+- WHEN data retention period expires, the system SHALL archive or delete data
+- WHEN maintenance window starts, the system SHALL notify active users
+```
+
+#### 高度なイベント駆動パターン
+
+**複数のトリガー**:
+
+```markdown
+- WHEN user login fails OR account is locked, the system SHALL send security alert
+- WHEN file upload completes AND virus scan passes, the system SHALL process file
+- WHEN high CPU usage detected AND memory usage > 90%, the system SHALL scale resources
+```
+
+**カスケードイベント**:
+
+```markdown
+- WHEN user registration completes, the system SHALL create user profile, send welcome email, AND initialize user preferences
+- WHEN payment is processed, the system SHALL update subscription, send receipt, AND extend access
+- WHEN security incident is detected, the system SHALL log event, notify admins, AND trigger incident response
+```
+
+**複雑な条件**:
+
+```markdown
+- WHEN user attempts login from new device AND location differs from usual, the system SHALL require additional verification
+- WHEN API request exceeds rate limit AND user is not premium, the system SHALL throttle requests
+- WHEN system load > 80% AND response time > 5s, the system SHALL enable caching mode
+```

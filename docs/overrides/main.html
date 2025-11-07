@@ -428,23 +428,38 @@
       transition: background-color var(--transition-normal), color var(--transition-normal), border-color var(--transition-normal);
     }
 
-    /* Code block padding - add left and right padding */
-    .md-typeset .highlight {
-      padding: 1em !important;
-      margin-left: 0.5em;
-      margin-right: 0.5em;
+    /* Code block padding - Strong selectors for override */
+    div.highlight {
+      padding: 1.2em 1.5em !important;
+      margin: 1.5em 0.5em !important;
+      background-color: var(--md-default-bg-color) !important;
     }
 
-    .md-typeset .highlight pre {
+    div.highlight pre {
       margin: 0 !important;
-      padding: 0.5em !important;
+      padding: 0 !important;
+      background-color: transparent !important;
     }
 
-    /* Command box padding adjustments */
-    .md-typeset .codehilite {
-      padding: 1em !important;
-      margin-left: 0.5em;
-      margin-right: 0.5em;
+    div.highlight code {
+      background-color: transparent !important;
+      padding: 0 !important;
+    }
+
+    /* Language-specific code blocks */
+    .language-bash, .language-python, .language-javascript, .language-typescript,
+    .language-java, .language-csharp, .language-php, .language-ruby, .language-go,
+    .language-rust, .language-kotlin, .language-swift, .language-sql, .language-html,
+    .language-css, .language-yaml, .language-json, .language-xml, .language-markdown,
+    .language-shell, .language-zsh, .language-text {
+      padding: 1.2em 1.5em !important;
+      margin: 1.5em 0.5em !important;
+    }
+
+    /* Ensure no padding bleeding */
+    .highlight > pre {
+      padding: 0 !important;
+      margin: 0 !important;
     }
 
     .md-typeset code {
