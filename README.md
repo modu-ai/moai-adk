@@ -642,6 +642,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 - **🐛 Issue Tracker**: Report bugs and request features
 - **📧 Email**: support@mo.ai.kr
 - **🌐 Website**: [adk.mo.ai.kr](https://adk.mo.ai.kr)
+- **💬 Community**: [mo.ai.kr](https://mo.ai.kr) (Coming in November - In Development)
 
 ---
 
