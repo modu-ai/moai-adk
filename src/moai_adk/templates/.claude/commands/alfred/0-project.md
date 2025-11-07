@@ -532,3 +532,42 @@ AskUserQuestion(
 - **Contextual Workflows**: Each flow type provides appropriate options and guidance
 - **Faster Execution**: Skills optimized for specific tasks with language awareness
 - **Better Error Handling**: Specialized error recovery with language-appropriate messages
+
+---
+
+## 🌍 Language-Specific CompanyAnnouncements
+
+### Simple Translation Strategy
+
+**Principle**: `.claude/settings.json` contains `companyAnnouncements` in the user's selected language.
+
+**How it works**:
+1. Each project maintains ONE language version of announcements in `.claude/settings.json`
+2. When language is selected during 0-project setup, appropriate announcements are written
+3. Current language: Read from `.moai/config.json` → `language.conversation_language`
+
+### Supported Announcements by Language
+
+**English (en)**:
+```
+Start with a plan, ✅ 5 promises, Task list, Language separation, ...
+```
+
+**Korean (ko)**:
+```
+계획 우선, ✅ 5가지 약속, 작업 목록, 언어 분리, ...
+```
+
+**Japanese (ja)**:
+```
+計画を優先, ✅ 5つの約束, タスク リスト, 言語分離, ...
+```
+
+### Implementation Notes for Future Language Support
+
+When adding new languages:
+
+1. Translate all 22 announcement strings to the new language
+2. Store translation in appropriate code/script that generates `.claude/settings.json`
+3. Ensure translator handles emoji and special characters correctly
+4. Validate all announcements display properly in Claude Code UI
