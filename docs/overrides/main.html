@@ -1033,3 +1033,8 @@
     }
   </style>
 {% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script src="{{ 'stylesheets/language-selector.js' | url }}"></script>
+{% endblock %}
