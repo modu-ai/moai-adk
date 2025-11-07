@@ -381,6 +381,18 @@ wheels = [
 ]
 
 [[package]]
+name = "mkdocs-static-i18n"
+version = "1.2.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "mkdocs" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/7e/39/e8c24a79d7fd557be67967e2bed3fd450247182ef01d3408a6b3193903c3/mkdocs_static_i18n-1.2.3.tar.gz", hash = "sha256:7ccf4da6dd29570ec49cd863ebff6fef9cb82dbb1cb85249bdf744e8d839c914", size = 1370068, upload-time = "2024-05-02T12:00:51.813Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3a/19/4c9f865302cd773c30fc14ed1b1a15074a7f3132caf4543c77e57c22885f/mkdocs_static_i18n-1.2.3-py3-none-any.whl", hash = "sha256:e6f2f3c53b657d7632015b32dea3c64d0b80a7a8d6cde0334ca8f66f9e33b52f", size = 21431, upload-time = "2024-05-02T12:00:54.321Z" },
+]
+
+[[package]]
 name = "moai-adk-docs"
 version = "0.17.0"
 source = { editable = "." }
@@ -390,6 +402,7 @@ dependencies = [
     { name = "mkdocs" },
     { name = "mkdocs-material" },
     { name = "mkdocs-minify-plugin" },
+    { name = "mkdocs-static-i18n" },
     { name = "pyyaml" },
     { name = "rich" },
 ]
@@ -416,6 +429,7 @@ requires-dist = [
     { name = "mkdocs", specifier = "==1.6.1" },
     { name = "mkdocs-material", specifier = "==9.5.49" },
     { name = "mkdocs-minify-plugin", specifier = "==0.8.0" },
+    { name = "mkdocs-static-i18n", specifier = "==1.2.3" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pyyaml", specifier = "==6.0.2" },
     { name = "rich", specifier = "==13.9.4" },

@@ -1,292 +1,468 @@
-______________________________________________________________________
-
-## title: Quick Start description: Experience MoAI-ADK's basic workflow in 5 minutes lang: en
-
 # Quick Start Guide
 
-Get started with your first project in MoAI-ADK with just **3 steps**. Beginners can complete it in
-under 5 minutes.
+Experience the complete MoAI-ADK workflow in just 10 minutes. This guide walks you through creating your first API using the SPEC-First TDD methodology.
 
 ## Prerequisites
 
-Before you start, ensure you have:
+Before starting, ensure you have:
 
 - ✅ **MoAI-ADK installed**: `uv tool install moai-adk`
 - ✅ **Claude Code installed**: Available in your terminal
-- ✅ **Git initialized**: Repository ready
+- ✅ **10 minutes of uninterrupted time**
 
-If not, check the [installation guide](installation.md).
+## Step 0: Project Initialization (1 minute)
 
-______________________________________________________________________
-
-## ステップ<span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_one</span>：プロジェクト作成（2分）
-
-### 新規プロジェクト作成
+Create a new project and initialize it with Alfred.
 
 ```bash
-# 新しいプロジェクトを作成
+# Create new project
 moai-adk init hello-api
 cd hello-api
 
-# 構造確認
-ls -la
-```
-
-### 生成されるもの
-
-```
-hello-api/
-├── .moai/              ✅ Alfred設定
-├── .claude/            ✅ Claude Code自動化
-└── CLAUDE.md           ✅ プロジェクトガイド
-```
-
-### 検証
-
-```bash
-# 診断実行
-moai-adk doctor
-```
-
-期待される出力：
-
-```
-✅ Python 3.13.0
-✅ uv 0.5.1
-✅ .moai/ directory initialized
-✅ .claude/ directory ready
-✅ 16 agents configured
-✅ 74 skills loaded
-```
-
-______________________________________________________________________
-
-## ステップ<span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_two</span>：Alfred開始（1分）
-
-### Claude Code実行
-
-```bash
+# Start Claude Code
 claude
 ```
 
-### プロジェクト初期化
+Run the project initialization command in Claude Code:
 
 ```
 /alfred:0-project
 ```
 
-Alfredが以下を質問します：
+Alfred will ask a few questions:
 
-```
-Q1: プロジェクト名は？
-A: hello-api
+- **Project name**: hello-api
+- **Project goal**: Learn MoAI-ADK
+- **Primary language**: python
+- **Mode**: personal (for local development)
 
-Q2: プロジェクト目標は？
-A: MoAI-ADK学習
+**Result**: Project is initialized with `.moai/` configuration, skills are loaded, and Alfred is ready.
 
-Q3: 主な開発言語は？
-A: python
+## Step 1: SPEC Creation (2 minutes)
 
-Q4: モードは？
-A: personal (ローカル開発用)
-```
-
-### 結果確認
-
-```
-✅ プロジェクト初期化完了
-✅ 設定が.moai/config.jsonに保存
-✅ .moai/project/にドキュメント作成
-✅ Alfredがスキル推薦完了
-```
-
-______________________________________________________________________
-
-## ステップ<span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_3</span>：最初の機能作成（5分）
-
-### SPEC作成（1分）
+Use Alfred's spec-builder to define what to build.
 
 ```bash
-/alfred:1-plan "GET /helloエンドポイント - クエリパラメータnameを受け取って挨拶を返す"
+/alfred:1-plan "GET /hello endpoint that accepts a name query parameter and returns a greeting"
 ```
 
-Alfredが自動生成：
+### What Alfred Does
 
-```
-✅ SPEC ID: HELLO-001
-✅ ファイル: .moai/specs/SPEC-HELLO-001/spec.md
-✅ ブランチ: feature/SPEC-HELLO-001
+1. **Analyzes request** and extracts requirements
+
+2. **Generates SPEC ID**: `HELLO-001`
+
+3. **Creates EARS format specification**:
+
+   ```yaml
+   ---
+   id: HELLO-001
+   version: 0.0.1
+   status: draft
+   priority: high
+   ---
+   # @SPEC:EX-HELLO-001: Hello World API
+
+   ## Ubiquitous Requirements
+   - The system SHALL provide HTTP GET /hello endpoint
+
+   ## Event-driven Requirements
+   - WHEN name query parameter is provided, the system SHALL return "Hello, {name}!"
+   - WHEN name is not provided, the system SHALL return "Hello, World!"
+
+   ## Constraints
+   - Name SHALL be limited to maximum 50 characters
+   - Response SHALL be in JSON format
+   ```
+
+4. **Generates supporting files**:
+
+   - `.moai/specs/SPEC-HELLO-001/spec.md` - Main specification
+   - `.moai/specs/SPEC-HELLO-001/plan.md` - Implementation plan
+   - Feature branch: `feature/SPEC-HELLO-001` (if in team mode)
+
+### Verification
+
+```bash
+# Check SPEC was created
+cat .moai/specs/SPEC-HELLO-001/spec.md
+
+# Verify TAG assignment
+rg '@SPEC:HELLO-001' -n
 ```
 
-### TDD実装（3分）
+## Step 2: TDD Implementation (5 minutes)
+
+Implement the API using Test-Driven Development.
 
 ```bash
 /alfred:2-run HELLO-001
 ```
 
-AlfredがTDDサイクルを自動実行：
+### Phase 1: 🔴 RED - Write Failing Tests
 
-- 🔴 **RED**: 失敗するテストを先に作成
-- 🟢 **GREEN**: テストを通過させる最小実装
-- ♻️ **REFACTOR**: コードを整理・改善
+Alfred's `tdd-implementer` generates comprehensive tests first:
 
-### ドキュメント同期（1分）
+```python
+# tests/test_hello.py
+# @TEST:EX-HELLO-001 | SPEC: SPEC-HELLO-001.md
+
+import pytest
+from fastapi.testclient import TestClient
+from src.hello.api import app
+
+client = TestClient(app)
+
+def test_hello_with_name_should_return_personalized_greeting():
+    """WHEN name is provided, SHALL return 'Hello, {name}!'"""
+    response = client.get("/hello?name=Alice")
+    assert response.status_code == 200
+    assert response.json() == {"message": "Hello, Alice!"}
+
+def test_hello_without_name_should_return_default_greeting():
+    """WHEN name is not provided, SHALL return 'Hello, World!'"""
+    response = client.get("/hello")
+    assert response.status_code == 200
+    assert response.json() == {"message": "Hello, World!"}
+
+def test_hello_with_long_name_should_return_400():
+    """WHEN name exceeds 50 characters, SHALL return 400 error"""
+    long_name = "a" * 51
+    response = client.get(f"/hello?name={long_name}")
+    assert response.status_code == 400
+```
+
+**Run tests** (they will fail - this is expected):
+
+```bash
+pytest tests/test_hello.py -v
+# Result: FAILED - No module named 'src.hello.api'
+```
+
+**RED phase commit**:
+
+```bash
+git add tests/test_hello.py
+git commit -m "🔴 test(HELLO-001): add failing hello API tests"
+```
+
+### Phase 2: 🟢 GREEN - Minimal Implementation
+
+Alfred generates minimal code to pass tests:
+
+```python
+# src/hello/api.py
+# @CODE:EX-HELLO-001:API | SPEC: SPEC-HELLO-001.md | TEST: tests/test_hello.py
+
+from fastapi import FastAPI, HTTPException
+
+app = FastAPI()
+
+@app.get("/hello")
+def hello(name: str = "World"):
+    """@CODE:EX-HELLO-001:API - Hello endpoint"""
+    if len(name) > 50:
+        raise HTTPException(status_code=400, detail="Name too long (max 50 chars)")
+    return {"message": f"Hello, {name}!"}
+```
+
+**Run tests** (should now pass):
+
+```bash
+pytest tests/test_hello.py -v
+# Result: PASSED - All 3 tests pass
+```
+
+**GREEN phase commit**:
+
+```bash
+git add src/hello/api.py
+git commit -m "🟢 feat(HELLO-001): implement hello API"
+```
+
+### Phase 3: ♻️ REFACTOR - Improve Code Quality
+
+Alfred improves the code by applying TRUST 5 principles:
+
+```python
+# src/hello/models.py
+# @CODE:EX-HELLO-001:MODEL | SPEC: SPEC-HELLO-001.md
+
+from pydantic import BaseModel, Field, validator
+
+class HelloRequest(BaseModel):
+    """@CODE:EX-HELLO-001:MODEL - Request validation model"""
+    name: str = Field(default="World", max_length=50, description="Name to greet")
+
+    @validator('name')
+    def validate_name(cls, v):
+        if not v.strip():
+            raise ValueError('Name cannot be empty')
+        return v.strip()
+
+class HelloResponse(BaseModel):
+    """@CODE:EX-HELLO-001:MODEL - Response model"""
+    message: str = Field(description="Greeting message")
+```
+
+```python
+# src/hello/api.py (refactored)
+# @CODE:EX-HELLO-001:API | SPEC: SPEC-HELLO-001.md | TEST: tests/test_hello.py
+
+from fastapi import FastAPI, HTTPException, Depends
+from .models import HelloRequest, HelloResponse
+
+app = FastAPI(title="Hello API", version="1.0.0")
+
+@app.get("/hello", response_model=HelloResponse)
+def hello(params: HelloRequest = Depends()):
+    """@CODE:EX-HELLO-001:API - Hello endpoint with validation"""
+    try:
+        message = f"Hello, {params.name}!"
+        return HelloResponse(message=message)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+```
+
+**Verify tests still pass**:
+
+```bash
+pytest tests/test_hello.py -v
+# Result: PASSED - All tests still pass
+```
+
+**REFACTOR phase commit**:
+
+```bash
+git add src/hello/models.py src/hello/api.py
+git commit -m "♻️ refactor(HELLO-001): add models and improve validation"
+```
+
+## Step 3: Documentation Sync (1 minute)
+
+Synchronize all documentation and validate the complete system.
 
 ```bash
 /alfred:3-sync
 ```
 
-自動的に実行：
+### What Alfred Does
 
+1. **Generates API documentation**:
+
+   ````markdown
+   # Hello API Documentation
+
+   ## GET /hello
+
+   Returns a personalized greeting message.
+
+   ### Parameters
+   - `name` (query, optional): Name to greet (default: "World", max 50 chars)
+
+   ### Response
+   - **200**: Success
+     ```json
+     {"message": "Hello, Alice!"}
+   ````
+
+   - **400**: Validation error
+
+   ### Example
+
+   ```bash
+   curl "http://localhost:8000/hello?name=Alice"
+   # → {"message": "Hello, Alice!"}
+   ```
+
+   ### Traceability
+
+   - @SPEC:EX-HELLO-001 - Requirements
+   - @TEST:EX-HELLO-001 - Tests
+   - @CODE:EX-HELLO-001 - Implementation
+
+   ```
+
+   ```
+
+2. **Updates README.md** (with API usage examples)
+
+3. **Generates CHANGELOG.md** (with version history)
+
+4. **Validates TAG chain integrity**:
+
+   ```
+   ✅ @SPEC:EX-HELLO-001 → .moai/specs/SPEC-HELLO-001/spec.md
+   ✅ @TEST:EX-HELLO-001 → tests/test_hello.py
+   ✅ @CODE:EX-HELLO-001 → src/hello/ (3 files)
+   ✅ @DOC:EX-HELLO-001 → docs/api/hello.md (auto-generated)
+
+   TAG chain integrity: 100%
+   Orphaned TAGs: none
+   ```
+
+5. **Validates TRUST 5 compliance**:
+
+   ```
+   ✅ Test First: 100% coverage (3/3 tests passing)
+   ✅ Readable: All functions < 50 lines
+   ✅ Unified: Consistent FastAPI patterns
+   ✅ Secured: Input validation implemented
+   ✅ Trackable: All code tagged with @CODE:HELLO-001
+   ```
+
+## Step 4: Validation and Celebration (1 minute)
+
+### Complete System Validation
+
+```bash
+# 1. Check TAG chain integrity
+rg '@(SPEC|TEST|CODE|DOC):HELLO-001' -n
+# All 4 TAG types should appear in output
+
+# 2. Run tests
+pytest tests/test_hello.py -v
+# All tests should pass
+
+# 3. Test API
+uvicorn src.hello.api:app --reload &
+curl "http://localhost:8000/hello?name=World"
+# Should return: {"message": "Hello, World!"}
+
+# 4. Check generated documentation
+cat docs/api/hello.md
+# Should contain complete API documentation
 ```
-✅ docs/api/hello.md - APIドキュメント作成
-✅ README.md - API使用法追加
-✅ CHANGELOG.md - v0.1.0リリースノート追加
-✅ @TAGチェーン検証 - すべての@TAG確認
-```
 
-______________________________________________________________________
+### Achievement Review
 
-## 🎉 5分後：あなたが得たもの
-
-### 生成されたファイル
+Successfully created:
 
 ```
 hello-api/
 ├── .moai/specs/SPEC-HELLO-001/
-│   ├── spec.md              ← 要件ドキュメント
-│   └── plan.md              ← 計画
-├── tests/test_hello.py      ← テスト（100%カバレッジ）
+│   ├── spec.md              ← Professional specification
+│   └── plan.md              ← Implementation plan
+├── tests/test_hello.py      ← 100% test coverage
 ├── src/hello/
-│   ├── api.py               ← API実装
+│   ├── api.py               ← Production-quality implementation
+│   ├── models.py            ← Data validation models
 │   └── __init__.py
-├── docs/api/hello.md        ← APIドキュメント
-├── README.md                ← 更新済み
-└── CHANGELOG.md             ← v0.1.0リリースノート
+├── docs/api/hello.md        ← Auto-generated API docs
+├── README.md                ← Updated with usage examples
+├── CHANGELOG.md             ← Version history
+└── .git/                    ← Clean git history with TDD commits
 ```
 
-### Git履歴
+### Git History
 
 ```bash
-git log --oneline | head -4
+git log --oneline | head -5
 ```
 
-期待される出力：
+Expected output:
 
 ```
-c1d2e3f ♻️ refactor(HELLO-001): add name length validation
+a1b2c3d ✅ sync(HELLO-001): update docs and changelog
+d4e5f6c ♻️ refactor(HELLO-001): add models and improve validation
 b2c3d4e 🟢 feat(HELLO-001): implement hello API
 a3b4c5d 🔴 test(HELLO-001): add failing hello API tests
-d4e5f6g Merge branch 'develop'
+e5f6g7h 🌿 Create feature/SPEC-HELLO-001 branch
 ```
 
-### 学んだこと
+## What You Learned
 
-- ✅ **SPEC**: EARS形式で要件を明確に定義
-- ✅ **TDD**: RED → GREEN → REFACTORサイクル体験
-- ✅ **自動化**: ドキュメントがコードと一緒に自動生成
-- ✅ **追跡性**: @TAGシステムですべてのステップが連結
-- ✅ **品質**: テスト100%、明確な実装、自動ドキュメント化
+### Concepts Experienced
 
-______________________________________________________________________
+✅ **SPEC-First**: Create clear requirements before coding
+✅ **TDD**: RED → GREEN → REFACTOR cycle with 100% test coverage
+✅ **@TAG System**: Complete traceability from requirements to documentation
+✅ **TRUST 5**: Production-quality code with validation and error handling
+✅ **Alfred Workflow**: Automated documentation and quality checks
 
-## <span class="material-icons">search</span> 検証してみよう
+### Skills Gained
 
-### APIテスト実行
+- **EARS Syntax**: Writing structured requirements
+- **Test Design**: Creating comprehensive test cases
+- **API Development**: FastAPI best practices
+- **Documentation**: Auto-generated, always-synchronized docs
+- **Git Workflow**: Clean, traceable commit history
+
+## Next Steps
+
+### Continue Building
+
+Add more features to your API:
 
 ```bash
-pytest tests/test_hello.py -v
+# Add new endpoint
+/alfred:1-plan "POST /greet endpoint that accepts JSON body"
+
+# Or enhance existing functionality
+/alfred:1-plan "Add language support to /hello endpoint"
 ```
 
-期待される出力：
+### Explore Advanced Topics
 
-```
-✅ test_hello_with_name_should_return_personalized_greeting PASSED
-✅ test_hello_without_name_should_return_default_greeting PASSED
-✅ test_hello_with_long_name_should_return_400 PASSED
-✅ 3 passed in 0.05s
-```
+- **[Project Configuration](../../guides/project/config.md)**: Customize project settings
+- **[SPEC Writing](../../guides/specs/basics.md)**: Master EARS syntax
+- **[TDD Patterns](../../guides/tdd/green.md)**: Learn advanced test strategies
+- **[TAG System](../reference/tags/index.md)**: Deep dive into traceability
 
-### @TAGチェーン確認
+### Join the Community
+
+- **GitHub Issues**: Report bugs or request features
+- **Discussions**: Ask questions and share experiences
+- **Contributing**: Help improve MoAI-ADK
+
+## Troubleshooting
+
+### Common Issues
+
+**Tests fail with import errors**:
 
 ```bash
-rg '@(SPEC|TEST|CODE|DOC):HELLO-001' -n
+# Install dependencies
+uv add fastapi pytest
+uv sync
 ```
 
-期待される出力：
-
-```
-.moai/specs/SPEC-HELLO-001/spec.md:7:# @SPEC:EX-HELLO-001: Hello World API
-tests/test_hello.py:3:# @TEST:EX-HELLO-002 | SPEC: SPEC-HELLO-001.md
-src/hello/api.py:3:# @CODE:EX-HELLO-001:API | SPEC: SPEC-HELLO-001.md
-docs/api/hello.md:24:- @SPEC:EX-HELLO-001
-```
-
-### 生成されたドキュメント確認
+**API doesn't start**:
 
 ```bash
-cat docs/api/hello.md
-cat README.md
-cat CHANGELOG.md
+# Check port and dependencies
+lsof -i :8000
+uvicorn src.hello.api:app --reload --port 8001
 ```
 
-______________________________________________________________________
-
-## 🚀 次のステップ
-
-### もっと複雑な機能に挑戦
+**Documentation not generated**:
 
 ```bash
-# 次の機能開始
-/alfred:1-plan "ユーザーデータベース照会API"
+# Run sync manually
+/alfred:3-sync
 ```
 
-### 学習を深める
+### Get Help
 
-- **概念理解**: [概念ガイド](concepts.md)で核心原理を学習
-- **Alfredコマンド**: [Alfredガイド](../guides/alfred/index.md)で全コマンドを学習
-- **TDD詳説**: [TDDガイド](../guides/tdd/index.md)でテスト駆動開発を深く理解
+```bash
+# System diagnostics
+moai-adk doctor
 
-### 実践例
+# Auto-create issue
+/alfred:9-feedback
+```
 
-- **Todo API**: [Todo API例](../guides/project/init.md)で実践的なアプリケーション作成
-- **認証システム**: 複雑な認証機能の実装
-- **データベース連携**: 永続化データの実装
+## Summary
 
-______________________________________________________________________
+In just 10 minutes, you've completed:
 
-## 💡 ヒントとコツ
+1. ✅ **Defined clear requirements** (using SPEC and EARS syntax)
+2. ✅ **Implemented with TDD** (achieving 100% test coverage)
+3. ✅ **Generated production-quality code** (with validation and error handling)
+4. ✅ **Created complete documentation** (kept synchronized)
+5. ✅ **Maintained full traceability** (with @TAG system)
+6. ✅ **Followed best practices** (with TRUST 5 principles)
 
-### 成功のためのヒント
+This is the power of MoAI-ADK: create reliable, maintainable, well-documented code faster than traditional methods. You're now ready to build complex applications with confidence! 🚀
 
-1. **小さく始める**: 最初は簡単なAPIから
-2. **SPECに集中**: 明確な要件が高品質なコードを作る
-3. **TDDを信頼**: テストが最初にコードをリードする
-4. **頻繁に同期**: `/alfred:3-sync`を定期的に実行
-5. **@TAGを活用**: すべてのコードに適切なTAGを付ける
-
-### よくある質問
-
-**Q: 既存プロジェクトに追加できますか？** A: はい。`moai-adk init .`で既存コードを変更せずに`.moai/`構造のみ追加します。
-
-**Q: テストはどのように実行しますか？** A: `/alfred:2-run`が先に実行し、必要なら`pytest`などを再実行します。
-
-**Q: ドキュメントが常に最新であることを確認する方法は？** A: `/alfred:3-sync`が同期レポートを作成します。プルリクエストでレポートを確認してください。
-
-______________________________________________________________________
-
-## 🎯 成功基準
-
-5分後、以下が達成できれば成功です：
-
-- ✅ MoAI-ADKプロジェクト作成完了
-- ✅ 最初のAPI機能実装完了
-- ✅ テスト100%通過
-- ✅ 自動生成されたドキュメント確認
-- ✅ @TAGシステム理解
-- ✅ Git履歴にTDDサイクル記録
-
-______________________________________________________________________
-
-**🎊 おめでとうございます！**
-あなたは5分でMoAI-ADKの基本ワークフローをマスターしました。次は[概念ガイド](concepts.md)で背后的な原理を学び、より高度な機能に挑戦しましょう。
+Continue your journey with the [Alfred Workflow Guide](../../guides/alfred/index.md) or explore any specific topic that interests you.

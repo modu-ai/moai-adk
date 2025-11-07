@@ -1,349 +1,336 @@
-______________________________________________________________________
+# Core Concepts
 
-## title: 核心概念 description: MoAI-ADKの5つの核心概念と基本原則の理解 lang: ja
+MoAI-ADK is built on five fundamental concepts that work together to create a reliable, traceable, and maintainable development workflow. Understanding these concepts is key to unlocking the full potential of AI-assisted development.
 
-# 核心概念の理解
+## The Problem: Trust in AI Development
 
-MoAI-ADKは5つの核心概念で構成されています。各概念は相互に連結し、共に機能する時、強力な開発システムを作ります。
+Modern AI-assisted development faces a fundamental challenge:
 
-______________________________________________________________________
+- **Unclear Requirements**: "Build a login system" means different things to different people
+- **Insufficient Testing**: AI often generates code without comprehensive test coverage
+- **Missing Documentation**: Code changes but documentation gets outdated
+- **Lost Context**: Each interaction starts from scratch, losing project history
+- **Untraceable Changes**: When requirements change, it's hard to identify affected code
 
-## 概念1: SPEC-First (要件優先)
+## The Solution: SPEC-First TDD with Alfred
 
-### 比喩：建築家なしで建物を建てるようなもの
+MoAI-ADK solves these problems through a systematic approach:
 
-設計図なしでコーディングしてはいけません。
+> **"No code without tests, no tests without specifications"**
 
-### 核心
+This creates a chain of responsibility: **SPEC → TEST → CODE → DOCUMENTATION**
 
-実装する前に\*\*「何を作るか」を明確に定義**します。これは単なるドキュメントではなく、チームとAIが共同で理解できる**実行可能な仕様\*\*です。
+## The Five Core Concepts
 
-### EARS文法の5つのパターン
+### 1. SPEC-First Development
 
-1. **Ubiquitous** (基本機能): 「システムはJWTベース認証を提供すべきである」
-2. **Event-driven** (条件付き): 「**WHEN** 有効な認証情報が提供されたら、システムはトークンを発行すべきである」
-3. **State-driven** (状態中心): 「**WHILE** ユーザーが認証された状態である時、システムは保護されたリソースを許可すべきである」
-4. **Optional** (選択): 「**WHERE** リフレッシュトークンがある場合、システムは新しいトークンを発行できる」
-5. **Constraints** (制約): 「トークン有効期限は15分を超えてはならない」
+**Definition**: Writing clear, executable specifications before writing any code.
 
-### どのように？
+**Why It Matters**:
 
-`/alfred:1-plan`コマンドがEARS形式で専門的なSPECを自動作成します。
+- Eliminates ambiguity about what to build
+- Provides foundation for automated testing
+- Ensures team alignment on requirements
 
-### 得られるもの
+**EARS Syntax**: Uses EARS (Easy Approach to Requirements Syntax) with 5 patterns:
 
-- ✅ チーム全員が理解する明確な要件
-- ✅ SPECベースのテストケース（何をテストするか既に定義済み）
-- ✅ 要件変更時`@SPEC:ID` TAGで影響を受けるすべてのコード追跡可能
+1. **Ubiquitous** (basic functionality): "The system SHALL provide JWT-based authentication"
+2. **Event-driven** (conditional): "**WHEN valid credentials are provided**, the system SHALL issue a token"
+3. **State-driven** (state-based): "**WHILE user is authenticated**, the system SHALL allow access to protected resources"
+4. **Optional** (optional features): "**WHERE refresh token exists**, the system MAY issue a new token"
+5. **Constraints** (limitations): "Token expiration time SHALL NOT exceed 15 minutes"
 
-### 実践例
-
-```yaml
----
-id: AUTH-001
-version: 0.1.0
-status: draft
-priority: high
----
-
-# @SPEC:EX-AUTH-001: ユーザー認証
-
-## Ubiquitous Requirements
-- システムはJWTベース認証を提供すべきである
-
-## Event-driven Requirements
-- WHEN 有効な認証情報が提供されたら、システムはトークンを発行すべきである
-- WHEN 無効な認証情報が提供されたら、システムは401エラーを返すべきである
-
-## Constraints
-- トークン有効期限は15分を超えてはならない
-- パスワードは最低8文字でなければならない
-```
-
-______________________________________________________________________
-
-## 概念2: TDD (テスト駆動開発)
-
-### 比喩：目的地を決めてから道を探すようなもの
-
-テストで目標を定めてコードを書きます。
-
-### 核心
-
-**実装**前に**テスト**を先に書きます。料理前に材料を確認するように、実装前に要件が何か明確にします。
-
-### 3ステップサイクル
-
-#### 🔴 RED: 失敗するテストを先に書く
-
-- SPECの各要件がテストケースになる
-- まだ実装がないので必ず失敗
-- Gitコミット: `test(AUTH-001): add failing test`
-
-```python
-def test_login_with_valid_credentials_should_return_token():
-    """WHEN 有効な認証情報が提供されたら、システムはトークンを発行すべきである"""
-    response = client.post("/auth/login", json={
-        "email": "user@example.com",
-        "password": "valid_password"
-    })
-    assert response.status_code == 200
-    assert "token" in response.json()
-    assert response.json()["token"] is not None
-```
-
-#### 🟢 GREEN: テストを通過させる最小実装
-
-- 最も単純な方法でテスト通過
-- 完璧さより通過が先
-- Gitコミット: `feat(AUTH-001): implement minimal solution`
-
-```python
-@app.post("/auth/login")
-def login(credentials: LoginRequest):
-    """@CODE:EX-AUTH-001:LOGIN - ログインエンドポイント"""
-    # 最小実装 - すべてのリクエストにトークンを返す
-    return {"token": "fake_token_for_testing"}
-```
-
-#### ♻️ REFACTOR: コードを整理・改善
-
-- TRUST 5原則適用
-- 重複排除、可読性向上
-- テストは依然として通過すべき
-- Gitコミット: `refactor(AUTH-001): improve code quality`
-
-```python
-@app.post("/auth/login")
-def login(credentials: LoginRequest):
-    """@CODE:EX-AUTH-001:LOGIN - 改善されたログインエンドポイント"""
-    user = authenticate_user(credentials.email, credentials.password)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-
-    token = create_access_token(data={"sub": user.email})
-    return {"token": token}
-```
-
-### どのように？
-
-`/alfred:2-run`コマンドがこの3ステップを自動実行します。
-
-### 得られるもの
-
-- ✅ カバレッジ85%以上保証（テストなしのコードなし）
-- ✅ リファクタリング自信（いつでもテストで検証可能）
-- ✅ 明確なGit履歴（RED → GREEN → REFACTOR過程追跡）
-
-______________________________________________________________________
-
-## 概念3: @TAGシステム
-
-### 比喩：宅配便の送り状のようなもの
-
-コードの旅を追跡できる必要があります。
-
-### 核心
-
-すべてのSPEC、テスト、コード、ドキュメントに`@TAG:ID`を付けて**一対一対応**を作ります。
-
-### TAGチェーン
-
-```
-@SPEC:EX-AUTH-001 (要件)
-    ↓
-@TEST:EX-AUTH-001 (テスト)
-    ↓
-@CODE:EX-AUTH-001 (実装)
-    ↓
-@DOC:EX-AUTH-DESIGN-001 (ドキュメント)
-```
-
-### TAG IDルール
-
-`<ドメイン>-<3桁数字>`
-
-- AUTH-001, AUTH-002, AUTH-003...
-- USER-001, USER-002...
-- 一度割り当てられたら**絶対に変更しません**
-
-### どのように使用？
-
-要件が変更されたら：
+**How It Works**:
 
 ```bash
-# AUTH-001と関連するすべてを検索
-rg '@TAG:AUTH-001' -n
-
-# 結果: SPEC, TEST, CODE, DOCがすべて一度に表示
-# → どこを修正すべきか明確
+/alfred:1-plan "User authentication with JWT tokens"
 ```
 
-### どのように？
+Alfred's spec-builder automatically generates professional SPECs using EARS format.
 
-`/alfred:3-sync`コマンドがTAGチェーンを検証し、orphan TAG（対応されないTAG）を検出します。
+### 2. Test-Driven Development (TDD)
 
-### 得られるもの
+**Definition**: Writing tests before implementation code, following the RED-GREEN-REFACTOR cycle.
 
-- ✅ すべてのコードの意図が明確（SPECを読めばなぜこのコードがあるか理解）
-- ✅ リファクタリング時影響を受けるすべてのコードを即座把握
-- ✅ 3ヶ月後でもコード理解可能（TAG → SPEC追跡）
+**Why It Matters**:
 
-______________________________________________________________________
+- Guarantees 85%+ test coverage
+- Enables confident refactoring
+- Provides living documentation of expected behavior
 
-## 概念4: TRUST 5原則
+**The TDD Cycle**:
 
-### 比喩：健康な体のようなもの
+1. **🔴 RED**: Write failing tests first
 
-良いコードは5つの要素をすべて満たす必要があります。
+   ```python
+   def test_login_with_valid_credentials_should_return_token():
+       """WHEN valid credentials provided, system SHALL issue JWT token"""
+       response = auth_client.login("user@example.com", "password123")
+       assert response.status_code == 200
+       assert "token" in response.json()
+   ```
 
-### 核心
+2. **🟢 GREEN**: Write minimal implementation to pass tests
 
-すべてのコードは以下の5つの原則を必ず守る必要があります。`/alfred:3-sync`がこれを自動検証します。
+   ```python
+   def login(email: str, password: str) -> dict:
+       if validate_credentials(email, password):
+           return {"token": generate_jwt_token(email)}
+       return {"error": "Invalid credentials"}
+   ```
 
-#### 1. 🧪 Test First (テスト優先)
+3. **♻️ REFACTOR**: Improve code quality while maintaining test coverage
 
-- テストカバレッジ ≥ 85%
-- すべてのコードがテストで保護される
-- 機能追加 = テスト追加
+   ```python
+   class AuthService:
+       def authenticate(self, email: str, password: str) -> AuthResult:
+           if not self._validate_credentials(email, password):
+               return AuthResult(success=False, error="Invalid credentials")
 
-#### 2. 📚 Readable (読みやすいコード)
+           token = self._generate_jwt_token(email)
+           return AuthResult(success=True, token=token)
+   ```
 
-- 関数 ≤ 50行、ファイル ≤ 300行
-- 変数名が意図を表す
-- リンター(ESLint/ruff/clippy)通過
+**How It Works**:
 
-#### 3. 🎯 Unified (一貫した構造)
-
-- SPECベースアーキテクチャ維持
-- 同じパターンが繰り返される（学習曲線減少）
-- タイプ安全性またはランタイム検証
-
-#### 4. 🔒 Secured (セキュリティ)
-
-- 入力検証（XSS, SQLインジェクション防御）
-- パスワードハッシュ（bcrypt, Argon2）
-- 機密情報保護（環境変数）
-
-#### 5. 🔗 Trackable (追跡可能)
-
-- @TAGシステム使用
-- GitコミットにTAG含む
-- すべての意思決定が文書化される
-
-### どのように？
-
-`/alfred:3-sync`コマンドがTRUST検証を自動実行します。
-
-### 得られるもの
-
-- ✅ プロダクション品質のコード保証
-- ✅ チーム全体が同じ基準で開発
-- ✅ バグ減少、セキュリティ脆弱性事前防止
-
-______________________________________________________________________
-
-## 概念5: Alfred SuperAgent
-
-### 比喩：個人秘書のようなもの
-
-Alfredがすべての複雑な作業を処理します。
-
-### 核心
-
-AIエージェントたちが協力して開発過程全体を自動化します。
-
-### エージェント構成
-
-- **Alfred SuperAgent**: 全体オーケストレーション
-- **Core Sub-agent**: SPEC作成、TDD実装、ドキュメント同期など専門業務
-- **Domain Specialist**: バックエンド、フロントエンド、セキュリティなど
-- **Built-in Agent**: 一般質問、コードベース探索
-
-### Claude Skills
-
-- **Foundation**: TRUST/TAG/SPEC/Git/EARS原則
-- **Essentials**: デバッグ、性能、リファクタリング、コードレビュー
-- **Alfred**: ワークフロー自動化
-- **Domain**: バックエンド、フロントエンド、セキュリティなど
-- **Language**: Python, JavaScript, Go, Rustなど
-- **Ops**: Claude Codeセッション管理
-
-### どのように？
-
-`/alfred:*`コマンドが必要な専門家チームを自動活性化します。
-
-### 得られるもの
-
-- ✅ プロンプト作成不要（標準化されたコマンド使用）
-- ✅ プロジェクトコンテキスト自動記憶（同じ質問繰り返さず）
-- ✅ 最適の専門家チーム自動構成（状況に合ったサブエージェント活性化）
-
-______________________________________________________________________
-
-## 🔄 5つの概念の連携
-
-これら5つの概念は相互に連携して完全な開発システムを形成します：
-
-```mermaid
-%%{init: {'theme':'neutral'}}%%
-graph TD
-    SPEC[SPEC-First<br/>明確な要件] --> TDD[TDD<br/>テスト駆動実装]
-    TDD --> TAG[@TAGシステム<br/>追跡可能性]
-    TAG --> TRUST[TRUST 5原則<br/>品質保証]
-    TRUST --> Alfred[Alfred SuperAgent<br/>自動化]
-    Alfred --> SPEC
+```bash
+/alfred:2-run SPEC-ID
 ```
 
-### 実際のワークフロー
+Alfred automatically executes the complete TDD cycle.
 
-1. **SPEC作成** → 明確な要件定義
-2. **TDD実行** → テスト駆動で高品質なコード作成
-3. **@TAG付与** → すべての要素に追跡タグ付与
-4. **TRUST検証** → 品質基準満たすか確認
-5. **Alfred自動化** → 全過程をAIが支援
+### 3. @TAG System
 
-______________________________________________________________________
+**Definition**: A unique identifier system that links specifications, tests, code, and documentation.
 
-## 🎯 学習パス
+**Why It Matters**:
 
-### 初心者向け
+- Enables complete traceability across all project artifacts
+- Makes impact analysis simple and reliable
+- Prevents orphaned code and forgotten requirements
 
-1. **SPEC-First**から始める - 明確な要件がすべての基本
-2. **TDD**体験 - RED → GREEN → REFACTORサイクルを実際に体験
-3. **@TAG**活用 - 追跡可能性の価値を理解
+**TAG Chain**:
 
-### 中級者向け
+```
+@SPEC:EX-AUTH-001 (requirements)
+    ↓
+@TEST:EX-AUTH-001 (tests)
+    ↓
+@CODE:EX-AUTH-001:SERVICE (implementation)
+    ↓
+@DOC:EX-AUTH-001 (documentation)
+```
 
-1. **TRUST 5原則**適用 - 品質基準をコードに適用
-2. **Alfred**活用 - 効率的なコマンド使用法習得
-3. **概念連携**理解 - 5つの概念がどのように連携するか理解
+**TAG Format**: `<DOMAIN>-<3-digit-number>`
 
-### 上級者向け
+Examples: `AUTH-001`, `AUTH-002`, `USER-001`, `API-001`
 
-1. **カスタマイズ** - プロジェクトに合わせた設定
-2. **拡張** - 新しいスキルやエージェント追加
-3. **最適化** - チームワークフロー最適化
+**Usage Example**:
 
-______________________________________________________________________
+```bash
+# Find all code related to authentication
+rg '@(SPEC|TEST|CODE|DOC):AUTH-001' -n
 
-## 💡 実践的ヒント
+# Results:
+# .moai/specs/SPEC-AUTH-001/spec.md:7:# @SPEC:EX-AUTH-001: User Authentication
+# tests/test_auth.py:3:# @TEST:EX-AUTH-001 | SPEC: SPEC-AUTH-001.md
+# src/auth/service.py:5:# @CODE:EX-AUTH-001:SERVICE | SPEC: SPEC-AUTH-001.md
+# docs/api/auth.md:24:- @SPEC:EX-AUTH-001
+```
 
-### 日常開発での適用
+**How It Works**:
 
-- **朝**: `/alfred:1-plan`で今日の機能SPEC作成
-- **昼**: `/alfred:2-run`でTDD実装
-- **夕**: `/alfred:3-sync`でドキュメント同期
-- **定期**: `moai-adk doctor`でシステム健康診断
+```bash
+/alfred:3-sync
+```
 
-### チーム協業
+Alfred automatically validates TAG chains and detects orphaned TAGs.
 
-- **SPECレビュー**: チーム全員でSPEC確認
-- **TAG標準**: チーム内TAG命名規則統一
-- **TRUST基準**: 品質基準チーム共通認識
-- **Alfred活用**: チームメンバー全員がAlfredコマンド習得
+### 4. TRUST 5 Principles
 
-______________________________________________________________________
+**Definition**: A quality framework ensuring all code meets production standards.
 
-**🎓 これで5つの核心概念を理解しました！**
-次は[Alfredコマンドガイド](../../guides/alfred/index.md)で実際の使用方法を学び、[TDDガイド](../../guides/tdd/index.md)で実践的なテクニックを習得しましょう。
+**Why It Matters**:
+
+- Ensures consistent code quality across projects
+- Provides clear criteria for code reviews
+- Prevents common bugs and security issues
+
+**The 5 Principles**:
+
+1. **🧪 Test First**
+
+   - Test coverage ≥ 85%
+   - All code protected by tests
+   - Adding features = adding tests
+
+2. **📚 Readable**
+
+   - Functions ≤ 50 lines, files ≤ 300 lines
+   - Variable names reveal intent
+   - Linter compliance (ESLint/ruff/clippy)
+
+3. **🎯 Unified**
+
+   - SPEC-based architecture consistency
+   - Repeated patterns (reduced learning curve)
+   - Type safety or runtime validation
+
+4. **🔒 Secured**
+
+   - Input validation (XSS, SQL injection prevention)
+   - Password hashing (bcrypt, Argon2)
+   - Sensitive data protection (environment variables)
+
+5. **🔗 Trackable**
+
+   - @TAG system usage
+   - TAG references in git commits
+   - All decisions documented
+
+**How It Works**:
+
+```bash
+/alfred:3-sync
+```
+
+Alfred automatically validates TRUST 5 compliance.
+
+### 5. Alfred SuperAgent
+
+**Definition**: An AI orchestration system that coordinates multiple specialized agents and skills throughout the development process.
+
+**Why It Matters**:
+
+- Removes prompt engineering complexity
+- Maintains project context across sessions
+- Delivers consistent, professional-quality output
+
+**Agent Architecture**:
+
+```
+Alfred SuperAgent (orchestration)
+    ├── Core Sub-agents (project workflow)
+    │   ├── project-manager 📋
+    │   ├── spec-builder 🏗️
+    │   ├── code-builder 💎
+    │   ├── doc-syncer 📚
+    │   └── quality-gate 🛡️
+    ├── Expert Agents (domain specialists)
+    │   ├── backend-expert ⚙️
+    │   ├── frontend-expert 💻
+    │   ├── devops-expert 🚀
+    │   └── ui-ux-expert 🎨
+    └── Built-in Claude Agents (general support)
+        ├── Code understanding
+        ├── Debugging
+        └── Analysis
+```
+
+**Skills System**: 69+ production-ready Claude Skills organized in 4 tiers:
+
+1. **Foundation**: Core principles (TRUST/TAG/SPEC/Git/EARS)
+2. **Essentials**: Daily development tools (debug/perf/refactor)
+3. **Alfred**: Workflow orchestration
+4. **Domain**: Specialized knowledge (backend/frontend/security)
+5. **Language**: Language-specific best practices (Python/TS/Go/Rust)
+
+**How It Works**:
+
+```bash
+/alfred:0-project    # Project initialization
+/alfred:1-plan      # Specification generation
+/alfred:2-run       # TDD implementation
+/alfred:3-sync       # Documentation synchronization
+```
+
+## Complete Workflow
+
+### Step-by-Step Process
+
+1. **PLAN** (2 minutes)
+
+   ```bash
+   /alfred:1-plan "User authentication with email/password"
+   ```
+
+   - Creates SPEC with @SPEC:AUTH-001
+   - Defines requirements using EARS syntax
+   - Status: `planning` → `draft`
+
+2. **RUN** (5 minutes)
+
+   ```bash
+   /alfred:2-run AUTH-001
+   ```
+
+   - Executes TDD cycle (RED → GREEN → REFACTOR)
+   - Generates tests with @TEST:AUTH-001
+   - Creates implementation with @CODE:AUTH-001
+   - Status: `draft` → `in_progress` → `testing`
+
+3. **SYNC** (1 minute)
+
+   ```bash
+   /alfred:3-sync
+   ```
+
+   - Generates documentation with @DOC:AUTH-001
+   - Validates TAG chain integrity
+   - Verifies TRUST 5 compliance
+   - Status: `testing` → `completed`
+
+### Result: Complete Traceability
+
+```
+@SPEC:EX-AUTH-001 → .moai/specs/SPEC-AUTH-001/spec.md
+     ↓ (requirements)
+@TEST:EX-AUTH-001 → tests/test_auth.py
+     ↓ (validation)
+@CODE:EX-AUTH-001 → src/auth/service.py
+     ↓ (implementation)
+@DOC:EX-AUTH-001 → docs/api/auth.md
+```
+
+## Benefits of the System
+
+### For Individual Developers
+
+- **Speed**: Clear requirements reduce iteration time
+- **Confidence**: 85%+ test coverage enables fearless refactoring
+- **Clarity**: @TAG system makes code intent immediately clear
+- **Learning**: Professional patterns and best practices built-in
+
+### For Teams
+
+- **Consistency**: Everyone follows the same development patterns
+- **Onboarding**: New members understand code intent through SPECs
+- **Quality**: TRUST 5 ensures consistent code quality
+- **Collaboration**: SPECs provide clear communication on requirements
+
+### For Projects
+
+- **Maintainability**: Code and documentation always synchronized
+- **Scalability**: TAG system makes impact analysis trivial
+- **Reliability**: TDD ensures robust, well-tested code
+- **Documentation**: Living documentation that evolves with code
+
+## Comparison with Traditional Development
+
+| Aspect | Traditional Approach | MoAI-ADK Approach |
+|--------|---------------------|-------------------|
+| Requirements | Verbal descriptions, emails | Formal SPEC documents using EARS syntax |
+| Testing | After implementation, often incomplete | First, with 85%+ coverage guaranteed |
+| Documentation | Written separately, often outdated | Auto-synchronized with code |
+| Traceability | Manual, often lost | @TAG system provides complete chain |
+| Quality | Varies by developer | TRUST 5 principles ensure consistency |
+| AI Usage | Prompt engineering, inconsistent | Standardized commands with reliable output |
+
+## Getting Started with Concepts
+
+1. **Experience the Workflow**: Try the [Quick Start Guide](quick-start.md)
+2. **Understand EARS Syntax**: Learn [SPEC Writing](../../guides/specs/basics.md)
+3. **Master TDD**: Follow the [TDD Guide](../../guides/tdd/red.md)
+4. **Explore TAG System**: Read the [TAG Documentation](../reference/tags/index.md)
+
+These concepts work together to create a development experience that is more reliable, maintainable, and enjoyable than traditional approaches. With Alfred as your guide, you'll write better code faster, with confidence that it meets production standards.

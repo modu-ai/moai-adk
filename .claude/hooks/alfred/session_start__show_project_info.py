@@ -47,14 +47,14 @@ except ImportError:
 
 
 def get_git_info() -> dict[str, Any]:
-    """Get comprehensive git information - optimized for speed"""
+    """Get comprehensive git information"""
     try:
         # Get current branch
         branch = subprocess.run(
             ["git", "branch", "--show-current"],
             capture_output=True,
             text=True,
-            timeout=0.5
+            timeout=3
         ).stdout.strip()
 
         # Get last commit hash and message
@@ -62,7 +62,7 @@ def get_git_info() -> dict[str, Any]:
             ["git", "log", "--pretty=format:%h %s", "-1"],
             capture_output=True,
             text=True,
-            timeout=0.5
+            timeout=3
         ).stdout.strip()
 
         # Get commit time (relative)
@@ -70,7 +70,7 @@ def get_git_info() -> dict[str, Any]:
             ["git", "log", "--pretty=format:%ar", "-1"],
             capture_output=True,
             text=True,
-            timeout=0.5
+            timeout=3
         ).stdout.strip()
 
         # Get number of changed files
@@ -78,7 +78,7 @@ def get_git_info() -> dict[str, Any]:
             ["git", "status", "--porcelain"],
             capture_output=True,
             text=True,
-            timeout=0.5
+            timeout=3
         ).stdout.strip()
         num_changes = len(changes.splitlines()) if changes else 0
 
@@ -101,31 +101,82 @@ def get_git_info() -> dict[str, Any]:
 def get_test_info() -> dict[str, Any]:
     """Get test coverage and status information
 
-    OPTIMIZATION: Skipped in SessionStart hook to avoid timeout
-    Reason: Running 1112+ tests on every session start (5+ seconds) is inefficient
-    Tests should be run on-demand via /alfred:2-run or explicit pytest commands
+    NOTE: SessionStart hook must complete quickly (<0.5s).
+    Running pytest is too slow (5+ seconds), so we skip it and return unknown status.
+    Users can run tests manually with: pytest --cov
+
+    To check test status, use: /alfred:test-status (future feature)
     """
+    # Skip pytest execution - it's too slow for SessionStart
     return {
-        "coverage": "run-on-demand",
-        "status": "⏭️"
+        "coverage": "unknown",
+        "status": "❓"
     }
 
 
+def get_spec_progress() -> dict[str, Any]:
+    """Get SPEC progress information"""
+    try:
+        specs_dir = Path.cwd() / ".moai" / "specs"
+        if not specs_dir.exists():
+            return {"completed": 0, "total": 0, "percentage": 0}
+
+        spec_folders = [d for d in specs_dir.iterdir() if d.is_dir() and d.name.startswith("SPEC-")]
+        total = len(spec_folders)
+
+        # Simple completion check - look for spec.md files
+        completed = sum(1 for folder in spec_folders if (folder / "spec.md").exists())
+
+        percentage = (completed / total * 100) if total > 0 else 0
+
+        return {
+            "completed": completed,
+            "total": total,
+            "percentage": round(percentage, 0)
+        }
+
+    except Exception:
+        return {"completed": 0, "total": 0, "percentage": 0}
+
+
+def calculate_risk(git_info: dict, spec_progress: dict, test_info: dict) -> str:
+    """Calculate overall project risk level"""
+    risk_score = 0
+
+    # Git changes contribute to risk
+    if git_info["changes"] > 20:
+        risk_score += 10
+    elif git_info["changes"] > 10:
+        risk_score += 5
+
+    # SPEC progress contributes to risk
+    if spec_progress["percentage"] < 50:
+        risk_score += 15
+    elif spec_progress["percentage"] < 80:
+        risk_score += 8
+
+    # Test status contributes to risk
+    if test_info["status"] != "✅":
+        risk_score += 12
+    elif test_info["coverage"] == "unknown":
+        risk_score += 5
+
+    # Determine risk level
+    if risk_score >= 20:
+        return "HIGH"
+    elif risk_score >= 10:
+        return "MEDIUM"
+    else:
+        return "LOW"
 
 
 def format_session_output() -> str:
-    """Format minimal session start output (optimized for speed)
-
-    Only includes essential Git information + version.
-    Removed slow operations:
-    - SPEC progress scan
-    - Risk calculation
-    - Test coverage check
-    """
-    # Gather minimal information (fast)
+    """Format the complete session start output"""
+    # Gather information
     git_info = get_git_info()
+    spec_progress = get_spec_progress()
 
-    # Get MoAI version from config (fast, single file read)
+    # Get MoAI version from config if available
     moai_version = "unknown"
     try:
         config_path = Path.cwd() / ".moai" / "config.json"
@@ -135,11 +186,14 @@ def format_session_output() -> str:
     except Exception:
         pass
 
-    # Format minimal output
+    # Format output
     output = [
-        f"🗿 Version: {moai_version} | 🌿 {git_info['branch']} ({git_info['branch'][:4] if git_info['branch'] != 'unknown' else 'unknown'})",
+        "🚀 MoAI-ADK Session Started",
+        "",
+        f"🗿 Version: {moai_version} | 🌿 {git_info['branch']}",
         f"📝 Changes: {git_info['changes']}",
-        f"📌 {git_info['last_commit']} ({git_info['commit_time']})"
+        f"📋 SPEC Progress: {spec_progress['completed']}/{spec_progress['total']} ({spec_progress['percentage']}%)",
+        f"🔨 Last: {git_info['last_commit']} ({git_info['commit_time']})"
     ]
 
     return "\n".join(output)
@@ -159,8 +213,8 @@ def main() -> None:
         0: Success
         1: Error (timeout, JSON parse failure, handler exception)
     """
-    # Set 2-second timeout (optimized after removing pytest execution)
-    timeout = CrossPlatformTimeout(2)
+    # Set 5-second timeout
+    timeout = CrossPlatformTimeout(5)
     timeout.start()
 
     try:
@@ -187,7 +241,7 @@ def main() -> None:
             "systemMessage": "⚠️ Session start timeout - continuing without project info",
         }
         print(json.dumps(timeout_response))
-        print("SessionStart hook timeout after 2 seconds", file=sys.stderr)
+        print("SessionStart hook timeout after 5 seconds", file=sys.stderr)
         sys.exit(1)
 
     except json.JSONDecodeError as e:

@@ -88,18 +88,34 @@ def should_validate_tool(tool_name: str, tool_args: Dict[str, Any]) -> bool:
     if tool_name not in validation_tools:
         return False
 
-    # CLAUDE.md 파일은 TAG 검증에서 제외
+    # 선택적 파일 패턴 (TAG 검증 대상 아님)
+    optional_patterns = [
+        "CLAUDE.md",
+        "README.md",
+        "CHANGELOG.md",
+        "CONTRIBUTING.md",
+        ".claude/",
+        ".moai/docs/",
+        ".moai/reports/",
+        ".moai/analysis/",
+        "docs/",
+        "templates/",
+        "examples/",
+    ]
+
+    # Edit/Write의 경우 단일 파일 확인
     if tool_name in {"Edit", "Write"}:
         file_path = tool_args.get("file_path", "")
-        if file_path.endswith("CLAUDE.md"):
+        if any(pattern in file_path for pattern in optional_patterns):
             return False
+        return True
 
-    # MultiEdit의 경우 CLAUDE.md 포함 여부 확인
+    # MultiEdit의 경우 여러 파일 확인
     if tool_name == "MultiEdit":
         edits = tool_args.get("edits", [])
         for edit in edits:
             file_path = edit.get("file_path", "")
-            if file_path.endswith("CLAUDE.md"):
+            if any(pattern in file_path for pattern in optional_patterns):
                 return False
 
     return True
