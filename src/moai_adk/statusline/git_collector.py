@@ -141,11 +141,19 @@ class GitCollector:
 
             status = line[:2]
 
+            # Check staged changes (first character)
             if status[0] == self._STATUS_ADDED:
                 staged += 1
             elif status[0] == self._STATUS_MODIFIED:
+                staged += 1
+
+            # Check unstaged/working directory changes (second character)
+            # Detects: M(modified), D(deleted), A(added), R(renamed), C(copied), T(type changed)
+            if len(status) > 1 and status[1] not in (' ', '.'):
                 modified += 1
-            elif status == self._STATUS_UNTRACKED:
+
+            # Check untracked files
+            if status == self._STATUS_UNTRACKED:
                 untracked += 1
 
         return staged, modified, untracked

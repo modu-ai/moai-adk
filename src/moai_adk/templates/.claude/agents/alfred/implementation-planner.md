@@ -1,7 +1,7 @@
 ---
 name: implementation-planner
 description: "Use when: When SPEC analysis and implementation strategy need to be established. Called from /alfred:2-run Phase 1"
-tools: Read, Grep, Glob, WebFetch, TodoWrite
+tools: Read, Grep, Glob, WebFetch, TodoWrite, AskUserQuestion
 model: inherit
 ---
 
