@@ -628,9 +628,14 @@
       font-weight: 600;
     }
 
-    /* LEFT SIDEBAR SUBMENU STYLING - Light Theme */
+    /* LEFT SIDEBAR SUBMENU STYLING - Light Theme (No Background, No Lines) */
     .md-nav--secondary {
-      background-color: #F2F1ED !important;  /* Bg Warm Off-White */
+      background-color: transparent !important;  /* Hide background */
+      border: none !important;  /* Hide all borders */
+      border-top: none !important;
+      border-bottom: none !important;
+      border-left: none !important;
+      border-right: none !important;
     }
 
     .md-nav--secondary .md-nav__link {
@@ -641,6 +646,7 @@
       font-weight: 500 !important;
       font-size: 0.9rem !important;
       line-height: 1.4 !important;
+      border: none !important;  /* Hide link borders */
     }
 
     .md-nav--secondary .md-nav__link:hover {
@@ -659,11 +665,17 @@
     .md-nav--secondary .md-nav__item {
       border-radius: 4px !important;
       margin: 0.25rem 0 !important;
+      border: none !important;  /* Hide item borders */
     }
 
-    /* LEFT SIDEBAR SUBMENU STYLING - Dark Theme */
+    /* LEFT SIDEBAR SUBMENU STYLING - Dark Theme (No Background, No Lines) */
     [data-md-color-scheme="slate"] .md-nav--secondary {
-      background-color: #1A1916 !important;  /* Dark Surface Very Light */
+      background-color: transparent !important;  /* Hide background */
+      border: none !important;  /* Hide all borders */
+      border-top: none !important;
+      border-bottom: none !important;
+      border-left: none !important;
+      border-right: none !important;
     }
 
     [data-md-color-scheme="slate"] .md-nav--secondary .md-nav__link {
@@ -674,6 +686,7 @@
       font-weight: 500 !important;
       font-size: 0.9rem !important;
       line-height: 1.4 !important;
+      border: none !important;  /* Hide link borders */
     }
 
     [data-md-color-scheme="slate"] .md-nav--secondary .md-nav__link:hover {
@@ -692,6 +705,7 @@
     [data-md-color-scheme="slate"] .md-nav--secondary .md-nav__item {
       border-radius: 4px !important;
       margin: 0.25rem 0 !important;
+      border: none !important;  /* Hide item borders */
     }
 
     /* Header with neutral styling - improved readability */
