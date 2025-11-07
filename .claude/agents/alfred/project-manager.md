@@ -53,7 +53,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 ## 🧰 Required Skills
 
-**Automatic Core Skills** (explicitly invoked by this agent)
+**Automatic Core Skills**
 - `Skill("moai-alfred-language-detection")` – First determine the language/framework of the project root and branch the document question tree.
 - `Skill("moai-project-documentation")` – Guide project documentation generation based on project type (Web App, Mobile App, CLI Tool, Library, Data Science). Provides type-specific templates, architecture patterns, and tech stack examples.
 
@@ -101,7 +101,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
      - `mode: "template_update_optimization"` → Template optimization (UPDATE MODE)
    - Route to appropriate workflow based on mode
 
-1. **Conversation Language Setup** (for all modes):
+1. **Conversation Language Setup**:
    - Receive `conversation_language` parameter from Command/Alfred
    - Confirm and announce the selected language in all subsequent interactions
    - Store language preference in context for all generated documents and responses
