@@ -46,6 +46,16 @@
           }
         ],
         "matcher": "Edit|Write|MultiEdit"
+      },
+      {
+        "hooks": [
+          {
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/pre_tool__auto_spec_proposal.py",
+            "type": "command",
+            "description": "Automatically propose SPEC generation for code files"
+          }
+        ],
+        "matcher": "Edit|Write"
       }
     ],
     "UserPromptSubmit": [
