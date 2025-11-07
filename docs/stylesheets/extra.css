@@ -259,9 +259,14 @@
   border-color: #444444;
 }
 
-/* 사이드바 테마 호환성 */
+/* 사이드바 테마 호환성 - 배경색과 라인 제거 */
 .md-nav--secondary {
-  background-color: #F7F6F2;
+  background-color: transparent !important;
+  border: none !important;
+  border-top: none !important;
+  border-bottom: none !important;
+  border-left: none !important;
+  border-right: none !important;
 }
 
 .md-nav--secondary .md-nav__link {
@@ -269,6 +274,7 @@
   padding: 0.4rem 0.75rem;
   border-radius: 4px;
   font-weight: 500;
+  border: none !important;
 }
 
 .md-nav--secondary .md-nav__link:hover {
@@ -289,9 +295,14 @@
   color: var(--md-primary-bg-color);
 }
 
-/* 다크 모드 서브메뉴 스타일 */
+/* 다크 모드 서브메뉴 스타일 - 배경색과 라인 제거 */
 [data-md-color-scheme="slate"] .md-nav--secondary {
-  background-color: #1A1916;
+  background-color: transparent !important;
+  border: none !important;
+  border-top: none !important;
+  border-bottom: none !important;
+  border-left: none !important;
+  border-right: none !important;
 }
 
 [data-md-color-scheme="slate"] .md-nav--secondary .md-nav__link {
@@ -299,6 +310,7 @@
   padding: 0.4rem 0.75rem;
   border-radius: 4px;
   font-weight: 500;
+  border: none !important;
 }
 
 [data-md-color-scheme="slate"] .md-nav--secondary .md-nav__link:hover {
