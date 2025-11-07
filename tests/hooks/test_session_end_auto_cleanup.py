@@ -17,10 +17,8 @@ TDD History:
 
 import json
 import sys
-import tempfile
 import time
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 

@@ -522,21 +522,6 @@ labels:
         """Create CODE template for given domain and number."""
         code_id = f"@CODE:{domain}-{number:03d}"
 
-        # Determine module based on domain
-        if "LDE" in domain:
-            module = "lde"
-        elif "CORE" in domain:
-            module = "core"
-        elif "INSTALLER" in domain:
-            module = "installer"
-        elif "CLI" in domain:
-            module = "cli"
-        elif "UTILS" in domain:
-            module = "utils"
-        else:
-            module = "core"
-
-        # Module variable used in template context
         return f'''# {code_id}
 """{domain} 기능 구현.
 
@@ -630,19 +615,6 @@ if __name__ == "__main__":
         """Create TEST template for given domain and number."""
         test_id = f"@TEST:{domain}-{number:03d}"
 
-        # Determine test type based on domain
-        if "LDE" in domain:
-            test_type = "feature"
-        elif "CORE" in domain:
-            test_type = "unit"
-        elif "INSTALLER" in domain:
-            test_type = "integration"
-        elif "CLI" in domain:
-            test_type = "e2e"
-        else:
-            test_type = "unit"
-
-        # Test type variable used in test context
         return f'''# {test_id}
 """{domain} 기능 테스트.
 

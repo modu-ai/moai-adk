@@ -160,7 +160,7 @@ class UserExperienceAnalyzer(HTTPClient):
         results = await asyncio.gather(*tasks)
 
         # 결과 분석
-        total_load_time = 0
+        total_load_time = 0.0
         success_count = 0
 
         for load_time, success in results:
@@ -188,7 +188,7 @@ class UserExperienceAnalyzer(HTTPClient):
     async def analyze_navigation(self) -> NavigationMetrics:
         """네비게이션 구조 분석"""
         # 모의 네비게이션 데이터 (실제 구현에서는 실제 크롤링 수행)
-        navigation_data = {
+        navigation_data: Dict[str, Any] = {
             "main_links": ["Getting Started", "API Documentation", "Guides", "Search"],
             "sub_links": {
                 "Getting Started": ["Installation", "Configuration", "First Steps"],
@@ -205,8 +205,8 @@ class UserExperienceAnalyzer(HTTPClient):
 
         return NavigationMetrics(
             structure_score=structure_score,
-            link_count=navigation_data["total_links"],
-            depth=navigation_data["depth"],
+            link_count=int(navigation_data["total_links"]),
+            depth=int(navigation_data["depth"]),
             completeness=0.95
         )
 
@@ -363,7 +363,7 @@ def generate_improvement_plan(analysis_report: Dict[str, Any]) -> Dict[str, Any]
     overall_score = analysis_report["overall_score"]
 
     # 우선순위 설정
-    priorities = {
+    priorities: Dict[str, List[str]] = {
         "high": [],
         "medium": [],
         "low": []

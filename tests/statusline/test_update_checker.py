@@ -5,8 +5,9 @@ Tests for UpdateChecker - 업데이트 확인
 @TEST:UPDATE-CHECKER-002 - 300초 캐싱
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 
 class TestUpdateChecker:
@@ -32,8 +33,8 @@ class TestUpdateChecker:
 
             update_info = checker.check_for_update("0.20.1")
 
-            assert update_info.available is True, f"Expected available=True"
-            assert "0.21.0" in str(update_info.latest_version), f"Expected latest_version=0.21.0"
+            assert update_info.available is True, "Expected available=True"
+            assert "0.21.0" in str(update_info.latest_version), "Expected latest_version=0.21.0"
 
     def test_check_update_not_available(self):
         """
@@ -53,7 +54,7 @@ class TestUpdateChecker:
 
             update_info = checker.check_for_update("0.21.0")
 
-            assert update_info.available is False, f"Expected available=False when versions match"
+            assert update_info.available is False, "Expected available=False when versions match"
 
     def test_api_failure_graceful(self):
         """

@@ -5,9 +5,9 @@ Tests for MetricsTracker - 세션 메트릭 추적
 @TEST:METRICS-TRACKER-002 - 시간 범위별 포맷
 """
 
-import pytest
 from datetime import datetime, timedelta
-from unittest.mock import patch, MagicMock
+
+import pytest
 
 
 class TestMetricsTracker:
@@ -103,7 +103,7 @@ class TestMetricsTracker:
         duration = tracker.get_duration()
 
         # Should show seconds or minute
-        assert duration and len(duration) > 0, f"Duration should not be empty"
+        assert duration and len(duration) > 0, "Duration should not be empty"
 
 
 if __name__ == "__main__":

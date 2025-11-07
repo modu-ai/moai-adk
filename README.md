@@ -32,12 +32,12 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
 
 ### How MoAI-ADK Solves It
 
-✅ **SPEC-First**: Clear, structured requirements BEFORE any code
-✅ **Guaranteed Testing**: 87.84%+ test coverage through automated TDD
-✅ **Living Documentation**: Auto-synced docs that never drift
-✅ **Persistent Context**: Alfred remembers project history and patterns
-✅ **Complete Traceability**: `@TAG` system links every artifact
-✅ **Quality Automation**: TRUST 5 principles enforced throughout
+- ✅ **SPEC-First**: Clear, structured requirements BEFORE any code
+- ✅ **Guaranteed Testing**: 87.84%+ test coverage through automated TDD
+- ✅ **Living Documentation**: Auto-synced docs that never drift
+- ✅ **Persistent Context**: Alfred remembers project history and patterns
+- ✅ **Complete Traceability**: `@TAG` system links every artifact
+- ✅ **Quality Automation**: TRUST 5 principles enforced throughout
 
 ---
 
@@ -951,7 +951,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 ## 📞 Support & Community
 
 - **🐛 Issue Tracker**: Report bugs and request features
-- **📧 Email**: support@mo.ai.kr
+- **📧 Email**: <support@mo.ai.kr>
 - **🌐 Website**: [adk.mo.ai.kr](https://adk.mo.ai.kr)
 - **💬 Community**: [mo.ai.kr](https://mo.ai.kr) (Coming in November - In Development)
 

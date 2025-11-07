@@ -13,7 +13,6 @@ TDD History:
 
 import sys
 from pathlib import Path
-from typing import List
 
 # Hook 디렉토리를 sys.path에 추가
 HOOKS_DIR = Path(__file__).parent.parent.parent / ".claude" / "hooks" / "alfred"

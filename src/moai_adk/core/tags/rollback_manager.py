@@ -10,8 +10,6 @@ TAG 정책 시스템에서 문제 발생 시 안전한 롤백을 제공하는 �
 - 안전한 롤백 실행
 - 이력 추적 및 로깅
 - 비상 복구 시스템
-
-@SPEC:TAG-ROLLBACK-001
 """
 
 import json
@@ -448,7 +446,6 @@ class RollbackManager:
         Args:
             checkpoint_id: 롤백할 체크포인트 ID
         """
-        backup_id = self._generate_checkpoint_id()
         self.create_checkpoint(
             description=f"롤백 전 백업 (from {checkpoint_id})",
             metadata={"rollback_from": checkpoint_id}
