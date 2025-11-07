@@ -537,37 +537,127 @@ AskUserQuestion(
 
 ## 🌍 Language-Specific CompanyAnnouncements
 
-### Simple Translation Strategy
+### Auto-Translation Strategy
 
-**Principle**: `.claude/settings.json` contains `companyAnnouncements` in the user's selected language.
+**Principle**: `.claude/settings.json` contains `companyAnnouncements` automatically translated to the user's selected language.
 
 **How it works**:
-1. Each project maintains ONE language version of announcements in `.claude/settings.json`
-2. When language is selected during 0-project setup, appropriate announcements are written
-3. Current language: Read from `.moai/config.json` → `language.conversation_language`
+1. During 0-project setup, user selects their preferred language
+2. After language selection, ALL workflow modes (INITIALIZATION/AUTO-DETECT/UPDATE) trigger auto-translation
+3. Announcement strings are translated to selected language
+4. Translated announcements written to `.claude/settings.json`
+5. Current language stored in `.moai/config.json` → `language.conversation_language`
 
-### Supported Announcements by Language
+### Implementation in All Workflow Modes
 
-**English (en)**:
-```
-Start with a plan, ✅ 5 promises, Task list, Language separation, ...
-```
+**Trigger Points** - Auto-translate and update `.claude/settings.json` in:
 
-**Korean (ko)**:
-```
-계획 우선, ✅ 5가지 약속, 작업 목록, 언어 분리, ...
-```
-
-**Japanese (ja)**:
-```
-計画を優先, ✅ 5つの約束, タスク リスト, 言語分離, ...
+#### 1. INITIALIZATION MODE
+After `Skill("moai-project-language-initializer", mode="language_first")` completes:
+```python
+# Step: After language selection, translate announcements
+selected_language = confirmed_language  # e.g., "ko", "en", "ja"
+translated_announcements = translate_announcements(selected_language)
+update_settings_json(companyAnnouncements=translated_announcements)
 ```
 
-### Implementation Notes for Future Language Support
+#### 2. AUTO-DETECT MODE
+After language confirmation in Step 2:
+```python
+# Apply language-specific announcements from config
+current_language = config.language.conversation_language
+translated_announcements = translate_announcements(current_language)
+update_settings_json(companyAnnouncements=translated_announcements)
+```
 
-When adding new languages:
+#### 3. SETTINGS MODE
+When user changes language in Step 4:
+```python
+# After Config Manager skill updates language in config.json
+new_language = updated_config.language.conversation_language
+translated_announcements = translate_announcements(new_language)
+update_settings_json(companyAnnouncements=translated_announcements)
+```
 
-1. Translate all 22 announcement strings to the new language
-2. Store translation in appropriate code/script that generates `.claude/settings.json`
-3. Ensure translator handles emoji and special characters correctly
-4. Validate all announcements display properly in Claude Code UI
+#### 4. UPDATE MODE
+Final step after template optimization:
+```python
+# Ensure announcements match current language
+current_language = config.language.conversation_language
+translated_announcements = translate_announcements(current_language)
+update_settings_json(companyAnnouncements=translated_announcements)
+```
+
+### Supported Translation Sources
+
+**Reference Announcements** (English baseline - 22 strings):
+```
+1. Start with a plan: Write down what you want to build first to avoid confusion (/alfred:1-plan)
+2. ✅ 5 promises: Test-first + Easy-to-read code + Clean organization + Secure + Trackable
+3. Task list: Continuous progress tracking ensures nothing gets missed
+4. Language separation: We communicate in your language, computers understand in English
+5. Everything connected: Plan→Test→Code→Docs are all linked together
+6. ⚡ Parallel processing: Independent tasks can be handled simultaneously
+7. Tools first: Find the right tools before starting any work
+8. Step by step: What you want→Plan→Execute→Report results
+9. Auto-generated lists: Planning automatically creates task lists
+10. ❓ Ask when confused: If something isn't clear, just ask right away
+11. 🧪 Automatic quality checks: Code automatically verified against 5 core principles
+12. Multi-language support: Automatic validation for Python, JavaScript, and more
+13. ⚡ Never stops: Can continue even when tools are unavailable
+14. Flexible approach: Choose between team collaboration or individual work as needed
+15. 🧹 Auto cleanup: Automatically removes unnecessary items when work is complete
+16. ⚡ Quick updates: New versions detected in 3 seconds, only fetch what's needed
+17. On-demand loading: Only loads current tools to save memory
+18. Complete history: All steps from planning to code are recorded for easy reference
+19. Bug reporting: File bug reports to GitHub in 30 seconds
+20. 🩺 Health check: Use 'moai-adk doctor' to instantly check current status
+21. Safe updates: Use 'moai-adk update' to safely add new features
+22. 🧹 When work is done: Use '/clear' to clean up conversation for the next task
+```
+
+**Currently Supported Languages**:
+- **ko** (Korean/한국어): Culturally localized translations with appropriate verb forms and expressions
+- **en** (English): Baseline/reference version
+- **ja** (Japanese/日本語): Formal/polite expressions suitable for Japanese audience
+
+### Adding New Languages
+
+When supporting a new language (e.g., **es** for Spanish):
+
+1. **Translation Requirements**:
+   - Translate all 22 announcement strings to target language
+   - Preserve emoji and special characters (✅, ⚡, 🧪, 🧹, 🩺, →)
+   - Maintain tone: Encouraging, action-oriented, user-friendly
+   - Keep command references intact: `/alfred:1-plan`, `moai-adk doctor`, `/clear`
+
+2. **Implementation**:
+   - Add language mapping in 0-project command or language initializer
+   - Create translation dictionary/storage for new language
+   - Ensure `translate_announcements("es")` returns Spanish strings
+
+3. **Validation**:
+   - Test in INITIALIZATION MODE with new language selection
+   - Verify announcements appear in `.claude/settings.json` with correct language
+   - Confirm emoji display correctly in Claude Code UI
+   - Check command references are readable in context
+
+### User Experience Flow
+
+```
+User runs: /alfred:0-project
+    ↓
+Skill("moai-project-language-initializer")
+    → User selects: "Korean (한국어)"
+    ↓
+translate_announcements("ko") returns Korean strings
+    ↓
+.claude/settings.json updated with:
+    "companyAnnouncements": [
+        "계획 우선: 혼란을 피하기 위해...",
+        "✅ 5가지 약속: 테스트 우선...",
+        ...
+    ]
+    ↓
+User sees Korean announcements on Claude Code startup ✓
+```
