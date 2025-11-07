@@ -748,4 +748,160 @@ moai-adk init --mcp-auto
 
 **English-Only Core Files**: `.claude/agents/`, `.claude/commands/`, `.claude/skills/` (global maintainability)
 
+---
+
+## 🔒 Critical: Deployment Secrets Prevention Policy
+
+**CRITICAL RULE**: Never commit environment-specific configuration files or credentials to any Git repository.
+
+### Prohibited Files (MUST be in .gitignore)
+
+**Platform Configuration Files** (contain API keys, IDs, authentication tokens):
+- `.vercel/project.json` - ❌ **CRITICAL**: Contains projectId, orgId (Vercel API access)
+- `.vercel/*.json` - All Vercel config files
+- `.netlify/state.json` - Netlify configuration
+- `.env` - All environment variable files (`.env`, `.env.local`, `.env.*.local`)
+- `.aws/credentials` - AWS authentication
+- `google-credentials.json` - Google Cloud credentials
+- `.firebase/` - Firebase configuration
+- `.github/workflows/secrets.yml` - GitHub Secrets references
+
+**Build Cache & Dependencies** (may contain sensitive data):
+- `node_modules/` - Already excluded
+- `dist/`, `build/` - Already excluded
+- `.next/`, `.nuxt/` - Framework caches
+- `.turbo/` - Turbo cache
+
+### Why This Matters: Security Impact Chain
+
+```
+Exposed .vercel/project.json
+        ↓
+Attacker gains projectId + orgId
+        ↓
+├─ Vercel API calls with stolen credentials
+├─ Environment variables access (DB passwords, API keys)
+├─ Build logs inspection (source code leaks)
+├─ Deployment configuration modification
+└─ Project deletion or malicious deployment
+        ↓
+Complete infrastructure compromise
+```
+
+### .gitignore Setup (MANDATORY)
+
+**Location**: Project root `.gitignore`
+
+**Required entries**:
+```gitignore
+# Deployment platform secrets
+.vercel/
+.netlify/
+.firebase/
+.aws/credentials
+
+# Environment variables (ALL variations)
+.env
+.env.local
+.env.*.local
+.env.production.local
+.env.development.local
+
+# IDE secrets
+.vscode/settings.json
+.idea/workspace.xml
+
+# OS secrets
+.DS_Store
+.env.example  # If contains comments about real values
+```
+
+### Pre-Commit Verification (MANDATORY)
+
+**Before every git push**, verify:
+
+```bash
+# Check for uncommitted secrets
+git status | grep -i ".vercel\|.env\|credentials\|secret\|key\|token"
+
+# Scan staged files for credentials patterns
+git diff --cached | grep -i "projectId\|orgId\|api[_-]?key\|secret\|password"
+
+# List files that would be committed
+git diff --cached --name-only
+```
+
+### Recovery Procedure (If Accidentally Committed)
+
+**IMMEDIATE ACTIONS** (Do not delay):
+
+1. **Invalidate credentials**:
+   ```bash
+   # Regenerate all exposed keys/tokens immediately
+   # Vercel: Dashboard → Project Settings → Regenerate
+   # AWS: Create new access keys, invalidate old ones
+   # GitHub: Rotate personal access tokens
+   ```
+
+2. **Remove from Git history**:
+   ```bash
+   # Option A: Recent commit
+   git rm --cached .vercel/project.json
+   git commit --amend
+
+   # Option B: Deep history
+   git filter-branch --tree-filter 'rm -f .vercel/project.json' HEAD
+   git push origin --force
+   ```
+
+3. **Audit access logs**:
+   - Vercel Dashboard → Activity Log
+   - GitHub → Security → Activity Log
+   - Cloud Provider → API Access Logs
+
+### Alfred's Prevention Policy
+
+**Alfred MUST**:
+- ❌ Refuse to create/modify files in `.vercel/`, `.env`, or credential directories
+- ⚠️ Alert user if git history contains these files
+- ✅ Remind user to add patterns to `.gitignore` during project setup
+- 🚨 Stop execution if pre-commit detection finds secrets
+
+**Config setting** (`.moai/config.json`):
+```json
+{
+  "security": {
+    "prevent_secrets_commit": true,
+    "scan_files_before_git": true,
+    "blocked_patterns": [".vercel/", ".env", "credentials"]
+  }
+}
+```
+
+### Testing Your Protection
+
+```bash
+# Create test secret file
+echo "TEST_SECRET=vercel_project_id" > .vercel/test.json
+
+# Verify gitignore blocks it
+git add .vercel/test.json 2>&1 | grep -i "pathspec"
+
+# Expected output: "fatal: pathspec '.vercel/test.json' did not match any files"
+# ✅ Correct: File is properly ignored
+
+# Cleanup
+rm .vercel/test.json
+```
+
+### Verification Checklist
+
+- [ ] `.gitignore` contains `.vercel/` entry
+- [ ] `.gitignore` contains `.env*` pattern
+- [ ] All deployment config is excluded
+- [ ] `.vercel/project.json` removed from repo (if previously committed)
+- [ ] Git history cleaned (if needed)
+- [ ] All exposed credentials rotated
+- [ ] Pre-commit hook configured (if using)
+- [ ] Team notified of security standards
 

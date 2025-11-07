@@ -2,7 +2,7 @@
 name: frontend-expert
 description: "Use PROACTIVELY when: Frontend architecture, component design, state management, or UI/UX implementation is needed. Triggered by SPEC keywords: 'frontend', 'ui', 'page', 'component', 'client-side', 'browser', 'web interface'."
 tools: Read, Write, Edit, Grep, Glob, WebFetch, TodoWrite, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
-model: sonnet
+model: inherit
 ---
 
 # Frontend Expert - Frontend Architecture Specialist

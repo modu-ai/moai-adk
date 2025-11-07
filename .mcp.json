@@ -2,39 +2,21 @@
   "mcpServers": {
     "context7": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@upstash/context7-mcp@latest"
-      ],
-      "env": {
-        "NODE_OPTIONS": "--max-old-space-size=2048"
-      },
-      "timeout": 15000,
-      "retries": 2
+      "args": ["-y", "@upstash/context7-mcp@latest"],
+      "timeout": 30000,
+      "retries": 3
     },
     "playwright": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@playwright/mcp@latest"
-      ],
-      "env": {
-        "NODE_OPTIONS": "--max-old-space-size=2048"
-      },
-      "timeout": 15000,
-      "retries": 2
+      "args": ["-y", "@playwright/mcp@latest"],
+      "timeout": 30000,
+      "retries": 3
     },
     "sequential-thinking": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-sequential-thinking@latest"
-      ],
-      "env": {
-        "NODE_OPTIONS": "--max-old-space-size=2048"
-      },
-      "timeout": 15000,
-      "retries": 2
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking@latest"],
+      "timeout": 30000,
+      "retries": 3
     }
   }
 }

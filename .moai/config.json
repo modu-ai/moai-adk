@@ -109,6 +109,34 @@
     "graceful_degradation": true,
     "notes": "Hook execution timeout (milliseconds). Set graceful_degradation to true to continue even if a hook fails."
   },
+  "session_end": {
+    "enabled": true,
+    "metrics": {
+      "enabled": true,
+      "save_location": ".moai/logs/sessions/"
+    },
+    "work_state": {
+      "enabled": true,
+      "save_location": ".moai/memory/last-session-state.json"
+    },
+    "cleanup": {
+      "enabled": true,
+      "temp_files": true,
+      "cache_files": true,
+      "patterns": [
+        ".moai/temp/*",
+        ".moai/cache/*.tmp"
+      ]
+    },
+    "warnings": {
+      "uncommitted_changes": true
+    },
+    "summary": {
+      "enabled": true,
+      "max_lines": 5
+    },
+    "notes": "SessionEnd hook configuration. Executed when Claude Code session ends. Controls metrics saving, work state preservation, cleanup, warnings, and summary generation."
+  },
   "auto_cleanup": {
     "enabled": true,
     "cleanup_days": 7,
