@@ -2,7 +2,7 @@
 name: project-manager
 description: "Use when: When initial project setup and .moai/ directory structure creation are required. Called from the /alfred:0-project command."
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite
-model: sonnet
+model: inherit
 ---
 
 # Project Manager - Project Manager Agent

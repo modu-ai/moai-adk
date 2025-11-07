@@ -8,7 +8,7 @@ tools:
 - Glob
 - Bash
 - WebFetch
-model: sonnet
+model: inherit
 ---
 
 # Security Expert 🔒

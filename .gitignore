@@ -41,12 +41,28 @@ venv/
 env/
 .env/
 
-# IDE
+# Environment variables & Secrets (CRITICAL - Never commit credentials)
+.env
+.env.local
+.env.*.local
+.env.production.local
+.env.development.local
+
+# IDE & Secrets
 .vscode/
+.vscode/settings.json
 .idea/
+.idea/workspace.xml
 *.swp
 *.swo
 *~
+
+# Deployment platforms & Cloud credentials (CRITICAL)
+.vercel/
+.netlify/
+.firebase/
+.aws/credentials
+google-credentials.json
 
 # OS
 .DS_Store
@@ -79,4 +95,3 @@ CLAUDE.md.local
 # Local users should not commit these files - sync from package template
 .claude/commands/alfred/release-new.md
 .claude/commands/alfred/awesome-release-new.md
-.vercel
