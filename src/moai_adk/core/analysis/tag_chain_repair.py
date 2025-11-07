@@ -194,9 +194,11 @@ class TagChainRepairer:
 
     def _extract_domain_from_tag(self, tag: str) -> str:
         """Extract domain from TAG."""
-        match = re.match(r'@[A-Z]+:([A-Z0-9-]+)\d{3}', tag)
+        match = re.match(r'@[A-Z]+:([A-Z0-9-]+?)-?\d{3}', tag)
         if match:
-            return match.group(1)
+            domain = match.group(1)
+            # Remove trailing hyphen if present
+            return domain.rstrip('-')
         return tag.split(":")[1].rsplit("-", 1)[0]
 
     def _create_spec_template(self, domain: str, number: int) -> str:
@@ -534,6 +536,7 @@ labels:
         else:
             module = "core"
 
+        # Module variable used in template context
         return f'''# {code_id}
 """{domain} 기능 구현.
 
@@ -639,6 +642,7 @@ if __name__ == "__main__":
         else:
             test_type = "unit"
 
+        # Test type variable used in test context
         return f'''# {test_id}
 """{domain} 기능 테스트.
 
