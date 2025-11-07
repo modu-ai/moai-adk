@@ -18,7 +18,6 @@ by automatically creating initial SPEC templates when code is written
 before specifications are documented.
 """
 
-import ast
 import re
 from collections import deque
 from dataclasses import dataclass, field
@@ -283,7 +282,7 @@ class SpecGenerator:
         """
         analysis = CodeAnalysis()
         suffix = code_file.suffix.lower()
-        MAX_FILE_SIZE = 1_000_000  # 1MB threshold for chunking
+        max_file_size = 1_000_000  # 1MB threshold for chunking
 
         try:
             # Check cache first
@@ -301,10 +300,10 @@ class SpecGenerator:
 
             # Determine if we should use chunking based on file size
             file_size = code_file.stat().st_size
-            use_chunking = file_size > MAX_FILE_SIZE
+            use_chunking = file_size > max_file_size
 
             if use_chunking:
-                content = self._read_file_chunked(code_file, MAX_FILE_SIZE)
+                content = self._read_file_chunked(code_file, max_file_size)
             else:
                 content = code_file.read_text(encoding="utf-8", errors="ignore")
 
