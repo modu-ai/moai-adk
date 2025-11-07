@@ -25,8 +25,6 @@ plugins:
         - ja
         - zh
   - i18n:
-      docs_structure: folder
-      fallback_to_default: true
       default_language: ko
       languages:
         ko:
