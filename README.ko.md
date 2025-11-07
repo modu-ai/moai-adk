@@ -20,14 +20,14 @@ MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 
 
 ### 기존 AI 기반 개발의 6가지 문제
 
-| 문제 | 영향 |
-|------|------|
-| **모호한 요구사항** | 개발자가 40% 시간을 요구사항 명확화에 사용 |
-| **부족한 테스트** | 테스트되지 않은 코드로 인한 프로덕션 버그 |
-| **동기화되지 않는 문서** | 구현과 맞지 않는 문서 |
-| **잃어버린 컨텍스트** | 팀원들 간 반복적인 설명 필요 |
-| **불가능한 영향 분석** | 요구사항 변경 시 영향받는 코드 파악 불가 |
-| **일관성 없는 품질** | 수동 QA로 인한 엣지 케이스 누락 |
+| 문제                     | 영향                                       |
+| ------------------------ | ------------------------------------------ |
+| **모호한 요구사항**      | 개발자가 40% 시간을 요구사항 명확화에 사용 |
+| **부족한 테스트**        | 테스트되지 않은 코드로 인한 프로덕션 버그  |
+| **동기화되지 않는 문서** | 구현과 맞지 않는 문서                      |
+| **잃어버린 컨텍스트**    | 팀원들 간 반복적인 설명 필요               |
+| **불가능한 영향 분석**   | 요구사항 변경 시 영향받는 코드 파악 불가   |
+| **일관성 없는 품질**     | 수동 QA로 인한 엣지 케이스 누락            |
 
 ### MoAI-ADK의 해결책
 
@@ -43,23 +43,28 @@ MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 
 ## ⚡ 핵심 기능
 
 ### 1. SPEC-First 개발
+
 - **EARS 형식 명세서**: 구조화되고 명확한 요구사항
 - **구현 전 명확화**: 비용이 큰 재작업 방지
 - **자동 추적성**: 요구사항에서 코드, 테스트까지 연결
 
 ### 2. 자동화된 TDD 워크플로우
+
 - **RED → GREEN → REFACTOR** 사이클 자동 관리
 - **테스트 우선 보증**: 테스트 없는 코드는 없음
 - **87.84%+ 커버리지**: 체계적 테스팅으로 달성
 
 ### 3. Alfred 슈퍼에이전트
+
 - **19개의 전문 AI 에이전트** (spec-builder, code-builder, doc-syncer 등)
 - **73개 이상의 프로덕션급 스킬** (모든 개발 영역 커버)
 - **적응형 학습**: 프로젝트 패턴으로부터 자동 학습
 - **스마트 컨텍스트 관리**: 프로젝트 구조와 의존성 이해
 
 ### 4. @TAG 시스템
+
 모든 산출물을 연결하는 완전한 추적성 시스템:
+
 ```
 @SPEC:AUTH-001 (요구사항)
     ↓
@@ -71,12 +76,14 @@ MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 
 ```
 
 ### 5. 살아있는 문서
+
 - **실시간 동기화**: 코드와 문서가 항상 일치
 - **수동 업데이트 불필요**: 자동 생성
 - **다중언어 지원**: Python, TypeScript, Go, Rust 등
 - **자동 다이어그램 생성**: 코드 구조에서 자동 생성
 
 ### 6. 품질 보증
+
 - **TRUST 5 원칙**: Test-first, Readable, Unified, Secured, Trackable
 - **자동화된 품질 게이트** (린팅, 타입 체크, 보안 검사)
 - **Pre-commit 검증**: 위반 사항 사전 차단
@@ -94,12 +101,12 @@ MoAI-ADK statusline은 Claude Code 터미널 상태 표시줄에 **실시간 개
 🤖 Haiku 4.5 | 🗿 Ver 0.20.1 | 📊 Git: develop | Changes: +0 M0 ?0
 ```
 
-| 항목 | 아이콘 | 의미 | 예시 |
-|------|-------|------|------|
-| **모델** | 🤖 | 사용 중인 Claude 모델 | Haiku 4.5, Sonnet 4.5 |
-| **버전** | 🗿 | MoAI-ADK 버전 | 0.20.1 |
-| **Git 브랜치** | 📊 | 현재 작업 중인 브랜치 | develop, feature/SPEC-001 |
-| **Changes** | - | Git 파일 변경 상태 | +0 M0 ?0 |
+| 항목           | 아이콘 | 의미                  | 예시                      |
+| -------------- | ------ | --------------------- | ------------------------- |
+| **모델**       | 🤖     | 사용 중인 Claude 모델 | Haiku 4.5, Sonnet 4.5     |
+| **버전**       | 🗿     | MoAI-ADK 버전         | 0.20.1                    |
+| **Git 브랜치** | 📊     | 현재 작업 중인 브랜치 | develop, feature/SPEC-001 |
+| **Changes**    | -      | Git 파일 변경 상태    | +0 M0 ?0                  |
 
 ### 📝 Changes 표기 설명
 
@@ -113,27 +120,30 @@ M0  = 수정된 파일 개수 (git add 안 된 파일)
 
 ### 💡 예시
 
-| 상황 | 표시 | 의미 |
-|------|------|------|
-| 정상 상태 | `Changes: +0 M0 ?0` | 모든 변경사항 commit됨 |
-| 파일 수정 | `Changes: +0 M2 ?0` | 2개 파일 수정됨 (git add 필요) |
-| 새 파일 생성 | `Changes: +0 M0 ?1` | 새 파일 1개 (git add 필요) |
-| 준비 완료 | `Changes: +3 M0 ?0` | 3개 파일 준비됨 (commit 가능) |
-| 진행 중 | `Changes: +2 M1 ?1` | 복합 상태: 2개 staged + 1개 modified + 1개 untracked |
+| 상황         | 표시                | 의미                                                 |
+| ------------ | ------------------- | ---------------------------------------------------- |
+| 정상 상태    | `Changes: +0 M0 ?0` | 모든 변경사항 commit됨                               |
+| 파일 수정    | `Changes: +0 M2 ?0` | 2개 파일 수정됨 (git add 필요)                       |
+| 새 파일 생성 | `Changes: +0 M0 ?1` | 새 파일 1개 (git add 필요)                           |
+| 준비 완료    | `Changes: +3 M0 ?0` | 3개 파일 준비됨 (commit 가능)                        |
+| 진행 중      | `Changes: +2 M1 ?1` | 복합 상태: 2개 staged + 1개 modified + 1개 untracked |
 
 ### 🎯 3가지 렌더링 모드
 
 **Compact 모드** (기본, 80자 이내):
+
 ```
 🤖 Haiku 4.5 | 🗿 Ver 0.20.1 | 📊 Git: develop | Changes: +0 M0 ?0
 ```
 
 **Extended 모드** (120자 이내):
+
 ```
 🤖 Haiku 4.5 | 🗿 Ver 0.20.1 | 📊 Git: feature/SPEC-001 | Changes: +2 M1 ?0 | [PLAN]
 ```
 
 **Minimal 모드** (40자 이내):
+
 ```
 🤖 H 4.5 | 🗿 Ver 0.20.1
 ```
@@ -165,12 +175,14 @@ export MOAI_STATUSLINE_MODE=extended
 ### Phase 1: 언어별 코드 디렉토리 감지 + 자동 수정
 
 **자동 감지**:
+
 - ✅ **10개 언어 지원**: Python, JavaScript, TypeScript, Go, Rust, Kotlin, Ruby, PHP, Java, C#
 - ✅ **표준 디렉토리 패턴**: 각 언어의 관례적 디렉토리 자동 감지 (Python: src/, Go: cmd/pkg/, JavaScript: src/app/pages/ 등)
 - ✅ **사용자 정의 모드**: auto/manual/hybrid 3가지 감지 모드 지원
 - ✅ **제외 패턴**: tests/, docs/, node_modules/ 등 자동으로 감지에서 제외
 
 **안전한 자동 수정**:
+
 - ✅ **3단계 위험도**: SAFE (자동) / MEDIUM (승인필요) / HIGH (차단)
 - ✅ **중복 TAG 제거**: 자동으로 중복 @TAG 제거
 - ✅ **형식 오류 수정**: @CODE AUTH-001 → @CODE:AUTH-001 자동 수정
@@ -178,6 +190,7 @@ export MOAI_STATUSLINE_MODE=extended
 - ✅ **백업 및 롤백**: 수정 전 백업, 오류 발생 시 자동 롤백
 
 **구현 통계**:
+
 - 📦 language_dirs.py: 329 LOC (10개 언어 매핑)
 - 🔧 policy_validator.py 확장: 153 LOC (자동 수정 메서드)
 - 🧪 테스트: 729 LOC (directory detection + auto-correction)
@@ -185,6 +198,7 @@ export MOAI_STATUSLINE_MODE=extended
 ### Phase 2: SPEC 템플릿 자동 생성
 
 **코드 분석 및 SPEC 생성**:
+
 - ✅ **다언어 분석**: Python (AST), JavaScript/Go (정규식 기반)
 - ✅ **자동 도메인 추론**: 파일 경로 → 클래스명 → 함수명 → docstring 우선순위
 - ✅ **EARS 포맷 템플릿**: 표준 SPEC 구조로 자동 생성
@@ -195,32 +209,35 @@ export MOAI_STATUSLINE_MODE=extended
 - ✅ **편집 가이드**: 신뢰도 기반 자동 TODO 체크리스트 생성
 
 **사용자 경험**:
+
 - ✅ **자동 제안**: SPEC 없이 코드 생성 시도 → Hook 감지 → 자동 생성 제안
 - ✅ **템플릿 생성**: 클릭 하나로 SPEC 템플릿 자동 생성
 - ✅ **사용자 편집**: 템플릿을 편집기에서 수정 후 계속 진행
 - ✅ **완전 자동화**: SPEC-first 원칙을 유지하면서 사용자 부담 최소화
 
 **구현 통계**:
+
 - 📝 spec_generator.py: 570 LOC (7가지 메서드)
 - 🧪 테스트: 835 LOC (generator + workflow)
 
 ### 설정 확장
 
 **config.json 새 섹션**:
+
 - `tags.policy.code_directories`: 언어별 디렉토리 감지 설정
 - `tags.policy.auto_correction`: 3단계 위험도별 자동 수정 정책
 - `tags.policy.auto_spec_generation`: SPEC 자동 생성 활성화/비활성화
 
 ### 전체 구현 통계
 
-| 항목 | 수치 |
-|------|------|
-| 새로운 코드 | 1,052 LOC |
-| 새로운 테스트 | 1,564 LOC |
-| 총 추가 라인 | 2,695 LOC |
-| 지원 언어 | 10개 (새로 확대) |
-| Git 커밋 | 2개 (Phase 1 + 2) |
-| 테스트 커버리지 | 100% (새 기능) |
+| 항목            | 수치              |
+| --------------- | ----------------- |
+| 새로운 코드     | 1,052 LOC         |
+| 새로운 테스트   | 1,564 LOC         |
+| 총 추가 라인    | 2,695 LOC         |
+| 지원 언어       | 10개 (새로 확대)  |
+| Git 커밋        | 2개 (Phase 1 + 2) |
+| 테스트 커버리지 | 100% (새 기능)    |
 
 ---
 
@@ -295,6 +312,7 @@ cd my-awesome-project
 ```
 
 완료! 이제 당신은 다음을 얻었습니다:
+
 - ✅ 명확한 SPEC 문서
 - ✅ 종합적인 테스트
 - ✅ 구현 코드
@@ -318,17 +336,20 @@ Alfred는 4단계 워크플로우를 통해 개발 생명주기 전체를 체계
 **목표**: 작업 시작 전 사용자 의도를 명확히 파악
 
 **동작 방식:**
+
 - Alfred는 요청의 명확성을 평가합니다:
   - **HIGH 명확성**: 기술 스택, 요구사항, 범위 모두 명시됨 → 2단계로 바로 진행
   - **MEDIUM/LOW 명확성**: 여러 해석이 가능함 → `AskUserQuestion`으로 명확히
 
 **Alfred가 질문하는 경우:**
+
 - 모호한 요청 (여러 해석 가능)
 - 아키텍처 결정 필요
 - 기술 스택 선택 필요
 - 비즈니스/UX 결정 필요
 
 **예시:**
+
 ```
 사용자: "시스템에 인증 기능을 추가해줘"
 
@@ -345,6 +366,7 @@ Alfred의 분석:
 **목표**: 사용자 승인을 받은 실행 전략 수립
 
 **프로세스:**
+
 1. **Plan Agent 필수 호출**: Alfred가 Plan agent를 호출하여:
    - 작업을 구조화된 단계로 분해
    - 작업 간 의존성 파악
@@ -362,21 +384,25 @@ Alfred의 분석:
    - 각 작업의 완료 기준을 명확히 정의
 
 **SPEC-AUTH-001 예시 계획:**
+
 ```markdown
 ## SPEC-AUTH-001 계획
 
 ### 생성될 파일
+
 - .moai/specs/SPEC-AUTH-001/spec.md
 - .moai/specs/SPEC-AUTH-001/plan.md
 - .moai/specs/SPEC-AUTH-001/acceptance.md
 
 ### 구현 단계
+
 1. RED: JWT 인증 테스트 작성 (실패)
 2. GREEN: JWT 토큰 서비스 최소 구현
 3. REFACTOR: 에러 처리 및 보안 강화
 4. SYNC: 문서 업데이트
 
 ### 위험 요소
+
 - 써드파티 서비스 연동 지연
 - 토큰 저장소 보안 고려사항
 ```
@@ -388,30 +414,35 @@ Alfred의 분석:
 **TDD 실행 사이클:**
 
 **1. RED 단계** - 먼저 실패하는 테스트 작성
+
 - 테스트 코드만 작성
 - 테스트는 의도적으로 실패해야 함
 - 구현 코드 변경 금지
 - 진행 상황 추적: `TodoWrite: "RED: 테스트 작성" → in_progress`
 
 **2. GREEN 단계** - 테스트를 통과하는 최소 코드 작성
+
 - 테스트 통과에 필요한 최소 코드만 추가
 - 과도한 기능 개발 금지
 - 테스트 통과에 집중
 - 진행 상황 추적: `TodoWrite: "GREEN: 최소 구현" → in_progress`
 
 **3. REFACTOR 단계** - 코드 품질 개선
+
 - 테스트 통과 유지하며 설계 개선
 - 코드 중복 제거
 - 가독성 및 유지보수성 향상
 - 진행 상황 추적: `TodoWrite: "REFACTOR: 품질 개선" → in_progress`
 
 **TodoWrite 규칙:**
+
 - 각 작업: `content` (명령형), `activeForm` (현재진행형), `status` (pending/in_progress/completed)
 - **정확히 ONE 작업만 in_progress** 상태 유지
 - **실시간 업데이트 의무**: 작업 시작/완료 시 즉시 상태 변경
 - **엄격한 완료 기준**: 모든 테스트 통과, 구현 완료, 에러 없을 때만 completed로 표시
 
 **실행 중 금지 사항:**
+
 - ❌ RED 단계 중 구현 코드 변경
 - ❌ GREEN 단계 중 과도한 기능 개발
 - ❌ TodoWrite 추적 없는 작업 실행
@@ -419,28 +450,33 @@ Alfred의 분석:
 
 **실제 사례 - Agent 모델 지시어 변경:**
 
-*배경:* 사용자가 모든 agent의 모델 지시어를 `sonnet`에서 `inherit`로 변경 요청 (동적 모델 선택 활성화)
+_배경:_ 사용자가 모든 agent의 모델 지시어를 `sonnet`에서 `inherit`로 변경 요청 (동적 모델 선택 활성화)
 
 **계획 승인:**
+
 - 26개 파일 변경 필요 (로컬 13개 + 템플릿 13개)
 - 파일 명시적 식별: `implementation-planner.md`, `spec-builder.md` 등
 - 위험 요소: develop 브랜치 merge 충돌 → `-X theirs` 전략으로 완화
 
 **RED 단계:**
+
 - 모든 agent 파일이 `model: inherit` 보유하는지 검증 테스트
 - 템플릿 파일과 로컬 파일 일치 확인
 
 **GREEN 단계:**
+
 - 13개 로컬 agent 파일 업데이트: `model: sonnet` → `model: inherit`
 - Python 스크립트로 13개 템플릿 파일 업데이트 (이식성)
 - 다른 모델 지시어 변경 사항 없는지 확인
 
 **REFACTOR 단계:**
+
 - Agent 파일 일관성 검토
 - 고아 변경사항 없는지 확인
 - Pre-commit 훅 검증 통과 확인
 
 **결과:**
+
 - 26개 파일 모두 성공적으로 업데이트
 - Pre-commit @TAG 검증 통과
 - Feature 브랜치를 develop에 깔끔하게 merge
@@ -450,11 +486,13 @@ Alfred의 분석:
 **목표**: 작업 기록 및 git 히스토리 생성 (필요에 따라)
 
 **설정 준수 우선:**
+
 - `.moai/config.json`의 `report_generation` 설정 확인
 - `enabled: false` → 상태 리포트만 제공, 파일 생성 금지
 - `enabled: true` AND 사용자 명시 요청 → 문서 파일 생성
 
 **Git 커밋:**
+
 - 모든 Git 작업은 git-manager 호출
 - TDD 커밋 사이클 준수: RED → GREEN → REFACTOR
 - 각 커밋 메시지는 워크플로우 단계와 목적 명시
@@ -476,6 +514,7 @@ commit 4: "merge: SPEC-AUTH-001을 develop으로 merge"
 ```
 
 **프로젝트 정리:**
+
 - 불필요한 임시 파일 삭제
 - 과도한 백업 파일 제거
 - 작업 공간을 깔끔하게 유지
@@ -533,13 +572,13 @@ flowchart TD
 
 ### 핵심 의사결정 포인트
 
-| 상황 | Alfred의 실행 | 결과 |
-|------|--------------|------|
-| 명확한 요청 | 2단계로 바로 진행 | 빠른 실행 |
-| 모호한 요청 | 1단계에서 질문 | 정확한 이해 |
-| 대규모 파일 변경 | Plan Agent가 모든 파일 식별 | 완전한 가시성 |
-| GREEN 단계 테스트 실패 | REFACTOR 계속 → 조사 | 품질 유지 |
-| 설정 충돌 | `.moai/config.json` 우선 확인 | 사용자 설정 존중 |
+| 상황                   | Alfred의 실행                 | 결과             |
+| ---------------------- | ----------------------------- | ---------------- |
+| 명확한 요청            | 2단계로 바로 진행             | 빠른 실행        |
+| 모호한 요청            | 1단계에서 질문                | 정확한 이해      |
+| 대규모 파일 변경       | Plan Agent가 모든 파일 식별   | 완전한 가시성    |
+| GREEN 단계 테스트 실패 | REFACTOR 계속 → 조사          | 품질 유지        |
+| 설정 충돌              | `.moai/config.json` 우선 확인 | 사용자 설정 존중 |
 
 ---
 
@@ -602,12 +641,14 @@ graph TD
 ### 주요 구성 요소
 
 **Alfred 슈퍼에이전트**
+
 - 19개의 전문 AI 에이전트 관리
 - 프로젝트 패턴으로부터 적응형 학습
 - 상황 인식 의사결정
 - 투명한 진행 상황 추적
 
 **전문 에이전트** (19개)
+
 - **spec-builder**: EARS 형식의 요구사항 엔지니어링
 - **code-builder**: TDD 기반 구현
 - **test-engineer**: 종합적 테스트 커버리지
@@ -622,6 +663,7 @@ graph TD
 
 **Claude 스킬** (73개 이상)
 6개 계층으로 조직:
+
 - **기초**: 핵심 개발 패턴 (SPEC, TDD, TAGs)
 - **필수**: 테스팅, 디버깅, 성능, 보안
 - **도메인**: Backend, Frontend, Database, Mobile, ML, DevOps
@@ -633,33 +675,36 @@ graph TD
 
 ## 📊 통계 및 메트릭
 
-| 항목 | 수치 |
-|------|------|
-| **테스트 커버리지** | 87.84%+ 보증 |
-| **전문 에이전트** | 19명 팀 |
-| **프로덕션급 스킬** | 73개 이상 |
-| **지원 언어** | 12개 이상 (Python, TypeScript, Go, Rust, PHP, Ruby, Java, Kotlin, R, Bash, Shell) |
-| **SPEC 패턴** | 5개 이상 EARS 형식 |
-| **품질 게이트** | TRUST 5 + 추가 검사 |
-| **Git 자동화** | 완전한 GitFlow 지원 |
+| 항목                | 수치                                                                              |
+| ------------------- | --------------------------------------------------------------------------------- |
+| **테스트 커버리지** | 87.84%+ 보증                                                                      |
+| **전문 에이전트**   | 19명 팀                                                                           |
+| **프로덕션급 스킬** | 73개 이상                                                                         |
+| **지원 언어**       | 12개 이상 (Python, TypeScript, Go, Rust, PHP, Ruby, Java, Kotlin, R, Bash, Shell) |
+| **SPEC 패턴**       | 5개 이상 EARS 형식                                                                |
+| **품질 게이트**     | TRUST 5 + 추가 검사                                                               |
+| **Git 자동화**      | 완전한 GitFlow 지원                                                               |
 
 ---
 
 ## 💡 MoAI-ADK를 선택하는 이유
 
 ### 개인 개발자를 위해
+
 - **컨텍스트 전환 감소**: Alfred가 전체 프로젝트 기억
 - **코드 품질 향상**: 자동 TDD로 프로덕션 버그 방지
 - **시간 절약**: 자동 문서화로 수동 업데이트 불필요
 - **패턴 학습**: 코드베이스로부터 자동 학습
 
 ### 팀을 위해
+
 - **통일된 표준**: TRUST 5 원칙을 팀 전체에 강제
 - **투명한 워크플로우**: @TAG를 통한 완전한 감사 추적
 - **협업**: 공유된 컨텍스트와 명확한 요구사항
 - **온보딩**: 신입 팀원이 패턴을 즉시 이해
 
 ### 조직을 위해
+
 - **규정 준수 준비**: 보안 및 감사 추적 내장
 - **유지보수성**: 코드가 문서화되고, 테스트되며, 추적 가능
 - **확장성**: 코드베이스와 함께 성장하는 패턴
@@ -669,16 +714,16 @@ graph TD
 
 ## 📚 문서 및 자료
 
-| 자료 | 링크 |
-|------|------|
-| **온라인 문서** | [adk.mo.ai.kr](https://adk.mo.ai.kr) |
-| **빠른 시작 가이드** | [설치 및 설정](https://adk.mo.ai.kr/getting-started) |
-| **API 레퍼런스** | [명령어 및 스킬](https://adk.mo.ai.kr/api) |
-| **예제 프로젝트** | [튜토리얼](https://adk.mo.ai.kr/examples) |
-| **문제 해결** | [FAQ 및 도움말](https://adk.mo.ai.kr/troubleshooting) |
-| **GitHub 저장소** | [modu-ai/moai-adk](https://github.com/modu-ai/moai-adk) |
-| **이슈 추적** | [GitHub Issues](https://github.com/modu-ai/moai-adk/issues) |
-| **커뮤니티** | [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions) |
+| 자료                 | 링크                                                                  |
+| -------------------- | --------------------------------------------------------------------- |
+| **온라인 문서**      | [adk.mo.ai.kr](https://adk.mo.ai.kr)                                  |
+| **빠른 시작 가이드** | [설치 및 설정](https://adk.mo.ai.kr/getting-started)                  |
+| **API 레퍼런스**     | [명령어 및 스킬](https://adk.mo.ai.kr/api)                            |
+| **예제 프로젝트**    | [튜토리얼](https://adk.mo.ai.kr/examples)                             |
+| **문제 해결**        | [FAQ 및 도움말](https://adk.mo.ai.kr/troubleshooting)                 |
+| **GitHub 저장소**    | [modu-ai/moai-adk](https://github.com/modu-ai/moai-adk)               |
+| **이슈 추적**        | [GitHub Issues](https://github.com/modu-ai/moai-adk/issues)           |
+| **커뮤니티**         | [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions) |
 
 ---
 

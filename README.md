@@ -21,14 +21,14 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
 
 ### Traditional AI-Powered Development Challenges
 
-| Problem | Impact |
-|---------|--------|
-| **Unclear requirements** | Developers spend 40% of time re-clarifying vague requirements |
-| **Missing tests** | Production bugs from untested code paths |
-| **Drifting documentation** | Docs fall out of sync with implementation |
-| **Lost context** | Repeated explanations across team members |
-| **Impossible impact analysis** | Can't determine what code is affected by requirement changes |
-| **Quality inconsistency** | Manual QA gates miss edge cases |
+| Problem                        | Impact                                                        |
+| ------------------------------ | ------------------------------------------------------------- |
+| **Unclear requirements**       | Developers spend 40% of time re-clarifying vague requirements |
+| **Missing tests**              | Production bugs from untested code paths                      |
+| **Drifting documentation**     | Docs fall out of sync with implementation                     |
+| **Lost context**               | Repeated explanations across team members                     |
+| **Impossible impact analysis** | Can't determine what code is affected by requirement changes  |
+| **Quality inconsistency**      | Manual QA gates miss edge cases                               |
 
 ### How MoAI-ADK Solves It
 
@@ -44,23 +44,28 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
 ## ⚡ Key Features
 
 ### 1. SPEC-First Development
+
 - **EARS-format specifications** for structured, unambiguous requirements
 - **Pre-implementation clarity** preventing costly rework
 - **Automatic traceability** from requirements to code to tests
 
 ### 2. Automated TDD Workflow
+
 - **RED → GREEN → REFACTOR** cycle fully orchestrated
 - **Test-first guarantee**: No code without tests
 - **87.84%+ coverage** achieved through systematic testing
 
 ### 3. Alfred SuperAgent
+
 - **19 specialized AI agents** (spec-builder, code-builder, doc-syncer, etc.)
 - **73+ production-ready skills** covering all development domains
 - **Adaptive learning** based on your project patterns
 - **Smart context management** understanding project structure and dependencies
 
 ### 4. @TAG System
+
 Complete traceability system linking all artifacts:
+
 ```
 @SPEC:AUTH-001 (Requirements)
     ↓
@@ -72,12 +77,14 @@ Complete traceability system linking all artifacts:
 ```
 
 ### 5. Living Documentation
+
 - **Real-time synchronization** between code and docs
 - **Zero manual updates** required
 - **Multi-language support** (Python, TypeScript, Go, Rust, etc.)
 - **Automatic diagram generation** from code structure
 
 ### 6. Quality Assurance
+
 - **TRUST 5 principles**: Test-first, Readable, Unified, Secured, Trackable
 - **Automated code quality gates** (linting, type checking, security)
 - **Pre-commit validation** preventing violations
@@ -95,12 +102,12 @@ MoAI-ADK statusline displays **real-time development status** in Claude Code's t
 🤖 Haiku 4.5 | 🗿 Ver 0.20.1 | 📊 Git: develop | Changes: +0 M0 ?0
 ```
 
-| Item | Icon | Meaning | Example |
-|------|------|---------|---------|
-| **Model** | 🤖 | Active Claude model | Haiku 4.5, Sonnet 4.5 |
-| **Version** | 🗿 | MoAI-ADK version | 0.20.1 |
-| **Git Branch** | 📊 | Current working branch | develop, feature/SPEC-001 |
-| **Changes** | - | Git file status | +0 M0 ?0 |
+| Item           | Icon | Meaning                | Example                   |
+| -------------- | ---- | ---------------------- | ------------------------- |
+| **Model**      | 🤖   | Active Claude model    | Haiku 4.5, Sonnet 4.5     |
+| **Version**    | 🗿   | MoAI-ADK version       | 0.20.1                    |
+| **Git Branch** | 📊   | Current working branch | develop, feature/SPEC-001 |
+| **Changes**    | -    | Git file status        | +0 M0 ?0                  |
 
 ### 📝 Changes Notation Explained
 
@@ -114,27 +121,30 @@ M0  = Number of modified files (not yet git add'ed)
 
 ### 💡 Examples
 
-| Situation | Display | Meaning |
-|-----------|---------|---------|
-| Clean state | `Changes: +0 M0 ?0` | All changes committed |
-| Files modified | `Changes: +0 M2 ?0` | 2 files modified (need git add) |
-| New file created | `Changes: +0 M0 ?1` | 1 new file (need git add) |
-| Ready to commit | `Changes: +3 M0 ?0` | 3 files staged (ready to commit) |
+| Situation        | Display             | Meaning                                          |
+| ---------------- | ------------------- | ------------------------------------------------ |
+| Clean state      | `Changes: +0 M0 ?0` | All changes committed                            |
+| Files modified   | `Changes: +0 M2 ?0` | 2 files modified (need git add)                  |
+| New file created | `Changes: +0 M0 ?1` | 1 new file (need git add)                        |
+| Ready to commit  | `Changes: +3 M0 ?0` | 3 files staged (ready to commit)                 |
 | Work in progress | `Changes: +2 M1 ?1` | Mixed state: 2 staged + 1 modified + 1 untracked |
 
 ### 🎯 Three Rendering Modes
 
 **Compact Mode** (default, ≤80 chars):
+
 ```
 🤖 Haiku 4.5 | 🗿 Ver 0.20.1 | 📊 Git: develop | Changes: +0 M0 ?0
 ```
 
 **Extended Mode** (≤120 chars):
+
 ```
 🤖 Haiku 4.5 | 🗿 Ver 0.20.1 | 📊 Git: feature/SPEC-001 | Changes: +2 M1 ?0 | [PLAN]
 ```
 
 **Minimal Mode** (≤40 chars):
+
 ```
 🤖 H 4.5 | 🗿 Ver 0.20.1
 ```
@@ -166,12 +176,14 @@ export MOAI_STATUSLINE_MODE=extended
 ### Phase 1: Multi-Language Code Directory Detection + Auto-Correction
 
 **Automatic Detection**:
+
 - ✅ **10 Language Support**: Python, JavaScript, TypeScript, Go, Rust, Kotlin, Ruby, PHP, Java, C#
 - ✅ **Standard Directory Patterns**: Automatically detect conventional directories per language (Python: src/, Go: cmd/pkg/, JavaScript: src/app/pages/, etc.)
 - ✅ **Customization Modes**: Three detection modes - auto/manual/hybrid
 - ✅ **Exclude Patterns**: Automatically exclude tests/, docs/, node_modules/, etc. from detection
 
 **Safe Auto-Correction**:
+
 - ✅ **3-Level Risk Tiers**: SAFE (auto-fix) / MEDIUM (approval needed) / HIGH (blocked)
 - ✅ **Duplicate TAG Removal**: Automatically remove duplicate @TAGs
 - ✅ **Format Error Fixing**: Auto-fix @CODE AUTH-001 → @CODE:AUTH-001
@@ -179,6 +191,7 @@ export MOAI_STATUSLINE_MODE=extended
 - ✅ **Backup & Rollback**: Auto-backup before fixes, rollback on errors
 
 **Implementation Statistics**:
+
 - 📦 language_dirs.py: 329 LOC (10-language mapping)
 - 🔧 policy_validator.py extension: 153 LOC (auto-correction methods)
 - 🧪 Tests: 729 LOC (directory detection + auto-correction)
@@ -186,6 +199,7 @@ export MOAI_STATUSLINE_MODE=extended
 ### Phase 2: Automatic SPEC Template Generation
 
 **Code Analysis & SPEC Generation**:
+
 - ✅ **Multi-Language Analysis**: Python (AST), JavaScript/Go (regex-based)
 - ✅ **Automatic Domain Inference**: File path → Class names → Function names → Docstrings (priority order)
 - ✅ **EARS Format Template**: Auto-generate standard SPEC structure
@@ -196,32 +210,35 @@ export MOAI_STATUSLINE_MODE=extended
 - ✅ **Editing Guide**: Auto-generate TODO checklist based on confidence level
 
 **User Experience**:
+
 - ✅ **Auto-Suggestion**: Attempt code without SPEC → Hook detection → Auto-generation offer
 - ✅ **Template Generation**: One-click automatic SPEC template creation
 - ✅ **User Editing**: Edit template in editor then resume development
 - ✅ **Full Automation**: Maintain SPEC-first principle while minimizing user burden
 
 **Implementation Statistics**:
+
 - 📝 spec_generator.py: 570 LOC (7 methods)
 - 🧪 Tests: 835 LOC (generator + workflow)
 
 ### Configuration Extensions
 
 **config.json New Sections**:
+
 - `tags.policy.code_directories`: Language-based directory detection settings
 - `tags.policy.auto_correction`: 3-tier risk-level auto-correction policies
 - `tags.policy.auto_spec_generation`: Enable/disable automatic SPEC generation
 
 ### Complete Implementation Statistics
 
-| Metric | Value |
-|--------|-------|
-| New Code | 1,052 LOC |
-| New Tests | 1,564 LOC |
-| Total Added Lines | 2,695 LOC |
-| Supported Languages | 10 (expanded) |
-| Git Commits | 2 (Phase 1 + 2) |
-| Test Coverage | 100% (new features) |
+| Metric              | Value               |
+| ------------------- | ------------------- |
+| New Code            | 1,052 LOC           |
+| New Tests           | 1,564 LOC           |
+| Total Added Lines   | 2,695 LOC           |
+| Supported Languages | 10 (expanded)       |
+| Git Commits         | 2 (Phase 1 + 2)     |
+| Test Coverage       | 100% (new features) |
 
 ---
 
@@ -285,6 +302,7 @@ cd my-awesome-project
 ```
 
 That's it! You now have:
+
 - ✅ Clear SPEC document
 - ✅ Comprehensive tests
 - ✅ Implementation code
@@ -308,17 +326,20 @@ Alfred orchestrates the complete development lifecycle through a systematic 4-st
 **Goal**: Clarify user intent before any action
 
 **How it works:**
+
 - Alfred evaluates request clarity:
   - **HIGH clarity**: Technical stack, requirements, scope all specified → Skip to Step 2
   - **MEDIUM/LOW clarity**: Multiple interpretations possible → Alfred uses `AskUserQuestion` to clarify
 
 **When Alfred asks clarifying questions:**
+
 - Ambiguous requests (multiple interpretations)
 - Architecture decisions needed
 - Technology stack selections required
 - Business/UX decisions involved
 
 **Example:**
+
 ```
 User: "Add authentication to the system"
 
@@ -335,6 +356,7 @@ Action: Ask clarifying questions via AskUserQuestion
 **Goal**: Create a pre-approved execution strategy
 
 **Process:**
+
 1. **Mandatory Plan Agent Invocation**: Alfred calls the Plan agent to:
    - Decompose tasks into structured steps
    - Identify dependencies between tasks
@@ -352,21 +374,25 @@ Action: Ask clarifying questions via AskUserQuestion
    - Define clear completion criteria for each task
 
 **Example Plan for Authentication SPEC:**
+
 ```markdown
 ## Plan for SPEC-AUTH-001
 
 ### Files to be Created
+
 - .moai/specs/SPEC-AUTH-001/spec.md
 - .moai/specs/SPEC-AUTH-001/plan.md
 - .moai/specs/SPEC-AUTH-001/acceptance.md
 
 ### Implementation Phases
+
 1. RED: Write failing authentication tests
 2. GREEN: Implement JWT token service
 3. REFACTOR: Improve error handling and security
 4. SYNC: Update documentation
 
 ### Risks
+
 - Third-party service integration latency
 - Token storage security considerations
 ```
@@ -378,30 +404,35 @@ Action: Ask clarifying questions via AskUserQuestion
 **TDD Execution Cycle:**
 
 **1. RED Phase** - Write failing tests first
+
 - Write test code ONLY
 - Tests should fail (intentionally)
 - No implementation code changes
 - Track progress: `TodoWrite: "RED: Write failing tests" → in_progress`
 
 **2. GREEN Phase** - Minimal code to make tests pass
+
 - Add ONLY minimal code necessary for test passing
 - No over-engineering
 - Focus on making tests pass
 - Track progress: `TodoWrite: "GREEN: Minimal implementation" → in_progress`
 
 **3. REFACTOR Phase** - Improve code quality
+
 - Improve design while maintaining test passing
 - Remove code duplication
 - Enhance readability and maintainability
 - Track progress: `TodoWrite: "REFACTOR: Improve code quality" → in_progress`
 
 **TodoWrite Rules:**
+
 - Each task: `content` (imperative), `activeForm` (present continuous), `status` (pending/in_progress/completed)
 - **Exactly ONE task in_progress** at any time
 - **Real-time Update Obligation**: Immediate status change on task start/completion
 - **Strict Completion Criteria**: Mark completed only when tests pass, implementation complete, and error-free
 
 **Forbidden during execution:**
+
 - ❌ Implementation code changes during RED phase
 - ❌ Over-engineering during GREEN phase
 - ❌ Task execution without TodoWrite tracking
@@ -409,28 +440,33 @@ Action: Ask clarifying questions via AskUserQuestion
 
 **Real-World Example - Agent Model Directive Change:**
 
-*Context:* User requested changing all agent model directives from `sonnet` to `inherit` to enable dynamic model selection
+_Context:_ User requested changing all agent model directives from `sonnet` to `inherit` to enable dynamic model selection
 
 **Plan Approval:**
+
 - 26 files to change (13 local + 13 template files)
 - Files clearly identified: `implementation-planner.md`, `spec-builder.md`, etc.
 - Risk: Merge conflicts on develop branch → Mitigated with `-X theirs` strategy
 
 **RED Phase:**
+
 - Write tests validating all agent files have `model: inherit`
 - Verify template files match local files
 
 **GREEN Phase:**
+
 - Update 13 local agent files: `model: sonnet` → `model: inherit`
 - Update 13 template agent files using Python script for portability
 - Verify no other model directives changed
 
 **REFACTOR Phase:**
+
 - Review agent file consistency
 - Ensure no orphaned changes
 - Validate pre-commit hook passes
 
 **Result:**
+
 - All 26 files successfully updated
 - Pre-commit @TAG validation passed
 - Feature branch merged to develop with clean history
@@ -440,11 +476,13 @@ Action: Ask clarifying questions via AskUserQuestion
 **Goal**: Document work and create git history on demand
 
 **Configuration Compliance First:**
+
 - Check `.moai/config.json` `report_generation` settings
 - If `enabled: false` → Provide status reports only, NO file generation
 - If `enabled: true` AND user explicitly requests → Generate documentation files
 
 **Git Commit:**
+
 - Call git-manager for all Git operations
 - Follow TDD commit cycle: RED → GREEN → REFACTOR
 - Each commit message captures the workflow phase and purpose
@@ -466,6 +504,7 @@ commit 4: "merge: Merge SPEC-AUTH-001 to develop"
 ```
 
 **Project Cleanup:**
+
 - Delete unnecessary temporary files
 - Remove excessive backups
 - Keep workspace organized and clean
@@ -523,13 +562,13 @@ flowchart TD
 
 ### Key Decision Points
 
-| Scenario | Alfred's Action | Outcome |
-|----------|-----------------|---------|
-| Clear, specific request | Skip to Step 2 (Plan) | Fast execution |
-| Ambiguous request | AskUserQuestion in Step 1 | Correct understanding |
-| Large multi-file changes | Plan Agent identifies all files | Complete visibility |
-| Test failures during GREEN | Continue REFACTOR → Investigate | Quality maintained |
-| Configuration conflicts | Check `.moai/config.json` first | Respect user settings |
+| Scenario                   | Alfred's Action                 | Outcome               |
+| -------------------------- | ------------------------------- | --------------------- |
+| Clear, specific request    | Skip to Step 2 (Plan)           | Fast execution        |
+| Ambiguous request          | AskUserQuestion in Step 1       | Correct understanding |
+| Large multi-file changes   | Plan Agent identifies all files | Complete visibility   |
+| Test failures during GREEN | Continue REFACTOR → Investigate | Quality maintained    |
+| Configuration conflicts    | Check `.moai/config.json` first | Respect user settings |
 
 ---
 
@@ -592,12 +631,14 @@ graph TD
 ### Key Components
 
 **Alfred SuperAgent**
+
 - Central orchestrator managing 19 specialized agents
 - Adaptive learning from project patterns
 - Context-aware decision making
 - Transparent progress tracking
 
 **Specialized Agents** (19 total)
+
 - **spec-builder**: Requirements engineering with EARS format
 - **code-builder**: TDD-driven implementation
 - **test-engineer**: Comprehensive test coverage
@@ -612,6 +653,7 @@ graph TD
 
 **Claude Skills** (73+ total)
 Organized across 6 tiers:
+
 - **Foundation**: Core development patterns (SPEC, TDD, TAGs)
 - **Essentials**: Testing, debugging, performance, security
 - **Domain-specific**: Backend, frontend, database, mobile, ML, DevOps
@@ -623,33 +665,36 @@ Organized across 6 tiers:
 
 ## 📊 Statistics & Metrics
 
-| Metric | Value |
-|--------|-------|
-| **Test Coverage** | 87.84%+ guaranteed |
-| **Specialized Agents** | 19 team members |
-| **Production Skills** | 73+ capabilities |
+| Metric                  | Value                                                                       |
+| ----------------------- | --------------------------------------------------------------------------- |
+| **Test Coverage**       | 87.84%+ guaranteed                                                          |
+| **Specialized Agents**  | 19 team members                                                             |
+| **Production Skills**   | 73+ capabilities                                                            |
 | **Supported Languages** | 12+ (Python, TypeScript, Go, Rust, PHP, Ruby, Java, Kotlin, R, Bash, Shell) |
-| **SPEC Patterns** | 5+ EARS formats |
-| **Quality Gates** | TRUST 5 + additional checks |
-| **Git Automation** | Complete GitFlow support |
+| **SPEC Patterns**       | 5+ EARS formats                                                             |
+| **Quality Gates**       | TRUST 5 + additional checks                                                 |
+| **Git Automation**      | Complete GitFlow support                                                    |
 
 ---
 
 ## 💡 Why Choose MoAI-ADK?
 
 ### For Individual Developers
+
 - **Reduce context switching**: Alfred remembers your entire project
 - **Better code quality**: Automated TDD prevents bugs before production
 - **Save time**: Automatic documentation means no manual updates
 - **Learn patterns**: Adaptive learning from your codebase
 
 ### For Teams
+
 - **Unified standards**: TRUST 5 principles enforced across team
 - **Transparent workflow**: Complete audit trail with @TAGs
 - **Collaboration**: Shared context and clear requirements
 - **Onboarding**: New team members understand patterns instantly
 
 ### For Organizations
+
 - **Compliance ready**: Security and audit trails built-in
 - **Maintainability**: Code is documented, tested, and traceable
 - **Scalability**: Patterns grow with your codebase
@@ -659,16 +704,16 @@ Organized across 6 tiers:
 
 ## 📚 Documentation & Resources
 
-| Resource | Link |
-|----------|------|
-| **Online Documentation** | [adk.mo.ai.kr](https://adk.mo.ai.kr) |
-| **Quick Start Guide** | [Installation & Setup](https://adk.mo.ai.kr/getting-started) |
-| **API Reference** | [Commands & Skills](https://adk.mo.ai.kr/api) |
-| **Example Projects** | [Tutorials](https://adk.mo.ai.kr/examples) |
-| **Troubleshooting** | [FAQ & Help](https://adk.mo.ai.kr/troubleshooting) |
-| **GitHub Repository** | [modu-ai/moai-adk](https://github.com/modu-ai/moai-adk) |
-| **Issue Tracker** | [GitHub Issues](https://github.com/modu-ai/moai-adk/issues) |
-| **Community** | [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions) |
+| Resource                 | Link                                                                  |
+| ------------------------ | --------------------------------------------------------------------- |
+| **Online Documentation** | [adk.mo.ai.kr](https://adk.mo.ai.kr)                                  |
+| **Quick Start Guide**    | [Installation & Setup](https://adk.mo.ai.kr/getting-started)          |
+| **API Reference**        | [Commands & Skills](https://adk.mo.ai.kr/api)                         |
+| **Example Projects**     | [Tutorials](https://adk.mo.ai.kr/examples)                            |
+| **Troubleshooting**      | [FAQ & Help](https://adk.mo.ai.kr/troubleshooting)                    |
+| **GitHub Repository**    | [modu-ai/moai-adk](https://github.com/modu-ai/moai-adk)               |
+| **Issue Tracker**        | [GitHub Issues](https://github.com/modu-ai/moai-adk/issues)           |
+| **Community**            | [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions) |
 
 ---
 
