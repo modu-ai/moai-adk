@@ -75,7 +75,7 @@ class StatuslineRenderer:
     def _build_compact_parts(self, data: StatuslineData) -> List[str]:
         """
         Build parts list for compact mode with labeled sections
-        Format: 🤖 Model | Ver Version | Git: Branch | GitStatus
+        Format: 🤖 Model | 🗿 Ver Version | 📊 Git: Branch | GitStatus
 
         Args:
             data: StatuslineData instance
@@ -85,8 +85,8 @@ class StatuslineRenderer:
         """
         parts = [
             f"🤖 {data.model}",
-            f"Ver {data.version}",
-            f"Git: {data.branch}",
+            f"🗿 Ver {data.version}",
+            f"📊 Git: {data.branch}",
         ]
 
         if data.git_status:
@@ -101,7 +101,7 @@ class StatuslineRenderer:
     def _fit_to_constraint(self, data: StatuslineData, max_length: int) -> str:
         """
         Fit statusline to character constraint by truncating
-        Format: 🤖 Model | Ver Version | Git: Branch | GitStatus
+        Format: 🤖 Model | 🗿 Ver Version | 📊 Git: Branch | GitStatus
 
         Args:
             data: StatuslineData instance
@@ -114,8 +114,8 @@ class StatuslineRenderer:
         truncated_branch = self._truncate_branch(data.branch, max_length=20)
         parts = [
             f"🤖 {data.model}",
-            f"Ver {data.version}",
-            f"Git: {truncated_branch}",
+            f"🗿 Ver {data.version}",
+            f"📊 Git: {truncated_branch}",
         ]
 
         if data.git_status:
@@ -132,8 +132,8 @@ class StatuslineRenderer:
             truncated_branch = self._truncate_branch(data.branch, max_length=12)
             parts = [
                 f"🤖 {data.model}",
-                f"Ver {data.version}",
-                f"Git: {truncated_branch}",
+                f"🗿 Ver {data.version}",
+                f"📊 Git: {truncated_branch}",
             ]
             if data.git_status:
                 parts.append(data.git_status)
@@ -145,8 +145,8 @@ class StatuslineRenderer:
         if len(result) > max_length and data.active_task.strip():
             parts = [
                 f"🤖 {data.model}",
-                f"Ver {data.version}",
-                f"Git: {truncated_branch}",
+                f"🗿 Ver {data.version}",
+                f"📊 Git: {truncated_branch}",
             ]
             if data.git_status:
                 parts.append(data.git_status)
@@ -162,7 +162,7 @@ class StatuslineRenderer:
         """
         Render extended mode: Full path and detailed info with labels
         Constraint: <= 120 characters
-        Format: 🤖 Model | Ver Version | Git: Branch | Status
+        Format: 🤖 Model | 🗿 Ver Version | 📊 Git: Branch | Status
 
         Args:
             data: StatuslineData instance
@@ -174,8 +174,8 @@ class StatuslineRenderer:
 
         parts = [
             f"🤖 {data.model}",
-            f"Ver {data.version}",
-            f"Git: {branch}",
+            f"🗿 Ver {data.version}",
+            f"📊 Git: {branch}",
         ]
 
         if data.git_status:
@@ -191,8 +191,8 @@ class StatuslineRenderer:
             branch = self._truncate_branch(data.branch, max_length=20)
             parts = [
                 f"🤖 {data.model}",
-                f"Ver {data.version}",
-                f"Git: {branch}",
+                f"🗿 Ver {data.version}",
+                f"📊 Git: {branch}",
             ]
             if data.git_status:
                 parts.append(data.git_status)
@@ -206,7 +206,7 @@ class StatuslineRenderer:
         """
         Render minimal mode: Extreme space constraint with minimal labels
         Constraint: <= 40 characters
-        Format: 🤖 Model | Ver | Status
+        Format: 🤖 Model | 🗿 Ver Version | Status
 
         Args:
             data: StatuslineData instance
@@ -216,7 +216,7 @@ class StatuslineRenderer:
         """
         parts = [
             f"🤖 {data.model}",
-            f"Ver {self._truncate_version(data.version)}",
+            f"🗿 Ver {self._truncate_version(data.version)}",
         ]
 
         result = " | ".join(parts)
