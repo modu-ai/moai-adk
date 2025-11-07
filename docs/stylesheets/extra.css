@@ -260,18 +260,57 @@
 }
 
 /* 사이드바 테마 호환성 */
+.md-nav--secondary {
+  background-color: #F7F6F2;
+}
+
 .md-nav--secondary .md-nav__link {
-  color: var(--md-default-fg-color--light);
+  color: #504F4B;
+  padding: 0.4rem 0.75rem;
+  border-radius: 4px;
+  font-weight: 500;
 }
 
 .md-nav--secondary .md-nav__link:hover {
-  color: var(--md-accent-fg-color);
+  color: #171612;
+  background-color: #EFEEEA;
+  font-weight: 600;
+}
+
+.md-nav--secondary .md-nav__link--active {
+  color: #171612;
+  background-color: #D5D4D0;
+  font-weight: 700;
 }
 
 /* 푸터 테마 호환성 */
 .md-footer {
   background-color: var(--md-primary-fg-color);
   color: var(--md-primary-bg-color);
+}
+
+/* 다크 모드 서브메뉴 스타일 */
+[data-md-color-scheme="slate"] .md-nav--secondary {
+  background-color: #1A1916;
+}
+
+[data-md-color-scheme="slate"] .md-nav--secondary .md-nav__link {
+  color: #C9C8C4;
+  padding: 0.4rem 0.75rem;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+[data-md-color-scheme="slate"] .md-nav--secondary .md-nav__link:hover {
+  color: #EEEDE8;
+  background-color: #22211E;
+  font-weight: 600;
+}
+
+[data-md-color-scheme="slate"] .md-nav--secondary .md-nav__link--active {
+  color: #EEEDE8;
+  background-color: #3A3935;
+  font-weight: 700;
 }
 
 /* 모바일 반응형 테마 */
