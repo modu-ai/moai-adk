@@ -92,7 +92,10 @@ class StatuslineRenderer:
         if data.git_status:
             parts.append(data.git_status)
 
-        parts.append(data.active_task)
+        # Only add active_task if it's not empty
+        if data.active_task.strip():
+            parts.append(data.active_task)
+
         return parts
 
     def _fit_to_constraint(self, data: StatuslineData, max_length: int) -> str:
@@ -118,7 +121,10 @@ class StatuslineRenderer:
         if data.git_status:
             parts.append(data.git_status)
 
-        parts.append(data.active_task)
+        # Only add active_task if it's not empty
+        if data.active_task.strip():
+            parts.append(data.active_task)
+
         result = " | ".join(parts)
 
         # If still too long, fall back to minimal
@@ -149,7 +155,9 @@ class StatuslineRenderer:
         if data.git_status:
             parts.append(data.git_status)
 
-        parts.append(data.active_task)
+        # Only add active_task if it's not empty
+        if data.active_task.strip():
+            parts.append(data.active_task)
 
         return " | ".join(parts)
 
