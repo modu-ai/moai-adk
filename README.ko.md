@@ -538,8 +538,6 @@ MIT 라이선스 - 자세한 내용은 [LICENSE](LICENSE)를 참조하세요.
 
 ## 🗺️ 프로젝트 상태 및 로드맵
 
-### 현재 릴리스: v0.20.1
-
 **완료**:
 - ✅ 핵심 SPEC-First 프레임워크
 - ✅ RED-GREEN-REFACTOR 자동화
@@ -568,7 +566,7 @@ MIT 라이선스 - 자세한 내용은 [LICENSE](LICENSE)를 참조하세요.
 ## ❓ 자주 묻는 질문
 
 ### Q: MoAI-ADK 사용에 AI 크레딧이 필요한가요?
-**A**: 네. MoAI-ADK는 Claude API 접근이 필요합니다 ([claude.com](https://claude.com)에서 사용 가능). 자신의 API 키를 사용하거나 조직 계정과 통합할 수 있습니다.
+**A**: MoAI-ADK는 Claude Code 내에서 Claude 구독으로 사용 가능합니다. Claude Code 가입 시 기본으로 제공되는 Claude API 접근권이 포함되어 있습니다.
 
 ### Q: MoAI-ADK를 다른 AI 모델과 함께 사용할 수 있나요?
 **A**: 현재 Claude 모델(Haiku, Sonnet, Opus)에 최적화되어 있습니다. 다른 모델과의 통합은 로드맵에 있습니다.
