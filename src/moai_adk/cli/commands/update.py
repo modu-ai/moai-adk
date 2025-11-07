@@ -515,6 +515,46 @@ def _execute_upgrade(installer_cmd: list[str]) -> bool:
         return False
 
 
+def _setup_mcp_servers(project_path: Path) -> list[str]:
+    """Initialize project-scoped MCP servers for Claude Code after update.
+
+    Resets MCP approval choices so Claude Code will auto-activate
+    project-scoped MCP servers from .mcp.json on next session.
+
+    Args:
+        project_path: Project path (absolute)
+
+    Returns:
+        List of configured MCP server names
+
+    @CODE:UPDATE-MCP-012 | Auto-initialize project MCP servers
+    """
+    try:
+        # Reset project-scoped MCP server choices
+        # This allows Claude Code to auto-detect and load servers from .mcp.json
+        result = subprocess.run(
+            ["claude", "mcp", "reset-project-choices"],
+            cwd=str(project_path),
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+
+        if result.returncode == 0:
+            # Read configured servers from .mcp.json
+            mcp_config_file = project_path / ".mcp.json"
+            if mcp_config_file.exists():
+                with open(mcp_config_file, 'r') as f:
+                    mcp_config = json.load(f)
+                    return list(mcp_config.get('mcpServers', {}).keys())
+
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        # claude command not available or timeout - continue silently
+        pass
+
+    return []
+
+
 def _sync_templates(project_path: Path, force: bool = False) -> bool:
     """Sync templates to project with rollback mechanism.
 
@@ -1023,6 +1063,13 @@ def update(path: str, force: bool, check: bool, templates_only: bool, yes: bool)
             console.print("   [green]✅ .moai/ update complete (specs/reports preserved)[/green]")
             console.print("   [green]🔄 CLAUDE.md merge complete[/green]")
             console.print("   [green]🔄 config.json merge complete[/green]")
+
+            # Initialize MCP servers for Claude Code
+            console.print("[cyan]   🔧 Initializing MCP servers...[/cyan]")
+            mcp_servers = _setup_mcp_servers(project_path)
+            if mcp_servers:
+                console.print(f"   [green]✓ MCP servers ready: {', '.join(mcp_servers)}[/green]")
+
             console.print("\n[green]✓ Template sync complete![/green]")
             return
 
@@ -1136,6 +1183,12 @@ def update(path: str, force: bool, check: bool, templates_only: bool, yes: bool)
         console.print("   [green]🔄 CLAUDE.md merge complete[/green]")
         console.print("   [green]🔄 config.json merge complete[/green]")
         console.print("   [yellow]⚙️  Set optimized=false (optimization needed)[/yellow]")
+
+        # Initialize MCP servers for Claude Code
+        console.print("   [cyan]🔧 Initializing MCP servers...[/cyan]")
+        mcp_servers = _setup_mcp_servers(project_path)
+        if mcp_servers:
+            console.print(f"   [green]✓ MCP servers ready: {', '.join(mcp_servers)}[/green]")
 
         console.print("\n[green]✓ Update complete![/green]")
         console.print("[cyan]ℹ️  Next step: Run /alfred:0-project update to optimize template changes[/cyan]")
