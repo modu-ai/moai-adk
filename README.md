@@ -538,8 +538,6 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## 🗺️ Project Status & Roadmap
 
-### Current Release: v0.20.1
-
 **Completed**:
 - ✅ Core SPEC-First framework
 - ✅ TDD automation with RED-GREEN-REFACTOR
@@ -568,7 +566,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 ## ❓ FAQ
 
 ### Q: Do I need AI credits to use MoAI-ADK?
-**A**: Yes. MoAI-ADK requires Claude API access (available at [claude.com](https://claude.com)). You can use your own API key or integrate with your organization's account.
+**A**: MoAI-ADK is available within Claude Code with a Claude subscription. Claude API access is included by default when you sign up for Claude Code.
 
 ### Q: Can I use MoAI-ADK with other AI models?
 **A**: Currently optimized for Claude models (Haiku, Sonnet, Opus). Integration with other models is on the roadmap.
