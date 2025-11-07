@@ -1,55 +1,55 @@
-# 프로젝트 초기화 완전 가이드
+# Complete Project Initialization Guide
 
-MoAI-ADK 프로젝트 초기화 과정의 모든 것을 다루는 상세 가이드입니다. 신규 프로젝트 생성부터 기존 프로젝트 추가, 다양한 템플릿 활용, 문제 해결까지 포괄적으로 설명합니다.
+A detailed guide covering everything about the MoAI-ADK project initialization process. Provides comprehensive explanations from creating new projects to adding to existing projects, using various templates, and troubleshooting.
 
-## 목차
+## Table of Contents
 
-1. [개요](#개요)
-2. [사전 요구사항](#사전-요구사항)
-3. [신규 프로젝트 생성](#신규-프로젝트-생성)
-4. [기존 프로젝트에 추가](#기존-프로젝트에-추가)
-5. [생성되는 파일 구조 상세](#생성되는-파일-구조-상세)
-6. [.moai/ 디렉토리 심층 분석](#moai-디렉토리-심층-분석)
-7. [.claude/ 디렉토리 심층 분석](#claude-디렉토리-심층-분석)
-8. [프로젝트 유형별 템플릿](#프로젝트-유형별-템플릿)
-9. [초기화 자동화 설정](#초기화-자동화-설정)
-10. [초기화 후 검증](#초기화-후-검증)
-11. [문제 해결](#문제-해결)
-12. [모범 사례](#모범-사례)
+1. [Overview](#overview)
+2. [Prerequisites](#prerequisites)
+3. [Creating a New Project](#creating-a-new-project)
+4. [Adding to Existing Projects](#adding-to-existing-projects)
+5. [Detailed File Structure](#detailed-file-structure)
+6. [In-Depth .moai/ Directory Analysis](#in-depth-moai-directory-analysis)
+7. [In-Depth .claude/ Directory Analysis](#in-depth-claude-directory-analysis)
+8. [Project Type Templates](#project-type-templates)
+9. [Initialization Automation Setup](#initialization-automation-setup)
+10. [Post-Initialization Verification](#post-initialization-verification)
+11. [Troubleshooting](#troubleshooting)
+12. [Best Practices](#best-practices)
 
-## 개요
+## Overview
 
-MoAI-ADK의 프로젝트 초기화는 단순한 파일 생성을 넘어, AI 지원 개발을 위한 완전한 생태계를 구축하는 과정입니다. 초기화를 통해 다음을 얻을 수 있습니다:
+Project initialization in MoAI-ADK goes beyond simple file creation - it's the process of building a complete ecosystem for AI-assisted development. Through initialization, you get:
 
-- **Alfred SuperAgent**: 19명의 AI 전문가 팀과 56개의 Claude Skills
-- **SPEC-First TDD**: 요구사항 → 테스트 → 코드 → 문서의 일관된 워크플로우
-- **@TAG 시스템**: 모든 아티팩트를 연결하는 추적성 네트워크
-- **자동화된 Hook**: 개발 흐름을 방해하지 않는 스마트한 보안장치
+- **Alfred SuperAgent**: A team of 19 AI experts with 56 Claude Skills
+- **SPEC-First TDD**: Consistent workflow from requirements → tests → code → documentation
+- **@TAG System**: A traceability network connecting all artifacts
+- **Automated Hooks**: Smart safeguards that don't disrupt your development flow
 
-### 초기화의 핵심 원칙
+### Core Principles of Initialization
 
-1. **최소 개입**: 사용자는 프로젝트 이름만 제공
-2. **자동 감지**: 언어, 프레임워크, 구조를 자동으로 파악
-3. **점진적 설정**: 세부 설정은 `/alfred:0-project`에서 수집
-4. **안전한 병합**: 기존 프로젝트에 안전하게 통합
+1. **Minimal Intervention**: Users only provide a project name
+2. **Auto-Detection**: Automatically identifies language, framework, and structure
+3. **Progressive Configuration**: Detailed settings collected via `/alfred:0-project`
+4. **Safe Merging**: Safely integrates with existing projects
 
-## 사전 요구사항
+## Prerequisites
 
-### 시스템 요구사항
+### System Requirements
 
-| 항목 | 최소 요구사항 | 권장 사양 |
-|------|-------------|----------|
-| 운영체제 | Windows 10+, macOS 11+, Ubuntu 20.04+ | 최신 LTS 버전 |
+| Item | Minimum Requirement | Recommended |
+|------|-------------------|-------------|
+| Operating System | Windows 10+, macOS 11+, Ubuntu 20.04+ | Latest LTS version |
 | Python | 3.13+ | 3.13.0+ |
 | Git | 2.25+ | 2.40+ |
-| 메모리 | 4GB RAM | 8GB+ RAM |
-| 저장 공간 | 1GB 여유 공간 | 2GB+ 여유 공간 |
+| Memory | 4GB RAM | 8GB+ RAM |
+| Storage | 1GB free space | 2GB+ free space |
 
-### 필수 도구 설치
+### Installing Required Tools
 
-#### 1. UV 설치 (Python 패키지 매니저)
+#### 1. Installing UV (Python Package Manager)
 
-UV는 MoAI-ADK의 공식 패키지 매니저입니다.
+UV is the official package manager for MoAI-ADK.
 
 ```bash
 # macOS/Linux
@@ -58,208 +58,208 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 # Windows (PowerShell)
 powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 
-# 설치 확인
+# Verify installation
 uv --version
 ```
 
-#### 2. Git 설치 및 설정
+#### 2. Git Installation and Configuration
 
 ```bash
-# 설치 확인
+# Verify installation
 git --version
 
-# 기본 설정 (최초 1회)
-git config --global user.name "사용자 이름"
-git config --global user.email "이메일@example.com"
+# Basic configuration (one-time setup)
+git config --global user.name "Your Name"
+git config --global user.email "email@example.com"
 
-# Git 저장소 초기화 (신규 프로젝트의 경우)
+# Initialize Git repository (for new projects)
 git init
 ```
 
-#### 3. MoAI-ADK 설치
+#### 3. Installing MoAI-ADK
 
 ```bash
-# UV를 통한 설치 (권장)
+# Install via UV (recommended)
 uv tool install moai-adk
 
-# 또는 pip를 통한 설치
+# Or install via pip
 pip install moai-adk
 
-# 설치 확인
+# Verify installation
 moai-adk --version
 ```
 
-### 선택적 도구
+### Optional Tools
 
-特定の開発スタックに応じて、追加ツールのインストールを推奨します：
+Additional tools are recommended based on your specific development stack:
 
 ```bash
-# Python 프로젝트
+# Python projects
 uv add pytest ruff mypy black
 
-# Node.js 프로젝트
+# Node.js projects
 npm install --save-dev eslint prettier typescript
 
-# Go 프로젝트
+# Go projects
 go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 
-# Rust 프로젝트
+# Rust projects
 rustup component add clippy rustfmt
 ```
 
-## 신규 프로젝트 생성
+## Creating a New Project
 
-### 기본 명령어
+### Basic Command
 
 ```bash
-# 새 프로젝트 생성
-moai-adk init <프로젝트-이름>
+# Create a new project
+moai-adk init <project-name>
 
-# 예시
+# Example
 moai-adk init my-awesome-app
 cd my-awesome-app
 ```
 
-### 고급 옵션
+### Advanced Options
 
 ```bash
-# 특정 템플릿으로 생성
+# Create with a specific template
 moai-adk init my-app --template web-api
 
-# 특정 언어로 생성
+# Create with a specific language
 moai-adk init my-app --language python
 
-# MCP 서버 포함하여 생성
+# Create with MCP servers included
 moai-adk init my-app --with-mcp
 
-# 상세 정보 출력
+# Show detailed output
 moai-adk init my-app --verbose
 
-# 도움말 확인
+# Show help
 moai-adk init --help
 ```
 
-### 초기화 과정 상세
+### Detailed Initialization Process
 
-#### 1단계: 프로젝트 정보 수집
+#### Step 1: Collecting Project Information
 
 ```bash
 $ moai-adk init hello-world
-🚀 MoAI-ADK v0.17.0 프로젝트 초기화 시작...
+🚀 Starting MoAI-ADK v0.17.0 project initialization...
 
-📁 생성 위치: /Users/username/projects/hello-world
-⚙️ 템플릿: auto-detect (기본값)
-🌍 언어: 자동 감지 예정
+📁 Creation location: /Users/username/projects/hello-world
+⚙️ Template: auto-detect (default)
+🌍 Language: Will be auto-detected
 ```
 
-#### 2단계: 디렉토리 구조 생성
+#### Step 2: Creating Directory Structure
 
 ```bash
-📂 디렉토리 구조 생성 중...
-✅ .moai/ - MoAI-ADK 프로젝트 설정
-✅ .claude/ - Claude Code 자동화
-✅ src/ - 소스 코드 디렉토리
-✅ tests/ - 테스트 디렉토리
-✅ docs/ - 문서 디렉토리
+📂 Creating directory structure...
+✅ .moai/ - MoAI-ADK project configuration
+✅ .claude/ - Claude Code automation
+✅ src/ - Source code directory
+✅ tests/ - Test directory
+✅ docs/ - Documentation directory
 ```
 
-#### 3단계: 설정 파일 생성
+#### Step 3: Creating Configuration Files
 
 ```bash
-⚙️  설정 파일 생성 중...
-✅ .moai/config.json - 프로젝트 설정
-✅ .moai/project/ - 프로젝트 정보
-✅ .claude/settings.json - Claude Code 설정
-✅ CLAUDE.md - 프로젝트 가이드
+⚙️ Creating configuration files...
+✅ .moai/config.json - Project configuration
+✅ .moai/project/ - Project information
+✅ .claude/settings.json - Claude Code settings
+✅ CLAUDE.md - Project guide
 ```
 
-#### 4단계: 에이전트 및 스킬 설치
+#### Step 4: Installing Agents and Skills
 
 ```bash
-🤖 AI 에이전트 설정 중...
-✅ 16개 Sub-agent 설치 완료
-✅ 74개 Claude Skills 로드 완료
-✅ 5개 Claude Code Hooks 활성화
+🤖 Setting up AI agents...
+✅ 16 Sub-agents installed successfully
+✅ 74 Claude Skills loaded successfully
+✅ 5 Claude Code Hooks activated
 ```
 
-#### 5단계: 초기화 완료
+#### Step 5: Initialization Complete
 
 ```bash
-🎉 프로젝트 초기화 완료!
+🎉 Project initialization complete!
 
-📋 다음 단계:
+📋 Next steps:
 1. cd hello-world
-2. claude (Claude Code 실행)
-3. /alfred:0-project (프로젝트 설정 완료)
+2. claude (Run Claude Code)
+3. /alfred:0-project (Complete project setup)
 
-💡 팁: moai-adk doctor 명령으로 시스템 상태를 확인할 수 있습니다.
+💡 Tip: Use the moai-adk doctor command to check system status.
 ```
 
-## 기존 프로젝트에 추가
+## Adding to Existing Projects
 
-이미 진행 중인 프로젝트에 MoAI-ADK를 통합할 수 있습니다. 기존 코드는 절대 수정되지 않습니다.
+You can integrate MoAI-ADK into an ongoing project. Existing code will never be modified.
 
-### 기본 통합
+### Basic Integration
 
 ```bash
-# 기존 프로젝트 디렉토리로 이동
+# Navigate to your existing project directory
 cd your-existing-project
 
-# MoAI-ADK 초기화
+# Initialize MoAI-ADK
 moai-adk init .
 
-# 또는 명시적으로 현재 디렉토리 지정
+# Or explicitly specify current directory
 moai-adk init . --force
 ```
 
-### 통합 전 검증
+### Pre-Integration Verification
 
 ```bash
-# 프로젝트 구조 확인
+# Check project structure
 tree -L 2
 
-# Git 상태 확인
+# Check Git status
 git status
 
-# 필요한 파일 백업 (선택사항)
+# Backup necessary files (optional)
 cp -r . /backup/your-project-$(date +%Y%m%d)
 ```
 
-### 통합 과정
+### Integration Process
 
-#### 1단계: 프로젝트 분석
-
-```bash
-<span class="material-icons">search</span> 기존 프로젝트 분석 중...
-✅ Python 프로젝트 감지 (pyproject.toml 발견)
-✅ FastAPI 프레임워크 감지
-✅ 이미 25개의 Python 파일 존재
-<span class="material-icons">warning</span>  tests/ 디렉토리 발견 (기존 테스트 보존)
-```
-
-#### 2단계: 최소한의 파일 추가
+#### Step 1: Project Analysis
 
 ```bash
-📂 MoAI-ADK 파일 추가 중...
-✅ .moai/ - 새로 생성
-✅ .claude/ - 새로 생성
-✅ CLAUDE.md - 새로 생성
-<span class="material-icons">warning</span>  src/, tests/, docs/ 기존 파일 유지
+<span class="material-icons">search</span> Analyzing existing project...
+✅ Python project detected (found pyproject.toml)
+✅ FastAPI framework detected
+✅ 25 Python files already exist
+<span class="material-icons">warning</span> tests/ directory found (preserving existing tests)
 ```
 
-#### 3단계: 설정 최적화
+#### Step 2: Adding Minimal Files
 
 ```bash
-⚙️  기존 프로젝트에 맞게 설정 최적화...
-✅ 언어: python (감지됨)
-✅ 프레임워크: fastapi (감지됨)
-✅ 테스트 도구: pytest (기존 설정 유지)
-✅ 문서 형식: markdown (기존 문서 유지)
+📂 Adding MoAI-ADK files...
+✅ .moai/ - Newly created
+✅ .claude/ - Newly created
+✅ CLAUDE.md - Newly created
+<span class="material-icons">warning</span> src/, tests/, docs/ existing files preserved
 ```
 
-### 기존 프로젝트와의 통합 예시
+#### Step 3: Configuration Optimization
 
-#### 기존 구조
+```bash
+⚙️ Optimizing settings for existing project...
+✅ Language: python (detected)
+✅ Framework: fastapi (detected)
+✅ Test tool: pytest (preserving existing settings)
+✅ Documentation format: markdown (preserving existing docs)
+```
+
+### Integration Example with Existing Project
+
+#### Existing Structure
 ```
 my-api/
 ├── app/
@@ -274,27 +274,27 @@ my-api/
 └── .git/
 ```
 
-#### MoAI-ADK 추가 후 구조
+#### Structure After Adding MoAI-ADK
 ```
 my-api/
-├── .moai/                    # ✅ 새로 추가
+├── .moai/                    # ✅ Newly added
 │   ├── config.json
 │   ├── project/
 │   ├── memory/
 │   ├── specs/
 │   └── reports/
-├── .claude/                  # ✅ 새로 추가
+├── .claude/                  # ✅ Newly added
 │   ├── agents/
 │   ├── commands/
 │   ├── skills/
 │   ├── hooks/
 │   └── settings.json
-├── CLAUDE.md                 # ✅ 새로 추가
-├── app/                      # ✅ 기존 유지
+├── CLAUDE.md                 # ✅ Newly added
+├── app/                      # ✅ Preserved
 │   ├── main.py
 │   ├── models/
 │   └── routes/
-├── tests/                    # ✅ 기존 유지
+├── tests/                    # ✅ Preserved
 │   ├── test_main.py
 │   └── conftest.py
 ├── requirements.txt
@@ -302,13 +302,13 @@ my-api/
 └── .git/
 ```
 
-## 생성되는 파일 구조 상세
+## Detailed File Structure
 
-### 전체 구조 다이어그램
+### Overall Structure Diagram
 
 ```mermaid
 graph TD
-    A[프로젝트 루트] --> B[.moai/]
+    A[Project Root] --> B[.moai/]
     A --> C[.claude/]
     A --> D[CLAUDE.md]
     A --> E[src/]
@@ -350,9 +350,9 @@ graph TD
     C3 --> C3d[language/]
 ```
 
-### 핵심 파일 설명
+### Core File Descriptions
 
-#### 1. `.moai/config.json` - 프로젝트 심장
+#### 1. `.moai/config.json` - Project Heart
 
 ```json
 {
@@ -369,7 +369,7 @@ graph TD
   },
   "project": {
     "name": "my-project",
-    "description": "MoAI-ADK로 생성된 프로젝트",
+    "description": "Project created with MoAI-ADK",
     "owner": "username",
     "mode": "personal",
     "created_at": "2025-11-06T10:00:00Z",
@@ -399,74 +399,74 @@ graph TD
 }
 ```
 
-#### 2. `.moai/project/` - 프로젝트 메타데이터
+#### 2. `.moai/project/` - Project Metadata
 
-##### `product.md` - 제품 비전
+##### `product.md` - Product Vision
 ```markdown
-# 제품 비전
+# Product Vision
 
-## 개요
-프로젝트의 핵심 가치와 목표를 정의합니다.
+## Overview
+Defines the core value and goals of the project.
 
-## 타겟 사용자
-- 주요 사용자 그룹 정의
-- 사용자의 요구사항과 문제점
+## Target Users
+- Definition of primary user groups
+- User requirements and pain points
 
-## 핵심 기능
-- 제품이 제공하는 주요 기능
-- 차별화된 가치 제안
+## Core Features
+- Main features provided by the product
+- Differentiated value proposition
 
-## 성공 지표
-- 제품 성공을 측정하는 KPI
-- 단기 및 장기 목표
+## Success Metrics
+- KPIs for measuring product success
+- Short-term and long-term goals
 ```
 
-##### `structure.md` - 프로젝트 구조
+##### `structure.md` - Project Structure
 ```markdown
-# 프로젝트 구조
+# Project Structure
 
-## 디렉토리 구조
+## Directory Structure
 ```
 src/
-├── core/           # 핵심 비즈니스 로직
-├── api/            # API 엔드포인트
-├── models/         # 데이터 모델
-├── services/       # 서비스 계층
-└── utils/          # 유틸리티 함수
+├── core/           # Core business logic
+├── api/            # API endpoints
+├── models/         # Data models
+├── services/       # Service layer
+└── utils/          # Utility functions
 ```
 
-## 아키텍처 패턴
-- 사용하는 아키텍처 패턴 (MVC, 클린 아키텍처 등)
-- 레이어별 책임과 상호작용
+## Architecture Patterns
+- Architectural patterns used (MVC, Clean Architecture, etc.)
+- Responsibilities and interactions by layer
 
-## 데이터 흐름
-- 주요 데이터 흐름 설명
-- 외부 시스템과의 연동 방식
+## Data Flow
+- Description of main data flows
+- Integration methods with external systems
 ```
 
-##### `tech.md` - 기술 스택
+##### `tech.md` - Technology Stack
 ```markdown
-# 기술 스택
+# Technology Stack
 
-## 핵심 기술
-- **언어**: Python 3.13
-- **프레임워크**: FastAPI
-- **데이터베이스**: PostgreSQL
-- **테스트**: pytest
+## Core Technologies
+- **Language**: Python 3.13
+- **Framework**: FastAPI
+- **Database**: PostgreSQL
+- **Testing**: pytest
 
-## 개발 도구
-- **패키지 관리**: uv
-- **코드 포맷팅**: black, ruff
-- **타입 검사**: mypy
-- **문서**: Sphinx
+## Development Tools
+- **Package Management**: uv
+- **Code Formatting**: black, ruff
+- **Type Checking**: mypy
+- **Documentation**: Sphinx
 
-## 인프라
-- **배포**: Docker
+## Infrastructure
+- **Deployment**: Docker
 - **CI/CD**: GitHub Actions
-- **모니터링**: Prometheus + Grafana
+- **Monitoring**: Prometheus + Grafana
 ```
 
-#### 3. `.claude/settings.json` - Claude Code 설정
+#### 3. `.claude/settings.json` - Claude Code Configuration
 
 ```json
 {
@@ -504,99 +504,99 @@ src/
 }
 ```
 
-## .moai/ 디렉토리 심층 분석
+## In-Depth .moai/ Directory Analysis
 
-### 디렉토리 구조와 역할
+### Directory Structure and Roles
 
 ```
 .moai/
-├── config.json              # 프로젝트 설정 파일
-├── project/                 # 프로젝트 문서들
-│   ├── product.md           # 제품 비전과 목표
-│   ├── structure.md         # 프로젝트 구조 설명
-│   └── tech.md              # 기술 스택 명세
-├── memory/                  # Alfred의 기억 저장소
-│   ├── development-guide.md # 개발 가이드
-│   ├── session-notes.md     # 세션 노트
-│   ├── decision-log.md      # 의사결정 로그
-│   ├── user-preferences.md  # 사용자 선호도
-│   ├── project-context.md   # 프로젝트 컨텍스트
-│   ├── learning-history.md  # 학습 이력
-│   └── expertise-profile.md # 전문성 프로필
-├── specs/                   # SPEC 문서 저장소
+├── config.json              # Project configuration file
+├── project/                 # Project documents
+│   ├── product.md           # Product vision and goals
+│   ├── structure.md         # Project structure description
+│   └── tech.md              # Technology stack specifications
+├── memory/                  # Alfred's memory storage
+│   ├── development-guide.md # Development guide
+│   ├── session-notes.md     # Session notes
+│   ├── decision-log.md      # Decision log
+│   ├── user-preferences.md  # User preferences
+│   ├── project-context.md   # Project context
+│   ├── learning-history.md  # Learning history
+│   └── expertise-profile.md # Expertise profile
+├── specs/                   # SPEC document repository
 │   └── SPEC-XXX-XXX/
-│       ├── spec.md          # 주요 SPEC 문서
-│       ├── plan.md          # 구현 계획
-│       ├── acceptance.md    # 수용 기준
-│       └── history.md       # 변경 이력
-└── reports/                 # 분석 리포트
-    ├── sync-report-*.md     # 동기화 리포트
-    ├── quality-report-*.md  # 품질 리포트
-    └── analysis-*.md        # 분석 리포트
+│       ├── spec.md          # Main SPEC document
+│       ├── plan.md          # Implementation plan
+│       ├── acceptance.md    # Acceptance criteria
+│       └── history.md       # Change history
+└── reports/                 # Analysis reports
+    ├── sync-report-*.md     # Sync reports
+    ├── quality-report-*.md  # Quality reports
+    └── analysis-*.md        # Analysis reports
 ```
 
-### memory/ 디렉토리 상세
+### memory/ Directory Details
 
 #### `development-guide.md`
-Alfred가 학습한 개발 패턴과 모범 사례를 저장합니다.
+Stores development patterns and best practices learned by Alfred.
 
 ```markdown
-# 개발 가이드
+# Development Guide
 
-## 코드 스타일
-- 함수는 50줄 이내로 작성
-- 변수명은 명확하게
-- 타입 힌트 사용
+## Code Style
+- Functions should be within 50 lines
+- Use clear variable names
+- Use type hints
 
-## 테스트 패턴
-- AAA 패턴 (Arrange, Act, Assert)
-- 테스트 이름은 명확하게
-- Edge case 테스트 필수
+## Test Patterns
+- AAA pattern (Arrange, Act, Assert)
+- Use clear test names
+- Edge case testing is mandatory
 
-## Git 커밋 메시지
-- feat: 새 기능
-- fix: 버그 수정
-- refactor: 리팩토링
-- test: 테스트 관련
+## Git Commit Messages
+- feat: New feature
+- fix: Bug fix
+- refactor: Refactoring
+- test: Test-related
 ```
 
 #### `session-notes.md`
-개발 세션 중의 중요한 발견과 결정사항을 기록합니다.
+Records important discoveries and decisions during development sessions.
 
 ```markdown
-# 세션 노트
+# Session Notes
 
-## 2025-11-06 세션
-### 주요 활동
-- 사용자 인증 API 구현 (AUTH-001)
-- 테스트 커버리지 92% 달성
+## 2025-11-06 Session
+### Main Activities
+- Implemented user authentication API (AUTH-001)
+- Achieved 92% test coverage
 
-### 발견된 사항
-- FastAPI의 의존성 주입이 테스트에 유리
-- JWT 토큰 만료 처리 개선 필요
+### Findings
+- FastAPI's dependency injection is beneficial for testing
+- JWT token expiration handling needs improvement
 
-### 다음 단계
-- 리프레시 토큰 구현
-- 보안 강화 조치
+### Next Steps
+- Implement refresh token
+- Security enhancement measures
 ```
 
-### specs/ 디렉토리 상세
+### specs/ Directory Details
 
-SPEC 문서는 MoAI-ADK의 핵심입니다. 모든 개발은 SPEC에서 시작합니다.
+SPEC documents are the core of MoAI-ADK. All development starts from SPECs.
 
-#### SPEC 문서 구조
+#### SPEC Document Structure
 ```
 .moai/specs/SPEC-AUTH-001/
-├── spec.md              # 메인 SPEC 문서
-├── plan.md              # 구현 계획
-├── acceptance.md        # 수용 기준
-├── history.md           # 변경 이력
-└── reviews/             # 리뷰 기록
+├── spec.md              # Main SPEC document
+├── plan.md              # Implementation plan
+├── acceptance.md        # Acceptance criteria
+├── history.md           # Change history
+└── reviews/             # Review records
     ├── review-1.md
     └── review-2.md
 ```
 
-#### `spec.md` 예시
+#### `spec.md` Example
 ```yaml
 ---
 id: AUTH-001
@@ -609,44 +609,44 @@ author: Alfred
 reviewer: username
 ---
 
-# `@SPEC:AUTH-001: 사용자 인증 시스템
+# `@SPEC:AUTH-001: User Authentication System
 
-## 개요
-사용자 인증을 위한 JWT 기반 시스템 구현
+## Overview
+Implement JWT-based system for user authentication
 
-## Ubiquitous Requirements (기본 요구사항)
-- 시스템은 JWT 기반 인증을 제공해야 한다
-- 사용자는 이메일과 비밀번호로 로그인할 수 있어야 한다
-- 인증된 사용자는 보호된 리소스에 접근할 수 있어야 한다
+## Ubiquitous Requirements (Basic Requirements)
+- The system must provide JWT-based authentication
+- Users must be able to log in with email and password
+- Authenticated users must be able to access protected resources
 
-## Event-driven Requirements (조건부 요구사항)
-- WHEN 유효한 자격증명이 제공되면, 시스템은 JWT 토큰을 발급해야 한다
-- WHEN 만료된 토큰이 제공되면, 시스템은 401 에러를 반환해야 한다
-- WHILE 사용자가 인증된 상태일 때, 시스템은 보호된 리소스 접근을 허용해야 한다
+## Event-driven Requirements (Conditional Requirements)
+- WHEN valid credentials are provided, the system must issue a JWT token
+- WHEN an expired token is provided, the system must return a 401 error
+- WHILE a user is authenticated, the system must allow access to protected resources
 
-## Optional Requirements (선택 요구사항)
-- WHERE 리프레시 토큰이 있으면, 시스템은 새 액세스 토큰을 발급할 수 있다
-- WHERE 소셜 로그인이 설정되면, 사용자는 소셜 계정으로 인증할 수 있다
+## Optional Requirements
+- WHERE a refresh token exists, the system may issue a new access token
+- WHERE social login is configured, users may authenticate with social accounts
 
-## Unwanted Behaviors (금지 동작)
-- 시스템은 평문 비밀번호를 저장해서는 안 된다
-- 시스템은 무효한 토큰으로 리소스 접근을 허용해서는 안 된다
-- 시스템은 rate limiting 없이 로그인을 허용해서는 안 된다
+## Unwanted Behaviors (Prohibited Actions)
+- The system must not store passwords in plain text
+- The system must not allow resource access with invalid tokens
+- The system must not allow login without rate limiting
 
-## Constraints (제약 조건)
-- 비밀번호는 최소 8자, 최대 128자여야 한다
-- JWT 토큰 만료 시간은 15분을 초과하지 않아야 한다
-- 로그인 시도는 분당 5회로 제한해야 한다
+## Constraints
+- Passwords must be at least 8 characters and at most 128 characters
+- JWT token expiration time must not exceed 15 minutes
+- Login attempts must be limited to 5 per minute
 ```
 
-## .claude/ 디렉토리 심층 분석
+## In-Depth .claude/ Directory Analysis
 
-### 디렉토리 구조와 역할
+### Directory Structure and Roles
 
 ```
 .claude/
-├── agents/                  # Sub-agent 정의
-│   ├── alfred/              # Alfred 핵심 에이전트
+├── agents/                  # Sub-agent definitions
+│   ├── alfred/              # Alfred core agents
 │   │   ├── project-manager.md
 │   │   ├── spec-builder.md
 │   │   ├── code-builder.md
@@ -657,49 +657,49 @@ reviewer: username
 │   │   ├── trust-checker.md
 │   │   ├── quality-gate.md
 │   │   └── cc-manager.md
-│   └── experts/             # 도메인 전문가 에이전트
+│   └── experts/             # Domain expert agents
 │       ├── backend-expert.md
 │       ├── frontend-expert.md
 │       ├── ui-ux-expert.md
 │       ├── devops-expert.md
 │       └── security-expert.md
-├── commands/                # 슬래시 명령어 정의
-│   ├── alfred/              # Alfred 명령어
+├── commands/                # Slash command definitions
+│   ├── alfred/              # Alfred commands
 │   │   ├── 0-project.md
 │   │   ├── 1-plan.md
 │   │   ├── 2-run.md
 │   │   ├── 3-sync.md
 │   │   └── 9-feedback.md
-│   └── slash/               # 일반 슬래시 명령어
+│   └── slash/               # General slash commands
 │       ├── help.md
 │       ├── status.md
 │       └── debug.md
 ├── skills/                  # Claude Skills
-│   ├── foundation/          # 기초 스킬
+│   ├── foundation/          # Foundation skills
 │   │   ├── trust.md
 │   │   ├── tags.md
 │   │   ├── specs.md
 │   │   ├── ears.md
 │   │   ├── git.md
 │   │   └── langs.md
-│   ├── essentials/          # 필수 스킬
+│   ├── essentials/          # Essential skills
 │   │   ├── debug.md
 │   │   ├── perf.md
 │   │   ├── refactor.md
 │   │   └── review.md
-│   ├── alfred/              # Alfred 전용 스킬
+│   ├── alfred/              # Alfred-specific skills
 │   │   ├── workflow.md
 │   │   ├── language-detection.md
 │   │   ├── spec-validation.md
 │   │   └── ask-user-questions.md
-│   ├── domain/              # 도메인 스킬
+│   ├── domain/              # Domain skills
 │   │   ├── backend.md
 │   │   ├── frontend.md
 │   │   ├── database.md
 │   │   ├── security.md
 │   │   ├── devops.md
 │   │   └── mobile-app.md
-│   └── language/            # 언어 스킬
+│   └── language/            # Language skills
 │       ├── python.md
 │       ├── typescript.md
 │       ├── javascript.md
@@ -708,7 +708,7 @@ reviewer: username
 │       └── sql.md
 ├── hooks/                   # Claude Code Hooks
 │   └── alfred/
-│       ├── alfred_hooks.py  # 메인 Hook 스크립트
+│       ├── alfred_hooks.py  # Main Hook script
 │       ├── core/
 │       │   ├── checkpoint.py
 │       │   ├── risk_detector.py
@@ -717,124 +717,124 @@ reviewer: username
 │       └── utils/
 │           ├── file_utils.py
 │           └── git_utils.py
-├── settings.json            # Claude Code 설정
-└── mcp.json                 # MCP 서버 설정 (선택사항)
+├── settings.json            # Claude Code configuration
+└── mcp.json                 # MCP server configuration (optional)
 ```
 
-### agents/ 디렉토리 상세
+### agents/ Directory Details
 
-#### Alfred 핵심 에이전트
+#### Alfred Core Agents
 
 ##### `project-manager.md`
 ```markdown
 # Project Manager Agent
 
-## 역할
-프로젝트 초기화와 메타데이터 관리를 담당합니다.
+## Role
+Responsible for project initialization and metadata management.
 
-## 주요 기능
-- 프로젝트 설정 수집
-- 언어 및 프레임워크 감지
-- 적절한 Skill Pack 추천
-- 프로젝트 구조 설계
+## Main Functions
+- Collect project settings
+- Detect language and framework
+- Recommend appropriate Skill Packs
+- Design project structure
 
-## 활성화 조건
-- `/alfred:0-project` 명령 실행
-- 새 프로젝트 초기화 필요
+## Activation Conditions
+- `/alfred:0-project` command execution
+- New project initialization needed
 
-## 사용 모델
-- 기본: Claude 3.5 Sonnet
-- 단순 작업: Claude 3.5 Haiku
+## Model Used
+- Default: Claude 3.5 Sonnet
+- Simple tasks: Claude 3.5 Haiku
 ```
 
 ##### `spec-builder.md`
 ```markdown
 # Spec Builder Agent
 
-## 역할
-EARS 형식으로 명확한 SPEC 문서를 작성합니다.
+## Role
+Creates clear SPEC documents in EARS format.
 
-## 주요 기능
-- 요구사항 분석 및 구조화
-- EARS 패턴 적용
-- Plan Board 생성
-- 수용 기준 정의
+## Main Functions
+- Requirement analysis and structuring
+- Apply EARS patterns
+- Generate Plan Board
+- Define acceptance criteria
 
-## 활성화 조건
-- `/alfred:1-plan` 명령 실행
-- SPEC 작성 필요
+## Activation Conditions
+- `/alfred:1-plan` command execution
+- SPEC creation needed
 
-## 전문 지식
+## Expertise
 - EARS (Easy Approach to Requirements Syntax)
-- 요구사항 공학
-- 시스템 설계
+- Requirements engineering
+- System design
 ```
 
-### commands/ 디렉토리 상세
+### commands/ Directory Details
 
-#### Alfred 명령어 구조
+#### Alfred Command Structure
 
-##### `0-project.md` - 프로젝트 초기화
+##### `0-project.md` - Project Initialization
 ```markdown
 # /alfred:0-project
 
-## 설명
-프로젝트 초기화와 설정을 관리하는 명령어입니다.
+## Description
+Command for managing project initialization and configuration.
 
-## 사용법
+## Usage
 ```bash
-/alfred:0-project                    # 자동 감지 모드
-/alfred:0-project setting           # 설정 수정 모드
-/alfred:0-project update            # 템플릿 최적화 모드
+/alfred:0-project                    # Auto-detection mode
+/alfred:0-project setting           # Configuration modification mode
+/alfred:0-project update            # Template optimization mode
 ```
 
-## 단계별 프로세스
-1. 프로젝트 상태 분석
-2. 사용자 정보 수집 (필요시)
-3. 적절한 설정 적용
-4. Skill Pack 배치
-5. 초기화 보고
+## Step-by-Step Process
+1. Analyze project status
+2. Collect user information (if needed)
+3. Apply appropriate settings
+4. Deploy Skill Packs
+5. Initialization report
 
-## 예상 결과
-- 완전히 설정된 `.moai/config.json`
-- 프로젝트 문서 5종 생성
-- 추천 Skill Pack 로드
+## Expected Results
+- Fully configured `.moai/config.json`
+- 5 project documents generated
+- Recommended Skill Packs loaded
 ```
 
-### skills/ 디렉토리 상세
+### skills/ Directory Details
 
 #### Foundation Skills
 
-##### `trust.md` - TRUST 5원칙
+##### `trust.md` - TRUST 5 Principles
 ```markdown
 # TRUST 5 Principles Skill
 
-## 설명
-모든 코드는 TRUST 5원칙을 만족해야 합니다.
+## Description
+All code must satisfy the TRUST 5 principles.
 
-## 원칙
-1. **Test First**: 테스트가 먼저 작성되어야 함
-2. **Readable**: 읽기 쉬운 코드여야 함
-3. **Unified**: 일관된 구조를 유지해야 함
-4. **Secured**: 보안을 고려해야 함
-5. **Trackable**: 추적 가능해야 함
+## Principles
+1. **Test First**: Tests must be written first
+2. **Readable**: Code must be easy to read
+3. **Unified**: Must maintain consistent structure
+4. **Secured**: Must consider security
+5. **Trackable**: Must be traceable
 
-## 검증 기준
-- 테스트 커버리지 ≥ 85%
-- 함수 ≤ 50줄
-- 일관된 명명 규칙
-- 입력 검증
-- @TAG 시스템 사용
+## Verification Criteria
+- Test coverage ≥ 85%
+- Functions ≤ 50 lines
+- Consistent naming conventions
+- Input validation
+- Use @TAG system
 
-## 적용 방법
-- 코드 리뷰 시 자동 검증
-- `/alfred:3-sync` 실행 시 확인
-- Pull Request 요구사항
+## Application Methods
+- Automatic verification during code review
+- Check when `/alfred:3-sync` is executed
+- Pull Request requirements
 ```
 
-### hooks/ 디렉토리 상세
+### hooks/ Directory Details
 
-#### Hook 아키텍처
+#### Hook Architecture
 
 ```python
 # alfred_hooks.py
@@ -844,7 +844,7 @@ import json
 from pathlib import Path
 
 def main():
-    """메인 Hook 진입점"""
+    """Main Hook entry point"""
     hook_name = os.environ.get('CLAUDE_HOOK_NAME')
     project_dir = os.environ.get('CLAUDE_PROJECT_DIR')
 
@@ -852,38 +852,38 @@ def main():
         session_start(project_dir)
     elif hook_name == 'PreToolUse':
         pre_tool_use(project_dir)
-    # ... 다른 Hook들
+    # ... other Hooks
 
 def session_start(project_dir: str):
-    """세션 시작 시 프로젝트 상태 요약"""
+    """Summarize project status at session start"""
     config_path = Path(project_dir) / '.moai' / 'config.json'
 
     if config_path.exists():
         with open(config_path) as f:
             config = json.load(f)
 
-        print(f"📋 프로젝트: {config['project']['name']}")
-        print(f"🌍 언어: {config['language']['conversation_language_name']}")
-        print(f"🤖 Alfred 준비 완료")
+        print(f"📋 Project: {config['project']['name']}")
+        print(f"🌍 Language: {config['language']['conversation_language_name']}")
+        print(f"🤖 Alfred ready")
 ```
 
-## 프로젝트 유형별 템플릿
+## Project Type Templates
 
-MoAI-ADK는 다양한 프로젝트 유형에 맞는 템플릿을 제공합니다.
+MoAI-ADK provides templates tailored to various project types.
 
-### 1. Web API 템플릿
+### 1. Web API Template
 
 ```bash
 moai-adk init my-api --template web-api
 ```
 
-#### 특징
-- FastAPI/Express/NestJS 기본 구조
-- RESTful API 가이드라인
-- API 문서 자동화 설정
-- JWT 인증 기본 구조
+#### Features
+- FastAPI/Express/NestJS basic structure
+- RESTful API guidelines
+- Automated API documentation setup
+- JWT authentication basic structure
 
-#### 생성되는 구조
+#### Generated Structure
 ```
 my-api/
 ├── src/
@@ -906,19 +906,19 @@ my-api/
 └── .moai/specs/SPEC-API-001/
 ```
 
-### 2. CLI 도구 템플릿
+### 2. CLI Tool Template
 
 ```bash
 moai-adk init my-cli --template cli-tool
 ```
 
-#### 특징
-- Click/argparse 기본 구조
-- 커맨드 라인 인터페이스 가이드
-- 설정 파일 처리
-- 로깅 시스템
+#### Features
+- Click/argparse basic structure
+- Command-line interface guide
+- Configuration file handling
+- Logging system
 
-#### 생성되는 구조
+#### Generated Structure
 ```
 my-cli/
 ├── src/
@@ -935,19 +935,19 @@ my-cli/
 └── .moai/specs/SPEC-CLI-001/
 ```
 
-### 3. 데이터 분석 템플릿
+### 3. Data Analysis Template
 
 ```bash
 moai-adk init my-analysis --template data-science
 ```
 
-#### 특징
-- Jupyter Notebook 기본 구조
-- pandas/numpy 설정
-- 데이터 시각화 설정
-- 실험 추적 시스템
+#### Features
+- Jupyter Notebook basic structure
+- pandas/numpy configuration
+- Data visualization setup
+- Experiment tracking system
 
-#### 생성되는 구조
+#### Generated Structure
 ```
 my-analysis/
 ├── notebooks/
@@ -968,19 +968,19 @@ my-analysis/
 └── .moai/specs/SPEC-DATA-001/
 ```
 
-### 4. 모바일 앱 템플릿
+### 4. Mobile App Template
 
 ```bash
 moai-adk init my-app --template mobile-app
 ```
 
-#### 특징
-- Flutter/React Native 기본 구조
-- 상태 관리 설정
-- API 통신 레이어
-- 테스트 환경
+#### Features
+- Flutter/React Native basic structure
+- State management setup
+- API communication layer
+- Testing environment
 
-#### 생성되는 구조
+#### Generated Structure
 ```
 my-app/
 ├── lib/
@@ -998,19 +998,19 @@ my-app/
 └── .moai/specs/SPEC-MOBILE-001/
 ```
 
-### 5. 머신러닝 템플릿
+### 5. Machine Learning Template
 
 ```bash
 moai-adk init my-ml --template ml-project
 ```
 
-#### 특징
-- 모델 훈련/추론 구조
-- 데이터 파이프라인
-- 실험 관리 (MLflow)
-- 모델 서빙 API
+#### Features
+- Model training/inference structure
+- Data pipeline
+- Experiment management (MLflow)
+- Model serving API
 
-#### 생성되는 구조
+#### Generated Structure
 ```
 my-ml/
 ├── src/
@@ -1032,43 +1032,43 @@ my-ml/
 └── .moai/specs/SPEC-ML-001/
 ```
 
-### 템플릿 선택 가이드
+### Template Selection Guide
 
-| 프로젝트 유형 | 추천 템플릿 | 주요 특징 | 적합한 상황 |
-|--------------|-------------|-----------|-----------|
-| 웹 백엔드 | `web-api` | REST API, 데이터베이스 연동 | API 서버, 마이크로서비스 |
-| 커맨드라인 도구 | `cli-tool` | CLI 인터페이스, 설정 관리 | 개발 도구, 유틸리티 |
-| 데이터 분석 | `data-science` | Jupyter, pandas, 시각화 | 연구 프로젝트, 분석 |
-| 모바일 앱 | `mobile-app` | Flutter/React Native | iOS/Android 앱 |
-| 머신러닝 | `ml-project` | 모델 훈련, 실험 관리 | ML 프로젝트, 연구 |
-| 일반적 | `default` | 범용 구조 | 기타 프로젝트 |
+| Project Type | Recommended Template | Key Features | Suitable Situations |
+|--------------|---------------------|--------------|-------------------|
+| Web Backend | `web-api` | REST API, database integration | API server, microservices |
+| Command-line Tool | `cli-tool` | CLI interface, config management | Development tools, utilities |
+| Data Analysis | `data-science` | Jupyter, pandas, visualization | Research projects, analysis |
+| Mobile App | `mobile-app` | Flutter/React Native | iOS/Android apps |
+| Machine Learning | `ml-project` | Model training, experiment management | ML projects, research |
+| General | `default` | General-purpose structure | Other projects |
 
-## 초기화 자동화 설정
+## Initialization Automation Setup
 
-### 환경 변수 설정
+### Environment Variable Configuration
 
-MoAI-ADK 초기화 시 환경 변수를 통해 기본값을 설정할 수 있습니다.
+You can set default values via environment variables during MoAI-ADK initialization.
 
 ```bash
-# 기본 설정
+# Basic settings
 export MOAI_DEFAULT_LANGUAGE="ko"
 export MOAI_DEFAULT_OWNER="username"
 export MOAI_DEFAULT_MODE="personal"
 
-# GitHub 통합
+# GitHub integration
 export MOAI_GITHUB_ENABLED="true"
 export MOAI_GITHUB_AUTO_DELETE_BRANCHES="true"
 
-# 보고서 설정
+# Report settings
 export MOAI_REPORT_GENERATION="minimal"
 
-# Hook 설정
+# Hook settings
 export MOAI_HOOK_TIMEOUT="5"
 ```
 
-### 초기화 스크립트
+### Initialization Script
 
-반복적인 초기화를 자동화하는 스크립트 예시:
+Example script for automating repetitive initialization:
 
 ```bash
 #!/bin/bash
@@ -1076,7 +1076,7 @@ export MOAI_HOOK_TIMEOUT="5"
 
 set -e
 
-# 인자 확인
+# Check arguments
 if [ $# -eq 0 ]; then
     echo "Usage: $0 <project-name> [template]"
     exit 1
@@ -1085,25 +1085,25 @@ fi
 PROJECT_NAME=$1
 TEMPLATE=${2:-"default"}
 
-# 환경 변수 설정
+# Set environment variables
 export MOAI_DEFAULT_LANGUAGE="ko"
 export MOAI_DEFAULT_OWNER="$(git config user.name)"
 export MOAI_GITHUB_ENABLED="true"
 
-# 프로젝트 생성
+# Create project
 echo "🚀 Creating MoAI-ADK project: $PROJECT_NAME"
 moai-adk init "$PROJECT_NAME" --template "$TEMPLATE"
 
-# 프로젝트 디렉토리 이동
+# Navigate to project directory
 cd "$PROJECT_NAME"
 
-# Git 초기화
+# Initialize Git
 echo "📦 Initializing Git repository"
 git init
 git add .
 git commit -m "🎉 Initial commit with MoAI-ADK"
 
-# 가상환경 설정 (Python 프로젝트의 경우)
+# Setup virtual environment (for Python projects)
 if [ "$TEMPLATE" = "web-api" ] || [ "$TEMPLATE" = "default" ]; then
     echo "🐍 Setting up Python virtual environment"
     uv venv
@@ -1111,7 +1111,7 @@ if [ "$TEMPLATE" = "web-api" ] || [ "$TEMPLATE" = "default" ]; then
     uv add pytest ruff mypy
 fi
 
-# 안내 메시지
+# Guidance message
 echo "✅ Project '$PROJECT_NAME' created successfully!"
 echo "📋 Next steps:"
 echo "   1. cd $PROJECT_NAME"
@@ -1119,7 +1119,7 @@ echo "   2. claude"
 echo "   3. /alfred:0-project"
 ```
 
-### Docker 통합 초기화
+### Docker Integration Initialization
 
 ```bash
 #!/bin/bash
@@ -1128,12 +1128,12 @@ echo "   3. /alfred:0-project"
 PROJECT_NAME=$1
 TEMPLATE=${2:-"web-api"}
 
-# 프로젝트 생성
+# Create project
 moai-adk init "$PROJECT_NAME" --template "$TEMPLATE"
 
 cd "$PROJECT_NAME"
 
-# Dockerfile 생성
+# Generate Dockerfile
 cat > Dockerfile << 'EOF'
 FROM python:3.13-slim
 
@@ -1150,7 +1150,7 @@ EXPOSE 8000
 CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
 EOF
 
-# docker-compose.yml 생성
+# Generate docker-compose.yml
 cat > docker-compose.yml << 'EOF'
 version: '3.8'
 
@@ -1168,7 +1168,6 @@ services:
     image: postgres:15
     environment:
       - POSTGRES_DB=mydb
-      - POSTGRES_USER=user
       - POSTGRES_PASSWORD=pass
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -1180,200 +1179,200 @@ EOF
 echo "🐳 Docker configuration added"
 ```
 
-## 초기화 후 검증
+## Post-Initialization Verification
 
-### 시스템 진단
+### System Diagnosis
 
 ```bash
-# 기본 진단
+# Basic diagnosis
 moai-adk doctor
 
-# 상세 진단
+# Detailed diagnosis
 moai-adk doctor --verbose
 
-# 특정 항목 확인
+# Check specific items
 moai-adk doctor --check python,git,uv
 ```
 
-#### 진단 항목 상세
+#### Diagnosis Items Details
 
-1. **Python 환경**
-   - 버전 확인 (3.13+)
-   - 가상환경 상태
-   - PATH 설정
+1. **Python Environment**
+   - Version check (3.13+)
+   - Virtual environment status
+   - PATH configuration
 
-2. **Git 설정**
-   - 버전 확인
-   - 사용자 설정
-   - 저장소 상태
+2. **Git Configuration**
+   - Version check
+   - User configuration
+   - Repository status
 
-3. **MoAI-ADK 구조**
-   - .moai/ 디렉토리
-   - .claude/ 디렉토리
-   - 설정 파일 무결성
+3. **MoAI-ADK Structure**
+   - .moai/ directory
+   - .claude/ directory
+   - Configuration file integrity
 
-4. **의존성**
-   - uv 설치 상태
-   - 필수 패키지
-   - 선택적 도구
+4. **Dependencies**
+   - uv installation status
+   - Required packages
+   - Optional tools
 
-### 파일 구조 검증
+### File Structure Verification
 
 ```bash
-# 전체 구조 확인
+# Check overall structure
 tree -L 3
 
-# 핵심 파일 확인
+# Check core files
 ls -la .moai/config.json
 ls -la .claude/settings.json
 ls -la CLAUDE.md
 
-# 에이전트 확인
+# Check agents
 find .claude/agents -name "*.md" | wc -l
-# 예상 출력: 16
+# Expected output: 16
 
-# 스킬 확인
+# Check skills
 find .claude/skills -name "*.md" | wc -l
-# 예상 출력: 74
+# Expected output: 74
 ```
 
-### 설정 파일 검증
+### Configuration File Verification
 
 ```bash
-# config.json 문법 확인
+# Check config.json syntax
 python3 -c "import json; json.load(open('.moai/config.json'))"
 
-# CLAUDE.md 내용 확인
+# Check CLAUDE.md content
 head -20 CLAUDE.md
 
-# Hook 설정 확인
+# Check Hook configuration
 python3 -c "import json; json.load(open('.claude/settings.json'))"
 ```
 
-### Alfred 기능 테스트
+### Alfred Functionality Test
 
 ```bash
-# Claude Code 실행
+# Run Claude Code
 claude
 
-# Alfred 테스트
+# Test Alfred
 /alfred:0-project
 
-# 명령어 목록 확인
+# Check command list
 /help
 
-# 세션 정보 확인
+# Check session info
 /alfred:session-info
 ```
 
-### 샘플 SPEC 생성 테스트
+### Sample SPEC Generation Test
 
 ```bash
-# 간단한 SPEC 생성 테스트
-/alfred:1-plan "간단한 Hello World API"
+# Simple SPEC generation test
+/alfred:1-plan "Simple Hello World API"
 
-# 생성된 SPEC 확인
+# Check generated SPEC
 ls -la .moai/specs/
 cat .moai/specs/SPEC-HELLO-001/spec.md
 ```
 
-## 문제 해결
+## Troubleshooting
 
-### 일반적인 초기화 문제
+### Common Initialization Issues
 
-#### 1. 권한 오류
+#### 1. Permission Errors
 
-**증상**:
+**Symptom**:
 ```
 Permission denied: .moai/config.json
 ```
 
-**원인**: 파일 시스템 권한 문제
+**Cause**: File system permission issue
 
-**해결**:
+**Solution**:
 ```bash
-# 소유자 확인
+# Check owner
 ls -la
 
-# 권한 수정
+# Modify permissions
 chmod 755 .
 chmod 644 .moai/config.json
 
-# 또는 sudo 사용 (권장하지 않음)
+# Or use sudo (not recommended)
 sudo moai-adk init my-project
 ```
 
-#### 2. 경로 오류
+#### 2. Path Errors
 
-**증상**:
+**Symptom**:
 ```
 Error: Directory already exists and is not empty
 ```
 
-**원인**: 대상 디렉토리가 비어있지 않음
+**Cause**: Target directory is not empty
 
-**해결**:
+**Solution**:
 ```bash
-# 방법 1: 빈 디렉토리 생성
+# Method 1: Create empty directory
 mkdir new-project
 cd new-project
 moai-adk init .
 
-# 방법 2: 기존 프로젝트에 추가
+# Method 2: Add to existing project
 moai-adk init . --force
 
-# 방법 3: 다른 이름 사용
+# Method 3: Use different name
 moai-adk init my-project-v2
 ```
 
-#### 3. 네트워크 오류
+#### 3. Network Errors
 
-**증상**:
+**Symptom**:
 ```
 Error: Failed to download template
 ```
 
-**원인**: 인터넷 연결 또는 PyPI 접속 문제
+**Cause**: Internet connection or PyPI access issue
 
-**해결**:
+**Solution**:
 ```bash
-# 네트워크 확인
+# Check network
 ping pypi.org
 
-# 프록시 설정 (필요시)
+# Set proxy (if needed)
 export https_proxy=http://proxy.company.com:8080
 export http_proxy=http://proxy.company.com:8080
 
-# 오프라인 모드 (로컬 템플릿)
+# Offline mode (local template)
 moai-adk init my-project --offline
 ```
 
-#### 4. 버전 호환성 문제
+#### 4. Version Compatibility Issues
 
-**증상**:
+**Symptom**:
 ```
 Error: Python 3.11 found, but 3.13+ required
 ```
 
-**원인**: Python 버전 호환성 문제
+**Cause**: Python version compatibility issue
 
-**해결**:
+**Solution**:
 ```bash
-# pyenv로 Python 버전 관리
+# Manage Python version with pyenv
 pyenv install 3.13.0
 pyenv local 3.13.0
 
-# 또는 uv로 Python 자동 관리
+# Or automatic Python management with uv
 uv python install 3.13
 uv python pin 3.13
 
-# 확인
+# Verify
 python --version
 ```
 
-### 복구 절차
+### Recovery Procedures
 
-#### 초기화 실패 시 복구
+#### Recovery from Failed Initialization
 
 ```bash
 #!/bin/bash
@@ -1381,141 +1380,141 @@ python --version
 
 PROJECT_NAME=$1
 
-# 실패한 디렉토리 정리
+# Clean up failed directory
 echo "🧹 Cleaning up failed initialization..."
 rm -rf "$PROJECT_NAME"
 
-# 시스템 상태 확인
+# Check system state
 echo "<span class="material-icons">search</span> Checking system state..."
 moai-adk doctor
 
-# 재시도
+# Retry
 echo "🔄 Retrying initialization..."
 moai-adk init "$PROJECT_NAME"
 
-# 검증
+# Verify
 echo "✅ Verifying initialization..."
 cd "$PROJECT_NAME"
 moai-adk doctor
 ```
 
-#### 설정 파일 손상 복구
+#### Restore Corrupted Configuration Files
 
 ```bash
-# 설정 파일 백업 확인
+# Check config file backup
 ls -la .moai/backups/
 
-# 백업에서 복원
+# Restore from backup
 cp .moai/backups/config.json.backup .moai/config.json
 
-# 또는 재생성
+# Or regenerate
 moai-adk init . --restore-config
 ```
 
-### 로그 분석
+### Log Analysis
 
-#### 초기화 로그 확인
+#### Check Initialization Logs
 
 ```bash
-# MoAI-ADK 로그 위치
+# MoAI-ADK log location
 ls -la ~/.moai/logs/
 
-# 최신 로그 확인
+# Check latest log
 tail -f ~/.moai/logs/latest.log
 
-# 오류 로그 필터링
+# Filter error logs
 grep "ERROR" ~/.moai/logs/latest.log
 ```
 
-#### Claude Code 로그 확인
+#### Check Claude Code Logs
 
 ```bash
-# Claude Code 로그 위치
+# Claude Code log location
 ls -la ~/.claude/logs/
 
-# 세션 로그 확인
+# Check session logs
 cat ~/.claude/projects/*/session-*.log | tail -20
 ```
 
-## 모범 사례
+## Best Practices
 
-### 프로젝트 명명 규칙
+### Project Naming Conventions
 
 ```bash
-# 좋은 예시
+# Good examples
 moai-adk init user-auth-service
 moai-adk init data-analytics-platform
 moai-adk init mobile-shopping-app
 moai-adk init cli-deployment-tool
 
-# 피해야 할 예시
+# Examples to avoid
 moai-adk init project1
 moai-adk init test
 moai-adk init temp
 moai-adk init my-app-v2.0.1-beta
 ```
 
-### 디렉토리 구조 모범 사례
+### Directory Structure Best Practices
 
-#### 성공적인 프로젝트 구조
+#### Successful Project Structure
 ```
 awesome-api/
-├── .moai/                   # ✅ 명확한 MoAI-ADK 설정
-├── .claude/                 # ✅ Claude Code 자동화
-├── src/                     # ✅ 소스 코드 논리적 분리
-│   ├── core/               # ✅ 핵심 비즈니스 로직
-│   ├── api/                # ✅ API 계층
-│   ├── models/             # ✅ 데이터 모델
-│   └── services/           # ✅ 서비스 계층
-├── tests/                   # ✅ 테스트 코드 분리
-│   ├── unit/               # ✅ 단위 테스트
-│   ├── integration/        # ✅ 통합 테스트
-│   └── e2e/                # ✅ 엔드투엔드 테스트
-├── docs/                    # ✅ 문서화
-├── scripts/                 # ✅ 유틸리티 스크립트
-├── docker/                  # ✅ Docker 설정
-└── README.md                # ✅ 프로젝트 설명
+├── .moai/                   # ✅ Clear MoAI-ADK configuration
+├── .claude/                 # ✅ Claude Code automation
+├── src/                     # ✅ Logical source code separation
+│   ├── core/               # ✅ Core business logic
+│   ├── api/                # ✅ API layer
+│   ├── models/             # ✅ Data models
+│   └── services/           # ✅ Service layer
+├── tests/                   # ✅ Separate test code
+│   ├── unit/               # ✅ Unit tests
+│   ├── integration/        # ✅ Integration tests
+│   └── e2e/                # ✅ End-to-end tests
+├── docs/                    # ✅ Documentation
+├── scripts/                 # ✅ Utility scripts
+├── docker/                  # ✅ Docker configuration
+└── README.md                # ✅ Project description
 ```
 
-### 초기화 체크리스트
+### Initialization Checklist
 
-#### 사전 확인
-- [ ] Python 3.13+ 설치됨
-- [ ] uv 설치됨
-- [ ] Git 설정됨
-- [ ] MoAI-ADK 최신 버전 설치됨
-- [ ] 충분한 디스크 공간 확보
-- [ ] 안정적인 네트워크 연결
+#### Pre-Check
+- [ ] Python 3.13+ installed
+- [ ] uv installed
+- [ ] Git configured
+- [ ] MoAI-ADK latest version installed
+- [ ] Sufficient disk space available
+- [ ] Stable network connection
 
-#### 초기화 중
-- [ ] 적절한 프로젝트 이름 선택
-- [ ] 올바른 템플릿 선택
-- [ ] 권장 도구 설치 확인
-- [ ] 생성되는 파일 구조 이해
+#### During Initialization
+- [ ] Appropriate project name selected
+- [ ] Correct template selected
+- [ ] Recommended tools installation confirmed
+- [ ] Generated file structure understood
 
-#### 초기화 후
-- [ ] `moai-adk doctor` 실행
-- [ ] Git 저장소 초기화
-- [ ] 첫 커밋 생성
-- [ ] `/alfred:0-project` 실행
-- [ ] 샘플 SPEC 생성 테스트
+#### Post-Initialization
+- [ ] Run `moai-adk doctor`
+- [ ] Initialize Git repository
+- [ ] Create first commit
+- [ ] Run `/alfred:0-project`
+- [ ] Test sample SPEC generation
 
-### 팀 협업 모범 사례
+### Team Collaboration Best Practices
 
-#### 팀 표준 설정
+#### Team Standards Setup
 
 ```bash
-# 팀 표준 설정 스크립트
+# Team standards setup script
 #!/bin/bash
 # setup-team-standards.sh
 
-# 팀 공통 설정
+# Team common settings
 export MOAI_DEFAULT_LANGUAGE="ko"
 export MOAI_DEFAULT_OWNER="$(git config user.name)"
 export MOAI_GITHUB_ENABLED="true"
 export MOAI_REPORT_GENERATION="enable"
 
-# 팀 표준 템플릿
+# Team standard templates
 TEAM_TEMPLATES=("web-api" "cli-tool" "data-science")
 
 for template in "${TEAM_TEMPLATES[@]}"; do
@@ -1523,42 +1522,40 @@ for template in "${TEAM_TEMPLATES[@]}"; do
     moai-adk init "example-$template" --template "$template"
     cd "example-$template"
 
-    # 팀 표준 설정 적용
+    # Apply team standard settings
     /alfred:0-project
 
-    # 문서화
+    # Documentation
     echo "<span class="material-icons">menu_book</span> Team standard setup for $template" > TEAM_SETUP.md
 
     cd ..
 done
 ```
 
-#### 문서화 표준
+#### Documentation Standards
 
 ```markdown
-# 팀 프로젝트 초기화 가이드
+# Team Project Initialization Guide
 
-## 1. 프로젝트 생성
+## 1. Project Creation
 ```bash
 moai-adk init project-name --template web-api
 ```
 
-## 2. 초기 설정
-- `/alfred:0-project` 실행
-- 팀 설정 적용
-- GitHub 연동
+## 2. Initial Setup
+- Run `/alfred:0-project`
+- Apply team settings
+- GitHub integration
 
-## 3. 첫 기능 개발
-- `/alfred:1-plan`으로 SPEC 작성
-- `/alfred:2-run`으로 TDD 구현
-- `/alfred:3-sync`로 문서 동기화
+## 3. First Feature Development
+- Write SPEC with `/alfred:1-plan`
+- TDD implementation with `/alfred:2-run`
+- Document sync with `/alfred:3-sync`
 
-## 4. 코드 리뷰
-- PR 생성 시 TAG 체인 확인
-- TRUST 5원칙 검증
-- 자동화된 품질 검사 통과
+## 4. Code Review
+- Check TAG chain when creating PR
+- Verify TRUST 5 principles
+- Pass automated quality checks
 ```
 
 ---
-
-이 가이드를 통해 MoAI-ADK 프로젝트 초기화의 모든 단계를 이해하고 성공적으로 프로젝트를 시작할 수 있습니다. 초기화는 단순한 파일 생성을 넘어, AI 지원 개발을 위한 강력한 기반을 구축하는 과정임을 기억하세요.

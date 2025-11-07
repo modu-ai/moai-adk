@@ -24,6 +24,11 @@
     "🧹 작업 완료 후: '/clear'로 다음 작업을 위해 대화 정리"
   ],
   "env": {},
+  "statusLine": {
+    "type": "command",
+    "command": "python3 -m moai_adk.statusline.main",
+    "padding": 1
+  },
   "hooks": {
     "SessionStart": [
       {
