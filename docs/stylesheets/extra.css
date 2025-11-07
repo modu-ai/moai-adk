@@ -66,13 +66,28 @@
   --md-accent-bg-color--light: rgba(201, 200, 196, 0.1);
 }
 
-/* 코드 블록 테마 색상 조정 */
+/* 코드 블록 테마 색상 조정 - Hack 폰트 적용 */
 .md-content code {
   background-color: var(--md-code-bg-color);
   color: var(--md-code-fg-color);
   padding: 0.2em 0.4em;
   border-radius: 3px;
   font-size: 0.9em;
+  font-family: 'Hack', 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
+}
+
+/* 명령어 박스 좌우 패딩 추가 */
+.md-typeset .highlight {
+  padding: 1em !important;
+  margin-left: 0.5em !important;
+  margin-right: 0.5em !important;
+  font-family: 'Hack', 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
+}
+
+.md-typeset .highlight pre {
+  margin: 0 !important;
+  padding: 0.5em !important;
+  font-family: 'Hack', 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
 }
 
 /* Mermaid 다이어그램 테마 조정 */

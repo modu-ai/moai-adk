@@ -16,6 +16,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
+  <!-- Hack monospace font for code blocks -->
+  <link href="https://fonts.googleapis.com/css2?family=Hack:wght@400;700&display=swap" rel="stylesheet">
+
   <style>
     /* Neutral Color Palette - Direct Material Theme Override */
 
@@ -415,7 +418,7 @@
     /* Code blocks - monospace for all languages with neutral styling */
     .md-typeset code,
     .md-typeset pre {
-      font-family: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
+      font-family: 'Hack', 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
       font-feature-settings: 'liga' 0;
       font-variant-ligatures: none;
       background-color: var(--bg-surface-muted);
@@ -423,6 +426,25 @@
       border: 1px solid var(--border-light);
       border-radius: 6px;
       transition: background-color var(--transition-normal), color var(--transition-normal), border-color var(--transition-normal);
+    }
+
+    /* Code block padding - add left and right padding */
+    .md-typeset .highlight {
+      padding: 1em !important;
+      margin-left: 0.5em;
+      margin-right: 0.5em;
+    }
+
+    .md-typeset .highlight pre {
+      margin: 0 !important;
+      padding: 0.5em !important;
+    }
+
+    /* Command box padding adjustments */
+    .md-typeset .codehilite {
+      padding: 1em !important;
+      margin-left: 0.5em;
+      margin-right: 0.5em;
     }
 
     .md-typeset code {
