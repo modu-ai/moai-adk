@@ -1,94 +1,94 @@
 # Translation Contributing Guide
 
-MoAI-ADK 문서 번역에 기여해 주셔서 감사합니다! 이 가이드는 번역 작업을 시작하는 방법을 안내합니다.
+Thank you for contributing to MoAI-ADK documentation translation! This guide will help you get started with translation work.
 
 ## 📊 Current Translation Status
 
-번역 현황을 확인하려면 [Translation Status Dashboard](../translation-status.md)를 참조하세요.
+To check the current translation status, see the [Translation Status Dashboard](../translation-status.md).
 
 ## 🌍 Supported Languages
 
-현재 지원하는 언어:
+Currently supported languages:
 
-- **English (en)** - 영어
-- **Japanese (ja)** - 일본어
-- **Chinese (zh)** - 중국어 (간체)
+- **English (en)** - English
+- **Japanese (ja)** - Japanese
+- **Chinese (zh)** - Chinese (Simplified)
 
 ## 🚀 Quick Start
 
-### 1. 번역할 파일 선택
+### 1. Select a File to Translate
 
-[Translation Status Dashboard](../translation-status.md)에서 누락된 파일 목록을 확인하세요.
+Check the list of missing files in the [Translation Status Dashboard](../translation-status.md).
 
-각 언어별로 번역이 필요한 파일이 표시됩니다.
+Files requiring translation are displayed for each language.
 
-### 2. 파일 구조 이해
+### 2. Understand File Structure
 
 ```
 docs/src/
-├── index.md                    # 한국어 (기본)
+├── index.md                    # Korean (default)
 ├── getting-started/
 │   ├── installation.md
 │   └── quick-start.md
-├── en/                         # 영어 번역
+├── en/                         # English translation
 │   ├── getting-started/
 │   │   ├── installation.md
 │   │   └── quick-start.md
-├── ja/                         # 일본어 번역
+├── ja/                         # Japanese translation
 │   └── ...
-└── zh/                         # 중국어 번역
+└── zh/                         # Chinese translation
     └── ...
 ```
 
-**핵심 원칙**:
-- 한국어 원본: `docs/src/` 루트 및 하위 디렉토리
-- 번역본: `docs/src/{언어코드}/` 하위에 동일한 디렉토리 구조 유지
+**Core Principles**:
+- Korean originals: `docs/src/` root and subdirectories
+- Translations: Maintain identical directory structure under `docs/src/{language-code}/`
 
-### 3. 번역 작업 시작
+### 3. Start Translation Work
 
-#### 방법 A: GitHub Web UI 사용
+#### Method A: Using GitHub Web UI
 
-1. GitHub에서 번역할 파일 찾기
-2. "Edit" 버튼 클릭
-3. 번역 내용 작성
-4. "Propose changes" 클릭
-5. Pull Request 생성
+1. Find the file to translate on GitHub
+2. Click the "Edit" button
+3. Write your translation
+4. Click "Propose changes"
+5. Create a Pull Request
 
-#### 방법 B: 로컬 환경 사용
+#### Method B: Using Local Environment
 
 ```bash
-# 1. Repository fork 및 clone
+# 1. Fork and clone repository
 git clone https://github.com/YOUR_USERNAME/moai-adk.git
 cd moai-adk
 
-# 2. 번역 브랜치 생성
+# 2. Create translation branch
 git checkout -b translate-ja-getting-started
 
-# 3. 번역 파일 생성
-# 예: docs/src/getting-started/installation.md를 일본어로 번역
+# 3. Create translation file
+# Example: Translate docs/src/getting-started/installation.md to Japanese
 mkdir -p docs/src/ja/getting-started
 cp docs/src/getting-started/installation.md docs/src/ja/getting-started/installation.md
 
-# 4. 파일 번역 (에디터로 열어서 작업)
+# 4. Translate the file (open with your editor)
 
-# 5. 변경사항 확인
+# 5. Check changes
 python docs/scripts/check_translation_status.py
 
-# 6. Commit 및 Push
+# 6. Commit and push
 git add docs/src/ja/
 git commit -m "docs: Add Japanese translation for installation guide"
 git push origin translate-ja-getting-started
 
-# 7. GitHub에서 Pull Request 생성
+# 7. Create Pull Request on GitHub
 ```
 
 ## 📝 Translation Guidelines
 
-### 용어 통일
+### Terminology Consistency
 
-주요 기술 용어는 가급적 원어를 유지하되, 필요시 번역 후 괄호에 원어를 병기합니다.
+Keep technical terms in their original form when possible, or translate and add the original in parentheses.
 
-| 한국어 | English | Japanese | Chinese |
+| Korean | English | Japanese | Chinese |
 |--------|---------|----------|---------|
 | SPEC | SPEC | SPEC | SPEC |
 | TAG | TAG | TAG | TAG |
@@ -97,15 +97,15 @@ git push origin translate-ja-getting-started
 | 요구사항 | Requirements | 要件 | 需求 |
 | 구현 | Implementation | 実装 | 实现 |
 
-### 문체
+### Writing Style
 
-- **공손하고 전문적인 톤** 유지
-- **2인칭 사용**: "당신"(한국어), "you"(영어), "あなた"(일본어), "您"(중국어)
-- **명확하고 간결한 표현** 사용
+- Maintain **polite and professional tone**
+- Use **second person**: "you" (English), "당신" (Korean), "あなた" (Japanese), "您" (Chinese)
+- Use **clear and concise expressions**
 
-### 코드 블록
+### Code Blocks
 
-코드 예제는 번역하지 않고 원본 유지:
+Keep code examples as-is without translation:
 
 ```python
 # Keep code as-is (do not translate comments in code blocks)
@@ -113,9 +113,9 @@ def hello_world():
     print("Hello, World!")
 ```
 
-### 링크 및 참조
+### Links and References
 
-- **내부 링크**: 번역된 페이지가 있으면 해당 언어 경로로 변경
+- **Internal links**: Change to the translated language path if the page exists
   ```markdown
   <!-- Korean -->
   [설치 가이드](getting-started/installation.md)
@@ -124,57 +124,57 @@ def hello_world():
   [Installation Guide](../en/getting-started/installation.md)
   ```
 
-- **외부 링크**: 가능하면 해당 언어 버전 링크로 변경
+- **External links**: Change to the language-specific version if available
 
 ## ✅ Quality Checklist
 
-번역 완료 후 다음 사항을 확인하세요:
+After completing your translation, verify the following:
 
-- [ ] **파일 구조**: 한국어 원본과 동일한 디렉토리 구조 유지
-- [ ] **파일 이름**: 원본과 동일한 파일명 사용
-- [ ] **마크다운 문법**: 제목, 링크, 코드 블록 등 문법 오류 없음
-- [ ] **용어 통일**: 주요 용어가 일관되게 번역됨
-- [ ] **코드 유지**: 코드 예제는 원본 그대로 유지
-- [ ] **링크 검증**: 내부/외부 링크가 올바르게 작동
-- [ ] **로컬 빌드 테스트**: `mkdocs serve`로 렌더링 확인
+- [ ] **File structure**: Maintains identical directory structure to Korean original
+- [ ] **File name**: Uses same filename as original
+- [ ] **Markdown syntax**: No errors in headings, links, code blocks, etc.
+- [ ] **Terminology consistency**: Key terms are translated consistently
+- [ ] **Code preservation**: Code examples are kept as-is
+- [ ] **Link validation**: Internal/external links work correctly
+- [ ] **Local build test**: Verify rendering with `mkdocs serve`
 
 ## 🔍 Testing Your Translation
 
-로컬에서 번역 결과를 확인하려면:
+To check your translation results locally:
 
 ```bash
-# 1. Documentation dependencies 설치
+# 1. Install documentation dependencies
 cd docs
 pip install -r requirements.txt
 
-# 2. MkDocs 개발 서버 실행
+# 2. Run MkDocs development server
 mkdocs serve
 
-# 3. 브라우저에서 확인
+# 3. Check in browser
 # http://localhost:8000
 ```
 
 ## 🤝 Review Process
 
-1. **Pull Request 생성**: 번역 완료 후 PR 제출
-2. **자동 검증**: CI/CD가 문법 및 링크 검증 자동 수행
-3. **리뷰**: 메인테이너 또는 언어별 리뷰어가 검토
-4. **수정 요청**: 필요시 피드백 반영
-5. **병합**: 승인 후 main 브랜치에 병합
+1. **Create Pull Request**: Submit PR after completing translation
+2. **Automated validation**: CI/CD automatically validates syntax and links
+3. **Review**: Maintainer or language-specific reviewer examines the work
+4. **Revision request**: Apply feedback if needed
+5. **Merge**: Merge to main branch after approval
 
 ## 📧 Contact
 
-질문이나 도움이 필요하시면:
+If you have questions or need help:
 
 - **GitHub Issues**: [moai-adk/issues](https://github.com/modu-ai/moai-adk/issues)
 - **GitHub Discussions**: [moai-adk/discussions](https://github.com/modu-ai/moai-adk/discussions)
 
 ## 🎖️ Contributors
 
-번역에 기여해 주신 분들:
+Contributors to translations:
 
-- 기여자 목록은 [Contributors](https://github.com/modu-ai/moai-adk/graphs/contributors)에서 확인할 수 있습니다.
+- The contributor list can be found at [Contributors](https://github.com/modu-ai/moai-adk/graphs/contributors).
 
 ---
 
-**감사합니다!** 여러분의 기여로 MoAI-ADK가 더 많은 사용자에게 다가갈 수 있습니다. 🌏
+**Thank you!** Your contributions help MoAI-ADK reach more users worldwide. 🌏
