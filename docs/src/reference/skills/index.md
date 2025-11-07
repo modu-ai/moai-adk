@@ -59,9 +59,9 @@ MoAI-ADK의 55개+ Claude Skills 완전 가이드입니다.
 
 | 스킬                      | 설명                                                       | 문서                                 |
 | ------------------------- | ---------------------------------------------------------- | ------------------------------------ |
-| **moai-foundation-trust** | TRUST 5 원칙 (Test, Readable, Unified, Secured, Trackable) | [TRUST 5](../foundations/trust.md)   |
-| **moai-foundation-tags**  | TAG 시스템 및 추적성 (@SPEC, @TEST, @CODE, @DOC)           | [TAG 시스템](../foundations/tags.md) |
-| **moai-alfred-workflow**  | Alfred 4단계 워크플로우                                    | [Workflow](../alfred/workflow.md)    |
+| **moai-foundation-trust** | TRUST 5 원칙 (Test, Readable, Unified, Secured, Trackable) | Foundation |
+| **moai-foundation-tags**  | TAG 시스템 및 추적성 (@SPEC, @TEST, @CODE, @DOC)           | Foundation |
+| **moai-alfred-workflow**  | Alfred 4단계 워크플로우                                    | Alfred    |
 
 ### 2️⃣ Essentials (필수 스킬)
 
@@ -236,7 +236,7 @@ Alfred (의도 분석)
 
 ### "필요한 Skill이 없습니다"
 
-→ [Skill Factory](../../guides/skills/factory.md)에서 새 Skill 생성 가능
+→ 요청하거나 새로운 Skill 제안을 GitHub Issues에서 할 수 있습니다
 
 ### "Skill을 수동으로 로드하고 싶습니다"
 
