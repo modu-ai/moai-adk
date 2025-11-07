@@ -2,7 +2,7 @@
 name: debug-helper
 description: "Use when: When a runtime error occurs and it is necessary to analyze the cause and suggest a solution."
 tools: Read, Grep, Glob, Bash, TodoWrite
-model: sonnet
+model: inherit
 ---
 
 # Debug Helper - Integrated debugging expert
