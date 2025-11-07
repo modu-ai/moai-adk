@@ -101,6 +101,262 @@ MoAI-ADK follows a simple 4-step workflow:
 
 ---
 
+## 🧠 How Alfred Processes Your Instructions - Detailed Workflow Analysis
+
+Alfred orchestrates the complete development lifecycle through a systematic 4-step workflow. Here's how Alfred understands, plans, executes, and validates your requests:
+
+### Step 1: Intent Understanding
+
+**Goal**: Clarify user intent before any action
+
+**How it works:**
+- Alfred evaluates request clarity:
+  - **HIGH clarity**: Technical stack, requirements, scope all specified → Skip to Step 2
+  - **MEDIUM/LOW clarity**: Multiple interpretations possible → Alfred uses `AskUserQuestion` to clarify
+
+**When Alfred asks clarifying questions:**
+- Ambiguous requests (multiple interpretations)
+- Architecture decisions needed
+- Technology stack selections required
+- Business/UX decisions involved
+
+**Example:**
+```
+User: "Add authentication to the system"
+
+Alfred's Analysis:
+- Is it JWT, OAuth, or session-based? (UNCLEAR)
+- Which authentication flow? (UNCLEAR)
+- Multi-factor authentication needed? (UNCLEAR)
+
+Action: Ask clarifying questions via AskUserQuestion
+```
+
+### Step 2: Plan Creation
+
+**Goal**: Create a pre-approved execution strategy
+
+**Process:**
+1. **Mandatory Plan Agent Invocation**: Alfred calls the Plan agent to:
+   - Decompose tasks into structured steps
+   - Identify dependencies between tasks
+   - Determine single vs parallel execution opportunities
+   - Specify exactly which files will be created/modified/deleted
+   - Estimate work scope and expected time
+
+2. **User Plan Approval**: Alfred presents the plan via AskUserQuestion:
+   - Share the complete file change list in advance
+   - Explain implementation approach clearly
+   - Disclose risk factors in advance
+
+3. **TodoWrite Initialization**: Create task list based on approved plan:
+   - List all task items explicitly
+   - Define clear completion criteria for each task
+
+**Example Plan for Authentication SPEC:**
+```markdown
+## Plan for SPEC-AUTH-001
+
+### Files to be Created
+- .moai/specs/SPEC-AUTH-001/spec.md
+- .moai/specs/SPEC-AUTH-001/plan.md
+- .moai/specs/SPEC-AUTH-001/acceptance.md
+
+### Implementation Phases
+1. RED: Write failing authentication tests
+2. GREEN: Implement JWT token service
+3. REFACTOR: Improve error handling and security
+4. SYNC: Update documentation
+
+### Risks
+- Third-party service integration latency
+- Token storage security considerations
+```
+
+### Step 3: Task Execution (Strict TDD Compliance)
+
+**Goal**: Execute tasks following TDD principles with transparent progress tracking
+
+**TDD Execution Cycle:**
+
+**1. RED Phase** - Write failing tests first
+- Write test code ONLY
+- Tests should fail (intentionally)
+- No implementation code changes
+- Track progress: `TodoWrite: "RED: Write failing tests" → in_progress`
+
+**2. GREEN Phase** - Minimal code to make tests pass
+- Add ONLY minimal code necessary for test passing
+- No over-engineering
+- Focus on making tests pass
+- Track progress: `TodoWrite: "GREEN: Minimal implementation" → in_progress`
+
+**3. REFACTOR Phase** - Improve code quality
+- Improve design while maintaining test passing
+- Remove code duplication
+- Enhance readability and maintainability
+- Track progress: `TodoWrite: "REFACTOR: Improve code quality" → in_progress`
+
+**TodoWrite Rules:**
+- Each task: `content` (imperative), `activeForm` (present continuous), `status` (pending/in_progress/completed)
+- **Exactly ONE task in_progress** at any time
+- **Real-time Update Obligation**: Immediate status change on task start/completion
+- **Strict Completion Criteria**: Mark completed only when tests pass, implementation complete, and error-free
+
+**Forbidden during execution:**
+- ❌ Implementation code changes during RED phase
+- ❌ Over-engineering during GREEN phase
+- ❌ Task execution without TodoWrite tracking
+- ❌ Code generation without tests
+
+**Real-World Example - Agent Model Directive Change:**
+
+*Context:* User requested changing all agent model directives from `sonnet` to `inherit` to enable dynamic model selection
+
+**Plan Approval:**
+- 26 files to change (13 local + 13 template files)
+- Files clearly identified: `implementation-planner.md`, `spec-builder.md`, etc.
+- Risk: Merge conflicts on develop branch → Mitigated with `-X theirs` strategy
+
+**RED Phase:**
+- Write tests validating all agent files have `model: inherit`
+- Verify template files match local files
+
+**GREEN Phase:**
+- Update 13 local agent files: `model: sonnet` → `model: inherit`
+- Update 13 template agent files using Python script for portability
+- Verify no other model directives changed
+
+**REFACTOR Phase:**
+- Review agent file consistency
+- Ensure no orphaned changes
+- Validate pre-commit hook passes
+
+**Result:**
+- All 26 files successfully updated
+- Pre-commit @TAG validation passed
+- Feature branch merged to develop with clean history
+
+### Step 4: Report & Commit
+
+**Goal**: Document work and create git history on demand
+
+**Configuration Compliance First:**
+- Check `.moai/config.json` `report_generation` settings
+- If `enabled: false` → Provide status reports only, NO file generation
+- If `enabled: true` AND user explicitly requests → Generate documentation files
+
+**Git Commit:**
+- Call git-manager for all Git operations
+- Follow TDD commit cycle: RED → GREEN → REFACTOR
+- Each commit message captures the workflow phase and purpose
+
+**Example Commit Sequence:**
+
+```bash
+# RED: Write failing tests
+commit 1: "test: Add authentication integration tests"
+
+# GREEN: Minimal implementation
+commit 2: "feat: Implement JWT token service (minimal)"
+
+# REFACTOR: Improve quality
+commit 3: "refactor: Enhance JWT error handling and security"
+
+# Merge to develop
+commit 4: "merge: Merge SPEC-AUTH-001 to develop"
+```
+
+**Project Cleanup:**
+- Delete unnecessary temporary files
+- Remove excessive backups
+- Keep workspace organized and clean
+
+---
+
+### Visual Workflow Overview
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ USER REQUEST                                            │
+│ "Add JWT authentication to the system"                  │
+└────────────────┬────────────────────────────────────────┘
+                 │
+                 ▼
+        ┌────────────────────┐
+        │ STEP 1: UNDERSTAND │
+        │  Intent Clarity?   │
+        └────────┬───────────┘
+                 │
+         ┌───────┴─────────┐
+         │                 │
+      HIGH            MEDIUM/LOW
+       │                  │
+     Skip     ┌──────────────────────┐
+     to       │ Ask Clarifying Qs    │
+    STEP 2    │ (AskUserQuestion)    │
+             └──────────┬───────────┘
+                       │
+                       ▼
+                    User Responds
+                       │
+                       ▼
+        ┌────────────────────────┐
+        │  STEP 2: PLAN          │
+        │  • Call Plan Agent     │
+        │  • Get User Approval   │
+        │  • Init TodoWrite      │
+        └────────┬───────────────┘
+                 │
+        Approved by User
+                 │
+                 ▼
+        ┌────────────────────────┐
+        │  STEP 3: EXECUTE       │
+        │  RED → GREEN → REFACTOR│
+        │  Real-time TodoWrite   │
+        │  Complete Tests        │
+        └────────┬───────────────┘
+                 │
+           All Tasks Done
+                 │
+                 ▼
+        ┌────────────────────────┐
+        │  STEP 4: REPORT        │
+        │  • Check Config        │
+        │  • Git Commit          │
+        │  • Cleanup Files       │
+        └────────────────────────┘
+```
+
+---
+
+### Key Decision Points
+
+| Scenario | Alfred's Action | Outcome |
+|----------|-----------------|---------|
+| Clear, specific request | Skip to Step 2 (Plan) | Fast execution |
+| Ambiguous request | AskUserQuestion in Step 1 | Correct understanding |
+| Large multi-file changes | Plan Agent identifies all files | Complete visibility |
+| Test failures during GREEN | Continue REFACTOR → Investigate | Quality maintained |
+| Configuration conflicts | Check `.moai/config.json` first | Respect user settings |
+
+---
+
+### Quality Validation
+
+After all 4 steps complete, Alfred validates:
+
+✅ **Intent Understanding**: User intent clearly defined and approved?
+✅ **Plan Creation**: Plan Agent plan created and user approved?
+✅ **TDD Compliance**: RED-GREEN-REFACTOR cycle strictly followed?
+✅ **Real-time Tracking**: All tasks transparently tracked with TodoWrite?
+✅ **Configuration Compliance**: `.moai/config.json` settings strictly followed?
+✅ **Quality Assurance**: All tests pass and code quality guaranteed?
+✅ **Cleanup Complete**: Unnecessary files cleaned and project in clean state?
+
+---
+
 ## The @TAG System
 
 Every artifact in your project gets a unique `@TAG` identifier:
