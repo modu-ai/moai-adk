@@ -25,16 +25,16 @@ plugins:
         - ja
         - zh
   - i18n:
-      default_language: ko
       docs_structure: folder
       fallback_to_default: true
-      reconfigure_material: true
-      reconfigure_search: true
+      default_language: ko
       languages:
         ko:
+          locale: ko
           name: 한국어
           build: true
         en:
+          locale: en
           name: English
           build: true
           nav_translations:
@@ -91,6 +91,7 @@ plugins:
             릴리즈 프로세스: Release Process
             코드 스타일: Code Style
         ja:
+          locale: ja
           name: 日本語
           build: true
           nav_translations:
@@ -147,6 +148,7 @@ plugins:
             릴리즈 프로세스: リリースプロセス
             코드 스타일: コードスタイル
         zh:
+          locale: zh
           name: 中文
           build: true
           nav_translations:

@@ -76,18 +76,41 @@
   font-family: 'Hack', 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
 }
 
-/* 명령어 박스 좌우 패딩 추가 */
-.md-typeset .highlight {
-  padding: 1em !important;
-  margin-left: 0.5em !important;
-  margin-right: 0.5em !important;
+/* 명령어 박스 좌우 패딩 추가 - 강력한 선택자 */
+div.highlight {
+  padding: 1.2em 1.5em !important;
+  margin: 1.5em 0.5em !important;
+  font-family: 'Hack', 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
+  background-color: var(--md-default-bg-color) !important;
+}
+
+div.highlight pre {
+  margin: 0 !important;
+  padding: 0 !important;
+  background-color: transparent !important;
   font-family: 'Hack', 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
 }
 
-.md-typeset .highlight pre {
-  margin: 0 !important;
-  padding: 0.5em !important;
+div.highlight code {
   font-family: 'Hack', 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
+  background-color: transparent !important;
+  padding: 0 !important;
+}
+
+/* 언어별 코드 블록 - 직접 스타일 */
+.language-bash, .language-python, .language-javascript, .language-typescript,
+.language-java, .language-csharp, .language-php, .language-ruby, .language-go,
+.language-rust, .language-kotlin, .language-swift, .language-sql, .language-html,
+.language-css, .language-yaml, .language-json, .language-xml, .language-markdown,
+.language-shell, .language-bash, .language-zsh, .language-text {
+  padding: 1.2em 1.5em !important;
+  margin: 1.5em 0.5em !important;
+}
+
+/* 코드블록 내부 패딩 조정 */
+.highlight > pre {
+  padding: 0 !important;
+  margin: 0 !important;
 }
 
 /* Mermaid 다이어그램 테마 조정 */
