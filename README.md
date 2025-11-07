@@ -82,6 +82,82 @@ Complete traceability system linking all artifacts:
 
 ---
 
+## 📍 Claude Code Statusline Integration (v0.20.1+)
+
+MoAI-ADK statusline displays **real-time development status** in Claude Code's terminal status bar. See your model, version, Git branch, and file changes at a glance.
+
+### 📊 Statusline Format
+
+```
+🤖 Haiku 4.5 | 🗿 Ver 0.20.1 | 📊 Git: develop | Changes: +0 M0 ?0
+```
+
+| Item | Icon | Meaning | Example |
+|------|------|---------|---------|
+| **Model** | 🤖 | Active Claude model | Haiku 4.5, Sonnet 4.5 |
+| **Version** | 🗿 | MoAI-ADK version | 0.20.1 |
+| **Git Branch** | 📊 | Current working branch | develop, feature/SPEC-001 |
+| **Changes** | - | Git file status | +0 M0 ?0 |
+
+### 📝 Changes Notation Explained
+
+```
+Changes: +staged Mmodified ?untracked
+
++0  = Number of staged files (git add'ed files)
+M0  = Number of modified files (not yet git add'ed)
+?0  = Number of untracked new files
+```
+
+### 💡 Examples
+
+| Situation | Display | Meaning |
+|-----------|---------|---------|
+| Clean state | `Changes: +0 M0 ?0` | All changes committed |
+| Files modified | `Changes: +0 M2 ?0` | 2 files modified (need git add) |
+| New file created | `Changes: +0 M0 ?1` | 1 new file (need git add) |
+| Ready to commit | `Changes: +3 M0 ?0` | 3 files staged (ready to commit) |
+| Work in progress | `Changes: +2 M1 ?1` | Mixed state: 2 staged + 1 modified + 1 untracked |
+
+### 🎯 Three Rendering Modes
+
+**Compact Mode** (default, ≤80 chars):
+```
+🤖 Haiku 4.5 | 🗿 Ver 0.20.1 | 📊 Git: develop | Changes: +0 M0 ?0
+```
+
+**Extended Mode** (≤120 chars):
+```
+🤖 Haiku 4.5 | 🗿 Ver 0.20.1 | 📊 Git: feature/SPEC-001 | Changes: +2 M1 ?0 | [PLAN]
+```
+
+**Minimal Mode** (≤40 chars):
+```
+🤖 H 4.5 | 🗿 Ver 0.20.1
+```
+
+### ⚙️ Configuration
+
+Change statusline mode in `.claude/settings.json`:
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "python3 -m moai_adk.statusline.main",
+    "padding": 1
+  }
+}
+```
+
+Or use environment variable:
+
+```bash
+export MOAI_STATUSLINE_MODE=extended
+```
+
+---
+
 ## 🆕 Latest Features: Phase 1 & Phase 2 (v0.20.1+)
 
 ### Phase 1: Multi-Language Code Directory Detection + Auto-Correction
