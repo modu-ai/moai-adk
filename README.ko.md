@@ -425,22 +425,41 @@ cp .moai/config.json .moai/config.json.backup
 - ❌ 파이프라인 상태 추적 불가
 - ❌ 자동화된 TDD 워크플로우 사용 불가
 
-##### 6️⃣ 자동 설정 상태 체크 (SessionStart Hook)
+##### 6️⃣ 자동 설정 상태 체크 및 대화형 제안 (SessionStart Hook)
 
-Claude Code 세션이 시작될 때마다 MoAI-ADK는 **자동으로** 프로젝트 설정 상태를 확인합니다:
+Claude Code 세션이 시작될 때마다 MoAI-ADK는 **자동으로** 프로젝트 설정 상태를 확인하고, 필요시 사용자에게 대화형으로 진행 옵션을 제시합니다:
 
 **자동 체크 항목**
 
-| 항목 | 확인 사항 | 제안 액션 |
-|------|---------|---------|
-| 설정 존재 여부 | `.moai/config.json` 파일 존재 확인 | 없으면: `/alfred:0-project` 실행 필수 |
-| 설정 완성도 | 필수 설정 섹션(project, language, git_strategy 등) 확인 | 누락되면: `/alfred:0-project` 재실행 |
-| 설정 업데이트 | 설정 파일 생성 시간 확인 (30일 이상 오래된 경우) | 30일 이상: `/alfred:0-project` 권장 |
-| 버전 일치 | 설치된 moai-adk 버전과 설정 버전 비교 | 불일치: `/alfred:0-project` 재실행 |
+| 항목 | 확인 사항 | 상황 |
+|------|---------|------|
+| 설정 존재 여부 | `.moai/config.json` 파일 존재 확인 | 없으면 제안 표시 |
+| 설정 완성도 | 필수 설정 섹션(project, language, git_strategy 등) 확인 | 누락되면 제안 표시 |
+| 설정 업데이트 | 설정 파일 생성 시간 확인 (30일 이상 오래된 경우) | 30일 이상 오래되면 제안 표시 |
+| 버전 일치 | 설치된 moai-adk 버전과 설정 버전 비교 | 불일치 시 제안 표시 |
 
-**SessionStart Hook이 제안하는 경우**
+**SessionStart Hook 사용자 상호작용**
 
-Claude Code 세션 시작 시 다음 중 하나라도 해당되면 자동으로 안내가 표시됩니다:
+설정 이슈가 감지되면, 사용자에게 다음과 같이 대화형 선택을 제시합니다:
+
+```
+📋 Configuration Health Check:
+❌ 프로젝트 설정 없음
+⚠️  필수 설정 누락
+
+다음 중 하나를 선택하세요:
+
+1️⃣ Initialize Project
+   → /alfred:0-project 실행하여 새로운 프로젝트 초기화
+
+2️⃣ Update Settings
+   → /alfred:0-project 실행하여 기존 설정 업데이트/검증
+
+3️⃣ Skip for Now
+   → 경고 무시하고 현재 설정으로 진행 (권장 안 함)
+```
+
+또는 설정이 양호한 경우:
 
 ```
 📋 Configuration Health Check:
@@ -448,16 +467,20 @@ Claude Code 세션 시작 시 다음 중 하나라도 해당되면 자동으로 
 ✅ 최근 설정: 2일 전
 ✅ 버전 일치: 0.21.1
 
-(또는)
-
-⚠️  설정 누락: language.conversation_language
-⏰ 설정 오래됨: 45일 전 (업데이트 권장)
-
-💡 Suggestion: Run /alfred:0-project to update/initialize configuration
+모든 설정이 정상입니다!
 ```
+
+**선택 항목 설명**
+
+| 선택 | 용도 | 언제 사용 |
+|------|------|---------|
+| **Initialize Project** | 새로운 프로젝트 설정 생성 | 처음 프로젝트를 시작할 때 |
+| **Update Settings** | 기존 설정 업데이트/검증 | 버전 업그레이드 후, 설정 수정 시, 30일 이상 오래됨 |
+| **Skip for Now** | 제안 무시하고 계속 진행 | 설정 수정 중단, 다른 작업 진행 (⚠️ 권장 안 함) |
 
 **자동 설정 제안의 이점**
 
+- ✅ **대화형 선택**: AskUserQuestion을 통한 직관적인 선택
 - ✅ **수동 확인 불필요**: 세션 시작 시 자동으로 상태 확인
 - ✅ **항상 동기화**: 설정이 항상 최신 상태 유지
 - ✅ **버전 호환성**: Alfred 업그레이드 후 설정 미스매치 감지

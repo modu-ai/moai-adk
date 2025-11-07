@@ -202,6 +202,7 @@ def main() -> None:
     """Main entry point for configuration health check hook
 
     Displays configuration status and suggests updates if needed.
+    If configuration issues detected, prompts user for action via AskUserQuestion.
 
     Exit Codes:
         0: Success
@@ -218,19 +219,47 @@ def main() -> None:
         # Check if we should suggest update
         should_update = should_suggest_update()
 
-        # Build system message
+        # Build system message with health check report
         system_message = f"📋 Configuration Health Check:\n{config_report}"
 
         if should_update:
-            system_message += (
-                "\n\n💡 Suggestion: Run /alfred:0-project to update/initialize configuration"
-            )
+            system_message += "\n\n⚠️  Configuration issues detected. Please take action."
 
-        # Return response
+        # Prepare response
         result: dict[str, Any] = {
             "continue": True,
             "systemMessage": system_message
         }
+
+        # If issues detected, add AskUserQuestion to prompt user for action
+        if should_update:
+            # Build question choices
+            question_data = {
+                "questions": [
+                    {
+                        "question": "프로젝트 설정 상태를 확인했습니다. 다음 중 진행할 작업을 선택하세요:",
+                        "header": "Project Configuration",
+                        "multiSelect": False,
+                        "options": [
+                            {
+                                "label": "Initialize Project",
+                                "description": "Run /alfred:0-project to initialize new project configuration"
+                            },
+                            {
+                                "label": "Update Settings",
+                                "description": "Run /alfred:0-project to update/verify existing configuration"
+                            },
+                            {
+                                "label": "Skip for Now",
+                                "description": "Continue without configuration update (not recommended)"
+                            }
+                        ]
+                    }
+                ]
+            }
+
+            # Add prompt data to result
+            result["askUserQuestion"] = question_data
 
         print(json.dumps(result))
         sys.exit(0)
