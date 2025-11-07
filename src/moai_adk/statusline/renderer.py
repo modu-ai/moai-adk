@@ -74,7 +74,7 @@ class StatuslineRenderer:
 
     def _build_compact_parts(self, data: StatuslineData) -> List[str]:
         """
-        Build parts list for compact mode
+        Build parts list for compact mode with labeled sections
 
         Args:
             data: StatuslineData instance
@@ -83,14 +83,14 @@ class StatuslineRenderer:
             List of parts to be joined
         """
         parts = [
-            f"{data.model} {data.duration}",
-            data.directory,
-            data.version,
-            data.branch,
+            f"🤖 {data.model} ({data.duration})",
+            f"📁 {data.directory}",
+            f"Ver {data.version}",
+            f"Git: {data.branch}",
         ]
 
         if data.git_status:
-            parts.append(data.git_status)
+            parts.append(f"📊 {data.git_status}")
 
         # Only add active_task if it's not empty
         if data.active_task.strip():
@@ -110,16 +110,16 @@ class StatuslineRenderer:
             Truncated statusline string
         """
         # Try with truncated branch first
-        truncated_branch = self._truncate_branch(data.branch)
+        truncated_branch = self._truncate_branch(data.branch, max_length=18)
         parts = [
-            f"{data.model} {data.duration}",
-            data.directory,
-            data.version,
-            truncated_branch,
+            f"🤖 {data.model} ({data.duration})",
+            f"📁 {data.directory}",
+            f"Ver {data.version}",
+            f"Git: {truncated_branch}",
         ]
 
         if data.git_status:
-            parts.append(data.git_status)
+            parts.append(f"📊 {data.git_status}")
 
         # Only add active_task if it's not empty
         if data.active_task.strip():
@@ -127,7 +127,34 @@ class StatuslineRenderer:
 
         result = " | ".join(parts)
 
-        # If still too long, fall back to minimal
+        # If still too long, try more aggressive branch truncation
+        if len(result) > max_length:
+            truncated_branch = self._truncate_branch(data.branch, max_length=12)
+            parts = [
+                f"🤖 {data.model} ({data.duration})",
+                f"📁 {data.directory}",
+                f"Ver {data.version}",
+                f"Git: {truncated_branch}",
+            ]
+            if data.git_status:
+                parts.append(f"📊 {data.git_status}")
+            if data.active_task.strip():
+                parts.append(data.active_task)
+            result = " | ".join(parts)
+
+        # If still too long, remove git_status last (it's less critical)
+        if len(result) > max_length:
+            parts = [
+                f"🤖 {data.model} ({data.duration})",
+                f"📁 {data.directory}",
+                f"Ver {data.version}",
+                f"Git: {truncated_branch}",
+            ]
+            if data.active_task.strip():
+                parts.append(data.active_task)
+            result = " | ".join(parts)
+
+        # Final fallback to minimal if still too long
         if len(result) > max_length:
             result = self._render_minimal(data)
 
@@ -135,7 +162,7 @@ class StatuslineRenderer:
 
     def _render_extended(self, data: StatuslineData) -> str:
         """
-        Render extended mode: Full path and detailed info
+        Render extended mode: Full path and detailed info with labels
         Constraint: <= 120 characters
 
         Args:
@@ -145,15 +172,15 @@ class StatuslineRenderer:
             Formatted statusline string (max 120 chars)
         """
         parts = [
-            data.model,
-            data.duration,
-            data.directory,
-            data.version,
-            data.branch,
+            f"🤖 Model: {data.model}",
+            f"⏱️ Time: {data.duration}",
+            f"📁 Proj: {data.directory}",
+            f"Ver: {data.version}",
+            f"Git: {data.branch}",
         ]
 
         if data.git_status:
-            parts.append(data.git_status)
+            parts.append(f"📊 {data.git_status}")
 
         # Only add active_task if it's not empty
         if data.active_task.strip():
@@ -163,7 +190,7 @@ class StatuslineRenderer:
 
     def _render_minimal(self, data: StatuslineData) -> str:
         """
-        Render minimal mode: Extreme space constraint
+        Render minimal mode: Extreme space constraint with minimal labels
         Constraint: <= 40 characters
 
         Args:
@@ -173,16 +200,23 @@ class StatuslineRenderer:
             Formatted statusline string (max 40 chars)
         """
         parts = [
-            data.model,
+            f"🤖 {data.model}",
             data.duration,
-            self._truncate_version(data.version),
-            self._truncate_branch(data.branch, max_length=15),
+            f"V{self._truncate_version(data.version)}",
         ]
 
-        if data.git_status:
-            parts.append(data.git_status)
+        # Add branch if short enough
+        branch_short = self._truncate_branch(data.branch, max_length=8)
+        if len(" | ".join(parts)) + len(branch_short) + 3 <= 40:
+            parts.append(branch_short)
 
-        return " | ".join(parts)
+        result = " | ".join(parts)
+
+        # Add git_status only if it fits
+        if data.git_status and len(result) + len(data.git_status) + 3 <= 40:
+            result += f" | {data.git_status}"
+
+        return result
 
     @staticmethod
     def _truncate_branch(branch: str, max_length: int = 20) -> str:
