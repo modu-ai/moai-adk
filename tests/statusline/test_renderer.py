@@ -30,7 +30,8 @@ class TestStatuslineRendererCompactMode:
         """
         GIVEN: StatuslineRenderer 인스턴스와 기본 StatuslineData
         WHEN: render() 메서드를 Compact 모드로 호출
-        THEN: 80자 이내이고 "|" 구분자가 포함되며 7가지 정보가 모두 포함됨
+        THEN: 80자 이내이고 "|" 구분자가 포함되며 필수 정보가 모두 포함됨
+        Format: 🤖 Model | Ver Version | Git: Branch | GitStatus | Task
         """
         # @TEST:STATUSLINE-RENDERER-001
         from moai_adk.statusline.renderer import StatuslineRenderer
@@ -54,10 +55,8 @@ class TestStatuslineRendererCompactMode:
         # "|" 구분자 포함 확인
         assert "|" in result, "Statusline must contain pipe separator"
 
-        # 7가지 정보가 모두 포함되는지 확인
+        # 필수 정보가 모두 포함되는지 확인
         assert "H 4.5" in result or "Haiku" in result, "Model info missing"
-        assert "5m" in result, "Duration missing"
-        assert "MoAI-ADK" in result, "Directory missing"
         assert "0.20.1" in result or "v0.20.1" in result, "Version missing"
         assert "feature/SPEC-AUTH-001" in result or "AUTH-001" in result or "feature" in result, "Branch info missing"
         assert "+2" in result or "M1" in result or "+2 M1" in result, "Git status missing"
@@ -103,7 +102,7 @@ class TestStatuslineRendererCompactMode:
         """
         GIVEN: 알려진 값의 StatuslineData
         WHEN: render()를 Compact 모드로 호출
-        THEN: [MODEL] [DURATION] | [DIR] | [VERSION] | [BRANCH] | [GIT] | [TASK] 순서를 준수
+        THEN: 🤖 Model | Ver Version | Git: Branch | Status | Task 순서를 준수
         """
         # @TEST:STATUSLINE-RENDERER-003
         from moai_adk.statusline.renderer import StatuslineRenderer
@@ -123,21 +122,18 @@ class TestStatuslineRendererCompactMode:
 
         # 정보 순서 검증 (위치 기반)
         model_pos = result.find("H 4.5") if "H 4.5" in result else result.find("Haiku")
-        duration_pos = result.find("5m")
-        dir_pos = result.find("MoAI-ADK")
         version_pos = result.find("0.20.1") if "0.20.1" in result else result.find("v0.20.1")
         branch_pos = result.find("develop")
         git_pos = result.find("+1")
         task_pos = result.find("[PLAN]") if "[PLAN]" in result else result.find("PLAN")
 
-        # 모든 요소가 찾았는지 확인
-        positions = [model_pos, duration_pos, dir_pos, version_pos, branch_pos, git_pos, task_pos]
+        # 모든 주요 요소가 찾았는지 확인
+        positions = [model_pos, version_pos, branch_pos, git_pos, task_pos]
         assert all(p >= 0 for p in positions), f"Not all elements found in: {result}"
 
-        # 순서 검증: 모델 < 시간 < 디렉토리 < 버전 < branch < git < task
-        assert model_pos < duration_pos < dir_pos, "Model, duration, dir order incorrect"
-        assert dir_pos < version_pos, "Dir before version"
-        assert version_pos < branch_pos or version_pos < task_pos, "Version position incorrect"
+        # 순서 검증: 모델 < 버전 < branch < git < task
+        assert model_pos < version_pos < branch_pos, "Model, version, branch order incorrect"
+        assert branch_pos < git_pos or branch_pos < task_pos, "Branch position incorrect"
 
 
 class TestStatuslineRendererDataHandling:
