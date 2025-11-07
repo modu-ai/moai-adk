@@ -1,171 +1,181 @@
-______________________________________________________________________
+# Installation Guide
 
-## title: インストールガイド description: MoAI-ADKのインストールと初期設定の完全ガイド lang: ja
+Install and run MoAI-ADK on your system in just minutes. This guide covers system requirements, installation methods, and verification steps.
 
-# インストールガイド
+## System Requirements
 
-MoAI-ADKをインストールして最初のプロジェクトを準備するまでの完全なガイドです。
+### Minimum Requirements
 
-## 要件
+- **Python**: 3.13 or higher
+- **Operating System**:
+  - macOS (10.15+)
+  - Linux (Ubuntu 20.04+, CentOS 8+, Debian 11+)
+  - Windows 10+ (PowerShell recommended)
+- **Git**: 2.25 or higher
+- **Memory**: 4GB RAM minimum, 8GB recommended
+- **Storage**: 500MB free space
 
-- **Python 3.13+** (必須)
-- **uv** (推奨パッケージマネージャー)
-- **Git** (バージョン管理用)
-- **Claude Code** (AI協力開発用)
+### Recommended Requirements
 
-## ステップ1：uvのインストール
+- **Python**: 3.13+ (latest stable version)
+- **Package Manager**: UV 0.5.0+ (recommended) or pip 24.0+
+- **IDE**: VS Code with Claude Code extension or preferred editor
+- **Terminal**: Modern terminal with UTF-8 support
 
-uvはMoAI-ADKが推奨する最新のPythonパッケージマネージャーです。
+## Installation Methods
 
-### macOS/Linux
+### Method 1: UV Package Manager (Recommended)
+
+UV is the fastest and most reliable way to install MoAI-ADK. It provides automatic dependency management and virtual environment handling.
+
+#### Step 1: Install UV
+
+**macOS/Linux:**
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
-source ~/.bashrc  # または ~/.zshrc
 ```
 
-### Windows (PowerShell)
+**Windows (PowerShell):**
 
 ```powershell
 powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-### 検証
+#### Step 2: Verify UV Installation
 
 ```bash
 uv --version
-# 期待される出力: uv 0.5.1 (またはそれ以降)
+# Expected output: uv 0.5.1 or higher
 ```
 
-## ステップ2：MoAI-ADKのインストール
-
-### 基本インストール
+#### Step 3: Install MoAI-ADK
 
 ```bash
 uv tool install moai-adk
 ```
 
-### 検証
+#### Step 4: Verify Installation
 
 ```bash
 moai-adk --version
-# 期待される出力: moai-adk version 1.0.0
+# Expected output: MoAI-ADK v1.0.0 or higher
 ```
 
-### インストール済みツールの確認
+### Method 2: PyPI Installation (Alternative)
+
+For pip users or when UV is unavailable.
+
+#### Step 1: Upgrade pip (if needed)
 
 ```bash
-uv tool list | grep moai-adk
+python -m pip install --upgrade pip
 ```
 
-## ステップ3：Python環境の確認
-
-### Pythonバージョン確認
+#### Step 2: Install MoAI-ADK
 
 ```bash
-python --version
-# 期待される出力: Python 3.13.x (またはそれ以降)
+pip install moai-adk
 ```
 
-### Python 3.13がない場合
-
-**pyenvを使用する方法（推奨）**：
+#### Step 3: Verify Installation
 
 ```bash
-# pyenvのインストール
-curl https://pyenv.run | bash
-
-# Python 3.13のインストール
-pyenv install 3.13
-pyenv global 3.13
-
-# 検証
-python --version
+moai-adk --version
 ```
 
-**uvで自動管理する方法**：
+### Method 3: Development Installation
+
+For developers who want to contribute to MoAI-ADK.
+
+#### Step 1: Clone Repository
 
 ```bash
-# uvが自動的にPython 3.13をダウンロード
-uv python install 3.13
-uv python pin 3.13
-
-# 検証
-python --version
+git clone https://github.com/modu-ai/moai-adk.git
+cd moai-adk
 ```
 
-## ステップ4：Gitの設定
-
-### Gitのインストール
-
-**macOS**：
+#### Step 2: Install in Development Mode
 
 ```bash
-# Homebrewでインストール
-brew install git
+# Using UV (recommended)
+uv pip install -e .
 
-# またはXcode Command Line Tools
-xcode-select --install
+# Or using pip
+pip install -e .
 ```
 
-**Ubuntu/Debian**：
+#### Step 3: Verify Installation
 
 ```bash
-sudo apt update
-sudo apt install git -y
+moai-adk --version
 ```
 
-**Windows**：
+## Post-Installation Setup
 
-```powershell
-winget install Git.Git
-```
+### Environment Variables
 
-### 検証
+Optional but recommended environment variables:
 
 ```bash
-git --version
-# 期待される出力: git version 2.x.x
+# Add to shell profile (~/.bashrc, ~/.zshrc, etc.)
+export MOAI_LOG_LEVEL=INFO
+export MOAI_CACHE_DIR="$HOME/.moai/cache"
+export CLAUDE_PROJECT_DIR=$(pwd)
 ```
 
-## ステップ5：Claude Codeのインストール
+### Claude Code Integration
 
-### インストール
+MoAI-ADK requires Claude Code for the complete experience.
 
-**macOS**：
+#### Install Claude Code
 
 ```bash
-brew install claude-code
+# macOS
+brew install claude-ai/claude/claude
+
+# Linux
+curl -fsSL https://claude.ai/install.sh | sh
+
+# Windows
+winget install Anthropic.Claude
 ```
 
-**他のプラットフォーム**：
-
-```bash
-npm install -g @anthropic-ai/claude-code
-```
-
-### 検証
+#### Verify Claude Code
 
 ```bash
 claude --version
-# 期待される出力: claude version 1.5.0 (またはそれ以降)
+# Expected: Claude Code v1.5.0 or higher
 ```
 
-### 認証
+### Optional MCP Servers
+
+MoAI-ADK supports Model Context Protocol (MCP) servers for enhanced functionality.
+
+#### Install Recommended MCP Servers
 
 ```bash
-claude auth login
+# Context7 - Latest library documentation
+npx -y @upstash/context7-mcp
+
+# Playwright - Web E2E testing
+npx -y @playwright/mcp
+
+# Sequential Thinking - Complex reasoning
+npx -y @modelcontextprotocol/server-sequential-thinking
 ```
 
-## ステップ6：システム診断
+## Verification
 
-すべての要件が満たされているか確認します：
+### Check System Status
+
+Run the built-in doctor command to verify installation:
 
 ```bash
 moai-adk doctor
 ```
 
-### 正常な出力例
+**Expected Output:**
 
 ```
 Running system diagnostics...
@@ -176,159 +186,118 @@ Running system diagnostics...
 │ Python >= 3.13                           │   ✓    │
 │ uv installed                             │   ✓    │
 │ Git installed                            │   ✓    │
-│ Claude Code installed                   │   ✓    │
-│ Project structure (.moai/)               │   ✓    │
-│ Config file (.moai/config.json)          │   ✓    │
+│ Claude Code available                    │   ✓    │
+│ Package registry accessible              │   ✓    │
 └──────────────────────────────────────────┴────────┘
 
-✓ All checks passed
+✅ All checks passed!
 ```
 
-## ステップ7：最初のプロジェクト作成
+### Create Test Project
 
-### 新規プロジェクト
+Create a simple test project to ensure everything works:
 
 ```bash
-moai-adk init hello-world
-cd hello-world
+# Create test project
+moai-adk init test-project
+cd test-project
+
+# Start Claude Code
+claude
+
+# In Claude Code, run:
+/alfred:0-project
 ```
 
-### 既存プロジェクトへの追加
+## Troubleshooting
+
+### Common Issues
+
+#### Issue: "uv: command not found"
+
+**Solution:**
+
+1. Verify UV is properly installed
+2. Add UV to PATH:
+   ```bash
+   export PATH="$HOME/.cargo/bin:$PATH"
+   ```
+3. Restart terminal
+
+#### Issue: "Python 3.8 found, but 3.13+ required"
+
+**Solution:**
 
 ```bash
-cd your-existing-project
-moai-adk init .
-```
-
-### 生成される構造
-
-```
-hello-world/
-├── .moai/                          # MoAI-ADKプロジェクト設定
-│   ├── config.json                 # プロジェクト設定（言語、モード、所有者）
-│   ├── project/                    # プロジェクト情報
-│   │   ├── product.md              # 製品ビジョンと目標
-│   │   ├── structure.md            # ディレクトリ構造
-│   │   └── tech.md                 # 技術スタックとアーキテクチャ
-│   ├── memory/                     # Alfredの知識ベース（8個ファイル）
-│   ├── specs/                      # SPECファイル
-│   └── reports/                    # 分析レポート
-├── .claude/                        # Claude Code自動化
-│   ├── agents/                     # 16個サブエージェント（専門家含む）
-│   ├── commands/                   # 4個Alfredコマンド
-│   ├── skills/                     # 74個Claude Skills
-│   ├── hooks/                      # 5個イベント自動化フック
-│   └── settings.json               # Claude Code設定
-└── CLAUDE.md                       # Alfredの核心指示
-```
-
-## トラブルシューティング
-
-### よくある問題
-
-#### 1. uvが見つからない
-
-**症状**：
-
-```bash
-bash: uv: command not found
-```
-
-**解決策**：
-
-```bash
-# PATHに手動で追加
-export PATH="$HOME/.cargo/bin:$PATH"
-
-# シェルを再起動
-source ~/.bashrc  # または ~/.zshrc
-```
-
-#### 2. Pythonバージョンが古い
-
-**症状**：
-
-```
-Python 3.8 found, but 3.13+ required
-```
-
-**解決策**：
-
-```bash
-# pyenvでPython 3.13をインストール
+# Using pyenv
+curl https://pyenv.run | bash
 pyenv install 3.13
 pyenv global 3.13
+
+# Or using UV
+uv python install 3.13
+uv python pin 3.13
 ```
 
-#### 3. Claude Codeが認識されない
+#### Issue: "Permission denied" during installation
 
-**症状**：
-
-```
-Command not found: claude
-```
-
-**解決策**：
+**Solution:**
 
 ```bash
-# 再インストール
-npm install -g @anthropic-ai/claude-code
+# Use user installation
+pip install --user moai-adk
 
-# 認証
-claude auth login
+# Or use sudo (Linux/macOS)
+sudo pip install moai-adk
 ```
 
-#### 4. プロジェクト初期化エラー
+#### Issue: Claude Code not recognized
 
-**症状**：
+**Solution:**
 
-```
-Error: .moai directory already exists
-```
+1. Verify Claude Code installation: `claude --version`
+2. Check if in PATH
+3. Reinstall if necessary
 
-**解決策**：
+#### Issue: ModuleNotFoundError for dependencies
+
+**Solution:**
 
 ```bash
-# 既存プロジェクトの場合
-cd your-project
-moai-adk init .
+# In project directory
+uv sync
 
-# 新しいプロジェクトの場合
-rm -rf .moai .claude
-moai-adk init fresh-project
+# Or install specific dependency
+uv add fastapi pytest
 ```
 
-### 詳細診断
+### Getting Help
 
-より詳細な診断情報が必要な場合：
+If you encounter issues not covered here:
+
+1. **Check GitHub Issues**: Search existing issues at https://github.com/modu-ai/moai-adk/issues
+2. **Run Detailed Diagnostics**: `moai-adk doctor --verbose`
+3. **Create Issue**: Use `/alfred:9-feedback` in Claude Code to automatically create GitHub issue
+
+## Next Steps
+
+After successful installation:
+
+1. **[Quick Start Guide](quick-start.md)** - Run your first project in 10 minutes
+2. **[Core Concepts](concepts.md)** - Understand SPEC-First, TDD, @TAG, and TRUST 5 principles
+3. **[Project Initialization](../../guides/project/init.md)** - Learn project setup and configuration
+
+## Installation Summary
 
 ```bash
-moai-adk doctor --verbose
+# One-line installation (recommended)
+curl -LsSf https://astral.sh/uv/install.sh | sh && uv tool install moai-adk
+
+# Verify installation
+moai-adk doctor
+
+# Create first project
+moai-adk init my-project && cd my-project && claude
 ```
 
-### ヘルプ
-
-問題が解決しない場合：
-
-1. **GitHub Issues**：同様の問題を検索
-2. **GitHub Discussions**：質問を投稿
-3. **コミュニティ**：Discordでリアルタイム質問
-
-報告する際には以下の情報を含めてください：
-
-- `moai-adk doctor --verbose`の出力
-- エラーメッセージ全体
-- オペレーティングシステムとバージョン
-- 実行したコマンド
-
-## 次のステップ
-
-インストールが完了したら：
-
-1. **クイックスタート**：[クイックスタートガイド](quick-start.md)で5分で最初の機能を作成
-2. **概念学習**：[概念ガイド](concepts.md)で核心概念を理解
-3. **Alfredコマンド**：[Alfredガイド](../guides/alfred/index.md)でコマンドを学習
-
-______________________________________________________________________
-
-**✅ おめでとうございます！** MoAI-ADKのインストールが完了しました。次は[クイックスタート](quick-start.md)で最初のプロジェクトを始めましょう。
+You're now ready to experience the power of SPEC-First TDD development with Alfred SuperAgent! 🚀

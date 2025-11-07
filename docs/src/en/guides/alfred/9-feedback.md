@@ -1,553 +1,815 @@
-______________________________________________________________________
+# Phase 9: Feedback - Issue Management and Team Communication
 
-## title: /alfred:9-feedback コマンド description: GitHub Issue自動作成とフィードバック収集のための完全ガイド lang: ja
+The `/alfred:9-feedback` command provides a streamlined way to create GitHub issues for bugs,
+features, improvements, and team discussions without interrupting your development workflow.
 
-# /alfred:9-feedback - フィードバックコマンド
+## Overview
 
-`/alfred:9-feedback`はMoAI-ADKのフィードバック収集コマンドで、開発中のバグ報告、機能要求、改善提案をGitHub Issueとして即座に作成します。
+**Purpose**: Create structured GitHub issues instantly from your development environment.
 
-## 概要
-
-**目的**: GitHub Issue自動作成とフィードバック収集 **実行時間**: 約30秒 **主要成果**: GitHub Issue、自動ラベル付与、チーム通知
-
-## 基本使用法
+**Command Format**:
 
 ```bash
 /alfred:9-feedback
 ```
 
-## 対話型フロー
+**Typical Duration**: 30-60 seconds **Output**: GitHub issue with proper labels, priority, and team
+notification
 
-### ステップ1: Issueタイプ選択
+## Why Quick Issue Creation Matters
 
-```
-Alfred: どのタイプのIssueを作成しますか？
+### Development Workflow Disruption
 
-[ ] 🐛 Bug Report - 問題が発生しました
-[ ] ✨ Feature Request - 新機能を提案します
-[ ] ⚡ Improvement - 既存機能を改善します
-[ ] ❓ Question/Discussion - チームに質問します
-```
+**Traditional Issue Creation**:
 
-### ステップ2: Issueタイトル入力
+1. Stop coding
+2. Open browser
+3. Navigate to GitHub
+4. Fill out issue form
+5. Add labels and priority
+6. Submit issue
+7. Return to coding
+8. **Time lost**: 3-5 minutes per issue
 
-```
-Alfred: Issueタイトルを入力してください（簡潔明瞭に）:
+**Alfred Quick Creation**:
 
-例: moai-adk update実行中にテンプレート同期エラーが発生
-```
+1. Type single command
+2. Answer 4 quick questions
+3. Issue automatically created
+4. Continue coding
+5. **Time saved**: 80% reduction in context switching
 
-### ステップ3: 詳細説明入力（オプション）
+### Benefits of Immediate Issue Creation
 
-```
-Alfred: 詳細な説明を入力してください（Enterキーで省略可能）:
+- **🐛 Bug Capture**: Report issues while they're fresh in your mind
+- **✨ Idea Preservation**: Capture feature ideas before they're lost
+- **⚡ Improvement Tracking**: Document optimization opportunities immediately
+- **📋 Team Visibility**: Instant team notification of important issues
+- **🔄 Context Preservation**: Maintain development flow while tracking issues
 
-例:
-moai-adk update実行時に以下のエラーが発生：
-- 症状: .claude/ディレクトリ権限エラー
-- 環境: macOS 14.2, Python 3.13, moai-adk v0.15.0
-- 期待動作: テンプレートが正常に同期されるべき
-- 実際動作: Permission deniedエラーで中断
-```
+## Interactive Issue Creation Process
 
-### ステップ4: 優先順位選択
+### Step 1: Issue Type Selection
 
-```
-Alfred: 優先順位レベルを選択してください:
-
-[ ] 🔴 Critical - システムダウン、データ損失、セキュリティ問題
-[ ] 🟠 High - 主要機能の故障、深刻な影響
-[✓] 🟡 Medium - 一般優先順位（デフォルト）
-[ ] 🟢 Low - 軽微な問題、あれば良い
-```
-
-### ステップ5: 自動Issue作成
-
-Alfredが自動的に実行：
-
-1. タイプと優先順位による適切なラベル決定
-2. 絵文字付きタイトルフォーマット
-3. GitHub Issue作成
-4. Issue番号とURL返却
-
-## 完全な実行例
-
-### コードレビュー中のバグ発見時
-
-```bash
-# コードレビュー中に深刻な問題を発見し、即座に報告したい場合
-$ /alfred:9-feedback
-
-Alfred: どのタイプのIssueを作成しますか？
-> 🐛 Bug Report
-
-Alfred: Issueタイトルを入力してください
-> モバイルでログインボタンクラッシュ発生
-
-Alfred: 詳細な説明を入力してください（Enterキーで省略可能）
-> iPhone 15でログインボタンを押すと5秒間フリーズした後、アプリが終了します。
-> iOS 17.2, macOS 14.2 Chrome 120でテストしました。
-> 期待動作: ログインモーダルが表示されるべき
-> 実際動作: 応答なくクラッシュ
-
-Alfred: 優先順位レベルを選択してください
-> 🟠 High
-
-✅ GitHub Issue #234 作成完了！
-
-📋 タイトル: 🐛 [BUG] モバイルでログインボタンクラッシュ発生
-🟠 優先順位: High
-🏷️  ラベル: bug, reported, priority-high
-🔗 URL: https://github.com/owner/repo/issues/234
-
-💡 次へ: 作業を続行してください - Issueは追跡されています！
-```
-
-### 機能要求時
-
-```bash
-$ /alfred:9-feedback
-
-Alfred: どのタイプのIssueを作成しますか？
-> ✨ Feature Request
-
-Alfred: Issueタイトルを入力してください
-> moai-adk updateに--dry-runオプション追加
-
-Alfred: 詳細な説明を入力してください（Enterキーで省略可能）
-> --dry-runオプションを追加して、実際に更新せずにどのような変更が
-> 適用されるかを確認できるようにしてください。これにより、更新前の
-> 検証が可能になります。
-
-Alfred: 優先順位レベルを選択してください
-> 🟡 Medium
-
-✅ GitHub Issue #235 作成完了！
-
-📋 タイトル: ✨ [FEATURE] moai-adk updateに--dry-runオプション追加
-🟡 優先順位: Medium
-🏷️  ラベル: enhancement, feature-request, priority-medium
-🔗 URL: https://github.com/owner/repo/issues/235
-```
-
-## 主な機能
-
-### 1. ⚡ 即時作成
-
-- **実行時間**: 約30秒でGitHub Issue作成
-- **中断なし**: 開発フローを維持
-- **自動化**: 手動作業不要
-
-### 2. 🏷️ 自動ラベリング
-
-| Issueタイプ            | 付与されるラベル                 |
-| ---------------------- | -------------------------------- |
-| 🐛 Bug Report          | `bug`, `reported`                |
-| ✨ Feature Request     | `enhancement`, `feature-request` |
-| ⚡ Improvement         | `enhancement`, `improvement`     |
-| ❓ Question/Discussion | `question`, `discussion`         |
-
-| 優先順位    | 付与されるラベル    |
-| ----------- | ------------------- |
-| 🔴 Critical | `priority-critical` |
-| 🟠 High     | `priority-high`     |
-| 🟡 Medium   | `priority-medium`   |
-| 🟢 Low      | `priority-low`      |
-
-### 3. 🎯 優先順位選択
-
-#### Critical (🔴)
-
-- **システムダウン**: サービス完全停止
-- **データ損失**: 重要データの喪失
-- **セキュリティ問題**: 脆弱性発見
-
-**例**:
+Alfred presents a clear, structured menu:
 
 ```
-🔴 [CRITICAL] 本番環境でデータベース接続がすべて失われました
+🤔 What type of issue would you like to create?
+
+[ ] 🐛 Bug Report - Something isn't working as expected
+[ ] ✨ Feature Request - New functionality or enhancement
+[ ] ⚡ Improvement - Optimizing existing functionality
+[ ] ❓ Question/Discussion - Team collaboration needed
 ```
 
-#### High (🟠)
+**Guidance for Selection**:
 
-- **主要機能故障**: コア機能が動作しない
-- **深刻な影響**: 多数のユーザーに影響
-- **代替案なし**: 回避策がない
+**🐛 Bug Report** - Choose when:
 
-**例**:
+- Code behavior doesn't match expectations
+- Errors or crashes occur
+- Performance issues are observed
+- Security vulnerabilities are discovered
+
+**✨ Feature Request** - Choose when:
+
+- New functionality would add value
+- User experience can be improved
+- New integrations are needed
+- Product enhancements are envisioned
+
+**⚡ Improvement** - Choose when:
+
+- Existing code can be optimized
+- Performance can be enhanced
+- Code quality can be improved
+- Technical debt needs addressing
+
+**❓ Question/Discussion** - Choose when:
+
+- Architecture decisions need team input
+- Technical approaches need debate
+- Requirements need clarification
+- Best practices need discussion
+
+### Step 2: Issue Title Input
+
+Alfred prompts for a clear, descriptive title:
 
 ```
-🟠 [HIGH] ユーザーログイン機能が完全に動作しません
+📄 Enter a concise issue title (max 100 characters):
+
+Examples:
+🐛 "Login API returns 500 error for invalid email format"
+✨ "Add two-factor authentication support"
+⚡ "Optimize database queries for user profile loading"
+❓ "Which caching strategy should we use for API responses?"
+
+Your title:
 ```
 
-#### Medium (🟡)
+**Best Practices for Titles**:
 
-- **一般優先順位**: 通常の機能要求やバグ
-- **影響限定**: 一部のユーザーに影響
-- **代替案あり**: 一時的な回避策可能
+- **Be Specific**: "Login fails" → "Login API returns 500 error for invalid email format"
+- **Include Context**: Mention the affected component or feature
+- **Keep it Actionable**: Title should suggest what needs to be done
+- **Use Keywords**: Include terms that help with searching and filtering
 
-**例**:
+### Step 3: Detailed Description (Optional)
 
-```
-🟡 [MEDIUM] APIレスポンス時間が遅い（約2秒）
-```
-
-#### Low (🟢)
-
-- **軽微な問題**: 些細な不便さ
-- **改善提案**: 機能強化アイデア
-- **あれば良い**: なくても問題ない
-
-**例**:
+Alfred offers the opportunity to add context:
 
 ```
-🟢 [LOW] ダッシュボードの配色変更提案
+📄 Add detailed description (optional - press Enter to skip):
+
+Include:
+- Steps to reproduce (for bugs)
+- Expected vs actual behavior
+- Environment details
+- Screenshots or error messages
+- Impact assessment
+
+Your description:
 ```
 
-### 4. 🔗 チーム可視性
+**Effective Description Templates**:
 
-- **即時通知**: Issue作成後すぐにチーム全員に通知
-- **追跡可能**: GitHubネイティブな追跡機能
-- **協業**: コメント、ラベル、マイルストーン管理
+**Bug Report Template**:
 
-## Issueテンプレート
+```
+Environment:
+- OS: macOS 14.2
+- Browser: Chrome 120
+- MoAI-ADK version: 0.17.0
 
-### Bug Reportテンプレート
+Steps to reproduce:
+1. Go to /auth/login endpoint
+2. Submit email with invalid format: "test@"
+3. Observe server response
 
-```markdown
-## 🐛 Bug Report
+Expected behavior:
+Should return 400 Bad Request with clear error message
 
-### 現象
-<!-- 問題の簡潔な説明 -->
+Actual behavior:
+Returns 500 Internal Server Error
 
-### 再現手順
-1. `...` に移動
-2. `...` をクリック
-3. エラーが発生
+Error message:
+TypeError: Cannot read property 'validate' of undefined
 
-### 期待動作
-<!-- 期待される動作の簡潔な説明 -->
-
-### 実際動作
-<!-- 実際に起こったことの簡潔な説明 -->
-
-### 環境情報
-- OS: [e.g. macOS 14.2]
-- Pythonバージョン: [e.g. 3.13.0]
-- MoAI-ADKバージョン: [e.g. 0.15.0]
-
-### 追加コンテキスト
-<!-- 問題に関する追加情報 -->
+Impact:
+Users cannot complete authentication process
 ```
 
-### Feature Requestテンプレート
+**Feature Request Template**:
 
-```markdown
-## ✨ Feature Request
+```
+Problem:
+Currently, users must re-authenticate every 15 minutes, which is disruptive for long sessions.
 
-### 機能説明
-<!-- 機能の簡潔な説明 -->
+Proposed solution:
+Implement "Remember me" functionality with extended token lifetime (7 days).
 
-### 問題解決
-<!-- この機能が解決する問題 -->
+User benefit:
+Reduced friction for trusted devices, improved user experience.
 
-### 提案ソリューション
-<!-- 望ましい解決策の説明 -->
-
-### 代替案
-<!-- 考慮した代替ソリューション -->
-
-### 追加コンテキスト
-<!-- 機能に関する追加情報 -->
+Technical considerations:
+- Need secure refresh token mechanism
+- Should be opt-in with user consent
+- Must maintain security standards
 ```
 
-## MoAI-ADKワークフローとの統合
+### Step 4: Priority Selection
 
-### 1. 開発中
+Alfred helps prioritize the issue:
 
-```bash
-# コーディング中に問題発見
-/alfred:9-feedback
-→ Issue即時作成
-→ 開発継続
+```
+🎯 Select priority level:
+
+[ ] 🔴 Critical - System down, data loss, security breach
+[ ] 🟠 High - Major functionality broken, significant impact
+[✓] 🟡 Medium - Important but non-blocking issue
+[ ] 🟢 Low - Nice to have, minor improvement
 ```
 
-### 2. コードレビュー
+**Priority Guidelines**:
 
-```bash
-# レビュー中に改善提案
-/alfred:9-feedback
-→ Issueとして追跡
-→ 後で対応
-```
+**🔴 Critical**:
 
-### 3. 計画段階
+- Production system is down
+- Data corruption or loss
+- Security vulnerability
+- Legal compliance issue
+- **Action**: Immediate attention required
 
-```bash
-# 計画中に質問発生
-/alfred:9-feedback
-→ チームディスカッション作成
-→ 意思決定支援
-```
+**🟠 High**:
 
-### 4. 同期段階
+- Core functionality broken
+- Significant user impact
+- Performance degradation
+- **Action**: Address in current sprint
 
-```bash
-# 同期中に発見された問題
-/alfred:3-sync
-→ 問題検出
-/alfred:9-feedback
-→ Issue作成
-```
+**🟡 Medium**:
 
-## 高度な機能
+- Important but non-critical issues
+- User experience improvements
+- Performance optimizations
+- **Action**: Address in next sprint
 
-### カスタムラベル
+**🟢 Low**:
 
-```bash
-# プロジェクト固有のラベル設定
-/alfred:9-feedback --custom-labels
+- Minor improvements
+- Nice-to-have features
+- Documentation updates
+- **Action**: Address when time permits
 
-# 設定例:
-custom_labels:
-  bug: ["bug", "needs-triage", "module-auth"]
-  feature: ["enhancement", "backlog", "module-ui"]
-```
+## Automatic Issue Generation
 
-### テンプレート統合
+Once you've provided the information, Alfred automatically:
 
-```bash
-# 特定テンプレート使用
-/alfred:9-feedback --template security-bug
+### 1. Formats the Issue
 
-# テンプレート選択
-[ ] 🐛 General Bug
-[ ] 🔒 Security Issue
-[ ] 🚀 Performance Issue
-[ ] <span class="material-icons">menu_book</span> Documentation Issue
-```
+````markdown
+# 🐛 [BUG] Login API returns 500 error for invalid email format
 
-### バッチ作成
+## Priority
+🟠 High
 
-```bash
-# 複数Issueを一度に作成
-/alfred:9-feedback --batch
+## Environment
+- **MoAI-ADK Version**: 0.17.0
+- **Operating System**: macOS 14.2
+- **Browser**: Chrome 120.0.6099.129
+- **Node.js Version**: 20.10.0
+- **Reported By**: @developer
 
-# 対話型バッチ作成
-Issue 1/3: タイトルを入力 > API認証エラー
-Issue 2/3: タイトルを入力 > データベース接続タイムアウト
-Issue 3/3: タイトルを入力 > フロントエンド表示崩れ
+## Description
 
-✅ 3個のIssueを作成しました: #456, #457, #458
-```
+### Steps to Reproduce
+1. Navigate to authentication endpoint
+2. Submit login request with invalid email format: `test@`
+3. Observe server response
 
-## 設定とカスタマイズ
+### Expected Behavior
+API should return 400 Bad Request with clear validation error message:
+```json
+{
+  "error": "validation_error",
+  "message": "Invalid email format"
+}
+````
 
-### GitHub連携設定
+### Actual Behavior
 
-```bash
-# GitHub CLI認証確認
-gh auth status
-
-# リポジトリ設定確認
-gh repo view
-```
-
-### デフォルト値設定
+API returns 500 Internal Server Error:
 
 ```json
-// .moai/config.json
 {
-  "feedback": {
-    "default_priority": "medium",
-    "auto_assign_labels": true,
-    "include_environment": true,
-    "custom_template": "internal"
-  }
+  "error": "internal_server_error",
+  "message": "An unexpected error occurred"
 }
 ```
 
-### 通知設定
-
-```bash
-# Slack連携
-/alfred:9-feedback --notify slack
-
-# メール通知
-/alfred:9-feedback --notify email
-
-# チームメンション
-/alfred:9-feedback --mention @team-leads
-```
-
-## ベストプラクティス
-
-### 1. 良いIssueタイトル
-
-**悪い例**:
+### Error Details
 
 ```
-- 問題です
-- 動きません
-- 要望
+TypeError: Cannot read property 'validate' of undefined
+    at EmailValidator.validate (/src/auth/validators.js:45:15)
+    at AuthController.login (/src/auth/controller.js:23:28)
+    at Layer.handle [as handle_request] (/node_modules/express/lib/router/layer.js:95:5)
 ```
 
-**良い例**:
+### Impact
 
-```
-- 🐛 [BUG] モバイルでログインボタンクラッシュ発生
-- ✨ [FEATURE] moai-adk updateに--dry-runオプション追加
-- ⚡ [IMPROVEMENT] APIレスポンスタイム最適化
-```
+Users cannot complete authentication process when entering email addresses with typos. This affects
+approximately 15% of login attempts based on current analytics.
 
-### 2. 詳細な説明
+## Additional Context
 
-**最小限の情報**:
+- Issue occurs consistently with any invalid email format
+- Problem started after deployment of v0.17.0
+- Related to recent email validation changes in commit a1b2c3d
 
-- 環境情報 (OS, バージョン)
-- 再現手順
-- 期待動作 vs 実際動作
-- エラーメッセージ（ある場合）
+## Labels
 
-**追加情報**:
-
-- スクリーンショット
-- ログファイル
-- コードスニペット
-- 関連Issueへのリンク
-
-### 3. 適切な優先順位選択
-
-```bash
-# 優先順位判断基準
-🔴 Critical: 製品が使えない、データ損失、セキュリティ
-🟠 High: 主要機能が動かない、多くのユーザーに影響
-🟡 Medium: 一般的なバグ、機能改善
-🟢 Low: 軽微な問題、将来の改善案
-```
-
-### 4. 重複回避
-
-```bash
-# Issue作成前に重複検索
-/alfred:9-feedback
-→ Alfredが類似Issueを自動検索
-→ 重複していれば既存Issueを表示
-→ 必要なら既存Issueにコメント追加
-```
-
-## トラブルシューティング
-
-### よくある問題
-
-**GitHub認証エラー**:
-
-```bash
-# GitHub CLI再認証
-gh auth login
-
-# 権限確認
-gh auth status
-```
-
-**リポジトリアクセス権限なし**:
-
-```bash
-# リポジトリ権限確認
-gh repo view
-
-# 権限がない場合、リポジトリ管理者に連絡
-```
-
-**ラベルが付与されない**:
-
-```bash
-# リポジトリラベル確認
-gh label list
-
-# 必要なラベル作成
-gh label create priority-high --color "d73a4a"
-```
-
-**Issue作成失敗**:
-
-```bash
-# ネットワーク接続確認
-ping github.com
-
-# GitHubステータス確認
-curl https://www.githubstatus.com/api/v2/status.json
-```
-
-## 統合と連携
-
-### CI/CD連携
-
-```yaml
-# .github/workflows/feedback.yml
-name: Process Feedback
-on:
-  issues:
-    types: [opened, labeled]
-
-jobs:
-  process-feedback:
-    runs-on: ubuntu-latest
-    if: contains(github.event.label.name, 'priority-critical')
-    steps:
-      - name: Notify team
-        run: |
-          # 緊急Issueチーム通知
-          # Slack/Discord/メール通知
-```
-
-### プロジェクト管理ツール連携
-
-```bash
-# Jira連携
-/alfred:9-feedback --jira-integration
-
-# Trello連携
-/alfred:9-feedback --trello-integration
-
-# Asana連携
-/alfred:9-feedback --asana-integration
-```
-
-## 分析とレポート
-
-### フィードバック分析
-
-```bash
-# フィードバック統計
-/alfred:9-feedback --analytics
-
-# 出力例:
-📊 フィードバック分析 (過去30日間)
-- 総Issue数: 15個
-- バグ報告: 8個 (53%)
-- 機能要求: 4個 (27%)
-- 改善提案: 3個 (20%)
-- 平均解決時間: 2.3日
-```
-
-### チーム生産性
-
-```bash
-# チーム別フィードバック傾向
-/alfred:9-feedback --team-analytics
-
-# 出力例:
-👥 チームフィードバック分析
-- 最も多くIssueを作成: @開発者A (5個)
-- 最も早く対応: @開発者B (平均0.5日)
-- 最も複雑なIssue: 認証システム再設計 (15コメント)
-```
+bug, authentication, high-priority, backend, v0.17.0
 
 ______________________________________________________________________
 
-**📚 次のステップ**:
+📅 Created: 2025-01-15 14:30:00 UTC 🤖 Generated with Alfred SuperAgent 🔗 Related SPEC: @SPEC:AUTH-001
 
-- [プロジェクトガイド](../project/index.md)でプロジェクト管理
-- [品質ガイド](../project/config.md)で品質管理
-- [デプロイガイド](../project/deploy.md)で本番環境展開
+````
+
+### 2. Applies Intelligent Labels
+
+Alfred automatically assigns relevant labels based on:
+
+**Content Analysis**:
+```bash
+# Keywords detected in title/description
+"authentication" → auth, security
+"API" → api, backend
+"500 error" → bug, server-error
+"performance" → performance, optimization
+````
+
+**Priority Mapping**:
+
+```bash
+Critical → priority-critical, urgent
+High → priority-high, needs-attention
+Medium → priority-medium
+Low → priority-low, nice-to-have
+```
+
+**Component Detection**:
+
+```bash
+"login" → authentication, user-management
+"database" → database, backend
+"UI" → frontend, user-interface
+"API" → api, backend
+```
+
+### 3. Sets Issue Metadata
+
+```yaml
+# GitHub issue metadata automatically applied
+labels:
+  - bug
+  - authentication
+  - high-priority
+  - backend
+  - v0.17.0
+
+assignees:
+  - @backend-team-lead
+
+milestone:
+  "Sprint 23 - Q1 2025"
+
+projects:
+  - "Authentication System"
+  - "Backend Development"
+```
+
+### 4. Creates GitHub Issue
+
+Alfred uses the GitHub CLI to create the issue:
+
+```bash
+# Equivalent Alfred operation
+gh issue create \
+  --title "🐛 [BUG] Login API returns 500 error for invalid email format" \
+  --body "$(cat issue-template.md)" \
+  --label bug,authentication,high-priority,backend,v0.17.0 \
+  --assignee @backend-team-lead \
+  --project "Authentication System"
+```
+
+## Integration with Development Workflow
+
+### During Development
+
+**Scenario 1: Bug Discovery During Coding**
+
+```bash
+# You're implementing a feature and discover a bug
+/alfred:9-feedback
+→ 🐛 Bug Report
+→ "JWT token validation fails for tokens with special characters"
+→ [Detailed description of the issue]
+→ 🟠 High priority
+
+# Issue #123 created immediately
+# Continue coding without losing context
+```
+
+**Scenario 2: Feature Idea During Implementation**
+
+```bash
+# While implementing authentication, you get an idea
+/alfred:9-feedback
+→ ✨ Feature Request
+→ "Add device fingerprinting for enhanced security"
+→ [Detailed explanation of the feature]
+→ 🟡 Medium priority
+
+# Issue #124 created for future consideration
+# Continue with current task
+```
+
+### During Code Review
+
+**Scenario 3: Code Review Suggestions**
+
+```bash
+# During PR review, you notice improvement opportunities
+/alfred:9-feedback
+→ ⚡ Improvement
+→ "Optimize database queries in user profile loading"
+→ [Specific optimization suggestions]
+→ 🟡 Medium priority
+
+# Issue #125 created and linked to PR
+# Review continues without interruption
+```
+
+### During Testing
+
+**Scenario 4: Test Failures**
+
+```bash
+# Running tests reveals unexpected behavior
+/alfred:9-feedback
+→ 🐛 Bug Report
+→ "Integration tests fail for concurrent user sessions"
+→ [Test output and reproduction steps]
+→ 🟠 High priority
+
+# Issue #126 created with test evidence
+# Debugging can continue systematically
+```
+
+## Advanced Features
+
+### Issue Templates and Customization
+
+Alfred supports custom issue templates:
+
+```yaml
+# .moai/templates/issue-templates.yml
+bug_report:
+  title_prefix: "🐛 [BUG]"
+  required_fields:
+    - environment
+    - steps_to_reproduce
+    - expected_behavior
+    - actual_behavior
+  optional_fields:
+    - screenshots
+    - logs
+    - additional_context
+
+feature_request:
+  title_prefix: "✨ [FEATURE]"
+  required_fields:
+    - problem_statement
+    - proposed_solution
+    - user_benefit
+  optional_fields:
+    - technical_considerations
+    - alternatives_considered
+
+improvement:
+  title_prefix: "⚡ [IMPROVEMENT]"
+  required_fields:
+    - current_limitation
+    - proposed_improvement
+    - expected_impact
+  optional_fields:
+    - implementation_complexity
+    - breaking_changes
+```
+
+### Bulk Issue Creation
+
+For related issues, Alfred can create multiple issues:
+
+```bash
+/alfred:9-feedback --bulk
+# Alfred will guide you through creating related issues
+# Useful for feature epics or bug clusters
+```
+
+### Issue Templates Integration
+
+Alfred integrates with GitHub's issue templates:
+
+```bash
+# Uses existing GitHub issue templates
+# Maintains consistency with team standards
+# Supports custom template selection
+```
+
+## Team Collaboration Features
+
+### Automatic Assignment
+
+Alfred can automatically assign issues based on:
+
+**Code Ownership**:
+
+```bash
+# File changes in src/auth/ → @auth-team
+# Database-related issues → @database-team
+# Frontend issues → @frontend-team
+```
+
+**Expertise Matching**:
+
+```bash
+# Security issues → @security-expert
+# Performance issues → @performance-team
+# UI/UX issues → @design-team
+```
+
+**Round-Robin Assignment**:
+
+```bash
+# Distribute issues evenly among team members
+# Consider current workload and expertise
+# Respect vacation and availability
+```
+
+### Team Notifications
+
+Alfred can configure automatic team notifications:
+
+```yaml
+# .moai/config/team-notifications.yml
+notifications:
+  critical_issues:
+    - slack: #dev-alerts
+    - email: oncall@company.com
+
+  high_priority:
+    - slack: #backend-team
+    - mention: @team-lead
+
+  feature_requests:
+    - slack: #product-team
+    - create_project_card: true
+```
+
+### Sprint Planning Integration
+
+```bash
+# Link issues to current sprint
+# Estimate complexity automatically
+# Suggest sprint assignments
+# Track velocity impact
+```
+
+## Issue Quality and Best Practices
+
+### Writing Effective Issues
+
+**Good Issue Characteristics**:
+
+- **Clear Title**: Immediately understandable
+- **Specific Context**: Environment, version, conditions
+- **Reproducible Steps**: Clear reproduction instructions
+- **Expected vs Actual**: Clear comparison
+- **Impact Assessment**: Business or user impact
+- **Visual Evidence**: Screenshots, logs, error messages
+
+**Issue Quality Checklist**:
+
+```bash
+✅ Title is descriptive and under 100 characters
+✅ Priority level is appropriate for impact
+✅ Description includes reproduction steps
+✅ Expected behavior is clearly stated
+✅ Actual behavior is documented
+✅ Environment details are included
+✅ Error messages or logs are provided
+✅ Impact on users/system is assessed
+✅ Related components or features are mentioned
+✅ Labels are relevant and helpful
+```
+
+### Issue Triage Process
+
+Alfred supports automated triage:
+
+```bash
+# Automatic triage rules
+if priority == "critical":
+    assign to oncall
+    notify in #alerts channel
+
+if contains "security":
+    assign to security team
+    set milestone to "Security Review"
+
+if contains "performance":
+    add performance label
+    assign to performance team
+
+if links to SPEC:
+    add specification label
+    link to related project card
+```
+
+## Analytics and Reporting
+
+### Issue Metrics
+
+Alfred tracks issue creation patterns:
+
+```bash
+# Weekly issue creation report
+📊 Issue Creation Analytics (Week of Jan 15-21)
+
+Issues Created: 12
+├── 🐛 Bug Reports: 5 (42%)
+├── ✨ Feature Requests: 4 (33%)
+├── ⚡ Improvements: 2 (17%)
+└── ❓ Questions: 1 (8%)
+
+Priority Distribution:
+├── 🔴 Critical: 1 (8%)
+├── 🟠 High: 3 (25%)
+├── 🟡 Medium: 6 (50%)
+└── 🟢 Low: 2 (17%)
+
+Average Time to Create: 45 seconds
+Context Switching Saved: ~3.5 hours
+```
+
+### Team Productivity
+
+```bash
+# Team productivity insights
+🎯 Team Productivity Metrics
+
+Issues per Developer:
+- @alice: 4 issues (33%)
+- @bob: 3 issues (25%)
+- @carol: 5 issues (42%)
+
+Response Time:
+- Average first response: 2.3 hours
+- Critical issues: 15 minutes
+- High priority: 1.2 hours
+
+Resolution Rate:
+- This week: 85% (10/12 resolved)
+- Last week: 78% (14/18 resolved)
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**GitHub CLI not authenticated**:
+
+```bash
+# Authenticate GitHub CLI
+gh auth login
+
+# Check authentication
+gh auth status
+
+# Retry issue creation
+/alfred:9-feedback
+```
+
+**Repository permissions**:
+
+```bash
+# Check repository access
+gh repo view
+
+# Verify write permissions
+gh api repos/:owner/:repo/collaborators/:username
+
+# Request access if needed
+# Contact repository maintainer
+```
+
+**Network connectivity**:
+
+```bash
+# Check GitHub connectivity
+ping github.com
+
+# Verify API access
+gh api user
+
+# Check rate limits
+gh api rate_limit
+```
+
+### Error Handling
+
+**Failed issue creation**:
+
+```bash
+# Alfred provides detailed error messages
+<span class="material-icons">cancel</span> Issue creation failed: Validation error
+
+Details:
+- Title too long (125 characters, max 100)
+- Missing required field: steps_to_reproduce
+- Invalid priority: "urgent" (use: critical, high, medium, low)
+
+Fix issues and try again, or use --force flag to override
+```
+
+**Template errors**:
+
+```bash
+# Check custom templates
+cat .moai/templates/issue-templates.yml
+
+# Validate template syntax
+moai-adk validate-templates
+
+# Reset to default templates if needed
+/alfred:9-feedback --reset-templates
+```
+
+## Integration with Other Tools
+
+### Project Management
+
+**Jira Integration**:
+
+```bash
+# Create corresponding Jira ticket
+/alfred:9-feedback --jira-integration
+
+# Sync issue status between GitHub and Jira
+# Maintain consistent labeling and priority
+```
+
+**Trello Integration**:
+
+```bash
+# Create Trello card for issue
+# Add to appropriate board and list
+# Assign team members and due dates
+```
+
+**Asana Integration**:
+
+```bash
+# Create Asana task
+# Assign to project and section
+# Set custom fields and dependencies
+```
+
+### Communication Tools
+
+**Slack Integration**:
+
+```bash
+# Post issue notification to Slack channel
+# @mention relevant team members
+# Include issue preview and action items
+```
+
+**Microsoft Teams Integration**:
+
+```bash
+# Create Teams conversation
+# Notify relevant channels
+# Include issue details and priority
+```
+
+### Monitoring and Alerting
+
+**PagerDuty Integration**:
+
+```bash
+# Create PagerDuty incident for critical issues
+# Notify on-call engineer
+# Track resolution time
+```
+
+**Datadog Integration**:
+
+```bash
+# Link issue to monitoring alerts
+# Correlate with performance metrics
+# Track issue impact on systems
+```
+
+## Best Practices Summary
+
+### For Individuals
+
+1. **Report Issues Immediately**: Don't wait, capture issues while fresh
+2. **Provide Clear Context**: Include environment, steps, and expected behavior
+3. **Use Appropriate Priority**: Consider impact on users and systems
+4. **Link Related Items**: Connect to SPECs, other issues, or PRs
+5. **Follow Up**: Monitor issue progress and provide additional information
+
+### For Teams
+
+1. **Establish Templates**: Create consistent issue templates
+2. **Define Workflows**: Set up triage and assignment processes
+3. **Monitor Metrics**: Track issue creation and resolution patterns
+4. **Review Quality**: Regularly assess issue quality and completeness
+5. **Continuous Improvement**: Refine process based on team feedback
+
+### For Organizations
+
+1. **Standardize Process**: Use Alfred across all repositories
+2. **Integrate Tooling**: Connect with project management and monitoring tools
+3. **Track Analytics**: Monitor issue patterns and team productivity
+4. **Provide Training**: Ensure team members understand effective issue creation
+5. **Iterate and Improve**: Continuously refine the issue management process
+
+The `/alfred:9-feedback` command transforms issue creation from a disruptive task into a seamless
+part of your development workflow, ensuring nothing gets lost while maintaining your coding flow! 🚀

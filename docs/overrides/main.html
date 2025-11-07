@@ -16,6 +16,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
+  <!-- Hack monospace font for code blocks -->
+  <link href="https://fonts.googleapis.com/css2?family=Hack:wght@400;700&display=swap" rel="stylesheet">
+
   <style>
     /* Neutral Color Palette - Direct Material Theme Override */
 
@@ -297,6 +300,16 @@
       color: #171612 !important;           /* Ink/Accent */
     }
 
+    /* Primary navigation styling - Light theme */
+    [data-md-color-scheme="default"] .md-nav--primary {
+      background-color: #F7F6F2 !important;  /* Surface Very Light */
+    }
+
+    /* Primary navigation styling - Dark theme */
+    [data-md-color-scheme="slate"] .md-nav--primary {
+      background-color: #1A1916 !important;  /* Dark Surface Very Light */
+    }
+
     html .md-nav__item,
     html .md-nav__link,
     html [data-md-color-scheme="default"] .md-nav__item,
@@ -405,7 +418,7 @@
     /* Code blocks - monospace for all languages with neutral styling */
     .md-typeset code,
     .md-typeset pre {
-      font-family: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
+      font-family: 'Hack', 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
       font-feature-settings: 'liga' 0;
       font-variant-ligatures: none;
       background-color: var(--bg-surface-muted);
@@ -413,6 +426,40 @@
       border: 1px solid var(--border-light);
       border-radius: 6px;
       transition: background-color var(--transition-normal), color var(--transition-normal), border-color var(--transition-normal);
+    }
+
+    /* Code block padding - Strong selectors for override */
+    div.highlight {
+      padding: 1.2em 1.5em !important;
+      margin: 1.5em 0.5em !important;
+      background-color: var(--md-default-bg-color) !important;
+    }
+
+    div.highlight pre {
+      margin: 0 !important;
+      padding: 0 !important;
+      background-color: transparent !important;
+    }
+
+    div.highlight code {
+      background-color: transparent !important;
+      padding: 0 !important;
+    }
+
+    /* Language-specific code blocks */
+    .language-bash, .language-python, .language-javascript, .language-typescript,
+    .language-java, .language-csharp, .language-php, .language-ruby, .language-go,
+    .language-rust, .language-kotlin, .language-swift, .language-sql, .language-html,
+    .language-css, .language-yaml, .language-json, .language-xml, .language-markdown,
+    .language-shell, .language-zsh, .language-text {
+      padding: 1.2em 1.5em !important;
+      margin: 1.5em 0.5em !important;
+    }
+
+    /* Ensure no padding bleeding */
+    .highlight > pre {
+      padding: 0 !important;
+      margin: 0 !important;
     }
 
     .md-typeset code {
@@ -618,6 +665,86 @@
       font-weight: 600;
     }
 
+    /* LEFT SIDEBAR SUBMENU STYLING - Light Theme (No Background, No Lines) */
+    .md-nav--secondary {
+      background-color: transparent !important;  /* Hide background */
+      border: none !important;  /* Hide all borders */
+      border-top: none !important;
+      border-bottom: none !important;
+      border-left: none !important;
+      border-right: none !important;
+    }
+
+    .md-nav--secondary .md-nav__link {
+      color: #504F4B !important;  /* Text Secondary */
+      background-color: transparent !important;
+      padding: 0.5rem 1rem !important;
+      border-radius: 4px !important;
+      font-weight: 500 !important;
+      font-size: 0.9rem !important;
+      line-height: 1.4 !important;
+      border: none !important;  /* Hide link borders */
+    }
+
+    .md-nav--secondary .md-nav__link:hover {
+      background-color: #EFEEEA !important;  /* Muted Surface */
+      color: #171612 !important;  /* Ink/Accent */
+      font-weight: 600 !important;
+    }
+
+    .md-nav--secondary .md-nav__link--active {
+      color: #171612 !important;  /* Ink/Accent */
+      background-color: #D5D4D0 !important;  /* Border Light Gray */
+      font-weight: 700 !important;
+      border-radius: 4px !important;
+    }
+
+    .md-nav--secondary .md-nav__item {
+      border-radius: 4px !important;
+      margin: 0.25rem 0 !important;
+      border: none !important;  /* Hide item borders */
+    }
+
+    /* LEFT SIDEBAR SUBMENU STYLING - Dark Theme (No Background, No Lines) */
+    [data-md-color-scheme="slate"] .md-nav--secondary {
+      background-color: transparent !important;  /* Hide background */
+      border: none !important;  /* Hide all borders */
+      border-top: none !important;
+      border-bottom: none !important;
+      border-left: none !important;
+      border-right: none !important;
+    }
+
+    [data-md-color-scheme="slate"] .md-nav--secondary .md-nav__link {
+      color: #C9C8C4 !important;  /* Light Text Secondary */
+      background-color: transparent !important;
+      padding: 0.5rem 1rem !important;
+      border-radius: 4px !important;
+      font-weight: 500 !important;
+      font-size: 0.9rem !important;
+      line-height: 1.4 !important;
+      border: none !important;  /* Hide link borders */
+    }
+
+    [data-md-color-scheme="slate"] .md-nav--secondary .md-nav__link:hover {
+      background-color: #22211E !important;  /* Dark Muted Surface */
+      color: #EEEDE8 !important;  /* Light Ink/Accent */
+      font-weight: 600 !important;
+    }
+
+    [data-md-color-scheme="slate"] .md-nav--secondary .md-nav__link--active {
+      color: #EEEDE8 !important;  /* Light Ink/Accent */
+      background-color: #3A3935 !important;  /* Dark Neutral Mid */
+      font-weight: 700 !important;
+      border-radius: 4px !important;
+    }
+
+    [data-md-color-scheme="slate"] .md-nav--secondary .md-nav__item {
+      border-radius: 4px !important;
+      margin: 0.25rem 0 !important;
+      border: none !important;  /* Hide item borders */
+    }
+
     /* Header with neutral styling - improved readability */
     .md-header {
       background-color: var(--bg-surface) !important;
@@ -650,14 +777,15 @@
       border-radius: 4px !important;
       transition: all 0.2s ease !important;
       font-weight: 500 !important;
-      color: var(--text-primary) !important;
+      color: #504F4B !important;  /* Text Secondary for light theme */
       opacity: 1.0 !important;
     }
 
     html .md-nav__link:hover,
     html [data-md-color-scheme="default"] .md-nav__link:hover {
-      background-color: var(--bg-surface-muted) !important;
-      color: var(--accent-primary) !important;
+      background-color: #EFEEEA !important;  /* Muted Surface */
+      color: #171612 !important;  /* Ink/Accent */
+      font-weight: 600 !important;
     }
 
     html .md-nav__item--active,
@@ -665,9 +793,28 @@
     html [data-md-color-scheme="default"] .md-nav__item--active,
     html [data-md-color-scheme="default"] .md-nav__link--active {
       font-weight: 700 !important;
-      color: var(--accent-primary) !important;
-      background-color: var(--bg-surface-muted) !important;
+      color: #171612 !important;  /* Ink/Accent */
+      background-color: #D5D4D0 !important;  /* Border Light Gray */
       opacity: 1.0 !important;
+    }
+
+    /* Dark theme navigation links */
+    [data-md-color-scheme="slate"] .md-nav__link,
+    [data-md-color-scheme="slate"] .md-nav__item {
+      color: #C9C8C4 !important;  /* Light Text Secondary */
+    }
+
+    [data-md-color-scheme="slate"] .md-nav__link:hover {
+      background-color: #22211E !important;  /* Dark Muted Surface */
+      color: #EEEDE8 !important;  /* Light Ink/Accent */
+      font-weight: 600 !important;
+    }
+
+    [data-md-color-scheme="slate"] .md-nav__item--active,
+    [data-md-color-scheme="slate"] .md-nav__link--active {
+      font-weight: 700 !important;
+      color: #EEEDE8 !important;  /* Light Ink/Accent */
+      background-color: #3A3935 !important;  /* Dark Neutral Mid */
     }
 
     /* Footer with neutral styling */
@@ -885,4 +1032,9 @@
       letter-spacing: -0.025em;
     }
   </style>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script src="{{ 'stylesheets/language-selector.js' | url }}"></script>
 {% endblock %}

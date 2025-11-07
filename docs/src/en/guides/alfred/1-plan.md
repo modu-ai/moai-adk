@@ -1,354 +1,428 @@
-______________________________________________________________________
+# Phase 1: Plan - Specification Creation
 
-## title: /alfred:1-plan コマンド description: SPEC作成と要件定義のための完全ガイド lang: ja
+The `/alfred:1-plan` command transforms your ideas into clear, executable specifications using the
+EARS (Easy Approach to Requirements Syntax) format. This phase is critical for ensuring everyone
+understands exactly what needs to be built.
 
-# /alfred:1-plan - SPEC作成コマンド
+## Overview
 
-`/alfred:1-plan`はMoAI-ADKの計画段階コマンドで、EARS形式のSPEC（仕様書）を作成し、明確な要件を定義します。
+**Purpose**: Create comprehensive specifications that serve as the foundation for implementation,
+testing, and documentation.
 
-## 概要
-
-**目的**: 明確な要件定義と実装計画の作成 **実行時間**: 約2分 **主要成果**: SPEC文書、プランボード、ブランチ
-
-## 基本使用法
-
-```bash
-/alfred:1-plan "機能説明"
-```
-
-### 例
+**Command Format**:
 
 ```bash
-# APIエンドポイント作成
-/alfred:1-plan "GET /helloエンドポイント - クエリパラメータnameを受け取って挨拶を返す"
-
-# ユーザー認証機能
-/alfred:1-plan "ユーザーログイン機能 - メールとパスワードで認証してJWTトークン発行"
-
-# データ管理機能
-/alfred:1-plan "TODO CRUD機能 - 作成、照会、修正、削除"
+/alfred:1-plan "Brief description of what you want to build"
 ```
 
-## 実行プロセス
+**Typical Duration**: 2-5 minutes **Output**: Professional specification document with unique ID
 
-### ステップ1: 要件分析
+## Alfred's Planning Process
 
-Alfredが以下を自動実行します：
+### Step 1: Requirement Analysis
 
-1. **入力分析**: ユーザーの要求を解析
-2. **ドメイン検出**: 関連する専門分野を特定
-3. **複雑度評価**: 実装難易度を判断
-4. **専門家推薦**: 必要な専門家エージェントを推薦
+When you invoke `/alfred:1-plan`, Alfred's **spec-builder** analyzes your input through multiple
+lenses:
 
-### ステップ2: SPEC作成
+1. **Natural Language Processing**
 
-#### EARS形式の自動生成
+   - Extract key requirements from your description
+   - Identify entities, actions, and constraints
+   - Detect implied requirements and edge cases
+
+2. **Domain Classification**
+
+   - Categorize the request (API, UI, database, etc.)
+   - Identify relevant domain experts to consult
+   - Determine complexity and scope
+
+3. **Scope Definition**
+
+   - Define what's in scope vs. out of scope
+   - Estimate implementation complexity
+   - Identify dependencies and prerequisites
+
+### Step 2: SPEC Generation
+
+Alfred automatically generates a complete specification with these components:
+
+#### YAML Frontmatter
 
 ```yaml
 ---
-id: HELLO-001
+id: AUTH-001
 version: 0.1.0
 status: draft
 priority: high
-created: 2025-01-06
-updated: 2025-01-06
-author: @user
+created: 2025-01-15
+updated: 2025-01-15
+author: @developer
+domain: authentication
+complexity: medium
+estimated_hours: 8
+dependencies: []
+tags: [api, security, jwt]
 ---
-
-# @SPEC:EX-HELLO-001: Hello World API
-
-## Ubiquitous Requirements
-- システムはHTTP GET /helloエンドポイントを提供すべきである
-
-## Event-driven Requirements
-- WHEN クエリパラメータnameが提供されたら、"Hello, {name}!"を返すべきである
-- WHEN nameがない場合、"Hello, World!"を返すべきである
-
-## State-driven Requirements
-- WHILE システムが実行中である時、エンドポイントは応答可能であるべきである
-
-## Optional Features
-- WHERE nameパラメータがある場合、パーソナライズされた挨拶を提供できる
-
-## Unwanted Behaviors
-- nameが50文字を超える場合、400エラーを返すべきである
-- 無効な文字が含まれる場合、400エラーを返すべきである
 ```
 
-#### プランボード作成
+#### EARS Requirements
+
+Alfred structures requirements using the 5 EARS patterns:
+
+1. **Ubiquitous Requirements** (Basic functionality)
+2. **Event-driven Requirements** (Conditional behavior)
+3. **State-driven Requirements** (State-based behavior)
+4. **Optional Requirements** (Nice-to-have features)
+5. **Unwanted Behaviors** (Constraints and limitations)
+
+#### Implementation Plan
+
+- Architecture recommendations
+- Technology stack suggestions
+- Risk assessment
+- Testing strategy
+
+### Step 3: Expert Consultation
+
+Based on domain classification, Alfred automatically consults relevant expert agents:
+
+**Backend Keywords** (`api`, `server`, `database`):
+
+```bash
+# Triggers backend-expert
+/alfred:1-plan "REST API for user management with PostgreSQL database"
+```
+
+**Frontend Keywords** (`ui`, `component`, `page`):
+
+```bash
+# Triggers frontend-expert
+/alfred:1-plan "User dashboard with profile management interface"
+```
+
+**Security Keywords** (`auth`, `security`, `encryption`):
+
+```bash
+# Triggers security-expert
+/alfred:1-plan "Secure authentication system with MFA support"
+```
+
+Each expert provides:
+
+- **Architecture recommendations**
+- **Technology suggestions**
+- **Risk analysis**
+- **Best practices**
+
+### Step 4: Document Generation
+
+Alfred creates a complete specification package:
+
+```
+.moai/specs/SPEC-AUTH-001/
+├── spec.md              # Main specification document
+├── plan.md              # Implementation plan
+├── acceptance.md        # Acceptance criteria checklist
+└── risks.md             # Risk assessment and mitigation
+```
+
+## Writing Effective Plan Requests
+
+### Good Plan Requests
+
+**Specific and Clear**:
+
+```bash
+/alfred:1-plan "REST API for user authentication with JWT tokens, email/password login, and refresh token support"
+```
+
+**Includes Context**:
+
+```bash
+/alfred:1-plan "Add password reset functionality to existing authentication system using email verification codes"
+```
+
+**Specifies Constraints**:
+
+```bash
+/alfred:1-plan "File upload API supporting images up to 10MB, with virus scanning and S3 storage"
+```
+
+### Poor Plan Requests
+
+**Too Vague**:
+
+```bash
+# <span class="material-icons">cancel</span> Too general
+/alfred:1-plan "Make a login system"
+```
+
+**Multiple Features**:
+
+```bash
+# <span class="material-icons">cancel</span> Combine multiple ideas
+/alfred:1-plan "Login, registration, profile, and admin dashboard"
+```
+
+**Missing Context**:
+
+```bash
+# <span class="material-icons">cancel</span> No details about requirements
+/alfred:1-plan "API endpoint"
+```
+
+## SPEC Structure and Components
+
+### Complete SPEC Example
 
 ```markdown
-## Plan Board
-
-### 実装アイデア
-1. FastAPIを使用したREST API実装
-2. Pydanticで入力検証
-3. エラーハンドリング統合
-
-### 技術スタック
-- **フレームワーク**: FastAPI
-- **検証**: Pydantic
-- **テスト**: pytest
-- **ドキュメント**: OpenAPI自動生成
-
-### リスク要因
-1. 入力検証の網羅性
-2. エラーメッセージの一貫性
-3. パフォーマンス要件
-
-### 解決戦略
-1. まず基本機能実装
-2. 次に入力検証追加
-3. 最後にエラーハンドリング強化
-```
-
-### ステップ3: 専門家コンサルテーション
-
-#### 自動専門家活性化
-
-特定のキーワードを検出して専門家を自動的に活性化：
-
-| キーワード                 | 活性化される専門家 | 提供内容           |
-| -------------------------- | ------------------ | ------------------ |
-| 'api', 'backend', 'server' | backend-expert     | アーキテクチャ設計 |
-| 'database', 'storage'      | database-expert    | データモデリング   |
-| 'security', 'auth'         | security-expert    | セキュリティ分析   |
-| 'frontend', 'ui'           | frontend-expert    | UI/UX設計          |
-| 'performance', 'scale'     | devops-expert      | 性能最適化         |
-
-#### 専門家アドバイス例
-
-```
-⚙️ backend-expertのアドバイス:
-- FastAPIは良い選択です。自動APIドキュメンテーション機能があります
-- エンドポイントのバージョニングを検討してください
-- レート制限の実装を推奨します
-
-🔒 security-expertのアドバイス:
-- 入力検証は重要です。すべてのユーザー入力を検証してください
-- エラーメッセージは情報漏洩しないように一般的な内容にしてください
-- ログ記録を通じてセキュリティイベントを監視してください
-```
-
-## 生成される成果物
-
-### 1. SPEC文書
-
-**場所**: `.moai/specs/SPEC-{ID}/spec.md` **内容**: EARS形式の要件定義 **TAG**: `@SPEC:EX-{ID}`
-
-### 2. プランボード
-
-**場所**: `.moai/specs/SPEC-{ID}/plan.md` **内容**: 実装計画、リスク分析、解決戦略
-
-### 3. 受諾基準
-
-**場所**: `.moai/specs/SPEC-{ID}/acceptance.md` **内容**: 検証基準、テストケース
-
-### 4. Gitブランチ（チームモード）
-
-**名前**: `feature/SPEC-{ID}` **用途**: 機能開発用分離ブランチ
-
-## 高度な機能
-
-### カスタムテンプレート
-
-特定のパターンでSPECを作成：
-
-```bash
-# REST APIテンプレート
-/alfred:1-plan "REST API: CRUD operations for user management"
-
-# データベーススキーマ
-/alfred:1-plan "Database: User authentication schema with roles"
-
-# UIコンポーネント
-/alfred:1-plan "UI Component: Modal dialog with form validation"
-```
-
-### 依存関係管理
-
-```bash
-# 依存関係のあるSPEC
-/alfred:1-plan "User profile management - depends on AUTH-001"
-
-# 生成される依存関係セクション
-## Dependencies
-- @SPEC:EX-AUTH-001: User Authentication (required)
-- @SPEC:EX-USER-002: User Database (optional)
-```
-
-### バージョン管理
-
-```yaml
 ---
-id: USER-001
-version: 0.2.0  # バージョン自動増加
-status: draft    # 状態管理
-priority: high   # 優先順位
+id: AUTH-001
+version: 0.1.0
+status: draft
+priority: high
+created: 2025-01-15
+updated: 2025-01-15
+author: @developer
+domain: authentication
+complexity: medium
+estimated_hours: 8
+dependencies: []
+tags: [api, security, jwt]
 ---
 
-## 変更履歴
-- v0.2.0: パスワード検証ルール強化
-- v0.1.0: 初期バージョン
-```
+# @SPEC:EX-AUTH-001: User Authentication System
 
-## 状態管理
+## Overview
+Provide secure user authentication using email/password credentials with JWT token-based session management.
 
-### 状態遷移
+## Ubiquitous Requirements
+- The system SHALL provide user authentication via email and password
+- The system SHALL issue JWT tokens for authenticated sessions
+- The system SHALL support token refresh for extended sessions
+- The system SHALL validate user credentials before token issuance
 
-```
-planning → draft → in_progress → testing → completed → deprecated
-```
+## Event-driven Requirements
+- WHEN valid email and password are provided, the system SHALL issue an access token and refresh token
+- WHEN invalid credentials are provided, the system SHALL return a 401 error with appropriate message
+- WHEN a valid refresh token is provided, the system SHALL issue a new access token
+- WHEN an expired refresh token is provided, the system SHALL return a 401 error
+- WHEN multiple failed login attempts occur, the system SHALL implement rate limiting
 
-### 状態変更
+## State-driven Requirements
+- WHILE a user is authenticated with a valid access token, the system SHALL allow access to protected resources
+- WHILE a refresh token is valid, the system SHALL allow token renewal without re-authentication
+- WHILE an account is locked due to security concerns, the system SHALL reject all authentication attempts
 
-```bash
-# 状態確認
-grep "status:" .moai/specs/SPEC-HELLO-001/spec.md
+## Optional Requirements
+- WHERE multi-factor authentication is enabled, the system SHALL require additional verification
+- WHERE social login providers are configured, the system SHALL support OAuth authentication
+- WHERE device fingerprinting is enabled, the system SHALL track login sessions by device
 
-# 手動状態変更（推奨しない）
-/alfred:3-sync  # 状態自動同期
-```
+## Unwanted Behaviors
+- The system SHALL NOT store passwords in plain text
+- The system SHALL NOT reveal whether an email address is registered
+- The system SHALL NOT accept weak passwords
+- The system SHALL NOT allow token reuse after logout
+- Password SHALL NOT be less than 8 characters
+- Login attempts SHALL NOT exceed 5 per minute per IP address
 
-## 品質基準
+## Technical Requirements
 
-### SPEC品質チェックリスト
+### API Endpoints
+- `POST /auth/login` - Authenticate user and issue tokens
+- `POST /auth/refresh` - Refresh access token
+- `POST /auth/logout` - Invalidate tokens
+- `GET /auth/me` - Get current user info
 
-- ✅ **明確性**: すべての要件が明確で曖昧さがない
-- ✅ **完全性**: 必要なすべての機能が含まれている
-- ✅ **一貫性**: 用語と構造が一貫している
-- ✅ **検証可能性**: 各要件がテスト可能
-- ✅ **追跡可能性**: @TAGで追跡可能
+### Security Requirements
+- Passwords SHALL be hashed using bcrypt with minimum 12 rounds
+- JWT tokens SHALL use RS256 signing algorithm
+- Access tokens SHALL expire after 15 minutes
+- Refresh tokens SHALL expire after 7 days
+- All endpoints SHALL use HTTPS only
 
-### EARSパターン検証
+### Performance Requirements
+- Login response time SHALL be under 500ms
+- System SHALL support 1000 concurrent authentication requests
+- Token validation SHALL be under 100ms
 
-```bash
-# EARSパターン確認
-grep -E "(WHEN|WHILE|WHERE|システムは.*すべきである)" .moai/specs/SPEC-HELLO-001/spec.md
-```
-
-## チーム協業
-
-### SPECレビュープロセス
-
-1. **作成**: `/alfred:1-plan`でSPEC作成
-2. **レビュー**: チームメンバーがSPECレビュー
-3. **フィードバック**: コメントや改善提案
-4. **承認**: 全員が承認後実装開始
-
-### プルリクエスト統合
-
-```bash
-# 自動PR作成（チームモード）
-/alfred:1-plan "新機能"
-→ feature/SPEC-XXXブランチ作成
-→ Draft PR自動作成
-→ レビュアー自動割り当て
-```
-
-## ベストプラクティス
-
-### 1. 良い要件定義
-
-**悪い例**:
-
-```
-- ユーザー機能
-- ログイン作成
-- データ保存
-```
-
-**良い例**:
-
-```
-- WHEN 有効なメールとパスワードが提供されたら、システムはJWTトークンを発行すべきである
-- WHILE ユーザーが認証されている時、保護されたリソースへのアクセスを許可すべきである
-- WHERE リフレッシュトークンが有効な場合、新しいアクセストークンを発行できる
-```
-
-### 2. 適切な粒度
-
-- **一つのSPEC**: 一つの機能または密接に関連する機能群
-- **原子性**: 分割できない最小単位
-- **独立性**: 他のSPECに依存しすぎない
-
-### 3. 明確な受け入れ基準
-
-```yaml
 ## Acceptance Criteria
-### 機能要件
-- [ ] 有効な認証情報でログインできる
-- [ ] 無効な認証情報で401エラーが返る
-- [ ] トークン有効期限が15分である
+- [ ] Users can authenticate with valid credentials
+- [ ] Invalid credentials return appropriate errors
+- [ ] Tokens can be refreshed before expiration
+- [ ] Password security requirements are enforced
+- [ ] Rate limiting prevents brute force attacks
+- [ ] All API endpoints are documented
+- [ ] Security headers are properly configured
+- [ ] Error handling covers all edge cases
 
-### 非機能要件
-- [ ] レスポンスタイムが200ms以内
-- [ ] 並列リクエスト1000個処理可能
-- [ ] セキュリティ基準準拠
+## Dependencies
+- User management system (USER-001)
+- Email service for notifications (EMAIL-001)
+- Rate limiting service (RATE-001)
+
+## Risk Assessment
+- **High**: Token leakage could compromise user accounts
+- **Medium**: Brute force attacks on login endpoint
+- **Low**: Token replay attacks
+
+## Implementation Notes
+@EXPERT:BACKEND - Consider using Redis for token blacklist
+@EXPERT:SECURITY - Implement device fingerprinting for enhanced security
+@EXPERT:DEVOPS - Set up log monitoring for authentication events
 ```
 
-## トラブルシューティング
+## Status Transitions
 
-### よくある問題
+SPEC documents follow a clear lifecycle:
 
-**SPECが作成されない**:
+```mermaid
+%%{init: {'theme':'neutral'}}%%
+stateDiagram-v2
+    [*] --> planning: /alfred:1-plan
+    planning --> draft: SPEC written
+    draft --> in_review: Team review
+    in_review --> approved: Changes approved
+    in_review --> draft: Revisions needed
+    approved --> in_progress: /alfred:2-run
+    in_progress --> completed: /alfred:3-sync
+    completed --> stable: Production deployed
+    stable --> deprecated: Feature retired
+```
+
+### Status Definitions
+
+- **`planning`**: Initial state during SPEC creation
+- **`draft`**: SPEC written, ready for review
+- **`in_review`**: Undergoing team review and feedback
+- **`approved`**: Approved for implementation
+- **`in_progress`**: Currently being implemented
+- **`completed`**: Implementation complete, documentation synced
+- **`stable`**: Running in production
+- **`deprecated`**: Feature retired or replaced
+
+## Best Practices
+
+### SPEC Writing Guidelines
+
+1. **Be Specific**: Use concrete, measurable requirements
+2. **Think in Scenarios**: Consider all use cases and edge cases
+3. **Define Constraints**: Clearly state what the system should NOT do
+4. **Include Acceptance Criteria**: Make success conditions testable
+5. **Consider Dependencies**: Identify related components and requirements
+
+### EARS Pattern Usage
+
+**Use Ubiquitous for**:
+
+- Core functionality
+- Basic requirements
+- Essential features
+
+**Use Event-driven for**:
+
+- Conditional behavior
+- User interactions
+- System responses
+
+**Use State-driven for**:
+
+- Authentication states
+- User permissions
+- System modes
+
+**Use Optional for**:
+
+- Nice-to-have features
+- Future enhancements
+- Conditional functionality
+
+**Use Unwanted Behaviors for**:
+
+- Security constraints
+- Performance limits
+- Business rules
+- Error conditions
+
+### Expert Consultation
+
+To get the most from expert consultations:
+
+1. **Use Domain Keywords**: Include terms that trigger relevant experts
+2. **Provide Context**: Mention existing systems or constraints
+3. **Specify Non-Functional Requirements**: Include performance, security, scalability
+4. **Consider Integration**: How does this feature interact with existing code?
+
+## Common Examples
+
+### API Endpoint
 
 ```bash
-# プロジェクト状態確認
+/alfred:1-plan "REST API endpoint for creating user profiles with validation, image upload, and database persistence"
+```
+
+### UI Component
+
+```bash
+/alfred:1-plan "User registration form with email validation, password strength indicator, and accessibility compliance"
+```
+
+### Database Schema
+
+```bash
+/alfred:1-plan "Database schema for user accounts with audit logging, soft deletes, and GDPR compliance"
+```
+
+### Integration Feature
+
+```bash
+/alfred:1-plan "Payment processing integration with Stripe, webhooks, and refund management"
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**SPEC creation fails**:
+
+- Check network connection
+- Verify `.moai/` directory exists
+- Run `moai-adk doctor`
+
+**Vague requirements**:
+
+- Be more specific in your request
+- Include constraints and requirements
+- Consider edge cases
+
+**Missing expert consultation**:
+
+- Include domain-specific keywords
+- Specify technical requirements
+- Mention integration points
+
+### Getting Help
+
+```bash
+# Check system status
 moai-adk doctor
 
-# Claude Code再起動
-exit && claude
+# Get help with SPEC writing
+/alfred:1-plan "Help me write a SPEC for [feature]"
 
-# 依存関係確認
-ls .claude/agents/ .claude/skills/
+# Report issues
+/alfred:9-feedback
 ```
 
-**内容が不十分**:
+## Next Steps
 
-```bash
-# より詳細な説明で再実行
-/alfred:1-plan "GET /users/{id} - パスパラメータでユーザーIDを受け取り、ユーザー情報をJSON形式で返す。存在しない場合は404エラーを返す"
-```
+After creating your SPEC:
 
-**専門家が活性化されない**:
+1. **Review the SPEC**: Ensure all requirements are captured
+2. **Team Review**: Share with team members for feedback (if applicable)
+3. **Implementation**: Begin TDD with `/alfred:2-run SPEC-ID`
+4. **Documentation**: Let Alfred sync docs with `/alfred:3-sync`
 
-```bash
-# キーワードを明確に含める
-/alfred:1-plan "API endpoint for user authentication with JWT tokens and database integration"
-```
-
-## 統合と連携
-
-### /alfred:2-runとの連携
-
-```bash
-# SPEC作成後すぐ実装
-/alfred:1-plan "ユーザー認証機能"
-/alfred:2-run AUTH-001  # 作成されたSPEC-IDを使用
-```
-
-### /alfred:3-syncとの連携
-
-```bash
-# 実装完了後ドキュメント同期
-/alfred:3-sync  # SPEC状態をcompletedに更新
-```
-
-### GitHub連携
-
-```bash
-# 自動Issue作成
-/alfred:1-plan "機能"
-→ GitHub Issue自動作成
-→ PRと連携
-→ ラベル自動付与
-```
-
-______________________________________________________________________
-
-**📚 次のステップ**:
-
-- [/alfred:2-run](2-run.md)でTDD実装
-- [TDDガイド](../tdd/index.md)でテスト駆動開発
-- [SPECガイド](../specs/basics.md)で仕様書作成技術
+Remember: A well-written SPEC is the foundation of successful software development. Take the time to
+get it right, and the rest of the development process will flow smoothly! 🎯

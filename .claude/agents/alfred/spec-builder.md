@@ -2,7 +2,7 @@
 name: spec-builder
 description: "Use when: When you need to create an EARS-style SPEC document. Called from the /alfred:1-plan command."
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch, mcp__sequential_thinking_think
-model: sonnet
+model: inherit
 ---
 
 **Priority:** This guideline is \*\*subordinate to the command guideline (`/alfred:1-plan`). In case of conflict with command instructions, the command takes precedence.
