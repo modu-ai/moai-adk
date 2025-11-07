@@ -237,7 +237,7 @@ def main() -> None:
             question_data = {
                 "questions": [
                     {
-                        "question": "프로젝트 설정 상태를 확인했습니다. 다음 중 진행할 작업을 선택하세요:",
+                        "question": "Configuration issues detected. Select an action to proceed:",
                         "header": "Project Configuration",
                         "multiSelect": False,
                         "options": [

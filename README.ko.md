@@ -444,30 +444,30 @@ Claude Code 세션이 시작될 때마다 MoAI-ADK는 **자동으로** 프로젝
 
 ```
 📋 Configuration Health Check:
-❌ 프로젝트 설정 없음
-⚠️  필수 설정 누락
+❌ Project configuration missing
+⚠️  Required configuration sections incomplete
 
-다음 중 하나를 선택하세요:
+Configuration issues detected. Select an action to proceed:
 
 1️⃣ Initialize Project
-   → /alfred:0-project 실행하여 새로운 프로젝트 초기화
+   → Run /alfred:0-project to initialize new project configuration
 
 2️⃣ Update Settings
-   → /alfred:0-project 실행하여 기존 설정 업데이트/검증
+   → Run /alfred:0-project to update/verify existing configuration
 
 3️⃣ Skip for Now
-   → 경고 무시하고 현재 설정으로 진행 (권장 안 함)
+   → Continue without configuration update (not recommended)
 ```
 
 또는 설정이 양호한 경우:
 
 ```
 📋 Configuration Health Check:
-✅ 설정 완성됨
-✅ 최근 설정: 2일 전
-✅ 버전 일치: 0.21.1
+✅ Configuration complete
+✅ Recent setup: 2 days ago
+✅ Version match: 0.21.1
 
-모든 설정이 정상입니다!
+All settings are healthy!
 ```
 
 **선택 항목 설명**
