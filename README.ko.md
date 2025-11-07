@@ -239,57 +239,55 @@ commit 4: "merge: SPEC-AUTH-001을 develop으로 merge"
 
 ### 워크플로우 시각화
 
-```
-┌─────────────────────────────────────────────────────────┐
-│ 사용자 요청                                              │
-│ "JWT 인증 시스템을 추가해줘"                            │
-└────────────────┬────────────────────────────────────────┘
-                 │
-                 ▼
-        ┌────────────────────┐
-        │  1단계: 의도 파악  │
-        │  명확성 평가?      │
-        └────────┬───────────┘
-                 │
-         ┌───────┴─────────┐
-         │                 │
-      높음 (HIGH)     중간/낮음
-       │                  │
-     2단계로    ┌──────────────────────┐
-     바로 진행  │ 명확히 질문하기      │
-              │ (AskUserQuestion)    │
-             └──────────┬───────────┘
-                       │
-                       ▼
-                    사용자 응답
-                       │
-                       ▼
-        ┌────────────────────────┐
-        │  2단계: 계획 수립      │
-        │  • Plan Agent 호출    │
-        │  • 사용자 승인 획득    │
-        │  • TodoWrite 초기화   │
-        └────────┬───────────────┘
-                 │
-            사용자 승인 완료
-                 │
-                 ▼
-        ┌────────────────────────┐
-        │  3단계: 실행           │
-        │  RED → GREEN → REFACTOR│
-        │  실시간 TodoWrite 추적 │
-        │  모든 테스트 완료      │
-        └────────┬───────────────┘
-                 │
-            모든 작업 완료
-                 │
-                 ▼
-        ┌────────────────────────┐
-        │  4단계: 보고 및 커밋  │
-        │  • 설정 확인          │
-        │  • Git 커밋           │
-        │  • 파일 정리          │
-        └────────────────────────┘
+```mermaid
+flowchart TD
+    Start["👤 사용자 요청<br/>JWT 인증 시스템<br/>추가해줘"]
+
+    Step1["🧠 1단계: 의도 파악<br/>명확성 평가?"]
+
+    HighClarity{"요청<br/>명확한가?"}
+
+    LowClarity["❓ 명확히 질문하기<br/>AskUserQuestion"]
+    UserRespond["💬 사용자 응답"]
+
+    Step2["📋 2단계: 계획 수립<br/>• Plan Agent 호출<br/>• 사용자 승인 획득<br/>• TodoWrite 초기화"]
+
+    UserApprove["✅ 사용자 계획 승인"]
+
+    Step3["⚙️ 3단계: 실행<br/>RED → GREEN → REFACTOR<br/>실시간 TodoWrite 추적<br/>모든 테스트 완료"]
+
+    TasksComplete["✓ 모든 작업 완료"]
+
+    Step4["📝 4단계: 보고 및 커밋<br/>• 설정 확인<br/>• Git 커밋<br/>• 파일 정리"]
+
+    Done["✨ 완료"]
+
+    Start --> Step1
+    Step1 --> HighClarity
+
+    HighClarity -->|높음 HIGH| Step2
+    HighClarity -->|중간/낮음| LowClarity
+
+    LowClarity --> UserRespond
+    UserRespond --> Step2
+
+    Step2 --> UserApprove
+    UserApprove --> Step3
+
+    Step3 --> TasksComplete
+    TasksComplete --> Step4
+
+    Step4 --> Done
+
+    classDef inputStyle fill:#e5e5e5,stroke:#333,stroke-width:2px,color:#000
+    classDef processStyle fill:#d3d3d3,stroke:#333,stroke-width:2px,color:#000
+    classDef decisionStyle fill:#c0c0c0,stroke:#333,stroke-width:2px,color:#000
+    classDef completeStyle fill:#a9a9a9,stroke:#333,stroke-width:2px,color:#000
+
+    class Start inputStyle
+    class Step1,Step2,Step3,Step4 processStyle
+    class HighClarity,LowClarity,UserRespond,UserApprove,TasksComplete decisionStyle
+    class Done completeStyle
 ```
 
 ---

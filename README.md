@@ -276,57 +276,55 @@ commit 4: "merge: Merge SPEC-AUTH-001 to develop"
 
 ### Visual Workflow Overview
 
-```
-┌─────────────────────────────────────────────────────────┐
-│ USER REQUEST                                            │
-│ "Add JWT authentication to the system"                  │
-└────────────────┬────────────────────────────────────────┘
-                 │
-                 ▼
-        ┌────────────────────┐
-        │ STEP 1: UNDERSTAND │
-        │  Intent Clarity?   │
-        └────────┬───────────┘
-                 │
-         ┌───────┴─────────┐
-         │                 │
-      HIGH            MEDIUM/LOW
-       │                  │
-     Skip     ┌──────────────────────┐
-     to       │ Ask Clarifying Qs    │
-    STEP 2    │ (AskUserQuestion)    │
-             └──────────┬───────────┘
-                       │
-                       ▼
-                    User Responds
-                       │
-                       ▼
-        ┌────────────────────────┐
-        │  STEP 2: PLAN          │
-        │  • Call Plan Agent     │
-        │  • Get User Approval   │
-        │  • Init TodoWrite      │
-        └────────┬───────────────┘
-                 │
-        Approved by User
-                 │
-                 ▼
-        ┌────────────────────────┐
-        │  STEP 3: EXECUTE       │
-        │  RED → GREEN → REFACTOR│
-        │  Real-time TodoWrite   │
-        │  Complete Tests        │
-        └────────┬───────────────┘
-                 │
-           All Tasks Done
-                 │
-                 ▼
-        ┌────────────────────────┐
-        │  STEP 4: REPORT        │
-        │  • Check Config        │
-        │  • Git Commit          │
-        │  • Cleanup Files       │
-        └────────────────────────┘
+```mermaid
+flowchart TD
+    Start["👤 USER REQUEST<br/>Add JWT authentication<br/>to the system"]
+
+    Step1["🧠 STEP 1: UNDERSTAND<br/>Intent Clarity?"]
+
+    HighClarity{"Request<br/>Clarity?"}
+
+    LowClarity["❓ Ask Clarifying Qs<br/>AskUserQuestion"]
+    UserRespond["💬 User Responds"]
+
+    Step2["📋 STEP 2: PLAN<br/>• Call Plan Agent<br/>• Get User Approval<br/>• Init TodoWrite"]
+
+    UserApprove["✅ User Approves Plan"]
+
+    Step3["⚙️ STEP 3: EXECUTE<br/>RED → GREEN → REFACTOR<br/>Real-time TodoWrite<br/>Complete Tests"]
+
+    TasksComplete["✓ All Tasks Done"]
+
+    Step4["📝 STEP 4: REPORT<br/>• Check Config<br/>• Git Commit<br/>• Cleanup Files"]
+
+    Done["✨ COMPLETE"]
+
+    Start --> Step1
+    Step1 --> HighClarity
+
+    HighClarity -->|HIGH| Step2
+    HighClarity -->|MEDIUM/LOW| LowClarity
+
+    LowClarity --> UserRespond
+    UserRespond --> Step2
+
+    Step2 --> UserApprove
+    UserApprove --> Step3
+
+    Step3 --> TasksComplete
+    TasksComplete --> Step4
+
+    Step4 --> Done
+
+    classDef inputStyle fill:#e5e5e5,stroke:#333,stroke-width:2px,color:#000
+    classDef processStyle fill:#d3d3d3,stroke:#333,stroke-width:2px,color:#000
+    classDef decisionStyle fill:#c0c0c0,stroke:#333,stroke-width:2px,color:#000
+    classDef completeStyle fill:#a9a9a9,stroke:#333,stroke-width:2px,color:#000
+
+    class Start inputStyle
+    class Step1,Step2,Step3,Step4 processStyle
+    class HighClarity,LowClarity,UserRespond,UserApprove,TasksComplete decisionStyle
+    class Done completeStyle
 ```
 
 ---
