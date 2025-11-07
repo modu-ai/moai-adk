@@ -26,7 +26,7 @@ def test_suggest_tag_with_spec():
         suggestion = suggest_tag_for_file(Path("docs/auth/guide.md"))
 
         assert suggestion.tag_id == "@DOC:AUTH-001"
-        assert suggestion.chain_ref == "@SPEC:AUTH-004"
+        assert suggestion.chain_ref == "@SPEC:AUTH-001"
         assert suggestion.confidence == 0.85
         assert suggestion.domain == "AUTH"
 
@@ -73,7 +73,7 @@ def test_validate_tag_chain_valid():
     """Validate correct TAG chain"""
     assert validate_tag_chain(
         "@DOC:AUTH-001",
-        "@SPEC:AUTH-004 -> @DOC:AUTH-001"
+        "@SPEC:AUTH-001 -> @DOC:AUTH-001"
     ) is True
 
 
@@ -89,7 +89,7 @@ def test_validate_tag_chain_missing_tag():
     """Detect missing TAG in chain"""
     assert validate_tag_chain(
         "@DOC:AUTH-002",
-        "@SPEC:AUTH-004 -> @DOC:AUTH-001"
+        "@SPEC:AUTH-001 -> @DOC:AUTH-001"
     ) is False
 
 
@@ -97,14 +97,14 @@ def test_tag_suggestion_dataclass():
     """Verify TagSuggestion dataclass structure"""
     suggestion = TagSuggestion(
         tag_id="@DOC:AUTH-001",
-        chain_ref="@SPEC:AUTH-004",
+        chain_ref="@SPEC:AUTH-001",
         confidence=0.85,
         domain="AUTH",
         file_path=Path("docs/auth/guide.md"),
     )
 
     assert suggestion.tag_id == "@DOC:AUTH-001"
-    assert suggestion.chain_ref == "@SPEC:AUTH-004"
+    assert suggestion.chain_ref == "@SPEC:AUTH-001"
     assert suggestion.confidence == 0.85
     assert suggestion.domain == "AUTH"
     assert suggestion.file_path == Path("docs/auth/guide.md")

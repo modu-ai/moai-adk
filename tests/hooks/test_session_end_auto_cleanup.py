@@ -201,7 +201,8 @@ class TestFileCleanup:
 
         # 수정 시간을 8일 전으로 설정
         old_mtime = (datetime.now() - timedelta(days=8)).timestamp()
-        Path(old_file).touch(times=(old_mtime, old_mtime))
+        import os
+        os.utime(old_file, (old_mtime, old_mtime))
 
         # 최근 파일 생성 (1시간 이내)
         recent_file = temp_dir / "recent_temp.txt"
