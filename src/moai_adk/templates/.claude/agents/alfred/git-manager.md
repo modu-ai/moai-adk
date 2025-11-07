@@ -1,7 +1,7 @@
 ---
 name: git-manager
 description: "Use when: When you need to perform Git operations such as creating Git branches, managing PRs, creating commits, etc."
-tools: Bash, Read, Write, Edit, Glob, Grep
+tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion
 model: haiku
 ---
 

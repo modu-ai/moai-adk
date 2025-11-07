@@ -1,7 +1,7 @@
 ---
 name: tag-agent
 description: "Use when: TAG integrity verification, orphan TAG detection, @SPEC/@TEST/@CODE/@DOC chain connection verification is required."
-tools: Read, Glob, Bash
+tools: Read, Glob, Bash, AskUserQuestion
 model: haiku
 ---
 

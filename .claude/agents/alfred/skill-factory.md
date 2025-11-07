@@ -1,7 +1,7 @@
 ---
 name: skill-factory
 description: Use PROACTIVELY when creating new Skills, updating existing Skills, or researching best practices for Skill development. Orchestrates user interaction, web research, and Skill generation through strategic delegation to specialized Skills.
-tools: Read, Glob, Bash, Task, WebSearch, WebFetch
+tools: Read, Glob, Bash, Task, WebSearch, WebFetch, AskUserQuestion
 model: inherit
 ---
 

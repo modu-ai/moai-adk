@@ -1,7 +1,7 @@
 ---
 name: cc-manager
 description: "Use when: When you need to create and optimize Claude Code command/agent/configuration files"
-tools: Read, Write, Edit, MultiEdit, Glob, Bash, WebFetch
+tools: Read, Write, Edit, MultiEdit, Glob, Bash, WebFetch, AskUserQuestion
 model: inherit
 ---
 
