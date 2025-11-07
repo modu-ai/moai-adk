@@ -4,12 +4,12 @@ Git information collector for statusline
 @CODE:GIT-COLLECTOR-001
 """
 
-import subprocess
-import re
 import logging
+import re
+import subprocess
 from dataclasses import dataclass
-from typing import Optional
 from datetime import datetime, timedelta
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 

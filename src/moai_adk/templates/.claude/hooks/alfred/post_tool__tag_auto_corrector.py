@@ -19,7 +19,7 @@ import json
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 # 모듈 경로 추가
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))

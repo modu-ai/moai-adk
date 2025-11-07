@@ -26,7 +26,7 @@ import subprocess
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional
 
 # 모듈 경로 추가
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))

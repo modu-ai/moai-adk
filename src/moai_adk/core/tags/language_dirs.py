@@ -18,9 +18,8 @@ Features:
   - File extension to language detection
 """
 
-from typing import Dict, List, Optional, Set
 from pathlib import Path
-
+from typing import Dict, List, Optional
 
 # Language-specific code directory patterns
 # Maps each language to its conventional code directory paths

@@ -7,14 +7,13 @@ orphan identification, and completeness scoring.
 @SPEC:DOCS-005: TAG 체인 분석 및 검증 도구
 """
 
-import json
 import tempfile
 from pathlib import Path
 
 from src.moai_adk.core.analysis.tag_chain_analyzer import (
+    ChainAnalysisResult,
     TagChain,
     TagChainAnalyzer,
-    ChainAnalysisResult,
     analyze_tag_chains,
 )
 

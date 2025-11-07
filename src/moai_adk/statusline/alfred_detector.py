@@ -7,9 +7,9 @@ Alfred task detector for statusline
 import json
 import logging
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
-from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
