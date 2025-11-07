@@ -1,515 +1,303 @@
-______________________________________________________________________
-
-## title: 安装指南 description: 完整的 MoAI-ADK 安装和配置指南，支持多种操作系统和 Python 版本
-
 # 安装指南
 
-本指南将帮助您在各种操作系统上安装 MoAI-ADK。
+在几分钟内即可在系统上安装并运行 MoAI-ADK。本指南涵盖系统要求、安装方法和验证步骤。
 
 ## 系统要求
 
 ### 最低要求
 
 - **Python**: 3.13 或更高版本
-- **操作系统**: Windows 10+、macOS 10.15+、Ubuntu 20.04+ 或 equivalent
+- **操作系统**:
+  - macOS (10.15+)
+  - Linux (Ubuntu 20.04+, CentOS 8+, Debian 11+)
+  - Windows 10+ (推荐使用 PowerShell)
 - **Git**: 2.25 或更高版本
-- **内存**: 最少 4GB RAM（推荐 8GB+）
-- **存储**: 至少 1GB 可用空间
+- **内存**: 最低 4GB RAM，推荐 8GB
+- **存储空间**: 500MB 可用空间
 
 ### 推荐配置
 
-- **Python**: 3.13（最新稳定版）
-- **uv**: 0.5.0 或更高版本
-- **Claude Code**: 1.5.0 或更高版本
-- **IDE**: VS Code、PyCharm 或其他支持 Python 的编辑器
+- **Python**: 3.13+ (最新稳定版本)
+- **包管理器**: UV 0.5.0+ (推荐) 或 pip 24.0+
+- **IDE**: 安装了 Claude Code 扩展的 VS Code 或您喜欢的编辑器
+- **终端**: 支持 UTF-8 的现代终端
 
-______________________________________________________________________
+## 安装方法
 
-## 方法一：使用 UV（推荐）
+### 方法 1: UV 包管理器 (推荐)
 
-UV 是一个现代 Python 包管理器，安装速度快，依赖管理优秀。
+UV 是安装 MoAI-ADK 最快速、最可靠的方法。它提供自动依赖管理和虚拟环境处理。
 
-### 步骤 1：安装 UV
+#### 步骤 1: 安装 UV
 
-#### macOS 和 Linux
+**macOS/Linux:**
 
 ```bash
-# 官方安装脚本
 curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# 或使用 wget
-wget -qO- https://astral.sh/uv/install.sh | sh
 ```
 
-#### Windows (PowerShell)
+**Windows (PowerShell):**
 
 ```powershell
-# 官方安装脚本
 powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-#### 验证 UV 安装
+#### 步骤 2: 验证 UV 安装
 
 ```bash
-# 检查版本
 uv --version
-
-# 输出示例: uv 0.5.1
+# 预期输出: uv 0.5.1 或更高版本
 ```
 
-### 步骤 2：安装 MoAI-ADK
+#### 步骤 3: 安装 MoAI-ADK
 
 ```bash
-# 安装 MoAI-ADK
 uv tool install moai-adk
+```
 
-# 验证安装
+#### 步骤 4: 验证安装
+
+```bash
 moai-adk --version
+# 预期输出: MoAI-ADK v1.0.0 或更高版本
 ```
 
-### 步骤 3：配置 PATH（如需要）
+### 方法 2: PyPI 安装 (替代方案)
 
-如果命令找不到，请添加 uv 工具目录到 PATH：
+如果您使用 pip 或无法使用 UV。
+
+#### 步骤 1: 升级 pip (如需要)
 
 ```bash
-# macOS/Linux
-export PATH="$HOME/.cargo/bin:$PATH"
-
-# Windows (PowerShell)
-$env:PATH = "$env:USERPROFILE\.cargo\bin;$env:PATH"
+python -m pip install --upgrade pip
 ```
 
-______________________________________________________________________
-
-## 方法二：使用 Pip
-
-如果您更喜欢使用传统的 pip 包管理器。
-
-### 步骤 1：确保 Python 版本
+#### 步骤 2: 安装 MoAI-ADK
 
 ```bash
-# 检查 Python 版本
-python --version
-
-# 需要 3.13 或更高版本
-# 如果不是，请先升级 Python
-```
-
-### 步骤 2：创建虚拟环境
-
-```bash
-# 创建虚拟环境
-python -m venv moai-adk-env
-
-# 激活虚拟环境
-# macOS/Linux:
-source moai-adk-env/bin/activate
-# Windows:
-moai-adk-env\Scripts\activate
-```
-
-### 步骤 3：安装 MoAI-ADK
-
-```bash
-# 升级 pip
-pip install --upgrade pip
-
-# 安装 MoAI-ADK
 pip install moai-adk
+```
 
-# 验证安装
+#### 步骤 3: 验证安装
+
+```bash
 moai-adk --version
 ```
 
-______________________________________________________________________
+### 方法 3: 开发者安装
 
-## 方法三：从源码安装
+适用于希望为 MoAI-ADK 做贡献的开发者。
 
-如果您想安装开发版本或贡献代码。
-
-### 步骤 1：克隆仓库
+#### 步骤 1: 克隆仓库
 
 ```bash
 git clone https://github.com/modu-ai/moai-adk.git
 cd moai-adk
 ```
 
-### 步骤 2：安装开发依赖
+#### 步骤 2: 以开发模式安装
 
 ```bash
-# 使用 uv（推荐）
-uv sync --dev
+# 使用 UV (推荐)
+uv pip install -e .
 
 # 或使用 pip
-pip install -e ".[dev]"
+pip install -e .
 ```
 
-### 步骤 3：验证安装
+#### 步骤 3: 验证安装
 
 ```bash
-# 运行测试
-pytest
-
-# 检查安装
-python -m moai_adk --version
+moai-adk --version
 ```
 
-______________________________________________________________________
+## 安装后配置
 
-## 安装后验证
+### 环境变量
 
-### 运行系统诊断
+可选但推荐的环境变量:
 
 ```bash
-# 完整系统检查
+# 添加到 shell 配置文件 (~/.bashrc, ~/.zshrc 等)
+export MOAI_LOG_LEVEL=INFO
+export MOAI_CACHE_DIR="$HOME/.moai/cache"
+export CLAUDE_PROJECT_DIR=$(pwd)
+```
+
+### Claude Code 集成
+
+MoAI-ADK 需要 Claude Code 才能获得完整体验。
+
+#### 安装 Claude Code
+
+```bash
+# macOS
+brew install claude-ai/claude/claude
+
+# Linux
+curl -fsSL https://claude.ai/install.sh | sh
+
+# Windows
+winget install Anthropic.Claude
+```
+
+#### 验证 Claude Code
+
+```bash
+claude --version
+# 预期: Claude Code v1.5.0 或更高版本
+```
+
+### 可选 MCP 服务器
+
+MoAI-ADK 支持 Model Context Protocol (MCP) 服务器以增强功能。
+
+#### 安装推荐的 MCP 服务器
+
+```bash
+# Context7 - 最新库文档
+npx -y @upstash/context7-mcp
+
+# Playwright - Web E2E 测试
+npx -y @playwright/mcp
+
+# Sequential Thinking - 复杂推理
+npx -y @modelcontextprotocol/server-sequential-thinking
+```
+
+## 验证
+
+### 检查系统状态
+
+运行内置的 doctor 命令以验证您的安装:
+
+```bash
 moai-adk doctor
-
-# 详细输出
-moai-adk doctor --verbose
 ```
 
-**预期输出**：
+**预期输出:**
 
 ```
-Running system diagnostics...
+正在运行系统诊断...
 
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┓
-┃ Check                                    ┃ Status ┃
+┃ 检查项                                    ┃ 状态   ┃
 ┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━┩
-│ Python >= 3.13                           │   ✓    │
-│ uv installed                            │   ✓    │
-│ Git installed                            │   ✓    │
-│ Claude Code installed                   │   ✓    │
-│ MoAI-ADK package                        │   ✓    │
-└──────────────────────────────────────────┴────────┘
+│ Python >= 3.13                            │   ✓    │
+│ uv 已安装                                 │   ✓    │
+│ Git 已安装                                │   ✓    │
+│ Claude Code 可用                          │   ✓    │
+│ 可访问包注册表                            │   ✓    │
+└───────────────────────────────────────────┴────────┘
 
-✓ All checks passed
+✅ 所有检查通过!
 ```
 
-### 验证命令可用性
+### 创建测试项目
+
+创建一个简单的测试项目以确认一切正常:
 
 ```bash
-# 测试核心命令
-moai-adk --help
-moai-adk init --help
-moai-adk doctor --help
-```
+# 创建测试项目
+moai-adk init test-project
+cd test-project
 
-______________________________________________________________________
-
-## Claude Code 设置
-
-MoAI-ADK 需要 Claude Code 来运行 AI 代理。
-
-### 安装 Claude Code
-
-#### 官方安装方法
-
-```bash
-# macOS (Homebrew)
-brew install claude-code
-
-# 其他系统请访问官方文档
-# https://docs.claude.com/installation
-```
-
-#### 验证安装
-
-```bash
-# 检查版本
-claude --version
-
-# 需要 1.5.0 或更高版本
-```
-
-### 配置 Claude Code
-
-```bash
 # 启动 Claude Code
 claude
 
-# 检查设置
-claude-code settings
+# 在 Claude Code 中运行:
+/alfred:0-project
 ```
 
-______________________________________________________________________
+## 故障排除
 
-## MCP 服务器配置
+### 常见问题
 
-MoAI-ADK 自动配置 4 个核心 MCP 服务器以增强 AI 功能。
+#### 问题: "uv: command not found"
 
-### 自动配置
+**解决方案:**
 
-创建新项目时，MCP 服务器会自动配置：
+1. 确认 UV 已正确安装
+2. 将 UV 添加到 PATH:
+   ```bash
+   export PATH="$HOME/.cargo/bin:$PATH"
+   ```
+3. 重启终端
 
-```bash
-# 包含 MCP 服务器的项目初始化
-moai-adk init my-project --with-mcp
-```
+#### 问题: "Python 3.8 found, but 3.13+ required"
 
-### 手动配置
-
-如果需要手动配置：
-
-```bash
-# 进入现有项目
-cd your-project
-
-# 添加 MCP 支持
-moai-adk init . --with-mcp
-```
-
-### 验证 MCP 配置
+**解决方案:**
 
 ```bash
-# 检查 MCP 配置文件
-cat .claude/mcp.json
-
-# 重启 Claude Code
-exit
-claude
-```
-
-______________________________________________________________________
-
-## 常见安装问题
-
-### 问题 1：uv 命令未找到
-
-**症状**：
-
-```bash
-uv: command not found
-```
-
-**解决方案**：
-
-```bash
-# 1. 确认安装路径
-ls -la ~/.cargo/bin/uv
-
-# 2. 添加到 PATH（临时）
-export PATH="$HOME/.cargo/bin:$PATH"
-
-# 3. 永久添加到 shell 配置
-echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.bashrc
-# 或
-echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.zshrc
-
-# 4. 重新加载 shell
-source ~/.bashrc  # 或 source ~/.zshrc
-```
-
-### 问题 2：Python 版本不兼容
-
-**症状**：
-
-```bash
-Python 3.12 found, but 3.13+ required
-```
-
-**解决方案**：
-
-#### 使用 pyenv 管理 Python 版本
-
-```bash
-# 安装 pyenv
+# 使用 pyenv
 curl https://pyenv.run | bash
+pyenv install 3.13
+pyenv global 3.13
 
-# 配置 shell
-echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.bashrc
-echo 'command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bashrc
-echo 'eval "$(pyenv init -)"' >> ~/.bashrc
-
-# 重新加载 shell
-source ~/.bashrc
-
-# 安装 Python 3.13
-pyenv install 3.13.0
-pyenv global 3.13.0
-
-# 验证
-python --version
-```
-
-#### 使用 uv 管理 Python
-
-```bash
-# 安装 Python 3.13
+# 或使用 UV
 uv python install 3.13
-
-# 为项目设置 Python 版本
 uv python pin 3.13
-
-# 验证
-python --version
 ```
 
-### 问题 3：权限错误
+#### 问题: 安装时 "Permission denied"
 
-**症状**：
-
-```bash
-Permission denied: '/usr/local/bin/moai-adk'
-```
-
-**解决方案**：
+**解决方案:**
 
 ```bash
 # 使用用户安装
 pip install --user moai-adk
 
-# 或使用 uv（自动处理权限）
-uv tool install moai-adk
+# 或使用 sudo (Linux/macOS)
+sudo pip install moai-adk
 ```
 
-### 问题 4：网络连接问题
+#### 问题: 无法识别 Claude Code
 
-**症状**：
+**解决方案:**
+
+1. 验证 Claude Code 安装: `claude --version`
+2. 确认在 PATH 中
+3. 如需要则重新安装
+
+#### 问题: 依赖项的 ModuleNotFoundError
+
+**解决方案:**
 
 ```bash
-Could not fetch URL https://pypi.org/simple/moai-adk/
+# 在项目目录中
+uv sync
+
+# 或安装特定依赖
+uv add fastapi pytest
 ```
 
-**解决方案**：
+### 获取帮助
 
-```bash
-# 使用国内镜像源
-pip install -i https://pypi.tuna.tsinghua.edu.cn/simple moai-adk
+如果遇到此处未涵盖的问题:
 
-# 或配置 pip 镜像源
-pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
-```
-
-### 问题 5：Windows 权限问题
-
-**症状**：
-
-```bash
-'uv' is not recognized as an internal or external command
-```
-
-**解决方案**：
-
-```powershell
-# 1. 以管理员身份运行 PowerShell
-# 2. 设置执行策略
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-
-# 3. 添加到 PATH
-$env:PATH = "$env:USERPROFILE\.cargo\bin;$env:PATH"
-
-# 4. 永久添加到系统 PATH
-# 系统属性 → 环境变量 → PATH → 添加 %USERPROFILE%\.cargo\bin
-```
-
-______________________________________________________________________
-
-## 升级 MoAI-ADK
-
-### 检查当前版本
-
-```bash
-moai-adk --version
-```
-
-### 升级到最新版本
-
-#### 使用 UV
-
-```bash
-# 升级 MoAI-ADK
-uv tool upgrade moai-adk
-
-# 验证升级
-moai-adk --version
-```
-
-#### 使用 Pip
-
-```bash
-# 升级包
-pip install --upgrade moai-adk
-
-# 验证升级
-moai-adk --version
-```
-
-### 同步项目模板
-
-升级后，同步现有项目的模板：
-
-```bash
-# 进入项目目录
-cd your-project
-
-# 同步模板
-moai-adk update
-
-# 验证同步
-moai-adk doctor
-```
-
-______________________________________________________________________
-
-## 卸载
-
-### 卸载 MoAI-ADK
-
-#### 使用 UV
-
-```bash
-# 卸载包
-uv tool uninstall moai-adk
-
-# 清理缓存
-uv cache clean
-```
-
-#### 使用 Pip
-
-```bash
-# 卸载包
-pip uninstall moai-adk
-
-# 清理缓存
-pip cache purge
-```
-
-### 删除配置文件
-
-```bash
-# 删除全局配置（可选）
-rm -rf ~/.config/moai-adk/
-
-# 删除项目特定配置（谨慎操作）
-# rm -rf .moai/ .claude/
-```
-
-______________________________________________________________________
+1. **检查 GitHub Issues**: 在 https://github.com/modu-ai/moai-adk/issues 搜索现有问题
+2. **运行详细诊断**: `moai-adk doctor --verbose`
+3. **创建 Issue**: 在 Claude Code 中使用 `/alfred:9-feedback` 自动创建 GitHub issue
 
 ## 下一步
 
-安装完成后，您可以：
+成功安装后:
 
-1. [创建第一个项目](quick-start.md)
-2. [学习核心概念](../guides/concepts.md)
-3. [查看命令参考](../reference/cli/)
+1. **[快速入门指南](quick-start.md)** - 10 分钟内运行您的第一个项目
+2. **[核心概念](concepts.md)** - 理解 SPEC-First、TDD、@TAG、TRUST 5 原则
+3. **[项目初始化](../../guides/project/init.md)** - 学习项目设置和配置
 
-______________________________________________________________________
+## 安装总结
 
-## 获取帮助
+```bash
+# 一行安装 (推荐)
+curl -LsSf https://astral.sh/uv/install.sh | sh && uv tool install moai-adk
 
-如果在安装过程中遇到问题：
+# 验证安装
+moai-adk doctor
 
-- **GitHub Issues**: [moai-adk/issues](https://github.com/modu-ai/moai-adk/issues)
-- **GitHub Discussions**: [moai-adk/discussions](https://github.com/modu-ai/moai-adk/discussions)
-- **文档**: [完整文档](../../)
+# 创建您的第一个项目
+moai-adk init my-project && cd my-project && claude
+```
 
-### 报告问题时请包含
-
-1. 操作系统和版本
-2. Python 版本
-3. MoAI-ADK 版本
-4. 完整的错误消息
-5. `moai-adk doctor --verbose` 输出
+现在您已准备好体验 Alfred 超级代理带来的 SPEC-First TDD 开发强大功能! 🚀

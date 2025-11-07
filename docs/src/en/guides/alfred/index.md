@@ -1,81 +1,349 @@
-______________________________________________________________________
+# Alfred Workflow Guide
 
-## title: Alfred Command Guide description: Complete guide to MoAI-ADK's 4 core Alfred commands lang: en
+<div align="center" class="image-container">
 
-# Alfredコマンドガイド
+![Alfred Logo](../../../../public/alfred_logo.png){ class="alfred-logo" }
 
-AlfredはMoAI-ADKのスーパーエージェントで、4つの核心コマンドを通じて開発ワークフローをオーケストレーションします。
+<div class="image-caption">Alfred - Your AI Development Partner</div>
 
-## コマンド概要
+</div>
 
-| コマンド            | 段階 | 説明                     | 主な機能                           | 実行時間 |
-| ------------------- | ---- | ------------------------ | ---------------------------------- | -------- |
-| `/alfred:0-project` | 準備 | プロジェクト初期化と設定 | プロジェクトセットアップ、設定収集 | 2-3分    |
-| `/alfred:1-plan`    | 計画 | SPEC作成と要件定義       | EARS形式SPEC、プランボード作成     | 2分      |
-| `/alfred:2-run`     | 実行 | TDD実装と品質検証        | RED→GREEN→REFACTORサイクル         | 5分      |
-| `/alfred:3-sync`    | 同期 | ドキュメント同期と整理   | Living Document、TAG検証           | 1分      |
+Alfred is the SuperAgent that orchestrates the entire MoAI-ADK development workflow. This guide
+explains how to use Alfred's four core commands to create a seamless development experience.
 
-## ワークフロー全体
+## Overview
+
+Alfred follows a simple but powerful 4-phase workflow:
 
 ```mermaid
 %%{init: {'theme':'neutral'}}%%
 graph TD
-    Start([User Request]) --> Project[0.Project Init<br/>/alfred:0-project]
-    Project --> Plan[1.Plan & SPEC<br/>/alfred:1-plan]
-    Plan --> Run[2.Run & TDD<br/>/alfred:2-run]
-    Run --> Sync[3.Sync & Docs<br/>/alfred:3-sync]
+    Start([User Request]) --> Project[0. Project Init<br/>/alfred:0-project]
+    Project --> Plan[1. Plan & SPEC<br/>/alfred:1-plan]
+    Plan --> Run[2. Run & TDD<br/>/alfred:2-run]
+    Run --> Sync[3. Sync & Docs<br/>/alfred:3-sync]
     Sync --> Plan
     Sync -.-> End([Release])
 ```
 
-## 基本使用法
+Each phase builds upon the previous one, creating a complete development lifecycle:
 
-### 1. プロジェクト開始時
+1. **Project** - Setup and configuration
+2. **Plan** - Requirements and specifications
+3. **Run** - Implementation and testing
+4. **Sync** - Documentation and quality checks
+
+## Alfred's Architecture
+
+### SuperAgent System
+
+Alfred coordinates multiple specialized agents and skills:
+
+```
+Alfred SuperAgent (Orchestration Layer)
+    ├── Core Sub-agents (Workflow Execution)
+    │   ├── project-manager 📋 - Project initialization and setup
+    │   ├── spec-builder 🏗️ - SPEC creation with EARS syntax
+    │   ├── implementation-planner 📊 - Architecture and planning
+    │   ├── tdd-implementer 💎 - TDD cycle execution
+    │   ├── doc-syncer 📚 - Documentation synchronization
+    │   ├── tag-agent 🏷️ - TAG system management
+    │   ├── git-manager 🚀 - Git workflow automation
+    │   ├── trust-checker ✅ - Quality validation
+    │   └── quality-gate 🛡️ - Release readiness checks
+    ├── Expert Agents (Domain Knowledge)
+    │   ├── backend-expert ⚙️ - Backend architecture and APIs
+    │   ├── frontend-expert 💻 - Frontend development and UX
+    │   ├── devops-expert 🚀 - Deployment and infrastructure
+    │   ├── ui-ux-expert 🎨 - Design systems and accessibility
+    │   ├── security-expert 🔒 - Security analysis and best practices
+    │   └── database-expert 💾 - Database design and optimization
+    └── Skills Library (69+ Production Guides)
+        ├── Foundation Skills (Core principles)
+        ├── Essential Skills (Daily tools)
+        ├── Alfred Skills (Workflow automation)
+        ├── Domain Skills (Specialized knowledge)
+        └── Language Skills (Best practices)
+```
+
+### Progressive Disclosure
+
+Alfred uses a just-in-time loading system to provide relevant skills when needed:
+
+- **Foundation**: Always loaded - TRUST, TAG, SPEC, Git, EARS principles
+- **Essentials**: On-demand - Debugging, performance, refactoring tools
+- **Domain**: Context-triggered - Activated by SPEC keywords
+- **Language**: Project-detected - Python, TypeScript, Go, etc.
+
+## The Four Core Commands
+
+### 0. `/alfred:0-project` - Project Management
+
+**Purpose**: Initialize projects, manage settings, and optimize templates.
+
+**Usage Scenarios**:
+
+- New project setup
+- Configuration changes
+- Template updates after package upgrades
+
+**Three Execution Modes**:
+
+1. **Basic Mode** (Smart Auto-Detection)
+
+   ```bash
+   /alfred:0-project
+   ```
+
+   - First run: Project initialization
+   - Subsequent runs: "Already Initialized" menu
+
+2. **Setting Mode** (Modify Existing Configuration)
+
+   ```bash
+   /alfred:0-project setting
+   ```
+
+   - Change language, nickname, GitHub settings
+   - Batch questions for efficiency
+   - Preserves other settings
+
+3. **Update Mode** (Template Optimization)
+
+   ```bash
+   /alfred:0-project update
+   ```
+
+   - Merge new templates after `moai-adk update`
+   - Preserve user customizations
+   - Resolve conflicts intelligently
+
+**Key Activities**:
+
+- Collect project metadata (name, goals, language, mode)
+- Generate `.moai/config.json` and `.moai/project/*` documents
+- Recommend and configure skill packs
+- Set up Git workflow and initial commits
+- Optimize project templates
+
+### 1. `/alfred:1-plan` - Specification Creation
+
+**Purpose**: Transform ideas into clear, executable specifications.
+
+**Usage Scenarios**:
+
+- New feature requirements
+- API endpoint definitions
+- User story elaboration
+- Architecture planning
+
+**Command Format**:
 
 ```bash
-# 初期セットアップ
-/alfred:0-project
+/alfred:1-plan "Brief description of what you want to build"
+```
 
-# 最初の機能計画
-/alfred:1-plan "機能説明"
+**Alfred's Process**:
 
-# 実装
+1. **Requirement Analysis**
+
+   - Parse user input for key requirements
+   - Identify domain keywords for expert activation
+   - Determine scope and complexity
+
+2. **SPEC Creation**
+
+   - Generate unique SPEC ID (DOMAIN-001 format)
+   - Write EARS-format requirements
+   - Define acceptance criteria
+   - Create implementation plan
+
+3. **Expert Consultation**
+
+   - Activate relevant domain experts
+   - Gather architectural recommendations
+   - Identify risks and dependencies
+   - Document expert opinions with `@EXPERT:` tags
+
+4. **Deliverables Generation**
+
+   - `.moai/specs/SPEC-*/spec.md` - Main specification
+   - `.moai/specs/SPEC-*/plan.md` - Implementation plan
+   - Feature branch (team mode)
+   - Initial project structure
+
+**SPEC Components**:
+
+- **YAML Frontmatter**: ID, version, status, priority
+- **EARS Requirements**: Clear, testable requirements
+- **Acceptance Criteria**: Success conditions
+- **Dependencies**: Related SPECs and external factors
+- **Risk Assessment**: Potential challenges
+
+### 2. `/alfred:2-run` - Implementation & Testing
+
+**Purpose**: Execute TDD cycles to implement specifications.
+
+**Usage Scenarios**:
+
+- Feature implementation
+- Bug fixes
+- Refactoring tasks
+- Performance improvements
+
+**Command Format**:
+
+```bash
 /alfred:2-run SPEC-ID
-
-# ドキュメント同期
-/alfred:3-sync
 ```
 
-### 2. 既存プロジェクトの場合
+**Alfred's Process**:
+
+1. **Phase 1: Implementation Planning**
+
+   - **implementation-planner** analyzes SPEC
+   - Determines architecture and libraries
+   - Designs folder structure
+   - Plans TAG assignments
+   - Activates domain experts
+
+2. **Phase 2: TDD Execution**
+
+   - **tdd-implementer** executes RED→GREEN→REFACTOR
+   - Creates failing tests (RED)
+   - Implements minimal solution (GREEN)
+   - Refactors for quality (REFACTOR)
+   - Validates against TRUST 5 principles
+
+3. **Phase 3: Quality Assurance**
+
+   - **trust-checker** validates code quality
+   - **quality-gate** ensures release readiness
+   - Automated testing and coverage checks
+   - Security and performance validation
+
+**TDD Cycle Details**:
+
+**🔴 RED Phase**:
+
+- Write comprehensive tests first
+- Tests MUST fail initially
+- Cover all acceptance criteria
+- Include edge cases and error conditions
+
+**🟢 GREEN Phase**:
+
+- Implement minimal code to pass tests
+- Focus on functionality over perfection
+- Ensure all tests pass
+- Commit with `feat()` message
+
+**♻️ REFACTOR Phase**:
+
+- Improve code quality and structure
+- Apply TRUST 5 principles
+- Maintain test coverage
+- Optimize performance and readability
+- Commit with `refactor()` message
+
+### 3. `/alfred:3-sync` - Documentation & Quality
+
+**Purpose**: Synchronize documentation and validate system integrity.
+
+**Usage Scenarios**:
+
+- After feature completion
+- Before releases
+- Documentation updates
+- Quality audits
+
+**Command Format**:
 
 ```bash
-# 直接機能開発開始
-/alfred:1-plan "新しい機能"
-/alfred:2-run SPEC-ID
 /alfred:3-sync
+# or with options
+/alfred:3-sync --auto-merge
+/alfred:3-sync --target=docs
 ```
 
-### 3. 設定変更時
+**Alfred's Process**:
+
+1. **TAG Chain Validation**
+
+   - **tag-agent** scans all @TAG markers
+   - Verifies complete SPEC→TEST→CODE→DOC chains
+   - Detects orphaned TAGs
+   - Reports chain integrity metrics
+
+2. **Documentation Synchronization**
+
+   - **doc-syncer** generates/updates documentation
+   - Creates API docs from code annotations
+   - Updates README and CHANGELOG
+   - Generates living documents
+
+3. **Quality Gate Validation**
+
+   - **trust-checker** validates TRUST 5 compliance
+   - **quality-gate** checks release readiness
+   - Test coverage analysis
+   - Security vulnerability scans
+
+4. **Git Workflow Management**
+
+   - **git-manager** handles branch operations
+   - Creates draft PRs (team mode)
+   - Manages auto-merge settings
+   - Generates sync reports
+
+**Synchronization Results**:
+
+- **Documentation**: Always up-to-date with code
+- **TAG Integrity**: Complete traceability maintained
+- **Quality**: TRUST 5 compliance verified
+- **Release**: Ready for deployment
+
+### 4. `/alfred:9-feedback` - Issue Management
+
+**Purpose**: Create GitHub issues for bugs, features, and improvements.
+
+**Usage Scenarios**:
+
+- Bug reports during development
+- Feature ideas and suggestions
+- Process improvements
+- Team discussions
+
+**Command Format**:
 
 ```bash
-# プロジェクト設定修正
-/alfred:0-project setting
-
-# テンプレート最適化
-/alfred:0-project update
+/alfred:9-feedback
 ```
 
-## 状態遷移システム
+**Interactive Process**:
 
-MoAI-ADKはSPEC文書の**状態遷移**を通じて開発進行状況を体系的に管理します。
+1. Select issue type (Bug/Feature/Improvement/Question)
+2. Enter descriptive title
+3. Add detailed description (optional)
+4. Choose priority level
+5. Automatic GitHub issue creation
 
-### SPEC状態ライフサイクル
+**Benefits**:
+
+- Immediate issue creation without context switching
+- Standardized issue format with labels
+- Team visibility and tracking
+- Integration with development workflow
+
+## Workflow States and Transitions
+
+### SPEC Status Lifecycle
 
 ```mermaid
 %%{init: {'theme':'neutral'}}%%
 stateDiagram-v2
     [*] --> planning: /alfred:1-plan
-    planning --> draft: SPEC created
+    planning --> draft: SPEC written
     draft --> in_progress: /alfred:2-run
     in_progress --> testing: Implementation complete
     testing --> completed: /alfred:3-sync
@@ -83,257 +351,231 @@ stateDiagram-v2
 
     note right of planning
         📋 Planning Phase
-        - Requirements gathering
+        - Requirements analysis
         - Architecture design
-        - Technology stack decisions
+        - Technology decisions
     end note
 
     note right of draft
         📄 Draft Phase
-        - EARS format SPEC creation
-        - Plan Board creation
-        - Review preparation complete
+        - EARS requirements
+        - Acceptance criteria
+        - Risk assessment
     end note
 
     note right of in_progress
         🚀 Development Phase
-        - TDD execution (RED→GREEN→REFACTOR)
-        - Implementation and test code creation
-        - Quality validation passed
+        - TDD execution
+        - Code implementation
+        - Quality validation
     end note
 
     note right of testing
         🧪 Testing Phase
-        - Unit tests complete
-        - Integration tests in progress
-        - QA validation execution
+        - Unit tests
+        - Integration tests
+        - QA validation
     end note
 
     note right of completed
         ✅ Completed Phase
-        - Documentation sync complete
-        - Deployment preparation complete
-        - Production environment applied
+        - Documentation sync
+        - Release ready
+        - Production deployment
     end note
 ```
 
-## コマンド詳細ガイド
+### State Transitions
 
-### [/alfred:0-project](0-project.md)
+| Current State | Next State  | Trigger          | Conditions                 |
+| ------------- | ----------- | ---------------- | -------------------------- |
+| planning      | draft       | SPEC completion  | EARS requirements defined  |
+| draft         | in_progress | `/alfred:2-run`  | Implementation approved    |
+| in_progress   | testing     | TDD complete     | All tests passing          |
+| testing       | completed   | `/alfred:3-sync` | Documentation synchronized |
+| completed     | planning    | New feature      | Next development cycle     |
 
-**目的**: プロジェクト初期化と設定管理
+## Best Practices
 
-**機能**:
+### Command Usage Patterns
 
-- プロジェクトメタデータ収集
-- 言語自動検出
-- スキルパッケージ推薦
-- 設定ファイル生成
-
-**使用時期**:
-
-- 新規プロジェクト作成時
-- プロジェクト設定変更時
-- テンプレート更新後
-
-### [/alfred:1-plan](1-plan.md)
-
-**目的**: SPEC作成と要件定義
-
-**機能**:
-
-- EARS形式SPEC作成
-- プランボード生成
-- 専門家コンサルテーション
-- ブランチ自動作成
-
-**使用時期**:
-
-- 新機能開発開始時
-- 要件変更が必要時
-- 計画段階
-
-### [/alfred:2-run](2-run.md)
-
-**目的**: TDD実装と品質保証
-
-**機能**:
-
-- 実装計画立案
-- TDDサイクル自動実行
-- 品質ゲート検証
-- TRUST 5原則適用
-
-**使用時期**:
-
-- 実装段階
-- テスト作成時
-- コード品質検証時
-
-### [/alfred:3-sync](3-sync.md)
-
-**目的**: ドキュメント同期と状態管理
-
-**機能**:
-
-- Living Document生成
-- TAGチェーン検証
-- README/CHANGELOG更新
-- PR状態管理
-
-**使用時期**:
-
-- 実装完了後
-- コミット前
-- リリース準備時
-
-## 高度な機能
-
-### フィードバックシステム
+**New Feature Development**:
 
 ```bash
+/alfred:1-plan "Feature description"
+/alfred:2-run FEATURE-ID
+/alfred:3-sync
+```
+
+**Bug Fix Process**:
+
+```bash
+/alfred:9-feedback  # Create bug issue
+/alfred:1-plan "Bug fix for ISSUE-XXX"
+/alfred:2-run BUG-ID
+/alfred:3-sync
+```
+
+**Project Maintenance**:
+
+```bash
+moai-adk update
+/alfred:0-project update
+/alfred:3-sync
+```
+
+### Quality Gates
+
+Always ensure these checks pass before considering work complete:
+
+1. **Test Coverage**: 85%+ minimum
+2. **TAG Integrity**: 100% chain completeness
+3. **TRUST 5**: All principles validated
+4. **Documentation**: Synchronized with code
+5. **Security**: No critical vulnerabilities
+
+### Team Collaboration
+
+**Individual Mode**:
+
+- Direct commits to develop branch
+- Personal project settings
+- Local documentation
+
+**Team Mode**:
+
+- Feature branches with PRs
+- Shared project configuration
+- Collaborative reviews
+- Auto-merge capabilities
+
+## Common Workflows
+
+### 1. Feature Development
+
+```bash
+# Start new feature
+/alfred:1-plan "User authentication with JWT"
+
+# Alfred creates SPEC-AUTH-001
+# Status: planning → draft
+
+# Implement feature
+/alfred:2-run AUTH-001
+
+# Alfred executes TDD cycle
+# Status: draft → in_progress → testing
+
+# Complete and document
+/alfred:3-sync
+
+# Alfred syncs everything
+# Status: testing → completed
+
+# Start next feature
+/alfred:1-plan "User profile management"
+```
+
+### 2. Bug Fix
+
+```bash
+# Report bug
+/alfred:9-feedback
+# → Creates GitHub issue #123
+
+# Plan fix
+/alfred:1-plan "Fix login validation issue #123"
+
+# Implement fix
+/alfred:2-run BUG-123
+
+# Validate and sync
+/alfred:3-sync
+
+# Link to original issue in commit messages
+```
+
+### 3. Project Maintenance
+
+```bash
+# Update MoAI-ADK
+moai-adk update
+
+# Optimize templates
+/alfred:0-project update
+
+# Sync all documentation
+/alfred:3-sync
+
+# Validate everything
+moai-adk doctor
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**Command not recognized**:
+
+- Verify Claude Code version (v1.5.0+)
+- Check `.claude/commands/` directory exists
+- Restart Claude Code
+
+**SPEC creation fails**:
+
+- Check network connection
+- Verify `.moai/` directory permissions
+- Run `moai-adk doctor`
+
+**TDD cycle issues**:
+
+- Check dependencies installed: `uv sync`
+- Verify test framework: `pytest --version`
+- Check Python path: `which python`
+
+**Sync problems**:
+
+- Verify TAG format: `@TYPE:DOMAIN-001`
+- Check file permissions
+- Run `/alfred:3-sync --force`
+
+### Getting Help
+
+```bash
+# System diagnostics
+moai-adk doctor
+
+# Verbose output
+moai-adk doctor --verbose
+
+# Create issue
 /alfred:9-feedback
 ```
 
-**機能**:
+## Performance Tips
 
-- GitHub Issue自動作成
-- バグ報告
-- 機能要求
-- 改善提案
+### Optimizing Workflow Speed
 
-### マルチプロジェクト管理
+1. **Use UV**: Faster dependency management
+2. **SSD Storage**: Faster file operations
+3. **Sufficient RAM**: 8GB+ recommended
+4. **Local LLM**: Reduce API latency (when available)
 
-```bash
-# 複数プロジェクト状態確認
-find ~/projects -name ".moai" -type d | xargs -I {} moai-adk doctor
+### Reducing Context Usage
 
-# 一括アップデート
-for project in project1 project2 project3; do
-    cd ~/projects/$project
-    moai-adk update
-done
-```
+1. **Minimal SPECs**: Focus on essential requirements
+2. **Targeted Skills**: Let Alfred load skills on-demand
+3. **Regular Sync**: Prevent large documentation backlogs
+4. **Clean History**: Regular git maintenance
 
-### カスタマイズ
+## Next Steps
 
-```bash
-# 設定カスタマイズ
-/alfred:0-project setting
+Now that you understand Alfred's workflow, explore these guides:
 
-# 言語変更
-/alfred:0-project setting
-→ "Language & Agent Prompt Language" 選択
-→ 新しい言語設定
-```
+- **[SPEC Writing](../specs/basics.md)** - Master EARS syntax
+- **[TDD Implementation](../tdd/red.md)** - Learn test-driven development
+- **[TAG System](../../reference/tags/index.md)** - Understand traceability
+- **[Project Configuration](../project/config.md)** - Customize your setup
 
-## ベストプラクティス
-
-### 1. 定期的な実行パターン
-
-```bash
-# 毎朝
-/alfred:1-plan "今日の機能"
-
-# 開発中
-/alfred:2-run SPEC-ID
-
-# 作業終了前
-/alfred:3-sync
-```
-
-### 2. チーム協業
-
-- **SPECレビュー**: `/alfred:1-plan`実行後チームレビュー
-- **並列開発**: 複数SPECで同時並行作業
-- **品質基準**: TRUST 5原則チーム共通認識
-
-### 3. 効率的なワークフロー
-
-```bash
-# 機能開発サイクル
-/alfred:1-plan "ユーザー認証"
-/alfred:2-run AUTH-001
-/alfred:3-sync
-
-# 次の機能
-/alfred:1-plan "権限管理"
-/alfred:2-run AUTH-002
-/alfred:3-sync
-```
-
-## トラブルシューティング
-
-### よくある問題
-
-**コマンドが認識されない場合**:
-
-```bash
-# Claude Code再起動
-exit
-claude
-
-# 設定確認
-ls .claude/commands/
-```
-
-**SPECが作成されない場合**:
-
-```bash
-# プロジェクト状態確認
-moai-adk doctor
-
-# 再初期化
-/alfred:0-project
-```
-
-**TDDが失敗する場合**:
-
-```bash
-# 依存関係確認
-uv sync
-
-# 手動テスト実行
-pytest tests/ -v
-```
-
-## パフォーマンス最適化
-
-### 実行時間短縮
-
-- **並列処理**: 複数SPECで同時実行
-- **キャッシュ活用**: 以前の結果再利用
-- \*\* selective実行\*\*: 必要な部分のみ実行
-
-### リソース管理
-
-- **メモリ使用量**: 大規模プロジェクトで分割実行
-- **コンテキスト制限**: 不要なコンテキスト削除
-- **一時ファイル**: 定期的な整理
-
-## 統合と拡張
-
-### 外部ツール連携
-
-- **GitHub**: Issue/PR自動連携
-- **CI/CD**: テスト自動実行
-- **ドキュメント**: 自動デプロイ
-
-### カスタムスキル
-
-```bash
-# スキル検索
-ls .claude/skills/
-
-# カスタムスキル追加
-# .claude/skills/custom/に新規ファイル作成
-```
-
-______________________________________________________________________
-
-**📚 次は個別コマンド詳細ガイドを参照してください**:
-
-- [0-project詳細](0-project.md) - プロジェクト初期化と設定
-- [1-plan詳細](1-plan.md) - SPEC作成と計画
-- [2-run詳細](2-run.md) - TDD実装と品質保証
-- [3-sync詳細](3-sync.md) - ドキュメント同期と管理
+Alfred is your partner in creating reliable, maintainable software. Trust the process, follow the
+workflow, and enjoy the confidence that comes with systematic development! 🚀

@@ -186,52 +186,30 @@ The user executes the `/alfred:0-project` command to start analyzing the project
    - If config exists → Display current language and confirm
 3. **Set Settings Language Context**: ALL settings interactions in confirmed language
 
-### Step 2: Load and Display Current Configuration (in confirmed language)
-1. **Read `.moai/config.json`** to verify it exists and is valid JSON
-2. **Extract and display current settings** (in confirmed language):
-   ```
-   ✅ **언어**: [language.conversation_language_name]
-   ✅ **닉네임**: [user.nickname]
-   ✅ **에이전트 프롬프트 언어**: [language.agent_prompt_language]
-   ✅ **GitHub 자동 브랜치 삭제**: [github.auto_delete_branches]
-   ✅ **SPEC Git 워크플로우**: [github.spec_git_workflow]
-   ✅ **보고서 생성**: [report_generation.user_choice]
-   ✅ **선택된 도메인**: [stack.selected_domains]
-   ```
-
-### Step 3: Language Change Option (CRITICAL)
-**Before showing other settings, offer language change first** (in confirmed language):
-
-1. **Language Priority Question**:
-   - "언어 설정을 변경하시겠습니까?" (in Korean)
-   - "Would you like to change language settings?" (in English)
-   - Options: "Change Language" | "Keep Current" | "Show All Settings"
-
-2. **IF user selects "Change Language"**:
+### Step 2: Delegate to Project Manager Agent
+1. **Invoke Agent**:
    ```python
-   Skill("moai-project-language-initializer", mode="language_change_only")
+   Task(
+       subagent_type="project-manager",
+       prompt="Modify project settings in confirmed language",
+       parameters={"mode": "settings_modification", "language": confirmed_language}
+   )
    ```
-   - Update language context
-   - Restart settings mode in new language
+2. **Agent Responsibilities**:
+   - Display current settings in confirmed language
+   - Ask for language change option (via Skill internally)
+   - Collect new values (via Skill internally)
+   - Update config.json
+   - Provide completion report
 
-3. **IF user selects "Keep Current" or "Show All Settings"**:
-   - Continue with current language context
-   - Proceed to Step 4
+### Step 3: Agent Handles All Settings Interactions
+**Project Manager Agent will internally**:
+- Invoke `Skill("moai-project-language-initializer", mode="language_change_only")` if needed
+- Invoke `Skill("moai-project-config-manager", language=confirmed_language)`
+- Invoke `Skill("moai-project-batch-questions")` for user interaction
+- Handle validation and error recovery
 
-### Step 4: Use Config Manager Skill (Language-Aware)
-```python
-Skill("moai-project-config-manager", language=confirmed_language)
-```
-
-**Purpose**: Let the skill handle all configuration modification workflows with language context
-**The skill will** (in confirmed language):
-- Ask which settings to modify (using batched questions in confirmed language)
-- Collect new values using batched questions in confirmed language
-- Update config.json with proper merge strategy
-- Handle validation and error recovery with language-appropriate messages
-- Provide completion report in confirmed language
-
-### Step 5: Exit after completion (in confirmed language)
+### Step 4: Exit after completion (in confirmed language)
 1. **Print**: "✅ 설정 업데이트 완료!" (or equivalent in confirmed language)
 2. **Offer Next Steps** (in confirmed language):
    - Option 1: "추가 설정 수정" → Continue settings mode
@@ -255,39 +233,20 @@ Skill("moai-project-config-manager", language=confirmed_language)
    - If config exists → Confirm current language settings
 3. **Set Update Language Context**: ALL update interactions in confirmed language
 
-### Step 2: Contextual Update Analysis
-**Analyze the update context** (in confirmed language):
-
-1. **Update Type Detection**:
+### Step 2: Delegate to Project Manager Agent
+1. **Invoke Agent**:
+   ```python
+   Task(
+       subagent_type="project-manager",
+       prompt="Optimize templates after moai-adk update",
+       parameters={"mode": "template_update_optimization", "language": confirmed_language}
+   )
    ```
-   🔍 **업데이트 유형 분석 중...**
-   ✅ **moai-adk 버전 변경 감지**: [version detection]
-   ✅ **백업 파일 발견**: [backup analysis]
-   ✅ **템플릿 변경 사항**: [template differences]
-   ```
-
-2. **Backup Discovery**:
-   - Check `.moai-backups/` directory for existing backups
-   - Analyze backup versions and completeness
-   - Identify which backup to use for comparison
-
-3. **Template Comparison**:
-   - Check template versions vs current project files
-   - Analyze what needs optimization
-   - Detect user customizations vs template defaults
-
-### Step 3: Use Template Optimizer Skill (Language-Aware)
-```python
-Skill("moai-project-template-optimizer", mode="update", language=confirmed_language)
-```
-
-**Purpose**: Let the skill handle template comparison and optimization with language context
-**The skill will** (in confirmed language):
-- Detect and analyze existing backups
-- Compare current templates with backup files
-- Perform smart merging to preserve user customizations
-- Update optimization flags in config.json
-- Generate completion report in confirmed language
+2. **Agent Responsibilities**:
+   - Analyze update context (backup discovery, template comparison)
+   - Invoke Template Optimizer Skill internally
+   - Perform smart merging
+   - Generate completion report
 
 ### Step 4: Update Confirmation and Completion (in confirmed language)
 1. **Display Update Results** (in confirmed language):
@@ -298,14 +257,20 @@ Skill("moai-project-template-optimizer", mode="update", language=confirmed_langu
    📝 **생성된 보고서**: [report location]
    ```
 
-2. **Ask for Next Steps** (in confirmed language):
+2. **Auto-Translate Announcements** (CRITICAL):
+   ```bash
+   # Ensure announcements match current language after template update
+   uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/shared/utils/announcement_translator.py
+   ```
+
+3. **Ask for Next Steps** (in confirmed language):
    - Option 1: "업데이트 내용 검토" → Show detailed changes
    - Option 2: "설정 수정" → Go to settings mode
    - Option 3: "종료" → End command
 
-3. **Exit after completion**
-4. **Do NOT proceed** to any other workflows
-5. **End command execution**
+4. **Exit after completion**
+5. **Do NOT proceed** to any other workflows
+6. **End command execution**
 
 ---
 
@@ -317,23 +282,27 @@ Skill("moai-project-template-optimizer", mode="update", language=confirmed_langu
 **IMPORTANT**: Language selection MUST happen BEFORE any other configuration.
 
 1. **Display**: "🚀 Starting first-time project initialization..."
-2. **Immediate Language Selection**: Use Language Initializer Skill FIRST
+2. **Invoke Project Manager Agent**: Delegate to specialized agent
    ```python
-   Skill("moai-project-language-initializer", mode="language_first")
+   Task(
+       subagent_type="project-manager",
+       prompt="Initialize new project with language-first flow",
+       parameters={"mode": "language_first_initialization"}
+   )
    ```
-3. **Language Detection Strategy**:
-   - Check environment variables (LANG, locale)
-   - Detect from system settings
-   - Present language options immediately
-4. **Language Confirmation**: Display selected language and confirm
-5. **Set Language Context**: ALL subsequent interactions MUST use selected language
+3. **Agent Responsibilities**:
+   - Detect/select project language
+   - Conduct user interview in selected language
+   - Generate project documentation
+   - Invoke Skills internally as needed
 
-### Step 2: Contextual Fresh Install Flow
-**After language selection, proceed with fresh install workflow**:
-
-```python
-Skill("moai-project-language-initializer", mode="fresh_install", language=selected_language)
-```
+### Step 2: Project Manager Executes Fresh Install
+**The project-manager Agent will**:
+- Invoke `Skill("moai-project-language-initializer", mode="language_first")` internally
+- Invoke `Skill("moai-project-language-initializer", mode="fresh_install")` internally
+- Invoke `Skill("moai-project-documentation")` internally
+- Generate all project documentation
+- Return completion status
 
 **Fresh Install Process**:
 1. **User Profile Collection** (in selected language):
@@ -356,6 +325,15 @@ Skill("moai-project-language-initializer", mode="fresh_install", language=select
    - Generate complete `.moai/config.json`
    - Validate all settings
    - Set up language-specific configurations
+
+5. **Auto-Translate Announcements** (CRITICAL - NEW):
+   ```bash
+   # After config.json is created, auto-translate companyAnnouncements
+   uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/shared/utils/announcement_translator.py
+   ```
+   - Reads `conversation_language` from `.moai/config.json`
+   - Translates 22 announcements to selected language
+   - Updates `.claude/settings.json` automatically
 
 ### Step 3: Project Documentation Creation (Language-Aware)
 1. **Invoke**: `Task` with `project-manager` agent
@@ -396,13 +374,18 @@ Skill("moai-project-language-initializer", mode="fresh_install", language=select
 
 ### Step 2: Language Context Handling
 **IF user selects "Change Language"**:
-1. **Immediate Language Selection**:
+1. **Delegate to Agent**:
    ```python
-   Skill("moai-project-language-initializer", mode="language_change_only")
+   Task(
+       subagent_type="project-manager",
+       prompt="Change project language settings",
+       parameters={"mode": "language_change"}
+   )
    ```
-2. **Update Language Context**: Switch ALL subsequent interactions to new language
-3. **Update Configuration**: Save new language settings
-4. **Continue with new language context**
+2. **Agent will**:
+   - Invoke `Skill("moai-project-language-initializer", mode="language_change_only")` internally
+   - Update configuration with new language
+   - Return completion status
 
 **IF user selects "Continue" or "Show Current Settings"**:
 1. **Maintain Current Language Context**
@@ -532,3 +515,124 @@ AskUserQuestion(
 - **Contextual Workflows**: Each flow type provides appropriate options and guidance
 - **Faster Execution**: Skills optimized for specific tasks with language awareness
 - **Better Error Handling**: Specialized error recovery with language-appropriate messages
+
+---
+
+## 🌍 Language-Specific CompanyAnnouncements
+
+### Auto-Translation Strategy
+
+**Principle**: `.claude/settings.json` contains `companyAnnouncements` automatically translated to the user's selected language.
+
+**How it works**:
+1. During 0-project setup, user selects their preferred language
+2. After language selection, ALL workflow modes (INITIALIZATION/AUTO-DETECT/UPDATE) trigger auto-translation
+3. Announcement strings are translated to selected language
+4. Translated announcements written to `.claude/settings.json`
+5. Current language stored in `.moai/config.json` → `language.conversation_language`
+
+### Implementation in All Workflow Modes
+
+**Trigger Points** - Auto-translate and update `.claude/settings.json` in:
+
+#### 1. INITIALIZATION MODE
+After `Skill("moai-project-language-initializer", mode="language_first")` completes:
+```bash
+# Step: After language selection, translate and update announcements
+uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/shared/utils/announcement_translator.py
+```
+
+#### 2. AUTO-DETECT MODE
+After language confirmation in Step 2:
+```bash
+# Apply language-specific announcements from config
+uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/shared/utils/announcement_translator.py
+```
+
+#### 3. SETTINGS MODE
+When user changes language (after Config Manager skill updates config.json):
+```bash
+# Update announcements to match new language setting
+uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/shared/utils/announcement_translator.py
+```
+
+#### 4. UPDATE MODE
+Final step after template optimization:
+```bash
+# Ensure announcements match current language
+uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/shared/utils/announcement_translator.py
+```
+
+### Supported Translation Sources
+
+**Reference Announcements** (English baseline - 22 strings):
+```
+1. Start with a plan: Write down what you want to build first to avoid confusion (/alfred:1-plan)
+2. ✅ 5 promises: Test-first + Easy-to-read code + Clean organization + Secure + Trackable
+3. Task list: Continuous progress tracking ensures nothing gets missed
+4. Language separation: We communicate in your language, computers understand in English
+5. Everything connected: Plan→Test→Code→Docs are all linked together
+6. ⚡ Parallel processing: Independent tasks can be handled simultaneously
+7. Tools first: Find the right tools before starting any work
+8. Step by step: What you want→Plan→Execute→Report results
+9. Auto-generated lists: Planning automatically creates task lists
+10. ❓ Ask when confused: If something isn't clear, just ask right away
+11. 🧪 Automatic quality checks: Code automatically verified against 5 core principles
+12. Multi-language support: Automatic validation for Python, JavaScript, and more
+13. ⚡ Never stops: Can continue even when tools are unavailable
+14. Flexible approach: Choose between team collaboration or individual work as needed
+15. 🧹 Auto cleanup: Automatically removes unnecessary items when work is complete
+16. ⚡ Quick updates: New versions detected in 3 seconds, only fetch what's needed
+17. On-demand loading: Only loads current tools to save memory
+18. Complete history: All steps from planning to code are recorded for easy reference
+19. Bug reporting: File bug reports to GitHub in 30 seconds
+20. 🩺 Health check: Use 'moai-adk doctor' to instantly check current status
+21. Safe updates: Use 'moai-adk update' to safely add new features
+22. 🧹 When work is done: Use '/clear' to clean up conversation for the next task
+```
+
+**Currently Supported Languages**:
+- **ko** (Korean/한국어): Culturally localized translations with appropriate verb forms and expressions
+- **en** (English): Baseline/reference version
+- **ja** (Japanese/日本語): Formal/polite expressions suitable for Japanese audience
+
+### Adding New Languages
+
+When supporting a new language (e.g., **es** for Spanish):
+
+1. **Translation Requirements**:
+   - Translate all 22 announcement strings to target language
+   - Preserve emoji and special characters (✅, ⚡, 🧪, 🧹, 🩺, →)
+   - Maintain tone: Encouraging, action-oriented, user-friendly
+   - Keep command references intact: `/alfred:1-plan`, `moai-adk doctor`, `/clear`
+
+2. **Implementation**:
+   - Add language mapping in 0-project command or language initializer
+   - Create translation dictionary/storage for new language
+   - Ensure `translate_announcements("es")` returns Spanish strings
+
+3. **Validation**:
+   - Test in INITIALIZATION MODE with new language selection
+   - Verify announcements appear in `.claude/settings.json` with correct language
+   - Confirm emoji display correctly in Claude Code UI
+   - Check command references are readable in context
+
+### User Experience Flow
+
+```
+User runs: /alfred:0-project
+    ↓
+Skill("moai-project-language-initializer")
+    → User selects: "Korean (한국어)"
+    ↓
+translate_announcements("ko") returns Korean strings
+    ↓
+.claude/settings.json updated with:
+    "companyAnnouncements": [
+        "계획 우선: 혼란을 피하기 위해...",
+        "✅ 5가지 약속: 테스트 우선...",
+        ...
+    ]
+    ↓
+User sees Korean announcements on Claude Code startup ✓
+```

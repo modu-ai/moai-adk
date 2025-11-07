@@ -1,609 +1,685 @@
-______________________________________________________________________
+# Phase 3: Sync - Documentation and Quality Validation
 
-## title: /alfred:3-sync コマンド description: ドキュメント同期と状態管理のための完全ガイド lang: ja
+The `/alfred:3-sync` command is the final phase that ensures your implementation is properly
+documented, quality validated, and ready for release. This phase maintains the critical link between
+code, tests, specifications, and documentation.
 
-# /alfred:3-sync - ドキュメント同期コマンド
+## Overview
 
-`/alfred:3-sync`はMoAI-ADKの同期段階コマンドで、コード、テスト、ドキュメントを最新状態に同期し、プロジェクトの完全性を保証します。
+**Purpose**: Synchronize all project artifacts and validate system integrity before release.
 
-## 概要
-
-**目的**: ドキュメント同期と状態管理 **実行時間**: 約1分 **主要成果**: Living Document、同期レポート、TAG検証
-
-## 基本使用法
+**Command Format**:
 
 ```bash
-/alfred:3-sync
-# または
-/alfred:3-sync auto  # 自動モード
+/alfred:3-sync [options]
 ```
 
-### 実行タイミング
+**Options**:
 
-- **実装完了後**: TDDサイクル完了後必ず実行
-- **コミット前**: 変更をリポジトリに反映する前
-- **PR作成時**: プルリクエスト作成前
-- **リリース準備時**: 本番環境展開前
+- `--auto-merge`: Automatically merge changes in team mode
+- `--target=docs`: Only synchronize documentation
+- `--force`: Force synchronization even with warnings
+- `--dry-run`: Preview changes without applying them
 
-## 同期プロセス
+**Typical Duration**: 1-3 minutes **Output**: Updated documentation, quality reports, and release
+readiness validation
 
-### フェーズ1: TAGチェーン検証
+## Alfred's Synchronization Process
 
-#### tag-agentが自動実行
+### Phase 1: TAG Chain Integrity Validation
+
+Alfred's **tag-agent** performs comprehensive validation of the @TAG system to ensure complete
+traceability.
+
+#### TAG Chain Analysis
 
 ```bash
-🏷️ tag-agentのTAGチェーン検証:
+# Example output from TAG validation
+<span class="material-icons">search</span> Analyzing TAG chain integrity...
 
-## スキャン結果
-スキャン対象: .moai/, src/, tests/, docs/
-検出されたTAG: 12個
+✅ @SPEC:AUTH-001 → .moai/specs/SPEC-AUTH-001/spec.md
+✅ @TEST:AUTH-001 → tests/test_auth.py (3 test functions)
+✅ @CODE:AUTH-001:MODEL → src/auth/models.py (2 classes)
+✅ @CODE:AUTH-001:SERVICE → src/auth/service.py (1 class, 4 methods)
+✅ @CODE:AUTH-001:API → src/auth/api.py (1 endpoint)
+✅ @CODE:AUTH-001:CONFIG → src/auth/config.py (1 config class)
+✅ @DOC:AUTH-001 → docs/api/auth.md (auto-generated)
 
-## TAGチェーン整合性検証
-✅ @SPEC:EX-HELLO-001 → .moai/specs/SPEC-HELLO-001/spec.md (存在)
-✅ @TEST:EX-HELLO-001 → tests/test_hello.py (存在)
-✅ @CODE:EX-HELLO-001:API → src/hello/api.py (存在)
-✅ @CODE:EX-HELLO-001:MODEL → src/hello/models.py (存在)
-✅ @DOC:EX-HELLO-001 → docs/api/hello.md (生成予定)
-
-## Orphan TAG検出
-<span class="material-icons">cancel</span> 検出されたOrphan TAG: 0個
-✅ すべてのTAGが適切に連結されています
-
-## TAG一貫性検証
-✅ すべてのTAGが同じIDを使用 (HELLO-001)
-✅ TAG形式が標準に準拠 (@TYPE:EX-DOMAIN-NNN)
+📊 TAG Chain Summary:
+- Total TAGs found: 7
+- Complete chains: 1/1 (100%)
+- Orphaned TAGs: 0
+- Missing references: 0
+- Broken links: 0
 ```
 
-#### Orphan TAG回復
+#### Orphaned TAG Detection
 
+Alfred automatically detects and fixes orphaned TAGs:
+
+```bash
+<span class="material-icons">warning</span> Orphaned TAGs detected:
+- @CODE:AUTH-001:VALIDATOR found in src/auth/validators.py
+  ↳ Missing @TEST:AUTH-001:VALIDATOR
+  ↳ Recommendation: Create tests for validator functions
+
+⚙️ Auto-fix applied:
+✅ Created tests/test_auth_validators.py with @TEST:AUTH-001:VALIDATOR
+✅ Updated TAG chain integrity: 100%
 ```
-⚙️ Orphan TAG回復処理:
 
-検出された問題:
-<span class="material-icons">cancel</span> @CODE:EX-USER-005 (参照先SPECが存在しません)
+#### TAG Consistency Validation
 
-自動回復アクション:
-1. 関連SPEC検索: .moai/specs/ で USER-005 を検索
-2. 類似SPEC分析: USER-002, USER-003 と比較
-3. 推奨アクション: @CODE:EX-USER-002 にTAG修正
+```python
+# Alfred validates TAG format consistency
+TAG_FORMAT_RULES = {
+    "pattern": r"@TYPE:DOMAIN-\d{3}(:SUBTYPE)?",
+    "types": ["SPEC", "TEST", "CODE", "DOC"],
+    "domains": ["AUTH", "USER", "API", "DB"],
+    "subtypes": ["MODEL", "SERVICE", "API", "UTILS", "CONFIG"]
+}
 
-実行しますか？ [Y/n]
+# Example validation results
+✅ @SPEC:AUTH-001 - Valid format
+✅ @TEST:AUTH-001 - Valid format
+✅ @CODE:AUTH-001:SERVICE - Valid format with subtype
+✅ @DOC:AUTH-001 - Valid format
+<span class="material-icons">cancel</span> @code:auth-001 - Invalid: lowercase type and domain
+⚙️ Auto-fixed to: @CODE:AUTH-001
 ```
 
-### フェーズ2: Living Document生成
+### Phase 2: Documentation Synchronization
 
-#### doc-syncerが自動実行
+Alfred's **doc-syncer** generates and updates documentation to keep it perfectly synchronized with
+the codebase.
+
+#### Living Documentation Generation
+
+**API Documentation**:
 
 ````markdown
-# 生成されるLiving Document
+# Authentication API Documentation
 
-# `@DOC:EX-HELLO-001: Hello World API
+## Overview
+Provides secure user authentication using JWT tokens with comprehensive security measures.
 
-## 概要
+## Endpoints
 
-このドキュメントはHello World APIの完全な仕様と実装詳細を説明します。
+### POST /auth/login
 
-## 要件
+Authenticate user with email and password credentials.
 
-### 機能要件
+**Request Body:**
+```json
+{
+  "email": "user@example.com",
+  "password": "SecurePass123!"
+}
+````
 
-- システムはHTTP GET /helloエンドポイントを提供すべきである
-- WHEN クエリパラメータnameが提供されたら、"Hello, {name}!"を返すべきである
-- WHEN nameがない場合、"Hello, World!"を返すべきである
-
-### 非機能要件
-
-- nameは最大50文字に制限すべきである
-- 無効な文字が含まれる場合、400エラーを返すべきである
-- レスポンスタイムは100ms以内であるべきである
-
-## 実装
-
-### APIエンドポイント
-
-| メソッド | パス | 説明 |
-|---------|------|------|
-| GET | /hello | 挨拶メッセージを返す |
-
-### リクエストパラメータ
-
-| パラメータ | タイプ | 必須 | 説明 | 制約 |
-|-----------|------|------|------|------|
-| name | query | いいえ | 挨拶する名前 | 1-50文字、有効な文字のみ |
-
-### レスポンス
-
-#### 成功 (200)
+**Response (200 OK):**
 
 ```json
 {
-  "message": "Hello, 田中!"
-}
-````
-
-#### エラー (400)
-
-```json
-{
-  "detail": "Name too long (max 50 chars)"
+  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+  "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+  "token_type": "bearer",
+  "expires_in": 900
 }
 ```
 
-## 追跡性
+**Error Responses:**
 
-- **要件**: @SPEC:EX-HELLO-001
-- **テスト**: @TEST:EX-HELLO-001
-- **実装**:
-  - @CODE:EX-HELLO-001:API (APIエンドポイント)
-  - @CODE:EX-HELLO-001:MODEL (データモデル)
-  - @CODE:EX-HELLO-001:SERVICE (ビジネスロジック)
-- **ドキュメント**: @DOC:EX-HELLO-001
+- `400 Bad Request`: Invalid input format
+- `401 Unauthorized`: Invalid credentials
+- `429 Too Many Requests`: Rate limit exceeded
+- `500 Internal Server Error`: Server error
 
-## テスト
+**Security Headers:**
 
-### テストカバレッジ
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: DENY`
+- `X-XSS-Protection: 1; mode=block`
 
-- 全体カバレッジ: 95%
-- APIエンドポイント: 100%
-- バリデーション: 100%
-- エラーハンドリング: 100%
+**Rate Limiting:**
 
-### テストケース
+- 5 requests per minute per IP
+- Burst of 10 requests allowed
 
-1. **名前付き挨拶**: nameパラメータでパーソナライズされた挨拶
-2. **デフォルト挨拶**: nameなしでデフォルト挨拶
-3. **長すぎる名前**: 50文字超えで400エラー
-4. **無効な文字**: スクリプト文字で400エラー
-
-## 品質
-
-### TRUST 5原則準拠
-
-✅ **Test First**: 95%カバレッジ達成 ✅ **Readable**: クリアなコード構造 ✅ **Unified**: 一貫したアーキテクチャ ✅ **Secured**:
-入力検証とXSS防止 ✅ **Trackable**: 完全なTAG連鎖
-
-## デプロイメント
-
-### 環境変数
+**Examples:**
 
 ```bash
-# 開発環境
-HELLO_API_DEBUG=true
-HELLO_API_LOG_LEVEL=debug
+# Successful login
+curl -X POST http://localhost:8000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"SecurePass123!"}'
 
-# 本番環境
-HELLO_API_DEBUG=false
-HELLO_API_LOG_LEVEL=info
+# Response
+{"access_token":"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...","refresh_token":"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...","token_type":"bearer","expires_in":900}
 ```
-
-### ヘルスチェック
-
-```bash
-GET /health
-{
-  "status": "healthy",
-  "version": "1.0.0",
-  "timestamp": "2025-01-06T10:00:00Z"
-}
-```
-
-````
-
-### フェーズ3: プロジェクトドキュメント更新
-
-#### README.md自動更新
-
-```markdown
-# 更新されるREADME.mdセクション
-
-## 機能
-
-### ✅ Hello World API (HELLO-001)
-- パーソナライズされた挨拶メッセージ提供
-- クエリパラメータnameをサポート
-- 入力検証とエラーハンドリング
-
-**APIエンドポイント**: `GET /hello`
-**ドキュメント**: [APIドキュメント](docs/api/hello.md)
-**テストカバレッジ**: 95%
-
-### 🏗️ User Authentication (AUTH-001) - 進行中
-- JWTベース認証システム
-- メール/パスワード認証
-- トークンリフレッシュ機能
-
-**ステータス**: 開発中
-**進行率**: 75%
-
-## クイックスタート
-
-### Hello API使用例
-
-```bash
-# 基本挨拶
-curl "http://localhost:8000/hello"
-# → {"message": "Hello, World!"}
-
-# パーソナライズされた挨拶
-curl "http://localhost:8000/hello?name=田中"
-# → {"message": "Hello, 田中!"}
-````
-
-````
-
-#### CHANGELOG.md自動更新
-
-```markdown
-# 更新されるCHANGELOG.md
-
-# Changelog
-
-## [0.1.0] - 2025-01-06
-
-### Added
-
-#### Hello World API (@SPEC:EX-HELLO-001)
-- GET /helloエンドポイント実装
-- クエリパラメータnameサポート
-- 入力検証（長さ、無効な文字）
-- エラーハンドリングと適切なHTTPステータスコード
-- 自動APIドキュメンテーション生成
 
 ### Implementation Details
 
-- **SPEC**: `.moai/specs/SPEC-HELLO-001/spec.md`
-- **Tests**: `tests/test_hello.py` (95% coverage)
-- **Code**: `src/hello/` with API, models, and services layers
-- **Documentation**: `docs/api/hello.md` with complete API reference
+**Architecture:**
 
-### Quality Metrics
+- **Models**: Pydantic schemas for request/response validation
+- **Service**: Business logic with dependency injection
+- **API**: FastAPI endpoints with proper error handling
+- **Security**: bcrypt password hashing, JWT tokens, rate limiting
 
-- Test Coverage: 95%
-- Code Quality: A+ (TRUST 5 principles compliant)
-- Performance: < 10ms response time
-- Security: Input validation and XSS prevention
+**Traceability:**
 
-### Contributors
+- @SPEC:EX-AUTH-001 - Requirements specification
+- @TEST:EX-AUTH-001 - Comprehensive test suite
+- @CODE:EX-AUTH-001:MODEL - Data models and validation
+- @CODE:EX-AUTH-001:SERVICE - Business logic implementation
+- @CODE:EX-AUTH-001:API - HTTP endpoints
+- @CODE:EX-AUTH-001:CONFIG - Configuration management
 
-- @user - Implementation and testing
+**Dependencies:**
 
----
+- FastAPI for web framework
+- Pydantic for data validation
+- bcrypt for password hashing
+- PyJWT for token management
+- Python-jose for JWT utilities
 
-## [0.0.1] - 2025-01-05
-
-### Added
-- Initial project setup
-- MoAI-ADK integration
-- Basic configuration
 ````
 
-### フェーズ4: Git状態管理
+#### README Updates
 
-#### git-managerが自動実行
+Alfred automatically updates the project README with new features:
+
+```markdown
+# Project README Update
+
+## Features
+
+### Authentication System (@SPEC:AUTH-001) ✅
+- JWT-based authentication with access/refresh tokens
+- Secure password hashing with bcrypt (12 rounds)
+- Rate limiting (5 requests/minute per IP)
+- Comprehensive input validation
+- Security headers and XSS protection
+
+### API Endpoints
+- `POST /auth/login` - User authentication
+- `POST /auth/refresh` - Token refresh
+- `POST /auth/logout` - Token invalidation
+- `GET /auth/me` - Current user information
+
+### Security Features
+- Password strength validation
+- SQL injection protection
+- Rate limiting and brute force protection
+- Secure token generation and validation
+- HTTPS-only enforcement
+
+## Quick Start
+
+### Authentication
+```bash
+# Login
+curl -X POST http://localhost:8000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"SecurePass123!"}'
+
+# Use token in subsequent requests
+curl -X GET http://localhost:8000/protected \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+````
+
+````
+
+#### CHANGELOG Generation
+
+```markdown
+# CHANGELOG.md Update
+
+## [0.2.0] - 2025-01-15
+
+### Added
+- User authentication system (@SPEC:AUTH-001)
+  - JWT-based authentication with access and refresh tokens
+  - Secure password hashing using bcrypt (12 rounds)
+  - Rate limiting to prevent brute force attacks
+  - Comprehensive input validation and error handling
+  - Security headers for XSS and clickjacking protection
+
+### Security
+- Password strength validation with comprehensive rules
+- SQL injection protection through parameterized queries
+- Rate limiting: 5 requests per minute per IP address
+- Token-based session management with proper expiration
+- HTTPS enforcement in production
+
+### API Endpoints
+- POST /auth/login - Authenticate users
+- POST /auth/refresh - Refresh access tokens
+- POST /auth/logout - Invalidate tokens
+- GET /auth/me - Get current user information
+
+### Implementation Details
+- Models: Pydantic schemas for type safety
+- Service layer with dependency injection
+- Comprehensive test suite (100% coverage)
+- Error handling with custom exception classes
+- Configuration management with environment variables
+
+### Dependencies
+- Added: fastapi, pydantic, bcrypt, python-jose
+- Added: pytest, pytest-asyncio for testing
+- Added: python-multipart for form data handling
+
+### Testing
+- Unit tests: 15 test cases, 100% coverage
+- Integration tests: Complete authentication flow
+- Security tests: SQL injection, XSS prevention
+- Performance tests: Response time validation
+````
+
+### Phase 3: Quality Gate Validation
+
+Alfred's **trust-checker** and **quality-gate** perform comprehensive quality validation.
+
+#### TRUST 5 Principles Validation
 
 ```bash
-🚀 git-managerの状態管理:
+<span class="material-icons">search</span> TRUST 5 Validation Report...
 
-## 変更検出
-検出された変更:
-  Modified: src/hello/api.py
-  Modified: src/hello/models.py
-  New: docs/api/hello.md
-  Modified: README.md
-  Modified: CHANGELOG.md
+## 1. Test First ✅
+- Test Coverage: 100% (15/15 functions covered)
+- All tests passing: ✅ (15 passed, 0 failed)
+- Edge cases covered: ✅ (error handling, security tests)
+- Performance tests: ✅ (response time validation)
 
-## コミット推奨
-📄 推奨コミットメッセージ:
-✅ docs(HELLO-001): sync documentation and update project files
+## 2. Readable ✅
+- Function length: Average 15 lines (target: <50)
+- File length: Average 120 lines (target: <300)
+- Variable naming: ✅ (descriptive and consistent)
+- Documentation: ✅ (all public functions documented)
+- Type annotations: ✅ (100% type coverage)
 
-変更内容:
-- Living Document生成 (docs/api/hello.md)
-- README.md機能セクション更新
-- CHANGELOG.mdにv0.1.0リリースノート追加
-- TAGチェーン検証完了
+## 3. Unified ✅
+- Architecture consistency: ✅ (layered architecture)
+- API patterns: ✅ (RESTful conventions)
+- Error handling: ✅ (consistent error responses)
+- Configuration: ✅ (environment-based)
+- Logging: ✅ (structured logging throughout)
+
+## 4. Secured ✅
+- Input validation: ✅ (all endpoints validated)
+- Password security: ✅ (bcrypt, 12 rounds)
+- Token security: ✅ (JWT with proper signing)
+- Rate limiting: ✅ (5 req/min per IP)
+- Security headers: ✅ (XSS, clickjacking protection)
+- Dependency security: ✅ (no known vulnerabilities)
+
+## 5. Trackable ✅
+- TAG completeness: 100% (7/7 TAGs present)
+- TAG consistency: ✅ (proper formatting)
+- Git history: ✅ (clean TDD commit history)
+- Documentation links: ✅ (all artifacts connected)
+- Change tracking: ✅ (comprehensive changelog)
+
+🎯 Overall Quality Score: 95/100
+✅ Ready for production deployment
 ```
 
-## 高度な機能
-
-### 自動モード
+#### Security Validation
 
 ```bash
-/alfred:3-sync auto
+🔒 Security Validation Report...
+
+### Authentication Security
+✅ Password hashing: bcrypt with 12 rounds
+✅ Token generation: Cryptographically secure
+✅ Session management: Proper expiration
+✅ Rate limiting: Implemented and effective
+✅ Input validation: Comprehensive coverage
+
+### Data Protection
+✅ SQL injection: Parameterized queries
+✅ XSS prevention: Output encoding
+✅ CSRF protection: SameSite cookies
+✅ HTTPS enforcement: Production only
+✅ Sensitive data: Environment variables
+
+### Infrastructure Security
+✅ Dependencies: No known vulnerabilities
+✅ Headers: Security headers configured
+✅ Logging: No sensitive data in logs
+✅ Error messages: Non-revealing
+✅ Monitoring: Security events tracked
+
+### Security Tests
+✅ Authentication bypass attempts
+✅ Token manipulation attempts
+✅ SQL injection payloads
+✅ XSS payload testing
+✅ Rate limiting effectiveness
+
+🛡️ Security Status: SECURE
+No critical issues found
 ```
 
-**自動モード機能**:
-
-- 変更検出時に自動同期実行
-- バックグラウンドで定期的実行
-- PR作成時に自動実行
-- コミット前に自動検証
-
-### 選択的同期
+#### Performance Validation
 
 ```bash
-# 特定SPECのみ同期
-/alfred:3-sync HELLO-001
+⚡ Performance Validation Report...
 
-# ドキュメントのみ同期
-/alfred:3-sync --docs-only
+### Response Times
+✅ Login endpoint: Average 145ms (target: <500ms)
+✅ Token refresh: Average 89ms (target: <200ms)
+✅ User validation: Average 23ms (target: <100ms)
+✅ Error responses: Average 12ms (target: <50ms)
 
-# TAG検証のみ実行
-/alfred:3-sync --tags-only
+### Resource Usage
+✅ Memory usage: 45MB average (target: <100MB)
+✅ CPU usage: 15% average under load
+✅ Database connections: Efficient pooling
+✅ File operations: Minimal I/O
 
-# レポートのみ生成
-/alfred:3-sync --report-only
+### Load Testing
+✅ Concurrent users: 1000 (target: 500+)
+✅ Requests per second: 850 (target: 500+)
+✅ Error rate: 0.1% (target: <1%)
+✅ Response consistency: Stable under load
+
+### Performance Tests
+✅ Authentication under load
+✅ Token validation performance
+✅ Database query optimization
+✅ Memory leak detection
+
+🚀 Performance Status: OPTIMIZED
+All performance targets met
 ```
 
-### カスタムテンプレート
+### Phase 4: Git Workflow Management
+
+Alfred's **git-manager** handles all Git operations for clean, traceable version control.
+
+#### Branch Management
+
+```bash
+# Team mode branch operations
+🌿 Git Workflow Management...
+
+Current branch: feature/SPEC-AUTH-001
+Status: Ready for merge
+
+Branch validation:
+✅ All tests passing
+✅ Documentation synchronized
+✅ Quality gates passed
+✅ No merge conflicts
+✅ Up to date with develop
+
+Merge options:
+[1] Create Draft PR (default)
+[2] Auto-merge to develop
+[3] Continue working on branch
+[4] Create release branch
+
+📄 PR Information:
+- Title: "feat(auth): Implement JWT authentication system"
+- Description: Auto-generated from SPEC-AUTH-001
+- Labels: feature, authentication, security
+- Reviewers: Auto-assigned based on code ownership
+- Tests: 15 passing, 100% coverage
+- Documentation: API docs updated
+```
+
+#### Commit History Optimization
+
+```bash
+📄 Commit History Analysis...
+
+Recent commits (TDD pattern maintained):
+a1b2c3d ✅ sync(AUTH-001): Update documentation and quality checks
+d4e5f6c ♻️ refactor(AUTH-001): Improve security and error handling
+b2c3d4e 🟢 feat(AUTH-001): Implement authentication service
+a3b4c5d 🔴 test(AUTH-001): Add failing authentication tests
+e5f6g7h 🌿 Create feature/SPEC-AUTH-001 from develop
+
+✅ Commit message consistency: 100%
+✅ TDD pattern compliance: 100%
+✅ TAG references in commits: 100%
+✅ Sign-off requirements: Met
+```
+
+## Advanced Synchronization Features
+
+### Custom Documentation Templates
+
+Alfred supports custom documentation templates:
 
 ```yaml
-# .moai/templates/sync-custom.yml
-custom_documentation:
-  enabled: true
-  template: "custom-api-doc.md"
-  output: "docs/custom/{SPEC_ID}.md"
+# .moai/templates/api-docs.yml
+api_documentation:
+  sections:
+    - overview
+    - authentication
+    - endpoints
+    - examples
+    - security
+    - traceability
 
-report_format:
-  format: "json"
-  include_metrics: true
-  include_recommendations: true
+  endpoint_format:
+    method: "{{ method }}"
+    path: "{{ path }}"
+    description: "{{ description }}"
+    parameters: "{{ parameters }}"
+    responses: "{{ responses }}"
+    examples: "{{ examples }}"
+    security: "{{ security }}"
+    traceability: "{{ tags }}"
 ```
 
-## 同期レポート
-
-### レポート生成
-
-```bash
-/alfred:3-sync --report
-```
-
-### レポート内容
-
-```
-📊 同期レポート (2025-01-06 10:00:00)
-
-## 実行概要
-- 実行時間: 45秒
-- 処理ファイル: 12個
-- 生成ドキュメント: 3個
-- 更新ファイル: 5個
-
-## 品質メトリクス
-- 全体カバレッジ: 95% ↗️ (+2%)
-- TRUST準拠率: 100%
-- TAG整合性: 100%
-- ドキュメント最新性: 100%
-
-## 検出された問題
-<span class="material-icons">cancel</span> 警告: src/unused.py (未使用ファイル)
-<span class="material-icons">cancel</span> 警告: README.md (APIドキュメントリンク切れ)
-
-## 推奨アクション
-1. 未使用ファイルを削除または移動
-2. README.mdのリンクを更新
-3. 次のリリース準備完了
-
-## 次のステップ
-✅ プルリクエスト作成準備完了
-✅ コミット推奨
-✅ デプロイ可能な状態
-```
-
-### レポート出力形式
-
-```bash
-# JSON形式
-/alfred:3-sync --report --format=json
-
-# HTML形式
-/alfred:3-sync --report --format=html
-
-# Markdown形式（デフォルト）
-/alfred:3-sync --report --format=markdown
-```
-
-## 状態遷移管理
-
-### SPEC状態更新
-
-```bash
-# 状態確認
-grep "status:" .moai/specs/SPEC-HELLO-001/spec.md
-# 出力: status: in_progress
-
-# 同期後状態更新
-/alfred:3-sync
-
-# 状態確認
-grep "status:" .moai/specs/SPEC-HELLO-001/spec.md
-# 出力: status: completed
-```
-
-### ワークフロー統合
-
-```mermaid
-%%{init: {'theme':'neutral'}}%%
-graph TD
-    Plan[/alfred:1-plan<br/>status: planning] --> Run[/alfred:2-run<br/>status: in_progress]
-    Run --> Sync[/alfred:3-sync<br/>status: testing]
-    Sync --> Completed[status: completed]
-    Completed --> Plan
-
-    Sync -.-> PR[Pull Request<br/>Ready for Review]
-    PR -.-> Merge[Merge<br/>status: stable]
-```
-
-## ドキュメントタイプ
-
-### 1. APIドキュメント
-
-自動生成されるAPIリファレンス：
+### Multi-Language Documentation
 
 ```markdown
-# APIドキュメント構造
+# docs/api/auth.es.md (Spanish)
+# Documentación de la API de Autenticación
 
-## エンドポイント一覧
-- パス、メソッド、説明
-- パラメータ詳細
-- レスポンス形式
-- エラーコード
+## Descripción General
+Proporciona autenticación segura de usuarios utilizando tokens JWT...
 
-## スキーマ定義
-- リクエスト/レスポンスモデル
-- データ型と制約
-- バリデーションルール
+## Endpoints (Puntos finales)
+### POST /auth/login
+Autenticar usuario con credenciales de email y contraseña.
 
-## 使用例
-- cURLコマンド例
-- レスポンス例
-- エラーケース例
+# docs/api/auth.fr.md (French)
+# Documentation de l'API d'Authentification
+
+## Vue d'ensemble
+Fournit une authentification sécurisée des utilisateurs en utilisant des jetons JWT...
 ```
 
-### 2. アーキテクチャドキュメント
+### Integration Testing Documentation
 
-```markdown
-# アーキテクチャ概要
+````markdown
+# docs/testing/integration.md
+# Integration Testing Guide
 
-## システム構成
-- コンポーネント図
-- データフロー
-- 技術スタック
+## Authentication Flow Testing
 
-## 設計決定
-- 選択した技術と理由
-- トレードオフ分析
-- 将来の拡張性計画
-```
+### Complete User Journey
+```bash
+# 1. Register new user
+POST /auth/register
+Content-Type: application/json
 
-### 3. デプロイドキュメント
+{
+  "email": "test@example.com",
+  "password": "SecurePass123!"
+}
 
-```markdown
-# デプロイガイド
+# 2. Authenticate user
+POST /auth/login
+Content-Type: application/json
 
-## 環境要件
-- 依存関係リスト
-- システム要件
-- 設定パラメータ
+{
+  "email": "test@example.com",
+  "password": "SecurePass123!"
+}
 
-## デプロイ手順
-- ステップバイステップガイド
-- 環境変数設定
-- ヘルスチェック
-```
+# 3. Access protected resource
+GET /protected
+Authorization: Bearer <access_token>
 
-## 品質保証
+# 4. Refresh token
+POST /auth/refresh
+Content-Type: application/json
 
-### ドキュメント品質検証
+{
+  "refresh_token": "<refresh_token>"
+}
+````
+
+## Test Scenarios
+
+### Happy Path Tests
+
+- User registration and confirmation
+- Successful login with valid credentials
+- Token refresh before expiration
+- Access to protected resources
+
+### Edge Case Tests
+
+- Login with invalid credentials
+- Expired token usage
+- Rate limiting enforcement
+- Concurrent session handling
+
+### Security Tests
+
+- SQL injection attempts
+- XSS payload handling
+- Token manipulation
+- Brute force protection
+
+````
+
+## Troubleshooting Sync Issues
+
+### Common Documentation Issues
+
+**Documentation not generated**:
+```bash
+# Check file permissions
+ls -la docs/
+
+# Force regeneration
+/alfred:3-sync --force --target=docs
+
+# Check templates
+cat .moai/templates/api-docs.yml
+````
+
+**TAG chain broken**:
 
 ```bash
-📚 doc-syncerの品質検証:
+# Find broken references
+rg '@(SPEC|TEST|CODE|DOC):' -A 2 -B 2
 
-## ドキュメント完全性
-✅ すべての@SPECに対応する@DOCが存在
-✅ すべての@CODEにドキュメント化済み
-✅ すべての@TESTに使用例が記載
+# Fix missing TAGs
+/alfred:3-sync --fix-tags
 
-## ドキュメント一貫性
-✅ 用語と命名規則の一貫性
-✅ フォーマットと構造の統一性
-✅ バージョン情報の正確性
-
-## ドキュメントアクセシビリティ
-✅ 見出しと目次の完成度
-✅ コード例の実行可能性
-✅ 外部リンクの有効性
+# Manual TAG addition
+echo "# @TEST:AUTH-001:VALIDATOR" >> tests/test_validators.py
 ```
 
-### リンク検証
+**Quality gate failures**:
 
 ```bash
-# 内部リンク検証
-/alfred:3-sync --validate-links
-
-# 外部リンク検証
-/alfred:3-sync --validate-external-links
-
-# 画像リソース検証
-/alfred:3-sync --validate-images
-```
-
-## トラブルシューティング
-
-### よくある問題
-
-**ドキュメントが生成されない**:
-
-```bash
-# TAGチェーン確認
-rg '@(SPEC|TEST|CODE):' -n
-
-# 同期強制実行
-/alfred:3-sync --force
-
-# 詳細ログ確認
+# Detailed quality report
 /alfred:3-sync --verbose
+
+# Fix specific issues
+# Example: Add missing tests
+pytest tests/ --cov=src --cov-report=term-missing
+
+# Re-run validation
+/alfred:3-sync
 ```
 
-**Orphan TAGが多い**:
+### Git Workflow Issues
+
+**Merge conflicts**:
 
 ```bash
-# Orphan TAG分析
-/alfred:3-sync --analyze-orphans
+# Check for conflicts
+git status
 
-# 自動修復提案
-/alfred:3-sync --suggest-fixes
+# Resolve conflicts (Alfred will guide you)
+git merge develop
+
+# Continue sync after resolution
+/alfred:3-sync --continue
 ```
 
-**ドキュメントフォーマットが壊れる**:
+**Branch issues**:
 
 ```bash
-# テンプレート再生成
-/alfred:3-sync --regenerate-templates
+# Check branch status
+git branch -vv
 
-# Markdown検証
-/alfred:3-sync --validate-markdown
+# Sync with develop
+git fetch origin
+git rebase origin/develop
+
+# Continue sync
+/alfred:3-sync
 ```
 
-## ベストプラクティス
+### Performance Issues
 
-### 1. 定期的な同期
+**Slow synchronization**:
 
 ```bash
-# 開発サイクル終了後必ず実行
-/alfred:2-run SPEC-001
-/alfred:3-sync  # 忘れずに実行
+# Check what's taking time
+/alfred:3-sync --profile
 
-# コミット前の最終確認
-git add .
-/alfred:3-sync --report-only  # レポート確認
-git commit -m "message"
+# Optimize by targeting specific areas
+/alfred:3-sync --target=docs
+/alfred:3-sync --target=tags
+/alfred:3-sync --target=quality
 ```
 
-### 2. ドキュメント品質維持
+## Best Practices
 
-- **コード変更と同時ドキュメント更新**
-- **定期的なリンク検証**
-- **用語集の維持**
-- **バージョン管理の徹底**
+### Before Running Sync
 
-### 3. チーム協業
+1. **Ensure Tests Pass**: All tests should be passing
+2. **Commit Changes**: Commit all code changes
+3. **Review TAGs**: Ensure all code has proper TAGs
+4. **Check Dependencies**: Verify all dependencies are installed
 
-```bash
-# ドキュメントレビュープロセス
-1. /alfred:3-sync 実行
-2. 生成されたドキュメントをチームレビュー
-3. フィードバック反映
-4. 再同期実行
-5. レビュー完了
-```
+### During Sync
 
-## 統合と連携
+1. **Monitor Output**: Watch for warnings and errors
+2. **Review Changes**: Check generated documentation
+3. **Validate Quality**: Ensure all quality gates pass
+4. **Check Git Status**: Verify proper branch management
 
-### CI/CDパイプライン統合
+### After Sync
+
+1. **Review Documentation**: Read generated docs for accuracy
+2. **Test Functionality**: Manual testing of implemented features
+3. **Update Team**: Notify team of completion (if applicable)
+4. **Plan Next Steps**: Determine next development iteration
+
+## Integration with CI/CD
+
+### GitHub Actions Integration
 
 ```yaml
 # .github/workflows/sync.yml
-name: Documentation Sync
+name: Alfred Sync and Quality Check
+
 on:
   push:
     branches: [main, develop]
@@ -611,39 +687,72 @@ on:
     branches: [main]
 
 jobs:
-  sync:
+  alfred-sync:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v3
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.13'
-      - name: Install MoAI-ADK
-        run: pip install moai-adk
-      - name: Run sync
-        run: /alfred:3-sync --report --format=json
-      - name: Validate documentation
-        run: |
-          # ドキュメント品質検証
-          # リンク検証
-          # カバレッジ確認
+    - uses: actions/checkout@v3
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.13'
+
+    - name: Install MoAI-ADK
+      run: |
+        pip install moai-adk
+        pip install -r requirements.txt
+
+    - name: Run Alfred Sync
+      run: |
+        cd /github/workspace
+        alfred-sync --ci-mode
+
+    - name: Upload Documentation
+      uses: actions/upload-artifact@v3
+      with:
+        name: documentation
+        path: docs/
 ```
 
-### デプロイメント連携
+### Quality Gates in Pipeline
 
 ```bash
-# 本番環境展開前
-/alfred:3-sync --production-ready
+# CI/CD integration script
+#!/bin/bash
+# ci-sync-check.sh
 
-# デプロイ後
-/alfred:3-sync --update-deployment-status
+echo "Running Alfred sync in CI mode..."
+
+# Run sync with CI-specific options
+alfred-sync --ci-mode --fail-on-warnings
+
+# Check exit code
+if [ $? -eq 0 ]; then
+  echo "✅ Sync completed successfully"
+  echo "📊 Quality gates passed"
+  echo "<span class="material-icons">menu_book</span> Documentation generated"
+else
+  echo "<span class="material-icons">cancel</span> Sync failed"
+  echo "<span class="material-icons">search</span> Check logs for details"
+  exit 1
+fi
+
+# Upload results
+echo "Uploading documentation artifacts..."
+tar -czf docs.tar.gz docs/
 ```
 
-______________________________________________________________________
+## Next Steps
 
-**📚 次のステップ**:
+After successful `/alfred:3-sync`:
 
-- [プロジェクトガイド](../project/index.md)でプロジェクト管理
-- [デプロイガイド](../project/deploy.md)で本番環境展開
-- [品質ガイド](../project/config.md)で品質管理
+1. **Review Documentation**: Read through all generated documentation
+2. **Manual Testing**: Test the implementation manually
+3. **Team Review**: Share with team for feedback (if applicable)
+4. **Deployment**: Deploy to staging/production environment
+5. **Monitor**: Monitor system performance and security
+
+The synchronization phase ensures your implementation is production-ready with comprehensive
+documentation, quality validation, and proper version control. By maintaining the critical link
+between all project artifacts, you create a maintainable and traceable codebase! 🎯
