@@ -549,91 +549,11 @@ Organized across 6 tiers:
 
 ---
 
-## 🤝 Contributing
-
-We welcome contributions! MoAI-ADK is maintained by the open-source community.
-
-### Getting Started
-
-```bash
-# Clone the repository
-git clone https://github.com/modu-ai/moai-adk.git
-cd moai-adk
-
-# Set up development environment
-uv venv
-source .venv/bin/activate
-uv pip install -e ".[dev]"
-
-# Run tests
-pytest
-
-# Build documentation
-cd docs && make html
-```
-
-### Development Workflow
-
-1. **Create a feature branch**: `git checkout -b feature/SPEC-XXX`
-2. **Follow SPEC-First TDD**: `/alfred:0-project`, `/alfred:1-plan`, `/alfred:2-run`
-3. **Sync documentation**: `/alfred:3-sync`
-4. **Submit a PR**: Target the `develop` branch
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
-
----
-
 ## 📋 License
 
 MIT License - see [LICENSE](LICENSE) for details.
 
 **Summary**: Use MoAI-ADK in commercial and private projects. Attribution is appreciated but not required.
-
----
-
-## 🗺️ Project Status & Roadmap
-
-**Completed**:
-- ✅ Core SPEC-First framework
-- ✅ TDD automation with RED-GREEN-REFACTOR
-- ✅ @TAG system for complete traceability
-- ✅ 19 specialized agents
-- ✅ 73+ production skills
-- ✅ Multi-language support
-- ✅ Git integration with GitFlow
-- ✅ Pre-commit validation hooks
-- ✅ MCP server integration
-
-**In Progress**:
-- 🔄 Enhanced AI model selection (Haiku/Sonnet optimization)
-- 🔄 Extended documentation generation
-- 🔄 Performance profiling tools
-
-**Planned**:
-- 📅 Visual workflow IDE integration
-- 📅 Real-time collaboration features
-- 📅 Extended security compliance (SOC 2, ISO 27001)
-- 📅 Mobile app support
-- 📅 Enterprise dashboard
-
----
-
-## ❓ FAQ
-
-### Q: Do I need AI credits to use MoAI-ADK?
-**A**: MoAI-ADK is available within Claude Code with a Claude subscription. Claude API access is included by default when you sign up for Claude Code.
-
-### Q: Can I use MoAI-ADK with other AI models?
-**A**: Currently optimized for Claude models (Haiku, Sonnet, Opus). Integration with other models is on the roadmap.
-
-### Q: Is MoAI-ADK suitable for enterprise use?
-**A**: Yes. SPEC-First TDD, security compliance, and audit trails make it ideal for enterprise development. See [Enterprise Guide](https://adk.mo.ai.kr/enterprise) for details.
-
-### Q: How does MoAI-ADK handle data privacy?
-**A**: Your code is sent to Claude API for processing. See [Privacy Policy](https://adk.mo.ai.kr/privacy) and [Security Guide](https://adk.mo.ai.kr/security) for details.
-
-### Q: Can I contribute to MoAI-ADK?
-**A**: Absolutely! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ---
 
@@ -653,12 +573,5 @@ MoAI-ADK is built on years of research into AI-assisted development, test-driven
 ---
 
 **Made with ❤️ by the MoAI Team**
-
-Build trustworthy, maintainable software with AI assistance. Start today:
-
-```bash
-pip install moai-adk
-moai-adk init my-project
-```
 
 [📖 Read the Full Documentation →](https://adk.mo.ai.kr)

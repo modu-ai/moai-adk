@@ -549,91 +549,11 @@ graph TD
 
 ---
 
-## 🤝 기여하기
-
-MoAI-ADK는 오픈소스 커뮤니티에 의해 유지보수됩니다. 기여를 환영합니다!
-
-### 시작하기
-
-```bash
-# 저장소 클론
-git clone https://github.com/modu-ai/moai-adk.git
-cd moai-adk
-
-# 개발 환경 설정
-uv venv
-source .venv/bin/activate
-uv pip install -e ".[dev]"
-
-# 테스트 실행
-pytest
-
-# 문서 빌드
-cd docs && make html
-```
-
-### 개발 워크플로우
-
-1. **Feature 브랜치 생성**: `git checkout -b feature/SPEC-XXX`
-2. **SPEC-First TDD 준수**: `/alfred:0-project`, `/alfred:1-plan`, `/alfred:2-run`
-3. **문서 동기화**: `/alfred:3-sync`
-4. **PR 제출**: `develop` 브랜치를 대상으로
-
-자세한 내용은 [CONTRIBUTING.md](CONTRIBUTING.md)를 참조하세요.
-
----
-
 ## 📋 라이선스
 
 MIT 라이선스 - 자세한 내용은 [LICENSE](LICENSE)를 참조하세요.
 
 **요약**: MoAI-ADK를 상업 및 개인 프로젝트에서 사용할 수 있습니다. 저작권 표시는 권장하지만 필수는 아닙니다.
-
----
-
-## 🗺️ 프로젝트 상태 및 로드맵
-
-**완료**:
-- ✅ 핵심 SPEC-First 프레임워크
-- ✅ RED-GREEN-REFACTOR 자동화
-- ✅ 완전한 추적성을 위한 @TAG 시스템
-- ✅ 19개의 전문 에이전트
-- ✅ 73개 이상의 프로덕션급 스킬
-- ✅ 다중언어 지원
-- ✅ GitFlow와의 Git 통합
-- ✅ Pre-commit 검증 훅
-- ✅ MCP 서버 통합
-
-**진행 중**:
-- 🔄 향상된 AI 모델 선택 (Haiku/Sonnet 최적화)
-- 🔄 확장된 문서 생성
-- 🔄 성능 프로파일링 도구
-
-**계획 중**:
-- 📅 시각적 워크플로우 IDE 통합
-- 📅 실시간 협업 기능
-- 📅 확장된 보안 규정 준수 (SOC 2, ISO 27001)
-- 📅 모바일 앱 지원
-- 📅 엔터프라이즈 대시보드
-
----
-
-## ❓ 자주 묻는 질문
-
-### Q: MoAI-ADK 사용에 AI 크레딧이 필요한가요?
-**A**: MoAI-ADK는 Claude Code 내에서 Claude 구독으로 사용 가능합니다. Claude Code 가입 시 기본으로 제공되는 Claude API 접근권이 포함되어 있습니다.
-
-### Q: MoAI-ADK를 다른 AI 모델과 함께 사용할 수 있나요?
-**A**: 현재 Claude 모델(Haiku, Sonnet, Opus)에 최적화되어 있습니다. 다른 모델과의 통합은 로드맵에 있습니다.
-
-### Q: MoAI-ADK는 엔터프라이즈 사용에 적합한가요?
-**A**: 네. SPEC-First TDD, 보안 규정 준수, 감사 추적으로 엔터프라이즈 개발에 이상적입니다. [엔터프라이즈 가이드](https://adk.mo.ai.kr/enterprise)를 참조하세요.
-
-### Q: MoAI-ADK는 데이터 개인정보를 어떻게 처리하나요?
-**A**: 코드는 Claude API로 전송됩니다. [개인정보 정책](https://adk.mo.ai.kr/privacy) 및 [보안 가이드](https://adk.mo.ai.kr/security)를 참조하세요.
-
-### Q: MoAI-ADK에 기여할 수 있나요?
-**A**: 물론이죠! [CONTRIBUTING.md](CONTRIBUTING.md)에서 가이드라인을 확인하세요.
 
 ---
 
@@ -653,12 +573,5 @@ MoAI-ADK는 AI 기반 개발, 테스트 주도 개발, 소프트웨어 엔지니
 ---
 
 **❤️ MoAI 팀이 만들었습니다**
-
-AI 도움으로 신뢰할 수 있고 유지보수하기 쉬운 소프트웨어를 빌드하세요. 오늘 시작하세요:
-
-```bash
-pip install moai-adk
-moai-adk init my-project
-```
 
 [📖 전체 문서 읽기 →](https://adk.mo.ai.kr)
