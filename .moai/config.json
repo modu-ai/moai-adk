@@ -4,7 +4,7 @@
     "@SPEC:PROJECT-CONFIG-001": "@SPEC:MOAI-CONFIG-001"
   },
   "moai": {
-    "version": "0.21.0",
+    "version": "0.21.1",
     "update_check_frequency": "daily",
     "version_check": {
       "enabled": true,
