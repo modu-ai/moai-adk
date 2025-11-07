@@ -284,7 +284,6 @@ def validate_password(password: str) -> bool:
     def test_domain_inference_performance(self, generator, medium_python_file):
         """Benchmark domain inference speed."""
         # Pre-analyze to isolate inference
-        from moai_adk.core.tags.spec_generator import CodeAnalysis
 
         generator = SpecGenerator()
         analysis = generator._analyze_code_file(medium_python_file)
@@ -334,8 +333,9 @@ class TestCachingFeasibility:
 
     def test_analysis_cache_validity(self):
         """Verify that cached analysis results are consistent."""
-        from moai_adk.core.tags.spec_generator import SpecGenerator, CodeAnalysis
         from tempfile import TemporaryDirectory
+
+        from moai_adk.core.tags.spec_generator import SpecGenerator
 
         generator = SpecGenerator()
 

@@ -12,7 +12,6 @@ TDD History:
 
 import sys
 from pathlib import Path
-from typing import List, Dict
 
 # 프로젝트 루트에서 src 추가
 SRC_DIR = Path(__file__).parent.parent.parent / "src"

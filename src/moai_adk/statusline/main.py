@@ -15,12 +15,12 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from .renderer import StatuslineRenderer, StatuslineData
+from .alfred_detector import AlfredDetector
 from .git_collector import GitCollector
 from .metrics_tracker import MetricsTracker
-from .alfred_detector import AlfredDetector
-from .version_reader import VersionReader
+from .renderer import StatuslineData, StatuslineRenderer
 from .update_checker import UpdateChecker
+from .version_reader import VersionReader
 
 
 def read_session_context() -> dict:

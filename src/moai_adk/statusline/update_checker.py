@@ -6,11 +6,11 @@ Update checker for MoAI-ADK using PyPI API
 
 import json
 import logging
+import re
 import urllib.request
 from dataclasses import dataclass
-from typing import Optional
 from datetime import datetime, timedelta
-import re
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 

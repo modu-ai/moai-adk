@@ -7,7 +7,7 @@ Link Validation Utilities
 
 import asyncio
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
@@ -25,7 +25,7 @@ class LinkResult:
     is_valid: bool
     response_time: float
     error_message: Optional[str] = None
-    checked_at: datetime = None
+    checked_at: datetime = field(default_factory=datetime.now)
 
     def __post_init__(self):
         if self.checked_at is None:
@@ -39,7 +39,7 @@ class ValidationResult:
     valid_links: int
     invalid_links: int
     results: List[LinkResult]
-    completed_at: datetime = None
+    completed_at: datetime = field(default_factory=datetime.now)
 
     def __post_init__(self):
         if self.completed_at is None:
@@ -187,7 +187,7 @@ class LinkValidator(HTTPClient):
         return "\n".join(report)
 
 
-def validate_readme_links(readme_path: Path = None) -> ValidationResult:
+def validate_readme_links(readme_path: Optional[Path] = None) -> ValidationResult:
     """README 파일의 모든 링크 검증"""
     if readme_path is None:
         readme_path = Path("README.ko.md")
