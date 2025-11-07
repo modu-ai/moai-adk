@@ -1,15 +1,21 @@
 #!/usr/bin/env python3
 # @CODE:LANGUAGE-DIRS-001 | @SPEC:TAG-LANGUAGE-DETECTION-001 | @DOC:LANGUAGE-DIRS-CONFIG-001
-"""언어별 코드 디렉토리 감지 및 설정
+"""Language-specific code directory detection and configuration.
 
-프로젝트 언어에 따라 기대되는 코드 디렉토리를 자동으로 감지하고,
-사용자 정의 설정과 병합하여 최종 디렉토리 패턴을 반환합니다.
+Automatically detects expected code directories for a project based on its language,
+merges with user-defined settings, and returns the final directory patterns.
 
-지원하는 언어 (10개):
+Supported Languages (10):
   - Python, JavaScript, TypeScript
   - Go, Rust
   - Kotlin, Ruby, PHP
   - Java, C#
+
+Features:
+  - Auto/manual/hybrid detection modes
+  - Custom pattern override support
+  - Exclude pattern management
+  - File extension to language detection
 """
 
 from typing import Dict, List, Optional, Set
@@ -17,7 +23,7 @@ from pathlib import Path
 
 
 # Language-specific code directory patterns
-# LANGUAGE_DIRECTORY_MAP: 각 언어별 일반적인 코드 디렉토리 패턴
+# Maps each language to its conventional code directory paths
 LANGUAGE_DIRECTORY_MAP: Dict[str, List[str]] = {
     "python": [
         "src/",
@@ -69,7 +75,8 @@ LANGUAGE_DIRECTORY_MAP: Dict[str, List[str]] = {
     ],
 }
 
-# 모든 언어 공통 제외 패턴
+# Common exclude patterns for all languages
+# These directories are typically not part of source code
 COMMON_EXCLUDE_PATTERNS: List[str] = [
     "tests/",
     "test/",
@@ -103,69 +110,82 @@ def detect_directories(
     config: Optional[Dict] = None,
     language: Optional[str] = None,
 ) -> List[str]:
-    """
-    프로젝트 설정과 언어에 따라 코드 디렉토리 패턴 반환.
+    """Detect code directory patterns based on project configuration and language.
 
-    동작 순서:
-    1. config에 커스텀 패턴이 있으면 → 커스텀 패턴 사용
-    2. 커스텀 없으면 → 언어별 기본 패턴 사용
-    3. 하이브리드 모드 → 언어 기본 + 커스텀 병합
+    Detection logic:
+    1. Manual mode: If custom patterns exist → use custom patterns only
+    2. Auto mode (default): Use language-specific default patterns
+    3. Hybrid mode: Merge language defaults with custom patterns
 
     Args:
-        config: 프로젝트 설정 (예: .moai/config.json)
-        language: 프로젝트 언어 (config에 없는 경우 직접 전달 가능)
+        config: Project configuration dict (e.g., loaded from .moai/config.json).
+                Expected structure: {"project": {"language": "python"}, "tags": {...}}
+        language: Project language code. Overrides config language if provided.
 
     Returns:
-        감지된 코드 디렉토리 패턴 리스트
+        List of detected code directory patterns.
+
+    Raises:
+        KeyError: If config is malformed (should not occur in normal use).
+
+    Example:
+        >>> config = {"project": {"language": "python"}}
+        >>> dirs = detect_directories(config)
+        >>> assert "src/" in dirs
     """
     config = config or {}
 
-    # 언어 결정
+    # Determine language
     if language is None:
         language = config.get("project", {}).get("language", "python").lower()
 
-    # 커스텀 설정 추출
+    # Extract custom configuration
     tags_policy = config.get("tags", {}).get("policy", {})
     code_dirs_config = tags_policy.get("code_directories", {})
 
     detection_mode = code_dirs_config.get("detection_mode", "auto")
     custom_patterns = code_dirs_config.get("patterns", [])
 
-    # Mode별 처리
+    # Handle detection modes
     if detection_mode == "manual" and custom_patterns:
-        # 수동 모드: 커스텀 패턴만 사용
+        # Manual mode: use custom patterns only
         return custom_patterns
 
     elif detection_mode == "auto":
-        # 자동 모드: 언어별 기본 패턴 사용
+        # Auto mode: use language-specific default patterns
         return LANGUAGE_DIRECTORY_MAP.get(language, LANGUAGE_DIRECTORY_MAP["python"])
 
     elif detection_mode == "hybrid":
-        # 하이브리드 모드: 언어 기본 + 커스텀 병합
+        # Hybrid mode: merge language defaults with custom patterns
         base_patterns = LANGUAGE_DIRECTORY_MAP.get(language, LANGUAGE_DIRECTORY_MAP["python"])
         combined = list(set(base_patterns + custom_patterns))
         return sorted(combined)
 
-    # 기본값: 자동 감지
+    # Default: auto-detect
     return LANGUAGE_DIRECTORY_MAP.get(language, LANGUAGE_DIRECTORY_MAP["python"])
 
 
 def get_exclude_patterns(
     config: Optional[Dict] = None,
 ) -> List[str]:
-    """
-    제외할 디렉토리 패턴 반환.
+    """Get directory patterns to exclude from code detection.
 
-    순서:
-    1. config에 커스텀 제외 패턴이 있으면 → 커스텀 사용
-    2. 없으면 → 공통 제외 패턴 사용
-    3. 병합 모드 → 공통 + 커스텀 합치기
+    Exclusion logic:
+    1. If custom patterns exist and merge is disabled → use custom only
+    2. If custom patterns exist and merge is enabled → merge with common patterns
+    3. Otherwise → use common exclude patterns
 
     Args:
-        config: 프로젝트 설정
+        config: Project configuration dict. Expected structure:
+                {"tags": {"policy": {"code_directories": {...}}}}
 
     Returns:
-        제외할 디렉토리 패턴 리스트
+        List of directory patterns to exclude from code detection.
+
+    Example:
+        >>> config = {"tags": {"policy": {"code_directories": {"exclude_patterns": ["vendor/"]}}}}
+        >>> patterns = get_exclude_patterns(config)
+        >>> assert "tests/" in patterns  # Common patterns included
     """
     config = config or {}
 
@@ -176,14 +196,14 @@ def get_exclude_patterns(
     merge_with_common = code_dirs_config.get("merge_exclude_patterns", True)
 
     if custom_exclude and not merge_with_common:
-        # 커스텀만 사용
+        # Use custom patterns only
         return custom_exclude
 
     if custom_exclude and merge_with_common:
-        # 공통 + 커스텀 병합
+        # Merge common and custom patterns
         return list(set(COMMON_EXCLUDE_PATTERNS + custom_exclude))
 
-    # 기본값: 공통 제외 패턴만
+    # Default: common exclude patterns only
     return COMMON_EXCLUDE_PATTERNS
 
 
@@ -192,23 +212,33 @@ def is_code_directory(
     config: Optional[Dict] = None,
     language: Optional[str] = None,
 ) -> bool:
-    """
-    주어진 경로가 코드 디렉토리인지 확인.
+    """Check if the given path is a code directory.
+
+    Checks path against exclude patterns first (early return if excluded),
+    then validates against code directory patterns.
 
     Args:
-        path: 확인할 경로
-        config: 프로젝트 설정
-        language: 프로젝트 언어
+        path: File or directory path to check (Path object or string).
+        config: Project configuration dict.
+        language: Project language code.
 
     Returns:
-        True if path is a code directory, False otherwise
+        True if path matches code directory patterns and is not excluded, False otherwise.
+
+    Example:
+        >>> path = Path("src/auth/login.py")
+        >>> is_code_directory(path, language="python")
+        True
+        >>> path = Path("tests/test_auth.py")
+        >>> is_code_directory(path, language="python")
+        False
     """
     code_dirs = detect_directories(config, language)
     exclude_patterns = get_exclude_patterns(config)
 
     path_str = str(path)
 
-    # 제외 패턴 확인
+    # Check exclude patterns first (early return)
     for exclude in exclude_patterns:
         if exclude.endswith("/"):
             if path_str.startswith(exclude) or f"/{exclude}" in path_str:
@@ -217,7 +247,7 @@ def is_code_directory(
             if exclude in path_str:
                 return False
 
-    # 코드 디렉토리 패턴 확인
+    # Check code directory patterns
     for code_dir in code_dirs:
         if code_dir.endswith("/"):
             if path_str.startswith(code_dir) or f"/{code_dir}" in path_str:
@@ -230,14 +260,19 @@ def is_code_directory(
 
 
 def get_language_by_file_extension(file_path: Path) -> Optional[str]:
-    """
-    파일 확장자에서 언어 추론.
+    """Infer language from file extension.
 
     Args:
-        file_path: 파일 경로
+        file_path: File path (Path object or string).
 
     Returns:
-        추론된 언어, 또는 None
+        Inferred language code (e.g., "python", "javascript"), or None if not recognized.
+
+    Example:
+        >>> get_language_by_file_extension(Path("auth.py"))
+        "python"
+        >>> get_language_by_file_extension(Path("index.ts"))
+        "typescript"
     """
     extension_map = {
         ".py": "python",
@@ -260,24 +295,33 @@ def get_language_by_file_extension(file_path: Path) -> Optional[str]:
 
 
 def get_all_supported_languages() -> List[str]:
-    """
-    지원하는 모든 언어 반환.
+    """Get list of all supported languages.
 
     Returns:
-        지원하는 언어 리스트 (정렬됨)
+        Sorted list of language codes currently supported.
+
+    Example:
+        >>> langs = get_all_supported_languages()
+        >>> assert "python" in langs
+        >>> assert len(langs) == 10
     """
     return sorted(LANGUAGE_DIRECTORY_MAP.keys())
 
 
 def validate_language(language: str) -> bool:
-    """
-    언어가 지원되는지 확인.
+    """Check if language is supported.
 
     Args:
-        language: 확인할 언어
+        language: Language code to validate.
 
     Returns:
-        True if supported, False otherwise
+        True if language is supported, False otherwise.
+
+    Example:
+        >>> validate_language("python")
+        True
+        >>> validate_language("cobol")
+        False
     """
     return language.lower() in LANGUAGE_DIRECTORY_MAP
 
@@ -286,17 +330,22 @@ def merge_directory_patterns(
     base_patterns: List[str],
     custom_patterns: List[str],
 ) -> List[str]:
-    """
-    기본 패턴과 커스텀 패턴을 병합.
+    """Merge base and custom directory patterns.
 
-    중복 제거 후 정렬하여 반환.
+    Removes duplicates and returns sorted result.
 
     Args:
-        base_patterns: 기본 디렉토리 패턴
-        custom_patterns: 커스텀 디렉토리 패턴
+        base_patterns: Base language-specific directory patterns.
+        custom_patterns: User-defined custom directory patterns.
 
     Returns:
-        병합된 패턴 (중복 제거, 정렬됨)
+        Merged and deduplicated patterns, sorted alphabetically.
+
+    Example:
+        >>> base = ["src/", "lib/"]
+        >>> custom = ["lib/", "app/"]
+        >>> result = merge_directory_patterns(base, custom)
+        >>> assert result == ["app/", "lib/", "src/"]
     """
     merged = list(set(base_patterns + custom_patterns))
     return sorted(merged)
@@ -306,15 +355,23 @@ def expand_package_placeholder(
     patterns: List[str],
     package_name: Optional[str] = None,
 ) -> List[str]:
-    """
-    패턴의 {package_name} 플레이스홀더를 실제 패키지명으로 치환.
+    """Expand {package_name} placeholder in patterns with actual package name.
+
+    If package_name is not provided, patterns containing {package_name} are filtered out.
 
     Args:
-        patterns: 원본 패턴
-        package_name: 패키지명 (없으면 플레이스홀더 유지)
+        patterns: Original directory patterns (may contain {package_name}).
+        package_name: Actual package name for substitution. If None, placeholders are removed.
 
     Returns:
-        치환된 패턴
+        Expanded patterns with placeholders replaced or filtered.
+
+    Example:
+        >>> patterns = ["src/", "{package_name}/", "lib/"]
+        >>> expand_package_placeholder(patterns, "myproject")
+        ["src/", "myproject/", "lib/"]
+        >>> expand_package_placeholder(patterns, None)
+        ["src/", "lib/"]
     """
     if not package_name:
         return [p for p in patterns if "{package_name}" not in p]
