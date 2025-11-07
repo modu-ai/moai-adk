@@ -12,6 +12,7 @@ Phase-based 5-step initialization process:
 """
 
 import json
+import subprocess
 import time
 from datetime import datetime
 from pathlib import Path
@@ -56,6 +57,42 @@ class ProjectInitializer:
         self.path = Path(path).resolve()
         self.validator = ProjectValidator()
         self.executor = PhaseExecutor(self.validator)
+
+    def _setup_mcp_servers(self) -> list[str]:
+        """Initialize project-scoped MCP servers for Claude Code
+
+        Resets MCP approval choices so Claude Code will auto-activate
+        project-scoped MCP servers from .mcp.json on next session.
+
+        Returns:
+            List of configured MCP server names
+
+        @CODE:INIT-MCP-001 | Auto-initialize project MCP servers
+        """
+        try:
+            # Reset project-scoped MCP server choices
+            # This allows Claude Code to auto-detect and load servers from .mcp.json
+            result = subprocess.run(
+                ["claude", "mcp", "reset-project-choices"],
+                cwd=str(self.path),
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+
+            if result.returncode == 0:
+                # Read configured servers from .mcp.json
+                mcp_config_file = self.path / ".mcp.json"
+                if mcp_config_file.exists():
+                    with open(mcp_config_file, 'r') as f:
+                        mcp_config = json.load(f)
+                        return list(mcp_config.get('mcpServers', {}).keys())
+
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            # claude command not available or timeout - continue initialization
+            pass
+
+        return []
 
     def _create_memory_files(self) -> list[str]:
         """Create runtime session and memory files (auto-generated per user/session)
@@ -202,7 +239,11 @@ class ProjectInitializer:
                 self.path, mode, progress_callback
             )
 
-            # Phase 6: Create runtime memory files (auto-generated per user/session)
+            # Phase 6: Initialize MCP servers for Claude Code
+            # Reset project-scoped MCP choices so Claude Code auto-loads servers
+            mcp_servers = self._setup_mcp_servers()
+
+            # Phase 7: Create runtime memory files (auto-generated per user/session)
             memory_files = self._create_memory_files()
 
             # Generate result
