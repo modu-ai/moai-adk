@@ -181,27 +181,11 @@ def build_statusline_data(
             latest_version=latest_version
         )
 
-        # Render statusline with emoji prefix
+        # Render statusline with labeled sections
         renderer = StatuslineRenderer()
         statusline = renderer.render(data, mode=mode)
 
-        # Add emoji prefix based on state
-        emoji = "🤖"  # Default: AI assistant
-        if data.active_task:
-            if "PLAN" in data.active_task:
-                emoji = "📋"  # Planning
-            elif "RUN" in data.active_task:
-                emoji = "🚀"  # Running
-            elif "SYNC" in data.active_task:
-                emoji = "📤"  # Syncing
-            elif "GREEN" in data.active_task:
-                emoji = "✅"  # Tests passing
-            elif "RED" in data.active_task:
-                emoji = "🔴"  # Tests failing
-        elif data.update_available:
-            emoji = "⬆️"  # Update available
-
-        return f"{emoji} {statusline}" if statusline else emoji
+        return statusline
 
     except Exception as e:
         # Graceful degradation on any error
