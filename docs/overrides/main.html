@@ -297,6 +297,16 @@
       color: #171612 !important;           /* Ink/Accent */
     }
 
+    /* Primary navigation styling - Light theme */
+    [data-md-color-scheme="default"] .md-nav--primary {
+      background-color: #F7F6F2 !important;  /* Surface Very Light */
+    }
+
+    /* Primary navigation styling - Dark theme */
+    [data-md-color-scheme="slate"] .md-nav--primary {
+      background-color: #1A1916 !important;  /* Dark Surface Very Light */
+    }
+
     html .md-nav__item,
     html .md-nav__link,
     html [data-md-color-scheme="default"] .md-nav__item,
@@ -618,6 +628,72 @@
       font-weight: 600;
     }
 
+    /* LEFT SIDEBAR SUBMENU STYLING - Light Theme */
+    .md-nav--secondary {
+      background-color: #F2F1ED !important;  /* Bg Warm Off-White */
+    }
+
+    .md-nav--secondary .md-nav__link {
+      color: #504F4B !important;  /* Text Secondary */
+      background-color: transparent !important;
+      padding: 0.5rem 1rem !important;
+      border-radius: 4px !important;
+      font-weight: 500 !important;
+      font-size: 0.9rem !important;
+      line-height: 1.4 !important;
+    }
+
+    .md-nav--secondary .md-nav__link:hover {
+      background-color: #EFEEEA !important;  /* Muted Surface */
+      color: #171612 !important;  /* Ink/Accent */
+      font-weight: 600 !important;
+    }
+
+    .md-nav--secondary .md-nav__link--active {
+      color: #171612 !important;  /* Ink/Accent */
+      background-color: #D5D4D0 !important;  /* Border Light Gray */
+      font-weight: 700 !important;
+      border-radius: 4px !important;
+    }
+
+    .md-nav--secondary .md-nav__item {
+      border-radius: 4px !important;
+      margin: 0.25rem 0 !important;
+    }
+
+    /* LEFT SIDEBAR SUBMENU STYLING - Dark Theme */
+    [data-md-color-scheme="slate"] .md-nav--secondary {
+      background-color: #1A1916 !important;  /* Dark Surface Very Light */
+    }
+
+    [data-md-color-scheme="slate"] .md-nav--secondary .md-nav__link {
+      color: #C9C8C4 !important;  /* Light Text Secondary */
+      background-color: transparent !important;
+      padding: 0.5rem 1rem !important;
+      border-radius: 4px !important;
+      font-weight: 500 !important;
+      font-size: 0.9rem !important;
+      line-height: 1.4 !important;
+    }
+
+    [data-md-color-scheme="slate"] .md-nav--secondary .md-nav__link:hover {
+      background-color: #22211E !important;  /* Dark Muted Surface */
+      color: #EEEDE8 !important;  /* Light Ink/Accent */
+      font-weight: 600 !important;
+    }
+
+    [data-md-color-scheme="slate"] .md-nav--secondary .md-nav__link--active {
+      color: #EEEDE8 !important;  /* Light Ink/Accent */
+      background-color: #3A3935 !important;  /* Dark Neutral Mid */
+      font-weight: 700 !important;
+      border-radius: 4px !important;
+    }
+
+    [data-md-color-scheme="slate"] .md-nav--secondary .md-nav__item {
+      border-radius: 4px !important;
+      margin: 0.25rem 0 !important;
+    }
+
     /* Header with neutral styling - improved readability */
     .md-header {
       background-color: var(--bg-surface) !important;
@@ -650,14 +726,15 @@
       border-radius: 4px !important;
       transition: all 0.2s ease !important;
       font-weight: 500 !important;
-      color: var(--text-primary) !important;
+      color: #504F4B !important;  /* Text Secondary for light theme */
       opacity: 1.0 !important;
     }
 
     html .md-nav__link:hover,
     html [data-md-color-scheme="default"] .md-nav__link:hover {
-      background-color: var(--bg-surface-muted) !important;
-      color: var(--accent-primary) !important;
+      background-color: #EFEEEA !important;  /* Muted Surface */
+      color: #171612 !important;  /* Ink/Accent */
+      font-weight: 600 !important;
     }
 
     html .md-nav__item--active,
@@ -665,9 +742,28 @@
     html [data-md-color-scheme="default"] .md-nav__item--active,
     html [data-md-color-scheme="default"] .md-nav__link--active {
       font-weight: 700 !important;
-      color: var(--accent-primary) !important;
-      background-color: var(--bg-surface-muted) !important;
+      color: #171612 !important;  /* Ink/Accent */
+      background-color: #D5D4D0 !important;  /* Border Light Gray */
       opacity: 1.0 !important;
+    }
+
+    /* Dark theme navigation links */
+    [data-md-color-scheme="slate"] .md-nav__link,
+    [data-md-color-scheme="slate"] .md-nav__item {
+      color: #C9C8C4 !important;  /* Light Text Secondary */
+    }
+
+    [data-md-color-scheme="slate"] .md-nav__link:hover {
+      background-color: #22211E !important;  /* Dark Muted Surface */
+      color: #EEEDE8 !important;  /* Light Ink/Accent */
+      font-weight: 600 !important;
+    }
+
+    [data-md-color-scheme="slate"] .md-nav__item--active,
+    [data-md-color-scheme="slate"] .md-nav__link--active {
+      font-weight: 700 !important;
+      color: #EEEDE8 !important;  /* Light Ink/Accent */
+      background-color: #3A3935 !important;  /* Dark Neutral Mid */
     }
 
     /* Footer with neutral styling */
