@@ -1,5 +1,7 @@
 # MoAI-ADK: AI 기반 SPEC-First TDD 개발 프레임워크
 
+**이용 가능한 언어:** [English](./README.md) | [한국어](./README.ko.md)
+
 [![PyPI version](https://img.shields.io/pypi/v/moai-adk)](https://pypi.org/project/moai-adk/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/Python-3.13+-blue)](https://www.python.org/)
