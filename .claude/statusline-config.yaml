@@ -9,7 +9,7 @@ statusline:
 
   # Display mode
   # 디스플레이 모드: compact (80자) | extended (120자) | minimal (40자)
-  mode: "compact"
+  mode: "extended"
 
   # Refresh interval in milliseconds
   # 갱신 주기 (밀리초, Claude Code API 제약: 300ms)
