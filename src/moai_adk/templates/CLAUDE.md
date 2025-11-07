@@ -412,14 +412,14 @@ git checkout main && git merge develop && git push origin main
 
 ### Key Features
 - **MCP Server Selection**: Interactive and CLI options during `moai-adk init`
-- **Pre-configured Servers**: context7, figma, playwright, sequential-thinking
+- **Pre-configured Servers**: context7, playwright, sequential-thinking
 - **Auto-setup**: `--mcp-auto` flag for recommended installation
 - **Template Integration**: `.claude/mcp.json` automatically generated
 
 ### Usage Examples
 ```bash
 moai-adk init                           # Interactive selection
-moai-adk init --with-mcp context7 --with-mcp figma  # CLI selection
+moai-adk init --with-mcp context7 --with-mcp playwright  # CLI selection
 moai-adk init --mcp-auto                # Auto-install all servers
 ```
 

@@ -4,11 +4,11 @@ ______________________________________________________________________
 
 # /alfred:2-run - TDD実装コマンド
 
-`/alfred:2-run`はMoAI-ADKの実装段階コマンドで、テスト駆動開発(TDD)サイクルを自動実行し、高品質なコードを作成します。
+`/alfred:2-run`はMoAI-ADKの実装段階コマンドで、Test-Driven Development (TDD)サイクルを通じてコードを実装し、品質を保証します。
 
 ## 概要
 
-**目的**: TDDサイクル実行と品質保証 **実行時間**: 約5分 **主要成果**: テストコード、実装コード、品質レポート
+**目的**: TDD RED→GREEN→REFACTORサイクルによる実装 **実行時間**: 約5-10分 **主要成果**: 100%テストカバレッジのコード、品質検証通過
 
 ## 基本使用法
 
@@ -19,558 +19,308 @@ ______________________________________________________________________
 ### 例
 
 ```bash
-# Hello API実装
+# SPEC-ID指定で実装
 /alfred:2-run HELLO-001
-
-# ユーザー認証実装
 /alfred:2-run AUTH-001
-
-# TODO機能実装
-/alfred:2-run TODO-001
+/alfred:2-run USER-002
 ```
 
-## TDDサイクルの自動実行
+## TDDサイクル
 
-### フェーズ1: 実装計画立案
+### 🔴 RED Phase - 失敗するテスト作成
 
-#### implementation-plannerが自動実行
+**目標**: コード作成前にテストを先に作成
 
-1. **SPEC分析**: 要件と制約事項を分析
-2. **技術選定**: 適切なライブラリとフレームワークを選択
-3. **アーキテクチャ設計**: フォルダ構造とコンポーネント設計
-4. **TAG設計**: 追跡のためのTAG ID割り当て
+**実行内容**:
+1. SPECのすべての要件をテストケースに変換
+2. エッジケースと例外状況を含む
+3. テストが失敗することを確認
 
-#### 計画出力例
-
-```
-🏗️ implementation-plannerの分析結果:
-
-## 技術スタック選定
-- **フレームワーク**: FastAPI (高性能、自動ドキュメンテーション)
-- **検証**: Pydantic (タイプ安全、入力検証)
-- **テスト**: pytest (豊富な機能、広く使われている)
-- **データベース**: SQLite (開発段階、後でPostgreSQLに移行可能)
-
-## フォルダ構造
-```
-
-src/hello/ ├── __init__.py ├── api.py # @CODE:EX-HELLO-001:API ├── models.py #
-@CODE:EX-HELLO-001:MODEL └── services.py # @CODE:EX-HELLO-001:SERVICE
-
-tests/hello/ ├── __init__.py ├── test_api.py # @TEST:EX-HELLO-001 └── test_models.py #
-@TEST:EX-HELLO-002
-
-```
-
-## TAG設計
-- @CODE:EX-HELLO-001:API - APIエンドポイント実装
-- @CODE:EX-HELLO-001:MODEL - データモデル定義
-- @CODE:EX-HELLO-001:SERVICE - ビジネスロジック
-- @TEST:EX-HELLO-001 - APIテスト
-- @TEST:EX-HELLO-002 - モデルテスト
-```
-
-### フェーズ2: TDDサイクル実行
-
-#### 🔴 RED: 失敗するテスト作成
-
-tdd-implementerがSPECからテストケースを自動生成：
-
+**例**:
 ```python
 # tests/test_hello.py
 # @TEST:EX-HELLO-001 | SPEC: SPEC-HELLO-001.md
 
-import pytest
-from fastapi.testclient import TestClient
-from src.hello.api import app
-
-client = TestClient(app)
-
 def test_hello_with_name_should_return_personalized_greeting():
-    """WHEN クエリパラメータnameが提供されたら、"Hello, {name}!"を返すべきである"""
-    response = client.get("/hello?name=田中")
+    """nameが提供されたら 'Hello, {name}!'を返すべきである"""
+    response = client.get("/hello?name=Alice")
     assert response.status_code == 200
-    assert response.json() == {"message": "Hello, 田中!"}
+    assert response.json() == {"message": "Hello, Alice!"}
 
 def test_hello_without_name_should_return_default_greeting():
-    """WHEN nameがない場合、"Hello, World!"を返すべきである"""
+    """nameがない場合 'Hello, World!'を返すべきである"""
     response = client.get("/hello")
     assert response.status_code == 200
     assert response.json() == {"message": "Hello, World!"}
-
-def test_hello_with_long_name_should_return_400():
-    """nameが50文字を超える場合、400エラーを返すべきである"""
-    long_name = "a" * 51
-    response = client.get(f"/hello?name={long_name}")
-    assert response.status_code == 400
-    assert "too long" in response.json()["detail"].lower()
-
-def test_hello_with_invalid_chars_should_return_400():
-    """無効な文字が含まれる場合、400エラーを返すべきである"""
-    response = client.get("/hello?name=<script>")
-    assert response.status_code == 400
 ```
 
-**実行結果**: <span class="material-icons">cancel</span> FAILED (予期通り - 実装がまだない)
-
-**Gitコミット**:
-
+**Git Commit**:
 ```bash
-git add tests/test_hello.py
 git commit -m "🔴 test(HELLO-001): add failing hello API tests"
 ```
 
-#### 🟢 GREEN: 最小実装
+### 🟢 GREEN Phase - 最小実装
 
-テストを通過させる最小のコードを実装：
+**目標**: テストを通過させる最小限のコード作成
 
+**実行内容**:
+1. テストを通過させる最小限の実装
+2. コード品質より機能動作を優先
+3. すべてのテストが通過することを確認
+
+**例**:
 ```python
 # src/hello/api.py
 # @CODE:EX-HELLO-001:API | SPEC: SPEC-HELLO-001.md | TEST: tests/test_hello.py
 
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-import re
+from fastapi import FastAPI
 
 app = FastAPI()
 
-class HelloResponse(BaseModel):
-    message: str
-
-@app.get("/hello", response_model=HelloResponse)
+@app.get("/hello")
 def hello(name: str = "World"):
     """@CODE:EX-HELLO-001:API - Helloエンドポイント"""
-
-    # 制約検証
-    if len(name) > 50:
-        raise HTTPException(status_code=400, detail="Name too long (max 50 chars)")
-
-    # 無効な文字検証（基本的なXSS防止）
-    if re.search(r'[<>"\']', name):
-        raise HTTPException(status_code=400, detail="Invalid characters in name")
-
     return {"message": f"Hello, {name}!"}
 ```
 
-**実行結果**: ✅ PASSED (すべてのテスト通過)
-
-**Gitコミット**:
-
+**Git Commit**:
 ```bash
-git add src/hello/api.py
-git commit -m "🟢 feat(HELLO-001): implement hello API with validation"
+git commit -m "🟢 feat(HELLO-001): implement hello API"
 ```
 
-#### ♻️ REFACTOR: コード改善
+### ♻️ REFACTOR Phase - コード品質改善
 
-TRUST 5原則を適用してコードを改善：
+**目標**: テストを維持しながらコード品質向上
 
+**実行内容**:
+1. TRUST 5原則適用
+2. コード構造改善
+3. パフォーマンス最適化
+4. ドキュメント追加
+
+**例**:
 ```python
-# src/hello/models.py
+# src/hello/models.py (新規)
 # @CODE:EX-HELLO-001:MODEL | SPEC: SPEC-HELLO-001.md
 
 from pydantic import BaseModel, Field, validator
-import re
 
 class HelloRequest(BaseModel):
-    """@CODE:EX-HELLO-001:MODEL - Helloリクエストモデル"""
+    """@CODE:EX-HELLO-001:MODEL - リクエスト検証モデル"""
     name: str = Field(
-        default="World",
-        min_length=1,
+        default="World", 
         max_length=50,
         description="挨拶する名前"
     )
-
+    
     @validator('name')
     def validate_name(cls, v):
-        """名前の妥当性検証"""
         if not v.strip():
-            raise ValueError('Name cannot be empty')
-
-        # XSS防止のため無効な文字を検証
-        if re.search(r'[<>"\']', v):
-            raise ValueError('Name contains invalid characters')
-
+            raise ValueError('名前は空にできません')
         return v.strip()
 
 class HelloResponse(BaseModel):
-    """@CODE:EX-HELLO-001:MODEL - Helloレスポンスモデル"""
-    message: str = Field(..., description="挨拶メッセージ")
+    """@CODE:EX-HELLO-001:MODEL - レスポンスモデル"""
+    message: str = Field(description="挨拶メッセージ")
 ```
 
-```python
-# src/hello/services.py
-# @CODE:EX-HELLO-001:SERVICE | SPEC: SPEC-HELLO-001.md
-
-from .models import HelloRequest, HelloResponse
-
-class HelloService:
-    """@CODE:EX-HELLO-001:SERVICE - Helloビジネスロジック"""
-
-    @staticmethod
-    def create_greeting(name: str = "World") -> HelloResponse:
-        """挨拶メッセージを作成する"""
-        request = HelloRequest(name=name)
-        message = f"Hello, {request.name}!"
-        return HelloResponse(message=message)
+**Git Commit**:
+```bash
+git commit -m "♻️ refactor(HELLO-001): add models and improve validation"
 ```
 
-```python
-# src/hello/api.py (改善版)
-# @CODE:EX-HELLO-001:API | SPEC: SPEC-HELLO-001.md | TEST: tests/test_hello.py
+## 実装計画段階
 
-from fastapi import FastAPI, HTTPException, Query
-from .services import HelloService
-from .models import HelloResponse
+### implementation-plannerの役割
 
-app = FastAPI(
-    title="Hello API",
-    description="簡単な挨拶API",
-    version="1.0.0"
-)
+実装前に以下を分析:
 
-@app.get("/hello", response_model=HelloResponse)
-def hello(
-    name: str = Query(
-        default="World",
-        min_length=1,
-        max_length=50,
-        description="挨拶する名前"
-    )
-):
-    """@CODE:EX-HELLO-001:API - Helloエンドポイント（改善版）"""
-    try:
-        return HelloService.create_greeting(name)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-```
+1. **アーキテクチャ設計**
+   - フォルダ構造
+   - ファイル配置
+   - 依存関係
 
-**実行結果**: ✅ PASSED (すべてのテスト依然として通過)
+2. **技術スタック決定**
+   - フレームワーク選択
+   - ライブラリ推薦
+   - ツール設定
 
-**Gitコミット**:
+3. **TAG戦略**
+   - TAG命名規則
+   - TAGチェーン設計
+   - 追跡性保証
+
+4. **専門家活性化**
+   - 必要な専門家判断
+   - コンサルテーション実行
+   - 推薦事項統合
+
+## 品質検証
+
+### TRUST 5原則
+
+#### 1. Test First ✅
+- **テストカバレッジ**: 85%以上必須
+- **テスト種類**: ユニット、統合、E2E
+- **エッジケース**: すべての例外状況
+
+#### 2. Readable ✅
+- **関数長**: 50行以下
+- **変数命名**: 明確で意味のある名前
+- **ドキュメント**: すべての公開関数に
+
+#### 3. Unified ✅
+- **アーキテクチャ**: 一貫したパターン
+- **API設計**: RESTful規約準拠
+- **エラーハンドリング**: 統一された形式
+
+#### 4. Secured ✅
+- **入力検証**: すべてのユーザー入力
+- **認証/認可**: 適切な保護
+- **機密データ**: 安全な処理
+
+#### 5. Trackable ✅
+- **TAG使用**: すべてのコードに@TAG
+- **Git履歴**: 明確なコミットメッセージ
+- **ドキュメント**: コードとドキュメントの連携
+
+### 自動品質検査
 
 ```bash
-git add src/hello/models.py src/hello/services.py src/hello/api.py
-git commit -m "♻️ refactor(HELLO-001): improve code structure with TRUST principles"
+# テスト実行
+pytest tests/ -v --cov=src
+
+# コードスタイル検査
+ruff check src/
+
+# タイプチェック
+mypy src/
+
+# セキュリティスキャン
+bandit -r src/
 ```
 
-### フェーズ3: 品質検証
+## 生成される成果物
 
-#### quality-gateが自動検証実行
+### 1. テストファイル
+**場所**: `tests/test_{module}.py`
+**TAG**: `@TEST:EX-{ID}`
+**内容**: すべての要件に対するテストケース
 
-```
-🛡️ quality-gateの検証結果:
+### 2. 実装コード
+**場所**: `src/{module}/`
+**TAG**: `@CODE:EX-{ID}:{SUBTYPE}`
+**内容**: プロダクション品質コード
 
-## TRUST 5原則検証
-✅ Test First: カバレッジ 95% (最小要件: 85%)
-✅ Readable: すべての関数 < 30行、変数名が意図を表す
-✅ Unified: SPECベースアーキテクチャ維持、一貫したパターン
-✅ Secured: 入力検証完了、XSS防止、エラーメッセージ安全
-✅ Trackable: すべてのファイルに@TAG割り当て完了
-
-## コード品質メトリクス
-- サイクロマティック複雑度: 3 (優秀)
-- 重複コード: 0% (完璧)
-- テストカバレッジ: 95% (優秀)
-- タイプ安全性: 100% (Pydantic使用)
-
-## パフォーマンス予測
-- 予想レスポンスタイム: < 10ms
-- メモリ使用量: < 50MB
-- 同時実行能力: 1000+ リクエスト/秒
-```
+### 3. Git履歴
+**コミット**: RED → GREEN → REFACTOR
+**メッセージ**: 明確なタイプとSPEC-ID
 
 ## 高度な機能
 
 ### 並列テスト実行
 
 ```bash
-# 複数SPECを同時に実行
-/alfred:2-run AUTH-001 USER-001 TODO-001
+# 複数コアで並列実行
+pytest -n auto
 
-# 並列実行ログ
-🔄 並列TDD実行開始:
-  ├─ AUTH-001: tdd-implementer活性化 (進行中: 0%)
-  ├─ USER-001: tdd-implementer活性化 (進行中: 0%)
-  └─ TODO-001: tdd-implementer活性化 (進行中: 0%)
+# 特定テストのみ
+pytest tests/test_auth.py -k "login"
 ```
 
-### カスタムテスト戦略
+### カバレッジレポート
 
 ```bash
-# 特定テストタイプに焦点
-/alfred:2-run HELLO-001 --focus=integration
+# HTML レポート生成
+pytest --cov=src --cov-report=html
 
-# パフォーマステスト追加
-/alfred:2-run HELLO-001 --add-performance-tests
-
-# セキュリティテスト追加
-/alfred:2-run AUTH-001 --add-security-tests
+# ブラウザで確認
+open htmlcov/index.html
 ```
 
-### データベース統合
+### 段階的実装
 
 ```bash
-# データベース必須機能
-/alfred:2-run USER-001 --database=postgresql
+# 特定機能だけ実装
+/alfred:2-run AUTH-001 --feature login
 
-# 生成されるデータベーステスト
-def test_user_crud_with_database():
-    """データベースでのCRUD操作テスト"""
-    # テスト用データベース設定
-    # CRUD操作テスト
-    # データ整合性検証
-```
-
-## 専門家との連携
-
-### 自動専門家活性化
-
-特定の状況で専門家を自動的に活性化：
-
-| 状況                 | 活性化される専門家 | 提供内容                      |
-| -------------------- | ------------------ | ----------------------------- |
-| データベース関連機能 | database-expert    | スキーマ設計、クエリ最適化    |
-| 認証・認可機能       | security-expert    | セキュリティ実装、脆弱性分析  |
-| APIエンドポイント    | backend-expert     | API設計、ドキュメンテーション |
-| パフォーマンス要件   | devops-expert      | 性能最適化、スケーリング      |
-
-### 専門家アドバイス統合
-
-```
-⚙️ backend-expertの実装アドバイス:
-- APIバージョニングを追加することを推奨
-- レート制限ミドルウェアを検討
-- OpenAPIドキュメンテーションを自動生成
-
-💾 database-expertのアドバイス:
-- ユニーク制約とインデックスを追加
-- トランザクション管理を検討
-- データベースマイグレーション戦略が必要
-
-🔒 security-expertのアドバイス:
-- ログ記録と監査を追加
-- レート制限で悪用防止
-- エラーメッセージから情報漏洩防止
-```
-
-## テスト戦略
-
-### テストピラミッド
-
-```
-    /\
-   /  \     E2Eテスト (10%)
-  /____\
- /      \   統合テスト (20%)
-/________\  単体テスト (70%)
-```
-
-### テストタイプ
-
-1. **単体テスト**: 個別関数/メソッドテスト
-2. **統合テスト**: コンポーネント間連携テスト
-3. **E2Eテスト**: 完全なユーザーシナリオテスト
-
-### カバレッジ要件
-
-- **最小要件**: 85%
-- **推奨**: 90%以上
-- **目標**: 95%以上
-
-## 品質メトリクス
-
-### TRUST 5原則詳細
-
-#### 🧪 Test First
-
-```bash
-# カバレッジ確認
-pytest --cov=src tests/
-# 期待: coverage >= 85%
-
-# カバレッジレポート
-coverage html
-# HTMLレポート生成: htmlcov/index.html
-```
-
-#### 📚 Readable
-
-```python
-# 良い例: 明確な関数名と変数名
-def create_user_with_email_validation(user_data: dict) -> User:
-    """メール検証付きユーザー作成"""
-    validated_email = validate_email_format(user_data["email"])
-    return User(email=validated_email, **user_data)
-
-# 悪い例: 曖昧な名前
-def process(data):
-    # 何を処理しているか不明
-    return something
-```
-
-#### 🎯 Unified
-
-- **アーキテクチャ一貫性**: すべてのレイヤーで同じパターン使用
-- **命名規則**: ファイル、関数、変数名の一貫性
-- **エラー処理**: 全体的なエラー処理戦略
-
-#### 🔒 Secured
-
-```python
-# 入力検証例
-from pydantic import BaseModel, validator
-
-class UserInput(BaseModel):
-    email: str
-    password: str
-
-    @validator('email')
-    def validate_email(cls, v):
-        email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-        if not re.match(email_regex, v):
-            raise ValueError('Invalid email format')
-        return v.lower()
-
-    @validator('password')
-    def validate_password(cls, v):
-        if len(v) < 8:
-            raise ValueError('Password must be at least 8 characters')
-        return v
-```
-
-#### 🔗 Trackable
-
-```python
-# すべてのファイルにTAG付与
-# @CODE:EX-USER-001:MODEL | SPEC: SPEC-USER-001.md | TEST: tests/test_user_models.py
-
-class User(BaseModel):
-    """@CODE:EX-USER-001:MODEL - ユーザーデータモデル"""
-    # 実装内容...
+# 次の機能
+/alfred:2-run AUTH-001 --feature logout
 ```
 
 ## トラブルシューティング
 
-### よくある問題
-
-**テストが失敗し続ける**:
+### テストが失敗する場合
 
 ```bash
-# テストデバッグ
-pytest tests/test_hello.py -v -s
+# 詳細出力で実行
+pytest -vv
 
-# 特定テストのみ実行
-pytest tests/test_hello.py::test_hello_with_name_should_return_personalized_greeting -v
+# 失敗したテストのみ再実行
+pytest --lf
+
+# デバッグモード
+pytest --pdb
 ```
 
-**モジュールインポートエラー**:
+### 依存関係問題
 
 ```bash
-# 依存関係インストール
+# 依存関係再インストール
+uv sync --force
+
+# 特定パッケージ追加
 uv add fastapi pytest
-
-# Pythonパス確認
-python -c "import sys; print(sys.path)"
 ```
 
-**カバレッジ不足**:
+### タイムアウトエラー
 
 ```bash
-# カバレッジレポート確認
-coverage report -m
+# タイムアウト延長
+pytest --timeout=300
 
-# 未カバレッジライン確認
-coverage html
-# htmlcov/index.htmlを開く
+# 特定テストスキップ
+pytest -m "not slow"
 ```
 
 ## ベストプラクティス
 
-### 1. 小さなステップ
+### 1. 小さなステップで進む
+- 一度に一つの機能
+- RED-GREEN-REFACTORサイクル厳守
+- 頻繁なコミット
 
-- **一つのテスト**: 一つの機能のみテスト
-- **小さな実装**: テストを通過させる最小コード
-- **漸進的改善**: 少しずつコードを改善
+### 2. テストの品質
+- 明確なテスト名
+- 独立したテストケース
+- モックの適切な使用
 
-### 2. 明確なテスト名
+### 3. コードレビュー
+- 自己レビュー実施
+- ペアプログラミング推奨
+- CI/CD統合
 
-```python
-# 良い例: 何を、いつ、どのようにテストするか明確
-def test_user_creation_with_valid_email_should_return_user_object()
+## チーム協業
 
-# 悪い例: 曖昧で何をテストするか不明
-def test_user()
-```
+### コードレビュープロセス
 
-### 3. テスト独立性
+1. **実装完了**: `/alfred:2-run`完了
+2. **自己レビュー**: 品質基準確認
+3. **PR作成**: Draft PRオープン
+4. **チームレビュー**: フィードバック収集
+5. **修正**: レビューコメント反映
+6. **承認**: マージ承認
 
-```python
-# 各テストが独立している
-def test_create_user():
-    user = User(name="田中")
-    assert user.name == "田中"
-
-def test_update_user():
-    user = User(name="田中")
-    user.name = "佐藤"
-    assert user.name == "佐藤"  # 他のテストに依存しない
-```
-
-### 4. 適切なアサーション
-
-```python
-# 具体的なアサーション
-assert response.status_code == 200
-assert response.json()["message"] == "Hello, 田中!"
-
-# 曖昧なアサーション（避ける）
-assert response.ok
-assert "message" in response.json()
-```
-
-## 統合と連携
-
-### /alfred:1-planとの連携
-
-```bash
-# SPECから直接実装
-/alfred:1-plan "機能説明"
-→ SPEC-ID生成
-/alfred:2-run SPEC-ID  # 生成されたIDを使用
-```
-
-### /alfred:3-syncとの連携
-
-```bash
-# 実装完了後同期
-/alfred:2-run SPEC-ID
-/alfred:3-sync  # 自動ドキュメント生成
-```
-
-### CI/CD統合
+### 品質ゲート
 
 ```yaml
-# .github/workflows/test.yml
-name: Test
-on: [push, pull_request]
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.13'
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-      - name: Run tests
-        run: pytest --cov=src tests/
-      - name: Check coverage
-        run: |
-          coverage report --fail-under=85
+# CI/CD品質ゲート
+quality_gates:
+  test_coverage: 85%
+  code_quality: A
+  security_scan: pass
+  lint_check: pass
+  type_check: pass
 ```
 
 ______________________________________________________________________
@@ -578,5 +328,5 @@ ______________________________________________________________________
 **📚 次のステップ**:
 
 - [/alfred:3-sync](3-sync.md)でドキュメント同期
-- [TDDガイド](../tdd/index.md)でテスト駆動開発技術
-- [品質ガイド](../project/deploy.md)でプロダクション展開
+- [TDDガイド](../tdd/index.md)でテスト技術深化
+- [品質保証](../quality/index.md)でコード品質向上

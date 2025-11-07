@@ -12,14 +12,14 @@ ______________________________________________________________________
 
 ## 🚀 Step 1: System Requirements
 
-### Required
+### Required Components
 
 - **Python**: 3.13 or higher
 - **UV**: Latest version recommended
 - **Git**: Latest version
 - **Browser**: Chrome 90+, Firefox 88+, Safari 14+, Edge 90+
 
-### Optional
+### Optional Components
 
 - **Vercel CLI**: Optional tool for automated deployment
 - **Node.js**: v18+ (required for some build tools)
@@ -67,12 +67,12 @@ uv run build
 
 ______________________________________________________________________
 
-## 🎨 Step 3: Building Documentation System
+## 🎨 Step 3: Build Documentation System
 
 ### MkDocs Configuration
 
 ```bash
-# Verify MkDocs basic setup
+# Check MkDocs basic configuration
 uv run mkdocs --help
 
 # Create project structure
@@ -82,7 +82,7 @@ mkdir -p docs/{getting-started,alfred,commands,development,advanced,api,contribu
 uv run mkdocs new .
 ```
 
-### Add Multi-language Configuration
+### Add Multi-Language Support
 
 ```yaml
 # mkdocs.yml
@@ -93,13 +93,13 @@ nav:
   - Alfred: alfred/
   - Commands: commands/
   - Development: development/
-  - Advanced Features: advanced/
+  - Advanced: advanced/
   - API: api/
   - Contributing: contributing/
 
 theme:
   name: material
-  language: en
+  language: ko
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
@@ -115,7 +115,7 @@ ______________________________________________________________________
 
 ## <span class="material-icons">search</span> Step 4: Search and Navigation
 
-### Enable Search System
+### Activate Search System
 
 ```bash
 # Add dependency
@@ -129,12 +129,12 @@ uv run mkdocs build --strict
 
 1. Run development server: `uv run dev`
 2. Access http://127.0.0.1:8080 in browser
-3. Enter "MoAI" in search bar
+3. Type "MoAI" in search bar
 4. Verify real-time search results
 
 ______________________________________________________________________
 
-## 🌍 Step 5: Multi-language Configuration
+## 🌍 Step 5: Multi-Language Setup
 
 ### Create Language Files
 
@@ -152,7 +152,7 @@ echo "# 中文文档" > docs/getting-started/index-zh.md
 ### Test Language Switching
 
 ```bash
-# Build multi-language docs
+# Build multi-language documentation
 uv run build
 
 # Verify results
@@ -199,13 +199,13 @@ ______________________________________________________________________
 ### Automated Testing
 
 ```bash
-# 1. Validate documentation
+# 1. Document validation
 uv run validate
 
-# 2. Check links
+# 2. Link checking
 uv run check-links
 
-# 3. Build test
+# 3. Build testing
 uv run build --strict
 ```
 
@@ -213,8 +213,8 @@ uv run build --strict
 
 - [ ] All pages display correctly
 - [ ] Dark/light mode switching works
-- [ ] Search functionality works properly
-- [ ] Mobile responsive design confirmed
+- [ ] Search functionality operational
+- [ ] Mobile responsive design verified
 - [ ] Multi-language documentation accessible
 
 ______________________________________________________________________
@@ -223,26 +223,26 @@ ______________________________________________________________________
 
 ### System Status
 
-- [ ] UV installed successfully
-- [ ] Project cloned successfully
-- [ ] Dependencies installed successfully
-- [ ] Development server running successfully
+- [ ] UV installation complete
+- [ ] Project clone successful
+- [ ] Dependencies installed
+- [ ] Development server running
 - [ ] Documentation build successful
 
 ### Feature Verification
 
 - [ ] All pages display correctly
-- [ ] Search functionality works properly
-- [ ] Multi-language support confirmed
+- [ ] Search functionality operational
+- [ ] Multi-language support verified
 - [ ] Responsive design confirmed
-- [ ] Dark/light mode switching confirmed
+- [ ] Dark/light mode switching works
 
 ### Deployment Verification
 
 - [ ] Local build successful
 - [ ] Vercel deployment successful
-- [ ] Domain accessible
-- [ ] SSL certificate confirmed
+- [ ] Domain access confirmed
+- [ ] SSL certificate verified
 - [ ] CDN performance confirmed
 
 ______________________________________________________________________
@@ -296,7 +296,7 @@ uv sync --force
 uv run build
 ```
 
-#### Server Start Error
+#### Server Startup Error
 
 ```bash
 # Change port

@@ -82,22 +82,37 @@ def should_monitor(tool_name: str, tool_args: Dict[str, Any]) -> bool:
 
 
 def get_project_files_to_scan() -> List[str]:
-    """스캔할 프로젝트 파일 목록 가져오기
+    """스캔할 프로젝트 파일 목록 가져오기 (최적화)
+
+    선택적 파일 디렉토리를 제외하여 성능 개선.
+    필수 파일만 스캔: src/, tests/, .moai/specs/
 
     Returns:
         파일 경로 목록
     """
     files = []
+    # 필수 파일 패턴만 스캔 (선택적 파일 제외)
     important_patterns = [
-        "src/**/*.py",
-        "tests/**/*.py",
-        "**/*.md",
-        ".claude/**/*",
-        ".moai/**/*"
+        "src/**/*.py",           # 구현 코드
+        "tests/**/*.py",         # 테스트 코드
+        ".moai/specs/**/*.md"    # SPEC 문서
     ]
 
-    # 빠른 스캔을 위해 파일 수 제한
-    max_files = 50
+    # 제외 패턴 (성능 최적화를 위해 제외)
+    exclude_patterns = [
+        ".claude/",
+        ".moai/docs/",
+        ".moai/reports/",
+        ".moai/analysis/",
+        "docs/",
+        "templates/",
+        "examples/",
+        "__pycache__/",
+        "node_modules/"
+    ]
+
+    # 빠른 스캔을 위해 파일 수 제한 (50개 → 30개로 단축)
+    max_files = 30
 
     for pattern in important_patterns:
         if len(files) >= max_files:
@@ -108,7 +123,10 @@ def get_project_files_to_scan() -> List[str]:
                 if len(files) >= max_files:
                     break
                 if path.is_file():
-                    files.append(str(path))
+                    # 제외 패턴 확인
+                    path_str = str(path)
+                    if not any(exclude in path_str for exclude in exclude_patterns):
+                        files.append(path_str)
         except Exception:
             continue
 
