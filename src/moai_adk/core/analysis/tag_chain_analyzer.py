@@ -284,9 +284,12 @@ class TagChainAnalyzer:
         report.append("")
         report.append("## Summary")
         report.append(f"- Total Chains: {result.total_chains}")
-        report.append(f"- Complete Chains: {result.complete_chains} ({result.complete_chains/result.total_chains*100:.1f}%)")
-        report.append(f"- Partial Chains: {result.partial_chains} ({result.partial_chains/result.total_chains*100:.1f}%)")
-        report.append(f"- Broken Chains: {result.broken_chains} ({result.broken_chains/result.total_chains*100:.1f}%)")
+        complete_pct = result.complete_chains / result.total_chains * 100
+        report.append(f"- Complete Chains: {result.complete_chains} ({complete_pct:.1f}%)")
+        partial_pct = result.partial_chains / result.total_chains * 100
+        report.append(f"- Partial Chains: {result.partial_chains} ({partial_pct:.1f}%)")
+        broken_pct = result.broken_chains / result.total_chains * 100
+        report.append(f"- Broken Chains: {result.broken_chains} ({broken_pct:.1f}%)")
         report.append("")
 
         report.append("## Orphan TAGs")
