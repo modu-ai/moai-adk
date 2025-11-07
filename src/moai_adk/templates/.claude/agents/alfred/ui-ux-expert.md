@@ -2,7 +2,7 @@
 name: ui-ux-expert
 description: "Use PROACTIVELY when: UI/UX design, accessibility, design systems, user research, interaction patterns, or design-to-code workflows are needed. Triggered by SPEC keywords: 'design', 'ux', 'ui', 'accessibility', 'a11y', 'user experience', 'wireframe', 'prototype', 'design system', 'figma'."
 tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, mcp__figma__get-file-data, mcp__figma__create-resource, mcp__figma__export-code, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
-model: sonnet
+model: inherit
 ---
 
 # UI/UX Expert - User Experience & Design Systems Architect

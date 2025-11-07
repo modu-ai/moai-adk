@@ -1,15 +1,16 @@
 # TAG Coverage Matrix
 
-Generated: 2025-11-06 08:43:09
+Generated: 2025-11-07 15:23:38
 
 | SPEC | CODE | TEST | DOC | Completion |
 |------|------|------|-----|------------|
-| ABC-123 (✅) | ❌ | ❌ | ❌ | 25% |
 | AGENT-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | ALF-WORKFLOW-001 (✅) | ✅ | ❌ | ❌ | 50% |
 | ALF-WORKFLOW-002 (❌) | ✅ | ❌ | ❌ | 25% |
 | ALF-WORKFLOW-003 (❌) | ✅ | ❌ | ❌ | 25% |
 | ALFRED-001 (❌) | ❌ | ❌ | ✅ | 25% |
+| ALFRED-DETECTOR-001 (❌) | ✅ | ✅ | ❌ | 50% |
+| ALFRED-DETECTOR-002 (❌) | ❌ | ✅ | ❌ | 25% |
 | ALFRED-WORKFLOW-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | ALL-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | ANALYTICS-001 (❌) | ❌ | ✅ | ❌ | 25% |
@@ -31,6 +32,7 @@ Generated: 2025-11-06 08:43:09
 | AUTH-API-002 (❌) | ✅ | ❌ | ❌ | 25% |
 | AUTH-LOGIN-001 (✅) | ✅ | ✅ | ✅ | 100% |
 | AUTH-TIMEOUT-001 (✅) | ✅ | ✅ | ❌ | 75% |
+| AUTO-CORRECTION-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | AUTO-CORRECTOR-001 (❌) | ✅ | ✅ | ❌ | 50% |
 | BACKUP-UTILS-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | BOOK-MGT-001 (✅) | ❌ | ❌ | ❌ | 25% |
@@ -47,6 +49,7 @@ Generated: 2025-11-06 08:43:09
 | CACHE-007 (❌) | ❌ | ✅ | ❌ | 25% |
 | CACHE-008 (❌) | ❌ | ✅ | ❌ | 25% |
 | CACHE-009 (❌) | ❌ | ✅ | ❌ | 25% |
+| CACHE-MANAGER-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | CALC-001 (✅) | ✅ | ✅ | ❌ | 75% |
 | CHAIN-001 (✅) | ✅ | ✅ | ✅ | 100% |
 | CHECKER-COVERAGE-001 (❌) | ❌ | ✅ | ❌ | 25% |
@@ -55,6 +58,7 @@ Generated: 2025-11-06 08:43:09
 | CI-TAG-VALIDATION-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | CLAUDE-CODE-FEATURES-001 (✅) | ❌ | ✅ | ❌ | 50% |
 | CLAUDE-COMMANDS-001 (✅) | ✅ | ✅ | ❌ | 75% |
+| CLAUDE-STATUSLINE-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | CLI-001 (✅) | ✅ | ✅ | ✅ | 100% |
 | CLI-002 (❌) | ✅ | ✅ | ❌ | 50% |
 | CLI-003 (❌) | ✅ | ✅ | ❌ | 50% |
@@ -94,6 +98,7 @@ Generated: 2025-11-06 08:43:09
 | DEPLOY-002 (❌) | ❌ | ❌ | ✅ | 25% |
 | DETECTOR-COVERAGE-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | DEVELOPMENT-001 (❌) | ❌ | ❌ | ✅ | 25% |
+| DIR-DETECTION-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | DOC-INTEGRATION-001 (✅) | ❌ | ✅ | ❌ | 50% |
 | DOC-ONLINE-001 (✅) | ✅ | ❌ | ✅ | 75% |
 | DOC-TABLE-001 (✅) | ❌ | ❌ | ❌ | 25% |
@@ -133,6 +138,7 @@ Generated: 2025-11-06 08:43:09
 | EXAMPLE-001 (✅) | ✅ | ✅ | ❌ | 75% |
 | EXAMPLE-AUTH-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | EXPERT-TEST-001 (✅) | ❌ | ❌ | ❌ | 25% |
+| FAST-AST-VISITOR-001 (❌) | ✅ | ✅ | ❌ | 50% |
 | FEAT-001 (✅) | ✅ | ✅ | ❌ | 75% |
 | FEATURE-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | FORMAT-001 (✅) | ✅ | ❌ | ❌ | 50% |
@@ -142,9 +148,14 @@ Generated: 2025-11-06 08:43:09
 | GEN-003 (❌) | ❌ | ✅ | ❌ | 25% |
 | GIT-001 (✅) | ✅ | ❌ | ❌ | 50% |
 | GIT-BRANCH-001 (❌) | ❌ | ✅ | ❌ | 25% |
+| GIT-COLLECTOR-001 (❌) | ✅ | ✅ | ❌ | 50% |
+| GIT-COLLECTOR-002 (❌) | ❌ | ✅ | ❌ | 25% |
+| GIT-COLLECTOR-003 (❌) | ❌ | ✅ | ❌ | 25% |
 | GIT-COMMIT-001 (❌) | ❌ | ✅ | ❌ | 25% |
+| GIT-INFO-COLLECTOR-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | GIT-MANAGER-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | GIT-MGR-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| GITHUB-ACTIONS-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | GITHUB-CONFIG-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | GITHUB-TEMPLATES-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | GUIDE-001 (❌) | ❌ | ❌ | ✅ | 25% |
@@ -157,12 +168,22 @@ Generated: 2025-11-06 08:43:09
 | HAS-TEST-001 (✅) | ✅ | ✅ | ❌ | 75% |
 | HELLO-001 (✅) | ✅ | ✅ | ✅ | 100% |
 | HOOK-001 (❌) | ❌ | ❌ | ✅ | 25% |
+| HOOK-AUTO-FIX-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| HOOK-AUTO-SPEC-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| HOOK-AUTO-SPEC-TEST-001 (❌) | ✅ | ✅ | ❌ | 50% |
 | HOOK-BASH-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| HOOK-DIR-DETECT-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | HOOK-POST-TAG-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | HOOK-PRE-TAG-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | HOOK-REALTIME-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| HOOK-SCAN-FILTER-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| HOOK-SESSION-END-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| HOOK-SESSION-END-TEMPLATE-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | HOOK-SESSION-START-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| HOOK-SESSION-START-TEMPLATE-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| HOOK-SPEC-WORKFLOW-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | HOOK-TAG-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| HOOK-TAG-FILTER-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | HOOK-TOOL-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | HOOKS-001 (✅) | ✅ | ✅ | ✅ | 100% |
 | HOOKS-002 (✅) | ❌ | ❌ | ❌ | 25% |
@@ -217,6 +238,8 @@ Generated: 2025-11-06 08:43:09
 | LANG-TS-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | LANGUAGE-DETECTION-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | LANGUAGE-DETECTION-EXTENDED-001 (✅) | ✅ | ✅ | ✅ | 100% |
+| LANGUAGE-DIRS-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| LANGUAGE-DIRS-CONFIG-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | LDE-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | LDE-002 (❌) | ❌ | ✅ | ❌ | 25% |
 | LDE-004 (❌) | ❌ | ✅ | ❌ | 25% |
@@ -251,6 +274,8 @@ Generated: 2025-11-06 08:43:09
 | MAP-002 (❌) | ❌ | ✅ | ❌ | 25% |
 | MATRIX-001 (✅) | ✅ | ✅ | ❌ | 75% |
 | MCP-SETUP-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| METRICS-TRACKER-001 (❌) | ✅ | ✅ | ❌ | 50% |
+| METRICS-TRACKER-002 (❌) | ❌ | ✅ | ❌ | 25% |
 | MISC-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | MIXED-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | MOAI-CONFIG-001 (✅) | ❌ | ❌ | ❌ | 25% |
@@ -277,6 +302,7 @@ Generated: 2025-11-06 08:43:09
 | OFFLINE-UNAVAILABLE-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | OLD-FEATURE-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | ONLINE-DOC-001 (❌) | ❌ | ❌ | ✅ | 25% |
+| OPT-SPEC-GENERATOR-001 (❌) | ✅ | ✅ | ❌ | 50% |
 | ORDER-001 (✅) | ✅ | ✅ | ✅ | 100% |
 | ORDER-CREATE-001 (✅) | ✅ | ❌ | ❌ | 50% |
 | ORDER-MGT-001 (✅) | ✅ | ✅ | ✅ | 100% |
@@ -295,6 +321,8 @@ Generated: 2025-11-06 08:43:09
 | PAYMENT-NEW-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | PAYMENT-REFRACTOR-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | PERF-001 (✅) | ❌ | ❌ | ❌ | 25% |
+| PERF-SPEC-GENERATOR-001 (❌) | ✅ | ✅ | ❌ | 50% |
+| PERFORMANCE-GUIDE-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | PHASE-EXECUTOR-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | PLACEHOLDER-HANDLING-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | PLAN-001 (✅) | ❌ | ❌ | ❌ | 25% |
@@ -318,6 +346,7 @@ Generated: 2025-11-06 08:43:09
 | README-UPDATE-PLAN-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | README-UX-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | README-VERSION-UPDATE-001 (❌) | ❌ | ❌ | ✅ | 25% |
+| REALTIME-MONITOR-IMPROVED-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | REFACTOR-001 (✅) | ✅ | ✅ | ❌ | 75% |
 | REFACTOR-002 (✅) | ❌ | ❌ | ❌ | 25% |
 | REGULAR-UPDATE-008 (❌) | ❌ | ✅ | ❌ | 25% |
@@ -337,7 +366,10 @@ Generated: 2025-11-06 08:43:09
 | SESSION-008 (❌) | ❌ | ✅ | ❌ | 25% |
 | SESSION-CLEANUP-001 (✅) | ✅ | ✅ | ❌ | 75% |
 | SESSION-CLEANUP-002 (✅) | ❌ | ❌ | ❌ | 25% |
+| SESSION-END-CLEANUP-001 (❌) | ❌ | ✅ | ❌ | 25% |
+| SESSION-METRICS-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | SESSION-NOTICE-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| SESSION-START-CLEANUP-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | SKILL-CICD-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | SKILL-CONTEXT-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | SKILL-EARS-001 (❌) | ❌ | ❌ | ✅ | 25% |
@@ -377,28 +409,49 @@ Generated: 2025-11-06 08:43:09
 | SPEC-005 (❌) | ✅ | ❌ | ❌ | 25% |
 | SPEC-006 (❌) | ✅ | ❌ | ❌ | 25% |
 | SPEC-999 (❌) | ✅ | ❌ | ❌ | 25% |
+| SPEC-AUTH-001 (✅) | ❌ | ❌ | ❌ | 25% |
+| SPEC-AUTO-GEN-001 (❌) | ✅ | ❌ | ✅ | 50% |
 | SPEC-BUGFIX-002 (✅) | ❌ | ❌ | ❌ | 25% |
+| SPEC-GENERATION-WORKFLOW-001 (❌) | ❌ | ✅ | ❌ | 25% |
+| SPEC-GENERATOR-001 (❌) | ✅ | ✅ | ❌ | 50% |
 | STAGE-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | START-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | STATS-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | STATUS-CHANGELOG-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | STATUS-README-001 (❌) | ❌ | ❌ | ✅ | 25% |
+| STATUSLINE-CONFIG-001 (❌) | ❌ | ❌ | ✅ | 25% |
+| STATUSLINE-ENGINE-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| STATUSLINE-EXAMPLES-001 (❌) | ❌ | ❌ | ✅ | 25% |
+| STATUSLINE-MAIN-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| STATUSLINE-RENDERER-001 (❌) | ✅ | ✅ | ❌ | 50% |
+| STATUSLINE-RENDERER-002 (❌) | ❌ | ✅ | ❌ | 25% |
+| STATUSLINE-RENDERER-003 (❌) | ❌ | ✅ | ❌ | 25% |
+| STATUSLINE-TEST-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | SYNC-001 (✅) | ✅ | ❌ | ❌ | 50% |
 | TAG-ANALYSIS-001 (✅) | ✅ | ❌ | ❌ | 50% |
 | TAG-AUTO-001 (✅) | ❌ | ❌ | ❌ | 25% |
+| TAG-AUTO-CORRECTION-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | TAG-AUTO-CORRECTOR-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| TAG-AUTO-SPEC-PROPOSAL-001 (✅) | ❌ | ❌ | ❌ | 25% |
+| TAG-DIRECTORY-DETECTION-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | TAG-GENERATOR-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| TAG-HOOK-WORKFLOW-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | TAG-INDEX-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | TAG-INSERTER-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | TAG-INTEGRATION-001 (❌) | ❌ | ✅ | ❌ | 25% |
+| TAG-LANGUAGE-DETECTION-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | TAG-LIFECYCLE-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | TAG-MAPPER-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | TAG-MODULE-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | TAG-PARSER-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | TAG-POLICY-001 (✅) | ❌ | ❌ | ❌ | 25% |
+| TAG-POLICY-IMPROVED-001 (❌) | ❌ | ✅ | ❌ | 25% |
+| TAG-POLICY-IMPROVEMENT-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | TAG-POLICY-VALIDATOR-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| TAG-REALTIME-IMPROVEMENT-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | TAG-ROLLBACK-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | TAG-ROLLBACK-MANAGER-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| TAG-SPEC-GENERATION-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | TAG-VALIDATOR-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | TEMPLATE-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | TEMPLATE-BACKUP-001 (❌) | ✅ | ❌ | ❌ | 25% |
@@ -447,6 +500,8 @@ Generated: 2025-11-06 08:43:09
 | UPDATE-CACHE-FIX-006 (❌) | ❌ | ✅ | ❌ | 25% |
 | UPDATE-CACHE-FIX-007 (❌) | ❌ | ✅ | ❌ | 25% |
 | UPDATE-CACHE-FIX-008 (❌) | ❌ | ✅ | ❌ | 25% |
+| UPDATE-CHECKER-001 (❌) | ✅ | ✅ | ❌ | 50% |
+| UPDATE-CHECKER-002 (❌) | ❌ | ✅ | ❌ | 25% |
 | UPDATE-CONFIG-002 (✅) | ❌ | ❌ | ❌ | 25% |
 | UPDATE-CONFIG-005 (❌) | ✅ | ❌ | ❌ | 25% |
 | UPDATE-CONTEXT-001 (❌) | ✅ | ❌ | ❌ | 25% |
@@ -500,6 +555,8 @@ Generated: 2025-11-06 08:43:09
 | VERSION-COMPARE-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | VERSION-DETECT-MAJOR-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | VERSION-INTEGRATE-FIELDS-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| VERSION-READER-001 (❌) | ✅ | ✅ | ❌ | 50% |
+| VERSION-READER-002 (❌) | ❌ | ✅ | ❌ | 25% |
 | VISUAL-RENDERING-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | WARN-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | WFLOW-GO-001 (❌) | ✅ | ❌ | ❌ | 25% |
@@ -512,5 +569,5 @@ Generated: 2025-11-06 08:43:09
 
 ## Summary
 
-- Total SPECs: 505
+- Total SPECs: 562
 - Fully Implemented (100%): 37

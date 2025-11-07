@@ -4,7 +4,7 @@
     "@SPEC:PROJECT-CONFIG-001": "@SPEC:MOAI-CONFIG-001"
   },
   "moai": {
-    "version": "0.20.1",
+    "version": "0.21.0",
     "update_check_frequency": "daily",
     "version_check": {
       "enabled": true,
@@ -102,12 +102,119 @@
       ],
       "scan_command": "rg '@TAG' -n",
       "philosophy": "The source of truth for TAGs lives in the code itself"
+    },
+    "policy": {
+      "enforcement_mode": "strict",
+      "require_spec_before_code": true,
+      "require_test_for_code": true,
+      "enforce_chains": true,
+      "mandatory_directories": [
+        "src/",
+        "tests/",
+        ".moai/specs/"
+      ],
+      "optional_directories": [
+        "CLAUDE.md",
+        "README.md",
+        "CHANGELOG.md",
+        "CONTRIBUTING.md",
+        ".claude/",
+        ".moai/docs/",
+        ".moai/reports/",
+        ".moai/analysis/",
+        "docs/",
+        "templates/",
+        "examples/"
+      ],
+      "code_directories": {
+        "detection_mode": "auto",
+        "patterns": [],
+        "exclude_patterns": [
+          "tests/",
+          "test/",
+          "__tests__/",
+          "spec/",
+          "specs/",
+          "node_modules/",
+          "dist/",
+          "build/",
+          ".next/",
+          ".nuxt/",
+          "examples/",
+          "docs/",
+          "documentation/"
+        ],
+        "merge_exclude_patterns": true,
+        "auto_detect_from_language": true,
+        "notes": "Language-based code directory detection. detection_mode: auto (language-based), manual (custom only), hybrid (language + custom)"
+      },
+      "auto_correction": {
+        "enabled": true,
+        "confidence_threshold": 0.8,
+        "create_missing_specs": false,
+        "create_missing_tests": false,
+        "remove_duplicates": true,
+        "backup_before_fix": true,
+        "auto_fix_levels": {
+          "safe": true,
+          "medium_risk": false,
+          "high_risk": false
+        },
+        "user_approval_required": {
+          "safe": false,
+          "medium_risk": true,
+          "high_risk": true
+        }
+      },
+      "auto_spec_generation": {
+        "enabled": true,
+        "mode": "template",
+        "confidence_threshold": 0.6,
+        "require_user_edit": true,
+        "open_in_editor": true,
+        "block_until_edited": true,
+        "notes": "Auto-generate SPEC templates when users forget to create SPEC before code. Requires user approval to proceed."
+      },
+      "realtime_validation": {
+        "enabled": true,
+        "validation_timeout": 5,
+        "enforce_chains": true,
+        "quick_scan_max_files": 30
+      }
     }
   },
   "hooks": {
     "timeout_ms": 2000,
     "graceful_degradation": true,
-    "notes": "Hook execution timeout (milliseconds). Optimized to 2000ms after removing pytest from SessionStart hook. Set graceful_degradation to true to continue even if a hook fails."
+    "notes": "Hook execution timeout (milliseconds). Set graceful_degradation to true to continue even if a hook fails. Optimized to 2 seconds for faster performance."
+  },
+  "session_end": {
+    "enabled": true,
+    "metrics": {
+      "enabled": true,
+      "save_location": ".moai/logs/sessions/"
+    },
+    "work_state": {
+      "enabled": true,
+      "save_location": ".moai/memory/last-session-state.json"
+    },
+    "cleanup": {
+      "enabled": true,
+      "temp_files": true,
+      "cache_files": true,
+      "patterns": [
+        ".moai/temp/*",
+        ".moai/cache/*.tmp"
+      ]
+    },
+    "warnings": {
+      "uncommitted_changes": true
+    },
+    "summary": {
+      "enabled": true,
+      "max_lines": 5
+    },
+    "notes": "SessionEnd hook configuration. Executed when Claude Code session ends. Controls metrics saving, work state preservation, cleanup, warnings, and summary generation."
   },
   "auto_cleanup": {
     "enabled": true,

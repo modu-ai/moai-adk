@@ -1,424 +1,631 @@
-______________________________________________________________________
+# SPEC Writing Basics
 
-## title: SPEC基本ガイド description: MoAI-ADKの仕様書作成と管理の基本原則 lang: ja
+Learn how to write clear, executable specifications using the EARS (Easy Approach to Requirements
+Syntax) format. Good specifications are the foundation of successful software development.
 
-# SPEC基本ガイド
+## Overview
 
-SPEC（仕様書）はMoAI-ADK開発の核心要素で、明確な要件定義から高品質なコード実装までのすべてを導きます。
+A SPEC (Specification) in MoAI-ADK is a structured document that defines what needs to be built, how
+it should behave, and what constraints apply. SPECs follow the EARS methodology to ensure clarity,
+testability, and completeness.
 
-## SPECとは？
+### What Makes a Good SPEC?
 
-SPECは**単なるドキュメントではなく、実行可能な開発計画**です。EARS（Easy Approach to Requirements
-Syntax）形式で書かれ、チームとAIが共に理解できる明確な要件を定義します。
+- **Unambiguous**: Clear language that leaves no room for interpretation
+- **Testable**: Each requirement can be validated through testing
+- **Complete**: Covers all aspects of the functionality
+- **Traceable**: Linked to tests, code, and documentation through @TAGs
+- **Maintainable**: Easy to understand and modify as requirements evolve
 
-### SPECの核心価値
+### The SPEC-First Principle
 
-1. **明確性**: あいまいさを排除し、すべての人が同じ理解を持つ
-2. **追跡可能性**: @TAGシステムで要件からコードまで完全追跡
-3. **テスト可能性**: 各要件が具体的なテストケースに変換可能
-4. **協業**: チームとAIの共通言語として機能
+> "No code without specifications, no tests without clear requirements"
 
-## EARS文法の基本
+SPECs are written **before** any code is created, ensuring that everyone understands exactly what
+needs to be built and how success will be measured.
 
-### 5つの基本パターン
+## SPEC Structure and Components
 
-#### 1. Ubiquitous（基本的機能）
+### YAML Frontmatter
 
-**形式**: 「システムは〜すべきである」 **用途**: システムの基本機能を記述
-
-**例**:
-
-```
-- システムはユーザー認証を提供すべきである
-- システムはデータ永続化機能をサポートすべきである
-- システムはREST APIインターフェースを公開すべきである
-```
-
-#### 2. Event-driven（条件付き）
-
-**形式**: 「WHEN 〜が起きたら、システムは〜すべきである」 **用途**: トリガーに基づく動作を記述
-
-**例**:
-
-```
-- WHEN 有効な認証情報が提供されたら、システムはJWTトークンを発行すべきである
-- WHEN ユーザーが登録フォームを送信したら、システムはアカウントを作成すべきである
-- WHEN 在庫がゼロになったら、システムは在庫切れアラートを送信すべきである
-```
-
-#### 3. State-driven（状態中心）
-
-**形式**: 「WHILE 〜状態である時、システムは〜すべきである」 **用途**: 状態に基づく継続的な動作を記述
-
-**例**:
-
-```
-- WHILE ユーザーが認証されている時、システムは保護されたリソースへのアクセスを許可すべきである
-- WHILE システムがメンテナンスモードである時、システムはメンテナンスページを表示すべきである
-- WHILE ユーザーセッションが有効である時、システムはユーザーデータをキャッシュすべきである
-```
-
-#### 4. Optional（選択的）
-
-**形式**: 「WHERE 〜がある場合、システムは〜できる」 **用途**: オプション機能や条件付き機能を記述
-
-**例**:
-
-```
-- WHERE リフレッシュトークンが有効な場合、システムは新しいアクセストークンを発行できる
-- WHERE ユーザープロフィール画像がアップロードされた場合、システムは画像を自動圧縮できる
-- WHERE 管理者権限がある場合、システムはシステム設定を変更できる
-```
-
-#### 5. Constraints（制約）
-
-**形式**: 「〜は〜を超えてはならない」 **用途**: 制約事項と禁止事項を記述
-
-**例**:
-
-```
-- パスワードは8文字未満であってはならない
-- APIレスポンスタイムは2000msを超えてはならない
-- ユーザー名は特殊文字を含んでいてはならない
-- 1回のリクエストで処理できるデータは1000件を超えてはならない
-```
-
-## SPEC構造
-
-### 基本構成
-
-```yaml
----
-# YAML Frontmatter
-id: SPEC-ID
-version: 0.1.0
-status: draft
-priority: high
-created: 2025-01-06
-updated: 2025-01-06
-author: @username
-tags: [authentication, security, api]
-dependencies: []
----
-
-# @SPEC:EX-SPEC-ID: タイトル
-
-## 要件
-### EARS形式の要件記述
-- Ubiquitous Requirements
-- Event-driven Requirements
-- State-driven Requirements
-- Optional Features
-- Constraints
-
-## 実装計画
-### 技術選定
-### アーキテクチャ設計
-### リスク要因
-### 解決戦略
-
-## 受諾基準
-### 機能要件
-### 非機能要件
-### テストケース
-
-## 履歴
-### 変更履歴
-### バージョン管理
-```
-
-### 詳細例
+Every SPEC begins with structured metadata:
 
 ```yaml
 ---
 id: AUTH-001
-version: 0.2.0
-status: in_progress
-priority: critical
-created: 2025-01-06
-updated: 2025-01-06
+version: 0.1.0
+status: draft
+priority: high
+created: 2025-01-15
+updated: 2025-01-15
 author: @developer
-tags: [authentication, security, jwt, api]
-dependencies: [USER-001, SEC-001]
+domain: authentication
+complexity: medium
+estimated_hours: 8
+dependencies: [USER-001, EMAIL-001]
+tags: [api, security, jwt]
+reviewers: [@tech-lead, @security-expert]
+milestone: "Sprint 23 - Q1 2025"
 ---
-
-# @SPEC:EX-AUTH-001: ユーザー認証システム
-
-## 要件
-
-### Ubiquitous Requirements
-- システムはJWTベースの認証システムを提供すべきである
-- システムはユーザー登録機能をサポートすべきである
-- システムはパスワードリセット機能を提供すべきである
-
-### Event-driven Requirements
-- WHEN 有効なメールアドレスとパスワードが提供されたら、システムはJWTアクセストークンを発行すべきである
-- WHEN 無効な認証情報が提供されたら、システムは401ステータスコードとエラーメッセージを返すべきである
-- WHEN アクセストークンが期限切れになったら、システムは401ステータスコードを返すべきである
-- WHEN ユーザーが登録を完了したら、システムは確認メールを送信すべきである
-
-### State-driven Requirements
-- WHILE ユーザーが認証されている時、システムは保護されたAPIエンドポイントへのアクセスを許可すべきである
-- WHILE ユーザーが未認証である時、システムは公開エンドポイントのみへのアクセスを制限すべきである
-- WHILE アカウントがロックされている時、システムはすべての認証試行を拒否すべきである
-
-### Optional Features
-- WHERE リフレッシュトークンが有効な場合、システムは新しいアクセストークンを発行できる
-- WHERE 二要素認証が有効な場合、システムはTOTPコードを要求できる
-- WHERE ソーシャルログインが設定されている場合、システムは外部プロバイダ経由で認証できる
-
-### Constraints
-- パスワードは最低8文字でなければならない
-- パスワードは大文字、小文字、数字、特殊文字を各1文字以上含まなければならない
-- アクセストークンの有効期限は15分を超えてはならない
-- リフレッシュトークンの有効期限は30日を超えてはならない
-- ログイン試行失敗は5回连续であってはならない
-- アカウントロック時間は30分未満であってはならない
-
-## 実装計画
-
-### 技術選定
-- **認証フレームワーク**: Passlib (パスワードハッシュ)
-- **JWTライブラリ**: PyJWT (トークン生成・検証)
-- **データベース**: PostgreSQL (ユーザーデータ)
-- **キャッシュ**: Redis (セッション管理)
-- **二要素認証**: PyOTP (TOTP生成)
-
-### アーキテクチャ設計
 ```
 
-src/auth/ ├── models.py # @CODE:EX-AUTH-001:MODEL ├── services.py # @CODE:EX-AUTH-001:SERVICE ├──
-api.py # @CODE:EX-AUTH-001:API ├── middleware.py # @CODE:EX-AUTH-001:MIDDLEWARE └── utils.py #
-@CODE:EX-AUTH-001:UTILS
+**Field Descriptions**:
 
-tests/auth/ ├── test_models.py # @TEST:EX-AUTH-001 ├── test_services.py # @TEST:EX-AUTH-002 ├──
-test_api.py # @TEST:EX-AUTH-003 └── test_middleware.py # @TEST:EX-AUTH-004
+- **`id`**: Unique identifier in `DOMAIN-NNN` format
+- **`version`**: Semantic version following `MAJOR.MINOR.PATCH`
+- **`status`**: Current state (draft, in_review, approved, in_progress, completed, stable,
+  deprecated)
+- **`priority`**: Importance level (critical, high, medium, low)
+- **`domain`**: Functional area (authentication, user_management, api, database, etc.)
+- **`complexity`**: Implementation difficulty (simple, medium, complex, expert)
+- **`estimated_hours`**: Time estimate for implementation
+- **`dependencies`**: Other SPECs this depends on
+- **`tags`**: Keywords for categorization and search
+- **`reviewers`**: Team members who should review this SPEC
+- **`milestone`**: Development milestone or sprint
 
+### SPEC Content Sections
+
+A complete SPEC includes these sections:
+
+```markdown
+# @SPEC:EX-AUTH-001: User Authentication System
+
+## Overview
+Brief description of what this SPEC covers and its importance.
+
+## EARS Requirements
+The core requirements written in EARS format.
+
+## Technical Requirements
+Non-functional requirements and technical constraints.
+
+## Acceptance Criteria
+Specific conditions that must be met for completion.
+
+## Dependencies
+Other components, systems, or SPECs this depends on.
+
+## Risk Assessment
+Potential challenges and mitigation strategies.
+
+## Implementation Notes
+Technical considerations and recommendations from experts.
 ```
 
-### リスク要因
-1. **セキュリティ脆弱性**: JWT実装の誤り
-2. **パフォーマンス**: 大量同時認証リクエスト
-3. **スケーラビリティ**: トークンストレージの容量
-4. **互換性**: クライアント側の古いトークン処理
+## EARS Syntax: The 5 Patterns
 
-### 解決戦略
-1. **セキュリティ**: 業界標準ライブラリ使用、定期的なセキュリティ監査
-2. **パフォーマンス**: Redisキャッシュ、レート制限
-3. **スケーラビリティ**: 分散ストレージ、トークン分割戦略
-4. **互換性**: バージョニング、段階的移行戦略
+EARS (Easy Approach to Requirements Syntax) provides 5 clear patterns for writing requirements. Each
+pattern serves a specific purpose and uses consistent language.
 
-## 受諾基準
+### 1. Ubiquitous Requirements
 
-### 機能要件
-- [ ] 有効な認証情報でログインできる
-- [ ] 無効な認証情報で401エラーが返る
-- [ ] アクセストークン有効期限が15分である
-- [ ] リフレッシュトークンで新しいアクセストークン取得できる
-- [ ] ユーザー登録が正常に完了する
-- [ ] パスワードリセットメールが送信される
-- [ ] 二要素認証が有効に機能する
+**Purpose**: Define basic functionality that must always be available.
 
-### 非機能要件
-- [ ] レスポンスタイムが500ms以内
-- [ ] 1000同時リクエストを処理できる
-- [ ] すべてのパスワードが適切にハッシュ化される
-- [ ] トークンが改ざんされていないことを検証できる
-- [ ] ログイン試行失敗回数が制限される
-- [ ] アカウントロック機能が正常に動作する
+**Pattern**: `The system SHALL <capability>`
 
-### テストケース
-1. **正常ログイン**: 有効な認証情報で200レスポンス
-2. **無効認証**: 無効な認証情報で401レスポンス
-3. **トークン有効期限**: 期限切れトークンで401レスポンス
-4. **リフレッシュトークン**: 有効なリフレッシュトークンで新しいアクセストークン発行
-5. **パスワードポリシー**: 弱いパスワードで422レスポンス
-6. **レート制限**: 過度なログイン試行で429レスポンス
-7. **アカウントロック**: 5回失敗後アカウントがロックされる
+**Examples**:
 
-## 履歴
-
-### 変更履歴
-- **v0.2.0** (2025-01-06): 二要素認証機能追加、リフレッシュトークン有効期限変更
-- **v0.1.1** (2025-01-05): パスワードポリシー強化、アカウントロック機能追加
-- **v0.1.0** (2025-01-04): 初期バージョン、基本認証機能
-
-### バージョン管理
-- **メジャーバージョン**: 後方互換性のない変更
-- **マイナーバージョン**: 後方互換性のある機能追加
-- **パッチバージョン**: バグ修正
+```markdown
+- The system SHALL provide user authentication via email and password
+- The system SHALL support JWT token-based session management
+- The system SHALL validate user input before processing
+- The system SHALL log all authentication attempts
+- The system SHALL maintain user session state securely
 ```
 
-## SPEC作成プロセス
+**Characteristics**:
 
-### ステップ1: 要件収集
+- Always active functionality
+- Core system capabilities
+- No conditions or triggers
+- Essential for system operation
 
-1. **ステークホルダーインタビュー**: ビジネス要件を収集
-2. **技術的制約分析**: 実装上の制約を特定
-3. **ユースケース分析**: ユーザーシナリオを定義
-4. **競合分析**: 類似システムの機能を調査
+### 2. Event-driven Requirements
 
-### ステップ2: EARS形式での記述
+**Purpose**: Define system behavior in response to specific events or triggers.
 
-1. **Ubiquitous Requirementsから開始**: 基本機能を定義
-2. **Event-driven Requirements追加**: トリガー動作を記述
-3. **State-driven Requirements記述**: 状態ベースの動作を定義
-4. **Optional Features検討**: オプション機能を追加
-5. **Constraints定義**: 制約事項を明確化
+**Pattern**: `WHEN <trigger occurs>, the system SHALL <response>`
 
-### ステップ3: 実装計画作成
+**Examples**:
 
-1. **技術選定**: 適切な技術スタックを選択
-2. **アーキテクチャ設計**: システム構造を設計
-3. **リスク分析**: 潜在的リスクを特定
-4. **解決戦略立案**: リスク対応策を計画
-
-### ステップ4: 受諾基準定義
-
-1. **機能要件**: 必須機能をリスト化
-2. **非機能要件**: 品質要件を定義
-3. **テストケース**: 具体的なテストシナリオ作成
-4. **検証基準**: 完了条件を明確化
-
-### ステップ5: レビューと承認
-
-1. **チームレビュー**: 技術的実現可能性を検証
-2. **ステークホルダー承認**: ビジネス要件との一致を確認
-3. **品質チェック**: SPECの完全性と一貫性を検証
-4. **承認**: 実装開始の最終承認
-
-## SPEC品質基準
-
-### 1. 明確性 (Clarity)
-
-**良い例**:
-
-```
-- WHEN ユーザーが有効な認証情報を提供したら、システムはJWTアクセストークンを発行すべきである
+```markdown
+- WHEN valid credentials are provided, the system SHALL issue access and refresh tokens
+- WHEN invalid credentials are provided, the system SHALL return a 401 error
+- WHEN a refresh token is valid, the system SHALL issue a new access token
+- WHEN multiple failed login attempts occur, the system SHALL implement rate limiting
+- WHEN a user logs out, the system SHALL invalidate all active tokens
 ```
 
-**悪い例**:
+**Characteristics**:
 
-```
-- ユーザー認証機能
-- ログイン処理
-```
+- Clear trigger-response relationship
+- Event-driven behavior
+- Specific conditions and outcomes
+- Testable scenarios
 
-### 2. 完全性 (Completeness)
+### 3. State-driven Requirements
 
-- ✅ すべての機能要件が含まれている
-- ✅ エラーケースが考慮されている
-- ✅ 制約事項が明記されている
-- ✅ 境界条件が定義されている
+**Purpose**: Define behavior that depends on system state or conditions.
 
-### 3. 一貫性 (Consistency)
+**Pattern**: `WHILE <condition exists>, the system SHALL <behavior>`
 
-- ✅ 用語が一貫して使用されている
-- ✅ 命名規則が統一されている
-- ✅ 構造が標準化されている
-- ✅ 形式が統一されている
+**Examples**:
 
-### 4. 検証可能性 (Verifiability)
-
-- ✅ 各要件がテスト可能
-- ✅ 成功基準が明確
-- ✅ 失敗条件が定義されている
-- ✅ 測定可能な指標がある
-
-### 5. 追跡可能性 (Traceability)
-
-- ✅ @TAGで他の成果物と連結
-- ✅ 変更履歴が記録されている
-- ✅ 依存関係が明記されている
-- ✅ バージョン管理がされている
-
-## SPEC管理のベストプラクティス
-
-### 1. 適切な粒度
-
-- **一つのSPEC**: 一つの機能または密接に関連する機能群
-- **原子性**: 分割できない最小単位
-- **独立性**: 他のSPECへの過度な依存を避ける
-
-### 2. バージョン管理
-
-```yaml
-# セマンティックバージョニング
-version: 1.2.3
-
-# 1: メジャーバージョン - 後方互換性のない変更
-# 2: マイナーバージョン - 後方互換性のある機能追加
-# 3: パッチバージョン - バグ修正
+```markdown
+- WHILE a user is authenticated, the system SHALL allow access to protected resources
+- WHILE a session is active, the system SHALL maintain user context
+- WHILE rate limiting is active, the system SHALL reject excess requests
+- WHILE maintenance mode is enabled, the system SHALL allow admin access only
+- WHILE a password reset is in progress, the system SHALL block login attempts
 ```
 
-### 3. 状態管理
+**Characteristics**:
+
+- Continuous behavior while condition exists
+- State-dependent functionality
+- Context-aware operations
+- Ongoing system behavior
+
+### 4. Optional Requirements
+
+**Purpose**: Define nice-to-have features or conditional functionality.
+
+**Pattern**: `WHERE <condition is met>, the system MAY <optional behavior>`
+
+**Examples**:
+
+```markdown
+- WHERE multi-factor authentication is enabled, the system MAY require additional verification
+- WHERE social login providers are configured, the system MAY support OAuth authentication
+- WHERE device fingerprinting is available, the system MAY track login sessions by device
+- WHERE user preferences allow, the system MAY remember login location
+- WHERE analytics are enabled, the system MAY track authentication patterns
+```
+
+**Characteristics**:
+
+- Conditional functionality
+- Optional features
+- Enhancement capabilities
+- Configuration-dependent
+
+### 5. Unwanted Behaviors (Constraints)
+
+**Purpose**: Define what the system should NOT do and constraints that must be followed.
+
+**Pattern**: `The system SHALL NOT <undesired behavior>` or `<parameter> SHALL NOT <constraint>`
+
+**Examples**:
+
+```markdown
+- The system SHALL NOT store passwords in plain text
+- The system SHALL NOT reveal whether an email address is registered
+- Passwords SHALL NOT be less than 8 characters
+- The system SHALL NOT allow concurrent sessions with the same credentials
+- JWT tokens SHALL NOT expire after more than 24 hours
+- Login attempts SHALL NOT exceed 5 per minute per IP address
+- The system SHALL NOT accept special characters in usernames
+```
+
+**Characteristics**:
+
+- Security constraints
+- Business rules
+- Technical limitations
+- Quality requirements
+
+## Writing Effective Requirements
+
+### Requirement Quality Checklist
+
+For each requirement, verify:
+
+**Clarity**:
+
+- [ ] Language is unambiguous
+- [ ] Technical terms are defined
+- [ ] Acronyms are explained
+- [ ] Context is clear
+
+**Testability**:
+
+- [ ] Success criteria are defined
+- [ ] Test scenarios can be created
+- [ ] Expected outcomes are specified
+- [ ] Edge cases are considered
+
+**Completeness**:
+
+- [ ] All functional aspects covered
+- [ ] Error conditions included
+- [ ] Performance requirements specified
+- [ ] Security considerations addressed
+
+**Consistency**:
+
+- [ ] Language follows EARS patterns
+- [ ] Terminology is consistent
+- [ ] Requirements don't conflict
+- [ ] Dependencies are identified
+
+### Common Mistakes to Avoid
+
+**<span class="material-icons">cancel</span> Vague Language**:
 
 ```
-planning → draft → in_progress → testing → completed → deprecated
+The system should handle user authentication well.
 ```
 
-### 4. 依存関係管理
+**✅ Specific Language**:
 
-```yaml
-dependencies:
-  - USER-001  # 必須依存
-  - SEC-001   # 必須依存
-  - UI-001    # オプション依存
+```
+The system SHALL authenticate users via email/password credentials within 500ms.
 ```
 
-## トラブルシューティング
+**<span class="material-icons">cancel</span> Multiple Requirements in One**:
 
-### よくある問題
+```
+WHEN users login, the system SHALL issue tokens and log the attempt and update the user profile.
+```
 
-**要件が曖昧**:
+**✅ Separate Requirements**:
 
-- 具体的な数値や条件を追加
-- 成功・失敗条件を明確化
-- ユーザーストーリーを追加
+```
+WHEN valid credentials are provided, the system SHALL issue JWT tokens.
+WHEN authentication occurs, the system SHALL log the attempt with timestamp.
+WHEN users authenticate successfully, the system SHALL update last login timestamp.
+```
 
-**実現不可能な要件**:
+**<span class="material-icons">cancel</span> Implementation Details**:
 
-- 技術的制約を再評価
-- 代替案を検討
-- 段階的実装を計画
+```
+The system SHALL use bcrypt with 12 rounds to hash passwords in the PostgreSQL database.
+```
 
-**依存関係が複雑**:
+**✅ Behavioral Requirements**:
 
-- 依存関係グラフを作成
-- 循環依存を解消
-- 実装順序を最適化
+```
+The system SHALL hash passwords using a secure algorithm with minimum 12 rounds.
+The system SHALL store password hashes securely in the database.
+```
 
-## ツールとテンプレート
+**<span class="material-icons">cancel</span> Missing Error Conditions**:
 
-### SPEC作成支援ツール
+```
+WHEN users login with valid credentials, the system SHALL issue tokens.
+```
+
+**✅ Complete Coverage**:
+
+```
+WHEN valid credentials are provided, the system SHALL issue JWT tokens.
+WHEN invalid credentials are provided, the system SHALL return a 401 error.
+WHEN the authentication service is unavailable, the system SHALL return a 503 error.
+```
+
+## SPEC ID Assignment and Management
+
+### ID Format and Rules
+
+**Format**: `DOMAIN-NNN`
+
+**Examples**: `AUTH-001`, `USER-002`, `API-003`, `DB-001`
+
+### Domain Categories
+
+| Domain     | Description                       | Examples                                 |
+| ---------- | --------------------------------- | ---------------------------------------- |
+| **AUTH**   | Authentication and authorization  | Login, registration, permissions         |
+| **USER**   | User management and profiles      | Profile creation, user settings          |
+| **API**    | REST API endpoints and interfaces | HTTP endpoints, request/response formats |
+| **DB**     | Database schemas and operations   | Tables, queries, migrations              |
+| **UI**     | User interface components         | Forms, pages, interactions               |
+| **SEC**    | Security features and controls    | Encryption, auditing, compliance         |
+| **PERF**   | Performance and optimization      | Caching, load balancing, monitoring      |
+| **INT**    | Integration with external systems | Third-party APIs, webhooks               |
+| **CONFIG** | Configuration and settings        | Environment variables, feature flags     |
+
+### ID Assignment Process
+
+1. **Select Domain**: Choose appropriate domain for the feature
+2. **Check Existing IDs**: Find the next available number in that domain
+3. **Assign ID**: Use format `DOMAIN-NNN` (e.g., `AUTH-001`)
+4. **Record in Registry**: Update `.moai/specs/registry.json`
+
+**Example Registry Entry**:
+
+```json
+{
+  "AUTH-001": {
+    "title": "User Authentication System",
+    "status": "completed",
+    "created": "2025-01-15",
+    "assigned_to": "@developer"
+  },
+  "AUTH-002": {
+    "title": "Password Reset Functionality",
+    "status": "draft",
+    "created": "2025-01-16",
+    "assigned_to": "@developer"
+  }
+}
+```
+
+## Acceptance Criteria
+
+### Writing Effective Acceptance Criteria
+
+Acceptance criteria define when a SPEC is considered complete and working correctly.
+
+#### Gherkin-style Format
+
+```gherkin
+Feature: User Authentication
+
+Scenario: Successful login with valid credentials
+  GIVEN a registered user with valid credentials
+  WHEN the user submits correct email and password
+  THEN the system SHALL authenticate the user
+  AND the system SHALL issue JWT tokens
+  AND the tokens SHALL be valid for 15 minutes
+
+Scenario: Failed login with invalid credentials
+  GIVEN a registered user account
+  WHEN the user submits incorrect password
+  THEN the system SHALL reject authentication
+  AND the system SHALL return 401 error
+  AND the system SHALL log the failed attempt
+```
+
+#### Checklist Format
+
+```markdown
+## Acceptance Criteria
+
+### Functional Requirements
+- [ ] Users can authenticate with email and password
+- [ ] System issues JWT access tokens (15 min expiry)
+- [ ] System issues JWT refresh tokens (7 days expiry)
+- [ ] Invalid credentials return 401 error
+- [ ] Rate limiting prevents brute force attacks
+
+### Security Requirements
+- [ ] Passwords are hashed with bcrypt (12+ rounds)
+- [ ] JWT tokens use RS256 signing algorithm
+- [ ] All endpoints use HTTPS only
+- [ ] Input validation prevents injection attacks
+- [ ] Authentication attempts are logged
+
+### Performance Requirements
+- [ ] Login response time < 500ms
+- [ ] Token validation < 100ms
+- [ ] System supports 1000 concurrent authentications
+- [ ] Database queries are optimized
+
+### Integration Requirements
+- [ ] Integrates with user management system
+- [ ] Sends email notifications for security events
+- [ ] Connects to monitoring and alerting
+- [ ] Supports multiple environments (dev/staging/prod)
+```
+
+### Testable Acceptance Criteria
+
+Each acceptance criterion should be:
+
+1. **Specific**: Clear and unambiguous
+2. **Measurable**: Can be quantified or verified
+3. **Achievable**: Realistic and attainable
+4. **Relevant**: Aligns with business goals
+5. **Time-bound**: Has clear completion criteria
+
+## Dependencies and Relationships
+
+### Types of Dependencies
+
+**Functional Dependencies**:
+
+```markdown
+## Dependencies
+- USER-001: User management system (required for authentication)
+- EMAIL-001: Email service for notifications (required for password reset)
+- RATE-001: Rate limiting service (required for security)
+```
+
+**Technical Dependencies**:
+
+```markdown
+## Technical Dependencies
+- PostgreSQL database (version 13+)
+- Redis for session storage
+- SMTP server for email delivery
+- SSL certificates for HTTPS
+```
+
+**External Dependencies**:
+
+```markdown
+## External Dependencies
+- OAuth providers (Google, GitHub) for social login
+- SMS service for two-factor authentication
+- Monitoring service for security events
+```
+
+### Dependency Management
+
+1. **Identify Dependencies**: List all required components
+2. **Assess Impact**: Understand how dependencies affect implementation
+3. **Plan Integration**: Define how dependencies will be integrated
+4. **Document Interfaces**: Specify integration points and contracts
+5. **Monitor Changes**: Track dependency updates and compatibility
+
+## Risk Assessment
+
+### Common Risk Categories
+
+**Technical Risks**:
+
+- Implementation complexity
+- Performance bottlenecks
+- Security vulnerabilities
+- Integration challenges
+
+**Business Risks**:
+
+- Changing requirements
+- Timeline constraints
+- Resource availability
+- User adoption
+
+**Operational Risks**:
+
+- Deployment challenges
+- Monitoring gaps
+- Maintenance overhead
+- Scalability issues
+
+### Risk Assessment Template
+
+```markdown
+## Risk Assessment
+
+### High Risk
+| Risk | Impact | Probability | Mitigation |
+|------|--------|-------------|------------|
+| Token security implementation | High | Medium | Use established libraries, security review |
+| Performance under load | Medium | High | Load testing, caching strategy |
+
+### Medium Risk
+| Risk | Impact | Probability | Mitigation |
+|------|--------|-------------|------------|
+| Email service reliability | Medium | Medium | Multiple providers, fallback mechanism |
+| Database schema changes | Low | High | Migration strategy, backward compatibility |
+
+### Low Risk
+| Risk | Impact | Probability | Mitigation |
+|------|--------|-------------|------------|
+| UI/UX design consistency | Low | Low | Design system, component library |
+```
+
+## SPEC Review Process
+
+### Review Checklist
+
+**Content Review**:
+
+- [ ] Requirements are clear and unambiguous
+- [ ] All use cases are covered
+- [ ] Error conditions are specified
+- [ ] Acceptance criteria are testable
+- [ ] Dependencies are identified
+
+**Format Review**:
+
+- [ ] YAML frontmatter is complete and valid
+- [ ] EARS patterns are used correctly
+- [ ] Language is consistent
+- [ ] Structure follows template
+- [ ] TAG references are correct
+
+**Quality Review**:
+
+- [ ] Technical feasibility is confirmed
+- [ ] Security considerations are addressed
+- [ ] Performance requirements are realistic
+- [ ] Integration points are defined
+- [ ] Risk assessment is complete
+
+### Review Workflow
+
+1. **Author Review**: Self-review for completeness
+2. **Peer Review**: Technical review by team member
+3. **Expert Review**: Domain expert validation
+4. **Stakeholder Review**: Business requirement validation
+5. **Final Approval**: Sign-off for implementation
+
+## Tools and Templates
+
+### SPEC Templates
+
+MoAI-ADK provides templates for different types of specifications:
+
+```markdown
+# API Endpoint Template
+# @SPEC:EX-API-001: [Feature Name]
+
+## Overview
+Brief description of the API endpoint functionality.
+
+## EARS Requirements
+- The system SHALL provide [HTTP method] [endpoint path]
+- WHEN [request condition], the system SHALL [response]
+- WHILE [state condition], the system SHALL [behavior]
+
+## Technical Requirements
+- Request format: [JSON schema]
+- Response format: [JSON schema]
+- Status codes: [list of expected codes]
+- Authentication: [requirements]
+- Rate limiting: [limits]
+
+## Acceptance Criteria
+- [ ] Endpoint accepts valid requests
+- [ ] Proper error handling for invalid requests
+- [ ] Response format matches specification
+- [ ] Authentication requirements enforced
+```
+
+### Validation Tools
+
+**Built-in Validation**:
 
 ```bash
-# Alfred自動生成
-/alfred:1-plan "機能説明"
+# Validate SPEC syntax and structure
+moai-adk validate-spec .moai/specs/SPEC-AUTH-001/spec.md
 
-# テンプレート使用
-moai-adk spec template --type=api
-moai-adk spec template --type=ui
-moai-adk spec template --type=database
+# Check for common issues
+moai-adk lint-specs .moai/specs/
+
+# Generate SPEC statistics
+moai-adk spec-stats
 ```
 
-### 品質検証ツール
+**Integration with Alfred**:
 
 ```bash
-# SPEC品質検証
-/alfred:3-sync --validate-specs
+# Alfred automatically validates SPECs during creation
+/alfred:1-plan "Feature description"
 
-# EARS形式検証
-/alfred:validate --ears-format
-
-# 依存関係検証
-/alfred:validate --dependencies
+# Check SPEC quality before implementation
+/alfred:validate-spec AUTH-001
 ```
 
-______________________________________________________________________
+## Best Practices Summary
 
-**📚 次のステップ**:
+### Writing SPECs
 
-- [EARS詳細ガイド](ears.md)で要件記述技術
-- [TAGシステム](tags.md)で追跡可能性管理
-- [TDDガイド](../tdd/index.md)でテスト駆動実装
+1. **Start with User Value**: Focus on what users need to accomplish
+2. **Be Specific**: Use precise language and avoid ambiguity
+3. **Think in Scenarios**: Consider all possible use cases and edge cases
+4. **Define Success**: Clear acceptance criteria that can be tested
+5. **Consider Constraints**: Identify technical and business limitations
+
+### Managing SPECs
+
+1. **Version Control**: Track changes with semantic versioning
+2. **Regular Reviews**: Keep SPECs updated as requirements evolve
+3. **Link Everything**: Maintain traceability with @TAG system
+4. **Document Decisions**: Record why decisions were made
+5. **Plan for Evolution**: Design for future changes and extensions
+
+### Team Collaboration
+
+1. **Shared Understanding**: Ensure team alignment on requirements
+2. **Early Feedback**: Get input before implementation starts
+3. **Continuous Refinement**: Update SPECs as understanding improves
+4. **Knowledge Sharing**: Use SPECs as learning documents
+5. **Quality Standards**: Maintain high standards for all SPECs
+
+Remember: A well-written SPEC is an investment in project success. It prevents misunderstandings,
+reduces rework, and ensures that everyone is building the same thing! 🎯

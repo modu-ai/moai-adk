@@ -1,609 +1,286 @@
 ______________________________________________________________________
 
-## title: /alfred:3-sync コマンド description: ドキュメント同期と状態管理のための完全ガイド lang: ja
+## title: /alfred:3-sync コマンド description: ドキュメント同期と品質検証のための完全ガイド lang: ja
 
 # /alfred:3-sync - ドキュメント同期コマンド
 
-`/alfred:3-sync`はMoAI-ADKの同期段階コマンドで、コード、テスト、ドキュメントを最新状態に同期し、プロジェクトの完全性を保証します。
+`/alfred:3-sync`はMoAI-ADKの同期段階コマンドで、ドキュメントを自動生成し、システム整合性を検証します。
 
 ## 概要
 
-**目的**: ドキュメント同期と状態管理 **実行時間**: 約1分 **主要成果**: Living Document、同期レポート、TAG検証
+**目的**: ドキュメント自動生成とTAGチェーン検証 **実行時間**: 約1-3分 **主要成果**: APIドキュメント、README/CHANGELOG更新、品質レポート
 
 ## 基本使用法
 
 ```bash
-/alfred:3-sync
-# または
-/alfred:3-sync auto  # 自動モード
+/alfred:3-sync [options]
 ```
 
-### 実行タイミング
+### オプション
 
-- **実装完了後**: TDDサイクル完了後必ず実行
-- **コミット前**: 変更をリポジトリに反映する前
-- **PR作成時**: プルリクエスト作成前
-- **リリース準備時**: 本番環境展開前
+```bash
+# 基本実行
+/alfred:3-sync
 
-## 同期プロセス
+# 自動マージ（チームモード）
+/alfred:3-sync --auto-merge
+
+# ドキュメントのみ
+/alfred:3-sync --target=docs
+
+# TAGのみ検証
+/alfred:3-sync --target=tags
+```
+
+## 実行プロセス
 
 ### フェーズ1: TAGチェーン検証
 
-#### tag-agentが自動実行
+**tag-agentが実行**:
 
-```bash
-🏷️ tag-agentのTAGチェーン検証:
+1. **TAGスキャン**: 全ファイルの@TAGマーカーを検索
+2. **チェーン検証**: SPEC→TEST→CODE→DOC連結確認
+3. **孤立TAG検出**: 連結されていないTAGを発見
+4. **整合性レポート**: TAGチェーン完全性メトリクス
 
-## スキャン結果
-スキャン対象: .moai/, src/, tests/, docs/
-検出されたTAG: 12個
+**出力例**:
+```
+✅ @SPEC:EX-HELLO-001 → .moai/specs/SPEC-HELLO-001/spec.md
+✅ @TEST:EX-HELLO-001 → tests/test_hello.py (3テスト関数)
+✅ @CODE:EX-HELLO-001:MODEL → src/hello/models.py (2クラス)
+✅ @CODE:EX-HELLO-001:API → src/hello/api.py (1エンドポイント)
+✅ @DOC:EX-HELLO-001 → docs/api/hello.md (自動生成)
 
-## TAGチェーン整合性検証
-✅ @SPEC:EX-HELLO-001 → .moai/specs/SPEC-HELLO-001/spec.md (存在)
-✅ @TEST:EX-HELLO-001 → tests/test_hello.py (存在)
-✅ @CODE:EX-HELLO-001:API → src/hello/api.py (存在)
-✅ @CODE:EX-HELLO-001:MODEL → src/hello/models.py (存在)
-✅ @DOC:EX-HELLO-001 → docs/api/hello.md (生成予定)
-
-## Orphan TAG検出
-<span class="material-icons">cancel</span> 検出されたOrphan TAG: 0個
-✅ すべてのTAGが適切に連結されています
-
-## TAG一貫性検証
-✅ すべてのTAGが同じIDを使用 (HELLO-001)
-✅ TAG形式が標準に準拠 (@TYPE:EX-DOMAIN-NNN)
+📊 TAGチェーン要約:
+- 発見されたTAG総数: 5
+- 完全なチェーン: 1/1 (100%)
+- 孤立TAG: 0
+- 参照欠落: 0
 ```
 
-#### Orphan TAG回復
+### フェーズ2: ドキュメント同期
 
-```
-⚙️ Orphan TAG回復処理:
+**doc-syncerが実行**:
 
-検出された問題:
-<span class="material-icons">cancel</span> @CODE:EX-USER-005 (参照先SPECが存在しません)
+1. **APIドキュメント生成**
+   - OpenAPI仕様から自動生成
+   - エンドポイント、パラメータ、レスポンス
+   - 使用例とエラーコード
 
-自動回復アクション:
-1. 関連SPEC検索: .moai/specs/ で USER-005 を検索
-2. 類似SPEC分析: USER-002, USER-003 と比較
-3. 推奨アクション: @CODE:EX-USER-002 にTAG修正
+2. **README更新**
+   - API使用法追加
+   - インストール手順
+   - クイックスタートガイド
 
-実行しますか？ [Y/n]
-```
+3. **CHANGELOG生成**
+   - バージョンベースの変更履歴
+   - 機能追加、修正、変更事項
+   - 破壊的変更の警告
 
-### フェーズ2: Living Document生成
+4. **Living Documentation**
+   - アーキテクチャ図
+   - データフロー図
+   - 追跡性マップ
 
-#### doc-syncerが自動実行
-
+**生成例**:
 ````markdown
-# 生成されるLiving Document
+# Hello API Documentation
 
-# `@DOC:EX-HELLO-001: Hello World API
+## GET /hello
 
-## 概要
+パーソナライズされた挨拶メッセージを返します。
 
-このドキュメントはHello World APIの完全な仕様と実装詳細を説明します。
+### Parameters
+- `name` (query, optional): 挨拶する名前 (デフォルト: "World", 最大50文字)
 
-## 要件
+### Response
+- **200**: 成功
+  ```json
+  {"message": "Hello, Alice!"}
+  ```
+- **400**: 検証エラー
 
-### 機能要件
-
-- システムはHTTP GET /helloエンドポイントを提供すべきである
-- WHEN クエリパラメータnameが提供されたら、"Hello, {name}!"を返すべきである
-- WHEN nameがない場合、"Hello, World!"を返すべきである
-
-### 非機能要件
-
-- nameは最大50文字に制限すべきである
-- 無効な文字が含まれる場合、400エラーを返すべきである
-- レスポンスタイムは100ms以内であるべきである
-
-## 実装
-
-### APIエンドポイント
-
-| メソッド | パス | 説明 |
-|---------|------|------|
-| GET | /hello | 挨拶メッセージを返す |
-
-### リクエストパラメータ
-
-| パラメータ | タイプ | 必須 | 説明 | 制約 |
-|-----------|------|------|------|------|
-| name | query | いいえ | 挨拶する名前 | 1-50文字、有効な文字のみ |
-
-### レスポンス
-
-#### 成功 (200)
-
-```json
-{
-  "message": "Hello, 田中!"
-}
-````
-
-#### エラー (400)
-
-```json
-{
-  "detail": "Name too long (max 50 chars)"
-}
-```
-
-## 追跡性
-
-- **要件**: @SPEC:EX-HELLO-001
-- **テスト**: @TEST:EX-HELLO-001
-- **実装**:
-  - @CODE:EX-HELLO-001:API (APIエンドポイント)
-  - @CODE:EX-HELLO-001:MODEL (データモデル)
-  - @CODE:EX-HELLO-001:SERVICE (ビジネスロジック)
-- **ドキュメント**: @DOC:EX-HELLO-001
-
-## テスト
-
-### テストカバレッジ
-
-- 全体カバレッジ: 95%
-- APIエンドポイント: 100%
-- バリデーション: 100%
-- エラーハンドリング: 100%
-
-### テストケース
-
-1. **名前付き挨拶**: nameパラメータでパーソナライズされた挨拶
-2. **デフォルト挨拶**: nameなしでデフォルト挨拶
-3. **長すぎる名前**: 50文字超えで400エラー
-4. **無効な文字**: スクリプト文字で400エラー
-
-## 品質
-
-### TRUST 5原則準拠
-
-✅ **Test First**: 95%カバレッジ達成 ✅ **Readable**: クリアなコード構造 ✅ **Unified**: 一貫したアーキテクチャ ✅ **Secured**:
-入力検証とXSS防止 ✅ **Trackable**: 完全なTAG連鎖
-
-## デプロイメント
-
-### 環境変数
+### Examples
 
 ```bash
-# 開発環境
-HELLO_API_DEBUG=true
-HELLO_API_LOG_LEVEL=debug
-
-# 本番環境
-HELLO_API_DEBUG=false
-HELLO_API_LOG_LEVEL=info
+curl "http://localhost:8000/hello?name=Alice"
+# → {"message": "Hello, Alice!"}
 ```
 
-### ヘルスチェック
-
-```bash
-GET /health
-{
-  "status": "healthy",
-  "version": "1.0.0",
-  "timestamp": "2025-01-06T10:00:00Z"
-}
-```
-
+### Traceability
+- @SPEC:EX-HELLO-001 - 要件
+- @TEST:EX-HELLO-001 - テスト
+- @CODE:EX-HELLO-001 - 実装
 ````
 
-### フェーズ3: プロジェクトドキュメント更新
+### フェーズ3: 品質ゲート検証
 
-#### README.md自動更新
+**trust-checkerが実行**:
 
+#### TRUST 5検証
+
+```
+✅ Test First: 100%カバレッジ (15/15テスト合格)
+✅ Readable: 平均関数長15行 (目標: <50)
+✅ Unified: API一貫性パターン準拠
+✅ Secured: 入力検証実装済み
+✅ Trackable: 全コードに@TAG付与
+
+🎯 総合品質スコア: 95/100
+✅ プロダクションデプロイ準備完了
+```
+
+#### セキュリティ検証
+
+```
+🔒 セキュリティ検証レポート...
+
+### 認証セキュリティ
+✅ パスワードハッシュ: bcrypt 12ラウンド
+✅ トークン生成: 暗号学的に安全
+✅ セッション管理: 適切な有効期限
+✅ レート制限: 実装済み、効果的
+
+### データ保護
+✅ SQLインジェクション: パラメータ化クエリ
+✅ XSS防止: 出力エンコーディング
+✅ CSRF保護: SameSite Cookie
+✅ HTTPS強制: プロダクションのみ
+
+🛡️ セキュリティステータス: 安全
+重大な問題は発見されませんでした
+```
+
+#### パフォーマンス検証
+
+```
+⚡ パフォーマンス検証レポート...
+
+### レスポンスタイム
+✅ ログインエンドポイント: 平均145ms (目標: <500ms)
+✅ トークン更新: 平均89ms (目標: <200ms)
+✅ ユーザー検証: 平均23ms (目標: <100ms)
+
+### リソース使用
+✅ メモリ使用量: 45MB平均 (目標: <100MB)
+✅ CPU使用率: 負荷時15%平均
+✅ データベース接続: 効率的なプーリング
+
+🚀 パフォーマンスステータス: 最適化済み
+全てのパフォーマンス目標を達成
+```
+
+### フェーズ4: Gitワークフロー管理
+
+**git-managerが実行**:
+
+#### チームモードブランチ操作
+
+```
+🌿 Gitワークフロー管理...
+
+現在のブランチ: feature/SPEC-HELLO-001
+ステータス: マージ準備完了
+
+ブランチ検証:
+✅ 全テスト合格
+✅ ドキュメント同期済み
+✅ 品質ゲート通過
+✅ マージコンフリクトなし
+✅ developブランチと最新
+
+マージオプション:
+[1] Draft PR作成 (デフォルト)
+[2] developに自動マージ
+[3] ブランチで作業継続
+[4] リリースブランチ作成
+
+📄 PR情報:
+- タイトル: "feat(hello): Hello APIシステム実装"
+- 説明: SPEC-HELLO-001から自動生成
+- ラベル: feature, api
+- レビュアー: コード所有権に基づき自動割り当て
+- テスト: 15個合格、100%カバレッジ
+- ドキュメント: APIドキュメント更新済み
+```
+
+#### コミット履歴最適化
+
+```
+📄 コミット履歴分析...
+
+最近のコミット (TDDパターン維持):
+a1b2c3d ✅ sync(HELLO-001): ドキュメントと品質チェック更新
+d4e5f6c ♻️ refactor(HELLO-001): セキュリティとエラーハンドリング改善
+b2c3d4e 🟢 feat(HELLO-001): 認証サービス実装
+a3b4c5d 🔴 test(HELLO-001): 失敗する認証テスト追加
+e5f6g7h 🌿 feature/SPEC-HELLO-001をdevelopから作成
+
+✅ コミットメッセージ一貫性: 100%
+✅ TDDパターン準拠: 100%
+✅ コミット内のTAG参照: 100%
+✅ サインオフ要件: 満たしている
+```
+
+## 生成される成果物
+
+### 1. APIドキュメント
+**場所**: `docs/api/{module}.md`
+**内容**: エンドポイント、パラメータ、レスポンス、例
+**TAG**: `@DOC:EX-{ID}`
+
+### 2. README.md
+**更新内容**:
+- 新機能説明
+- API使用例
+- インストール手順
+
+### 3. CHANGELOG.md
+**フォーマット**:
 ```markdown
-# 更新されるREADME.mdセクション
-
-## 機能
-
-### ✅ Hello World API (HELLO-001)
-- パーソナライズされた挨拶メッセージ提供
-- クエリパラメータnameをサポート
-- 入力検証とエラーハンドリング
-
-**APIエンドポイント**: `GET /hello`
-**ドキュメント**: [APIドキュメント](docs/api/hello.md)
-**テストカバレッジ**: 95%
-
-### 🏗️ User Authentication (AUTH-001) - 進行中
-- JWTベース認証システム
-- メール/パスワード認証
-- トークンリフレッシュ機能
-
-**ステータス**: 開発中
-**進行率**: 75%
-
-## クイックスタート
-
-### Hello API使用例
-
-```bash
-# 基本挨拶
-curl "http://localhost:8000/hello"
-# → {"message": "Hello, World!"}
-
-# パーソナライズされた挨拶
-curl "http://localhost:8000/hello?name=田中"
-# → {"message": "Hello, 田中!"}
-````
-
-````
-
-#### CHANGELOG.md自動更新
-
-```markdown
-# 更新されるCHANGELOG.md
-
-# Changelog
-
-## [0.1.0] - 2025-01-06
+## [0.2.0] - 2025-01-06
 
 ### Added
-
-#### Hello World API (@SPEC:EX-HELLO-001)
-- GET /helloエンドポイント実装
-- クエリパラメータnameサポート
-- 入力検証（長さ、無効な文字）
-- エラーハンドリングと適切なHTTPステータスコード
-- 自動APIドキュメンテーション生成
-
-### Implementation Details
-
-- **SPEC**: `.moai/specs/SPEC-HELLO-001/spec.md`
-- **Tests**: `tests/test_hello.py` (95% coverage)
-- **Code**: `src/hello/` with API, models, and services layers
-- **Documentation**: `docs/api/hello.md` with complete API reference
-
-### Quality Metrics
-
-- Test Coverage: 95%
-- Code Quality: A+ (TRUST 5 principles compliant)
-- Performance: < 10ms response time
-- Security: Input validation and XSS prevention
-
-### Contributors
-
-- @user - Implementation and testing
-
----
-
-## [0.0.1] - 2025-01-05
-
-### Added
-- Initial project setup
-- MoAI-ADK integration
-- Basic configuration
-````
-
-### フェーズ4: Git状態管理
-
-#### git-managerが自動実行
-
-```bash
-🚀 git-managerの状態管理:
-
-## 変更検出
-検出された変更:
-  Modified: src/hello/api.py
-  Modified: src/hello/models.py
-  New: docs/api/hello.md
-  Modified: README.md
-  Modified: CHANGELOG.md
-
-## コミット推奨
-📄 推奨コミットメッセージ:
-✅ docs(HELLO-001): sync documentation and update project files
-
-変更内容:
-- Living Document生成 (docs/api/hello.md)
-- README.md機能セクション更新
-- CHANGELOG.mdにv0.1.0リリースノート追加
-- TAGチェーン検証完了
+- ユーザー認証システム (@SPEC:EX-AUTH-001)
+  - JWTベース認証 (アクセス・リフレッシュトークン)
+  - bcryptを使用した安全なパスワードハッシュ化 (12ラウンド)
+  - ブルートフォース攻撃防止のためのレート制限
 ```
+
+### 4. 品質レポート
+**場所**: `.moai/reports/quality-{date}.md`
+**内容**: TRUST 5検証結果、セキュリティスキャン、パフォーマンステスト
 
 ## 高度な機能
 
-### 自動モード
-
-```bash
-/alfred:3-sync auto
-```
-
-**自動モード機能**:
-
-- 変更検出時に自動同期実行
-- バックグラウンドで定期的実行
-- PR作成時に自動実行
-- コミット前に自動検証
-
-### 選択的同期
-
-```bash
-# 特定SPECのみ同期
-/alfred:3-sync HELLO-001
-
-# ドキュメントのみ同期
-/alfred:3-sync --docs-only
-
-# TAG検証のみ実行
-/alfred:3-sync --tags-only
-
-# レポートのみ生成
-/alfred:3-sync --report-only
-```
-
-### カスタムテンプレート
+### カスタムドキュメントテンプレート
 
 ```yaml
-# .moai/templates/sync-custom.yml
-custom_documentation:
-  enabled: true
-  template: "custom-api-doc.md"
-  output: "docs/custom/{SPEC_ID}.md"
-
-report_format:
-  format: "json"
-  include_metrics: true
-  include_recommendations: true
+# .moai/templates/api-docs.yml
+api_documentation:
+  sections:
+    - overview
+    - authentication
+    - endpoints
+    - examples
+    - security
+    - traceability
 ```
 
-## 同期レポート
-
-### レポート生成
-
-```bash
-/alfred:3-sync --report
-```
-
-### レポート内容
-
-```
-📊 同期レポート (2025-01-06 10:00:00)
-
-## 実行概要
-- 実行時間: 45秒
-- 処理ファイル: 12個
-- 生成ドキュメント: 3個
-- 更新ファイル: 5個
-
-## 品質メトリクス
-- 全体カバレッジ: 95% ↗️ (+2%)
-- TRUST準拠率: 100%
-- TAG整合性: 100%
-- ドキュメント最新性: 100%
-
-## 検出された問題
-<span class="material-icons">cancel</span> 警告: src/unused.py (未使用ファイル)
-<span class="material-icons">cancel</span> 警告: README.md (APIドキュメントリンク切れ)
-
-## 推奨アクション
-1. 未使用ファイルを削除または移動
-2. README.mdのリンクを更新
-3. 次のリリース準備完了
-
-## 次のステップ
-✅ プルリクエスト作成準備完了
-✅ コミット推奨
-✅ デプロイ可能な状態
-```
-
-### レポート出力形式
-
-```bash
-# JSON形式
-/alfred:3-sync --report --format=json
-
-# HTML形式
-/alfred:3-sync --report --format=html
-
-# Markdown形式（デフォルト）
-/alfred:3-sync --report --format=markdown
-```
-
-## 状態遷移管理
-
-### SPEC状態更新
-
-```bash
-# 状態確認
-grep "status:" .moai/specs/SPEC-HELLO-001/spec.md
-# 出力: status: in_progress
-
-# 同期後状態更新
-/alfred:3-sync
-
-# 状態確認
-grep "status:" .moai/specs/SPEC-HELLO-001/spec.md
-# 出力: status: completed
-```
-
-### ワークフロー統合
-
-```mermaid
-%%{init: {'theme':'neutral'}}%%
-graph TD
-    Plan[/alfred:1-plan<br/>status: planning] --> Run[/alfred:2-run<br/>status: in_progress]
-    Run --> Sync[/alfred:3-sync<br/>status: testing]
-    Sync --> Completed[status: completed]
-    Completed --> Plan
-
-    Sync -.-> PR[プルリクエスト<br/>Ready for Review]
-    PR -.-> Merge[マージ<br/>status: stable]
-```
-
-## ドキュメントタイプ
-
-### 1. APIドキュメント
-
-自動生成されるAPIリファレンス：
+### 多言語ドキュメント
 
 ```markdown
-# APIドキュメント構造
-
-## エンドポイント一覧
-- パス、メソッド、説明
-- パラメータ詳細
-- レスポンス形式
-- エラーコード
-
-## スキーマ定義
-- リクエスト/レスポンスモデル
-- データ型と制約
-- バリデーションルール
-
-## 使用例
-- cURLコマンド例
-- レスポンス例
-- エラーケース例
+# docs/api/auth.ja.md (日本語)
+# docs/api/auth.en.md (英語)
+# docs/api/auth.ko.md (韓国語)
 ```
 
-### 2. アーキテクチャドキュメント
-
-```markdown
-# アーキテクチャ概要
-
-## システム構成
-- コンポーネント図
-- データフロー
-- 技術スタック
-
-## 設計決定
-- 選択した技術と理由
-- トレードオフ分析
-- 将来の拡張性計画
-```
-
-### 3. デプロイドキュメント
-
-```markdown
-# デプロイガイド
-
-## 環境要件
-- 依存関係リスト
-- システム要件
-- 設定パラメータ
-
-## デプロイ手順
-- ステップバイステップガイド
-- 環境変数設定
-- ヘルスチェック
-```
-
-## 品質保証
-
-### ドキュメント品質検証
-
-```bash
-📚 doc-syncerの品質検証:
-
-## ドキュメント完全性
-✅ すべての@SPECに対応する@DOCが存在
-✅ すべての@CODEにドキュメント化済み
-✅ すべての@TESTに使用例が記載
-
-## ドキュメント一貫性
-✅ 用語と命名規則の一貫性
-✅ フォーマットと構造の統一性
-✅ バージョン情報の正確性
-
-## ドキュメントアクセシビリティ
-✅ 見出しと目次の完成度
-✅ コード例の実行可能性
-✅ 外部リンクの有効性
-```
-
-### リンク検証
-
-```bash
-# 内部リンク検証
-/alfred:3-sync --validate-links
-
-# 外部リンク検証
-/alfred:3-sync --validate-external-links
-
-# 画像リソース検証
-/alfred:3-sync --validate-images
-```
-
-## トラブルシューティング
-
-### よくある問題
-
-**ドキュメントが生成されない**:
-
-```bash
-# TAGチェーン確認
-rg '@(SPEC|TEST|CODE):' -n
-
-# 同期強制実行
-/alfred:3-sync --force
-
-# 詳細ログ確認
-/alfred:3-sync --verbose
-```
-
-**Orphan TAGが多い**:
-
-```bash
-# Orphan TAG分析
-/alfred:3-sync --analyze-orphans
-
-# 自動修復提案
-/alfred:3-sync --suggest-fixes
-```
-
-**ドキュメントフォーマットが壊れる**:
-
-```bash
-# テンプレート再生成
-/alfred:3-sync --regenerate-templates
-
-# Markdown検証
-/alfred:3-sync --validate-markdown
-```
-
-## ベストプラクティス
-
-### 1. 定期的な同期
-
-```bash
-# 開発サイクル終了後必ず実行
-/alfred:2-run SPEC-001
-/alfred:3-sync  # 忘れずに実行
-
-# コミット前の最終確認
-git add .
-/alfred:3-sync --report-only  # レポート確認
-git commit -m "message"
-```
-
-### 2. ドキュメント品質維持
-
-- **コード変更と同時ドキュメント更新**
-- **定期的なリンク検証**
-- **用語集の維持**
-- **バージョン管理の徹底**
-
-### 3. チーム協業
-
-```bash
-# ドキュメントレビュープロセス
-1. /alfred:3-sync 実行
-2. 生成されたドキュメントをチームレビュー
-3. フィードバック反映
-4. 再同期実行
-5. レビュー完了
-```
-
-## 統合と連携
-
-### CI/CDパイプライン統合
+### CI/CD統合
 
 ```yaml
 # .github/workflows/sync.yml
-name: Documentation Sync
+name: Alfred Sync and Quality Check
+
 on:
   push:
     branches: [main, develop]
@@ -611,39 +288,79 @@ on:
     branches: [main]
 
 jobs:
-  sync:
+  alfred-sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.13'
-      - name: Install MoAI-ADK
-        run: pip install moai-adk
-      - name: Run sync
-        run: /alfred:3-sync --report --format=json
-      - name: Validate documentation
-        run: |
-          # ドキュメント品質検証
-          # リンク検証
-          # カバレッジ確認
+    - uses: actions/checkout@v3
+    - name: Run Alfred Sync
+      run: alfred-sync --ci-mode
 ```
 
-### デプロイメント連携
+## トラブルシューティング
+
+### ドキュメントが生成されない
 
 ```bash
-# 本番環境展開前
-/alfred:3-sync --production-ready
+# ファイル権限確認
+ls -la docs/
 
-# デプロイ後
-/alfred:3-sync --update-deployment-status
+# 強制再生成
+/alfred:3-sync --force --target=docs
+
+# テンプレート確認
+cat .moai/templates/api-docs.yml
 ```
+
+### TAGチェーン破損
+
+```bash
+# 破損参照検索
+rg '@(SPEC|TEST|CODE|DOC):' -A 2 -B 2
+
+# TAG修正
+/alfred:3-sync --fix-tags
+
+# 手動TAG追加
+echo "# @TEST:EX-AUTH-001:VALIDATOR" >> tests/test_validators.py
+```
+
+### 品質ゲート失敗
+
+```bash
+# 詳細品質レポート
+/alfred:3-sync --verbose
+
+# 特定問題修正
+pytest tests/ --cov=src --cov-report=term-missing
+
+# 再検証
+/alfred:3-sync
+```
+
+## ベストプラクティス
+
+### 1. 実行前チェックリスト
+- ✅ すべてのテスト合格
+- ✅ すべての変更コミット済み
+- ✅ 適切なTAG付与
+- ✅ 依存関係インストール済み
+
+### 2. 同期中
+- ⚠️ 警告とエラーを監視
+- 📖 生成されたドキュメントをレビュー
+- ✅ 品質ゲート通過確認
+- 🌿 Gitステータス確認
+
+### 3. 実行後
+- 📚 ドキュメントの正確性確認
+- 🧪 機能の手動テスト
+- 👥 チームへの通知 (該当する場合)
+- 📋 次の反復計画
 
 ______________________________________________________________________
 
 **📚 次のステップ**:
 
-- [プロジェクトガイド](../project/index.md)でプロジェクト管理
-- [デプロイガイド](../project/deploy.md)で本番環境展開
-- [品質ガイド](../project/config.md)で品質管理
+- [プロジェクト設定](../project/config.md)でカスタマイズ
+- [TAGシステム](../../reference/tags/index.md)で追跡性理解
+- [品質保証](../quality/index.md)で品質基準学習
