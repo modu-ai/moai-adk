@@ -1,7 +1,7 @@
 ---
 name: trust-checker
 description: "Use when: When verification of compliance with TRUST 5 principles such as code quality, security, and test coverage is required."
-tools: Read, Grep, Glob, Bash, TodoWrite
+tools: Read, Grep, Glob, Bash, TodoWrite, AskUserQuestion
 model: haiku
 ---
 
