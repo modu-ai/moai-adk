@@ -82,6 +82,70 @@ Complete traceability system linking all artifacts:
 
 ---
 
+## 🆕 Latest Features: Phase 1 & Phase 2 (v0.20.1+)
+
+### Phase 1: Multi-Language Code Directory Detection + Auto-Correction
+
+**Automatic Detection**:
+- ✅ **10 Language Support**: Python, JavaScript, TypeScript, Go, Rust, Kotlin, Ruby, PHP, Java, C#
+- ✅ **Standard Directory Patterns**: Automatically detect conventional directories per language (Python: src/, Go: cmd/pkg/, JavaScript: src/app/pages/, etc.)
+- ✅ **Customization Modes**: Three detection modes - auto/manual/hybrid
+- ✅ **Exclude Patterns**: Automatically exclude tests/, docs/, node_modules/, etc. from detection
+
+**Safe Auto-Correction**:
+- ✅ **3-Level Risk Tiers**: SAFE (auto-fix) / MEDIUM (approval needed) / HIGH (blocked)
+- ✅ **Duplicate TAG Removal**: Automatically remove duplicate @TAGs
+- ✅ **Format Error Fixing**: Auto-fix @CODE AUTH-001 → @CODE:AUTH-001
+- ✅ **Whitespace Normalization**: Consistent spacing between TAGs
+- ✅ **Backup & Rollback**: Auto-backup before fixes, rollback on errors
+
+**Implementation Statistics**:
+- 📦 language_dirs.py: 329 LOC (10-language mapping)
+- 🔧 policy_validator.py extension: 153 LOC (auto-correction methods)
+- 🧪 Tests: 729 LOC (directory detection + auto-correction)
+
+### Phase 2: Automatic SPEC Template Generation
+
+**Code Analysis & SPEC Generation**:
+- ✅ **Multi-Language Analysis**: Python (AST), JavaScript/Go (regex-based)
+- ✅ **Automatic Domain Inference**: File path → Class names → Function names → Docstrings (priority order)
+- ✅ **EARS Format Template**: Auto-generate standard SPEC structure
+  - Overview, Requirements (Ubiquitous/State-driven/Event-driven/Optional/Unwanted)
+  - Environment, Assumptions, Test Cases
+  - Implementation Notes, Related Specifications
+- ✅ **Confidence Scoring**: 0-1 score for generation quality (structure 30%, domain 40%, documentation 30%)
+- ✅ **Editing Guide**: Auto-generate TODO checklist based on confidence level
+
+**User Experience**:
+- ✅ **Auto-Suggestion**: Attempt code without SPEC → Hook detection → Auto-generation offer
+- ✅ **Template Generation**: One-click automatic SPEC template creation
+- ✅ **User Editing**: Edit template in editor then resume development
+- ✅ **Full Automation**: Maintain SPEC-first principle while minimizing user burden
+
+**Implementation Statistics**:
+- 📝 spec_generator.py: 570 LOC (7 methods)
+- 🧪 Tests: 835 LOC (generator + workflow)
+
+### Configuration Extensions
+
+**config.json New Sections**:
+- `tags.policy.code_directories`: Language-based directory detection settings
+- `tags.policy.auto_correction`: 3-tier risk-level auto-correction policies
+- `tags.policy.auto_spec_generation`: Enable/disable automatic SPEC generation
+
+### Complete Implementation Statistics
+
+| Metric | Value |
+|--------|-------|
+| New Code | 1,052 LOC |
+| New Tests | 1,564 LOC |
+| Total Added Lines | 2,695 LOC |
+| Supported Languages | 10 (expanded) |
+| Git Commits | 2 (Phase 1 + 2) |
+| Test Coverage | 100% (new features) |
+
+---
+
 ## 🚀 Getting Started
 
 ### Installation

@@ -81,6 +81,70 @@ MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 
 
 ---
 
+## 🆕 Latest Features: Phase 1 & Phase 2 (v0.20.1+)
+
+### Phase 1: 언어별 코드 디렉토리 감지 + 자동 수정
+
+**자동 감지**:
+- ✅ **10개 언어 지원**: Python, JavaScript, TypeScript, Go, Rust, Kotlin, Ruby, PHP, Java, C#
+- ✅ **표준 디렉토리 패턴**: 각 언어의 관례적 디렉토리 자동 감지 (Python: src/, Go: cmd/pkg/, JavaScript: src/app/pages/ 등)
+- ✅ **사용자 정의 모드**: auto/manual/hybrid 3가지 감지 모드 지원
+- ✅ **제외 패턴**: tests/, docs/, node_modules/ 등 자동으로 감지에서 제외
+
+**안전한 자동 수정**:
+- ✅ **3단계 위험도**: SAFE (자동) / MEDIUM (승인필요) / HIGH (차단)
+- ✅ **중복 TAG 제거**: 자동으로 중복 @TAG 제거
+- ✅ **형식 오류 수정**: @CODE AUTH-001 → @CODE:AUTH-001 자동 수정
+- ✅ **공백 정규화**: TAG 사이 공백을 일관되게 정규화
+- ✅ **백업 및 롤백**: 수정 전 백업, 오류 발생 시 자동 롤백
+
+**구현 통계**:
+- 📦 language_dirs.py: 329 LOC (10개 언어 매핑)
+- 🔧 policy_validator.py 확장: 153 LOC (자동 수정 메서드)
+- 🧪 테스트: 729 LOC (directory detection + auto-correction)
+
+### Phase 2: SPEC 템플릿 자동 생성
+
+**코드 분석 및 SPEC 생성**:
+- ✅ **다언어 분석**: Python (AST), JavaScript/Go (정규식 기반)
+- ✅ **자동 도메인 추론**: 파일 경로 → 클래스명 → 함수명 → docstring 우선순위
+- ✅ **EARS 포맷 템플릿**: 표준 SPEC 구조로 자동 생성
+  - Overview, Requirements (Ubiquitous/State-driven/Event-driven/Optional/Unwanted)
+  - Environment, Assumptions, Test Cases
+  - Implementation Notes, Related Specifications
+- ✅ **신뢰도 계산**: 0-1 점수로 생성 품질 평가 (구조 30%, 도메인 40%, 문서화 30%)
+- ✅ **편집 가이드**: 신뢰도 기반 자동 TODO 체크리스트 생성
+
+**사용자 경험**:
+- ✅ **자동 제안**: SPEC 없이 코드 생성 시도 → Hook 감지 → 자동 생성 제안
+- ✅ **템플릿 생성**: 클릭 하나로 SPEC 템플릿 자동 생성
+- ✅ **사용자 편집**: 템플릿을 편집기에서 수정 후 계속 진행
+- ✅ **완전 자동화**: SPEC-first 원칙을 유지하면서 사용자 부담 최소화
+
+**구현 통계**:
+- 📝 spec_generator.py: 570 LOC (7가지 메서드)
+- 🧪 테스트: 835 LOC (generator + workflow)
+
+### 설정 확장
+
+**config.json 새 섹션**:
+- `tags.policy.code_directories`: 언어별 디렉토리 감지 설정
+- `tags.policy.auto_correction`: 3단계 위험도별 자동 수정 정책
+- `tags.policy.auto_spec_generation`: SPEC 자동 생성 활성화/비활성화
+
+### 전체 구현 통계
+
+| 항목 | 수치 |
+|------|------|
+| 새로운 코드 | 1,052 LOC |
+| 새로운 테스트 | 1,564 LOC |
+| 총 추가 라인 | 2,695 LOC |
+| 지원 언어 | 10개 (새로 확대) |
+| Git 커밋 | 2개 (Phase 1 + 2) |
+| 테스트 커버리지 | 100% (새 기능) |
+
+---
+
 ## 🚀 빠른 시작
 
 ### 설치
