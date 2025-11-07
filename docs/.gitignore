@@ -5,3 +5,9 @@ yarn-error.log
 dist
 examples
 packages
+.vercel/
+.coverage
+.cache
+.ruff_cache
+.venv
+site/
