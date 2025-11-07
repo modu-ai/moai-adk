@@ -85,15 +85,50 @@ MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 
 
 ### 설치
 
-```bash
-# uv를 사용한 설치 (Python 3.13+ 권장)
-uv install moai-adk
+#### 권장: uv tool (CLI - 전역 접근)
 
-# pip를 사용한 설치
-pip install moai-adk
+```bash
+# uv tool을 사용하여 moai-adk를 전역 명령어로 설치
+uv tool install moai-adk
 
 # 설치 확인
 moai-adk --version
+
+# 어디서나 새 프로젝트 초기화 가능
+moai-adk init my-awesome-project
+cd my-awesome-project
+```
+
+#### 대체: uv 사용 (로컬 프로젝트 설치)
+
+```bash
+# Python 프로젝트에 개발 의존성으로 설치
+uv add moai-adk
+
+# uv run으로 실행
+uv run moai-adk init my-awesome-project
+cd my-awesome-project
+```
+
+#### 대체: pip 사용
+
+```bash
+# 전통적인 pip 설치
+pip install moai-adk
+
+# 새 프로젝트 초기화
+moai-adk init my-awesome-project
+cd my-awesome-project
+```
+
+#### 최신 버전으로 업그레이드
+
+```bash
+# uv tool을 사용한 업데이트 (권장)
+uv tool upgrade moai-adk
+
+# 또는 재설치
+uv tool install --force moai-adk
 ```
 
 ### 5분 빠른 시작

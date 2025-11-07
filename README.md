@@ -85,15 +85,50 @@ Complete traceability system linking all artifacts:
 
 ### Installation
 
-```bash
-# Using uv (recommended for Python 3.13+)
-uv install moai-adk
+#### Recommended: uv tool (CLI - Global Access)
 
-# Using pip
-pip install moai-adk
+```bash
+# Install moai-adk as a globally available command using uv tool
+uv tool install moai-adk
 
 # Verify installation
 moai-adk --version
+
+# Initialize a new project (available everywhere)
+moai-adk init my-awesome-project
+cd my-awesome-project
+```
+
+#### Alternative: Using uv (Local Project Installation)
+
+```bash
+# Install as development dependency in a Python project
+uv add moai-adk
+
+# Run via uv run
+uv run moai-adk init my-awesome-project
+cd my-awesome-project
+```
+
+#### Alternative: Using pip
+
+```bash
+# Traditional pip installation
+pip install moai-adk
+
+# Initialize a new project
+moai-adk init my-awesome-project
+cd my-awesome-project
+```
+
+#### Upgrade to Latest Version
+
+```bash
+# Update using uv tool (recommended)
+uv tool upgrade moai-adk
+
+# Or reinstall
+uv tool install --force moai-adk
 ```
 
 ### 5-Minute Quick Start
