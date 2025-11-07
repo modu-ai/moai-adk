@@ -14,9 +14,9 @@ Pre-Tool-Use 훅과 통합하여 SPEC-less 코드 생성을 원천적으로 차�
 @SPEC:TAG-POLICY-001
 """
 
+import json
 import re
 import time
-import json
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -278,7 +278,9 @@ class TagPolicyValidator:
         Returns:
             {tag_type: [domains]} 딕셔너리
         """
-        tags = {"SPEC": [], "CODE": [], "TEST": [], "DOC": []}
+        tags: Dict[str, List[str]] = {
+            "SPEC": [], "CODE": [], "TEST": [], "DOC": []
+        }
 
         matches = self.TAG_PATTERN.findall(content)
         for tag_type, domain in matches:
@@ -316,6 +318,8 @@ class TagPolicyValidator:
                 for domain in tags["CODE"]:
                     spec_file = self._find_spec_file(domain)
                     if not spec_file:
+                        spec_path = f".moai/specs/SPEC-{domain}/spec.md"
+                        guidance = f"{spec_path} 파일을 생성하거나 기존 SPEC에 추가하세요."
                         violations.append(PolicyViolation(
                             level=PolicyViolationLevel.HIGH,
                             type=PolicyViolationType.NO_SPEC_REFERENCE,
@@ -323,7 +327,7 @@ class TagPolicyValidator:
                             message=f"@CODE:{domain}에 연결된 SPEC이 없습니다",
                             file_path=file_path,
                             action="block" if self.config.strict_mode else "warn",
-                            guidance=f".moai/specs/SPEC-{domain}/spec.md 파일을 생성하거나 기존 SPEC에 @TAG를 추가하세요.",
+                            guidance=guidance,
                             auto_fix_possible=True
                         ))
 
@@ -545,11 +549,10 @@ class TagPolicyValidator:
         Returns:
             중복 TAG 목록
         """
-        duplicates = []
+        duplicates: List[str] = []
 
         try:
             content = Path(file_path).read_text(encoding="utf-8", errors="ignore")
-            found_tags = []
 
             for tag_type, domains in tags.items():
                 for domain in domains:
@@ -580,7 +583,7 @@ class TagPolicyValidator:
         lines.append("=" * 50)
 
         # 수준별 그룹화
-        by_level = {
+        by_level: Dict[PolicyViolationLevel, List[PolicyViolation]] = {
             PolicyViolationLevel.CRITICAL: [],
             PolicyViolationLevel.HIGH: [],
             PolicyViolationLevel.MEDIUM: [],
@@ -702,7 +705,7 @@ class TagPolicyValidator:
         Returns:
             수정 결과 딕셔너리
         """
-        result = {
+        result: Dict[str, Any] = {
             "success": False,
             "fixed_count": 0,
             "pending_count": 0,

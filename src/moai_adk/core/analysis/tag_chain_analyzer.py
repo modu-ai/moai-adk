@@ -327,6 +327,7 @@ def main():
     args = parser.parse_args()
 
     result = analyze_tag_chains(Path(args.path))
+    analyzer = TagChainAnalyzer()
 
     if args.output:
         with open(args.output, 'w') as f:
