@@ -905,3 +905,81 @@ rm .vercel/test.json
 - [ ] Pre-commit hook configured (if using)
 - [ ] Team notified of security standards
 
+---
+
+## 🏛️ Critical: Commands → Agents → Skills Architecture
+
+**CRITICAL RULE**: Strict layer separation is mandatory for maintainability and clarity.
+
+### Architecture Principle
+
+```
+┌─────────────────────────────────────────┐
+│        Commands Layer                   │
+│  (user-facing orchestration)            │
+│  - Entry points for user requests       │
+│  - Route to appropriate agents          │
+│  - NEVER call Skills directly           │
+└────────────────┬────────────────────────┘
+                 │ Task(subagent_type="...")
+                 ↓
+┌─────────────────────────────────────────┐
+│        Agents Layer                     │
+│  (domain expertise & reasoning)         │
+│  - Perform domain-specific logic        │
+│  - Invoke Skills explicitly             │
+│  - Coordinate tool usage                │
+└────────────────┬────────────────────────┘
+                 │ Skill("skill-name")
+                 ↓
+┌─────────────────────────────────────────┐
+│        Skills Layer                     │
+│  (reusable knowledge capsules)          │
+│  - Provide domain knowledge             │
+│  - Best practices and guidelines        │
+│  - Cannot invoke other Skills directly  │
+└─────────────────────────────────────────┘
+```
+
+### Enforcement Rules
+
+**Commands MUST**:
+- ✅ Use `Task(subagent_type="agent-name")` to invoke agents
+- ❌ NEVER invoke `Skill("...")` directly
+- ❌ NEVER call tools directly (except Read for config validation)
+- Purpose: Orchestration only
+
+**Agents MUST**:
+- ✅ Use `Skill("skill-name")` to invoke skills explicitly
+- ✅ Use tools (Read, Write, Edit, Grep, Bash, etc.) for implementation
+- ❌ NEVER invoke other Agents directly via Task tool
+- ❌ NEVER invoke Skills indirectly (only explicit `Skill("...")` calls)
+- Purpose: Domain reasoning and skill delegation
+
+**Skills MUST**:
+- ✅ Provide reusable knowledge and guidance
+- ✅ Be invoked explicitly via `Skill("skill-name")`
+- ❌ NEVER call other Skills directly
+- ❌ NEVER invoke Agents
+- Purpose: Knowledge capsules
+
+### Violation Prevention
+
+**Automated Detection** (Future):
+- Pre-commit hook scans for `Skill(` in `.claude/commands/` files
+- CI/CD validates command files don't contain Skill invocations
+- TAG system tracks architectural violations
+
+**Manual Review** (Current):
+- Code review checklist: Verify layer separation
+- Each command/agent file should have clear Skill invocation documentation
+- Architecture audit scheduled: `/alfred:0-project` verification report
+
+### Rationale
+
+1. **Maintainability**: Clear separation makes debugging easier
+2. **Reusability**: Skills can be used by multiple agents
+3. **Testing**: Each layer can be tested independently
+4. **Knowledge Encoding**: Skills capture expertise centrally
+5. **Scalability**: Adding new commands doesn't require duplicating logic
+

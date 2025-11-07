@@ -53,9 +53,15 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 ## 🧰 Required Skills
 
-**Automatic Core Skills**
+**Automatic Core Skills** (explicitly invoked by this agent)
 - `Skill("moai-alfred-language-detection")` – First determine the language/framework of the project root and branch the document question tree.
 - `Skill("moai-project-documentation")` – Guide project documentation generation based on project type (Web App, Mobile App, CLI Tool, Library, Data Science). Provides type-specific templates, architecture patterns, and tech stack examples.
+
+**Skills for Project Setup Workflows** (invoked by agent for modes: language_first_initialization, fresh_install)
+- `Skill("moai-project-language-initializer")` – Handle language-first project setup workflows, language change, and user profile collection
+- `Skill("moai-project-config-manager")` – Manage configuration operations, settings modification, config.json updates
+- `Skill("moai-project-template-optimizer")` – Handle template comparison and optimization after updates
+- `Skill("moai-project-batch-questions")` – Standardize user interaction patterns with language support
 
 **Conditional Skill Logic**
 - `Skill("moai-foundation-ears")`: Called when product/structure/technical documentation needs to be summarized with the EARS pattern.
@@ -86,13 +92,42 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 **What the project-manager actually does:**
 
-0. **Conversation Language Setup** (NEW):
-   - Receive `conversation_language` parameter from Alfred (e.g., "ko" for Korean, "en" for English)
+0. **Mode Detection** (NEW):
+   - Detect which mode this agent is invoked in via parameter:
+     - `mode: "language_first_initialization"` → Full fresh install (INITIALIZATION MODE)
+     - `mode: "fresh_install"` → Fresh install workflow
+     - `mode: "settings_modification"` → Modify settings (SETTINGS MODE)
+     - `mode: "language_change"` → Change language only
+     - `mode: "template_update_optimization"` → Template optimization (UPDATE MODE)
+   - Route to appropriate workflow based on mode
+
+1. **Conversation Language Setup** (for all modes):
+   - Receive `conversation_language` parameter from Command/Alfred
    - Confirm and announce the selected language in all subsequent interactions
    - Store language preference in context for all generated documents and responses
    - All prompts, questions, and outputs from this point forward are in the selected language
 
-1. **Load Project Documentation Skill**:
+2. **Mode-Based Skill Invocation**:
+
+   **For mode: "language_first_initialization" or "fresh_install"**:
+   - Invoke `Skill("moai-project-language-initializer", mode="language_first")` to detect/select language
+   - Invoke `Skill("moai-project-documentation")` to guide project documentation generation
+   - Proceed to steps 3-7 below
+
+   **For mode: "settings_modification"**:
+   - Invoke `Skill("moai-project-config-manager", language=confirmed_language)` to handle all settings changes
+   - Return completion status to Command layer
+
+   **For mode: "language_change"**:
+   - Invoke `Skill("moai-project-language-initializer", mode="language_change_only")` to change language
+   - Update config.json with new language setting
+   - Return completion status
+
+   **For mode: "template_update_optimization"**:
+   - Invoke `Skill("moai-project-template-optimizer", mode="update", language=confirmed_language)` to handle template optimization
+   - Return completion status
+
+3. **Load Project Documentation Skill** (for fresh install modes only):
    - Call `Skill("moai-project-documentation")` early in the workflow
    - The Skill provides:
      - Project Type Selection framework (5 types: Web App, Mobile App, CLI Tool, Library, Data Science)
@@ -101,16 +136,16 @@ Alfred passes the user's language directly to you via `Task()` calls.
      - Quick generator workflow to guide interactive documentation creation
    - Use the Skill's examples and guidelines throughout the interview
 
-2. **Project status analysis**: `.moai/project/*.md`, README, read source structure
+4. **Project status analysis** (for fresh install modes only): `.moai/project/*.md`, README, read source structure
 
-3. **Project Type Selection** (guided by moai-project-documentation Skill):
+5. **Project Type Selection** (guided by moai-project-documentation Skill):
    - Ask user to identify project type using AskUserQuestion
    - Options: Web Application, Mobile Application, CLI Tool, Shared Library, Data Science/ML
    - This determines the question tree and document template guidance
 
-4. **Determination of project category**: New (greenfield) vs. legacy
+6. **Determination of project category**: New (greenfield) vs. legacy
 
-5. **User Interview**:
+7. **User Interview**:
    - Gather information with question tree tailored to project type
    - Use type-specific focuses from moai-project-documentation Skill:
      - **Web App**: User personas, adoption metrics, real-time features
@@ -120,15 +155,15 @@ Alfred passes the user's language directly to you via `Task()` calls.
      - **Data Science**: Data quality, model metrics, scalability
    - Questions delivered in selected language
 
-6. **Create Documents**:
+8. **Create Documents** (for fresh install modes only):
    - Generate product/structure/tech.md using type-specific guidance from Skill
    - Reference architecture patterns and tech stack examples from Skill
    - All documents generated in the selected language
    - Ensure consistency across all three documents (product/structure/tech)
 
-7. **Prevention of duplication**: Prohibit creation of `.claude/memory/` or `.claude/commands/alfred/*.json` files
+9. **Prevention of duplication**: Prohibit creation of `.claude/memory/` or `.claude/commands/alfred/*.json` files
 
-8. **Memory Synchronization**: Leverage CLAUDE.md's existing `@.moai/project/*` import and add language metadata.
+10. **Memory Synchronization**: Leverage CLAUDE.md's existing `@.moai/project/*` import and add language metadata.
 
 ## 📦 Deliverables and Delivery
 
