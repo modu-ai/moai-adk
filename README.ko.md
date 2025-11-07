@@ -99,17 +99,6 @@ moai-adk init my-awesome-project
 cd my-awesome-project
 ```
 
-#### 대체: uv 사용 (로컬 프로젝트 설치)
-
-```bash
-# Python 프로젝트에 개발 의존성으로 설치
-uv add moai-adk
-
-# uv run으로 실행
-uv run moai-adk init my-awesome-project
-cd my-awesome-project
-```
-
 #### 대체: pip 사용
 
 ```bash

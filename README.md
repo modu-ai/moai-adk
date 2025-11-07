@@ -99,17 +99,6 @@ moai-adk init my-awesome-project
 cd my-awesome-project
 ```
 
-#### Alternative: Using uv (Local Project Installation)
-
-```bash
-# Install as development dependency in a Python project
-uv add moai-adk
-
-# Run via uv run
-uv run moai-adk init my-awesome-project
-cd my-awesome-project
-```
-
 #### Alternative: Using pip
 
 ```bash
