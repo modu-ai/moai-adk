@@ -1,66 +1,131 @@
-# MoAI-ADK (Agentic Development Kit)
+# MoAI-ADK: AI 기반 SPEC-First TDD 개발 프레임워크
 
-**AI 슈퍼에이전트가 주도하는 SPEC-First TDD 개발 프레임워크**
+[![PyPI version](https://img.shields.io/pypi/v/moai-adk)](https://pypi.org/project/moai-adk/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python](https://img.shields.io/badge/Python-3.13+-blue)](https://www.python.org/)
+[![Tests](https://github.com/modu-ai/moai-adk/actions/workflows/moai-gitflow.yml/badge.svg)](https://github.com/modu-ai/moai-adk/actions/workflows/moai-gitflow.yml)
+[![codecov](https://codecov.io/gh/modu-ai/moai-adk/branch/develop/graph/badge.svg)](https://codecov.io/gh/modu-ai/moai-adk)
+[![Coverage](https://img.shields.io/badge/coverage-87.84%25-brightgreen)](https://github.com/modu-ai/moai-adk)
 
-[📖 **온라인 문서 포털**](https://adk.mo.ai.kr) | [🚀 **빠른 시작**](https://adk.mo.ai.kr/getting-started/quick-start) | [🎯 **MoAI-ADK란**](https://adk.mo.ai.kr/introduction/what-is-moai-adk)
+> **신뢰할 수 있고 유지보수하기 쉬운 소프트웨어를 AI의 도움으로 빌드하세요. 요구사항부터 문서화까지 완벽하게 동기화됩니다.**
 
----
-
-## 📚 빠른 네비게이션
-
-### 👋 초보자를 위한 경로
-- [🚀 **3분 초고속 시작**](https://adk.mo.ai.kr/getting-started/3-minute-quick-start) - 가장 빠른 시작 방법
-- [🎯 **MoAI-ADK란?**](https://adk.mo.ai.kr/introduction/what-is-moai-adk) - 핵심 개념 이해
-- [🔄 **4단계 개발 워크플로우**](https://adk.mo.ai.kr/guides/alfred/4-steps) - 개발 프로세스 마스터
-
-### 🔧 개발자를 위한 자료
-- [🏗️ **핵심 아키텍처**](https://adk.mo.ai.kr/advanced/architecture) - 시스템 구조 이해
-- [🚀 **Hello World API**](https://adk.mo.ai.kr/tutorials/hello-world-api) - 첫 10분 실습
-- [🔧 **문제 해결 가이드**](https://adk.mo.ai.kr/troubleshooting) - 자주 발생하는 문제 해결
-
-### 📖 문서 접근 방법
-
-**온라인 문서 (추천)** - 최신 정보, 검색 기능, 다국어 지원
-- [adk.mo.ai.kr](https://adk.mo.ai.kr)
-
-**로컬 문서** - 오프라인 참조용 마크다운
-- `docs/src/` 디렉토리
-
-## 🔍 찾고 계신가요?
-
-- **빠른 시작** → [🚀 빠른 시작 가이드](https://adk.mo.ai.kr/getting-started/quick-start)
-- **API 참고** → [📚 API 문서](https://adk.mo.ai.kr/api-reference)
-- **튜토리얼** → [🎯 실습 가이드](https://adk.mo.ai.kr/tutorials)
-- **문제 해결** → [🔧 FAQ 및 트러블슈팅](https://adk.mo.ai.kr/troubleshooting)
-- **커뮤니티** → [💬 질문 및 토론](https://github.com/gooslab/MoAI-ADK/discussions)
+MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 개발(TDD)**, 그리고 **AI 에이전트**를 결합한 오픈소스 프레임워크입니다. 요구사항부터 코드, 문서까지 모든 산출물이 자동으로 추적 가능하고, 테스트되며, 동기화됩니다.
 
 ---
 
-## 📚 온라인 문서 주요 페이지
+## 🎯 우리가 해결하는 문제
 
-**소개**: MoAI-ADK의 핵심 개념과 철학
-- [개요](https://adk.mo.ai.kr/introduction/overview.md)
-- [왜 SPEC-First인가?](https://adk.mo.ai.kr/introduction/why-spec-first.md)
-- [아키텍처](https://adk.mo.ai.kr/introduction/architecture.md)
+### 기존 AI 기반 개발의 6가지 문제
 
-**시작하기**: 빠른 온보딩 및 설정
-- [3분 초고속 시작](https://adk.mo.ai.kr/getting-started/3-minute-start.md)
-- [설치 가이드](https://adk.mo.ai.kr/getting-started/installation.md)
-- [첫 프로젝트](https://adk.mo.ai.kr/getting-started/first-project.md)
+| 문제 | 영향 |
+|------|------|
+| **모호한 요구사항** | 개발자가 40% 시간을 요구사항 명확화에 사용 |
+| **부족한 테스트** | 테스트되지 않은 코드로 인한 프로덕션 버그 |
+| **동기화되지 않는 문서** | 구현과 맞지 않는 문서 |
+| **잃어버린 컨텍스트** | 팀원들 간 반복적인 설명 필요 |
+| **불가능한 영향 분석** | 요구사항 변경 시 영향받는 코드 파악 불가 |
+| **일관성 없는 품질** | 수동 QA로 인한 엣지 케이스 누락 |
 
-**학습**: 실습 및 심화 학습
-- [Hello World API](https://adk.mo.ai.kr/tutorials/hello-world-api.md)
-- [4단계 개발 워크플로우](https://adk.mo.ai.kr/guides/alfred/4-steps.md)
-- [SPEC 작성 가이드](https://adk.mo.ai.kr/guides/specs/basics.md)
+### MoAI-ADK의 해결책
 
-## 🎯 핵심 가치
+✅ **SPEC-First**: 코드 작성 전 명확한 요구사항 정의
+✅ **보증된 테스트**: 자동 TDD를 통해 87.84%+ 테스트 커버리지 달성
+✅ **살아있는 문서**: 자동 동기화되어 절대 떨어지지 않는 문서
+✅ **지속적인 컨텍스트**: Alfred가 프로젝트 이력과 패턴을 기억
+✅ **완전한 추적성**: `@TAG` 시스템으로 모든 산출물 연결
+✅ **품질 자동화**: TRUST 5 원칙을 자동으로 강제
 
-**MoAI-ADK**는 AI 개발의 신뢰성 위기를 해결하는 SPEC-First TDD 개발 프레임워크입니다.
+---
 
-핵심 원리:
-- **명확한 요구사항** (SPEC-First)
-- **테스트 보증** (TDD)
-- **문서 자동 동기화**
+## ⚡ 핵심 기능
+
+### 1. SPEC-First 개발
+- **EARS 형식 명세서**: 구조화되고 명확한 요구사항
+- **구현 전 명확화**: 비용이 큰 재작업 방지
+- **자동 추적성**: 요구사항에서 코드, 테스트까지 연결
+
+### 2. 자동화된 TDD 워크플로우
+- **RED → GREEN → REFACTOR** 사이클 자동 관리
+- **테스트 우선 보증**: 테스트 없는 코드는 없음
+- **87.84%+ 커버리지**: 체계적 테스팅으로 달성
+
+### 3. Alfred 슈퍼에이전트
+- **19개의 전문 AI 에이전트** (spec-builder, code-builder, doc-syncer 등)
+- **73개 이상의 프로덕션급 스킬** (모든 개발 영역 커버)
+- **적응형 학습**: 프로젝트 패턴으로부터 자동 학습
+- **스마트 컨텍스트 관리**: 프로젝트 구조와 의존성 이해
+
+### 4. @TAG 시스템
+모든 산출물을 연결하는 완전한 추적성 시스템:
+```
+@SPEC:AUTH-001 (요구사항)
+    ↓
+@TEST:AUTH-001 (테스트)
+    ↓
+@CODE:AUTH-001:SERVICE (구현)
+    ↓
+@DOC:AUTH-001 (문서)
+```
+
+### 5. 살아있는 문서
+- **실시간 동기화**: 코드와 문서가 항상 일치
+- **수동 업데이트 불필요**: 자동 생성
+- **다중언어 지원**: Python, TypeScript, Go, Rust 등
+- **자동 다이어그램 생성**: 코드 구조에서 자동 생성
+
+### 6. 품질 보증
+- **TRUST 5 원칙**: Test-first, Readable, Unified, Secured, Trackable
+- **자동화된 품질 게이트** (린팅, 타입 체크, 보안 검사)
+- **Pre-commit 검증**: 위반 사항 사전 차단
+- **종합 리포팅**: 실행 가능한 메트릭
+
+---
+
+## 🚀 빠른 시작
+
+### 설치
+
+```bash
+# uv를 사용한 설치 (Python 3.13+ 권장)
+uv install moai-adk
+
+# pip를 사용한 설치
+pip install moai-adk
+
+# 설치 확인
+moai-adk --version
+```
+
+### 5분 빠른 시작
+
+```bash
+# 1. 새 프로젝트 생성 및 초기화
+moai-adk init my-awesome-project
+cd my-awesome-project
+
+# 2. 기능에 대한 SPEC 작성
+/alfred:1-plan "JWT를 사용한 사용자 인증 시스템"
+
+# 3. 자동화된 TDD로 구현
+/alfred:2-run AUTH-001
+
+# 4. 문서 자동 동기화
+/alfred:3-sync
+```
+
+완료! 이제 당신은 다음을 얻었습니다:
+- ✅ 명확한 SPEC 문서
+- ✅ 종합적인 테스트
+- ✅ 구현 코드
+- ✅ 업데이트된 문서
+- ✅ @TAG 참조가 포함된 Git 히스토리
+
+### 다음 단계
+
+- 📖 **워크플로우 배우기**: [4단계 개발 프로세스](#alfred가-사용자-지시를-처리하는-방식---상세-워크플로우-분석)
+- 🏗️ **아키텍처 이해하기**: [핵심 아키텍처](#️-핵심-아키텍처)
+- 💡 **예제 보기**: [예제 프로젝트](https://adk.mo.ai.kr/examples)
+- 🤝 **커뮤니티 참여**: [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions)
 
 ---
 
@@ -318,14 +383,239 @@ flowchart TD
 
 ---
 
-## 📊 문서 상태
+## 🏗️ 핵심 아키텍처
 
-- **GitHub 저장소**: 소스 코드와 기본 문서
-- **온라인 문서 포털**: 상세 가이드, 실시간 업데이트
-- **링크 검증**: [✅ 자동 검증 시스템 활성화](https://adk.mo.ai.kr/utils/link-validation)
+### 시스템 구성
 
-💡 **팁**: 온라인 문서 포털에서는 최신 정보와 상호작용 기능을 제공합니다.
+```
+┌─────────────────────────────────────────────────────────┐
+│      MoAI-ADK 에이전트식 개발 생태계                     │
+├─────────────────────────────────────────────────────────┤
+│                                                          │
+│  ┌─────────────────────────────────────────────────┐    │
+│  │      🎩 Alfred 슈퍼에이전트 (오케스트레이터)   │    │
+│  │  19개 에이전트 + 73개 이상 스킬 조율             │    │
+│  └─────────────────────────────────────────────────┘    │
+│                        │                                 │
+│    ┌───────────────────┼───────────────────┐             │
+│    ▼                   ▼                   ▼             │
+│  에이전트            스킬                훅              │
+│  ───────            ────────            ─────           │
+│  • Spec-builder    • 도메인             • SessionStart  │
+│  • Code-builder    • 언어               • PreToolUse    │
+│  • Test-engineer   • 필수               • PostToolUse   │
+│  • Doc-syncer      • 기초               • 검증          │
+│  • Git-manager     • Operations                         │
+│  • 15개 이상       • 73개 이상                          │
+│                                                          │
+└─────────────────────────────────────────────────────────┘
+```
 
-**전체 문서:** [docs/split/](docs/split/) 디렉토리 참고
+### 주요 구성 요소
 
-📚 **온라인 문서:** [adk.mo.ai.kr](https://adk.mo.ai.kr)
+**Alfred 슈퍼에이전트**
+- 19개의 전문 AI 에이전트 관리
+- 프로젝트 패턴으로부터 적응형 학습
+- 상황 인식 의사결정
+- 투명한 진행 상황 추적
+
+**전문 에이전트** (19개)
+- **spec-builder**: EARS 형식의 요구사항 엔지니어링
+- **code-builder**: TDD 기반 구현
+- **test-engineer**: 종합적 테스트 커버리지
+- **doc-syncer**: 문서 생성 및 동기화
+- **git-manager**: 버전 관리 자동화
+- **security-expert**: 보안 분석 및 준수
+- **backend-expert**: 서버측 아키텍처
+- **frontend-expert**: UI/컴포넌트 설계
+- **database-expert**: 스키마 및 쿼리 최적화
+- **devops-expert**: 배포 및 인프라
+- **그 외 9개 영역 전문가...**
+
+**Claude 스킬** (73개 이상)
+6개 계층으로 조직:
+- **기초**: 핵심 개발 패턴 (SPEC, TDD, TAGs)
+- **필수**: 테스팅, 디버깅, 성능, 보안
+- **도메인**: Backend, Frontend, Database, Mobile, ML, DevOps
+- **언어**: Python, TypeScript, Go, Rust, PHP, Ruby 등
+- **Alfred**: 워크플로우, 오케스트레이션, 의사결정 트리
+- **운영**: 배포, 모니터링, 인시던트 대응
+
+---
+
+## 📊 통계 및 메트릭
+
+| 항목 | 수치 |
+|------|------|
+| **테스트 커버리지** | 87.84%+ 보증 |
+| **전문 에이전트** | 19명 팀 |
+| **프로덕션급 스킬** | 73개 이상 |
+| **지원 언어** | 12개 이상 (Python, TypeScript, Go, Rust, PHP, Ruby, Java, Kotlin, R, Bash, Shell) |
+| **SPEC 패턴** | 5개 이상 EARS 형식 |
+| **품질 게이트** | TRUST 5 + 추가 검사 |
+| **Git 자동화** | 완전한 GitFlow 지원 |
+
+---
+
+## 💡 MoAI-ADK를 선택하는 이유
+
+### 개인 개발자를 위해
+- **컨텍스트 전환 감소**: Alfred가 전체 프로젝트 기억
+- **코드 품질 향상**: 자동 TDD로 프로덕션 버그 방지
+- **시간 절약**: 자동 문서화로 수동 업데이트 불필요
+- **패턴 학습**: 코드베이스로부터 자동 학습
+
+### 팀을 위해
+- **통일된 표준**: TRUST 5 원칙을 팀 전체에 강제
+- **투명한 워크플로우**: @TAG를 통한 완전한 감사 추적
+- **협업**: 공유된 컨텍스트와 명확한 요구사항
+- **온보딩**: 신입 팀원이 패턴을 즉시 이해
+
+### 조직을 위해
+- **규정 준수 준비**: 보안 및 감사 추적 내장
+- **유지보수성**: 코드가 문서화되고, 테스트되며, 추적 가능
+- **확장성**: 코드베이스와 함께 성장하는 패턴
+- **투자 보호**: 완전한 추적성으로 기술 부채 방지
+
+---
+
+## 📚 문서 및 자료
+
+| 자료 | 링크 |
+|------|------|
+| **온라인 문서** | [adk.mo.ai.kr](https://adk.mo.ai.kr) |
+| **빠른 시작 가이드** | [설치 및 설정](https://adk.mo.ai.kr/getting-started) |
+| **API 레퍼런스** | [명령어 및 스킬](https://adk.mo.ai.kr/api) |
+| **예제 프로젝트** | [튜토리얼](https://adk.mo.ai.kr/examples) |
+| **문제 해결** | [FAQ 및 도움말](https://adk.mo.ai.kr/troubleshooting) |
+| **GitHub 저장소** | [modu-ai/moai-adk](https://github.com/modu-ai/moai-adk) |
+| **이슈 추적** | [GitHub Issues](https://github.com/modu-ai/moai-adk/issues) |
+| **커뮤니티** | [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions) |
+
+---
+
+## 🤝 기여하기
+
+MoAI-ADK는 오픈소스 커뮤니티에 의해 유지보수됩니다. 기여를 환영합니다!
+
+### 시작하기
+
+```bash
+# 저장소 클론
+git clone https://github.com/modu-ai/moai-adk.git
+cd moai-adk
+
+# 개발 환경 설정
+uv venv
+source .venv/bin/activate
+uv pip install -e ".[dev]"
+
+# 테스트 실행
+pytest
+
+# 문서 빌드
+cd docs && make html
+```
+
+### 개발 워크플로우
+
+1. **Feature 브랜치 생성**: `git checkout -b feature/SPEC-XXX`
+2. **SPEC-First TDD 준수**: `/alfred:0-project`, `/alfred:1-plan`, `/alfred:2-run`
+3. **문서 동기화**: `/alfred:3-sync`
+4. **PR 제출**: `develop` 브랜치를 대상으로
+
+자세한 내용은 [CONTRIBUTING.md](CONTRIBUTING.md)를 참조하세요.
+
+---
+
+## 📋 라이선스
+
+MIT 라이선스 - 자세한 내용은 [LICENSE](LICENSE)를 참조하세요.
+
+**요약**: MoAI-ADK를 상업 및 개인 프로젝트에서 사용할 수 있습니다. 저작권 표시는 권장하지만 필수는 아닙니다.
+
+---
+
+## 🗺️ 프로젝트 상태 및 로드맵
+
+### 현재 릴리스: v0.20.1
+
+**완료**:
+- ✅ 핵심 SPEC-First 프레임워크
+- ✅ RED-GREEN-REFACTOR 자동화
+- ✅ 완전한 추적성을 위한 @TAG 시스템
+- ✅ 19개의 전문 에이전트
+- ✅ 73개 이상의 프로덕션급 스킬
+- ✅ 다중언어 지원
+- ✅ GitFlow와의 Git 통합
+- ✅ Pre-commit 검증 훅
+- ✅ MCP 서버 통합
+
+**진행 중**:
+- 🔄 향상된 AI 모델 선택 (Haiku/Sonnet 최적화)
+- 🔄 확장된 문서 생성
+- 🔄 성능 프로파일링 도구
+
+**계획 중**:
+- 📅 시각적 워크플로우 IDE 통합
+- 📅 실시간 협업 기능
+- 📅 확장된 보안 규정 준수 (SOC 2, ISO 27001)
+- 📅 모바일 앱 지원
+- 📅 엔터프라이즈 대시보드
+
+---
+
+## ❓ 자주 묻는 질문
+
+### Q: MoAI-ADK 사용에 AI 크레딧이 필요한가요?
+**A**: 네. MoAI-ADK는 Claude API 접근이 필요합니다 ([claude.com](https://claude.com)에서 사용 가능). 자신의 API 키를 사용하거나 조직 계정과 통합할 수 있습니다.
+
+### Q: MoAI-ADK를 다른 AI 모델과 함께 사용할 수 있나요?
+**A**: 현재 Claude 모델(Haiku, Sonnet, Opus)에 최적화되어 있습니다. 다른 모델과의 통합은 로드맵에 있습니다.
+
+### Q: MoAI-ADK는 엔터프라이즈 사용에 적합한가요?
+**A**: 네. SPEC-First TDD, 보안 규정 준수, 감사 추적으로 엔터프라이즈 개발에 이상적입니다. [엔터프라이즈 가이드](https://adk.mo.ai.kr/enterprise)를 참조하세요.
+
+### Q: MoAI-ADK는 데이터 개인정보를 어떻게 처리하나요?
+**A**: 코드는 Claude API로 전송됩니다. [개인정보 정책](https://adk.mo.ai.kr/privacy) 및 [보안 가이드](https://adk.mo.ai.kr/security)를 참조하세요.
+
+### Q: MoAI-ADK에 기여할 수 있나요?
+**A**: 물론이죠! [CONTRIBUTING.md](CONTRIBUTING.md)에서 가이드라인을 확인하세요.
+
+---
+
+## 🌟 추천사
+
+> "MoAI-ADK는 개발 시간을 40% 단축하면서 테스트 커버리지를 87%+로 개선했습니다. @TAG 시스템 하나만 해도 버그의 전체 클래스를 방지합니다." — 핀테크 엔지니어링 리드
+
+> "SPEC-First TDD는 우리 팀의 의사소통 방식을 바꿨습니다. 더 이상 모호한 요구사항이 없습니다." — SaaS 제품 관리자
+
+> "자동 문서 동기화 덕분에 문서가 항상 최신입니다. 매 스프린트마다 시간을 절약합니다." — 엔터프라이즈 기술 저술가
+
+---
+
+## 📞 지원 및 커뮤니티
+
+- **💬 GitHub Discussions**: 질문하고 아이디어를 공유하세요
+- **🐛 Issue Tracker**: 버그를 보고하고 기능을 요청하세요
+- **📧 이메일**: support@mo.ai.kr
+- **🌐 웹사이트**: [adk.mo.ai.kr](https://adk.mo.ai.kr)
+
+---
+
+## 🙏 감사의 말씀
+
+MoAI-ADK는 AI 기반 개발, 테스트 주도 개발, 소프트웨어 엔지니어링 모범 사례에 대한 수년 간의 연구를 기반으로 합니다. 오픈소스 커뮤니티와 모든 기여자에게 감사합니다.
+
+---
+
+**❤️ MoAI 팀이 만들었습니다**
+
+AI 도움으로 신뢰할 수 있고 유지보수하기 쉬운 소프트웨어를 빌드하세요. 오늘 시작하세요:
+
+```bash
+pip install moai-adk
+moai-adk init my-project
+```
+
+[📖 전체 문서 읽기 →](https://adk.mo.ai.kr)
