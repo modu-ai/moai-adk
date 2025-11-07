@@ -145,7 +145,7 @@ Change statusline mode in `.claude/settings.json`:
 {
   "statusLine": {
     "type": "command",
-    "command": "python3 -m moai_adk.statusline.main",
+    "command": "uv run --no-project -m moai_adk.statusline.main",
     "padding": 1
   }
 }
@@ -227,7 +227,7 @@ export MOAI_STATUSLINE_MODE=extended
 
 ### Installation
 
-#### Recommended: uv tool (CLI - Global Access)
+#### Using uv tool (CLI - Global Access)
 
 ```bash
 # Install moai-adk as a globally available command using uv tool
@@ -241,24 +241,13 @@ moai-adk init my-awesome-project
 cd my-awesome-project
 ```
 
-#### Alternative: Using pip
-
-```bash
-# Traditional pip installation
-pip install moai-adk
-
-# Initialize a new project
-moai-adk init my-awesome-project
-cd my-awesome-project
-```
-
 #### Upgrade to Latest Version
 
 ```bash
-# Update using uv tool (recommended)
+# Update using uv tool
 uv tool upgrade moai-adk
 
-# Or reinstall
+# Or reinstall with force
 uv tool install --force moai-adk
 ```
 
