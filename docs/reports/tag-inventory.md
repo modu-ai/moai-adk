@@ -1,6 +1,6 @@
 # TAG Inventory
 
-Generated: 2025-11-07 19:03:49
+Generated: 2025-11-07 19:20:58
 Total TAGs: 5491
 
 ## By Domain
@@ -209,16 +209,16 @@ Total TAGs: 5491
 - **AUTH-001** (`CONTRIBUTING.md:374`)
 - **AUTH-001** (`CONTRIBUTING.md:509`)
 - **AUTH-001** (`CONTRIBUTING.md:784`)
-- **AUTH-001** (`README.md:65`)
-- **AUTH-001** (`README.md:67`)
-- **AUTH-001** (`README.md:69`)
-- **AUTH-001** (`README.md:71`)
-- **AUTH-001** (`README.md:177`)
-- **AUTH-001** (`README.ko.md:64`)
-- **AUTH-001** (`README.ko.md:66`)
-- **AUTH-001** (`README.ko.md:68`)
-- **AUTH-001** (`README.ko.md:70`)
-- **AUTH-001** (`README.ko.md:176`)
+- **AUTH-001** (`README.md:70`)
+- **AUTH-001** (`README.md:72`)
+- **AUTH-001** (`README.md:74`)
+- **AUTH-001** (`README.md:76`)
+- **AUTH-001** (`README.md:189`)
+- **AUTH-001** (`README.ko.md:69`)
+- **AUTH-001** (`README.ko.md:71`)
+- **AUTH-001** (`README.ko.md:73`)
+- **AUTH-001** (`README.ko.md:75`)
+- **AUTH-001** (`README.ko.md:188`)
 - **AUTH-001** (`.claude/commands/alfred/release-new.md:1634`)
 - **AUTH-001** (`.claude/agents/alfred/spec-builder.md:279`)
 - **AUTH-001** (`.claude/agents/alfred/tag-agent.md:108`)
