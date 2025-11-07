@@ -24,6 +24,184 @@ plugins:
         - en
         - ja
         - zh
+  - i18n:
+      docs_structure: folder
+      fallback_to_default: true
+      reconfigure_material: true
+      reconfigure_search: true
+      languages:
+        - locale: ko
+          default: true
+          name: 한국어
+          build: true
+        - locale: en
+          name: English
+          build: true
+          nav_translations:
+            홈: Home
+            시작하기: Getting Started
+            설치: Installation
+            빠른 시작: Quick Start
+            기본 개념: Concepts
+            사용 가이드: User Guide
+            Alfred 워크플로우: Alfred Workflow
+            개요: Overview
+            "1단계: 계획 (Plan)": "Step 1: Plan"
+            "2단계: 실행 (Run)": "Step 2: Run"
+            "3단계: 동기화 (Sync)": "Step 3: Sync"
+            "9단계: 피드백": "Step 9: Feedback"
+            SPEC 작성: Writing SPEC
+            SPEC 기초: SPEC Basics
+            EARS 문법: EARS Grammar
+            TAG 시스템: TAG System
+            예제: Examples
+            TDD 개발: TDD Development
+            RED 단계: RED Phase
+            GREEN 단계: GREEN Phase
+            REFACTOR 단계: REFACTOR Phase
+            프로젝트 관리: Project Management
+            초기화: Initialization
+            설정: Configuration
+            배포: Deployment
+            기술 참고: Technical Reference
+            CLI 명령어: CLI Commands
+            moai-adk: moai-adk
+            서브커맨드: Subcommands
+            에이전트 시스템: Agent System
+            핵심 에이전트: Core Agents
+            전문가 에이전트: Expert Agents
+            스킬 시스템: Skill System
+            기반 스킬: Foundation Skills
+            언어 스킬: Language Skills
+            알프레드 스킬: Alfred Skills
+            훅 시스템: Hook System
+            세션 훅: Session Hooks
+            도구 훅: Tool Hooks
+            TAG 시스템: TAG System
+            TAG 타입: TAG Types
+            추적성: Traceability
+            고급 주제: Advanced Topics
+            다국어 지원: Internationalization
+            성능 최적화: Performance Optimization
+            보안: Security
+            확장: Extensions
+            개발자 가이드: Developer Guide
+            기여하기: Contributing
+            개발 환경: Development Environment
+            릴리즈 프로세스: Release Process
+            코드 스타일: Code Style
+        - locale: ja
+          name: 日本語
+          build: true
+          nav_translations:
+            홈: ホーム
+            시작하기: はじめに
+            설치: インストール
+            빠른 시작: クイックスタート
+            기본 개념: 基本概念
+            사용 가이드: 使用ガイド
+            Alfred 워크플로우: Alfredワークフロー
+            개요: 概要
+            "1단계: 계획 (Plan)": "ステップ1: 計画"
+            "2단계: 실행 (Run)": "ステップ2: 実行"
+            "3단계: 동기화 (Sync)": "ステップ3: 同期"
+            "9단계: 피드백": "ステップ9: フィードバック"
+            SPEC 작성: SPEC作成
+            SPEC 기초: SPEC基礎
+            EARS 문법: EARS文法
+            TAG 시스템: TAGシステム
+            예제: 例
+            TDD 개발: TDD開発
+            RED 단계: REDフェーズ
+            GREEN 단계: GREENフェーズ
+            REFACTOR 단계: REFACTORフェーズ
+            프로젝트 관리: プロジェクト管理
+            초기화: 初期化
+            설정: 設定
+            배포: デプロイ
+            기술 참고: 技術リファレンス
+            CLI 명령어: CLIコマンド
+            moai-adk: moai-adk
+            서브커맨드: サブコマンド
+            에이전트 시스템: エージェントシステム
+            핵심 에이전트: コアエージェント
+            전문가 에이전트: エキスパートエージェント
+            스킬 시스템: スキルシステム
+            기반 스킬: 基盤スキル
+            언어 스킬: 言語スキル
+            알프레드 스킬: Alfredスキル
+            훅 시스템: フックシステム
+            세션 훅: セッションフック
+            도구 훅: ツールフック
+            TAG 시스템: TAGシステム
+            TAG 타입: TAGタイプ
+            추적성: トレーサビリティ
+            고급 주제: 高度なトピック
+            다국어 지원: 国際化
+            성능 최적화: パフォーマンス最適化
+            보안: セキュリティ
+            확장: 拡張
+            개발자 가이드: 開発者ガイド
+            기여하기: 貢献
+            개발 환경: 開発環境
+            릴리즈 프로세스: リリースプロセス
+            코드 스타일: コードスタイル
+        - locale: zh
+          name: 中文
+          build: true
+          nav_translations:
+            홈: 首页
+            시작하기: 入门
+            설치: 安装
+            빠른 시작: 快速入门
+            기본 개념: 基本概念
+            사용 가이드: 用户指南
+            Alfred 워크플로우: Alfred工作流
+            개요: 概述
+            "1단계: 계획 (Plan)": "步骤1: 计划"
+            "2단계: 실행 (Run)": "步骤2: 执行"
+            "3단계: 동기화 (Sync)": "步骤3: 同步"
+            "9단계: 피드백": "步骤9: 反馈"
+            SPEC 작성: 编写SPEC
+            SPEC 기초: SPEC基础
+            EARS 문법: EARS语法
+            TAG 시스템: TAG系统
+            예제: 示例
+            TDD 개발: TDD开发
+            RED 단계: RED阶段
+            GREEN 단계: GREEN阶段
+            REFACTOR 단계: REFACTOR阶段
+            프로젝트 관리: 项目管理
+            초기화: 初始化
+            설정: 配置
+            배포: 部署
+            기술 참고: 技术参考
+            CLI 명령어: CLI命令
+            moai-adk: moai-adk
+            서브커맨드: 子命令
+            에이전트 시스템: 代理系统
+            핵심 에이전트: 核心代理
+            전문가 에이전트: 专家代理
+            스킬 시스템: 技能系统
+            기반 스킬: 基础技能
+            언어 스킬: 语言技能
+            알프레드 스킬: Alfred技能
+            훅 시스템: 钩子系统
+            세션 훅: 会话钩子
+            도구 훅: 工具钩子
+            TAG 시스템: TAG系统
+            TAG 타입: TAG类型
+            추적성: 可追溯性
+            고급 주제: 高级主题
+            다국어 지원: 国际化
+            성능 최적화: 性能优化
+            보안: 安全性
+            확장: 扩展
+            개발자 가이드: 开发者指南
+            기여하기: 贡献
+            개발 환경: 开发环境
+            릴리즈 프로세스: 发布流程
+            코드 스타일: 代码风格
   - minify:
       minify_html: true
 
@@ -83,9 +261,10 @@ theme:
     - navigation.expand
     - navigation.footer
     - navigation.indexes
-    - navigation.instant
-    - navigation.instant.prefetch
-    - navigation.instant.progress
+    # Disabled for i18n plugin compatibility
+    # - navigation.instant
+    # - navigation.instant.prefetch
+    # - navigation.instant.progress
     - navigation.prune
     - navigation.sections
     - navigation.tabs
@@ -228,9 +407,11 @@ nav:
     - 개발 환경: contributing/development.md
     - 릴리즈 프로세스: contributing/releases.md
     - 코드 스타일: contributing/style.md
-  
-  
-  
+    - 번역 기여: guides/contributing-translations.md
+  - 번역 현황:
+    - 대시보드: translation-status.md
+
+
 # Page tree
 exclude_docs: |
   .python-version
