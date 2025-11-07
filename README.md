@@ -617,19 +617,8 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
-## 🌟 Testimonials
-
-> "MoAI-ADK reduced our development time by 40% while improving test coverage to 87%+. The @TAG system alone prevents entire classes of bugs." — Engineering Lead, FinTech
-
-> "SPEC-First TDD changed how our team communicates. No more ambiguous requirements." — Product Manager, SaaS
-
-> "The automatic documentation sync means our docs are always up-to-date. This saves us hours every sprint." — Technical Writer, Enterprise
-
----
-
 ## 📞 Support & Community
 
-- **💬 GitHub Discussions**: Ask questions, share ideas
 - **🐛 Issue Tracker**: Report bugs and request features
 - **📧 Email**: support@mo.ai.kr
 - **🌐 Website**: [adk.mo.ai.kr](https://adk.mo.ai.kr)
