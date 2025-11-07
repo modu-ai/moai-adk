@@ -147,7 +147,7 @@ class SpecGenerator:
             ...     print(f"SPEC path: {result['spec_path']}")
             ...     print(f"Confidence: {result['confidence']:.0%}")
         """
-        result = {
+        result: Dict[str, Any] = {
             "success": False,
             "spec_path": None,
             "content": None,
