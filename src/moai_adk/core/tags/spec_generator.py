@@ -1,16 +1,21 @@
 #!/usr/bin/env python3
 # @CODE:SPEC-GENERATOR-001 | @SPEC:TAG-SPEC-GENERATION-001 | @DOC:SPEC-AUTO-GEN-001
-"""SPEC 템플릿 자동 생성기
+"""Automatic SPEC template generation engine.
 
-코드 파일을 분석하여 EARS 포맷의 SPEC 템플릿을 자동으로 생성합니다.
-도메인 추론, 신뢰도 계산, 편집 가이드 제공 포함.
+Analyzes code files and automatically generates SPEC templates in EARS format.
+Features domain inference, confidence scoring, and editing guidance.
 
-주요 기능:
-- AST 기반 Python/JavaScript/Go 코드 분석
-- 파일 경로에서 도메인 자동 추론
-- EARS 포맷 SPEC 템플릿 생성
-- 신뢰도 점수 계산 (0-1)
-- 편집 가이드 생성 (TODO 체크리스트)
+Key Features:
+  - AST-based Python/JavaScript/Go code analysis
+  - Automatic domain inference from file paths and content
+  - EARS-format SPEC template generation
+  - Confidence scoring (0-1 scale)
+  - Editing guidance generation with TODO checklists
+  - Multi-language support with fallback strategies
+
+The generator is designed to help developers follow SPEC-first principles
+by automatically creating initial SPEC templates when code is written
+before specifications are documented.
 """
 
 import ast
@@ -23,15 +28,15 @@ from typing import Any, Dict, List, Optional, Set
 
 @dataclass
 class CodeAnalysis:
-    """코드 분석 결과
+    """Result of analyzing a code file.
 
     Attributes:
-        functions: 함수 목록 및 정보
-        classes: 클래스 목록 및 정보
-        imports: import 정보
-        docstring: 모듈 docstring
-        domain_keywords: 도메인 관련 키워드
-        has_clear_structure: 명확한 구조 여부
+        functions: Dict mapping function names to their metadata (docstrings, parameters, etc.).
+        classes: Dict mapping class names to their metadata (methods, docstrings, etc.).
+        imports: Dict of import statements grouped by source (stdlib, third-party, local).
+        docstring: Module-level docstring if present.
+        domain_keywords: Set of keywords extracted from code that match known domains.
+        has_clear_structure: True if code has clear functions/classes and documentation.
     """
     functions: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     classes: Dict[str, Dict[str, Any]] = field(default_factory=dict)
@@ -42,22 +47,30 @@ class CodeAnalysis:
 
 
 class SpecGenerator:
-    """SPEC 템플릿 자동 생성기
+    """Automatic SPEC template generator for code files.
 
-    코드 파일을 분석하여 SPEC-first 원칙에 맞는 SPEC 템플릿을 자동으로 생성합니다.
+    Analyzes code files and generates SPEC templates following SPEC-first principles.
+    Supports domain inference, confidence scoring, and editing guidance to help
+    developers create better specifications.
 
-    Usage:
-        generator = SpecGenerator()
-        result = generator.generate_spec_template(
-            code_file=Path("src/auth/login.py"),
-            domain="AUTH"
-        )
-        print(result["spec_path"])
-        print(result["content"])
-        print(f"신뢰도: {result['confidence']:.0%}")
+    Usage Example:
+        >>> generator = SpecGenerator()
+        >>> result = generator.generate_spec_template(
+        ...     code_file=Path("src/auth/login.py"),
+        ...     domain="AUTH"
+        ... )
+        >>> print(f"SPEC path: {result['spec_path']}")
+        >>> print(f"Confidence: {result['confidence']:.0%}")
+        >>> for suggestion in result['editing_guide']:
+        ...     print(f"  - {suggestion}")
+
+    Attributes:
+        DOMAIN_KEYWORDS: Domain-to-keywords mapping for automatic domain inference.
+        creation_timestamp: ISO format timestamp of generator instantiation.
     """
 
-    # 도메인 추론용 키워드 맵
+    # Domain inference keyword mapping
+    # Used to automatically detect domain from code content and names
     DOMAIN_KEYWORDS = {
         "AUTH": {"authenticate", "login", "logout", "token", "password", "user"},
         "PAYMENT": {"payment", "pay", "billing", "transaction", "charge", "amount"},
@@ -70,7 +83,10 @@ class SpecGenerator:
     }
 
     def __init__(self):
-        """초기화"""
+        """Initialize the SPEC generator.
+
+        Captures creation timestamp for metadata in generated SPEC templates.
+        """
         self.creation_timestamp = datetime.now().isoformat()
 
     def generate_spec_template(
@@ -78,19 +94,36 @@ class SpecGenerator:
         code_file: Path,
         domain: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """SPEC 템플릿 생성 (주요 메서드)
+        """Generate a SPEC template from a code file.
+
+        Main entry point for SPEC generation. Analyzes the code file, infers domain
+        if not provided, and returns a complete SPEC template with confidence score
+        and editing guidance.
 
         Args:
-            code_file: 코드 파일 경로
-            domain: 도메인 (미지정 시 자동 추론)
+            code_file: Path to the code file to analyze (Path or str).
+            domain: Domain name (e.g., "AUTH", "PAYMENT"). If not provided,
+                   domain is automatically inferred from code content.
 
         Returns:
-            생성 결과 딕셔너리:
-            - spec_path: SPEC 파일 경로
-            - content: SPEC 템플릿 내용
-            - domain: 추론된 도메인
-            - confidence: 신뢰도 (0-1)
-            - suggestions: 편집 가이드
+            Dict containing generation result:
+                - success (bool): True if generation succeeded
+                - spec_path (str): Recommended path for SPEC file
+                - content (str): Generated SPEC template in EARS format
+                - domain (str): Inferred or provided domain name
+                - confidence (float): Confidence score (0-1)
+                - editing_guide (List[str]): TODO items for refinement
+                - error (str, optional): Error message if generation failed
+
+        Raises:
+            No exceptions raised; errors are captured in result["error"]
+
+        Example:
+            >>> generator = SpecGenerator()
+            >>> result = generator.generate_spec_template(Path("auth.py"))
+            >>> if result["success"]:
+            ...     print(f"SPEC path: {result['spec_path']}")
+            ...     print(f"Confidence: {result['confidence']:.0%}")
         """
         result = {
             "success": False,
@@ -105,26 +138,26 @@ class SpecGenerator:
         try:
             code_file = Path(code_file)
             if not code_file.exists():
-                result["error"] = f"파일을 찾을 수 없습니다: {code_file}"
+                result["error"] = f"Code file not found: {code_file}"
                 return result
 
-            # 코드 분석
+            # Analyze code file
             analysis = self._analyze_code_file(code_file)
 
-            # 도메인 추론
+            # Infer domain if not provided
             if not domain:
                 domain = self._infer_domain(code_file, analysis)
 
-            # SPEC 경로 생성
+            # Generate SPEC path
             spec_path = Path(f".moai/specs/SPEC-{domain}/spec.md")
 
-            # EARS 포맷 템플릿 생성
+            # Create EARS format template
             content = self._create_ears_template(code_file, domain, analysis)
 
-            # 신뢰도 계산
+            # Calculate confidence score
             confidence = self._calculate_confidence(code_file, analysis, domain)
 
-            # 편집 가이드 생성
+            # Generate editing guidance
             editing_guide = self._generate_editing_guide(analysis, confidence, domain)
 
             result.update({
