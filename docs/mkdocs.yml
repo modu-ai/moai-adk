@@ -236,6 +236,7 @@ extra:
 theme:
   name: material
   language: en
+  custom_dir: overrides
 
   # Custom color definitions for Material theme
   custom:
@@ -432,3 +433,6 @@ validation:
 extra_css:
   - https://fonts.googleapis.com/icon?family=Material+Icons
   - stylesheets/extra.css
+
+extra_javascript:
+  - stylesheets/language-selector.js
