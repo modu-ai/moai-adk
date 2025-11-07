@@ -424,28 +424,49 @@ After all 4 steps complete, Alfred validates:
 
 ### System Components
 
-```
-┌─────────────────────────────────────────────────────────┐
-│         MoAI-ADK Agentic Development Ecosystem          │
-├─────────────────────────────────────────────────────────┤
-│                                                          │
-│  ┌─────────────────────────────────────────────────┐    │
-│  │        🎩 Alfred SuperAgent (Orchestrator)      │    │
-│  │  Coordinates 19 agents + 73+ skills             │    │
-│  └─────────────────────────────────────────────────┘    │
-│                        │                                 │
-│    ┌───────────────────┼───────────────────┐             │
-│    ▼                   ▼                   ▼             │
-│  AGENTS            SKILLS              HOOKS            │
-│  ───────            ────────            ─────           │
-│  • Spec-builder    • Domain             • SessionStart  │
-│  • Code-builder    • Language           • PreToolUse    │
-│  • Test-engineer   • Essentials         • PostToolUse   │
-│  • Doc-syncer      • Foundation         • Validation    │
-│  • Git-manager     • Operations                         │
-│  • 15+ more        • 55+ total                          │
-│                                                          │
-└─────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    Alfred["🎩 Alfred SuperAgent<br/><br/>Central Orchestrator<br/>Adaptive Learning<br/>Context-Aware Decisions"]
+
+    Alfred -->|Manages| Agents["<b>Agents Layer</b><br/>19 Specialized AI Experts"]
+    Alfred -->|Activates| Skills["<b>Skills Layer</b><br/>73+ Reusable Knowledge Capsules"]
+    Alfred -->|Enforces| Hooks["<b>Hooks Layer</b><br/>Safety Guards & Validation"]
+
+    Agents --> A1["spec-builder"]
+    Agents --> A2["code-builder"]
+    Agents --> A3["test-engineer"]
+    Agents --> A4["doc-syncer"]
+    Agents --> A5["git-manager"]
+    Agents --> A6["security-expert"]
+    Agents --> A7["backend-expert"]
+    Agents --> A8["frontend-expert"]
+    Agents --> A9["database-expert"]
+    Agents --> A10["devops-expert"]
+    Agents --> A11["+ 9 more specialists"]
+
+    Skills --> S1["Foundation<br/>SPEC·TDD·TAGs"]
+    Skills --> S2["Essentials<br/>Testing·Debug·Perf"]
+    Skills --> S3["Domain<br/>Backend·Frontend·DB"]
+    Skills --> S4["Language<br/>Python·TS·Go·Rust"]
+    Skills --> S5["Alfred<br/>Workflow·Orchestration"]
+    Skills --> S6["Operations<br/>Deploy·Monitor"]
+
+    Hooks --> H1["SessionStart"]
+    Hooks --> H2["PreToolUse"]
+    Hooks --> H3["PostToolUse"]
+    Hooks --> H4["Validation"]
+
+    classDef alfredStyle fill:#ffc107,stroke:#f57c00,stroke-width:3px,color:#000
+    classDef layerStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:2px,color:#000
+    classDef agentStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1px,color:#000
+    classDef skillStyle fill:#e8f5e9,stroke:#388e3c,stroke-width:1px,color:#000
+    classDef hookStyle fill:#fff3e0,stroke:#f57c00,stroke-width:1px,color:#000
+
+    class Alfred alfredStyle
+    class Agents,Skills,Hooks layerStyle
+    class A1,A2,A3,A4,A5,A6,A7,A8,A9,A10,A11 agentStyle
+    class S1,S2,S3,S4,S5,S6 skillStyle
+    class H1,H2,H3,H4 hookStyle
 ```
 
 ### Key Components
