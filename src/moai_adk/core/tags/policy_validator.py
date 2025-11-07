@@ -174,7 +174,7 @@ class TagPolicyValidator:
         Returns:
             PolicyViolation 목록
         """
-        violations = []
+        violations: List[PolicyViolation] = []
 
         # 타임아웃 체크
         if time.time() - self._start_time > self.config.validation_timeout:
@@ -211,7 +211,7 @@ class TagPolicyValidator:
         Returns:
             PolicyViolation 목록 (주로 경고 수준)
         """
-        violations = []
+        violations: List[PolicyViolation] = []
 
         # 타임아웃 체크
         if time.time() - self._start_time > self.config.validation_timeout:
