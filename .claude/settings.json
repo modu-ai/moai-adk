@@ -189,11 +189,7 @@
   "statusLine": {
     "enabled": true,
     "type": "command",
-<<<<<<< HEAD
     "command": "uv run {{PROJECT_DIR}}/.moai/scripts/statusline.py"
-=======
-    "command": "uv run .moai/scripts/statusline.py"
->>>>>>> b5ac98dc46dcbb7aa3d64d1c16f4a5ef2dfa3053
   },
   "spinnerTipsEnabled": true,
   "outputStyle": "streaming"
