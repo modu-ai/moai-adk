@@ -107,3 +107,44 @@ class TemplateBackup:
                 shutil.copy2(item, dst_item)
             elif item.is_dir():
                 dst_item.mkdir(parents=True, exist_ok=True)
+
+    def restore_backup(self, backup_path: Path | None = None) -> None:
+        """Restore project files from backup.
+
+        Restores .moai, .claude, .github directories and CLAUDE.md file
+        from a backup created by create_backup().
+
+        Args:
+            backup_path: Backup path to restore from.
+                        Defaults to .moai-backups/backup/
+
+        Raises:
+            FileNotFoundError: When backup_path doesn't exist.
+        """
+        if backup_path is None:
+            backup_path = self.backup_dir / "backup"
+
+        if not backup_path.exists():
+            raise FileNotFoundError(f"Backup not found: {backup_path}")
+
+        # Restore each item from backup
+        for item in [".moai", ".claude", ".github", "CLAUDE.md"]:
+            src = backup_path / item
+            dst = self.target_path / item
+
+            # Skip if not in backup
+            if not src.exists():
+                continue
+
+            # Remove current version
+            if dst.exists():
+                if dst.is_dir():
+                    shutil.rmtree(dst)
+                else:
+                    dst.unlink()
+
+            # Restore from backup
+            if src.is_dir():
+                shutil.copytree(src, dst, dirs_exist_ok=True)
+            else:
+                shutil.copy2(src, dst)
