@@ -181,6 +181,11 @@
       "Bash(git rebase -i:*)"
     ]
   },
+  "statusLine": {
+    "enabled": true,
+    "type": "command",
+    "command": "python -m moai_adk.statusline.main"
+  },
   "spinnerTipsEnabled": true,
   "outputStyle": "streaming"
 }

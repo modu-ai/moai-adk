@@ -158,6 +158,11 @@
       "Bash(git rebase -i:*)"
     ]
   },
+  "statusLine": {
+    "enabled": true,
+    "type": "command",
+    "command": "python -m moai_adk.statusline.main"
+  },
   "companyAnnouncements": [
     "계획 우선: 혼란을 피하기 위해 먼저 만들 것을 적어놓세요 (/alfred:1-plan)",
     "✅ 5가지 약속: 테스트 우선 + 읽기 쉬운 코드 + 깔끔한 조직 + 보안 + 추적 가능",
