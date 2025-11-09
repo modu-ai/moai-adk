@@ -165,13 +165,13 @@ Alfred는 자동으로 TAG 체인을 검증하고 고아 TAG를 감지합니다.
    - 모든 코드가 테스트로 보호됨
    - 기능 추가 = 테스트 추가
 
-2. **📚 Readable**
+2. **<span class="material-icons">library_books</span> Readable**
 
    - 함수 ≤ 50줄, 파일 ≤ 300줄
    - 변수 이름이 의도를 드러냄
    - 린터 준수 (ESLint/ruff/clippy)
 
-3. **🎯 Unified**
+3. **:bullseye: Unified**
 
    - SPEC 기반 아키텍처 일관성
    - 반복 패턴 (학습 곡선 감소)
@@ -183,7 +183,7 @@ Alfred는 자동으로 TAG 체인을 검증하고 고아 TAG를 감지합니다.
    - 비밀번호 해싱 (bcrypt, Argon2)
    - 민감한 데이터 보호 (환경 변수)
 
-5. **🔗 Trackable**
+5. **:link: Trackable**
 
    - @TAG 시스템 사용
    - Git 커밋에 TAG 참조 포함
@@ -228,7 +228,7 @@ Alfred SuperAgent (오케스트레이션)
         └── Analysis
 ```
 
-**스킬 시스템**: 4개 계층으로 구성된 69개 이상의 프로덕션 레디 Claude 스킬:
+**스킬 시스템**: 7개 계층으로 구성된 93개의 프로덕션급 Claude 스킬:
 
 1. **Foundation**: 핵심 원칙 (TRUST/TAG/SPEC/Git/EARS)
 2. **Essentials**: 일일 개발 도구 (debug/perf/refactor)
