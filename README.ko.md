@@ -185,7 +185,7 @@ export MOAI_STATUSLINE_MODE=extended
 
 **자동 감지**:
 
-- ✅ **10개 언어 지원**: Python, JavaScript, TypeScript, Go, Rust, Kotlin, Ruby, PHP, Java, C#
+- ✅ **18개 언어 지원**: Python, TypeScript, JavaScript, Go, Rust, Java, Kotlin, Swift, Dart, PHP, Ruby, C, C++, C#, Scala, R, SQL, Shell
 - ✅ **표준 디렉토리 패턴**: 각 언어의 관례적 디렉토리 자동 감지 (Python: src/, Go: cmd/pkg/, JavaScript: src/app/pages/ 등)
 - ✅ **사용자 정의 모드**: auto/manual/hybrid 3가지 감지 모드 지원
 - ✅ **제외 패턴**: tests/, docs/, node_modules/ 등 자동으로 감지에서 제외
@@ -1043,7 +1043,7 @@ graph TD
 | **플랫폼 커버리지** | 9개 플랫폼 (Supabase, Firebase, Vercel, Cloudflare, Auth0, Convex, Railway, Neon, Clerk) |
 | **아키텍처 패턴**   | 8개 패턴 (A-H) 모든 배포 시나리오 지원                                            |
 | **BaaS 문서**       | 11,500+ 단어, 60개 이상 코드 예제                                                |
-| **지원 언어**       | 12개 이상 (Python, TypeScript, Go, Rust, PHP, Ruby, Java, Kotlin, R, Bash, Shell) |
+| **지원 언어**       | 18개 (Python, TypeScript, JavaScript, Go, Rust, Java, Kotlin, Swift, Dart, PHP, Ruby, C, C++, C#, Scala, R, SQL, Shell) |
 | **SPEC 패턴**       | 5개 이상 EARS 형식                                                                |
 | **품질 게이트**     | TRUST 5 + 추가 검사                                                               |
 | **Git 자동화**      | 완전한 GitFlow 지원                                                               |
