@@ -713,6 +713,50 @@ i {
   color: var(--md-primary-bg-color);
 }
 
+/* 우측 TOC (md-sidebar--secondary) 네비게이션 최적화 */
+.md-sidebar--secondary .md-nav {
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: 0.5rem 0 !important;
+}
+
+/* 우측 TOC 링크: 폰트 크기 및 행간 최소화 */
+.md-sidebar--secondary .md-nav__link {
+  font-size: 0.75rem !important;      /* 극소 폰트 */
+  padding: 0.25rem 0.5rem !important; /* 최소 패딩 */
+  line-height: 1.2 !important;        /* 행간 최소화 */
+  margin-bottom: 0 !important;        /* 마진 제거 */
+  word-break: break-word !important;  /* 긴 텍스트 줄바꿈 */
+  display: block !important;          /* 블록 레이아웃 */
+  width: 100% !important;             /* 가로 100% */
+}
+
+/* 우측 TOC 제목: 폰트 크기 및 행간 최소화 */
+.md-sidebar--secondary .md-nav__title {
+  font-size: 0.7rem !important;       /* 극소 폰트 */
+  padding: 0.2rem 0.5rem !important; /* 최소 패딩 */
+  line-height: 1.1 !important;        /* 행간 극소화 */
+  margin-bottom: 0 !important;        /* 마진 제거 */
+  font-weight: 600 !important;        /* 굵기 유지 */
+  width: 100% !important;             /* 가로 100% */
+}
+
+/* 우측 TOC 아이템: 여백 최소화 */
+.md-sidebar--secondary .md-nav__item {
+  line-height: 1.0 !important;        /* 극소 행간 */
+  margin-bottom: 0.05rem !important;  /* 최소 마진 */
+  padding: 0 !important;              /* 패딩 제거 */
+  width: 100% !important;             /* 가로 100% */
+}
+
+/* 중첩 아이템도 동일하게 */
+.md-sidebar--secondary .md-nav__item .md-nav__item {
+  margin-bottom: 0 !important;
+  line-height: 1.0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+}
+
 /* 모바일 반응형 테마 */
 @media screen and (max-width: 76.1875em) {
   [data-md-color-scheme="slate"] .md-nav--primary {
