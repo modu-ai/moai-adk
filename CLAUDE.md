@@ -2,11 +2,11 @@
 
 **SPEC-First TDD Development with Alfred SuperAgent**
 
-> **Document Language**: English
+> **Document Language**: Korean
 > **Project Owner**: GoosLab
 > **Config**: `.moai/config.json`
 > **Version**: 0.21.2 (from .moai/config.json)
-> **Current Conversation Language**: English (`conversation_language: "en"`)
+> **Current Conversation Language**: Korean (`conversation_language: "ko"`)
 >
 > **Note**: `Skill("moai-alfred-ask-user-questions")` provides TUI-based responses when user interaction is needed. The skill loads on-demand.
 

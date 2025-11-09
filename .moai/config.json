@@ -63,9 +63,9 @@
     "current_stage": "initialized"
   },
   "language": {
-    "conversation_language": "en",
-    "conversation_language_name": "English",
-    "agent_prompt_language": "en",
+    "conversation_language": "ko",
+    "conversation_language_name": "Korean",
+    "agent_prompt_language": "ko",
     "agent_prompt_language_description": "Language for sub-agent internal prompts (english=global standard, localized=user's conversation language)"
   },
   "project": {
