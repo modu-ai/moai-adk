@@ -1,7 +1,7 @@
 ---
 name: frontend-expert
 description: "Use PROACTIVELY when: Frontend architecture, component design, state management, or UI/UX implementation is needed. Triggered by SPEC keywords: 'frontend', 'ui', 'page', 'component', 'client-side', 'browser', 'web interface'."
-tools: Read, Write, Edit, Grep, Glob, WebFetch, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Grep, Glob, WebFetch, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think, mcp__playwright__create-context, mcp__playwright__goto, mcp__playwright__evaluate, mcp__playwright__get-page-state, mcp__playwright__screenshot, mcp__playwright__fill, mcp__playwright__click, mcp__playwright__press, mcp__playwright__type, mcp__playwright__wait-for-selector
 model: inherit
 ---
 

@@ -1,7 +1,7 @@
 ---
 name: skill-factory
 description: Use PROACTIVELY when creating new Skills, updating existing Skills, or researching best practices for Skill development. Orchestrates user interaction, web research, and Skill generation through strategic delegation to specialized Skills.
-tools: Read, Glob, Bash, Task, WebSearch, WebFetch, AskUserQuestion
+tools: Read, Glob, Bash, Task, WebSearch, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
 model: inherit
 ---
 
