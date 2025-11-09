@@ -172,8 +172,6 @@ class TestShouldValidateToolOptionalFiles:
         # Hook 파일에서 should_validate_tool 함수 import
         try:
             # Hook 파일을 모듈로 로드할 수 없으므로, 직접 로직 테스트
-            tool_name = "Edit"
-            tool_args = {"file_path": "CLAUDE.md"}
 
             # CLAUDE.md는 검증 대상이 아님
             # 현재: 검증 대상이 아님 (이미 구현됨)
@@ -186,8 +184,6 @@ class TestShouldValidateToolOptionalFiles:
     @pytest.mark.xfail(reason='Test data migration needed')
     def test_should_validate_tool_excludes_dot_claude(self):
         """should_validate_tool이 .claude/ 디렉토리를 제외하는지 확인 (미구현)"""
-        tool_name = "Edit"
-        tool_args = {"file_path": ".claude/hooks/alfred/example.py"}
 
         # .claude/ 파일은 검증 대상이 아니어야 함
         # 현재: 검증 대상임 (미구현)
@@ -197,8 +193,6 @@ class TestShouldValidateToolOptionalFiles:
     @pytest.mark.xfail(reason='Test data migration needed')
     def test_should_validate_tool_excludes_docs(self):
         """should_validate_tool이 docs/ 디렉토리를 제외하는지 확인 (미구현)"""
-        tool_name = "Write"
-        tool_args = {"file_path": "docs/user-guide.md"}
 
         # docs/ 파일은 검증 대상이 아니어야 함
         # 현재: 검증 대상임 (미구현)
@@ -208,8 +202,6 @@ class TestShouldValidateToolOptionalFiles:
     @pytest.mark.xfail(reason='Test data migration needed')
     def test_should_validate_tool_includes_src(self):
         """should_validate_tool이 src/ 디렉토리를 포함하는지 확인"""
-        tool_name = "Write"
-        tool_args = {"file_path": "src/example.py"}
 
         # src/ 파일은 검증 대상이어야 함
         # 예상: should_validate_tool(tool_name, tool_args) == True

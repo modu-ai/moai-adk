@@ -278,7 +278,6 @@ class TestSessionSummary:
 
     def test_session_summary_empty_state(self):
         """REFACTOR: 빈 상태에서의 요약"""
-        cleanup_stats = {"temp_cleaned": 0, "cache_cleaned": 0, "total_cleaned": 0}
         work_state = {"uncommitted_files": 0, "specs_in_progress": []}
 
         summary_lines = ["✅ Session Ended"]
