@@ -128,7 +128,7 @@ def generate_config_report() -> str:
 
     # Check 1: Configuration exists
     if not check_config_exists():
-        report_lines.append("❌ Project configuration missing - run /alfred:0-project")
+        report_lines.append("❌ 프로젝트 설정 없음 - /alfred:0-project을(를) 실행해야 합니다")
         return "\n".join(report_lines)
 
     config = get_config_data()
@@ -136,29 +136,29 @@ def generate_config_report() -> str:
     # Check 2: Configuration completeness
     is_complete, missing_fields = check_config_completeness(config or {})
     if not is_complete:
-        report_lines.append(f"⚠️  Missing configuration: {', '.join(missing_fields)}")
+        report_lines.append(f"⚠️  설정 누락: {', '.join(missing_fields)}")
     else:
-        report_lines.append("✅ Configuration complete")
+        report_lines.append("✅ 설정 완성됨")
 
     # Check 3: Configuration age
     config_age = get_config_age()
     if config_age is not None:
         if config_age > 30:
-            report_lines.append(f"⏰ Configuration outdated: {config_age} days old (update recommended)")
+            report_lines.append(f"⏰ 설정 오래됨: {config_age}일 전 (업데이트 권장)")
         elif config_age > 7:
-            report_lines.append(f"⏰ Configuration updated: {config_age} days ago")
+            report_lines.append(f"⏰ 설정 업데이트: {config_age}일 전")
         else:
-            report_lines.append(f"✅ Recent configuration: {config_age} days ago")
+            report_lines.append(f"✅ 최근 설정: {config_age}일 전")
 
     # Check 4: Version match
     is_matched, config_version, installed_version = check_moai_version_match()
     if installed_version and config_version:
         if is_matched:
-            report_lines.append(f"✅ Version match: {installed_version}")
+            report_lines.append(f"✅ 버전 일치: {installed_version}")
         else:
             report_lines.append(
-                f"⚠️  Version mismatch: config {config_version} vs installed {installed_version} "
-                f" - consider running /alfred:0-project"
+                f"⚠️  버전 불일치: 설정 {config_version} vs 설치됨 {installed_version} "
+                f"- /alfred:0-project 실행 권장"
             )
 
     return "\n".join(report_lines)

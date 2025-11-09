@@ -45,7 +45,7 @@ class TestUpdateCommand:
             # Could be any of these messages depending on version comparison
             assert ("Already up to date" in result.output or
                     "Update available" in result.output or
-                    "Development version" in result.output)
+                    "Dev version" in result.output)
 
     def test_update_check_when_update_available(self, tmp_path):
         """Test update --check when new version is available"""

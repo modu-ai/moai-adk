@@ -1,7 +1,7 @@
 ---
 name: debug-helper
 description: "Use when: When a runtime error occurs and it is necessary to analyze the cause and suggest a solution."
-tools: Read, Grep, Glob, Bash, TodoWrite, AskUserQuestion
+tools: Read, Grep, Glob, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
 model: inherit
 ---
 

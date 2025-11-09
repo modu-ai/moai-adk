@@ -1,0 +1,130 @@
+# @CODE:LANG-GO-001 | SPEC: SPEC-LANGUAGE-DETECTION-001.md | TEST: tests/test_workflows.py
+# Go Project TAG Validation Workflow
+# Automatically validates TAGs with go test, golangci-lint, and coverage
+
+name: TAG Validation (Go)
+
+on:
+  push:
+    branches: [main, develop, feature/**]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate TAGs - Go ${{ matrix.go-version }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        go-version: ['1.22', '1.23']
+      fail-fast: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache: true
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-${{ runner.os }}-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            go-${{ runner.os }}-${{ matrix.go-version }}-
+            go-${{ runner.os }}-
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Verify dependencies
+        run: go mod verify
+
+      - name: Run go fmt
+        run: |
+          FMT_OUTPUT=$(gofmt -l .)
+          if [ -n "$FMT_OUTPUT" ]; then
+            echo "Files need formatting:"
+            echo "$FMT_OUTPUT"
+            exit 1
+          fi
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --timeout=5m
+
+      - name: Run tests with coverage
+        run: |
+          go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+          go tool cover -func=coverage.out
+
+      - name: Check coverage threshold
+        run: |
+          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+          echo "Total coverage: ${COVERAGE}%"
+          if (( $(echo "$COVERAGE < 75" | bc -l) )); then
+            echo "❌ Coverage ${COVERAGE}% is below 75% threshold"
+            exit 1
+          fi
+          echo "✅ Coverage ${COVERAGE}% meets 75% threshold"
+
+      - name: Upload coverage reports
+        if: matrix.go-version == '1.23'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-go
+          path: coverage.out
+
+      - name: Comment PR with coverage
+        if: github.event_name == 'pull_request' && matrix.go-version == '1.23'
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage.out
+          flags: go
+          fail_ci_if_error: false
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Build project
+        run: go build -v ./...
+
+  quality-gate:
+    name: Quality Gate Summary
+    needs: validate
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Check validation results
+        run: |
+          if [ "${{ needs.validate.result }}" != "success" ]; then
+            echo "❌ TAG validation failed"
+            exit 1
+          fi
+          echo "✅ TAG validation passed"
+
+      - name: Quality metrics summary
+        run: |
+          echo "## Quality Metrics Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Go tests passed" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Code coverage ≥ 75%" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Linting passed (golangci-lint)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Formatting checked (gofmt)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Build successful" >> $GITHUB_STEP_SUMMARY

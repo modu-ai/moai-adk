@@ -6,28 +6,20 @@ document.addEventListener('DOMContentLoaded', function() {
     const path = window.location.pathname;
     let currentLang = 'ko'; // default
     if (path.startsWith('/en/')) currentLang = 'en';
-    else if (path.startsWith('/ja/')) currentLang = 'ja';
-    else if (path.startsWith('/zh/')) currentLang = 'zh';
 
     const languageNames = {
       'ko': '한국어',
-      'en': 'English',
-      'ja': '日本語',
-      'zh': '中文'
+      'en': 'English'
     };
 
     const languageIcons = {
       'ko': '🇰🇷', // Korean flag
-      'en': '🌐',  // Globe
-      'ja': '⛩️',  // Torii gate
-      'zh': '🏯'   // Pagoda
+      'en': '🇺🇸'  // US flag
     };
 
     const languages = [
       { name: '한국어', icon: '🇰🇷', link: '/', lang: 'ko' },
-      { name: 'English', icon: '🌐', link: '/en/', lang: 'en' },
-      { name: '日本語', icon: '⛩️', link: '/ja/', lang: 'ja' },
-      { name: '中文', icon: '🏯', link: '/zh/', lang: 'zh' }
+      { name: 'English', icon: '🇺🇸', link: '/en/', lang: 'en' }
     ];
 
     const selector = document.createElement('div');

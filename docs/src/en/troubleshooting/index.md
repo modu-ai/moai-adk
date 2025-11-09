@@ -12,13 +12,14 @@ Comprehensive solutions for issues encountered while using MoAI-ADK.
 - [Diagnostic Checklists](#diagnostic-checklists)
 - [FAQ](#frequently-asked-questions)
 
-______________________________________________________________________
+---
 
 ## Common Error Messages
 
 ### 1. ModuleNotFoundError: No module named 'moai_adk'
 
 **Error Message**:
+
 ```
 ModuleNotFoundError: No module named 'moai_adk'
 ```
@@ -26,6 +27,7 @@ ModuleNotFoundError: No module named 'moai_adk'
 **Meaning**: Python cannot find the MoAI-ADK package
 
 **Root Causes**:
+
 1. Package not installed in current environment
 2. Wrong Python environment activated
 3. Installation failed silently
@@ -50,21 +52,24 @@ python3 -c "import moai_adk; print(moai_adk.__version__)"
 ```
 
 **Verification**:
+
 ```bash
 moai-adk --version
 # Expected output: moai-adk version 0.21.2
 ```
 
 **Prevention**:
+
 - Always activate virtual environment before work
 - Add activation to shell profile (.bashrc/.zshrc)
 - Use `uv` for consistent dependency management
 
-______________________________________________________________________
+---
 
-### 2. Command not found: /alfred:*
+### 2. Command not found: /alfred:\*
 
 **Error Message**:
+
 ```
 Unknown command: /alfred:1-plan
 ```
@@ -72,6 +77,7 @@ Unknown command: /alfred:1-plan
 **Meaning**: Claude Code doesn't recognize Alfred commands
 
 **Root Causes**:
+
 1. .claude/commands/ directory not loaded
 2. Claude Code session not refreshed
 3. CLAUDE.md not loaded properly
@@ -97,6 +103,7 @@ moai-adk init --force
 ```
 
 **Verification**:
+
 ```bash
 # Test command recognition
 /alfred:0-project
@@ -104,15 +111,17 @@ moai-adk init --force
 ```
 
 **Prevention**:
+
 - Keep .claude/ directory in version control
 - Never modify command files directly
 - Always work from project root
 
-______________________________________________________________________
+---
 
 ### 3. uv: command not found
 
 **Error Message**:
+
 ```
 bash: uv: command not found
 ```
@@ -120,6 +129,7 @@ bash: uv: command not found
 **Meaning**: UV package manager not installed or not in PATH
 
 **Root Causes**:
+
 1. UV not installed
 2. Installation path not in PATH
 3. Shell config not reloaded
@@ -142,6 +152,7 @@ uv --version
 ```
 
 **Verification**:
+
 ```bash
 which uv
 # Expected: /home/user/.cargo/bin/uv (or similar)
@@ -151,14 +162,16 @@ uv pip list
 ```
 
 **Prevention**:
+
 - Add UV path to shell profile
 - Verify installation after system updates
 
-______________________________________________________________________
+---
 
 ### 4. Python version mismatch
 
 **Error Message**:
+
 ```
 Python 3.9.x is installed, but 3.13+ required
 ```
@@ -166,6 +179,7 @@ Python 3.9.x is installed, but 3.13+ required
 **Meaning**: Incompatible Python version
 
 **Root Causes**:
+
 1. Old Python version installed
 2. Multiple Python versions on system
 3. Virtual environment using wrong version
@@ -197,14 +211,16 @@ python --version
 ```
 
 **Prevention**:
+
 - Always use latest Python version
 - Specify Python version in pyproject.toml
 
-______________________________________________________________________
+---
 
 ### 5. Permission denied: .moai/
 
 **Error Message**:
+
 ```
 PermissionError: [Errno 13] Permission denied: '.moai/config.json'
 ```
@@ -212,6 +228,7 @@ PermissionError: [Errno 13] Permission denied: '.moai/config.json'
 **Meaning**: Insufficient permissions to access .moai/ directory
 
 **Root Causes**:
+
 1. File ownership issues
 2. Directory permissions too restrictive
 3. Read-only file system
@@ -235,14 +252,16 @@ ls -la .moai/
 ```
 
 **Prevention**:
+
 - Don't use sudo when running moai-adk commands
 - Check file permissions before committing
 
-______________________________________________________________________
+---
 
 ### 6. YAML parsing error in config.json
 
 **Error Message**:
+
 ```
 json.decoder.JSONDecodeError: Expecting ',' delimiter: line 15 column 5
 ```
@@ -250,6 +269,7 @@ json.decoder.JSONDecodeError: Expecting ',' delimiter: line 15 column 5
 **Meaning**: Invalid JSON syntax in config.json
 
 **Root Causes**:
+
 1. Missing comma or bracket
 2. Trailing comma (invalid in JSON)
 3. Incorrect quotes (single vs double)
@@ -295,21 +315,24 @@ cat .moai/config.json | jq .
 ```
 
 **Verification**:
+
 ```bash
 jq . .moai/config.json
 # Should output formatted JSON without errors
 ```
 
 **Prevention**:
+
 - Always validate JSON after editing
 - Use JSON-aware editor (VS Code, etc.)
 - Keep backup before editing
 
-______________________________________________________________________
+---
 
 ### 7. SPEC document creation failure
 
 **Error Message**:
+
 ```
 Error: Failed to create SPEC document at .moai/specs/SPEC-001.md
 ```
@@ -317,6 +340,7 @@ Error: Failed to create SPEC document at .moai/specs/SPEC-001.md
 **Meaning**: SPEC file creation failed
 
 **Root Causes**:
+
 1. .moai/specs/ directory doesn't exist
 2. File already exists
 3. Invalid SPEC ID format
@@ -342,14 +366,16 @@ df -h .
 ```
 
 **Prevention**:
+
 - Don't manually edit SPEC files during creation
 - Always use /alfred:1-plan for SPEC creation
 
-______________________________________________________________________
+---
 
 ### 8. Test execution failures
 
 **Error Message**:
+
 ```
 pytest: error: no tests found
 ```
@@ -357,9 +383,10 @@ pytest: error: no tests found
 **Meaning**: pytest cannot find test files
 
 **Root Causes**:
+
 1. Test files not in tests/ directory
 2. Test files don't follow naming convention
-3. Test functions don't start with test_
+3. Test functions don't start with test\_
 4. pytest configuration issue
 
 **Solutions**:
@@ -381,14 +408,16 @@ pytest --collect-only
 ```
 
 **Prevention**:
-- Follow pytest naming conventions
-- Use test_ prefix for all test files and functions
 
-______________________________________________________________________
+- Follow pytest naming conventions
+- Use test\_ prefix for all test files and functions
+
+---
 
 ### 9. Code formatting errors (black/ruff)
 
 **Error Message**:
+
 ```
 error: cannot format file.py: Cannot parse: 1:15
 ```
@@ -396,6 +425,7 @@ error: cannot format file.py: Cannot parse: 1:15
 **Meaning**: Code has syntax errors preventing formatting
 
 **Root Causes**:
+
 1. Python syntax error
 2. Unclosed brackets/quotes
 3. Invalid indentation
@@ -421,14 +451,16 @@ black src/  # Apply formatting
 ```
 
 **Prevention**:
+
 - Use IDE with syntax checking (VS Code, PyCharm)
 - Run formatter before committing
 
-______________________________________________________________________
+---
 
 ### 10. Git merge conflicts
 
 **Error Message**:
+
 ```
 CONFLICT (content): Merge conflict in src/main.py
 ```
@@ -436,6 +468,7 @@ CONFLICT (content): Merge conflict in src/main.py
 **Meaning**: Changes conflict between branches
 
 **Root Causes**:
+
 1. Same lines modified in both branches
 2. Branch diverged from main
 3. Force push overwrote history
@@ -452,11 +485,7 @@ git diff
 # Solution 3: Resolve manually
 # Open conflicted file
 # Look for:
-<<<<<<< HEAD
-Your changes
-=======
 Their changes
->>>>>>> branch-name
 
 # Edit to keep desired changes
 
@@ -469,11 +498,12 @@ git mergetool
 ```
 
 **Prevention**:
+
 - Pull frequently from main
 - Keep PRs small and focused
 - Communicate with team before large changes
 
-______________________________________________________________________
+---
 
 ## Installation and Setup Issues
 
@@ -537,7 +567,7 @@ moai-adk doctor
 moai-adk init
 ```
 
-______________________________________________________________________
+---
 
 ## Alfred Command Issues
 
@@ -546,11 +576,13 @@ ______________________________________________________________________
 #### /alfred:0-project not working
 
 **Symptoms**:
+
 - Command not recognized
 - No response from Alfred
 - Initialization incomplete
 
 **Diagnosis**:
+
 ```bash
 # Check if command file exists
 ls .claude/commands/0-project.md
@@ -563,6 +595,7 @@ cat CLAUDE.md | head -20
 ```
 
 **Fix**:
+
 ```bash
 # Reinitialize project
 moai-adk init --force
@@ -574,11 +607,13 @@ tree .claude/
 #### /alfred:1-plan fails to create SPEC
 
 **Symptoms**:
+
 - SPEC file not created
 - Invalid SPEC format
 - Missing sections
 
 **Diagnosis**:
+
 ```bash
 # Check .moai/specs/ directory
 ls -la .moai/specs/
@@ -588,6 +623,7 @@ cat .moai/config.json | jq .
 ```
 
 **Fix**:
+
 ```bash
 # Create specs directory if missing
 mkdir -p .moai/specs/
@@ -602,11 +638,13 @@ cat .moai/specs/SPEC-001.md
 #### /alfred:2-run doesn't execute TDD
 
 **Symptoms**:
+
 - Tests not created
 - Implementation without tests
 - RED phase skipped
 
 **Diagnosis**:
+
 ```bash
 # Check SPEC exists
 ls .moai/specs/SPEC-*.md
@@ -619,6 +657,7 @@ cat pyproject.toml | grep -A 10 pytest
 ```
 
 **Fix**:
+
 ```bash
 # Ensure SPEC exists
 cat .moai/specs/SPEC-001.md
@@ -633,7 +672,7 @@ mkdir -p tests/
 # (should show RED → GREEN → REFACTOR)
 ```
 
-______________________________________________________________________
+---
 
 ## Development and Testing Issues
 
@@ -642,6 +681,7 @@ ______________________________________________________________________
 **Problem**: Coverage < 85% (MoAI-ADK target)
 
 **Diagnosis**:
+
 ```bash
 # Generate coverage report
 pytest --cov=src --cov-report=html tests/
@@ -654,6 +694,7 @@ pytest --cov=src --cov-report=term-missing tests/
 ```
 
 **Solution**:
+
 ```bash
 # Identify missing test cases
 # Coverage report shows:
@@ -680,6 +721,7 @@ pytest --cov=src tests/
 **Problem**: Tests pass/fail inconsistently
 
 **Common Causes**:
+
 1. Time-dependent logic
 2. Random data
 3. External dependencies
@@ -723,7 +765,7 @@ def test_api(mocker):
     mock_response = mocker.Mock()
     mock_response.status_code = 200
     mocker.patch('requests.get', return_value=mock_response)
-    
+
     response = requests.get("https://api.example.com")
     assert response.status_code == 200
 ```
@@ -733,6 +775,7 @@ def test_api(mocker):
 **Problem**: Package version conflicts
 
 **Diagnosis**:
+
 ```bash
 # Check dependency tree
 uv pip tree
@@ -745,6 +788,7 @@ uv pip list --outdated
 ```
 
 **Solution**:
+
 ```bash
 # Update specific package
 uv pip install --upgrade package-name
@@ -762,7 +806,7 @@ package-b = ">=2.0,<3.0"
 uv pip install -e ".[dev]"
 ```
 
-______________________________________________________________________
+---
 
 ## Git and Deployment Issues
 
@@ -771,6 +815,7 @@ ______________________________________________________________________
 **Problem**: PR targeting wrong branch
 
 **Diagnosis**:
+
 ```bash
 # Check current branch
 git branch
@@ -783,6 +828,7 @@ gh pr view 123 --json baseRefName
 ```
 
 **Solution**:
+
 ```bash
 # Fix PR target (GitFlow)
 # PRs should target 'develop', not 'main'
@@ -801,6 +847,7 @@ gh pr view 123
 **Common Failures**:
 
 1. **Test failures**:
+
 ```bash
 # Run tests locally first
 pytest tests/
@@ -813,6 +860,7 @@ pytest --cov=src tests/
 ```
 
 2. **Linting errors**:
+
 ```bash
 # Run linters locally
 black src/ tests/
@@ -823,6 +871,7 @@ ruff check src/ tests/
 ```
 
 3. **Type checking errors**:
+
 ```bash
 # Run mypy
 mypy src/
@@ -832,6 +881,7 @@ mypy src/
 ```
 
 4. **Build errors**:
+
 ```bash
 # Test build locally
 python -m build
@@ -841,6 +891,7 @@ twine check dist/*
 ```
 
 **Prevention**:
+
 ```bash
 # Pre-commit hook
 # .git/hooks/pre-commit
@@ -852,7 +903,7 @@ ruff check src/ tests/ || exit 1
 mypy src/ || exit 1
 ```
 
-______________________________________________________________________
+---
 
 ## Diagnostic Checklists
 
@@ -1010,7 +1061,7 @@ Deployment
   [ ] Rollback plan ready
 ```
 
-______________________________________________________________________
+---
 
 ## Frequently Asked Questions
 
@@ -1019,6 +1070,7 @@ ______________________________________________________________________
 **Q1: How do I get started with MoAI-ADK?**
 
 A: Follow these steps:
+
 1. Install Python 3.13+
 2. Install UV: `curl -LsSf https://astral.sh/uv/install.sh | sh`
 3. Create project: `moai-adk init my-project`
@@ -1027,6 +1079,7 @@ A: Follow these steps:
 **Q2: What is SPEC-first development?**
 
 A: SPEC-first means:
+
 - Write specifications before code
 - Use EARS syntax for clarity
 - Link requirements to tests/code via @TAG
@@ -1035,6 +1088,7 @@ A: SPEC-first means:
 **Q3: What does Alfred do?**
 
 A: Alfred is a SuperAgent that:
+
 - Orchestrates 19 AI experts
 - Automates SPEC → TDD → Sync workflow
 - Enforces quality (TRUST 5 principles)
@@ -1045,6 +1099,7 @@ A: Alfred is a SuperAgent that:
 **Q4: What is RED-GREEN-REFACTOR?**
 
 A: Three-phase TDD cycle:
+
 - **RED**: Write failing test first
 - **GREEN**: Minimal code to pass test
 - **REFACTOR**: Improve code quality
@@ -1054,6 +1109,7 @@ See [TDD Guide](../guides/tdd/index.md)
 **Q5: How much test coverage should I have?**
 
 A: MoAI-ADK recommends **85% or higher**. Check with:
+
 ```bash
 pytest --cov=src --cov-report=term-missing tests/
 ```
@@ -1061,6 +1117,7 @@ pytest --cov=src --cov-report=term-missing tests/
 **Q6: Can I skip writing tests?**
 
 A: No. MoAI-ADK enforces TDD:
+
 - Alfred blocks implementation without tests
 - Quality gate requires 85%+ coverage
 - Tests are linked via @TAG system
@@ -1070,6 +1127,7 @@ A: No. MoAI-ADK enforces TDD:
 **Q7: What is the @TAG system?**
 
 A: Traceability system that links:
+
 - SPEC (requirements) → @TEST (validation)
 - @TEST → @CODE (implementation)
 - @CODE → @DOC (documentation)
@@ -1079,11 +1137,12 @@ See [TAG Guide](../guides/specs/tags.md)
 **Q8: How do I add TAGs to my code?**
 
 A:
+
 ```python
 # @CODE:SPEC-001:AUTH:LOGIN
 def login(username, password):
     """Login implementation
-    
+
     @CODE:SPEC-001:AUTH:LOGIN:VALIDATE
     """
     pass
@@ -1094,6 +1153,7 @@ def login(username, password):
 **Q9: Should I create PRs to main or develop?**
 
 A: Always target **develop** (GitFlow):
+
 ```bash
 # Correct
 gh pr create --base develop
@@ -1105,6 +1165,7 @@ gh pr create --base main
 **Q10: How do I resolve merge conflicts?**
 
 A:
+
 ```bash
 # 1. View conflicts
 git status
@@ -1125,6 +1186,7 @@ git push
 **Q11: Where is configuration stored?**
 
 A: `.moai/config.json`:
+
 ```json
 {
   "project": {...},
@@ -1137,10 +1199,11 @@ A: `.moai/config.json`:
 **Q12: How do I change conversation language?**
 
 A:
+
 ```json
 {
   "language": {
-    "conversation_language": "en"  // or "ko", "ja", "zh"
+    "conversation_language": "en" // or "ko", "ja", "zh"
   }
 }
 ```
@@ -1150,12 +1213,14 @@ A:
 **Q13: Tests pass locally but fail in CI**
 
 A: Common causes:
+
 1. Python version mismatch (check CI uses 3.13+)
 2. Platform differences (Windows vs Linux)
 3. Missing environment variables
 4. Time zone differences
 
 Fix:
+
 ```bash
 # Match CI environment locally
 python3.13 -m venv .venv
@@ -1167,6 +1232,7 @@ pytest tests/
 **Q14: How do I debug Alfred commands?**
 
 A:
+
 ```bash
 # Enable verbose mode
 export MOAI_ADK_DEBUG=1
@@ -1181,6 +1247,7 @@ cat .moai/session.log
 **Q15: Package installation fails**
 
 A: Try these steps:
+
 ```bash
 # 1. Clear cache
 uv cache clean
@@ -1195,7 +1262,7 @@ source .venv/bin/activate
 uv pip install -e ".[dev]"
 ```
 
-______________________________________________________________________
+---
 
 ## Performance Troubleshooting
 
@@ -1204,6 +1271,7 @@ ______________________________________________________________________
 **Problem**: Tests take too long
 
 **Diagnosis**:
+
 ```bash
 # Profile tests
 pytest --durations=10 tests/
@@ -1213,7 +1281,9 @@ pytest --durations=0 tests/ | grep -E "s (call|setup|teardown)"
 ```
 
 **Solutions**:
+
 1. Use pytest markers for slow tests:
+
 ```python
 @pytest.mark.slow
 def test_long_running():
@@ -1224,11 +1294,13 @@ pytest -m "not slow"
 ```
 
 2. Parallelize tests:
+
 ```bash
 pytest -n auto tests/
 ```
 
 3. Use fixtures efficiently:
+
 ```python
 @pytest.fixture(scope="module")  # Not "function"
 def expensive_fixture():
@@ -1241,13 +1313,16 @@ def expensive_fixture():
 **Problem**: Tests consume too much memory
 
 **Diagnosis**:
+
 ```bash
 # Monitor memory
 pytest --memray tests/
 ```
 
 **Solutions**:
+
 1. Clean up after tests:
+
 ```python
 def test_large_data():
     data = create_large_dataset()
@@ -1256,6 +1331,7 @@ def test_large_data():
 ```
 
 2. Use generators:
+
 ```python
 # Instead of loading all at once
 def load_data():
@@ -1263,7 +1339,7 @@ def load_data():
         yield item
 ```
 
-______________________________________________________________________
+---
 
 ## Additional Resources
 
@@ -1292,9 +1368,10 @@ moai-adk debug-info
 /alfred:9-feedback
 ```
 
-______________________________________________________________________
+---
 
 **Still stuck?** [Open a GitHub Discussion](https://github.com/modu-ai/moai-adk/discussions) and include:
+
 - Error message (full traceback)
 - Steps to reproduce
 - Environment info (`moai-adk doctor` output)

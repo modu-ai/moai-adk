@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
 # @CODE:HOOK-SESSION-END-TEMPLATE-001 | SPEC: SESSION-END-HOOK-001
 
-"""SessionEnd Hook: Session cleanup and state persistence on session end
+"""SessionEnd Hook: 세션 종료 시 정리 및 상태 저장
 
-Performs the following tasks on session end:
-- Cleanup temporary files and cache
-- Save session metrics (for productivity analysis)
-- Save work state snapshot (ensure work continuity)
-- Warn about uncommitted changes
-- Generate session summary
+세션 종료 시 다음 작업을 수행합니다:
+- 임시 파일 및 캐시 정리
+- 세션 메트릭 저장 (생산성 분석용)
+- 작업 상태 스냅샷 저장 (작업 연속성 보장)
+- 미커밋 변경사항 경고
+- 세션 요약 생성
 
-Features:
-- Cleanup old temporary files
-- Cleanup cache files
-- Collect and save session metrics
-- Work state snapshot (current SPEC, TodoWrite items, etc)
-- Detect uncommitted Git changes
-- Generate session summary message
+기능:
+- 오래된 임시 파일 정리
+- 캐시 파일 정리
+- 세션 메트릭 수집 및 저장
+- 작업 상태 스냅샷 (현재 SPEC, TodoWrite 항목 등)
+- Git 미커밋 변경사항 감지
+- 세션 요약 메시지 생성
 """
 
 import json
@@ -28,7 +28,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional
 
-# Add module path
+# 모듈 경로 추가
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
 try:
@@ -87,7 +87,7 @@ def get_graceful_degradation() -> bool:
 
 
 def load_config() -> Dict:
-    """Load configuration file"""
+    """설정 파일 로드"""
     try:
         config_file = Path(".moai/config.json")
         if config_file.exists():
@@ -100,13 +100,13 @@ def load_config() -> Dict:
 
 
 def cleanup_old_files(config: Dict) -> Dict[str, int]:
-    """Cleanup old files
+    """오래된 파일 정리
 
     Args:
-        config: Configuration dictionary
+        config: 설정 딕셔너리
 
     Returns:
-        Cleanup statistics with file counts
+        정리된 파일 수 통계
     """
     stats = {
         "temp_cleaned": 0,
@@ -122,7 +122,7 @@ def cleanup_old_files(config: Dict) -> Dict[str, int]:
         cleanup_days = cleanup_config.get("cleanup_days", 7)
         cutoff_date = datetime.now() - timedelta(days=cleanup_days)
 
-        # Cleanup temporary files
+        # 임시 파일 정리
         temp_dir = Path(".moai/temp")
         if temp_dir.exists():
             stats["temp_cleaned"] = cleanup_directory(
@@ -132,7 +132,7 @@ def cleanup_old_files(config: Dict) -> Dict[str, int]:
                 patterns=["*"]
             )
 
-        # Cleanup cache files
+        # 캐시 파일 정리
         cache_dir = Path(".moai/cache")
         if cache_dir.exists():
             stats["cache_cleaned"] = cleanup_directory(
@@ -159,16 +159,16 @@ def cleanup_directory(
     max_files: Optional[int],
     patterns: List[str]
 ) -> int:
-    """Cleanup directory files
+    """디렉토리 파일 정리
 
     Args:
-        directory: Target directory
-        cutoff_date: Cutoff date for deletion
-        max_files: Maximum number of files to keep
-        patterns: List of file patterns to delete
+        directory: 대상 디렉토리
+        cutoff_date: 자를 기준 날짜
+        max_files: 최대 유지 파일 수
+        patterns: 삭제할 파일 패턴 목록
 
     Returns:
-        Number of deleted files
+        삭제된 파일 수
     """
     if not directory.exists():
         return 0
@@ -176,21 +176,21 @@ def cleanup_directory(
     cleaned_count = 0
 
     try:
-        # Collect files matching patterns
+        # 패턴에 해당하는 파일 목록 수집
         files_to_check = []
         for pattern in patterns:
             files_to_check.extend(directory.glob(pattern))
 
-        # Sort by date (oldest first)
+        # 날짜순 정렬 (오래된 것부터)
         files_to_check.sort(key=lambda f: f.stat().st_mtime)
 
-        # Delete files
+        # 파일 삭제
         for file_path in files_to_check:
             try:
-                # Check file modification time
+                # 파일 수정 시간 확인
                 file_mtime = datetime.fromtimestamp(file_path.stat().st_mtime)
 
-                # Delete if before cutoff date
+                # 기준 날짜 이전이면 삭제
                 if file_mtime < cutoff_date:
                     if file_path.is_file():
                         file_path.unlink()
@@ -210,20 +210,20 @@ def cleanup_directory(
 
 
 def save_session_metrics(payload: Dict) -> bool:
-    """Save session metrics (P0-1)
+    """세션 메트릭 저장 (P0-1)
 
     Args:
         payload: Hook payload
 
     Returns:
-        Success status
+        성공 여부
     """
     try:
-        # Create logs directory
+        # 로그 디렉토리 생성
         logs_dir = Path(".moai/logs/sessions")
         logs_dir.mkdir(parents=True, exist_ok=True)
 
-        # Collect session information
+        # 세션 정보 수집
         session_metrics = {
             "session_id": datetime.now().strftime("%Y-%m-%d-%H%M%S"),
             "end_time": datetime.now().isoformat(),
@@ -233,7 +233,7 @@ def save_session_metrics(payload: Dict) -> bool:
             "specs_worked_on": extract_specs_from_memory(),
         }
 
-        # Save session metrics
+        # 세션 메트릭 저장
         session_file = logs_dir / f"session-{session_metrics['session_id']}.json"
         with open(session_file, 'w', encoding='utf-8') as f:
             json.dump(session_metrics, f, indent=2, ensure_ascii=False)
@@ -247,20 +247,20 @@ def save_session_metrics(payload: Dict) -> bool:
 
 
 def save_work_state(payload: Dict) -> bool:
-    """Save work state snapshot (P0-2)
+    """작업 상태 스냅샷 저장 (P0-2)
 
     Args:
         payload: Hook payload
 
     Returns:
-        Success status
+        성공 여부
     """
     try:
-        # Create memory directory
+        # 메모리 디렉토리 생성
         memory_dir = Path(".moai/memory")
         memory_dir.mkdir(parents=True, exist_ok=True)
 
-        # Collect work state
+        # 작업 상태 수집
         work_state = {
             "last_updated": datetime.now().isoformat(),
             "current_branch": get_current_branch(),
@@ -269,7 +269,7 @@ def save_work_state(payload: Dict) -> bool:
             "specs_in_progress": extract_specs_from_memory(),
         }
 
-        # Save state
+        # 상태 저장
         state_file = memory_dir / "last-session-state.json"
         with open(state_file, 'w', encoding='utf-8') as f:
             json.dump(work_state, f, indent=2, ensure_ascii=False)
@@ -283,20 +283,20 @@ def save_work_state(payload: Dict) -> bool:
 
 
 def check_uncommitted_changes(config: Dict) -> Optional[str]:
-    """Warn about uncommitted changes (P0-3)
+    """미커밋 변경사항 경고 (P0-3)
 
     Args:
-        config: Configuration dictionary
+        config: 설정 딕셔너리
 
     Returns:
-        Warning message or None
+        경고 메시지 또는 None
     """
     try:
         warnings_config = config.get("session_end", {}).get("warnings", {})
         if not warnings_config.get("uncommitted_changes", True):
             return None
 
-        # Execute git command
+        # Git 명령어 실행
         try:
             result = subprocess.run(
                 ["git", "status", "--porcelain"],
@@ -321,7 +321,7 @@ def check_uncommitted_changes(config: Dict) -> Optional[str]:
 
 
 def get_current_branch() -> Optional[str]:
-    """Get current Git branch name"""
+    """현재 Git 브랜치명 조회"""
     try:
         result = subprocess.run(
             ["git", "rev-parse", "--abbrev-ref", "HEAD"],
@@ -340,7 +340,7 @@ def get_current_branch() -> Optional[str]:
 
 
 def count_modified_files() -> int:
-    """Count modified files"""
+    """수정된 파일 수 카운트"""
     try:
         result = subprocess.run(
             ["git", "status", "--porcelain"],
@@ -359,14 +359,14 @@ def count_modified_files() -> int:
 
 
 def count_uncommitted_files() -> int:
-    """Count uncommitted files"""
+    """미커밋 파일 수 카운트"""
     return count_modified_files()
 
 
 def count_recent_commits() -> int:
-    """Count recent commits (this session)"""
+    """최근 커밋 수 카운트 (이 세션 동안)"""
     try:
-        # Get commits from last 1 hour
+        # 1시간 이내 커밋 수 조회
         result = subprocess.run(
             ["git", "rev-list", "--since=1 hour", "HEAD"],
             capture_output=True,
@@ -385,19 +385,19 @@ def count_recent_commits() -> int:
 
 
 def extract_specs_from_memory() -> List[str]:
-    """Extract SPEC information from memory"""
+    """메모리에서 SPEC 정보 추출"""
     specs = []
 
     try:
-        # Get recent SPEC from command_execution_state.json
+        # command_execution_state.json에서 최근 SPEC 조회
         state_file = Path(".moai/memory/command-execution-state.json")
         if state_file.exists():
             with open(state_file, 'r', encoding='utf-8') as f:
                 state_data = json.load(f)
 
-            # Extract recent SPEC IDs
+            # 최근 SPEC ID 추출
             if "last_specs" in state_data:
-                specs = state_data["last_specs"][:3]  # Last 3
+                specs = state_data["last_specs"][:3]  # 최근 3개
 
     except Exception as e:
         logger.warning(f"Failed to extract specs from memory: {e}")
@@ -406,29 +406,29 @@ def extract_specs_from_memory() -> List[str]:
 
 
 def generate_session_summary(cleanup_stats: Dict, work_state: Dict) -> str:
-    """Generate session summary (P1-3)
+    """세션 요약 생성 (P1-3)
 
     Args:
-        cleanup_stats: Cleanup statistics
-        work_state: Work state
+        cleanup_stats: 정리 통계
+        work_state: 작업 상태
 
     Returns:
-        Summary message
+        요약 메시지
     """
     summary_lines = ["✅ Session Ended"]
 
     try:
-        # Work information
+        # 작업 정보
         specs = work_state.get("specs_in_progress", [])
         if specs:
             summary_lines.append(f"   • Worked on: {', '.join(specs)}")
 
-        # File change information
+        # 파일 변경 정보
         files_modified = work_state.get("uncommitted_files", 0)
         if files_modified > 0:
             summary_lines.append(f"   • Files modified: {files_modified}")
 
-        # Cleanup information
+        # 정리 정보
         total_cleaned = cleanup_stats.get("total_cleaned", 0)
         if total_cleaned > 0:
             summary_lines.append(f"   • Cleaned: {total_cleaned} temp files")
@@ -440,15 +440,15 @@ def generate_session_summary(cleanup_stats: Dict, work_state: Dict) -> str:
 
 
 def main():
-    """Main function"""
+    """메인 함수"""
     graceful_degradation = False
 
     try:
-        # Load hook timeout setting
+        # Hook timeout 설정 로드
         timeout_seconds = load_hook_timeout() / 1000
         graceful_degradation = get_graceful_degradation()
 
-        # Timeout check
+        # 타임아웃 체크
         import signal
         import time
 
@@ -461,10 +461,10 @@ def main():
         try:
             start_time = time.time()
 
-            # Load configuration
+            # 설정 로드
             config = load_config()
 
-            # Create hook payload (simple version)
+            # Hook payload 생성 (간단한 버전)
             payload = {"cwd": str(Path.cwd())}
 
             results = {
@@ -479,11 +479,11 @@ def main():
                 "timestamp": datetime.now().isoformat()
             }
 
-            # P0-1: Save session metrics
+            # P0-1: 세션 메트릭 저장
             if save_session_metrics(payload):
                 results["session_metrics_saved"] = True
 
-            # P0-2: Save work state snapshot
+            # P0-2: 작업 상태 스냅샷 저장
             work_state = {}
             if save_work_state(payload):
                 results["work_state_saved"] = True
@@ -492,31 +492,31 @@ def main():
                     "specs_in_progress": extract_specs_from_memory()
                 }
 
-            # P0-3: Warn uncommitted changes
+            # P0-3: 미커밋 변경사항 경고
             uncommitted_warning = check_uncommitted_changes(config)
             if uncommitted_warning:
                 results["uncommitted_warning"] = uncommitted_warning
 
-            # P1-1: Cleanup temporary files
+            # P1-1: 임시 파일 정리
             cleanup_stats = cleanup_old_files(config)
             results["cleanup_stats"] = cleanup_stats
 
-            # P1-3: Generate session summary
+            # P1-3: 세션 요약 생성
             session_summary = generate_session_summary(cleanup_stats, work_state)
             results["session_summary"] = session_summary
 
-            # Record execution time
+            # 실행 시간 기록
             execution_time = time.time() - start_time
             results["execution_time_seconds"] = round(execution_time, 2)
 
-            # Print results
+            # 결과 출력
             print(json.dumps(results, ensure_ascii=False, indent=2))
 
         finally:
-            signal.alarm(0)  # Disable timeout
+            signal.alarm(0)  # 타임아웃 해제
 
     except TimeoutError as e:
-        # Timeout handling
+        # 타임아웃 처리
         result = {
             "hook": "session_end__auto_cleanup",
             "success": False,
@@ -531,7 +531,7 @@ def main():
         print(json.dumps(result, ensure_ascii=False, indent=2))
 
     except Exception as e:
-        # Exception handling
+        # 예외 처리
         result = {
             "hook": "session_end__auto_cleanup",
             "success": False,

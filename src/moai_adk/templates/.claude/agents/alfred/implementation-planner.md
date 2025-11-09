@@ -1,7 +1,7 @@
 ---
 name: implementation-planner
 description: "Use when: When SPEC analysis and implementation strategy need to be established. Called from /alfred:2-run Phase 1"
-tools: Read, Grep, Glob, WebFetch, TodoWrite, AskUserQuestion
+tools: Read, Grep, Glob, WebFetch, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
 model: inherit
 ---
 

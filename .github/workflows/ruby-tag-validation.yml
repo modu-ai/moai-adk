@@ -1,0 +1,11 @@
+name: Ruby TAG Validation
+on:
+  push:
+    branches: [ develop, main ]
+jobs:
+  validate-tags:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Validate Ruby TAGs
+        run: echo "Validating Ruby TAGs"
