@@ -9,7 +9,7 @@ const withNextra = require('nextra')({
 module.exports = withNextra({
   // Internationalization (i18n) configuration
   i18n: {
-    locales: ['ko', 'en'],
+    locales: ['ko', 'en', 'ja', 'zh'],
     defaultLocale: 'ko',
   },
 
