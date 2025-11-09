@@ -63,7 +63,7 @@ class TestErrorHandling:
         detector = LanguageDetector()
         # Verify template file actually exists for Python
         template_path = detector.get_workflow_template_path("python")
-        # This should be a relative path like "workflows/python-tag-validation.yml"
+        # This should be a relative path like ".github/workflows/python-tag-validation.yml"
         assert "python-tag-validation.yml" in template_path
         # Verify the actual template file exists in the package
         full_path = Path("src/moai_adk/templates") / template_path
@@ -71,7 +71,7 @@ class TestErrorHandling:
 
     def test_invalid_workflow_syntax_detection(self, tmp_path):
         """Test: Invalid YAML syntax in workflow detected"""
-        template_path = Path("src/moai_adk/templates/workflows/python-tag-validation.yml")
+        template_path = Path("src/moai_adk/templates/.github/workflows/python-tag-validation.yml")
         content = template_path.read_text()
         # Try to parse as YAML - should succeed for valid templates
         parsed = yaml.safe_load(content)
@@ -146,6 +146,6 @@ class TestIntegrationScenarios:
             "typescript-tag-validation.yml",
             "go-tag-validation.yml"
         ]
-        templates_dir = Path("src/moai_adk/templates/workflows")
+        templates_dir = Path("src/moai_adk/templates/.github/workflows")
         for template in new_templates:
             assert (templates_dir / template).exists(), f"New template missing: {template}"
