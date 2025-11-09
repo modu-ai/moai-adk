@@ -531,40 +531,57 @@ i {
 .md-sidebar--secondary .md-nav {
   width: 100% !important;
   max-width: 100% !important;
-  padding: 0.5rem 0 !important;
+  min-width: 100% !important;
+  padding: 1.5rem 1rem !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  box-sizing: border-box !important;
+  -webkit-overflow-scrolling: touch !important;
 }
 
 .md-sidebar--secondary .md-nav__link {
-  font-size: 0.75rem !important;
-  padding: 0.25rem 0.5rem !important;
-  line-height: 1.2 !important;
+  font-size: 0.5rem !important;
+  padding: 0.2rem 0.5rem !important;
+  line-height: 1.0 !important;
   margin-bottom: 0 !important;
   word-break: break-word !important;
   display: block !important;
   width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 .md-sidebar--secondary .md-nav__title {
-  font-size: 0.7rem !important;
-  padding: 0.2rem 0.5rem !important;
-  line-height: 1.1 !important;
+  font-size: 0.55rem !important;
+  padding: 0.3rem 0.5rem !important;
+  line-height: 1.0 !important;
   margin-bottom: 0 !important;
   font-weight: 600 !important;
   width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 .md-sidebar--secondary .md-nav__item {
   line-height: 1.0 !important;
-  margin-bottom: 0.05rem !important;
+  margin-bottom: 0.03rem !important;
   padding: 0 !important;
   width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 .md-sidebar--secondary .md-nav__item .md-nav__item {
-  margin-bottom: 0 !important;
+  margin-bottom: 0.02rem !important;
   line-height: 1.0 !important;
   padding: 0 !important;
   width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 /* 모바일 반응형 테마 */

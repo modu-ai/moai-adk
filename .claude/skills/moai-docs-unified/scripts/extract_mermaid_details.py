@@ -6,7 +6,7 @@ Mermaid 다이어그램 상세 추출 및 렌더링 테스트 가이드 생성
 import re
 import sys
 from pathlib import Path
-from typing import List, Dict
+
 
 # 프로젝트 루트 자동 탐지
 def find_project_root(start_path: Path) -> Path:
@@ -113,7 +113,7 @@ class MermaidDetailExtractor:
         report.append("=" * 90)
         report.append(f"검사 파일: {file_count}개")
         report.append(f"총 다이어그램: {diagram_count}개")
-        report.append(f"유효성: 100% ✅")
+        report.append("유효성: 100% ✅")
         report.append("")
         report.append("다이어그램 타입별 분류:")
         report.append("  - Graph (Flowchart): 10개")
