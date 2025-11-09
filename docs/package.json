@@ -7,7 +7,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "type-check": "tsc --noEmit",
+    "validate": "node scripts/validate.js",
+    "analyze": "node scripts/analyze.js",
+    "ci": "npm run type-check && npm run lint && npm run build && npm run validate"
   },
   "dependencies": {
     "next": "14.2.15",
