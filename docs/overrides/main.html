@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 
+
 {% block extrahead %}
   <!-- Font Loading Strategy for Multilingual Support -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -995,6 +996,90 @@
       letter-spacing: -0.025em;
     }
 
+    /* 좌측 TOC 여백 0으로 설정 */
+    .md-sidebar--primary .md-nav--toc {
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--md-border-color);
+    }
+
+    .md-sidebar--primary .md-nav--toc .md-nav__link {
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      padding-left: 0.2rem !important;
+      padding-right: 0 !important;
+    }
+
+    .md-sidebar--primary .md-nav--toc .md-nav__item {
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+    }
+
+    .md-sidebar--primary .md-nav--toc .md-nav__item .md-nav__item {
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+    }
+
+    /* 상단 메인 네비게이션 목록 숨김 */
+    .md-sidebar--primary nav.md-nav--primary > ul {
+      display: none !important;
+    }
+
+    /* 우측 사이드바 숨김 */
+    .md-sidebar--secondary {
+      display: none !important;
+    }
+
+    /* 좌측 사이드바에 추가된 TOC 스타일링 */
+    .md-sidebar--primary nav.md-nav--secondary {
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+      margin-top: 0 !important;
+      padding-top: 0 !important;
+      border-top: none !important;
+    }
+
+    .md-sidebar--primary nav.md-nav--secondary .md-nav__list {
+      display: flex !important;
+      flex-direction: column !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+    .md-sidebar--primary nav.md-nav--secondary .md-nav__link {
+      margin: 0 !important;
+      padding: 0.4rem 0.2rem !important;
+      font-size: 0.8rem !important;
+      color: var(--md-text-color--secondary) !important;
+      display: block !important;
+      writing-mode: horizontal-tb !important;
+      text-orientation: initial !important;
+    }
+
+    .md-sidebar--primary nav.md-nav--secondary .md-nav__item {
+      margin: 0 !important;
+      padding: 0 !important;
+      display: block !important;
+    }
+
+    .md-sidebar--primary nav.md-nav--secondary .md-nav__link:hover {
+      color: var(--md-text-color) !important;
+    }
+
+    .md-sidebar--primary nav.md-nav--secondary .md-nav__link--active {
+      color: var(--md-text-color) !important;
+      font-weight: 600 !important;
+    }
 
   </style>
 {% endblock %}
@@ -1003,39 +1088,47 @@
   {{ super() }}
   <script src="{{ 'stylesheets/language-selector.js' | url }}"></script>
 
-  <!-- Enhance TOC sidebar with proper styling -->
   <script>
-    (function() {
-      document.addEventListener('DOMContentLoaded', function() {
-        enhanceTocSidebar();
-      });
+    // Move TOC from right sidebar to left sidebar
+    function moveTOCToLeftSidebar() {
+      const rightSidebar = document.querySelector('.md-sidebar--secondary');
+      const leftSidebar = document.querySelector('.md-sidebar--primary');
+      const primaryNav = leftSidebar?.querySelector('nav.md-nav--primary');
 
-      function enhanceTocSidebar() {
-        const sidebar = document.querySelector('.md-sidebar--secondary');
-        if (!sidebar) return;
-
-        // 기존 TOC 유지하되, 네비게이션 깊이 표시 강화
-        const links = sidebar.querySelectorAll('.md-nav__link');
-        links.forEach(link => {
-          const parent = link.closest('.md-nav__item');
-          if (parent) {
-            const depth = getElementDepth(parent);
-            link.setAttribute('data-toc-depth', depth);
-          }
-        });
+      if (!rightSidebar || !leftSidebar || !primaryNav) {
+        return;
       }
 
-      function getElementDepth(element) {
-        let depth = 0;
-        let current = element;
-        while (current.parentElement && current.parentElement !== document.body) {
-          if (current.parentElement.classList.contains('md-nav__list')) {
-            depth++;
-          }
-          current = current.parentElement;
-        }
-        return depth;
+      // Find the TOC nav element in the right sidebar
+      const toc = rightSidebar.querySelector('nav.md-nav--secondary');
+      if (!toc) {
+        return;
       }
-    })();
+
+      // Clone the TOC element
+      const tocClone = toc.cloneNode(true);
+
+      // Create a separator element
+      const separator = document.createElement('div');
+      separator.className = 'md-toc-separator';
+      separator.style.marginTop = '1rem';
+      separator.style.paddingTop = '1rem';
+      separator.style.borderTop = '1px solid var(--md-border-color)';
+
+      // Insert the cloned TOC after the separator in the left sidebar
+      primaryNav.parentElement.appendChild(separator);
+      primaryNav.parentElement.appendChild(tocClone);
+    }
+
+    // Run when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', moveTOCToLeftSidebar);
+    } else {
+      moveTOCToLeftSidebar();
+    }
+
+    // Also run after Material's initialization (with a small delay)
+    setTimeout(moveTOCToLeftSidebar, 500);
   </script>
+
 {% endblock %}
