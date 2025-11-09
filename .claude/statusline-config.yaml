@@ -5,7 +5,6 @@
 
 statusline:
   enabled: true
-  script_path: "src/moai_adk/statusline/main.py"
 
   # Display mode: compact (80 chars) | extended (120 chars) | minimal (40 chars)
   mode: "extended"
