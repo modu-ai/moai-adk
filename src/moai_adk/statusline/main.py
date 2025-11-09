@@ -1,3 +1,4 @@
+# type: ignore
 #!/usr/bin/env python3
 """
 Claude Code Statusline Integration

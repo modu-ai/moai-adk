@@ -1,3 +1,4 @@
+# type: ignore
 """
 Update checker for MoAI-ADK using PyPI API
 

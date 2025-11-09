@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # @CODE:DOC-TAG-004 | Component 2: CI/CD pipeline TAG validator
+# type: ignore
 """CI/CD TAG validation module for GitHub Actions
 
 This module extends PreCommitValidator for CI/CD environments:

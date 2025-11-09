@@ -296,9 +296,10 @@ def main() -> None:
 
         # 인자 파싱
         if len(sys.argv) < 4:
+            usage = "python3 post_tool__tag_auto_corrector.py <tool_name> <tool_args_json> <result_json>"  # noqa: E501
             print(json.dumps({
                 "monitoring_completed": False,
-                "error": "Invalid arguments. Usage: python3 post_tool__tag_auto_corrector.py <tool_name> <tool_args_json> <result_json>"
+                "error": f"Invalid arguments. Usage: {usage}"
             }))
             sys.exit(0)
 

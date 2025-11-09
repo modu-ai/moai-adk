@@ -8,7 +8,7 @@ status: stable
 
 **TDD (Test-Driven Development)**는 MoAI-ADK의 핵심 원칙입니다. 이 가이드에서는 RED-GREEN-REFACTOR 사이클을 통해 테스트 우선 개발을 실현하는 방법을 배웁니다.
 
-## 📚 TDD란?
+## <span class="material-icons">article</span> **TDD란?**
 
 Test-Driven Development는 다음 순서로 진행됩니다:
 
@@ -18,7 +18,7 @@ Test-Driven Development는 다음 순서로 진행됩니다:
 
 이 사이클을 반복하면서 요구사항을 만족하는 안정적인 코드를 작성합니다.
 
-## 🎯 각 단계별 가이드
+## <span class="material-icons">list</span> **각 단계별 가이드**
 
 ### [RED 단계](red.md)
 - 실패하는 테스트 작성
@@ -35,7 +35,7 @@ Test-Driven Development는 다음 순서로 진행됩니다:
 - SOLID 원칙 적용
 - 가독성 향상
 
-## 🔄 Alfred와 함께하는 TDD
+## <span class="material-icons">sync</span> **Alfred와 함께하는 TDD**
 
 Alfred SuperAgent는 TDD 사이클을 자동화합니다:
 
@@ -45,7 +45,7 @@ Alfred SuperAgent는 TDD 사이클을 자동화합니다:
 
 [Alfred 워크플로우로 TDD 시작하기](../alfred/2-run.md)
 
-## 📊 TDD의 이점
+## <span class="material-icons">analytics</span> **TDD의 이점**
 
 | 항목 | 효과 |
 |------|------|
@@ -55,7 +55,7 @@ Alfred SuperAgent는 TDD 사이클을 자동화합니다:
 | **문서화** | 테스트 자체가 실행 가능한 문서 |
 | **설계 개선** | 테스트 가능한 설계의 자동 형성 |
 
-## 🚀 다음 단계
+## <span class="material-icons">navigate_next</span> **다음 단계**
 
 - [RED: 실패하는 테스트 작성](red.md)
 - [GREEN: 최소 구현으로 통과](green.md)

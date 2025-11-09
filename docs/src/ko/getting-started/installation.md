@@ -300,4 +300,4 @@ moai-adk doctor
 moai-adk init my-project && cd my-project && claude
 ```
 
-이제 Alfred SuperAgent와 함께 SPEC-First TDD 개발의 강력한 기능을 경험할 준비가 되었습니다! 🚀
+이제 Alfred SuperAgent와 함께 SPEC-First TDD 개발의 강력한 기능을 경험할 준비가 되었습니다!

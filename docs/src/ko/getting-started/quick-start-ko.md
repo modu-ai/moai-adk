@@ -1,9 +1,10 @@
-# 🚀 10분 완전 실습: Hello World API
+# 10분 완전 실습: Hello World API
 
-> **목표**: MoAI-ADK의 전체 워크플로우를 10분 안에 경험하기 **배우는 것**: SPEC 작성, TDD 구현, 문서 자동화, @TAG 시스템 **난이도**: 초급
-> (프로그래밍 기초 지식 필요)
+> **목표**: MoAI-ADK의 전체 워크플로우를 10분 안에 경험하기
+> **배우는 것**: SPEC 작성, TDD 구현, 문서 자동화, @TAG 시스템
+> **난이도**: 초급 (프로그래밍 기초 지식 필요)
 
-## 🎯 이 실습으로 얻을 수 있는 것
+## 이 실습으로 얻을 수 있는 것
 
 - ✅ **SPEC**: EARS 형식으로 요구사항을 명확히 정의
 - ✅ **TDD**: RED → GREEN → REFACTOR 사이클 경험
@@ -11,7 +12,7 @@
 - ✅ **추적성**: @TAG 시스템으로 모든 단계가 연결됨
 - ✅ **품질**: 테스트 100%, 명확한 구현, 자동 문서화
 
-## 📋 사전 준비물
+## 사전 준비물
 
 이 실습을 시작하기 전에 다음이 준비되어 있어야 합니다:
 
@@ -32,7 +33,7 @@ ls -la .moai/ .claude/
 
 ______________________________________________________________________
 
-## 🏗️ 전체 워크플로우 개요
+## 전체 워크플로우 개요
 
 MoAI-ADK의 개발은 4단계 워크플로우를 따릅니다:
 
@@ -53,7 +54,9 @@ graph TD
 
 ______________________________________________________________________
 
-## 📄 Step <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_one</span>: SPEC 작성 (2분)
+## Step 1: SPEC 작성 (2분)
+
+<span class="material-icons">description</span> **SPEC 작성 단계**
 
 ### 명령어 실행
 
@@ -167,7 +170,7 @@ tags: ["API", "HELLO", "FASTAPI"]
 ---
 ```
 
-### ✅ Step 1 완료 확인
+### Step 1 완료 확인
 
 ```bash
 # SPEC 파일이 생성되었는지 확인
@@ -181,7 +184,9 @@ grep "@SPEC:HELLO-001" .moai/specs/SPEC-HELLO-001/spec.md
 
 ______________________________________________________________________
 
-## 🧪 Step <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_two</span>: TDD 구현 (5분)
+## Step 2: TDD 구현 (5분)
+
+<span class="material-icons">science</span> **TDD 구현 단계**
 
 ### 명령어 실행
 
@@ -455,7 +460,7 @@ git commit -m "♻️ refactor(HELLO-001): enhance code quality
 @CODE:HELLO-001:API"
 ```
 
-### ✅ Step 2 완료 확인
+### Step 2 완료 확인
 
 ```bash
 # 최종 테스트 결과 확인
@@ -473,7 +478,9 @@ git log --oneline | head -4
 
 ______________________________________________________________________
 
-## <span class="material-icons">menu_book</span> Step <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_3</span>: 문서 동기화 (2분)
+## Step 3: 문서 동기화 (2분)
+
+<span class="material-icons">menu_book</span> **문서 동기화 단계**
 
 ### 명령어 실행
 
@@ -699,7 +706,7 @@ curl "http://localhost:8000/hello?name=MoAI-ADK"
 - **Security**: Input validation and XSS protection
 ````
 
-### ✅ Step 3 완료 확인
+### Step 3 완료 확인
 
 ```bash
 # 생성된 문서 확인
@@ -716,7 +723,9 @@ cat CHANGELOG.md | grep -A 10 "0.1.0"
 
 ______________________________________________________________________
 
-## 🔗 Step <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_4</span>: TAG 체인 검증 (1분)
+## Step 4: TAG 체인 검증 (1분)
+
+<span class="material-icons">link</span> **TAG 체인 검증 단계**
 
 ### TAG 체인 완전성 확인
 
@@ -736,7 +745,7 @@ docs/api/hello.md:326:- **@CODE:HELLO-001:API**: API 구현
 docs/api/hello.md:327:- **@DOC:HELLO-001**: 이 문서
 ```
 
-### ✅ TAG 체인 분석
+### TAG 체인 분석
 
 **완벽한 추적성**:
 
@@ -747,7 +756,7 @@ docs/api/hello.md:327:- **@DOC:HELLO-001**: 이 문서
 
 **의미**: 요구사항 → 테스트 → 구현 → 문서가 완벽하게 연결됨!
 
-### 🎯 최종 검증
+### 최종 검증
 
 ```bash
 # <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_one</span> 테스트 실행
@@ -776,9 +785,13 @@ git log --oneline | head -5
 
 ______________________________________________________________________
 
-## 🎉 10분 후: 완전한 시스템
+## 10분 후: 완전한 시스템
 
-### 📁 생성된 파일 구조
+<span class="material-icons">celebration</span> **완성된 시스템**
+
+### 생성된 파일 구조
+
+<span class="material-icons">folder</span> **프로젝트 구조**
 
 ```
 hello-world/
@@ -798,7 +811,9 @@ hello-world/
 └── .git/                   ← Git 히스토리 (4개 커밋)
 ```
 
-### 📊 Git 히스토리
+### Git 히스토리
+
+<span class="material-icons">history</span> **커밋 기록**
 
 ```bash
 git log --oneline | head -4
@@ -814,7 +829,9 @@ f4e5d6c ♻️ refactor(HELLO-001): enhance code quality
 5m6n7o8 🌿 Create feature/SPEC-HELLO-001 branch
 ```
 
-### 🎯 배운 것 정리
+### 배운 것 정리
+
+<span class="material-icons">school</span> **학습 요약**
 
 이 10분 실습을 통해 다음을 경험했습니다:
 
@@ -852,7 +869,9 @@ f4e5d6c ♻️ refactor(HELLO-001): enhance code quality
 - **Git 워크플로우**: feature 브랜치, 명확한 커밋
 - **CI/CD 준비**: 자동화된 테스트와 문서
 
-### 🚀 다음 단계
+### 다음 단계
+
+<span class="material-icons">rocket_launch</span> **다음으로 진행할 내용**
 
 이제 더 복잡한 기능을 만들어보세요:
 
@@ -870,7 +889,9 @@ f4e5d6c ♻️ refactor(HELLO-001): enhance code quality
 
 ______________________________________________________________________
 
-## 💡 MoAI-ADK의 진정한 힘
+## MoAI-ADK의 진정한 힘
+
+<span class="material-icons">lightbulb</span> **핵심 가치**
 
 이 10분 실습이 보여주는 것:
 

@@ -20,57 +20,45 @@
   <link href="https://fonts.googleapis.com/css2?family=Hack:wght@400;700&display=swap" rel="stylesheet">
 
   <style>
-    /* Neutral Color Palette - Direct Material Theme Override */
+    /* Unified Color Palette - Material Design Light & Dark Theme */
 
-    /* Define custom color properties for Material theme */
+    /* LIGHT THEME - Root variables */
     :root {
-      /* Primary palette colors - exact hex codes from extracted image */
-      --md-primary-fg-color: #171612;           /* Ink/Accent (Near-Black) */
-      --md-primary-fg-color--light: #373632;     /* Lighter variant */
-      --md-primary-fg-color--dark: #000000;      /* Darker variant */
-      --md-primary-bg-color: #F2F1ED;           /* Bg Warm Off-White */
-      --md-primary-bg-color--light: #F7F6F2;     /* Surface Very Light */
+      /* Primary colors - light theme */
+      --md-primary-fg-color: #000000;           /* Black text */
+      --md-primary-fg-color--light: #333333;     /* Dark gray variant */
+      --md-primary-fg-color--dark: #000000;      /* Pure black */
+      --md-primary-bg-color: #FFFFFF;           /* White background */
+      --md-primary-bg-color--light: #F5F5F5;     /* Very light gray */
 
-      /* Accent palette colors */
-      --md-accent-fg-color: #504F4B;            /* Text Secondary (Graphite) */
-      --md-accent-fg-color--transparent: rgba(80, 79, 75, 0.1);
+      /* Accent colors - light theme */
+      --md-accent-fg-color: #666666;            /* Medium gray */
+      --md-accent-fg-color--transparent: rgba(102, 102, 102, 0.1);
 
-      /* Background colors - exact hex codes */
-      --md-bg-color: #F2F1ED;                   /* Bg Warm Off-White */
-      --md-bg-color--light: #F7F6F2;            /* Surface Very Light */
-      --md-bg-color--dark: #EFEEEA;             /* Muted Surface */
+      /* Background colors - light theme */
+      --md-bg-color: #FFFFFF;                   /* Main white background */
+      --md-bg-color--light: #F9F9F9;             /* Almost white */
+      --md-bg-color--dark: #F0F0F0;              /* Light gray */
 
-      /* Surface colors */
-      --md-surface-color: #F7F6F2;              /* Surface Very Light */
-      --md-surface-color--light: #FBFAF8;       /* Even lighter surface */
-      --md-surface-color--dark: #EFEEEA;        /* Muted Surface */
+      /* Surface colors - light theme */
+      --md-surface-color: #F5F5F5;               /* Light gray surface */
+      --md-surface-color--light: #FBFBFB;        /* Almost white surface */
+      --md-surface-color--dark: #F0F0F0;         /* Muted gray surface */
 
-      /* Text colors - exact hex codes */
-      --md-text-color: #171612;                 /* Ink/Accent (Primary text) */
-      --md-text-color--secondary: #504F4B;      /* Text Secondary */
-      --md-text-color--disabled: #C9C8C4;       /* Neutral Mid */
+      /* Text colors - light theme */
+      --md-text-color: #000000;                  /* Pure black text */
+      --md-text-color--secondary: #666666;       /* Medium gray text */
+      --md-text-color--disabled: #AAAAAA;        /* Disabled text gray */
 
-      /* Border colors */
-      --md-border-color: #D5D4D0;               /* Border Light Gray */
-      --md-border-color--light: #E0DFDB;        /* Lighter border */
-      --md-border-color--dark: #C9C8C4;         /* Neutral Mid */
+      /* Border colors - light theme */
+      --md-border-color: #DDDDDD;                /* Light gray border */
+      --md-border-color--light: #EEEEEE;         /* Very light gray border */
+      --md-border-color--dark: #CCCCCC;          /* Medium gray border */
 
-      /* Code block colors */
-      --md-code-bg-color: #EFEEEA;              /* Muted Surface */
-      --md-code-fg-color: #171612;              /* Ink/Accent */
-      --md-code-border-color: #D5D4D0;          /* Border Light Gray */
-
-      /* Custom neutral palette variables */
-      --bg-primary: #F2F1ED;                    /* Bg Warm Off-White */
-      --bg-surface: #F7F6F2;                    /* Surface Very Light */
-      --bg-surface-muted: #EFEEEA;              /* Muted Surface */
-      --border-light: #D5D4D0;                  /* Border Light Gray */
-      --text-primary: #171612;                  /* Ink/Accent */
-      --text-secondary: #504F4B;                /* Text Secondary */
-      --neutral-mid: #C9C8C4;                   /* Neutral Mid */
-      --accent-primary: #171612;                /* Accent */
-      --accent-contrast: #F2F1ED;               /* Contrast for accent */
-      --selection-bg: #E8E7E3;                  /* Selection background */
+      /* Code block colors - light theme */
+      --md-code-bg-color: #F0F0F0;               /* Light gray code background */
+      --md-code-fg-color: #000000;               /* Black code text */
+      --md-code-border-color: #DDDDDD;           /* Light gray code border */
 
       /* Font variables */
       --font-ko-text: 'Pretendard', 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
@@ -87,94 +75,82 @@
       --transition-normal: 250ms ease-in-out;
       --transition-slow: 350ms ease-in-out;
 
-      /* Shadows with neutral colors */
-      --shadow-sm: 0 1px 2px 0 rgba(23, 22, 18, 0.05);
-      --shadow-md: 0 4px 6px -1px rgba(23, 22, 18, 0.1), 0 2px 4px -1px rgba(23, 22, 18, 0.06);
-      --shadow-lg: 0 10px 15px -3px rgba(23, 22, 18, 0.1), 0 4px 6px -2px rgba(23, 22, 18, 0.05);
+      /* Shadows with light theme */
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     }
 
-    /* Dark Theme Neutral Colors - Material Theme Override */
+    /* DARK THEME - Override all variables for dark mode */
     [data-md-color-scheme="slate"] {
-      /* Primary palette colors for dark theme */
-      --md-primary-fg-color: #F2F1ED;           /* Light variant for dark theme */
-      --md-primary-fg-color--light: #FFFFFF;    /* Even lighter variant */
-      --md-primary-fg-color--dark: #D0CFCA;     /* Darker variant */
-      --md-primary-bg-color: #171612;           /* Dark background */
-      --md-primary-bg-color--light: #1A1916;    /* Lighter dark background */
+      /* Primary colors - dark theme */
+      --md-primary-fg-color: #FFFFFF;           /* White text */
+      --md-primary-fg-color--light: #EEEEEE;     /* Light gray variant */
+      --md-primary-fg-color--dark: #FFFFFF;      /* Pure white */
+      --md-primary-bg-color: #121212;           /* Dark background */
+      --md-primary-bg-color--light: #1E1E1E;     /* Lighter dark background */
 
-      /* Accent palette colors for dark theme */
-      --md-accent-fg-color: #C9C8C4;            /* Light neutral for dark theme */
-      --md-accent-fg-color--transparent: rgba(201, 200, 196, 0.1);
+      /* Accent colors - dark theme */
+      --md-accent-fg-color: #BBBBBB;            /* Light gray accent */
+      --md-accent-fg-color--transparent: rgba(187, 187, 187, 0.1);
 
-      /* Background colors for dark theme */
-      --md-bg-color: #12110F;                   /* Dark variant of Bg Warm Off-White */
-      --md-bg-color--light: #1A1916;            /* Dark variant of Surface Very Light */
-      --md-bg-color--dark: #0A0908;             /* Even darker background */
+      /* Background colors - dark theme */
+      --md-bg-color: #121212;                   /* Main dark background */
+      --md-bg-color--light: #1E1E1E;             /* Slightly lighter dark */
+      --md-bg-color--dark: #0A0A0A;              /* Darker background */
 
-      /* Surface colors for dark theme */
-      --md-surface-color: #1A1916;              /* Dark variant of Surface Very Light */
-      --md-surface-color--light: #22211E;       /* Dark variant of Muted Surface */
-      --md-surface-color--dark: #0A0908;        /* Dark surface */
+      /* Surface colors - dark theme */
+      --md-surface-color: #1E1E1E;               /* Dark surface */
+      --md-surface-color--light: #2A2A2A;        /* Lighter dark surface */
+      --md-surface-color--dark: #0A0A0A;         /* Darker surface */
 
-      /* Text colors for dark theme */
-      --md-text-color: #EEEDE8;                 /* Light variant of Ink/Accent */
-      --md-text-color--secondary: #C9C8C4;      /* Light variant of Text Secondary */
-      --md-text-color--disabled: #AEADA9;       /* Light variant of Neutral Mid */
+      /* Text colors - dark theme */
+      --md-text-color: #FFFFFF;                  /* White text */
+      --md-text-color--secondary: #BBBBBB;       /* Light gray text */
+      --md-text-color--disabled: #777777;        /* Disabled text gray */
 
-      /* Border colors for dark theme */
-      --md-border-color: #2E2D29;               /* Dark variant of Border Light Gray */
-      --md-border-color--light: #3A3935;        /* Lighter dark border */
-      --md-border-color--dark: #22211E;         /* Darker border */
+      /* Border colors - dark theme */
+      --md-border-color: #333333;                /* Dark gray border */
+      --md-border-color--light: #444444;         /* Lighter dark border */
+      --md-border-color--dark: #222222;          /* Darker border */
 
-      /* Code block colors for dark theme */
-      --md-code-bg-color: #1A1916;              /* Dark code background */
-      --md-code-fg-color: #EEEDE8;              /* Light code text */
-      --md-code-border-color: #2E2D29;          /* Dark code border */
+      /* Code block colors - dark theme */
+      --md-code-bg-color: #1E1E1E;               /* Dark gray code background */
+      --md-code-fg-color: #FFFFFF;               /* White code text */
+      --md-code-border-color: #333333;           /* Dark code border */
 
-      /* Custom neutral palette variables for dark theme */
-      --bg-primary: #12110F;                    /* Dark variant of Bg Warm Off-White */
-      --bg-surface: #1A1916;                    /* Dark variant of Surface Very Light */
-      --bg-surface-muted: #22211E;              /* Dark variant of Muted Surface */
-      --border-light: #2E2D29;                  /* Dark variant of Border Light Gray */
-      --text-primary: #EEEDE8;                  /* Light variant of Ink/Accent */
-      --text-secondary: #C9C8C4;                /* Light variant of Text Secondary */
-      --neutral-mid: #AEADA9;                   /* Light variant of Neutral Mid */
-      --accent-primary: #F2F1ED;                /* Light accent for dark theme */
-      --accent-contrast: #171612;               /* Dark contrast for light accent */
-      --selection-bg: #3A3935;                  /* Dark selection background */
-
-      /* Adjusted shadows for dark theme */
+      /* Shadows with dark theme */
       --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
       --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
       --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
     }
 
-    /* CRITICAL: Dark theme color overrides */
+    /* Dark theme overrides - body and main content */
     [data-md-color-scheme="slate"] body,
     [data-md-color-scheme="slate"] .md-typeset,
     [data-md-color-scheme="slate"] .md-content,
     [data-md-color-scheme="slate"] .md-main__inner {
-      background-color: #12110F !important;     /* Dark Bg Warm Off-White */
-      color: #EEEDE8 !important;               /* Light variant of Ink/Accent */
+      background-color: var(--md-bg-color) !important;
+      color: var(--md-text-color) !important;
     }
 
     [data-md-color-scheme="slate"] .md-header {
-      background-color: #1A1916 !important;     /* Dark Surface Very Light */
-      color: #EEEDE8 !important;               /* Light variant of Ink/Accent */
-      border-bottom: 1px solid #2E2D29 !important; /* Dark Border Light Gray */
+      background-color: var(--md-surface-color) !important;
+      color: var(--md-text-color) !important;
+      border-bottom: 1px solid var(--md-border-color) !important;
     }
 
     [data-md-color-scheme="slate"] .md-nav {
-      background-color: #1A1916 !important;     /* Dark Surface Very Light */
-      color: #EEEDE8 !important;               /* Light variant of Ink/Accent */
+      background-color: var(--md-surface-color) !important;
+      color: var(--md-text-color) !important;
     }
 
     [data-md-color-scheme="slate"] .md-nav__item {
-      color: #C9C8C4 !important;               /* Light Text Secondary */
+      color: var(--md-text-color--secondary) !important;
     }
 
     [data-md-color-scheme="slate"] .md-nav__item--active {
-      color: #F2F1ED !important;               /* Light accent for dark theme */
+      color: var(--md-text-color) !important;
       font-weight: 600 !important;
     }
 
@@ -199,24 +175,24 @@
       -webkit-font-feature-settings: 'liga';
       -webkit-font-smoothing: antialiased;
       vertical-align: middle;
-      color: var(--accent-primary) !important; /* Use theme accent color */
+      color: var(--md-text-color) !important;
     }
 
     /* Dark theme Material Icons */
     [data-md-color-scheme="slate"] .material-icons {
-      color: var(--accent-primary) !important; /* Light accent for dark theme */
+      color: var(--md-text-color) !important;
     }
 
-    /* Apply neutral colors to base elements - HIGHEST SPECIFICITY OVERRIDE */
+    /* Base element styling - Light theme by default */
     html body,
     body.md-base {
       font-family: var(--font-ko-text), system-ui, -apple-system, sans-serif !important;
-      background-color: #F2F1ED !important;  /* Bg Warm Off-White */
-      color: #171612 !important;           /* Ink/Accent */
+      background-color: var(--md-bg-color) !important;
+      color: var(--md-text-color) !important;
       transition: background-color var(--transition-normal), color var(--transition-normal);
     }
 
-    /* CRITICAL: UNIVERSAL ITALIC REMOVAL - 모든 요소에서 이탈릭체 제거 */
+    /* CRITICAL: Remove all italic styles */
     *,
     *::before,
     *::after,
@@ -224,178 +200,128 @@
     html *,
     body,
     body *,
-    div,
-    p,
-    span,
-    li,
-    td,
-    th,
-    h1, h2, h3, h4, h5, h6,
-    a,
-    strong,
-    em,
-    i {
-      font-style: normal !important;  /* 완벽한 이탤릭체 제거 */
+    .md-content,
+    .md-content *,
+    .md-typeset,
+    .md-typeset *,
+    .md-main__inner,
+    .md-main__inner * {
+      font-style: normal !important;
     }
 
-    /* Force override with maximum specificity - COMPLETE ITALIC REMOVAL */
-    html body,
-    html body *,
-    html .md-typeset,
-    html .md-typeset *,
-    html .md-content,
-    html .md-content *,
-    html .md-main__inner,
-    html .md-main__inner *,
-    html .md-container,
-    html .md-container *,
-    html [data-md-color-scheme="default"] * {
-      background-color: #F2F1ED !important;  /* Bg Warm Off-White */
-      color: #171612 !important;           /* Ink/Accent */
-      font-style: normal !important;       /* CRITICAL: Complete italic removal */
-    }
-
-    /* Override header with maximum specificity */
-    html .md-header,
-    html .md-header__inner,
-    html [data-md-color-scheme="default"] .md-header,
-    html [data-md-color-scheme="default"] .md-header__inner {
-      background-color: #F7F6F2 !important;  /* Surface Very Light */
-      color: #171612 !important;           /* Ink/Accent */
-      border-bottom: 1px solid #D5D4D0 !important; /* Border Light Gray */
-    }
-
-    /* CRITICAL: Force header links to be bold - 라이트/다크 모드 */
-    html .md-header a,
-    html .md-header__title,
-    html .md-header__inner a {
-      font-weight: 700 !important;
-      text-decoration: none !important;
-      text-shadow: 0 1px 2px rgba(0,0,0,0.1) !important;
-    }
-
-    /* 라이트 모드 헤더 링크 */
-    html [data-md-color-scheme="default"] .md-header a,
-    html [data-md-color-scheme="default"] .md-header__title,
-    html [data-md-color-scheme="default"] .md-header__inner a {
-      color: #171612 !important;
-      text-shadow: 0 1px 2px rgba(0,0,0,0.1) !important;
-    }
-
-    /* 다크 모드 헤더 링크 */
-    html [data-md-color-scheme="slate"] .md-header a,
-    html [data-md-color-scheme="slate"] .md-header__title,
-    html [data-md-color-scheme="slate"] .md-header__inner a {
-      color: #F2F1ED !important;
-      text-shadow: 0 1px 2px rgba(0,0,0,0.3) !important;
-    }
-
-    /* Override navigation */
-    html .md-nav,
-    html .md-nav__inner,
-    html .md-nav--primary .md-nav__title,
-    html [data-md-color-scheme="default"] .md-nav,
-    html [data-md-color-scheme="default"] .md-nav__inner {
-      background-color: #F7F6F2 !important;  /* Surface Very Light */
-      color: #171612 !important;           /* Ink/Accent */
-    }
-
-    /* Primary navigation styling - Light theme */
-    [data-md-color-scheme="default"] .md-nav--primary {
-      background-color: #F7F6F2 !important;  /* Surface Very Light */
-    }
-
-    /* Primary navigation styling - Dark theme */
-    [data-md-color-scheme="slate"] .md-nav--primary {
-      background-color: #1A1916 !important;  /* Dark Surface Very Light */
-    }
-
-    html .md-nav__item,
-    html .md-nav__link,
-    html [data-md-color-scheme="default"] .md-nav__item,
-    html [data-md-color-scheme="default"] .md-nav__link {
-      color: #504F4B !important;           /* Text Secondary */
-    }
-
-    html .md-nav__item--active,
-    html .md-nav__link--active,
-    html [data-md-color-scheme="default"] .md-nav__item--active,
-    html [data-md-color-scheme="default"] .md-nav__link--active {
-      color: #171612 !important;           /* Ink/Accent */
-      font-weight: 600 !important;
-    }
-
-    /* Override sidebar */
-    html .md-sidebar,
-    html .md-sidebar--secondary,
-    html [data-md-color-scheme="default"] .md-sidebar,
-    html [data-md-color-scheme="default"] .md-sidebar--secondary {
-      background-color: #F7F6F2 !important;  /* Surface Very Light */
-    }
-
-    /* Override tabs */
-    html .md-tabs,
-    html [data-md-color-scheme="default"] .md-tabs {
-      background-color: #F7F6F2 !important;  /* Surface Very Light */
-      color: #171612 !important;           /* Ink/Accent */
-    }
-
-    /* Override footer */
-    html .md-footer,
-    html [data-md-color-scheme="default"] .md-footer {
-      background-color: #EFEEEA !important;  /* Muted Surface */
-      color: #504F4B !important;           /* Text Secondary */
-      border-top: 1px solid #D5D4D0 !important; /* Border Light Gray */
-    }
-
-    /* Override search */
-    html .md-search__input,
-    html [data-md-color-scheme="default"] .md-search__input {
-      background-color: #F7F6F2 !important;  /* Surface Very Light */
-      color: #171612 !important;           /* Ink/Accent */
-      border: 1px solid #D5D4D0 !important; /* Border Light Gray */
-    }
-
-    /* Override buttons */
-    html .md-button,
-    html [data-md-color-scheme="default"] .md-button {
-      background-color: #171612 !important;  /* Ink/Accent */
-      color: #F2F1ED !important;           /* Bg Warm Off-White */
-    }
-
-    /* Override links */
-    html .md-typeset a,
-    html [data-md-color-scheme="default"] .md-typeset a {
-      color: #171612 !important;           /* Ink/Accent */
-    }
-
-    /* CRITICAL: Force color scheme to default and apply palette */
+    /* Light theme - body and main content */
     [data-md-color-scheme="default"] body,
     [data-md-color-scheme="default"] .md-typeset,
     [data-md-color-scheme="default"] .md-content,
     [data-md-color-scheme="default"] .md-main__inner {
-      background-color: #F2F1ED !important;  /* Bg Warm Off-White */
-      color: #171612 !important;           /* Ink/Accent */
+      background-color: var(--md-bg-color) !important;
+      color: var(--md-text-color) !important;
     }
 
     [data-md-color-scheme="default"] .md-header {
-      background-color: #F7F6F2 !important;  /* Surface Very Light */
-      color: #171612 !important;           /* Ink/Accent */
-      border-bottom: 1px solid #D5D4D0 !important; /* Border Light Gray */
+      background-color: var(--md-surface-color) !important;
+      color: var(--md-text-color) !important;
+      border-bottom: 1px solid var(--md-border-color) !important;
     }
 
-    [data-md-color-scheme="default"] .md-nav {
-      background-color: #F7F6F2 !important;  /* Surface Very Light */
-      color: #171612 !important;           /* Ink/Accent */
+    [data-md-color-scheme="default"] .md-header a,
+    [data-md-color-scheme="default"] .md-header__title,
+    [data-md-color-scheme="default"] .md-header__inner a {
+      color: var(--md-text-color) !important;
+      font-weight: 700 !important;
+      text-decoration: none !important;
     }
 
-    [data-md-color-scheme="default"] .md-nav__item {
-      color: #504F4B !important;           /* Text Secondary */
+    [data-md-color-scheme="default"] .md-nav,
+    [data-md-color-scheme="default"] .md-nav--primary {
+      background-color: var(--md-surface-color) !important;
+      color: var(--md-text-color) !important;
     }
 
-    [data-md-color-scheme="default"] .md-nav__item--active {
-      color: #171612 !important;           /* Ink/Accent */
+    [data-md-color-scheme="default"] .md-nav__item,
+    [data-md-color-scheme="default"] .md-nav__link {
+      color: var(--md-text-color--secondary) !important;
+    }
+
+    [data-md-color-scheme="default"] .md-nav__item--active,
+    [data-md-color-scheme="default"] .md-nav__link--active {
+      color: var(--md-text-color) !important;
       font-weight: 600 !important;
+    }
+
+    [data-md-color-scheme="default"] .md-sidebar,
+    [data-md-color-scheme="default"] .md-sidebar--secondary {
+      background-color: var(--md-surface-color) !important;
+    }
+
+    [data-md-color-scheme="default"] .md-tabs {
+      background-color: var(--md-surface-color) !important;
+      color: var(--md-text-color) !important;
+    }
+
+    [data-md-color-scheme="default"] .md-footer {
+      background-color: var(--md-surface-color--dark) !important;
+      color: var(--md-text-color--secondary) !important;
+      border-top: 1px solid var(--md-border-color) !important;
+    }
+
+    [data-md-color-scheme="default"] .md-search__input {
+      background-color: var(--md-surface-color) !important;
+      color: var(--md-text-color) !important;
+      border: 1px solid var(--md-border-color) !important;
+    }
+
+    [data-md-color-scheme="default"] .md-button {
+      background-color: var(--md-text-color) !important;
+      color: var(--md-bg-color) !important;
+    }
+
+    [data-md-color-scheme="default"] .md-typeset a {
+      color: var(--md-text-color) !important;
+    }
+
+    /* Dark theme overrides */
+    [data-md-color-scheme="slate"] .md-header a,
+    [data-md-color-scheme="slate"] .md-header__title,
+    [data-md-color-scheme="slate"] .md-header__inner a {
+      color: var(--md-text-color) !important;
+      font-weight: 700 !important;
+      text-decoration: none !important;
+    }
+
+    [data-md-color-scheme="slate"] .md-nav--primary {
+      background-color: var(--md-surface-color) !important;
+    }
+
+    [data-md-color-scheme="slate"] .md-sidebar,
+    [data-md-color-scheme="slate"] .md-sidebar--secondary {
+      background-color: var(--md-surface-color) !important;
+    }
+
+    [data-md-color-scheme="slate"] .md-tabs {
+      background-color: var(--md-surface-color) !important;
+      color: var(--md-text-color) !important;
+    }
+
+    [data-md-color-scheme="slate"] .md-footer {
+      background-color: var(--md-surface-color--dark) !important;
+      color: var(--md-text-color--secondary) !important;
+      border-top: 1px solid var(--md-border-color) !important;
+    }
+
+    [data-md-color-scheme="slate"] .md-search__input {
+      background-color: var(--md-surface-color) !important;
+      color: var(--md-text-color) !important;
+      border: 1px solid var(--md-border-color) !important;
+    }
+
+    [data-md-color-scheme="slate"] .md-button {
+      background-color: var(--md-text-color) !important;
+      color: var(--md-bg-color) !important;
+    }
+
+    [data-md-color-scheme="slate"] .md-typeset a {
+      color: var(--md-text-color) !important;
     }
 
     /* Language-specific font adjustments */
@@ -415,15 +341,15 @@
       font-family: var(--font-zh-text) !important;
     }
 
-    /* Code blocks - monospace for all languages with neutral styling */
+    /* Code blocks - monospace for all languages */
     .md-typeset code,
     .md-typeset pre {
       font-family: 'Hack', 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
       font-feature-settings: 'liga' 0;
       font-variant-ligatures: none;
-      background-color: var(--bg-surface-muted);
-      color: var(--text-primary);
-      border: 1px solid var(--border-light);
+      background-color: var(--md-code-bg-color);
+      color: var(--md-code-fg-color);
+      border: 1px solid var(--md-code-border-color);
       border-radius: 6px;
       transition: background-color var(--transition-normal), color var(--transition-normal), border-color var(--transition-normal);
     }
@@ -473,7 +399,7 @@
       box-shadow: var(--shadow-sm);
     }
 
-    /* Headings - optimized for readability with neutral colors */
+    /* Headings - optimized for readability */
     .md-typeset h1,
     .md-typeset h2,
     .md-typeset h3,
@@ -483,7 +409,7 @@
       font-weight: 700 !important;
       letter-spacing: -0.025em;
       line-height: 1.25;
-      color: var(--text-primary);
+      color: var(--md-text-color);
       transition: color var(--transition-normal);
     }
 
@@ -516,27 +442,27 @@
       letter-spacing: normal !important; /* Keep normal spacing for code */
     }
 
-    /* Links with neutral accent colors */
+    /* Links */
     .md-typeset a {
-      color: var(--accent-primary);
+      color: var(--md-text-color);
       text-decoration: none;
       transition: color var(--transition-fast), text-decoration var(--transition-fast);
     }
 
     .md-typeset a:hover {
-      color: var(--text-secondary);
+      color: var(--md-text-color--secondary);
       text-decoration: underline;
     }
 
-    /* Text selection with neutral colors */
+    /* Text selection */
     ::selection {
-      background-color: var(--selection-bg);
-      color: var(--text-primary);
+      background-color: var(--md-surface-color);
+      color: var(--md-text-color);
     }
 
-    /* Tables with neutral styling */
+    /* Tables */
     .md-typeset table {
-      border: 1px solid var(--border-light);
+      border: 1px solid var(--md-border-color);
       border-radius: 6px;
       overflow: hidden;
       box-shadow: var(--shadow-sm);
@@ -544,29 +470,29 @@
     }
 
     .md-typeset table th {
-      background-color: var(--bg-surface-muted);
-      color: var(--text-primary);
+      background-color: var(--md-surface-color--dark);
+      color: var(--md-text-color);
       font-weight: 600;
-      border-bottom: 2px solid var(--border-light);
+      border-bottom: 2px solid var(--md-border-color);
       transition: background-color var(--transition-normal), color var(--transition-normal);
     }
 
     .md-typeset table td {
-      border-bottom: 1px solid var(--border-light);
-      color: var(--text-primary);
+      border-bottom: 1px solid var(--md-border-color);
+      color: var(--md-text-color);
       transition: border-color var(--transition-normal), color var(--transition-normal);
     }
 
     .md-typeset table tr:hover {
-      background-color: var(--bg-surface);
+      background-color: var(--md-surface-color);
       transition: background-color var(--transition-fast);
     }
 
-    /* Blockquotes with neutral styling */
+    /* Blockquotes */
     .md-typeset blockquote {
-      border-left: 4px solid var(--accent-primary);
-      background-color: var(--bg-surface);
-      color: var(--text-secondary);
+      border-left: 4px solid var(--md-border-color);
+      background-color: var(--md-surface-color);
+      color: var(--md-text-color--secondary);
       padding: 1em 1.5em;
       margin: 1em 0;
       border-radius: 0 6px 6px 0;
@@ -574,31 +500,31 @@
       transition: background-color var(--transition-normal), color var(--transition-normal), border-color var(--transition-normal);
     }
 
-    /* Admonitions (callouts) with neutral colors */
+    /* Admonitions (callouts) */
     .md-typeset .admonition {
-      border: 1px solid var(--border-light);
-      border-left: 4px solid var(--accent-primary);
-      background-color: var(--bg-surface);
-      color: var(--text-primary);
+      border: 1px solid var(--md-border-color);
+      border-left: 4px solid var(--md-border-color);
+      background-color: var(--md-surface-color);
+      color: var(--md-text-color);
       border-radius: 6px;
       box-shadow: var(--shadow-sm);
       transition: background-color var(--transition-normal), color var(--transition-normal), border-color var(--transition-normal);
     }
 
     .md-typeset .admonition-title {
-      color: var(--accent-primary);
+      color: var(--md-text-color);
       font-weight: 600;
-      border-bottom: 1px solid var(--border-light);
+      border-bottom: 1px solid var(--md-border-color);
       transition: color var(--transition-normal), border-color var(--transition-normal);
     }
 
-    /* Specific admonition types with neutral variations */
+    /* Specific admonition types */
     .md-typeset .admonition.note {
-      border-left-color: var(--neutral-mid);
+      border-left-color: var(--md-border-color);
     }
 
     .md-typeset .admonition.note .admonition-title {
-      color: var(--text-secondary);
+      color: var(--md-text-color--secondary);
     }
 
     .md-typeset .admonition.tip {
@@ -613,10 +539,10 @@
       border-left-color: #dc2626; /* Red for danger */
     }
 
-    /* Buttons with neutral styling */
+    /* Buttons */
     .md-button {
-      background-color: var(--accent-primary);
-      color: var(--accent-contrast);
+      background-color: var(--md-text-color);
+      color: var(--md-bg-color);
       border: none;
       border-radius: 6px;
       padding: 0.5em 1em;
@@ -626,7 +552,7 @@
     }
 
     .md-button:hover {
-      background-color: var(--text-secondary);
+      background-color: var(--md-text-color--secondary);
       transform: translateY(-1px);
       box-shadow: var(--shadow-md);
     }
@@ -636,65 +562,65 @@
       box-shadow: var(--shadow-sm);
     }
 
-    /* Search input with neutral styling */
+    /* Search input */
     .md-search__input {
-      background-color: var(--bg-surface);
-      color: var(--text-primary);
-      border: 1px solid var(--border-light);
+      background-color: var(--md-surface-color);
+      color: var(--md-text-color);
+      border: 1px solid var(--md-border-color);
       transition: background-color var(--transition-normal), color var(--transition-normal), border-color var(--transition-normal);
     }
 
     .md-search__input:focus {
-      background-color: var(--bg-surface);
-      border-color: var(--accent-primary);
-      box-shadow: 0 0 0 2px rgba(23, 22, 18, 0.1);
+      background-color: var(--md-surface-color);
+      border-color: var(--md-text-color);
+      box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
     }
 
-    /* Navigation with neutral colors */
+    [data-md-color-scheme="slate"] .md-search__input:focus {
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+    }
+
+    /* Navigation */
     .md-nav__item {
-      color: var(--text-secondary);
+      color: var(--md-text-color--secondary);
       transition: color var(--transition-normal);
     }
 
     .md-nav__item:hover {
-      color: var(--accent-primary);
+      color: var(--md-text-color);
     }
 
     .md-nav__item--active {
-      color: var(--accent-primary);
+      color: var(--md-text-color);
       font-weight: 600;
     }
 
-    /* LEFT SIDEBAR SUBMENU STYLING - Light Theme (No Background, No Lines) */
+    /* LEFT SIDEBAR SUBMENU STYLING */
     .md-nav--secondary {
-      background-color: transparent !important;  /* Hide background */
-      border: none !important;  /* Hide all borders */
-      border-top: none !important;
-      border-bottom: none !important;
-      border-left: none !important;
-      border-right: none !important;
+      background-color: transparent !important;
+      border: none !important;
     }
 
     .md-nav--secondary .md-nav__link {
-      color: #504F4B !important;  /* Text Secondary */
+      color: var(--md-text-color--secondary) !important;
       background-color: transparent !important;
       padding: 0.5rem 1rem !important;
       border-radius: 4px !important;
       font-weight: 500 !important;
       font-size: 0.9rem !important;
       line-height: 1.4 !important;
-      border: none !important;  /* Hide link borders */
+      border: none !important;
     }
 
     .md-nav--secondary .md-nav__link:hover {
-      background-color: #EFEEEA !important;  /* Muted Surface */
-      color: #171612 !important;  /* Ink/Accent */
+      background-color: var(--md-surface-color--dark) !important;
+      color: var(--md-text-color) !important;
       font-weight: 600 !important;
     }
 
     .md-nav--secondary .md-nav__link--active {
-      color: #171612 !important;  /* Ink/Accent */
-      background-color: #D5D4D0 !important;  /* Border Light Gray */
+      color: var(--md-text-color) !important;
+      background-color: var(--md-border-color) !important;
       font-weight: 700 !important;
       border-radius: 4px !important;
     }
@@ -702,39 +628,35 @@
     .md-nav--secondary .md-nav__item {
       border-radius: 4px !important;
       margin: 0.25rem 0 !important;
-      border: none !important;  /* Hide item borders */
+      border: none !important;
     }
 
-    /* LEFT SIDEBAR SUBMENU STYLING - Dark Theme (No Background, No Lines) */
+    /* Dark theme sidebar overrides */
     [data-md-color-scheme="slate"] .md-nav--secondary {
-      background-color: transparent !important;  /* Hide background */
-      border: none !important;  /* Hide all borders */
-      border-top: none !important;
-      border-bottom: none !important;
-      border-left: none !important;
-      border-right: none !important;
+      background-color: transparent !important;
+      border: none !important;
     }
 
     [data-md-color-scheme="slate"] .md-nav--secondary .md-nav__link {
-      color: #C9C8C4 !important;  /* Light Text Secondary */
+      color: var(--md-text-color--secondary) !important;
       background-color: transparent !important;
       padding: 0.5rem 1rem !important;
       border-radius: 4px !important;
       font-weight: 500 !important;
       font-size: 0.9rem !important;
       line-height: 1.4 !important;
-      border: none !important;  /* Hide link borders */
+      border: none !important;
     }
 
     [data-md-color-scheme="slate"] .md-nav--secondary .md-nav__link:hover {
-      background-color: #22211E !important;  /* Dark Muted Surface */
-      color: #EEEDE8 !important;  /* Light Ink/Accent */
+      background-color: var(--md-surface-color--dark) !important;
+      color: var(--md-text-color) !important;
       font-weight: 600 !important;
     }
 
     [data-md-color-scheme="slate"] .md-nav--secondary .md-nav__link--active {
-      color: #EEEDE8 !important;  /* Light Ink/Accent */
-      background-color: #3A3935 !important;  /* Dark Neutral Mid */
+      color: var(--md-text-color) !important;
+      background-color: var(--md-border-color) !important;
       font-weight: 700 !important;
       border-radius: 4px !important;
     }
@@ -742,19 +664,18 @@
     [data-md-color-scheme="slate"] .md-nav--secondary .md-nav__item {
       border-radius: 4px !important;
       margin: 0.25rem 0 !important;
-      border: none !important;  /* Hide item borders */
+      border: none !important;
     }
 
-    /* Header with neutral styling - improved readability */
+    /* Header styling */
     .md-header {
-      background-color: var(--bg-surface) !important;
-      border-bottom: 1px solid var(--border-light) !important;
+      background-color: var(--md-surface-color) !important;
+      border-bottom: 1px solid var(--md-border-color) !important;
       box-shadow: var(--shadow-sm) !important;
       transition: background-color var(--transition-normal), border-color var(--transition-normal), box-shadow var(--transition-normal);
       padding: 0.5rem 0;
     }
 
-    /* Header navigation improved styling */
     .md-header__inner {
       font-size: 0.95rem;
       font-weight: 500;
@@ -766,62 +687,61 @@
       letter-spacing: -0.025em;
     }
 
-    /* CRITICAL: Navigation links improved - Clear visibility */
-    html .md-nav__link,
-    html .md-nav__item,
-    html [data-md-color-scheme="default"] .md-nav__link,
-    html [data-md-color-scheme="default"] .md-nav__item {
+    /* Navigation links - Light theme */
+    .md-nav__link,
+    .md-nav__item {
       font-size: 0.9rem !important;
       line-height: 1.4 !important;
       padding: 0.5rem 0.75rem !important;
       border-radius: 4px !important;
       transition: all 0.2s ease !important;
       font-weight: 500 !important;
-      color: #504F4B !important;  /* Text Secondary for light theme */
       opacity: 1.0 !important;
     }
 
-    html .md-nav__link:hover,
-    html [data-md-color-scheme="default"] .md-nav__link:hover {
-      background-color: #EFEEEA !important;  /* Muted Surface */
-      color: #171612 !important;  /* Ink/Accent */
+    [data-md-color-scheme="default"] .md-nav__link,
+    [data-md-color-scheme="default"] .md-nav__item {
+      color: var(--md-text-color--secondary) !important;
+    }
+
+    [data-md-color-scheme="default"] .md-nav__link:hover {
+      background-color: var(--md-surface-color--dark) !important;
+      color: var(--md-text-color) !important;
       font-weight: 600 !important;
     }
 
-    html .md-nav__item--active,
-    html .md-nav__link--active,
-    html [data-md-color-scheme="default"] .md-nav__item--active,
-    html [data-md-color-scheme="default"] .md-nav__link--active {
+    [data-md-color-scheme="default"] .md-nav__item--active,
+    [data-md-color-scheme="default"] .md-nav__link--active {
       font-weight: 700 !important;
-      color: #171612 !important;  /* Ink/Accent */
-      background-color: #D5D4D0 !important;  /* Border Light Gray */
+      color: var(--md-text-color) !important;
+      background-color: var(--md-border-color) !important;
       opacity: 1.0 !important;
     }
 
     /* Dark theme navigation links */
     [data-md-color-scheme="slate"] .md-nav__link,
     [data-md-color-scheme="slate"] .md-nav__item {
-      color: #C9C8C4 !important;  /* Light Text Secondary */
+      color: var(--md-text-color--secondary) !important;
     }
 
     [data-md-color-scheme="slate"] .md-nav__link:hover {
-      background-color: #22211E !important;  /* Dark Muted Surface */
-      color: #EEEDE8 !important;  /* Light Ink/Accent */
+      background-color: var(--md-surface-color--dark) !important;
+      color: var(--md-text-color) !important;
       font-weight: 600 !important;
     }
 
     [data-md-color-scheme="slate"] .md-nav__item--active,
     [data-md-color-scheme="slate"] .md-nav__link--active {
       font-weight: 700 !important;
-      color: #EEEDE8 !important;  /* Light Ink/Accent */
-      background-color: #3A3935 !important;  /* Dark Neutral Mid */
+      color: var(--md-text-color) !important;
+      background-color: var(--md-border-color) !important;
     }
 
-    /* Footer with neutral styling */
+    /* Footer */
     .md-footer {
-      background-color: var(--bg-surface-muted);
-      color: var(--text-secondary);
-      border-top: 1px solid var(--border-light);
+      background-color: var(--md-surface-color--dark);
+      color: var(--md-text-color--secondary);
+      border-top: 1px solid var(--md-border-color);
       transition: background-color var(--transition-normal), color var(--transition-normal), border-color var(--transition-normal);
     }
 
@@ -898,26 +818,39 @@
       --mermain-timeline-node-bg-color: #12110F !important; /* Dark Bg Warm Off-White */
     }
 
-    /* Scrollbar styling for neutral theme */
+    /* Scrollbar styling */
     ::-webkit-scrollbar {
       width: 8px;
       height: 8px;
     }
 
     ::-webkit-scrollbar-track {
-      background: var(--bg-surface);
+      background: var(--md-surface-color);
     }
 
     ::-webkit-scrollbar-thumb {
-      background: var(--neutral-mid);
+      background: var(--md-border-color);
       border-radius: 4px;
     }
 
     ::-webkit-scrollbar-thumb:hover {
-      background: var(--text-secondary);
+      background: var(--md-text-color--secondary);
     }
 
-    /* Image styling for design consistency */
+    /* Dark theme scrollbar */
+    [data-md-color-scheme="slate"] ::-webkit-scrollbar-track {
+      background: var(--md-surface-color);
+    }
+
+    [data-md-color-scheme="slate"] ::-webkit-scrollbar-thumb {
+      background: var(--md-border-color);
+    }
+
+    [data-md-color-scheme="slate"] ::-webkit-scrollbar-thumb:hover {
+      background: var(--md-text-color--secondary);
+    }
+
+    /* Image styling */
     .md-typeset img {
       border-radius: 8px;
       box-shadow: var(--shadow-md);
@@ -931,34 +864,34 @@
       box-shadow: var(--shadow-lg);
     }
 
-    /* Specific styling for Alfred logo */
+    /* Alfred logo styling */
     .alfred-logo {
       width: 120px;
       height: auto;
-      filter: drop-shadow(0 4px 8px rgba(23, 22, 18, 0.1));
+      filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
       transition: transform var(--transition-normal), filter var(--transition-normal);
     }
 
     .alfred-logo:hover {
       transform: scale(1.05);
-      filter: drop-shadow(0 6px 12px rgba(23, 22, 18, 0.15));
+      filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.15));
     }
 
-    /* Specific styling for TUI screenshot */
+    /* TUI screenshot styling */
     .tui-screenshot {
       width: 100%;
       max-width: 800px;
       height: auto;
       border-radius: 8px;
-      border: 1px solid var(--border-light);
-      filter: drop-shadow(0 8px 16px rgba(23, 22, 18, 0.15));
+      border: 1px solid var(--md-border-color);
+      filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.15));
       transition: transform var(--transition-normal), filter var(--transition-normal), border-color var(--transition-normal);
     }
 
     .tui-screenshot:hover {
       transform: translateY(-4px);
-      filter: drop-shadow(0 12px 24px rgba(23, 22, 18, 0.2));
-      border-color: var(--neutral-mid);
+      filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.2));
+      border-color: var(--md-text-color--secondary);
     }
 
     /* Dark theme image adjustments */
@@ -971,12 +904,12 @@
     }
 
     [data-md-color-scheme="slate"] .tui-screenshot {
-      border-color: var(--border-light);
+      border-color: var(--md-border-color);
       filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.4));
     }
 
     [data-md-color-scheme="slate"] .tui-screenshot:hover {
-      border-color: var(--neutral-mid);
+      border-color: var(--md-text-color--secondary);
       filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.5));
     }
 
@@ -1012,29 +945,258 @@
       text-align: center;
       margin: 2em 0;
       padding: 1em;
-      background-color: var(--bg-surface);
+      background-color: var(--md-surface-color);
       border-radius: 12px;
-      border: 1px solid var(--border-light);
+      border: 1px solid var(--md-border-color);
       transition: background-color var(--transition-normal), border-color var(--transition-normal);
     }
 
     [data-md-color-scheme="slate"] .image-container {
-      background-color: var(--bg-surface);
-      border-color: var(--border-light);
+      background-color: var(--md-surface-color);
+      border-color: var(--md-border-color);
     }
 
     /* Image caption styling */
     .image-caption {
       font-size: 0.875em;
-      color: var(--text-secondary);
+      color: var(--md-text-color--secondary);
       margin-top: 0.5em;
-      font-style: italic;
+      font-style: normal;
       letter-spacing: -0.025em;
     }
+
+    /* Hide left sidebar completely */
+    .md-sidebar--primary {
+      display: none !important;
+    }
+
+    /* Style the right TOC navigation */
+    .md-sidebar--secondary .md-nav__list {
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+    .md-sidebar--secondary .md-nav__item {
+      list-style: none !important;
+    }
+
+    .md-sidebar--secondary .md-nav__link {
+      display: block !important;
+      padding: 0.5rem 1rem !important;
+      color: var(--md-text-color) !important;
+      text-decoration: none !important;
+      font-size: 0.875rem !important;
+      line-height: 1.4 !important;
+      transition: color 0.2s ease !important;
+    }
+
+    .md-sidebar--secondary .md-nav__link:hover {
+      color: var(--md-primary-fg-color) !important;
+      background-color: var(--md-surface-color) !important;
+    }
+
+    .md-sidebar--secondary .md-nav__list .md-nav__list {
+      padding-left: 1rem !important;
+    }
+
+    /* Adjust main content to fill full width */
+    .md-content {
+      margin-left: 0 !important;
+    }
+
+    /* Right sidebar styling - fixed position on right */
+    .md-sidebar--secondary {
+      position: fixed !important;
+      right: 0px !important;
+      top: 60px !important;
+      width: 250px !important;
+      height: calc(100vh - 60px) !important;
+      overflow-y: auto !important;
+      background-color: var(--md-bg-color) !important;
+      border-left: 1px solid var(--md-border-color) !important;
+      padding: 1rem 0 !important;
+      z-index: 10 !important;
+      display: block !important;
+      margin: 0 !important;
+      flex: none !important;
+      left: auto !important;
+    }
+
+    /* Override Material for MkDocs sidebar styles */
+    html .md-sidebar--secondary {
+      position: fixed !important;
+      right: 0px !important;
+    }
+
+    html .md-sidebar--secondary.md-sidebar {
+      position: fixed !important;
+      right: 0px !important;
+    }
+
+    /* Adjust main content to have right margin for sidebar */
+    .md-main__inner {
+      margin-right: 260px !important;
+    }
+
   </style>
 {% endblock %}
 
 {% block scripts %}
   {{ super() }}
   <script src="{{ 'stylesheets/language-selector.js' | url }}"></script>
+
+  <!-- Remove left sidebar and create right TOC sidebar -->
+  <script>
+    (function() {
+      // Remove left sidebar after DOM is fully loaded
+      document.addEventListener('DOMContentLoaded', function() {
+        // Target the primary sidebar using the exact selector
+        const primarySidebar = document.querySelector('.md-sidebar--primary');
+        if (primarySidebar) {
+          primarySidebar.remove();
+        }
+
+        // Also adjust the main container if needed
+        const mdMain = document.querySelector('.md-main');
+        if (mdMain) {
+          mdMain.style.marginLeft = '0';
+        }
+
+        // Create right TOC sidebar if it doesn't exist
+        createRightTocSidebar();
+      });
+
+      // Fallback: try to remove on page load as well
+      window.addEventListener('load', function() {
+        const primarySidebar = document.querySelector('.md-sidebar--primary');
+        if (primarySidebar && primarySidebar.parentNode) {
+          primarySidebar.remove();
+        }
+      });
+
+      // Also use MutationObserver to catch any dynamic re-rendering
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initObserver);
+      } else {
+        initObserver();
+      }
+
+      function initObserver() {
+        const observer = new MutationObserver(function(mutations) {
+          const primarySidebar = document.querySelector('.md-sidebar--primary');
+          if (primarySidebar && primarySidebar.parentNode) {
+            primarySidebar.remove();
+          }
+        });
+
+        observer.observe(document.body, {
+          childList: true,
+          subtree: true,
+          attributes: false
+        });
+      }
+
+      // Create right TOC sidebar with table of contents
+      function createRightTocSidebar() {
+        // Check if secondary sidebar already exists
+        let sidebar = document.querySelector('.md-sidebar--secondary');
+        if (sidebar) {
+          sidebar.remove();
+        }
+
+        // Get all headings from the content
+        const article = document.querySelector('article.md-content__inner');
+        if (!article) return;
+
+        const headings = article.querySelectorAll('h2, h3, h4, h5, h6');
+        if (headings.length === 0) return;
+
+        // Create the sidebar structure
+        sidebar = document.createElement('div');
+        sidebar.className = 'md-sidebar md-sidebar--secondary';
+        sidebar.setAttribute('data-md-component', 'sidebar');
+
+        // Apply fixed positioning styles directly with !important
+        sidebar.setAttribute('style', `
+          position: fixed !important;
+          right: 0px !important;
+          top: 60px !important;
+          width: 250px !important;
+          height: calc(100vh - 60px) !important;
+          overflow-y: auto !important;
+          background-color: var(--md-bg-color) !important;
+          border-left: 1px solid var(--md-border-color) !important;
+          padding: 1rem 0 !important;
+          z-index: 10 !important;
+          display: block !important;
+          margin: 0 !important;
+        `);
+
+        // Create nav with TOC
+        const nav = document.createElement('nav');
+        nav.className = 'md-nav md-nav--secondary md-nav--lifted';
+        nav.setAttribute('aria-label', '목차');
+
+        // Create list
+        const ul = document.createElement('ul');
+        ul.className = 'md-nav__list';
+
+        const headingArray = Array.from(headings);
+        const levelStack = [];
+
+        headingArray.forEach((heading, index) => {
+          const level = parseInt(heading.tagName[1]);
+          const text = heading.textContent.replace('¶', '').trim();
+          let id = heading.id;
+
+          // Generate ID if not present
+          if (!id) {
+            id = text.toLowerCase().replace(/\s+/g, '-').replace(/[^\w\-]/g, '');
+            heading.id = id;
+          }
+
+          // Create list item
+          const li = document.createElement('li');
+          li.className = 'md-nav__item';
+
+          // Create link
+          const a = document.createElement('a');
+          a.className = 'md-nav__link';
+          a.href = '#' + id;
+          a.textContent = text;
+
+          li.appendChild(a);
+
+          // Determine parent list based on level
+          while (levelStack.length > 0 && levelStack[levelStack.length - 1].level >= level) {
+            levelStack.pop();
+          }
+
+          let parentList = ul;
+          if (levelStack.length > 0) {
+            parentList = levelStack[levelStack.length - 1].ul;
+          }
+
+          parentList.appendChild(li);
+
+          // Check if next heading is deeper (needs nested list)
+          if (index < headingArray.length - 1) {
+            const nextLevel = parseInt(headingArray[index + 1].tagName[1]);
+            if (nextLevel > level) {
+              const nestedUl = document.createElement('ul');
+              nestedUl.className = 'md-nav__list';
+              li.appendChild(nestedUl);
+              levelStack.push({ level: level, ul: nestedUl });
+            }
+          }
+        });
+
+        nav.appendChild(ul);
+        sidebar.appendChild(nav);
+
+        // Insert sidebar to document body as fixed element
+        document.body.appendChild(sidebar);
+      }
+    })();
+  </script>
 {% endblock %}
