@@ -8,6 +8,9 @@ tools:
 - Glob
 - Bash
 - WebFetch
+- mcp__context7__resolve-library-id
+- mcp__context7__get-library-docs
+- mcp__sequential_thinking_think
 model: inherit
 ---
 

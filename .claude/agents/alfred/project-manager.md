@@ -1,7 +1,7 @@
 ---
 name: project-manager
 description: "Use when: When initial project setup and .moai/ directory structure creation are required. Called from the /alfred:0-project command."
-tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, AskUserQuestion
+tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
 model: inherit
 ---
 
