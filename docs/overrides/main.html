@@ -13,8 +13,6 @@
 
   <!-- Google Fonts for multilingual support -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
   <!-- Hack monospace font for code blocks -->
   <link href="https://fonts.googleapis.com/css2?family=Hack:wght@400;700&display=swap" rel="stylesheet">
@@ -64,8 +62,6 @@
       /* Font variables */
       --font-ko-text: 'Pretendard', 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
       --font-en-text: 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
-      --font-ja-text: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
-      --font-zh-text: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
 
       /* Transitions and shadows */
       --transition-normal: 250ms ease-in-out;
@@ -330,14 +326,6 @@
     /* Language-specific fonts */
     html[lang="en"] .md-typeset {
       font-family: var(--font-en-text) !important;
-    }
-
-    html[lang="ja"] .md-typeset {
-      font-family: var(--font-ja-text) !important;
-    }
-
-    html[lang="zh"] .md-typeset {
-      font-family: var(--font-zh-text) !important;
     }
 
 
@@ -754,14 +742,6 @@
       line-height: 1.5;
     }
 
-    html[lang="ja"] .md-typeset {
-      line-height: 1.6;
-    }
-
-    html[lang="zh"] .md-typeset {
-      line-height: 1.6;
-    }
-
     /* Performance optimization - font-display: swap */
     @font-face {
       font-family: 'Pretendard';
@@ -965,80 +945,6 @@
       letter-spacing: -0.025em;
     }
 
-    /* Hide left sidebar completely */
-    .md-sidebar--primary {
-      display: none !important;
-    }
-
-    /* Style the right TOC navigation */
-    .md-sidebar--secondary .md-nav__list {
-      margin: 0 !important;
-      padding: 0 !important;
-    }
-
-    .md-sidebar--secondary .md-nav__item {
-      list-style: none !important;
-    }
-
-    .md-sidebar--secondary .md-nav__link {
-      display: block !important;
-      padding: 0.5rem 1rem !important;
-      color: var(--md-text-color) !important;
-      text-decoration: none !important;
-      font-size: 0.875rem !important;
-      line-height: 1.4 !important;
-      transition: color 0.2s ease !important;
-    }
-
-    .md-sidebar--secondary .md-nav__link:hover {
-      color: var(--md-primary-fg-color) !important;
-      background-color: var(--md-surface-color) !important;
-    }
-
-    .md-sidebar--secondary .md-nav__list .md-nav__list {
-      padding-left: 1rem !important;
-    }
-
-    /* Adjust main content to fill full width */
-    .md-content {
-      margin-left: 0 !important;
-    }
-
-    /* Left TOC sidebar styling - fixed position on left */
-    .md-sidebar--secondary {
-      position: fixed !important;
-      left: 0px !important;
-      top: 60px !important;
-      width: 250px !important;
-      height: calc(100vh - 60px) !important;
-      overflow-y: auto !important;
-      background-color: var(--md-bg-color) !important;
-      border-right: 1px solid var(--md-border-color) !important;
-      border-left: none !important;
-      padding: 1rem 0 !important;
-      z-index: 10 !important;
-      display: block !important;
-      margin: 0 !important;
-      flex: none !important;
-      right: auto !important;
-    }
-
-    /* Override Material for MkDocs sidebar styles */
-    html .md-sidebar--secondary {
-      position: fixed !important;
-      left: 0px !important;
-    }
-
-    html .md-sidebar--secondary.md-sidebar {
-      position: fixed !important;
-      left: 0px !important;
-    }
-
-    /* Adjust main content to have left margin for sidebar */
-    .md-main__inner {
-      margin-left: 260px !important;
-      margin-right: 0 !important;
-    }
 
   </style>
 {% endblock %}
