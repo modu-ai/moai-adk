@@ -292,7 +292,7 @@ class TestHookProjectDirSubstitution:
         # Check for enhanced error message
         warning_text = " ".join(warnings)
         assert "PROJECT_DIR" in warning_text
-        assert "Cross-platform hook path" in warning_text
+        assert "Cross-platform project path" in warning_text
 
     def test_enhanced_error_messages(self, tmp_path):
         """Test enhanced error messages for common variables"""
@@ -317,6 +317,6 @@ Unknown: {{UNKNOWN_VAR}}
         assert "AUTHOR" in warning_text
         assert "CONVERSATION_LANGUAGE" in warning_text
         assert "PROJECT_DIR" in warning_text
-        assert "Cross-platform hook path" in warning_text
+        assert "Cross-platform project path" in warning_text
         assert "UNKNOWN_VAR" in warning_text
         assert "Unknown variable" in warning_text
