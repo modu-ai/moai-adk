@@ -186,7 +186,7 @@ export MOAI_STATUSLINE_MODE=extended
 
 **Automatic Detection**:
 
-- ✅ **10 Language Support**: Python, JavaScript, TypeScript, Go, Rust, Kotlin, Ruby, PHP, Java, C#
+- ✅ **18 Language Support**: Python, TypeScript, JavaScript, Go, Rust, Java, Kotlin, Swift, Dart, PHP, Ruby, C, C++, C#, Scala, R, SQL, Shell
 - ✅ **Standard Directory Patterns**: Automatically detect conventional directories per language (Python: src/, Go: cmd/pkg/, JavaScript: src/app/pages/, etc.)
 - ✅ **Customization Modes**: Three detection modes - auto/manual/hybrid
 - ✅ **Exclude Patterns**: Automatically exclude tests/, docs/, node_modules/, etc. from detection
@@ -1044,7 +1044,7 @@ Organized across 6 tiers:
 | **Platform Coverage**   | 9 platforms (Supabase, Firebase, Vercel, Cloudflare, Auth0, Convex, Railway, Neon, Clerk) |
 | **Architecture Patterns** | 8 patterns (A-H) for all deployment scenarios                             |
 | **BaaS Documentation**  | 11,500+ words with 60+ code examples                                       |
-| **Supported Languages** | 12+ (Python, TypeScript, Go, Rust, PHP, Ruby, Java, Kotlin, R, Bash, Shell) |
+| **Supported Languages** | 18 (Python, TypeScript, JavaScript, Go, Rust, Java, Kotlin, Swift, Dart, PHP, Ruby, C, C++, C#, Scala, R, SQL, Shell) |
 | **SPEC Patterns**       | 5+ EARS formats                                                             |
 | **Quality Gates**       | TRUST 5 + additional checks                                                 |
 | **Git Automation**      | Complete GitFlow support                                                    |
