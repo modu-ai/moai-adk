@@ -88,6 +88,11 @@ def should_validate_tool(tool_name: str, tool_args: Dict[str, Any]) -> bool:
     if tool_name not in validation_tools:
         return False
 
+    # Load optional patterns from config
+    config_data = load_config()
+    hook_config = config_data.get("hooks", {})
+    tag_validation_exceptions = hook_config.get("tag_validation_exceptions", {})
+
     # Optional file patterns (not a TAG validation target)
     optional_patterns = [
         "CLAUDE.md",
@@ -102,6 +107,10 @@ def should_validate_tool(tool_name: str, tool_args: Dict[str, Any]) -> bool:
         "templates/",
         "examples/",
     ]
+
+    # Add exempt directories from config
+    if tag_validation_exceptions.get("enabled", True):
+        optional_patterns.extend(tag_validation_exceptions.get("exempt_directories", []))
 
     # For Edit/Write, check single file
     if tool_name in {"Edit", "Write"}:

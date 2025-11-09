@@ -98,6 +98,11 @@ def get_project_files_to_scan() -> List[str]:
         ".moai/specs/**/*.md"    # SPEC documents
     ]
 
+    # Load exclude patterns from config
+    config_data = load_config()
+    hook_config = config_data.get("hooks", {})
+    tag_validation_exceptions = hook_config.get("tag_validation_exceptions", {})
+
     # Exclude patterns (for performance optimization)
     exclude_patterns = [
         ".claude/",
@@ -110,6 +115,10 @@ def get_project_files_to_scan() -> List[str]:
         "__pycache__/",
         "node_modules/"
     ]
+
+    # Add exempt directories from config
+    if tag_validation_exceptions.get("enabled", True):
+        exclude_patterns.extend(tag_validation_exceptions.get("exempt_directories", []))
 
     # Limit file count for fast scan (reduced from 50 to 30)
     max_files = 30
