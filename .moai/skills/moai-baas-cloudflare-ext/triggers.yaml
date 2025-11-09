@@ -1,0 +1,28 @@
+skill_id: moai-baas-cloudflare-ext
+trigger_keywords:
+  - "Cloudflare"
+  - "Workers"
+  - "D1"
+  - "Pages"
+  - "Edge"
+  - "Wrangler"
+  - "Durable Objects"
+
+trigger_contexts:
+  - "cloudflare-detected"
+  - "pattern-g"
+  - "edge-performance"
+  - "global-deployment"
+
+trigger_agents:
+  - "backend-expert"
+  - "devops-expert"
+  - "database-expert"
+
+auto_load_conditions:
+  - when_cloudflare_selected: true
+  - when_edge_performance_critical: true
+  - when_pattern_g_active: true
+
+priority: 86
+freedom_level: high

@@ -1,0 +1,44 @@
+{
+  "skill_id": "moai-baas-convex-ext",
+  "skill_name": "Convex Realtime Database & Sync Framework",
+  "version": "2.0.0",
+  "language": "english",
+  "word_count": 1200,
+  "sections": 8,
+  "context7_references": 4,
+  "context7_topics": [
+    "Database Design & Schema",
+    "Realtime Sync Primitives",
+    "Authentication & Authorization",
+    "Server Functions"
+  ],
+  "agents": [
+    "backend-expert",
+    "database-expert",
+    "frontend-expert",
+    "devops-expert"
+  ],
+  "tags": [
+    "baas",
+    "convex",
+    "realtime",
+    "sync",
+    "typescript",
+    "database"
+  ],
+  "patterns_supported": [
+    "pattern-f"
+  ],
+  "special_requirements": [
+    "realtime-sync",
+    "type-safety",
+    "collaborative-apps"
+  ],
+  "dependencies": [
+    "moai-baas-foundation"
+  ],
+  "created": "2025-11-09",
+  "updated": "2025-11-09",
+  "validation_status": "complete",
+  "spec_reference": "@SPEC:BAAS-ECOSYSTEM-001"
+}
