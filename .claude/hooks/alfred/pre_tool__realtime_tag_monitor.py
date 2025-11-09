@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 # @CODE:HOOK-REALTIME-001 | SPEC: TAG-REALTIME-HOOK-001 | TEST: tests/hooks/test_realtime_tag_monitor.py
-"""Real-time TAG monitoring Hook
+"""실시간 TAG 모니터링 Hook
 
-Continuous TAG status monitoring and real-time violation detection.
-Quick scan of entire project TAG status at PreToolUse stage.
+지속적인 TAG 상태 모니터링과 실시간 위반 탐지.
+PreToolUse 단계에서 프로젝트 전체 TAG 상태를 빠르게 검사.
 
-Features:
-- Real-time TAG status monitoring
-- Fast violation detection (within 5 seconds)
-- Project-wide TAG integrity check
-- Immediate feedback to user
+기능:
+- 실시간 TAG 상태 모니터링
+- 빠른 위반 탐지 (5초 내)
+- 프로젝트 전체 TAG 무결성 검사
+- 사용자에게 즉각적인 피드백
 
-Usage:
+사용법:
     python3 pre_tool__realtime_tag_monitor.py <tool_name> <tool_args_json>
 """
 
@@ -21,7 +21,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List
 
-# Add module path
+# 모듈 경로 추가
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
 from moai_adk.core.tags.validator import CentralValidationResult, CentralValidator, ValidationConfig
@@ -30,10 +30,10 @@ from ..utils.hook_config import get_graceful_degradation, load_hook_timeout
 
 
 def load_config() -> Dict[str, Any]:
-    """Load configuration file
+    """설정 파일 로드
 
     Returns:
-        Configuration dictionary
+        설정 딕셔너리
     """
     try:
         config_file = Path(".moai/config.json")
@@ -47,15 +47,15 @@ def load_config() -> Dict[str, Any]:
 
 
 def create_validator() -> CentralValidator:
-    """Create central validator
+    """중앙 검증기 생성
 
     Returns:
-        CentralValidator instance
+        CentralValidator 인스턴스
     """
     config_data = load_config()
     tag_policy_config = config_data.get("tags", {}).get("policy", {})
 
-    # Create ValidationConfig
+    # ValidationConfig 생성
     validation_config = ValidationConfig(
         strict_mode=tag_policy_config.get("enforcement_mode", "strict") == "strict",
         check_duplicates=True,
@@ -67,43 +67,38 @@ def create_validator() -> CentralValidator:
 
 
 def should_monitor(tool_name: str, tool_args: Dict[str, Any]) -> bool:
-    """Check if tool is a monitoring target
+    """모니터링 대상 툴인지 확인
 
     Args:
-        tool_name: Tool name
-        tool_args: Tool arguments
+        tool_name: 툴 이름
+        tool_args: 툴 인자
 
     Returns:
-        True if monitoring target
+        모니터링 대상이면 True
     """
-    # Monitor only file manipulation tools
+    # 파일 조작 툴만 모니터링
     monitoring_tools = {"Edit", "Write", "MultiEdit"}
     return tool_name in monitoring_tools
 
 
 def get_project_files_to_scan() -> List[str]:
-    """Get project files to scan (optimized)
+    """스캔할 프로젝트 파일 목록 가져오기 (최적화)
 
-    Improves performance by excluding optional file directories.
-    Scan only essential files: src/, tests/, .moai/specs/
+    선택적 파일 디렉토리를 제외하여 성능 개선.
+    필수 파일만 스캔: src/, tests/, .moai/specs/
 
     Returns:
-        List of file paths
+        파일 경로 목록
     """
     files = []
-    # Scan only essential file patterns (exclude optional files)
+    # 필수 파일 패턴만 스캔 (선택적 파일 제외)
     important_patterns = [
-        "src/**/*.py",           # Implementation code
-        "tests/**/*.py",         # Test code
-        ".moai/specs/**/*.md"    # SPEC documents
+        "src/**/*.py",           # 구현 코드
+        "tests/**/*.py",         # 테스트 코드
+        ".moai/specs/**/*.md"    # SPEC 문서
     ]
 
-    # Load exclude patterns from config
-    config_data = load_config()
-    hook_config = config_data.get("hooks", {})
-    tag_validation_exceptions = hook_config.get("tag_validation_exceptions", {})
-
-    # Exclude patterns (for performance optimization)
+    # 제외 패턴 (성능 최적화를 위해 제외)
     exclude_patterns = [
         ".claude/",
         ".moai/docs/",
@@ -116,11 +111,7 @@ def get_project_files_to_scan() -> List[str]:
         "node_modules/"
     ]
 
-    # Add exempt directories from config
-    if tag_validation_exceptions.get("enabled", True):
-        exclude_patterns.extend(tag_validation_exceptions.get("exempt_directories", []))
-
-    # Limit file count for fast scan (reduced from 50 to 30)
+    # 빠른 스캔을 위해 파일 수 제한 (50개 → 30개로 단축)
     max_files = 30
 
     for pattern in important_patterns:
@@ -132,7 +123,7 @@ def get_project_files_to_scan() -> List[str]:
                 if len(files) >= max_files:
                     break
                 if path.is_file():
-                    # Check exclude patterns
+                    # 제외 패턴 확인
                     path_str = str(path)
                     if not any(exclude in path_str for exclude in exclude_patterns):
                         files.append(path_str)
@@ -144,14 +135,14 @@ def get_project_files_to_scan() -> List[str]:
 
 def create_quick_scan_result(validation_result: CentralValidationResult,
                            scan_time_ms: float) -> Dict[str, Any]:
-    """Create quick scan result
+    """빠른 스캔 결과 생성
 
     Args:
-        validation_result: Validation result
-        scan_time_ms: Scan time
+        validation_result: 검증 결과
+        scan_time_ms: 스캔 시간
 
     Returns:
-        Scan result dictionary
+        스캔 결과 딕셔너리
     """
     result = {
         "quick_scan_completed": True,
@@ -162,7 +153,7 @@ def create_quick_scan_result(validation_result: CentralValidationResult,
         "is_valid": validation_result.is_valid
     }
 
-    # Summarize only critical issues
+    # 심각한 문제만 요약
     if validation_result.errors:
         result["critical_issues"] = len(validation_result.errors)
         result["error_summary"] = [
@@ -171,22 +162,22 @@ def create_quick_scan_result(validation_result: CentralValidationResult,
                 "tag": error.tag,
                 "message": error.message
             }
-            for error in validation_result.errors[:5]  # Show maximum 5 issues
+            for error in validation_result.errors[:5]  # 최대 5개만 표시
         ]
 
     if validation_result.warnings:
         result["warnings"] = len(validation_result.warnings)
 
-    # Coverage information
+    # 커버리지 정보
     result["coverage_percentage"] = validation_result.statistics.coverage_percentage
 
-    # Status message
+    # 상태 메시지
     if validation_result.is_valid:
-        result["status_message"] = "✅ Project TAG status is healthy"
+        result["status_message"] = "✅ 프로젝트 TAG 상태 양호"
     elif validation_result.errors:
-        result["status_message"] = f"🚨 {len(validation_result.errors)} critical issues found"
+        result["status_message"] = f"🚨 {len(validation_result.errors)}개 치명적 문제 발견"
     else:
-        result["status_message"] = f"⚠️ {len(validation_result.warnings)} warnings found"
+        result["status_message"] = f"⚠️ {len(validation_result.warnings)}개 경고 발견"
 
     return result
 
@@ -194,23 +185,23 @@ def create_quick_scan_result(validation_result: CentralValidationResult,
 def create_health_check_result(issues_count: int,
                              coverage_percentage: float,
                              scan_time_ms: float) -> Dict[str, Any]:
-    """Create health check result
+    """프로젝트 건강 상태 결과 생성
 
     Args:
-        issues_count: Issue count
-        coverage_percentage: Coverage percentage
-        scan_time_ms: Scan time
+        issues_count: 문제 수
+        coverage_percentage: 커버리지
+        scan_time_ms: 스캔 시간
 
     Returns:
-        Health check result
+        건강 상태 결과
     """
-    # Calculate health score
+    # 건강 상태 계산
     health_score = 100
 
-    # Deduct points for issues
-    health_score -= min(issues_count * 5, 50)  # Maximum 50 points deduction
+    # 문제 점수 차감
+    health_score -= min(issues_count * 5, 50)  # 최대 50점 차감
 
-    # Coverage percentage score
+    # 커버리지 점수
     if coverage_percentage < 50:
         health_score -= 20
     elif coverage_percentage < 75:
@@ -218,22 +209,22 @@ def create_health_check_result(issues_count: int,
 
     health_score = max(0, health_score)
 
-    # Health grade
+    # 건강 등급
     if health_score >= 90:
         health_grade = "A"
-        health_message = "Excellent"
+        health_message = "매우 좋음"
     elif health_score >= 80:
         health_grade = "B"
-        health_message = "Good"
+        health_message = "좋음"
     elif health_score >= 70:
         health_grade = "C"
-        health_message = "Fair"
+        health_message = "보통"
     elif health_score >= 60:
         health_grade = "D"
-        health_message = "Needs attention"
+        health_message = "주의 필요"
     else:
         health_grade = "F"
-        health_message = "Needs improvement"
+        health_message = "개선 필요"
 
     return {
         "health_score": health_score,
@@ -246,13 +237,13 @@ def create_health_check_result(issues_count: int,
 
 
 def main() -> None:
-    """Main function"""
+    """메인 함수"""
     try:
-        # Load timeout value from config (milliseconds to seconds)
+        # 설정에서 타임아웃 값 로드 (밀리초 → 초)
         timeout_seconds = load_hook_timeout() / 1000
         graceful_degradation = get_graceful_degradation()
 
-        # Parse arguments
+        # 인자 파싱
         if len(sys.argv) < 3:
             usage = "python3 pre_tool__realtime_tag_monitor.py <tool_name> <tool_args_json>"  # noqa: E501
             print(json.dumps({
@@ -271,44 +262,44 @@ def main() -> None:
             }))
             sys.exit(0)
 
-        # Check if monitoring target
+        # 모니터링 대상 확인
         if not should_monitor(tool_name, tool_args):
             print(json.dumps({
                 "quick_scan_completed": True,
-                "message": "Not a monitoring target"
+                "message": "모니터링 대상 아님"
             }))
             sys.exit(0)
 
-        # Record start time
+        # 시작 시간 기록
         start_time = time.time()
 
-        # Get list of files to scan
+        # 스캔할 파일 목록 가져오기
         files_to_scan = get_project_files_to_scan()
         if not files_to_scan:
             print(json.dumps({
                 "quick_scan_completed": True,
-                "message": "No files to scan"
+                "message": "스캔할 파일 없음"
             }))
             sys.exit(0)
 
-        # Create validator
+        # 검증기 생성
         validator = create_validator()
 
-        # Execute fast validation (using configured timeout)
+        # 빠른 검증 실행 (설정된 타임아웃 사용)
         try:
-            # Timeout check
+            # 타임아웃 체크
             if time.time() - start_time > timeout_seconds:
                 raise TimeoutError("Real-time monitoring timeout")
 
             validation_result = validator.validate_files(files_to_scan)
         except Exception as e:
-            # Handle validation failure and timeout
+            # 검증 실패시 타임아웃 처리
             scan_time = (time.time() - start_time) * 1000
             error_response = {
                 "quick_scan_completed": False,
-                "error": f"Validation timeout: {str(e)}",
+                "error": f"검증 타임아웃: {str(e)}",
                 "scan_time_ms": scan_time,
-                "message": "Real-time validation timeout - treating as normal operation"
+                "message": "실시간 검증 타임아웃 - 정상 작동으로 간주"
             }
 
             if graceful_degradation:
@@ -320,41 +311,37 @@ def main() -> None:
 
         scan_time_ms = (time.time() - start_time) * 1000
 
-        # Create results
+        # 결과 생성
         scan_result = create_quick_scan_result(validation_result, scan_time_ms)
 
-        # Perform health check
+        # 건강 상태 검사
         health_result = create_health_check_result(
             validation_result.statistics.total_issues,
             validation_result.statistics.coverage_percentage,
             scan_time_ms
         )
 
-        # Final response
+        # 최종 응답
         response = {
             **scan_result,
             "health_check": health_result,
             "monitoring_type": "realtime_quick_scan"
         }
 
-        # Timeout warning
+        # 타임아웃 경고
         timeout_warning_ms = timeout_seconds * 1000 * 0.8  # 80% of timeout
         if scan_time_ms > timeout_warning_ms:
-<<<<<<< HEAD
             warn_msg = f"스캔 시간이 설정된 타임아웃의 80%를 초과했습니다 ({scan_time_ms:.0f}ms / {timeout_warning_ms:.0f}ms)"  # noqa: E501
             response["performance_warning"] = warn_msg
-=======
-            response["performance_warning"] = f"Scan time exceeded 80% of configured timeout ({scan_time_ms:.0f}ms / {timeout_warning_ms:.0f}ms)"
->>>>>>> b5ac98dc46dcbb7aa3d64d1c16f4a5ef2dfa3053
 
         print(json.dumps(response, ensure_ascii=False, indent=2))
 
     except Exception as e:
-        # Default response on exception
+        # 예외 발생시 기본 응답
         error_response = {
             "quick_scan_completed": False,
             "error": f"Hook execution error: {str(e)}",
-            "message": "Real-time monitoring error - treating as normal operation"
+            "message": "실시간 모니터링 오류 - 정상 작동으로 간주"
         }
 
         if graceful_degradation:

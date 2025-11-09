@@ -5,14 +5,9 @@ Phase 4: 최종 종합 검증 리포트 생성
 """
 
 import sys
-<<<<<<< HEAD
 from datetime import datetime
 from pathlib import Path
 
-=======
-from pathlib import Path
-from datetime import datetime
->>>>>>> b5ac98dc46dcbb7aa3d64d1c16f4a5ef2dfa3053
 
 # 프로젝트 루트 자동 탐지
 def find_project_root(start_path: Path) -> Path:

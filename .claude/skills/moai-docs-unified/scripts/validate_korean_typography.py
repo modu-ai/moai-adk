@@ -5,14 +5,8 @@ UTF-8 인코딩, 전각/반각 문자, 타이포그래피 검증
 """
 
 import sys
-<<<<<<< HEAD
 from pathlib import Path
 
-=======
-import unicodedata
-from pathlib import Path
-from collections import defaultdict
->>>>>>> b5ac98dc46dcbb7aa3d64d1c16f4a5ef2dfa3053
 
 # 프로젝트 루트 자동 탐지
 def find_project_root(start_path: Path) -> Path:
@@ -254,15 +248,9 @@ class KoreanTypographyValidator:
             report.append(f"   영문 단어: {english_words:,}개")
 
             # 제목 구조 분석
-<<<<<<< HEAD
             headers = [line for line in lines if line.startswith('#')]
             if headers:
                 report.append("   제목 구조:")
-=======
-            headers = [l for l in lines if l.startswith('#')]
-            if headers:
-                report.append(f"   제목 구조:")
->>>>>>> b5ac98dc46dcbb7aa3d64d1c16f4a5ef2dfa3053
                 for header in headers[:5]:
                     report.append(f"     {header[:70]}")
                 if len(headers) > 5:
