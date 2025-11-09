@@ -58,7 +58,7 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
 ### 3. Alfred SuperAgent
 
 - **19 specialized AI agents** (spec-builder, code-builder, doc-syncer, etc.)
-- **73+ production-ready skills** covering all development domains
+- **93 production-ready skills** covering all development domains
 - **Adaptive learning** based on your project patterns
 - **Smart context management** understanding project structure and dependencies
 
@@ -1039,7 +1039,7 @@ Organized across 6 tiers:
 | ----------------------- | --------------------------------------------------------------------------- |
 | **Test Coverage**       | 87.84%+ guaranteed                                                          |
 | **Specialized Agents**  | 19 team members                                                             |
-| **Production Skills**   | 73+ capabilities (including 10 BaaS skills)                                |
+| **Production Skills**   | 93 capabilities (including 10 BaaS skills)                                |
 | **BaaS Skills**         | 10 production-ready (Foundation + 7 Extensions + 2 Planned)                |
 | **Platform Coverage**   | 9 platforms (Supabase, Firebase, Vercel, Cloudflare, Auth0, Convex, Railway, Neon, Clerk) |
 | **Architecture Patterns** | 8 patterns (A-H) for all deployment scenarios                             |
