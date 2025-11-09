@@ -1,7 +1,7 @@
 ---
 name: doc-syncer
 description: "Use when: When automatic document synchronization based on code changes is required. Called from the /alfred:3-sync command."
-tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, AskUserQuestion
+tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
 model: haiku
 ---
 

@@ -4,7 +4,7 @@
     "@SPEC:PROJECT-CONFIG-001": "@SPEC:MOAI-CONFIG-001"
   },
   "moai": {
-    "version": "0.22.0",
+    "version": "0.22.4",
     "update_check_frequency": "daily",
     "version_check": {
       "enabled": true,
@@ -65,20 +65,19 @@
   "language": {
     "conversation_language": "ko",
     "conversation_language_name": "Korean",
-    "agent_prompt_language": "ko",
+    "agent_prompt_language": "english",
     "agent_prompt_language_description": "Language for sub-agent internal prompts (english=global standard, localized=user's conversation language)"
   },
   "project": {
     "name": "MoAI-ADK",
     "description": "",
-    "owner": "GoosLab",
+    "owner": "@user",
     "mode": "personal",
-    "locale": "en",
-    "language": "en",
-    "created_at": "2025-11-09 16:50:59",
+    "locale": "ko",
+    "created_at": "2025-11-10 05:15:50",
     "initialized": true,
     "optimized": false,
-    "template_version": "0.21.2"
+    "template_version": "0.22.4"
   },
   "tags": {
     "auto_sync": true,
@@ -96,10 +95,7 @@
     "code_scan_policy": {
       "no_intermediate_cache": true,
       "realtime_validation": true,
-      "scan_tools": [
-        "rg",
-        "grep"
-      ],
+      "scan_tools": ["rg", "grep"],
       "scan_command": "rg '@TAG' -n",
       "philosophy": "The source of truth for TAGs lives in the code itself"
     },
@@ -108,11 +104,7 @@
       "require_spec_before_code": true,
       "require_test_for_code": true,
       "enforce_chains": true,
-      "mandatory_directories": [
-        "src/",
-        "tests/",
-        ".moai/specs/"
-      ],
+      "mandatory_directories": ["src/", "tests/", ".moai/specs/"],
       "optional_directories": [
         "CLAUDE.md",
         "README.md",
@@ -186,11 +178,6 @@
   "hooks": {
     "timeout_ms": 2000,
     "graceful_degradation": true,
-    "emoji_policy": {
-      "ban_in_ask_user_question": true,
-      "ban_fields": ["question", "header", "label", "description"],
-      "reason": "Prevent 'no low surrogate in string' JSON encoding errors in API requests"
-    },
     "tag_validation_exceptions": {
       "enabled": true,
       "exempt_directories": [
@@ -201,7 +188,7 @@
       ],
       "reason": "System infrastructure and documentation directories do not require TAG annotations"
     },
-    "notes": "Hook execution timeout (milliseconds). Set graceful_degradation to true to continue even if a hook fails. Optimized to 2 seconds for faster performance. CRITICAL: No emojis in AskUserQuestion fields to prevent JSON serialization errors."
+    "notes": "Hook execution timeout (milliseconds). Set graceful_degradation to true to continue even if a hook fails. Optimized to 2 seconds for faster performance."
   },
   "session_end": {
     "enabled": true,
@@ -217,10 +204,7 @@
       "enabled": true,
       "temp_files": true,
       "cache_files": true,
-      "patterns": [
-        ".moai/temp/*",
-        ".moai/cache/*.tmp"
-      ]
+      "patterns": [".moai/temp/*", ".moai/cache/*.tmp"]
     },
     "warnings": {
       "uncommitted_changes": true
@@ -233,16 +217,14 @@
   },
   "auto_cleanup": {
     "enabled": true,
-    "cleanup_days": 3,
-    "max_reports": 5,
+    "cleanup_days": 7,
+    "max_reports": 10,
     "cleanup_targets": [
       ".moai/reports/*.json",
       ".moai/reports/*.md",
       ".moai/cache/*",
-      ".moai/temp/*",
-      ".moai/memory/*.json"
-    ],
-    "notes": "Optimized to prevent 'no low surrogate in string' JSON serialization errors by reducing context accumulation. Memory files cleaned every 3 days."
+      ".moai/temp/*"
+    ]
   },
   "daily_analysis": {
     "enabled": true,
@@ -259,7 +241,7 @@
     "auto_create": false,
     "warn_user": true,
     "user_choice": "Minimal",
-    "configured_at": "2025-11-09 16:50:59",
+    "configured_at": "2025-11-10 05:15:50",
     "allowed_locations": [
       ".moai/docs/",
       ".moai/reports/",
@@ -279,12 +261,12 @@
       "test_directory": "tests",
       "notes": "Configure GitHub templates for project customization. When enable_* flags are false, corresponding MoAI-specific sections are omitted from templates."
     },
-    "auto_delete_branches": true,
-    "auto_delete_branches_checked": true,
-    "auto_delete_branches_rationale": "Auto-delete feature branches after successful merge (configured by GoosLab)",
-    "spec_git_workflow": "develop_direct",
-    "spec_git_workflow_configured": true,
-    "spec_git_workflow_rationale": "Direct merge to develop branch for each SPEC (configured by GoosLab)",
+    "auto_delete_branches": null,
+    "auto_delete_branches_checked": false,
+    "auto_delete_branches_rationale": "Not configured",
+    "spec_git_workflow": "per_spec",
+    "spec_git_workflow_configured": false,
+    "spec_git_workflow_rationale": "Ask per SPEC (flexible, user controls each workflow)",
     "notes_new_fields": "auto_delete_branches: whether to auto-delete feature branches after merge. spec_git_workflow: 'feature_branch' (auto), 'develop_direct' (direct), 'per_spec' (ask per SPEC)"
   }
 }

@@ -59,6 +59,9 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
 
 - **19 specialized AI agents** (spec-builder, code-builder, doc-syncer, etc.)
 - **93 production-ready skills** covering all development domains
+  - **10 BaaS skills**: Cloud platforms (Supabase, Firebase, Vercel, Cloudflare, Auth0, Convex, Railway, Neon, Clerk)
+  - **Complete frontend coverage**: HTML/CSS, Tailwind CSS, shadcn/ui, Vector icons (10+ icon libraries)
+  - **Full backend support**: Database design, API architecture, DevOps
 - **Adaptive learning** based on your project patterns
 - **Smart context management** understanding project structure and dependencies
 
@@ -1039,8 +1042,11 @@ Organized across 6 tiers:
 | ----------------------- | --------------------------------------------------------------------------- |
 | **Test Coverage**       | 87.84%+ guaranteed                                                          |
 | **Specialized Agents**  | 19 team members                                                             |
-| **Production Skills**   | 93 capabilities (including 10 BaaS skills)                                |
+| **Production Skills**   | 93 capabilities (including 10 BaaS + 4 Frontend + 6+ Backend skills)      |
 | **BaaS Skills**         | 10 production-ready (Foundation + 7 Extensions + 2 Planned)                |
+| **Frontend Skills**     | 4 specialized (HTML/CSS, Tailwind CSS, shadcn/ui, Vector Icons)           |
+| **Icon Libraries**      | 10+ (Lucide, React Icons, Tabler, Phosphor, Heroicons, Radix, Iconify, etc.) |
+| **Icon Coverage**       | 200K+ icons across 150+ icon sets                                          |
 | **Platform Coverage**   | 9 platforms (Supabase, Firebase, Vercel, Cloudflare, Auth0, Convex, Railway, Neon, Clerk) |
 | **Architecture Patterns** | 8 patterns (A-H) for all deployment scenarios                             |
 | **BaaS Documentation**  | 11,500+ words with 60+ code examples                                       |

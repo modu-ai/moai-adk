@@ -121,11 +121,6 @@ class TestPortalUserExperience:
         assert "ko" in supported_languages, "한국어가 지원 언어 목록에 없습니다"
 
         # 언어 전환 기능 가정 검증
-        language_switch_features = [
-            "language_selector",
-            "content_translation",
-            "ui_localization"
-        ]
 
         # 실제 구현에서는 이 기능들이 존재하는지 검증
         # 현재는 테스트 스켈레톤만 작성
