@@ -184,7 +184,7 @@
   "statusLine": {
     "enabled": true,
     "type": "command",
-    "command": "python -m moai_adk.statusline.main"
+    "command": "uv run .moai/scripts/statusline.py"
   },
   "spinnerTipsEnabled": true,
   "outputStyle": "streaming"
