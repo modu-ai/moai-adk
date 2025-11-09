@@ -1,7 +1,7 @@
 """
 MoAI-ADK Session Analyzer
 
-Claude Code 세션 로그를 분석하여 데이터 기반 개선 제안 생성
+Analyzes Claude Code session logs to generate data-driven improvement suggestions
 
 This module provides the SessionAnalyzer class for analyzing Claude Code session logs
 and generating improvement suggestions based on usage patterns.
@@ -11,11 +11,11 @@ import json
 from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, cast
 
 
 class SessionAnalyzer:
-    """Claude Code 세션 로그 분석기"""
+    """Claude Code session log analyzer"""
 
     def __init__(self, days_back: int = 7, verbose: bool = False):
         """
@@ -43,7 +43,7 @@ class SessionAnalyzer:
             "failed_sessions": 0,
         }
 
-        self.sessions_data = []
+        self.sessions_data: list[Dict[str, Any]] = []
 
     def parse_sessions(self) -> Dict[str, Any]:
         """
@@ -60,7 +60,7 @@ class SessionAnalyzer:
         cutoff_date = datetime.now() - timedelta(days=self.days_back)
 
         # Look for both session-*.json and UUID.jsonl files
-        session_files = []
+        session_files: list[Path] = []
         session_files.extend(self.claude_projects.glob("*/session-*.json"))
         session_files.extend(self.claude_projects.glob("*/*.jsonl"))
 
@@ -68,7 +68,7 @@ class SessionAnalyzer:
             print(f"Found {len(session_files)} session files")
 
         for session_file in session_files:
-            # 파일 수정 시간 확인
+            # Check file modification time
             if datetime.fromtimestamp(session_file.stat().st_mtime) < cutoff_date:
                 continue
 
@@ -115,62 +115,70 @@ class SessionAnalyzer:
         # Handle session summary format (current JSONL format)
         if session.get("type") == "summary":
             # Count session types by summary content
-            summary = session.get("summary", "").lower()
+            summary = cast(str, session.get("summary", "")).lower()
 
             # Simple analysis of session summaries
             if any(keyword in summary for keyword in ["error", "fail", "issue", "problem"]):
-                self.patterns["failed_sessions"] += 1
-                self.patterns["tool_failures"]["session_error_in_summary"] += 1
+                self.patterns["failed_sessions"] = cast(int, self.patterns["failed_sessions"]) + 1
+                tool_failures = cast(defaultdict[str, int], self.patterns["tool_failures"])
+                tool_failures["session_error_in_summary"] += 1
 
             # Extract potential tool usage from summary
             tool_keywords = ["test", "build", "deploy", "analyze", "create", "update", "fix", "check"]
+            tool_usage = cast(defaultdict[str, int], self.patterns["tool_usage"])
             for keyword in tool_keywords:
                 if keyword in summary:
-                    self.patterns["tool_usage"][f"summary_{keyword}"] += 1
+                    tool_usage[f"summary_{keyword}"] += 1
 
             # Track session summaries as events
-            self.patterns["total_events"] += 1
+            self.patterns["total_events"] = cast(int, self.patterns["total_events"]) + 1
             return
 
         # Handle detailed event format (legacy session-*.json format)
-        events = session.get("events", [])
-        self.patterns["total_events"] += len(events)
+        events = cast(list[Dict[str, Any]], session.get("events", []))
+        self.patterns["total_events"] = cast(int, self.patterns["total_events"]) + len(events)
 
         has_error = False
 
         for event in events:
             event_type = event.get("type", "unknown")
 
-            # Tool 사용 패턴 추출
+            # Extract tool usage patterns
             if event_type == "tool_call":
-                tool_name = event.get("toolName", "unknown").split("(")[0]
-                self.patterns["tool_usage"][tool_name] += 1
+                tool_name = cast(str, event.get("toolName", "unknown")).split("(")[0]
+                tool_usage = cast(defaultdict[str, int], self.patterns["tool_usage"])
+                tool_usage[tool_name] += 1
 
-            # Tool 오류 패턴
+            # Tool error patterns
             elif event_type == "tool_error":
-                error_msg = event.get("error", "unknown error")
-                self.patterns["tool_failures"][error_msg[:50]] += 1  # 처음 50자
+                error_msg = cast(str, event.get("error", "unknown error"))
+                tool_failures = cast(defaultdict[str, int], self.patterns["tool_failures"])
+                tool_failures[error_msg[:50]] += 1  # First 50 characters
                 has_error = True
 
-            # 권한 요청
+            # Permission requests
             elif event_type == "permission_request":
-                perm_type = event.get("permission_type", "unknown")
-                self.patterns["permission_requests"][perm_type] += 1
+                perm_type = cast(str, event.get("permission_type", "unknown"))
+                perm_requests = cast(defaultdict[str, int], self.patterns["permission_requests"])
+                perm_requests[perm_type] += 1
 
-            # Hook 실패
+            # Hook failures
             elif event_type == "hook_failure":
-                hook_name = event.get("hook_name", "unknown")
-                self.patterns["hook_failures"][hook_name] += 1
+                hook_name = cast(str, event.get("hook_name", "unknown"))
+                hook_failures = cast(defaultdict[str, int], self.patterns["hook_failures"])
+                hook_failures[hook_name] += 1
                 has_error = True
 
-            # 명령어 사용
+            # Command usage
             if "command" in event:
-                cmd = event.get("command", "").split()[0]
-                if cmd:
-                    self.patterns["command_frequency"][cmd] += 1
+                cmd_str = cast(str, event.get("command", "")).split()
+                if cmd_str:
+                    cmd = cmd_str[0]
+                    cmd_freq = cast(defaultdict[str, int], self.patterns["command_frequency"])
+                    cmd_freq[cmd] += 1
 
         if has_error:
-            self.patterns["failed_sessions"] += 1
+            self.patterns["failed_sessions"] = cast(int, self.patterns["failed_sessions"]) + 1
 
     def generate_report(self) -> str:
         """
@@ -180,91 +188,97 @@ class SessionAnalyzer:
             Formatted markdown report string
         """
         timestamp = datetime.now().isoformat()
-        total_sessions = self.patterns["total_sessions"]
+        total_sessions = cast(int, self.patterns["total_sessions"])
+        failed_sessions = cast(int, self.patterns["failed_sessions"])
+        total_events = cast(int, self.patterns["total_events"])
         success_rate = (
-            ((total_sessions - self.patterns["failed_sessions"]) / total_sessions * 100)
+            ((total_sessions - failed_sessions) / total_sessions * 100)
             if total_sessions > 0
             else 0
         )
 
-        report = f"""# MoAI-ADK 세션 메타분석 리포트
+        report = f"""# MoAI-ADK Session Meta-Analysis Report
 
-**생성 일시**: {timestamp}
-**분석 기간**: 최근 {self.days_back}일
-**분석 범위**: `~/.claude/projects/`
-
----
-
-## 📊 전체 메트릭
-
-| 메트릭 | 값 |
-|------|-----|
-| **총 세션 수** | {total_sessions} |
-| **총 이벤트 수** | {self.patterns['total_events']} |
-| **성공 세션** | {total_sessions - self.patterns['failed_sessions']} ({success_rate:.1f}%) |
-| **실패 세션** | {self.patterns['failed_sessions']} ({100 - success_rate:.1f}%) |
-| **평균 세션 길이** | {self.patterns['total_events'] / total_sessions if total_sessions > 0 else 0:.1f} 이벤트 |
+**Generated at**: {timestamp}
+**Analysis period**: Last {self.days_back} days
+**Analysis scope**: `~/.claude/projects/`
 
 ---
 
-## 🔧 도구 사용 패턴 (상위 10)
+## Overall Metrics
+
+| Metric | Value |
+|--------|-------|
+| **Total sessions** | {total_sessions} |
+| **Total events** | {total_events} |
+| **Successful sessions** | {total_sessions - failed_sessions} ({success_rate:.1f}%) |
+| **Failed sessions** | {failed_sessions} ({100 - success_rate:.1f}%) |
+| **Average session length** | {total_events / total_sessions if total_sessions > 0 else 0:.1f} |
+
+---
+
+## Tool Usage Patterns (Top 10)
 
 """
 
-        # 상위 도구 사용
+        # Top tool usage
+        tool_usage = cast(defaultdict[str, int], self.patterns["tool_usage"])
         sorted_tools = sorted(
-            self.patterns["tool_usage"].items(), key=lambda x: x[1], reverse=True
+            tool_usage.items(), key=lambda x: x[1], reverse=True
         )
 
-        report += "| 도구 | 사용 횟수 |\n|------|----------|\n"
+        report += "| Tool | Usage Count |\n|------|----------|\n"
         for tool, count in sorted_tools[:10]:
             report += f"| `{tool}` | {count} |\n"
 
-        # Tool 오류 패턴
-        report += "\n## ⚠️ 도구 오류 패턴 (상위 5)\n\n"
+        # Tool error patterns
+        report += "\n## Tool Error Patterns (Top 5)\n\n"
 
-        if self.patterns["tool_failures"]:
+        tool_failures = cast(defaultdict[str, int], self.patterns["tool_failures"])
+        if tool_failures:
             sorted_errors = sorted(
-                self.patterns["tool_failures"].items(),
+                tool_failures.items(),
                 key=lambda x: x[1],
                 reverse=True,
             )
-            report += "| 오류 | 발생 횟수 |\n|------|----------|\n"
+            report += "| Error | Occurrence Count |\n|--------|----------|\n"
             for error, count in sorted_errors[:5]:
                 report += f"| {error}... | {count} |\n"
         else:
-            report += "✅ 도구 오류 없음\n"
+            report += "✅ No tool errors\n"
 
-        # Hook 실패 분석
-        report += "\n## 🪝 Hook 실패 분석\n\n"
+        # Hook failure analysis
+        report += "\n## Hook Failure Analysis\n\n"
 
-        if self.patterns["hook_failures"]:
+        hook_failures = cast(defaultdict[str, int], self.patterns["hook_failures"])
+        if hook_failures:
             for hook, count in sorted(
-                self.patterns["hook_failures"].items(),
+                hook_failures.items(),
                 key=lambda x: x[1],
                 reverse=True,
             ):
-                report += f"- **{hook}**: {count}회\n"
+                report += f"- **{hook}**: {count} times\n"
         else:
-            report += "✅ Hook 실패 없음\n"
+            report += "✅ No hook failures\n"
 
-        # 권한 요청 분석
-        report += "\n## 🔐 권한 요청 패턴\n\n"
+        # Permission request analysis
+        report += "\n## Permission Request Patterns\n\n"
 
-        if self.patterns["permission_requests"]:
+        perm_requests = cast(defaultdict[str, int], self.patterns["permission_requests"])
+        if perm_requests:
             sorted_perms = sorted(
-                self.patterns["permission_requests"].items(),
+                perm_requests.items(),
                 key=lambda x: x[1],
                 reverse=True,
             )
-            report += "| 권한 유형 | 요청 횟수 |\n|---------|----------|\n"
+            report += "| Permission Type | Request Count |\n|---------|----------|\n"
             for perm, count in sorted_perms:
                 report += f"| {perm} | {count} |\n"
         else:
-            report += "✅ 권한 요청 없음\n"
+            report += "✅ No permission requests\n"
 
-        # 개선 제안
-        report += "\n## 💡 개선 제안\n\n"
+        # Improvement suggestions
+        report += "\n## Improvement Suggestions\n\n"
         report += self._generate_suggestions()
 
         return report
@@ -276,68 +290,72 @@ class SessionAnalyzer:
         Returns:
             Formatted suggestions string
         """
-        suggestions = []
+        suggestions: list[str] = []
 
-        # 높은 권한 요청 → 권한 설정 재검토
-        if self.patterns["permission_requests"]:
+        # High permission requests - review permission settings
+        perm_requests = cast(defaultdict[str, int], self.patterns["permission_requests"])
+        if perm_requests:
             top_perm = max(
-                self.patterns["permission_requests"].items(),
+                perm_requests.items(),
                 key=lambda x: x[1],
             )
             if top_perm[1] >= 5:
                 suggestions.append(
-                    f"🔐 **{top_perm[0]}** 권한이 자주 요청됨 ({top_perm[1]}회)\n"
-                    f"   → `.claude/settings.json`의 `permissions` 재검토 필요\n"
-                    f"   → `allow` → `ask`로 변경하거나 새 Bash 도구 규칙 추가"
+                    f"Permission: **{top_perm[0]}** requested frequently ({top_perm[1]} times)\n"
+                    f"   - Review `permissions` in `.claude/settings.json`\n"
+                    f"   - Change `allow` to `ask` or add new Bash tool rules"
                 )
 
-        # Tool 실패 패턴 → 회피 전략 추가
-        if self.patterns["tool_failures"]:
+        # Tool failure patterns - add fallback strategies
+        tool_failures = cast(defaultdict[str, int], self.patterns["tool_failures"])
+        if tool_failures:
             top_error = max(
-                self.patterns["tool_failures"].items(),
+                tool_failures.items(),
                 key=lambda x: x[1],
             )
             if top_error[1] >= 3:
                 suggestions.append(
-                    f"🔧 **도구 오류**: '{top_error[0]}...' ({top_error[1]}회)\n"
-                    f"   → CLAUDE.md에 회피 전략 추가\n"
-                    f"   → 예: 'X 오류 시 Y를 시도하세요'"
+                    f"Tool error: **{top_error[0]}...** ({top_error[1]} times)\n"
+                    f"   - Add fallback strategy to CLAUDE.md\n"
+                    f"   - Example: 'If X error occurs, try Y'"
                 )
 
-        # Hook 실패 → Hook 로직 검토
-        if self.patterns["hook_failures"]:
+        # Hook failures - review hook logic
+        hook_failures = cast(defaultdict[str, int], self.patterns["hook_failures"])
+        if hook_failures:
             for hook, count in sorted(
-                self.patterns["hook_failures"].items(),
+                hook_failures.items(),
                 key=lambda x: x[1],
                 reverse=True,
             )[:3]:
                 if count >= 2:
                     suggestions.append(
-                        f"🪝 **Hook 실패**: {hook} ({count}회)\n"
-                        f"   → `.claude/hooks/alfred/{hook}.py` 디버깅 필요\n"
-                        f"   → 타임아웃, 권한, 파일 경로 확인"
+                        f"Hook failure: **{hook}** ({count} times)\n"
+                        f"   - Debug `.claude/hooks/alfred/{hook}.py`\n"
+                        f"   - Check timeouts, permissions, and file paths"
                     )
 
-        # 낮은 성공률 → 전반적 진단
+        # Low success rate - general diagnosis
+        total_sessions = cast(int, self.patterns["total_sessions"])
+        failed_sessions = cast(int, self.patterns["failed_sessions"])
         success_rate = (
-            ((self.patterns["total_sessions"] - self.patterns["failed_sessions"])
-             / self.patterns["total_sessions"] * 100)
-            if self.patterns["total_sessions"] > 0
+            ((total_sessions - failed_sessions) / total_sessions * 100)
+            if total_sessions > 0
             else 0
         )
 
-        if success_rate < 80 and self.patterns["total_sessions"] >= 5:
+        if success_rate < 80 and total_sessions >= 5:
             suggestions.append(
-                f"📉 **낮은 성공률** ({success_rate:.1f}%)\n"
-                f"   → 최근 세션 로그 상세 검토\n"
-                f"   → CLAUDE.md의 규칙/제약 재평가\n"
-                f"   → Alfred와 Sub-agent 간 컨텍스트 동기화 확인"
+                f"Low success rate: **{success_rate:.1f}%**\n"
+                f"   - Review recent session logs in detail\n"
+                f"   - Re-evaluate rules and constraints in CLAUDE.md\n"
+                f"   - Verify context synchronization between Alfred and Sub-agents"
             )
 
         if not suggestions:
             suggestions.append(
-                "✅ **No major issues detected**\n"
-                "   → 현재 설정과 규칙이 잘 작동 중"
+                "✅ No major issues detected\n"
+                "   - Current settings and rules are working well"
             )
 
         return "\n\n".join(suggestions)
@@ -376,13 +394,15 @@ class SessionAnalyzer:
         Returns:
             Dictionary containing analysis metrics
         """
-        total_sessions = self.patterns["total_sessions"]
+        total_sessions = cast(int, self.patterns["total_sessions"])
         if total_sessions > 0:
+            failed_sessions = cast(int, self.patterns["failed_sessions"])
+            total_events = cast(int, self.patterns["total_events"])
             self.patterns["success_rate"] = (
-                (total_sessions - self.patterns["failed_sessions"]) / total_sessions * 100
+                (total_sessions - failed_sessions) / total_sessions * 100
             )
             self.patterns["average_session_length"] = (
-                self.patterns["total_events"] / total_sessions
+                total_events / total_sessions
             )
 
         return self.patterns.copy()

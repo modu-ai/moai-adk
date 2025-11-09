@@ -1,10 +1,11 @@
 # TAG Coverage Matrix
 
-Generated: 2025-11-07 20:24:40
+Generated: 2025-11-09 18:13:44
 
 | SPEC | CODE | TEST | DOC | Completion |
 |------|------|------|-----|------------|
 | AGENT-001 (❌) | ❌ | ❌ | ✅ | 25% |
+| ALF-WORKFLOW-000 (❌) | ✅ | ❌ | ❌ | 25% |
 | ALF-WORKFLOW-001 (✅) | ✅ | ❌ | ❌ | 50% |
 | ALF-WORKFLOW-002 (❌) | ✅ | ❌ | ❌ | 25% |
 | ALF-WORKFLOW-003 (❌) | ✅ | ❌ | ❌ | 25% |
@@ -34,6 +35,7 @@ Generated: 2025-11-07 20:24:40
 | AUTH-TIMEOUT-001 (✅) | ✅ | ✅ | ❌ | 75% |
 | AUTO-CORRECTION-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | AUTO-CORRECTOR-001 (❌) | ✅ | ✅ | ❌ | 50% |
+| BAAS-ECOSYSTEM-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | BACKUP-UTILS-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | BOOK-MGT-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | BRAND-001 (✅) | ✅ | ✅ | ✅ | 100% |
@@ -113,6 +115,9 @@ Generated: 2025-11-07 20:24:40
 | DOCS-004 (✅) | ❌ | ✅ | ❌ | 50% |
 | DOCS-005 (✅) | ❌ | ❌ | ❌ | 25% |
 | DOCS-030 (❌) | ❌ | ✅ | ❌ | 25% |
+| DOCS-MANAGER-001 (✅) | ✅ | ❌ | ✅ | 75% |
+| DOCS-TYPOGRAPHY-001 (✅) | ❌ | ❌ | ❌ | 25% |
+| DOCS-VALIDATION-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | DOCUMENTATION-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | DOMAIN-001 (✅) | ✅ | ✅ | ✅ | 100% |
 | DUPLIC-001 (❌) | ✅ | ❌ | ❌ | 25% |
@@ -140,7 +145,7 @@ Generated: 2025-11-07 20:24:40
 | EXPERT-TEST-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | FAST-AST-VISITOR-001 (❌) | ✅ | ✅ | ❌ | 50% |
 | FEAT-001 (✅) | ✅ | ✅ | ❌ | 75% |
-| FEATURE-001 (❌) | ❌ | ❌ | ✅ | 25% |
+| FEATURE-001 (✅) | ❌ | ✅ | ✅ | 75% |
 | FORMAT-001 (✅) | ✅ | ❌ | ❌ | 50% |
 | FULL-001 (✅) | ✅ | ✅ | ✅ | 100% |
 | GEN-001 (❌) | ❌ | ✅ | ❌ | 25% |
@@ -158,6 +163,7 @@ Generated: 2025-11-07 20:24:40
 | GITHUB-ACTIONS-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | GITHUB-CONFIG-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | GITHUB-TEMPLATES-001 (❌) | ❌ | ❌ | ✅ | 25% |
+| GLOSSARY-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | GUIDE-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | GUIDE-002 (❌) | ❌ | ❌ | ✅ | 25% |
 | GUIDE-AGENT-001 (❌) | ❌ | ❌ | ✅ | 25% |
@@ -206,6 +212,7 @@ Generated: 2025-11-07 20:24:40
 | INIT-FLOW-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | INIT-MEMORY-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | INIT-PHASE-001 (❌) | ✅ | ❌ | ❌ | 25% |
+| INIT-PHASE-002 (❌) | ✅ | ❌ | ❌ | 25% |
 | INIT-TEMPLATE-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | INIT-VALIDATOR-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | INITIALIZER-001 (❌) | ❌ | ✅ | ❌ | 25% |
@@ -279,6 +286,7 @@ Generated: 2025-11-07 20:24:40
 | MISC-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | MIXED-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | MOAI-CONFIG-001 (✅) | ❌ | ❌ | ❌ | 25% |
+| MOAI-DOCS-UNIFIED-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | MULTDUP-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | MULTDUP-002 (❌) | ✅ | ❌ | ❌ | 25% |
 | MULTI-001 (❌) | ✅ | ❌ | ❌ | 25% |
@@ -356,6 +364,7 @@ Generated: 2025-11-07 20:24:40
 | SAMDUP-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | SEARCH-001 (✅) | ✅ | ❌ | ❌ | 50% |
 | SEC-001 (✅) | ❌ | ❌ | ✅ | 50% |
+| SECURITY-001 (✅) | ❌ | ✅ | ❌ | 50% |
 | SESSION-001 (❌) | ❌ | ✅ | ❌ | 25% |
 | SESSION-002 (❌) | ❌ | ✅ | ❌ | 25% |
 | SESSION-003 (❌) | ❌ | ✅ | ❌ | 25% |
@@ -418,13 +427,18 @@ Generated: 2025-11-07 20:24:40
 | STATS-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | STATUS-CHANGELOG-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | STATUS-README-001 (❌) | ❌ | ❌ | ✅ | 25% |
-| STATUSLINE-CONFIG-001 (❌) | ❌ | ❌ | ✅ | 25% |
+| STATUSLINE-CONFIG-001 (❌) | ❌ | ✅ | ✅ | 50% |
+| STATUSLINE-CONFIG-002 (❌) | ❌ | ✅ | ❌ | 25% |
+| STATUSLINE-CONFIG-003 (❌) | ❌ | ✅ | ❌ | 25% |
+| STATUSLINE-CONFIG-004 (❌) | ❌ | ✅ | ❌ | 25% |
+| STATUSLINE-CONFIG-LOADER-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | STATUSLINE-ENGINE-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | STATUSLINE-EXAMPLES-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | STATUSLINE-MAIN-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | STATUSLINE-RENDERER-001 (❌) | ✅ | ✅ | ❌ | 50% |
 | STATUSLINE-RENDERER-002 (❌) | ❌ | ✅ | ❌ | 25% |
 | STATUSLINE-RENDERER-003 (❌) | ❌ | ✅ | ❌ | 25% |
+| STATUSLINE-RUNNER-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | STATUSLINE-TEST-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | SYNC-001 (✅) | ✅ | ❌ | ❌ | 50% |
 | TAG-ANALYSIS-001 (✅) | ✅ | ❌ | ❌ | 50% |
@@ -473,8 +487,10 @@ Generated: 2025-11-07 20:24:40
 | TIMEOUT-002 (❌) | ❌ | ✅ | ❌ | 25% |
 | TIMEOUT-003 (❌) | ❌ | ✅ | ❌ | 25% |
 | TROUBLESHOOT-001 (❌) | ❌ | ❌ | ✅ | 25% |
+| TROUBLESHOOTING-QUICK-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | TRUST-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | TRUST-002 (❌) | ✅ | ✅ | ❌ | 50% |
+| TRUST-INIT-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | TUTORIAL-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | UI-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | UI-THEME-001 (✅) | ❌ | ❌ | ❌ | 25% |
@@ -568,5 +584,5 @@ Generated: 2025-11-07 20:24:40
 
 ## Summary
 
-- Total SPECs: 561
+- Total SPECs: 577
 - Fully Implemented (100%): 37

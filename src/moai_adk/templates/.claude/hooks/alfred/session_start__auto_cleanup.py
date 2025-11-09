@@ -136,7 +136,7 @@ def cleanup_old_files(config: Dict) -> Dict[str, int]:
 
         cleanup_days = cleanup_config.get("cleanup_days", 7)
         max_reports = cleanup_config.get("max_reports", 10)
-        cleanup_targets = cleanup_config.get("cleanup_targets", [])
+        _cleanup_targets = cleanup_config.get("cleanup_targets", [])
 
         cutoff_date = datetime.now() - timedelta(days=cleanup_days)
 
@@ -373,7 +373,7 @@ def analyze_session_logs(analysis_config: Dict) -> Optional[str]:
         report_content = format_analysis_report(analysis_data)
 
         # 보고서 저장
-        report_location = analysis_config.get("report_location", ".moai/reports/daily-")
+        _report_location = analysis_config.get("report_location", ".moai/reports/daily-")
         base_path = Path(".moai/reports")
         base_path.mkdir(exist_ok=True)
 

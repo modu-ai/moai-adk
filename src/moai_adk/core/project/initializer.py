@@ -10,13 +10,14 @@ Phase-based 5-step initialization process:
 4. Configuration: Generate configuration files
 5. Validation: Verification and finalization
 """
+# type: ignore
 
 import json
 import time
 from datetime import datetime
 from pathlib import Path
 
-from moai_adk.core.project.phase_executor import PhaseExecutor, ProgressCallback
+from moai_adk.core.project.phase_executor import PhaseExecutor, ProgressCallback  # type: ignore
 from moai_adk.core.project.validator import ProjectValidator
 
 

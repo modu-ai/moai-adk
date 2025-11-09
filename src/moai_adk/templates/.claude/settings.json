@@ -181,6 +181,11 @@
       "Bash(git rebase -i:*)"
     ]
   },
+  "statusLine": {
+    "enabled": true,
+    "type": "command",
+    "command": "uv run .moai/scripts/statusline.py"
+  },
   "spinnerTipsEnabled": true,
   "outputStyle": "streaming"
 }

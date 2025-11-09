@@ -245,9 +245,10 @@ def main() -> None:
 
         # 인자 파싱
         if len(sys.argv) < 3:
+            usage = "python3 pre_tool__realtime_tag_monitor.py <tool_name> <tool_args_json>"  # noqa: E501
             print(json.dumps({
                 "quick_scan_completed": False,
-                "error": "Invalid arguments. Usage: python3 pre_tool__realtime_tag_monitor.py <tool_name> <tool_args_json>"
+                "error": f"Invalid arguments. Usage: {usage}"
             }))
             sys.exit(0)
 
@@ -330,7 +331,8 @@ def main() -> None:
         # 타임아웃 경고
         timeout_warning_ms = timeout_seconds * 1000 * 0.8  # 80% of timeout
         if scan_time_ms > timeout_warning_ms:
-            response["performance_warning"] = f"스캔 시간이 설정된 타임아웃의 80%를 초과했습니다 ({scan_time_ms:.0f}ms / {timeout_warning_ms:.0f}ms)"
+            warn_msg = f"스캔 시간이 설정된 타임아웃의 80%를 초과했습니다 ({scan_time_ms:.0f}ms / {timeout_warning_ms:.0f}ms)"  # noqa: E501
+            response["performance_warning"] = warn_msg
 
         print(json.dumps(response, ensure_ascii=False, indent=2))
 

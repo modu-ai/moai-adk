@@ -256,9 +256,10 @@ def main() -> None:
 
         # 인자 파싱
         if len(sys.argv) < 3:
+            usage = "python3 pre_tool__tag_policy_validator.py <tool_name> <tool_args_json>"  # noqa: E501
             print(json.dumps({
                 "block_execution": False,
-                "error": "Invalid arguments. Usage: python3 pre_tool__tag_policy_validator.py <tool_name> <tool_args_json>"
+                "error": f"Invalid arguments. Usage: {usage}"
             }))
             sys.exit(0)
 

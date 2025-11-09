@@ -46,7 +46,7 @@ Alfred SuperAgent (Orchestration Layer)
     │   ├── spec-builder 🏗️ - SPEC creation with EARS syntax
     │   ├── implementation-planner 📊 - Architecture and planning
     │   ├── tdd-implementer 💎 - TDD cycle execution
-    │   ├── doc-syncer 📚 - Documentation synchronization
+    │   ├── doc-syncer <span class="material-icons">library_books</span> - Documentation synchronization
     │   ├── tag-agent 🏷️ - TAG system management
     │   ├── git-manager 🚀 - Git workflow automation
     │   ├── trust-checker ✅ - Quality validation
@@ -58,7 +58,7 @@ Alfred SuperAgent (Orchestration Layer)
     │   ├── ui-ux-expert 🎨 - Design systems and accessibility
     │   ├── security-expert 🔒 - Security analysis and best practices
     │   └── database-expert 💾 - Database design and optimization
-    └── Skills Library (69+ Production Guides)
+    └── Skills Library (93 Production Guides)
         ├── Foundation Skills (Core principles)
         ├── Essential Skills (Daily tools)
         ├── Alfred Skills (Workflow automation)
@@ -357,7 +357,7 @@ stateDiagram-v2
     end note
 
     note right of draft
-        📄 Draft Phase
+        📝 Draft Phase
         - EARS requirements
         - Acceptance criteria
         - Risk assessment

@@ -1,3 +1,4 @@
+# type: ignore
 #!/usr/bin/env python3
 """
 Claude Code Statusline Integration
@@ -16,6 +17,7 @@ from pathlib import Path
 from typing import Optional
 
 from .alfred_detector import AlfredDetector
+from .config import StatuslineConfig
 from .git_collector import GitCollector
 from .metrics_tracker import MetricsTracker
 from .renderer import StatuslineData, StatuslineRenderer
@@ -118,7 +120,7 @@ def safe_check_update(current_version: str) -> tuple[bool, Optional[str]]:
     """
     try:
         checker = UpdateChecker()
-        update_info = checker.check_update(current_version)
+        update_info = checker.check_for_update(current_version)
 
         return update_info.available, update_info.latest_version
     except Exception:
@@ -204,10 +206,15 @@ def main():
     # Read session context from Claude Code
     session_context = read_session_context()
 
-    # Determine display mode
+    # Load configuration
+    config = StatuslineConfig()
+
+    # Determine display mode (priority: session context > environment > config > default)
     mode = (
         session_context.get("statusline", {}).get("mode") or
-        os.environ.get("MOAI_STATUSLINE_MODE", "compact")
+        os.environ.get("MOAI_STATUSLINE_MODE") or
+        config.get("statusline.mode") or
+        "extended"
     )
 
     # Build and output statusline

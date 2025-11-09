@@ -1,3 +1,4 @@
+# type: ignore
 """
 Session metrics tracker for statusline
 

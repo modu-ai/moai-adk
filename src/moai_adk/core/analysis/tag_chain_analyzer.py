@@ -11,7 +11,7 @@ import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -83,8 +83,8 @@ class TagChainAnalyzer:
         complete_chains = 0
         partial_chains = 0
         broken_chains = 0
-        broken_chain_details = []
-        orphans_by_type = {
+        broken_chain_details: list[dict[str, Any]] = []
+        orphans_by_type: dict[str, list[str]] = {
             "code_without_spec": [],
             "code_without_test": [],
             "test_without_code": [],
@@ -130,7 +130,7 @@ class TagChainAnalyzer:
 
     def _scan_all_tags(self) -> Dict[str, List[str]]:
         """Scan all files for TAG occurrences."""
-        all_tags = {}
+        all_tags: dict[str, list[str]] = {}
 
         # Scan source files
         src_path = self.root_path / "src"
@@ -175,10 +175,10 @@ class TagChainAnalyzer:
 
     def _group_chains_by_domain(self, all_tags: Dict[str, List[str]]) -> Dict[str, List[TagChain]]:
         """Group TAGs by domain and create chain objects."""
-        chains_by_domain = {}
+        chains_by_domain: dict[str, list[TagChain]] = {}
 
         # Group by domain
-        domain_groups = {}
+        domain_groups: dict[str, list[tuple[str, list[str]]]] = {}
         for tag, files in all_tags.items():
             domain = self._extract_domain_from_tag(tag)
             if domain not in domain_groups:
@@ -235,7 +235,7 @@ class TagChainAnalyzer:
 
     def _identify_orphans(self, all_tags: Dict[str, List[str]]) -> Dict[str, List[str]]:
         """Identify orphaned TAGs (missing linked elements)."""
-        orphans = {
+        orphans: dict[str, list[str]] = {
             "code_without_spec": [],
             "code_without_test": [],
             "test_without_code": [],

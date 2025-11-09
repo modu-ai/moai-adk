@@ -1,0 +1,439 @@
+Translate the following Korean markdown document to Japanese.
+
+**CRITICAL RULES:**
+1. Preserve ALL markdown structure (headers, code blocks, links, tables, diagrams)
+2. Keep ALL code blocks and technical terms UNCHANGED
+3. Maintain the EXACT same file structure and formatting
+4. Translate ONLY Korean text content
+5. Keep ALL @TAG references unchanged (e.g., @SPEC:AUTH-001)
+6. Preserve ALL file paths and URLs
+7. Keep ALL emoji and icons as-is
+8. Maintain ALL frontmatter (YAML) structure
+
+**Source File:** /Users/goos/MoAI/MoAI-ADK/docs/src/ko/reference/skills/alfred.md
+**Target Language:** Japanese
+**Target File:** /Users/goos/MoAI/MoAI-ADK/docs/src/ja/reference/skills/alfred.md
+
+**Content to Translate:**
+
+# Alfred Skills 상세 가이드
+
+Alfred와 서브에이전트들을 위한 5개 전문 스킬입니다.
+
+## 개요
+
+| 스킬                               | 설명                   | 대상          | 버전 |
+| ---------------------------------- | ---------------------- | ------------- | ---- |
+| **moai-alfred-agent-guide**        | 19명 팀 구조, 의사결정 | Alfred        | 4.0  |
+| **moai-alfred-ask-user-questions** | 사용자 상호작용 최적화 | 모든 에이전트 | 2.1  |
+| **moai-alfred-personas**           | 적응형 커뮤니케이션    | Alfred        | 3.0  |
+| **moai-alfred-best-practices**     | TRUST, TAG, Skill 규칙 | 검증          | 5.0  |
+| **moai-alfred-context-budget**     | Context window 최적화  | Alfred        | 2.5  |
+
+______________________________________________________________________
+
+## 1. moai-alfred-agent-guide
+
+**19명 AI 팀 구조, 선택 알고리즘, 협력 패턴**
+
+### 팀 구조
+
+```
+Alfred (마스터)
+├── 10명 핵심 Sub-agents
+│   ├─ project-manager: 프로젝트 초기화
+│   ├─ spec-builder: SPEC 작성
+│   ├─ implementation-planner: 계획 수립
+│   ├─ tdd-implementer: TDD 실행
+│   ├─ doc-syncer: 문서 동기화
+│   ├─ tag-agent: TAG 관리
+│   ├─ git-manager: Git 자동화
+│   ├─ trust-checker: 품질 검증
+│   ├─ quality-gate: 릴리즈 준비
+│   └─ debug-helper: 오류 해결
+│
+├── 6명 전문가 Agents
+│   ├─ backend-expert: API/서버
+│   ├─ frontend-expert: UI/상태관리
+│   ├─ devops-expert: 배포/CI/CD
+│   ├─ ui-ux-expert: 디자인/접근성
+│   ├─ security-expert: 보안
+│   └─ database-expert: DB 설계
+│
+└── 2명 빌트인 Agents
+    ├─ Claude Opus/Sonnet: 복잡한 추론
+    └─ Claude Haiku: 경량 작업
+```
+
+### Lead-Specialist Pattern
+
+```python
+# Alfred가 도메인 키워드 감지
+if "database" in spec:
+    activate(database_expert)
+    # database_expert가 Alfred와 협력
+    # Alfred: 전체 조율
+    # database_expert: DB 전문 지식
+
+if "security" in spec:
+    activate(security_expert)
+    # security_expert가 보안 검토
+
+if "performance" in spec:
+    activate(debug_helper)
+    # debug_helper가 성능 최적화
+```
+
+### Master-Clone Pattern
+
+```
+대규모 작업 (100+ 파일, 5+ 단계)
+    ↓
+Master Alfred
+├─→ Clone-1: 모듈 A (독립적 실행)
+├─→ Clone-2: 모듈 B (병렬 처리)
+└─→ Clone-3: 모듈 C (동시 진행)
+    ↓
+Master가 결과 조율 및 병합
+```
+
+### 의사결정 트리
+
+```
+User Request
+    ↓
+Alfred: 도메인 분석
+    ├─ 백엔드 작업? → backend-expert
+    ├─ 프론트엔드? → frontend-expert
+    ├─ 배포? → devops-expert
+    ├─ 보안? → security-expert
+    ├─ 데이터베이스? → database-expert
+    └─ UI/디자인? → ui-ux-expert
+    ↓
+    ├─ 대규모? (100+ 파일) → Master-Clone
+    ├─ 도메인 특화? → Lead-Specialist
+    └─ 일반 작업? → Alfred 직접 처리
+    ↓
+선택된 에이전트 활성화
+```
+
+______________________________________________________________________
+
+## 2. moai-alfred-ask-user-questions
+
+**사용자 상호작용 최적 사용법**
+
+### 필수 규칙
+
+```
+:x: 이모지 금지 위치:
+- question: "이 설정이 맞습니까?" (:x: "🔧 설정 선택?")
+- header: "Authentication" (:x: "🔐 인증")
+- label: "JWT Token" (:x: "✅ JWT")
+- description: "Stateless token" (:x: ":bullseye: Stateless...")
+
+✅ 허용 위치:
+- 응답 메시지: "✅ 설정 완료"
+- 설명 텍스트: "💡 팁: JWT는..."
+```
+
+### 구조화된 질문
+
+```json
+{
+  "questions": [
+    {
+      "question": "어떤 인증 방식을 사용하시겠습니까?",
+      "header": "Authentication Method",
+      "multiSelect": false,
+      "options": [
+        {
+          "label": "JWT",
+          "description": "Stateless, API에 최적"
+        },
+        {
+          "label": "Session",
+          "description": "기존 웹앱, 서버 상태 유지"
+        },
+        {
+          "label": "OAuth 2.0",
+          "description": "소셜 로그인, 타사 통합"
+        }
+      ]
+    }
+  ]
+}
+```
+
+### 사용 시점
+
+#### ✅ 반드시 사용
+
+- 여러 기술 선택 필요 (3개 이상)
+- 아키텍처 결정 필요
+- 요청 모호함
+- 영향 범위 큼
+
+#### :x: 사용하지 않음
+
+- 요청이 명확함
+- 단순 예/아니오 질문
+- 기술 결정 불필요
+
+### 배치 전략
+
+```python
+# 만약 5개 이상 옵션 필요 시
+# → 여러 번의 AskUserQuestion으로 분할
+
+# 예: 언어 선택 → GitHub 설정 → 프레임워크
+# 3개의 별도 AskUserQuestion 호출
+```
+
+______________________________________________________________________
+
+## 3. moai-alfred-personas
+
+**적응형 커뮤니케이션 스타일**
+
+### 사용자 수준 감지
+
+#### Beginner 수준
+
+```
+특징:
+- MoAI-ADK 처음 사용
+- SPEC-First 개념 이해 부족
+- TDD 경험 없음
+
+Alfred의 커뮤니케이션:
+- 상세한 설명
+- 단계별 가이드
+- 개념 설명 먼저
+- 예시 많이 제공
+```
+
+#### Intermediate 수준
+
+```
+특징:
+- Alfred 기본 사용 가능
+- SPEC 작성 경험 있음
+- TDD 기본 이해
+
+Alfred의 커뮤니케이션:
+- 적당한 상세도
+- 핵심만 강조
+- 최적화 팁 제공
+- 패턴 제시
+```
+
+#### Expert 수준
+
+```
+특징:
+- Alfred 숙련자
+- Master-Clone 패턴 이해
+- 커스텀 요구사항 가능
+
+Alfred의 커뮤니케이션:
+- 간결한 설명
+- 기술 세부사항
+- 최적화 전략
+- 커스텀 솔루션
+```
+
+### 페르소나 감지 신호
+
+```
+Beginner 신호:
+- "SPEC이 뭐예요?"
+- "TDD를 어떻게 해요?"
+- 상세 설명 요청
+
+Intermediate 신호:
+- SPEC 키워드 사용
+- 기능 구현 요청
+- 아키텍처 질문
+
+Expert 신호:
+- 대규모 마이그레이션
+- 커스텀 에이전트
+- 성능 최적화
+```
+
+______________________________________________________________________
+
+## 4. moai-alfred-best-practices
+
+**TRUST, TAG, Skill 호출 규칙**
+
+### TRUST 5 강제 사항
+
+```
+:x: 절대 금지:
+- 테스트 없는 코드 작성
+- 85% 미만 커버리지로 배포
+- 보안 취약점 무시
+- 추적성 무시
+
+✅ 필수 사항:
+- RED-GREEN-REFACTOR 엄격 준수
+- 모든 구현에 @CODE TAG
+- 모든 테스트에 @TEST TAG
+- 모든 문서에 @DOC TAG
+```
+
+### TAG 체인 검증
+
+```
+SPEC-001
+    ↓
+@TEST:SPEC-001:* (최소 1개)
+    ↓
+@CODE:SPEC-001:* (최소 1개)
+    ↓
+@DOC:SPEC-001:* (최소 1개)
+    ↓
+모두 완성 시 ✅
+```
+
+### Skill 호출 규칙
+
+```python
+# ✅ 올바른 호출
+Skill("moai-lang-python")
+Skill("moai-domain-backend")
+
+# :x: 잘못된 호출
+Skill("python")  # 오류!
+Skill("backend")  # 오류!
+
+# ✅ 필수 호출 (검증 전)
+Skill("moai-foundation-trust")
+Skill("moai-foundation-tags")
+```
+
+______________________________________________________________________
+
+## 5. moai-alfred-context-budget
+
+**Context Window 최적화**
+
+### Context 할당 전략
+
+```
+총 Context Window: 200,000 tokens
+
+할당:
+├── System Prompt: 10,000 tokens (5%)
+├── Conversation History: 80,000 tokens (40%)
+├── Current Task: 40,000 tokens (20%)
+├── Code Files: 50,000 tokens (25%)
+└── Reserve: 20,000 tokens (10%)
+```
+
+### JIT (Just-In-Time) 로딩
+
+```python
+# :x: 모든 파일을 한번에 로드
+Read("file1.py")
+Read("file2.py")
+Read("file3.py")
+Read("file4.py")
+
+# ✅ 필요할 때만 로드
+Read("file1.py")  # 필요한 파일만
+# ... 작업 수행
+Read("file2.py")  # 다음 필요 파일
+```
+
+### Memory 파일 패턴
+
+```
+.moai/
+├── .session-memory.md        # 현재 세션 상태
+├── .plan-summary.md          # 현재 계획 요약
+└── .progress-snapshot.md     # 진행률 스냅샷
+
+크기 최적화:
+- 각 파일 < 10KB
+- 요약 형식 (상세 X)
+- 자동 정리 (주기적)
+```
+
+### 정리 전략
+
+```
+세션 종료 시:
+✅ 완료된 작업 아카이브
+✅ 임시 파일 삭제
+✅ 큰 로그 파일 압축
+✅ 메모리 파일 요약
+```
+
+______________________________________________________________________
+
+## Alfred Skills 통합 워크플로우
+
+```
+User Request
+    ↓
+Skill("moai-alfred-agent-guide")
+├── 팀 구조 확인
+├── 의사결정 트리 실행
+└── 필요 에이전트 선택
+    ↓
+Skill("moai-alfred-ask-user-questions")
+├── 명확화 필요? → 사용자 상호작용
+└── 진행 → 다음 단계
+    ↓
+Skill("moai-alfred-personas")
+├── 사용자 수준 감지
+└── 커뮤니케이션 조정
+    ↓
+Skill("moai-alfred-context-budget")
+├── Context 효율화
+└── 메모리 최적화
+    ↓
+Skill("moai-alfred-best-practices")
+├── TRUST 5 검증
+├── TAG 체인 확인
+└── Skill 호출 검증
+    ↓
+작업 실행
+    ↓
+완료
+```
+
+______________________________________________________________________
+
+## Alfred Skills FAQ
+
+### "어떤 에이전트를 활성화해야 하나요?"
+
+→ `Skill("moai-alfred-agent-guide")`에서 의사결정 트리 참조
+
+### "Context가 부족합니다"
+
+→ `Skill("moai-alfred-context-budget")`로 최적화
+
+### "사용자가 요청을 명확히 하지 않았습니다"
+
+→ `Skill("moai-alfred-ask-user-questions")`로 상호작용
+
+### "TRUST 5를 어떻게 검증하나요?"
+
+→ `Skill("moai-alfred-best-practices")`의 TRUST 섹션
+
+______________________________________________________________________
+
+**다음**: [Foundation Skills](foundation.md) 또는 [Skills 개요](index.md)
+
+
+**Instructions:**
+- Translate the content above to Japanese
+- Output ONLY the translated markdown content
+- Do NOT include any explanations or comments
+- Maintain EXACT markdown formatting
+- Preserve ALL code blocks exactly as-is
