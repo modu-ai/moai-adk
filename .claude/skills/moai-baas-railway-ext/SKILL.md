@@ -17,7 +17,7 @@ agents:
   - backend-expert
   - database-expert
 freedom_level: high
-word_count: 800
+word_count: 1200
 context7_references:
   - url: "https://docs.railway.app"
     topic: "Railway Documentation"
@@ -232,7 +232,241 @@ git push origin feature/new-api
 
 ---
 
-### 4. Monitoring & Logs (150 words)
+### 4. Advanced Deployment Strategies (250 words)
+
+**Blue-Green Deployment** (Zero-downtime updates):
+
+```bash
+# Current setup: Green (live) → Blue (staging)
+# Step 1: Deploy new version to Blue environment
+railway env create blue
+railway env blue
+git checkout production  # or deploy specific version
+railway deploy --service=api
+
+# Step 2: Run smoke tests on Blue
+curl https://blue-[project].railway.app/health
+npm run integration-tests
+
+# Step 3: Switch traffic from Green to Blue
+# Railway → Project Settings → Domains → Switch target
+# OR use traffic splitting
+
+# Step 4: Keep Green as rollback target for 24 hours
+railway env green
+# Keep this running for quick rollback if needed
+
+# Step 5: Delete Green after confidence period
+railway env delete green
+```
+
+**Canary Deployment** (Gradual rollout):
+
+```bash
+# Step 1: Deploy new version as canary
+railway env create canary
+railway env canary
+git push canary-deployment
+
+# Step 2: Route 10% traffic to canary
+# Railway → Project Settings → Domains
+# Advanced → Traffic splitting: 90% Green, 10% Blue
+
+# Step 3: Monitor metrics for canary
+railway logs --service=api --follow
+# Watch for errors, latency, memory usage
+
+# Step 4: Gradually increase canary traffic
+# 10% → 25% → 50% → 100%
+# Each step: monitor for 30 minutes
+
+# Step 5: Complete rollout
+# Full traffic to canary, delete old version
+railway env delete green
+```
+
+**Database Migrations During Deploy**:
+
+```typescript
+// Safe migration pattern
+async function migrate() {
+  const client = await pool.connect();
+
+  try {
+    // Step 1: Create new column (non-blocking)
+    await client.query(`
+      ALTER TABLE users ADD COLUMN status VARCHAR(50) DEFAULT 'active';
+    `);
+
+    // Step 2: Backfill gradually (during traffic)
+    await client.query(`
+      UPDATE users SET status = 'active'
+      WHERE status IS NULL
+      LIMIT 10000;
+    `);
+
+    // Step 3: Add constraint after backfill complete
+    await client.query(`
+      ALTER TABLE users ALTER COLUMN status SET NOT NULL;
+    `);
+
+  } finally {
+    client.release();
+  }
+}
+```
+
+**Deployment Checklist**:
+- ✅ Test build locally with Docker
+- ✅ Run full test suite in CI/CD
+- ✅ Database migration tested in staging
+- ✅ Environment variables verified
+- ✅ Dependencies up-to-date
+- ✅ Health check endpoint responding
+- ✅ Monitoring alerts configured
+- ✅ Rollback procedure documented
+
+---
+
+### 5. Custom Domains & SSL Configuration (150 words)
+
+**Setup Custom Domain**:
+
+```bash
+# Step 1: Add custom domain to Railway
+railway domain add example.com
+
+# Step 2: Get DNS records from Railway
+# Railway Dashboard → Project → Domains → example.com
+# Shows: CNAME target
+
+# Step 3: Update DNS provider (Namecheap, Route53, etc.)
+# CNAME: example.com → [railway-provided-cname]
+# Wait 5-30 minutes for DNS propagation
+
+# Verify with:
+nslookup example.com
+dig example.com
+```
+
+**SSL Certificate (Automatic)**:
+
+Railway automatically provisions Let's Encrypt certificates:
+- ✅ Automatic renewal (before expiry)
+- ✅ HTTPS enabled by default
+- ✅ HTTP → HTTPS redirect automatic
+- ✅ No manual certificate management needed
+
+**Subdomain Routing**:
+
+```typescript
+// Route based on subdomain
+app.get("*", (req, res, next) => {
+  const subdomain = req.subdomains[0]; // e.g., "api" from api.example.com
+
+  if (subdomain === "api") {
+    // Route to API handlers
+    return apiRouter.handle(req, res);
+  }
+
+  if (subdomain === "www" || !subdomain) {
+    // Route to web app
+    return webRouter.handle(req, res);
+  }
+
+  // Unknown subdomain
+  res.status(404).send("Not found");
+});
+```
+
+**Domain Troubleshooting**:
+- ❌ SSL not showing: Wait 10 minutes after DNS propagation
+- ❌ DNS not resolving: Check CNAME matches exactly
+- ❌ Redirect loop: Verify protocol (http vs https)
+
+---
+
+### 6. Advanced Monitoring & Alerting (150 words)
+
+**Configure Uptime Monitoring**:
+
+```bash
+# Railway Dashboard → Alerts
+# Create uptime alert for /health endpoint
+
+# Alert conditions:
+# - Response time > 2s
+# - Status code != 200
+# - Service down > 5 minutes
+```
+
+**Log Aggregation Setup**:
+
+```bash
+# Export logs to external service
+# Step 1: Configure log drain in Railway
+railway variable set LOG_DRAIN_URL="https://your-drain.com"
+
+# Step 2: Send structured logs
+export LOG_LEVEL=info
+export LOG_FORMAT=json  # For log parsing
+```
+
+**Performance Monitoring Metrics**:
+
+```sql
+-- Database performance queries
+-- Monitor connection pool usage
+SELECT count(*) FROM pg_stat_activity WHERE state = 'active';
+
+-- Query performance analysis
+EXPLAIN ANALYZE SELECT * FROM users WHERE email = 'user@example.com';
+
+-- Cache hit ratio
+SELECT
+  sum(heap_blks_read) as heap_read,
+  sum(heap_blks_hit)  as heap_hit,
+  sum(heap_blks_hit) / (sum(heap_blks_hit) + sum(heap_blks_read)) as ratio
+FROM pg_statio_user_tables;
+```
+
+**Error Rate Tracking**:
+
+```typescript
+// Log errors with context
+import logger from "pino";
+
+const log = logger({
+  level: process.env.LOG_LEVEL || "info",
+  transport: {
+    target: "pino-pretty",
+  },
+});
+
+app.use((err, req, res, next) => {
+  log.error({
+    error: err.message,
+    status: err.status || 500,
+    path: req.path,
+    method: req.method,
+    timestamp: new Date(),
+  });
+
+  res.status(err.status || 500).json({
+    error: err.message,
+  });
+});
+```
+
+**Alert Thresholds**:
+- CPU > 80%: Investigate
+- Memory > 90%: Scale up
+- Error rate > 1%: Page on-call
+- Response time p99 > 5s: Investigate queries
+
+---
+
+### 7. Monitoring & Logs (150 words)
 
 **View Real-time Logs**:
 
@@ -271,7 +505,7 @@ SELECT pg_size_pretty(pg_database_size('postgres'));
 
 ---
 
-### 5. Cost Optimization & Scaling (150 words)
+### 8. Cost Optimization & Scaling (150 words)
 
 **Railway Pricing**:
 
@@ -314,7 +548,7 @@ railway logs --cleanup
 
 ---
 
-### 6. Common Issues & Solutions (50 words)
+### 9. Common Issues & Solutions (50 words)
 
 | Issue | Solution |
 |-------|----------|
@@ -357,8 +591,11 @@ When Railway detected:
 - [x] Railway platform overview & philosophy
 - [x] Project setup & database provisioning
 - [x] Git-based deployment & preview environments
+- [x] Advanced deployment strategies (blue-green, canary)
+- [x] Custom domains & SSL configuration
+- [x] Advanced monitoring & alerting
 - [x] Monitoring & logs streaming
 - [x] Cost optimization & scaling strategies
 - [x] Common issues & troubleshooting
-- [x] 800-word target
+- [x] 1200-word target (from 800)
 - [x] English language (policy compliant)
