@@ -191,6 +191,16 @@
       "ban_fields": ["question", "header", "label", "description"],
       "reason": "Prevent 'no low surrogate in string' JSON encoding errors in API requests"
     },
+    "tag_validation_exceptions": {
+      "enabled": true,
+      "exempt_directories": [
+        ".claude/",
+        ".moai/docs/",
+        ".moai/reports/",
+        ".moai/analysis/"
+      ],
+      "reason": "System infrastructure and documentation directories do not require TAG annotations"
+    },
     "notes": "Hook execution timeout (milliseconds). Set graceful_degradation to true to continue even if a hook fails. Optimized to 2 seconds for faster performance. CRITICAL: No emojis in AskUserQuestion fields to prevent JSON serialization errors."
   },
   "session_end": {
