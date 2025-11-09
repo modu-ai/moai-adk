@@ -556,7 +556,7 @@ def _sync_templates(project_path: Path, force: bool = False) -> bool:
         if not validation_passed:
             if backup_path:
                 console.print(f"[yellow]🔄 Rolling back to backup: {backup_path.name}[/yellow]")
-                backup.restore_backup(backup_path)  # type: ignore[attr-defined]
+                backup.restore_backup(backup_path)
             return False
 
         # Preserve metadata
@@ -573,7 +573,7 @@ def _sync_templates(project_path: Path, force: bool = False) -> bool:
             console.print(f"[yellow]🔄 Rolling back to backup: {backup_path.name}[/yellow]")
             try:
                 backup = TemplateBackup(project_path)
-                backup.restore_backup(backup_path)  # type: ignore[attr-defined]
+                backup.restore_backup(backup_path)
                 console.print("[green]✅ Rollback completed[/green]")
             except Exception as rollback_error:
                 console.print(f"[red]✗ Rollback failed: {rollback_error}[/red]")
@@ -709,7 +709,7 @@ def _build_template_context(
         "PROJECT_DESCRIPTION": project_description,
         "PROJECT_VERSION": project_version,
         "CREATION_TIMESTAMP": created_at,
-        "HOOK_PROJECT_DIR": hook_project_dir,
+        "PROJECT_DIR": hook_project_dir,
         "CONVERSATION_LANGUAGE": language_config.get("conversation_language", "en"),
         "CONVERSATION_LANGUAGE_NAME": language_config.get("conversation_language_name", "English"),
         "CODEBASE_LANGUAGE": project_section.get("language", "generic"),
