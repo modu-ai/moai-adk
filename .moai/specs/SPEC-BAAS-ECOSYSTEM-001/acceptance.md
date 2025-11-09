@@ -327,6 +327,261 @@ User selects: Pattern C
 
 ---
 
+## ✅ Scenario 5: Convex Realtime App Detection
+
+### Given (초기 상태)
+```
+새로운 Next.js + TypeScript 프로젝트
+├─ package.json
+│  ├─ "dependencies": {
+│  │   "convex": "^1.x",
+│  │   "next": "^14.x"
+│  └─ }
+├─ convex.json (존재)
+└─ .env
+   ├─ CONVEX_DEPLOYMENT=dev.convex.cloud
+```
+
+### When (사용자 액션)
+```bash
+cd my-convex-realtime-app/
+/alfred:1-plan "Add realtime collaboration features"
+```
+
+### Then (예상 결과)
+
+#### 1️⃣ Platform Detection
+```
+✅ Detected Platforms:
+   - convex (from package.json: convex)
+   - next (from package.json: next)
+
+✅ Recommended Pattern: F (Convex Realtime Sync)
+```
+
+#### 2️⃣ Context7 Auto-Loading
+```
+✅ Loading Context7 documentation:
+   - Convex Database: https://docs.convex.dev/database
+   - Convex Sync: https://docs.convex.dev/sync
+   - Convex Auth: https://docs.convex.dev/auth
+   - Convex Functions: https://docs.convex.dev/functions
+
+✅ Total tokens consumed: ~3000 (within 20,000 budget)
+```
+
+#### 3️⃣ AskUserQuestion & Agent Activation
+```
+✅ Pattern F (Convex Realtime) recommended with:
+   - TypeScript-first development
+   - Native realtime sync
+   - Offline support
+
+✅ Activated Agents:
+   - backend-expert (Convex stack)
+   - database-expert (Convex schema design)
+   - frontend-expert (React hooks integration)
+```
+
+### 📊 Acceptance Checklist
+- [ ] Platform detection: Convex + Next
+- [ ] Recommended pattern: F
+- [ ] Context7 documentation loaded
+- [ ] Total tokens < 4000
+- [ ] Pattern F implementation guidance provided
+
+---
+
+## ✅ Scenario 6: Firebase Full Stack Project
+
+### Given (초기 상태)
+```
+새로운 React 프로젝트
+├─ package.json
+│  ├─ "dependencies": {
+│  │   "firebase": "^10.x",
+│  │   "react": "^18.x"
+│  └─ }
+├─ .firebaserc (존재)
+└─ .env
+   └─ VITE_FIREBASE_CONFIG={...}
+```
+
+### When (사용자 액션)
+```bash
+cd my-firebase-app/
+/alfred:1-plan "Setup full-stack backend with Firebase"
+```
+
+### Then (예상 결과)
+
+#### 1️⃣ Platform Detection
+```
+✅ Detected Platforms:
+   - firebase (from package.json: firebase)
+   - firebase (from .firebaserc)
+
+✅ Recommended Pattern: E (Firebase Full Stack)
+```
+
+#### 2️⃣ Context7 Auto-Loading
+```
+✅ Loading Context7 documentation:
+   - Firestore Database: https://firebase.google.com/docs/firestore
+   - Firebase Auth: https://firebase.google.com/docs/auth
+   - Cloud Functions: https://firebase.google.com/docs/functions
+   - Cloud Storage: https://firebase.google.com/docs/storage
+
+✅ Total tokens consumed: ~3500
+```
+
+#### 3️⃣ Architecture Recommendations
+```
+✅ Pattern E (Firebase Full Stack) provides:
+   - Complete integration (single platform)
+   - Firestore NoSQL database design
+   - Firebase Auth (Email, OAuth, Phone)
+   - Cloud Functions for serverless backend
+   - Cloud Storage for file uploads
+   - Firebase Hosting
+```
+
+### 📊 Acceptance Checklist
+- [ ] Platform detection: Firebase
+- [ ] Recommended pattern: E
+- [ ] Context7 documentation loaded (4 Firebase services)
+- [ ] Total tokens < 4500
+- [ ] Firebase architecture guidance provided
+
+---
+
+## ✅ Scenario 7: Cloudflare Edge-First Architecture
+
+### Given (초기 상태)
+```
+새로운 Cloudflare Workers 프로젝트
+├─ package.json
+│  ├─ "dependencies": {
+│  │   "wrangler": "^3.x"
+│  └─ }
+├─ wrangler.toml (존재)
+└─ .env
+   └─ CLOUDFLARE_API_TOKEN=xxx
+```
+
+### When (사용자 액션)
+```bash
+cd my-edge-app/
+/alfred:1-plan "Deploy edge-optimized API"
+```
+
+### Then (예상 결과)
+
+#### 1️⃣ Platform Detection
+```
+✅ Detected Platforms:
+   - cloudflare (from package.json: wrangler)
+   - cloudflare (from wrangler.toml)
+
+✅ Recommended Pattern: G (Cloudflare Edge-first)
+```
+
+#### 2️⃣ Context7 Auto-Loading
+```
+✅ Loading Context7 documentation:
+   - Cloudflare Workers: https://developers.cloudflare.com/workers/
+   - D1 Database: https://developers.cloudflare.com/d1/
+   - Pages: https://developers.cloudflare.com/pages/
+   - Analytics: https://developers.cloudflare.com/analytics/
+
+✅ Total tokens consumed: ~3000
+```
+
+#### 3️⃣ Edge-First Recommendations
+```
+✅ Pattern G (Cloudflare Edge) provides:
+   - Ultra-low latency (<50ms globally)
+   - Workers runtime with 80ms cold start
+   - D1 SQLite database globally distributed
+   - KV Store for sub-millisecond caching
+   - Pages for full-stack hosting
+```
+
+### 📊 Acceptance Checklist
+- [ ] Platform detection: Cloudflare (wrangler)
+- [ ] Recommended pattern: G
+- [ ] Context7 documentation loaded (Workers, D1, Pages)
+- [ ] Total tokens < 4000
+- [ ] Edge-first architecture guidance provided
+
+---
+
+## ✅ Scenario 8: Auth0 Enterprise Authentication
+
+### Given (초기 상태)
+```
+엔터프라이즈 Next.js 프로젝트
+├─ package.json
+│  ├─ "dependencies": {
+│  │   "@auth0/nextjs-auth0": "^3.x",
+│  │   "next": "^14.x"
+│  └─ }
+└─ .env
+   ├─ AUTH0_SECRET=xxx
+   ├─ AUTH0_BASE_URL=https://company.com
+   ├─ AUTH0_ISSUER_BASE_URL=https://company.auth0.com
+   ├─ AUTH0_CLIENT_ID=xxx
+   └─ AUTH0_CLIENT_SECRET=xxx
+```
+
+### When (사용자 액션)
+```bash
+cd my-enterprise-app/
+/alfred:1-plan "Implement enterprise SAML authentication"
+```
+
+### Then (예상 결과)
+
+#### 1️⃣ Platform Detection
+```
+✅ Detected Platforms:
+   - auth0 (from package.json: @auth0/nextjs-auth0)
+   - auth0 (from .env: AUTH0_DOMAIN pattern)
+
+✅ Recommended Pattern: H (Auth0 Enterprise OAuth)
+```
+
+#### 2️⃣ Context7 Auto-Loading
+```
+✅ Loading Context7 documentation:
+   - Auth0 Integration: https://auth0.com/docs/get-started
+   - OpenID Connect: https://auth0.com/docs/protocols/openid-connect
+   - SAML 2.0: https://auth0.com/docs/saml/saml-configuration
+   - Rules & Hooks: https://auth0.com/docs/rules
+
+✅ Total tokens consumed: ~3500
+```
+
+#### 3️⃣ Enterprise Security Guidance
+```
+✅ Pattern H (Auth0 Enterprise) provides:
+   - SAML 2.0 / OIDC enterprise flows
+   - Multi-factor authentication (MFA)
+   - Active Directory integration
+   - Custom authentication rules
+   - Management API for user provisioning
+   - Compliance features (SOC 2, HIPAA ready)
+```
+
+### 📊 Acceptance Checklist
+- [ ] Platform detection: Auth0
+- [ ] Recommended pattern: H
+- [ ] Context7 documentation loaded (SAML, OIDC, Rules)
+- [ ] Total tokens < 4500
+- [ ] Enterprise authentication architecture provided
+
+---
+
 ## ✅ Scenario 4: 새로운 프로젝트 (플랫폼 미감지)
 
 ### Given (초기 상태)
@@ -422,14 +677,14 @@ User selects: Pattern A (Full Supabase)
 ### Requirement 1: Token Budget Management
 ```
 ✅ For all scenarios:
-   - Foundation Skill: ~800 tokens (always)
+   - Foundation Skill: ~1200 tokens (always)
    - Extension Skills: ~600-1000 tokens each (as needed)
-   - Context7 docs: ~1500 tokens per platform (max 4)
+   - Context7 docs: ~1500 tokens per platform (max 9)
 
-   Maximum case (4 platforms):
-   800 + (1000 + 600 + 600 + 600) + (4 × 1500) = 8,600 tokens
+   Maximum case (9 platforms):
+   1200 + (1000 + 600 + 1000 + 1000 + 1000 + 1000 + 600) + (9 × 1500) = 18,400 tokens
 
-   ✅ Well within 20,000 token budget (43% utilization max)
+   ✅ Well within 20,000 token budget (92% utilization max)
 ```
 
 ### Requirement 2: No Breaking Changes
@@ -494,15 +749,28 @@ User selects: Pattern A (Full Supabase)
 ### Phase 2 Completion (Week 3)
 - [ ] Scenario 2 (Neon + Clerk + Vercel): PASS
 - [ ] Token budget verified: < 7,000
-- [ ] All 4 agents activated correctly
+- [ ] 3 agents enhanced
 
 ### Phase 3 Completion (Week 4)
-- [ ] Scenario 3 (Railway): PASS
-- [ ] All 4 patterns working: A, B, C, D
+- [ ] Scenario 5 (Convex Realtime): PASS
+- [ ] Scenario 6 (Firebase Full Stack): PASS
+- [ ] 2 agents enhanced
+- [ ] Pattern E & F implementation verified
 
-### Final Signoff (Week 5)
-- [ ] All scenarios: PASS
-- [ ] Token budget: PASS (< 8,600)
+### Phase 4 Completion (Week 5)
+- [ ] Scenario 7 (Cloudflare Edge-first): PASS
+- [ ] Scenario 8 (Auth0 Enterprise): PASS
+- [ ] 2 agents enhanced
+- [ ] Pattern G & H implementation verified
+
+### Phase 5 Completion (Week 6)
+- [ ] Scenario 3 (Railway): PASS
+- [ ] Pattern C implementation complete
+
+### Final Signoff (Week 6)
+- [ ] All 8 scenarios: PASS
+- [ ] All 8 patterns working: A, B, C, D, E, F, G, H
+- [ ] Token budget: PASS (< 18,400)
 - [ ] Documentation: PASS (> 90% complete)
 - [ ] Backward compatibility: PASS (100%)
 - [ ] Ready for production deployment: YES
