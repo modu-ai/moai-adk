@@ -158,7 +158,7 @@ def get_file_content(tool_name: str, tool_args: Dict[str, Any], file_path: str) 
         file_path: File path
 
     Returns:
-        파일 내용
+        File content
     """
     # Write: new content
     if tool_name == "Write":
@@ -196,7 +196,7 @@ def create_block_response(violations: List[PolicyViolation]) -> Dict[str, Any]:
     }
 
     if critical_violations:
-        response["message"] = "🚨 치명적인 TAG 정책 위반입니다. 작업을 진행할 수 없습니다."
+        response["message"] = "🚨 Critical TAG policy violation. Cannot proceed with this operation."
         response["critical_violations"] = [v.to_dict() for v in critical_violations]
 
     # Add fix guidance
@@ -214,7 +214,7 @@ def create_warning_response(violations: List[PolicyViolation]) -> Dict[str, Any]
         violations: List of policy violations
 
     Returns:
-        경고 응답 딕셔너리
+        Warning response dictionary
     """
     response = {
         "block_execution": False,

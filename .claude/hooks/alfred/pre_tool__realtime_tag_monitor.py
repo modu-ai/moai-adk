@@ -201,7 +201,7 @@ def create_health_check_result(issues_count: int,
     # Deduct points for issues
     health_score -= min(issues_count * 5, 50)  # Maximum 50 points deduction
 
-    # Coverage percentage 점수
+    # Coverage percentage score
     if coverage_percentage < 50:
         health_score -= 20
     elif coverage_percentage < 75:
@@ -330,7 +330,7 @@ def main() -> None:
         # Timeout warning
         timeout_warning_ms = timeout_seconds * 1000 * 0.8  # 80% of timeout
         if scan_time_ms > timeout_warning_ms:
-            response["performance_warning"] = f"Scan time이 설정된 타임아웃의 80%를 초과했습니다 ({scan_time_ms:.0f}ms / {timeout_warning_ms:.0f}ms)"
+            response["performance_warning"] = f"Scan time exceeded 80% of configured timeout ({scan_time_ms:.0f}ms / {timeout_warning_ms:.0f}ms)"
 
         print(json.dumps(response, ensure_ascii=False, indent=2))
 
