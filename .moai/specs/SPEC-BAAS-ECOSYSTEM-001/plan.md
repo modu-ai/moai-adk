@@ -2,16 +2,16 @@
 doc_type: implementation_plan
 spec_id: SPEC-BAAS-ECOSYSTEM-001
 created_date: 2025-11-09
-version: 1.0.0
+version: 2.0.0
 ---
 
 # 구현 계획: SPEC-BAAS-ECOSYSTEM-001
 
 ## 📋 개요
 
-4주 동안 5개 BaaS 플랫폼(Supabase, Vercel, Neon, Clerk, Railway) 통합을 단계적으로 진행합니다.
+6주 동안 9개 BaaS 플랫폼(Supabase, Vercel, Neon, Clerk, Railway, Convex, Firebase, Cloudflare, Auth0) 통합을 단계적으로 진행합니다.
 
-**총 노력**: 80시간 | **기간**: 4주 | **팀**: 6명 (Alfred + 5 specialists)
+**총 노력**: 150시간 | **기간**: 6주 | **팀**: 6명 (Alfred + 6 specialists)
 
 ---
 
@@ -319,7 +319,139 @@ cd test-project-best-of-breed/
 
 ---
 
-## Phase 3: Railway (1주, 10시간)
+## Phase 3: Convex + Firebase (2주, 30시간)
+
+### 🎯 목표
+
+- Convex Skill 생성 (Realtime Sync, Database, TypeScript)
+- Firebase Skill 생성 (Firestore, Auth, Cloud Functions)
+- Agents 강화
+
+### 📦 Deliverables
+
+#### 1. Skills 생성 (2개)
+
+**A. `.claude/skills/moai-baas-convex-ext/SKILL.md` (1000 words)**
+
+Topics:
+- Convex architecture & core concepts
+- Database design with TypeScript schema
+- Realtime Sync patterns (useQuery/useMutation)
+- Authentication & authorization
+- Common patterns & best practices
+
+**B. `.claude/skills/moai-baas-firebase-ext/SKILL.md` (1000 words)**
+
+Topics:
+- Firebase ecosystem & full-stack platform
+- Firestore data design & security rules
+- Firebase Authentication methods
+- Cloud Functions & Cloud Storage
+- Hosting & deployment workflow
+
+#### 2. Agents 강화 (2개)
+
+- `database-expert.md`: Convex database design + Firestore comparison
+- `frontend-expert.md`: Convex React hooks integration
+
+### ✅ Phase 3 성공 기준
+
+1. ✅ 2개 Skills 생성 (Convex + Firebase)
+2. ✅ 2개 Agents 강화
+3. ✅ Pattern F (Convex Realtime) 완전 작동 테스트
+4. ✅ Pattern E (Firebase) 완전 작동 테스트
+
+### 🧪 테스트 계획
+
+**Test Case 1: Convex Realtime**
+```bash
+cd test-project-convex/
+# package.json: convex
+# .env: CONVEX_DEPLOYMENT
+
+/alfred:1-plan "Add realtime features"
+# Expected: Pattern F 추천 + Convex docs 로드
+```
+
+**Test Case 2: Firebase Full Stack**
+```bash
+cd test-project-firebase/
+# package.json: firebase
+# .env: FIREBASE_CONFIG
+
+/alfred:1-plan "Setup backend"
+# Expected: Pattern E 추천 + Firebase docs 로드
+```
+
+---
+
+## Phase 4: Cloudflare + Auth0 (2주, 30시간)
+
+### 🎯 목표
+
+- Cloudflare Skill 생성 (Workers, D1, Pages, Edge)
+- Auth0 Skill 생성 (Enterprise Auth, SAML, OIDC)
+- Agents 강화
+
+### 📦 Deliverables
+
+#### 1. Skills 생성 (2개)
+
+**A. `.claude/skills/moai-baas-cloudflare-ext/SKILL.md` (1000 words)**
+
+Topics:
+- Cloudflare edge-first philosophy
+- Workers runtime & HTTP handling
+- D1 database & SQL operations
+- Pages deployment & Functions routing
+- Performance optimization with KV cache
+
+**B. `.claude/skills/moai-baas-auth0-ext/SKILL.md` (1000 words)**
+
+Topics:
+- Auth0 enterprise architecture
+- Frontend & backend SDK integration
+- SAML & OIDC protocol configuration
+- Multi-factor authentication (MFA)
+- Rules, Hooks, Actions & Management API
+
+#### 2. Agents 강화 (2개)
+
+- `backend-expert.md`: Cloudflare Workers stack + Auth0 flows
+- `security-expert.md`: Auth0 enterprise security patterns
+
+### ✅ Phase 4 성공 기준
+
+1. ✅ 2개 Skills 생성 (Cloudflare + Auth0)
+2. ✅ 2개 Agents 강화
+3. ✅ Pattern G (Cloudflare Edge-first) 완전 작동 테스트
+4. ✅ Pattern H (Auth0 Enterprise) 완전 작동 테스트
+
+### 🧪 테스트 계획
+
+**Test Case 1: Cloudflare Edge-first**
+```bash
+cd test-project-cloudflare/
+# package.json: wrangler
+# wrangler.toml: 존재
+
+/alfred:1-plan "Deploy edge application"
+# Expected: Pattern G 추천 + Cloudflare docs 로드
+```
+
+**Test Case 2: Auth0 Enterprise**
+```bash
+cd test-project-auth0/
+# package.json: auth0
+# .env: AUTH0_DOMAIN
+
+/alfred:1-plan "Implement SAML authentication"
+# Expected: Pattern H 추천 + Auth0 docs 로드
+```
+
+---
+
+## Phase 5: Railway (1주, 10시간)
 
 ### 🎯 목표
 
@@ -344,7 +476,7 @@ Topics:
 
 - `devops-expert.md`: Railway 배포 전략
 
-### ✅ Phase 3 성공 기준
+### ✅ Phase 5 성공 기준
 
 1. ✅ 1개 Skill 생성
 2. ✅ 1개 Agent 강화
@@ -365,11 +497,11 @@ cd test-project-railway/
 
 ---
 
-## Phase 4: Testing & Documentation (1주, 10시간)
+## Phase 6: Testing & Documentation (1주, 10시간)
 
 ### 🎯 목표
 
-- 모든 4가지 패턴 (A/B/C/D) 실제 프로젝트 검증
+- 모든 8가지 패턴 (A-H) 실제 프로젝트 검증
 - 문서 작성
 - 토큰 예산 검증
 
@@ -401,7 +533,27 @@ cd test-project-railway/
    - Session management
    - Webhook delivery
 
-5. Railway Troubleshooting
+5. Convex Troubleshooting
+   - Sync issues
+   - Database schema
+   - Authentication
+
+6. Firebase Troubleshooting
+   - Firestore queries
+   - Cloud Functions
+   - Security rules
+
+7. Cloudflare Troubleshooting
+   - Workers timeout
+   - D1 performance
+   - KV cache
+
+8. Auth0 Troubleshooting
+   - SAML/OIDC config
+   - Token expiry
+   - MFA enrollment
+
+9. Railway Troubleshooting
    - Environment variables
    - Logging
    - Cost monitoring
@@ -413,14 +565,18 @@ cd test-project-railway/
 ```markdown
 ## BaaS Platform Support
 
-MoAI-ADK supports 5 BaaS platforms integrated into `/alfred:1-plan`:
+MoAI-ADK supports 9 BaaS platforms integrated into `/alfred:1-plan`:
 
 ### Supported Patterns
 
 - **Pattern A**: Full Supabase (Supabase + Vercel)
 - **Pattern B**: Best-of-breed (Neon + Clerk + Vercel)
 - **Pattern C**: Railway all-in-one
-- **Pattern D**: Hybrid (Supabase + Clerk + Railway + Vercel)
+- **Pattern D**: Hybrid Premium (Supabase + Clerk + Railway + Vercel + Cloudflare)
+- **Pattern E**: Firebase Full Stack
+- **Pattern F**: Convex Realtime
+- **Pattern G**: Cloudflare Edge-first
+- **Pattern H**: Auth0 Enterprise
 
 ### Quick Start
 
@@ -436,43 +592,33 @@ See [BaaS Platforms Guide](docs/troubleshooting/baas-platforms.md)
 #### 2. 토큰 예산 검증
 
 **검증 항목**:
-- Foundation Skill 로드: ~800 tokens
-- Extension Skills 로드 (최악의 경우 5개): ~3500 tokens
-- Context7 docs (최대 4개 플랫폼): ~6000 tokens
-- **총합**: ~10,300 tokens (20,000 한계 내)
+- Foundation Skill 로드: ~1200 tokens
+- Extension Skills 로드 (최악의 경우 8개): ~7000 tokens
+- Context7 docs (최대 9개 플랫폼): ~10000 tokens
+- **총합**: ~18,200 tokens (20,000 한계 내)
 
 #### 3. 실제 프로젝트 검증
 
-**Pattern A 테스트** (Supabase + Vercel):
+8가지 패턴 모두 테스트:
+- **Pattern A** (Supabase + Vercel)
+- **Pattern B** (Neon + Clerk + Vercel)
+- **Pattern C** (Railway all-in-one)
+- **Pattern D** (Hybrid Premium)
+- **Pattern E** (Firebase Full Stack)
+- **Pattern F** (Convex Realtime)
+- **Pattern G** (Cloudflare Edge-first)
+- **Pattern H** (Auth0 Enterprise)
+
+각 패턴마다:
 - [ ] 프로젝트 생성
 - [ ] 플랫폼 자동 감지
 - [ ] Context7 문서 로드
 - [ ] 아키텍처 패턴 추천
-- [ ] 실제 기능 구현 (auth, DB, realtime)
+- [ ] 실제 기능 구현
 
-**Pattern B 테스트** (Neon + Clerk + Vercel):
-- [ ] 프로젝트 생성
-- [ ] 플랫폼 자동 감지
-- [ ] 3개 플랫폼 문서 동시 로드
-- [ ] 아키텍처 패턴 추천
-- [ ] 실제 기능 구현 (auth, DB, deployment)
+### ✅ Phase 6 성공 기준
 
-**Pattern C 테스트** (Railway):
-- [ ] 프로젝트 생성
-- [ ] 플랫폼 자동 감지
-- [ ] Railway 문서 로드
-- [ ] Full-stack deployment
-- [ ] 비용 추적
-
-**Pattern D 테스트** (Hybrid):
-- [ ] 프로젝트 생성
-- [ ] 4개 플랫폼 모두 감지
-- [ ] 아키텍처 권장사항
-- [ ] 통합 테스트
-
-### ✅ Phase 4 성공 기준
-
-1. ✅ 모든 4가지 패턴 실제 프로젝트 테스트 완료
+1. ✅ 모든 8가지 패턴 실제 프로젝트 테스트 완료
 2. ✅ docs/troubleshooting/baas-platforms.md 작성
 3. ✅ README.md BaaS 섹션 추가
 4. ✅ 토큰 예산 < 20,000 확인
@@ -482,35 +628,43 @@ See [BaaS Platforms Guide](docs/troubleshooting/baas-platforms.md)
 
 ## 📊 통합 요약
 
-### Skills 총 6개
+### Skills 총 9개
 | Skill | 크기 | 활성화 시점 |
 |-------|------|----------|
-| moai-baas-foundation | 800w | Phase 1 |
+| moai-baas-foundation | 1200w | Phase 1 |
 | moai-baas-supabase-ext | 1000w | Phase 1 |
 | moai-baas-vercel-ext | 600w | Phase 1 |
-| moai-baas-neon-ext | 600w | Phase 2 |
-| moai-baas-clerk-ext | 600w | Phase 2 |
-| moai-baas-railway-ext | 600w | Phase 3 |
-| **Total** | **4200w** | Phase 4 |
+| moai-baas-neon-ext | 1000w | Phase 2 |
+| moai-baas-clerk-ext | 1000w | Phase 2 |
+| moai-baas-convex-ext | 1000w | Phase 3 |
+| moai-baas-firebase-ext | 1000w | Phase 3 |
+| moai-baas-cloudflare-ext | 1000w | Phase 4 |
+| moai-baas-auth0-ext | 1000w | Phase 4 |
+| moai-baas-railway-ext | 600w | Phase 5 |
+| **Total** | **9400w** | Phase 6 |
 
 ### Agents 강화 (6개)
 | Agent | 강화 사항 | Phase |
 |-------|---------|-------|
 | spec-builder | Platform detection | Phase 1 |
-| backend-expert | Stack recommendation | Phase 1 |
-| devops-expert | Deployment strategy | Phase 1-3 |
-| database-expert | DB selection | Phase 1-2 |
-| security-expert | Auth comparison | Phase 2 |
-| frontend-expert | Edge Functions | Phase 1 |
+| backend-expert | Stack recommendation | Phase 1, 3, 4 |
+| devops-expert | Deployment strategy | Phase 1-5 |
+| database-expert | DB selection (SQL/NoSQL) | Phase 1-3 |
+| security-expert | Auth comparison (5 providers) | Phase 2, 4 |
+| frontend-expert | Edge/Client integration | Phase 1, 3, 4 |
 
-### Context7 통합 (5개)
+### Context7 통합 (9개)
 | Platform | Docs | Phase |
 |----------|------|-------|
 | Supabase | RLS, Migrations, Realtime | Phase 1 |
 | Vercel | Deployments, Edge Functions | Phase 1 |
-| Neon | Branching, Autoscaling | Phase 2 |
-| Clerk | OAuth, MFA, Webhooks | Phase 2 |
-| Railway | Full-stack, Monitoring | Phase 3 |
+| Neon | Branching, Autoscaling, Pooling | Phase 2 |
+| Clerk | OAuth, MFA, Webhooks, Session | Phase 2 |
+| Convex | Sync, Database, Functions | Phase 3 |
+| Firebase | Firestore, Auth, Functions, Storage | Phase 3 |
+| Cloudflare | Workers, D1, Pages, Analytics | Phase 4 |
+| Auth0 | SAML, OIDC, Rules, Management API | Phase 4 |
+| Railway | Deployment, Monitoring, Logging | Phase 5 |
 
 ---
 
@@ -538,28 +692,35 @@ See [BaaS Platforms Guide](docs/troubleshooting/baas-platforms.md)
 ## 📅 주간 체크포인트
 
 ### Week 1-2 (Phase 1)
-- [ ] Day 1-2: Skills 구조 설계
-- [ ] Day 3-4: Foundation Skill 작성
-- [ ] Day 5: Supabase Skill 작성
-- [ ] Day 6: Vercel Skill 작성
+- [x] Day 1-2: Skills 구조 설계
+- [x] Day 3-4: Foundation Skill 작성 (1200w 영어)
+- [x] Day 5: Supabase Skill 작성 (1000w)
+- [x] Day 6: Vercel Skill 작성 (600w)
 - [ ] Day 7-8: Agents 강화
 - [ ] Day 9-10: `/alfred:1-plan` 통합
 - [ ] Day 11-14: 테스트 및 버그 수정
 
 ### Week 3 (Phase 2)
-- [ ] Day 1-2: Neon Skill 작성
-- [ ] Day 3-4: Clerk Skill 작성
+- [ ] Day 1-2: Neon Skill 작성 (1000w)
+- [ ] Day 3-4: Clerk Skill 작성 (1000w)
 - [ ] Day 5: Agents 강화
 - [ ] Day 6-7: 테스트 및 버그 수정
 
 ### Week 4 (Phase 3)
-- [ ] Day 1-2: Railway Skill 작성
-- [ ] Day 3: Agents 강화
-- [ ] Day 4-5: 테스트
+- [x] Day 1-2: Convex Skill 작성 (1000w 영어)
+- [x] Day 3-4: Firebase Skill 작성 (1000w 영어)
+- [ ] Day 5: Agents 강화
+- [ ] Day 6-7: 테스트
 
 ### Week 5 (Phase 4)
-- [ ] Day 1-2: 문서 작성
-- [ ] Day 3-4: 최종 테스트
+- [x] Day 1-2: Cloudflare Skill 작성 (1000w 영어)
+- [x] Day 3-4: Auth0 Skill 작성 (1000w 영어)
+- [ ] Day 5: Agents 강화
+- [ ] Day 6-7: 테스트
+
+### Week 6 (Phase 5-6)
+- [ ] Day 1-2: Railway Skill 작성 (600w)
+- [ ] Day 3-4: 문서 작성 및 최종 테스트
 - [ ] Day 5: 배포 준비
 
 ---

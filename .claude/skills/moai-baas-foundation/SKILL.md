@@ -1,16 +1,17 @@
 # Skill: moai-baas-foundation
 
-## 메타데이터
+## Metadata
 
 ```yaml
 skill_id: moai-baas-foundation
-skill_name: BaaS 플랫폼 기초 및 의사결정
-version: 1.0.0
+skill_name: BaaS Platform Foundation & 9-Platform Decision Framework (Ultra-comprehensive)
+version: 2.0.0
 created_date: 2025-11-09
-language: korean
+updated_date: 2025-11-09
+language: english
 triggers:
-  - keywords: ["BaaS", "backend-as-a-service", "플랫폼 선택", "아키텍처"]
-  - contexts: ["/alfred:1-plan", "platform-selection", "architecture-decision"]
+  - keywords: ["BaaS", "backend-as-a-service", "platform selection", "architecture", "9 platforms", "Convex", "Firebase", "Cloudflare", "Auth0"]
+  - contexts: ["/alfred:1-plan", "platform-selection", "architecture-decision", "pattern-a-h"]
 agents:
   - spec-builder
   - backend-expert
@@ -19,291 +20,220 @@ agents:
   - security-expert
   - frontend-expert
 freedom_level: high
-word_count: 800
+word_count: 1200
 spec_reference: "@SPEC:BAAS-ECOSYSTEM-001"
 ```
 
 ---
 
-## 📚 내용
+## 📚 Content
 
-### 1. BaaS (Backend-as-a-Service) 개념 (100 words)
+### 1. BaaS (Backend-as-a-Service) Concepts & 9-Platform Overview (150 words)
 
-**Backend-as-a-Service**는 서버 인프라 관리 없이 백엔드 기능을 제공하는 클라우드 서비스입니다.
+**Backend-as-a-Service** is a cloud service model providing backend functionality without requiring server infrastructure management.
 
-**핵심 특징**:
-- 인프라 관리 불필요 (서버리스)
-- 즉시 사용 가능한 기능 (Auth, DB, Storage)
-- 자동 스케일링
-- 종량제 과금
+**Core Characteristics**:
+- No infrastructure management needed (serverless)
+- Immediately usable features (Auth, DB, Storage, Realtime)
+- Automatic scaling
+- Pay-as-you-go pricing model
 
-**MoAI-ADK에서 지원하는 5개 플랫폼**:
+**MoAI-ADK Supported 9-Platform Comparison**:
 
-| 플랫폼 | 강점 | 약점 | 비용 |
-|-------|------|------|------|
-| **Supabase** | PostgreSQL + Auth + RLS | 단일 기술 스택 | 저 |
-| **Vercel** | Edge Functions + 배포 | 모니터링 제한 | 중 |
-| **Neon** | DB branching + 자동스케일 | 독립적 DB만 | 중 |
-| **Clerk** | MFA + SSO + 보안 | Auth만 제공 | 고 |
-| **Railway** | Full-stack 통합 | 커스터마이징 제한 | 저 |
-
----
-
-### 2. 4가지 아키텍처 패턴 (400 words)
-
-#### **Pattern A: Full Supabase (Supabase + Vercel)**
-
-```
-┌─────────────────────────────────────┐
-│ Client (Next.js/React)              │
-└──────────────┬──────────────────────┘
-               │
-       ┌───────┴────────┐
-       ▼                 ▼
-┌────────────────┐  ┌──────────────┐
-│ Vercel (Edge)  │  │ Supabase     │
-│ - Deployment   │  │ - PostgreSQL │
-│ - Edge Funcs   │  │ - Auth       │
-└────────────────┘  │ - Storage    │
-                    │ - Realtime   │
-                    └──────────────┘
-```
-
-**대상**: MVP, 작은 팀 (< 5명), 빠른 개발
-
-**장점**:
-- ✅ 최고의 통합성 (PostgreSQL, Auth, Storage 한 곳)
-- ✅ 빠른 개발 속도 (선언적 API)
-- ✅ RLS로 강력한 보안
-- ✅ 저비용 ($0-100/월)
-
-**단점**:
-- ❌ PostgreSQL에 종속적
-- ❌ 고급 인증 기능 제한 (MFA는 제한적)
-- ❌ 스케일링 시 비용 급증
-
-**사용 시기**:
-```
-if (project_stage == "MVP") && (team_size <= 5) && (budget == "low"):
-    return "Pattern A"
-```
+| Platform | Strengths | Weaknesses | Cost | Type |
+|----------|-----------|-----------|------|------|
+| **Supabase** | PostgreSQL + RLS + Auth | Single stack | Low | Postgres |
+| **Vercel** | Edge Functions + Deployment | Limited monitoring | Medium | Deploy |
+| **Neon** | DB branching + auto-scale | DB only | Medium | Postgres |
+| **Clerk** | MFA + SSO + Security | Auth only | High | Auth |
+| **Railway** | Full-stack integration | Limited customization | Low | Full-stack |
+| **Convex** | Realtime Sync + Auth | Small community | Medium | Realtime |
+| **Firebase** | Fully managed | High vendor lock-in | Low-Med | Full-stack |
+| **Cloudflare** | Edge Workers + Speed | Learning curve | Low | Edge |
+| **Auth0** | Enterprise authentication | High cost | High | Auth |
 
 ---
 
-#### **Pattern B: Best-of-breed (Neon + Clerk + Vercel)**
+### 2. Eight Architecture Patterns (700 words)
 
+#### **Pattern A: Full Supabase (Postgres Integration)**
 ```
-┌──────────────────────────────────────────┐
-│ Client (Next.js/React)                   │
-└───┬──────────────────┬──────────────┬────┘
-    │                  │              │
-    ▼                  ▼              ▼
-┌─────────┐    ┌──────────────┐  ┌────────┐
-│ Vercel  │    │ Clerk (Auth) │  │ Neon   │
-│ Deploy  │    │ - OAuth/SSO  │  │ - DB   │
-│ Edge    │    │ - MFA        │  │ - Pool │
-│ Funcs   │    │ - Webhooks   │  │ - Branch
-└─────────┘    └──────────────┘  └────────┘
+PostgreSQL + RLS + Auth + Storage + Realtime + Vercel
 ```
+- **Target**: MVP, small teams (< 5 people), rapid development
+- **Cost**: Low ($0-100/month)
+- **Strengths**: Best integration, RLS security, realtime features
+- **Weaknesses**: PostgreSQL dependent, limited advanced auth
 
-**대상**: Production 시스템, 큰 팀 (5-50명), 엔터프라이즈
-
-**장점**:
-- ✅ 각 분야 최고의 도구 선택
-- ✅ Clerk의 고급 인증 (MFA, SSO, Passwordless)
-- ✅ Neon의 DB branching (개발/스테이징 격리)
-- ✅ 높은 확장성
-
-**단점**:
-- ❌ 통합 복잡도 (3개 플랫폼 연동)
-- ❌ 중간~높은 비용 ($100-500/월)
-- ❌ 학습 곡선 증가
-
-**사용 시기**:
+#### **Pattern B: Best-of-breed (Postgres + Enterprise Auth)**
 ```
-if (project_stage == "Production") && (team_size >= 5) && (requires_mfa):
-    return "Pattern B"
+Neon (DB) + Clerk (Auth) + Vercel (Deploy)
 ```
+- **Target**: Production, large teams (5-50 people), advanced auth
+- **Cost**: Medium ($100-500/month)
+- **Strengths**: Peak performance, MFA/SSO, DB branching
+- **Weaknesses**: 3-platform orchestration, increased complexity
+
+#### **Pattern C: Railway All-in-one (Single Platform)**
+```
+Railway (PostgreSQL + Backend + Monitoring)
+```
+- **Target**: Solo developers, low-budget, Monolith preference
+- **Cost**: Low ($5-50/month)
+- **Strengths**: Simplicity, fast deployment, lowest cost
+- **Weaknesses**: No advanced auth, limited flexibility
+
+#### **Pattern D: Hybrid Premium (Postgres + Edge + Cloud)**
+```
+Supabase (DB) + Clerk (Auth) + Railway (Backend) + Vercel (Edge) + Cloudflare (CDN)
+```
+- **Target**: Complex requirements, maximum flexibility
+- **Cost**: High ($200-1000+/month)
+- **Strengths**: Maximum flexibility, all features, high security
+- **Weaknesses**: 5-platform orchestration, operational complexity
+
+#### **Pattern E: Firebase Full Stack (Google Ecosystem)**
+```
+Firebase (Auth + Firestore + Storage + Hosting + Functions)
+```
+- **Target**: Google ecosystem preference, rapid prototyping
+- **Cost**: Low-Medium ($0-500/month)
+- **Strengths**: Fully managed, integration, scalability
+- **Weaknesses**: Firestore learning curve, lock-in, NoSQL
+
+#### **Pattern F: Convex Realtime (Sync-first Architecture)**
+```
+Convex (Database + Sync + Auth + Functions + Hosting)
+```
+- **Target**: Realtime apps, modern frontend development
+- **Cost**: Medium ($50-500/month)
+- **Strengths**: Native realtime sync, TypeScript-first
+- **Weaknesses**: Smaller community, emerging platform
+
+#### **Pattern G: Cloudflare Edge-first (Performance Priority)**
+```
+Cloudflare Workers (Edge Functions) + D1 (Database) + Pages (Hosting)
+```
+- **Target**: Edge performance critical, global deployment
+- **Cost**: Low ($0-200/month)
+- **Strengths**: Ultra-low latency, edge deployment, low cost
+- **Weaknesses**: Learning curve, sparse documentation
+
+#### **Pattern H: Enterprise OAuth (Auth0 + Flexible Backend)**
+```
+Auth0 (Advanced Auth) + Free Choice (DB/Deploy/Backend)
+```
+- **Target**: Enterprise auth required, SAML/OIDC mandatory
+- **Cost**: High ($1000+/month)
+- **Strengths**: Enterprise features, SAML, Hooks
+- **Weaknesses**: High cost, complex configuration
 
 ---
 
-#### **Pattern C: Railway All-in-one (Railway)**
+### 3. Decision Matrix (V2 - 9-Platform Based) (250 words)
+
+**Level 1: Project Stage Classification**
 
 ```
-┌─────────────────────────┐
-│ Client (Next.js/React)  │
-└────────────┬────────────┘
-             │
-             ▼
-    ┌─────────────────┐
-    │ Railway         │
-    │ - PostgreSQL    │
-    │ - App Deploy    │
-    │ - Environment   │
-    │ - Monitoring    │
-    └─────────────────┘
+MVP (Fast Launch Priority)
+├─ Pattern A (Full Supabase) ← Recommended
+├─ Pattern C (Railway) ← Minimal setup
+└─ Pattern E (Firebase) ← Google ecosystem
+
+Growth (Scalability + Features)
+├─ Pattern B (Best-of-breed) ← Recommended
+├─ Pattern F (Convex) ← Realtime priority
+└─ Pattern D (Hybrid) ← Maximum flexibility
+
+Scale (Enterprise + High Availability)
+├─ Pattern D (Hybrid Premium) ← Recommended
+├─ Pattern H (Auth0 + Free) ← Enterprise auth
+└─ Pattern G (Cloudflare) ← Edge performance
 ```
 
-**대상**: Solo 개발자, 저예산 스타트업, Monolith 아키텍처
+**Level 2: Team Size vs Features**
 
-**장점**:
-- ✅ 최고로 단순함 (한 대시보드에서 모든 관리)
-- ✅ 최저 비용 ($5-50/월)
-- ✅ 빠른 배포 (Git push)
-- ✅ 모니터링 내장
-
-**단점**:
-- ❌ 고급 인증 미지원 (기본 session만)
-- ❌ DB branching 없음
-- ❌ 마이크로서비스로 확장 어려움
-
-**사용 시기**:
 ```
-if (team_size == 1) && (budget == "very_low"):
-    return "Pattern C"
+Solo (1 person) → Pattern C (Railway) or Pattern A (Supabase)
+Small (2-4 people) → Pattern A (Supabase) or Pattern E (Firebase)
+Medium (5-15 people) → Pattern B (Best-of-breed) or Pattern F (Convex)
+Large (15+ people) → Pattern D (Hybrid) or Pattern H (Enterprise)
 ```
+
+**Level 3: Special Requirements**
+
+```
+Realtime app required → Pattern F (Convex) or Pattern A (Supabase Realtime)
+Edge performance critical → Pattern G (Cloudflare) or Pattern D (with Vercel Edge)
+Enterprise auth → Pattern H (Auth0) or Pattern D (Clerk)
+Google ecosystem → Pattern E (Firebase)
+Maximum control needed → Pattern D (Hybrid Premium)
+```
+
+**Priority Weighting**:
+1. **Team size** (40%): Largest impact
+2. **Project stage** (30%)
+3. **Special requirements** (20%)
+4. **Budget** (10%)
 
 ---
 
-#### **Pattern D: Hybrid (Supabase + Clerk + Railway + Vercel)**
+### 4. Real-World Pain Points & Solutions (150 words)
 
-```
-┌──────────────────────────────────────────────┐
-│ Client (Next.js/React)                       │
-└─┬────────────────┬──────────────┬────────┬──┘
-  │                │              │        │
-  ▼                ▼              ▼        ▼
-┌────────┐  ┌────────────┐  ┌──────────┐ ┌─────┐
-│Vercel  │  │Supabase RLS│  │ Clerk    │ │Rail │
-│Deploy  │  │+ Realtime  │  │ Auth     │ │way  │
-└────────┘  └────────────┘  └──────────┘ └─────┘
-```
-
-**대상**: 복잡한 요구사항, 최고의 유연성 필요
-
-**장점**:
-- ✅ 최고의 유연성 (각 부분 최적화)
-- ✅ 높은 보안 (Clerk MFA + Supabase RLS)
-- ✅ 실시간 기능 (Supabase Realtime)
-
-**단점**:
-- ❌ 최고의 복잡도 (4개 플랫폼 연동)
-- ❌ 높은 비용 ($200-1000+/월)
-- ❌ 운영 오버헤드 증가
-
-**사용 시기**:
-```
-if (complexity == "high") && (requires_all_features):
-    return "Pattern D"
-```
+| Pain Point | Pattern Solution | Implementation |
+|-----------|------------------|-----------------|
+| **RLS Debugging** | Pattern A, D | Supabase Logs, pgTAP tests |
+| **Data Sync** | Pattern F, A | Convex Sync or Supabase Realtime |
+| **Global Latency** | Pattern G | Cloudflare Workers + Pages |
+| **Enterprise Auth** | Pattern H, D | Auth0 + SAML/OIDC |
+| **DB Branching/Dev** | Pattern B | Neon development instances |
+| **Cost Optimization** | Pattern C | Railway single platform |
+| **Type Safety** | Pattern F | Convex TypeScript definitions |
+| **Lock-in Avoidance** | Pattern D | Multi-platform approach |
 
 ---
 
-### 3. 의사결정 행렬 (200 words)
+## 🎯 Usage
 
-**선택 기준**:
-
-```
-Step 1: 프로젝트 단계?
-├─ MVP → Step 2
-├─ Growth → Step 3
-└─ Scale → Step 4
-
-Step 2: 팀 규모?
-├─ Solo (1명) → Pattern C
-├─ Small (2-4명) → Pattern A
-└─ Medium (5-10명) → Pattern B
-
-Step 3: 고급 인증 필요?
-├─ Yes (MFA/SSO) → Pattern B
-├─ No → Pattern A
-└─ Maybe → Pattern D
-
-Step 4: 높은 보안 필수?
-├─ Yes → Pattern B or D
-├─ No → Pattern A or C
-└─ Maximum → Pattern D
-```
-
-**우선순위**:
-1. 팀 규모 (가장 중요)
-2. 예산 제약
-3. 인증 복잡도
-4. 실시간 요구사항
-
----
-
-### 4. Common Pain Points와 해결책 (100 words)
-
-**Pain Point 1: RLS (Row Level Security) 디버깅**
-- 문제: PostgreSQL 500 에러 (정보 부족)
-- 해결: Supabase 대시보드 → Logs 확인, pgTAP 테스트
-
-**Pain Point 2: 데이터베이스 마이그레이션 안전성**
-- 문제: 프로덕션에서 스키마 변경 위험
-- 해결: Neon DB branching으로 개발/프로덕션 격리
-
-**Pain Point 3: 인증 통합 복잡도**
-- 문제: Supabase Auth가 부족하면 Clerk 필요
-- 해결: Pattern B (Best-of-breed) 선택
-
-**Pain Point 4: 성능 최적화**
-- 문제: Vercel Edge vs. Serverless 혼동
-- 해결: 엣지는 정적 콘텐츠, Serverless는 DB 쿼리
-
----
-
-## 🎯 사용 방법
-
-### Agent에서 호출 방법
-
+### Invocation from Agents
 ```python
-# backend-expert, spec-builder 등에서
 Skill("moai-baas-foundation")
-
-# 결과:
-# - 4가지 패턴 명확히 이해
-# - 의사결정 기준 제시
-# - 아키텍처 추천 근거 마련
+# Result: Clear understanding of all 9 platforms and 8 patterns
 ```
 
-### 사용 시나리오
-
-**Scenario 1**: `/alfred:1-plan` 실행 시
+### Usage Scenarios
 ```
 User: /alfred:1-plan "Add backend"
 ↓
-spec-builder: moai-baas-foundation 로드
+spec-builder: Load moai-baas-foundation
 ↓
-Platform 감지 후 4가지 패턴 제시
+Detect 1-9 platforms in project
 ↓
-User: Pattern A 선택
-```
-
-**Scenario 2**: 아키텍처 리뷰 필요할 때
-```
-User: "현재 구조가 최적인가?"
+AskUserQuestion: Present 8 patterns (A-H)
 ↓
-backend-expert: moai-baas-foundation 로드
+User: Select pattern
 ↓
-현재 구조 분석 후 Pattern B 제안
+Load extension Skills (moai-baas-supabase-ext, etc.)
 ```
 
 ---
 
-## 📚 참고 자료
+## 📚 Reference Materials
 
-- [SPEC-BAAS-ECOSYSTEM-001](../../specs/SPEC-BAAS-ECOSYSTEM-001/spec.md)
-- [4가지 패턴 상세 비교](../../specs/SPEC-BAAS-ECOSYSTEM-001/acceptance.md)
-- moai-baas-supabase-ext (RLS, Migrations)
-- moai-baas-vercel-ext (Edge Functions, Deployment)
+- SPEC-BAAS-ECOSYSTEM-001 (main specification)
+- moai-baas-supabase-ext, moai-baas-vercel-ext (existing)
+- moai-baas-neon-ext, moai-baas-clerk-ext (Phase 2)
+- moai-baas-convex-ext, moai-baas-firebase-ext (Phase 3)
+- moai-baas-cloudflare-ext, moai-baas-auth0-ext (Phase 4)
+- moai-baas-railway-ext (Phase 5)
 
 ---
 
-## ✅ 검증 체크리스트
+## ✅ Validation Checklist
 
-- [x] 5개 플랫폼 개요
-- [x] 4가지 패턴 설명
-- [x] 의사결정 행렬
-- [x] Pain points 해결책
-- [x] 800 단어 목표
+- [x] 9-platform overview
+- [x] 8 architecture patterns (A-H)
+- [x] Decision matrix (V2)
+- [x] Pain points & solutions (expanded)
+- [x] 1200-word target
+- [x] English language (policy compliant)
