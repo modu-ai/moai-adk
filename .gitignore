@@ -42,3 +42,9 @@ logs/
 # Temporary files
 *.tmp
 *.temp
+*.bak
+*.backup
+
+# Test coverage
+.coverage
+coverage.json
