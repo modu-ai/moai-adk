@@ -1,8 +1,9 @@
-name: Deploy Documentation to Vercel
+name: Deploy Documentation to Vercel (Nextra)
 
 # GitFlow Strategy:
 # - main branch → Production (adk.mo.ai.kr)
 # - develop branch → Preview deployment
+# Next.js/Nextra optimized pipeline with quality gates
 on:
   push:
     branches:
@@ -12,83 +13,172 @@ on:
       - "docs/**"
       - ".github/workflows/docs-deploy.yml"
 
+env:
+  NODE_VERSION: "18.17"
+  CACHE_NAME_PREFIX: "nextra-docs"
+
+concurrency:
+  group: docs-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  deploy:
-    name: 📚 Deploy Documentation
+  # Phase 1: Code Quality & Type Checking
+  quality-check:
+    name: 🔍 Code Quality & Type Check
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./docs
 
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
 
-      - name: 🐍 Setup Python 3.13
-        uses: actions/setup-python@v5
+      - name: 🟢 Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
         with:
-          python-version: "3.13"
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
 
-      - name: 📦 Install uv
-        uses: astral-sh/setup-uv@v2
+      - name: 📦 Install dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: 🔍 TypeScript type checking
+        run: npx tsc --noEmit
+        continue-on-error: false
+
+      - name: 🎨 ESLint verification
+        run: npm run lint -- --max-warnings 0
+        continue-on-error: true
+
+  # Phase 2: Build & Validation
+  build-and-validate:
+    name: 🏗️ Build & Validate
+    runs-on: ubuntu-latest
+    needs: quality-check
+    defaults:
+      run:
+        working-directory: ./docs
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
         with:
-          enable-cache: true
-          cache-dependency-glob: "docs/pyproject.toml"
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
 
-      - name: 🏗️ Build documentation
+      - name: 📦 Install dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: 🏗️ Build Nextra documentation
         run: |
-          cd docs
-          echo "🚀 Building MoAI-ADK Documentation..."
-          uv sync
-          uv run mkdocs build
+          echo "🚀 Building MoAI-ADK Documentation with Nextra..."
+          npm run build
 
-          # Build stats
-          echo "📊 Build Statistics:"
-          echo "HTML files: $(find site -name "*.html" | wc -l)"
-          echo "Total size: $(du -sh site | cut -f1)"
-
-          # Verify multilingual structure
+      - name: 📊 Build Statistics
+        run: |
+          echo "📈 Build Output Analysis:"
           echo ""
-          echo "🌍 Multilingual Structure:"
-          for lang in "" en ja zh; do
-            if [ -n "$lang" ]; then
-              count=$(find site/$lang -name "*.html" 2>/dev/null | wc -l)
-              echo "  $lang: $count HTML files"
-            else
-              count=$(find site -maxdepth 1 -name "*.html" | wc -l)
-              echo "  Korean (default): $count HTML files"
-            fi
-          done
+          echo "Next.js Build Directory:"
+          du -sh .next || echo "⚠️ .next directory not found"
+          echo ""
 
-      - name: 🔍 Verify build quality
+          if [ -d ".next/static" ]; then
+            echo "✅ Static files generated:"
+            find .next/static -type f | wc -l | xargs echo "   Files:"
+            du -sh .next/static | awk '{print "   Size: " $1}'
+          fi
+
+      - name: 🌍 Validate multilingual structure
         run: |
-          cd docs
+          echo "🌍 Multilingual Pages Validation:"
+          echo ""
 
-          # Check critical files exist
-          critical_files=("site/index.html" "site/sitemap.xml")
-          for file in "${critical_files[@]}"; do
-            if [ -f "$file" ]; then
-              echo "✅ $file exists"
+          locales=("ko" "en" "ja" "zh")
+          for locale in "${locales[@]}"; do
+            if [ -d "pages/$locale" ]; then
+              count=$(find pages/$locale -type f \( -name "*.md" -o -name "*.mdx" \) | wc -l)
+              echo "  ✅ $locale: $count files"
             else
-              echo "❌ $file missing"
-              exit 1
+              echo "  ⚠️ $locale: directory not found"
             fi
           done
 
-          # Check file sizes (should be reasonable)
-          index_size=$(stat -f%z "site/index.html" 2>/dev/null || stat -c%s "site/index.html" 2>/dev/null || echo 0)
-          if [ "$index_size" -gt 1000 ]; then
-            echo "✅ Index.html size: $index_size bytes"
+      - name: ✅ Verify build output
+        run: |
+          echo "🔍 Build Quality Verification:"
+          echo ""
+
+          # Check if .next directory exists
+          if [ -d ".next" ]; then
+            echo "  ✅ .next directory created"
           else
-            echo "❌ Index.html too small: $index_size bytes"
+            echo "  ❌ .next directory missing"
             exit 1
           fi
 
-          # Check for CSS/JS assets
-          if [ -d "site/assets" ]; then
-            asset_count=$(find site/assets -type f | wc -l)
-            echo "✅ Assets directory: $asset_count files"
+          # Check for next.config.cjs
+          if [ -f "next.config.cjs" ]; then
+            echo "  ✅ next.config.cjs present"
           else
-            echo "❌ Assets directory missing"
+            echo "  ❌ next.config.cjs missing"
             exit 1
           fi
+
+          # Check for theme config
+          if [ -f "theme.config.tsx" ]; then
+            echo "  ✅ theme.config.tsx present"
+          else
+            echo "  ❌ theme.config.tsx missing"
+            exit 1
+          fi
+
+          # Check for pages directory
+          if [ -d "pages" ]; then
+            file_count=$(find pages -type f \( -name "*.md" -o -name "*.mdx" \) | wc -l)
+            echo "  ✅ pages directory: $file_count markdown files"
+          else
+            echo "  ❌ pages directory missing"
+            exit 1
+          fi
+
+      - name: 📦 Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextra-build-${{ github.sha }}
+          path: docs/.next
+          retention-days: 7
+
+  # Phase 3: Deploy to Vercel
+  deploy:
+    name: 🚀 Deploy to Vercel
+    runs-on: ubuntu-latest
+    needs: build-and-validate
+    defaults:
+      run:
+        working-directory: ./docs
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+
+      - name: 📦 Install dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: 🏗️ Build documentation (cached)
+        run: npm run build
 
       - name: 🚀 Deploy to Vercel (Production)
         id: deploy-prod
@@ -100,6 +190,7 @@ jobs:
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
           working-directory: ./docs
           vercel-args: '--prod'
+          scope: ${{ secrets.VERCEL_ORG_ID }}
 
       - name: 🔍 Deploy to Vercel (Preview)
         id: deploy-preview
@@ -110,49 +201,73 @@ jobs:
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
           working-directory: ./docs
+          scope: ${{ secrets.VERCEL_ORG_ID }}
 
-      - name: 🔗 Production Deployment Complete
+      - name: 📝 Production Deployment Summary
         if: github.ref == 'refs/heads/main' && success()
         run: |
-          echo "🎉 Production deployment complete!"
+          echo "✅ Production Deployment Successful!"
           echo ""
-          echo "📊 Summary:"
+          echo "📊 Deployment Details:"
           echo "  • Repository: ${{ github.repository }}"
           echo "  • Branch: main (production)"
-          echo "  • Commit: ${{ github.sha }}"
-          echo "  • Production URL: https://adk.mo.ai.kr"
+          echo "  • Commit SHA: ${{ github.sha }}"
+          echo "  • Commit Message: ${{ github.event.head_commit.message }}"
           echo ""
-          echo "🌍 Multilingual URLs:"
-          echo "  🇰🇷 Korean: https://adk.mo.ai.kr/"
-          echo "  🇺🇸 English: https://adk.mo.ai.kr/en/"
-          echo "  🇯🇵 Japanese: https://adk.mo.ai.kr/ja/"
-          echo "  🇨🇳 Chinese: https://adk.mo.ai.kr/zh/"
+          echo "🌐 Production URLs:"
+          echo "  🇰🇷 Korean (Default): https://adk.mo.ai.kr"
+          echo "  🇺🇸 English: https://adk.mo.ai.kr/en"
+          echo "  🇯🇵 Japanese: https://adk.mo.ai.kr/ja"
+          echo "  🇨🇳 Chinese: https://adk.mo.ai.kr/zh"
+          echo ""
+          echo "⏱️ Deployment completed at: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
 
-      - name: 🔗 Preview Deployment Complete
+      - name: 📝 Preview Deployment Summary
         if: github.ref == 'refs/heads/develop' && success()
         run: |
-          echo "🔍 Preview deployment complete!"
+          echo "✅ Preview Deployment Successful!"
           echo ""
-          echo "📊 Summary:"
+          echo "📊 Deployment Details:"
           echo "  • Repository: ${{ github.repository }}"
           echo "  • Branch: develop (preview)"
-          echo "  • Commit: ${{ github.sha }}"
-          echo "  • Preview URL: ${{ steps.deploy-preview.outputs.preview-url }}"
+          echo "  • Commit SHA: ${{ github.sha }}"
+          echo "  • Commit Message: ${{ github.event.head_commit.message }}"
           echo ""
-          echo "🌍 Multilingual Preview URLs:"
-          echo "  🇰🇷 Korean: ${{ steps.deploy-preview.outputs.preview-url }}/"
-          echo "  🇺🇸 English: ${{ steps.deploy-preview.outputs.preview-url }}/en/"
-          echo "  🇯🇵 Japanese: ${{ steps.deploy-preview.outputs.preview-url }}/ja/"
-          echo "  🇨🇳 Chinese: ${{ steps.deploy-preview.outputs.preview-url }}/zh/"
+          echo "🌐 Preview URLs:"
+          PREVIEW_URL="${{ steps.deploy-preview.outputs.preview-url }}"
+          echo "  🇰🇷 Korean (Default): $PREVIEW_URL"
+          echo "  🇺🇸 English: $PREVIEW_URL/en"
+          echo "  🇯🇵 Japanese: $PREVIEW_URL/ja"
+          echo "  🇨🇳 Chinese: $PREVIEW_URL/zh"
+          echo ""
+          echo "⏱️ Deployment completed at: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
 
-      - name: ❌ Deployment failed
-        if: failure()
+  # Phase 4: Notification on Failure
+  failure-notification:
+    name: ❌ Deployment Failed
+    runs-on: ubuntu-latest
+    if: failure()
+    needs: [quality-check, build-and-validate, deploy]
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📋 Generate failure report
         run: |
-          echo "❌ Documentation deployment failed!"
+          echo "❌ Documentation Deployment Failed!"
           echo ""
-          echo "🔍 Debug information:"
+          echo "🔍 Debug Information:"
           echo "  • Repository: ${{ github.repository }}"
           echo "  • Branch: ${{ github.ref_name }}"
-          echo "  • Commit: ${{ github.sha }}"
+          echo "  • Commit SHA: ${{ github.sha }}"
+          echo "  • Triggered by: ${{ github.event_name }}"
           echo ""
-          echo "Check the logs above for details."
+          echo "📌 Check the workflow run:"
+          echo "  https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo ""
+          echo "🚨 Next Steps:"
+          echo "  1. Review the logs above"
+          echo "  2. Check Node.js version compatibility"
+          echo "  3. Verify environment variables are set"
+          echo "  4. Ensure all markdown files are valid"
