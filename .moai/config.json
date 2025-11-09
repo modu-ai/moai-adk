@@ -186,7 +186,12 @@
   "hooks": {
     "timeout_ms": 2000,
     "graceful_degradation": true,
-    "notes": "Hook execution timeout (milliseconds). Set graceful_degradation to true to continue even if a hook fails. Optimized to 2 seconds for faster performance."
+    "emoji_policy": {
+      "ban_in_ask_user_question": true,
+      "ban_fields": ["question", "header", "label", "description"],
+      "reason": "Prevent 'no low surrogate in string' JSON encoding errors in API requests"
+    },
+    "notes": "Hook execution timeout (milliseconds). Set graceful_degradation to true to continue even if a hook fails. Optimized to 2 seconds for faster performance. CRITICAL: No emojis in AskUserQuestion fields to prevent JSON serialization errors."
   },
   "session_end": {
     "enabled": true,
@@ -218,14 +223,16 @@
   },
   "auto_cleanup": {
     "enabled": true,
-    "cleanup_days": 7,
-    "max_reports": 10,
+    "cleanup_days": 3,
+    "max_reports": 5,
     "cleanup_targets": [
       ".moai/reports/*.json",
       ".moai/reports/*.md",
       ".moai/cache/*",
-      ".moai/temp/*"
-    ]
+      ".moai/temp/*",
+      ".moai/memory/*.json"
+    ],
+    "notes": "Optimized to prevent 'no low surrogate in string' JSON serialization errors by reducing context accumulation. Memory files cleaned every 3 days."
   },
   "daily_analysis": {
     "enabled": true,
