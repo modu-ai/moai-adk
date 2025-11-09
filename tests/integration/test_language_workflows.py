@@ -22,7 +22,7 @@ def detector():
 @pytest.fixture
 def templates_dir():
     """Path to workflow templates directory"""
-    return Path("src/moai_adk/templates/workflows")
+    return Path("src/moai_adk/templates/.github/workflows")
 
 
 @pytest.fixture
