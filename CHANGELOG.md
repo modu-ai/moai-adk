@@ -4,6 +4,24 @@ All commits to MoAI-ADK are listed below in chronological order. Each entry show
 
 ## Recent Releases
 
+### v0.22.2 (2025-11-10)
+
+**Patch Release: Hook File Restoration & GitFlow Workflow Compliance**
+
+- **Hook File Restoration**: Restored pre_tool__auto_spec_proposal.py hook file that was lost during merge conflict resolution
+- **GitFlow Workflow Implementation**: Established proper develop → main branching strategy for all releases
+- **Merge Conflict Resolution**: Successfully resolved complex merge conflicts between develop and main branches
+- **Package Template Synchronization**: Completed final sync of .claude/ directories to ensure SSOT (Single Source of Truth) principle
+- **Test Infrastructure Fix**: Removed broken test file that referenced missing hook file
+- **Documentation Cleanup**: Previous merge brought in multiple documentation updates and UI improvements
+
+Quality Metrics:
+- Test Coverage: 65.3% (1,150+ passing tests)
+- Linting: Pass (E402 pre-existing in test imports)
+- Type Checking: Pass
+- Security: Pass
+- GitFlow: Properly implemented develop→main PR workflow
+
 ### v0.22.1 (2025-11-10)
 
 **Patch Release: Package Synchronization & Configuration Cleanup**
