@@ -143,7 +143,8 @@ def translate_via_claude(announcements: List[str], target_language: str) -> List
     # Create translation prompt
     announcements_text = "\n".join([f"{i+1}. {a}" for i, a in enumerate(announcements)])
 
-    prompt = f"""Translate the following 22 MoAI-ADK company announcements to {target_language}.
+    # Build translation prompt for Claude API (placeholder for future implementation)
+    _prompt = f"""Translate the following 22 MoAI-ADK company announcements to {target_language}.
 
 CRITICAL REQUIREMENTS:
 1. Preserve all emoji characters exactly (✅, ⚡, 🧪, 🧹, 🩺, ❓)

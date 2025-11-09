@@ -169,7 +169,7 @@ class PhaseExecutor:
                 "CONVERSATION_LANGUAGE": language_config.get("conversation_language", "en"),
                 "CONVERSATION_LANGUAGE_NAME": language_config.get("conversation_language_name", "English"),
                 "CODEBASE_LANGUAGE": config.get("language", "generic"),
-                "HOOK_PROJECT_DIR": hook_project_dir,
+                "PROJECT_DIR": hook_project_dir,
             }
             processor.set_context(context)
 
