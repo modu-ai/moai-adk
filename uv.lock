@@ -682,11 +682,7 @@ wheels = [
 
 [[package]]
 name = "moai-adk"
-<<<<<<< HEAD
-version = "0.22.1"
-=======
-version = "0.22.0"
->>>>>>> b5ac98dc46dcbb7aa3d64d1c16f4a5ef2dfa3053
+version = "0.22.2"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
