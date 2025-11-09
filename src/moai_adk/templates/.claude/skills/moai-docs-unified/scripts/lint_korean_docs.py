@@ -5,9 +5,9 @@
 
 import re
 import sys
-from pathlib import Path
-from typing import List, Dict, Tuple, Set
 from collections import defaultdict
+from pathlib import Path
+
 
 # 프로젝트 루트 자동 탐지 (pyproject.toml 또는 .git 기준)
 def find_project_root(start_path: Path) -> Path:
