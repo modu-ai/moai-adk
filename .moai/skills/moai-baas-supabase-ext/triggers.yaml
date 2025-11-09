@@ -1,0 +1,28 @@
+skill_id: moai-baas-supabase-ext
+trigger_keywords:
+  - "Supabase"
+  - "RLS"
+  - "Row Level Security"
+  - "PostgreSQL"
+  - "Migration"
+  - "Realtime"
+  - "Production"
+
+trigger_contexts:
+  - "supabase-detected"
+  - "pattern-a"
+  - "pattern-d"
+  - "postgresql-database"
+
+trigger_agents:
+  - "backend-expert"
+  - "database-expert"
+  - "security-expert"
+
+auto_load_conditions:
+  - when_supabase_selected: true
+  - when_pattern_a_active: true
+  - when_pattern_d_active: true
+
+priority: 90
+freedom_level: high

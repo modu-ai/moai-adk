@@ -1,0 +1,31 @@
+skill_id: moai-baas-auth0-ext
+trigger_keywords:
+  - "Auth0"
+  - "Enterprise Auth"
+  - "SAML"
+  - "OIDC"
+  - "Identity"
+  - "SSO"
+  - "Compliance"
+  - "GDPR"
+  - "HIPAA"
+
+trigger_contexts:
+  - "auth0-detected"
+  - "pattern-h"
+  - "enterprise-authentication"
+  - "compliance-required"
+  - "saml-oidc"
+
+trigger_agents:
+  - "security-expert"
+  - "backend-expert"
+  - "devops-expert"
+
+auto_load_conditions:
+  - when_auth0_selected: true
+  - when_enterprise_required: true
+  - when_saml_oidc_needed: true
+
+priority: 89
+freedom_level: high
