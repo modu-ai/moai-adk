@@ -7,12 +7,8 @@ Phase 2: Mermaid 다이어그램 검증 (문법, 구조, 렌더링 가능성)
 import re
 import sys
 from pathlib import Path
-<<<<<<< HEAD
 from typing import Dict, List, Tuple
 
-=======
-from typing import List, Dict, Tuple
->>>>>>> b5ac98dc46dcbb7aa3d64d1c16f4a5ef2dfa3053
 
 # 프로젝트 루트 자동 탐지
 def find_project_root(start_path: Path) -> Path:
@@ -231,44 +227,25 @@ class MermaidDiagramValidator:
                 print(f"    라인 수: {block['length']}")
 
                 if is_valid_type:
-<<<<<<< HEAD
                     print("    상태: ✅ 유효한 다이어그램 타입")
                     valid_count += 1
                 else:
                     print("    상태: ❌ 유효하지 않은 타입")
-=======
-                    print(f"    상태: ✅ 유효한 다이어그램 타입")
-                    valid_count += 1
-                else:
-                    print(f"    상태: ❌ 유효하지 않은 타입")
->>>>>>> b5ac98dc46dcbb7aa3d64d1c16f4a5ef2dfa3053
                     issue_count += 1
 
                 # 문법 검증
                 syntax_issues = self.validate_syntax(block['code'], diagram_type)
                 if syntax_issues:
-<<<<<<< HEAD
                     print("    문법 문제:")
-=======
-                    print(f"    문법 문제:")
->>>>>>> b5ac98dc46dcbb7aa3d64d1c16f4a5ef2dfa3053
                     for issue in syntax_issues:
                         print(f"      {issue}")
                     issue_count += 1
                 else:
-<<<<<<< HEAD
                     print("    문법: ✅ 검증됨")
 
                 # 코드 스니펫 표시 (처음 3줄)
                 lines = block['code'].split('\n')[:3]
                 print("    코드 샘플:")
-=======
-                    print(f"    문법: ✅ 검증됨")
-
-                # 코드 스니펫 표시 (처음 3줄)
-                lines = block['code'].split('\n')[:3]
-                print(f"    코드 샘플:")
->>>>>>> b5ac98dc46dcbb7aa3d64d1c16f4a5ef2dfa3053
                 for line in lines:
                     print(f"      {line}")
 

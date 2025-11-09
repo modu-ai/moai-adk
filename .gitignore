@@ -15,25 +15,8 @@ node_modules/
 
 # Backups
 .moai-backups/
-*.backup
-*.bak
-
-# Test coverage
-.coverage
-.coverage.*
-coverage.json
-htmlcov/
-.pytest_cache/
-
-# Documentation builds
-site/
-docs/_build/
-
-# Documentation (Nextra)
-docs/node_modules/
-docs/.next/
-docs/.npm-cache/
-docs/.turbo/
+*.backup/
+*-backup/
 
 # Virtual environment
 venv/
@@ -41,28 +24,12 @@ venv/
 env/
 .env/
 
-# Environment variables & Secrets (CRITICAL - Never commit credentials)
-.env
-.env.local
-.env.*.local
-.env.production.local
-.env.development.local
-
-# IDE & Secrets
+# IDE
 .vscode/
-.vscode/settings.json
 .idea/
-.idea/workspace.xml
 *.swp
 *.swo
 *~
-
-# Deployment platforms & Cloud credentials (CRITICAL)
-.vercel/
-.netlify/
-.firebase/
-.aws/credentials
-google-credentials.json
 
 # OS
 .DS_Store
@@ -75,23 +42,3 @@ logs/
 # Temporary files
 *.tmp
 *.temp
-
-.claudeignore
-
-# Project Plans (internal tracking, not versioned)
-CURSOR_INTEGRATION_PLAN.md
-
-# Local .claude infrastructure (package template is source of truth)
-# Users should never modify these files directly - sync from package template
-
-# Developer local settings and configurations
-.claude/settings.local.json
-CLAUDE.md.local
-
-# Runtime session and memory files (auto-generated per user/session)
-# These files are created during package initialization and updated at runtime
-
-# Package template commands (should only exist in src/moai_adk/templates/)
-# Local users should not commit these files - sync from package template
-.claude/commands/alfred/release-new.md
-.claude/commands/alfred/awesome-release-new.md
