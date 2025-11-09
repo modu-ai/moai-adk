@@ -78,6 +78,8 @@ const config: DocsThemeConfig = {
   i18n: [
     { locale: 'ko', name: '한국어' },
     { locale: 'en', name: 'English' },
+    { locale: 'ja', name: '日本語' },
+    { locale: 'zh', name: '中文' },
   ],
 
   search: {
