@@ -57,6 +57,9 @@ python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
 addopts = "-v --cov=src/moai_adk --cov-report=html --cov-report=term-missing"
+markers = [
+    "e2e: End-to-end workflow tests",
+]
 
 [tool.coverage.run]
 source = ["src/moai_adk"]
