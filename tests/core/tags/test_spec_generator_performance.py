@@ -325,7 +325,7 @@ class TestCachingFeasibility:
         start = time.perf_counter()
         for _ in range(100):
             content = test_file.read_bytes()
-            hash_val = sha256(content).hexdigest()
+            sha256(content).hexdigest()
         elapsed = (time.perf_counter() - start) * 1000 / 100
 
         assert elapsed < 5  # Hash should be < 5ms

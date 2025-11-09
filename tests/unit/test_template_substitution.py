@@ -253,45 +253,45 @@ Version: {{VERSION}}""")
 
 
 class TestHookProjectDirSubstitution:
-    """Test HOOK_PROJECT_DIR variable substitution for cross-platform support"""
+    """Test PROJECT_DIR variable substitution for cross-platform support"""
 
     def test_hook_project_dir_windows(self, tmp_path):
-        """Test HOOK_PROJECT_DIR substitution on Windows"""
+        """Test PROJECT_DIR substitution on Windows"""
         processor = TemplateProcessor(tmp_path)
-        processor.set_context({"HOOK_PROJECT_DIR": "%CLAUDE_PROJECT_DIR%"})
+        processor.set_context({"PROJECT_DIR": "%CLAUDE_PROJECT_DIR%"})
 
-        content = 'uv run {{HOOK_PROJECT_DIR}}/.claude/hooks/session_start.py'
+        content = 'uv run {{PROJECT_DIR}}/.claude/hooks/session_start.py'
         result, warnings = processor._substitute_variables(content)
 
         assert "%CLAUDE_PROJECT_DIR%" in result
-        assert "{{HOOK_PROJECT_DIR}}" not in result
+        assert "{{PROJECT_DIR}}" not in result
         assert len(warnings) == 0
 
     def test_hook_project_dir_unix(self, tmp_path):
-        """Test HOOK_PROJECT_DIR substitution on Unix-like systems"""
+        """Test PROJECT_DIR substitution on Unix-like systems"""
         processor = TemplateProcessor(tmp_path)
-        processor.set_context({"HOOK_PROJECT_DIR": "$CLAUDE_PROJECT_DIR"})
+        processor.set_context({"PROJECT_DIR": "$CLAUDE_PROJECT_DIR"})
 
-        content = 'uv run {{HOOK_PROJECT_DIR}}/.claude/hooks/session_start.py'
+        content = 'uv run {{PROJECT_DIR}}/.claude/hooks/session_start.py'
         result, warnings = processor._substitute_variables(content)
 
         assert "$CLAUDE_PROJECT_DIR" in result
-        assert "{{HOOK_PROJECT_DIR}}" not in result
+        assert "{{PROJECT_DIR}}" not in result
         assert len(warnings) == 0
 
     def test_hook_project_dir_missing_context(self, tmp_path):
-        """Test HOOK_PROJECT_DIR without context (should generate warning)"""
+        """Test PROJECT_DIR without context (should generate warning)"""
         processor = TemplateProcessor(tmp_path)
-        # Don't set HOOK_PROJECT_DIR in context
+        # Don't set PROJECT_DIR in context
 
-        content = 'uv run {{HOOK_PROJECT_DIR}}/.claude/hooks/session_start.py'
+        content = 'uv run {{PROJECT_DIR}}/.claude/hooks/session_start.py'
         result, warnings = processor._substitute_variables(content)
 
-        assert "{{HOOK_PROJECT_DIR}}" in result
+        assert "{{PROJECT_DIR}}" in result
         assert len(warnings) >= 1
         # Check for enhanced error message
         warning_text = " ".join(warnings)
-        assert "HOOK_PROJECT_DIR" in warning_text
+        assert "PROJECT_DIR" in warning_text
         assert "Cross-platform hook path" in warning_text
 
     def test_enhanced_error_messages(self, tmp_path):
@@ -303,7 +303,7 @@ class TestHookProjectDirSubstitution:
 # {{PROJECT_NAME}}
 Author: {{AUTHOR}}
 Language: {{CONVERSATION_LANGUAGE}}
-Hook: {{HOOK_PROJECT_DIR}}
+Hook: {{PROJECT_DIR}}
 Version: {{MOAI_VERSION}}
 Unknown: {{UNKNOWN_VAR}}
 """
@@ -316,7 +316,7 @@ Unknown: {{UNKNOWN_VAR}}
         assert "PROJECT_NAME" in warning_text
         assert "AUTHOR" in warning_text
         assert "CONVERSATION_LANGUAGE" in warning_text
-        assert "HOOK_PROJECT_DIR" in warning_text
+        assert "PROJECT_DIR" in warning_text
         assert "Cross-platform hook path" in warning_text
         assert "UNKNOWN_VAR" in warning_text
         assert "Unknown variable" in warning_text

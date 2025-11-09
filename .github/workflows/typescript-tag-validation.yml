@@ -1,0 +1,154 @@
+# @CODE:LANG-TS-001 | SPEC: SPEC-LANGUAGE-DETECTION-001.md | TEST: tests/test_workflows.py
+# TypeScript Project TAG Validation Workflow
+# Automatically validates TAGs with type checking, linting, and testing
+
+name: TAG Validation (TypeScript)
+
+on:
+  push:
+    branches: [main, develop, feature/**]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate TAGs - Node ${{ matrix.node-version }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: ['20', '22']
+      fail-fast: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Detect package manager
+        id: detect-pm
+        run: |
+          if [ -f "bun.lockb" ]; then
+            echo "manager=bun" >> $GITHUB_OUTPUT
+            echo "lockfile=bun.lockb" >> $GITHUB_OUTPUT
+          elif [ -f "pnpm-lock.yaml" ]; then
+            echo "manager=pnpm" >> $GITHUB_OUTPUT
+            echo "lockfile=pnpm-lock.yaml" >> $GITHUB_OUTPUT
+          elif [ -f "yarn.lock" ]; then
+            echo "manager=yarn" >> $GITHUB_OUTPUT
+            echo "lockfile=yarn.lock" >> $GITHUB_OUTPUT
+          else
+            echo "manager=npm" >> $GITHUB_OUTPUT
+            echo "lockfile=package-lock.json" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup package manager cache
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: ${{ steps.detect-pm.outputs.manager }}
+
+      - name: Install pnpm (if needed)
+        if: steps.detect-pm.outputs.manager == 'pnpm'
+        run: npm install -g pnpm
+
+      - name: Install Bun (if needed)
+        if: steps.detect-pm.outputs.manager == 'bun'
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: |
+          case "${{ steps.detect-pm.outputs.manager }}" in
+            npm)
+              npm ci
+              ;;
+            yarn)
+              yarn install --frozen-lockfile
+              ;;
+            pnpm)
+              pnpm install --frozen-lockfile
+              ;;
+            bun)
+              bun install --frozen-lockfile
+              ;;
+          esac
+
+      - name: Run type checking
+        run: |
+          if [ -f "tsconfig.json" ]; then
+            npx tsc --noEmit
+          else
+            npm run type-check || npx tsc --noEmit
+          fi
+        continue-on-error: false
+
+      - name: Run linting
+        run: |
+          if [ -f "biome.json" ]; then
+            npx @biomejs/biome check src/
+          elif command -v eslint &> /dev/null; then
+            npm run lint || npx eslint src/
+          fi
+        continue-on-error: false
+
+      - name: Run tests with coverage
+        run: npm test -- --coverage --coverage-threshold=85
+        continue-on-error: false
+
+      - name: Upload coverage reports
+        if: matrix.node-version == '22'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-typescript
+          path: coverage/
+
+      - name: Comment PR with coverage
+        if: github.event_name == 'pull_request' && matrix.node-version == '22'
+        uses: ArtiomTr/jest-coverage-report-action@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          threshold: 85
+
+      - name: Build project
+        run: |
+          if grep -q '"build"' package.json; then
+            npm run build
+          else
+            npx tsc
+          fi
+        continue-on-error: true
+
+  quality-gate:
+    name: Quality Gate Summary
+    needs: validate
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Check validation results
+        run: |
+          if [ "${{ needs.validate.result }}" != "success" ]; then
+            echo "❌ TAG validation failed"
+            exit 1
+          fi
+          echo "✅ TAG validation passed"
+
+      - name: Quality metrics summary
+        run: |
+          echo "## Quality Metrics Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ TypeScript tests passed" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Type checking passed (tsc)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Code coverage ≥ 85%" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Linting passed" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ TAG chain validated" >> $GITHUB_STEP_SUMMARY

@@ -20,45 +20,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Hack:wght@400;700&display=swap" rel="stylesheet">
 
   <style>
-<<<<<<< HEAD
-    /* Neutral Color Palette - Direct Material Theme Override */
-    :root {
-      /* Light theme - Primary palette colors */
-      --md-primary-fg-color: #000000;           /* Pure Black */
-      --md-primary-fg-color--light: #333333;    /* Dark Gray */
-      --md-primary-fg-color--dark: #000000;     /* Pure Black */
-      --md-primary-bg-color: #EBEBEB;           /* Light Gray Background */
-      --md-primary-bg-color--light: #F5F5F5;    /* Lighter Gray */
 
-      /* Accent palette colors */
-      --md-accent-fg-color: #666666;            /* Medium Gray */
-      --md-accent-fg-color--transparent: rgba(102, 102, 102, 0.1);
-
-      /* Background colors */
-      --md-bg-color: #EBEBEB;                   /* Light Gray Background */
-      --md-bg-color--light: #F5F5F5;            /* Lighter Gray */
-      --md-bg-color--dark: #E0E0E0;             /* Darker Gray */
-
-      /* Surface colors */
-      --md-surface-color: #F5F5F5;              /* Light Surface */
-      --md-surface-color--light: #FAFAFA;       /* Very Light Surface */
-      --md-surface-color--dark: #E0E0E0;        /* Dark Surface */
-
-      /* Text colors */
-      --md-text-color: #000000;                 /* Pure Black Text */
-      --md-text-color--secondary: #666666;      /* Medium Gray Text */
-      --md-text-color--disabled: #999999;       /* Light Gray Text */
-
-      /* Border colors */
-      --md-border-color: #CCCCCC;               /* Light Border */
-      --md-border-color--light: #DDDDDD;        /* Lighter Border */
-      --md-border-color--dark: #BBBBBB;         /* Darker Border */
-
-      /* Code block colors */
-      --md-code-bg-color: #F5F5F5;              /* Light Code Background */
-      --md-code-fg-color: #000000;              /* Black Code Text */
-      --md-code-border-color: #CCCCCC;          /* Light Code Border */
-=======
     /* Unified Color Palette - Material Design Light & Dark Theme */
 
     /* LIGHT THEME - Root variables */
@@ -98,7 +60,6 @@
       --md-code-bg-color: #F0F0F0;               /* Light gray code background */
       --md-code-fg-color: #000000;               /* Black code text */
       --md-code-border-color: #DDDDDD;           /* Light gray code border */
->>>>>>> b5ac98dc46dcbb7aa3d64d1c16f4a5ef2dfa3053
 
       /* Font variables */
       --font-ko-text: 'Pretendard', 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
@@ -108,17 +69,13 @@
 
       /* Transitions and shadows */
       --transition-normal: 250ms ease-in-out;
-<<<<<<< HEAD
-      --shadow-sm: 0 1px 2px 0 rgba(23, 22, 18, 0.05);
-      --shadow-md: 0 4px 6px -1px rgba(23, 22, 18, 0.1), 0 2px 4px -1px rgba(23, 22, 18, 0.06);
-=======
+
       --transition-slow: 350ms ease-in-out;
 
       /* Shadows with light theme */
       --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
       --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
       --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
->>>>>>> b5ac98dc46dcbb7aa3d64d1c16f4a5ef2dfa3053
     }
 
     /* DARK THEME - Override all variables for dark mode */
@@ -159,11 +116,8 @@
       --md-code-fg-color: #FFFFFF;               /* White code text */
       --md-code-border-color: #333333;           /* Dark code border */
 
-<<<<<<< HEAD
-      /* Adjusted shadows for dark theme */
-=======
+
       /* Shadows with dark theme */
->>>>>>> b5ac98dc46dcbb7aa3d64d1c16f4a5ef2dfa3053
       --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
       --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
     }
@@ -197,15 +151,7 @@
       font-weight: 600 !important;
     }
 
-<<<<<<< HEAD
-    /* Core typography and layout */
-    body {
-      font-family: var(--font-ko-text), system-ui, -apple-system, sans-serif !important;
-    }
 
-    * {
-      font-style: normal !important;
-=======
     /* Font loading optimization - prevent FOUT/FOIT */
     .md-typeset {
       font-display: swap;
@@ -379,7 +325,6 @@
     /* Language-specific font adjustments */
     html[lang="ko"] .md-typeset {
       font-family: var(--font-ko-text) !important;
->>>>>>> b5ac98dc46dcbb7aa3d64d1c16f4a5ef2dfa3053
     }
 
     /* Language-specific fonts */
@@ -394,10 +339,7 @@
     html[lang="zh"] .md-typeset {
       font-family: var(--font-zh-text) !important;
     }
-<<<<<<< HEAD
-  </style>
-{% endblock %}
-=======
+
 
     /* Code blocks - monospace for all languages */
     .md-typeset code,
@@ -1062,38 +1004,40 @@
       margin-left: 0 !important;
     }
 
-    /* Right sidebar styling - fixed position on right */
+    /* Left TOC sidebar styling - fixed position on left */
     .md-sidebar--secondary {
       position: fixed !important;
-      right: 0px !important;
+      left: 0px !important;
       top: 60px !important;
       width: 250px !important;
       height: calc(100vh - 60px) !important;
       overflow-y: auto !important;
       background-color: var(--md-bg-color) !important;
-      border-left: 1px solid var(--md-border-color) !important;
+      border-right: 1px solid var(--md-border-color) !important;
+      border-left: none !important;
       padding: 1rem 0 !important;
       z-index: 10 !important;
       display: block !important;
       margin: 0 !important;
       flex: none !important;
-      left: auto !important;
+      right: auto !important;
     }
 
     /* Override Material for MkDocs sidebar styles */
     html .md-sidebar--secondary {
       position: fixed !important;
-      right: 0px !important;
+      left: 0px !important;
     }
 
     html .md-sidebar--secondary.md-sidebar {
       position: fixed !important;
-      right: 0px !important;
+      left: 0px !important;
     }
 
-    /* Adjust main content to have right margin for sidebar */
+    /* Adjust main content to have left margin for sidebar */
     .md-main__inner {
-      margin-right: 260px !important;
+      margin-left: 260px !important;
+      margin-right: 0 !important;
     }
 
   </style>
@@ -1103,159 +1047,39 @@
   {{ super() }}
   <script src="{{ 'stylesheets/language-selector.js' | url }}"></script>
 
-  <!-- Remove left sidebar and create right TOC sidebar -->
+  <!-- Enhance TOC sidebar with proper styling -->
   <script>
     (function() {
-      // Remove left sidebar after DOM is fully loaded
       document.addEventListener('DOMContentLoaded', function() {
-        // Target the primary sidebar using the exact selector
-        const primarySidebar = document.querySelector('.md-sidebar--primary');
-        if (primarySidebar) {
-          primarySidebar.remove();
-        }
-
-        // Also adjust the main container if needed
-        const mdMain = document.querySelector('.md-main');
-        if (mdMain) {
-          mdMain.style.marginLeft = '0';
-        }
-
-        // Create right TOC sidebar if it doesn't exist
-        createRightTocSidebar();
+        enhanceTocSidebar();
       });
 
-      // Fallback: try to remove on page load as well
-      window.addEventListener('load', function() {
-        const primarySidebar = document.querySelector('.md-sidebar--primary');
-        if (primarySidebar && primarySidebar.parentNode) {
-          primarySidebar.remove();
-        }
-      });
+      function enhanceTocSidebar() {
+        const sidebar = document.querySelector('.md-sidebar--secondary');
+        if (!sidebar) return;
 
-      // Also use MutationObserver to catch any dynamic re-rendering
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initObserver);
-      } else {
-        initObserver();
-      }
-
-      function initObserver() {
-        const observer = new MutationObserver(function(mutations) {
-          const primarySidebar = document.querySelector('.md-sidebar--primary');
-          if (primarySidebar && primarySidebar.parentNode) {
-            primarySidebar.remove();
+        // 기존 TOC 유지하되, 네비게이션 깊이 표시 강화
+        const links = sidebar.querySelectorAll('.md-nav__link');
+        links.forEach(link => {
+          const parent = link.closest('.md-nav__item');
+          if (parent) {
+            const depth = getElementDepth(parent);
+            link.setAttribute('data-toc-depth', depth);
           }
-        });
-
-        observer.observe(document.body, {
-          childList: true,
-          subtree: true,
-          attributes: false
         });
       }
 
-      // Create right TOC sidebar with table of contents
-      function createRightTocSidebar() {
-        // Check if secondary sidebar already exists
-        let sidebar = document.querySelector('.md-sidebar--secondary');
-        if (sidebar) {
-          sidebar.remove();
+      function getElementDepth(element) {
+        let depth = 0;
+        let current = element;
+        while (current.parentElement && current.parentElement !== document.body) {
+          if (current.parentElement.classList.contains('md-nav__list')) {
+            depth++;
+          }
+          current = current.parentElement;
         }
-
-        // Get all headings from the content
-        const article = document.querySelector('article.md-content__inner');
-        if (!article) return;
-
-        const headings = article.querySelectorAll('h2, h3, h4, h5, h6');
-        if (headings.length === 0) return;
-
-        // Create the sidebar structure
-        sidebar = document.createElement('div');
-        sidebar.className = 'md-sidebar md-sidebar--secondary';
-        sidebar.setAttribute('data-md-component', 'sidebar');
-
-        // Apply fixed positioning styles directly with !important
-        sidebar.setAttribute('style', `
-          position: fixed !important;
-          right: 0px !important;
-          top: 60px !important;
-          width: 250px !important;
-          height: calc(100vh - 60px) !important;
-          overflow-y: auto !important;
-          background-color: var(--md-bg-color) !important;
-          border-left: 1px solid var(--md-border-color) !important;
-          padding: 1rem 0 !important;
-          z-index: 10 !important;
-          display: block !important;
-          margin: 0 !important;
-        `);
-
-        // Create nav with TOC
-        const nav = document.createElement('nav');
-        nav.className = 'md-nav md-nav--secondary md-nav--lifted';
-        nav.setAttribute('aria-label', '목차');
-
-        // Create list
-        const ul = document.createElement('ul');
-        ul.className = 'md-nav__list';
-
-        const headingArray = Array.from(headings);
-        const levelStack = [];
-
-        headingArray.forEach((heading, index) => {
-          const level = parseInt(heading.tagName[1]);
-          const text = heading.textContent.replace('¶', '').trim();
-          let id = heading.id;
-
-          // Generate ID if not present
-          if (!id) {
-            id = text.toLowerCase().replace(/\s+/g, '-').replace(/[^\w\-]/g, '');
-            heading.id = id;
-          }
-
-          // Create list item
-          const li = document.createElement('li');
-          li.className = 'md-nav__item';
-
-          // Create link
-          const a = document.createElement('a');
-          a.className = 'md-nav__link';
-          a.href = '#' + id;
-          a.textContent = text;
-
-          li.appendChild(a);
-
-          // Determine parent list based on level
-          while (levelStack.length > 0 && levelStack[levelStack.length - 1].level >= level) {
-            levelStack.pop();
-          }
-
-          let parentList = ul;
-          if (levelStack.length > 0) {
-            parentList = levelStack[levelStack.length - 1].ul;
-          }
-
-          parentList.appendChild(li);
-
-          // Check if next heading is deeper (needs nested list)
-          if (index < headingArray.length - 1) {
-            const nextLevel = parseInt(headingArray[index + 1].tagName[1]);
-            if (nextLevel > level) {
-              const nestedUl = document.createElement('ul');
-              nestedUl.className = 'md-nav__list';
-              li.appendChild(nestedUl);
-              levelStack.push({ level: level, ul: nestedUl });
-            }
-          }
-        });
-
-        nav.appendChild(ul);
-        sidebar.appendChild(nav);
-
-        // Insert sidebar to document body as fixed element
-        document.body.appendChild(sidebar);
+        return depth;
       }
     })();
   </script>
 {% endblock %}
->>>>>>> b5ac98dc46dcbb7aa3d64d1c16f4a5ef2dfa3053

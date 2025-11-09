@@ -8,13 +8,14 @@ Tests for StatuslineConfig - Configuration loading and management
 """
 
 import pytest
+
 from moai_adk.statusline.config import (
-    StatuslineConfig,
     CacheConfig,
     ColorConfig,
     DisplayConfig,
-    FormatConfig,
     ErrorHandlingConfig,
+    FormatConfig,
+    StatuslineConfig,
 )
 
 

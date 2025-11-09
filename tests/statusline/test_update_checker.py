@@ -92,11 +92,11 @@ class TestUpdateChecker:
             mock_urlopen.return_value = mock_response
 
             # First call
-            result1 = checker.check_for_update("0.20.1")
+            checker.check_for_update("0.20.1")
             call_count_after_first = mock_urlopen.call_count
 
             # Second call immediately (should use cache)
-            result2 = checker.check_for_update("0.20.1")
+            checker.check_for_update("0.20.1")
             call_count_after_second = mock_urlopen.call_count
 
             # API should only be called once (cache works)

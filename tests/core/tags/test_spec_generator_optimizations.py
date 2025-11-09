@@ -98,14 +98,14 @@ async def async_function{i}():
 
         # Current slow implementation
         start = time.perf_counter()
-        analysis_slow = generator._analyze_code_file(large_python_file)
+        generator._analyze_code_file(large_python_file)
         time_slow = (time.perf_counter() - start) * 1000
 
         # Check that fast implementation exists
         # (This will fail until we add fast_analyze method)
         if hasattr(generator, '_analyze_code_file_fast'):
             start = time.perf_counter()
-            analysis_fast = generator._analyze_code_file_fast(large_python_file)
+            generator._analyze_code_file_fast(large_python_file)
             time_fast = (time.perf_counter() - start) * 1000
 
             # Target: 30-50% faster
