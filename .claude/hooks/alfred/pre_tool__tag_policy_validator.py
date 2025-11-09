@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 # @CODE:HOOK-PRE-TAG-001 | SPEC: TAG-PRE-HOOK-001 | TEST: tests/hooks/test_pre_tool_tag_validator.py
-"""PreToolUse Hook: TAG 정책 위반 실시간 차단
+"""PreToolUse Hook: Real-time TAG Policy Violation Detection
 
-Edit/Write/MultiEdit 실행 전 TAG 정책 위반을 탐지하고 차단.
-SPEC-first 원칙을 강제하여 코드 품질 보증.
+Detects and blocks TAG policy violations before Edit/Write/MultiEdit execution.
+Enforces SPEC-first principle to guarantee code quality.
 
-기능:
-- 파일 생성 전 TAG 정책 검증
-- SPEC 없이 CODE 생성 시 차단
-- 실시간 위반 보고 및 수정 가이드
-- 작업 차단 또는 경고 제공
+Features:
+- TAG policy validation before file creation
+- Blocks CODE creation without SPEC
+- Real-time violation reporting and fix guidance
+- Work blocking or warning provision
 
-사용법:
+Usage:
     python3 pre_tool__tag_policy_validator.py <tool_name> <tool_args_json>
 """
 
@@ -21,7 +21,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List
 
-# 모듈 경로 추가
+# Add module path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
 from moai_adk.core.tags.policy_validator import (
@@ -35,10 +35,10 @@ from ..utils.hook_config import get_graceful_degradation, load_hook_timeout
 
 
 def load_config() -> Dict[str, Any]:
-    """설정 파일 로드
+    """Load configuration file
 
     Returns:
-        설정 딕셔너리
+        Configuration dictionary
     """
     try:
         config_file = Path(".moai/config.json")
@@ -52,15 +52,15 @@ def load_config() -> Dict[str, Any]:
 
 
 def create_policy_validator() -> TagPolicyValidator:
-    """TAG 정책 검증기 생성
+    """Create TAG policy validator
 
     Returns:
-        TagPolicyValidator 인스턴스
+        TagPolicyValidator instance
     """
     config_data = load_config()
     tag_policy_config = config_data.get("tags", {}).get("policy", {})
 
-    # PolicyValidationConfig 생성
+    # Create PolicyValidationConfig
     policy_config = PolicyValidationConfig(
         strict_mode=tag_policy_config.get("enforcement_mode", "strict") == "strict",
         require_spec_before_code=tag_policy_config.get("require_spec_before_code", True),
@@ -74,21 +74,21 @@ def create_policy_validator() -> TagPolicyValidator:
 
 
 def should_validate_tool(tool_name: str, tool_args: Dict[str, Any]) -> bool:
-    """검증 대상 툴인지 확인
+    """Check if tool is a validation target
 
     Args:
-        tool_name: 툴 이름
-        tool_args: 툴 인자
+        tool_name: Tool name
+        tool_args: Tool arguments
 
     Returns:
-        검증 대상이면 True
+        True if validation target
     """
-    # 파일 조작 툴만 검증
+    # Validate only file manipulation tools
     validation_tools = {"Edit", "Write", "MultiEdit"}
     if tool_name not in validation_tools:
         return False
 
-    # 선택적 파일 패턴 (TAG 검증 대상 아님)
+    # Optional file patterns (not a TAG validation target)
     optional_patterns = [
         "CLAUDE.md",
         "README.md",
@@ -103,14 +103,14 @@ def should_validate_tool(tool_name: str, tool_args: Dict[str, Any]) -> bool:
         "examples/",
     ]
 
-    # Edit/Write의 경우 단일 파일 확인
+    # For Edit/Write, check single file
     if tool_name in {"Edit", "Write"}:
         file_path = tool_args.get("file_path", "")
         if any(pattern in file_path for pattern in optional_patterns):
             return False
         return True
 
-    # MultiEdit의 경우 여러 파일 확인
+    # For MultiEdit, check multiple files
     if tool_name == "MultiEdit":
         edits = tool_args.get("edits", [])
         for edit in edits:
@@ -122,14 +122,14 @@ def should_validate_tool(tool_name: str, tool_args: Dict[str, Any]) -> bool:
 
 
 def extract_file_paths(tool_name: str, tool_args: Dict[str, Any]) -> List[str]:
-    """툴 인자에서 파일 경로 추출
+    """Extract file paths from tool arguments
 
     Args:
-        tool_name: 툴 이름
-        tool_args: 툴 인자
+        tool_name: Tool name
+        tool_args: Tool arguments
 
     Returns:
-        파일 경로 목록
+        List of file paths
     """
     file_paths = []
 
@@ -139,7 +139,7 @@ def extract_file_paths(tool_name: str, tool_args: Dict[str, Any]) -> List[str]:
             file_paths.append(file_path)
 
     elif tool_name == "MultiEdit":
-        # MultiEdit의 경우 여러 파일 경로 추출
+        # For MultiEdit, extract multiple file paths
         edits = tool_args.get("edits", [])
         for edit in edits:
             file_path = edit.get("file_path", "")
@@ -150,21 +150,21 @@ def extract_file_paths(tool_name: str, tool_args: Dict[str, Any]) -> List[str]:
 
 
 def get_file_content(tool_name: str, tool_args: Dict[str, Any], file_path: str) -> str:
-    """파일 내용 가져오기
+    """Get file content
 
     Args:
-        tool_name: 툴 이름
-        tool_args: 툴 인자
-        file_path: 파일 경로
+        tool_name: Tool name
+        tool_args: Tool arguments
+        file_path: File path
 
     Returns:
         파일 내용
     """
-    # Write: 새 내용
+    # Write: new content
     if tool_name == "Write":
         return tool_args.get("content", "")
 
-    # Edit/MultiEdit: 기존 내용에 수정 적용
+    # Edit/MultiEdit: apply modifications to existing content
     try:
         path = Path(file_path)
         if path.exists():
@@ -176,22 +176,22 @@ def get_file_content(tool_name: str, tool_args: Dict[str, Any], file_path: str) 
 
 
 def create_block_response(violations: List[PolicyViolation]) -> Dict[str, Any]:
-    """작업 차단 응답 생성
+    """Create work blocking response
 
     Args:
-        violations: 정책 위반 목록
+        violations: List of policy violations
 
     Returns:
-        차단 응답 딕셔너리
+        Blocking response dictionary
     """
     critical_violations = [v for v in violations if v.level == PolicyViolationLevel.CRITICAL]
     blocking_violations = [v for v in violations if v.should_block_operation()]
 
     response = {
         "block_execution": True,
-        "reason": "TAG 정책 위반",
+        "reason": "TAG policy violation",
         "violations": [v.to_dict() for v in blocking_violations],
-        "message": "❌ TAG 정책 위반으로 작업이 차단되었습니다.",
+        "message": "❌ Work blocked due to TAG policy violation",
         "guidance": []
     }
 
@@ -199,7 +199,7 @@ def create_block_response(violations: List[PolicyViolation]) -> Dict[str, Any]:
         response["message"] = "🚨 치명적인 TAG 정책 위반입니다. 작업을 진행할 수 없습니다."
         response["critical_violations"] = [v.to_dict() for v in critical_violations]
 
-    # 수정 가이드 추가
+    # Add fix guidance
     for violation in blocking_violations:
         if violation.guidance:
             response["guidance"].append(f"• {violation.guidance}")
@@ -208,23 +208,23 @@ def create_block_response(violations: List[PolicyViolation]) -> Dict[str, Any]:
 
 
 def create_warning_response(violations: List[PolicyViolation]) -> Dict[str, Any]:
-    """경고 응답 생성
+    """Create warning response
 
     Args:
-        violations: 정책 위반 목록
+        violations: List of policy violations
 
     Returns:
         경고 응답 딕셔너리
     """
     response = {
         "block_execution": False,
-        "reason": "TAG 정책 경고",
+        "reason": "TAG policy warning",
         "violations": [v.to_dict() for v in violations],
-        "message": "⚠️ TAG 정책 경고가 있지만 작업을 진행할 수 있습니다.",
+        "message": "⚠️ TAG policy warnings detected but work can proceed",
         "guidance": []
     }
 
-    # 수정 가이드 추가
+    # Add fix guidance
     for violation in violations:
         if violation.guidance:
             response["guidance"].append(f"• {violation.guidance}")
@@ -233,28 +233,28 @@ def create_warning_response(violations: List[PolicyViolation]) -> Dict[str, Any]
 
 
 def create_success_response() -> Dict[str, Any]:
-    """성공 응답 생성
+    """Create success response
 
     Returns:
-        성공 응답 딕셔너리
+        Success response dictionary
     """
     return {
         "block_execution": False,
-        "reason": "TAG 정책 준수",
+        "reason": "TAG policy compliant",
         "violations": [],
-        "message": "✅ TAG 정책 검증 통과",
+        "message": "✅ TAG policy validation passed",
         "guidance": []
     }
 
 
 def main() -> None:
-    """메인 함수"""
+    """Main function"""
     try:
-        # 설정에서 타임아웃 값 로드 (밀리초 → 초)
+        # Load timeout value from config (milliseconds → seconds)
         timeout_seconds = load_hook_timeout() / 1000
         graceful_degradation = get_graceful_degradation()
 
-        # 인자 파싱
+        # Parse arguments
         if len(sys.argv) < 3:
             print(json.dumps({
                 "block_execution": False,
@@ -272,42 +272,42 @@ def main() -> None:
             }))
             sys.exit(0)
 
-        # 시작 시간 기록 (타임아웃 체크용)
+        # Record start time (for timeout check)
         start_time = time.time()
 
-        # 툴 검증 여부 확인
+        # Check if tool should be validated
         if not should_validate_tool(tool_name, tool_args):
             print(json.dumps(create_success_response()))
             sys.exit(0)
 
-        # 파일 경로 추출
+        # Extract file paths
         file_paths = extract_file_paths(tool_name, tool_args)
         if not file_paths:
             print(json.dumps(create_success_response()))
             sys.exit(0)
 
-        # 정책 검증기 생성
+        # Create policy validator
         validator = create_policy_validator()
 
-        # 모든 파일에 대해 검증
+        # Validate all files
         all_violations = []
         for file_path in file_paths:
-            # 타임아웃 체크
+            # Timeout check
             if time.time() - start_time > timeout_seconds:
                 break
 
-            # 파일 내용 가져오기
+            # Get file content
             content = get_file_content(tool_name, tool_args, file_path)
 
-            # 정책 검증
+            # Validate policy
             violations = validator.validate_before_creation(file_path, content)
             all_violations.extend(violations)
 
-        # 위반 수준별 분류
+        # Classify violations by level
         blocking_violations = [v for v in all_violations if v.should_block_operation()]
         warning_violations = [v for v in all_violations if not v.should_block_operation()]
 
-        # 응답 생성
+        # Create response
         if blocking_violations:
             response = create_block_response(blocking_violations)
         elif warning_violations:
@@ -315,7 +315,7 @@ def main() -> None:
         else:
             response = create_success_response()
 
-        # 검증 보고서 추가
+        # Add validation report
         if all_violations:
             validation_report = validator.create_validation_report(all_violations)
             response["validation_report"] = validation_report
@@ -323,11 +323,11 @@ def main() -> None:
         print(json.dumps(response, ensure_ascii=False, indent=2))
 
     except Exception as e:
-        # 예외 발생 시 차단하지 않고 로그만 남김
+        # On exception, do not block but only log
         error_response = {
             "block_execution": False,
             "error": f"Hook execution error: {str(e)}",
-            "message": "Hook 실행 중 오류가 발생했지만 작업을 진행합니다."
+            "message": "Hook execution encountered error but work will proceed."
         }
 
         if graceful_degradation:
