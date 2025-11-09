@@ -1,0 +1,44 @@
+{
+  "skill_id": "moai-baas-cloudflare-ext",
+  "skill_name": "Cloudflare Edge-First Architecture & Workers",
+  "version": "2.0.0",
+  "language": "english",
+  "word_count": 1200,
+  "sections": 8,
+  "context7_references": 4,
+  "context7_topics": [
+    "Cloudflare Workers Runtime",
+    "D1 Database (SQLite)",
+    "Cloudflare Pages Hosting",
+    "Analytics Engine"
+  ],
+  "agents": [
+    "backend-expert",
+    "devops-expert",
+    "database-expert",
+    "security-expert"
+  ],
+  "tags": [
+    "baas",
+    "cloudflare",
+    "edge-computing",
+    "workers",
+    "d1",
+    "performance"
+  ],
+  "patterns_supported": [
+    "pattern-g"
+  ],
+  "special_requirements": [
+    "edge-performance",
+    "global-latency",
+    "sqlite"
+  ],
+  "dependencies": [
+    "moai-baas-foundation"
+  ],
+  "created": "2025-11-09",
+  "updated": "2025-11-09",
+  "validation_status": "complete",
+  "spec_reference": "@SPEC:BAAS-ECOSYSTEM-001"
+}

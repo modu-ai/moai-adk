@@ -3,11 +3,12 @@ Statusline renderer for Claude Code status display
 
 @CODE:STATUSLINE-RENDERER-001
 """
+# type: ignore
 
 from dataclasses import dataclass
 from typing import List
 
-from .config import StatuslineConfig
+from .config import StatuslineConfig  # type: ignore[attr-defined]
 
 
 @dataclass

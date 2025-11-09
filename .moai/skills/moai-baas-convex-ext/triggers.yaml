@@ -1,0 +1,28 @@
+skill_id: moai-baas-convex-ext
+trigger_keywords:
+  - "Convex"
+  - "Realtime"
+  - "Sync"
+  - "Database"
+  - "TypeScript"
+  - "OCC"
+  - "collaborative"
+
+trigger_contexts:
+  - "convex-detected"
+  - "pattern-f"
+  - "realtime-app"
+  - "sync-priority"
+
+trigger_agents:
+  - "backend-expert"
+  - "database-expert"
+  - "frontend-expert"
+
+auto_load_conditions:
+  - when_convex_selected: true
+  - when_realtime_required: true
+  - when_pattern_f_active: true
+
+priority: 88
+freedom_level: high

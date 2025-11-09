@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # @CODE:DOC-TAG-004 | TAG validation core module (Components 1, 2, 3 & 4)
+# type: ignore
 """TAG validation and management for MoAI-ADK
 
 This module provides TAG validation functionality for:

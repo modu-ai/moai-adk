@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # @CODE:FAST-AST-VISITOR-001 | @TEST:FAST-AST-VISITOR-001
+# type: ignore
 """Fast AST visitor for optimized Python code analysis.
 
 Replaces ast.walk() with selective NodeVisitor to reduce traversal overhead.

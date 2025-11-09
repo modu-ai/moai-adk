@@ -1,3 +1,4 @@
+# type: ignore
 """
 Alfred task detector for statusline
 

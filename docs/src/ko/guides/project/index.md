@@ -8,7 +8,7 @@ status: stable
 
 MoAI-ADK 프로젝트의 전체 생명주기를 관리하는 방법을 배웁니다. 초기화부터 설정, 배포까지 모든 단계를 다룹니다.
 
-## 🎯 프로젝트 관리 3단계
+## <span class="material-icons">list</span> **프로젝트 관리 3단계**
 
 ### [1. 프로젝트 초기화](init.md)
 - `moai-adk init` 명령어로 새 프로젝트 생성
@@ -40,7 +40,7 @@ MoAI-ADK 프로젝트의 전체 생명주기를 관리하는 방법을 배웁니
 - CI/CD 파이프라인 구축
 - 모니터링 및 로깅
 
-## 📊 프로젝트 구조
+## <span class="material-icons">folder</span> **프로젝트 구조**
 
 ```
 my-awesome-project/
@@ -59,7 +59,7 @@ my-awesome-project/
 └── pyproject.toml      # Python 프로젝트 설정
 ```
 
-## 🔄 Alfred 통합
+## <span class="material-icons">sync</span> **Alfred 통합**
 
 프로젝트 관리는 Alfred SuperAgent와 완벽하게 통합됩니다:
 
@@ -70,7 +70,7 @@ my-awesome-project/
 
 [Alfred 워크플로우 완전 가이드](../alfred/index.md)
 
-## 📋 체크리스트
+## <span class="material-icons">checklist</span> **체크리스트**
 
 프로젝트 설정 시 확인해야 할 항목:
 
@@ -81,7 +81,7 @@ my-awesome-project/
 - [ ] CI/CD 파이프라인 설정 (선택)
 - [ ] 배포 전략 결정
 
-## 🚀 다음 단계
+## <span class="material-icons">navigate_next</span> **다음 단계**
 
 - [프로젝트 초기화: init.md](init.md)
 - [설정 관리: config.md](config.md)

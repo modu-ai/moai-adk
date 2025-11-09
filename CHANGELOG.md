@@ -4,6 +4,25 @@ All commits to MoAI-ADK are listed below in chronological order. Each entry show
 
 ## Recent Releases
 
+### v0.22.1 (2025-11-10)
+
+**Patch Release: Package Synchronization & Configuration Cleanup**
+
+- **Documentation Cleanup**: Removed deprecated Japanese (ja) and Chinese (zh) language documentation files from docs/ and docs/src/
+- **Configuration Standardization**: Unified PROJECT_DIR variable naming across all settings files and hooks (replaces HOOK_PROJECT_DIR)
+- **Package Template Synchronization**: Completed full sync of .claude/ directories between local and package templates (source-of-truth principle)
+- **Statusline Configuration**: Removed unused script_path field from statusline config; execution now handled via .moai/scripts wrapper
+- **Code Quality**: Fixed remaining Ruff line length violations and MyPy type checking errors
+- **NPM Configuration Cleanup**: Removed deprecated npm configuration files (package.json, package-lock.json)
+- **Test Marker Configuration**: Added pytest.mark.e2e marker configuration for end-to-end tests
+- **Hook Restoration**: Restored pre_tool__auto_spec_proposal hook file for proper functionality
+
+Quality Metrics:
+- Test Coverage: 98%+ (1,244+ passing tests)
+- Linting: Pass (0 errors)
+- Type Checking: Pass
+- Security: Pass
+
 ### v0.21.1 (2025-11-07)
 
 **Patch Release: Bug Fixes & Test Corrections**

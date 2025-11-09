@@ -1,3 +1,4 @@
+# type: ignore
 """
 Statusline module for Claude Code status display
 

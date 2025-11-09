@@ -1,4 +1,4 @@
-// Language Selector for MkDocs Material
+// Language Selector for MkDocs Material with Icon Support
 document.addEventListener('DOMContentLoaded', function() {
   const header = document.querySelector('.md-header__inner');
   if (header && !document.querySelector('.md-select')) {
@@ -16,11 +16,18 @@ document.addEventListener('DOMContentLoaded', function() {
       'zh': '中文'
     };
 
+    const languageIcons = {
+      'ko': '🇰🇷', // Korean flag
+      'en': '🌐',  // Globe
+      'ja': '⛩️',  // Torii gate
+      'zh': '🏯'   // Pagoda
+    };
+
     const languages = [
-      { name: '한국어', link: '/', lang: 'ko' },
-      { name: 'English', link: '/en/', lang: 'en' },
-      { name: '日本語', link: '/ja/', lang: 'ja' },
-      { name: '中文', link: '/zh/', lang: 'zh' }
+      { name: '한국어', icon: '🇰🇷', link: '/', lang: 'ko' },
+      { name: 'English', icon: '🌐', link: '/en/', lang: 'en' },
+      { name: '日本語', icon: '⛩️', link: '/ja/', lang: 'ja' },
+      { name: '中文', icon: '🏯', link: '/zh/', lang: 'zh' }
     ];
 
     const selector = document.createElement('div');
@@ -29,15 +36,16 @@ document.addEventListener('DOMContentLoaded', function() {
     let listHTML = '';
     languages.forEach(lang => {
       const activeClass = lang.lang === currentLang ? ' md-select__item--active' : '';
-      listHTML += `<a href="${lang.link}" class="md-select__item${activeClass}" hreflang="${lang.lang}">
-        <span>${lang.name}</span>
+      listHTML += `<a href="${lang.link}" class="md-select__item${activeClass}" hreflang="${lang.lang}" title="${lang.name}">
+        <span class="md-select__icon">${lang.icon}</span>
+        <span class="md-select__label">${lang.name}</span>
       </a>`;
     });
 
     selector.innerHTML = `
-      <button class="md-select__inner" aria-label="Select language">
-        <span>${languageNames[currentLang]}</span>
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" style="vertical-align: middle; margin-left: 0.25rem;">
+      <button class="md-select__inner" aria-label="Select language" title="Language: ${languageNames[currentLang]}">
+        <span class="md-select__current-icon">${languageIcons[currentLang]}</span>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" class="md-select__arrow">
           <path d="M7 10l5 5 5-5z" fill="currentColor"/>
         </svg>
       </button>
@@ -53,5 +61,22 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
       header.appendChild(selector);
     }
+
+    // Handle dropdown toggle
+    const button = selector.querySelector('.md-select__inner');
+    button.addEventListener('click', function(e) {
+      e.stopPropagation();
+      selector.classList.toggle('md-select--active');
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function() {
+      selector.classList.remove('md-select--active');
+    });
+
+    // Prevent dropdown close when clicking inside
+    selector.addEventListener('click', function(e) {
+      e.stopPropagation();
+    });
   }
 });
