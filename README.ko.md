@@ -58,6 +58,9 @@ MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 
 
 - **19개의 전문 AI 에이전트** (spec-builder, code-builder, doc-syncer 등)
 - **93개의 프로덕션급 스킬** (모든 개발 영역 커버)
+  - **10개 BaaS 스킬**: 클라우드 플랫폼 (Supabase, Firebase, Vercel, Cloudflare, Auth0, Convex, Railway, Neon, Clerk)
+  - **완전한 프론트엔드 지원**: HTML/CSS, Tailwind CSS, shadcn/ui, 벡터 아이콘 (10+ 아이콘 라이브러리)
+  - **풀 백엔드 지원**: 데이터베이스 설계, API 아키텍처, DevOps
 - **적응형 학습**: 프로젝트 패턴으로부터 자동 학습
 - **스마트 컨텍스트 관리**: 프로젝트 구조와 의존성 이해
 
@@ -1038,8 +1041,11 @@ graph TD
 | ------------------- | --------------------------------------------------------------------------------- |
 | **테스트 커버리지** | 87.84%+ 보증                                                                      |
 | **전문 에이전트**   | 19명 팀                                                                           |
-| **프로덕션급 스킬** | 93개 (BaaS 스킬 10개 포함)                                                   |
+| **프로덕션급 스킬** | 93개 (BaaS 10개 + 프론트엔드 4개 + 백엔드 6개+ 포함)                        |
 | **BaaS 스킬**       | 10개 프로덕션급 (Foundation + 7 Extensions + 2 계획중)                            |
+| **프론트엔드 스킬** | 4개 (HTML/CSS, Tailwind CSS, shadcn/ui, 벡터 아이콘)                      |
+| **아이콘 라이브러리** | 10개 이상 (Lucide, React Icons, Tabler, Phosphor, Heroicons, Radix, Iconify 등) |
+| **아이콘 커버리지** | 200K+ 아이콘 (150+ 아이콘 세트)                                            |
 | **플랫폼 커버리지** | 9개 플랫폼 (Supabase, Firebase, Vercel, Cloudflare, Auth0, Convex, Railway, Neon, Clerk) |
 | **아키텍처 패턴**   | 8개 패턴 (A-H) 모든 배포 시나리오 지원                                            |
 | **BaaS 문서**       | 11,500+ 단어, 60개 이상 코드 예제                                                |
