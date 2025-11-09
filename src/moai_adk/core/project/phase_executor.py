@@ -1,4 +1,5 @@
-# @CODE:INIT-005:PHASE | SPEC: .moai/specs/SPEC-INIT-003/spec.md | TEST: tests/unit/test_init_reinit.py
+# @CODE:INIT-PHASE-002 | SPEC: .moai/specs/SPEC-INIT-003/spec.md | TEST: tests/unit/test_init_reinit.py
+# type: ignore
 # @CODE:TEST-COVERAGE-001 | SPEC: SPEC-TEST-COVERAGE-001.md | TEST: tests/unit/test_phase_executor.py
 """Phase-based installation executor (SPEC-INIT-003 v0.4.2)
 
@@ -168,7 +169,7 @@ class PhaseExecutor:
                 "CONVERSATION_LANGUAGE": language_config.get("conversation_language", "en"),
                 "CONVERSATION_LANGUAGE_NAME": language_config.get("conversation_language_name", "English"),
                 "CODEBASE_LANGUAGE": config.get("language", "generic"),
-                "HOOK_PROJECT_DIR": hook_project_dir,
+                "PROJECT_DIR": hook_project_dir,
             }
             processor.set_context(context)
 

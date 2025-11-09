@@ -185,6 +185,16 @@
   "hooks": {
     "timeout_ms": 2000,
     "graceful_degradation": true,
+    "tag_validation_exceptions": {
+      "enabled": true,
+      "exempt_directories": [
+        ".claude/",
+        ".moai/docs/",
+        ".moai/reports/",
+        ".moai/analysis/"
+      ],
+      "reason": "System infrastructure and documentation directories do not require TAG annotations"
+    },
     "notes": "Hook execution timeout (milliseconds). Set graceful_degradation to true to continue even if a hook fails. Optimized to 2 seconds for faster performance."
   },
   "session_end": {

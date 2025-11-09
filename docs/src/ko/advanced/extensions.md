@@ -2,14 +2,18 @@
 
 MoAI-ADK를 프로젝트에 맞게 커스터마이즈하는 방법입니다.
 
-## 🎯 확장 가능한 영역
+## 확장 가능한 영역
+
+<span class="material-icons">extension</span> **커스터마이제이션 영역**
 
 1. **Custom Skills**: 새로운 도메인 스킬 추가
 2. **Custom Agents**: 특화된 에이전트 생성
 3. **Custom Hooks**: 프로젝트별 자동화 Hook
 4. **Custom Commands**: Alfred 커맨드 확장
 
-## 🛠️ Custom Skills 만들기
+## Custom Skills 만들기
+
+<span class="material-icons">build</span> **스킬 개발**
 
 ### Skill 구조
 
@@ -56,7 +60,9 @@ MoAI-ADK를 프로젝트에 맞게 커스터마이즈하는 방법입니다.
 }
 ```
 
-## 👥 Custom Agents 만들기
+## Custom Agents 만들기
+
+<span class="material-icons">smart_toy</span> **에이전트 개발**
 
 ### Agent 구조
 

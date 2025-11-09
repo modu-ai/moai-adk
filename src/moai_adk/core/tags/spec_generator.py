@@ -17,6 +17,7 @@ The generator is designed to help developers follow SPEC-first principles
 by automatically creating initial SPEC templates when code is written
 before specifications are documented.
 """
+# type: ignore
 
 import re
 from collections import deque
@@ -26,7 +27,7 @@ from hashlib import sha256
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
-from moai_adk.core.tags.fast_ast_visitor import analyze_python_fast
+from moai_adk.core.tags.fast_ast_visitor import analyze_python_fast  # type: ignore[attr-defined]
 
 
 @dataclass

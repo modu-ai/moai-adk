@@ -1,0 +1,371 @@
+Translate the following Korean markdown document to Japanese.
+
+**CRITICAL RULES:**
+1. Preserve ALL markdown structure (headers, code blocks, links, tables, diagrams)
+2. Keep ALL code blocks and technical terms UNCHANGED
+3. Maintain the EXACT same file structure and formatting
+4. Translate ONLY Korean text content
+5. Keep ALL @TAG references unchanged (e.g., @SPEC:AUTH-001)
+6. Preserve ALL file paths and URLs
+7. Keep ALL emoji and icons as-is
+8. Maintain ALL frontmatter (YAML) structure
+
+**Source File:** /Users/goos/MoAI/MoAI-ADK/docs/src/ko/reference/cli/moai-adk.md
+**Target Language:** Japanese
+**Target File:** /Users/goos/MoAI/MoAI-ADK/docs/src/ja/reference/cli/moai-adk.md
+
+**Content to Translate:**
+
+# moai-adk 명령어 완전 참고서
+
+`moai-adk` 커맨드라인 도구의 모든 명령어와 옵션을 다룹니다.
+
+## 명령어 구조
+
+```
+moai-adk <command> [options] [arguments]
+```
+
+## 전역 옵션
+
+모든 `moai-adk` 명령어에서 사용 가능:
+
+| 옵션               | 설명           |
+| ------------------ | -------------- |
+| `--help`, `-h`     | 도움말 표시    |
+| `--version`, `-v`  | 버전 정보 표시 |
+| `--verbose`, `-vv` | 상세 출력 모드 |
+| `--no-color`       | 색상 없이 출력 |
+
+## 명령어 목록
+
+### 1. moai-adk init
+
+**프로젝트 초기화 및 템플릿 주입**
+
+#### 문법
+
+```bash
+moai-adk init [경로] [옵션]
+```
+
+#### 인자
+
+| 인자   | 설명          | 기본값        |
+| ------ | ------------- | ------------- |
+| `경로` | 프로젝트 경로 | 현재 디렉토리 |
+
+#### 옵션
+
+```bash
+--language LANG, -l LANG    프로젝트 언어 선택 (ko/en/ja/zh)
+--mode MODE                 개발 모드 (solo/team/org)
+--with-mcp SERVER          MCP 서버 추가 (context7, figma, playwright)
+--mcp-auto                 모든 권장 MCP 서버 자동 설치
+--force, -f                기존 설정 덮어쓰기
+--skip-git                 Git 초기화 스킵
+```
+
+#### 예시
+
+```bash
+# 새 프로젝트 생성
+moai-adk init my-project
+
+# 현재 디렉토리 초기화
+moai-adk init .
+
+# MCP 서버 포함
+moai-adk init . --with-mcp context7 --with-mcp figma
+
+# 모든 MCP 자동 설치
+moai-adk init . --mcp-auto
+
+# 덮어쓰기로 재초기화
+moai-adk init . --force
+```
+
+#### 생성되는 파일
+
+```
+프로젝트/
+├── .moai/
+│   ├── config.json        # 프로젝트 설정
+│   ├── specs/            # SPEC 문서
+│   ├── docs/             # 생성 문서
+│   ├── reports/          # 분석 보고서
+│   └── scripts/          # 유틸리티 스크립트
+├── .claude/
+│   ├── settings.json     # Claude Code 설정
+│   ├── commands/         # Alfred 커맨드
+│   ├── agents/          # Sub-agent 템플릿
+│   └── mcp.json         # MCP 설정
+└── CLAUDE.md            # 프로젝트 지침
+```
+
+______________________________________________________________________
+
+### 2. moai-adk doctor
+
+**시스템 환경 진단**
+
+#### 문법
+
+```bash
+moai-adk doctor [옵션]
+```
+
+#### 옵션
+
+```bash
+--verbose, -vv       상세 진단 정보
+--fix                자동 수정 시도
+--export FILE       결과를 파일로 내보내기
+```
+
+#### 진단 항목
+
+- ✅ Python 버전 (3.13+ 필수)
+- ✅ uv 패키지 매니저
+- ✅ Git 저장소 상태
+- ✅ `.moai/` 디렉터리 구조
+- ✅ `.claude/` 리소스
+- ✅ Claude Code 접근성
+- ✅ 파이썬 의존성
+- ✅ 디스크 공간
+
+#### 예시
+
+```bash
+# 기본 진단
+moai-adk doctor
+
+# 상세 진단
+moai-adk doctor -vv
+
+# 결과 파일로 저장
+moai-adk doctor --export .moai/reports/doctor.txt
+
+# 자동 수정
+moai-adk doctor --fix
+```
+
+______________________________________________________________________
+
+### 3. moai-adk status
+
+**프로젝트 상태 조회**
+
+#### 문법
+
+```bash
+moai-adk status [옵션]
+```
+
+#### 옵션
+
+```bash
+--json                 JSON 형식 출력
+--compact, -c          간단한 요약만 표시
+--spec ID              특정 SPEC 상세 조회
+```
+
+#### 표시 정보
+
+- 📋 SPEC 진행 현황 (완료/진행중/대기)
+- 🏷️ TAG 통계 (@SPEC/@TEST/@CODE/@DOC)
+- 📝 최근 커밋
+- 📅 마지막 동기화 시간
+- 🔄 Git 브랜치 상태
+
+#### 예시
+
+```bash
+# 전체 상태
+moai-adk status
+
+# JSON 형식
+moai-adk status --json
+
+# 간단 요약
+moai-adk status --compact
+
+# 특정 SPEC 상세
+moai-adk status --spec SPEC-001
+```
+
+______________________________________________________________________
+
+### 4. moai-adk backup
+
+**프로젝트 백업 생성**
+
+#### 문법
+
+```bash
+moai-adk backup [옵션]
+```
+
+#### 옵션
+
+```bash
+--target DIR           백업 위치 (기본: .moai-backups/)
+--include-git          Git 히스토리 포함
+--compress, -z         압축 형식 (tar.gz)
+--restore FILE         백업 복원
+```
+
+#### 백업 대상
+
+- `.moai/` 전체 디렉터리
+- `.claude/` 리소스
+- `CLAUDE.md` 프로젝트 지침
+- `pyproject.toml` / `requirements.txt`
+
+#### 예시
+
+```bash
+# 기본 백업
+moai-adk backup
+
+# 압축으로 백업
+moai-adk backup --compress
+
+# Git 히스토리 포함
+moai-adk backup --include-git
+
+# 백업 복원
+moai-adk backup --restore .moai-backups/20250115_143000/
+
+# 커스텀 위치
+moai-adk backup --target ~/backups/moai/
+```
+
+______________________________________________________________________
+
+### 5. moai-adk update
+
+**패키지 및 템플릿 동기화 (가장 중요한 명령)**
+
+#### 문법
+
+```bash
+moai-adk update [옵션]
+```
+
+#### 옵션
+
+```bash
+--check                업데이트 가능 여부만 확인
+--dry-run              변경 미리보기
+--skip-backup          백업 스킵 (권장하지 않음)
+--force                강제 업데이트
+--from VERSION         특정 버전에서 업데이트
+```
+
+#### 동작 과정
+
+1. **버전 확인**: PyPI에서 최신 버전 확인
+2. **백업 생성**: 현재 상태 안전 백업
+3. **템플릿 동기화**: 새 템플릿과 기존 설정 병합
+4. **검증**: 무결성 확인
+5. **완료**: 변경사항 요약
+
+#### 예시
+
+```bash
+# 일반 업데이트
+moai-adk update
+
+# 미리보기
+moai-adk update --dry-run
+
+# 강제 업데이트
+moai-adk update --force
+
+# 버전 확인만
+moai-adk update --check
+```
+
+______________________________________________________________________
+
+## 옵션 조합
+
+### 고급 사용 사례
+
+```bash
+# 상세 로그와 함께 초기화
+moai-adk init . --verbose --with-mcp context7
+
+# 자동 수정과 상세 보고서
+moai-adk doctor --fix --export .moai/reports/doctor.md
+
+# 전체 상태 JSON로 내보내기
+moai-adk status --json > status.json
+
+# 압축 백업 생성 및 복원 테스트
+moai-adk backup --compress
+moai-adk backup --restore .moai-backups/latest.tar.gz
+```
+
+______________________________________________________________________
+
+## 종료 코드
+
+| 코드  | 의미        |
+| ----- | ----------- |
+| `0`   | 성공        |
+| `1`   | 일반 오류   |
+| `2`   | 사용법 오류 |
+| `127` | 명령어 없음 |
+
+______________________________________________________________________
+
+## 환경 변수
+
+```bash
+MOAI_HOME              MoAI-ADK 설치 경로
+MOAI_DEBUG             디버그 모드 활성화 (1)
+MOAI_NO_COLOR          색상 출력 비활성화 (1)
+MOAI_CONFIG_PATH       .moai/config.json 경로
+```
+
+______________________________________________________________________
+
+## 문제 해결
+
+### "Permission denied"
+
+```bash
+# 권한 확인
+ls -la .moai/
+chmod -R u+w .moai/
+```
+
+### "Template conflict"
+
+```bash
+# 백업 후 강제 업데이트
+moai-adk backup
+moai-adk update --force
+```
+
+### "Python version mismatch"
+
+```bash
+# Python 3.13+ 확인
+python3 --version
+uv python install 3.13
+```
+
+______________________________________________________________________
+
+**다음**: [Alfred 서브커맨드 가이드](subcommands.md) 또는 [CLI 참고서](index.md)
+
+
+**Instructions:**
+- Translate the content above to Japanese
+- Output ONLY the translated markdown content
+- Do NOT include any explanations or comments
+- Maintain EXACT markdown formatting
+- Preserve ALL code blocks exactly as-is
