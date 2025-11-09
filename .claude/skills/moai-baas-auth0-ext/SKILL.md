@@ -5,18 +5,19 @@
 ```yaml
 skill_id: moai-baas-auth0-ext
 skill_name: Auth0 Enterprise Authentication & Identity Management
-version: 1.0.0
+version: 2.0.0
 created_date: 2025-11-09
+updated_date: 2025-11-09
 language: english
 triggers:
-  - keywords: ["Auth0", "Enterprise Auth", "SAML", "OIDC", "Identity", "SSO"]
-  - contexts: ["auth0-detected", "pattern-h", "enterprise-authentication"]
+  - keywords: ["Auth0", "Enterprise Auth", "SAML", "OIDC", "Identity", "SSO", "Compliance", "GDPR", "HIPAA"]
+  - contexts: ["auth0-detected", "pattern-h", "enterprise-authentication", "compliance"]
 agents:
   - security-expert
   - backend-expert
   - devops-expert
 freedom_level: high
-word_count: 1000
+word_count: 1200
 context7_references:
   - url: "https://auth0.com/docs/get-started"
     topic: "Auth0 Integration & Setup"
@@ -399,14 +400,136 @@ await mgmt.tokens.revoke({ token: REFRESH_TOKEN });
 
 ---
 
-### 6. Cost Optimization & Common Issues (50 words)
+### 6. Compliance, Audit Logging & Regulations (100 words)
+
+**GDPR Compliance Checklist** (General Data Protection Regulation):
+
+```typescript
+// User data export (GDPR Right to Data Portability)
+app.get("/api/user/export", async (req, res) => {
+  const mgmt = new ManagementClient(config);
+  const user = await mgmt.users.get({ id: req.user.sub });
+
+  // Export: Personal data, login history, consent logs
+  res.json({
+    user: user,
+    loginHistory: user.logins_count,
+    lastLogin: user.last_login,
+    dataExportedAt: new Date(),
+  });
+});
+
+// User deletion (GDPR Right to Be Forgotten)
+app.delete("/api/user/delete", async (req, res) => {
+  const mgmt = new ManagementClient(config);
+
+  // Step 1: Anonymize user data
+  await mgmt.users.update({ id: req.user.sub }, {
+    email: `deleted-${uuid()}@example.com`,
+    user_metadata: null,
+    app_metadata: null,
+  });
+
+  // Step 2: Revoke all tokens
+  await mgmt.tokens.revoke({ token: req.user.accessToken });
+
+  // Step 3: Log deletion for audit trail
+  console.log(`User ${req.user.sub} deleted at ${new Date()}`);
+});
+```
+
+**Audit Logging Setup** (SOC 2, HIPAA compliance):
+
+```bash
+# Auth0 Dashboard → Settings → Audit Logs
+# Monitor: Login attempts, password changes, MFA changes, user deletions
+
+# Export audit logs to Splunk/DataDog
+# Auth0 → Flows → Send logs to SIEM
+
+# Key audit events to monitor:
+# - s (Success Login)
+# - f (Failed Login)
+# - pwd_xchg (Password Exchange)
+# - pwds (Password Changed)
+# - du (User Deleted)
+# - rs (Rules Executed)
+```
+
+**Compliance Frameworks**:
+- ✅ **SOC 2**: Audit logs, MFA, encryption at rest
+- ✅ **HIPAA**: Business Associate Agreement (BAA), 90-day log retention
+- ✅ **GDPR**: Data export, deletion rights, consent tracking
+- ✅ **ISO 27001**: Access controls, encryption, incident response
+
+---
+
+### 7. MAU Management & Cost Optimization (100 words)
+
+**Monthly Active User (MAU) Cost Model**:
+
+```
+Free tier: 7,500 MAU/month
+Pro tier: $0.08 per MAU (example: 50k users = $4,000/month)
+Enterprise: Custom pricing
+
+Cost drivers:
+├─ Active users (login within 30 days)
+├─ Rules/Hooks executions
+├─ Custom database connections
+└─ Enterprise connections (SAML/OIDC)
+```
+
+**Cost Optimization Strategies**:
+
+```javascript
+// Strategy 1: Identify inactive users
+const inactiveUsers = users.filter(u => {
+  const daysSinceLogin = (Date.now() - new Date(u.last_login)) / (1000 * 60 * 60 * 24);
+  return daysSinceLogin > 90;
+});
+
+// Strategy 2: Archive inactive users to separate database
+const archiveInactiveUsers = async (days = 180) => {
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  await mgmt.jobs.create({
+    type: "users_exports",
+    connection: "Username-Password-Authentication",
+  });
+};
+
+// Strategy 3: Use machine-to-machine for service accounts
+// Don't count service accounts toward MAU
+
+// Strategy 4: Batch operations to reduce hook executions
+```
+
+**Monitoring Dashboard Setup**:
+
+```bash
+# Auth0 Dashboard → Insights → Active Users
+# Track: Weekly/monthly MAU trends
+# Set alerts: Alert when MAU exceeds threshold by 10%
+
+# Cost projection example:
+# Current: 10k MAU × $0.08 = $800/month
+# Projected (6 months): 15k MAU × $0.08 = $1,200/month
+```
+
+**Break-even Analysis** (When to upgrade):
+- Pro tier becomes cheaper when MAU > 10,000
+- Enterprise pricing needed when MAU > 100,000 or SAML gates required
+
+---
+
+### 8. Common Issues & Solutions (50 words)
 
 | Issue | Solution |
 |-------|----------|
-| **High MAU costs** | Review inactive users, purge old accounts |
-| **SAML not working** | Check IdP metadata, certificate expiry |
-| **MFA enrollment low** | Use Rules to encourage opt-in gradually |
-| **Token expiry issues** | Implement refresh token rotation |
+| **High MAU costs** | Archive inactive users, review service accounts |
+| **SAML not working** | Check IdP metadata, certificate expiry, SP fingerprint |
+| **MFA enrollment low** | Use Actions to encourage opt-in gradually |
+| **Token expiry issues** | Implement refresh token rotation, monitor expiry |
 
 ---
 
@@ -444,6 +567,8 @@ When Auth0 platform detected:
 - [x] SAML & OIDC protocol configuration
 - [x] Multi-factor authentication (MFA)
 - [x] Rules, Hooks, Actions & Management API
-- [x] Cost optimization & troubleshooting
-- [x] 1000-word target
+- [x] Compliance, audit logging & regulations (GDPR, SOC 2, HIPAA, ISO 27001)
+- [x] MAU management & cost optimization
+- [x] Troubleshooting & common issues
+- [x] 1200-word target (from 1000)
 - [x] English language (policy compliant)

@@ -5,18 +5,20 @@
 ```yaml
 skill_id: moai-baas-convex-ext
 skill_name: Convex Realtime Database & Sync Framework
-version: 1.0.0
+version: 2.0.0
 created_date: 2025-11-09
+updated_date: 2025-11-09
 language: english
 triggers:
-  - keywords: ["Convex", "Realtime", "Sync", "Database", "TypeScript", "OCC"]
+  - keywords: ["Convex", "Realtime", "Sync", "Database", "TypeScript", "OCC", "Production"]
   - contexts: ["convex-detected", "pattern-f", "realtime-app"]
 agents:
   - backend-expert
   - database-expert
   - frontend-expert
+  - devops-expert
 freedom_level: high
-word_count: 1000
+word_count: 1200
 context7_references:
   - url: "https://docs.convex.dev/database"
     topic: "Database Design & Schema"
@@ -319,14 +321,64 @@ export const updateProfile = mutation({
 
 ---
 
-### 5. Common Patterns & Best Practices (100 words)
+### 5. Advanced Patterns: Actions & Scheduled Functions (120 words)
+
+**Actions** enable multi-step operations with external API calls and transactions.
+
+```typescript
+import { action } from "./_generated/server";
+
+export const publishPostWithNotification = action({
+  args: { postId: v.id("posts") },
+  handler: async (ctx, args) => {
+    // Step 1: Update post status
+    await ctx.runMutation(api.updatePostStatus, {
+      postId: args.postId,
+      published: true
+    });
+
+    // Step 2: Call external API (email notification)
+    await fetch("https://api.sendgrid.com/v3/mail/send", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${process.env.SENDGRID_KEY}` },
+      body: JSON.stringify({
+        to: "subscribers@example.com",
+        subject: "New post published!",
+      }),
+    });
+
+    // Step 3: Log analytics
+    await ctx.runMutation(api.logAnalytics, { event: "post_published" });
+  },
+});
+
+// Scheduled function (daily cleanup)
+export const cleanupOldDrafts = internalAction({
+  handler: async (ctx) => {
+    const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+    const oldDrafts = await ctx.runQuery(api.getOldDrafts, { before: oneDayAgo });
+
+    for (const draft of oldDrafts) {
+      await ctx.runMutation(api.deleteDraft, { draftId: draft._id });
+    }
+  },
+});
+```
+
+**Key Use Cases**:
+- ✅ Multi-table transactions
+- ✅ External API calls (webhooks, notifications)
+- ✅ Complex business logic with multiple steps
+
+---
+
+### 6. Common Patterns & Best Practices (100 words)
 
 | Pattern | Implementation | Use Case |
 |---------|-----------------|----------|
 | **Pagination** | `query().skip(n).take(10)` | Large datasets |
 | **Full-text search** | String index + `.filter()` | Search functionality |
 | **Aggregation** | `.collect()` then client-side | Analytics |
-| **Transactions** | Use `Action` type for multi-step | Complex operations |
 | **Cleanup** | Use `scheduled()` functions | Data maintenance |
 | **File upload** | Use `generateUploadUrl()` | Media handling |
 
@@ -338,7 +390,59 @@ export const updateProfile = mutation({
 
 ---
 
-### 6. Troubleshooting (50 words)
+### 7. Production Deployment & Cost Optimization (150 words)
+
+**Deployment Strategy**:
+
+```bash
+# 1. Environment setup (production vs development)
+npm install convex
+
+# 2. Configure production credentials
+convex env set GITHUB_ID=...
+convex env set GITHUB_SECRET=...
+
+# 3. Deploy to production
+convex deploy
+
+# 4. Monitor via dashboard
+# https://dashboard.convex.dev → Logs → Monitor real-time activity
+```
+
+**Scaling & Cost Considerations**:
+
+| Metric | Free Tier | Pro Tier | Notes |
+|--------|-----------|----------|-------|
+| **Database size** | 500MB | Unlimited | Auto-scaling |
+| **Monthly function calls** | 1M free | $0.30 per 1M | Most cost driver |
+| **Concurrent users** | Unlimited | Unlimited | No seat-based pricing |
+| **Realtime subscriptions** | Unlimited | Unlimited | Included in calls |
+
+**Cost Optimization Strategies**:
+- ✅ **Debounce queries**: Reduce frequency of `useQuery()` with debouncing
+- ✅ **Batch operations**: Use Actions for multi-step operations instead of separate calls
+- ✅ **Archive old data**: Move historical data to separate tables
+- ✅ **Index optimization**: Proper indexes reduce query iterations
+- ✅ **Monitor usage**: Dashboard → Billing → Monitor function call trends
+
+**Production Monitoring**:
+```typescript
+// Log important events for monitoring
+export const logMetric = mutation({
+  args: { event: v.string(), duration: v.number() },
+  handler: async (ctx, args) => {
+    await ctx.db.insert("metrics", {
+      event: args.event,
+      duration: args.duration,
+      timestamp: Date.now(),
+    });
+  },
+});
+```
+
+---
+
+### 8. Troubleshooting (50 words)
 
 | Issue | Solution |
 |-------|----------|
@@ -381,7 +485,9 @@ When Convex platform detected:
 - [x] Database schema design (TypeScript)
 - [x] Realtime sync patterns (useQuery/useMutation)
 - [x] Authentication & authorization
+- [x] Advanced patterns (Actions, Scheduled Functions)
 - [x] Common patterns & best practices
+- [x] Production deployment & cost optimization
 - [x] Troubleshooting section
-- [x] 1000-word target
+- [x] 1200-word target (from 1000)
 - [x] English language (policy compliant)

@@ -5,19 +5,21 @@
 ```yaml
 skill_id: moai-baas-firebase-ext
 skill_name: Firebase Full-Stack Platform & Ecosystem
-version: 1.0.0
+version: 2.0.0
 created_date: 2025-11-09
+updated_date: 2025-11-09
 language: english
 triggers:
-  - keywords: ["Firebase", "Firestore", "Cloud Functions", "Firebase Auth", "Google Cloud"]
+  - keywords: ["Firebase", "Firestore", "Cloud Functions", "Firebase Auth", "Google Cloud", "Security Rules", "Testing"]
   - contexts: ["firebase-detected", "pattern-e", "google-ecosystem"]
 agents:
   - backend-expert
   - database-expert
   - devops-expert
   - frontend-expert
+  - security-expert
 freedom_level: high
-word_count: 1000
+word_count: 1200
 context7_references:
   - url: "https://firebase.google.com/docs/firestore"
     topic: "Firestore Database & Collections"
@@ -386,7 +388,113 @@ firebase open hosting
 
 ---
 
-### 6. Common Issues & Solutions (50 words)
+### 6. Security Rules Advanced Patterns & Testing (150 words)
+
+**Advanced Security Rule Patterns**:
+
+```javascript
+// Rule 1: Timestamp-based access control
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow deletion only within 24 hours of creation
+    match /posts/{postId} {
+      allow delete: if request.auth.uid == resource.data.userId &&
+                       (now.getTime() - resource.createTime.getTime() < 24 * 60 * 60 * 1000);
+    }
+
+    // Rule 2: Map-based permissions (shared access)
+    match /documents/{docId} {
+      allow read: if request.auth.uid in resource.data.allowedUsers;
+      allow write: if request.auth.uid == resource.data.owner ||
+                      request.auth.uid in resource.data.editors;
+    }
+
+    // Rule 3: Batch operation limits
+    match /transactions/{transaction} {
+      allow create: if request.resource.data.items.size() <= 100;
+    }
+  }
+}
+```
+
+**Testing Security Rules**:
+
+```bash
+# Install Firebase Emulator
+npm install -D firebase-tools
+
+# Start emulator with rules testing
+firebase emulators:start --only firestore
+
+# Test rules with firestore.test.js
+```
+
+```typescript
+// firestore.test.ts using firebase-rules-testing
+import { initializeTestEnvironment, assertFails, assertSucceeds } from "@firebase/rules-testing";
+
+describe("Firestore Rules", () => {
+  let testEnv;
+
+  beforeAll(async () => {
+    testEnv = await initializeTestEnvironment({
+      projectId: "test-project",
+      firestore: { rules: fs.readFileSync("firestore.rules", "utf8") },
+    });
+  });
+
+  test("User can delete own post within 24h", async () => {
+    const db = testEnv.authenticatedContext("user123").firestore();
+
+    // Create post
+    await db.collection("posts").doc("post1").set({
+      userId: "user123",
+      title: "Test Post",
+      createdAt: new Date(),
+    });
+
+    // Attempt delete (should succeed)
+    await assertSucceeds(db.collection("posts").doc("post1").delete());
+  });
+
+  test("User cannot delete others' posts", async () => {
+    const db = testEnv.authenticatedContext("user456").firestore();
+    await assertFails(db.collection("posts").doc("post1").delete());
+  });
+});
+```
+
+---
+
+### 7. Performance Optimization & Scaling Limits (100 words)
+
+**Firestore Scaling Limits** (per database):
+
+| Metric | Limit | Workaround |
+|--------|-------|-----------|
+| **Document size** | 1MB max | Use subcollections for large arrays |
+| **Write throughput** | 1 write/sec per document | Distribute across multiple docs |
+| **Composite indexes** | 200 max per database | Clean up unused indexes |
+| **Query result size** | Memory-based | Use pagination or `limit(1000)` |
+| **Array size** | 20,000 items max | Use separate collection |
+
+**Performance Best Practices**:
+- ✅ **Pagination**: Use `startAfter()` and `limit(20)` for large datasets
+- ✅ **Index optimization**: Monitor composite indexes in console
+- ✅ **Batch writes**: Group up to 500 operations with `batch()`
+- ✅ **Denormalization**: Copy frequently-accessed data to reduce joins
+- ✅ **Lazy loading**: Load subcollections only when needed
+
+**Cost Monitoring**:
+```typescript
+// Log read/write operations for cost analysis
+logging.log(`Firestore operation - ${operation} - estimated cost: $${cost}`);
+```
+
+---
+
+### 8. Common Issues & Solutions (50 words)
 
 | Issue | Solution |
 |-------|----------|
@@ -429,7 +537,9 @@ When Firebase platform detected:
 - [x] Firestore data design & security rules
 - [x] Authentication methods & setup
 - [x] Cloud Functions patterns & storage
+- [x] Security rules advanced patterns & testing
+- [x] Performance optimization & scaling limits
 - [x] Hosting & deployment workflow
 - [x] Common issues & troubleshooting
-- [x] 1000-word target
+- [x] 1200-word target (from 1000)
 - [x] English language (policy compliant)

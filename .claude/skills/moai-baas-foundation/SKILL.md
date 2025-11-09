@@ -20,7 +20,7 @@ agents:
   - security-expert
   - frontend-expert
 freedom_level: high
-word_count: 1200
+word_count: 1400
 spec_reference: "@SPEC:BAAS-ECOSYSTEM-001"
 ```
 
@@ -193,6 +193,113 @@ Maximum control needed → Pattern D (Hybrid Premium)
 
 ---
 
+### 5. Real Project Scenarios & Pattern Selection (100 words)
+
+**Scenario 1: SaaS MVP (Early Stage Startup)**
+```
+Requirements: User auth, database, file uploads, billing
+Timeline: Launch in 4 weeks
+Budget: $0-200/month
+Team: 2 developers
+
+RECOMMENDED PATTERN: A (Full Supabase)
+├─ Supabase: Auth + DB + RLS + Storage + Realtime
+├─ Vercel: Frontend deployment
+├─ Stripe: Billing integration
+└─ Cost: ~$50/month
+```
+
+**Scenario 2: Realtime Collaboration App**
+```
+Requirements: Live sync, presence, conflict resolution
+Timeline: MVP in 8 weeks
+Budget: $100-500/month
+Team: 4 developers
+
+RECOMMENDED PATTERN: F (Convex Realtime)
+├─ Convex: TypeScript-first realtime sync + auth
+├─ Vercel: Edge deployment
+└─ Cost: ~$200/month
+```
+
+**Scenario 3: Enterprise Dashboard**
+```
+Requirements: SAML/OIDC, MFA, audit logs, complex roles
+Timeline: 12 weeks
+Budget: $1000+/month
+Team: 10+ developers
+
+RECOMMENDED PATTERN: D or H (Hybrid Premium + Auth0)
+├─ Supabase or Neon: Database with audit
+├─ Clerk or Auth0: Enterprise auth
+├─ Vercel: Frontend + Edge functions
+└─ Cost: $500-2000/month
+```
+
+**Scenario 4: Global Edge-First App**
+```
+Requirements: <100ms latency globally, AI/ML APIs
+Timeline: 6 weeks
+Budget: Low cost
+Team: 2-3 developers
+
+RECOMMENDED PATTERN: G (Cloudflare Edge-first)
+├─ Cloudflare Workers: Global edge functions
+├─ D1: Distributed database
+├─ Vercel: Static frontend
+└─ Cost: $50-300/month
+```
+
+---
+
+### 6. Platform Migration Strategy & Best Practices (100 words)
+
+**Migration Path: Pattern A → Pattern B (Supabase → Best-of-breed)**
+
+```
+Phase 1: Parallel Setup (1-2 weeks)
+├─ Set up Neon database with PostgreSQL backup
+├─ Migrate Supabase schema via pg_dump/psql
+├─ Configure Clerk for new auth system
+└─ Run data validation tests
+
+Phase 2: Gradual Migration (2-4 weeks)
+├─ Route 10% new users to Clerk + Neon
+├─ Monitor error rates & performance
+├─ Gradually increase to 50% → 100%
+└─ Keep Supabase auth as fallback
+
+Phase 3: Cleanup (1 week)
+├─ Archive old Supabase data
+├─ Remove legacy auth routes
+└─ Document new architecture
+```
+
+**Zero-downtime Migration Checklist**:
+- ✅ Database schema compatibility verified
+- ✅ Data migration tested in staging
+- ✅ Dual-write setup for consistency
+- ✅ Rollback plan documented
+- ✅ Performance baseline established
+- ✅ Team training completed
+
+**Cost-Benefit Analysis Template**:
+
+| Factor | Supabase | Neon + Clerk | Break-even |
+|--------|----------|--------------|-----------|
+| Monthly cost | $100 | $250 | ~3 months |
+| Development time | 40h | 60h | +20h investment |
+| Scaling capacity | Medium | High | 10x users |
+| Team velocity | +15% | +25% | 2x productivity |
+
+**Key Migration Decisions**:
+1. **Hot vs Cold migration**: Hot = zero downtime, Cold = downtime required
+2. **Big-bang vs Gradual**: Gradual safer for production apps
+3. **Rollback timing**: Plan for 24-48 hours post-migration rollback window
+4. **Data validation**: Mandatory checksums on critical data
+
+---
+
 ## 🎯 Usage
 
 ### Invocation from Agents
@@ -233,7 +340,9 @@ Load extension Skills (moai-baas-supabase-ext, etc.)
 
 - [x] 9-platform overview
 - [x] 8 architecture patterns (A-H)
-- [x] Decision matrix (V2)
+- [x] Decision matrix (V2) with 3-level classification
 - [x] Pain points & solutions (expanded)
-- [x] 1200-word target
+- [x] Real project scenarios (4 detailed use cases)
+- [x] Platform migration strategy (zero-downtime guide)
+- [x] 1400-word target (from 1200)
 - [x] English language (policy compliant)
