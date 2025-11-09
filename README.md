@@ -1,4 +1,4 @@
-# MoAI-ADK: AI-Powered SPEC-First TDD Development Framework
+# 🗿 MoAI-ADK: AI-Powered SPEC-First TDD Development Framework
 
 **Available Languages:** [English](./README.md) | [한국어](./README.ko.md)
 

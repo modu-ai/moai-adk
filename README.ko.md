@@ -1,4 +1,4 @@
-# MoAI-ADK: AI 기반 SPEC-First TDD 개발 프레임워크
+# 🗿 MoAI-ADK: AI 기반 SPEC-First TDD 개발 프레임워크
 
 **이용 가능한 언어:** [English](./README.md) | [한국어](./README.ko.md)
 
