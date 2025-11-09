@@ -1,5 +1,36 @@
 /* MoAI-ADK Documentation Custom Styles - UI/UX Optimized */
 
+/* Material Design Icons 폰트 정의 */
+.material-icons {
+  font-family: 'Material Icons';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 1.5rem;
+  display: inline-block;
+  line-height: 1;
+  text-transform: none;
+  letter-spacing: normal;
+  word-wrap: normal;
+  white-space: nowrap;
+  direction: ltr;
+  vertical-align: -0.25em;
+  margin-right: 0.25em;
+  /* 무채색 테마 */
+  color: var(--md-default-fg-color);
+}
+
+/* 제목 내 Material Icons 스타일 */
+h1 .material-icons,
+h2 .material-icons,
+h3 .material-icons,
+h4 .material-icons,
+h5 .material-icons,
+h6 .material-icons {
+  font-size: 1.2em;
+  vertical-align: -0.15em;
+  margin-right: 0.3em;
+}
+
 /* CRITICAL: 모든 요소에서 이탤릭체 완전 제거 - UNIVERSAL FIX */
 *,
 *::before,
@@ -261,14 +292,188 @@ i {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
 }
 
-/* 언어 선택자 스타일 개선 */
-.md-language {
+/* 언어 선택자 스타일 - 아이콘 기반 UI */
+.md-select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-right: 0.5rem;
+  z-index: 1000;
+}
+
+.md-select__inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  background-color: transparent;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  color: var(--md-default-fg-color);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.md-select__inner:hover {
+  background-color: var(--md-accent-bg-color--light);
+  border-color: var(--md-accent-fg-color);
+  color: var(--md-accent-fg-color);
+}
+
+.md-select__inner:focus {
+  outline: 2px solid var(--md-accent-fg-color);
+  outline-offset: 2px;
+}
+
+.md-select__current-icon {
+  display: inline-block;
+  font-size: 1.25rem;
+  line-height: 1;
+  vertical-align: -0.15em;
+}
+
+.md-select__arrow {
+  display: inline-block;
+  margin-left: 0.25rem;
+  vertical-align: middle;
+  transition: transform 0.2s ease;
+}
+
+/* 다크 모드 언어 선택자 */
+[data-md-color-scheme="slate"] .md-select__inner {
+  background-color: transparent;
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #F2F1ED;
+}
+
+[data-md-color-scheme="slate"] .md-select__inner:hover {
+  background-color: rgba(201, 200, 196, 0.1);
+  border-color: #C9C8C4;
+  color: #C9C8C4;
+}
+
+/* 드롭다운 리스트 */
+.md-select__list {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  min-width: 200px;
+  margin-top: 0.5rem;
+  padding: 0.5rem 0;
+  background-color: var(--md-default-bg-color);
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 6px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-0.5rem);
+  transition: all 0.2s ease;
+  list-style: none;
+}
+
+.md-select--active .md-select__list {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.md-select--active .md-select__arrow {
+  transform: rotate(180deg);
+}
+
+/* 드롭다운 아이템 */
+.md-select__item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  color: var(--md-default-fg-color);
+  text-decoration: none;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.md-select__item:hover {
   background-color: var(--md-accent-bg-color--light);
   color: var(--md-accent-fg-color);
-  padding: 0.2em 0.6em;
-  border-radius: 12px;
-  font-size: 0.8em;
-  font-weight: 500;
+}
+
+.md-select__item--active {
+  background-color: var(--md-accent-bg-color--light);
+  color: var(--md-accent-fg-color);
+  font-weight: 600;
+}
+
+.md-select__icon {
+  display: inline-block;
+  font-size: 1.25rem;
+  line-height: 1;
+  vertical-align: -0.15em;
+  min-width: 1.5rem;
+  text-align: center;
+}
+
+.md-select__label {
+  display: inline-block;
+  vertical-align: middle;
+  font-size: 0.95rem;
+}
+
+/* 다크 모드 드롭다운 */
+[data-md-color-scheme="slate"] .md-select__list {
+  background-color: #2a2a2a;
+  border-color: #444444;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+[data-md-color-scheme="slate"] .md-select__item {
+  color: #F2F1ED;
+}
+
+[data-md-color-scheme="slate"] .md-select__item:hover,
+[data-md-color-scheme="slate"] .md-select__item--active {
+  background-color: rgba(201, 200, 196, 0.1);
+  color: #C9C8C4;
+}
+
+/* 레이아웃: 헤더에 언어 선택자 통합 */
+.md-header__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* 모바일 반응형 */
+@media screen and (max-width: 76.25em) {
+  .md-select__list {
+    min-width: 160px;
+  }
+
+  .md-select__inner {
+    padding: 0.4rem 0.5rem;
+    font-size: 0.9rem;
+  }
+
+  .md-select__current-icon {
+    font-size: 1.1rem;
+  }
+
+  .md-select__item {
+    padding: 0.6rem 0.75rem;
+    font-size: 0.9rem;
+  }
+
+  .md-select__label {
+    display: none; /* Hide label on mobile, show only icon */
+  }
+
+  .md-select__item .md-select__label {
+    display: inline-block;
+  }
 }
 
 /* 테이블 스타일 개선 */
