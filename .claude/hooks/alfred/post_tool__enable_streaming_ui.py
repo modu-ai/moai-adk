@@ -6,7 +6,7 @@ Purpose: Ensure streaming indicators and progress displays are properly configur
 Execution: Runs after tool executions to verify UI settings
 
 This hook ensures that streaming display features like:
-- "✻ 확인 중...… (esc to interrupt · ctrl+t to hide todos)"
+- "✻ Checking... (esc to interrupt · ctrl+t to hide todos)"
 - Progress indicators
 - Todo visibility controls
 Are properly enabled and functioning.
