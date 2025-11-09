@@ -75,7 +75,7 @@ def process_user_data(user_list):
     return result
 ```
 
-#### ⚡ 즉시 리팩토링해야 할 상황
+#### 즉시 리팩토링해야 할 상황
 
 1. **코드 냄새(Code Smells) 발견 시**
 

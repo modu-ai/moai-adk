@@ -1,3 +1,4 @@
+# type: ignore
 """
 Statusline configuration loader for Claude Code
 

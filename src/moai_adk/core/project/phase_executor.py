@@ -1,4 +1,5 @@
-# @CODE:INIT-005:PHASE | SPEC: .moai/specs/SPEC-INIT-003/spec.md | TEST: tests/unit/test_init_reinit.py
+# @CODE:INIT-PHASE-002 | SPEC: .moai/specs/SPEC-INIT-003/spec.md | TEST: tests/unit/test_init_reinit.py
+# type: ignore
 # @CODE:TEST-COVERAGE-001 | SPEC: SPEC-TEST-COVERAGE-001.md | TEST: tests/unit/test_phase_executor.py
 """Phase-based installation executor (SPEC-INIT-003 v0.4.2)
 

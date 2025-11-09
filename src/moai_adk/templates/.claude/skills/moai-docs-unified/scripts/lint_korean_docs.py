@@ -97,7 +97,7 @@ class KoreanDocsLinter:
         for i, line in enumerate(lines, 1):
             if match := re.match(r'^(#{1,6})\s+(.+)$', line):
                 level = len(match.group(1))
-                title = match.group(2).strip()
+                _title = match.group(2).strip()
 
                 # H1 중복 확인
                 if level == 1:

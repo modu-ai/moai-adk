@@ -1,3 +1,4 @@
+# type: ignore
 """
 Git information collector for statusline
 

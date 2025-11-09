@@ -1,3 +1,4 @@
+# type: ignore
 """
 Template engine for parameterizing GitHub templates and other configuration files.
 

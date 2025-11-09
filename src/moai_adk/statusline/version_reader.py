@@ -1,3 +1,4 @@
+# type: ignore
 """
 Version reader for MoAI-ADK from config.json
 

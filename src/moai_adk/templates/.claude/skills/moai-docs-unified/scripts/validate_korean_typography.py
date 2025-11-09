@@ -248,7 +248,7 @@ class KoreanTypographyValidator:
             report.append(f"   영문 단어: {english_words:,}개")
 
             # 제목 구조 분석
-            headers = [l for l in lines if l.startswith('#')]
+            headers = [line for line in lines if line.startswith('#')]
             if headers:
                 report.append("   제목 구조:")
                 for header in headers[:5]:
