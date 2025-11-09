@@ -1,6 +1,6 @@
 # TAG Coverage Matrix
 
-Generated: 2025-11-07 20:24:40
+Generated: 2025-11-09 08:33:21
 
 | SPEC | CODE | TEST | DOC | Completion |
 |------|------|------|-----|------------|
@@ -169,7 +169,6 @@ Generated: 2025-11-07 20:24:40
 | HELLO-001 (✅) | ✅ | ✅ | ✅ | 100% |
 | HOOK-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | HOOK-AUTO-FIX-001 (❌) | ✅ | ❌ | ❌ | 25% |
-| HOOK-AUTO-SPEC-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | HOOK-AUTO-SPEC-TEST-001 (❌) | ✅ | ✅ | ❌ | 50% |
 | HOOK-BASH-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | HOOK-DIR-DETECT-001 (❌) | ✅ | ❌ | ❌ | 25% |
@@ -418,7 +417,11 @@ Generated: 2025-11-07 20:24:40
 | STATS-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | STATUS-CHANGELOG-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | STATUS-README-001 (❌) | ❌ | ❌ | ✅ | 25% |
-| STATUSLINE-CONFIG-001 (❌) | ❌ | ❌ | ✅ | 25% |
+| STATUSLINE-CONFIG-001 (❌) | ❌ | ✅ | ✅ | 50% |
+| STATUSLINE-CONFIG-002 (❌) | ❌ | ✅ | ❌ | 25% |
+| STATUSLINE-CONFIG-003 (❌) | ❌ | ✅ | ❌ | 25% |
+| STATUSLINE-CONFIG-004 (❌) | ❌ | ✅ | ❌ | 25% |
+| STATUSLINE-CONFIG-LOADER-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | STATUSLINE-ENGINE-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | STATUSLINE-EXAMPLES-001 (❌) | ❌ | ❌ | ✅ | 25% |
 | STATUSLINE-MAIN-001 (❌) | ✅ | ❌ | ❌ | 25% |
@@ -431,7 +434,6 @@ Generated: 2025-11-07 20:24:40
 | TAG-AUTO-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | TAG-AUTO-CORRECTION-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | TAG-AUTO-CORRECTOR-001 (❌) | ✅ | ❌ | ❌ | 25% |
-| TAG-AUTO-SPEC-PROPOSAL-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | TAG-DIRECTORY-DETECTION-001 (✅) | ❌ | ❌ | ❌ | 25% |
 | TAG-GENERATOR-001 (❌) | ✅ | ❌ | ❌ | 25% |
 | TAG-HOOK-WORKFLOW-001 (✅) | ❌ | ❌ | ❌ | 25% |
@@ -568,5 +570,5 @@ Generated: 2025-11-07 20:24:40
 
 ## Summary
 
-- Total SPECs: 561
+- Total SPECs: 563
 - Fully Implemented (100%): 37
