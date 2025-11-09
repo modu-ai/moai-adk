@@ -1,67 +1,72 @@
 # Skill: moai-baas-vercel-ext
 
-## 메타데이터
+## Metadata
 
 ```yaml
 skill_id: moai-baas-vercel-ext
-skill_name: Vercel 배포 및 Edge Functions
-version: 1.0.0
+skill_name: Vercel Deployment & Edge Functions (Production Best Practices)
+version: 2.0.0
 created_date: 2025-11-09
-language: korean
+updated_date: 2025-11-09
+language: english
 triggers:
-  - keywords: ["Vercel", "Edge Functions", "Next.js", "배포", "ISR", "Serverless"]
+  - keywords: ["Vercel", "Edge Functions", "Next.js", "Deployment", "ISR", "Serverless", "Production", "Performance"]
   - contexts: ["vercel-detected", "pattern-a", "pattern-b", "pattern-d"]
 agents:
   - frontend-expert
   - devops-expert
 freedom_level: high
-word_count: 600
+word_count: 1000
 context7_references:
   - url: "https://vercel.com/docs/deployments/overview"
-    topic: "배포 방식 비교"
+    topic: "Deployment Strategy Comparison"
   - url: "https://vercel.com/docs/functions/edge-functions"
-    topic: "Edge Functions 상세"
+    topic: "Edge Functions Guide"
   - url: "https://vercel.com/docs/concepts/image-optimization"
-    topic: "이미지 최적화"
+    topic: "Image Optimization"
+  - url: "https://vercel.com/docs/deployments/git"
+    topic: "Git Integration & Preview Deployments"
+  - url: "https://vercel.com/docs/concepts/functions/serverless-functions"
+    topic: "Serverless Functions"
 spec_reference: "@SPEC:BAAS-ECOSYSTEM-001"
 ```
 
 ---
 
-## 📚 내용
+## 📚 Content
 
-### 1. Vercel 배포 원리 (150 words)
+### 1. Vercel Deployment Principles (150 words)
 
-**Vercel**은 Next.js 최적화된 클라우드 배포 플랫폼입니다.
+**Vercel** is a cloud deployment platform optimized for Next.js and edge computing.
 
-**배포 프로세스**:
+**Deployment Process**:
 ```
-Git Push
+Git Push (to main/develop)
    ↓
-GitHub/GitLab 연동
+GitHub/GitLab webhook
    ↓
-Vercel: 자동 빌드
+Vercel: Auto-build
    ├─ npm install
    ├─ npm run build (Next.js)
-   └─ 최적화
+   └─ Optimization & compression
    ↓
-엣지 네트워크에 배포 (200+개 위치)
+Deploy to Edge Network (200+ locations)
    ↓
-CDN 캐싱
+CDN cache enabled
    ↓
-Live!
+Live! (preview + production)
 ```
 
-**Next.js 렌더링 방식**:
+**Next.js Rendering Strategies**:
 
-| 방식 | 빌드 시점 | 캐싱 | 사용 시기 |
-|-----|---------|------|---------|
-| **SSG** | 빌드 타임 | 영구 | 블로그, 문서 |
-| **ISR** | 백그라운드 | 시간 기반 | 준 정적 콘텐츠 |
-| **SSR** | 요청마다 | 없음 | 실시간 데이터 |
-| **CSR** | 클라이언트 | 없음 | 대시보드 |
+| Strategy | Build Time | Caching | Use Case |
+|----------|---------|---------|---------|
+| **SSG** | Build time | Permanent | Blogs, docs, landing pages |
+| **ISR** | Background | Time-based | Semi-static content |
+| **SSR** | Per request | None | Real-time data, personalized |
+| **CSR** | Client-side | None | Dashboards, interactive apps |
 
-**예제: ISR (Incremental Static Regeneration)**
+**Example: ISR (Incremental Static Regeneration)**
 ```typescript
 // pages/blog/[slug].tsx
 export async function getStaticProps({ params }) {
@@ -69,7 +74,7 @@ export async function getStaticProps({ params }) {
 
   return {
     props: { post },
-    revalidate: 60 // 60초마다 재생성
+    revalidate: 3600 // Regenerate hourly
   };
 }
 ```
@@ -78,7 +83,7 @@ export async function getStaticProps({ params }) {
 
 ### 2. Edge Functions (200 words)
 
-**Edge Functions**: 사용자에 가장 가까운 엣지에서 실행되는 Serverless 함수.
+**Edge Functions**: Serverless functions running at edge closest to users.
 
 **Serverless vs Edge**:
 
@@ -86,39 +91,39 @@ export async function getStaticProps({ params }) {
 Client Request
    ↓
 ┌─────────────────────────────────┐
-│ Edge Functions (가깝고 빠름)      │
+│ Edge Functions (Fast, Global)    │
 ├─────────────────────────────────┤
-│ - 실행 위치: 지역별 엣지 (200+곳) │
-│ - 응답 시간: < 100ms            │
-│ - 유효 기간: 15분                │
-│ - 용도: 인증, 리다이렉트, 변환    │
+│ - Location: Regional edges (200+)│
+│ - Response time: <100ms         │
+│ - Max duration: 15 minutes       │
+│ - Use: Auth, redirects, transforms
 └─────────────────────────────────┘
-   ↓ (필요 시에만)
+   ↓ (Only when needed)
 ┌─────────────────────────────────┐
-│ Serverless Functions (중앙집중)   │
+│ Serverless Functions (Central)   │
 ├─────────────────────────────────┤
-│ - 실행 위치: 중앙 데이터센터      │
-│ - 응답 시간: 100-1000ms         │
-│ - 유효 기간: 5분 (cold start)    │
-│ - 용도: DB 쿼리, 계산, API 호출  │
+│ - Location: Central datacenter   │
+│ - Response time: 100-1000ms     │
+│ - Cold start: 5 minutes         │
+│ - Use: DB queries, compute, APIs│
 └─────────────────────────────────┘
 ```
 
-**Edge Functions 예제**:
+**Edge Middleware Example**:
 
 ```typescript
-// api/middleware.ts - Supabase와 함께 사용
+// middleware.ts - Auth check at edge
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function middleware(req: NextRequest) {
-  // 1. 인증 확인 (엣지에서 고속 실행)
+  // 1. Verify token at edge (fast)
   const token = req.cookies.get('auth_token');
 
   if (!token) {
     return NextResponse.redirect(new URL('/login', req.url));
   }
 
-  // 2. 사용자 정보 조회 (선택: Supabase)
+  // 2. Optional: Fetch user from Supabase
   const res = await fetch('https://xxx.supabase.co/rest/v1/users', {
     headers: {
       'Authorization': `Bearer ${token.value}`,
@@ -138,69 +143,63 @@ export const config = {
 };
 ```
 
-**성능 최적화**:
+**When to use Edge Functions**:
 ```typescript
-// ✅ Edge Functions 사용
-- 인증 토큰 검증
-- 지역별 리다이렉트
-- A/B 테스트
-- 요청 변환
+// ✅ Perfect for Edge
+- Authentication token validation
+- Geo-based redirects
+- A/B testing logic
+- Request/response transformation
 
-// ❌ Edge Functions 사용 금지
-- 데이터베이스 쿼리 (느림)
-- 파일 업로드 처리
-- 복잡한 계산
-- Realtime 구독
-```
-
-**Supabase와 함께 사용**:
-```typescript
-// 예: Edge에서 인증 후 Supabase 쿼리
-const { data, error } = await supabase
-  .from('posts')
-  .select('*')
-  .eq('user_id', userId)
-  .limit(10);
+// ❌ Avoid on Edge
+- Database queries (latency)
+- File uploads
+- Heavy computation
+- Realtime subscriptions
 ```
 
 ---
 
 ### 3. Environment Variables (100 words)
 
-**환경 변수 관리**:
+**Environment setup**:
 
 ```bash
-# .env.local (로컬 개발)
-NEXT_PUBLIC_SUPABASE_URL=xxx
-NEXT_PUBLIC_SUPABASE_ANON_KEY=xxx
-SUPABASE_SERVICE_KEY=xxx  # 서버만
+# .env.local (local development)
+NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+SUPABASE_SERVICE_KEY=eyJ...  # Server-side only
 
-# vercel.yml (프로덕션)
-env:
-  NEXT_PUBLIC_SUPABASE_URL: @supabase_url
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: @supabase_key
-  SUPABASE_SERVICE_KEY: @supabase_service_key
+# vercel.json (production)
+{
+  "env": {
+    "NEXT_PUBLIC_SUPABASE_URL": "@supabase_url",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@supabase_key",
+    "SUPABASE_SERVICE_KEY": "@supabase_service_key"
+  }
+}
 ```
 
-**Secrets 관리**:
+**Secrets management**:
 ```bash
-# Vercel CLI로 secrets 추가
+# Via Vercel CLI
 vercel env add SUPABASE_SERVICE_KEY
 
-# 또는 대시보드
-Settings → Environment Variables → 추가
+# Or Dashboard
+Settings → Environment Variables → Add
 ```
 
-**주의사항**:
-- ✅ `NEXT_PUBLIC_` = 클라이언트에 노출 (공개 정보만)
-- ❌ 키 노출 = 즉시 재생성 필요
-- ✅ Service role key는 절대 클라이언트에 노출 금지
+**Best Practices**:
+- ✅ `NEXT_PUBLIC_` = safe for client (public data only)
+- ✅ Service keys = server-only environment
+- ❌ Never expose keys in logs
+- ✅ Rotate secrets quarterly
 
 ---
 
 ### 4. Monitoring & Analytics (150 words)
 
-**Web Vitals 추적**:
+**Web Vitals tracking**:
 
 ```typescript
 // app/layout.tsx
@@ -211,27 +210,27 @@ export default function RootLayout({ children }) {
     <html>
       <body>
         {children}
-        <Analytics /> {/* 자동 추적 */}
+        <Analytics /> {/* Auto-tracking enabled */}
       </body>
     </html>
   );
 }
 ```
 
-**추적 항목**:
-- **LCP** (Largest Contentful Paint): 콘텐츠 로드 시간 (< 2.5s)
-- **FID** (First Input Delay): 상호작용 지연 (< 100ms)
-- **CLS** (Cumulative Layout Shift): 레이아웃 이동 (< 0.1)
+**Key Metrics**:
+- **LCP** (Largest Contentful Paint): Content load time (<2.5s target)
+- **INP** (Interaction to Next Paint): Input responsiveness (<200ms target)
+- **CLS** (Cumulative Layout Shift): Visual stability (<0.1 target)
 
-**성능 최적화**:
+**Performance optimization**:
 
 ```typescript
-// 1. 동적 import (코드 분할)
+// 1. Code splitting with dynamic imports
 const HeavyComponent = dynamic(() => import('./Heavy'), {
   loading: () => <Skeleton />
 });
 
-// 2. 이미지 최적화 (자동)
+// 2. Image optimization (automatic)
 import Image from 'next/image';
 
 export default function Page() {
@@ -240,64 +239,191 @@ export default function Page() {
       src="/photo.jpg"
       width={400}
       height={300}
-      // Vercel이 자동으로 최적화:
-      // - WebP 변환
-      // - 반응형 이미지
+      priority // LCP optimization
+      // Vercel auto-optimizes:
+      // - WebP conversion
+      // - Responsive images
       // - Lazy loading
     />
   );
 }
 
-// 3. 폰트 최적화
+// 3. Font optimization
 import { Inter } from 'next/font/google';
-
 const inter = Inter({ subsets: ['latin'] });
 ```
 
-**Error Tracking**:
-- Vercel 대시보드 → Logs → Errors 확인
-- 자동 감지: 500 에러, 사용자 보고
-
-**비용 모니터링**:
-- Edge Requests: 무료 (일부)
-- Serverless Functions: 요청당 과금
-- 데이터 전송: 월별 제한
-- 빌드: 월 100회 무료
+**Error tracking & cost**:
+- Dashboard → Logs → Errors for debugging
+- Free tier: 100 builds/month, limited functions
 
 ---
 
-## 🎯 사용 방법
+### 5. Production Deployment Workflow (200 words)
 
-### Agent에서 호출
+**Branching strategy**:
 
-```python
-# frontend-expert, devops-expert에서
-Skill("moai-baas-vercel-ext")
+```bash
+# Feature development
+git checkout -b feature/new-feature
+npm run dev
 
-# Vercel 패턴 감지 시 자동 로드
+# Build locally before pushing
+npm run build
+
+# Create preview deployment
+git push origin feature/new-feature
+# Vercel auto-creates preview URL
+
+# Preview testing
+# Visit: https://project-[random].vercel.app
+
+# Merge to main for production
+git checkout main
+git merge feature/new-feature
+git push origin main
+# Auto-deploys to production
 ```
 
-### Context7 자동 로딩
+**Pre-deployment checklist**:
+```typescript
+// 1. Environment secrets set
+vercel env list
 
-Vercel 감지 시:
-- 배포 방식 비교 (SSG vs ISR vs SSR)
-- Edge Functions 상세 가이드
-- 성능 최적화 체크리스트
+// 2. Build succeeds locally
+npm run build
+
+// 3. Analytics enabled
+import { Analytics } from '@vercel/analytics/react';
+
+// 4. Error monitoring ready
+Sentry.init({ dsn: process.env.NEXT_PUBLIC_SENTRY_DSN });
+
+// 5. Database connections verified
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
+```
+
+**Monitoring post-deployment**:
+
+```bash
+# Check deployment status
+vercel deploy --prod
+
+# View real-time logs
+vercel logs
+
+# Monitor Web Vitals
+# Dashboard → Analytics → Web Vitals
+# Target: LCP <2.5s, INP <200ms, CLS <0.1
+
+# Error monitoring
+# Dashboard → Logs → Errors
+```
+
+**Rollback procedure**:
+
+```bash
+# If deployment fails, Vercel auto-rollback to previous stable
+# Or manual rollback:
+vercel rollback
+```
 
 ---
 
-## 📚 참고 자료
+### 6. Performance & Cost Optimization (200 words)
 
-- [Vercel 배포 가이드](https://vercel.com/docs/deployments/overview)
-- [Edge Functions](https://vercel.com/docs/functions/edge-functions)
-- [이미지 최적화](https://vercel.com/docs/concepts/image-optimization)
+**Performance optimization**:
+
+```typescript
+// 1. Implement incremental static regeneration
+export async function getStaticProps() {
+  return {
+    props: { /* data */ },
+    revalidate: 3600 // Regenerate hourly
+  };
+}
+
+// 2. Use Edge Functions for auth/redirects (FREE)
+// vs Serverless for DB queries (paid per invocation)
+
+// 3. Compress images automatically
+// Vercel handles: WebP, AVIF, responsive sizes
+
+// 4. Code splitting for large bundles
+const HeavyModal = dynamic(() => import('./HeavyModal'));
+
+// 5. Font optimization prevents CLS
+import { Inter } from 'next/font/google';
+const inter = Inter({ display: 'swap' });
+```
+
+**Cost optimization strategies**:
+
+| Item | Cost | Optimization |
+|------|------|------|
+| **Builds** | Free (100/month) | Merge carefully, use preview |
+| **Serverless** | $0.50/1M requests | Use Edge Functions instead |
+| **Edge** | Free (included) | Offload auth/redirects |
+| **Data** | Included in plan | Monitor with Analytics |
+
+**Monitoring costs**:
+
+```bash
+# Check usage dashboard
+vercel analytics
+
+# Review function invocations
+vercel logs --follow
+
+# Estimate monthly costs
+# Free: up to $20 value
+# Pro: $20/month for 1M serverless requests
+```
 
 ---
 
-## ✅ 검증
+## 🎯 Usage
 
-- [x] 배포 원리
-- [x] Edge Functions 심화
-- [x] Environment Variables
-- [x] Monitoring & Analytics
-- [x] 600 단어 목표
+### Agent Invocation
+
+```python
+# From frontend-expert or devops-expert
+Skill("moai-baas-vercel-ext")
+
+# Auto-loaded when Vercel patterns detected
+```
+
+### Context7 Auto-loading
+
+When Vercel detected:
+- Deployment strategy comparison (SSG vs ISR vs SSR)
+- Edge Functions detailed guide
+- Performance optimization checklist
+- Production deployment workflow
+
+---
+
+## 📚 Reference Materials
+
+- [Vercel Deployment Guide](https://vercel.com/docs/deployments/overview)
+- [Edge Functions Documentation](https://vercel.com/docs/functions/edge-functions)
+- [Image Optimization](https://vercel.com/docs/concepts/image-optimization)
+- [Git Integration & Preview](https://vercel.com/docs/deployments/git)
+- [Serverless Functions](https://vercel.com/docs/concepts/functions/serverless-functions)
+
+---
+
+## ✅ Validation Checklist
+
+- [x] Deployment principles (SSG/ISR/SSR)
+- [x] Edge Functions best practices
+- [x] Environment variable management
+- [x] Monitoring & Web Vitals analytics
+- [x] Production deployment workflow
+- [x] Performance optimization patterns
+- [x] Cost monitoring & optimization
+- [x] 1000+ word target (from 600)
+- [x] English language (policy compliant)

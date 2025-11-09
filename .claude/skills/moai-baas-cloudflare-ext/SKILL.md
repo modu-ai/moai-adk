@@ -5,18 +5,20 @@
 ```yaml
 skill_id: moai-baas-cloudflare-ext
 skill_name: Cloudflare Edge-First Architecture & Workers
-version: 1.0.0
+version: 2.0.0
 created_date: 2025-11-09
+updated_date: 2025-11-09
 language: english
 triggers:
-  - keywords: ["Cloudflare", "Workers", "D1", "Pages", "Edge", "Wrangler"]
+  - keywords: ["Cloudflare", "Workers", "D1", "Pages", "Edge", "Wrangler", "Durable Objects", "Production"]
   - contexts: ["cloudflare-detected", "pattern-g", "edge-performance"]
 agents:
   - backend-expert
   - devops-expert
   - database-expert
+  - security-expert
 freedom_level: high
-word_count: 1000
+word_count: 1200
 context7_references:
   - url: "https://developers.cloudflare.com/workers/"
     topic: "Cloudflare Workers Runtime"
@@ -440,7 +442,123 @@ export const getUser = async (
 
 ---
 
-### 6. Common Issues & Solutions (50 words)
+### 6. Advanced Features: Durable Objects & Service Bindings (120 words)
+
+**Durable Objects** provide stateful computing at the edge for coordination and caching.
+
+```typescript
+// Durable Object for rate limiting
+export class RateLimiter implements DurableObject {
+  private requests: number[] = [];
+  private limit = 100; // 100 requests per minute
+
+  async fetch(request: Request): Promise<Response> {
+    const now = Date.now();
+    this.requests = this.requests.filter(t => now - t < 60000);
+
+    if (this.requests.length >= this.limit) {
+      return new Response("Rate limit exceeded", { status: 429 });
+    }
+
+    this.requests.push(now);
+    return new Response("OK");
+  }
+}
+
+// Bind in wrangler.toml
+// [[durable_objects.bindings]]
+// name = "RATE_LIMITER"
+// class_name = "RateLimiter"
+
+// Use in Worker
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const id = env.RATE_LIMITER.idFromName("user-123");
+    const stub = env.RATE_LIMITER.get(id);
+
+    return stub.fetch(request);
+  },
+};
+```
+
+**Service Bindings** enable Workers to call other Workers securely:
+
+```typescript
+// API Worker
+export default {
+  async fetch(request: Request): Promise<Response> {
+    const data = await request.json();
+    return Response.json({ result: data.value * 2 });
+  },
+};
+
+// Main Worker calling API Worker
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const response = await env.API_WORKER.fetch(
+      new Request("https://api.example.com", {
+        method: "POST",
+        body: JSON.stringify({ value: 10 }),
+      })
+    );
+
+    return response;
+  },
+};
+```
+
+**Use Cases**:
+- ✅ Rate limiting, session management
+- ✅ Real-time collaboration (operational transforms)
+- ✅ Secure service-to-service communication
+
+---
+
+### 7. Production Deployment & Cost Optimization (100 words)
+
+**Deployment Pipeline**:
+
+```bash
+# 1. Development
+wrangler dev
+
+# 2. Staging
+wrangler deploy --env staging
+
+# 3. Production with monitoring
+wrangler deploy --env production
+
+# 4. View logs
+wrangler tail --env production --format json
+```
+
+**Cost Model** (Cloudflare Workers):
+
+| Metric | Free Tier | Paid Tier | Notes |
+|--------|-----------|-----------|-------|
+| **Requests** | 100k/day | $0.50 per 1M | Unlimited on paid |
+| **CPU time** | 10ms per request | 30s per request | Most cost-effective |
+| **KV operations** | 100k writes/day | $0.50 per 1M writes | Very generous |
+| **D1** | 25GB storage | Pay-as-you-go | SQLite replication cost |
+
+**Cost Optimization**:
+- ✅ **Cache aggressively**: Use KV for frequently accessed data (TTL-based)
+- ✅ **Batch operations**: Reduce individual KV calls
+- ✅ **Use streaming**: Avoid loading entire responses into memory
+- ✅ **Monitor usage**: Dashboard → Graphs → Worker requests
+
+**Production Monitoring**:
+```bash
+# Real-time tail with filtering
+wrangler tail --env production --format pretty | grep "error"
+
+# Metrics export for analysis
+wrangler analytics-engine get
+```
+
+---
+
+### 8. Common Issues & Solutions (50 words)
 
 | Issue | Solution |
 |-------|----------|
@@ -484,6 +602,8 @@ When Cloudflare platform detected:
 - [x] D1 database & SQL operations
 - [x] Pages deployment & Functions routing
 - [x] Performance optimization with KV cache
+- [x] Advanced features (Durable Objects, Service Bindings)
+- [x] Production deployment & cost optimization
 - [x] Common issues & troubleshooting
-- [x] 1000-word target
+- [x] 1200-word target (from 1000)
 - [x] English language (policy compliant)

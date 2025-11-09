@@ -1,44 +1,49 @@
 # Skill: moai-baas-supabase-ext
 
-## 메타데이터
+## Metadata
 
 ```yaml
 skill_id: moai-baas-supabase-ext
-skill_name: Supabase 심화 가이드 (RLS, Migrations, Realtime)
-version: 1.0.0
+skill_name: Supabase Advanced Guide (RLS, Migrations, Realtime, Production Best Practices)
+version: 2.0.0
 created_date: 2025-11-09
-language: korean
+updated_date: 2025-11-09
+language: english
 triggers:
-  - keywords: ["Supabase", "RLS", "Row Level Security", "PostgreSQL", "마이그레이션", "Realtime"]
+  - keywords: ["Supabase", "RLS", "Row Level Security", "PostgreSQL", "Migration", "Realtime", "Production", "Deployment"]
   - contexts: ["supabase-detected", "pattern-a", "pattern-d"]
 agents:
   - backend-expert
   - database-expert
   - security-expert
 freedom_level: high
-word_count: 1000
+word_count: 1300
 context7_references:
   - url: "https://supabase.com/docs/guides/database/postgres/row-level-security"
-    topic: "RLS 정책 작성"
+    topic: "RLS Policy Writing"
   - url: "https://supabase.com/docs/guides/database/migrations"
-    topic: "마이그레이션 안전성"
+    topic: "Migration Safety"
   - url: "https://supabase.com/docs/guides/realtime"
-    topic: "Realtime 구독"
+    topic: "Realtime Subscriptions"
+  - url: "https://supabase.com/docs/guides/database/connections"
+    topic: "Connection Pooling & Supavisor"
+  - url: "https://supabase.com/docs/guides/database/postgres/indexes"
+    topic: "Database Indexing Strategy"
 spec_reference: "@SPEC:BAAS-ECOSYSTEM-001"
 ```
 
 ---
 
-## 📚 내용
+## 📚 Content
 
-### 1. Supabase 아키텍처 (150 words)
+### 1. Supabase Architecture (150 words)
 
-**Supabase**는 PostgreSQL 기반의 오픈소스 Firebase 대체제입니다.
+**Supabase** is an open-source Firebase alternative built on PostgreSQL with enterprise features.
 
-**핵심 구성요소**:
+**Core Components**:
 ```
 ┌─────────────────────────────────┐
-│ Supabase                        │
+│ Supabase (PostgreSQL Platform)  │
 ├─────────────────────────────────┤
 │ 1. PostgreSQL Database          │
 │    └─ Tables, Functions, Triggers
@@ -47,38 +52,38 @@ spec_reference: "@SPEC:BAAS-ECOSYSTEM-001"
 │    └─ Email, Magic Link, OAuth  │
 │                                  │
 │ 3. Row Level Security (RLS)     │
-│    └─ Policy-based access       │
+│    └─ Policy-based access control
 │                                  │
 │ 4. Real-time Subscriptions      │
 │    └─ Broadcast, Postgres Changes
 │                                  │
 │ 5. Storage                       │
-│    └─ File buckets, CDN         │
+│    └─ File buckets with CDN     │
 │                                  │
 │ 6. Edge Functions               │
-│    └─ Serverless PostgreSQL Funcs
+│    └─ Serverless TypeScript      │
 └─────────────────────────────────┘
 ```
 
 **Edge Functions vs Database Functions**:
 
-| 기능 | Edge Functions | Database Functions |
-|-----|---|---|
-| 언어 | TypeScript/JavaScript | PL/pgSQL, Python |
-| 실행 위치 | 엣지 (고속) | 데이터베이스 내부 |
-| 사용 시기 | HTTP 요청 응답 | 데이터 변경 트리거 |
-| 성능 | 매우 빠름 | 제한적 |
+| Feature | Edge Functions | Database Functions |
+|---------|---|---|
+| Language | TypeScript/JavaScript | PL/pgSQL, Python |
+| Location | Edge (global) | Database |
+| Use Case | HTTP requests | DB triggers |
+| Performance | <50ms | Variable |
 
 ---
 
-### 2. RLS (Row Level Security) 심화 (300 words)
+### 2. RLS (Row Level Security) Advanced (300 words)
 
-**RLS란**: 사용자의 역할과 정책에 따라 행 단위로 데이터 접근을 제어하는 PostgreSQL 기능.
+**RLS Definition**: PostgreSQL feature that controls row-level access based on user roles and policies.
 
-**기본 개념**:
+**Core Concept**:
 ```sql
--- Example: users 테이블
--- Rule: 자기 자신의 데이터만 조회 가능
+-- Example: users table
+-- Rule: Users can only see their own data
 
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 
@@ -92,16 +97,16 @@ USING (auth.uid() = id)
 WITH CHECK (auth.uid() = id);
 ```
 
-**Policy 작성 패턴**:
+**Policy Writing Patterns**:
 
-**Pattern 1: 자신의 데이터만 (Most Common)**
+**Pattern 1: Self-only access (Most Common)**
 ```sql
 CREATE POLICY "Self access"
 ON profiles FOR ALL
 USING (auth.uid() = user_id);
 ```
 
-**Pattern 2: 역할 기반 (Role-based)**
+**Pattern 2: Role-based access**
 ```sql
 CREATE POLICY "Admin or owner can delete"
 ON posts FOR DELETE
@@ -111,7 +116,7 @@ USING (
 );
 ```
 
-**Pattern 3: 공유 데이터 (Shared)**
+**Pattern 3: Shared data with others**
 ```sql
 CREATE POLICY "Shared with me"
 ON documents FOR SELECT
@@ -121,29 +126,29 @@ USING (
 );
 ```
 
-**500 에러 디버깅**:
+**Debugging RLS 500 Errors**:
 
 ```
-현상: "new row violates row-level security policy"
-원인: 쓰기 작업 후 SELECT 정책 확인 부족
+Issue: "new row violates row-level security policy"
+Cause: Missing SELECT policy after INSERT
 
-해결:
-1. Supabase 대시보드 → SQL Editor
-2. 로그 확인: SELECT * FROM auth.logs
-3. Policy 검증:
+Solution:
+1. Supabase Dashboard → SQL Editor
+2. Check logs: SELECT * FROM auth.logs
+3. Validate policies:
    SELECT * FROM pg_policies WHERE schemaname='public';
 ```
 
-**Policy 테스트 (pgTAP)**:
+**Testing Policies with pgTAP**:
 
 ```sql
--- pgTAP을 사용한 정책 검증
+-- Policy validation with pgTAP
 CREATE OR REPLACE FUNCTION test_rls()
 RETURNS void AS $$
 DECLARE
   user_id uuid := 'xxx';
 BEGIN
-  -- User는 자신의 데이터만 보임
+  -- Verify user only sees own data
   ASSERT (
     SELECT COUNT(*) FROM profiles
     WHERE user_id = auth.uid()
@@ -152,25 +157,25 @@ END;
 $$ LANGUAGE plpgsql;
 ```
 
-**보안 Best Practices**:
-- ✅ 모든 테이블에 RLS 활성화
-- ✅ 각 테이블마다 SELECT, INSERT, UPDATE, DELETE 정책 정의
-- ✅ auth.uid()를 항상 포함 (인증 확인)
-- ✅ JWT claims 검증 (`auth.jwt()->>'role'`)
-- ❌ 서비스 역할(Service Role) 토큰 노출 금지
+**RLS Security Best Practices**:
+- ✅ Enable RLS on all tables
+- ✅ Define SELECT, INSERT, UPDATE, DELETE policies per table
+- ✅ Always include auth.uid() checks
+- ✅ Validate JWT claims (`auth.jwt()->>'role'`)
+- ❌ Never expose Service Role tokens
 
 ---
 
 ### 3. Database Functions (200 words)
 
-**Database Functions**: PostgreSQL 함수를 RPC(Remote Procedure Call)로 노출.
+**Database Functions**: Expose PostgreSQL functions as RPC (Remote Procedure Call) endpoints.
 
-**사용 시나리오**:
-- 복잡한 비즈니스 로직
-- 원자성 보장 필요
-- 다중 테이블 변경
+**Use Cases**:
+- Complex business logic
+- Atomic operations
+- Multi-table updates
 
-**예제: 트윗 생성 (좋아요 카운트 업데이트)**
+**Example: Create tweet with counter increment**
 
 ```sql
 CREATE OR REPLACE FUNCTION create_tweet(
@@ -181,12 +186,12 @@ RETURNS tweets AS $$
 DECLARE
   v_tweet tweets;
 BEGIN
-  -- 트윗 삽입
+  -- Insert tweet
   INSERT INTO tweets (content, user_id, created_at)
   VALUES (p_content, p_user_id, NOW())
   RETURNING * INTO v_tweet;
 
-  -- 사용자의 트윗 카운트 증가 (한 번의 트랜잭션)
+  -- Increment user tweet count (single transaction)
   UPDATE users
   SET tweet_count = tweet_count + 1
   WHERE id = p_user_id;
@@ -196,7 +201,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 ```
 
-**클라이언트에서 호출**:
+**Client invocation**:
 ```typescript
 const { data, error } = await supabase.rpc('create_tweet', {
   p_content: 'Hello World',
@@ -204,13 +209,13 @@ const { data, error } = await supabase.rpc('create_tweet', {
 });
 ```
 
-**Triggers**: 자동 실행되는 함수
+**Triggers**: Automated function execution
 
 ```sql
 CREATE OR REPLACE FUNCTION update_user_stats()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- 새로운 트윗이 생성될 때마다
+  -- Increment count on every new tweet
   UPDATE users
   SET tweet_count = tweet_count + 1
   WHERE id = NEW.user_id;
@@ -229,15 +234,15 @@ EXECUTE FUNCTION update_user_stats();
 
 ### 4. Migrations (200 words)
 
-**마이그레이션**: 데이터베이스 스키마의 버전 관리.
+**Migrations**: Database schema versioning and tracking.
 
-**전략 1: Migration-first (추천)**
+**Strategy 1: Migration-first (Recommended)**
 
 ```bash
-# 1. 마이그레이션 생성
+# 1. Create migration
 supabase migration new add_user_table
 
-# 2. SQL 작성
+# 2. Write SQL
 cat supabase/migrations/20250101120000_add_user_table.sql
 CREATE TABLE users (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -245,42 +250,42 @@ CREATE TABLE users (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-# 3. 로컬에서 테스트
+# 3. Test locally
 supabase db reset
 
-# 4. 프로덕션에 배포
+# 4. Deploy to production
 supabase db push
 ```
 
-**전략 2: Dashboard-first (피해야 함)**
+**Strategy 2: Dashboard-first (Avoid)**
 
 ```
-Supabase 대시보드에서 직접 테이블 생성
-→ 마이그레이션 파일이 없음
-→ 다른 개발자와 동기화 불가
-→ 프로덕션 배포 불가능
+Creating tables directly in Supabase Dashboard
+→ No migration files
+→ Can't sync with team
+→ Can't deploy to production
 ```
 
-**안전한 마이그레이션**:
+**Safe migration patterns**:
 
 ```sql
--- ❌ 위험: 데이터 손실 가능
+-- ❌ Risky: Data loss possible
 ALTER TABLE users DROP COLUMN email;
 
--- ✅ 안전: 단계적 변경
--- Step 1: 새 컬럼 추가
+-- ✅ Safe: Step-by-step changes
+-- Step 1: Add new column
 ALTER TABLE users ADD COLUMN email_new TEXT;
 
--- Step 2: 데이터 마이그레이션
+-- Step 2: Migrate data
 UPDATE users SET email_new = email;
 
--- Step 3: 기존 컬럼 제거 (다음 배포)
+-- Step 3: Remove old column (next deploy)
 ALTER TABLE users DROP COLUMN email;
 ```
 
-**Rollback 전략**:
-```sql
--- 이전 마이그레이션으로 되돌리기
+**Rollback strategy**:
+```bash
+# Rollback to previous migration
 supabase db push --version 20250101110000
 ```
 
@@ -288,26 +293,26 @@ supabase db push --version 20250101110000
 
 ### 5. Realtime (100 words)
 
-**Realtime**: WebSocket을 통한 실시간 데이터 동기화.
+**Realtime**: WebSocket-based real-time data synchronization.
 
-**두 가지 모드**:
+**Two modes**:
 
-**Mode 1: Broadcast** (메시지 전송)
+**Mode 1: Broadcast** (Message passing)
 ```typescript
-// 사용자 1: 메시지 브로드캐스트
+// User 1: Broadcast message
 supabase.realtime.channel('game').send({
   type: 'broadcast',
   event: 'player_moved',
   payload: { x: 100, y: 200 }
 });
 
-// 사용자 2: 메시지 수신
+// User 2: Receive message
 channel.on('broadcast', { event: 'player_moved' }, (payload) => {
   console.log('Player moved:', payload);
 });
 ```
 
-**Mode 2: Postgres Changes** (DB 변경 감지)
+**Mode 2: Postgres Changes** (DB change detection)
 ```typescript
 supabase
   .channel('public:messages')
@@ -321,54 +326,160 @@ supabase
   .subscribe();
 ```
 
-**성능**: 1000+ 동시 연결 지원, RLS 자동 적용.
+**Performance**: 1000+ concurrent connections, RLS automatically enforced.
 
 ---
 
-### 6. Common Issues & Solutions (50 words)
+### 6. Production Best Practices (300 words)
 
-| 문제 | 원인 | 해결 |
-|-----|------|-----|
-| Auth 토큰 만료 | 1시간 유효기간 | Refresh token 사용 |
-| RLS 500 에러 | 정책 누락 | `INSERT INTO` 후 `SELECT` 정책 확인 |
-| 느린 쿼리 | 인덱스 미생성 | `CREATE INDEX` 추가 |
-| Realtime 연결 안됨 | Replication 비활성화 | 대시보드에서 활성화 |
+**Connection Pooling with Supavisor**:
 
----
+Production deployments must use Supavisor for connection management:
 
-## 🎯 사용 방법
+```typescript
+// Supabase connection string with Supavisor
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY,
+  {
+    db: {
+      schema: 'public',
+    }
+  }
+);
 
-### Agent에서 호출
-
-```python
-# database-expert, security-expert에서
-Skill("moai-baas-supabase-ext")
-
-# Supabase 패턴 감지 시 자동 로드
+// Connection pooling settings (from Dashboard → Database → Connection Pooling)
+// Min pool: 5, Max pool: 20, Timeout: 3s
 ```
 
-### Context7 자동 로딩
+**Database Indexing Strategy**:
 
-Supabase 감지 시 다음 문서 자동 로드:
-- RLS 정책 작성 가이드
-- 마이그레이션 베스트 프랙티스
-- Realtime 구독 방법
+Smart indexing prevents slow queries and reduces costs:
+
+```sql
+-- 1. Identify slow queries using Supabase Logs
+-- Dashboard → Logs → Database → Sort by duration
+
+-- 2. Create composite indexes for common filters
+CREATE INDEX idx_posts_user_created ON posts(user_id, created_at DESC);
+
+-- 3. Use EXPLAIN QUERY PLAN to verify
+EXPLAIN QUERY PLAN
+SELECT * FROM posts WHERE user_id = $1 ORDER BY created_at DESC;
+
+-- 4. Monitor index bloat
+SELECT schemaname, tablename, indexname, idx_scan, idx_tup_read, idx_tup_fetch
+FROM pg_stat_user_indexes
+ORDER BY idx_scan DESC;
+```
+
+**RLS Performance Optimization**:
+
+RLS policies can slow queries if poorly written:
+
+```sql
+-- ❌ Slow: Subquery in USING clause
+CREATE POLICY "slow_policy" ON posts FOR SELECT
+USING (user_id IN (SELECT id FROM users WHERE status = 'active'));
+
+-- ✅ Fast: Direct column comparison
+CREATE POLICY "fast_policy" ON posts FOR SELECT
+USING (user_id = auth.uid() AND auth.jwt()->>'status' = 'active');
+```
+
+**Monitoring with Supabase Logs**:
+
+```typescript
+// Check database performance metrics
+// Dashboard → Logs → Database
+// - Query execution time
+// - Connection usage
+// - Replication lag
+```
+
+**Backup Strategy**:
+
+```bash
+# Automatic daily backups (included in paid plans)
+# Dashboard → Database → Backups
+
+# Manual backup for critical data
+pg_dump --dbname=$DATABASE_URL > backup.sql
+
+# Restore
+psql --dbname=$DATABASE_URL < backup.sql
+```
 
 ---
 
-## 📚 참고 자료
+### 7. Security & Cost Optimization (100 words)
 
-- [Supabase RLS 공식 문서](https://supabase.com/docs/guides/database/postgres/row-level-security)
-- [마이그레이션 가이드](https://supabase.com/docs/guides/database/migrations)
-- [Realtime](https://supabase.com/docs/guides/realtime)
+**Cost Reduction**:
+
+```sql
+-- Monthly cost depends on:
+-- 1. Database size (included 0-500MB free)
+-- 2. Egress bandwidth
+-- 3. Realtime connections
+
+-- Monitor costs:
+-- Dashboard → Database → Usage → Database size
+-- Kill idle connections to reduce bandwidth
+SELECT pid, now() - query_start AS duration, query
+FROM pg_stat_activity
+WHERE state = 'idle' AND query_start < now() - INTERVAL '15 minutes';
+```
+
+**Service Role Key Security**:
+
+- ✅ Store in `.env` (never in code)
+- ✅ Rotate quarterly
+- ❌ Never expose in browser code
+- ❌ Never share via email or logs
 
 ---
 
-## ✅ 검증
+## 🎯 Usage
 
-- [x] 아키텍처 설명
-- [x] RLS 심화 가이드
-- [x] Database Functions
-- [x] Migrations
-- [x] Realtime
-- [x] 1000 단어 목표
+### Agent Invocation
+
+```python
+# From backend-expert or database-expert
+Skill("moai-baas-supabase-ext")
+
+# Auto-loaded when Supabase patterns detected
+```
+
+### Context7 Auto-loading
+
+When Supabase detected, these docs auto-loaded:
+- RLS policy writing guide
+- Migration best practices
+- Realtime subscriptions
+- Connection pooling
+- Database indexing strategy
+
+---
+
+## 📚 Reference Materials
+
+- [Supabase RLS Documentation](https://supabase.com/docs/guides/database/postgres/row-level-security)
+- [Migration Guide](https://supabase.com/docs/guides/database/migrations)
+- [Realtime Documentation](https://supabase.com/docs/guides/realtime)
+- [Connection Pooling Guide](https://supabase.com/docs/guides/database/connections)
+- [Database Indexing](https://supabase.com/docs/guides/database/postgres/indexes)
+
+---
+
+## ✅ Validation Checklist
+
+- [x] Supabase architecture overview
+- [x] RLS advanced patterns
+- [x] Database functions & triggers
+- [x] Safe migrations & rollback
+- [x] Realtime subscriptions
+- [x] Production best practices (connection pooling, indexing, RLS optimization)
+- [x] Backup strategy & monitoring
+- [x] Security & cost optimization
+- [x] 1300+ word target (from 1000)
+- [x] English language (policy compliant)
