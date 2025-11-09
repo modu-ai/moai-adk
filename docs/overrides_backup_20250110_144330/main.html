@@ -1,0 +1,1008 @@
+{% extends "base.html" %}
+
+
+{% block extrahead %}
+  <!-- Font Loading Strategy for Multilingual Support -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <!-- Material Icons -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+  <!-- Pretendard for Korean -->
+  <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard-dynamic-subset.css" rel="stylesheet">
+
+  <!-- Google Fonts for multilingual support -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Hack monospace font for code blocks -->
+  <link href="https://fonts.googleapis.com/css2?family=Hack:wght@400;700&display=swap" rel="stylesheet">
+
+  <!-- SEO & Open Graph Meta Tags -->
+  {% set title = config.site_name %}
+  {% if page and page.title and not page.is_homepage %}
+    {% set title = page.title ~ " - " ~ config.site_name %}
+  {% endif %}
+
+  {% set description = config.site_description %}
+  {% if page and page.meta and page.meta.description %}
+    {% set description = page.meta.description %}
+  {% endif %}
+
+  <meta name="description" content="{{ description }}">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="{{ title }}">
+  <meta property="og:description" content="{{ description }}">
+  <meta property="og:url" content="{{ page.canonical_url }}">
+  <meta property="og:image" content="{{ config.site_url }}assets/images/og-image.png">
+  <meta property="og:site_name" content="{{ config.site_name }}">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ title }}">
+  <meta name="twitter:description" content="{{ description }}">
+  <meta name="twitter:image" content="{{ config.site_url }}assets/images/og-image.png">
+
+  <!-- Canonical URL -->
+  <link rel="canonical" href="{{ page.canonical_url }}">
+
+  <!-- Theme Color -->
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: dark)">
+
+  <!-- Structured Data (JSON-LD) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "{{ config.site_name }}",
+    "description": "{{ config.site_description }}",
+    "url": "{{ config.site_url }}",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": {
+        "@type": "EntryPoint",
+        "urlTemplate": "{{ config.site_url }}?q={search_term}"
+      }
+    }
+  }
+  </script>
+
+  <style>
+
+    /* Unified Color Palette - Material Design Light & Dark Theme */
+
+    /* LIGHT THEME - Root variables */
+    :root {
+      /* Primary colors - light theme */
+      --md-primary-fg-color: #000000;           /* Black text */
+      --md-primary-fg-color--light: #333333;     /* Dark gray variant */
+      --md-primary-fg-color--dark: #000000;      /* Pure black */
+      --md-primary-bg-color: #FFFFFF;           /* White background */
+      --md-primary-bg-color--light: #F5F5F5;     /* Very light gray */
+
+      /* Accent colors - light theme */
+      --md-accent-fg-color: #666666;            /* Medium gray */
+      --md-accent-fg-color--transparent: rgba(102, 102, 102, 0.1);
+
+      /* Background colors - light theme */
+      --md-bg-color: #FFFFFF;                   /* Main white background */
+      --md-bg-color--light: #F9F9F9;             /* Almost white */
+      --md-bg-color--dark: #F0F0F0;              /* Light gray */
+
+      /* Surface colors - light theme */
+      --md-surface-color: #F5F5F5;               /* Light gray surface */
+      --md-surface-color--light: #FBFBFB;        /* Almost white surface */
+      --md-surface-color--dark: #F0F0F0;         /* Muted gray surface */
+
+      /* Text colors - light theme */
+      --md-text-color: #000000;                  /* Pure black text */
+      --md-text-color--secondary: #666666;       /* Medium gray text */
+      --md-text-color--disabled: #AAAAAA;        /* Disabled text gray */
+
+      /* Border colors - light theme */
+      --md-border-color: #DDDDDD;                /* Light gray border */
+      --md-border-color--light: #EEEEEE;         /* Very light gray border */
+      --md-border-color--dark: #CCCCCC;          /* Medium gray border */
+
+      /* Code block colors - light theme */
+      --md-code-bg-color: #F0F0F0;               /* Light gray code background */
+      --md-code-fg-color: #000000;               /* Black code text */
+      --md-code-border-color: #DDDDDD;           /* Light gray code border */
+
+      /* Font variables */
+      --font-ko-text: 'Pretendard', 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+      --font-en-text: 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+
+      /* Transitions and shadows */
+      --transition-normal: 250ms ease-in-out;
+
+      --transition-slow: 350ms ease-in-out;
+
+      /* Shadows with light theme */
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    /* DARK THEME - Override all variables for dark mode */
+    [data-md-color-scheme="slate"] {
+      /* Primary colors - dark theme */
+      --md-primary-fg-color: #FFFFFF;           /* White text */
+      --md-primary-fg-color--light: #EEEEEE;     /* Light gray variant */
+      --md-primary-fg-color--dark: #FFFFFF;      /* Pure white */
+      --md-primary-bg-color: #121212;           /* Dark background */
+      --md-primary-bg-color--light: #1E1E1E;     /* Lighter dark background */
+
+      /* Accent colors - dark theme */
+      --md-accent-fg-color: #BBBBBB;            /* Light gray accent */
+      --md-accent-fg-color--transparent: rgba(187, 187, 187, 0.1);
+
+      /* Background colors - dark theme */
+      --md-bg-color: #121212;                   /* Main dark background */
+      --md-bg-color--light: #1E1E1E;             /* Slightly lighter dark */
+      --md-bg-color--dark: #0A0A0A;              /* Darker background */
+
+      /* Surface colors - dark theme */
+      --md-surface-color: #1E1E1E;               /* Dark surface */
+      --md-surface-color--light: #2A2A2A;        /* Lighter dark surface */
+      --md-surface-color--dark: #0A0A0A;         /* Darker surface */
+
+      /* Text colors - dark theme */
+      --md-text-color: #FFFFFF;                  /* White text */
+      --md-text-color--secondary: #BBBBBB;       /* Light gray text */
+      --md-text-color--disabled: #777777;        /* Disabled text gray */
+
+      /* Border colors - dark theme */
+      --md-border-color: #333333;                /* Dark gray border */
+      --md-border-color--light: #444444;         /* Lighter dark border */
+      --md-border-color--dark: #222222;          /* Darker border */
+
+      /* Code block colors - dark theme */
+      --md-code-bg-color: #1E1E1E;               /* Dark gray code background */
+      --md-code-fg-color: #FFFFFF;               /* White code text */
+      --md-code-border-color: #333333;           /* Dark code border */
+
+
+      /* Shadows with dark theme */
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Dark theme overrides - body and main content */
+    [data-md-color-scheme="slate"] body,
+    [data-md-color-scheme="slate"] .md-typeset,
+    [data-md-color-scheme="slate"] .md-content,
+    [data-md-color-scheme="slate"] .md-main__inner {
+      background-color: var(--md-bg-color) !important;
+      color: var(--md-text-color) !important;
+    }
+
+    [data-md-color-scheme="slate"] .md-header {
+      background-color: var(--md-surface-color) !important;
+      color: var(--md-text-color) !important;
+      border-bottom: 1px solid var(--md-border-color) !important;
+    }
+
+    [data-md-color-scheme="slate"] .md-nav {
+      background-color: var(--md-surface-color) !important;
+      color: var(--md-text-color) !important;
+    }
+
+    [data-md-color-scheme="slate"] .md-nav__item {
+      color: var(--md-text-color--secondary) !important;
+    }
+
+    [data-md-color-scheme="slate"] .md-nav__item--active {
+      color: var(--md-text-color) !important;
+      font-weight: 600 !important;
+    }
+
+
+    /* Font loading optimization - prevent FOUT/FOIT */
+    .md-typeset {
+      font-display: swap;
+    }
+
+    /* Material Icons styling for theme consistency */
+    .material-icons {
+      font-family: 'Material Icons' !important;
+      font-weight: normal;
+      font-style: normal;
+      font-size: 24px;
+      line-height: 1;
+      letter-spacing: normal;
+      text-transform: none;
+      display: inline-block;
+      white-space: nowrap;
+      word-wrap: normal;
+      direction: ltr;
+      -webkit-font-feature-settings: 'liga';
+      -webkit-font-smoothing: antialiased;
+      vertical-align: middle;
+      color: var(--md-text-color) !important;
+    }
+
+    /* Dark theme Material Icons */
+    [data-md-color-scheme="slate"] .material-icons {
+      color: var(--md-text-color) !important;
+    }
+
+    /* Base element styling - Light theme by default */
+    html body,
+    body.md-base {
+      font-family: var(--font-ko-text), system-ui, -apple-system, sans-serif !important;
+      background-color: var(--md-bg-color) !important;
+      color: var(--md-text-color) !important;
+      transition: background-color var(--transition-normal), color var(--transition-normal);
+    }
+
+    /* CRITICAL: Remove all italic styles */
+    *,
+    *::before,
+    *::after,
+    html,
+    html *,
+    body,
+    body *,
+    .md-content,
+    .md-content *,
+    .md-typeset,
+    .md-typeset *,
+    .md-main__inner,
+    .md-main__inner * {
+      font-style: normal !important;
+    }
+
+    /* Light theme - body and main content */
+    [data-md-color-scheme="default"] body,
+    [data-md-color-scheme="default"] .md-typeset,
+    [data-md-color-scheme="default"] .md-content,
+    [data-md-color-scheme="default"] .md-main__inner {
+      background-color: var(--md-bg-color) !important;
+      color: var(--md-text-color) !important;
+    }
+
+    [data-md-color-scheme="default"] .md-header {
+      background-color: var(--md-surface-color) !important;
+      color: var(--md-text-color) !important;
+      border-bottom: 1px solid var(--md-border-color) !important;
+    }
+
+    [data-md-color-scheme="default"] .md-header a,
+    [data-md-color-scheme="default"] .md-header__title,
+    [data-md-color-scheme="default"] .md-header__inner a {
+      color: var(--md-text-color) !important;
+      font-weight: 700 !important;
+      text-decoration: none !important;
+    }
+
+    [data-md-color-scheme="default"] .md-nav,
+    [data-md-color-scheme="default"] .md-nav--primary {
+      background-color: var(--md-surface-color) !important;
+      color: var(--md-text-color) !important;
+    }
+
+    [data-md-color-scheme="default"] .md-nav__item,
+    [data-md-color-scheme="default"] .md-nav__link {
+      color: var(--md-text-color--secondary) !important;
+    }
+
+    [data-md-color-scheme="default"] .md-nav__item--active,
+    [data-md-color-scheme="default"] .md-nav__link--active {
+      color: var(--md-text-color) !important;
+      font-weight: 600 !important;
+    }
+
+    [data-md-color-scheme="default"] .md-sidebar,
+    [data-md-color-scheme="default"] .md-sidebar--secondary {
+      background-color: var(--md-surface-color) !important;
+    }
+
+    [data-md-color-scheme="default"] .md-tabs {
+      background-color: var(--md-surface-color) !important;
+      color: var(--md-text-color) !important;
+    }
+
+    [data-md-color-scheme="default"] .md-footer {
+      background-color: var(--md-surface-color--dark) !important;
+      color: var(--md-text-color--secondary) !important;
+      border-top: 1px solid var(--md-border-color) !important;
+    }
+
+    [data-md-color-scheme="default"] .md-search__input {
+      background-color: var(--md-surface-color) !important;
+      color: var(--md-text-color) !important;
+      border: 1px solid var(--md-border-color) !important;
+    }
+
+    [data-md-color-scheme="default"] .md-button {
+      background-color: var(--md-text-color) !important;
+      color: var(--md-bg-color) !important;
+    }
+
+    [data-md-color-scheme="default"] .md-typeset a {
+      color: var(--md-text-color) !important;
+    }
+
+    /* Dark theme overrides */
+    [data-md-color-scheme="slate"] .md-header a,
+    [data-md-color-scheme="slate"] .md-header__title,
+    [data-md-color-scheme="slate"] .md-header__inner a {
+      color: var(--md-text-color) !important;
+      font-weight: 700 !important;
+      text-decoration: none !important;
+    }
+
+    [data-md-color-scheme="slate"] .md-nav--primary {
+      background-color: var(--md-surface-color) !important;
+    }
+
+    [data-md-color-scheme="slate"] .md-sidebar,
+    [data-md-color-scheme="slate"] .md-sidebar--secondary {
+      background-color: var(--md-surface-color) !important;
+    }
+
+    [data-md-color-scheme="slate"] .md-tabs {
+      background-color: var(--md-surface-color) !important;
+      color: var(--md-text-color) !important;
+    }
+
+    [data-md-color-scheme="slate"] .md-footer {
+      background-color: var(--md-surface-color--dark) !important;
+      color: var(--md-text-color--secondary) !important;
+      border-top: 1px solid var(--md-border-color) !important;
+    }
+
+    [data-md-color-scheme="slate"] .md-search__input {
+      background-color: var(--md-surface-color) !important;
+      color: var(--md-text-color) !important;
+      border: 1px solid var(--md-border-color) !important;
+    }
+
+    [data-md-color-scheme="slate"] .md-button {
+      background-color: var(--md-text-color) !important;
+      color: var(--md-bg-color) !important;
+    }
+
+    [data-md-color-scheme="slate"] .md-typeset a {
+      color: var(--md-text-color) !important;
+    }
+
+    /* Language-specific font adjustments */
+    html[lang="ko"] .md-typeset {
+      font-family: var(--font-ko-text) !important;
+    }
+
+    /* Language-specific fonts */
+    html[lang="en"] .md-typeset {
+      font-family: var(--font-en-text) !important;
+    }
+
+
+    /* Code blocks - monospace for all languages */
+    .md-typeset code,
+    .md-typeset pre {
+      font-family: 'Hack', 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
+      font-feature-settings: 'liga' 0;
+      font-variant-ligatures: none;
+      background-color: var(--md-code-bg-color);
+      color: var(--md-code-fg-color);
+      border: 1px solid var(--md-code-border-color);
+      border-radius: 6px;
+      transition: background-color var(--transition-normal), color var(--transition-normal), border-color var(--transition-normal);
+    }
+
+    /* Code block padding - Strong selectors for override */
+    div.highlight {
+      padding: 1.2em 1.5em !important;
+      margin: 1.5em 0.5em !important;
+      background-color: var(--md-default-bg-color) !important;
+    }
+
+    div.highlight pre {
+      margin: 0 !important;
+      padding: 0 !important;
+      background-color: transparent !important;
+    }
+
+    div.highlight code {
+      background-color: transparent !important;
+      padding: 0 !important;
+    }
+
+    /* Language-specific code blocks */
+    .language-bash, .language-python, .language-javascript, .language-typescript,
+    .language-java, .language-csharp, .language-php, .language-ruby, .language-go,
+    .language-rust, .language-kotlin, .language-swift, .language-sql, .language-html,
+    .language-css, .language-yaml, .language-json, .language-xml, .language-markdown,
+    .language-shell, .language-zsh, .language-text {
+      padding: 1.2em 1.5em !important;
+      margin: 1.5em 0.5em !important;
+    }
+
+    /* Ensure no padding bleeding */
+    .highlight > pre {
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+
+    .md-typeset code {
+      padding: 0.2em 0.4em;
+      font-size: 0.85em;
+    }
+
+    .md-typeset pre {
+      padding: 1em;
+      overflow-x: auto;
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Headings - optimized for readability */
+    .md-typeset h1,
+    .md-typeset h2,
+    .md-typeset h3,
+    .md-typeset h4,
+    .md-typeset h5,
+    .md-typeset h6 {
+      font-weight: 700 !important;
+      letter-spacing: -0.025em;
+      line-height: 1.25;
+      color: var(--md-text-color);
+      transition: color var(--transition-normal);
+    }
+
+    /* Korean typography improvements - reduce letter spacing for better readability */
+    html[lang="ko"] .md-typeset {
+      letter-spacing: -0.5px !important;
+      font-style: normal !important; /* Ensure no italic styling */
+    }
+
+    html[lang="ko"] .md-typeset p,
+    html[lang="ko"] .md-typeset li,
+    html[lang="ko"] .md-typeset span,
+    html[lang="ko"] .md-typeset div {
+      letter-spacing: -0.5px !important;
+      font-style: normal !important; /* Ensure no italic styling */
+    }
+
+    html[lang="ko"] .md-typeset h1,
+    html[lang="ko"] .md-typeset h2,
+    html[lang="ko"] .md-typeset h3,
+    html[lang="ko"] .md-typeset h4,
+    html[lang="ko"] .md-typeset h5,
+    html[lang="ko"] .md-typeset h6 {
+      font-weight: 700 !important;
+      letter-spacing: -2px !important;
+    }
+
+    html[lang="ko"] .md-typeset code,
+    html[lang="ko"] .md-typeset pre {
+      letter-spacing: normal !important; /* Keep normal spacing for code */
+    }
+
+    /* Links */
+    .md-typeset a {
+      color: var(--md-text-color);
+      text-decoration: none;
+      transition: color var(--transition-fast), text-decoration var(--transition-fast);
+    }
+
+    .md-typeset a:hover {
+      color: var(--md-text-color--secondary);
+      text-decoration: underline;
+    }
+
+    /* Text selection */
+    ::selection {
+      background-color: var(--md-surface-color);
+      color: var(--md-text-color);
+    }
+
+    /* Tables */
+    .md-typeset table {
+      border: 1px solid var(--md-border-color);
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+      transition: border-color var(--transition-normal), box-shadow var(--transition-normal);
+    }
+
+    .md-typeset table th {
+      background-color: var(--md-surface-color--dark);
+      color: var(--md-text-color);
+      font-weight: 600;
+      border-bottom: 2px solid var(--md-border-color);
+      transition: background-color var(--transition-normal), color var(--transition-normal);
+    }
+
+    .md-typeset table td {
+      border-bottom: 1px solid var(--md-border-color);
+      color: var(--md-text-color);
+      transition: border-color var(--transition-normal), color var(--transition-normal);
+    }
+
+    .md-typeset table tr:hover {
+      background-color: var(--md-surface-color);
+      transition: background-color var(--transition-fast);
+    }
+
+    /* Blockquotes */
+    .md-typeset blockquote {
+      border-left: 4px solid var(--md-border-color);
+      background-color: var(--md-surface-color);
+      color: var(--md-text-color--secondary);
+      padding: 1em 1.5em;
+      margin: 1em 0;
+      border-radius: 0 6px 6px 0;
+      box-shadow: var(--shadow-sm);
+      transition: background-color var(--transition-normal), color var(--transition-normal), border-color var(--transition-normal);
+    }
+
+    /* Admonitions (callouts) */
+    .md-typeset .admonition {
+      border: 1px solid var(--md-border-color);
+      border-left: 4px solid var(--md-border-color);
+      background-color: var(--md-surface-color);
+      color: var(--md-text-color);
+      border-radius: 6px;
+      box-shadow: var(--shadow-sm);
+      transition: background-color var(--transition-normal), color var(--transition-normal), border-color var(--transition-normal);
+    }
+
+    .md-typeset .admonition-title {
+      color: var(--md-text-color);
+      font-weight: 600;
+      border-bottom: 1px solid var(--md-border-color);
+      transition: color var(--transition-normal), border-color var(--transition-normal);
+    }
+
+    /* Specific admonition types */
+    .md-typeset .admonition.note {
+      border-left-color: var(--md-border-color);
+    }
+
+    .md-typeset .admonition.note .admonition-title {
+      color: var(--md-text-color--secondary);
+    }
+
+    .md-typeset .admonition.tip {
+      border-left-color: var(--accent-primary);
+    }
+
+    .md-typeset .admonition.warning {
+      border-left-color: #d97706; /* Warm orange for warnings */
+    }
+
+    .md-typeset .admonition.danger {
+      border-left-color: #dc2626; /* Red for danger */
+    }
+
+    /* Buttons */
+    .md-button {
+      background-color: var(--md-text-color);
+      color: var(--md-bg-color);
+      border: none;
+      border-radius: 6px;
+      padding: 0.5em 1em;
+      font-weight: 500;
+      transition: background-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .md-button:hover {
+      background-color: var(--md-text-color--secondary);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .md-button:active {
+      transform: translateY(0);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Search input */
+    .md-search__input {
+      background-color: var(--md-surface-color);
+      color: var(--md-text-color);
+      border: 1px solid var(--md-border-color);
+      transition: background-color var(--transition-normal), color var(--transition-normal), border-color var(--transition-normal);
+    }
+
+    .md-search__input:focus {
+      background-color: var(--md-surface-color);
+      border-color: var(--md-text-color);
+      box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+    }
+
+    [data-md-color-scheme="slate"] .md-search__input:focus {
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+    }
+
+    /* Navigation */
+    .md-nav__item {
+      color: var(--md-text-color--secondary);
+      transition: color var(--transition-normal);
+    }
+
+    .md-nav__item:hover {
+      color: var(--md-text-color);
+    }
+
+    .md-nav__item--active {
+      color: var(--md-text-color);
+      font-weight: 600;
+    }
+
+    /* LEFT SIDEBAR SUBMENU STYLING */
+    .md-nav--secondary {
+      background-color: transparent !important;
+      border: none !important;
+    }
+
+    .md-nav--secondary .md-nav__link {
+      color: var(--md-text-color--secondary) !important;
+      background-color: transparent !important;
+      padding: 0.5rem 1rem !important;
+      border-radius: 4px !important;
+      font-weight: 500 !important;
+      font-size: 0.9rem !important;
+      line-height: 1.4 !important;
+      border: none !important;
+    }
+
+    .md-nav--secondary .md-nav__link:hover {
+      background-color: var(--md-surface-color--dark) !important;
+      color: var(--md-text-color) !important;
+      font-weight: 600 !important;
+    }
+
+    .md-nav--secondary .md-nav__link--active {
+      color: var(--md-text-color) !important;
+      background-color: var(--md-border-color) !important;
+      font-weight: 700 !important;
+      border-radius: 4px !important;
+    }
+
+    .md-nav--secondary .md-nav__item {
+      border-radius: 4px !important;
+      margin: 0.25rem 0 !important;
+      border: none !important;
+    }
+
+    /* Dark theme sidebar overrides */
+    [data-md-color-scheme="slate"] .md-nav--secondary {
+      background-color: transparent !important;
+      border: none !important;
+    }
+
+    [data-md-color-scheme="slate"] .md-nav--secondary .md-nav__link {
+      color: var(--md-text-color--secondary) !important;
+      background-color: transparent !important;
+      padding: 0.5rem 1rem !important;
+      border-radius: 4px !important;
+      font-weight: 500 !important;
+      font-size: 0.9rem !important;
+      line-height: 1.4 !important;
+      border: none !important;
+    }
+
+    [data-md-color-scheme="slate"] .md-nav--secondary .md-nav__link:hover {
+      background-color: var(--md-surface-color--dark) !important;
+      color: var(--md-text-color) !important;
+      font-weight: 600 !important;
+    }
+
+    [data-md-color-scheme="slate"] .md-nav--secondary .md-nav__link--active {
+      color: var(--md-text-color) !important;
+      background-color: var(--md-border-color) !important;
+      font-weight: 700 !important;
+      border-radius: 4px !important;
+    }
+
+    [data-md-color-scheme="slate"] .md-nav--secondary .md-nav__item {
+      border-radius: 4px !important;
+      margin: 0.25rem 0 !important;
+      border: none !important;
+    }
+
+    /* Header styling */
+    .md-header {
+      background-color: var(--md-surface-color) !important;
+      border-bottom: 1px solid var(--md-border-color) !important;
+      box-shadow: var(--shadow-sm) !important;
+      transition: background-color var(--transition-normal), border-color var(--transition-normal), box-shadow var(--transition-normal);
+      padding: 0.5rem 0;
+    }
+
+    .md-header__inner {
+      font-size: 0.95rem;
+      font-weight: 500;
+    }
+
+    .md-header__title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      letter-spacing: -0.025em;
+    }
+
+    /* Navigation links - Light theme */
+    .md-nav__link,
+    .md-nav__item {
+      font-size: 0.9rem !important;
+      line-height: 1.4 !important;
+      padding: 0.5rem 0.75rem !important;
+      border-radius: 4px !important;
+      transition: all 0.2s ease !important;
+      font-weight: 500 !important;
+      opacity: 1.0 !important;
+    }
+
+    [data-md-color-scheme="default"] .md-nav__link,
+    [data-md-color-scheme="default"] .md-nav__item {
+      color: var(--md-text-color--secondary) !important;
+    }
+
+    [data-md-color-scheme="default"] .md-nav__link:hover {
+      background-color: var(--md-surface-color--dark) !important;
+      color: var(--md-text-color) !important;
+      font-weight: 600 !important;
+    }
+
+    [data-md-color-scheme="default"] .md-nav__item--active,
+    [data-md-color-scheme="default"] .md-nav__link--active {
+      font-weight: 700 !important;
+      color: var(--md-text-color) !important;
+      background-color: var(--md-border-color) !important;
+      opacity: 1.0 !important;
+    }
+
+    /* Dark theme navigation links */
+    [data-md-color-scheme="slate"] .md-nav__link,
+    [data-md-color-scheme="slate"] .md-nav__item {
+      color: var(--md-text-color--secondary) !important;
+    }
+
+    [data-md-color-scheme="slate"] .md-nav__link:hover {
+      background-color: var(--md-surface-color--dark) !important;
+      color: var(--md-text-color) !important;
+      font-weight: 600 !important;
+    }
+
+    [data-md-color-scheme="slate"] .md-nav__item--active,
+    [data-md-color-scheme="slate"] .md-nav__link--active {
+      font-weight: 700 !important;
+      color: var(--md-text-color) !important;
+      background-color: var(--md-border-color) !important;
+    }
+
+    /* Footer */
+    .md-footer {
+      background-color: var(--md-surface-color--dark);
+      color: var(--md-text-color--secondary);
+      border-top: 1px solid var(--md-border-color);
+      transition: background-color var(--transition-normal), color var(--transition-normal), border-color var(--transition-normal);
+    }
+
+    /* Language-specific line height optimization */
+    html[lang="ko"] .md-typeset {
+      line-height: 1.6;
+    }
+
+    html[lang="en"] .md-typeset {
+      line-height: 1.5;
+    }
+
+    /* Performance optimization - font-display: swap */
+    @font-face {
+      font-family: 'Pretendard';
+      src: url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard-dynamic-subset.woff2') format('woff2');
+      font-display: swap;
+    }
+
+    /* Theme toggle animation */
+    [data-md-color-scheme] {
+      transition: background-color var(--transition-normal), color var(--transition-normal);
+    }
+
+    [data-md-color-scheme] * {
+      transition: background-color var(--transition-normal), color var(--transition-normal), border-color var(--transition-normal);
+    }
+
+    /* Mermaid diagram theme colors - Light Theme */
+    .mermaid {
+      --mermaid-bg-color: #F7F6F2 !important;            /* Surface Very Light */
+      --mermaid-edge-color: #D5D4D0 !important;           /* Border Light Gray */
+      --mermaid-node-bg-color: #F2F1ED !important;        /* Bg Warm Off-White */
+      --mermaid-node-border-color: #C9C8C4 !important;    /* Neutral Mid */
+      --mermaid-primary-color: #171612 !important;        /* Ink/Accent */
+      --mermaid-secondary-color: #504F4B !important;      /* Text Secondary */
+      --mermaid-tertiary-color: #EFEEEA !important;       /* Muted Surface */
+      --mermaid-primary-text-color: #171612 !important;   /* Ink/Accent */
+      --mermaid-secondary-text-color: #504F4B !important; /* Text Secondary */
+      --mermaid-line-color: #D5D4D0 !important;           /* Border Light Gray */
+      --mermaid-section-bkg-color: #F7F6F2 !important;    /* Surface Very Light */
+      --mermaid-alt-section-bkg-color: #F2F1ED !important; /* Bg Warm Off-White */
+      --mermaid-grid-color: #D5D4D0 !important;           /* Border Light Gray */
+      --mermaid-timeline-color: #C9C8C4 !important;      /* Neutral Mid */
+      --mermaid-timeline-node-color: #171612 !important;  /* Ink/Accent */
+      --mermain-timeline-node-bg-color: #F2F1ED !important; /* Bg Warm Off-White */
+    }
+
+    /* Mermaid Dark Theme */
+    [data-md-color-scheme="slate"] .mermaid {
+      --mermaid-bg-color: #1A1916 !important;            /* Dark Surface Very Light */
+      --mermaid-edge-color: #2E2D29 !important;           /* Dark Border Light Gray */
+      --mermaid-node-bg-color: #12110F !important;        /* Dark Bg Warm Off-White */
+      --mermaid-node-border-color: #3A3935 !important;    /* Dark Neutral Mid */
+      --mermaid-primary-color: #EEEDE8 !important;        /* Light Ink/Accent */
+      --mermaid-secondary-color: #C9C8C4 !important;      /* Light Text Secondary */
+      --mermaid-tertiary-color: #22211E !important;       /* Dark Muted Surface */
+      --mermaid-primary-text-color: #EEEDE8 !important;   /* Light Ink/Accent */
+      --mermaid-secondary-text-color: #C9C8C4 !important; /* Light Text Secondary */
+      --mermaid-line-color: #2E2D29 !important;           /* Dark Border Light Gray */
+      --mermaid-section-bkg-color: #1A1916 !important;    /* Dark Surface Very Light */
+      --mermaid-alt-section-bkg-color: #12110F !important; /* Dark Bg Warm Off-White */
+      --mermaid-grid-color: #2E2D29 !important;           /* Dark Border Light Gray */
+      --mermaid-timeline-color: #3A3935 !important;      /* Dark Neutral Mid */
+      --mermaid-timeline-node-color: #EEEDE8 !important;  /* Light Ink/Accent */
+      --mermain-timeline-node-bg-color: #12110F !important; /* Dark Bg Warm Off-White */
+    }
+
+    /* Scrollbar styling */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--md-surface-color);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--md-border-color);
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--md-text-color--secondary);
+    }
+
+    /* Dark theme scrollbar */
+    [data-md-color-scheme="slate"] ::-webkit-scrollbar-track {
+      background: var(--md-surface-color);
+    }
+
+    [data-md-color-scheme="slate"] ::-webkit-scrollbar-thumb {
+      background: var(--md-border-color);
+    }
+
+    [data-md-color-scheme="slate"] ::-webkit-scrollbar-thumb:hover {
+      background: var(--md-text-color--secondary);
+    }
+
+    /* Image styling */
+    .md-typeset img {
+      border-radius: 8px;
+      box-shadow: var(--shadow-md);
+      transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+      max-width: 100%;
+      height: auto;
+    }
+
+    .md-typeset img:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    /* Alfred logo styling */
+    .alfred-logo {
+      width: 120px;
+      height: auto;
+      filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+      transition: transform var(--transition-normal), filter var(--transition-normal);
+    }
+
+    .alfred-logo:hover {
+      transform: scale(1.05);
+      filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.15));
+    }
+
+    /* TUI screenshot styling */
+    .tui-screenshot {
+      width: 100%;
+      max-width: 800px;
+      height: auto;
+      border-radius: 8px;
+      border: 1px solid var(--md-border-color);
+      filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.15));
+      transition: transform var(--transition-normal), filter var(--transition-normal), border-color var(--transition-normal);
+    }
+
+    .tui-screenshot:hover {
+      transform: translateY(-4px);
+      filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.2));
+      border-color: var(--md-text-color--secondary);
+    }
+
+    /* Dark theme image adjustments */
+    [data-md-color-scheme="slate"] .alfred-logo {
+      filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+    }
+
+    [data-md-color-scheme="slate"] .alfred-logo:hover {
+      filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4));
+    }
+
+    [data-md-color-scheme="slate"] .tui-screenshot {
+      border-color: var(--md-border-color);
+      filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.4));
+    }
+
+    [data-md-color-scheme="slate"] .tui-screenshot:hover {
+      border-color: var(--md-text-color--secondary);
+      filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.5));
+    }
+
+    /* Responsive image sizing */
+    @media (max-width: 768px) {
+      .alfred-logo {
+        width: 80px;
+      }
+
+      .tui-screenshot {
+        max-width: 100%;
+        border-radius: 6px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .alfred-logo {
+        width: 60px;
+      }
+
+      .tui-screenshot {
+        border-radius: 4px;
+        filter: drop-shadow(0 4px 8px rgba(23, 22, 18, 0.1));
+      }
+
+      [data-md-color-scheme="slate"] .tui-screenshot {
+        filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+      }
+    }
+
+    /* Image container styling */
+    .image-container {
+      text-align: center;
+      margin: 2em 0;
+      padding: 1em;
+      background-color: var(--md-surface-color);
+      border-radius: 12px;
+      border: 1px solid var(--md-border-color);
+      transition: background-color var(--transition-normal), border-color var(--transition-normal);
+    }
+
+    [data-md-color-scheme="slate"] .image-container {
+      background-color: var(--md-surface-color);
+      border-color: var(--md-border-color);
+    }
+
+    /* Image caption styling */
+    .image-caption {
+      font-size: 0.875em;
+      color: var(--md-text-color--secondary);
+      margin-top: 0.5em;
+      font-style: normal;
+      letter-spacing: -0.025em;
+    }
+
+
+  </style>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script src="{{ 'stylesheets/language-selector.js' | url }}"></script>
+
+
+{% endblock %}
