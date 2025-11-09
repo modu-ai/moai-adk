@@ -67,12 +67,17 @@ class TemplateProcessor:
 
         # Detect common template variables and provide helpful suggestions
         common_variables = {
-            "PROJECT_DIR": "Cross-platform hook path (run /alfred:0-project to set)",
+            "PROJECT_DIR": "Cross-platform project path (run /alfred:0-project to set)",
+            "HOOK_PROJECT_DIR": "Cross-platform hook path (deprecated, use PROJECT_DIR instead)",
             "PROJECT_NAME": "Project name (run /alfred:0-project to set)",
             "AUTHOR": "Project author (run /alfred:0-project to set)",
             "CONVERSATION_LANGUAGE": "Interface language (run /alfred:0-project to set)",
             "MOAI_VERSION": "MoAI-ADK version (should be set automatically)",
         }
+        
+        # Support deprecated HOOK_PROJECT_DIR by mapping it to PROJECT_DIR
+        if "PROJECT_DIR" in self.context and "HOOK_PROJECT_DIR" not in self.context:
+            self.context["HOOK_PROJECT_DIR"] = self.context["PROJECT_DIR"]
 
         # Perform variable substitution
         for key, value in self.context.items():

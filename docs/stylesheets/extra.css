@@ -644,11 +644,11 @@ i {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* 라이트 모드 특정 스타일 */
+/* 라이트 모드 특정 스타일 - 개선된 코드 색상 */
 [data-md-color-scheme="default"] {
   --md-default-bg-color: #FFFFFF;
   --md-default-fg-color: #000000;
-  --md-code-bg-color: #F0F0F0;
+  --md-code-bg-color: #F5F5F5;
   --md-code-fg-color: #000000;
 }
 
@@ -718,28 +718,41 @@ i {
 .md-sidebar--secondary .md-nav {
   width: 100% !important;
   max-width: 100% !important;
-  padding: 0.5rem 0 !important;
+  padding: 0.75rem 0 !important;
 }
 
-/* 우측 TOC 링크: 폰트 크기 및 행간 최소화 */
+/* 우측 TOC 링크: 가독성 개선된 폰트 크기 및 행간 */
 .md-sidebar--secondary .md-nav__link {
-  font-size: 0.75rem !important;
-  padding: 0.25rem 0.5rem !important;
-  line-height: 1.2 !important;
-  margin-bottom: 0 !important;
+  font-size: 0.85rem !important;
+  padding: 0.4rem 0.6rem !important;
+  line-height: 1.35 !important;
+  margin-bottom: 0.05rem !important;
   word-break: break-word !important;
   display: block !important;
   width: 100% !important;
+  color: var(--md-text-color--secondary) !important;
+  transition: all 0.2s ease !important;
 }
 
-/* 우측 TOC 제목: 폰트 크기 및 행간 최소화 */
+/* 우측 TOC 링크 호버 */
+.md-sidebar--secondary .md-nav__link:hover {
+  color: var(--md-text-color) !important;
+  background-color: var(--md-surface-color--dark) !important;
+  border-radius: 3px;
+  padding-left: 0.8rem !important;
+}
+
+/* 우측 TOC 제목: 가독성 개선된 폰트 크기 및 행간 */
 .md-sidebar--secondary .md-nav__title {
-  font-size: 0.7rem !important;
-  padding: 0.2rem 0.5rem !important;
-  line-height: 1.1 !important;
-  margin-bottom: 0 !important;
-  font-weight: 600 !important;
+  font-size: 0.8rem !important;
+  padding: 0.4rem 0.6rem !important;
+  line-height: 1.2 !important;
+  margin-bottom: 0.3rem !important;
+  font-weight: 700 !important;
   width: 100% !important;
+  color: var(--md-text-color) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 /* 우측 TOC 아이템: 여백 최소화 */
@@ -769,22 +782,35 @@ i {
   }
 }
 
-/* Hide left sidebar completely */
+/* 좌측 사이드바 - 조건부 표시 (모바일에서 숨김, 데스크톱에서 표시 가능) */
 .md-sidebar--primary {
   display: none !important;
 }
 
-/* Adjust main content to fill full width */
+/* 데스크톱 화면에서 좌측 사이드바 표시 (필요시 활성화) */
+@media (min-width: 1400px) {
+  /*
+  .md-sidebar--primary {
+    display: block !important;
+  }
+
+  .md-content {
+    margin-left: 260px !important;
+  }
+  */
+}
+
+/* 좌측 사이드바 숨김 시 콘텐츠 전체 너비 조정 */
 .md-content {
   margin-left: 0 !important;
 }
 
-/* Adjust container for full width */
+/* 컨테이너 전체 너비 설정 */
 .md-container {
   width: 100% !important;
 }
 
-/* Adjust layout when sidebar is hidden */
+/* 사이드바 숨김 시 레이아웃 조정 */
 [data-md-color-scheme] .md-main {
   flex: 1 1 auto;
 }
