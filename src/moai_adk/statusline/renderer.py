@@ -3,9 +3,12 @@ Statusline renderer for Claude Code status display
 
 @CODE:STATUSLINE-RENDERER-001
 """
+# type: ignore
 
 from dataclasses import dataclass
 from typing import List
+
+from .config import StatuslineConfig  # type: ignore[attr-defined]
 
 
 @dataclass
@@ -31,6 +34,12 @@ class StatuslineRenderer:
         "extended": 120,
         "minimal": 40,
     }
+
+    def __init__(self):
+        """Initialize renderer with configuration"""
+        self._config = StatuslineConfig()
+        self._format_config = self._config.get_format_config()
+        self._display_config = self._config.get_display_config()
 
     def render(self, data: StatuslineData, mode: str = "compact") -> str:
         """
@@ -64,7 +73,7 @@ class StatuslineRenderer:
         """
         max_length = self._MODE_CONSTRAINTS["compact"]
         parts = self._build_compact_parts(data)
-        result = " | ".join(parts)
+        result = self._format_config.separator.join(parts)
 
         # Adjust if too long
         if len(result) > max_length:
@@ -83,17 +92,26 @@ class StatuslineRenderer:
         Returns:
             List of parts to be joined
         """
-        parts = [
-            f"🤖 {data.model}",
-            f"🗿 Ver {data.version}",
-            f"📊 Git: {data.branch}",
-        ]
+        parts = []
 
-        if data.git_status:
+        # Add model if display enabled
+        if self._display_config.model:
+            parts.append(f"🤖 {data.model}")
+
+        # Add version if display enabled
+        if self._display_config.version:
+            parts.append(f"🗿 Ver {data.version}")
+
+        # Add branch if display enabled
+        if self._display_config.branch:
+            parts.append(f"📊 Git: {data.branch}")
+
+        # Add git status if display enabled and status not empty
+        if self._display_config.git_status and data.git_status:
             parts.append(f"Changes: {data.git_status}")
 
-        # Only add active_task if it's not empty
-        if data.active_task.strip():
+        # Add active_task if display enabled and not empty
+        if self._display_config.active_task and data.active_task.strip():
             parts.append(data.active_task)
 
         return parts
@@ -125,7 +143,7 @@ class StatuslineRenderer:
         if data.active_task.strip():
             parts.append(data.active_task)
 
-        result = " | ".join(parts)
+        result = self._format_config.separator.join(parts)
 
         # If still too long, try more aggressive branch truncation
         if len(result) > max_length:
@@ -139,7 +157,7 @@ class StatuslineRenderer:
                 parts.append(f"Changes: {data.git_status}")
             if data.active_task.strip():
                 parts.append(data.active_task)
-            result = " | ".join(parts)
+            result = self._format_config.separator.join(parts)
 
         # If still too long, remove active_task
         if len(result) > max_length and data.active_task.strip():
@@ -150,7 +168,7 @@ class StatuslineRenderer:
             ]
             if data.git_status:
                 parts.append(f"Changes: {data.git_status}")
-            result = " | ".join(parts)
+            result = self._format_config.separator.join(parts)
 
         # Final fallback to minimal if still too long
         if len(result) > max_length:
@@ -172,19 +190,29 @@ class StatuslineRenderer:
         """
         branch = self._truncate_branch(data.branch, max_length=30)
 
-        parts = [
-            f"🤖 {data.model}",
-            f"🗿 Ver {data.version}",
-            f"📊 Git: {branch}",
-        ]
+        parts = []
 
-        if data.git_status:
+        # Add model if display enabled
+        if self._display_config.model:
+            parts.append(f"🤖 {data.model}")
+
+        # Add version if display enabled
+        if self._display_config.version:
+            parts.append(f"🗿 Ver {data.version}")
+
+        # Add branch if display enabled
+        if self._display_config.branch:
+            parts.append(f"📊 Git: {branch}")
+
+        # Add git status if display enabled and status not empty
+        if self._display_config.git_status and data.git_status:
             parts.append(f"Changes: {data.git_status}")
 
-        if data.active_task.strip():
+        # Add active_task if display enabled and not empty
+        if self._display_config.active_task and data.active_task.strip():
             parts.append(data.active_task)
 
-        result = " | ".join(parts)
+        result = self._format_config.separator.join(parts)
 
         # If exceeds limit, try truncating branch
         if len(result) > 120:
@@ -198,7 +226,7 @@ class StatuslineRenderer:
                 parts.append(f"Changes: {data.git_status}")
             if data.active_task.strip():
                 parts.append(data.active_task)
-            result = " | ".join(parts)
+            result = self._format_config.separator.join(parts)
 
         return result
 
@@ -214,18 +242,24 @@ class StatuslineRenderer:
         Returns:
             Formatted statusline string (max 40 chars)
         """
-        parts = [
-            f"🤖 {data.model}",
-            f"🗿 Ver {self._truncate_version(data.version)}",
-        ]
+        parts = []
 
-        result = " | ".join(parts)
+        # Add model if display enabled
+        if self._display_config.model:
+            parts.append(f"🤖 {data.model}")
+
+        # Add version if display enabled
+        if self._display_config.version:
+            parts.append(f"🗿 Ver {self._truncate_version(data.version)}")
+
+        result = self._format_config.separator.join(parts)
 
         # Add git_status if it fits (use abbreviated format for minimal)
-        if data.git_status:
+        # and if display is enabled and status not empty
+        if self._display_config.git_status and data.git_status:
             status_label = f"Chg: {data.git_status}"
-            if len(result) + len(status_label) + 3 <= 40:
-                result += f" | {status_label}"
+            if len(result) + len(status_label) + len(self._format_config.separator) <= 40:
+                result += f"{self._format_config.separator}{status_label}"
 
         return result
 

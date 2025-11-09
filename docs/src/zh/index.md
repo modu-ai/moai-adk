@@ -266,7 +266,7 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-## 📚 安装和项目设置完整指南
+## <span class="material-icons">library_books</span> 安装和项目设置完整指南
 
 快速入门后如需更详细说明，请参考下文。
 
@@ -390,7 +390,7 @@ moai-adk init . --with-mcp
 
 **注意**：Figma MCP 使用 Claude Code 官方远程服务器(https://mcp.figma.com/mcp)，无需单独本地安装。
 
-#### 🎯 遵循 Microsoft MCP 标准
+#### :bullseye: 遵循 Microsoft MCP 标准
 
 **设置标准**：
 
@@ -477,13 +477,13 @@ ______________________________________________________________________
 | ------------------------------------------------------ | --------------------------- | ------------------------------ | ----- |
 | 📋 **PLAN**                                            | `/alfred:1-plan "功能说明"` | SPEC 编写（EARS 格式）         | 2分钟 |
 | 💻 **RUN**                                             | `/alfred:2-run SPEC-ID`     | TDD 实现（RED→GREEN→REFACTOR） | 5分钟 |
-| <span class="material-icons">menu_book</span> **SYNC** | `/alfred:3-sync`            | 文档自动同步                   | 1分钟 |
+| 📚 **SYNC** | `/alfred:3-sync`            | 文档自动同步                   | 1分钟 |
 
 **一个循环 ≈ 8分钟** → **一天可完成 7-8 个功能** ⚡
 
 ______________________________________________________________________
 
-## 📦 保持 MoAI-ADK 最新版本
+## :package: 保持 MoAI-ADK 最新版本
 
 ### 版本确认
 
@@ -658,13 +658,13 @@ ______________________________________________________________________
    - 所有代码受测试保护
    - 功能添加 = 测试添加
 
-2. **📚 Readable**（可读代码）
+2. **<span class="material-icons">library_books</span> Readable**（可读代码）
 
    - 函数 ≤ 50行，文件 ≤ 300行
    - 变量名体现意图
    - 通过 linter（ESLint/ruff/clippy）
 
-3. **🎯 Unified**（一致结构）
+3. **:bullseye: Unified**（一致结构）
 
    - 保持基于 SPEC 的架构
    - 相同模式重复（学习曲线降低）
@@ -676,7 +676,7 @@ ______________________________________________________________________
    - 密码哈希（bcrypt、Argon2）
    - 敏感信息保护（环境变量）
 
-5. **🔗 Trackable**（可追踪）
+5. **:link: Trackable**（可追踪）
 
    - 使用 @TAG 系统
    - Git 提交包含 TAG
@@ -1005,7 +1005,7 @@ docs/api/hello.md:24:- `@SPEC:EX-HELLO-001`
 
 ______________________________________________________________________
 
-### 🎉 10 分钟后：您获得的成果
+### :partying_face: 10 分钟后：您获得的成果
 
 #### 生成的文件
 
@@ -1072,14 +1072,14 @@ Alfred 结合多个专业代理和 Claude Skills 进行工作。
 | project-manager 📋                                      | Sonnet | 项目初始化、元数据访谈                                       |
 | spec-builder 🏗️                                         | Sonnet | 计划板、EARS SPEC 编写、推荐专家咨询                         |
 | code-builder 💎                                         | Sonnet | 用 `implementation-planner` + `tdd-implementer` 执行完整 TDD |
-| doc-syncer 📚                                           | Haiku  | 动态文档、README、CHANGELOG 同步                             |
+| doc-syncer <span class="material-icons">library_books</span>                                           | Haiku  | 动态文档、README、CHANGELOG 同步                             |
 | tag-agent 🏷️                                            | Haiku  | TAG 清单、孤立检测、@EXPERT TAG 验证                         |
 | git-manager 🚀                                          | Haiku  | GitFlow、Draft/Ready、自动合并                               |
 | debug-helper <span class="material-icons">search</span> | Sonnet | 失败分析、forward-fix 策略                                   |
 | trust-checker ✅                                        | Haiku  | TRUST 5 质量门禁                                             |
 | quality-gate 🛡️                                         | Haiku  | 覆盖率变更和发布阻止条件审查                                 |
-| cc-manager <span class="material-icons">build</span>    | Sonnet | Claude Code 会话优化、Skill 部署                             |
-| skill-factory 🏭                                        | Sonnet | Skills 创建和管理、69个 Skills 生态系统维护                  |
+| cc-manager 🔧    | Sonnet | Claude Code 会话优化、Skill 部署                             |
+| skill-factory 🏭                                        | Sonnet | Skills 创建和管理、93个 Skills 生态系统维护                  |
 
 ### 专家代理（根据 SPEC 关键字自动激活）
 
@@ -1464,17 +1464,17 @@ ______________________________________________________________________
 
 | 版本        | 主要功能                                                                                               | 日期       |
 | ----------- | ------------------------------------------------------------------------------------------------------ | ---------- |
-| **v0.17.0** | 🌍 **多语言 Lint/Format 架构**（Python、JS、TS、Go、Rust、Java、Ruby、PHP）- 自动语言检测 + 非阻塞错误 | 2025-11-04 |
+| **v0.17.0** | 🌐 **多语言 Lint/Format 架构**（Python、JS、TS、Go、Rust、Java、Ruby、PHP）- 自动语言检测 + 非阻塞错误 | 2025-11-04 |
 | **v0.16.x** | ✅ 4个 Alfred 命令 100% 命令式指南完成 + Hook 架构稳定化                                               | 2025-11-03 |
-| **v0.8.2**  | 📚 EARS 术语更新："Constraints" → "Unwanted Behaviors"（提高清晰度）                                   | 2025-10-29 |
+| **v0.8.2**  | <span class="material-icons">library_books</span> EARS 术语更新："Constraints" → "Unwanted Behaviors"（提高清晰度）                                   | 2025-10-29 |
 | **v0.8.1**  | 🔄 命令更改：`/alfred:9-help` → `/alfred:9-feedback` + 用户反馈工作流程改进                            | 2025-10-28 |
 | **v0.8.0**  | 🏷️ @DOC TAG 自动生成系统 + SessionStart 版本检查强化                                                   | 2025-10-27 |
-| **v0.7.0**  | 🌍 完整多语言支持系统（英语、韩语、日语、中文、西班牙语）                                              | 2025-10-26 |
+| **v0.7.0**  | 🌐 完整多语言支持系统（英语、韩语、日语、中文、西班牙语）                                              | 2025-10-26 |
 | **v0.6.3**  | ⚡ 3步更新工作流程：并行操作提升 70-80% 性能                                                           | 2025-10-25 |
 
-> 📦 **立即安装**：`uv tool install moai-adk` 或 `pip install moai-adk`
+> :package: **立即安装**：`uv tool install moai-adk` 或 `pip install moai-adk`
 
-### 🎯 v0.17.0 主要功能
+### :bullseye: v0.17.0 主要功能
 
 #### <span class="material-icons" style="font-size: 1em; vertical-align: middle;">looks_one</span> 多语言 Lint/Format 自动化（11种语言）
 
@@ -1507,10 +1507,10 @@ ______________________________________________________________________
 
 | 目的                                                           | 资源                                                                    |
 | -------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| <span class="material-icons">menu_book</span> 多语言 Lint 指南 | `.claude/hooks/alfred/core/MULTILINGUAL_LINTING_GUIDE.md`（完整 API）   |
-| 📚 多语言安装指南                                              | `.claude/hooks/alfred/core/INSTALLATION_GUIDE.md`（各语言安装）         |
+| 📚 多语言 Lint 指南 | `.claude/hooks/alfred/core/MULTILINGUAL_LINTING_GUIDE.md`（完整 API）   |
+| <span class="material-icons">library_books</span> 多语言安装指南                                              | `.claude/hooks/alfred/core/INSTALLATION_GUIDE.md`（各语言安装）         |
 | 🧪 测试报告                                                    | `.moai/reports/MULTILINGUAL_LINTING_TEST_REPORT.md`（103/103 测试通过） |
-| 🎯 实现摘要                                                    | `.moai/reports/MULTILINGUAL_LINTING_IMPLEMENTATION_SUMMARY.md`          |
+| :bullseye: 实现摘要                                                    | `.moai/reports/MULTILINGUAL_LINTING_IMPLEMENTATION_SUMMARY.md`          |
 | Skills 详细结构                                                | `.claude/skills/` 目录（74个 Skills）                                   |
 | 子代理详细信息                                                 | `.claude/agents/alfred/` 目录（16个代理 + 4个命令）                     |
 | 工作流程指南                                                   | `.claude/commands/alfred/`（4个命令：0-project ~ 3-sync）               |
@@ -1549,9 +1549,9 @@ ______________________________________________________________________
 
 **MoAI-ADK** — SPEC-First TDD with AI SuperAgent & Complete Skills + TAG Guard
 
-- 📦 PyPI: https://pypi.org/project/moai-adk/
+- :package: PyPI: https://pypi.org/project/moai-adk/
 - 🏠 GitHub: https://github.com/modu-ai/moai-adk
-- 📄 License: MIT
+- 📝 License: MIT
 - ⭐ Skills: 73+ 生产就绪指南（多语言 linting 等）
 - ✅ Tests: 570+ 通过（89%+ 覆盖率 - v0.17.0 新增 103 个测试）
 - 🏷️ TAG Guard: PreToolUse Hook 中自动 @TAG 验证

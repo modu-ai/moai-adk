@@ -202,9 +202,6 @@ plugins:
             개발 환경: 开发环境
             릴리즈 프로세스: 发布流程
             코드 스타일: 代码风格
-  - minify:
-      minify_html: true
-
 # Customization
 extra:
   analytics:
@@ -322,9 +319,6 @@ markdown_extensions:
       smart_enable: all
   - pymdownx.caret
   - pymdownx.details
-  - pymdownx.emoji:
-      emoji_generator: !!python/name:material.extensions.emoji.to_svg
-      emoji_index: !!python/name:material.extensions.emoji.twemoji
   - pymdownx.highlight:
       anchor_linenums: true
       line_spans: __span
@@ -350,67 +344,241 @@ markdown_extensions:
 
 # Navigation - Multilingual Structure
 nav:
-  # Korean (Default)
-  - 홈: index.md
+  # Korean (Default) - Updated with language prefix
+  - 홈: ko/index.md
   - 시작하기:
-    - 설치: getting-started/installation.md
-    - 빠른 시작: getting-started/quick-start.md
-    - 기본 개념: getting-started/concepts.md
+    - 설치: ko/getting-started/installation.md
+    - 빠른 시작: ko/getting-started/quick-start.md
+    - 기본 개념: ko/getting-started/concepts.md
   - 사용 가이드:
     - Alfred 워크플로우:
-      - 개요: guides/alfred/index.md
-      - "1단계: 계획 (Plan)": guides/alfred/1-plan.md
-      - "2단계: 실행 (Run)": guides/alfred/2-run.md
-      - "3단계: 동기화 (Sync)": guides/alfred/3-sync.md
-      - "9단계: 피드백": guides/alfred/9-feedback.md
+      - 개요: ko/guides/alfred/index.md
+      - "1단계: 계획 (Plan)": ko/guides/alfred/1-plan.md
+      - "2단계: 실행 (Run)": ko/guides/alfred/2-run.md
+      - "3단계: 동기화 (Sync)": ko/guides/alfred/3-sync.md
+      - "9단계: 피드백": ko/guides/alfred/9-feedback.md
     - SPEC 작성:
-      - SPEC 기초: guides/specs/basics.md
-      - EARS 문법: guides/specs/ears.md
-      - TAG 시스템: guides/specs/tags.md
-      - 예제: guides/specs/examples.md
+      - SPEC 기초: ko/guides/specs/basics.md
+      - EARS 문법: ko/guides/specs/ears.md
+      - TAG 시스템: ko/guides/specs/tags.md
+      - 예제: ko/guides/specs/examples.md
     - TDD 개발:
-      - RED 단계: guides/tdd/red.md
-      - GREEN 단계: guides/tdd/green.md
-      - REFACTOR 단계: guides/tdd/refactor.md
+      - RED 단계: ko/guides/tdd/red.md
+      - GREEN 단계: ko/guides/tdd/green.md
+      - REFACTOR 단계: ko/guides/tdd/refactor.md
     - 프로젝트 관리:
-      - 초기화: guides/project/init.md
-      - 설정: guides/project/config.md
-      - 배포: guides/project/deploy.md
+      - 초기화: ko/guides/project/init.md
+      - 설정: ko/guides/project/config.md
+      - 배포: ko/guides/project/deploy.md
+    - 번역 기여: ko/guides/contributing-translations.md
   - 기술 참고:
     - CLI 명령어:
-      - 개요: reference/cli/index.md
-      - moai-adk: reference/cli/moai-adk.md
-      - 서브커맨드: reference/cli/subcommands.md
+      - 개요: ko/reference/cli/index.md
+      - moai-adk: ko/reference/cli/moai-adk.md
+      - 서브커맨드: ko/reference/cli/subcommands.md
     - 에이전트 시스템:
-      - 개요: reference/agents/index.md
-      - 핵심 에이전트: reference/agents/core.md
-      - 전문가 에이전트: reference/agents/experts.md
+      - 개요: ko/reference/agents/index.md
+      - 핵심 에이전트: ko/reference/agents/core.md
+      - 전문가 에이전트: ko/reference/agents/experts.md
     - 스킬 시스템:
-      - 개요: reference/skills/index.md
-      - 기반 스킬: reference/skills/foundation.md
-      - 언어 스킬: reference/skills/languages.md
-      - 알프레드 스킬: reference/skills/alfred.md
+      - 개요: ko/reference/skills/index.md
+      - 기반 스킬: ko/reference/skills/foundation.md
+      - 언어 스킬: ko/reference/skills/languages.md
+      - 알프레드 스킬: ko/reference/skills/alfred.md
     - 훅 시스템:
-      - 개요: reference/hooks/index.md
-      - 세션 훅: reference/hooks/session.md
-      - 도구 훅: reference/hooks/tool.md
+      - 개요: ko/reference/hooks/index.md
+      - 세션 훅: ko/reference/hooks/session.md
+      - 도구 훅: ko/reference/hooks/tool.md
     - TAG 시스템:
-      - 개요: reference/tags/index.md
-      - TAG 타입: reference/tags/types.md
-      - 추적성: reference/tags/traceability.md
+      - 개요: ko/reference/tags/index.md
+      - TAG 타입: ko/reference/tags/types.md
+      - 추적성: ko/reference/tags/traceability.md
   - 고급 주제:
-    - 다국어 지원: advanced/i18n.md
-    - 성능 최적화: advanced/performance.md
-    - 보안: advanced/security.md
-    - 확장: advanced/extensions.md
+    - 다국어 지원: ko/advanced/i18n.md
+    - 성능 최적화: ko/advanced/performance.md
+    - 보안: ko/advanced/security.md
+    - 확장: ko/advanced/extensions.md
   - 개발자 가이드:
-    - 기여하기: contributing/index.md
-    - 개발 환경: contributing/development.md
-    - 릴리즈 프로세스: contributing/releases.md
-    - 코드 스타일: contributing/style.md
-    - 번역 기여: guides/contributing-translations.md
+    - 기여하기: ko/contributing/index.md
+    - 개발 환경: ko/contributing/development.md
+    - 릴리즈 프로세스: ko/contributing/releases.md
+    - 코드 스타일: ko/contributing/style.md
   - 번역 현황:
-    - 대시보드: translation-status.md
+    - 대시보드: ko/translation-status.md
+  - Home: en/index.md
+  - Getting Started:
+    - Installation: en/getting-started/installation.md
+    - Quick Start: en/getting-started/quick-start.md
+    - Concepts: en/getting-started/concepts.md
+  - User Guide:
+    - Alfred Workflow:
+      - Overview: en/guides/alfred/index.md
+      - "Step 1: Plan": en/guides/alfred/1-plan.md
+      - "Step 2: Run": en/guides/alfred/2-run.md
+      - "Step 3: Sync": en/guides/alfred/3-sync.md
+      - "Step 9: Feedback": en/guides/alfred/9-feedback.md
+    - Writing SPEC:
+      - SPEC Basics: en/guides/specs/basics.md
+      - EARS Grammar: en/guides/specs/ears.md
+      - TAG System: en/guides/specs/tags.md
+      - Examples: en/guides/specs/examples.md
+    - TDD Development:
+      - RED Phase: en/guides/tdd/red.md
+      - GREEN Phase: en/guides/tdd/green.md
+      - REFACTOR Phase: en/guides/tdd/refactor.md
+    - Project Management:
+      - Initialization: en/guides/project/init.md
+      - Configuration: en/guides/project/config.md
+      - Deployment: en/guides/project/deploy.md
+    - Contributing Translations: en/guides/contributing-translations.md
+  - Technical Reference:
+    - CLI Commands:
+      - Overview: en/reference/cli/index.md
+      - moai-adk: en/reference/cli/moai-adk.md
+      - Subcommands: en/reference/cli/subcommands.md
+    - Agent System:
+      - Overview: en/reference/agents/index.md
+      - Core Agents: en/reference/agents/core.md
+      - Expert Agents: en/reference/agents/experts.md
+    - Skill System:
+      - Overview: en/reference/skills/index.md
+      - Foundation Skills: en/reference/skills/foundation.md
+      - Language Skills: en/reference/skills/languages.md
+      - Alfred Skills: en/reference/skills/alfred.md
+    - Hook System:
+      - Overview: en/reference/hooks/index.md
+      - Session Hooks: en/reference/hooks/session.md
+      - Tool Hooks: en/reference/hooks/tool.md
+    - TAG System:
+      - Overview: en/reference/tags/index.md
+      - TAG Types: en/reference/tags/types.md
+      - Traceability: en/reference/tags/traceability.md
+  - Advanced Topics:
+    - Internationalization: en/advanced/i18n.md
+    - Performance Optimization: en/advanced/performance.md
+    - Security: en/advanced/security.md
+    - Extensions: en/advanced/extensions.md
+  - Developer Guide:
+    - Contributing: en/contributing/index.md
+    - Development Environment: en/contributing/development.md
+    - Release Process: en/contributing/releases.md
+    - Code Style: en/contributing/style.md
+  - ホーム: ja/index.md
+  - はじめに:
+    - インストール: ja/getting-started/installation.md
+    - クイックスタート: ja/getting-started/quick-start.md
+    - 基本概念: ja/getting-started/concepts.md
+  - 使用ガイド:
+    - Alfredワークフロー:
+      - 概要: ja/guides/alfred/index.md
+      - "ステップ1: 計画": ja/guides/alfred/1-plan.md
+      - "ステップ2: 実行": ja/guides/alfred/2-run.md
+      - "ステップ3: 同期": ja/guides/alfred/3-sync.md
+      - "ステップ9: フィードバック": ja/guides/alfred/9-feedback.md
+    - SPEC作成:
+      - SPEC基礎: ja/guides/specs/basics.md
+      - EARS文法: ja/guides/specs/ears.md
+      - TAGシステム: ja/guides/specs/tags.md
+      - 例: ja/guides/specs/examples.md
+    - TDD開発:
+      - REDフェーズ: ja/guides/tdd/red.md
+      - GREENフェーズ: ja/guides/tdd/green.md
+      - REFACTORフェーズ: ja/guides/tdd/refactor.md
+    - プロジェクト管理:
+      - 初期化: ja/guides/project/init.md
+      - 設定: ja/guides/project/config.md
+      - デプロイ: ja/guides/project/deploy.md
+    - 翻訳に貢献: ja/guides/contributing-translations.md
+  - 技術リファレンス:
+    - CLIコマンド:
+      - 概要: ja/reference/cli/index.md
+      - moai-adk: ja/reference/cli/moai-adk.md
+      - サブコマンド: ja/reference/cli/subcommands.md
+    - エージェントシステム:
+      - 概要: ja/reference/agents/index.md
+      - コアエージェント: ja/reference/agents/core.md
+      - エキスパートエージェント: ja/reference/agents/experts.md
+    - スキルシステム:
+      - 概要: ja/reference/skills/index.md
+      - 基盤スキル: ja/reference/skills/foundation.md
+      - 言語スキル: ja/reference/skills/languages.md
+      - Alfredスキル: ja/reference/skills/alfred.md
+    - フックシステム:
+      - 概要: ja/reference/hooks/index.md
+      - セッションフック: ja/reference/hooks/session.md
+      - ツールフック: ja/reference/hooks/tool.md
+    - TAGシステム:
+      - 概要: ja/reference/tags/index.md
+      - TAGタイプ: ja/reference/tags/types.md
+      - トレーサビリティ: ja/reference/tags/traceability.md
+  - 高度なトピック:
+    - 国際化: ja/advanced/i18n.md
+    - パフォーマンス最適化: ja/advanced/performance.md
+    - セキュリティ: ja/advanced/security.md
+    - 拡張: ja/advanced/extensions.md
+  - 開発者ガイド:
+    - 貢献: ja/contributing/index.md
+    - 開発環境: ja/contributing/development.md
+    - リリースプロセス: ja/contributing/releases.md
+    - コードスタイル: ja/contributing/style.md
+  - 首页: zh/index.md
+  - 入门:
+    - 安装: zh/getting-started/installation.md
+    - 快速入门: zh/getting-started/quick-start.md
+    - 基本概念: zh/getting-started/concepts.md
+  - 用户指南:
+    - Alfred工作流:
+      - 概述: zh/guides/alfred/index.md
+      - "步骤1: 计划": zh/guides/alfred/1-plan.md
+      - "步骤2: 执行": zh/guides/alfred/2-run.md
+      - "步骤3: 同步": zh/guides/alfred/3-sync.md
+      - "步骤9: 反馈": zh/guides/alfred/9-feedback.md
+    - 编写SPEC:
+      - SPEC基础: zh/guides/specs/basics.md
+      - EARS语法: zh/guides/specs/ears.md
+      - TAG系统: zh/guides/specs/tags.md
+      - 示例: zh/guides/specs/examples.md
+    - TDD开发:
+      - RED阶段: zh/guides/tdd/red.md
+      - GREEN阶段: zh/guides/tdd/green.md
+      - REFACTOR阶段: zh/guides/tdd/refactor.md
+    - 项目管理:
+      - 初始化: zh/guides/project/init.md
+      - 配置: zh/guides/project/config.md
+      - 部署: zh/guides/project/deploy.md
+    - 贡献翻译: zh/guides/contributing-translations.md
+  - 技术参考:
+    - CLI命令:
+      - 概述: zh/reference/cli/index.md
+      - moai-adk: zh/reference/cli/moai-adk.md
+      - 子命令: zh/reference/cli/subcommands.md
+    - 代理系统:
+      - 概述: zh/reference/agents/index.md
+      - 核心代理: zh/reference/agents/core.md
+      - 专家代理: zh/reference/agents/experts.md
+    - 技能系统:
+      - 概述: zh/reference/skills/index.md
+      - 基础技能: zh/reference/skills/foundation.md
+      - 语言技能: zh/reference/skills/languages.md
+      - Alfred技能: zh/reference/skills/alfred.md
+    - 钩子系统:
+      - 概述: zh/reference/hooks/index.md
+      - 会话钩子: zh/reference/hooks/session.md
+      - 工具钩子: zh/reference/hooks/tool.md
+    - TAG系统:
+      - 概述: zh/reference/tags/index.md
+      - TAG类型: zh/reference/tags/types.md
+      - 可追溯性: zh/reference/tags/traceability.md
+  - 高级主题:
+    - 国际化: zh/advanced/i18n.md
+    - 性能优化: zh/advanced/performance.md
+    - 安全性: zh/advanced/security.md
+    - 扩展: zh/advanced/extensions.md
+  - 开发者指南:
+    - 贡献: zh/contributing/index.md
+    - 开发环境: zh/contributing/development.md
+    - 发布流程: zh/contributing/releases.md
+    - 代码风格: zh/contributing/style.md
 
 
 # Page tree
@@ -431,7 +599,6 @@ validation:
 
 # Custom CSS and JS
 extra_css:
-  - https://fonts.googleapis.com/icon?family=Material+Icons
   - stylesheets/extra.css
 
 extra_javascript:

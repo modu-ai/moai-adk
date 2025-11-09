@@ -1,4 +1,5 @@
 # @CODE:MCP-SETUP-001 | SPEC: SPEC-MCP-SETUP-001/spec.md
+# type: ignore
 """MCP (Model Context Protocol) Setup and Configuration
 
 Handles MCP server installation, configuration, and management for MoAI-ADK projects.
@@ -252,7 +253,8 @@ class MCPSetupManager:
 
             if success:
                 console.print("\n🎉 MCP setup completed successfully!")
-                console.print(f"📋 Configured servers: {', '.join([s for s, installed in installed_status.items() if installed])}")
+                servers = [s for s, installed in installed_status.items() if installed]
+                console.print(f"📋 Configured servers: {', '.join(servers)}")
 
 
                 return True

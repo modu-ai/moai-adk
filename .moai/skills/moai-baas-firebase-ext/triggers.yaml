@@ -1,0 +1,28 @@
+skill_id: moai-baas-firebase-ext
+trigger_keywords:
+  - "Firebase"
+  - "Firestore"
+  - "Cloud Functions"
+  - "Firebase Auth"
+  - "Google Cloud"
+  - "Security Rules"
+  - "Testing"
+
+trigger_contexts:
+  - "firebase-detected"
+  - "pattern-e"
+  - "google-ecosystem"
+  - "full-stack"
+
+trigger_agents:
+  - "backend-expert"
+  - "database-expert"
+  - "frontend-expert"
+
+auto_load_conditions:
+  - when_firebase_selected: true
+  - when_google_ecosystem: true
+  - when_pattern_e_active: true
+
+priority: 87
+freedom_level: high

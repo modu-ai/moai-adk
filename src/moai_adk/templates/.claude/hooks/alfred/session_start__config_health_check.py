@@ -211,7 +211,7 @@ def main() -> None:
     try:
         # Read JSON payload from stdin (for compatibility)
         input_data = sys.stdin.read()
-        data = json.loads(input_data) if input_data.strip() else {}
+        _data = json.loads(input_data) if input_data.strip() else {}
 
         # Generate configuration report
         config_report = generate_config_report()

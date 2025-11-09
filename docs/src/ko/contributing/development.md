@@ -8,14 +8,18 @@ status: stable
 
 MoAI-ADK에 기여하기 위한 로컬 개발 환경을 구성하는 방법을 설명합니다.
 
-## 📋 사전 요구사항
+## 사전 요구사항
+
+<span class="material-icons">checklist</span> **필수 설치 항목**
 
 - Python 3.13+
 - Git
 - UV (Python 패키지 관리자)
 - Docker (선택)
 
-## 🚀 개발 환경 구성
+## 개발 환경 구성
+
+<span class="material-icons">developer_mode</span> **로컬 환경 설정**
 
 ### 1단계: 저장소 클론
 
@@ -44,7 +48,9 @@ uv run pre-commit install
 uv run pre-commit run --all-files
 ```
 
-## 🧪 테스트 실행
+## 테스트 실행
+
+<span class="material-icons">science</span> **테스트 수행**
 
 ### 전체 테스트 스위트
 
@@ -69,7 +75,9 @@ uv run pytest tests/test_core.py::test_function_name
 uv run pytest -m integration
 ```
 
-## 📝 코드 스타일 검사
+## 코드 스타일 검사
+
+<span class="material-icons">code</span> **코드 품질 관리**
 
 ### 린팅
 
@@ -94,7 +102,9 @@ uv run ruff check --fix src/ tests/
 uv run black src/ tests/
 ```
 
-## 📚 문서 빌드
+## 문서 빌드
+
+<span class="material-icons">description</span> **문서화 작업**
 
 ### 로컬 문서 서버
 

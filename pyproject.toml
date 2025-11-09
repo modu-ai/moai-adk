@@ -1,6 +1,6 @@
 [project]
 name = "moai-adk"
-version = "0.21.2"
+version = "0.22.0"
 description = "MoAI Agentic Development Kit - SPEC-First TDD with Alfred SuperAgent & Complete Skills v2.0"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -57,6 +57,9 @@ python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
 addopts = "-v --cov=src/moai_adk --cov-report=html --cov-report=term-missing"
+markers = [
+    "e2e: End-to-end workflow tests",
+]
 
 [tool.coverage.run]
 source = ["src/moai_adk"]
