@@ -161,7 +161,7 @@
   "statusLine": {
     "enabled": true,
     "type": "command",
-    "command": "python -m moai_adk.statusline.main"
+    "command": "uv run .moai/scripts/statusline.py"
   },
   "companyAnnouncements": [
     "계획 우선: 혼란을 피하기 위해 먼저 만들 것을 적어놓세요 (/alfred:1-plan)",
