@@ -2412,11 +2412,13 @@ echo "→ Release page: https://github.com/modu-ai/moai-adk/releases/tag/v{new_v
 ✅ Package built (dist/)
 ✅ Deployed to PyPI (https://pypi.org/project/moai-adk/{new_version}/)
 ✅ GitHub Release published (https://github.com/modu-ai/moai-adk/releases/tag/v{new_version})
+✅ CHANGELOG.md updated with release notes
 
 ## Next Steps
 1. Verify GitHub Release page
-2. Execute Step 3.9: Post-Release Cleanup
-3. Start planning next feature with /alfred:1-plan
+2. Verify CHANGELOG.md was updated
+3. Execute Step 3.12: Post-Release Cleanup
+4. Start planning next feature with /alfred:1-plan
 
 ## Installation Test
 ```bash
@@ -2616,6 +2618,183 @@ echo "→ 다음 단계: Git 커밋 (Step 3.11)"
 
 ---
 
+### Step 3.10.5: CHANGELOG.md 업데이트 (필수)
+
+**목적**:
+- 릴리즈 노트를 CHANGELOG.md에 영구 기록
+- 사용자가 버전 히스토리를 쉽게 참고할 수 있도록 유지
+- GitHub Release와 동기화
+
+**CHANGELOG.md 업데이트 스크립트:**
+
+```bash
+echo "📝 Step 3.10.5: CHANGELOG.md 업데이트 중..."
+echo ""
+
+# 1️⃣ CHANGELOG.md 파일 확인
+if [ ! -f "CHANGELOG.md" ]; then
+    echo "⚠️ CHANGELOG.md를 찾을 수 없습니다"
+    echo "→ 새로운 CHANGELOG.md를 생성합니다..."
+    touch CHANGELOG.md
+fi
+
+# 2️⃣ 변수 설정
+CURRENT_DATE=$(date +%Y-%m-%d)
+CURRENT_VERSION="v${new_version}"
+PREV_VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "Initial Release")
+
+# 3️⃣ 릴리즈 정보 수집
+echo "📊 릴리즈 정보 수집 중..."
+
+# 커밋 통계
+COMMITS=$(git log $PREV_VERSION..HEAD --oneline 2>/dev/null | wc -l)
+FILES_CHANGED=$(git diff --name-only $PREV_VERSION..HEAD 2>/dev/null | wc -l)
+
+# 커밋 분류
+FEATURES=$(git log $PREV_VERSION..HEAD --oneline 2>/dev/null | grep -E "feat:|✨|🎉|🚀" | wc -l)
+BUGFIXES=$(git log $PREV_VERSION..HEAD --oneline 2>/dev/null | grep -E "fix:|🐛|🔥|🩹" | wc -l)
+DOCS=$(git log $PREV_VERSION..HEAD --oneline 2>/dev/null | grep -E "docs:|📝|📚|📖" | wc -l)
+REFACTOR=$(git log $PREV_VERSION..HEAD --oneline 2>/dev/null | grep -E "refactor:|♻️|🔨|🔧" | wc -l)
+
+# 4️⃣ CHANGELOG 항목 생성
+CHANGELOG_ENTRY="## $CURRENT_VERSION - $CURRENT_DATE
+
+### 📊 Release Statistics
+- **Commits**: $COMMITS
+- **Files Changed**: $FILES_CHANGED
+- **Version Type**: ${VERSION_TYPE}
+
+### ✨ What's New
+
+#### Features ($FEATURES)
+\`\`\`bash
+git log $PREV_VERSION..HEAD --oneline --grep='feat:' | grep -E "feat:|✨|🎉|🚀"
+\`\`\`
+
+#### Bug Fixes ($BUGFIXES)
+\`\`\`bash
+git log $PREV_VERSION..HEAD --oneline --grep='fix:' | grep -E "fix:|🐛|🔥|🩹"
+\`\`\`
+
+#### Documentation ($DOCS)
+\`\`\`bash
+git log $PREV_VERSION..HEAD --oneline --grep='docs:' | grep -E "docs:|📝|📚|📖"
+\`\`\`
+
+#### Refactoring ($REFACTOR)
+\`\`\`bash
+git log $PREV_VERSION..HEAD --oneline --grep='refactor:' | grep -E "refactor:|♻️|🔨|🔧"
+\`\`\`
+
+### 💻 Installation
+
+**Using uv (Recommended)**:
+\`\`\`bash
+uv tool install moai-adk==${new_version}
+\`\`\`
+
+**Using pip**:
+\`\`\`bash
+pip install moai-adk==${new_version}
+\`\`\`
+
+### 🔗 Links
+- **GitHub**: [Compare $PREV_VERSION...$CURRENT_VERSION](https://github.com/modu-ai/moai-adk/compare/$PREV_VERSION...$CURRENT_VERSION)
+- **Release**: [Release Notes](https://github.com/modu-ai/moai-adk/releases/tag/$CURRENT_VERSION)
+
+---
+
+"
+
+# 5️⃣ 기존 CHANGELOG.md가 있으면 앞에 추가
+if [ -s "CHANGELOG.md" ]; then
+    # 기존 내용을 임시 파일에 저장
+    cp CHANGELOG.md CHANGELOG.md.bak
+
+    # 새로운 항목 + 기존 내용
+    echo "$CHANGELOG_ENTRY" > CHANGELOG.md
+    cat CHANGELOG.md.bak >> CHANGELOG.md
+    rm CHANGELOG.md.bak
+
+    echo "  ✅ 기존 항목 앞에 추가됨"
+else
+    # 새 파일 생성
+    echo "$CHANGELOG_ENTRY" > CHANGELOG.md
+    echo "  ✅ 새 CHANGELOG.md 생성됨"
+fi
+
+echo ""
+
+# 6️⃣ CHANGELOG 형식 검증
+if grep -q "$CURRENT_VERSION" CHANGELOG.md; then
+    echo "✅ CHANGELOG.md에 버전 $CURRENT_VERSION 기록됨"
+else
+    echo "⚠️ CHANGELOG.md 업데이트 실패"
+fi
+
+echo ""
+echo "📋 CHANGELOG.md 업데이트 완료"
+echo "→ 파일 위치: ./CHANGELOG.md"
+echo "→ 다음 단계: Git 커밋에 포함 (Step 3.11)"
+```
+
+**검증 체크리스트:**
+- ✅ CHANGELOG.md 파일 존재 또는 생성됨
+- ✅ 현재 버전 정보 기록됨 (v{new_version})
+- ✅ 릴리즈 날짜 기록됨
+- ✅ 커밋 통계 포함됨
+- ✅ 설치 방법 기록됨
+- ✅ GitHub 링크 포함됨
+
+**CHANGELOG.md 형식 표준:**
+
+```markdown
+## v0.14.0 - 2025-11-10
+
+### 📊 Release Statistics
+- **Commits**: 15
+- **Files Changed**: 42
+- **Version Type**: minor
+
+### ✨ What's New
+
+#### Features (5)
+- Add multi-language support
+- Implement new Skill system
+- Enhanced performance
+
+#### Bug Fixes (7)
+- Fix template substitution issues
+- Resolve async timing problems
+- Fix linting errors
+
+#### Documentation (3)
+- Update installation guide
+- Add migration guide
+- Update API documentation
+
+### 💻 Installation
+
+**Using uv (Recommended)**:
+\`\`\`bash
+uv tool install moai-adk==0.14.0
+\`\`\`
+
+### 🔗 Links
+- **GitHub**: [Compare v0.13.0...v0.14.0](...)
+- **Release**: [Release Notes](...)
+
+---
+```
+
+**참고사항:**
+- ℹ️ CHANGELOG.md는 릴리즈마다 맨 앞에 새 항목 추가됨 (최신순)
+- ℹ️ GitHub Release의 변경사항을 반영하되, 더 상세한 정보 포함
+- ℹ️ CHANGELOG.md는 git repository의 영구 기록으로 유지됨
+- ⚠️ CHANGELOG.md는 릴리즈 커밋(Step 3.11)에 포함되어야 함
+
+---
+
 ### Step 3.11: 패키지 템플릿 동기화 커밋 (필수)
 
 **목적**:
@@ -2642,6 +2821,7 @@ git add .claude/
 git add .moai/config.json
 git add .moai/memory/
 git add CLAUDE.md
+git add CHANGELOG.md
 
 staged_count=$(git diff --cached --name-only | wc -l)
 echo "  ✅ $staged_count개 파일 staged"
@@ -2649,18 +2829,20 @@ echo "  ✅ $staged_count개 파일 staged"
 echo ""
 
 # 3️⃣ 커밋 메시지 생성 (영문만)
-COMMIT_MSG="chore: Synchronize package templates to local project after release
+COMMIT_MSG="chore: Synchronize package templates and update CHANGELOG after release
 
 - Sync .claude/ (agents, commands, hooks, output-styles, settings.json)
 - Sync .moai/memory/ (development guides, rules, practices)
 - Update .moai/config.json: version v${CURRENT_VERSION}, optimize structure
 - Update CLAUDE.md: project variables substitution
+- Update CHANGELOG.md: record v${CURRENT_VERSION} release with statistics
 - Maintain package template as source of truth (src/moai_adk/templates/)
 
 **File Changes**:
 - .claude/: Alfred agents, commands, hooks, output styles
 - .moai/: Project configuration, development documentation
 - CLAUDE.md: Project directives with substituted variables
+- CHANGELOG.md: Release notes for v${CURRENT_VERSION}
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
@@ -2687,13 +2869,15 @@ echo "→ 다음 단계: Push to remote (선택 사항) 또는 Step 3.12 (Post-R
 ```
 
 **검증 체크리스트:**
-- ✅ 변경된 파일이 모두 staged 상태
+- ✅ 변경된 파일이 모두 staged 상태 (.claude/, .moai/, CLAUDE.md, CHANGELOG.md)
 - ✅ 커밋 메시지: 영문으로 작성, Alfred 공동저자 포함
+- ✅ CHANGELOG.md: v{new_version} 기록됨
 - ✅ 커밋 해시 기록됨
 
 **참고사항:**
 - ℹ️ 이 커밋은 develop/main 브랜치에 추가됨
 - ℹ️ PyPI 배포는 이미 완료된 상태
+- ℹ️ CHANGELOG.md는 모든 릴리즈의 영구 기록
 - ℹ️ 패키지 사용자에게는 영향 없음 (코드 변경 없음)
 
 ---
@@ -3004,6 +3188,7 @@ git push upstream develop
 5. 배포 ✅
    - PyPI: moai-adk@{new_version} ✅
    - GitHub Release (Draft): https://github.com/modu-ai/moai-adk/releases/tag/v{new_version} ✅
+   - CHANGELOG.md: v{new_version} 기록됨 ✅
 
 ---
 
