@@ -11,3 +11,26 @@ packages
 .ruff_cache
 .venv
 site/
+
+# Nextra specific
+.nextra-cache
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# Environment
+.env.local
+.env.*.local
