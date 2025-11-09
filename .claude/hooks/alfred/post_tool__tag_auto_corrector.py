@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 # @CODE:HOOK-POST-TAG-001 | SPEC: TAG-POST-HOOK-001 | TEST: tests/hooks/test_post_tool_tag_corrector.py
-"""PostToolUse Hook: TAG 자동 교정 및 모니터링
+"""PostToolUse Hook: Auto TAG correction and monitoring
 
-Edit/Write/MultiEdit 실행 후 TAG 상태를 검증하고 자동 교정.
-실시간 모니터링으로 누락된 TAG를 탐지하고 수정 제안.
+Validates and auto-corrects TAG status after Edit/Write/MultiEdit execution.
+Real-time monitoring detects missing TAGs and suggests fixes.
 
-기능:
-- 파일 수정 후 TAG 상태 검증
-- 누락된 TAG 자동 생성 제안
-- TAG 체인 무결성 검사
-- 자동 수정 기능 (설정에 따라)
+Features:
+- Validate TAG status after file modification
+- Auto-suggest missing TAG creation
+- Check TAG chain integrity
+- Auto-fix capability (configuration-based)
 
-사용법:
+Usage:
     python3 post_tool__tag_auto_corrector.py <tool_name> <tool_args_json> <result_json>
 """
 
@@ -21,7 +21,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-# 모듈 경로 추가
+# Add module path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
 from moai_adk.core.tags.auto_corrector import AutoCorrection, AutoCorrectionConfig, TagAutoCorrector
@@ -32,10 +32,10 @@ from ..utils.hook_config import get_graceful_degradation, load_hook_timeout
 
 
 def load_config() -> Dict[str, Any]:
-    """설정 파일 로드
+    """Load configuration file
 
     Returns:
-        설정 딕셔너리
+        Configuration dictionary
     """
     try:
         config_file = Path(".moai/config.json")
@@ -49,10 +49,10 @@ def load_config() -> Dict[str, Any]:
 
 
 def create_policy_validator() -> TagPolicyValidator:
-    """TAG 정책 검증기 생성
+    """Create TAG policy validator
 
     Returns:
-        TagPolicyValidator 인스턴스
+        TagPolicyValidator instance
     """
     config_data = load_config()
     tag_policy_config = config_data.get("tags", {}).get("policy", {})
@@ -70,10 +70,10 @@ def create_policy_validator() -> TagPolicyValidator:
 
 
 def create_auto_corrector() -> TagAutoCorrector:
-    """TAG 자동 수정기 생성
+    """Create TAG auto-corrector
 
     Returns:
-        TagAutoCorrector 인스턴스
+        TagAutoCorrector instance
     """
     config_data = load_config()
     auto_correction_config = config_data.get("tags", {}).get("policy", {}).get("auto_correction", {})
@@ -91,10 +91,10 @@ def create_auto_corrector() -> TagAutoCorrector:
 
 
 def create_rollback_manager() -> RollbackManager:
-    """롤백 관리자 생성
+    """Create rollback manager
 
     Returns:
-        RollbackManager 인스턴스
+        RollbackManager instance
     """
     config_data = load_config()
     rollback_config = config_data.get("tags", {}).get("policy", {}).get("rollback", {})
@@ -111,38 +111,38 @@ def create_rollback_manager() -> RollbackManager:
 
 
 def should_monitor_tool(tool_name: str, tool_args: Dict[str, Any], result: Dict[str, Any]) -> bool:
-    """모니터링 대상 툴인지 확인
+    """Check if tool should be monitored
 
     Args:
-        tool_name: 툴 이름
-        tool_args: 툴 인자
-        result: 툴 실행 결과
+        tool_name: Tool name
+        tool_args: Tool arguments
+        result: Tool execution result
 
     Returns:
-        모니터링 대상이면 True
+        True if should be monitored
     """
-    # 파일 조작 툴만 모니터링
+    # Monitor only file manipulation tools
     monitoring_tools = {"Edit", "Write", "MultiEdit"}
 
-    # 성공한 경우에만 모니터링
+    # Monitor only on success
     if tool_name not in monitoring_tools:
         return False
 
-    if result.get("success", True):  # 기본값은 True
+    if result.get("success", True):  # Default is True
         return True
 
     return False
 
 
 def extract_modified_files(tool_name: str, tool_args: Dict[str, Any]) -> List[str]:
-    """수정된 파일 경로 추출
+    """Extract modified file paths
 
     Args:
-        tool_name: 툴 이름
-        tool_args: 툴 인자
+        tool_name: Tool name
+        tool_args: Tool arguments
 
     Returns:
-        파일 경로 목록
+        List of file paths
     """
     file_paths = []
 
@@ -162,13 +162,13 @@ def extract_modified_files(tool_name: str, tool_args: Dict[str, Any]) -> List[st
 
 
 def get_current_file_content(file_path: str) -> str:
-    """현재 파일 내용 가져오기
+    """Get current file content
 
     Args:
-        file_path: 파일 경로
+        file_path: File path
 
     Returns:
-        파일 내용
+        File content
     """
     try:
         path = Path(file_path)
@@ -181,23 +181,23 @@ def get_current_file_content(file_path: str) -> str:
 
 
 def create_checkpoint_if_needed(rollback_manager: RollbackManager, file_paths: List[str]) -> Optional[str]:
-    """필요시 체크포인트 생성
+    """Create checkpoint if needed
 
     Args:
-        rollback_manager: 롤백 관리자
-        file_paths: 파일 경로 목록
+        rollback_manager: Rollback manager
+        file_paths: List of file paths
 
     Returns:
-        체크포인트 ID 또는 None
+        Checkpoint ID or None
     """
     try:
-        # 중요 파일이 변경된 경우에만 체크포인트 생성
+        # Create checkpoint only if important files changed
         important_files = [fp for fp in file_paths if any(
             pattern in fp for pattern in ["src/", "tests/", ".moai/", ".claude/"]
         )]
 
         if important_files:
-            description = f"TAG 시스템 체크포인트: {len(important_files)}개 파일 수정"
+            description = f"TAG system checkpoint: {len(important_files)} files modified"
             return rollback_manager.create_checkpoint(
                 description=description,
                 files=important_files,
@@ -210,13 +210,13 @@ def create_checkpoint_if_needed(rollback_manager: RollbackManager, file_paths: L
 
 
 def create_corrections_summary(corrections: List[AutoCorrection]) -> Dict[str, Any]:
-    """수정 내용 요약 생성
+    """Create corrections summary
 
     Args:
-        corrections: 수정 목록
+        corrections: List of corrections
 
     Returns:
-        수정 요약 딕셔너리
+        Corrections summary dictionary
     """
     if not corrections:
         return {
@@ -251,15 +251,15 @@ def create_monitoring_response(
     corrections: List[AutoCorrection],
     checkpoint_id: Optional[str] = None
 ) -> Dict[str, Any]:
-    """모니터링 결과 응답 생성
+    """Create monitoring result response
 
     Args:
-        violations: 정책 위반 목록
-        corrections: 수정 목록
-        checkpoint_id: 체크포인트 ID
+        violations: List of policy violations
+        corrections: List of corrections
+        checkpoint_id: Checkpoint ID
 
     Returns:
-        모니터링 응답 딕셔너리
+        Monitoring response dictionary
     """
     response = {
         "monitoring_completed": True,
@@ -270,7 +270,7 @@ def create_monitoring_response(
         "checkpoint_id": checkpoint_id
     }
 
-    # 위반 정보 추가
+    # Add violation information
     if violations:
         response["violations"] = [v.to_dict() for v in violations]
         response["violation_summary"] = {
@@ -280,7 +280,7 @@ def create_monitoring_response(
             "low": len([v for v in violations if v.level.value == "low"])
         }
 
-    # 수정 정보 추가
+    # Add correction information
     if corrections:
         response["corrections"] = create_corrections_summary(corrections)
 
@@ -288,13 +288,13 @@ def create_monitoring_response(
 
 
 def main() -> None:
-    """메인 함수"""
+    """Main function"""
     try:
-        # 설정에서 타임아웃 값 로드 (밀리초 → 초)
+        # Load timeout from config (milliseconds to seconds)
         timeout_seconds = load_hook_timeout() / 1000
         graceful_degradation = get_graceful_degradation()
 
-        # 인자 파싱
+        # Parse arguments
         if len(sys.argv) < 4:
             usage = "python3 post_tool__tag_auto_corrector.py <tool_name> <tool_args_json> <result_json>"  # noqa: E501
             print(json.dumps({
@@ -314,58 +314,58 @@ def main() -> None:
             }))
             sys.exit(0)
 
-        # 시작 시간 기록
+        # Record start time
         start_time = time.time()
 
-        # 모니터링 대상 확인
+        # Check if should monitor
         if not should_monitor_tool(tool_name, tool_args, tool_result):
             print(json.dumps({
                 "monitoring_completed": True,
-                "message": "툴 실행 결과 모니터링 대상 아님"
+                "message": "Tool execution result not a monitoring target"
             }))
             sys.exit(0)
 
-        # 수정된 파일 경로 추출
+        # Extract modified file paths
         file_paths = extract_modified_files(tool_name, tool_args)
         if not file_paths:
             print(json.dumps({
                 "monitoring_completed": True,
-                "message": "수정된 파일 없음"
+                "message": "No modified files"
             }))
             sys.exit(0)
 
-        # 구성요소 생성
+        # Create components
         policy_validator = create_policy_validator()
         auto_corrector = create_auto_corrector()
         rollback_manager = create_rollback_manager()
 
-        # 체크포인트 생성 (중요 파일인 경우)
+        # Create checkpoint if important files
         checkpoint_id = create_checkpoint_if_needed(rollback_manager, file_paths)
 
-        # 모든 파일에 대해 검증 및 수정
+        # Validate and correct all files
         all_violations = []
         all_corrections = []
 
         for file_path in file_paths:
-            # 타임아웃 체크
+            # Timeout check
             if time.time() - start_time > timeout_seconds:
                 break
 
-            # 현재 파일 내용 가져오기
+            # Get current file content
             content = get_current_file_content(file_path)
             if not content:
                 continue
 
-            # 정책 위반 검증
+            # Validate policy violations
             violations = policy_validator.validate_after_modification(file_path, content)
             all_violations.extend(violations)
 
-            # 자동 수정 생성
+            # Generate auto corrections
             if violations:
                 corrections = auto_corrector.generate_corrections(violations)
                 all_corrections.extend(corrections)
 
-        # 자동 수정 적용
+        # Apply auto corrections
         applied_corrections = []
         if all_corrections and auto_corrector.config.enable_auto_fix:
             success = auto_corrector.apply_corrections(all_corrections)
@@ -373,28 +373,28 @@ def main() -> None:
                 applied_corrections = [c for c in all_corrections
                                      if c.confidence >= auto_corrector.config.confidence_threshold]
 
-        # 응답 생성
+        # Create response
         response = create_monitoring_response(all_violations, all_corrections, checkpoint_id)
 
-        # 추가 정보
+        # Additional information
         if applied_corrections:
             response["auto_corrections_applied"] = len(applied_corrections)
-            response["message"] = f"✅ {len(applied_corrections)}개 자동 수정 적용 완료"
+            response["message"] = f"✅ {len(applied_corrections)} auto-corrections applied"
         elif all_corrections:
-            response["message"] = f"💡 {len(all_corrections)}개 수정 제안 생성 (자동 적용 비활성화)"
+            response["message"] = f"💡 {len(all_corrections)} correction suggestions generated (auto-apply disabled)"
         elif all_violations:
-            response["message"] = f"⚠️ {len(all_violations)}개 TAG 정책 위반 발견"
+            response["message"] = f"⚠️ {len(all_violations)} TAG policy violations found"
         else:
-            response["message"] = "✅ TAG 정책 준수 확인"
+            response["message"] = "✅ TAG policy compliance verified"
 
         print(json.dumps(response, ensure_ascii=False, indent=2))
 
     except Exception as e:
-        # 예외 발생 시 로그만 남기고 계속 진행
+        # Log exception and continue
         error_response = {
             "monitoring_completed": False,
             "error": f"Hook execution error: {str(e)}",
-            "message": "Hook 실행 중 오류가 발생했지만 정상 처리됨"
+            "message": "Hook execution error occurred but processing normally"
         }
 
         if graceful_degradation:

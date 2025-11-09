@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 # @CODE:HOOK-SESSION-START-TEMPLATE-001 | SPEC: SESSION-START-HOOK-001
 
-"""SessionStart Hook: 자동 정리 및 보고서 생성
+"""SessionStart Hook: Auto cleanup and report generation
 
-세션 시작 시 오래된 임시 파일, 보고서 등을 정리하고
-일일 분석 보고서를 생성합니다.
+Cleans old temporary files and reports on session start
+and generates daily analysis reports.
 
-기능:
-- 오래된 보고서 파일 자동 정리
-- 임시 파일 정리
-- 일일 분석 보고서 생성
-- 세션 로그 분석
+Features:
+- Auto cleanup old report files
+- Cleanup temporary files
+- Generate daily analysis report
+- Analyze session logs
 """
 
 import json
@@ -21,7 +21,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional
 
-# 모듈 경로 추가
+# Add module path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
 try:
@@ -80,7 +80,7 @@ def get_graceful_degradation() -> bool:
 
 
 def load_config() -> Dict:
-    """설정 파일 로드"""
+    """Load configuration file"""
     try:
         config_file = Path(".moai/config.json")
         if config_file.exists():
@@ -93,14 +93,14 @@ def load_config() -> Dict:
 
 
 def should_cleanup_today(last_cleanup: Optional[str], cleanup_days: int = 7) -> bool:
-    """오늘 정리가 필요한지 확인
+    """Check if cleanup is needed today
 
     Args:
-        last_cleanup: 마지막 정리 날짜 (YYYY-MM-DD)
-        cleanup_days: 정리 주기 (일)
+        last_cleanup: Last cleanup date (YYYY-MM-DD)
+        cleanup_days: Cleanup period (days)
 
     Returns:
-        정리 필요 여부
+        Cleanup needed status
     """
     if not last_cleanup:
         return True
@@ -114,13 +114,13 @@ def should_cleanup_today(last_cleanup: Optional[str], cleanup_days: int = 7) -> 
 
 
 def cleanup_old_files(config: Dict) -> Dict[str, int]:
-    """오래된 파일 정리
+    """Cleanup old files
 
     Args:
-        config: 설정 딕셔너리
+        config: Configuration dictionary
 
     Returns:
-        정리된 파일 수 통계
+        Cleanup statistics
     """
     stats = {
         "reports_cleaned": 0,
@@ -140,7 +140,7 @@ def cleanup_old_files(config: Dict) -> Dict[str, int]:
 
         cutoff_date = datetime.now() - timedelta(days=cleanup_days)
 
-        # 보고서 파일 정리
+        # Cleanup report files
         reports_dir = Path(".moai/reports")
         if reports_dir.exists():
             stats["reports_cleaned"] = cleanup_directory(
@@ -150,17 +150,17 @@ def cleanup_old_files(config: Dict) -> Dict[str, int]:
                 patterns=["*.json", "*.md"]
             )
 
-        # 캐시 파일 정리
+        # Cleanup cache files
         cache_dir = Path(".moai/cache")
         if cache_dir.exists():
             stats["cache_cleaned"] = cleanup_directory(
                 cache_dir,
                 cutoff_date,
-                None,  # 캐시는 개수 제한 없음
+                None,  # Cache has no file count limit
                 patterns=["*"]
             )
 
-        # 임시 파일 정리
+        # Cleanup temp files
         temp_dir = Path(".moai/temp")
         if temp_dir.exists():
             stats["temp_cleaned"] = cleanup_directory(
@@ -188,16 +188,16 @@ def cleanup_directory(
     max_files: Optional[int],
     patterns: List[str]
 ) -> int:
-    """디렉토리 파일 정리
+    """Cleanup directory files
 
     Args:
-        directory: 대상 디렉토리
-        cutoff_date: 자를 기준 날짜
-        max_files: 최대 유지 파일 수
-        patterns: 삭제할 파일 패턴 목록
+        directory: Target directory
+        cutoff_date: Cutoff date for deletion
+        max_files: Maximum number of files to keep
+        patterns: List of file patterns to delete
 
     Returns:
-        삭제된 파일 수
+        Number of deleted files
     """
     if not directory.exists():
         return 0
@@ -205,21 +205,21 @@ def cleanup_directory(
     cleaned_count = 0
 
     try:
-        # 패턴에 해당하는 파일 목록 수집
+        # Collect files matching patterns
         files_to_check = []
         for pattern in patterns:
             files_to_check.extend(directory.glob(pattern))
 
-        # 날짜순 정렬 (오래된 것부터)
+        # Sort by date (oldest first)
         files_to_check.sort(key=lambda f: f.stat().st_mtime)
 
-        # 파일 삭제
+        # Delete files
         for file_path in files_to_check:
             try:
-                # 파일 수정 시간 확인
+                # Check file modification time
                 file_mtime = datetime.fromtimestamp(file_path.stat().st_mtime)
 
-                # 기준 날짜 이전이면 삭제
+                # Delete if before cutoff date
                 if file_mtime < cutoff_date:
                     if file_path.is_file():
                         file_path.unlink()
@@ -228,7 +228,7 @@ def cleanup_directory(
                         shutil.rmtree(file_path)
                         cleaned_count += 1
 
-                # 최대 파일 수 제한
+                # Enforce maximum file count limit
                 elif max_files is not None:
                     remaining_files = len([f for f in files_to_check
                                          if f.exists() and
@@ -252,23 +252,23 @@ def cleanup_directory(
 
 
 def generate_daily_analysis(config: Dict) -> Optional[str]:
-    """일일 분석 보고서 생성
+    """Generate daily analysis report
 
     Args:
-        config: 설정 딕셔너리
+        config: Configuration dictionary
 
     Returns:
-        생성된 보고서 파일 경로 또는 None
+        Generated report file path or None
     """
     try:
         analysis_config = config.get("daily_analysis", {})
         if not analysis_config.get("enabled", True):
             return None
 
-        # 세션 로그 분석
+        # Analyze session logs
         report_path = analyze_session_logs(analysis_config)
 
-        # 설정에 마지막 분석 날짜 업데이트
+        # Update last analysis date in config
         if report_path:
             config_file = Path(".moai/config.json")
             if config_file.exists():
@@ -288,20 +288,20 @@ def generate_daily_analysis(config: Dict) -> Optional[str]:
 
 
 def analyze_session_logs(analysis_config: Dict) -> Optional[str]:
-    """세션 로그 분석
+    """Analyze session logs
 
     Args:
-        analysis_config: 분석 설정
+        analysis_config: Analysis configuration
 
     Returns:
-        보고서 파일 경로 또는 None
+        Report file path or None
     """
     try:
-        # Claude Code 세션 로그 경로
+        # Claude Code session logs path
         session_logs_dir = Path.home() / ".claude" / "projects"
         project_name = Path.cwd().name
 
-        # 현재 프로젝트의 세션 로그 찾기
+        # Find session logs for current project
         project_sessions = []
         for project_dir in session_logs_dir.iterdir():
             if project_dir.name.endswith(project_name):
@@ -311,10 +311,10 @@ def analyze_session_logs(analysis_config: Dict) -> Optional[str]:
         if not project_sessions:
             return None
 
-        # 최근 세션 로그 분석
+        # Analyze recent session logs
         recent_sessions = sorted(project_sessions, key=lambda f: f.stat().st_mtime, reverse=True)[:10]
 
-        # 분석 데이터 수집
+        # Collect analysis data
         analysis_data = {
             "total_sessions": len(recent_sessions),
             "date_range": "",
@@ -329,28 +329,28 @@ def analyze_session_logs(analysis_config: Dict) -> Optional[str]:
             last_session = datetime.fromtimestamp(recent_sessions[0].stat().st_mtime)
             analysis_data["date_range"] = f"{first_session.strftime('%Y-%m-%d')} ~ {last_session.strftime('%Y-%m-%d')}"
 
-            # 각 세션 분석
+            # Analyze each session
             all_durations = []
             for session_file in recent_sessions:
                 try:
                     with open(session_file, 'r', encoding='utf-8') as f:
                         session_data = json.load(f)
 
-                    # 도구 사용 분석
+                    # Analyze tool usage
                     if "tool_use" in session_data:
                         for tool_use in session_data["tool_use"]:
                             tool_name = tool_use.get("name", "unknown")
                             analysis_data["tools_used"][tool_name] = analysis_data["tools_used"].get(tool_name, 0) + 1
 
-                    # 오류 분석
+                    # Analyze errors
                     if "errors" in session_data:
                         for error in session_data["errors"]:
                             analysis_data["errors_found"].append({
                                 "timestamp": error.get("timestamp", ""),
-                                "error": error.get("message", "")[:100]  # 첫 100자만
+                                "error": error.get("message", "")[:100]  # First 100 characters only
                             })
 
-                    # 세션 길이 분석
+                    # Analyze session duration
                     if "start_time" in session_data and "end_time" in session_data:
                         start = session_data["start_time"]
                         end = session_data["end_time"]
@@ -365,15 +365,20 @@ def analyze_session_logs(analysis_config: Dict) -> Optional[str]:
                     logger.warning(f"Failed to analyze session {session_file}: {e}")
                     continue
 
-            # 세션 길이 통계
+            # Session duration statistics
             if all_durations:
                 analysis_data["duration_stats"] = get_summary_stats(all_durations)
 
-        # 보고서 생성
+        # Generate report
         report_content = format_analysis_report(analysis_data)
 
+<<<<<<< HEAD
         # 보고서 저장
         _report_location = analysis_config.get("report_location", ".moai/reports/daily-")
+=======
+        # Save report
+        report_location = analysis_config.get("report_location", ".moai/reports/daily-")
+>>>>>>> b5ac98dc46dcbb7aa3d64d1c16f4a5ef2dfa3053
         base_path = Path(".moai/reports")
         base_path.mkdir(exist_ok=True)
 
@@ -391,110 +396,110 @@ def analyze_session_logs(analysis_config: Dict) -> Optional[str]:
 
 
 def format_analysis_report(analysis_data: Dict) -> str:
-    """분석 결과를 보고서 형식으로 변환
+    """Convert analysis results to report format
 
     Args:
-        analysis_data: 분석 데이터
+        analysis_data: Analysis data
 
     Returns:
-        형식화된 보고서 내용
+        Formatted report content
     """
     report_lines = [
-        "# 일일 세션 분석 보고서",
+        "# Daily Session Analysis Report",
         "",
-        f"생성 시간: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-        f"분석 기간: {analysis_data.get('date_range', 'N/A')}",
-        f"총 세션 수: {analysis_data.get('total_sessions', 0)}",
+        f"Generated time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+        f"Analysis period: {analysis_data.get('date_range', 'N/A')}",
+        f"Total sessions: {analysis_data.get('total_sessions', 0)}",
         "",
-        "## 📊 도구 사용 현황",
+        "## Tool Usage Report",
         ""
     ]
 
-    # 도구 사용 순위
+    # Tool usage ranking
     tools_used = analysis_data.get("tools_used", {})
     if tools_used:
         sorted_tools = sorted(tools_used.items(), key=lambda x: x[1], reverse=True)
         for tool_name, count in sorted_tools[:10]:  # TOP 10
-            report_lines.append(f"- **{tool_name}**: {count}회")
+            report_lines.append(f"- **{tool_name}**: {count} times")
     else:
-        report_lines.append("- 사용된 도구가 없습니다")
+        report_lines.append("- No tools used")
 
     report_lines.extend([
         "",
-        "## ⚠️ 오류 현황",
+        "## Error Report",
         ""
     ])
 
-    # 오류 현황
+    # Error status
     errors = analysis_data.get("errors_found", [])
     if errors:
-        for i, error in enumerate(errors[:5], 1):  # 최근 5개
+        for i, error in enumerate(errors[:5], 1):  # Last 5
             report_lines.append(f"{i}. {error.get('error', 'N/A')} ({error.get('timestamp', 'N/A')})")
     else:
-        report_lines.append("- 발견된 오류가 없습니다")
+        report_lines.append("- No errors found")
 
-    # 세션 길이 통계
+    # Session duration statistics
     duration_stats = analysis_data.get("duration_stats", {})
     if duration_stats.get("mean", 0) > 0:
         report_lines.extend([
             "",
-            "## ⏱️ 세션 길이 통계",
+            "## Session Duration Statistics",
             "",
-            f"- 평균: {format_duration(duration_stats['mean'])}",
-            f"- 최소: {format_duration(duration_stats['min'])}",
-            f"- 최대: {format_duration(duration_stats['max'])}",
-            f"- 표준편차: {format_duration(duration_stats['std'])}"
+            f"- Average: {format_duration(duration_stats['mean'])}",
+            f"- Minimum: {format_duration(duration_stats['min'])}",
+            f"- Maximum: {format_duration(duration_stats['max'])}",
+            f"- Std Dev: {format_duration(duration_stats['std'])}"
         ])
 
-    # 개선 제안
+    # Improvement recommendations
     report_lines.extend([
         "",
-        "## 💡 개선 제안",
+        "## Improvement Recommendations",
         ""
     ])
 
-    # 도구 사용 패턴 기반 제안
+    # Recommendations based on tool usage patterns
     if tools_used:
         most_used_tool = max(tools_used.items(), key=lambda x: x[1])[0]
         if "Bash" in most_used_tool and tools_used[most_used_tool] > 10:
-            report_lines.append("- 🔧 Bash 명령어 사용이 잦습니다. 스크립트 자동화를 고려해보세요")
+            report_lines.append("- Consider script automation - frequent Bash command usage detected")
 
     if len(errors) > 3:
-        report_lines.append("- ⚠️ 오류 발생이 잦습니다. 안정성 검토가 필요합니다")
+        report_lines.append("- Review stability - frequent errors detected")
 
-    if duration_stats.get("mean", 0) > 1800:  # 30분 이상
-        report_lines.append("- ⏰ 세션 시간이 깁니다. 작업 분할을 고려해보세요")
+    if duration_stats.get("mean", 0) > 1800:  # More than 30 minutes
+        report_lines.append("- Consider task splitting - session time exceeds 30 minutes")
 
     if not report_lines[-1].startswith("-"):
-        report_lines.append("- 현재 세션 패턴이 양호합니다")
+        report_lines.append("- Current session patterns look good")
 
     report_lines.extend([
         "",
         "---",
-        "*보고서는 Alfred의 SessionStart Hook으로 자동 생성되었습니다*",
-        "*분석 설정은 `.moai/config.json`의 `daily_analysis` 섹션에서 관리할 수 있습니다*"
+        "*This report was automatically generated by Alfred's SessionStart Hook*",
+        "*Analysis settings can be managed in the `daily_analysis` section of `.moai/config.json`*"
     ])
 
     return "\n".join(report_lines)
 
 
 def update_cleanup_stats(cleanup_stats: Dict[str, int]):
-    """정리 통계 업데이트
+    """Update cleanup statistics
 
     Args:
-        cleanup_stats: 정리 통계
+        cleanup_stats: Cleanup statistics
     """
     try:
         stats_file = Path(".moai/cache/cleanup_stats.json")
         stats_file.parent.mkdir(exist_ok=True)
 
-        # 기존 통계 로드
+        # Load existing statistics
         existing_stats = {}
         if stats_file.exists():
             with open(stats_file, 'r', encoding='utf-8') as f:
                 existing_stats = json.load(f)
 
-        # 새 통계 추가
+        # Add new statistics
         today = datetime.now().strftime("%Y-%m-%d")
         existing_stats[today] = {
             "cleaned_files": cleanup_stats["total_cleaned"],
@@ -504,7 +509,7 @@ def update_cleanup_stats(cleanup_stats: Dict[str, int]):
             "timestamp": datetime.now().isoformat()
         }
 
-        # 최근 30일 통계만 유지
+        # Keep only last 30 days of statistics
         cutoff_date = datetime.now() - timedelta(days=30)
         filtered_stats = {}
         for date, stats in existing_stats.items():
@@ -515,7 +520,7 @@ def update_cleanup_stats(cleanup_stats: Dict[str, int]):
             except ValueError:
                 continue
 
-        # 통계 저장
+        # Save statistics
         with open(stats_file, 'w', encoding='utf-8') as f:
             json.dump(filtered_stats, f, indent=2, ensure_ascii=False)
 
@@ -524,13 +529,13 @@ def update_cleanup_stats(cleanup_stats: Dict[str, int]):
 
 
 def main():
-    """메인 함수"""
+    """Main function"""
     try:
-        # Hook timeout 설정 로드
+        # Load hook timeout setting
         timeout_seconds = load_hook_timeout() / 1000
         graceful_degradation = get_graceful_degradation()
 
-        # 타임아웃 체크
+        # Timeout check
         import signal
         import time
 
@@ -543,21 +548,21 @@ def main():
         try:
             start_time = time.time()
 
-            # 설정 로드
+            # Load configuration
             config = load_config()
 
-            # 마지막 정리 날짜 확인
+            # Check last cleanup date
             last_cleanup = config.get("auto_cleanup", {}).get("last_cleanup")
             cleanup_days = config.get("auto_cleanup", {}).get("cleanup_days", 7)
 
             cleanup_stats = {"total_cleaned": 0, "reports_cleaned": 0, "cache_cleaned": 0, "temp_cleaned": 0}
             report_path = None
 
-            # 정리 필요 시 실행
+            # Execute cleanup if needed
             if should_cleanup_today(last_cleanup, cleanup_days):
                 cleanup_stats = cleanup_old_files(config)
 
-                # 마지막 정리 날짜 업데이트
+                # Update last cleanup date
                 config_file = Path(".moai/config.json")
                 if config_file.exists():
                     with open(config_file, 'r', encoding='utf-8') as f:
@@ -568,18 +573,18 @@ def main():
                     with open(config_file, 'w', encoding='utf-8') as f:
                         json.dump(config_data, f, indent=2, ensure_ascii=False)
 
-                # 정리 통계 업데이트
+                # Update cleanup statistics
                 update_cleanup_stats(cleanup_stats)
 
-            # 일일 분석 보고서 생성
+            # Generate daily analysis report
             last_analysis = config.get("daily_analysis", {}).get("last_analysis")
-            if should_cleanup_today(last_analysis, 1):  # 매일 실행
+            if should_cleanup_today(last_analysis, 1):  # Run daily
                 report_path = generate_daily_analysis(config)
 
-            # 실행 시간 기록
+            # Record execution time
             execution_time = time.time() - start_time
 
-            # 결과 출력
+            # Print results
             result = {
                 "hook": "session_start__auto_cleanup",
                 "success": True,
@@ -592,10 +597,10 @@ def main():
             print(json.dumps(result, ensure_ascii=False, indent=2))
 
         finally:
-            signal.alarm(0)  # 타임아웃 해제
+            signal.alarm(0)  # Disable timeout
 
     except TimeoutError as e:
-        # 타임아웃 처리
+        # Timeout handling
         result = {
             "hook": "session_start__auto_cleanup",
             "success": False,
@@ -610,7 +615,7 @@ def main():
         print(json.dumps(result, ensure_ascii=False, indent=2))
 
     except Exception as e:
-        # 예외 처리
+        # Exception handling
         result = {
             "hook": "session_start__auto_cleanup",
             "success": False,

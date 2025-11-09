@@ -5,9 +5,15 @@
 
 import re
 import sys
+<<<<<<< HEAD
 from collections import defaultdict
 from pathlib import Path
 
+=======
+from pathlib import Path
+from typing import List, Dict, Tuple, Set
+from collections import defaultdict
+>>>>>>> b5ac98dc46dcbb7aa3d64d1c16f4a5ef2dfa3053
 
 # 프로젝트 루트 자동 탐지 (pyproject.toml 또는 .git 기준)
 def find_project_root(start_path: Path) -> Path:
@@ -97,7 +103,11 @@ class KoreanDocsLinter:
         for i, line in enumerate(lines, 1):
             if match := re.match(r'^(#{1,6})\s+(.+)$', line):
                 level = len(match.group(1))
+<<<<<<< HEAD
                 _title = match.group(2).strip()
+=======
+                title = match.group(2).strip()
+>>>>>>> b5ac98dc46dcbb7aa3d64d1c16f4a5ef2dfa3053
 
                 # H1 중복 확인
                 if level == 1:
