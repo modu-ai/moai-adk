@@ -7,5 +7,11 @@
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "outputStyle": "🤖 R2-D2 Agentic Coding",
+  "enabledMcpjsonServers": [
+    "context7",
+    "playwright",
+    "sequential-thinking"
+  ]
 }

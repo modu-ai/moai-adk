@@ -413,6 +413,36 @@ Use Task tool:
 
 ---
 
+### Step 2.4: Update SPEC Status to Completed
+
+**After successful synchronization**, update SPEC status to completed:
+
+1. **Batch update all completed SPECs**:
+   ```bash
+   python3 .claude/hooks/alfred/spec_status_hooks.py batch_update
+   ```
+
+2. **Verify status updates**:
+   - Check results from batch update
+   - Record version changes and status transitions
+   - Include status changes in sync report
+
+3. **Handle individual SPEC validation (if needed)**:
+   ```bash
+   python3 .claude/hooks/alfred/spec_status_hooks.py validate_completion <SPEC_ID>
+   python3 .claude/hooks/alfred/spec_status_hooks.py status_update <SPEC_ID> --status completed --reason "Documentation synchronized successfully"
+   ```
+
+4. **Generate status update summary**:
+   - Count of SPECs updated to completed
+   - List of any failed updates with reasons
+   - Version changes for each SPEC
+   - Integration with sync report
+
+**Integration**: Status updates are included in the Git commit from Phase 3 with detailed commit message.
+
+---
+
 ## 🔧 PHASE 3: Git Operations & PR
 
 **Goal**: Commit changes, transition PR (if Team mode), optionally auto-merge.

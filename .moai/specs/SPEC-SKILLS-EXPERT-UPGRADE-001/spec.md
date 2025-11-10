@@ -1,23 +1,23 @@
 ---
-id: SKILLS-EXPERT-UPGRADE-001
-version: 1.0.0
-status: draft
-created: 2025-11-11
-updated: 2025-11-11
-author: @user
-priority: high
+author: user
 category: enhancement
+created: 2025-11-11
+id: SKILLS-EXPERT-UPGRADE-001
 labels:
-  - skills
-  - expert-level
-  - context7
-  - web-search
-  - documentation
+- skills
+- expert-level
+- context7
+- web-search
+- documentation
+priority: high
 scope:
-  packages:
-    - .claude/skills/
   files:
-    - 186개 모든 SKILL.md 파일
+  - "186\uAC1C \uBAA8\uB4E0 SKILL.md \uD30C\uC77C"
+  packages:
+  - .claude/skills/
+status: in-progress
+updated: 2025-11-11
+version: 1.0.0
 ---
 
 # @SPEC:SKILLS-EXPERT-UPGRADE-001: 전문가 수준 스킬 업그레이드 (186개)

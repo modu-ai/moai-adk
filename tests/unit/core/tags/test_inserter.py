@@ -1,4 +1,4 @@
-# @TEST:INS-001, @TEST:INS-002, @TEST:INS-003
+# # REMOVED_ORPHAN_TEST:INS-001, # REMOVED_ORPHAN_TEST:INS-002, # REMOVED_ORPHAN_TEST:INS-003
 """Test suite for markdown TAG insertion.
 
 Tests TAG insertion into markdown headers, chain reference formatting,

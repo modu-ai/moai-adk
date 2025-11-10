@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from moai_adk.utils.common import HTTPClient, create_report_path, extract_links_from_text, is_valid_url
+from moai_adk.utils.safe_file_reader import SafeFileReader
 
 logger = logging.getLogger(__name__)
 
@@ -60,13 +61,18 @@ class LinkValidator(HTTPClient):
         super().__init__(max_concurrent, timeout)
 
     def extract_links_from_file(self, file_path: Path) -> List[str]:
-        """파일에서 모든 링크 추출"""
+        """파일에서 모든 링크 추출 (안전한 파일 읽기 사용)"""
         if not file_path.exists():
             logger.warning(f"파일이 존재하지 않습니다: {file_path}")
             return []
 
         try:
-            content = file_path.read_text(encoding='utf-8')
+            reader = SafeFileReader()
+            content = reader.read_text(file_path)
+            if content is None:
+                logger.error(f"파일을 읽을 수 없습니다: {file_path}")
+                return []
+
             base_url = "https://adk.mo.ai.kr"
             links = extract_links_from_text(content, base_url)
             logger.info(f"파일에서 {len(links)}개의 링크를 발견했습니다: {file_path}")

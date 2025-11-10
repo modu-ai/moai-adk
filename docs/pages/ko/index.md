@@ -1,4 +1,4 @@
-# MoAI-ADK: AI 기반 SPEC-First TDD 개발 프레임워크
+# MoAI-ADK: AI 기반 SPEC-First TDD 개발 프레임워크 {#main-content}
 
 > **신뢰할 수 있고 유지보수하기 쉬운 소프트웨어를 AI의 도움으로 빌드하세요.** 요구사항부터 문서화까지 모든 산출물이 완벽하게 추적되고, 자동으로 테스트되며, 항상 동기화됩니다.
 

@@ -23,43 +23,50 @@
     "안전한 업데이트: 'moai-adk update'로 새로운 기능을 안전하게 추가합니다",
     "🧹 작업이 끝났을 때: '/clear'를 사용하여 다음 작업을 위해 대화를 정리합니다"
   ],
-  "env": {},
+  "env": {
+    "MOAI_QUIET_SETUP": "true",
+    "MOAI_SILENT_RESEARCH": "true"
+  },
   "hooks": {
     "SessionStart": [
       {
         "hooks": [
           {
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session_start__show_project_info.py",
             "type": "command",
-            "description": "Display project info and language configuration at session start"
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session_start__show_project_info.py"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session_start__research_setup.py"
           }
         ]
       }
     ],
     "PreToolUse": [
       {
+        "matcher": "Edit|Write|MultiEdit",
         "hooks": [
           {
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/pre_tool__auto_checkpoint.py",
             "type": "command",
-            "description": "Create automatic checkpoint before file modifications"
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/pre_tool__auto_checkpoint.py"
           },
           {
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/pre_tool__auto_spec_proposal.py",
             "type": "command",
-            "description": "Automatically propose SPEC generation on code file creation/modification"
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/pre_tool__research_strategy.py"
           }
-        ],
-        "matcher": "Edit|Write|MultiEdit"
+        ]
       }
     ],
     "UserPromptSubmit": [
       {
         "hooks": [
           {
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/user_prompt__jit_load_docs.py",
             "type": "command",
-            "description": "Load documentation on-demand based on user intent"
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/user_prompt__jit_load_docs.py"
           }
         ]
       }
@@ -68,23 +75,21 @@
       {
         "hooks": [
           {
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session_end__cleanup.py",
             "type": "command",
-            "description": "Clean up session state and temporary files"
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session_end__cleanup.py"
           }
         ]
       }
     ],
     "PostToolUse": [
       {
+        "matcher": "Edit|Write|MultiEdit",
         "hooks": [
           {
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/post_tool__log_changes.py",
             "type": "command",
-            "description": "Log file changes for audit and tracking"
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/post_tool__research_analysis.py"
           }
-        ],
-        "matcher": "Edit|Write|MultiEdit"
+        ]
       }
     ]
   },

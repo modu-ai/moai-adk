@@ -1,0 +1,336 @@
+/* MoAI-ADK 문서 사이트 글로벌 스타일 */
+
+/* CSS 변수 정의 */
+:root {
+  /* 브랜드 색상 */
+  --brand-primary: #6366f1;
+  --brand-primary-dark: #4f46e5;
+  --brand-primary-light: #818cf8;
+
+  /* 텍스트 색상 */
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+
+  /* 배경 색상 */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f9fafb;
+  --bg-tertiary: #f3f4f6;
+
+  /* 상태 색상 */
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --info: #3b82f6;
+
+  /* 링크 색상 */
+  --link-color: #3182ce;
+  --link-hover: #2c5282;
+
+  /* 스페이스 시스템 */
+  --space-1: 0.25rem;  /* 4px */
+  --space-2: 0.5rem;   /* 8px */
+  --space-3: 0.75rem;  /* 12px */
+  --space-4: 1rem;     /* 16px */
+  --space-5: 1.25rem;  /* 20px */
+  --space-6: 1.5rem;   /* 24px */
+  --space-8: 2rem;     /* 32px */
+  --space-10: 2.5rem;  /* 40px */
+  --space-12: 3rem;    /* 48px */
+
+  /* 타이포그래피 */
+  --font-size-xs: 0.75rem;    /* 12px */
+  --font-size-sm: 0.875rem;   /* 14px */
+  --font-size-base: 1rem;     /* 16px */
+  --font-size-lg: 1.125rem;   /* 18px */
+  --font-size-xl: 1.25rem;    /* 20px */
+  --font-size-2xl: 1.5rem;    /* 24px */
+  --font-size-3xl: 1.875rem;  /* 30px */
+  --font-size-4xl: 2.25rem;   /* 36px */
+
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
+}
+
+/* 다크 모드 변수 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text-primary: #f9fafb;
+    --text-secondary: #d1d5db;
+    --text-muted: #9ca3af;
+    --bg-primary: #111827;
+    --bg-secondary: #1f2937;
+    --bg-tertiary: #374151;
+    --link-color: #60a5fa;
+    --link-hover: #3b82f6;
+  }
+}
+
+/* 기본 스타일 재정의 */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'system-ui', -apple-system, 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', sans-serif;
+  line-height: var(--line-height-normal);
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  transition: color 0.3s ease, background-color 0.3s ease;
+}
+
+/* H1 제목 스타일 개선 */
+h1 {
+  font-size: clamp(2rem, 5vw, 3rem) !important;
+  font-weight: 700 !important;
+  line-height: var(--line-height-tight) !important;
+  margin: var(--space-8) 0 var(--space-6) 0 !important;
+  color: var(--text-primary) !important;
+  background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-primary-dark) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* H2 제목 스타일 */
+h2 {
+  font-size: clamp(1.5rem, 4vw, 2.25rem) !important;
+  font-weight: 600 !important;
+  line-height: var(--line-height-tight) !important;
+  margin: var(--space-8) 0 var(--space-4) 0 !important;
+  color: var(--text-primary) !important;
+  border-bottom: 2px solid var(--brand-primary);
+  padding-bottom: var(--space-2);
+}
+
+/* H3 제목 스타일 */
+h3 {
+  font-size: clamp(1.25rem, 3vw, 1.75rem) !important;
+  font-weight: 600 !important;
+  line-height: var(--line-height-tight) !important;
+  margin: var(--space-6) 0 var(--space-3) 0 !important;
+  color: var(--text-primary) !important;
+}
+
+/* 다른 헤딩 스타일 */
+h4, h5, h6 {
+  font-weight: 600 !important;
+  line-height: var(--line-height-tight) !important;
+  margin: var(--space-4) 0 var(--space-2) 0 !important;
+  color: var(--text-primary) !important;
+}
+
+h4 {
+  font-size: var(--font-size-xl) !important;
+}
+
+h5 {
+  font-size: var(--font-size-lg) !important;
+}
+
+h6 {
+  font-size: var(--font-size-base) !important;
+}
+
+/* 단락 스타일 개선 */
+p {
+  font-size: var(--font-size-base) !important;
+  line-height: var(--line-height-relaxed) !important;
+  margin: var(--space-4) 0 !important;
+  color: var(--text-secondary) !important;
+}
+
+/* 링크 스타일 개선 */
+a {
+  color: var(--link-color) !important;
+  text-decoration: none !important;
+  border-radius: 2px;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+a:hover {
+  color: var(--link-hover) !important;
+  text-decoration: underline !important;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+}
+
+a:focus {
+  outline: 2px solid var(--brand-primary) !important;
+  outline-offset: 2px !important;
+  text-decoration: underline !important;
+}
+
+/* 코드 블록 스타일 개선 */
+pre {
+  background-color: var(--bg-tertiary) !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 8px !important;
+  padding: var(--space-4) !important;
+  margin: var(--space-6) 0 !important;
+  overflow-x: auto !important;
+  font-size: var(--font-size-sm) !important;
+  line-height: var(--line-height-normal) !important;
+}
+
+pre code {
+  background: none !important;
+  padding: 0 !important;
+  font-size: inherit !important;
+  color: var(--text-primary) !important;
+}
+
+/* 인라인 코드 스타일 */
+code:not(pre code) {
+  background-color: var(--bg-tertiary) !important;
+  color: var(--brand-primary-dark) !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  font-size: 0.875em !important;
+  font-weight: 500 !important;
+}
+
+/* 블록퀘인 스타일 */
+blockquote {
+  border-left: 4px solid var(--brand-primary) !important;
+  background-color: var(--bg-secondary) !important;
+  padding: var(--space-4) var(--space-6) !important;
+  margin: var(--space-6) 0 !important;
+  border-radius: 0 8px 8px 0;
+  font-style: italic !important;
+  color: var(--text-secondary) !important;
+}
+
+/* 리스트 스타일 */
+ul, ol {
+  padding-left: var(--space-6) !important;
+  margin: var(--space-4) 0 !important;
+}
+
+li {
+  margin: var(--space-2) 0 !important;
+  line-height: var(--line-height-relaxed) !important;
+  color: var(--text-secondary) !important;
+}
+
+/* 테이블 스타일 */
+table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  margin: var(--space-6) 0 !important;
+  background-color: var(--bg-primary) !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+th, td {
+  padding: var(--space-3) var(--space-4) !important;
+  text-align: left !important;
+  border-bottom: 1px solid var(--bg-tertiary) !important;
+}
+
+th {
+  background-color: var(--bg-secondary) !important;
+  font-weight: 600 !important;
+  color: var(--text-primary) !important;
+  font-size: var(--font-size-sm) !important;
+}
+
+td {
+  color: var(--text-secondary) !important;
+  font-size: var(--font-size-sm) !important;
+}
+
+/* 포커스 관리 개선 */
+:focus-visible {
+  outline: 2px solid var(--brand-primary) !important;
+  outline-offset: 2px !important;
+  border-radius: 4px !important;
+}
+
+/* 스킵 링크 */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: var(--brand-primary);
+  color: white;
+  padding: 8px;
+  text-decoration: none;
+  border-radius: 4px;
+  z-index: 1000;
+  transition: top 0.3s ease;
+}
+
+.skip-link:focus {
+  top: 6px;
+}
+
+/* 모바일 최적화 */
+@media (max-width: 768px) {
+  h1 {
+    font-size: 2rem !important;
+    margin: var(--space-6) 0 var(--space-4) 0 !important;
+  }
+
+  h2 {
+    font-size: 1.5rem !important;
+    margin: var(--space-6) 0 var(--space-3) 0 !important;
+  }
+
+  h3 {
+    font-size: 1.25rem !important;
+  }
+
+  pre {
+    padding: var(--space-3) !important;
+    margin: var(--space-4) 0 !important;
+  }
+
+  table {
+    font-size: var(--font-size-xs) !important;
+  }
+
+  th, td {
+    padding: var(--space-2) var(--space-3) !important;
+  }
+}
+
+/* 프린트 스타일 */
+@media print {
+  a {
+    text-decoration: underline !important;
+    color: inherit !important;
+  }
+
+  pre, blockquote {
+    border: 1px solid #ccc !important;
+    page-break-inside: avoid !important;
+  }
+
+  h1, h2, h3 {
+    page-break-after: avoid !important;
+  }
+}
+
+/* 접근성 강화 */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* 고대비 모드 */
+@media (prefers-contrast: high) {
+  :root {
+    --text-primary: #000000;
+    --bg-primary: #ffffff;
+    --link-color: #0000ff;
+    --brand-primary: #0000ff;
+  }
+}

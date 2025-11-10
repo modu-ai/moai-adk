@@ -14,7 +14,7 @@ SPEC-INIT-004 Enhancement:
 TAG Chain:
   SPEC-INIT-004 (spec.md)
     └─> @CODE:INIT-VALIDATOR-001:VALIDATION (this file)
-        └─> @TEST:INIT-005:VALIDATION (test_validator.py)
+        └─> # REMOVED_ORPHAN_TEST:INIT-005:VALIDATION (test_validator.py)
 """
 
 import shutil

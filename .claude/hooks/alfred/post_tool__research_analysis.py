@@ -17,6 +17,7 @@ PostToolUse 단계에서 작업 결과를 분석하고 연구 인사이트를 �
 """
 
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -28,7 +29,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 from moai_adk.core.tags.validator import CentralValidationResult, CentralValidator, ValidationConfig
 from moai_adk.statusline.version_reader import VersionReader
 
-from ..utils.hook_config import get_graceful_degradation, load_hook_timeout
+# Local hook configuration functions
+from utils.hook_config import get_graceful_degradation, load_hook_timeout
 
 
 def load_research_config() -> Dict[str, Any]:
@@ -293,7 +295,7 @@ def main() -> None:
                 "research_analysis_completed": False,
                 "error": "Invalid arguments. Usage: python3 post_tool__research_analysis.py <tool_name> <tool_result_json> <execution_time_ms>"
             }))
-            sys.exit(0)
+            sys.exit(1)
 
         tool_name = sys.argv[1]
         try:
@@ -304,7 +306,7 @@ def main() -> None:
                 "research_analysis_completed": False,
                 "error": f"Invalid arguments: {str(e)}"
             }))
-            sys.exit(0)
+            sys.exit(1)
 
         # 시작 시간 기록
         start_time = time.time()
@@ -335,7 +337,7 @@ def main() -> None:
                 "graceful_degradation": graceful_degradation
             }
             print(json.dumps(error_response, ensure_ascii=False))
-            sys.exit(0)
+            sys.exit(1)
 
         # 실행 시간 계산
         analysis_time_ms = (time.time() - start_time) * 1000
@@ -366,7 +368,7 @@ def main() -> None:
             error_response["graceful_degradation"] = True
 
         print(json.dumps(error_response, ensure_ascii=False))
-        sys.exit(0)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

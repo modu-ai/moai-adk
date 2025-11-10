@@ -1,13 +1,17 @@
 ---
 name: moai-alfred-ask-user-questions
-version: 3.1.0
+version: 3.2.0
 created: 2025-10-22
-updated: 2025-11-04
+updated: 2025-11-11
 status: active
-description: Guide Alfred sub-agents to actively invoke AskUserQuestion for ambiguous decisions.
-keywords: ['interactive', 'clarification', 'decision-making', 'AskUserQuestion']
+description: Guide Alfred sub-agents to actively invoke AskUserQuestion for ambiguous decisions. Enhanced with research capabilities for question optimization and user intent analysis.
+keywords: ['interactive', 'clarification', 'decision-making', 'AskUserQuestion', 'research', 'analysis', 'optimization']
+tags: [agent, interaction, decision-support, research, optimization]
 allowed-tools:
   - AskUserQuestion
+  - Read
+  - Grep
+  - TodoWrite
 ---
 
 # Alfred Ask User Questions - Skill Guide

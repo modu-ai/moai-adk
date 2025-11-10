@@ -1,4 +1,4 @@
-# @TEST:CLI-003 | SPEC: SPEC-CLI-001/spec.md
+# # REMOVED_ORPHAN_TEST:CLI-003 | SPEC: SPEC-CLI-001/spec.md
 """Unit tests for status command
 
 Basic tests for CLI status functionality.
@@ -36,3 +36,6 @@ class TestStatusCommand:
 
             # Should mention "project" or "status" somewhere
             assert "project" in result.output.lower() or "status" in result.output.lower() or result.exit_code in [0, 1]
+
+
+# @TEST:USER-EXPERIENCE-001

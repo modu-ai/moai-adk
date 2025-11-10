@@ -96,7 +96,7 @@ def test_function():
         # Invalid chain (domain mismatch)
         invalid_chain = validate_tag_chain(
             "@DOC:AUTH-001",
-            "@SPEC:API-001 -> @CODE:API-001 -> @TEST:API-001 -> @DOC:AUTH-001"
+            "@SPEC:API-001 -> # REMOVED_ORPHAN_CODE:API-001 -> # REMOVED_ORPHAN_TEST:API-001 -> @DOC:AUTH-001"
         )
         assert invalid_chain is False
 
@@ -199,8 +199,8 @@ class TestTagAutoCorrectionIntegration:
         """Test auto-correction with duplicate detection"""
         # Create file with duplicate TAG
         with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
-            f.write("""# @CODE:DUPLICATE-001
-# @CODE:DUPLICATE-001
+            f.write("""# # REMOVED_ORPHAN_CODE:DUPLICATE-001
+# # REMOVED_ORPHAN_CODE:DUPLICATE-001
 def test_function():
     return True
 """)
@@ -218,7 +218,7 @@ def test_function():
             # Run correction
             violation = type('MockViolation', (), {
                 'type': 'duplicate_tags',
-                'tag': '@CODE:DUPLICATE-001'
+                'tag': '# REMOVED_ORPHAN_CODE:DUPLICATE-001'
             })()
             correction = corrector._fix_duplicate_tags(str(test_file), test_file.read_text(), violation)
 
@@ -227,7 +227,7 @@ def test_function():
 
             # Verify content has been corrected
             corrected_content = test_file.read_text()
-            assert corrected_content.count("@CODE:DUPLICATE-001") == 1
+            assert corrected_content.count("# REMOVED_ORPHAN_CODE:DUPLICATE-001") == 1
 
         finally:
             test_file.unlink()
@@ -279,8 +279,8 @@ class TestTagReportingIntegration:
         try:
             # File with duplicate TAG
             with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
-                f.write("""# @CODE:DUP-001
-# @CODE:DUP-001
+                f.write("""# # REMOVED_ORPHAN_CODE:DUP-001
+# # REMOVED_ORPHAN_CODE:DUP-001
 def test_function():
     return True
 """)
@@ -288,7 +288,7 @@ def test_function():
 
             # File with orphan TAG
             with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
-                f.write("""# @CODE:ORPHAN-001
+                f.write("""# # REMOVED_ORPHAN_CODE:ORPHAN-001
 def test_function():
     return True
 """)

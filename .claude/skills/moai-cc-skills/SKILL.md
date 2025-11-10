@@ -1,7 +1,12 @@
 ---
 name: moai-cc-skills
-description: "Creating and Optimizing Claude Code Skills. Design reusable knowledge capsules with progressive disclosure (metadata → content → resources). Apply freedom levels (high/medium/low), create examples, validate YAML. Use when building domain-specific guidance or automating recurring patterns."
-allowed-tools: "Read, Write, Edit, Glob, Bash"
+version: 2.0.0
+created: 2025-11-02
+updated: 2025-11-11
+status: active
+description: "Creating and Optimizing Claude Code Skills. Design reusable knowledge capsules with progressive disclosure (metadata → content → resources). Apply freedom levels (high/medium/low), create examples, validate YAML. Enhanced with research capabilities for skill optimization and effectiveness analysis. Use when building domain-specific guidance, automating recurring patterns, or researching skill effectiveness."
+keywords: ['skills', 'claude-code', 'optimization', 'progressive-disclosure', 'freedom-levels', 'research', 'effectiveness-analysis', 'skill-optimization']
+allowed-tools: "Read, Write, Edit, Glob, Bash, AskUserQuestion, TodoWrite"
 ---
 
 ## Skill Metadata
@@ -287,5 +292,87 @@ See [examples.md](examples.md) for integration with Redux, React Query, form tes
 
 ---
 
+## Research Integration
+
+### Skill Effectiveness Research Capabilities
+
+**Skill Optimization Research**:
+- **Progressive disclosure effectiveness**: Research on optimal metadata → content → resource loading patterns
+- **Freedom level optimization**: Analyze the effectiveness of different freedom level distributions for various domains
+- **Skill structure analysis**: Research optimal skill organization and content delivery patterns
+- **Usage pattern analysis**: Study how different skill structures affect user adoption and success rates
+
+**Skill Performance Research**:
+- **Loading time optimization**: Research on optimal skill loading strategies and context budget management
+- **Knowledge retention studies**: Analyze how different skill structures affect knowledge retention and application
+- **Domain adaptation research**: Study skill effectiveness across different programming domains and project types
+- **Skill interaction patterns**: Research how different skills interact and complement each other
+
+**Research Methodology**:
+- **Skill usage analytics**: Monitor skill invocation patterns, success rates, and user feedback
+- **A/B testing frameworks**: Compare different skill structures and content delivery approaches
+- **Performance benchmarking**: Measure skill loading times, memory usage, and effectiveness metrics
+- **User experience research**: Study how different skill patterns affect user satisfaction and productivity
+
+### Skill Development Research Framework
+
+#### 1. Progressive Disclosure Research
+- **Content layering optimization**: Research optimal content organization and disclosure timing
+- **Metadata effectiveness**: Study the impact of different metadata structures on skill discovery
+- **Resource loading strategies**: Research optimal just-in-time resource loading patterns
+- **Context budget optimization**: Analyze skill memory usage and context optimization strategies
+
+#### 2. Freedom Level Research
+- **Freedom distribution analysis**: Research optimal freedom level allocation for different skill types
+- **Domain-specific optimization**: Study how different domains require different freedom level approaches
+- **User expertise adaptation**: Research freedom level adaptation based on user expertise detection
+- **Learning curve analysis**: Analyze how freedom levels affect skill learning and mastery
+
+#### 3. Skill Effectiveness Research
+```
+Skill Development Research Framework:
+├── Structure Optimization
+│   ├── Progressive disclosure effectiveness
+│   ├── Freedom level optimization
+│   ├── Content organization research
+│   └── Metadata enhancement studies
+├── Performance Analysis
+│   ├── Loading time optimization
+│   ├── Memory usage analysis
+│   ├── Context budget management
+│   └── User experience research
+└── Effectiveness Measurement
+        ├── Usage pattern analysis
+        ├── Success rate tracking
+        ├── Knowledge retention studies
+        └── Domain adaptation research
+```
+
+**Current Research Focus Areas**:
+- Progressive disclosure pattern optimization
+- Freedom level distribution for different domains
+- Skill loading performance enhancement
+- User adoption and success rate improvement
+- Cross-skill interaction and optimization
+
+---
+
+## Integration with Research System
+
+The skill development system integrates with MoAI-ADK's research framework by:
+
+1. **Collecting skill usage data**: Track skill invocation patterns, loading times, and user success metrics
+2. **Validating development patterns**: Provide real-world testing ground for new skill structures and content delivery methods
+3. **Documenting optimization strategies**: Capture successful skill development patterns and share them across the ecosystem
+4. **Benchmarking skill approaches**: Measure the effectiveness of different skill development strategies and identify improvements
+
+**Research Collaboration**:
+- **Progressive disclosure team**: Share data on content layering effectiveness and optimization opportunities
+- **Performance optimization team**: Provide insights on skill loading patterns and memory management
+- **User experience research team**: Study skill adoption patterns and user satisfaction improvements
+- **Domain adaptation team**: Collaborate on skill optimization for different programming domains
+
+---
+
 **Reference**: Claude Code Skills official documentation
-**Version**: 1.0.0
+**Version**: 2.0.0

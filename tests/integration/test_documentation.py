@@ -1,4 +1,4 @@
-# @TEST:LANG-005 | SPEC: SPEC-LANGUAGE-DETECTION-001.md | CODE: .moai/docs/
+# # REMOVED_ORPHAN_TEST:LANG-005 | SPEC: SPEC-LANGUAGE-DETECTION-001.md | CODE: .moai/docs/
 """Documentation tests for language detection feature.
 
 Tests that language detection and workflow template documentation exists

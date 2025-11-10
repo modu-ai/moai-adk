@@ -85,7 +85,7 @@ class TestTagInventory:
                 tag_id="TEST-001",
                 file_path="/test.py",
                 line_number=1,
-                context="# @CODE:TEST-002",
+                context="# # REMOVED_ORPHAN_CODE:TEST-002",
                 related_tags=[],
                 last_modified=datetime.now(),
                 status=status
@@ -98,7 +98,7 @@ class TestTagInventory:
             tag_id="ORPHAN-001",
             file_path="/orphan.py",
             line_number=10,
-            context="# @CODE:ORPHAN-001",
+            context="# # REMOVED_ORPHAN_CODE:ORPHAN-001",
             related_tags=[],
             last_modified=datetime.now(),
             status="orphan"
@@ -132,7 +132,7 @@ class TestInventoryGenerator:
             test_file = Path(tmpdir) / "test.py"
             test_file.write_text("""
 # @SPEC:AUTH-004 | Authentication specification
-# @CODE:AUTH-004 | Login implementation
+# # REMOVED_ORPHAN_CODE:AUTH-004 | Login implementation
 def login():
     pass
 # @TEST:AUTH-004 | Login tests
@@ -198,15 +198,15 @@ def login():
             # Create files in ignored directories
             git_dir = Path(tmpdir) / ".git"
             git_dir.mkdir()
-            (git_dir / "config").write_text("# @CODE:GIT-001")
+            (git_dir / "config").write_text("# # REMOVED_ORPHAN_CODE:GIT-001")
 
             node_dir = Path(tmpdir) / "node_modules"
             node_dir.mkdir()
-            (node_dir / "lib.js").write_text("// @CODE:NODE-001")
+            (node_dir / "lib.js").write_text("// # REMOVED_ORPHAN_CODE:NODE-001")
 
             # Create valid file
             valid_file = Path(tmpdir) / "src.py"
-            valid_file.write_text("# @CODE:VALID-001")
+            valid_file.write_text("# # REMOVED_ORPHAN_CODE:VALID-001")
 
             generator = InventoryGenerator()
             inventory = generator.generate_inventory(tmpdir)
@@ -332,8 +332,8 @@ class TestCoverageAnalyzer:
             test_file = Path(tmpdir) / "complete.py"
             test_file.write_text("""
 # @SPEC:COMPLETE-001
-# @CODE:COMPLETE-001
-# @TEST:COMPLETE-001
+# # REMOVED_ORPHAN_CODE:COMPLETE-001
+# # REMOVED_ORPHAN_TEST:COMPLETE-001
 # @DOC:COMPLETE-001
             """)
 
@@ -399,12 +399,12 @@ class TestCoverageAnalyzer:
             test_file = Path(tmpdir) / "mixed.py"
             test_file.write_text("""
 # @SPEC:FULL-001
-# @CODE:FULL-001
-# @TEST:FULL-001
+# # REMOVED_ORPHAN_CODE:FULL-001
+# # REMOVED_ORPHAN_TEST:FULL-001
 # @DOC:FULL-001
 
 # @SPEC:PARTIAL-001
-# @CODE:PARTIAL-001
+# # REMOVED_ORPHAN_CODE:PARTIAL-001
 
 # @SPEC:NONE-001
             """)
@@ -518,7 +518,7 @@ class TestReportGenerator:
         """Test inventory report generation"""
         with tempfile.TemporaryDirectory() as tmpdir:
             test_file = Path(tmpdir) / "test.py"
-            test_file.write_text("# @CODE:TEST-002")
+            test_file.write_text("# # REMOVED_ORPHAN_CODE:TEST-002")
 
             generator = ReportGenerator()
             report = generator.generate_inventory_report(tmpdir)
@@ -533,8 +533,8 @@ class TestReportGenerator:
             test_file = Path(tmpdir) / "test.py"
             test_file.write_text("""
 # @SPEC:MATRIX-001
-# @CODE:MATRIX-001
-# @TEST:MATRIX-001
+# # REMOVED_ORPHAN_CODE:MATRIX-001
+# # REMOVED_ORPHAN_TEST:MATRIX-001
             """)
 
             generator = ReportGenerator()
@@ -547,7 +547,7 @@ class TestReportGenerator:
         """Test statistics report generation"""
         with tempfile.TemporaryDirectory() as tmpdir:
             test_file = Path(tmpdir) / "test.py"
-            test_file.write_text("# @CODE:STATS-001")
+            test_file.write_text("# # REMOVED_ORPHAN_CODE:STATS-001")
 
             generator = ReportGenerator()
             report = generator.generate_statistics_report(tmpdir)
@@ -563,8 +563,8 @@ class TestReportGenerator:
             test_file = Path(tmpdir) / "test.py"
             test_file.write_text("""
 # @SPEC:COMBINED-001
-# @CODE:COMBINED-001
-# @TEST:COMBINED-001
+# # REMOVED_ORPHAN_CODE:COMBINED-001
+# # REMOVED_ORPHAN_TEST:COMBINED-001
             """)
 
             generator = ReportGenerator()
@@ -581,7 +581,7 @@ class TestReportGenerator:
             # Create source directory with tags
             src_dir = Path(tmpdir) / "src"
             src_dir.mkdir()
-            (src_dir / "code.py").write_text("# @CODE:ALL-001")
+            (src_dir / "code.py").write_text("# # REMOVED_ORPHAN_CODE:ALL-001")
 
             # Create output directory
             output_dir = Path(tmpdir) / "reports"
@@ -626,7 +626,7 @@ class TestReportFormatting:
                 tag_id="FORMAT-001",
                 file_path="/test.py",
                 line_number=10,
-                context="# @CODE:FORMAT-001",
+                context="# # REMOVED_ORPHAN_CODE:FORMAT-001",
                 related_tags=["@SPEC:FORMAT-001"],
                 last_modified=datetime.now(),
                 status="active"
@@ -687,7 +687,7 @@ class TestReportFormatting:
                 tag_id="HTML-001",
                 file_path="/test.py",
                 line_number=1,
-                context="# @CODE:HTML-001",
+                context="# # REMOVED_ORPHAN_CODE:HTML-001",
                 related_tags=[],
                 last_modified=datetime.now(),
                 status="active"

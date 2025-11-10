@@ -275,7 +275,7 @@ class TestLanguageDetectorLaravel:
         assert result == "php"
 
 
-# @TEST:LANG-002 | SPEC: SPEC-LANGUAGE-DETECTION-001.md
+# # REMOVED_ORPHAN_TEST:LANG-002 | SPEC: SPEC-LANGUAGE-DETECTION-001.md
 class TestLanguageDetectorPackageManager:
     """Test package manager detection for JavaScript/TypeScript projects"""
 
@@ -358,7 +358,7 @@ class TestLanguageDetectorPackageManager:
         assert result == "npm"
 
 
-# @TEST:LANG-002 | SPEC: SPEC-LANGUAGE-DETECTION-001.md
+# # REMOVED_ORPHAN_TEST:LANG-002 | SPEC: SPEC-LANGUAGE-DETECTION-001.md
 class TestLanguageDetectorWorkflowTemplate:
     """Test workflow template path selection"""
 

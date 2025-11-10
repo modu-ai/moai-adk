@@ -1,4 +1,4 @@
-# @TEST:LANG-001 | SPEC: SPEC-LANGUAGE-DETECTION-001.md | CODE: src/moai_adk/templates/.github/workflows/
+# # REMOVED_ORPHAN_TEST:LANG-001 | SPEC: SPEC-LANGUAGE-DETECTION-001.md | CODE: src/moai_adk/templates/.github/workflows/
 """Unit tests for language-specific workflow templates
 
 Tests workflow file creation and correctness for Python, JavaScript, TypeScript, and Go.

@@ -1,4 +1,4 @@
-# @CODE:TEMPLATE-001 | SPEC: SPEC-INIT-003/spec.md | Chain: TEMPLATE-001
+# # REMOVED_ORPHAN_CODE:TEMPLATE-001 | SPEC: SPEC-INIT-003/spec.md | Chain: TEMPLATE-001
 """Enhanced Template copy and backup processor with improved version handling and validation.
 
 SPEC-INIT-003 v0.3.0: preserve user content

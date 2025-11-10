@@ -281,20 +281,29 @@ def main() -> None:
         # Create research environment setup
         setup_result = create_research_environment_setup(research_config)
 
-        # Display status
-        display_research_status(setup_result)
+        # Check if silent research mode is enabled (via environment variable)
+        silent_research = os.environ.get('MOAI_SILENT_RESEARCH', 'false').lower() == 'true'
 
-        # Output result as JSON
-        print(json.dumps(setup_result, ensure_ascii=False, indent=2))
+        # Only proceed with output if neither quiet nor silent research mode is enabled
+        if not silent_research:
+            quiet_mode = os.environ.get('MOAI_QUIET_SETUP', 'false').lower() == 'true'
+
+            if not quiet_mode:
+                # Display status
+                display_research_status(setup_result)
+
+                # Output result as JSON
+                print(json.dumps(setup_result, ensure_ascii=False, indent=2))
 
     except Exception as e:
-        error_response = {
-            "research_setup_completed": False,
-            "error": f"Hook execution error: {str(e)}",
-            "message": "Research setup failed - continuing without research features"
-        }
-
-        print(json.dumps(error_response, ensure_ascii=False))
+        # Only show errors if not in silent research mode
+        if not os.environ.get('MOAI_SILENT_RESEARCH', 'false').lower() == 'true':
+            error_response = {
+                "research_setup_completed": False,
+                "error": f"Hook execution error: {str(e)}",
+                "message": "Research setup failed - continuing without research features"
+            }
+            print(json.dumps(error_response, ensure_ascii=False))
 
 
 if __name__ == "__main__":
