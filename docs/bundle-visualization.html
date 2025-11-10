@@ -1,0 +1,335 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bundle Analysis - MoAI-ADK Documentation</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 20px; background: #f8f9fa; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .metric { display: inline-block; margin: 10px 20px 10px 0; }
+        .metric-value { font-size: 24px; font-weight: bold; color: #2563eb; }
+        .metric-label { font-size: 14px; color: #64748b; }
+        .chart-container { position: relative; height: 400px; margin: 20px 0; }
+        .issue { background: #fef2f2; border-left: 4px solid #ef4444; padding: 12px; margin: 8px 0; }
+        .recommendation { background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 12px; margin: 8px 0; }
+        .high { border-left-color: #ef4444; }
+        .medium { border-left-color: #f59e0b; }
+        .low { border-left-color: #10b981; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #e5e7eb; }
+        th { background: #f9fafb; font-weight: 600; }
+        .file-list { max-height: 400px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>📦 Bundle Analysis Report</h1>
+            <p>Generated: 2025-11-10T12:01:59.698Z</p>
+
+            <div class="metric">
+                <div class="metric-value">904.3KB</div>
+                <div class="metric-label">Total Size</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value">281.2KB</div>
+                <div class="metric-label">Gzipped Size</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value">19</div>
+                <div class="metric-label">Total Files</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value">56.8%</div>
+                <div class="metric-label">Avg Compression</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📊 Bundle Composition</h2>
+            <div class="chart-container">
+                <canvas id="compositionChart"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>⚠️ Issues Found (4)</h2>
+            
+                <div class="issue high">
+                    <strong>Large file detected: 262.8KB</strong><br>
+                    <small>File: .next/static/chunks/396c30dbc2494a84.js | Size: 262.8KB</small>
+                </div>
+            
+                <div class="issue high">
+                    <strong>Large file detected: 91.4KB</strong><br>
+                    <small>File: .next/static/chunks/5f8a548950077515.js | Size: 91.4KB</small>
+                </div>
+            
+                <div class="issue high">
+                    <strong>Large file detected: 296.8KB</strong><br>
+                    <small>File: .next/static/chunks/8d98be24743ee0fa.js | Size: 296.8KB</small>
+                </div>
+            
+                <div class="issue high">
+                    <strong>Large file detected: 110.0KB</strong><br>
+                    <small>File: .next/static/chunks/a6dad97d9634a72d.js | Size: 110.0KB</small>
+                </div>
+            
+        </div>
+
+        <div class="card">
+            <h2>💡 Recommendations</h2>
+            
+                <div class="recommendation high">
+                    <strong>Consider implementing code splitting to reduce initial bundle size</strong><br>
+                    <small>Priority: high | Impact: High | Effort: Medium</small>
+                </div>
+            
+                <div class="recommendation high">
+                    <strong>JavaScript bundle is large, consider dynamic imports and tree shaking</strong><br>
+                    <small>Priority: high | Impact: High | Effort: Medium</small>
+                </div>
+            
+                <div class="recommendation high">
+                    <strong>4 large files detected, consider lazy loading or optimization</strong><br>
+                    <small>Priority: high | Impact: High | Effort: Medium</small>
+                </div>
+            
+        </div>
+
+        <div class="card">
+            <h2>📁 File Breakdown</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th>Files</th>
+                        <th>Size</th>
+                        <th>Gzipped</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+                        <tr>
+                            <td>Javascript</td>
+                            <td>19</td>
+                            <td>904.3KB</td>
+                            <td>281.2KB</td>
+                        </tr>
+                    
+                        <tr>
+                            <td>Css</td>
+                            <td>0</td>
+                            <td>0.0KB</td>
+                            <td>0.0KB</td>
+                        </tr>
+                    
+                        <tr>
+                            <td>Fonts</td>
+                            <td>0</td>
+                            <td>0.0KB</td>
+                            <td>0.0KB</td>
+                        </tr>
+                    
+                        <tr>
+                            <td>Images</td>
+                            <td>0</td>
+                            <td>0.0KB</td>
+                            <td>0.0KB</td>
+                        </tr>
+                    
+                        <tr>
+                            <td>Other</td>
+                            <td>0</td>
+                            <td>0.0KB</td>
+                            <td>0.0KB</td>
+                        </tr>
+                    
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <h2>📋 Largest Files</h2>
+            <div class="file-list">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>File</th>
+                            <th>Size</th>
+                            <th>Gzipped</th>
+                            <th>Compression</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                                <tr>
+                                    <td>.next/static/chunks/8d98be24743ee0fa.js</td>
+                                    <td>296.8KB</td>
+                                    <td>88.5KB</td>
+                                    <td>70.2%</td>
+                                </tr>
+                            
+                                <tr>
+                                    <td>.next/static/chunks/396c30dbc2494a84.js</td>
+                                    <td>262.8KB</td>
+                                    <td>79.9KB</td>
+                                    <td>69.6%</td>
+                                </tr>
+                            
+                                <tr>
+                                    <td>.next/static/chunks/a6dad97d9634a72d.js</td>
+                                    <td>110.0KB</td>
+                                    <td>38.7KB</td>
+                                    <td>64.8%</td>
+                                </tr>
+                            
+                                <tr>
+                                    <td>.next/static/chunks/5f8a548950077515.js</td>
+                                    <td>91.4KB</td>
+                                    <td>23.3KB</td>
+                                    <td>74.6%</td>
+                                </tr>
+                            
+                                <tr>
+                                    <td>.next/static/chunks/e251df68dff2f4e9.js</td>
+                                    <td>27.4KB</td>
+                                    <td>6.8KB</td>
+                                    <td>75.3%</td>
+                                </tr>
+                            
+                                <tr>
+                                    <td>.next/static/chunks/54cd9346bf918848.js</td>
+                                    <td>18.1KB</td>
+                                    <td>6.6KB</td>
+                                    <td>63.7%</td>
+                                </tr>
+                            
+                                <tr>
+                                    <td>.next/static/chunks/95b2d15958ae571e.js</td>
+                                    <td>17.6KB</td>
+                                    <td>6.0KB</td>
+                                    <td>66.0%</td>
+                                </tr>
+                            
+                                <tr>
+                                    <td>.next/static/chunks/e9375c6644e9dca7.js</td>
+                                    <td>13.4KB</td>
+                                    <td>4.9KB</td>
+                                    <td>63.1%</td>
+                                </tr>
+                            
+                                <tr>
+                                    <td>.next/static/chunks/d8dbf7500795af4d.js</td>
+                                    <td>11.4KB</td>
+                                    <td>4.6KB</td>
+                                    <td>59.5%</td>
+                                </tr>
+                            
+                                <tr>
+                                    <td>.next/static/chunks/a3b846e2d8d8699a.js</td>
+                                    <td>10.1KB</td>
+                                    <td>3.8KB</td>
+                                    <td>62.5%</td>
+                                </tr>
+                            
+                                <tr>
+                                    <td>.next/static/chunks/turbopack-37d143a82848b45e.js</td>
+                                    <td>9.6KB</td>
+                                    <td>3.8KB</td>
+                                    <td>60.9%</td>
+                                </tr>
+                            
+                                <tr>
+                                    <td>.next/static/chunks/turbopack-077bbad56938b0be.js</td>
+                                    <td>9.6KB</td>
+                                    <td>3.8KB</td>
+                                    <td>60.9%</td>
+                                </tr>
+                            
+                                <tr>
+                                    <td>.next/static/chunks/turbopack-1e0182eb2e3fe254.js</td>
+                                    <td>9.6KB</td>
+                                    <td>3.8KB</td>
+                                    <td>60.9%</td>
+                                </tr>
+                            
+                                <tr>
+                                    <td>.next/static/chunks/turbopack-c715a5061e9a32c3.js</td>
+                                    <td>9.6KB</td>
+                                    <td>3.8KB</td>
+                                    <td>60.8%</td>
+                                </tr>
+                            
+                                <tr>
+                                    <td>.next/static/chunks/c4e3163442883ccb.js</td>
+                                    <td>5.5KB</td>
+                                    <td>2.2KB</td>
+                                    <td>60.0%</td>
+                                </tr>
+                            
+                                <tr>
+                                    <td>.next/static/chunks/29d5b1205d939dfc.js</td>
+                                    <td>0.8KB</td>
+                                    <td>0.4KB</td>
+                                    <td>44.8%</td>
+                                </tr>
+                            
+                                <tr>
+                                    <td>.next/static/chunks/dd46f00c19ff8e2a.js</td>
+                                    <td>0.2KB</td>
+                                    <td>0.1KB</td>
+                                    <td>20.8%</td>
+                                </tr>
+                            
+                                <tr>
+                                    <td>.next/static/chunks/5197bb7f6c154d54.js</td>
+                                    <td>0.2KB</td>
+                                    <td>0.1KB</td>
+                                    <td>20.5%</td>
+                                </tr>
+                            
+                                <tr>
+                                    <td>.next/static/chunks/01a417255e9c4298.js</td>
+                                    <td>0.2KB</td>
+                                    <td>0.1KB</td>
+                                    <td>19.8%</td>
+                                </tr>
+                            
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Composition Chart
+        const ctx = document.getElementById('compositionChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ["javascript","css","fonts","images","other"],
+                datasets: [{
+                    data: [925963,0,0,0,0],
+                    backgroundColor: [
+                        '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
