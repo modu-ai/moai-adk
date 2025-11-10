@@ -4,6 +4,12 @@ Statusline module for Claude Code status display
 
 @SPEC:CLAUDE-STATUSLINE-001
 Provides real-time status information display in Claude Code terminal
+
+Enhanced version includes:
+- Improved version reader with caching and error handling
+- Async support for better performance
+- Configurable version reading behavior
+- Comprehensive fallback strategies
 """
 
 __version__ = "0.1.0"
@@ -14,7 +20,7 @@ from .git_collector import GitCollector, GitInfo
 from .metrics_tracker import MetricsTracker
 from .renderer import StatuslineData, StatuslineRenderer
 from .update_checker import UpdateChecker, UpdateInfo
-from .version_reader import VersionReader
+from .version_reader import VersionReader, VersionConfig, VersionReadError
 
 __all__ = [
     "StatuslineRenderer",
@@ -26,6 +32,8 @@ __all__ = [
     "AlfredDetector",
     "AlfredTask",
     "VersionReader",
+    "VersionConfig",
+    "VersionReadError",
     "UpdateChecker",
     "UpdateInfo",
 ]
