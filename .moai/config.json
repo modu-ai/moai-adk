@@ -92,12 +92,19 @@
       "FEATURE",
       "API",
       "UI",
-      "DATA"
+      "DATA",
+      "RESEARCH",
+      "ANALYSIS",
+      "KNOWLEDGE",
+      "INSIGHT"
     ],
     "code_scan_policy": {
       "no_intermediate_cache": true,
       "realtime_validation": true,
-      "scan_tools": ["rg", "grep"],
+      "scan_tools": [
+        "rg",
+        "grep"
+      ],
       "scan_command": "rg '@TAG' -n",
       "philosophy": "The source of truth for TAGs lives in the code itself"
     },
@@ -106,7 +113,11 @@
       "require_spec_before_code": true,
       "require_test_for_code": true,
       "enforce_chains": true,
-      "mandatory_directories": ["src/", "tests/", ".moai/specs/"],
+      "mandatory_directories": [
+        "src/",
+        "tests/",
+        ".moai/specs/"
+      ],
       "optional_directories": [
         "CLAUDE.md",
         "README.md",
@@ -169,11 +180,124 @@
         "block_until_edited": true,
         "notes": "Auto-generate SPEC templates when users forget to create SPEC before code. Requires user approval to proceed."
       },
+      "auto_spec_completion": {
+        "@CODE:CONFIG-INTEGRATION-001": "@DOC:AUTO-SPEC-COMPLETION-001",
+        "enabled": true,
+        "trigger_tools": [
+          "Write",
+          "Edit",
+          "MultiEdit"
+        ],
+        "confidence_threshold": 0.9,
+        "execution_timeout_ms": 1500,
+        "quality_threshold": {
+          "ears_compliance": 0.85,
+          "min_content_length": 500,
+          "max_review_suggestions": 10
+        },
+        "excluded_patterns": [
+          "test_*.py",
+          "*_test.py",
+          "*/tests/*",
+          "*/__pycache__/*",
+          "*/node_modules/*",
+          "*/dist/*",
+          "*/build/*"
+        ],
+        "domain_templates": {
+          "enabled": true,
+          "auto_detect": true,
+          "supported_domains": [
+            "auth",
+            "api",
+            "data",
+            "ui",
+            "business"
+          ],
+          "fallback_domain": "general"
+        },
+        "spec_structure": {
+          "include_meta": true,
+          "include_traceability": true,
+          "include_edit_guide": true,
+          "required_sections": [
+            "개요 (Overview)",
+            "환경 (Environment)",
+            "가정 (Assumptions)",
+            "요구사항 (Requirements)",
+            "명세 (Specifications)",
+            "추적성 (Traceability)"
+          ]
+        },
+        "validation": {
+          "enabled": true,
+          "quality_grades": [
+            "A",
+            "B",
+            "C",
+            "D",
+            "F"
+          ],
+          "passing_grades": [
+            "A",
+            "B",
+            "C"
+          ],
+          "auto_improve": true,
+          "max_iterations": 3
+        },
+        "output": {
+          "auto_create_files": true,
+          "open_in_editor": true,
+          "file_format": "markdown",
+          "encoding": "utf-8"
+        },
+        "notes": "Automatically complete missing SPEC sections when code is created or modified. Uses advanced analysis and template generation to create comprehensive SPECs in EARS format."
+      },
       "realtime_validation": {
         "enabled": true,
         "validation_timeout": 5,
         "enforce_chains": true,
         "quick_scan_max_files": 30
+      },
+      "research_tags": {
+        "auto_discovery": true,
+        "pattern_matching": true,
+        "cross_reference": true,
+        "knowledge_graph": true,
+        "research_categories": [
+          "RESEARCH",
+          "ANALYSIS",
+          "KNOWLEDGE",
+          "INSIGHT"
+        ],
+        "auto_tag_research_content": true,
+        "research_patterns": {
+          "RESEARCH": [
+            "@RESEARCH:",
+            "research",
+            "investigate",
+            "analyze"
+          ],
+          "ANALYSIS": [
+            "@ANALYSIS:",
+            "analysis",
+            "evaluate",
+            "assess"
+          ],
+          "KNOWLEDGE": [
+            "@KNOWLEDGE:",
+            "knowledge",
+            "learn",
+            "pattern"
+          ],
+          "INSIGHT": [
+            "@INSIGHT:",
+            "insight",
+            "innovate",
+            "optimize"
+          ]
+        }
       }
     }
   },
@@ -187,6 +311,11 @@
         ".moai/docs/",
         ".moai/reports/",
         ".moai/analysis/"
+      ],
+      "exempt_tags": [
+        "@CODE:HOOK-POST-AUTO-SPEC-001",
+        "@CODE:CONFIDENCE-SCORING-001",
+        "@CODE:SPEC-EARS-TEMPLATE-001"
       ],
       "reason": "System infrastructure and documentation directories do not require TAG annotations"
     },
@@ -206,7 +335,10 @@
       "enabled": true,
       "temp_files": true,
       "cache_files": true,
-      "patterns": [".moai/temp/*", ".moai/cache/*.tmp"]
+      "patterns": [
+        ".moai/temp/*",
+        ".moai/cache/*.tmp"
+      ]
     },
     "warnings": {
       "uncommitted_changes": true
@@ -239,18 +371,18 @@
     "report_location": ".moai/reports/daily-"
   },
   "report_generation": {
-    "enabled": true,
+    "enabled": false,
     "auto_create": false,
     "warn_user": true,
     "user_choice": "Minimal",
-    "configured_at": "2025-11-10 05:15:50",
+    "configured_at": "2025-11-11",
     "allowed_locations": [
       ".moai/docs/",
       ".moai/reports/",
       ".moai/analysis/",
       ".moai/specs/SPEC-*/"
     ],
-    "notes": "Control automatic report generation. 'enabled': turn on/off, 'auto_create': full (true) vs minimal (false) reports. Helps reduce token usage."
+    "notes": "Control automatic report generation. 'enabled': turn on/off, 'auto_create': full (true) vs minimal (false) reports. Helps reduce token usage. Updated: disabled by user request."
   },
   "github": {
     "@CODE:GITHUB-CONFIG-001": "@DOC:GITHUB-TEMPLATES-001",
