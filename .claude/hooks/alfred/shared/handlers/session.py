@@ -7,10 +7,11 @@ SessionStart, SessionEnd event handling
 from core import HookPayload, HookResult
 from core.checkpoint import list_checkpoints
 from core.project import count_specs, get_git_info, get_package_version_info
+from utils.state_tracking import track_hook_execution
 
 
 def handle_session_start(payload: HookPayload) -> HookResult:
-    """SessionStart event handler with GRACEFUL DEGRADATION
+    """SessionStart event handler with GRACEFUL DEGRADATION and PHASE-BASED DEDUPLICATION
 
     When Claude Code Session starts, it displays a summary of project status.
     You can check the language, Git status, SPEC progress, and checkpoint list at a glance.
@@ -38,11 +39,13 @@ def handle_session_start(payload: HookPayload) -> HookResult:
         - OPTIONAL: Checkpoint list (skip if timeout/failure)
         - Always display SOMETHING to user, never return empty message
 
-    Note:
+    Phase-based Deduplication:
         - Claude Code processes SessionStart in several stages (clear → compact)
-        - Display message only at "compact" stage to prevent duplicate output
-        - "clear" step returns minimal result (empty hookSpecificOutput)
-        - CRITICAL: All optional operations must complete within 2-3 seconds total
+        - "clear" stage: returns minimal result (continue: True only)
+        - "compact" stage: returns detailed project summary
+        - Invalid/missing phase: defaults to clear behavior (minimal output)
+        - Phase transitions (clear→compact or compact→clear) are allowed
+        - Same phase calls are deduplicated to prevent duplicate output
 
     TDD History:
         - RED: Session startup message format test
@@ -52,19 +55,32 @@ def handle_session_start(payload: HookPayload) -> HookResult:
         - UPDATE: Migrated to Claude Code standard Hook schema
         - HOTFIX: Add graceful degradation for timeout scenarios (Issue #66)
         - Phase 3: Add major version warning and release notes display (@TEST:MAJOR-UPDATE-001-07/08)
+        - Phase 4: Add phase-based deduplication to prevent duplicate outputs (@TEST:HOOKS-SESSION-DEDUPE-001)
 
     @TAG:CHECKPOINT-EVENT-001
     @TAG:HOOKS-TIMEOUT-001
     @CODE:MAJOR-UPDATE-WARN-001
+    @CODE:HOOKS-SESSION-DEDUPE-001
     """
-    # Claude Code SessionStart runs in several stages (clear, compact, etc.)
-    # Ignore the "clear" stage and output messages only at the "compact" stage
+    # Phase-based deduplication for SessionStart hook
     event_phase = payload.get("phase", "")
+
+    # Validate and normalize phase (handle invalid/missing phases)
+    if event_phase not in ["clear", "compact"]:
+        # Invalid or missing phase defaults to clear behavior
+        event_phase = "clear"
+
+    # Clear phase: return minimal output to prevent duplicate execution
     if event_phase == "clear":
-        # Return minimal valid Hook result for clear phase
         return HookResult(continue_execution=True)
 
+    # Track hook execution for compact phase (after deduplication)
     cwd = payload.get("cwd", ".")
+    execution_info = track_hook_execution("SessionStart", cwd, event_phase)
+
+    # Return empty result if deduplicated (compact phase)
+    if not execution_info["executed"]:
+        return HookResult(continue_execution=True)
 
     # OPTIONAL: Git info - skip if timeout/failure
     git_info = {}
