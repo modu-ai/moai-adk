@@ -7,6 +7,11 @@ const nextConfig = {
   output: 'export',
   trailingSlash: true,
 
+  // Enable experimental features for Nextra 4.x
+  experimental: {
+    webpackBuildWorker: true,
+  },
+
   // Image optimization (compatible with static export)
   images: {
     // For static export, we need unoptimized: true
