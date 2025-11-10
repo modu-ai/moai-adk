@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "mcp__sequential-thinking__sequentialthinking",
-      "Skill(moai-alfred-agent-guide)"
+      "Skill(moai-alfred-agent-guide)",
+      "Bash(xargs:*)"
     ],
     "deny": [],
     "ask": []

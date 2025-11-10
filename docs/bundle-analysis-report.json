@@ -1,0 +1,596 @@
+{
+  "timestamp": "2025-11-10T12:01:59.698Z",
+  "files": [
+    {
+      "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/01a417255e9c4298.js",
+      "relativePath": ".next/static/chunks/01a417255e9c4298.js",
+      "name": "01a417255e9c4298.js",
+      "extension": ".js",
+      "size": 167,
+      "sizeGzipped": 134,
+      "compressionRatio": 0.19760479041916168,
+      "lastModified": "2025-11-10T11:53:53.579Z",
+      "isReactComponent": false,
+      "dependencies": [],
+      "estimatedModules": 1
+    },
+    {
+      "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/29d5b1205d939dfc.js",
+      "relativePath": ".next/static/chunks/29d5b1205d939dfc.js",
+      "name": "29d5b1205d939dfc.js",
+      "extension": ".js",
+      "size": 813,
+      "sizeGzipped": 449,
+      "compressionRatio": 0.4477244772447725,
+      "lastModified": "2025-11-10T11:53:53.585Z",
+      "isReactComponent": false,
+      "dependencies": [],
+      "estimatedModules": 2
+    },
+    {
+      "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/396c30dbc2494a84.js",
+      "relativePath": ".next/static/chunks/396c30dbc2494a84.js",
+      "name": "396c30dbc2494a84.js",
+      "extension": ".js",
+      "size": 269094,
+      "sizeGzipped": 81866,
+      "compressionRatio": 0.6957717377570662,
+      "lastModified": "2025-11-10T11:53:53.618Z",
+      "isReactComponent": true,
+      "dependencies": [],
+      "estimatedModules": 68
+    },
+    {
+      "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/5197bb7f6c154d54.js",
+      "relativePath": ".next/static/chunks/5197bb7f6c154d54.js",
+      "name": "5197bb7f6c154d54.js",
+      "extension": ".js",
+      "size": 171,
+      "sizeGzipped": 136,
+      "compressionRatio": 0.20467836257309946,
+      "lastModified": "2025-11-10T11:53:53.599Z",
+      "isReactComponent": false,
+      "dependencies": [],
+      "estimatedModules": 1
+    },
+    {
+      "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/54cd9346bf918848.js",
+      "relativePath": ".next/static/chunks/54cd9346bf918848.js",
+      "name": "54cd9346bf918848.js",
+      "extension": ".js",
+      "size": 18562,
+      "sizeGzipped": 6738,
+      "compressionRatio": 0.6370003232410301,
+      "lastModified": "2025-11-10T11:53:53.612Z",
+      "isReactComponent": true,
+      "dependencies": [],
+      "estimatedModules": 13
+    },
+    {
+      "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/5f8a548950077515.js",
+      "relativePath": ".next/static/chunks/5f8a548950077515.js",
+      "name": "5f8a548950077515.js",
+      "extension": ".js",
+      "size": 93606,
+      "sizeGzipped": 23817,
+      "compressionRatio": 0.7455611819755144,
+      "lastModified": "2025-11-10T11:53:53.615Z",
+      "isReactComponent": true,
+      "dependencies": [
+        "use server"
+      ],
+      "estimatedModules": 42
+    },
+    {
+      "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/8d98be24743ee0fa.js",
+      "relativePath": ".next/static/chunks/8d98be24743ee0fa.js",
+      "name": "8d98be24743ee0fa.js",
+      "extension": ".js",
+      "size": 303927,
+      "sizeGzipped": 90618,
+      "compressionRatio": 0.7018428767434286,
+      "lastModified": "2025-11-10T11:53:53.618Z",
+      "isReactComponent": true,
+      "dependencies": [],
+      "estimatedModules": 61
+    },
+    {
+      "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/95b2d15958ae571e.js",
+      "relativePath": ".next/static/chunks/95b2d15958ae571e.js",
+      "name": "95b2d15958ae571e.js",
+      "extension": ".js",
+      "size": 18062,
+      "sizeGzipped": 6135,
+      "compressionRatio": 0.6603366183146938,
+      "lastModified": "2025-11-10T11:53:53.609Z",
+      "isReactComponent": true,
+      "dependencies": [],
+      "estimatedModules": 10
+    },
+    {
+      "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/a3b846e2d8d8699a.js",
+      "relativePath": ".next/static/chunks/a3b846e2d8d8699a.js",
+      "name": "a3b846e2d8d8699a.js",
+      "extension": ".js",
+      "size": 10315,
+      "sizeGzipped": 3867,
+      "compressionRatio": 0.6251090644692197,
+      "lastModified": "2025-11-10T11:53:53.601Z",
+      "isReactComponent": true,
+      "dependencies": [],
+      "estimatedModules": 10
+    },
+    {
+      "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/a6dad97d9634a72d.js",
+      "relativePath": ".next/static/chunks/a6dad97d9634a72d.js",
+      "name": "a6dad97d9634a72d.js",
+      "extension": ".js",
+      "size": 112594,
+      "sizeGzipped": 39627,
+      "compressionRatio": 0.6480540703767519,
+      "lastModified": "2025-11-10T11:53:53.616Z",
+      "isReactComponent": false,
+      "dependencies": [],
+      "estimatedModules": 12
+    },
+    {
+      "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/c4e3163442883ccb.js",
+      "relativePath": ".next/static/chunks/c4e3163442883ccb.js",
+      "name": "c4e3163442883ccb.js",
+      "extension": ".js",
+      "size": 5675,
+      "sizeGzipped": 2271,
+      "compressionRatio": 0.5998237885462555,
+      "lastModified": "2025-11-10T11:53:53.578Z",
+      "isReactComponent": true,
+      "dependencies": [],
+      "estimatedModules": 3
+    },
+    {
+      "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/d8dbf7500795af4d.js",
+      "relativePath": ".next/static/chunks/d8dbf7500795af4d.js",
+      "name": "d8dbf7500795af4d.js",
+      "extension": ".js",
+      "size": 11691,
+      "sizeGzipped": 4734,
+      "compressionRatio": 0.5950731331793687,
+      "lastModified": "2025-11-10T11:53:53.601Z",
+      "isReactComponent": true,
+      "dependencies": [],
+      "estimatedModules": 1
+    },
+    {
+      "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/dd46f00c19ff8e2a.js",
+      "relativePath": ".next/static/chunks/dd46f00c19ff8e2a.js",
+      "name": "dd46f00c19ff8e2a.js",
+      "extension": ".js",
+      "size": 173,
+      "sizeGzipped": 137,
+      "compressionRatio": 0.20809248554913296,
+      "lastModified": "2025-11-10T11:53:53.599Z",
+      "isReactComponent": false,
+      "dependencies": [],
+      "estimatedModules": 1
+    },
+    {
+      "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/e251df68dff2f4e9.js",
+      "relativePath": ".next/static/chunks/e251df68dff2f4e9.js",
+      "name": "e251df68dff2f4e9.js",
+      "extension": ".js",
+      "size": 28012,
+      "sizeGzipped": 6929,
+      "compressionRatio": 0.7526417249750107,
+      "lastModified": "2025-11-10T11:53:53.607Z",
+      "isReactComponent": true,
+      "dependencies": [],
+      "estimatedModules": 12
+    },
+    {
+      "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/e9375c6644e9dca7.js",
+      "relativePath": ".next/static/chunks/e9375c6644e9dca7.js",
+      "name": "e9375c6644e9dca7.js",
+      "extension": ".js",
+      "size": 13699,
+      "sizeGzipped": 5049,
+      "compressionRatio": 0.6314329513103146,
+      "lastModified": "2025-11-10T11:53:53.607Z",
+      "isReactComponent": true,
+      "dependencies": [],
+      "estimatedModules": 12
+    },
+    {
+      "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/turbopack-077bbad56938b0be.js",
+      "relativePath": ".next/static/chunks/turbopack-077bbad56938b0be.js",
+      "name": "turbopack-077bbad56938b0be.js",
+      "extension": ".js",
+      "size": 9843,
+      "sizeGzipped": 3852,
+      "compressionRatio": 0.6086558975921975,
+      "lastModified": "2025-11-10T11:53:53.611Z",
+      "isReactComponent": false,
+      "dependencies": [],
+      "estimatedModules": 25
+    },
+    {
+      "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/turbopack-1e0182eb2e3fe254.js",
+      "relativePath": ".next/static/chunks/turbopack-1e0182eb2e3fe254.js",
+      "name": "turbopack-1e0182eb2e3fe254.js",
+      "extension": ".js",
+      "size": 9843,
+      "sizeGzipped": 3853,
+      "compressionRatio": 0.6085543025500355,
+      "lastModified": "2025-11-10T11:53:53.601Z",
+      "isReactComponent": false,
+      "dependencies": [],
+      "estimatedModules": 25
+    },
+    {
+      "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/turbopack-37d143a82848b45e.js",
+      "relativePath": ".next/static/chunks/turbopack-37d143a82848b45e.js",
+      "name": "turbopack-37d143a82848b45e.js",
+      "extension": ".js",
+      "size": 9873,
+      "sizeGzipped": 3865,
+      "compressionRatio": 0.6085283095310443,
+      "lastModified": "2025-11-10T11:53:53.609Z",
+      "isReactComponent": false,
+      "dependencies": [],
+      "estimatedModules": 25
+    },
+    {
+      "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/turbopack-c715a5061e9a32c3.js",
+      "relativePath": ".next/static/chunks/turbopack-c715a5061e9a32c3.js",
+      "name": "turbopack-c715a5061e9a32c3.js",
+      "extension": ".js",
+      "size": 9843,
+      "sizeGzipped": 3854,
+      "compressionRatio": 0.6084527075078736,
+      "lastModified": "2025-11-10T11:53:53.613Z",
+      "isReactComponent": false,
+      "dependencies": [],
+      "estimatedModules": 25
+    }
+  ],
+  "summary": {
+    "totalFiles": 19,
+    "totalSize": 925963,
+    "totalSizeGzipped": 287931,
+    "averageCompressionRatio": 0.5676283580976828
+  },
+  "categories": {
+    "javascript": {
+      "count": 19,
+      "size": 925963,
+      "files": [
+        {
+          "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/01a417255e9c4298.js",
+          "relativePath": ".next/static/chunks/01a417255e9c4298.js",
+          "name": "01a417255e9c4298.js",
+          "extension": ".js",
+          "size": 167,
+          "sizeGzipped": 134,
+          "compressionRatio": 0.19760479041916168,
+          "lastModified": "2025-11-10T11:53:53.579Z",
+          "isReactComponent": false,
+          "dependencies": [],
+          "estimatedModules": 1
+        },
+        {
+          "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/29d5b1205d939dfc.js",
+          "relativePath": ".next/static/chunks/29d5b1205d939dfc.js",
+          "name": "29d5b1205d939dfc.js",
+          "extension": ".js",
+          "size": 813,
+          "sizeGzipped": 449,
+          "compressionRatio": 0.4477244772447725,
+          "lastModified": "2025-11-10T11:53:53.585Z",
+          "isReactComponent": false,
+          "dependencies": [],
+          "estimatedModules": 2
+        },
+        {
+          "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/396c30dbc2494a84.js",
+          "relativePath": ".next/static/chunks/396c30dbc2494a84.js",
+          "name": "396c30dbc2494a84.js",
+          "extension": ".js",
+          "size": 269094,
+          "sizeGzipped": 81866,
+          "compressionRatio": 0.6957717377570662,
+          "lastModified": "2025-11-10T11:53:53.618Z",
+          "isReactComponent": true,
+          "dependencies": [],
+          "estimatedModules": 68
+        },
+        {
+          "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/5197bb7f6c154d54.js",
+          "relativePath": ".next/static/chunks/5197bb7f6c154d54.js",
+          "name": "5197bb7f6c154d54.js",
+          "extension": ".js",
+          "size": 171,
+          "sizeGzipped": 136,
+          "compressionRatio": 0.20467836257309946,
+          "lastModified": "2025-11-10T11:53:53.599Z",
+          "isReactComponent": false,
+          "dependencies": [],
+          "estimatedModules": 1
+        },
+        {
+          "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/54cd9346bf918848.js",
+          "relativePath": ".next/static/chunks/54cd9346bf918848.js",
+          "name": "54cd9346bf918848.js",
+          "extension": ".js",
+          "size": 18562,
+          "sizeGzipped": 6738,
+          "compressionRatio": 0.6370003232410301,
+          "lastModified": "2025-11-10T11:53:53.612Z",
+          "isReactComponent": true,
+          "dependencies": [],
+          "estimatedModules": 13
+        },
+        {
+          "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/5f8a548950077515.js",
+          "relativePath": ".next/static/chunks/5f8a548950077515.js",
+          "name": "5f8a548950077515.js",
+          "extension": ".js",
+          "size": 93606,
+          "sizeGzipped": 23817,
+          "compressionRatio": 0.7455611819755144,
+          "lastModified": "2025-11-10T11:53:53.615Z",
+          "isReactComponent": true,
+          "dependencies": [
+            "use server"
+          ],
+          "estimatedModules": 42
+        },
+        {
+          "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/8d98be24743ee0fa.js",
+          "relativePath": ".next/static/chunks/8d98be24743ee0fa.js",
+          "name": "8d98be24743ee0fa.js",
+          "extension": ".js",
+          "size": 303927,
+          "sizeGzipped": 90618,
+          "compressionRatio": 0.7018428767434286,
+          "lastModified": "2025-11-10T11:53:53.618Z",
+          "isReactComponent": true,
+          "dependencies": [],
+          "estimatedModules": 61
+        },
+        {
+          "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/95b2d15958ae571e.js",
+          "relativePath": ".next/static/chunks/95b2d15958ae571e.js",
+          "name": "95b2d15958ae571e.js",
+          "extension": ".js",
+          "size": 18062,
+          "sizeGzipped": 6135,
+          "compressionRatio": 0.6603366183146938,
+          "lastModified": "2025-11-10T11:53:53.609Z",
+          "isReactComponent": true,
+          "dependencies": [],
+          "estimatedModules": 10
+        },
+        {
+          "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/a3b846e2d8d8699a.js",
+          "relativePath": ".next/static/chunks/a3b846e2d8d8699a.js",
+          "name": "a3b846e2d8d8699a.js",
+          "extension": ".js",
+          "size": 10315,
+          "sizeGzipped": 3867,
+          "compressionRatio": 0.6251090644692197,
+          "lastModified": "2025-11-10T11:53:53.601Z",
+          "isReactComponent": true,
+          "dependencies": [],
+          "estimatedModules": 10
+        },
+        {
+          "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/a6dad97d9634a72d.js",
+          "relativePath": ".next/static/chunks/a6dad97d9634a72d.js",
+          "name": "a6dad97d9634a72d.js",
+          "extension": ".js",
+          "size": 112594,
+          "sizeGzipped": 39627,
+          "compressionRatio": 0.6480540703767519,
+          "lastModified": "2025-11-10T11:53:53.616Z",
+          "isReactComponent": false,
+          "dependencies": [],
+          "estimatedModules": 12
+        },
+        {
+          "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/c4e3163442883ccb.js",
+          "relativePath": ".next/static/chunks/c4e3163442883ccb.js",
+          "name": "c4e3163442883ccb.js",
+          "extension": ".js",
+          "size": 5675,
+          "sizeGzipped": 2271,
+          "compressionRatio": 0.5998237885462555,
+          "lastModified": "2025-11-10T11:53:53.578Z",
+          "isReactComponent": true,
+          "dependencies": [],
+          "estimatedModules": 3
+        },
+        {
+          "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/d8dbf7500795af4d.js",
+          "relativePath": ".next/static/chunks/d8dbf7500795af4d.js",
+          "name": "d8dbf7500795af4d.js",
+          "extension": ".js",
+          "size": 11691,
+          "sizeGzipped": 4734,
+          "compressionRatio": 0.5950731331793687,
+          "lastModified": "2025-11-10T11:53:53.601Z",
+          "isReactComponent": true,
+          "dependencies": [],
+          "estimatedModules": 1
+        },
+        {
+          "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/dd46f00c19ff8e2a.js",
+          "relativePath": ".next/static/chunks/dd46f00c19ff8e2a.js",
+          "name": "dd46f00c19ff8e2a.js",
+          "extension": ".js",
+          "size": 173,
+          "sizeGzipped": 137,
+          "compressionRatio": 0.20809248554913296,
+          "lastModified": "2025-11-10T11:53:53.599Z",
+          "isReactComponent": false,
+          "dependencies": [],
+          "estimatedModules": 1
+        },
+        {
+          "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/e251df68dff2f4e9.js",
+          "relativePath": ".next/static/chunks/e251df68dff2f4e9.js",
+          "name": "e251df68dff2f4e9.js",
+          "extension": ".js",
+          "size": 28012,
+          "sizeGzipped": 6929,
+          "compressionRatio": 0.7526417249750107,
+          "lastModified": "2025-11-10T11:53:53.607Z",
+          "isReactComponent": true,
+          "dependencies": [],
+          "estimatedModules": 12
+        },
+        {
+          "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/e9375c6644e9dca7.js",
+          "relativePath": ".next/static/chunks/e9375c6644e9dca7.js",
+          "name": "e9375c6644e9dca7.js",
+          "extension": ".js",
+          "size": 13699,
+          "sizeGzipped": 5049,
+          "compressionRatio": 0.6314329513103146,
+          "lastModified": "2025-11-10T11:53:53.607Z",
+          "isReactComponent": true,
+          "dependencies": [],
+          "estimatedModules": 12
+        },
+        {
+          "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/turbopack-077bbad56938b0be.js",
+          "relativePath": ".next/static/chunks/turbopack-077bbad56938b0be.js",
+          "name": "turbopack-077bbad56938b0be.js",
+          "extension": ".js",
+          "size": 9843,
+          "sizeGzipped": 3852,
+          "compressionRatio": 0.6086558975921975,
+          "lastModified": "2025-11-10T11:53:53.611Z",
+          "isReactComponent": false,
+          "dependencies": [],
+          "estimatedModules": 25
+        },
+        {
+          "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/turbopack-1e0182eb2e3fe254.js",
+          "relativePath": ".next/static/chunks/turbopack-1e0182eb2e3fe254.js",
+          "name": "turbopack-1e0182eb2e3fe254.js",
+          "extension": ".js",
+          "size": 9843,
+          "sizeGzipped": 3853,
+          "compressionRatio": 0.6085543025500355,
+          "lastModified": "2025-11-10T11:53:53.601Z",
+          "isReactComponent": false,
+          "dependencies": [],
+          "estimatedModules": 25
+        },
+        {
+          "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/turbopack-37d143a82848b45e.js",
+          "relativePath": ".next/static/chunks/turbopack-37d143a82848b45e.js",
+          "name": "turbopack-37d143a82848b45e.js",
+          "extension": ".js",
+          "size": 9873,
+          "sizeGzipped": 3865,
+          "compressionRatio": 0.6085283095310443,
+          "lastModified": "2025-11-10T11:53:53.609Z",
+          "isReactComponent": false,
+          "dependencies": [],
+          "estimatedModules": 25
+        },
+        {
+          "path": "/Users/goos/MoAI/MoAI-ADK/docs/.next/static/chunks/turbopack-c715a5061e9a32c3.js",
+          "relativePath": ".next/static/chunks/turbopack-c715a5061e9a32c3.js",
+          "name": "turbopack-c715a5061e9a32c3.js",
+          "extension": ".js",
+          "size": 9843,
+          "sizeGzipped": 3854,
+          "compressionRatio": 0.6084527075078736,
+          "lastModified": "2025-11-10T11:53:53.613Z",
+          "isReactComponent": false,
+          "dependencies": [],
+          "estimatedModules": 25
+        }
+      ]
+    },
+    "css": {
+      "count": 0,
+      "size": 0,
+      "files": []
+    },
+    "fonts": {
+      "count": 0,
+      "size": 0,
+      "files": []
+    },
+    "images": {
+      "count": 0,
+      "size": 0,
+      "files": []
+    },
+    "other": {
+      "count": 0,
+      "size": 0,
+      "files": []
+    }
+  },
+  "issues": [
+    {
+      "type": "large_file",
+      "severity": "high",
+      "file": ".next/static/chunks/396c30dbc2494a84.js",
+      "size": 269094,
+      "message": "Large file detected: 262.8KB"
+    },
+    {
+      "type": "large_file",
+      "severity": "high",
+      "file": ".next/static/chunks/5f8a548950077515.js",
+      "size": 93606,
+      "message": "Large file detected: 91.4KB"
+    },
+    {
+      "type": "large_file",
+      "severity": "high",
+      "file": ".next/static/chunks/8d98be24743ee0fa.js",
+      "size": 303927,
+      "message": "Large file detected: 296.8KB"
+    },
+    {
+      "type": "large_file",
+      "severity": "high",
+      "file": ".next/static/chunks/a6dad97d9634a72d.js",
+      "size": 112594,
+      "message": "Large file detected: 110.0KB"
+    }
+  ],
+  "recommendations": [
+    {
+      "priority": "high",
+      "type": "bundle_splitting",
+      "message": "Consider implementing code splitting to reduce initial bundle size",
+      "impact": "High",
+      "effort": "Medium"
+    },
+    {
+      "priority": "high",
+      "type": "js_optimization",
+      "message": "JavaScript bundle is large, consider dynamic imports and tree shaking",
+      "impact": "High",
+      "effort": "Medium"
+    },
+    {
+      "priority": "high",
+      "type": "large_files",
+      "message": "4 large files detected, consider lazy loading or optimization",
+      "impact": "High",
+      "effort": "Medium",
+      "details": [
+        ".next/static/chunks/396c30dbc2494a84.js: 262.8KB",
+        ".next/static/chunks/5f8a548950077515.js: 91.4KB",
+        ".next/static/chunks/8d98be24743ee0fa.js: 296.8KB",
+        ".next/static/chunks/a6dad97d9634a72d.js: 110.0KB"
+      ]
+    }
+  ]
+}

@@ -183,6 +183,91 @@ export MOAI_STATUSLINE_MODE=extended
 
 ---
 
+## 🧠 Senior Engineer Thinking Patterns Integration (v0.22.0+)
+
+MoAI-ADK now integrates **8 research strategies** from "Teach Your AI to Think Like a Senior Engineer" to transform Alfred from a coding assistant into a true engineering partner that thinks, researches, and learns like a senior engineer.
+
+### 🎯 The 8 Research Strategies
+
+| Strategy | Purpose | Alfred Implementation |
+|----------|---------|----------------------|
+| **1. Reproduce & Document** | Systematic issue reproduction and documentation | `research-reproducer` agent + reproduction workflows |
+| **2. Ground in Best Practices** | Research industry standards and proven solutions | `best-practices-researcher` agent + pattern validation |
+| **3. Ground in Your Codebase** | Discover existing implementation patterns | Enhanced `codebase-analyst` agent + pattern recognition |
+| **4. Ground in Your Libraries** | Deep understanding of tool capabilities | `library-researcher` agent + source code analysis |
+| **5. Study Git History** | Learn from past decisions and evolution | Enhanced `git-historian` agent + commit pattern analysis |
+| **6. Vibe Prototype for Clarity** | Rapid prototyping to explore requirements | `prototype-creator` agent + quick iteration tools |
+| **7. Synthesize with Options** | Generate and compare multiple approaches | `synthesis-agent` agent + decision frameworks |
+| **8. Review with Style Agents** | Multi-perspective quality validation | Multiple `style-reviewer` agents + specialized expertise |
+
+### 🚀 Parallel Research Operations
+
+**Before**: Sequential thinking → single perspective → limited solutions
+**After**: Parallel research across 8 strategies → synthesized insights → optimal solutions
+
+```
+research-orchestrator
+├── strategy-1: Reproduction & Documentation
+├── strategy-2: Best Practices Research
+├── strategy-3: Codebase Pattern Analysis
+├── strategy-4: Library Capabilities Research
+├── strategy-5: Git History Analysis
+├── strategy-6: Rapid Prototyping
+├── strategy-7: Option Synthesis & Comparison
+└── strategy-8: Multi-perspective Style Review
+    ↓
+knowledge-synthesizer: Results integration & optimal recommendations
+```
+
+### 📈 Learning & Compounding System
+
+**Knowledge Accumulation**:
+- Every research session contributes to project knowledge base
+- Patterns discovered are automatically captured and reused
+- Decision quality improves over time through accumulated experience
+
+**Adaptive Intelligence**:
+- Alfred learns your project's unique patterns and preferences
+- Research becomes faster and more accurate with each session
+- Custom best practices emerge from your specific codebase history
+
+### 🎭 Real-World Impact
+
+**Example**: Email bulk archive feature (53,000 emails)
+- **Traditional AI**: "Simple bulk delete" → Gmail rate limits → failure
+- **Senior Engineer Alfred**: Researches Gmail API limits, batch processing patterns, user experience → implements robust solution with progress tracking and error recovery
+
+**Example**: Authentication system design
+- **Traditional AI**: Basic JWT implementation
+- **Senior Engineer Alfred**: Researches OAuth 2.0 standards, security best practices, session management, token rotation patterns → enterprise-ready solution
+
+### 🛠️ Implementation Integration
+
+The 8 strategies are seamlessly integrated into MoAI-ADK's workflow:
+
+**Planning Phase** (`/alfred:1-plan`):
+- Parallel research across all 8 strategies
+- Comprehensive requirements analysis
+- Risk identification and mitigation planning
+
+**Implementation Phase** (`/alfred:2-run`):
+- Continuous research during development
+- Best practice validation
+- Multi-perspective code review
+
+**Sync Phase** (`/alfred:3-sync`):
+- Pattern extraction and knowledge capture
+- Documentation of learned insights
+- Team knowledge sharing
+
+### 📚 Learn More
+
+- **[Detailed Guide](./docs/senior-engineer-thinking)**: Complete implementation guide
+- **[Research Strategies](./docs/research-strategies)**: Deep dive into each strategy
+- **[Case Studies](./docs/case-studies)**: Real-world examples and impact analysis
+
+---
+
 ## 🆕 Latest Features: Phase 1, Phase 2 & Phase 3 (v0.20.1+)
 
 ### Phase 1: Multi-Language Code Directory Detection + Auto-Correction
