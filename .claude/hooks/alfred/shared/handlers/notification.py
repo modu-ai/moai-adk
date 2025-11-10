@@ -8,8 +8,9 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from core import HookPayload, HookResult
-from utils.state_tracking import deduplicate_command, mark_command_complete
+import time
+from core import HookPayload, HookResult, ExecutionResult, get_logger, get_performance_metrics
+from utils.state_tracking import deduplicate_command, mark_command_complete, get_state_manager, HookConfiguration
 
 
 def _get_command_execution_state_file(cwd: str) -> Path:
@@ -60,9 +61,17 @@ def handle_notification(payload: HookPayload) -> HookResult:
     """Notification event handler with COMMAND DEDUPLICATION
 
     Detects and prevents duplicate command executions
-    (When the same /alfred: command is triggered multiple times within 3 seconds)
-    Implements 3-second window deduplication for Alfred commands only.
+    (When the same /alfred: command is triggered multiple times within configurable time window)
+    Implements configurable window deduplication for Alfred commands only.
+
+    Args:
+        payload: Claude Code event payload containing notification and cwd
+
+    Returns:
+        HookResult with continue_execution flag
     """
+    logger = get_logger()
+
     cwd = payload.get("cwd", ".")
     notification = payload.get("notification", {})
 
@@ -81,24 +90,44 @@ def handle_notification(payload: HookPayload) -> HookResult:
 
     # Only deduplicate Alfred commands, not regular commands
     if not current_cmd or not current_cmd.startswith("/alfred:"):
+        logger.debug(f"Non-Alfred command: {current_cmd}")
         return HookResult()
 
-    # Use centralized state tracking for command deduplication
-    dedup_result = deduplicate_command(current_cmd, cwd)
+    try:
+        # Get state manager with configuration
+        state_manager = get_state_manager(cwd)
+        config = state_manager.config
 
-    # If duplicate, log it but continue execution (prevents blocking)
-    if dedup_result["duplicate"]:
-        # Optionally log duplicate detection
-        pass
+        # Use centralized state tracking for command deduplication
+        dedup_result = deduplicate_command(current_cmd, cwd, config)
 
-    return HookResult(continue_execution=True)
+        # Log duplicate detection if enabled
+        if dedup_result.duplicate:
+            logger.info(f"Command duplicate detected: {current_cmd} (reason: {dedup_result.reason})")
+        else:
+            logger.debug(f"Command execution allowed: {current_cmd} (reason: {dedup_result.reason})")
+
+        return HookResult(continue_execution=True)
+
+    except Exception as e:
+        logger.error(f"Error in command deduplication: {e}")
+        # Continue execution despite deduplication failure
+        return HookResult(continue_execution=True)
 
 
 def handle_stop(payload: HookPayload) -> HookResult:
     """Stop event handler
 
     Marks command execution as complete
+
+    Args:
+        payload: Claude Code event payload containing notification and cwd
+
+    Returns:
+        HookResult with continue_execution flag
     """
+    logger = get_logger()
+
     cwd = payload.get("cwd", ".")
     notification = payload.get("notification", {})
 
@@ -112,8 +141,18 @@ def handle_stop(payload: HookPayload) -> HookResult:
             if match:
                 current_cmd = match.group().strip()
 
-    # Mark command as complete in centralized state tracker
-    mark_command_complete(current_cmd, cwd)
+    try:
+        # Get state manager with configuration
+        state_manager = get_state_manager(cwd)
+        config = state_manager.config
+
+        # Mark command as complete in centralized state tracker
+        mark_command_complete(current_cmd, cwd, config)
+        logger.info(f"Command marked as complete: {current_cmd or 'unknown'}")
+
+    except Exception as e:
+        logger.error(f"Failed to mark command as complete: {e}")
+        # Continue execution despite failure
 
     return HookResult()
 

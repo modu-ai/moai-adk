@@ -6,6 +6,7 @@ command deduplication, and duplicate prevention.
 """
 
 import json
+import logging
 import threading
 import time
 from datetime import datetime, timedelta
@@ -13,7 +14,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional, List
 import uuid
 
-from core import HookPayload, HookResult
+from core import HookPayload, HookResult, HookConfiguration, ExecutionResult, get_logger, get_performance_metrics, record_execution_metrics, record_cache_hit, record_cache_miss, configure_logging
 
 
 class HookStateManager:
@@ -25,96 +26,191 @@ class HookStateManager:
     - Command deduplication within time windows
     - Thread-safe state operations
     - Persistent state storage
+    - Performance monitoring and metrics collection
+    - Configurable deduplication parameters
     """
 
-    # Time windows for deduplication (in seconds)
-    COMMAND_DEDUPE_WINDOW = 3.0
-    HOOK_DEDUPE_WINDOW = 1.0
+    def __init__(self, cwd: str, config: Optional[HookConfiguration] = None):
+        """Initialize state manager for given working directory
 
-    def __init__(self, cwd: str):
-        """Initialize state manager for given working directory"""
+        Args:
+            cwd: Current working directory path
+            config: Optional configuration object, defaults to environment-based config
+        """
         self.cwd = cwd
+        self.config = config or HookConfiguration.from_env()
+        self.logger = get_logger()
 
-        # Try to use .moai/memory directory, fallback to temp directory if not writable
-        try:
-            self.state_dir = Path(cwd) / ".moai" / "memory"
-            self.state_dir.mkdir(parents=True, exist_ok=True)
-            # Test if directory is writable
-            test_file = self.state_dir / ".test_write"
-            test_file.touch()
-            test_file.unlink()
-        except (OSError, PermissionError):
-            # Fallback to temporary directory
-            import tempfile
-            temp_dir = Path(tempfile.gettempdir()) / "alfred_hooks" / cwd.replace("/", "_")
-            self.state_dir = temp_dir
-            self.state_dir.mkdir(parents=True, exist_ok=True)
+        # Configure logging based on config
+        configure_logging(
+            debug_mode=self.config.debug_mode,
+            verbose=self.config.enable_verbose_logging
+        )
 
-        # Thread safety
+        # Initialize state directory with fallback logic
+        self.state_dir = self.config.get_state_dir(cwd)
+        self.logger.debug(f"Using state directory: {self.state_dir}")
+
+        # Thread safety with configurable timeout
         self._lock = threading.RLock()
+        self._lock_timeout = self.config.lock_timeout_seconds
 
         # State files
         self.hook_state_file = self.state_dir / "hook_execution_state.json"
         self.command_state_file = self.state_dir / "command_execution_state.json"
+        self.performance_metrics_file = self.state_dir / "performance_metrics.json"
 
         # In-memory cache for performance
         self._hook_state_cache: Optional[Dict[str, Any]] = None
         self._command_state_cache: Optional[Dict[str, Any]] = None
         self._cache_timestamp = 0
 
-    def _load_hook_state(self) -> Dict[str, Any]:
-        """Load hook execution state with caching"""
+        # Performance tracking
+        self._performance_metrics = get_performance_metrics()
+
+        # Start cache cleanup thread if enabled
+        if self.config.enable_caching and self.config.cache_cleanup_interval > 0:
+            self._start_cache_cleanup_thread()
+
+    def _start_cache_cleanup_thread(self):
+        """Start background thread for cache cleanup"""
+        def cleanup_task():
+            while True:
+                time.sleep(self.config.cache_cleanup_interval)
+                try:
+                    self._cleanup_expired_cache_entries()
+                except Exception as e:
+                    self.logger.warning(f"Cache cleanup task failed: {e}")
+
+        cleanup_thread = threading.Thread(target=cleanup_task, daemon=True)
+        cleanup_thread.start()
+        self.logger.debug("Started cache cleanup background thread")
+
+    def _cleanup_expired_cache_entries(self):
+        """Clean up expired cache entries"""
         current_time = time.time()
 
-        # Use cache if recent (within 5 seconds)
+        # Clean hook state cache
         if (self._hook_state_cache and
-            current_time - self._cache_timestamp < 5.0):
+            current_time - self._cache_timestamp > self.config.state_cache_ttl):
+            self._hook_state_cache = None
+            self._cache_timestamp = 0
+            self.logger.debug("Cleaned expired hook state cache")
+
+        # Clean command state cache
+        if (self._command_state_cache and
+            current_time - self._cache_timestamp > self.config.state_cache_ttl):
+            self._command_state_cache = None
+            self._cache_timestamp = 0
+            self.logger.debug("Cleaned expired command state cache")
+
+    def _load_hook_state(self) -> Dict[str, Any]:
+        """Load hook execution state with caching and error handling
+
+        Returns:
+            Dictionary containing hook execution state
+        """
+        current_time = time.time()
+
+        # Use cache if recent (within configured TTL)
+        if (self._hook_state_cache and
+            current_time - self._cache_timestamp < self.config.state_cache_ttl):
+            if self.config.log_state_changes:
+                self.logger.debug("Hook state cache hit")
+            record_cache_hit()
             return self._hook_state_cache
 
         try:
             if self.hook_state_file.exists():
-                with open(self.hook_state_file, "r", encoding="utf-8") as f:
+                with open(self.hook_state_file, "r", encoding=self.config.state_file_encoding) as f:
                     state = json.load(f)
+
                 self._hook_state_cache = state
                 self._cache_timestamp = current_time
+                self._performance_metrics.record_state_read()
+                if self.config.log_state_changes:
+                    self.logger.debug(f"Loaded hook state from {self.hook_state_file}")
+                record_cache_hit()
                 return state
-        except Exception:
-            pass
+        except (IOError, json.JSONDecodeError, Exception) as e:
+            self.logger.warning(f"Failed to load hook state: {e}")
+            self._performance_metrics.record_io_error()
+            record_cache_miss()
 
         # Default state structure
         default_state = {}
         self._hook_state_cache = default_state
         self._cache_timestamp = current_time
+        record_cache_miss()
         return default_state
 
-    def _save_hook_state(self, state: Dict[str, Any]) -> None:
-        """Save hook execution state"""
+    def _save_hook_state(self, state: Dict[str, Any]) -> bool:
+        """Save hook execution state with error handling
+
+        Args:
+            state: Hook state to save
+
+        Returns:
+            bool: True if save was successful, False otherwise
+        """
+        if not self.config.enable_state_persistence:
+            return False
+
         try:
-            with open(self.hook_state_file, "w", encoding="utf-8") as f:
-                json.dump(state, f, indent=2)
+            # Create backup if enabled
+            if self.config.backup_on_write and self.hook_state_file.exists():
+                backup_file = self.hook_state_file.with_suffix('.json.backup')
+                import shutil
+                shutil.copy2(self.hook_state_file, backup_file)
+
+            with open(self.hook_state_file, "w", encoding=self.config.state_file_encoding) as f:
+                json.dump(state, f, indent=self.config.state_file_indent)
+
             self._hook_state_cache = state
             self._cache_timestamp = time.time()
-        except Exception:
-            pass
+            self._performance_metrics.record_state_write()
+
+            if self.config.log_state_changes:
+                self.logger.debug(f"Saved hook state to {self.hook_state_file}")
+            return True
+
+        except (IOError, OSError, Exception) as e:
+            self.logger.error(f"Failed to save hook state: {e}")
+            self._performance_metrics.record_io_error()
+            return False
 
     def _load_command_state(self) -> Dict[str, Any]:
-        """Load command execution state with caching"""
+        """Load command execution state with caching and error handling
+
+        Returns:
+            Dictionary containing command execution state
+        """
         current_time = time.time()
 
-        # Use cache if recent (within 5 seconds)
+        # Use cache if recent (within configured TTL)
         if (self._command_state_cache and
-            current_time - self._cache_timestamp < 5.0):
+            current_time - self._cache_timestamp < self.config.state_cache_ttl):
+            if self.config.log_state_changes:
+                self.logger.debug("Command state cache hit")
+            record_cache_hit()
             return self._command_state_cache
 
         try:
             if self.command_state_file.exists():
-                with open(self.command_state_file, "r", encoding="utf-8") as f:
+                with open(self.command_state_file, "r", encoding=self.config.state_file_encoding) as f:
                     state = json.load(f)
+
                 self._command_state_cache = state
                 self._cache_timestamp = current_time
+                self._performance_metrics.record_state_read()
+                if self.config.log_state_changes:
+                    self.logger.debug(f"Loaded command state from {self.command_state_file}")
+                record_cache_hit()
                 return state
-        except Exception:
-            pass
+        except (IOError, json.JSONDecodeError, Exception) as e:
+            self.logger.warning(f"Failed to load command state: {e}")
+            self._performance_metrics.record_io_error()
+            record_cache_miss()
 
         # Default state structure
         default_state = {
@@ -126,19 +222,45 @@ class HookStateManager:
         }
         self._command_state_cache = default_state
         self._cache_timestamp = current_time
+        record_cache_miss()
         return default_state
 
-    def _save_command_state(self, state: Dict[str, Any]) -> None:
-        """Save command execution state"""
+    def _save_command_state(self, state: Dict[str, Any]) -> bool:
+        """Save command execution state with error handling
+
+        Args:
+            state: Command state to save
+
+        Returns:
+            bool: True if save was successful, False otherwise
+        """
+        if not self.config.enable_state_persistence:
+            return False
+
         try:
-            with open(self.command_state_file, "w", encoding="utf-8") as f:
-                json.dump(state, f, indent=2)
+            # Create backup if enabled
+            if self.config.backup_on_write and self.command_state_file.exists():
+                backup_file = self.command_state_file.with_suffix('.json.backup')
+                import shutil
+                shutil.copy2(self.command_state_file, backup_file)
+
+            with open(self.command_state_file, "w", encoding=self.config.state_file_encoding) as f:
+                json.dump(state, f, indent=self.config.state_file_indent)
+
             self._command_state_cache = state
             self._cache_timestamp = time.time()
-        except Exception:
-            pass
+            self._performance_metrics.record_state_write()
 
-    def track_hook_execution(self, hook_name: str, phase: str = None) -> Dict[str, Any]:
+            if self.config.log_state_changes:
+                self.logger.debug(f"Saved command state to {self.command_state_file}")
+            return True
+
+        except (IOError, OSError, Exception) as e:
+            self.logger.error(f"Failed to save command state: {e}")
+            self._performance_metrics.record_io_error()
+            return False
+
+    def track_hook_execution(self, hook_name: str, phase: str = None) -> ExecutionResult:
         """Track hook execution and return execution information
 
         Args:
@@ -146,142 +268,318 @@ class HookStateManager:
             phase: Optional phase for phase-based deduplication
 
         Returns:
-            Dictionary with execution info including:
+            ExecutionResult with detailed execution information including:
             - executed: Whether the hook was actually executed
-            - execution_count: Total execution count
             - duplicate: Whether this was a duplicate execution
             - execution_id: Unique identifier for this execution
+            - execution_count: Total execution count
+            - performance metrics and error information
         """
-        with self._lock:
-            state = self._load_hook_state()
+        start_time = time.time()
 
-            # Initialize hook state if not exists
-            if hook_name not in state:
-                state[hook_name] = {
-                    "count": 0,
-                    "last_execution": 0,
-                    "last_phase": None,
-                    "executions": []
-                }
+        try:
+            with self._lock:
+                # Acquire lock with timeout
+                if not self._lock.acquire(timeout=self._lock_timeout):
+                    self.logger.warning("Failed to acquire lock for hook tracking")
+                    self._performance_metrics.record_concurrent_access_error()
+                    return ExecutionResult(
+                        executed=True,  # Allow execution to continue despite lock issue
+                        duplicate=False,
+                        execution_id=str(uuid.uuid4()),
+                        timestamp=start_time,
+                        error="Failed to acquire lock for hook tracking"
+                    )
 
-            current_time = time.time()
-            hook_state = state[hook_name]
+                state = self._load_hook_state()
+                current_time = time.time()
+                execution_id = str(uuid.uuid4())
 
-            # Check for deduplication
-            is_duplicate = False
-            execution_id = str(uuid.uuid4())
+                # Initialize hook state if not exists
+                if hook_name not in state:
+                    state[hook_name] = {
+                        "count": 0,
+                        "last_execution": 0,
+                        "last_phase": None,
+                        "executions": []
+                    }
 
-            # Phase-based deduplication for SessionStart
-            if hook_name == "SessionStart" and phase:
-                # Phase transitions are allowed (clear->compact or compact->clear)
-                if (phase == hook_state.get("last_phase") and
-                    current_time - hook_state["last_execution"] < self.HOOK_DEDUPE_WINDOW):
-                    # Same phase within time window - deduplicate
-                    is_duplicate = True
+                hook_state = state[hook_name]
+
+                # Check for deduplication
+                is_duplicate = False
+                deduplication_reason = None
+
+                # Phase-based deduplication for SessionStart
+                if hook_name == "SessionStart" and phase:
+                    # Phase transitions are allowed (clear->compact or compact->clear)
+                    if (phase == hook_state.get("last_phase") and
+                        current_time - hook_state["last_execution"] < self.config.hook_dedupe_window):
+                        # Same phase within time window - deduplicate
+                        is_duplicate = True
+                        deduplication_reason = f"same phase within {self.config.hook_dedupe_window}s window"
+                    else:
+                        # Different phase or time window expired - execute
+                        pass
                 else:
-                    # Different phase or time window expired - execute
-                    pass
-            else:
-                # Regular deduplication based on time window
-                if (current_time - hook_state["last_execution"] < self.HOOK_DEDUPE_WINDOW):
-                    is_duplicate = True
+                    # Regular deduplication based on time window
+                    if (current_time - hook_state["last_execution"] < self.config.hook_dedupe_window):
+                        is_duplicate = True
+                        deduplication_reason = f"within {self.config.hook_dedupe_window}s deduplication window"
 
-            # Update state only if not duplicate
-            if not is_duplicate:
-                hook_state["count"] += 1
-                hook_state["last_execution"] = current_time
-                hook_state["last_phase"] = phase
-                hook_state["executions"].append({
-                    "timestamp": current_time,
-                    "phase": phase,
-                    "execution_id": execution_id
-                })
+                # Update state only if not duplicate
+                if not is_duplicate:
+                    hook_state["count"] += 1
+                    hook_state["last_execution"] = current_time
+                    hook_state["last_phase"] = phase
+                    hook_state["executions"].append({
+                        "timestamp": current_time,
+                        "phase": phase,
+                        "execution_id": execution_id
+                    })
 
-                # Keep only recent executions (cleanup)
-                recent_executions = [
-                    e for e in hook_state["executions"]
-                    if current_time - e["timestamp"] < 3600  # 1 hour
-                ]
-                if len(recent_executions) != len(hook_state["executions"]):
-                    hook_state["executions"] = recent_executions
+                    # Keep only recent executions (cleanup)
+                    recent_executions = [
+                        e for e in hook_state["executions"]
+                        if current_time - e["timestamp"] < self.config.max_state_file_age_hours * 3600
+                    ]
+                    if len(recent_executions) != len(hook_state["executions"]):
+                        hook_state["executions"] = recent_executions
 
-                self._save_hook_state(state)
+                    # Save state
+                    save_success = self._save_hook_state(state)
+                    if not save_success:
+                        self.logger.warning("Failed to save hook state")
 
-            return {
-                "hook_name": hook_name,
-                "executed": not is_duplicate,
-                "execution_count": hook_state["count"],
-                "duplicate": is_duplicate,
-                "execution_id": execution_id,
-                "phase": phase,
-                "timestamp": current_time
-            }
+                # Create execution result
+                execution_time_ms = (time.time() - start_time) * 1000
+                execution_count = hook_state["count"]
+                duplicate_count = state.get("duplicate_count", 0)
 
-    def deduplicate_command(self, command: str) -> Dict[str, Any]:
+                result = ExecutionResult(
+                    executed=not is_duplicate,
+                    duplicate=is_duplicate,
+                    execution_id=execution_id,
+                    timestamp=current_time,
+                    hook_name=hook_name,
+                    phase=phase,
+                    reason=deduplication_reason,
+                    execution_time_ms=execution_time_ms,
+                    execution_count=execution_count,
+                    duplicate_count=duplicate_count,
+                    state_operations_count=2,  # Load + Save
+                    cache_hit=bool(self._hook_state_cache),
+                    warning=None if save_success else "Failed to save state but continuing execution"
+                )
+
+                # Record performance metrics
+                record_execution_metrics(
+                    execution_time_ms,
+                    success=True,
+                    is_duplicate=is_duplicate
+                )
+
+                if self.config.log_state_changes:
+                    self.logger.info(f"Hook execution tracked: {hook_name} (executed: {not is_duplicate}, duplicate: {is_duplicate})")
+
+                return result
+
+        except Exception as e:
+            execution_time_ms = (time.time() - start_time) * 1000
+
+            # Record failure metrics
+            record_execution_metrics(
+                execution_time_ms,
+                success=False,
+                is_duplicate=False
+            )
+
+            self.logger.error(f"Error in hook execution tracking: {e}")
+            self._performance_metrics.record_other_error()
+
+            return ExecutionResult(
+                executed=True,  # Allow execution to continue despite error
+                duplicate=False,
+                execution_id=str(uuid.uuid4()),
+                timestamp=start_time,
+                hook_name=hook_name,
+                phase=phase,
+                error=str(e),
+                execution_time_ms=execution_time_ms,
+                warning="Execution tracking failed but continuing execution"
+            )
+
+        finally:
+            # Release lock if acquired
+            if self._lock.locked():
+                self._lock.release()
+
+    def deduplicate_command(self, command: str) -> ExecutionResult:
         """Check and deduplicate command execution within time window
 
         Args:
             command: Command string to check for deduplication
 
         Returns:
-            Dictionary with deduplication info including:
+            ExecutionResult with detailed deduplication information including:
             - executed: Whether the command should execute
             - duplicate: Whether this was a duplicate
             - reason: Reason for deduplication decision
             - execution_count: Total execution count
+            - performance metrics and error information
         """
-        with self._lock:
-            state = self._load_command_state()
+        start_time = time.time()
 
-            current_time = time.time()
+        try:
+            with self._lock:
+                # Acquire lock with timeout
+                if not self._lock.acquire(timeout=self._lock_timeout):
+                    self.logger.warning("Failed to acquire lock for command deduplication")
+                    self._performance_metrics.record_concurrent_access_error()
+                    return ExecutionResult(
+                        executed=True,  # Allow execution to continue despite lock issue
+                        duplicate=False,
+                        execution_id=str(uuid.uuid4()),
+                        timestamp=start_time,
+                        command=command,
+                        error="Failed to acquire lock for command deduplication"
+                    )
 
-            # Check if command is an Alfred command (only deduplicate these)
-            if not command or not command.startswith("/alfred:"):
-                return {
-                    "command": command,
-                    "executed": True,
-                    "duplicate": False,
-                    "reason": "non-alfred command",
-                    "execution_count": state["execution_count"]
-                }
+                state = self._load_command_state()
+                current_time = time.time()
+                execution_id = str(uuid.uuid4())
 
-            # Check for duplicate within time window
-            last_cmd = state.get("last_command")
-            last_timestamp = state.get("last_timestamp")
+                # Check if command is an Alfred command (only deduplicate these)
+                if not command or not command.startswith("/alfred:"):
+                    result = ExecutionResult(
+                        executed=True,
+                        duplicate=False,
+                        execution_id=execution_id,
+                        timestamp=current_time,
+                        command=command,
+                        reason="non-alfred command",
+                        execution_count=state["execution_count"],
+                        execution_time_ms=(time.time() - start_time) * 1000,
+                        state_operations_count=1  # Load
+                    )
 
-            if (last_cmd and last_timestamp and
-                command == last_cmd and
-                current_time - last_timestamp < self.COMMAND_DEDUPE_WINDOW):
+                    # Record performance metrics
+                    record_execution_metrics(
+                        result.execution_time_ms,
+                        success=True,
+                        is_duplicate=False
+                    )
 
-                # Duplicate detected
-                state["duplicate_count"] += 1
-                state["is_running"] = True  # Mark as running to prevent further duplicates
-                state["duplicate_timestamp"] = current_time.isoformat()
-                self._save_command_state(state)
+                    if self.config.log_state_changes:
+                        self.logger.info(f"Non-Alfred command: {command}")
 
-                return {
-                    "command": command,
-                    "executed": True,  # Allow execution but mark as duplicate
-                    "duplicate": True,
-                    "reason": f"duplicate within {self.COMMAND_DEDUPE_WINDOW}s window",
-                    "execution_count": state["execution_count"],
-                    "duplicate_count": state["duplicate_count"]
-                }
+                    return result
 
-            # Not a duplicate - update state and execute
-            state["last_command"] = command
-            state["last_timestamp"] = current_time
-            state["is_running"] = True
-            state["execution_count"] += 1
-            self._save_command_state(state)
+                # Check for duplicate within time window
+                last_cmd = state.get("last_command")
+                last_timestamp = state.get("last_timestamp")
 
-            return {
-                "command": command,
-                "executed": True,
-                "duplicate": False,
-                "reason": "normal execution",
-                "execution_count": state["execution_count"]
-            }
+                is_duplicate = False
+                deduplication_reason = None
+
+                if (last_cmd and last_timestamp and
+                    command == last_cmd and
+                    current_time - last_timestamp < self.config.command_dedupe_window):
+
+                    # Duplicate detected
+                    is_duplicate = True
+                    deduplication_reason = f"within {self.config.command_dedupe_window}s deduplication window"
+                    state["duplicate_count"] += 1
+                    state["is_running"] = True  # Mark as running to prevent further duplicates
+                    state["duplicate_timestamp"] = datetime.fromtimestamp(current_time).isoformat()
+
+                    # Save state
+                    save_success = self._save_command_state(state)
+                    if not save_success:
+                        self.logger.warning("Failed to save command state for duplicate detection")
+
+                    result = ExecutionResult(
+                        executed=True,  # Allow execution but mark as duplicate
+                        duplicate=True,
+                        execution_id=execution_id,
+                        timestamp=current_time,
+                        command=command,
+                        phase=None,
+                        reason=deduplication_reason,
+                        execution_count=state["execution_count"],
+                        duplicate_count=state["duplicate_count"],
+                        execution_time_ms=(time.time() - start_time) * 1000,
+                        state_operations_count=2,  # Load + Save
+                        cache_hit=bool(self._command_state_cache),
+                        warning=None if save_success else "Failed to save duplicate state"
+                    )
+
+                else:
+                    # Not a duplicate - update state and execute
+                    state["last_command"] = command
+                    state["last_timestamp"] = current_time
+                    state["is_running"] = True
+                    state["execution_count"] += 1
+
+                    # Save state
+                    save_success = self._save_command_state(state)
+                    if not save_success:
+                        self.logger.warning("Failed to save command state for normal execution")
+
+                    result = ExecutionResult(
+                        executed=True,
+                        duplicate=False,
+                        execution_id=execution_id,
+                        timestamp=current_time,
+                        command=command,
+                        reason="normal execution",
+                        execution_count=state["execution_count"],
+                        execution_time_ms=(time.time() - start_time) * 1000,
+                        state_operations_count=2,  # Load + Save
+                        cache_hit=bool(self._command_state_cache),
+                        warning=None if save_success else "Failed to save command state"
+                    )
+
+                # Record performance metrics
+                record_execution_metrics(
+                    result.execution_time_ms,
+                    success=True,
+                    is_duplicate=is_duplicate
+                )
+
+                if self.config.log_state_changes:
+                    self.logger.info(f"Command deduplication: {command} (executed: {not is_duplicate}, duplicate: {is_duplicate})")
+
+                return result
+
+        except Exception as e:
+            execution_time_ms = (time.time() - start_time) * 1000
+
+            # Record failure metrics
+            record_execution_metrics(
+                execution_time_ms,
+                success=False,
+                is_duplicate=False
+            )
+
+            self.logger.error(f"Error in command deduplication: {e}")
+            self._performance_metrics.record_other_error()
+
+            return ExecutionResult(
+                executed=True,  # Allow execution to continue despite error
+                duplicate=False,
+                execution_id=str(uuid.uuid4()),
+                timestamp=start_time,
+                command=command,
+                error=str(e),
+                execution_time_ms=execution_time_ms,
+                warning="Command deduplication failed but continuing execution"
+            )
+
+        finally:
+            # Release lock if acquired
+            if self._lock.locked():
+                self._lock.release()
 
     def mark_command_complete(self, command: str = None) -> None:
         """Mark command execution as complete
@@ -289,13 +587,22 @@ class HookStateManager:
         Args:
             command: Optional command that completed
         """
-        with self._lock:
-            state = self._load_command_state()
-            state["is_running"] = False
-            state["last_timestamp"] = time.time()
-            if command:
-                state["last_command"] = command
-            self._save_command_state(state)
+        try:
+            with self._lock:
+                state = self._load_command_state()
+                state["is_running"] = False
+                state["last_timestamp"] = time.time()
+                if command:
+                    state["last_command"] = command
+
+                self._save_command_state(state)
+
+                if self.config.log_state_changes:
+                    self.logger.info(f"Command marked as complete: {command or 'unknown'}")
+
+        except Exception as e:
+            self.logger.error(f"Failed to mark command as complete: {e}")
+            self._performance_metrics.record_other_error()
 
     def get_hook_execution_count(self, hook_name: str) -> int:
         """Get total execution count for a hook"""
@@ -307,44 +614,80 @@ class HookStateManager:
         state = self._load_command_state()
         return state.get("execution_count", 0)
 
-    def cleanup_old_states(self, max_age_hours: int = 24) -> None:
-        """Clean up old state entries to prevent state file bloat"""
+    def cleanup_old_states(self, max_age_hours: int = None) -> None:
+        """Clean up old state entries to prevent state file bloat
+
+        Args:
+            max_age_hours: Maximum age for state entries in hours, defaults to config setting
+        """
+        if not self.config.enable_state_persistence:
+            return
+
+        max_age = max_age_hours or self.config.max_state_file_age_hours
         current_time = time.time()
-        max_age_seconds = max_age_hours * 3600
+        max_age_seconds = max_age * 3600
 
-        # Clean up hook state
-        with self._lock:
-            hook_state = self._load_hook_state()
+        try:
+            with self._lock:
+                # Clean up hook state
+                hook_state = self._load_hook_state()
 
-            # Clean up old hook executions
-            for hook_name in list(hook_state.keys()):
-                hook_data = hook_state[hook_name]
-                if "executions" in hook_data:
-                    recent_executions = [
-                        e for e in hook_data["executions"]
-                        if current_time - e["timestamp"] < max_age_seconds
-                    ]
-                    if len(recent_executions) != len(hook_data["executions"]):
-                        hook_data["executions"] = recent_executions
+                # Clean up old hook executions
+                for hook_name in list(hook_state.keys()):
+                    hook_data = hook_state[hook_name]
+                    if "executions" in hook_data:
+                        recent_executions = [
+                            e for e in hook_data["executions"]
+                            if current_time - e["timestamp"] < max_age_seconds
+                        ]
+                        if len(recent_executions) != len(hook_data["executions"]):
+                            hook_data["executions"] = recent_executions
+                            if self.config.log_state_changes:
+                                self.logger.debug(f"Cleaned up {len(recent_executions)} executions for {hook_name}")
 
-                # Remove hooks with no recent executions
-                if (hook_data.get("last_execution", 0) < current_time - max_age_seconds):
-                    del hook_state[hook_name]
+                    # Remove hooks with no recent executions
+                    if (hook_data.get("last_execution", 0) < current_time - max_age_seconds):
+                        del hook_state[hook_name]
+                        if self.config.log_state_changes:
+                            self.logger.debug(f"Removed old hook state: {hook_name}")
 
-            self._save_hook_state(hook_state)
+                self._save_hook_state(hook_state)
 
-            # Clean up command state
-            command_state = self._load_command_state()
-            if (command_state.get("last_timestamp", 0) < current_time - max_age_seconds):
-                # Reset command state if too old
-                command_state.update({
-                    "last_command": None,
-                    "last_timestamp": None,
-                    "is_running": False,
-                    "execution_count": 0,
-                    "duplicate_count": 0
-                })
-                self._save_command_state(command_state)
+                # Clean up command state
+                command_state = self._load_command_state()
+                if (command_state.get("last_timestamp", 0) < current_time - max_age_seconds):
+                    # Reset command state if too old
+                    command_state.update({
+                        "last_command": None,
+                        "last_timestamp": None,
+                        "is_running": False,
+                        "execution_count": 0,
+                        "duplicate_count": 0
+                    })
+                    self._save_command_state(command_state)
+                    if self.config.log_state_changes:
+                        self.logger.debug("Reset old command state")
+
+        except Exception as e:
+            self.logger.error(f"Failed to clean up old states: {e}")
+            self._performance_metrics.record_other_error()
+
+    def get_performance_summary(self) -> Dict[str, Any]:
+        """Get performance summary for the state manager
+
+        Returns:
+            Dictionary with performance metrics summary
+        """
+        return self._performance_metrics.get_summary()
+
+    def reset_performance_metrics(self) -> None:
+        """Reset performance metrics for this state manager"""
+        global _global_performance_metrics
+        with _global_metrics_lock:
+            _global_performance_metrics = PerformanceMetrics()
+        self._performance_metrics = get_performance_metrics()
+        if self.config.log_state_changes:
+            self.logger.info("Performance metrics reset")
 
 
 # Global state manager instances (per-CWD)
@@ -352,29 +695,92 @@ _state_managers: Dict[str, HookStateManager] = {}
 _state_manager_lock = threading.RLock()
 
 
-def get_state_manager(cwd: str) -> HookStateManager:
-    """Get or create state manager for given working directory"""
+def get_state_manager(cwd: str, config: Optional[HookConfiguration] = None) -> HookStateManager:
+    """Get or create state manager for given working directory
+
+    Args:
+        cwd: Current working directory path
+        config: Optional configuration object
+
+    Returns:
+        HookStateManager instance for the given directory
+    """
     with _state_manager_lock:
         if cwd not in _state_managers:
-            _state_managers[cwd] = HookStateManager(cwd)
+            _state_managers[cwd] = HookStateManager(cwd, config)
         return _state_managers[cwd]
 
 
-def track_hook_execution(hook_name: str, cwd: str, phase: str = None) -> Dict[str, Any]:
-    """Convenience function to track hook execution"""
-    manager = get_state_manager(cwd)
+def track_hook_execution(hook_name: str, cwd: str, phase: str = None, config: Optional[HookConfiguration] = None) -> ExecutionResult:
+    """Convenience function to track hook execution
+
+    Args:
+        hook_name: Name of the hook being executed
+        cwd: Current working directory
+        phase: Optional phase for phase-based deduplication
+        config: Optional configuration object
+
+    Returns:
+        ExecutionResult with execution information
+    """
+    manager = get_state_manager(cwd, config)
     return manager.track_hook_execution(hook_name, phase)
 
 
-def deduplicate_command(command: str, cwd: str) -> Dict[str, Any]:
-    """Convenience function to deduplicate command"""
-    manager = get_state_manager(cwd)
+def deduplicate_command(command: str, cwd: str, config: Optional[HookConfiguration] = None) -> ExecutionResult:
+    """Convenience function to deduplicate command
+
+    Args:
+        command: Command string to check for deduplication
+        cwd: Current working directory
+        config: Optional configuration object
+
+    Returns:
+        ExecutionResult with deduplication information
+    """
+    manager = get_state_manager(cwd, config)
     return manager.deduplicate_command(command)
 
 
-def mark_command_complete(command: str = None, cwd: str = None) -> None:
-    """Convenience function to mark command complete"""
+def mark_command_complete(command: str = None, cwd: str = None, config: Optional[HookConfiguration] = None) -> None:
+    """Convenience function to mark command complete
+
+    Args:
+        command: Optional command that completed
+        cwd: Current working directory
+        config: Optional configuration object
+    """
     if not cwd:
         cwd = "."
-    manager = get_state_manager(cwd)
+    manager = get_state_manager(cwd, config)
     manager.mark_command_complete(command)
+
+
+def cleanup_old_states(max_age_hours: int = None, cwd: str = None, config: Optional[HookConfiguration] = None) -> None:
+    """Convenience function to clean up old states
+
+    Args:
+        max_age_hours: Maximum age for state entries in hours
+        cwd: Current working directory
+        config: Optional configuration object
+    """
+    if not cwd:
+        cwd = "."
+    manager = get_state_manager(cwd, config)
+    manager.cleanup_old_states(max_age_hours)
+
+
+def get_performance_summary(cwd: str = None, config: Optional[HookConfiguration] = None) -> Dict[str, Any]:
+    """Convenience function to get performance summary
+
+    Args:
+        cwd: Current working directory
+        config: Optional configuration object
+
+    Returns:
+        Dictionary with performance metrics summary
+    """
+    if not cwd:
+        cwd = "."
+    manager = get_state_manager(cwd, config)
+    return manager.get_performance_summary()

@@ -218,6 +218,23 @@ class PhaseExecutor:
 
         # Merge user settings from existing config (preserve customization)
         if existing_config:
+            # Preserve moai section if it exists (including version field)
+            if "moai" in existing_config and isinstance(existing_config.get("moai"), dict):
+                if "moai" not in config:
+                    config["moai"] = {}
+                moai_config = config["moai"]
+                if isinstance(moai_config, dict):
+                    existing_moai = existing_config["moai"]
+                    if isinstance(existing_moai, dict):
+                        # Preserve version field (critical for user customizations)
+                        if "version" in existing_moai:
+                            moai_config["version"] = existing_moai["version"]
+
+                        # Preserve other moai settings
+                        for key, value in existing_moai.items():
+                            if key != "version":  # Already handled above
+                                moai_config[key] = value
+
             # Preserve user.nickname if it exists
             if "user" in existing_config and isinstance(existing_config.get("user"), dict):
                 if "user" not in config:
@@ -241,6 +258,16 @@ class PhaseExecutor:
                             lang_config["conversation_language"] = existing_lang["conversation_language"]
                         if "conversation_language_name" in existing_lang:
                             lang_config["conversation_language_name"] = existing_lang["conversation_language_name"]
+
+        # Ensure moai section exists and preserve version
+        if "moai" not in config:
+            config["moai"] = {}
+        # Type guard for mypy
+        moai_config = config["moai"]
+        if isinstance(moai_config, dict):
+            # Only set version if it doesn't exist in either config or existing config
+            if "version" not in moai_config and "version" not in existing_config.get("moai", {}):
+                moai_config["version"] = __version__  # Set current version only if not present in either config
 
         # Ensure project section exists and set defaults
         if "project" not in config:
