@@ -4,7 +4,7 @@
     "@SPEC:PROJECT-CONFIG-001": "@SPEC:MOAI-CONFIG-001"
   },
   "moai": {
-    "version": "0.22.4",
+    "version": "0.23.0",
     "update_check_frequency": "daily",
     "version_check": {
       "enabled": true,
@@ -79,7 +79,7 @@
     "created_at": "2025-11-10 05:15:50",
     "initialized": true,
     "optimized": false,
-    "template_version": "0.22.4"
+    "template_version": "0.23.0"
   },
   "tags": {
     "auto_sync": true,
