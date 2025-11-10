@@ -44,6 +44,8 @@ class ValidationConfig:
         allowed_file_types: List of file extensions to validate (e.g., ["py", "js"])
         ignore_patterns: List of glob patterns to ignore (e.g., [".git/*", "*.pyc"])
         report_format: Default report format (detailed|summary|json)
+        supported_categories: All supported TAG categories
+        research_categories: Research-specific TAG categories for enhanced validation
     """
     strict_mode: bool = False
     check_duplicates: bool = True
@@ -56,6 +58,13 @@ class ValidationConfig:
         ".git/*", "node_modules/*", "__pycache__/*", "*.pyc", ".venv/*", "venv/*"
     ])
     report_format: str = "detailed"
+    supported_categories: List[str] = field(default_factory=lambda: [
+        "REQ", "DESIGN", "TASK", "TEST", "FEATURE", "API", "UI", "DATA",
+        "RESEARCH", "ANALYSIS", "KNOWLEDGE", "INSIGHT"
+    ])
+    research_categories: List[str] = field(default_factory=lambda: [
+        "RESEARCH", "ANALYSIS", "KNOWLEDGE", "INSIGHT"
+    ])
 
 
 @dataclass
@@ -165,8 +174,8 @@ class TagValidator(ABC):
     - get_priority(): Return priority (higher = runs first)
     """
 
-    # Default TAG pattern: @(SPEC|CODE|TEST|DOC):DOMAIN-TYPE-NNN
-    TAG_PATTERN = re.compile(r"@(SPEC|CODE|TEST|DOC):([A-Z]+(?:-[A-Z]+)*-\d{3})")
+    # Updated TAG pattern: @(SPEC|CODE|TEST|DOC|REQ|DESIGN|TASK|FEATURE|API|UI|DATA|RESEARCH|ANALYSIS|KNOWLEDGE|INSIGHT):DOMAIN-TYPE-NNN
+    TAG_PATTERN = re.compile(r"@(SPEC|CODE|TEST|DOC|REQ|DESIGN|TASK|FEATURE|API|UI|DATA|RESEARCH|ANALYSIS|KNOWLEDGE|INSIGHT):([A-Z]+(?:-[A-Z]+)*-\d{3})")
 
     @abstractmethod
     def validate(self, files: List[str]) -> List[ValidationIssue]:

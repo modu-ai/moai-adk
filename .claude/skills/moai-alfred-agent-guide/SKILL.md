@@ -1,7 +1,8 @@
 ---
 name: moai-alfred-agent-guide
-description: "19-agent team structure, decision trees for agent selection, Haiku vs Sonnet model selection, and agent collaboration principles. Use when deciding which sub-agent to invoke, understanding team responsibilities, or learning multi-agent orchestration."
+description: "19-agent team structure, decision trees for agent selection, Haiku vs Sonnet model selection, and agent collaboration principles. Enhanced with research capabilities for agent performance analysis and optimization. Use when deciding which sub-agent to invoke, understanding team responsibilities, or learning multi-agent orchestration."
 allowed-tools: "Read, Glob, Grep"
+tags: [agent, coordination, decision-tree, research, analysis, optimization, team-management]
 ---
 
 ## What It Does

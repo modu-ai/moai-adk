@@ -7,7 +7,7 @@ status: active
 description: Complete config.json CRUD operations with validation, merge strategy, and error recovery
 freedom: medium
 type: project
-tags: [project, configuration, management, validation, crud]
+tags: [project, configuration, management, validation, crud, research, analysis]
 allowed-tools:
   - Read
   - Write
