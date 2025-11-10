@@ -13,7 +13,9 @@ export default function LocaleLayout({ children, params }) {
     <html lang={locale}>
       <body>
         <LocaleProvider locale={locale}>
-          {children}
+          <div data-pagefind-body>
+            {children}
+          </div>
         </LocaleProvider>
       </body>
     </html>
