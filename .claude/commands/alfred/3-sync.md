@@ -212,8 +212,13 @@ Use Task tool:
   ```
   You are the doc-syncer agent.
 
+  CRITICAL LANGUAGE CONFIGURATION:
+  - You receive instructions in agent_prompt_language from config (default: English for global standard)
+  - You must respond in conversation_language from config (user's preferred language)
+  - Example: If agent_prompt_language="en" and conversation_language="ko", you receive English instructions but respond in Korean
+
   Language settings:
-  - conversation_language: [from .moai/config.json]
+  - conversation_language: {{CONVERSATION_LANGUAGE}}
 
   Task: Analyze Git changes and create a synchronization plan.
 
@@ -324,8 +329,13 @@ Use Task tool:
   ```
   You are the doc-syncer agent.
 
+  CRITICAL LANGUAGE CONFIGURATION:
+  - You receive instructions in agent_prompt_language from config (default: English for global standard)
+  - You must respond in conversation_language from config (user's preferred language)
+  - Example: If agent_prompt_language="en" and conversation_language="ko", you receive English instructions but respond in Korean
+
   Language settings:
-  - conversation_language: [from config]
+  - conversation_language: {{CONVERSATION_LANGUAGE}}
 
   **Execute the approved synchronization plan**:
 
@@ -379,6 +389,11 @@ Use Task tool:
   ```
   You are the quality-gate agent.
 
+  CRITICAL LANGUAGE CONFIGURATION:
+  - You receive instructions in agent_prompt_language from config (default: English for global standard)
+  - You must respond in conversation_language from config (user's preferred language)
+  - Example: If agent_prompt_language="en" and conversation_language="ko", you receive English instructions but respond in Korean
+
   **Task**: Verify that document synchronization meets TRUST 5 principles.
 
   Synchronization results: [from doc-syncer]
@@ -398,6 +413,48 @@ Use Task tool:
 
 ---
 
+### Step 2.4: Update SPEC Status to Completed
+
+**After successful synchronization**, update SPEC status to completed:
+
+1. **Identify completed SPECs**:
+   - Extract SPEC IDs from synchronized documents
+   - Check for @SPEC markers in updated files
+   - Verify implementation completeness
+
+2. **Update SPEC status**:
+   ```bash
+   python3 -c "
+   from moai_adk.core.spec_status_manager import SpecStatusManager
+   import re
+
+   manager = SpecStatusManager()
+
+   # Extract SPEC IDs from synchronized files
+   spec_ids = set()
+
+   # This would be populated from the sync results
+   completed_specs = []  # From $SYNC_RESULTS
+
+   for spec_id in completed_specs:
+       try:
+           manager.update_status(spec_id, 'completed',
+                               reason='Documentation synchronized successfully')
+           print(f'✅ {spec_id} status updated to completed')
+       except Exception as e:
+           print(f'⚠️  Failed to update {spec_id}: {e}')
+   "
+   ```
+
+3. **Verify status updates**:
+   - Check that all identified SPECs were updated
+   - Record version changes
+   - Include status changes in sync report
+
+**Integration**: Status updates are included in the Git commit from Phase 3.
+
+---
+
 ## 🔧 PHASE 3: Git Operations & PR
 
 **Goal**: Commit changes, transition PR (if Team mode), optionally auto-merge.
@@ -412,6 +469,11 @@ Use Task tool:
 - `prompt`:
   ```
   You are the git-manager agent.
+
+  CRITICAL LANGUAGE CONFIGURATION:
+  - You receive instructions in agent_prompt_language from config (default: English for global standard)
+  - You must respond in conversation_language from config (user's preferred language)
+  - Example: If agent_prompt_language="en" and conversation_language="ko", you receive English instructions but respond in Korean
 
   **Task**: Commit document synchronization changes to Git.
 

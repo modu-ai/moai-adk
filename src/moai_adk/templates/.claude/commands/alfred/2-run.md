@@ -123,10 +123,17 @@ Use Task tool:
   ```
   You are the implementation-planner agent.
 
+CRITICAL LANGUAGE CONFIGURATION:
+- You receive instructions in agent_prompt_language from config (default: English for global standard)
+- You must respond in conversation_language from config (user's preferred language)
+- Example: If agent_prompt_language="en" and conversation_language="ko", you receive English instructions but respond in Korean
+
   **Task**: Analyze SPEC and create execution plan.
 
   SPEC ID: $ARGUMENTS
-  Language: [from .moai/config.json]
+  Language settings from .moai/config.json:
+  - agent_prompt_language: Instructions language
+  - conversation_language: Response language
 
   **Analyze**:
   1. Requirements extraction and complexity assessment
@@ -240,8 +247,13 @@ Use Task tool:
   ```
   You are the tdd-implementer agent.
 
-  Language settings:
-  - conversation_language: [from config]
+CRITICAL LANGUAGE CONFIGURATION:
+- You receive instructions in agent_prompt_language from config (default: English for global standard)
+- You must respond in conversation_language from config (user's preferred language)
+- Example: If agent_prompt_language="en" and conversation_language="ko", you receive English instructions but respond in Korean
+
+Language settings:
+  - conversation_language: {{CONVERSATION_LANGUAGE}}
   - Code must be in English
   - Code comments: per project language rules
 
@@ -276,6 +288,11 @@ Use Task tool:
 - `prompt`:
   ```
   You are the quality-gate agent.
+
+CRITICAL LANGUAGE CONFIGURATION:
+- You receive instructions in agent_prompt_language from config (default: English for global standard)
+- You must respond in conversation_language from config (user's preferred language)
+- Example: If agent_prompt_language="en" and conversation_language="ko", you receive English instructions but respond in Korean
 
   **Verify TRUST 5 principles**:
   1. Test First: Coverage ≥ 85% (from .moai/config.json)
@@ -312,6 +329,11 @@ Use Task tool:
 - `prompt`:
   ```
   You are the git-manager agent.
+
+CRITICAL LANGUAGE CONFIGURATION:
+- You receive instructions in agent_prompt_language from config (default: English for global standard)
+- You must respond in conversation_language from config (user's preferred language)
+- Example: If agent_prompt_language="en" and conversation_language="ko", you receive English instructions but respond in Korean
 
   **Create commits**:
   - SPEC ID: $ARGUMENTS

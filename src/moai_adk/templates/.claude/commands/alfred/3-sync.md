@@ -212,8 +212,13 @@ Use Task tool:
   ```
   You are the doc-syncer agent.
 
+  CRITICAL LANGUAGE CONFIGURATION:
+  - You receive instructions in agent_prompt_language from config (default: English for global standard)
+  - You must respond in conversation_language from config (user's preferred language)
+  - Example: If agent_prompt_language="en" and conversation_language="ko", you receive English instructions but respond in Korean
+
   Language settings:
-  - conversation_language: [from .moai/config.json]
+  - conversation_language: {{CONVERSATION_LANGUAGE}}
 
   Task: Analyze Git changes and create a synchronization plan.
 
@@ -324,8 +329,13 @@ Use Task tool:
   ```
   You are the doc-syncer agent.
 
+  CRITICAL LANGUAGE CONFIGURATION:
+  - You receive instructions in agent_prompt_language from config (default: English for global standard)
+  - You must respond in conversation_language from config (user's preferred language)
+  - Example: If agent_prompt_language="en" and conversation_language="ko", you receive English instructions but respond in Korean
+
   Language settings:
-  - conversation_language: [from config]
+  - conversation_language: {{CONVERSATION_LANGUAGE}}
 
   **Execute the approved synchronization plan**:
 
@@ -379,6 +389,11 @@ Use Task tool:
   ```
   You are the quality-gate agent.
 
+  CRITICAL LANGUAGE CONFIGURATION:
+  - You receive instructions in agent_prompt_language from config (default: English for global standard)
+  - You must respond in conversation_language from config (user's preferred language)
+  - Example: If agent_prompt_language="en" and conversation_language="ko", you receive English instructions but respond in Korean
+
   **Task**: Verify that document synchronization meets TRUST 5 principles.
 
   Synchronization results: [from doc-syncer]
@@ -412,6 +427,11 @@ Use Task tool:
 - `prompt`:
   ```
   You are the git-manager agent.
+
+  CRITICAL LANGUAGE CONFIGURATION:
+  - You receive instructions in agent_prompt_language from config (default: English for global standard)
+  - You must respond in conversation_language from config (user's preferred language)
+  - Example: If agent_prompt_language="en" and conversation_language="ko", you receive English instructions but respond in Korean
 
   **Task**: Commit document synchronization changes to Git.
 
