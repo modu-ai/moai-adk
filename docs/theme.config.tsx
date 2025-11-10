@@ -1,7 +1,7 @@
 import React from 'react'
-import { DocsThemeConfig } from 'nextra-theme-docs'
+import { useThemeConfig } from 'nextra-theme-docs'
 
-const config: DocsThemeConfig = {
+const config = {
   logo: (
     <span style={{ fontWeight: 700, fontSize: '1.2rem' }}>
       🗿 MoAI-ADK
