@@ -201,8 +201,8 @@ class TemplateEngine:
             "ENABLE_ALFRED_COMMANDS": github_config.get("enable_alfred_commands", True),
 
             # Language configuration
-            "CONVERSATION_LANGUAGE": project_config.get("conversation_language", "en"),
-            "CONVERSATION_LANGUAGE_NAME": project_config.get("conversation_language_name", "English"),
+            "CONVERSATION_LANGUAGE": config.get("language", {}).get("conversation_language", "en"),
+            "CONVERSATION_LANGUAGE_NAME": config.get("language", {}).get("conversation_language_name", "English"),
             "AGENT_PROMPT_LANGUAGE": config.get("language", {}).get("agent_prompt_language", "english"),
 
             # Additional metadata
