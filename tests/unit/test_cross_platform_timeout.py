@@ -27,7 +27,7 @@ templates_path = (
 sys.path.insert(0, str(templates_path))
 
 # Import the module to test
-from utils.timeout import CrossPlatformTimeout, TimeoutError  # noqa: E402
+from moai_adk.hooks.utils.timeout import CrossPlatformTimeout, TimeoutError  # noqa: E402
 
 
 class TestCrossPlatformTimeoutWindows:
