@@ -105,7 +105,7 @@ async function buildLanguageIndex(locale) {
 
   try {
     // Build the index
-    execSync(`npx pagefind --config ${configPath}`, {
+    execSync(`npx pagefind --source ${SITE_DIR} --output-subdir pagefind/${locale} --force-language ${locale}`, {
       stdio: 'inherit',
       cwd: process.cwd()
     });
