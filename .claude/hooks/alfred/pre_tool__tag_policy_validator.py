@@ -24,14 +24,45 @@ from typing import Any, Dict, List
 # 모듈 경로 추가
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
-from moai_adk.core.tags.policy_validator import (
-    PolicyValidationConfig,
-    PolicyViolation,
-    PolicyViolationLevel,
-    TagPolicyValidator,
-)
+# Try to import moai_adk modules with fallback
+try:
+    from moai_adk.core.tags.policy_validator import (
+        PolicyValidationConfig,
+        PolicyViolation,
+        PolicyViolationLevel,
+        TagPolicyValidator,
+    )
+    TAG_VALIDATION_AVAILABLE = True
+except ImportError:
+    TAG_VALIDATION_AVAILABLE = False
 
-from ..utils.hook_config import get_graceful_degradation, load_hook_timeout
+    # Fallback classes when moai_adk is not available
+    class PolicyValidationConfig:
+        def __init__(self, **kwargs):
+            for k, v in kwargs.items():
+                setattr(self, k, v)
+
+    class PolicyViolation:
+        pass
+
+    class PolicyViolationLevel:
+        pass
+
+    class TagPolicyValidator:
+        def __init__(self, config):
+            self.config = config
+
+try:
+    from ..utils.hook_config import get_graceful_degradation, load_hook_timeout
+    HOOK_CONFIG_AVAILABLE = True
+except ImportError:
+    HOOK_CONFIG_AVAILABLE = False
+
+    def get_graceful_degradation():
+        return True
+
+    def load_hook_timeout():
+        return 5
 
 
 def load_config() -> Dict[str, Any]:
@@ -250,8 +281,18 @@ def create_success_response() -> Dict[str, Any]:
 def main() -> None:
     """메인 함수"""
     try:
+        # If TAG validation is not available, skip validation and allow operation
+        if not TAG_VALIDATION_AVAILABLE:
+            print(json.dumps({
+                "block_execution": False,
+                "reason": "TAG validation not available",
+                "message": "TAG validation module not found, allowing operation",
+                "guidance": ["Install moai_adk package for full TAG validation"]
+            }))
+            sys.exit(0)
+
         # 설정에서 타임아웃 값 로드 (밀리초 → 초)
-        timeout_seconds = load_hook_timeout() / 1000
+        timeout_seconds = load_hook_timeout() / 1000 if HOOK_CONFIG_AVAILABLE else 5
         graceful_degradation = get_graceful_degradation()
 
         # 인자 파싱

@@ -27,8 +27,8 @@ if str(SHARED_DIR) not in sys.path:
 
 # Try to import existing modules, provide fallbacks if not available
 try:
-    from utils.timeout import CrossPlatformTimeout
-    from utils.timeout import TimeoutError as PlatformTimeoutError
+    from core.timeout import CrossPlatformTimeout
+    from core.timeout import TimeoutError as PlatformTimeoutError
 except ImportError:
     # Fallback timeout implementation
 
