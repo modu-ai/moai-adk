@@ -47,9 +47,9 @@ class VersionReader:
 
     # Supported version fields in order of priority
     VERSION_FIELDS = [
+        "project.version",
         "moai.version",
         "version",
-        "project.version",
         "moai.template_version",
         "template_version"
     ]
@@ -73,7 +73,11 @@ class VersionReader:
         }
 
         # Pre-compile regex for performance
-        self._version_pattern = re.compile(self.config.version_format_regex)
+        try:
+            self._version_pattern = re.compile(self.config.version_format_regex)
+        except re.error:
+            # Fallback to default regex if custom one is invalid
+            self._version_pattern = re.compile(self.DEFAULT_CONFIG.version_format_regex)
 
     def get_version(self) -> str:
         """
@@ -183,6 +187,35 @@ class VersionReader:
                 return None
 
         return str(current) if current is not None else None
+
+    def _format_short_version(self, version: str) -> str:
+        """
+        Format short version by removing 'v' prefix if present.
+
+        Args:
+            version: Version string
+
+        Returns:
+            Short version string
+        """
+        return version[1:] if version.startswith('v') else version
+
+    def _format_display_version(self, version: str) -> str:
+        """
+        Format display version with proper formatting.
+
+        Args:
+            version: Version string
+
+        Returns:
+            Display version string
+        """
+        if version == "unknown":
+            return "MoAI-ADK unknown version"
+        elif version.startswith('v'):
+            return f"MoAI-ADK {version}"
+        else:
+            return f"MoAI-ADK v{version}"
 
     def _is_valid_version_format(self, version: str) -> bool:
         """

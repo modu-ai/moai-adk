@@ -248,7 +248,20 @@ def init(
                     # Update version and optimization flags
                     if "moai" not in config_data:
                         config_data["moai"] = {}
-                    config_data["moai"]["version"] = __version__
+
+                    # Use enhanced version reader for consistent version handling
+                    try:
+                        version_config = VersionConfig(
+                            cache_ttl_seconds=5,  # Very short cache for config update
+                            fallback_version=__version__,
+                            debug_mode=False
+                        )
+                        version_reader = VersionReader(version_config)
+                        current_version = version_reader.get_version()
+                        config_data["moai"]["version"] = current_version
+                    except Exception:
+                        # Fallback to package version
+                        config_data["moai"]["version"] = __version__
 
                     if "project" not in config_data:
                         config_data["project"] = {}

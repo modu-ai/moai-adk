@@ -1,4 +1,4 @@
-# @CODE:VAL-002
+# @CODE:VAL-002 | @SPEC:VAL-002 | @TEST:VAL-002
 """TAG chain analysis tool for identifying broken chains.
 
 Analyzes TAG chains across the codebase to identify broken links

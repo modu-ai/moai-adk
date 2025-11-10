@@ -1,7 +1,7 @@
 """
 Statusline renderer for Claude Code status display
 
-@CODE:STATUSLINE-RENDERER-001
+@CODE:STATUSLINE-RENDERER-001 | @SPEC:STATUSLINE-RENDERER-001 | @TEST:STATUSLINE-RENDERER-001
 """
 # type: ignore
 
