@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 import shutil
 from pathlib import Path
@@ -11,6 +12,7 @@ from rich.console import Console
 
 from moai_adk.core.template.backup import TemplateBackup
 from moai_adk.core.template.merger import TemplateMerger
+from moai_adk.statusline.version_reader import VersionReader, VersionConfig
 
 console = Console()
 
@@ -41,6 +43,77 @@ class TemplateProcessor:
         self.backup = TemplateBackup(self.target_path)
         self.merger = TemplateMerger(self.target_path)
         self.context: dict[str, str] = {}  # Template variable substitution context
+        self._version_reader: VersionReader | None = None
+
+    def _get_version_reader(self) -> VersionReader:
+        """
+        Get or create version reader instance.
+
+        Returns:
+            VersionReader instance
+        """
+        if self._version_reader is None:
+            config = VersionConfig(
+                cache_ttl_seconds=30,  # Shorter cache for template processing
+                fallback_version="unknown",
+                debug_mode=False
+            )
+            self._version_reader = VersionReader(config)
+        return self._version_reader
+
+    def get_enhanced_version_context(self) -> dict[str, str]:
+        """
+        Get enhanced version context with proper error handling and caching.
+
+        Returns:
+            Dictionary containing version-related template variables
+        """
+        version_context = {}
+
+        try:
+            version_reader = self._get_version_reader()
+            moai_version = version_reader.get_version()
+            version_context["MOAI_VERSION"] = moai_version
+            version_context["MOAI_VERSION_SHORT"] = self._format_short_version(moai_version)
+            version_context["MOAI_VERSION_DISPLAY"] = self._format_display_version(moai_version)
+        except Exception as e:
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Failed to read version for template context: {e}")
+            # Use fallback version
+            version_context["MOAI_VERSION"] = "unknown"
+            version_context["MOAI_VERSION_SHORT"] = "unknown"
+            version_context["MOAI_VERSION_DISPLAY"] = "MoAI-ADK unknown version"
+
+        return version_context
+
+    def _format_short_version(self, version: str) -> str:
+        """
+        Format short version by removing 'v' prefix if present.
+
+        Args:
+            version: Version string
+
+        Returns:
+            Short version string
+        """
+        return version[1:] if version.startswith('v') else version
+
+    def _format_display_version(self, version: str) -> str:
+        """
+        Format display version with proper formatting.
+
+        Args:
+            version: Version string
+
+        Returns:
+            Display version string
+        """
+        if version == "unknown":
+            return "MoAI-ADK unknown version"
+        elif version.startswith('v'):
+            return f"MoAI-ADK {version}"
+        else:
+            return f"MoAI-ADK v{version}"
 
     def _get_template_root(self) -> Path:
         """Return the template root path."""

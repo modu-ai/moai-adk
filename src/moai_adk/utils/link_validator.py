@@ -1,4 +1,4 @@
-# @CODE:PORTAL-LINK-001: 온라인 문서 링크 검증 유틸리티 | @TEST:PORTAL-LINK-001: 링크 검증 테스트
+# @CODE:PORTAL-LINK-001 | @SPEC:PORTAL-LINK-001 | @TEST:PORTAL-LINK-001: 온라인 문서 링크 검증 유틸리티 | @TEST:PORTAL-LINK-001: 링크 검증 테스트
 
 """
 Link Validation Utilities
