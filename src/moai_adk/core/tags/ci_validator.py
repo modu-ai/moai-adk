@@ -10,6 +10,8 @@ This module extends PreCommitValidator for CI/CD environments:
 - Supports strict mode (block merge on warnings) and info mode
 
 Used by GitHub Actions workflow to validate TAGs on every PR.
+
+@CODE:QUALITY-FRAMEWORK: CI/CD 환경 품질 검증 시스템
 """
 
 import json
