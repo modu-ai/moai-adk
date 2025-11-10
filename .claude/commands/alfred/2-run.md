@@ -101,7 +101,19 @@ Execute planned tasks based on SPEC document analysis. Supports TDD implementati
    - Read: `.moai/specs/SPEC-$ARGUMENTS/spec.md`
    - Determine if codebase exploration is needed (existing patterns, similar implementations)
 
-3. **Optionally invoke Explore agent for codebase analysis**:
+3. **Update SPEC status to in-progress**:
+   ```bash
+   python3 -c "
+   from moai_adk.core.spec_status_manager import SpecStatusManager
+
+   manager = SpecStatusManager()
+   manager.update_status('SPEC-$ARGUMENTS', 'in-progress',
+                        reason='Implementation started via /alfred:2-run')
+   print('✅ SPEC-$ARGUMENTS status updated to in-progress')
+   "
+   ```
+
+4. **Optionally invoke Explore agent for codebase analysis**:
    - IF SPEC requires understanding existing code patterns:
      - Use Task tool with `subagent_type: "Explore"`
      - Prompt: "Analyze codebase for SPEC-$ARGUMENTS: Similar implementations, test patterns, architecture, libraries/versions"
@@ -123,10 +135,17 @@ Use Task tool:
   ```
   You are the implementation-planner agent.
 
+CRITICAL LANGUAGE CONFIGURATION:
+- You receive instructions in agent_prompt_language from config (default: English for global standard)
+- You must respond in conversation_language from config (user's preferred language)
+- Example: If agent_prompt_language="en" and conversation_language="ko", you receive English instructions but respond in Korean
+
   **Task**: Analyze SPEC and create execution plan.
 
   SPEC ID: $ARGUMENTS
-  Language: [from .moai/config.json]
+  Language settings from .moai/config.json:
+  - agent_prompt_language: Instructions language
+  - conversation_language: Response language
 
   **Analyze**:
   1. Requirements extraction and complexity assessment
@@ -240,8 +259,13 @@ Use Task tool:
   ```
   You are the tdd-implementer agent.
 
-  Language settings:
-  - conversation_language: [from config]
+CRITICAL LANGUAGE CONFIGURATION:
+- You receive instructions in agent_prompt_language from config (default: English for global standard)
+- You must respond in conversation_language from config (user's preferred language)
+- Example: If agent_prompt_language="en" and conversation_language="ko", you receive English instructions but respond in Korean
+
+Language settings:
+  - conversation_language: {{CONVERSATION_LANGUAGE}}
   - Code must be in English
   - Code comments: per project language rules
 
@@ -276,6 +300,11 @@ Use Task tool:
 - `prompt`:
   ```
   You are the quality-gate agent.
+
+CRITICAL LANGUAGE CONFIGURATION:
+- You receive instructions in agent_prompt_language from config (default: English for global standard)
+- You must respond in conversation_language from config (user's preferred language)
+- Example: If agent_prompt_language="en" and conversation_language="ko", you receive English instructions but respond in Korean
 
   **Verify TRUST 5 principles**:
   1. Test First: Coverage ≥ 85% (from .moai/config.json)
@@ -312,6 +341,11 @@ Use Task tool:
 - `prompt`:
   ```
   You are the git-manager agent.
+
+CRITICAL LANGUAGE CONFIGURATION:
+- You receive instructions in agent_prompt_language from config (default: English for global standard)
+- You must respond in conversation_language from config (user's preferred language)
+- Example: If agent_prompt_language="en" and conversation_language="ko", you receive English instructions but respond in Korean
 
   **Create commits**:
   - SPEC ID: $ARGUMENTS

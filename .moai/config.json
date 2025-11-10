@@ -67,7 +67,7 @@
   "language": {
     "conversation_language": "ko",
     "conversation_language_name": "Korean",
-    "agent_prompt_language": "english",
+    "agent_prompt_language": "conversation_language",
     "agent_prompt_language_description": "Language for sub-agent internal prompts (english=global standard, localized=user's conversation language)"
   },
   "project": {
