@@ -1,12 +1,23 @@
 # @CODE:TEMPLATE-001 | SPEC: SPEC-INIT-003/spec.md | Chain: TEMPLATE-001
-"""Template copy and backup processor (SPEC-INIT-003 v0.3.0: preserve user content)."""
+"""Enhanced Template copy and backup processor with improved version handling and validation.
+
+SPEC-INIT-003 v0.3.0: preserve user content
+Enhanced with:
+- Comprehensive version field management
+- Template substitution validation
+- Performance optimization
+- Error handling improvements
+- Configuration-driven behavior
+"""
 
 from __future__ import annotations
 
 import logging
 import re
 import shutil
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Set
 
 from rich.console import Console
 
@@ -17,8 +28,56 @@ from moai_adk.statusline.version_reader import VersionReader, VersionConfig
 console = Console()
 
 
+@dataclass
+class TemplateProcessorConfig:
+    """Configuration for TemplateProcessor behavior."""
+
+    # Version handling configuration
+    version_cache_ttl_seconds: int = 120
+    version_fallback: str = "unknown"
+    version_format_regex: str = r"^v?(\d+\.\d+\.\d+(-[a-zA-Z0-9]+)?)$"
+    enable_version_validation: bool = True
+    preserve_user_version: bool = True
+
+    # Template substitution configuration
+    validate_template_variables: bool = True
+    max_variable_length: int = 50
+    allowed_variable_pattern: str = r"^[A-Z_]+$"
+    enable_substitution_warnings: bool = True
+
+    # Performance configuration
+    enable_caching: bool = True
+    cache_size: int = 100
+    async_operations: bool = False
+
+    # Error handling configuration
+    graceful_degradation: bool = True
+    verbose_logging: bool = False
+
+    @classmethod
+    def from_dict(cls, config_dict: Dict[str, Any]) -> "TemplateProcessorConfig":
+        """Create config from dictionary."""
+        config_dict = config_dict or {}
+        return cls(
+            version_cache_ttl_seconds=config_dict.get("version_cache_ttl_seconds", 120),
+            version_fallback=config_dict.get("version_fallback", "unknown"),
+            version_format_regex=config_dict.get("version_format_regex", r"^v?(\d+\.\d+\.\d+(-[a-zA-Z0-9]+)?)$"),
+            enable_version_validation=config_dict.get("enable_version_validation", True),
+            preserve_user_version=config_dict.get("preserve_user_version", True),
+            validate_template_variables=config_dict.get("validate_template_variables", True),
+            max_variable_length=config_dict.get("max_variable_length", 50),
+            allowed_variable_pattern=config_dict.get("allowed_variable_pattern", r"^[A-Z_]+$"),
+            enable_substitution_warnings=config_dict.get("enable_substitution_warnings", True),
+            enable_caching=config_dict.get("enable_caching", True),
+            cache_size=config_dict.get("cache_size", 100),
+            async_operations=config_dict.get("async_operations", False),
+            graceful_degradation=config_dict.get("graceful_degradation", True),
+            verbose_logging=config_dict.get("verbose_logging", False),
+        )
+
+
 class TemplateProcessor:
-    """Orchestrate template copying and backups."""
+    """Orchestrate template copying and backups with enhanced version handling and validation."""
 
     # User data protection paths (never touch) - SPEC-INIT-003 v0.3.0
     PROTECTED_PATHS = [
@@ -32,11 +91,30 @@ class TemplateProcessor:
     # Paths excluded from backups
     BACKUP_EXCLUDE = PROTECTED_PATHS
 
-    def __init__(self, target_path: Path) -> None:
-        """Initialize the processor.
+    # Common template variables with validation hints
+    COMMON_TEMPLATE_VARIABLES = {
+        "PROJECT_DIR": "Cross-platform project path (run /alfred:0-project to set)",
+        "HOOK_PROJECT_DIR": "Cross-platform hook path (deprecated, use PROJECT_DIR instead)",
+        "PROJECT_NAME": "Project name (run /alfred:0-project to set)",
+        "AUTHOR": "Project author (run /alfred:0-project to set)",
+        "CONVERSATION_LANGUAGE": "Interface language (run /alfred:0-project to set)",
+        "MOAI_VERSION": "MoAI-ADK version (should be set automatically)",
+        "MOAI_VERSION_SHORT": "Short MoAI-ADK version (without 'v' prefix)",
+        "MOAI_VERSION_DISPLAY": "Display version with proper formatting",
+        "MOAI_VERSION_TRIMMED": "Trimmed version for UI displays",
+        "MOAI_VERSION_SEMVER": "Semantic version format (major.minor.patch)",
+        "MOAI_VERSION_VALID": "Version validation status",
+        "MOAI_VERSION_SOURCE": "Version source information",
+        "MOAI_VERSION_CACHE_AGE": "Cache age for debugging",
+        "CREATION_TIMESTAMP": "Project creation timestamp",
+    }
+
+    def __init__(self, target_path: Path, config: Optional[TemplateProcessorConfig] = None) -> None:
+        """Initialize the processor with enhanced configuration.
 
         Args:
             target_path: Project path.
+            config: Optional configuration for processor behavior.
         """
         self.target_path = target_path.resolve()
         self.template_root = self._get_template_root()
@@ -44,47 +122,192 @@ class TemplateProcessor:
         self.merger = TemplateMerger(self.target_path)
         self.context: dict[str, str] = {}  # Template variable substitution context
         self._version_reader: VersionReader | None = None
+        self.config = config or TemplateProcessorConfig()
+        self._substitution_cache: Dict[str, str] = {}  # Cache for substitution results
+        self._variable_validation_cache: Dict[str, bool] = {}  # Cache for variable validation
+        self.logger = logging.getLogger(__name__)
+
+        if self.config.verbose_logging:
+            self.logger.info(f"TemplateProcessor initialized with config: {self.config}")
+
+    def set_context(self, context: dict[str, str]) -> None:
+        """Set variable substitution context with enhanced validation.
+
+        Args:
+            context: Dictionary of template variables.
+        """
+        self.context = context
+        self._substitution_cache.clear()  # Clear cache when context changes
+        self._variable_validation_cache.clear()
+
+        if self.config.verbose_logging:
+            self.logger.debug(f"Context set with {len(context)} variables")
+
+        # Validate template variables if enabled
+        if self.config.validate_template_variables:
+            self._validate_template_variables(context)
+
+        # Add deprecation mapping for HOOK_PROJECT_DIR
+        if "PROJECT_DIR" in self.context and "HOOK_PROJECT_DIR" not in self.context:
+            self.context["HOOK_PROJECT_DIR"] = self.context["PROJECT_DIR"]
 
     def _get_version_reader(self) -> VersionReader:
         """
-        Get or create version reader instance.
+        Get or create version reader instance with enhanced configuration.
 
         Returns:
             VersionReader instance
         """
         if self._version_reader is None:
-            config = VersionConfig(
-                cache_ttl_seconds=30,  # Shorter cache for template processing
-                fallback_version="unknown",
-                debug_mode=False
+            version_config = VersionConfig(
+                cache_ttl_seconds=self.config.version_cache_ttl_seconds,
+                fallback_version=self.config.version_fallback,
+                version_format_regex=self.config.version_format_regex,
+                debug_mode=self.config.verbose_logging
             )
-            self._version_reader = VersionReader(config)
+            self._version_reader = VersionReader(version_config)
+
+            if self.config.verbose_logging:
+                self.logger.info("VersionReader created with enhanced configuration")
         return self._version_reader
+
+    def _validate_template_variables(self, context: Dict[str, str]) -> None:
+        """
+        Validate template variables with comprehensive checking.
+
+        Args:
+            context: Dictionary of template variables to validate
+        """
+        import re
+
+        if not self.config.validate_template_variables:
+            return
+
+        validation_errors: List[str] = []
+        warning_messages: List[str] = []
+
+        # Check variable names against pattern
+        variable_pattern = re.compile(self.config.allowed_variable_pattern)
+
+        for var_name, var_value in context.items():
+            # Check variable name format
+            if not variable_pattern.match(var_name):
+                validation_errors.append(f"Invalid variable name format: '{var_name}'")
+                continue
+
+            # Check variable length
+            if len(var_name) > self.config.max_variable_length:
+                warning_messages.append(f"Variable name '{var_name}' exceeds maximum length")
+
+            # Check variable value length
+            if len(var_value) > self.config.max_variable_length * 2:
+                warning_messages.append(f"Variable value '{var_value[:20]}...' is very long")
+
+            # Check for potentially dangerous values
+            if '{{' in var_value or '}}' in var_value:
+                warning_messages.append(f"Variable '{var_name}' contains placeholder patterns")
+
+        # Check for common variables that should be present
+        missing_common_vars = []
+        for common_var in self.COMMON_TEMPLATE_VARIABLES:
+            if common_var not in context:
+                missing_common_vars.append(common_var)
+
+        if missing_common_vars and self.config.enable_substitution_warnings:
+            warning_messages.append(f"Common variables missing: {', '.join(missing_common_vars[:3])}")
+
+        # Report validation results
+        if validation_errors and not self.config.graceful_degradation:
+            raise ValueError(f"Template variable validation failed: {validation_errors}")
+
+        if validation_errors and self.config.graceful_degradation:
+            self.logger.warning(f"Template variable validation warnings: {validation_errors}")
+
+        if warning_messages and self.config.enable_substitution_warnings:
+            self.logger.warning(f"Template variable warnings: {warning_messages}")
+
+        if self.config.verbose_logging:
+            self.logger.debug(f"Template variables validated: {len(context)} variables checked")
 
     def get_enhanced_version_context(self) -> dict[str, str]:
         """
         Get enhanced version context with proper error handling and caching.
 
+        Returns comprehensive version information including multiple format options
+        and debugging information.
+
         Returns:
-            Dictionary containing version-related template variables
+            Dictionary containing enhanced version-related template variables
         """
         version_context = {}
+        logger = logging.getLogger(__name__)
 
         try:
             version_reader = self._get_version_reader()
             moai_version = version_reader.get_version()
+
+            # Basic version information
             version_context["MOAI_VERSION"] = moai_version
             version_context["MOAI_VERSION_SHORT"] = self._format_short_version(moai_version)
             version_context["MOAI_VERSION_DISPLAY"] = self._format_display_version(moai_version)
+
+            # Enhanced formatting options
+            version_context["MOAI_VERSION_TRIMMED"] = self._format_trimmed_version(moai_version, max_length=10)
+            version_context["MOAI_VERSION_SEMVER"] = self._format_semver_version(moai_version)
+
+            # Validation and source information
+            version_context["MOAI_VERSION_VALID"] = "true" if moai_version != "unknown" else "false"
+            version_context["MOAI_VERSION_SOURCE"] = self._get_version_source(version_reader)
+
+            # Performance metrics
+            cache_age = version_reader.get_cache_age_seconds()
+            if cache_age is not None:
+                version_context["MOAI_VERSION_CACHE_AGE"] = f"{cache_age:.2f}s"
+            else:
+                version_context["MOAI_VERSION_CACHE_AGE"] = "uncached"
+
+            # Additional metadata
+            if self.config.enable_version_validation:
+                is_valid = self._is_valid_version_format(moai_version)
+                version_context["MOAI_VERSION_FORMAT_VALID"] = "true" if is_valid else "false"
+
+            if self.config.verbose_logging:
+                logger.debug(f"Enhanced version context generated: {version_context}")
+
         except Exception as e:
-            logger = logging.getLogger(__name__)
             logger.warning(f"Failed to read version for template context: {e}")
-            # Use fallback version
-            version_context["MOAI_VERSION"] = "unknown"
-            version_context["MOAI_VERSION_SHORT"] = "unknown"
-            version_context["MOAI_VERSION_DISPLAY"] = "MoAI-ADK unknown version"
+            # Use fallback version with comprehensive formatting
+            fallback_version = self.config.version_fallback
+            version_context["MOAI_VERSION"] = fallback_version
+            version_context["MOAI_VERSION_SHORT"] = self._format_short_version(fallback_version)
+            version_context["MOAI_VERSION_DISPLAY"] = self._format_display_version(fallback_version)
+            version_context["MOAI_VERSION_TRIMMED"] = self._format_trimmed_version(fallback_version, max_length=10)
+            version_context["MOAI_VERSION_SEMVER"] = self._format_semver_version(fallback_version)
+            version_context["MOAI_VERSION_VALID"] = "false" if fallback_version == "unknown" else "true"
+            version_context["MOAI_VERSION_SOURCE"] = "fallback_config"
+            version_context["MOAI_VERSION_CACHE_AGE"] = "unavailable"
+            version_context["MOAI_VERSION_FORMAT_VALID"] = "false"
 
         return version_context
+
+    def _is_valid_version_format(self, version: str) -> bool:
+        """
+        Validate version format using configured regex pattern.
+
+        Args:
+            version: Version string to validate
+
+        Returns:
+            True if version format is valid
+        """
+        import re
+        try:
+            pattern = re.compile(self.config.version_format_regex)
+            return bool(pattern.match(version))
+        except re.error:
+            # Fallback to default pattern if custom one is invalid
+            default_pattern = re.compile(r"^v?(\d+\.\d+\.\d+(-[a-zA-Z0-9]+)?)$")
+            return bool(default_pattern.match(version))
 
     def _format_short_version(self, version: str) -> str:
         """
@@ -115,6 +338,71 @@ class TemplateProcessor:
         else:
             return f"MoAI-ADK v{version}"
 
+    def _format_trimmed_version(self, version: str, max_length: int = 10) -> str:
+        """
+        Format version with maximum length, suitable for UI displays.
+
+        Args:
+            version: Version string
+            max_length: Maximum allowed length for the version string
+
+        Returns:
+            Trimmed version string
+        """
+        if version == "unknown":
+            return "unknown"
+
+        # Remove 'v' prefix for trimming
+        clean_version = version[1:] if version.startswith('v') else version
+
+        # Trim if necessary
+        if len(clean_version) > max_length:
+            return clean_version[:max_length]
+        return clean_version
+
+    def _format_semver_version(self, version: str) -> str:
+        """
+        Format version as semantic version with major.minor.patch structure.
+
+        Args:
+            version: Version string
+
+        Returns:
+            Semantic version string
+        """
+        if version == "unknown":
+            return "0.0.0"
+
+        # Remove 'v' prefix and extract semantic version
+        clean_version = version[1:] if version.startswith('v') else version
+
+        # Extract core semantic version (remove pre-release and build metadata)
+        import re
+        semver_match = re.match(r'^(\d+\.\d+\.\d+)', clean_version)
+        if semver_match:
+            return semver_match.group(1)
+        return "0.0.0"
+
+    def _get_version_source(self, version_reader: VersionReader) -> str:
+        """
+        Determine the source of the version information.
+
+        Args:
+            version_reader: VersionReader instance
+
+        Returns:
+            String indicating version source
+        """
+        config = version_reader.get_config()
+        cache_age = version_reader.get_cache_age_seconds()
+
+        if cache_age is not None and cache_age < config.cache_ttl_seconds:
+            return "config_cached"
+        elif cache_age is not None:
+            return "config_stale"
+        else:
+            return "fallback"
+
     def _get_template_root(self) -> Path:
         """Return the template root path."""
         # src/moai_adk/core/template/processor.py → src/moai_adk/templates/
@@ -131,53 +419,137 @@ class TemplateProcessor:
         self.context = context
 
     def _substitute_variables(self, content: str) -> tuple[str, list[str]]:
-        """Substitute template variables in content.
+        """
+        Substitute template variables in content with enhanced validation and caching.
+
+        Args:
+            content: Content to substitute variables in
 
         Returns:
             Tuple of (substituted_content, warnings_list)
         """
         warnings = []
+        logger = logging.getLogger(__name__)
 
-        # Detect common template variables and provide helpful suggestions
-        common_variables = {
-            "PROJECT_DIR": "Cross-platform project path (run /alfred:0-project to set)",
-            "HOOK_PROJECT_DIR": "Cross-platform hook path (deprecated, use PROJECT_DIR instead)",
-            "PROJECT_NAME": "Project name (run /alfred:0-project to set)",
-            "AUTHOR": "Project author (run /alfred:0-project to set)",
-            "CONVERSATION_LANGUAGE": "Interface language (run /alfred:0-project to set)",
-            "MOAI_VERSION": "MoAI-ADK version (should be set automatically)",
-        }
-        
-        # Support deprecated HOOK_PROJECT_DIR by mapping it to PROJECT_DIR
-        if "PROJECT_DIR" in self.context and "HOOK_PROJECT_DIR" not in self.context:
-            self.context["HOOK_PROJECT_DIR"] = self.context["PROJECT_DIR"]
+        # Check cache first if enabled
+        cache_key = hash(frozenset(self.context.items()) + content[:1000])
+        if self.config.enable_caching and cache_key in self._substitution_cache:
+            cached_result = self._substitution_cache[cache_key]
+            if self.config.verbose_logging:
+                logger.debug("Using cached substitution result")
+            return cached_result
 
-        # Perform variable substitution
+        # Enhanced variable substitution with validation
+        substitution_count = 0
         for key, value in self.context.items():
             placeholder = f"{{{{{key}}}}}"  # {{KEY}}
             if placeholder in content:
+                if self.config.validate_template_variables:
+                    # Validate variable before substitution
+                    if not self._is_valid_template_variable(key, value):
+                        warnings.append(f"Invalid variable {key} - skipped substitution")
+                        continue
+
                 safe_value = self._sanitize_value(value)
                 content = content.replace(placeholder, safe_value)
+                substitution_count += 1
+
+                if self.config.verbose_logging:
+                    logger.debug(f"Substituted {key}: {safe_value[:50]}...")
 
         # Detect unsubstituted variables with enhanced error messages
         remaining = re.findall(r'\{\{([A-Z_]+)\}\}', content)
         if remaining:
             unique_remaining = sorted(set(remaining))
 
-            # Build detailed warning message
+            # Build detailed warning message with enhanced suggestions
             warning_parts = []
             for var in unique_remaining:
-                if var in common_variables:
-                    suggestion = common_variables[var]
+                if var in self.COMMON_TEMPLATE_VARIABLES:
+                    suggestion = self.COMMON_TEMPLATE_VARIABLES[var]
                     warning_parts.append(f"{{{{{var}}}}} → {suggestion}")
                 else:
                     warning_parts.append(f"{{{{{var}}}}} → Unknown variable (check template)")
 
             warnings.append("Template variables not substituted:")
             warnings.extend(f"  • {part}" for part in warning_parts)
-            warnings.append("💡 Run 'uv run moai-adk update' to fix template variables")
+
+            if self.config.enable_substitution_warnings:
+                warnings.append("💡 Run 'uv run moai-adk update' to fix template variables")
+
+        # Add performance information if verbose logging is enabled
+        if self.config.verbose_logging:
+            warnings.append(f"  📊 Substituted {substitution_count} variables")
+
+        # Cache the result if enabled
+        if self.config.enable_caching:
+            result = (content, warnings)
+            self._substitution_cache[cache_key] = result
+
+            # Manage cache size
+            if len(self._substitution_cache) > self.config.cache_size:
+                # Remove oldest entry (simple FIFO)
+                oldest_key = next(iter(self._substitution_cache))
+                del self._substitution_cache[oldest_key]
+                if self.config.verbose_logging:
+                    logger.debug("Cache size limit reached, removed oldest entry")
 
         return content, warnings
+
+    def _is_valid_template_variable(self, key: str, value: str) -> bool:
+        """
+        Validate a template variable before substitution.
+
+        Args:
+            key: Variable name
+            value: Variable value
+
+        Returns:
+            True if variable is valid
+        """
+        import re
+
+        # Check variable name format
+        if not re.match(self.config.allowed_variable_pattern, key):
+            return False
+
+        # Check variable length
+        if len(key) > self.config.max_variable_length:
+            return False
+
+        # Check value length
+        if len(value) > self.config.max_variable_length * 2:
+            return False
+
+        # Check for dangerous patterns
+        if '{{' in value or '}}' in value:
+            return False
+
+        # Check for empty values
+        if not value.strip():
+            return False
+
+        return True
+
+    def clear_substitution_cache(self) -> None:
+        """Clear the substitution cache."""
+        self._substitution_cache.clear()
+        if self.config.verbose_logging:
+            self.logger.debug("Substitution cache cleared")
+
+    def get_cache_stats(self) -> Dict[str, Any]:
+        """
+        Get cache statistics.
+
+        Returns:
+            Dictionary containing cache statistics
+        """
+        return {
+            "cache_size": len(self._substitution_cache),
+            "max_cache_size": self.config.cache_size,
+            "cache_enabled": self.config.enable_caching,
+            "cache_hit_ratio": 0.0,  # Would need to track hits to implement this
+        }
 
     def _sanitize_value(self, value: str) -> str:
         """Sanitize value to prevent recursive substitution and control characters.

@@ -14,13 +14,14 @@ Test coverage includes 5-phase integration tests with backup, configuration, and
 """
 
 import json
+import logging
 import platform
 import shutil
 import subprocess
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 from rich.console import Console
 
@@ -96,28 +97,46 @@ class PhaseExecutor:
 
     def _get_enhanced_version_context(self) -> dict[str, str]:
         """
-        Get enhanced version context with fallback strategies.
+        Get enhanced version context with fallback strategies and comprehensive configuration.
 
         Returns:
-            Dictionary containing version-related template variables
+            Dictionary containing version-related template variables with enhanced formatting
         """
         version_context = {}
+        logger = logging.getLogger(__name__)
 
         try:
             version_reader = self._get_version_reader()
             moai_version = version_reader.get_version()
+
+            # Enhanced version context with multiple format options
             version_context["MOAI_VERSION"] = moai_version
             version_context["MOAI_VERSION_SHORT"] = self._format_short_version(moai_version)
             version_context["MOAI_VERSION_DISPLAY"] = self._format_display_version(moai_version)
+            version_context["MOAI_VERSION_TRIMMED"] = self._format_trimmed_version(moai_version, max_length=10)
+            version_context["MOAI_VERSION_SEMVER"] = self._format_semver_version(moai_version)
             version_context["MOAI_VERSION_VALID"] = "true" if moai_version != "unknown" else "false"
+            version_context["MOAI_VERSION_SOURCE"] = self._get_version_source(version_reader)
+
+            # Add performance metrics for debugging
+            cache_age = version_reader.get_cache_age_seconds()
+            if cache_age is not None:
+                version_context["MOAI_VERSION_CACHE_AGE"] = f"{cache_age:.2f}s"
+            else:
+                version_context["MOAI_VERSION_CACHE_AGE"] = "uncached"
+
         except Exception as e:
-            logger = logging.getLogger(__name__)
             logger.warning(f"Failed to read version for context: {e}")
-            # Use fallback version
-            version_context["MOAI_VERSION"] = __version__
-            version_context["MOAI_VERSION_SHORT"] = __version__
-            version_context["MOAI_VERSION_DISPLAY"] = f"MoAI-ADK v{__version__}"
+            # Use fallback version with comprehensive fallback formatting
+            fallback_version = __version__
+            version_context["MOAI_VERSION"] = fallback_version
+            version_context["MOAI_VERSION_SHORT"] = self._format_short_version(fallback_version)
+            version_context["MOAI_VERSION_DISPLAY"] = self._format_display_version(fallback_version)
+            version_context["MOAI_VERSION_TRIMMED"] = self._format_trimmed_version(fallback_version, max_length=10)
+            version_context["MOAI_VERSION_SEMVER"] = self._format_semver_version(fallback_version)
             version_context["MOAI_VERSION_VALID"] = "true"
+            version_context["MOAI_VERSION_SOURCE"] = "fallback_package"
+            version_context["MOAI_VERSION_CACHE_AGE"] = "unavailable"
 
         return version_context
 
@@ -149,6 +168,72 @@ class PhaseExecutor:
             return f"MoAI-ADK {version}"
         else:
             return f"MoAI-ADK v{version}"
+
+    def _format_trimmed_version(self, version: str, max_length: int = 10) -> str:
+        """
+        Format version with maximum length, suitable for UI displays.
+
+        Args:
+            version: Version string
+            max_length: Maximum allowed length for the version string
+
+        Returns:
+            Trimmed version string
+        """
+        if version == "unknown":
+            return "unknown"
+
+        # Remove 'v' prefix for trimming
+        clean_version = version[1:] if version.startswith('v') else version
+
+        # Trim if necessary
+        if len(clean_version) > max_length:
+            return clean_version[:max_length]
+        return clean_version
+
+    def _format_semver_version(self, version: str) -> str:
+        """
+        Format version as semantic version with major.minor.patch structure.
+
+        Args:
+            version: Version string
+
+        Returns:
+            Semantic version string
+        """
+        if version == "unknown":
+            return "0.0.0"
+
+        # Remove 'v' prefix and extract semantic version
+        clean_version = version[1:] if version.startswith('v') else version
+
+        # Extract core semantic version (remove pre-release and build metadata)
+        import re
+        semver_match = re.match(r'^(\d+\.\d+\.\d+)', clean_version)
+        if semver_match:
+            return semver_match.group(1)
+        return "0.0.0"
+
+    def _get_version_source(self, version_reader: VersionReader) -> str:
+        """
+        Determine the source of the version information.
+
+        Args:
+            version_reader: VersionReader instance
+
+        Returns:
+            String indicating version source
+        """
+        config = version_reader.get_config()
+
+        # Check if we have a cached version (most likely from config)
+        cache_age = version_reader.get_cache_age_seconds()
+        if cache_age is not None and cache_age < config.cache_ttl_seconds:
+            return "config_cached"
+        elif cache_age is not None:
+            return "config_stale"
+        else:
+            return config.fallback_version
 
     def execute_preparation_phase(
         self,
@@ -286,6 +371,8 @@ class PhaseExecutor:
             "Phase 4: Generating configurations...", progress_callback
         )
 
+        logger = logging.getLogger(__name__)
+
         # Read existing config to preserve user settings (Issue #165)
         config_path = project_path / ".moai" / "config.json"
         existing_config: dict[str, Any] = {}
@@ -293,76 +380,186 @@ class PhaseExecutor:
             try:
                 with open(config_path, "r", encoding="utf-8") as f:
                     existing_config = json.load(f)
-            except (json.JSONDecodeError, OSError):
-                # If config reading fails, start fresh
+                logger.debug(f"Successfully read existing config from {config_path}")
+            except (json.JSONDecodeError, OSError) as e:
+                logger.warning(f"Failed to read existing config: {e}. Starting fresh.")
                 existing_config = {}
 
-        # Merge user settings from existing config (preserve customization)
-        if existing_config:
-            # Preserve moai section if it exists (including version field)
-            if "moai" in existing_config and isinstance(existing_config.get("moai"), dict):
-                if "moai" not in config:
-                    config["moai"] = {}
-                moai_config = config["moai"]
-                if isinstance(moai_config, dict):
-                    existing_moai = existing_config["moai"]
-                    if isinstance(existing_moai, dict):
-                        # Preserve version field (critical for user customizations)
-                        if "version" in existing_moai:
-                            moai_config["version"] = existing_moai["version"]
+        # Enhanced config merging with comprehensive version preservation
+        merged_config = self._merge_configuration_preserving_versions(config, existing_config)
 
-                        # Preserve other moai settings
-                        for key, value in existing_moai.items():
-                            if key != "version":  # Already handled above
-                                moai_config[key] = value
+        # Enhanced version handling using VersionReader for consistency
+        try:
+            version_reader = self._get_version_reader()
+            current_config_version = version_reader.get_version()
 
-            # Preserve user.nickname if it exists
-            if "user" in existing_config and isinstance(existing_config.get("user"), dict):
-                if "user" not in config:
-                    config["user"] = {}
-                user_config = config["user"]
-                if isinstance(user_config, dict):
-                    existing_user = existing_config["user"]
-                    if isinstance(existing_user, dict) and "nickname" in existing_user:
-                        user_config["nickname"] = existing_user["nickname"]
+            # Ensure version consistency across the merged config
+            self._ensure_version_consistency(merged_config, current_config_version, existing_config)
 
-            # Preserve language settings if they exist
-            if "language" in existing_config and isinstance(existing_config.get("language"), dict):
-                if "language" not in config:
-                    config["language"] = {}
-                lang_config = config["language"]
-                if isinstance(lang_config, dict):
-                    existing_lang = existing_config["language"]
-                    if isinstance(existing_lang, dict):
-                        # Preserve conversation_language settings
-                        if "conversation_language" in existing_lang:
-                            lang_config["conversation_language"] = existing_lang["conversation_language"]
-                        if "conversation_language_name" in existing_lang:
-                            lang_config["conversation_language_name"] = existing_lang["conversation_language_name"]
+            logger.debug(f"Version consistency check completed. Current version: {current_config_version}")
+        except Exception as e:
+            logger.warning(f"Version consistency check failed: {e}. Using fallback version.")
+            merged_config["moai"]["version"] = __version__
 
-        # Ensure moai section exists and preserve version
-        if "moai" not in config:
-            config["moai"] = {}
-        # Type guard for mypy
-        moai_config = config["moai"]
-        if isinstance(moai_config, dict):
-            # Only set version if it doesn't exist in either config or existing config
-            if "version" not in moai_config and "version" not in existing_config.get("moai", {}):
-                moai_config["version"] = __version__  # Set current version only if not present in either config
-
-        # Ensure project section exists and set defaults
-        if "project" not in config:
-            config["project"] = {}
-        # Type guard for mypy
-        project_config = config["project"]
-        if isinstance(project_config, dict):
-            project_config["optimized"] = False  # Default value
-
-        # Write config.json
-        with open(config_path, "w", encoding="utf-8") as f:
-            json.dump(config, f, indent=2, ensure_ascii=False)
+        # Write final config with enhanced formatting
+        self._write_configuration_file(config_path, merged_config)
+        logger.info(f"Configuration file written to {config_path}")
 
         return [str(config_path)]
+
+    def _merge_configuration_preserving_versions(
+        self,
+        new_config: dict[str, Any],
+        existing_config: dict[str, Any]
+    ) -> dict[str, Any]:
+        """
+        Merge configurations while preserving user settings and version information.
+
+        Args:
+            new_config: New configuration from initialization
+            existing_config: Existing configuration from project
+
+        Returns:
+            Merged configuration dictionary
+        """
+        logger = logging.getLogger(__name__)
+        merged_config = new_config.copy()
+
+        # Define configuration sections with their merge strategies
+        config_sections = {
+            "moai": {"preserve_all": True, "priority": "user"},
+            "user": {"preserve_keys": ["nickname"], "priority": "user"},
+            "language": {"preserve_keys": ["conversation_language", "conversation_language_name"], "priority": "user"},
+            "project": {"preserve_keys": [], "priority": "new"},
+            "git": {"preserve_keys": [], "priority": "new"},
+        }
+
+        for section_name, strategy in config_sections.items():
+            if section_name in existing_config:
+                logger.debug(f"Merging section: {section_name}")
+                self._merge_config_section(
+                    merged_config, existing_config, section_name, strategy
+                )
+
+        return merged_config
+
+    def _merge_config_section(
+        self,
+        merged_config: dict[str, Any],
+        existing_config: dict[str, Any],
+        section_name: str,
+        strategy: dict[str, Any]
+    ) -> None:
+        """
+        Merge a specific configuration section.
+
+        Args:
+            merged_config: Target configuration to merge into
+            existing_config: Source configuration to merge from
+            section_name: Name of the section to merge
+            strategy: Merge strategy for this section
+        """
+        if section_name not in merged_config:
+            merged_config[section_name] = {}
+
+        section_config = merged_config[section_name]
+        existing_section = existing_config[section_name]
+
+        if strategy["priority"] == "user":
+            # User priority: preserve existing values
+            for key, value in existing_section.items():
+                if strategy.get("preserve_all", False) or key in strategy.get("preserve_keys", []):
+                    section_config[key] = value
+                    logger.debug(f"Preserved {section_name}.{key} = {value}")
+        else:
+            # New priority: keep new config, but don't overwrite if exists
+            for key, value in existing_section.items():
+                if key not in section_config:
+                    section_config[key] = value
+                    logger.debug(f"Inherited {section_name}.{key} = {value}")
+
+    def _ensure_version_consistency(
+        self,
+        config: dict[str, Any],
+        current_version: str,
+        existing_config: dict[str, Any]
+    ) -> None:
+        """
+        Ensure version consistency across the configuration.
+
+        Args:
+            config: Configuration to update
+            current_version: Current version from VersionReader
+            existing_config: Existing configuration for reference
+        """
+        logger = logging.getLogger(__name__)
+
+        # Ensure moai section exists
+        if "moai" not in config:
+            config["moai"] = {}
+
+        # Version field priority strategy:
+        # 1. User explicitly set in existing config -> preserve
+        # 2. Version from config file -> use
+        # 3. Current version from VersionReader -> use
+        # 4. Package version -> fallback
+
+        existing_moai = existing_config.get("moai", {})
+        config_moai = config["moai"]
+
+        # Check if user explicitly set a version in existing config
+        if "version" in existing_moai:
+            user_version = existing_moai["version"]
+            logger.debug(f"User explicitly set version: {user_version}")
+            config_moai["version"] = user_version
+        elif "version" in config_moai:
+            # Version already in new config, validate it
+            config_version = config_moai["version"]
+            if config_version == "unknown" or not self._is_valid_version_format(config_version):
+                logger.debug(f"Invalid config version {config_version}, updating to current: {current_version}")
+                config_moai["version"] = current_version
+        else:
+            # No version found, use current version
+            logger.debug(f"No version found, setting to current: {current_version}")
+            config_moai["version"] = current_version
+
+    def _is_valid_version_format(self, version: str) -> bool:
+        """
+        Check if version format is valid.
+
+        Args:
+            version: Version string to validate
+
+        Returns:
+            True if version format is valid
+        """
+        import re
+        pattern = r"^v?(\d+\.\d+\.\d+(-[a-zA-Z0-9]+)?)$"
+        return bool(re.match(pattern, version))
+
+    def _write_configuration_file(self, config_path: Path, config: dict[str, Any]) -> None:
+        """
+        Write configuration file with enhanced formatting and error handling.
+
+        Args:
+            config_path: Path to write configuration file
+            config: Configuration dictionary to write
+        """
+        logger = logging.getLogger(__name__)
+
+        try:
+            # Ensure parent directory exists
+            config_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Write with enhanced formatting
+            with open(config_path, "w", encoding="utf-8") as f:
+                json.dump(config, f, indent=2, ensure_ascii=False)
+
+            logger.info(f"Configuration successfully written to {config_path}")
+
+        except Exception as e:
+            logger.error(f"Failed to write configuration file: {e}")
+            raise
 
     def execute_validation_phase(
         self,
