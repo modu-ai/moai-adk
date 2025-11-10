@@ -38,11 +38,11 @@
       "cleanup_days": 7,
       "push_to_remote": false,
       "auto_commit": true,
-      "branch_prefix": "feature/",
+      "branch_prefix": "feature/SPEC-",
       "develop_branch": "develop",
       "main_branch": "main",
-      "prevent_branch_creation": true,
-      "work_on_main": true
+      "prevent_branch_creation": false,
+      "work_on_main": false
     },
     "team": {
       "auto_pr": true,

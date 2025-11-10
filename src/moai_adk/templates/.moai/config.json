@@ -38,7 +38,7 @@
       "cleanup_days": 7,
       "push_to_remote": false,
       "auto_commit": true,
-      "branch_prefix": "feature/",
+      "branch_prefix": "feature/SPEC-",
       "develop_branch": "develop",
       "main_branch": "main",
       "prevent_branch_creation": false,
