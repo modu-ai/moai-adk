@@ -21,6 +21,8 @@ priority: "high"
 @REQ:MIGRATION-001-006: 성능 개선 목표 (빌드 50%, LCP 25%)
 @REQ:MIGRATION-001-007: FlexSearch → Pagefind 검색 엔진 전환
 @REQ:MIGRATION-001-008: Turbopack 빌드 시스템 도입
+@REQ:MIGRATION-001-009: Bun 패키지 매니저 도입
+@REQ:MIGRATION-001-010: Biome 린터/포매터 도입
 
 @DESIGN:MIGRATION-001-001: 마이그레이션 아키텍처 설계
 @DESIGN:MIGRATION-001-002: 12단계 실행 계획
@@ -45,6 +47,8 @@ priority: "high"
 @FEATURE:MIGRATION-001-003: Turbopack 빌드 성능
 @FEATURE:MIGRATION-001-004: Pagefind 검색 성능
 @FEATURE:MIGRATION-001-005: 자동화된 마이그레이션 검증
+@FEATURE:MIGRATION-001-006: Bun 빌드 성능 최적화
+@FEATURE:MIGRATION-001-007: Biome 코드 품질 자동화
 ```
 
 ## 🎯 개요
@@ -254,8 +258,11 @@ MoAI-ADK 문서 사이트를 현재의 Next.js 14.2.15 + Nextra 3.3.1 (Pages Rou
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "typescript": "^5.0.0",
-    "pagefind": "^1.0.0"
-  }
+    "pagefind": "^1.0.0",
+    "bun-types": "^1.0.0",
+    "@biomejs/biome": "^1.8.0"
+  },
+  "packageManager": "bun@1.1.0"
 }
 ```
 
@@ -358,13 +365,80 @@ export interface PagefindConfig {
 }
 ```
 
+**SP2.5: Bun 패키지 매니저 명세**
+```json
+{
+  "packageManager": "bun@1.1.0",
+  "scripts": {
+    "dev": "bun next dev",
+    "build": "bun next build",
+    "start": "bun next start",
+    "lint": "bun biome check --write",
+    "type-check": "bun tsc --noEmit",
+    "test": "bun test",
+    "clean": "rm -rf .next out dist"
+  },
+  "engines": {
+    "bun": ">=1.1.0",
+    "node": ">=18.0.0"
+  }
+}
+```
+
+**SP2.6: Biome 린터/포매터 명세**
+```json
+{
+  "biome": {
+    "extends": ["@biomejs/biome"],
+    "formatter": {
+      "enabled": true,
+      "formatWithErrors": false,
+      "indentStyle": "space",
+      "indentWidth": 2,
+      "lineWidth": 100
+    },
+    "linter": {
+      "enabled": true,
+      "rules": {
+        "recommended": true,
+        "complexity": {
+          "noExtraBooleanCast": "error",
+          "noMultipleSpacesInRegularExpressionLiterals": "error"
+        },
+        "correctness": {
+          "noUnusedVariables": "error",
+          "useExhaustiveDependencies": "error"
+        },
+        "style": {
+          "noNegationElse": "error",
+          "useShorthandArrayType": "error"
+        }
+      }
+    },
+    "javascript": {
+      "formatter": {
+        "jsxQuoteStyle": "double",
+        "quoteProperties": "asNeeded"
+      }
+    },
+    "typescript": {
+      "formatter": {
+        "quoteStyle": "double"
+      }
+    }
+  }
+}
+```
+
 ## 🎯 수락 기준
 
 ### 성능 기준
-- 빌드 시간: 현재 대비 50% 이상 개선
+- 빌드 시간: 현재 대비 50% 이상 개선 (Bun + Turbopack 효과)
 - LCP: 2.5초 → 1.9초 이하 (25% 개선)
 - FCP: 1.8초 → 1.3초 이하 (30% 개선)
 - 번들 크기: 현재와 동일하거나 감소
+- 패키지 설치 속도: npm 대비 200% 향상 (Bun 효과)
+- 린트/포맷팅 속도: ESLint/Prettier 대비 100% 향상 (Biome 효과)
 
 ### 기능성 기준
 - 100+ MDX 파일 완전 호환성
@@ -377,6 +451,9 @@ export interface PagefindConfig {
 - 0개의 콘솔 에러
 - 95% 이상의 Lighthouse 점수
 - 모든 테스트 케이스 통과
+- Biome 린트 검사 100% 통과
+- Biome 포맷팅 일관성 100% 달성
+- Bun 패키지 관리 안정성 확보
 
 ## 🔍 추적성
 
