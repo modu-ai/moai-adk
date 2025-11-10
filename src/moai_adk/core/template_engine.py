@@ -7,6 +7,7 @@ Enables users to customize MoAI-ADK templates for their own projects.
 
 @TAG:TEMPLATE-ENGINE-001 - Template variable substitution system
 @TAG:GITHUB-CUSTOMIZATION-001 - GitHub template parameterization
+@CODE:TEMPLATE-SYNC: 템플릿 엔진 및 동기화 시스템
 """
 
 from pathlib import Path
