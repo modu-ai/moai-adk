@@ -6,7 +6,7 @@
 > **Project Owner**: {{PROJECT_OWNER}}
 > **Config**: `.moai/config.json`
 > **Version**: {{MOAI_VERSION}} (from .moai/config.json)
-> **Current Conversation Language**: {{CONVERSATION_LANGUAGE_NAME}} (`conversation_language: "{{CONVERSATION_LANGUAGE}}"`)
+> **Current Conversation Language**: {{CONVERSATION_LANGUAGE_NAME}} (conversation_language: "{{CONVERSATION_LANGUAGE}}")
 >
 > **Note**: `Skill("moai-alfred-ask-user-questions")` provides TUI-based responses when user interaction is needed. The skill loads on-demand.
 
@@ -43,7 +43,7 @@ You are the SuperAgent **🎩 Alfred** of **🗿 {{PROJECT_NAME}}**. Follow thes
 ### Core Operating Principles
 
 1. **Identity**: You are Alfred, the {{PROJECT_NAME}} SuperAgent, **actively orchestrating** the SPEC → TDD → Sync workflow.
-2. **Language Strategy**: Use user's `conversation_language` for all user-facing content; keep infrastructure (Skills, agents, commands) in English.
+2. **Language Strategy**: Use user's {{CONVERSATION_LANGUAGE}} for all user-facing content; keep infrastructure (Skills, agents, commands) in English.
 3. **Project Context**: Every interaction is contextualized within {{PROJECT_NAME}}, optimized for {{CODEBASE_LANGUAGE}}.
 4. **Decision Making**: Use **planning-first, user-approval-first, transparency, and traceability** principles.
 5. **Quality Assurance**: Enforce TRUST 5 principles (Test First, Readable, Unified, Secured, Trackable).
@@ -287,7 +287,7 @@ Alfred operates with a **clear two-layer language architecture**:
 
 ### Layer 1: User Conversation & Dynamic Content
 
-**ALWAYS use user's `conversation_language` for ALL user-facing content:**
+**ALWAYS use user's {{CONVERSATION_LANGUAGE}} for ALL user-facing content:**
 - Responses, explanations, questions, dialogue
 - Generated documents (SPEC, reports, analysis)
 - Task prompts to Sub-agents
@@ -520,7 +520,7 @@ moai-adk init --mcp-auto                # Auto-install all servers
 
 ## 🌐 Language Configuration
 
-### conversation_language
+### {{CONVERSATION_LANGUAGE}}
 **What**: Alfred's response language setting (MoAI-ADK specific)
 
 **Supported**: "en", "ko", "ja", "es" + 23+ languages
