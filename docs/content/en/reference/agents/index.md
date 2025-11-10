@@ -216,9 +216,9 @@ def select_agents(user_request):
 
 ## Related Documents
 
-- [Alfred Super-Agent](../guides/alfred/index.md) - Alfred concepts and workflow
+- [Alfred Super-Agent](guides/alfred/index.md) - Alfred concepts and workflow
 - [Skills System](skills/index.md) - 55+ Claude Skills
-- [Architecture Explanation](../advanced/architecture.md) - 4-layer stack structure
+- [Architecture Explanation](advanced/architecture.md) - 4-layer stack structure
 
 ______________________________________________________________________
 

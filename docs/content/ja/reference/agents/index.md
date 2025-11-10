@@ -216,9 +216,9 @@ def select_agents(user_request):
 
 ## 関連ドキュメント
 
-- [Alfredスーパーエージェント](../guides/alfred/index.md) - Alfred概念とワークフロー
+- [Alfredスーパーエージェント](guides/alfred/index.md) - Alfred概念とワークフロー
 - [スキルシステム](skills/index.md) - 55個以上のClaudeスキル
-- [アーキテクチャ説明](../advanced/architecture.md) - 4層スタック構造
+- [アーキテクチャ説明](advanced/architecture.md) - 4層スタック構造
 
 ______________________________________________________________________
 

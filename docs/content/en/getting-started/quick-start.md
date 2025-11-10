@@ -404,9 +404,9 @@ Add more features to your API:
 
 ### Explore Advanced Topics
 
-- **[Project Configuration](../guides/project/config.md)**: Customize project settings
-- **[SPEC Writing](../guides/specs/basics.md)**: Master EARS syntax
-- **[TDD Patterns](../guides/tdd/green.md)**: Learn advanced test strategies
+- **[Project Configuration](guides/project/config.md)**: Customize project settings
+- **[SPEC Writing](guides/specs/basics.md)**: Master EARS syntax
+- **[TDD Patterns](guides/tdd/green.md)**: Learn advanced test strategies
 - **[TAG System](reference/tags/index.md)**: Deep dive into traceability
 
 ### Join the Community
@@ -465,4 +465,4 @@ In just 10 minutes, you've completed:
 
 This is the power of MoAI-ADK: create reliable, maintainable, well-documented code faster than traditional methods. You're now ready to build complex applications with confidence! 🚀
 
-Continue your journey with the [Alfred Workflow Guide](../guides/alfred/index.md) or explore any specific topic that interests you.
+Continue your journey with the [Alfred Workflow Guide](guides/alfred/index.md) or explore any specific topic that interests you.

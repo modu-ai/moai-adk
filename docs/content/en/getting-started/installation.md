@@ -285,7 +285,7 @@ After successful installation:
 
 1. **[Quick Start Guide](quick-start.md)** - Run your first project in 10 minutes
 2. **[Core Concepts](concepts.md)** - Understand SPEC-First, TDD, @TAG, and TRUST 5 principles
-3. **[Project Initialization](../guides/project/init.md)** - Learn project setup and configuration
+3. **[Project Initialization](guides/project/init.md)** - Learn project setup and configuration
 
 ## Installation Summary
 

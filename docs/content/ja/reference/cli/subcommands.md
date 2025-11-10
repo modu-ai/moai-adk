@@ -561,7 +561,7 @@ moai-adk status
 
 ______________________________________________________________________
 
-**次**: [moai-adkコマンドリファレンス](moai-adk.md)または[Alfred概念](../guides/alfred/index.md)
+**次**: [moai-adkコマンドリファレンス](moai-adk.md)または[Alfred概念](guides/alfred/index.md)
 
 
 

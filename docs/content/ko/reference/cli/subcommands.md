@@ -561,4 +561,4 @@ moai-adk status
 
 ______________________________________________________________________
 
-**다음**: [moai-adk 명령어 참고서](moai-adk.md) 또는 [Alfred 개념](../guides/alfred/index.md)
+**다음**: [moai-adk 명령어 참고서](moai-adk.md) 또는 [Alfred 개념](guides/alfred/index.md)
