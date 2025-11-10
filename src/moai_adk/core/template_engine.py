@@ -1,12 +1,13 @@
-# type: ignore
+# @CODE:TEMPLATE-ENGINE-001
 """
 Template engine for parameterizing GitHub templates and other configuration files.
 
 Supports Jinja2-style templating with variable substitution and conditional sections.
 Enables users to customize MoAI-ADK templates for their own projects.
 
-@TAG:TEMPLATE-ENGINE-001 - Template variable substitution system
-@TAG:GITHUB-CUSTOMIZATION-001 - GitHub template parameterization
+@SPEC:TEMPLATE-SYSTEM-001: 템플릿 엔진 및 동기화 시스템
+@TEST:TEMPLATE-SYSTEM-001: 템플릿 시스템 테스트
+@DOC:TEMPLATE-SYSTEM-001: 템플릿 시스템 문서
 """
 
 from pathlib import Path
@@ -16,6 +17,7 @@ from jinja2 import (
     Environment,
     FileSystemLoader,
     StrictUndefined,
+    Undefined,
     TemplateNotFound,
     TemplateRuntimeError,
     TemplateSyntaxError,
@@ -45,7 +47,7 @@ class TemplateEngine:
             Variables must be explicitly provided to avoid silent template failures.
         """
         self.strict_undefined = strict_undefined
-        self.undefined_behavior = StrictUndefined if strict_undefined else None
+        self.undefined_behavior = StrictUndefined if strict_undefined else Undefined
 
     def render_string(
         self,
