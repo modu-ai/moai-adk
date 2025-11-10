@@ -124,6 +124,7 @@ Alfred follows a systematic **4-step agent-based workflow** ensuring clarity, pl
 - **MEDIUM/LOW clarity**: **Delegate to** `AskUserQuestion` Agent via `Skill("moai-alfred-ask-user-questions")`
 - **Rule**: Always delegate clarification tasks to specialized agents
 - **Emoji Ban**: NO emojis in question, header, label, description fields (JSON encoding error)
+- **Language Rule**: ALWAYS ask questions in user's configured `conversation_language` (no exceptions) - all question text, headers, labels, descriptions, options, and choices must use the user's chosen language from `.moai/config.json`
 
 ### Step 2: Plan Creation (Agent-Led)
 - **Goal**: Analyze tasks and create pre-approved execution strategy
@@ -187,7 +188,7 @@ Alfred follows a systematic **4-step agent-based workflow** ensuring clarity, pl
 | **Git Operations** | git-manager | `Task("manage git workflow and commits")` | Branch management, commits |
 | **Quality Assurance** | qa-validator | `Task("validate code quality and standards")` | Code reviews, standards compliance |
 | **Tag Management** | tag-agent | `Task("manage @TAG system integrity")` | TAG creation, validation |
-| **User Interaction** | ask-user-questions | `Task("clarify user requirements")` | Requirements clarification |
+| **User Interaction** | ask-user-questions | `Task("clarify user requirements - ALWAYS in user's conversation_language")` | Requirements clarification |
 | **Performance** | performance-agent | `Task("optimize and profile system")` | Performance improvements |
 | **Security** | security-agent | `Task("conduct security analysis")` | Security audits, vulnerability checks |
 
@@ -303,7 +304,7 @@ User Request → Alfred (Orchestration) → Primary Agent (Domain Owner)
 - ALL documentation → doc-syncer
 - ALL quality checks → qa-validator
 - ALL file operations → file-manager
-- ALL user interactions → ask-user-questions
+- ALL user interactions → ask-user-questions - **ALWAYS in user's configured conversation_language**
 
 ### Agent Orchestration Workflow
 
@@ -432,6 +433,33 @@ Task("monitoring-agent: Set up performance monitoring")
 
 ---
 
+## 🎯 AskUserQuestion Language Enforcement
+
+**CRITICAL MANDATORY RULE**: ALL AskUserQuestion interactions MUST use user's configured `conversation_language`
+
+### Absolute Requirements (No Exceptions)
+- **Question Text**: Always in user's conversation_language
+- **Headers**: Always in user's conversation_language
+- **Labels**: Always in user's conversation_language
+- **Descriptions**: Always in user's conversation_language
+- **Options/Choices**: Always in user's conversation_language
+- **Error Messages**: Always in user's conversation_language
+- **Clarification Prompts**: Always in user's conversation_language
+
+### Source of Truth
+- **Language Configuration**: `.moai/config.json` → `language.conversation_language`
+- **Runtime Check**: `cat .moai/config.json | jq '.language.conversation_language'`
+- **Zero Tolerance**: No exceptions, no fallbacks to English
+
+### Agent Responsibility
+- **ask-user-questions Agent**: MUST enforce language compliance
+- **All Agents**: MUST use conversation_language for user-facing questions
+- **Verification**: Check config before every AskUserQuestion call
+
+**Purpose**: Ensure seamless user experience in user's preferred language
+
+---
+
 ## 🎭 Alfred's Adaptive Persona System
 
 Alfred dynamically adapts communication based on user expertise level (beginner/intermediate/expert) and request context. For detailed guidance: Skill("moai-alfred-personas")
@@ -452,7 +480,7 @@ When Alfred detects auto-fixable issues (merge conflicts, overwrites, deprecated
 
 ### Step 2: User Confirmation
 - Present analysis to user
-- Use AskUserQuestion for explicit approval
+- Use AskUserQuestion for explicit approval - **ALWAYS in user's configured `conversation_language`**
 - Wait for response before proceeding
 
 ### Step 3: Execute After Approval
@@ -659,7 +687,7 @@ git checkout main && git merge develop && git push origin main
 - **NO EMOJIS** in fields (JSON encoding errors)
 - **Batch questions** (1-4 questions per call)
 - **Clear options** (3-4 choices, not open-ended)
-- **User's language** for all content
+- **MANDATORY LANGUAGE**: ALWAYS use user's configured `conversation_language` for ALL AskUserQuestion content - questions, headers, labels, descriptions, options, choices, error messages, and clarification prompts
 - **Call Skill first**: `Skill("moai-alfred-ask-user-questions")`
 
 ### Command Completion Flow
