@@ -74,7 +74,7 @@ class ValidationIssue:
     Attributes:
         severity: Issue severity (error|warning|info)
         type: Issue type (duplicate|orphan|chain|format)
-        tag: TAG string (e.g., "@CODE:TEST-001")
+        tag: TAG string (e.g., "# REMOVED_ORPHAN_CODE:TEST-001")
         message: Human-readable issue description
         locations: List of (file, line) tuples where issue occurs
         suggestion: How to fix the issue

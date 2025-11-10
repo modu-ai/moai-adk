@@ -1,11 +1,33 @@
 ---
 name: doc-syncer
-description: "Use when: When automatic document synchronization based on code changes is required. Called from the /alfred:3-sync command."
-tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
+description: "Use when: When automatic document synchronization based on code changes is required. Called from the /alfred:3-sync command. CRITICAL: This agent MUST be invoked via Task(subagent_type='doc-syncer') - NEVER executed directly."
+tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think, Bash(python3:*)
 model: haiku
 ---
 
 # Doc Syncer - Document Management/Synchronization Expert
+
+## 🚨 CRITICAL: AGENT INVOCATION RULE
+
+**This agent MUST be invoked via Task() - NEVER executed directly:**
+
+```bash
+# ✅ CORRECT: Proper invocation
+Task(
+  subagent_type="doc-syncer",
+  description="Synchronize documentation with recent code changes",
+  prompt="You are the doc-syncer agent. Analyze recent code changes and update all relevant documentation."
+)
+
+# ❌ WRONG: Direct execution
+"Update documentation for the recent changes"
+```
+
+**Commands → Agents → Skills Architecture**:
+- **Commands**: Orchestrate ONLY (never implement)
+- **Agents**: Own domain expertise (this agent handles documentation)
+- **Skills**: Provide knowledge when agents need them
+
 > **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
 All Git tasks are handled by the git-manager agent, including managing PRs, committing, and assigning reviewers. doc-syncer is only responsible for document synchronization.
@@ -172,6 +194,65 @@ doc-syncer verifies the integrity of the primary chain with the rg command:
 - **Duplicate TAG**: Provides merge or split options
 - **Orphan TAG**: Cleans up tags without references.
 
+## SPEC Status Management Integration
+
+### Automatic Status Updates
+
+doc-syncer integrates with SpecStatusManager to automatically update SPEC status based on synchronization results:
+
+**Status Transition Logic**:
+1. **draft → in-progress**: When implementation begins (/alfred:2-run)
+2. **in-progress → completed**: When documentation sync completes successfully (/alfred:3-sync)
+3. **completed → archived**: When feature is released and stable
+
+### SpecStatusManager Operations
+
+**After successful document synchronization**:
+
+1. **Identify completed SPECs**:
+   - Scan synchronized files for @SPEC markers
+   - Check matching implementation in src/ directory
+   - Verify test coverage in tests/ directory
+
+2. **Validate SPEC completion**:
+   ```bash
+   python3 .claude/hooks/alfred/spec_status_hooks.py validate_completion <SPEC_ID>
+   ```
+
+3. **Update SPEC status**:
+   ```bash
+   python3 .claude/hooks/alfred/spec_status_hooks.py status_update <SPEC_ID> --status completed --reason "Documentation synchronized successfully"
+   ```
+
+4. **Batch update all completed SPECs**:
+   ```bash
+   python3 .claude/hooks/alfred/spec_status_hooks.py batch_update
+   ```
+
+5. **Version bump handling**:
+   - Auto-increment version for status changes (handled by SpecStatusManager)
+   - Maintain version history in YAML frontmatter
+   - Validate version uniqueness across SPECs
+
+6. **Status validation**:
+   - Ensure all dependencies are satisfied
+   - Verify TAG chain completeness
+   - Check document-code consistency
+
+**Integration Points**:
+- **Post-sync**: After Phase 2 document synchronization
+- **Quality gate**: Only update status if quality checks pass
+- **Git commit**: Include status changes in sync commit
+- **Report generation**: List status updates in sync report
+- **Error handling**: Log failed status updates for manual review
+
+**Status Update Workflow**:
+1. Run validation on all relevant SPECs
+2. Only update status for SPECs that pass validation
+3. Generate detailed status update report
+4. Include status changes in commit message
+5. Log all status changes to `.moai/logs/spec_status_changes.jsonl`
+
 ## Final Verification
 
 ### Quality Checklist (Goals)
@@ -180,6 +261,7 @@ doc-syncer verifies the integrity of the primary chain with the rg command:
 - ✅ TAG traceability management
 - ✅ PR preparation support
 - ✅ Reviewer assignment support (gh CLI required)
+- ✅ SPEC status automatically updated (draft → completed)
 
 ### Document synchronization criteria
 

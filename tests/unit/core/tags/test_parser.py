@@ -1,4 +1,4 @@
-# @TEST:PAR-001 | Chain: @SPEC:DOC-TAG-001 -> @TEST:PAR-001
+# # REMOVED_ORPHAN_TEST:PAR-001 | Chain: @SPEC:DOC-TAG-001 -> # REMOVED_ORPHAN_TEST:PAR-001
 """Test suite for SPEC parser utilities.
 
 Tests SPEC ID extraction from YAML frontmatter and domain parsing

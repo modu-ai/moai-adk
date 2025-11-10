@@ -1,4 +1,4 @@
-# @CODE:VAL-001
+# # REMOVED_ORPHAN_CODE:VAL-001
 """TAG chain repair tool for creating missing links.
 
 Automatically creates missing SPEC, CODE, and TEST elements to

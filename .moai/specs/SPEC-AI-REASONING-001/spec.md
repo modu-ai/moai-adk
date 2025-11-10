@@ -1,30 +1,30 @@
 ---
-id: AI-REASONING-001
-version: 0.1.0
-status: draft
-created: 2025-11-10
-updated: 2025-11-10
-author: @user
-priority: high
+author: user
 category: feature
-labels:
-  - ai-reasoning
-  - architecture
-  - senior-engineering
-  - integration
+created: 2025-11-10
 depends_on: []
+id: AI-REASONING-001
+labels:
+- ai-reasoning
+- architecture
+- senior-engineering
+- integration
+priority: high
 related_specs:
-  - TRUST-001
-  - CONFIG-001
+- TRUST-001
+- CONFIG-001
 scope:
-  packages:
-    - moai-adk/src/core/reasoning
-    - moai-adk/src/agents/reasoning-agent
   files:
-    - reasoning-strategy.py
-    - senior-engineering-patterns.py
-    - context-analyzer.py
-    - research-integrator.py
+  - reasoning-strategy.py
+  - senior-engineering-patterns.py
+  - context-analyzer.py
+  - research-integrator.py
+  packages:
+  - moai-adk/src/core/reasoning
+  - moai-adk/src/agents/reasoning-agent
+status: completed
+updated: '2025-11-11'
+version: 1.0.0
 ---
 
 # @SPEC:AI-REASONING-001: Senior Engineer Thinking Patterns Integration

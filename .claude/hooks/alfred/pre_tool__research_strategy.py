@@ -16,6 +16,8 @@ PreToolUse 단계에서 작업 유형에 맞는 연구 전략을 자동으로 �
     python3 pre_tool__research_strategy.py <tool_name> <tool_args_json>
 """
 
+import os
+
 import json
 import sys
 import time
@@ -28,7 +30,17 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 from moai_adk.core.tags.validator import CentralValidationResult, CentralValidator, ValidationConfig
 from moai_adk.statusline.version_reader import VersionReader
 
-from ..utils.hook_config import get_graceful_degradation, load_hook_timeout
+# Local hook configuration functions
+def get_graceful_degradation() -> bool:
+    """우아한 저하 degrade 모드 설정 반환"""
+    return os.environ.get("MOAI_GRACEFUL_DEGRADATION", "true").lower() == "true"
+
+def load_hook_timeout() -> int:
+    """Hook 타임아웃 로드 (밀리초 단위)"""
+    try:
+        return int(os.environ.get("MOAI_HOOK_TIMEOUT_MS", "30000"))
+    except ValueError:
+        return 30000
 
 
 def load_research_config() -> Dict[str, Any]:
@@ -410,20 +422,22 @@ def main() -> None:
 
         # 인자 파싱
         if len(sys.argv) < 3:
-            print(json.dumps({
-                "research_strategy_selected": False,
-                "error": "Invalid arguments. Usage: python3 pre_tool__research_strategy.py <tool_name> <tool_args_json>"
-            }))
+            if os.environ.get("MOAI_SILENT_RESEARCH", "false").lower() != "true":
+                print(json.dumps({
+                    "research_strategy_selected": False,
+                    "error": "Invalid arguments. Usage: python3 pre_tool__research_strategy.py <tool_name> <tool_args_json>"
+                }))
             sys.exit(0)
 
         tool_name = sys.argv[1]
         try:
             tool_args = json.loads(sys.argv[2])
         except json.JSONDecodeError:
-            print(json.dumps({
-                "research_strategy_selected": False,
-                "error": "Invalid tool_args JSON"
-            }))
+            if os.environ.get("MOAI_SILENT_RESEARCH", "false").lower() != "true":
+                print(json.dumps({
+                    "research_strategy_selected": False,
+                    "error": "Invalid tool_args JSON"
+                }))
             sys.exit(0)
 
         # 시작 시간 기록
@@ -458,7 +472,8 @@ def main() -> None:
                 "message": "연구 전략 선택 실패 - 기본 전략으로 진행",
                 "graceful_degradation": graceful_degradation
             }
-            print(json.dumps(timeout_response, ensure_ascii=False))
+            if os.environ.get("MOAI_SILENT_RESEARCH", "false").lower() != "true":
+                print(json.dumps(timeout_response, ensure_ascii=False))
             sys.exit(0)
 
         # 실행 시간 계산
@@ -477,7 +492,8 @@ def main() -> None:
         if execution_time_ms > timeout_warning_ms:
             response["performance_warning"] = f"전략 선택 시간이 타임아웃의 80%를 초과했습니다 ({execution_time_ms:.0f}ms / {timeout_warning_ms:.0f}ms)"
 
-        print(json.dumps(response, ensure_ascii=False, indent=2))
+        if os.environ.get("MOAI_SILENT_RESEARCH", "false").lower() != "true":
+            print(json.dumps(response, ensure_ascii=False, indent=2))
 
     except Exception as e:
         # 예외 처리
@@ -490,8 +506,9 @@ def main() -> None:
         if graceful_degradation:
             error_response["graceful_degradation"] = True
 
-        print(json.dumps(error_response, ensure_ascii=False))
-        sys.exit(0)
+        if os.environ.get("MOAI_SILENT_RESEARCH", "false").lower() != "true":
+            print(json.dumps(error_response, ensure_ascii=False))
+        sys.exit(1)
 
 
 if __name__ == "__main__":

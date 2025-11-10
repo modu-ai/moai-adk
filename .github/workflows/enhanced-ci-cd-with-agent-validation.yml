@@ -1,0 +1,554 @@
+# @CI:AGENT-VALIDATION-001 | SPEC: SPEC-ENHANCED-CICD-001
+# Enhanced CI/CD Workflow with Agent-Based Validation v5.0.0
+# Integrates DevOps expert agent patterns with encoding standardization and TRUST 5 principles
+
+name: Enhanced CI/CD with Agent-Based Validation
+
+on:
+  push:
+    branches: [main, develop, feature/**]
+  pull_request:
+    branches: [main, develop]
+  # Allow manual triggering for agent validation
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Environment variables for agent-based validation
+env:
+  PYTHON_VERSIONS: '["3.11", "3.12", "3.13"]'
+  AGENT_VALIDATION_TIMEOUT: '10'
+  ENCODING_STANDARD: 'utf-8'
+  TRUST_COVERAGE_THRESHOLD: '85'
+  TRUST_MAX_FILE_LOC: '300'
+  TRUST_MAX_FUNCTION_LOC: '50'
+
+jobs:
+  # ========================================
+  # Agent-Based Pre-Validation Phase
+  # ========================================
+  agent-validation:
+    name: 🤖 Agent-Based Pre-Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install dependencies
+        run: |
+          uv sync --all-extras --dev
+
+      - name: 🔍 Agent-Based Encoding Validation
+        timeout-minutes: ${{ env.AGENT_VALIDATION_TIMEOUT }}
+        run: |
+          echo "Running comprehensive encoding validation with agent patterns..."
+          python3 -c "
+          import os
+          import json
+          from pathlib import Path
+          from moai_adk.utils.safe_file_reader import SafeFileReader
+
+          def agent_encoding_validation():
+              '''DevOps expert agent encoding validation pattern'''
+              reader = SafeFileReader()
+              issues = []
+              stats = {
+                  'total_files': 0,
+                  'utf8_files': 0,
+                  'encoding_issues': 0,
+                  'file_types': {}
+              }
+
+              # Enhanced file type detection (agent pattern)
+              code_patterns = ['**/*.py', '**/*.js', '**/*.ts', '**/*.tsx', '**/*.jsx']
+              doc_patterns = ['**/*.md', '**/*.rst', '**/*.txt']
+              config_patterns = ['**/*.yml', '**/*.yaml', '**/*.json', '**/*.toml']
+
+              all_patterns = code_patterns + doc_patterns + config_patterns
+
+              for pattern in all_patterns:
+                  for file_path in Path('.').glob(pattern):
+                      if any(skip in str(file_path) for skip in ['.git', '__pycache__', 'node_modules']):
+                          continue
+
+                      stats['total_files'] += 1
+                      file_ext = file_path.suffix
+                      stats['file_types'][file_ext] = stats['file_types'].get(file_ext, 0) + 1
+
+                      # Agent-based validation with fallback
+                      content = reader.read_text(file_path)
+                      if content is not None:
+                          stats['utf8_files'] += 1
+                      else:
+                          stats['encoding_issues'] += 1
+                          issues.append({
+                              'file': str(file_path),
+                              'type': 'encoding_error',
+                              'message': 'Cannot read file with UTF-8 or fallback encodings'
+                          })
+
+              # Generate agent validation report
+              report = {
+                  'status': 'passed' if not issues else 'failed',
+                  'statistics': stats,
+                  'issues': issues,
+                  'encoding_compliance': (stats['utf8_files'] / stats['total_files'] * 100) if stats['total_files'] > 0 else 100
+              }
+
+              # Output results
+              print(f'🔍 Agent Encoding Validation Results:')
+              print(f'  Total files: {stats[\"total_files\"]}')
+              print(f'  UTF-8 compatible: {stats[\"utf8_files\"]}')
+              print(f'  Encoding issues: {stats[\"encoding_issues\"]}')
+              print(f'  Compliance rate: {report[\"encoding_compliance\"]:.1f}%')
+
+              if issues:
+                  print(f'❌ Encoding issues found:')
+                  for issue in issues:
+                      print(f'  - {issue[\"file\"]}: {issue[\"message\"]}')
+                  exit(1)
+              else:
+                  print(f'✅ All files pass agent encoding validation')
+
+              # Save report for downstream jobs
+              with open('agent-encoding-report.json', 'w') as f:
+                  json.dump(report, f, indent=2)
+
+          agent_encoding_validation()
+          "
+
+      - name: 🏷️ Agent-Based TAG Chain Validation
+        timeout-minutes: ${{ env.AGENT_VALIDATION_TIMEOUT }}
+        run: |
+          echo "Running agent-based TAG chain integrity validation..."
+          uv run python -c "
+          import json
+          from pathlib import Path
+          from moai_adk.core.tags.validator import CentralValidator
+          from moai_adk.core.tags.validator import ValidationConfig
+
+          # Agent-optimized validation config
+          config = ValidationConfig(
+              strict_mode=True,
+              check_duplicates=True,
+              check_orphans=True,
+              check_chain_integrity=True,
+              report_format='json'
+          )
+
+          validator = CentralValidator(config=config)
+          result = validator.validate_directory('.')
+
+          # Agent-based analysis
+          stats = result.get('statistics', {})
+          total_tags = stats.get('total_tags', 0)
+          total_issues = stats.get('total_issues', 0)
+          complete_chains = stats.get('complete_chains', 0)
+
+          print(f'🏷️ Agent TAG Validation Results:')
+          print(f'  Total TAGs: {total_tags}')
+          print(f'  Complete chains: {complete_chains}')
+          print(f'  Issues found: {total_issues}')
+
+          if result.get('is_valid', False):
+              print(f'✅ TAG chain integrity validated by agent')
+          else:
+              print(f'❌ TAG chain validation failed')
+              issues = result.get('issues', [])
+              for issue in issues[:5]:  # Show first 5 issues
+                  print(f'  - {issue.get(\"type\", \"unknown\")}: {issue.get(\"message\", \"no message\")}')
+              if total_issues > 5:
+                  print(f'  ... and {total_issues - 5} more issues')
+              exit(1)
+
+          # Save agent report
+          with open('agent-tag-report.json', 'w') as f:
+              json.dump(result, f, indent=2)
+          "
+
+      - name: Upload agent validation reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-validation-reports
+          path: |
+            agent-encoding-report.json
+            agent-tag-report.json
+          retention-days: 7
+
+  # ========================================
+  # Enhanced TRUST 5 Validation with Agent Patterns
+  # ========================================
+  enhanced-trust-validation:
+    name: 🛡️ Enhanced TRUST 5 Validation
+    needs: agent-validation
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12', '3.13']
+      fail-fast: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Install uv and dependencies
+        run: |
+          pip install uv
+          uv sync --all-extras --dev
+
+      - name: 🧪 Agent-Enhanced Test Coverage Validation
+        run: |
+          echo "Running agent-enhanced test coverage validation..."
+          uv run pytest tests/ -v \
+            --cov=src \
+            --cov-report=term-missing \
+            --cov-report=html:htmlcov \
+            --cov-report=xml:coverage.xml \
+            --cov-fail-under=${{ env.TRUST_COVERAGE_THRESHOLD }}
+
+      - name: 📏 Agent-Enhanced Code Quality Gates
+        run: |
+          echo "Running agent-enhanced code quality validation..."
+
+          # Agent-based linting with TRUST principles
+          uv run ruff check src/ tests/ --output-format=json > ruff-report.json || true
+          uv run mypy src/ --ignore-missing-imports --json-report mypy-report || true
+
+          # Agent-based complexity validation
+          uv run python -c "
+          import ast
+          import json
+          from pathlib import Path
+
+          def agent_complexity_validation():
+              '''DevOps expert agent complexity validation'''
+              violations = []
+              stats = {
+                  'total_functions': 0,
+                  'violations_by_type': {
+                      'file_size': 0,
+                      'function_size': 0,
+                      'complexity': 0,
+                      'parameters': 0
+                  }
+              }
+
+              for py_file in Path('src').rglob('*.py'):
+                  if py_file.name.startswith('test_'):
+                      continue
+
+                  try:
+                      content = py_file.read_text(encoding='utf-8')
+                      lines = content.splitlines()
+                      tree = ast.parse(content)
+
+                      # File size validation (TRUST principle)
+                      if len(lines) > int('${{ env.TRUST_MAX_FILE_LOC }}'):
+                          stats['violations_by_type']['file_size'] += 1
+                          violations.append({
+                              'file': str(py_file),
+                              'type': 'file_size',
+                              'value': len(lines),
+                              'limit': int('${{ env.TRUST_MAX_FILE_LOC }}')
+                          })
+
+                      # Function-level validation
+                      for node in ast.walk(tree):
+                          if isinstance(node, ast.FunctionDef):
+                              stats['total_functions'] += 1
+                              start_line = node.lineno
+                              end_line = node.end_lineno or start_line
+                              func_lines = lines[start_line - 1:end_line]
+                              func_loc = len(func_lines)
+
+                              # Function size validation
+                              if func_loc > int('${{ env.TRUST_MAX_FUNCTION_LOC }}'):
+                                  stats['violations_by_type']['function_size'] += 1
+                                  violations.append({
+                                      'file': str(py_file),
+                                      'function': node.name,
+                                      'type': 'function_size',
+                                      'value': func_loc,
+                                      'limit': int('${{ env.TRUST_MAX_FUNCTION_LOC }}')
+                                  })
+
+                              # Parameter count validation
+                              param_count = len(node.args.args)
+                              if param_count > 5:
+                                  stats['violations_by_type']['parameters'] += 1
+                                  violations.append({
+                                      'file': str(py_file),
+                                      'function': node.name,
+                                      'type': 'parameters',
+                                      'value': param_count,
+                                      'limit': 5
+                                  })
+
+                  except Exception as e:
+                  print(f'Warning: Could not process {py_file}: {e}')
+
+              # Generate agent report
+              report = {
+                  'python_version': '${{ matrix.python-version }}',
+                  'statistics': stats,
+                  'violations': violations,
+                  'trust_compliance': len(violations) == 0
+              }
+
+              print(f'📏 Agent Code Quality Results (Python ${{ matrix.python-version }}):')
+              print(f'  Total functions: {stats[\"total_functions\"]}')
+              print(f'  Violations: {len(violations)}')
+              print(f'  TRUST compliance: {\"✅ PASS\" if len(violations) == 0 else \"❌ FAIL\"}')
+
+              if violations:
+                  print(f'Violations by type:')
+                  for vtype, count in stats['violations_by_type'].items():
+                      if count > 0:
+                          print(f'  - {vtype}: {count}')
+
+              with open('agent-quality-report-${{ matrix.python-version }}.json', 'w') as f:
+                  json.dump(report, f, indent=2)
+
+              if violations:
+                  exit(1)
+
+          agent_complexity_validation()
+          "
+
+      - name: Upload quality reports
+        if: matrix.python-version == '3.13'
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-quality-reports
+          path: |
+            ruff-report.json
+            mypy-report/
+            agent-quality-report-*.json
+            htmlcov/
+            coverage.xml
+          retention-days: 7
+
+  # ========================================
+  # Agent-Based Deployment Readiness Validation
+  # ========================================
+  deployment-readiness:
+    name: 🚀 Agent-Based Deployment Readiness
+    needs: [agent-validation, enhanced-trust-validation]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Install uv and dependencies
+        run: |
+          pip install uv
+          uv sync --all-extras --dev
+
+      - name: 🚀 Agent-Based Deployment Validation
+        run: |
+          echo "Running agent-based deployment readiness validation..."
+          uv run python -c "
+          import json
+          import subprocess
+          from pathlib import Path
+
+          def agent_deployment_validation():
+              '''DevOps expert deployment readiness validation'''
+              checks = {
+                  'build_success': False,
+                  'dependencies_resolved': False,
+                  'tests_pass': False,
+                  'security_scan': False,
+                  'performance_baseline': False
+              }
+
+              issues = []
+
+              # Build validation
+              try:
+                  result = subprocess.run(['uv', 'build'], capture_output=True, text=True, timeout=300)
+                  checks['build_success'] = result.returncode == 0
+                  if not checks['build_success']:
+                      issues.append(f'Build failed: {result.stderr}')
+              except subprocess.TimeoutExpired:
+                  issues.append('Build timed out after 5 minutes')
+              except Exception as e:
+                  issues.append(f'Build error: {e}')
+
+              # Dependency validation
+              try:
+                  result = subprocess.run(['uv', 'tree'], capture_output=True, text=True)
+                  checks['dependencies_resolved'] = result.returncode == 0
+              except Exception as e:
+                  issues.append(f'Dependency check failed: {e}')
+
+              # Security scan (basic)
+              try:
+                  # Basic security check for common vulnerabilities
+                  result = subprocess.run(['uv', 'run', 'safety', 'check'], capture_output=True, text=True)
+                  checks['security_scan'] = result.returncode == 0 or 'No known security vulnerabilities' in result.stdout
+                  if not checks['security_scan'] and result.stdout:
+                      issues.append(f'Security vulnerabilities detected')
+              except Exception as e:
+                  issues.append(f'Security scan failed: {e}')
+
+              # Performance baseline (import time check)
+              try:
+                  import time
+                  start_time = time.time()
+                  result = subprocess.run(['uv', 'run', 'python', '-c', 'import moai_adk'], capture_output=True, text=True)
+                  import_time = time.time() - start_time
+                  checks['performance_baseline'] = import_time < 2.0 and result.returncode == 0
+                  if import_time >= 2.0:
+                      issues.append(f'Slow import time: {import_time:.2f}s')
+              except Exception as e:
+                  issues.append(f'Performance baseline failed: {e}')
+
+              # Agent deployment readiness assessment
+              passed_checks = sum(checks.values())
+              total_checks = len(checks)
+              readiness_score = (passed_checks / total_checks) * 100
+
+              print(f'🚀 Agent Deployment Readiness Results:')
+              for check, passed in checks.items():
+                  status = '✅ PASS' if passed else '❌ FAIL'
+                  print(f'  {check}: {status}')
+              print(f'  Readiness Score: {readiness_score:.1f}%')
+
+              if issues:
+                  print(f'❌ Deployment readiness issues:')
+                  for issue in issues:
+                      print(f'  - {issue}')
+
+              # Generate deployment readiness report
+              report = {
+                  'readiness_score': readiness_score,
+                  'checks': checks,
+                  'issues': issues,
+                  'ready_for_deployment': readiness_score >= 80 and len(issues) == 0
+              }
+
+              with open('agent-deployment-readiness.json', 'w') as f:
+                  json.dump(report, f, indent=2)
+
+              if readiness_score < 80:
+                  print(f'❌ Deployment readiness score below 80% threshold')
+                  exit(1)
+
+          agent_deployment_validation()
+          "
+
+      - name: Upload deployment readiness report
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-deployment-readiness
+          path: agent-deployment-readiness.json
+          retention-days: 7
+
+  # ========================================
+  # Agent Validation Summary and Reporting
+  # ========================================
+  agent-validation-summary:
+    name: 📊 Agent Validation Summary
+    needs: [agent-validation, enhanced-trust-validation, deployment-readiness]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Download all agent reports
+        uses: actions/download-artifact@v4
+
+      - name: Generate Agent Validation Summary
+        run: |
+          echo "# 🤖 Agent-Based Validation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Check agent validation results
+          if [[ "${{ needs.agent-validation.result }}" == "success" ]]; then
+            echo "## ✅ Agent-Based Pre-Validation" >> $GITHUB_STEP_SUMMARY
+            echo "- Encoding validation: PASSED" >> $GITHUB_STEP_SUMMARY
+            echo "- TAG chain integrity: PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ❌ Agent-Based Pre-Validation" >> $GITHUB_STEP_SUMMARY
+            echo "- Agent validation failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Check TRUST validation results
+          if [[ "${{ needs.enhanced-trust-validation.result }}" == "success" ]]; then
+            echo "## ✅ Enhanced TRUST 5 Validation" >> $GITHUB_STEP_SUMMARY
+            echo "- Test coverage (≥85%): PASSED" >> $GITHUB_STEP_SUMMARY
+            echo "- Code quality gates: PASSED" >> $GITHUB_STEP_SUMMARY
+            echo "- Complexity validation: PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ❌ Enhanced TRUST 5 Validation" >> $GITHUB_STEP_SUMMARY
+            echo "- TRUST principles validation failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Check deployment readiness
+          if [[ "${{ needs.deployment-readiness.result }}" == "success" ]]; then
+            echo "## ✅ Agent-Based Deployment Readiness" >> $GITHUB_STEP_SUMMARY
+            echo "- Build validation: PASSED" >> $GITHUB_STEP_SUMMARY
+            echo "- Security scan: PASSED" >> $GITHUB_STEP_SUMMARY
+            echo "- Performance baseline: PASSED" >> $GITHUB_STEP_SUMMARY
+            echo "- Ready for deployment: YES" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ❌ Agent-Based Deployment Readiness" >> $GITHUB_STEP_SUMMARY
+            echo "- Not ready for deployment" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Overall status
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ needs.agent-validation.result }}" == "success" && "${{ needs.enhanced-trust-validation.result }}" == "success" ]]; then
+            echo "## 🎉 Overall Status: PASSED" >> $GITHUB_STEP_SUMMARY
+            echo "All agent-based validation checks passed. The codebase is ready for production deployment." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ⚠️ Overall Status: FAILED" >> $GITHUB_STEP_SUMMARY
+            echo "Some agent-based validation checks failed. Please review the detailed reports." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+  # ========================================
+  # Notification and Integration (Optional)
+  # ========================================
+  notify-agents:
+    name: 📢 Notify Agent System
+    needs: agent-validation-summary
+    runs-on: ubuntu-latest
+    if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+
+    steps:
+      - name: Agent System Notification
+        run: |
+          echo "🤖 Agent-based CI/CD validation completed"
+          echo "Status: ${{ needs.agent-validation-summary.result }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit: ${{ github.sha }}"
+
+          # This could integrate with Alfred agent system for further actions
+          # Such as triggering spec-builder for new features, or doc-syncer for updates

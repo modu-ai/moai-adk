@@ -1,7 +1,12 @@
 ---
 name: moai-alfred-config-schema
+version: 2.0.0
+created: 2025-11-02
+updated: 2025-11-11
+status: active
 description: ".moai/config.json official schema documentation, structure validation, project metadata, language settings, and configuration migration guide. Use when setting up project configuration or understanding config.json structure."
-allowed-tools: "Read, Grep"
+keywords: ['config-schema', 'configuration-validation', 'project-metadata', 'language-settings', 'migration-guide', 'research', 'best-practices', 'configuration-optimization', 'schema-evolution']
+allowed-tools: "Read, Grep, AskUserQuestion, TodoWrite"
 ---
 
 ## What It Does
@@ -124,6 +129,88 @@ Controls how features are developed in team mode:
 3. **`per_spec`** (maximum flexibility)
    - Ask user per SPEC which workflow to use
    - Combine both approaches in single project
+
+---
+
+## Research Integration
+
+### Configuration Best Practices Research Capabilities
+
+**Schema Evolution Research**:
+- **Configuration pattern analysis**: Study how teams use different configuration options and identify common patterns
+- **Migration path optimization**: Research on effective upgrade strategies and backward compatibility preservation
+- **Validation effectiveness**: Research on optimal validation methods and error messaging for different configuration types
+- **Schema versioning strategies**: Analysis of different versioning approaches and their impact on usability
+
+**Best Practices Research Areas**:
+- **Project configuration optimization**: Research on optimal configuration patterns for different project sizes and types
+- **Language setting effectiveness**: Study on conversation language adoption and its impact on development efficiency
+- **Git strategy optimization**: Research on optimal workflow strategies for different team sizes and collaboration styles
+- **Report generation control**: Analysis of optimal report generation settings for different project requirements
+
+**Research Methodology**:
+- **Configuration adoption tracking**: Monitor how teams adopt different configuration options and identify trends
+- **Migration success rate analysis**: Study the effectiveness of different migration strategies and their success rates
+- **Configuration impact measurement**: Correlate configuration choices with project success metrics
+- **User experience research**: Study the usability of different configuration approaches and identify improvement opportunities
+
+### Configuration Research Framework
+
+#### 1. Schema Optimization Research
+- **Field usage patterns**: Research on which configuration fields are most/least commonly used
+- **Validation improvement**: Research on optimal validation rules and error messaging
+- **Schema evolution strategies**: Analysis of different schema evolution approaches and their impact
+- **Configuration default optimization**: Research on optimal default values for different project types
+
+#### 2. Migration Research
+- **Migration effectiveness**: Study on different migration approaches and their success rates
+- **Backward compatibility preservation**: Research on optimal strategies for preserving compatibility during upgrades
+- **Migration automation potential**: Analysis of opportunities for automating migration processes
+- **Version correlation studies**: Research on relationship between schema versions and project characteristics
+
+#### 3. Project Type Research
+```
+Configuration Research Framework:
+├── Usage Pattern Analysis
+│   ├── Configuration adoption tracking
+│   ├── Field popularity analysis
+│   ├── Team size correlation
+│   └── Project type patterns
+├── Optimization Research
+│   ├── Default value optimization
+│   ├── Validation improvement
+│   ├── Schema evolution
+│   └── Migration strategies
+└── Best Practices Development
+        ├── Configuration templates
+        ├── Migration guides
+        ├── Validation rules
+        └── Success metrics
+```
+
+**Current Research Focus Areas**:
+- Configuration optimization for different team sizes and project types
+- Migration path improvement strategies
+- Validation method enhancement for better user experience
+- Schema evolution patterns and best practices
+- Configuration impact on development efficiency
+
+---
+
+## Integration with Research System
+
+The configuration schema system integrates with MoAI-ADK's research framework by:
+
+1. **Collecting configuration data**: Track how teams configure their projects and identify common patterns and best practices
+2. **Validating schema evolution**: Provide real-world testing ground for new schema features and configuration options
+3. **Documenting migration patterns**: Capture successful migration strategies and share them across the organization
+4. **Benchmarking configuration approaches**: Measure the effectiveness of different configuration strategies and identify improvements
+
+**Research Collaboration**:
+- **Migration research team**: Share data on migration effectiveness and success patterns
+- **Validation optimization team**: Provide insights on validation methods and error messaging improvements
+- **Schema evolution team**: Collaborate on schema development and versioning strategies
+- **User experience team**: Study configuration usability and identify improvement opportunities
 
 ---
 

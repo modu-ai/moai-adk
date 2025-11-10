@@ -183,6 +183,7 @@
       "auto_spec_completion": {
         "@CODE:CONFIG-INTEGRATION-001": "@DOC:AUTO-SPEC-COMPLETION-001",
         "enabled": true,
+        "startup_grace_period_ms": 30000,
         "trigger_tools": [
           "Write",
           "Edit",

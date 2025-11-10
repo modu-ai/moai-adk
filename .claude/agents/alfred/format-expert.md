@@ -357,6 +357,60 @@ repos:
 - **Markdown Formatting**: Consistent markdown style
 - **Shell Script Formatting**: Shell script beautification
 
+### 📊 Research-Driven Code Quality & Style Standards
+
+The format-expert integrates research capabilities to establish evidence-based code formatting and style standards:
+
+#### 4.1 Code Quality Research & Metrics
+
+- **@RESEARCH:CODE-QUALITY-* Tags**: Systematic code quality research studies
+  - Code readability studies and comprehension research
+  - Maintainability metrics and technical debt analysis
+  - Code review effectiveness and bug prevention studies
+  - Developer productivity impact of formatting standards
+  - Code complexity measurement and optimization research
+  - Style consistency impact on onboarding and team collaboration
+
+#### 4.2 Tool Performance & Efficiency Research
+
+- **@ANALYSIS:PERF-TOOLS-* Tags**: Formatting tool performance and efficiency studies
+  - Formatting tool benchmarking and performance comparison
+  - Large-scale codebase formatting scalability research
+  - CI/CD integration efficiency studies
+  - Memory usage and resource consumption analysis
+  - Parallel processing effectiveness in formatting tools
+  - Tool adoption patterns and developer satisfaction research
+
+#### 4.3 Industry Standards & Best Practices Research
+
+- **@KNOWLEDGE:STANDARDS-* Tags**: Industry standards and best practices research
+  - Cross-industry style guide comparison and analysis
+  - Programming language evolution and style adaptation research
+  - Open-source project formatting standards study
+  - Enterprise vs startup formatting requirement analysis
+  - Regulatory compliance and code formatting standards research
+  - Internationalization and localization formatting considerations
+
+#### 4.4 Developer Experience & Workflow Research
+
+- **@INSIGHT:DEV-EX-* Tags**: Developer experience and workflow optimization research
+  - IDE integration effectiveness and developer productivity studies
+  - Pre-commit hook adoption and compliance research
+  - Automated formatting vs manual formatting preference studies
+  - Code review process efficiency and formatting feedback analysis
+  - Developer onboarding and style guide education effectiveness research
+  - Remote development formatting challenges and solutions research
+
+#### 4.5 Emerging Trends & Technology Research
+
+- **@RESEARCH:FUTURE-* Tags**: Emerging formatting trends and technology research
+  - Algorithm-based code formatting and style recommendation systems
+  - Statistical analysis for code style detection and automation
+  - Real-time collaborative editing formatting challenges
+  - Low-code/no-code platform formatting standards research
+  - Quantum computing code formatting considerations
+  - Cross-language style consistency automation research
+
 ## Code Example: Formatting Best Practices
 
 ```python
@@ -433,22 +487,48 @@ jobs:
 - **PR Comments**: Format feedback on pull requests
 - **Quality Gates**: Format compliance requirements
 
+### TAG Chain Integration for Code Quality
+
+**Format Expert TAG Types**:
+- `@FORMAT:{LANGUAGE}-{NNN}` – Language-specific formatting standards
+- `@STYLE:{PROJECT}-{NNN}` – Project style guide definitions
+- `@LINT:{RULESET}-{NNN}` – Linting rule configurations
+- `@RESEARCH:CODE-QUALITY-{NNN}` – Code quality research studies
+- `@ANALYSIS:PERF-TOOLS-{NNN}` – Tool performance analysis
+- `@KNOWLEDGE:STANDARDS-{NNN}` – Industry standards research
+- `@INSIGHT:DEV-EX-{NNN}` – Developer experience research
+- `@RESEARCH:FUTURE-{NNN}` – Emerging formatting trends research
+
+**Example with Research Integration**:
+```
+@SPEC:PROJECT-SETUP-001 (Project setup SPEC)
+  └─ @FORMAT:PYTHON-001 (Python formatting standards)
+      ├─ @LINT:RUFF-001 (Ruff configuration)
+      ├─ @STYLE:PROJECT-001 (Project style guide)
+      ├─ @RESEARCH:CODE-QUALITY-001 (Code readability research)
+      ├─ @ANALYSIS:PERF-TOOLS-001 (Formatting tool performance)
+      └─ @KNOWLEDGE:STANDARDS-001 (Industry standards analysis)
+```
+
 ## Collaboration with Other Alfred Agents
 
 ### With TDD Implementer
 - Code formatting in test files
 - Consistent style in test code
 - Documentation formatting
+- Research-backed test code organization patterns
 
 ### With Quality Gate
 - Format compliance validation
 - Code quality metrics
 - Style consistency checks
+- Evidence-based quality gate standards
 
 ### With Implementation Planner
 - Style guide requirements
 - Formatting tool selection
 - Code quality standards
+- Research-supported formatting recommendations
 
 ## Continuous Improvement
 

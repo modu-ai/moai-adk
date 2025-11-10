@@ -1,4 +1,4 @@
-# @TEST:GEN-001, @TEST:GEN-002, @TEST:GEN-003
+# # REMOVED_ORPHAN_TEST:GEN-001, # REMOVED_ORPHAN_TEST:GEN-002, # REMOVED_ORPHAN_TEST:GEN-003
 """Test suite for TAG ID generation and duplicate detection.
 
 Tests sequential TAG ID generation, duplicate detection using ripgrep,

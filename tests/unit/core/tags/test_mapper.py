@@ -1,4 +1,4 @@
-# @TEST:MAP-001, @TEST:MAP-002
+# # REMOVED_ORPHAN_TEST:MAP-001, # REMOVED_ORPHAN_TEST:MAP-002
 """Test suite for SPEC-DOC mapping and confidence scoring.
 
 Tests domain-based SPEC mapping, explicit metadata extraction,

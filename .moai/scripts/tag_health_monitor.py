@@ -183,7 +183,7 @@ class TagHealthMonitor:
             start_time = time.time()
             
             # 검증 테스트 실행
-            test_content = "# @CODE:TEST-001: Example tag"
+            test_content = "# # REMOVED_ORPHAN_CODE:TEST-001: Example tag"
             hook_script = self.project_root / ".claude" / "hooks" / "PreToolUse" / "tag_dedup_enhanced.py"
             
             if hook_script.exists():

@@ -1,0 +1,19 @@
+{
+  "index": "MoAI-ADK Documentation",
+  "ko": {
+    "title": "한국어",
+    "type": "page"
+  },
+  "en": {
+    "title": "English",
+    "type": "page"
+  },
+  "ja": {
+    "title": "日本語",
+    "type": "page"
+  },
+  "zh": {
+    "title": "中文",
+    "type": "page"
+  }
+}
