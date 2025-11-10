@@ -25,6 +25,7 @@ from typing import Any
 from rich.console import Console
 
 from moai_adk import __version__
+from moai_adk.statusline.version_reader import VersionReader, VersionConfig
 from moai_adk.core.project.backup_utils import (
     get_backup_targets,
     has_any_moai_files,
@@ -48,6 +49,8 @@ class PhaseExecutor:
     3. Resource: Copy template resources.
     4. Configuration: Generate configuration files.
     5. Validation: Perform final checks.
+
+    Enhanced with improved version reading and context management.
     """
 
     # Required directory structure
@@ -71,6 +74,81 @@ class PhaseExecutor:
         self.validator = validator
         self.total_phases = 5
         self.current_phase = 0
+        self._version_reader: VersionReader | None = None
+
+    def _get_version_reader(self) -> VersionReader:
+        """
+        Get or create version reader instance.
+
+        Returns:
+            VersionReader instance with enhanced configuration
+        """
+        if self._version_reader is None:
+            config = VersionConfig(
+                cache_ttl_seconds=120,  # Longer cache for phase execution
+                fallback_version=__version__,
+                version_format_regex=r"^v?(\d+\.\d+\.\d+(-[a-zA-Z0-9]+)?)$",
+                cache_enabled=True,
+                debug_mode=False
+            )
+            self._version_reader = VersionReader(config)
+        return self._version_reader
+
+    def _get_enhanced_version_context(self) -> dict[str, str]:
+        """
+        Get enhanced version context with fallback strategies.
+
+        Returns:
+            Dictionary containing version-related template variables
+        """
+        version_context = {}
+
+        try:
+            version_reader = self._get_version_reader()
+            moai_version = version_reader.get_version()
+            version_context["MOAI_VERSION"] = moai_version
+            version_context["MOAI_VERSION_SHORT"] = self._format_short_version(moai_version)
+            version_context["MOAI_VERSION_DISPLAY"] = self._format_display_version(moai_version)
+            version_context["MOAI_VERSION_VALID"] = "true" if moai_version != "unknown" else "false"
+        except Exception as e:
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Failed to read version for context: {e}")
+            # Use fallback version
+            version_context["MOAI_VERSION"] = __version__
+            version_context["MOAI_VERSION_SHORT"] = __version__
+            version_context["MOAI_VERSION_DISPLAY"] = f"MoAI-ADK v{__version__}"
+            version_context["MOAI_VERSION_VALID"] = "true"
+
+        return version_context
+
+    def _format_short_version(self, version: str) -> str:
+        """
+        Format short version by removing 'v' prefix if present.
+
+        Args:
+            version: Version string
+
+        Returns:
+            Short version string
+        """
+        return version[1:] if version.startswith('v') else version
+
+    def _format_display_version(self, version: str) -> str:
+        """
+        Format display version with proper formatting.
+
+        Args:
+            version: Version string
+
+        Returns:
+            Display version string
+        """
+        if version == "unknown":
+            return "MoAI-ADK unknown version"
+        elif version.startswith('v'):
+            return f"MoAI-ADK {version}"
+        else:
+            return f"MoAI-ADK v{version}"
 
     def execute_preparation_phase(
         self,
@@ -157,8 +235,11 @@ class PhaseExecutor:
                 else "$CLAUDE_PROJECT_DIR"
             )
 
+            # Get enhanced version context with fallback strategies
+            version_context = self._get_enhanced_version_context()
+
             context = {
-                "MOAI_VERSION": __version__,
+                **version_context,
                 "CREATION_TIMESTAMP": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "PROJECT_NAME": config.get("name", "unknown"),
                 "PROJECT_DESCRIPTION": config.get("description", ""),

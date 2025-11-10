@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# @CODE:DOC-TAG-004 | Component 2: CI/CD pipeline TAG validator
+# @CODE:DOC-TAG-004 | @SPEC:TAG-CI-VALIDATOR-001 | @TEST:TAG-CI-VALIDATOR-001 | Component 2: CI/CD pipeline TAG validator
 # type: ignore
 """CI/CD TAG validation module for GitHub Actions
 

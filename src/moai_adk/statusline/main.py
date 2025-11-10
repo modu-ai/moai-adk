@@ -3,7 +3,7 @@
 """
 Claude Code Statusline Integration
 
-@CODE:STATUSLINE-MAIN-001
+@CODE:STATUSLINE-MAIN-001 | @SPEC:STATUSLINE-MAIN-002 | @TEST:STATUSLINE-MAIN-002
 
 Main entry point for MoAI-ADK statusline rendering in Claude Code.
 Collects all necessary information from the project and renders it
