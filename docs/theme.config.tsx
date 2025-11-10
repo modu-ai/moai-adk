@@ -1,6 +1,7 @@
 import React from 'react'
 import { useThemeConfig } from 'nextra-theme-docs'
 import CustomSearch from './components/CustomSearch'
+import CoreWebVitalsOptimizer from './components/CoreWebVitalsOptimizer'
 
 const config = {
   logo: (
@@ -79,6 +80,34 @@ const config = {
       <meta property="og:image" content="https://moai-adk.gooslab.ai/og-image.png" />
       <meta name="twitter:card" content="summary_large_image" />
       <link rel="icon" href="/favicon.ico" />
+
+      {/* Performance optimizations */}
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+
+      {/* Core Web Vitals monitoring in development */}
+      {process.env.NODE_ENV === 'development' && (
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              // Performance monitoring setup
+              if (typeof window !== 'undefined') {
+                window.addEventListener('load', function() {
+                  setTimeout(function() {
+                    const vitals = performance.getEntriesByType('navigation')[0];
+                    console.log('📊 Navigation Timing:', {
+                      domContentLoaded: vitals.domContentLoadedEventEnd - vitals.navigationStart,
+                      loadComplete: vitals.loadEventEnd - vitals.navigationStart,
+                      firstPaint: performance.getEntriesByType('paint')[0]?.startTime,
+                      firstContentfulPaint: performance.getEntriesByType('paint')[1]?.startTime
+                    });
+                  }, 0);
+                });
+              }
+            `
+          }}
+        />
+      )}
     </>
   ),
 
@@ -120,6 +149,12 @@ const extendedConfig = {
   content: {
     // Specify the content directory
     dir: 'content',
+  },
+
+  // Performance optimization components
+  components: {
+    // Add Core Web Vitals monitoring in development
+    CoreWebVitalsOptimizer: process.env.NODE_ENV === 'development' ? CoreWebVitalsOptimizer : undefined,
   },
 }
 

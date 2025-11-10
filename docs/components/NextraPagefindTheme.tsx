@@ -15,7 +15,6 @@ const NextraPagefindTheme: React.FC<NextraPagefindThemeProps> = ({ children }) =
       {/* Override default search with Pagefind */}
       <div className="nextra-search-container">
         <PagefindSearch
-          placeholder={themeConfig.search?.placeholder || "검색..."}
           locale={locale}
         />
       </div>
