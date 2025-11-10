@@ -402,9 +402,9 @@ API에 더 많은 기능 추가:
 
 ### 고급 주제 탐색
 
-- **[프로젝트 구성](../guides/project/config.md)**: 프로젝트 설정 사용자정의
-- **[SPEC 작성](../guides/specs/basics.md)**: EARS 구문 마스터하기
-- **[TDD 패턴](../guides/tdd/green.md)**: 고급 테스트 전략 학습
+- **[프로젝트 구성](guides/project/config.md)**: 프로젝트 설정 사용자정의
+- **[SPEC 작성](guides/specs/basics.md)**: EARS 구문 마스터하기
+- **[TDD 패턴](guides/tdd/green.md)**: 고급 테스트 전략 학습
 - **[TAG 시스템](reference/tags/index.md)**: 추적성 깊이 이해하기
 
 ### 커뮤니티 참여
@@ -464,4 +464,4 @@ moai-adk doctor
 이것이 MoAI-ADK의 힘입니다: 전통적인 방법보다 더 빠르게 신뢰할 수 있고, 유지보수가 쉬우며, 잘 문서화된 코드를 생성하세요. 이제 자신감 있게 복잡한 애플리케이션을 빌드할
 준비가 되었습니다!
 
-[Alfred 워크플로우 가이드](../guides/alfred/index.md)로 여정을 계속하거나 관심 있는 특정 주제를 탐색하세요.
+[Alfred 워크플로우 가이드](guides/alfred/index.md)로 여정을 계속하거나 관심 있는 특정 주제를 탐색하세요.

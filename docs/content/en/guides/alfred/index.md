@@ -2,7 +2,7 @@
 
 <div align="center" class="image-container">
 
-![Alfred Logo](../../../public/alfred_logo.png){ class="alfred-logo" }
+![Alfred Logo](../../public/alfred_logo.png){ class="alfred-logo" }
 
 <div class="image-caption">Alfred - Your AI Development Partner</div>
 
@@ -574,7 +574,7 @@ Now that you understand Alfred's workflow, explore these guides:
 
 - **[SPEC Writing](specs/basics.md)** - Master EARS syntax
 - **[TDD Implementation](tdd/red.md)** - Learn test-driven development
-- **[TAG System](../reference/tags/index.md)** - Understand traceability
+- **[TAG System](reference/tags/index.md)** - Understand traceability
 - **[Project Configuration](project/config.md)** - Customize your setup
 
 Alfred is your partner in creating reliable, maintainable software. Trust the process, follow the

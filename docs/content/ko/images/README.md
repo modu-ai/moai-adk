@@ -89,7 +89,7 @@
 ## 마크다운 임베딩 예시
 
 ```markdown
-![프로젝트 초기화 과정](../images/screenshot-01-moai-init.png)
+![프로젝트 초기화 과정](images/screenshot-01-moai-init.png)
 
 이 화면에서 프로젝트 이름, 언어, 프레임워크를 선택합니다.
 ```

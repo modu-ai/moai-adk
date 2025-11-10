@@ -216,9 +216,9 @@ def select_agents(user_request):
 
 ## 🔗 관련 문서
 
-- [Alfred 슈퍼에이전트](../guides/alfred/index.md) - Alfred 개념과 워크플로우
+- [Alfred 슈퍼에이전트](guides/alfred/index.md) - Alfred 개념과 워크플로우
 - [Skills 시스템](skills/index.md) - 55개+ Claude Skills
-- [아키텍처 설명](../advanced/architecture.md) - 4계층 스택 구조
+- [아키텍처 설명](advanced/architecture.md) - 4계층 스택 구조
 
 ______________________________________________________________________
 

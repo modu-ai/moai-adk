@@ -344,8 +344,8 @@ Task(
 
 ## 참고 자료
 
-- **[Skill 상세](../reference/skills/index.md)** - moai-docs-unified 스킬 설명
-- **[Agent 상세](../reference/agents/index.md)** - docs-manager 에이전트 역할
+- **[Skill 상세](reference/skills/index.md)** - moai-docs-unified 스킬 설명
+- **[Agent 상세](reference/agents/index.md)** - docs-manager 에이전트 역할
 - **[마크다운 가이드](https://www.markdownguide.org/)** - 마크다운 기본 문법
 - **[Mermaid 공식](https://mermaid.live)** - Mermaid 다이어그램 렌더링
 

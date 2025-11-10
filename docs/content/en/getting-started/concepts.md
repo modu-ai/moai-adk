@@ -329,8 +329,8 @@ Alfred SuperAgent (orchestration)
 ## Getting Started with Concepts
 
 1. **Experience the Workflow**: Try the [Quick Start Guide](quick-start.md)
-2. **Understand EARS Syntax**: Learn [SPEC Writing](../guides/specs/basics.md)
-3. **Master TDD**: Follow the [TDD Guide](../guides/tdd/red.md)
+2. **Understand EARS Syntax**: Learn [SPEC Writing](guides/specs/basics.md)
+3. **Master TDD**: Follow the [TDD Guide](guides/tdd/red.md)
 4. **Explore TAG System**: Read the [TAG Documentation](reference/tags/index.md)
 
 These concepts work together to create a development experience that is more reliable, maintainable, and enjoyable than traditional approaches. With Alfred as your guide, you'll write better code faster, with confidence that it meets production standards.

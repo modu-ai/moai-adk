@@ -285,7 +285,7 @@ uv add fastapi pytest
 
 1. **[빠른 시작 가이드](quick-start.md)** - 10분 안에 첫 프로젝트 실행
 2. **[핵심 개념](concepts.md)** - SPEC-First, TDD, @TAG, TRUST 5 원칙 이해
-3. **[프로젝트 초기화](../guides/project/init.md)** - 프로젝트 설정 및 구성 학습
+3. **[프로젝트 초기화](guides/project/init.md)** - 프로젝트 설정 및 구성 학습
 
 ## 설치 요약
 

@@ -330,8 +330,8 @@ Alfred SuperAgent (오케스트레이션)
 ## 개념으로 시작하기
 
 1. **워크플로우 경험**: [빠른 시작 가이드](quick-start.md) 시도
-2. **EARS 구문 이해**: [SPEC 작성](../guides/specs/basics.md) 학습
-3. **TDD 마스터**: [TDD 가이드](../guides/tdd/red.md) 따르기
+2. **EARS 구문 이해**: [SPEC 작성](guides/specs/basics.md) 학습
+3. **TDD 마스터**: [TDD 가이드](guides/tdd/red.md) 따르기
 4. **TAG 시스템 탐색**: [TAG 문서](reference/tags/index.md) 읽기
 
 이러한 개념은 함께 작동하여 전통적 접근보다 더 신뢰할 수 있고, 유지보수가 쉬우며, 즐거운 개발 경험을 만듭니다. Alfred를 가이드로 삼아, 프로덕션 표준을 충족한다는

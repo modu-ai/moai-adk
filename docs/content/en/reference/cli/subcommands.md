@@ -561,7 +561,7 @@ moai-adk status
 
 ______________________________________________________________________
 
-**Next**: [moai-adk Command Reference](moai-adk.md) or [Alfred Concepts](../guides/alfred/index.md)
+**Next**: [moai-adk Command Reference](moai-adk.md) or [Alfred Concepts](guides/alfred/index.md)
 
 
 
