@@ -1,3 +1,5 @@
+# @CODE:UPDATE-MAIN-001 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002
+
 """Update command
 
 Update MoAI-ADK to the latest version available on PyPI with 3-stage workflow:
@@ -66,7 +68,7 @@ PIPX_COMMAND = ["pipx", "upgrade", "moai-adk"]
 PIP_COMMAND = ["pip", "install", "--upgrade", "moai-adk"]
 
 
-# @CODE:UPDATE-TEMPLATE-004
+# @CODE:UPDATE-TEMPLATE-004 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002
 # Custom exceptions for better error handling
 class UpdateError(Exception):
     """Base exception for update operations."""
@@ -143,7 +145,7 @@ def _is_installed_via_pip() -> bool:
         return False
 
 
-# @CODE:UPDATE-CONTEXT-001
+# @CODE:UPDATE-CONTEXT-001 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002
 def _detect_tool_installer() -> list[str] | None:
     """Detect which tool installed moai-adk.
 
@@ -183,7 +185,7 @@ def _detect_tool_installer() -> list[str] | None:
         return None
 
 
-# @CODE:UPDATE-VERSION-002
+# @CODE:UPDATE-VERSION-002 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002
 def _get_current_version() -> str:
     """Get currently installed moai-adk version.
 
@@ -240,7 +242,7 @@ def _compare_versions(current: str, latest: str) -> int:
         return 1
 
 
-# @CODE:UPDATE-SYNC-006
+# @CODE:UPDATE-SYNC-006 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002
 def _get_package_config_version() -> str:
     """Get the current package template version.
 
@@ -255,7 +257,7 @@ def _get_package_config_version() -> str:
     return __version__
 
 
-# @CODE:UPDATE-PACKAGE-007
+# @CODE:UPDATE-PACKAGE-007 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002
 def _get_project_config_version(project_path: Path) -> str:
     """Get current project config.json template version.
 
@@ -301,7 +303,7 @@ def _get_project_config_version(project_path: Path) -> str:
         raise ValueError(f"Failed to parse project config.json: {e}") from e
 
 
-# @CODE:UPDATE-CACHE-001
+# @CODE:UPDATE-CACHE-001 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002
 def _detect_stale_cache(upgrade_output: str, current_version: str, latest_version: str) -> bool:
     """
     Detect if uv cache is stale by comparing versions.
@@ -347,7 +349,7 @@ def _detect_stale_cache(upgrade_output: str, current_version: str, latest_versio
         return False
 
 
-# @CODE:UPDATE-CACHE-002
+# @CODE:UPDATE-CACHE-002 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002
 def _clear_uv_package_cache(package_name: str = "moai-adk") -> bool:
     """
     Clear uv cache for specific package.
@@ -398,7 +400,7 @@ def _clear_uv_package_cache(package_name: str = "moai-adk") -> bool:
         return False
 
 
-# @CODE:UPDATE-CACHE-003
+# @CODE:UPDATE-CACHE-003 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002
 def _execute_upgrade_with_retry(installer_cmd: list[str], package_name: str = "moai-adk") -> bool:
     """
     Execute upgrade with automatic cache retry on stale detection.
@@ -762,7 +764,7 @@ def _preserve_project_metadata(
     config_data.setdefault("moai", {})
     config_data["moai"]["version"] = version_for_config
 
-    # @CODE:UPDATE-VERSION-008: Update template_version to track sync status
+    # @CODE:UPDATE-VERSION-008 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002: Update template_version to track sync status
     # This allows Stage 2 to compare package vs project template versions
     project_data["template_version"] = version_for_config
 
@@ -870,7 +872,7 @@ def _validate_template_substitution_with_rollback(project_path: Path, backup_pat
         return True
 
 
-# @CODE:UPDATE-METADATA-003
+# @CODE:UPDATE-METADATA-003 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002
 def _show_version_info(current: str, latest: str) -> None:
     """Display version information.
 
@@ -883,7 +885,7 @@ def _show_version_info(current: str, latest: str) -> None:
     console.print(f"   Latest version:  {latest}")
 
 
-# @CODE:UPDATE-CONFIG-005
+# @CODE:UPDATE-CONFIG-005 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002
 def _show_installer_not_found_help() -> None:
     """Show help when installer not found."""
     console.print("[red]❌ Cannot detect package installer[/red]\n")
@@ -1032,7 +1034,7 @@ def update(path: str, force: bool, check: bool, templates_only: bool, yes: bool)
         comparison = _compare_versions(current, latest)
 
         # Stage 1: Package Upgrade (if current < latest)
-        # @CODE:UPDATE-STAGE1-009
+        # @CODE:UPDATE-STAGE1-009 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002
         if comparison < 0:
             console.print(f"\n[cyan]📦 Upgrading: {current} → {latest}[/cyan]")
 
@@ -1072,7 +1074,7 @@ def update(path: str, force: bool, check: bool, templates_only: bool, yes: bool)
             return
 
         # Stage 2: Config Version Comparison
-        # @CODE:UPDATE-STAGE2-010: Stage 2 - Compare template versions to determine if sync needed
+        # @CODE:UPDATE-STAGE2-010 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002: Stage 2 - Compare template versions to determine if sync needed
         console.print(f"✓ Package already up to date ({current})")
 
         try:
@@ -1104,7 +1106,7 @@ def update(path: str, force: bool, check: bool, templates_only: bool, yes: bool)
             return
 
         # Stage 3: Template Sync (Only if package_config_version > project_config_version)
-        # @CODE:UPDATE-STAGE3-011: Stage 3 - Template sync only if versions differ
+        # @CODE:UPDATE-STAGE3-011 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002: Stage 3 - Template sync only if versions differ
         console.print(f"\n[cyan]📄 Syncing templates ({project_config_version} → {package_config_version})...[/cyan]")
 
         # Create backup unless --force
