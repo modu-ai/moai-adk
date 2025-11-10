@@ -176,15 +176,24 @@ def format_session_output() -> str:
     git_info = get_git_info()
     spec_progress = get_spec_progress()
 
-    # Get MoAI version from config if available
+    # Get MoAI version using enhanced VersionReader
     moai_version = "unknown"
     try:
-        config_path = Path.cwd() / ".moai" / "config.json"
-        if config_path.exists():
-            config = json.loads(config_path.read_text())
-            moai_version = config.get("moai", {}).get("version", "unknown")
+        # Import VersionReader for enhanced version reading
+        from src.moai_adk.statusline.version_reader import VersionReader, VersionConfig
+
+        # Create VersionReader with default configuration
+        version_reader = VersionReader()
+        moai_version = version_reader.get_version()
+
+        # If still unknown, try fallback methods
+        if moai_version == "unknown":
+            config_path = Path.cwd() / ".moai" / "config.json"
+            if config_path.exists():
+                config = json.loads(config_path.read_text())
+                moai_version = config.get("moai", {}).get("version", "unknown")
     except Exception:
-        pass
+        moai_version = "unknown"
 
     # Format output
     output = [
