@@ -4,10 +4,11 @@
 SessionStart, SessionEnd event handling
 """
 
-from core import HookPayload, HookResult
+import time
+from core import HookPayload, HookResult, HookConfiguration, ExecutionResult, get_logger, get_performance_metrics
 from core.checkpoint import list_checkpoints
 from core.project import count_specs, get_git_info, get_package_version_info
-from utils.state_tracking import track_hook_execution
+from utils.state_tracking import track_hook_execution, get_state_manager, HookConfiguration as StateConfig
 
 
 def handle_session_start(payload: HookPayload) -> HookResult:
@@ -62,25 +63,59 @@ def handle_session_start(payload: HookPayload) -> HookResult:
     @CODE:MAJOR-UPDATE-WARN-001
     @CODE:HOOKS-SESSION-DEDUPE-001
     """
+    # Get logger and configuration
+    logger = get_logger()
+
     # Phase-based deduplication for SessionStart hook
+    cwd = payload.get("cwd", ".")
     event_phase = payload.get("phase", "")
 
     # Validate and normalize phase (handle invalid/missing phases)
     if event_phase not in ["clear", "compact"]:
         # Invalid or missing phase defaults to clear behavior
         event_phase = "clear"
+        logger.debug(f"Invalid or missing phase '{event_phase}', defaulting to clear")
 
     # Clear phase: return minimal output to prevent duplicate execution
     if event_phase == "clear":
         return HookResult(continue_execution=True)
 
-    # Track hook execution for compact phase (after deduplication)
-    cwd = payload.get("cwd", ".")
-    execution_info = track_hook_execution("SessionStart", cwd, event_phase)
+    # Get state manager with configuration
+    try:
+        state_manager = get_state_manager(cwd)
+        config = state_manager.config
+    except Exception as e:
+        logger.warning(f"Failed to get state manager: {e}, using defaults")
+        config = HookConfiguration.from_env()
 
-    # Return empty result if deduplicated (compact phase)
-    if not execution_info["executed"]:
-        return HookResult(continue_execution=True)
+    # Track hook execution for compact phase with enhanced error handling
+    try:
+        execution_info = track_hook_execution("SessionStart", cwd, event_phase, config)
+
+        # If deduplicated, still return system_message but with different handling
+        if not execution_info.executed:
+            # For compact phase deduplication, still return a minimal message
+            # but avoid executing the expensive operations
+            logger.info(f"SessionStart deduplicated (phase: {event_phase}, reason: {execution_info.reason})")
+
+            return HookResult(
+                continue_execution=True,
+                system_message="🚀 MoAI-ADK Session Started (deduplicated)"
+            )
+
+        # Log successful execution
+        logger.info(f"SessionStart executed successfully (phase: {event_phase}, execution_id: {execution_info.execution_id})")
+
+    except Exception as e:
+        logger.error(f"Error in hook execution tracking: {e}")
+        # Continue with execution despite tracking failure
+        execution_info = ExecutionResult(
+            executed=True,
+            duplicate=False,
+            execution_id="unknown",
+            timestamp=time.time(),
+            error=str(e)
+        )
 
     # OPTIONAL: Git info - skip if timeout/failure
     git_info = {}
