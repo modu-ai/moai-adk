@@ -21,8 +21,8 @@ if str(SHARED_DIR) not in sys.path:
     sys.path.insert(0, str(SHARED_DIR))
 
 from handlers import handle_user_prompt_submit  # noqa: E402
-from utils.timeout import CrossPlatformTimeout  # noqa: E402
-from utils.timeout import TimeoutError as PlatformTimeoutError  # noqa: E402
+from core.timeout import CrossPlatformTimeout  # noqa: E402
+from core.timeout import TimeoutError as PlatformTimeoutError  # noqa: E402
 
 
 def main() -> None:
