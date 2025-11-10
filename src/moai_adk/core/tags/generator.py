@@ -1,10 +1,11 @@
-# @CODE:TAG-GENERATOR-001 | @SPEC:DOC-TAG-001
+# @CODE:TAG-GENERATOR-001 | @SPEC:DOC-TAG-GENERATOR
 """TAG ID generation and duplicate detection.
 
 Generates sequential @DOC:DOMAIN-NNN identifiers and detects duplicates
 using ripgrep for performance.
 
-@SPEC:DOC-TAG-001: @DOC 태그 자동 생성 인프라
+@SPEC:DOC-TAG-GENERATOR: @DOC 태그 자동 생성 인프라
+@CODE:QUALITY-FRAMEWORK: TAG 생성 품질 관리 시스템
 """
 
 import re

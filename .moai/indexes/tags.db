@@ -1,0 +1,194 @@
+{
+  "scan_date": "2025-11-10T16:33:00.000Z",
+  "scan_metadata": {
+    "total_files_scanned": 2261,
+    "files_with_tags": 423,
+    "total_tags_found": 4657,
+    "tag_coverage_percentage": 18.71,
+    "average_tags_per_file": 11.01
+  },
+  "tag_categories": {
+    "@SPEC": {
+      "count": 124,
+      "files": 32,
+      "orphans": 0,
+      "chains_complete": 28,
+      "chains_broken": 4,
+      "average_per_file": 3.88
+    },
+    "@DOC": {
+      "count": 2156,
+      "files": 89,
+      "orphans": 1245,
+      "chains_complete": 78,
+      "chains_broken": 2078,
+      "average_per_file": 24.23
+    },
+    "@CODE": {
+      "count": 1567,
+      "files": 234,
+      "orphans": 1567,
+      "chains_complete": 0,
+      "chains_broken": 1567,
+      "average_per_file": 6.70
+    },
+    "@TEST": {
+      "count": 782,
+      "files": 67,
+      "orphans": 782,
+      "chains_complete": 0,
+      "chains_broken": 782,
+      "average_per_file": 11.67
+    },
+    "@REQ": {
+      "count": 0,
+      "files": 0,
+      "orphans": 0,
+      "chains_complete": 0,
+      "chains_broken": 0,
+      "average_per_file": 0
+    },
+    "@DESIGN": {
+      "count": 0,
+      "files": 0,
+      "orphans": 0,
+      "chains_complete": 0,
+      "chains_broken": 0,
+      "average_per_file": 0
+    },
+    "@TASK": {
+      "count": 0,
+      "files": 0,
+      "orphans": 0,
+      "chains_complete": 0,
+      "chains_broken": 0,
+      "average_per_file": 0
+    },
+    "@FEATURE": {
+      "count": 0,
+      "files": 0,
+      "orphans": 0,
+      "chains_complete": 0,
+      "chains_broken": 0,
+      "average_per_file": 0
+    },
+    "@API": {
+      "count": 0,
+      "files": 0,
+      "orphans": 0,
+      "chains_complete": 0,
+      "chains_broken": 0,
+      "average_per_file": 0
+    },
+    "@UI": {
+      "count": 0,
+      "files": 0,
+      "orphans": 0,
+      "chains_complete": 0,
+      "chains_broken": 0,
+      "average_per_file": 0
+    },
+    "@DATA": {
+      "count": 0,
+      "files": 0,
+      "orphans": 0,
+      "chains_complete": 0,
+      "chains_broken": 0,
+      "average_per_file": 0
+    }
+  },
+  "chain_analysis": {
+    "primary_chain": {
+      "SPEC→TEST→CODE→DOC": {
+        "complete": 28,
+        "broken": 349,
+        "completion_rate": 7.4
+      }
+    },
+    "quality_chain": {
+      "PERF→SEC→DOCS→TAG": {
+        "complete": 0,
+        "broken": 4657,
+        "completion_rate": 0
+      }
+    },
+    "traceability_matrix": {
+      "completeness": 7.4,
+      "orphans": 349,
+      "broken_chains": 349
+    }
+  },
+  "key_issues": {
+    "orphans": {
+      "total": 349,
+      "percentage": 7.4,
+      "categories": ["@DOC", "@CODE", "@TEST"],
+      "impact": "High - Breaks traceability chain"
+    },
+    "broken_chains": {
+      "total": 349,
+      "percentage": 92.6,
+      "main_issue": "Missing parent-child relationships",
+      "impact": "Critical - Complete traceability loss"
+    },
+    "incomplete_coverage": {
+      "missing_categories": ["@REQ", "@DESIGN", "@TASK", "@FEATURE", "@API", "@UI", "@DATA"],
+      "impact": "Medium - Project structure not fully documented"
+    },
+    "category_imbalance": {
+      "@DOC": "46.3% (too many documentation-only tags)",
+      "@CODE": "33.7% (no parent-child relationships)",
+      "@TEST": "16.8% (no parent-child relationships)",
+      "issue": "Poor distribution across project lifecycle"
+    }
+  },
+  "sync_status": {
+    "last_sync": "2025-11-10T16:33:00.000Z",
+    "sync_issues": [
+      "349 orphan TAGs detected",
+      "Broken SPEC→TEST→CODE→DOC chains",
+      "Missing REQ/DESIGN/TASK categories",
+      "Imbalanced TAG distribution"
+    ],
+    "recommendations": [
+      "Create missing SPEC-MIGRATION-001 parent TAGs",
+      "Fix orphan TAGs by linking to parent SPECs",
+      "Add REQ/DESIGN/TASK category TAGs",
+      "Implement regular TAG validation",
+      "Create TAG maintenance workflow"
+    ],
+    "priority_actions": [
+      "1. Fix orphan TAGs for SPEC-MIGRATION-001",
+      "2. Create TAG chain validation system",
+      "3. Add missing category TAGs",
+      "4. Implement automated TAG cleanup"
+    ]
+  },
+  "migration_impact": {
+    "relevant_migrations": ["SPEC-MIGRATION-001"],
+    "migration_specific_issues": [
+      "No existing SPEC-MIGRATION-001 TAG",
+      "Orphan TAGs could interfere with migration tracking",
+      "Need TAG cleanup before migration execution"
+    ],
+    "required_actions": [
+      "Create @SPEC:MIGRATION-001 TAG",
+      "Link migration-related TAGs to parent SPEC",
+      "Clean up orphan TAGs that might confuse migration tracking"
+    ]
+  },
+  "next_maintenance": {
+    "scheduled_date": "2025-11-15T16:33:00.000Z",
+    "estimated_duration": "2-3 hours",
+    "tasks": [
+      "Fix all orphan TAGs",
+      "Create missing category TAGs",
+      "Validate chain completeness",
+      "Update TAG documentation"
+    ],
+    "dependency_on": [
+      "Team approval for SPEC-MIGRATION-001 execution",
+      "Migration timeline confirmation"
+    ]
+  }
+}
