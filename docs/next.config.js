@@ -5,4 +5,9 @@ module.exports = withNextra({
   staticImage: true,
   latex: true,
   codeHighlight: true,
+  output: 'export',
+  trailingSlash: true,
+  images: {
+    unoptimized: true
+  }
 });

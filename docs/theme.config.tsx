@@ -1,5 +1,6 @@
 import React from 'react'
 import { useThemeConfig } from 'nextra-theme-docs'
+import CustomSearch from './components/CustomSearch'
 
 const config = {
   logo: (
@@ -90,6 +91,8 @@ const config = {
 
   search: {
     placeholder: '검색...',
+    // Custom search component using Pagefind
+    component: CustomSearch,
   },
 
   toc: {
