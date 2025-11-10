@@ -111,4 +111,13 @@ const config = {
   darkMode: true,
 }
 
-export default config
+// Content directory configuration for Nextra 4.x
+const extendedConfig = {
+  ...config,
+  content: {
+    // Specify the content directory
+    dir: 'content',
+  },
+}
+
+export default extendedConfig
