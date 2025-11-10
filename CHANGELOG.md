@@ -4,6 +4,21 @@ All commits to MoAI-ADK are listed below in chronological order. Each entry show
 
 ## Recent Releases
 
+### v0.23.0 (2025-11-11)
+
+**Critical Release: Bug Fixes & Performance Improvements**
+
+**Critical Bug Fixes**
+- **Issue #207**: Hook Duplication Fix - All hooks and commands were executing twice, causing performance degradation and user confusion
+  - **Solution**: Implemented temporal command deduplication in PhaseExecutor and enhanced state tracking in HookManager
+  - **Impact**: ~50% performance improvement by eliminating duplicate executions
+  - **Technical**: Added phase detection, temporal deduplication with 30-minute TTL, and enhanced session state management
+
+- **Issue #206**: Version Field Preservation - Version fields were missing from `.moai/config.json`, causing "unknown" version display
+  - **Solution**: Enhanced ConfigGenerator to preserve version fields during config generation
+  - **Impact**: Version now correctly displays actual version instead of "unknown"
+  - **Technical**: Added version field preservation, template variable substitution, and enhanced VersionReader with caching
+
 ### v0.22.1 (2025-11-10)
 
 **Patch Release: Package Synchronization & Configuration Cleanup**
