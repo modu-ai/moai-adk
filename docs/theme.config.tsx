@@ -8,6 +8,12 @@ const config: DocsThemeConfig = {
     </span>
   ),
 
+  // Nextra 4.x optimizations
+  // primaryHue: 180,
+  // primarySaturation: 70,
+  // grayHue: 215,
+  // graySaturation: 10,
+
   project: {
     link: 'https://github.com/modu-ai/moai-adk',
     icon: (
