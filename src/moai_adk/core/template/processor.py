@@ -401,7 +401,7 @@ class TemplateProcessor:
         elif cache_age is not None:
             return "config_stale"
         else:
-            return "fallback"
+            return config.fallback_source.value
 
     def _get_template_root(self) -> Path:
         """Return the template root path."""
