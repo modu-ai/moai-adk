@@ -2,7 +2,7 @@
 
 <div align="center" class="image-container">
 
-![Alfred Logo](../../public/alfred_logo.png){ class="alfred-logo" }
+![Alfred Logo](public/alfred_logo.png){ class="alfred-logo" }
 
 <div class="image-caption">Alfred - Your AI Development Partner</div>
 
