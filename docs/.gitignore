@@ -31,6 +31,9 @@ npm-debug.log*
 coverage/
 .nyc_output/
 
+# Biome
+.biome/
+
 # Environment
 .env.local
 .env.*.local
