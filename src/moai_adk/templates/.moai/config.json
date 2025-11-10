@@ -40,7 +40,9 @@
       "auto_commit": true,
       "branch_prefix": "feature/",
       "develop_branch": "develop",
-      "main_branch": "main"
+      "main_branch": "main",
+      "prevent_branch_creation": false,
+      "work_on_main": false
     },
     "team": {
       "auto_pr": true,
