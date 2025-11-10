@@ -1,4 +1,4 @@
-# @CODE:CLI-003 | @CODE:INIT-005:CLI
+# @CODE:CLI-003 | @SPEC:CLI-INIT-001 | @TEST:CLI-INIT-001 | @CODE:INIT-005:CLI
 # SPEC: SPEC-CLI-001.md, SPEC-INIT-003.md
 # TEST: tests/unit/test_cli_commands.py, tests/unit/test_init_reinit.py
 """MoAI-ADK init command
@@ -36,6 +36,7 @@ from rich.console import Console
 from rich.progress import BarColumn, Progress, SpinnerColumn, TaskID, TextColumn
 
 from moai_adk import __version__
+from moai_adk.statusline.version_reader import VersionReader, VersionConfig
 from moai_adk.cli.prompts import prompt_project_setup
 from moai_adk.core.mcp.setup import MCPSetupManager
 from moai_adk.core.project.initializer import ProjectInitializer
@@ -135,10 +136,25 @@ def init(
         force: Force reinitialize without confirmation
     """
     try:
-        # 1. Print banner
+        # 1. Print banner with enhanced version info
         print_banner(__version__)
 
-        # 2. Check current directory mode
+        # 2. Enhanced version reading with error handling
+        try:
+            version_config = VersionConfig(
+                cache_ttl_seconds=10,  # Very short cache for CLI
+                fallback_version=__version__,
+                debug_mode=False
+            )
+            version_reader = VersionReader(version_config)
+            current_version = version_reader.get_version()
+
+            # Log version info for debugging
+            console.print(f"[dim]Current MoAI-ADK version: {current_version}[/dim]")
+        except Exception as e:
+            console.print(f"[yellow]⚠️ Version read error: {e}[/yellow]")
+
+        # 3. Check current directory mode
         is_current_dir = path == "."
         project_path = Path(path).resolve()
 
