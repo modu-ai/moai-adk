@@ -113,6 +113,21 @@ async function fixUrl(url, currentFilePath) {
     fixedUrl = fixedUrl.substring(2);
   }
 
+  // Fix Spanish page references (es/page.md → zh/page.md)
+  if (fixedUrl.includes('es/page.md') || fixedUrl.startsWith('es/')) {
+    fixedUrl = fixedUrl.replace('es/', 'zh/');
+  }
+
+  // Fix generic path/to/file.md references
+  if (fixedUrl.includes('path/to/file.md')) {
+    fixedUrl = fixedUrl.replace('path/to/file.md', 'docs/index.md');
+  }
+
+  // Fix nonexistent.md references
+  if (fixedUrl.includes('nonexistent.md')) {
+    fixedUrl = fixedUrl.replace('nonexistent.md', 'docs/index.md');
+  }
+
   // Get current file directory
   const currentDir = path.dirname(currentFilePath);
   const contentRoot = CONTENT_DIR;

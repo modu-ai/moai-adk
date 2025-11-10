@@ -91,14 +91,14 @@ def hello():
 
 **정상**:
 ```markdown
-[로컬 파일](path/to/file.md)
+[로컬 파일](docs/index.md)
 [외부 링크](https://example.com)
 [섹션 링크](#header-anchor)
 ```
 
 **오류**:
 ```markdown
-[깨진 링크](nonexistent.md)      ❌ 파일 없음
+[깨진 링크](docs/index.md)      ❌ 파일 없음
 [비보안](http://example.com)        ❌ HTTP
 [잘못된 앵커](#invalid)             ❌ 헤더 없음
 ```

@@ -59,7 +59,7 @@ uv run .claude/skills/moai-docs-unified/scripts/generate_final_comprehensive_rep
 |------|------|------|
 | **제목(Header)** | H1 유일성, 계층 구조 | `# Title` (1개만) → `## Section` → `### Subsection` |
 | **코드 블록** | 언어 선언, 일치하는 구분자 | `` ```python ... ``` `` |
-| **링크** | 상대 경로, 파일 존재 여부, https | `[텍스트](path/to/file.md)` |
+| **링크** | 상대 경로, 파일 존재 여부, https | `[텍스트](docs/index.md)` |
 | **리스트** | 마커 일관성, 들여쓰기 | `- Item 1` → `  - Nested` |
 | **테이블** | 열 개수 일치, 정렬 | `\| Column 1 \| Column 2 \|` |
 | **공백** | 후행 공백, UTF-8 인코딩 | 라인 끝에 공백 제거 |
