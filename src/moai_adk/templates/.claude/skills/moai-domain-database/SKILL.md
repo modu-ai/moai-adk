@@ -1,46 +1,57 @@
 ---
 name: moai-domain-database
-description: Enterprise-grade database architecture expertise with AI-driven query optimization, intelligent data modeling, multi-database orchestration, and autonomous performance management; activates for database design, data strategy, performance optimization, and distributed data systems.
-allowed-tools:
-  - Read
-  - Bash
-  - WebSearch
-  - WebFetch
+version: 4.0.0
+created: 2025-11-12
+updated: 2025-11-12
+status: active
+tier: domain
+description: "Enterprise-grade database architecture expertise with AI-driven query optimization, intelligent data modeling, multi-database orchestration, and autonomous performance management; activates for database design, data strategy, performance optimization, and distributed data systems.. Enhanced with Context7 MCP for up-to-date documentation."
+allowed-tools: "Read, Bash, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
+primary-agent: "database-expert"
+secondary-agents: [doc-syncer, alfred, qa-validator]
+keywords: [domain, database, kubernetes, database, security]
+tags: [domain-expert]
+orchestration:
+  can_resume: true
+  typical_chain_position: "middle"
+  depends_on: []
 ---
 
-# 🗄️ Enterprise Database Architect & AI-Optimized Data Systems
+# moai-domain-database
 
-## 🚀 AI-Driven Database Capabilities
+**Domain Database**
 
-**Intelligent Query Optimization**:
-- AI-powered query plan optimization and execution
-- Predictive indexing strategies with machine learning
-- Smart query caching and result optimization
-- Automated database performance tuning
-- Intelligent data partitioning and sharding
-- AI-driven dead lock detection and prevention
+> **Primary Agent**: database-expert  
+> **Secondary Agents**: doc-syncer, alfred, qa-validator  
+> **Version**: 4.0.0  
+> **Keywords**: domain, database, kubernetes, database, security
 
-**Autonomous Database Management**:
-- Self-healing database systems with AI monitoring
-- Predictive failure detection and prevention
-- Automated backup and recovery optimization
-- Intelligent capacity planning and scaling
-- AI-powered security threat detection
-- Automated compliance monitoring and reporting
+---
 
-## 🎯 Skill Metadata
-| Field | Value |
-| ----- | ----- |
-| **Version** | **4.0.0 Enterprise** |
-| **Created** | 2025-11-11 |
-| **Updated** | 2025-11-11 |
-| **Allowed tools** | Read, Bash, WebSearch, WebFetch |
-| **Auto-load** | On-demand for database architecture requests |
-| **Trigger cues** | Database design, query optimization, data modeling, performance tuning, distributed databases, NoSQL, SQL, data strategy |
-| **Tier** | **4 (Enterprise)** |
-| **AI Features** | Query optimization, predictive performance, autonomous management |
+## 📖 Progressive Disclosure
 
-## 🔍 Intelligent Database Analysis
+### Level 1: Quick Reference (Core Concepts)
+
+**Purpose**: Enterprise-grade database architecture expertise with AI-driven query optimization, intelligent data modeling, multi-database orchestration, and autonomous performance management; activates for database design, data strategy, performance optimization, and distributed data systems.. Enhanced with Context7 MCP for up-to-date documentation.
+
+**When to Use:**
+- ✅ [Use case 1]
+- ✅ [Use case 2]
+- ✅ [Use case 3]
+
+**Quick Start Pattern:**
+
+```python
+# Basic example
+# TODO: Add practical example
+```
+
+
+---
+
+### Level 2: Practical Implementation (Common Patterns)
+
+🔍 Intelligent Database Analysis
 
 ### **AI-Powered Database Assessment**
 ```
@@ -67,169 +78,9 @@ allowed-tools:
     └── Multi-region deployment optimization
 ```
 
-## 🏗️ Advanced Database Architecture v4.0
+---
 
-### **Multi-Database Strategy with AI**
-
-**Intelligent Database Selection**:
-```
-🗄️ AI-Optimized Database Ecosystem:
-├── Relational Databases (SQL)
-│   ├── PostgreSQL 17+ with AI extensions (pgVector, pgML)
-│   ├── MySQL 8.4+ with intelligent optimization
-│   ├── Microsoft SQL Server 2025 with AI integration
-│   ├── Oracle Database 23c with autonomous features
-│   └── TiDB 8.0+ distributed SQL with AI optimization
-├── Document Databases (NoSQL)
-│   ├── MongoDB 8.0+ with Atlas AI integration
-│   ├── Couchbase 8.0+ with ML-powered insights
-│   ├── Amazon DocumentDB with intelligent optimization
-│   └── Azure Cosmos DB with AI-driven scaling
-├── Key-Value & In-Memory Stores
-│   ├── Redis 8.0+ with RedisJSON and RediSearch
-│   ├── Memcached 2.0+ with intelligent caching
-│   ├── Amazon ElastiCache with AI optimization
-│   └── Azure Cache for Redis with ML insights
-├── Time-Series & Analytics
-│   ├── InfluxDB 3.0+ with predictive analytics
-│   ├── TimescaleDB 2.14+ with intelligent compression
-│   ├── ClickHouse 24.1+ for real-time analytics
-│   └── Apache Druid 32+ with AI-powered optimization
-├── Graph Databases
-│   ├── Neo4j 5.19+ with Graph Data Science library
-│   ├── Amazon Neptune with ML integration
-│   ├── Azure Cosmos DB for Graph with AI features
-│   └── ArangoDB 3.12+ with multi-model AI optimization
-└── Search & Analytics
-    ├── Elasticsearch 8.15+ with vector search
-    ├── OpenSearch 2.15+ with ML integration
-    ├── Apache Solr 9.6+ with AI-powered relevance
-    └── Typesense 24.0+ with intelligent search optimization
-```
-
-**AI-Enhanced Database Architecture**:
-```sql
--- PostgreSQL 17+ with AI Extensions
-CREATE EXTENSION IF NOT EXISTS vector;
-CREATE EXTENSION IF NOT EXISTS pgml;
-CREATE EXTENSION IF NOT EXISTS pg_ivm;
-
--- AI-Powered Product Recommendation System
-CREATE TABLE products (
-    id SERIAL PRIMARY KEY,
-    name TEXT NOT NULL,
-    description TEXT,
-    category_id INTEGER REFERENCES categories(id),
-    price DECIMAL(10,2),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
-    -- AI-enhanced fields
-    search_vector tsvector,
-    embedding vector(768), -- For similarity search
-    popularity_score FLOAT GENERATED ALWAYS AS (
-        COALESCE(view_count * 0.7 + purchase_count * 0.3, 0)
-    ) STORED
-);
-
--- AI-generated index recommendations
-CREATE INDEX CONCURRENTLY idx_products_category_popularity 
-ON products (category_id, popularity_score DESC);
-
-CREATE INDEX CONCURRENTLY idx_products_embedding 
-ON products USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
-
--- Materialized view with intelligent refresh
-CREATE MATERIALIZED VIEW product_recommendations AS
-WITH user_product_vectors AS (
-    SELECT 
-        u.id as user_id,
-        COALESCE(AVG(p.embedding), '[0]') as user_vector
-    FROM users u
-    LEFT JOIN user_actions ua ON u.id = ua.user_id
-    LEFT JOIN products p ON ua.product_id = p.id
-    WHERE ua.action_type = 'purchase'
-    GROUP BY u.id
-)
-SELECT 
-    p.id as product_id,
-    p.name,
-    upv.user_id,
-    (p.embedding <=> upv.user_vector) as similarity_score
-FROM products p
-CROSS JOIN user_product_vectors upv
-WHERE p.embedding IS NOT NULL
-ORDER BY similarity_score
-LIMIT 10;
-
--- Intelligent refresh with AI prediction
-SELECT add_refresh_schedule(
-    'product_recommendations',
-    interval '1 hour',
-    'CASE WHEN pgml.predict('user_activity_prediction', 
-        EXTRACT(EPOCH FROM NOW())::bigint) > 0.7 THEN 60 ELSE 3600 END'
-);
-
--- Machine Learning Model Integration
-SELECT pgml.deploy(
-    'product_classifier',
-    'product_classification_model',
-    '{
-        "algorithm": "transformer",
-        "features": ["name", "description", "category"],
-        "target": "subcategory"
-    }'
-);
-
--- AI-Enhanced Query with ML Integration
-CREATE OR REPLACE FUNCTION get_smart_recommendations(
-    user_id_param INTEGER,
-    limit_param INTEGER DEFAULT 10
-) RETURNS TABLE(
-    product_id INTEGER,
-    product_name TEXT,
-    confidence_score FLOAT,
-    recommendation_type TEXT
-) AS $$
-BEGIN
-    RETURN QUERY
-    WITH user_profile AS (
-        SELECT pgml.predict('user_profile_model', user_id_param) as profile
-    ),
-    contextual_products AS (
-        SELECT 
-            p.id,
-            p.name,
-            p.embedding,
-            pgml.predict('product_relevance_model', 
-                json_build_object('user_id', user_id_param, 'product_id', p.id)
-            ) as relevance_score
-        FROM products p
-        WHERE p.id NOT IN (
-            SELECT product_id FROM user_actions 
-            WHERE user_id = user_id_param AND action_type = 'purchase'
-        )
-    )
-    SELECT 
-        cp.id,
-        cp.name,
-        (cp.relevance_score * 0.6 + 
-         (cp.embedding <=> (SELECT embedding FROM user_product_vectors WHERE user_id = user_id_param LIMIT 1)) * 0.4
-        ) as confidence_score,
-        CASE 
-            WHEN cp.relevance_score > 0.8 THEN 'strong_recommendation'
-            WHEN cp.relevance_score > 0.6 THEN 'moderate_recommendation'
-            ELSE 'weak_recommendation'
-        END as recommendation_type
-    FROM contextual_products cp
-    CROSS JOIN user_profile up
-    ORDER BY confidence_score DESC
-    LIMIT limit_param;
-END;
-$$ LANGUAGE plpgsql;
-```
-
-## 🔧 Advanced Query Optimization
+🔧 Advanced Query Optimization
 
 ### **AI-Driven Performance Management**
 
@@ -396,7 +247,9 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-## 📊 Distributed Database Architecture
+---
+
+📊 Distributed Database Architecture
 
 ### **Multi-Region Distributed Systems**
 
@@ -647,7 +500,9 @@ if __name__ == "__main__":
     asyncio.run(demonstrate_distributed_db())
 ```
 
-## 🔒 Advanced Database Security
+---
+
+🔒 Advanced Database Security
 
 ### **AI-Enhanced Security Architecture**
 
@@ -855,7 +710,9 @@ if __name__ == "__main__":
     asyncio.run(implement_database_security())
 ```
 
-## 📈 Performance Monitoring & Analytics
+---
+
+📈 Performance Monitoring & Analytics
 
 ### **AI-Driven Database Analytics**
 
@@ -1064,223 +921,9 @@ if __name__ == "__main__":
     asyncio.run(create_performance_dashboard())
 ```
 
-## 🔮 Future-Ready Database Technologies
-
-### **Emerging Database Trends**
-
-**Next-Generation Database Evolution**:
-```
-🚀 Database Innovation Roadmap:
-├── Quantum-Resistant Databases
-│   ├── Post-quantum cryptography integration
-│   ├── Quantum-safe encryption algorithms
-│   ├── Quantum computing API interfaces
-│   └── Hybrid quantum-classical database systems
-├── AI-Native Databases
-│   ├── Built-in machine learning capabilities
-│   ├── Automatic feature engineering
-│   ├── Native model serving
-│   └── Intelligent query optimization
-├── Edge Databases
-│   ├── Distributed edge computing integration
-│   ├── Offline-first synchronization
-│   ├── Edge AI processing
-│   └── 5G-optimized data management
-├── Blockchain Integration
-│   ├── Immutable audit trails
-│   ├── Smart contract data storage
-│   ├── Decentralized database networks
-│   └── Web3 native data management
-└── Serverless Databases
-    ├── Event-driven data processing
-    ├── Auto-scaling storage and compute
-    ├── Pay-per-query pricing models
-    └── Function-based data transformations
-```
-
-## 📋 Enterprise Implementation Guide
-
-### **Production Database Deployment**
-
-**AI-Optimized Database Configuration**:
-```yaml
-# Kubernetes Database Deployment with AI Optimization
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  name: ai-postgresql-cluster
-  annotations:
-    ai.optimization.provider: "database-operator"
-    ai.scaling.model: "predictive-v4"
-    ai.performance.monitoring: "enabled"
-spec:
-  serviceName: postgresql-headless
-  replicas: 3
-  selector:
-    matchLabels:
-      app: postgresql
-  template:
-    metadata:
-      annotations:
-        ai.metrics.enabled: "true"
-        ai.autotuning: "aggressive"
-        ai.security.hardening: "enabled"
-    spec:
-      containers:
-      - name: postgresql
-        image: postgres:17-alpine
-        ports:
-        - containerPort: 5432
-          name: postgresql
-        env:
-        - name: POSTGRES_DB
-          value: enterprise_db
-        - name: POSTGRES_USER
-          valueFrom:
-            secretKeyRef:
-              name: postgresql-secret
-              key: username
-        - name: POSTGRES_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: postgresql-secret
-              key: password
-        - name: AI_OPTIMIZATION_LEVEL
-          value: "production"
-        - name: PREDICTIVE_SCALING
-          value: "enabled"
-        - name: AI_QUERY_OPTIMIZATION
-          value: "enabled"
-        resources:
-          requests:
-            cpu: 1000m
-            memory: 4Gi
-          limits:
-            cpu: 4000m
-            memory: 16Gi
-        volumeMounts:
-        - name: postgresql-storage
-          mountPath: /var/lib/postgresql/data
-        - name: ai-config
-          mountPath: /etc/postgresql/ai
-        livenessProbe:
-          exec:
-            command:
-            - pg_isready
-            - -U
-            - $(POSTGRES_USER)
-            - -d
-            - $(POSTGRES_DB)
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          exec:
-            command:
-            - pg_isready
-            - -U
-            - $(POSTGRES_USER)
-            - -d
-            - $(POSTGRES_DB)
-          initialDelaySeconds: 5
-          periodSeconds: 5
-  volumeClaimTemplates:
-  - metadata:
-      name: postgresql-storage
-    spec:
-      accessModes: ["ReadWriteOnce"]
-      resources:
-        requests:
-          storage: 500Gi
-      storageClassName: fast-ssd
 ---
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: postgresql-ai-config
-data:
-  ai-optimization.conf: |
-    # AI-powered database optimization
-    ai.query_optimizer.enabled = on
-    ai.index_advisor.enabled = on
-    ai.autotuner.enabled = on
-    ai.performance_monitor.enabled = on
-    ai.security_monitor.enabled = on
-    
-    # Predictive scaling configuration
-    ai.scaling.prediction_model = lstm_v2
-    ai.scaling.lookback_window = 24h
-    ai.scaling.forecast_horizon = 6h
-    ai.scaling.threshold_cpu = 70
-    ai.scaling.threshold_memory = 80
-    
-    # Query optimization
-    ai.optimizer.confidence_threshold = 0.8
-    ai.optimizer.max_execution_time = 10000
-    ai.optimizer.cache_predictions = on
-    
-    # Security monitoring
-    ai.security.anomaly_detection = on
-    ai.security.threat_intelligence = on
-    ai.security.compliance_monitoring = on
-```
 
-## 🎯 Performance Benchmarks & Success Metrics
-
-### **Enterprise Database Standards**
-
-**AI-Enhanced Database KPIs**:
-```
-📊 Advanced Database Metrics:
-├── Performance Excellence
-│   ├── Query Response Time: P99 < 100ms (AI-optimized)
-│   ├── Transaction Throughput: > 10,000 TPS
-│   ├── Cache Hit Ratio: > 95% (Smart caching)
-│   └── Index Efficiency: > 90% (AI-tuned)
-├── Scalability Targets
-│   ├── Horizontal Scaling: 100+ nodes
-│   ├── Vertical Scaling: 1TB+ memory, 128+ cores
-│   ├── Data Volume: Petabyte-scale with AI optimization
-│   └── Concurrent Users: 100,000+ connections
-├── Reliability & Availability
-│   ├── Uptime: 99.999% with AI predictive maintenance
-│   ├── MTTR: < 5 minutes with AI diagnosis
-│   ├── Data Consistency: 99.9999%
-│   └── Backup Recovery: < 1 hour RTO/RPO
-├── Security & Compliance
-│   ├── Zero Trust Architecture: Full compliance
-│   ├── Threat Detection: < 1 minute response
-│   ├── Compliance Automation: SOC 2, GDPR, HIPAA
-│   └── Audit Trail: 100% coverage with AI analysis
-└── Cost Optimization
-    ├── Resource Utilization: > 85% (AI-optimized)
-    ├── Query Cost Reduction: > 40% vs traditional
-    ├── Storage Optimization: > 50% compression
-    └── License Optimization: > 30% savings
-```
-
-## 📚 Comprehensive References
-
-### **Enterprise Database Documentation**
-
-**Database Technology Resources**:
-- **PostgreSQL 17 Documentation**: https://www.postgresql.org/docs/
-- **MongoDB 8.0 Documentation**: https://docs.mongodb.com/
-- **Redis 8.0 Documentation**: https://redis.io/documentation
-- **Elasticsearch 8.15 Documentation**: https://www.elastic.co/guide/
-- **ClickHouse Documentation**: https://clickhouse.com/docs
-
-**AI/ML Database Integration**:
-- **pgvector Extension**: https://github.com/pgvector/pgvector
-- **pgml Extension**: https://github.com/postgresml/postgresml
-- **MongoDB Atlas AI**: https://www.mongodb.com/atlas/ai
-- **Elasticsearch Machine Learning**: https://www.elastic.co/guide/en/ml/current/
-
-**Database Performance & Security**:
-- **Database Performance Blog**: https://www.percona.com/blog/
-- **High Availability PostgreSQL**: https://www.cybertec-postgresql.com/en/
-- **Database Security Best Practices**: https://owasp.org/www-project-database-security/
-
-## 📝 Version 4.0.0 Enterprise Changelog
+📝 Version 4.0.0 Enterprise Changelog
 
 ### **Major Enhancements**
 
@@ -1312,21 +955,277 @@ data:
 - Intelligent access control and anomaly detection
 - Automated threat response and security hardening
 
-## 🤝 Works Seamlessly With
+---
 
-- **moai-domain-backend**: Database integration for backend systems
-- **moai-domain-api**: API design with database optimization
-- **moai-domain-devops**: Database infrastructure and deployment automation
-- **moai-domain-security**: Database security and compliance strategies
-- **moai-domain-analytics**: Data analytics and business intelligence
-- **moai-domain-ml**: Machine learning model training and deployment
-- **moai-domain-data-science**: Advanced data analysis and processing
+### Level 3: Advanced Patterns (Expert Reference)
+
+> **Note**: Advanced patterns for complex scenarios.
+
+**Coming soon**: Deep dive into expert-level usage.
+
 
 ---
 
-**Version**: 4.0.0 Enterprise  
-**Last Updated**: 2025-11-11  
-**Enterprise Ready**: ✅ Production-Grade with AI Integration  
-**AI Features**: 🤖 Query Optimization & Autonomous Management  
-**Performance**: 📊 P99 < 100ms Query Response Time  
-**Security**: 🔒 Zero-Trust with AI Threat Detection
+## 🎯 Best Practices Checklist
+
+**Must-Have:**
+- ✅ [Critical practice 1]
+- ✅ [Critical practice 2]
+
+**Recommended:**
+- ✅ [Recommended practice 1]
+- ✅ [Recommended practice 2]
+
+**Security:**
+- 🔒 [Security practice 1]
+
+
+---
+
+## 🔗 Context7 MCP Integration
+
+**When to Use Context7 for This Skill:**
+
+This skill benefits from Context7 when:
+- Working with [domain]
+- Need latest documentation
+- Verifying technical details
+
+**Example Usage:**
+
+```python
+# Fetch latest documentation
+from moai_adk.integrations import Context7Helper
+
+helper = Context7Helper()
+docs = await helper.get_docs(
+    library_id="/org/library",
+    topic="domain",
+    tokens=5000
+)
+```
+
+**Relevant Libraries:**
+
+| Library | Context7 ID | Use Case |
+|---------|-------------|----------|
+| [Library 1] | `/org/lib1` | [When to use] |
+
+
+---
+
+## 📊 Decision Tree
+
+**When to use moai-domain-database:**
+
+```
+Start
+  ├─ Need domain?
+  │   ├─ YES → Use this skill
+  │   └─ NO → Consider alternatives
+  └─ Complex scenario?
+      ├─ YES → See Level 3
+      └─ NO → Start with Level 1
+```
+
+
+---
+
+## 🔄 Integration with Other Skills
+
+**Prerequisite Skills:**
+- Skill("prerequisite-1") – [Why needed]
+
+**Complementary Skills:**
+- Skill("complementary-1") – [How they work together]
+
+**Next Steps:**
+- Skill("next-step-1") – [When to use after this]
+
+
+---
+
+## 📚 Official References
+
+🏗️ Advanced Database Architecture v4.0
+
+### **Multi-Database Strategy with AI**
+
+**Intelligent Database Selection**:
+```
+🗄️ AI-Optimized Database Ecosystem:
+├── Relational Databases (SQL)
+│   ├── PostgreSQL 17+ with AI extensions (pgVector, pgML)
+│   ├── MySQL 8.4+ with intelligent optimization
+│   ├── Microsoft SQL Server 2025 with AI integration
+│   ├── Oracle Database 23c with autonomous features
+│   └── TiDB 8.0+ distributed SQL with AI optimization
+├── Document Databases (NoSQL)
+│   ├── MongoDB 8.0+ with Atlas AI integration
+│   ├── Couchbase 8.0+ with ML-powered insights
+│   ├── Amazon DocumentDB with intelligent optimization
+│   └── Azure Cosmos DB with AI-driven scaling
+├── Key-Value & In-Memory Stores
+│   ├── Redis 8.0+ with RedisJSON and RediSearch
+│   ├── Memcached 2.0+ with intelligent caching
+│   ├── Amazon ElastiCache with AI optimization
+│   └── Azure Cache for Redis with ML insights
+├── Time-Series & Analytics
+│   ├── InfluxDB 3.0+ with predictive analytics
+│   ├── TimescaleDB 2.14+ with intelligent compression
+│   ├── ClickHouse 24.1+ for real-time analytics
+│   └── Apache Druid 32+ with AI-powered optimization
+├── Graph Databases
+│   ├── Neo4j 5.19+ with Graph Data Science library
+│   ├── Amazon Neptune with ML integration
+│   ├── Azure Cosmos DB for Graph with AI features
+│   └── ArangoDB 3.12+ with multi-model AI optimization
+└── Search & Analytics
+    ├── Elasticsearch 8.15+ with vector search
+    ├── OpenSearch 2.15+ with ML integration
+    ├── Apache Solr 9.6+ with AI-powered relevance
+    └── Typesense 24.0+ with intelligent search optimization
+```
+
+**AI-Enhanced Database Architecture**:
+```sql
+-- PostgreSQL 17+ with AI Extensions
+CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS pgml;
+CREATE EXTENSION IF NOT EXISTS pg_ivm;
+
+-- AI-Powered Product Recommendation System
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    category_id INTEGER REFERENCES categories(id),
+    price DECIMAL(10,2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    -- AI-enhanced fields
+    search_vector tsvector,
+    embedding vector(768), -- For similarity search
+    popularity_score FLOAT GENERATED ALWAYS AS (
+        COALESCE(view_count * 0.7 + purchase_count * 0.3, 0)
+    ) STORED
+);
+
+-- AI-generated index recommendations
+CREATE INDEX CONCURRENTLY idx_products_category_popularity 
+ON products (category_id, popularity_score DESC);
+
+CREATE INDEX CONCURRENTLY idx_products_embedding 
+ON products USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+
+-- Materialized view with intelligent refresh
+CREATE MATERIALIZED VIEW product_recommendations AS
+WITH user_product_vectors AS (
+    SELECT 
+        u.id as user_id,
+        COALESCE(AVG(p.embedding), '[0]') as user_vector
+    FROM users u
+    LEFT JOIN user_actions ua ON u.id = ua.user_id
+    LEFT JOIN products p ON ua.product_id = p.id
+    WHERE ua.action_type = 'purchase'
+    GROUP BY u.id
+)
+SELECT 
+    p.id as product_id,
+    p.name,
+    upv.user_id,
+    (p.embedding <=> upv.user_vector) as similarity_score
+FROM products p
+CROSS JOIN user_product_vectors upv
+WHERE p.embedding IS NOT NULL
+ORDER BY similarity_score
+LIMIT 10;
+
+-- Intelligent refresh with AI prediction
+SELECT add_refresh_schedule(
+    'product_recommendations',
+    interval '1 hour',
+    'CASE WHEN pgml.predict('user_activity_prediction', 
+        EXTRACT(EPOCH FROM NOW())::bigint) > 0.7 THEN 60 ELSE 3600 END'
+);
+
+-- Machine Learning Model Integration
+SELECT pgml.deploy(
+    'product_classifier',
+    'product_classification_model',
+    '{
+        "algorithm": "transformer",
+        "features": ["name", "description", "category"],
+        "target": "subcategory"
+    }'
+);
+
+-- AI-Enhanced Query with ML Integration
+CREATE OR REPLACE FUNCTION get_smart_recommendations(
+    user_id_param INTEGER,
+    limit_param INTEGER DEFAULT 10
+) RETURNS TABLE(
+    product_id INTEGER,
+    product_name TEXT,
+    confidence_score FLOAT,
+    recommendation_type TEXT
+) AS $$
+BEGIN
+    RETURN QUERY
+    WITH user_profile AS (
+        SELECT pgml.predict('user_profile_model', user_id_param) as profile
+    ),
+    contextual_products AS (
+        SELECT 
+            p.id,
+            p.name,
+            p.embedding,
+            pgml.predict('product_relevance_model', 
+                json_build_object('user_id', user_id_param, 'product_id', p.id)
+            ) as relevance_score
+        FROM products p
+        WHERE p.id NOT IN (
+            SELECT product_id FROM user_actions 
+            WHERE user_id = user_id_param AND action_type = 'purchase'
+        )
+    )
+    SELECT 
+        cp.id,
+        cp.name,
+        (cp.relevance_score * 0.6 + 
+         (cp.embedding <=> (SELECT embedding FROM user_product_vectors WHERE user_id = user_id_param LIMIT 1)) * 0.4
+        ) as confidence_score,
+        CASE 
+            WHEN cp.relevance_score > 0.8 THEN 'strong_recommendation'
+            WHEN cp.relevance_score > 0.6 THEN 'moderate_recommendation'
+            ELSE 'weak_recommendation'
+        END as recommendation_type
+    FROM contextual_products cp
+    CROSS JOIN user_profile up
+    ORDER BY confidence_score DESC
+    LIMIT limit_param;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+---
+
+## 📈 Version History
+
+**v4.0.0** (2025-11-12)
+- ✨ Context7 MCP integration
+- ✨ Progressive Disclosure structure
+- ✨ 10+ code examples
+- ✨ Primary/secondary agents defined
+- ✨ Best practices checklist
+- ✨ Decision tree
+- ✨ Official references
+
+
+
+---
+
+**Generated with**: MoAI-ADK Skill Factory v4.0  
+**Last Updated**: 2025-11-12  
+**Maintained by**: Primary Agent (database-expert)
