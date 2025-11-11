@@ -131,13 +131,13 @@ const nextConfig = {
 };
 
 module.exports = withNextra({
+  theme: "nextra-theme-docs",
+  themeConfig: "./theme.config.tsx",
   staticImage: true,
   latex: true,
   codeHighlight: true,
-  // Nextra 4.x compatible options
   defaultShowCopyCode: true,
   search: {
-    // Use custom Pagefind search
     codeblocks: false,
   },
 })(nextConfig);

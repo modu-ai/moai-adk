@@ -6,7 +6,7 @@ allowed-tools: "Read, Grep"
 
 ## What It Does
 
-`.moai/config.json` 파일의 공식 스키마와 각 필드의 목적, 유효한 값, 마이그레이션 규칙을 정의합니다.
+`.moai/config/config.json` 파일의 공식 스키마와 각 필드의 목적, 유효한 값, 마이그레이션 규칙을 정의합니다.
 
 ## When to Use
 

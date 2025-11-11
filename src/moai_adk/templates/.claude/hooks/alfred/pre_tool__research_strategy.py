@@ -50,7 +50,7 @@ def load_research_config() -> Dict[str, Any]:
         연구 설정 딕셔너리
     """
     try:
-        config_file = Path(".moai/config.json")
+        config_file = Path(".moai/config/config.json")
         if config_file.exists():
             with open(config_file, 'r', encoding='utf-8') as f:
                 config = json.load(f)

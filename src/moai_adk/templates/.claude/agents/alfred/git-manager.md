@@ -149,9 +149,9 @@ git-manager **recommends** GitFlow best practices with pre-push hooks, but respe
 
 #### 🔄 Feature development workflow (spec_git_workflow driven)
 
-git-manager manages feature development based on `.moai/config.json`'s `github.spec_git_workflow` setting.
+git-manager manages feature development based on `.moai/config/config.json`'s `github.spec_git_workflow` setting.
 
-**Pre-check**: Read `.moai/config.json` and determine workflow type:
+**Pre-check**: Read `.moai/config/config.json` and determine workflow type:
 ```bash
 # Check spec_git_workflow setting
 spec_workflow=$(grep -o '"spec_git_workflow": "[^"]*"' .moai/config.json | cut -d'"' -f4)
@@ -332,7 +332,7 @@ git-manager uses the following Git commands directly:
 
 **Create locale-based commit message**:
 
-> **IMPORTANT**: Commit messages are automatically generated based on the `project.locale` setting in `.moai/config.json`.
+> **IMPORTANT**: Commit messages are automatically generated based on the `project.locale` setting in `.moai/config/config.json`.
 > For more information: `CLAUDE.md` - see "Git commit message standard (Locale-based)"
 
 **Commit creation procedure**:

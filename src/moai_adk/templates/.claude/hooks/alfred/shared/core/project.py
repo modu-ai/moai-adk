@@ -17,9 +17,9 @@ CACHE_DIR_NAME = ".moai/cache"
 
 
 def find_project_root(start_path: str | Path = ".") -> Path:
-    """Find MoAI-ADK project root by searching upward for .moai/config.json
+    """Find MoAI-ADK project root by searching upward for .moai/config/config.json
 
-    Traverses up the directory tree until it finds .moai/config.json or CLAUDE.md,
+    Traverses up the directory tree until it finds .moai/config/config.json or CLAUDE.md,
     which indicates the project root. This ensures cache and other files are
     always created in the correct location, regardless of where hooks execute.
 
@@ -36,21 +36,21 @@ def find_project_root(start_path: str | Path = ".") -> Path:
         Path("/Users/user/my-project")  # Found root 3 levels up
 
     Notes:
-        - Searches for .moai/config.json first (most reliable)
+        - Searches for .moai/config/config.json first (most reliable)
         - Falls back to CLAUDE.md if config.json not found
         - Max depth: 10 levels up (prevent infinite loop)
         - Returns absolute path for consistency
 
     TDD History:
         - RED: 4 test scenarios (root, nested, not found, symlinks)
-        - GREEN: Minimal upward search with .moai/config.json detection
+        - GREEN: Minimal upward search with .moai/config/config.json detection
         - REFACTOR: Add CLAUDE.md fallback, max depth limit, absolute path return
     """
     current = Path(start_path).resolve()
     max_depth = 10  # Prevent infinite loop
 
     for _ in range(max_depth):
-        # Check for .moai/config.json (primary indicator)
+        # Check for .moai/config/config.json (primary indicator)
         if (current / ".moai" / "config.json").exists():
             return current
 
@@ -380,9 +380,9 @@ def get_project_language(cwd: str) -> str:
         Language string in lower-case.
 
     Notes:
-        - Reads ``.moai/config.json`` first for a quick answer.
+        - Reads ``.moai/config/config.json`` first for a quick answer.
         - Falls back to ``detect_language`` if configuration is missing.
-        - Automatically finds project root to locate .moai/config.json
+        - Automatically finds project root to locate .moai/config/config.json
     """
     # Find project root to ensure we read config from correct location
     project_root = find_project_root(cwd)
@@ -403,7 +403,7 @@ def get_project_language(cwd: str) -> str:
 
 # @CODE:CONFIG-INTEGRATION-001
 def get_version_check_config(cwd: str) -> dict[str, Any]:
-    """Read version check configuration from .moai/config.json
+    """Read version check configuration from .moai/config/config.json
 
     Returns version check settings with sensible defaults.
     Supports frequency-based cache TTL configuration.

@@ -143,7 +143,7 @@ Gather context for synchronization planning:
    - Count: Python files, test files, documents, SPEC files
 
 2. **Read project configuration**:
-   - Read: `.moai/config.json`
+   - Read: `.moai/config/config.json`
    - Extract: `git_strategy.mode` (Personal/Team)
    - Extract: `language.conversation_language` (for document updates)
    - Extract: `git_strategy.spec_git_workflow`

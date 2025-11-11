@@ -33,7 +33,7 @@ if (isTeamMode()) {
 
 - **Alfred Commands**: Use in `/alfred:0-project` and other commands
 - **Sub-agents**: Integrate with project-manager, spec-builder, etc.
-- **Configuration**: Save responses to `.moai/config.json`
+- **Configuration**: Save responses to `.moai/config/config.json`
 
 ## Performance
 

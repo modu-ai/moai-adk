@@ -168,7 +168,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 ## 📦 Deliverables and Delivery
 
 - Updated `.moai/project/{product,structure,tech}.md` (in the selected language)
-- Updated `.moai/config.json` with language metadata (conversation_language, language_name)
+- Updated `.moai/config/config.json` with language metadata (conversation_language, language_name)
 - Project overview summary (team size, technology stack, constraints) in selected language
 - Individual/team mode settings confirmation results
 - For legacy projects, organized with "Legacy Context" TODO/DEBT items

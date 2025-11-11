@@ -113,7 +113,7 @@ class VersionReader:
             config: Version configuration object. If None, uses defaults.
         """
         self.config = config or self.DEFAULT_CONFIG
-        self._config_path = Path.cwd() / ".moai" / "config.json"
+        self._config_path = Path.cwd() / ".moai" / "config" / "config.json"
 
         # Enhanced caching with LRU support
         self._cache: Dict[str, CacheEntry] = {}
@@ -390,7 +390,7 @@ class VersionReader:
 
     async def _read_version_from_config_async(self) -> str:
         """
-        Read version from .moai/config.json asynchronously.
+        Read version from .moai/config/config.json asynchronously.
 
         Returns:
             Version string or empty string if not found

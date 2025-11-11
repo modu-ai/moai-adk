@@ -49,13 +49,13 @@ except ImportError:
 
 
 def load_research_config() -> Dict[str, Any]:
-    """Load research configuration from .moai/config.json
+    """Load research configuration from .moai/config/config.json
 
     Returns:
         Research configuration dictionary
     """
     try:
-        config_file = Path(".moai/config.json")
+        config_file = Path(".moai/config/config.json")
         if config_file.exists():
             import json as json_module
             with open(config_file, 'r', encoding='utf-8') as f:

@@ -49,7 +49,7 @@ This skill manages the complete project setup process:
 
 ## Configuration Structure
 
-The skill creates and manages `.moai/config.json`:
+The skill creates and manages `.moai/config/config.json`:
 
 ```json
 {

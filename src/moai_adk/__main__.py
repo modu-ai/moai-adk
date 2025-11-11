@@ -20,6 +20,7 @@ from moai_adk import __version__
 from moai_adk.cli.commands.backup import backup
 from moai_adk.cli.commands.doctor import doctor
 from moai_adk.cli.commands.init import init
+from moai_adk.cli.commands.migrate import migrate
 from moai_adk.cli.commands.status import status
 from moai_adk.cli.commands.update import update
 
@@ -59,6 +60,7 @@ cli.add_command(init)
 cli.add_command(doctor)
 cli.add_command(status)
 cli.add_command(backup)
+cli.add_command(migrate)
 cli.add_command(update)
 
 

@@ -16,13 +16,13 @@ logger = logging.getLogger(__name__)
 
 def load_hook_timeout() -> int:
     """
-    .moai/config.json에서 Hook timeout 설정 로드
+    .moai/config/config.json에서 Hook timeout 설정 로드
 
     Returns:
         int: timeout 값 (밀리초), 설정이 없으면 기본값 5000 반환
     """
     try:
-        config_path = Path(".moai/config.json")
+        config_path = Path(".moai/config/config.json")
         if not config_path.exists():
             return 5000  # 기본값
 
@@ -41,13 +41,13 @@ def load_hook_timeout() -> int:
 
 def get_graceful_degradation() -> bool:
     """
-    .moai/config.json에서 graceful_degradation 설정 로드
+    .moai/config/config.json에서 graceful_degradation 설정 로드
 
     Returns:
         bool: graceful_degradation 설정값, 설정이 없으면 기본값 True 반환
     """
     try:
-        config_path = Path(".moai/config.json")
+        config_path = Path(".moai/config/config.json")
         if not config_path.exists():
             return True  # 기본값
 
@@ -70,7 +70,7 @@ def get_hook_execution_config() -> dict:
         dict: Hook 설정 딕셔너리
     """
     try:
-        config_path = Path(".moai/config.json")
+        config_path = Path(".moai/config/config.json")
         if not config_path.exists():
             return {
                 "timeout_ms": 5000,

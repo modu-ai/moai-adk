@@ -15,7 +15,7 @@ class EventDetector:
     CRITICAL_FILES = {
         "CLAUDE.md",
         "config.json",
-        ".moai/config.json",
+        ".moai/config/config.json",
     }
 
     CRITICAL_DIRS = {
@@ -69,8 +69,8 @@ class EventDetector:
         # Convert to string for further checks
         path_str = str(file_path)
 
-        # Detect .moai/config.json paths
-        if ".moai/config.json" in path_str or ".moai\\config.json" in path_str:
+        # Detect .moai/config/config.json paths
+        if ".moai/config/config.json" in path_str or ".moai\\config.json" in path_str:
             return True
 
         # Detect files inside the .moai/memory/ directory

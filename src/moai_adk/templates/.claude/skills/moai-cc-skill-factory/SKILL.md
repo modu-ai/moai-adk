@@ -480,7 +480,7 @@ ai_skill_factory_stage:
 
 ### Perfect Gentleman Style Integration
 - Skill factory guides in perfect Korean
-- Automatic application of `.moai/config.json` conversation_language
+- Automatic application of `.moai/config/config.json` conversation_language
 - AI-generated factory with detailed Korean comments
 - Developer-friendly Korean explanations and examples
 

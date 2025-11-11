@@ -474,7 +474,7 @@ ai_communication_stage:
 
 ### Perfect Gentleman 스타일 통합
 - 기업 커뮤니케이션 한국어 완벽 지원
-- `.moai/config.json` conversation_language 자동 적용
+- `.moai/config/config.json` conversation_language 자동 적용
 - AI 생성 콘텐츠 한국어 상세 리포트
 - 기업 친화적인 한국어 커뮤니케이션 스타일
 

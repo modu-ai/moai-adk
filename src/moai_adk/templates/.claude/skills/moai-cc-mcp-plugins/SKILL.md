@@ -542,7 +542,7 @@ class AIMCPLearner:
 
 ### Perfect Gentleman Style Integration
 - MCP system guides in perfect Korean
-- Automatic application of `.moai/config.json` conversation_language
+- Automatic application of `.moai/config/config.json` conversation_language
 - AI-generated MCP configurations with detailed Korean comments
 - Developer-friendly Korean explanations and examples
 

@@ -374,7 +374,7 @@ class PhaseExecutor:
         logger = logging.getLogger(__name__)
 
         # Read existing config to preserve user settings (Issue #165)
-        config_path = project_path / ".moai" / "config.json"
+        config_path = project_path / ".moai" / "config" / "config.json"
         existing_config: dict[str, Any] = {}
         if config_path.exists():
             try:

@@ -104,7 +104,7 @@ class TemplateMerger:
         Returns:
             Merged configuration dictionary.
         """
-        config_path = self.target_path / ".moai" / "config.json"
+        config_path = self.target_path / ".moai" / "config" / "config.json"
 
         # Load existing config if present
         existing_config: dict[str, Any] = {}

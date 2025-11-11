@@ -100,7 +100,7 @@ def detect_risky_operation(tool_name: str, tool_args: dict[str, Any], cwd: str) 
             "config.json",
             ".claude/skills/moai-alfred-dev-guide/reference.md",
             ".claude/skills/moai-alfred-spec-metadata-extended/reference.md",
-            ".moai/config.json",
+            ".moai/config/config.json",
         ]
 
         if any(cf in file_path for cf in critical_files):

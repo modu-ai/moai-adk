@@ -15,7 +15,7 @@
 #### Tier 1: CRITICAL (Always Load) — ~10K tokens
 
 **Must load at session start**:
-- `.moai/config.json` (project configuration)
+- `.moai/config/config.json` (project configuration)
 - `.moai/project/product.md` (business requirements)
 - `.moai/project/structure.md` (architecture design)
 - `.moai/project/tech.md` (technology stack)

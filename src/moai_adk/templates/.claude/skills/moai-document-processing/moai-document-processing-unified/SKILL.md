@@ -501,7 +501,7 @@ class AIDocumentProcessingLearner:
 
 ### Perfect Gentleman 스타일 통합
 - 문서 처리 가이드 한국어 완벽 지원
-- `.moai/config.json` conversation_language 자동 적용
+- `.moai/config/config.json` conversation_language 자동 적용
 - AI 처리 결과 한국어 상세 리포트
 - 기업 친화적인 한국어 설명 및 예제
 

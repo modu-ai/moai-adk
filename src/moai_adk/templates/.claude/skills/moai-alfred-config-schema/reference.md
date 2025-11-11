@@ -1,12 +1,12 @@
 # MoAI-ADK config.json Schema Documentation
 
-> **Purpose**: This document defines the official schema structure for `.moai/config.json` file, which serves as the single source of truth for all MoAI-ADK project configuration.
+> **Purpose**: This document defines the official schema structure for `.moai/config/config.json` file, which serves as the single source of truth for all MoAI-ADK project configuration.
 
 ---
 
 ## 📋 Schema Overview
 
-The `.moai/config.json` file contains all project-level configuration for MoAI-ADK, including:
+The `.moai/config/config.json` file contains all project-level configuration for MoAI-ADK, including:
 - Project metadata and settings
 - User preferences (language, nickname)
 - Git workflow strategies

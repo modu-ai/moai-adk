@@ -85,7 +85,7 @@ class ConfigManager:
         """Initialize configuration manager.
 
         Args:
-            config_path: Path to configuration file (defaults to .moai/config.json)
+            config_path: Path to configuration file (defaults to .moai/config/config.json)
         """
         self.config_path = config_path or Path.cwd() / ".moai" / "config.json"
         self._config = None

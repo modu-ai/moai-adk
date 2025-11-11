@@ -58,9 +58,9 @@ def status() -> None:
     """
     try:
         # Read config.json
-        config_path = Path.cwd() / ".moai" / "config.json"
+        config_path = Path.cwd() / ".moai" / "config" / "config.json"
         if not config_path.exists():
-            console.print("[yellow]⚠ No .moai/config.json found[/yellow]")
+            console.print("[yellow]⚠ No .moai/config/config.json found[/yellow]")
             console.print("[dim]Run [cyan]python -m moai_adk init .[/cyan] to initialize the project[/dim]")
             raise click.Abort()
 

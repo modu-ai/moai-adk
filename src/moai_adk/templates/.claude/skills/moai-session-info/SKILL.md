@@ -139,7 +139,7 @@ Skill("moai-session-info")
 The skill gathers information from multiple sources:
 
 ### Project Configuration
-- `.moai/config.json` - Project settings and language
+- `.moai/config/config.json` - Project settings and language
 - `pyproject.toml` - Package version and dependencies
 - `.git/` - Repository status and history
 

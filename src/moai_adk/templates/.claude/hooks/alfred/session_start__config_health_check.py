@@ -7,7 +7,7 @@ Purpose: Automatically detect and propose configuration updates
 Execution: Triggered automatically when Claude Code session begins
 
 Features:
-- Check if .moai/config.json exists
+- Check if .moai/config/config.json exists
 - Verify configuration completeness
 - Detect stale configurations (older than 30 days)
 - Suggest updates via interactive prompt
@@ -23,13 +23,13 @@ from typing import Any, Optional
 
 
 def check_config_exists() -> bool:
-    """Check if .moai/config.json exists"""
+    """Check if .moai/config/config.json exists"""
     config_path = Path.cwd() / ".moai" / "config.json"
     return config_path.exists()
 
 
 def get_config_data() -> Optional[dict[str, Any]]:
-    """Read and parse .moai/config.json"""
+    """Read and parse .moai/config/config.json"""
     try:
         config_path = Path.cwd() / ".moai" / "config.json"
         if not config_path.exists():
@@ -80,7 +80,7 @@ def check_config_completeness(config: dict[str, Any]) -> tuple[bool, list[str]]:
 
 
 def check_moai_version_match() -> tuple[bool, Optional[str], Optional[str]]:
-    """Check if .moai/config.json version matches installed moai-adk version
+    """Check if .moai/config/config.json version matches installed moai-adk version
 
     Returns:
         (is_matched, config_version, installed_version)

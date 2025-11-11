@@ -5,13 +5,12 @@ import { useEffect } from 'react'
 export default function App({ Component, pageProps }) {
   useEffect(() => {
     // Nextra의 인라인 스타일을 오버라이드하여 무채색 테마 적용
+    // 클릭 문제를 해결하기 위해 setInterval 제거하고 MutationObserver만 사용
     const overrideNextraColors = () => {
-      // CSS 변수 직접 설정
       const root = document.documentElement
       root.style.setProperty('--nextra-primary-hue', '0deg')
       root.style.setProperty('--nextra-primary-saturation', '0%')
       
-      // 다크 모드 감지
       const isDark = document.documentElement.classList.contains('dark') || 
                      document.documentElement.getAttribute('data-theme') === 'dark'
       
@@ -37,27 +36,29 @@ export default function App({ Component, pageProps }) {
     // 초기 실행
     overrideNextraColors()
     
-    // 짧은 간격으로 반복 실행 (Nextra가 동적으로 스타일을 주입할 수 있음)
-    const interval = setInterval(overrideNextraColors, 100)
-    
-    // 다크 모드 변경 감지
+    // 다크 모드 변경 감지 (debounce 적용)
+    let timeoutId = null
     const observer = new MutationObserver(() => {
-      setTimeout(overrideNextraColors, 50)
+      if (timeoutId) clearTimeout(timeoutId)
+      timeoutId = setTimeout(overrideNextraColors, 100)
     })
     observer.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ['class', 'data-theme']
     })
     
-    // DOM 변경 감지 (새로운 style 태그 추가 시)
-    const domObserver = new MutationObserver(overrideNextraColors)
+    // DOM 변경 감지 (새로운 style 태그 추가 시, debounce 적용)
+    const domObserver = new MutationObserver(() => {
+      if (timeoutId) clearTimeout(timeoutId)
+      timeoutId = setTimeout(overrideNextraColors, 100)
+    })
     domObserver.observe(document.head, {
       childList: true,
       subtree: true
     })
     
     return () => {
-      clearInterval(interval)
+      if (timeoutId) clearTimeout(timeoutId)
       observer.disconnect()
       domObserver.disconnect()
     }

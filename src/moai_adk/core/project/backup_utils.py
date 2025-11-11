@@ -10,7 +10,7 @@ from pathlib import Path
 
 # Backup targets (OR condition - back up when any exist)
 BACKUP_TARGETS = [
-    ".moai/config.json",
+    ".moai/config/config.json",
     ".moai/project/",
     ".moai/memory/",
     ".claude/",
