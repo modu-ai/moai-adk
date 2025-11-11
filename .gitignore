@@ -52,3 +52,15 @@ coverage.json
 # Next.js build output
 docs/.next/
 docs/out/
+
+# Claude and MoAI configuration (user-specific)
+.claude/
+.moai/
+CLAUDE.md
+
+# Environment variables and deployment secrets
+.env*
+.vercel/
+.netlify/
+.firebase/
+.aws/
