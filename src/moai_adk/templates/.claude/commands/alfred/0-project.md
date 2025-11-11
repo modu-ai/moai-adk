@@ -158,6 +158,108 @@ This ensures `.claude/settings.json` contains announcements in the user's select
 
 ---
 
+## 💾 PHASE 2.5: Save Phase Context
+
+**Goal**: Persist phase execution results for explicit context passing to subsequent commands.
+
+<!-- @CODE:W2-001 - Context saving integration -->
+
+### Step 1: Extract Context from Agent Response
+
+After project-manager agent completes, extract the following information:
+- **Project metadata**: name, mode, owner, language
+- **Files created**: List of generated files with absolute paths
+- **Tech stack**: Primary codebase language
+- **Next phase**: Recommended next command (1-plan)
+
+### Step 2: Initialize ContextManager
+
+```python
+import os
+from datetime import datetime, timezone
+
+# Get project root directory
+project_root = os.getcwd()
+
+# Import ContextManager
+try:
+    from moai_adk.core.context_manager import ContextManager, validate_and_convert_path
+
+    # Initialize context manager
+    context_mgr = ContextManager(project_root)
+except ImportError:
+    # Log warning but don't block completion
+    print("Warning: ContextManager not available. Phase result not saved.")
+    context_mgr = None
+```
+
+### Step 3: Build Phase Result Data
+
+**Extract outputs from agent response** and build phase result dictionary:
+
+```python
+phase_data = {
+    "phase": "0-project",
+    "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+    "status": "completed",
+    "outputs": {
+        "project_name": "<extracted from config>",
+        "mode": "<personal|team>",
+        "language": "<conversation_language>",
+        "tech_stack": ["<detected language>"]
+    },
+    "files_created": [],  # Will be populated below
+    "next_phase": "1-plan"
+}
+```
+
+### Step 4: Validate and Convert File Paths
+
+**For each file created by project-manager**:
+1. Convert relative paths to absolute paths
+2. Validate paths are within project root
+3. Handle errors gracefully
+
+```python
+files_created_relative = [
+    ".moai/config/config.json",
+    ".moai/project/product.md",
+    ".moai/project/structure.md",
+    "CLAUDE.md"
+]
+
+files_created_absolute = []
+for rel_path in files_created_relative:
+    try:
+        abs_path = validate_and_convert_path(rel_path, project_root)
+        files_created_absolute.append(abs_path)
+    except (ValueError, FileNotFoundError) as e:
+        # Log warning but continue
+        print(f"Warning: Could not validate path {rel_path}: {e}")
+
+phase_data["files_created"] = files_created_absolute
+```
+
+### Step 5: Save Phase Result with Error Handling
+
+```python
+if context_mgr:
+    try:
+        saved_path = context_mgr.save_phase_result(phase_data)
+        print(f"Phase context saved to: {saved_path}")
+    except (IOError, OSError) as e:
+        # Log error but don't block completion
+        print(f"Warning: Failed to save phase context: {e}")
+        print("Command execution continues normally.")
+```
+
+**Error Handling Strategy**:
+- Context save failures should NOT block command completion
+- Log clear warning messages for debugging
+- Allow user to retry manually if needed
+
+---
+
 ## 🔒 PHASE 3: Completion & Next Steps
 
 **Goal**: Guide user to next action in their selected language.

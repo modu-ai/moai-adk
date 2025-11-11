@@ -1,16 +1,22 @@
 ---
-id: CMD-IMPROVE-001
-version: 0.0.1
-status: draft
-created: 2025-11-12
-updated: 2025-11-12
-author: @goos
-priority: high
+author: goos
 category: refactoring
-labels: [commands, context-passing, resume, architecture, integration]
+created: 2025-11-12
 depends_on: []
+id: CMD-IMPROVE-001
+labels:
+- commands
+- context-passing
+- resume
+- architecture
+- integration
+priority: high
 related_specs: []
-scope: Commands 레이어 4개 파일 (0-project, 1-plan, 2-run, 3-sync) 리팩토링
+scope: "Commands \uB808\uC774\uC5B4 4\uAC1C \uD30C\uC77C (0-project, 1-plan, 2-run,\
+  \ 3-sync) \uB9AC\uD329\uD1A0\uB9C1"
+status: in-progress
+updated: 2025-11-12
+version: 0.0.1
 ---
 
 # @SPEC:CMD-IMPROVE-001: Commands 레이어 컨텍스트 전달 및 Resume 기능 통합 개선

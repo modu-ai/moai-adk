@@ -261,13 +261,51 @@ ls -la ~/.moai/logs/
 ls -la ~/.claude/logs/
 ```
 
+## v0.23.1 최신 기능
+
+### Skills Ecosystem v4.0
+- **292 Skills 지원** (기존 55개에서 5배 확장)
+- **12 BaaS 플랫폼 통합** (Supabase, Firebase, Vercel, Cloudflare, Auth0, Convex, Railway, Neon, Clerk 등)
+- **95%+ 검증 성공률** 달성
+- [Skills 전체 목록 보기](/ko/skills/ecosystem-upgrade-v4)
+
+### Expert Delegation System v2.0
+- **4단계 자동 전문가 할당** 시스템
+- **60% 사용자 상호작용 감소** 달성
+- **95%+ 정확도** 유지
+- [Expert Delegation System 자세히 보기](/ko/alfred/expert-delegation-system)
+
+### Senior Engineer Thinking
+- **8가지 연구 전략** 통합 (v0.22.0+)
+- **병렬 연구 작업** 시스템
+- **학습 및 복리 효과**
+- [Senior Engineer Thinking 자세히 보기](/ko/features/senior-engineer-thinking)
+
+### 설치 후 확인
+
+```bash
+# MoAI-ADK 버전 확인 (v0.23.1+)
+moai-adk --version
+
+# Skills 목록 확인 (292 Skills)
+moai-adk skills list
+
+# 프로젝트 초기화
+moai-adk init my-project
+cd my-project
+
+# ⚠️ 필수: 프로젝트 설정
+/alfred:0-project
+```
+
 ## 다음 단계
 
 설치가 완료되었습니다! 다음 단계를 진행하세요:
 
-1. **[빠른 시작](./quick-start)**: 5분 만에 첫 프로젝트 실행
-2. **[첫 프로젝트 가이드](./first-project)**: 완전한 프로젝트 설정부터 배포까지
-3. **[Alfred 가이드](../guides/alfred)**: Alfred 슈퍼에이전트 활용법
+1. **[5분 빠른 시작](./quick-start)**: 첫 프로젝트 즉시 실행
+2. **[실전 튜토리얼](/ko/tutorials)**: 단계별 학습 (REST API, JWT 인증, DB 최적화)
+3. **[코드 예제 라이브러리](/ko/examples)**: 즉시 사용 가능한 예제
+4. **[BaaS 생태계 가이드](/ko/skills/baas-ecosystem)**: 12개 플랫폼 완전 가이드
 
 ## 추가 리소스
 

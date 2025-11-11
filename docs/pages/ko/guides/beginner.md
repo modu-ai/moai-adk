@@ -39,13 +39,21 @@ flowchart LR
 - **GREEN**: 테스트를 통과하는 최소한의 코드 작성
 - **REFACTOR**: 코드 품질 개선
 
-#### 3. Alfred 슈퍼에이전트
-19명의 전문 AI 에이전트를 관리하는 중앙 오케스트레이터입니다:
+#### 3. Alfred 슈퍼에이전트 (v0.23.1 강화)
+**19명의 전문 AI 에이전트**를 관리하는 중앙 오케스트레이터입니다:
 
+**핵심 에이전트**:
 - **spec-builder**: 요구사항 작성 전문가
-- **code-builder**: TDD 기반 구현 전문가
+- **tdd-implementer**: TDD 기반 구현 전문가 (v0.23.1 개선)
 - **test-engineer**: 테스트 설계 및 실행 전문가
 - **doc-syncer**: 문서 자동화 전문가
+
+**v0.23.1 추가 전문가**:
+- **baas-integration-expert**: BaaS 플랫폼 통합 전문가 (신규)
+- **security-expert**: 보안 검증 전문가
+- **performance-expert**: 성능 최적화 전문가
+
+[19명 팀원 전체 보기](/ko/agents/19-team-members)
 
 #### 4. @TAG 시스템
 모든 산출물을 연결하는 추적 시스템입니다:
@@ -285,27 +293,101 @@ Alfred가 다음을 자동으로 수행합니다:
 2. **버그 리포트**: [GitHub Issues](https://github.com/modu-ai/moai-adk/issues)
 3. **문서**: [공식 문서](https://adk.mo.ai.kr)
 
-## 📊 6단계: 다음 학습 단계
+## 🆕 6단계: v0.23.1 최신 기능 익히기
+
+### Expert Delegation System 이해
+
+Alfred가 자동으로 적절한 전문가를 할당합니다:
+
+```bash
+# 프로젝트 시작 - project-manager 자동 할당
+/alfred:0-project
+
+# SPEC 작성 - spec-builder 자동 할당
+/alfred:1-plan "사용자 인증 시스템"
+
+# 구현 - tdd-implementer 자동 할당
+/alfred:2-run AUTH-001
+
+# BaaS 통합 - baas-integration-expert 자동 할당
+/alfred:2-run BAAS-001
+```
+
+**장점**: 60% 사용자 상호작용 감소, 95%+ 정확도
+
+[Expert Delegation System 자세히 보기](/ko/alfred/expert-delegation-system)
+
+### 292 Skills 활용하기
+
+```bash
+# Skills 목록 확인
+moai-adk skills list
+
+# BaaS Skills 확인
+moai-adk skills list --category baas
+
+# 특정 Skill 정보
+moai-adk skills info moai-baas-supabase
+```
+
+**Skills 카테고리**:
+- Foundation (12개)
+- Workflow (24개)
+- Language & Framework (68개)
+- Domain Expert (89개)
+- **BaaS Platform (78개)** - v0.23.1 신규
+- Cross-Cutting (21개)
+
+[Skills Ecosystem v4.0 가이드](/ko/skills/ecosystem-upgrade-v4)
+
+### BaaS 플랫폼 통합
+
+**지원 플랫폼 (12개)**:
+- Supabase, Firebase, Vercel, Cloudflare
+- Auth0, Convex, Railway, Neon
+- Clerk, PocketBase, Appwrite, Parse
+
+```bash
+# Supabase 통합 예제
+/alfred:1-plan "Supabase를 활용한 실시간 채팅"
+/alfred:2-run CHAT-001
+
+# Firebase 통합 예제
+/alfred:1-plan "Firebase Auth를 활용한 소셜 로그인"
+/alfred:2-run AUTH-002
+```
+
+[BaaS 생태계 가이드](/ko/skills/baas-ecosystem)
+
+## 📊 7단계: 다음 학습 단계
 
 ### 초보자 가이드 완료 후 다음 단계:
 
 <Callout type="success" emoji="🎉">
   <strong>축하합니다! 초보자 가이드를 완료했습니다.</strong><br />
-  이제 MoAI-ADK의 기본 개념과 사용법을 익혔습니다.
+  이제 MoAI-ADK의 기본 개념과 v0.23.1 최신 기능을 익혔습니다.
 </Callout>
 
-#### 추천 학습 경로:
+#### 실전 학습 자료 (추천 순서):
 
-1. **[중급자 가이드](./intermediate)**: 고급 패턴과 실전 활용법 배우기
-2. **Alfred 워크플로우**: 19개 전문 에이전트 심층 활용법
-3. **TDD 마스터리**: 복잡한 프로젝트에서의 TDD 적용
-4. **팀 협업**: GitFlow와 코드 리뷰 프로세스
+1. **[Tutorial 1: REST API 개발](/ko/tutorials/tutorial-01-rest-api)** - 30분, 초보자 필수
+2. **[Tutorial 2: JWT 인증 구현](/ko/tutorials/tutorial-02-jwt-auth)** - 1시간, 실전 보안
+3. **[Tutorial 4: Supabase 통합](/ko/tutorials/tutorial-04-baas-supabase)** - 1시간, BaaS 활용
+4. **[Tutorial 3: 데이터베이스 최적화](/ko/tutorials/tutorial-03-database-optimization)** - 1시간, 성능 향상
 
-#### 실천 프로젝트:
+#### 코드 예제로 빠르게 배우기:
 
-- 🏗️ **간단한 웹 애플리케이션**: Flask/FastAPI로 CRUD 기능 구현
-- 📱 **REST API 설계**: OpenAPI 명세서 자동 생성
-- 🧪 **테스트 슈트 작성**: 단위/통합/E2E 테스트 자동화
+- **[REST API 예제](/ko/examples/rest-api)**: CRUD, 인증, 에러 처리
+- **[인증 예제](/ko/examples/authentication)**: JWT, OAuth, Session
+- **[BaaS 예제](/ko/examples/baas)**: Supabase, Firebase 통합
+- **[데이터베이스 예제](/ko/examples/database)**: 스키마, 쿼리, 최적화
+
+#### 심화 학습:
+
+1. **[중급자 가이드](./intermediate)**: 고급 패턴과 실전 활용법
+2. **[19명 팀원 가이드](/ko/agents/19-team-members)**: 전문 에이전트 심층 활용
+3. **[Senior Engineer Thinking](/ko/features/senior-engineer-thinking)**: 8가지 연구 전략
+4. **[실제 프로젝트 사례](/ko/case-studies)**: E-commerce, SaaS, Microservices
 
 ### 유용한 리소스
 

@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 # @CODE:HOOK-RESEARCH-002 | @SPEC:HOOK-RESEARCH-STRATEGY-001 | @TEST: tests/hooks/test_research_strategy.py
-"""실시간 연구 전략 선택 Hook
+"""Real-time Research Strategy Selection Hook
 
-PreToolUse 단계에서 작업 유형에 맞는 연구 전략을 자동으로 선택하고 최적화.
-작업 전 연구 컨텍스트를 설정하고 자원을 할당.
+Automatically selects and optimizes research strategy based on task type at PreToolUse stage.
+Sets up research context and allocates resources before task execution.
 
-기능:
-- 작업 유형 분석 기반 연구 전략 선택
-- 자동 연구 컨텍스트 설정
-- 자원 최적화 및 메모리 관리
-- 병렬 연구 처리 준비
-- 연구 지식 JIT 로딩
+Features:
+- Research strategy selection based on task type analysis
+- Automatic research context configuration
+- Resource optimization and memory management
+- Parallel research processing preparation
+- JIT loading of research knowledge
 
-사용법:
+Usage:
     python3 pre_tool__research_strategy.py <tool_name> <tool_args_json>
 """
 
@@ -24,7 +24,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-# 모듈 경로 추가
+# Add module path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
 from moai_adk.core.tags.validator import CentralValidationResult, CentralValidator, ValidationConfig
@@ -32,11 +32,11 @@ from moai_adk.statusline.version_reader import VersionReader
 
 # Local hook configuration functions
 def get_graceful_degradation() -> bool:
-    """우아한 저하 degrade 모드 설정 반환"""
+    """Return graceful degradation mode configuration"""
     return os.environ.get("MOAI_GRACEFUL_DEGRADATION", "true").lower() == "true"
 
 def load_hook_timeout() -> int:
-    """Hook 타임아웃 로드 (밀리초 단위)"""
+    """Load hook timeout (in milliseconds)"""
     try:
         return int(os.environ.get("MOAI_HOOK_TIMEOUT_MS", "30000"))
     except ValueError:
@@ -44,10 +44,10 @@ def load_hook_timeout() -> int:
 
 
 def load_research_config() -> Dict[str, Any]:
-    """연구 설정 로드
+    """Load research configuration
 
     Returns:
-        연구 설정 딕셔너리
+        Research configuration dictionary
     """
     try:
         config_file = Path(".moai/config/config.json")
@@ -74,28 +74,28 @@ def load_research_config() -> Dict[str, Any]:
 
 
 def classify_tool_type(tool_name: str, tool_args: Dict[str, Any]) -> str:
-    """도구 유형 분류
+    """Classify tool type
 
     Args:
-        tool_name: 도구 이름
-        tool_args: 도구 인자
+        tool_name: Tool name
+        tool_args: Tool arguments
 
     Returns:
-        분류된 도구 유형
+        Classified tool type
     """
-    # 코드 작업 도구
+    # Code operation tools
     code_tools = {"Edit", "Write", "MultiEdit", "Read", "Grep", "Glob"}
 
-    # 테스트 관련 도구
+    # Test-related tools
     test_tools = {"Bash"}
 
-    # 문서 작업 도구
+    # Documentation tools
     doc_tools = {"NotebookEdit"}
 
-    # 탐색 및 분석 도구
+    # Exploration and analysis tools
     explore_tools = {"Task", "Explore", "Plan", "WebFetch", "WebSearch"}
 
-    # 프로젝트 관리 도구
+    # Project management tools
     project_tools = {"Bash(git:*)", "Bash(gh:*)"}
 
     if tool_name in code_tools:
@@ -113,17 +113,17 @@ def classify_tool_type(tool_name: str, tool_args: Dict[str, Any]) -> str:
 
 
 def get_research_strategies_for_tool(tool_type: str) -> Dict[str, Any]:
-    """도구 유형에 적합한 연구 전략 선택
+    """Select appropriate research strategy for tool type
 
     Args:
-        tool_type: 도구 유형
+        tool_type: Tool type
 
     Returns:
-        선택된 연구 전략
+        Selected research strategy
     """
     config = load_research_config()
 
-    # 전략 매핑 (도구 유형 -> 적합한 전략)
+    # Strategy mapping (tool type -> suitable strategy)
     strategy_mapping = {
         "code": {
             "primary_strategies": [
@@ -232,14 +232,14 @@ def get_research_strategies_for_tool(tool_type: str) -> Dict[str, Any]:
 
 
 def load_jit_knowledge(tool_type: str, focus_areas: List[str]) -> Dict[str, Any]:
-    """Just-In-Time 지식 로딩
+    """Just-In-Time knowledge loading
 
     Args:
-        tool_type: 도구 유형
-        focus_areas: 초점 영역
+        tool_type: Tool type
+        focus_areas: Focus areas
 
     Returns:
-        JIT 로딩된 지식
+        JIT loaded knowledge
     """
     knowledge_base = {}
     knowledge_dir = Path(".moai/research/knowledge/")
@@ -247,10 +247,10 @@ def load_jit_knowledge(tool_type: str, focus_areas: List[str]) -> Dict[str, Any]
     if not knowledge_dir.exists():
         return knowledge_base
 
-    # 도구 유형과 초점 영역에 맞는 지식 파일 로드
+    # Load knowledge files matching tool type and focus areas
     relevant_files = []
 
-    # 일치하는 파일 패턴
+    # Matching file patterns
     patterns = [
         f"{tool_type}_*.json",
         f"*.json"
@@ -264,14 +264,14 @@ def load_jit_knowledge(tool_type: str, focus_areas: List[str]) -> Dict[str, Any]
         except Exception:
             continue
 
-    # 파일 로드
+    # Load files
     for file_path in relevant_files:
         try:
             import json as json_module
             with open(file_path, 'r', encoding='utf-8') as f:
                 knowledge_data = json_module.load(f)
 
-                # 초점 영역과 관련된 지식만 필터링
+                # Filter only knowledge related to focus areas
                 if focus_areas:
                     relevant_knowledge = {}
                     for area in focus_areas:
@@ -288,16 +288,16 @@ def load_jit_knowledge(tool_type: str, focus_areas: List[str]) -> Dict[str, Any]
 
 
 def optimize_resources(tool_type: str, strategies: List[str]) -> Dict[str, Any]:
-    """자원 최적화 설정
+    """Resource optimization configuration
 
     Args:
-        tool_type: 도구 유형
-        strategies: 선택된 전략
+        tool_type: Tool type
+        strategies: Selected strategies
 
     Returns:
-        최적화된 자원 설정
+        Optimized resource configuration
     """
-    # 도구 유형에 따른 자원 할당
+    # Resource allocation based on tool type
     resource_configs = {
         "code": {
             "memory_limit": "512MB",
@@ -345,7 +345,7 @@ def optimize_resources(tool_type: str, strategies: List[str]) -> Dict[str, Any]:
 
     config = resource_configs.get(tool_type, resource_configs["general"])
 
-    # 전략 수에 따라 추가 최적화
+    # Additional optimization based on number of strategies
     if len(strategies) > 3:
         config["memory_limit"] = f"{int(config['memory_limit'].replace('MB', '')) * 1.5:.0f}MB"
         config["parallel_processing"] = True
@@ -357,17 +357,17 @@ def create_research_context(tool_name: str, tool_args: Dict[str, Any],
                           strategy_config: Dict[str, Any],
                           knowledge_base: Dict[str, Any],
                           resource_config: Dict[str, Any]) -> Dict[str, Any]:
-    """연구 컨텍스트 생성
+    """Create research context
 
     Args:
-        tool_name: 도구 이름
-        tool_args: 도구 인자
-        strategy_config: 전략 설정
-        knowledge_base: 지식 베이스
-        resource_config: 자원 설정
+        tool_name: Tool name
+        tool_args: Tool arguments
+        strategy_config: Strategy configuration
+        knowledge_base: Knowledge base
+        resource_config: Resource configuration
 
     Returns:
-        연구 컨텍스트
+        Research context
     """
     tool_type = classify_tool_type(tool_name, tool_args)
 
@@ -387,40 +387,40 @@ def create_research_context(tool_name: str, tool_args: Dict[str, Any],
 
 
 def format_strategy_message(context: Dict[str, Any]) -> str:
-    """전략 선택 메시지 생성
+    """Generate strategy selection message
 
     Args:
-        context: 연구 컨텍스트
+        context: Research context
 
     Returns:
-        포맷된 메시지
+        Formatted message
     """
     strategy_names = context["research_strategy"]["primary_strategies"]
     focus_areas = context["research_strategy"]["focus_areas"]
     resource_config = context["resource_config"]
 
     message = [
-        f"🔬 연구 전략 선택 완료",
-        f"📝 도구: {context['tool_context']['name']} ({context['tool_context']['type']})",
-        f"⚡ 활성화된 전략: {', '.join(strategy_names)}",
-        f"🎯 초점 영역: {', '.join(focus_areas)}",
-        f"💾 자원 설정: {resource_config['memory_limit']}, 타임아웃: {resource_config['timeout_seconds']}초"
+        f"🔬 Research strategy selection complete",
+        f"📝 Tool: {context['tool_context']['name']} ({context['tool_context']['type']})",
+        f"⚡ Activated strategies: {', '.join(strategy_names)}",
+        f"🎯 Focus areas: {', '.join(focus_areas)}",
+        f"💾 Resource configuration: {resource_config['memory_limit']}, timeout: {resource_config['timeout_seconds']}s"
     ]
 
     if context["knowledge_base"]:
-        message.append(f"📚 JIT 지식 로딩: {len(context['knowledge_base'])} 개 항목")
+        message.append(f"📚 JIT knowledge loading: {len(context['knowledge_base'])} items")
 
     return "\n".join(message)
 
 
 def main() -> None:
-    """메인 함수"""
+    """Main function"""
     try:
-        # 설정 로드
+        # Load configuration
         timeout_seconds = load_hook_timeout() / 1000
         graceful_degradation = get_graceful_degradation()
 
-        # 인자 파싱
+        # Parse arguments
         if len(sys.argv) < 3:
             if os.environ.get("MOAI_SILENT_RESEARCH", "false").lower() != "true":
                 print(json.dumps({
@@ -440,46 +440,46 @@ def main() -> None:
                 }))
             sys.exit(0)
 
-        # 시작 시간 기록
+        # Record start time
         start_time = time.time()
 
-        # 도구 유형 분류
+        # Classify tool type
         tool_type = classify_tool_type(tool_name, tool_args)
 
-        # 연구 전략 선택
+        # Select research strategy
         strategy_config = get_research_strategies_for_tool(tool_type)
 
-        # 초점 영역 추출
+        # Extract focus areas
         focus_areas = strategy_config.get("focus_areas", [])
 
-        # JIT 지식 로딩
+        # JIT knowledge loading
         knowledge_base = load_jit_knowledge(tool_type, focus_areas)
 
-        # 자원 최적화
+        # Resource optimization
         resource_config = optimize_resources(tool_type, strategy_config["primary_strategies"])
 
-        # 연구 컨텍스트 생성
+        # Create research context
         research_context = create_research_context(
             tool_name, tool_args, strategy_config,
             knowledge_base, resource_config
         )
 
-        # 타임아웃 체크
+        # Timeout check
         if time.time() - start_time > timeout_seconds:
             timeout_response = {
                 "research_strategy_selected": False,
-                "error": "연구 전략 선택 타임아웃",
-                "message": "연구 전략 선택 실패 - 기본 전략으로 진행",
+                "error": "Research strategy selection timeout",
+                "message": "Research strategy selection failed - proceeding with default strategy",
                 "graceful_degradation": graceful_degradation
             }
             if os.environ.get("MOAI_SILENT_RESEARCH", "false").lower() != "true":
                 print(json.dumps(timeout_response, ensure_ascii=False))
             sys.exit(0)
 
-        # 실행 시간 계산
+        # Calculate execution time
         execution_time_ms = (time.time() - start_time) * 1000
 
-        # 최종 응답
+        # Final response
         response = {
             **research_context,
             "execution_time_ms": execution_time_ms,
@@ -487,20 +487,20 @@ def main() -> None:
             "message": format_strategy_message(research_context)
         }
 
-        # 성능 경고
+        # Performance warning
         timeout_warning_ms = timeout_seconds * 1000 * 0.8
         if execution_time_ms > timeout_warning_ms:
-            response["performance_warning"] = f"전략 선택 시간이 타임아웃의 80%를 초과했습니다 ({execution_time_ms:.0f}ms / {timeout_warning_ms:.0f}ms)"
+            response["performance_warning"] = f"Strategy selection time exceeded 80% of timeout ({execution_time_ms:.0f}ms / {timeout_warning_ms:.0f}ms)"
 
         if os.environ.get("MOAI_SILENT_RESEARCH", "false").lower() != "true":
             print(json.dumps(response, ensure_ascii=False, indent=2))
 
     except Exception as e:
-        # 예외 처리
+        # Exception handling
         error_response = {
             "research_strategy_selected": False,
-            "error": f"연구 전략 선택 오류: {str(e)}",
-            "message": "연구 전략 선택 실패 - 기본 전략으로 진행"
+            "error": f"Research strategy selection error: {str(e)}",
+            "message": "Research strategy selection failed - proceeding with default strategy"
         }
 
         if graceful_degradation:

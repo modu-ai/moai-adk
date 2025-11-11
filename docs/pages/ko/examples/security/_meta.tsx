@@ -1,7 +1,7 @@
-{
+export default {
   "index": "개요",
   "input-validation": "입력 검증",
   "sql-injection-prevention": "SQL 인젝션 방지",
   "xss-protection": "XSS 방어",
   "rate-limiting": "속도 제한"
-}
+};

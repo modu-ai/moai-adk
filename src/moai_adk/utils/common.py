@@ -2,7 +2,7 @@
 
 """
 Common Utilities
-공통 유틸리티 함수들
+Common utility functions
 """
 
 import asyncio
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class HTTPResponse:
-    """HTTP 응답 데이터"""
+    """HTTP response data"""
     status_code: int
     url: str
     load_time: float
@@ -36,7 +36,7 @@ class HTTPResponse:
 
 
 class HTTPClient:
-    """HTTP 클라이언트 유틸리티"""
+    """HTTP client utility"""
 
     def __init__(self, max_concurrent: int = 5, timeout: int = 10):
         self.max_concurrent = max_concurrent
@@ -44,7 +44,7 @@ class HTTPClient:
         self.session: Optional[aiohttp.ClientSession] = None
 
     async def __aenter__(self):
-        """비동기 컨텍스트 매니저 진입"""
+        """Async context manager entry"""
         connector = aiohttp.TCPConnector(limit=self.max_concurrent)
         timeout = aiohttp.ClientTimeout(total=self.timeout)
         self.session = aiohttp.ClientSession(
@@ -57,12 +57,12 @@ class HTTPClient:
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        """비동기 컨텍스트 매니저 종료"""
+        """Async context manager exit"""
         if self.session:
             await self.session.close()
 
     async def fetch_url(self, url: str) -> HTTPResponse:
-        """단일 URL 가져오기"""
+        """Fetch single URL"""
         try:
             if self.session is None:
                 return HTTPResponse(
@@ -108,23 +108,23 @@ class HTTPClient:
             )
 
     async def fetch_urls(self, urls: List[str]) -> List[HTTPResponse]:
-        """여러 URL 동시 가져오기"""
+        """Fetch multiple URLs concurrently"""
         async with self:
             tasks = [self.fetch_url(url) for url in urls]
             return await asyncio.gather(*tasks)
 
 
 def extract_links_from_text(text: str, base_url: Optional[str] = None) -> List[str]:
-    """텍스트에서 링크 추출"""
+    """Extract links from text"""
     links = []
 
-    # Markdown 링크 패턴: [text](url)
+    # Markdown link pattern: [text](url)
     markdown_pattern = r'\[([^\]]+)\]\(([^)]+)\)'
     markdown_matches = re.findall(markdown_pattern, text)
 
     for match in markdown_matches:
         url = match[1]
-        # 상대 URL을 절대 URL로 변환
+        # Convert relative URLs to absolute URLs
         if url.startswith(('http://', 'https://')):
             links.append(url)
         elif base_url and url.startswith('/'):
@@ -132,17 +132,17 @@ def extract_links_from_text(text: str, base_url: Optional[str] = None) -> List[s
         elif base_url and not url.startswith(('http://', 'https://', '#')):
             links.append(f"{base_url}/{url.rstrip('/')}")
 
-    # 일반 URL 패턴
+    # General URL pattern
     url_pattern = r'https?://[^\s<>"\'()]+'
     url_matches = re.findall(url_pattern, text)
     links.extend(url_matches)
 
-    logger.info(f"텍스트에서 {len(links)}개의 링크를 발견했습니다")
-    return list(set(links))  # 중복 제거
+    logger.info(f"Found {len(links)} links in text")
+    return list(set(links))  # Remove duplicates
 
 
 def is_valid_url(url: str) -> bool:
-    """URL 유효성 검사"""
+    """Validate URL"""
     try:
         result = urlparse(url)
         return all([result.scheme, result.netloc])
@@ -151,14 +151,14 @@ def is_valid_url(url: str) -> bool:
 
 
 def create_report_path(base_path: Path, suffix: str = "report") -> Path:
-    """보고서 파일 경로 생성"""
+    """Create report file path"""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"{suffix}_{timestamp}.md"
     return base_path / filename
 
 
 def format_duration(seconds: float) -> str:
-    """시간(초)을 읽기 쉬운 형식으로 변환"""
+    """Convert time (seconds) to readable format"""
     if seconds < 1:
         return f"{seconds*1000:.0f}ms"
     elif seconds < 60:
@@ -174,7 +174,7 @@ def format_duration(seconds: float) -> str:
 
 
 def calculate_score(values: List[float], weights: Optional[List[float]] = None) -> float:
-    """가중 평균 점수 계산"""
+    """Calculate weighted average score"""
     if not values:
         return 0.0
 
@@ -182,7 +182,7 @@ def calculate_score(values: List[float], weights: Optional[List[float]] = None) 
         weights = [1.0] * len(values)
 
     if len(values) != len(weights):
-        raise ValueError("값과 가중치의 길이가 일치해야 합니다")
+        raise ValueError("Values and weights must have the same length")
 
     weighted_sum = sum(v * w for v, w in zip(values, weights))
     total_weight = sum(weights)
@@ -191,7 +191,7 @@ def calculate_score(values: List[float], weights: Optional[List[float]] = None) 
 
 
 def get_summary_stats(numbers: List[float]) -> Dict[str, float]:
-    """기통계량 계산"""
+    """Calculate basic statistics"""
     if not numbers:
         return {"mean": 0.0, "min": 0.0, "max": 0.0, "std": 0.0}
 
@@ -199,7 +199,7 @@ def get_summary_stats(numbers: List[float]) -> Dict[str, float]:
     min_val = min(numbers)
     max_val = max(numbers)
 
-    # 표준편차 계산
+    # Calculate standard deviation
     if len(numbers) > 1:
         variance = sum((x - mean) ** 2 for x in numbers) / (len(numbers) - 1)
         std_dev = variance ** 0.5
@@ -215,7 +215,7 @@ def get_summary_stats(numbers: List[float]) -> Dict[str, float]:
 
 
 class RateLimiter:
-    """요청 속도 제한기"""
+    """Request rate limiter"""
 
     def __init__(self, max_requests: int = 10, time_window: int = 60):
         self.max_requests = max_requests
@@ -223,24 +223,24 @@ class RateLimiter:
         self.requests: List[datetime] = []
 
     def can_make_request(self) -> bool:
-        """요청 가능 여부 확인"""
+        """Check if request can be made"""
         now = datetime.now()
 
-        # 오래된 요청 제거
+        # Remove old requests
         self.requests = [req_time for req_time in self.requests
                         if (now - req_time).total_seconds() < self.time_window]
 
         return len(self.requests) < self.max_requests
 
     def add_request(self):
-        """요청 기록 추가"""
+        """Add request record"""
         if self.can_make_request():
             self.requests.append(datetime.now())
         else:
             raise RateLimitError(f"Rate limit exceeded: {self.max_requests} requests per {self.time_window}s")
 
     async def wait_if_needed(self):
-        """요청이 가능할 때까지 대기"""
+        """Wait until request can be made"""
         if not self.can_make_request():
             oldest_request = min(self.requests)
             wait_time = self.time_window - (datetime.now() - oldest_request).total_seconds()
@@ -250,7 +250,7 @@ class RateLimiter:
 
 
 class RateLimitError(Exception):
-    """속도 제한 오류"""
+    """Rate limit error"""
     pass
 
 
