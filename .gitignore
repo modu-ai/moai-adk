@@ -56,10 +56,11 @@ coverage.json
 docs/.next/
 docs/out/
 
-# Claude and MoAI configuration (user-specific)
-.claude/
-.moai/
-CLAUDE.md
+# Claude and MoAI configuration (user-specific, root only)
+# Package templates (src/moai_adk/templates/) are tracked
+/.claude/
+/.moai/
+/CLAUDE.md
 
 # Environment variables and deployment secrets
 .env*
