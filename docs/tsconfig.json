@@ -6,7 +6,7 @@
       "dom.iterable",
       "esnext"
     ],
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
