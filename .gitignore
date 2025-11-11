@@ -17,6 +17,9 @@ node_modules/
 .moai-backups/
 *.backup/
 *-backup/
+*_backup_*/
+hooks_backup_*/
+docs_backup_*/
 
 # Virtual environment
 venv/
