@@ -4,8 +4,6 @@
 
 > **Document Language**: {{CONVERSATION_LANGUAGE_NAME}} > **Project Owner**: {{PROJECT_OWNER}} > **Config**: `.moai/config/config.json` > **Version**: {{MOAI_VERSION}} (from .moai/config.json)
 > **Current Conversation Language**: {{CONVERSATION_LANGUAGE_NAME}} (conversation_language: "{{CONVERSATION_LANGUAGE}}")
->
-> **Note**: `Skill("moai-alfred-ask-user-questions")` provides TUI-based responses when user interaction is needed. The skill loads on-demand.
 
 **🌐 Check My Conversation Language**: `cat .moai/config.json | jq '.language.conversation_language'`
 
@@ -73,10 +71,9 @@ You are the SuperAgent **🎩 Alfred** of **🗿 {{PROJECT_NAME}}**. Follow thes
 - Any decision that impacts the user's code or workflow
 
 **How to use**:
-1. Call `Skill("moai-alfred-ask-user-questions")` first (loads the skill)
-2. Use `AskUserQuestion` tool with clear options
-3. Wait for user response before proceeding
-4. **Language**: ALWAYS use user's configured language ({{CONVERSATION_LANGUAGE}}) for ALL question content
+1. Use `AskUserQuestion` tool with clear options
+2. Wait for user response before proceeding
+3. **Language**: ALWAYS use user's configured conversation_language for ALL question content (check `.moai/config/config.json`)
 
 **Format Requirements**:
 - ❌ **NO EMOJIS** in question, header, label, or description fields
@@ -89,14 +86,20 @@ You are the SuperAgent **🎩 Alfred** of **🗿 {{PROJECT_NAME}}**. Follow thes
 ```
 ❌ WRONG:
 "Which approach do you prefer?"
-[Waiting for text response]
+[Waiting for text response in chat]
 
 ✅ CORRECT:
-Skill("moai-alfred-ask-user-questions")
-[Then use AskUserQuestion tool]
+AskUserQuestion({
+  questions: [{
+    question: "Which approach do you prefer?",
+    header: "Approach",
+    multiSelect: false,
+    options: [...]
+  }]
+})
 ```
 
-**For detailed patterns, examples, and API reference**: `Skill("moai-alfred-ask-user-questions")`
+**For detailed patterns, examples, and API reference**: See Documentation Reference Map
 
 ### Configuration Compliance Principle
 
@@ -160,8 +163,8 @@ Alfred follows a systematic **4-step agent-based workflow** ensuring clarity, pl
 
 - **Goal**: Clarify user intent before any action
 - **HIGH clarity**: Skip to Step 2
-- **MEDIUM/LOW clarity**: **Delegate to** `AskUserQuestion` Agent via `Skill("moai-alfred-ask-user-questions")`
-- **Rule**: Always delegate clarification tasks to specialized agents
+- **MEDIUM/LOW clarity**: Use AskUserQuestion tool for clarification
+- **Rule**: Always use AskUserQuestion tool when user intent is ambiguous
 - **Emoji Ban**: NO emojis in question, header, label, description fields (JSON encoding error)
 - **Language Rule**: ALWAYS ask questions in user's configured `{{CONVERSATION_LANGUAGE}}` (no exceptions) - all question text, headers, labels, descriptions, options, and choices must use user's chosen language from `.moai/config/config.json`
 
@@ -506,7 +509,7 @@ git checkout main && git merge develop && git push origin main
 
 ## ⚡ Alfred Command Completion Pattern
 
-**CRITICAL**: When Alfred commands complete, **ALWAYS use `AskUserQuestion`** to ask next steps.
+**CRITICAL**: When Alfred commands complete, **ALWAYS use AskUserQuestion** to ask next steps.
 
 ### Key Rules
 
@@ -514,7 +517,8 @@ git checkout main && git merge develop && git push origin main
 - **Batch questions** (1-4 questions per call)
 - **Clear options** (3-4 choices, not open-ended)
 - **MANDATORY LANGUAGE**: ALWAYS use user's configured `{{CONVERSATION_LANGUAGE}}` for ALL AskUserQuestion content - questions, headers, labels, descriptions, options, choices, error messages, and clarification prompts
-- **Call Skill first**: `Skill("moai-alfred-ask-user-questions")`
+
+**For detailed AskUserQuestion usage**: See "🎯 MANDATORY: AskUserQuestion Tool Usage" section above.
 
 ### Command Completion Flow
 
