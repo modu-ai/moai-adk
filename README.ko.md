@@ -2222,8 +2222,9 @@ MIT 라이선스 - 자세한 내용은 [LICENSE](LICENSE)를 참조하세요.
 
 - **🐛 Issue Tracker**: 버그를 보고하고 기능을 요청하세요
 - **📧 이메일**: <support@mo.ai.kr>
-- **🌐 웹사이트**: [adk.mo.ai.kr](https://adk.mo.ai.kr)
+- **📖 온라인 매뉴얼**: [adk.mo.ai.kr](https://adk.mo.ai.kr)
 - **💬 커뮤니티**: [mo.ai.kr](https://mo.ai.kr) (11월 오픈 예정 - 개발 중)
+- **☕ 후원하기**: [Ko-fi](https://ko-fi.com/modu_ai)
 
 ---
 
