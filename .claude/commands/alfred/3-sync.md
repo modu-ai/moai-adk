@@ -30,11 +30,26 @@ allowed-tools:
 
 ## 🎯 Command Purpose
 
-Synchronize code changes to Living Documents and verify @TAG system to ensure complete traceability.
+**CRITICAL**: This command orchestrates ONLY - delegates all sync work to doc-syncer agent
+
+Synchronize code changes to Living Documents and verify @TAG system to ensure complete traceability through proper agent delegation.
 
 **Document sync to**: $ARGUMENTS
 
-> **Standard workflow**: STEP 1 (Analysis & Planning) → User Approval → STEP 2 (Document Sync) → STEP 3 (Git Commit & PR)
+**Agent Delegation Pattern**:
+```bash
+# ✅ CORRECT: Delegate to doc-syncer agent
+Task(
+  subagent_type="doc-syncer",
+  description="Synchronize documentation for $ARGUMENTS",
+  prompt="You are the doc-syncer agent. Analyze changes and synchronize all relevant documentation."
+)
+
+# ❌ WRONG: Direct document manipulation
+Edit file.md "update documentation"
+```
+
+> **Standard workflow**: STEP 1 (Analysis & Planning) → User Approval → STEP 2 (Document Sync via Agent) → STEP 3 (Git Commit & PR)
 
 ---
 
@@ -417,41 +432,29 @@ Use Task tool:
 
 **After successful synchronization**, update SPEC status to completed:
 
-1. **Identify completed SPECs**:
-   - Extract SPEC IDs from synchronized documents
-   - Check for @SPEC markers in updated files
-   - Verify implementation completeness
-
-2. **Update SPEC status**:
+1. **Batch update all completed SPECs**:
    ```bash
-   python3 -c "
-   from moai_adk.core.spec_status_manager import SpecStatusManager
-   import re
-
-   manager = SpecStatusManager()
-
-   # Extract SPEC IDs from synchronized files
-   spec_ids = set()
-
-   # This would be populated from the sync results
-   completed_specs = []  # From $SYNC_RESULTS
-
-   for spec_id in completed_specs:
-       try:
-           manager.update_status(spec_id, 'completed',
-                               reason='Documentation synchronized successfully')
-           print(f'✅ {spec_id} status updated to completed')
-       except Exception as e:
-           print(f'⚠️  Failed to update {spec_id}: {e}')
-   "
+   python3 .claude/hooks/alfred/spec_status_hooks.py batch_update
    ```
 
-3. **Verify status updates**:
-   - Check that all identified SPECs were updated
-   - Record version changes
+2. **Verify status updates**:
+   - Check results from batch update
+   - Record version changes and status transitions
    - Include status changes in sync report
 
-**Integration**: Status updates are included in the Git commit from Phase 3.
+3. **Handle individual SPEC validation (if needed)**:
+   ```bash
+   python3 .claude/hooks/alfred/spec_status_hooks.py validate_completion <SPEC_ID>
+   python3 .claude/hooks/alfred/spec_status_hooks.py status_update <SPEC_ID> --status completed --reason "Documentation synchronized successfully"
+   ```
+
+4. **Generate status update summary**:
+   - Count of SPECs updated to completed
+   - List of any failed updates with reasons
+   - Version changes for each SPEC
+   - Integration with sync report
+
+**Integration**: Status updates are included in the Git commit from Phase 3 with detailed commit message.
 
 ---
 

@@ -141,7 +141,7 @@ def test_count_specs(tmp_path: Path, project_module):
     assert result["percentage"] == 33
 
 
-# @TEST:OFFLINE-001-05
+# # REMOVED_ORPHAN_TEST:OFFLINE-001-05
 def test_get_package_version_offline_mode(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, project_module):
     """Returns current version when offline
 

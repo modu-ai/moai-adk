@@ -1,8 +1,12 @@
 ---
 name: moai-alfred-agent-guide
+version: 2.0.0
+created: 2025-10-01
+updated: 2025-11-11
+status: active
 description: "19-agent team structure, decision trees for agent selection, Haiku vs Sonnet model selection, and agent collaboration principles. Enhanced with research capabilities for agent performance analysis and optimization. Use when deciding which sub-agent to invoke, understanding team responsibilities, or learning multi-agent orchestration."
-allowed-tools: "Read, Glob, Grep"
-tags: [agent, coordination, decision-tree, research, analysis, optimization, team-management]
+allowed-tools: "Read, Glob, Grep, TodoWrite"
+tags: [agent, coordination, decision-tree, research, analysis, optimization, team-management, performance]
 ---
 
 ## What It Does
@@ -46,23 +50,110 @@ MoAI-ADK의 19개 Sub-agent 아키텍처, 어떤 agent를 선택할지 결정하
 
 ## Agent Selection Decision Tree
 
+**CRITICAL**: Always invoke agents via `Task(subagent_type="agent-name")` - NEVER execute directly
+
 ```
 Task Type?
-├─ SPEC 작성/검증 → spec-builder
-├─ TDD 구현 → tdd-implementer
-├─ 문서 동기화 → doc-syncer
-├─ 구현 계획 → implementation-planner
-├─ 오류 분석 → debug-helper
-├─ 품질 검증 → quality-gate + Skill("moai-foundation-trust")
-├─ 코드베이스 탐색 → Explore
-├─ Git 워크플로우 → git-manager
-└─ 전체 프로젝트 계획 → Plan
+├─ SPEC 작성/검증 → Task(subagent_type="spec-builder")
+├─ TDD 구현 → Task(subagent_type="tdd-implementer")
+├─ 문서 동기화 → Task(subagent_type="doc-syncer")
+├─ 구현 계획 → Task(subagent_type="implementation-planner")
+├─ 오류 분석 → Task(subagent_type="debug-helper")
+├─ 품질 검증 → Task(subagent_type="quality-gate") + Skill("moai-foundation-trust")
+├─ 코드베이스 탐색 → Task(subagent_type="Explore")
+├─ Git 워크플로우 → Task(subagent_type="git-manager")
+└─ 전체 프로젝트 계획 → Task(subagent_type="Plan")
 ```
 
 ## Model Selection
 
 - **Sonnet**: Complex reasoning (spec-builder, tdd-implementer, implementation-planner)
 - **Haiku**: Fast execution (project-manager, quality-gate, git-manager)
+
+---
+
+## Agent Delegation Patterns (v5.0.0)
+
+### Commands → Agents → Skills Architecture
+
+**CRITICAL RULES**:
+1. **Commands NEVER execute directly** - Always orchestrate via agents
+2. **Agents own domain expertise** - Handle complex reasoning and decisions
+3. **Skills provide reusable knowledge** - Called by agents when needed
+
+### Proper Delegation Templates
+
+#### For Commands (Orchestration Only):
+```bash
+# ❌ WRONG: Direct execution
+"Implement SPEC-001"
+
+# ✅ CORRECT: Agent delegation
+Task(
+  subagent_type="tdd-implementer",
+  description="Execute TDD implementation for SPEC-001",
+  prompt="You are the tdd-implementer agent. Execute SPEC-001 using TDD cycle."
+)
+```
+
+#### For Agents (Domain Execution):
+```bash
+# ❌ WRONG: Direct skill execution without context
+Skill("moai-domain-backend")
+
+# ✅ CORRECT: Skill loading with proper context
+Skill("moai-domain-backend")  # Load domain knowledge
+# Then apply to specific task with context
+```
+
+#### For Specialist Agent Activation:
+```bash
+# ❌ WRONG: Manual domain work
+"Design backend API for user authentication"
+
+# ✅ CORRECT: Delegate to domain expert
+Task(
+  subagent_type="backend-expert",
+  description="Design and implement backend authentication system",
+  prompt="You are the backend-expert agent. Design comprehensive authentication API."
+)
+```
+
+### Agent Collaboration Protocols
+
+#### Cross-Agent Coordination:
+```bash
+# Backend expert coordinates with frontend expert
+Task(
+  subagent_type="backend-expert",
+  description="Create API contract for frontend integration",
+  prompt="Coordinate with frontend-expert for API contract. Design endpoints that frontend can consume."
+)
+```
+
+#### Sequential Agent Handoffs:
+```bash
+# 1. Plan agent creates strategy
+Task(subagent_type="Plan", ...)
+# 2. Implementation agent executes
+Task(subagent_type="tdd-implementer", ...)
+# 3. Quality agent validates
+Task(subagent_type="quality-gate", ...)
+```
+
+### Anti-Patterns to Avoid
+
+❌ **Direct Command Execution**: Commands implementing features directly
+❌ **Agent Bypassing**: Using skills without proper agent context
+❌ **Mixed Responsibilities**: Commands doing both orchestration AND implementation
+❌ **Unclear Delegation**: Ambiguous handoffs between agents
+
+### Best Practices
+
+✅ **Clear Ownership**: Each task has one responsible agent
+✅ **Proper Handoffs**: Explicit agent-to-agent communication
+✅ **Skill Context**: Skills loaded within agent domain context
+✅ **Traceable Work**: Every action traceable to responsible agent
 
 ---
 

@@ -51,6 +51,33 @@ jobs:
       - name: Install dependencies with uv
         run: uv sync --all-extras --dev
 
+      - name: Validate file encodings
+        run: |
+          echo "Checking for UTF-8 encoding issues..."
+          python3 -c "
+          import os
+          from pathlib import Path
+
+          def check_encodings():
+              issues = []
+              for py_file in Path('./src').rglob('*.py'):
+                  try:
+                      with open(py_file, 'r', encoding='utf-8') as f:
+                          f.read()
+                  except UnicodeDecodeError as e:
+                      issues.append(f'{py_file}: {e}')
+              return issues
+
+          encoding_issues = check_encodings()
+          if encoding_issues:
+              print('❌ Encoding issues found:')
+              for issue in encoding_issues:
+                  print(f'  {issue}')
+              exit(1)
+          else:
+              print('✅ All Python files have valid UTF-8 encoding')
+          "
+
       - name: Run TAG validation
         run: |
           uv run pytest tests/ -v \

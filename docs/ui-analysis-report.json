@@ -1,0 +1,396 @@
+{
+  "layout": {
+    "header": {
+      "exists": false,
+      "element": "undefined..."
+    },
+    "nav": {
+      "exists": false,
+      "count": 0,
+      "primary": false
+    },
+    "sidebar": {
+      "exists": false,
+      "nextra": false,
+      "count": 0
+    },
+    "main": {
+      "exists": false,
+      "nextra": false,
+      "hasContent": false
+    },
+    "footer": {
+      "exists": false,
+      "nextra": false
+    },
+    "wrapper": {
+      "nextraContainer": false,
+      "contentWrapper": false,
+      "markdownContent": false
+    }
+  },
+  "theme": {
+    "stylesheets": [],
+    "themeClasses": [],
+    "nextraElements": {
+      "search": false,
+      "themeToggle": false,
+      "breadcrumb": false,
+      "toc": false,
+      "editLink": false,
+      "pagination": false
+    },
+    "customizations": {},
+    "issues": [
+      "No Nextra stylesheets detected",
+      "Missing core Nextra theme classes",
+      "Nextra container not found"
+    ]
+  },
+  "styling": {
+    "fonts": [
+      {
+        "family": "Pretendard",
+        "weight": "900",
+        "style": "normal"
+      },
+      {
+        "family": "Pretendard",
+        "weight": "800",
+        "style": "normal"
+      },
+      {
+        "family": "Pretendard",
+        "weight": "700",
+        "style": "normal"
+      },
+      {
+        "family": "Pretendard",
+        "weight": "600",
+        "style": "normal"
+      },
+      {
+        "family": "Pretendard",
+        "weight": "500",
+        "style": "normal"
+      },
+      {
+        "family": "Pretendard",
+        "weight": "400",
+        "style": "normal"
+      },
+      {
+        "family": "Pretendard",
+        "weight": "300",
+        "style": "normal"
+      },
+      {
+        "family": "Pretendard",
+        "weight": "200",
+        "style": "normal"
+      },
+      {
+        "family": "Pretendard",
+        "weight": "100",
+        "style": "normal"
+      },
+      {
+        "family": "Hack",
+        "weight": "400",
+        "style": "normal"
+      },
+      {
+        "family": "Hack",
+        "weight": "700",
+        "style": "normal"
+      },
+      {
+        "family": "Hack",
+        "weight": "400",
+        "style": "italic"
+      },
+      {
+        "family": "Hack",
+        "weight": "700",
+        "style": "italic"
+      }
+    ],
+    "colors": {},
+    "spacing": {},
+    "typography": {
+      "fontFamily": "Pretendard, \"Source Han Sans JP\", \"Source Han Sans CN\", \"Source Han Sans TW\", \"Apple SD Gothic Neo\", \"Malgun Gothic\", \"Spoqa Han Sans Neo\", system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+      "fontSize": "16px",
+      "lineHeight": "25.6px",
+      "color": "rgb(0, 0, 0)",
+      "backgroundColor": "rgba(0, 0, 0, 0)"
+    },
+    "issues": [],
+    "cssVariables": {
+      "--nextra-card-bg-color": "#ffffff",
+      "--tw-inset-shadow-alpha": "100%",
+      "--nextra-primary-saturation": "0%",
+      "--tw-ring-shadow": "0 0 #0000",
+      "--nextra-text-color": "#000000",
+      "--x-tracking-tight": "-0.025em",
+      "--tw-drop-shadow-alpha": "100%",
+      "--x-color-red-500": "oklch(63.7% 0.237 25.331)",
+      "--x-color-gray-200": "oklch(92.8% 0.006 264.531)",
+      "--x-radius-xl": "0.75rem",
+      "--x-color-gray-600": "oklch(44.6% 0.03 256.802)",
+      "--twoslash-docs-color": "#888",
+      "--x-color-blue-600": "oklch(54.6% 0.245 262.881)",
+      "--tw-outline-style": "solid",
+      "--x-container-2xl": "42rem",
+      "--tw-inset-ring-shadow": "0 0 #0000",
+      "--font-system": "'Pretendard', 'Source Han Sans JP', 'Source Han Sans CN', 'Source Han Sans TW', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Spoqa Han Sans Neo', system-ui, -apple-system, 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', sans-serif",
+      "--x-text-sm--line-height": "calc(1.25 / 0.875)",
+      "--x-color-slate-900": "oklch(20.8% 0.042 265.755)",
+      "--nextra-text-color-tertiary": "#666666",
+      "--nextra-bg-color-secondary": "#F5F5F5",
+      "--x-color-primary-200": "",
+      "--x-font-sans": "ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\",\n      \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+      "--font-mono": "'Hack', 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', 'Courier New', monospace",
+      "--x-font-mono": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\",\n      \"Courier New\", monospace",
+      "--nextra-bg-color-tertiary": "#F2F1ED",
+      "--x-color-neutral-300": "oklch(87% 0 0)",
+      "--x-color-slate-100": "oklch(96.8% 0.007 247.896)",
+      "--x-leading-tight": "1.25",
+      "--nextra-border-color": "#D5D4D0",
+      "--nextra-text-color-secondary": "#504F4B",
+      "--x-text-3xl": "1.875rem",
+      "--x-color-green-500": "oklch(72.3% 0.219 149.579)",
+      "--twoslash-cursor-color": "#8888",
+      "--tw-inset-shadow": "0 0 #0000",
+      "--tw-ring-offset-color": "#fff",
+      "--x-font-weight-semibold": "600",
+      "--tw-gradient-from": "rgba(0, 0, 0, 0)",
+      "--x-color-neutral-900": "oklch(20.5% 0 0)",
+      "--x-text-4xl--line-height": "calc(2.5 / 2.25)",
+      "--x-color-gray-100": "oklch(96.7% 0.003 264.542)",
+      "--x-color-blue-100": "oklch(93.2% 0.032 255.585)",
+      "--x-color-neutral-50": "oklch(98.5% 0 0)",
+      "--tw-gradient-to": "rgba(0, 0, 0, 0)",
+      "--tw-shadow-alpha": "100%",
+      "--font-sans": "ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\",\n      \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+      "--x-default-font-family": "ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\",\n      \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+      "--x-text-lg--line-height": "calc(1.75 / 1.125)",
+      "--tw-scale-z": "1",
+      "--nextra-accent-hover-color": "#504F4B",
+      "--x-color-green-900": "oklch(39.3% 0.095 152.535)",
+      "--color-gray-100": "oklch(96.7% 0.003 264.542)",
+      "--x-radius-sm": "0.25rem",
+      "--x-text-xl--line-height": "calc(1.75 / 1.25)",
+      "--twoslash-popup-bg": "#f8f8f8",
+      "--x-color-primary-800": "",
+      "--tw-ring-offset-width": "0px",
+      "--twoslash-tag-color": "55, 114, 207",
+      "--twoslash-popup-color": "",
+      "--tw-gradient-via-position": "50%",
+      "--x-color-red-900": "oklch(39.6% 0.141 25.723)",
+      "--text-xs--line-height": "calc(1 / 0.75)",
+      "--default-font-family": "ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\",\n      \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+      "--x-color-purple-100": "oklch(94.6% 0.033 307.174)",
+      "--x-text-3xl--line-height": "calc(2.25 / 1.875)",
+      "--nextra-primary-hue": "0deg",
+      "--x-color-red-600": "oklch(57.7% 0.245 27.325)",
+      "--x-color-gray-800": "oklch(27.8% 0.033 256.848)",
+      "--tw-gradient-to-position": "100%",
+      "--x-color-red-700": "oklch(50.5% 0.213 27.518)",
+      "--x-color-red-100": "oklch(93.6% 0.032 17.717)",
+      "--x-text-xl": "1.25rem",
+      "--x-color-gray-300": "oklch(87.2% 0.01 258.338)",
+      "--x-color-purple-900": "oklch(38.1% 0.176 304.987)",
+      "--default-transition-duration": "150ms",
+      "--twoslash-tag-warn-color": "195, 125, 13",
+      "--x-color-slate-700": "oklch(37.2% 0.044 257.287)",
+      "--x-ease-in-out": "cubic-bezier(0.4, 0, 0.2, 1)",
+      "--x-radius-lg": "0.5rem",
+      "--x-color-yellow-700": "oklch(55.4% 0.135 66.442)",
+      "--x-color-green-100": "oklch(96.2% 0.044 156.743)",
+      "--x-color-neutral-400": "oklch(70.8% 0 0)",
+      "--twoslash-tag-annotate-color": "27, 166, 115",
+      "--x-ease-out": "cubic-bezier(0, 0, 0.2, 1)",
+      "--x-font-weight-bold": "700",
+      "--nextra-navbar-height": "64px",
+      "--x-text-xs--line-height": "calc(1 / 0.75)",
+      "--tw-gradient-from-position": "0%",
+      "--x-font-weight-black": "900",
+      "--x-color-gray-50": "oklch(98.5% 0.002 247.839)",
+      "--tw-ring-offset-shadow": "0 0 #0000",
+      "--x-color-primary-700": "",
+      "--x-text-2xl--line-height": "calc(2 / 1.5)",
+      "--twoslash-docs-font": "sans-serif",
+      "--x-text-sm": "0.875rem",
+      "--x-text-xs": "0.75rem",
+      "--default-transition-timing-function": "cubic-bezier(0.4, 0, 0.2, 1)",
+      "--x-color-green-700": "oklch(52.7% 0.154 150.069)",
+      "--x-color-neutral-600": "oklch(43.9% 0 0)",
+      "--x-color-neutral-500": "oklch(55.6% 0 0)",
+      "--x-color-slate-50": "oklch(98.4% 0.003 247.858)",
+      "--x-text-base--line-height": "calc(1.5 / 1)",
+      "--x-text-base": "1rem",
+      "--x-color-purple-600": "oklch(55.8% 0.288 302.321)",
+      "--x-color-neutral-200": "oklch(92.2% 0 0)",
+      "--spacing": "0.25rem",
+      "--x-color-primary-100": "",
+      "--tw-translate-z": "0",
+      "--tw-gradient-via": "rgba(0, 0, 0, 0)",
+      "--x-font-weight-normal": "400",
+      "--x-color-green-800": "oklch(44.8% 0.119 151.328)",
+      "--tw-scale-y": "1",
+      "--x-color-gray-400": "oklch(70.7% 0.022 261.325)",
+      "--x-color-yellow-50": "oklch(98.7% 0.026 102.212)",
+      "--x-default-mono-font-family": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\",\n      \"Courier New\", monospace",
+      "--twoslash-border-color": "#8888",
+      "--x-color-blue-900": "oklch(37.9% 0.146 265.522)",
+      "--x-color-nextra-bg": "",
+      "--nextra-code-text-color": "#000000",
+      "--x-blur-md": "12px",
+      "--tw-translate-y": "0",
+      "--twoslash-highlighted-border": "195, 125, 13",
+      "--x-spacing": "0.25rem",
+      "--x-color-yellow-500": "oklch(79.5% 0.184 86.047)",
+      "--x-color-primary-600": "",
+      "--twoslash-underline-color": "currentColor",
+      "--x-color-blue-700": "oklch(48.8% 0.243 264.376)",
+      "--x-radius-md": "0.375rem",
+      "--x-color-primary-300": "",
+      "--x-color-gray-700": "oklch(37.3% 0.034 259.733)",
+      "--tw-content": "\"\"",
+      "--nextra-accent-color": "#666666",
+      "--twoslash-error-bg": "rgba(212, 86, 86, 0.13)",
+      "--x-font-weight-medium": "500",
+      "--x-animate-spin": "spin 1s linear infinite",
+      "--x-default-transition-duration": "150ms",
+      "--x-color-black": "#000",
+      "--x-color-neutral-700": "oklch(37.1% 0 0)",
+      "--tw-border-style": "solid",
+      "--tw-shadow": "0 0 #0000",
+      "--tw-translate-x": "0",
+      "--color-gray-200": "oklch(92.8% 0.006 264.531)",
+      "--x-text-4xl": "2.25rem",
+      "--text-xs": "0.75rem",
+      "--tw-scale-x": "1",
+      "--x-color-slate-200": "oklch(92.9% 0.013 255.508)",
+      "--x-color-purple-400": "oklch(71.4% 0.203 305.504)",
+      "--twoslash-matched-color": "",
+      "--x-text-lg": "1.125rem",
+      "--x-default-transition-timing-function": "cubic-bezier(0.4, 0, 0.2, 1)",
+      "--nextra-code-bg-color": "#F0F0F0",
+      "--x-color-gray-900": "oklch(21% 0.034 264.665)",
+      "--x-color-primary-50": "",
+      "--x-color-primary-500": "",
+      "--x-text-2xl": "1.5rem",
+      "--x-color-primary-400": "",
+      "--twoslash-popup-shadow": "rgba(0, 0, 0.08) 0px 1px 4px",
+      "--twoslash-unmatched-color": "#888",
+      "--x-color-neutral-800": "oklch(26.9% 0 0)",
+      "--nextra-bg-color": "#ffffff",
+      "--x-color-white": "#fff",
+      "--x-color-blue-400": "oklch(70.7% 0.165 254.624)",
+      "--twoslash-error-color": "212, 86, 86",
+      "--default-mono-font-family": "'Hack', 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', 'Courier New', monospace"
+    }
+  },
+  "responsive": {
+    "Mobile": {
+      "viewport": {
+        "name": "Mobile",
+        "width": 375,
+        "height": 667
+      },
+      "sidebarVisible": false,
+      "navigationVisible": false,
+      "contentWidth": 0,
+      "horizontalScroll": false,
+      "elementsOverflow": []
+    },
+    "Tablet": {
+      "viewport": {
+        "name": "Tablet",
+        "width": 768,
+        "height": 1024
+      },
+      "sidebarVisible": false,
+      "navigationVisible": false,
+      "contentWidth": 0,
+      "horizontalScroll": false,
+      "elementsOverflow": []
+    },
+    "Desktop": {
+      "viewport": {
+        "name": "Desktop",
+        "width": 1920,
+        "height": 1080
+      },
+      "sidebarVisible": false,
+      "navigationVisible": false,
+      "contentWidth": 0,
+      "horizontalScroll": false,
+      "elementsOverflow": []
+    }
+  },
+  "quality": {
+    "score": 40,
+    "strengths": [],
+    "weaknesses": [],
+    "recommendations": [
+      "Overall design quality needs significant improvement",
+      "Implement proper navigation structure"
+    ],
+    "checks": {
+      "visualHierarchy": {
+        "hasClearHeadings": true,
+        "consistentSpacing": false,
+        "goodContrast": true
+      },
+      "contentOrganization": {
+        "hasNavigation": false,
+        "hasSearch": false,
+        "hasTableOfContents": false,
+        "hasBreadcrumb": false
+      },
+      "userExperience": {
+        "responsiveDesign": true,
+        "fastLoad": false,
+        "accessible": true
+      }
+    }
+  },
+  "screenshots": {
+    "desktop-full": "screenshot-desktop-full.png",
+    "tablet-full": "screenshot-tablet-full.png",
+    "mobile-full": "screenshot-mobile-full.png",
+    "desktop-above-fold": "screenshot-desktop-above-fold.png"
+  },
+  "htmlStructure": {
+    "doctype": "html",
+    "htmlLang": "ko",
+    "headElements": {
+      "title": "",
+      "metaDescription": "missing",
+      "viewport": "width=device-width",
+      "favicon": false,
+      "stylesheets": 4,
+      "scripts": 9
+    },
+    "bodyStructure": {
+      "hasHeader": false,
+      "hasNav": false,
+      "hasMain": false,
+      "hasAside": false,
+      "hasFooter": false,
+      "hasArticle": false,
+      "totalElements": 51
+    },
+    "semanticHTML": {
+      "properHeadingHierarchy": true,
+      "usesLandmarks": false,
+      "hasAltText": true,
+      "properForms": true
+    },
+    "issues": [
+      "Missing page title"
+    ]
+  }
+}

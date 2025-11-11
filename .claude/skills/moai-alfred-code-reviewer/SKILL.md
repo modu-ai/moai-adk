@@ -1,7 +1,13 @@
 ---
 name: moai-alfred-code-reviewer
-description: "Systematic code review guidance and automation. Apply TRUST 5 principles, check code quality, validate SOLID principles, identify security issues, and ensure maintainability. Use when conducting code reviews, setting review standards, or implementing review automation."
-allowed-tools: "Read, Write, Edit, Glob, Bash"
+version: 2.0.0
+created: 2025-10-01
+updated: 2025-11-11
+status: active
+description: "Systematic code review guidance and automation. Apply TRUST 5 principles, check code quality, validate SOLID principles, identify security issues, and ensure maintainability. Enhanced with research capabilities for code quality analysis and optimization. Use when conducting code reviews, setting review standards, or implementing review automation."
+keywords: ['code-review', 'quality', 'automation', 'research', 'analysis', 'optimization']
+allowed-tools: "Read, Write, Edit, Glob, Bash, TodoWrite"
+tags: [quality-assurance, code-review, automation, research, analysis, optimization]
 ---
 
 ## Skill Metadata
@@ -208,5 +214,66 @@ repos:
 
 ---
 
-**Reference**: Code Review Best Practices, TRUST 5 Principles  
-**Version**: 1.0.0
+## Research Integration
+
+This skill is enhanced with advanced research capabilities to optimize code review processes and quality analysis.
+
+### Research Areas
+
+**Code Quality Pattern Research**:
+- **Issue Pattern Analysis**: Research and analyze common code issues across different programming languages and frameworks
+- **Code Smell Detection**: Research and develop pattern recognition for code quality issues
+- **Best Practice Effectiveness**: Research and analyze the impact of different review practices on code quality
+- **Language-Specific Optimization**: Research best practices for different programming languages and frameworks
+
+**Review Process Optimization Research**:
+- **Review Efficiency Studies**: Research and analyze the time efficiency of different review approaches
+- **Automation Effectiveness**: Research the impact of automated tools on review quality and speed
+- **Reviewer Training Analysis**: Research and document learning patterns for new reviewers
+- **Review Coverage Optimization**: Research optimal review coverage strategies for different project types
+
+**Security and Quality Research**:
+- **Vulnerability Pattern Analysis**: Research and analyze security vulnerability patterns in code
+- **Code Complexity Research**: Investigate the relationship between code complexity and maintainability
+- **Test Coverage Impact**: Research the correlation between test coverage and code quality
+- **Code Review ROI Analysis**: Research and measure the return on investment for different review approaches
+
+### Research Methodology
+
+**Quality Pattern Analysis**:
+```python
+# Code Quality Pattern Research
+def analyze_quality_patterns():
+    """Research and document code quality patterns"""
+
+    patterns = {
+        'common_vulnerabilities': [],
+        'code_smells_frequency': [],
+        'best_practice_adoption': [],
+        'language_specific_issues': []
+    }
+
+    # Analyze code review data
+    for review_data in collect_review_history():
+        # Identify patterns
+        # Research effectiveness of different approaches
+        # Document findings for improvement
+        pass
+```
+
+**Review Process Research**:
+- Research and document optimal review team sizes
+- Analyze review efficiency across different project types
+- Research the impact of review timing on quality
+- Develop benchmarking metrics for review effectiveness
+
+**Automation Research**:
+- Research and test new automation tools and techniques
+- Analyze the balance between automated and manual review
+- Research AI-assisted review capabilities
+- Develop continuous improvement processes for automation
+
+---
+
+**Reference**: Code Review Best Practices, TRUST 5 Principles
+**Version**: 2.0.0

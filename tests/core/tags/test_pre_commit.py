@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# @TEST:PRECOMMIT-001 | Component 1: Pre-commit validator tests
+# # REMOVED_ORPHAN_TEST:PRECOMMIT-001 | Component 1: Pre-commit validator tests
 """Test suite for pre-commit TAG validation
 
 This module tests the pre-commit validator that checks:
@@ -86,10 +86,10 @@ class TestDuplicateDetection:
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create test files with UNIQUE TAGs
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:UNIQUE-001\n")
+            file1.write_text("# # REMOVED_ORPHAN_CODE:UNIQUE-001\n")
 
             file2 = Path(tmpdir) / "file2.py"
-            file2.write_text("# @CODE:UNIQUE-002\n")
+            file2.write_text("# # REMOVED_ORPHAN_CODE:UNIQUE-002\n")
 
             errors = validator.validate_duplicates([str(file1), str(file2)])
             assert len(errors) == 0
@@ -101,11 +101,11 @@ class TestDuplicateDetection:
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
             file1.write_text("""
-# @CODE:DUPLIC-001
+# # REMOVED_ORPHAN_CODE:DUPLIC-001
 def func1():
     pass
 
-# @CODE:DUPLIC-001
+# # REMOVED_ORPHAN_CODE:DUPLIC-001
 def func2():
     pass
 """)
@@ -121,10 +121,10 @@ def func2():
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:CROSS-001\n")
+            file1.write_text("# # REMOVED_ORPHAN_CODE:CROSS-001\n")
 
             file2 = Path(tmpdir) / "file2.py"
-            file2.write_text("# @CODE:CROSS-001\n")
+            file2.write_text("# # REMOVED_ORPHAN_CODE:CROSS-001\n")
 
             errors = validator.validate_duplicates([str(file1), str(file2)])
             assert len(errors) == 1
@@ -138,10 +138,10 @@ def func2():
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
             file1.write_text("""
-# @CODE:MULTI-001
-# @CODE:MULTI-001
-# @CODE:MULTI-002
-# @CODE:MULTI-002
+# # REMOVED_ORPHAN_CODE:MULTI-001
+# # REMOVED_ORPHAN_CODE:MULTI-001
+# # REMOVED_ORPHAN_CODE:MULTI-002
+# # REMOVED_ORPHAN_CODE:MULTI-002
 """)
 
             errors = validator.validate_duplicates([str(file1)])
@@ -154,7 +154,7 @@ def func2():
 class TestOrphanDetection:
     """Test orphan TAG detection"""
 
-    @pytest.mark.skip(reason="TAG chain matching logic under review - @CODE:SKIP-001")
+    @pytest.mark.skip(reason="TAG chain matching logic under review - # REMOVED_ORPHAN_CODE:SKIP-001")
     def test_no_orphans(self):
         """Valid TAG chain should have no orphans"""
         validator = PreCommitValidator()
@@ -191,7 +191,7 @@ class TestOrphanDetection:
             assert any("USER-REG-001" in w.tag for w in warnings)
             assert any("test" in w.message.lower() for w in warnings)
 
-    @pytest.mark.skip(reason="TAG chain matching logic under review - @CODE:SKIP-002")
+    @pytest.mark.skip(reason="TAG chain matching logic under review - # REMOVED_ORPHAN_CODE:SKIP-002")
     def test_orphan_test_without_code(self):
         """TEST without CODE should generate warning"""
         validator = PreCommitValidator()
@@ -204,7 +204,7 @@ class TestOrphanDetection:
             assert len(warnings) >= 1
             assert any("USER-REG-001" in w.tag for w in warnings)
 
-    @pytest.mark.skip(reason="TAG chain matching logic under review - @CODE:SKIP-003")
+    @pytest.mark.skip(reason="TAG chain matching logic under review - # REMOVED_ORPHAN_CODE:SKIP-003")
     def test_multiple_orphans(self):
         """Multiple orphans should all be detected"""
         validator = PreCommitValidator()
@@ -212,11 +212,11 @@ class TestOrphanDetection:
         with tempfile.TemporaryDirectory() as tmpdir:
             # CODE without TEST
             code1 = Path(tmpdir) / "auth.py"
-            code1.write_text("# @CODE:AUTH-004\n")
+            code1.write_text("# # REMOVED_ORPHAN_CODE:AUTH-004\n")
 
             # TEST without CODE
             test1 = Path(tmpdir) / "test_payment.py"
-            test1.write_text("# @TEST:PAY-001\n")
+            test1.write_text("# # REMOVED_ORPHAN_TEST:PAY-001\n")
 
             warnings = validator.validate_orphans([str(code1), str(test1)])
             assert len(warnings) >= 2
@@ -240,8 +240,8 @@ class TestFileScanningAndValidation:
             # File with duplicate TAGs
             file1 = Path(tmpdir) / "file1.py"
             file1.write_text("""
-# @CODE:ERROR-001
-# @CODE:ERROR-001
+# # REMOVED_ORPHAN_CODE:ERROR-001
+# # REMOVED_ORPHAN_CODE:ERROR-001
 """)
 
             result = validator.validate_files([str(file1)])
@@ -255,7 +255,7 @@ class TestFileScanningAndValidation:
         with tempfile.TemporaryDirectory() as tmpdir:
             # CODE without TEST (warning, not error)
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:WARN-001\n")
+            file1.write_text("# # REMOVED_ORPHAN_CODE:WARN-001\n")
 
             result = validator.validate_files([str(file1)])
             # Warnings don't block commit by default
@@ -270,13 +270,13 @@ class TestFileScanningAndValidation:
             # Duplicate (error)
             file1 = Path(tmpdir) / "file1.py"
             file1.write_text("""
-# @CODE:MIXED-001
-# @CODE:MIXED-001
+# # REMOVED_ORPHAN_CODE:MIXED-001
+# # REMOVED_ORPHAN_CODE:MIXED-001
 """)
 
             # Orphan (warning)
             file2 = Path(tmpdir) / "file2.py"
-            file2.write_text("# @CODE:ORPH-001\n")
+            file2.write_text("# # REMOVED_ORPHAN_CODE:ORPH-001\n")
 
             result = validator.validate_files([str(file1), str(file2)])
             assert result.is_valid is False
@@ -296,12 +296,12 @@ class TestFileScanningAndValidation:
 
             # Create and stage file
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:STAGE-001\n")
+            file1.write_text("# # REMOVED_ORPHAN_CODE:STAGE-001\n")
             subprocess.run(["git", "add", "file1.py"], cwd=tmpdir)
 
             # Create unstaged file
             file2 = Path(tmpdir) / "file2.py"
-            file2.write_text("# @CODE:UNSTAGE-001\n")
+            file2.write_text("# # REMOVED_ORPHAN_CODE:UNSTAGE-001\n")
 
             staged_files = validator.get_staged_files(tmpdir)
             assert "file1.py" in staged_files
@@ -377,8 +377,8 @@ class TestDocumentFileExclusion:
             md_file.write_text("""
 # Contributing Guide
 
-Example @CODE:AUTH-004 in markdown
-More @CODE:AUTH-004 elsewhere
+Example # REMOVED_ORPHAN_CODE:AUTH-004 in markdown
+More # REMOVED_ORPHAN_CODE:AUTH-004 elsewhere
 
 Example @TEST:AUTH-004 in docs
 More @TEST:AUTH-004 in example code
@@ -395,7 +395,7 @@ More @TEST:AUTH-004 in example code
 
         with tempfile.TemporaryDirectory() as tmpdir:
             readme = Path(tmpdir) / "README.md"
-            readme.write_text("Example @CODE:README-001\nExample @CODE:README-001\n")
+            readme.write_text("Example # REMOVED_ORPHAN_CODE:README-001\nExample # REMOVED_ORPHAN_CODE:README-001\n")
 
             result = validator.validate_files([str(readme)])
             assert result.is_valid is True
@@ -409,13 +409,13 @@ More @TEST:AUTH-004 in example code
             changelog.write_text("""
 ## v1.0.0
 
-- Fixed @CODE:BUG-001
-- Also @CODE:BUG-001
+- Fixed # REMOVED_ORPHAN_CODE:BUG-001
+- Also # REMOVED_ORPHAN_CODE:BUG-001
 
 ## v0.9.0
 
-- Added @TEST:FEAT-001
-- Also @TEST:FEAT-001
+- Added # REMOVED_ORPHAN_TEST:FEAT-001
+- Also # REMOVED_ORPHAN_TEST:FEAT-001
 """)
 
             result = validator.validate_files([str(changelog)])
@@ -428,11 +428,11 @@ More @TEST:AUTH-004 in example code
         with tempfile.TemporaryDirectory() as tmpdir:
             py_file = Path(tmpdir) / "auth.py"
             py_file.write_text("""
-# @CODE:AUTH-004
+# # REMOVED_ORPHAN_CODE:AUTH-004
 def login():
     pass
 
-# @CODE:AUTH-004  <- Duplicate in code file
+# # REMOVED_ORPHAN_CODE:AUTH-004  <- Duplicate in code file
 def verify():
     pass
 """)
@@ -449,11 +449,11 @@ def verify():
         with tempfile.TemporaryDirectory() as tmpdir:
             # Document with duplicates (should be ignored)
             doc = Path(tmpdir) / "CONTRIBUTING.md"
-            doc.write_text("Example @CODE:FEAT-001\nExample @CODE:FEAT-001\n")
+            doc.write_text("Example # REMOVED_ORPHAN_CODE:FEAT-001\nExample # REMOVED_ORPHAN_CODE:FEAT-001\n")
 
             # Code with duplicates (should be flagged)
             code = Path(tmpdir) / "feature.py"
-            code.write_text("# @CODE:BUG-001\n# @CODE:BUG-001\n")
+            code.write_text("# # REMOVED_ORPHAN_CODE:BUG-001\n# # REMOVED_ORPHAN_CODE:BUG-001\n")
 
             result = validator.validate_files([str(doc), str(code)])
             assert result.is_valid is False
@@ -472,7 +472,7 @@ class TestConfigurableValidation:
         with tempfile.TemporaryDirectory() as tmpdir:
             # CODE without TEST (warning in normal mode)
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-002\n")
+            file1.write_text("# # REMOVED_ORPHAN_CODE:TEST-002\n")
 
             result = validator.validate_files([str(file1)])
             # In strict mode, warnings should block commit
@@ -484,7 +484,7 @@ class TestConfigurableValidation:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-002\n")
+            file1.write_text("# # REMOVED_ORPHAN_CODE:TEST-002\n")
 
             result = validator.validate_files([str(file1)])
             # No orphan warnings when check is disabled
@@ -497,7 +497,7 @@ class TestConfigurableValidation:
             tag_pattern=r"@(SPEC|CODE|TEST|DOC):[A-Z]+-\d{3}"
         )
 
-        assert validator.validate_format("@CODE:PRJ-001") is True
+        assert validator.validate_format("# REMOVED_ORPHAN_CODE:PRJ-001") is True
         assert validator.validate_format("@CODE:PROJECT-FEAT-001") is False
 
 

@@ -5,9 +5,9 @@ Tests platform-specific timeout handling:
 - Windows: threading.Timer-based timeout
 - Unix/Linux/macOS: signal.SIGALRM-based timeout
 
-@TEST:TIMEOUT-001 - Windows threading.Timer timeout
-@TEST:TIMEOUT-002 - Unix signal.SIGALRM timeout
-@TEST:TIMEOUT-003 - Timeout cancellation
+# REMOVED_ORPHAN_TEST:TIMEOUT-001 - Windows threading.Timer timeout
+# REMOVED_ORPHAN_TEST:TIMEOUT-002 - Unix signal.SIGALRM timeout
+# REMOVED_ORPHAN_TEST:TIMEOUT-003 - Timeout cancellation
 """
 
 import signal

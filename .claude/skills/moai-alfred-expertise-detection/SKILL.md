@@ -1,13 +1,15 @@
 ---
 name: moai-alfred-expertise-detection
-version: 1.0.0
+version: 2.0.0
 created: 2025-11-02
-updated: 2025-11-02
+updated: 2025-11-11
 status: active
-description: Guide Alfred to detect user expertise level (Beginner/Intermediate/Expert) through in-session behavioral signals without memory file access
-keywords: ['expertise', 'detection', 'adaptive', 'heuristic', 'beginner', 'intermediate', 'expert', 'signals']
+description: Guide Alfred to detect user expertise level (Beginner/Intermediate/Expert) through in-session behavioral signals without memory file access. Enhanced with research capabilities for behavioral pattern analysis and optimization.
+keywords: ['expertise', 'detection', 'adaptive', 'heuristic', 'beginner', 'intermediate', 'expert', 'signals', 'research', 'behavioral-analysis', 'optimization']
 allowed-tools:
   - Read
+  - AskUserQuestion
+  - TodoWrite
 ---
 
 # Alfred Expertise Detection - Behavioral Signal Analysis

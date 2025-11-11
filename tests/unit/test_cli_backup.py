@@ -1,4 +1,4 @@
-# @TEST:CLI-003 | SPEC: SPEC-CLI-001/spec.md
+# @TEST:CLI-INIT-005 | SPEC: SPEC-CLI-001/spec.md
 """Unit tests for backup command
 
 Basic tests for CLI backup functionality.

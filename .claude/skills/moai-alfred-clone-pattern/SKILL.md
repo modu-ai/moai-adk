@@ -1,15 +1,16 @@
 ---
 name: moai-alfred-clone-pattern
-version: 1.0.0
+version: 2.0.0
 created: 2025-11-05
-updated: 2025-11-05
+updated: 2025-11-11
 status: active
-description: Master-Clone pattern implementation guide for complex multi-step tasks with full project context
-keywords: ['clone-pattern', 'master-clone', 'delegation', 'multi-step', 'parallel-processing']
+description: Master-Clone pattern implementation guide for complex multi-step tasks with full project context. Enhanced with research capabilities for delegation optimization and performance analysis. Use when implementing complex task delegation, parallel processing strategies, or optimizing master-clone workflows.
 allowed-tools:
   - Read
   - Bash
   - Task
+  - TodoWrite
+tags: [delegation, parallel-processing, master-clone, optimization, performance, research, analysis]
 ---
 
 # Clone Pattern Skill
@@ -225,3 +226,60 @@ def save_learning(task_type: str, learnings: dict):
 - CLAUDE.md: Alfred's Hybrid Architecture
 - Skill("moai-alfred-workflow"): 4-Step Workflow Logic
 - Skill("moai-alfred-agent-guide"): 19 team members details
+
+---
+
+## Research Integration
+
+This skill is enhanced with advanced research capabilities to optimize Master-Clone pattern implementation and performance.
+
+### Research Areas
+
+**Delegation Optimization Research**:
+- **Clone Performance Analysis**: Research and analyze clone execution patterns, success rates, and optimization opportunities
+- **Task Complexity Studies**: Investigate optimal delegation thresholds and conditions
+- **Memory Management Research**: Analyze context preservation and memory usage patterns across clones
+- **Parallel Processing Efficiency**: Research parallel execution benefits and synchronization challenges
+
+**Performance Optimization Research**:
+- **Execution Time Studies**: Research and document time savings from parallel vs sequential execution
+- **Resource Utilization Analysis**: Monitor and analyze CPU, memory, and I/O usage patterns
+- **Task Decomposition Research**: Investigate optimal task splitting strategies for different complexity levels
+- **Clone Learning Systems**: Research and implement learning mechanisms to improve future clone performance
+
+**Implementation Pattern Research**:
+- **Domain-Specific Optimization**: Research and document best practices for different project domains
+- **Clone Recovery Research**: Develop and test recovery procedures for failed clone operations
+- **Context Preservation Analysis**: Research effective context management across session boundaries
+- **Workflow Integration Studies**: Analyze seamless integration with existing Alfred workflows
+
+### Research Methodology
+
+**Performance Benchmarking**:
+```python
+# Clone vs Sequential Performance Comparison
+def benchmark_execution_patterns():
+    """Research and document performance differences"""
+
+    # Track execution metrics
+    metrics = {
+        'clone_total_time': [],
+        'sequential_total_time': [],
+        'memory_usage_peak': [],
+        'task_success_rate': [],
+        'context_preservation_score': []
+    }
+
+    # Analyze patterns across different task types
+    for task_type in ['refactoring', 'migration', 'exploration']:
+        # Execute with clone pattern
+        # Execute with sequential pattern
+        # Compare results and document findings
+        pass
+```
+
+**Optimization Research**:
+- Research and document optimal clone creation conditions
+- Analyze learning curve improvements over time
+- Research best practices for handoff protocols
+- Develop performance monitoring and alerting systems

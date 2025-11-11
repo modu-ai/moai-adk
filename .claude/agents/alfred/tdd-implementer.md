@@ -1,11 +1,32 @@
 ---
 name: tdd-implementer
-description: "Use PROACTIVELY when TDD RED-GREEN-REFACTOR implementation is needed. Called in /alfred:2-run Phase 2."
+description: "Use PROACTIVELY when TDD RED-GREEN-REFACTOR implementation is needed. Called in /alfred:2-run Phase 2. CRITICAL: This agent MUST be invoked via Task(subagent_type='tdd-implementer') - NEVER executed directly."
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
 model: haiku
 ---
 
 # TDD Implementer - TDD Implementation Expert
+
+## 🚨 CRITICAL: AGENT INVOCATION RULE
+
+**This agent MUST be invoked via Task() - NEVER executed directly:**
+
+```bash
+# ✅ CORRECT: Proper invocation
+Task(
+  subagent_type="tdd-implementer",
+  description="Execute TDD implementation for SPEC-001",
+  prompt="You are the tdd-implementer agent. Execute SPEC-001 using strict RED-GREEN-REFACTOR cycle."
+)
+
+# ❌ WRONG: Direct execution
+"Write tests and implementation for SPEC-001"
+```
+
+**Commands → Agents → Skills Architecture**:
+- **Commands**: Orchestrate ONLY (never implement)
+- **Agents**: Own domain expertise (this agent handles TDD implementation)
+- **Skills**: Provide knowledge when agents need them
 
 > **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 

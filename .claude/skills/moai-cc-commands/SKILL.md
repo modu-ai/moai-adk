@@ -1,7 +1,12 @@
 ---
 name: moai-cc-commands
-description: "Designing Slash Commands for Claude Code. Create and optimize slash commands with proper argument parsing, tool permissions, and agent orchestration. Use when building workflow entry points, automation commands, or user-facing shortcuts."
-allowed-tools: "Read, Write, Edit, Glob, Bash"
+version: 2.0.0
+created: 2025-11-02
+updated: 2025-11-11
+status: active
+description: "Designing Slash Commands for Claude Code. Create and optimize slash commands with proper argument parsing, tool permissions, and agent orchestration. Enhanced with research capabilities for command effectiveness and workflow optimization. Use when building workflow entry points, automation commands, user-facing shortcuts, or researching command patterns."
+keywords: ['commands', 'slash-commands', 'claude-code', 'automation', 'workflow', 'orchestration', 'research', 'effectiveness-optimization', 'command-patterns']
+allowed-tools: "Read, Write, Edit, Glob, Bash, AskUserQuestion, TodoWrite"
 ---
 
 ## Skill Metadata
@@ -303,5 +308,87 @@ fi
 
 ---
 
+## Research Integration
+
+### Command Effectiveness Research Capabilities
+
+**Command Optimization Research**:
+- **User adoption patterns**: Research on command discovery, learning curves, and adoption barriers
+- **Argument parsing effectiveness**: Analyze different argument parsing strategies and user interaction patterns
+- **Tool permission optimization**: Research optimal tool permission assignments for security and functionality balance
+- **Agent orchestration efficiency**: Study effective agent delegation patterns and coordination strategies
+
+**Workflow Automation Research**:
+- **Command sequence optimization**: Research optimal command chaining and workflow automation patterns
+- **User experience enhancement**: Analyze command interface design and user satisfaction patterns
+- **Error handling strategies**: Research effective error handling and user guidance approaches
+- **Performance optimization**: Study command execution speed, resource usage, and scalability patterns
+
+**Research Methodology**:
+- **Command usage analytics**: Monitor command invocation patterns, success rates, and user feedback
+- **A/B testing frameworks**: Compare different command designs and interaction approaches
+- **User behavior research**: Study how users discover, learn, and effectively use commands
+- **Performance benchmarking**: Measure command execution efficiency and resource consumption
+
+### Command Design Research Framework
+
+#### 1. User Interface Research
+- **Command discovery patterns**: Research effective command categorization and discovery mechanisms
+- **Argument design optimization**: Study optimal argument naming, ordering, and validation strategies
+- **Help system effectiveness**: Research help content delivery and user self-service patterns
+- **Error message optimization**: Analyze error message clarity and user guidance effectiveness
+
+#### 2. Orchestration Research
+- **Agent selection patterns**: Research optimal agent delegation strategies for different command types
+- **Parallel execution optimization**: Study effective parallel command execution and coordination
+- **Resource management research**: Analyze optimal resource allocation and permission management
+- **Workflow integration studies**: Research seamless integration with existing development workflows
+
+#### 3. Performance Research
+```
+Command Design Research Framework:
+├── User Experience Analysis
+│   ├── Command discovery and adoption
+│   ├── Argument parsing effectiveness
+│   ├── Help system optimization
+│   └── Error handling strategies
+├── Orchestration Optimization
+│   ├── Agent selection patterns
+│   ├── Parallel execution research
+│   ├── Resource management studies
+│   └── Workflow integration analysis
+└── Performance Enhancement
+        ├── Execution speed optimization
+        ├── Resource usage analysis
+        ├── Scalability research
+        └── Reliability studies
+```
+
+**Current Research Focus Areas**:
+- Command discovery and adoption optimization
+- Agent orchestration pattern improvement
+- User experience enhancement strategies
+- Performance optimization and scalability
+- Error handling and user guidance research
+
+---
+
+## Integration with Research System
+
+The command design system integrates with MoAI-ADK's research framework by:
+
+1. **Collecting command usage data**: Track command invocation patterns, user behavior, and performance metrics
+2. **Validating design patterns**: Provide real-world testing ground for new command designs and interaction approaches
+3. **Documenting best practices**: Capture successful command design patterns and share them across the ecosystem
+4. **Benchmarking command approaches**: Measure the effectiveness of different command strategies and identify improvements
+
+**Research Collaboration**:
+- **User experience team**: Share data on command adoption patterns and user satisfaction improvements
+- **Agent orchestration team**: Provide insights on effective agent delegation and coordination strategies
+- **Performance optimization team**: Study command execution patterns and optimization opportunities
+- **Workflow integration team**: Collaborate on seamless command integration with development workflows
+
+---
+
 **Reference**: Claude Code Slash Commands documentation
-**Version**: 1.0.0
+**Version**: 2.0.0

@@ -13,6 +13,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+# Import safe file reader utilities
+from ...utils.safe_file_reader import (
+    SafeFileReader,
+    safe_extract_spec_tags,
+    safe_extract_code_tags,
+    safe_extract_test_tags,
+    safe_extract_doc_tags
+)
+
 
 @dataclass
 class TagChain:
@@ -129,14 +138,15 @@ class TagChainAnalyzer:
         )
 
     def _scan_all_tags(self) -> Dict[str, List[str]]:
-        """Scan all files for TAG occurrences."""
+        """Scan all files for TAG occurrences using safe file reading."""
         all_tags: dict[str, list[str]] = {}
+        reader = SafeFileReader()
 
         # Scan source files
         src_path = self.root_path / "src"
         if src_path.exists():
             for py_file in src_path.rglob("*.py"):
-                tags = self._extract_tags_from_file(py_file)
+                tags = self._extract_tags_from_file_safe(py_file, reader)
                 for tag in tags:
                     if tag not in all_tags:
                         all_tags[tag] = []
@@ -146,7 +156,7 @@ class TagChainAnalyzer:
         tests_path = self.root_path / "tests"
         if tests_path.exists():
             for py_file in tests_path.rglob("*.py"):
-                tags = self._extract_tags_from_file(py_file)
+                tags = self._extract_tags_from_file_safe(py_file, reader)
                 for tag in tags:
                     if tag not in all_tags:
                         all_tags[tag] = []
@@ -156,7 +166,7 @@ class TagChainAnalyzer:
         specs_path = self.root_path / ".moai" / "specs"
         if specs_path.exists():
             for md_file in specs_path.rglob("*.md"):
-                tags = self._extract_tags_from_file(md_file)
+                tags = self._extract_tags_from_file_safe(md_file, reader)
                 for tag in tags:
                     if tag not in all_tags:
                         all_tags[tag] = []
@@ -164,14 +174,14 @@ class TagChainAnalyzer:
 
         return all_tags
 
-    def _extract_tags_from_file(self, file_path: Path) -> List[str]:
-        """Extract TAGs from a single file."""
-        try:
-            content = file_path.read_text(encoding='utf-8')
-            matches = self.tag_pattern.findall(content)
-            return list(set(matches))  # Remove duplicates
-        except Exception:
+    def _extract_tags_from_file_safe(self, file_path: Path, reader: SafeFileReader) -> List[str]:
+        """Extract TAGs from a single file using safe file reading."""
+        content = reader.read_text(file_path)
+        if content is None:
             return []
+
+        matches = self.tag_pattern.findall(content)
+        return list(set(matches))  # Remove duplicates
 
     def _group_chains_by_domain(self, all_tags: Dict[str, List[str]]) -> Dict[str, List[TagChain]]:
         """Group TAGs by domain and create chain objects."""
