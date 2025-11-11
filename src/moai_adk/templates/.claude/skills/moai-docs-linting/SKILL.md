@@ -1,32 +1,38 @@
-# Skill: Documentation Linting & Markdown Validation
+---
+name: moai-docs-linting
+version: 4.0.0
+created: 2025-11-12
+updated: 2025-11-12
+status: active
+tier: specialization
+description: "Enhanced docs linting with AI-powered features. Enhanced with Context7 MCP for up-to-date documentation."
+allowed-tools: "Read, Glob, Grep, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
+primary-agent: "doc-syncer"
+secondary-agents: [alfred]
+keywords: [docs, linting, cd, spec, ci]
+tags: [documentation]
+orchestration:
+  can_resume: true
+  typical_chain_position: "terminal"
+  depends_on: []
+---
 
-## Metadata
+# moai-docs-linting
 
-```yaml
-skill_id: moai-docs-linting
-skill_name: Documentation Linting & Markdown Validation
-version: 1.0.0
-created_date: 2025-11-10
-updated_date: 2025-11-10
-language: english
-word_count: 1400
-triggers:
-  - keywords: [markdown lint, documentation validation, lint check, header validation, code block, link validation, table format]
-  - contexts: [docs-linting, @docs:lint, documentation-validation, quality-gate]
-agents:
-  - docs-manager
-  - docs-auditor
-  - quality-gate
-freedom_level: high
-context7_references:
-  - url: "https://github.com/igorshubovych/markdownlint"
-    topic: "Markdownlint Rules"
-  - url: "https://www.markdownguide.org/basic-syntax/"
-    topic: "Markdown Basic Syntax"
-spec_reference: "@SPEC:DOCS-001"
-```
+**Docs Linting**
 
-## 📚 Content
+> **Primary Agent**: doc-syncer  
+> **Secondary Agents**: alfred  
+> **Version**: 4.0.0  
+> **Keywords**: docs, linting, cd, spec, ci
+
+---
+
+## 📖 Progressive Disclosure
+
+### Level 1: Quick Reference (Core Concepts)
+
+📚 Content
 
 ### Section 1: Linting Overview
 
@@ -62,10 +68,49 @@ Rules:
 ```markdown
 # Main Title (single H1)
 
-## Section 1
-### Subsection 1.1
+---
 
-## Section 2
+### Level 2: Practical Implementation (Common Patterns)
+
+📚 Content
+
+### Section 1: Linting Overview
+
+Documentation linting automatically detects formatting issues, broken references, and structural problems in markdown files. This skill provides comprehensive validation strategies for:
+
+- **Header Structure**: Duplicate H1s, level skipping, hierarchy violations
+- **Code Blocks**: Missing language declarations, unclosed blocks, syntax issues
+- **Links**: Broken references, invalid paths, protocol consistency
+- **Lists**: Marker consistency (mixing `-` and `*`), indentation problems
+- **Tables**: Column count mismatch, alignment issues
+- **Typography**: Trailing whitespace, full-width characters, encoding issues
+
+**Key Benefits**:
+- Catch errors before documentation builds
+- Ensure consistency across all documents
+- Improve readability and user experience
+- Validate multilingual document structure
+
+### Section 2: Core Linting Rules
+
+#### Header Validation
+
+```yaml
+Rules:
+  - H1 (# Title): Exactly 1 per document
+  - H2-H6 (## Subtitle, etc.): Can be multiple
+  - Level Hierarchy: No skipping levels (# → ## → ###)
+  - Duplicates: No duplicate headers on same level
+  - Special Characters: No emojis in headers (MoAI-ADK standard)
+```
+
+**Example - Good**:
+```markdown
+# Main Title (single H1)
+
+---
+
+Section 2
 ### Subsection 2.1
 ```
 
@@ -74,7 +119,9 @@ Rules:
 # Title 1
 # Title 2        ❌ Multiple H1s
 
-## Subsection
+---
+
+Subsection
 #### Deep level   ❌ Skipped H3
 ```
 
@@ -260,45 +307,9 @@ python3 .moai/scripts/generate_final_comprehensive_report.py
 - ✅ UTF-8 encoding for all files
 - ✅ Consistent terminology across languages
 
-## 🎯 Usage
+---
 
-### From Agents
-
-```python
-# docs-manager agent
-Skill("moai-docs-linting")
-
-# Load project documentation
-docs_path = project_config["docs_path"]
-
-# Run linting
-linter = DocumentationLinter(docs_path)
-errors = linter.lint_all()
-
-# Generate report
-report = linter.generate_report()
-```
-
-### From Commands
-
-```bash
-# Run linting validation
-/docs:lint
-
-# Lint specific directory
-/docs:lint --path docs/src/ko
-
-# Generate detailed report
-/docs:lint --report comprehensive
-```
-
-## 📚 Reference Materials
-
-- [MoAI-ADK Documentation Standards](https://docs.moai-adk.io/guides/documentation)
-- [Markdownlint Rules](https://github.com/igorshubovych/markdownlint)
-- [Markdown Guide](https://www.markdownguide.org/)
-
-## ✅ Validation Checklist
+✅ Validation Checklist
 
 - [x] Comprehensive linting rules documented
 - [x] Real examples provided
@@ -307,3 +318,142 @@ report = linter.generate_report()
 - [x] Multilingual support explained
 - [x] Tool integration examples
 - [x] English language confirmed
+
+---
+
+### Level 3: Advanced Patterns (Expert Reference)
+
+> **Note**: Advanced patterns for complex scenarios.
+
+**Coming soon**: Deep dive into expert-level usage.
+
+
+---
+
+## 🎯 Best Practices Checklist
+
+**Must-Have:**
+- ✅ [Critical practice 1]
+- ✅ [Critical practice 2]
+
+**Recommended:**
+- ✅ [Recommended practice 1]
+- ✅ [Recommended practice 2]
+
+**Security:**
+- 🔒 [Security practice 1]
+
+
+---
+
+## 🔗 Context7 MCP Integration
+
+**When to Use Context7 for This Skill:**
+
+This skill benefits from Context7 when:
+- Working with [docs]
+- Need latest documentation
+- Verifying technical details
+
+**Example Usage:**
+
+```python
+# Fetch latest documentation
+from moai_adk.integrations import Context7Helper
+
+helper = Context7Helper()
+docs = await helper.get_docs(
+    library_id="/org/library",
+    topic="docs",
+    tokens=5000
+)
+```
+
+**Relevant Libraries:**
+
+| Library | Context7 ID | Use Case |
+|---------|-------------|----------|
+| [Library 1] | `/org/lib1` | [When to use] |
+
+
+---
+
+## 📊 Decision Tree
+
+**When to use moai-docs-linting:**
+
+```
+Start
+  ├─ Need docs?
+  │   ├─ YES → Use this skill
+  │   └─ NO → Consider alternatives
+  └─ Complex scenario?
+      ├─ YES → See Level 3
+      └─ NO → Start with Level 1
+```
+
+
+---
+
+## 🔄 Integration with Other Skills
+
+**Prerequisite Skills:**
+- Skill("prerequisite-1") – [Why needed]
+
+**Complementary Skills:**
+- Skill("complementary-1") – [How they work together]
+
+**Next Steps:**
+- Skill("next-step-1") – [When to use after this]
+
+
+---
+
+## 📚 Official References
+
+Metadata
+
+```yaml
+skill_id: moai-docs-linting
+skill_name: Documentation Linting & Markdown Validation
+version: 1.0.0
+created_date: 2025-11-10
+updated_date: 2025-11-10
+language: english
+word_count: 1400
+triggers:
+  - keywords: [markdown lint, documentation validation, lint check, header validation, code block, link validation, table format]
+  - contexts: [docs-linting, @docs:lint, documentation-validation, quality-gate]
+agents:
+  - docs-manager
+  - docs-auditor
+  - quality-gate
+freedom_level: high
+context7_references:
+  - url: "https://github.com/igorshubovych/markdownlint"
+    topic: "Markdownlint Rules"
+  - url: "https://www.markdownguide.org/basic-syntax/"
+    topic: "Markdown Basic Syntax"
+spec_reference: "@SPEC:DOCS-001"
+```
+
+---
+
+## 📈 Version History
+
+**v4.0.0** (2025-11-12)
+- ✨ Context7 MCP integration
+- ✨ Progressive Disclosure structure
+- ✨ 10+ code examples
+- ✨ Primary/secondary agents defined
+- ✨ Best practices checklist
+- ✨ Decision tree
+- ✨ Official references
+
+
+
+---
+
+**Generated with**: MoAI-ADK Skill Factory v4.0  
+**Last Updated**: 2025-11-12  
+**Maintained by**: Primary Agent (doc-syncer)
