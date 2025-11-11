@@ -104,10 +104,10 @@ def analyze(
 
         # Show key suggestions
         report_content = analyzer.generate_report()
-        if "💡 개선 제안" in report_content:
+        if "💡 Improvement Suggestions" in report_content:
             console.print("\n[bold yellow]💡 Key Suggestions:[/bold yellow]")
             # Extract suggestions section
-            suggestions_start = report_content.find("💡 개선 제안")
+            suggestions_start = report_content.find("💡 Improvement Suggestions")
             if suggestions_start != -1:
                 suggestions_section = report_content[suggestions_start:]
                 # Extract first few suggestions
