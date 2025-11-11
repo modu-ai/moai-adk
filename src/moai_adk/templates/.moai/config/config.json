@@ -20,7 +20,6 @@
       }
     },
     "require_tags": true,
-    "simplicity_threshold": 5,
     "test_coverage_target": 85
   },
   "git_strategy": {
@@ -61,14 +60,13 @@
       "/alfred:1-plan",
       "/alfred:2-run",
       "/alfred:3-sync"
-    ],
-    "current_stage": "initialized"
+    ]
   },
   "language": {
     "conversation_language": "{{CONVERSATION_LANGUAGE}}",
     "conversation_language_name": "{{CONVERSATION_LANGUAGE_NAME}}",
     "agent_prompt_language": "{{CONVERSATION_LANGUAGE}}",
-    "agent_prompt_language_description": "Language for sub-agent internal prompts (english=global standard, localized=user's conversation language)"
+    "notes": "Language for sub-agent internal prompts (english=global standard, localized=user's conversation language)"
   },
   "project": {
     "name": "{{PROJECT_NAME}}",
@@ -97,12 +95,9 @@
     "code_scan_policy": {
       "no_intermediate_cache": true,
       "realtime_validation": true,
-      "scan_tools": [
-        "rg",
-        "grep"
-      ],
       "scan_command": "rg '@TAG' -n",
-      "philosophy": "The source of truth for TAGs lives in the code itself"
+      "philosophy": "The source of truth for TAGs lives in the code itself",
+      "notes": "Uses ripgrep (rg) or grep for TAG scanning. Only scan_command is actively used."
     },
     "policy": {
       "enforcement_mode": "strict",
@@ -275,10 +270,114 @@
     },
     "auto_delete_branches": null,
     "auto_delete_branches_checked": false,
-    "auto_delete_branches_rationale": "Not configured",
     "spec_git_workflow": "per_spec",
     "spec_git_workflow_configured": false,
-    "spec_git_workflow_rationale": "Ask per SPEC (flexible, user controls each workflow)",
-    "notes_new_fields": "auto_delete_branches: whether to auto-delete feature branches after merge. spec_git_workflow: 'feature_branch' (auto), 'develop_direct' (direct), 'per_spec' (ask per SPEC)"
+    "notes": "auto_delete_branches: whether to auto-delete feature branches after merge. spec_git_workflow: 'feature_branch' (auto), 'develop_direct' (direct), 'per_spec' (ask per SPEC - flexible, user controls each workflow)"
+  },
+  "document_management": {
+    "_meta": {
+      "@CODE:DOCUMENT-MGMT-001": "@DOC:CLEAN-PROJECT-ROOT-001",
+      "@SPEC:DOC-MANAGEMENT-001": "@SPEC:ROOT-POLLUTION-PREVENTION-001"
+    },
+    "enabled": true,
+    "enforce_structure": true,
+    "block_root_pollution": false,
+    "directories": {
+      "reports": {
+        "base": ".moai/reports/",
+        "categories": ["inspection", "phases", "sync", "analysis", "validation", "daily"],
+        "auto_categorize": true,
+        "retention_days": 90
+      },
+      "logs": {
+        "base": ".moai/logs/",
+        "categories": ["sessions", "agent-transcripts", "errors", "execution"],
+        "retention_days": 30
+      },
+      "scripts": {
+        "base": ".moai/scripts/",
+        "categories": ["dev", "conversion", "validation", "analysis", "maintenance"],
+        "retention_days": null
+      },
+      "temp": {
+        "base": ".moai/temp/",
+        "categories": ["tests", "coverage", "work", "research"],
+        "retention_days": 7,
+        "auto_cleanup": true
+      },
+      "backups": {
+        "base": ".moai/backups/",
+        "categories": ["specs", "docs", "hooks", "skills", "config", "legacy"],
+        "retention_days": 90,
+        "max_backups_per_type": 10
+      },
+      "cache": {
+        "base": ".moai/cache/",
+        "categories": ["mcp", "analysis"],
+        "retention_days": 30,
+        "auto_cleanup": true
+      }
+    },
+    "root_whitelist": [
+      "README.md", "README.*.md",
+      "CHANGELOG.md", "CONTRIBUTING.md", "CLAUDE.md",
+      "LICENSE", "LICENSE.*",
+      "pyproject.toml", "setup.py", "setup.cfg",
+      "package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml",
+      ".gitignore", ".gitattributes", ".editorconfig", ".prettierrc", ".eslintrc*",
+      "Makefile", "Dockerfile", "docker-compose.yml", ".dockerignore",
+      "tsconfig.json", "jsconfig.json", "next.config.js", "vite.config.js"
+    ],
+    "file_patterns": {
+      "reports": {
+        "inspection": ["FINAL-INSPECTION-*.md", "*-inspection-*.md"],
+        "phases": ["PHASE*-COMPLETION-*.md", "*-phase-*.md"],
+        "sync": ["sync-report-*.md", "*-sync-*.md"],
+        "analysis": ["*-ANALYSIS-*.md", "*-analysis-*.md"],
+        "validation": ["*-validation-*.md", "*-quality-*.md"],
+        "daily": ["daily-*.md", "*-daily-report-*.md"]
+      },
+      "scripts": {
+        "dev": ["init-*.sh", "setup-*.sh", "*-dev-*.py"],
+        "conversion": ["fix-*.js", "convert-*.py", "migrate-*.js"],
+        "validation": ["validate_*.py", "lint_*.py", "check_*.sh"],
+        "analysis": ["*_analyzer.py", "analyze_*.py", "*_monitor.py"],
+        "maintenance": ["cleanup_*.sh", "maintain_*.py"]
+      },
+      "temp": {
+        "tests": ["test-*.spec.js", "*_test.tmp", "*.test.temp"],
+        "coverage": ["coverage.json", ".coverage", "*.lcov"],
+        "work": ["*.tmp", "*.temp", "*.bak", "*.draft"]
+      },
+      "backups": {
+        "docs": ["docs_backup_*", "docs-backup-*"],
+        "hooks": ["hooks_backup_*", "hooks-backup-*"],
+        "specs": ["specs_backup_*", "specs-backup-*"],
+        "config": ["config_backup_*", "config-backup-*"]
+      }
+    },
+    "validation": {
+      "enabled": true,
+      "on_file_create": true,
+      "on_session_end": true,
+      "warn_violations": true,
+      "block_violations": false
+    },
+    "auto_migration": {
+      "enabled": true,
+      "scan_on_startup": false,
+      "suggest_moves": true,
+      "auto_move": false,
+      "require_user_approval": true
+    },
+    "cleanup": {
+      "enabled": true,
+      "schedule": "session_end",
+      "dry_run": false,
+      "preserve_recent_days": 3,
+      "max_items_per_cleanup": 100,
+      "notify_before_delete": true
+    },
+    "notes": "Document management system to prevent project root pollution. Enforces .moai/ hierarchy for all internal files. Auto-categorizes by file patterns. Cleanup policy preserves recent files."
   }
 }
