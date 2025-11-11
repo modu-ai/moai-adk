@@ -31,6 +31,7 @@ from moai_adk.core.tags.policy_validator import (
     TagPolicyValidator,
 )
 
+from ..utils.gitignore_parser import get_combined_exclude_patterns
 from ..utils.hook_config import get_graceful_degradation, load_hook_timeout
 
 
@@ -88,8 +89,8 @@ def should_validate_tool(tool_name: str, tool_args: Dict[str, Any]) -> bool:
     if tool_name not in validation_tools:
         return False
 
-    # 선택적 파일 패턴 (TAG 검증 대상 아님)
-    optional_patterns = [
+    # 기본 선택적 파일 패턴 (TAG 검증 대상 아님)
+    base_optional_patterns = [
         "CLAUDE.md",
         "README.md",
         "CHANGELOG.md",
@@ -102,6 +103,9 @@ def should_validate_tool(tool_name: str, tool_args: Dict[str, Any]) -> bool:
         "templates/",
         "examples/",
     ]
+
+    # .gitignore 패턴과 결합 (자동 동기화)
+    optional_patterns = get_combined_exclude_patterns(base_optional_patterns)
 
     # Edit/Write의 경우 단일 파일 확인
     if tool_name in {"Edit", "Write"}:
