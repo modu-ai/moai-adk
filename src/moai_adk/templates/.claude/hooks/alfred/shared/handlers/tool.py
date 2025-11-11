@@ -65,14 +65,14 @@ def handle_pre_tool_use(payload: HookPayload) -> HookResult:
     issues = scan_recent_changes_for_missing_tags(cwd)
     if issues:
         # Summarize first few issues for display
-        preview = "\n".join(f" - {i.path} → 기대 태그: {i.expected}" for i in issues[:5])
-        more = "" if len(issues) <= 5 else f"\n (외 {len(issues) - 5}건 더 존재)"
+        preview = "\n".join(f" - {i.path} → Expected tag: {i.expected}" for i in issues[:5])
+        more = "" if len(issues) <= 5 else f"\n ({len(issues) - 5} more items exist)"
         msg = (
-            "⚠️ TAG 누락 감지: 생성/수정한 파일 중 @TAG가 없는 항목이 있습니다.\n"
+            "⚠️ Missing TAG detected: Some created/modified files are missing @TAG.\n"
             f"{preview}{more}\n"
-            "권장 조치:\n"
-            "  1) SPEC/TEST/CODE/DOC 유형에 맞는 @TAG를 파일 상단 주석이나 헤더에 추가\n"
-            "  2) rg로 확인: rg '@(SPEC|TEST|CODE|DOC):' -n <경로>\n"
+            "Recommended actions:\n"
+            "  1) Add appropriate @TAG (SPEC/TEST/CODE/DOC type) to file header or top comment\n"
+            "  2) Verify with rg: rg '@(SPEC|TEST|CODE|DOC):' -n <path>\n"
         )
         return HookResult(system_message=msg, continue_execution=True)
 

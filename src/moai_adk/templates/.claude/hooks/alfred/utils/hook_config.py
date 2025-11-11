@@ -2,9 +2,9 @@
 # Hook Configuration Utilities
 
 """
-Hook 관련 설정 및 유틸리티 함수들
-- Hook timeout 설정 로드
-- Graceful degradation 설정 확인
+Hook-related configuration and utility functions
+- Load Hook timeout configuration
+- Check graceful degradation settings
 """
 
 import json
@@ -16,20 +16,20 @@ logger = logging.getLogger(__name__)
 
 def load_hook_timeout() -> int:
     """
-    .moai/config/config.json에서 Hook timeout 설정 로드
+    Load Hook timeout configuration from .moai/config/config.json
 
     Returns:
-        int: timeout 값 (밀리초), 설정이 없으면 기본값 5000 반환
+        int: timeout value (milliseconds), returns default 5000 if configuration not found
     """
     try:
         config_path = Path(".moai/config/config.json")
         if not config_path.exists():
-            return 5000  # 기본값
+            return 5000  # Default value
 
         with open(config_path, 'r', encoding='utf-8') as f:
             config = json.load(f)
 
-        # hooks 섹션에서 timeout_ms 값 가져오기
+        # Get timeout_ms value from hooks section
         hooks_config = config.get("hooks", {})
         timeout_ms = hooks_config.get("timeout_ms", 5000)
 
@@ -41,20 +41,20 @@ def load_hook_timeout() -> int:
 
 def get_graceful_degradation() -> bool:
     """
-    .moai/config/config.json에서 graceful_degradation 설정 로드
+    Load graceful_degradation configuration from .moai/config/config.json
 
     Returns:
-        bool: graceful_degradation 설정값, 설정이 없으면 기본값 True 반환
+        bool: graceful_degradation configuration value, returns default True if configuration not found
     """
     try:
         config_path = Path(".moai/config/config.json")
         if not config_path.exists():
-            return True  # 기본값
+            return True  # Default value
 
         with open(config_path, 'r', encoding='utf-8') as f:
             config = json.load(f)
 
-        # hooks 섹션에서 graceful_degradation 값 가져오기
+        # Get graceful_degradation value from hooks section
         hooks_config = config.get("hooks", {})
         return hooks_config.get("graceful_degradation", True)
     except (json.JSONDecodeError, FileNotFoundError, KeyError):
@@ -64,10 +64,10 @@ def get_graceful_degradation() -> bool:
 
 def get_hook_execution_config() -> dict:
     """
-    Hook 실행 관련 모든 설정 로드
+    Load all Hook execution related configuration
 
     Returns:
-        dict: Hook 설정 딕셔너리
+        dict: Hook configuration dictionary
     """
     try:
         config_path = Path(".moai/config/config.json")
