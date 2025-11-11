@@ -145,7 +145,7 @@ def _is_installed_via_pip() -> bool:
         return False
 
 
-# @CODE:UPDATE-CONTEXT-001 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002
+# @CODE:UPDATE-CONTEXT-MAIN-001 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002
 def _detect_tool_installer() -> list[str] | None:
     """Detect which tool installed moai-adk.
 
@@ -303,7 +303,7 @@ def _get_project_config_version(project_path: Path) -> str:
         raise ValueError(f"Failed to parse project config.json: {e}") from e
 
 
-# @CODE:UPDATE-CACHE-001 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002
+# @CODE:UPDATE-CACHE-MAIN-001 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002
 def _detect_stale_cache(upgrade_output: str, current_version: str, latest_version: str) -> bool:
     """
     Detect if uv cache is stale by comparing versions.

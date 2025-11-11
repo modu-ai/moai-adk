@@ -1,0 +1,310 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - link "메인 콘텐츠로 바로가기" [ref=e3]:
+      - /url: "#main-content"
+    - 'heading "MoAI-ADK: AI 기반 SPEC-First TDD 개발 프레임워크 {#main-content}" [level=1] [ref=e4]'
+    - blockquote [ref=e5]:
+      - paragraph [ref=e6]:
+        - strong [ref=e7]: 신뢰할 수 있고 유지보수하기 쉬운 소프트웨어를 AI의 도움으로 빌드하세요.
+        - text: 요구사항부터 문서화까지 모든 산출물이 완벽하게 추적되고, 자동으로 테스트되며, 항상 동기화됩니다.
+    - separator [ref=e8]
+    - heading "🎯 우리가 해결하는 문제" [level=2] [ref=e9]
+    - heading "기존 AI 기반 개발의 6가지 문제" [level=3] [ref=e10]
+    - table [ref=e11]:
+      - rowgroup [ref=e12]:
+        - row "문제 영향" [ref=e13]:
+          - cell "문제" [ref=e14]
+          - cell "영향" [ref=e15]
+      - rowgroup [ref=e16]:
+        - row "모호한 요구사항 개발자가 40% 시간을 요구사항 명확화에 사용" [ref=e17]:
+          - cell "모호한 요구사항" [ref=e18]:
+            - strong [ref=e19]: 모호한 요구사항
+          - cell "개발자가 40% 시간을 요구사항 명확화에 사용" [ref=e20]
+        - row "부족한 테스트 테스트되지 않은 코드로 인한 프로덕션 버그" [ref=e21]:
+          - cell "부족한 테스트" [ref=e22]:
+            - strong [ref=e23]: 부족한 테스트
+          - cell "테스트되지 않은 코드로 인한 프로덕션 버그" [ref=e24]
+        - row "동기화되지 않는 문서 구현과 맞지 않는 문서" [ref=e25]:
+          - cell "동기화되지 않는 문서" [ref=e26]:
+            - strong [ref=e27]: 동기화되지 않는 문서
+          - cell "구현과 맞지 않는 문서" [ref=e28]
+        - row "잃어버린 컨텍스트 팀원들 간 반복적인 설명 필요" [ref=e29]:
+          - cell "잃어버린 컨텍스트" [ref=e30]:
+            - strong [ref=e31]: 잃어버린 컨텍스트
+          - cell "팀원들 간 반복적인 설명 필요" [ref=e32]
+        - row "불가능한 영향 분석 요구사항 변경 시 영향받는 코드 파악 불가" [ref=e33]:
+          - cell "불가능한 영향 분석" [ref=e34]:
+            - strong [ref=e35]: 불가능한 영향 분석
+          - cell "요구사항 변경 시 영향받는 코드 파악 불가" [ref=e36]
+        - row "일관성 없는 품질 수동 QA로 인한 엣지 케이스 누락" [ref=e37]:
+          - cell "일관성 없는 품질" [ref=e38]:
+            - strong [ref=e39]: 일관성 없는 품질
+          - cell "수동 QA로 인한 엣지 케이스 누락" [ref=e40]
+    - heading "MoAI-ADK의 해결책" [level=3] [ref=e41]
+    - paragraph [ref=e42]:
+      - text: ✅
+      - strong [ref=e43]: SPEC-First
+      - text: ": 코드 작성 전 명확한 요구사항 정의 ✅"
+      - strong [ref=e44]: 보증된 테스트
+      - text: ": 자동 TDD를 통해 87%+ 테스트 커버리지 달성 ✅"
+      - strong [ref=e45]: 살아있는 문서
+      - text: ": 자동 동기화되어 절대 떨어지지 않는 문서 ✅"
+      - strong [ref=e46]: 지속적인 컨텍스트
+      - text: ": Alfred가 프로젝트 이력과 패턴을 기억 ✅"
+      - strong [ref=e47]: 완전한 추적성
+      - text: ":"
+      - code [ref=e48]: "@TAG"
+      - text: 시스템으로 모든 산출물 연결 ✅
+      - strong [ref=e49]: 품질 자동화
+      - text: ": TRUST 5 원칙을 자동으로 강제"
+    - separator [ref=e50]
+    - heading "⚡ 핵심 기능" [level=2] [ref=e51]
+    - heading "1. SPEC-First 개발" [level=3] [ref=e52]
+    - list [ref=e53]:
+      - listitem [ref=e54]:
+        - strong [ref=e55]: EARS 형식 명세서
+        - text: ": 구조화되고 명확한 요구사항"
+      - listitem [ref=e56]:
+        - strong [ref=e57]: 구현 전 명확화
+        - text: ": 비용이 큰 재작업 방지"
+      - listitem [ref=e58]:
+        - strong [ref=e59]: 자동 추적성
+        - text: ": 요구사항에서 코드, 테스트까지 연결"
+    - heading "2. 자동화된 TDD 워크플로우" [level=3] [ref=e60]
+    - list [ref=e61]:
+      - listitem [ref=e62]:
+        - strong [ref=e63]: RED → GREEN → REFACTOR
+        - text: 사이클 자동 관리
+      - listitem [ref=e64]:
+        - strong [ref=e65]: 테스트 우선 보증
+        - text: ": 테스트 없는 코드는 없음"
+      - listitem [ref=e66]:
+        - strong [ref=e67]: 87%+ 커버리지
+        - text: ": 체계적 테스팅으로 달성"
+    - heading "3. Alfred 슈퍼에이전트" [level=3] [ref=e68]
+    - list [ref=e69]:
+      - listitem [ref=e70]:
+        - strong [ref=e71]: 19개의 전문 AI 에이전트
+        - text: (spec-builder, tdd-implementer, doc-syncer 등)
+      - listitem [ref=e72]:
+        - strong [ref=e73]: 69개 이상의 프로덕션급 스킬
+        - text: (모든 개발 영역 커버)
+      - listitem [ref=e74]:
+        - strong [ref=e75]: 적응형 학습
+        - text: ": 프로젝트 패턴으로부터 자동 학습"
+      - listitem [ref=e76]:
+        - strong [ref=e77]: 스마트 컨텍스트 관리
+        - text: ": 프로젝트 구조와 의존성 이해"
+    - heading "4. @TAG 시스템 (완전한 추적성)" [level=3] [ref=e78]
+    - paragraph [ref=e79]: "모든 산출물을 연결하는 추적성 시스템:"
+    - code [ref=e81]:
+      - generic [ref=e82]: "@SPEC:AUTH-001 (요구사항)"
+      - generic [ref=e83]: ↓
+      - generic [ref=e84]: "@TEST:AUTH-001 (테스트)"
+      - generic [ref=e85]: ↓
+      - generic [ref=e86]: "@CODE:AUTH-001:SERVICE (구현)"
+      - generic [ref=e87]: ↓
+      - generic [ref=e88]: "@DOC:AUTH-001 (문서)"
+    - heading "5. 살아있는 문서" [level=3] [ref=e89]
+    - list [ref=e90]:
+      - listitem [ref=e91]:
+        - strong [ref=e92]: 실시간 동기화
+        - text: ": 코드와 문서가 항상 일치"
+      - listitem [ref=e93]:
+        - strong [ref=e94]: 수동 업데이트 불필요
+        - text: ": 자동 생성"
+      - listitem [ref=e95]:
+        - strong [ref=e96]: 다중언어 지원
+        - text: ": Python, TypeScript, Go, Rust 등"
+      - listitem [ref=e97]:
+        - strong [ref=e98]: 자동 다이어그램 생성
+        - text: ": 코드 구조에서 자동 생성"
+    - heading "6. 품질 보증" [level=3] [ref=e99]
+    - list [ref=e100]:
+      - listitem [ref=e101]:
+        - strong [ref=e102]: TRUST 5 원칙
+        - text: ": Test-first, Readable, Unified, Secured, Trackable"
+      - listitem [ref=e103]:
+        - strong [ref=e104]: 자동화된 품질 게이트
+        - text: (린팅, 타입 체크, 보안 검사)
+      - listitem [ref=e105]:
+        - strong [ref=e106]: Pre-commit 검증
+        - text: ": 위반 사항 사전 차단"
+      - listitem [ref=e107]:
+        - strong [ref=e108]: 종합 리포팅
+        - text: ": 실행 가능한 메트릭"
+    - separator [ref=e109]
+    - heading "🚀 빠른 시작" [level=2] [ref=e110]
+    - 'heading "설치 (권장: uv tool)" [level=3] [ref=e111]'
+    - code [ref=e113]:
+      - generic [ref=e114]: "# uv tool을 사용하여 moai-adk를 전역 명령어로 설치"
+      - generic [ref=e115]: uv tool install moai-adk
+      - generic [ref=e116]: "# 설치 확인"
+      - generic [ref=e117]: moai-adk --version
+      - generic [ref=e118]: "# 새 프로젝트 초기화"
+      - generic [ref=e119]: moai-adk init my-awesome-project
+      - generic [ref=e120]: cd my-awesome-project
+    - heading "프로젝트 구성 (필수)" [level=3] [ref=e121]
+    - paragraph [ref=e122]:
+      - text: 설치 후
+      - strong [ref=e123]: 반드시
+      - text: "프로젝트를 구성해야 합니다:"
+    - code [ref=e125]:
+      - generic [ref=e126]: "# 프로젝트 메타데이터 및 환경 초기화"
+      - generic [ref=e127]: /alfred:0-project
+    - heading "5분 빠른 시작" [level=3] [ref=e128]
+    - code [ref=e130]:
+      - generic [ref=e131]: "# 1. 새 기능 계획 - SPEC 자동 생성"
+      - generic [ref=e132]: /alfred:1-plan "사용자 인증 기능 (JWT 토큰)"
+      - generic [ref=e133]: "# 2. TDD 실행 - 자동으로 테스트 → 구현 → 리팩토링"
+      - generic [ref=e134]: /alfred:2-run SPEC-AUTH-001
+      - generic [ref=e135]: "# 3. 문서 동기화 및 품질 검증"
+      - generic [ref=e136]: /alfred:3-sync
+    - paragraph [ref=e137]:
+      - strong [ref=e138]: 결과
+      - text: ": 요구사항 명확화 → 테스트 우선 구현 → 자동 문서화 → 품질 보증까지 완료!"
+    - separator [ref=e139]
+    - heading "📊 프로젝트 통계" [level=2] [ref=e140]
+    - table [ref=e141]:
+      - rowgroup [ref=e142]:
+        - row "항목 수치" [ref=e143]:
+          - cell "항목" [ref=e144]
+          - cell "수치" [ref=e145]
+      - rowgroup [ref=e146]:
+        - row "테스트 커버리지 87%+" [ref=e147]:
+          - cell "테스트 커버리지" [ref=e148]:
+            - strong [ref=e149]: 테스트 커버리지
+          - cell "87%+" [ref=e150]
+        - row "지원 언어 10개 (Python, JavaScript, TypeScript, Go, Rust, Kotlin, Ruby, PHP, Java, C#)" [ref=e151]:
+          - cell "지원 언어" [ref=e152]:
+            - strong [ref=e153]: 지원 언어
+          - cell "10개 (Python, JavaScript, TypeScript, Go, Rust, Kotlin, Ruby, PHP, Java, C#)" [ref=e154]
+        - row "AI 에이전트 19명 전문가팀" [ref=e155]:
+          - cell "AI 에이전트" [ref=e156]:
+            - strong [ref=e157]: AI 에이전트
+          - cell "19명 전문가팀" [ref=e158]
+        - row "프로덕션급 스킬 69개+" [ref=e159]:
+          - cell "프로덕션급 스킬" [ref=e160]:
+            - strong [ref=e161]: 프로덕션급 스킬
+          - cell "69개+" [ref=e162]
+        - row "오픈소스 라이선스 MIT" [ref=e163]:
+          - cell "오픈소스 라이선스" [ref=e164]:
+            - strong [ref=e165]: 오픈소스 라이선스
+          - cell "MIT" [ref=e166]
+    - separator [ref=e167]
+    - heading "🌟 주요 특징" [level=2] [ref=e168]
+    - heading "다국어 지원" [level=3] [ref=e169]
+    - list [ref=e170]:
+      - listitem [ref=e171]:
+        - strong [ref=e172]: 4개 언어 지원
+        - text: ": 한국어, 영어, 일본어, 중국어"
+      - listitem [ref=e173]:
+        - strong [ref=e174]: 자동 번역
+        - text: ": AI 기반 고품질 번역"
+      - listitem [ref=e175]:
+        - strong [ref=e176]: 실시간 동기화
+        - text: ": 모든 언어로 최신 문서 제공"
+    - heading "지원되는 기술 스택" [level=3] [ref=e177]
+    - list [ref=e178]:
+      - listitem [ref=e179]:
+        - strong [ref=e180]: 프론트엔드
+        - text: ": React, Vue, Angular (TypeScript)"
+      - listitem [ref=e181]:
+        - strong [ref=e182]: 백엔드
+        - text: ": Node.js, Python, Go, Rust"
+      - listitem [ref=e183]:
+        - strong [ref=e184]: 데이터베이스
+        - text: ": SQL, NoSQL (MongoDB, PostgreSQL)"
+      - listitem [ref=e185]:
+        - strong [ref=e186]: 배포
+        - text: ": Docker, Kubernetes, AWS, Vercel"
+    - heading "팀 협업" [level=3] [ref=e187]
+    - list [ref=e188]:
+      - listitem [ref=e189]:
+        - strong [ref=e190]: 개인 모드
+        - text: ": 자유로운 로컬 개발"
+      - listitem [ref=e191]:
+        - strong [ref=e192]: 팀 모드
+        - text: ": Feature branch, PR 자동 관리, 자동 merge"
+      - listitem [ref=e193]:
+        - strong [ref=e194]: 실시간 컨텍스트
+        - text: ": 팀원 간 완벽한 문서 공유"
+    - separator [ref=e195]
+    - heading "📚 학습 자원" [level=2] [ref=e196]
+    - heading "공식 문서" [level=3] [ref=e197]
+    - list [ref=e198]:
+      - listitem [ref=e199]:
+        - strong [ref=e200]:
+          - link "시작하기" [ref=e201]:
+            - /url: getting-started/installation
+        - text: ": 설치 및 기본 설정"
+      - listitem [ref=e202]:
+        - strong [ref=e203]:
+          - link "사용 가이드" [ref=e204]:
+            - /url: guides/alfred/index
+        - text: ": Alfred 워크플로우 완벽 가이드"
+      - listitem [ref=e205]:
+        - strong [ref=e206]:
+          - link "API 참조" [ref=e207]:
+            - /url: reference/cli/index
+        - text: ": 명령어 및 스킬 API"
+      - listitem [ref=e208]:
+        - strong [ref=e209]:
+          - link "개발자 가이드" [ref=e210]:
+            - /url: contributing/index
+        - text: ": 프로젝트 기여 및 확장"
+    - heading "핵심 가이드" [level=3] [ref=e211]
+    - list [ref=e212]:
+      - listitem [ref=e213]:
+        - strong [ref=e214]:
+          - link "SPEC 작성" [ref=e215]:
+            - /url: guides/specs/basics
+        - text: ": SPEC-First 개발 방법론"
+      - listitem [ref=e216]:
+        - strong [ref=e217]:
+          - link "TDD 실행" [ref=e218]:
+            - /url: guides/tdd/red
+        - text: ": RED → GREEN → REFACTOR 사이클"
+      - listitem [ref=e219]:
+        - strong [ref=e220]:
+          - link "TAG 시스템" [ref=e221]:
+            - /url: guides/specs/tags
+        - text: ": 완전한 추적성 관리"
+    - separator [ref=e222]
+    - heading "✨ 커뮤니티" [level=2] [ref=e223]
+    - list [ref=e224]:
+      - listitem [ref=e225]:
+        - strong [ref=e226]: GitHub
+        - text: ":"
+        - link "modu-ai/moai-adk" [ref=e227]:
+          - /url: https://github.com/modu-ai/moai-adk
+      - listitem [ref=e228]:
+        - strong [ref=e229]: Issues
+        - text: ":"
+        - link "버그 리포트 및 기능 요청" [ref=e230]:
+          - /url: https://github.com/modu-ai/moai-adk/issues
+      - listitem [ref=e231]:
+        - strong [ref=e232]: 라이선스
+        - text: ": MIT (상업적 사용 가능)"
+    - separator [ref=e233]
+    - heading "🎬 다음 단계" [level=2] [ref=e234]
+    - generic [ref=e235]:
+      - heading "지금 바로 시작하세요!" [level=3] [ref=e236]
+      - paragraph [ref=e237]:
+        - link "빠른 시작 가이드" [ref=e238]:
+          - /url: getting-started/installation
+        - text: ·
+        - link "Alfred 워크플로우" [ref=e239]:
+          - /url: guides/alfred/index
+        - text: ·
+        - link "GitHub 저장소" [ref=e240]:
+          - /url: https://github.com/modu-ai/moai-adk
+      - separator [ref=e241]
+      - paragraph [ref=e242]:
+        - strong [ref=e243]: MoAI-ADK
+        - text: 로 SPEC-First TDD 개발의 강력함을 경험하세요!
+  - alert [ref=e244]
+```

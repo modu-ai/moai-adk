@@ -48,8 +48,8 @@ This is a comprehensive test specification for a high-quality system.
 
 ## 추적성 (Traceability)
 - @SPEC:TEST-001 ← @CODE:HOOK-POST-AUTO-SPEC-001
-- @SPEC:TEST-001 → @TEST:TEST-001
-- @SPEC:TEST-001 → @CODE:TEST-001''',
+- @SPEC:TEST-001 → # REMOVED_ORPHAN_TEST:TEST-001
+- @SPEC:TEST-001 → # REMOVED_ORPHAN_CODE:TEST-001''',
             'plan_md': '''# @PLAN:TEST-001: Implementation Plan
 ## 구현 단계 (Implementation Phases)
 ### 1단계: 요구사항 분석 (Priority: High)
@@ -531,7 +531,7 @@ No proper headings'''
     def test_traceability_tags_check(self):
         """Test traceability tags check."""
         # Has tags
-        with_tags = '''@SPEC:TEST-001 is related to @CODE:TEST-001 and @TEST:TEST-001'''
+        with_tags = '''@SPEC:TEST-001 is related to # REMOVED_ORPHAN_CODE:TEST-001 and # REMOVED_ORPHAN_TEST:TEST-001'''
         self.assertTrue(self.validator._check_traceability_tags(with_tags))
 
         # No tags
@@ -541,12 +541,12 @@ No proper headings'''
     def test_tag_formatting_check(self):
         """Test tag formatting check."""
         # Good formatting
-        well_formatted = '''@SPEC:TEST-001, @TEST:TEST-001, @CODE:TEST-001, @ENV:TEST-001'''
+        well_formatted = '''@SPEC:TEST-001, # REMOVED_ORPHAN_TEST:TEST-001, # REMOVED_ORPHAN_CODE:TEST-001, @ENV:TEST-001'''
         score = self.validator._check_tag_formatting(well_formatted)
         self.assertEqual(score, 1.0)
 
         # Poor formatting
-        poorly_formatted = '''@SPEC:TEST-001, BAD-TAG:TEST-001, @TEST:TEST-001'''
+        poorly_formatted = '''@SPEC:TEST-001, BAD-TAG:TEST-001, # REMOVED_ORPHAN_TEST:TEST-001'''
         score = self.validator._check_tag_formatting(poorly_formatted)
         self.assertLess(score, 1.0)
 

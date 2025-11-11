@@ -186,7 +186,9 @@ class TemplateEngine:
             # Project information
             "PROJECT_NAME": project_config.get("name", "MyProject"),
             "PROJECT_DESCRIPTION": project_config.get("description", ""),
+            "PROJECT_OWNER": project_config.get("owner", ""),
             "PROJECT_MODE": project_config.get("mode", "team"),  # team or personal
+            "CODEBASE_LANGUAGE": project_config.get("codebase_language", "python"),
 
             # Directory structure
             "SPEC_DIR": github_config.get("spec_directory", ".moai/specs"),
@@ -199,8 +201,9 @@ class TemplateEngine:
             "ENABLE_ALFRED_COMMANDS": github_config.get("enable_alfred_commands", True),
 
             # Language configuration
-            "CONVERSATION_LANGUAGE": project_config.get("conversation_language", "en"),
-            "CONVERSATION_LANGUAGE_NAME": project_config.get("conversation_language_name", "English"),
+            "CONVERSATION_LANGUAGE": config.get("language", {}).get("conversation_language", "en"),
+            "CONVERSATION_LANGUAGE_NAME": config.get("language", {}).get("conversation_language_name", "English"),
+            "AGENT_PROMPT_LANGUAGE": config.get("language", {}).get("agent_prompt_language", "english"),
 
             # Additional metadata
             "MOAI_VERSION": config.get("moai", {}).get("version", "0.7.0"),
@@ -215,9 +218,12 @@ class TemplateVariableValidator:
 
     REQUIRED_VARIABLES = {
         "PROJECT_NAME": str,
+        "PROJECT_OWNER": str,
+        "CODEBASE_LANGUAGE": str,
         "SPEC_DIR": str,
         "DOCS_DIR": str,
         "TEST_DIR": str,
+        "CONVERSATION_LANGUAGE": str,
     }
 
     OPTIONAL_VARIABLES = {

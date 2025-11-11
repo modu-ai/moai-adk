@@ -23,13 +23,13 @@ class TestLanguageDetectionExtended:
     """Test 11 new language detection methods."""
 
     def test_detect_ruby(self, tmp_path: Path):
-        """@TEST:LDE-001-RUBY | Ruby project detection (Gemfile)."""
+        """# REMOVED_ORPHAN_TEST:LDE-001-RUBY | Ruby project detection (Gemfile)."""
         (tmp_path / "Gemfile").touch()
         detector = LanguageDetector()
         assert detector.detect(tmp_path) == "ruby"
 
     def test_detect_php(self, tmp_path: Path):
-        """@TEST:LDE-002-PHP | PHP project detection (composer.json)."""
+        """# REMOVED_ORPHAN_TEST:LDE-002-PHP | PHP project detection (composer.json)."""
         (tmp_path / "composer.json").touch()
         detector = LanguageDetector()
         assert detector.detect(tmp_path) == "php"
@@ -47,51 +47,51 @@ class TestLanguageDetectionExtended:
         assert detector.detect(tmp_path) == "java"
 
     def test_detect_rust(self, tmp_path: Path):
-        """@TEST:LDE-004-RUST | Rust project detection (Cargo.toml)."""
+        """# REMOVED_ORPHAN_TEST:LDE-004-RUST | Rust project detection (Cargo.toml)."""
         (tmp_path / "Cargo.toml").touch()
         detector = LanguageDetector()
         assert detector.detect(tmp_path) == "rust"
 
     def test_detect_dart(self, tmp_path: Path):
-        """@TEST:LDE-005-DART | Dart project detection (pubspec.yaml)."""
+        """# REMOVED_ORPHAN_TEST:LDE-005-DART | Dart project detection (pubspec.yaml)."""
         (tmp_path / "pubspec.yaml").touch()
         detector = LanguageDetector()
         assert detector.detect(tmp_path) == "dart"
 
     def test_detect_swift(self, tmp_path: Path):
-        """@TEST:LDE-006-SWIFT | Swift project detection (Package.swift)."""
+        """# REMOVED_ORPHAN_TEST:LDE-006-SWIFT | Swift project detection (Package.swift)."""
         (tmp_path / "Package.swift").touch()
         detector = LanguageDetector()
         assert detector.detect(tmp_path) == "swift"
 
     def test_detect_kotlin(self, tmp_path: Path):
-        """@TEST:LDE-007-KOTLIN | Kotlin project detection (build.gradle.kts)."""
+        """# REMOVED_ORPHAN_TEST:LDE-007-KOTLIN | Kotlin project detection (build.gradle.kts)."""
         (tmp_path / "build.gradle.kts").touch()
         detector = LanguageDetector()
         assert detector.detect(tmp_path) == "kotlin"
 
     def test_detect_csharp(self, tmp_path: Path):
-        """@TEST:LDE-008-CSHARP | C# project detection (*.csproj)."""
+        """# REMOVED_ORPHAN_TEST:LDE-008-CSHARP | C# project detection (*.csproj)."""
         (tmp_path / "MyApp.csproj").touch()
         detector = LanguageDetector()
         assert detector.detect(tmp_path) == "csharp"
 
     def test_detect_c(self, tmp_path: Path):
-        """@TEST:LDE-009-C | C project detection (Makefile + *.c)."""
+        """# REMOVED_ORPHAN_TEST:LDE-009-C | C project detection (Makefile + *.c)."""
         (tmp_path / "Makefile").touch()
         (tmp_path / "main.c").touch()
         detector = LanguageDetector()
         assert detector.detect(tmp_path) == "c"
 
     def test_detect_cpp(self, tmp_path: Path):
-        """@TEST:LDE-010-CPP | C++ project detection (CMakeLists.txt + *.cpp)."""
+        """# REMOVED_ORPHAN_TEST:LDE-010-CPP | C++ project detection (CMakeLists.txt + *.cpp)."""
         (tmp_path / "CMakeLists.txt").touch()
         (tmp_path / "main.cpp").touch()
         detector = LanguageDetector()
         assert detector.detect(tmp_path) == "cpp"
 
     def test_detect_shell(self, tmp_path: Path):
-        """@TEST:LDE-011-SHELL | Shell project detection (*.sh files)."""
+        """# REMOVED_ORPHAN_TEST:LDE-011-SHELL | Shell project detection (*.sh files)."""
         (tmp_path / "script.sh").touch()
         detector = LanguageDetector()
         assert detector.detect(tmp_path) == "shell"

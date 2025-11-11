@@ -160,8 +160,8 @@ def another():
         """Test finding existing TAGs in project"""
         # Create test files with TAGs
         (temp_dir / "src").mkdir()
-        (temp_dir / "src" / "auth.py").write_text("# @CODE:AUTH-004")
-        (temp_dir / "src" / "api.py").write_text("# @CODE:API-001")
+        (temp_dir / "src" / "auth.py").write_text("# # REMOVED_ORPHAN_CODE:AUTH-004")
+        (temp_dir / "src" / "api.py").write_text("# # REMOVED_ORPHAN_CODE:API-001")
         (temp_dir / "README.md").write_text("# @DOC:README-001")
 
         with patch('Path.cwd', return_value=temp_dir):
@@ -262,7 +262,7 @@ def another():
             AutoCorrection(
                 file_path="test1.py",
                 original_content="def test1(): pass",
-                corrected_content="# @CODE:TEST-002\ndef test1(): pass",
+                corrected_content="# # REMOVED_ORPHAN_CODE:TEST-002\ndef test1(): pass",
                 description="Add TAG",
                 confidence=0.7,  # Below threshold
                 requires_review=True
@@ -270,7 +270,7 @@ def another():
             AutoCorrection(
                 file_path="test2.py",
                 original_content="def test2(): pass",
-                corrected_content="# @CODE:TEST-002\ndef test2(): pass",
+                corrected_content="# # REMOVED_ORPHAN_CODE:TEST-002\ndef test2(): pass",
                 description="Add TAG",
                 confidence=0.95,  # Above threshold
                 requires_review=False

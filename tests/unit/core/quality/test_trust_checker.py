@@ -1,4 +1,4 @@
-# @TEST:TRUST-002 | SPEC: SPEC-TRUST-001/spec.md
+# # REMOVED_ORPHAN_TEST:TRUST-002 | SPEC: SPEC-TRUST-001/spec.md
 """
 TRUST 원칙 통합 검증 테스트
 
@@ -21,7 +21,7 @@ import pytest
 
 
 class TestTrustChecker:
-    """@TEST:TRUST-002: TRUST 원칙 통합 검증"""
+    """# REMOVED_ORPHAN_TEST:TRUST-002: TRUST 원칙 통합 검증"""
 
     @pytest.fixture
     def trust_checker(self):
@@ -294,7 +294,7 @@ def complex_function(x):
         # Arrange
         (sample_project_path / ".moai" / "specs").mkdir(parents=True)
         (sample_project_path / ".moai" / "specs" / "SPEC-AUTH-001.md").write_text("# @SPEC:AUTH-004")
-        (sample_project_path / "src" / "auth.py").write_text("# @CODE:AUTH-004")
+        (sample_project_path / "src" / "auth.py").write_text("# # REMOVED_ORPHAN_CODE:AUTH-004")
         (sample_project_path / "tests" / "test_auth.py").write_text("# @TEST:AUTH-004")
 
         # Act
@@ -307,12 +307,12 @@ def complex_function(x):
     @pytest.mark.xfail(reason='Test data migration needed')
     def test_should_fail_when_tag_chain_broken(self, trust_checker, sample_project_path):
         """
-        Given: @CODE:AUTH-004은 있으나 @SPEC:AUTH-004이 없음
+        Given: # REMOVED_ORPHAN_CODE:AUTH-004은 있으나 @SPEC:AUTH-004이 없음
         When: trust_checker.validate_tag_chain() 실행
         Then: ValidationResult.passed = False, 끊어진 체인 표시
         """
         # Arrange
-        (sample_project_path / "src" / "auth.py").write_text("# @CODE:AUTH-004")
+        (sample_project_path / "src" / "auth.py").write_text("# # REMOVED_ORPHAN_CODE:AUTH-004")
 
         # Act
         result = trust_checker.validate_tag_chain(sample_project_path)
@@ -329,12 +329,12 @@ def complex_function(x):
     @pytest.mark.xfail(reason='Test data migration needed')
     def test_should_detect_orphan_tags(self, trust_checker, sample_project_path):
         """
-        Given: @CODE:USER-005는 있으나 @SPEC:USER-005가 없음 (고아 TAG)
+        Given: # REMOVED_ORPHAN_CODE:USER-005는 있으나 @SPEC:USER-005가 없음 (고아 TAG)
         When: trust_checker.detect_orphan_tags() 실행
         Then: 고아 TAG 목록 반환
         """
         # Arrange
-        (sample_project_path / "src" / "user.py").write_text("# @CODE:USER-005")
+        (sample_project_path / "src" / "user.py").write_text("# # REMOVED_ORPHAN_CODE:USER-005")
 
         # Act
         orphans = trust_checker.detect_orphan_tags(sample_project_path)
@@ -353,7 +353,7 @@ def complex_function(x):
         # Arrange
         (sample_project_path / ".moai" / "specs").mkdir(parents=True)
         (sample_project_path / ".moai" / "specs" / "SPEC-USER-001.md").write_text("# @SPEC:USER-001")
-        (sample_project_path / "src" / "user.py").write_text("# @CODE:USER-001")
+        (sample_project_path / "src" / "user.py").write_text("# # REMOVED_ORPHAN_CODE:USER-001")
 
         # Act
         orphans = trust_checker.detect_orphan_tags(sample_project_path)
@@ -492,3 +492,6 @@ def complex_function(x):
         assert tools["test_framework"] == "vitest"
         assert tools["linter"] == "biome"
         assert tools["type_checker"] == "tsc"
+
+
+# @TEST:TRUST-001

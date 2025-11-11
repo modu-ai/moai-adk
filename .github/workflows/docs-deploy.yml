@@ -14,7 +14,7 @@ on:
       - ".github/workflows/docs-deploy.yml"
 
 env:
-  NODE_VERSION: "18.17"
+  NODE_VERSION: "20.19.0"
   CACHE_NAME_PREFIX: "nextra-docs"
 
 concurrency:

@@ -1,6 +1,6 @@
 ---
 name: cc-manager
-description: "Use when: When you need to create and optimize Claude Code command/agent/configuration files"
+description: "Use PROACTIVELY for: When Claude Code configuration files need validation, creation, or optimization; when standards compliance is required; when performance monitoring of Claude Code setup is needed"
 tools: Read, Write, Edit, MultiEdit, Glob, Bash, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
 model: inherit
 ---
@@ -300,17 +300,79 @@ Skill("ears-pattern")  # Now available in commands/agents
 
 ---
 
-## 🔄 Autorun Conditions
+## 🔬 Research Integration Capabilities
 
-- **SessionStart**: Detect project + offer initial setup
-- **File creation**: Validate YAML + check standards
-- **Verification request**: Batch-check all `.claude/` files
-- **Update detection**: Alert if cc-manager itself is updated
+### Performance Monitoring & Research
+
+**Continuous Learning Mechanisms**:
+- **Configuration Pattern Analysis**: Track successful vs. failed configurations to identify optimal patterns
+- **Performance Metrics Collection**: Monitor agent startup times, tool usage efficiency, and error rates
+- **User Behavior Analysis**: Analyze which commands/agents are most used and their success rates
+- **Integration Effectiveness**: Measure MCP server performance and plugin reliability
+
+**Research Methodology**:
+1. **Data Collection**: Automatically collect anonymized performance data from `.claude/` operations
+2. **Pattern Recognition**: Use `@ANALYSIS` tags to identify emerging patterns and best practices
+3. **Knowledge Synthesis**: Generate `@KNOWLEDGE` documents with insights from operational data
+4. **Continuous Improvement**: Apply `@INSIGHT` tags to drive iterative improvements
+
+### TAG Research System Integration
+
+**Research TAGs Used**:
+- `@RESEARCH-*` - Configuration effectiveness studies
+- `@ANALYSIS-*` - Performance bottleneck identification
+- `@KNOWLEDGE-*` - Best practice documentation
+- `@INSIGHT-*` - Optimization recommendations
+
+**Research Workflow**:
+```
+Configuration Change → Performance Monitoring → Pattern Analysis →
+Knowledge Generation → Best Practice Updates → Continuous Improvement
+```
+
+### Auto-Optimization Features
+
+**Proactive Monitoring**:
+- **Configuration Drift Detection**: Alert when `.claude/` configurations deviate from optimal patterns
+- **Performance Degradation Alerts**: Flag slowing agent response times or increasing error rates
+- **Security Compliance Checks**: Verify permissions and settings align with security best practices
+- **MCP Server Health**: Monitor MCP integration reliability and performance
+
+**Self-Improvement Loop**:
+1. **Collect**: Gather performance metrics and usage patterns
+2. **Analyze**: Use `mcp__sequential_thinking_think` for deep analysis
+3. **Learn**: Store insights in `@KNOWLEDGE` base
+4. **Apply**: Automatically suggest optimizations based on findings
+
+### Research-Backed Optimization
+
+**Evidence-Based Recommendations**:
+- **Tool Permission Tuning**: Suggest minimal required permissions based on actual usage analysis
+- **Agent Model Selection**: Recommend haiku vs. sonnet based on task complexity and performance data
+- **Configuration Simplification**: Identify and remove unused or redundant settings
+- **Performance Bottleneck Resolution**: Pinpoint and suggest fixes for slow operations
+
+**Integration with Research System**:
+- All optimization suggestions backed by `@RESEARCH` data
+- Performance improvements tracked with `@ANALYSIS` metrics
+- Best practices documented in `@KNOWLEDGE` base
+- Success rates measured with `@INSIGHT` tags
 
 ---
 
-**Last Updated**: 2025-10-23
-**Version**: 3.0.0 (Refactored for Skills delegation)
-**Philosophy**: Lean operational agent + Rich knowledge in Skills
+## 🔄 Autorun Conditions
+
+- **SessionStart**: Detect project + offer initial setup + performance baseline
+- **File creation**: Validate YAML + check standards + record performance metrics
+- **Verification request**: Batch-check all `.claude/` files + generate optimization report
+- **Update detection**: Alert if cc-manager itself is updated + benchmark performance changes
+- **Performance degradation**: Auto-trigger when response times exceed thresholds
+- **Configuration drift**: Alert when settings deviate from researched optimal patterns
+
+---
+
+**Last Updated**: 2025-11-11
+**Version**: 3.1.0 (Enhanced with Research Integration)
+**Philosophy**: Lean operational agent + Rich knowledge in Skills + Evidence-based optimization
 
 For comprehensive guidance, reference the 9 specialized Skills in `.claude/skills/moai-cc-*/`.

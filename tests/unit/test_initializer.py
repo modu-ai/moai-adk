@@ -1,4 +1,4 @@
-# @TEST:INITIALIZER-001 | SPEC: SPEC-TEST-COVERAGE-001.md
+# # REMOVED_ORPHAN_TEST:INITIALIZER-001 | SPEC: SPEC-TEST-COVERAGE-001.md
 """Integration tests for ProjectInitializer
 
 Tests the complete project initialization workflow:

@@ -101,12 +101,17 @@ Execute planned tasks based on SPEC document analysis. Supports TDD implementati
    - Read: `.moai/specs/SPEC-$ARGUMENTS/spec.md`
    - Determine if codebase exploration is needed (existing patterns, similar implementations)
 
-3. **Optionally invoke Explore agent for codebase analysis**:
+3. **Update SPEC status to in-progress**:
+   ```bash
+   python3 .claude/hooks/alfred/spec_status_hooks.py status_update SPEC-$ARGUMENTS --status in-progress --reason "Implementation started via /alfred:2-run"
+   ```
+
+4. **Optionally invoke Explore agent for codebase analysis**:
    - IF SPEC requires understanding existing code patterns:
      - Use Task tool with `subagent_type: "Explore"`
      - Prompt: "Analyze codebase for SPEC-$ARGUMENTS: Similar implementations, test patterns, architecture, libraries/versions"
      - Thoroughness: "medium"
-   - ELSE: Skip and proceed directly to Step 1.2
+   - ELSE: Skip and proceed directly to Step 1.3
 
 **Result**: SPEC context gathered. Ready for planning.
 

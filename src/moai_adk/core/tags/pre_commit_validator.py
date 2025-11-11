@@ -85,7 +85,7 @@ class PreCommitValidator:
     # Default TAG pattern: @(SPEC|CODE|TEST|DOC):DOMAIN-NNN or DOMAIN-TYPE-NNN
     # Matches formats like:
     # - @CODE:AUTH-API-001 (domain-type-number)
-    # - @CODE:SPEC-001 (domain-number)
+    # - # REMOVED_ORPHAN_CODE:SPEC-001 (domain-number)
     # - @TEST:USER-REG-001 (domain-type-number)
     DEFAULT_TAG_PATTERN = r"@(SPEC|CODE|TEST|DOC):([A-Z]+(?:-[A-Z]+)*-\d{3})"
 

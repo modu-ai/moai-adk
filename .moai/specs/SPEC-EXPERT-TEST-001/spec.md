@@ -1,10 +1,11 @@
 ---
-id: EXPERT-TEST-001
-title: Full-Stack User Dashboard with Authentication
-status: draft
-version: 1.0.0
 created_date: 2025-11-04
+id: EXPERT-TEST-001
 owner: Alfred
+status: completed
+title: Full-Stack User Dashboard with Authentication
+updated: '2025-11-11'
+version: 1.1.0
 ---
 
 # SPEC-EXPERT-TEST-001: Full-Stack User Dashboard with Authentication

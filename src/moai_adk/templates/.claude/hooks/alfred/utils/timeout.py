@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# @CODE:TIMEOUT-001 | SPEC: SPEC-TIMEOUT-HANDLING-001
+# # REMOVED_ORPHAN_CODE:TIMEOUT-001 | SPEC: SPEC-TIMEOUT-HANDLING-001
 """Cross-Platform Timeout Handler for Windows & Unix Compatibility
 
 Provides a unified timeout mechanism that works on both Windows (threading-based)

@@ -1,7 +1,12 @@
 ---
 name: moai-alfred-context-budget
+version: 2.0.0
+created: 2025-11-02
+updated: 2025-11-11
+status: active
 description: "Claude Code context window optimization strategies, JIT retrieval, progressive loading, memory file patterns, and cleanup practices. Use when optimizing context usage, managing large projects, or implementing efficient workflows."
-allowed-tools: "Read, Grep"
+keywords: ['context-budget', 'memory-optimization', 'jit-retrieval', 'progressive-disclosure', 'token-management', 'research', 'memory-patterns', 'optimization']
+allowed-tools: "Read, Grep, AskUserQuestion, TodoWrite"
 ---
 
 ## What It Does
@@ -57,6 +62,68 @@ Total: 100K-200K tokens
 
 ---
 
+## Research Integration
+
+### Memory Optimization Research Capabilities
+
+**Context Budget Pattern Analysis**:
+- **Token allocation studies**: Optimal distribution between system prompts, tools, and project context
+- **Progressive disclosure efficiency**: Best practices for metadata → content → supporting data retrieval
+- **Memory file structure optimization**: Ideal size limits, naming conventions, and retention policies
+- **JIT retrieval algorithm research**: Pattern matching for context-aware file selection
+
+**Memory Management Research Areas**:
+- **Context compression techniques**: Summarization vs caching for different file types
+- **Session handoff optimization**: Memory preservation strategies for multi-session workflows
+- **Memory cleanup automation**: Trigger conditions and retention policies for different project sizes
+- **Memory file organization**: Hierarchical structures for large-scale projects vs small teams
+
+**Research Methodology**:
+- **Token usage tracking**: Monitor consumption patterns across project types
+- **Context efficiency scoring**: Measure success rates of progressive disclosure
+- **Memory file impact analysis**: Evaluate the effect of different memory structures on task completion
+- **JIT retrieval performance**: Compare manual file hunting vs automated context loading
+
+### Memory Pattern Research Categories
+
+#### 1. Project Size-Based Patterns
+- **Small projects (<50 files)**: Minimal memory, focus on current session
+- **Medium projects (50-200 files)**: Structured memory with hierarchical organization
+- **Large projects (>200 files)**: Advanced memory with automated cleanup and compression
+
+#### 2. Workflow-Specific Memory Strategies
+- **SPEC-first workflows**: Memory prioritization for SPEC files and test cases
+- **Team mode projects**: Shared memory patterns and collaboration memory
+- **Personal mode projects**: Individual memory optimization and preference learning
+
+#### 3. Memory File Research Framework
+```
+Memory File Analysis Framework:
+├── Structure Analysis
+│   ├── File size optimization
+│   ├── Content categorization
+│   ├── Access frequency tracking
+│   └── Retention policy optimization
+├── Performance Research
+│   ├── Load time measurements
+│   ├── Context impact scoring
+│   ├── Token savings calculation
+│   └── Task completion correlation
+└── Best Practices Development
+        ├── Memory architecture patterns
+        ├── Content compression techniques
+        ├── Cleanup automation strategies
+        └── Memory migration guides
+```
+
+**Current Research Focus Areas**:
+- Context budget allocation optimization
+- Memory file size vs. utility relationship studies
+- Progressive disclosure effectiveness metrics
+- Memory pattern documentation standardization
+
+---
+
 Learn more in `reference.md` for detailed JIT strategy, memory patterns, context budget calculations, and management practices.
 
-**Related Skills**: moai-alfred-practices, moai-cc-memory
+**Related Skills**: moai-alfred-practices, moai-cc-memory, moai-foundation-tags

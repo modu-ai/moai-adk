@@ -177,7 +177,7 @@ class TestPRValidation:
             # Create test file with valid TAGs
             test_file = Path(tmpdir) / "test_file.py"
             test_file.write_text("""
-# @CODE:AUTH-004
+# # REMOVED_ORPHAN_CODE:AUTH-004
 def authenticate():
     pass
 
@@ -197,7 +197,7 @@ def test_authenticate():
                 assert len(result.errors) == 0
 
     @patch('moai_adk.core.tags.ci_validator.requests.Session')
-    @pytest.mark.skip(reason="CIValidator validation logic under review - @CODE:SKIP-004")
+    @pytest.mark.skip(reason="CIValidator validation logic under review - # REMOVED_ORPHAN_CODE:SKIP-004")
     def test_validate_pr_changes_with_errors(self, mock_session_class):
         """PR with TAG errors should fail validation"""
         # Mock API response
@@ -222,11 +222,11 @@ def test_authenticate():
             # Create test file with duplicate TAGs
             test_file = Path(tmpdir) / "test_file.py"
             test_file.write_text("""
-# @CODE:AUTH-004
+# # REMOVED_ORPHAN_CODE:AUTH-004
 def func1():
     pass
 
-# @CODE:AUTH-004
+# # REMOVED_ORPHAN_CODE:AUTH-004
 def func2():
     pass
 """)
@@ -272,7 +272,7 @@ class TestReportGeneration:
 
         error = ValidationError(
             message="Duplicate TAG found",
-            tag="@CODE:TEST-002",
+            tag="# REMOVED_ORPHAN_CODE:TEST-002",
             locations=[("file1.py", 10), ("file2.py", 20)]
         )
 
@@ -288,7 +288,7 @@ class TestReportGeneration:
         assert report['is_valid'] is False
         assert len(report['errors']) == 1
         assert report['errors'][0]['message'] == "Duplicate TAG found"
-        assert report['errors'][0]['tag'] == "@CODE:TEST-002"
+        assert report['errors'][0]['tag'] == "# REMOVED_ORPHAN_CODE:TEST-002"
         assert len(report['errors'][0]['locations']) == 2
 
     def test_generate_report_with_warnings(self):
@@ -297,7 +297,7 @@ class TestReportGeneration:
 
         warning = ValidationWarning(
             message="CODE TAG without corresponding TEST",
-            tag="@CODE:AUTH-004",
+            tag="# REMOVED_ORPHAN_CODE:AUTH-004",
             location=("auth.py", 15)
         )
 
@@ -321,11 +321,11 @@ class TestReportGeneration:
         result = ValidationResult(
             is_valid=False,
             errors=[
-                ValidationError("Error 1", "@CODE:TEST-002", [("f1.py", 1)]),
-                ValidationError("Error 2", "@CODE:TEST-002", [("f2.py", 2)])
+                ValidationError("Error 1", "# REMOVED_ORPHAN_CODE:TEST-002", [("f1.py", 1)]),
+                ValidationError("Error 2", "# REMOVED_ORPHAN_CODE:TEST-002", [("f2.py", 2)])
             ],
             warnings=[
-                ValidationWarning("Warning 1", "@CODE:TEST-003", ("f3.py", 3))
+                ValidationWarning("Warning 1", "# REMOVED_ORPHAN_CODE:TEST-003", ("f3.py", 3))
             ]
         )
 
@@ -387,7 +387,7 @@ class TestPRCommentFormatting:
 
         error = ValidationError(
             message="Duplicate TAG found",
-            tag="@CODE:AUTH-004",
+            tag="# REMOVED_ORPHAN_CODE:AUTH-004",
             locations=[("auth.py", 10), ("auth_v2.py", 20)]
         )
 
@@ -404,7 +404,7 @@ class TestPRCommentFormatting:
 
         assert "❌" in comment or "error" in comment.lower()
         assert "Duplicate TAG" in comment
-        assert "@CODE:AUTH-004" in comment
+        assert "# REMOVED_ORPHAN_CODE:AUTH-004" in comment
         assert "auth.py" in comment
         assert "auth_v2.py" in comment
 
@@ -414,7 +414,7 @@ class TestPRCommentFormatting:
 
         warning = ValidationWarning(
             message="CODE TAG without corresponding TEST",
-            tag="@CODE:AUTH-004",
+            tag="# REMOVED_ORPHAN_CODE:AUTH-004",
             location=("auth.py", 15)
         )
 
@@ -431,7 +431,7 @@ class TestPRCommentFormatting:
 
         assert "⚠️" in comment or "warning" in comment.lower()
         assert "CODE TAG without corresponding TEST" in comment
-        assert "@CODE:AUTH-004" in comment
+        assert "# REMOVED_ORPHAN_CODE:AUTH-004" in comment
 
     def test_format_pr_comment_includes_table(self):
         """Should include results table in comment"""
@@ -440,10 +440,10 @@ class TestPRCommentFormatting:
         result = ValidationResult(
             is_valid=False,
             errors=[
-                ValidationError("Error 1", "@CODE:TEST-002", [("f1.py", 1)])
+                ValidationError("Error 1", "# REMOVED_ORPHAN_CODE:TEST-002", [("f1.py", 1)])
             ],
             warnings=[
-                ValidationWarning("Warning 1", "@CODE:TEST-002", ("f2.py", 2))
+                ValidationWarning("Warning 1", "# REMOVED_ORPHAN_CODE:TEST-002", ("f2.py", 2))
             ]
         )
 
@@ -463,7 +463,7 @@ class TestPRCommentFormatting:
         result = ValidationResult(
             is_valid=False,
             errors=[
-                ValidationError("Duplicate TAG", "@CODE:TEST-002", [("f1.py", 1)])
+                ValidationError("Duplicate TAG", "# REMOVED_ORPHAN_CODE:TEST-002", [("f1.py", 1)])
             ],
             warnings=[]
         )
@@ -494,7 +494,7 @@ class TestStrictVsInfoMode:
         with tempfile.TemporaryDirectory() as tmpdir:
             # File with orphan CODE (warning only)
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-002\n")
+            file1.write_text("# # REMOVED_ORPHAN_CODE:TEST-002\n")
 
             result = validator.validate_files([str(file1)])
 
@@ -515,7 +515,7 @@ class TestStrictVsInfoMode:
         with tempfile.TemporaryDirectory() as tmpdir:
             # File with orphan CODE (warning in info mode)
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @CODE:TEST-002\n")
+            file1.write_text("# # REMOVED_ORPHAN_CODE:TEST-002\n")
 
             result = validator.validate_files([str(file1)])
 
@@ -598,7 +598,7 @@ class TestIntegrationWorkflow:
             # Create test file
             test_file = Path(tmpdir) / "src" / "auth.py"
             test_file.parent.mkdir(parents=True)
-            test_file.write_text("# @CODE:AUTH-004\n# @TEST:AUTH-004\n")
+            test_file.write_text("# # REMOVED_ORPHAN_CODE:AUTH-004\n# @TEST:AUTH-004\n")
 
             # Mock file resolution
             with patch.object(Path, 'exists', return_value=True), \

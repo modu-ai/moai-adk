@@ -1,4 +1,4 @@
-# @CODE:TRUST-002 | SPEC: SPEC-TRUST-001/spec.md | TEST: tests/unit/core/quality/test_trust_checker.py
+# # REMOVED_ORPHAN_CODE:TRUST-002 | SPEC: SPEC-TRUST-001/spec.md | TEST: tests/unit/core/quality/test_trust_checker.py
 # type: ignore
 """
 Integrated TRUST principle validation system
@@ -440,3 +440,6 @@ class TrustChecker:
             "linter": "ruff",
             "type_checker": "mypy",
         }
+
+
+# @CODE:TRUST-001

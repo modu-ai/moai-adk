@@ -80,7 +80,7 @@ def test_extract_domain_from_tag():
 
     assert repairer._extract_domain_from_tag("@SPEC:AUTH-004") == "AUTH"
     assert repairer._extract_domain_from_tag("@CODE:LDE-PRIORITY-005") == "LDE-PRIORITY"
-    assert repairer._extract_domain_from_tag("@TEST:CLI-002") == "CLI"
+    assert repairer._extract_domain_from_tag("# REMOVED_ORPHAN_TEST:CLI-002") == "CLI"
 
 
 @pytest.mark.xfail(reason='Test data migration needed')
@@ -154,9 +154,9 @@ def test_repair_plan_creation():
                 {'domain': 'UTILS', 'missing': ['CODE'], 'score': 0.33}
             ],
             'orphans_by_type': {
-                'code_without_spec': ['@CODE:TEST-002'],
-                'code_without_test': ['@CODE:TEST-002'],
-                'test_without_code': ['@TEST:TEST-003'],
+                'code_without_spec': ['# REMOVED_ORPHAN_CODE:TEST-002'],
+                'code_without_test': ['# REMOVED_ORPHAN_CODE:TEST-002'],
+                'test_without_code': ['# REMOVED_ORPHAN_TEST:TEST-003'],
                 'spec_without_code': ['@SPEC:TEST-004']
             }
         })()
@@ -227,7 +227,7 @@ def test_execute_repair_plan_dry_run():
                 {'domain': 'AUTH', 'missing': ['SPEC'], 'score': 0.33}
             ],
             'orphans_by_type': {
-                'code_without_test': ['@CODE:TEST-002']
+                'code_without_test': ['# REMOVED_ORPHAN_CODE:TEST-002']
             }
         })()
 

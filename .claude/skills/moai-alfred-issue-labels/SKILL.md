@@ -1,14 +1,16 @@
 ---
 name: moai-alfred-issue-labels
-version: 1.1.0
+version: 2.0.0
 created: 2025-11-05
-updated: 2025-11-05
+updated: 2025-11-11
 status: active
-description: GitHub issue label configuration, label taxonomy, and workflow automation mapping for MoAI-ADK projects
-keywords: ['github', 'issues', 'labels', 'workflow', 'taxonomy', 'automation']
+description: GitHub issue label configuration, label taxonomy, and workflow automation mapping for MoAI-ADK projects. Enhanced with research capabilities for label optimization and workflow efficiency analysis.
+keywords: ['github', 'issues', 'labels', 'workflow', 'taxonomy', 'automation', 'research', 'optimization']
 allowed-tools:
   - Read
   - Bash
+  - TodoWrite
+tags: [github, issue-management, workflow, optimization, research, analysis]
 ---
 
 # Alfred Issue Labels Skill

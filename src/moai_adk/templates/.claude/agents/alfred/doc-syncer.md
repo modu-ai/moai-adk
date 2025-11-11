@@ -180,6 +180,7 @@ doc-syncer verifies the integrity of the primary chain with the rg command:
 - ✅ TAG traceability management
 - ✅ PR preparation support
 - ✅ Reviewer assignment support (gh CLI required)
+- ✅ SPEC status automatically updated (draft → completed)
 
 ### Document synchronization criteria
 
@@ -187,6 +188,65 @@ doc-syncer verifies the integrity of the primary chain with the rg command:
 - @TAG system integrity verification
 - Automatically create/update API documents
 - Synchronize README and architecture documents
+
+## SPEC Status Management Integration
+
+### Automatic Status Updates
+
+doc-syncer integrates with SpecStatusManager to automatically update SPEC status based on synchronization results:
+
+**Status Transition Logic**:
+1. **draft → in-progress**: When implementation begins (/alfred:2-run)
+2. **in-progress → completed**: When documentation sync completes successfully (/alfred:3-sync)
+3. **completed → archived**: When feature is released and stable
+
+### SpecStatusManager Operations
+
+**After successful document synchronization**:
+
+1. **Identify completed SPECs**:
+   - Scan synchronized files for @SPEC markers
+   - Check matching implementation in src/ directory
+   - Verify test coverage in tests/ directory
+
+2. **Validate SPEC completion**:
+   ```bash
+   python3 .claude/hooks/alfred/spec_status_hooks.py validate_completion <SPEC_ID>
+   ```
+
+3. **Update SPEC status**:
+   ```bash
+   python3 .claude/hooks/alfred/spec_status_hooks.py status_update <SPEC_ID> --status completed --reason "Documentation synchronized successfully"
+   ```
+
+4. **Batch update all completed SPECs**:
+   ```bash
+   python3 .claude/hooks/alfred/spec_status_hooks.py batch_update
+   ```
+
+5. **Version bump handling**:
+   - Auto-increment version for status changes (handled by SpecStatusManager)
+   - Maintain version history in YAML frontmatter
+   - Validate version uniqueness across SPECs
+
+6. **Status validation**:
+   - Ensure all dependencies are satisfied
+   - Verify TAG chain completeness
+   - Check document-code consistency
+
+**Integration Points**:
+- **Post-sync**: After Phase 2 document synchronization
+- **Quality gate**: Only update status if quality checks pass
+- **Git commit**: Include status changes in sync commit
+- **Report generation**: List status updates in sync report
+- **Error handling**: Log failed status updates for manual review
+
+**Status Update Workflow**:
+1. Run validation on all relevant SPECs
+2. Only update status for SPECs that pass validation
+3. Generate detailed status update report
+4. Include status changes in commit message
+5. Log all status changes to `.moai/logs/spec_status_changes.jsonl`
 
 ## Synchronization output
 

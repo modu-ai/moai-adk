@@ -76,12 +76,18 @@ Execute planned tasks based on SPEC document analysis. Supports TDD implementati
 
 ## 🧠 Associated Skills & Agents
 
-| Agent                  | Core Skill                       | Purpose                                 |
-| ---------------------- | -------------------------------- | --------------------------------------- |
-| implementation-planner | `moai-alfred-language-detection` | Detect language and design architecture |
-| tdd-implementer        | `moai-essentials-debug`          | Implement TDD (RED → GREEN → REFACTOR)  |
-| quality-gate           | `moai-alfred-trust-validation`   | Verify TRUST 5 principles               |
-| git-manager            | `moai-alfred-git-workflow`       | Commit and manage Git workflows         |
+**CRITICAL**: This command orchestrates ONLY - never implements directly
+
+| Agent                  | Core Skill                       | Purpose                                 | Delegation Pattern                     |
+| ---------------------- | -------------------------------- | --------------------------------------- | -------------------------------------- |
+| implementation-planner | `moai-alfred-language-detection` | Detect language and design architecture | `Task(subagent_type="implementation-planner")` |
+| tdd-implementer        | `moai-essentials-debug`          | Implement TDD (RED → GREEN → REFACTOR)  | `Task(subagent_type="tdd-implementer")` |
+| quality-gate           | `moai-alfred-trust-validation`   | Verify TRUST 5 principles               | `Task(subagent_type="quality-gate")` |
+| git-manager            | `moai-alfred-git-workflow`       | Commit and manage Git workflows         | `Task(subagent_type="git-manager")` |
+
+**Command Responsibility**: Orchestrate agent delegation and track progress
+**Agent Responsibility**: Own domain expertise and execute complex tasks
+**Skill Responsibility**: Provide reusable knowledge when agents request them
 
 **Note**: TUI Survey Skill is used for user confirmations during the run phase and is shared across all interactive prompts.
 
@@ -103,14 +109,7 @@ Execute planned tasks based on SPEC document analysis. Supports TDD implementati
 
 3. **Update SPEC status to in-progress**:
    ```bash
-   python3 -c "
-   from moai_adk.core.spec_status_manager import SpecStatusManager
-
-   manager = SpecStatusManager()
-   manager.update_status('SPEC-$ARGUMENTS', 'in-progress',
-                        reason='Implementation started via /alfred:2-run')
-   print('✅ SPEC-$ARGUMENTS status updated to in-progress')
-   "
+   python3 .claude/hooks/alfred/spec_status_hooks.py status_update SPEC-$ARGUMENTS --status in-progress --reason "Implementation started via /alfred:2-run"
    ```
 
 4. **Optionally invoke Explore agent for codebase analysis**:
@@ -118,7 +117,7 @@ Execute planned tasks based on SPEC document analysis. Supports TDD implementati
      - Use Task tool with `subagent_type: "Explore"`
      - Prompt: "Analyze codebase for SPEC-$ARGUMENTS: Similar implementations, test patterns, architecture, libraries/versions"
      - Thoroughness: "medium"
-   - ELSE: Skip and proceed directly to Step 1.2
+   - ELSE: Skip and proceed directly to Step 1.3
 
 **Result**: SPEC context gathered. Ready for planning.
 
