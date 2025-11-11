@@ -2,28 +2,69 @@
 
 ## Metadata
 
-```yaml
-skill_id: moai-context7-integration
-skill_name: Context7 Integration Expert
-version: 1.0.0
-created_date: 2025-11-11
-updated_date: 2025-11-11
-language: english
-word_count: 1400
-triggers:
-  - keywords: [context7, documentation research, library lookup, best practices, API reference]
-  - contexts: [context7-integration, docs-research, library-documentation, best-practices-sync]
-agents:
-  - docs-manager
-  - doc-syncer
-  - research-specialist
-freedom_level: high
-context7_references:
-  - url: "https://context7.com"
-    topic: "Context7 platform documentation and API reference"
-  - url: "https://github.com/context7/context7-claude"
-    topic: "Context7 Claude integration patterns and best practices"
-spec_reference: "@SPEC:CONTEXT7-INTEGRATION-001"
+---
+name: moai-context7-integration
+version: 2.0.0
+created: 2025-11-06
+updated: 2025-11-11
+status: active
+description: "Context7 MCP integration expert for library documentation research, analysis, and best practices discovery with 2025 technology support"
+keywords: ['context7', 'mcp-integration', 'documentation-research', 'library-analysis', 'best-practices', 'api-reference', '2025-tech']
+allowed-tools: "Read, Write, Edit, Glob, Bash, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, WebFetch"
+model: sonnet
+---
+
+# Context7 Integration Expert (2025 Edition)
+
+**Advanced MCP integration for library documentation research and analysis**
+
+> Comprehensive Context7 MCP integration expertise covering the latest 2025 libraries, documentation research patterns, and intelligent content enhancement strategies.
+
+## 2025 Library Version Updates
+
+### Latest 2025 Technology Stack for Context7
+
+**Frontend Frameworks (2025)**:
+- **Next.js**: 15 → **16** (latest stable with AI integration)
+- **React**: 18 → **19** (latest stable with enhanced Server Components)
+- **TypeScript**: 5.6 → **5.7** (latest stable)
+- **Vue**: 3.4 → **3.5** (latest stable)
+- **Angular**: 18 → **19** (latest stable)
+- **Vite**: 6.x → **7.x** (ultra-fast build tool)
+- **Nuxt**: 3.x → **4.x** (latest Vue meta-framework)
+
+**Backend & Runtime (2025)**:
+- **Node.js**: 22.x → **23.x** (latest LTS)
+- **Python**: 3.13 → **3.14** (latest stable)
+- **Java**: 21 → **23** (latest LTS)
+- **Spring Boot**: 3.3.x → **3.4.x** (latest stable)
+- **Go**: 1.23 → **1.24** (latest stable)
+- **Rust**: 1.83 → **1.84** (latest stable)
+- **.NET**: 8 → **9** (latest stable)
+
+
+**Development Tools (2025)**:
+- **pnpm**: 9.x → **10.x** (latest package manager)
+- **npm**: 10.x → **11.x** (latest npm)
+- **ESLint**: 9.x → **10.x** (latest linter)
+- **Prettier**: 3.3.x → **3.4.x** (latest formatter)
+- **TypeScript Compiler**: Built-in updates with 5.7
+- **Vitest**: 2.x → **3.x** (latest testing framework)
+
+### Context7 Library Resolution (2025 Updates)
+
+**Latest Library Paths for Context7**:
+```
+/next/next.js              → /next/next.js/v16
+/react/react               → /react/react/v19
+/typescript/typescript     → /typescript/typescript/v5.7
+/nodejs/node               → /nodejs/node/v23
+/python/python             → /python/python/v3.14
+/java/java                 → /java/java/v23
+/go/go                     → /go/go/v1.24
+/rust/rust                 → /rust/rust/v1.84
+/vitejs/vite               → /vitejs/vite/v7
+/vuejs/vue                 → /vuejs/vue/v3.5
 ```
 
 ## 📚 Content
@@ -209,6 +250,7 @@ class MultiLibraryResearcher:
 
         return '\n'.join(synthesis)
 ```
+
 
 ### Section 3: Integration with Nextra Documentation
 

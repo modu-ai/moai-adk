@@ -18,10 +18,11 @@ class ProjectSetupAnswers(TypedDict):
 
     project_name: str
     mode: str  # personal | team (default from init)
-    locale: str  # ko | en (default from init)
+    locale: str  # ko | en | ja | zh | other (default from init)
     language: str | None  # Will be set in /alfred:0-project
     author: str  # Will be set in /alfred:0-project
     mcp_servers: list[str]  # Selected MCP servers to install
+    custom_language: str | None  # User input for "other" language option
 
 
 def prompt_project_setup(
@@ -51,6 +52,7 @@ def prompt_project_setup(
         "language": None,    # Will be detected in /alfred:0-project
         "author": "",        # Will be set in /alfred:0-project
         "mcp_servers": [],   # Selected MCP servers
+        "custom_language": None,  # User input for other language
     }
 
     try:
@@ -83,16 +85,53 @@ def prompt_project_setup(
                 f"[cyan]📦 Project Name:[/cyan] {answers['project_name']} [dim](current directory)[/dim]"
             )
 
+        # 2. Language selection - 한국어, English, 日本語, 中文, 기타
+        console.print("\n[blue]🌐 Language Selection / 언어 선택[/blue]")
+
+        language_choice = questionary.select(
+            "Select your conversation language / 대화 언어를 선택하세요:",
+            choices=[
+                {"name": "한국어 (Korean)", "value": "ko"},
+                {"name": "English", "value": "en"},
+                {"name": "日本語 (Japanese)", "value": "ja"},
+                {"name": "中文 (Chinese)", "value": "zh"},
+                {"name": "기타 (Other) - 직접 입력", "value": "other"}
+            ],
+            default=initial_locale or "en"
+        ).ask()
+
+        if language_choice is None:
+            raise KeyboardInterrupt
+
+        if language_choice == "other":
+            # 사용자 직접 입력 받기
+            custom_lang = questionary.text(
+                "Enter your language / 언어를 입력하세요:",
+                validate=lambda text: len(text) > 0 or "Language is required / 언어가 필요합니다"
+            ).ask()
+
+            if custom_lang is None:
+                raise KeyboardInterrupt
+
+            answers["custom_language"] = custom_lang
+            answers["locale"] = "other"  # ISO 코드가 없을 경우
+            console.print(f"[cyan]🌐 Selected Language:[/cyan] {custom_lang}")
+        else:
+            answers["locale"] = language_choice
+            language_names = {
+                "ko": "한국어 (Korean)",
+                "en": "English",
+                "ja": "日本語 (Japanese)",
+                "zh": "中文 (Chinese)"
+            }
+            console.print(f"[cyan]🌐 Selected Language:[/cyan] {language_names.get(language_choice, language_choice)}")
+
         # MCP 서버 자동 설치
         mcp_servers = ["context7", "playwright", "sequential-thinking"]
         answers["mcp_servers"] = mcp_servers
         console.print("\n[blue]🔧 MCP (Model Context Protocol) Configuration[/blue]")
         console.print("[dim]Enhance AI capabilities with MCP servers (auto-installing recommended servers)[/dim]\n")
         console.print(f"[green]✅ MCP servers auto-installed: {', '.join(mcp_servers)}[/green]")
-
-        # NOTE: All other configuration (mode, language, author) is now handled in /alfred:0-project
-        # This significantly reduces init time and improves UX
-        answers["locale"] = initial_locale or "en"
 
         return answers
 

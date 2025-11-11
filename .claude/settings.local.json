@@ -4,7 +4,8 @@
       "mcp__sequential-thinking__sequentialthinking",
       "Skill(moai-alfred-agent-guide)",
       "Bash(xargs:*)",
-      "Bash(comm:*)"
+      "Bash(comm:*)",
+      "Bash(lsof:*)"
     ],
     "deny": [],
     "ask": []
@@ -14,5 +15,5 @@
     "playwright",
     "sequential-thinking"
   ],
-  "outputStyle": "🤖 R2-D2 Agentic Coding"
+  "outputStyle": "🎩 Alfred"
 }

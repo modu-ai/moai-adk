@@ -46,40 +46,40 @@ allowed-tools: "Read, Write, Edit, Glob, Bash, AskUserQuestion, mcp__context7__r
 - "Java best practices"
 - "Spring Boot microservice"
 
-## Tool Version Matrix (2025-11-06)
+## Tool Version Matrix (2025-11-11)
 
 ### Core Java
 - **Java**: 23 (current) / 21 (LTS) / 17 (LTS)
-- **Package Managers**: Maven 3.9.x, Gradle 8.8
+- **Package Managers**: Maven 3.9.x, Gradle 8.11
 - **Build Tools**: Maven Wrapper, Gradle Wrapper
 - **JVM**: OpenJDK, Oracle JDK, Amazon Corretto
 
 ### Web Frameworks
-- **Spring Boot**: 3.3.x - Production-ready applications
+- **Spring Boot**: 3.4.x - Production-ready applications
 - **Spring Framework**: 6.2.x - Core application framework
 - **Spring Security**: 6.4.x - Authentication and authorization
-- **Spring Data**: 3.3.x - Database access layer
-- **Micronaut**: 4.7.x - Reactive microservices framework
-- **Quarkus**: 3.17.x - Cloud-native Java framework
+- **Spring Data**: 3.4.x - Database access layer
+- **Micronaut**: 4.8.x - Reactive microservices framework
+- **Quarkus**: 3.18.x - Cloud-native Java framework
 
 ### Testing Tools
 - **JUnit**: 5.11.x - Primary testing framework
 - **Mockito**: 5.15.x - Mocking framework
-- **TestContainers**: 1.20.x - Integration testing with containers
-- **AssertJ**: 3.26.x - Fluent assertions library
-- **Jacoco**: 0.8.x - Code coverage analysis
+- **TestContainers**: 1.21.x - Integration testing with containers
+- **AssertJ**: 3.27.x - Fluent assertions library
+- **Jacoco**: 0.8.12 - Code coverage analysis
 
 ### Code Quality
-- **Checkstyle**: 10.20.x - Code style checking
-- **SpotBugs**: 4.8.x - Static analysis
-- **PMD**: 7.7.x - Code quality analysis
-- **Error Prone**: 2.36.x - Google's error detection
+- **Checkstyle**: 10.21.x - Code style checking
+- **SpotBugs**: 4.9.x - Static analysis
+- **PMD**: 7.8.x - Code quality analysis
+- **Error Prone**: 2.37.x - Google's error detection
 
 ### Database Tools
-- **Hibernate**: 6.6.x - ORM framework
-- **Flyway**: 10.20.x - Database migrations
-- **Liquibase**: 4.29.x - Database schema management
-- **H2**: 2.3.x - In-memory database for testing
+- **Hibernate**: 6.7.x - ORM framework
+- **Flyway**: 11.0.x - Database migrations
+- **Liquibase**: 4.30.x - Database schema management
+- **H2**: 2.4.x - In-memory database for testing
 
 ## Context7 Integration for Java
 
@@ -195,7 +195,7 @@ my-java-project/
 
 ## Modern Development Patterns
 
-### Modern Java Features (Java 21+)
+### Modern Java Features (Java 23+)
 
 ```java
 import java.util.List;
@@ -654,8 +654,8 @@ plugins {
     jacoco
     checkstyle
     pmd
-    id("org.springframework.boot") version "3.3.0"
-    id("io.spring.dependency-management") version "1.1.5"
+    id("org.springframework.boot") version "3.4.0"
+    id("io.spring.dependency-management") version "1.1.6"
 }
 
 group = "com.example"
@@ -663,7 +663,7 @@ version = "0.1.0"
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(23)
     }
 }
 
@@ -1223,8 +1223,8 @@ plugins {
     jacoco
     checkstyle
     pmd
-    id("org.springframework.boot") version "3.3.0"
-    id("io.spring.dependency-management") version "1.1.5"
+    id("org.springframework.boot") version "3.4.0"
+    id("io.spring.dependency-management") version "1.1.6"
     id("com.google.cloud.tools.jib") version "3.4.1"
 }
 
@@ -1233,7 +1233,7 @@ version = "0.1.0"
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(23)
     }
 }
 
@@ -1302,7 +1302,7 @@ tasks.test {
 // Jib configuration for Docker image generation
 jib {
     from {
-        image = "eclipse-temurin:21-jre-alpine"
+        image = "eclipse-temurin:23-jre-alpine"
     }
     to {
         image = "my-registry.com/my-app:latest"
@@ -1374,7 +1374,7 @@ repos:
 # This Dockerfile is for local development; use Jib for production
 
 # Build stage
-FROM eclipse-temurin:21-jdk-alpine AS builder
+FROM eclipse-temurin:23-jdk-alpine AS builder
 
 WORKDIR /app
 
@@ -1392,7 +1392,7 @@ COPY src/ ./src/
 RUN ./gradlew --no-daemon bootJar -x test
 
 # Runtime stage
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:23-jre-alpine
 
 # Security best practices
 RUN addgroup --system --gid 1001 appgroup && \

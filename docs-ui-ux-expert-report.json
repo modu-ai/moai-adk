@@ -1,0 +1,106 @@
+{
+  "timestamp": "2025-11-11T21:20:12.032956",
+  "server_status": "error",
+  "ui_analysis": {
+    "structure": {
+      "hasContent": false,
+      "characterCount": 21,
+      "wordCount": 3,
+      "hasHeadings": false,
+      "headingCount": 0,
+      "hasNavigation": false,
+      "navElementCount": 0,
+      "hasLinks": false,
+      "linkCount": 0,
+      "hasImages": false,
+      "imageCount": 0
+    },
+    "navigation": {
+      "navCount": 0,
+      "navInfo": [],
+      "hasFunctionalNav": false
+    },
+    "navigation_working": false,
+    "responsiveness": [
+      {
+        "viewport": "Mobile",
+        "size": "375x667",
+        "responsive": true,
+        "horizontal_scroll": false,
+        "document_width": 375,
+        "viewport_width": 375
+      },
+      {
+        "viewport": "Tablet",
+        "size": "768x1024",
+        "responsive": true,
+        "horizontal_scroll": false,
+        "document_width": 768,
+        "viewport_width": 768
+      },
+      {
+        "viewport": "Desktop",
+        "size": "1920x1080",
+        "responsive": true,
+        "horizontal_scroll": false,
+        "document_width": 1920,
+        "viewport_width": 1920
+      }
+    ]
+  },
+  "ux_issues": [
+    {
+      "severity": "CRITICAL",
+      "category": "_meta_json_configuration",
+      "description": "_meta.json configuration errors detected",
+      "details": [
+        "Minimal content detected - possible rendering failure"
+      ],
+      "impact": "Documentation server not rendering properly"
+    },
+    {
+      "severity": "HIGH",
+      "category": "navigation",
+      "description": "No functional navigation found",
+      "details": "Found 0 nav elements, but none are functional",
+      "impact": "Users cannot navigate through documentation"
+    }
+  ],
+  "screenshots_taken": 4,
+  "priority_recommendations": [
+    {
+      "priority": "IMMEDIATE",
+      "title": "Fix _meta.json Configuration",
+      "description": "Resolve _meta.json syntax and structure errors",
+      "action": "Check and fix _meta.json format according to Nextra 3.3.1 requirements",
+      "assigned_to": "Frontend Expert"
+    },
+    {
+      "priority": "HIGH",
+      "title": "Implement Navigation Structure",
+      "description": "Add functional sidebar or navigation menu",
+      "action": "Configure Nextra theme with proper navigation",
+      "assigned_to": "Frontend Expert"
+    },
+    {
+      "priority": "MEDIUM",
+      "title": "Enhance Visual Design",
+      "description": "Improve typography, colors, and spacing",
+      "action": "Apply consistent design tokens and improve readability",
+      "assigned_to": "Frontend Expert"
+    },
+    {
+      "priority": "LOW",
+      "title": "Add Interactive Features",
+      "description": "Search, dark mode, and other UX enhancements",
+      "action": "Implement advanced Nextra features and customizations",
+      "assigned_to": "Frontend Expert"
+    }
+  ],
+  "server_info": {
+    "status_code": 500,
+    "title": "",
+    "url": "http://localhost:3001/"
+  },
+  "final_status": "CRITICAL_FAILURE"
+}

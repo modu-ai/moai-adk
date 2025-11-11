@@ -119,6 +119,7 @@ class ProjectInitializer:
         mode: str = "personal",
         locale: str = "en",  # Changed from "ko" to "en" (will be configurable in /alfred:0-project)
         language: str | None = None,
+        custom_language: str | None = None,
         backup_enabled: bool = True,
         progress_callback: ProgressCallback | None = None,
         reinit: bool = False,
@@ -127,8 +128,9 @@ class ProjectInitializer:
 
         Args:
             mode: Project mode (personal/team) - Default: personal (configurable in /alfred:0-project)
-            locale: Locale (ko/en/ja/zh) - Default: en (configurable in /alfred:0-project)
+            locale: Locale (ko/en/ja/zh/other) - Default: en (configurable in /alfred:0-project)
             language: Force language specification (auto-detect if None) - Will be detected in /alfred:0-project
+            custom_language: Custom language name when locale="other" (user input)
             backup_enabled: Whether to enable backup
             progress_callback: Progress callback
             reinit: Reinitialization mode (v0.3.0, SPEC-INIT-003)
@@ -178,6 +180,31 @@ class ProjectInitializer:
             )
 
             # Phase 4: Configuration (generate config.json)
+            # Handle language configuration
+            language_config = {}
+            if locale == "other" and custom_language:
+                language_config = {
+                    "conversation_language": "other",
+                    "conversation_language_name": custom_language
+                }
+            elif locale in ["ko", "en", "ja", "zh"]:
+                language_names = {
+                    "ko": "한국어",
+                    "en": "English",
+                    "ja": "日本語",
+                    "zh": "中文"
+                }
+                language_config = {
+                    "conversation_language": locale,
+                    "conversation_language_name": language_names.get(locale, "English")
+                }
+            else:
+                # Default fallback
+                language_config = {
+                    "conversation_language": locale,
+                    "conversation_language_name": "English"
+                }
+
             config_data: dict[str, str | bool | dict] = {
                 "project": {
                     "name": self.path.name,
@@ -192,7 +219,8 @@ class ProjectInitializer:
                         "markers": [],  # Will be populated by project-manager
                         "confirmed_by": None,  # Will be "user" after project-manager confirmation
                     }
-                }
+                },
+                "language": language_config
             }
             config_files = self.executor.execute_configuration_phase(
                 self.path, config_data, progress_callback

@@ -36,14 +36,11 @@ def migrate_config_to_nested_structure(config: dict[str, Any]) -> dict[str, Any]
         conversation_language = config.pop("conversation_language", "en")
         config.pop("locale", None)  # Remove legacy locale field
 
-        # Map language codes to language names
-        language_names = {
-            "en": "English",
-            "ko": "한국어",
-            "ja": "日本語",
-            "zh": "中文",
-            "es": "Español",
-        }
+        # Import enhanced language configuration
+        from ..language_config import LANGUAGE_CONFIG
+
+        # Extract language names from enhanced config
+        language_names = {code: info["native_name"] for code, info in LANGUAGE_CONFIG.items()}
 
         language_name = language_names.get(conversation_language, "English")
 
@@ -103,13 +100,12 @@ def get_conversation_language_name(config: dict[str, Any]) -> str:
 
     # If we have the language code, try to map it
     language_code = get_conversation_language(config)
-    language_names = {
-        "en": "English",
-        "ko": "한국어",
-        "ja": "日本語",
-        "zh": "中文",
-        "es": "Español",
-    }
+
+    # Import enhanced language configuration
+    from ..language_config import LANGUAGE_CONFIG
+
+    # Extract language names from enhanced config
+    language_names = {code: info["native_name"] for code, info in LANGUAGE_CONFIG.items()}
     return language_names.get(language_code, "English")
 
 
