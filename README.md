@@ -484,6 +484,81 @@ BaaS skills integrate seamlessly with MoAI-ADK's development cycle:
 
 ## 🚀 Getting Started
 
+### Prerequisites
+
+Before installing MoAI-ADK, ensure you have the following tools installed:
+
+#### Git Installation
+
+**Windows:**
+1. Download Git from the official website: [https://git-scm.com/download/win](https://git-scm.com/download/win)
+2. Run the installer and follow the installation wizard
+3. Verify installation:
+   ```bash
+   git --version
+   ```
+
+**macOS:**
+
+Option 1 - Homebrew (Recommended):
+```bash
+# Install Homebrew if not already installed
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Install Git
+brew install git
+
+# Verify installation
+git --version
+```
+
+Option 2 - Official Installer:
+1. Download from: [https://git-scm.com/download/mac](https://git-scm.com/download/mac)
+2. Open the .dmg file and follow installation instructions
+
+#### GitHub CLI (gh) Installation
+
+GitHub CLI is required for creating pull requests and managing GitHub repositories from the command line.
+
+**Windows:**
+
+Option 1 - WinGet (Recommended):
+```bash
+winget install --id GitHub.cli
+```
+
+Option 2 - Chocolatey:
+```bash
+choco install gh
+```
+
+Option 3 - Scoop:
+```bash
+scoop install gh
+```
+
+**macOS:**
+
+```bash
+brew install gh
+```
+
+**Verify Installation:**
+```bash
+gh --version
+```
+
+**Authenticate with GitHub:**
+```bash
+gh auth login
+```
+
+For more information, visit:
+- Git: [https://git-scm.com/](https://git-scm.com/)
+- GitHub CLI: [https://cli.github.com/](https://cli.github.com/)
+
+---
+
 ### Installation
 
 #### Using uv tool (CLI - Global Access)

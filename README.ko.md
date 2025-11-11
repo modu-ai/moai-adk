@@ -484,6 +484,81 @@ BaaS 스킬은 MoAI-ADK의 개발 사이클과 seamlessly 통합됩니다:
 
 ## 🚀 빠른 시작
 
+### 사전 요구사항
+
+MoAI-ADK를 설치하기 전에 다음 도구들이 설치되어 있어야 합니다:
+
+#### Git 설치
+
+**Windows:**
+1. 공식 웹사이트에서 Git 다운로드: [https://git-scm.com/download/win](https://git-scm.com/download/win)
+2. 설치 파일을 실행하고 설치 마법사를 따라 진행
+3. 설치 확인:
+   ```bash
+   git --version
+   ```
+
+**macOS:**
+
+방법 1 - Homebrew (권장):
+```bash
+# Homebrew가 설치되어 있지 않다면 먼저 설치
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Git 설치
+brew install git
+
+# 설치 확인
+git --version
+```
+
+방법 2 - 공식 설치 파일:
+1. 다음에서 다운로드: [https://git-scm.com/download/mac](https://git-scm.com/download/mac)
+2. .dmg 파일을 열고 설치 안내를 따라 진행
+
+#### GitHub CLI (gh) 설치
+
+GitHub CLI는 명령줄에서 Pull Request를 생성하고 GitHub 저장소를 관리하는 데 필요합니다.
+
+**Windows:**
+
+방법 1 - WinGet (권장):
+```bash
+winget install --id GitHub.cli
+```
+
+방법 2 - Chocolatey:
+```bash
+choco install gh
+```
+
+방법 3 - Scoop:
+```bash
+scoop install gh
+```
+
+**macOS:**
+
+```bash
+brew install gh
+```
+
+**설치 확인:**
+```bash
+gh --version
+```
+
+**GitHub 인증:**
+```bash
+gh auth login
+```
+
+자세한 정보:
+- Git: [https://git-scm.com/](https://git-scm.com/)
+- GitHub CLI: [https://cli.github.com/](https://cli.github.com/)
+
+---
+
 ### 설치
 
 #### 권장: uv tool (CLI - 전역 접근)
