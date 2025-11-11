@@ -2,7 +2,7 @@
 # @CODE:SKILL-RESEARCH-001 | @SPEC:SKILL-SENIOR-ENGINEER-THINKING-001 | @TEST: tests/skills/test_senior_engineer_thinking.py
 """Senior Engineer Thinking Pattern Skill
 
-최고 엔지니어의 사고 패턴을 구현한 Skill. 8가지 고급 분석 전략을 통합:
+Implements senior engineer thinking patterns. Integrates 8 advanced analysis strategies:
 1. Root Cause Analysis
 2. Pattern Recognition
 3. Systematic Elimination
@@ -12,7 +12,7 @@
 7. Resource Optimization
 8. Continuous Learning
 
-사용법:
+Usage:
     Skill("senior_engineer_thinking")
 """
 
@@ -29,7 +29,7 @@ class SeniorEngineerThinking:
     def __init__(self):
         self.research_strategies = {
             "root_cause_analysis": {
-                "description": "근본 원인 분석",
+                "description": "Root cause analysis",
                 "questions": [
                     "What is the fundamental problem?",
                     "What are the root causes?",
@@ -39,7 +39,7 @@ class SeniorEngineerThinking:
                 "techniques": ["5 Whys", "Fishbone Diagram", "Barrier Analysis"]
             },
             "pattern_recognition": {
-                "description": "패턴 인식",
+                "description": "Pattern recognition",
                 "questions": [
                     "What patterns do we observe?",
                     "Have we seen this before?",
@@ -49,7 +49,7 @@ class SeniorEngineerThinking:
                 "techniques": ["Data Clustering", "Correlation Analysis", "Trend Detection"]
             },
             "systematic_elimination": {
-                "description": "체계적 제거",
+                "description": "Systematic elimination",
                 "questions": [
                     "What can we eliminate?",
                     "What is unnecessary complexity?",
@@ -59,7 +59,7 @@ class SeniorEngineerThinking:
                 "techniques": ["Occam's Razor", "Minimal Viable Product", "Constraint Analysis"]
             },
             "first_principles": {
-                "description": "첫 원리 사고",
+                "description": "First principles thinking",
                 "questions": [
                     "What are the fundamental truths?",
                     "What do we know for certain?",
@@ -69,7 +69,7 @@ class SeniorEngineerThinking:
                 "techniques": ["Fundamental Analysis", "Deconstruction", "Reconstruction"]
             },
             "cross_domain_analysis": {
-                "description": "도메인 간 분석",
+                "description": "Cross-domain analysis",
                 "questions": [
                     "What can we learn from other domains?",
                     "What parallel problems exist?",
@@ -79,7 +79,7 @@ class SeniorEngineerThinking:
                 "techniques": ["Analogical Reasoning", "Cross-Industry Benchmarking", "Knowledge Transfer"]
             },
             "probabilistic_thinking": {
-                "description": "확률적 사고",
+                "description": "Probabilistic thinking",
                 "questions": [
                     "What are the probabilities?",
                     "What are the worst/best cases?",
@@ -89,7 +89,7 @@ class SeniorEngineerThinking:
                 "techniques": ["Risk Assessment", "Monte Carlo Simulation", "Expected Value Calculation"]
             },
             "resource_optimization": {
-                "description": "자원 최적화",
+                "description": "Resource optimization",
                 "questions": [
                     "Where are we wasting resources?",
                     "What can be automated?",
@@ -99,7 +99,7 @@ class SeniorEngineerThinking:
                 "techniques": ["Cost-Benefit Analysis", "Resource Allocation", "Efficiency Metrics"]
             },
             "continuous_learning": {
-                "description": "지속적 학습",
+                "description": "Continuous learning",
                 "questions": [
                     "What have we learned?",
                     "What patterns repeat?",
@@ -114,7 +114,7 @@ class SeniorEngineerThinking:
         self.load_historical_knowledge()
 
     def load_historical_knowledge(self) -> None:
-        """이전 학습 데이터 로드"""
+        """Load previous learning data"""
         try:
             knowledge_dir = Path(".moai/research/knowledge/")
             if knowledge_dir.exists():
@@ -131,7 +131,7 @@ class SeniorEngineerThinking:
             pass
 
     def analyze_problem(self, problem: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
-        """문제 분석 수행"""
+        """Perform problem analysis"""
         if context is None:
             context = {}
 
@@ -146,7 +146,7 @@ class SeniorEngineerThinking:
             "next_steps": []
         }
 
-        # 각 전략 적용
+        # Apply each strategy
         for strategy_name, strategy_info in self.research_strategies.items():
             strategy_result = self.apply_strategy(strategy_name, problem, context)
             analysis_result["strategies_applied"].append({
@@ -157,16 +157,16 @@ class SeniorEngineerThinking:
             analysis_result["insights"].extend(strategy_result.get("insights", []))
             analysis_result["recommendations"].extend(strategy_result.get("recommendations", []))
 
-        # 지식 연결 분석
+        # Knowledge connection analysis
         analysis_result["knowledge_connections"] = self.find_knowledge_connections(problem, context)
 
-        # 리스크 평가
+        # Risk assessment
         analysis_result["risk_assessment"] = self.assess_risks(problem, context)
 
         return analysis_result
 
     def apply_strategy(self, strategy_name: str, problem: str, context: Dict[str, Any]) -> Dict[str, Any]:
-        """개별 전략 적용"""
+        """Apply individual strategy"""
         strategy_info = self.research_strategies[strategy_name]
 
         result = {
@@ -178,27 +178,27 @@ class SeniorEngineerThinking:
             "techniques": strategy_info["techniques"]
         }
 
-        # 문제 분석을 통한 질문 생성
+        # Generate questions through problem analysis
         for question_template in strategy_info["questions"]:
             question = question_template.replace("What", f"What about '{problem}'")
             question = question.replace("we", "we" if "we" in problem.lower() else "you")
             result["questions"].append(question)
 
-        # 전략별 인사이트 생성
+        # Generate strategy-specific insights
         insights = self.generate_strategy_insights(strategy_name, problem, context)
         result["insights"] = insights
 
-        # 전략별 추천 생성
+        # Generate strategy-specific recommendations
         recommendations = self.generate_strategy_recommendations(strategy_name, problem, context)
         result["recommendations"] = recommendations
 
         return result
 
     def generate_strategy_insights(self, strategy_name: str, problem: str, context: Dict[str, Any]) -> List[str]:
-        """전략별 인사이트 생성"""
+        """Generate strategy-specific insights"""
         insights = []
 
-        # 근본 원인 분석
+        # Root cause analysis
         if strategy_name == "root_cause_analysis":
             if "bug" in problem.lower() or "error" in problem.lower():
                 insights.append("Root cause likely lies in input validation or error handling")
@@ -207,43 +207,43 @@ class SeniorEngineerThinking:
                 insights.append("Root cause likely in algorithmic complexity or resource usage")
                 insights.append("Profile memory usage and execution paths")
 
-        # 패턴 인식
+        # Pattern recognition
         elif strategy_name == "pattern_recognition":
             if "repeat" in problem.lower() or "again" in problem.lower():
                 insights.append("Identify patterns in occurrence timing or conditions")
                 insights.append("Look for common triggers or shared characteristics")
 
-        # 체계적 제거
+        # Systematic elimination
         elif strategy_name == "systematic_elimination":
             if "complex" in problem.lower() or "complicated" in problem.lower():
                 insights.append("Remove unnecessary layers of abstraction")
                 insights.append("Simplify by focusing on core functionality")
 
-        # 첫 원리 사고
+        # First principles thinking
         elif strategy_name == "first_principles":
             if "assumption" in problem.lower() or "assume" in problem.lower():
                 insights.append("Question all underlying assumptions")
                 insights.append("Break down problem to fundamental components")
 
-        # 도메인 간 분석
+        # Cross-domain analysis
         elif strategy_name == "cross_domain_analysis":
             if "new" in problem.lower() or "novel" in problem.lower():
                 insights.append("Similar problems exist in other domains")
                 insights.append("Transfer solutions from analogous fields")
 
-        # 확률적 사고
+        # Probabilistic thinking
         elif strategy_name == "probabilistic_thinking":
             if "risk" in problem.lower() or "uncertain" in problem.lower():
                 insights.append("Quantify probability of different outcomes")
                 insights.append("Assess impact of worst-case scenarios")
 
-        # 자원 최적화
+        # Resource optimization
         elif strategy_name == "resource_optimization":
             if "slow" in problem.lower() or "fast" in problem.lower():
                 insights.append("Identify bottlenecks in resource allocation")
                 insights.append("Automate repetitive or resource-intensive tasks")
 
-        # 지속적 학습
+        # Continuous learning
         elif strategy_name == "continuous_learning":
             if "first time" in problem.lower() or "new" in problem.lower():
                 insights.append("Document lessons learned for future reference")
@@ -252,10 +252,10 @@ class SeniorEngineerThinking:
         return insights
 
     def generate_strategy_recommendations(self, strategy_name: str, problem: str, context: Dict[str, Any]) -> List[str]:
-        """전략별 추천 생성"""
+        """Generate strategy-specific recommendations"""
         recommendations = []
 
-        # 전략별 구체적 추천
+        # Strategy-specific concrete recommendations
         if strategy_name == "root_cause_analysis":
             recommendations.append("Implement comprehensive logging and monitoring")
             recommendations.append("Create automated root cause analysis tools")
@@ -291,10 +291,10 @@ class SeniorEngineerThinking:
         return recommendations
 
     def find_knowledge_connections(self, problem: str, context: Dict[str, Any]) -> List[str]:
-        """관련 지식 연결 찾기"""
+        """Find related knowledge connections"""
         connections = []
 
-        # 이전 인사이트와 연결
+        # Connect with previous insights
         for file_name, data in self.knowledge_base.items():
             for entry in data.get("insights_history", []):
                 for insight in entry.get("insights", []):
@@ -302,7 +302,7 @@ class SeniorEngineerThinking:
                         connections.append(f"Related insight from {file_name}: {insight[:100]}...")
                         break
 
-        # 연결이 없을 때 기본 연결
+        # Default connections when none exist
         if not connections:
             connections.append("Create new knowledge entry for this problem")
             connections.append("Document insights for future reference")
@@ -310,7 +310,7 @@ class SeniorEngineerThinking:
         return connections
 
     def assess_risks(self, problem: str, context: Dict[str, Any]) -> Dict[str, Any]:
-        """리스크 평가"""
+        """Assess risks"""
         risks = {
             "high_risks": [],
             "medium_risks": [],
@@ -318,7 +318,7 @@ class SeniorEngineerThinking:
             "mitigation_strategies": []
         }
 
-        # 문제 유형 기반 리스크 평가
+        # Risk assessment based on problem type
         if "critical" in problem.lower() or "urgent" in problem.lower():
             risks["high_risks"].append("Time pressure may lead to incomplete analysis")
             risks["mitigation_strategies"].append("Allocate dedicated time for thorough analysis")
@@ -338,28 +338,28 @@ class SeniorEngineerThinking:
 
 
 def analyze_problem_with_senior_engineer_thinking(problem: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
-    """주어진 문제를 최고 엔지니어 사고 패턴으로 분석"""
+    """Analyze given problem with senior engineer thinking patterns"""
     thinker = SeniorEngineerThinking()
     return thinker.analyze_problem(problem, context)
 
 
 def get_available_strategies() -> List[str]:
-    """사용 가능한 전략 목록 반환"""
+    """Return list of available strategies"""
     thinker = SeniorEngineerThinking()
     return list(thinker.research_strategies.keys())
 
 
 def get_strategy_details(strategy_name: str) -> Dict[str, Any]:
-    """특정 전략 상세 정보 반환"""
+    """Return detailed information for specific strategy"""
     thinker = SeniorEngineerThinking()
     return thinker.research_strategies.get(strategy_name, {})
 
 
-# 표준 Skill 인터페이스 구현
+# Standard Skill interface implementation
 def main() -> None:
-    """Skill 메인 함수"""
+    """Skill main function"""
     try:
-        # 인자 파싱
+        # Parse arguments
         if len(sys.argv) < 2:
             print(json.dumps({
                 "error": "Usage: python3 senior_engineer_thinking.py <problem> [context_json]"
@@ -375,10 +375,10 @@ def main() -> None:
             except json.JSONDecodeError:
                 pass
 
-        # 최고 엔지니어 사고 분석 실행
+        # Execute senior engineer thinking analysis
         result = analyze_problem_with_senior_engineer_thinking(problem, context)
 
-        # 결과 출력
+        # Output result
         print(json.dumps(result, ensure_ascii=False, indent=2))
 
     except Exception as e:

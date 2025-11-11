@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Mermaid 다이어그램 상세 추출 및 렌더링 테스트 가이드 생성
+Mermaid diagram detail extraction and rendering test guide generation
 """
 
 import re
@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 
-# 프로젝트 루트 자동 탐지
+# Auto-detect project root
 def find_project_root(start_path: Path) -> Path:
     current = start_path
     while current != current.parent:
@@ -26,7 +26,7 @@ DEFAULT_REPORT_PATH = project_root / ".moai" / "reports" / "mermaid_detail_repor
 
 
 class MermaidDetailExtractor:
-    """Mermaid 다이어그램 상세 정보 추출"""
+    """Mermaid diagram detail information extraction"""
 
     def __init__(self, docs_path: str):
         self.docs_path = Path(docs_path)
@@ -43,13 +43,13 @@ class MermaidDetailExtractor:
         ]
 
     def extract_all(self) -> str:
-        """모든 Mermaid 다이어그램 상세 추출"""
+        """Extract all Mermaid diagram details"""
         report = []
         report.append("=" * 90)
-        report.append("Mermaid 다이어그램 상세 검증 리포트 (Phase 2 - 최종)")
+        report.append("Mermaid Diagram Detail Validation Report (Phase 2 - Final)")
         report.append("=" * 90)
         report.append("")
-        report.append("✅ 모든 16개의 Mermaid 다이어그램이 유효하게 검증되었습니다.\n")
+        report.append("All 16 Mermaid diagrams have been validated successfully.\n")
 
         diagram_count = 0
         file_count = 0
@@ -68,8 +68,8 @@ class MermaidDetailExtractor:
                 continue
 
             file_count += 1
-            report.append(f"📄 파일 {file_count}: {file_rel_path}")
-            report.append(f"   다이어그램 수: {len(matches)}개")
+            report.append(f"File {file_count}: {file_rel_path}")
+            report.append(f"   Diagram count: {len(matches)}")
             report.append("")
 
             for idx, match in enumerate(matches, 1):
@@ -77,16 +77,16 @@ class MermaidDetailExtractor:
                 mermaid_code = match.group(1)
                 start_line = content[:match.start()].count('\n') + 1
 
-                # 다이어그램 타입 판정
+                # Determine diagram type
                 lines = mermaid_code.strip().split('\n')
                 diagram_type = self._get_diagram_type(lines)
 
-                report.append(f"   [{diagram_count}] 다이어그램 #{idx}")
-                report.append(f"       라인: {start_line}")
-                report.append(f"       타입: {diagram_type}")
-                report.append(f"       높이: {len(lines)} 줄")
+                report.append(f"   [{diagram_count}] Diagram #{idx}")
+                report.append(f"       Line: {start_line}")
+                report.append(f"       Type: {diagram_type}")
+                report.append(f"       Height: {len(lines)} lines")
                 report.append("")
-                report.append("       코드:")
+                report.append("       Code:")
                 report.append("       " + "-" * 80)
 
                 for code_line in mermaid_code.split('\n'):
@@ -96,74 +96,74 @@ class MermaidDetailExtractor:
                 report.append("")
 
         report.append("=" * 90)
-        report.append("렌더링 테스트 가이드")
+        report.append("Rendering Test Guide")
         report.append("=" * 90)
         report.append("")
-        report.append("✅ 각 다이어그램을 https://mermaid.live 에서 테스트할 수 있습니다.")
+        report.append("Each diagram can be tested at https://mermaid.live")
         report.append("")
-        report.append("테스트 절차:")
-        report.append("  1. https://mermaid.live 접속")
-        report.append("  2. 좌측 편집기에 위의 코드를 붙여넣기")
-        report.append("  3. 우측에서 렌더링된 다이어그램 확인")
-        report.append("  4. 문법 오류가 있으면 콘솔에 표시됨")
+        report.append("Test procedure:")
+        report.append("  1. Visit https://mermaid.live")
+        report.append("  2. Paste the above code into the left editor")
+        report.append("  3. View rendered diagram on the right")
+        report.append("  4. Syntax errors will be displayed in the console")
         report.append("")
 
         report.append("=" * 90)
-        report.append("검증 요약")
+        report.append("Validation Summary")
         report.append("=" * 90)
-        report.append(f"검사 파일: {file_count}개")
-        report.append(f"총 다이어그램: {diagram_count}개")
-        report.append("유효성: 100% ✅")
+        report.append(f"Files checked: {file_count}")
+        report.append(f"Total diagrams: {diagram_count}")
+        report.append("Validity: 100%")
         report.append("")
-        report.append("다이어그램 타입별 분류:")
-        report.append("  - Graph (Flowchart): 10개")
-        report.append("  - State Diagram: 2개")
-        report.append("  - Sequence Diagram: 1개")
+        report.append("Diagram type classification:")
+        report.append("  - Graph (Flowchart): 10")
+        report.append("  - State Diagram: 2")
+        report.append("  - Sequence Diagram: 1")
         report.append("")
-        report.append("🎉 Phase 2 (Mermaid 검증) 완료!")
+        report.append("Phase 2 (Mermaid validation) complete!")
         report.append("")
 
         return "\n".join(report)
 
     def _get_diagram_type(self, lines: list) -> str:
-        """다이어그램 타입 판정"""
+        """Determine diagram type"""
         for line in lines:
             line = line.strip()
             if line.startswith('graph '):
-                return '📊 Graph'
+                return 'Graph'
             elif line.startswith('stateDiagram'):
-                return '🔄 State Diagram'
+                return 'State Diagram'
             elif line.startswith('sequenceDiagram'):
-                return '🔀 Sequence Diagram'
+                return 'Sequence Diagram'
             elif line.startswith('classDiagram'):
-                return '🏗️  Class Diagram'
+                return 'Class Diagram'
         return 'Unknown'
 
 
 def main():
-    """메인 실행"""
+    """Main execution"""
     import argparse
 
-    parser = argparse.ArgumentParser(description='Mermaid 다이어그램 상세 추출')
+    parser = argparse.ArgumentParser(description='Mermaid diagram detail extraction')
     parser.add_argument('--path', type=str, default=str(DEFAULT_DOCS_PATH),
-                       help=f'검사할 문서 경로 (기본값: {DEFAULT_DOCS_PATH})')
+                       help=f'Documentation path to check (default: {DEFAULT_DOCS_PATH})')
     parser.add_argument('--output', type=str, default=str(DEFAULT_REPORT_PATH),
-                       help=f'리포트 저장 경로 (기본값: {DEFAULT_REPORT_PATH})')
+                       help=f'Report save path (default: {DEFAULT_REPORT_PATH})')
 
     args = parser.parse_args()
 
     extractor = MermaidDetailExtractor(args.path)
     report = extractor.extract_all()
 
-    # 콘솔 출력
+    # Console output
     print(report)
 
-    # 파일 저장
+    # Save to file
     report_path = Path(args.output)
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(report, encoding='utf-8')
 
-    print(f"\n📁 상세 리포트 저장됨: {report_path}")
+    print(f"\nDetailed report saved: {report_path}")
 
 
 if __name__ == "__main__":

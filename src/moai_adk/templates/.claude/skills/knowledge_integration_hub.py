@@ -2,18 +2,19 @@
 # @CODE:SKILL-RESEARCH-003 | @SPEC:SKILL-KNOWLEDGE-INTEGRATION-HUB-001 | @TEST: tests/skills/test_knowledge_integration_hub.py
 """Knowledge Integration Hub Skill
 
-지식 통합 허브. 다양한 지원의 지식을 통합하고 관리:
-1. JIT 지식 로딩
-2. 지식 베이스 관리
-3. 지식 연결 분석
-4. 자동 지식 갱신
+Knowledge integration hub. Integrates and manages knowledge from various sources:
+1. JIT knowledge loading
+2. Knowledge base management
+3. Knowledge connection analysis
+4. Automatic knowledge updates
 
-사용법:
+Usage:
     Skill("knowledge_integration_hub")
 """
 
 import json
 import os
+import sys
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
@@ -21,7 +22,7 @@ from collections import defaultdict, Counter
 
 
 class KnowledgeIntegrationHub:
-    """지식 통합 허브 클래스"""
+    """Knowledge integration hub class"""
 
     def __init__(self):
         self.knowledge_bases = {}
@@ -31,7 +32,7 @@ class KnowledgeIntegrationHub:
         self.load_configuration()
 
     def load_configuration(self) -> None:
-        """설정 로드"""
+        """Load configuration"""
         try:
             config_file = Path(".moai/config/config.json")
             if config_file.exists():
@@ -49,7 +50,7 @@ class KnowledgeIntegrationHub:
                         "confidence_threshold": 0.7
                     }
         except Exception:
-            # 기본 설정
+            # Default configuration
             self.integration_rules = {
                 "auto_update": True,
                 "cross_reference": True,
@@ -61,14 +62,14 @@ class KnowledgeIntegrationHub:
             }
 
     def load_all_knowledge_bases(self) -> Dict[str, Any]:
-        """모든 지식 베이스 로드"""
+        """Load all knowledge bases"""
         knowledge_bases = {}
         knowledge_dir = Path(".moai/research/knowledge/")
 
         if not knowledge_dir.exists():
             return knowledge_bases
 
-        # 모든 지식 파일 로드
+        # Load all knowledge files
         for file_path in knowledge_dir.glob("*.json"):
             if file_path.is_file():
                 try:
@@ -82,7 +83,7 @@ class KnowledgeIntegrationHub:
         return knowledge_bases
 
     def integrate_knowledge(self, new_knowledge: Dict[str, Any], source_type: str = "manual") -> Dict[str, Any]:
-        """지식 통합 수행"""
+        """Perform knowledge integration"""
         integration_result = {
             "integration_success": True,
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -95,32 +96,32 @@ class KnowledgeIntegrationHub:
             "recommendations": []
         }
 
-        # 모든 지식 베이스 로드
+        # Load all knowledge bases
         self.knowledge_bases = self.load_all_knowledge_bases()
 
-        # 지식 카테고리 식별
+        # Identify knowledge categories
         categories = self.identify_knowledge_categories(new_knowledge)
         integration_result["knowledge_categories"] = categories
 
-        # 지식 간 충돌 검사 및 해결
+        # Detect and resolve knowledge conflicts
         conflicts = self.detect_knowledge_conflicts(new_knowledge)
         if conflicts:
             integration_result["conflicts_resolved"] = self.resolve_conflicts(new_knowledge, conflicts)
             integration_result["conflict_sources"] = [c["source"] for c in conflicts]
 
-        # 지식 연결 생성
+        # Create knowledge connections
         connections = self.create_knowledge_connections(new_knowledge)
         integration_result["connections_made"] = len(connections)
 
-        # 지식 저장
+        # Save knowledge
         saved_sources = self.save_integrated_knowledge(new_knowledge, categories)
         integration_result["integrated_sources"] = saved_sources
 
-        # 지식 그래프 업데이트
+        # Update knowledge graph
         if self.integration_rules["knowledge_graph"]:
             self.update_knowledge_graph(connections)
 
-        # 추천 생성
+        # Generate recommendations
         integration_result["recommendations"] = self.generate_integration_recommendations(
             new_knowledge, connections, conflicts
         )
@@ -128,10 +129,10 @@ class KnowledgeIntegrationHub:
         return integration_result
 
     def identify_knowledge_categories(self, knowledge: Dict[str, Any]) -> List[str]:
-        """지식 카테고리 식별"""
+        """Identify knowledge categories"""
         categories = []
 
-        # 연구 카테고리 매핑
+        # Research category mapping
         category_keywords = {
             "RESEARCH": ["research", "investigate", "analyze", "explore"],
             "ANALYSIS": ["analysis", "evaluate", "assess", "review"],
@@ -145,14 +146,14 @@ class KnowledgeIntegrationHub:
             if any(keyword in knowledge_text for keyword in keywords):
                 categories.append(category)
 
-        # 없으면 기본 카테고리
+        # If none found, use default category
         if not categories:
             categories = ["GENERAL"]
 
         return categories
 
     def detect_knowledge_conflicts(self, new_knowledge: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """지식 간 충돌 감지"""
+        """Detect conflicts between knowledge bases"""
         conflicts = []
 
         if not self.knowledge_bases:
@@ -164,32 +165,32 @@ class KnowledgeIntegrationHub:
             if base_name in self.knowledge_bases:
                 base_text = json.dumps(base_knowledge, ensure_ascii=False)
 
-                # 유사도 검사
+                # Check similarity
                 similarity = self.calculate_text_similarity(new_knowledge_text, base_text)
 
-                if similarity > 0.8:  # 높은 유사도 = 잠재적 중복
+                if similarity > 0.8:  # High similarity = potential duplication
                     conflicts.append({
                         "type": "duplication",
                         "source": base_name,
                         "similarity": similarity,
-                        "description": f"지식 베이스 '{base_name}'와 유사도 {similarity:.2f}"
+                        "description": f"Similarity {similarity:.2f} with knowledge base '{base_name}'"
                     })
 
-                # 모순 검사
+                # Check contradictions
                 contradictions = self.check_knowledge_contradictions(new_knowledge, base_knowledge)
                 if contradictions:
                     conflicts.append({
                         "type": "contradiction",
                         "source": base_name,
                         "contradictions": contradictions,
-                        "description": f"지식 베이스 '{base_name}'와 {len(contradictions)}개 모순 감지"
+                        "description": f"Detected {len(contradictions)} contradictions with knowledge base '{base_name}'"
                     })
 
         return conflicts
 
     def calculate_text_similarity(self, text1: str, text2: str) -> float:
-        """텍스트 유사도 계산"""
-        # 간단한 단어 기반 유사도
+        """Calculate text similarity"""
+        # Simple word-based similarity
         words1 = set(text1.lower().split())
         words2 = set(text2.lower().split())
 
@@ -203,10 +204,10 @@ class KnowledgeIntegrationHub:
 
     def check_knowledge_contradictions(self, new_knowledge: Dict[str, Any],
                                     existing_knowledge: Dict[str, Any]) -> List[str]:
-        """지식 모순 검사"""
+        """Check knowledge contradictions"""
         contradictions = []
 
-        # 숫자 값 모순 검사
+        # Check numerical value contradictions
         def check_numerical_contradictions(new_data, existing_data, path=""):
             if isinstance(new_data, dict) and isinstance(existing_data, dict):
                 for key in set(new_data.keys()) | set(existing_data.keys()):
@@ -218,7 +219,7 @@ class KnowledgeIntegrationHub:
                         elif isinstance(new_data[key], dict) and isinstance(existing_data[key], dict):
                             check_numerical_contradictions(new_data[key], existing_data[key], new_path)
                         elif isinstance(new_data[key], list) and isinstance(existing_data[key], list):
-                            # 리스트 길이 모순
+                            # List length contradiction
                             if len(new_data[key]) != len(existing_data[key]):
                                 contradictions.append(f"List length contradiction at {new_path}: {len(new_data[key])} vs {len(existing_data[key])}")
 
@@ -227,27 +228,27 @@ class KnowledgeIntegrationHub:
         return contradictions
 
     def resolve_conflicts(self, new_knowledge: Dict[str, Any], conflicts: List[Dict[str, Any]]) -> int:
-        """지식 충돌 해결"""
+        """Resolve knowledge conflicts"""
         resolved_count = 0
 
         for conflict in conflicts:
             if conflict["type"] == "duplication":
-                # 중복 지식 합병
+                # Merge duplicate knowledge
                 self.merge_duplicate_knowledge(new_knowledge, conflict["source"])
                 resolved_count += 1
             elif conflict["type"] == "contradiction":
-                # 모순 해결
+                # Resolve contradiction
                 self.resolve_knowledge_contradiction(new_knowledge, conflict["source"])
                 resolved_count += 1
 
         return resolved_count
 
     def merge_duplicate_knowledge(self, new_knowledge: Dict[str, Any], source_name: str) -> None:
-        """중복 지식 합병"""
+        """Merge duplicate knowledge"""
         if source_name in self.knowledge_bases:
             existing_knowledge = self.knowledge_bases[source_name]
 
-            # 타임스탬프와 버전 정보 유지
+            # Preserve timestamp and version information
             if "integration_history" not in existing_knowledge:
                 existing_knowledge["integration_history"] = []
 
@@ -258,11 +259,11 @@ class KnowledgeIntegrationHub:
             })
 
     def resolve_knowledge_contradiction(self, new_knowledge: Dict[str, Any], source_name: str) -> None:
-        """지식 모순 해결"""
+        """Resolve knowledge contradiction"""
         if source_name in self.knowledge_bases:
             existing_knowledge = self.knowledge_bases[source_name]
 
-            # 모순에 대한 기록 추가
+            # Add record of contradiction resolution
             if "contradiction_history" not in existing_knowledge:
                 existing_knowledge["contradiction_history"] = []
 
@@ -273,7 +274,7 @@ class KnowledgeIntegrationHub:
             })
 
     def create_knowledge_connections(self, new_knowledge: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """지식 연결 생성"""
+        """Create knowledge connections"""
         connections = []
 
         if not self.integration_rules["cross_reference"]:
@@ -284,7 +285,7 @@ class KnowledgeIntegrationHub:
         for base_name, base_knowledge in self.knowledge_bases.items():
             base_text = json.dumps(base_knowledge, ensure_ascii=False)
 
-            # 연결 강도 계산
+            # Calculate connection strength
             strength = self.calculate_text_similarity(new_knowledge_text, base_text)
 
             if strength > self.integration_rules["confidence_threshold"]:
@@ -296,7 +297,7 @@ class KnowledgeIntegrationHub:
                     "categories": self.find_common_categories(new_knowledge, base_knowledge)
                 })
 
-                # 양방향 연결 추가
+                # Add bidirectional connection
                 if base_name not in self.connection_graph:
                     self.connection_graph[base_name] = []
 
@@ -309,15 +310,15 @@ class KnowledgeIntegrationHub:
         return connections
 
     def find_common_categories(self, knowledge1: Dict[str, Any], knowledge2: Dict[str, Any]) -> List[str]:
-        """공통 카테고리 찾기"""
+        """Find common categories"""
         categories1 = self.identify_knowledge_categories(knowledge1)
         categories2 = self.identify_knowledge_categories(knowledge2)
 
         return list(set(categories1) & set(categories2))
 
     def update_knowledge_graph(self, connections: List[Dict[str, Any]]) -> None:
-        """지식 그래프 업데이트"""
-        # 연결 정보 그래프에 저장
+        """Update knowledge graph"""
+        # Store connection information in graph
         for connection in connections:
             source = connection["from"]
             target = connection["to"]
@@ -334,12 +335,12 @@ class KnowledgeIntegrationHub:
 
     def save_integrated_knowledge(self, knowledge: Dict[str, Any],
                                 categories: List[str]) -> List[str]:
-        """통합 지식 저장"""
+        """Save integrated knowledge"""
         saved_sources = []
         knowledge_dir = Path(".moai/research/knowledge/")
         knowledge_dir.mkdir(parents=True, exist_ok=True)
 
-        # 타임스탬프 기반 파일명
+        # Timestamp-based filename
         timestamp = int(time.time())
 
         for category in categories:
@@ -347,7 +348,7 @@ class KnowledgeIntegrationHub:
             file_path = knowledge_dir / filename
 
             try:
-                # 지식 메타데이터 추가
+                # Add knowledge metadata
                 knowledge_with_metadata = {
                     **knowledge,
                     "integration_metadata": {
@@ -370,41 +371,41 @@ class KnowledgeIntegrationHub:
     def generate_integration_recommendations(self, knowledge: Dict[str, Any],
                                           connections: List[Dict[str, Any]],
                                           conflicts: List[Dict[str, Any]]) -> List[str]:
-        """통합 추천 생성"""
+        """Generate integration recommendations"""
         recommendations = []
 
-        # 연결 수 기반 추천
+        # Connection count-based recommendations
         if len(connections) > 5:
-            recommendations.append(f"강력한 지식 연결 {len(connections)}개 감지 - 지식 그래프 확장")
+            recommendations.append(f"Detected {len(connections)} strong knowledge connections - expand knowledge graph")
 
-        # 충돌 수 기반 추천
+        # Conflict count-based recommendations
         if len(conflicts) > 2:
-            recommendations.append(f"지식 충돌 {len(conflicts)}개 감지 - 주의 깊은 검토 필요")
+            recommendations.append(f"Detected {len(conflicts)} knowledge conflicts - careful review needed")
 
-        # 카테고리 기반 추천
+        # Category-based recommendations
         categories = self.identify_knowledge_categories(knowledge)
         if "RESEARCH" in categories:
-            recommendations.append("연구 결과 추가 문서화 필요")
+            recommendations.append("Additional documentation of research results needed")
 
         if "ANALYSIS" in categories:
-            recommendations.append("분석 결과 기반 추천 사항 정리")
+            recommendations.append("Organize recommendations based on analysis results")
 
         if "KNOWLEDGE" in categories:
-            recommendations.append("지식 활용 가이드 제작")
+            recommendations.append("Create knowledge utilization guide")
 
         if "INSIGHT" in categories:
-            recommendations.append("인사이트 적용 실행 계획 수립")
+            recommendations.append("Establish execution plan for insight application")
 
-        # 저장량 기반 추천
+        # Storage size-based recommendations
         total_size = sum(len(json.dumps(kb)) for kb in self.knowledge_bases.values())
         if total_size > 10 * 1024 * 1024:  # 10MB
-            recommendations.append("지식 베이스 정리 및 보관 필요")
+            recommendations.append("Knowledge base cleanup and archival needed")
 
         return recommendations
 
     def query_knowledge(self, query: str, category: Optional[str] = None,
                       limit: int = 10) -> Dict[str, Any]:
-        """지식 쿼리"""
+        """Query knowledge"""
         query_result = {
             "query": query,
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -414,15 +415,15 @@ class KnowledgeIntegrationHub:
             "recommendations": []
         }
 
-        # 지식 베이스 로드
+        # Load knowledge bases
         self.knowledge_bases = self.load_all_knowledge_bases()
 
-        # 쿼리에 맞는 지식 검색
+        # Search for knowledge matching query
         for base_name, base_knowledge in self.knowledge_bases.items():
             if category and category not in self.identify_knowledge_categories(base_knowledge):
                 continue
 
-            # 유사도 검사
+            # Check similarity
             knowledge_text = json.dumps(base_knowledge, ensure_ascii=False)
             similarity = self.calculate_text_similarity(query, knowledge_text)
 
@@ -434,43 +435,43 @@ class KnowledgeIntegrationHub:
                     "categories": self.identify_knowledge_categories(base_knowledge)
                 })
 
-        # 유사도 순 정렬
+        # Sort by similarity
         query_result["results"].sort(key=lambda x: x["similarity"], reverse=True)
 
-        # 제한 적용
+        # Apply limit
         query_result["results"] = query_result["results"][:limit]
         query_result["total_results"] = len(query_result["results"])
 
-        # 카테고리 수집
+        # Collect categories
         all_categories = set()
         for result in query_result["results"]:
             all_categories.update(result["categories"])
         query_result["categories"] = list(all_categories)
 
-        # 추천 생성
+        # Generate recommendations
         if query_result["total_results"] == 0:
-            query_result["recommendations"].append("관련 지식을 찾을 수 없습니다 - 새로운 지식 생성")
+            query_result["recommendations"].append("No related knowledge found - create new knowledge")
         else:
-            query_result["recommendations"].append(f"관련 지식 {query_result['total_results']}개 발견")
+            query_result["recommendations"].append(f"Found {query_result['total_results']} related knowledge items")
 
         return query_result
 
 
 def integrate_knowledge_with_hub(knowledge: Dict[str, Any], source_type: str = "manual") -> Dict[str, Any]:
-    """지식 통합 허브로 지식 통합"""
+    """Integrate knowledge with knowledge integration hub"""
     hub = KnowledgeIntegrationHub()
     return hub.integrate_knowledge(knowledge, source_type)
 
 
 def query_knowledge_with_hub(query: str, category: Optional[str] = None,
                            limit: int = 10) -> Dict[str, Any]:
-    """지식 통합 허브로 지식 쿼리"""
+    """Query knowledge with knowledge integration hub"""
     hub = KnowledgeIntegrationHub()
     return hub.query_knowledge(query, category, limit)
 
 
 def get_knowledge_hub_status() -> Dict[str, Any]:
-    """지식 허브 상태 반환"""
+    """Return knowledge hub status"""
     hub = KnowledgeIntegrationHub()
     return {
         "knowledge_bases_count": len(hub.knowledge_bases),
@@ -480,11 +481,11 @@ def get_knowledge_hub_status() -> Dict[str, Any]:
     }
 
 
-# 표준 Skill 인터페이스 구현
+# Standard Skill interface implementation
 def main() -> None:
-    """Skill 메인 함수"""
+    """Skill main function"""
     try:
-        # 인자 파싱
+        # Parse arguments
         if len(sys.argv) < 2:
             print(json.dumps({
                 "error": "Usage: python3 knowledge_integration_hub.py <action> [args...]"
@@ -533,7 +534,7 @@ def main() -> None:
             }))
             sys.exit(1)
 
-        # 결과 출력
+        # Output result
         print(json.dumps(result, ensure_ascii=False, indent=2))
 
     except Exception as e:
