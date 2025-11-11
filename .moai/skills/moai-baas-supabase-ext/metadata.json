@@ -1,0 +1,41 @@
+{
+  "skill_id": "moai-baas-supabase-ext",
+  "skill_name": "Supabase Advanced Guide (RLS, Migrations, Realtime, Production)",
+  "version": "2.0.0",
+  "language": "english",
+  "word_count": 1300,
+  "sections": 7,
+  "context7_references": 5,
+  "context7_topics": [
+    "RLS Policy Writing",
+    "Migration Safety",
+    "Realtime Subscriptions",
+    "Connection Pooling & Supavisor",
+    "Database Indexing Strategy"
+  ],
+  "agents": [
+    "backend-expert",
+    "database-expert",
+    "security-expert"
+  ],
+  "tags": [
+    "baas",
+    "supabase",
+    "postgresql",
+    "rls",
+    "production",
+    "migration",
+    "realtime"
+  ],
+  "patterns_supported": [
+    "pattern-a",
+    "pattern-d"
+  ],
+  "dependencies": [
+    "moai-baas-foundation"
+  ],
+  "created": "2025-11-09",
+  "updated": "2025-11-09",
+  "validation_status": "complete",
+  "spec_reference": "@SPEC:BAAS-ECOSYSTEM-001"
+}

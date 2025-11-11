@@ -405,12 +405,173 @@ def extract_specs_from_memory() -> List[str]:
     return specs
 
 
-def generate_session_summary(cleanup_stats: Dict, work_state: Dict) -> str:
+def is_root_whitelisted(filename: str, config: Dict) -> bool:
+    """Check if file is allowed in project root
+
+    Args:
+        filename: Name of the file
+        config: Configuration dictionary
+
+    Returns:
+        True if file is whitelisted for root directory
+    """
+    import re
+
+    whitelist = config.get("document_management", {}).get("root_whitelist", [])
+
+    for pattern in whitelist:
+        # Convert glob pattern to regex
+        regex = pattern.replace("*", ".*").replace("?", ".")
+        if re.match(f"^{regex}$", filename):
+            return True
+
+    return False
+
+
+def get_file_pattern_category(filename: str, config: Dict) -> Optional[tuple]:
+    """Match filename against patterns to determine category
+
+    Args:
+        filename: Name of the file to categorize
+        config: Configuration dictionary
+
+    Returns:
+        Tuple of (directory_type, category) or None if no match
+    """
+    import re
+
+    patterns = config.get("document_management", {}).get("file_patterns", {})
+
+    for dir_type, categories in patterns.items():
+        for category, pattern_list in categories.items():
+            for pattern in pattern_list:
+                # Convert glob pattern to regex
+                regex = pattern.replace("*", ".*").replace("?", ".")
+                if re.match(f"^{regex}$", filename):
+                    return (dir_type, category)
+
+    return None
+
+
+def suggest_moai_location(filename: str, config: Dict) -> str:
+    """Suggest appropriate .moai/ location based on file pattern
+
+    Args:
+        filename: Name of the file
+        config: Configuration dictionary
+
+    Returns:
+        Suggested .moai/ path
+    """
+    # Try pattern matching first
+    match = get_file_pattern_category(filename, config)
+
+    if match:
+        dir_type, category = match
+        base_dir = config.get("document_management", {}).get("directories", {}).get(dir_type, {}).get("base", "")
+        if base_dir:
+            return f"{base_dir}{category}/"
+
+    # Default fallback suggestions
+    if filename.endswith(".md"):
+        return ".moai/temp/work/"
+    elif filename.endswith((".sh", ".py", ".js")):
+        return ".moai/scripts/dev/"
+    elif filename.endswith((".tmp", ".temp", ".bak")):
+        return ".moai/temp/work/"
+
+    # Ultimate fallback
+    return ".moai/temp/work/"
+
+
+def scan_root_violations(config: Dict) -> List[Dict[str, str]]:
+    """Scan project root for document management violations
+
+    Args:
+        config: Configuration dictionary
+
+    Returns:
+        List of violation dictionaries with file info and suggested location
+    """
+    violations = []
+
+    try:
+        # Get project root
+        project_root = Path(".moai/config/config.json").parent.parent
+        if not project_root.exists():
+            project_root = Path.cwd()
+
+        # Scan root directory
+        for item in project_root.iterdir():
+            # Skip directories (except backup directories)
+            if item.is_dir():
+                # Check for backup directories
+                if item.name.endswith("-backup") or item.name.endswith("_backup") or "_backup_" in item.name:
+                    suggested = suggest_moai_location(item.name, config)
+                    violations.append({
+                        "file": item.name + "/",
+                        "type": "directory",
+                        "suggested": suggested
+                    })
+                continue
+
+            # Skip hidden files and directories
+            if item.name.startswith("."):
+                continue
+
+            # Check if whitelisted
+            if is_root_whitelisted(item.name, config):
+                continue
+
+            # Not whitelisted - add to violations
+            suggested = suggest_moai_location(item.name, config)
+            violations.append({
+                "file": item.name,
+                "type": "file",
+                "suggested": suggested
+            })
+
+    except Exception as e:
+        logger.warning(f"Failed to scan root violations: {e}")
+
+    return violations
+
+
+def generate_migration_report(violations: List[Dict[str, str]]) -> str:
+    """Generate migration suggestions report
+
+    Args:
+        violations: List of violations
+
+    Returns:
+        Formatted report string
+    """
+    if not violations:
+        return ""
+
+    report_lines = [
+        "\n⚠️ Document Management Violations Detected",
+        f"   Found {len(violations)} misplaced file(s) in project root:\n"
+    ]
+
+    for idx, violation in enumerate(violations, 1):
+        file_display = violation["file"]
+        suggested = violation["suggested"]
+        report_lines.append(f"   {idx}. {file_display} → {suggested}")
+
+    report_lines.append("\n   Action: Move files to suggested locations or update root_whitelist")
+    report_lines.append("   Guide: Skill(\"moai-alfred-document-management\")")
+
+    return "\n".join(report_lines)
+
+
+def generate_session_summary(cleanup_stats: Dict, work_state: Dict, violations_count: int = 0) -> str:
     """Generate session summary (P1-3)
 
     Args:
         cleanup_stats: Cleanup statistics
         work_state: Work state
+        violations_count: Number of document management violations
 
     Returns:
         Summary message
@@ -432,6 +593,10 @@ def generate_session_summary(cleanup_stats: Dict, work_state: Dict) -> str:
         total_cleaned = cleanup_stats.get("total_cleaned", 0)
         if total_cleaned > 0:
             summary_lines.append(f"   • Cleaned: {total_cleaned} temp files")
+
+        # Document management violations
+        if violations_count > 0:
+            summary_lines.append(f"   ⚠️ {violations_count} root violations detected (see below)")
 
     except Exception as e:
         logger.warning(f"Failed to generate session summary: {e}")
@@ -501,16 +666,39 @@ def main():
             cleanup_stats = cleanup_old_files(config)
             results["cleanup_stats"] = cleanup_stats
 
+            # P1-2: Document Management - Scan root violations
+            violations = []
+            migration_report = ""
+            doc_mgmt = config.get("document_management", {})
+            if doc_mgmt.get("enabled", True):
+                violations = scan_root_violations(config)
+                if violations:
+                    migration_report = generate_migration_report(violations)
+                    results["document_violations"] = {
+                        "count": len(violations),
+                        "violations": violations
+                    }
+
             # P1-3: Generate session summary
-            session_summary = generate_session_summary(cleanup_stats, work_state)
+            session_summary = generate_session_summary(cleanup_stats, work_state, len(violations))
             results["session_summary"] = session_summary
+
+            # Add migration report to summary if violations exist
+            if migration_report:
+                results["migration_report"] = migration_report
 
             # Record execution time
             execution_time = time.time() - start_time
             results["execution_time_seconds"] = round(execution_time, 2)
 
             # Print results
-            print(json.dumps(results, ensure_ascii=False, indent=2))
+            output_lines = [json.dumps(results, ensure_ascii=False, indent=2)]
+
+            # Print migration report separately for visibility
+            if migration_report:
+                output_lines.append(migration_report)
+
+            print("\n".join(output_lines))
 
         finally:
             signal.alarm(0)  # Clear timeout
