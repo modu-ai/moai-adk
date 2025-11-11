@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 # @CODE:TAG-POLICY-VALIDATOR-001 | @SPEC:TAG-POLICY-001
-"""TAG 정책 위반 실시간 검증 시스템
+"""Real-time TAG policy violation detection system
 
-MoAI-ADK의 SPEC-first 원칙을 강제하는 실시간 TAG 정책 검증기.
-Pre-Tool-Use 훅과 통합하여 SPEC-less 코드 생성을 원천적으로 차단.
+Real-time TAG policy validator enforcing MoAI-ADK's SPEC-first principle.
+Integrates with Pre-Tool-Use hooks to fundamentally block SPEC-less code generation.
 
-주요 기능:
-- 실시간 TAG 정책 위반 탐지
-- SPEC 없이 CODE 생성 시 차단
-- TAG 체인 무결성 검증
-- 즉각적인 위반 보고 및 수정 가이드
+Key Features:
+- Real-time TAG policy violation detection
+- Block CODE generation without SPEC
+- TAG chain integrity verification
+- Immediate violation reporting and correction guidance
 
 @SPEC:TAG-POLICY-001
 """
@@ -30,12 +30,12 @@ from moai_adk.core.tags.language_dirs import (
 
 
 class PolicyViolationLevel(Enum):
-    """정책 위반 수준
+    """Policy violation severity levels
 
-    CRITICAL: 작업을 즉시 중단해야 하는 치명적 위반
-    HIGH: 사용자 확인 후 진행 가능한 높은 수준 위반
-    MEDIUM: 경고 수준 위반 (권고 사항)
-    LOW: 정보 수준 (권장 사항)
+    CRITICAL: Critical violation requiring immediate task termination
+    HIGH: High-level violation requiring user confirmation before proceeding
+    MEDIUM: Warning-level violation (advisory)
+    LOW: Information-level violation (recommendation)
     """
     CRITICAL = "critical"
     HIGH = "high"
@@ -44,14 +44,14 @@ class PolicyViolationLevel(Enum):
 
 
 class PolicyViolationType(Enum):
-    """정책 위반 유형
+    """Policy violation types
 
-    SPECLESS_CODE: SPEC 없이 CODE 생성 (치명적)
-    MISSING_TAGS: 필수 TAG 누락 (높음)
-    CHAIN_BREAK: TAG 체인 연결 끊김 (높음)
-    DUPLICATE_TAGS: 중복 TAG (중간)
-    FORMAT_INVALID: TAG 형식 오류 (중간)
-    NO_SPEC_REFERENCE: CODE가 SPEC 참조 없음 (낮음)
+    SPECLESS_CODE: CODE generation without SPEC (critical)
+    MISSING_TAGS: Required TAG missing (high)
+    CHAIN_BREAK: TAG chain disconnected (high)
+    DUPLICATE_TAGS: Duplicate TAG (medium)
+    FORMAT_INVALID: TAG format error (medium)
+    NO_SPEC_REFERENCE: CODE has no SPEC reference (low)
     """
     SPECLESS_CODE = "specless_code"
     MISSING_TAGS = "missing_tags"
@@ -63,17 +63,17 @@ class PolicyViolationType(Enum):
 
 @dataclass
 class PolicyViolation:
-    """TAG 정책 위반 정보
+    """TAG policy violation information
 
     Attributes:
-        level: 위반 수준 (CRITICAL|HIGH|MEDIUM|LOW)
-        type: 위반 유형 (PolicyViolationType)
-        tag: 관련 TAG (있는 경우)
-        message: 위반 설명
-        file_path: 관련 파일 경로
-        action: 제안되는 조치 (block|warn|suggest)
-        guidance: 수정 안내
-        auto_fix_possible: 자동 수정 가능 여부
+        level: Violation severity level (CRITICAL|HIGH|MEDIUM|LOW)
+        type: Violation type (PolicyViolationType)
+        tag: Related TAG (if applicable)
+        message: Violation description
+        file_path: Related file path
+        action: Suggested action (block|warn|suggest)
+        guidance: Correction guidance
+        auto_fix_possible: Whether automatic fix is possible
     """
     level: PolicyViolationLevel
     type: PolicyViolationType
@@ -85,7 +85,7 @@ class PolicyViolation:
     auto_fix_possible: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
-        """딕셔너리로 변환"""
+        """Convert to dictionary"""
         return {
             "level": self.level.value,
             "type": self.type.value,
@@ -98,22 +98,22 @@ class PolicyViolation:
         }
 
     def should_block_operation(self) -> bool:
-        """작업을 차단해야 하는지 여부"""
+        """Whether the operation should be blocked"""
         return self.level == PolicyViolationLevel.CRITICAL or self.action == "block"
 
 
 @dataclass
 class PolicyValidationConfig:
-    """TAG 정책 검증 설정
+    """TAG policy validation configuration
 
     Attributes:
-        strict_mode: 엄격 모드 (모든 위반을 차단)
-        require_spec_before_code: CODE 생성 전 SPEC 필수
-        require_test_for_code: CODE에 TEST 필수
-        allow_duplicate_tags: 중복 TAG 허용 여부
-        validation_timeout: 검증 타임아웃 (초)
-        auto_fix_enabled: 자동 수정 기능 활성화
-        file_types_to_validate: 검증할 파일 확장자
+        strict_mode: Strict mode (block all violations)
+        require_spec_before_code: Require SPEC before CODE generation
+        require_test_for_code: Require TEST for CODE
+        allow_duplicate_tags: Whether to allow duplicate TAGs
+        validation_timeout: Validation timeout (seconds)
+        auto_fix_enabled: Enable automatic fix feature
+        file_types_to_validate: File extensions to validate
     """
     strict_mode: bool = True
     require_spec_before_code: bool = True
@@ -127,34 +127,34 @@ class PolicyValidationConfig:
 
 
 class TagPolicyValidator:
-    """TAG 정책 실시간 검증기
+    """Real-time TAG policy validator
 
-    Pre-Tool-Use 훅과 통합하여 파일 생성/수정 시점에 TAG 정책 위반을 탐지하고 차단.
-    SPEC-first 원칙을 강제하여 품질 보증.
+    Integrates with Pre-Tool-Use hooks to detect and block TAG policy violations
+    during file creation/modification. Enforces SPEC-first principle for quality assurance.
 
     Usage:
         config = PolicyValidationConfig(strict_mode=True)
         validator = TagPolicyValidator(config=config)
 
-        # 파일 생성 전 검증
+        # Validate before file creation
         violations = validator.validate_before_creation(
             file_path="src/example.py",
             content="def example(): pass"
         )
 
-        # 작업 차단 여부 확인
+        # Check if operation should be blocked
         should_block = any(v.should_block_operation() for v in violations)
     """
 
-    # TAG 정규식 패턴
+    # TAG regex pattern
     TAG_PATTERN = re.compile(r"@(SPEC|CODE|TEST|DOC):([A-Z0-9-]+-\d{3})")
 
     def __init__(self, config: Optional[PolicyValidationConfig] = None, project_config: Optional[Dict] = None):
-        """초기화
+        """Initialize validator
 
         Args:
-            config: 정책 검증 설정 (기본: PolicyValidationConfig())
-            project_config: 프로젝트 설정 (.moai/config/config.json에서 로드됨, 선택적)
+            config: Policy validation configuration (default: PolicyValidationConfig())
+            project_config: Project configuration (loaded from .moai/config/config.json, optional)
         """
         self.config = config or PolicyValidationConfig()
         self.project_config = project_config or self._load_project_config()
@@ -163,92 +163,92 @@ class TagPolicyValidator:
         self._start_time = time.time()
 
     def validate_before_creation(self, file_path: str, content: str) -> List[PolicyViolation]:
-        """파일 생성 전 TAG 정책 검증
+        """Validate TAG policy before file creation
 
-        Pre-Tool-Use 훅에서 호출. 파일 생성 시점에 정책 위반을 탐지.
+        Called from Pre-Tool-Use hooks. Detects policy violations at file creation time.
 
         Args:
-            file_path: 생성/수정할 파일 경로
-            content: 파일 내용
+            file_path: Path to file being created/modified
+            content: File content
 
         Returns:
-            PolicyViolation 목록
+            List of PolicyViolation
         """
         violations: List[PolicyViolation] = []
 
-        # 타임아웃 체크
+        # Check timeout
         if time.time() - self._start_time > self.config.validation_timeout:
             return violations
 
-        # 파일 타입 확인
+        # Check file type
         if not self._should_validate_file(file_path):
             return violations
 
-        # 기존 파일 TAG 추출
+        # Extract existing TAGs
         existing_tags = self._extract_tags_from_content(content)
 
-        # 새 파일인지 확인
+        # Check if new file
         is_new_file = not Path(file_path).exists()
 
         if is_new_file:
-            # 새 파일 생성 시 검증
+            # Validate new file creation
             violations.extend(self._validate_new_file_creation(file_path, existing_tags))
         else:
-            # 기존 파일 수정 시 검증
+            # Validate file modification
             violations.extend(self._validate_file_modification(file_path, existing_tags))
 
         return violations
 
     def validate_after_modification(self, file_path: str, content: str) -> List[PolicyViolation]:
-        """파일 수정 후 TAG 정책 검증
+        """Validate TAG policy after file modification
 
-        Post-Tool-Use 훅에서 호출. 수정 후 최종 상태 검증.
+        Called from Post-Tool-Use hooks. Validates final state after modification.
 
         Args:
-            file_path: 수정된 파일 경로
-            content: 수정된 파일 내용
+            file_path: Modified file path
+            content: Modified file content
 
         Returns:
-            PolicyViolation 목록 (주로 경고 수준)
+            List of PolicyViolation (mostly warning level)
         """
         violations: List[PolicyViolation] = []
 
-        # 타임아웃 체크
+        # Check timeout
         if time.time() - self._start_time > self.config.validation_timeout:
             return violations
 
-        # 파일 타입 확인
+        # Check file type
         if not self._should_validate_file(file_path):
             return violations
 
-        # TAG 추출
+        # Extract TAGs
         tags = self._extract_tags_from_content(content)
 
-        # 누락된 TAG 확인
+        # Check missing TAGs
         violations.extend(self._validate_missing_tags(file_path, tags))
 
-        # 체인 무결성 검증
+        # Validate chain integrity
         violations.extend(self._validate_chain_integrity(file_path, tags))
 
         return violations
 
     def _should_validate_file(self, file_path: str) -> bool:
-        """파일을 검증해야 하는지 확인
+        """Check if file should be validated
 
         Args:
-            file_path: 파일 경로
+            file_path: File path
 
         Returns:
-            검증 대상이면 True
+            True if file should be validated
         """
         path = Path(file_path)
         suffix = path.suffix.lstrip(".")
 
-        # 파일 확장자 확인
+        # Check file extension
         if suffix not in self.config.file_types_to_validate:
             return False
 
-        # 선택적 파일 패턴 제외 (TAG 검증 대상 아님)
+        # Exclude optional file patterns (not TAG validation targets)
         optional_patterns = [
             "CLAUDE.md",
             "README.md",
@@ -270,13 +270,13 @@ class TagPolicyValidator:
         return True
 
     def _extract_tags_from_content(self, content: str) -> Dict[str, List[str]]:
-        """내용에서 TAG 추출
+        """Extract TAGs from content
 
         Args:
-            content: 파일 내용
+            content: File content
 
         Returns:
-            {tag_type: [domains]} 딕셔너리
+            Dictionary of {tag_type: [domains]}
         """
         tags: Dict[str, List[str]] = {
             "SPEC": [], "CODE": [], "TEST": [], "DOC": []
@@ -289,49 +289,49 @@ class TagPolicyValidator:
         return tags
 
     def _validate_new_file_creation(self, file_path: str, tags: Dict[str, List[str]]) -> List[PolicyViolation]:
-        """새 파일 생성 시 정책 검증
+        """Validate policy for new file creation
 
         Args:
-            file_path: 파일 경로
-            tags: 추출된 TAG
+            file_path: File path
+            tags: Extracted TAGs
 
         Returns:
-            PolicyViolation 목록
+            List of PolicyViolation
         """
         violations = []
 
-        # CODE 파일 생성 시 SPEC 필수 확인
+        # Check SPEC requirement for CODE file creation
         if self._is_code_file(file_path) and self.config.require_spec_before_code:
             if not tags.get("CODE"):
                 violations.append(PolicyViolation(
                     level=PolicyViolationLevel.CRITICAL,
                     type=PolicyViolationType.SPECLESS_CODE,
                     tag=None,
-                    message="CODE 파일에 @TAG가 없습니다",
+                    message="CODE file has no @TAG",
                     file_path=file_path,
                     action="block",
-                    guidance="CODE 파일은 반드시 @CODE:DOMAIN-XXX 형식의 TAG를 가져야 합니다. 먼저 SPEC을 생성하세요.",
+                    guidance="CODE files must have a @CODE:DOMAIN-XXX format TAG. Create SPEC first.",
                     auto_fix_possible=False
                 ))
             else:
-                # CODE TAG가 있는 경우 연결된 SPEC 확인
+                # If CODE TAG exists, check for linked SPEC
                 for domain in tags["CODE"]:
                     spec_file = self._find_spec_file(domain)
                     if not spec_file:
                         spec_path = f".moai/specs/SPEC-{domain}/spec.md"
-                        guidance = f"{spec_path} 파일을 생성하거나 기존 SPEC에 추가하세요."
+                        guidance = f"Create {spec_path} file or add to existing SPEC."
                         violations.append(PolicyViolation(
                             level=PolicyViolationLevel.HIGH,
                             type=PolicyViolationType.NO_SPEC_REFERENCE,
                             tag=f"@CODE:{domain}",
-                            message=f"@CODE:{domain}에 연결된 SPEC이 없습니다",
+                            message=f"@CODE:{domain} has no linked SPEC",
                             file_path=file_path,
                             action="block" if self.config.strict_mode else "warn",
                             guidance=guidance,
                             auto_fix_possible=True
                         ))
 
-        # TEST 파일 생성 시 CODE 필수 확인
+        # Check CODE requirement for TEST file creation
         if self._is_test_file(file_path) and tags.get("TEST"):
             for domain in tags["TEST"]:
                 code_file = self._find_code_file(domain)
@@ -340,28 +340,28 @@ class TagPolicyValidator:
                         level=PolicyViolationLevel.HIGH,
                         type=PolicyViolationType.CHAIN_BREAK,
                         tag=f"@TEST:{domain}",
-                        message=f"@TEST:{domain}에 연결된 CODE가 없습니다",
+                        message=f"@TEST:{domain} has no linked CODE",
                         file_path=file_path,
                         action="warn",
-                        guidance=f"먼저 @CODE:{domain}를 가진 구현 파일을 생성하세요.",
+                        guidance=f"Create implementation file with @CODE:{domain} first.",
                         auto_fix_possible=False
                     ))
 
         return violations
 
     def _validate_file_modification(self, file_path: str, tags: Dict[str, List[str]]) -> List[PolicyViolation]:
-        """파일 수정 시 정책 검증
+        """Validate policy for file modification
 
         Args:
-            file_path: 파일 경로
-            tags: 추출된 TAG
+            file_path: File path
+            tags: Extracted TAGs
 
         Returns:
-            PolicyViolation 목록
+            List of PolicyViolation
         """
         violations = []
 
-        # 중복 TAG 확인
+        # Check for duplicate TAGs
         if not self.config.allow_duplicate_tags:
             duplicates = self._find_duplicate_tags(file_path, tags)
             for duplicate in duplicates:
@@ -369,55 +369,55 @@ class TagPolicyValidator:
                     level=PolicyViolationLevel.MEDIUM,
                     type=PolicyViolationType.DUPLICATE_TAGS,
                     tag=duplicate,
-                    message=f"중복된 TAG: {duplicate}",
+                    message=f"Duplicate TAG: {duplicate}",
                     file_path=file_path,
                     action="warn",
-                    guidance="중복된 TAG를 제거하세요. 각 TAG는 고유해야 합니다.",
+                    guidance="Remove duplicate TAG. Each TAG should be unique.",
                     auto_fix_possible=True
                 ))
 
         return violations
 
     def _validate_missing_tags(self, file_path: str, tags: Dict[str, List[str]]) -> List[PolicyViolation]:
-        """누락된 TAG 확인
+        """Check for missing TAGs
 
         Args:
-            file_path: 파일 경로
-            tags: 추출된 TAG
+            file_path: File path
+            tags: Extracted TAGs
 
         Returns:
-            PolicyViolation 목록
+            List of PolicyViolation
         """
         violations = []
 
-        # CODE 파일인데 TAG가 없는 경우
+        # If CODE file has no TAG
         if self._is_code_file(file_path) and not tags.get("CODE"):
             violations.append(PolicyViolation(
                 level=PolicyViolationLevel.HIGH,
                 type=PolicyViolationType.MISSING_TAGS,
                 tag=None,
-                message="CODE 파일에 @TAG가 누락되었습니다",
+                message="CODE file is missing @TAG",
                 file_path=file_path,
                 action="suggest",
-                guidance="파일 상단에 @CODE:DOMAIN-XXX 형식의 TAG를 추가하세요.",
+                guidance="Add @CODE:DOMAIN-XXX format TAG at the top of the file.",
                 auto_fix_possible=True
             ))
 
         return violations
 
     def _validate_chain_integrity(self, file_path: str, tags: Dict[str, List[str]]) -> List[PolicyViolation]:
-        """TAG 체인 무결성 검증
+        """Validate TAG chain integrity
 
         Args:
-            file_path: 파일 경로
-            tags: 추출된 TAG
+            file_path: File path
+            tags: Extracted TAGs
 
         Returns:
-            PolicyViolation 목록
+            List of PolicyViolation
         """
         violations = []
 
-        # CODE가 있는데 TEST가 없는 경우
+        # If CODE exists but TEST doesn't
         if tags.get("CODE") and self.config.require_test_for_code:
             for domain in tags["CODE"]:
                 test_file = self._find_test_file(domain)
@@ -426,55 +426,55 @@ class TagPolicyValidator:
                         level=PolicyViolationLevel.MEDIUM,
                         type=PolicyViolationType.CHAIN_BREAK,
                         tag=f"@CODE:{domain}",
-                        message=f"@CODE:{domain}에 연결된 TEST가 없습니다",
+                        message=f"@CODE:{domain} has no linked TEST",
                         file_path=file_path,
                         action="suggest",
-                        guidance=f"tests/ 디렉토리에 @TEST:{domain}를 가진 테스트 파일을 생성하세요.",
+                        guidance=f"Create test file with @TEST:{domain} in tests/ directory.",
                         auto_fix_possible=True
                     ))
 
         return violations
 
     def _is_code_file(self, file_path: str) -> bool:
-        """코드 파일인지 확인 (언어별 동적 감지)
+        """Check if file is a code file (dynamic detection by language)
 
         Args:
-            file_path: 파일 경로
+            file_path: File path
 
         Returns:
-            코드 파일이면 True
+            True if code file
         """
         path = Path(file_path)
 
-        # 파일 확장자 확인 (코드 파일 확장자만)
+        # Check file extension (code file extensions only)
         code_extensions = {".py", ".js", ".ts", ".jsx", ".tsx", ".go", ".rs", ".kt", ".rb", ".php", ".java", ".cs"}
         if path.suffix not in code_extensions:
             return False
 
-        # language_dirs를 사용한 동적 감지
+        # Dynamic detection using language_dirs
         return is_code_directory(path, self.project_config)
 
     def _is_test_file(self, file_path: str) -> bool:
-        """테스트 파일인지 확인
+        """Check if file is a test file
 
         Args:
-            file_path: 파일 경로
+            file_path: File path
 
         Returns:
-            테스트 파일이면 True
+            True if test file
         """
         path = Path(file_path)
         test_patterns = ["test/", "tests/", "__tests__", "spec/", "_test.", "_spec."]
         return any(pattern in str(path) for pattern in test_patterns)
 
     def _find_spec_file(self, domain: str) -> Optional[Path]:
-        """DOMAIN에 해당하는 SPEC 파일 찾기
+        """Find SPEC file for given domain
 
         Args:
-            domain: TAG 도메인 (예: USER-REG-001)
+            domain: TAG domain (e.g., USER-REG-001)
 
         Returns:
-            SPEC 파일 경로 또는 None
+            SPEC file path or None
         """
         spec_patterns = [
             f".moai/specs/SPEC-{domain}/spec.md",
@@ -490,15 +490,15 @@ class TagPolicyValidator:
         return None
 
     def _find_code_file(self, domain: str) -> Optional[Path]:
-        """DOMAIN에 해당하는 CODE 파일 찾기
+        """Find CODE file for given domain
 
         Args:
-            domain: TAG 도메인
+            domain: TAG domain
 
         Returns:
-            CODE 파일 경로 또는 None
+            CODE file path or None
         """
-        # 프로젝트 루트에서 CODE TAG 검색
+        # Search for CODE TAG from project root
         for pattern in ["src/**/*.py", "lib/**/*.py", "**/*.py", "**/*.js", "**/*.ts"]:
             for path in Path(".").glob(pattern):
                 if path.is_file():
@@ -512,13 +512,13 @@ class TagPolicyValidator:
         return None
 
     def _find_test_file(self, domain: str) -> Optional[Path]:
-        """DOMAIN에 해당하는 TEST 파일 찾기
+        """Find TEST file for given domain
 
         Args:
-            domain: TAG 도메인
+            domain: TAG domain
 
         Returns:
-            TEST 파일 경로 또는 None
+            TEST file path or None
         """
         test_patterns = [
             f"tests/**/test_*{domain}*.py",
@@ -540,14 +540,14 @@ class TagPolicyValidator:
         return None
 
     def _find_duplicate_tags(self, file_path: str, tags: Dict[str, List[str]]) -> List[str]:
-        """파일 내 중복 TAG 찾기
+        """Find duplicate TAGs in file
 
         Args:
-            file_path: 파일 경로
-            tags: 추출된 TAG
+            file_path: File path
+            tags: Extracted TAGs
 
         Returns:
-            중복 TAG 목록
+            List of duplicate TAGs
         """
         duplicates: List[str] = []
 
@@ -567,22 +567,22 @@ class TagPolicyValidator:
         return duplicates
 
     def create_validation_report(self, violations: List[PolicyViolation]) -> str:
-        """검증 결과 리포트 생성
+        """Generate validation result report
 
         Args:
-            violations: 정책 위반 목록
+            violations: List of policy violations
 
         Returns:
-            포맷된 리포트 문자열
+            Formatted report string
         """
         if not violations:
-            return "✅ TAG 정책 검증 통과"
+            return "✅ TAG policy validation passed"
 
         lines = []
-        lines.append("❌ TAG 정책 위반 발견")
+        lines.append("❌ TAG policy violations found")
         lines.append("=" * 50)
 
-        # 수준별 그룹화
+        # Group by level
         by_level: Dict[PolicyViolationLevel, List[PolicyViolation]] = {
             PolicyViolationLevel.CRITICAL: [],
             PolicyViolationLevel.HIGH: [],
@@ -593,38 +593,38 @@ class TagPolicyValidator:
         for violation in violations:
             by_level[violation.level].append(violation)
 
-        # 수준별 출력
+        # Output by level
         level_names = {
-            PolicyViolationLevel.CRITICAL: "🚨 치명적",
-            PolicyViolationLevel.HIGH: "⚠️ 높음",
-            PolicyViolationLevel.MEDIUM: "⚡ 중간",
-            PolicyViolationLevel.LOW: "ℹ️ 낮음"
+            PolicyViolationLevel.CRITICAL: "🚨 Critical",
+            PolicyViolationLevel.HIGH: "⚠️ High",
+            PolicyViolationLevel.MEDIUM: "⚡ Medium",
+            PolicyViolationLevel.LOW: "ℹ️ Low"
         }
 
         for level in [PolicyViolationLevel.CRITICAL, PolicyViolationLevel.HIGH,
                      PolicyViolationLevel.MEDIUM, PolicyViolationLevel.LOW]:
             level_violations = by_level[level]
             if level_violations:
-                lines.append(f"\n{level_names[level]} ({len(level_violations)}개):")
+                lines.append(f"\n{level_names[level]} ({len(level_violations)} found):")
                 lines.append("-" * 30)
 
                 for violation in level_violations:
                     tag_info = f" - {violation.tag}" if violation.tag else ""
                     lines.append(f"  {violation.message}{tag_info}")
                     if violation.file_path:
-                        lines.append(f"    파일: {violation.file_path}")
-                    lines.append(f"    조치: {violation.guidance}")
+                        lines.append(f"    File: {violation.file_path}")
+                    lines.append(f"    Action: {violation.guidance}")
                     if violation.auto_fix_possible:
-                        lines.append("    🤖 자동 수정 가능")
+                        lines.append("    🤖 Auto-fix available")
                     lines.append("")
 
         return "\n".join(lines)
 
     def _load_project_config(self) -> Dict:
-        """프로젝트 설정 로드 (.moai/config/config.json)
+        """Load project configuration (.moai/config/config.json)
 
         Returns:
-            프로젝트 설정 딕셔너리
+            Project configuration dictionary
         """
         config_path = Path(".moai/config/config.json")
         if config_path.exists():
@@ -633,33 +633,33 @@ class TagPolicyValidator:
             except Exception:
                 pass
 
-        # 기본 설정 반환
+        # Return default configuration
         return {"project": {"language": "python"}}
 
     def _fix_duplicate_tags(self, content: str) -> str:
-        """중복 TAG 제거
+        """Remove duplicate TAGs
 
-        같은 TAG가 여러 번 나타나는 경우 첫 번째만 유지하고 나머지는 제거.
+        When same TAG appears multiple times, keep only the first occurrence and remove the rest.
 
         Args:
-            content: 파일 내용
+            content: File content
 
         Returns:
-            수정된 내용
+            Modified content
         """
         lines = content.split("\n")
         seen_tags = set()
         result_lines = []
 
         for line in lines:
-            # 이 줄에서 모든 TAG 추출
+            # Extract all TAGs from this line
             tags = self.TAG_PATTERN.findall(line)
             modified_line = line
 
             for tag_type, domain in tags:
                 tag = f"@{tag_type}:{domain}"
                 if tag in seen_tags:
-                    # 이미 본 TAG - 이 줄에서 제거
+                    # Already seen TAG - remove from this line
                     modified_line = modified_line.replace(f"{tag} | ", "")
                     modified_line = modified_line.replace(f" | {tag}", "")
                     modified_line = modified_line.replace(tag, "")
@@ -671,39 +671,39 @@ class TagPolicyValidator:
         return "\n".join(result_lines)
 
     def _fix_format_errors(self, content: str) -> str:
-        """TAG 형식 오류 수정
+        """Fix TAG format errors
 
-        - 콜론 누락: @CODE AUTH-001 → @CODE:AUTH-001
-        - 공백 정규화: @CODE:AUTH-001  |  @SPEC:... → @CODE:AUTH-001 | @SPEC:...
+        - Missing colon: @CODE AUTH-001 → @CODE:AUTH-001
+        - Normalize whitespace: @CODE:AUTH-001  |  @SPEC:... → @CODE:AUTH-001 | @SPEC:...
 
         Args:
-            content: 파일 내용
+            content: File content
 
         Returns:
-            수정된 내용
+            Modified content
         """
-        # 콜론 누락 수정 (예: @CODE AUTH-001 → @CODE:AUTH-001)
+        # Fix missing colon (e.g., @CODE AUTH-001 → @CODE:AUTH-001)
         content = re.sub(r"@(SPEC|CODE|TEST|DOC)\s+([A-Z0-9-]+-\d{3})", r"@\1:\2", content)
 
-        # 공백 정규화 (파이프 주변)
+        # Normalize whitespace (around pipe)
         content = re.sub(r"\s*\|\s*", " | ", content)
 
-        # 중복 공백 제거
+        # Remove duplicate whitespace
         content = re.sub(r"  +", " ", content)
 
         return content
 
     def _apply_auto_fix(self, file_path: str, violations: List[PolicyViolation]) -> Dict[str, Any]:
-        """자동 수정 적용
+        """Apply automatic fixes
 
-        설정에 따라 SAFE 수준의 위반을 자동으로 수정.
+        Automatically fix SAFE-level violations according to configuration.
 
         Args:
-            file_path: 파일 경로
-            violations: 정책 위반 목록
+            file_path: File path
+            violations: List of policy violations
 
         Returns:
-            수정 결과 딕셔너리
+            Fix result dictionary
         """
         result: Dict[str, Any] = {
             "success": False,
@@ -731,11 +731,11 @@ class TagPolicyValidator:
                     modified = True
 
                 else:
-                    # 수정 불가능한 위반
+                    # Violation cannot be fixed
                     result["pending_count"] += 1
                     result["pending_violations"].append(violation)
 
-            # 수정된 내용 저장
+            # Save modified content
             if modified:
                 Path(file_path).write_text(content, encoding="utf-8")
                 result["success"] = True

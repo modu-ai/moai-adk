@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 # @CODE:TAG-ROLLBACK-MANAGER-001 | @SPEC:TAG-ROLLBACK-001
-"""TAG 시스템 롤백 관리자
+"""TAG system rollback manager
 
-TAG 정책 시스템에서 문제 발생 시 안전한 롤백을 제공하는 관리자.
-체크포인트 기반 복구와 이력 추적 기능을 지원.
+Manager providing safe rollback when problems occur in the TAG policy system.
+Supports checkpoint-based recovery and history tracking.
 
-주요 기능:
-- 체크포인트 생성 및 관리
-- 안전한 롤백 실행
-- 이력 추적 및 로깅
-- 비상 복구 시스템
+Key Features:
+- Checkpoint creation and management
+- Safe rollback execution
+- History tracking and logging
+- Emergency recovery system
 """
 
 import json
@@ -23,14 +23,14 @@ from typing import Any, Dict, List, Optional
 
 @dataclass
 class Checkpoint:
-    """체크포인트 정보
+    """Checkpoint information
 
     Attributes:
-        id: 고유 체크포인트 ID
-        timestamp: 생성 시간
-        description: 체크포인트 설명
-        file_states: 파일 상태 정보
-        metadata: 추가 메타데이터
+        id: Unique checkpoint ID
+        timestamp: Creation time
+        description: Checkpoint description
+        file_states: File state information
+        metadata: Additional metadata
     """
     id: str
     timestamp: datetime
@@ -39,7 +39,7 @@ class Checkpoint:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
-        """딕셔너리로 변환"""
+        """Convert to dictionary"""
         return {
             "id": self.id,
             "timestamp": self.timestamp.isoformat(),
@@ -51,14 +51,14 @@ class Checkpoint:
 
 @dataclass
 class RollbackConfig:
-    """롤백 시스템 설정
+    """Rollback system configuration
 
     Attributes:
-        checkpoints_dir: 체크포인트 저장 디렉토리
-        max_checkpoints: 최대 체크포인트 수
-        auto_cleanup: 자동 정리 활성화
-        backup_before_rollback: 롤백 전 백업 생성
-        rollback_timeout: 롤백 타임아웃 (초)
+        checkpoints_dir: Checkpoint storage directory
+        max_checkpoints: Maximum number of checkpoints
+        auto_cleanup: Enable automatic cleanup
+        backup_before_rollback: Create backup before rollback
+        rollback_timeout: Rollback timeout (seconds)
     """
     checkpoints_dir: str = ".moai/checkpoints"
     max_checkpoints: int = 10
@@ -68,30 +68,30 @@ class RollbackConfig:
 
 
 class RollbackManager:
-    """TAG 시스템 롤백 관리자
+    """TAG system rollback manager
 
-    체크포인트 기반 롤백 시스템을 제공하여 TAG 정책 시스템의 안정성 보장.
-    문제 발생 시 신속하고 안전한 복구를 지원.
+    Provides checkpoint-based rollback system to ensure TAG policy system stability.
+    Supports rapid and safe recovery when problems occur.
 
     Usage:
         config = RollbackConfig()
         manager = RollbackManager(config=config)
 
-        # 체크포인트 생성
-        checkpoint_id = manager.create_checkpoint("작업 전 상태")
+        # Create checkpoint
+        checkpoint_id = manager.create_checkpoint("State before work")
 
-        # 롤백 실행
+        # Execute rollback
         success = manager.rollback_to_checkpoint(checkpoint_id)
 
-        # 최신 체크포인트로 롤백
+        # Rollback to latest checkpoint
         success = manager.rollback_to_latest()
     """
 
     def __init__(self, config: Optional[RollbackConfig] = None):
-        """초기화
+        """Initialize
 
         Args:
-            config: 롤백 설정 (기본: RollbackConfig())
+            config: Rollback configuration (default: RollbackConfig())
         """
         self.config = config or RollbackConfig()
         self.checkpoints_dir = Path(self.config.checkpoints_dir)
@@ -100,26 +100,26 @@ class RollbackManager:
     def create_checkpoint(self, description: str,
                          files: Optional[List[str]] = None,
                          metadata: Optional[Dict[str, Any]] = None) -> str:
-        """체크포인트 생성
+        """Create checkpoint
 
         Args:
-            description: 체크포인트 설명
-            files: 포함할 파일 목록 (None이면 자동 탐지)
-            metadata: 추가 메타데이터
+            description: Checkpoint description
+            files: List of files to include (auto-detect if None)
+            metadata: Additional metadata
 
         Returns:
-            생성된 체크포인트 ID
+            Created checkpoint ID
         """
         checkpoint_id = self._generate_checkpoint_id()
         timestamp = datetime.now()
 
-        # 파일 상태 수집
+        # Collect file states
         if files is None:
             files = self._discover_project_files()
 
         file_states = self._collect_file_states(files)
 
-        # 체크포인트 생성
+        # Create checkpoint
         checkpoint = Checkpoint(
             id=checkpoint_id,
             timestamp=timestamp,
@@ -128,41 +128,41 @@ class RollbackManager:
             metadata=metadata or {}
         )
 
-        # 체크포인트 저장
+        # Save checkpoint
         self._save_checkpoint(checkpoint)
 
-        # 파일 백업 생성
+        # Create file backup
         self._backup_files(checkpoint_id, files)
 
-        # 오래된 체크포인트 정리
+        # Clean up old checkpoints
         if self.config.auto_cleanup:
             self._cleanup_old_checkpoints()
 
         return checkpoint_id
 
     def rollback_to_checkpoint(self, checkpoint_id: str) -> bool:
-        """특정 체크포인트로 롤백
+        """Rollback to specific checkpoint
 
         Args:
-            checkpoint_id: 롤백할 체크포인트 ID
+            checkpoint_id: Checkpoint ID to rollback to
 
         Returns:
-            성공 여부
+            Success status
         """
         try:
             checkpoint = self._load_checkpoint(checkpoint_id)
             if not checkpoint:
                 return False
 
-            # 롤백 전 백업 생성
+            # Create backup before rollback
             if self.config.backup_before_rollback:
                 self._create_rollback_backup(checkpoint_id)
 
-            # 파일 복원
+            # Restore files
             success = self._restore_files(checkpoint)
 
             if success:
-                # 롤백 로그 기록
+                # Log rollback
                 self._log_rollback(checkpoint_id, checkpoint)
 
             return success
@@ -171,10 +171,10 @@ class RollbackManager:
             return False
 
     def rollback_to_latest(self) -> bool:
-        """최신 체크포인트로 롤백
+        """Rollback to latest checkpoint
 
         Returns:
-            성공 여부
+            Success status
         """
         latest_id = self.get_latest_checkpoint_id()
         if not latest_id:
@@ -183,10 +183,10 @@ class RollbackManager:
         return self.rollback_to_checkpoint(latest_id)
 
     def list_checkpoints(self) -> List[Dict[str, Any]]:
-        """체크포인트 목록 조회
+        """List checkpoints
 
         Returns:
-            체크포인트 정보 목록
+            List of checkpoint information
         """
         checkpoints = []
 
@@ -198,36 +198,36 @@ class RollbackManager:
             except Exception:
                 continue
 
-        # 시간순 정렬 (최신 먼저)
+        # Sort by time (newest first)
         checkpoints.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
 
         return checkpoints
 
     def get_latest_checkpoint_id(self) -> Optional[str]:
-        """최신 체크포인트 ID 조회
+        """Get latest checkpoint ID
 
         Returns:
-            최신 체크포인트 ID 또는 None
+            Latest checkpoint ID or None
         """
         checkpoints = self.list_checkpoints()
         return checkpoints[0]['id'] if checkpoints else None
 
     def delete_checkpoint(self, checkpoint_id: str) -> bool:
-        """체크포인트 삭제
+        """Delete checkpoint
 
         Args:
-            checkpoint_id: 삭제할 체크포인트 ID
+            checkpoint_id: Checkpoint ID to delete
 
         Returns:
-            성공 여부
+            Success status
         """
         try:
-            # 체크포인트 파일 삭제
+            # Delete checkpoint file
             checkpoint_file = self.checkpoints_dir / f"checkpoint_{checkpoint_id}.json"
             if checkpoint_file.exists():
                 checkpoint_file.unlink()
 
-            # 백업 파일 삭제
+            # Delete backup files
             backup_dir = self.checkpoints_dir / f"backup_{checkpoint_id}"
             if backup_dir.exists():
                 shutil.rmtree(backup_dir)
@@ -238,46 +238,46 @@ class RollbackManager:
             return False
 
     def emergency_rollback(self) -> bool:
-        """비상 롤백
+        """Emergency rollback
 
-        모든 변경 사항을 취소하고 가장 안전한 상태로 복귀.
+        Cancel all changes and return to the safest state.
 
         Returns:
-            성공 여부
+            Success status
         """
         try:
-            # 가장 오래된 안정 체크포인트 찾기
+            # Find oldest stable checkpoint
             stable_checkpoints = self._find_stable_checkpoints()
             if not stable_checkpoints:
                 return False
 
-            # 가장 오래된 안정 체크포인트로 롤백
-            oldest_stable = stable_checkpoints[-1]  # 오래된 순서 정렬
+            # Rollback to oldest stable checkpoint
+            oldest_stable = stable_checkpoints[-1]  # Sorted by oldest
             return self.rollback_to_checkpoint(oldest_stable['id'])
 
         except Exception:
             return False
 
     def validate_checkpoint_integrity(self, checkpoint_id: str) -> bool:
-        """체크포인트 무결성 검증
+        """Validate checkpoint integrity
 
         Args:
-            checkpoint_id: 검증할 체크포인트 ID
+            checkpoint_id: Checkpoint ID to validate
 
         Returns:
-            무결성 여부
+            Integrity status
         """
         try:
             checkpoint = self._load_checkpoint(checkpoint_id)
             if not checkpoint:
                 return False
 
-            # 파일 무결성 검증
+            # Validate file integrity
             backup_dir = self.checkpoints_dir / f"backup_{checkpoint_id}"
             if not backup_dir.exists():
                 return False
 
-            # 백업 파일 존재 확인
+            # Check backup file existence
             for file_path in checkpoint.file_states.keys():
                 backup_file = backup_dir / file_path.replace('/', '_')
                 if not backup_file.exists():
@@ -289,20 +289,20 @@ class RollbackManager:
             return False
 
     def _generate_checkpoint_id(self) -> str:
-        """체크포인트 ID 생성
+        """Generate checkpoint ID
 
         Returns:
-            고유 체크포인트 ID
+            Unique checkpoint ID
         """
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         random_suffix = str(int(time.time() * 1000))[-6:]
         return f"ckpt_{timestamp}_{random_suffix}"
 
     def _discover_project_files(self) -> List[str]:
-        """프로젝트 파일 자동 탐지
+        """Auto-discover project files
 
         Returns:
-            프로젝트 파일 경로 목록
+            List of project file paths
         """
         files = []
         important_patterns = [
@@ -321,16 +321,16 @@ class RollbackManager:
                 if path.is_file():
                     files.append(str(path))
 
-        return list(set(files))  # 중복 제거
+        return list(set(files))  # Remove duplicates
 
     def _collect_file_states(self, files: List[str]) -> Dict[str, str]:
-        """파일 상태 수집
+        """Collect file states
 
         Args:
-            files: 파일 경로 목록
+            files: List of file paths
 
         Returns:
-            {file_path: content_hash} 딕셔너리
+            {file_path: content_hash} dictionary
         """
         file_states = {}
 
@@ -339,7 +339,7 @@ class RollbackManager:
                 path = Path(file_path)
                 if path.exists():
                     content = path.read_text(encoding="utf-8", errors="ignore")
-                    # 간단한 해시 (실제로는 hashlib 사용 권장)
+                    # Simple hash (recommend using hashlib in production)
                     content_hash = str(hash(content))
                     file_states[file_path] = content_hash
             except Exception:
@@ -348,21 +348,21 @@ class RollbackManager:
         return file_states
 
     def _save_checkpoint(self, checkpoint: Checkpoint) -> None:
-        """체크포인트 저장
+        """Save checkpoint
 
         Args:
-            checkpoint: 저장할 체크포인트
+            checkpoint: Checkpoint to save
         """
         checkpoint_file = self.checkpoints_dir / f"checkpoint_{checkpoint.id}.json"
         with open(checkpoint_file, 'w', encoding='utf-8') as f:
             json.dump(checkpoint.to_dict(), f, indent=2, ensure_ascii=False)
 
     def _backup_files(self, checkpoint_id: str, files: List[str]) -> None:
-        """파일 백업 생성
+        """Create file backup
 
         Args:
-            checkpoint_id: 체크포인트 ID
-            files: 백업할 파일 목록
+            checkpoint_id: Checkpoint ID
+            files: List of files to backup
         """
         backup_dir = self.checkpoints_dir / f"backup_{checkpoint_id}"
         backup_dir.mkdir(exist_ok=True)
@@ -371,7 +371,7 @@ class RollbackManager:
             try:
                 path = Path(file_path)
                 if path.exists():
-                    # 파일명에 /를 _로 변경하여 유효한 파일명으로 변환
+                    # Convert / to _ in filename to create valid filename
                     backup_name = file_path.replace('/', '_')
                     backup_file = backup_dir / backup_name
                     shutil.copy2(path, backup_file)
@@ -379,13 +379,13 @@ class RollbackManager:
                 continue
 
     def _load_checkpoint(self, checkpoint_id: str) -> Optional[Checkpoint]:
-        """체크포인트 로드
+        """Load checkpoint
 
         Args:
-            checkpoint_id: 로드할 체크포인트 ID
+            checkpoint_id: Checkpoint ID to load
 
         Returns:
-            Checkpoint 객체 또는 None
+            Checkpoint object or None
         """
         try:
             checkpoint_file = self.checkpoints_dir / f"checkpoint_{checkpoint_id}.json"
@@ -407,13 +407,13 @@ class RollbackManager:
             return None
 
     def _restore_files(self, checkpoint: Checkpoint) -> bool:
-        """파일 복원
+        """Restore files
 
         Args:
-            checkpoint: 복원할 체크포인트
+            checkpoint: Checkpoint to restore
 
         Returns:
-            성공 여부
+            Success status
         """
         backup_dir = self.checkpoints_dir / f"backup_{checkpoint.id}"
         if not backup_dir.exists():
@@ -429,9 +429,9 @@ class RollbackManager:
                 target_file = Path(file_path)
 
                 if backup_file.exists():
-                    # 대상 디렉토리 생성
+                    # Create target directory
                     target_file.parent.mkdir(parents=True, exist_ok=True)
-                    # 파일 복원
+                    # Restore file
                     shutil.copy2(backup_file, target_file)
                     success_count += 1
 
@@ -441,48 +441,48 @@ class RollbackManager:
         return success_count == total_files
 
     def _create_rollback_backup(self, checkpoint_id: str) -> None:
-        """롤백 전 백업 생성
+        """Create backup before rollback
 
         Args:
-            checkpoint_id: 롤백할 체크포인트 ID
+            checkpoint_id: Checkpoint ID to rollback to
         """
         self.create_checkpoint(
-            description=f"롤백 전 백업 (from {checkpoint_id})",
+            description=f"Backup before rollback (from {checkpoint_id})",
             metadata={"rollback_from": checkpoint_id}
         )
 
     def _cleanup_old_checkpoints(self) -> None:
-        """오래된 체크포인트 정리"""
+        """Clean up old checkpoints"""
         checkpoints = self.list_checkpoints()
 
         if len(checkpoints) > self.config.max_checkpoints:
-            # 가장 오래된 체크포인트 삭제
+            # Delete oldest checkpoints
             old_checkpoints = checkpoints[self.config.max_checkpoints:]
             for checkpoint in old_checkpoints:
                 self.delete_checkpoint(checkpoint['id'])
 
     def _find_stable_checkpoints(self) -> List[Dict[str, Any]]:
-        """안정적인 체크포인트 찾기
+        """Find stable checkpoints
 
         Returns:
-            안정적인 체크포인트 목록
+            List of stable checkpoints
         """
         checkpoints = self.list_checkpoints()
         stable_checkpoints = []
 
         for checkpoint in checkpoints:
-            # 무결성 검증 통과한 체크포인트만 선택
+            # Select only checkpoints that pass integrity validation
             if self.validate_checkpoint_integrity(checkpoint['id']):
                 stable_checkpoints.append(checkpoint)
 
         return stable_checkpoints
 
     def _log_rollback(self, checkpoint_id: str, checkpoint: Checkpoint) -> None:
-        """롤백 로그 기록
+        """Log rollback
 
         Args:
-            checkpoint_id: 롤백한 체크포인트 ID
-            checkpoint: 체크포인트 정보
+            checkpoint_id: Rolled back checkpoint ID
+            checkpoint: Checkpoint information
         """
         log_file = self.checkpoints_dir / "rollback.log"
 
@@ -500,10 +500,10 @@ class RollbackManager:
             pass
 
     def get_rollback_history(self) -> List[Dict[str, Any]]:
-        """롤백 이력 조회
+        """Get rollback history
 
         Returns:
-            롤백 이력 목록
+            List of rollback history
         """
         log_file = self.checkpoints_dir / "rollback.log"
         history = []
@@ -517,6 +517,6 @@ class RollbackManager:
             except Exception:
                 pass
 
-        # 최신 이력부터 정렬
+        # Sort by newest first
         history.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
         return history

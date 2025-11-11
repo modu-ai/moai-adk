@@ -98,12 +98,12 @@ class AutoSpecConfig:
                 "include_traceability": True,
                 "include_edit_guide": True,
                 "required_sections": [
-                    "개요 (Overview)",
-                    "환경 (Environment)",
-                    "가정 (Assumptions)",
-                    "요구사항 (Requirements)",
-                    "명세 (Specifications)",
-                    "추적성 (Traceability)"
+                    "Overview",
+                    "Environment",
+                    "Assumptions",
+                    "Requirements",
+                    "Specifications",
+                    "Traceability"
                 ]
             },
             "validation": {

@@ -4,7 +4,7 @@ Language Validator
 
 Provides comprehensive language validation capabilities for programming languages.
 
-@CODE:LANG-VALIDATOR: 언어 정책 검증 시스템
+@CODE:LANG-VALIDATOR: Language policy validation system
 """
 
 import os

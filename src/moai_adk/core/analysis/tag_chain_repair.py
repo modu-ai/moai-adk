@@ -221,33 +221,33 @@ labels:
 ## HISTORY
 
 ### v0.1.0 (2025-11-05)
-- **INITIAL**: LDE 기능 개선
+- **INITIAL**: LDE feature improvement
 - **AUTHOR**: @Goos
-- **SCOPE**: 개발 경험 및 효율성 향상
+- **SCOPE**: Development experience and efficiency enhancement
 
 ---
 
-## Environment (환경)
+## Environment
 
-### 현재 상태
+### Current Status
 
-### 가정
+### Assumptions
 
-### 요구사항
+### Requirements
 
-### Ubiquitous Requirements (기본 요구사항)
+### Ubiquitous Requirements
 
-### Event-driven Requirements (이벤트 기반)
+### Event-driven Requirements
 
-### State-driven Requirements (상태 기반)
+### State-driven Requirements
 
-### Constraints (제약사항)
+### Constraints
 
 ---
 
 ## Traceability (@TAG)
 
-### 핵심 TAG 체인
+### Core TAG Chain
 
 - **SPEC**: {spec_id}
 - **CODE**: @CODE:{domain}-{number:03d}
@@ -255,29 +255,29 @@ labels:
 
 ---
 
-## Specifications (상세 명세)
+## Specifications
 
-### 1. 기능 명세
+### 1. Feature Specification
 
-### 2. 구현 요구사항
+### 2. Implementation Requirements
 
-### 3. 테스트 요구사항
-
----
-
-## 성공 지표
+### 3. Test Requirements
 
 ---
 
-## 리스크 및 �난화 방안
+## Success Metrics
 
 ---
 
-## 다음 단계
+## Risks and Mitigation
 
-**작성일**: 2025-11-05
-**버전**: 0.1.0
-**상태**: Draft
+---
+
+## Next Steps
+
+**Created**: 2025-11-05
+**Version**: 0.1.0
+**Status**: Draft
 """
         elif "CORE" in domain:
             return f"""---
@@ -299,33 +299,33 @@ labels:
 ## HISTORY
 
 ### v0.1.0 (2025-11-05)
-- **INITIAL**: 핵심 기능 개선
+- **INITIAL**: Core feature improvement
 - **AUTHOR**: @Goos
-- **SCOPE**: 프로젝트 핵심 인프라 개선
+- **SCOPE**: Project core infrastructure enhancement
 
 ---
 
-## Environment (환경)
+## Environment
 
-### 현재 상태
+### Current Status
 
-### 가정
+### Assumptions
 
-### 요구사항
+### Requirements
 
-### Ubiquitous Requirements (기본 요구사항)
+### Ubiquitous Requirements
 
-### Event-driven Requirements (이벤트 기반)
+### Event-driven Requirements
 
-### State-driven Requirements (상태 기반)
+### State-driven Requirements
 
-### Constraints (제약사항)
+### Constraints
 
 ---
 
 ## Traceability (@TAG)
 
-### 핵심 TAG 체인
+### Core TAG Chain
 
 - **SPEC**: {spec_id}
 - **CODE**: @CODE:{domain}-{number:03d}
@@ -333,29 +333,29 @@ labels:
 
 ---
 
-## Specifications (상세 명세)
+## Specifications
 
-### 1. 기능 명세
+### 1. Feature Specification
 
-### 2. 구현 요구사항
+### 2. Implementation Requirements
 
-### 3. 테스트 요구사항
-
----
-
-## 성공 지표
+### 3. Test Requirements
 
 ---
 
-## 리스크 및 완화 방안
+## Success Metrics
 
 ---
 
-## 다음 단계
+## Risks and Mitigation
 
-**작성일**: 2025-11-05
-**버전**: 0.1.0
-**상태**: Draft
+---
+
+## Next Steps
+
+**Created**: 2025-11-05
+**Version**: 0.1.0
+**Status**: Draft
 """
         elif "INSTALLER" in domain:
             return f"""---
@@ -377,33 +377,33 @@ labels:
 ## HISTORY
 
 ### v0.1.0 (2025-11-05)
-- **INITIAL**: 설치기 개선
+- **INITIAL**: Installer improvement
 - **AUTHOR**: @Goos
-- **SCOPE**: 설치 및 배포 프로세스 개선
+- **SCOPE**: Installation and deployment process enhancement
 
 ---
 
-## Environment (환경)
+## Environment
 
-### 현재 상태
+### Current Status
 
-### 가정
+### Assumptions
 
-### 요구사항
+### Requirements
 
-### Ubiquitous Requirements (기본 요구사항)
+### Ubiquitous Requirements
 
-### Event-driven Requirements (이벤트 기반)
+### Event-driven Requirements
 
-### State-driven Requirements (상태 기반)
+### State-driven Requirements
 
-### Constraints (제약사항)
+### Constraints
 
 ---
 
 ## Traceability (@TAG)
 
-### 핵심 TAG 체인
+### Core TAG Chain
 
 - **SPEC**: {spec_id}
 - **CODE**: @CODE:{domain}-{number:03d}
@@ -411,29 +411,29 @@ labels:
 
 ---
 
-## Specifications (상세 명세)
+## Specifications
 
-### 1. 설치 명세
+### 1. Installation Specification
 
-### 2. 배포 요구사항
+### 2. Deployment Requirements
 
-### 3. 테스트 요구사항
-
----
-
-## 성공 지표
+### 3. Test Requirements
 
 ---
 
-## 리스크 및 완화 방안
+## Success Metrics
 
 ---
 
-## 다음 단계
+## Risks and Mitigation
 
-**작성일**: 2025-11-05
-**버전**: 0.1.0
-**상태**: Draft
+---
+
+## Next Steps
+
+**Created**: 2025-11-05
+**Version**: 0.1.0
+**Status**: Draft
 """
         else:
             # Generic template
@@ -454,33 +454,33 @@ labels:
 ## HISTORY
 
 ### v0.1.0 (2025-11-05)
-- **INITIAL**: {domain} 도메인 기능 개선
+- **INITIAL**: {domain} domain feature improvement
 - **AUTHOR**: @Goos
-- **SCOPE**: {domain} 기능 개선 및 유지보수성 향상
+- **SCOPE**: {domain} feature enhancement and maintainability improvement
 
 ---
 
-## Environment (환경)
+## Environment
 
-### 현재 상태
+### Current Status
 
-### 가정
+### Assumptions
 
-### 요구사항
+### Requirements
 
-### Ubiquitous Requirements (기본 요구사항)
+### Ubiquitous Requirements
 
-### Event-driven Requirements (이벤트 기반)
+### Event-driven Requirements
 
-### State-driven Requirements (상태 기반)
+### State-driven Requirements
 
-### Constraints (제약사항)
+### Constraints
 
 ---
 
 ## Traceability (@TAG)
 
-### 핵심 TAG 체인
+### Core TAG Chain
 
 - **SPEC**: {spec_id}
 - **CODE**: @CODE:{domain}-{number:03d}
@@ -488,29 +488,29 @@ labels:
 
 ---
 
-## Specifications (상세 명세)
+## Specifications
 
-### 1. 기능 명세
+### 1. Feature Specification
 
-### 2. 구현 요구사항
+### 2. Implementation Requirements
 
-### 3. 테스트 요구사항
-
----
-
-## 성공 지표
+### 3. Test Requirements
 
 ---
 
-## 리스크 및 완화 방안
+## Success Metrics
 
 ---
 
-## 다음 단계
+## Risks and Mitigation
 
-**작성일**: 2025-11-05
-**버전**: 0.1.0
-**상태**: Draft
+---
+
+## Next Steps
+
+**Created**: 2025-11-05
+**Version**: 0.1.0
+**Status**: Draft
 """
 
     def _create_code_template(self, domain: str, number: int) -> str:
@@ -518,11 +518,11 @@ labels:
         code_id = f"@CODE:{domain}-{number:03d}"
 
         return f'''# {code_id}
-"""{domain} 기능 구현.
+"""{domain} feature implementation.
 
-{domain} 도메인의 핵심 기능을 구현합니다.
+Implements core functionality for the {domain} domain.
 
-@SPEC:{domain}-{number:03d}: {domain} 기능 명세
+@SPEC:{domain}-{number:03d}: {domain} feature specification
 """
 
 from typing import Any, Dict, List, Optional
@@ -533,14 +533,14 @@ def {domain.lower().replace('-', '_')}_function(
     param1: Optional[str] = None,
     param2: Optional[Dict[str, Any]] = None
 ) -> Any:
-    """{domain} 핵심 기능.
+    """{domain} core functionality.
 
     Args:
-        param1: 첫 번째 매개변수
-        param2: 두 번째 매개변수 (선택적)
+        param1: First parameter
+        param2: Second parameter (optional)
 
     Returns:
-        처리 결과 객체
+        Processing result object
 
     Examples:
         >>> result = {domain.lower().replace('-', '_')}_function("test", {{"key": "value"}})
@@ -553,7 +553,7 @@ def {domain.lower().replace('-', '_')}_function(
     if param2 is None:
         param2 = {{}}
 
-    # 핵심 로직 구현
+    # Core logic implementation
     result = _process_{domain.lower().replace('-', '_')}_logic(param1, param2)
 
     return result
@@ -563,16 +563,16 @@ def _process_{domain.lower().replace('-', '_')}_logic(
     input_data: str,
     config: Dict[str, Any]
 ) -> Any:
-    """내부 로직 처리.
+    """Internal logic processing.
 
     Args:
-        input_data: 입력 데이터
-        config: 설정 정보
+        input_data: Input data
+        config: Configuration information
 
     Returns:
-        처리된 결과
+        Processed result
     """
-    # 여기에 {domain} 특화 로직 구현
+    # Implement {domain}-specific logic here
     processed_data = input_data.upper() if config.get("uppercase", False) else input_data
 
     return {{
@@ -584,24 +584,24 @@ def _process_{domain.lower().replace('-', '_')}_logic(
 
 
 def validate_{domain.lower().replace('-', '_')}_input(data: Any) -> bool:
-    """입력 데이터 검증.
+    """Input data validation.
 
     Args:
-        data: 검증할 데이터
+        data: Data to validate
 
     Returns:
-        유효성 검증 결과
+        Validation result
     """
     if data is None:
         return False
 
-    # 여기에 {domain} 특화 검증 로직 추가
+    # Add {domain}-specific validation logic here
     return isinstance(data, (str, dict, list))
 
 
-# @TEST:{domain}-{number:03d}: 단위 테스트 포함
+# @TEST:{domain}-{number:03d}: Unit tests included
 if __name__ == "__main__":
-    # 간단한 실행 예시
+    # Simple execution example
     test_result = {domain.lower().replace('-', '_')}_function("test")
     print(f"Test result: {{test_result}}")
 '''
@@ -611,12 +611,12 @@ if __name__ == "__main__":
         test_id = f"@TEST:{domain}-{number:03d}"
 
         return f'''# {test_id}
-"""{domain} 기능 테스트.
+"""{domain} feature tests.
 
-{domain} 도메인의 핵심 기능을 검증하기 위한 테스트 코드입니다.
+Test code to validate core functionality of the {domain} domain.
 
-@SPEC:{domain}-{number:03d}: {domain} 기능 명세
-@CODE:{domain}-{number:03d}: {domain} 기능 구현
+@SPEC:{domain}-{number:03d}: {domain} feature specification
+@CODE:{domain}-{number:03d}: {domain} feature implementation
 """
 
 import pytest
@@ -630,10 +630,10 @@ from src.moai_adk.{domain.lower().replace('-', '_')}.{domain.lower().replace('-'
 
 
 class Test{domain.replace('-', '_')}:
-    """{domain} 기능 테스트 클래스."""
+    """{domain} feature test class."""
 
     def test_{domain.lower().replace('-', '_')}_function_basic(self):
-        """기본 {domain} 기능 테스트."""
+        """Basic {domain} functionality test."""
         result = {domain.lower().replace('-', '_')}_function("test_input")
 
         assert result["status"] == "success"
@@ -641,42 +641,42 @@ class Test{domain.replace('-', '_')}:
         assert result["config"] == {{}}
 
     def test_{domain.lower().replace('-', '_')}_function_with_params(self):
-        """매개변수가 포함된 {domain} 기능 테스트."""
+        """{domain} functionality test with parameters."""
         param2 = {{"key": "value", "uppercase": True}}
         result = {domain.lower().replace('-', '_')}_function("test", param2)
 
         assert result["status"] == "success"
         assert result["input"] == "test"
-        assert result["output"] == "TEST"  # uppercase=True 적용
+        assert result["output"] == "TEST"  # uppercase=True applied
         assert result["config"] == param2
 
     def test_{domain.lower().replace('-', '_')}_function_defaults(self):
-        """기본값 사용 테스트."""
+        """Default value usage test."""
         result = {domain.lower().replace('-', '_')}_function()
 
         assert result["status"] == "success"
         assert result["input"] == "default_value"
 
     def test_validate_{domain.lower().replace('-', '_')}_input_valid(self):
-        """유효한 입력 데이터 검증 테스트."""
+        """Valid input data validation test."""
         assert validate_{domain.lower().replace('-', '_')}_input("valid_string") is True
         assert validate_{domain.lower().replace('-', '_')}_input({{"key": "value"}}) is True
         assert validate_{domain.lower().replace('-', '_')}_input([1, 2, 3]) is True
 
     def test_validate_{domain.lower().replace('-', '_')}_input_invalid(self):
-        """무효한 입력 데이터 검증 테스트."""
+        """Invalid input data validation test."""
         assert validate_{domain.lower().replace('-', '_')}_input(None) is False
         assert validate_{domain.lower().replace('-', '_')}_input(123) is False
         assert validate_{domain.lower().replace('-', '_')}_input(12.34) is False
 
     def test_{domain.lower().replace('-', '_')}_function_error_handling(self):
-        """에러 처리 테스트."""
+        """Error handling test."""
         with pytest.raises(Exception):
-            # 예상되는 예외 상황 테스트
+            # Expected exception scenario test
             {domain.lower().replace('-', '_')}_function(None, None)
 
     def test_{domain.lower().replace('-', '_')}_function_integration(self):  # type: ignore[misc]
-        """통합 테스트."""
+        """Integration test."""
         # Jinja2 template - variables filled at generation time
         domain_key = '{{ domain_key }}'  # noqa: F841, F821
         patch_path = 'src.moai_adk.{{ domain_key }}.{{ domain_key }}._process_logic'
@@ -690,25 +690,25 @@ class Test{domain.replace('-', '_')}:
 
 
 def test_{domain.lower().replace('-', '_')}_function_edge_cases():
-    """경계 조건 테스트."""
-    # 빈 문자열 테스트
+    """Edge case test."""
+    # Empty string test
     result = {domain.lower().replace('-', '_')}_function("")
     assert result["status"] == "success"
     assert result["input"] == ""
 
-    # 빈 딕셔너리 테스트
+    # Empty dictionary test
     result = {domain.lower().replace('-', '_')}_function("test", {{}})
     assert result["status"] == "success"
     assert result["input"] == "test"
 
-    # 대규모 데이터 테스트
+    # Large data test
         large_data = "x" * 10000
     result = {domain.lower().replace('-', '_')}_function(large_data)
     assert result["status"] == "success"
     assert len(result["output"]) == 10000
 
 
-# @TEST:{domain}-{number:03d}: 테스트 실행
+# @TEST:{domain}-{number:03d}: Test execution
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
 '''

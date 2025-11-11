@@ -30,7 +30,7 @@ LANGUAGE_CONFIG: Dict[str, Dict[str, str]] = {
     },
     "es": {
         "name": "Spanish",
-        "native_name": "Español",  # 스페인어 원어민 표기
+        "native_name": "Español",  # Spanish native representation
         "code": "es",
         "family": "indo-european"
     },

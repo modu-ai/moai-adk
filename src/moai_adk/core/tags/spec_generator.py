@@ -438,14 +438,14 @@ class SpecGenerator:
             pass
 
     def _analyze_javascript(self, content: str, analysis: CodeAnalysis) -> None:
-        """JavaScript 코드 분석 (정규식 기반)"""
-        # 함수 추출
+        """JavaScript code analysis (regex-based)"""
+        # Extract functions
         func_pattern = r"(?:async\s+)?function\s+(\w+)\s*\([^)]*\)|const\s+(\w+)\s*=\s*(?:async\s+)?\([^)]*\)\s*=>"
         for match in re.finditer(func_pattern, content):
             func_name = match.group(1) or match.group(2)
             analysis.functions[func_name] = {"lineno": content[:match.start()].count("\n")}
 
-        # JSDoc 추출
+        # Extract JSDoc
         jsdoc_pattern = r"/\*\*\s*([\s\S]*?)\*/"
         for match in re.finditer(jsdoc_pattern, content):
             if match.group(1).strip():
@@ -454,13 +454,13 @@ class SpecGenerator:
         analysis.has_clear_structure = bool(analysis.functions)
 
     def _analyze_go(self, content: str, analysis: CodeAnalysis) -> None:
-        """Go 코드 분석 (정규식 기반)"""
-        # 함수 추출
+        """Go code analysis (regex-based)"""
+        # Extract functions
         func_pattern = r"func\s+(?:\([^)]*\)\s+)?(\w+)\s*\("
         for match in re.finditer(func_pattern, content):
             analysis.functions[match.group(1)] = {"lineno": content[:match.start()].count("\n")}
 
-        # 주석 추출
+        # Extract comments
         comment_pattern = r"//\s*(.+)"
         for match in re.finditer(comment_pattern, content):
             text = match.group(1).strip()
@@ -560,37 +560,37 @@ class SpecGenerator:
         domain: str,
         analysis: CodeAnalysis
     ) -> str:
-        """EARS 포맷 SPEC 템플릿 생성
+        """Create EARS format SPEC template
 
         Args:
-            code_file: 코드 파일 경로
-            domain: 도메인
-            analysis: 코드 분석 결과
+            code_file: Code file path
+            domain: Domain
+            analysis: Code analysis result
 
         Returns:
-            EARS 포맷 SPEC 템플릿 내용
+            EARS format SPEC template content
         """
         spec_id = f"SPEC-{domain}-001"
         created_at = datetime.now().strftime("%Y-%m-%d")
 
         template = f"""# {spec_id} | @SPEC:{domain}
 
-**프로젝트**: {code_file.parent.parent.parent.name}
-**파일**: `{code_file}`
-**생성일**: {created_at}
-**상태**: draft
+**Project**: {code_file.parent.parent.parent.name}
+**File**: `{code_file}`
+**Created**: {created_at}
+**Status**: draft
 
 ---
 
 ## HISTORY
 
-- {created_at}: 자동 생성된 SPEC 템플릿
+- {created_at}: Auto-generated SPEC template
 
 ---
 
 ## Overview
 
-> **수정 필요**: 이 섹션을 작성하여 {domain} 기능의 전체 목표와 범위를 설명하세요.
+> **Requires modification**: Write this section to describe the overall goal and scope of the {domain} feature.
 
 {self._get_function_documentation(analysis)}
 
@@ -598,83 +598,83 @@ class SpecGenerator:
 
 ## Requirements
 
-### Ubiquitous Requirements (항상 만족해야 함)
+### Ubiquitous Requirements
 
 ```
-THE SYSTEM SHALL [요구사항 설명]
+THE SYSTEM SHALL [requirement description]
 ```
 
-### State-Driven Requirements (특정 상태에서)
+### State-Driven Requirements
 
 ```
-WHEN [조건]
-THE SYSTEM SHALL [동작]
+WHEN [condition]
+THE SYSTEM SHALL [action]
 ```
 
-### Event-Driven Requirements (이벤트 발생 시)
+### Event-Driven Requirements
 
 ```
-IF [이벤트]
-THE SYSTEM SHALL [동작]
+IF [event]
+THE SYSTEM SHALL [action]
 ```
 
-### Optional Requirements (선택 사항)
+### Optional Requirements
 
 ```
-THE SYSTEM MAY [선택 기능]
+THE SYSTEM MAY [optional feature]
 ```
 
-### Unwanted Behaviors (방지해야 함)
+### Unwanted Behaviors
 
 ```
-THE SYSTEM SHALL NOT [금지 동작]
+THE SYSTEM SHALL NOT [prohibited action]
 ```
 
 ---
 
 ## Environment
 
-> **수정 필요**: 이 SPEC이 동작하기 위한 환경 조건을 작성하세요.
+> **Requires modification**: Write the environmental conditions required for this SPEC to operate.
 
-- 필요한 외부 서비스: [예: Database, API Gateway]
-- 필요한 라이브러리: [예: cryptography v41.0.0+]
-- 환경 변수: [예: DATABASE_URL, SECRET_KEY]
+- Required external services: [e.g., Database, API Gateway]
+- Required libraries: [e.g., cryptography v41.0.0+]
+- Environment variables: [e.g., DATABASE_URL, SECRET_KEY]
 
 ---
 
 ## Assumptions
 
-> **수정 필요**: 이 SPEC이 성립하기 위한 가정들을 작성하세요.
+> **Requires modification**: Write the assumptions required for this SPEC to be valid.
 
-1. [가정 1]
-2. [가정 2]
+1. [Assumption 1]
+2. [Assumption 2]
 
 ---
 
 ## Test Cases
 
-### 정상 케이스 (Happy Path)
+### Happy Path
 
 ```
-GIVEN [초기 상태]
-WHEN [사용자 행동]
-THEN [예상 결과]
+GIVEN [initial state]
+WHEN [user action]
+THEN [expected result]
 ```
 
-### 에러 케이스 (Error Handling)
+### Error Handling
 
 ```
-GIVEN [초기 상태]
-WHEN [에러 발생 시나리오]
-THEN [에러 처리 결과]
+GIVEN [initial state]
+WHEN [error scenario]
+THEN [error handling result]
 ```
 
-### 엣지 케이스 (Edge Cases)
+### Edge Cases
 
 ```
-GIVEN [경계 상황]
-WHEN [경계 행동]
-THEN [경계 결과]
+GIVEN [boundary condition]
+WHEN [boundary action]
+THEN [boundary result]
 ```
 
 ---
@@ -683,73 +683,73 @@ THEN [경계 결과]
 
 ### Code References
 
-- 관련 코드: `{code_file}`
+- Related code: `{code_file}`
 
 ### Design Decisions
 
-> **수정 필요**: 설계 결정 사항을 기록하세요.
+> **Requires modification**: Record design decisions.
 
 ### Dependencies
 
-> **수정 필요**: 외부 의존성을 나열하세요.
+> **Requires modification**: List external dependencies.
 
 ### Performance Considerations
 
-> **수정 필요**: 성능 관련 고려사항을 작성하세요.
+> **Requires modification**: Write performance considerations.
 
 ---
 
 ## Related Specifications
 
-> **수정 필요**: 이와 관련된 다른 SPEC들을 참조하세요.
+> **Requires modification**: Reference other related SPECs.
 
-- SPEC-PARENT: 상위 SPEC (있으면)
-- SPEC-RELATED: 관련 SPEC (있으면)
+- SPEC-PARENT: Parent SPEC (if exists)
+- SPEC-RELATED: Related SPEC (if exists)
 
 ---
 
 ## TODO Checklist
 
-완성하기 전에 이 체크리스트를 검토하세요:
+Review this checklist before completion:
 
-- [ ] Overview 섹션 작성 완료
-- [ ] 최소 3개 이상의 요구사항 정의
-- [ ] Environment 섹션 상세 작성
-- [ ] Assumptions 섹션 작성
-- [ ] Test Cases 3가지 이상 정의
-- [ ] Code References 확인
-- [ ] Related Specifications 검토
-- [ ] 팀 리뷰 완료
+- [ ] Overview section completed
+- [ ] At least 3 requirements defined
+- [ ] Environment section detailed
+- [ ] Assumptions section completed
+- [ ] At least 3 test cases defined
+- [ ] Code References verified
+- [ ] Related Specifications reviewed
+- [ ] Team review completed
 
 ---
 
-**작성자**: @user
-**최종 검수**: Pending
+**Author**: @user
+**Final Review**: Pending
 """
         return template
 
     def _get_function_documentation(self, analysis: CodeAnalysis) -> str:
-        """코드에서 추출한 함수/클래스 정보를 문서화"""
+        """Document function/class information extracted from code"""
         doc_parts = []
 
         if analysis.classes:
-            doc_parts.append("### 주요 클래스\n")
+            doc_parts.append("### Main Classes\n")
             for class_name, info in analysis.classes.items():
                 doc_parts.append(f"- **{class_name}**")
                 if info.get("docstring"):
                     doc_parts.append(f"  - {info['docstring']}")
                 if info.get("methods"):
-                    doc_parts.append(f"  - 메서드: {', '.join(info['methods'])}")
+                    doc_parts.append(f"  - Methods: {', '.join(info['methods'])}")
             doc_parts.append("")
 
         if analysis.functions:
-            doc_parts.append("### 주요 함수\n")
+            doc_parts.append("### Main Functions\n")
             for func_name, info in analysis.functions.items():
                 doc_parts.append(f"- **{func_name}**")
                 if info.get("docstring"):
                     doc_parts.append(f"  - {info['docstring']}")
                 if info.get("params"):
-                    doc_parts.append(f"  - 파라미터: {', '.join(info['params'])}")
+                    doc_parts.append(f"  - Parameters: {', '.join(info['params'])}")
             doc_parts.append("")
 
         return "\n".join(doc_parts) if doc_parts else ""
@@ -760,34 +760,34 @@ THEN [경계 결과]
         analysis: CodeAnalysis,
         domain: str
     ) -> float:
-        """신뢰도 계산 (0-1)
+        """Calculate confidence score (0-1)
 
-        팩터:
-        - 명확한 코드 구조 (30%)
-        - 도메인 추론 명확성 (40%)
-        - docstring 존재 여부 (30%)
+        Factors:
+        - Clear code structure (30%)
+        - Domain inference clarity (40%)
+        - Docstring presence (30%)
 
         Args:
-            code_file: 코드 파일 경로
-            analysis: 코드 분석 결과
-            domain: 추론된 도메인
+            code_file: Code file path
+            analysis: Code analysis result
+            domain: Inferred domain
 
         Returns:
-            신뢰도 점수 (0-1)
+            Confidence score (0-1)
         """
         score = 0.0
 
-        # 명확한 구조 (최대 0.3)
+        # Clear structure (max 0.3)
         if analysis.has_clear_structure:
             score += 0.3
 
-        # 도메인 추론 명확성 (최대 0.4)
+        # Domain inference clarity (max 0.4)
         if domain in analysis.domain_keywords:
             score += 0.4
         elif domain != "COMMON":
             score += 0.2
 
-        # docstring (최대 0.3)
+        # Docstring (max 0.3)
         if analysis.docstring:
             score += 0.2
         if analysis.functions and any(f.get("docstring") for f in analysis.functions.values()):
@@ -801,39 +801,39 @@ THEN [경계 결과]
         confidence: float,
         domain: str
     ) -> List[str]:
-        """편집 가이드 생성 (TODO 항목)
+        """Generate editing guide (TODO items)
 
-        신뢰도가 낮을수록 더 많은 가이드 제시.
+        Lower confidence results in more guidance.
 
         Args:
-            analysis: 코드 분석 결과
-            confidence: 신뢰도
-            domain: 도메인
+            analysis: Code analysis result
+            confidence: Confidence score
+            domain: Domain
 
         Returns:
-            편집 가이드 항목 리스트
+            List of editing guide items
         """
         guide = [
-            "[ ] 개요(Overview) 섹션 작성",
-            "[ ] 요구사항(Requirements) 최소 3개 정의",
-            "[ ] 환경(Environment) 섹션 상세 작성",
-            "[ ] 가정(Assumptions) 항목 정의",
-            "[ ] 테스트 케이스(정상/에러/엣지) 작성",
+            "[ ] Write Overview section",
+            "[ ] Define at least 3 Requirements",
+            "[ ] Detail Environment section",
+            "[ ] Define Assumptions items",
+            "[ ] Write test cases (happy/error/edge)",
         ]
 
-        # 낮은 신뢰도 → 더 많은 가이드
+        # Low confidence → more guidance
         if confidence < 0.5:
             guide.extend([
-                "[ ] 도메인 '{domain}' 확인 (자동 추론됨)",
-                "[ ] 관련 함수/클래스 요구사항과 연결",
-                "[ ] 외부 API/라이브러리 의존성 나열",
-                "[ ] 성능 고려사항 검토",
+                "[ ] Verify domain '{domain}' (auto-inferred)",
+                "[ ] Link related functions/classes to requirements",
+                "[ ] List external API/library dependencies",
+                "[ ] Review performance considerations",
             ])
 
         if not analysis.docstring:
-            guide.append("[ ] 모듈 docstring 추가 (코드 가독성 향상)")
+            guide.append("[ ] Add module docstring (improve code readability)")
 
         if not any(f.get("docstring") for f in analysis.functions.values()):
-            guide.append("[ ] 함수 docstring 추가 (자동 SPEC 생성 품질 향상)")
+            guide.append("[ ] Add function docstrings (improve auto-SPEC generation quality)")
 
         return guide

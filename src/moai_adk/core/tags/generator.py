@@ -4,8 +4,8 @@
 Generates sequential @DOC:DOMAIN-NNN identifiers and detects duplicates
 using ripgrep for performance.
 
-@SPEC:DOC-TAG-GENERATOR: @DOC 태그 자동 생성 인프라
-@CODE:QUALITY-FRAMEWORK: TAG 생성 품질 관리 시스템
+@SPEC:DOC-TAG-GENERATOR: Automated @DOC tag generation infrastructure
+@CODE:QUALITY-FRAMEWORK: TAG generation quality management system
 """
 
 import re
@@ -35,7 +35,7 @@ def generate_doc_tag(domain: str, existing_ids: List[str]) -> str:
     Examples:
         >>> generate_doc_tag("AUTH", [])
         'AUTH-001'
-        >>> generate_doc_tag("AUTH", ["@DOC:AUTH-001", "@DOC:AUTH-002"])
+        >>> generate_doc_tag("AUTH", ["`@DOC:AUTH-001`", "@DOC:AUTH-002"])
         'AUTH-003'
     """
     # Validate domain format: uppercase alphanumeric and hyphens only

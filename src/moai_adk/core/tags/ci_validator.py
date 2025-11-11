@@ -11,7 +11,7 @@ This module extends PreCommitValidator for CI/CD environments:
 
 Used by GitHub Actions workflow to validate TAGs on every PR.
 
-@CODE:QUALITY-FRAMEWORK: CI/CD 환경 품질 검증 시스템
+@CODE:QUALITY-FRAMEWORK: CI/CD environment quality validation system
 """
 
 import json

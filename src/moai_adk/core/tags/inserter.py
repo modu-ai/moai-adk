@@ -4,7 +4,7 @@
 Inserts @DOC tags into markdown file headers with chain references
 and provides backup/recovery functionality.
 
-@SPEC:DOC-TAG-001: @DOC 태그 자동 생성 인프라
+Related SPEC: DOC-TAG-001 (Automated @DOC tag generation infrastructure)
 """
 
 from pathlib import Path
@@ -47,7 +47,7 @@ def insert_tag_to_markdown(
         True if successful, False on error
 
     Examples:
-        >>> insert_tag_to_markdown(Path("guide.md"), "@DOC:AUTH-001", "@SPEC:AUTH-004")
+        >>> insert_tag_to_markdown(Path("guide.md"), "`@DOC:AUTH-001`", "`@SPEC:AUTH-004`")
         True
     """
     try:

@@ -503,8 +503,8 @@ class SpecStatusManager:
             # Look for acceptance criteria section
             acceptance_patterns = [
                 r'#+\s*acceptance\s+criteria',
-                r'#+\s*수락\s+기준',
-                r'#+\s*受け入れ基準',
+                r'#+\s*acceptance\s+criteria',  # English (Korean removed)
+                r'#+\s*acceptance\s+criteria',  # English (Japanese removed)
                 r'#+\s*criterios\s+de\s+aceptación'
             ]
 

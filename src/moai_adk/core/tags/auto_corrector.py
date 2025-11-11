@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 # @CODE:TAG-AUTO-CORRECTOR-001 | @SPEC:TAG-AUTO-001
 # type: ignore
-"""TAG 오류 자동 수정 시스템
+"""TAG error automatic correction system
 
-TAG 정책 위반을 자동으로 수정하고 스마트한 TAG를 생성하는 시스템.
-Post-Tool-Use 훅과 통합하여 실시간으로 TAG 오류를 교정.
+System for automatically correcting TAG policy violations and generating smart TAGs.
+Integrates with Post-Tool-Use hooks for real-time TAG error correction.
 
-주요 기능:
-- 누락된 TAG 자동 생성
-- 중복 TAG 자동 제거
-- TAG 체인 연결 자동 복구
-- 스마트 TAG 제안 시스템
+Key Features:
+- Automatic generation of missing TAGs
+- Automatic removal of duplicate TAGs
+- Automatic TAG chain connection recovery
+- Smart TAG suggestion system
 """
 
 import re
@@ -23,15 +23,15 @@ from .policy_validator import PolicyViolation, PolicyViolationType
 
 @dataclass
 class AutoCorrection:
-    """자동 수정 정보
+    """Automatic correction information
 
     Attributes:
-        file_path: 수정할 파일 경로
-        original_content: 원본 내용
-        corrected_content: 수정된 내용
-        description: 수정 설명
-        confidence: 수정 신뢰도 (0.0-1.0)
-        requires_review: 수동 검토 필요 여부
+        file_path: Path to file to be corrected
+        original_content: Original content
+        corrected_content: Corrected content
+        description: Correction description
+        confidence: Correction confidence (0.0-1.0)
+        requires_review: Whether manual review is required
     """
     file_path: str
     original_content: str
@@ -43,15 +43,15 @@ class AutoCorrection:
 
 @dataclass
 class AutoCorrectionConfig:
-    """자동 수정 설정
+    """Automatic correction configuration
 
     Attributes:
-        enable_auto_fix: 자동 수정 활성화
-        confidence_threshold: 자동 적용할 최소 신뢰도
-        create_missing_specs: 누락된 SPEC 자동 생성
-        create_missing_tests: 누락된 TEST 자동 생성
-        remove_duplicates: 중복 TAG 자동 제거
-        backup_before_fix: 수정 전 백업 생성
+        enable_auto_fix: Enable automatic correction
+        confidence_threshold: Minimum confidence for automatic application
+        create_missing_specs: Automatically create missing SPECs
+        create_missing_tests: Automatically create missing TESTs
+        remove_duplicates: Automatically remove duplicate TAGs
+        backup_before_fix: Create backup before correction
     """
     enable_auto_fix: bool = False
     confidence_threshold: float = 0.8
@@ -62,10 +62,10 @@ class AutoCorrectionConfig:
 
 
 class TagAutoCorrector:
-    """TAG 오류 자동 수정기
+    """TAG error automatic corrector
 
-    Post-Tool-Use 훅에서 호출되어 TAG 정책 위반을 자동으로 수정.
-    스마트한 알고리즘으로 최적의 TAG를 생성하고 제안.
+    Called from Post-Tool-Use hooks to automatically correct TAG policy violations.
+    Generates and suggests optimal TAGs using smart algorithms.
 
     Usage:
         config = AutoCorrectionConfig(enable_auto_fix=True)
@@ -78,35 +78,35 @@ class TagAutoCorrector:
             corrector.apply_corrections(corrections)
     """
 
-    # TAG 정규식 패턴
+    # TAG regex pattern
     TAG_PATTERN = re.compile(r"@(SPEC|CODE|TEST|DOC):([A-Z0-9-]+-\d{3})")
     SHEBANG_PATTERN = re.compile(r"^#!.*\n")
 
     def __init__(self, config: Optional[AutoCorrectionConfig] = None):
-        """초기화
+        """Initialize corrector
 
         Args:
-            config: 자동 수정 설정 (기본: AutoCorrectionConfig())
+            config: Automatic correction configuration (default: AutoCorrectionConfig())
         """
         self.config = config or AutoCorrectionConfig()
 
     def generate_corrections(self, violations: List[PolicyViolation]) -> List[AutoCorrection]:
-        """정책 위반에 대한 자동 수정 생성
+        """Generate automatic corrections for policy violations
 
         Args:
-            violations: 정책 위반 목록
+            violations: List of policy violations
 
         Returns:
-            AutoCorrection 목록
+            List of AutoCorrection
         """
         corrections = []
 
-        # 파일별로 위반 그룹화
+        # Group violations by file
         violations_by_file = self._group_violations_by_file(violations)
 
         for file_path, file_violations in violations_by_file.items():
             try:
-                # 파일 내용 읽기
+                # Read file content
                 path = Path(file_path)
                 if not path.exists():
                     continue
@@ -114,7 +114,7 @@ class TagAutoCorrector:
                 original_content = path.read_text(encoding="utf-8", errors="ignore")
                 corrected_content = original_content
 
-                # 각 위반에 대해 수정 적용
+                # Apply correction for each violation
                 for violation in file_violations:
                     correction = self._generate_single_correction(
                         file_path, corrected_content, violation
@@ -124,19 +124,19 @@ class TagAutoCorrector:
                         corrections.append(correction)
 
             except Exception:
-                # 파일 읽기 실패 시 건너뛰기
+                # Skip on file read failure
                 continue
 
         return corrections
 
     def apply_corrections(self, corrections: List[AutoCorrection]) -> bool:
-        """자동 수정 적용
+        """Apply automatic corrections
 
         Args:
-            corrections: 적용할 수정 목록
+            corrections: List of corrections to apply
 
         Returns:
-            성공 여부
+            Success status
         """
         if not self.config.enable_auto_fix:
             return False
@@ -145,41 +145,41 @@ class TagAutoCorrector:
         for correction in corrections:
             if correction.confidence >= self.config.confidence_threshold:
                 try:
-                    # 백업 생성
+                    # Create backup
                     if self.config.backup_before_fix:
                         self._create_backup(correction.file_path, correction.original_content)
 
-                    # 수정 적용
+                    # Apply correction
                     path = Path(correction.file_path)
                     path.write_text(correction.corrected_content, encoding="utf-8")
                     success_count += 1
 
                 except Exception:
-                    # 수정 실패 시 건너뛰기
+                    # Skip on correction failure
                     continue
 
         return success_count == len(corrections)
 
     def suggest_tag_for_code_file(self, file_path: str) -> Optional[Tuple[str, float]]:
-        """코드 파일에 대한 TAG 제안
+        """Suggest TAG for code file
 
         Args:
-            file_path: 코드 파일 경로
+            file_path: Code file path
 
         Returns:
-            (TAG, 신뢰도) 튜플 또는 None
+            (TAG, confidence) tuple or None
         """
         path = Path(file_path)
 
-        # 파일 경로에서 도메인 추출
+        # Extract domain from file path
         domain = self._extract_domain_from_path(path)
         if not domain:
             return None
 
-        # 기존 TAG 확인
+        # Check existing TAGs
         existing_tags = self._find_existing_tags_in_project(domain)
 
-        # 다음 번호 계산
+        # Calculate next number
         next_number = self._calculate_next_number(existing_tags, domain)
 
         tag = f"@CODE:{domain}-{next_number:03d}"
@@ -188,13 +188,13 @@ class TagAutoCorrector:
         return tag, confidence
 
     def _group_violations_by_file(self, violations: List[PolicyViolation]) -> Dict[str, List[PolicyViolation]]:
-        """파일별로 정책 위반 그룹화
+        """Group policy violations by file
 
         Args:
-            violations: 정책 위반 목록
+            violations: List of policy violations
 
         Returns:
-            {file_path: [violations]} 딕셔너리
+            Dictionary of {file_path: [violations]}
         """
         grouped = {}
         for violation in violations:
@@ -206,15 +206,15 @@ class TagAutoCorrector:
 
     def _generate_single_correction(self, file_path: str, content: str,
                                   violation: PolicyViolation) -> Optional[AutoCorrection]:
-        """단일 정책 위반에 대한 수정 생성
+        """Generate correction for single policy violation
 
         Args:
-            file_path: 파일 경로
-            content: 현재 파일 내용
-            violation: 정책 위반
+            file_path: File path
+            content: Current file content
+            violation: Policy violation
 
         Returns:
-            AutoCorrection 또는 None
+            AutoCorrection or None
         """
         if violation.type == PolicyViolationType.MISSING_TAGS:
             return self._fix_missing_tags(file_path, content, violation)
@@ -229,35 +229,35 @@ class TagAutoCorrector:
 
     def _fix_missing_tags(self, file_path: str, content: str,
                          violation: PolicyViolation) -> Optional[AutoCorrection]:
-        """누락된 TAG 수정
+        """Fix missing TAGs
 
         Args:
-            file_path: 파일 경로
-            content: 파일 내용
-            violation: 정책 위반
+            file_path: File path
+            content: File content
+            violation: Policy violation
 
         Returns:
-            AutoCorrection 또는 None
+            AutoCorrection or None
         """
-        # 코드 파일에 대한 TAG 제안
+        # Suggest TAG for code file
         tag_suggestion = self.suggest_tag_for_code_file(file_path)
         if not tag_suggestion:
             return None
 
         tag, confidence = tag_suggestion
 
-        # TAG 삽입 위치 찾기
+        # Find TAG insertion position
         insert_position = self._find_tag_insert_position(content)
 
-        # TAG 주석 생성
+        # Generate TAG comment
         tag_comment = f"# {tag}\n"
 
-        # 내용에 TAG 삽입
+        # Insert TAG into content
         lines = content.splitlines()
         if insert_position is not None:
             lines.insert(insert_position, tag_comment.strip())
         else:
-            # 파일 시작에 삽입 (shebang 다음)
+            # Insert at file start (after shebang)
             if self.SHEBANG_PATTERN.match(content):
                 shebang_line = lines[0]
                 lines = [shebang_line, "", tag_comment.strip()] + lines[1:]
@@ -270,39 +270,39 @@ class TagAutoCorrector:
             file_path=file_path,
             original_content=content,
             corrected_content=corrected_content,
-            description=f"@TAG 자동 추가: {tag}",
+            description=f"Auto-add @TAG: {tag}",
             confidence=confidence,
             requires_review=confidence < 0.9
         )
 
     def _fix_duplicate_tags(self, file_path: str, content: str,
                            violation: PolicyViolation) -> Optional[AutoCorrection]:
-        """중복 TAG 수정
+        """Fix duplicate TAGs
 
         Args:
-            file_path: 파일 경로
-            content: 파일 내용
-            violation: 정책 위반
+            file_path: File path
+            content: File content
+            violation: Policy violation
 
         Returns:
-            AutoCorrection 또는 None
+            AutoCorrection or None
         """
         if not violation.tag:
             return None
 
-        # 중복 TAG 제거 (첫 번째만 유지)
+        # Remove duplicate TAGs (keep only first)
         tag = violation.tag
         corrected_content = content
 
-        # 정규식으로 모든 TAG 찾기
+        # Find all TAGs with regex
         pattern = re.compile(re.escape(tag))
         matches = list(pattern.finditer(content))
 
         if len(matches) <= 1:
             return None
 
-        # 첫 번째를 제외한 모든 TAG 제거
-        # 역순으로 처리하여 인덱스 변화 문제 방지
+        # Remove all TAGs except the first
+        # Process in reverse order to prevent index shift issues
         for match in reversed(matches[1:]):
             start, end = match.span()
             line_start = content.rfind('\n', 0, start) + 1
@@ -312,10 +312,10 @@ class TagAutoCorrector:
 
             line = content[line_start:line_end]
             if line.strip() == f"#{tag}":
-                # TAG만 있는 라인 제거
+                # Remove line with TAG only
                 corrected_content = corrected_content[:line_start] + corrected_content[line_end:]
             else:
-                # 라인의 일부로 있는 TAG 제거
+                # Remove TAG as part of line
                 corrected_content = (corrected_content[:start] +
                                   corrected_content[end:])
 
@@ -323,99 +323,99 @@ class TagAutoCorrector:
             file_path=file_path,
             original_content=content,
             corrected_content=corrected_content,
-            description=f"중복 TAG 제거: {tag}",
+            description=f"Remove duplicate TAG: {tag}",
             confidence=0.95,
             requires_review=False
         )
 
     def _fix_missing_spec_reference(self, file_path: str, content: str,
                                    violation: PolicyViolation) -> Optional[AutoCorrection]:
-        """누락된 SPEC 참조 수정
+        """Fix missing SPEC reference
 
         Args:
-            file_path: 파일 경로
-            content: 파일 내용
-            violation: 정책 위반
+            file_path: File path
+            content: File content
+            violation: Policy violation
 
         Returns:
-            AutoCorrection 또는 None
+            AutoCorrection or None
         """
         if not violation.tag or not self.config.create_missing_specs:
             return None
 
-        # CODE TAG에서 도메인 추출
+        # Extract domain from CODE TAG
         match = self.TAG_PATTERN.search(violation.tag)
         if not match:
             return None
 
         domain = match.group(2)
 
-        # SPEC 파일 자동 생성
+        # Automatically create SPEC file
         spec_created = self._create_spec_file(domain)
         if not spec_created:
             return None
 
-        # 기존 내용에 SPEC 참조 추가
+        # Add SPEC reference to existing content
         corrected_content = self._add_spec_reference_to_content(content, domain)
 
         return AutoCorrection(
             file_path=file_path,
             original_content=content,
             corrected_content=corrected_content,
-            description=f"SPEC 참조 추가: {domain}",
+            description=f"Add SPEC reference: {domain}",
             confidence=0.8,
             requires_review=True
         )
 
     def _fix_chain_break(self, file_path: str, content: str,
                         violation: PolicyViolation) -> Optional[AutoCorrection]:
-        """체인 끊김 수정
+        """Fix chain break
 
         Args:
-            file_path: 파일 경로
-            content: 파일 내용
-            violation: 정책 위반
+            file_path: File path
+            content: File content
+            violation: Policy violation
 
         Returns:
-            AutoCorrection 또는 None
+            AutoCorrection or None
         """
         if violation.type == PolicyViolationType.CHAIN_BREAK and violation.tag:
-            # CODE에 대한 TEST 생성
+            # Generate TEST for CODE
             if "@CODE:" in violation.tag and self.config.create_missing_tests:
                 return self._create_missing_test_file(violation.tag)
 
         return None
 
     def _find_tag_insert_position(self, content: str) -> Optional[int]:
-        """TAG 삽입 위치 찾기
+        """Find TAG insertion position
 
         Args:
-            content: 파일 내용
+            content: File content
 
         Returns:
-            라인 번호 (0-based) 또는 None
+            Line number (0-based) or None
         """
         lines = content.splitlines()
 
-        # shebang 다음 위치 찾기
+        # Find position after shebang
         for i, line in enumerate(lines):
             if line.startswith('#!'):
                 return i + 1
 
-        # docstring 다음 위치 찾기 (Python)
+        # Find position after docstring (Python)
         for i, line in enumerate(lines):
             if line.strip().startswith('"""') or line.strip().startswith("'''"):
-                # docstring 끝 찾기
+                # Find docstring end
                 quote_char = '"""' if line.strip().startswith('"""') else "'''"
                 if quote_char in line[line.find(quote_char)+3:]:
                     return i + 1
                 else:
-                    # 여러 줄 docstring
+                    # Multi-line docstring
                     for j in range(i + 1, len(lines)):
                         if quote_char in lines[j]:
                             return j + 1
 
-        # 첫 번째 빈 라인 또는 주석 다음
+        # First empty line or after comment
         for i, line in enumerate(lines):
             if not line.strip() or line.strip().startswith('#'):
                 return i
@@ -423,7 +423,7 @@ class TagAutoCorrector:
         return 0
 
     def _extract_domain_from_path(self, path: Path) -> Optional[str]:
-        """파일 경로에서 도메인 추출
+        """Extract domain from file path
 
         Extract domain from file path:
         - test files (tests/ or test_*.py) → None
@@ -432,10 +432,10 @@ class TagAutoCorrector:
         - filename (no parent dir) → filename stem (uppercase)
 
         Args:
-            path: 파일 경로
+            path: File path
 
         Returns:
-            도메인 문자열 또는 None
+            Domain string or None
         """
         parts = path.parts
         filename = path.name
@@ -464,17 +464,17 @@ class TagAutoCorrector:
         return None
 
     def _find_existing_tags_in_project(self, domain: str) -> Set[str]:
-        """프로젝트에서 기존 TAG 찾기
+        """Find existing TAGs in project
 
         Args:
-            domain: 도메인
+            domain: Domain
 
         Returns:
-            기존 TAG 번호 집합
+            Set of existing TAG numbers
         """
         existing_numbers = set()
 
-        # 프로젝트 루트에서 TAG 검색
+        # Search for TAGs from project root
         for pattern in ["**/*.py", "**/*.js", "**/*.ts", "**/*.md"]:
             for path in Path(".").glob(pattern):
                 if path.is_file():
@@ -483,7 +483,7 @@ class TagAutoCorrector:
                         matches = self.TAG_PATTERN.findall(content)
                         for tag_type, tag_domain in matches:
                             if tag_domain.startswith(domain):
-                                # 도메인-번호 형식에서 번호 추출
+                                # Extract number from domain-number format
                                 if f"{domain}-" in tag_domain:
                                     number_part = tag_domain.replace(f"{domain}-", "")
                                     if number_part.isdigit():
@@ -494,60 +494,60 @@ class TagAutoCorrector:
         return existing_numbers
 
     def _calculate_next_number(self, existing_numbers: Set[int], domain: str) -> int:
-        """다음 TAG 번호 계산
+        """Calculate next TAG number
 
         Args:
-            existing_numbers: 기존 TAG 번호 집합
-            domain: 도메인
+            existing_numbers: Set of existing TAG numbers
+            domain: Domain
 
         Returns:
-            다음 번호
+            Next number
         """
         if not existing_numbers:
             return 1
 
-        # 1부터 999까지 중 비어있는 가장 작은 번호 찾기
+        # Find smallest empty number from 1 to 999
         for i in range(1, 1000):
             if i not in existing_numbers:
                 return i
 
-        # 모두 사용된 경우 마지막 번호 + 1
+        # If all used, return last number + 1
         return max(existing_numbers) + 1
 
     def _calculate_tag_confidence(self, domain: str, file_path: str) -> float:
-        """TAG 신뢰도 계산
+        """Calculate TAG confidence
 
         Args:
-            domain: 도메인
-            file_path: 파일 경로
+            domain: Domain
+            file_path: File path
 
         Returns:
-            신뢰도 (0.0-1.0)
+            Confidence (0.0-1.0)
         """
-        confidence = 0.5  # 기본 신뢰도
+        confidence = 0.5  # Base confidence
 
         path = Path(file_path)
 
-        # 경로 기반 신뢰도 증가
+        # Increase confidence based on path
         if "src" in str(path):
             confidence += 0.2
 
-        # 도메인 일치 여부
+        # Check domain match
         if domain.lower() in path.stem.lower():
             confidence += 0.2
 
-        # 파일 구조 정확성
+        # Check file structure accuracy
         if path.suffix in ['.py', '.js', '.ts']:
             confidence += 0.1
 
         return min(confidence, 1.0)
 
     def _create_backup(self, file_path: str, content: str) -> None:
-        """백업 파일 생성
+        """Create backup file
 
         Args:
-            file_path: 원본 파일 경로
-            content: 원본 내용
+            file_path: Original file path
+            content: Original content
         """
         try:
             backup_path = Path(f"{file_path}.backup")
@@ -556,13 +556,13 @@ class TagAutoCorrector:
             pass
 
     def _create_spec_file(self, domain: str) -> bool:
-        """SPEC 파일 자동 생성
+        """Automatically create SPEC file
 
         Args:
-            domain: 도메인
+            domain: Domain
 
         Returns:
-            성공 여부
+            Success status
         """
         try:
             spec_dir = Path(f".moai/specs/SPEC-{domain}")
@@ -572,26 +572,26 @@ class TagAutoCorrector:
             if not spec_file.exists():
                 spec_content = f"""# SPEC: {domain}
 
-## 요구사항
+## Requirements
 
-- [요구사항 상세 내용]
+- [Detailed requirements]
 
-## 구현 가이드
+## Implementation Guide
 
-### TAG 연결
-- @SPEC:{domain} (현재 문서)
-- @CODE:{domain} (구현 파일)
-- @TEST:{domain} (테스트 파일)
+### TAG Links
+- @SPEC:{domain} (current document)
+- @CODE:{domain} (implementation file)
+- @TEST:{domain} (test file)
 
-### 인수 조건
-- [ ] 기능 구현 완료
-- [ ] 테스트 통과
-- [ ] 문서화 완료
+### Acceptance Criteria
+- [ ] Feature implementation complete
+- [ ] Tests passing
+- [ ] Documentation complete
 
-## 기록
+## History
 
-- 생성일: {Path('.').absolute().name}
-- 상태: 작성 중
+- Created: {Path('.').absolute().name}
+- Status: In progress
 """
                 spec_file.write_text(spec_content, encoding="utf-8")
                 return True
@@ -602,21 +602,21 @@ class TagAutoCorrector:
         return False
 
     def _add_spec_reference_to_content(self, content: str, domain: str) -> str:
-        """내용에 SPEC 참조 추가
+        """Add SPEC reference to content
 
         Args:
-            content: 원본 내용
-            domain: 도메인
+            content: Original content
+            domain: Domain
 
         Returns:
-            수정된 내용
+            Modified content
         """
         lines = content.splitlines()
 
-        # 기존 CODE TAG 찾기
+        # Find existing CODE TAG
         for i, line in enumerate(lines):
             if f"@CODE:{domain}" in line:
-                # SPEC 참조 추가
+                # Add SPEC reference
                 spec_ref = f" | SPEC: .moai/specs/SPEC-{domain}/spec.md"
                 if spec_ref not in line:
                     lines[i] = line + spec_ref
@@ -625,13 +625,13 @@ class TagAutoCorrector:
         return "\n".join(lines) + "\n"
 
     def _create_missing_test_file(self, code_tag: str) -> Optional[AutoCorrection]:
-        """누락된 테스트 파일 생성
+        """Create missing test file
 
         Args:
             code_tag: CODE TAG
 
         Returns:
-            AutoCorrection 또는 None
+            AutoCorrection or None
         """
         match = self.TAG_PATTERN.search(code_tag)
         if not match:
@@ -680,7 +680,7 @@ class Test{domain.replace('-', '')}:
                     file_path=str(test_file),
                     original_content="",
                     corrected_content=test_content,
-                    description=f"테스트 파일 생성: {domain}",
+                    description=f"Create test file: {domain}",
                     confidence=0.8,
                     requires_review=True
                 )

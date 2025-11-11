@@ -4,7 +4,7 @@
 Analyzes TAG chains across the codebase to identify broken links
 between SPEC, CODE, TEST, and DOC elements.
 
-@SPEC:DOCS-005: TAG 체인 분석 및 검증 도구
+@SPEC:DOCS-005: TAG chain analysis and validation tool
 """
 
 import json
@@ -223,7 +223,7 @@ class TagChainAnalyzer:
         return chains_by_domain
 
     def _extract_domain_from_tag(self, tag: str) -> str:
-        """Extract domain from TAG (e.g., "@SPEC:AUTH-004" -> "AUTH")."""
+        """Extract domain from TAG (e.g., "`@SPEC:AUTH-004`" -> "AUTH")."""
         # Match pattern: @TYPE:DOMAIN-NUMBER where NUMBER is exactly 3 digits
         match = re.match(r'@[A-Z]+:(.+?)-\d{3}', tag)
         if match:
