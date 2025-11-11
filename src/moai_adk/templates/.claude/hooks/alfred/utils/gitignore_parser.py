@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 # @CODE:UTIL-GITIGNORE-001 | SPEC: UTIL-GITIGNORE-001 | TEST: tests/hooks/test_gitignore_parser.py
-""".gitignore 파서 유틸리티
+""".gitignore parser utility
 
-.gitignore 파일을 파싱하여 TAG 검증에서 제외할 패턴을 추출합니다.
+Parse .gitignore files to extract patterns for exclusion from TAG validation.
 
-기능:
-- .gitignore 파일 파싱
-- 코멘트 및 빈 줄 제외
-- glob 패턴 정규화
-- 디렉토리 패턴 처리
+Features:
+- Parse .gitignore files
+- Exclude comments and empty lines
+- Normalize glob patterns
+- Handle directory patterns
 
-사용법:
+Usage:
     from .utils.gitignore_parser import load_gitignore_patterns
     patterns = load_gitignore_patterns()
 """
@@ -20,13 +20,13 @@ from typing import List, Set
 
 
 def load_gitignore_patterns(gitignore_path: str = ".gitignore") -> List[str]:
-    """.gitignore에서 패턴 로드
+    """Load patterns from .gitignore
 
     Args:
-        gitignore_path: .gitignore 파일 경로 (기본값: ".gitignore")
+        gitignore_path: Path to .gitignore file (default: ".gitignore")
 
     Returns:
-        제외 패턴 목록
+        List of exclude patterns
     """
     patterns = []
 
@@ -39,44 +39,44 @@ def load_gitignore_patterns(gitignore_path: str = ".gitignore") -> List[str]:
             for line in f:
                 line = line.strip()
 
-                # 빈 줄이나 코멘트 제외
+                # Exclude empty lines or comments
                 if not line or line.startswith('#'):
                     continue
 
-                # 부정 패턴 (!) 제외 - TAG 검증에서는 사용하지 않음
+                # Exclude negation patterns (!) - not used in TAG validation
                 if line.startswith('!'):
                     continue
 
-                # 패턴 정규화
+                # Normalize pattern
                 pattern = normalize_pattern(line)
                 if pattern:
                     patterns.append(pattern)
 
     except Exception:
-        # 파일 읽기 실패 시 빈 리스트 반환
+        # Return empty list on file read failure
         pass
 
     return patterns
 
 
 def normalize_pattern(pattern: str) -> str:
-    """패턴 정규화
+    """Normalize pattern
 
     Args:
-        pattern: 원본 패턴
+        pattern: Original pattern
 
     Returns:
-        정규화된 패턴
+        Normalized pattern
     """
-    # 앞뒤 공백 제거
+    # Remove leading and trailing whitespace
     pattern = pattern.strip()
 
-    # 절대 경로 패턴 (/ 로 시작)
+    # Absolute path pattern (starts with /)
     if pattern.startswith('/'):
-        # / 제거하고 반환
+        # Remove / and return
         return pattern[1:]
 
-    # 일반 패턴은 그대로 반환 (디렉토리 슬래시 포함)
+    # Return regular pattern as-is (including directory slashes)
     return pattern
 
 
@@ -85,56 +85,56 @@ def is_path_ignored(
     ignore_patterns: List[str],
     protected_paths: List[str] = None
 ) -> bool:
-    """파일 경로가 ignore 패턴에 매칭되는지 확인
+    """Check if file path matches ignore patterns
 
     Args:
-        file_path: 확인할 파일 경로
-        ignore_patterns: ignore 패턴 목록
-        protected_paths: 보호되어야 하는 경로 (무시하지 않음)
+        file_path: File path to check
+        ignore_patterns: List of ignore patterns
+        protected_paths: Paths that should be protected (not ignored)
 
     Returns:
-        매칭되면 True
+        True if matched
     """
     import fnmatch
 
-    # 기본 보호 경로 설정
+    # Set default protected paths
     if protected_paths is None:
         protected_paths = [".moai/specs/"]
 
-    # 보호된 경로인 경우 무시하지 않음
+    # Do not ignore if protected path
     for protected in protected_paths:
         if file_path.startswith(protected):
             return False
 
-    # 경로 정규화
+    # Normalize path
     path_parts = Path(file_path).parts
 
     for pattern in ignore_patterns:
-        # 와일드카드 디렉토리 패턴 (hooks_backup_*/, *_backup_*/)
+        # Wildcard directory patterns (hooks_backup_*/, *_backup_*/)
         if '*' in pattern and pattern.endswith('/'):
             pattern_without_slash = pattern[:-1]
-            # 각 경로 부분과 매칭
+            # Match with each path part
             for part in path_parts:
                 if fnmatch.fnmatch(part, pattern_without_slash):
                     return True
 
-        # 와일드카드 패턴 매칭 (*.ext, *backup*)
+        # Wildcard pattern matching (*.ext, *backup*)
         elif '*' in pattern:
-            # 전체 경로 매칭
+            # Match full path
             if fnmatch.fnmatch(file_path, pattern):
                 return True
-            # 각 경로 부분 매칭
+            # Match each path part
             for part in path_parts:
                 if fnmatch.fnmatch(part, pattern):
                     return True
 
-        # 디렉토리 패턴 매칭
+        # Directory pattern matching
         elif pattern.endswith('/'):
             dir_name = pattern[:-1]
             if dir_name in path_parts:
                 return True
 
-        # 단순 문자열 매칭 (파일명 또는 디렉토리명)
+        # Simple string matching (filename or directory name)
         else:
             if pattern in file_path:
                 return True
@@ -146,28 +146,28 @@ def get_combined_exclude_patterns(
     base_patterns: List[str],
     gitignore_path: str = ".gitignore"
 ) -> List[str]:
-    """기본 패턴과 .gitignore 패턴 결합
+    """Combine base patterns with .gitignore patterns
 
     Args:
-        base_patterns: 기본 제외 패턴
-        gitignore_path: .gitignore 파일 경로
+        base_patterns: Base exclude patterns
+        gitignore_path: Path to .gitignore file
 
     Returns:
-        결합된 제외 패턴 목록 (중복 제거)
+        Combined exclude pattern list (deduplicated)
     """
-    # 기본 패턴 시작
+    # Start with base patterns
     patterns_set: Set[str] = set(base_patterns)
 
-    # .gitignore 패턴 추가
+    # Add .gitignore patterns
     gitignore_patterns = load_gitignore_patterns(gitignore_path)
     patterns_set.update(gitignore_patterns)
 
-    # 정렬하여 반환
+    # Sort and return
     return sorted(list(patterns_set))
 
 
 if __name__ == "__main__":
-    # 테스트 코드
+    # Test code
     patterns = load_gitignore_patterns()
     print(f"Loaded {len(patterns)} patterns from .gitignore")
     for pattern in patterns[:10]:

@@ -59,7 +59,7 @@ def handle_user_prompt_submit(payload: HookPayload) -> HookResult:
 
             # Enhanced logging with agent information
             log_entry = f"{timestamp} | {user_prompt}"
-            if system_message and "전문가 에이전트" in system_message:
+            if system_message and "Expert Agent" in system_message:
                 log_entry += " | AGENT_DELEGATION"
             if context_files and any("skills/" in str(f) for f in context_files):
                 log_entry += " | SKILLS_JIT"
