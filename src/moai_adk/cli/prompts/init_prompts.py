@@ -85,17 +85,17 @@ def prompt_project_setup(
                 f"[cyan]📦 Project Name:[/cyan] {answers['project_name']} [dim](current directory)[/dim]"
             )
 
-        # 2. Language selection - 한국어, English, 日本語, 中文, 기타
-        console.print("\n[blue]🌐 Language Selection / 언어 선택[/blue]")
+        # 2. Language selection - Korean, English, Japanese, Chinese, Other
+        console.print("\n[blue]🌐 Language Selection[/blue]")
 
         language_choice = questionary.select(
-            "Select your conversation language / 대화 언어를 선택하세요:",
+            "Select your conversation language:",
             choices=[
                 {"name": "한국어 (Korean)", "value": "ko"},
                 {"name": "English", "value": "en"},
                 {"name": "日本語 (Japanese)", "value": "ja"},
                 {"name": "中文 (Chinese)", "value": "zh"},
-                {"name": "기타 (Other) - 직접 입력", "value": "other"}
+                {"name": "Other - Manual input", "value": "other"}
             ],
             default=initial_locale or "en"
         ).ask()
@@ -104,17 +104,17 @@ def prompt_project_setup(
             raise KeyboardInterrupt
 
         if language_choice == "other":
-            # 사용자 직접 입력 받기
+            # Prompt for manual input
             custom_lang = questionary.text(
-                "Enter your language / 언어를 입력하세요:",
-                validate=lambda text: len(text) > 0 or "Language is required / 언어가 필요합니다"
+                "Enter your language:",
+                validate=lambda text: len(text) > 0 or "Language is required"
             ).ask()
 
             if custom_lang is None:
                 raise KeyboardInterrupt
 
             answers["custom_language"] = custom_lang
-            answers["locale"] = "other"  # ISO 코드가 없을 경우
+            answers["locale"] = "other"  # When ISO code is not available
             console.print(f"[cyan]🌐 Selected Language:[/cyan] {custom_lang}")
         else:
             answers["locale"] = language_choice
@@ -126,7 +126,7 @@ def prompt_project_setup(
             }
             console.print(f"[cyan]🌐 Selected Language:[/cyan] {language_names.get(language_choice, language_choice)}")
 
-        # MCP 서버 자동 설치
+        # Auto-install MCP servers
         mcp_servers = ["context7", "playwright", "sequential-thinking"]
         answers["mcp_servers"] = mcp_servers
         console.print("\n[blue]🔧 MCP (Model Context Protocol) Configuration[/blue]")
