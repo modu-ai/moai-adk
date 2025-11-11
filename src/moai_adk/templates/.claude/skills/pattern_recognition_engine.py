@@ -2,14 +2,14 @@
 # @CODE:SKILL-RESEARCH-002 | @SPEC:SKILL-PATTERN-RECOGNITION-ENGINE-001 | @TEST: tests/skills/test_pattern_recognition_engine.py
 """Pattern Recognition Engine Skill
 
-패턴 인식을 위한 고급 엔진. 다양한 유형의 패턴을 식별하고 분석:
-1. 코드 패턴
-2. 실행 패턴
-3. 에러 패턴
-4. 성능 패턴
-5. 사용자 행동 패턴
+Advanced engine for pattern recognition. Identifies and analyzes various types of patterns:
+1. Code patterns
+2. Execution patterns
+3. Error patterns
+4. Performance patterns
+5. User behavior patterns
 
-사용법:
+Usage:
     Skill("pattern_recognition_engine")
 """
 
@@ -22,7 +22,7 @@ from collections import defaultdict, Counter
 
 
 class PatternRecognitionEngine:
-    """고급 패턴 인식 엔진"""
+    """Advanced pattern recognition engine"""
 
     def __init__(self):
         self.pattern_history = []
@@ -35,7 +35,7 @@ class PatternRecognitionEngine:
         }
 
     def load_pattern_database(self) -> Dict[str, Any]:
-        """패턴 데이터베이스 로드"""
+        """Load pattern database"""
         try:
             database_file = Path(".moai/research/patterns/pattern_database.json")
             if database_file.exists():
@@ -48,43 +48,43 @@ class PatternRecognitionEngine:
             "known_patterns": {
                 "code_patterns": {
                     "function_length": {
-                        "description": "함수 길이 패턴",
+                        "description": "Function length pattern",
                         "threshold": {"min": 1, "max": 30},
-                        "recommendation": "함수는 15-20라인 이내로 유지"
+                        "recommendation": "Keep functions within 15-20 lines"
                     },
                     "nesting_level": {
-                        "description": "중첩 레벨 패턴",
+                        "description": "Nesting level pattern",
                         "threshold": {"min": 1, "max": 3},
-                        "recommendation": "중첩 레벨은 3레벨 이내로 유지"
+                        "recommendation": "Keep nesting level within 3 levels"
                     },
                     "parameter_count": {
-                        "description": "매개변수 수 패턴",
+                        "description": "Parameter count pattern",
                         "threshold": {"min": 1, "max": 7},
-                        "recommendation": "매개변수는 5개 이하로 유지"
+                        "recommendation": "Keep parameters to 5 or fewer"
                     }
                 },
                 "error_patterns": {
                     "null_pointer": {
-                        "description": "널 포인터 패턴",
+                        "description": "Null pointer pattern",
                         "indicators": ["None", "null", "undefined"],
-                        "recommendation": "사전 유효성 검사 추가"
+                        "recommendation": "Add pre-validation checks"
                     },
                     "timeout": {
-                        "description": "타임아웃 패턴",
+                        "description": "Timeout pattern",
                         "indicators": ["timeout", "timeouterror"],
-                        "recommendation": "타임아웃 설정 최적화"
+                        "recommendation": "Optimize timeout settings"
                     }
                 },
                 "performance_patterns": {
                     "memory_growth": {
-                        "description": "메모리 증가 패턴",
+                        "description": "Memory growth pattern",
                         "indicators": ["memory", "heap", "allocation"],
-                        "recommendation": "메모리 누수 점검"
+                        "recommendation": "Check for memory leaks"
                     },
                     "cpu_intensive": {
-                        "description": "CPU 집약적 패턴",
+                        "description": "CPU intensive pattern",
                         "indicators": ["cpu", "processor", "compute"],
-                        "recommendation": "캐싱 또는 비동기화 적용"
+                        "recommendation": "Apply caching or async processing"
                     }
                 }
             },
@@ -96,7 +96,7 @@ class PatternRecognitionEngine:
         }
 
     def analyze_patterns(self, data: str, data_type: str = "general") -> Dict[str, Any]:
-        """패턴 분석 수행"""
+        """Perform pattern analysis"""
         analysis_result = {
             "data_type": data_type,
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -108,7 +108,7 @@ class PatternRecognitionEngine:
             "similar_patterns": []
         }
 
-        # 데이터 유형별 분석
+        # Analyze by data type
         if data_type == "code":
             analysis_result["patterns_detected"] = self.detect_code_patterns(data)
         elif data_type == "error":
@@ -120,31 +120,31 @@ class PatternRecognitionEngine:
         else:
             analysis_result["patterns_detected"] = self.detect_general_patterns(data)
 
-        # 패턴 통계 계산
+        # Calculate pattern statistics
         analysis_result["pattern_statistics"] = self.calculate_pattern_statistics(analysis_result["patterns_detected"])
 
-        # 신뢰도 점수 계산
+        # Calculate confidence scores
         analysis_result["confidence_scores"] = self.calculate_confidence_scores(analysis_result["patterns_detected"])
 
-        # 추천 생성
+        # Generate recommendations
         analysis_result["recommendations"] = self.generate_recommendations(analysis_result["patterns_detected"])
 
-        # 리스크 평가
+        # Assess risks
         analysis_result["risk_assessment"] = self.assess_pattern_risks(analysis_result["patterns_detected"])
 
-        # 유사 패턴 검색
+        # Find similar patterns
         analysis_result["similar_patterns"] = self.find_similar_patterns(analysis_result["patterns_detected"])
 
-        # 패턴 기록 업데이트
+        # Update pattern history
         self.update_pattern_history(analysis_result)
 
         return analysis_result
 
     def detect_code_patterns(self, code: str) -> List[Dict[str, Any]]:
-        """코드 패턴 감지"""
+        """Detect code patterns"""
         patterns = []
 
-        # 함수 길이 패턴
+        # Function length pattern
         function_pattern = re.compile(r'def\s+\w+\([^)]*\)\s*:.*?(?=def|\Z)', re.DOTALL)
         for match in function_pattern.finditer(code):
             function_content = match.group()
@@ -154,16 +154,16 @@ class PatternRecognitionEngine:
             if line_count > self.analysis_config["min_occurrences"]:
                 patterns.append({
                     "pattern_type": "code_function_length",
-                    "description": f"긴 함수 패턴 ({line_count} 라인)",
+                    "description": f"Long function pattern ({line_count} lines)",
                     "severity": "warning" if line_count < 50 else "error",
                     "details": {
                         "line_count": line_count,
                         "function_name": self.extract_function_name(match.group())
                     },
-                    "known_solution": "함수 분리 또는 리팩토링 권장"
+                    "known_solution": "Recommend function splitting or refactoring"
                 })
 
-        # 중첩 레벨 패턴
+        # Nesting level pattern
         nesting_pattern = re.compile(r'(\s+)(if|for|while|try|with)', re.MULTILINE)
         nesting_counts = []
         current_nesting = 0
@@ -178,16 +178,16 @@ class PatternRecognitionEngine:
             if current_nesting > 3:
                 patterns.append({
                     "pattern_type": "code_nesting_level",
-                    "description": f"높은 중첩 레벨 ({current_nesting} 레벨)",
+                    "description": f"High nesting level ({current_nesting} levels)",
                     "severity": "warning",
                     "details": {
                         "nesting_level": current_nesting,
                         "line_number": code[:match.start()].count('\n') + 1
                     },
-                    "known_solution": "중첩 구조 간소화"
+                    "known_solution": "Simplify nested structure"
                 })
 
-        # 매개변수 수 패턴
+        # Parameter count pattern
         param_pattern = re.compile(r'def\s+(\w+)\(([^)]+)\)')
         for match in param_pattern.finditer(code):
             params = match.group(2).split(',')
@@ -196,183 +196,183 @@ class PatternRecognitionEngine:
             if param_count > 7:
                 patterns.append({
                     "pattern_type": "code_parameter_count",
-                    "description": f"많은 매개변수 패턴 ({param_count}개)",
+                    "description": f"High parameter count pattern ({param_count} parameters)",
                     "severity": "warning",
                     "details": {
                         "param_count": param_count,
                         "function_name": match.group(1)
                     },
-                    "known_solution": "매개변수 그룹화 또는 객체 사용"
+                    "known_solution": "Group parameters or use object"
                 })
 
         return patterns
 
     def detect_error_patterns(self, error_data: str) -> List[Dict[str, Any]]:
-        """에러 패턴 감지"""
+        """Detect error patterns"""
         patterns = []
 
-        # 널 포인터 패턴
+        # Null pointer pattern
         null_pattern = re.compile(r'None|null|undefined|nullpointer|nullreference', re.IGNORECASE)
         if null_pattern.search(error_data):
             patterns.append({
                 "pattern_type": "error_null_pointer",
-                "description": "널 포인터 관련 에러 패턴",
+                "description": "Null pointer related error pattern",
                 "severity": "high",
                 "details": {
                     "indicators": null_pattern.findall(error_data)
                 },
-                "known_solution": "사전 유효성 검사 및 null 처리 로직 추가"
+                "known_solution": "Add pre-validation checks and null handling logic"
             })
 
-        # 타임아웃 패턴
+        # Timeout pattern
         timeout_pattern = re.compile(r'timeout|timeouterror|timedout', re.IGNORECASE)
         if timeout_pattern.search(error_data):
             patterns.append({
                 "pattern_type": "error_timeout",
-                "description": "타임아웃 관련 에러 패턴",
+                "description": "Timeout related error pattern",
                 "severity": "medium",
                 "details": {
                     "indicators": timeout_pattern.findall(error_data)
                 },
-                "known_solution": "타임아웃 설정 최적화 및 재시도 로직"
+                "known_solution": "Optimize timeout settings and retry logic"
             })
 
-        # 메모리 관련 패턴
+        # Memory related pattern
         memory_pattern = re.compile(r'memory|outofmemory|heap|stackoverflow', re.IGNORECASE)
         if memory_pattern.search(error_data):
             patterns.append({
                 "pattern_type": "error_memory",
-                "description": "메모리 관련 에러 패턴",
+                "description": "Memory related error pattern",
                 "severity": "high",
                 "details": {
                     "indicators": memory_pattern.findall(error_data)
                 },
-                "known_solution": "메모리 관리 개선 및 가비지 컬렉션 최적화"
+                "known_solution": "Improve memory management and garbage collection optimization"
             })
 
-        # 네트워크 관련 패턴
+        # Network related pattern
         network_pattern = re.compile(r'connection|network|timeout|unreachable', re.IGNORECASE)
         if network_pattern.search(error_data):
             patterns.append({
                 "pattern_type": "error_network",
-                "description": "네트워크 관련 에러 패턴",
+                "description": "Network related error pattern",
                 "severity": "medium",
                 "details": {
                     "indicators": network_pattern.findall(error_data)
                 },
-                "known_solution": "네트워크 예외 처리 및 재시도 메커니즘"
+                "known_solution": "Add network exception handling and retry mechanism"
             })
 
         return patterns
 
     def detect_performance_patterns(self, performance_data: str) -> List[Dict[str, Any]]:
-        """성능 패턴 감지"""
+        """Detect performance patterns"""
         patterns = []
 
-        # O(n^2) 복잡도 패턴
+        # O(n^2) complexity pattern
         quadratic_pattern = re.compile(r'nested.*loop|nested.*for|nested.*while', re.IGNORECASE)
         if quadratic_pattern.search(performance_data):
             patterns.append({
                 "pattern_type": "performance_quadratic",
-                "description": "O(n^2) 복잡도 패턴",
+                "description": "O(n^2) complexity pattern",
                 "severity": "warning",
                 "details": {
                     "indicators": quadratic_pattern.findall(performance_data)
                 },
-                "known_solution": "알고리즘 개선 또는 캐싱 적용"
+                "known_solution": "Improve algorithm or apply caching"
             })
 
-        # 메모리 누수 패턴
+        # Memory leak pattern
         leak_pattern = re.compile(r'memory.*leak|leak.*memory|growth.*memory|memory.*growth', re.IGNORECASE)
         if leak_pattern.search(performance_data):
             patterns.append({
                 "pattern_type": "performance_memory_leak",
-                "description": "메모리 누수 패턴",
+                "description": "Memory leak pattern",
                 "severity": "high",
                 "details": {
                     "indicators": leak_pattern.findall(performance_data)
                 },
-                "known_solution": "메모리 관리 점검 및 객체 생명주기 관리"
+                "known_solution": "Check memory management and object lifecycle"
             })
 
-        # CPU 집약적 패턴
+        # CPU intensive pattern
         cpu_pattern = re.compile(r'cpu.*intensive|compute.*heavy|processor.*load', re.IGNORECASE)
         if cpu_pattern.search(performance_data):
             patterns.append({
                 "pattern_type": "performance_cpu_intensive",
-                "description": "CPU 집약적 패턴",
+                "description": "CPU intensive pattern",
                 "severity": "medium",
                 "details": {
                     "indicators": cpu_pattern.findall(performance_data)
                 },
-                "known_solution": "비동기 처리 또는 분산 컴퓨팅 적용"
+                "known_solution": "Apply async processing or distributed computing"
             })
 
-        # I/O 병목 패턴
+        # I/O bottleneck pattern
         io_pattern = re.compile(r'io.*bottleneck|file.*io|disk.*io|network.*io', re.IGNORECASE)
         if io_pattern.search(performance_data):
             patterns.append({
                 "pattern_type": "performance_io_bottleneck",
-                "description": "I/O 병목 패턴",
+                "description": "I/O bottleneck pattern",
                 "severity": "medium",
                 "details": {
                     "indicators": io_pattern.findall(performance_data)
                 },
-                "known_solution": "I/O 캐싱 또는 비동기 I/O 적용"
+                "known_solution": "Apply I/O caching or async I/O"
             })
 
         return patterns
 
     def detect_execution_patterns(self, execution_data: str) -> List[Dict[str, Any]]:
-        """실행 패턴 감지"""
+        """Detect execution patterns"""
         patterns = []
 
-        # 반복 실행 패턴
+        # Repeated execution pattern
         repeated_pattern = re.compile(r'execute.*repeat|repeat.*execute|loop.*execute', re.IGNORECASE)
         if repeated_pattern.search(execution_data):
             patterns.append({
                 "pattern_type": "execution_repeated",
-                "description": "반복 실행 패턴",
+                "description": "Repeated execution pattern",
                 "severity": "info",
                 "details": {
                     "indicators": repeated_pattern.findall(execution_data)
                 },
-                "known_solution": "배치 처리 또는 캐싱 적용"
+                "known_solution": "Apply batch processing or caching"
             })
 
-        # 순차 실행 패턴
+        # Sequential execution pattern
         sequential_pattern = re.compile(r'sequential.*execute|execute.*sequential|serial.*execute', re.IGNORECASE)
         if sequential_pattern.search(execution_data):
             patterns.append({
                 "pattern_type": "execution_sequential",
-                "description": "순차 실행 패턴",
+                "description": "Sequential execution pattern",
                 "severity": "warning",
                 "details": {
                     "indicators": sequential_pattern.findall(execution_data)
                 },
-                "known_solution": "병렬 처리 또는 파이프라인 적용"
+                "known_solution": "Apply parallel processing or pipeline"
             })
 
-        # 지연 실행 패턴
+        # Delayed execution pattern
         delayed_pattern = re.compile(r'delay.*execute|execute.*delay|late.*execute', re.IGNORECASE)
         if delayed_pattern.search(execution_data):
             patterns.append({
                 "pattern_type": "execution_delayed",
-                "description": "지연 실행 패턴",
+                "description": "Delayed execution pattern",
                 "severity": "medium",
                 "details": {
                     "indicators": delayed_pattern.findall(execution_data)
                 },
-                "known_solution": "실행 계획 최적화 또는 예측 실행"
+                "known_solution": "Optimize execution plan or predictive execution"
             })
 
         return patterns
 
     def detect_general_patterns(self, data: str) -> List[Dict[str, Any]]:
-        """일반 패턴 감지"""
+        """Detect general patterns"""
         patterns = []
 
-        # 반복 키워드 패턴
+        # Keyword frequency pattern
         common_keywords = ["error", "warning", "exception", "fail", "success", "timeout"]
         keyword_counts = defaultdict(int)
 
@@ -384,35 +384,35 @@ class PatternRecognitionEngine:
         if keyword_counts:
             patterns.append({
                 "pattern_type": "keyword_frequency",
-                "description": "키워드 빈도 패턴",
+                "description": "Keyword frequency pattern",
                 "severity": "info",
                 "details": {
                     "keyword_counts": dict(keyword_counts),
                     "total_occurrences": sum(keyword_counts.values())
                 },
-                "known_solution": "키워드 분석을 통한 개선 영역 식별"
+                "known_solution": "Identify improvement areas through keyword analysis"
             })
 
-        # 길이 패턴
+        # Line length pattern
         data_lines = data.split('\n')
         avg_line_length = sum(len(line) for line in data_lines) / len(data_lines) if data_lines else 0
 
         if avg_line_length > 100:
             patterns.append({
                 "pattern_type": "line_length",
-                "description": "긴 라인 패턴",
+                "description": "Long line pattern",
                 "severity": "warning",
                 "details": {
                     "avg_line_length": avg_line_length,
                     "max_line_length": max(len(line) for line in data_lines)
                 },
-                "known_solution": "라인 길이 조정 및 코드 포맷팅"
+                "known_solution": "Adjust line length and apply code formatting"
             })
 
         return patterns
 
     def calculate_pattern_statistics(self, patterns: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """패턴 통계 계산"""
+        """Calculate pattern statistics"""
         if not patterns:
             return {"total_patterns": 0, "severity_distribution": {}}
 
@@ -434,13 +434,13 @@ class PatternRecognitionEngine:
         }
 
     def calculate_confidence_scores(self, patterns: List[Dict[str, Any]]) -> Dict[str, float]:
-        """신뢰도 점수 계산"""
+        """Calculate confidence scores"""
         confidence_scores = {}
 
         for i, pattern in enumerate(patterns):
             base_confidence = self.analysis_config["confidence_threshold"]
 
-            # 심각도에 따른 조정
+            # Adjust by severity
             severity_multiplier = {
                 "error": 1.2,
                 "high": 1.1,
@@ -452,7 +452,7 @@ class PatternRecognitionEngine:
             multiplier = severity_multiplier.get(pattern.get("severity", "info"), 1.0)
             confidence = min(1.0, base_confidence * multiplier)
 
-            # 패턴 유형에 따른 추가 조정
+            # Additional adjustment by pattern type
             type_bonus = {
                 "code_function_length": 0.1,
                 "code_nesting_level": 0.1,
@@ -469,37 +469,37 @@ class PatternRecognitionEngine:
         return confidence_scores
 
     def generate_recommendations(self, patterns: List[Dict[str, Any]]) -> List[str]:
-        """개선 추천 생성"""
+        """Generate improvement recommendations"""
         recommendations = []
 
-        # 심각도 기반 추천
+        # Severity-based recommendations
         high_severity_patterns = [p for p in patterns if p.get("severity") in ["error", "high"]]
         if high_severity_patterns:
-            recommendations.append(f"우선 해결할 심각한 패턴 {len(high_severity_patterns)}개 존재")
+            recommendations.append(f"{len(high_severity_patterns)} critical patterns need priority resolution")
 
-        # 패턴 유형 기반 추천
+        # Pattern type-based recommendations
         code_patterns = [p for p in patterns if p.get("pattern_type", "").startswith("code_")]
         if code_patterns:
-            recommendations.append("코드 스타일 및 구조 개선 필요")
+            recommendations.append("Code style and structure improvements needed")
 
         error_patterns = [p for p in patterns if p.get("pattern_type", "").startswith("error_")]
         if error_patterns:
-            recommendations.append("오류 처리 메커니즘 개선 필요")
+            recommendations.append("Error handling mechanism improvements needed")
 
         performance_patterns = [p for p in patterns if p.get("pattern_type", "").startswith("performance_")]
         if performance_patterns:
-            recommendations.append("성능 최적화 필요")
+            recommendations.append("Performance optimization needed")
 
-        # 일반 추천
+        # General recommendations
         if not patterns:
-            recommendations.append("패턴 감지되지 않음 - 현재 상태 양호")
+            recommendations.append("No patterns detected - current state is good")
         else:
-            recommendations.append("정기적인 패턴 점검 및 개선 권장")
+            recommendations.append("Regular pattern inspection and improvement recommended")
 
         return recommendations
 
     def assess_pattern_risks(self, patterns: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """패턴 리스크 평가"""
+        """Assess pattern risks"""
         risk_level = {
             "low": 0,
             "medium": 0,
@@ -533,13 +533,13 @@ class PatternRecognitionEngine:
         }
 
     def find_similar_patterns(self, patterns: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """유사 패턴 검색"""
+        """Find similar patterns"""
         similar_patterns = []
 
         for pattern in patterns:
             pattern_type = pattern.get("pattern_type")
 
-            # 기존 데이터베이스에서 유사 패턴 검색
+            # Search for similar patterns in existing database
             for known_category, known_patterns in self.pattern_database.get("known_patterns", {}).items():
                 if pattern_type in known_patterns:
                     similar_patterns.append({
@@ -552,7 +552,7 @@ class PatternRecognitionEngine:
         return similar_patterns
 
     def update_pattern_history(self, analysis_result: Dict[str, Any]) -> None:
-        """패턴 기록 업데이트"""
+        """Update pattern history"""
         self.pattern_history.append({
             "timestamp": analysis_result["timestamp"],
             "data_type": analysis_result["data_type"],
@@ -560,39 +560,39 @@ class PatternRecognitionEngine:
             "risk_level": analysis_result["risk_assessment"]["risk_level"]
         })
 
-        # 최대 100개 항목 유지
+        # Keep maximum 100 entries
         if len(self.pattern_history) > 100:
             self.pattern_history = self.pattern_history[-100:]
 
     def extract_function_name(self, function_match: str) -> str:
-        """함수 이름 추출"""
+        """Extract function name"""
         match = re.search(r'def\s+(\w+)', function_match)
         return match.group(1) if match else "unknown"
 
 
 def analyze_patterns_with_engine(data: str, data_type: str = "general") -> Dict[str, Any]:
-    """패턴 인식 엔진으로 데이터 분석"""
+    """Analyze data with pattern recognition engine"""
     engine = PatternRecognitionEngine()
     return engine.analyze_patterns(data, data_type)
 
 
 def get_pattern_database() -> Dict[str, Any]:
-    """패턴 데이터베이스 반환"""
+    """Return pattern database"""
     engine = PatternRecognitionEngine()
     return engine.pattern_database
 
 
 def get_pattern_history() -> List[Dict[str, Any]]:
-    """패턴 기록 반환"""
+    """Return pattern history"""
     engine = PatternRecognitionEngine()
     return engine.pattern_history
 
 
-# 표준 Skill 인터페이스 구현
+# Standard Skill interface implementation
 def main() -> None:
-    """Skill 메인 함수"""
+    """Skill main function"""
     try:
-        # 인자 파싱
+        # Parse arguments
         if len(sys.argv) < 2:
             print(json.dumps({
                 "error": "Usage: python3 pattern_recognition_engine.py <data> [data_type:general|code|error|performance|execution]"
@@ -602,17 +602,17 @@ def main() -> None:
         data = sys.argv[1]
         data_type = sys.argv[2] if len(sys.argv) > 2 else "general"
 
-        # 데이터 타입 검증
+        # Validate data type
         if data_type not in ["general", "code", "error", "performance", "execution"]:
             print(json.dumps({
                 "error": f"Invalid data_type: {data_type}. Must be: general, code, error, performance, execution"
             }))
             sys.exit(1)
 
-        # 패턴 인식 분석 실행
+        # Execute pattern recognition analysis
         result = analyze_patterns_with_engine(data, data_type)
 
-        # 결과 출력
+        # Output results
         print(json.dumps(result, ensure_ascii=False, indent=2))
 
     except Exception as e:
