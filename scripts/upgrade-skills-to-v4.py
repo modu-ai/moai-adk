@@ -456,9 +456,13 @@ orchestration:
         
         return current_desc
     
-    def _enhance_allowed_tools(self, current_tools: str) -> str:
+    def _enhance_allowed_tools(self, current_tools) -> str:
         """Add Context7 tools to allowed-tools"""
-        tools = current_tools.split(", ")
+        # Handle both string and list input
+        if isinstance(current_tools, list):
+            tools = current_tools
+        else:
+            tools = current_tools.split(", ")
         
         context7_tools = [
             "WebSearch",
