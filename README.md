@@ -2045,6 +2045,12 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
+## ⭐ Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=modu-ai/moai-adk&type=date&legend=top-left)](https://www.star-history.com/#modu-ai/moai-adk&Date)
+
+---
+
 ## 🙏 Acknowledgments
 
 MoAI-ADK is built on years of research into AI-assisted development, test-driven development, and software engineering best practices. Special thanks to the open-source community and all contributors.
