@@ -407,7 +407,7 @@ class TrustChecker:
         Returns:
             dict[str, str]: Selected tool dictionary
         """
-        config_path = project_path / ".moai" / "config.json"
+        config_path = project_path / ".moai" / "config" / "config.json"
         if not config_path.exists():
             return {
                 "test_framework": "pytest",

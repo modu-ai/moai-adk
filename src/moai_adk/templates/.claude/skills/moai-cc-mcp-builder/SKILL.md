@@ -501,7 +501,7 @@ class AIMCPDevelopmentLearner:
 
 ### Perfect Gentleman 스타일 통합
 - MCP 개발 가이드 한국어 완벽 지원
-- `.moai/config.json` conversation_language 자동 적용
+- `.moai/config/config.json` conversation_language 자동 적용
 - AI 생성 코드 한국어 상세 주석
 - 개발자 친화적인 한국어 설명 및 예제
 

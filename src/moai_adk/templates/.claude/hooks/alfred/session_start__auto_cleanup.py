@@ -56,7 +56,7 @@ logger = logging.getLogger(__name__)
 def load_hook_timeout() -> int:
     """Load hook timeout from config.json (default: 3000ms)"""
     try:
-        config_file = Path(".moai/config.json")
+        config_file = Path(".moai/config/config.json")
         if config_file.exists():
             with open(config_file, 'r', encoding='utf-8') as f:
                 config = json.load(f)
@@ -69,7 +69,7 @@ def load_hook_timeout() -> int:
 def get_graceful_degradation() -> bool:
     """Load graceful_degradation setting from config.json (default: true)"""
     try:
-        config_file = Path(".moai/config.json")
+        config_file = Path(".moai/config/config.json")
         if config_file.exists():
             with open(config_file, 'r', encoding='utf-8') as f:
                 config = json.load(f)
@@ -82,7 +82,7 @@ def get_graceful_degradation() -> bool:
 def load_config() -> Dict:
     """설정 파일 로드"""
     try:
-        config_file = Path(".moai/config.json")
+        config_file = Path(".moai/config/config.json")
         if config_file.exists():
             with open(config_file, 'r', encoding='utf-8') as f:
                 return json.load(f)
@@ -270,7 +270,7 @@ def generate_daily_analysis(config: Dict) -> Optional[str]:
 
         # 설정에 마지막 분석 날짜 업데이트
         if report_path:
-            config_file = Path(".moai/config.json")
+            config_file = Path(".moai/config/config.json")
             if config_file.exists():
                 with open(config_file, 'r', encoding='utf-8') as f:
                     config_data = json.load(f)
@@ -472,7 +472,7 @@ def format_analysis_report(analysis_data: Dict) -> str:
         "",
         "---",
         "*보고서는 Alfred의 SessionStart Hook으로 자동 생성되었습니다*",
-        "*분석 설정은 `.moai/config.json`의 `daily_analysis` 섹션에서 관리할 수 있습니다*"
+        "*분석 설정은 `.moai/config/config.json`의 `daily_analysis` 섹션에서 관리할 수 있습니다*"
     ])
 
     return "\n".join(report_lines)
@@ -558,7 +558,7 @@ def main():
                 cleanup_stats = cleanup_old_files(config)
 
                 # 마지막 정리 날짜 업데이트
-                config_file = Path(".moai/config.json")
+                config_file = Path(".moai/config/config.json")
                 if config_file.exists():
                     with open(config_file, 'r', encoding='utf-8') as f:
                         config_data = json.load(f)

@@ -634,7 +634,7 @@ Output language: {{CONVERSATION_LANGUAGE}}"""
 The git-manager agent will:
 
 1. **Check project mode** (Personal or Team):
-   - Read `.moai/config.json`
+   - Read `.moai/config/config.json`
    - Check `project.mode` field
    - IF mode == "Personal" → create local branch only
    - IF mode == "Team" → create branch + GitHub Issue + PR

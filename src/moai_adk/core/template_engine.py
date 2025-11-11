@@ -174,7 +174,7 @@ class TemplateEngine:
         Extract template variables from project configuration.
 
         Args:
-            config: Project configuration dictionary (from .moai/config.json)
+            config: Project configuration dictionary (from .moai/config/config.json)
 
         Returns:
             Dictionary of template variables

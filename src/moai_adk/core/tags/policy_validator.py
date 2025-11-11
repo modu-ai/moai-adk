@@ -154,7 +154,7 @@ class TagPolicyValidator:
 
         Args:
             config: 정책 검증 설정 (기본: PolicyValidationConfig())
-            project_config: 프로젝트 설정 (.moai/config.json에서 로드됨, 선택적)
+            project_config: 프로젝트 설정 (.moai/config/config.json에서 로드됨, 선택적)
         """
         self.config = config or PolicyValidationConfig()
         self.project_config = project_config or self._load_project_config()
@@ -621,12 +621,12 @@ class TagPolicyValidator:
         return "\n".join(lines)
 
     def _load_project_config(self) -> Dict:
-        """프로젝트 설정 로드 (.moai/config.json)
+        """프로젝트 설정 로드 (.moai/config/config.json)
 
         Returns:
             프로젝트 설정 딕셔너리
         """
-        config_path = Path(".moai/config.json")
+        config_path = Path(".moai/config/config.json")
         if config_path.exists():
             try:
                 return json.loads(config_path.read_text(encoding="utf-8"))

@@ -64,3 +64,9 @@ CLAUDE.md
 .netlify/
 .firebase/
 .aws/
+.mypy_cache
+.playwright-mcp
+.ruff_cache
+.uv_cache
+.uv-cache
+.venv_issue43_py313

@@ -183,7 +183,7 @@ Skill("moai-project-config-manager")
 
 | Error Code | Description | Recovery Action |
 |------------|-------------|-----------------|
-| CONFIG_NOT_FOUND | `.moai/config.json` doesn't exist | Create default config |
+| CONFIG_NOT_FOUND | `.moai/config/config.json` doesn't exist | Create default config |
 | INVALID_JSON | Configuration file has invalid JSON syntax | Attempt JSON repair or recreate |
 | VALIDATION_FAILED | Configuration fails schema validation | Fix validation errors |
 | PERMISSION_DENIED | Cannot write to configuration file | Fix file permissions |
@@ -220,7 +220,7 @@ Skill("moai-project-config-manager")
 ### Interactive Mode Workflow
 
 1. **Configuration Loading**
-   - Load existing `.moai/config.json`
+   - Load existing `.moai/config/config.json`
    - Validate JSON structure and schema
    - Display current settings
 

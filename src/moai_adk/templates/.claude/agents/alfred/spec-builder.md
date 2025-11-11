@@ -363,7 +363,7 @@ When this agent receives a request from Alfred to create a SPEC, it loads the do
 **Step 1: Required documents** (Always loaded):
 
 - `.moai/project/product.md` - Business requirements, user stories
-- `.moai/config.json` - Check project mode (Personal/Team)
+- `.moai/config/config.json` - Check project mode (Personal/Team)
 - **Skill("moai-alfred-spec-metadata-extended")** - SPEC metadata structure standard (7 required fields)
 
 **Step 2: Conditional document** (Load on demand):

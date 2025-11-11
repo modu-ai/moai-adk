@@ -150,7 +150,7 @@ rg '@SPEC:AUTH-001' -n .moai/specs/  # SPEC missing → orphan
 - No duplicate TAG IDs across project
 
 ## Inputs
-- Project configuration (`.moai/config.json`, `CLAUDE.md`)
+- Project configuration (`.moai/config/config.json`, `CLAUDE.md`)
 - Source code (`src/`, `tests/`)
 - SPEC documents (`.moai/specs/`)
 - CI/CD configuration (`.github/workflows/`)
@@ -231,7 +231,7 @@ jobs:
 - Link to relevant documentation
 
 ## Failure Modes
-- Missing standard files (`.moai/config.json`, `CLAUDE.md`)
+- Missing standard files (`.moai/config/config.json`, `CLAUDE.md`)
 - Insufficient file access permissions
 - Conflicting policies requiring coordination
 - Tool version mismatches in CI vs local

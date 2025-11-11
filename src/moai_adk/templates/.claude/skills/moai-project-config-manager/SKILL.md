@@ -25,7 +25,7 @@ allowed-tools:
 | **Skill Name** | moai-project-config-manager |
 | **Version** | 1.0.0 (2025-11-05) |
 | **Core Function** | Configuration file lifecycle management |
-| **Scope** | All `.moai/config.json` operations |
+| **Scope** | All `.moai/config/config.json` operations |
 | **Freedom** | Medium (guided automation) |
 
 ---

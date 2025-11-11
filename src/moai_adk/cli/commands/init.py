@@ -243,7 +243,7 @@ def init(
                     except Exception:
                         pass  # Ignore removal failures
 
-            config_path = project_path / ".moai" / "config.json"
+            config_path = project_path / ".moai" / "config" / "config.json"
             if config_path.exists():
                 try:
                     with open(config_path, "r", encoding="utf-8") as f:

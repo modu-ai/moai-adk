@@ -68,7 +68,7 @@ Initialize or update project metadata with **language-first architecture**. Supp
 1. **`/alfred:0-project setting`** → SETTINGS MODE
 2. **`/alfred:0-project update`** → UPDATE MODE
 3. **`/alfred:0-project`** (no args):
-   - Check if `.moai/config.json` exists
+   - Check if `.moai/config/config.json` exists
    - Exists → AUTO-DETECT MODE
    - Missing → INITIALIZATION MODE
 4. **Invalid subcommand** → Show error and exit
@@ -139,7 +139,7 @@ The project-manager agent handles all mode-specific workflows:
 - Language confirmation
 - Present modification options
 - Handle language change if requested
-- Update `.moai/config.json`
+- Update `.moai/config/config.json`
 
 **UPDATE MODE**:
 - Analyze backup and compare templates
@@ -189,7 +189,7 @@ Use AskUserQuestion in user's language:
 - ✅ Route to correct mode based on command analysis
 
 **Configuration Priority**:
-- `.moai/config.json` settings ALWAYS take priority
+- `.moai/config/config.json` settings ALWAYS take priority
 - Existing language settings respected unless user requests change
 - Fresh installs: Language selection FIRST, then all other config
 

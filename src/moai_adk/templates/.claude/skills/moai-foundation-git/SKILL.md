@@ -154,7 +154,7 @@ Options:
 
 ## Configuration
 
-**Set workflow in `.moai/config.json`**:
+**Set workflow in `.moai/config/config.json`**:
 
 ```json
 {
@@ -173,7 +173,7 @@ Options:
 
 ## Inputs
 
-- Git configuration from `.moai/config.json`
+- Git configuration from `.moai/config/config.json`
 - SPEC metadata for branch naming
 - TDD phase information (RED/GREEN/REFACTOR)
 

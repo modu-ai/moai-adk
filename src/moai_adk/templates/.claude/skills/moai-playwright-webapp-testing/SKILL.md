@@ -265,7 +265,7 @@ ai_testing_stage:
 
 ### Perfect Gentleman 스타일 통합
 - 사용자 인터페이스 한국어 완벽 지원
-- `.moai/config.json` conversation_language 자동 적용
+- `.moai/config/config.json` conversation_language 자동 적용
 - AI 테스트 결과 한국어 상세 리포트
 - 개발자 친화적인 한국어 가이드 및 예제
 

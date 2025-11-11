@@ -441,8 +441,8 @@ class RollbackManager:
         config_backup_path = rollback_dir / "config"
         config_backup_path.mkdir(parents=True, exist_ok=True)
 
-        # Backup .moai/config.json
-        config_file = self.project_root / ".moai" / "config.json"
+        # Backup .moai/config/config.json
+        config_file = self.project_root / ".moai" / "config" / "config.json"
         if config_file.exists():
             shutil.copy2(config_file, config_backup_path / "config.json")
 
@@ -660,7 +660,7 @@ class RollbackManager:
 
         try:
             # Validate configuration
-            config_file = self.project_root / ".moai" / "config.json"
+            config_file = self.project_root / ".moai" / "config" / "config.json"
             if config_file.exists():
                 try:
                     with open(config_file, 'r') as f:

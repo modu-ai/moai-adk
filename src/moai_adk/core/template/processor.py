@@ -857,11 +857,11 @@ class TemplateProcessor:
                 console.print("⚠️ .moai/ template not found")
             return
 
-        # Paths excluded from template copying (specs/, reports/, .moai/config.json)
+        # Paths excluded from template copying (specs/, reports/, .moai/config/config.json)
         template_protected_paths = [
             "specs",
             "reports",
-            ".moai/config.json",
+            ".moai/config/config.json",
         ]
 
         all_warnings = []

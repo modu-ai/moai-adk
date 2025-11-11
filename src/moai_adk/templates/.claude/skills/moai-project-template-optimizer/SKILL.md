@@ -148,7 +148,7 @@ Default examples           | Custom implementations
 ### Phase 6: Configuration Updates
 
 **Purpose**: Update project configuration with optimization flags and metadata
-**Target**: `.moai/config.json` and related configuration files
+**Target**: `.moai/config/config.json` and related configuration files
 
 **Optimization Configuration**:
 ```json

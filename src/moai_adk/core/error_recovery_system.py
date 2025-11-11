@@ -608,7 +608,7 @@ class ErrorRecoverySystem:
             latest_backup = max(backup_files, key=lambda f: f.stat().st_mtime)
 
             # Restore configuration
-            config_file = self.project_root / ".moai" / "config.json"
+            config_file = self.project_root / ".moai" / "config" / "config.json"
             import shutil
             shutil.copy2(latest_backup, config_file)
 

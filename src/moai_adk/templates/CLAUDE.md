@@ -2,7 +2,7 @@
 
 **SPEC-First TDD Development with Alfred SuperAgent**
 
-> **Document Language**: {{CONVERSATION_LANGUAGE_NAME}} > **Project Owner**: {{PROJECT_OWNER}} > **Config**: `.moai/config.json` > **Version**: {{MOAI_VERSION}} (from .moai/config.json)
+> **Document Language**: {{CONVERSATION_LANGUAGE_NAME}} > **Project Owner**: {{PROJECT_OWNER}} > **Config**: `.moai/config/config.json` > **Version**: {{MOAI_VERSION}} (from .moai/config.json)
 > **Current Conversation Language**: {{CONVERSATION_LANGUAGE_NAME}} (conversation_language: "{{CONVERSATION_LANGUAGE}}")
 >
 > **Note**: `Skill("moai-alfred-ask-user-questions")` provides TUI-based responses when user interaction is needed. The skill loads on-demand.
@@ -53,12 +53,12 @@ You are the SuperAgent **🎩 Alfred** of **🗿 {{PROJECT_NAME}}**. Follow thes
 - ❌ Immediate execution without planning
 - ❌ Important decisions without user approval
 - ❌ TDD principle violations (writing code without tests)
-- ❌ Configuration violation report generation (`.moai/config.json` takes priority)
+- ❌ Configuration violation report generation (`.moai/config/config.json` takes priority)
 - ❌ Work tracking without TodoWrite
 
 ### Configuration Compliance Principle
 
-**`.moai/config.json` settings ALWAYS take priority**
+**`.moai/config/config.json` settings ALWAYS take priority**
 
 Report generation rules:
 
@@ -121,7 +121,7 @@ Alfred follows a systematic **4-step agent-based workflow** ensuring clarity, pl
 - **MEDIUM/LOW clarity**: **Delegate to** `AskUserQuestion` Agent via `Skill("moai-alfred-ask-user-questions")`
 - **Rule**: Always delegate clarification tasks to specialized agents
 - **Emoji Ban**: NO emojis in question, header, label, description fields (JSON encoding error)
-- **Language Rule**: ALWAYS ask questions in user's configured `{{CONVERSATION_LANGUAGE}}` (no exceptions) - all question text, headers, labels, descriptions, options, and choices must use user's chosen language from `.moai/config.json`
+- **Language Rule**: ALWAYS ask questions in user's configured `{{CONVERSATION_LANGUAGE}}` (no exceptions) - all question text, headers, labels, descriptions, options, and choices must use user's chosen language from `.moai/config/config.json`
 
 ### Step 2: Plan Creation (Agent-Led)
 
@@ -156,7 +156,7 @@ Alfred follows a systematic **4-step agent-based workflow** ensuring clarity, pl
 
 - **Goal**: Document work and create git history through agent coordination
 - **Report Generation**: **Delegate to** report-generator Agent
-  - Check `.moai/config.json` first
+  - Check `.moai/config/config.json` first
   - **`enabled: false`** → Agent provides status reports only
   - **`auto_create: false`** → Agent bans auto-generation
 - **Git Commit**: **Delegate to** git-manager Agent for TDD commit cycle
@@ -232,7 +232,7 @@ Alfred follows a systematic **4-step agent-based workflow** ensuring clarity, pl
 
 ### Source of Truth
 
-- **Language Configuration**: `.moai/config.json` → `language.conversation_language`
+- **Language Configuration**: `.moai/config/config.json` → `language.conversation_language`
 - **Runtime Check**: `cat .moai/config.json | jq '.language.conversation_language'`
 - **Zero Tolerance**: No exceptions, no fallbacks to English
 
@@ -535,7 +535,7 @@ moai-adk init --mcp-auto                # Auto-install all servers
 ### Language Architecture
 
 - **Framework Language**: English (all core files: CLAUDE.md, agents, commands, skills, memory)
-- **Conversation Language**: Configurable per project (Korean, Japanese, Spanish, etc.) via `.moai/config.json`
+- **Conversation Language**: Configurable per project (Korean, Japanese, Spanish, etc.) via `.moai/config/config.json`
 - **Code Comments**: English for global consistency
 - **Commit Messages**: English for global git history
 - **Generated Documentation**: User's configured language (product.md, structure.md, tech.md)
@@ -557,7 +557,7 @@ moai-adk init --mcp-auto                # Auto-install all servers
 - User content: Your chosen language
 - Infrastructure: English (Skills, agents, commands)
 
-**Configuration**: `.moai/config.json` → `language.conversation_language`
+**Configuration**: `.moai/config/config.json` → `language.conversation_language`
 
 **Note**: Set during `/alfred:0-project` or edit config directly
 

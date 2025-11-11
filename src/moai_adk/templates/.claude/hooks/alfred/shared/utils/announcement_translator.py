@@ -101,7 +101,7 @@ HARDCODED_TRANSLATIONS = {
 
 def get_language_from_config(project_root: Path = None) -> str:
     """
-    Retrieve conversation_language from .moai/config.json
+    Retrieve conversation_language from .moai/config/config.json
 
     Args:
         project_root: Project root directory (defaults to current working directory)
@@ -235,7 +235,7 @@ def update_settings_json(announcements: List[str], project_root: Path = None):
 def auto_translate_and_update(project_root: Path = None):
     """
     Complete auto-translation workflow:
-    1. Read language from .moai/config.json
+    1. Read language from .moai/config/config.json
     2. Translate announcements to that language
     3. Update .claude/settings.json
 
@@ -265,7 +265,7 @@ if __name__ == "__main__":
     Usage:
         python announcement_translator.py [language_code]
 
-    If language_code is not provided, reads from .moai/config.json
+    If language_code is not provided, reads from .moai/config/config.json
     """
     import sys
 

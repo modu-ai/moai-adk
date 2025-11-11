@@ -63,7 +63,7 @@ logger = logging.getLogger(__name__)
 def load_hook_timeout() -> int:
     """Load hook timeout from config.json (default: 5000ms)"""
     try:
-        config_file = Path(".moai/config.json")
+        config_file = Path(".moai/config/config.json")
         if config_file.exists():
             with open(config_file, 'r', encoding='utf-8') as f:
                 config = json.load(f)
@@ -76,7 +76,7 @@ def load_hook_timeout() -> int:
 def get_graceful_degradation() -> bool:
     """Load graceful_degradation setting from config.json (default: true)"""
     try:
-        config_file = Path(".moai/config.json")
+        config_file = Path(".moai/config/config.json")
         if config_file.exists():
             with open(config_file, 'r', encoding='utf-8') as f:
                 config = json.load(f)
@@ -89,7 +89,7 @@ def get_graceful_degradation() -> bool:
 def load_config() -> Dict:
     """설정 파일 로드"""
     try:
-        config_file = Path(".moai/config.json")
+        config_file = Path(".moai/config/config.json")
         if config_file.exists():
             with open(config_file, 'r', encoding='utf-8') as f:
                 return json.load(f)

@@ -5,7 +5,7 @@
 ### Core References
 - **AskUserQuestion API**: [Claude Code Documentation - Built-in Tools]
 - **Alfred 4-Step Workflow**: `CLAUDE.md` - 4-Step Agent-Based Workflow Logic
-- **Language Configuration**: `.moai/config.json` - conversation_language
+- **Language Configuration**: `.moai/config/config.json` - conversation_language
 
 ### AskUserQuestion API Specification
 
@@ -30,7 +30,7 @@ AskUserQuestion({
 
 #### Language Enforcement
 - **CRITICAL**: All text MUST use user's configured conversation_language
-- **Source of Truth**: `.moai/config.json` → `language.conversation_language`
+- **Source of Truth**: `.moai/config/config.json` → `language.conversation_language`
 - **Runtime Check**: `cat .moai/config.json | jq '.language.conversation_language'`
 - **Zero Tolerance**: No exceptions, no fallbacks to English
 

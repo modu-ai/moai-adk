@@ -108,6 +108,36 @@ def safe_collect_version() -> str:
         return "unknown"
 
 
+def safe_collect_output_style() -> str:
+    """
+    Safely collect output style from Claude Code settings with fallback.
+
+    Returns:
+        Output style string (streaming, R2-D2, etc.)
+    """
+    try:
+        # Try to read from settings.json
+        settings_path = Path.cwd() / ".claude" / "settings.json"
+        if settings_path.exists():
+            with open(settings_path, "r", encoding="utf-8") as f:
+                settings = json.load(f)
+                output_style = settings.get("outputStyle", "unknown")
+
+                # Map common values to display names
+                style_mapping = {
+                    "streaming": "R2-D2",
+                    "explanatory": "Explanatory",
+                    "concise": "Concise",
+                    "detailed": "Detailed"
+                }
+
+                return style_mapping.get(output_style, output_style.title())
+
+        return "Unknown"
+    except Exception:
+        return "Unknown"
+
+
 def safe_check_update(current_version: str) -> tuple[bool, Optional[str]]:
     """
     Safely check for updates with fallback.
@@ -168,16 +198,20 @@ def build_statusline_data(
         duration = safe_collect_duration()
         active_task = safe_collect_alfred_task()
         version = safe_collect_version()
+        output_style = safe_collect_output_style()
         update_available, latest_version = safe_check_update(version)
 
-        # Build StatuslineData
+        # Build StatuslineData with dynamic fields
         data = StatuslineData(
             model=model,
-            duration=duration,
-            directory=directory,
             version=version,
+            output_style=output_style,    # Dynamically read from Claude Code settings
+            memory_usage="256MB",        # TODO: Get actual memory usage
+            todo_count="3 tasks",        # TODO: Get actual TODO count
             branch=branch,
             git_status=git_status,
+            duration=duration,
+            directory=directory,
             active_task=active_task,
             update_available=update_available,
             latest_version=latest_version

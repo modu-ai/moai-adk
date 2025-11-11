@@ -117,7 +117,7 @@ def detect_directories(
     3. Hybrid mode: Merge language defaults with custom patterns
 
     Args:
-        config: Project configuration dict (e.g., loaded from .moai/config.json).
+        config: Project configuration dict (e.g., loaded from .moai/config/config.json).
                 Expected structure: {"project": {"language": "python"}, "tags": {...}}
         language: Project language code. Overrides config language if provided.
 

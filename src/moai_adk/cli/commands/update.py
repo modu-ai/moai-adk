@@ -57,6 +57,7 @@ from rich.console import Console
 
 from moai_adk import __version__
 from moai_adk.core.template.processor import TemplateProcessor
+from moai_adk.core.migration import VersionMigrator
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -261,7 +262,7 @@ def _get_package_config_version() -> str:
 def _get_project_config_version(project_path: Path) -> str:
     """Get current project config.json template version.
 
-    This reads the project's .moai/config.json to determine the current
+    This reads the project's .moai/config/config.json to determine the current
     template version that the project is configured with.
 
     Args:
@@ -279,7 +280,7 @@ def _get_project_config_version(project_path: Path) -> str:
         """Check if value contains unsubstituted template placeholders."""
         return isinstance(value, str) and value.startswith("{{") and value.endswith("}}")
 
-    config_path = project_path / ".moai" / "config.json"
+    config_path = project_path / ".moai" / "config" / "config.json"
 
     if not config_path.exists():
         # No config yet, treat as version 0.0.0 (needs initial sync)
@@ -604,7 +605,7 @@ def set_optimized_false(project_path: Path) -> None:
     Args:
         project_path: Project path (absolute).
     """
-    config_path = project_path / ".moai" / "config.json"
+    config_path = project_path / ".moai" / "config" / "config.json"
     if not config_path.exists():
         return
 
@@ -619,7 +620,7 @@ def set_optimized_false(project_path: Path) -> None:
 
 def _load_existing_config(project_path: Path) -> dict[str, Any]:
     """Load existing config.json if available."""
-    config_path = project_path / ".moai" / "config.json"
+    config_path = project_path / ".moai" / "config" / "config.json"
     if config_path.exists():
         try:
             return json.loads(config_path.read_text(encoding="utf-8"))
@@ -730,7 +731,7 @@ def _preserve_project_metadata(
 
     Also updates template_version to track which template version is synchronized.
     """
-    config_path = project_path / ".moai" / "config.json"
+    config_path = project_path / ".moai" / "config" / "config.json"
     if not config_path.exists():
         return
 
@@ -939,6 +940,62 @@ def _show_timeout_error_help() -> None:
     console.print("  [cyan]moai-adk update --yes --force[/cyan]")
 
 
+def _execute_migration_if_needed(project_path: Path, yes: bool = False) -> bool:
+    """Check and execute migration if needed.
+
+    Args:
+        project_path: Project directory path
+        yes: Auto-confirm without prompting
+
+    Returns:
+        True if no migration needed or migration succeeded, False if migration failed
+    """
+    try:
+        migrator = VersionMigrator(project_path)
+
+        # Check if migration is needed
+        if not migrator.needs_migration():
+            return True
+
+        # Get migration info
+        info = migrator.get_migration_info()
+        console.print("\n[cyan]🔄 Migration Required[/cyan]")
+        console.print(f"   Current version: {info['current_version']}")
+        console.print(f"   Target version:  {info['target_version']}")
+        console.print(f"   Files to migrate: {info['file_count']}")
+        console.print()
+        console.print("   This will migrate configuration files to new locations:")
+        console.print("   • .moai/config.json → .moai/config/config.json")
+        console.print("   • .claude/statusline-config.yaml → .moai/config/statusline-config.yaml")
+        console.print()
+        console.print("   A backup will be created automatically.")
+        console.print()
+
+        # Confirm with user (unless --yes)
+        if not yes:
+            if not click.confirm("Do you want to proceed with migration?", default=True):
+                console.print("[yellow]⚠️  Migration skipped. Some features may not work correctly.[/yellow]")
+                console.print("[cyan]💡 Run 'moai-adk migrate' manually when ready[/cyan]")
+                return False
+
+        # Execute migration
+        console.print("[cyan]🚀 Starting migration...[/cyan]")
+        success = migrator.migrate_to_v024(dry_run=False, cleanup=True)
+
+        if success:
+            console.print("[green]✅ Migration completed successfully![/green]")
+            return True
+        else:
+            console.print("[red]❌ Migration failed[/red]")
+            console.print("[cyan]💡 Use 'moai-adk migrate --rollback' to restore from backup[/cyan]")
+            return False
+
+    except Exception as e:
+        console.print(f"[red]❌ Migration error: {e}[/red]")
+        logger.error(f"Migration failed: {e}", exc_info=True)
+        return False
+
+
 @click.command()
 @click.option("--path", type=click.Path(exists=True), default=".", help="Project path (default: current directory)")
 @click.option("--force", is_flag=True, help="Skip backup and force the update")
@@ -1073,10 +1130,17 @@ def update(path: str, force: bool, check: bool, templates_only: bool, yes: bool)
             console.print("[cyan]📢 Run 'moai-adk update' again to sync templates[/cyan]")
             return
 
-        # Stage 2: Config Version Comparison
-        # @CODE:UPDATE-STAGE2-010 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002: Stage 2 - Compare template versions to determine if sync needed
+        # Stage 1.5: Migration Check (NEW in v0.24.0)
+        # @CODE:UPDATE-STAGE1.5-012 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002: Auto-detect and execute migration if needed
         console.print(f"✓ Package already up to date ({current})")
 
+        # Execute migration if needed
+        if not _execute_migration_if_needed(project_path, yes):
+            console.print("[yellow]⚠️  Update continuing without migration[/yellow]")
+            console.print("[cyan]💡 Some features may require migration to work correctly[/cyan]")
+
+        # Stage 2: Config Version Comparison
+        # @CODE:UPDATE-STAGE2-010 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002: Stage 2 - Compare template versions to determine if sync needed
         try:
             package_config_version = _get_package_config_version()
             project_config_version = _get_project_config_version(project_path)
