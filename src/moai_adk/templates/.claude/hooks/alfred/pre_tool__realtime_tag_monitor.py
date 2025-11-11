@@ -26,6 +26,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
 from moai_adk.core.tags.validator import CentralValidationResult, CentralValidator, ValidationConfig
 
+from ..utils.gitignore_parser import get_combined_exclude_patterns
 from ..utils.hook_config import get_graceful_degradation, load_hook_timeout
 
 
@@ -86,6 +87,7 @@ def get_project_files_to_scan() -> List[str]:
 
     선택적 파일 디렉토리를 제외하여 성능 개선.
     필수 파일만 스캔: src/, tests/, .moai/specs/
+    .gitignore 패턴 자동 통합.
 
     Returns:
         파일 경로 목록
@@ -98,8 +100,8 @@ def get_project_files_to_scan() -> List[str]:
         ".moai/specs/**/*.md"    # SPEC 문서
     ]
 
-    # 제외 패턴 (성능 최적화를 위해 제외)
-    exclude_patterns = [
+    # 기본 제외 패턴
+    base_exclude_patterns = [
         ".claude/",
         ".moai/docs/",
         ".moai/reports/",
@@ -110,6 +112,9 @@ def get_project_files_to_scan() -> List[str]:
         "__pycache__/",
         "node_modules/"
     ]
+
+    # .gitignore 패턴과 결합 (자동 동기화)
+    exclude_patterns = get_combined_exclude_patterns(base_exclude_patterns)
 
     # 빠른 스캔을 위해 파일 수 제한 (50개 → 30개로 단축)
     max_files = 30
