@@ -230,7 +230,7 @@ uv pip install moai-adk==X.Y.Z
 
 Released with Claude Code
 
-Co-Authored-By: 🎩 Alfred@MoAI
+Co-Authored-By: Alfred@MoAI
 ```
 
 ### 언어 규칙
@@ -1414,7 +1414,7 @@ pr_body="## GitFlow Release PR
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: Alfred <alfred@mo.ai.kr>"
+Co-Authored-By: 🎩 Alfred@MoAI"
 
 # Create PR with gh CLI (Draft)
 echo "⏳ Creating GitHub PR..."
@@ -2171,7 +2171,7 @@ Release v${new_version}
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: Alfred <alfred@mo.ai.kr>"
+Co-Authored-By: 🎩 Alfred@MoAI"
 
 # Git commit 실행
 git add pyproject.toml uv.lock
@@ -2287,7 +2287,7 @@ Thanks to all contributors who made this release possible.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: Alfred <alfred@mo.ai.kr>
+Co-Authored-By: Alfred@MoAI
 ```
 
 #### 작성 팁
@@ -2361,7 +2361,7 @@ Thanks to all contributors who made this release possible.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: Alfred <alfred@mo.ai.kr>"
+Co-Authored-By: 🎩 Alfred@MoAI"
 
 # Create GitHub Release (Draft, English only)
 gh release create "v{new_version}" \
@@ -2846,7 +2846,7 @@ COMMIT_MSG="chore: Synchronize package templates and update CHANGELOG after rele
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: Alfred <alfred@mo.ai.kr>"
+Co-Authored-By: 🎩 Alfred@MoAI"
 
 # 4️⃣ 커밋 실행
 echo "💾 커밋 생성 중..."
@@ -3222,7 +3222,7 @@ git push upstream develop
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: Alfred <alfred@mo.ai.kr>
+Co-Authored-By: Alfred@MoAI
 ```
 
 ---

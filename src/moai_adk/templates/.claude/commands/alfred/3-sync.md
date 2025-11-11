@@ -487,7 +487,7 @@ Use Task tool:
 
   Generated with Claude Code
 
-  Co-Authored-By: Alfred <alfred@mo.ai.kr>
+  Co-Authored-By: 🎩 Alfred@MoAI
 
   **Important**:
   - Pass commit message in HEREDOC format
