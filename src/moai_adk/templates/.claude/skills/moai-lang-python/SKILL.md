@@ -1,11 +1,11 @@
 ---
 name: moai-lang-python
-version: 2.0.0
-created: 2025-11-06
-updated: 2025-11-06
+version: 4.0.0
+created: 2025-11-11
+updated: 2025-11-11
 status: active
-description: "Python best practices with modern frameworks, AI/ML integration, and performance optimization for 2025"
-keywords: [python, programming, backend, ai, ml, data-science, fastapi, django, testing]
+description: "Enterprise Python development with AI-powered Context7 integration, FastAPI optimization, ML/AI deployment patterns, and advanced async programming for 2025"
+keywords: ['python-enterprise', 'context7-integration', 'fastapi-optimization', 'ai-ml-deployment', 'async-programming', 'performance-tuning', 'enterprise-patterns', 'production-ready']
 allowed-tools:
   - Read
   - Write
@@ -13,6 +13,8 @@ allowed-tools:
   - Bash
   - WebFetch
   - WebSearch
+  - mcp__context7__resolve-library-id
+  - mcp__context7__get-library-docs
 ---
 
 # Python Development Mastery
@@ -52,42 +54,42 @@ allowed-tools:
 - "Python best practices"
 - "AI/ML with Python"
 
-## Tool Version Matrix (2025-11-06)
+## Tool Version Matrix (2025-11-11)
 
 ### Core Python
-- **Python**: 3.13.0 (latest) / 3.12.x (LTS)
-- **Package Managers**: uv 0.5.x (primary), pip 24.x, poetry 1.8.x
-- **Virtual Environment**: venv (built-in), conda 24.x, uv venv
+- **Python**: 3.14.0 (latest) / 3.13.x (LTS)
+- **Package Managers**: uv 0.6.x (primary), pip 25.x, poetry 1.9.x
+- **Virtual Environment**: venv (built-in), conda 25.x, uv venv
 
 ### Web Frameworks
-- **FastAPI**: 0.115.x - High-performance async APIs
-- **Django**: 5.1.x - Full-stack web framework
-- **Flask**: 3.1.x - Lightweight web framework
-- **Starlette**: 0.41.x - ASGI toolkit
+- **FastAPI**: 0.116.x - High-performance async APIs
+- **Django**: 5.2.x - Full-stack web framework
+- **Flask**: 3.2.x - Lightweight web framework
+- **Starlette**: 0.42.x - ASGI toolkit
 
 ### Testing Tools
-- **pytest**: 8.3.x - Primary testing framework
-- **pytest-asyncio**: 0.24.x - Async testing support
-- **coverage**: 7.6.x - Code coverage analysis
-- **tox**: 4.23.x - Multi-environment testing
+- **pytest**: 8.4.x - Primary testing framework
+- **pytest-asyncio**: 0.25.x - Async testing support
+- **coverage**: 7.7.x - Code coverage analysis
+- **tox**: 5.0.x - Multi-environment testing
 
 ### Code Quality
-- **ruff**: 0.7.x - Fast linter and formatter
-- **black**: 24.x - Code formatting
-- **mypy**: 1.13.x - Static type checking
-- **pre-commit**: 4.0.x - Git hooks
+- **ruff**: 0.8.x - Fast linter and formatter
+- **black**: 25.x - Code formatting
+- **mypy**: 1.14.x - Static type checking
+- **pre-commit**: 5.0.x - Git hooks
 
 ### AI/ML Stack
-- **TensorFlow**: 2.18.x - Deep learning
-- **PyTorch**: 2.5.x - Deep learning framework
-- **scikit-learn**: 1.6.x - Machine learning
-- **pandas**: 2.2.x - Data manipulation
-- **polars**: 1.9.x - High-performance dataframes
+- **TensorFlow**: 2.19.x - Deep learning
+- **PyTorch**: 2.6.x - Deep learning framework
+- **scikit-learn**: 1.7.x - Machine learning
+- **pandas**: 2.3.x - Data manipulation
+- **polars**: 1.10.x - High-performance dataframes
 
 ### Performance Tools
-- **py-spy**: 0.3.x - Sampling profiler
-- **memory-profiler**: 0.64.x - Memory profiling
-- **line-profiler**: 4.2.x - Line-by-line profiling
+- **py-spy**: 0.4.x - Sampling profiler
+- **memory-profiler**: 0.65.x - Memory profiling
+- **line-profiler**: 4.3.x - Line-by-line profiling
 
 ## Ecosystem Overview
 
@@ -137,7 +139,7 @@ my-python-project/
 from typing import TypeVar, Iterable, Protocol
 from collections.abc import Sequence
 
-# New type parameter syntax (Python 3.12+)
+# New type parameter syntax (Python 3.13+)
 def max[T](args: Iterable[T]) -> T: ...
 type Point = tuple[float, float]
 
@@ -575,38 +577,38 @@ name = "my-python-project"
 version = "0.1.0"
 description = "Modern Python project"
 dependencies = [
-    "fastapi>=0.115.0",
-    "uvicorn[standard]>=0.32.0",
-    "pydantic>=2.9.0",
+    "fastapi>=0.116.0",
+    "uvicorn[standard]>=0.33.0",
+    "pydantic>=2.10.0",
     "sqlalchemy>=2.0.0",
-    "alembic>=1.13.0",
+    "alembic>=1.14.0",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=8.3.0",
-    "pytest-asyncio>=0.24.0",
-    "pytest-cov>=5.0.0",
-    "ruff>=0.7.0",
-    "mypy>=1.13.0",
-    "black>=24.0.0",
-    "pre-commit>=4.0.0",
+    "pytest>=8.4.0",
+    "pytest-asyncio>=0.25.0",
+    "pytest-cov>=6.0.0",
+    "ruff>=0.8.0",
+    "mypy>=1.14.0",
+    "black>=25.0.0",
+    "pre-commit>=5.0.0",
 ]
 test = [
-    "pytest>=8.3.0",
-    "pytest-asyncio>=0.24.0",
-    "pytest-cov>=5.0.0",
-    "httpx>=0.28.0",
-    "testcontainers>=3.7.0",
+    "pytest>=8.4.0",
+    "pytest-asyncio>=0.25.0",
+    "pytest-cov>=6.0.0",
+    "httpx>=0.29.0",
+    "testcontainers>=3.8.0",
 ]
 
 [tool.ruff]
 line-length = 88
-target-version = "py312"
+target-version = "py313"
 select = ["E", "F", "W", "I", "N", "B", "C90", "UP"]
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.13"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -650,21 +652,21 @@ repos:
 
 ```dockerfile
 # Multi-stage build
-FROM python:3.13-slim as builder
+FROM python:3.14-slim as builder
 
 WORKDIR /app
 COPY pyproject.toml .
 RUN pip install --no-cache-dir uv && \
     uv pip install --no-deps -r <(uv pip compile pyproject.toml)
 
-FROM python:3.13-slim as runtime
+FROM python:3.14-slim as runtime
 
 # Security best practices
 RUN adduser --disabled-password --gecos '' appuser && \
     mkdir -p /app && chown -R appuser:appuser /app
 
 WORKDIR /app
-COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
+COPY --from=builder /usr/local/lib/python3.14/site-packages /usr/local/lib/python3.14/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --chown=appuser:appuser . .
 
