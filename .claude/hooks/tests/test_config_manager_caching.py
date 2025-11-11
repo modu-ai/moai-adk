@@ -42,15 +42,21 @@ class TestConfigManagerCaching(unittest.TestCase):
             json.dump(self.test_config, f)
 
         # Reset singleton state
-        if hasattr(ConfigManager, '_instance'):
-            delattr(ConfigManager, '_instance')
-        if hasattr(ConfigManager, '_lock'):
-            delattr(ConfigManager, '_lock')
+        ConfigManager._instance = None
+        # Reset global instance
+        import alfred.shared.core.config_manager as config_module
+        config_module._config_manager = None
 
     def tearDown(self):
         """Clean up test environment."""
         import shutil
         shutil.rmtree(self.test_dir, ignore_errors=True)
+
+        # Reset singleton state
+        ConfigManager._instance = None
+        # Reset global instance
+        import alfred.shared.core.config_manager as config_module
+        config_module._config_manager = None
 
     def test_ttl_cache_prevents_file_reread_within_ttl(self):
         """Test that cached config is used within TTL period (5 minutes)."""

@@ -30,36 +30,12 @@ except ImportError:
     sys.path.insert(0, str(Path(__file__).parent.parent))
     from core.spec_status_manager import SpecStatusManager
 
+from alfred.shared.core.config_manager import get_config_manager, get_config
+
 
 def load_config() -> Dict[str, Any]:
-    """Load MoAI project configuration
-
-    Returns:
-        Configuration dictionary
-    """
-    config_file = Path(".moai/config.json")
-    if config_file.exists():
-        try:
-            with open(config_file, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except Exception as e:
-            print(f"Warning: Failed to load config: {e}", file=sys.stderr)
-
-    # Default configuration
-    return {
-        "project": {
-            "name": "moai-project",
-            "mode": "personal"
-        },
-        "git_strategy": {
-            "mode": "personal"
-        },
-        "language": {
-            "conversation_language": "en"
-        }
-    }
-
-
+    """Load configuration using central ConfigManager for optimized performance."""
+    return get_config_manager().load_config()
 def update_spec_status(spec_id: str, new_status: str, reason: str = "") -> Dict[str, Any]:
     """Update SPEC status with validation and logging
 

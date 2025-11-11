@@ -86,19 +86,9 @@ def get_graceful_degradation() -> bool:
     return True
 
 
-def load_config() -> Dict:
-    """설정 파일 로드"""
-    try:
-        config_file = Path(".moai/config.json")
-        if config_file.exists():
-            with open(config_file, 'r', encoding='utf-8') as f:
-                return json.load(f)
-    except Exception:
-        pass
-
-    return {}
-
-
+def load_config() -> Dict[str, Any]:
+    """Load configuration using central ConfigManager for optimized performance."""
+    return get_config_manager().load_config()
 def cleanup_old_files(config: Dict) -> Dict[str, int]:
     """오래된 파일 정리
 
@@ -451,6 +441,8 @@ def main():
         # 타임아웃 체크
         import signal
         import time
+
+from alfred.shared.core.config_manager import get_config_manager, get_config
 
         def timeout_handler(signum, frame):
             raise TimeoutError("Hook execution timeout")

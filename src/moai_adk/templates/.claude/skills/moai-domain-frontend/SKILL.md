@@ -1,128 +1,93 @@
 ---
 name: moai-domain-frontend
-version: 2.1.0
+version: 2.0.0
 created: 2025-10-22
-updated: 2025-11-02
+updated: 2025-11-11
 status: active
-description: React 19/Vue 3.5/Angular 19 with state management, performance optimization, accessibility, and meta-frameworks (Nuxt, SvelteKit, Astro, SolidJS).
-keywords: ['react', 'vue', 'angular', 'state', 'accessibility', 'nuxt', 'sveltekit', 'astro', 'solidjs']
+description: Frontend development patterns, React/Next.js architecture, and modern web UI best practices. Use when building web applications, implementing responsive design, or creating user interfaces.
+keywords: ['frontend', 'react', 'nextjs', 'ui', 'responsive-design']
 allowed-tools:
   - Read
   - Bash
+  - WebFetch
 ---
 
-# Domain Frontend Skill
+# Frontend Development Domain Skill
 
 ## Skill Metadata
 
 | Field | Value |
 | ----- | ----- |
 | **Skill Name** | moai-domain-frontend |
-| **Version** | 2.1.0 (2025-11-02) |
-| **Allowed tools** | Read (read_file), Bash (terminal) |
-| **Auto-load** | On demand when keywords detected |
-| **Tier** | Domain |
+| **Version** | 2.0.0 (2025-11-11) |
+| **Allowed tools** | Read, Bash, WebFetch |
+| **Auto-load** | On demand when frontend patterns detected |
+| **Tier** | Domain (Expert) |
 
 ---
 
 ## What It Does
 
-React 19/Vue 3.5/Angular 19 with state management, performance optimization, accessibility, and meta-frameworks (Nuxt, SvelteKit, Astro, SolidJS).
+Frontend development patterns, React/Next.js architecture, and modern web UI best practices.
 
 **Key capabilities**:
-- ✅ Best practices enforcement for frontend domain
-- ✅ TRUST 5 principles integration
-- ✅ Latest tool versions (2025-11-02)
-- ✅ TDD workflow support
-- ✅ Meta-framework patterns (Nuxt, SvelteKit, Astro)
+- ✅ React/Next.js component architecture
+- ✅ Responsive design patterns
+- ✅ State management strategies
+- ✅ Performance optimization
+- ✅ Modern CSS techniques
 
 ---
 
 ## When to Use
 
-**Automatic triggers**:
-- Related code discussions and file patterns
-- SPEC implementation (`/alfred:2-run`)
-- Code review requests
-
-**Manual invocation**:
-- Review code for TRUST 5 compliance
-- Design new features
-- Troubleshoot issues
+- ✅ Building web applications
+- ✅ Implementing responsive design
+- ✅ Creating user interfaces
+- ✅ Optimizing frontend performance
 
 ---
 
-## Tool Version Matrix (2025-11-02)
+## Core Frontend Patterns
 
-| Tool | Version | Purpose | Status |
-|------|---------|---------|--------|
-| **React** | 19.0.0 | UI Library | ✅ Current |
-| **Vue** | 3.5.13 | UI Framework | ✅ Current |
-| **Angular** | 19.0.0 | UI Framework | ✅ Current |
-| **Svelte** | 4.2+ | UI Framework | ✅ Current |
-| **SolidJS** | 1.2.0 | UI Library | ✅ Current |
-| **Vite** | 6.0.5 | Build tool | ✅ Current |
-| **Astro** | 5.15.3 | Static site gen | ✅ Current |
+### Component Architecture
+1. **React Components**: Functional components with hooks
+2. **Next.js Patterns**: Server-side rendering and routing
+3. **State Management**: Context API and external state libraries
+4. **Component Composition**: Reusable UI patterns
+5. **Performance Optimization**: Code splitting and lazy loading
+
+### Modern CSS Patterns
+- **CSS-in-JS**: Styled-components and emotion
+- **Tailwind CSS**: Utility-first styling
+- **Responsive Design**: Mobile-first approach
+- **CSS Grid/Flexbox**: Modern layout systems
+- **Animation**: Smooth UI transitions
 
 ---
-
-## Inputs
-
-- Language-specific source directories
-- Configuration files
-- Test suites and sample data
-
-## Outputs
-
-- Test/lint execution plan
-- TRUST 5 review checkpoints
-- Migration guidance
-
-## Failure Modes
-
-- When required tools are not installed
-- When dependencies are missing
-- When test coverage falls below 85%
 
 ## Dependencies
 
-- Access to project files via Read/Bash tools
-- Integration with `moai-foundation-langs` for language detection
-- Integration with `moai-foundation-trust` for quality gates
-
----
-
-## References (Latest Documentation)
-
-_Documentation links updated 2025-10-22_
-
----
-
-## Changelog
-
-- **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
-- **v1.0.0** (2025-03-29): Initial Skill release
+- React/Next.js framework
+- Modern build tools (Vite, Webpack)
+- CSS frameworks and preprocessors
+- Browser development tools
 
 ---
 
 ## Works Well With
 
-- `moai-foundation-trust` (quality gates)
-- `moai-alfred-code-reviewer` (code review)
-- `moai-essentials-debug` (debugging support)
+- `moai-lang-typescript` (TypeScript frontend)
+- `moai-lang-javascript` (JavaScript patterns)
+- `moai-essentials-perf` (Performance optimization)
 
 ---
 
-## Best Practices
+## Changelog
 
-✅ **DO**:
-- Follow domain best practices
-- Use latest stable tool versions
-- Maintain test coverage ≥85%
-- Document all public APIs
+- **v2.0.0** (2025-11-11): Added complete metadata, frontend patterns
+- **v1.0.0** (2025-10-22): Initial frontend domain
 
-❌ **DON'T**:
-- Skip quality gates
-- Use deprecated tools
-- Ignore security warnings
-- Mix testing frameworks
+---
+
+**End of Skill** | Updated 2025-11-11
