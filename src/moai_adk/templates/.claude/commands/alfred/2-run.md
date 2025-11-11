@@ -21,8 +21,6 @@ allowed-tools:
 
 # ⚒️ MoAI-ADK Step 2: Execute Implementation (Run) - TDD Implementation
 
-> **Critical Note**: ALWAYS invoke `Skill("moai-alfred-ask-user-questions")` before using `AskUserQuestion` tool. This skill provides up-to-date best practices, field specifications, and validation rules for interactive prompts.
->
 > **Batched Design**: All AskUserQuestion calls follow batched design principles (1-4 questions per call) to minimize user interaction turns. See CLAUDE.md section "Alfred Command Completion Pattern" for details.
 
 <!-- @CODE:ALF-WORKFLOW-002:CMD-RUN -->
@@ -93,9 +91,8 @@ Execute planned tasks based on SPEC document analysis. Supports TDD implementati
 
 ### Step 1.1: Load Skills & Prepare Context
 
-1. **Load TUI Skill immediately**:
-   - Invoke: `Skill("moai-alfred-ask-user-questions")`
-   - This enables interactive menus for all user interactions
+1. **TUI System Ready**:
+   - Interactive menus are available for all user interactions
 
 2. **Read SPEC document**:
    - Read: `.moai/specs/SPEC-$ARGUMENTS/spec.md`

@@ -18,7 +18,7 @@ allowed-tools:
 
 # ⚒️ MoAI-ADK Step 0: Initialize/Update Project (Project Setup)
 
-> **Interactive Prompts**: Use `AskUserQuestion` tool (invoked via `Skill("moai-alfred-ask-user-questions")`) for TUI-based user interaction. The skill provides all question specifications and validation.
+> **Interactive Prompts**: Use `AskUserQuestion` tool for TUI-based user interaction.
 
 <!-- @CODE:ALF-WORKFLOW-000:CMD-PROJECT -->
 
