@@ -1,805 +1,520 @@
-# Skill: Nextra Architecture Expert
-
-## Metadata
-
-```yaml
-skill_id: moai-nextra-architecture
-skill_name: Nextra Architecture Expert
-version: 1.0.0
-created_date: 2025-11-11
-updated_date: 2025-11-11
-language: english
-word_count: 1800
-triggers:
-  - keywords: [nextra, nextjs documentation, theme config, mdx, static site generation]
-  - contexts: [nextra-architecture, docs-optimization, site-generation, documentation-framework]
-agents:
-  - docs-manager
-  - frontend-expert
-freedom_level: high
-context7_references:
-  - url: "https://github.com/shuding/nextra"
-    topic: "Nextra framework best practices and configuration"
-  - url: "https://vercel.com/templates/next.js"
-    topic: "Next.js deployment and optimization strategies"
-spec_reference: "@SPEC:DOCS-ARCHITECTURE-001"
-```
-
-## 📚 Content
-
-### Section 1: Nextra Framework Mastery
-
-#### Core Architecture Principles
-
-**Nextra** is a React-based static site generator built on Next.js that specializes in documentation websites. Key architectural advantages:
-
-- **Zero Config MDX**: Markdown + JSX without build configuration
-- **File-system Routing**: Automatic route generation from content structure
-- **Performance Optimization**: Automatic code splitting and prefetching
-- **Theme System**: Pluggable architecture with customizable themes
-- **i18n Support**: Built-in internationalization with automatic locale detection
-
-#### Essential Configuration Patterns
-
-**theme.config.tsx** (Core Configuration):
-```typescript
-import { DocsThemeConfig } from 'nextra-theme-docs'
-
-const config: DocsThemeConfig = {
-  logo: <span>My Documentation</span>,
-  project: {
-    link: 'https://github.com/username/project',
-  },
-  docsRepositoryBase: 'https://github.com/username/project/tree/main',
-  useNextSeoProps: true,
-  head: (
-    <>
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <meta property="og:title" content="My Documentation" />
-      <meta property="og:description" content="Comprehensive documentation" />
-    </>
-  ),
-  footer: {
-    text: 'Built with Nextra and Next.js',
-  },
-  sidebar: {
-    defaultMenuCollapseLevel: 1,
-    toggleButton: true,
-  },
-  toc: {
-    backToTop: true,
-    extraContent: (
-      <div style={{ fontSize: '0.8em', marginTop: '1em' }}>
-        Last updated: {new Date().toLocaleDateString()}
-      </div>
-    ),
-  },
-  editLink: {
-    text: 'Edit this page on GitHub →',
-  },
-  feedback: {
-    content: 'Question? Give us feedback →',
-    labels: 'feedback',
-  },
-  navigation: {
-    prev: true,
-    next: true,
-  },
-  darkMode: true,
-  themeSwitch: {
-    component: <ThemeSwitch />,
-    useOptions() {
-      return {
-        light: 'Light',
-        dark: 'Dark',
-        system: 'System',
-      }
-    },
-  },
-}
-
-export default config
-```
-
-**next.config.js** (Build Optimization):
-```javascript
-const withNextra = require('nextra')({
-  theme: 'nextra-theme-docs',
-  themeConfig: './theme.config.tsx',
-  // Performance optimizations
-  staticImage: true,
-  flexibleSearch: true,
-  defaultShowCopyCode: true,
-  readingTime: true,
-  // MDX configuration
-  mdxOptions: {
-    remarkPlugins: [
-      // Custom remark plugins
-      require('remark-gfm'),
-      require('remark-footnotes'),
-    ],
-    rehypePlugins: [
-      // Custom rehype plugins
-      require('rehype-slug'),
-      require('rehype-autolink-headings'),
-    ],
-  },
-})
-
-module.exports = withNextra({
-  // Next.js optimizations
-  experimental: {
-    appDir: true,
-    serverComponentsExternalPackages: ['nextra'],
-  },
-  images: {
-    domains: ['example.com'],
-    formats: ['image/webp', 'image/avif'],
-  },
-  // Build performance
-  swcMinify: true,
-  compiler: {
-    removeConsole: process.env.NODE_ENV === 'production',
-  },
-  // Static export configuration
-  output: 'export',
-  trailingSlash: true,
-  images: {
-    unoptimized: true,
-  },
-})
-```
-
-### Section 2: Advanced Content Architecture
-
-#### Directory Structure Design
-
-**Optimal Nextra Project Structure**:
-```
-docs/
-├── pages/                          # Route definitions (optional)
-│   ├── _meta.json                  # Site metadata
-│   └── api/                        # Custom API routes
-├── public/                         # Static assets
-│   ├── images/                     # Images and icons
-│   ├── files/                      # Downloadable files
-│   └── favicon.ico
-├── components/                     # React components
-│   ├── ui/                         # Reusable UI components
-│   ├── diagrams/                   # Custom diagram components
-│   └── interactive/                # Interactive elements
-├── lib/                           # Utility functions
-│   ├── nextra-config.ts           # Nextra configuration helpers
-│   ├── content-utils.ts           # Content processing utilities
-│   └── search-client.ts           # Custom search implementation
-├── styles/                        # Custom styles
-│   ├── globals.css               # Global CSS
-│   └── components.css            # Component-specific styles
-├── content/                       # Documentation content
-│   ├── index.mdx                 # Homepage
-│   ├── getting-started/          # Getting started guides
-│   ├── guides/                   # How-to guides
-│   ├── reference/                # API reference
-│   └── tutorials/                # Step-by-step tutorials
-├── scripts/                       # Build and utility scripts
-│   ├── build-search-index.js     # Search index generation
-│   ├── validate-links.js         # Link validation
-│   └── generate-sitemap.js       # Sitemap generation
-├── types/                        # TypeScript definitions
-│   ├── content.d.ts              # Content type definitions
-│   └── config.d.ts               # Configuration types
-├── .nextra/                      # Nextra cache (auto-generated)
-├── package.json
-├── tsconfig.json
-└── README.md
-```
-
-#### Content Type Patterns
-
-**Homepage (content/index.mdx)**:
-```mdx
 ---
-title: Welcome to My Documentation
-description: Comprehensive guide for getting started with our platform
+name: moai-nextra-architecture
+version: 4.0.0
+created: 2025-11-11
+updated: 2025-11-11
+status: active
+description: Enterprise Nextra architecture expert with Context7 integration, AI-powered documentation optimization, advanced MDX patterns, and intelligent performance monitoring for modern documentation sites
+keywords: ['nextra', 'documentation-architecture', 'mdx-optimization', 'context7-integration', 'static-site-generation', 'enterprise-docs', 'nextjs-integration', 'performance-optimization']
+allowed-tools:
+  - Read
+  - Bash
+  - Write
+  - Edit
+  - Glob
+  - Grep
+  - WebFetch
+  - mcp__context7__resolve-library-id
+  - mcp__context7__get-library-docs
 ---
 
-import { Callout } from 'nextra-theme-docs'
-import { Tabs, TabItem } from 'nextra-theme-docs'
+# Enterprise Nextra Architecture Expert v4.0.0
 
-# Welcome to My Platform
+## Skill Metadata
 
-<Callout type="info" emoji="🎯">
-  This documentation will help you get up and running in minutes.
-</Callout>
+| Field | Value |
+| ----- | ----- |
+| **Skill Name** | moai-nextra-architecture |
+| **Version** | 4.0.0 (2025-11-11) |
+| **Tier** | Enterprise Foundation |
+| **AI-Powered** | ✅ Context7 Integration, Performance Intelligence |
+| **Auto-load** | On demand when Nextra keywords detected |
 
-## Quick Start
-
-<Tabs items={['npm', 'yarn', 'pnpm']}>
-  <TabItem>
-    ```bash
-    npm install my-platform
-    ```
-  </TabItem>
-  <TabItem>
-    ```bash
-    yarn add my-platform
-    ```
-  </TabItem>
-  <TabItem>
-    ```bash
-    pnpm install my-platform
-    ```
-  </TabItem>
-</Tabs>
-
-## Why Choose Our Platform?
-
-- 🚀 **Performance**: Built with modern web technologies
-- 🎨 **Customizable**: Extensive theming and configuration options
-- 📱 **Mobile-First**: Responsive design for all devices
-- 🔍 **Searchable**: Built-in search functionality
-- ♿ **Accessible**: WCAG 2.1 compliant
-
-<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-8">
-  <div className="p-6 border rounded-lg">
-    <h3 className="text-lg font-semibold mb-2">📚 Documentation</h3>
-    <p>Comprehensive guides and API references.</p>
-  </div>
-  <div className="p-6 border rounded-lg">
-    <h3 className="text-lg font-semibold mb-2">🛠️ Tools</h3>
-    <p>Developer tools and utilities.</p>
-  </div>
-  <div className="p-6 border rounded-lg">
-    <h3 className="text-lg font-semibold mb-2">🤝 Community</h3>
-    <p>Join our community for support.</p>
-  </div>
-</div>
-```
-
-**Guide Page Pattern (content/guides/example.mdx)**:
-```mdx
----
-title: Complete Guide to Feature X
-description: Learn how to implement and customize Feature X
 ---
 
-import { Steps, Step } from 'nextra-theme-docs'
-import { FileTree } from 'nextra/components'
-
-# Feature X Guide
-
-<Callout type="warning" emoji="⚠️">
-  This feature requires version 2.0.0 or higher.
-</Callout>
-
-## Prerequisites
-
-Before you begin, ensure you have:
-
-- Node.js 18+ installed
-- Basic understanding of React
-- Project configured for TypeScript
-
-## Implementation Steps
-
-<Steps>
-  <Step>
-    ### Step 1: Installation
-
-    Install the required dependencies:
-
-    ```bash
-    npm install feature-x-package
-    ```
-
-    Update your configuration:
-
-    <FileTree>
-      <FileTree.File name="config.json" active>
-        {`{
-          "featureX": {
-            "enabled": true,
-            "options": {
-              "theme": "default"
-            }
-          }
-        }}`}
-      </FileTree.File>
-    </FileTree>
-  </Step>
-
-  <Step>
-    ### Step 2: Configuration
-
-    Configure the feature according to your needs:
-
-    ```typescript showLineNumbers
-    // src/config/featureX.ts
-    export const featureXConfig = {
-      mode: 'production',
-      plugins: ['analytics', 'seo'],
-      theme: {
-        primary: '#0070f3',
-        secondary: '#6f42c1'
-      }
-    }
-    ```
-
-    <Callout type="tip" emoji="💡">
-      You can customize the theme using CSS variables.
-    </Callout>
-  </Step>
-
-  <Step>
-    ### Step 3: Usage
-
-    Now you can use the feature in your application:
-
-    ```tsx
-    import { FeatureX } from 'feature-x-package'
-
-    export default function MyComponent() {
-      return (
-        <FeatureX
-          config={featureXConfig}
-          onReady={() => console.log('Ready!')}
-        />
-      )
-    }
-    ```
-  </Step>
-</Steps>
-
-## Advanced Configuration
-
-For more advanced use cases, refer to the [API Reference](/reference/feature-x).
-```
-
-### Section 3: Performance Optimization
-
-#### Build Performance
-
-**Optimizing Build Speed**:
-```typescript
-// scripts/optimize-build.js
-const { execSync } = require('child_process')
-const fs = require('fs')
-
-// Pre-build optimizations
-function optimizeBuild() {
-  // Clear Next.js cache
-  execSync('rm -rf .next', { stdio: 'inherit' })
-
-  // Generate search index incrementally
-  execSync('node scripts/build-search-index.js --incremental', {
-    stdio: 'inherit'
-  })
-
-  // Optimize images
-  execSync('node scripts/optimize-images.js', { stdio: 'inherit' })
-}
-
-// Post-build optimizations
-function optimizeOutput() {
-  // Generate sitemap
-  execSync('node scripts/generate-sitemap.js', { stdio: 'inherit' })
-
-  // Compress static assets
-  execSync('gzip -k -r out/', { stdio: 'inherit' })
-
-  // Generate Lighthouse report
-  execSync('lighthouse http://localhost:3000 --output=json --output-path=./lighthouse-report.json', {
-    stdio: 'inherit'
-  })
-}
-```
-
-**Search Optimization**:
-```typescript
-// lib/search-client.ts
-import type { PagefindResult } from './types'
-
-export class SearchClient {
-  private searchIndex: Map<string, PagefindResult> = new Map()
-
-  async initialize() {
-    // Load pre-built search index
-    const response = await fetch('/search-index.json')
-    const index = await response.json()
-
-    this.searchIndex = new Map(
-      index.map((item: PagefindResult) => [item.url, item])
-    )
-  }
-
-  async search(query: string, limit = 10) {
-    const results = Array.from(this.searchIndex.values())
-      .filter(item =>
-        item.title.toLowerCase().includes(query.toLowerCase()) ||
-        item.content.toLowerCase().includes(query.toLowerCase())
-      )
-      .slice(0, limit)
-
-    return {
-      results,
-      total: results.length
-    }
-  }
-}
-```
-
-#### Runtime Performance
-
-**Client-Side Optimizations**:
-```typescript
-// lib/performance.ts
-export class PerformanceOptimizer {
-  // Lazy load images
-  static optimizeImages() {
-    if ('IntersectionObserver' in window) {
-      const imageObserver = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            const img = entry.target as HTMLImageElement
-            if (img.dataset.src) {
-              img.src = img.dataset.src
-              imageObserver.unobserve(img)
-            }
-          }
-        })
-      })
-
-      document.querySelectorAll('img[data-src]').forEach(img => {
-        imageObserver.observe(img)
-      })
-    }
-  }
-
-  // Prefetch critical resources
-  static prefetchCriticalResources() {
-    const criticalPaths = ['/api/content', '/search-index.json']
-
-    criticalPaths.forEach(path => {
-      const link = document.createElement('link')
-      link.rel = 'prefetch'
-      link.href = path
-      document.head.appendChild(link)
-    })
-  }
-
-  // Optimize scroll performance
-  static optimizeScrolling() {
-    let ticking = false
-
-    window.addEventListener('scroll', () => {
-      if (!ticking) {
-        requestAnimationFrame(() => {
-          // Update scroll-based elements
-          this.updateScrollPosition()
-          ticking = false
-        })
-        ticking = true
-      }
-    })
-  }
-}
-```
-
-### Section 4: Mobile Optimization
-
-#### Responsive Design Patterns
-
-**Mobile-First Layout Components**:
-```tsx
-// components/ui/MobileLayout.tsx
-import { useState } from 'react'
-import { useRouter } from 'next/router'
-
-export function MobileLayout({ children }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const router = useRouter()
-
-  return (
-    <div className="min-h-screen bg-background">
-      {/* Mobile Header */}
-      <header className="sticky top-0 z-50 border-b bg-background md:hidden">
-        <div className="flex h-14 items-center px-4">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="mr-4 p-2 rounded-md hover:bg-accent"
-            aria-label="Open sidebar"
-          >
-            <svg className="h-5 w-5" fill="none" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-          <h1 className="text-lg font-semibold">Documentation</h1>
-        </div>
-      </header>
-
-      {/* Mobile Sidebar Overlay */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <div
-            className="fixed inset-0 bg-black/50"
-            onClick={() => setSidebarOpen(false)}
-          />
-          <div className="fixed left-0 top-0 h-full w-64 bg-background border-r">
-            {/* Sidebar content here */}
-          </div>
-        </div>
-      )}
-
-      {/* Main Content */}
-      <main className="flex-1 md:flex">
-        {/* Desktop Sidebar (always visible) */}
-        <aside className="hidden md:block w-64 border-r">
-          {/* Desktop sidebar content */}
-        </aside>
-
-        {/* Content Area */}
-        <div className="flex-1 px-4 py-6 md:px-8 lg:px-12">
-          <div className="max-w-4xl mx-auto">
-            {children}
-          </div>
-        </div>
-      </main>
-    </div>
-  )
-}
-```
-
-**Touch-Friendly Interactions**:
-```css
-/* styles/mobile.css}
-@media (max-width: 768px) {
-  /* Larger tap targets */
-  button, a, input, select, textarea {
-    min-height: 44px;
-    min-width: 44px;
-    padding: 12px;
-  }
-
-  /* Improved spacing */
-  .mobile-spacing > * + * {
-    margin-top: 1.5rem;
-  }
-
-  /* Touch-friendly navigation */
-  .mobile-nav {
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  /* Readable font sizes */
-  body {
-    font-size: 16px;
-    line-height: 1.6;
-  }
-
-  /* Improved readability */
-  .content {
-    max-width: 100%;
-    padding: 0 1rem;
-  }
-
-  /* Horizontal scroll prevention */
-  .no-overflow {
-    overflow-x: hidden;
-  }
-}
-```
-
-### Section 5: Accessibility Implementation
-
-#### WCAG 2.1 Compliance
-
-**Semantic HTML Structure**:
-```tsx
-// components/ui/AccessibleContent.tsx
-export function AccessibleContent({ title, children }) {
-  return (
-    <main id="main-content" role="main" aria-labelledby="page-title">
-      <header>
-        <h1 id="page-title" className="sr-only">
-          {title}
-        </h1>
-      </header>
-
-      <div className="prose prose-lg max-w-none">
-        {children}
-      </div>
-
-      {/* Skip to main content link */}
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4
-                   bg-primary text-primary-foreground px-4 py-2 rounded-md"
-      >
-        Skip to main content
-      </a>
-    </main>
-  )
-}
-```
-
-**Keyboard Navigation**:
-```tsx
-// components/ui/KeyboardNavigation.tsx
-import { useEffect } from 'react'
-
-export function KeyboardNavigation() {
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      // Focus trap for modals
-      if (event.key === 'Tab') {
-        const focusableElements = document.querySelectorAll(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        )
-        const firstElement = focusableElements[0] as HTMLElement
-        const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement
-
-        if (event.shiftKey && document.activeElement === firstElement) {
-          event.preventDefault()
-          lastElement.focus()
-        } else if (!event.shiftKey && document.activeElement === lastElement) {
-          event.preventDefault()
-          firstElement.focus()
-        }
-      }
-
-      // Escape key to close modals
-      if (event.key === 'Escape') {
-        const modal = document.querySelector('[role="dialog"]')
-        if (modal) {
-          const closeButton = modal.querySelector('button[aria-label*="Close"]')
-          closeButton?.dispatchEvent(new MouseEvent('click'))
-        }
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [])
-
-  return null
-}
-```
-
-### Section 6: SEO Optimization
-
-#### Meta Tag Configuration
-
-**Dynamic SEO Implementation**:
-```typescript
-// lib/seo.ts
-import type { Metadata } from 'next'
-
-export function generateSEOMetadata({
-  title,
-  description,
-  path = '',
-  image,
-  keywords = [],
-  publishedTime,
-  modifiedTime
-}: {
-  title: string
-  description: string
-  path?: string
-  image?: string
-  keywords?: string[]
-  publishedTime?: string
-  modifiedTime?: string
-}): Metadata {
-  const baseUrl = 'https://docs.example.com'
-  const url = `${baseUrl}${path}`
-
-  return {
-    title,
-    description,
-    keywords: keywords.join(', '),
-    authors: [{ name: 'Documentation Team' }],
-    creator: 'Documentation Platform',
-    publisher: 'Your Company',
-
-    openGraph: {
-      type: 'article',
-      locale: 'en_US',
-      url,
-      title,
-      description,
-      siteName: 'Documentation',
-      images: image ? [{
-        url: image,
-        width: 1200,
-        height: 630,
-        alt: title,
-      }] : [],
-    },
-
-    twitter: {
-      card: 'summary_large_image',
-      title,
-      description,
-      images: image ? [image] : [],
-    },
-
-    alternates: {
-      canonical: url,
-      languages: {
-        'en': `${baseUrl}/en${path}`,
-        'ko': `${baseUrl}/ko${path}`,
-        'ja': `${baseUrl}/ja${path}`,
-      },
-    },
-
-    robots: {
-      index: true,
-      follow: true,
-      googleBot: {
-        index: true,
-        follow: true,
-        'max-video-preview': -1,
-        'max-image-preview': 'large',
-        'max-snippet': -1,
-      },
-    },
-  }
-}
-```
-
-## 🎯 Usage
-
-### From Agents
-
+## What It Does
+
+Enterprise Nextra architecture expert with Context7 integration, AI-powered documentation optimization, advanced MDX patterns, and intelligent performance monitoring for modern documentation sites.
+
+**Revolutionary v4.0.0 capabilities**:
+- 🤖 **AI-Powered Documentation Architecture** using Context7 MCP for latest Nextra features
+- 📊 **Intelligent Performance Optimization** with real-time monitoring and automated tuning
+- 🚀 **Advanced MDX Pattern Recognition** with intelligent component suggestions
+- 🔗 **Enterprise-Scale Architecture** with multi-site management and deployment strategies
+- 📈 **Predictive Performance Analytics** with ML-based optimization recommendations
+- 🔍 **Real-time Content Intelligence** with automated quality assessment
+- 🌐 **Multi-Language Documentation** with intelligent translation and localization
+- 🎯 **Intelligent Search Optimization** with AI-powered content discovery
+- 📱 **Cross-Platform Publishing** with automated CI/CD integration
+- ⚡ **Zero-Configuration Templates** with intelligent project scaffolding
+
+---
+
+## When to Use
+
+**Automatic triggers**:
+- Documentation architecture discussions
+- `/alfred:1-plan` with documentation requirements
+- Performance optimization requests for documentation sites
+- Static site generation strategy planning
+- MDX content optimization needs
+
+**Manual invocation**:
+- Designing enterprise documentation architecture
+- Optimizing Nextra performance and SEO
+- Implementing advanced MDX patterns
+- Planning multi-language documentation sites
+- Setting up intelligent documentation search
+- Creating automated documentation workflows
+
+---
+
+## Enterprise Nextra Architecture v4.0
+
+### AI-Enhanced Framework Analysis
+
+#### Core Nextra Intelligence with Context7
 ```python
-# docs-manager agent
-Skill("moai-nextra-architecture")
-
-# Analyze project structure
-architecture = NextraArchitecture()
-structure_analysis = architecture.analyze_source_project("./src")
-
-# Design optimal Nextra configuration
-config = architecture.design_theme_config(structure_analysis)
-directory_structure = architecture.design_content_structure(structure_analysis)
-
-# Generate configuration files
-architecture.generate_theme_config(config)
-architecture.create_directory_structure(directory_structure)
+# AI-powered Nextra architecture analysis with Context7 integration
+class EnterpriseNextraArchitect:
+    def __init__(self):
+        self.context7_client = Context7Client()
+        self.architecture_analyzer = ArchitectureAnalyzer()
+        self.performance_optimizer = PerformanceOptimizer()
+    
+    async def analyze_documentation_architecture(self, 
+                                                project_config: ProjectConfig) -> ArchitectureAnalysis:
+        """Analyze and optimize documentation architecture using AI."""
+        
+        # Get latest Nextra best practices via Context7
+        nextra_docs = await self.context7_client.get_library_docs(
+            context7_library_id="/shuding/nextra",
+            topic="architecture best practices performance optimization 2025",
+            tokens=4000
+        )
+        
+        # Analyze current architecture
+        current_analysis = self.architecture_analyzer.analyze_setup(
+            project_config,
+            nextra_docs
+        )
+        
+        # Generate optimization recommendations
+        optimizations = self.performance_optimizer.generate_recommendations(
+            current_analysis,
+            nextra_docs
+        )
+        
+        return ArchitectureAnalysis(
+            current_setup=current_analysis,
+            optimization_opportunities=optimizations,
+            performance_benchmarks=self._benchmark_performance(current_analysis),
+            seo_recommendations=self._analyze_seo_opportunities(current_analysis),
+            deployment_strategy=self._optimize_deployment_pattern(current_analysis),
+            monitoring_setup=self._design_monitoring_system(current_analysis)
+        )
+    
+    async def generate_intelligent_configuration(self, 
+                                                requirements: DocumentationRequirements) -> NextraConfig:
+        """Generate optimized Nextra configuration with AI assistance."""
+        
+        # Get latest configuration patterns
+        config_docs = await self.context7_client.get_library_docs(
+            context7_library_id="/shuding/nextra",
+            topic="theme configuration optimization advanced patterns",
+            tokens=3000
+        )
+        
+        # Analyze requirements
+        req_analysis = self._analyze_requirements(requirements)
+        
+        # Generate intelligent configuration
+        return NextraConfig(
+            next_config=self._generate_nextjs_config(req_analysis, config_docs),
+            theme_config=self._generate_theme_config(req_analysis, config_docs),
+            meta_config=self._optimize_meta_configuration(req_analysis, config_docs),
+            performance_config=self._configure_performance_optimizations(req_analysis),
+            seo_config=self._setup_seo_optimizations(req_analysis),
+            deployment_config=self._configure_deployment_settings(req_analysis)
+        )
 ```
 
-### Integration Examples
+### Advanced Performance Optimization
 
-```bash
-# Initialize Nextra documentation project
-npx nextra-init docs --theme docs --typescript
-
-# Generate optimized configuration
-node scripts/generate-nextra-config.js --source ./src --output ./docs
-
-# Build and validate documentation
-npm run build:docs
-npm run validate:docs
-npm run test:docs
+#### Real-Time Performance Intelligence
+```python
+# AI-powered performance monitoring and optimization
+class NextraPerformanceIntelligence:
+    def __init__(self):
+        self.context7_client = Context7Client()
+        self.performance_monitor = PerformanceMonitor()
+        self.optimization_engine = OptimizationEngine()
+    
+    async def optimize_site_performance(self, 
+                                      site_config: SiteConfiguration) -> OptimizationPlan:
+        """Optimize Nextra site performance with AI-driven insights."""
+        
+        # Get latest performance optimization strategies
+        perf_docs = await self.context7_client.get_library_docs(
+            context7_library_id="/shuding/nextra",
+            topic="static site generation performance optimization caching",
+            tokens=3500
+        )
+        
+        # Analyze current performance
+        current_performance = self.performance_monitor.analyze_site(site_config)
+        
+        # Identify optimization opportunities
+        opportunities = self.optimization_engine.identify_opportunities(
+            current_performance,
+            perf_docs
+        )
+        
+        return OptimizationPlan(
+            build_optimizations=opportunities.build_level,
+            runtime_optimizations=opportunities.runtime_level,
+            content_optimizations=opportunities.content_level,
+            infrastructure_optimizations=opportunities.infrastructure_level,
+            expected_improvements=self._calculate_performance_gains(opportunities),
+            implementation_priority=self._prioritize_optimizations(opportunities)
+        )
+    
+    def setup_intelligent_monitoring(self, site_url: str) -> MonitoringSetup:
+        """Setup comprehensive monitoring with AI-powered alerting."""
+        return MonitoringSetup(
+            core_web_vitals=[
+                "Largest Contentful Paint (LCP)",
+                "First Input Delay (FID)",
+                "Cumulative Layout Shift (CLS)",
+                "Time to First Byte (TTFB)"
+            ],
+            custom_metrics=[
+                "Page load time by content type",
+                "Search query performance",
+                "User engagement patterns",
+                "Content effectiveness scores"
+            ],
+            ai_alerts=[
+                "Performance regression detection",
+                "SEO ranking changes",
+                "User experience degradation",
+                "Content quality decline"
+            ],
+            dashboard_config=self._create_performance_dashboard(),
+            alert_configuration=self._setup_intelligent_alerts()
+        )
 ```
 
-## 📚 Reference Materials
+### Advanced MDX Pattern Intelligence
 
-- [Nextra Official Documentation](https://nextra.site/)
-- [Next.js Performance Optimization](https://nextjs.org/docs/advanced-features/measuring-performance)
-- [MDN Web Accessibility](https://developer.mozilla.org/en-US/docs/Web/Accessibility)
-- [Google SEO Starter Guide](https://developers.google.com/search/docs/fundamentals/seo-starter-guide)
+#### AI-Powered Content Optimization
+```python
+# Intelligent MDX pattern recognition and optimization
+class MDXPatternIntelligence:
+    def __init__(self):
+        self.context7_client = Context7Client()
+        self.pattern_analyzer = PatternAnalyzer()
+        self.content_optimizer = ContentOptimizer()
+    
+    async def analyze_and_optimize_content(self, 
+                                          content: List[MDXContent]) -> ContentOptimization:
+        """Analyze MDX content and provide intelligent optimization."""
+        
+        # Get latest MDX best practices
+        mdx_docs = await self.context7_client.get_library_docs(
+            context7_library_id="/shuding/nextra",
+            topic="MDX optimization patterns component best practices",
+            tokens=3000
+        )
+        
+        # Analyze content patterns
+        pattern_analysis = self.pattern_analyzer.analyze_content(content)
+        
+        # Generate optimization recommendations
+        optimizations = self.content_optimizer.generate_recommendations(
+            pattern_analysis,
+            mdx_docs
+        )
+        
+        return ContentOptimization(
+            structure_improvements=optimizations.structure_changes,
+            performance_optimizations=optimizations.performance_improvements,
+            seo_enhancements=optimizations.seo_improvements,
+            accessibility_improvements=optimizations.accessibility_enhancements,
+            component_suggestions=self._suggest_optimal_components(pattern_analysis),
+            content_recommendations=self._recommend_content_improvements(pattern_analysis)
+        )
+    
+    def generate_intelligent_components(self, 
+                                       content_type: str,
+                                       requirements: ComponentRequirements) -> ComponentLibrary:
+        """Generate optimized MDX components with AI assistance."""
+        return ComponentLibrary(
+            interactive_components=[
+                InteractiveDemo(
+                    name="Code Playground",
+                    description="Live code editing with preview",
+                    props=["language", "initialCode", "theme", "showLineNumbers"]
+                ),
+                InteractiveDemo(
+                    name="API Explorer",
+                    description="Interactive API documentation explorer",
+                    props=["endpoints", "auth", "baseUrl", "theme"]
+                )
+            ],
+            visualization_components=[
+                VisualizationComponent(
+                    name="Architecture Diagram",
+                    description="Interactive system architecture visualization",
+                    props=["nodes", "edges", "layout", "interactive"]
+                ),
+                VisualizationComponent(
+                    name="Performance Metrics",
+                    description="Real-time performance data visualization",
+                    props=["metrics", "timeRange", "chartType", "refreshInterval"]
+                )
+            ],
+            content_components=[
+                ContentComponent(
+                    name="Smart Table of Contents",
+                    description="AI-powered content navigation with smart highlighting",
+                    props=["autoGenerate", "depth", "sticky", "smartScroll"]
+                ),
+                ContentComponent(
+                    name="Related Content",
+                    description="Intelligent content recommendation engine",
+                    props=["algorithm", "maxItems", "showScore", "manualOverride"]
+                )
+            ]
+        )
+```
 
-## ✅ Validation Checklist
+---
 
-- [x] Complete Nextra configuration patterns documented
-- [x] Performance optimization strategies included
-- [x] Mobile-first responsive design examples provided
-- [x] WCAG 2.1 accessibility implementation shown
-- [x] SEO optimization best practices integrated
-- [x] Real-world usage examples included
-- [x] TypeScript configuration templates provided
-- [x] Build optimization strategies documented
+## Enterprise Integration Patterns
+
+### Multi-Site Architecture Management
+```yaml
+# Enterprise multi-site documentation architecture
+enterprise_nextra_architecture:
+  site_management:
+    - name: "Developer Documentation"
+      domain: "docs.enterprise.com"
+      features: ["API docs", "tutorials", "examples", "playground"]
+      deployment: "Vercel Edge Network"
+      
+    - name: "User Documentation"
+      domain: "help.enterprise.com"
+      features: ["User guides", "FAQs", "video tutorials", "community"]
+      deployment: "Multi-region CDN"
+      
+    - name: "Internal Documentation"
+      domain: "internal.enterprise.com"
+      features: ["Onboarding", "processes", "policies", "tools"]
+      deployment: "Private Vercel with SSO"
+
+  content_strategy:
+    content_types:
+      - "API References": "Auto-generated from OpenAPI specs"
+      - "Tutorials": "Interactive MDX with live examples"
+      - "Guides": "Step-by-step with progress tracking"
+      - "Blog": "Content marketing with SEO optimization"
+      
+    localization:
+      - "English": "Primary source language"
+      - "Spanish": "Full translation with cultural adaptation"
+      - "Japanese": "Technical documentation with localized examples"
+      - "German": "Enterprise-focused translations"
+      
+    quality_assurance:
+      automated_checks: ["Grammar", "Links", "SEO", "Accessibility"]
+      manual_review: ["Technical accuracy", "User experience"]
+      continuous_improvement: ["User feedback", "Analytics", "Search patterns"]
+```
+
+### Advanced Deployment Strategies
+```python
+# AI-powered deployment optimization
+class NextraDeploymentOptimizer:
+    def __init__(self):
+        self.context7_client = Context7Client()
+        self.deployment_analyzer = DeploymentAnalyzer()
+        self.performance_predictor = PerformancePredictor()
+    
+    async def optimize_deployment_strategy(self, 
+                                          site_config: SiteConfiguration,
+                                          traffic_patterns: TrafficPatterns) -> DeploymentStrategy:
+        """Optimize deployment strategy using AI analysis."""
+        
+        # Get latest deployment best practices
+        deployment_docs = await self.context7_client.get_library_docs(
+            context7_library_id="/shuding/nextra",
+            topic="deployment strategies CI/CD optimization edge caching",
+            tokens=3000
+        )
+        
+        # Analyze current deployment setup
+        current_analysis = self.deployment_analyzer.analyze_setup(site_config)
+        
+        # Predict performance under different deployment scenarios
+        performance_predictions = self.performance_predictor.predict_performance(
+            site_config,
+            traffic_patterns,
+            deployment_docs
+        )
+        
+        # Generate optimized deployment strategy
+        return DeploymentStrategy(
+            build_optimization=self._optimize_build_process(site_config, deployment_docs),
+            caching_strategy=self._design_intelligent_caching(traffic_patterns, deployment_docs),
+            cdn_configuration=self._configure_edge_delivery(traffic_patterns),
+            ci_cd_pipeline=self._design_deployment_pipeline(site_config),
+            monitoring_setup=self._setup_deployment_monitoring(),
+            rollback_strategy=self._design_rollback_procedures()
+        )
+    
+    def setup_intelligent_ci_cd(self, repository_config: RepositoryConfig) -> CICDConfiguration:
+        """Setup intelligent CI/CD pipeline with AI-powered optimizations."""
+        return CICDConfiguration(
+            build_pipeline=[
+                {
+                    "name": "Content Validation",
+                    "steps": ["Lint MDX", "Check links", "Validate images", "SEO analysis"]
+                },
+                {
+                    "name": "Performance Testing",
+                    "steps": ["Lighthouse audit", "Bundle analysis", "Load testing"]
+                },
+                {
+                    "name": "Security Scanning",
+                    "steps": ["Dependency check", "Content security", "Access validation"]
+                },
+                {
+                    "name": "Build and Deploy",
+                    "steps": ["Optimized build", "Asset optimization", "Deploy to edge"]
+                }
+            ],
+            quality_gates=[
+                "Performance score > 90",
+                "SEO score > 85",
+                "Accessibility score > 95",
+                "Zero security vulnerabilities"
+            ],
+            rollback_conditions=[
+                "Performance regression > 20%",
+                "Error rate > 5%",
+                "Build time > 10 minutes",
+                "Security findings"
+            ]
+        )
+```
+
+---
+
+## Performance Monitoring & Analytics
+
+### Real-Time Intelligence Dashboard
+```python
+# Comprehensive performance monitoring with AI insights
+class NextraAnalyticsIntelligence:
+    def __init__(self):
+        self.context7_client = Context7Client()
+        self.analytics_engine = AnalyticsEngine()
+        self.insight_generator = InsightGenerator()
+    
+    async def setup_comprehensive_monitoring(self, 
+                                           site_config: SiteConfiguration) -> AnalyticsSetup:
+        """Setup comprehensive monitoring with AI-powered insights."""
+        
+        # Get latest analytics best practices
+        analytics_docs = await self.context7_client.get_library_docs(
+            context7_library_id="/shuding/nextra",
+            topic="analytics monitoring user behavior optimization",
+            tokens=3000
+        )
+        
+        # Configure monitoring system
+        return AnalyticsSetup(
+            performance_monitoring=self._setup_performance_monitoring(analytics_docs),
+            user_behavior_tracking=self._setup_user_analytics(analytics_docs),
+            content_effectiveness=self._setup_content_analytics(analytics_docs),
+            seo_monitoring=self._setup_seo_tracking(analytics_docs),
+            error_tracking=self._setup_error_monitoring(analytics_docs),
+            business_metrics=self._setup_business_kpi_tracking()
+        )
+    
+    def generate_ai_insights(self, 
+                           analytics_data: AnalyticsData) -> InsightsReport:
+        """Generate AI-powered insights from analytics data."""
+        return InsightsReport(
+            performance_insights=self._analyze_performance_patterns(analytics_data),
+            content_insights=self._analyze_content_effectiveness(analytics_data),
+            user_insights=self._analyze_user_behavior(analytics_data),
+            seo_insights=self._analyze_seo_performance(analytics_data),
+            business_insights=self._analyze_business_impact(analytics_data),
+            recommendations=self._generate_improvement_recommendations(analytics_data)
+        )
+```
+
+---
+
+## API Reference
+
+### Core Functions
+- `analyze_documentation_architecture(project_config)` - AI-powered architecture analysis
+- `optimize_site_performance(site_config)` - Real-time performance optimization
+- `analyze_and_optimize_content(content)` - MDX content intelligence
+- `optimize_deployment_strategy(site_config)` - Deployment optimization
+- `setup_comprehensive_monitoring(site_config)` - Analytics and monitoring setup
+
+### Context7 Integration
+- `get_latest_nextras_documentation()` - Latest Nextra features via Context7
+- `analyze_performance_best_practices()` - Current optimization strategies
+- `get_deployment_patterns()` - Modern deployment approaches
+
+### Data Structures
+- `ArchitectureAnalysis` - Comprehensive architecture assessment
+- `OptimizationPlan` - AI-driven optimization recommendations
+- `ContentOptimization` - MDX content intelligence
+- `DeploymentStrategy` - Optimized deployment configuration
+- `AnalyticsSetup` - Comprehensive monitoring configuration
+
+---
+
+## Changelog
+
+- **v4.0.0** (2025-11-11): Complete rewrite with Context7 integration, AI-powered optimization, enterprise architecture patterns, and intelligent performance monitoring
+- **v1.0.0** (2025-11-11): Initial Nextra architecture expert skill
+
+---
+
+## Works Well With
+
+- `moai-foundation-specs` (documentation specification generation)
+- `moai-foundation-trust` (quality gates and validation)
+- `moai-essentials-perf` (performance optimization and monitoring)
+- `moai-essentials-seo` (search engine optimization)
+- Context7 MCP (real-time documentation updates)
+
+---
+
+## Best Practices
+
+✅ **DO**:
+- Use Context7 integration for latest Nextra features
+- Implement comprehensive performance monitoring
+- Optimize MDX content for both performance and SEO
+- Use AI-powered content analysis for quality improvement
+- Setup intelligent CI/CD pipelines with quality gates
+- Monitor user behavior and content effectiveness
+- Implement multi-language documentation strategies
+- Use edge deployment for global performance
+
+❌ **DON'T**:
+- Skip performance optimization for documentation sites
+- Ignore SEO best practices for documentation content
+- Use manual deployment processes for enterprise sites
+- Neglect accessibility in documentation design
+- Skip comprehensive monitoring and analytics
+- Ignore mobile optimization for documentation
+- Use outdated MDX patterns without optimization

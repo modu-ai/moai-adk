@@ -53,39 +53,39 @@ allowed-tools:
 - "Optimize Go performance"
 - "Deploy Go application"
 
-## Tool Version Matrix (2025-11-06)
+## Tool Version Matrix (2025-11-11)
 
 ### Core Go
-- **Go**: 1.25.x (latest) / 1.23.x (LTS)
-- **Gin**: 1.10.x - HTTP web framework
-- **Echo**: 4.12.x - High-performance web framework
-- **Chi**: 5.0.x - Lightweight router
+- **Go**: 1.24.x (latest) / 1.23.x (LTS)
+- **Gin**: 1.11.x - HTTP web framework
+- **Echo**: 4.13.x - High-performance web framework
+- **Chi**: 5.1.x - Lightweight router
 - **Fiber**: 3.x - Express.js-inspired framework
 
 ### Database & Storage
-- **GORM**: 2.0.x - ORM for Go
+- **GORM**: 2.1.x - ORM for Go
 - **sqlx**: 1.4.x - SQL extensions
-- **pgx**: 5.6.x - PostgreSQL driver
-- **Redis**: 9.x - Redis client
+- **pgx**: 5.7.x - PostgreSQL driver
+- **Redis**: 10.x - Redis client
 - **MongoDB**: 2.x - MongoDB driver
 
 ### Testing Tools
 - **Testify**: 1.9.x - Testing toolkit
 - **GoMock**: 1.6.x - Mock generation
 - **gomock**: Built-in mocking framework
-- **goleak**: 1.3.x - Goroutine leak detection
+- **goleak**: 1.4.x - Goroutine leak detection
 
 ### Development Tools
-- **Air**: 1.53.x - Live reload
-- **Gin-swagger**: 1.6.x - API documentation
-- **Zap**: 1.27.x - Structured logging
-- **Viper**: 1.19.x - Configuration management
-- **golangci-lint**: 1.62.x - Linter aggregator
+- **Air**: 1.55.x - Live reload
+- **Gin-swagger**: 1.7.x - API documentation
+- **Zap**: 1.28.x - Structured logging
+- **Viper**: 1.20.x - Configuration management
+- **golangci-lint**: 1.63.x - Linter aggregator
 
 ### Observability
 - **Prometheus**: 4.x client - Metrics
 - **Jaeger**: 2.x client - Distributed tracing
-- **OpenTelemetry**: 1.30.x - Observability framework
+- **OpenTelemetry**: 1.31.x - Observability framework
 - **pprof**: Built-in profiling
 
 ## Ecosystem Overview
@@ -1925,6 +1925,6 @@ install-tools:
 **Created by**: MoAI Language Skill Factory  
 **Last Updated**: 2025-11-06  
 **Version**: 2.0.0  
-**Go Target**: 1.25+ with latest language features  
+**Go Target**: 1.24+ with latest language features  
 
 This skill provides comprehensive Go development guidance with 2025 best practices, covering everything from basic concurrent programming to advanced cloud-native patterns and enterprise-grade applications.

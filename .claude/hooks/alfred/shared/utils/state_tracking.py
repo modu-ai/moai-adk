@@ -13,11 +13,38 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 import uuid
+import weakref
 
 from core import HookPayload, HookResult, HookConfiguration, ExecutionResult, get_logger, get_performance_metrics, record_execution_metrics, record_cache_hit, record_cache_miss, configure_logging
 
 
-class HookStateManager:
+class SingletonMeta(type):
+    """Thread-safe Singleton metaclass with cleanup support"""
+
+    _instances = {}
+    _lock = threading.Lock()
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            with cls._lock:
+                if cls not in cls._instances:
+                    instance = super().__call__(*args, **kwargs)
+                    cls._instances[cls] = instance
+        return cls._instances[cls]
+
+    def cleanup_all_instances(cls):
+        """Cleanup all singleton instances"""
+        with cls._lock:
+            for instance in cls._instances.values():
+                if hasattr(instance, 'cleanup'):
+                    try:
+                        instance.cleanup()
+                    except Exception:
+                        pass  # Silently ignore cleanup errors
+            cls._instances.clear()
+
+
+class HookStateManager(metaclass=SingletonMeta):
     """Centralized state management for hook execution tracking and deduplication
 
     Handles:
@@ -55,6 +82,11 @@ class HookStateManager:
         self._lock = threading.RLock()
         self._lock_timeout = self.config.lock_timeout_seconds
 
+        # Thread lifecycle management
+        self._cleanup_event = threading.Event()
+        self._cleanup_thread = None
+        self._threads = []  # Track all created threads for proper cleanup
+
         # State files
         self.hook_state_file = self.state_dir / "hook_execution_state.json"
         self.command_state_file = self.state_dir / "command_execution_state.json"
@@ -72,11 +104,23 @@ class HookStateManager:
         if self.config.enable_caching and self.config.cache_cleanup_interval > 0:
             self._start_cache_cleanup_thread()
 
+        # Register cleanup on garbage collection
+        weakref.finalize(self, self._cleanup_on_finalize)
+
+    def _cleanup_on_finalize(self):
+        """Cleanup method called during garbage collection"""
+        try:
+            self.cleanup()
+        except Exception:
+            pass  # Silently ignore cleanup errors during finalization
+
     def _start_cache_cleanup_thread(self):
         """Start background thread for cache cleanup"""
         def cleanup_task():
-            while True:
-                time.sleep(self.config.cache_cleanup_interval)
+            while not self._cleanup_event.is_set():
+                # Use event.wait() instead of time.sleep() for immediate response to stop signal
+                if self._cleanup_event.wait(timeout=self.config.cache_cleanup_interval):
+                    break  # Stop signal received
                 try:
                     self._cleanup_expired_cache_entries()
                 except Exception as e:
@@ -84,6 +128,7 @@ class HookStateManager:
 
         cleanup_thread = threading.Thread(target=cleanup_task, daemon=True)
         cleanup_thread.start()
+        self._threads.append(cleanup_thread)
         self.logger.debug("Started cache cleanup background thread")
 
     def _cleanup_expired_cache_entries(self):
@@ -689,6 +734,57 @@ class HookStateManager:
         if self.config.log_state_changes:
             self.logger.info("Performance metrics reset")
 
+    def cleanup(self, timeout: float = 5.0) -> None:
+        """Cleanup resources and stop all threads
+
+        Args:
+            timeout: Maximum time to wait for threads to finish (default: 5.0 seconds)
+        """
+        if self._cleanup_event.is_set():
+            return  # Already cleaned up
+
+        # Signal all threads to stop
+        self._cleanup_event.set()
+
+        # Wait for all threads to finish
+        for thread in self._threads:
+            if thread.is_alive():
+                thread.join(timeout=timeout)
+                if thread.is_alive():
+                    self.logger.warning(f"Thread {thread.name} did not finish within timeout")
+
+        # Clear thread list
+        self._threads.clear()
+
+        # Clear caches
+        self._hook_state_cache = None
+        self._command_state_cache = None
+        self._cache_timestamp = 0
+
+        if self.config.log_state_changes:
+            self.logger.debug("HookStateManager cleanup completed")
+
+    def stop(self) -> None:
+        """Alias for cleanup method - stop the state manager"""
+        self.cleanup()
+
+    def __enter__(self):
+        """Context manager entry"""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit - ensures cleanup"""
+        self.cleanup()
+        return False  # Don't suppress exceptions
+
+    def __del__(self):
+        """Destructor - ensures cleanup on garbage collection"""
+        try:
+            if not self._cleanup_event.is_set():
+                self.cleanup(timeout=1.0)  # Quick cleanup during garbage collection
+        except Exception:
+            pass  # Silently ignore cleanup errors during destruction
+
 
 # Global state manager instances (per-CWD)
 _state_managers: Dict[str, HookStateManager] = {}
@@ -698,6 +794,9 @@ _state_manager_lock = threading.RLock()
 def get_state_manager(cwd: str, config: Optional[HookConfiguration] = None) -> HookStateManager:
     """Get or create state manager for given working directory
 
+    Note: With Singleton pattern, each cwd gets its own unique instance,
+    but duplicate instances for the same cwd are prevented.
+
     Args:
         cwd: Current working directory path
         config: Optional configuration object
@@ -706,9 +805,27 @@ def get_state_manager(cwd: str, config: Optional[HookConfiguration] = None) -> H
         HookStateManager instance for the given directory
     """
     with _state_manager_lock:
-        if cwd not in _state_managers:
-            _state_managers[cwd] = HookStateManager(cwd, config)
-        return _state_managers[cwd]
+        # Check if we already have an instance for this cwd
+        existing_instance_key = None
+        for key, instance in _state_managers.items():
+            if hasattr(instance, 'cwd') and instance.cwd == cwd:
+                existing_instance_key = key
+                break
+
+        if existing_instance_key is not None:
+            return _state_managers[existing_instance_key]
+
+        # Create new instance with cwd as part of key for uniqueness
+        instance_key = f"{cwd}_{len(_state_managers)}"
+        try:
+            instance = HookStateManager(cwd, config)
+            _state_managers[instance_key] = instance
+            return instance
+        except Exception as e:
+            # Clean up on creation failure
+            if instance_key in _state_managers:
+                del _state_managers[instance_key]
+            raise e
 
 
 def track_hook_execution(hook_name: str, cwd: str, phase: str = None, config: Optional[HookConfiguration] = None) -> ExecutionResult:
@@ -784,3 +901,39 @@ def get_performance_summary(cwd: str = None, config: Optional[HookConfiguration]
         cwd = "."
     manager = get_state_manager(cwd, config)
     return manager.get_performance_summary()
+
+
+def cleanup_all_state_managers(timeout: float = 5.0) -> None:
+    """Cleanup all state manager instances and stop all threads
+
+    Args:
+        timeout: Maximum time to wait for threads to finish (default: 5.0 seconds)
+    """
+    with _state_manager_lock:
+        for instance in list(_state_managers.values()):
+            try:
+                instance.cleanup(timeout)
+            except Exception as e:
+                # Log error but continue cleanup of other instances
+                try:
+                    logger = get_logger()
+                    logger.error(f"Error during state manager cleanup: {e}")
+                except Exception:
+                    pass  # Silently ignore logging errors
+
+        # Clear all instances
+        _state_managers.clear()
+
+
+def force_cleanup_all_singletons() -> None:
+    """Force cleanup of all singleton instances using the metaclass cleanup method"""
+    try:
+        HookStateManager.cleanup_all_instances()
+    except Exception:
+        pass  # Silently ignore cleanup errors
+
+
+# Module-level cleanup on import/unload
+import atexit
+atexit.register(cleanup_all_state_managers)
+atexit.register(force_cleanup_all_singletons)

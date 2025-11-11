@@ -4,8 +4,8 @@ version: 4.0.0
 created: 2025-11-11
 updated: 2025-11-11
 status: active
-description: "Enterprise TypeScript development with Next.js 15, AI-powered Context7 integration, advanced type safety, and full-stack optimization for 2025"
-keywords: ['typescript-enterprise', 'nextjs-15', 'context7-integration', 'type-safety', 'fullstack-optimization', 'server-components', 'react-19', 'enterprise-patterns']
+description: "Enterprise TypeScript development with Next.js 16, AI-powered Context7 integration, advanced type safety, and full-stack optimization for 2025"
+keywords: ['typescript-enterprise', 'nextjs-16', 'context7-integration', 'type-safety', 'fullstack-optimization', 'server-components', 'react-19', 'enterprise-patterns']
 allowed-tools:
   - Read
   - Write
@@ -53,44 +53,44 @@ allowed-tools:
 - "Migrate JavaScript to TypeScript"
 - "Full-stack TypeScript application"
 
-## Tool Version Matrix (2025-11-06)
+## Tool Version Matrix (2025-11-11)
 
 ### Core TypeScript
-- **TypeScript**: 5.6.x (latest) / 5.3.x (LTS)
-- **Node.js**: 22.x (LTS) / 20.x (stable)
-- **Package Managers**: pnpm 9.x, npm 10.x, yarn 4.x
-- **Runtimes**: Node.js 22.x, Deno 2.x, Bun 1.1.x
+- **TypeScript**: 5.7.x (latest) / 5.6.x (LTS)
+- **Node.js**: 23.x (LTS) / 22.x (stable)
+- **Package Managers**: pnpm 10.x, npm 11.x, yarn 5.x
+- **Runtimes**: Node.js 23.x, Deno 2.x, Bun 1.2.x
 
 ### Frontend Frameworks
-- **Next.js**: 15.x - Full-stack React framework
-- **React**: 19.x - UI library with Server Components
+- **Next.js**: 16.x - Full-stack React framework with AI integration
+- **React**: 19.x - UI library with enhanced Server Components
 - **Vue**: 3.5.x - Progressive framework
-- **Angular**: 18.x - Enterprise framework
+- **Angular**: 19.x - Enterprise framework
 - **Svelte**: 5.x - Compiler-based framework
 
 ### Build Tools
-- **Vite**: 6.x - Fast build tool
+- **Vite**: 7.x - Ultra-fast build tool
 - **Webpack**: 5.x - Module bundler
-- **esbuild**: 0.24.x - Fast bundler
-- **SWC**: 1.7.x - Rust-based compiler
+- **esbuild**: 0.25.x - Fast bundler
+- **SWC**: 1.9.x - Rust-based compiler
 
 ### Testing Tools
-- **Vitest**: 2.x - Fast unit testing
-- **Jest**: 30.x - Comprehensive testing
-- **Playwright**: 1.48.x - E2E testing
-- **Testing Library**: 16.x - Component testing
+- **Vitest**: 3.x - Fast unit testing
+- **Jest**: 31.x - Comprehensive testing
+- **Playwright**: 1.50.x - E2E testing
+- **Testing Library**: 17.x - Component testing
 
 ### Code Quality
-- **ESLint**: 9.x - Linting (flat config)
-- **Prettier**: 3.3.x - Code formatting
+- **ESLint**: 10.x - Linting (flat config)
+- **Prettier**: 3.4.x - Code formatting
 - **TypeScript Compiler**: Built-in type checking
-- **Husky**: 9.x - Git hooks
+- **Husky**: 10.x - Git hooks
 
 ### Backend Frameworks
-- **Express**: 4.21.x - Minimal web framework
+- **Express**: 5.x - Minimal web framework
 - **Fastify**: 5.x - Fast web framework
-- **NestJS**: 10.x - Enterprise framework
-- **tRPC**: 11.x - End-to-end typesafe APIs
+- **NestJS**: 11.x - Enterprise framework
+- **tRPC**: 12.x - End-to-end typesafe APIs
 
 ## Ecosystem Overview
 
@@ -112,6 +112,11 @@ bun add vitest @testing-library/react -d
 npx create-nx-workspace@latest my-workspace --preset=react-monorepo
 # or
 npx create-turbo@latest my-turbo-app
+
+# Next.js 16 with AI integration
+pnpm create next-app@latest my-ai-app --typescript --tailwind --eslint --app --ai
+cd my-ai-app
+pnpm add @ai-sdk/openai @ai-sdk/google @ai-sdk/anthropic
 ```
 
 ### Modern Project Structure
@@ -151,7 +156,7 @@ my-typescript-project/
 
 ## Modern TypeScript Patterns
 
-### Advanced Type System Features (TypeScript 5.6)
+### Advanced Type System Features (TypeScript 5.7)
 
 ```typescript
 // Import attributes for better module management
@@ -413,6 +418,7 @@ export default defineConfig({
           vendor: ['react', 'react-dom'],
           router: ['react-router-dom'],
           ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu'],
+          ai: ['@ai-sdk/openai', '@ai-sdk/google', '@ai-sdk/anthropic'],
         },
       },
     },
@@ -422,6 +428,9 @@ export default defineConfig({
     hmr: {
       overlay: true,
     },
+  },
+  optimizeDeps: {
+    include: ['@ai-sdk/openai', '@ai-sdk/google', '@ai-sdk/anthropic'],
   },
 });
 ```
@@ -1091,25 +1100,29 @@ function ProfilePage() {
     "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
-    "next": "^15.0.0",
+    "next": "^16.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "@trpc/client": "^11.0.0",
-    "@trpc/server": "^11.0.0",
-    "@trpc/react-query": "^11.0.0",
-    "zod": "^3.23.0",
-    "zustand": "^5.0.0"
+    "@trpc/client": "^12.0.0",
+    "@trpc/server": "^12.0.0",
+    "@trpc/react-query": "^12.0.0",
+    "zod": "^3.24.0",
+    "zustand": "^5.1.0",
+    "@ai-sdk/openai": "^1.0.0",
+    "@ai-sdk/google": "^1.0.0",
+    "@ai-sdk/anthropic": "^1.0.0",
+    "ai": "^4.0.0"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
+    "@types/node": "^23.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "typescript": "^5.6.0",
-    "eslint": "^9.0.0",
-    "prettier": "^3.3.0",
-    "vitest": "^2.0.0",
-    "@testing-library/react": "^16.0.0",
-    "playwright": "^1.48.0"
+    "typescript": "^5.7.0",
+    "eslint": "^10.0.0",
+    "prettier": "^3.4.0",
+    "vitest": "^3.0.0",
+    "@testing-library/react": "^17.0.0",
+    "playwright": "^1.50.0"
   }
 }
 ```
@@ -1212,7 +1225,7 @@ jobs:
     
     strategy:
       matrix:
-        node-version: [20.x, 22.x]
+        node-version: [22.x, 23.x]
     
     steps:
       - uses: actions/checkout@v4

@@ -467,8 +467,15 @@ class PhaseExecutor:
 
         if strategy["priority"] == "user":
             # User priority: preserve existing values
+            preserve_keys = strategy.get("preserve_keys", [])
+            # Convert frozenset to list if needed
+            if isinstance(preserve_keys, frozenset):
+                preserve_keys = list(preserve_keys)
+            elif not isinstance(preserve_keys, list):
+                preserve_keys = list(preserve_keys) if preserve_keys else []
+
             for key, value in existing_section.items():
-                if strategy.get("preserve_all", False) or key in strategy.get("preserve_keys", []):
+                if strategy.get("preserve_all", False) or key in preserve_keys:
                     section_config[key] = value
                     logger.debug(f"Preserved {section_name}.{key} = {value}")
         else:

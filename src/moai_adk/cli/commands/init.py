@@ -1,4 +1,4 @@
-# @CODE:CLI-INIT-MAIN-001 | @SPEC:CLI-INIT-001 | @TEST:CLI-INIT-001 | @CODE:INIT-005:CLI
+# @CODE:CLI-INIT-MAIN-001 | @SPEC:CLI-INIT-001 | @TEST:CLI-INIT-001
 # SPEC: SPEC-CLI-001.md, SPEC-INIT-003.md
 # TEST: tests/unit/test_cli_commands.py, tests/unit/test_init_reinit.py
 """MoAI-ADK init command
@@ -87,9 +87,9 @@ def create_progress_callback(progress: Progress, task_ids: Sequence[TaskID]):
 )
 @click.option(
     "--locale",
-    type=click.Choice(["ko", "en"]),
+    type=click.Choice(["ko", "en", "ja", "zh"]),
     default=None,
-    help="Preferred language (default: en)",
+    help="Preferred language (ko/en/ja/zh, default: en)",
 )
 @click.option(
     "--language",
@@ -129,7 +129,7 @@ def init(
         path: Project directory path (default: current directory)
         non_interactive: Skip prompts and use defaults
         mode: Project mode (personal/team)
-        locale: Preferred language (ko/en). When omitted, defaults to en.
+        locale: Preferred language (ko/en/ja/zh). Interactive mode supports additional languages.
         language: Programming language
         with_mcp: Install specific MCP servers (can be used multiple times)
         mcp_auto: Auto-install all recommended MCP servers
@@ -157,6 +157,9 @@ def init(
         # 3. Check current directory mode
         is_current_dir = path == "."
         project_path = Path(path).resolve()
+
+        # Initialize variables
+        custom_language = None
 
         # 3. Interactive vs Non-Interactive
         if non_interactive:
@@ -203,6 +206,7 @@ def init(
             language = answers["language"]
             project_name = answers["project_name"]
             mcp_servers = answers.get("mcp_servers", [])
+            custom_language = answers.get("custom_language")
 
             console.print("\n[cyan]🚀 Starting installation...[/cyan]\n")
 
@@ -295,6 +299,7 @@ def init(
                 mode=mode,
                 locale=locale,
                 language=language,
+                custom_language=custom_language,
                 backup_enabled=True,
                 progress_callback=callback,
                 reinit=True,  # Always allow reinit (force mode by default)

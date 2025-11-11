@@ -513,19 +513,28 @@ def configure_logging(debug_mode: bool = False, verbose: bool = False):
         debug_mode: Enable debug mode logging
         verbose: Enable verbose logging
     """
-    level = logging.DEBUG if debug_mode or verbose else logging.INFO
-    logging.basicConfig(
-        level=level,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.StreamHandler(),
-            logging.FileHandler(Path.cwd() / ".moai" / "memory" / "hook_debug.log", mode='a')
-        ]
-    )
-
     # Create memory directory if it doesn't exist
     memory_dir = Path.cwd() / ".moai" / "memory"
     memory_dir.mkdir(parents=True, exist_ok=True)
+
+    level = logging.DEBUG if debug_mode or verbose else logging.INFO
+
+    handlers = [logging.StreamHandler()]
+
+    # Try to add file handler, but don't fail if it doesn't work
+    try:
+        file_handler = logging.FileHandler(memory_dir / "hook_debug.log", mode='a')
+        handlers.append(file_handler)
+    except (OSError, IOError) as e:
+        # Fallback to console only if file logging fails
+        print(f"Warning: Could not create file handler: {e}")
+
+    logging.basicConfig(
+        level=level,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=handlers,
+        force=True  # Override existing configuration
+    )
 
 
 # Initialize logging with default configuration

@@ -44,43 +44,43 @@ allowed-tools: "Read, Write, Edit, Glob, Bash, AskUserQuestion, mcp__context7__r
 - "Systems programming with Rust"
 - "Async Rust patterns"
 
-## Tool Version Matrix (2025-11-06)
+## Tool Version Matrix (2025-11-11)
 
 ### Core Rust
-- **Rust**: 1.91.x (latest) / 1.89.x (LTS)
+- **Rust**: 1.84.x (latest) / 1.83.x (LTS)
 - **Cargo**: Built-in package manager and build tool
 - **Rustup**: Rust version manager
 - **Rust-analyzer**: Advanced LSP support
 
 ### Web Frameworks
-- **Actix-web**: 4.9.x - High-performance web framework
+- **Actix-web**: 4.10.x - High-performance web framework
 - **Axum**: 0.8.x - Web framework from tokio team
 - **Rocket**: 0.6.x - Web framework with macros
-- **Poem**: 3.1.x - Modular web framework
+- **Poem**: 3.2.x - Modular web framework
 - **Warp**: 0.4.x - Composable web server
 
 ### Async Runtime
-- **Tokio**: 1.42.x - Asynchronous runtime
-- **Async-std**: 1.13.x - Async standard library
-- **Smol**: 2.0.x - Compact async runtime
+- **Tokio**: 1.43.x - Asynchronous runtime
+- **Async-std**: 1.14.x - Async standard library
+- **Smol**: 2.1.x - Compact async runtime
 
 ### Database & Storage
 - **SQLx**: 0.8.x - Async SQL toolkit
-- **Diesel**: 2.2.x - ORM and query builder
+- **Diesel**: 2.3.x - ORM and query builder
 - **Serde**: 1.0.x - Serialization framework
-- **Redis**: 0.26.x - Redis client
+- **Redis**: 0.27.x - Redis client
 
 ### Testing Tools
 - **Tokio-test**: 0.4.x - Async testing utilities
 - **Mockall**: 0.13.x - Mocking framework
-- **Cucumber-rs**: 0.22.x - BDD testing
-- **Proptest**: 1.5.x - Property-based testing
+- **Cucumber-rs**: 0.23.x - BDD testing
+- **Proptest**: 1.6.x - Property-based testing
 
 ### Development Tools
 - **Clippy**: Built-in linter
 - **rustfmt**: Built-in formatter
-- **cargo-watch**: 8.5.x - File watcher
-- **cargo-audit**: 0.21.x - Security audit
+- **cargo-watch**: 8.6.x - File watcher
+- **cargo-audit**: 0.22.x - Security audit
 
 ## Ecosystem Overview
 
@@ -1893,6 +1893,6 @@ jobs:
 **Created by**: MoAI Language Skill Factory  
 **Last Updated**: 2025-11-06  
 **Version**: 2.0.0  
-**Rust Target**: 1.91+ with latest language features  
+**Rust Target**: 1.84+ with latest language features  
 
 This skill provides comprehensive Rust development guidance with 2025 best practices, covering everything from basic memory safety to advanced systems programming and performance-critical applications.
