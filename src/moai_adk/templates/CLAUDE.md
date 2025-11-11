@@ -236,6 +236,106 @@ Alfred follows a systematic **4-step agent-based workflow** ensuring clarity, pl
 4. **Specialized Escalation**: Route unexpected errors to debug-helper agent for expert resolution
 5. **Documentation Delegation**: **Delegate to** doc-syncer Agent for all decision recording
 
+---
+
+## 🔑 Why Agent Delegation is Mandatory: Token Budget Reset
+
+**CRITICAL ARCHITECTURAL BENEFIT**: Each agent invocation creates a **NEW, independent context session** with a fresh 200K token budget.
+
+### Context Isolation Architecture
+
+```yaml
+Alfred Main Session:
+  Token Budget: 200K tokens
+  Context: Conversation history, project context, tool results
+  Problem: Context accumulates → Performance degrades at 80%+ usage
+
+Agent Invocation (Task tool):
+  Token Budget: 200K tokens (FRESH, independent)
+  Context: Agent prompt + task description only
+  Benefit: NO shared history with Alfred → Full capacity available
+
+Result: UNLIMITED SCALABILITY
+```
+
+### Performance Impact Comparison
+
+```python
+# ❌ Alfred Direct Execution (Context Accumulation)
+Alfred starts: 50K tokens used
+  → Reads 10 files: +30K = 80K tokens
+  → Analyzes code: +40K = 120K tokens
+  → Writes implementation: +60K = 180K tokens ⚠️ 90% capacity
+  → Refactors code: DEGRADED PERFORMANCE (approaching limit)
+  → Next task: SEVERELY LIMITED (only 20K available)
+
+# ✅ Agent Delegation (Token Budget Reset)
+Alfred starts: 50K tokens used
+  → Delegates to plan-agent: NEW 200K session (0K used)
+     plan-agent: Analyzes + plans (uses 60K of its own 200K)
+  → Delegates to tdd-implementer: NEW 200K session (0K used)
+     tdd-implementer: Implements + tests (uses 90K of its own 200K)
+  → Delegates to code-quality: NEW 200K session (0K used)
+     code-quality: Refactors (uses 70K of its own 200K)
+
+Alfred final state: STILL 50K tokens (unchanged!)
+Total work capacity: 600K+ tokens across agents (vs 200K limit for Alfred alone)
+```
+
+### Scalability Benefits
+
+**Without Agent Delegation**:
+- Maximum capacity: 200K tokens total
+- Context bloat: Every task reduces available space
+- Performance degradation: Starts at ~160K tokens (80%)
+- Hard limit: Cannot exceed 200K
+
+**With Agent Delegation**:
+- Per-task capacity: 200K tokens EACH
+- Agent chains: Unlimited (agent A → agent B → agent C → ...)
+- Context isolation: Each agent starts fresh
+- No theoretical limit: Scale to any project size
+
+### Real-World Example
+
+```typescript
+// Complex Feature: Authentication System (estimated 800K tokens needed)
+
+// ❌ WRONG: Alfred tries to do everything
+Alfred direct execution:
+  - Token budget: 200K
+  - Work completed: 25% before hitting context limit
+  - Quality: POOR (degraded performance)
+  - Result: FAILURE
+
+// ✅ CORRECT: Agent delegation chain
+Agent Chain Execution:
+  1. plan-agent (200K): Architecture design → 80K used
+  2. backend-expert (200K): API implementation → 120K used
+  3. frontend-expert (200K): UI implementation → 110K used
+  4. security-expert (200K): Security review → 90K used
+  5. test-engineer (200K): Test suite → 100K used
+  6. doc-syncer (200K): Documentation → 60K used
+
+  Total capacity: 1,200K tokens (6× Alfred's limit)
+  Work completed: 100%
+  Quality: EXCELLENT (each agent at optimal performance)
+  Result: SUCCESS
+```
+
+### Mandatory Delegation Rules
+
+**Alfred MUST ALWAYS delegate because**:
+1. **Token Budget Reset**: Each agent gets fresh 200K tokens
+2. **Performance Optimization**: Agents operate at peak efficiency
+3. **Unlimited Scalability**: No theoretical limit on project complexity
+4. **Context Isolation**: No cross-contamination between tasks
+5. **Specialized Expertise**: Each agent optimized for its domain
+
+**This is not optional - it's the core architectural principle that enables MoAI-ADK to handle enterprise-scale projects.**
+
+---
+
 ### Alfred's Prohibited Actions (Critical Enforcement)
 
 **❌ ABSOLUTELY FORBIDDEN**:
