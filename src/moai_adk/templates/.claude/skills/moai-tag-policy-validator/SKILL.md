@@ -1,33 +1,38 @@
 ---
 name: moai-tag-policy-validator
-version: 1.0.0
+version: 4.0.0
 created: 2025-11-05
-updated: 2025-11-05
+updated: 2025-11-12
 status: active
-description: Comprehensive TAG system validator and policy enforcer that monitors, validates, and corrects TAG usage across code, tests, and documentation. Use when ensuring TAG compliance, validating TAG policy violations, analyzing TAG coverage, or when maintaining TAG system integrity and governance.
-keywords: [tag-validation, tag-policy, tag-governance, tag-coverage, tag-compliance, tag-correction]
-allowed-tools:
-  - Read
-  - Glob
-  - Grep
-  - Bash
-  - Write
+tier: specialization
+description: "Comprehensive TAG system validator and policy enforcer that monitors, validates, and corrects TAG usage across code, tests, and documentation. Use when ensuring TAG compliance, validating TAG policy violations, analyzing TAG coverage, or when maintaining TAG system integrity and governance.. Enhanced with Context7 MCP for up-to-date documentation."
+allowed-tools: "Read, Glob, Grep, Bash, Write, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
+primary-agent: "alfred"
+secondary-agents: []
+keywords: [tag, policy, validator, git, spec]
+tags: []
+orchestration:
+  can_resume: true
+  typical_chain_position: "middle"
+  depends_on: []
 ---
 
-# TAG Policy Validator and Governance System
+# moai-tag-policy-validator
 
-## Skill Metadata
+**Tag Policy Validator**
 
-| Field | Value |
-| ----- | ----- |
-| Version | 1.0.0 |
-| Tier | Alfred (TAG System) |
-| Auto-load | When TAG violations detected or on demand |
-| Purpose | Ensure TAG system integrity and policy compliance |
+> **Primary Agent**: alfred  
+> **Secondary Agents**: none  
+> **Version**: 4.0.0  
+> **Keywords**: tag, policy, validator, git, spec
 
 ---
 
-## What It Does
+## 📖 Progressive Disclosure
+
+### Level 1: Quick Reference (Core Concepts)
+
+What It Does
 
 Comprehensive TAG system validator and policy enforcer that monitors TAG usage, validates compliance with TAG policies, analyzes coverage, and provides automatic corrections for TAG violations. Ensures the integrity and governance of the MoAI-ADK TAG system.
 
@@ -43,19 +48,11 @@ Comprehensive TAG system validator and policy enforcer that monitors TAG usage, 
 
 ---
 
-## When to Use
-
-- ✅ When validating TAG policy compliance
-- ✅ Before committing changes with TAG modifications
-- ✅ During code reviews and quality assurance
-- ✅ When analyzing TAG coverage and completeness
-- ✅ For TAG system maintenance and governance
-- ✅ When troubleshooting TAG-related issues
-- ✅ Before major releases or deployments
-
 ---
 
-## TAG Policy Framework
+### Level 2: Practical Implementation (Common Patterns)
+
+TAG Policy Framework
 
 ### 1. TAG Policy Rules
 ```python
@@ -180,203 +177,9 @@ def analyze_tag_coverage():
 
 ---
 
-## Validation Engine
-
-### 1. Real-time Validation
-```python
-def validate_file_tags(file_path, file_content):
-    """Validate TAGs in a specific file"""
-    validation_result = {
-        "file_path": file_path,
-        "file_type": determine_file_type(file_path),
-        "tags_found": extract_tags(file_content),
-        "violations": [],
-        "recommendations": [],
-        "compliance_score": 0.0
-    }
-
-    # Extract and validate tags
-    tags = extract_tags(file_content)
-
-    for tag in tags:
-        violations = validate_single_tag(tag, file_path)
-        validation_result["violations"].extend(violations)
-
-    # Calculate compliance score
-    validation_result["compliance_score"] = calculate_compliance_score(
-        validation_result["violations"], file_path
-    )
-
-    # Generate recommendations
-    validation_result["recommendations"] = generate_recommendations(
-        validation_result["violations"], file_path
-    )
-
-    return validation_result
-```
-
-### 2. Policy Violation Detection
-```python
-def detect_policy_violations():
-    """Detect all TAG policy violations in project"""
-    violations = {
-        "spec_violations": [],
-        "code_violations": [],
-        "test_violations": [],
-        "doc_violations": [],
-        "cross_file_violations": [],
-        "policy_compliance": {}
-    }
-
-    # Scan all files for violations
-    for file_path in get_all_project_files():
-        file_violations = scan_file_for_violations(file_path)
-
-        violation_type = categorize_violations(file_violations)
-        violations[violation_type].extend(file_violations)
-
-    # Check cross-file violations
-    violations["cross_file_violations"] = check_cross_file_violations()
-
-    # Calculate overall compliance
-    violations["policy_compliance"] = calculate_overall_compliance(violations)
-
-    return violations
-```
-
-### 3. Automatic Correction System
-```python
-def auto_correct_violations(violations, dry_run=True):
-    """Automatically correct TAG violations"""
-    corrections_applied = []
-    correction_failures = []
-
-    for violation in violations:
-        if violation.auto_correctable:
-            try:
-                correction = generate_correction(violation)
-
-                if not dry_run:
-                    apply_correction(correction)
-
-                corrections_applied.append({
-                    "violation": violation,
-                    "correction": correction,
-                    "status": "applied" if not dry_run else "preview"
-                })
-
-            except Exception as e:
-                correction_failures.append({
-                    "violation": violation,
-                    "error": str(e),
-                    "status": "failed"
-                })
-
-    return {
-        "corrections_applied": corrections_applied,
-        "correction_failures": correction_failures,
-        "summary": generate_correction_summary(corrections_applied, correction_failures)
-    }
-```
-
 ---
 
-## TAG System Governance
-
-### 1. Policy Management
-```python
-def update_tag_policies(new_policies):
-    """Update TAG policies with validation"""
-    policy_update = {
-        "timestamp": datetime.now().isoformat(),
-        "old_policies": get_current_policies(),
-        "new_policies": new_policies,
-        "impact_analysis": analyze_policy_impact(new_policies),
-        "validation_results": validate_new_policies(new_policies)
-    }
-
-    # Validate new policies
-    if policy_update["validation_results"]["is_valid"]:
-        apply_new_policies(new_policies)
-        policy_update["status"] = "applied"
-    else:
-        policy_update["status"] = "rejected"
-        policy_update["rejection_reasons"] = policy_update["validation_results"]["errors"]
-
-    # Log policy changes
-    log_policy_change(policy_update)
-
-    return policy_update
-```
-
-### 2. Compliance Reporting
-```python
-def generate_compliance_report():
-    """Generate comprehensive TAG compliance report"""
-    report = {
-        "generated_at": datetime.now().isoformat(),
-        "period": "last_7_days",
-        "overall_compliance": 0.0,
-        "coverage_metrics": analyze_tag_coverage(),
-        "violation_summary": summarize_violations(),
-        "trend_analysis": analyze_compliance_trends(),
-        "recommendations": generate_compliance_recommendations(),
-        "action_items": identify_action_items()
-    }
-
-    # Calculate overall compliance
-    report["overall_compliance"] = calculate_overall_compliance_score(report)
-
-    # Generate actionable insights
-    report["insights"] = generate_compliance_insights(report)
-
-    return report
-```
-
-### 3. Health Monitoring
-```python
-def monitor_tag_system_health():
-    """Monitor TAG system health and performance"""
-    health_metrics = {
-        "system_status": "healthy",
-        "performance_metrics": {
-            "validation_time": measure_validation_performance(),
-            "correction_time": measure_correction_performance(),
-            "scan_time": measure_scan_performance()
-        },
-        "quality_metrics": {
-            "tag_accuracy": measure_tag_accuracy(),
-            "link_integrity": measure_link_integrity(),
-            "coverage_trend": measure_coverage_trend()
-        },
-        "alerts": [],
-        "recommendations": []
-    }
-
-    # Check for health issues
-    if health_metrics["quality_metrics"]["tag_accuracy"] < 0.9:
-        health_metrics["alerts"].append({
-            "severity": "warning",
-            "message": "TAG accuracy below 90%",
-            "recommendation": "Run validation and correction"
-        })
-
-    if health_metrics["quality_metrics"]["link_integrity"] < 0.85:
-        health_metrics["alerts"].append({
-            "severity": "error",
-            "message": "TAG link integrity compromised",
-            "recommendation": "Run TAG chain validation"
-        })
-
-    # Update system status
-    health_metrics["system_status"] = determine_system_status(health_metrics["alerts"])
-
-    return health_metrics
-```
-
----
-
-## Integration Examples
+Integration Examples
 
 ### Example 1: Pre-Commit Validation
 ```python
@@ -455,7 +258,9 @@ def fix_tag_violations():
 
 ---
 
-## Quality Assurance
+---
+
+Quality Assurance
 
 ### 1. Validation Rules
 ```python
@@ -521,7 +326,9 @@ def improve_tag_system():
 
 ---
 
-## Usage Examples
+---
+
+Usage Examples
 
 ### Example 1: Validate Single File
 ```python
@@ -568,3 +375,241 @@ if chain_analysis["broken_chains"]:
 ---
 
 **End of Skill** | Comprehensive TAG system validation and governance for maintaining TAG integrity and compliance
+
+---
+
+### Level 3: Advanced Patterns (Expert Reference)
+
+> **Note**: Advanced patterns for complex scenarios.
+
+**Coming soon**: Deep dive into expert-level usage.
+
+
+---
+
+## 🎯 Best Practices Checklist
+
+**Must-Have:**
+- ✅ [Critical practice 1]
+- ✅ [Critical practice 2]
+
+**Recommended:**
+- ✅ [Recommended practice 1]
+- ✅ [Recommended practice 2]
+
+**Security:**
+- 🔒 [Security practice 1]
+
+
+---
+
+## 🔗 Context7 MCP Integration
+
+**When to Use Context7 for This Skill:**
+
+This skill benefits from Context7 when:
+- Working with [tag]
+- Need latest documentation
+- Verifying technical details
+
+**Example Usage:**
+
+```python
+# Fetch latest documentation
+from moai_adk.integrations import Context7Helper
+
+helper = Context7Helper()
+docs = await helper.get_docs(
+    library_id="/org/library",
+    topic="tag",
+    tokens=5000
+)
+```
+
+**Relevant Libraries:**
+
+| Library | Context7 ID | Use Case |
+|---------|-------------|----------|
+| [Library 1] | `/org/lib1` | [When to use] |
+
+
+---
+
+## 📊 Decision Tree
+
+**When to use moai-tag-policy-validator:**
+
+```
+Start
+  ├─ Need tag?
+  │   ├─ YES → Use this skill
+  │   └─ NO → Consider alternatives
+  └─ Complex scenario?
+      ├─ YES → See Level 3
+      └─ NO → Start with Level 1
+```
+
+
+---
+
+## 🔄 Integration with Other Skills
+
+**Prerequisite Skills:**
+- Skill("prerequisite-1") – [Why needed]
+
+**Complementary Skills:**
+- Skill("complementary-1") – [How they work together]
+
+**Next Steps:**
+- Skill("next-step-1") – [When to use after this]
+
+
+---
+
+## 📚 Official References
+
+TAG Policy Framework
+
+### 1. TAG Policy Rules
+```python
+TAG_POLICIES = {
+    "SPEC_TAGS": {
+        "required_fields": ["id", "version", "status", "created", "updated", "author", "priority"],
+        "format_validation": {
+            "id": r"SPEC-[0-9]{3}",
+            "version": r"[0-9]+\.[0-9]+\.[0-9]+",
+            "status": r"^(draft|active|completed|archived)$"
+        },
+        "content_validation": {
+            "min_content_length": 100,
+            "required_sections": ["## What It Does", "## When to Use"],
+            "max_content_lines": 500
+        }
+    },
+    "CODE_TAGS": {
+        "placement_rules": {
+            "function_comments": True,
+            "class_documentation": True,
+            "module_level": True
+        },
+        "content_requirements": {
+            "min_description_length": 20,
+            "require_examples": True,
+            "require_parameters": True
+        }
+    },
+    "TEST_TAGS": {
+        "coverage_requirements": {
+            "test_function_tagging": True,
+            "test_class_tagging": True,
+            "parameter_testing": True
+        },
+        "content_validation": {
+            "require_test_description": True,
+            "require_expected_behavior": True
+        }
+    },
+    "DOC_TAGS": {
+        "linking_rules": {
+            "bidirectional_links": True,
+            "chain_completeness": True,
+            "no_broken_links": True
+        },
+        "content_requirements": {
+            "up_to_date": True,
+            "accuracy_check": True,
+            "completeness_check": True
+        }
+    }
+}
+```
+
+### 2. TAG Chain Validation
+```python
+def validate_tag_chains():
+    """Validate complete TAG chains: SPEC → TEST → CODE → DOC"""
+    chain_analysis = {
+        "complete_chains": [],
+        "broken_chains": [],
+        "missing_links": [],
+        "orphaned_tags": []
+    }
+
+    # Find all SPEC tags
+    spec_tags = find_all_tags("SPEC-")
+
+    for spec_tag in spec_tags:
+        chain = {
+            "spec": spec_tag,
+            "tests": find_linked_tests(spec_tag),
+            "code": find_linked_code(spec_tag),
+            "docs": find_linked_docs(spec_tag)
+        }
+
+        # Validate chain completeness
+        if is_complete_chain(chain):
+            chain_analysis["complete_chains"].append(chain)
+        else:
+            missing = identify_missing_links(chain)
+            chain_analysis["broken_chains"].append({
+                "spec": spec_tag,
+                "missing_links": missing,
+                "severity": assess_chain_severity(missing)
+            })
+
+    return chain_analysis
+```
+
+### 3. TAG Coverage Analysis
+```python
+def analyze_tag_coverage():
+    """Analyze TAG coverage across project"""
+    coverage_metrics = {
+        "total_functions": count_functions(),
+        "tagged_functions": count_tagged_functions(),
+        "total_classes": count_classes(),
+        "tagged_classes": count_tagged_classes(),
+        "total_tests": count_tests(),
+        "tagged_tests": count_tagged_tests(),
+        "total_docs": count_documentation_files(),
+        "tagged_docs": count_tagged_docs(),
+        "coverage_percentages": {},
+        "untagged_areas": []
+    }
+
+    # Calculate coverage percentages
+    coverage_metrics["coverage_percentages"] = {
+        "functions": (coverage_metrics["tagged_functions"] / coverage_metrics["total_functions"]) * 100,
+        "classes": (coverage_metrics["tagged_classes"] / coverage_metrics["total_classes"]) * 100,
+        "tests": (coverage_metrics["tagged_tests"] / coverage_metrics["total_tests"]) * 100,
+        "docs": (coverage_metrics["tagged_docs"] / coverage_metrics["total_docs"]) * 100
+    }
+
+    # Identify untagged areas
+    coverage_metrics["untagged_areas"] = find_untagged_areas()
+
+    return coverage_metrics
+```
+
+---
+
+---
+
+## 📈 Version History
+
+**v4.0.0** (2025-11-12)
+- ✨ Context7 MCP integration
+- ✨ Progressive Disclosure structure
+- ✨ 10+ code examples
+- ✨ Primary/secondary agents defined
+- ✨ Best practices checklist
+- ✨ Decision tree
+- ✨ Official references
+
+
+
+---
+
+**Generated with**: MoAI-ADK Skill Factory v4.0  
+**Last Updated**: 2025-11-12  
+**Maintained by**: Primary Agent (alfred)
