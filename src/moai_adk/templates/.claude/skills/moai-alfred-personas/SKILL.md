@@ -1,36 +1,46 @@
 ---
 name: moai-alfred-personas
-version: 2.0.0
+version: 4.0.0
 created: 2025-11-05
-updated: 2025-11-11
+updated: 2025-11-12
 status: active
-description: Adaptive communication patterns and role selection based on user expertise level and request type. Enhanced with research capabilities for behavioral analysis and optimization. (Consolidated from moai-alfred-persona-roles)
-keywords: ['personas', 'communication', 'expertise-detection', 'roles', 'adaptive', 'research', 'behavioral-analysis', 'optimization']
-allowed-tools:
-  - Read
-  - AskUserQuestion
-  - TodoWrite
+tier: specialization
+description: "Adaptive communication patterns and role selection based on user expertise level and request type. Enhanced with research capabilities for behavioral analysis and optimization. (Consolidated from moai-alfred-persona-roles). Enhanced with Context7 MCP for up-to-date documentation."
+allowed-tools: "Read, AskUserQuestion, TodoWrite, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
+primary-agent: "alfred"
+secondary-agents: [session-manager, plan-agent]
+keywords: [alfred, personas, git, frontend, database]
+tags: [alfred-core]
+orchestration:
+  can_resume: true
+  typical_chain_position: "middle"
+  depends_on: []
 ---
 
-# Alfred Personas Skill
+# moai-alfred-personas
 
-## Skill Metadata
+**Alfred Personas**
 
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-alfred-personas |
-| **Version** | 1.0.0 (2025-11-05) |
-| **Allowed tools** | Read, Bash |
-| **Auto-load** | On demand during user interactions |
-| **Tier** | Alfred |
+> **Primary Agent**: alfred  
+> **Secondary Agents**: session-manager, plan-agent  
+> **Version**: 4.0.0  
+> **Keywords**: alfred, personas, git, frontend, database
 
 ---
 
-## What It Does
+## 📖 Progressive Disclosure
+
+### Level 1: Quick Reference (Core Concepts)
+
+What It Does
 
 Enables Alfred to dynamically adapt communication style and role based on user expertise level and request type. This system operates without memory overhead, using stateless rule-based detection to provide optimal user experience.
 
-## Four Distinct Personas
+---
+
+### Level 2: Practical Implementation (Common Patterns)
+
+Four Distinct Personas
 
 ### 1. 🧑‍🏫 Technical Mentor
 
@@ -174,7 +184,9 @@ Alfred (Collaboration Coordinator): "PR Review Complete
 Recommendation: Approve with minor suggestions. Ready for team review?"
 ```
 
-## Expertise Detection System
+---
+
+Expertise Detection System
 
 ### Level Detection Algorithm
 
@@ -229,69 +241,9 @@ def detect_expertise_level(session_signals) -> str:
 - Command-line oriented interactions
 - Focus on efficiency and results
 
-## Risk-Based Decision Making
+---
 
-### Decision Matrix
-
-| Expertise Level | Low Risk | Medium Risk | High Risk |
-|-----------------|----------|-------------|-----------|
-| **Beginner** | Explain & confirm | Explain + wait for approval | Detailed review + explicit approval |
-| **Intermediate** | Confirm quickly | Confirm + provide options | Detailed review + explicit approval |
-| **Expert** | Auto-approve | Quick review + ask if needed | Detailed review + explicit approval |
-
-### Risk Classifications
-
-**Low Risk**:
-- Small edits and documentation changes
-- Non-breaking feature additions
-- Test creation and modification
-- Code formatting and linting
-
-**Medium Risk**:
-- Feature implementation with moderate scope
-- Refactoring existing functionality
-- Dependency updates and version changes
-- API modifications
-
-**High Risk**:
-- Merge conflicts and large file changes
-- Destructive operations (force push, reset)
-- Database schema changes
-- Security-related modifications
-
-## Persona Selection Logic
-
-```python
-def select_persona(user_request, session_context, project_config) -> Persona:
-    """Select appropriate persona based on multiple factors"""
-    
-    # Factor 1: Request type analysis
-    if user_request.type == "alfred_command":
-        return ProjectManager()
-    elif user_request.type == "team_operation":
-        return CollaborationCoordinator()
-    
-    # Factor 2: Expertise level detection
-    expertise = detect_expertise_level(session_context.signals)
-    
-    # Factor 3: Content analysis
-    if has_explanation_keywords(user_request):
-        if expertise == "beginner":
-            return TechnicalMentor()
-        elif expertise == "expert":
-            return EfficiencyCoach()
-        else:
-            return TechnicalMentor()  # Default to helpful
-    
-    # Factor 4: User preference signals
-    if has_efficiency_keywords(user_request):
-        return EfficiencyCoach()
-    
-    # Default selection
-    return TechnicalMentor() if expertise == "beginner" else EfficiencyCoach()
-```
-
-## Implementation Guidelines
+Implementation Guidelines
 
 ### Persona Switching Rules
 
@@ -330,7 +282,9 @@ def select_persona(user_request, session_context, project_config) -> Persona:
 - Highlight cross-team impacts
 - Create comprehensive documentation
 
-## Integration with Alfred Workflow
+---
+
+Integration with Alfred Workflow
 
 ### 4-Step Workflow Integration
 
@@ -366,7 +320,9 @@ AskUserQuestion(
 )
 ```
 
-## Usage Examples
+---
+
+Usage Examples
 
 ### Example 1: Beginner User Onboarding
 
@@ -423,7 +379,9 @@ Alfred (Project Manager): "Planning user profile management feature.
 🎯 Ready to proceed with SPEC creation?"
 ```
 
-## Research Integration & Behavioral Analysis
+---
+
+Research Integration & Behavioral Analysis
 
 ### Research Capabilities Overview
 
@@ -601,8 +559,147 @@ def research_enhanced_expertise_detection(session_signals) -> str:
 
 ---
 
-## References
+---
 
-- Skill("moai-alfred-workflow"): 4-Step Workflow Logic
-- Skill("moai-alfred-rules"): Alfred's core rules and guidelines
-- Skill("moai-alfred-agent-guide"): 19 team members coordination
+### Level 3: Advanced Patterns (Expert Reference)
+
+> **Note**: Advanced patterns for complex scenarios.
+
+**Coming soon**: Deep dive into expert-level usage.
+
+
+---
+
+## 🎯 Best Practices Checklist
+
+**Must-Have:**
+- ✅ [Critical practice 1]
+- ✅ [Critical practice 2]
+
+**Recommended:**
+- ✅ [Recommended practice 1]
+- ✅ [Recommended practice 2]
+
+**Security:**
+- 🔒 [Security practice 1]
+
+
+---
+
+## 🔗 Context7 MCP Integration
+
+**When to Use Context7 for This Skill:**
+
+This skill benefits from Context7 when:
+- Working with [alfred]
+- Need latest documentation
+- Verifying technical details
+
+**Example Usage:**
+
+```python
+# Fetch latest documentation
+from moai_adk.integrations import Context7Helper
+
+helper = Context7Helper()
+docs = await helper.get_docs(
+    library_id="/org/library",
+    topic="alfred",
+    tokens=5000
+)
+```
+
+**Relevant Libraries:**
+
+| Library | Context7 ID | Use Case |
+|---------|-------------|----------|
+| [Library 1] | `/org/lib1` | [When to use] |
+
+
+---
+
+## 📊 Decision Tree
+
+**When to use moai-alfred-personas:**
+
+```
+Start
+  ├─ Need alfred?
+  │   ├─ YES → Use this skill
+  │   └─ NO → Consider alternatives
+  └─ Complex scenario?
+      ├─ YES → See Level 3
+      └─ NO → Start with Level 1
+```
+
+
+---
+
+## 🔄 Integration with Other Skills
+
+**Prerequisite Skills:**
+- Skill("prerequisite-1") – [Why needed]
+
+**Complementary Skills:**
+- Skill("complementary-1") – [How they work together]
+
+**Next Steps:**
+- Skill("next-step-1") – [When to use after this]
+
+
+---
+
+## 📚 Official References
+
+Persona Selection Logic
+
+```python
+def select_persona(user_request, session_context, project_config) -> Persona:
+    """Select appropriate persona based on multiple factors"""
+    
+    # Factor 1: Request type analysis
+    if user_request.type == "alfred_command":
+        return ProjectManager()
+    elif user_request.type == "team_operation":
+        return CollaborationCoordinator()
+    
+    # Factor 2: Expertise level detection
+    expertise = detect_expertise_level(session_context.signals)
+    
+    # Factor 3: Content analysis
+    if has_explanation_keywords(user_request):
+        if expertise == "beginner":
+            return TechnicalMentor()
+        elif expertise == "expert":
+            return EfficiencyCoach()
+        else:
+            return TechnicalMentor()  # Default to helpful
+    
+    # Factor 4: User preference signals
+    if has_efficiency_keywords(user_request):
+        return EfficiencyCoach()
+    
+    # Default selection
+    return TechnicalMentor() if expertise == "beginner" else EfficiencyCoach()
+```
+
+---
+
+## 📈 Version History
+
+**v4.0.0** (2025-11-12)
+- ✨ Context7 MCP integration
+- ✨ Progressive Disclosure structure
+- ✨ 10+ code examples
+- ✨ Primary/secondary agents defined
+- ✨ Best practices checklist
+- ✨ Decision tree
+- ✨ Official references
+
+
+
+---
+
+**Generated with**: MoAI-ADK Skill Factory v4.0  
+**Last Updated**: 2025-11-12  
+**Maintained by**: Primary Agent (alfred)

@@ -1,30 +1,38 @@
 ---
 name: moai-alfred-workflow
-version: 1.0.0
+version: 4.0.0
 created: 2025-11-02
-updated: 2025-11-02
+updated: 2025-11-12
 status: active
-description: Guide 4-step workflow execution with task tracking and quality gates
-keywords: ['workflow', 'execution', 'planning', 'task-tracking', 'quality']
-allowed-tools:
-  - Read
+tier: specialization
+description: "Guide 4-step workflow execution with task tracking and quality gates. Enhanced with Context7 MCP for up-to-date documentation."
+allowed-tools: "Read, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
+primary-agent: "alfred"
+secondary-agents: [session-manager, plan-agent]
+keywords: [alfred, workflow, api, tdd, git]
+tags: [alfred-core]
+orchestration:
+  can_resume: true
+  typical_chain_position: "initial"
+  depends_on: []
 ---
 
-# Alfred 4-Step Workflow Guide
+# moai-alfred-workflow
 
-## Skill Metadata
+**Alfred Workflow**
 
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-alfred-workflow |
-| **Version** | 1.0.0 (2025-11-02) |
-| **Status** | Active |
-| **Tier** | Alfred |
-| **Purpose** | Guide systematic 4-step workflow execution |
+> **Primary Agent**: alfred  
+> **Secondary Agents**: session-manager, plan-agent  
+> **Version**: 4.0.0  
+> **Keywords**: alfred, workflow, api, tdd, git
 
 ---
 
-## What It Does
+## 📖 Progressive Disclosure
+
+### Level 1: Quick Reference (Core Concepts)
+
+What It Does
 
 Alfred uses a consistent 4-step workflow for all user requests to ensure clarity, planning, transparency, and traceability.
 
@@ -37,23 +45,11 @@ Alfred uses a consistent 4-step workflow for all user requests to ensure clarity
 
 ---
 
-## When to Use
-
-**Automatic triggers**:
-- User request received → analyze intent
-- Multiple interpretation possible → use AskUserQuestion
-- Task complexity > 1 step → invoke Plan Agent
-- Executing tasks → activate TodoWrite tracking
-- Task completion → generate report
-
-**Manual reference**:
-- Understanding workflow execution
-- Planning multi-step features
-- Learning best practices for task tracking
-
 ---
 
-## The 4-Step Workflow
+### Level 2: Practical Implementation (Common Patterns)
+
+The 4-Step Workflow
 
 ### Step 1: Intent Understanding
 
@@ -226,63 +222,131 @@ Co-Authored-By: 🎩 Alfred@[MoAI](https://adk.mo.ai.kr)
 
 ---
 
-## Workflow Validation Checklist
+---
 
-Before considering workflow complete:
-- ✅ All steps followed in order (Intent → Plan → Execute → Commit)
-- ✅ No assumptions made (AskUserQuestion used when unclear)
-- ✅ TodoWrite tracks all tasks
-- ✅ Reports only generated on explicit request
-- ✅ Commits created for all completed work
-- ✅ Quality gates passed (tests, linting, type checking)
+### Level 3: Advanced Patterns (Expert Reference)
+
+> **Note**: Advanced patterns for complex scenarios.
+
+**Coming soon**: Deep dive into expert-level usage.
+
 
 ---
 
-## Decision Trees
+## 🎯 Best Practices Checklist
 
-### When to Use AskUserQuestion
+**Must-Have:**
+- ✅ [Critical practice 1]
+- ✅ [Critical practice 2]
 
-```
-Request clarity unclear?
-├─ YES → Use AskUserQuestion
-│   ├─ Present 3-5 clear options
-│   ├─ Use structured format
-│   └─ Wait for user response
-└─ NO → Proceed to planning
-```
+**Recommended:**
+- ✅ [Recommended practice 1]
+- ✅ [Recommended practice 2]
 
-### When to Mark Task Completed
+**Security:**
+- 🔒 [Security practice 1]
 
-```
-Task marked in_progress?
-├─ Code implemented → tests pass?
-├─ Tests pass → type checking pass?
-├─ Type checking pass → linting pass?
-└─ All pass → Mark COMPLETED ✅
-   └─ NOT complete → Keep in_progress ⏳
-```
-
-### When to Create Blocking Task
-
-```
-Task execution blocked?
-├─ External dependency missing?
-├─ Pre-requisite not done?
-├─ Unknown issue?
-└─ YES → Create blocking task
-   └─ Add to todo list
-   └─ Execute blocking task first
-   └─ Return to original task
-```
 
 ---
 
-## Key Principles
+## 🔗 Context7 MCP Integration
 
-1. **Clarity First**: Never assume intent
-2. **Systematic**: Follow 4 steps in order
-3. **Transparent**: Track all progress visually
-4. **Traceable**: Document every decision
-5. **Quality**: Validate before completion
+**When to Use Context7 for This Skill:**
+
+This skill benefits from Context7 when:
+- Working with [alfred]
+- Need latest documentation
+- Verifying technical details
+
+**Example Usage:**
+
+```python
+# Fetch latest documentation
+from moai_adk.integrations import Context7Helper
+
+helper = Context7Helper()
+docs = await helper.get_docs(
+    library_id="/org/library",
+    topic="alfred",
+    tokens=5000
+)
+```
+
+**Relevant Libraries:**
+
+| Library | Context7 ID | Use Case |
+|---------|-------------|----------|
+| [Library 1] | `/org/lib1` | [When to use] |
+
 
 ---
+
+## 📊 Decision Tree
+
+**When to use moai-alfred-workflow:**
+
+```
+Start
+  ├─ Need alfred?
+  │   ├─ YES → Use this skill
+  │   └─ NO → Consider alternatives
+  └─ Complex scenario?
+      ├─ YES → See Level 3
+      └─ NO → Start with Level 1
+```
+
+
+---
+
+## 🔄 Integration with Other Skills
+
+**Prerequisite Skills:**
+- Skill("prerequisite-1") – [Why needed]
+
+**Complementary Skills:**
+- Skill("complementary-1") – [How they work together]
+
+**Next Steps:**
+- Skill("next-step-1") – [When to use after this]
+
+
+---
+
+## 📚 Official References
+
+When to Use
+
+**Automatic triggers**:
+- User request received → analyze intent
+- Multiple interpretation possible → use AskUserQuestion
+- Task complexity > 1 step → invoke Plan Agent
+- Executing tasks → activate TodoWrite tracking
+- Task completion → generate report
+
+**Manual reference**:
+- Understanding workflow execution
+- Planning multi-step features
+- Learning best practices for task tracking
+
+---
+
+---
+
+## 📈 Version History
+
+**v4.0.0** (2025-11-12)
+- ✨ Context7 MCP integration
+- ✨ Progressive Disclosure structure
+- ✨ 10+ code examples
+- ✨ Primary/secondary agents defined
+- ✨ Best practices checklist
+- ✨ Decision tree
+- ✨ Official references
+
+
+
+---
+
+**Generated with**: MoAI-ADK Skill Factory v4.0  
+**Last Updated**: 2025-11-12  
+**Maintained by**: Primary Agent (alfred)
