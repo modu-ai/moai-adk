@@ -48,3 +48,7 @@ logs/
 # Test coverage
 .coverage
 coverage.json
+
+# Next.js build output
+docs/.next/
+docs/out/

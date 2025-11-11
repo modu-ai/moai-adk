@@ -1,20 +1,11 @@
 import React from 'react'
-import { useThemeConfig } from 'nextra-theme-docs'
-import CustomSearch from './components/CustomSearch'
-import CoreWebVitalsOptimizer from './components/CoreWebVitalsOptimizer'
 
 const config = {
   logo: (
-    <span style={{ fontWeight: 700, fontSize: '1.2rem' }}>
+    <span style={{ fontWeight: 700, fontSize: '1.2rem', letterSpacing: '-1px' }}>
       🗿 MoAI-ADK
     </span>
   ),
-
-  // Nextra 4.x optimizations
-  // primaryHue: 180,
-  // primarySaturation: 70,
-  // grayHue: 215,
-  // graySaturation: 10,
 
   project: {
     link: 'https://github.com/modu-ai/moai-adk',
@@ -45,6 +36,7 @@ const config = {
   },
 
   docsRepositoryBase: 'https://github.com/modu-ai/moai-adk/tree/main/docs',
+  
   editLink: {
     content: 'GitHub에서 이 페이지 수정 →',
   },
@@ -56,18 +48,18 @@ const config = {
 
   footer: {
     content: (
-      <div className="flex w-full flex-col items-center sm:items-start">
+      <div className="flex w-full flex-col items-center text-center">
         <div>
           <a
-            className="flex items-center gap-2 text-current"
+            className="flex items-center gap-2 text-current hover:opacity-75 transition-opacity"
             target="_blank"
             rel="noopener noreferrer"
-            href="https://github.com/modu-ai/moai-adk"
+            href="https://mo.ai.kr"
           >
-            <span>Made with ❤️ by GoosLab</span>
+            <span>Copyleft 2025 MoAI (모두의AI)</span>
           </a>
         </div>
-        <p className="mt-4 text-xs">© 2025 GoosLab. All rights reserved.</p>
+        <p className="text-xs">All rights reserved.</p>
       </div>
     ),
   },
@@ -80,48 +72,20 @@ const config = {
       <meta property="og:image" content="https://moai-adk.gooslab.ai/og-image.png" />
       <meta name="twitter:card" content="summary_large_image" />
       <link rel="icon" href="/favicon.ico" />
-
-      {/* Performance optimizations */}
+      
+      {/* Web Fonts */}
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-
-      {/* Core Web Vitals monitoring in development */}
-      {process.env.NODE_ENV === 'development' && (
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              // Performance monitoring setup
-              if (typeof window !== 'undefined') {
-                window.addEventListener('load', function() {
-                  setTimeout(function() {
-                    const vitals = performance.getEntriesByType('navigation')[0];
-                    console.log('📊 Navigation Timing:', {
-                      domContentLoaded: vitals.domContentLoadedEventEnd - vitals.navigationStart,
-                      loadComplete: vitals.loadEventEnd - vitals.navigationStart,
-                      firstPaint: performance.getEntriesByType('paint')[0]?.startTime,
-                      firstContentfulPaint: performance.getEntriesByType('paint')[1]?.startTime
-                    });
-                  }, 0);
-                });
-              }
-            `
-          }}
-        />
-      )}
+      <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+      <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet" />
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+      <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+      <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
     </>
   ),
 
-  i18n: [
-    { locale: 'ko', name: '한국어' },
-    { locale: 'en', name: 'English' },
-    { locale: 'ja', name: '日本語' },
-    { locale: 'zh', name: '中文' },
-  ],
-
   search: {
     placeholder: '검색...',
-    // Custom search component using Pagefind
-    component: CustomSearch,
   },
 
   toc: {
@@ -129,33 +93,26 @@ const config = {
     backToTop: true,
   },
 
-  // Sidebar configuration
   sidebar: {
     autoCollapse: false,
     defaultMenuCollapseLevel: 1,
     toggleButton: true,
   },
 
-  // Navigation configuration
   navigation: true,
-
-  // Dark mode
   darkMode: true,
-}
-
-// Content directory configuration for Nextra 4.x
-const extendedConfig = {
-  ...config,
-  content: {
-    // Specify the content directory
-    dir: 'content',
+  nextThemes: {
+    defaultTheme: 'system',
   },
 
-  // Performance optimization components
-  components: {
-    // Add Core Web Vitals monitoring in development
-    CoreWebVitalsOptimizer: process.env.NODE_ENV === 'development' ? CoreWebVitalsOptimizer : undefined,
-  },
+  i18n: [
+    { locale: 'ko', name: '한국어' },
+    { locale: 'en', name: 'English' },
+    { locale: 'ja', name: '日本語' },
+    { locale: 'zh', name: '中文' },
+  ],
 }
 
-export default extendedConfig
+export default config
+
+
