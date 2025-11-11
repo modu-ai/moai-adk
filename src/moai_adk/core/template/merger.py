@@ -15,7 +15,7 @@ from typing import Any
 class TemplateMerger:
     """Encapsulate template merging logic."""
 
-    PROJECT_INFO_HEADERS = ("## Project Information", "## 프로젝트 정보")
+    PROJECT_INFO_HEADERS = ("## Project Information", "## Project Information")
 
     def __init__(self, target_path: Path) -> None:
         """Initialize the merger.

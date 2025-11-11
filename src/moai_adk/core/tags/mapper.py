@@ -4,7 +4,7 @@
 Maps documentation files to related SPEC IDs based on domain matching
 and calculates confidence scores for chain references.
 
-@SPEC:DOC-TAG-001: @DOC 태그 자동 생성 인프라
+Related SPEC: DOC-TAG-001 (Automated @DOC tag generation infrastructure)
 """
 
 import re

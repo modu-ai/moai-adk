@@ -6,11 +6,10 @@ Provides helper functions for commands to interact with ContextManager
 and perform common operations like context extraction and validation.
 """
 
-import os
 import json
-from typing import Dict, Any, List, Optional
+import os
 from datetime import datetime, timezone
-from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 # Conditional import of ContextManager
 try:
@@ -159,6 +158,60 @@ def validate_phase_files(
     return absolute_paths
 
 
+def _prepare_phase_data(
+    phase_name: str,
+    status: str,
+    outputs: Dict[str, Any],
+    absolute_paths: List[str],
+    next_phase: Optional[str]
+) -> Dict[str, Any]:
+    """
+    Prepare phase data for saving.
+
+    Args:
+        phase_name: Name of the phase
+        status: Phase status
+        outputs: Phase outputs
+        absolute_paths: List of absolute file paths
+        next_phase: Optional next phase
+
+    Returns:
+        Phase data dictionary ready for saving
+    """
+    phase_data = build_phase_result(
+        phase_name=phase_name,
+        status=status,
+        outputs=outputs,
+        files_created=absolute_paths,
+        next_phase=next_phase
+    )
+
+    # Validate no unsubstituted template variables
+    phase_json = json.dumps(phase_data)
+    validate_no_template_vars(phase_json)
+
+    return phase_data
+
+
+def _validate_and_save(
+    context_mgr: Any,
+    phase_data: Dict[str, Any]
+) -> str:
+    """
+    Validate and save phase data.
+
+    Args:
+        context_mgr: ContextManager instance
+        phase_data: Phase data to save
+
+    Returns:
+        Path to saved file
+    """
+    saved_path = context_mgr.save_phase_result(phase_data)
+    print(f"✓ Phase context saved: {os.path.basename(saved_path)}")
+    return saved_path
+
+
 def save_command_context(
     phase_name: str,
     project_root: str,
@@ -189,33 +242,14 @@ def save_command_context(
         return None
 
     try:
-        # Initialize ContextManager
         context_mgr = ContextManager(project_root)
-
-        # Validate and convert file paths to absolute
         absolute_paths = validate_phase_files(files_created, project_root)
-
-        # Build phase result
-        phase_data = build_phase_result(
-            phase_name=phase_name,
-            status=status,
-            outputs=outputs,
-            files_created=absolute_paths,
-            next_phase=next_phase
+        phase_data = _prepare_phase_data(
+            phase_name, status, outputs, absolute_paths, next_phase
         )
-
-        # Validate no unsubstituted template variables
-        phase_json = json.dumps(phase_data)
-        validate_no_template_vars(phase_json)
-
-        # Save phase result
-        saved_path = context_mgr.save_phase_result(phase_data)
-        print(f"✓ Phase context saved: {os.path.basename(saved_path)}")
-
-        return saved_path
+        return _validate_and_save(context_mgr, phase_data)
 
     except Exception as e:
-        # Log error but don't block command completion
         print(f"Warning: Failed to save phase context: {e}")
         print("Command execution continues normally.")
         return None

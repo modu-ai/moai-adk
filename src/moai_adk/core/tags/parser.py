@@ -4,8 +4,8 @@
 This module extracts SPEC metadata (ID, domain, title) from SPEC documents
 for use in TAG generation and SPEC-DOC mapping.
 
-@SPEC:DOC-TAG-PARSER: @DOC 태그 자동 생성 인프라
-@CODE:QUALITY-FRAMEWORK: SPEC 파싱 및 메타데이터 추출 시스템
+@SPEC:DOC-TAG-PARSER: Automated @DOC tag generation infrastructure
+@CODE:QUALITY-FRAMEWORK: SPEC parsing and metadata extraction system
 """
 
 import re

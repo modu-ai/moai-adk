@@ -46,23 +46,23 @@ class QualityValidator:
         # Validation rules
         self.validation_rules = {
             'required_sections': [
-                '개요 (Overview)',
-                '환경 (Environment)',
-                '가정 (Assumptions)',
-                '요구사항 (Requirements)',
-                '명세 (Specifications)',
-                '추적성 (Traceability)'
+                'Overview',
+                'Environment',
+                'Assumptions',
+                'Requirements',
+                'Specifications',
+                'Traceability'
             ],
             'required_plan_sections': [
-                '구현 단계 (Implementation Phases)',
-                '기술적 접근 방식 (Technical Approach)',
-                '성공 기준 (Success Criteria)',
-                '다음 단계 (Next Steps)'
+                'Implementation Phases',
+                'Technical Approach',
+                'Success Criteria',
+                'Next Steps'
             ],
             'required_acceptance_sections': [
-                '검수 기준 (Acceptance Criteria)',
-                '검수 절차 (Validation Process)',
-                '검수 완료 기준 (Completion Criteria)'
+                'Acceptance Criteria',
+                'Validation Process',
+                'Completion Criteria'
             ],
             'technical_keywords': [
                 'API', 'Database', 'Authentication', 'Security',
@@ -452,11 +452,11 @@ class QualityValidator:
 
         # Check for plan-specific elements
         plan_indicators = [
-            r'단계|Phase',  # Phases
-            r'우선순위|Priority',  # Priorities
-            r'할 일|Task',  # Tasks
+            r'Phase',  # Phases
+            r'Priority',  # Priorities
+            r'Task',  # Tasks
             r'\[\s*\]',  # Checkboxes
-            r'1단계|Phase 1',  # Phase indicators
+            r'Phase 1',  # Phase indicators
         ]
 
         score = 0.0
@@ -473,11 +473,11 @@ class QualityValidator:
 
         # Check for acceptance-specific elements
         acceptance_indicators = [
-            r'검수|Acceptance',  # Acceptance
-            r'기준|Criteria',  # Criteria
-            r'통과|Pass',  # Pass
-            r'실패|Fail',  # Fail
-            r'테스트|Test',  # Test
+            r'Acceptance',  # Acceptance
+            r'Criteria',  # Criteria
+            r'Pass',  # Pass
+            r'Fail',  # Fail
+            r'Test',  # Test
         ]
 
         score = 0.0
@@ -527,10 +527,10 @@ class QualityValidator:
         """Check for realistic time/effort estimates."""
         # Look for realistic time estimates
         time_patterns = [
-            r'1-2\s*일|1-2\s*days',
-            r'3-5\s*일|3-5\s*days',
-            r'1-2\s*주|1-2\s*weeks',
-            r'\d+\s*시간|\d+\s*hours'
+            r'1-2\s*days',
+            r'3-5\s*days',
+            r'1-2\s*weeks',
+            r'\d+\s*hours'
         ]
 
         return any(re.search(pattern, spec_md) for pattern in time_patterns)
@@ -552,11 +552,11 @@ class QualityValidator:
     def _check_clarity_requirements(self, spec_md: str) -> float:
         """Check clarity requirements."""
         clarity_indicators = [
-            r'명확한|Clear',
-            r'구체적인|Specific',
-            r'측정 가능한|Measurable',
-            r'달성 가능한|Achievable',
-            r'관련성 있는|Relevant'
+            r'Clear',
+            r'Specific',
+            r'Measurable',
+            r'Achievable',
+            r'Relevant'
         ]
 
         found_indicators = sum(1 for indicator in clarity_indicators
@@ -567,11 +567,11 @@ class QualityValidator:
     def _check_ambiguity(self, spec_md: str) -> float:
         """Check for ambiguous language."""
         ambiguity_indicators = [
-            r'정도|degree',
-            r'정도|extent',
-            r'대략|approximately',
-            r'약|about',
-            r'정도|around'
+            r'degree',
+            r'extent',
+            r'approximately',
+            r'about',
+            r'around'
         ]
 
         ambiguous_count = sum(1 for indicator in ambiguity_indicators
@@ -622,9 +622,9 @@ class QualityValidator:
         # Look for traceability indicators
         traceability_indicators = [
             r'←|→',  # Arrows for relationships
-            r'관계|Relationship',
-            r'연결|Connect',
-            r'추적|Trace'
+            r'Relationship',
+            r'Connect',
+            r'Trace'
         ]
 
         found_indicators = sum(1 for indicator in traceability_indicators
@@ -639,11 +639,11 @@ class QualityValidator:
 
         # Check for acceptance-specific elements
         acceptance_indicators = [
-            r'검수|Acceptance',  # Acceptance
-            r'기준|Criteria',  # Criteria
-            r'통과|Pass',  # Pass
-            r'실패|Fail',  # Fail
-            r'테스트|Test',  # Test
+            r'Acceptance',  # Acceptance
+            r'Criteria',  # Criteria
+            r'Pass',  # Pass
+            r'Fail',  # Fail
+            r'Test',  # Test
         ]
 
         score = 0.0
