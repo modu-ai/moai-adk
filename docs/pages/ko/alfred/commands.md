@@ -15,7 +15,6 @@ Alfred 슈퍼에이전트를 제어하는 7개의 핵심 명령어들입니다. 
 | [`/alfred:1-plan`](#1-plan) | SPEC 작성 및 계획 수립 | 계획 |
 | [`/alfred:2-run`](#2-run) | TDD 기반 구현 실행 | 개발 |
 | [`/alfred:3-sync`](#3-sync) | 문서 동기화 및 검증 | 동기화 |
-| [`/alfred:8-research`](#8-research) | 심층 연구 및 분석 | 연구 |
 | [`/alfred:9-feedback`](#9-feedback) | 피드백 수집 및 개선 | 개선 |
 | [`/alfred:release-new`](#release-new) | 릴리즈 관리 | 배포 |
 
@@ -233,66 +232,6 @@ flowchart TD
 
     class Code,Trigger,Validation,Sync,Complete processNode
     class Error errorNode
-```
-
----
-
-## /alfred:8-research
-
-심층 연구 및 분석을 담당합니다. 8가지 연구 전략을 통해 복잡한 문제에 대한 종합적인 해결책을 제시합니다.
-
-### 8가지 연구 전략
-
-| 전략 | 목적 | Alfred 구현 |
-|------|------|-------------|
-| **1. 재현 및 문서화** | 체계적인 이슈 재현 | research-reproducer |
-| **2. 모범 사례 기반 연구** | 업계 표준 및 검증된 솔루션 | best-practices-researcher |
-| **3. 코드베이스 기반 연구** | 기존 구현 패턴 발견 | codebase-analyst |
-| **4. 라이브러리 기반 연구** | 도구 능력에 대한 깊은 이해 | library-researcher |
-| **5. Git 히스토리 연구** | 과거 결정과 진화로부터 학습 | git-historian |
-| **6. 명확성을 위한 프로토타이핑** | 요구사항 탐색 | prototype-creator |
-| **7. 옵션별 종합** | 여러 접근 방식 생성 및 비교 | synthesis-agent |
-| **8. 스타일 에이전트를 통한 검토** | 다각적 품질 검증 | style-reviewer |
-
-### 병렬 연구 운영
-
-```mermaid
-flowchart TD
-    Input["복잡한 문제 입력"]
-
-    subgraph "병렬 연구 실행"
-        S1["전략 1<br/>재현 및 문서화"]
-        S2["전략 2<br/>모범 사례 연구"]
-        S3["전략 3<br/>코드베이스 분석"]
-        S4["전략 4<br/>라이브러리 연구"]
-        S5["전략 5<br/>Git 히스토리"]
-        S6["전략 6<br/>프로토타이핑"]
-        S7["전략 7<br/>옵션 종합"]
-        S8["전략 8<br/>다각적 검토"]
-    end
-
-    Synthesize["지식 종합"]
-    Solution["최적 해결책"]
-
-    Input --> S1
-    Input --> S2
-    Input --> S3
-    Input --> S4
-    Input --> S5
-    Input --> S6
-    Input --> S7
-    Input --> S8
-
-    S1 --> Synthesize
-    S2 --> Synthesize
-    S3 --> Synthesize
-    S4 --> Synthesize
-    S5 --> Synthesize
-    S6 --> Synthesize
-    S7 --> Synthesize
-    S8 --> Synthesize
-
-    Synthesize --> Solution
 ```
 
 ---

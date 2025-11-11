@@ -104,11 +104,11 @@ description: "Zero-downtime 마이그레이션, 95% 성능 향상, 배포 주기
 
 #### Git History 분석으로 서비스 경계 도출
 
-Alfred의 research-strategies Skills 활용:
+Alfred의 Plan 에이전트 활용:
 
 ```bash
-# Git History 분석
-/alfred:research "Analyze git history to identify service boundaries for microservices migration"
+# Git History 분석 및 마이그레이션 계획
+/alfred:1-plan "Analyze git history and create microservices migration strategy"
 ```
 
 **Alfred의 분석 결과**:
@@ -1318,19 +1318,16 @@ else:
 ### MoAI-ADK로 시작하기
 
 ```bash
-# 1. Git History 분석
-/alfred:research "Analyze git history to identify microservices boundaries"
+# 1. Git History 분석 및 마이그레이션 계획
+/alfred:1-plan "Analyze git history and migrate Django monolith to microservices using Strangler Pattern"
 
-# 2. 마이그레이션 계획
-/alfred:1-plan "Migrate Django monolith to microservices using Strangler Pattern"
-
-# 3. 첫 서비스 구현
+# 2. 첫 서비스 구현
 /alfred:2-run MIGRATE-001  # Auth Service 분리
 
-# 4. 검증 및 모니터링
+# 3. 검증 및 모니터링
 /alfred:3-sync auto MIGRATE-001
 
-# 5. 다음 서비스
+# 4. 다음 서비스
 /alfred:2-run MIGRATE-002  # User Service 분리
 ```
 

@@ -17,6 +17,9 @@ node_modules/
 .moai-backups/
 *.backup/
 *-backup/
+*_backup_*/
+hooks_backup_*/
+docs_backup_*/
 
 # Virtual environment
 venv/
@@ -48,3 +51,36 @@ logs/
 # Test coverage
 .coverage
 coverage.json
+
+# Next.js build output
+docs/.next/
+docs/out/
+
+# Claude and MoAI configuration (user-specific, root only)
+# Package templates (src/moai_adk/templates/) are tracked
+/.claude/
+/CLAUDE.md
+
+# MoAI dynamic content (로컬 프로젝트만 무시)
+.moai/logs/
+.moai/temp/
+.moai/cache/
+.moai/memory/
+.moai/config/
+
+# MoAI reports (임시 보고서만 무시)
+.moai/reports/*.tmp
+.moai/reports/*-draft.*
+
+# Environment variables and deployment secrets
+.env*
+.vercel/
+.netlify/
+.firebase/
+.aws/
+.mypy_cache
+.playwright-mcp
+.ruff_cache
+.uv_cache
+.uv-cache
+.venv_issue43_py313

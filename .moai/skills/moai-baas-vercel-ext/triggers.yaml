@@ -1,0 +1,27 @@
+skill_id: moai-baas-vercel-ext
+trigger_keywords:
+  - "Vercel"
+  - "Edge Functions"
+  - "Next.js"
+  - "Deployment"
+  - "ISR"
+  - "Serverless"
+  - "Production"
+
+trigger_contexts:
+  - "vercel-detected"
+  - "pattern-a"
+  - "pattern-b"
+  - "pattern-d"
+  - "deployment-phase"
+
+trigger_agents:
+  - "frontend-expert"
+  - "devops-expert"
+
+auto_load_conditions:
+  - when_vercel_selected: true
+  - when_deployment_phase: true
+
+priority: 85
+freedom_level: high

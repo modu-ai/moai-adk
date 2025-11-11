@@ -1,0 +1,40 @@
+{
+  "skill_id": "moai-baas-vercel-ext",
+  "skill_name": "Vercel Deployment & Edge Functions (Production Best Practices)",
+  "version": "2.0.0",
+  "language": "english",
+  "word_count": 1000,
+  "sections": 6,
+  "context7_references": 5,
+  "context7_topics": [
+    "Deployment Strategy Comparison",
+    "Edge Functions Guide",
+    "Image Optimization",
+    "Git Integration & Preview Deployments",
+    "Serverless Functions"
+  ],
+  "agents": [
+    "frontend-expert",
+    "devops-expert"
+  ],
+  "tags": [
+    "baas",
+    "vercel",
+    "deployment",
+    "edge-functions",
+    "next.js",
+    "production"
+  ],
+  "patterns_supported": [
+    "pattern-a",
+    "pattern-b",
+    "pattern-d"
+  ],
+  "dependencies": [
+    "moai-baas-foundation"
+  ],
+  "created": "2025-11-09",
+  "updated": "2025-11-09",
+  "validation_status": "complete",
+  "spec_reference": "@SPEC:BAAS-ECOSYSTEM-001"
+}
