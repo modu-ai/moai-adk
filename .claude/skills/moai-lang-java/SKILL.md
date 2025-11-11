@@ -1,18 +1,12 @@
 ---
 name: moai-lang-java
-version: 2.0.0
+version: 4.0.0
 created: 2025-11-06
-updated: 2025-11-06
+updated: 2025-11-11
 status: active
-description: "Java best practices with Spring ecosystem, enterprise backend development, and JVM optimization for 2025"
-keywords: [java, programming, backend, spring, enterprise, maven, gradle, testing]
-allowed-tools:
-  - Read
-  - Write
-  - Edit
-  - Bash
-  - WebFetch
-  - WebSearch
+description: "Java enterprise development with Context7 integration. Spring Boot mastery, JVM optimization, microservices architecture, TestContainers integration. Use when building enterprise applications, microservices, REST APIs, or production-grade backend systems."
+keywords: ['java', 'spring-boot', 'context7', 'microservices', 'enterprise', 'testcontainers', 'jvm', 'mcp-integration', 'maven', 'gradle']
+allowed-tools: "Read, Write, Edit, Glob, Bash, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, WebFetch"
 ---
 
 # Java Development Mastery
@@ -86,6 +80,65 @@ allowed-tools:
 - **Flyway**: 10.20.x - Database migrations
 - **Liquibase**: 4.29.x - Database schema management
 - **H2**: 2.3.x - In-memory database for testing
+
+## Context7 Integration for Java
+
+### Spring Boot Libraries with Context7
+
+```java
+// Get latest Spring Boot patterns from Context7
+// Library: /spring-projects/spring-boot
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.web.bind.annotation.*;
+
+@SpringBootApplication
+@RestController
+public class Application {
+
+    @GetMapping("/hello")
+    public String hello(@RequestParam(defaultValue = "World") String name) {
+        return String.format("Hello %s!", name);
+    }
+
+    public static void main(String[] args) {
+        SpringApplication.run(Application.class, args);
+    }
+}
+```
+
+### TestContainers Integration with Context7
+
+```java
+// Context7-backed testing patterns
+@Testcontainers
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+class ApplicationIntegrationTest {
+
+    @Container
+    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16")
+        .withDatabaseName("testdb")
+        .withUsername("testuser")
+        .withPassword("testpass");
+
+    @DynamicPropertySource
+    static void configureProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.username", postgres::getUsername);
+        registry.add("spring.datasource.password", postgres::getPassword);
+    }
+
+    @Autowired
+    private TestRestTemplate restTemplate;
+
+    @Test
+    void testHealthEndpoint() {
+        ResponseEntity<String> response = restTemplate.getForEntity("/actuator/health", String.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).contains("UP");
+    }
+}
+```
 
 ## Ecosystem Overview
 

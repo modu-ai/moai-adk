@@ -18,11 +18,11 @@ traceability:
   code: "@CODE:DOCS-001"
 ---
 
-# `@PLAN:DOCS-001: MoAI-ADK 문서 개선 실행 계획`
+# `@PLAN:DOCS-001: Document-master 에이전트 온라인 문서 구현 계획`
 
 ## 요약 (Summary)
 
-README.ko.md(3295줄)를 주제별로 분할하고, 실제 코드 기반 예제와 Mermaid 다이어그램으로 문서를 개선하는 프로젝트입니다.
+SPEC-DOCS-001 v2.0.0의 요구사항을 만족시키기 위한 Document-master 에이전트 기반 온라인 문서 생성 시스템 구현 계획입니다. Nextra 프레임워크와 Context7 통합을 통해 자동화된 문서 사이트를 구축하여 169개 Python 파일과 55개 Skills, 19개 에이전트를 종합적으로 문서화합니다.
 
 ## 목표 (Objectives)
 

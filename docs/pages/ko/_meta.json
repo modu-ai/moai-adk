@@ -1,3 +1,10 @@
 {
-  "title": "한국어"
+  "title": "한국어",
+  "getting-started": "시작하기",
+  "features": "주요 기능",
+  "skills": "Skills",
+  "guides": "가이드",
+  "output-style": "출력 스타일",
+  "reference": "레퍼런스",
+  "troubleshooting": "문제 해결"
 }

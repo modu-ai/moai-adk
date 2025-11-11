@@ -1,14 +1,20 @@
 ---
 name: moai-foundation-trust
-description: Validates TRUST 5-principles (Test 85%+, Readable, Unified, Secured, Trackable). Use when aligning with TRUST governance.
+description: Enterprise Zero-Trust security and quality validation with AI-powered threat detection, automated compliance monitoring, and real-time risk assessment across ISO, SOC2, and internal standards
 allowed-tools:
   - Read
   - Write
   - Edit
   - Bash
   - TodoWrite
-version: 2.0.0
-created: 2025-10-22
+  - WebFetch
+  - mcp__context7__resolve-library-id
+  - mcp__context7__get-library-docs
+version: 4.0.0
+created: 2025-11-11
+updated: 2025-11-11
+status: active
+keywords: ['zero-trust', 'ai-security', 'compliance-automation', 'threat-detection', 'risk-assessment', 'enterprise-security', 'iso-compliance', 'soc2-audit']
 ---
 
 # Foundation: TRUST Validation

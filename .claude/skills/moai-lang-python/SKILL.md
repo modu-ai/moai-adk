@@ -1,11 +1,11 @@
 ---
 name: moai-lang-python
-version: 2.0.0
-created: 2025-11-06
-updated: 2025-11-06
+version: 4.0.0
+created: 2025-11-11
+updated: 2025-11-11
 status: active
-description: "Python best practices with modern frameworks, AI/ML integration, and performance optimization for 2025"
-keywords: [python, programming, backend, ai, ml, data-science, fastapi, django, testing]
+description: "Enterprise Python development with AI-powered Context7 integration, FastAPI optimization, ML/AI deployment patterns, and advanced async programming for 2025"
+keywords: ['python-enterprise', 'context7-integration', 'fastapi-optimization', 'ai-ml-deployment', 'async-programming', 'performance-tuning', 'enterprise-patterns', 'production-ready']
 allowed-tools:
   - Read
   - Write
@@ -13,6 +13,8 @@ allowed-tools:
   - Bash
   - WebFetch
   - WebSearch
+  - mcp__context7__resolve-library-id
+  - mcp__context7__get-library-docs
 ---
 
 # Python Development Mastery
