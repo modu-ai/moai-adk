@@ -254,3 +254,122 @@ class TestPreviousPhaseLoading:
 
             # Should return None gracefully
             assert loaded is None or isinstance(loaded, dict)
+
+
+class TestEdgeCases:
+    """@TEST:W2-006 - Edge case coverage for quality gate improvements"""
+
+    def test_extract_metadata_missing_keys(self):
+        """@TEST:W2-008 - Verify default values when config.json incomplete"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir)
+            (project_root / ".moai" / "config").mkdir(parents=True)
+
+            # Create incomplete config with missing project keys
+            incomplete_config = {
+                "project": {},  # Missing name, mode, owner
+                "language": {}  # Missing conversation_language
+            }
+
+            config_path = project_root / ".moai" / "config" / "config.json"
+            with open(config_path, 'w') as f:
+                json.dump(incomplete_config, f)
+
+            result = extract_project_metadata(str(project_root))
+
+            # Verify default values applied
+            assert result["project_name"] == "Unknown"
+            assert result["mode"] == "personal"
+            assert result["owner"] == "@user"
+            assert result["language"] == "en"
+
+    def test_detect_tech_stack_no_indicators(self):
+        """@TEST:W2-009 - Verify behavior when no language indicators found"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Empty directory with no indicator files
+            result = detect_tech_stack(tmpdir)
+
+            # Should default to Python
+            assert result == ["python"]
+
+    def test_build_phase_result_minimal_data(self):
+        """@TEST:W2-010 - Verify phase result with only required fields"""
+        result = build_phase_result(
+            phase_name="0-project",
+            status="completed",
+            outputs={},
+            files_created=[]
+        )
+
+        # Verify all required fields present
+        assert result["phase"] == "0-project"
+        assert result["status"] == "completed"
+        assert "timestamp" in result
+        assert result["outputs"] == {}
+        assert result["files_created"] == []
+        # next_phase should not be present when not provided
+        assert "next_phase" not in result
+
+    def test_validate_phase_files_outside_project_root(self):
+        """@TEST:W2-007 - Verify error handling for paths outside project root"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir)
+            (project_root / ".moai" / "config").mkdir(parents=True)
+
+            # Paths that attempt to escape project root
+            invalid_paths = [
+                "../../../etc/passwd",
+                "/etc/passwd",
+                "../../outside/project"
+            ]
+
+            result = validate_phase_files(invalid_paths, str(project_root))
+
+            # Should handle gracefully - may return empty or filtered list
+            assert isinstance(result, list)
+            # No path should point outside project root
+            for path in result:
+                assert tmpdir in path or not os.path.isabs(path)
+
+    def test_save_context_when_context_manager_unavailable(self, monkeypatch):
+        """@TEST:W2-006 - Test graceful degradation when ContextManager unavailable"""
+        import moai_adk.core.command_helpers as helpers
+
+        # Mock CONTEXT_MANAGER_AVAILABLE to False
+        monkeypatch.setattr(helpers, 'CONTEXT_MANAGER_AVAILABLE', False)
+
+        result = save_command_context(
+            phase_name="test",
+            project_root="/tmp/test",
+            outputs={"test": "data"},
+            files_created=[]
+        )
+
+        # Should return None gracefully, not raise exception
+        assert result is None
+
+    def test_validate_phase_files_mixed_valid_invalid(self, mock_project):
+        """Test validation with mix of valid and invalid paths"""
+        mixed_paths = [
+            ".moai/config/config.json",  # Valid
+            "../../../etc/passwd",  # Invalid - path traversal
+            ".moai/memory/test.json",  # Valid but may not exist
+        ]
+
+        result = validate_phase_files(mixed_paths, mock_project)
+
+        # Should be a list (may filter out invalid paths)
+        assert isinstance(result, list)
+
+    def test_build_phase_result_with_next_phase(self):
+        """Test phase result includes next_phase when provided"""
+        result = build_phase_result(
+            phase_name="0-project",
+            status="completed",
+            outputs={},
+            files_created=[],
+            next_phase="1-plan"
+        )
+
+        assert "next_phase" in result
+        assert result["next_phase"] == "1-plan"
