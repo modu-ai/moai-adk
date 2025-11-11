@@ -195,7 +195,7 @@ def initialize_or_update_project():
     """Handle project initialization or setting updates"""
     
     # Check if configuration exists
-    if not Path(".moai/config.json").exists():
+    if not Path(".moai/config/config.json").exists():
         print("🆕 Creating new project configuration...")
         # Use skill to create default configuration
         Skill("moai-project-config-manager", action="create_default")
@@ -500,7 +500,7 @@ def recover_configuration():
     print("🔧 Configuration Recovery Mode")
     
     # Check if configuration file exists
-    if not Path(".moai/config.json").exists():
+    if not Path(".moai/config/config.json").exists():
         print("📭 Configuration file not found")
         create_new = AskUserQuestion(
             question="Create new default configuration?",
@@ -672,14 +672,14 @@ def test_full_configuration_workflow():
     """Test complete configuration management workflow"""
     
     # Start with clean state
-    if Path(".moai/config.json").exists():
-        Path(".moai/config.json").unlink()
+    if Path(".moai/config/config.json").exists():
+        Path(".moai/config/config.json").unlink()
     
     # 1. Create initial configuration
     Skill("moai-project-config-manager", action="create_default")
     
     # Verify creation
-    assert Path(".moai/config.json").exists()
+    assert Path(".moai/config/config.json").exists()
     
     validation = Skill("moai-project-config-manager", action="validate")
     assert validation["valid"] == True
@@ -726,7 +726,7 @@ def test_error_recovery():
     Skill("moai-project-config-manager", action="create_default")
     
     # Simulate corruption by writing invalid JSON
-    with open(".moai/config.json", "w") as f:
+    with open(".moai/config/config.json", "w") as f:
         f.write('{"invalid": json}')
     
     # Should handle gracefully

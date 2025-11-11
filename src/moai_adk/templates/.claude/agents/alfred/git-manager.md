@@ -154,7 +154,7 @@ git-manager manages feature development based on `.moai/config/config.json`'s `g
 **Pre-check**: Read `.moai/config/config.json` and determine workflow type:
 ```bash
 # Check spec_git_workflow setting
-spec_workflow=$(grep -o '"spec_git_workflow": "[^"]*"' .moai/config.json | cut -d'"' -f4)
+spec_workflow=$(grep -o '"spec_git_workflow": "[^"]*"' .moai/config/config.json | cut -d'"' -f4)
 
 # Results:
 # - "feature_branch": Feature branch + PR workflow

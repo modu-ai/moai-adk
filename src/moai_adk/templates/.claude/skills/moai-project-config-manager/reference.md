@@ -347,7 +347,7 @@ diff_result = Skill(
 **Project Initialization**:
 ```python
 # In /alfred:0-project command
-if not Path(".moai/config.json").exists():
+if not Path(".moai/config/config.json").exists():
     Skill("moai-project-config-manager", action="create_default")
 ```
 
@@ -370,7 +370,7 @@ if not validation["valid"]:
 
 **Language-Aware Skills**:
 ```python
-config = load_config(".moai/config.json")
+config = load_config(".moai/config/config.json")
 language = config["language"]["conversation_language"]
 
 if language == "ko":
@@ -383,7 +383,7 @@ else:
 
 **Report Generation Skills**:
 ```python
-config = load_config(".moai/config.json")
+config = load_config(".moai/config/config.json")
 report_settings = config["report_generation"]
 
 if report_settings["enabled"]:
