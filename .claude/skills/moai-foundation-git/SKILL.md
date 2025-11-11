@@ -1,25 +1,30 @@
 ---
 name: moai-foundation-git
-version: 2.0.0
-created: 2025-10-22
-updated: 2025-10-22
+version: 4.0.0
+created: 2025-11-11
+updated: 2025-11-11
 status: active
-description: GitFlow automation and PR policy enforcement for MoAI-ADK workflows.
-keywords: ['git', 'gitflow', 'pr', 'automation']
+description: Enterprise Git workflow automation with AI-powered branching strategies, GitTown integration, advanced conflict resolution, and intelligent release management
+keywords: ['git', 'gitflow', 'github-flow', 'gittown', 'ai-workflows', 'branch-automation', 'conflict-resolution', 'release-management', 'enterprise-git', 'monorepo', 'git-automation']
 allowed-tools:
   - Read
   - Bash
+  - Glob
+  - Grep
+  - WebFetch
+  - mcp__context7__resolve-library-id
+  - mcp__context7__get-library-docs
 ---
 
-# Foundation Git Skill
+# Advanced Foundation Git Skill
 
 ## Skill Metadata
 
 | Field | Value |
 | ----- | ----- |
 | **Skill Name** | moai-foundation-git |
-| **Version** | 2.0.0 (2025-10-22) |
-| **Allowed tools** | Read (read_file), Bash (terminal) |
+| **Version** | 3.0.0 (2025-11-11) |
+| **Allowed tools** | Read (read_file), Bash (terminal), Glob (file search), Grep (content search) |
 | **Auto-load** | On demand when keywords detected |
 | **Tier** | Foundation |
 
@@ -27,13 +32,23 @@ allowed-tools:
 
 ## What It Does
 
-GitFlow automation and PR policy enforcement for MoAI-ADK workflows.
+Comprehensive Git workflow automation with GitFlow, GitHub Flow, advanced branching strategies, and production-ready Git operations.
 
 **Key capabilities**:
-- ✅ Best practices enforcement for foundation domain
-- ✅ TRUST 5 principles integration
-- ✅ Latest tool versions (2025-10-22)
-- ✅ TDD workflow support
+- ✅ **Advanced Git workflows**: GitFlow, GitHub Flow, GitLab Flow, and custom hybrid strategies
+- ✅ **Official Git documentation integration** with 100+ real-world examples
+- ✅ **Advanced branching strategies**: feature branches, release branches, hotfix workflows
+- ✅ **Merge strategies**: fast-forward, recursive, octopus, ours, theirs, and cherry-pick
+- ✅ **Rebase workflows**: interactive rebase, squash, fixup, autosquash, and conflict resolution
+- ✅ **Multi-worktree support** for parallel development and testing
+- ✅ **Git bisect automation** for bug hunting and regression testing
+- ✅ **Hook system integration** for automated quality gates and validation
+- ✅ **Commit message standards** with Conventional Commits and semantic versioning
+- ✅ **Changelog automation** and release management
+- ✅ **Submodule and subtree management** for complex projects
+- ✅ **Performance optimization** for large repositories and monorepos
+- ✅ **Security integration** with GPG signing and access control
+- ✅ **CI/CD pipeline integration** with GitHub Actions, GitLab CI, Jenkins
 
 ---
 

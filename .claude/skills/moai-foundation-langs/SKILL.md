@@ -1,14 +1,18 @@
 ---
 name: moai-foundation-langs
-version: 2.0.0
-created: 2025-10-22
-updated: 2025-10-22
+version: 4.0.0
+created: 2025-11-11
+updated: 2025-11-11
 status: active
-description: Auto-detects project language from package.json, pyproject.toml, go.mod, Cargo.toml, etc.
-keywords: ['language', 'detection', 'framework', 'auto']
+description: AI-powered multi-language detection with Context7 integration, framework intelligence, and automated toolchain optimization for 25+ programming languages
+keywords: ['language-detection', 'ai-intelligence', 'framework-analysis', 'toolchain-optimization', 'multi-language', 'context7-integration', 'enterprise-support']
 allowed-tools:
   - Read
   - Bash
+  - Glob
+  - WebFetch
+  - mcp__context7__resolve-library-id
+  - mcp__context7__get-library-docs
 ---
 
 # Foundation Langs Skill

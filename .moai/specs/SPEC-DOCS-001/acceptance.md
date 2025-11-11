@@ -1,360 +1,293 @@
 ---
 id: DOCS-001
-version: 1.0.0
+version: 2.0.0
 status: draft
-created: 2025-01-06
-updated: 2025-01-06
-author: @Goos
+created: 2025-11-11
+updated: 2025-11-11
+author: @user + Alfred
 priority: high
 category: documentation
-related_specs:
-  - SPEC-INSTALL-001
-  - SPEC-INIT-001
-  - SPEC-CONFIG-001
+phase: acceptance
 traceability:
   spec: "@SPEC:DOCS-001"
   test: "@TEST:DOCS-001"
   code: "@CODE:DOCS-001"
 ---
 
-# `@ACCEPTANCE:DOCS-001: MoAI-ADK 문서 개선 수락 기준`
+# @ACCEPTANCE:DOCS-001 - Document-master 에이전트 온라인 문서 수용 기준
 
-## Given-When-Then 테스트 시나리오
+## 개요
 
-이 문서는 SPEC-DOCS-001의 수락 기준을 Given-When-Then 형식으로 정의합니다.
+SPEC-DOCS-001 v2.0.0의 구현 완료 여부를 검증하기 위한 수용 기준(Acceptance Criteria)입니다. Document-master 에이전트 기반 자동화된 온라인 문서 생성 시스템이 모든 요구사항을 만족하는지 확인합니다.
 
----
+## 핵심 수용 기준 (Core Acceptance Criteria)
 
-## 시나리오 1: README.ko.md 분할 완료
+### AC-001: 자동화된 문서 생성
+**Given:** Document-master 에이전트가 배포됨
+**When:** src/moai_adk/ 코드베이스를 분석하라고 요청함
+**Then:** 169개 Python 파일 중 90% 이상이 자동으로 문서화되어야 함
 
-### Given (전제 조건)
-- README.ko.md 파일이 3295줄로 존재함
-- 분할 스크립트(`scripts/split_readme.py`)가 준비됨
-- Nextra 설정(`theme.config.cjs`)이 준비됨
-
-### When (실행 조건)
-- 개발자가 분할 스크립트를 실행함
+#### 검증 방법
 ```bash
-python scripts/split_readme.py
+# 문서 커버리지 확인 스크립트
+python scripts/validate_documentation_coverage.py
+
+# 기대 결과:
+# ✓ Code coverage: 94.7% (160/169 files)
+# ✓ API coverage: 89.2% (public methods)
+# ✓ Examples coverage: 87.3% (executable examples)
 ```
 
-### Then (예상 결과)
-- README.ko.md가 간결한 소개로 재구성됨 (100줄 이내)
-- 20+개의 새로운 문서 파일이 생성됨
-- 모든 섹션이 논리적으로 분리됨
-- 내용 누락률 ≤ 1%
+#### 성공 기준
+- [ ] Python 파일 160개 이상 문서화
+- [ ] Public API 85% 이상 문서화
+- [ ] 실행 가능한 예제 140개 이상 포함
+- [ ] @TAG 참조 95% 이상 연결 완료
 
-### 검증 방법
+### AC-002: Nextra 기반 문서 사이트
+**Given:** Nextra v3.x 환경이 구성됨
+**When:** 문서 사이트에 접속함
+**Then:** 초보자가 5분 내에 핵심 개념을 이해하고 첫 예제를 실행할 수 있어야 함
+
+#### 검증 시나리오
+```gherkin
+Scenario: 초보자 빠른 시작
+  Given 초보자 개발자가 MoAI-ADK 문서 사이트에 방문함
+  When "빠른 시작" 가이드를 따름
+  Then 3분 내에 설치를 완료함
+  And 5분 내에 첫 프로젝트를 생성함
+  And 첫 번째 예제를 성공적으로 실행함
+```
+
+#### 성공 기준
+- [ ] 페이지 로드 속도: 2초 이내
+- [ ] 빠른 시작 완료율: 95% 이상
+- [ ] 모바일 호환성: 모든 기기에서 정상 작동
+- [ ] WCAG 2.1 AA 접근성 준수
+
+### AC-003: 실시간 코드-문서 동기화
+**Given:** CI/CD 파이프라인이 설정됨
+**When:** src/ 코드가 변경되고 푸시됨
+**Then:** 2분 내에 관련 문서가 자동으로 업데이트되어야 함
+
+#### 검증 방법
 ```bash
-# 원본과 분할 후 내용 비교
-python scripts/validate_split.py --original README.ko.md --target docs/
+# 1. 코드 변경 시뮬레이션
+echo "# New function" >> src/moai_adk/example.py
+git add . && git commit -m "Test documentation sync"
 
-# 기대 출력:
-# Content preservation: 99.2%
-# Sections split: 23
-# New files created: 21
-# Content preserved: 3270/3295 lines
+# 2. 배포 모니터링
+timeout 180s scripts/monitor_documentation_sync.sh
+
+# 3. 결과 확인
+curl -s https://moai-adk-docs.vercel.app/reference/api | grep -q "New function"
 ```
 
----
+#### 성공 기준
+- [ ] 코드 변경 감지: 30초 이내
+- [ ] 문서 업데이트: 2분 이내
+- [ ] @TAG 체인 유지: 100%
+- [ ] 배포 성공률: 99%+
 
-## 시나리오 2: 실제 코드 기반 예제 검증
+### AC-004: Context7 베스트 프랙티스 통합
+**Given:** Context7 API가 연동됨
+**When:** 문서가 생성되거나 업데이트됨
+**Then:** 최신 Nextra 및 Markdown 베스트 프랙티스가 자동으로 적용되어야 함
 
-### Given
-- 모든 예제가 `src/moai_adk/` 실제 코드를 참조함
-- `@CODE:` 태그로 실제 파일과 연동됨
+#### 검증 항목
+- [ ] Markdown linting 점수: 95점 이상
+- [ ] Nextra 설정 최적화: 모든 권장 사항 적용
+- [ ] Mermaid 다이어그램 유효성: 100%
+- [ ] SEO 최적화: Lighthouse 점수 90점 이상
 
-### When
-- 사용자가 문서의 코드 예제를 실행함
+### AC-005: 자동 생성된 시각 자료
+**Given:** 코드베이스 분석이 완료됨
+**When:** 문서 사이트를 탐색함
+**Then:** 복잡한 개념을 시각화하는 Mermaid 다이어그램이 자동으로 생성되어야 함
 
-### Then
-- 모든 예제가 실제로 실행 가능함
-- `@CODE:` 태그가 유효한 파일을 참조함
-- 예제 코드와 실제 구현이 일치함
+#### 필수 다이어그램
+- [ ] 시스템 아키텍처 다이어그램
+- [ ] Alfred 워크플로우 다이어그램
+- [ ] @TAG 체인 시스템 다이어그램
+- [ ] 에이전트 관계도
+- [ ] TDD 사이클 다이어그램
 
-### 검증 방법
+## 품질 게이트 (Quality Gates)
+
+### QG-001: 기능성 테스트
 ```bash
-# 모든 @CODE: 태그 유효성 검증
-rg '@CODE:DOCS-001' docs/ -A1 -B1 | xargs -I {} sh -c 'file=$(echo {} | grep -o "src/[^:]*"); [ -f "$file" ] && echo "✅ $file exists" || echo "❌ $file not found"'
+# 모든 기능성 테스트 통과
+npm run test:documentation
 
-# 예제 실행 테스트
-python scripts/test_examples.py
+# 개별 테스트 수행
+npm run test:api-generation     # API 문서 생성 테스트
+npm run test:skill-docs         # Skills 문서화 테스트
+npm run test:agent-reference    # 에이전트 레퍼런스 테스트
+npm run test:example-execution  # 예제 실행 테스트
 ```
 
----
-
-## 시나리오 3: Mermaid 다이어그램 렌더링
-
-### Given
-- Nextra Mermaid 플러그인이 설정됨
-- 다이어그램이 문서에 포함됨
-
-### When
-- 사용자가 다이어그램이 포함된 페이지를 방문함
-
-### Then
-- 모든 Mermaid 다이어그램이 정상적으로 렌더링됨
-- 노드 수 ≤ 20개 (가독성 유지)
-- 대체 텍스트가 제공됨
-
-### 검증 방법
+### QG-002: 성능 테스트
 ```bash
-# 다이어그램 문법 검증
-python scripts/validate_mermaid.py docs/
+# Lighthouse CI 검증
+npm run test:lighthouse
 
-# 브라우저에서 시각적 확인
-npm run docs:dev
-# http://localhost:5173 접속
+# 기대 결과:
+# ✓ Performance: 92+
+# ✓ Accessibility: 100
+# ✓ Best Practices: 90+
+# ✓ SEO: 95+
 ```
 
----
-
-## 시나리오 4: 표 형식 구조화
-
-### Given
-- 문서에 표 형식이 포함됨
-- 마크다운 테이블 문법이 올바르게 사용됨
-
-### When
-- 사용자가 표가 포함된 페이지를 조회함
-
-### Then
-- 모든 표가 올바르게 렌더링됨
-- 헤더 행이 명확하게 구분됨
-- 정렬이 올바르게 적용됨
-
-### 검증 방법
-```markdown
-| 명령 | 기능 | 산출물 |
-|------|------|--------|
-| /alfred:0-project | 프로젝트 초기화 | 설정 파일 |
-```
-
----
-
-## 시나리오 5: 다국어 구조 준비
-
-### Given
-- 한국어 문서가 완성됨
-- 다국어 디렉토리 구조가 준비됨
-
-### When
-- Nextra i18n 설정이 활성화됨
-
-### Then
-- 언어 전환 기능이 제공됨
-- 각 언어별로 올바른 경로 구조를 가짐
-- 번역 관리가 용이함
-
-### 검증 방법
+### QG-003: 보안 테스트
 ```bash
-# 다국어 구조 확인
-ls docs/ko docs/en docs/ja docs/zh
+# 보안 취약점 스캔
+npm run audit:security
 
-# Nextra 설정 확인
-grep -n "i18n" docs/nextra.config.js
+# 링크 무결성 검사
+npm run test:link-integrity
+
+# 결과: 취약점 0개, 깨진 링크 0개
 ```
 
----
+## 사용자 수용 테스트 (User Acceptance Testing)
 
-## 시나리오 6: 문서 탐색 용이성
-
-### Given
-- 문서가 주제별로 분할됨
-- 검색 인덱스가 생성됨
-
-### When
-- 사용자가 특정 정보를 검색함
-
-### Then
-- 핵심 정보를 3클릭 내에 접근 가능
-- 검색 결과가 관련성 순으로 정렬됨
-- 빠른 시작 가이드를 5분 내에 완료 가능
-
-### 검증 방법
-```bash
-# 검색 기능 테스트
-npm run docs:dev
-# Cmd/Ctrl+K로 검색창 열기
-# 핵심 키워드 검색: "설치", "SPEC", "@TAG"
+### UAT-001: 온보딩 시나리오
+```gherkin
+Scenario: 신규 개발자 온보딩
+  Given Python 개발 경험이 있는 신규 개발자
+  When MoAI-ADK 문서 사이트를 처음 방문
+  Then 30분 내에 다음을 완료할 수 있음
+    - 설치 및 설정
+    - 첫 프로젝트 생성
+    - SPEC 작성
+    - TDD 구현 사이클 이해
 ```
 
----
+### UAT-002: 문서 검색 시나리오
+```gherkin
+Scenario: 정보 검색
+  Given 개발자가 특정 기능에 대한 정보를 찾아야 함
+  When 검색어를 입력하거나 내비게이션을 탐색함
+  Then 10초 내에 관련 문서를 찾을 수 있음
+  And 해당 정보로 2분 내에 문제를 해결할 수 있음
+```
 
-## 품질 게이트 기준
+### UAT-003: 모바일 경험 시나리오
+```gherkin
+Scenario: 모바일 문서 접근
+  Given 개발자가 모바일 기기로 문서에 접근함
+  When 문서를 탐색함
+  Then 데스크톱과 동일한 수준의 경험을 제공함
+    - 반응형 레이아웃
+    - 터치 친화적 내비게이션
+    - 읽기 쉬운 폰트 크기
+```
 
-### 문서 분할 품질
-- ✅ README.ko.md: 3295줄 → ≤100줄
-- ✅ 새 문서: 20+개 파일
-- ✅ 내용 보존률: ≥99%
-- ✅ 섹션별 논리적 분리 완료
-
-### 코드 예제 품질
-- ✅ 실제 실행 가능 예제: 100%
-- ✅ `@CODE:` 태그 연결: 100%
-- ✅ 예제-실제 코드 일치: 100%
-- ✅ 실행 검증 테스트 통과
-
-### 시각화 품질
-- ✅ Mermaid 다이어그램 렌더링: 100%
-- ✅ 노드 수 제한 준수 (≤20개)
-- ✅ 대체 텍스트 제공: 100%
-- ✅ 색상 구분 명확성
-
-### 다국어 품질
-- ✅ 한국어 문서: 100% 완료
-- ✅ 영어 번역: ≥80% 진행
-- ✅ 일본어 번역: ≥60% 진행
-- ✅ 중국어 번역: ≥40% 진행
-
-### 성능 품질
-- ✅ 페이지 로딩 시간: <2초
-- ✅ 검색 응답 시간: <500ms
-- ✅ 문서 빌드 시간: <30초
-- ✅ 핫 리로드 시간: <3초
-
----
-
-## Definition of Done (완료 조건)
-
-### Phase 1: README 분할 완료
-- ✅ README.ko.md를 5개 주제로 분할
-- ✅ 분할 스크립트 실행 완료
-- ✅ 내용 검증 통과 (99% 보존)
-- ✅ Nextra 경로 설정 완료
-
-### Phase 2: 코드 예제 완료
-- ✅ 15+개 실제 코드 예제 작성
-- ✅ 모든 예제 실행 가능 검증
-- ✅ `@CODE:` 태그로 파일 연동
-- ✅ 예제 실행 가이드 제공
-
-### Phase 3: 시각화 완료
-- ✅ 워크플로우 다이어그램 3개 작성
-- ✅ 아키텍처 다이어그램 작성
-- ✅ TAG 체인 다이어그램 작성
-- ✅ 모든 다이어그램 렌더링 검증
-
-### Phase 4: 표 형식 완료
-- ✅ 명령어 요약표 작성
-- ✅ 에이전트 목록표 작성
-- ✅ 버전 히스토리표 작성
-- ✅ 모든 표 마크다운 형식 검증
-
-### Phase 5: 다국어 준비 완료
-- ✅ 다국어 디렉토리 구조 준비
-- ✅ Nextra i18n 설정
-- ✅ 영어 번역 80% 완료
-- ✅ 번역 관리 가이드 작성
-
----
-
-## 수락 테스트 체크리스트
+## 자동화된 테스트 스위트
 
 ### 기능 테스트
-- [ ] README.ko.md 분할 완료
-- [ ] 새 문서 20+개 생성 확인
-- [ ] 내용 보존률 99% 검증
-- [ ] 코드 예제 실행 가능 확인
-- [ ] Mermaid 다이어그램 렌더링
-- [ ] 표 형식 올바른 표시
-- [ ] 검색 기능 정상 동작
-- [ ] 다국어 전환 기능
+```python
+# tests/documentation/test_api_generation.py
+def test_api_documentation_coverage():
+    """API 문서 커버리지 검증"""
+    docs = DocumentationAnalyzer.analyze_src_directory()
+    assert docs.coverage_percentage >= 90.0
+    assert docs.public_api_percentage >= 85.0
 
-### 품질 테스트
-- [ ] 문서 빌드 성공
-- [ ] 링크 유효성 검증
-- [ ] 코드 예제 실행 테스트
-- [ ] 다국어 렌더링 테스트
-- [ ] 성능 기준 준수
-- [ ] 접근성 가이드라인 준수
+def test_example_execution():
+    """예제 실행 가능성 검증"""
+    examples = ExampleExtractor.extract_all_examples()
+    for example in examples:
+        assert example.executable, f"Example {example.name} is not executable"
+        assert example.run_successfully(), f"Example {example.name} execution failed"
+```
 
-### 사용자 경험 테스트
-- [ ] 빠른 시작 5분 완료 가능
-- [ ] 핵심 정보 3클릭 내 접근
-- [ ] 문서 명확도 4.5/5.0
-- [ ] 예제 유용성 4.7/5.0
+### 통합 테스트
+```python
+# tests/documentation/test_sync_workflow.py
+def test_code_documentation_sync():
+    """코드-문서 동기화 테스트"""
+    # 코드 변경
+    test_file = "src/moai_adk/test_sync.py"
+    write_test_function(test_file)
+
+    # 동기화 대기
+    sync_result = DocumentationSync.wait_for_sync(test_file, timeout=120)
+    assert sync_result.success, "Documentation sync failed"
+
+    # 문서 확인
+    docs_url = f"https://moai-adk-docs.vercel.app/reference/api#test_sync"
+    response = requests.get(docs_url)
+    assert "test_function" in response.text
+```
+
+### 성능 테스트
+```python
+# tests/documentation/test_performance.py
+def test_page_load_performance():
+    """페이지 로드 성능 테스트"""
+    pages = ["", "/getting-started", "/reference/api", "/guides/workflow"]
+
+    for page in pages:
+        lighthouse_result = run_lighthouse(f"https://moai-adk-docs.vercel.app{page}")
+        assert lighthouse_result.performance >= 90
+        assert lighthouse_result.accessibility == 100
+```
+
+## 롤아웃 검증 절차
+
+### 1단계: 내부 알파 테스트
+- **기간**: 3일
+- **참여자**: 개발팀 5명
+- **검증 항목**: 기능 완성도, 기본 품질
+- **성공 기준**: 모든 AC 통과
+
+### 2단계: 선택적 베타 테스트
+- **기간**: 5일
+- **참여자**: 외부 개발자 20명
+- **검증 항목**: 사용자 경험, 문서 명확성
+- **성공 기준**: 만족도 4.5/5.0 이상
+
+### 3단계: 전체 공개 (GA)
+- **조건**: 알파/베타 테스트 100% 통과
+- **모니터링**: 실시간 성능, 오류률, 사용자 피드백
+- **롤백 계획**: 치명적 오류 발생 시 1시간 내 롤백
+
+## 장기 모니터링 지표
+
+### 기술적 지표
+- **가동 시간**: 99.9% 이상
+- **응답 시간**: 평균 500ms 이하
+- **오류율**: 0.1% 이하
+- **빌드 성공률**: 99% 이상
+
+### 비즈니스 지표
+- **온보딩 시간**: 60% 단축
+- **GitHub Issues 감소**: 40% 이상
+- **문서 만족도**: 4.5/5.0 이상
+- **반복 방문율**: 70% 이상
+
+### 지속적 개선
+- 주간 사용자 피드백 수집
+- 월간 성능 최적화
+- 분기별 기능 개선
+- 반년간 대규모 업데이트
+
+## 수용 결정
+
+### 수용 승인 조건
+1. 모든 핵심 수용 기준(AC-001 ~ AC-005) 통과
+2. 모든 품질 게이트(QG-001 ~ QG-003) 통과
+3. 사용자 수용 테스트 85% 이상 통과
+4. 성능 테스트 모든 항목 통과
+5. 보안 검토 통과
+
+### 최종 승인
+- **프로덕트 책임자**: [이름]
+- **기술 책임자**: [이름]
+- **품질 책임자**: [이름]
+- **사용자 대표**: [이름]
 
 ---
 
-## 검증 스크립트 예시
-
-### 분할 검증 스크립트 (`scripts/validate_split.py`)
-```python
-import os
-import hashlib
-
-def validate_content_preservation():
-    """README 분할 후 내용 보존률 검증"""
-    with open('README.ko.md.bak', 'r') as f:
-        original_hash = hashlib.md5(f.read().encode()).hexdigest()
-
-    # 분할된 문서 내용 취합
-    combined_content = ""
-    for root, dirs, files in os.walk('docs/'):
-        for file in files:
-            if file.endswith('.md'):
-                with open(os.path.join(root, file), 'r') as f:
-                    combined_content += f.read()
-
-    combined_hash = hashlib.md5(combined_content.encode()).hexdigest()
-    preservation_rate = (1 - abs(int(original_hash, 16) - int(combined_hash, 16)) / int(original_hash, 16)) * 100
-
-    print(f"Content preservation: {preservation_rate:.1f}%")
-    return preservation_rate >= 99.0
-
-if __name__ == "__main__":
-    validate_content_preservation()
-```
-
-### 코드 예제 검증 스크립트 (`scripts/test_examples.py`)
-```python
-import subprocess
-import re
-
-def extract_code_from_doc(doc_path):
-    """문서에서 코드 예제 추출"""
-    with open(doc_path, 'r') as f:
-        content = f.read()
-
-    # 코드 블록 추출
-    code_blocks = re.findall(r'```python\n(.*?)\n```', content, re.DOTALL)
-    return code_blocks
-
-def test_example(code):
-    """코드 예제 실행 테스트"""
-    try:
-        result = subprocess.run(['python', '-c', code],
-                              capture_output=True, text=True, timeout=10)
-        return result.returncode == 0
-    except subprocess.TimeoutExpired:
-        return False
-    except Exception:
-        return False
-
-def validate_all_examples():
-    """모든 코드 예제 검증"""
-    total_examples = 0
-    passing_examples = 0
-
-    for root, dirs, files in os.walk('docs/'):
-        for file in files:
-            if file.endswith('.md'):
-                doc_path = os.path.join(root, file)
-                examples = extract_code_from_doc(doc_path)
-
-                for example in examples:
-                    total_examples += 1
-                    if test_example(example):
-                        passing_examples += 1
-
-    success_rate = (passing_examples / total_examples) * 100 if total_examples > 0 else 0
-    print(f"Example test pass rate: {success_rate:.1f}% ({passing_examples}/{total_examples})")
-    return success_rate >= 100.0
-```
-
----
-
-**작성일**: 2025-01-06
-**버전**: 1.0.0
-**관련 SPEC**: @SPEC:DOCS-001
+*본 수용 기준은 SPEC-DOCS-001 v2.0.0이 성공적으로 구현되었는지 검증하기 위한 공식적인 절차입니다. 모든 기준이 충족되어야 프로덕션 배포가 승인됩니다.*

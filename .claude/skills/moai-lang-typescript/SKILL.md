@@ -1,11 +1,11 @@
 ---
 name: moai-lang-typescript
-version: 2.0.0
-created: 2025-11-06
-updated: 2025-11-06
+version: 4.0.0
+created: 2025-11-11
+updated: 2025-11-11
 status: active
-description: "TypeScript best practices with modern frameworks, full-stack development, and type-safe patterns for 2025"
-keywords: [typescript, javascript, frontend, backend, fullstack, react, nextjs, nodejs, type-safety]
+description: "Enterprise TypeScript development with Next.js 15, AI-powered Context7 integration, advanced type safety, and full-stack optimization for 2025"
+keywords: ['typescript-enterprise', 'nextjs-15', 'context7-integration', 'type-safety', 'fullstack-optimization', 'server-components', 'react-19', 'enterprise-patterns']
 allowed-tools:
   - Read
   - Write
@@ -13,6 +13,8 @@ allowed-tools:
   - Bash
   - WebFetch
   - WebSearch
+  - mcp__context7__resolve-library-id
+  - mcp__context7__get-library-docs
 ---
 
 # TypeScript Development Mastery

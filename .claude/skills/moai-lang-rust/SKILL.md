@@ -1,18 +1,12 @@
 ---
 name: moai-lang-rust
-version: 2.0.0
+version: 4.0.0
 created: 2025-11-06
-updated: 2025-11-06
+updated: 2025-11-11
 status: active
-description: "Rust best practices with systems programming, performance-critical applications, and memory-safe patterns for 2025"
-keywords: [rust, systems, performance, memory-safety, concurrency, web-services, embedded, blockchain]
-allowed-tools:
-  - Read
-  - Write
-  - Edit
-  - Bash
-  - WebFetch
-  - WebSearch
+description: "Rust systems programming with Context7 integration. Memory-safe patterns, async web frameworks, performance optimization, Actix/Axum mastery. Use when building systems, web services, CLI tools, embedded applications, or performance-critical software."
+keywords: ['rust', 'systems-programming', 'context7', 'actix-web', 'axum', 'memory-safety', 'async', 'performance', 'mcp-integration', 'tokio']
+allowed-tools: "Read, Write, Edit, Glob, Bash, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, WebFetch"
 ---
 
 # Rust Development Mastery
@@ -154,6 +148,46 @@ my-rust-project/
 ├── examples/              # Example usage
 ├── docs/                  # Documentation
 └── scripts/               # Build and utility scripts
+```
+
+## Context7 Integration for Rust
+
+### Web Framework Libraries with Context7
+
+```rust
+// Get latest Actix-web patterns from Context7
+// Library: /actix/actix-web
+use actix_web::{get, web, App, HttpServer, Responder};
+
+#[get("/hello/{name}")]
+async fn greet(name: web::Path<String>) -> impl Responder {
+    format!("Hello {name}!")
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(|| {
+        App::new().service(greet)
+    })
+    .bind(("127.0.0.1", 8080))?
+    .run()
+    .await
+}
+```
+
+### Async Runtime Integration
+
+```rust
+// Context7-backed async patterns
+fn get_context7_tokio_patterns() {
+    """
+    Latest Tokio patterns from Context7:
+    - Advanced async/await optimizations
+    - Concurrency best practices
+    - Resource management patterns
+    - Error handling in async contexts
+    """
+}
 ```
 
 ## Modern Rust Patterns

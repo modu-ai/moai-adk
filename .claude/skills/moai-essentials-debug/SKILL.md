@@ -1,12 +1,20 @@
 ---
 name: moai-essentials-debug
-description: Advanced debugging with stack trace analysis, error pattern detection, and fix suggestions. Use when delivering quick diagnostic support for everyday issues.
+description: AI-powered debugging expert with Context7 integration, intelligent error pattern recognition, automated root cause analysis, and predictive fix suggestions across 25+ languages and distributed systems
 allowed-tools:
   - Read
   - Bash
   - Write
   - Edit
   - TodoWrite
+  - WebFetch
+  - mcp__context7__resolve-library-id
+  - mcp__context7__get-library-docs
+version: 4.0.0
+created: 2025-11-11
+updated: 2025-11-11
+status: active
+keywords: ['ai-debugging', 'pattern-recognition', 'root-cause-analysis', 'predictive-fixes', 'distributed-tracing', 'performance-profiling', 'container-debugging', 'cloud-integration']
 ---
 
 # MoAI Essentials Debug v2.1

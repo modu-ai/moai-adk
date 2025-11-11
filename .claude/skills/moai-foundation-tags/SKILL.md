@@ -1,45 +1,97 @@
 ---
 name: moai-foundation-tags
-version: 3.0.0
+version: 4.0.0
 created: 2025-11-11
 updated: 2025-11-11
 status: active
-description: Advanced TAG inventory management, cross-referencing, dependency visualization, and automated validation with 30+ tracking patterns
-keywords: ['tag', 'inventory', 'traceability', 'cross-reference', 'dependency-graph', 'git-integration', 'type-safe', 'validation']
+description: Enterprise-grade TAG system with semantic versioning, automated release management, advanced dependency analytics, and AI-powered cross-reference intelligence
+keywords: ['tag', 'semantic-versioning', 'release-automation', 'dependency-analytics', 'cross-reference', 'git-integration', 'ai-intelligence', 'enterprise-grade']
 allowed-tools:
   - Read
   - Bash
   - Glob
   - Grep
+  - WebFetch
+  - mcp__context7__resolve-library-id
+  - mcp__context7__get-library-docs
 ---
 
-# Advanced Foundation Tags Skill
+# Enterprise Foundation Tags Skill v4.0.0
 
 ## Skill Metadata
 
 | Field | Value |
 | ----- | ----- |
 | **Skill Name** | moai-foundation-tags |
-| **Version** | 3.0.0 (2025-11-11) |
-| **Allowed tools** | Read (read_file), Bash (terminal), Glob (file search), Grep (content search) |
+| **Version** | 4.0.0 (2025-11-11) |
+| **Tier** | Enterprise Foundation |
+| **AI-Powered** | ✅ Context7 Integration, Semantic Analysis |
 | **Auto-load** | On demand when keywords detected |
-| **Tier** | Foundation |
 
 ---
 
 ## What It Does
 
-Advanced TAG inventory management with cross-referencing, dependency visualization, Git integration, and automated validation.
+Enterprise-grade TAG system with semantic versioning, automated release management, advanced dependency analytics, and AI-powered cross-reference intelligence.
 
-**Key capabilities**:
-- ✅ **30+ TAG patterns** including specialized subcategories
-- ✅ **Cross-reference tracing** between different @TAG types
-- ✅ **Dependency graph visualization** using Graphviz
-- ✅ **Git integration** for commit correlation and lineage tracking
-- ✅ **Type-safe implementation** with TypeScript patterns
-- ✅ **Automated validation** with integrity checking
-- ✅ **Performance optimization** for large-scale projects
-- ✅ **Advanced search and filtering** capabilities
+**Revolutionary v4.0.0 capabilities**:
+- 🚀 **Semantic Versioning Automation** with GitVersion and Semantic Release integration
+- 🤖 **AI-Powered Cross-Reference Intelligence** using Context7 MCP for official docs
+- 📊 **Advanced Dependency Analytics** with real-time impact analysis and risk assessment
+- 🔄 **Automated Release Management** with changelog generation and version bumping
+- 🔍 **Intelligent TAG Pattern Recognition** with machine learning-based classification
+- 📈 **Enterprise Performance Optimization** for projects with 100k+ files
+- 🛡️ **Zero-Trust Security Model** with GPG signing and audit trails
+- 🌐 **Multi-Repository TAG Synchronization** for enterprise monorepo management
+- 📋 **Real-time Compliance Monitoring** against ISO, SOC2, and internal standards
+- 🎯 **Predictive Impact Analysis** using ML models for change estimation
+- 📱 **Cross-Platform IDE Integration** with VSCode, IntelliJ, and Vim plugins
+
+---
+
+## 4.0.0 Enterprise Features
+
+### Semantic Versioning Integration
+```yaml
+# .moai/tags-config.yaml
+semantic_versioning:
+  enabled: true
+  auto_bump: true
+  commit_analyzer: "conventional"
+  release_notes: "automated"
+
+git_integration:
+  gitversion_config: true
+  semantic_release: true
+  conventional_commits: true
+  auto_tagging: true
+
+ai_intelligence:
+  context7_enabled: true
+  impact_prediction: true
+  cross_reference_analysis: true
+  pattern_learning: true
+```
+
+### AI-Powered Dependency Analytics
+```python
+# AI-powered dependency analysis with Context7 integration
+from moai.tags import AIAnalytics
+
+# Real-time impact analysis
+impact = AIAnalytics.analyze_impact(
+    tag_changes=["@SPEC:AUTH-001", "@CODE:AUTH-001:API"],
+    context_sources=["github", "jira", "confluence"],
+    ml_model="impact-predictor-v4"
+)
+
+# Risk assessment with historical data
+risk_assessment = AIAnalytics.assess_risk(
+    change_scope="authentication_system",
+    historical_data=True,
+    ml_confidence_threshold=0.85
+)
+```
 
 ---
 

@@ -1,11 +1,11 @@
 ---
 name: moai-lang-go
-version: 2.0.0
-created: 2025-11-06
-updated: 2025-11-06
+version: 4.0.0
+created: 2025-11-11
+updated: 2025-11-11
 status: active
-description: "Go best practices with modern cloud-native development, performance optimization, and concurrent programming for 2025"
-keywords: [go, golang, backend, microservices, cloud-native, performance, concurrency, devops]
+description: "Enterprise Go development with AI-powered Context7 integration, Fiber framework optimization, advanced concurrent programming, and cloud-native deployment patterns for 2025"
+keywords: ['go-enterprise', 'context7-integration', 'fiber-optimization', 'concurrent-programming', 'cloud-native', 'performance-tuning', 'microservices', 'enterprise-patterns']
 allowed-tools:
   - Read
   - Write
@@ -13,6 +13,8 @@ allowed-tools:
   - Bash
   - WebFetch
   - WebSearch
+  - mcp__context7__resolve-library-id
+  - mcp__context7__get-library-docs
 ---
 
 # Go Development Mastery

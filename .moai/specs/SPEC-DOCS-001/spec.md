@@ -26,9 +26,20 @@ scope:
     - docs/**/*.mdx
 ---
 
-# `@SPEC:DOCS-001`: MoAI-ADK 문서 개선 프로젝트 (README.ko.md 분할 및 재구성)
+# `@SPEC:DOCS-001`: MoAI-ADK 종합 온라인 문서 생성 시스템
 
 ## History
+
+### v2.0.0 (2025-11-11)
+- **주요 업그레이드**: Document-master 에이전트 통합 온라인 문서 생성
+- **작성자**: @user + Alfred
+- **주요 변경사항**:
+  - Nextra 기반 전문 온라인 문서 사이트 구축
+  - Document-master 에이전트를 통한 자동 문서 생성
+  - Context7 연동 실시간 베스트 프랙티스 통합
+  - 169개 Python 파일, 55+ Skills, 19개 에이전트 완전 문서화
+  - 반응형 디자인 및 WCAG 2.1 접근성 준수
+  - CI/CD 파이프라인 자동화 및 Vercel 배포
 
 ### v1.0.0 (2025-01-06)
 - **초기 작성**: README.ko.md 분할 및 재구성 명세
@@ -45,56 +56,55 @@ scope:
 ## Environment (환경 및 전제조건)
 
 ### 실행 환경
-- **프로젝트**: MoAI-ADK 문서 개선
-- **문서 플랫폼**: Nextra (현재) / MkDocs (고려)
-- **소스 코드**: Python 기반 CLI 도구 (`src/moai_adk/`)
-- **현재 문서**: README.ko.md (3295줄) + Nextra 기반 docs/
+- **프로젝트**: MoAI-ADK 종합 온라인 문서 생성 시스템
+- **문서 프레임워크**: Nextra v3.x (React 기반 정적 사이트 생성)
+- **소스 코드**: Python 기반 CLI 도구 (`src/moai_adk/`, 169개 파일)
+- **스킬 시스템**: .claude/skills/ (55개 이상 Claude Skills)
+- **에이전트 시스템**: .claude/agents/ (19개 전문 에이전트)
+- **현재 문서**: README.ko.md (690라인) + 빈 docs/ 구조
 
 ### 기술 스택
-- **언어**: Python 3.13+, TypeScript, Markdown/MDX
-- **문서 도구**: Nextra, Mermaid.js
-- **다국어**: 한국어(기본) → 영어 → 일본어 → 중국어
-- **코드 예제**: 실제 `src/` 코드 기반
+- **문서 생성**: Document-master 에이전트 (자동화)
+- **콘텐츠 형식**: MDX (Markdown + JSX 컴포넌트)
+- **시각화**: Mermaid.js v11.x (자동 다이어그램 생성)
+- **베스트 프랙티스**: Context7 실시간 통합
+- **배포**: Vercel (무료 SSL, CDN, CI/CD)
+- **검색**: Nextra 내장 + Algolia 선택적 연동
+- **다국어**: 한국어 우선, 영어/일본어 지원
+- **접근성**: WCAG 2.1 준수, 모바일 최적화
 
 ### 제약사항
-- **README.ko.md 분할**: 3295줄을 논리적 섹션으로 분리
-- **실제 코드 기반**: 모든 예제는 `src/moai_adk/` 실제 코드 참조
-- **다이어그램 활용**: Mermaid를 사용한 시각화 강화
-- **다국어 순차**: 한국어 완료 → 영어 → 일본어 → 중국어
-- **할루시네이션 금지**: 존재하지 않는 기능/코드 설명 금지
+- **코드 커버리지**: 169개 Python 파일 중 90% 이상 문서화
+- **실시간 동기화**: 코드 변경 시 2분 내 문서 자동 업데이트
+- **초보자 친화**: 5분 내 핵심 개념 이해 및 첫 예제 실행
+- **자동화 수준**: Document-master 에이전트로 80% 이상 자동 생성
+- **품질 보증**: Context7 베스트 프랙티스 자동 적용
+- **반응형 설계**: 모바일 40%+ 접근 비율 지원
 
 ---
 
 ## Assumptions (가정사항)
 
-1. **현재 문서 상태 가정**:
-   - README.ko.md: 3295줄의 방대한 단일 파일
-   - docs/: Nextra 기반 구조이지만 내용 부족
-   - 소스 코드: `src/moai_adk/`에 풍부한 실제 구현
+### 기술적 가정
+1. **Nextra 프레임워크 안정성**: React 18+와 호환되며 안정적으로 작동함
+2. **Context7 API 안정성**: 실시간 베스트 프랙티스 제공에 안정적임
+3. **코드 분석 가능성**: AST 분석으로 충분한 문서 생성이 가능함
+4. **자동화 기술**: Mermaid 다이어그램 자동 생성 기술이 성숙함
+5. **Vercel 무료 플랜**: 제약없이 문서 사이트 호스팅이 가능함
 
-2. **분할 대상 가정**:
-   - 빠른 시작 섹션 (3분 초고속 시작)
-   - 핵심 개념 설명 (SPEC-First, TDD, @TAG, TRUST 5)
-   - 워크플로우 가이드 (4단계 개발)
-   - 예제 및 튜토리얼 (실제 코드 기반)
-   - 문제 해결 및 FAQ
+### 사용자 가정
+1. **타겟 사용자**: Python/TypeScript 개발자 (초급-중급)
+2. **학습 패턴**: 문서 검색 > 코드 예제 > API 참조 순서로 학습
+3. **모바일 사용**: 40% 이상 모바일 기기로 문서 접근
+4. **언어 선호**: 한국어 사용자가 60% 이상, 영어/일본어 지원 필요
+5. **인터랙티브 선호**: 실습 환경과 시각 자료가 학습 효과를 높임
 
-3. **코드 예제 가정**:
-   - `src/moai_adk/cli/commands/`: CLI 명령어 실제 구현
-   - `src/moai_adk/core/`: 핵심 기능 실제 구현
-   - `src/moai_adk/utils/`: 유틸리티 함수
-   - 실제 테스트 코드 활용
-
-4. **다국어 가정**:
-   - 1단계: 한국어 문서 완성 (기준)
-   - 2단계: 영어 번역
-   - 3단계: 일본어 번역
-   - 4단계: 중국어 번역
-
-5. **품질 기준 가정**:
-   - 모든 코드 예제는 실제로 실행 가능
-   - 모든 링크는 유효해야 함
-   - Mermaid 다이어그램은 명확해야 함
+### 프로젝트 가정
+1. **코드베이스 품질**: 169개 Python 파일에 충분한 docstring과 주석이 있음
+2. **에이전트 활용**: Document-master 에이전트가 문서 생성의 80%를 자동화할 수 있음
+3. **스킬 문서화**: 55개 Skills가 체계적으로 분류되어 문서화 가능함
+4. **지속적 업데이트**: 코드 변경 시 자동으로 문서가 동기화될 수 있음
+5. **품질 유지**: Context7 베스트 프랙티스로 일관된 품질을 유지할 수 있음
 
 ---
 
@@ -102,30 +112,30 @@ scope:
 
 ### Ubiquitous Requirements (기본 기능)
 
-**UR-001**: 시스템은 README.ko.md를 주제별로 분할된 문서를 제공해야 한다
-- **분할 대상**: 빠른 시작, 핵심 개념, 워크플로우, 예제, 문제 해결
-- **목표**: 단일 파일(3295줄) → 관리 가능한 모듈화 문서
-- **위치**: docs/guides/, docs/concepts/, docs/examples/
+**UR-001**: 시스템은 Document-master 에이전트를 통해 자동으로 온라인 문서를 생성해야 한다
+- **자동화 범위**: 169개 Python 파일, 55개 Skills, 19개 에이전트
+- **생성 목표**: 전체 코드베이스의 90% 이상 문서 커버리지
+- **품질 보증**: Context7 베스트 프랙티스 자동 적용
 
-**UR-002**: 시스템은 실제 코드 기반의 예제를 제공해야 한다
-- **소스**: `src/moai_adk/` 실제 구현
-- **검증**: 모든 예제는 실제 동작 코드 기반
-- **참조**: `@CODE:` 태그로 실제 파일 연동
+**UR-002**: 시스템은 Nextra 기반의 반응형 문서 사이트를 제공해야 한다
+- **프레임워크**: Nextra v3.x with MDX 지원
+- **디자인**: 모바일 최적화, WCAG 2.1 접근성 준수
+- **성능**: 페이지 로드 2초 이내, 검색 응답 1초 이내
 
-**UR-003**: 시스템은 Mermaid 다이어그램으로 시각화를 제공해야 한다
-- **워크플로우**: 4단계 개발 프로세스
-- **아키텍처**: 컴포넌트 관계도
-- **상태 전환**: SPEC 생명주기
+**UR-003**: 시스템은 실시간 코드-문서 동기화를 지원해야 한다
+- **동기화 대상**: src/moai_adk/ 코드 변경
+- **응답 시간**: 코드 변경 후 2분 내 문서 업데이트
+- **추적성**: @TAG 시스템으로 코드-문서 연동 유지
 
-**UR-004**: 시스템은 표 형식으로 정보를 구조화해야 한다
-- **명령어 요약**: 기능과 산출물 표
-- **에이전트 목록**: 역할과 모델 표
-- **버전 히스토리**: 변경사항 표
+**UR-004**: 시스템은 초보자 친화적 학습 경로를 제공해야 한다
+- **빠른 시작**: 5분 내 핵심 개념 이해 및 첫 예제 실행
+- **점진적 학습**: beginner → intermediate → advanced 경로
+- **실습 환경**: 코드 예제와 인터랙티브 요소 통합
 
-**UR-005**: 시스템은 다국어 지원 구조를 제공해야 한다
-- **순서**: 한국어 → 영어 → 일본어 → 중국어
-- **구조**: 언어별 디렉토리 분리
-- **동기화**: 원본 변경 시 번역 업데이트
+**UR-005**: 시스템은 자동 생성된 시각 자료를 제공해야 한다
+- **다이어그램**: Mermaid.js로 아키텍처, 워크플로우 자동 생성
+- **코드 예제**: 구문 강조, 실행 가능한 코드 블록
+- **내비게이션**: 자동 빵가루 경로, 논리적 페이지 연결
 
 ---
 
@@ -222,7 +232,154 @@ scope:
 
 ## Specifications (상세 명세)
 
-### 1. README.ko.md 분할 구조
+### SP-DOCS-001: Document-master 에이전트 통합
+
+#### EARS 패턴: Given/When/Then
+```
+Given: 개발자가 MoAI-ADK의 복잡한 아키텍처를 문서화해야 함
+When: Document-master 에이전트가 src/ 코드베이스를 분석함
+Then: 초보자 친화적인 Nextra 문서 사이트가 자동으로 생성됨
+```
+
+**구현 상세**:
+
+1. **Document-master 에이전트 워크플로우**
+   ```python
+   # 자동화된 문서 생성 파이프라인
+   class DocumentMasterWorkflow:
+       def __init__(self):
+           self.context7 = Context7Integration()
+           self.nextra_generator = NextraContentGenerator()
+           self.mermaid_expert = MermaidDiagramExpert()
+
+       async def generate_documentation(self, project_path: Path):
+           # 1단계: 소스 코드 분석
+           analysis = await self.analyze_codebase(project_path)
+
+           # 2단계: Context7 베스트 프랙티스 적용
+           best_practices = await self.context7.get_nextra_standards()
+
+           # 3단계: 콘텐츠 생성
+           content = await self.nextra_generator.generate(analysis, best_practices)
+
+           # 4단계: 시각화 자료 생성
+           diagrams = await self.mermaid_expert.create_diagrams(analysis)
+
+           # 5단계: 품질 검증
+           validation = await self.validate_quality(content, diagrams)
+
+           return DocumentationSite(content, diagrams, validation)
+   ```
+
+2. **콘텐츠 계층 구조 자동 생성**
+   ```
+   docs/
+   ├── index.mdx                     # 홈페이지 (빠른 시작)
+   ├── getting-started/
+   │   ├── installation.mdx         # 자동 생성된 설치 가이드
+   │   ├── quick-start.mdx          # 5분 퀵스타트
+   │   └── first-project.mdx        # 첫 프로젝트 예제
+   ├── guides/
+   │   ├── workflow.mdx             # 4단계 워크플로우 (자동)
+   │   ├── alfred-commands.mdx      # 명령어 레퍼런스 (자동)
+   │   └── tdd-patterns.mdx         # TDD 패턴 가이드 (자동)
+   ├── reference/
+   │   ├── api/                     # API 레퍼런스 (자동 생성)
+   │   ├── skills/                  # Skills 레퍼런스 (자동)
+   │   ├── agents/                  # 에이전트 설명 (자동)
+   │   └── configuration.mdx        # 설정 참조 (자동)
+   ├── tutorials/                   # 실전 예제 (자동 분석)
+   └── advanced/                    # 고급 주제 (자동 생성)
+   ```
+
+### SP-DOCS-002: Context7 실시간 베스트 프랙티스 통합
+
+#### EARS 패턴: If/Then
+```
+If: Nextra 문서가 생성되거나 업데이트됨
+Then: Context7이 최신 베스트 프랙티스를 적용하여 품질을 보증함
+```
+
+**구현 상세**:
+
+1. **실시간 베스트 프랙티스 적용**
+   ```python
+   async def apply_context7_best_practices(content: MDXContent) -> EnhancedContent:
+       # Nextra 최신 설정 가져오기
+       nextra_config = await context7.get_docs("/shuding/nextra",
+           topic="configuration themes optimization performance",
+           tokens=5000)
+
+       # Markdown/GFM 표준 적용
+       markdown_standards = await context7.get_docs("/github/markdown",
+           topic="gfm syntax linting formatting",
+           tokens=3000)
+
+       # Mermaid 최신 패턴 적용
+       mermaid_patterns = await context7.get_docs("/mermaid-js/mermaid",
+           topic="diagram types syntax validation",
+           tokens=4000)
+
+       # 자동 품질 개선
+       enhanced = apply_enhancements(content, {
+           'nextra': nextra_config,
+           'markdown': markdown_standards,
+           'mermaid': mermaid_patterns
+       })
+
+       return enhanced
+   ```
+
+2. **품질 자동 검증**
+   - Markdown linting (prettier, remark plugins)
+   - Mermaid 구문 검증
+   - 링크 무결성 확인
+   - 접근성 테스트 (axe-core)
+   - 모바일 반응형 검증
+
+### SP-DOCS-003: 자동 Mermaid 다이어그램 생성
+
+#### EARS 패턴: When/Then
+```
+When: Document-master가 코드 아키텍처를 분석함
+Then: Mermaid 다이어그램이 자동으로 생성되어 시각적 이해를 지원함
+```
+
+**구현 상세**:
+
+1. **다이어그램 자동 생성 유형**
+   ```python
+   class AutoDiagramGenerator:
+       def generate_architecture_diagram(self, code_structure: CodeAnalysis):
+           """시스템 아키텍처 다이어그램 자동 생성"""
+           # 모듈 간 의존성 분석
+           dependencies = self.extract_dependencies(code_structure)
+
+           # Mermaid flowchart 생성
+           return self.create_mermaid_flowchart(dependencies)
+
+       def generate_workflow_diagram(self, agents: List[Agent]):
+           """Alfred 워크플로우 다이어그램 생성"""
+           return """
+           graph TD
+               User[👤 사용자 요청] --> Alfred[🎩 Alfred 슈퍼에이전트]
+               Alfred --> Plan[📋 Plan Agent]
+               Plan --> Implement[⚙️ TDD Implementer]
+               Implement --> Sync[🔄 Doc Syncer]
+               Sync --> Deploy[🚀 Deploy]
+           """
+
+       def generate_tag_chain_diagram(self, tags: List[Tag]):
+           """@TAG 시스템 추적성 다이어그램"""
+           return """
+           graph LR
+               SPEC[@SPEC:ID] --> TEST[@TEST:ID]
+               TEST --> CODE[@CODE:ID]
+               CODE --> DOC[@DOC:ID]
+           """
+   ```
+
+### 1. README.ko.md 분할 구조 (기존 내용 유지)
 
 #### 1.1 빠른 시작 가이드 (`docs/getting-started/`)
 ```
@@ -362,23 +519,61 @@ docs/
 
 ## Traceability (@TAG)
 
-- **SPEC**: 이 문서
-- **TEST**: @TEST:DOCS-001
-  - 문서 빌드 테스트
-  - 링크 유효성 테스트
-  - 코드 예제 실행 테스트
-  - 다국어 렌더링 테스트
-- **CODE**: @CODE:DOCS-001
-  - docs/getting-started/*.md
-  - docs/concepts/*.md
-  - docs/guides/*.md
-  - docs/examples/*/README.md
-  - scripts/split_readme.py (분할 스크립트)
-  - scripts/validate_examples.py (예제 검증)
-- **DOC**: @DOC:DOCS-001
-  - 문서 스타일 가이드
-  - 기여 가이드
-  - 번역 가이드
+### @TAG 연결 맵
+
+```
+@SPEC:DOCS-001 (v2.0.0)
+├── @CODE:DOCS-GENERATOR-001 → Document-master 에이전트 구현
+├── @CODE:NEXTRA-CONFIG-001 → Nextra 설정 및 테마
+├── @CODE:CONTEXT7-INTEGRATION-001 → Context7 베스트 프랙티스 통합
+├── @CODE:MERMAID-AUTO-001 → 자동 다이어그램 생성기
+├── @CODE:DOCS-SYNC-001 → 실시간 코드-문서 동기화
+├── @TEST:DOCS-GENERATION-001 → 문서 자동 생성 테스트
+├── @TEST:NEXTRA-BUILD-001 → Nextra 빌드 및 배포 테스트
+├── @TEST:CONTEXT7-VALIDATION-001 → 베스트 프랙티스 검증 테스트
+├── @DOC:USER-GUIDE-001 → 사용자 가이드 문서 (자동 생성)
+├── @DOC:API-REFERENCE-001 → API 레퍼런스 (자동 생성)
+├── @DOC:TUTORIALS-001 → 튜토리얼 콜렉션 (자동 생성)
+└── @DOC:SKILLS-REFERENCE-001 → Skills 레퍼런스 (자동 생성)
+```
+
+### 구현 의존성
+
+1. **선조건 (Prerequisites)**:
+   - src/moai_adk/ 코드 구조 분석 완료
+   - Document-master 에이전트 배포 준비
+   - Context7 API 접근 권한 확보
+   - Nextra v3.x 테마 선택 및 설정
+   - Vercel 배포 계정 설정
+
+2. **동시 진행 작업 (Parallel Tasks)**:
+   - Document-master 에이전트 개발
+   - Context7 통합 모듈 개발
+   - Mermaid 자동 생성기 개발
+   - Nextra 테마 커스터마이징
+   - CI/CD 파이프라인 구성
+
+3. **후행 영향 (Expected Impact)**:
+   - 개발자 온보딩 시간 60% 단축 예상
+   - GitHub Issues 문의량 40% 감소 예상
+   - 프로젝트 채택률 2배 증가 예상
+   - 문서 유지보수 비용 70% 감소 예상
+
+### 자동화된 워크플로우
+
+```mermaid
+graph TD
+    CodeChange[코드 변경] --> Trigger[CI/CD 트리거]
+    Trigger --> DocMaster[Document-master 에이전트]
+    DocMaster --> Analysis[코드 분석]
+    Analysis --> Context7[Context7 베스트 프랙티스]
+    Context7 --> ContentGen[콘텐츠 생성]
+    ContentGen --> Mermaid[Mermaid 다이어그램]
+    Mermaid --> Validation[품질 검증]
+    Validation --> NextraBuild[Nextra 빌드]
+    NextraBuild --> VercelDeploy[Vercel 배포]
+    VercelDeploy --> Complete[문서 업데이트 완료]
+```
 
 ---
 
