@@ -3,22 +3,16 @@ const withNextra = nextra.default || nextra;
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Development mode - no static export
-  // Remove output: 'export' for development
+  // Static export configuration
+  output: 'export',
+  trailingSlash: true,
 
-  // Enable experimental features for Nextra 4.x with Next.js 15
-  experimental: {
-    webpackBuildWorker: true,
-    // Next.js 15 specific optimizations
-    optimizePackageImports: ['nextra', 'nextra-theme-docs'],
-  },
-
-  // Removed invalid turbo configuration
-  // Turbopack is automatically configured by Next.js 15
-
-  // Image optimization
+  // Image optimization (compatible with static export)
   images: {
-    unoptimized: false, // Enable optimization in development
+    // For static export, we need unoptimized: true
+    // but we'll handle optimization through our custom component
+    unoptimized: true,
+    // Configure remote patterns for external images
     remotePatterns: [
       {
         protocol: 'https',
@@ -27,21 +21,43 @@ const nextConfig = {
     ],
   },
 
-  // Bundle optimization - simplified for development
+  // Bundle optimization
   compiler: {
-    removeConsole: false, // Keep console logs in development
-    reactRemoveProperties: false,
+    // Remove console logs in production
+    removeConsole: process.env.NODE_ENV === 'production',
+    // Optimize React components
+    reactRemoveProperties: process.env.NODE_ENV === 'production',
   },
 
+  // Webpack optimizations
   webpack: (config, { isServer, dev }) => {
-    // Simplified webpack config for development
-    // Remove usedExports to avoid cacheUnaffected conflict
+    // Enable webpack bundle analyzer in development
     if (dev) {
       config.optimization = {
         ...config.optimization,
+        usedExports: true,
         sideEffects: false,
       };
     }
+
+    // Optimize bundle splitting
+    config.optimization.splitChunks = {
+      chunks: 'all',
+      cacheGroups: {
+        vendor: {
+          test: /[\\/]node_modules[\\/]/,
+          name: 'vendors',
+          chunks: 'all',
+          priority: 10,
+        },
+        common: {
+          name: 'common',
+          minChunks: 2,
+          chunks: 'all',
+          priority: 5,
+        },
+      },
+    };
 
     // Exclude Pagefind from server bundle
     if (isServer) {
@@ -53,44 +69,70 @@ const nextConfig = {
     return config;
   },
 
+  // Compression
   compress: true,
+
+  // Performance monitoring
   poweredByHeader: false,
 
-  // Custom headers for better SEO and accessibility
-  async headers() {
+  // Security headers
+  headers: async () => [
+    {
+      source: '/(.*)',
+      headers: [
+        {
+          key: 'X-Content-Type-Options',
+          value: 'nosniff',
+        },
+        {
+          key: 'X-Frame-Options',
+          value: 'DENY',
+        },
+        {
+          key: 'X-XSS-Protection',
+          value: '1; mode=block',
+        },
+      ],
+    },
+    {
+      source: '/_next/static/(.*)',
+      headers: [
+        {
+          key: 'Cache-Control',
+          value: 'public, max-age=31536000, immutable',
+        },
+      ],
+    },
+    {
+      source: '/pagefind/(.*)',
+      headers: [
+        {
+          key: 'Cache-Control',
+          value: 'public, max-age=86400',
+        },
+      ],
+    },
+  ],
+
+  // Rewrites for Pagefind search
+  async rewrites() {
     return [
       {
-        source: '/(.*)',
-        headers: [
-          {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
-          },
-          {
-            key: 'X-Frame-Options',
-            value: 'DENY',
-          },
-          {
-            key: 'X-XSS-Protection',
-            value: '1; mode=block',
-          },
-          {
-            key: 'Referrer-Policy',
-            value: 'strict-origin-when-cross-origin',
-          },
-        ],
+        source: '/pagefind/:path*',
+        destination: '/pagefind/:path*',
       },
     ];
   },
 };
 
-// Configure Nextra for 4.6.0 - theme is now configured differently
 module.exports = withNextra({
   staticImage: true,
   latex: true,
   codeHighlight: true,
+  // Nextra 4.x compatible options
   defaultShowCopyCode: true,
   search: {
+    // Use custom Pagefind search
     codeblocks: false,
   },
 })(nextConfig);
