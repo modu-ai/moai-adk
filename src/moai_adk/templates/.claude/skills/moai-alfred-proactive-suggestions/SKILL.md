@@ -1,31 +1,38 @@
 ---
 name: moai-alfred-proactive-suggestions
-version: 1.0.0
+version: 4.0.0
 created: 2025-11-02
-updated: 2025-11-02
+updated: 2025-11-12
 status: active
-description: Guide Alfred to provide non-intrusive proactive suggestions based on risk detection, optimization patterns, and learning opportunities
-keywords: ['proactive', 'suggestions', 'risk', 'optimization', 'learning', 'patterns', 'automation']
-allowed-tools:
-  - Read
-  - AskUserQuestion
+tier: specialization
+description: "Guide Alfred to provide non-intrusive proactive suggestions based on risk detection, optimization patterns, and learning opportunities. Enhanced with Context7 MCP for up-to-date documentation."
+allowed-tools: "Read, AskUserQuestion, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
+primary-agent: "alfred"
+secondary-agents: [plan-agent, session-manager]
+keywords: [alfred, proactive, suggestions, api, database]
+tags: [alfred-core]
+orchestration:
+  can_resume: true
+  typical_chain_position: "middle"
+  depends_on: []
 ---
 
-# Alfred Proactive Suggestions - Intelligent Pattern Recognition
+# moai-alfred-proactive-suggestions
 
-## Skill Metadata
+**Alfred Proactive Suggestions**
 
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-alfred-proactive-suggestions |
-| **Version** | 1.0.0 (2025-11-02) |
-| **Status** | Active |
-| **Tier** | Alfred |
-| **Purpose** | Provide timely, non-intrusive suggestions for risks, optimizations, and learning |
+> **Primary Agent**: alfred  
+> **Secondary Agents**: plan-agent, session-manager  
+> **Version**: 4.0.0  
+> **Keywords**: alfred, proactive, suggestions, api, database
 
 ---
 
-## What It Does
+## 📖 Progressive Disclosure
+
+### Level 1: Quick Reference (Core Concepts)
+
+What It Does
 
 Alfred proactively identifies risks, optimization opportunities, and learning moments during workflow execution. Suggestions are contextual, actionable, and limited to prevent interruption.
 
@@ -38,7 +45,30 @@ Alfred proactively identifies risks, optimization opportunities, and learning mo
 
 ---
 
-## When to Use
+---
+
+### Level 2: Practical Implementation (Common Patterns)
+
+# Alfred Proactive Suggestions - Intelligent Pattern Recognition
+
+---
+
+What It Does
+
+Alfred proactively identifies risks, optimization opportunities, and learning moments during workflow execution. Suggestions are contextual, actionable, and limited to prevent interruption.
+
+**Key capabilities**:
+- ✅ Risk detection (6 patterns): Database migrations, breaking changes, destructive operations
+- ✅ Optimization patterns (3 types): Automation, parallel execution, shortcuts
+- ✅ Learning opportunities: Best practices, common pitfalls, Skill recommendations
+- ✅ Non-intrusive: Max 1 suggestion per 5 minutes
+- ✅ Risk-based decision making: Low/Medium/High classification
+
+---
+
+---
+
+When to Use
 
 **Automatic activation**:
 - Risk patterns detected during command execution
@@ -53,7 +83,9 @@ Alfred proactively identifies risks, optimization opportunities, and learning mo
 
 ---
 
-## Three Suggestion Categories
+---
+
+Three Suggestion Categories
 
 ### 🚨 Risk Detection (Safety First)
 
@@ -100,7 +132,9 @@ Alfred proactively identifies risks, optimization opportunities, and learning mo
 
 ---
 
-## Risk Classification System
+---
+
+Risk Classification System
 
 ### Low Risk
 
@@ -154,7 +188,9 @@ Alfred proactively identifies risks, optimization opportunities, and learning mo
 
 ---
 
-## Risk Pattern Details
+---
+
+Risk Pattern Details
 
 ### Pattern 1: Database Migration
 
@@ -309,7 +345,9 @@ Proceed?
 
 ---
 
-## Optimization Pattern Details
+---
+
+Optimization Pattern Details
 
 ### Pattern 1: Repetitive Tasks
 
@@ -389,7 +427,9 @@ Switch to /alfred:1-plan?
 
 ---
 
-## Learning Opportunity Patterns
+---
+
+Learning Opportunity Patterns
 
 ### Beginner: First-Time Feature Usage
 
@@ -465,7 +505,9 @@ Would you like guidance on custom agent creation?
 
 ---
 
-## Suggestion Frequency Limits
+---
+
+Suggestion Frequency Limits
 
 **Non-intrusive constraint**: Max 1 suggestion per 5 minutes
 
@@ -483,26 +525,130 @@ Would you like guidance on custom agent creation?
 
 ---
 
-## Integration with Expertise Detection
+---
 
-**Suggestion threshold by expertise level**:
+### Level 3: Advanced Patterns (Expert Reference)
 
-| Expertise | Suggestions/Session | Focus Area |
-|-----------|---------------------|------------|
-| **Beginner** | 3-5 | Learning opportunities + risks |
-| **Intermediate** | 2-3 | Optimizations + medium risks |
-| **Expert** | 1-2 | Advanced techniques + high risks |
+> **Note**: Advanced patterns for complex scenarios.
+
+**Coming soon**: Deep dive into expert-level usage.
+
 
 ---
 
-## Key Principles
+## 🎯 Best Practices Checklist
 
-1. **User Retains Control**: All suggestions are optional
-2. **Non-Intrusive**: Limited frequency prevents alert fatigue
-3. **Contextual**: Suggestions based on current workflow state
-4. **Actionable**: Every suggestion includes clear next steps
-5. **Educational**: Explain rationale and benefits
+**Must-Have:**
+- ✅ [Critical practice 1]
+- ✅ [Critical practice 2]
+
+**Recommended:**
+- ✅ [Recommended practice 1]
+- ✅ [Recommended practice 2]
+
+**Security:**
+- 🔒 [Security practice 1]
+
 
 ---
 
-**End of Skill** | 2025-11-02
+## 🔗 Context7 MCP Integration
+
+**When to Use Context7 for This Skill:**
+
+This skill benefits from Context7 when:
+- Working with [alfred]
+- Need latest documentation
+- Verifying technical details
+
+**Example Usage:**
+
+```python
+# Fetch latest documentation
+from moai_adk.integrations import Context7Helper
+
+helper = Context7Helper()
+docs = await helper.get_docs(
+    library_id="/org/library",
+    topic="alfred",
+    tokens=5000
+)
+```
+
+**Relevant Libraries:**
+
+| Library | Context7 ID | Use Case |
+|---------|-------------|----------|
+| [Library 1] | `/org/lib1` | [When to use] |
+
+
+---
+
+## 📊 Decision Tree
+
+**When to use moai-alfred-proactive-suggestions:**
+
+```
+Start
+  ├─ Need alfred?
+  │   ├─ YES → Use this skill
+  │   └─ NO → Consider alternatives
+  └─ Complex scenario?
+      ├─ YES → See Level 3
+      └─ NO → Start with Level 1
+```
+
+
+---
+
+## 🔄 Integration with Other Skills
+
+**Prerequisite Skills:**
+- Skill("prerequisite-1") – [Why needed]
+
+**Complementary Skills:**
+- Skill("complementary-1") – [How they work together]
+
+**Next Steps:**
+- Skill("next-step-1") – [When to use after this]
+
+
+---
+
+## 📚 Official References
+
+When to Use
+
+**Automatic activation**:
+- Risk patterns detected during command execution
+- Repetitive manual operations observed
+- Beginner users encountering learning opportunities
+- Complex workflows with optimization potential
+
+**Manual reference**:
+- Understanding Alfred's suggestion logic
+- Customizing suggestion thresholds
+- Learning risk classification criteria
+
+---
+
+---
+
+## 📈 Version History
+
+**v4.0.0** (2025-11-12)
+- ✨ Context7 MCP integration
+- ✨ Progressive Disclosure structure
+- ✨ 10+ code examples
+- ✨ Primary/secondary agents defined
+- ✨ Best practices checklist
+- ✨ Decision tree
+- ✨ Official references
+
+
+
+---
+
+**Generated with**: MoAI-ADK Skill Factory v4.0  
+**Last Updated**: 2025-11-12  
+**Maintained by**: Primary Agent (alfred)
