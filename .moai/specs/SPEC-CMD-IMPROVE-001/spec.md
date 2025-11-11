@@ -16,12 +16,18 @@ scope: "Commands \uB808\uC774\uC5B4 4\uAC1C \uD30C\uC77C (0-project, 1-plan, 2-r
   \ 3-sync) \uB9AC\uD329\uD1A0\uB9C1"
 status: in-progress
 updated: 2025-11-12
-version: 0.0.1
+version: 0.0.2
 ---
 
 # @SPEC:CMD-IMPROVE-001: Commands 레이어 컨텍스트 전달 및 Resume 기능 통합 개선
 
 ## HISTORY
+
+### v0.0.2 - 2025-11-12
+- **Author**: @goos
+- **Week 2 Milestone**: command_helpers.py implementation complete
+- **Achievement**: 27 tests, 90.41% coverage, @CODE:W2-002
+- **Status**: Phase 1 Week 2 complete, proceeding to Week 3-4
 
 ### v0.0.1 - 2025-11-12
 - **Author**: @goos
@@ -413,6 +419,40 @@ def validate_no_template_vars(text: str):
 - **User Guide**: `docs/commands/context-passing-guide.md`
 - **Developer Guide**: `docs/architecture/command-state-management.md`
 - **API Reference**: `docs/api/context-manager.md`
+
+## TAG Hierarchy
+
+### Primary SPEC
+- @SPEC:CMD-IMPROVE-001: Parent specification for context passing and resume functionality
+
+### Week 2 Implementation TAGs (@SPEC:CMD-IMPROVE-001)
+
+#### Core Module
+- @CODE:W2-002: `command_helpers.py` - Reusable patterns for command integration
+  - Parent: @SPEC:CMD-IMPROVE-001
+  - Related: REQ-1.1 (Explicit Context Passing System)
+  - Files: `src/moai_adk/core/command_helpers.py`
+
+#### Test Coverage (@CODE:W2-002)
+- @TEST:W2-001: `test_extract_project_metadata()`
+- @TEST:W2-002: `test_extract_project_metadata_file_not_found()`
+- @TEST:W2-003: `test_extract_project_metadata_invalid_json()`
+- @TEST:W2-004: `test_detect_tech_stack_python()`
+- @TEST:W2-005: `test_detect_tech_stack_javascript()`
+- @TEST:W2-006: `test_detect_tech_stack_multiple()`
+- @TEST:W2-007: `test_detect_tech_stack_fallback_to_python()`
+- @TEST:W2-008: `test_build_phase_result()`
+- @TEST:W2-009: `test_build_phase_result_with_next_phase()`
+- @TEST:W2-010: `test_validate_phase_files()`
+
+**Traceability Chain**:
+```
+@SPEC:CMD-IMPROVE-001 (Requirements)
+    ↓
+@CODE:W2-002 (Implementation)
+    ↓
+@TEST:W2-001 to W2-010 (Test Coverage)
+```
 
 ---
 
