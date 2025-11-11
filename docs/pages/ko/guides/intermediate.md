@@ -12,11 +12,19 @@ description: 고급 패턴과 실전 활용법을 다루는 중급자 가이드
 이 가이드를 통해 다음을 마스터할 수 있습니다:
 
 - ✅ 복잡한 아키텍처 패턴 구현
-- ✅ 32개 에이전트 전문 활용법
-- ✅ BaaS 플랫폼 통합
+- ✅ **19명 전문 에이전트 활용** (v0.23.1 강화)
+- ✅ **12개 BaaS 플랫폼 완전 통합** (v0.23.1 신규)
+- ✅ **292 Skills 전략적 활용** (v0.23.1)
 - ✅ 팀 협업 워크플로우
 - ✅ 고급 TDD 패턴
 - ✅ 성능 최적화 전략
+
+### v0.23.1 중점 학습 내용
+
+- **Expert Delegation System v2.0**: 자동 전문가 할당
+- **Skills Ecosystem v4.0**: 292 Skills 마스터
+- **BaaS 생태계**: Supabase, Firebase 등 12개 플랫폼
+- **Senior Engineer Thinking**: 8가지 연구 전략 활용
 
 ## 🧠 1단계: Alfred 에이전트 심층 활용
 
@@ -905,25 +913,97 @@ graph TB
   </Tab>
 </Tabs>
 
-## 📈 7단계: 다음 학습 단계
+## 🆕 7단계: v0.23.1 고급 기능 마스터
+
+### Senior Engineer Thinking 적용
+
+**8가지 연구 전략**을 실전 프로젝트에 활용하세요:
+
+```bash
+# 복잡한 기술 조사
+/alfred:1-plan "복잡한 아키텍처 연구가 필요한 프로젝트" \
+  --research-strategy "parallel" \
+  --depth "comprehensive"
+```
+
+**연구 전략 유형**:
+1. Sequential Investigation (순차적 조사)
+2. Parallel Research (병렬 연구)
+3. Hypothesis Testing (가설 검증)
+4. Comparative Analysis (비교 분석)
+5. Deep Dive (심층 분석)
+6. Breadth-First (폭 우선 탐색)
+7. Expert Consultation (전문가 자문)
+8. Iterative Refinement (반복적 개선)
+
+[연구 전략 상세 가이드](/ko/guides/research-strategies)
+
+### BaaS 플랫폼 마스터
+
+#### Supabase 완전 가이드
+
+```bash
+# Supabase 풀스택 프로젝트
+/alfred:1-plan "Supabase를 활용한 SaaS 플랫폼" \
+  --features "auth:database:storage:realtime:edge-functions" \
+  --architecture "multi-tenant"
+```
+
+[Supabase 완전 가이드](/ko/skills/baas/supabase)
+
+#### Firebase 완전 가이드
+
+```bash
+# Firebase 통합 프로젝트
+/alfred:1-plan "Firebase를 활용한 모바일 백엔드" \
+  --features "auth:firestore:cloud-functions:analytics" \
+  --platform "mobile"
+```
+
+[Firebase 완전 가이드](/ko/skills/baas/firebase)
+
+### 성능 최적화 고급 기법
+
+```bash
+# 성능 최적화 프로젝트
+/alfred:1-plan "데이터베이스 성능 최적화" \
+  --focus "query-optimization:indexing:caching" \
+  --target "p95 < 100ms"
+```
+
+[Tutorial 3: 데이터베이스 최적화](/ko/tutorials/tutorial-03-database-optimization)
+
+## 📈 8단계: 다음 학습 단계
 
 ### 중급자 가이드 완료 후
 
 <Callout type="success" emoji="🎉">
   <strong>축하합니다! 중급자 가이드를 완료했습니다.</strong><br />
-  이제 복잡한 프로젝트를 구축하고 팀을 이끌 수 있는 능력을 갖추었습니다.
+  v0.23.1의 최신 기능과 복잡한 프로젝트를 구축할 능력을 갖추었습니다.
 </Callout>
+
+#### 실전 프로젝트 사례 연구:
+
+1. **[E-commerce 플랫폼](/ko/case-studies/ecommerce-platform)** - 6주 완성, 제로 버그
+2. **[Enterprise SaaS 보안](/ko/case-studies/enterprise-saas-security)** - SOC 2 준수
+3. **[Microservices 전환](/ko/case-studies/microservices-migration)** - 레거시 현대화
+
+#### 고급 튜토리얼:
+
+- **[Tutorial 5: Microservices 아키텍처](/ko/tutorials/tutorial-05-microservices)** - 2시간
+- **[Tutorial 6: 보안 강화](/ko/tutorials/tutorial-06-security-hardening)** - 1.5시간
+- **[Tutorial 7: CI/CD 파이프라인](/ko/tutorials/tutorial-07-cicd-pipeline)** - 2시간
 
 #### 추천 학습 경로:
 
-1. **[고급자 가이드](./advanced)**: 커스터마이징 및 기여 방법 배우기
-2. **엔터프라이즈 패턴**: 대규모 시스템 설계 및 운영
+1. **[고급자 가이드](./advanced)**: 커스터마이징 및 기여 방법
+2. **[실제 프로젝트 사례](/ko/case-studies)**: 성공 사례 분석
 3. **DevOps 마스터리**: Kubernetes, 서버리스 아키텍처
 4. **AI/ML 통합**: 머신러닝 모델 배포 및 운영
 
 #### 실천 프로젝트:
 
-- 🏗️ **대규모 SaaS 플랫폼**: 수만 명 사용자 지원
+- 🏗️ **대규모 SaaS 플랫폼**: 수만 명 사용자 지원 (Supabase/Firebase)
 - 📱 **모바일 앱 백엔드**: React Native/Flutter 연동
 - 🤖 **AI 기반 서비스**: 머신러닝 모델 통합
 - 🌐 **글로벌 서비스**: 다국어, 다통화 지원

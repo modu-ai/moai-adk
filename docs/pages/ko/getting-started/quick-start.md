@@ -200,13 +200,66 @@ docs(calculator): Auto-sync documentation with implementation
 feat(SPEC-CALC-001): Complete calculator feature with full coverage
 ```
 
+## 🆕 v0.23.1 최신 기능 활용하기
+
+### BaaS 플랫폼 빠른 통합
+
+MoAI-ADK v0.23.1은 **12개 BaaS 플랫폼**을 완전 지원합니다:
+
+```bash
+# Supabase 통합 예제
+/alfred:1-plan "Supabase를 활용한 실시간 채팅 기능"
+/alfred:2-run CHAT-001
+
+# Firebase 통합 예제
+/alfred:1-plan "Firebase Auth를 활용한 소셜 로그인"
+/alfred:2-run AUTH-002
+```
+
+**지원 플랫폼**: Supabase, Firebase, Vercel, Cloudflare, Auth0, Convex, Railway, Neon, Clerk, PocketBase, Appwrite, Parse
+
+### Expert Delegation System 활용
+
+```bash
+# 자동 전문가 할당 (v0.23.1)
+/alfred:0-project  # project-manager 자동 할당
+/alfred:1-plan "복잡한 요구사항"  # spec-builder 자동 할당
+/alfred:2-run SPEC-001  # tdd-implementer 자동 할당
+```
+
+**60% 상호작용 감소**: Alfred가 자동으로 적절한 전문가를 선택합니다.
+
+### 292 Skills 활용
+
+```bash
+# Skills 목록 확인
+moai-adk skills list
+
+# 특정 Skill 정보 확인
+moai-adk skills info moai-baas-supabase
+```
+
 ## 다음 단계
 
 빠른 시작을 완료했습니다! 이제 다음을 할 수 있습니다:
 
-1. **[첫 프로젝트 가이드](./first-project)**: 더 상세한 가이드로 학습
-2. **[Alfred 가이드](../guides/alfred)**: Alfred 슈퍼에이전트 활용법
-3. **[가이드 목록](../guides)**: 고급 기능과 모범 사례
+### 실전 학습 자료
+
+1. **[Tutorial 1: REST API 개발](/ko/tutorials/tutorial-01-rest-api)** - 30분, 초보자 추천
+2. **[Tutorial 2: JWT 인증 구현](/ko/tutorials/tutorial-02-jwt-auth)** - 1시간, 실전 보안
+3. **[Tutorial 4: Supabase 통합](/ko/tutorials/tutorial-04-baas-supabase)** - 1시간, BaaS 활용
+
+### 코드 예제 라이브러리
+
+- **[REST API 예제](/ko/examples/rest-api)**: CRUD, 인증, 에러 처리
+- **[인증 예제](/ko/examples/authentication)**: JWT, OAuth, Session
+- **[BaaS 예제](/ko/examples/baas)**: Supabase, Firebase 통합
+
+### 심화 학습
+
+- **[초보자 가이드](/ko/guides/beginner)**: 체계적인 학습 경로
+- **[중급자 가이드](/ko/guides/intermediate)**: 고급 패턴과 실전 활용
+- **[Skills 생태계](/ko/skills/ecosystem-upgrade-v4)**: 292 Skills 완전 가이드
 
 ## 빠른 참조
 

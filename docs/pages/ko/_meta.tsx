@@ -1,4 +1,4 @@
-{
+export default {
   "index": "소개",
   "getting-started": "시작하기",
   "features": "핵심 기능",
@@ -14,4 +14,4 @@
   "troubleshooting": "문제 해결",
   "contributing": "기여 가이드",
   "output-style": "출력 스타일"
-}
+};
