@@ -127,6 +127,100 @@ graph TD
 - **인터페이스**: 명확한 API와 프로토콜 정의
 - **교체 가능성**: 구현체를 쉽게 교체 가능
 
+## Command Context Management Pattern
+
+### Overview
+MoAI-ADK Commands save execution results as JSON files in `.moai/memory/command-state/` for explicit context passing between phases. This enables stateful workflows across sessions and provides clear traceability.
+
+### Phase Result Storage
+
+Each command phase (0-project, 1-plan, 2-run, 3-sync) saves its execution results:
+
+```json
+{
+  "phase": "0-project",
+  "timestamp": "2025-11-12T10:30:00Z",
+  "status": "completed",
+  "outputs": {
+    "project_name": "MyProject",
+    "mode": "personal",
+    "conversation_language": "ko"
+  },
+  "files_created": [
+    "/absolute/path/to/.moai/config.json",
+    "/absolute/path/to/.moai/project/product.md"
+  ],
+  "next_phase": "1-plan"
+}
+```
+
+### Helper Utilities (@CODE:W2-002)
+
+`command_helpers.py` provides reusable patterns for commands:
+
+| Function | Purpose |
+|----------|---------|
+| `extract_project_metadata()` | Extract project configuration from `.moai/config.json` |
+| `detect_tech_stack()` | Auto-detect programming languages in project |
+| `build_phase_result()` | Standardize phase output format |
+| `validate_phase_files()` | Batch validate file paths (absolute path enforcement) |
+| `save_command_context()` | Persist phase state to JSON with error handling |
+| `load_previous_phase()` | Load most recent phase results for next command |
+
+### Integration Pattern
+
+Commands use helpers to save context after agent execution:
+
+```python
+from moai_adk.core.command_helpers import save_command_context
+
+# After project-manager agent completes in /alfred:0-project
+save_command_context(
+    phase_name="0-project",
+    project_root="/path/to/project",
+    outputs={
+        "project_name": "MyProject",
+        "mode": "personal",
+        "conversation_language": "ko"
+    },
+    files_created=[
+        "/absolute/path/.moai/config.json",
+        "/absolute/path/.moai/project/product.md"
+    ],
+    next_phase="1-plan"
+)
+```
+
+### Data Flow
+
+```
+/alfred:0-project
+    ↓ (executes)
+project-manager agent
+    ↓ (returns results)
+command_helpers.save_command_context()
+    ↓ (persists)
+.moai/memory/command-state/0-project-{timestamp}.json
+    ↓ (loads)
+/alfred:1-plan
+    ↓ (uses context)
+spec-builder agent
+```
+
+### Benefits
+
+- **Explicit Context**: No reliance on session history
+- **Resumable**: Commands can resume after interruption
+- **Testable**: Integration tests verify end-to-end flow
+- **Traceable**: JSON files provide clear audit trail
+- **Consistent**: Standardized format across all phases
+
+### Implementation Reference
+
+- **SPEC**: @SPEC:CMD-IMPROVE-001 (Week 2)
+- **Code**: @CODE:W2-002 (`src/moai_adk/core/command_helpers.py`)
+- **Tests**: @TEST:W2-001 through @TEST:W2-010 (27 tests, 90.41% coverage)
+
 ## 보안 패턴
 
 ### 신뢰 경계 (Trust Boundaries)

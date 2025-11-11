@@ -43,6 +43,14 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
 
 ## ⚡ Key Features
 
+### Core Infrastructure
+
+- **`command_helpers.py`**: Context management utilities for commands (@CODE:W2-002)
+  - Phase result storage and retrieval
+  - Project metadata extraction
+  - Tech stack auto-detection
+  - Explicit context passing between command phases
+
 ### 1. SPEC-First Development
 
 - **EARS-format specifications** for structured, unambiguous requirements

@@ -407,6 +407,43 @@ Alfred는 복잡한 문제에 대해 **30초 안에** 다음 프로세스를 완
 
 ---
 
+## Context Management
+
+MoAI-ADK Commands maintain explicit context between phases using JSON storage:
+
+### How It Works
+
+1. **Phase Completion**: Each command saves results to `.moai/memory/command-state/`
+2. **Context Loading**: Next command loads previous phase results
+3. **Template Substitution**: Variables like `{{PROJECT_NAME}}` are replaced with actual values
+4. **Path Validation**: All file paths converted to absolute paths
+
+### Example
+
+```bash
+# Phase 0: Save project info
+/alfred:0-project
+→ Saves to .moai/memory/command-state/0-project-{timestamp}.json
+
+# Phase 1: Load project info
+/alfred:1-plan "Add authentication"
+→ Loads 0-project results
+→ Uses {{PROJECT_NAME}}, {{MODE}}, {{LANGUAGE}} in prompts
+```
+
+### Benefits
+
+- Works across multiple sessions
+- No dependency on conversation history
+- Clear audit trail in JSON files
+- Enables command resume functionality (Week 5-8)
+
+### Technical Details
+
+See architecture documentation: [Command Context Management Pattern](../architecture/patterns.md#command-context-management-pattern)
+
+---
+
 ## 다국어 지원
 
 Alfred는 **25개 이상 언어**를 완벽 지원합니다:
