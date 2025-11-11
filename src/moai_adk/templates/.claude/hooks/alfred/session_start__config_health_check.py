@@ -24,14 +24,14 @@ from typing import Any, Optional
 
 def check_config_exists() -> bool:
     """Check if .moai/config/config.json exists"""
-    config_path = Path.cwd() / ".moai" / "config.json"
+    config_path = Path.cwd() / ".moai" / "config" / "config.json"
     return config_path.exists()
 
 
 def get_config_data() -> Optional[dict[str, Any]]:
     """Read and parse .moai/config/config.json"""
     try:
-        config_path = Path.cwd() / ".moai" / "config.json"
+        config_path = Path.cwd() / ".moai" / "config" / "config.json"
         if not config_path.exists():
             return None
         return json.loads(config_path.read_text())
@@ -42,7 +42,7 @@ def get_config_data() -> Optional[dict[str, Any]]:
 def get_config_age() -> Optional[int]:
     """Get configuration file age in days"""
     try:
-        config_path = Path.cwd() / ".moai" / "config.json"
+        config_path = Path.cwd() / ".moai" / "config" / "config.json"
         if not config_path.exists():
             return None
 

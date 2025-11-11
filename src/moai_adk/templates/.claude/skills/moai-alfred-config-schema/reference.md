@@ -395,7 +395,7 @@ import json
 from pathlib import Path
 
 def read_config():
-    config_path = Path(".moai/config.json")
+    config_path = Path(".moai/config/config.json")
     with open(config_path, "r", encoding="utf-8") as f:
         return json.load(f)
 
@@ -411,7 +411,7 @@ import json
 from pathlib import Path
 
 def update_user_nickname(new_nickname: str):
-    config_path = Path(".moai/config.json")
+    config_path = Path(".moai/config/config.json")
 
     # Read existing config
     with open(config_path, "r", encoding="utf-8") as f:

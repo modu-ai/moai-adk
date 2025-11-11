@@ -1300,8 +1300,8 @@ test=$(echo "$commits" | grep -E "^- (✅|🧪)" || echo "")
 
 **Mode 및 Workflow 자동 감지**:
 ```bash
-# 1. 프로젝트 모드 감지 (.moai/config.json)
-project_mode=$(rg '"mode":\s*"([^"]+)"' .moai/config.json -o '$1' | head -1)
+# 1. 프로젝트 모드 감지 (.moai/config/config.json)
+project_mode=$(rg '"mode":\s*"([^"]+)"' .moai/config/config.json -o '$1' | head -1)
 echo "🎭 프로젝트 모드: $project_mode"
 
 if [ "$project_mode" = "personal" ]; then
@@ -1833,11 +1833,11 @@ uv pip install -e . --force-reinstall --no-deps
 echo "🔄 패키지 템플릿 동기화 중..."
 echo ""
 
-# 프로젝트 정보 읽기 (.moai/config.json)
-PROJECT_NAME=$(rg '"name":\s*"([^"]+)"' .moai/config.json -o '$1' | head -1)
-PROJECT_OWNER=$(rg '"nickname":\s*"([^"]+)"' .moai/config.json -o '$1' | head -1)
-PROJECT_LOCALE=$(rg '"locale":\s*"([^"]+)"' .moai/config.json -o '$1' | head -1)
-PROJECT_LANGUAGE=$(rg '"language":\s*"([^"]+)"' .moai/config.json -o '$1' | head -1)
+# 프로젝트 정보 읽기 (.moai/config/config.json)
+PROJECT_NAME=$(rg '"name":\s*"([^"]+)"' .moai/config/config.json -o '$1' | head -1)
+PROJECT_OWNER=$(rg '"nickname":\s*"([^"]+)"' .moai/config/config.json -o '$1' | head -1)
+PROJECT_LOCALE=$(rg '"locale":\s*"([^"]+)"' .moai/config/config.json -o '$1' | head -1)
+PROJECT_LANGUAGE=$(rg '"language":\s*"([^"]+)"' .moai/config/config.json -o '$1' | head -1)
 
 echo "📌 프로젝트 정보:"
 echo "  - 이름: $PROJECT_NAME"
@@ -1900,10 +1900,10 @@ if [ -f "$TEMPLATE_CLAUDE_MD" ]; then
     # CLAUDE.md 복사
     cp "$TEMPLATE_CLAUDE_MD" CLAUDE.md
 
-    # .moai/config.json에서 추가 정보 추출
-    CONVERSATION_LANGUAGE=$(rg '"conversation_language":\s*"([^"]+)"' .moai/config.json -o '$1' | head -1)
-    CONVERSATION_LANGUAGE_NAME=$(rg '"conversation_language_name":\s*"([^"]+)"' .moai/config.json -o '$1' | head -1)
-    CODEBASE_LANGUAGE=$(rg '"language":\s*"([^"]+)"' .moai/config.json -o '$1' | head -1)
+    # .moai/config/config.json에서 추가 정보 추출
+    CONVERSATION_LANGUAGE=$(rg '"conversation_language":\s*"([^"]+)"' .moai/config/config.json -o '$1' | head -1)
+    CONVERSATION_LANGUAGE_NAME=$(rg '"conversation_language_name":\s*"([^"]+)"' .moai/config/config.json -o '$1' | head -1)
+    CODEBASE_LANGUAGE=$(rg '"language":\s*"([^"]+)"' .moai/config/config.json -o '$1' | head -1)
 
     # 변수 치환 (sed 사용, 플레이스홀더 기반)
     # {{project_name}} → $PROJECT_NAME
@@ -2026,8 +2026,8 @@ echo ""
 # 4️⃣ 설정 스키마 버전 검증
 echo "4️⃣  설정 스키마 버전 검증..."
 
-if [ -f ".moai/config.json" ] && [ -f "$TEMPLATE_MOAI/config.json" ]; then
-    LOCAL_VERSION=$(grep '"version"' .moai/config.json | head -1 | grep -o '[0-9.]*' | head -1 || echo "unknown")
+if [ -f ".moai/config/config.json" ] && [ -f "$TEMPLATE_MOAI/config.json" ]; then
+    LOCAL_VERSION=$(grep '"version"' .moai/config/config.json | head -1 | grep -o '[0-9.]*' | head -1 || echo "unknown")
     TEMPLATE_VERSION=$(grep '"version"' "$TEMPLATE_MOAI/config.json" | head -1 | grep -o '[0-9.]*' | head -1 || echo "unknown")
 
     if [ "$LOCAL_VERSION" = "$TEMPLATE_VERSION" ]; then
@@ -2066,7 +2066,7 @@ echo "  4. GitHub에 푸시"
 
 **검증 항목**:
 - ✅ Package template (.claude/)과 Local (.claude/) 동기화 상태
-- ✅ 설정 파일 (.moai/config.json) 버전 호환성
+- ✅ 설정 파일 (.moai/config/config.json) 버전 호환성
 - ✅ CLAUDE.md 템플릿 변수 완전 치환
 - ✅ 파일 백업 생성 확인
 - ⚠️ 불일치 항목 발견 시 경고
@@ -2455,7 +2455,7 @@ echo ""
 
 # 2️⃣ 패키지 템플릿 디렉토리 경로 설정
 TEMPLATE_DIR="src/moai_adk/templates"
-TEMPLATE_CONFIG="$TEMPLATE_DIR/.moai/config.json"
+TEMPLATE_CONFIG="$TEMPLATE_DIR/.moai/config/config.json"
 
 if [ ! -f "$TEMPLATE_CONFIG" ]; then
     echo "❌ 패키지 템플릿을 찾을 수 없습니다: $TEMPLATE_CONFIG"
@@ -2495,7 +2495,7 @@ fi
 
 echo ""
 
-# 5️⃣ 버전 최적화 (.moai/config.json)
+# 5️⃣ 버전 최적화 (.moai/config/config.json)
 echo "3️⃣  config.json 버전 및 메타데이터 최적화 중..."
 
 # 패키지 템플릿의 config.json에서 최신 구조 읽기
@@ -2511,9 +2511,9 @@ import json
 import sys
 from pathlib import Path
 
-config_path = Path(".moai/config.json")
+config_path = Path(".moai/config/config.json")
 if not config_path.exists():
-    print("❌ .moai/config.json을 찾을 수 없습니다")
+    print("❌ .moai/config/config.json을 찾을 수 없습니다")
     sys.exit(1)
 
 with open(config_path) as f:
@@ -2559,7 +2559,7 @@ print(f"     - project section 정규화됨 (중복 제거)")
 EOF
 
 # 변수 치환 (CURRENT_VERSION → 실제 버전)
-sed -i '' "s/CURRENT_VERSION/$CURRENT_VERSION/g" .moai/config.json
+sed -i '' "s/CURRENT_VERSION/$CURRENT_VERSION/g" .moai/config/config.json
 
 echo ""
 
@@ -2572,12 +2572,12 @@ if [ -f "$TEMPLATE_CLAUDE_MD" ]; then
     # CLAUDE.md 복사
     cp "$TEMPLATE_CLAUDE_MD" CLAUDE.md
 
-    # .moai/config.json에서 프로젝트 정보 추출
-    PROJECT_NAME=$(rg '"name":\s*"([^"]+)"' .moai/config.json -o '$1' | head -1)
-    PROJECT_LOCALE=$(rg '"locale":\s*"([^"]+)"' .moai/config.json -o '$1' | head -1)
-    CONVERSATION_LANGUAGE=$(rg '"conversation_language":\s*"([^"]+)"' .moai/config.json -o '$1' | head -1)
-    CONVERSATION_LANGUAGE_NAME=$(rg '"conversation_language_name":\s*"([^"]+)"' .moai/config.json -o '$1' | head -1)
-    CODEBASE_LANGUAGE=$(rg '"language":\s*"([^"]+)"' .moai/config.json -o '$1' | head -1)
+    # .moai/config/config.json에서 프로젝트 정보 추출
+    PROJECT_NAME=$(rg '"name":\s*"([^"]+)"' .moai/config/config.json -o '$1' | head -1)
+    PROJECT_LOCALE=$(rg '"locale":\s*"([^"]+)"' .moai/config/config.json -o '$1' | head -1)
+    CONVERSATION_LANGUAGE=$(rg '"conversation_language":\s*"([^"]+)"' .moai/config/config.json -o '$1' | head -1)
+    CONVERSATION_LANGUAGE_NAME=$(rg '"conversation_language_name":\s*"([^"]+)"' .moai/config/config.json -o '$1' | head -1)
+    CODEBASE_LANGUAGE=$(rg '"language":\s*"([^"]+)"' .moai/config/config.json -o '$1' | head -1)
 
     # 변수 치환 (소문자, 대문자, {{}} 형식 모두 처리)
     sed -i '' "s|{{project_name}}|$PROJECT_NAME|g" CLAUDE.md
@@ -2602,7 +2602,7 @@ echo ""
 echo "📋 동기화 체크리스트:"
 echo "  ✅ .claude/ (agents, commands, hooks, output-styles, settings.json)"
 echo "  ✅ .moai/memory/ (CLAUDE-RULES.md, DEVELOPMENT-GUIDE.md, etc.)"
-echo "  ✅ .moai/config.json (버전, 언어, 메타데이터 최적화)"
+echo "  ✅ .moai/config/config.json (버전, 언어, 메타데이터 최적화)"
 echo "  ✅ CLAUDE.md (프로젝트 변수 치환)"
 echo ""
 echo "→ 다음 단계: Git 커밋 (Step 3.11)"
@@ -2818,7 +2818,7 @@ echo ""
 echo "📦 변경사항 staging 중..."
 
 git add .claude/
-git add .moai/config.json
+git add .moai/config/config.json
 git add .moai/memory/
 git add CLAUDE.md
 git add CHANGELOG.md
@@ -2833,7 +2833,7 @@ COMMIT_MSG="chore: Synchronize package templates and update CHANGELOG after rele
 
 - Sync .claude/ (agents, commands, hooks, output-styles, settings.json)
 - Sync .moai/memory/ (development guides, rules, practices)
-- Update .moai/config.json: version v${CURRENT_VERSION}, optimize structure
+- Update .moai/config/config.json: version v${CURRENT_VERSION}, optimize structure
 - Update CLAUDE.md: project variables substitution
 - Update CHANGELOG.md: record v${CURRENT_VERSION} release with statistics
 - Maintain package template as source of truth (src/moai_adk/templates/)

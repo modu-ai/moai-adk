@@ -563,8 +563,8 @@ Your task is to handle Git operations based on the project's `spec_git_workflow`
 First, read the current workflow configuration:
 
 ```bash
-# Check spec_git_workflow setting from .moai/config.json
-spec_workflow=$(grep -o '"spec_git_workflow": "[^"]*"' .moai/config.json | cut -d'"' -f4)
+# Check spec_git_workflow setting from .moai/config/config.json
+spec_workflow=$(grep -o '"spec_git_workflow": "[^"]*"' .moai/config/config.json | cut -d'"' -f4)
 echo "Current SPEC Git workflow: $spec_workflow"
 ```
 

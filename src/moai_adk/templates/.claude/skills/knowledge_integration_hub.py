@@ -33,7 +33,7 @@ class KnowledgeIntegrationHub:
     def load_configuration(self) -> None:
         """설정 로드"""
         try:
-            config_file = Path(".moai/config.json")
+            config_file = Path(".moai/config/config.json")
             if config_file.exists():
                 with open(config_file, 'r', encoding='utf-8') as f:
                     config = json.load(f)

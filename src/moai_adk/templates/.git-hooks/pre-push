@@ -12,11 +12,11 @@
 # 0 - Push allowed
 # 1 - Push blocked (team mode violation or user declined)
 
-# Check team mode from .moai/config.json
+# Check team mode from .moai/config/config.json
 is_team_mode() {
-    if [ -f ".moai/config.json" ]; then
+    if [ -f ".moai/config/config.json" ]; then
         # Check if mode is "team"
-        grep -q '"mode".*:.*"team"' ".moai/config.json" 2>/dev/null
+        grep -q '"mode".*:.*"team"' ".moai/config/config.json" 2>/dev/null
         return $?
     fi
     return 1

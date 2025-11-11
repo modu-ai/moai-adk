@@ -662,7 +662,7 @@ def save_config_safely(config):
     # Create backup
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     backup_path = f".moai/config.backup.{timestamp}.json"
-    shutil.copy2(".moai/config.json", backup_path)
+    shutil.copy2(".moai/config/config.json", backup_path)
 
     try:
         # Validate before save
@@ -674,11 +674,11 @@ def save_config_safely(config):
         with open(".moai/config.json.tmp", "w") as f:
             json.dump(config, f, indent=2, ensure_ascii=False)
 
-        os.replace(".moai/config.json.tmp", ".moai/config.json")
+        os.replace(".moai/config.json.tmp", ".moai/config/config.json")
 
     except Exception as e:
         # Restore from backup on error
-        shutil.copy2(backup_path, ".moai/config.json")
+        shutil.copy2(backup_path, ".moai/config/config.json")
         raise ConfigError(f"Save failed, restored backup: {e}")
 ```
 
