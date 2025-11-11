@@ -412,47 +412,52 @@ class UserExperienceAnalyzer(HTTPClient):
 
 
 def generate_improvement_plan(analysis_report: Dict[str, Any]) -> Dict[str, Any]:
-    """개선 계획 생성"""
+    """
+    Generate improvement plan from analysis report
+
+    Creates a prioritized action plan based on UX analysis results, categorizing
+    improvements by priority and timeline.
+    """
     overall_score = analysis_report["overall_score"]
 
-    # 우선순위 설정
+    # Set priorities
     priorities: Dict[str, List[str]] = {
         "high": [],
         "medium": [],
         "low": []
     }
 
-    # 성능 우선순위
+    # Performance priorities
     performance = analysis_report["performance"]
     if not performance.is_good:
         if performance.error_rate > 0.2:
-            priorities["high"].append("에러 처리 시스템 개선")
+            priorities["high"].append("Improve error handling system")
         elif performance.load_time > 3.0:
-            priorities["high"].append("로드 시간 개선")
+            priorities["high"].append("Improve load time")
         else:
-            priorities["medium"].append("성능 최적화")
+            priorities["medium"].append("Optimize performance")
 
-    # 콘텐츠 우선순위
+    # Content priorities
     content = analysis_report["content"]
     if not content.is_good:
         if content.accuracy_score < 0.8:
-            priorities["high"].append("콘텐츠 정확성 검증")
+            priorities["high"].append("Validate content accuracy")
         elif content.completeness_score < 0.8:
-            priorities["medium"].append("콘텐츠 완성도 개선")
+            priorities["medium"].append("Improve content completeness")
         else:
-            priorities["low"].append("콘텐츠 미세 조정")
+            priorities["low"].append("Fine-tune content")
 
-    # 접근성 우선순위
+    # Accessibility priorities
     accessibility = analysis_report["accessibility"]
     if not accessibility.is_good:
         if not accessibility.keyboard_navigation:
-            priorities["high"].append("키보드 접근성 개선")
+            priorities["high"].append("Improve keyboard accessibility")
         elif not accessibility.screen_reader_support:
-            priorities["high"].append("스크린 리더 지원 개선")
+            priorities["high"].append("Improve screen reader support")
         else:
-            priorities["medium"].append("접근성 표준 준수")
+            priorities["medium"].append("Ensure accessibility standards compliance")
 
-    # 실행 계획 생성
+    # Generate execution plan
     timeline = {
         "immediate": priorities["high"],
         "short_term": priorities["medium"],
@@ -464,7 +469,7 @@ def generate_improvement_plan(analysis_report: Dict[str, Any]) -> Dict[str, Any]
         "priorities": priorities,
         "timeline": timeline,
         "estimated_duration": (
-            f"{len(priorities['high']) + len(priorities['medium']) * 2 + len(priorities['low']) * 3}주"
+            f"{len(priorities['high']) + len(priorities['medium']) * 2 + len(priorities['low']) * 3} weeks"
         ),
         "success_criteria": {
             "performance_score": 0.9,
@@ -476,29 +481,29 @@ def generate_improvement_plan(analysis_report: Dict[str, Any]) -> Dict[str, Any]
 
 
 if __name__ == "__main__":
-    # 사용자 경험 분석 실행 예시
+    # User experience analysis execution example
     analyzer = UserExperienceAnalyzer("https://adk.mo.ai.kr")
 
     async def main():
         analysis_report = await analyzer.generate_report()
 
-        print("=== 사용자 경험 분석 보고서 ===")
-        print(f"전체 점수: {analysis_report['overall_score']:.2f}")
-        print(f"성능 점수: {analysis_report['performance'].success_rate:.2f}")
-        print(f"네비게이션 점수: {analysis_report['navigation'].structure_score:.2f}")
-        print(f"콘텐츠 점수: {analysis_report['content'].accuracy_score:.2f}")
-        print(f"접근성 점수: {1.0 if analysis_report['accessibility'].is_good else 0.0:.2f}")
+        print("=== User Experience Analysis Report ===")
+        print(f"Overall Score: {analysis_report['overall_score']:.2f}")
+        print(f"Performance Score: {analysis_report['performance'].success_rate:.2f}")
+        print(f"Navigation Score: {analysis_report['navigation'].structure_score:.2f}")
+        print(f"Content Score: {analysis_report['content'].accuracy_score:.2f}")
+        print(f"Accessibility Score: {1.0 if analysis_report['accessibility'].is_good else 0.0:.2f}")
 
-        print("\n개선 제안:")
+        print("\nImprovement Recommendations:")
         for recommendation in analysis_report['recommendations']:
             print(f"- {recommendation}")
 
-        # 개선 계획 생성
+        # Generate improvement plan
         improvement_plan = generate_improvement_plan(analysis_report)
-        print("\n개선 계획:")
-        print(f"예상 소요 시간: {improvement_plan['estimated_duration']}")
-        print(f"즉시 실행: {improvement_plan['timeline']['immediate']}")
-        print(f"단기 실행: {improvement_plan['timeline']['short_term']}")
-        print(f"장기 실행: {improvement_plan['timeline']['long_term']}")
+        print("\nImprovement Plan:")
+        print(f"Estimated Duration: {improvement_plan['estimated_duration']}")
+        print(f"Immediate Actions: {improvement_plan['timeline']['immediate']}")
+        print(f"Short-term Actions: {improvement_plan['timeline']['short_term']}")
+        print(f"Long-term Actions: {improvement_plan['timeline']['long_term']}")
 
     asyncio.run(main())
