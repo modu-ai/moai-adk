@@ -429,7 +429,7 @@ class PhaseExecutor:
         config_sections = {
             "moai": {"preserve_all": True, "priority": "user"},
             "user": {"preserve_keys": ["nickname"], "priority": "user"},
-            "language": {"preserve_keys": ["conversation_language", "conversation_language_name"], "priority": "user"},
+            "language": {"preserve_keys": [], "priority": "new"},  # Use new language config during init
             "project": {"preserve_keys": [], "priority": "new"},
             "git": {"preserve_keys": [], "priority": "new"},
         }
@@ -459,6 +459,7 @@ class PhaseExecutor:
             section_name: Name of the section to merge
             strategy: Merge strategy for this section
         """
+        logger = logging.getLogger(__name__)
         if section_name not in merged_config:
             merged_config[section_name] = {}
 

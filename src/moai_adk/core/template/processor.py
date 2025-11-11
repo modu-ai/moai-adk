@@ -432,7 +432,7 @@ class TemplateProcessor:
         logger = logging.getLogger(__name__)
 
         # Check cache first if enabled
-        cache_key = hash(frozenset(self.context.items()) + content[:1000])
+        cache_key = hash((frozenset(self.context.items()), content[:1000]))
         if self.config.enable_caching and cache_key in self._substitution_cache:
             cached_result = self._substitution_cache[cache_key]
             if self.config.verbose_logging:
