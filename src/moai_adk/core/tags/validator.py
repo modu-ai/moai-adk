@@ -586,6 +586,32 @@ class CentralValidator:
             if suffix and suffix not in self.config.allowed_file_types:
                 return False
 
+        # CRITICAL: Exclude local project config files (not templates)
+        # Local files (.claude/, .moai/, CLAUDE.md) are ignored by git
+        # and should not participate in TAG validation to avoid duplicate TAG errors.
+        # However, template files (src/moai_adk/templates/*) must be validated.
+        try:
+            # Convert to relative path from cwd for consistent matching
+            rel_path = path.relative_to(Path.cwd())
+            rel_path_str = str(rel_path)
+        except ValueError:
+            # If not relative to cwd, use absolute path
+            rel_path_str = str(path)
+
+        # Exclude local project config (root-level only, not templates)
+        local_excludes = [".claude/", ".moai/", "CLAUDE.md"]
+        for exclude_pattern in local_excludes:
+            # Check if path starts with pattern (root-level)
+            if rel_path_str.startswith(exclude_pattern):
+                # But always include template files
+                if not rel_path_str.startswith("src/moai_adk/templates/"):
+                    return False
+            # Also check for file name match (CLAUDE.md)
+            if exclude_pattern == "CLAUDE.md" and path.name == "CLAUDE.md":
+                # Exclude root CLAUDE.md but not template CLAUDE.md
+                if not "src/moai_adk/templates" in rel_path_str:
+                    return False
+
         # Check ignore patterns
         for pattern in self.config.ignore_patterns:
             # Simple pattern matching (can be enhanced with fnmatch)
