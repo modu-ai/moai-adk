@@ -28,24 +28,12 @@ from moai_adk.core.tags.validator import CentralValidationResult, CentralValidat
 
 from ..utils.hook_config import get_graceful_degradation, load_hook_timeout
 
+from alfred.shared.core.config_manager import get_config_manager, get_config
+
 
 def load_config() -> Dict[str, Any]:
-    """설정 파일 로드
-
-    Returns:
-        설정 딕셔너리
-    """
-    try:
-        config_file = Path(".moai/config.json")
-        if config_file.exists():
-            with open(config_file, 'r', encoding='utf-8') as f:
-                return json.load(f)
-    except Exception:
-        pass
-
-    return {}
-
-
+    """Load configuration using central ConfigManager for optimized performance."""
+    return get_config_manager().load_config()
 def create_validator() -> CentralValidator:
     """중앙 검증기 생성
 

@@ -27,15 +27,21 @@ class TestConfigManagerErrorHandling(unittest.TestCase):
         self.config_path = Path(self.test_dir) / "config.json"
 
         # Reset singleton state
-        if hasattr(ConfigManager, '_instance'):
-            delattr(ConfigManager, '_instance')
-        if hasattr(ConfigManager, '_lock'):
-            delattr(ConfigManager, '_lock')
+        ConfigManager._instance = None
+        # Reset global instance
+        import alfred.shared.core.config_manager as config_module
+        config_module._config_manager = None
 
     def tearDown(self):
         """Clean up test environment."""
         import shutil
         shutil.rmtree(self.test_dir, ignore_errors=True)
+
+        # Reset singleton state
+        ConfigManager._instance = None
+        # Reset global instance
+        import alfred.shared.core.config_manager as config_module
+        config_module._config_manager = None
 
     def test_missing_file_returns_defaults(self):
         """Test graceful degradation when config file doesn't exist."""

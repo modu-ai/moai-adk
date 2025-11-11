@@ -54,6 +54,8 @@ except ImportError:
 
 try:
     from ..utils.hook_config import get_graceful_degradation, load_hook_timeout
+
+from alfred.shared.core.config_manager import get_config_manager, get_config
     HOOK_CONFIG_AVAILABLE = True
 except ImportError:
     HOOK_CONFIG_AVAILABLE = False
@@ -66,22 +68,8 @@ except ImportError:
 
 
 def load_config() -> Dict[str, Any]:
-    """설정 파일 로드
-
-    Returns:
-        설정 딕셔너리
-    """
-    try:
-        config_file = Path(".moai/config.json")
-        if config_file.exists():
-            with open(config_file, 'r', encoding='utf-8') as f:
-                return json.load(f)
-    except Exception:
-        pass
-
-    return {}
-
-
+    """Load configuration using central ConfigManager for optimized performance."""
+    return get_config_manager().load_config()
 def create_policy_validator() -> TagPolicyValidator:
     """TAG 정책 검증기 생성
 

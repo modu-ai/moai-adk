@@ -2,122 +2,92 @@
 name: moai-domain-security
 version: 2.0.0
 created: 2025-10-22
-updated: 2025-10-22
+updated: 2025-11-11
 status: active
-description: OWASP Top 10, SAST/DAST, dependency security, and secrets management.
-keywords: ['security', 'owasp', 'sast', 'secrets', 'vulnerabilities']
+description: Security best practices, vulnerability prevention, and application security patterns. Use when implementing authentication, securing APIs, or conducting security audits.
+keywords: ['security', 'authentication', 'vulnerability-prevention', 'encryption', 'audit']
 allowed-tools:
   - Read
   - Bash
+  - WebFetch
 ---
 
-# Domain Security Skill
+# Security Development Domain Skill
 
 ## Skill Metadata
 
 | Field | Value |
 | ----- | ----- |
 | **Skill Name** | moai-domain-security |
-| **Version** | 2.0.0 (2025-10-22) |
-| **Allowed tools** | Read (read_file), Bash (terminal) |
-| **Auto-load** | On demand when keywords detected |
-| **Tier** | Domain |
+| **Version** | 2.0.0 (2025-11-11) |
+| **Allowed tools** | Read, Bash, WebFetch |
+| **Auto-load** | On demand when security patterns detected |
+| **Tier** | Domain (Expert) |
 
 ---
 
 ## What It Does
 
-OWASP Top 10, SAST/DAST, dependency security, and secrets management.
+Security best practices, vulnerability prevention, and application security patterns.
 
 **Key capabilities**:
-- ✅ Best practices enforcement for domain domain
-- ✅ TRUST 5 principles integration
-- ✅ Latest tool versions (2025-10-22)
-- ✅ TDD workflow support
+- ✅ Authentication and authorization
+- ✅ Data encryption and protection
+- ✅ Security vulnerability prevention
+- ✅ Security audit procedures
+- ✅ Compliance frameworks
 
 ---
 
 ## When to Use
 
-**Automatic triggers**:
-- Related code discussions and file patterns
-- SPEC implementation (`/alfred:2-run`)
-- Code review requests
-
-**Manual invocation**:
-- Review code for TRUST 5 compliance
-- Design new features
-- Troubleshoot issues
+- ✅ Implementing authentication systems
+- ✅ Securing application APIs
+- ✅ Conducting security audits
+- ✅ Planning security architecture
 
 ---
 
-## Tool Version Matrix (2025-10-22)
+## Core Security Patterns
 
-| Tool | Version | Purpose | Status |
-|------|---------|---------|--------|
-| **OWASP ZAP** | 2.16.0 | Primary | ✅ Current |
-| **Trivy** | 0.58.0 | Primary | ✅ Current |
-| **Bandit** | 1.8.0 | Primary | ✅ Current |
+### Authentication & Authorization
+1. **JWT Implementation**: Secure token-based auth
+2. **OAuth 2.0**: Third-party authentication
+3. **RBAC**: Role-based access control
+4. **Session Management**: Secure session handling
+5. **Multi-Factor Auth**: Enhanced security layers
+
+### Data Protection
+- **Encryption**: Data at rest and in transit
+- **Hashing**: Secure password storage
+- **Input Validation**: Prevent injection attacks
+- **CORS Configuration**: Cross-origin security
+- **Security Headers**: HTTP security implementations
 
 ---
-
-## Inputs
-
-- Language-specific source directories
-- Configuration files
-- Test suites and sample data
-
-## Outputs
-
-- Test/lint execution plan
-- TRUST 5 review checkpoints
-- Migration guidance
-
-## Failure Modes
-
-- When required tools are not installed
-- When dependencies are missing
-- When test coverage falls below 85%
 
 ## Dependencies
 
-- Access to project files via Read/Bash tools
-- Integration with `moai-foundation-langs` for language detection
-- Integration with `moai-foundation-trust` for quality gates
-
----
-
-## References (Latest Documentation)
-
-_Documentation links updated 2025-10-22_
-
----
-
-## Changelog
-
-- **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
-- **v1.0.0** (2025-03-29): Initial Skill release
+- Authentication libraries
+- Encryption tools
+- Security scanning frameworks
+- Compliance documentation
 
 ---
 
 ## Works Well With
 
-- `moai-foundation-trust` (quality gates)
-- `moai-alfred-code-reviewer` (code review)
-- `moai-essentials-debug` (debugging support)
+- `moai-domain-backend` (API security)
+- `moai-baas-auth0-ext` (Auth0 integration)
+- `moai-essentials-debug` (Security debugging)
 
 ---
 
-## Best Practices
+## Changelog
 
-✅ **DO**:
-- Follow domain best practices
-- Use latest stable tool versions
-- Maintain test coverage ≥85%
-- Document all public APIs
+- **v2.0.0** (2025-11-11): Added complete metadata, security patterns
+- **v1.0.0** (2025-10-22): Initial security domain
 
-❌ **DON'T**:
-- Skip quality gates
-- Use deprecated tools
-- Ignore security warnings
-- Mix testing frameworks
+---
+
+**End of Skill** | Updated 2025-11-11
