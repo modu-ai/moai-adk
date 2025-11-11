@@ -37,9 +37,7 @@ Alfred responds and proceeds to Step 2.
 
 ### Step 2: Select Issue Type (AskUserQuestion)
 
-First, invoke `Skill("moai-alfred-ask-user-questions")` to get the latest best practices for interactive prompts.
-
-Then use AskUserQuestion with:
+Use AskUserQuestion with:
 
 **Question**: "What type of issue do you want to create?"
 
