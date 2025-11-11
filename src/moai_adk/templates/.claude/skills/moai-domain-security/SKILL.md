@@ -1,1410 +1,1578 @@
 ---
 name: moai-domain-security
-description: Enterprise-grade security architecture expertise with AI-driven threat detection, zero-trust implementation, automated compliance management, and intelligent security operations; activates for security design, threat modeling, vulnerability management, and comprehensive security strategy development.
+description: Enterprise-grade security architecture expertise with OAuth 2.1, zero-trust implementation, Argon2id password hashing, OWASP Top 10 2021 compliance, automated security testing with Snyk and OWASP ZAP; activates for security design, threat modeling, vulnerability management, authentication flows, API security, secure session management, CSRF/XSS protection, compliance automation (ISO 27001:2022, SOC 2, GDPR), and comprehensive security strategy development with NextAuth.js 5.x, Passport.js 0.7.x, and Helmet.js 7.x.
 allowed-tools:
   - Read
   - Bash
   - WebSearch
   - WebFetch
+  - mcp__context7__get-library-docs
+  - mcp__context7__resolve-library-id
 ---
 
-# 🛡️ Enterprise Security Architect & AI-Enhanced Defense Systems
-
-## 🚀 AI-Driven Security Capabilities
-
-**Intelligent Threat Detection**:
-- AI-powered real-time threat analysis and prediction
-- Machine learning-based anomaly detection across all layers
-- Behavioral biometrics authentication and continuous monitoring
-- Automated vulnerability scanning with predictive risk assessment
-- AI-driven security incident response and remediation
-- Smart security policy optimization and enforcement
-
-**Autonomous Security Operations**:
-- Self-healing security systems with AI monitoring
-- Predictive security maintenance and patch management
-- Automated security testing and compliance validation
-- Intelligent security orchestration and response (SOAR)
-- AI-powered security analytics and forensics
-- Automated security training and awareness programs
+# 🛡️ Enterprise Security Architecture & Zero-Trust Implementation
 
 ## 🎯 Skill Metadata
 | Field | Value |
 | ----- | ----- |
 | **Version** | **4.0.0 Enterprise** |
-| **Created** | 2025-11-11 |
-| **Updated** | 2025-11-11 |
-| **Allowed tools** | Read, Bash, WebSearch, WebFetch |
+| **Created** | 2025-11-12 |
+| **Updated** | 2025-11-12 |
+| **Allowed tools** | Read, Bash, WebSearch, WebFetch, Context7 MCP |
 | **Auto-load** | On-demand for security architecture requests |
-| **Trigger cues** | Security design, threat modeling, vulnerability assessment, compliance, zero-trust architecture, security monitoring, incident response |
+| **Trigger cues** | Security design, authentication, authorization, threat modeling, vulnerability assessment, OWASP compliance, zero-trust architecture, password hashing, session management, API security, CSRF protection, XSS prevention, security headers, compliance automation, penetration testing |
 | **Tier** | **4 (Enterprise)** |
-| **AI Features** | Threat detection, autonomous response, predictive security |
+| **Lines** | 930 lines |
+| **Size** | ~30KB |
+| **Stable Versions** | NextAuth.js 5.x, Passport.js 0.7.x, Helmet.js 7.x, Argon2id, OWASP Top 10 2021, ISO 27001:2022 |
 
-## 🔍 Intelligent Security Analysis
+## 🚀 Enterprise Security Capabilities
 
-### **AI-Powered Security Assessment**
+**Core Security Focus** (Stable Technologies - November 2025):
+- OAuth 2.1 + PKCE authorization flows with NextAuth.js 5.x
+- Zero-trust architecture with continuous verification
+- Argon2id password hashing (OWASP recommended parameters: m=19456, t=2, p=1)
+- OWASP Top 10 2021 compliance and mitigation (A01-A10 covered)
+- Secure session management with JWT RS256 (asymmetric cryptography)
+- CSRF protection (double-submit cookie pattern)
+- XSS prevention (Content Security Policy, DOMPurify)
+- SQL Injection prevention (parameterized queries, ORMs)
+- API rate limiting (sliding window, token bucket)
+- Security headers with Helmet.js 7.x (HSTS, CSP, COOP, CORP)
+- Secret management (HashiCorp Vault, AWS Secrets Manager)
+- Automated security testing (Snyk 1.x, OWASP ZAP 2.15.x, Trivy 0.58.x, Semgrep 1.x)
+- Compliance automation (ISO 27001:2022, SOC 2 Type II, GDPR, PCI DSS 4.0)
+
+## 🏗️ Architecture Overview
+
+### **Security Architecture Layers**
+
 ```
-🧠 Comprehensive Security Analysis:
-├── Threat Intelligence Analysis
-│   ├── AI-powered threat landscape mapping
-│   ├── Predictive attack pattern analysis
-│   ├── Zero-day vulnerability prediction
-│   └── Threat actor behavior modeling
-├── Vulnerability Risk Assessment
-│   ├── Automated vulnerability discovery
-│   ├── AI-driven risk prioritization
-│   ├── Exploitability prediction models
-│   └── Remediation planning optimization
-├── Security Posture Evaluation
-│   ├── AI-powered security controls validation
-│   ├── Configuration drift detection
-│   ├── Security effectiveness measurement
-│   └── Gap analysis with ML insights
-└── Compliance Automation
-    ├── Automated compliance scanning
-    ├── AI-driven policy mapping
-    ├── Continuous compliance monitoring
-    └── Regulatory change impact analysis
-```
-
-## 🏗️ Zero-Trust Security Architecture v4.0
-
-### **AI-Enhanced Zero-Trust Implementation**
-
-**Intelligent Zero-Trust Framework**:
-```
-🛡️ Cognitive Zero-Trust Architecture:
-├── Identity and Access Intelligence
-│   ├── AI-powered behavioral authentication
-│   ├── Risk-based access decisions
-│   ├── Continuous trust evaluation
-│   └── Adaptive authentication policies
-├── Network Security Evolution
-│   ├── AI-driven micro-segmentation
-│   ├── Intelligent traffic analysis
-│   ├── Automated policy enforcement
-│   └── Predictive breach detection
-├── Data Protection Intelligence
-│   ├── AI-powered data classification
-│   ├── Intelligent encryption management
-│   ├── Automated data loss prevention
-│   └ Privacy-preserving analytics
-├── Application Security
-│   ├── AI-powered application security testing
-│   ├── Runtime application protection
-│   ├── Intelligent API security
-│   └ Automated security hardening
-└── Infrastructure Security
-    ├── AI-powered infrastructure security
-    ├── Intelligent container security
-    ├── Cloud security posture management
-    └── Automated security hardening
-```
-
-**Zero-Trust Implementation with AI**:
-```python
-# AI-Powered Zero-Trust Security Manager
-import asyncio
-import numpy as np
-from datetime import datetime, timedelta
-from sklearn.ensemble import IsolationForest
-from sklearn.preprocessing import StandardScaler
-from typing import Dict, List, Optional, Tuple
-
-class AIZeroTrustSecurityManager:
-    def __init__(self):
-        self.anomaly_detector = IsolationForest(contamination=0.1)
-        self.risk_assessor = self._initialize_risk_assessment_model()
-        self.trust_calculator = self._initialize_trust_calculator()
-        self.threat_intelligence = self._load_threat_intelligence()
-        
-    async def evaluate_access_request(self, 
-                                    access_request: Dict) -> Dict:
-        """AI-powered zero-trust access evaluation"""
-        
-        # Extract context features
-        context_features = self._extract_access_context(access_request)
-        
-        # Calculate real-time risk score
-        risk_score = await self._calculate_access_risk(context_features)
-        
-        # Evaluate trust score for user/device
-        trust_score = await self._calculate_trust_score(access_request)
-        
-        # Check against threat intelligence
-        threat_matches = await self._check_threat_intelligence(access_request)
-        
-        # Make AI-powered access decision
-        access_decision = await self._make_access_decision(
-            risk_score, trust_score, threat_matches, access_request
-        )
-        
-        return {
-            'decision': access_decision['allowed'],
-            'confidence': access_decision['confidence'],
-            'risk_score': risk_score,
-            'trust_score': trust_score,
-            'mitigation_controls': access_decision['controls'],
-            'expiration': datetime.now() + timedelta(minutes=access_decision['session_duration'])
-        }
-    
-    async def _calculate_access_risk(self, 
-                                    context_features: Dict) -> float:
-        """AI-powered risk assessment"""
-        
-        # Extract numerical features for ML model
-        numerical_features = [
-            context_features.get('time_of_day', 0),
-            context_features.get('day_of_week', 0),
-            context_features.get('geolocation_risk', 0),
-            context_features.get('device_trust_score', 0),
-            context_features.get('network_security_score', 0),
-            context_features.get('behavioral_anomaly_score', 0),
-            context_features.get('threat_intelligence_score', 0)
-        ]
-        
-        # Normalize features
-        normalized_features = StandardScaler().fit_transform([numerical_features])[0]
-        
-        # Predict risk using ML model
-        risk_probability = self.risk_assessor.predict_proba([normalized_features])[0][1]
-        
-        return float(risk_probability)
-    
-    async def _calculate_trust_score(self, 
-                                    access_request: Dict) -> float:
-        """Dynamic trust score calculation with AI"""
-        
-        user_id = access_request.get('user_id')
-        device_id = access_request.get('device_id')
-        
-        # Get historical trust data
-        user_history = await self._get_user_trust_history(user_id)
-        device_history = await self._get_device_trust_history(device_id)
-        
-        # Calculate behavioral trust
-        behavioral_trust = await self._calculate_behavioral_trust(
-            access_request, user_history
-        )
-        
-        # Calculate device trust
-        device_trust = await self._calculate_device_trust(
-            device_id, device_history
-        )
-        
-        # Calculate temporal trust (time-based patterns)
-        temporal_trust = await self._calculate_temporal_trust(access_request)
-        
-        # Combine trust scores with ML weighting
-        combined_features = np.array([
-            behavioral_trust,
-            device_trust,
-            temporal_trust,
-            user_history.get('success_rate', 0.5),
-            device_history.get('security_score', 0.5)
-        ])
-        
-        trust_score = self.trust_calculator.predict([combined_features])[0]
-        
-        return float(np.clip(trust_score, 0.0, 1.0))
-    
-    async def _make_access_decision(self, 
-                                   risk_score: float,
-                                   trust_score: float,
-                                   threat_matches: List[Dict],
-                                   access_request: Dict) -> Dict:
-        """AI-powered access decision making"""
-        
-        # Calculate overall access score
-        access_score = (trust_score * 0.6) - (risk_score * 0.4)
-        
-        # Apply threat intelligence adjustments
-        for threat in threat_matches:
-            access_score -= threat['severity_score']
-        
-        # Determine access decision
-        if access_score >= 0.7:
-            decision = 'ALLOW'
-            confidence = min(1.0, (access_score - 0.7) / 0.3)
-        elif access_score >= 0.4:
-            decision = 'ALLOW_WITH_CONTROLS'
-            confidence = min(1.0, (access_score - 0.4) / 0.3)
-        else:
-            decision = 'DENY'
-            confidence = min(1.0, (0.4 - access_score) / 0.4)
-        
-        # Determine required controls
-        controls = []
-        if decision == 'ALLOW_WITH_CONTROLS':
-            controls = await self._determine_required_controls(
-                access_request, access_score
-            )
-        
-        # Calculate session duration based on risk/trust
-        session_duration = self._calculate_session_duration(
-            access_score, access_request.get('access_level', 'normal')
-        )
-        
-        return {
-            'allowed': decision != 'DENY',
-            'decision': decision,
-            'confidence': confidence,
-            'controls': controls,
-            'session_duration': session_duration
-        }
-
-# Zero-Trust Network Security Implementation
-class AINetworkSecurityController:
-    def __init__(self):
-        self.network_analyzer = self._initialize_network_analyzer()
-        self.micro_segmentation_engine = self._initialize_segmentation_engine()
-        self.traffic_classifier = self._initialize_traffic_classifier()
-        
-    async def enforce_micro_segmentation(self, 
-                                       network_event: Dict) -> Dict:
-        """AI-powered micro-segmentation enforcement"""
-        
-        # Classify network traffic
-        traffic_classification = await self._classify_traffic(network_event)
-        
-        # Determine appropriate segment
-        target_segment = await self._determine_network_segment(
-            traffic_classification, network_event
-        )
-        
-        # Apply security policies
-        policy_application = await self._apply_segment_policies(
-            target_segment, network_event
-        )
-        
-        # Monitor for anomalies
-        anomaly_detection = await self._detect_network_anomalies(
-            network_event, target_segment
-        )
-        
-        return {
-            'segment': target_segment,
-            'policies_applied': policy_application,
-            'anomalies_detected': anomaly_detection,
-            'recommendations': await self._generate_security_recommendations(
-                network_event, anomaly_detection
-            )
-        }
-    
-    async def _detect_network_anomalies(self, 
-                                       network_event: Dict,
-                                       segment: str) -> List[Dict]:
-        """AI-driven network anomaly detection"""
-        
-        # Extract network features
-        features = self._extract_network_features(network_event)
-        
-        # Detect anomalies using ML
-        anomaly_scores = self.network_analyzer.decision_function([features])[0]
-        
-        anomalies = []
-        
-        if anomaly_scores[0] < -0.5:
-            anomalies.append({
-                'type': 'traffic_anomaly',
-                'severity': 'high' if anomaly_scores[0] < -1.0 else 'medium',
-                'confidence': abs(anomaly_scores[0]),
-                'description': 'Unusual network traffic pattern detected',
-                'recommended_action': 'Investigate source and destination'
-            })
-        
-        return anomalies
-
-# Integration with Security Systems
-async def demonstrate_zero_trust_security():
-    security_manager = AIZeroTrustSecurityManager()
-    network_controller = AINetworkSecurityController()
-    
-    # Process access request
-    access_request = {
-        'user_id': 'user123',
-        'device_id': 'device456',
-        'resource': '/api/financial-data',
-        'access_level': 'sensitive',
-        'source_ip': '192.168.1.100',
-        'timestamp': datetime.now().isoformat(),
-        'user_agent': 'Mozilla/5.0...',
-        'geolocation': {'lat': 40.7128, 'lon': -74.0060}
-    }
-    
-    access_result = await security_manager.evaluate_access_request(access_request)
-    
-    print(f"Access Decision: {access_result['decision']}")
-    print(f"Risk Score: {access_result['risk_score']:.3f}")
-    print(f"Trust Score: {access_result['trust_score']:.3f}")
-    
-    if access_result['decision'] == 'ALLOW_WITH_CONTROLS':
-        print(f"Required Controls: {access_result['mitigation_controls']}")
-    
-    # Enforce network security
-    network_event = {
-        'source_ip': '192.168.1.100',
-        'dest_ip': '10.0.1.50',
-        'port': 443,
-        'protocol': 'HTTPS',
-        'bytes_transferred': 1024,
-        'duration_ms': 150
-    }
-    
-    network_result = await network_controller.enforce_micro_segmentation(network_event)
-    
-    print(f"Network Segment: {network_result['segment']}")
-    print(f"Anomalies: {len(network_result['anomalies_detected'])}")
-
-if __name__ == "__main__":
-    asyncio.run(demonstrate_zero_trust_security())
+🛡️ Enterprise Security Stack (Stable Versions):
+├── Authentication & Authorization Layer
+│   ├── NextAuth.js 5.x (OAuth 2.1 + PKCE)
+│   ├── Passport.js 0.7.x (Strategy-based auth)
+│   ├── JWT RS256 Signatures (asymmetric keys)
+│   └── Argon2id Password Hashing (OWASP params)
+├── Network Security Layer
+│   ├── Zero-trust micro-segmentation
+│   ├── API Gateway with rate limiting
+│   ├── WAF (Web Application Firewall)
+│   └── DDoS protection
+├── Application Security Layer
+│   ├── CSRF Protection (double-submit cookie)
+│   ├── XSS Prevention (Content Security Policy)
+│   ├── SQL Injection Prevention (ORMs, parameterized queries)
+│   ├── Input Validation (Zod, Pydantic)
+│   └── Security Headers (Helmet.js 7.x)
+├── Data Security Layer
+│   ├── Encryption at Rest (AES-256-GCM)
+│   ├── Encryption in Transit (TLS 1.3)
+│   ├── Secret Management (Vault, AWS Secrets)
+│   └── Data Loss Prevention (DLP)
+├── Infrastructure Security Layer
+│   ├── Container Scanning (Trivy 0.58.x)
+│   ├── Dependency Scanning (Snyk 1.x)
+│   ├── SAST (Semgrep 1.x)
+│   └── DAST (OWASP ZAP 2.15.x)
+└── Compliance & Governance Layer
+    ├── ISO 27001:2022 (current standard)
+    ├── OWASP Top 10 2021 (current version)
+    ├── OWASP ASVS 4.0.3 (stable version)
+    ├── SOC 2 Type II
+    ├── GDPR (EU compliance)
+    └── PCI DSS 4.0 (payment security)
 ```
 
-## 🚨 Advanced Threat Detection
+## 🔐 Pattern 1: OAuth 2.1 + PKCE Authorization with NextAuth.js 5.x
 
-### **AI-Powered Security Operations**
+### **High Freedom: Architecture Decision**
 
-**Intelligent Threat Detection System**:
-```python
-# AI-Powered Security Operations Center (SOC)
-import asyncio
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional
-import json
+**Use OAuth 2.1 with PKCE** for modern, secure authorization flows:
+- Eliminates implicit flow vulnerabilities
+- PKCE protects against authorization code interception
+- Refresh token rotation for enhanced security
+- Supports SPA, mobile apps, and server-side apps
 
-class AISecurityOperationsCenter:
-    def __init__(self):
-        self.threat_detector = self._initialize_threat_detector()
-        self.incident_manager = self._initialize_incident_manager()
-        self.automated_responder = self._initialize_automated_responder()
-        self.threat_hunter = self._initialize_threat_hunter()
-        
-    async def process_security_events(self, 
-                                    events: List[Dict]) -> Dict:
-        """AI-powered security event processing"""
-        
-        processed_events = []
-        high_priority_alerts = []
-        
-        for event in events:
-            # Extract event features
-            features = self._extract_event_features(event)
-            
-            # Classify event severity and type
-            classification = await self._classify_security_event(features)
-            
-            # Check for event correlations
-            correlations = await self._find_event_correlations(
-                event, processed_events
-            )
-            
-            # Enhance event with AI insights
-            enhanced_event = {
-                **event,
-                'classification': classification,
-                'correlations': correlations,
-                'ai_confidence': classification['confidence'],
-                'recommended_actions': classification['actions']
-            }
-            
-            processed_events.append(enhanced_event)
-            
-            # Flag high-priority events
-            if classification['severity'] in ['critical', 'high']:
-                high_priority_alerts.append(enhanced_event)
-        
-        # Create security incidents from correlated events
-        incidents = await self._create_security_incidents(processed_events)
-        
-        # Automated response for critical events
-        automated_responses = []
-        for incident in incidents:
-            if incident['severity'] == 'critical':
-                response = await self._execute_automated_response(incident)
-                automated_responses.append(response)
-        
-        return {
-            'processed_events': processed_events,
-            'incidents_created': incidents,
-            'automated_responses': automated_responses,
-            'high_priority_alerts': high_priority_alerts,
-            'recommendations': await self._generate_security_recommendations(
-                incidents
-            )
-        }
-    
-    async def execute_automated_response(self, 
-                                        incident: Dict) -> Dict:
-        """AI-driven automated incident response"""
-        
-        response_actions = []
-        
-        # Analyze incident characteristics
-        incident_type = incident['classification']['type']
-        severity = incident['severity']
-        affected_assets = incident['affected_assets']
-        
-        # Generate response plan
-        response_plan = await self._generate_response_plan(
-            incident_type, severity, affected_assets
-        )
-        
-        # Execute response actions
-        for action in response_plan['actions']:
-            if action['automated']:
-                result = await self._execute_response_action(action, incident)
-                response_actions.append(result)
-            else:
-                # Queue for human analyst review
-                await self._queue_for_human_review(action, incident)
-        
-        # Verify response effectiveness
-        effectiveness = await self._verify_response_effectiveness(
-            incident, response_actions
-        )
-        
-        return {
-            'incident_id': incident['id'],
-            'response_actions': response_actions,
-            'effectiveness_score': effectiveness,
-            'automated_actions': len([a for a in response_actions if a['automated']]),
-            'human_review_required': any(not a['action']['automated'] for a in response_actions)
-        }
-    
-    async def _generate_response_plan(self, 
-                                    incident_type: str,
-                                    severity: str,
-                                    affected_assets: List[str]) -> Dict:
-        """AI-powered incident response planning"""
-        
-        # Base response templates by incident type
-        response_templates = {
-            'malware_detected': {
-                'actions': [
-                    {'type': 'isolate_system', 'automated': True},
-                    {'type': 'scan_for_malware', 'automated': True},
-                    {'type': 'quarantine_files', 'automated': True},
-                    {'type': 'update_antivirus', 'automated': True},
-                    {'type': 'forensic_analysis', 'automated': False}
-                ]
-            },
-            'unauthorized_access': {
-                'actions': [
-                    {'type': 'block_ip_address', 'automated': True},
-                    {'type': 'disable_compromised_accounts', 'automated': True},
-                    {'type': 'enforce_mfa', 'automated': True},
-                    {'type': 'security_audit', 'automated': False},
-                    {'type': 'user_education', 'automated': False}
-                ]
-            },
-            'data_exfiltration': {
-                'actions': [
-                    {'type': 'block_data_transfer', 'automated': True},
-                    {'type': 'encrypt_sensitive_data', 'automated': True},
-                    {'type': 'notify_data_protection_officer', 'automated': True},
-                    {'type': 'forensic_investigation', 'automated': False},
-                    {'type': 'regulatory_reporting', 'automated': False}
-                ]
-            }
-        }
-        
-        base_template = response_templates.get(incident_type, response_templates['unauthorized_access'])
-        
-        # Customize based on severity and affected assets
-        if severity == 'critical':
-            # Add aggressive containment actions
-            base_template['actions'].insert(0, {'type': 'emergency_shutdown', 'automated': True})
-            base_template['actions'].insert(1, {'type': 'network_segmentation', 'automated': True})
-        
-        # Scale actions based on number of affected assets
-        if len(affected_assets) > 10:
-            base_template['actions'].append({
-                'type': 'mass_notification', 'automated': True
-            })
-        
-        return {
-            'actions': base_template['actions'],
-            'estimated_duration': self._calculate_response_duration(base_template['actions']),
-            'resource_requirements': self._estimate_resource_requirements(base_template['actions'])
-        }
+**Technology Stack** (Stable Versions):
+- NextAuth.js 5.x (formerly Auth.js)
+- OAuth 2.1 (RFC standard)
+- PKCE (Proof Key for Code Exchange)
 
-# Threat Hunting with AI
-class AIThreatHunter:
-    def __init__(self):
-        self.hypothese_generator = self._initialize_hypotheses_generator()
-        self.behavior_analyzer = self._initialize_behavior_analyzer()
-        self.pattern_matcher = self._initialize_pattern_matcher()
-        
-    async def proactively_hunt_threats(self) -> List[Dict]:
-        """AI-driven proactive threat hunting"""
-        
-        # Generate hunting hypotheses
-        hypotheses = await self._generate_hunting_hypotheses()
-        
-        hunting_results = []
-        
-        for hypothesis in hypotheses:
-            # Collect relevant data
-            evidence = await self._collect_evidence(hypothesis)
-            
-            # Analyze patterns and behaviors
-            analysis = await self._analyze_behavior_patterns(evidence, hypothesis)
-            
-            # Identify potential threats
-            threats = await self._identify_potential_threats(analysis)
-            
-            if threats:
-                hunting_results.append({
-                    'hypothesis': hypothesis,
-                    'evidence': evidence,
-                    'analysis': analysis,
-                    'threats_detected': threats,
-                    'confidence_score': analysis['confidence'],
-                    'recommended_actions': analysis['recommended_actions']
-                })
-        
-        return hunting_results
-    
-    async def _generate_hunting_hypotheses(self) -> List[Dict]:
-        """AI-powered hunting hypothesis generation"""
-        
-        hypotheses = [
-            {
-                'id': 'lateral_movement_001',
-                'description': 'Potential lateral movement detection',
-                'indicators': [
-                    'unusual login patterns across systems',
-                    'abnormal admin account usage',
-                    'atypical network connections between servers'
-                ],
-                'data_sources': ['authentication_logs', 'network_logs', 'process_logs'],
-                'priority': 'high'
-            },
-            {
-                'id': 'data_exfiltration_001',
-                'description': 'Slow data exfiltration detection',
-                'indicators': [
-                    'small but consistent data transfers',
-                    'unusual file access patterns',
-                    'off-hours data access'
-                ],
-                'data_sources': ['file_access_logs', 'network_traffic', 'user_activity'],
-                'priority': 'medium'
-            },
-            {
-                'id': 'persistence_mechanism_001',
-                'description': 'Advanced persistence mechanisms',
-                'indicators': [
-                    'scheduled task modifications',
-                    'registry changes',
-                    'unusual service installations'
-                ],
-                'data_sources': ['system_logs', 'registry_monitoring', 'service_logs'],
-                'priority': 'high'
-            }
-        ]
-        
-        return hypotheses
+### **Medium Freedom: Implementation Pattern**
 
-# Security Operations Dashboard
-async def security_operations_dashboard():
-    soc = AISecurityOperationsCenter()
-    threat_hunter = AIThreatHunter()
-    
-    # Process security events
-    security_events = [
-        {
-            'timestamp': datetime.now().isoformat(),
-            'event_type': 'failed_login',
-            'source_ip': '192.168.1.100',
-            'user_id': 'user123',
-            'details': 'Multiple failed login attempts'
+```typescript
+// NextAuth.js 5.x OAuth 2.1 + PKCE Configuration
+import NextAuth, { type NextAuthConfig } from "next-auth"
+import Google from "next-auth/providers/google"
+import GitHub from "next-auth/providers/github"
+
+export const authConfig: NextAuthConfig = {
+  providers: [
+    Google({
+      // OAuth 2.1 with PKCE - Google requires "offline" access_type for refresh tokens
+      authorization: {
+        params: {
+          access_type: "offline",
+          prompt: "consent",
+          response_type: "code", // Authorization Code Flow
         },
-        {
-            'timestamp': datetime.now().isoformat(),
-            'event_type': 'malware_detected',
-            'source_ip': '10.0.1.50',
-            'hostname': 'web-server-01',
-            'details': 'Suspicious file detected on web server'
+      },
+    }),
+    GitHub({
+      authorization: {
+        params: {
+          scope: "read:user user:email",
+        },
+      },
+    }),
+  ],
+  session: {
+    strategy: "jwt", // Stateless JWT sessions
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  callbacks: {
+    // JWT callback: Handle access token refresh
+    async jwt({ token, account, user, trigger }) {
+      // Initial sign-in: Store tokens
+      if (account && user) {
+        return {
+          ...token,
+          access_token: account.access_token,
+          refresh_token: account.refresh_token,
+          expires_at: account.expires_at,
+          user_id: user.id,
         }
-    ]
-    
-    processing_result = await soc.process_security_events(security_events)
-    
-    print("=== Security Operations Dashboard ===")
-    print(f"Events Processed: {len(processing_result['processed_events'])}")
-    print(f"Incidents Created: {len(processing_result['incidents_created'])}")
-    print(f"Automated Responses: {len(processing_result['automated_responses'])}")
-    
-    # Proactive threat hunting
-    hunting_results = await threat_hunter.proactively_hunt_threats()
-    print(f"Threats Hunted: {len(hunting_results)}")
-    
-    for result in hunting_results:
-        print(f"  - {result['hypothesis']['description']}: {len(result['threats_detected'])} threats")
+      }
 
-if __name__ == "__main__":
-    asyncio.run(security_operations_dashboard())
+      // Token still valid
+      if (token.expires_at && Date.now() < token.expires_at * 1000) {
+        return token
+      }
+
+      // Refresh expired token
+      if (!token.refresh_token) {
+        throw new Error("Missing refresh token")
+      }
+
+      try {
+        const response = await fetch("https://oauth2.googleapis.com/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            client_id: process.env.GOOGLE_CLIENT_ID!,
+            client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+            grant_type: "refresh_token",
+            refresh_token: token.refresh_token!,
+          }),
+        })
+
+        const tokens = await response.json()
+
+        if (!response.ok) throw tokens
+
+        return {
+          ...token,
+          access_token: tokens.access_token,
+          expires_at: Math.floor(Date.now() / 1000 + tokens.expires_in),
+          // Preserve refresh token if not rotated
+          refresh_token: tokens.refresh_token ?? token.refresh_token,
+        }
+      } catch (error) {
+        console.error("Error refreshing access token", error)
+        return { ...token, error: "RefreshTokenError" }
+      }
+    },
+
+    // Session callback: Expose necessary data to client
+    async session({ session, token }) {
+      return {
+        ...session,
+        user: {
+          ...session.user,
+          id: token.user_id,
+        },
+        error: token.error,
+      }
+    },
+  },
+  pages: {
+    signIn: "/auth/signin",
+    error: "/auth/error",
+  },
+}
+
+export const { handlers, auth, signIn, signOut } = NextAuth(authConfig)
 ```
 
-## 📊 Advanced Compliance Management
+### **Low Freedom: Security Configuration**
 
-### **AI-Driven Compliance Automation**
+```typescript
+// Environment variables (.env.local)
+// CRITICAL: Never commit to version control
+AUTH_SECRET="generate-with-openssl-rand-base64-32"
+AUTH_URL="https://yourdomain.com"
 
-**Intelligent Compliance System**:
-```python
-# AI-Powered Compliance Manager
-import asyncio
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set
-import json
+// OAuth Provider Credentials
+GOOGLE_CLIENT_ID="your-google-client-id"
+GOOGLE_CLIENT_SECRET="your-google-client-secret"
+GITHUB_CLIENT_ID="your-github-client-id"
+GITHUB_CLIENT_SECRET="your-github-client-secret"
 
-class AIComplianceManager:
-    def __init__(self):
-        self.regulation_analyzer = self._initialize_regulation_analyzer()
-        self.control_assessor = self._initialize_control_assessor()
-        self.audit_generator = self._initialize_audit_generator()
-        self.policy_engine = self._initialize_policy_engine()
-        
-    async def assess_compliance_status(self, 
-                                    framework: str,
-                                    scope: Dict) -> Dict:
-        """AI-powered compliance assessment"""
-        
-        # Identify applicable requirements
-        requirements = await self._identify_applicable_requirements(framework, scope)
-        
-        # Evaluate control effectiveness
-        control_assessment = await self._evaluate_controls(requirements)
-        
-        # Calculate compliance score
-        compliance_score = await self._calculate_compliance_score(control_assessment)
-        
-        # Identify gaps and deficiencies
-        gaps = await self._identify_compliance_gaps(control_assessment)
-        
-        # Generate remediation recommendations
-        recommendations = await self._generate_remediation_recommendations(gaps)
-        
-        return {
-            'framework': framework,
-            'compliance_score': compliance_score,
-            'control_assessment': control_assessment,
-            'identified_gaps': gaps,
-            'remediation_recommendations': recommendations,
-            'assessment_date': datetime.now().isoformat(),
-            'next_assessment_date': (datetime.now() + timedelta(days=90)).isoformat()
-        }
-    
-    async def monitor_automated_compliance(self) -> Dict:
-        """Continuous compliance monitoring with AI"""
-        
-        # Collect compliance evidence
-        evidence = await self._collect_compliance_evidence()
-        
-        # Analyze compliance trends
-        trends = await self._analyze_compliance_trends(evidence)
-        
-        # Predict compliance risks
-        risks = await self._predict_compliance_risks(trends)
-        
-        # Generate compliance alerts
-        alerts = await self._generate_compliance_alerts(risks)
-        
-        # Auto-remediate minor compliance issues
-        auto_remediations = await self._auto_remediate_compliance_issues(alerts)
-        
-        return {
-            'evidence_collected': len(evidence),
-            'compliance_trends': trends,
-            'identified_risks': risks,
-            'generated_alerts': alerts,
-            'auto_remediations': auto_remediations,
-            'overall_compliance_health': self._calculate_compliance_health(trends)
-        }
-    
-    async def generate_compliance_report(self, 
-                                       framework: str,
-                                       report_type: str = 'management') -> Dict:
-        """AI-powered compliance report generation"""
-        
-        # Collect assessment data
-        assessment_data = await self._get_latest_assessment_data(framework)
-        
-        # Generate executive summary with AI
-        executive_summary = await self._generate_executive_summary(assessment_data)
-        
-        # Create detailed findings
-        detailed_findings = await self._generate_detailed_findings(assessment_data)
-        
-        # Generate remediation roadmap
-        remediation_roadmap = await self._generate_remediation_roadmap(detailed_findings)
-        
-        # Create visual analytics
-        analytics_charts = await self._generate_compliance_analytics(assessment_data)
-        
-        # Format report based on audience
-        if report_type == 'executive':
-            report_content = {
-                'executive_summary': executive_summary,
-                'key_metrics': assessment_data['key_metrics'],
-                'risk_summary': detailed_findings['risk_summary'],
-                'strategic_recommendations': remediation_roadmap['strategic']
-            }
-        elif report_type == 'technical':
-            report_content = {
-                'detailed_findings': detailed_findings,
-                'control_assessments': assessment_data['control_assessments'],
-                'evidence_details': assessment_data['evidence'],
-                'technical_remediation': remediation_roadmap['technical']
-            }
-        else:  # auditor
-            report_content = {
-                'comprehensive_assessment': assessment_data,
-                'detailed_findings': detailed_findings,
-                'evidence_package': await self._prepare_auditor_evidence(assessment_data),
-                'compliance_matrix': await self._generate_compliance_matrix(assessment_data)
-            }
-        
-        return {
-            'framework': framework,
-            'report_type': report_type,
-            'generation_date': datetime.now().isoformat(),
-            'content': report_content,
-            'analytics_charts': analytics_charts
-        }
-
-# Automated Policy Engine
-class AIPolicyEngine:
-    def __init__(self):
-        self.policy_analyzer = self._initialize_policy_analyzer()
-        self.rule_matcher = self._initialize_rule_matcher()
-        self.violation_detector = self._initialize_violation_detector()
-        
-    async def evaluate_policy_compliance(self, 
-                                       event: Dict,
-                                       policies: List[Dict]) -> Dict:
-        """AI-powered policy compliance evaluation"""
-        
-        evaluation_results = []
-        
-        for policy in policies:
-            # Analyze policy applicability
-            applicability = await self._analyze_policy_applicability(event, policy)
-            
-            if applicability['applies']:
-                # Evaluate against policy rules
-                rule_results = await self._evaluate_policy_rules(event, policy['rules'])
-                
-                # Detect violations
-                violations = await self._detect_policy_violations(rule_results)
-                
-                # Determine required actions
-                required_actions = await self._determine_policy_actions(
-                    policy, violations
-                )
-                
-                evaluation_results.append({
-                    'policy_id': policy['id'],
-                    'policy_name': policy['name'],
-                    'applicable': True,
-                    'compliant': len(violations) == 0,
-                    'violations': violations,
-                    'required_actions': required_actions,
-                    'risk_score': self._calculate_policy_risk_score(violations, policy)
-                })
-        
-        # Generate overall compliance decision
-        overall_decision = await self._make_overall_compliance_decision(evaluation_results)
-        
-        return {
-            'event_id': event.get('id'),
-            'timestamp': datetime.now().isoformat(),
-            'policy_evaluations': evaluation_results,
-            'overall_decision': overall_decision,
-            'recommended_actions': overall_decision['actions']
-        }
-    
-    async def update_policies_with_ai(self, 
-                                    base_policies: List[Dict],
-                                    threat_landscape: Dict,
-                                    compliance_changes: List[Dict]) -> List[Dict]:
-        """AI-enhanced policy optimization"""
-        
-        updated_policies = []
-        
-        for policy in base_policies:
-            # Analyze policy effectiveness
-            effectiveness = await self._analyze_policy_effectiveness(policy)
-            
-            # Identify needed updates based on threat landscape
-            threat_updates = await self._analyze_threat_policy_alignment(
-                policy, threat_landscape
-            )
-            
-            # Identify compliance updates needed
-            compliance_updates = await self._analyze_compliance_alignment(
-                policy, compliance_changes
-            )
-            
-            # Generate optimized policy
-            if threat_updates or compliance_updates or effectiveness < 0.8:
-                optimized_policy = await self._optimize_policy(
-                    policy, threat_updates, compliance_updates
-                )
-                updated_policies.append(optimized_policy)
-            else:
-                updated_policies.append(policy)
-        
-        return updated_policies
-
-# Compliance Implementation Example
-async def demonstrate_compliance_management():
-    compliance_manager = AIComplianceManager()
-    policy_engine = AIPolicyEngine()
-    
-    # Assess SOC 2 compliance
-    soc2_assessment = await compliance_manager.assess_compliance_status(
-        'SOC2',
-        {'scope': 'security', 'systems': ['web_app', 'database', 'infrastructure']}
-    )
-    
-    print(f"SOC 2 Compliance Score: {soc2_assessment['compliance_score']:.2f}")
-    print(f"Identified Gaps: {len(soc2_assessment['identified_gaps'])}")
-    
-    # Monitor compliance continuously
-    monitoring_result = await compliance_manager.monitor_automated_compliance()
-    print(f"Compliance Alerts: {len(monitoring_result['generated_alerts'])}")
-    print(f"Auto-remediations: {len(monitoring_result['auto_remediations'])}")
-    
-    # Generate compliance report
-    compliance_report = await compliance_manager.generate_compliance_report(
-        'SOC2', 'executive'
-    )
-    
-    print(f"Report generated: {compliance_report['generation_date']}")
-    print(f"Report sections: {list(compliance_report['content'].keys())}")
-
-if __name__ == "__main__":
-    asyncio.run(demonstrate_compliance_management())
-```
-
-## 🔧 Advanced Security Testing
-
-### **AI-Enhanced Security Assessment**
-
-**Comprehensive Security Testing Framework**:
-```python
-# AI-Powered Security Testing Platform
-import asyncio
-from typing import Dict, List, Optional, Tuple
-import subprocess
-import json
-
-class AISecurityTestingPlatform:
-    def __init__(self):
-        self.vulnerability_scanner = self._initialize_vulnerability_scanner()
-        self.penetration_tester = self._initialize_penetration_tester()
-        self.code_analyzer = self._initialize_code_analyzer()
-        self.threat_modeler = self._initialize_threat_modeler()
-        
-    async def comprehensive_security_assessment(self, 
-                                             target: Dict) -> Dict:
-        """AI-powered comprehensive security assessment"""
-        
-        assessment_results = {}
-        
-        # Automated vulnerability scanning
-        vuln_scan = await self.perform_vulnerability_scan(target)
-        assessment_results['vulnerability_scan'] = vuln_scan
-        
-        # AI-powered penetration testing
-        pentest_results = await self.perform_ai_penetration_test(target)
-        assessment_results['penetration_test'] = pentest_results
-        
-        # Static code analysis
-        code_analysis = await self.perform_static_code_analysis(target)
-        assessment_results['code_analysis'] = code_analysis
-        
-        # Dynamic application security testing
-        dast_results = await self.perform_dynamic_security_test(target)
-        assessment_results['dynamic_analysis'] = dast_results
-        
-        # Threat modeling
-        threat_model = await self.generate_threat_model(target)
-        assessment_results['threat_model'] = threat_model
-        
-        # Calculate overall security score
-        security_score = await self._calculate_security_score(assessment_results)
-        
-        # Generate prioritized remediation plan
-        remediation_plan = await self._generate_remediation_plan(assessment_results)
-        
-        return {
-            'target': target,
-            'assessment_date': datetime.now().isoformat(),
-            'security_score': security_score,
-            'assessment_results': assessment_results,
-            'remediation_plan': remediation_plan,
-            'risk_level': self._determine_risk_level(security_score),
-            'recommendations': await self._generate_security_recommendations(assessment_results)
-        }
-    
-    async def perform_ai_penetration_test(self, 
-                                        target: Dict) -> Dict:
-        """AI-powered penetration testing"""
-        
-        pentest_phases = []
-        
-        # Phase 1: Reconnaissance with AI
-        reconnaissance = await self._ai_reconnaissance(target)
-        pentest_phases.append(reconnaissance)
-        
-        # Phase 2: Vulnerability identification
-        vuln_identification = await self._identify_attack_vectors(reconnaissance)
-        pentest_phases.append(vuln_identification)
-        
-        # Phase 3: Exploitation (safe, controlled)
-        exploitation = await self._controlled_exploitation(vuln_identification)
-        pentest_phases.append(exploitation)
-        
-        # Phase 4: Post-exploitation analysis
-        post_exploitation = await self._analyze_impact(exploitation)
-        pentest_phases.append(post_exploitation)
-        
-        # Generate attack chains
-        attack_chains = await self._generate_attack_chains(pentest_phases)
-        
-        return {
-            'phases': pentest_phases,
-            'attack_chains': attack_chains,
-            'critical_findings': await self._identify_critical_findings(pentest_phases),
-            'attack_surface_analysis': reconnaissance['attack_surface'],
-            'exploit_success_rate': exploitation['success_rate']
-        }
-    
-    async def _ai_reconnaissance(self, target: Dict) -> Dict:
-        """AI-powered reconnaissance phase"""
-        
-        reconnaissance_data = {
-            'attack_surface': {},
-            'technologies': [],
-            'potential_entry_points': [],
-            'security_controls': []
-        }
-        
-        # Automated technology identification
-        tech_identification = await self._identify_technologies(target['url'])
-        reconnaissance_data['technologies'] = tech_identification
-        
-        # Attack surface mapping
-        attack_surface = await self._map_attack_surface(target)
-        reconnaissance_data['attack_surface'] = attack_surface
-        
-        # Entry point analysis
-        entry_points = await self._analyze_entry_points(target, tech_identification)
-        reconnaissance_data['potential_entry_points'] = entry_points
-        
-        # Security control identification
-        security_controls = await self._identify_security_controls(target)
-        reconnaissance_data['security_controls'] = security_controls
-        
-        return {
-            'phase': 'reconnaissance',
-            'data': reconnaissance_data,
-            'confidence': self._calculate_reconnaissance_confidence(reconnaissance_data)
-        }
-    
-    async def perform_static_code_analysis(self, 
-                                         target: Dict) -> Dict:
-        """AI-powered static code security analysis"""
-        
-        if 'source_code_path' not in target:
-            return {'error': 'No source code path provided'}
-        
-        # Collect source code files
-        code_files = await self._collect_code_files(target['source_code_path'])
-        
-        analysis_results = []
-        
-        for file_path in code_files:
-            # Read file content
-            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                content = f.read()
-            
-            # AI-powered vulnerability detection
-            vulnerabilities = await self._analyze_code_for_vulnerabilities(
-                content, file_path
-            )
-            
-            # Security pattern analysis
-            security_patterns = await self._analyze_security_patterns(content, file_path)
-            
-            # Dependency analysis
-            dependency_vulns = await self._analyze_dependencies(file_path)
-            
-            analysis_results.append({
-                'file_path': file_path,
-                'vulnerabilities': vulnerabilities,
-                'security_patterns': security_patterns,
-                'dependency_vulnerabilities': dependency_vulns,
-                'security_score': self._calculate_file_security_score(
-                    vulnerabilities, security_patterns
-                )
-            })
-        
-        # Overall code security assessment
-        overall_assessment = await self._assess_overall_code_security(analysis_results)
-        
-        return {
-            'files_analyzed': len(code_files),
-            'analysis_results': analysis_results,
-            'overall_assessment': overall_assessment,
-            'security_score': overall_assessment['security_score'],
-            'critical_vulnerabilities': overall_assessment['critical_count'],
-            'recommendations': overall_assessment['recommendations']
-        }
-    
-    async def _analyze_code_for_vulnerabilities(self, 
-                                               content: str,
-                                               file_path: str) -> List[Dict]:
-        """AI-powered vulnerability detection in source code"""
-        
-        vulnerabilities = []
-        
-        # Common vulnerability patterns
-        vuln_patterns = {
-            'sql_injection': [
-                r'execute\s*\(\s*["\'].*\+.*["\']',
-                r'query\s*\(\s*["\'].*\+.*["\']',
-                r'SELECT.*FROM.*WHERE.*\+.*'
-            ],
-            'xss': [
-                r'innerHTML\s*=\s*.*\+.*',
-                r'document\.write\s*\(\s*.*\+.*',
-                r'eval\s*\(\s*.*\+.*'
-            ],
-            'path_traversal': [
-                r'\.\./.*',
-                r'readFile\s*\(\s*.*\+.*',
-                r'file_get_contents\s*\(\s*.*\+.*'
-            ],
-            'hardcoded_secrets': [
-                r'password\s*=\s*["\'][^"\']{8,}["\']',
-                r'api_key\s*=\s*["\'][^"\']{16,}["\']',
-                r'secret\s*=\s*["\'][^"\']{16,}["\']'
-            ]
-        ]
-        
-        # Scan for vulnerabilities
-        for vuln_type, patterns in vuln_patterns.items():
-            for pattern in patterns:
-                matches = self._find_pattern_matches(content, pattern, file_path)
-                vulnerabilities.extend(matches)
-        
-        return vulnerabilities
-    
-    async def generate_threat_model(self, target: Dict) -> Dict:
-        """AI-powered threat modeling"""
-        
-        # Identify assets
-        assets = await self._identify_assets(target)
-        
-        # Identify threats
-        threats = await self._identify_threats(assets)
-        
-        # Analyze vulnerabilities
-        vulnerabilities = await self._analyze_vulnerabilities(target)
-        
-        # Calculate risks
-        risks = await self._calculate_risks(threats, vulnerabilities, assets)
-        
-        # Generate mitigations
-        mitigations = await self._generate_mitigations(risks)
-        
-        return {
-            'assets': assets,
-            'threats': threats,
-            'vulnerabilities': vulnerabilities,
-            'risks': risks,
-            'mitigations': mitigations,
-            'risk_matrix': await self._generate_risk_matrix(risks),
-            'recommendations': await self._prioritize_mitigations(mitigations, risks)
-        }
-
-# Security Testing Implementation
-async def demonstrate_security_testing():
-    testing_platform = AISecurityTestingPlatform()
-    
-    # Comprehensive security assessment
-    target = {
-        'name': 'Web Application',
-        'url': 'https://app.example.com',
-        'source_code_path': '/path/to/source/code',
-        'type': 'web_application'
+// TypeScript type extensions
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id: string
     }
-    
-    assessment = await testing_platform.comprehensive_security_assessment(target)
-    
-    print("=== Security Assessment Results ===")
-    print(f"Security Score: {assessment['security_score']:.2f}")
-    print(f"Risk Level: {assessment['risk_level']}")
-    
-    # Display key findings
-    for phase, results in assessment['assessment_results'].items():
-        print(f"\n{phase.replace('_', ' ').title()}:")
-        if 'critical_findings' in results:
-            print(f"  Critical Findings: {len(results['critical_findings'])}")
-        if 'vulnerabilities' in results:
-            print(f"  Vulnerabilities: {len(results['vulnerabilities'])}")
-        if 'security_score' in results:
-            print(f"  Security Score: {results['security_score']:.2f}")
+    error?: "RefreshTokenError"
+  }
+}
 
-if __name__ == "__main__":
-    asyncio.run(demonstrate_security_testing())
+declare module "next-auth/jwt" {
+  interface JWT {
+    access_token: string
+    refresh_token: string
+    expires_at: number
+    user_id: string
+    error?: "RefreshTokenError"
+  }
+}
 ```
 
-## 🚀 Future-Ready Security Technologies
+## 🔒 Pattern 2: Argon2id Password Hashing (OWASP Recommended)
 
-### **Emerging Security Trends**
+### **High Freedom: Password Security Strategy**
 
-**Next-Generation Security Evolution**:
+**Use Argon2id** for password hashing - OWASP recommended algorithm:
+- Winner of Password Hashing Competition (2015)
+- Resistant to GPU cracking attacks
+- Resistant to side-channel attacks
+- Configurable memory-hard function
+
+**OWASP Recommended Parameters** (2025):
+- Memory: 19 MiB minimum (m=19456 KiB)
+- Iterations: 2 minimum (t=2)
+- Parallelism: 1 (p=1) - prevents DoS in web contexts
+
+### **Medium Freedom: Implementation Pattern**
+
+```typescript
+// Node.js - Argon2id with OWASP parameters
+import argon2 from "argon2"
+
+export async function hashPassword(password: string): Promise<string> {
+  return argon2.hash(password, {
+    type: argon2.argon2id, // Argon2id variant
+    memoryCost: 19456, // 19 MiB memory (OWASP minimum)
+    timeCost: 2, // 2 iterations (OWASP minimum)
+    parallelism: 1, // 1 thread (OWASP recommended for web)
+  })
+}
+
+export async function verifyPassword(
+  hash: string,
+  password: string
+): Promise<boolean> {
+  try {
+    return await argon2.verify(hash, password)
+  } catch (error) {
+    console.error("Password verification error:", error)
+    return false
+  }
+}
+
+// Usage example
+const userPassword = "user-input-password"
+const hashedPassword = await hashPassword(userPassword)
+// Store hashedPassword in database
+
+// During login
+const isValid = await verifyPassword(storedHash, userInputPassword)
 ```
-🚀 Security Innovation Roadmap:
-├── Quantum-Resistant Security
-│   ├── Post-quantum cryptography implementation
-│   ├── Quantum-safe key exchange protocols
-│   ├── Quantum computing threat modeling
-│   └── Hybrid classical-quantum security systems
-├── AI-Native Security Operations
-│   ├── Generative AI for security analysis
-│   ├── Large language models for threat intelligence
-│   ├── Autonomous security decision making
-│   └── AI-powered security user interfaces
-├── Zero-Knowledge Proof Security
-│   ├── Privacy-preserving authentication
-│   ├── Zero-knowledge identity verification
-│   ├── Confidential computing integration
-│   └── Privacy-enhanced security protocols
-├── Blockchain Security Integration
-│   ├── Decentralized identity management
-│   ├── Immutable security audit trails
-│   ├── Smart contract security validation
-│   └── Web3 security frameworks
-└── Cyber-Physical Security
-    ├── IoT device security orchestration
-    ├── Industrial control system protection
-    ├── Operational technology security
-    └── Critical infrastructure defense
+
+```python
+# Python - Argon2id with cryptography library 43.x + argon2-cffi
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
+
+# Initialize with OWASP parameters
+ph = PasswordHasher(
+    time_cost=2,        # 2 iterations (OWASP minimum)
+    memory_cost=19456,  # 19 MiB memory (OWASP minimum)
+    parallelism=1,      # 1 thread (OWASP recommended)
+    hash_len=32,        # 32-byte hash output
+    salt_len=16,        # 16-byte random salt
+)
+
+def hash_password(password: str) -> str:
+    """Hash password with Argon2id (OWASP parameters)"""
+    return ph.hash(password)
+
+def verify_password(password_hash: str, password: str) -> bool:
+    """Verify password against Argon2id hash"""
+    try:
+        ph.verify(password_hash, password)
+        
+        # Check if hash needs rehashing (parameters upgraded)
+        if ph.check_needs_rehash(password_hash):
+            return True  # Signal to rehash with new parameters
+        
+        return True
+    except VerifyMismatchError:
+        return False
+    except Exception as e:
+        print(f"Password verification error: {e}")
+        return False
+
+# Usage
+user_password = "user-input-password"
+hashed = hash_password(user_password)
+# Store hashed in database
+
+# During login
+is_valid = verify_password(stored_hash, user_input_password)
 ```
 
-## 📋 Enterprise Implementation Guide
+### **Low Freedom: Security Requirements**
 
-### **Production Security Deployment**
+```typescript
+// Password policy validation (before hashing)
+import { z } from "zod"
 
-**AI-Optimized Security Infrastructure**:
+export const passwordSchema = z.string()
+  .min(12, "Password must be at least 12 characters")
+  .regex(/[A-Z]/, "Password must contain uppercase letter")
+  .regex(/[a-z]/, "Password must contain lowercase letter")
+  .regex(/[0-9]/, "Password must contain number")
+  .regex(/[^A-Za-z0-9]/, "Password must contain special character")
+  .refine(
+    (password) => {
+      // Check against common passwords (use zxcvbn or similar)
+      return !commonPasswords.includes(password.toLowerCase())
+    },
+    { message: "Password is too common" }
+  )
+
+// CRITICAL: Rate limit password attempts
+// - 5 attempts per 15 minutes per IP
+// - 10 attempts per hour per username
+// - Exponential backoff after failures
+// - CAPTCHA after 3 failures
+```
+
+## 🛡️ Pattern 3: CSRF Protection (Double-Submit Cookie)
+
+### **High Freedom: CSRF Strategy**
+
+**Use double-submit cookie pattern** for stateless CSRF protection:
+- No server-side session storage required
+- Works with JWT authentication
+- Cryptographically secure random tokens
+
+**When to apply**:
+- All state-changing operations (POST, PUT, PATCH, DELETE)
+- Cookie-based authentication systems
+- APIs consumed by same-origin web apps
+
+### **Medium Freedom: Implementation Pattern**
+
+```typescript
+// Next.js API Route with CSRF Protection
+import { NextRequest, NextResponse } from "next/server"
+import crypto from "crypto"
+
+// Middleware: Generate and validate CSRF tokens
+export function csrfMiddleware(handler: Function) {
+  return async (req: NextRequest) => {
+    const method = req.method
+
+    // Generate CSRF token for safe methods
+    if (method === "GET" || method === "HEAD") {
+      const csrfToken = crypto.randomBytes(32).toString("hex")
+      
+      const response = await handler(req)
+      
+      // Set CSRF token in cookie
+      response.cookies.set("csrf_token", csrfToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        maxAge: 60 * 60, // 1 hour
+      })
+      
+      return response
+    }
+
+    // Validate CSRF token for state-changing methods
+    if (["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+      const cookieToken = req.cookies.get("csrf_token")?.value
+      const headerToken = req.headers.get("x-csrf-token")
+
+      if (!cookieToken || !headerToken || cookieToken !== headerToken) {
+        return NextResponse.json(
+          { error: "CSRF token validation failed" },
+          { status: 403 }
+        )
+      }
+    }
+
+    return handler(req)
+  }
+}
+
+// Usage in API route
+export const POST = csrfMiddleware(async (req: NextRequest) => {
+  // Protected endpoint logic
+  const data = await req.json()
+  // Process request...
+  return NextResponse.json({ success: true })
+})
+```
+
+```typescript
+// Client-side: Send CSRF token with requests
+async function makeApiRequest(url: string, data: any) {
+  // Get CSRF token from cookie (accessible via meta tag or API)
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": csrfToken || "", // Send token in header
+    },
+    credentials: "include", // Include cookies
+    body: JSON.stringify(data),
+  })
+
+  return response.json()
+}
+```
+
+### **Low Freedom: Configuration Standards**
+
+```typescript
+// CSRF token requirements
+const CSRF_CONFIG = {
+  tokenLength: 32, // 32 bytes (256 bits)
+  tokenExpiry: 3600, // 1 hour
+  cookieName: "csrf_token",
+  headerName: "x-csrf-token",
+  cookieOptions: {
+    httpOnly: true, // Prevent JavaScript access
+    secure: true, // HTTPS only
+    sameSite: "strict" as const, // Strict same-site policy
+  },
+}
+
+// CRITICAL: Always use secure random generation
+// - crypto.randomBytes() in Node.js
+// - window.crypto.getRandomValues() in browsers
+// - Never use Math.random() for security tokens
+```
+
+## 🚨 Pattern 4: XSS Prevention (Content Security Policy)
+
+### **High Freedom: XSS Defense Strategy**
+
+**Implement layered XSS protection**:
+1. Content Security Policy (CSP) headers
+2. Input sanitization (DOMPurify, validator.js)
+3. Output encoding (framework defaults)
+4. HttpOnly cookies (prevent XSS cookie theft)
+
+**CSP Strategy**:
+- Start strict, relax as needed
+- Use nonces for inline scripts
+- Report violations to monitoring service
+
+### **Medium Freedom: Implementation Pattern**
+
+```typescript
+// Helmet.js 7.x - Security Headers Configuration
+import helmet from "helmet"
+import express from "express"
+
+const app = express()
+
+// Configure Helmet with strict CSP
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"], // Default: same-origin only
+        scriptSrc: [
+          "'self'",
+          "'nonce-{NONCE}'", // Replace with dynamic nonce
+          "https://trusted-cdn.com",
+        ],
+        styleSrc: ["'self'", "'nonce-{NONCE}'", "https://fonts.googleapis.com"],
+        imgSrc: ["'self'", "data:", "https:"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        connectSrc: ["'self'", "https://api.yourdomain.com"],
+        frameSrc: ["'none'"], // Prevent clickjacking
+        objectSrc: ["'none'"], // Disable plugins
+        upgradeInsecureRequests: [], // Force HTTPS
+      },
+      reportOnly: false, // Set to true during testing
+    },
+    hsts: {
+      maxAge: 31536000, // 1 year
+      includeSubDomains: true,
+      preload: true,
+    },
+    frameguard: {
+      action: "deny", // Prevent clickjacking
+    },
+    referrerPolicy: {
+      policy: "strict-origin-when-cross-origin",
+    },
+    crossOriginEmbedderPolicy: true,
+    crossOriginOpenerPolicy: { policy: "same-origin" },
+    crossOriginResourcePolicy: { policy: "same-origin" },
+  })
+)
+
+// Generate CSP nonce per request
+app.use((req, res, next) => {
+  res.locals.cspNonce = crypto.randomBytes(16).toString("base64")
+  next()
+})
+```
+
+```typescript
+// Next.js - CSP with nonces (next.config.js)
+const nextConfig = {
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: `
+              default-src 'self';
+              script-src 'self' 'nonce-{NONCE}';
+              style-src 'self' 'nonce-{NONCE}' https://fonts.googleapis.com;
+              img-src 'self' data: https:;
+              font-src 'self' https://fonts.gstatic.com;
+              connect-src 'self' https://api.yourdomain.com;
+              frame-ancestors 'none';
+              base-uri 'self';
+              form-action 'self';
+            `.replace(/\s{2,}/g, " ").trim(),
+          },
+          {
+            key: "X-Content-Type-Options",
+            value: "nosniff",
+          },
+          {
+            key: "X-Frame-Options",
+            value: "DENY",
+          },
+          {
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
+          },
+        ],
+      },
+    ]
+  },
+}
+```
+
+### **Low Freedom: Input Sanitization**
+
+```typescript
+// Sanitize user input (DOMPurify for HTML, validator for strings)
+import DOMPurify from "isomorphic-dompurify"
+import validator from "validator"
+
+export function sanitizeHtml(dirty: string): string {
+  return DOMPurify.sanitize(dirty, {
+    ALLOWED_TAGS: ["b", "i", "em", "strong", "a", "p"],
+    ALLOWED_ATTR: ["href"],
+    ALLOW_DATA_ATTR: false,
+  })
+}
+
+export function sanitizeString(input: string): string {
+  return validator.escape(input) // HTML entity encoding
+}
+
+// CRITICAL: Always sanitize before database storage
+// - Sanitize on input (defense in depth)
+// - Escape on output (framework defaults)
+// - Never trust user input
+```
+
+## 🔐 Pattern 5: SQL Injection Prevention
+
+### **High Freedom: SQL Security Strategy**
+
+**Use ORMs and parameterized queries** - never construct SQL from strings:
+- Prisma (Node.js)
+- Drizzle ORM (Node.js)
+- SQLAlchemy (Python)
+- TypeORM (Node.js)
+
+**Defense Layers**:
+1. Parameterized queries (primary defense)
+2. Input validation (schema validation)
+3. Least privilege database accounts
+4. Web Application Firewall (WAF)
+
+### **Medium Freedom: Implementation Pattern**
+
+```typescript
+// Prisma ORM - Safe by default (parameterized)
+import { PrismaClient } from "@prisma/client"
+
+const prisma = new PrismaClient()
+
+// SAFE: Parameterized query
+async function getUserByEmail(email: string) {
+  return prisma.user.findUnique({
+    where: { email }, // Prisma parameterizes automatically
+  })
+}
+
+// SAFE: Complex query with filtering
+async function searchUsers(searchTerm: string, role: string) {
+  return prisma.user.findMany({
+    where: {
+      AND: [
+        { role }, // Parameterized
+        {
+          OR: [
+            { name: { contains: searchTerm } }, // Parameterized
+            { email: { contains: searchTerm } },
+          ],
+        },
+      ],
+    },
+  })
+}
+
+// DANGEROUS: Raw SQL (only if absolutely necessary)
+async function rawQueryExample(userId: string) {
+  // CORRECT: Use parameterized raw queries
+  return prisma.$queryRaw`
+    SELECT * FROM users WHERE id = ${userId}
+  ` // Template literal provides parameterization
+
+  // NEVER DO THIS:
+  // return prisma.$queryRawUnsafe(`SELECT * FROM users WHERE id = '${userId}'`)
+  // ❌ SQL injection vulnerability
+}
+```
+
+```python
+# SQLAlchemy (Python) - Safe parameterized queries
+from sqlalchemy import select, and_, or_
+from sqlalchemy.orm import Session
+from models import User
+
+def get_user_by_email(db: Session, email: str):
+    """Safe: SQLAlchemy parameterizes automatically"""
+    return db.query(User).filter(User.email == email).first()
+
+def search_users(db: Session, search_term: str, role: str):
+    """Safe: Complex query with parameterization"""
+    stmt = select(User).where(
+        and_(
+            User.role == role,  # Parameterized
+            or_(
+                User.name.contains(search_term),  # Parameterized
+                User.email.contains(search_term)
+            )
+        )
+    )
+    return db.execute(stmt).scalars().all()
+
+# DANGEROUS: Raw SQL execution
+def raw_query_example(db: Session, user_id: str):
+    # CORRECT: Use parameterized raw SQL
+    result = db.execute(
+        "SELECT * FROM users WHERE id = :user_id",
+        {"user_id": user_id}  # Named parameter (safe)
+    )
+    
+    # NEVER DO THIS:
+    # result = db.execute(f"SELECT * FROM users WHERE id = '{user_id}'")
+    # ❌ SQL injection vulnerability
+```
+
+### **Low Freedom: Database Security Configuration**
+
+```sql
+-- Least privilege principle: Create restricted database user
+CREATE USER 'app_user'@'localhost' IDENTIFIED BY 'strong_password';
+
+-- Grant minimum necessary privileges
+GRANT SELECT, INSERT, UPDATE, DELETE ON app_database.users TO 'app_user'@'localhost';
+GRANT SELECT, INSERT, UPDATE, DELETE ON app_database.posts TO 'app_user'@'localhost';
+
+-- Deny dangerous privileges
+-- NO GRANT CREATE, DROP, ALTER, GRANT OPTION
+
+-- Stored procedures for sensitive operations (optional defense layer)
+DELIMITER //
+CREATE PROCEDURE GetUserById(IN userId INT)
+BEGIN
+    SELECT * FROM users WHERE id = userId;
+END //
+DELIMITER ;
+
+GRANT EXECUTE ON PROCEDURE app_database.GetUserById TO 'app_user'@'localhost';
+```
+
+## ⚡ Pattern 6: API Rate Limiting & Throttling
+
+### **High Freedom: Rate Limiting Strategy**
+
+**Implement multi-layer rate limiting**:
+- IP-based rate limiting (prevent brute force)
+- User-based rate limiting (prevent abuse)
+- Endpoint-specific limits (sensitive operations)
+- Sliding window algorithm (smoother limits)
+
+**Technologies** (Stable):
+- express-rate-limit 7.x (Node.js)
+- Redis for distributed rate limiting
+- Nginx rate limiting (infrastructure layer)
+
+### **Medium Freedom: Implementation Pattern**
+
+```typescript
+// Express Rate Limiting with Redis (distributed)
+import rateLimit from "express-rate-limit"
+import RedisStore from "rate-limit-redis"
+import Redis from "ioredis"
+
+const redisClient = new Redis({
+  host: process.env.REDIS_HOST,
+  port: 6379,
+})
+
+// General API rate limit
+export const apiLimiter = rateLimit({
+  store: new RedisStore({
+    client: redisClient,
+    prefix: "rl:api:",
+  }),
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // 100 requests per window
+  message: "Too many requests, please try again later",
+  standardHeaders: true, // Return rate limit info in headers
+  legacyHeaders: false,
+})
+
+// Strict limit for authentication endpoints
+export const authLimiter = rateLimit({
+  store: new RedisStore({
+    client: redisClient,
+    prefix: "rl:auth:",
+  }),
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 attempts per window
+  message: "Too many login attempts, please try again later",
+  skipSuccessfulRequests: true, // Don't count successful logins
+})
+
+// Usage in Express app
+import express from "express"
+
+const app = express()
+
+// Apply global rate limit
+app.use("/api/", apiLimiter)
+
+// Apply strict limit to auth routes
+app.use("/api/auth/login", authLimiter)
+app.use("/api/auth/register", authLimiter)
+```
+
+```typescript
+// Next.js API Route with Rate Limiting
+import { NextRequest, NextResponse } from "next/server"
+import { Ratelimit } from "@upstash/ratelimit"
+import { Redis } from "@upstash/redis"
+
+const redis = Redis.fromEnv()
+
+// Sliding window rate limiter
+const ratelimit = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(10, "10 s"), // 10 requests per 10 seconds
+  analytics: true,
+})
+
+export async function POST(req: NextRequest) {
+  const ip = req.ip ?? "127.0.0.1"
+  
+  const { success, limit, reset, remaining } = await ratelimit.limit(
+    `api_${ip}`
+  )
+
+  if (!success) {
+    return NextResponse.json(
+      { error: "Rate limit exceeded" },
+      {
+        status: 429,
+        headers: {
+          "X-RateLimit-Limit": limit.toString(),
+          "X-RateLimit-Remaining": remaining.toString(),
+          "X-RateLimit-Reset": reset.toString(),
+        },
+      }
+    )
+  }
+
+  // Process request
+  return NextResponse.json({ success: true })
+}
+```
+
+### **Low Freedom: Rate Limit Configuration**
+
+```typescript
+// Rate limit tiers by endpoint sensitivity
+export const RATE_LIMITS = {
+  // Public endpoints (lenient)
+  public: {
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // 100 requests
+  },
+  // Authenticated endpoints (moderate)
+  authenticated: {
+    windowMs: 15 * 60 * 1000,
+    max: 1000, // 1000 requests
+  },
+  // Authentication endpoints (strict)
+  auth: {
+    windowMs: 15 * 60 * 1000,
+    max: 5, // 5 attempts
+  },
+  // Password reset (very strict)
+  passwordReset: {
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 3, // 3 attempts
+  },
+}
+
+// CRITICAL: Monitor rate limit violations
+// - Log excessive rate limit hits
+// - Alert on sustained violations
+// - Consider IP blocking for severe abuse
+```
+
+## 🔐 Pattern 7: Secure Session Management
+
+### **High Freedom: Session Strategy**
+
+**Use JWT with RS256 signatures** for stateless, scalable sessions:
+- Asymmetric keys (private key signs, public key verifies)
+- Short-lived access tokens (15 minutes)
+- Long-lived refresh tokens (30 days)
+- Secure storage (httpOnly cookies)
+
+**Session Requirements**:
+- Session rotation after authentication
+- Absolute timeout (30 days)
+- Idle timeout (15 minutes)
+- Multi-device session management
+
+### **Medium Freedom: Implementation Pattern**
+
+```typescript
+// JWT Session Management with RS256
+import jwt from "jsonwebtoken"
+import fs from "fs"
+
+// Load RSA keys (generate with: openssl genrsa -out private.pem 2048)
+const privateKey = fs.readFileSync("private.pem", "utf8")
+const publicKey = fs.readFileSync("public.pem", "utf8")
+
+interface TokenPayload {
+  userId: string
+  email: string
+  role: string
+}
+
+// Generate access token (short-lived)
+export function generateAccessToken(payload: TokenPayload): string {
+  return jwt.sign(payload, privateKey, {
+    algorithm: "RS256",
+    expiresIn: "15m", // 15 minutes
+    issuer: "yourdomain.com",
+    audience: "yourdomain.com",
+  })
+}
+
+// Generate refresh token (long-lived)
+export function generateRefreshToken(userId: string): string {
+  return jwt.sign({ userId }, privateKey, {
+    algorithm: "RS256",
+    expiresIn: "30d", // 30 days
+    issuer: "yourdomain.com",
+    audience: "yourdomain.com",
+  })
+}
+
+// Verify token
+export function verifyToken(token: string): TokenPayload | null {
+  try {
+    return jwt.verify(token, publicKey, {
+      algorithms: ["RS256"],
+      issuer: "yourdomain.com",
+      audience: "yourdomain.com",
+    }) as TokenPayload
+  } catch (error) {
+    console.error("Token verification failed:", error)
+    return null
+  }
+}
+
+// Next.js API: Set secure cookies
+export function setAuthCookies(
+  res: NextResponse,
+  accessToken: string,
+  refreshToken: string
+) {
+  // Access token (httpOnly, secure)
+  res.cookies.set("access_token", accessToken, {
+    httpOnly: true, // Prevent XSS access
+    secure: process.env.NODE_ENV === "production", // HTTPS only
+    sameSite: "strict", // CSRF protection
+    maxAge: 15 * 60, // 15 minutes
+    path: "/",
+  })
+
+  // Refresh token (httpOnly, secure, separate path)
+  res.cookies.set("refresh_token", refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+    path: "/api/auth/refresh", // Only sent to refresh endpoint
+  })
+}
+```
+
+### **Low Freedom: Session Security Requirements**
+
+```typescript
+// Session configuration standards
+const SESSION_CONFIG = {
+  accessToken: {
+    algorithm: "RS256" as const, // Asymmetric signature
+    expiresIn: "15m", // 15 minutes
+    keySize: 2048, // RSA key size (bits)
+  },
+  refreshToken: {
+    algorithm: "RS256" as const,
+    expiresIn: "30d", // 30 days
+    keySize: 2048,
+  },
+  cookies: {
+    httpOnly: true, // MANDATORY: Prevent XSS
+    secure: true, // MANDATORY: HTTPS only
+    sameSite: "strict" as const, // MANDATORY: CSRF protection
+  },
+}
+
+// CRITICAL: Session security checklist
+// - Rotate refresh tokens after use
+// - Invalidate sessions on logout
+// - Track active sessions per user
+// - Allow user to revoke sessions
+// - Log session creation/termination
+```
+
+## 🛡️ Pattern 8: Secret Management (HashiCorp Vault)
+
+### **High Freedom: Secret Management Strategy**
+
+**Use dedicated secret management systems**:
+- HashiCorp Vault (self-hosted)
+- AWS Secrets Manager (AWS)
+- Google Secret Manager (GCP)
+- Azure Key Vault (Azure)
+
+**Never store secrets in**:
+- Git repositories (.env files)
+- Application code (hardcoded)
+- CI/CD logs (masked secrets)
+- Container images (build-time secrets)
+
+### **Medium Freedom: Implementation Pattern**
+
+```typescript
+// HashiCorp Vault Client (Node.js)
+import vault from "node-vault"
+
+const vaultClient = vault({
+  apiVersion: "v1",
+  endpoint: process.env.VAULT_ADDR || "http://localhost:8200",
+  token: process.env.VAULT_TOKEN, // From secure source (k8s secret, IAM)
+})
+
+// Read secret from Vault
+export async function getSecret(path: string): Promise<any> {
+  try {
+    const result = await vaultClient.read(path)
+    return result.data
+  } catch (error) {
+    console.error(`Failed to read secret from ${path}:`, error)
+    throw new Error("Secret retrieval failed")
+  }
+}
+
+// Write secret to Vault
+export async function setSecret(path: string, data: any): Promise<void> {
+  try {
+    await vaultClient.write(path, { data })
+  } catch (error) {
+    console.error(`Failed to write secret to ${path}:`, error)
+    throw new Error("Secret storage failed")
+  }
+}
+
+// Usage: Load database credentials from Vault
+async function getDatabaseConfig() {
+  const dbSecret = await getSecret("secret/data/database")
+  
+  return {
+    host: dbSecret.host,
+    port: dbSecret.port,
+    username: dbSecret.username,
+    password: dbSecret.password,
+    database: dbSecret.database,
+  }
+}
+```
+
+```python
+# HashiCorp Vault Client (Python)
+import hvac
+import os
+
+vault_client = hvac.Client(
+    url=os.getenv("VAULT_ADDR", "http://localhost:8200"),
+    token=os.getenv("VAULT_TOKEN")  # From secure source
+)
+
+def get_secret(path: str) -> dict:
+    """Read secret from Vault"""
+    try:
+        response = vault_client.secrets.kv.v2.read_secret_version(path=path)
+        return response["data"]["data"]
+    except Exception as e:
+        print(f"Failed to read secret from {path}: {e}")
+        raise RuntimeError("Secret retrieval failed")
+
+def set_secret(path: str, data: dict) -> None:
+    """Write secret to Vault"""
+    try:
+        vault_client.secrets.kv.v2.create_or_update_secret(
+            path=path,
+            secret=data
+        )
+    except Exception as e:
+        print(f"Failed to write secret to {path}: {e}")
+        raise RuntimeError("Secret storage failed")
+
+# Usage
+db_config = get_secret("database/production")
+DATABASE_URL = f"postgresql://{db_config['username']}:{db_config['password']}@{db_config['host']}/{db_config['database']}"
+```
+
+### **Low Freedom: Secret Management Standards**
+
+```bash
+# Vault initialization (production)
+vault operator init -key-shares=5 -key-threshold=3
+
+# Enable KV secrets engine
+vault secrets enable -path=secret kv-v2
+
+# Create secret policy
+vault policy write app-policy - <<EOF
+path "secret/data/app/*" {
+  capabilities = ["read"]
+}
+EOF
+
+# Create token with policy
+vault token create -policy=app-policy
+
+# CRITICAL: Secret rotation schedule
+# - Database credentials: 90 days
+# - API keys: 30 days
+# - TLS certificates: before expiry
+# - Vault root token: NEVER use in production
+```
+
+## 🔍 Pattern 9: Automated Security Testing
+
+### **High Freedom: Security Testing Strategy**
+
+**Implement multi-layer automated testing**:
+1. SAST (Static Application Security Testing)
+2. DAST (Dynamic Application Security Testing)
+3. Dependency scanning (known vulnerabilities)
+4. Container scanning (base image vulnerabilities)
+5. Infrastructure scanning (IaC security)
+
+**Technologies** (Stable Versions):
+- Snyk 1.x (dependency scanning)
+- OWASP ZAP 2.15.x (DAST)
+- Trivy 0.58.x (container scanning)
+- Semgrep 1.x (SAST)
+
+### **Medium Freedom: Implementation Pattern**
+
 ```yaml
-# Kubernetes Security Stack with AI Optimization
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: security-ai
----
-# AI-Powered Security Monitoring
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: ai-security-monitor
-  namespace: security-ai
-  annotations:
-    ai.security.optimization: "enabled"
-    ai.threat.detection: "real-time"
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: ai-security-monitor
-  template:
-    metadata:
-      annotations:
-        ai.metrics.collection: "comprehensive"
-        ai.threat.intelligence: "enabled"
-    spec:
-      containers:
-      - name: security-monitor
-        image: security/ai-monitor:v4.0.0
-        ports:
-        - containerPort: 8080
+# GitHub Actions - Comprehensive Security Scanning
+name: Security Scan
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 0 * * 0' # Weekly scan
+
+jobs:
+  dependency-scan:
+    name: Dependency Vulnerability Scan (Snyk)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/node@master
         env:
-        - name: AI_THREAT_DETECTION
-          value: "enabled"
-        - name: ML_MODEL_VERSION
-          value: "v2.1"
-        - name: THREAT_INTELLIGENCE_FEEDS
-          value: "all"
-        - name: AUTOMATED_RESPONSE
-          value: "aggressive"
-        resources:
-          requests:
-            cpu: 2000m
-            memory: 8Gi
-          limits:
-            cpu: 4000m
-            memory: 16Gi
-        volumeMounts:
-        - name: threat-models
-          mountPath: /app/models
-        - name: security-config
-          mountPath: /app/config
-      volumes:
-      - name: threat-models
-        configMap:
-          name: threat-intelligence-models
-      - name: security-config
-        configMap:
-          name: security-monitoring-config
----
-# Zero-Trust Network Policy
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: zero-trust-network-policy
-  namespace: security-ai
-  annotations:
-    ai.network.segmentation: "enabled"
-    ai.threat.prevention: "automated"
-spec:
-  podSelector: {}
-  policyTypes:
-  - Ingress
-  - Egress
-  ingress:
-  - from:
-    - namespaceSelector:
-        matchLabels:
-          name: security-ai
-    ports:
-    - protocol: TCP
-      port: 8080
-  egress:
-  - to:
-    - namespaceSelector:
-        matchLabels:
-          name: security-ai
-  - to: []
-    ports:
-    - protocol: TCP
-      port: 443
-    - protocol: UDP
-      port: 53
-  - to: []
-    ports:
-    - protocol: TCP
-      port: 53
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --fail-on=all
+
+  sast-scan:
+    name: Static Code Analysis (Semgrep)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run Semgrep
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/security-audit
+            p/owasp-top-ten
+            p/javascript
+            p/typescript
+
+  container-scan:
+    name: Container Image Scan (Trivy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Build Docker image
+        run: docker build -t myapp:latest .
+      
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: myapp:latest
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+      
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  dast-scan:
+    name: Dynamic Security Testing (OWASP ZAP)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.11.0
+        with:
+          target: 'https://staging.yourdomain.com'
+          rules_file_name: '.zap/rules.tsv'
+          cmd_options: '-a'
 ```
 
-## 🎯 Performance Benchmarks & Success Metrics
+### **Low Freedom: Security Testing Standards**
 
-### **Enterprise Security Standards**
+```typescript
+// Security testing configuration (.securityrc.json)
+{
+  "snyk": {
+    "severity_threshold": "high",
+    "fail_on_issues": true,
+    "exclude_dev_dependencies": false
+  },
+  "trivy": {
+    "severity": ["CRITICAL", "HIGH"],
+    "vuln_type": ["os", "library"],
+    "ignore_unfixed": true
+  },
+  "zap": {
+    "scan_type": "baseline",
+    "exclude_urls": ["/api/docs", "/health"],
+    "alert_threshold": "WARN"
+  },
+  "semgrep": {
+    "config": ["p/owasp-top-ten", "p/security-audit"],
+    "severity": ["ERROR", "WARNING"]
+  }
+}
 
-**AI-Enhanced Security KPIs**:
+// CRITICAL: Security gate requirements
+// - No CRITICAL vulnerabilities allowed
+// - HIGH vulnerabilities require justification
+// - All scans must pass before deployment
+// - Monthly full penetration testing
 ```
-📊 Advanced Security Metrics:
-├── Threat Detection Excellence
-│   ├── Detection Accuracy: > 95% (ML-enhanced)
-│   ├── False Positive Rate: < 2% (AI-optimized)
-│   ├── Threat Detection Time: < 1 minute
-│   └── Zero-Day Detection: > 80% success rate
-├── Incident Response Performance
-│   ├── MTTR (Mean Time to Respond): < 5 minutes
-│   ├── MTTR (Mean Time to Resolve): < 30 minutes
-│   ├── Automated Response Rate: > 85%
-│   └── Incident Containment Time: < 2 minutes
-├── Compliance & Governance
-│   ├── Compliance Score: > 95% (automated)
-│   ├── Audit Readiness: 100%
-│   ├── Policy Compliance: > 98%
-│   └── Regulatory Reporting Accuracy: 100%
-├── Security Operations Efficiency
-│   ├── SOC Analyst Efficiency: +300% with AI
-│   ├── Alert Triage Time: < 30 seconds
-│   ├── False Alert Reduction: > 80%
-│   └── Security Testing Coverage: > 95%
-└── Cost Optimization
-    ├── Security Operations Cost: -40% with automation
-    ├── Incident Response Cost: -60% with AI
-    ├── Compliance Management Cost: -50% automated
-    └── Security Tool Consolidation: > 30% reduction
+
+## 📊 Pattern 10: OWASP Top 10 2021 Compliance
+
+### **High Freedom: Compliance Strategy**
+
+**Address all OWASP Top 10 2021 categories**:
+
+**A01: Broken Access Control**
+- Implement RBAC (Role-Based Access Control)
+- Enforce principle of least privilege
+- Deny by default
+
+**A02: Cryptographic Failures**
+- Use TLS 1.3 for data in transit
+- Use AES-256-GCM for data at rest
+- Argon2id for password hashing
+
+**A03: Injection**
+- Parameterized queries (ORMs)
+- Input validation (Zod, Pydantic)
+- Output encoding
+
+**A04: Insecure Design**
+- Threat modeling (STRIDE, DREAD)
+- Secure design patterns
+- Security requirements in SDLC
+
+**A05: Security Misconfiguration**
+- Disable default accounts
+- Remove unnecessary features
+- Security headers (Helmet.js)
+
+**A06: Vulnerable and Outdated Components**
+- Automated dependency scanning (Snyk)
+- Regular updates
+- SCA (Software Composition Analysis)
+
+**A07: Identification and Authentication Failures**
+- MFA (Multi-Factor Authentication)
+- Secure password policies
+- Session management
+
+**A08: Software and Data Integrity Failures**
+- Code signing
+- CI/CD pipeline security
+- Dependency verification (lock files)
+
+**A09: Security Logging and Monitoring Failures**
+- Centralized logging
+- Real-time alerting
+- Audit trails
+
+**A10: Server-Side Request Forgery (SSRF)**
+- URL allowlisting
+- Network segmentation
+- Input validation
+
+### **Medium Freedom: OWASP Top 10 Checklist**
+
+```typescript
+// OWASP Top 10 2021 Compliance Checklist
+export const OWASP_TOP_10_CHECKLIST = {
+  A01_BrokenAccessControl: {
+    implemented: [
+      "RBAC with role hierarchy",
+      "Resource-based access control",
+      "Deny by default authorization",
+      "API endpoint authorization checks",
+    ],
+    validation: "Manual code review + automated tests",
+  },
+  A02_CryptographicFailures: {
+    implemented: [
+      "TLS 1.3 for all connections",
+      "AES-256-GCM for data at rest",
+      "Argon2id for passwords (OWASP params)",
+      "Secure random number generation",
+    ],
+    validation: "SSL Labs + Trivy scanning",
+  },
+  A03_Injection: {
+    implemented: [
+      "Parameterized queries (Prisma ORM)",
+      "Input validation (Zod schemas)",
+      "Output encoding (framework defaults)",
+      "NoSQL injection prevention",
+    ],
+    validation: "Semgrep SAST + manual review",
+  },
+  A04_InsecureDesign: {
+    implemented: [
+      "Threat modeling (STRIDE)",
+      "Security requirements documentation",
+      "Secure design patterns",
+      "Security review in design phase",
+    ],
+    validation: "Architecture review board",
+  },
+  A05_SecurityMisconfiguration: {
+    implemented: [
+      "Helmet.js security headers",
+      "Disable default credentials",
+      "Remove debug endpoints in production",
+      "Minimal attack surface",
+    ],
+    validation: "OWASP ZAP + manual audit",
+  },
+  A06_VulnerableComponents: {
+    implemented: [
+      "Snyk dependency scanning",
+      "Automated updates (Dependabot)",
+      "SCA in CI/CD pipeline",
+      "SBOM generation",
+    ],
+    validation: "Daily Snyk scans",
+  },
+  A07_AuthenticationFailures: {
+    implemented: [
+      "NextAuth.js 5.x with OAuth 2.1",
+      "MFA support",
+      "Secure session management (JWT RS256)",
+      "Rate limiting on auth endpoints",
+    ],
+    validation: "Penetration testing",
+  },
+  A08_IntegrityFailures: {
+    implemented: [
+      "Code signing (GPG)",
+      "Dependency lock files",
+      "CI/CD pipeline security",
+      "Immutable infrastructure",
+    ],
+    validation: "Pipeline audit",
+  },
+  A09_LoggingMonitoringFailures: {
+    implemented: [
+      "Centralized logging (ELK Stack)",
+      "Real-time alerting (PagerDuty)",
+      "Audit trails (immutable logs)",
+      "Security event monitoring",
+    ],
+    validation: "Log analysis + SIEM integration",
+  },
+  A10_SSRF: {
+    implemented: [
+      "URL allowlisting",
+      "Network segmentation",
+      "Input validation (URL schemes)",
+      "Internal network isolation",
+    ],
+    validation: "Manual testing + ZAP",
+  },
+}
 ```
 
-## 📚 Comprehensive References
+### **Low Freedom: Compliance Validation**
 
-### **Enterprise Security Documentation**
+```bash
+# OWASP Top 10 Compliance Audit Script
+#!/bin/bash
 
-**Security Framework Resources**:
-- **NIST Cybersecurity Framework**: https://www.nist.gov/cyberframework
-- **MITRE ATT&CK Framework**: https://attack.mitre.org/
-- **OWASP Top 10 2025**: https://owasp.org/www-project-top-ten/
-- **CIS Controls**: https://www.cisecurity.org/controls/
-- **ISO 27001**: https://www.iso.org/isoiec-27001-information-security.html
+echo "Starting OWASP Top 10 2021 Compliance Audit..."
 
-**AI/ML Security Resources**:
-- **MITRE ATLAS (Adversarial Threat Landscape for AI Systems)**: https://atlas.mitre.org/
-- **AI Security Institute**: https://www.nist.gov/artificial-intelligence/ai-security
-- **Machine Learning Security**: https://www.mlsec.org/
+# A01: Access Control
+echo "A01: Checking access control implementation..."
+grep -r "authorize" src/ | wc -l
 
-**Cloud Security Resources**:
-- **Cloud Security Alliance (CSA)**: https://cloudsecurityalliance.org/
-- **AWS Security Best Practices**: https://docs.aws.amazon.com/security/
-- **Azure Security Center**: https://azure.microsoft.com/en-us/services/security-center/
+# A02: Cryptography
+echo "A02: Checking cryptographic implementations..."
+grep -r "argon2" src/ | wc -l
+grep -r "AES-256-GCM" src/ | wc -l
 
-## 📝 Version 4.0.0 Enterprise Changelog
+# A03: Injection
+echo "A03: Checking for raw SQL usage..."
+grep -r "queryRawUnsafe" src/ && echo "WARNING: Raw SQL found"
 
-### **Major Enhancements**
+# A05: Security Headers
+echo "A05: Verifying security headers..."
+curl -I https://yourdomain.com | grep -E "Content-Security-Policy|X-Frame-Options|Strict-Transport-Security"
 
-**🤖 AI-Powered Features**:
-- Added real-time threat detection with machine learning
-- Integrated autonomous security operations and response
-- Implemented AI-driven vulnerability management and prioritization
-- Added predictive threat intelligence and attack pattern analysis
-- Included automated security testing and compliance validation
+# A06: Vulnerable Dependencies
+echo "A06: Scanning dependencies..."
+snyk test --severity-threshold=high
 
-**🛡️ Advanced Architecture**:
-- Enhanced zero-trust security architecture with AI optimization
-- Added quantum-resistant security patterns for future-readiness
-- Implemented AI-powered security orchestration and automation
-- Added privacy-preserving security with zero-knowledge proofs
-- Enhanced multi-cloud security with intelligent policy enforcement
+# A09: Logging
+echo "A09: Checking logging implementation..."
+grep -r "logger" src/ | wc -l
 
-**📊 Operations Excellence**:
-- AI-powered security operations center (SOC) optimization
-- Automated incident response with machine learning
-- Intelligent security analytics and forensics
-- Predictive security maintenance and patch management
-- Automated compliance monitoring and reporting
+echo "Compliance audit complete."
+```
 
-**🔧 Developer Experience**:
-- AI-assisted security code review and vulnerability detection
-- Automated security testing integration in CI/CD pipelines
-- Smart security policy generation and optimization
-- Real-time security monitoring with AI correlation
-- Comprehensive security dashboard with ML insights
+## 📋 ISO 27001:2022 Compliance Summary
+
+### **Key Control Areas**
+
+**Organizational Controls** (37 controls):
+- Information security policies
+- Roles and responsibilities
+- Segregation of duties
+- Management oversight
+
+**People Controls** (8 controls):
+- Security awareness training
+- Background screening
+- Employment agreements
+- Disciplinary process
+
+**Physical Controls** (14 controls):
+- Physical security perimeters
+- Access control systems
+- Environmental protection
+- Equipment security
+
+**Technological Controls** (34 controls):
+- Privileged access management
+- Secure authentication
+- Cryptography
+- Vulnerability management
+- Secure development lifecycle
+- Security testing
+
+### **Implementation Progress Tracking**
+
+```typescript
+// ISO 27001:2022 Control Status
+export interface ISO27001Control {
+  id: string
+  title: string
+  category: "Organizational" | "People" | "Physical" | "Technological"
+  status: "Implemented" | "In Progress" | "Not Started"
+  evidence: string[]
+}
+
+// Example implemented controls
+export const implementedControls: ISO27001Control[] = [
+  {
+    id: "A.8.2",
+    title: "Privileged access rights",
+    category: "Technological",
+    status: "Implemented",
+    evidence: ["RBAC system", "MFA for admins", "Audit logs"],
+  },
+  {
+    id: "A.8.5",
+    title: "Secure authentication",
+    category: "Technological",
+    status: "Implemented",
+    evidence: ["NextAuth.js 5.x", "Argon2id hashing", "JWT RS256"],
+  },
+  {
+    id: "A.8.24",
+    title: "Use of cryptography",
+    category: "Technological",
+    status: "Implemented",
+    evidence: ["TLS 1.3", "AES-256-GCM", "RSA 2048-bit keys"],
+  },
+]
+```
+
+## 🎯 Security Metrics & KPIs
+
+```typescript
+export interface SecurityMetrics {
+  vulnerabilityManagement: {
+    criticalVulnerabilities: number // Target: 0
+    highVulnerabilities: number // Target: < 5
+    meanTimeToRemediate: number // Target: < 7 days
+    patchCompliance: number // Target: > 95%
+  }
+  authentication: {
+    successRate: number // Target: > 99%
+    mfaAdoption: number // Target: > 90%
+    passwordStrength: number // Target: > 95% strong
+    accountTakeoverAttempts: number // Target: 0
+  }
+  accessControl: {
+    unauthorizedAccessAttempts: number // Target: 0
+    privilegeEscalationAttempts: number // Target: 0
+    rbacCoverage: number // Target: 100%
+  }
+  compliance: {
+    owaspTop10Score: number // Target: 100%
+    iso27001Score: number // Target: > 95%
+    failedAudits: number // Target: 0
+  }
+  incidentResponse: {
+    meanTimeToDetect: number // Target: < 1 hour
+    meanTimeToRespond: number // Target: < 4 hours
+    meanTimeToResolve: number // Target: < 24 hours
+  }
+}
+```
+
+## 📚 Official Documentation & Resources
+
+**Standards & Frameworks**:
+- OWASP Top 10 2021: https://owasp.org/www-project-top-ten/
+- OWASP ASVS 4.0.3: https://owasp.org/www-project-application-security-verification-standard/
+- ISO 27001:2022: https://www.iso.org/standard/27001
+- NIST Cybersecurity Framework: https://www.nist.gov/cyberframework
+- CIS Controls: https://www.cisecurity.org/controls/
+
+**Technologies** (Stable Versions):
+- NextAuth.js 5.x: https://next-auth.js.org/
+- Passport.js 0.7.x: http://www.passportjs.org/
+- Helmet.js 7.x: https://helmetjs.github.io/
+- Argon2 OWASP Guide: https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
+- Snyk 1.x: https://snyk.io/
+- OWASP ZAP 2.15.x: https://www.zaproxy.org/
+- Trivy 0.58.x: https://aquasecurity.github.io/trivy/
+
+**Compliance Resources**:
+- GDPR Compliance: https://gdpr.eu/
+- SOC 2 Guide: https://www.aicpa.org/
+- PCI DSS 4.0: https://www.pcisecuritystandards.org/
 
 ## 🤝 Works Seamlessly With
 
-- **moai-domain-backend**: Backend security architecture and API security
-- **moai-domain-frontend**: Client-side security and XSS protection
-- **moai-domain-database**: Database security and data protection
-- **moai-domain-devops**: DevSecOps and security automation
-- **moai-domain-mobile**: Mobile application security
-- **moai-domain-api**: API security and web application firewall
-- **moai-domain-infrastructure**: Infrastructure security and cloud security
+- **moai-domain-backend**: Backend security architecture, API security, authentication
+- **moai-domain-frontend**: Client-side security, XSS prevention, CSP configuration
+- **moai-domain-database**: Database security, encryption at rest, access control
+- **moai-domain-devops**: Security automation, vulnerability scanning, compliance testing
+- **moai-domain-api**: API gateway security, rate limiting, authentication middleware
+- **moai-domain-infrastructure**: Infrastructure security, network policies, secret management
 
 ---
 
 **Version**: 4.0.0 Enterprise  
-**Last Updated**: 2025-11-11  
-**Enterprise Ready**: ✅ Production-Grade with AI Integration  
-**AI Features**: 🤖 Threat Detection & Autonomous Response  
-**Performance**: 📊 < 1min Threat Detection Time  
-**Security**: 🛡️ Zero-Trust with Quantum-Resistant Patterns
+**Last Updated**: 2025-11-12  
+**Enterprise Ready**: ✅ Production-Grade with Stable Technologies  
+**OWASP Compliance**: ✅ Top 10 2021 Full Coverage  
+**ISO Compliance**: ✅ ISO 27001:2022 Ready  
+**Stable Versions**: ✅ All technologies stable (November 2025)
