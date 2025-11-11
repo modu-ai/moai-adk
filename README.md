@@ -58,10 +58,15 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
 ### 3. Alfred SuperAgent
 
 - **19 specialized AI agents** (spec-builder, code-builder, doc-syncer, etc.)
-- **93 production-ready skills** covering all development domains
+- **101 production-ready skills** covering all development domains
   - **10 BaaS skills**: Cloud platforms (Supabase, Firebase, Vercel, Cloudflare, Auth0, Convex, Railway, Neon, Clerk)
   - **Complete frontend coverage**: HTML/CSS, Tailwind CSS, shadcn/ui, Vector icons (10+ icon libraries)
   - **Full backend support**: Database design, API architecture, DevOps
+  - **NEW: Advanced MCP Integration**: Context7, Playwright, Sequential-thinking servers
+  - **NEW: Document Processing**: AI-powered document handling (docx, pdf, pptx, xlsx)
+  - **NEW: Artifact Builder**: Modern React/Tailwind/shadcn/ui component creation
+  - **NEW: Internal Communications**: Enterprise communication templates and automation
+  - **NEW: MCP Builder**: Advanced Model Context Protocol server development
 - **Adaptive learning** based on your project patterns
 - **Smart context management** understanding project structure and dependencies
 
@@ -1612,7 +1617,7 @@ Organized across 6 tiers:
 | ----------------------- | --------------------------------------------------------------------------- |
 | **Test Coverage**       | 92%+ guaranteed                                                              |
 | **Specialized Agents**  | 19 team members                                                             |
-| **Production Skills**   | 93 capabilities (including 10 BaaS + 4 Frontend + 6+ Backend skills)      |
+| **Production Skills**   | 101 capabilities (including 10 BaaS + 4 Frontend + 6+ Backend + 8 New Advanced Skills)      |
 | **BaaS Skills**         | 12 production-ready (Foundation + 9 Extensions + 2 New)                     |
 | **Frontend Skills**     | 4 specialized (HTML/CSS, Tailwind CSS, shadcn/ui, Vector Icons)           |
 | **Icon Libraries**      | 10+ (Lucide, React Icons, Tabler, Phosphor, Heroicons, Radix, Iconify, etc.) |
@@ -1870,6 +1875,66 @@ Select optimal platform using MoAI's intelligent pattern system:
    ├─ Secondary: Clerk
    └─ Features: SAML, OIDC, Multi-tenant
 ```
+
+---
+
+## 🆕 New Advanced Skills Integration (v0.23.0+)
+
+### 🚀 MCP (Model Context Protocol) Integration
+
+#### **moai-cc-mcp-builder** - MCP Server Development
+- **Complete Context7 MCP Integration**: Auto-apply latest docs and patterns
+- **AI-Powered Architecture**: Agent-centered design patterns
+- **Industry Standards Compliance**: Automatic best practices application
+- **Version-Aware Development**: Framework-specific version patterns support
+
+#### **moai-playwright-webapp-testing** - Web App Testing Automation
+- **AI Test Generation**: Context7 pattern-based automated test creation
+- **Cross-Browser Support**: Multi-browser compatibility testing
+- **Real-time Error Detection**: Automated bug detection and reporting
+- **Performance Metrics**: Web app performance analysis and optimization
+
+### 📄 Document Processing Skills
+
+#### **moai-document-processing** - Unified Document Processing
+- **Multiple Format Support**: Integrated docx, pdf, pptx, xlsx processing
+- **AI Content Extraction**: Intelligent content analysis and extraction
+- **Enterprise Workflows**: Large-scale document processing automation
+- **Context7 Integration**: Latest document processing patterns
+
+### 🎨 Modern Frontend Development
+
+#### **moai-artifacts-builder** - Artifact Builder
+- **React Component Generation**: Modern React component auto-creation
+- **Tailwind CSS Integration**: Utility-first CSS design
+- **shadcn/ui Components**: Premium UI component library
+- **AI-Powered Optimization**: Best user experience implementation
+
+### 📢 Enterprise Communications
+
+#### **moai-internal-comms** - Internal Communications
+- **AI Content Generation**: Enterprise communication automation
+- **Template Library**: Reusable communication templates
+- **Personalized Messaging**: Customized communication generation
+- **Context7 Patterns**: Latest communication best practices
+
+### 📊 Skills Integration Summary
+
+| Skill Category | Integrated Skills | Key Features |
+|----------------|-------------------|--------------|
+| **MCP Development** | 2 skills | Context7, Playwright integration |
+| **Document Processing** | 1 skill | Unified document processing (docx, pdf, pptx, xlsx) |
+| **Frontend** | 1 skill | React/Tailwind/shadcn/ui artifacts |
+| **Communications** | 1 skill | Enterprise templates and automation |
+| **Total** | **5 groups (8 skills)** | **AI-powered integrated solutions** |
+
+### 🎯 Integration Benefits
+
+- **AI Power**: Latest technology auto-application through Context7 MCP
+- **Alfred Integration**: Complete 4-Step workflow integration
+- **Korean Support**: Perfect Gentleman style application
+- **Enterprise Ready**: Immediate production deployment
+- **Quality Assurance**: TRUST 5 principles compliance
 
 ---
 
