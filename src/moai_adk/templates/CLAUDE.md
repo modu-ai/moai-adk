@@ -339,7 +339,7 @@ For examples and rationale: Skill("moai-alfred-agent-guide")
 **Alfred** orchestrates the {{PROJECT_NAME}} agentic workflow across a four-layer stack (Commands → Sub-agents → Skills → Hooks). The SuperAgent interprets user intent, activates specialists, streams Claude Skills on demand, and enforces TRUST 5 principles.
 
 **Team Structure**: Alfred coordinates **19 team members** using **55 Claude Skills**:
-- **Core Agents (10)**: spec-builder, tdd-implementer, test-engineer, doc-syncer, git-manager, plan-agent, qa-validator, tag-agent, implementation-planner, debug-helper
+- **Core Agents (9)**: spec-builder, tdd-implementer, doc-syncer, git-manager, plan-agent, quality-gate, tag-agent, implementation-planner, debug-helper
 - **Specialists (6)**: security-expert, performance-engineer, backend-expert, frontend-expert, database-expert, ui-ux-expert
 - **Built-in Agents (2)**: Claude Sonnet 4.5, Haiku 3.5
 - **Skills (55)**: Organized across 6 tiers (Foundation, Core, Workflow, Domain, Integration, Advanced)
@@ -375,16 +375,15 @@ Alfred follows a systematic **4-step agent-based workflow** ensuring clarity, pl
 
 - **Goal**: Execute ALL tasks through specialized agents following TDD principles
 - **Execution Pattern**: Delegate to appropriate specialist agents via `Task()`:
-  - **Code Development**: tdd-implementer Agent
-  - **Testing**: test-engineer Agent
+  - **Code Development & Testing**: tdd-implementer Agent (manages complete TDD cycle)
   - **Documentation**: doc-syncer Agent
   - **Git Operations**: git-manager Agent
-  - **Quality Assurance**: qa-validator Agent
+  - **Quality Assurance & Validation**: quality-gate Agent
   - **Tag Management**: tag-agent Agent
-- **TDD Agent-Managed Cycle**:
-  1. **RED**: Test Agent writes failing tests
-  2. **GREEN**: Implementer Agent creates minimal passing code
-  3. **REFACTOR**: Code-quality Agent improves implementation
+- **TDD Agent-Managed Cycle** (tdd-implementer owns all 3 phases):
+  1. **RED**: tdd-implementer writes failing tests
+  2. **GREEN**: tdd-implementer creates minimal passing code
+  3. **REFACTOR**: tdd-implementer improves implementation
 - **CRITICAL Rule**: Alfred NEVER executes ANY bash commands (direct or indirect), echo statements, or file operations
 - **Agent Responsibility**: Each agent owns their domain completely
 
@@ -442,11 +441,10 @@ Alfred follows a systematic **4-step agent-based workflow** ensuring clarity, pl
 **✅ MANDATORY DELEGATION**:
 
 - ALL planning → plan-agent
-- ALL code development → tdd-implementer
-- ALL testing → test-engineer
+- ALL code development & testing → tdd-implementer (RED-GREEN-REFACTOR cycle)
 - ALL git operations → git-manager
 - ALL documentation → doc-syncer
-- ALL quality checks → qa-validator
+- ALL quality checks & validation → quality-gate
 - ALL file operations → file-manager
 - ALL user interactions → ask-user-questions (follow Language Architecture & Enforcement)
 
