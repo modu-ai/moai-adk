@@ -1,0 +1,417 @@
+Claude Code SessionStart 훅 시스템 - 기술 요약
+============================================
+
+작성일: 2025-11-12
+대상: MoAI-ADK 개발팀
+상태: 분석 완료, 구현 가이드 제공
+
+## 핵심 발견
+
+### 현재 상황
+✓ Claude Code 훅 시스템 정상 구성
+✓ .claude/settings.json에서 SessionStart 이벤트 정의 완료
+✓ session_start__show_project_info.py 구현 완료
+✓ session_start__config_health_check.py 구현 완료
+✓ .moai/config/config.json에 session.suppress_setup_messages 필드 존재
+
+✗ 플래그와 실제 구현 간의 연동 누락
+  - session_start__show_project_info.py가 suppress 플래그를 무시함
+  - session_start__config_health_check.py가 suppress 플래그를 무시함
+  → 항상 setup 메시지 표시
+
+### 해결 방법
+1. session_start__show_project_info.py에 should_show_setup_messages() 추가
+2. session_start__config_health_check.py에 should_suppress_setup() 추가
+3. 두 파일 모두 config 플래그를 확인하여 조건부 메시지 생성
+
+## Claude Code 훅 아키텍처
+
+### 3계층 구조
+
+```
+┌─────────────────────────────────────────────┐
+│ LAYER 1: .claude/settings.json              │
+│ - 훅 이벤트 정의 (SessionStart, PreToolUse) │
+│ - 실행할 Python 스크립트 명시              │
+└─────────────────────────────────────────────┘
+                     ↓
+┌─────────────────────────────────────────────┐
+│ LAYER 2: .claude/hooks/alfred/*.py          │
+│ - 실제 훅 구현                              │
+│ - stdin에서 JSON 페이로드 수신             │
+│ - stdout으로 JSON 응답 반환                │
+└─────────────────────────────────────────────┘
+                     ↓
+┌─────────────────────────────────────────────┐
+│ LAYER 3: .moai/config/config.json          │
+│ - 프로젝트 설정                             │
+│ - session.suppress_setup_messages 플래그   │
+└─────────────────────────────────────────────┘
+```
+
+### 훅 실행 흐름
+
+```
+Claude Code SessionStart 이벤트 발생
+         ↓
+.claude/settings.json의 hooks.SessionStart[] 로드
+         ↓
+순차 실행:
+  1. session_start__show_project_info.py
+  2. session_start__config_health_check.py
+         ↓
+각 스크립트:
+  - .moai/config/config.json 읽음
+  - 필요한 정보 수집
+  - JSON 응답 반환
+         ↓
+Claude Code가 응답 처리:
+  - systemMessage 사용자에게 표시
+  - askUserQuestion 있으면 사용자에게 제시
+  - continue=false면 다음 훅 중단
+```
+
+### 훅 응답 형식
+
+```json
+{
+  "continue": true,                    // 다음 훅 계속 실행
+  "systemMessage": "message text",     // 사용자에게 표시
+  "askUserQuestion": {...},            // 선택사항: 사용자 입력 요청
+  "hookSpecificOutput": {...}          // 선택사항: 시스템 로그
+}
+```
+
+## config.json의 session 섹션
+
+### 현재 구조
+
+```json
+{
+  "session": {
+    "suppress_setup_messages": false,
+    "setup_messages_suppressed_at": "2025-11-12T00:00:00Z",
+    "notes": "suppress_setup_messages: Hide setup completion messages..."
+  }
+}
+```
+
+### 필드 설명
+
+**suppress_setup_messages** (boolean)
+- true: setup 메시지 표시 안 함
+  - 7일 초과 시 자동으로 다시 표시
+  - 설정 문제가 있으면 경고만 표시
+- false: setup 메시지 항상 표시
+
+**setup_messages_suppressed_at** (ISO 8601 timestamp)
+- suppress 기능이 활성화된 시간
+- 7일 경과 계산에 사용
+- 형식: "2025-11-12T00:00:00Z"
+
+## SessionStart.md 문서와 구현의 불일치
+
+### SessionStart.md의 should_show_setup_messages() 로직
+
+```python
+def should_show_setup_messages():
+    """
+    suppress_setup_messages 플래그 확인
+
+    반환:
+    - true: 메시지 표시
+    - false: 메시지 비표시
+
+    동작:
+    1. config 파일이 없으면 → true (메시지 표시)
+    2. project.initialized가 false면 → true (메시지 표시)
+    3. suppress_setup_messages가 false면 → true (메시지 표시)
+    4. suppress_setup_messages가 true면:
+       - setup_messages_suppressed_at 타임스탬프 확인
+       - 7일 미경과 → false (메시지 비표시)
+       - 7일 초과 → true (메시지 표시)
+    """
+```
+
+### 현재 구현의 문제
+
+session_start__show_project_info.py:
+```python
+def main():
+    # ... 정보 수집 ...
+    session_output = format_session_output()  # 항상 생성!
+    result = {"continue": True, "systemMessage": session_output}
+    print(json.dumps(result))
+```
+
+문제: format_session_output()을 항상 호출하여 항상 메시지 생성
+
+### 필요한 수정
+
+```python
+def main():
+    # 플래그 확인
+    show_messages = should_show_setup_messages()
+
+    # 조건부 메시지 생성
+    session_output = format_session_output() if show_messages else ""
+
+    result = {"continue": True, "systemMessage": session_output}
+    print(json.dumps(result))
+```
+
+## 구현 단계별 요구사항
+
+### 단계 1: should_show_setup_messages() 함수 추가
+
+위치: session_start__show_project_info.py
+
+기능:
+- .moai/config/config.json 읽음
+- session.suppress_setup_messages 확인
+- setup_messages_suppressed_at의 7일 경과 판단
+- boolean 반환
+
+에러 처리:
+- config 없음 → true 반환 (메시지 표시)
+- JSON 파싱 오류 → true 반환 (메시지 표시)
+- 타임스탬프 형식 오류 → true 반환 (메시지 표시)
+
+### 단계 2: main() 함수 수정
+
+위치: session_start__show_project_info.py
+
+변경:
+```python
+# Before
+session_output = format_session_output()
+
+# After
+show_messages = should_show_setup_messages()
+session_output = format_session_output() if show_messages else ""
+```
+
+### 단계 3: should_suppress_setup() 함수 추가
+
+위치: session_start__config_health_check.py
+
+기능:
+- session.suppress_setup_messages 확인
+- 7일 경과 판단
+- True = 메시지 억제, False = 메시지 표시
+
+### 단계 4: main() 함수 수정
+
+위치: session_start__config_health_check.py
+
+변경:
+```python
+# Before
+config_report = generate_config_report()
+system_message = f"📋 Configuration Health Check:\n{config_report}"
+
+# After
+is_suppressed = should_suppress_setup()
+if is_suppressed and not should_update:
+    system_message = ""
+else:
+    config_report = generate_config_report()
+    system_message = f"📋 Configuration Health Check:\n{config_report}"
+```
+
+## 설정 및 플래그 관리
+
+### 플래그 활성화 방법
+
+CLI를 통한 설정:
+```bash
+# 메시지 표시하기 (suppress 비활성화)
+cat > /tmp/patch.json << 'EOF'
+{
+  "path": ".moai/config/config.json",
+  "op": "replace",
+  "value": false
+}
+EOF
+# jq -f /tmp/patch.json < .moai/config/config.json
+
+# 메시지 숨기기 (suppress 활성화)
+jq '.session.suppress_setup_messages = true' .moai/config/config.json > /tmp/config.json
+jq '.session.setup_messages_suppressed_at = now | gmtime | strftime("%Y-%m-%dT%H:%M:%SZ")' /tmp/config.json > .moai/config/config.json
+```
+
+직접 편집:
+```bash
+# .moai/config/config.json 직접 수정
+{
+  "session": {
+    "suppress_setup_messages": true,
+    "setup_messages_suppressed_at": "2025-11-12T18:30:00Z"
+  }
+}
+```
+
+### 플래그 확인 방법
+
+```bash
+# 현재 설정 확인
+cat .moai/config/config.json | jq '.session'
+
+# suppress 상태만 확인
+cat .moai/config/config.json | jq '.session.suppress_setup_messages'
+
+# 타임스탐프만 확인
+cat .moai/config/config.json | jq '.session.setup_messages_suppressed_at'
+```
+
+## 테스트 시나리오
+
+### 시나리오 1: 초기 프로젝트 (메시지 표시)
+
+```
+설정:
+  suppress_setup_messages: false
+
+예상:
+  ✓ SessionStart 이벤트 발생
+  ✓ session_start__show_project_info.py 실행
+    → should_show_setup_messages() = true
+    → "🚀 MoAI-ADK Session Started..." 표시
+  ✓ session_start__config_health_check.py 실행
+    → "📋 Configuration Health Check..." 표시
+```
+
+### 시나리오 2: 프로젝트 설정 완료 (메시지 숨김)
+
+```
+설정:
+  suppress_setup_messages: true
+  setup_messages_suppressed_at: "2025-11-12T12:00:00Z" (방금 설정)
+
+예상:
+  ✓ SessionStart 이벤트 발생
+  ✓ session_start__show_project_info.py 실행
+    → should_show_setup_messages() = false (7일 미경과)
+    → systemMessage = "" (비표시)
+  ✓ session_start__config_health_check.py 실행
+    → should_suppress_setup() = true
+    → 설정 문제 없으면 systemMessage = "" (비표시)
+    → 설정 문제 있으면 경고만 표시
+```
+
+### 시나리오 3: 7일 경과 (메시지 다시 표시)
+
+```
+설정:
+  suppress_setup_messages: true
+  setup_messages_suppressed_at: "2025-11-05T12:00:00Z" (7일 이상 전)
+
+예상:
+  ✓ SessionStart 이벤트 발생
+  ✓ session_start__show_project_info.py 실행
+    → should_show_setup_messages() = true (7일 초과)
+    → "🚀 MoAI-ADK Session Started..." 다시 표시
+  ✓ session_start__config_health_check.py 실행
+    → should_suppress_setup() = false (7일 초과)
+    → "📋 Configuration Health Check..." 다시 표시
+```
+
+## 파일 변경 요약
+
+### 수정 파일 1
+파일: .claude/hooks/alfred/session_start__show_project_info.py
+추가: should_show_setup_messages() 함수 (~30줄)
+수정: main() 함수의 session_output 생성 로직 (1줄)
+라인: 약 180줄 → 210줄
+
+### 수정 파일 2
+파일: .claude/hooks/alfred/session_start__config_health_check.py
+추가: should_suppress_setup() 함수 (~30줄)
+수정: main() 함수의 조건 처리 (5줄)
+라인: 약 280줄 → 320줄
+
+### 동기화 필요 파일
+- src/moai_adk/templates/.claude/hooks/alfred/session_start__show_project_info.py
+- src/moai_adk/templates/.claude/hooks/alfred/session_start__config_health_check.py
+
+## 예상 효과
+
+구현 후:
+
+1. 프로젝트 초기화 후 자동으로 메시지 숨김
+   - suppress_setup_messages를 true로 설정 가능
+   - 불필요한 setup 메시지 제거
+
+2. 7일마다 자동 리마인더
+   - 설정 상태 재확인
+   - 새로운 기능 알림
+
+3. 설정 오류만 즉시 표시
+   - 중요한 이슈는 여전히 표시
+   - 주의 깊은 사용자 경험
+
+4. config.json의 플래그 명령 반영
+   - 사용자 설정 존중
+   - 일관된 동작
+
+## 문서 정확성 검증
+
+SessionStart.md 문서:
+✓ 로직 정확함
+✓ 구현 가이드로 사용 가능
+✓ should_show_setup_messages() 의사 코드 유효함
+
+문제점:
+✗ 실제 구현과 불일치
+  - 문서는 정확하지만 코드에 반영되지 않음
+
+해결책:
+✓ 문서의 로직을 그대로 Python 코드로 구현
+✓ 문서 유지 (업데이트 불필요)
+
+## 마이그레이션 영향도
+
+### 기존 기능 영향
+- 없음 (기존 동작 유지, suppress=false가 기본값)
+
+### 새 기능 추가
+- session.suppress_setup_messages 플래그 효과 반영
+- 플래그가 true일 때만 새 동작 발생
+
+### 하위 호환성
+- ✓ 유지됨
+- 기존 config.json에서 suppress_setup_messages가 없으면 false로 취급
+- 기존 프로젝트 자동 적응
+
+## 롤아웃 계획
+
+1. 로컬 구현 (session_start__*.py 수정)
+2. 테스트 (3가지 시나리오 검증)
+3. 패키지 템플릿 동기화
+4. Git 커밋
+5. 문서 검증
+
+## 참고 자료
+
+문서:
+- .claude/hooks/SessionStart.md (구현 정사본)
+- .moai/reports/validation/SESSIONSTART-HOOK-ANALYSIS-2025-11-12.txt (분석)
+- .moai/reports/validation/SESSIONSTART-IMPLEMENTATION-GUIDE-2025-11-12.txt (상세 가이드)
+
+파일:
+- .moai/config/config.json (설정 파일)
+- .claude/settings.json (훅 정의)
+- .claude/hooks/alfred/session_start__show_project_info.py
+- .claude/hooks/alfred/session_start__config_health_check.py
+
+## 다음 단계
+
+1. 구현 가이드 검토 (SESSIONSTART-IMPLEMENTATION-GUIDE-2025-11-12.txt)
+2. session_start__show_project_info.py 수정
+3. session_start__config_health_check.py 수정
+4. 패키지 템플릿 동기화
+5. 테스트 및 검증
+6. 커밋 및 배포
+
+구현 예상 시간: 30-45분
+테스트 예상 시간: 15분
