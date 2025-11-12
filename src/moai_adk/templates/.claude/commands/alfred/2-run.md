@@ -256,3 +256,38 @@ Skills (Knowledge)
 **Updated**: 2025-11-12
 **Pattern**: Complete Agent Delegation
 **Compliance**: Claude Code Best Practices
+
+---
+
+## Final Step: Next Action Selection
+
+After TDD implementation completes, use AskUserQuestion tool to guide user to next action:
+
+```python
+AskUserQuestion({
+    "questions": [{
+        "question": "구현이 완료되었습니다. 다음으로 무엇을 하시겠습니까?",
+        "header": "다음 단계",
+        "multiSelect": false,
+        "options": [
+            {
+                "label": "문서 동기화",
+                "description": "/alfred:3-sync 실행하여 문서 정리 및 PR 생성"
+            },
+            {
+                "label": "추가 구현",
+                "description": "더 많은 기능 구현"
+            },
+            {
+                "label": "품질 검증",
+                "description": "테스트 및 코드 품질 검토"
+            }
+        ]
+    }]
+})
+```
+
+**Important**: 
+- Use conversation language from config (ko)
+- No emojis in any AskUserQuestion fields
+- Always provide clear next step options

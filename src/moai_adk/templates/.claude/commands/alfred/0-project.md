@@ -664,3 +664,38 @@ Use AskUserQuestion in user's language:
 **Last Updated**: 2025-11-12
 **Architecture**: Commands → Agents → Skills (Complete delegation)
 **Tab Schema**: `.claude/skills/moai-project-batch-questions/tab_schema.json`
+
+---
+
+## Final Step: Next Action Selection
+
+After command execution completes, use AskUserQuestion tool to guide user to next action:
+
+```python
+AskUserQuestion({
+    "questions": [{
+        "question": "프로젝트 설정이 완료되었습니다. 다음으로 무엇을 하시겠습니까?",
+        "header": "다음 단계",
+        "multiSelect": false,
+        "options": [
+            {
+                "label": "스펙 작성",
+                "description": "/alfred:1-plan 실행하여 기능 사양 정의"
+            },
+            {
+                "label": "프로젝트 구조 검토",
+                "description": "현재 프로젝트 상태 및 설정 확인"
+            },
+            {
+                "label": "새 세션 시작",
+                "description": "작업 공간 초기화 및 새로 시작"
+            }
+        ]
+    }]
+})
+```
+
+**Important**: 
+- Use conversation language from config (ko)
+- No emojis in any AskUserQuestion fields
+- Always provide clear next step options
