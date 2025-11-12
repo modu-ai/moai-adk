@@ -1,4 +1,4 @@
-# Acceptance Criteria: SPEC-SESSION-CLEANUP-001
+# Acceptance Criteria: @SPEC:SESSION-CLEANUP-001
 
 <!-- @ACCEPTANCE:SESSION-CLEANUP-001 -->
 

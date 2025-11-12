@@ -1,4 +1,4 @@
-# SPEC-HOOKS-001 구현 계획 (사후 분석)
+# @SPEC:HOOKS-001 구현 계획 (사후 분석)
 
 > **⚠️ 사후 문서화 (Reverse Engineering)**
 >

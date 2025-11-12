@@ -1,4 +1,4 @@
-# SPEC-INIT-003 인수 기준 (v0.2.1)
+# @SPEC:INIT-003 인수 기준 (v0.2.1)
 
 > **@SPEC:INIT-003 Acceptance Criteria - 백업 조건 완화**
 >

@@ -1,4 +1,4 @@
-# SPEC-SKILL-REFACTOR-001 구현 계획서
+# @SPEC:SKILL-REFACTOR-001 구현 계획서
 
 > Claude Code Skills 표준화 작업 계획
 

@@ -1,4 +1,4 @@
-# Acceptance Criteria: SPEC-DOC-TAG-004
+# Acceptance Criteria: @SPEC:DOC-TAG-004
 
 **@TAG 자동 검증 및 품질 게이트 (Phase 4)**
 

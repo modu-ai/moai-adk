@@ -1,4 +1,4 @@
-# Acceptance Criteria: SPEC-LANG-FIX-001
+# Acceptance Criteria: @SPEC:LANG-FIX-001
 
 ## Overview
 

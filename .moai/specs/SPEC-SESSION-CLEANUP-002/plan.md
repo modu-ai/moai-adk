@@ -1,4 +1,4 @@
-# Implementation Plan: SPEC-SESSION-CLEANUP-002
+# Implementation Plan: @SPEC:SESSION-CLEANUP-002
 
 <!-- @PLAN:SESSION-CLEANUP-002 -->
 

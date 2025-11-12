@@ -1,4 +1,4 @@
-# SPEC-001 수락 기준
+# @SPEC:001 수락 기준
 
 ## TAG BLOCK
 

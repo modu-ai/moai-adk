@@ -1,4 +1,4 @@
-# SPEC-DOCS-003 구현 계획
+# @SPEC:DOCS-003 구현 계획
 
 ## @PLAN:DOCS-003 Implementation Roadmap
 

@@ -1,4 +1,4 @@
-# SPEC-HOOKS-003 구현 계획서
+# @SPEC:HOOKS-003 구현 계획서
 
 > **TRUST 원칙 자동 검증 (PostToolUse 통합)**
 >

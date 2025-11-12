@@ -1,4 +1,4 @@
-# SPEC-INIT-004 Acceptance Criteria
+# @SPEC:INIT-004 Acceptance Criteria
 
 ## @ACCEPTANCE:INIT-004 수락 기준
 

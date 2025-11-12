@@ -1,4 +1,4 @@
-# SPEC-CLI-001 인수 기준 (Acceptance Criteria)
+# @SPEC:CLI-001 인수 기준 (Acceptance Criteria)
 
 > **Given-When-Then 형식의 구체적인 시나리오**
 >

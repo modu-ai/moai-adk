@@ -1,4 +1,4 @@
-# Implementation Plan: SPEC-LANG-FIX-001
+# Implementation Plan: @SPEC:LANG-FIX-001
 
 ## Overview
 

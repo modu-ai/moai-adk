@@ -1,4 +1,4 @@
-# SPEC-BRAND-001 수락 기준
+# @SPEC:BRAND-001 수락 기준
 
 ## 개요
 

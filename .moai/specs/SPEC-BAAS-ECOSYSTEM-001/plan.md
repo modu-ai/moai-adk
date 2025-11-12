@@ -5,7 +5,7 @@ created_date: 2025-11-09
 version: 2.0.0
 ---
 
-# 구현 계획: SPEC-BAAS-ECOSYSTEM-001
+# @SPEC:BAAS-ECOSYSTEM-001 구현 계획: SPEC-BAAS-ECOSYSTEM-001
 
 ## 📋 개요
 

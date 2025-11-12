@@ -17,6 +17,15 @@
       "args": ["-y", "@modelcontextprotocol/server-sequential-thinking@latest"],
       "timeout": 30000,
       "retries": 3
+    },
+    "notion": {
+      "command": "npx",
+      "args": ["-y", "@notionhq/client"],
+      "timeout": 30000,
+      "retries": 3,
+      "env": {
+        "NOTION_TOKEN": "${NOTION_TOKEN}"
+      }
     }
   }
 }
