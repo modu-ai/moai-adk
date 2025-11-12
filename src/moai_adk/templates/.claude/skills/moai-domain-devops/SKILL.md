@@ -1,6 +1,6 @@
 ---
 name: moai-domain-devops
-description: Enterprise-grade DevOps expertise with AI-powered automation, intelligent infrastructure management, predictive operations, and autonomous pipeline orchestration; activates for DevOps transformation, CI/CD optimization, infrastructure as code, and advanced operations automation.
+description: Enterprise DevOps expertise with production-grade patterns for Kubernetes 1.31, Docker 27.x, Terraform 1.9, GitHub Actions, and cloud-native architectures; activates for CI/CD pipelines, infrastructure automation, container orchestration, monitoring with Prometheus/Grafana, and DevOps transformation strategies.
 allowed-tools:
   - Read
   - Bash
@@ -8,1327 +8,1120 @@ allowed-tools:
   - WebFetch
 ---
 
-# 🚀 Enterprise DevOps Architect & AI-Optimized Operations
-
-## 🚀 AI-Driven DevOps Capabilities
-
-**Intelligent Automation**:
-- AI-powered pipeline optimization and auto-scaling
-- Machine learning-based failure prediction and prevention
-- Autonomous infrastructure provisioning and management
-- Smart deployment strategies with ML-driven decision making
-- Predictive capacity planning and resource optimization
-- Automated incident response with cognitive analysis
-
-**Cognitive Operations Management**:
-- Self-healing infrastructure with AI monitoring
-- Predictive maintenance and performance tuning
-- Intelligent cost optimization and resource right-sizing
-- Automated security integration and compliance validation
-- AI-driven performance analytics and bottleneck detection
-- Smart observability with ML-powered correlation
+# 🚀 Enterprise DevOps Architect — Production-Grade v4.0
 
 ## 🎯 Skill Metadata
+
 | Field | Value |
 | ----- | ----- |
 | **Version** | **4.0.0 Enterprise** |
-| **Created** | 2025-11-11 |
-| **Updated** | 2025-11-11 |
-| **Allowed tools** | Read, Bash, WebSearch, WebFetch |
-| **Auto-load** | On-demand for DevOps architecture requests |
-| **Trigger cues** | DevOps, CI/CD, infrastructure automation, Kubernetes, Docker, monitoring, observability, GitOps, IaC, AIOps |
+| **Created** | 2025-11-12 |
+| **Updated** | 2025-11-12 |
+| **Lines** | ~950 lines |
+| **Size** | ~30KB |
 | **Tier** | **4 (Enterprise)** |
-| **AI Features** | Pipeline optimization, predictive operations, autonomous infrastructure |
+| **Allowed tools** | Read, Bash, WebSearch, WebFetch |
+| **Auto-load** | DevOps architecture, CI/CD, container orchestration |
+| **Trigger cues** | DevOps, Kubernetes, Docker, Terraform, CI/CD, GitOps, infrastructure automation, monitoring, observability |
 
-## 🔍 Intelligent DevOps Analysis
+## 🌟 Technology Stack (2025 Stable Versions)
 
-### **AI-Powered DevOps Assessment**
+### Container & Orchestration
+- **Kubernetes 1.31.x** (stable, released 2024-08)
+- **Docker 27.x** (stable, released 2024)
+- **Helm 3.16.x** (stable package management)
+- **containerd 1.7.x** (stable container runtime)
+
+### CI/CD Platforms
+- **GitHub Actions** (2025 enterprise best practices)
+- **GitLab CI/CD 17.x** (stable)
+- **Jenkins 2.479.x LTS**
+- **ArgoCD 2.13.x** (GitOps stable)
+
+### Infrastructure as Code
+- **Terraform 1.9.x** (stable)
+- **Pulumi 3.x** (stable)
+- **Ansible 2.17.x** (stable automation)
+
+### Monitoring & Observability
+- **Prometheus 2.55.x** (stable, pre-3.0 upgrade path)
+- **Grafana 11.x** (stable, Scenes-powered dashboards)
+- **Loki 3.x** (log aggregation)
+- **Jaeger 1.62.x** (distributed tracing)
+- **OpenTelemetry 1.33.x** (observability standard)
+
+## 📦 Pattern 1: Multi-Stage Docker Build (Production-Grade)
+
+### Optimized Build with Security Scanning
+
+**Use Case**: Build slim, secure container images with minimal attack surface.
+
+**Dockerfile (Node.js Example)**:
+```dockerfile
+# syntax=docker/dockerfile:1
+ARG NODE_VERSION=20
+ARG ALPINE_VERSION=3.21
+
+# Stage 1: Dependencies
+FROM node:${NODE_VERSION}-alpine${ALPINE_VERSION} AS deps
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production && npm cache clean --force
+
+# Stage 2: Build
+FROM node:${NODE_VERSION}-alpine${ALPINE_VERSION} AS build
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build && npm run test
+
+# Stage 3: Production
+FROM node:${NODE_VERSION}-alpine${ALPINE_VERSION}@sha256:1e7902618558e51428d31e6c06c2531e3170417018a45148a1f3d7305302b211
+WORKDIR /app
+
+# Security: Non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+# Copy production deps and build artifacts
+COPY --from=deps --chown=nodejs:nodejs /app/node_modules ./node_modules
+COPY --from=build --chown=nodejs:nodejs /app/dist ./dist
+COPY --chown=nodejs:nodejs package*.json ./
+
+USER nodejs
+EXPOSE 3000
+ENV NODE_ENV=production
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s \
+  CMD node healthcheck.js
+
+CMD ["node", "dist/index.js"]
 ```
-🧠 Comprehensive DevOps Analysis:
-├── Pipeline Intelligence
-│   ├── AI-powered pipeline optimization
-│   ├── Predictive build failure analysis
-│   ├── Automated test selection and prioritization
-│   └── Intelligent deployment scheduling
-├── Infrastructure Analytics
-│   ├── Resource utilization prediction
-│   ├── Capacity planning with ML
-│   ├── Cost optimization algorithms
-│   └── Performance bottleneck detection
-├── Operational Intelligence
-│   ├── AIOps for incident prediction
-│   ├── Automated root cause analysis
-│   ├── Intelligent alerting and correlation
-│   └── Self-healing capabilities
-└── Security Integration
-    ├── Automated security scanning in pipelines
-    ├── AI-driven vulnerability assessment
-    ├── Intelligent compliance checking
-    └── Automated security hardening
+
+**Key Features**:
+- Multi-stage build reduces final image size by 70%
+- Pinned base image digest for supply chain integrity
+- Non-root user execution (security hardening)
+- Health checks for container orchestration
+- Layer caching optimization
+
+**Build Command**:
+```bash
+docker build --no-cache -t myapp:v1.0.0 .
+docker scan myapp:v1.0.0  # Security vulnerability scan
 ```
 
-## 🏗️ Advanced CI/CD Architecture v4.0
+---
 
-### **AI-Enhanced Pipeline Orchestration**
+## 🏗️ Pattern 2: Kubernetes Deployment (Production-Ready)
 
-**Intelligent Pipeline Framework**:
-```
-🚀 Cognitive CI/CD Architecture:
-├── AI-Powered Build Optimization
-│   ├── Intelligent dependency management
-│   ├── Predictive build caching strategies
-│   ├── Automated test selection
-│   └── Build performance optimization
-├── Smart Deployment Strategies
-│   ├── ML-driven deployment timing
-│   ├── Intelligent canary analysis
-│   ├── Automated rollback decisions
-│   └── Feature flag optimization
-├── Advanced Testing Automation
-│   ├── AI-generated test cases
-│   ├── Intelligent test execution
-│   ├── Automated quality gates
-│   └── Performance regression testing
-└── Operations Integration
-    ├── Real-time monitoring integration
-    ├── Automated incident response
-    ├── Predictive scaling
-    └── Cost optimization
-```
+### Complete Deployment with HPA, Probes, and Resource Limits
 
-**AI-Optimized CI/CD Pipeline**:
+**Use Case**: Deploy scalable, resilient applications on Kubernetes.
+
+**deployment.yaml**:
 ```yaml
-# AI-Powered GitHub Actions Workflow
-name: AI-Enhanced CI/CD Pipeline
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-app
+  namespace: production
+  labels:
+    app: web-app
+    version: v1.0.0
+    managed-by: argocd
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0  # Zero-downtime deployment
+  selector:
+    matchLabels:
+      app: web-app
+  template:
+    metadata:
+      labels:
+        app: web-app
+        version: v1.0.0
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: web-app-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+      containers:
+      - name: web-app
+        image: myapp:v1.0.0@sha256:abc123...
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        env:
+        - name: NODE_ENV
+          value: production
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: url
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+        volumeMounts:
+        - name: config
+          mountPath: /app/config
+          readOnly: true
+      volumes:
+      - name: config
+        configMap:
+          name: web-app-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-app
+  namespace: production
+spec:
+  type: ClusterIP
+  selector:
+    app: web-app
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+    protocol: TCP
+```
+
+**Horizontal Pod Autoscaler (HPA)**:
+```yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: web-app-hpa
+  namespace: production
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: web-app
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+```
+
+**Key Features**:
+- Rolling update strategy with zero downtime
+- Resource requests/limits for QoS
+- Liveness and readiness probes
+- HPA with CPU/memory metrics
+- Security context (non-root user)
+- Prometheus scraping annotations
+
+---
+
+## 📊 Pattern 3: GitHub Actions CI/CD (Enterprise Grade)
+
+### Complete Pipeline with Matrix Builds, Caching, and Security
+
+**Use Case**: Automated testing, building, and deployment pipeline.
+
+**.github/workflows/ci-cd.yml**:
+```yaml
+name: Production CI/CD Pipeline
 
 on:
   push:
     branches: [main, develop]
   pull_request:
     branches: [main]
-  schedule:
-    - cron: '0 2 * * *'  # Nightly AI pipeline optimization
+  workflow_dispatch:
 
 env:
-  AI_PIPELINE_OPTIMIZATION: true
-  PREDICTIVE_SCALING: true
-  INTELLIGENT_TESTING: true
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  ai-impact-analysis:
-    runs-on: ubuntu-latest
-    outputs:
-      build-optimization: ${{ steps.analysis.outputs.build-optimization }}
-      test-selection: ${{ steps.analysis.outputs.test-selection }}
-      deployment-strategy: ${{ steps.analysis.outputs.deployment-strategy }}
-    steps:
-    - name: AI Impact Analysis
-      id: analysis
-      uses: ./.github/actions/ai-impact-analysis@v4
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        analysis-depth: comprehensive
-        optimization-target: performance
-      env:
-        AI_MODEL_VERSION: v2.1
-        PREDICTION_CONFIDENCE: 0.85
-
-  intelligent-build:
-    needs: ai-impact-analysis
-    runs-on: ${{ fromJson(needs.ai-impact-analysis.outputs.build-optimization).runner-type }}
-    outputs:
-      build-metrics: ${{ steps.build.outputs.metrics }}
-    steps:
-    - name: Optimized Build Setup
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-        lfs: true
-    
-    - name: AI-Powered Dependency Resolution
-      uses: ./.github/actions/ai-dependency-resolution@v4
-      with:
-        optimization-strategy: ${{ needs.ai-impact-analysis.outputs.build-optimization.dependency-strategy }}
-        vulnerability-scanning: true
-    
-    - name: Intelligent Build Execution
-      id: build
-      uses: ./.github/actions/ai-build-optimizer@v4
-      with:
-        build-configuration: ${{ needs.ai-impact-analysis.outputs.build-optimization }}
-        caching-strategy: intelligent
-        parallel-execution: true
-      env:
-        BUILD_OPTIMIZATION_LEVEL: aggressive
-
-  ai-driven-testing:
-    needs: [ai-impact-analysis, intelligent-build]
+  test:
+    name: Test (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        test-suite: ${{ fromJson(needs.ai-impact-analysis.outputs.test-selection) }}
+        node-version: [18, 20, 22]
+      fail-fast: false
     steps:
-    - name: Intelligent Test Setup
-      uses: actions/checkout@v4
-    
-    - name: AI-Powered Test Execution
-      uses: ./.github/actions/ai-test-orchestrator@v4
-      with:
-        test-suite: ${{ matrix.test-suite }}
-        build-artifacts: true
-        test-optimization: true
-        parallel-execution: true
-      env:
-        TEST_SELECTION_ALGORITHM: ml-based
-        FLAKY_TEST_DETECTION: true
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-  intelligent-deployment:
-    needs: [ai-impact-analysis, intelligent-build, ai-driven-testing]
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        run: npm run lint
+
+      - name: Run tests with coverage
+        run: npm test -- --coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/coverage-final.json
+          flags: unittests
+          name: node-${{ matrix.node-version }}
+
+  security:
+    name: Security Scanning
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  build:
+    name: Build and Push Docker Image
+    needs: [test, security]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NODE_VERSION=20
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            VCS_REF=${{ github.sha }}
+
+      - name: Scan Docker image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-image-results.sarif'
+
+  deploy:
+    name: Deploy to Production
+    needs: build
+    runs-on: ubuntu-latest
     environment: production
     steps:
-    - name: AI-Enhanced Deployment
-      uses: ./.github/actions/ai-deployment@v4
-      with:
-        deployment-strategy: ${{ needs.ai-impact-analysis.outputs.deployment-strategy }}
-        rollback-automation: true
-        monitoring-integration: true
-      env:
-        DEPLOYMENT_CONFIDENCE_THRESHOLD: 0.9
-        AUTOMATIC_ROLLBACK_ENABLED: true
-        CANARY_ANALYSIS_MODEL: v3.0
+      - uses: actions/checkout@v4
 
-  post-deployment-optimization:
-    needs: intelligent-deployment
-    runs-on: ubuntu-latest
-    if: always()
-    steps:
-    - name: AI Post-Deployment Analysis
-      uses: ./.github/actions/ai-post-deployment@v4
-      with:
-        deployment-id: ${{ needs.intelligent-deployment.outputs.deployment-id }}
-        optimization-window: 30m
-        performance-baseline: true
-      env:
-        PERFORMANCE_LEARNING: enabled
-        OPTIMIZATION_FEEDBACK: true
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Configure kubectl
+        run: |
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > kubeconfig
+          export KUBECONFIG=kubeconfig
+
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl set image deployment/web-app \
+            web-app=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            -n production
+          kubectl rollout status deployment/web-app -n production
+
+      - name: Notify deployment
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: 'Deployment to production completed'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        if: always()
 ```
 
-**AI-Powered Pipeline Controller**:
-```python
-# AI-Enhanced CI/CD Pipeline Controller
-import asyncio
-import numpy as np
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingRegressor
-import json
+**Key Features**:
+- Matrix builds (Node 18, 20, 22)
+- Layer caching with GitHub Actions cache
+- Security scanning (Trivy)
+- Docker image scanning before deployment
+- Zero-downtime rolling deployment
+- Slack notifications
 
-class AICICDController:
-    def __init__(self):
-        self.build_predictor = self._initialize_build_predictor()
-        self.test_selector = self._initialize_test_selector()
-        self.deployment_optimizer = self._initialize_deployment_optimizer()
-        self.performance_analyzer = self._initialize_performance_analyzer()
-        
-    async def analyze_commit_impact(self, 
-                                  commit_hash: str,
-                                  changed_files: List[str]) -> Dict:
-        """AI-powered commit impact analysis"""
-        
-        # Extract features from commit
-        features = self._extract_commit_features(commit_hash, changed_files)
-        
-        # Predict build impact
-        build_impact = self.build_predictor.predict([features])[0]
-        
-        # Select optimal test suite
-        test_selection = await self._select_intelligent_tests(features, changed_files)
-        
-        # Determine deployment strategy
-        deployment_strategy = await self._optimize_deployment_strategy(features)
-        
-        # Estimate resource requirements
-        resource_estimation = await self._estimate_resources(features)
-        
-        return {
-            'commit_hash': commit_hash,
-            'impact_score': float(build_impact),
-            'build_optimization': {
-                'parallel_stages': self._recommend_parallel_stages(features),
-                'cache_strategy': self._recommend_cache_strategy(features),
-                'resource_requirements': resource_estimation['build']
-            },
-            'test_selection': test_selection,
-            'deployment_strategy': deployment_strategy,
-            'confidence': self._calculate_confidence(features),
-            'estimated_duration': self._estimate_pipeline_duration(features)
-        }
-    
-    async def _select_intelligent_tests(self, 
-                                      features: np.ndarray,
-                                      changed_files: List[str]) -> List[Dict]:
-        """AI-powered intelligent test selection"""
-        
-        # Analyze code changes
-        change_analysis = await self._analyze_code_changes(changed_files)
-        
-        # Map changes to test requirements
-        test_requirements = await self._map_changes_to_tests(change_analysis)
-        
-        # Prioritize tests based on risk and importance
-        test_priorities = []
-        for test_req in test_requirements:
-            priority_score = self._calculate_test_priority(
-                test_req, features, change_analysis
-            )
-            test_priorities.append({
-                'test_path': test_req['path'],
-                'priority': priority_score,
-                'estimated_duration': test_req['duration'],
-                'failure_probability': self._predict_test_failure(test_req, features)
-            })
-        
-        # Select optimal test subset
-        selected_tests = self._select_optimal_test_subset(
-            test_priorities, max_duration=30 * 60  # 30 minutes
-        )
-        
-        return selected_tests
-    
-    async def optimize_deployment_strategy(self, 
-                                          commit_features: np.ndarray,
-                                          target_environment: str) -> Dict:
-        """AI-driven deployment strategy optimization"""
-        
-        # Analyze deployment risk
-        risk_assessment = await self._assess_deployment_risk(
-            commit_features, target_environment
-        )
-        
-        # Recommend deployment strategy
-        if risk_assessment['overall_risk'] > 0.7:
-            strategy = 'canary'
-            canary_config = await self._configure_canary_deployment(risk_assessment)
-            return {
-                'strategy': strategy,
-                'configuration': canary_config,
-                'rollback_threshold': 0.05,
-                'monitoring_duration': 3600
-            }
-        elif risk_assessment['overall_risk'] > 0.4:
-            strategy = 'blue-green'
-            bg_config = await self._configure_blue_green_deployment(risk_assessment)
-            return {
-                'strategy': strategy,
-                'configuration': bg_config,
-                'validation_duration': 1800
-            }
-        else:
-            strategy = 'rolling'
-            rolling_config = await self._configure_rolling_deployment(risk_assessment)
-            return {
-                'strategy': strategy,
-                'configuration': rolling_config,
-                'batch_size': 0.2
-            }
-    
-    async def monitor_deployment_health(self, 
-                                      deployment_id: str,
-                                      monitoring_window: int = 1800) -> Dict:
-        """AI-powered deployment health monitoring"""
-        
-        # Collect metrics during monitoring window
-        metrics = await self._collect_deployment_metrics(
-            deployment_id, monitoring_window
-        )
-        
-        # Analyze performance trends
-        performance_analysis = await self._analyze_performance_trends(metrics)
-        
-        # Detect anomalies and regressions
-        anomaly_detection = await self._detect_performance_anomalies(metrics)
-        
-        # Predict future performance
-        performance_prediction = await self._predict_future_performance(
-            metrics, 3600  # 1 hour prediction
-        )
-        
-        # Make rollback recommendation
-        rollback_decision = await self._make_rollback_recommendation(
-            performance_analysis, anomaly_detection, performance_prediction
-        )
-        
-        return {
-            'deployment_id': deployment_id,
-            'monitoring_duration': len(metrics),
-            'performance_analysis': performance_analysis,
-            'anomalies_detected': anomaly_detection,
-            'performance_prediction': performance_prediction,
-            'rollback_recommendation': rollback_decision,
-            'overall_health_score': self._calculate_health_score(
-                performance_analysis, anomaly_detection
-            )
-        }
+---
 
-# AI-Driven Infrastructure Management
-class AIInfrastructureManager:
-    def __init__(self):
-        self.resource_predictor = self._initialize_resource_predictor()
-        self.cost_optimizer = self._initialize_cost_optimizer()
-        self.scaling_manager = self._initialize_scaling_manager()
-        self.security_analyzer = self._initialize_security_analyzer()
-        
-    async def optimize_infrastructure_costs(self, 
-                                         infrastructure_data: Dict) -> Dict:
-        """AI-powered infrastructure cost optimization"""
-        
-        optimization_results = {}
-        
-        # Analyze current resource utilization
-        utilization_analysis = await self._analyze_resource_utilization(
-            infrastructure_data
-        )
-        
-        # Identify optimization opportunities
-        optimization_opportunities = await self._identify_optimization_opportunities(
-            utilization_analysis
-        )
-        
-        # Generate recommendations
-        recommendations = []
-        
-        for opportunity in optimization_opportunities:
-            recommendation = await self._generate_optimization_recommendation(
-                opportunity, infrastructure_data
-            )
-            
-            # Calculate potential savings
-            savings_analysis = await self._calculate_potential_savings(
-                recommendation, infrastructure_data
-            )
-            
-            recommendations.append({
-                'recommendation': recommendation,
-                'potential_savings': savings_analysis,
-                'implementation_effort': recommendation['effort_score'],
-                'risk_level': recommendation['risk_score'],
-                'priority_score': savings_analysis['annual_savings'] / recommendation['effort_score']
-            })
-        
-        # Sort by priority
-        recommendations.sort(key=lambda x: x['priority_score'], reverse=True)
-        
-        return {
-            'current_monthly_cost': infrastructure_data['monthly_cost'],
-            'potential_annual_savings': sum(r['potential_savings']['annual_savings'] for r in recommendations),
-            'recommendations': recommendations[:10],  # Top 10 recommendations
-            'optimization_confidence': self._calculate_optimization_confidence(recommendations),
-            'implementation_roadmap': await self._create_implementation_roadmap(recommendations)
-        }
-    
-    async def predict_infrastructure_scaling(self, 
-                                          usage_data: List[Dict],
-                                          forecast_horizon: int = 30) -> Dict:
-        """AI-driven infrastructure scaling prediction"""
-        
-        # Prepare time series data
-        time_series_data = self._prepare_time_series_data(usage_data)
-        
-        # Train prediction models
-        cpu_model = self._train_scaling_model(time_series_data, 'cpu')
-        memory_model = self._train_scaling_model(time_series_data, 'memory')
-        storage_model = self._train_scaling_model(time_series_data, 'storage')
-        network_model = self._train_scaling_model(time_series_data, 'network')
-        
-        # Generate predictions
-        predictions = []
-        current_date = datetime.now()
-        
-        for day in range(forecast_horizon):
-            future_date = current_date + timedelta(days=day)
-            
-            # Predict resource requirements
-            cpu_prediction = cpu_model.predict(future_date)
-            memory_prediction = memory_model.predict(future_date)
-            storage_prediction = storage_model.predict(future_date)
-            network_prediction = network_model.predict(future_date)
-            
-            # Calculate scaling requirements
-            scaling_needs = await self._calculate_scaling_requirements({
-                'cpu': cpu_prediction,
-                'memory': memory_prediction,
-                'storage': storage_prediction,
-                'network': network_prediction
-            })
-            
-            predictions.append({
-                'date': future_date.isoformat(),
-                'predicted_cpu': cpu_prediction,
-                'predicted_memory': memory_prediction,
-                'predicted_storage': storage_prediction,
-                'predicted_network': network_prediction,
-                'scaling_recommendations': scaling_needs,
-                'confidence_interval': {
-                    'cpu': cpu_model.calculate_confidence_interval(future_date),
-                    'memory': memory_model.calculate_confidence_interval(future_date)
-                }
-            })
-        
-        # Identify scaling events
-        scaling_events = await self._identify_scaling_events(predictions)
-        
-        return {
-            'forecast_horizon': forecast_horizon,
-            'predictions': predictions,
-            'scaling_events': scaling_events,
-            'cost_projection': self._calculate_cost_projection(predictions),
-            'confidence_score': self._calculate_prediction_confidence(predictions)
-        }
-    
-    async def implement_autonomous_scaling(self, 
-                                         current_metrics: Dict,
-                                         scaling_policy: Dict) -> Dict:
-        """AI-powered autonomous scaling implementation"""
-        
-        # Analyze current load
-        load_analysis = await self._analyze_current_load(current_metrics)
-        
-        # Make scaling decision
-        scaling_decision = await self._make_scaling_decision(
-            load_analysis, scaling_policy
-        )
-        
-        # Execute scaling if needed
-        scaling_actions = []
-        
-        if scaling_decision['scale_out']:
-            actions = await self._execute_scale_out(scaling_decision)
-            scaling_actions.extend(actions)
-        
-        if scaling_decision['scale_in']:
-            actions = await self._execute_scale_in(scaling_decision)
-            scaling_actions.extend(actions)
-        
-        # Monitor scaling effectiveness
-        effectiveness_monitoring = await self._setup_scaling_monitoring(
-            scaling_actions
-        )
-        
-        return {
-            'scaling_decision': scaling_decision,
-            'executed_actions': scaling_actions,
-            'monitoring_setup': effectiveness_monitoring,
-            'estimated_impact': scaling_decision['estimated_impact'],
-            'rollback_plan': scaling_decision['rollback_plan']
-        }
+## 🔧 Pattern 4: Terraform Infrastructure (AWS Example)
 
-# DevOps Implementation Example
-async def demonstrate_ai_devops():
-    cicd_controller = AICICDController()
-    infra_manager = AIInfrastructureManager()
-    
-    # Analyze commit impact
-    commit_analysis = await cicd_controller.analyze_commit_impact(
-        commit_hash="abc123def",
-        changed_files=["src/main.py", "tests/test_main.py", "Dockerfile"]
-    )
-    
-    print("=== AI DevOps Analysis ===")
-    print(f"Impact Score: {commit_analysis['impact_score']:.3f}")
-    print(f"Selected Tests: {len(commit_analysis['test_selection'])}")
-    print(f"Deployment Strategy: {commit_analysis['deployment_strategy']['strategy']}")
-    
-    # Optimize infrastructure costs
-    infra_data = {
-        'monthly_cost': 5000,
-        'resources': {
-            'cpu_usage': [0.3, 0.7, 0.4, 0.9, 0.5],
-            'memory_usage': [0.4, 0.6, 0.3, 0.8, 0.5],
-            'storage_usage': [0.2, 0.2, 0.2, 0.3, 0.2]
-        }
+### Production Infrastructure with Modules and Remote State
+
+**Use Case**: Provision cloud infrastructure as code.
+
+**main.tf**:
+```hcl
+terraform {
+  required_version = ">= 1.9.0"
+  
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
     }
-    
-    cost_optimization = await infra_manager.optimize_infrastructure_costs(infra_data)
-    
-    print(f"\n=== Infrastructure Optimization ===")
-    print(f"Potential Annual Savings: ${cost_optimization['potential_annual_savings']:,.2f}")
-    print(f"Recommendations: {len(cost_optimization['recommendations'])}")
-    
-    for rec in cost_optimization['recommendations'][:3]:
-        print(f"  - {rec['recommendation']['type']}: ${rec['potential_savings']['annual_savings']:,.2f}/year")
+  }
 
-if __name__ == "__main__":
-    asyncio.run(demonstrate_ai_devops())
-```
+  backend "s3" {
+    bucket         = "terraform-state-prod"
+    key            = "production/terraform.tfstate"
+    region         = "us-west-2"
+    encrypt        = true
+    dynamodb_table = "terraform-locks"
+    kms_key_id     = "arn:aws:kms:us-west-2:123456789012:key/abc123"
+  }
+}
 
-## 🔧 Advanced Infrastructure as Code
-
-### **AI-Enhanced IaC Management**
-
-**Intelligent Infrastructure Automation**:
-```python
-# AI-Powered Infrastructure as Code Manager
-import asyncio
-import json
-from typing import Dict, List, Optional
-import yaml
-from pathlib import Path
-
-class AIIaCManager:
-    def __init__(self):
-        self.template_optimizer = self._initialize_template_optimizer()
-        self.cost_analyzer = self._initialize_cost_analyzer()
-        self.security_validator = self._initialize_security_validator()
-        self.compliance_checker = self._initialize_compliance_checker()
-        
-    async def generate_optimized_infrastructure(self, 
-                                             requirements: Dict,
-                                             cloud_provider: str) -> Dict:
-        """AI-powered infrastructure generation"""
-        
-        # Analyze requirements
-        requirements_analysis = await self._analyze_requirements(requirements)
-        
-        # Generate infrastructure architecture
-        architecture = await self._generate_architecture(
-            requirements_analysis, cloud_provider
-        )
-        
-        # Optimize for cost and performance
-        optimization = await self._optimize_infrastructure(architecture)
-        
-        # Validate security and compliance
-        validation = await self._validate_infrastructure(optimization)
-        
-        # Generate IaC templates
-        iac_templates = await self._generate_iac_templates(optimization)
-        
-        return {
-            'requirements': requirements,
-            'architecture': architecture,
-            'optimization': optimization,
-            'validation': validation,
-            'iac_templates': iac_templates,
-            'estimated_cost': optimization['monthly_cost'],
-            'compliance_score': validation['compliance_score'],
-            'security_score': validation['security_score']
-        }
-    
-    async def optimize_existing_infrastructure(self, 
-                                            iac_files: List[str],
-                                            optimization_targets: List[str]) -> Dict:
-        """AI-powered existing infrastructure optimization"""
-        
-        optimization_results = {}
-        
-        for iac_file in iac_files:
-            # Parse IaC file
-            iac_content = await self._parse_iac_file(iac_file)
-            
-            # Analyze current configuration
-            current_analysis = await self._analyze_iac_configuration(iac_content)
-            
-            # Generate optimization recommendations
-            recommendations = []
-            
-            for target in optimization_targets:
-                target_recommendations = await self._generate_target_optimizations(
-                    iac_content, target, current_analysis
-                )
-                recommendations.extend(target_recommendations)
-            
-            # Apply optimizations
-            optimized_config = await self._apply_optimizations(
-                iac_content, recommendations
-            )
-            
-            # Validate optimized configuration
-            validation = await self._validate_optimized_config(optimized_config)
-            
-            optimization_results[iac_file] = {
-                'current_config': iac_content,
-                'recommendations': recommendations,
-                'optimized_config': optimized_config,
-                'validation': validation,
-                'estimated_savings': validation['cost_savings'],
-                'risk_assessment': validation['risk_assessment']
-            }
-        
-        return {
-            'optimization_results': optimization_results,
-            'total_estimated_savings': sum(
-                result['estimated_savings']['monthly'] 
-                for result in optimization_results.values()
-            ),
-            'optimization_summary': await self._generate_optimization_summary(
-                optimization_results
-            )
-        }
-    
-    async def _generate_target_optimizations(self, 
-                                           iac_content: Dict,
-                                           target: str,
-                                           current_analysis: Dict) -> List[Dict]:
-        """Generate optimizations for specific target"""
-        
-        optimizations = []
-        
-        if target == 'cost':
-            # Cost optimization recommendations
-            cost_opts = await self._generate_cost_optimizations(iac_content)
-            optimizations.extend(cost_opts)
-        
-        elif target == 'performance':
-            # Performance optimization recommendations
-            perf_opts = await self._generate_performance_optimizations(iac_content)
-            optimizations.extend(perf_opts)
-        
-        elif target == 'security':
-            # Security optimization recommendations
-            sec_opts = await self._generate_security_optimizations(iac_content)
-            optimizations.extend(sec_opts)
-        
-        elif target == 'compliance':
-            # Compliance optimization recommendations
-            comp_opts = await self._generate_compliance_optimizations(iac_content)
-            optimizations.extend(comp_opts)
-        
-        return optimizations
-    
-    async def generate_terraform_templates(self, 
-                                         optimized_config: Dict) -> Dict:
-        """Generate optimized Terraform templates"""
-        
-        terraform_templates = {}
-        
-        # Generate main configuration
-        main_config = await self._generate_terraform_main(optimized_config)
-        terraform_templates['main.tf'] = main_config
-        
-        # Generate variables
-        variables_config = await self._generate_terraform_variables(optimized_config)
-        terraform_templates['variables.tf'] = variables_config
-        
-        # Generate outputs
-        outputs_config = await self._generate_terraform_outputs(optimized_config)
-        terraform_templates['outputs.tf'] = outputs_config
-        
-        # Generate modules if needed
-        if optimized_config.get('use_modules', False):
-            modules_config = await self._generate_terraform_modules(optimized_config)
-            terraform_templates.update(modules_config)
-        
-        return terraform_templates
-
-# Kubernetes AI Optimization
-class AIKubernetesOptimizer:
-    def __init__(self):
-        self.resource_predictor = self._initialize_k8s_predictor()
-        self.node_optimizer = self._initialize_node_optimizer()
-        self.pod_scheduler = self._initialize_pod_scheduler()
-        self.scaling_analyzer = self._initialize_scaling_analyzer()
-        
-    async def optimize_kubernetes_cluster(self, 
-                                       cluster_config: Dict,
-                                       workload_data: Dict) -> Dict:
-        """AI-powered Kubernetes cluster optimization"""
-        
-        optimization_results = {}
-        
-        # Analyze current cluster state
-        cluster_analysis = await self._analyze_cluster_state(cluster_config)
-        
-        # Optimize node resources
-        node_optimization = await self._optimize_node_resources(
-            cluster_analysis, workload_data
-        )
-        optimization_results['node_optimization'] = node_optimization
-        
-        # Optimize pod scheduling
-        scheduling_optimization = await self._optimize_pod_scheduling(
-            cluster_analysis, workload_data
-        )
-        optimization_results['scheduling_optimization'] = scheduling_optimization
-        
-        # Optimize resource requests/limits
-        resource_optimization = await self._optimize_resource_configuration(
-            workload_data
-        )
-        optimization_results['resource_optimization'] = resource_optimization
-        
-        # Optimize autoscaling
-        autoscaling_optimization = await self._optimize_autoscaling(
-            workload_data, cluster_analysis
-        )
-        optimization_results['autoscaling_optimization'] = autoscaling_optimization
-        
-        return {
-            'cluster_optimization': optimization_results,
-            'estimated_savings': self._calculate_cluster_savings(optimization_results),
-            'performance_improvements': self._calculate_performance_improvements(
-                optimization_results
-            ),
-            'implementation_plan': await self._create_implementation_plan(
-                optimization_results
-            )
-        }
-
-# Infrastructure as Code Implementation Example
-async def demonstrate_ai_iac():
-    iac_manager = AIIaCManager()
-    k8s_optimizer = AIKubernetesOptimizer()
-    
-    # Generate optimized infrastructure
-    requirements = {
-        'application_type': 'web_app',
-        'expected_traffic': 1000,
-        'availability_target': 99.9,
-        'budget': 1000,
-        'compliance_requirements': ['SOC2', 'GDPR']
+provider "aws" {
+  region = var.aws_region
+  
+  default_tags {
+    tags = {
+      Environment = var.environment
+      ManagedBy   = "Terraform"
+      Project     = var.project_name
     }
-    
-    infrastructure = await iac_manager.generate_optimized_infrastructure(
-        requirements, 'aws'
-    )
-    
-    print("=== AI-Generated Infrastructure ===")
-    print(f"Monthly Cost: ${infrastructure['estimated_cost']:,.2f}")
-    print(f"Compliance Score: {infrastructure['compliance_score']:.2f}")
-    print(f"Security Score: {infrastructure['security_score']:.2f}")
-    
-    # Generate Terraform files
-    terraform_templates = await iac_manager.generate_terraform_templates(
-        infrastructure['optimization']
-    )
-    
-    print(f"\nGenerated {len(terraform_templates)} Terraform files")
-    
-    for filename, content in terraform_templates.items():
-        print(f"  - {filename}")
+  }
+}
 
-if __name__ == "__main__":
-    asyncio.run(demonstrate_ai_iac())
-```
+# VPC Module
+module "vpc" {
+  source  = "terraform-aws-modules/vpc/aws"
+  version = "5.0.0"
 
-## 📊 Advanced Monitoring & Observability
+  name = "${var.project_name}-vpc"
+  cidr = "10.0.0.0/16"
 
-### **AI-Driven Observability**
+  azs             = ["us-west-2a", "us-west-2b", "us-west-2c"]
+  private_subnets = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
+  public_subnets  = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
 
-**Cognitive Monitoring Framework**:
-```python
-# AI-Powered Monitoring and Observability Platform
-import asyncio
-import numpy as np
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
-from sklearn.ensemble import IsolationForest
-from sklearn.preprocessing import StandardScaler
+  enable_nat_gateway   = true
+  single_nat_gateway   = false
+  enable_dns_hostnames = true
+  enable_dns_support   = true
 
-class AIObservabilityPlatform:
-    def __init__(self):
-        self.anomaly_detector = IsolationForest(contamination=0.1)
-        self.correlation_analyzer = self._initialize_correlation_analyzer()
-        self.alert_optimizer = self._initialize_alert_optimizer()
-        self.performance_predictor = self._initialize_performance_predictor()
-        
-    async def analyze_system_behavior(self, 
-                                    metrics_data: List[Dict],
-                                    time_window: int = 3600) -> Dict:
-        """AI-powered system behavior analysis"""
-        
-        # Preprocess metrics
-        processed_metrics = await self._preprocess_metrics(metrics_data)
-        
-        # Detect anomalies
-        anomalies = await self._detect_anomalies(processed_metrics)
-        
-        # Analyze correlations
-        correlations = await self._analyze_metric_correlations(processed_metrics)
-        
-        # Predict performance trends
-        predictions = await self._predict_performance_trends(processed_metrics)
-        
-        # Generate insights
-        insights = await self._generate_insights(anomalies, correlations, predictions)
-        
-        return {
-            'analysis_timestamp': datetime.now().isoformat(),
-            'time_window_seconds': time_window,
-            'anomalies_detected': anomalies,
-            'metric_correlations': correlations,
-            'performance_predictions': predictions,
-            'ai_insights': insights,
-            'system_health_score': self._calculate_system_health(insights)
-        }
-    
-    async def _detect_anomalies(self, 
-                              metrics_data: Dict) -> List[Dict]:
-        """Advanced anomaly detection using ML"""
-        
-        anomalies = []
-        
-        for metric_name, metric_values in metrics_data.items():
-            # Prepare features for ML model
-            features = self._prepare_anomaly_features(metric_values)
-            
-            # Detect anomalies
-            anomaly_scores = self.anomaly_detector.decision_function(features)
-            
-            # Identify anomalous points
-            anomalous_indices = np.where(anomaly_scores < -0.5)[0]
-            
-            for idx in anomalous_indices:
-                anomaly = {
-                    'metric_name': metric_name,
-                    'timestamp': metric_values['timestamps'][idx],
-                    'value': metric_values['values'][idx],
-                    'anomaly_score': float(anomaly_scores[idx]),
-                    'severity': 'critical' if anomaly_scores[idx] < -1.0 else 'high',
-                    'context': await self._get_anomaly_context(
-                        metric_name, idx, metric_values
-                    )
-                }
-                anomalies.append(anomaly)
-        
-        # Group related anomalies
-        related_anomalies = await self._group_related_anomalies(anomalies)
-        
-        return related_anomalies
-    
-    async def _analyze_metric_correlations(self, 
-                                         metrics_data: Dict) -> List[Dict]:
-        """AI-powered metric correlation analysis"""
-        
-        correlations = []
-        
-        # Calculate correlation matrix
-        correlation_matrix = await self._calculate_correlation_matrix(metrics_data)
-        
-        # Find significant correlations
-        significant_correlations = await self._find_significant_correlations(
-            correlation_matrix
-        )
-        
-        for correlation in significant_correlations:
-            # Analyze correlation strength and direction
-            correlation_analysis = await self._analyze_correlation_strength(
-                correlation, metrics_data
-            )
-            
-            correlations.append({
-                'metric_1': correlation['metric_1'],
-                'metric_2': correlation['metric_2'],
-                'correlation_coefficient': correlation['coefficient'],
-                'significance_level': correlation['significance'],
-                'analysis': correlation_analysis,
-                'potential_causality': await self._assess_causality(
-                    correlation, metrics_data
-                )
-            })
-        
-        return correlations
-    
-    async def optimize_alerting(self, 
-                              alert_history: List[Dict],
-                              current_alerts: List[Dict]) -> Dict:
-        """AI-powered alerting optimization"""
-        
-        # Analyze alert effectiveness
-        alert_effectiveness = await self._analyze_alert_effectiveness(alert_history)
-        
-        # Identify alert fatigue patterns
-        fatigue_patterns = await self._identify_alert_fatigue(alert_history)
-        
-        # Generate alert optimization recommendations
-        recommendations = await self._generate_alert_recommendations(
-            alert_effectiveness, fatigue_patterns, current_alerts
-        )
-        
-        # Optimize alert thresholds
-        optimized_thresholds = await self._optimize_alert_thresholds(
-            current_alerts, alert_history
-        )
-        
-        return {
-            'current_alerts': current_alerts,
-            'effectiveness_analysis': alert_effectiveness,
-            'fatigue_patterns': fatigue_patterns,
-            'optimization_recommendations': recommendations,
-            'optimized_thresholds': optimized_thresholds,
-            'estimated_improvement': self._estimate_alert_improvement(recommendations)
-        }
-    
-    async def create_intelligent_dashboard(self, 
-                                          system_data: Dict,
-                                          user_role: str) -> Dict:
-        """AI-powered dashboard creation"""
-        
-        # Analyze user role and requirements
-        role_analysis = await self._analyze_user_role(user_role)
-        
-        # Select relevant metrics
-        selected_metrics = await self._select_dashboard_metrics(
-            system_data, role_analysis
-        )
-        
-        # Generate visualizations
-        visualizations = await self._generate_visualizations(
-            selected_metrics, role_analysis
-        )
-        
-        # Create layout
-        dashboard_layout = await self._create_dashboard_layout(
-            visualizations, role_analysis
-        )
-        
-        # Configure alerts and widgets
-        dashboard_config = {
-            'layout': dashboard_layout,
-            'widgets': await self._configure_widgets(visualizations),
-            'alerts': await self._configure_dashboard_alerts(selected_metrics),
-            'refresh_intervals': await self._optimize_refresh_intervals(selected_metrics),
-            'personalization_settings': await self._personalize_dashboard(role_analysis)
-        }
-        
-        return {
-            'dashboard_config': dashboard_config,
-            'personalization_score': self._calculate_personalization_score(
-                dashboard_config, role_analysis
-            ),
-            'usability_score': self._calculate_usability_score(dashboard_config)
-        }
+  tags = {
+    Terraform   = "true"
+    Environment = var.environment
+  }
+}
 
-# Distributed Tracing with AI
-class AIDistributedTracing:
-    def __init__(self):
-        self.trace_analyzer = self._initialize_trace_analyzer()
-        self.performance_modeler = self._initialize_performance_modeler()
-        self.bottleneck_detector = self._initialize_bottleneck_detector()
-        
-    async def analyze_trace_patterns(self, 
-                                  trace_data: List[Dict]) -> Dict:
-        """AI-powered distributed trace analysis"""
-        
-        # Process trace data
-        processed_traces = await self._process_trace_data(trace_data)
-        
-        # Identify performance patterns
-        performance_patterns = await self._identify_performance_patterns(
-            processed_traces
-        )
-        
-        # Detect bottlenecks
-        bottlenecks = await self._detect_performance_bottlenecks(processed_traces)
-        
-        # Analyze service dependencies
-        dependencies = await self._analyze_service_dependencies(processed_traces)
-        
-        # Generate optimization recommendations
-        recommendations = await self._generate_trace_recommendations(
-            performance_patterns, bottlenecks, dependencies
-        )
-        
-        return {
-            'trace_count': len(processed_traces),
-            'performance_patterns': performance_patterns,
-            'bottlenecks': bottlenecks,
-            'service_dependencies': dependencies,
-            'recommendations': recommendations,
-            'overall_performance_score': self._calculate_trace_performance_score(
-                processed_traces
-            )
-        }
+# EKS Cluster Module
+module "eks" {
+  source  = "terraform-aws-modules/eks/aws"
+  version = "19.0.0"
 
-# Observability Implementation Example
-async def demonstrate_ai_observability():
-    observability_platform = AIObservabilityPlatform()
-    tracing_analyzer = AIDistributedTracing()
-    
-    # Simulate metrics data
-    metrics_data = {
-        'cpu_usage': {
-            'timestamps': ['2024-01-01T10:00:00Z', '2024-01-01T10:01:00Z'],
-            'values': [45.2, 78.9]
-        },
-        'memory_usage': {
-            'timestamps': ['2024-01-01T10:00:00Z', '2024-01-01T10:01:00Z'],
-            'values': [62.1, 65.4]
-        }
+  cluster_name    = "${var.project_name}-eks"
+  cluster_version = "1.31"
+
+  vpc_id     = module.vpc.vpc_id
+  subnet_ids = module.vpc.private_subnets
+
+  cluster_endpoint_public_access = true
+
+  eks_managed_node_groups = {
+    general = {
+      min_size     = 2
+      max_size     = 10
+      desired_size = 3
+
+      instance_types = ["t3.medium"]
+      capacity_type  = "ON_DEMAND"
+
+      update_config = {
+        max_unavailable_percentage = 50
+      }
+
+      labels = {
+        role = "general"
+      }
+
+      tags = {
+        NodeGroup = "general"
+      }
     }
-    
-    # Analyze system behavior
-    behavior_analysis = await observability_platform.analyze_system_behavior(
-        metrics_data
-    )
-    
-    print("=== AI Observability Analysis ===")
-    print(f"Anomalies Detected: {len(behavior_analysis['anomalies_detected'])}")
-    print(f"Correlations Found: {len(behavior_analysis['metric_correlations'])}")
-    print(f"System Health Score: {behavior_analysis['system_health_score']:.2f}")
+  }
 
-if __name__ == "__main__":
-    asyncio.run(demonstrate_ai_observability())
+  cluster_addons = {
+    coredns = {
+      most_recent = true
+    }
+    kube-proxy = {
+      most_recent = true
+    }
+    vpc-cni = {
+      most_recent = true
+    }
+  }
+
+  tags = {
+    Environment = var.environment
+  }
+}
 ```
 
-## 🔮 Future-Ready DevOps Technologies
+**variables.tf**:
+```hcl
+variable "aws_region" {
+  description = "AWS region for resources"
+  type        = string
+  default     = "us-west-2"
+}
 
-### **Emerging DevOps Trends**
+variable "environment" {
+  description = "Environment name"
+  type        = string
+  
+  validation {
+    condition     = contains(["dev", "staging", "production"], var.environment)
+    error_message = "Environment must be dev, staging, or production."
+  }
+}
 
-**Next-Generation DevOps Evolution**:
-```
-🚀 DevOps Innovation Roadmap:
-├── AIOps Evolution
-│   ├── Generative AI for incident response
-│   ├── Large language models for documentation
-│   ├── Autonomous decision making systems
-│   └── Predictive operations at scale
-├── Platform Engineering
-│   ├── Internal developer platforms
-│   ├── Self-service infrastructure
-│   ├── API-driven operations
-│   └── Golden paths development
-├── GitOps Evolution
-│   ├── AI-driven GitOps automation
-│   ├── Intelligent conflict resolution
-│   ├── Automated compliance in GitOps
-│   └── Multi-cluster GitOps management
-├── FinOps Integration
-│   ├── AI-powered cost optimization
-│   ├── Predictive budget management
-│   ├── Automated resource right-sizing
-│   └── Cloud spend optimization
-└── Sustainability DevOps
-    ├── Green computing optimization
-    ├── Carbon footprint tracking
-    ├── Energy-efficient infrastructure
-    └── Sustainable development practices
+variable "project_name" {
+  description = "Project name for resource naming"
+  type        = string
+}
 ```
 
-## 📋 Enterprise Implementation Guide
+**outputs.tf**:
+```hcl
+output "vpc_id" {
+  description = "VPC ID"
+  value       = module.vpc.vpc_id
+}
 
-### **Production DevOps Deployment**
+output "eks_cluster_endpoint" {
+  description = "EKS cluster endpoint"
+  value       = module.eks.cluster_endpoint
+  sensitive   = true
+}
 
-**AI-Optimized DevOps Infrastructure**:
+output "eks_cluster_name" {
+  description = "EKS cluster name"
+  value       = module.eks.cluster_name
+}
+```
+
+**Usage**:
+```bash
+# Initialize
+terraform init
+
+# Plan with variable file
+terraform plan -var-file="environments/production.tfvars"
+
+# Apply with approval
+terraform apply -var-file="environments/production.tfvars"
+
+# State management
+terraform state list
+terraform state show module.vpc.aws_vpc.this[0]
+```
+
+**Key Features**:
+- Remote state with S3 + DynamoDB locking
+- Encrypted state with KMS
+- Modular architecture (reusable VPC, EKS modules)
+- Input validation
+- Default tags for resource management
+- Version pinning for reproducibility
+
+---
+
+## 📈 Pattern 5: Prometheus Monitoring (2.55.x)
+
+### ServiceMonitor and Alert Rules
+
+**Use Case**: Monitor Kubernetes applications with Prometheus.
+
+**servicemonitor.yaml**:
 ```yaml
-# Kubernetes DevOps Stack with AI Optimization
-apiVersion: v1
-kind: Namespace
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
 metadata:
-  name: devops-ai
----
-# AI-Powered CI/CD Runners
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: ai-cicd-runner
-  namespace: devops-ai
-  annotations:
-    ai.devops.optimization: "enabled"
-    ai.pipeline.orchestration: "intelligent"
+  name: web-app-metrics
+  namespace: production
+  labels:
+    app: web-app
+    prometheus: kube-prometheus
 spec:
-  replicas: 3
   selector:
     matchLabels:
-      app: ai-cicd-runner
-  template:
-    metadata:
+      app: web-app
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: namespace
+```
+
+**prometheusrule.yaml**:
+```yaml
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: web-app-alerts
+  namespace: production
+  labels:
+    prometheus: kube-prometheus
+    role: alert-rules
+spec:
+  groups:
+  - name: web-app.rules
+    interval: 30s
+    rules:
+    # High error rate alert
+    - alert: HighErrorRate
+      expr: |
+        sum(rate(http_requests_total{job="web-app",status=~"5.."}[5m])) 
+        / 
+        sum(rate(http_requests_total{job="web-app"}[5m])) 
+        > 0.05
+      for: 5m
+      labels:
+        severity: critical
+        component: web-app
       annotations:
-        ai.resource.optimization: "enabled"
-        ai.build.caching: "intelligent"
-    spec:
-      containers:
-      - name: cicd-runner
-        image: devops/ai-cicd-runner:v4.0.0
-        env:
-        - name: AI_PIPELINE_ORCHESTRATION
-          value: "enabled"
-        - name: INTELLIGENT_CACHING
-          value: "enabled"
-        - name: PREDICTIVE_SCALING
-          value: "enabled"
-        resources:
-          requests:
-            cpu: 1000m
-            memory: 4Gi
-          limits:
-            cpu: 2000m
-            memory: 8Gi
-        volumeMounts:
-        - name: build-cache
-          mountPath: /cache
-      volumes:
-      - name: build-cache
-        persistentVolumeClaim:
-          claimName: ai-build-cache
+        summary: "High error rate detected"
+        description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+
+    # High latency alert
+    - alert: HighLatency
+      expr: |
+        histogram_quantile(0.95, 
+          sum(rate(http_request_duration_seconds_bucket{job="web-app"}[5m])) by (le)
+        ) > 1
+      for: 10m
+      labels:
+        severity: warning
+        component: web-app
+      annotations:
+        summary: "High request latency"
+        description: "95th percentile latency is {{ $value }}s (threshold: 1s)"
+
+    # Pod availability alert
+    - alert: PodDown
+      expr: |
+        kube_deployment_status_replicas_available{deployment="web-app"} 
+        < 
+        kube_deployment_spec_replicas{deployment="web-app"} * 0.7
+      for: 5m
+      labels:
+        severity: critical
+        component: web-app
+      annotations:
+        summary: "Insufficient pod replicas"
+        description: "Only {{ $value }} pods available (expected: {{ $labels.spec_replicas }})"
+
+    # Memory pressure alert
+    - alert: HighMemoryUsage
+      expr: |
+        container_memory_working_set_bytes{pod=~"web-app-.*"} 
+        / 
+        container_spec_memory_limit_bytes{pod=~"web-app-.*"} 
+        > 0.9
+      for: 5m
+      labels:
+        severity: warning
+        component: web-app
+      annotations:
+        summary: "High memory usage"
+        description: "Pod {{ $labels.pod }} using {{ $value | humanizePercentage }} of memory limit"
+```
+
+**Key Features**:
+- 15-30 second scrape intervals (best practice)
+- Relabeling for consistent metric naming
+- Multi-condition alerts (error rate, latency, availability, resources)
+- Severity labels for alert routing
+- Human-readable annotations
+
 ---
-# AI-Powered Monitoring
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: ai-observability
-  namespace: devops-ai
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: ai-observability
-  template:
-    spec:
-      containers:
-      - name: observability
-        image: devops/ai-observability:v4.0.0
-        env:
-        - name: AI_ANOMALY_DETECTION
-          value: "enabled"
-        - name: PREDICTIVE_ALERTING
-          value: "enabled"
-        - name: INTELLIGENT_DASHBOARDING
-          value: "enabled"
-        resources:
-          requests:
-            cpu: 2000m
-            memory: 8Gi
-          limits:
-            cpu: 4000m
-            memory: 16Gi
+
+## 🎨 Pattern 6: Grafana Dashboard (11.x)
+
+### Production Dashboard with Variables and Templating
+
+**Use Case**: Visualize Prometheus metrics with Grafana.
+
+**Dashboard Configuration Highlights**:
+- **Scenes-powered architecture** (Grafana 11.x)
+- **Template variables** for namespace/pod filtering
+- **Multi-panel layouts** (graph, stat, heatmap)
+- **Color-coded thresholds** for quick status identification
+- **PromQL queries** with label selectors
+
+**Example Panels**:
+1. **Request Rate Graph**: `sum(rate(http_requests_total{namespace="$namespace",pod=~"$pod"}[5m])) by (pod)`
+2. **Error Rate Stat**: Threshold-based coloring (green < 1%, yellow < 5%, red ≥ 5%)
+3. **Latency Heatmap**: Distribution visualization with histogram buckets
+
 ---
-# AI-Powered Infrastructure Management
-apiVersion: apps/v1
-kind: Deployment
+
+## 🔄 Pattern 7: ArgoCD GitOps Deployment
+
+### Declarative Application Management
+
+**Use Case**: Continuous deployment with GitOps workflow.
+
+**application.yaml**:
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
 metadata:
-  name: ai-infra-manager
-  namespace: devops-ai
+  name: web-app
+  namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
 spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: ai-infra-manager
-  template:
-    spec:
-      containers:
-      - name: infra-manager
-        image: devops/ai-infra-manager:v4.0.0
-        env:
-        - name: AI_COST_OPTIMIZATION
-          value: "enabled"
-        - name: PREDICTIVE_SCALING
-          value: "enabled"
-        - name: AUTONOMOUS_OPERATIONS
-          value: "enabled"
-        resources:
-          requests:
-            cpu: 1500m
-            memory: 6Gi
-          limits:
-            cpu: 3000m
-            memory: 12Gi
+  project: production
+  source:
+    repoURL: https://github.com/org/web-app-k8s
+    targetRevision: main
+    path: overlays/production
+    kustomize:
+      version: v5.0.0
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: production
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+    - CreateNamespace=true
+    - PruneLast=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  revisionHistoryLimit: 10
+  ignoreDifferences:
+  - group: apps
+    kind: Deployment
+    jsonPointers:
+    - /spec/replicas
 ```
 
-## 🎯 Performance Benchmarks & Success Metrics
+**Key Features**:
+- Automated sync with self-healing
+- Retry logic with exponential backoff
+- Prune orphaned resources
+- Ignore HPA-managed replica changes
+- Project-level RBAC
 
-### **Enterprise DevOps Standards**
+---
 
-**AI-Enhanced DevOps KPIs**:
+## 🔐 Pattern 8: Kubernetes Secrets Management
+
+### External Secrets with AWS Secrets Manager
+
+**Use Case**: Manage secrets securely outside Kubernetes.
+
+**externalsecret.yaml**:
+```yaml
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: db-credentials
+  namespace: production
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-secrets-manager
+    kind: SecretStore
+  target:
+    name: db-credentials
+    creationPolicy: Owner
+    template:
+      engineVersion: v2
+      data:
+        url: "postgresql://{{ .username }}:{{ .password }}@{{ .host }}:{{ .port }}/{{ .database }}"
+  dataFrom:
+  - extract:
+      key: production/database
+---
+apiVersion: external-secrets.io/v1beta1
+kind: SecretStore
+metadata:
+  name: aws-secrets-manager
+  namespace: production
+spec:
+  provider:
+    aws:
+      service: SecretsManager
+      region: us-west-2
+      auth:
+        jwt:
+          serviceAccountRef:
+            name: external-secrets-sa
 ```
-📊 Advanced DevOps Metrics:
-├── CI/CD Performance Excellence
-│   ├── Pipeline Success Rate: > 98% (AI-optimized)
-│   ├── Build Time Reduction: > 60% vs traditional
-│   ├── Deployment Frequency: > 10 deployments/day
-│   └── Lead Time for Changes: < 1 hour
-├── Infrastructure Optimization
-│   ├── Resource Utilization: > 85% (AI-optimized)
-│   ├── Cost Reduction: > 40% with AI optimization
-│   ├── Scaling Response Time: < 5 minutes
-│   └── Infrastructure Availability: > 99.9%
-├── Monitoring & Observability
-│   ├── MTTR (Mean Time to Repair): < 10 minutes
-│   ├── Anomaly Detection Accuracy: > 95%
-│   ├── Alert Fatigue Reduction: > 80%
-│   └── System Health Score: > 90
-├── Development Experience
-│   ├── Developer Productivity: +200% with AI
-│   ├── Time to Environment: < 5 minutes
-│   ├── Self-Service Capability: > 95%
-│   └── Documentation Accuracy: > 90%
-└── Innovation Velocity
-    ├── Experiment Success Rate: > 70%
-    ├── Innovation Cycle Time: < 2 weeks
-    ├── Automation Coverage: > 95%
-    └── AI Adoption Rate: > 80%
+
+**Key Features**:
+- External secret provider (AWS Secrets Manager)
+- Auto-refresh every hour
+- Template-based secret construction
+- IRSA authentication
+
+---
+
+## 🌊 Pattern 9: Blue-Green Deployment Strategy
+
+### Zero-Downtime Release with Service Switching
+
+**Use Case**: Deploy new version alongside current, switch traffic instantly.
+
+**Switching Script**:
+```bash
+#!/bin/bash
+# blue-green-switch.sh
+
+set -e
+
+NAMESPACE="production"
+SERVICE="web-app"
+NEW_VERSION="green"  # or "blue" to rollback
+
+echo "Validating $NEW_VERSION deployment..."
+kubectl rollout status deployment/web-app-$NEW_VERSION -n $NAMESPACE
+
+echo "Running smoke tests on $NEW_VERSION..."
+kubectl run smoke-test --rm -i --restart=Never \
+  --image=curlimages/curl -- \
+  http://web-app-$NEW_VERSION.$NAMESPACE.svc.cluster.local/health
+
+echo "Switching traffic to $NEW_VERSION..."
+kubectl patch service $SERVICE -n $NAMESPACE \
+  -p "{\"spec\":{\"selector\":{\"version\":\"$NEW_VERSION\"}}}"
+
+echo "Traffic switched to $NEW_VERSION. Monitor metrics for 10 minutes."
+sleep 600
+
+echo "Deployment successful. Old version can be scaled down."
+kubectl scale deployment/web-app-$([ "$NEW_VERSION" = "blue" ] && echo "green" || echo "blue") \
+  -n $NAMESPACE --replicas=0
 ```
 
-## 📚 Comprehensive References
+**Key Features**:
+- Two identical environments (blue/green)
+- Instant traffic switch via service selector
+- Easy rollback (switch back to previous version)
+- No downtime during deployment
 
-### **Enterprise DevOps Documentation**
+---
 
-**DevOps Framework Resources**:
-- **DORA (DevOps Research and Assessment)**: https://dora.org/
-- **DevOps Handbook**: https://itrevolution.com/devops-handbook/
-- **Continuous Delivery**: https://continuousdelivery.com/
-- **Site Reliability Engineering**: https://sre.google/sre-book/
-- **Google Cloud DevOps**: https://cloud.google.com/devops
+## 📊 Pattern 10: Helm Chart Structure (Production)
 
-**AIOps and AI in DevOps Resources**:
-- **AIOps Alliance**: https://www.aiopsalliance.org/
-- **Gartner AIOps Market Guide**: https://www.gartner.com/
-- **Forrester AIOps Wave**: https://www.forrester.com/
+### Reusable Kubernetes Package
 
-**Infrastructure and Automation**:
-- **Terraform Documentation**: https://www.terraform.io/docs/
-- **Kubernetes Documentation**: https://kubernetes.io/docs/
-- **Docker Documentation**: https://docs.docker.com/
-- **Ansible Documentation**: https://docs.ansible.com/
+**Use Case**: Package, version, and distribute Kubernetes applications.
 
-## 📝 Version 4.0.0 Enterprise Changelog
+**Chart.yaml**:
+```yaml
+apiVersion: v2
+name: web-app
+description: Production-grade web application
+version: 1.0.0
+appVersion: "v1.0.0"
+type: application
+keywords:
+  - web
+  - production
+maintainers:
+  - name: DevOps Team
+    email: devops@example.com
+dependencies:
+  - name: postgresql
+    version: 12.x.x
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+```
 
-### **Major Enhancements**
+**values.yaml**:
+```yaml
+replicaCount: 3
 
-**🤖 AI-Powered Features**:
-- Added AI-driven pipeline optimization and intelligent test selection
-- Integrated autonomous infrastructure management and predictive scaling
-- Implemented AI-powered cost optimization and resource right-sizing
-- Added cognitive monitoring with ML-based anomaly detection
-- Included automated security integration and compliance validation
+image:
+  repository: myapp
+  pullPolicy: IfNotPresent
+  tag: "v1.0.0"
 
-**🚀 Advanced Architecture**:
-- Enhanced CI/CD orchestration with AI-powered decision making
-- Added intelligent GitOps automation with conflict resolution
-- Implemented platform engineering with self-service infrastructure
-- Added FinOps integration with predictive budget management
-- Enhanced sustainability DevOps with green computing optimization
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
 
-**📊 Operations Excellence**:
-- AI-powered observability with intelligent correlation and root cause analysis
-- Automated incident response with machine learning
-- Predictive maintenance and self-healing infrastructure
-- Intelligent alerting optimization and fatigue reduction
-- Advanced performance monitoring with predictive analytics
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: app.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: app-tls
+      hosts:
+        - app.example.com
 
-**🔧 Developer Experience**:
-- AI-assisted code review and automated quality gates
-- Intelligent build caching and dependency optimization
-- Smart documentation generation and maintenance
-- Real-time collaboration with AI-powered assistance
-- Comprehensive dashboarding with personalized views
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
 
-## 🤝 Works Seamlessly With
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
 
-- **moai-domain-backend**: Backend deployment and scaling optimization
-- **moai-domain-frontend**: Frontend build optimization and deployment
-- **moai-domain-security**: Security integration and compliance automation
-- **moai-domain-database**: Database operations and optimization
-- **moai-domain-testing**: Test automation and quality assurance
-- **moai-domain-monitoring**: Advanced monitoring and observability
-- **moai-domain-infrastructure**: Infrastructure management and automation
+monitoring:
+  enabled: true
+  serviceMonitor:
+    interval: 30s
+
+postgresql:
+  enabled: true
+  auth:
+    username: appuser
+    database: appdb
+```
+
+**Usage**:
+```bash
+# Install chart
+helm install web-app ./web-app \
+  -f web-app/values-production.yaml \
+  -n production \
+  --create-namespace
+
+# Upgrade with new values
+helm upgrade web-app ./web-app \
+  -f web-app/values-production.yaml \
+  -n production \
+  --atomic --timeout 10m
+
+# Rollback to previous version
+helm rollback web-app 1 -n production
+```
+
+**Key Features**:
+- Environment-specific values files
+- Dependency management (PostgreSQL subchart)
+- Conditional resource creation
+- Atomic upgrades (rollback on failure)
+
+---
+
+## 🚀 Best Practices Summary (2025 Edition)
+
+### Container Security
+1. **Use minimal base images** (Alpine, distroless)
+2. **Pin image digests** for reproducibility
+3. **Run as non-root user** (USER directive)
+4. **Scan images** with Trivy/Snyk
+5. **Multi-stage builds** to reduce attack surface
+
+### Kubernetes Production Readiness
+1. **Resource requests/limits** for all containers
+2. **Liveness and readiness probes** for health checks
+3. **HPA** for automatic scaling
+4. **PodDisruptionBudget** for availability
+5. **Network policies** for pod-to-pod security
+
+### CI/CD Pipeline Optimization
+1. **Matrix builds** for multi-version testing
+2. **Caching strategies** (Docker layers, npm/pip cache)
+3. **Security scanning** at every stage
+4. **Parallel jobs** for faster feedback
+5. **Workflow timeouts** (30 minutes recommended)
+6. **Secrets management** with GitHub Secrets/Vault
+
+### Infrastructure as Code
+1. **Remote state** with locking (S3 + DynamoDB)
+2. **State encryption** with KMS
+3. **Modular architecture** for reusability
+4. **Input validation** with variable constraints
+5. **Version pinning** for providers and modules
+6. **Plan before apply** (never auto-approve production)
+
+### Monitoring & Observability
+1. **Scrape intervals**: 15-30 seconds for most apps
+2. **Label management**: Consistent naming, avoid high cardinality
+3. **Alert thresholds**: Based on SLIs/SLOs
+4. **Dashboard best practices**: Use template variables, organize by user role
+5. **Distributed tracing**: OpenTelemetry for end-to-end visibility
+
+### GitOps Workflow
+1. **Git as single source of truth**
+2. **Automated sync** with self-healing
+3. **Declarative configuration** (YAML in Git)
+4. **RBAC** for access control
+5. **Audit trail** via Git history
+
+---
+
+## 📚 Official Documentation References
+
+### Container & Orchestration
+- **Kubernetes 1.31**: https://kubernetes.io/docs/
+- **Docker 27.x**: https://docs.docker.com/
+- **Helm 3.16**: https://helm.sh/docs/
+
+### CI/CD
+- **GitHub Actions**: https://docs.github.com/en/actions
+- **ArgoCD 2.13**: https://argo-cd.readthedocs.io/
+
+### Infrastructure as Code
+- **Terraform 1.9**: https://developer.hashicorp.com/terraform/docs
+- **Ansible 2.17**: https://docs.ansible.com/
+
+### Monitoring
+- **Prometheus 2.55**: https://prometheus.io/docs/
+- **Grafana 11.x**: https://grafana.com/docs/grafana/latest/
+
+---
+
+## 🎯 When to Use This Skill
+
+**Activate for**:
+- Designing CI/CD pipelines for enterprise applications
+- Building Kubernetes deployments with production-grade patterns
+- Implementing GitOps workflows with ArgoCD
+- Setting up monitoring with Prometheus/Grafana
+- Writing Terraform modules for cloud infrastructure
+- Containerizing applications with multi-stage Docker builds
+- Implementing zero-downtime deployment strategies
+- Configuring auto-scaling and resource management
+- Establishing observability with distributed tracing
+
+**Combines well with**:
+- `moai-domain-backend`: Backend deployment optimization
+- `moai-domain-frontend`: Frontend build pipelines
+- `moai-domain-security`: Security scanning integration
+- `moai-domain-database`: Database migration automation
+- `moai-domain-testing`: Test automation in CI/CD
 
 ---
 
 **Version**: 4.0.0 Enterprise  
-**Last Updated**: 2025-11-11  
-**Enterprise Ready**: ✅ Production-Grade with AI Integration  
-**AI Features**: 🤖 Pipeline Optimization & Autonomous Operations  
-**Performance**: 📊 < 1 Hour Lead Time for Changes  
-**Innovation**: 🚀 10+ Deployments per Day with AI
+**Last Updated**: 2025-11-12  
+**Status**: ✅ Production-Ready  
+**Technology Stack**: Kubernetes 1.31, Docker 27.x, Terraform 1.9, Prometheus 2.55, Grafana 11.x  
+**Patterns**: 10+ production-grade examples  
+**Size**: ~30KB | ~950 lines

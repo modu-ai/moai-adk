@@ -612,7 +612,7 @@ git checkout main && git merge develop && git push origin main
 
 **CRITICAL**: Place internal documentation in `.moai/` hierarchy ONLY, never in project root (except README.md, CHANGELOG.md, CONTRIBUTING.md).
 
-### Prohibited Actions (루트 디렉토리 생성 금지)
+### Prohibited Actions (Root Directory Creation Ban)
 
 ❌ **ABSOLUTELY FORBIDDEN in Project Root**:
 - Reports, analysis documents, inspection files
@@ -621,7 +621,7 @@ git checkout main && git merge develop && git push origin main
 - Log files, coverage files, temp files
 - Any `.md` files except standard project docs
 
-### Allowed Root Files (허용 목록)
+### Allowed Root Files (Whitelist)
 
 ✅ **Standard Project Files**:
 - `README.md`, `README.*.md` (language variants)
@@ -634,7 +634,7 @@ git checkout main && git merge develop && git push origin main
 - `.gitignore`, `.editorconfig`, `.prettierrc`
 - `Makefile`, `Dockerfile`, `docker-compose.yml`
 
-### Required Locations (필수 디렉토리 매핑)
+### Required Locations (Directory Mapping)
 
 | File Type | Required Location |
 |-----------|-------------------|
@@ -645,7 +645,7 @@ git checkout main && git merge develop && git push origin main
 | **Backups** | `.moai/backups/{type}/` |
 | **Cache** | `.moai/cache/{type}/` |
 
-### Category Mapping (자동 분류 규칙)
+### Category Mapping (Auto-Classification Rules)
 
 **Reports Categories**:
 - `FINAL-INSPECTION-*.md` → `.moai/reports/inspection/`
@@ -670,7 +670,7 @@ git checkout main && git merge develop && git push origin main
 - `hooks_backup_*` → `.moai/backups/hooks/`
 - `.moai-backups/` → `.moai/backups/legacy/`
 
-### Agent Responsibilities (에이전트별 책임)
+### Agent Responsibilities (By Agent)
 
 | Agent | Responsibility |
 |-------|---------------|
@@ -681,7 +681,7 @@ git checkout main && git merge develop && git push origin main
 | **test-engineer** | Place temp tests ONLY in `.moai/temp/tests/` |
 | **doc-syncer** | Check location before creating any documentation |
 
-### Auto-Cleanup Policy (자동 정리 정책)
+### Auto-Cleanup Policy (Retention Policy)
 
 | Directory | Retention Period | Auto-Cleanup |
 |-----------|------------------|--------------|
@@ -692,7 +692,7 @@ git checkout main && git merge develop && git push origin main
 | `.moai/reports/` | 90 days | ⚠️ Manual review |
 | `.moai/scripts/` | Permanent | ❌ Disabled |
 
-### Validation Rules (검증 규칙)
+### Validation Rules (Verification Rules)
 
 **On File Creation** (PreToolUse Hook):
 1. Check if file path is in project root
