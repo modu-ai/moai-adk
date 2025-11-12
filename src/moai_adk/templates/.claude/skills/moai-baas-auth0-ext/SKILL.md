@@ -2,7 +2,7 @@
 name: moai-baas-auth0-ext
 version: 4.0.0
 created: 2025-11-11
-updated: 2025-11-11
+updated: 2025-11-12
 status: active
 description: Enterprise Auth0 Identity Platform with AI-powered authentication architecture, Context7 integration, and intelligent identity orchestration for scalable enterprise SSO and compliance
 keywords: ['auth0', 'enterprise-authentication', 'sso', 'saml', 'oidc', 'identity-platform', 'compliance', 'context7-integration', 'ai-orchestration', 'production-deployment']
@@ -716,7 +716,7 @@ class Auth0SecurityIntelligence:
 
 ## Changelog
 
-- **v4.0.0** (2025-11-11): Complete rewrite with Context7 integration, AI-powered Auth0 optimization, enterprise identity patterns, and intelligent migration planning
+- **v4.0.0** (2025-11-12): Complete Enterprise v4.0 rewrite with Context7 integration, November 2025 Event Streams and ACUL features, advanced MFA orchestration, intelligent identity migration planning integration, AI-powered Auth0 optimization, enterprise identity patterns, and intelligent migration planning
 - **v2.0.0** (2025-11-09): Auth0 Enterprise Authentication with SAML and compliance support
 - **v1.0.0** (2025-11-09): Initial Auth0 authentication platform integration
 
