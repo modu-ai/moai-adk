@@ -1,173 +1,422 @@
-# Foundation TRUST 5 - Reference Documentation
+# moai-foundation-trust: Reference & Implementation Guide
 
-## Official Documentation
+## TRUST 5 Quick Validation Checklist
 
-### Core References
-- **TRUST 5 Principles**: `CLAUDE.md` - Quality Assurance Enforcement
-- **Quality Gates**: `.claude/skills/moai-foundation-trust/CHECKLIST.md`
-- **Validation Framework**: Integration with Alfred QA processes
+### Before Every Commit
 
-### TRUST 5 Framework
-
-#### T - Test First
-**Definition**: All production code must have corresponding tests before implementation
-
-**Implementation Standards**:
-- **Test Coverage**: Minimum 85% line coverage for production code
-- **Test Types**: Unit tests, Integration tests, End-to-end tests
-- **TDD Cycle**: RED → GREEN → REFACTOR workflow
-- **Test Organization**: Clear test structure and naming conventions
-- **Mock Strategy**: Proper mocking for external dependencies
-
-**Validation Criteria**:
 ```bash
-# Coverage check example
-pytest --cov=src --cov-fail-under=85 --cov-report=term-missing
+# T: Test First
+pytest --cov=src --cov-report=term --cov-fail-under=85
+
+# R: Readable
+pylint src/ --fail-under=8.0
+black --check src/
+
+# U: Unified
+python .moai/scripts/validation/architecture_checker.py
+
+# S: Secured
+bandit -r src/ -ll
+pip audit
+
+# T: Trackable
+python .moai/scripts/validation/tag_validator.py
+
+# Result: All checks pass → Ready to commit ✓
 ```
 
-#### R - Readable
-**Definition**: Code must be self-documenting and maintainable
+## Principle 1: Test First - Metrics & Validation
 
-**Implementation Standards**:
-- **Naming Conventions**: Descriptive variable and function names
-- **Code Structure**: Logical organization and modularity
-- **Documentation**: Inline comments for complex logic
-- **Code Style**: Consistent formatting and style guide adherence
-- **Complexity Management**: Function and class size limits
+### Coverage Targets (November 2025)
 
-**Code Quality Tools**:
+| Metric | Minimum | Target | Excellent |
+|--------|---------|--------|-----------|
+| **Unit Test Coverage** | 75% | 85% | 95% |
+| **Branch Coverage** | 70% | 80% | 90% |
+| **Critical Path** | 95% | 100% | 100% |
+| **Line Coverage** | 75% | 85% | 95% |
+
+### Test Execution
+
+```bash
+# Run all tests with coverage
+pytest tests/ --cov=src --cov-report=html --cov-report=term
+
+# Generate HTML report
+coverage html
+# View: htmlcov/index.html
+
+# Check specific module coverage
+coverage report --include=src/auth.py
+
+# Find uncovered lines
+coverage report --show-missing
+```
+
+### Test Quality Metrics
+
 ```python
-# Example configuration
+# Test file structure (enforce via code review)
+def test_function_behavior_with_inputs_expects_output():
+    """
+    Test name format: test_[unit]_[condition]_[expected_result]
+    
+    Structure:
+    1. Setup: Create test fixtures
+    2. Execute: Call function under test
+    3. Verify: Assert expected behavior
+    """
+    # Setup
+    user = create_test_user("test@example.com", "TestPass123")
+    
+    # Execute
+    result = authenticate_user(user.email, "TestPass123")
+    
+    # Verify
+    assert result is not None
+    assert result.startswith("eyJ")  # JWT token format
+```
+
+## Principle 2: Readable - Code Quality Tools
+
+### Pylint Configuration
+
+```ini
 # .pylintrc
-max-line-length = 88
-max-function-length = 50
-max-args = 7
+[MASTER]
+fail-under = 8.0
+
+[DESIGN]
+max-locals = 15
+max-branches = 12
+max-attributes = 7
+
+[COMPLEXITY]
+max-complexity = 10
+
+[FORMAT]
+max-line-length = 100
+
+[MESSAGES CONTROL]
+disable = missing-docstring  # Enforce in code review
 ```
 
-#### U - Unified
-**Definition**: Consistent patterns, architecture, and standards across codebase
+### Black Auto-Formatting
 
-**Implementation Standards**:
-- **Architecture Patterns**: Consistent use of design patterns
-- **Code Standards**: Unified coding conventions
-- **API Design**: Consistent REST/GraphQL patterns
-- **Error Handling**: Standardized error management
-- **Configuration**: Consistent configuration management
+```bash
+# Format all Python files
+black src/ tests/
 
-**Consistency Checks**:
+# Check without modifying
+black --check src/ tests/
+
+# Configure in pyproject.toml
+[tool.black]
+line-length = 100
+target-version = ['py312']
+```
+
+### Cyclomatic Complexity Rules
+
+```
+CC = 1: Low complexity ✓ Excellent
+CC = 2-5: Moderate ✓ Good
+CC = 6-10: High ⚠ Accept with review
+CC = 11+: Very high ✗ Refactor required
+
+Calculation:
+  CC = number of independent paths through function
+  IF/ELSE = +1 path
+  LOOPS = +1 path
+  BOOLEAN_AND/OR = +1 path
+```
+
+### Readability Verification Script
+
+```python
+# .moai/scripts/validation/readability_checker.py
+import ast
+import subprocess
+
+def check_readability(src_dir):
+    """Verify readability metrics"""
+    
+    # 1. Check naming conventions
+    # 2. Check function length
+    # 3. Check comment ratio
+    # 4. Check variable clarity
+    # 5. Report violations
+    
+    issues = []
+    for file in glob(f"{src_dir}/**/*.py"):
+        # ... implementation
+        pass
+    
+    return issues
+```
+
+## Principle 3: Unified - Architecture Validation
+
+### Directory Structure Validation
+
+```bash
+# Verify consistent structure
+find src/ -name "__init__.py" | wc -l   # Every package has __init__.py
+find src/ -name "*.py" | grep -c "^src/[a-z_]/[a-z_]*.py$"  # Flat structure
+
+# Check naming consistency
+find src/ -name "*util*.py"    # Find any util.py (use domain-specific names)
+find src/ -name "*helper*.py"  # Find any helper.py (split into domain)
+```
+
+### Pattern Consistency Checker
+
+```python
+# src/auth/authenticate.py
+# Consistent pattern: imports → docstring → classes → functions
+
+"""
+@CODE:SPEC:AUTH-001
+User authentication module.
+
+Standard structure enforced by architecture validator.
+"""
+
+# 1. Imports
+import logging
+from typing import Optional
+from src.models import User
+from src.exceptions import AuthenticationError
+
+# 2. Module constants
+logger = logging.getLogger(__name__)
+MAX_LOGIN_ATTEMPTS = 5
+
+# 3. Classes
+class AuthenticationManager:
+    """Unified authentication handler"""
+    pass
+
+# 4. Public functions
+def authenticate_user(email: str, password: str) -> str:
+    """Public API"""
+    pass
+
+# 5. Private helpers
+def _validate_email(email: str) -> bool:
+    """Private helper"""
+    pass
+```
+
+## Principle 4: Secured - Security Validation Tools
+
+### Bandit Configuration
+
+```bash
+# Scan for security issues
+bandit -r src/ -ll  # Report high/medium only
+
+# Custom config
+[bandit]
+exclude_dirs = ['tests', 'docs']
+skips = ['B101']  # Skip assert_used in tests
+```
+
+### Dependency Security
+
+```bash
+# Check for known vulnerabilities
+pip audit
+
+# Fix vulnerabilities
+pip install --upgrade vulnerable-package
+
+# Pin versions in requirements.txt
+cryptography==41.0.7  # Pin exact version (not cryptography>=41.0)
+```
+
+### Security Test Examples
+
+```python
+@TEST:SPEC:AUTH-SECURE-001
+def test_password_hash_not_reversible():
+    """Verify passwords cannot be reversed"""
+    plaintext = "SecurePassword123"
+    hashed = hash_password(plaintext)
+    
+    # Hash must not contain original
+    assert plaintext not in hashed
+    assert len(hashed) > 20  # Bcrypt format
+
+@TEST:SPEC:SQL-INJECTION-001
+def test_query_safe_against_sql_injection():
+    """Verify parameterized queries prevent injection"""
+    # Dangerous: f"SELECT * FROM users WHERE email='{email}'"
+    # Safe: execute("SELECT * FROM users WHERE email=?", [email])
+    
+    result = find_user_by_email("test@example.com' OR '1'='1")
+    # Query safe because parameterized
+    assert result is None
+```
+
+## Principle 5: Trackable - TAG Validation
+
+### TAG Scanning Command
+
+```bash
+# Find all TAGs
+rg '@(SPEC|TEST|CODE|DOC):' --no-filename -o | sort | uniq -c
+
+# Validate chains
+python .moai/scripts/validation/tag_validator.py
+
+# Report by type
+rg '@SPEC:' -c  # Count SPECs
+rg '@TEST:' -c  # Count TESTSs
+rg '@CODE:' -c  # Count CODE
+rg '@DOC:' -c   # Count DOCs
+```
+
+### TAG Linking Rules
+
+```
+Valid links:
+├─ @SPEC:AUTH-001 in .moai/specs/
+├─ @TEST:SPEC:AUTH-001-001 in tests/
+├─ @CODE:SPEC:AUTH-001 in src/
+└─ @DOC:SPEC:AUTH-001 in docs/
+
+Invalid patterns (will fail validation):
+├─ @TEST:ORPHAN-001 (no @SPEC)
+├─ @CODE:FLOATING-001 (no @SPEC)
+├─ @DOC without @SPEC/@CODE link
+└─ Circular references
+```
+
+## TRUST 5 Integration with CI/CD
+
+### GitHub Actions Example
+
 ```yaml
-# Example standards enforcement
-code_standards:
-  naming: snake_case
-  docstring_format: google_style
-  import_order: standard_library, third_party, local
+# .github/workflows/trust-5-gate.yml
+name: TRUST 5 Quality Gates
+
+on: [push, pull_request]
+
+jobs:
+  trust-5:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest coverage pylint black bandit
+      
+      - name: T - Test First
+        run: |
+          pytest --cov=src --cov-fail-under=85
+          
+      - name: R - Readable
+        run: |
+          pylint src/ --fail-under=8.0
+          black --check src/ tests/
+          
+      - name: U - Unified
+        run: |
+          python .moai/scripts/validation/architecture_checker.py
+          
+      - name: S - Secured
+        run: |
+          bandit -r src/ -ll
+          pip audit
+          
+      - name: T - Trackable
+        run: |
+          python .moai/scripts/validation/tag_validator.py
+      
+      - name: Report Results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: trust-5-report
+          path: .moai/reports/
 ```
 
-#### S - Secured
-**Definition**: Security best practices and vulnerability prevention
+## Troubleshooting Common Issues
 
-**Implementation Standards**:
-- **Input Validation**: All user inputs validated and sanitized
-- **Authentication**: Proper user authentication and authorization
-- **Data Protection**: Encryption for sensitive data
-- **Dependencies**: Regular security updates and vulnerability scanning
-- **Access Control**: Principle of least privilege enforcement
-
-**Security Validation**:
+### Issue: Coverage < 85%
 ```bash
-# Security scanning example
-bandit -r src/ -f json -o security-report.json
-safety check
+# Find uncovered lines
+coverage report --show-missing
+
+# Add tests for missing coverage
+# Rerun: pytest --cov --cov-report=html
+
+# If unreachable code, mark as such:
+if False:  # pragma: no cover
+    unreachable_code()
 ```
 
-#### T - Trackable
-**Definition**: Complete traceability from requirements through deployment
-
-**Implementation Standards**:
-- **@TAG System**: Complete TAG chains (SPEC→CODE→TEST→DOC)
-- **Change History**: Comprehensive git commit history
-- **Documentation**: Up-to-date technical documentation
-- **Version Control**: Proper branching and merge strategies
-- **Audit Trail**: Complete change tracking and accountability
-
-**Traceability Validation**:
+### Issue: Pylint score < 8.0
 ```bash
-# TAG chain validation
-find . -name "*.md" -exec grep -l "@TAG" {} \; | wc -l
-git log --oneline --graph --decorate --all
+# See violations
+pylint src/
+
+# Fix common issues
+black src/  # Auto-format
+pylint --generate-rcfile > .pylintrc  # Generate config
+
+# Discuss with team if score acceptable
 ```
 
-### Quality Gates and Validation
+### Issue: Bandit finds vulnerability
+```bash
+# Review finding
+bandit -r src/ -ll -v
 
-#### Automated Validation Process
-1. **Pre-commit Hooks**: Local quality checks
-2. **CI/CD Pipeline**: Automated testing and validation
-3. **Code Review**: Human review of changes
-4. **Security Scanning**: Vulnerability detection
-5. **Documentation Review**: Documentation completeness
+# If false positive:
+# @bandit: disable=B101
+code_with_assert()
 
-#### Quality Metrics Dashboard
-- **Test Coverage**: % of code covered by tests
-- **Code Quality**: Linting and style compliance
-- **Security Score**: Vulnerability assessment
-- **Documentation Coverage**: % of documented components
-- **Performance Metrics**: System performance benchmarks
-
-### Integration with Development Workflow
-
-#### TDD Integration with Alfred
-```python
-# Alfred TDD workflow
-class TDDWorkflow:
-    def RED_phase(self):
-        """Write failing tests"""
-        return test_engineer.write_failing_tests()
-    
-    def GREEN_phase(self):
-        """Implement minimal passing code"""
-        return tdd_implementer.implement_minimum()
-    
-    def REFACTOR_phase(self):
-        """Improve code quality"""
-        return code_quality_agent.refactor_safely()
+# If real vulnerability: Fix code before merge
 ```
 
-#### Quality Gate Enforcement
-```python
-# Quality gate validation
-def validate_trust_5(changes):
-    validators = [
-        TestCoverageValidator(),
-        CodeQualityValidator(),
-        SecurityValidator(),
-        TraceabilityValidator()
-    ]
-    
-    for validator in validators:
-        if not validator.validate(changes):
-            raise QualityGateError(validator.get_issues())
-    
-    return True
+### Issue: TAG validation fails
+```bash
+# Check TAG syntax
+rg '@(SPEC|TEST|CODE|DOC):' -n
+
+# Find orphans
+python .moai/scripts/validation/tag_validator.py --report
+
+# Link or mark deprecated
 ```
 
-## External References
+## TRUST 5 Team Responsibilities
 
-### Testing Best Practices
-- **Test-Driven Development**: [testdriven.io](https://testdriven.io/)
-- **Pytest Documentation**: [docs.pytest.org](https://docs.pytest.org/)
-- **Testing Best Practices**: [martinfowler.com/articles/testing-strategies.html](https://martinfowler.com/articles/testing-strategies.html)
+| Role | TRUST Principle | Responsibility |
+|------|-----------------|-----------------|
+| **Developer** | All 5 | Implement with TRUST 5 in mind |
+| **Test Engineer** | Test First | Maintain ≥85% coverage |
+| **Code Reviewer** | Readable, Unified | Review code quality + consistency |
+| **Security Engineer** | Secured | Review security implementation |
+| **DevOps/QA** | Trackable | Maintain CI/CD validation |
 
-### Code Quality Standards
-- **PEP 8**: [pep8.org](https://pep8.org/)
-- **Clean Code**: [Robert C. Martin - Clean Code](https://www.amazon.com/Clean-Code-Handbook-Software-Craftsmanship/dp/0132350884)
-- **Refactoring**: [refactoring.guru](https://refactoring.guru/)
+## TRUST 5 Onboarding Checklist
 
-### Security Standards
-- **OWASP Top 10**: [owasp.org/www-project-top-ten](https://owasp.org/www-project-top-ten/)
-- **Security Guidelines**: [snyk.io/blog/10-security-best-practices/](https://snyk.io/blog/10-security-best-practices/)
-- **Dependency Security**: [safety-cli documentation](https://pyup.io/safety/)
+- [ ] Read TRUST 5 principles (Level 1)
+- [ ] Review validation tools installed
+- [ ] Configure IDE with linters (pylint, black)
+- [ ] Review TRUST 5 code examples
+- [ ] Run first commit with all gates passing
+- [ ] Understand TAG system (see moai-foundation-tags)
+- [ ] Join TRUST 5 review meetings
+- [ ] Mentor new team members
 
----
-
-**Last Updated**: 2025-11-11
-**Related Skills**: moai-foundation-specs, moai-foundation-tags, moai-alfred-code-reviewer
