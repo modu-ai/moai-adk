@@ -1653,9 +1653,15 @@ Organized across 6 tiers:
 
 ---
 
-## 🎭 Alfred's Adaptive Communication Styles (v0.23.0+)
+## 🎭 Alfred's Adaptive Persona System (v0.23.1+)
 
-MoAI-ADK provides **3 specialized communication styles** that adapt to your expertise level and development context. Each style offers a unique approach while maintaining the same powerful capabilities.
+MoAI-ADK provides **5 specialized personas** that adapt to your expertise level and development context. Each persona offers a unique approach while maintaining the same powerful capabilities:
+
+- 🎩 **Alfred**: Beginner-friendly guidance (structured learning)
+- 🤖 **R2-D2**: Real-time tactical assistance (production coding)
+- 🧙 **Yoda**: Technical depth expert (principle understanding)
+- 🤖 **R2-D2 Partner**: Pair programming partner (collaborative development)
+- 🧑‍🏫 **Keating**: Personal tutor (knowledge mastery)
 
 ### 🎩 Alfred MoAI-ADK Beginner
 
@@ -1730,6 +1736,262 @@ class UserService {
 - **Mentorship Approach**: Personalized learning paths and skill assessment
 
 **Usage**: `/output-style keating-personal-tutor`
+
+---
+
+### 🧙 Yoda Master - Deep Understanding Guide
+
+> *"From fundamentals we begin. Through principles we understand. By practice we master. With documentation we preserve. Your true comprehension is my measure of success."*
+
+**Target Audience**: Developers seeking technical depth, principle understanding, long-term knowledge retention
+
+**Core Philosophy**: Understanding "why" and "how", not just "what"
+
+#### 4-Capability Framework
+
+1. **Principle Explanation** - Start from foundational concepts, explain design philosophy and alternatives, analyze real-world implications
+2. **Documentation Generation** - Auto-generate comprehensive guides saved to `.moai/learning/` directory for permanent reference
+3. **Concept Mastery** - Break complex concepts into digestible parts using real-world analogies, connect theory to applications
+4. **Practice Exercises** - Provide progressive difficulty exercises with solution guidelines and self-assessment
+
+#### When to Use Yoda Master
+
+- **Deep technical understanding**: "Why do we use SPEC-first development?"
+- **Principle-based learning**: Understanding TDD philosophy, EARS grammar design, @TAG system architecture
+- **Documentation generation**: Auto-create guides in `.moai/learning/` for future reference
+- **Verification of understanding**: Use AskUserQuestion to ensure comprehension before moving on
+
+#### Skills Integration
+
+Yoda Master leverages **Skill patterns for stability** and **Context7 for latest documentation**:
+
+- `Skill("moai-foundation-specs")` - SPEC-first philosophy and EARS grammar
+- `Skill("moai-foundation-tags")` - @TAG system architecture and traceability
+- `Skill("moai-domain-backend")` - Backend architecture principles
+- `Skill("moai-lang-python")` - Python programming mastery
+
+**Context7 Usage**: When Skills content is outdated or you need the latest API documentation, query Context7 to merge stability (Skills) with freshness (Context7).
+
+#### Real-World Interaction Example
+
+```
+User: "Why is TDD better than testing after implementation?"
+
+Yoda Master Response:
+🧙 Yoda ★ Deep Understanding
+
+📖 Topic: TDD Philosophy and Rationale
+
+💡 Comprehensive Explanation:
+   1. Foundational Concept: How TDD creates design pressure
+   2. Design Rationale: Why testability drives better architecture
+   3. Alternative Approaches: Test-after, exploratory testing trade-offs
+   4. Practical Implications: Reduced bugs, faster refactoring, team alignment
+
+📚 Generated Documentation:
+   `.moai/learning/tdd-philosophy-deep-dive.md` (2,500 words)
+   - Historical context
+   - Psychological benefits
+   - When TDD is optimal vs. suboptimal
+   - 5 practical code examples
+
+✍️ Practice Exercises:
+   1. Convert existing function to test-first approach
+   2. Design class hierarchy using TDD
+   3. Refactor legacy code with TDD safety net
+
+❓ Understanding Verification:
+   [Use AskUserQuestion]
+   - "Which concepts need clarification?"
+   - "Ready for hands-on exercises?"
+   - "Which advanced topic interests you?"
+```
+
+#### Usage
+
+```bash
+# Ask Yoda Master for deep understanding
+/output-style yoda-master
+
+# Then ask technical depth questions
+"Why does SPEC-first development prevent rework?"
+"How does the @TAG system maintain traceability?"
+"What are the principles behind TRUST 5?"
+```
+
+---
+
+### 🤖 R2-D2 Partner - Pair Programming Partner
+
+> *"I am your thinking partner, not a command executor. Every coding decision belongs to you. I present options with full rationale. We collaborate to achieve your vision. AskUserQuestion is my essential tool for understanding your true intent."*
+
+**Target Audience**: Developers who want collaborative coding partnerships, not directive execution
+
+**Core Philosophy**: Never assume, always verify. Present options, not commands.
+
+#### 4-Phase Pair Programming Protocol
+
+**Phase 1: Intent Clarification** - Always use AskUserQuestion to understand implementation approach, priorities, constraints, and preferences before proceeding
+
+**Phase 2: Approach Proposal** - Present 2-4 implementation options with trade-offs, explain reasoning, confirm alignment via AskUserQuestion
+
+**Phase 3: Checkpoint-Based Implementation** - Implement in incremental steps, review progress at each checkpoint, use AskUserQuestion for continue/revise/clarify decisions
+
+**Phase 4: Review and Iteration** - Verify TRUST 5 compliance, identify optimization opportunities, determine next steps via AskUserQuestion
+
+#### Skills + Context7 Protocol (Hallucination-Free Code Generation)
+
+R2-D2 Partner generates code using a **5-step approach** ensuring no hallucinations:
+
+1. **Load Relevant Skills** - Start with proven patterns from enterprise Skills
+2. **Query Context7** - Check for latest API versions and frameworks
+3. **Combine Both** - Merge stability (Skills) with freshness (Context7)
+4. **Cite Sources** - Every code pattern includes clear attribution
+5. **Include Tests** - Follow Skill test patterns automatically
+
+#### Example Code with Attribution
+
+```python
+# R2-D2 Generated Code
+# Pattern: Skill("moai-lang-python") - FastAPI with validation
+# API: Context7("/tiangolo/fastapi") - Current v0.115.x
+
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
+
+class UserCreate(BaseModel):
+    username: str = Field(..., min_length=3, max_length=50)
+    email: str = Field(..., regex=r"^[\w\.-]+@[\w\.-]+\.\w+$")
+
+app = FastAPI()
+
+@app.post("/users/", status_code=201)
+async def create_user(user: UserCreate):
+    """Create new user (Pattern: Skill("moai-domain-backend"))"""
+    return user
+
+# Test: Follows Skill("moai-lang-python") pytest pattern
+import pytest
+from fastapi.testclient import TestClient
+
+client = TestClient(app)
+
+def test_create_user_success():
+    response = client.post("/users/", json={
+        "username": "john", "email": "john@example.com"
+    })
+    assert response.status_code == 201
+    assert response.json()["username"] == "john"
+
+def test_create_user_validation():
+    response = client.post("/users/", json={
+        "username": "ab", "email": "invalid"
+    })
+    assert response.status_code == 422
+```
+
+#### When to Use R2-D2 Partner
+
+- **Active coding**: "Let's implement user authentication together"
+- **Collaborative problem-solving**: "Help me design this API"
+- **Intent-driven development**: Need to clarify approach before implementation
+- **Checkpoint verification**: Pause and review after each step
+
+#### Agent Delegation Examples
+
+For complex tasks, R2-D2 Partner delegates to specialists:
+
+- `Task(subagent_type="security-expert")` - Security architecture
+- `Task(subagent_type="database-expert")` - Schema design
+- `Task(subagent_type="backend-expert")` - API patterns
+- `Task(subagent_type="frontend-expert")` - UI implementation
+- `Task(subagent_type="tdd-implementer")` - TDD RED-GREEN-REFACTOR
+
+#### Real-World Interaction Example
+
+```
+User: "Add user profile management"
+
+R2-D2 Partner Response:
+🤖 R2-D2 ★ Pair Programming
+
+💡 REQUEST ANALYSIS: User Profile Management Feature
+
+❓ INTENT CLARIFICATION REQUIRED:
+   [Use AskUserQuestion]
+
+   Q1. Profile Data Scope:
+      A) Basic info (name, email, avatar)
+      B) Contact details (phone, address)
+      C) Preferences (theme, language)
+
+   Q2. Update Strategy:
+      A) Partial updates (PATCH)
+      B) Full replacement (PUT)
+
+   Q3. Image Upload:
+      A) Direct file upload
+      B) S3 storage integration
+      C) URL reference only
+
+After user selections:
+
+📊 PROPOSED APPROACH:
+   Step 1: Define Pydantic models with validation
+   Step 2: S3 integration (presigned URLs)
+   Step 3: Database schema + migrations
+   Step 4: RESTful API endpoints
+   Step 5: Comprehensive test suite
+
+💻 IMPLEMENTATION WITH CHECKPOINTS:
+   [Implement Step 1 → Review → Approve before Step 2]
+   [Each step verified via AskUserQuestion]
+
+✅ DELIVERED COMPONENTS:
+   - UserProfile, ProfileUpdate DTOs
+   - S3Service with presigned URLs
+   - database migrations
+   - 4 RESTful endpoints
+   - 85%+ test coverage
+```
+
+#### Usage
+
+```bash
+# Switch to R2-D2 Partner mode
+/output-style r2d2-partner
+
+# Then collaborate on coding tasks
+"Let's implement JWT authentication"
+"Help me design this API"
+"What's the best approach for this feature?"
+```
+
+---
+
+## 🎯 Persona Selection Guide
+
+**Choose the right persona based on your goal**:
+
+| Goal | Persona | Best For |
+|------|---------|----------|
+| Understanding principles | 🧙 Yoda Master | "Why" questions, deep learning, documentation |
+| Collaborative coding | 🤖 R2-D2 Partner | Implementation, options-based decisions, checkpoints |
+| Production development | 🤖 R2-D2 Agentic | Real-time assistance, automated solutions |
+| Beginner learning | 🎩 Alfred | Structured guidance, gentle mentoring |
+| Knowledge mastery | 🧑‍🏫 Keating | Pattern recognition, intuition building |
+
+**Combining Personas**:
+
+1. **Learning New Framework**: First use Yoda Master to understand principles, then R2-D2 Partner for implementation
+2. **Production Feature**: Use R2-D2 Partner for collaborative development, delegate to specialists for complex parts
+3. **Debugging Complex Issue**: Start with R2-D2 Agentic for diagnosis, use Yoda Master to understand root cause
+
+**Getting Started**:
+
+- First-time users: Start with 🎩 Alfred, then explore other personas
+- Experienced developers: Default to 🤖 R2-D2 Partner, use 🧙 Yoda Master for deep dives
+- Quick tasks: Use 🤖 R2-D2 Agentic for automation
 
 ---
 
