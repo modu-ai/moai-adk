@@ -478,7 +478,6 @@ git config --global feature.experimental true
 ✅ **DO**:
 - Choose workflow at SPEC creation (align with team)
 - Follow TDD commit phases (RED → GREEN → REFACTOR)
-- Use @TAGs for complete traceability
 - Keep feature branches short-lived (<3 days)
 - Squash commits when merging to develop
 - Maintain test coverage ≥85%
@@ -491,7 +490,6 @@ git config --global feature.experimental true
 - Commit directly to main branch
 - Force push to shared branches
 - Merge without all checks passing
-- Ignore @TAG conventions
 - Leave long-running feature branches
 - Use deprecated Git versions (<2.40)
 

@@ -2,7 +2,6 @@
   "companyAnnouncements": [
     "SPEC-First: Use /alfred:1-plan to define requirements first and everything connects together",
     "TDD Cycle: RED (write tests) → GREEN (minimal code) → REFACTOR (improve) ensures quality",
-    "TAG Tracking: @SPEC, @TEST, @CODE, @DOC links requirements to code for full traceability",
     "4-Phase Workflow: /alfred:1-plan plan → /alfred:2-run implement → /alfred:3-sync validate → git deploy",
     "TRUST 5 Principles: Test(≥85%) + Readable + Unified + Secured(OWASP) + Trackable(TAG) = Quality",
     "Alfred Agents: 19 expert team members automatically handle planning, implementation, testing, validation",

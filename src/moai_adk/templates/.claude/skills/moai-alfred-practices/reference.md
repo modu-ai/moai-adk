@@ -136,7 +136,6 @@ After reading this document:
    ```
 
    **Alfred Internal Execution**:
-   - TAG chain verification: @SPEC ↔ @TEST ↔ @CODE
    - Living Document update: README.md, CHANGELOG.md
    - PR status change: Draft → Ready
 
@@ -206,7 +205,6 @@ After reading this document:
      - Readable: ✅ ruff lint passed
      - Unified: ✅ mypy type safety passed
      - Secured: ✅ trivy security scan passed
-     - Trackable: ✅ @TAG chain normal
 
    - **TAG Chain Verification**:
      ```bash
@@ -217,7 +215,6 @@ After reading this document:
 - SPEC updated
 - TEST added
 - CODE modified (1 line)
-- Git commit: `fix(auth): Extend JWT expiration to 30 minutes (was 5 minutes) - Refs: @AUTH-TIMEOUT-001`
 
 **Estimated Duration**: 15-20 minutes (Analysis 5min + SPEC 5min + TDD 5min + Verification 5min)
 
@@ -247,7 +244,6 @@ After reading this document:
    **doc-syncer Analysis**:
    - README.md update needed: Add "User Dashboard" to Features section
    - CHANGELOG.md creation needed: v0.4.2 release notes
-   - TAG integrity verified: All @CODE linked to @SPEC
 
 3. **TAG Integrity Check**
    ```bash

@@ -97,7 +97,6 @@
     "code_scan_policy": {
       "no_intermediate_cache": true,
       "realtime_validation": true,
-      "scan_command": "rg '@TAG' -n",
       "philosophy": "The source of truth for TAGs lives in the code itself",
       "notes": "Uses ripgrep (rg) or grep for TAG scanning. Only scan_command is actively used."
     },

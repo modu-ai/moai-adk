@@ -31,7 +31,6 @@ skills:
 
 ## 🎯 Command Purpose
 
-Synchronize code changes to Living Documents and verify @TAG system to ensure complete traceability.
 
 **Document sync to**: $ARGUMENTS
 
@@ -176,21 +175,12 @@ Use Task tool:
 - `description`: "Verify TAG system across entire project"
 - `prompt`:
   ```
-  Please perform comprehensive @TAG system verification across the entire project.
 
   **Required Scope**: Scan ALL source files, not just changed files.
 
   **Verification Items**:
-  1. @SPEC TAGs in .moai/specs/ directory
-  2. @TEST TAGs in tests/ directory
-  3. @CODE TAGs in src/ directory
-  4. @DOC TAGs in docs/ directory
 
   **Orphan Detection** (Required):
-  - Detect @CODE TAGs with no matching @SPEC
-  - Detect @SPEC TAGs with no matching @CODE
-  - Detect @TEST TAGs with no matching @SPEC
-  - Detect @DOC TAGs with no matching @SPEC/@CODE
 
   **Output Format**:
   - Provide complete list of orphan TAGs with locations
@@ -351,7 +341,6 @@ Use Task tool:
      - Update README (if needed)
      - Synchronize Architecture documents
 
-  2. @TAG system updates:
      - Update TAG index (.moai/indexes/tags.db)
      - Repair orphan TAGs (if possible)
      - Restore broken references
@@ -359,7 +348,6 @@ Use Task tool:
   3. SPEC synchronization:
      - Ensure SPEC documents match implementation
      - Update EARS statements if needed
-     - Link @CODE/@TEST TAGs correctly
 
   4. Domain-based documentation:
      - Detect changed domains (frontend/backend/devops/database/ml/mobile)
@@ -490,7 +478,6 @@ Use Task tool:
 
   Generated with Claude Code
 
-  Co-Authored-By: 🎩 Alfred@MoAI
 
   **Important**:
   - Pass commit message in HEREDOC format
@@ -583,10 +570,6 @@ Print comprehensive summary:
 - Domain-specific reports: [count]
 
 🔗 TAG System Status:
-- @SPEC TAGs: [count]
-- @CODE TAGs: [count]
-- @TEST TAGs: [count]
-- @DOC TAGs: [count]
 - TAG chain integrity: [PASS / WARNING]
 
 📄 Reports Generated:

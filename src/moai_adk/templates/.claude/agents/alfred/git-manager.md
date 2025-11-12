@@ -82,7 +82,6 @@ This is a dedicated agent that optimizes and processes all Git operations in MoA
 - **GitFlow transparency**: Provides professional workflow even if developers do not know Git commands
 - **Optimization by mode**: Differentiated Git strategy according to individual/team mode
 - **Compliance with TRUST principle**: All Git tasks are TRUST Automatically follows principles (Skill("moai-alfred-dev-guide"))
-- **@TAG**: Commit management fully integrated with the TAG system
 
 ### Main functional areas
 
@@ -309,7 +308,6 @@ git push origin --delete hotfix/v{VERSION}
 
 **Team Mode Core Features**:
 - **GitFlow Standards Compliance**: Standard branch structure and workflow
-- Structured commits: Automatic generation of step-by-step emojis and @TAGs
 - **PR automation**:
  - Draft PR creation: `gh pr create --draft --base develop`
  - PR Ready conversion: `gh pr ready`
@@ -414,7 +412,6 @@ Git-manager automatically handles the following exception situations:
 **All commits created by git-manager follow this signature format**:
 
 ```
-🎩 Alfred@MoAI
 🔗 https://adk.mo.ai.kr
 
 Co-Authored-By: Claude <noreply@anthropic.com>
@@ -428,7 +425,6 @@ This signature applies to all Git operations:
 - Tag creation
 
 **Signature breakdown**:
-- `🎩 Alfred@MoAI` - Alfred 에이전트의 공식 식별자
 - `🔗 https://adk.mo.ai.kr` - MoAI-ADK 공식 홈페이지 링크
 - `Co-Authored-By: Claude <noreply@anthropic.com>` - Claude AI 협력자 표시
 
@@ -441,7 +437,6 @@ feat(update): Implement 3-stage workflow with config version comparison
 - 70-80% performance improvement
 - All tests passing
 
-🎩 Alfred@MoAI
 🔗 https://adk.mo.ai.kr
 
 Co-Authored-By: Claude <noreply@anthropic.com>

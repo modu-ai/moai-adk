@@ -14,7 +14,6 @@ version: 0.1.0
 status: active
 created: 2025-11-03
 updated: 2025-11-03
-author: @GOOS
 priority: high
 ---
 
@@ -301,7 +300,6 @@ Context saved: ~200 MB
 - [x] RED: Tests written first, all fail
 - [x] GREEN: Minimal code passes all tests
 - [x] REFACTOR: Code improved, tests still pass
-- [x] @TAG chain complete: SPEC→TEST(4)→CODE(5)→README
 
 ## R – Readable
 - [x] Function names: signup(), login(), _validate_email()

@@ -276,7 +276,6 @@ python .moai/scripts/validation/tag_validator.py
 Valid links:
 
 Invalid patterns (will fail validation):
-├─ @DOC without @SPEC/@CODE link
 └─ Circular references
 ```
 

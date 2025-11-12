@@ -114,7 +114,6 @@ Step 4: Carry forward summary only across handoffs
 
 **Technique 2: Context Tagging with Unique Identifiers**
 ```
-Use @TAG references instead of full context:
 
 ❌ Bad (high token cost):
 "The user configuration from the previous 20 messages..."
@@ -461,7 +460,6 @@ def sync_memory_files(session_state):
 - Use context-aware token budget tracking (Sonnet/Haiku 4.5 feature)
 - Create checkpoints before major operations
 - Apply progressive summarization for long workflows
-- Use @TAG references instead of full context
 - Enable session persistence for recovery
 - Monitor token usage and plan accordingly
 - Use session forking for parallel exploration

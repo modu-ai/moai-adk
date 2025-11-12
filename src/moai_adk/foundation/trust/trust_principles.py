@@ -625,7 +625,6 @@ class TrustPrinciplesValidator:
                 recommendations.append("Add project documentation (README.md, API docs)")
 
             if tag_references < 5:
-                recommendations.append("Add @TAG references for better traceability")
 
             if not (has_requirements or has_setup or has_pyproject):
                 recommendations.append("Add dependency management files")

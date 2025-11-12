@@ -4,7 +4,6 @@ version: "4.0.0"
 created: 2025-11-02
 updated: 2025-11-12
 tier: Alfred
-description: "SPEC-First TDD Development workflow orchestration guide with RED-GREEN-REFACTOR cycle, @TAG traceability, TRUST 5 principles, and comprehensive testing patterns from 7,549+ production code examples."
 allowed-tools: "Read, Bash(rg:*), Bash(grep:*)"
 primary-agent: "alfred"
 secondary-agents: ["spec-builder", "tdd-implementer", "test-engineer", "doc-syncer", "git-manager"]
@@ -29,7 +28,6 @@ Alfred's SPEC-First TDD workflow orchestrates the complete development lifecycle
 
 1. **SPEC Phase** (`/alfred:1-plan`): Requirements with EARS format
 2. **TDD Phase** (`/alfred:2-run`): RED → GREEN → REFACTOR cycle
-3. **SYNC Phase** (`/alfred:3-sync`): @TAG chain validation
 
 **Core Principle**: **No spec, no code. No tests, no implementation.**
 
@@ -1098,11 +1096,9 @@ Authentication Module
 
 ---
 
-#### Pattern 11: @TAG Chain Validation - Traceability
 
 **Objective**: Maintain complete traceability from SPEC to CODE.
 
-**@TAG Lifecycle**:
 
 ```
     ↓
@@ -1132,12 +1128,8 @@ def extract_tags(file_path: Path, tag_type: str) -> Set[str]:
     return set(re.findall(pattern, content))
 
 def validate_tag_chain(project_root: Path) -> Dict[str, List[str]]:
-    """Validate complete @TAG chain integrity.
     
     Checks:
-    1. Every @TEST tag links to existing @SPEC
-    2. Every @CODE tag links to existing @TEST
-    3. Every @DOC tag links to existing @CODE
     4. No orphan tags
     
     Returns:
@@ -1183,14 +1175,12 @@ def validate_tag_chain(project_root: Path) -> Dict[str, List[str]]:
 if __name__ == '__main__':
     errors = validate_tag_chain(Path.cwd())
     if errors:
-        print("❌ @TAG Chain Validation FAILED:")
         for error_type, items in errors.items():
             print(f"\n{error_type}:")
             for item in items:
                 print(f"  - {item}")
         exit(1)
     else:
-        print("✅ @TAG Chain Validation PASSED")
 ```
 
 **Run Validation**:
@@ -1198,7 +1188,6 @@ if __name__ == '__main__':
 ```bash
 $ python scripts/validate_tags.py
 
-✅ @TAG Chain Validation PASSED
 
 SPEC → TEST → CODE → DOC Chain:
 ```
@@ -1531,16 +1520,13 @@ on:
 
 jobs:
   validate-tags:
-    name: "Validate @TAG Chain"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       
-      - name: Check @TAG integrity
         run: |
           python scripts/validate_tags.py
           if [ $? -ne 0 ]; then
-            echo "❌ @TAG chain validation failed"
             exit 1
           fi
 
@@ -1643,7 +1629,6 @@ jobs:
       - name: Generate sync report
         run: |
           echo "✅ All TRUST 5 principles verified"
-          echo "✅ @TAG chain validated"
           echo "✅ Tests passing (coverage: 93%)"
           echo "✅ Security scan passed"
           echo "✅ Performance benchmarks met"
@@ -1687,7 +1672,6 @@ TodoWrite:
   [pending] Write failing tests for SPEC-001
   [pending] Implement authentication logic
   [pending] Add documentation
-  [pending] Validate @TAG chain
 
 # ===== PHASE 2: TDD (/alfred:2-run) =====
 $ /alfred:2-run SPEC-001
@@ -1727,7 +1711,6 @@ TodoWrite:
 $ /alfred:3-sync auto SPEC-001
 
 Alfred (doc-syncer agent):
-  1. Validates @TAG chain:
   
   2. Generates Sphinx documentation:
   
@@ -1748,7 +1731,6 @@ Alfred (doc-syncer agent):
 
 TodoWrite:
   [completed] Add documentation
-  [completed] Validate @TAG chain
   [completed] Create PR to develop
 
 # ===== RESULT =====
@@ -1756,7 +1738,6 @@ PR #42 created: feature/SPEC-001 → develop
   - 3 commits (RED, GREEN, REFACTOR+DOCS)
   - 5 tests passing
   - 93% coverage
-  - @TAG chain validated
   - Documentation deployed
   - CI checks passing
 ```
@@ -1836,7 +1817,6 @@ async def run_tdd_cycle(spec_id: str):
     
     validation = await delegate_to_agent(
         agent_type="tag-agent",
-        prompt=f"Validate @TAG chain for {spec_id}"
     )
     
     # Phase 6: Commit (git-manager)
@@ -1902,7 +1882,6 @@ class TDDMetricsCollector:
 
 ## Quality Metrics
 - **Test Coverage**: {metrics['test_coverage']}% (Target: ≥85%)
-- **@TAG Integrity**: {'✅ Valid' if metrics['tag_integrity'] else '❌ Broken'}
 
 ## TRUST 5 Compliance
 {'✅ All principles satisfied' if all(metrics['trust_compliance'].values()) else '❌ Violations detected'}
@@ -1926,10 +1905,8 @@ Path(".moai/reports/SPEC-001-metrics.md").write_text(report)
 2. **RED Verification**: Ensure tests fail before implementation
 3. **Minimal GREEN**: Write only enough code to pass tests
 4. **Safe REFACTOR**: Run tests after every refactoring step
-5. **@TAG Discipline**: Tag every requirement, test, code, and doc
 6. **Context Efficiency**: Load only necessary documents per phase
 7. **Agent Delegation**: Use specialized agents for expertise domains
-8. **Continuous Validation**: Run @TAG validation in CI/CD
 9. **Documentation Sync**: Auto-generate docs from code
 10. **TRUST Enforcement**: Validate all 5 principles before merge
 
@@ -1938,7 +1915,6 @@ Path(".moai/reports/SPEC-001-metrics.md").write_text(report)
 1. **Skipping RED**: Writing passing tests after implementation ❌
 2. **Gold-Plating GREEN**: Adding features not in tests ❌
 3. **Refactoring Without Tests**: Changing code behavior ❌
-4. **Orphan Tags**: @TEST without @SPEC, @CODE without @TEST ❌
 5. **Manual Documentation**: Writing docs separately from code ❌
 6. **Context Overload**: Loading entire codebase every phase ❌
 7. **Agent Bypass**: Alfred executing tasks instead of delegating ❌
@@ -1995,13 +1971,11 @@ Path(".moai/reports/SPEC-001-metrics.md").write_text(report)
 
 **`/alfred:3-sync`**:
 - Loads: Advanced Patterns section (Level 3)
-- Uses: Patterns 11-15 (Documentation, @TAG validation, CI/CD)
 - Agents: doc-syncer, tag-agent, git-manager
 
 ### Skill Dependencies
 
 - `moai-alfred-todowrite-pattern`: Task tracking during TDD cycle
-- `moai-foundation-tags`: @TAG system implementation details
 - `moai-alfred-best-practices`: TRUST 5 principles enforcement
 - `moai-lang-python`: Python-specific TDD patterns
 - `moai-lang-typescript`: TypeScript/Jest patterns

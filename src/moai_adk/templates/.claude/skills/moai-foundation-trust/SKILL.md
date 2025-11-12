@@ -40,7 +40,6 @@ This foundational Skill defines **TRUST 5**, the core quality principles for MoA
 - **R**eadable: Code clarity over cleverness
 - **U**nified: Consistent patterns and conventions
 - **S**ecured: Security by design (OWASP Top 10 compliance)
-- **T**rackable: Complete traceability via @TAG system
 
 Each principle includes:
 - **Definition**: What the principle means
@@ -234,7 +233,6 @@ Rule R3: Documentation
 ├─ Module docstrings (at file top)
 ├─ Complex logic: inline comments
 ├─ Why, not what: explain reasoning
-├─ Link to SPEC/TEST via @TAG
 └─ Keep docs in sync with code
 
 Rule R4: Consistent style
@@ -479,11 +477,6 @@ MoAI-ADK enforces **all 10 OWASP Top 10** vulnerabilities prevention:
 
 | Threat | Prevention | Implementation | Test | Docs |
 |--------|-----------|-----------------|------|------|
-| SQL Injection | Parameterized queries | @CODE | @TEST | @DOC |
-| XSS | Input validation + output encoding | @CODE | @TEST | @DOC |
-| CSRF | Token validation | @CODE | @TEST | @DOC |
-| Weak passwords | Policy enforcement + hashing | @CODE | @TEST | @DOC |
-| Exposed secrets | Environment variables + vault | @CODE | @TEST | @DOC |
 
 ### Security Validation (STRICT Mode)
 
@@ -567,9 +560,7 @@ def test_password_hash_secure():
 
 ### Definition
 
-**Complete traceability from requirements to production.** Every line of code must be linked to a requirement via @TAG system.
 
-**See** `Skill("moai-foundation-tags")` for complete @TAG system guide.
 
 ### Traceability Rules
 
@@ -587,12 +578,10 @@ Rule T2: SPEC linked to TESTS
 └─ Validation: Coverage report >= 85%
 
 Rule T3: TESTS linked to CODE
-├─ Every @TEST references a @SPEC
 ├─ Code implements test requirements
 └─ Validation: All tests pass
 
 Rule T4: CODE linked to DOCS
-├─ Documentation describes @CODE
 ├─ Users know what code does
 └─ Validation: Docs match code
 ```
@@ -860,7 +849,6 @@ TRUST 5 is the **foundation of code quality** in MoAI-ADK. Every feature must sa
 2. **Readable**: Clear code with low complexity
 3. **Unified**: Consistent patterns across codebase
 4. **Secured**: OWASP compliance and security by design
-5. **Trackable**: Complete traceability via @TAG system
 
 Together, TRUST 5 ensures code is **correct, maintainable, secure, and auditable**.
 

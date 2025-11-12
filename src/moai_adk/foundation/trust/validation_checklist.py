@@ -538,11 +538,9 @@ class TRUSTValidationChecklist:
             ChecklistItem(
                 id="TK_002",
                 title="Tag References",
-                description="Code references @TAGs for traceability",
                 category=ChecklistType.TRACKABLE,
                 severity=ChecklistSeverity.HIGH,
                 validation_rule="tag_references_present",
-                expected_result="@TAG references for traceability",
                 score_weight=1.5
             ),
             ChecklistItem(

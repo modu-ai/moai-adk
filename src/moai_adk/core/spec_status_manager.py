@@ -33,8 +33,6 @@ class SpecStatusManager:
         # Validation criteria (configurable)
         self.validation_criteria = {
             "min_code_coverage": 0.85,  # 85% minimum coverage
-            "require_all_tags": True,    # All @CODE and @TEST tags must be implemented
-            "max_open_tasks": 0,         # No remaining @TASK tags
             "require_acceptance_criteria": True,
             "min_implementation_age_days": 0  # Days since last implementation
         }
@@ -60,10 +58,8 @@ class SpecStatusManager:
                         with open(spec_file, 'r', encoding='utf-8') as f:
                             content = f.read()
 
-                        # Extract frontmatter (YAML or @META format)
                         frontmatter = None
 
-                            # Parse @META format (JSON-like)
                             if meta_match:
                                 try:
                                     meta_text = meta_match.group(1)
@@ -71,7 +67,6 @@ class SpecStatusManager:
                                     meta_text = meta_text.replace('"', '').replace("'", '')
                                     frontmatter = yaml.safe_load('{' + meta_text + '}')
                                 except Exception as e:
-                                    logger.warning(f"Could not parse @META format for {spec_dir.name}: {e}")
 
                         # Handle regular YAML frontmatter
                         elif content.startswith('---'):
@@ -129,13 +124,10 @@ class SpecStatusManager:
             test_tags = required_tags.get('TEST', set())
             task_tags = required_tags.get('TASK', set())
 
-            # Verify all @CODE tags are implemented
             code_implemented = self._verify_code_tags_implementation(code_tags)
 
-            # Verify all @TEST tags are implemented
             test_implemented = self._verify_test_tags_implementation(test_tags)
 
-            # Verify no remaining @TASK tags (unless allowed)
             tasks_completed = len(task_tags) <= self.validation_criteria['max_open_tasks']
 
             # Additional validation checks
@@ -263,23 +255,17 @@ class SpecStatusManager:
             # Check each validation criterion
             criteria_checks = {}
 
-            # 1. All @CODE tags implemented
             code_tags = required_tags.get('CODE', set())
             criteria_checks['code_implemented'] = self._verify_code_tags_implementation(code_tags)
             if not criteria_checks['code_implemented']:
-                result['issues'].append(f"Missing {len(code_tags)} @CODE tag implementations")
 
-            # 2. All @TEST tags implemented
             test_tags = required_tags.get('TEST', set())
             criteria_checks['test_implemented'] = self._verify_test_tags_implementation(test_tags)
             if not criteria_checks['test_implemented']:
-                result['issues'].append(f"Missing {len(test_tags)} @TEST tag implementations")
 
-            # 3. No remaining @TASK tags
             task_tags = required_tags.get('TASK', set())
             criteria_checks['tasks_completed'] = len(task_tags) <= self.validation_criteria['max_open_tasks']
             if not criteria_checks['tasks_completed']:
-                result['issues'].append(f"{len(task_tags)} @TASK tags remaining")
 
             # 4. Acceptance criteria present
             criteria_checks['has_acceptance_criteria'] = self._check_acceptance_criteria(spec_file)
@@ -385,7 +371,6 @@ class SpecStatusManager:
         return required_tags
 
     def _verify_code_tags_implementation(self, code_tags: Set[str]) -> bool:
-        """Verify that all @CODE tags have corresponding implementations
 
         Args:
             code_tags: Set of CODE tag IDs
@@ -452,7 +437,6 @@ class SpecStatusManager:
         return all_implemented
 
     def _verify_test_tags_implementation(self, test_tags: Set[str]) -> bool:
-        """Verify that all @TEST tags have corresponding test implementations
 
         Args:
             test_tags: Set of TEST tag IDs

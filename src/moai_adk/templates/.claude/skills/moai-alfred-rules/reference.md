@@ -53,7 +53,6 @@
 | # | Skill | 호출 조건 | 반환값 |
 |---|-------|---------|--------|
 | 1 | moai-foundation-trust | TRUST 5 검증 필요 | Score + violations |
-| 2 | moai-foundation-tags | @TAG 무결성 확인 | Chain status |
 | 3 | moai-foundation-specs | SPEC 작성/검증 | Template + validation |
 | 4 | moai-foundation-ears | EARS 형식 필요 | Format guide |
 | 5 | moai-foundation-git | Git 워크플로우 | Branch + commit rules |
@@ -152,10 +151,8 @@ safety check
 detect-secrets scan
 ```
 
-### Trackable (@TAG)
 
 ```bash
-# @TAG 추출
 grep -r "@[A-Z]+-[0-9]\+" .
 
 # 체인 검증
@@ -169,7 +166,6 @@ grep -r "@[A-Z]+-[0-9]\+" .
 ### RED (테스트 작성)
 
 ```
-test(@AUTH-001): Add authentication tests
 
 - Implement test_successful_login()
 - Implement test_invalid_credentials()
@@ -181,7 +177,6 @@ All tests RED (expected to fail at this stage).
 ### GREEN (구현)
 
 ```
-feat(@AUTH-001): Implement user authentication
 
 - Add authenticate_user() function
 - Add JWT token generation
@@ -194,7 +189,6 @@ All tests now GREEN (passing).
 ### REFACTOR (최적화)
 
 ```
-refactor(@AUTH-001): Optimize authentication flow
 
 - Extract token validation to separate function
 - Add in-memory cache for user lookups
@@ -224,7 +218,6 @@ if code_needed:
     Task(
         subagent_type="tdd-implementer",
         description="Implement feature X",
-        prompt="Follow RED-GREEN-REFACTOR cycle, add @TAG-001"
     )
 
 # 패턴 3: 테스트
@@ -240,7 +233,6 @@ if docs_needed:
     Task(
         subagent_type="doc-syncer",
         description="Document feature X",
-        prompt="Update README, add examples, link @TAGs"
     )
 
 # 패턴 5: Git 커밋
@@ -248,7 +240,6 @@ if commit_needed:
     Task(
         subagent_type="git-manager",
         description="Commit changes",
-        prompt="Use TDD commit format, include @TAG"
     )
 ```
 
@@ -265,7 +256,6 @@ from pathlib import Path
 TAG_PATTERN = r'@[A-Z]+-\d{3}'
 
 def find_all_tags(directory):
-    """Find all @TAGs in codebase"""
     tags = {}
     for file in Path(directory).rglob('*'):
         if file.is_file() and file.suffix in ['.py', '.md', '.txt']:

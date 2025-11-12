@@ -513,10 +513,6 @@ Per SPEC-001, the system SHALL validate all JWT tokens...
 
 ### TAG Integration
 
-- [ ] @SPEC tag added to document header
-- [ ] @TEST tags linked for each requirement
-- [ ] @CODE tags reserved (to be filled during implementation)
-- [ ] @DOC tags reserved (to be filled during sync)
 
 ### Documentation Quality
 
@@ -599,7 +595,6 @@ unwanted_behaviors:
 **Bad**:
 ```
 # SPEC-001: Feature Name
-# (No @SPEC, @TEST, @CODE, @DOC tags)
 ```
 
 **Good**:
@@ -742,7 +737,6 @@ and SHALL NOT exceed 500MB memory usage under sustained load.
 
 # Related Skills
 - `moai-alfred-best-practices`: TRUST 5 principles for SPEC authoring
-- `moai-foundation-tags`: @TAG system and traceability
 - `moai-alfred-spec-validation`: Automated SPEC validation
 ```
 

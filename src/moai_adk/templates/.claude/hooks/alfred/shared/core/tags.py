@@ -2,7 +2,6 @@
 """TAG validation helpers for MoAI-ADK hooks
 
 Fast checks used by PreToolUse/PostToolUse to nudge users when
-new or modified files are missing required @TAG annotations.
 
 Configurable rules with sensible defaults:
 - Load patterns from .moai/tag-rules.json if present.
@@ -59,7 +58,6 @@ DEFAULT_CODE_EXTS = (
 @dataclass
 class TagIssue:
     path: str
-    expected: str  # one of @SPEC, @TEST, @CODE, @DOC
     reason: str
 
 

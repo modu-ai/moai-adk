@@ -44,7 +44,6 @@ Alfred passes the user's language directly to you via `Task()` calls.
 **Example**:
 - You receive (Korean): "코드 품질을 검증해주세요"
 - You invoke: Skill("moai-alfred-trust-validation"), Skill("moai-essentials-review")
-- You generate Korean report with English technical terms (PASS/WARNING, @TAGs)
 
 ## 🧰 Required Skills
 

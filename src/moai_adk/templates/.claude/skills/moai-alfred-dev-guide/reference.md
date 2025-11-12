@@ -41,7 +41,6 @@ version: 0.1.0
 status: active
 created: 2025-11-03
 updated: 2025-11-03
-author: @USERNAME
 priority: high
 ```
 
@@ -108,7 +107,6 @@ from src.exceptions import AuthenticationError
 
 **Duration**: 30-60 minutes per SPEC
 **Actions**:
-1. Verify all @TAG chains (SPEC→TEST→CODE→DOC)
 2. Update README, CHANGELOG
 3. Generate sync report
 4. Create PR to develop
@@ -163,7 +161,6 @@ Never load:
 - [ ] RED phase: failing tests written first
 - [ ] GREEN phase: code passes all tests
 - [ ] REFACTOR: improved code still passes
-- [ ] @TAG chain: SPEC→TEST→CODE→DOC
 
 ### R – Readable
 - [ ] Variable names are descriptive
@@ -193,13 +190,11 @@ Never load:
 - [ ] Edge cases included
 - [ ] Integration tests exist
 
-## @TAG Chain Validation
 
 ```bash
 # Check all TAGs
 rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/
 
-# Find orphan SPECs (no @CODE references)
 
 # Find orphan CODE tags (SPEC missing)
 ```

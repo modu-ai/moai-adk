@@ -15,7 +15,6 @@ Comprehensive guide for authoring SPEC documents in MoAI-ADK projects. Provides 
 - **7 Required + 9 Optional Metadata Fields**: Complete reference with lifecycle examples
 - **5 Official EARS Patterns**: Ubiquitous, Event-driven, State-driven, Optional, Unwanted Behaviors
 - **Version Lifecycle**: Semantic versioning from draft to production
-- **TAG Integration**: @SPEC, @TEST, @CODE, @DOC chain management
 - **Validation Tools**: Pre-submission checklist and automation scripts
 - **Common Pitfalls**: Prevention strategies for 7 major issues
 
@@ -80,7 +79,6 @@ version: 0.0.1
 status: draft
 created: 2025-10-29
 updated: 2025-10-29
-author: @YourHandle
 priority: high
 ---
 

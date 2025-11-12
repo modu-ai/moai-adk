@@ -24,7 +24,6 @@
 - **R**eadable: Clear function names, <50 lines per function
 - **U**nified: Consistent with auth module patterns
 - **S**ecured: OWASP A02 (cryptographic failures) compliance
-- **T**rackable: Complete @TAG chain from SPEC→TEST→CODE→DOC
 ```
 
 #### T: Test First - Write Tests (RED Phase)
@@ -198,7 +197,6 @@ for high-quality, secure code.
 
 Security (S): Uses bcrypt for password hashing (OWASP approved)
 Readable (R): Clear function names, comprehensive docstrings
-Trackable (T): Every function linked to @SPEC via @CODE tags
 """
 
 import bcrypt

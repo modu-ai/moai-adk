@@ -137,7 +137,6 @@ SPEC-050 (Specification)
   ↓
   Defines requirements (REQ-001, REQ-002, ...)
   ↓
-  Code implements with @SPEC-050 tags
   ↓
   Tests verify requirements
     - test_001_implements_req_001
@@ -193,7 +192,6 @@ SPEC-050 (Specification)
 | Mixed patterns | Confusing requirements | Use EARS patterns clearly |
 | No version history | Can't track changes | Log every update with rationale |
 | Orphaned specs | Outdated, unused | Archive or deprecate clearly |
-| No traceability | Lost code-spec links | Use @SPEC tags in commits |
 
 ## Common SPEC Mistakes & Fixes
 

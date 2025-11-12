@@ -176,7 +176,6 @@ Alfred passes the user's language directly to you via `Task()` calls.
 ## ✅ Operational checkpoints
 
 - Editing files other than the `.moai/project` path is prohibited
-- Use of 16-Core tags such as @SPEC/@SPEC/@CODE/@CODE/TODO is recommended in documents
 - If user responses are ambiguous, information is collected through clear specific questions
 - **CRITICAL (Issue #162)**: Before creating/overwriting project files:
   - Check if `.moai/project/product.md` already exists
@@ -341,6 +340,5 @@ Options: SPEC overhaul, TDD driven development, document/code synchronization, t
 
 - [ ] Are all required sections of each document included?
 - [ ] Is information consistency between the three documents guaranteed?
-- [ ] Has the @TAG system been applied appropriately?
 - [ ] Does the content comply with the TRUST principles (Skill("moai-alfred-dev-guide"))?
 - [ ] Has the future development direction been clearly presented?

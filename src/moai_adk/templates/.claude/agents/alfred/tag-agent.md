@@ -1,6 +1,5 @@
 ---
 name: tag-agent
-description: "Use when: TAG integrity verification, orphan TAG detection, @SPEC/@TEST/@CODE/@DOC chain connection verification is required."
 tools: Read, Glob, Bash, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
 model: haiku
 ---
@@ -68,14 +67,11 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 - **Code-based TAG scan**: Real-time extraction of TAGs from entire project source files
 - **TAG integrity verification**: 4-Core TAG chain, reference relationship, duplicate verification
-- **TAG chain management**: @SPEC → @TEST → @CODE chain integrity assurance (v5.0 4-Core)
-- **Expert domain tracking**: @EXPERT TAG validation and domain expert involvement traceability
 
 **Core Principle**: The source of truth for TAGs exists only in the code itself, and all TAGs are extracted in real time from the source files.
 
 ---
 
-## @EXPERT TAG System (NEW)
 
 ### 5-Core TAG Architecture
 
@@ -87,7 +83,6 @@ Alfred passes the user's language directly to you via `Task()` calls.
 5-Core (Expert Domain Involvement):
 ```
 
-### Valid @EXPERT Domains
 
 | Domain | Trigger Keywords | Responsibility |
 |--------|-----------------|-----------------|
@@ -96,7 +91,6 @@ Alfred passes the user's language directly to you via `Task()` calls.
 | **DEVOPS** | 'deployment', 'docker', 'kubernetes', 'ci/cd', 'pipeline', 'infrastructure', 'railway', 'vercel', 'aws' | DevOps strategy, containerization, CI/CD, infrastructure |
 | **UIUX** | 'design', 'ux', 'ui', 'accessibility', 'a11y', 'user experience', 'wireframe', 'prototype', 'design system', 'figma', 'user research', 'persona', 'journey map' | Design system, accessibility, UX patterns, design-to-code |
 
-### @EXPERT TAG Usage Examples
 
 ```markdown
 # SPEC-AUTH-001: User Authentication
@@ -117,18 +111,15 @@ Alfred passes the user's language directly to you via `Task()` calls.
 - ui-ux-expert: Design system & accessibility
 ```
 
-### @EXPERT TAG Verification Rules
 
 **Valid Format**:
 
 **Validation Checks**:
 1. **Domain validity**: Only BACKEND, FRONTEND, DEVOPS, UIUX allowed
 3. **Duplication prevention**: Same domain used multiple times in one SPEC is a warning
-4. **Chain consistency**: @EXPERT domains should match SPEC keywords
 
 **Verification Implementation**:
 ```bash
-# Scan for all @EXPERT TAGs
 
 # Validate domain values only
 
@@ -216,7 +207,6 @@ rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/
 ```
 
 **Verification items**:
-- **4-Core TAG chain integrity**: Check @SPEC → @TEST → @CODE (→ @DOC) chain
 - **Orphan TAG detection**: Automatic detection of CODE TAG without SPEC
 - **Duplicate TAG detection**: Duplicate use of the same ID OK
 - **Broken Reference Detection**: Check for non-existent TAG references
@@ -331,4 +321,3 @@ Auto-tagging relevant TAGs on commit, managing branch-specific TAG scope, and au
 
 ---
 
-This tag-agent fully automates MoAI-ADK's @TAG system, ensuring full traceability and quality without developers having to worry about TAG management.

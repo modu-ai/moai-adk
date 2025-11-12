@@ -5,7 +5,6 @@ created: 2025-11-12
 updated: 2025-11-12
 status: stable
 tier: foundation
-description: "Complete TAG system guide covering @SPEC, @TEST, @CODE, @DOC chains, TAG lifecycle management, orphan detection, validation rules, and enterprise traceability patterns. Enterprise v4.0 with November 2025 stable coverage."
 allowed-tools: "Read, Glob, Grep, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
 primary-agent: "alfred"
 secondary-agents: [tag-agent, qa-validator, doc-syncer]
@@ -19,12 +18,10 @@ depends_on: []
 
 # moai-foundation-tags
 
-**The Complete @TAG System & Traceability Framework**
 
 > **Version**: 4.0.0 Enterprise  
 > **Tier**: Foundation  
 > **Updated**: November 2025 Stable  
-> **Keywords**: TAG-system, traceability, @SPEC, @TEST, @CODE, @DOC, governance
 
 ---
 
@@ -34,9 +31,7 @@ depends_on: []
 
 ### What It Does
 
-This foundational Skill provides the **complete operational guide** for MoAI-ADK's @TAG system:
 
-- **TAG System Architecture**: Four-chain model (@SPEC → @TEST → @CODE → @DOC)
 - **TAG Lifecycle**: Creation, linking, validation, and deprecation
 - **Orphan Detection & Cleanup**: Identify and remediate unreferenced TAGs
 - **Validation Rules**: Enterprise-grade governance and compliance
@@ -57,27 +52,12 @@ Every feature in MoAI-ADK follows a complete chain from specification to documen
 ```
 Requirement Layer (SPEC)
     ↓
-    @SPEC-001: Define requirements
         ↓ (depends on)
-    TEST Layer (@TEST)
         ↓
-        @TEST-SPEC-001: Write failing tests
-        @TEST-SPEC-001-001: Unit test
-        @TEST-SPEC-001-002: Integration test
             ↓ (validates)
-    Implementation Layer (@CODE)
         ↓
-        @CODE-SPEC-001: Implement feature
-        @CODE-SPEC-001-001: Main function
-        @CODE-SPEC-001-002: Helper logic
-        @CODE-SPEC-001-003: Error handling
             ↓ (fulfills)
-    Documentation Layer (@DOC)
         ↓
-        @DOC-SPEC-001: Document feature
-        @DOC-SPEC-001-001: User guide
-        @DOC-SPEC-001-002: API reference
-        @DOC-SPEC-001-003: Migration guide
 ```
 
 ### Chain Semantics (November 2025)
@@ -86,10 +66,6 @@ Each link type defines a specific relationship:
 
 | Chain Type | Direction | Meaning | Validation |
 |-----------|-----------|---------|-----------|
-| **@SPEC** | Requirement definition | "What must be done?" | Required in .moai/specs/ |
-| **@TEST** | Validation logic | "How do we verify?" | ≥85% code coverage |
-| **@CODE** | Implementation | "How is it built?" | Must reference @SPEC |
-| **@DOC** | Knowledge capture | "How do users use it?" | Links to @SPEC/@CODE |
 
 ### Example: Complete Chain
 
@@ -106,14 +82,12 @@ Each link type defines a specific relationship:
      Validates SPEC-001 authentication requirements
      """
      def test_login_with_valid_credentials():
-         # @TEST-SPEC-001-001: User login with correct password
          assert authenticate("user", "password") == True
 
 3. Code Implemented (GREEN phase):
    File: src/auth.py
    Content:
      def authenticate(username, password):
-         # @CODE-SPEC-001-001: Password validation
          if validate_password(password):
              return True
 
@@ -182,10 +156,6 @@ Authentication module handles user login...
 ### Phase 3: Maturity (Stability)
 
 **All chain links validated**:
-- @SPEC exists and approved
-- @TEST coverage >= 85%
-- @CODE references @SPEC
-- @DOC links to @SPEC/@CODE
 - Traceability chain complete
 
 **Quality Gate Checks** (November 2025):
@@ -203,10 +173,6 @@ End-of-life: 2026-05-01
 ```
 
 **Orphan Detection**:
-- Scan for unreferenced @SPEC TAGs
-- Find @TEST TAGs without @SPEC links
-- Identify @CODE without @TEST
-- Flag @DOC without source references
 
 ---
 
@@ -222,21 +188,13 @@ Rule 1: Unique Identifier
 ├─ Format: @[TYPE]:[DOMAIN]-[NNN]
 
 Rule 2: Proper Hierarchy
-├─ @SPEC must exist before @TEST/@CODE
-├─ @TEST must exist before @CODE
-├─ @DOC must reference @SPEC or @CODE
 └─ Circular references forbidden
 
 Rule 3: Complete Chains
-├─ Every @SPEC should have @TEST
-├─ Every @TEST should validate a @SPEC
-├─ Every @CODE should implement a @SPEC
-├─ Every @DOC should reference source
 └─ No orphan TAGs allowed
 
 Rule 4: Version Compliance
 ├─ TAG references must use current versions
-├─ Deprecated features marked @DEPRECATED
 ├─ Migration paths documented
 └─ November 2025 standards enforced
 
@@ -251,7 +209,6 @@ Rule 5: Documentation
 
 ```bash
 # Scan for TAGs
-rg '@SPEC|@TEST|@CODE|@DOC' -n
 
 # Find orphans
   while read spec; do
@@ -273,7 +230,6 @@ python .moai/scripts/analysis/tag_analyzer.py --report
 
 Orphan TAGs are references that exist but lack proper linking:
 
-**Type A: Unreferenced @SPEC**
 ```python
 # Problem: Created but never used
 
@@ -282,23 +238,16 @@ Reason: Feature cancelled
 Decision: 2025-11-12
 ```
 
-**Type B: Floating @TEST**
 ```python
-# Problem: Test exists but @SPEC missing
 
-# Solution: Link to existing @SPEC or create it
 ```
 
-**Type C: Stray @CODE**
 ```python
-# Problem: Code has TAG but no @SPEC/@TEST
 def feature():
-    # Missing @SPEC and @TEST
 
 # Solution: Trace requirements
 ```
 
-**Type D: Orphan @DOC**
 ```markdown
 # Documentation exists but no source
 
@@ -342,19 +291,13 @@ PYEOF
 ```python
 # Determine orphan type
 def analyze_orphan(tag):
-    if tag.startswith('@SPEC'):
-        # Check if @TEST references it
-        if search_references(f'{tag}', ['@TEST']):
             return 'OK'
         else:
             return 'ORPHAN_TYPE_A'
-    elif tag.startswith('@TEST'):
-        # Check if linked to @SPEC
         if has_spec_link(tag):
             return 'OK'
         else:
             return 'ORPHAN_TYPE_B'
-    # ... continue for @CODE, @DOC
 ```
 
 **Step 3: Remediation Phase**
@@ -364,7 +307,6 @@ def analyze_orphan(tag):
 # Option 2: Mark as deprecated
 
 # Option 3: Create missing link
-# Create SPEC if orphan is @TEST/@CODE
 ```
 
 ---
@@ -404,7 +346,6 @@ Validation Status:
 ```
 Feature     | SPEC    | TEST    | CODE    | DOC     | Status
 ------------|---------|---------|---------|---------|----------
-Legacy API  | @DEPRECATED    | -    | -    | ✓ 2 | DEPRECATED
 ```
 
 ---
@@ -427,23 +368,17 @@ Examples:
 
 | Component | Responsible | Timeline | Review |
 |-----------|-------------|----------|--------|
-| @SPEC | spec-builder | Day 1 | plan-agent |
-| @TEST | test-engineer | Day 2 | qa-validator |
-| @CODE | tdd-implementer | Days 3-5 | code-reviewer |
-| @DOC | doc-syncer | Day 6 | technical-writer |
 
 ### Deprecation Policy
 
 ```
 When removing features:
 
-1. Mark with @DEPRECATED
    EOL Date: 2026-05-01
 
 2. Create migration guide
    Link: docs/migrations/old-to-new.md
 
-3. Update @CODE references
 
 4. Maintain 6-month runway
    Old feature supported during migration window
@@ -477,9 +412,6 @@ Task(subagent_type="tag-agent")  # Scan and validate TAGs
 ### TAG-Driven Workflow
 
 ```
-1. /alfred:1-plan → Creates @SPEC
-2. /alfred:2-run → Creates @TEST, @CODE (RED-GREEN-REFACTOR)
-3. /alfred:3-sync → Creates @DOC
 4. Validation → TAG chain verified
 ```
 
@@ -500,12 +432,10 @@ This Skill covers:
 
 ```markdown
 v3.x Pattern:
-  @TAG-OLD-001
 
 v4.0.0 Pattern:
 
 Migration:
-  1. Audit existing @TAG-* references
   2. Map to v4.0.0 type system
   3. Create chain links
   4. Update references
@@ -664,7 +594,6 @@ import subprocess
 orphans = []
 for spec in specs:
     # Check if any TEST, CODE, or DOC references it
-    refs = subprocess.run(['rg', f'{spec}.*(@TEST|@CODE|@DOC)', '--count-matches'],
         capture_output=True, text=True)
     if refs.stdout.strip() == '0':
         orphans.append(spec)
@@ -683,7 +612,6 @@ python .moai/scripts/validation/tag_chain_validator.py
 echo ""
 echo "Test Coverage by TAG:"
 python << 'PYEOF'
-# Coverage analysis by @SPEC TAG
 import json
 coverage_data = json.load(open('.coverage'))
 for spec, coverage in coverage_data.items():
@@ -694,7 +622,6 @@ PYEOF
 # 5. Deprecation review
 echo ""
 echo "Deprecated features review:"
-rg '@DEPRECATED' -n
 ```
 
 ### Integration with CI/CD
@@ -760,16 +687,10 @@ def detect_missing_spec_tags():
 
 ### 2. TAG Duplication Detection System
 
-**Problem**: Multiple @CODE tags for same @SPEC (middle duplication)
 
 **Detection Algorithm**:
 ```
-1. SCAN: Find all @SPEC IDs in codebase
-2. COUNT: For each @SPEC ID, count @CODE occurrences
 3. CLASSIFY:
-   - Single (OK): 1 @CODE per @SPEC
-   - Duplicate (WARN): 2+ @CODE for same @SPEC
-   - Missing (ERR): @SPEC exists but no @CODE
 4. RANK: By authority (topline > inline, earlier > later)
 5. RECOMMEND: Keep primary, merge duplicates
 ```
@@ -797,9 +718,6 @@ python3 .moai/scripts/validation/tag_dedup_manager.py --apply
 **Weekly Health Check** (Every Monday):
 ```python
 metrics = {
-    'tag_coverage': 95,        # % of @SPEC with @CODE
-    'orphan_count': 0,         # @CODE without @SPEC
-    'duplicate_groups': 2,     # Multi-occurrence @SPEC IDs
     'chain_complete': 98,      # SPEC→TEST→CODE→DOC links
     'doc_sync': 92,            # SPEC updated? DOC updated?
     'definition_complete': 94, # Metadata fields filled
@@ -838,15 +756,8 @@ python3 .moai/scripts/monitoring/tag_health_monitor.py --notify slack
 ```
 STEP 1: Coverage Analysis (5 min)
   - Count total SPEC documents
-  - Verify each has @TEST reference
-  - Verify each has @CODE reference
-  - Verify each has @DOC reference
 
 STEP 2: Chain Integrity (10 min)
-  - For each @SPEC-ID:
-    ✓ Does @TEST-SPEC-ID exist?
-    ✓ Does @CODE-SPEC-ID exist?
-    ✓ Does @DOC-SPEC-ID exist?
   - Mark as Complete/Incomplete
 
 STEP 3: Quality Score (5 min)
@@ -913,7 +824,6 @@ python3 .moai/scripts/analysis/tag_analyzer.py --audit --report .moai/reports/ta
 
 ## Summary
 
-The @TAG system is the **core traceability mechanism** for MoAI-ADK, linking requirements (@SPEC) through tests (@TEST) to implementation (@CODE) and documentation (@DOC). This Skill provides the complete operational guide for creating, managing, validating, and auditing TAGs at enterprise scale.
 
 **Key Takeaway**: Treat TAGs as first-class citizens in your codebase. Every feature should be traceable from its specification to its documentation through its tests and code.
 
