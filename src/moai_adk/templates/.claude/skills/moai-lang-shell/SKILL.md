@@ -1,11 +1,12 @@
 ---
-name: moai-lang-shell
-version: 4.0.0
+name: "moai-lang-shell"
+version: "4.0.0"
 tier: Language
 description: "Enterprise Shell scripting mastery with ShellCheck 0.10, bats-core 1.11, POSIX compliance, and defensive scripting patterns based on 1,335+ production code examples."
 primary-agent: "alfred"
 secondary-agents: ["tdd-implementer", "test-engineer", "code-reviewer"]
 keywords: ["shell", "bash", "shellcheck", "bats", "posix", "scripting", "testing", "linting"]
+status: stable
 ---
 
 # moai-lang-shell

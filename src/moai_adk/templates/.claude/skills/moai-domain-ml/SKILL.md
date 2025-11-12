@@ -1,11 +1,13 @@
 ---
-name: moai-domain-ml
+name: "moai-domain-ml"
+version: "4.0.0"
 description: Enterprise-grade machine learning expertise with AI-powered model development, intelligent MLOps automation, advanced deep learning architectures, and production-grade ML deployment strategies; activates for ML model development, MLOps implementation, deep learning projects, and comprehensive machine learning system architecture.
-allowed-tools:
+allowed-tools: 
   - Read
   - Bash
   - WebSearch
   - WebFetch
+status: stable
 ---
 
 # 🤖 Enterprise ML Architect & AI-Enhanced Machine Learning Systems

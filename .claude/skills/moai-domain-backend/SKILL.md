@@ -1,9 +1,9 @@
 ---
-name: moai-domain-backend
-version: 4.0.0
+name: "moai-domain-backend"
+version: "4.0.0"
 created: 2025-11-12
 updated: 2025-11-12
-status: active
+status: stable
 tier: domain
 description: "Enterprise-grade backend architecture expertise with modern async patterns, microservices orchestration, API design best practices, and production-ready deployment strategies. Covers FastAPI, Django, service mesh, database optimization, and cloud-native architectures for 2025. Enhanced with Context7 MCP integration for latest documentation."
 allowed-tools: "Read, Bash, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
@@ -11,10 +11,10 @@ primary-agent: "backend-expert"
 secondary-agents: [qa-validator, alfred, doc-syncer]
 keywords: [backend, api, microservices, database, async, fastapi, django, kubernetes, service-mesh]
 tags: [domain-expert]
-orchestration:
-  can_resume: true
-  typical_chain_position: "middle"
-  depends_on: []
+orchestration: 
+can_resume: true
+typical_chain_position: "middle"
+depends_on: []
 ---
 
 # moai-domain-backend

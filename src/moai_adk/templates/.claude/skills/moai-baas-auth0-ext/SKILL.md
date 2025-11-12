@@ -1,12 +1,12 @@
 ---
-name: moai-baas-auth0-ext
-version: 4.0.0
+name: "moai-baas-auth0-ext"
+version: "4.0.0"
 created: 2025-11-11
 updated: 2025-11-12
-status: active
+status: stable
 description: Enterprise Auth0 Identity Platform with AI-powered authentication architecture, Context7 integration, and intelligent identity orchestration for scalable enterprise SSO and compliance
 keywords: ['auth0', 'enterprise-authentication', 'sso', 'saml', 'oidc', 'identity-platform', 'compliance', 'context7-integration', 'ai-orchestration', 'production-deployment']
-allowed-tools:
+allowed-tools: 
   - Read
   - Bash
   - Write

@@ -1,12 +1,12 @@
 ---
-name: moai-alfred-code-reviewer
-version: 4.0.0 Enterprise
+name: "moai-alfred-code-reviewer"
+version: "4.0.0"
 created: 2025-11-11
 updated: 2025-11-12
-status: active
+status: stable
 description: Enterprise systematic code review orchestrator with TRUST 5 principles, multi-language support, Context7 integration, AI-powered quality checks, SOLID principle validation, security vulnerability detection, and maintainability analysis across 25+ programming languages; activates for code reviews, quality standard validation, TRUST 5 enforcement, architectural audits, and automated review automation
 keywords: ['code-review', 'TRUST-5', 'quality-assurance', 'SOLID-principles', 'security-scanning', 'maintainability-analysis', 'ai-code-review', 'context7-integration', 'automated-review', 'enterprise-quality']
-allowed-tools:
+allowed-tools: 
   - Read
   - Write
   - Edit

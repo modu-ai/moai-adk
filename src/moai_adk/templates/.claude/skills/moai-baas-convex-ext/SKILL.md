@@ -1,12 +1,12 @@
 ---
-name: moai-baas-convex-ext
-version: 4.0.0
+name: "moai-baas-convex-ext"
+version: "4.0.0"
 created: 2025-11-11
 updated: 2025-11-12
-status: active
+status: stable
 description: Enterprise Convex Realtime Database Platform with AI-powered sync architecture, Context7 integration, and intelligent real-time orchestration for scalable collaborative applications
 keywords: ['convex', 'realtime-database', 'sync-engine', 'typescript', 'reactive-database', 'collaboration', 'context7-integration', 'ai-orchestration', 'production-deployment']
-allowed-tools:
+allowed-tools: 
   - Read
   - Bash
   - Write

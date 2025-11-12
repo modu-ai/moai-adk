@@ -1,3 +1,11 @@
+---
+name: "moai-nextra-architecture"
+version: "4.0.0"
+status: stable
+description: "Enterprise Skill for advanced development"
+allowed-tools: "Read, Bash, WebSearch, WebFetch"
+---
+
 # Skill: Nextra Architecture Expert
 
 ## Metadata

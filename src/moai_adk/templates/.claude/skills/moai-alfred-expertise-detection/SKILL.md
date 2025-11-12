@@ -1,12 +1,12 @@
 ---
-name: moai-alfred-expertise-detection
-version: 4.0.0 Enterprise
+name: "moai-alfred-expertise-detection"
+version: "4.0.0"
 created: 2025-11-11
 updated: 2025-11-12
-status: active
+status: stable
 description: Enterprise AI-powered user expertise detection with behavioral analysis, communication pattern recognition, code complexity assessment, Context7 integration, and adaptive response calibration; activates for personalized guidance generation, complexity adjustment, tutorial depth selection, and communication style matching
 keywords: ['expertise-detection', 'behavioral-analysis', 'adaptive-learning', 'ai-expertise-modeling', 'communication-patterns', 'skill-assessment', 'personalization', 'context7-integration', 'user-profiling', 'enterprise-adaptation']
-allowed-tools:
+allowed-tools: 
   - Read
   - AskUserQuestion
   - mcp__context7__resolve-library-id

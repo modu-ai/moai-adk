@@ -1,9 +1,9 @@
 ---
-name: moai-domain-mobile-app
-version: 4.0.0
+name: "moai-domain-mobile-app"
+version: "4.0.0"
 created: 2025-11-12
 updated: 2025-11-12
-status: active
+status: stable
 tier: domain
 description: "Enterprise-grade mobile development expertise with React Native 0.76+, Flutter 3.24+, Capacitor 6.x, Ionic 8.x, cross-platform UI/UX, native module integration, advanced testing, CI/CD automation, error tracking, and production-ready deployment for 2025. Covers performance optimization, battery management, network optimization, state management patterns, and E2E testing with stable version best practices."
 allowed-tools: "Read, Bash, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
@@ -11,10 +11,10 @@ primary-agent: "frontend-expert"
 secondary-agents: [qa-validator, alfred, doc-syncer]
 keywords: [mobile, react-native, flutter, ios, android, cross-platform, capacitor, ionic, detox, appium, fastlane, sentry, eas, performance, testing]
 tags: [domain-expert, enterprise]
-orchestration:
-  can_resume: true
-  typical_chain_position: "middle"
-  depends_on: []
+orchestration: 
+can_resume: true
+typical_chain_position: "middle"
+depends_on: []
 ---
 
 # moai-domain-mobile-app

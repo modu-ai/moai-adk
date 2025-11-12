@@ -1,11 +1,13 @@
 ---
-name: moai-domain-testing
+name: "moai-domain-testing"
+version: "4.0.0"
 description: Enterprise-grade testing framework expertise with pytest 8.4.x, Vitest 4.x TypeScript, Playwright 1.48.x E2E multi-browser automation, Cypress 14.x, Testing Library 15.x (React/Vue/Svelte), httpx 0.28.x async API testing, Mocha 10.x, Coverage.py 7.11.x, k6 1.0+ load testing, performance testing, accessibility testing with axe-core WCAG 2.1 compliance; activates for unit testing, integration testing, E2E automation, API testing, test coverage strategy, test data factories, mock and stub patterns, CI/CD test automation, and production-grade testing architecture.
-allowed-tools:
+allowed-tools: 
   - Read
   - Bash
   - WebSearch
   - WebFetch
+status: stable
 ---
 
 # 🧪 Enterprise Testing Framework & Quality Assurance — v4.0

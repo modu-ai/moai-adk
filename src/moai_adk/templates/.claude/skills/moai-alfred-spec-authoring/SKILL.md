@@ -1,15 +1,15 @@
 ---
-name: moai-alfred-spec-authoring
-version: 4.0.0
+name: "moai-alfred-spec-authoring"
+version: "4.0.0"
 created: 2025-10-23
 updated: 2025-11-12
-status: active
+status: stable
 tier: Alfred
 description: >-
   Complete SPEC document authoring guide with YAML metadata structure (7 required + 9 optional fields),
   EARS requirement syntax (5 patterns including Unwanted Behaviors), version lifecycle management,
   TAG integration, pre-submission validation checklist, and real-world SPEC examples.
-keywords:
+keywords: 
   - spec
   - authoring
   - ears
@@ -20,7 +20,7 @@ keywords:
   - yaml-metadata
   - requirement-syntax
   - validation-checklist
-allowed-tools:
+allowed-tools: 
   - Read
   - Bash
   - Glob
@@ -88,7 +88,7 @@ code: SPEC-001
 title: Add User Authentication with JWT
 
 # SPEC status (draft | active | deprecated | archived)
-status: active
+status: stable
 
 # Creation timestamp (ISO 8601: YYYY-MM-DD)
 created_at: 2025-11-12
@@ -685,7 +685,7 @@ effort: 8  # Includes: 3 code files, 2 test suites,
 ---
 code: SPEC-105
 title: Email Notification Service with Template Engine
-status: active
+status: stable
 created_at: 2025-11-12
 updated_at: 2025-11-12
 priority: high

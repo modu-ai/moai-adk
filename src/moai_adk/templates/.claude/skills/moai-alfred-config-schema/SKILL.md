@@ -1,12 +1,12 @@
 ---
-name: moai-alfred-config-schema
-version: 4.0.0 Enterprise
+name: "moai-alfred-config-schema"
+version: "4.0.0"
 created: 2025-11-11
 updated: 2025-11-12
-status: active
+status: stable
 description: Enterprise configuration schema validation and management orchestrator with JSON Schema v2024-12, Context7 integration, semantic versioning compliance, environment variable management, secrets handling, multi-environment support, and configuration-as-code best practices; activates for config validation, schema enforcement, environment setup, secrets management, and configuration audits
 keywords: ['configuration-schema', 'json-schema', 'config-management', 'environment-management', 'secrets-handling', 'semantic-versioning', 'configuration-as-code', 'schema-validation', 'multi-environment', 'enterprise-config']
-allowed-tools:
+allowed-tools: 
   - Read
   - Write
   - Edit

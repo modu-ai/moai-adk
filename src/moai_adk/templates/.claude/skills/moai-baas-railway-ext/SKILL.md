@@ -1,12 +1,12 @@
 ---
-name: moai-baas-railway-ext
-version: 4.0.0
+name: "moai-baas-railway-ext"
+version: "4.0.0"
 created: 2025-11-11
 updated: 2025-11-12
-status: active
+status: stable
 description: Enterprise Railway Full-Stack Platform with AI-powered deployment architecture, Context7 integration, and intelligent container orchestration for scalable modern applications
 keywords: ['railway', 'full-stack-platform', 'container-deployment', 'docker-deployment', 'postgresql', 'build-pipelines', 'context7-integration', 'ai-orchestration', 'production-deployment']
-allowed-tools:
+allowed-tools: 
   - Read
   - Bash
   - Write

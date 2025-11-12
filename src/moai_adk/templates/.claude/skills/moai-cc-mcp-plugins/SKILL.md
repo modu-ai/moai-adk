@@ -1,12 +1,12 @@
 ---
-name: moai-cc-mcp-plugins
-version: 4.0.0
+name: "moai-cc-mcp-plugins"
+version: "4.0.0"
 created: 2025-11-11
 updated: 2025-11-11
-status: active
+status: stable
 description: AI-powered enterprise MCP (Model Context Protocol) server orchestrator with intelligent plugin management, predictive optimization, ML-based performance analysis, and Context7-enhanced integration patterns. Use when creating smart MCP systems, implementing AI-driven plugin discovery, optimizing MCP performance with machine learning, or building enterprise-grade server architecture with automated compliance and governance.
 keywords: ['ai-mcp-servers', 'enterprise-plugin-management', 'predictive-optimization', 'ml-performance-analysis', 'context7-integration', 'intelligent-mcp-orchestration', 'automated-governance', 'smart-plugins', 'enterprise-mcp']
-allowed-tools:
+allowed-tools: 
   - Read
   - Write
   - Edit

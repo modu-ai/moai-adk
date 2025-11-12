@@ -1,6 +1,6 @@
 ---
-name: moai-alfred-language-detection
-version: 4.0.0
+name: "moai-alfred-language-detection"
+version: "4.0.0"
 created: 2025-10-22
 updated: 2025-11-12
 tier: Alfred
@@ -9,6 +9,7 @@ allowed-tools: "Read, Bash(rg:*), Bash(grep:*)"
 primary-agent: "alfred"
 secondary-agents: ["plan-agent", "implementation-planner"]
 keywords: ["language-detection", "framework-identification", "package-manager", "auto-detection", "project-analysis", "nodejs", "python", "rust", "golang"]
+status: stable
 ---
 
 # moai-alfred-language-detection

@@ -1,12 +1,12 @@
 ---
-name: moai-essentials-refactor
-version: 4.0.0 Enterprise Enhanced
+name: "moai-essentials-refactor"
+version: "4.0.0"
 created: 2025-11-11
 updated: 2025-11-11
-status: active
+status: stable
 description: "Revolutionary AI-powered enterprise refactoring orchestrator with Context7 integration, automated code transformation, Rope pattern intelligence, design pattern optimization, technical debt quantification, and predictive maintenance across 25+ programming languages"
 keywords: ['ai-refactoring', 'context7-integration', 'rope-patterns', 'automated-transformation', 'design-pattern-intelligence', 'technical-debt-quantification', 'predictive-maintenance', 'enterprise-architecture-optimization']
-allowed-tools:
+allowed-tools: 
   - Read
   - Bash
   - Write

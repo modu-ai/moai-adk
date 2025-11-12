@@ -1,12 +1,12 @@
 ---
-name: moai-foundation-ears
-version: 4.0.0
+name: "moai-foundation-ears"
+version: "4.0.0"
 created: 2025-11-11
 updated: 2025-11-12
-status: active
+status: stable
 description: EARS (Easy Approach to Requirements Syntax) expert guide - 5 core patterns, formal verification, 50+ official references, 100+ real-world examples
 keywords: ['ears', 'requirements', 'syntax', 'patterns', 'formal-methods', 'nasa-fret', 'specification', 'verification']
-allowed-tools:
+allowed-tools: 
   - Read
   - Write
   - Bash

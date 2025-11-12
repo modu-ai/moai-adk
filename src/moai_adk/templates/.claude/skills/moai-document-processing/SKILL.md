@@ -1,7 +1,7 @@
 ---
-name: moai-document-processing
+name: "moai-document-processing"
 description: AI-powered enterprise document processing orchestrator with Context7 integration, intelligent document analysis, automated content extraction, multi-format support (docx, pdf, pptx, xlsx), and enterprise-grade document workflow automation
-allowed-tools:
+allowed-tools: 
   - Read
   - Bash
   - Write
@@ -10,10 +10,10 @@ allowed-tools:
   - WebFetch
   - mcp__context7__resolve-library-id
   - mcp__context7__get-library-docs
-version: 4.0.0 Enterprise
+version: "4.0.0"
 created: 2025-11-11
 updated: 2025-11-11
-status: active
+status: stable
 keywords: ['ai-document-processing', 'context7-integration', 'multi-format-support', 'document-automation', 'enterprise-documents', 'intelligent-analysis', 'content-extraction', 'document-workflows', 'docx-pdf-pptx', 'document-intelligence']
 ---
 

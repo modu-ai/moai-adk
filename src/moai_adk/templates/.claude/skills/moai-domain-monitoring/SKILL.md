@@ -1,11 +1,13 @@
 ---
-name: moai-domain-monitoring
+name: "moai-domain-monitoring"
+version: "4.0.0"
 description: Enterprise-grade monitoring and observability platform with Prometheus 3.7.x, Grafana 11.x Scenes, OpenTelemetry 1.33.x, Loki 3.x+ logs, Jaeger 1.62.x distributed tracing, Elasticsearch 8.17 with ILM, Sentry error tracking, and multi-cluster HA architectures; activates for metrics collection, visualization, log aggregation, distributed tracing, error tracking, SLO/SLI implementation, cost optimization, and production observability infrastructure.
-allowed-tools:
+allowed-tools: 
   - Read
   - Bash
   - WebSearch
   - WebFetch
+status: stable
 ---
 
 # Enterprise Monitoring & Observability Platform — v4.0

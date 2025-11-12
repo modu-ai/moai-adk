@@ -1,11 +1,13 @@
 ---
-name: moai-domain-data-science
+name: "moai-domain-data-science"
+version: "4.0.0"
 description: Production-grade data science expertise with TensorFlow, PyTorch, scikit-learn, pandas, polars, and enterprise analytics; activates for neural networks, machine learning pipelines, statistical analysis, feature engineering, hyperparameter optimization, and business intelligence with 2025 stable versions.
-allowed-tools:
+allowed-tools: 
   - Read
   - Bash
   - WebSearch
   - WebFetch
+status: stable
 ---
 
 # Enterprise Data Science & AI Analytics (Production Edition)

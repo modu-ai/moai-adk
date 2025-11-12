@@ -1,9 +1,9 @@
 ---
-name: moai-docs-generation
-version: 4.0.0
+name: "moai-docs-generation"
+version: "4.0.0"
 created: 2025-11-12
 updated: 2025-11-12
-status: active
+status: stable
 tier: specialization
 description: "Enhanced docs generation with AI-powered features. Enhanced with Context7 MCP for up-to-date documentation."
 allowed-tools: "Read, Glob, Grep, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
@@ -11,10 +11,10 @@ primary-agent: "doc-syncer"
 secondary-agents: [alfred]
 keywords: [docs, generation, test, api, spec]
 tags: [documentation]
-orchestration:
-  can_resume: true
-  typical_chain_position: "terminal"
-  depends_on: []
+orchestration: 
+can_resume: true
+typical_chain_position: "terminal"
+depends_on: []
 ---
 
 # moai-docs-generation

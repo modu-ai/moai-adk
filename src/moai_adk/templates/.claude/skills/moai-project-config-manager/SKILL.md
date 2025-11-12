@@ -1,9 +1,9 @@
 ---
-name: moai-project-config-manager
-version: 4.0.0
+name: "moai-project-config-manager"
+version: "4.0.0"
 created: 2025-11-05
 updated: 2025-11-12
-status: active
+status: stable
 tier: specialization
 description: "Complete config.json CRUD operations with validation, merge strategy, and error recovery. Enhanced with research capabilities for configuration optimization, pattern analysis, and performance research. Use for configuration management research, optimization analysis, and configuration pattern discovery.. Enhanced with Context7 MCP for up-to-date documentation."
 allowed-tools: "Read, Write, Edit, AskUserQuestion, Bash, TodoWrite, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
@@ -12,10 +12,10 @@ secondary-agents: []
 keywords: [project, config, manager, frontend, security]
 tags: [project-configuration, management, validation, research, analysis, optimization,
   performance-patterns]
-orchestration:
-  can_resume: true
-  typical_chain_position: "middle"
-  depends_on: []
+orchestration: 
+can_resume: true
+typical_chain_position: "middle"
+depends_on: []
 ---
 
 # moai-project-config-manager

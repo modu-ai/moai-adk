@@ -1,12 +1,12 @@
 ---
-name: moai-essentials-review
-version: 4.0.0 Enterprise
+name: "moai-essentials-review"
+version: "4.0.0"
 created: 2025-11-11
 updated: 2025-11-12
-status: active
+status: stable
 description: Enterprise comprehensive code review automation with AI-powered quality analysis, TRUST 5 enforcement, multi-language support, Context7 integration, security scanning, performance analysis, test coverage validation, and automated review feedback generation
 keywords: ['code-review', 'quality-analysis', 'TRUST-5-validation', 'security-scanning', 'performance-analysis', 'test-coverage', 'ai-review', 'context7-integration', 'review-automation', 'enterprise-quality']
-allowed-tools:
+allowed-tools: 
   - Read
   - Write
   - Edit

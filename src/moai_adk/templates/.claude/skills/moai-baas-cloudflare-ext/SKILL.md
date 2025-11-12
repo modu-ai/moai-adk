@@ -1,12 +1,12 @@
 ---
-name: moai-baas-cloudflare-ext
-version: 4.0.0
+name: "moai-baas-cloudflare-ext"
+version: "4.0.0"
 created: 2025-11-11
 updated: 2025-11-12
-status: active
+status: stable
 description: Enterprise Cloudflare Edge-First Platform with AI-powered edge computing architecture, Context7 integration, and intelligent global network orchestration for scalable modern applications
 keywords: ['cloudflare', 'edge-computing', 'workers', 'd1-database', 'pages-hosting', 'durable-objects', 'global-network', 'context7-integration', 'ai-orchestration', 'production-deployment']
-allowed-tools:
+allowed-tools: 
   - Read
   - Bash
   - Write

@@ -1,13 +1,13 @@
 ---
-name: moai-foundation-git
-version: 4.0.0
+name: "moai-foundation-git"
+version: "4.0.0"
 tier: Foundation
 created: 2025-10-22
 updated: 2025-11-12
-status: active
+status: stable
 description: Enterprise GitFlow automation, PR policy enforcement, Git 2.47-2.50 features, trunk-based development, comprehensive branching strategies, commit conventions, GitHub CLI 2.83.0 integration
 keywords: ['git', 'gitflow', 'github', 'branching', 'workflow', 'automation', 'commit-conventions']
-allowed-tools:
+allowed-tools: 
   - Read
   - Bash
 ---

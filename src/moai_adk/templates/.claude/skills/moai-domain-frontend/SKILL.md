@@ -1,9 +1,9 @@
 ---
-name: moai-domain-frontend
-version: 4.0.0
+name: "moai-domain-frontend"
+version: "4.0.0"
 created: 2025-11-12
 updated: 2025-11-12
-status: active
+status: stable
 tier: domain
 description: "Enterprise-grade frontend architecture expertise with AI-powered component optimization, modern framework integration, edge-first performance, and intelligent user experience management; activates for modern web applications, SPA/PWA development, component systems, and cutting-edge UI/UX implementations.. Enhanced with Context7 MCP for up-to-date documentation."
 allowed-tools: "Read, Bash, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
@@ -11,10 +11,10 @@ primary-agent: "frontend-expert"
 secondary-agents: [doc-syncer, alfred, qa-validator]
 keywords: [domain, frontend, api, backend, frontend]
 tags: [domain-expert]
-orchestration:
-  can_resume: true
-  typical_chain_position: "middle"
-  depends_on: []
+orchestration: 
+can_resume: true
+typical_chain_position: "middle"
+depends_on: []
 ---
 
 # moai-domain-frontend

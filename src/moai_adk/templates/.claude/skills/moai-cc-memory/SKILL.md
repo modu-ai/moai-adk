@@ -1,12 +1,12 @@
 ---
-name: moai-cc-memory
-version: 2.0.0
+name: "moai-cc-memory"
+version: "2.0.0"
 created: 2025-10-22
 updated: 2025-11-11
-status: active
+status: stable
 description: Claude Code memory management, context persistence, and knowledge retention. Use when managing session memory, persisting context, or optimizing knowledge retention.
 keywords: ['memory', 'context', 'persistence', 'knowledge-retention', 'session-management']
-allowed-tools:
+allowed-tools: 
   - Read
   - Bash
   - Grep

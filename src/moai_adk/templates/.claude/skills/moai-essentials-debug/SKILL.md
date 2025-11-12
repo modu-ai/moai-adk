@@ -1,7 +1,7 @@
 ---
-name: moai-essentials-debug
+name: "moai-essentials-debug"
 description: AI-powered enterprise debugging orchestrator with Context7 integration, intelligent error pattern recognition, automated root cause analysis, predictive fix suggestions, and multi-process debugging coordination across 25+ languages and distributed systems
-allowed-tools:
+allowed-tools: 
   - Read
   - Bash
   - Write
@@ -10,10 +10,10 @@ allowed-tools:
   - WebFetch
   - mcp__context7__resolve-library-id
   - mcp__context7__get-library-docs
-version: 4.0.0 Enterprise
+version: "4.0.0"
 created: 2025-11-11
 updated: 2025-11-11
-status: active
+status: stable
 keywords: ['ai-debugging', 'context7-integration', 'predictive-debugging', 'multi-process-debugging', 'error-pattern-recognition', 'automated-root-cause', 'distributed-tracing', 'performance-profiling', 'container-debugging', 'cloud-integration']
 ---
 

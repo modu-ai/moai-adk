@@ -1,12 +1,12 @@
 ---
-name: moai-baas-clerk-ext
-version: 4.0.0
+name: "moai-baas-clerk-ext"
+version: "4.0.0"
 created: 2025-11-11
 updated: 2025-11-12
-status: active
+status: stable
 description: Enterprise Clerk Authentication Platform with AI-powered modern auth architecture, Context7 integration, and intelligent user management orchestration for scalable full-stack applications
 keywords: ['clerk', 'modern-authentication', 'mfa', 'user-management', 'sso', 'multi-tenancy', 'context7-integration', 'ai-orchestration', 'production-deployment']
-allowed-tools:
+allowed-tools: 
   - Read
   - Bash
   - Write

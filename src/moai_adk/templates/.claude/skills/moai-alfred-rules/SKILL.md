@@ -1,9 +1,9 @@
 ---
-name: moai-alfred-rules
-version: 4.0.0
+name: "moai-alfred-rules"
+version: "4.0.0"
 created: 2025-11-02
 updated: 2025-11-12
-status: active
+status: stable
 tier: Alfred
 description: "Alfred SuperAgent의 필수 규칙을 정의합니다. November 2025 enterprise standard 기반. 3-Layer architecture, 4-Step workflow, Agent-first paradigm, Skill invocation rules, AskUserQuestion patterns, TRUST 5 quality gates, TAG chain integrity, commit message standards. 사용: 워크플로우 규칙 검증, 품질 게이트 확인, MoAI-ADK 표준 준수, 아키텍처 규칙 검증."
 keywords: ['rules', 'agent-first', 'skill-invocation', 'ask-user-question', 'trust-5', 'tag-chain', 'workflow-compliance', 'quality-gates', '4-step-workflow', 'architecture-rules']

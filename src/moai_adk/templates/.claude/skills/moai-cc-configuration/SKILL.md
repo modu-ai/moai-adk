@@ -1,12 +1,12 @@
 ---
-name: moai-cc-configuration
-version: 4.0.0
+name: "moai-cc-configuration"
+version: "4.0.0"
 created: 2025-11-06
 updated: 2025-11-11
-status: active
+status: stable
 description: AI-powered enterprise Claude Code configuration orchestrator with intelligent security automation, adaptive permission management, predictive system optimization, and Context7-enhanced MCP integration. Use when configuring enterprise Claude Code deployments, implementing AI-driven security policies, optimizing system performance with machine learning, or managing large-scale Claude Code infrastructure with automated compliance and governance.
 keywords: ['ai-claude-code-configuration', 'enterprise-security-automation', 'adaptive-permission-management', 'predictive-system-optimization', 'context7-mcp-integration', 'intelligent-policy-management', 'automated-compliance-governance', 'ml-powered-security', 'enterprise-infrastructure-management']
-allowed-tools:
+allowed-tools: 
   - Read
   - Write
   - Edit

@@ -1,3 +1,11 @@
+---
+name: "moai-security-auth"
+version: "4.0.0"
+status: stable
+description: "Enterprise Skill for advanced development"
+allowed-tools: "Read, Bash, WebSearch, WebFetch"
+---
+
 # moai-security-auth: Modern Authentication Patterns
 
 **Advanced Authentication with MFA, FIDO2, WebAuthn & Passkeys**  

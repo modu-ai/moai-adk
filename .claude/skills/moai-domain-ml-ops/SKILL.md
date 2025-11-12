@@ -1,11 +1,13 @@
 ---
-name: moai-domain-ml-ops
+name: "moai-domain-ml-ops"
+version: "4.0.0"
 description: Enterprise MLOps orchestration platform with MLflow 3.6.0 model tracking & registry, DVC 3.x data versioning & pipelines, Ray Serve 2.51.x model serving, Kubeflow Pipelines 1.10 ML workflows, Seldon Core 2.9.x Kubernetes deployment, Feast 0.56.0 feature store, Optuna 4.6.0 hyperparameter tuning, Evidently AI model monitoring & drift detection, GitHub Actions ML CI/CD, Prometheus 3.7.x metrics, Grafana 11.3+ dashboards; activates for ML pipeline orchestration, experiment tracking, model registry, feature engineering, model serving, monitoring, hyperparameter optimization, and production ML infrastructure.
-allowed-tools:
+allowed-tools: 
   - Read
   - Bash
   - WebSearch
   - WebFetch
+status: stable
 ---
 
 # Enterprise MLOps Platform — v4.0

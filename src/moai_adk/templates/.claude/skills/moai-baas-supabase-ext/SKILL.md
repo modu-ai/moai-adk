@@ -1,12 +1,12 @@
 ---
-name: moai-baas-supabase-ext
-version: 4.0.0
+name: "moai-baas-supabase-ext"
+version: "4.0.0"
 created: 2025-11-11
 updated: 2025-11-12
-status: active
+status: stable
 description: Enterprise Supabase PostgreSQL Platform with AI-powered architecture, Context7 integration, and intelligent open-source BaaS orchestration for scalable production applications
 keywords: ['supabase', 'postgresql', 'rls', 'row-level-security', 'realtime', 'edge-functions', 'enterprise-integration', 'context7-integration', 'ai-orchestration', 'production-deployment']
-allowed-tools:
+allowed-tools: 
   - Read
   - Bash
   - Write
