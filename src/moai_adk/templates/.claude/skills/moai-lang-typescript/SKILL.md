@@ -1,650 +1,283 @@
 ---
 name: "moai-lang-typescript"
-description: "Enterprise TypeScript with strict typing and modern ecosystem: TypeScript 5.9.3, Next.js 16, Turbopack, React 19, tRPC, Zod for type-safe schemas; activates for full-stack development, API contract definition, type safety enforcement, and framework-agnostic TypeScript patterns."
-allowed-tools: 
 version: "4.0.0"
+description: Enterprise TypeScript with strict typing and modern ecosystem TypeScript 5.9.3, Next.js 16, Turbopack, React 19, tRPC, Zod for type-safe schemas; activates for full-stack development, API contract definition, type safety enforcement, and framework-agnostic TypeScript patterns.
+allowed-tools:
+  - Read
+  - Bash
+  - WebSearch
+  - WebFetch
 status: stable
 ---
 
 # Modern TypeScript Development — Enterprise v4.0
 
-## Skill Metadata
+## Quick Summary
 
-| Field | Value |
-| ----- | ----- |
-| **Version** | **4.0.0 Enterprise** |
-| **Created** | 2025-11-12 |
-| **Updated** | 2025-11-12 |
-| **Lines** | ~950 lines |
-| **Size** | ~30KB |
-| **Tier** | **3 (Professional)** |
-| **Allowed tools** | Read, Bash, WebSearch, WebFetch |
-| **Auto-load** | TypeScript strict types, Next.js patterns, full-stack development |
-| **Trigger cues** | TypeScript, Next.js, React, tRPC, strict, types, API routes, SSR, full-stack |
+**Primary Focus**: TypeScript 5.9 with strict typing, Next.js 16, React 19, and type-safe APIs
+**Best For**: Full-stack development, API contracts, type safety, component libraries
+**Key Libraries**: React 19, Next.js 16, tRPC 11, Zod 3.23, Vitest 2.x
+**Auto-triggers**: TypeScript, Next.js, React, tRPC, strict types, type safety, API routes
+
+| Version | Release | Support |
+|---------|---------|---------|
+| TypeScript 5.9.3 | Aug 2025 | Active |
+| React 19.x | Dec 2024 | Active |
+| Next.js 16.x | 2025 | Active |
+| Node.js 22 LTS | Oct 2024 | Apr 2027 |
+
+---
+
+## Three-Level Learning Path
+
+### Level 1: Fundamentals (Read examples.md)
+
+Core TypeScript concepts and patterns:
+- **Type System**: Primitives, unions, intersections, generics, utility types
+- **React 19**: Server components, transitions, ref as prop, new hooks
+- **Next.js 16**: File-based routing, API routes, server actions, Turbopack
+- **tRPC Basics**: Type-safe API definition and client usage
+- **Examples**: See `examples.md` for full code samples
+
+### Level 2: Advanced Patterns (See reference.md)
+
+Production-ready enterprise patterns:
+- **Advanced Types**: Conditional types, mapped types, generic constraints
+- **Zod Validation**: Runtime schema validation with type inference
+- **Component Testing**: Vitest with React Testing Library
+- **API Design**: tRPC routers, middleware, context
+- **Pattern Reference**: See `reference.md` for API details and best practices
+
+### Level 3: Production Deployment (Consult security/performance skills)
+
+Enterprise deployment and optimization:
+- **Build Optimization**: Turbopack configuration, code splitting
+- **Docker Deployment**: Multi-stage builds, environment setup
+- **Performance**: Web Vitals, caching strategies, bundle analysis
+- **Monitoring**: Error tracking, metrics, observability
+- **Details**: Skill("moai-essentials-perf"), Skill("moai-security-backend")
+
+---
 
 ## Technology Stack (November 2025 Stable)
 
-### Core Language
-- **TypeScript 5.9.3** (Released August 2025)
-  - Deferred module evaluation (import defer)
-  - Enhanced developer experience
-  - Node.js 20 stable module resolution
-  - Performance improvements (11% on large projects)
+### Language & Runtime
+- **TypeScript 5.9.3** (August 2025, deferred module evaluation)
+- **Node.js 22.11.0 LTS** (April 2027 support)
+- **JavaScript ES2020** target for compatibility
 
 ### Frontend Framework
-- **React 19.x** (Latest stable)
-  - Server Components
-  - Actions (use server)
-  - Ref as prop
-  - New Hooks API
+- **React 19.x** (Server Components, Actions, new Hooks API)
+- **Next.js 16.x** (Turbopack, App Router, Server Components)
+- **Turbopack** (Rust-based bundler, 2x faster builds)
 
-- **Next.js 16.x** (Full-stack framework)
-  - Turbopack bundler (2x faster builds)
-  - App Router (file-based routing)
-  - Server Components by default
-  - API Routes with middleware
-
-### Build & Runtime
-- **Node.js 22.11.0 LTS** (Long-term support until April 2027)
-- **Turbopack** (Rust-based bundler, Webpack replacement)
-- **Webpack 6.x** (Alternative bundler)
-- **esbuild 0.23.x** (Alternative transpiler)
-
-### Type-Safe APIs
-- **tRPC 11.x** (End-to-end type-safe APIs)
-  - Zero-cost abstractions
-  - Automatic documentation
-  - Client type inference
-
-- **Zod 3.23.x** (Runtime schema validation)
-  - Type inference from schemas
-  - Custom error messages
-  - Coercion support
-
-- **OpenAPI 3.1.x** (API specification standard)
-
-### Testing & Quality
-- **Vitest 2.x** (Unit testing, Jest-compatible)
-- **Playwright 1.48.x** (E2E testing)
-- **TypeScript Compiler API** (For type checking)
+### Type-Safe Ecosystem
+- **tRPC 11.x** (End-to-end type safety without code generation)
+- **Zod 3.23.x** (Runtime validation with TypeScript inference)
+- **Vitest 2.x** (Unit testing with Jest compatibility)
 
 ### Package Management
-- **npm 11.x** (Latest major version)
-- **yarn 4.x** (Alternative package manager)
-- **pnpm 9.x** (Fast, efficient package manager)
+- **npm 11.x**, **pnpm 9.x**, **yarn 4.x** (all supported)
+- **Node Modules**: ESM modules with bundler resolution
 
-## Level 1: Fundamentals (High Freedom)
+---
 
-### 1. TypeScript 5.9 Type System
+## TypeScript Type System
 
-TypeScript 5.9 enhances type safety and developer experience:
-
-**Basic Type Annotations**:
+### Basic Types
 ```typescript
-// Primitive types
+// Primitives
 const name: string = "John";
 const age: number = 30;
 const active: boolean = true;
 
-// Union types
+// Union types for flexible APIs
 type Status = "pending" | "approved" | "rejected";
-const status: Status = "approved";
+type Result = string | number;
 
-// Intersection types
+// Intersection types for combining
 type Admin = User & { role: "admin"; permissions: string[] };
-
-// Generic types
-interface Container<T> {
-  value: T;
-  getValue(): T;
-  setValue(value: T): void;
-}
-
-const stringContainer: Container<string> = {
-  value: "hello",
-  getValue() { return this.value; },
-  setValue(value) { this.value = value; }
-};
 ```
 
-**Advanced Type Features**:
+### Generics & Constraints
 ```typescript
-// Utility types
+// Generic function
+function getFirstElement<T>(arr: T[]): T {
+  return arr[0];
+}
+
+// Generic with constraints
+function merge<T extends object, U extends object>(obj1: T, obj2: U): T & U {
+  return { ...obj1, ...obj2 };
+}
+```
+
+### Utility Types
+```typescript
+// Common patterns
 type Readonly<T> = { readonly [K in keyof T]: T[K] };
 type Partial<T> = { [K in keyof T]?: T[K] };
+type Pick<T, K> = { [P in K]: T[P] };
+type Omit<T, K> = Pick<T, Exclude<keyof T, K>>;
 type Record<K, T> = { [P in K]: T };
-
-// Conditional types
-type IsString<T> = T extends string ? true : false;
-type Flatten<T> = T extends Array<infer U> ? U : T;
-
-// Mapped types
-type Getters<T> = {
-  [K in keyof T as `get${Capitalize<string & K>}`]: () => T[K];
-};
-
-interface Person {
-  name: string;
-  age: number;
-}
-
-type PersonGetters = Getters<Person>;
-// Results in: { getName: () => string; getAge: () => number }
 ```
 
-### 2. React 19 Component Patterns
+---
 
-React 19 introduces Server Components and new patterns:
+## React 19 Components
 
-**Server Components**:
+### Server & Client Components
 ```typescript
-// app/components/UserProfile.tsx
+// Server Component
 'use server'
-
-import { getUserData } from '@/lib/db';
-
 export async function UserProfile({ userId }: { userId: string }) {
-  const userData = await getUserData(userId);
-  
-  return (
-    <div className="user-profile">
-      <h1>{userData.name}</h1>
-      <p>{userData.bio}</p>
-    </div>
-  );
+  const userData = await fetchUser(userId);
+  return <div>{userData.name}</div>;
 }
-```
 
-**Client Components with Use**:
-```typescript
-// app/components/Counter.tsx
+// Client Component with State
 'use client'
-
-import { useState, useTransition } from 'react';
-
 export function Counter() {
   const [count, setCount] = useState(0);
-  const [isPending, startTransition] = useTransition();
-  
-  const handleIncrement = () => {
-    startTransition(async () => {
-      const newCount = await updateCountOnServer(count + 1);
-      setCount(newCount);
-    });
-  };
-  
-  return (
-    <div>
-      <p>Count: {count}</p>
-      <button onClick={handleIncrement} disabled={isPending}>
-        {isPending ? 'Updating...' : 'Increment'}
-      </button>
-    </div>
-  );
-}
-
-async function updateCountOnServer(newCount: number): Promise<number> {
-  'use server'
-  // Server-side logic
-  return newCount;
+  return <button onClick={() => setCount(count + 1)}>{count}</button>;
 }
 ```
 
-**Ref as Prop**:
+### React Hooks
 ```typescript
-interface ComponentWithRefProps {
-  ref?: React.Ref<HTMLInputElement>;
-  value?: string;
-}
+// useState, useEffect, useContext
+const [state, setState] = useState<number>(0);
+useEffect(() => { /* ... */ }, []);
 
-// Now you can pass ref directly to component
-const MyInput = React.forwardRef<
-  HTMLInputElement,
-  ComponentWithRefProps
->(({ value }, ref) => (
-  <input ref={ref} defaultValue={value} />
-));
+// useTransition for non-blocking updates
+const [isPending, startTransition] = useTransition();
+
+// useRef for DOM access
+const inputRef = useRef<HTMLInputElement>(null);
 ```
 
-### 3. Next.js 16 App Router
+---
 
-Next.js 16 with Turbopack provides modern full-stack development:
+## Next.js 16 Full-Stack Development
 
-**Project Structure**:
+### File-Based Routing & Layouts
 ```
 app/
-├── page.tsx                 // Home page
-├── layout.tsx              // Root layout
-├── api/
-│   ├── users/
-│   │   ├── route.ts        // GET, POST handlers
-│   │   └── [id]/
-│   │       └── route.ts    // Dynamic routes
-│   └── health/
-│       └── route.ts
-├── dashboard/
-│   ├── page.tsx            // /dashboard
-│   ├── layout.tsx          // Dashboard layout
-│   └── settings/
-│       └── page.tsx        // /dashboard/settings
-└── (auth)/
-    ├── login/
-    │   └── page.tsx
-    └── register/
-        └── page.tsx
+├── page.tsx                  # Root page
+├── layout.tsx                # Root layout
+├── api/users/route.ts        # API route: /api/users
+└── dashboard/
+    ├── page.tsx              # /dashboard
+    └── [id]/page.tsx         # /dashboard/[id]
 ```
 
-**API Routes with Middleware**:
+### API Routes
 ```typescript
-// app/api/users/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { validateAuth } from '@/lib/auth';
-
-// Middleware for API route
-export const middleware = validateAuth;
-
 export async function GET(request: NextRequest) {
-  const users = await fetchUsers();
-  return NextResponse.json({ users });
+  return NextResponse.json({ users: [] });
 }
 
 export async function POST(request: NextRequest) {
   const data = await request.json();
-  const newUser = await createUser(data);
-  return NextResponse.json({ user: newUser }, { status: 201 });
-}
-
-// Dynamic route with parameters
-// app/api/users/[id]/route.ts
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  const user = await getUserById(params.id);
-  
-  if (!user) {
-    return NextResponse.json(
-      { error: 'Not found' },
-      { status: 404 }
-    );
-  }
-  
-  return NextResponse.json({ user });
+  return NextResponse.json(data, { status: 201 });
 }
 ```
 
-**Server Actions**:
+### Server Actions
 ```typescript
-// app/actions/users.ts
 'use server'
 
 export async function createUser(formData: FormData) {
   const name = formData.get('name');
-  const email = formData.get('email');
-  
-  // Database operation
-  const newUser = await db.users.create({
-    name: String(name),
-    email: String(email)
-  });
-  
-  // Revalidate cache
+  await db.users.create({ data: { name } });
   revalidatePath('/users');
-  
-  return newUser;
-}
-
-// Usage in component
-// app/components/UserForm.tsx
-'use client'
-
-import { createUser } from '@/app/actions/users';
-
-export function UserForm() {
-  return (
-    <form action={createUser}>
-      <input name="name" required />
-      <input name="email" type="email" required />
-      <button type="submit">Create User</button>
-    </form>
-  );
 }
 ```
 
-### 4. tRPC for Type-Safe APIs
+---
 
-tRPC provides end-to-end type safety without code generation:
+## Type-Safe APIs with tRPC
 
-**Router Definition**:
+### Router Definition
 ```typescript
-// server/trpc.ts
-import { initTRPC } from '@trpc/server';
-import { z } from 'zod';
-
-export const t = initTRPC.create();
-
 export const router = t.router({
   user: t.router({
-    list: t.procedure.query(async () => {
-      return await db.user.findMany();
-    }),
-    
-    byId: t.procedure
+    list: t.procedure.query(() => db.user.findMany()),
+
+    getById: t.procedure
       .input(z.object({ id: z.string() }))
-      .query(async ({ input }) => {
-        return await db.user.findUnique({
-          where: { id: input.id }
-        });
-      }),
-    
-    create: t.procedure
-      .input(z.object({
-        name: z.string(),
-        email: z.string().email()
-      }))
-      .mutation(async ({ input }) => {
-        return await db.user.create({
-          data: input
-        });
-      })
+      .query(async ({ input }) =>
+        db.user.findUnique({ where: { id: input.id } })
+      )
   })
 });
 
 export type AppRouter = typeof router;
 ```
 
-**Client Usage (Type-Safe)**:
+### Client Usage (Fully Typed)
 ```typescript
-// client/trpc.ts
-import { createTRPCReact } from '@trpc/react-query';
-import type { AppRouter } from '@/server/trpc';
-
-export const trpc = createTRPCReact<AppRouter>();
-
-// Component usage - fully typed!
-export function UserList() {
-  const { data: users, isLoading } = trpc.user.list.useQuery();
-  
-  if (isLoading) return <div>Loading...</div>;
-  
-  return (
-    <ul>
-      {users?.map(user => (
-        <li key={user.id}>{user.name}</li>
-      ))}
-    </ul>
-  );
-}
+const { data: users } = trpc.user.list.useQuery();
+// All types inferred from server router!
 ```
 
-## Level 2: Advanced Patterns (Medium Freedom)
+---
 
-### 1. Type-Safe Data Validation with Zod
+## Runtime Validation with Zod
 
-Zod provides runtime schema validation with TypeScript inference:
-
-**Schema Definition**:
+### Schema Definition
 ```typescript
-import { z } from 'zod';
-
 const UserSchema = z.object({
   id: z.string().uuid(),
   name: z.string().min(1).max(100),
-  email: z.string().email(),
-  age: z.number().int().min(0).max(150),
-  roles: z.array(z.enum(['admin', 'user', 'guest'])).default(['user']),
-  createdAt: z.date().default(() => new Date())
+  email: z.string().email()
 });
 
-// Infer TypeScript type from schema
 type User = z.infer<typeof UserSchema>;
 
 // Validation
-const userData = { /* ... */ };
-const user = UserSchema.parse(userData); // Throws on error
-const result = UserSchema.safeParse(userData); // Returns { success, data, error }
+const user = UserSchema.parse(data);  // Throws on error
+const result = UserSchema.safeParse(data);  // Returns { success, data, error }
 ```
 
-**Custom Validation**:
+---
+
+## Testing
+
+### Unit Tests with Vitest
 ```typescript
-const PasswordSchema = z.string()
-  .min(8, 'Password must be at least 8 characters')
-  .regex(/[A-Z]/, 'Must contain uppercase')
-  .regex(/[0-9]/, 'Must contain numbers')
-  .refine(
-    (pwd) => !commonPasswords.includes(pwd),
-    'Password is too common'
-  );
+import { describe, it, expect, vi } from 'vitest';
 
-const RegisterSchema = z.object({
-  email: z.string().email(),
-  password: PasswordSchema,
-  confirmPassword: z.string()
-}).refine(
-  (data) => data.password === data.confirmPassword,
-  { message: 'Passwords must match', path: ['confirmPassword'] }
-);
-```
-
-### 2. Advanced TypeScript Patterns
-
-**Generic Constraints**:
-```typescript
-// Constraint T to objects with id property
-function getById<T extends { id: string }>(
-  items: T[],
-  id: string
-): T | undefined {
-  return items.find(item => item.id === id);
-}
-
-// Constraint T to keyof another type
-function pick<T, K extends keyof T>(
-  obj: T,
-  ...keys: K[]
-): Pick<T, K> {
-  const result = {} as Pick<T, K>;
-  keys.forEach(key => {
-    result[key] = obj[key];
-  });
-  return result;
-}
-
-const user = { id: '1', name: 'John', age: 30 };
-const partial = pick(user, 'name', 'age');
-// Type: { name: string; age: number }
-```
-
-**Decorator Pattern (TypeScript 5.0+)**:
-```typescript
-// Enable experimentalDecorators in tsconfig.json
-
-function Memoize(
-  target: any,
-  propertyKey: string,
-  descriptor: PropertyDescriptor
-) {
-  const originalMethod = descriptor.value;
-  const cache = new Map();
-  
-  descriptor.value = function(...args: any[]) {
-    const key = JSON.stringify(args);
-    if (!cache.has(key)) {
-      cache.set(key, originalMethod.apply(this, args));
-    }
-    return cache.get(key);
-  };
-  
-  return descriptor;
-}
-
-class MathUtils {
-  @Memoize
-  fibonacci(n: number): number {
-    if (n <= 1) return n;
-    return this.fibonacci(n - 1) + this.fibonacci(n - 2);
-  }
-}
-```
-
-### 3. Testing with Vitest
-
-Vitest provides Jest-compatible testing for TypeScript:
-
-**Unit Tests**:
-```typescript
-import { describe, it, expect } from 'vitest';
-import { add, multiply } from '@/lib/math';
-
-describe('Math Utils', () => {
-  it('should add numbers', () => {
+describe('Math', () => {
+  it('adds numbers', () => {
     expect(add(2, 3)).toBe(5);
   });
-  
-  it('should multiply numbers', () => {
-    expect(multiply(2, 3)).toBe(6);
+
+  it('calls callback', () => {
+    const fn = vi.fn();
+    execute(fn);
+    expect(fn).toHaveBeenCalled();
   });
 });
 ```
 
-**Component Tests**:
+### Component Tests
 ```typescript
 import { render, screen } from '@testing-library/react';
-import { Button } from '@/components/Button';
 
-describe('Button Component', () => {
-  it('renders with text', () => {
-    render(<Button>Click me</Button>);
-    expect(screen.getByRole('button')).toHaveTextContent('Click me');
-  });
-  
-  it('calls onClick handler', async () => {
-    const handleClick = vi.fn();
-    render(<Button onClick={handleClick}>Click</Button>);
-    
-    await userEvent.click(screen.getByRole('button'));
-    expect(handleClick).toHaveBeenCalled();
-  });
+it('renders button', () => {
+  render(<Button>Click me</Button>);
+  expect(screen.getByRole('button')).toBeInTheDocument();
 });
 ```
 
-## Level 3: Production Deployment (Low Freedom, Expert Only)
+---
 
-### 1. Build Optimization with Turbopack
+## Production Best Practices
 
-Turbopack (Rust-based bundler) provides 2x faster builds:
-
-**next.config.js Configuration**:
-```typescript
-import type { NextConfig } from 'next';
-
-const nextConfig: NextConfig = {
-  // Use Turbopack for dev mode
-  experimental: {
-    turbopack: {
-      // Turbopack-specific configuration
-      resolveAlias: {
-        '@/*': './*'
-      }
-    }
-  },
-  
-  // Image optimization
-  images: {
-    formats: ['image/avif', 'image/webp'],
-    remotePatterns: [
-      { hostname: 'cdn.example.com' }
-    ]
-  },
-  
-  // API routes compression
-  compress: true,
-  
-  // Security headers
-  headers: async () => [
-    {
-      source: '/(.*)',
-      headers: [
-        { key: 'X-Content-Type-Options', value: 'nosniff' },
-        { key: 'X-Frame-Options', value: 'DENY' }
-      ]
-    }
-  ]
-};
-
-export default nextConfig;
-```
-
-### 2. Deployment Strategies
-
-**Docker Deployment**:
-```dockerfile
-FROM node:22-alpine AS builder
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-
-COPY . .
-RUN npm run build
-
-FROM node:22-alpine
-WORKDIR /app
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/node_modules ./node_modules
-COPY package*.json ./
-
-EXPOSE 3000
-CMD ["npm", "start"]
-```
-
-**Environment Configuration**:
-```typescript
-// lib/config.ts
-const config = {
-  apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000',
-  apiKey: process.env.API_KEY,
-  environment: process.env.NODE_ENV || 'development',
-  isDev: process.env.NODE_ENV === 'development'
-};
-
-export default config;
-```
-
-### 3. Performance Monitoring
-
-**Web Vitals Tracking**:
-```typescript
-// app/layout.tsx
-import { reportWebVitals } from 'next/web-vitals';
-
-export function reportWebVitals(metric: any) {
-  console.log(`${metric.name}: ${metric.value}ms`);
-  
-  // Send to analytics service
-  fetch('/api/metrics', {
-    method: 'POST',
-    body: JSON.stringify(metric)
-  });
-}
-```
-
-## Auto-Load Triggers
-
-This Skill automatically activates when you:
-- Work with TypeScript projects and strict type checking
-- Develop full-stack applications with Next.js
-- Implement type-safe APIs with tRPC
-- Need data validation with Zod
-- Set up React 19 Server Components
-- Debug TypeScript type errors
-- Optimize builds with Turbopack
-
-## Best Practices Summary
-
-1. **Enable strict mode** in tsconfig.json for full type safety
-2. **Use Zod for runtime validation** combined with TypeScript types
-3. **Prefer tRPC over REST** for end-to-end type safety
+1. **Enable strict mode** in tsconfig.json for maximum type safety
+2. **Use Zod** for runtime validation combined with TypeScript types
+3. **Prefer tRPC** over REST for end-to-end type safety
 4. **Use Server Components** by default in Next.js 16
 5. **Implement proper error handling** with discriminated unions
 6. **Test with Vitest** for fast, type-safe unit tests
@@ -653,12 +286,20 @@ This Skill automatically activates when you:
 9. **Monitor Web Vitals** in production environments
 10. **Build with Turbopack** for faster development cycles
 
-## See Also
+---
 
-- **TypeScript 5.9 Release**: https://devblogs.microsoft.com/typescript/announcing-typescript-5-9/
-- **React 19 Documentation**: https://react.dev/
-- **Next.js 16 Documentation**: https://nextjs.org/docs
-- **tRPC Documentation**: https://trpc.io/docs
-- **Zod Documentation**: https://zod.dev/
-- **Turbopack Documentation**: https://turbo.build/pack
+## Learn More
+
+- **Examples**: See `examples.md` for React, Next.js, tRPC, Zod, and Vitest patterns
+- **Reference**: See `reference.md` for API details, tool versions, and troubleshooting
+- **TypeScript 5.9**: https://devblogs.microsoft.com/typescript/announcing-typescript-5-9/
+- **React 19**: https://react.dev/
+- **Next.js 16**: https://nextjs.org/docs
+- **tRPC**: https://trpc.io/docs
+- **Zod**: https://zod.dev/
+
+---
+
+**Skills**: Skill("moai-essentials-debug"), Skill("moai-essentials-perf"), Skill("moai-security-backend")
+**Auto-loads**: TypeScript projects mentioning Next.js, React, tRPC, strict types, type safety
 

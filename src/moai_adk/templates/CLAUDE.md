@@ -1105,6 +1105,94 @@ git checkout .moai/release/your-file.sh
 
 ---
 
+## 🧙 Yoda System: Local-Only Lecture Material Generation
+
+**Status**: Production Ready (MoAI-ADK)
+
+**Location**: `~/.claude/commands/yoda/`, `~/.claude/agents/yoda-master.md`, `~/.claude/skills/moai-yoda-system/`
+
+### Policy: Yoda is Local-Only, Never Deployed
+
+**CRITICAL RULE**: Yoda system files are **local-only** and **NEVER deployed** with {{PROJECT_NAME}} package.
+
+Similar to `/moai:release` command, Yoda system is an **internal tool** for generating lecture materials.
+
+### Files Organization
+
+**Source of Truth** (Package Template):
+- `src/moai_adk/templates/.claude/commands/yoda/generate.md`
+- `src/moai_adk/templates/.claude/agents/yoda-master.md`
+- `src/moai_adk/templates/.claude/skills/moai-yoda-system/SKILL.md`
+- `src/moai_adk/templates/.claude/skills/moai-yoda-system/templates/`
+
+**Local Project Copy** (Auto-synced from package):
+- `.claude/commands/yoda/generate.md`
+- `.claude/agents/yoda-master.md`
+- `.claude/skills/moai-yoda-system/SKILL.md`
+- `.claude/skills/moai-yoda-system/templates/education.md`
+- `.claude/skills/moai-yoda-system/templates/presentation.md`
+- `.claude/skills/moai-yoda-system/templates/workshop.md`
+
+**Local Output Directory** (Always local):
+- `.moai/yoda/output/` - Generated lecture materials
+
+### .gitignore Rules for Yoda
+
+**Ignored Files** (User-generated):
+```gitignore
+# Yoda system output (로컬 강의 자료 생성만)
+.moai/yoda/output/*.md
+.moai/yoda/output/*.pdf
+.moai/yoda/output/*.pptx
+.moai/yoda/output/*.docx
+.moai/yoda/output/*-notion-link.txt
+```
+
+### Why Yoda is Local-Only
+
+1. **Development Tool**: Generates materials only for local education/lectures
+2. **Confidential Content**: Generated lectures may contain sensitive examples
+3. **Personal Use**: Each developer customizes their own lecture materials
+4. **No Package Dependency**: Not part of {{PROJECT_NAME}} core functionality
+5. **Parallel to /moai:release**: Same pattern as release automation tool
+
+### Master Yoda Core Principle
+
+**"바퀴를 재발명하지 말고, 기존의 도구를 현명하게 재사용하자"**
+(Don't reinvent the wheel; reuse existing tools wisely)
+
+**Execution Rules**:
+- ✅ Reuse existing scripts from `moai-document-processing` skill
+- ✅ Use MCP tools (Notion, Context7) directly
+- ✅ Generate from 3 standard templates only
+- ❌ Never create new scripts in `.moai/yoda/scripts/`
+- ❌ Never duplicate PDF/PPTX/DOCX generation logic
+
+### Usage Pattern
+
+```bash
+/yoda:generate --topic "주제" --format "education" --output "pdf,pptx"
+```
+
+Generates:
+- `.moai/yoda/output/{topic}.md` (마크다운)
+- `.moai/yoda/output/{topic}.pdf` (PDF)
+- `.moai/yoda/output/{topic}.pptx` (PowerPoint)
+- Optional: Notion page auto-publish
+
+### Notion MCP Setup
+
+To enable Notion publishing:
+
+1. Check `.moai/NOTION_SETUP.md` for complete setup instructions
+2. Configure Notion API token in `.env`
+3. Set `NOTION_DATABASE_ID` environment variable
+4. Run: `/yoda:generate --topic "Test" --output "notion"`
+
+See `.moai/NOTION_SETUP.md` for detailed setup guide.
+
+---
+
 ## Project Information
 
 - **Name**: {{PROJECT_NAME}}
