@@ -1,62 +1,282 @@
-# Foundation Tags - Reference Documentation
+# moai-foundation-tags: Reference & Resources
 
-## Official Documentation
+## Official TAG System Documentation
 
-### Core References
-- **MoAI-ADK TAG System**: [Internal Documentation]
-- **TAG Management Guidelines**: `.moai/docs/tag-management.md`
-- **@TAG Chain Documentation**: `CLAUDE.md` - Documentation Reference Map
+### Primary References
+- **MoAI-ADK Configuration**: `.moai/config.json` (tags section)
+- **TAG Storage**: Source code scanning (.claude/skills/.moai/specs/)
+- **Validation Scripts**: `.moai/scripts/validation/tag_*.py`
 
-### TAG Patterns and Standards
+## TAG Type Specifications
 
-#### TAG Structure
+### @SPEC: Specification TAGs
+- **Location**: `.moai/specs/SPEC-XXX/spec.md`
+- **Format**: `@SPEC:[DOMAIN]-[NNN]`
+- **Example**: `@SPEC:AUTH-001`, `@SPEC:PAYMENT-042`
+- **Purpose**: Define requirements and acceptance criteria
+- **Validation**: Must be approved by SPEC reviewer
+
+### @TEST: Testing TAGs
+- **Location**: `tests/test_*.py`
+- **Format**: `@TEST:SPEC:[DOMAIN]-[NNN]-[SUB]`
+- **Example**: `@TEST:SPEC:AUTH-001-001`, `@TEST:SPEC:AUTH-001-002`
+- **Purpose**: Implement test cases validating @SPEC
+- **Validation**: Must link to existing @SPEC
+
+### @CODE: Implementation TAGs
+- **Location**: `src/**/*.py`
+- **Format**: `@CODE:SPEC:[DOMAIN]-[NNN]-[SUB]`
+- **Example**: `@CODE:SPEC:AUTH-001`, `@CODE:SPEC:AUTH-001-001`
+- **Purpose**: Mark code that implements @SPEC requirements
+- **Validation**: Must reference valid @SPEC
+
+### @DOC: Documentation TAGs
+- **Location**: `docs/**/*.md`
+- **Format**: `@DOC:SPEC:[DOMAIN]-[NNN][-SUB]`
+- **Example**: `@DOC:SPEC:AUTH-001`, `@DOC:SPEC:AUTH-001-USER-GUIDE`
+- **Purpose**: Link documentation to implementation
+- **Validation**: Must reference @SPEC or @CODE
+
+## Chain Relationships
+
+### Valid Chain Links (November 2025)
+
 ```
-@{DOMAIN}-{TOPIC}-{###}
-├─ DOMAIN: Project area (SPEC, CODE, TEST, DOC)
-├─ TOPIC: Specific subject area
-└─ ###: Sequential ID (001-999)
+@SPEC:AUTH-001
+    ↓ depends_on
+@TEST:SPEC:AUTH-001-001 (must exist)
+    ↓ validates
+@CODE:SPEC:AUTH-001 (must exist)
+    ↓ described_by
+@DOC:SPEC:AUTH-001 (should exist)
 ```
 
-#### TAG Chain Integrity
-- **SPEC → CODE**: Requirements to implementation
-- **CODE → TEST**: Implementation to verification
-- **TEST → DOC**: Verification to documentation
-- **DOC → SPEC**: Documentation to requirements
+### Invalid Patterns (Validation Errors)
 
-#### TAG Validation Rules
-1. **Format Compliance**: Correct @TAG-DOMAIN-TOPIC-### structure
-2. **Chain Completeness**: All four TAG types present
-3. **Reference Accuracy**: Links point to existing files
-4. **Traceability**: Clear lineage from SPEC to DOC
+```
+PATTERN 1: Floating @TEST (no @SPEC)
+@TEST:ORPHAN-001  ← ERROR: No @SPEC reference
 
-### Tools and Integration
+PATTERN 2: Orphan @SPEC (no @TEST/@CODE)
+@SPEC:UNUSED-001  ← WARNING: Not implemented
 
-#### TAG Management Tools
-- **Git Integration**: Automatic TAG commit validation
-- **Documentation Generation**: TAG-based doc assembly
-- **Search and Discovery**: TAG-based content finding
-- **Quality Gates**: TAG completeness validation
+PATTERN 3: Circular reference
+@SPEC:A-001 references @CODE:B-001
+@CODE:B-001 references @TEST:A-001  ← ERROR: Circular
 
-#### Best Practices
-- **TAG First**: Always create TAGs before implementation
-- **Consistent Naming**: Use established topic conventions
-- **Complete Chains**: Maintain SPEC→CODE→TEST→DOC links
-- **Regular Audits**: Periodic orphan detection and cleanup
+PATTERN 4: Version mismatch
+@SPEC:OLD-001 (v3.0)
+@CODE:SPEC:OLD-001 (v4.0)  ← ERROR: Version mismatch
+```
 
----
+## Scanning & Detection Commands
 
-## External References
+### Find TAGs in Codebase
+```bash
+# All TAGs by type
+rg '@SPEC:[A-Z]+-\d+' --no-filename -o | sort | uniq
+rg '@TEST:SPEC:' --no-filename -o | sort | uniq
+rg '@CODE:SPEC:' --no-filename -o | sort | uniq
+rg '@DOC:' --no-filename -o | sort | uniq
 
-### Version Control and Traceability
-- **Git TAG Best Practices**: [Git Documentation](https://git-scm.com/book/en/v2/Git-Basics-Tagging)
-- **Semantic Versioning**: [SemVer.org](https://semver.org/)
-- **Conventional Commits**: [Conventional Commits](https://www.conventionalcommits.org/)
+# Count TAGs
+rg '@SPEC:|@TEST:|@CODE:|@DOC:' --count-matches
 
-### Documentation Standards
-- **Markdown Best Practices**: [CommonMark](https://commonmark.org/)
-- **Technical Writing**: [Google Developer Documentation Style Guide](https://developers.google.com/tech-writing)
+# Find specific TAG
+rg '@SPEC:AUTH-001' -n
 
----
+# Find all references to TAG
+rg 'AUTH-001' -n
+```
 
-**Last Updated**: 2025-11-11
-**Related Skills**: moai-foundation-specs, moai-foundation-trust
+### Python TAG Analysis
+
+```python
+import re
+import subprocess
+
+def scan_tags(tag_type='SPEC'):
+    """Scan for specific TAG type"""
+    cmd = f'rg @{tag_type}:[A-Z]+-\d+ --no-filename -o'
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    return set(result.stdout.strip().split('\n'))
+
+def find_references(tag):
+    """Find all references to a TAG"""
+    cmd = f'rg "{tag}" -n'
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    return result.stdout.strip().split('\n')
+
+def validate_chain(spec_tag):
+    """Validate complete chain for a SPEC"""
+    chains = {
+        'spec': False,
+        'test': False,
+        'code': False,
+        'doc': False
+    }
+    refs = find_references(spec_tag)
+    for ref in refs:
+        if '@SPEC' in ref: chains['spec'] = True
+        if '@TEST' in ref: chains['test'] = True
+        if '@CODE' in ref: chains['code'] = True
+        if '@DOC' in ref: chains['doc'] = True
+    return all(chains.values())  # All parts present
+```
+
+## TAG Validation Rules
+
+### Syntax Rules
+- Must start with `@`
+- Must have TYPE (SPEC, TEST, CODE, DOC, DEPRECATED)
+- Must have DOMAIN (alphabetic, max 20 chars)
+- Must have NUMBER (001-999)
+- Optional: Subtype (numeric suffix)
+
+### Semantic Rules
+- TAGs must be unique across codebase
+- @SPEC must exist before linking
+- @TEST must reference valid @SPEC
+- @CODE must reference valid @SPEC
+- @DOC must reference @SPEC or @CODE
+- No circular dependencies allowed
+
+### Coverage Rules
+- Every @SPEC should have @TEST (≥1)
+- Every @TEST should validate a @SPEC (≥1)
+- Every @CODE should implement a @SPEC (≥1)
+- Test coverage ≥85% for all @CODE
+
+## Orphan Detection Patterns
+
+### Query: Find Orphan SPECs
+
+```sql
+-- Pseudo SQL for concept
+SELECT spec_tag
+FROM tags
+WHERE type = 'SPEC'
+  AND NOT EXISTS (
+    SELECT 1 FROM tags
+    WHERE type IN ('TEST', 'CODE')
+      AND parent_ref = spec_tag
+  )
+ORDER BY created_date;
+```
+
+### Query: Find Floating TESTSs
+
+```sql
+SELECT test_tag
+FROM tags
+WHERE type = 'TEST'
+  AND parent_ref NOT IN (
+    SELECT tag FROM tags WHERE type = 'SPEC'
+  );
+```
+
+### Cleanup Decision Tree
+
+```
+Found Orphan TAG?
+    ├─ Type A: Unused @SPEC
+    │  ├─ Feature cancelled?
+    │  │  └─ Mark @DEPRECATED
+    │  └─ Feature pending?
+    │     └─ Link to @TEST/@CODE
+    │
+    ├─ Type B: Floating @TEST
+    │  ├─ Valid test?
+    │  │  └─ Create missing @SPEC
+    │  └─ Obsolete?
+    │     └─ Mark @DEPRECATED
+    │
+    ├─ Type C: Stray @CODE
+    │  ├─ Active feature?
+    │  │  └─ Create SPEC→TEST chain
+    │  └─ Legacy code?
+    │     └─ Document with @DOC
+    │
+    └─ Type D: Orphan @DOC
+       ├─ Source still exists?
+       │  └─ Link to @SPEC/@CODE
+       └─ Outdated doc?
+          └─ Mark @DEPRECATED or delete
+```
+
+## Version Compatibility
+
+### Supported Versions
+
+| Component | Version | Release Date | Status |
+|-----------|---------|--------------|--------|
+| MoAI-ADK | 0.22.5+ | 2025-11-12 | Active |
+| TAG System | 4.0.0 | 2025-11-12 | Current |
+| Python | 3.12+ | 2023-10-02 | Required |
+| Git | 2.40+ | 2023-03-13 | Required |
+
+### Breaking Changes (v3 → v4)
+
+| Feature | v3 Pattern | v4 Pattern | Action |
+|---------|-----------|-----------|--------|
+| SPEC TAG | `@TAG-OLD-001` | `@SPEC:DOMAIN-001` | Update all references |
+| TEST TAG | `@TEST-OLD-001` | `@TEST:SPEC:DOMAIN-001-001` | Update structure |
+| CODE TAG | `@CODE-OLD-001` | `@CODE:SPEC:DOMAIN-001` | Update references |
+| DOC TAG | `@DOC-OLD-001` | `@DOC:SPEC:DOMAIN-001` | Standardize |
+
+## Integration Checklist
+
+### Setup Phase
+- [ ] Review TAG system architecture (this Skill Level 1)
+- [ ] Understand four-chain model (@SPEC→@TEST→@CODE→@DOC)
+- [ ] Review naming conventions and syntax rules
+- [ ] Configure `.moai/config.json` TAG settings
+
+### Development Phase
+- [ ] Create @SPEC for new feature (Day 1)
+- [ ] Add @TEST tags in test files (Days 2-3)
+- [ ] Link @CODE tags in implementation (Days 4-5)
+- [ ] Add @DOC tags in documentation (Day 6)
+- [ ] Run validation script before commit
+
+### Validation Phase
+- [ ] Run tag scanner: `rg '@(SPEC|TEST|CODE|DOC):'`
+- [ ] Check chains: `.moai/scripts/validation/tag_chain_validator.py`
+- [ ] Detect orphans: `.moai/scripts/validation/orphan_detector.py`
+- [ ] Verify coverage: Coverage report >= 85%
+- [ ] Generate audit report
+
+## Common Issues & Solutions
+
+### Issue: TAG not found during validation
+**Cause**: TAG not scanned yet or ripgrep not installed  
+**Solution**: 
+```bash
+# Install ripgrep
+brew install ripgrep  # macOS
+apt-get install ripgrep  # Linux
+
+# Rescan
+rg '@SPEC:' .
+```
+
+### Issue: Circular reference detected
+**Cause**: @SPEC references @CODE that references @TEST that references @SPEC  
+**Solution**: Restructure to avoid loops. Use linear chain only.
+
+### Issue: Coverage < 85% for @SPEC
+**Cause**: @SPEC has @TEST but code coverage metrics are low  
+**Solution**: Add more test cases or improve test quality. Use mutation testing.
+
+### Issue: Orphan TAGs prevent merge
+**Cause**: CI/CD validation fails on orphan detection  
+**Solution**: Either link orphan or mark as @DEPRECATED before committing.
+
+## Next Steps
+
+1. **Understand Level 2**: Review practical implementation patterns
+2. **Implement Patterns**: Start tagging new features following examples
+3. **Run Validation**: Execute tag chain validator in CI/CD
+4. **Review Governance**: Implement enterprise audit procedures
+5. **Monitor Metrics**: Track TAG health monthly
+
