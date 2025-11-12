@@ -1,12 +1,12 @@
 ---
-name: moai-foundation-specs
-version: 4.0.0
+name: "moai-foundation-specs"
+version: "4.0.0"
 created: 2025-11-11
 updated: 2025-11-12
-status: active
+status: stable
 description: SPEC document management - lifecycle, versioning, approval workflows, 50+ references, SPEC-first TDD integration
 keywords: ['spec', 'specification', 'requirements', 'lifecycle', 'versioning', 'approval', 'tracking', 'tdd']
-allowed-tools:
+allowed-tools: 
   - Read
   - Write
   - Bash
@@ -305,7 +305,7 @@ Pre-release versions:
 ```yaml
 # In SPEC frontmatter
 version: 1.2.3
-status: active
+status: stable
 created: 2025-11-01
 updated: 2025-11-12
 approved_by: tech-lead-name
@@ -356,7 +356,7 @@ eol_date: null  # null if active, 2025-12-31 if deprecated
 name: User Profile Enhancement
 spec_id: SPEC-050
 version: 1.0.0
-status: active
+status: stable
 created: 2025-11-01
 approved_date: 2025-11-08
 approved_by: tech-lead
@@ -430,7 +430,7 @@ REQ-003 (Unwanted):
 name: Payment Processing Refactor
 spec_id: SPEC-051
 version: 2.1.0
-status: active
+status: stable
 created: 2025-10-15
 approved_date: 2025-11-01
 approved_by: tech-lead, product-owner

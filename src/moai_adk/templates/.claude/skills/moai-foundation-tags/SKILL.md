@@ -1,20 +1,20 @@
 ---
-name: moai-foundation-tags
-version: 4.0.0
+name: "moai-foundation-tags"
+version: "4.0.0"
 created: 2025-11-12
 updated: 2025-11-12
-status: active
+status: stable
 tier: foundation
 description: "Complete TAG system guide covering @SPEC, @TEST, @CODE, @DOC chains, TAG lifecycle management, orphan detection, validation rules, and enterprise traceability patterns. Enterprise v4.0 with November 2025 stable coverage."
 allowed-tools: "Read, Glob, Grep, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
 primary-agent: "alfred"
 secondary-agents: [tag-agent, qa-validator, doc-syncer]
-keywords: [TAG-system, traceability, @SPEC, @TEST, @CODE, @DOC, tagging, metadata, governance]
+keywords: [TAG-system, traceability, SPEC, TEST, CODE, DOC, tagging, metadata, governance]
 tags: [foundation, tags, traceability, chains, validation, enterprise]
-orchestration:
-  can_resume: true
-  typical_chain_position: "foundational"
-  depends_on: []
+orchestration: 
+can_resume: true
+typical_chain_position: "foundational"
+depends_on: []
 ---
 
 # moai-foundation-tags

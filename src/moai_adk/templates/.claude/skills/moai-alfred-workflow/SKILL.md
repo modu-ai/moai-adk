@@ -1,9 +1,9 @@
 ---
-name: moai-alfred-workflow
-version: 4.0.0
+name: "moai-alfred-workflow"
+version: "4.0.0"
 created: 2025-11-02
 updated: 2025-11-12
-status: active
+status: stable
 tier: specialization
 description: "Enterprise-grade 4-step workflow orchestration with multi-agent delegation, Context7 integration, and 2025 best practices from Claude Code, Celery, Airflow, and Prefect."
 allowed-tools: "Read, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
@@ -11,10 +11,10 @@ primary-agent: "alfred"
 secondary-agents: [plan-agent, tdd-implementer, test-engineer, doc-syncer, git-manager, qa-validator]
 keywords: [alfred, workflow, orchestration, multi-agent, dag, canvas, asset-driven]
 tags: [alfred-core, enterprise, orchestration]
-orchestration:
-  can_resume: true
-  typical_chain_position: "orchestrator"
-  depends_on: []
+orchestration: 
+can_resume: true
+typical_chain_position: "orchestrator"
+depends_on: []
 ---
 
 # moai-alfred-workflow

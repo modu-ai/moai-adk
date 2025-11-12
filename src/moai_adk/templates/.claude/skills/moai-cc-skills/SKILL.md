@@ -1,12 +1,12 @@
 ---
-name: moai-cc-skills
-version: 2.0.0
+name: "moai-cc-skills"
+version: "2.0.0"
 created: 2025-10-22
 updated: 2025-11-11
-status: active
+status: stable
 description: Claude Code Skills management, skill creation patterns, and knowledge capsule architecture. Use when creating custom Skills, managing skill libraries, or designing knowledge systems.
 keywords: ['skills', 'knowledge-capsules', 'claude-code', 'skill-creation', 'management']
-allowed-tools:
+allowed-tools: 
   - Read
   - Bash
   - Glob

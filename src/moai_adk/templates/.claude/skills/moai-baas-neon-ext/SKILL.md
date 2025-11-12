@@ -1,12 +1,12 @@
 ---
-name: moai-baas-neon-ext
-version: 4.0.0
+name: "moai-baas-neon-ext"
+version: "4.0.0"
 created: 2025-11-11
 updated: 2025-11-12
-status: active
+status: stable
 description: Enterprise Neon Serverless PostgreSQL Platform with AI-powered database architecture, Context7 integration, and intelligent branching orchestration for scalable modern applications
 keywords: ['neon', 'postgresql', 'serverless-database', 'database-branching', 'autoscaling', 'pg-bouncer', 'context7-integration', 'ai-orchestration', 'production-deployment']
-allowed-tools:
+allowed-tools: 
   - Read
   - Bash
   - Write

@@ -1,3 +1,11 @@
+---
+name: "moai-security-secrets"
+version: "4.0.0"
+status: stable
+description: "Enterprise Skill for advanced development"
+allowed-tools: "Read, Bash, WebSearch, WebFetch"
+---
+
 # moai-security-secrets: Secret Management & Rotation
 
 **Secure Credential Storage, Rotation & Distribution**  

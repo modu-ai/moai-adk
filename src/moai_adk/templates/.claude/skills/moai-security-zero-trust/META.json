@@ -1,0 +1,40 @@
+{
+  "name": "moai-security-zero-trust",
+  "title": "Zero-Trust Architecture & Micro-Segmentation",
+  "version": "4.0.0",
+  "category": "security",
+  "status": "production",
+  "published_date": "2025-11-12",
+  "last_updated": "2025-11-12",
+  "difficulty": "expert",
+  "trust_score": 9.9,
+  "keywords": ["zero-trust", "eBPF", "Cilium", "Kubernetes", "microservices", "mTLS"],
+  "tech_stack": {
+    "language": "JavaScript/Node.js + YAML",
+    "platforms": ["Kubernetes", "Docker"],
+    "tools": ["Cilium 1.18+", "Teleport", "Istio"]
+  },
+  "features": [
+    "Zero-trust architecture",
+    "eBPF network policies",
+    "Micro-segmentation",
+    "Kubernetes NetworkPolicy",
+    "Cilium Layer 7 filtering",
+    "mTLS enforcement",
+    "BeyondCorp device trust",
+    "Hubble observability",
+    "Context7 policy validation"
+  ],
+  "coverage": {
+    "lines": 514,
+    "codeExamples": 5,
+    "reference_links": 34,
+    "production_ready": true
+  },
+  "enterprise_patterns": {
+    "service_mesh": "Cilium, Istio for mTLS",
+    "network_isolation": "Default deny-all, explicit allow rules",
+    "device_trust": "OS patching, AV, firewall, encryption checks"
+  },
+  "2025_standard": "50% enterprises using service mesh for zero-trust"
+}

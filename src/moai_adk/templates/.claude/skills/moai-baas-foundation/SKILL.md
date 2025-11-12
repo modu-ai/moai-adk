@@ -1,12 +1,12 @@
 ---
-name: moai-baas-foundation
-version: 4.0.0
+name: "moai-baas-foundation"
+version: "4.0.0"
 created: 2025-10-22
 updated: 2025-11-12
-status: active
+status: stable
 description: Enterprise Backend-as-a-Service Foundation with AI-powered BaaS architecture patterns, strategic provider selection, and intelligent multi-service orchestration for scalable production applications
 keywords: ['baas', 'backend-architecture', 'service-integration', 'provider-selection', 'enterprise-patterns', 'multi-cloud', 'context7-integration', 'ai-orchestration', 'production-deployment']
-allowed-tools:
+allowed-tools: 
   - Read
   - Bash
   - WebSearch

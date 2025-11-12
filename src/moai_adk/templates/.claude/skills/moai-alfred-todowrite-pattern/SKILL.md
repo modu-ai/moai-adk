@@ -1,6 +1,6 @@
 ---
-name: moai-alfred-todowrite-pattern
-version: 4.0.0
+name: "moai-alfred-todowrite-pattern"
+version: "4.0.0"
 tier: Alfred
 model: claude-sonnet-4-5
 primary_agent: alfred
@@ -8,12 +8,13 @@ secondary_agents: [plan-agent, tdd-implementer, test-engineer, git-manager, doc-
 description: Comprehensive TodoWrite task tracking and state management patterns with 15+ executable code examples from 18,075 production implementations across Jira, Trello, Asana, Linear, GitHub Projects, and Todoist
 keywords: [todowrite, task-tracking, state-management, task-lifecycle, workflow-automation, batch-operations, history-tracking, phase-based-initialization, alfred-4-step-workflow]
 allowed_tools: [TodoWrite, Read, Bash]
-version_history:
-  - 4.0.0: Complete rewrite with 18,075 production examples, 15+ patterns, 1000+ lines
-  - 3.1.0: Enhanced phase-based initialization and bulk operations
-  - 3.0.0: Added state validation and history tracking
-  - 2.0.0: Introduced three-state model
-  - 1.0.0: Initial TodoWrite patterns
+version_history: 
+- 4.0.0: Complete rewrite with 18,075 production examples, 15+ patterns, 1000+ lines
+- 3.1.0: Enhanced phase-based initialization and bulk operations
+- 3.0.0: Added state validation and history tracking
+- 2.0.0: Introduced three-state model
+- 1.0.0: Initial TodoWrite patterns
+status: stable
 ---
 
 # TodoWrite Task Tracking & State Management Patterns

@@ -1,12 +1,12 @@
 ---
-name: moai-baas-firebase-ext
-version: 4.0.0
+name: "moai-baas-firebase-ext"
+version: "4.0.0"
 created: 2025-11-11
 updated: 2025-11-12
-status: active
+status: stable
 description: Enterprise Firebase Full-Stack Platform with AI-powered architecture, Context7 integration, and intelligent Google Cloud ecosystem orchestration for scalable production applications
 keywords: ['firebase', 'google-cloud', 'firestore', 'cloud-functions', 'firebase-auth', 'enterprise-integration', 'context7-integration', 'ai-orchestration', 'production-deployment']
-allowed-tools:
+allowed-tools: 
   - Read
   - Bash
   - Write

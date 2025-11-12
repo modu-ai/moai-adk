@@ -1,12 +1,12 @@
 ---
-name: moai-lang-php
-version: 2.1.0
+name: "moai-lang-php"
+version: "2.1.0"
 created: 2025-10-22
 updated: 2025-11-02
-status: active
+status: stable
 description: PHP 8.4+ best practices with PHPUnit 11, Composer, PSR-12 standards, and web frameworks (Laravel, Symfony).
 keywords: ['php', 'phpunit', 'composer', 'psr', 'laravel', 'symfony']
-allowed-tools:
+allowed-tools: 
   - Read
   - Bash
 ---

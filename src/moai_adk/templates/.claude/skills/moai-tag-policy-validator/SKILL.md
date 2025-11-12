@@ -1,9 +1,9 @@
 ---
-name: moai-tag-policy-validator
-version: 4.0.0
+name: "moai-tag-policy-validator"
+version: "4.0.0"
 created: 2025-11-05
 updated: 2025-11-12
-status: active
+status: stable
 tier: specialization
 description: "Comprehensive TAG system validator and policy enforcer that monitors, validates, and corrects TAG usage across code, tests, and documentation. Use when ensuring TAG compliance, validating TAG policy violations, analyzing TAG coverage, or when maintaining TAG system integrity and governance.. Enhanced with Context7 MCP for up-to-date documentation."
 allowed-tools: "Read, Glob, Grep, Bash, Write, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
@@ -11,10 +11,10 @@ primary-agent: "alfred"
 secondary-agents: []
 keywords: [tag, policy, validator, git, spec]
 tags: []
-orchestration:
-  can_resume: true
-  typical_chain_position: "middle"
-  depends_on: []
+orchestration: 
+can_resume: true
+typical_chain_position: "middle"
+depends_on: []
 ---
 
 # moai-tag-policy-validator

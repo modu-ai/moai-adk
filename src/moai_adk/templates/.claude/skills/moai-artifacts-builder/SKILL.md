@@ -1,9 +1,9 @@
 ---
-name: moai-artifacts-builder
-version: 4.1.0
+name: "moai-artifacts-builder"
+version: "4.1.0"
 created: 2025-11-12
 updated: 2025-11-12
-status: active
+status: stable
 tier: Alfred
 description: "아티팩트 생성, 관리, 거버넌스 패턴을 정의합니다. November 2025 enterprise standards 기반. 아티팩트 분류, Context7 MCP 통합, 생명주기 관리, 보안 검증. 사용: 프로덕션 아티팩트 생성, 아티팩트 거버넌스 설계, 저장소 구조 정의, SBOM 생성, 공급망 보안 검증 필요 시."
 keywords: ['artifact', 'governance', 'lifecycle', 'context7-mcp', 'sbom', 'supply-chain-security', 'enterprise-standards', 'november-2025', 'devops', 'compliance']

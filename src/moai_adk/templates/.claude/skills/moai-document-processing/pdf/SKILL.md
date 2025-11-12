@@ -1,7 +1,9 @@
 ---
-name: pdf
+name: "pdf"
+version: "4.0.0"
 description: Comprehensive PDF manipulation toolkit for extracting text and tables, creating new PDFs, merging/splitting documents, and handling forms. When Claude needs to fill in a PDF form or programmatically process, generate, or analyze PDF documents at scale.
 license: Proprietary. LICENSE.txt has complete terms
+status: stable
 ---
 
 # PDF Processing Guide

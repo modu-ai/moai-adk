@@ -1,9 +1,9 @@
 ---
-name: moai-alfred-proactive-suggestions
-version: 4.0.0
+name: "moai-alfred-proactive-suggestions"
+version: "4.0.0"
 created: 2025-11-02
 updated: 2025-11-12
-status: active
+status: stable
 tier: specialization
 description: "Guide Alfred to provide non-intrusive proactive suggestions based on risk detection, optimization patterns, and learning opportunities. Enhanced with Context7 MCP for up-to-date documentation."
 allowed-tools: "Read, AskUserQuestion, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
@@ -11,10 +11,10 @@ primary-agent: "alfred"
 secondary-agents: [plan-agent, session-manager]
 keywords: [alfred, proactive, suggestions, api, database]
 tags: [alfred-core]
-orchestration:
-  can_resume: true
-  typical_chain_position: "middle"
-  depends_on: []
+orchestration: 
+can_resume: true
+typical_chain_position: "middle"
+depends_on: []
 ---
 
 # moai-alfred-proactive-suggestions

@@ -1,13 +1,15 @@
 ---
-name: moai-domain-security
-description: Enterprise-grade security architecture expertise with OAuth 2.1, zero-trust implementation, Argon2id password hashing, OWASP Top 10 2021 compliance, automated security testing with Snyk and OWASP ZAP; activates for security design, threat modeling, vulnerability management, authentication flows, API security, secure session management, CSRF/XSS protection, compliance automation (ISO 27001:2022, SOC 2, GDPR), and comprehensive security strategy development with NextAuth.js 5.x, Passport.js 0.7.x, and Helmet.js 7.x.
-allowed-tools:
+name: "moai-domain-security"
+version: "4.0.0"
+description: "Enterprise-grade security architecture expertise with OAuth 2.1, zero-trust implementation, Argon2id password hashing, OWASP Top 10 2021 compliance, automated security testing with Snyk and OWASP ZAP; activates for security design, threat modeling, vulnerability management, authentication flows, API security, secure session management, CSRF/XSS protection, compliance automation (ISO 27001:2022, SOC 2, GDPR), and comprehensive security strategy development with NextAuth.js 5.x, Passport.js 0.7.x, and Helmet.js 7.x."
+allowed-tools: 
   - Read
   - Bash
   - WebSearch
   - WebFetch
   - mcp__context7__get-library-docs
   - mcp__context7__resolve-library-id
+status: stable
 ---
 
 # 🛡️ Enterprise Security Architecture & Zero-Trust Implementation

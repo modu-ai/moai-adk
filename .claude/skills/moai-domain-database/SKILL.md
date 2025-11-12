@@ -1,9 +1,9 @@
 ---
-name: moai-domain-database
-version: 4.0.0
+name: "moai-domain-database"
+version: "4.0.0"
 created: 2025-11-12
 updated: 2025-11-12
-status: active
+status: stable
 tier: domain
 description: "Enterprise-grade database architecture with PostgreSQL 17, MySQL 8.4 LTS, MongoDB 8.0, Redis 7.4, and modern ORM patterns (SQLAlchemy 2.0, Prisma 5); covers query optimization, connection pooling, indexing strategies, caching patterns, and distributed data management. Enhanced with Context7 MCP for up-to-date stable version documentation."
 allowed-tools: "Read, Bash, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
@@ -11,10 +11,10 @@ primary-agent: "database-expert"
 secondary-agents: [alfred, qa-validator, doc-syncer]
 keywords: [database, postgresql, mysql, mongodb, redis, sqlalchemy, prisma, query-optimization, caching, indexing]
 tags: [domain-expert, database]
-orchestration:
-  can_resume: true
-  typical_chain_position: "middle"
-  depends_on: []
+orchestration: 
+can_resume: true
+typical_chain_position: "middle"
+depends_on: []
 ---
 
 # moai-domain-database

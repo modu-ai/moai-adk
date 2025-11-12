@@ -1,12 +1,12 @@
 ---
-name: moai-cc-claude-md
-version: 2.0.0
+name: "moai-cc-claude-md"
+version: "2.0.0"
 created: 2025-10-22
 updated: 2025-11-11
-status: active
+status: stable
 description: Claude Code Markdown integration, documentation generation, and structured content patterns. Use when generating documentation, managing markdown content, or creating structured reports.
 keywords: ['markdown', 'documentation', 'content-generation', 'structured-content', 'claude-md']
-allowed-tools:
+allowed-tools: 
   - Read
   - Bash
   - WebFetch

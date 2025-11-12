@@ -1,12 +1,12 @@
 ---
-name: moai-project-language-initializer
-version: 1.0.0
+name: "moai-project-language-initializer"
+version: "1.0.0"
 created: 2025-11-05
 updated: 2025-11-05
-status: active
+status: stable
 description: Handle comprehensive project language and user setup workflows including language selection, agent prompt configuration, user profiles, team settings, and domain selection
 keywords: ['project', 'initialization', 'language', 'configuration', 'batch-questions', 'team-setup']
-allowed-tools:
+allowed-tools: 
   - Read
   - Write
   - Edit

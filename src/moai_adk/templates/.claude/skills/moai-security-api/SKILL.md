@@ -1,3 +1,11 @@
+---
+name: "moai-security-api"
+version: "4.0.0"
+status: stable
+description: "Enterprise Skill for advanced development"
+allowed-tools: "Read, Bash, WebSearch, WebFetch"
+---
+
 # moai-security-api: REST/GraphQL/gRPC API Security
 
 **Comprehensive API Security for Modern Web Services**  

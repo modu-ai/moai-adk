@@ -1,12 +1,12 @@
 ---
-name: moai-lang-csharp
-version: 4.0.0
+name: "moai-lang-csharp"
+version: "4.0.0"
 created: 2025-11-11
 updated: 2025-11-11
-status: active
+status: stable
 description: "Enterprise C# 13 mastery with .NET 9, ASP.NET Core, Entity Framework, Context7 MCP integration, and 2025 best practices"
 keywords: [csharp, dotnet9, csharp13, aspnetcore, entityframework, backend, async, context7, enterprise]
-allowed-tools:
+allowed-tools: 
   - Read
   - Write
   - Edit

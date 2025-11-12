@@ -1,6 +1,6 @@
 ---
-name: moai-alfred-dev-guide
-version: 4.0.0
+name: "moai-alfred-dev-guide"
+version: "4.0.0"
 created: 2025-11-02
 updated: 2025-11-12
 tier: Alfred
@@ -9,6 +9,7 @@ allowed-tools: "Read, Bash(rg:*), Bash(grep:*)"
 primary-agent: "alfred"
 secondary-agents: ["spec-builder", "tdd-implementer", "test-engineer", "doc-syncer", "git-manager"]
 keywords: ["spec-first", "tdd", "red-green-refactor", "tag-system", "trust-principles", "pytest", "jest", "bdd", "sphinx"]
+status: stable
 ---
 
 # moai-alfred-dev-guide

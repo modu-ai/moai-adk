@@ -1,11 +1,13 @@
 ---
-name: moai-component-designer
+name: "moai-component-designer"
+version: "4.0.0"
 description: Enterprise-grade component design and architecture with React 19, Vue 3.5, Atomic Design patterns, accessibility standards (WCAG 2.1 AA), design systems, and production-ready component libraries. Use when building reusable component systems, designing component libraries, implementing Atomic Design, ensuring accessibility compliance, or creating scalable UI architectures.
-allowed-tools:
+allowed-tools: 
   - Read
   - Bash
   - WebSearch
   - WebFetch
+status: stable
 ---
 
 # Enterprise Component Designer & Accessible UI Architecture

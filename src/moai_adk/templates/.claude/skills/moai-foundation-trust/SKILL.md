@@ -1,9 +1,9 @@
 ---
-name: moai-foundation-trust
-version: 4.0.0
+name: "moai-foundation-trust"
+version: "4.0.0"
 created: 2025-11-12
 updated: 2025-11-12
-status: active
+status: stable
 tier: foundation
 description: "Complete TRUST 5 principles guide covering Test First, Readable, Unified, Secured, Trackable. Validation methods, enterprise quality gates, metrics, and November 2025 standards. Enterprise v4.0 with 50+ software quality standards references."
 allowed-tools: "Read, Glob, Grep, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
@@ -11,10 +11,10 @@ primary-agent: "alfred"
 secondary-agents: [qa-validator, trust-checker, test-engineer, security-expert]
 keywords: [TRUST-5, quality, testing, readability, security, traceability, metrics, enterprise]
 tags: [foundation, trust, quality, principles, governance, standards]
-orchestration:
-  can_resume: true
-  typical_chain_position: "foundational"
-  depends_on: []
+orchestration: 
+can_resume: true
+typical_chain_position: "foundational"
+depends_on: []
 ---
 
 # moai-foundation-trust

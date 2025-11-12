@@ -1,12 +1,14 @@
 ---
-name: moai-domain-cli-tool
-version: 4.0.0
+name: "moai-domain-cli-tool"
+version: "4.0.0"
 tier: Domain Architecture
 created: 2025-11-12
 updated: 2025-11-12
 tags: [CLI, Rust, Go, Node.js, command-line-tools, argument-parsing, UX/DX]
 trigger_keywords: [CLI tool, command-line, argparse, Clap, Cobra, Commander]
 allowed_tools: [WebSearch, WebFetch]
+status: stable
+description: "Enterprise Skill for advanced development"
 ---
 
 # moai-domain-cli-tool: Enterprise CLI Tool Design & Architecture (v4.0.0)

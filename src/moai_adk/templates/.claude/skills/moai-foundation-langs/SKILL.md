@@ -1,16 +1,16 @@
 ---
-name: moai-foundation-langs
-version: 4.0.0
+name: "moai-foundation-langs"
+version: "4.0.0"
 created: 2025-10-22
 updated: 2025-11-12
-status: active
+status: stable
 tier: Foundation
 description: >-
   Complete programming language support matrix with 25+ languages (Python, JavaScript, 
   Go, Rust, PHP, Java, TypeScript, C++, C#, etc.) covering November 2025 stable versions. 
   Includes language detection, version management, best practices, and framework ecosystem 
   guidance for modern development.
-keywords:
+keywords: 
   - language
   - detection
   - framework
@@ -19,7 +19,7 @@ keywords:
   - version-management
   - polyglot
   - november-2025-stable
-allowed-tools:
+allowed-tools: 
   - Read
   - Bash
   - Glob

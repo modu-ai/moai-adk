@@ -1,12 +1,12 @@
 ---
-name: moai-baas-vercel-ext
-version: 4.0.0
+name: "moai-baas-vercel-ext"
+version: "4.0.0"
 created: 2025-11-11
 updated: 2025-11-12
-status: active
+status: stable
 description: Enterprise Vercel Edge Platform with AI-powered deployment architecture, Context7 integration, and intelligent edge computing orchestration for scalable global applications
 keywords: ['vercel', 'edge-functions', 'next.js', 'deployment', 'serverless', 'edge-computing', 'global-cdn', 'context7-integration', 'ai-orchestration', 'production-deployment']
-allowed-tools:
+allowed-tools: 
   - Read
   - Bash
   - Write

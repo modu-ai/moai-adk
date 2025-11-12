@@ -1,11 +1,13 @@
 ---
-name: moai-domain-devops
+name: "moai-domain-devops"
+version: "4.0.0"
 description: Enterprise DevOps expertise with production-grade patterns for Kubernetes 1.31, Docker 27.x, Terraform 1.9, GitHub Actions, and cloud-native architectures; activates for CI/CD pipelines, infrastructure automation, container orchestration, monitoring with Prometheus/Grafana, and DevOps transformation strategies.
-allowed-tools:
+allowed-tools: 
   - Read
   - Bash
   - WebSearch
   - WebFetch
+status: stable
 ---
 
 # 🚀 Enterprise DevOps Architect — Production-Grade v4.0

@@ -1,3 +1,11 @@
+---
+name: "moai-security-encryption"
+version: "4.0.0"
+status: stable
+description: "Enterprise Skill for advanced development"
+allowed-tools: "Read, Bash, WebSearch, WebFetch"
+---
+
 # moai-security-encryption: Cryptography & Data Protection
 
 **Advanced Encryption, Key Management & End-to-End Security**  

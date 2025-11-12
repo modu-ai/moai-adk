@@ -1,12 +1,12 @@
 ---
-name: moai-alfred-practices
-version: 4.0.0 Enterprise
+name: "moai-alfred-practices"
+version: "4.0.0"
 created: 2025-11-05
 updated: 2025-11-12
-status: active
+status: stable
 description: Enterprise practical workflows, context engineering strategies, JIT (Just-In-Time) retrieval optimization, real-world execution examples, debugging patterns, and moai-adk workflow mastery; activates for workflow pattern learning, context optimization, debugging issue resolution, feature implementation end-to-end, and team knowledge transfer
 keywords: ['workflow-patterns', 'context-engineering', 'jit-retrieval', 'agent-usage', 'debugging-patterns', 'feature-implementation', 'practical-examples', 'moai-adk-mastery', 'knowledge-transfer', 'enterprise-workflows']
-allowed-tools:
+allowed-tools: 
   - Read
   - Glob
   - Bash
