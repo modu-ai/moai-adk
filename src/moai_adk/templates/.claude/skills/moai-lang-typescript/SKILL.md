@@ -1,1275 +1,666 @@
 ---
 name: moai-lang-typescript
-version: 4.0.0
-created: 2025-11-11
-updated: 2025-11-11
-status: active
-description: "Enterprise TypeScript development with Next.js 16, AI-powered Context7 integration, advanced type safety, and full-stack optimization for 2025"
-keywords: ['typescript-enterprise', 'nextjs-16', 'context7-integration', 'type-safety', 'fullstack-optimization', 'server-components', 'react-19', 'enterprise-patterns']
+description: Enterprise TypeScript with strict typing and modern ecosystem: TypeScript 5.9.3, Next.js 16, Turbopack, React 19, tRPC, Zod for type-safe schemas; activates for full-stack development, API contract definition, type safety enforcement, and framework-agnostic TypeScript patterns.
 allowed-tools:
   - Read
-  - Write
-  - Edit
   - Bash
-  - WebFetch
   - WebSearch
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+  - WebFetch
 ---
 
-# TypeScript Development Mastery
+# Modern TypeScript Development — Enterprise v4.0
 
-**Modern TypeScript Development with 2025 Best Practices**
+## Skill Metadata
 
-> Comprehensive TypeScript development guidance covering full-stack applications, type-safe patterns, modern frameworks, and production-ready code using the latest tools and methodologies.
+| Field | Value |
+| ----- | ----- |
+| **Version** | **4.0.0 Enterprise** |
+| **Created** | 2025-11-12 |
+| **Updated** | 2025-11-12 |
+| **Lines** | ~950 lines |
+| **Size** | ~30KB |
+| **Tier** | **3 (Professional)** |
+| **Allowed tools** | Read, Bash, WebSearch, WebFetch |
+| **Auto-load** | TypeScript strict types, Next.js patterns, full-stack development |
+| **Trigger cues** | TypeScript, Next.js, React, tRPC, strict, types, API routes, SSR, full-stack |
 
-## What It Does
+## Technology Stack (November 2025 Stable)
 
-- **Full-Stack Development**: Next.js, React, Node.js with end-to-end type safety
-- **Type-Safe APIs**: REST and GraphQL with TypeScript validation
-- **Modern Frontend**: React 19+, Vue 3+, Angular 17+ with TypeScript
-- **Backend Services**: Node.js, Deno, Bun with TypeScript optimization
-- **Testing Strategies**: Vitest, Jest, Playwright with type-safe testing
-- **Build & Deployment**: Modern bundlers, CI/CD, performance optimization
-- **Code Quality**: ESLint, Prettier, automated type checking
-- **Enterprise Patterns**: Monorepos, microservices, scalable architecture
+### Core Language
+- **TypeScript 5.9.3** (Released August 2025)
+  - Deferred module evaluation (import defer)
+  - Enhanced developer experience
+  - Node.js 20 stable module resolution
+  - Performance improvements (11% on large projects)
 
-## When to Use
+### Frontend Framework
+- **React 19.x** (Latest stable)
+  - Server Components
+  - Actions (use server)
+  - Ref as prop
+  - New Hooks API
 
-### Perfect Scenarios
-- **Building full-stack web applications**
-- **Developing type-safe APIs and microservices**
-- **Creating modern React/Next.js applications**
-- **Enterprise-scale JavaScript applications**
-- **Projects requiring strict type safety**
-- **Teams with multiple JavaScript skill levels**
-- **Applications with complex data models**
+- **Next.js 16.x** (Full-stack framework)
+  - Turbopack bundler (2x faster builds)
+  - App Router (file-based routing)
+  - Server Components by default
+  - API Routes with middleware
 
-### Common Triggers
-- "Create TypeScript API"
-- "Set up Next.js project"
-- "Type-safe React components"
-- "TypeScript best practices"
-- "Migrate JavaScript to TypeScript"
-- "Full-stack TypeScript application"
+### Build & Runtime
+- **Node.js 22.11.0 LTS** (Long-term support until April 2027)
+- **Turbopack** (Rust-based bundler, Webpack replacement)
+- **Webpack 6.x** (Alternative bundler)
+- **esbuild 0.23.x** (Alternative transpiler)
 
-## Tool Version Matrix (2025-11-11)
+### Type-Safe APIs
+- **tRPC 11.x** (End-to-end type-safe APIs)
+  - Zero-cost abstractions
+  - Automatic documentation
+  - Client type inference
 
-### Core TypeScript
-- **TypeScript**: 5.7.x (latest) / 5.6.x (LTS)
-- **Node.js**: 23.x (LTS) / 22.x (stable)
-- **Package Managers**: pnpm 10.x, npm 11.x, yarn 5.x
-- **Runtimes**: Node.js 23.x, Deno 2.x, Bun 1.2.x
+- **Zod 3.23.x** (Runtime schema validation)
+  - Type inference from schemas
+  - Custom error messages
+  - Coercion support
 
-### Frontend Frameworks
-- **Next.js**: 16.x - Full-stack React framework with AI integration
-- **React**: 19.x - UI library with enhanced Server Components
-- **Vue**: 3.5.x - Progressive framework
-- **Angular**: 19.x - Enterprise framework
-- **Svelte**: 5.x - Compiler-based framework
+- **OpenAPI 3.1.x** (API specification standard)
 
-### Build Tools
-- **Vite**: 7.x - Ultra-fast build tool
-- **Webpack**: 5.x - Module bundler
-- **esbuild**: 0.25.x - Fast bundler
-- **SWC**: 1.9.x - Rust-based compiler
+### Testing & Quality
+- **Vitest 2.x** (Unit testing, Jest-compatible)
+- **Playwright 1.48.x** (E2E testing)
+- **TypeScript Compiler API** (For type checking)
 
-### Testing Tools
-- **Vitest**: 3.x - Fast unit testing
-- **Jest**: 31.x - Comprehensive testing
-- **Playwright**: 1.50.x - E2E testing
-- **Testing Library**: 17.x - Component testing
+### Package Management
+- **npm 11.x** (Latest major version)
+- **yarn 4.x** (Alternative package manager)
+- **pnpm 9.x** (Fast, efficient package manager)
 
-### Code Quality
-- **ESLint**: 10.x - Linting (flat config)
-- **Prettier**: 3.4.x - Code formatting
-- **TypeScript Compiler**: Built-in type checking
-- **Husky**: 10.x - Git hooks
+## Level 1: Fundamentals (High Freedom)
 
-### Backend Frameworks
-- **Express**: 5.x - Minimal web framework
-- **Fastify**: 5.x - Fast web framework
-- **NestJS**: 11.x - Enterprise framework
-- **tRPC**: 12.x - End-to-end typesafe APIs
+### 1. TypeScript 5.9 Type System
 
-## Ecosystem Overview
+TypeScript 5.9 enhances type safety and developer experience:
 
-### Project Setup (2025 Best Practice)
-
-```bash
-# Modern TypeScript with pnpm (recommended)
-pnpm create next-app@latest my-app --typescript --tailwind --eslint --app
-cd my-app
-pnpm add @types/node @types/react @types/react-dom
-pnpm add -D vitest @vitest/ui jsdom @testing-library/react
-
-# Alternative: Bun for ultra-fast development
-bun create next-app my-app
-cd my-app
-bun add vitest @testing-library/react -d
-
-# Monorepo with Nx or Turborepo
-npx create-nx-workspace@latest my-workspace --preset=react-monorepo
-# or
-npx create-turbo@latest my-turbo-app
-
-# Next.js 16 with AI integration
-pnpm create next-app@latest my-ai-app --typescript --tailwind --eslint --app --ai
-cd my-ai-app
-pnpm add @ai-sdk/openai @ai-sdk/google @ai-sdk/anthropic
-```
-
-### Modern Project Structure
-
-```
-my-typescript-project/
-├── package.json
-├── tsconfig.json              # TypeScript configuration
-├── tsconfig.build.json        # Build-specific config
-├── vite.config.ts             # Build tool configuration
-├── eslint.config.js           # ESLint flat config
-├── prettier.config.js         # Prettier configuration
-├── playwright.config.ts       # E2E testing config
-├── vitest.config.ts           # Unit testing config
-├── src/
-│   ├── app/                   # Next.js app router
-│   │   ├── layout.tsx
-│   │   ├── page.tsx
-│   │   ├── globals.css
-│   │   └── api/               # API routes
-│   ├── components/            # Reusable components
-│   │   ├── ui/                # UI components
-│   │   └── features/          # Feature components
-│   ├── lib/                   # Utilities and configs
-│   │   ├── utils.ts
-│   │   ├── db.ts              # Database configuration
-│   │   └── types.ts           # Global type definitions
-│   ├── hooks/                 # Custom React hooks
-│   └── types/                 # Domain-specific types
-├── tests/
-│   ├── __mocks__/             # Mock files
-│   ├── setup.ts               # Test setup
-│   └── integration/           # Integration tests
-└── .github/
-    └── workflows/             # CI/CD pipelines
-```
-
-## Modern TypeScript Patterns
-
-### Advanced Type System Features (TypeScript 5.7)
-
+**Basic Type Annotations**:
 ```typescript
-// Import attributes for better module management
-import data from "./data.json" with { type: "json" };
+// Primitive types
+const name: string = "John";
+const age: number = 30;
+const active: boolean = true;
 
-// Template literal type improvements
-type EventName<T extends string> = `on${Capitalize<T>}`;
-type UserEvent = EventName<'click' | 'hover'>; // 'onClick' | 'onHover'
+// Union types
+type Status = "pending" | "approved" | "rejected";
+const status: Status = "approved";
 
-// Enhanced symbol key handling
-const metaKey = Symbol('metadata');
-interface Metadata {
-  [metaKey]: string;
+// Intersection types
+type Admin = User & { role: "admin"; permissions: string[] };
+
+// Generic types
+interface Container<T> {
+  value: T;
+  getValue(): T;
+  setValue(value: T): void;
 }
 
-// Improved decorator metadata
-function Entity<T extends { new(...args: any[]): {} }>(constructor: T) {
-  return class extends constructor {
-    createdAt = new Date();
+const stringContainer: Container<string> = {
+  value: "hello",
+  getValue() { return this.value; },
+  setValue(value) { this.value = value; }
+};
+```
+
+**Advanced Type Features**:
+```typescript
+// Utility types
+type Readonly<T> = { readonly [K in keyof T]: T[K] };
+type Partial<T> = { [K in keyof T]?: T[K] };
+type Record<K, T> = { [P in K]: T };
+
+// Conditional types
+type IsString<T> = T extends string ? true : false;
+type Flatten<T> = T extends Array<infer U> ? U : T;
+
+// Mapped types
+type Getters<T> = {
+  [K in keyof T as `get${Capitalize<string & K>}`]: () => T[K];
+};
+
+interface Person {
+  name: string;
+  age: number;
+}
+
+type PersonGetters = Getters<Person>;
+// Results in: { getName: () => string; getAge: () => number }
+```
+
+### 2. React 19 Component Patterns
+
+React 19 introduces Server Components and new patterns:
+
+**Server Components**:
+```typescript
+// app/components/UserProfile.tsx
+'use server'
+
+import { getUserData } from '@/lib/db';
+
+export async function UserProfile({ userId }: { userId: string }) {
+  const userData = await getUserData(userId);
+  
+  return (
+    <div className="user-profile">
+      <h1>{userData.name}</h1>
+      <p>{userData.bio}</p>
+    </div>
+  );
+}
+```
+
+**Client Components with Use**:
+```typescript
+// app/components/Counter.tsx
+'use client'
+
+import { useState, useTransition } from 'react';
+
+export function Counter() {
+  const [count, setCount] = useState(0);
+  const [isPending, startTransition] = useTransition();
+  
+  const handleIncrement = () => {
+    startTransition(async () => {
+      const newCount = await updateCountOnServer(count + 1);
+      setCount(newCount);
+    });
   };
-}
-
-@Entity
-class User {
-  constructor(public name: string) {}
-}
-```
-
-### Utility Types and Patterns
-
-```typescript
-// Advanced utility types
-type StrictOmit<T, K extends keyof T> = T extends Record<string, unknown>
-  ? Pick<T, Exclude<keyof T, K>>
-  : never;
-
-type DeepPartial<T> = {
-  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
-};
-
-type Branded<T, B> = T & { __brand: B };
-
-// Type-safe IDs
-type UserId = Branded<string, 'UserId'>;
-type ProductId = Branded<string, 'ProductId'>;
-
-function createUserId(id: string): UserId {
-  return id as UserId;
-}
-
-// Type-safe API client
-type ApiResponse<T, E = unknown> = 
-  | { success: true; data: T }
-  | { success: false; error: E };
-
-interface User {
-  id: UserId;
-  name: string;
-  email: string;
-}
-
-async function fetchUser(id: UserId): Promise<ApiResponse<User>> {
-  try {
-    const response = await fetch(`/api/users/${id}`);
-    if (!response.ok) throw new Error('Failed to fetch');
-    const data = await response.json();
-    return { success: true, data };
-  } catch (error) {
-    return { success: false, error };
-  }
-}
-```
-
-### React Patterns with TypeScript
-
-```typescript
-// Type-safe component props with forwardRef
-import React, { forwardRef, useImperativeHandle } from 'react';
-
-interface ButtonProps {
-  variant: 'primary' | 'secondary' | 'danger';
-  size: 'sm' | 'md' | 'lg';
-  disabled?: boolean;
-  children: React.ReactNode;
-  onClick?: () => void;
-}
-
-export interface ButtonRef {
-  click: () => void;
-  focus: () => void;
-}
-
-export const Button = forwardRef<ButtonRef, ButtonProps>(
-  ({ variant, size, disabled, children, onClick }, ref) => {
-    const buttonRef = React.useRef<HTMLButtonElement>(null);
-
-    useImperativeHandle(ref, () => ({
-      click: () => buttonRef.current?.click(),
-      focus: () => buttonRef.current?.focus(),
-    }));
-
-    const baseClasses = 'font-semibold rounded-lg transition-colors';
-    const variantClasses = {
-      primary: 'bg-blue-600 text-white hover:bg-blue-700',
-      secondary: 'bg-gray-200 text-gray-900 hover:bg-gray-300',
-      danger: 'bg-red-600 text-white hover:bg-red-700',
-    };
-    const sizeClasses = {
-      sm: 'px-3 py-1 text-sm',
-      md: 'px-4 py-2 text-base',
-      lg: 'px-6 py-3 text-lg',
-    };
-
-    return (
-      <button
-        ref={buttonRef}
-        className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]}`}
-        disabled={disabled}
-        onClick={onClick}
-      >
-        {children}
+  
+  return (
+    <div>
+      <p>Count: {count}</p>
+      <button onClick={handleIncrement} disabled={isPending}>
+        {isPending ? 'Updating...' : 'Increment'}
       </button>
-    );
-  }
-);
+    </div>
+  );
+}
 
-Button.displayName = 'Button';
+async function updateCountOnServer(newCount: number): Promise<number> {
+  'use server'
+  // Server-side logic
+  return newCount;
+}
 ```
 
-### Custom Hooks with TypeScript
-
+**Ref as Prop**:
 ```typescript
-// Type-safe data fetching hook
-interface UseApiResult<T, E = unknown> {
-  data: T | null;
-  error: E | null;
-  loading: boolean;
-  refetch: () => Promise<void>;
+interface ComponentWithRefProps {
+  ref?: React.Ref<HTMLInputElement>;
+  value?: string;
 }
 
-function useApi<T, E = unknown>(
-  url: string,
-  options?: RequestInit
-): UseApiResult<T, E> {
-  const [data, setData] = React.useState<T | null>(null);
-  const [error, setError] = React.useState<E | null>(null);
-  const [loading, setLoading] = React.useState(false);
+// Now you can pass ref directly to component
+const MyInput = React.forwardRef<
+  HTMLInputElement,
+  ComponentWithRefProps
+>(({ value }, ref) => (
+  <input ref={ref} defaultValue={value} />
+));
+```
 
-  const fetchData = React.useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const response = await fetch(url, options);
-      if (!response.ok) throw new Error(response.statusText);
-      const result = await response.json() as T;
-      setData(result);
-    } catch (err) {
-      setError(err as E);
-    } finally {
-      setLoading(false);
-    }
-  }, [url, options]);
+### 3. Next.js 16 App Router
 
-  React.useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+Next.js 16 with Turbopack provides modern full-stack development:
 
-  return { data, error, loading, refetch: fetchData };
+**Project Structure**:
+```
+app/
+├── page.tsx                 // Home page
+├── layout.tsx              // Root layout
+├── api/
+│   ├── users/
+│   │   ├── route.ts        // GET, POST handlers
+│   │   └── [id]/
+│   │       └── route.ts    // Dynamic routes
+│   └── health/
+│       └── route.ts
+├── dashboard/
+│   ├── page.tsx            // /dashboard
+│   ├── layout.tsx          // Dashboard layout
+│   └── settings/
+│       └── page.tsx        // /dashboard/settings
+└── (auth)/
+    ├── login/
+    │   └── page.tsx
+    └── register/
+        └── page.tsx
+```
+
+**API Routes with Middleware**:
+```typescript
+// app/api/users/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { validateAuth } from '@/lib/auth';
+
+// Middleware for API route
+export const middleware = validateAuth;
+
+export async function GET(request: NextRequest) {
+  const users = await fetchUsers();
+  return NextResponse.json({ users });
 }
 
-// Usage
-interface User {
-  id: number;
-  name: string;
-  email: string;
+export async function POST(request: NextRequest) {
+  const data = await request.json();
+  const newUser = await createUser(data);
+  return NextResponse.json({ user: newUser }, { status: 201 });
 }
 
-function UserProfile({ userId }: { userId: number }) {
-  const { data: user, loading, error } = useApi<User>(`/api/users/${userId}`);
+// Dynamic route with parameters
+// app/api/users/[id]/route.ts
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const user = await getUserById(params.id);
+  
+  if (!user) {
+    return NextResponse.json(
+      { error: 'Not found' },
+      { status: 404 }
+    );
+  }
+  
+  return NextResponse.json({ user });
+}
+```
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error.message}</div>;
-  if (!user) return <div>No user found</div>;
+**Server Actions**:
+```typescript
+// app/actions/users.ts
+'use server'
 
+export async function createUser(formData: FormData) {
+  const name = formData.get('name');
+  const email = formData.get('email');
+  
+  // Database operation
+  const newUser = await db.users.create({
+    name: String(name),
+    email: String(email)
+  });
+  
+  // Revalidate cache
+  revalidatePath('/users');
+  
+  return newUser;
+}
+
+// Usage in component
+// app/components/UserForm.tsx
+'use client'
+
+import { createUser } from '@/app/actions/users';
+
+export function UserForm() {
   return (
-    <div>
-      <h1>{user.name}</h1>
-      <p>{user.email}</p>
-    </div>
+    <form action={createUser}>
+      <input name="name" required />
+      <input name="email" type="email" required />
+      <button type="submit">Create User</button>
+    </form>
   );
 }
 ```
 
-## Performance Optimization
+### 4. tRPC for Type-Safe APIs
 
-### Code Splitting and Lazy Loading
+tRPC provides end-to-end type safety without code generation:
 
+**Router Definition**:
 ```typescript
-// Dynamic imports with type safety
-import { lazy, Suspense } from 'react';
+// server/trpc.ts
+import { initTRPC } from '@trpc/server';
+import { z } from 'zod';
 
-const HeavyComponent = lazy(() => 
-  import('./HeavyComponent').then(module => ({
-    default: module.HeavyComponent
-  }))
-);
+export const t = initTRPC.create();
 
-// Route-based code splitting
-import { createBrowserRouter } from 'react-router-dom';
-
-const router = createBrowserRouter([
-  {
-    path: '/',
-    element: <HomePage />,
-  },
-  {
-    path: '/dashboard',
-    element: (
-      <Suspense fallback={<div>Loading dashboard...</div>}>
-        <LazyDashboard />
-      </Suspense>
-    ),
-    loader: () => import('./loaders/dashboardLoader').then(m => m.dashboardLoader()),
-  },
-]);
-
-// Preloading strategies
-const preloadComponent = () => {
-  import('./HeavyComponent');
-};
-
-// Preload on hover
-<button onMouseEnter={preloadComponent}>
-  Load Component
-</button>
-```
-
-### Bundle Optimization
-
-```typescript
-// vite.config.ts - Modern build configuration
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react-swc';
-import { visualizer } from 'rollup-plugin-visualizer';
-
-export default defineConfig({
-  plugins: [
-    react(),
-    process.env.ANALYZE && visualizer({
-      filename: 'dist/stats.html',
-      open: true,
+export const router = t.router({
+  user: t.router({
+    list: t.procedure.query(async () => {
+      return await db.user.findMany();
     }),
-  ],
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-          router: ['react-router-dom'],
-          ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu'],
-          ai: ['@ai-sdk/openai', '@ai-sdk/google', '@ai-sdk/anthropic'],
-        },
-      },
-    },
-    chunkSizeWarningLimit: 1000,
-  },
-  server: {
-    hmr: {
-      overlay: true,
-    },
-  },
-  optimizeDeps: {
-    include: ['@ai-sdk/openai', '@ai-sdk/google', '@ai-sdk/anthropic'],
-  },
-});
-```
-
-### Memory Management
-
-```typescript
-// Efficient state management with useReducer
-interface State {
-  items: Item[];
-  filter: string;
-  loading: boolean;
-}
-
-type Action =
-  | { type: 'SET_ITEMS'; payload: Item[] }
-  | { type: 'SET_FILTER'; payload: string }
-  | { type: 'SET_LOADING'; payload: boolean };
-
-function itemsReducer(state: State, action: Action): State {
-  switch (action.type) {
-    case 'SET_ITEMS':
-      return { ...state, items: action.payload, loading: false };
-    case 'SET_FILTER':
-      return { ...state, filter: action.payload };
-    case 'SET_LOADING':
-      return { ...state, loading: action.payload };
-    default:
-      return state;
-  }
-}
-
-// Memoized components for performance
-import { memo, useMemo, useCallback } from 'react';
-
-interface ExpensiveComponentProps {
-  data: number[];
-  onItemClick: (id: number) => void;
-}
-
-const ExpensiveComponent = memo<ExpensiveComponentProps>(({ data, onItemClick }) => {
-  const processedData = useMemo(() => {
-    return data.map(item => ({
-      ...item,
-      processed: expensiveCalculation(item),
-    }));
-  }, [data]);
-
-  const handleClick = useCallback((id: number) => {
-    onItemClick(id);
-  }, [onItemClick]);
-
-  return (
-    <div>
-      {processedData.map(item => (
-        <Item key={item.id} item={item} onClick={handleClick} />
-      ))}
-    </div>
-  );
-});
-```
-
-## Testing Strategies
-
-### Vitest Configuration
-
-```typescript
-// vitest.config.ts
-import { defineConfig } from 'vitest/config';
-import react from '@vitejs/plugin-react-swc';
-import path from 'path';
-
-export default defineConfig({
-  plugins: [react()],
-  test: {
-    globals: true,
-    environment: 'jsdom',
-    setupFiles: ['./tests/setup.ts'],
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'json', 'html'],
-      exclude: [
-        'node_modules/',
-        'tests/',
-        '**/*.d.ts',
-        '**/*.config.*',
-        'dist/',
-      ],
-    },
-  },
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
-  },
-});
-```
-
-### Type-Safe Testing Patterns
-
-```typescript
-// Component testing with Testing Library
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { vi, type MockedFunction } from 'vitest';
-import { Button } from './Button';
-
-describe('Button', () => {
-  it('renders with correct variant styles', () => {
-    render(
-      <Button variant="primary" size="md" onClick={vi.fn()}>
-        Click me
-      </Button>
-    );
-
-    const button = screen.getByRole('button', { name: 'Click me' });
-    expect(button).toBeInTheDocument();
-    expect(button).toHaveClass('bg-blue-600', 'text-white');
-  });
-
-  it('handles click events', async () => {
-    const handleClick = vi.fn();
-    render(
-      <Button variant="secondary" size="sm" onClick={handleClick}>
-        Submit
-      </Button>
-    );
-
-    const button = screen.getByRole('button', { name: 'Submit' });
-    fireEvent.click(button);
-
-    expect(handleClick).toHaveBeenCalledTimes(1);
-  });
-
-  it('can be triggered via ref', () => {
-    const handleClick = vi.fn();
-    const ref = { current: null };
-
-    render(
-      <Button variant="primary" size="md" onClick={handleClick} ref={ref}>
-        Click via ref
-      </Button>
-    );
-
-    // TypeScript should infer the correct ref type
-    if (ref.current) {
-      ref.current.click();
-    }
-
-    expect(handleClick).toHaveBeenCalledTimes(1);
-  });
-});
-
-// API testing with MSW
-import { rest } from 'msw';
-import { setupServer } from 'msw/node';
-import { fetchUser } from './api';
-
-const server = setupServer(
-  rest.get('/api/users/1', (req, res, ctx) => {
-    return res(
-      ctx.json({
-        id: 1,
-        name: 'John Doe',
-        email: 'john@example.com',
+    
+    byId: t.procedure
+      .input(z.object({ id: z.string() }))
+      .query(async ({ input }) => {
+        return await db.user.findUnique({
+          where: { id: input.id }
+        });
+      }),
+    
+    create: t.procedure
+      .input(z.object({
+        name: z.string(),
+        email: z.string().email()
+      }))
+      .mutation(async ({ input }) => {
+        return await db.user.create({
+          data: input
+        });
       })
-    );
   })
-);
-
-beforeAll(() => server.listen());
-afterEach(() => server.resetHandlers());
-afterAll(() => server.close());
-
-describe('fetchUser', () => {
-  it('fetches user data successfully', async () => {
-    const userId = createUserId('1');
-    const result = await fetchUser(userId);
-
-    if (result.success) {
-      expect(result.data.name).toBe('John Doe');
-      expect(result.data.email).toBe('john@example.com');
-    } else {
-      fail('Expected successful fetch');
-    }
-  });
 });
+
+export type AppRouter = typeof router;
 ```
 
-### E2E Testing with Playwright
-
+**Client Usage (Type-Safe)**:
 ```typescript
-// tests/e2e/user-journey.spec.ts
-import { test, expect, type Page } from '@playwright/test';
+// client/trpc.ts
+import { createTRPCReact } from '@trpc/react-query';
+import type { AppRouter } from '@/server/trpc';
 
-test.describe('User Authentication Flow', () => {
-  test('should allow user to sign up and log in', async ({ page }) => {
-    // Sign up
-    await page.goto('/signup');
-    
-    await page.fill('[data-testid=email-input]', 'user@example.com');
-    await page.fill('[data-testid=password-input]', 'securepassword123');
-    await page.fill('[data-testid=name-input]', 'Test User');
-    
-    await page.click('[data-testid=signup-button]');
-    
-    // Should redirect to dashboard
-    await expect(page).toHaveURL('/dashboard');
-    await expect(page.locator('[data-testid=user-name]')).toHaveText('Test User');
-    
-    // Log out
-    await page.click('[data-testid=logout-button]');
-    
-    // Log in
-    await page.goto('/login');
-    await page.fill('[data-testid=email-input]', 'user@example.com');
-    await page.fill('[data-testid=password-input]', 'securepassword123');
-    await page.click('[data-testid=login-button]');
-    
-    // Should be back at dashboard
-    await expect(page).toHaveURL('/dashboard');
-  });
+export const trpc = createTRPCReact<AppRouter>();
 
-  test('should show validation errors for invalid input', async ({ page }) => {
-    await page.goto('/signup');
-    
-    // Try to submit with empty fields
-    await page.click('[data-testid=signup-button]');
-    
-    await expect(page.locator('[data-testid=email-error]')).toBeVisible();
-    await expect(page.locator('[data-testid=password-error]')).toBeVisible();
-    await expect(page.locator('[data-testid=name-error]')).toBeVisible();
-  });
-});
+// Component usage - fully typed!
+export function UserList() {
+  const { data: users, isLoading } = trpc.user.list.useQuery();
+  
+  if (isLoading) return <div>Loading...</div>;
+  
+  return (
+    <ul>
+      {users?.map(user => (
+        <li key={user.id}>{user.name}</li>
+      ))}
+    </ul>
+  );
+}
 ```
 
-## Security Best Practices
+## Level 2: Advanced Patterns (Medium Freedom)
 
-### Input Validation and Sanitization
+### 1. Type-Safe Data Validation with Zod
 
+Zod provides runtime schema validation with TypeScript inference:
+
+**Schema Definition**:
 ```typescript
-// Type-safe validation with Zod
 import { z } from 'zod';
 
 const UserSchema = z.object({
-  name: z.string().min(1).max(100).trim(),
+  id: z.string().uuid(),
+  name: z.string().min(1).max(100),
   email: z.string().email(),
-  age: z.number().min(13).max(120),
-  bio: z.string().max(1000).optional(),
+  age: z.number().int().min(0).max(150),
+  roles: z.array(z.enum(['admin', 'user', 'guest'])).default(['user']),
+  createdAt: z.date().default(() => new Date())
 });
 
+// Infer TypeScript type from schema
 type User = z.infer<typeof UserSchema>;
 
-// API route validation
-export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    const validatedUser = UserSchema.parse(body);
-    
-    // Process validated data
-    await createUser(validatedUser);
-    
-    return Response.json({ success: true }, { status: 201 });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return Response.json(
-        { 
-          success: false, 
-          errors: error.flatten().fieldErrors 
-        },
-        { status: 400 }
-      );
-    }
-    
-    return Response.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
-
-// XSS prevention
-function sanitizeHtml(input: string): string {
-  // Use DOMPurify or similar library
-  return input.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-}
-
-// CSRF protection
-function getCSRFToken(): string {
-  const meta = document.querySelector('meta[name="csrf-token"]');
-  return meta?.getAttribute('content') || '';
-}
-
-// Secure API client
-class SecureApiClient {
-  private baseUrl: string;
-  private csrfToken: string;
-
-  constructor(baseUrl: string) {
-    this.baseUrl = baseUrl;
-    this.csrfToken = getCSRFToken();
-  }
-
-  async post<T>(endpoint: string, data: unknown): Promise<T> {
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': this.csrfToken,
-      },
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    return response.json() as Promise<T>;
-  }
-}
+// Validation
+const userData = { /* ... */ };
+const user = UserSchema.parse(userData); // Throws on error
+const result = UserSchema.safeParse(userData); // Returns { success, data, error }
 ```
 
-### Authentication and Authorization
-
+**Custom Validation**:
 ```typescript
-// JWT-based authentication
-interface JWTPayload {
-  userId: string;
-  email: string;
-  role: 'user' | 'admin';
-  exp: number;
-}
-
-class AuthService {
-  private static readonly TOKEN_KEY = 'auth_token';
-
-  static setToken(token: string): void {
-    localStorage.setItem(this.TOKEN_KEY, token);
-  }
-
-  static getToken(): string | null {
-    return localStorage.getItem(this.TOKEN_KEY);
-  }
-
-  static removeToken(): void {
-    localStorage.removeItem(this.TOKEN_KEY);
-  }
-
-  static isTokenExpired(token: string): boolean {
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1])) as JWTPayload;
-      return Date.now() >= payload.exp * 1000;
-    } catch {
-      return true;
-    }
-  }
-
-  static getCurrentUser(): JWTPayload | null {
-    const token = this.getToken();
-    if (!token || this.isTokenExpired(token)) {
-      return null;
-    }
-
-    try {
-      return JSON.parse(atob(token.split('.')[1])) as JWTPayload;
-    } catch {
-      return null;
-    }
-  }
-}
-
-// Protected routes
-interface ProtectedRouteProps {
-  children: React.ReactNode;
-  requiredRole?: 'user' | 'admin';
-}
-
-function ProtectedRoute({ children, requiredRole = 'user' }: ProtectedRouteProps) {
-  const user = AuthService.getCurrentUser();
-  
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (requiredRole === 'admin' && user.role !== 'admin') {
-    return <Navigate to="/unauthorized" replace />;
-  }
-
-  return <>{children}</>;
-}
-
-// API middleware
-function withAuth<T extends unknown[], R>(
-  handler: (...args: T) => Promise<R>
-) {
-  return async (...args: T): Promise<R> => {
-    const token = AuthService.getToken();
-    
-    if (!token || AuthService.isTokenExpired(token)) {
-      throw new Error('Unauthorized');
-    }
-
-    return handler(...args);
-  };
-}
-```
-
-## Integration Patterns
-
-### Full-Stack Type Safety with tRPC
-
-```typescript
-// server/router.ts
-import { initTRPC } from '@trpc/server';
-import { z } from 'zod';
-import type { CreateHTTPContextOptions } from '@trpc/server/adapters/standalone';
-
-const t = initTRPC.context<CreateHTTPContextOptions>().create();
-
-export const appRouter = t.router({
-  getUser: t.procedure
-    .input(z.object({ id: z.string() }))
-    .query(async ({ input, ctx }) => {
-      const user = await ctx.db.user.findUnique({
-        where: { id: input.id },
-      });
-      return user;
-    }),
-    
-  createUser: t.procedure
-    .input(z.object({
-      name: z.string().min(1),
-      email: z.string().email(),
-    }))
-    .mutation(async ({ input, ctx }) => {
-      const user = await ctx.db.user.create({
-        data: input,
-      });
-      return user;
-    }),
-});
-
-export type AppRouter = typeof appRouter;
-
-// client/trpc.ts
-import { createTRPCProxyClient, httpBatchLink } from '@trpc/client';
-import type { AppRouter } from '../server/router';
-
-const trpc = createTRPCProxyClient<AppRouter>({
-  links: [
-    httpBatchLink({
-      url: 'http://localhost:3000/trpc',
-    }),
-  ],
-});
-
-// Usage in React component
-function UserProfile({ userId }: { userId: string }) {
-  const { data: user, isLoading } = trpc.getUser.useQuery({ id: userId });
-  const createUser = trpc.createUser.useMutation();
-
-  if (isLoading) return <div>Loading...</div>;
-
-  return (
-    <div>
-      <h1>{user?.name}</h1>
-      <p>{user?.email}</p>
-      <button 
-        onClick={() => createUser.mutate({
-          name: 'New User',
-          email: 'new@example.com',
-        })}
-      >
-        Create User
-      </button>
-    </div>
+const PasswordSchema = z.string()
+  .min(8, 'Password must be at least 8 characters')
+  .regex(/[A-Z]/, 'Must contain uppercase')
+  .regex(/[0-9]/, 'Must contain numbers')
+  .refine(
+    (pwd) => !commonPasswords.includes(pwd),
+    'Password is too common'
   );
+
+const RegisterSchema = z.object({
+  email: z.string().email(),
+  password: PasswordSchema,
+  confirmPassword: z.string()
+}).refine(
+  (data) => data.password === data.confirmPassword,
+  { message: 'Passwords must match', path: ['confirmPassword'] }
+);
+```
+
+### 2. Advanced TypeScript Patterns
+
+**Generic Constraints**:
+```typescript
+// Constraint T to objects with id property
+function getById<T extends { id: string }>(
+  items: T[],
+  id: string
+): T | undefined {
+  return items.find(item => item.id === id);
+}
+
+// Constraint T to keyof another type
+function pick<T, K extends keyof T>(
+  obj: T,
+  ...keys: K[]
+): Pick<T, K> {
+  const result = {} as Pick<T, K>;
+  keys.forEach(key => {
+    result[key] = obj[key];
+  });
+  return result;
+}
+
+const user = { id: '1', name: 'John', age: 30 };
+const partial = pick(user, 'name', 'age');
+// Type: { name: string; age: number }
+```
+
+**Decorator Pattern (TypeScript 5.0+)**:
+```typescript
+// Enable experimentalDecorators in tsconfig.json
+
+function Memoize(
+  target: any,
+  propertyKey: string,
+  descriptor: PropertyDescriptor
+) {
+  const originalMethod = descriptor.value;
+  const cache = new Map();
+  
+  descriptor.value = function(...args: any[]) {
+    const key = JSON.stringify(args);
+    if (!cache.has(key)) {
+      cache.set(key, originalMethod.apply(this, args));
+    }
+    return cache.get(key);
+  };
+  
+  return descriptor;
+}
+
+class MathUtils {
+  @Memoize
+  fibonacci(n: number): number {
+    if (n <= 1) return n;
+    return this.fibonacci(n - 1) + this.fibonacci(n - 2);
+  }
 }
 ```
 
-### Database Integration with Prisma
+### 3. Testing with Vitest
 
+Vitest provides Jest-compatible testing for TypeScript:
+
+**Unit Tests**:
 ```typescript
-// schema.prisma
-model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  posts     Post[]
-}
+import { describe, it, expect } from 'vitest';
+import { add, multiply } from '@/lib/math';
 
-model Post {
-  id        String   @id @default(cuid())
-  title     String
-  content   String
-  published Boolean  @default(false)
-  author    User     @relation(fields: [authorId], references: [id])
-  authorId  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
+describe('Math Utils', () => {
+  it('should add numbers', () => {
+    expect(add(2, 3)).toBe(5);
+  });
+  
+  it('should multiply numbers', () => {
+    expect(multiply(2, 3)).toBe(6);
+  });
+});
+```
 
-// lib/db.ts
-import { PrismaClient } from '@prisma/client';
+**Component Tests**:
+```typescript
+import { render, screen } from '@testing-library/react';
+import { Button } from '@/components/Button';
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
+describe('Button Component', () => {
+  it('renders with text', () => {
+    render(<Button>Click me</Button>);
+    expect(screen.getByRole('button')).toHaveTextContent('Click me');
+  });
+  
+  it('calls onClick handler', async () => {
+    const handleClick = vi.fn();
+    render(<Button onClick={handleClick}>Click</Button>);
+    
+    await userEvent.click(screen.getByRole('button'));
+    expect(handleClick).toHaveBeenCalled();
+  });
+});
+```
+
+## Level 3: Production Deployment (Low Freedom, Expert Only)
+
+### 1. Build Optimization with Turbopack
+
+Turbopack (Rust-based bundler) provides 2x faster builds:
+
+**next.config.js Configuration**:
+```typescript
+import type { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {
+  // Use Turbopack for dev mode
+  experimental: {
+    turbopack: {
+      // Turbopack-specific configuration
+      resolveAlias: {
+        '@/*': './*'
+      }
+    }
+  },
+  
+  // Image optimization
+  images: {
+    formats: ['image/avif', 'image/webp'],
+    remotePatterns: [
+      { hostname: 'cdn.example.com' }
+    ]
+  },
+  
+  // API routes compression
+  compress: true,
+  
+  // Security headers
+  headers: async () => [
+    {
+      source: '/(.*)',
+      headers: [
+        { key: 'X-Content-Type-Options', value: 'nosniff' },
+        { key: 'X-Frame-Options', value: 'DENY' }
+      ]
+    }
+  ]
 };
 
-export const prisma = globalForPrisma.prisma ?? new PrismaClient();
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
-
-// API routes with type safety
-import { z } from 'zod';
-
-const createPostSchema = z.object({
-  title: z.string().min(1).max(200),
-  content: z.string().min(1),
-  authorId: z.string().cuid(),
-});
-
-export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    const { title, content, authorId } = createPostSchema.parse(body);
-    
-    const post = await prisma.post.create({
-      data: {
-        title,
-        content,
-        authorId,
-      },
-      include: {
-        author: true,
-      },
-    });
-    
-    return Response.json(post, { status: 201 });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return Response.json(
-        { errors: error.flatten().fieldErrors },
-        { status: 400 }
-      );
-    }
-    
-    return Response.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
+export default nextConfig;
 ```
 
-### State Management with Zustand
+### 2. Deployment Strategies
 
+**Docker Deployment**:
+```dockerfile
+FROM node:22-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+RUN npm run build
+
+FROM node:22-alpine
+WORKDIR /app
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/node_modules ./node_modules
+COPY package*.json ./
+
+EXPOSE 3000
+CMD ["npm", "start"]
+```
+
+**Environment Configuration**:
 ```typescript
-// store/userStore.ts
-import { create } from 'zustand';
-import { devtools, persist } from 'zustand/middleware';
+// lib/config.ts
+const config = {
+  apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000',
+  apiKey: process.env.API_KEY,
+  environment: process.env.NODE_ENV || 'development',
+  isDev: process.env.NODE_ENV === 'development'
+};
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-}
+export default config;
+```
 
-interface UserStore {
-  user: User | null;
-  isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
-  updateProfile: (updates: Partial<User>) => void;
-}
+### 3. Performance Monitoring
 
-export const useUserStore = create<UserStore>()(
-  devtools(
-    persist(
-      (set, get) => ({
-        user: null,
-        isLoading: false,
-        
-        login: async (email: string, password: string) => {
-          set({ isLoading: true });
-          try {
-            const response = await fetch('/api/auth/login', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email, password }),
-            });
-            
-            if (response.ok) {
-              const user = await response.json();
-              set({ user, isLoading: false });
-            } else {
-              throw new Error('Login failed');
-            }
-          } catch (error) {
-            set({ isLoading: false });
-            throw error;
-          }
-        },
-        
-        logout: () => {
-          set({ user: null });
-        },
-        
-        updateProfile: (updates) => {
-          const currentUser = get().user;
-          if (currentUser) {
-            set({ user: { ...currentUser, ...updates } });
-          }
-        },
-      }),
-      {
-        name: 'user-storage',
-        partialize: (state) => ({ user: state.user }),
-      }
-    )
-  )
-);
+**Web Vitals Tracking**:
+```typescript
+// app/layout.tsx
+import { reportWebVitals } from 'next/web-vitals';
 
-// Usage in components
-function ProfilePage() {
-  const { user, isLoading, updateProfile } = useUserStore();
-
-  if (isLoading) return <div>Loading...</div>;
-  if (!user) return <div>Please log in</div>;
-
-  return (
-    <div>
-      <h1>Profile</h1>
-      <p>Name: {user.name}</p>
-      <p>Email: {user.email}</p>
-      <button 
-        onClick={() => updateProfile({ name: 'Updated Name' })}
-      >
-        Update Name
-      </button>
-    </div>
-  );
+export function reportWebVitals(metric: any) {
+  console.log(`${metric.name}: ${metric.value}ms`);
+  
+  // Send to analytics service
+  fetch('/api/metrics', {
+    method: 'POST',
+    body: JSON.stringify(metric)
+  });
 }
 ```
 
-## Modern Development Workflow
+## Auto-Load Triggers
 
-### Configuration Files
+This Skill automatically activates when you:
+- Work with TypeScript projects and strict type checking
+- Develop full-stack applications with Next.js
+- Implement type-safe APIs with tRPC
+- Need data validation with Zod
+- Set up React 19 Server Components
+- Debug TypeScript type errors
+- Optimize builds with Turbopack
 
-```json
-// package.json
-{
-  "name": "my-typescript-app",
-  "version": "0.1.0",
-  "type": "module",
-  "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint . --max-warnings 0",
-    "lint:fix": "eslint . --fix",
-    "type-check": "tsc --noEmit",
-    "test": "vitest",
-    "test:ui": "vitest --ui",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
-  },
-  "dependencies": {
-    "next": "^16.0.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "@trpc/client": "^12.0.0",
-    "@trpc/server": "^12.0.0",
-    "@trpc/react-query": "^12.0.0",
-    "zod": "^3.24.0",
-    "zustand": "^5.1.0",
-    "@ai-sdk/openai": "^1.0.0",
-    "@ai-sdk/google": "^1.0.0",
-    "@ai-sdk/anthropic": "^1.0.0",
-    "ai": "^4.0.0"
-  },
-  "devDependencies": {
-    "@types/node": "^23.0.0",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "typescript": "^5.7.0",
-    "eslint": "^10.0.0",
-    "prettier": "^3.4.0",
-    "vitest": "^3.0.0",
-    "@testing-library/react": "^17.0.0",
-    "playwright": "^1.50.0"
-  }
-}
-```
+## Best Practices Summary
 
-```json
-// tsconfig.json
-{
-  "compilerOptions": {
-    "target": "ES2022",
-    "lib": ["dom", "dom.iterable", "ES2022"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "forceConsistentCasingInFileNames": true,
-    "noEmit": true,
-    "esModuleInterop": true,
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "preserve",
-    "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"],
-      "@/components/*": ["./src/components/*"],
-      "@/lib/*": ["./src/lib/*"],
-      "@/types/*": ["./src/types/*"]
-    }
-  },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
-}
-```
+1. **Enable strict mode** in tsconfig.json for full type safety
+2. **Use Zod for runtime validation** combined with TypeScript types
+3. **Prefer tRPC over REST** for end-to-end type safety
+4. **Use Server Components** by default in Next.js 16
+5. **Implement proper error handling** with discriminated unions
+6. **Test with Vitest** for fast, type-safe unit tests
+7. **Leverage TypeScript utility types** for DRY code
+8. **Use conditional types** for advanced type manipulations
+9. **Monitor Web Vitals** in production environments
+10. **Build with Turbopack** for faster development cycles
 
-```javascript
-// eslint.config.js (ESLint Flat Config)
-import js from '@eslint/js';
-import typescript from '@typescript-eslint/eslint-plugin';
-import typescriptParser from '@typescript-eslint/parser';
-import react from 'eslint-plugin-react';
-import reactHooks from 'eslint-plugin-react-hooks';
+## See Also
 
-export default [
-  js.configs.recommended,
-  {
-    files: ['**/*.{ts,tsx}'],
-    languageOptions: {
-      parser: typescriptParser,
-      parserOptions: {
-        ecmaVersion: 'latest',
-        sourceType: 'module',
-        ecmaFeatures: {
-          jsx: true,
-        },
-      },
-    },
-    plugins: {
-      '@typescript-eslint': typescript,
-      'react': react,
-      'react-hooks': reactHooks,
-    },
-    rules: {
-      ...typescript.configs.recommended.rules,
-      '@typescript-eslint/no-unused-vars': 'error',
-      '@typescript-eslint/no-explicit-any': 'warn',
-      'react/react-in-jsx-scope': 'off',
-      'react-hooks/rules-of-hooks': 'error',
-      'react-hooks/exhaustive-deps': 'warn',
-    },
-    settings: {
-      react: {
-        version: 'detect',
-      },
-    },
-  },
-];
-```
+- **TypeScript 5.9 Release**: https://devblogs.microsoft.com/typescript/announcing-typescript-5-9/
+- **React 19 Documentation**: https://react.dev/
+- **Next.js 16 Documentation**: https://nextjs.org/docs
+- **tRPC Documentation**: https://trpc.io/docs
+- **Zod Documentation**: https://zod.dev/
+- **Turbopack Documentation**: https://turbo.build/pack
 
-### CI/CD Pipeline
-
-```yaml
-# .github/workflows/ci.yml
-name: CI
-
-on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main, develop]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    
-    strategy:
-      matrix:
-        node-version: [22.x, 23.x]
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: 'pnpm'
-      
-      - name: Install pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 9
-      
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      
-      - name: Type check
-        run: pnpm type-check
-      
-      - name: Lint
-        run: pnpm lint
-      
-      - name: Test
-        run: pnpm test
-      
-      - name: E2E tests
-        run: pnpm test:e2e
-      
-      - name: Build
-        run: pnpm build
-      
-      - name: Upload coverage
-        uses: codecov/codecov-action@v4
-        with:
-          file: ./coverage/lcov.info
-```
-
----
-
-**Created by**: MoAI Language Skill Factory  
-**Last Updated**: 2025-11-06  
-**Version**: 2.0.0  
-**TypeScript Target**: 5.6+ with latest language features  
-
-This skill provides comprehensive TypeScript development guidance with 2025 best practices, covering everything from basic type safety to advanced full-stack patterns and enterprise-grade applications.
