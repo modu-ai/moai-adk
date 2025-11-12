@@ -127,7 +127,10 @@ PHASE 1 consists of **two independent sub-phases** to provide flexible workflow 
 │  │ • Request user approval                 │               │
 │  └─────────────────────────────────────────┘               │
 │                    ↓                                        │
-│          (user approval via AskUserQuestion)                │
+│  📊 Progress Report & User Confirmation                     │
+│  • Display analysis results and plan summary                 │
+│  • Show next steps and deliverables                         │
+│  • Request final user approval                             │
 │                    ↓                                        │
 │              PROCEED TO PHASE 2                             │
 └─────────────────────────────────────────────────────────────┘
@@ -334,22 +337,74 @@ questions:
       - label: "취소"
         description: "계획 폐기하고 계획 단계로 복귀"
 
+**Wait for user response**, then proceed to Step 3.5.
+
+#### Step 3.5: Progress Report and User Confirmation
+
+**This step automatically executes after PHASE 1 completion.**
+
+Display detailed progress report to user and get final approval:
+
+```
+📊 Progress Report for PHASE 1 Completion
+
+✅ **Completed Items:**
+- Project document analysis completed
+- Existing SPEC scan completed
+- SPEC candidate generation completed
+- Technical constraint analysis completed
+
+📋 **Plan Summary:**
+- Selected SPEC: {SPEC ID} - {SPEC Title}
+- Priority: {Priority}
+- Estimated time: {Time Estimation}
+- Main technology stack: {Technology Stack}
+
+🎯 **Next Phase Plan (PHASE 2):**
+- spec.md creation: Core specifications with EARS structure
+- plan.md creation: Detailed implementation plan
+- acceptance.md creation: Acceptance criteria and scenarios
+- Directory: .moai/specs/SPEC-{ID}/
+
+⚠️ **Important Notes:**
+- Existing files may be overwritten
+- Dependencies: {Dependencies}
+- Resource requirements: {Resource Requirements}
+```
+
+Tool: AskUserQuestion
+Parameters:
+questions:
+  - question: "📊 Plan completion and progress report\n\n**Analysis results:**\n- SPEC candidates found: [Number]\n- Priority: [Priority]\n- Estimated work time: [Time Estimation]\n\n**Next steps:**\n1. PHASE 2: SPEC file creation\n   - .moai/specs/SPEC-{ID}/\n   - spec.md, plan.md, acceptance.md creation\n\nProceed with the plan?"
+    header: "Plan Confirmation"
+    multiSelect: false
+    options:
+      - label: "Proceed"
+        description: "Start SPEC creation according to plan"
+      - label: "Detailed Revision"
+        description: "Revise plan content then proceed"
+      - label: "Save as Draft"
+        description: "Save plan and continue later"
+      - label: "Cancel"
+        description: "Cancel operation and discard plan"
+
 **Wait for user response**, then proceed to Step 4.
 
 #### Step 4: Process user's answer
 
 Based on the user's choice:
 
-**IF user selected "Proceed with SPEC Creation"**:
+**IF user selected "Proceed"**:
 1. Store approval confirmation
-2. Proceed to PHASE 2 (SPEC Document Creation)
+2. Print: "✅ Plan approved. Proceeding to PHASE 2."
+3. Proceed to PHASE 2 (SPEC Document Creation)
 
-**IF user selected "Request Modifications"**:
+**IF user selected "Detailed Revision"**:
 1. Ask the user: "What changes would you like to make to the plan?"
 2. Wait for user's feedback
 3. Pass feedback to spec-builder agent
 4. spec-builder updates the plan
-5. Return to Step 3 (request approval again with updated plan)
+5. Return to Step 3.5 (request approval again with updated plan)
 
 **IF user selected "Save as Draft"**:
 1. Create directory: `.moai/specs/SPEC-{ID}/`
@@ -907,7 +962,8 @@ For complete context engineering strategy, invoke: `Skill("moai-alfred-dev-guide
 Before you consider this command complete, verify:
 
 - [ ] **PHASE 1 executed**: spec-builder analyzed project and proposed SPEC candidates
-- [ ] **User approval obtained**: User explicitly approved SPEC creation (via AskUserQuestion)
+- [ ] **Progress report displayed**: User shown detailed progress report with analysis results
+- [ ] **User approval obtained**: User explicitly approved SPEC creation (via enhanced AskUserQuestion)
 - [ ] **PHASE 2 executed**: spec-builder created all 3 SPEC files (spec.md, plan.md, acceptance.md)
 - [ ] **Directory naming correct**: `.moai/specs/SPEC-{ID}/` format followed
 - [ ] **YAML frontmatter valid**: All 7 required fields present

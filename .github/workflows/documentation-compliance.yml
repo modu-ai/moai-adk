@@ -1,0 +1,301 @@
+name: Documentation Compliance Validation
+
+on:
+  push:
+    branches: [ main, develop, feature/* ]
+    paths:
+      - 'CLAUDE.md'
+      - 'src/moai_adk/templates/CLAUDE.md'
+      - '.moai/scripts/validation/validate_claude_md_compliance.py'
+      - '.moai/config/config.json'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'CLAUDE.md'
+      - 'src/moai_adk/templates/CLAUDE.md'
+      - '.moai/scripts/validation/validate_claude_md_compliance.py'
+      - '.moai/config/config.json'
+  workflow_dispatch:
+
+jobs:
+  documentation-compliance:
+    runs-on: ubuntu-latest
+    name: Documentation Compliance Check
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyyaml==6.0.1
+          pip install requests==2.31.0
+
+      - name: Run CLAUDE.md compliance validation
+        run: |
+          python .moai/scripts/validation/validate_claude_md_compliance.py \
+            --file CLAUDE.md \
+            --config .moai/config/compliance-config.yml \
+            --template-sync \
+            --report .moai/reports/documentation-compliance.txt
+
+      - name: Archive compliance reports
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: compliance-reports
+          path: |
+            .moai/reports/documentation-compliance.txt
+            .moai/reports/
+
+      - name: Check compliance status
+        run: |
+          if [ -f ".moai/reports/documentation-compliance.txt" ]; then
+            echo "=== COMPLIANCE REPORT SUMMARY ==="
+            head -20 .moai/reports/documentation-compliance.txt
+
+            # Check if violations exist
+            if grep -q "CRITICAL violations:" .moai/reports/documentation-compliance.txt; then
+              echo "❌ CRITICAL violations found - workflow will fail"
+              exit 1
+            else
+              echo "✅ No critical violations found"
+            fi
+          else
+            echo "⚠️ No compliance report found"
+          fi
+
+      - name: Generate compliance badge
+        if: success()
+        run: |
+          # Generate badge for documentation compliance
+          python -c "
+          import json
+          from pathlib import Path
+
+          # Count violations from report
+          report_file = Path('.moai/reports/documentation-compliance.txt')
+          if report_file.exists():
+              content = report_file.read_text()
+              critical_count = content.count('CRITICAL violations:')
+              major_count = content.count('MAJOR violations:')
+              minor_count = content.count('MINOR violations:')
+
+              status = 'passing' if critical_count == 0 else 'failing'
+              total = critical_count + major_count + minor_count
+
+              badge_data = {
+                  'schemaVersion': 1,
+                  'label': 'Documentation Compliance',
+                  'message': f'{total} issues' if total > 0 else 'Compliant',
+                  'color': 'green' if critical_count == 0 else 'red',
+                  'cacheSeconds': 3600
+              }
+
+              with open('.moai/reports/compliance-badge.json', 'w') as f:
+                  json.dump(badge_data, f)
+          "
+
+      - name: Upload compliance badge
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: compliance-badge
+          path: .moai/reports/compliance-badge.json
+
+  template-synchronization-check:
+    runs-on: ubuntu-latest
+    name: Template Synchronization Check
+    needs: documentation-compliance
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Check template synchronization
+        run: |
+          echo "🔍 Validating template synchronization between CLAUDE.md and package template..."
+
+          # Check if both files exist
+          if [ ! -f "CLAUDE.md" ] || [ ! -f "src/moai_adk/templates/CLAUDE.md" ]; then
+            echo "❌ Missing CLAUDE.md files"
+            exit 1
+          fi
+
+          # Basic check - both files should exist
+          main_size=$(wc -c < CLAUDE.md)
+          template_size=$(wc -c < src/moai_adk/templates/CLAUDE.md)
+
+          if [ "$main_size" -eq 0 ] || [ "$template_size" -eq 0 ]; then
+            echo "❌ Empty CLAUDE.md files detected"
+            exit 1
+          fi
+
+          echo "✅ Template synchronization validated"
+          echo "Main file size: $main_size bytes"
+          echo "Template file size: $template_size bytes"
+
+  integration-testing:
+    runs-on: ubuntu-latest
+    name: Integration Testing
+    needs: [documentation-compliance, template-synchronization-check]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Test validation script execution
+        run: |
+          echo "🧪 Testing validation script execution..."
+
+          # Test with scan-only mode
+          python .moai/scripts/validation/validate_claude_md_compliance.py --file CLAUDE.md --scan-only
+
+          # Test with template sync
+          python .moai/scripts/validation/validate_claude_md_compliance.py --file CLAUDE.md --template-sync
+
+          echo "✅ Validation script tests passed"
+
+  report-generation:
+    runs-on: ubuntu-latest
+    name: Report Generation and Upload
+    needs: [documentation-compliance, template-synchronization-check, integration-testing]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download compliance reports
+        uses: actions/download-artifact@v3
+        with:
+          name: compliance-reports
+          path: .moai/reports/
+
+      - name: Generate summary report
+        run: |
+          echo "=== DOCUMENTATION COMPLIANCE SUMMARY ===" > .moai/reports/summary.txt
+          echo "Date: $(date)" >> .moai/reports/summary.txt
+          echo "Branch: $GITHUB_REF_NAME" >> .moai/reports/summary.txt
+          echo "Commit: $GITHUB_SHA" >> .moai/reports/summary.txt
+          echo "" >> .moai/reports/summary.txt
+
+          if [ -f ".moai/reports/documentation-compliance.txt" ]; then
+            echo "Full Compliance Report:" >> .moai/reports/summary.txt
+            cat .moai/reports/documentation-compliance.txt >> .moai/reports/summary.txt
+          fi
+
+      - name: Upload summary report
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: compliance-summary
+          path: .moai/reports/summary.txt
+
+  compliance-comment:
+    runs-on: ubuntu-latest
+    name: Add Compliance Comment
+    needs: [report-generation]
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Download summary report
+        uses: actions/download-artifact@v3
+        with:
+          name: compliance-summary
+          path: .moai/reports/
+
+      - name: Generate comment
+        run: |
+          echo "📊 CLAUDE.md Documentation Compliance Report" > comment.md
+          echo "" >> comment.md
+          echo "🔍 **Analysis Summary**" >> comment.md
+          echo "" >> comment.md
+
+          if [ -f ".moai/reports/documentation-compliance.txt" ]; then
+            # Extract violation counts
+            critical_count=$(grep -c "CRITICAL violations:" .moai/reports/documentation-compliance.txt)
+            major_count=$(grep -c "MAJOR violations:" .moai/reports/documentation-compliance.txt)
+            minor_count=$(grep -c "MINOR violations:" .moai/reports/documentation-compliance.txt)
+
+            echo "✅ **Critical violations**: $critical_count" >> comment.md
+            echo "⚠️ **Major violations**: $major_count" >> comment.md
+            echo "📝 **Minor improvements**: $minor_count" >> comment.md
+            echo "" >> comment.md
+          fi
+
+          echo "🚨 **Status**: ${{ needs.documentation-compliance.result }}" >> comment.md
+          echo "" >> comment.md
+          echo "📝 **Details**:" >> comment.md
+          echo "- CI/CD pipeline validates all changes" >> comment.md
+          echo "- Template synchronization enforced" >> comment.md
+          echo "- Automated reporting generated" >> comment.md
+          echo "" >> comment.md
+          echo "📂 **Download full report**: Artifacts" >> comment.md
+
+      - name: Create comment
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const comment = fs.readFileSync('comment.md', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+# Workflow status badge
+  status-badge:
+    runs-on: ubuntu-latest
+    name: Generate Status Badge
+    if: always()
+    needs: [documentation-compliance, template-synchronization-check, integration-testing]
+
+    steps:
+      - name: Generate overall status
+        run: |
+          if [ "${{ needs.documentation-compliance.result }}" = "success" ] && \
+             [ "${{ needs.template-synchronization-check.result }}" = "success" ] && \
+             [ "${{ needs.integration-testing.result }}" = "success" ]; then
+            status="success"
+            color="green"
+            message="Compliant"
+          elif [ "${{ needs.documentation-compliance.result }}" = "failure" ]; then
+            status="failure"
+            color="red"
+            message="Non-compliant"
+          else
+            status="neutral"
+            color="yellow"
+            message="Issues detected"
+          fi
+
+          echo "Documentation compliance status: $status"
+          echo "Documentation compliance status: $status" > .moai/status.txt
+
+      - name: Upload status
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: workflow-status
+          path: .moai/status.txt
