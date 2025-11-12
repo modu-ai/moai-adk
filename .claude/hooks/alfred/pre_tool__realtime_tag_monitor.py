@@ -26,8 +26,18 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
 from moai_adk.core.tags.validator import CentralValidationResult, CentralValidator, ValidationConfig
 
-from ..utils.gitignore_parser import get_combined_exclude_patterns
-from ..utils.hook_config import get_graceful_degradation, load_hook_timeout
+# Import utility modules with fallback
+try:
+    from ..utils.gitignore_parser import get_combined_exclude_patterns
+    from ..utils.hook_config import get_graceful_degradation, load_hook_timeout
+except ImportError:
+    # Fallback for standalone execution
+    import sys
+    import os
+    hook_dir = os.path.dirname(os.path.abspath(__file__))
+    sys.path.insert(0, os.path.join(hook_dir, 'utils'))
+    from gitignore_parser import get_combined_exclude_patterns
+    from hook_config import get_graceful_degradation, load_hook_timeout
 
 
 def load_config() -> Dict[str, Any]:

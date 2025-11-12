@@ -20,7 +20,7 @@
     },
     "notion": {
       "command": "npx",
-      "args": ["-y", "@notionhq/client"],
+      "args": ["-y", "@modelcontextprotocol/server-notion"],
       "timeout": 30000,
       "retries": 3,
       "env": {
