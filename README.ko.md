@@ -1766,9 +1766,271 @@ graph TD
 
 ---
 
-## 🎭 Alfred의 적응형 커뮤니케이션 스타일 (v0.23.0+)
+## 🎭 Alfred의 적응형 페르소나 시스템 (v0.23.1+)
 
-MoAI-ADK는 사용자의 전문성 수준과 개발 컨텍스트에 맞춰 **3가지 전문화된 커뮤니케이션 스타일**을 제공합니다. 각 스타일은 독특한 접근 방식을 제공하면서 동일한 강력한 기능을 유지합니다.
+MoAI-ADK는 사용자의 전문성 수준과 개발 컨텍스트에 맞춰 **5가지 전문화된 페르소나**를 제공합니다. 각 페르소나는 독특한 접근 방식을 제공하면서 동일한 강력한 기능을 유지합니다:
+
+- 🎩 **Alfred**: 초보자 친화적 안내 (구조화된 학습)
+- 🤖 **R2-D2**: 실시간 전술 지원 (프로덕션 코딩)
+- 🧙 **Yoda**: 기술 깊이 전문가 (원리 이해)
+- 🤖 **R2-D2 Partner**: 페어 프로그래밍 파트너 (협력 개발)
+- 🧑‍🏫 **Keating**: 개인 튜터 (지식 숙달)
+
+### 🧙 Yoda Master - 깊은 이해 안내자
+
+> *"기초부터 시작합니다. 원리를 통해 이해합니다. 실천으로 숙달합니다. 문서로 보존합니다. 당신의 참된 이해가 나의 성공의 척도입니다."*
+
+**대상 사용자**: 기술적 깊이를 추구하는 개발자, 원리 이해를 원하는 사람, 장기적 지식 유지를 원하는 분들
+
+**핵심 철학**: "무엇"뿐만 아니라 "왜"와 "어떻게"를 이해하는 것
+
+#### 4가지 역량 프레임워크
+
+1. **원리 설명** - 기초 개념부터 시작, 설계 철학과 대안 설명, 실무 영향 분석
+2. **문서 생성** - `.moai/learning/` 디렉토리에 저장되는 포괄적 가이드 자동 생성으로 영구 참조 가능
+3. **개념 숙달** - 복잡한 개념을 이해하기 쉬운 부분으로 분해, 실제 사례와 이론 연결
+4. **실습 연습** - 점진적 난이도의 연습 제공, 해결책 지침 및 자가 평가 기준 포함
+
+#### Yoda Master를 사용할 때
+
+- **심층적 기술 이해**: "SPEC 우선 개발을 왜 사용할까?"
+- **원리 기반 학습**: TDD 철학, EARS 문법 설계, @TAG 시스템 아키텍처 이해
+- **문서 생성**: `.moai/learning/`에서 향후 참조용 가이드 자동 생성
+- **이해도 검증**: AskUserQuestion을 통해 진행 전 이해도 확인
+
+#### Skills 통합
+
+Yoda Master는 **안정성을 위한 Skill 패턴**과 **최신 정보를 위한 Context7**을 활용합니다:
+
+- `Skill("moai-foundation-specs")` - SPEC 우선 철학과 EARS 문법
+- `Skill("moai-foundation-tags")` - @TAG 시스템 아키텍처와 추적성
+- `Skill("moai-domain-backend")` - 백엔드 아키텍처 원리
+- `Skill("moai-lang-python")` - Python 프로그래밍 숙달
+
+**Context7 사용**: Skill 콘텐츠가 최신이 아니거나 최신 API 문서가 필요할 때, Context7을 조회하여 안정성(Skills)과 최신성(Context7)을 결합합니다.
+
+#### 실제 상호작용 예시
+
+```
+사용자: "TDD가 구현 후 테스트보다 나은 이유는 뭔가요?"
+
+Yoda Master 응답:
+🧙 Yoda ★ 깊은 이해
+
+📖 주제: TDD 철학과 근거
+
+💡 포괄적 설명:
+   1. 기초 개념: TDD가 설계 압력을 어떻게 만드는가
+   2. 설계 근거: 테스트성이 더 나은 아키텍처를 어떻게 주도하는가
+   3. 대안 접근법: 사후 테스트, 탐색적 테스트의 장단점
+   4. 실무 영향: 버그 감소, 빠른 리팩토링, 팀 정렬
+
+📚 생성된 문서:
+   `.moai/learning/tdd-philosophy-deep-dive.md` (2,500 단어)
+   - 역사적 배경
+   - 심리학적 이점
+   - TDD가 최적과 비최적인 경우
+   - 5가지 실무 코드 예시
+
+✍️ 실습 연습:
+   1. 기존 함수를 테스트 우선 접근법으로 전환
+   2. TDD를 이용한 클래스 계층 설계
+   3. TDD 안전망으로 레거시 코드 리팩토링
+
+❓ 이해도 검증:
+   [AskUserQuestion 사용]
+   - "어떤 개념이 명확하지 않은가요?"
+   - "실습을 시작할 준비가 되었나요?"
+   - "어떤 심화 주제에 관심이 있나요?"
+```
+
+#### 사용법
+
+```bash
+# Yoda Master에게 깊은 이해를 요청합니다
+/output-style yoda-master
+
+# 그 후 기술 깊이 질문을 합니다
+"SPEC 우선 개발이 재작업을 방지하는 이유는?"
+"@TAG 시스템이 추적성을 유지하는 방식은?"
+"TRUST 5 원리는 무엇인가요?"
+```
+
+---
+
+### 🤖 R2-D2 Partner - 페어 프로그래밍 파트너
+
+> *"저는 당신의 사고 파트너이지, 명령 실행자가 아닙니다. 모든 코딩 결정은 당신의 것입니다. 저는 옵션을 제시하고 충분한 근거를 제공합니다. 우리는 협력하여 당신의 비전을 달성합니다. AskUserQuestion은 당신의 참된 의도를 이해하기 위한 제 필수 도구입니다."*
+
+**대상 사용자**: 지시적 실행이 아닌 협력적 코딩 파트너십을 원하는 개발자
+
+**핵심 철학**: 절대 가정하지 마세요, 항상 검증하세요. 명령이 아닌 옵션을 제시합니다.
+
+#### 4단계 페어 프로그래밍 프로토콜
+
+**Phase 1: 의도 명확화** - AskUserQuestion을 사용하여 구현 접근법, 우선순위, 제약조건, 선호도를 항상 파악한 후 진행
+
+**Phase 2: 접근 방식 제안** - 2-4가지 구현 옵션을 장단점과 함께 제시, 근거 설명, AskUserQuestion을 통해 정렬 확인
+
+**Phase 3: 체크포인트 기반 구현** - 증분 단계로 구현, 각 체크포인트에서 진행 상황 검토, AskUserQuestion으로 계속/수정/명확화 결정
+
+**Phase 4: 검토 및 반복** - TRUST 5 준수 확인, 최적화 기회 식별, AskUserQuestion으로 다음 단계 결정
+
+#### Skills + Context7 프로토콜 (환각 없는 코드 생성)
+
+R2-D2 Partner는 **5단계 접근 방식**을 사용하여 환각 없는 코드를 생성합니다:
+
+1. **관련 Skills 로드** - 엔터프라이즈 Skills의 검증된 패턴으로 시작
+2. **Context7 조회** - 최신 API 버전 및 프레임워크 확인
+3. **양자 결합** - 안정성(Skills)과 최신성(Context7) 병합
+4. **출처 인용** - 모든 코드 패턴에 명확한 출처 표시
+5. **테스트 포함** - Skill 테스트 패턴 자동 따름
+
+#### 출처 표시가 있는 코드 예시
+
+```python
+# R2-D2 생성 코드
+# 패턴: Skill("moai-lang-python") - FastAPI와 검증
+# API: Context7("/tiangolo/fastapi") - 현재 v0.115.x
+
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
+
+class UserCreate(BaseModel):
+    username: str = Field(..., min_length=3, max_length=50)
+    email: str = Field(..., regex=r"^[\w\.-]+@[\w\.-]+\.\w+$")
+
+app = FastAPI()
+
+@app.post("/users/", status_code=201)
+async def create_user(user: UserCreate):
+    """사용자 생성 (패턴: Skill("moai-domain-backend"))"""
+    return user
+
+# 테스트: Skill("moai-lang-python") pytest 패턴을 따름
+import pytest
+from fastapi.testclient import TestClient
+
+client = TestClient(app)
+
+def test_create_user_success():
+    response = client.post("/users/", json={
+        "username": "john", "email": "john@example.com"
+    })
+    assert response.status_code == 201
+    assert response.json()["username"] == "john"
+
+def test_create_user_validation():
+    response = client.post("/users/", json={
+        "username": "ab", "email": "invalid"
+    })
+    assert response.status_code == 422
+```
+
+#### R2-D2 Partner를 사용할 때
+
+- **활발한 코딩**: "사용자 인증을 함께 구현해보자"
+- **협력적 문제 해결**: "이 API 설계를 도와줘"
+- **의도 기반 개발**: 구현 전 접근 방식을 명확히 해야 함
+- **체크포인트 검증**: 각 단계 후 일시 정지하고 검토
+
+#### 에이전트 위임 예시
+
+복잡한 작업의 경우, R2-D2 Partner는 전문가에게 위임합니다:
+
+- `Task(subagent_type="security-expert")` - 보안 아키텍처
+- `Task(subagent_type="database-expert")` - 스키마 설계
+- `Task(subagent_type="backend-expert")` - API 패턴
+- `Task(subagent_type="frontend-expert")` - UI 구현
+- `Task(subagent_type="tdd-implementer")` - TDD RED-GREEN-REFACTOR
+
+#### 실제 상호작용 예시
+
+```
+사용자: "사용자 프로필 관리 추가"
+
+R2-D2 Partner 응답:
+🤖 R2-D2 ★ 페어 프로그래밍
+
+💡 요청 분석: 사용자 프로필 관리 기능
+
+❓ 의도 명확화 필요:
+   [AskUserQuestion 사용]
+
+   Q1. 프로필 데이터 범위:
+      A) 기본 정보 (이름, 이메일, 아바타)
+      B) 연락처 정보 (전화, 주소)
+      C) 선호도 (테마, 언어)
+
+   Q2. 업데이트 방식:
+      A) 부분 업데이트 (PATCH)
+      B) 전체 교체 (PUT)
+
+   Q3. 이미지 업로드:
+      A) 직접 파일 업로드
+      B) S3 스토리지 통합
+      C) URL 참조만
+
+사용자 선택 후:
+
+📊 제안된 접근 방식:
+   Step 1: Pydantic 모델 정의 및 검증
+   Step 2: S3 통합 (사전 서명된 URL)
+   Step 3: 데이터베이스 스키마 + 마이그레이션
+   Step 4: RESTful API 엔드포인트
+   Step 5: 포괄적 테스트 스위트
+
+💻 체크포인트 기반 구현:
+   [Step 1 구현 → 검토 → Step 2 진행 전 승인]
+   [각 단계는 AskUserQuestion으로 검증]
+
+✅ 제공된 컴포넌트:
+   - UserProfile, ProfileUpdate DTO
+   - 사전 서명된 URL이 있는 S3Service
+   - 데이터베이스 마이그레이션
+   - 4개 RESTful 엔드포인트
+   - 85%+ 테스트 커버리지
+```
+
+#### 사용법
+
+```bash
+# R2-D2 Partner 모드로 전환
+/output-style r2d2-partner
+
+# 그 후 코딩 작업에서 협력합니다
+"API 엔드포인트 구현을 도와줘"
+"이 데이터베이스 스키마를 검토해줄래?"
+"TDD로 이 기능을 어떻게 접근할까?"
+```
+
+---
+
+## 🎯 페르소나 선택 가이드
+
+**당신의 목표에 맞는 올바른 페르소나를 선택하세요**:
+
+| 목표 | 페르소나 | 최적 용도 |
+|------|---------|----------|
+| 원리 이해 | 🧙 Yoda Master | "왜"에 대한 질문, 깊이 있는 학습, 문서 생성 |
+| 협력적 코딩 | 🤖 R2-D2 Partner | 구현, 옵션 기반 결정, 체크포인트 |
+| 프로덕션 개발 | 🤖 R2-D2 Agentic | 실시간 지원, 자동화된 솔루션 |
+| 초보자 학습 | 🎩 Alfred | 구조화된 안내, 부드러운 멘토링 |
+| 지식 숙달 | 🧑‍🏫 Keating | 패턴 인식, 직관 개발 |
+
+**페르소나 결합**:
+
+1. **새 프레임워크 학습**: 먼저 Yoda Master로 원리를 이해하고, R2-D2 Partner로 구현
+2. **프로덕션 기능**: R2-D2 Partner로 협력 개발, 복잡한 부분은 전문가에게 위임
+3. **복잡한 버그 디버깅**: R2-D2 Agentic으로 진단 시작, Yoda Master로 근본 원인 이해
+
+**시작하기**:
+
+- 처음 사용자: 🎩 Alfred로 시작, 다른 페르소나 탐색
+- 경험 많은 개발자: 기본값 🤖 R2-D2 Partner, 깊이 있는 학습은 🧙 Yoda Master 활용
+- 빠른 작업: 자동화는 🤖 R2-D2 Agentic 사용
+
+---
 
 ### 🎩 Alfred MoAI-ADK Beginner
 
