@@ -68,6 +68,13 @@ docs/out/
 .moai/memory/
 .moai/config/
 
+# Yoda system output (로컬 강의 자료 생성만)
+.moai/yoda/output/*.md
+.moai/yoda/output/*.pdf
+.moai/yoda/output/*.pptx
+.moai/yoda/output/*.docx
+.moai/yoda/output/*-notion-link.txt
+
 # MoAI reports (임시 보고서만 무시)
 .moai/reports/*.tmp
 .moai/reports/*-draft.*
