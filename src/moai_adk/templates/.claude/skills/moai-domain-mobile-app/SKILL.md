@@ -1,1281 +1,1117 @@
 ---
 name: moai-domain-mobile-app
-description: Enterprise-grade mobile development expertise with AI-powered app optimization, intelligent cross-platform strategies, autonomous performance management, and advanced user experience enhancement; activates for mobile app development, cross-platform frameworks, mobile UI/UX design, and comprehensive mobile application architecture.
-allowed-tools:
-  - Read
-  - Bash
-  - WebSearch
-  - WebFetch
+version: 4.0.0
+created: 2025-11-12
+updated: 2025-11-12
+status: active
+tier: domain
+description: "Enterprise-grade mobile development expertise with React Native 0.76+, Flutter 3.24+, Capacitor 6.x, Ionic 8.x, cross-platform UI/UX, native module integration, advanced testing, CI/CD automation, error tracking, and production-ready deployment for 2025. Covers performance optimization, battery management, network optimization, state management patterns, and E2E testing with stable version best practices."
+allowed-tools: "Read, Bash, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
+primary-agent: "frontend-expert"
+secondary-agents: [qa-validator, alfred, doc-syncer]
+keywords: [mobile, react-native, flutter, ios, android, cross-platform, capacitor, ionic, detox, appium, fastlane, sentry, eas, performance, testing]
+tags: [domain-expert, enterprise]
+orchestration:
+  can_resume: true
+  typical_chain_position: "middle"
+  depends_on: []
 ---
 
-# 📱 Enterprise Mobile Architect & AI-Optimized Mobile Development
+# moai-domain-mobile-app
 
-## 🚀 AI-Driven Mobile Capabilities
+**Enterprise Mobile Development Excellence**
 
-**Intelligent App Optimization**:
-- AI-powered mobile performance analysis and optimization
-- Machine learning-based user behavior prediction and personalization
-- Smart battery usage optimization and resource management
-- Predictive network optimization and offline experience enhancement
-- Automated UI/UX adaptation based on user preferences
-- Intelligent crash prediction and prevention with ML
+> **Primary Agent**: frontend-expert  
+> **Secondary Agents**: qa-validator, alfred, doc-syncer  
+> **Version**: 4.0.0 (Stable 2025-11 Edition)  
+> **Keywords**: mobile, react-native, flutter, ios, android, cross-platform, ui/ux, testing, deployment
 
-**Cognitive Mobile Experience**:
-- Adaptive user interfaces that learn from user behavior
-- Context-aware app functionality and content delivery
-- Personalized user journey optimization with AI
-- Smart notification management and engagement optimization
-- Predictive content caching and performance enhancement
-- Intelligent accessibility features and inclusive design
+---
 
-## 🎯 Skill Metadata
-| Field | Value |
-| ----- | ----- |
-| **Version** | **4.0.0 Enterprise** |
-| **Created** | 2025-11-11 |
-| **Updated** | 2025-11-11 |
-| **Allowed tools** | Read, Bash, WebSearch, WebFetch |
-| **Auto-load** | On-demand for mobile development requests |
-| **Trigger cues** | Mobile app development, iOS, Android, React Native, Flutter, cross-platform, mobile UI/UX, mobile performance |
-| **Tier** | **4 (Enterprise)** |
-| **AI Features** | Performance optimization, adaptive UX, intelligent caching |
+## 📖 Progressive Disclosure
 
-## 🔍 Intelligent Mobile Analysis
+### Level 1: Quick Reference (Core Concepts)
 
-### **AI-Powered Mobile Assessment**
-```
-🧠 Comprehensive Mobile Analysis:
-├── Performance Intelligence
-│   ├── AI-powered performance profiling
-│   ├── Intelligent resource optimization
-│   ├── Predictive battery usage analysis
-│   └── Smart memory management
-├── User Experience Analytics
-│   ├── AI-driven user behavior analysis
-│   ├── Intelligent engagement optimization
-│   ├── Personalized UX recommendations
-│   └── Predictive user journey mapping
-├── Cross-Platform Optimization
-│   ├── AI-powered code sharing strategies
-│   ├── Intelligent platform-specific optimizations
-│   ├── Automated testing across platforms
-│   └── Smart deployment strategies
-└── App Store Intelligence
-    ├── AI-powered app store optimization
-    ├── Intelligent review analysis
-    ├── Predictive download trends
-    └── Automated competitor analysis
-```
+**Purpose**: Enterprise-grade mobile development expertise covering React Native, Flutter, Capacitor, cross-platform strategies, performance optimization, testing, and production deployment for 2025.
 
-## 🏗️ Advanced Mobile Architecture v4.0
+**When to Use:**
+- ✅ Building native iOS/Android apps with React Native (0.76+)
+- ✅ Cross-platform app development with Flutter (3.24+)
+- ✅ Hybrid app development with Capacitor (6.x) and Ionic (8.x)
+- ✅ Implementing native modules and bridging Java/Swift code
+- ✅ State management (Provider, GetX, Redux) and navigation (React Navigation 6.x)
+- ✅ Performance optimization, battery management, network optimization
+- ✅ E2E testing with Detox (20.x), Appium (2.x)
+- ✅ CI/CD automation with fastlane (2.x) and EAS Build/Submit
+- ✅ Error tracking and monitoring with Sentry (24.x)
+- ✅ App Store optimization and release management
 
-### **AI-Enhanced Mobile Framework**
+**Quick Start Pattern (React Native 0.76):**
 
-**Intelligent Mobile Architecture**:
-```
-📱 Cognitive Mobile Architecture:
-├── AI-Native Mobile Development
-│   ├── React Native 0.75+ with AI optimization
-│   ├── Flutter 3.19+ with intelligent performance
-│   ├── SwiftUI 5.0+ with ML integration
-│   ├── Jetpack Compose with AI-enhanced UI
-│   └── Capacitor 5.0+ with smart plugin management
-├── Cross-Platform Intelligence
-│   ├── AI-powered code generation
-│   ├── Intelligent shared component libraries
-│   ├── Smart platform-specific optimizations
-│   └── Automated testing strategies
-├── Performance Optimization
-│   ├── AI-driven performance profiling
-│   ├── Intelligent battery optimization
-│   ├── Smart memory management
-│   └── Predictive network optimization
-├── User Experience Enhancement
-│   ├── AI-powered personalization engine
-│   ├── Intelligent UI/UX adaptation
-│   ├── Smart accessibility features
-│   └── Predictive user engagement
-└── Enterprise Integration
-    ├── AI-powered mobile backend integration
-    ├── Intelligent offline synchronization
-    ├── Smart security implementation
-    └── Automated deployment and monitoring
-```
-
-**AI-Optimized Mobile Implementation**:
 ```typescript
-/**
- * Enterprise Mobile Framework v4.0 with AI-Powered Optimization
- * React Native 0.75+ with Advanced AI Features
- */
-
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+// React Native 0.76+ App with Modern Navigation
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   FlatList,
+  TouchableOpacity,
   ActivityIndicator,
-  Alert
+  SafeAreaView
 } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
-import { Performance } from 'react-native-performance';
-import crashlytics from '@react-native-firebase/crashlytics';
 
-// AI-powered performance optimizer
-class AIMobilePerformanceOptimizer {
-  private performanceMetrics: Map<string, number[]> = new Map();
-  private userBehaviorAnalyzer: UserBehaviorAnalyzer;
-  private networkOptimizer: NetworkOptimizer;
-  private batteryOptimizer: BatteryOptimizer;
-  
-  constructor() {
-    this.userBehaviorAnalyzer = new UserBehaviorAnalyzer();
-    this.networkOptimizer = new NetworkOptimizer();
-    this.batteryOptimizer = new BatteryOptimizer();
-  }
-  
-  async initializeOptimization(): Promise<void> {
-    // Initialize AI components
-    await this.userBehaviorAnalyzer.initialize();
-    await this.networkOptimizer.initialize();
-    await this.batteryOptimizer.initialize();
-    
-    // Start performance monitoring
-    this.startPerformanceMonitoring();
-  }
-  
-  async optimizeAppPerformance(screenName: string): Promise<OptimizationResult> {
-    // Collect current metrics
-    const metrics = await this.collectMetrics(screenName);
-    
-    // Analyze user behavior patterns
-    const behaviorAnalysis = await this.userBehaviorAnalyzer.analyzeBehavior(
-      screenName, metrics
-    );
-    
-    // Optimize network requests
-    const networkOptimization = await this.networkOptimizer.optimizeRequests(
-      behaviorAnalysis.predictedActions
-    );
-    
-    // Optimize battery usage
-    const batteryOptimization = await this.batteryOptimizer.optimizePowerUsage(
-      behaviorAnalysis.usagePatterns
-    );
-    
-    return {
-      screenName,
-      metrics,
-      behaviorAnalysis,
-      networkOptimization,
-      batteryOptimization,
-      optimizationScore: this.calculateOptimizationScore(
-        networkOptimization, batteryOptimization
-      )
-    };
-  }
-  
-  private async collectMetrics(screenName: string): Promise<PerformanceMetrics> {
-    const performance = await Performance.getEntryByName(screenName);
-    
-    return {
-      screenName,
-      renderTime: performance?.duration || 0,
-      memoryUsage: await this.getMemoryUsage(),
-      cpuUsage: await this.getCPUUsage(),
-      batteryLevel: await this.getBatteryLevel(),
-      networkType: await this.getNetworkType()
-    };
-  }
-}
+const Stack = createNativeStackNavigator();
 
-// AI-powered user behavior analyzer
-class UserBehaviorAnalyzer {
-  private behaviorPatterns: Map<string, BehaviorPattern> = new Map();
-  private interactionHistory: UserInteraction[] = [];
-  
-  async initialize(): Promise<void> {
-    // Load historical behavior data
-    await this.loadBehaviorHistory();
-    
-    // Initialize ML models for behavior prediction
-    await this.initializePredictionModels();
-  }
-  
-  async analyzeBehavior(
-    screenName: string,
-    metrics: PerformanceMetrics
-  ): Promise<BehaviorAnalysis> {
-    // Get or create behavior pattern for screen
-    let pattern = this.behaviorPatterns.get(screenName);
-    if (!pattern) {
-      pattern = new BehaviorPattern(screenName);
-      this.behaviorPatterns.set(screenName, pattern);
-    }
-    
-    // Update pattern with current metrics
-    pattern.updateMetrics(metrics);
-    
-    // Predict user actions
-    const predictedActions = await this.predictUserActions(pattern);
-    
-    // Analyze engagement patterns
-    const engagementAnalysis = await this.analyzeEngagement(pattern);
-    
-    return {
-      screenName,
-      behaviorPattern: pattern,
-      predictedActions,
-      engagementAnalysis,
-      recommendations: await this.generateRecommendations(pattern, metrics)
-    };
-  }
-  
-  private async predictUserActions(pattern: BehaviorPattern): Promise<PredictedAction[]> {
-    // Use ML model to predict next user actions
-    const features = pattern.extractFeatures();
-    const predictions = await this.mlModel.predict(features);
-    
-    return predictions.map((prediction, index) => ({
-      action: this.actionMapping[index],
-      probability: prediction,
-      confidence: prediction > 0.7 ? 'high' : prediction > 0.5 ? 'medium' : 'low'
-    }));
-  }
-}
-
-// AI-powered network optimizer
-class NetworkOptimizer {
-  private requestCache: Map<string, CachedResponse> = new Map();
-  private networkMonitor: NetworkMonitor;
-  
-  async initialize(): Promise<void> {
-    this.networkMonitor = new NetworkMonitor();
-    await this.networkMonitor.start();
-  }
-  
-  async optimizeRequests(
-    predictedActions: PredictedAction[]
-  ): Promise<NetworkOptimization> {
-    // Preload resources based on predicted actions
-    const preloadRecommendations = await this.generatePreloadRecommendations(
-      predictedActions
-    );
-    
-    // Optimize request scheduling
-    const scheduleOptimization = await this.optimizeRequestScheduling();
-    
-    // Configure intelligent caching
-    const cacheOptimization = await this.optimizeCaching();
-    
-    return {
-      preloadRecommendations,
-      scheduleOptimization,
-      cacheOptimization,
-      estimatedImprovement: this.calculateNetworkImprovement(
-        preloadRecommendations, scheduleOptimization, cacheOptimization
-      )
-    };
-  }
-  
-  private async generatePreloadRecommendations(
-    predictedActions: PredictedAction[]
-  ): Promise<PreloadRecommendation[]> {
-    const recommendations: PreloadRecommendation[] = [];
-    
-    for (const action of predictedActions) {
-      if (action.confidence === 'high' && action.probability > 0.8) {
-        const resources = await this.getResourcesForAction(action.action);
-        recommendations.push({
-          action: action.action,
-          resources,
-          priority: 'high',
-          estimatedDataUsage: this.calculateDataUsage(resources)
-        });
-      }
-    }
-    
-    return recommendations.sort((a, b) => b.priority.localeCompare(a.priority));
-  }
-}
-
-// AI-powered battery optimizer
-class BatteryOptimizer {
-  private batteryMonitor: BatteryMonitor;
-  private powerUsageAnalyzer: PowerUsageAnalyzer;
-  
-  async initialize(): Promise<void> {
-    this.batteryMonitor = new BatteryMonitor();
-    this.powerUsageAnalyzer = new PowerUsageAnalyzer();
-    
-    await this.batteryMonitor.start();
-  }
-  
-  async optimizePowerUsage(
-    usagePatterns: UsagePattern[]
-  ): Promise<BatteryOptimization> {
-    // Analyze power consumption patterns
-    const powerAnalysis = await this.powerUsageAnalyzer.analyze(usagePatterns);
-    
-    // Generate optimization strategies
-    const optimizationStrategies = await this.generateOptimizationStrategies(
-      powerAnalysis
-    );
-    
-    // Configure adaptive performance
-    const adaptivePerformance = await this.configureAdaptivePerformance(
-      powerAnalysis
-    );
-    
-    return {
-      powerAnalysis,
-      optimizationStrategies,
-      adaptivePerformance,
-      estimatedBatterySavings: this.calculateBatterySavings(optimizationStrategies)
-    };
-  }
-  
-  private async generateOptimizationStrategies(
-    powerAnalysis: PowerAnalysis
-  ): Promise<OptimizationStrategy[]> {
-    const strategies: OptimizationStrategy[] = [];
-    
-    // CPU optimization
-    if (powerAnalysis.cpuUsage > 70) {
-      strategies.push({
-        type: 'cpu_optimization',
-        description: 'Reduce CPU-intensive operations',
-        implementation: 'enableLowPowerMode',
-        estimatedSavings: '15%'
-      });
-    }
-    
-    // Network optimization
-    if (powerAnalysis.networkUsage > 60) {
-      strategies.push({
-        type: 'network_optimization',
-        description: 'Optimize network requests and caching',
-        implementation: 'enableIntelligentCaching',
-        estimatedSavings: '20%'
-      });
-    }
-    
-    // Display optimization
-    if (powerAnalysis.displayUsage > 50) {
-      strategies.push({
-        type: 'display_optimization',
-        description: 'Optimize display brightness and refresh rate',
-        implementation: 'enableAdaptiveDisplay',
-        estimatedSavings: '25%'
-      });
-    }
-    
-    return strategies;
-  }
-}
-
-// AI-enhanced React Native component
-const AIMobileAppComponent: React.FC = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [performanceData, setPerformanceData] = useState<PerformanceData | null>(null);
-  const [aiOptimizations, setAiOptimizations] = useState<AIOptimizations | null>(null);
-  
-  // Initialize AI performance optimizer
-  const performanceOptimizer = useMemo(() => new AIMobilePerformanceOptimizer(), []);
-  
-  useEffect(() => {
-    initializeApp();
-  }, []);
-  
-  const initializeApp = async () => {
-    try {
-      // Initialize AI optimization
-      await performanceOptimizer.initializeOptimization();
-      
-      // Analyze current screen performance
-      const optimizationResult = await performanceOptimizer.optimizeAppPerformance('HomeScreen');
-      
-      setAiOptimizations(optimizationResult);
-      setIsLoading(false);
-      
-    } catch (error) {
-      console.error('Failed to initialize AI optimization:', error);
-      setIsLoading(false);
-    }
-  };
-  
-  const handleScreenChange = useCallback(async (screenName: string) => {
-    // Optimize performance for new screen
-    const optimizationResult = await performanceOptimizer.optimizeAppPerformance(screenName);
-    setAiOptimizations(optimizationResult);
-    setPerformanceData(optimizationResult.metrics);
-  }, [performanceOptimizer]);
-  
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>AI Optimization Initializing...</Text>
-      </View>
-    );
-  }
-  
+// Main Navigation Component
+export const AppNavigator: React.FC = () => {
   return (
     <NavigationContainer>
-      <Stack.Navigator>
-        <Stack.Screen name="Home">
-          {(props) => (
-            <HomeScreen
-              {...props}
-              performanceData={performanceData}
-              aiOptimizations={aiOptimizations}
-              onScreenChange={handleScreenChange}
-            />
-          )}
-        </Stack.Screen>
-        <Stack.Screen name="ProductList">
-          {(props) => (
-            <ProductListScreen
-              {...props}
-              performanceData={performanceData}
-              aiOptimizations={aiOptimizations}
-              onScreenChange={handleScreenChange}
-            />
-          )}
-        </Stack.Screen>
-        <Stack.Screen name="ProductDetail">
-          {(props) => (
-            <ProductDetailScreen
-              {...props}
-              performanceData={performanceData}
-              aiOptimizations={aiOptimizations}
-              onScreenChange={handleScreenChange}
-            />
-          )}
-        </Stack.Screen>
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: true,
+          headerBackTitleVisible: false,
+          animationEnabled: true,
+          gestureEnabled: true,
+        }}
+      >
+        <Stack.Screen 
+          name="Home" 
+          component={HomeScreen}
+          options={{ title: 'Mobile App' }}
+        />
+        <Stack.Screen 
+          name="Detail" 
+          component={DetailScreen}
+          options={{ title: 'Details' }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );
 };
 
-// AI-enhanced Home Screen component
-const HomeScreen: React.FC<HomeScreenProps> = ({
-  performanceData,
-  aiOptimizations,
-  onScreenChange
-}) => {
+// Home Screen with Data Fetching
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  imageUrl: string;
+}
+
+const HomeScreen: React.FC<any> = ({ navigation }) => {
   const [products, setProducts] = useState<Product[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
-  
-  useEffect(() => {
-    loadProducts();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isOnline, setIsOnline] = useState(true);
+
+  // Network status monitoring
+  React.useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(state => {
+      setIsOnline(state.isConnected ?? false);
+    });
+
+    return () => unsubscribe();
   }, []);
-  
-  const loadProducts = async () => {
+
+  // Load products from cache first, then API
+  const loadProducts = useCallback(async () => {
     try {
-      setRefreshing(true);
-      
-      // Use AI-optimized data fetching
-      const optimizedFetch = aiOptimizations?.networkOptimization;
-      
-      let response;
-      if (optimizedFetch && optimizedFetch.preloadedData) {
-        // Use preloaded data if available
-        response = optimizedFetch.preloadedData;
-      } else {
-        // Fetch from API with optimization
-        response = await fetchProductsOptimized();
+      setLoading(true);
+      setError(null);
+
+      // Try to load from cache first
+      const cachedData = await AsyncStorage.getItem('products');
+      if (cachedData && !loading) {
+        setProducts(JSON.parse(cachedData));
       }
-      
-      setProducts(response);
-      setRefreshing(false);
-    } catch (error) {
-      console.error('Failed to load products:', error);
-      setRefreshing(false);
-    }
-  };
-  
-  const fetchProductsOptimized = async (): Promise<Product[]> => {
-    // AI-optimized API call
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout with AI optimization
-    
-    try {
-      const response = await fetch('https://api.example.com/products', {
-        signal: controller.signal,
-        headers: {
-          'X-AI-Optimization': 'enabled',
-          'X-Performance-Mode': aiOptimizations?.batteryOptimization?.mode || 'balanced'
+
+      // Fetch fresh data if online
+      if (isOnline) {
+        const response = await fetch('https://api.example.com/products', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept-Encoding': 'gzip',
+          },
+          timeout: 10000,
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
         }
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+
+        const data = await response.json() as Product[];
+        setProducts(data);
+
+        // Cache the data
+        await AsyncStorage.setItem('products', JSON.stringify(data));
       }
-      
-      return await response.json();
-    } catch (error) {
-      clearTimeout(timeoutId);
-      throw error;
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+      setError(errorMsg);
+      console.error('Failed to load products:', err);
+    } finally {
+      setLoading(false);
     }
-  };
-  
-  const renderProduct = ({ item }: { item: Product }) => (
-    <TouchableOpacity
-      style={styles.productCard}
-      onPress={() => navigateToProductDetail(item)}
-      activeOpacity={0.7}
-    >
-      <Text style={styles.productName}>{item.name}</Text>
-      <Text style={styles.productPrice}>{item.price}</Text>
-      {aiOptimizations && (
-        <Text style={styles.optimizationBadge}>
-          AI Optimized
-        </Text>
-      )}
-    </TouchableOpacity>
+  }, [isOnline]);
+
+  React.useEffect(() => {
+    loadProducts();
+  }, [loadProducts]);
+
+  const renderProduct = useCallback(
+    ({ item }: { item: Product }) => (
+      <TouchableOpacity
+        style={styles.productCard}
+        onPress={() => navigation.navigate('Detail', { product: item })}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.productName}>{item.name}</Text>
+        <Text style={styles.productPrice}>${item.price.toFixed(2)}</Text>
+      </TouchableOpacity>
+    ),
+    [navigation]
   );
-  
-  return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>AI Mobile App</Text>
-        {performanceData && (
-          <Text style={styles.performanceInfo}>
-            CPU: {performanceData.cpuUsage}% | Battery: {performanceData.batteryLevel}%
-          </Text>
-        )}
+
+  if (loading && products.length === 0) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>Loading products...</Text>
       </View>
-      
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
+      {!isOnline && (
+        <View style={styles.offlineBanner}>
+          <Text style={styles.offlineText}>Offline - Using cached data</Text>
+        </View>
+      )}
+      {error && (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      )}
       <FlatList
         data={products}
         renderItem={renderProduct}
         keyExtractor={(item) => item.id}
-        refreshing={refreshing}
-        onRefresh={loadProducts}
-        contentContainerStyle={styles.productList}
-        showsVerticalScrollIndicator={false}
-        // AI-optimized performance props
+        onEndReachedThreshold={0.5}
+        onEndReached={() => console.log('Load more')}
         removeClippedSubviews={true}
         maxToRenderPerBatch={10}
         updateCellsBatchingPeriod={50}
         initialNumToRender={10}
-        windowSize={10}
+        refreshing={loading}
+        onRefresh={loadProducts}
+        contentContainerStyle={styles.listContent}
       />
-      
-      {aiOptimizations && (
-        <View style={styles.optimizationPanel}>
-          <Text style={styles.panelTitle}>AI Optimizations Active</Text>
-          <Text>Network: {aiOptimizations.networkOptimization.improvement}% better</Text>
-          <Text>Battery: {aiOptimizations.batteryOptimization.savings}% saved</Text>
-        </View>
-      )}
-    </View>
+    </SafeAreaView>
   );
 };
 
-// Flutter AI Optimization Example (Dart)
-/*
-class AIMobileOptimizerFlutter {
-  late final AIMobilePerformanceOptimizer _optimizer;
-  late final UserBehaviorAnalyzer _behaviorAnalyzer;
-  
-  Future<void> initializeOptimization() async {
-    _optimizer = AIMobilePerformanceOptimizer();
-    _behaviorAnalyzer = UserBehaviorAnalyzer();
-    
-    await _optimizer.initialize();
-    await _behaviorAnalyzer.initialize();
-  }
-  
-  Future<OptimizationResult> optimizeScreen(
-    String screenName,
-    BuildContext context
-  ) async {
-    // Collect performance metrics
-    final metrics = await _collectMetrics(screenName, context);
-    
-    // Analyze user behavior
-    final behaviorAnalysis = await _behaviorAnalyzer.analyzeBehavior(
-      screenName,
-      metrics
-    );
-    
-    // Apply AI optimizations
-    final optimizations = await _applyOptimizations(
-      metrics,
-      behaviorAnalysis
-    );
-    
-    return OptimizationResult(
-      screenName: screenName,
-      metrics: metrics,
-      behaviorAnalysis: behaviorAnalysis,
-      optimizations: optimizations
-    );
-  }
-  
-  Future<void> _applyOptimizations(
-    PerformanceMetrics metrics,
-    BehaviorAnalysis analysis
-  ) async {
-    // Apply battery optimizations
-    if (metrics.batteryLevel < 20) {
-      await _enablePowerSaveMode();
-    }
-    
-    // Apply network optimizations
-    if (analysis.predictedNetworkUsage > 50) {
-      await _enableIntelligentCaching();
-    }
-    
-    // Apply performance optimizations
-    if (metrics.frameTime > 16.67) { // 60 FPS threshold
-      await _enablePerformanceMode();
-    }
-  }
-}
+// Detail Screen
+const DetailScreen: React.FC<any> = ({ route }) => {
+  const { product } = route.params as { product: Product };
 
-// AI-Optimized Flutter Widget
-class AIOptimizedWidget extends StatefulWidget {
-  @override
-  _AIOptimizedWidgetState createState() => _AIOptimizedWidgetState();
-}
-
-class _AIOptimizedWidgetState extends State<AIOptimizedWidget>
-    with WidgetsBindingObserver {
-  late final AIMobileOptimizerFlutter _optimizer;
-  late final Timer _performanceTimer;
-  
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _optimizer = AIMobileOptimizerFlutter();
-    _initializeOptimization();
-    _startPerformanceMonitoring();
-  }
-  
-  Future<void> _initializeOptimization() async {
-    await _optimizer.initializeOptimization();
-    
-    // Optimize current screen
-    final result = await _optimizer.optimizeScreen(
-      'AIOptimizedWidget',
-      context
-    );
-    
-    _logOptimizationResult(result);
-  }
-  
-  void _startPerformanceMonitoring() {
-    _performanceTimer = Timer.periodic(
-      Duration(seconds: 5),
-      (_) => _monitorPerformance(),
-    );
-  }
-  
-  Future<void> _monitorPerformance() async {
-    final result = await _optimizer.optimizeScreen(
-      'AIOptimizedWidget',
-      context
-    );
-    
-    // Apply real-time optimizations
-    if (result.metrics.frameTime > 16.67) {
-      _reduceComplexity();
-    }
-    
-    if (result.metrics.memoryUsage > 100) { // MB
-      _clearImageCache();
-    }
-  }
-  
-  @override
-  Widget build(BuildContext context) {
-    return RepaintBoundary(
-      child: CustomPaint(
-        painter: AIOptimizedPainter(),
-        child: Scaffold(
-          appBar: AppBar(
-            title: Text('AI Optimized Flutter'),
-            backgroundColor: Colors.blue,
-          ),
-          body: OptimizedListView(),
-        ),
-      ),
-    );
-  }
-}
-*/
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.detailContent}>
+        <Text style={styles.detailTitle}>{product.name}</Text>
+        <Text style={styles.detailPrice}>${product.price.toFixed(2)}</Text>
+      </View>
+    </SafeAreaView>
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  loadingContainer: {
+  centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
   },
   loadingText: {
-    marginTop: 16,
+    marginTop: 12,
     fontSize: 16,
-    color: '#666666',
+    color: '#666',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+  offlineBanner: {
+    backgroundColor: '#FFA500',
+    padding: 8,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333333',
-  },
-  performanceInfo: {
-    fontSize: 12,
-    color: '#666666',
-    backgroundColor: '#f0f0f0',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  productList: {
-    padding: 16,
-  },
-  productCard: {
-    backgroundColor: '#ffffff',
-    padding: 16,
-    marginBottom: 12,
-    borderRadius: 8,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  productName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333333',
-    marginBottom: 8,
-  },
-  productPrice: {
-    fontSize: 16,
-    color: '#007AFF',
+  offlineText: {
+    color: '#fff',
+    fontSize: 14,
     fontWeight: '600',
   },
-  optimizationBadge: {
-    fontSize: 10,
-    color: '#ffffff',
-    backgroundColor: '#34C759',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    alignSelf: 'flex-start',
-    marginTop: 8,
+  errorBanner: {
+    backgroundColor: '#FF3B30',
+    padding: 8,
   },
-  optimizationPanel: {
-    backgroundColor: '#ffffff',
+  errorText: {
+    color: '#fff',
+    fontSize: 14,
+  },
+  productCard: {
+    backgroundColor: '#fff',
     padding: 16,
-    marginTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    marginHorizontal: 12,
+    marginVertical: 6,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
-  panelTitle: {
+  productName: {
     fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  productPrice: {
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: '700',
+  },
+  listContent: {
+    paddingVertical: 8,
+  },
+  detailContent: {
+    padding: 20,
+  },
+  detailTitle: {
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#333333',
+    color: '#333',
     marginBottom: 8,
   },
+  detailPrice: {
+    fontSize: 20,
+    color: '#007AFF',
+    fontWeight: '700',
+  },
 });
 
-// Performance monitoring integration
-Performance.addEventListener('screen_load', (metric) => {
-  // Send performance data to AI optimizer
-  performanceOptimizer.recordScreenLoad(metric);
-});
+export default AppNavigator;
+```
 
-// Error tracking with AI analysis
-ErrorUtils.setGlobalHandler((error, isFatal) => {
-  // Enhanced error reporting with AI analysis
-  crashlytics.recordError(error, {
-    screen_name: 'Unknown',
-    ai_optimizations_active: aiOptimizations !== null,
-    performance_metrics: performanceData,
-    user_behavior_analysis: aiOptimizations?.behaviorAnalysis
+**Core Technology Stack (Stable 2025-11):**
+- **React Native**: 0.76.x (New Architecture default)
+- **Expo**: 52.x (SDK with EAS Build/Submit)
+- **React Navigation**: 6.x (Stack, Tab, Drawer)
+- **Flutter**: 3.24+ (Dart 3.5+)
+- **Capacitor**: 6.x (Cross-platform bridge)
+- **Ionic**: 8.x (UI framework)
+- **State Management**: Provider 6.x, GetX 4.x, Redux Toolkit
+- **Testing**: Detox 20.x (E2E), Jest 30.x (Unit), Appium 2.x (Mobile Automation)
+- **CI/CD**: fastlane 2.x, GitHub Actions, EAS Build
+- **Error Tracking**: Sentry 24.x
+- **Performance Monitoring**: Flipper, React Native DevTools
+
+---
+
+### Level 2: Advanced Patterns (Production Architecture)
+
+## 🏗️ React Native Architecture (0.76+ with New Architecture)
+
+### React Native 0.76 Setup
+
+```bash
+# Create project with latest stable version
+npx react-native@latest init MyApp --template
+
+# Or with Expo (recommended for most projects)
+npx create-expo-app MyApp
+cd MyApp
+npm install expo@^52 react-native@^0.76
+
+# Install essential dependencies
+npm install @react-navigation/native @react-navigation/bottom-tabs
+npm install @react-native-async-storage/async-storage
+npm install @react-native-community/netinfo
+npm install axios
+
+# Install Detox for E2E testing
+npm install --save-dev detox detox-cli detox-config
+detox init -r ios
+```
+
+### State Management (Provider Pattern - Best Practice)
+
+```dart
+// Flutter Example with Provider 6.x
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+// Model
+class Counter with ChangeNotifier {
+  int _count = 0;
+
+  int get count => _count;
+
+  void increment() {
+    _count++;
+    notifyListeners();
+  }
+
+  void decrement() {
+    _count--;
+    notifyListeners();
+  }
+}
+
+// Service
+class CounterService {
+  Future<int> fetchInitialCount() async {
+    await Future.delayed(Duration(seconds: 1));
+    return 0;
+  }
+}
+
+// Provider setup
+void main() {
+  runApp(
+    MultiProvider(
+      providers: [
+        Provider<CounterService>(create: (_) => CounterService()),
+        ChangeNotifierProxyProvider<CounterService, Counter>(
+          create: (_) => Counter(),
+          update: (_, service, counter) => counter ?? Counter(),
+        ),
+      ],
+      child: const MyApp(),
+    ),
+  );
+}
+
+// Widget usage
+class CounterWidget extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<Counter>(
+      builder: (context, counter, child) {
+        return Column(
+          children: [
+            Text('Count: ${counter.count}'),
+            ElevatedButton(
+              onPressed: counter.increment,
+              child: Text('Increment'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+```
+
+## 🔌 Native Module Integration
+
+### React Native - JavaScript to Native Bridge
+
+```typescript
+// native-modules/BatteryModule.ts
+import { NativeModules } from 'react-native';
+
+interface BatteryModuleType {
+  getBatteryLevel(): Promise<number>;
+  subscribeToBatteryLevel(callback: (level: number) => void): void;
+}
+
+const BatteryModule = NativeModules.BatteryModule as BatteryModuleType;
+
+export const useBatteryLevel = () => {
+  const [level, setLevel] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    BatteryModule.getBatteryLevel().then(setLevel);
+    BatteryModule.subscribeToBatteryLevel(setLevel);
+
+    return () => {
+      // Cleanup
+    };
+  }, []);
+
+  return level;
+};
+
+// Usage in component
+const BatteryStatus: React.FC = () => {
+  const batteryLevel = useBatteryLevel();
+
+  if (batteryLevel === null) {
+    return <Text>Checking battery...</Text>;
+  }
+
+  return <Text>Battery: {batteryLevel}%</Text>;
+};
+```
+
+### Flutter - Platform Channel Integration
+
+```dart
+// platform_channel/battery_method.dart
+import 'package:flutter/services.dart';
+
+class BatteryMethodChannel {
+  static const platform = MethodChannel('com.example.battery');
+
+  static Future<int> getBatteryLevel() async {
+    try {
+      final int result = await platform.invokeMethod('getBatteryLevel');
+      return result;
+    } on PlatformException catch (e) {
+      print('Failed to get battery level: ${e.message}');
+      return -1;
+    }
+  }
+
+  static void subscribeToBatteryLevel(Function(int) callback) {
+    platform.setMethodCallHandler((call) async {
+      if (call.method == 'batteryLevelChanged') {
+        callback(call.arguments as int);
+      }
+    });
+  }
+}
+
+// Usage
+class BatteryWidget extends StatefulWidget {
+  @override
+  _BatteryWidgetState createState() => _BatteryWidgetState();
+}
+
+class _BatteryWidgetState extends State<BatteryWidget> {
+  int _batteryLevel = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _getBatteryLevel();
+    BatteryMethodChannel.subscribeToBatteryLevel((level) {
+      setState(() => _batteryLevel = level);
+    });
+  }
+
+  Future<void> _getBatteryLevel() async {
+    final level = await BatteryMethodChannel.getBatteryLevel();
+    setState(() => _batteryLevel = level);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Text('Battery: $_batteryLevel%');
+  }
+}
+```
+
+## 🧪 E2E Testing Strategy
+
+### Detox (React Native E2E - Recommended)
+
+```typescript
+// detox/firstTest.e2e.ts
+describe('Product List E2E Test', () => {
+  beforeAll(async () => {
+    await device.launchApp();
+  });
+
+  beforeEach(async () => {
+    await device.reloadReactNative();
+  });
+
+  it('should display product list and navigate to detail', async () => {
+    // Wait for list to render
+    await waitFor(element(by.id('productList'))).toExist().withTimeout(5000);
+
+    // Verify first product is visible
+    await expect(element(by.text('Product 1'))).toBeVisible();
+
+    // Tap on first product
+    await element(by.id('product-0')).multiTap();
+
+    // Verify navigation to detail screen
+    await expect(element(by.text('Product Details'))).toBeVisible();
+
+    // Scroll in detail view
+    await waitFor(element(by.id('detailScroll'))).toBeVisible().withTimeout(5000);
+    await element(by.id('detailScroll')).scroll(300, 'down');
+
+    // Navigate back
+    await element(by.text('Back')).tap();
+    await expect(element(by.id('productList'))).toBeVisible();
+  });
+
+  it('should handle offline state', async () => {
+    // Simulate offline
+    await device.setAirplaneMode(true);
+
+    // Navigate to products
+    await element(by.id('productsTab')).tap();
+
+    // Should show offline banner
+    await expect(element(by.id('offlineBanner'))).toBeVisible();
+
+    // Should still be able to scroll cached data
+    await element(by.id('productList')).scroll(200, 'down');
+
+    // Restore online
+    await device.setAirplaneMode(false);
   });
 });
 
-export default AIMobileAppComponent;
+// Build and run
+// detox build-ios-framework --release
+// detox test ios.sim.debug --record-logs all
 ```
 
-## 📊 Advanced Mobile Analytics
+### Appium (Cross-Platform Automation)
 
-### **AI-Driven Mobile Analytics**
-
-**Cognitive Mobile Analytics**:
 ```typescript
-// AI-Powered Mobile Analytics Platform
-class AIMobileAnalytics {
-  private userBehaviorAnalyzer: UserBehaviorAnalyzer;
-  private performanceAnalyzer: PerformanceAnalyzer;
-  private engagementOptimizer: EngagementOptimizer;
-  private retentionPredictor: RetentionPredictor;
-  
-  constructor() {
-    this.userBehaviorAnalyzer = new UserBehaviorAnalyzer();
-    this.performanceAnalyzer = new PerformanceAnalyzer();
-    this.engagementOptimizer = new EngagementOptimizer();
-    this.retentionPredictor = new RetentionPredictor();
-  }
-  
-  async analyzeUserBehavior(
-    userId: string,
-    sessionData: UserSession[]
-  ): Promise<UserBehaviorAnalysis> {
-    // Analyze user interaction patterns
-    const interactionPatterns = await this.userBehaviorAnalyzer.analyzeInteractions(
-      sessionData
-    );
-    
-    // Identify usage patterns
-    const usagePatterns = await this.userBehaviorAnalyzer.identifyUsagePatterns(
-      sessionData
-    );
-    
-    // Predict user actions
-    const predictedActions = await this.userBehaviorAnalyzer.predictNextActions(
-      interactionPatterns, usagePatterns
-    );
-    
-    // Generate personalization recommendations
-    const personalizationRecommendations = await this.generatePersonalizationRecommendations(
-      interactionPatterns, usagePatterns, predictedActions
-    );
-    
-    return {
-      userId,
-      sessionCount: sessionData.length,
-      interactionPatterns,
-      usagePatterns,
-      predictedActions,
-      personalizationRecommendations,
-      engagementScore: this.calculateEngagementScore(interactionPatterns),
-      churnRisk: this.calculateChurnRisk(usagePatterns)
-    };
-  }
-  
-  async optimizeUserEngagement(
-    userSegment: UserSegment,
-    engagementData: EngagementMetrics[]
-  ): Promise<EngagementOptimization> {
-    // Analyze current engagement patterns
-    const engagementAnalysis = await this.engagementOptimizer.analyzeEngagement(
-      userSegment, engagementData
-    );
-    
-    // Generate optimization strategies
-    const optimizationStrategies = await this.engagementOptimizer.generateStrategies(
-      engagementAnalysis
-    );
-    
-    // Predict engagement improvement
-    const improvementPrediction = await this.engagementOptimizer.predictImprovement(
-      optimizationStrategies
-    );
-    
-    return {
-      userSegment,
-      engagementAnalysis,
-      optimizationStrategies,
-      improvementPrediction,
-      implementationPlan: await this.createImplementationPlan(optimizationStrategies)
-    };
-  }
-  
-  async predictUserRetention(
-    userProfiles: UserProfile[],
-    historicalData: RetentionData[]
-  ): Promise<RetentionPrediction> {
-    // Train ML model for retention prediction
-    const trainedModel = await this.retentionPredictor.trainModel(
-      userProfiles, historicalData
-    );
-    
-    // Generate predictions for current users
-    const predictions = await this.retentionPredictor.predictRetention(
-      trainedModel, userProfiles
-    );
-    
-    // Identify at-risk users
-    const atRiskUsers = predictions
-      .filter(pred => pred.retentionProbability < 0.6)
-      .map(pred => pred.userId);
-    
-    // Generate retention strategies
-    const retentionStrategies = await this.generateRetentionStrategies(atRiskUsers);
-    
-    return {
-      modelAccuracy: trainedModel.accuracy,
-      predictions,
-      atRiskUsers,
-      retentionStrategies,
-      overallRetentionRate: this.calculateOverallRetentionRate(predictions)
-    };
-  }
-}
+// appium/appTest.spec.ts
+import { remote } from 'webdriverio';
 
-// AI-powered App Store Optimization
-class AIAppStoreOptimizer {
-  private keywordAnalyzer: KeywordAnalyzer;
-  private competitorAnalyzer: CompetitorAnalyzer;
-  private reviewAnalyzer: ReviewAnalyzer;
-  
-  async optimizeAppStoreListing(
-    appData: AppData,
-    marketData: MarketData
-  ): Promise<AppStoreOptimization> {
-    // Analyze keywords and search trends
-    const keywordAnalysis = await this.keywordAnalyzer.analyzeKeywords(
-      appData, marketData
-    );
-    
-    // Analyze competitor strategies
-    const competitorAnalysis = await this.competitorAnalyzer.analyzeCompetitors(
-      appData, marketData
-    );
-    
-    // Analyze user reviews
-    const reviewAnalysis = await this.reviewAnalyzer.analyzeReviews(
-      appData.reviews
-    );
-    
-    // Generate optimization recommendations
-    const optimizationRecommendations = await this.generateOptimizationRecommendations(
-      keywordAnalysis, competitorAnalysis, reviewAnalysis
-    );
-    
-    return {
-      keywordAnalysis,
-      competitorAnalysis,
-      reviewAnalysis,
-      optimizationRecommendations,
-      predictedImprovement: this.predictImprovement(optimizationRecommendations),
-      implementationPriority: this.prioritizeImplementations(optimizationRecommendations)
-    };
-  }
-}
+describe('Mobile App Appium Tests', () => {
+  let driver: WebdriverIO.Browser;
 
-// Mobile Analytics Implementation Example
-async function demonstrateMobileAnalytics() {
-  const mobileAnalytics = new AIMobileAnalytics();
-  const appStoreOptimizer = new AIAppStoreOptimizer();
-  
-  // Simulate user session data
-  const userSessions = [
-    {
-      userId: 'user123',
-      sessionId: 'session1',
-      startTime: '2024-01-01T10:00:00Z',
-      endTime: '2024-01-01T10:15:00Z',
-      screens: ['Home', 'ProductList', 'ProductDetail'],
-      interactions: ['tap', 'scroll', 'swipe'],
-      performance: {
-        loadTime: 1.2,
-        crashCount: 0,
-        batteryUsage: 5
+  before(async () => {
+    const opts = {
+      path: '/wd/hub',
+      port: 4723,
+      capabilities: {
+        platformName: 'iOS',
+        'appium:deviceName': 'iPhone 15',
+        'appium:app': '/path/to/app.ipa',
+        'appium:automationName': 'XCUITest',
+      },
+    };
+    driver = await remote(opts);
+  });
+
+  after(async () => {
+    await driver?.deleteSession();
+  });
+
+  it('should load app and display home screen', async () => {
+    const homeTitle = await driver.$('~homeTitle');
+    await expect(homeTitle).toBeDisplayed();
+  });
+
+  it('should scroll and load more items', async () => {
+    const list = await driver.$('~productList');
+    await driver.execute('mobile: scroll', {
+      element: list.elementId,
+      direction: 'down',
+      distance: 300,
+    });
+
+    const lastItem = await driver.$('~lastProduct');
+    await expect(lastItem).toBeDisplayed();
+  });
+});
+```
+
+## 🚀 CI/CD with fastlane & EAS
+
+### fastlane Configuration
+
+```ruby
+# ios/fastlane/Fastfile
+default_platform(:ios)
+
+platform :ios do
+  desc "Build and distribute iOS app"
+  lane :build_and_distribute do |options|
+    # Increment build number
+    increment_build_number(
+      xcodeproj: "ios/MyApp.xcodeproj"
+    )
+
+    # Build the app
+    build_app(
+      workspace: "ios/MyApp.xcworkspace",
+      scheme: "MyApp",
+      configuration: "Release",
+      destination: "generic/platform=iOS",
+      export_method: "app-store",
+      output_name: "MyApp.ipa",
+      clean: true,
+      quiet: false
+    )
+
+    # Upload dSYMs to Sentry
+    upload_symbols_to_sentry(
+      auth_token: ENV['SENTRY_AUTH_TOKEN'],
+      org_slug: 'my-org',
+      project_slug: 'my-app'
+    )
+
+    # Upload to TestFlight
+    upload_to_testflight(
+      skip_waiting_for_build_processing: true,
+      skip_submission: true
+    )
+  end
+
+  desc "Build for App Store"
+  lane :build_for_app_store do
+    match(type: "appstore")
+    build_and_distribute
+  end
+end
+
+# android/fastlane/Fastfile
+default_platform(:android)
+
+platform :android do
+  desc "Build and distribute Android app"
+  lane :build_and_distribute do
+    gradle(
+      project_dir: "android/",
+      task: "bundleRelease"
+    )
+
+    # Sign the bundle
+    gradle(
+      project_dir: "android/",
+      task: "bundleRelease",
+      gradle_path: "android/gradlew"
+    )
+
+    # Upload to Play Store
+    upload_to_play_store(
+      track: "beta",
+      aab: "android/app/build/outputs/bundle/release/app-release.aab",
+      json_key_data: ENV['PLAY_STORE_CREDENTIALS']
+    )
+  end
+end
+```
+
+### Expo EAS Build Configuration
+
+```json
+{
+  "expo": {
+    "name": "MyApp",
+    "slug": "myapp",
+    "owner": "myusername",
+    "version": "1.0.0",
+    "plugins": [
+      ["@react-native-firebase/app"],
+      [
+        "react-native-permissions",
+        {
+          "mapsPermissions": ["Camera", "Contacts"]
+        }
+      ]
+    ]
+  },
+  "build": {
+    "preview": {
+      "ios": {
+        "resourceClass": "default"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "preview2": {
+      "ios": {
+        "resourceClass": "m-large"
+      }
+    },
+    "preview3": {
+      "developmentClient": true
+    },
+    "production": {
+      "ios": {
+        "resourceClass": "m1-medium"
       }
     }
-  ];
-  
-  // Analyze user behavior
-  const behaviorAnalysis = await mobileAnalytics.analyzeUserBehavior(
-    'user123', userSessions
-  );
-  
-  console.log('=== Mobile Analytics ===');
-  console.log(`Engagement Score: ${behaviorAnalysis.engagementScore}`);
-  console.log(`Churn Risk: ${behaviorAnalysis.churnRisk}`);
-  console.log(`Predicted Actions: ${behaviorAnalysis.predictedActions.length}`);
-  
-  // Optimize app store listing
-  const appData = {
-    name: 'AI Mobile App',
-    description: 'AI-powered mobile application',
-    category: 'Productivity',
-    reviews: []
-  };
-  
-  const marketData = {
-    keywords: ['AI', 'Mobile', 'Productivity'],
-    competitors: []
-  };
-  
-  const storeOptimization = await appStoreOptimizer.optimizeAppStoreListing(
-    appData, marketData
-  );
-  
-  console.log(`\n=== App Store Optimization ===`);
-  console.log(`Keyword Opportunities: ${storeOptimization.keywordAnalysis.opportunities.length}`);
-  console.log(`Predicted Improvement: ${storeOptimization.predictedImprovement}%`);
-}
-
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {
-    AIMobileAnalytics,
-    AIAppStoreOptimizer
-  };
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "123456789"
+      }
+    }
+  }
 }
 ```
 
-## 🔮 Future-Ready Mobile Technologies
+Build with EAS:
 
-### **Emerging Mobile Trends**
+```bash
+# Configure EAS
+eas build:configure
 
-**Next-Generation Mobile Evolution**:
-```
-🚀 Mobile Innovation Roadmap:
-├── AI-Native Mobile Development
-│   ├── On-device AI model optimization
-│   ├── Edge AI integration for mobile
-│   ├── Federated learning on mobile
-│   └── Real-time AI inference optimization
-├── 5G and Edge Computing
-│   ├── Edge-native mobile applications
-│   ├── Ultra-low latency mobile experiences
-│   ├── Network-aware optimization
-│   └── Multi-connectivity management
-├── Augmented Reality Integration
-│   ├── ARKit 7.0 and ARCore integration
-│   ├── AI-powered AR experiences
-│   ├── Spatial computing for mobile
-│   └── Computer vision optimization
-├── Wearable and IoT Integration
-│   ├── Smartwatch app optimization
-│   ├── IoT device management
-│   ├── Health and fitness AI integration
-│   └── Cross-device synchronization
-└── Mobile Web Evolution
-    ├── Progressive Web Apps with AI
-    ├── WebAssembly mobile optimization
-    ├── Mobile-first web architecture
-    └── Cross-platform web technologies
+# Build for iOS
+eas build --platform ios --profile production
+
+# Build for Android
+eas build --platform android --profile production
+
+# Submit to stores
+eas submit --platform ios --latest
+eas submit --platform android --latest
 ```
 
-## 📋 Enterprise Implementation Guide
+## 📊 Error Tracking & Monitoring
 
-### **Production Mobile Deployment**
+### Sentry Integration (24.x Stable)
 
-**AI-Optimized Mobile Infrastructure**:
-```yaml
-# Mobile App CI/CD Pipeline with AI Optimization
-name: mobile-app-pipeline
-on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main]
+```typescript
+// sentry-config.ts
+import * as Sentry from '@sentry/react-native';
 
-jobs:
-  ai-optimization:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Setup AI Mobile Optimizer
-      run: |
-        npm install -g @enterprise/mobile-ai-optimizer
-        mobile-ai-optimizer init --framework=react-native
-        
-    - name: Analyze Performance
-      run: |
-        mobile-ai-optimizer analyze --platform=ios,android
-        
-    - name: Generate Optimization Report
-      run: |
-        mobile-ai-optimizer report --format=json > optimization-report.json
-        
-    - name: Apply AI Optimizations
-      run: |
-        mobile-ai-optimizer optimize --auto-apply=true
-        
-    - name: Upload Optimization Report
-      uses: actions/upload-artifact@v3
-      with:
-        name: optimization-report
-        path: optimization-report.json
+Sentry.init({
+  dsn: 'https://[key]@[domain].ingest.sentry.io/[projectId]',
+  tracesSampleRate: 1.0,
+  environment: __DEV__ ? 'development' : 'production',
+  integrations: [
+    new Sentry.ReactNativeTracing({
+      routingInstrumentation: Sentry.registerNavigationContainer(
+        navigationRef
+      ),
+    }),
+  ],
+  debug: __DEV__,
+  beforeSend(event) {
+    // Filter sensitive data
+    if (event.request?.url?.includes('/auth')) {
+      return null;
+    }
+    return event;
+  },
+});
 
-  build-ios:
-    needs: ai-optimization
-    runs-on: macos-latest
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-        
-    - name: Install Dependencies
-      run: |
-        cd ios && pod install
-        
-    - name: Apply AI Optimizations
-      run: |
-        mobile-ai-optimizer apply-ios --optimizations=performance,battery
-        
-    - name: Build iOS App
-      run: |
-        xcodebuild -workspace ios/AIMobileApp.xcworkspace \
-                  -scheme AIMobileApp \
-                  -configuration Release \
-                  -destination 'platform=iOS Simulator,name=iPhone 15' \
-                  build
+// Wrap navigation
+export const RootNavigator = Sentry.withProfiler(RootNavigatorComponent);
 
-  build-android:
-    needs: ai-optimization
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Setup Java
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '17'
-        
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
-      
-    - name: Apply AI Optimizations
-      run: |
-        mobile-ai-optimizer apply-android --optimizations=performance,memory
-        
-    - name: Build Android App
-      run: |
-        cd android
-        ./gradlew assembleRelease
+// Error boundary
+const errorHandler = (error: Error, isFatal: boolean) => {
+  Sentry.captureException(error, {
+    level: isFatal ? 'fatal' : 'error',
+    tags: {
+      handler: isFatal ? 'fatal' : 'error',
+    },
+  });
+};
+
+// Monitoring performance
+const measureScreenLoad = () => {
+  const transaction = Sentry.startTransaction({
+    name: 'Screen Load',
+    op: 'navigation',
+  });
+
+  // Complete transaction when screen loads
+  setTimeout(() => transaction.finish(), 2000);
+};
 ```
 
-## 🎯 Performance Benchmarks & Success Metrics
+## 🎯 Performance Optimization
 
-### **Enterprise Mobile Standards**
+### Network Request Optimization
 
-**AI-Enhanced Mobile KPIs**:
+```typescript
+// network-optimizer.ts
+import axios from 'axios';
+
+const createOptimizedClient = () => {
+  const client = axios.create({
+    baseURL: 'https://api.example.com',
+    timeout: 10000,
+  });
+
+  // Request interceptor for optimization
+  client.interceptors.request.use((config) => {
+    // Add compression
+    config.headers['Accept-Encoding'] = 'gzip, deflate';
+
+    // Add cache headers
+    if (config.method === 'GET') {
+      config.headers['Cache-Control'] = 'max-age=3600';
+    }
+
+    return config;
+  });
+
+  // Response interceptor for caching
+  const cache = new Map<string, any>();
+
+  client.interceptors.response.use(
+    (response) => {
+      if (response.status === 200 && response.config.method === 'GET') {
+        cache.set(response.config.url!, response.data);
+      }
+      return response;
+    },
+    (error) => {
+      // Return cached data on error
+      if (error.config.method === 'GET') {
+        const cached = cache.get(error.config.url);
+        if (cached) {
+          return Promise.resolve({ ...error.response, data: cached });
+        }
+      }
+      return Promise.reject(error);
+    }
+  );
+
+  return client;
+};
 ```
-📊 Advanced Mobile Metrics:
-├── Performance Excellence
-│   ├── App Launch Time: < 2 seconds (AI-optimized)
-│   ├── Screen Load Time: < 500ms (Intelligent caching)
-│   ├── Battery Usage: < 5% per hour (AI optimization)
-│   └── Memory Usage: < 100MB (Smart management)
-├── User Experience
-│   ├── App Store Rating: > 4.5/5 (AI-enhanced UX)
-│   ├── Crash Rate: < 0.1% (AI prevention)
-│   ├── User Retention: > 80% (AI personalization)
-│   └── Engagement Rate: > 70% (AI optimization)
-├── Business Impact
-│   ├── App Downloads: > 100K/month (AI ASO)
-│   ├── Revenue per User: > $5 (AI monetization)
-│   ├── Conversion Rate: > 15% (AI optimization)
-│   └── Customer Satisfaction: > 90% (AI support)
-├── Technical Excellence
-│   ├── Code Quality Score: > 90% (AI review)
-│   ├── Test Coverage: > 85% (AI testing)
-│   ├── Build Success Rate: > 98% (AI optimization)
-│   └── Deployment Frequency: > 10/week (AI automation)
-└── Innovation Velocity
-    ├── Feature Release Cycle: < 2 weeks (AI-powered)
-    ├── A/B Test Success Rate: > 80% (AI optimization)
-    ├── User Feedback Implementation: > 90% (AI analysis)
-    └── Innovation Adoption Rate: > 75% (AI recommendation)
+
+### Memory Management
+
+```typescript
+// memory-optimization.ts
+import React, { useCallback, useRef, useEffect } from 'react';
+import { Image, FlatList } from 'react-native';
+
+// Image caching and lazy loading
+export const OptimizedImage: React.FC<{ source: string; width: number; height: number }> = ({
+  source,
+  width,
+  height,
+}) => {
+  return (
+    <Image
+      source={{ uri: source }}
+      style={{ width, height }}
+      cache="force-cache"
+      resizeMode="cover"
+    />
+  );
+};
+
+// FlatList optimization
+export const OptimizedList: React.FC<{ data: any[] }> = ({ data }) => {
+  return (
+    <FlatList
+      data={data}
+      renderItem={({ item }) => <Item data={item} />}
+      keyExtractor={(item) => item.id}
+      // Performance settings
+      removeClippedSubviews={true}
+      maxToRenderPerBatch={20}
+      updateCellsBatchingPeriod={50}
+      initialNumToRender={20}
+      windowSize={10}
+      scrollEventThrottle={16}
+    />
+  );
+};
+
+// Memory leak prevention
+export const useCleanup = (callback: () => void) => {
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      callback();
+    };
+  }, [callback]);
+
+  return {
+    schedule: (fn: () => void, delay: number) => {
+      timeoutRef.current = setTimeout(fn, delay);
+    },
+  };
+};
 ```
+
+---
+
+### Level 3: Enterprise Integration (Advanced Topics)
+
+## 🔄 Capacitor & Ionic Bridge
+
+### Capacitor Plugin Development
+
+```typescript
+// capacitor-plugin/src/index.ts
+import { registerPlugin } from '@capacitor/core';
+
+export interface CustomPluginPlugin {
+  echo(options: { value: string }): Promise<{ value: string }>;
+  openNativeScreen(): Promise<void>;
+}
+
+export const CustomPlugin = registerPlugin<CustomPluginPlugin>('CustomPlugin', {
+  web: () => import('./web').then(m => new m.CustomPluginWeb()),
+});
+```
+
+### Ionic Framework Integration
+
+```typescript
+// pages/home.page.ts
+import { Component, OnInit } from '@angular/core';
+import { IonicModule } from '@ionic/angular';
+import { HttpClient } from '@angular/common/http';
+
+@Component({
+  selector: 'app-home',
+  template: `
+    <ion-header>
+      <ion-toolbar color="primary">
+        <ion-title>Mobile App</ion-title>
+      </ion-toolbar>
+    </ion-header>
+    <ion-content>
+      <ion-list>
+        <ion-list-header>
+          <ion-label>Products</ion-label>
+        </ion-list-header>
+        <ion-item *ngFor="let product of products" [routerLink]="['/detail', product.id]">
+          <ion-label>
+            <h2>{{ product.name }}</h2>
+            <p>${{ product.price }}</p>
+          </ion-label>
+        </ion-item>
+      </ion-list>
+    </ion-content>
+  `,
+  standalone: true,
+  imports: [IonicModule],
+})
+export class HomePage implements OnInit {
+  products: any[] = [];
+
+  constructor(private http: HttpClient) {}
+
+  ngOnInit() {
+    this.loadProducts();
+  }
+
+  loadProducts() {
+    this.http.get('/api/products').subscribe((data: any) => {
+      this.products = data;
+    });
+  }
+}
+```
+
+---
+
+## 🎓 Best Practices Summary
+
+**React Native 0.76+ Best Practices:**
+1. Use New Architecture by default
+2. Implement proper error boundaries
+3. Use React Navigation for routing
+4. Optimize FlatList rendering
+5. Implement offline-first architecture
+6. Use AsyncStorage for caching
+7. Monitor network connectivity
+8. Implement proper logging and error tracking
+9. Use TypeScript for type safety
+10. Follow OWASP Mobile Security Top 10
+
+**Flutter 3.24+ Best Practices:**
+1. Use immutable widgets and data classes
+2. Implement proper state management (Provider/GetX)
+3. Use lazy loading for images and lists
+4. Implement proper error handling
+5. Use platform channels for native features
+6. Implement proper logging
+7. Use performance profiler
+8. Implement accessibility (Semantics)
+9. Follow Material Design 3 guidelines
+10. Use proper testing strategies
+
+**Cross-Platform Strategy:**
+1. Share business logic, not UI code
+2. Platform-specific UI implementations
+3. Unified error handling and logging
+4. Centralized configuration management
+5. Shared testing strategies
+6. Unified performance monitoring
+7. Consistent code style across platforms
+8. Shared CI/CD pipelines
+9. Unified dependency management
+10. Platform-specific optimization
+
+---
 
 ## 📚 Comprehensive References
 
-### **Enterprise Mobile Documentation**
+**Official Documentation:**
+- React Native: https://reactnative.dev/
+- Flutter: https://flutter.dev/
+- React Navigation: https://reactnavigation.org/
+- Expo: https://expo.dev/
+- Capacitor: https://capacitorjs.com/
+- Ionic: https://ionicframework.com/
 
-**Mobile Development Resources**:
-- **React Native Documentation**: https://reactnative.dev/docs/
-- **Flutter Documentation**: https://flutter.dev/docs/
-- **SwiftUI Documentation**: https://developer.apple.com/xcode/swiftui/
-- **Jetpack Compose Documentation**: https://developer.android.com/jetpack/compose
-- **Capacitor Documentation**: https://capacitorjs.com/docs/
+**Testing & Quality:**
+- Detox: https://wix.github.io/Detox/
+- Appium: https://appium.io/
+- Jest: https://jestjs.io/
+- Sentry: https://sentry.io/
 
-**Mobile Performance Optimization**:
-- **React Native Performance**: https://reactnative.dev/docs/performance
-- **Flutter Performance**: https://flutter.dev/docs/performance
-- **iOS Performance Guide**: https://developer.apple.com/documentation/xcode/improving-your-apps-performance/
-- **Android Performance**: https://developer.android.com/topic/performance/
+**Deployment:**
+- EAS Build: https://docs.expo.dev/build/setup/
+- fastlane: https://fastlane.tools/
+- GitHub Actions: https://github.com/features/actions
 
-**Mobile AI and Analytics**:
-- **TensorFlow Lite**: https://www.tensorflow.org/lite
-- **Core ML**: https://developer.apple.com/documentation/coreml/
-- **ML Kit**: https://developers.google.com/ml-kit
-- **Firebase Analytics**: https://firebase.google.com/docs/analytics
+---
 
-## 📝 Version 4.0.0 Enterprise Changelog
+## Version 4.0.0 Enterprise Changelog
 
-### **Major Enhancements**
+**Major Enhancements (2025-11-12):**
+- Updated React Native to 0.76.x (New Architecture default, React 18)
+- Updated Flutter to 3.24+ with Dart 3.5
+- Capacitor 6.x with enhanced plugin ecosystem
+- Ionic 8.x with latest component library
+- React Navigation 6.x modern patterns
+- Detox 20.x E2E testing standards
+- Sentry 24.x error tracking
+- EAS Build/Submit current stable
+- Complete production deployment strategies
+- Advanced performance optimization patterns
+- Enterprise-grade testing architecture
+- Modern state management patterns (Provider, GetX)
+- Network optimization and caching strategies
+- Offline-first architecture support
 
-**🤖 AI-Powered Features**:
-- Added AI-driven mobile performance optimization and battery management
-- Integrated intelligent user behavior analysis and personalization
-- Implemented predictive caching and network optimization strategies
-- Added AI-powered crash prediction and prevention systems
-- Included intelligent UI/UX adaptation based on user patterns
+**Performance Improvements:**
+- React Native app startup: <2 seconds (optimized)
+- Battery optimization with background task management
+- Network request caching with offline support
+- Memory management with FlatList optimization
+- Build size reduction strategies
 
-**📱 Advanced Architecture**:
-- Enhanced React Native 0.75+ with AI optimization capabilities
-- Added Flutter 3.19+ with intelligent performance management
-- Implemented SwiftUI 5.0+ and Jetpack Compose with AI integration
-- Added cross-platform intelligence with shared optimization strategies
-- Enhanced mobile backend integration with AI-powered synchronization
-
-**📊 Performance Excellence**:
-- AI-powered performance profiling and real-time optimization
-- Intelligent battery usage optimization and power management
-- Advanced memory management with ML-driven strategies
-- Predictive network optimization and offline experience enhancement
-- Automated performance monitoring with AI correlation and analysis
-
-**🔧 Developer Experience**:
-- AI-assisted mobile app development and optimization
-- Intelligent debugging with ML-powered error analysis
-- Automated testing strategies with AI-generated test cases
-- Real-time performance monitoring and optimization suggestions
-- Comprehensive analytics with AI-driven insights and recommendations
-
-## 🤝 Works Seamlessly With
-
-- **moai-domain-frontend**: Cross-platform UI development and optimization
-- **moai-domain-backend**: Mobile API integration and backend services
-- **moai-domain-api**: Mobile API optimization and caching strategies
-- **moai-domain-security**: Mobile security implementation and threat protection
-- **moai-domain-testing**: Mobile testing automation and quality assurance
-- **moai-domain-monitoring**: Mobile app performance monitoring and analytics
-- **moai-domain-ml**: On-device AI integration and mobile ML optimization
+**Testing & Quality:**
+- E2E testing with Detox 20.x
+- Mobile automation with Appium 2.x
+- Unit testing with Jest 30.x
+- Error tracking integration
+- Performance monitoring
+- Crash reporting automation
 
 ---
 
 **Version**: 4.0.0 Enterprise  
-**Last Updated**: 2025-11-11  
-**Enterprise Ready**: ✅ Production-Grade with AI Integration  
-**AI Features**: 🤖 Performance Optimization & Adaptive UX  
-**Performance**: 📊 App Launch < 2s with AI Optimization  
-**User Experience**: 📱 > 4.5/5 App Store Rating with AI Enhancement
+**Last Updated**: 2025-11-12  
+**Stable Edition**: Yes (2025-11)  
+**Status**: Production Ready  
+**Enterprise Grade**: ✅ Full Enterprise Support
