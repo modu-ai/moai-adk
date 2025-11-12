@@ -1,705 +1,865 @@
 ---
 name: moai-foundation-tags
 version: 4.0.0
-created: 2025-11-11
-updated: 2025-11-11
+created: 2025-11-12
+updated: 2025-11-12
 status: active
-description: Enterprise-grade TAG system with semantic versioning, automated release management, advanced dependency analytics, and AI-powered cross-reference intelligence
-keywords: ['tag', 'semantic-versioning', 'release-automation', 'dependency-analytics', 'cross-reference', 'git-integration', 'ai-intelligence', 'enterprise-grade']
-allowed-tools:
-  - Read
-  - Bash
-  - Glob
-  - Grep
-  - WebFetch
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+tier: foundation
+description: "Complete TAG system guide covering @SPEC, @TEST, @CODE, @DOC chains, TAG lifecycle management, orphan detection, validation rules, and enterprise traceability patterns. Enterprise v4.0 with November 2025 stable coverage."
+allowed-tools: "Read, Glob, Grep, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
+primary-agent: "alfred"
+secondary-agents: [tag-agent, qa-validator, doc-syncer]
+keywords: [TAG-system, traceability, @SPEC, @TEST, @CODE, @DOC, tagging, metadata, governance]
+tags: [foundation, tags, traceability, chains, validation, enterprise]
+orchestration:
+  can_resume: true
+  typical_chain_position: "foundational"
+  depends_on: []
 ---
 
-# Enterprise Foundation Tags Skill v4.0.0
+# moai-foundation-tags
 
-## Skill Metadata
+**The Complete @TAG System & Traceability Framework**
 
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-foundation-tags |
-| **Version** | 4.0.0 (2025-11-11) |
-| **Tier** | Enterprise Foundation |
-| **AI-Powered** | ✅ Context7 Integration, Semantic Analysis |
-| **Auto-load** | On demand when keywords detected |
-
----
-
-## What It Does
-
-Enterprise-grade TAG system with semantic versioning, automated release management, advanced dependency analytics, and AI-powered cross-reference intelligence.
-
-**Revolutionary v4.0.0 capabilities**:
-- 🚀 **Semantic Versioning Automation** with GitVersion and Semantic Release integration
-- 🤖 **AI-Powered Cross-Reference Intelligence** using Context7 MCP for official docs
-- 📊 **Advanced Dependency Analytics** with real-time impact analysis and risk assessment
-- 🔄 **Automated Release Management** with changelog generation and version bumping
-- 🔍 **Intelligent TAG Pattern Recognition** with machine learning-based classification
-- 📈 **Enterprise Performance Optimization** for projects with 100k+ files
-- 🛡️ **Zero-Trust Security Model** with GPG signing and audit trails
-- 🌐 **Multi-Repository TAG Synchronization** for enterprise monorepo management
-- 📋 **Real-time Compliance Monitoring** against ISO, SOC2, and internal standards
-- 🎯 **Predictive Impact Analysis** using ML models for change estimation
-- 📱 **Cross-Platform IDE Integration** with VSCode, IntelliJ, and Vim plugins
+> **Version**: 4.0.0 Enterprise  
+> **Tier**: Foundation  
+> **Updated**: November 2025 Stable  
+> **Keywords**: TAG-system, traceability, @SPEC, @TEST, @CODE, @DOC, governance
 
 ---
 
-## 4.0.0 Enterprise Features
+## Progressive Disclosure
 
-### Semantic Versioning Integration
-```yaml
-# .moai/tags-config.yaml
-semantic_versioning:
-  enabled: true
-  auto_bump: true
-  commit_analyzer: "conventional"
-  release_notes: "automated"
+### Level 1: Core Concepts (Quick Start)
 
-git_integration:
-  gitversion_config: true
-  semantic_release: true
-  conventional_commits: true
-  auto_tagging: true
+### What It Does
 
-ai_intelligence:
-  context7_enabled: true
-  impact_prediction: true
-  cross_reference_analysis: true
-  pattern_learning: true
-```
+This foundational Skill provides the **complete operational guide** for MoAI-ADK's @TAG system:
 
-### AI-Powered Dependency Analytics
-```python
-# AI-powered dependency analysis with Context7 integration
-from moai.tags import AIAnalytics
+- **TAG System Architecture**: Four-chain model (@SPEC → @TEST → @CODE → @DOC)
+- **TAG Lifecycle**: Creation, linking, validation, and deprecation
+- **Orphan Detection & Cleanup**: Identify and remediate unreferenced TAGs
+- **Validation Rules**: Enterprise-grade governance and compliance
+- **Traceability Chains**: Link requirements to implementation to documentation
+- **Enterprise Patterns**: November 2025 stable practices
+- **50+ Official Documentation Links**: Official references and standards
 
-# Real-time impact analysis
-impact = AIAnalytics.analyze_impact(
-    tag_changes=["@SPEC:AUTH-001", "@CODE:AUTH-001:API"],
-    context_sources=["github", "jira", "confluence"],
-    ml_model="impact-predictor-v4"
-)
-
-# Risk assessment with historical data
-risk_assessment = AIAnalytics.assess_risk(
-    change_scope="authentication_system",
-    historical_data=True,
-    ml_confidence_threshold=0.85
-)
-```
+**Core Principle**: TAGs are the **source of truth for traceability**, linking requirements through implementation to documentation with complete auditability.
 
 ---
 
-## When to Use
+## The Four-Chain TAG Model
 
-**Automatic triggers**:
-- Related code discussions and file patterns
-- SPEC implementation (`/alfred:2-run`)
-- Code review requests
-- Complex project traceability analysis
+### Chain Structure
 
-**Manual invocation**:
-- Review code for TRUST 5 compliance
-- Design new features with comprehensive tagging
-- Troubleshoot traceability issues
-- Generate dependency graphs and documentation
+Every feature in MoAI-ADK follows a complete chain from specification to documentation:
 
----
-
-## Advanced TAG System Architecture
-
-### Core TAG Categories (30+ Patterns)
-
-#### 1. **Specification Tags (@SPEC)**
-- `@SPEC:ID` - Base specification tag
-- `@SPEC:ID:REQUIREMENT` - Specific requirement within spec
-- `@SPEC:ID:ACCEPTANCE` - Acceptance criteria
-- `@SPEC:ID:CONSTRAINT` - Constraints and limitations
-- `@SPEC:ID:ASSUMPTION` - Underlying assumptions
-
-#### 2. **Test Tags (@TEST)**
-- `@TEST:ID` - Base test tag
-- `@TEST:ID:UNIT` - Unit tests
-- `@TEST:ID:INTEGRATION` - Integration tests
-- `@TEST:ID:E2E` - End-to-end tests
-- `@TEST:ID:PERFORMANCE` - Performance tests
-- `@TEST:ID:SECURITY` - Security tests
-- `@TEST:ID:MOCK` - Test mocks and stubs
-
-#### 3. **Code Tags (@CODE)**
-- `@CODE:ID` - Base code implementation
-- `@CODE:ID:API` - REST/GraphQL endpoints
-- `@CODE:ID:UI` - Components and UI elements
-- `@CODE:ID:DATA` - Data models, schemas, types
-- `@CODE:ID:DOMAIN` - Business logic
-- `@CODE:ID:INFRA` - Infrastructure, databases, integrations
-- `@CODE:ID:HELPER` - Utility functions
-- `@CODE:ID:CONFIG` - Configuration management
-- `@CODE:ID:ERROR` - Error handling and exceptions
-
-#### 4. **Documentation Tags (@DOC)**
-- `@DOC:ID` - Base documentation
-- `@DOC:ID:GUIDE` - User guides and tutorials
-- `@DOC:ID:API` - API documentation
-- `@DOC:ID:ARCH` - Architecture documentation
-- `@DOC:ID:DESIGN` - Design documents
-- `@DOC:ID:DEPLOY` - Deployment guides
-- `@DOC:ID:TROUBLESHOOT` - Troubleshooting guides
-
-#### 5. **Meta Tags (@META)**
-- `@META:VERSION` - Version control metadata
-- `@META:STATUS` - Status tracking
-- `@META:PRIORITY` - Priority levels
-- `@META:OWNER` - Ownership information
-- `@META:DEPENDENCY` - Dependency declarations
-
-#### 6. **Relationship Tags (@REL)**
-- `@REL:DERIVES_FROM` - Derivation relationships
-- `@REL:DEPENDS_ON` - Dependencies
-- `@REL:REPLACES` - Replacement relationships
-- `@REL:MERGES` - Merge relationships
-- `@REL:CONFLICTS` - Conflict relationships
-
-#### 7. **Quality Tags (@QUALITY)**
-- `@QUALITY:READABILITY` - Code readability metrics
-- `@QUALITY:MAINTAINABILITY` - Maintainability scores
-- `@QUALITY:SECURITY` - Security assessments
-- `@QUALITY:PERFORMANCE` - Performance benchmarks
-- `@QUALITY:TESTABILITY` - Testability metrics
-
-#### 8. **Lifecycle Tags (@LIFECYCLE)**
-- `@LIFECYCLE:CONCEPT` - Concept phase
-- `@LIFECYCLE:DESIGN` - Design phase
-- `@LIFECYCLE:DEVELOPMENT` - Development phase
-- `@LIFECYCLE:TESTING` - Testing phase
-- `@LIFECYCLE:DEPLOYMENT` - Deployment phase
-- `@LIFECYCLE:MAINTENANCE` - Maintenance phase
-- `@LIFECYCLE:DEPRECATED` - Deprecated components
-- `@LIFECYCLE:RETIRED` - Retired components
-
----
-
-## Advanced Features
-
-### 1. Cross-Reference Tracing
-```python
-# Link @TEST to @CODE and @SPEC
-@TEST:AUTH-001:UNIT
-@CODE:AUTH-001:API
-@SPEC:AUTH-001:REQUIREMENT
-
-# Cross-reference validation
-validate_cross_references([
-    ("@TEST:AUTH-001:UNIT", "@CODE:AUTH-001:API"),
-    ("@CODE:AUTH-001:API", "@SPEC:AUTH-001:REQUIREMENT")
-])
+```
+Requirement Layer (SPEC)
+    ↓
+    @SPEC-001: Define requirements
+        ↓ (depends on)
+    TEST Layer (@TEST)
+        ↓
+        @TEST-SPEC-001: Write failing tests
+        @TEST-SPEC-001-001: Unit test
+        @TEST-SPEC-001-002: Integration test
+            ↓ (validates)
+    Implementation Layer (@CODE)
+        ↓
+        @CODE-SPEC-001: Implement feature
+        @CODE-SPEC-001-001: Main function
+        @CODE-SPEC-001-002: Helper logic
+        @CODE-SPEC-001-003: Error handling
+            ↓ (fulfills)
+    Documentation Layer (@DOC)
+        ↓
+        @DOC-SPEC-001: Document feature
+        @DOC-SPEC-001-001: User guide
+        @DOC-SPEC-001-002: API reference
+        @DOC-SPEC-001-003: Migration guide
 ```
 
-### 2. Dependency Graph Generation
-```python
-# Generate DOT format dependency graph
-generate_dependency_graph("project", format="dot")
-# Output: graph.gv file with visual node/edge relationships
+### Chain Semantics (November 2025)
 
-# Generate visualization
-generate_dependency_graph("project", format="png", output="dependencies.png")
-```
+Each link type defines a specific relationship:
 
-### 3. Git Integration
-```python
-# Correlate tags with git history
-tag_commit_history = correlate_tags_with_git(
-    tag_patterns=["@SPEC", "@TEST", "@CODE"],
-    since_date="2025-01-01"
-)
+| Chain Type | Direction | Meaning | Validation |
+|-----------|-----------|---------|-----------|
+| **@SPEC** | Requirement definition | "What must be done?" | Required in .moai/specs/ |
+| **@TEST** | Validation logic | "How do we verify?" | ≥85% code coverage |
+| **@CODE** | Implementation | "How is it built?" | Must reference @SPEC |
+| **@DOC** | Knowledge capture | "How do users use it?" | Links to @SPEC/@CODE |
 
-# Generate release notes from tags
-generate_release_notes_from_tags("@SPEC:PROJECT-001")
-```
+### Example: Complete Chain
 
-### 4. Advanced Search and Filtering
-```python
-# Search by multiple criteria
-search_tags(
-    domain="AUTH",
-    status="active",
-    lifecycle="development",
-    priority="high"
-)
+```markdown
+1. SPEC Created:
+   File: .moai/specs/SPEC-001/spec.md
+   Header: # SPEC-001: Authentication System
+   TAG: @SPEC:AUTH-001
+   Status: APPROVED
 
-# Filter by relationship patterns
-filter_by_relationship("@REL:DEPENDS_ON", "@SPEC:AUTH-001")
-```
+2. Tests Written (RED phase):
+   File: tests/test_auth.py
+   Content:
+     """
+     @TEST:SPEC:AUTH-001
+     Validates SPEC-001 authentication requirements
+     """
+     def test_login_with_valid_credentials():
+         # @TEST-SPEC-001-001: User login with correct password
+         assert authenticate("user", "password") == True
 
-### 5. Automated Validation
-```python
-# Validate tag chain integrity
-validate_tag_integrity(
-    required_patterns=["@SPEC", "@TEST", "@CODE", "@DOC"],
-    check_cross_references=True,
-    validate_git_correlation=True
-)
+3. Code Implemented (GREEN phase):
+   File: src/auth.py
+   Content:
+     @CODE:SPEC:AUTH-001
+     def authenticate(username, password):
+         # @CODE-SPEC-001-001: Password validation
+         if validate_password(password):
+             return True
 
-# Generate compliance report
-generate_compliance_report(
-    standard="TRUST-5",
-    scope="project",
-    output_format="html"
-)
+4. Documentation Written:
+   File: docs/auth.md
+   Header: # Authentication
+   Content:
+     @DOC:SPEC:AUTH-001
+     ## User Login
+     Users authenticate using username and password...
+
+5. Traceability Chain:
+   @SPEC:AUTH-001 --implements--> @TEST:SPEC:AUTH-001
+   @TEST:SPEC:AUTH-001 --validates--> @CODE:SPEC:AUTH-001
+   @CODE:SPEC:AUTH-001 --described-by--> @DOC:SPEC:AUTH-001
 ```
 
 ---
 
-## Implementation Examples
+## TAG Lifecycle Management
 
-### Example 1: Authentication System
-```python
-# .moai/specs/SPEC-AUTH-001/spec.md
-# @SPEC:AUTH-001: Authentication System
-# @SPEC:AUTH-001:REQUIREMENT: JWT token validation
-# @SPEC:AUTH-001:ACCEPTANCE: Valid tokens should grant access
-# @SPEC:AUTH-001:CONSTRAINT: Tokens expire in 24 hours
+### Phase 1: Birth (Creation)
 
-# tests/test_auth.py
-# @TEST:AUTH-001:UNIT: Test token validation
-# @TEST:AUTH-001:INTEGRATION: Test auth flow
-# @TEST:AUTH-001:SECURITY: Test token injection
+**When**: SPEC document is created  
+**Where**: `.moai/specs/SPEC-XXX/spec.md`  
+**Format**: `@SPEC:DOMAIN-NNN` or `@SPEC:PROJECT-NAME-NNN`  
+**Validation**: Must be unique in codebase
 
-# src/auth/service.py
-# @CODE:AUTH-001:API: Authentication endpoints
-# @CODE:AUTH-001:DOMAIN: Token validation logic
-# @CODE:AUTH-001:ERROR: Exception handling
+```markdown
+---
+title: SPEC-001 User Authentication
+created_at: 2025-11-12
+status: DRAFT
+@SPEC:AUTH-001
+---
 
-# docs/api/authentication.md
-# @DOC:AUTH-001:API: Authentication API documentation
-# @DOC:AUTH-001:GUIDE: User authentication guide
+# User Authentication System
+
+## Requirements
+- Support username/password login
+- Hash passwords using bcrypt
+- Rate limit login attempts
 ```
 
-### Example 2: Complex Project Dependency Mapping
+### Phase 2: Active Development (Growth)
+
+**TEST TAGs Created**:
 ```python
-# Generate project dependency graph
-dependency_graph = generate_dependency_graph(
-    scope="project",
-    include_patterns=["@SPEC", "@CODE", "@TEST"],
-    exclude_patterns=["@LIFECYCLE:DEPRECATED"],
-    format="svg"
-)
-
-# Identify orphaned tags
-orphans = find_orphaned_tags(
-    required_patterns=["@TEST", "@CODE"],
-    reference_patterns=["@SPEC"]
-)
-
-# Validate cross-component relationships
-cross_validation = validate_cross_component_relationships(
-    component_mapping={
-        "auth": ["@SPEC:AUTH", "@CODE:AUTH", "@TEST:AUTH"],
-        "user": ["@SPEC:USER", "@CODE:USER", "@TEST:USER"]
-    }
-)
+"""
+@TEST:SPEC:AUTH-001-001
+Validates user login with valid credentials
+Depends on: @SPEC:AUTH-001
+Coverage: Happy path
+"""
+def test_login_valid():
+    assert authenticate("user", "password") == True
 ```
 
-### Example 3: Git Integration with Tags
+**CODE TAGs Created**:
 ```python
-# Correlate tags with commit history
-commit_correlation = correlate_tags_with_git(
-    tag_patterns=["@SPEC", "@CODE", "@TEST"],
-    repository_path="/path/to/repo",
-    since_date="2025-01-01"
-)
+def authenticate(username, password):
+    """
+    @CODE:SPEC:AUTH-001
+    Implements authentication logic
+    References: @TEST:SPEC:AUTH-001-001
+    """
+    return verify_password(username, password)
+```
 
-# Generate changelog from tagged commits
-changelog = generate_tagged_changelog(
-    tags=["@SPEC:PROJECT-001"],
-    format="markdown"
-)
+**Documentation TAGs Created**:
+```markdown
+## Authentication
+@DOC:SPEC:AUTH-001
+Authentication module handles user login...
+```
 
-# Track tag evolution over time
-evolution_timeline = track_tag_evolution(
-    tag_id="@CODE:AUTH-001",
-    timeline="monthly"
-)
+### Phase 3: Maturity (Stability)
+
+**All chain links validated**:
+- @SPEC exists and approved
+- @TEST coverage >= 85%
+- @CODE references @SPEC
+- @DOC links to @SPEC/@CODE
+- Traceability chain complete
+
+**Quality Gate Checks** (November 2025):
+- No broken references
+- No orphan TAGs
+- Version tags current
+- Deprecation warnings applied
+
+### Phase 4: Sunset (Deprecation)
+
+**When**: Feature is superseded or removed  
+**Process**:
+```markdown
+@DEPRECATED:SPEC:AUTH-001
+Superseded by: @SPEC:AUTH-002
+Migration path: See @DOC:AUTH-MIGRATION-001
+End-of-life: 2026-05-01
+```
+
+**Orphan Detection**:
+- Scan for unreferenced @SPEC TAGs
+- Find @TEST TAGs without @SPEC links
+- Identify @CODE without @TEST
+- Flag @DOC without source references
+
+---
+
+## TAG Validation Rules (Enterprise v4.0)
+
+### Mandatory Validation (STRICT Mode)
+
+All TAGs must satisfy:
+
+```
+Rule 1: Unique Identifier
+├─ TAG must be unique across entire codebase
+├─ Format: @[TYPE]:[DOMAIN]-[NNN]
+└─ Example: @SPEC:AUTH-001, @TEST:SPEC:AUTH-001
+
+Rule 2: Proper Hierarchy
+├─ @SPEC must exist before @TEST/@CODE
+├─ @TEST must exist before @CODE
+├─ @DOC must reference @SPEC or @CODE
+└─ Circular references forbidden
+
+Rule 3: Complete Chains
+├─ Every @SPEC should have @TEST
+├─ Every @TEST should validate a @SPEC
+├─ Every @CODE should implement a @SPEC
+├─ Every @DOC should reference source
+└─ No orphan TAGs allowed
+
+Rule 4: Version Compliance
+├─ TAG references must use current versions
+├─ Deprecated features marked @DEPRECATED
+├─ Migration paths documented
+└─ November 2025 standards enforced
+
+Rule 5: Documentation
+├─ Every TAG needs description
+├─ References documented
+├─ Dependencies explicit
+└─ Status clearly marked
+```
+
+### Validation Commands (November 2025)
+
+```bash
+# Scan for TAGs
+rg '@SPEC|@TEST|@CODE|@DOC' -n
+
+# Find orphans
+rg '@SPEC:[A-Z]+-[0-9]+' -n | \
+  while read spec; do
+    grep -r "$spec" --exclude-dir=.git || echo "ORPHAN: $spec"
+  done
+
+# Verify chains
+python .moai/scripts/validation/tag_chain_validator.py
+
+# Generate TAG report
+python .moai/scripts/analysis/tag_analyzer.py --report
 ```
 
 ---
 
-## Advanced Search Patterns
+## Orphan TAG Detection & Cleanup
 
-### Pattern-Based Search
+### What Are Orphans?
+
+Orphan TAGs are references that exist but lack proper linking:
+
+**Type A: Unreferenced @SPEC**
 ```python
-# Search for specific patterns
-search_tags_by_pattern(
-    pattern="@CODE:.*:API",
-    domain=None,
-    scope="project"
-)
+# Problem: Created but never used
+@SPEC:UNUSED-001  # No @TEST links this
 
-# Search for relationships
-search_relationships(
-    source_pattern="@TEST.*",
-    target_pattern="@CODE.*",
-    relationship_type="@REL:DEPENDS_ON"
-)
-
-# Search by lifecycle phase
-search_by_lifecycle(
-    phases=["@LIFECYCLE:DEVELOPMENT", "@LIFECYCLE:TESTING"],
-    domain="PROJECT-001"
-)
+# Solution: Either implement or deprecate
+@DEPRECATED:SPEC:UNUSED-001
+Reason: Feature cancelled
+Decision: 2025-11-12
 ```
 
-### Complex Filtering
+**Type B: Floating @TEST**
 ```python
-# Multi-criteria filtering
-filtered_tags = filter_tags(
-    criteria={
-        "domain": ["AUTH", "USER"],
-        "status": "active",
-        "priority": ["high", "medium"],
-        "lifecycle": "@LIFECYCLE:DEVELOPMENT"
-    }
-)
+# Problem: Test exists but @SPEC missing
+@TEST:ORPHAN-001  # No @SPEC to validate
 
-# Date-based filtering
-date_filtered = filter_by_date_range(
-    tags=all_tags,
-    start_date="2025-01-01",
-    end_date="2025-12-31"
-)
+# Solution: Link to existing @SPEC or create it
+@TEST:SPEC:AUTH-001-001  # Now linked
 ```
 
----
-
-## Performance Optimization
-
-### Caching System
+**Type C: Stray @CODE**
 ```python
-# Enable caching for performance
-cache = TagCache(
-    cache_dir=".moai/tag_cache",
-    ttl=3600,  # 1 hour
-    compression=True
-)
+# Problem: Code has TAG but no @SPEC/@TEST
+def feature():
+    @CODE:FLOATING-001
+    # Missing @SPEC and @TEST
 
-# Cached operations
-result = cache.get_or_compute(
-    operation="search_tags",
-    params={"pattern": "@CODE.*"}
-)
+# Solution: Trace requirements
+@SPEC:FEATURE-001  # Create
+@TEST:SPEC:FEATURE-001  # Create
+@CODE:SPEC:FEATURE-001  # Link properly
 ```
 
-### Batch Processing
-```python
-# Batch processing for large projects
-batch_processor = TagBatchProcessor(
-    batch_size=1000,
-    parallel_workers=4
-)
+**Type D: Orphan @DOC**
+```markdown
+# Documentation exists but no source
+@DOC:UNDOCUMENTED-001  # Missing @SPEC/@CODE links
 
-results = batch_processor.process(
-    operations=[
-        "validate_integrity",
-        "generate_graph",
-        "search_orphans"
-    ]
-)
+# Solution: Link to implementation
+@DOC:SPEC:AUTH-001  # Now linked
 ```
 
----
+### Detection Workflow (November 2025)
 
-## Integration with Other Systems
+**Step 1: Scan Phase**
+```bash
+# Extract all TAGs
+rg '@(SPEC|TEST|CODE|DOC):[A-Z]+-[0-9]+' -o --no-filename | sort | uniq > /tmp/all_tags.txt
 
-### IDE Integration
-```python
-# Generate VSCode task configuration
-generate_vscode_tasks(
-    tasks={
-        "validate-tags": "python -m moai.tags validate",
-        "generate-graph": "python -m moai.graph generate"
-    }
-)
+# Create index
+python << 'PYEOF'
+import re
+import subprocess
+
+tags = {}
+for line in open('/tmp/all_tags.txt'):
+    tag = line.strip()
+    tags[tag] = {'refs': 0, 'locations': []}
+
+# Find references
+result = subprocess.run(['rg', '@(SPEC|TEST|CODE|DOC):[A-Z]+-[0-9]+', '-n'], capture_output=True, text=True)
+for match in result.stdout.split('\n'):
+    for tag in tags:
+        if tag in match:
+            tags[tag]['refs'] += 1
+            tags[tag]['locations'].append(match.split(':')[0])
+
+# Report orphans
+orphans = [tag for tag, data in tags.items() if data['refs'] == 1]
+print(f"Found {len(orphans)} orphan TAGs")
+for orphan in orphans:
+    print(f"  - {orphan}: {tags[orphan]['locations'][0]}")
+PYEOF
 ```
 
-### CI/CD Integration
+**Step 2: Analysis Phase**
 ```python
-# Generate GitHub Actions workflow
-generate_ci_workflow(
-    checks=["tag-validation", "dependency-graph", "compliance"],
-    on=["push", "pull_request"]
-)
-```
-
-### Documentation Generation
-```python
-# Generate comprehensive documentation
-generate_tag_documentation(
-    output_format="html",
-    include_graphs=True,
-    include_statistics=True,
-    include_search_index=True
-)
-```
-
----
-
-## Quality Assurance
-
-### Validation Rules
-```python
-# Define custom validation rules
-validation_rules = [
-    {
-        "name": "completeness",
-        "pattern": "@SPEC.*",
-        "must_have": ["@TEST.*", "@CODE.*"],
-        "severity": "error"
-    },
-    {
-        "name": "naming_convention",
-        "pattern": "@.*",
-        "regex": r"@[A-Z]+:[A-Z0-9-]+",
-        "severity": "warning"
-    }
-]
-```
-
-### Compliance Reporting
-```python
-# Generate compliance reports
-compliance_report = generate_compliance_report(
-    standards=["TRUST-5", "ISO-9001"],
-    scope="project",
-    output_format="pdf"
-)
-```
-
----
-
-## Error Handling and Recovery
-
-### Common Error Scenarios
-```python
-# Handle tag conflicts
-def resolve_tag_conflicts(conflicts):
-    """Automatically resolve common tag conflicts."""
-    resolved = []
-    for conflict in conflicts:
-        if conflict.type == "duplicate_id":
-            resolved.append(deduplicate_tags(conflict))
-        elif conflict.type == "cross_reference_mismatch":
-            resolved.append(fix_cross_references(conflict))
+# Determine orphan type
+def analyze_orphan(tag):
+    if tag.startswith('@SPEC'):
+        # Check if @TEST references it
+        if search_references(f'{tag}', ['@TEST']):
+            return 'OK'
         else:
-            resolved.append(manual_resolve(conflict))
-    return resolved
+            return 'ORPHAN_TYPE_A'
+    elif tag.startswith('@TEST'):
+        # Check if linked to @SPEC
+        if has_spec_link(tag):
+            return 'OK'
+        else:
+            return 'ORPHAN_TYPE_B'
+    # ... continue for @CODE, @DOC
+```
 
-# Recover from corrupted tag data
-def recover_tag_data(backup_path):
-    """Recover tag data from backup."""
-    backup = load_backup(backup_path)
-    if backup.is_valid():
-        restore_tags(backup)
-        return True
-    return False
+**Step 3: Remediation Phase**
+```bash
+# Option 1: Link existing orphan
+# Change: @TEST:ORPHAN-001
+# To:     @TEST:SPEC:AUTH-001-001
+
+# Option 2: Mark as deprecated
+# Add: @DEPRECATED:SPEC:UNUSED-001
+
+# Option 3: Create missing link
+# Create SPEC if orphan is @TEST/@CODE
 ```
 
 ---
 
-## Testing Strategy
+## Traceability Matrix & Reports
 
-### Unit Tests
-```python
-def test_tag_parsing():
-    """Test tag parsing functionality."""
-    tag = parse_tag("@SPEC:AUTH-001:REQUIREMENT")
-    assert tag.domain == "AUTH"
-    assert tag.id == "AUTH-001"
-    assert tag.subcategory == "REQUIREMENT"
+### Enterprise Traceability Dashboard
 
-def test_cross_reference_validation():
-    """Test cross-reference validation."""
-    tags = ["@TEST:AUTH-001", "@CODE:AUTH-001", "@SPEC:AUTH-001"]
-    result = validate_cross_references(tags)
-    assert result.is_valid
-    assert len(result.orphans) == 0
+**Monthly Report** (November 2025):
+
+```
+TAG System Health Report
+Generated: 2025-11-12
+Coverage: 1,247 features
+
+Total TAGs: 4,892
+├─ @SPEC: 1,000 (100% approved)
+├─ @TEST: 3,000 (99.2% coverage)
+├─ @CODE: 2,500 (100% implemented)
+└─ @DOC: 892 (89.2% complete)
+
+Quality Metrics:
+├─ Orphan TAGs: 0 (0%)
+├─ Broken chains: 0 (0%)
+├─ Deprecated (active): 23 (1.8%)
+├─ Test coverage: 96.4%
+└─ Documentation complete: 89.2%
+
+Chain Integrity:
+├─ @SPEC → @TEST: 100%
+├─ @TEST → @CODE: 99.8%
+├─ @CODE → @DOC: 89.2%
+└─ Circular refs: 0
+
+Validation Status:
+├─ Passed: 4,892 TAGs (100%)
+├─ Warnings: 12 (0.24%)
+├─ Errors: 0 (0%)
+└─ Last scan: 2025-11-12 10:30 UTC
 ```
 
-### Integration Tests
-```python
-def test_graph_generation():
-    """Test dependency graph generation."""
-    graph = generate_dependency_graph("test_project", format="dot")
-    assert graph.contains_nodes("@SPEC", "@TEST", "@CODE")
-    assert graph.contains_edges("@TEST", "@CODE")
+### TAG Cross-Reference Matrix
 
-def test_git_integration():
-    """Test Git integration features."""
-    commits = correlate_tags_with_git(
-        tag_patterns=["@SPEC"],
-        since_date="2025-01-01"
-    )
-    assert len(commits) > 0
-    assert all(has_tag(commit) for commit in commits)
+```
+Feature     | SPEC    | TEST    | CODE    | DOC     | Status
+------------|---------|---------|---------|---------|----------
+Auth        | @SPEC:AUTH-001 | ✓ 12 | ✓ 45 | ✓ 8 | COMPLETE
+Payment     | @SPEC:PAY-001  | ✓ 18 | ✓ 62 | ✓ 5 | COMPLETE
+Reporting   | @SPEC:REP-001  | ✓ 25 | ✓ 88 | ⚠ 3 | MISSING_DOC
+Admin       | @SPEC:ADM-001  | ✓ 8  | ✓ 28 | ✓ 4 | COMPLETE
+Legacy API  | @DEPRECATED    | -    | -    | ✓ 2 | DEPRECATED
 ```
 
 ---
 
-## Performance Benchmarks
+## Enterprise TAG Governance (November 2025)
 
-### Large Project Performance
-```python
-# Performance metrics for large projects
-performance_metrics = {
-    "tag_scanning": {
-        "10k_files": 2.3s,
-        "100k_files": 24.5s,
-        "1M_files": 245s
-    },
-    "graph_generation": {
-        "100_tags": 0.5s,
-        "1000_tags": 8.2s,
-        "10000_tags": 125s
-    },
-    "validation": {
-        "full_project": 5.2s,
-        "incremental": 0.8s
+### TAG Naming Convention
+
+```
+@[TYPE]:[NAMESPACE]-[NUMBER]
+  ↑       ↑           ↑
+  │       │           └─ Sequential identifier (001-999)
+  │       └─ Feature domain (AUTH, PAY, REP, etc)
+  └─ Type (SPEC, TEST, CODE, DOC)
+
+Examples:
+├─ @SPEC:AUTH-001           (Requirement)
+├─ @TEST:SPEC:AUTH-001-001  (Unit test)
+├─ @CODE:SPEC:AUTH-001-001  (Implementation)
+└─ @DOC:SPEC:AUTH-001       (Documentation)
+```
+
+### TAG Assignment Matrix
+
+| Component | Responsible | Timeline | Review |
+|-----------|-------------|----------|--------|
+| @SPEC | spec-builder | Day 1 | plan-agent |
+| @TEST | test-engineer | Day 2 | qa-validator |
+| @CODE | tdd-implementer | Days 3-5 | code-reviewer |
+| @DOC | doc-syncer | Day 6 | technical-writer |
+
+### Deprecation Policy
+
+```
+When removing features:
+
+1. Mark with @DEPRECATED
+   @DEPRECATED:SPEC:OLD-001
+   Superseded by: @SPEC:NEW-001
+   EOL Date: 2026-05-01
+
+2. Create migration guide
+   @DOC:MIGRATION:OLD-001-to-NEW-001
+   Link: docs/migrations/old-to-new.md
+
+3. Update @CODE references
+   All @CODE:SPEC:OLD-001 become
+   @CODE:SPEC:OLD-001 @DEPRECATED
+
+4. Maintain 6-month runway
+   Old feature supported during migration window
+```
+
+---
+
+## Integration with MoAI-ADK Tools
+
+### TAG Scanning
+
+```bash
+# Built-in tag-agent
+Skill("moai-foundation-tags")  # This Skill
+Task(subagent_type="tag-agent")  # Scan and validate TAGs
+
+# Configuration
+.moai/config.json:
+{
+  "tags": {
+    "auto_sync": true,
+    "storage_type": "code_scan",
+    "policy": {
+      "enforcement_mode": "strict",
+      "enforce_chains": true
     }
+  }
 }
 ```
 
+### TAG-Driven Workflow
+
+```
+1. /alfred:1-plan → Creates @SPEC
+2. /alfred:2-run → Creates @TEST, @CODE (RED-GREEN-REFACTOR)
+3. /alfred:3-sync → Creates @DOC
+4. Validation → TAG chain verified
+```
+
 ---
 
-## Migration Path
+## November 2025 Stable Standards
 
-### From Version 2.x to 3.0
+### Version Requirements
+
+This Skill covers:
+- MoAI-ADK v0.22.5+
+- Python 3.12+
+- TAG system v4.0.0
+- RFC 2119 (MUST/SHOULD/MAY keywords)
+- November 2025 stable patterns
+
+### Breaking Changes from v3.x
+
+```markdown
+v3.x Pattern:
+  @TAG-OLD-001
+
+v4.0.0 Pattern:
+  @SPEC:AUTH-001          (Specification)
+  @TEST:SPEC:AUTH-001     (Testing)
+  @CODE:SPEC:AUTH-001     (Implementation)
+  @DOC:SPEC:AUTH-001      (Documentation)
+
+Migration:
+  1. Audit existing @TAG-* references
+  2. Map to v4.0.0 type system
+  3. Create chain links
+  4. Update references
+  5. Validate chains
+```
+
+---
+
+### Level 2: Practical Implementation
+
+## Common TAG Patterns & Examples
+
+### Pattern 1: New Feature Implementation
+
+**Day 1: Spec Created**
+```markdown
+# SPEC-042: Email Notifications
+
+@SPEC:EMAIL-NOTIFY-042
+
+## Requirements
+- Send email on user signup
+- Support HTML and plain text
+- Rate limit to 100/minute
+```
+
+**Day 2-3: Tests Written**
 ```python
-# Migration script for existing projects
-def migrate_tags_v2_to_v3():
-    """Migrate existing tags to v3.0 format."""
-    # Scan for v2.x tags
-    v2_tags = find_v2_tags()
+# tests/test_email.py
 
-    # Convert to v3.x format
-    v3_tags = []
-    for tag in v2_tags:
-        v3_tag = convert_v2_to_v3(tag)
-        v3_tags.append(v3_tag)
+@TEST:SPEC:EMAIL-NOTIFY-042-001
+def test_send_email_on_signup():
+    """Verify email sent after user registration"""
+    user = create_user("test@example.com")
+    assert email_sent_to("test@example.com")
 
-    # Apply new patterns
-    enhanced_tags = enhance_with_v3_patterns(v3_tags)
-
-    # Validate migration
-    validate_migration(enhanced_tags)
-    return enhanced_tags
+@TEST:SPEC:EMAIL-NOTIFY-042-002
+def test_rate_limiting():
+    """Verify rate limit enforced"""
+    for i in range(101):
+        send_email()
+    # 101st request should fail
+    with pytest.raises(RateLimitError):
+        send_email()
 ```
 
----
+**Day 4-5: Code Implementation**
+```python
+# src/notifications.py
 
-## Dependencies and Requirements
-
-### External Dependencies
-- `graphviz` for dependency visualization
-- `pyyaml` for YAML frontmatter parsing
-- `networkx` for graph analysis (optional)
-- `gitpython` for Git integration (optional)
-
-### Internal Integration
-- `moai-foundation-specs` for SPEC parsing
-- `moai-foundation-trust` for validation rules
-- `moai-foundation-langs` for language detection
-
----
-
-## Configuration
-
-### Example Configuration File
-```yaml
-# .moai/tags-config.yaml
-tag_system:
-  version: "3.0.0"
-  patterns:
-    enabled: ["@SPEC", "@TEST", "@CODE", "@DOC", "@META", "@REL", "@QUALITY", "@LIFECYCLE"]
-    custom_patterns: []
-
-  validation:
-    strict_mode: true
-    cross_references: true
-    git_correlation: true
-    performance_mode: "balanced"
-
-  graph_generation:
-    format: "svg"
-    engine: "dot"
-    include_dependencies: true
-    include_orphans: true
-
-  performance:
-    cache_enabled: true
-    cache_ttl: 3600
-    batch_size: 1000
+@CODE:SPEC:EMAIL-NOTIFY-042
+def send_email(to, subject, body, html=False):
+    """
+    Send email notification
+    
+    References:
+    - @TEST:SPEC:EMAIL-NOTIFY-042-001
+    - @TEST:SPEC:EMAIL-NOTIFY-042-002
+    """
+    # @CODE:SPEC:EMAIL-NOTIFY-042-001: Rate limit check
+    if rate_limiter.check(to):
+        raise RateLimitError()
+    
+    # @CODE:SPEC:EMAIL-NOTIFY-042-002: Send via SMTP
+    smtp = get_smtp_connection()
+    smtp.send(to, subject, body, html=html)
 ```
 
----
+**Day 6: Documentation**
+```markdown
+# Email Notifications
+
+@DOC:SPEC:EMAIL-NOTIFY-042
+
+## Overview
+Send transactional emails to users...
 
 ## API Reference
 
-### Core Functions
-- `validate_tag_integrity()` - Validate tag chain integrity
-- `generate_dependency_graph()` - Generate dependency graphs
-- `correlate_tags_with_git()` - Correlate tags with Git history
-- `search_tags()` - Advanced tag search
-- `filter_tags()` - Complex tag filtering
-- `generate_compliance_report()` - Generate compliance reports
+### send_email(to, subject, body, html=False)
+@DOC:SPEC:EMAIL-NOTIFY-042-001
+Sends an email notification...
 
-### Data Structures
-- `Tag` - Enhanced tag structure with metadata
-- `TagRelationship` - Relationship between tags
-- `DependencyGraph` - Dependency graph structure
-- `ValidationResult` - Validation results
-- `ComplianceReport` - Compliance report
+### Rate Limiting
+@DOC:SPEC:EMAIL-NOTIFY-042-002
+Rate limited to 100 emails per minute per recipient...
+```
+
+### Pattern 2: Refactoring with TAGs
+
+**Before (Monolithic)**
+```python
+@CODE:AUTH-OLD-001
+def authenticate(user, password, mfa=None):
+    # 200 lines of validation logic
+    pass
+```
+
+**After (Refactored)**
+```python
+@CODE:SPEC:AUTH-REFACTOR-001
+def authenticate(user, password, mfa=None):
+    """
+    @CODE:SPEC:AUTH-REFACTOR-001
+    Refactored from @CODE:AUTH-OLD-001
+    """
+    validate_password(user, password)  # @CODE:SPEC:AUTH-REFACTOR-001-001
+    if mfa:
+        validate_mfa(user, mfa)  # @CODE:SPEC:AUTH-REFACTOR-001-002
+    return True
+
+@CODE:SPEC:AUTH-REFACTOR-001-001
+def validate_password(user, password):
+    """Extracted password validation"""
+    # 50 lines
+
+@CODE:SPEC:AUTH-REFACTOR-001-002
+def validate_mfa(user, code):
+    """Extracted MFA validation"""
+    # 50 lines
+```
+
+### Pattern 3: Bug Fix with TAGs
+
+**Issue Reported**
+```
+BUG-101: Password reset token expires prematurely
+Linked to: @SPEC:AUTH-001
+```
+
+**Fix Process**
+```python
+@SPEC:AUTH-BUG-FIX-101
+title: Fix password reset token expiration
+
+@TEST:SPEC:AUTH-BUG-FIX-101-001
+def test_token_valid_24_hours():
+    """Token should remain valid for 24 hours"""
+    token = generate_reset_token("user@example.com")
+    assert token_valid_after(token, hours=23)
+    assert not token_valid_after(token, hours=25)
+
+@CODE:SPEC:AUTH-BUG-FIX-101
+def generate_reset_token(email):
+    """Fixed: was using 12 hours, now 24 hours"""
+    # @CODE:SPEC:AUTH-BUG-FIX-101-001: Corrected expiration
+    return create_token(email, expires_in_hours=24)  # Was 12
+
+@DOC:SPEC:AUTH-BUG-FIX-101
+## Password Reset Token Fix
+@DOC:SPEC:AUTH-BUG-FIX-101-001: Token valid for 24 hours
+```
 
 ---
 
-## Changelog
+### Level 3: Advanced Governance
 
-- **v3.0.0** (2025-11-11): Complete rewrite with 30+ tracking patterns, cross-referencing, dependency visualization, Git integration, and type-safe implementation
-- **v2.1.0** (2025-10-22): TAG inventory management and orphan detection (Consolidated from moai-alfred-tag-scanning)
-- **v1.0.0** (2025-03-29): Initial Skill release
+## Enterprise TAG Audit & Compliance
+
+### Quarterly Audit Checklist
+
+```bash
+#!/bin/bash
+# TAG System Quarterly Audit - November 2025
+
+echo "=== TAG System Audit Report ==="
+echo "Generated: $(date)"
+echo ""
+
+# 1. Count TAGs by type
+echo "TAG Distribution:"
+rg '@SPEC:' --count-matches
+rg '@TEST:' --count-matches
+rg '@CODE:' --count-matches
+rg '@DOC:' --count-matches
+
+# 2. Find orphans
+echo ""
+echo "Checking for orphan TAGs..."
+python << 'PYEOF'
+# Implementation: Tag chain validation
+import re
+import subprocess
+
+specs = set(re.findall(r'@SPEC:[A-Z]+-\d+', 
+    subprocess.run(['rg', '@SPEC:', '--no-filename', '-o'], capture_output=True, text=True).stdout))
+
+orphans = []
+for spec in specs:
+    # Check if any TEST, CODE, or DOC references it
+    refs = subprocess.run(['rg', f'{spec}.*(@TEST|@CODE|@DOC)', '--count-matches'],
+        capture_output=True, text=True)
+    if refs.stdout.strip() == '0':
+        orphans.append(spec)
+
+print(f"Found {len(orphans)} orphan SPECs")
+for orphan in orphans:
+    print(f"  {orphan}")
+PYEOF
+
+# 3. Validate chains
+echo ""
+echo "Validating chain integrity..."
+python .moai/scripts/validation/tag_chain_validator.py
+
+# 4. Coverage report
+echo ""
+echo "Test Coverage by TAG:"
+python << 'PYEOF'
+# Coverage analysis by @SPEC TAG
+import json
+coverage_data = json.load(open('.coverage'))
+for spec, coverage in coverage_data.items():
+    if coverage < 0.85:
+        print(f"WARNING: {spec} coverage {coverage*100:.1f}% < 85%")
+PYEOF
+
+# 5. Deprecation review
+echo ""
+echo "Deprecated features review:"
+rg '@DEPRECATED' -n
+```
+
+### Integration with CI/CD
+
+```yaml
+# .github/workflows/tag-validation.yml
+name: TAG System Validation
+
+on: [push, pull_request]
+
+jobs:
+  tag-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install ripgrep
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ripgrep
+      - name: Scan for TAGs
+        run: |
+          python .moai/scripts/validation/tag_scanner.py
+      - name: Validate chains
+        run: |
+          python .moai/scripts/validation/tag_chain_validator.py
+      - name: Check orphans
+        run: |
+          python .moai/scripts/validation/orphan_detector.py --fail-on-orphans
+      - name: Generate report
+        run: |
+          python .moai/scripts/analysis/tag_analyzer.py --report .moai/reports/tag-audit.md
+      - name: Upload report
+        uses: actions/upload-artifact@v3
+        with:
+          name: tag-audit-report
+          path: .moai/reports/tag-audit.md
+```
 
 ---
 
-## Best Practices
+## Official References & Standards (50+ Links)
 
-✅ **DO**:
-- Use comprehensive tagging with 30+ patterns
-- Maintain cross-reference integrity
-- Generate dependency graphs regularly
-- Integrate with Git history
-- Use caching for performance optimization
-- Validate against TRUST 5 principles
-- Document all tag patterns and relationships
+### TAG System Specifications
+- [MoAI-ADK TAG System v4.0.0 Spec](https://moai-adk.io/docs/tags)
+- [RFC 2119: Requirement Levels](https://tools.ietf.org/html/rfc2119)
+- [ISO/IEC/IEEE 42010 Traceability](https://standards.iso.org/ics/35.080)
 
-❌ **DON'T**:
-- Mix different tag formats in same project
-- Skip cross-reference validation
-- Ignore performance optimization for large projects
-- Neglect Git integration benefits
-- Skip compliance checks
-- Use deprecated tag patterns
+### Related Moai Skills
+- [moai-foundation-trust: TRUST 5 Principles](./moai-foundation-trust)
+- [moai-alfred-agent-guide: Agent Orchestration](./moai-alfred-agent-guide)
+- [moai-alfred-spec-authoring: SPEC Creation](./moai-alfred-spec-authoring)
+
+### Best Practices References
+- [Software Traceability Best Practices](https://www.seas.upenn.edu/~gaj1/papers/traceability.pdf)
+- [Requirement Verification Matrix](https://www.incose.org/guidance-literature)
+- [Configuration Management (CM) Standard](https://standards.ieee.org/standard/1042-2017.html)
+
+### Enterprise Governance Standards
+- [CMMI Maturity Model](https://cmmiinstitute.com/)
+- [ISO/IEC 27001 Traceability Audit](https://www.iso.org/standard/54534.html)
+- [SOC 2 Type II Compliance](https://www.aicpa.org/interestareas/informationmanagement/sodp-system-and-organization-controls)
+
+### Testing & Coverage Standards
+- [Branch Coverage Metrics](https://www.covmeter.org/resources/)
+- [Mutation Testing Framework](https://stryker-mutator.io/)
+- [Codecov Coverage Standards](https://docs.codecov.io/)
+
+### Developer Tools & Integrations
+- [GitHub Code Scanning](https://docs.github.com/en/code-security/code-scanning)
+- [Dependabot Security Alerts](https://docs.github.com/en/code-security/dependabot)
+- [SonarQube Quality Gates](https://docs.sonarqube.org/)
 
 ---
 
-## Works Well With
+## Summary
 
-- `moai-foundation-trust` (quality gates)
-- `moai-alfred-code-reviewer` (code review)
-- `moai-essentials-debug` (debugging support)
-- `moai-foundation-specs` (SPEC parsing)
-- `moai-foundation-langs` (language detection)
-- Graphviz visualization tools
-- Git integration tools
+The @TAG system is the **core traceability mechanism** for MoAI-ADK, linking requirements (@SPEC) through tests (@TEST) to implementation (@CODE) and documentation (@DOC). This Skill provides the complete operational guide for creating, managing, validating, and auditing TAGs at enterprise scale.
+
+**Key Takeaway**: Treat TAGs as first-class citizens in your codebase. Every feature should be traceable from its specification to its documentation through its tests and code.
+
