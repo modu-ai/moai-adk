@@ -24,7 +24,6 @@ description: 고급 패턴과 실전 활용법을 다루는 중급자 가이드
 - **Expert Delegation System v2.0**: 자동 전문가 할당
 - **Skills Ecosystem v4.0**: 292 Skills 마스터
 - **BaaS 생태계**: Supabase, Firebase 등 12개 플랫폼
-- **Senior Engineer Thinking**: 8가지 연구 전략 활용
 
 ## 🧠 1단계: Alfred 에이전트 심층 활용
 
@@ -914,29 +913,6 @@ graph TB
 </Tabs>
 
 ## 🆕 7단계: v0.23.1 고급 기능 마스터
-
-### Senior Engineer Thinking 적용
-
-**8가지 연구 전략**을 실전 프로젝트에 활용하세요:
-
-```bash
-# 복잡한 기술 조사
-/alfred:1-plan "복잡한 아키텍처 연구가 필요한 프로젝트" \
-  --research-strategy "parallel" \
-  --depth "comprehensive"
-```
-
-**연구 전략 유형**:
-1. Sequential Investigation (순차적 조사)
-2. Parallel Research (병렬 연구)
-3. Hypothesis Testing (가설 검증)
-4. Comparative Analysis (비교 분석)
-5. Deep Dive (심층 분석)
-6. Breadth-First (폭 우선 탐색)
-7. Expert Consultation (전문가 자문)
-8. Iterative Refinement (반복적 개선)
-
-[연구 전략 상세 가이드](/ko/guides/research-strategies)
 
 ### BaaS 플랫폼 마스터
 
