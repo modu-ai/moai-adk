@@ -386,8 +386,7 @@ moai-adk skills info moai-baas-supabase
 
 1. **[중급자 가이드](./intermediate)**: 고급 패턴과 실전 활용법
 2. **[19명 팀원 가이드](/ko/agents/19-team-members)**: 전문 에이전트 심층 활용
-3. **[Senior Engineer Thinking](/ko/features/senior-engineer-thinking)**: 8가지 연구 전략
-4. **[실제 프로젝트 사례](/ko/case-studies)**: E-commerce, SaaS, Microservices
+3. **[실제 프로젝트 사례](/ko/case-studies)**: E-commerce, SaaS, Microservices
 
 ### 유용한 리소스
 
