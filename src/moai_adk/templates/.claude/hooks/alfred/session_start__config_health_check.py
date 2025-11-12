@@ -18,6 +18,7 @@ import json
 import subprocess
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
@@ -164,6 +165,42 @@ def generate_config_report() -> str:
     return "\n".join(report_lines)
 
 
+def should_suppress_setup() -> bool:
+    """Determine whether setup messages should be suppressed.
+
+    Returns:
+        bool: True if setup should be suppressed, False otherwise
+    """
+    config = get_config_data()
+    if not config:
+        # No config, don't suppress
+        return False
+
+    session_config = config.get("session", {})
+    suppress = session_config.get("suppress_setup_messages", False)
+
+    if not suppress:
+        # Flag is False, don't suppress
+        return False
+
+    # Flag is True, check time threshold (7 days)
+    suppressed_at_str = session_config.get("setup_messages_suppressed_at")
+    if not suppressed_at_str:
+        # No timestamp, suppress
+        return True
+
+    try:
+        suppressed_at = datetime.fromisoformat(suppressed_at_str)
+        now = datetime.now(suppressed_at.tzinfo) if suppressed_at.tzinfo else datetime.now()
+        days_passed = (now - suppressed_at).days
+
+        # Suppress if less than 7 days have passed
+        return days_passed < 7
+    except (ValueError, TypeError):
+        # If timestamp is invalid, don't suppress (show messages)
+        return False
+
+
 def should_suggest_update() -> bool:
     """Determine if we should suggest configuration update
 
@@ -213,17 +250,35 @@ def main() -> None:
         input_data = sys.stdin.read()
         _data = json.loads(input_data) if input_data.strip() else {}
 
+        # Check if setup messages should be suppressed
+        is_suppressed = should_suppress_setup()
+
         # Generate configuration report
         config_report = generate_config_report()
 
-        # Check if we should suggest update
-        should_update = should_suggest_update()
+        # Determine system message
+        if is_suppressed:
+            # If suppressed and no issues, return minimal response
+            should_update = should_suggest_update()
+            if not should_update:
+                # No issues, suppress everything
+                result: dict[str, Any] = {
+                    "continue": True,
+                    "systemMessage": ""  # Empty message
+                }
+                print(json.dumps(result))
+                sys.exit(0)
+            else:
+                # Issues found, show them even if suppressed
+                system_message = f"⚠️  Configuration issues detected:\n{config_report}"
+        else:
+            # Not suppressed, show full report
+            system_message = f"📋 Configuration Health Check:\n{config_report}"
 
-        # Build system message with health check report
-        system_message = f"📋 Configuration Health Check:\n{config_report}"
-
-        if should_update:
-            system_message += "\n\n⚠️  Configuration issues detected. Please take action."
+            # Check if we should suggest update
+            should_update = should_suggest_update()
+            if should_update:
+                system_message += "\n\n⚠️  Configuration issues detected. Please take action."
 
         # Prepare response
         result: dict[str, Any] = {

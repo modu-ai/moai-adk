@@ -16,6 +16,7 @@ Enhanced Features:
 import json
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -44,6 +45,63 @@ except ImportError:
 
     class PlatformTimeoutError(Exception):
         pass
+
+
+def should_show_setup_messages() -> bool:
+    """Determine whether to show setup completion messages.
+
+    Logic:
+    1. Read .moai/config/config.json
+    2. Check session.suppress_setup_messages flag
+    3. If suppress_setup_messages is False, always show messages
+    4. If suppress_setup_messages is True:
+       - Check if more than 7 days have passed since suppression
+       - Show messages if time threshold exceeded
+
+    Returns:
+        bool: True if messages should be shown, False otherwise
+    """
+    config_path = Path(".moai/config/config.json")
+
+    # If config doesn't exist, show messages
+    if not config_path.exists():
+        return True
+
+    try:
+        with open(config_path) as f:
+            config = json.load(f)
+    except (json.JSONDecodeError, IOError):
+        # If config can't be read, show messages
+        return True
+
+    # Check project initialization status
+    if not config.get("project", {}).get("initialized", False):
+        return True
+
+    # Check suppress_setup_messages flag
+    session_config = config.get("session", {})
+    suppress = session_config.get("suppress_setup_messages", False)
+
+    if not suppress:
+        # Flag is False, show messages
+        return True
+
+    # Flag is True, check time threshold (7 days)
+    suppressed_at_str = session_config.get("setup_messages_suppressed_at")
+    if not suppressed_at_str:
+        # No timestamp recorded, show messages
+        return True
+
+    try:
+        suppressed_at = datetime.fromisoformat(suppressed_at_str)
+        now = datetime.now(suppressed_at.tzinfo) if suppressed_at.tzinfo else datetime.now()
+        days_passed = (now - suppressed_at).days
+
+        # Show messages if more than 7 days have passed
+        return days_passed >= 7
+    except (ValueError, TypeError):
+        # If timestamp is invalid, show messages
+        return True
 
 
 def get_git_info() -> dict[str, Any]:
@@ -222,8 +280,11 @@ def main() -> None:
         input_data = sys.stdin.read()
         _data = json.loads(input_data) if input_data.strip() else {}
 
-        # Generate enhanced session output
-        session_output = format_session_output()
+        # Check if setup messages should be shown
+        show_messages = should_show_setup_messages()
+
+        # Generate enhanced session output (conditionally)
+        session_output = format_session_output() if show_messages else ""
 
         # Return as system message
         result: dict[str, Any] = {
