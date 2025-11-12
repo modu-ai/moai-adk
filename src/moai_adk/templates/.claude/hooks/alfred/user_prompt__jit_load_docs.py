@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @CODE:HOOKS-CLARITY-DOCS | SPEC: Individual hook files for better UX
 """UserPromptSubmit Hook: Just-In-Time Document Loading
 
 Claude Code Event: UserPromptSubmit

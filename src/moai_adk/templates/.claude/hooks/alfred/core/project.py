@@ -406,7 +406,6 @@ def get_project_language(cwd: str) -> str:
     return detect_language(str(project_root))
 
 
-# @CODE:CONFIG-INTEGRATION-001
 def get_version_check_config(cwd: str) -> dict[str, Any]:
     """Read version check configuration from .moai/config/config.json
 
@@ -476,7 +475,6 @@ def get_version_check_config(cwd: str) -> dict[str, Any]:
         return defaults
 
 
-# @CODE:NETWORK-DETECT-001
 def is_network_available(timeout_seconds: float = 0.1) -> bool:
     """Quick network availability check using socket.
 
@@ -513,7 +511,6 @@ def is_network_available(timeout_seconds: float = 0.1) -> bool:
         return False
 
 
-# @CODE:VERSION-DETECT-MAJOR-001
 def is_major_version_change(current: str, latest: str) -> bool:
     """Detect if version change is a major version bump.
 
@@ -560,7 +557,6 @@ def is_major_version_change(current: str, latest: str) -> bool:
         return False
 
 
-# @CODE:VERSION-CACHE-INTEGRATION-001
 def get_package_version_info(cwd: str = ".") -> dict[str, Any]:
     """Check MoAI-ADK current and latest version with caching and offline support.
 
@@ -593,7 +589,6 @@ def get_package_version_info(cwd: str = ".") -> dict[str, Any]:
         - RED: 5 test scenarios (network detection, cache integration, offline mode)
         - GREEN: Integrate VersionCache with network detection
         - REFACTOR: Extract cache directory constant, improve error handling
-        - Phase 3: Add release_notes_url and is_major_update fields (@CODE:VERSION-INTEGRATE-FIELDS-001)
     """
     import importlib.util
     import urllib.error

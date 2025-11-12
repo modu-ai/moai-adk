@@ -7,7 +7,6 @@ created: 2025-10-06
 
 # INIT-002 구현 계획
 
-## @SPEC:INIT-002 | Implementation Plan
 
 ---
 
@@ -50,7 +49,6 @@ export function isMoAIProject(projectRoot: string): boolean {
 ```typescript
 /**
  * Check if this is a MoAI project
- * @CODE:INIT-002 | SPEC: .moai/specs/SPEC-INIT-002/spec.md
  */
 export function isMoAIProject(projectRoot: string): boolean {
   const moaiDir = path.join(projectRoot, ".moai");
@@ -69,11 +67,9 @@ export function isMoAIProject(projectRoot: string): boolean {
 
 1. **브랜딩 정렬**: `moai` → `alfred` 경로 변경
 2. **가독성**: 명시적 변수명으로 의도 명확화
-3. **TAG 추적**: `@CODE:INIT-002` 주석 추가
 
 #### 1.2. 기타 수정 사항
 
-- **파일 헤더 TAG 확인**: `@CODE:SESSION-NOTICE-001:UTILS` 유지
 - **타입 안전성**: TypeScript 타입 체크 통과 확인
 - **Lint**: ESLint/Biome 검증 통과
 
@@ -174,7 +170,6 @@ claude-code .                         # 새 세션 시작
 import { describe, it, expect } from "vitest";
 import { isMoAIProject } from "../../../src/claude/hooks/session-notice/utils";
 
-describe("@TEST:INIT-002 | isMoAIProject", () => {
   it("should return true when both .moai and .claude/commands/alfred exist", () => {
     // Given: MoAI 프로젝트 경로
     const projectRoot = "/path/to/moai-project";

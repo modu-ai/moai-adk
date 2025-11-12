@@ -781,7 +781,6 @@ context7_references:
     topic: "Context7 platform documentation and API reference"
   - url: "https://github.com/context7/context7-claude"
     topic: "Context7 Claude integration patterns and best practices"
-spec_reference: "@SPEC:CONTEXT7-INTEGRATION-001"
 ```
 
 ---
@@ -1636,7 +1635,6 @@ context7_references:
     topic: "Context7 platform documentation and API reference"
   - url: "https://github.com/context7/context7-claude"
     topic: "Context7 Claude integration patterns and best practices"
-spec_reference: "@SPEC:CONTEXT7-INTEGRATION-001"
 ```
 
 ---

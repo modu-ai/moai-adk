@@ -5,7 +5,6 @@ created_date: 2025-11-09
 version: 1.0.0
 ---
 
-# @SPEC:BAAS-ECOSYSTEM-001 승인 기준: SPEC-BAAS-ECOSYSTEM-001
 
 ## 📋 개요
 

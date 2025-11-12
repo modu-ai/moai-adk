@@ -1,4 +1,3 @@
-# Acceptance Criteria: @SPEC:LANG-FIX-001
 
 ## Overview
 
@@ -183,7 +182,6 @@ This document defines the acceptance criteria and test scenarios for the languag
 **Then**:
 - [ ] Agent sees rule: "If conversation_language='ko' → Generate output in Korean"
 - [ ] Agent sees example showing Korean text in output
-- [ ] Agent sees rule: "Always use English for code and @TAGs"
 - [ ] Agent has clear, unambiguous instructions
 
 **Test Case**: `test_language_section_contains_output_rules()`
@@ -285,7 +283,6 @@ This document defines the acceptance criteria and test scenarios for the languag
 
 - [ ] **After 1-plan**:
   - `.moai/specs/SPEC-AUTH-001/spec.md` generated
-  - spec.md title in Korean: "# @SPEC:AUTH-001: JWT 기반 인증..."
   - Requirements section in Korean: "## 요구사항"
   - Requirement text in Korean: "시스템은 사용자 인증 기능을 제공해야 한다"
 
@@ -442,7 +439,6 @@ grep -i "requirement\|ubiquitous\|event-driven" .moai/specs/SPEC-AUTH-001/spec.m
 - [ ] **Phase 6**: Documentation updated + validation checklist complete
 - [ ] **Quality**: Code coverage ≥ 85%, all tests green
 - [ ] **Validation**: All 40 files modified correctly
-- [ ] **Sign-off**: @GOOS or authorized reviewer approves
 
 ---
 
@@ -504,5 +500,4 @@ Spanish User: Project → SPEC → Code
 ---
 
 **Acceptance Status**: Ready for implementation and testing
-**Sign-off Target**: @GOOS
 **Review Cycle**: After all tests green

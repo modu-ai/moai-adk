@@ -196,13 +196,11 @@ Before submitting a Pull Request, please verify the following:
 - [ ] **SPEC Written**: Is there a SPEC document for the changes? (`/alfred:1-plan`)
 - [ ] **TDD Completed**: Have you completed the RED-GREEN-REFACTOR cycle? (`/alfred:2-run`)
 - [ ] **Documentation Synchronized**: Has the Living Document been updated? (`/alfred:3-sync`)
-- [ ] **@TAG Traceability**: Are all code changes properly tagged with @TAG?
 - [ ] **TRUST 5 Principles Followed**:
   - [ ] **T**est: Are tests written? (Coverage ≥85%)
   - [ ] **R**eadable: Is code readable? (Function ≤50 LOC, File ≤300 LOC)
   - [ ] **U**nified: Are consistent patterns used?
   - [ ] **S**ecured: Are there no security vulnerabilities?
-  - [ ] **T**rackable: Is it traceable via @TAG?
 
 ### PR Template
 
@@ -334,8 +332,6 @@ MoAI-ADK follows the **SPEC-First TDD** methodology. All code changes must follo
 /alfred:2-run SPEC-{ID}
 ```
 
-- **RED**: Write failing test (`@TEST:ID`)
-- **GREEN**: Implement minimum code to pass test (`@CODE:ID`)
 - **REFACTOR**: Improve code quality
 
 #### Step 3: Synchronize Documentation (`/alfred:3-sync`)
@@ -345,7 +341,6 @@ MoAI-ADK follows the **SPEC-First TDD** methodology. All code changes must follo
 ```
 
 - Update Living Document
-- Verify @TAG chain
 - Convert to PR Ready state
 
 ### Code Style Guide
@@ -356,12 +351,8 @@ MoAI-ADK follows the **SPEC-First TDD** methodology. All code changes must follo
 - Parameters: ≤5
 - Complexity: ≤10
 
-**@TAG Usage Example**:
 ```typescript
-// Example of proper @TAG annotation in code
-// In real implementation: `@CODE:ID` | SPEC: SPEC-ID.md | TEST: tests/test_file.py
 export class AuthService {
-  // Implementation with @TAG markers
   async login(username: string, password: string): Promise<Token> {
     // Implementation
   }
@@ -370,8 +361,6 @@ export class AuthService {
 
 **Writing Tests**:
 ```typescript
-// Example of proper @TAG annotation in tests
-// In real implementation: `@TEST:AUTH-001` | SPEC: SPEC-AUTH-001.md
 describe('AuthService', () => {
   it('should authenticate valid credentials', async () => {
     // Given
@@ -506,7 +495,6 @@ Error: Cannot find module '...'
 ## 💥 예상 동작 vs 실제 동작
 
 - **예상 동작**: TDD 사이클이 정상적으로 완료되어야 함
-- **실제 동작**: ``@TEST:AUTH-001` not found` 에러 발생
 
 ## 🖥️ 환경 정보
 
@@ -606,13 +594,11 @@ Pull Request를 제출하기 전에 다음 사항을 확인해주세요:
 - [ ] **SPEC 작성**: 변경 사항에 대한 SPEC 문서가 있습니까? (`/alfred:1-plan`)
 - [ ] **TDD 완료**: RED-GREEN-REFACTOR 사이클을 완료했습니까? (`/alfred:2-run`)
 - [ ] **문서 동기화**: Living Document가 업데이트되었습니까? (`/alfred:3-sync`)
-- [ ] **@TAG 추적성**: 모든 코드에 @TAG가 올바르게 적용되었습니까?
 - [ ] **TRUST 5원칙 준수**:
   - [ ] **T**est: 테스트가 작성되었습니까? (커버리지 ≥85%)
   - [ ] **R**eadable: 코드가 읽기 쉽습니까? (함수 ≤50 LOC, 파일 ≤300 LOC)
   - [ ] **U**nified: 일관된 패턴을 사용했습니까?
   - [ ] **S**ecured: 보안 취약점이 없습니까?
-  - [ ] **T**rackable: @TAG로 추적 가능합니까?
 
 ### PR 템플릿
 
@@ -744,8 +730,6 @@ MoAI-ADK는 **SPEC-First TDD** 방법론을 따릅니다. 모든 코드 변경�
 /alfred:2-run SPEC-{ID}
 ```
 
-- **RED**: 실패하는 테스트 작성 (`@TEST:ID`)
-- **GREEN**: 테스트를 통과하는 최소 구현 (`@CODE:ID`)
 - **REFACTOR**: 코드 품질 개선
 
 #### 3단계: 문서 동기화 (`/alfred:3-sync`)
@@ -755,7 +739,6 @@ MoAI-ADK는 **SPEC-First TDD** 방법론을 따릅니다. 모든 코드 변경�
 ```
 
 - Living Document 업데이트
-- @TAG 체인 검증
 - PR Ready 전환
 
 ### 코드 스타일 가이드
@@ -766,12 +749,8 @@ MoAI-ADK는 **SPEC-First TDD** 방법론을 따릅니다. 모든 코드 변경�
 - 매개변수: ≤5개
 - 복잡도: ≤10
 
-**@TAG 사용 예제**:
 ```typescript
-// 코드에서 @TAG 애노테이션을 올바르게 사용하는 예제
-// 실제 구현 시: `@CODE:ID` | SPEC: SPEC-ID.md | TEST: tests/test_file.py
 export class AuthService {
-  // @TAG 마커를 포함한 구현
   async login(username: string, password: string): Promise<Token> {
     // 구현
   }
@@ -780,8 +759,6 @@ export class AuthService {
 
 **테스트 작성**:
 ```typescript
-// 테스트에서 @TAG 애노테이션을 올바르게 사용하는 예제
-// 실제 구현 시: `@TEST:AUTH-001` | SPEC: SPEC-AUTH-001.md
 describe('AuthService', () => {
   it('should authenticate valid credentials', async () => {
     // Given

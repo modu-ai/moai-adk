@@ -10,11 +10,6 @@ allowed-tools:
   - mcp__context7__get-library-docs
 tier: foundation
 tags:
-  - "@SKILL:CONTEXT7"
-  - "@MCP:INTEGRATION"
-  - "@PATTERN:DOCUMENTATION"
-  - "@PATTERN:CACHING"
-  - "@PATTERN:ERROR-HANDLING"
 ---
 
 # Context7 Language Integration

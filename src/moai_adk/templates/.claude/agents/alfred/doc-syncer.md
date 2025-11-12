@@ -125,7 +125,6 @@ doc-syncer checks the list of existing documents (docs/ directory, README.md, CH
 #### Document → Code Sync
 
 **1. SPEC change tracking**
-doc-syncer checks for SPEC changes in the .moai/specs/ directory with the rg '@SPEC:' command
 - Marks relevant code files when requirements are modified
 - Adds required changes with TODO comments
 

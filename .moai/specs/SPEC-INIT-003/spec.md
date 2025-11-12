@@ -4,7 +4,6 @@ version: 0.3.2
 status: completed
 created: 2025-10-06
 updated: 2025-10-17
-author: @Goos
 priority: high
 category: feature
 labels:
@@ -26,7 +25,6 @@ scope:
     - init.py
 ---
 
-# @SPEC:INIT-003: Init 백업 및 병합 옵션
 
 ## HISTORY
 
@@ -39,7 +37,6 @@ scope:
   - src/moai_adk/core/project/phase_executor.py (검증 완료)
   - src/moai_adk/cli/commands/init.py (검증 완료)
   - tests/unit/test_backup_merger.py (427 passed)
-- **AUTHOR**: @Goos
 - **REASON**: v0.3.1 구현 완료 확정, SPEC 상태 업데이트
 
 ### v0.3.1 (2025-10-15)
@@ -59,7 +56,6 @@ scope:
   - src/moai_adk/cli/commands/init.py (reinit 로직 추가)
   - src/moai_adk/templates/.moai/config.json (버전 필드 추가)
   - tests/unit/test_backup_merger.py (신규)
-- **AUTHOR**: @Goos
 - **REASON**: v0.3.0 이하 → v0.3.1+ 업데이트 시 사용자 작업물 보존 및 자동 버전 추적
 - **CONTEXT**: moai-adk init . 실행 후 /alfred:0-project에서 백업 병합 여부 선택 가능
 
@@ -70,7 +66,6 @@ scope:
 - **IMPROVED**: 백업 메타데이터 - `backed_up_files` 배열에 실제 백업된 파일 목록 추가
 - **ADDED**: /alfred:0-project 긴급 백업 시나리오 (백업 없을 시 자동 생성)
 - **IMPROVED**: 데이터 손실 방지 강화 - 부분 설치 케이스 대응
-- **AUTHOR**: @Goos
 - **CONTEXT**: moai init과 /alfred:0-project 양쪽 모두 안전성 강화
 
 ### v0.2.0 (2025-10-07)
@@ -85,7 +80,6 @@ scope:
   - 348f825: RED - Phase B 테스트 작성
   - 384c010: GREEN - Phase B 병합 전략 구현
   - 072c1ec: REFACTOR - 코드 품질 개선
-- **AUTHOR**: @Goos
 - **CHANGED** (2025-10-06): 설계 전략 변경 - 2단계 분리 접근법 적용
   - SIMPLIFIED: moai init은 백업만 수행 (복잡한 병합 엔진 제거)
   - MOVED: 병합 로직을 /alfred:0-project로 이동
@@ -96,7 +90,6 @@ scope:
 ### v0.1.0 (2025-10-06)
 
 - **INITIAL**: Init 백업 및 병합 옵션 명세 최초 작성
-- **AUTHOR**: @Goos
 - **SCOPE**: 사용자 선택 프롬프트, 스마트 병합 엔진, 변경 내역 리포트
 - **CONTEXT**: 기존 프로젝트에 `moai init` 실행 시 사용자 경험 개선 - 백업만 하고 덮어쓰기하는 현재 방식에서 병합 옵션 제공
 
@@ -676,7 +669,6 @@ function mergeJSON(backupFile: string, currentFile: string): object {
 #### 1. BackupMerger 클래스 설계
 
 ```python
-# @CODE:INIT-005:MERGE | SPEC: .moai/specs/SPEC-INIT-003/spec.md
 """백업 병합 모듈 (SPEC-INIT-003 v0.3.1)
 
 백업의 프로젝트 문서를 현재 템플릿에 지능형 병합.
@@ -854,7 +846,6 @@ if config_version != package_version or not optimized:
 **파일**: `tests/unit/test_backup_merger.py`
 
 ```python
-# @TEST:INIT-003:MERGE | SPEC: .moai/specs/SPEC-INIT-003/spec.md
 """백업 병합 테스트 (SPEC-INIT-003 v0.3.1)"""
 
 import pytest
@@ -1016,28 +1007,15 @@ Then:
 
 ### TAG 체계
 
-**이 SPEC의 TAG**: `@SPEC:INIT-003`
 
 **Phase A 구현 위치** (v0.2.1까지, TypeScript):
 
-- `@CODE:INIT-005:BACKUP` → `moai-adk-ts/src/core/installer/phase-executor.ts` (deprecated)
-- `@CODE:INIT-005:DATA` → `moai-adk-ts/src/core/installer/backup-metadata.ts` (deprecated)
-- `@TEST:INIT-003:BACKUP` → `moai-adk-ts/__tests__/core/installer/phase-executor.test.ts` (deprecated)
 
 **Phase B 구현 위치** (v0.2.1까지, TypeScript):
 
-- `@CODE:INIT-005:MERGE` → `moai-adk-ts/src/cli/commands/project/backup-merger.ts` (deprecated)
-- `@CODE:INIT-005:DATA` → `moai-adk-ts/src/cli/commands/project/merge-strategies/` (deprecated)
-- `@CODE:INIT-005:UI` → `moai-adk-ts/src/cli/commands/project/merge-report.ts` (deprecated)
-- `@TEST:INIT-003:MERGE` → `moai-adk-ts/__tests__/cli/commands/project/backup-merger.test.ts` (deprecated)
 
 **Phase C 구현 위치** (v0.3.1, Python, 신규):
 
-- `@CODE:INIT-005:MERGE` → `src/moai_adk/core/project/backup_merger.py`
-- `@CODE:INIT-005:CONFIG` → `src/moai_adk/core/project/phase_executor.py` (Phase 4 수정)
-- `@CODE:INIT-005:REINIT` → `src/moai_adk/cli/commands/init.py` (reinit 로직)
-- `@CODE:INIT-005:TEMPLATE` → `src/moai_adk/templates/.moai/config.json`
-- `@TEST:INIT-003:MERGE` → `tests/unit/test_backup_merger.py`
 
 ### 의존성 체인
 

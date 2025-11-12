@@ -492,7 +492,6 @@ class ContextOptimizer:
         
         if supporting['reference_docs']:
             optimized['reference_pointers'] = [
-                f"@REF:{doc_id}" for doc_id in supporting['reference_docs'].keys()
             ]
         
         # Step 3: Discard temporary

@@ -1,4 +1,3 @@
-# @CODE:LANG-CONFIG-001 | SPEC: SPEC-LANG-EXTENSION-001/spec.md
 """
 Enhanced language configuration for MoAI-ADK.
 

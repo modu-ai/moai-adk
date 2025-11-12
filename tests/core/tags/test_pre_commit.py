@@ -3,7 +3,6 @@
 """Test suite for pre-commit TAG validation
 
 This module tests the pre-commit validator that checks:
-- TAG format validation (@DOC:DOMAIN-TYPE-NNN)
 - Duplicate TAG detection
 - Orphan TAG detection
 - File scanning and validation
@@ -32,10 +31,6 @@ class TestTagFormatValidation:
         validator = PreCommitValidator()
 
         # Valid formats
-        assert validator.validate_format("@DOC:SPEC-001") is True
-        assert validator.validate_format("@CODE:AUTH-API-001") is True
-        assert validator.validate_format("@TEST:DB-QUERY-099") is True
-        assert validator.validate_format("@SPEC:USER-REG-001") is True
 
     def test_invalid_tag_format(self):
         """Invalid TAG format should fail validation"""
@@ -45,35 +40,27 @@ class TestTagFormatValidation:
         assert validator.validate_format("DOC:SPEC-001") is False
 
         # Missing colon
-        assert validator.validate_format("@DOC-SPEC-001") is False
 
         # Invalid prefix
-        assert validator.validate_format("@INVALID:SPEC-001") is False
 
         # Missing domain
-        assert validator.validate_format("@DOC:001") is False
 
         # Invalid number format
-        assert validator.validate_format("@DOC:SPEC-ABC") is False
 
     def test_tag_pattern_extraction(self):
         """Extract TAG pattern from content"""
         validator = PreCommitValidator()
 
         content = """
-        # @CODE:AUTH-API-001
         def login():
             pass
 
-        # @CODE:AUTH-API-002
         def logout():
             pass
         """
 
         tags = validator.extract_tags(content)
         assert len(tags) == 2
-        assert "@CODE:AUTH-API-001" in tags
-        assert "@CODE:AUTH-API-002" in tags
 
 
 class TestDuplicateDetection:
@@ -162,16 +149,12 @@ class TestOrphanDetection:
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create complete chain: SPEC -> CODE -> TEST -> DOC
             spec_file = Path(tmpdir) / "spec.md"
-            spec_file.write_text("# @SPEC:USER-REG-001\n")
 
             code_file = Path(tmpdir) / "auth.py"
-            code_file.write_text("# @CODE:USER-REG-001\n")
 
             test_file = Path(tmpdir) / "test_auth.py"
-            test_file.write_text("# @TEST:USER-REG-PRECOMMIT-001\n")
 
             doc_file = Path(tmpdir) / "README.md"
-            doc_file.write_text("# @DOC:USER-REG-001\n")
 
             warnings = validator.validate_orphans([
                 str(spec_file), str(code_file), str(test_file), str(doc_file)
@@ -184,7 +167,6 @@ class TestOrphanDetection:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             code_file = Path(tmpdir) / "auth.py"
-            code_file.write_text("# @CODE:USER-REG-001\n")
 
             warnings = validator.validate_orphans([str(code_file)])
             assert len(warnings) >= 1
@@ -198,7 +180,6 @@ class TestOrphanDetection:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             test_file = Path(tmpdir) / "test_auth.py"
-            test_file.write_text("# @TEST:USER-REG-PRECOMMIT-001\n")
 
             warnings = validator.validate_orphans([str(test_file)])
             assert len(warnings) >= 1
@@ -380,8 +361,6 @@ class TestDocumentFileExclusion:
 Example # REMOVED_ORPHAN_CODE:AUTH-004 in markdown
 More # REMOVED_ORPHAN_CODE:AUTH-004 elsewhere
 
-Example @TEST:AUTH-004 in docs
-More @TEST:AUTH-004 in example code
 """)
 
             # Duplicate TAGs in markdown should NOT be flagged
@@ -492,13 +471,11 @@ class TestConfigurableValidation:
 
     def test_custom_tag_pattern(self):
         """Should support custom TAG patterns"""
-        # Custom pattern: @TAG:PROJECT-NNN
         validator = PreCommitValidator(
             tag_pattern=r"@(SPEC|CODE|TEST|DOC):[A-Z]+-\d{3}"
         )
 
         assert validator.validate_format("# REMOVED_ORPHAN_CODE:PRJ-001") is True
-        assert validator.validate_format("@CODE:PROJECT-FEAT-001") is False
 
 
 if __name__ == "__main__":

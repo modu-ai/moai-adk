@@ -206,10 +206,6 @@
 - [x] Architecture documented: Commands → Agents → Skills
 
 ### Metadata Tags
-- [x] @CODE:ALF-WORKFLOW-000:CMD-PROJECT maintained
-- [x] @CODE:W2-001 - Context saving integration added
-- [x] @CODE:GITHUB-CONFIG-001 referenced for GitHub templates
-- [x] @CODE:DOCUMENT-MGMT-001 referenced for document management
 
 ---
 
@@ -271,7 +267,6 @@
 - [x] **Readable**: Clear section structure with examples
 - [x] **Unified**: Consistent patterns across all modes
 - [x] **Secured**: No hardcoded credentials, safe atomic updates with rollback
-- [x] **Trackable**: @TAG references for traceability
 
 ---
 

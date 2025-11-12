@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @CODE:HOOK-SESSION-END-TEMPLATE-001 | SPEC: SESSION-END-HOOK-001
 
 """SessionEnd Hook: Cleanup and state saving on session end
 

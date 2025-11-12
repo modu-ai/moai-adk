@@ -31,7 +31,6 @@ scope:
     - exporters.py
 ---
 
-# @SPEC:CLI-ANALYSIS-001: CLI 명령어 분석 및 진단 기능 강화
 
 ## HISTORY
 
@@ -60,7 +59,6 @@ scope:
 
 - Click 프레임워크의 옵션 확장이 가능하다 (`--format`, `--export`, `--deep`)
 - 프로젝트 구조가 표준 moai-adk 레이아웃을 따른다
-- TAG 체인 데이터(`@SPEC`, `@TEST`, `@CODE`, `@DOC`)가 구성되어 있다
 - 테스트 메트릭 데이터(pytest-cov JSON)가 수집 가능하다
 - 분석 실행 시간은 기본 10초 이내, 깊은 분석 30초 이내로 제한한다
 - 모든 CLI 개선은 기존 테스트 커버리지 85% 이상을 유지한다
@@ -158,7 +156,6 @@ moai analyze [CATEGORY] [OPTIONS]
 ```python
 # 분석 항목:
 - 테스트 커버리지 (pytest-cov)
-- TAG 체인 완정성 (@SPEC → @TEST → @CODE → @DOC)
 - 코드 스타일 준수 (린터 경고)
 - 문서화율 (docstring 비율)
 - 복잡도 함수 개수 (McCabe > 10)
@@ -237,7 +234,6 @@ Score Ranges:
 - <60: CRITICAL (즉시 개선 필요)
 
 예시:
-- TAG 체인 완정성 < 80% → "@SPEC:XXX을 위한 @CODE 누락" 감지 후 자동 가이드
 - 테스트 커버리지 < 85% → "coverage run으로 레포트 생성" 안내
 - 순환 참조 발견 → "의존성 리팩토링 권고"
 ```
@@ -365,9 +361,7 @@ Score Ranges:
   - EXCELLENT(90-100): 권장사항 없음
   - 권장사항이 실행 가능한 명령어 포함
 
-## Traceability (@TAG)
 
-- **SPEC**: `@SPEC:CLI-ANALYSIS-001`
 - **TEST**:
   - `tests/unit/test_analyzer.py`
   - `tests/unit/test_metrics.py`

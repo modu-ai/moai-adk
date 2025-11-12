@@ -4,7 +4,6 @@ version: 0.2.0
 status: completed
 created: 2025-10-06
 updated: 2025-10-06
-author: @Goos
 labels:
   - cli
   - prompts
@@ -14,14 +13,12 @@ labels:
 priority: high
 ---
 
-# @SPEC:INSTALL-001: Install Prompts Redesign - Developer Name, Git Mandatory & PR Automation
 
 ## HISTORY
 
 ### v0.2.0 (2025-10-06)
 
 - **COMPLETED**: 구현 완료 (PR #4, 9bc4097)
-- **AUTHOR**: @Goos
 - **IMPLEMENTED**:
   - 개발자 이름 프롬프트 구현 (`developer-info.ts`, Git user.name 연동)
   - Git 필수 검증 로직 추가 (`git-validator.ts`, OS별 설치 안내)
@@ -29,14 +26,12 @@ priority: high
   - Auto PR/Draft PR 프롬프트 구현 (`pr-config.ts`, Team 모드 전용)
   - Alfred 환영 메시지 구현 (`welcome-message.ts`, 페르소나 강화)
   - Progressive Disclosure 흐름 구현 (`install-flow.ts`, 단계별 노출)
-- **TAG CHAIN**: @SPEC:INSTALL-001 → @TEST:INSTALL-001 (6파일) → @CODE:INSTALL-001 (8파일) - 완벽 추적
 - **TEST COVERAGE**: 100% (14개 파일, 32개 TAG 발생)
 - **DEPLOYMENT**: PR #4 squash merge → develop 브랜치 반영 완료
 
 ### v0.1.0 (2025-10-06)
 
 - **INITIAL**: Install Prompts Redesign 명세 작성
-- **AUTHOR**: @Goos
 - **SCOPE**:
   - 개발자 이름 프롬프트 추가 (Git 커밋 서명용)
   - Git 필수화 (Personal/Team 모드 모두)
@@ -731,19 +726,15 @@ AND 기존 auto_pr, draft_pr 값은 유지되어야 한다
 
 ---
 
-## Traceability (@TAG 체인)
 
 ### TAG 체인 구조
 
 ```
-@SPEC:INSTALL-001 (본 문서)
   ↓
-@TEST:INSTALL-001
   ├─ tests/cli/prompts/init/phase2-developer.test.ts
   ├─ tests/cli/prompts/init/phase4-git.test.ts
   └─ tests/core/installer/integration.test.ts
   ↓
-@CODE:INSTALL-001
   ├─ src/cli/prompts/init/phase1-basic.ts (Git 검증)
   ├─ src/cli/prompts/init/phase2-developer.ts (개발자 정보, NEW)
   ├─ src/cli/prompts/init/phase3-mode.ts (SPEC 선택)
@@ -752,20 +743,16 @@ AND 기존 auto_pr, draft_pr 값은 유지되어야 한다
   ├─ src/cli/prompts/init/index.ts (Phase 통합)
   └─ src/core/installer/phase-executor.ts (Phase 실행기)
   ↓
-@DOC:INSTALL-001 (본 SPEC 문서 + 마이그레이션 가이드)
 ```
 
 ### 검증 명령어
 
 ```bash
 # SPEC 문서 확인
-rg '@SPEC:INSTALL-001' -n .moai/specs/
 
 # 테스트 코드 확인
-rg '@TEST:INSTALL-001' -n tests/
 
 # 구현 코드 확인
-rg '@CODE:INSTALL-001' -n src/
 
 # 전체 TAG 체인 검증
 rg '@(SPEC|TEST|CODE|DOC):INSTALL-001' -n

@@ -8,7 +8,6 @@ created: "2025-11-10"
 author: "GoosLab"
 ---
 
-# @SPEC:VERSION-READER-001 | @EXPERT:BACKEND
 
 ## SPEC Overview
 
@@ -23,9 +22,6 @@ This SPEC defines the version reader system for MoAI-ADK, which reads version in
 
 ## Implementation Files
 
-- **CODE**: @CODE:VERSION-READER-001 - Version reader implementation
-- **TEST**: @TEST:VERSION-READER-001 - Version reader tests
-- **DOC**: @DOC:VERSION-READER-001 - Version reader documentation
 
 ## Acceptance Criteria
 
@@ -39,5 +35,4 @@ This SPEC defines the version reader system for MoAI-ADK, which reads version in
 ## Traceability Chain
 
 ```
-@SPEC:VERSION-READER-001 → @CODE:VERSION-READER-001 → @TEST:VERSION-READER-001 → @DOC:VERSION-READER-001
 ```

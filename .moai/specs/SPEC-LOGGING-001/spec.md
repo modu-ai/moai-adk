@@ -8,7 +8,6 @@ created: "2025-11-13"
 author: "GoosLab"
 ---
 
-# @SPEC:LOGGING-001 | @EXPERT:BACKEND | @EXPERT:DEVOPS
 
 ## SPEC 개요
 
@@ -224,25 +223,15 @@ class SensitiveDataFilter(logging.Filter):
 ## 트레이서빌리티 체인
 
 ```
-@SPEC:LOGGING-001
   ↓ (구현)
-@CODE:LOGGING-001 (src/moai_adk/utils/logger.py)
   ↓ (검증)
-@TEST:LOGGING-001 (tests/unit/test_logger.py)
 ```
 
 ## 서브컴포넌트
 
 ### 도메인 관리 (DOMAIN)
-- **@CODE:LOGGING-001:DOMAIN** - 민감정보 패턴 정의 및 관리
-- **@CODE:LOGGING-001:DOMAIN** - 환경별 로그 레벨 결정 로직
 
 ### 인프라 (INFRA)
-- **@CODE:LOGGING-001:INFRA** - Logger 객체 생성 및 설정
-- **@CODE:LOGGING-001:INFRA** - 로그 디렉토리 생성 및 검증
-- **@CODE:LOGGING-001:INFRA** - 로그 포맷 정의
-- **@CODE:LOGGING-001:INFRA** - StreamHandler 구성 (콘솔)
-- **@CODE:LOGGING-001:INFRA** - FileHandler 구성 (파일)
 
 ## 관련 기술 및 라이브러리
 
@@ -271,4 +260,3 @@ class SensitiveDataFilter(logging.Filter):
 
 - 기존 구현: `src/moai_adk/utils/logger.py`
 - 테스트 파일: `tests/unit/test_logger.py` (18개 테스트 케이스)
-- 이 SPEC은 현재 구현을 정규화하고 `@CODE:LOGGING-001` 고아 TAG를 해결합니다.

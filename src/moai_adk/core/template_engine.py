@@ -1,13 +1,9 @@
-# @CODE:TEMPLATE-ENGINE-001
 """
 Template engine for parameterizing GitHub templates and other configuration files.
 
 Supports Jinja2-style templating with variable substitution and conditional sections.
 Enables users to customize MoAI-ADK templates for their own projects.
 
-@SPEC:TEMPLATE-SYSTEM-001: Template engine and synchronization system
-@TEST:TEMPLATE-SYSTEM-001: Template system tests
-@DOC:TEMPLATE-SYSTEM-001: Template system documentation
 """
 
 from pathlib import Path

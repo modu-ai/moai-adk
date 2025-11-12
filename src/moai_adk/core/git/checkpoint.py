@@ -1,4 +1,3 @@
-# @CODE:CHECKPOINT-EVENT-001 | SPEC: SPEC-CHECKPOINT-EVENT-001.md | TEST: tests/unit/test_checkpoint.py
 """
 Checkpoint Manager - Event-driven checkpoint system.
 

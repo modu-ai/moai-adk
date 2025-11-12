@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @CODE:HOOKS-JSON-001 | SPEC: HOOKS-STANDARDIZATION-002
 """JSON Utilities for Alfred Hooks
 
 Provides consistent JSON handling, validation, and serialization across all hooks.

@@ -441,25 +441,20 @@ VS Code, Git, npm, yarn, pnpm, uv, Make, Docker, Postman, Insomnia, Jest, Pytest
 
 ### TAG 카테고리별 Skills 매핑
 
-**요구사항 영역 (`@SPEC`)**:
 - `moai-foundation-specs` - SPEC 작성
 - `moai-foundation-spec-validation` - 검증
 
-**설계 영역 (`@DESIGN`)**:
 - `moai-domain-api-design` - API 설계
 - `moai-domain-database-design` - DB 설계
 - 및 15+ 설계 관련 skills
 
-**구현 영역 (`@CODE`)**:
 - `moai-lang-*` - 언어별 구현
 - `moai-domain-*` - 도메인별 구현
 
-**테스트 영역 (`@TEST`)**:
 - `moai-foundation-testing-strategy` - 테스트 전략
 - `moai-essentials-testing` - 테스트 기법
 - `moai-essentials-mock-testing` - Mock 테스트
 
-**문서 영역 (`@DOC`)**:
 - `moai-alfred-document-management` - 문서 관리
 - `moai-alfred-doc-syncer` - 문서 동기화
 

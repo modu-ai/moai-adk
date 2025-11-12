@@ -1,4 +1,3 @@
-# @CODE:TAG-IMPROVEMENT-INTEGRATION-003
 """
 Integration testing utilities and helper functions.
 

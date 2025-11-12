@@ -1,4 +1,3 @@
-# @CODE:PY314-001 | SPEC: SPEC-PY314-001.md | TEST: tests/unit/test_config_manager.py
 """Configuration Manager
 
 Manage .moai/config/config.json:

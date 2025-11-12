@@ -8,7 +8,6 @@ created: "2025-11-10"
 author: "GoosLab"
 ---
 
-# @SPEC:CLI-UPDATE-001 | @EXPERT:BACKEND | @EXPERT:DEVOPS
 
 ## SPEC Overview
 
@@ -23,21 +22,6 @@ This SPEC defines the CLI update system for MoAI-ADK, which provides comprehensi
 
 ## Implementation Files
 
-- **CODE**: @CODE:UPDATE-TEMPLATE-004 - Template update functionality
-- **CODE**: @CODE:UPDATE-CONTEXT-001 - Context update functionality  
-- **CODE**: @CODE:UPDATE-VERSION-002 - Version tracking functionality
-- **CODE**: @CODE:UPDATE-SYNC-006 - System synchronization functionality
-- **CODE**: @CODE:UPDATE-PACKAGE-007 - Package update functionality
-- **CODE**: @CODE:UPDATE-CACHE-001 - Cache management functionality
-- **CODE**: @CODE:UPDATE-CACHE-002 - Cache optimization functionality
-- **CODE**: @CODE:UPDATE-CACHE-003 - Cache cleanup functionality
-- **CODE**: @CODE:UPDATE-METADATA-003 - Metadata update functionality
-- **CODE**: @CODE:UPDATE-CONFIG-005 - Configuration update functionality
-- **CODE**: @CODE:UPDATE-STAGE1-009 - Stage 1 update logic
-- **CODE**: @CODE:UPDATE-STAGE2-010 - Stage 2 update logic
-- **CODE**: @CODE:UPDATE-STAGE3-011 - Stage 3 update logic
-- **TEST**: @TEST:CLI-UPDATE-001 - CLI update system tests
-- **DOC**: @DOC:CLI-UPDATE-001 - CLI update documentation
 
 ## Acceptance Criteria
 
@@ -51,5 +35,4 @@ This SPEC defines the CLI update system for MoAI-ADK, which provides comprehensi
 ## Traceability Chain
 
 ```
-@SPEC:CLI-UPDATE-001 → [Multiple CODE TAGs] → @TEST:CLI-UPDATE-001 → @DOC:CLI-UPDATE-001
 ```

@@ -63,7 +63,6 @@ void main() {
 ### Example 3: Null Safety Best Practices
 
 ```dart
-// @CODE:DART-NULL-SAFETY-001
 // Comprehensive null safety patterns
 
 class User {
@@ -119,7 +118,6 @@ void main() async {
 ### Example 4: Future & Async/Await Patterns
 
 ```dart
-// @CODE:DART-ASYNC-001
 // Modern async programming with Future and async/await
 
 class DataService {
@@ -183,7 +181,6 @@ void main() async {
 ### Example 5: Flutter First App with Counter
 
 ```dart
-// @CODE:DART-FLUTTER-FIRST-001
 // Basic Flutter app: Counter with State Management
 
 import 'package:flutter/material.dart';
@@ -302,7 +299,6 @@ class _CounterPageState extends State<CounterPage> {
 ### Example 6: Stream Programming
 
 ```dart
-// @CODE:DART-STREAM-001
 // Stream and reactive programming patterns
 
 class StreamService {
@@ -357,7 +353,6 @@ void main() {
 ### Example 7: Provider State Management (Popular Pattern)
 
 ```dart
-// @CODE:DART-PROVIDER-001
 // State management with Provider package
 
 import 'package:flutter/material.dart';
@@ -483,7 +478,6 @@ void main() {
 ### Example 8: HTTP Requests and JSON Parsing
 
 ```dart
-// @CODE:DART-HTTP-JSON-001
 // REST API calls with error handling and JSON parsing
 
 import 'dart:convert';
@@ -604,7 +598,6 @@ void main() async {
 ### Example 9: BLoC Pattern for Complex State
 
 ```dart
-// @CODE:DART-BLOC-001
 // Business Logic Component pattern for enterprise apps
 
 import 'package:flutter/material.dart';
@@ -755,7 +748,6 @@ void main() {
 ### Example 10: Performance Optimization
 
 ```dart
-// @CODE:DART-PERF-001
 // Performance optimization techniques
 
 class PerformanceOptimizationExample {

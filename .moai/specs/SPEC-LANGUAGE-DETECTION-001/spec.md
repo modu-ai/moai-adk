@@ -1,4 +1,3 @@
-# @SPEC:LANGUAGE-DETECTION-001: JavaScript/TypeScript 프로젝트 CI/CD 워크플로우 언어 감지 및 템플릿 분리
 
 ---
 title: JavaScript/TypeScript 프로젝트 CI/CD 워크플로우 언어 감지 및 템플릿 분리
@@ -390,25 +389,15 @@ except LanguageDetectionError as e:
 
 ### 구현 파일
 
-- `@CODE:LANG-DETECTOR:src/moai_adk/language_detector.py`
-- `@CODE:WORKFLOWS:src/moai_adk/templates/workflows/`
-- `@TEST:LANG-DETECTION:tests/test_language_detection.py`
 
 ### 관련 스킬
 
-- `@SKILL:moai-alfred-language-detection`
-- `@SKILL:moai-foundation-trust`
 
 ### 관련 에이전트
 
-- `@AGENT:tdd-implementer`
 
 ### 하위 태스크
 
-- `@TASK:LANG-001`: LanguageDetector 클래스 확장 (패키지 매니저 감지)
-- `@TASK:LANG-002`: 언어별 워크플로우 템플릿 생성 (Python, JS, TS, Go)
-- `@TASK:LANG-003`: tdd-implementer 에이전트 통합
-- `@TASK:LANG-004`: 통합 테스트 작성 (멀티 언어 프로젝트)
 
 ---
 

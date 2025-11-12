@@ -12,7 +12,6 @@ allowed-tools:
 >
 > **Delegation Model**: Complete agent-first pattern. All execution delegated to run-orchestrator.
 
-<!-- @CODE:ALF-WORKFLOW-002:CMD-RUN -->
 
 **4-Step Workflow Integration**: This command implements Step 3 of Alfred's workflow (Task Execution with TodoWrite tracking). See CLAUDE.md for full workflow details.
 

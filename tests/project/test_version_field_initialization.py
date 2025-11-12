@@ -1,10 +1,6 @@
-# @TEST:VERSION-FIELD-001 | SPEC: SPEC-INIT-VERSION-FIELD-001 | CODE: src/moai_adk/core/project/phase_executor.py
 """
 Tests for version field presence in .moai/config.json after initialization
 
-@TEST:VERSION-FIELD-001 - Version field presence after moai-adk init
-@TEST:VERSION-FIELD-002 - Version field preservation during reinitialization
-@TEST:VERSION-FIELD-003 - Template variable substitution in config.json
 """
 
 import json
@@ -26,7 +22,6 @@ class TestVersionFieldInitialization:
         WHEN: moai-adk init is executed (fresh initialization)
         THEN: .moai/config.json should contain moai.version field with actual version
         """
-        # @TEST:VERSION-FIELD-001
         initializer = ProjectInitializer(tmp_path)
         result = initializer.initialize(backup_enabled=False)
 
@@ -57,7 +52,6 @@ class TestVersionFieldInitialization:
         WHEN: moai-adk init --reinit is executed (reinitialization)
         THEN: .moai/config.json should preserve moai.version field
         """
-        # @TEST:VERSION-FIELD-002
         # First initialization
         initializer = ProjectInitializer(tmp_path)
         result = initializer.initialize(backup_enabled=False)

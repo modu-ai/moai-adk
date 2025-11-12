@@ -5,7 +5,6 @@ Analyze command for MoAI-ADK
 Analyze Claude Code sessions and generate improvement suggestions.
 """
 
-# @CODE:CLI-002 | SPEC: SPEC-CLI-001/spec.md | TEST: tests/unit/test_cli_commands.py
 
 from pathlib import Path
 from typing import Optional

@@ -25,7 +25,6 @@ flowchart TD
     REFACTOR["🔵 REFACTOR 단계<br/>코드 품질 개선"] -->
     CodeQuality["코드 품질<br/>개선되었는가?"]
 
-    Complete["✅ 구현 완료<br/>@TAG 연결 및 동기화"]
 
     REDValidation -->|예| GREEN
     REDValidation -->|아니오| RED
@@ -77,7 +76,6 @@ from app.services.auth_service import AuthService
 from app.exceptions import AuthenticationError
 
 class TestAuthServiceRED:
-    """@TEST:AUTH-001 RED 단계 테스트"""
 
     @pytest.fixture
     def mock_db(self):
@@ -92,7 +90,6 @@ class TestAuthServiceRED:
 
     async def test_login_with_valid_credentials_should_issue_jwt_token(self, auth_service, mock_db):
         """
-        @REQ:AUTH-001 유효한 자격증명으로 로그인 시 JWT 토큰 발급
         Given: 유효한 이메일과 비밀번호가 주어지고
         When: 사용자 로그인을 시도하면
         Then: JWT 토큰이 발급되어야 한다
@@ -128,7 +125,6 @@ class TestAuthServiceRED:
 
     async def test_login_with_invalid_credentials_should_raise_error(self, auth_service, mock_db):
         """
-        @REQ:AUTH-002 무효한 자격증명으로 로그인 시 에러 발생
         Given: 무효한 이메일 또는 비밀번호가 주어지고
         When: 사용자 로그인을 시도하면
         Then: AuthenticationError가 발생해야 한다
@@ -146,7 +142,6 @@ class TestAuthServiceRED:
 
     async def test_jwt_token_should_contain_required_claims(self, auth_service, mock_db):
         """
-        @REQ:AUTH-003 JWT 토큰에 필수 클레임 포함
         Given: 인증된 사용자가 있고
         When: JWT 토큰을 생성하면
         Then: 토큰에 sub, email, iat, exp 클레임이 포함되어야 한다
@@ -169,7 +164,6 @@ class TestAuthServiceRED:
 
     async def test_expired_jwt_token_should_be_invalid(self, auth_service):
         """
-        @REQ:AUTH-004 만료된 JWT 토큰은 무효해야 함
         Given: 만료된 JWT 토큰이 주어지고
         When: 토큰을 검증하면
         Then: AuthenticationError가 발생해야 한다
@@ -235,7 +229,6 @@ from typing import Dict, Optional
 from app.exceptions import AuthenticationError
 
 class AuthService:
-    """@CODE:AUTH-001:SERVICE 사용자 인증 서비스 (GREEN 단계 최소 구현)"""
 
     def __init__(self, db_connection):
         self.db = db_connection
@@ -406,7 +399,6 @@ class User:
 
 class AuthService:
     """
-    @CODE:AUTH-001:SERVICE 개선된 사용자 인증 서비스 (REFACTOR 단계)
 
     사용자 인증, JWT 토큰 관리, 보안 정책 적용을 담당하는 서비스.
     """
@@ -853,7 +845,6 @@ MoAI-ADK의 TDD는 TRUST 5 원칙을 자동으로 적용합니다:
 2. **Readable**: 테스트가 명확하고 이해하기 쉬움
 3. **Unified**: 일관된 테스트 스타일과 패턴 유지
 4. **Secured**: 보안 테스트 포함 및 취약점 검증
-5. **Trackable**: 모든 테스트가 @TAG로 추적 가능
 
 ### 자동 품질 검증
 

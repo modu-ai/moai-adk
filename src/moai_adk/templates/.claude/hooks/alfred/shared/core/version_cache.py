@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @CODE:VERSION-CACHE-001
 """Version information cache with TTL support
 
 TTL-based caching system for version check results to minimize network calls

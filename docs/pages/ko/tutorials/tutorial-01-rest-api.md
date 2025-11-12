@@ -178,7 +178,6 @@ pip install -r requirements.txt
 ```python
 """
 사용자 데이터 모델 정의
-@TAG: SPEC-USER-API-001
 """
 from datetime import datetime
 from typing import Optional
@@ -232,7 +231,6 @@ class UserListResponse(BaseModel):
 ```python
 """
 인메모리 사용자 데이터베이스
-@TAG: SPEC-USER-API-001
 """
 from datetime import datetime
 from typing import Optional
@@ -326,7 +324,6 @@ db = UserDatabase()
 ```python
 """
 사용자 API 라우트
-@TAG: SPEC-USER-API-001
 """
 from fastapi import APIRouter, HTTPException, status
 from .models import User, UserCreate, UserUpdate, UserListResponse
@@ -413,7 +410,6 @@ def delete_user(user_id: int):
 ```python
 """
 User API FastAPI 애플리케이션
-@TAG: SPEC-USER-API-001
 """
 from fastapi import FastAPI
 from .routes import router
@@ -453,7 +449,6 @@ def health_check():
 ```python
 """
 User API 테스트
-@TAG: SPEC-USER-API-001
 """
 import pytest
 from fastapi.testclient import TestClient

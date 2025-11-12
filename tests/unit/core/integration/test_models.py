@@ -1,4 +1,3 @@
-# @TEST:TAG-IMPROVEMENT-INTEGRATION-002
 """
 Test integration testing models and data structures.
 """

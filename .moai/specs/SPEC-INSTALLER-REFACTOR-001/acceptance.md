@@ -1,4 +1,3 @@
-# @SPEC:INSTALLER-REFACTOR-001 인수 기준
 
 ## ✅ Acceptance Criteria
 

@@ -1,4 +1,3 @@
-# @SPEC:LOGGING-001 구현 계획서
 
 작성일: 2025-11-13
 작성자: GoosLab (spec-builder)
@@ -8,7 +7,6 @@
 
 ## 개요
 
-`SPEC-LOGGING-001`은 기존 구현된 로깅 시스템을 정규화하고 `@CODE:LOGGING-001` 고아 TAG를 해결하기 위한 SPEC입니다. 현재 구현은 완전하고 광범위한 테스트 커버리지를 보유하고 있으므로, 이 SPEC의 구현 단계는 검증과 정규화에 중점을 둡니다.
 
 ## 마일스톤 (우선순위 기반)
 
@@ -74,9 +72,7 @@
 **목표**: 기존 코드에 SPEC 태그 추가 및 문서 정리
 
 **활동**:
-1. 파일 헤더에 @SPEC:LOGGING-001 TAG 추가
    - `src/moai_adk/utils/logger.py` 상단
-   - 기존 `@CODE:LOGGING-001` 유지 및 @SPEC 연결
 
 2. 함수/클래스 docstring 정리
    - SPEC 요구사항과 일치하도록 문서화
@@ -90,7 +86,6 @@
 **예상 산출물**: 정규화된 코드, 통합 테스트 통과 확인
 
 **담당**: tdd-implementer Agent
-**완료 기준**: 모든 @SPEC/@CODE/@TEST 태그 정렬 + 린팅/포매팅 통과
 
 ---
 
@@ -185,7 +180,6 @@
 ### 검증 전략
 1. **코드 리뷰**: 현재 구현이 SPEC 요구사항과 정확히 매칭되는지 확인
 2. **테스트 검증**: 18개 기존 테스트가 모든 AC를 커버하는지 확인
-3. **태그 정규화**: @SPEC/@CODE/@TEST 태그 정렬
 
 ### 리팩토링 포인트 (필요시)
 - 민감정보 패턴 최적화 (패턴 컴파일 캐싱)
@@ -292,7 +286,6 @@ setup_logger()
 **상황**: 기존에 SPEC-LOGGER-MAIN-001이 존재
 **검토**: 해당 SPEC은 설계 문서이고, 새로운 SPEC-LOGGING-001은 구현 명세
 **결정**: 별도 SPEC 생성으로 고아 TAG 해결
-**근거**: @CODE:LOGGING-001이 기존 구현을 가리키므로 새로운 SPEC 필요
 
 ### 결정 2: 현재 구현 재사용
 **상황**: 광범위한 테스트를 보유한 완전한 구현 존재
@@ -328,7 +321,6 @@ setup_logger()
 
 - **기존 구현 파일**: `src/moai_adk/utils/logger.py` (153줄)
 - **테스트 파일**: `tests/unit/test_logger.py` (245줄, 18개 테스트)
-- **고아 TAG 소유**: `@CODE:LOGGING-001` in `src/moai_adk/utils/__init__.py` (line 8)
 - **목표**: 고아 TAG 해결 + 시스템 정규화
 
 ---

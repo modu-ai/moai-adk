@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @TEST:AUTO-CORRECTION-001 | @SPEC:TAG-AUTO-CORRECTION-001 | @CODE:HOOK-AUTO-FIX-001
 """자동 수정 시스템 테스트
 
 TAG 정책 위반에 대한 안전한 자동 수정 기능 테스트.
@@ -29,7 +28,6 @@ class TestSafeAutoCorrection:
         # from moai_adk.core.tags.policy_validator import TagPolicyValidator
 
         # content = '''
-        # # @CODE:AUTH-001 | @CODE:AUTH-001
         # def login():
         #     pass
         # '''
@@ -37,8 +35,6 @@ class TestSafeAutoCorrection:
         # validator = TagPolicyValidator()
         # fixed_content = validator._fix_duplicate_tags(content)
 
-        # assert fixed_content.count("@CODE:AUTH-001") == 1
-        # assert "@CODE:AUTH-001 | @CODE:AUTH-001" not in fixed_content
         pass
 
     def test_tag_format_correction(self):
@@ -46,7 +42,6 @@ class TestSafeAutoCorrection:
         # from moai_adk.core.tags.policy_validator import TagPolicyValidator
 
         # content = '''
-        # # @CODE AUTH-001  # 잘못된 형식: 콜론 누락
         # def login():
         #     pass
         # '''
@@ -54,8 +49,6 @@ class TestSafeAutoCorrection:
         # validator = TagPolicyValidator()
         # fixed_content = validator._fix_format_errors(content)
 
-        # assert "@CODE:AUTH-001" in fixed_content
-        # assert "@CODE AUTH-001" not in fixed_content
         pass
 
     def test_whitespace_normalization(self):
@@ -63,7 +56,6 @@ class TestSafeAutoCorrection:
         # from moai_adk.core.tags.policy_validator import TagPolicyValidator
 
         # content = '''
-        # # @CODE:AUTH-001  |   @SPEC:SPEC-AUTH-001
         # def login():
         #     pass
         # '''
@@ -72,8 +64,6 @@ class TestSafeAutoCorrection:
         # fixed_content = validator._fix_format_errors(content)
 
         # # 공백 정규화
-        # assert "@CODE:AUTH-001 | @SPEC:SPEC-AUTH-001" in fixed_content
-        # assert "@SPEC:SPEC-AUTH-001" in fixed_content
         pass
 
 
@@ -167,7 +157,6 @@ class TestBackupManagement:
     def test_backup_created_before_fix(self):
         """수정 전 백업 생성"""
         # with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
-        #     f.write("# @CODE AUTH-001\n")
         #     file_path = f.name
 
         # from moai_adk.core.tags.policy_validator import TagPolicyValidator
@@ -188,13 +177,11 @@ class TestBackupManagement:
         # assert backup_path.endswith(".backup")
 
         # # 원본 파일 수정됨
-        # assert "@CODE:AUTH-001" in Path(file_path).read_text()
         pass
 
     def test_rollback_on_failure(self):
         """실패 시 롤백"""
         # with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
-        #     original_content = "# @CODE AUTH-001\n"
         #     f.write(original_content)
         #     file_path = f.name
 
@@ -270,7 +257,6 @@ class TestAutoFixIntegration:
     def test_full_correction_flow(self):
         """전체 수정 흐름: 백업 → 수정 → 검증 → 성공"""
         # with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
-        #     f.write("# @CODE:AUTH-001 | @CODE:AUTH-001\n")
         #     file_path = f.name
 
         # from moai_adk.core.tags.policy_validator import TagPolicyValidator
@@ -293,7 +279,6 @@ class TestAutoFixIntegration:
         # result = validator.apply_auto_fix(file_path)
 
         # assert result["success"] == True
-        # assert "@CODE:AUTH-001 | @CODE:AUTH-001" not in Path(file_path).read_text()
         # assert result["backup_created"] == True
         pass
 
@@ -335,7 +320,6 @@ class TestAutoFixEdgeCases:
 
     def test_already_fixed_file(self):
         """이미 수정된 파일 재처리"""
-        # content = "# @CODE:AUTH-001 | @SPEC:SPEC-AUTH-001\n"
 
         # from moai_adk.core.tags.policy_validator import TagPolicyValidator
 
@@ -349,7 +333,6 @@ class TestAutoFixEdgeCases:
     def test_multiple_violations_same_file(self):
         """같은 파일의 여러 위반 동시 수정"""
         # content = """
-        # # @CODE AUTH-001 | @CODE AUTH-001
         # def login():
         #     pass
         # """
@@ -360,8 +343,6 @@ class TestAutoFixEdgeCases:
         # fixed = validator._apply_all_safe_fixes(content)
 
         # # 형식 오류 + 중복 모두 수정
-        # assert "@CODE:AUTH-001 | @CODE:AUTH-001" not in fixed
-        # assert "@CODE:AUTH-001 |" not in fixed
         pass
 
     def test_corrupted_file_protection(self):

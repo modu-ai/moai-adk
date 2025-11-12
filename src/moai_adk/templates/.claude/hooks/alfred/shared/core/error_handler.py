@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @CODE:HOOKS-ERROR-001 | SPEC: HOOKS-STANDARDIZATION-001
 """Standard Error Handler for Alfred Hooks
 
 Provides consistent error handling, logging, and response formatting across all hooks.

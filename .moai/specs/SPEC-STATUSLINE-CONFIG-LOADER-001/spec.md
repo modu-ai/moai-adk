@@ -8,7 +8,6 @@ created: "2025-11-10"
 author: "GoosLab"
 ---
 
-# @SPEC:STATUSLINE-CONFIG-LOADER-001 | @EXPERT:BACKEND
 
 ## SPEC Overview
 
@@ -23,9 +22,6 @@ This SPEC defines the configuration loader system for MoAI-ADK statusline, which
 
 ## Implementation Files
 
-- **CODE**: @CODE:STATUSLINE-CONFIG-LOADER-001 - Config loader implementation
-- **TEST**: @TEST:STATUSLINE-CONFIG-LOADER-001 - Config loader tests
-- **DOC**: @DOC:STATUSLINE-CONFIG-LOADER-001 - Config loader documentation
 
 ## Acceptance Criteria
 
@@ -39,5 +35,4 @@ This SPEC defines the configuration loader system for MoAI-ADK statusline, which
 ## Traceability Chain
 
 ```
-@SPEC:STATUSLINE-CONFIG-LOADER-001 → @CODE:STATUSLINE-CONFIG-LOADER-001 → @TEST:STATUSLINE-CONFIG-LOADER-001 → @DOC:STATUSLINE-CONFIG-LOADER-001
 ```

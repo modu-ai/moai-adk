@@ -1,4 +1,3 @@
-# @TEST:CLAUDE-INTEGRATION-001 | SPEC: SPEC-CLAUDE-INTEGRATION-001/spec.md
 """Test Claude CLI integration functionality."""
 
 import json

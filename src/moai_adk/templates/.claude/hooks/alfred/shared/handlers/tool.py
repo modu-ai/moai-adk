@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @CODE:HOOK-TOOL-001 | SPEC: TBD | TEST: tests/hooks/test_handlers.py
 """Tool usage handlers
 
 PreToolUse, PostToolUse event handling
@@ -40,7 +39,6 @@ def handle_pre_tool_use(payload: HookPayload) -> HookResult:
         - Work continues even when checkpoint fails (ignores)
         - Transparent background operation
 
-    @TAG:CHECKPOINT-EVENT-001
     """
     tool_name = payload.get("tool", "")
     tool_args = payload.get("arguments", {})

@@ -4,7 +4,6 @@ version: 0.1.0
 status: completed
 created: 2025-10-16
 updated: 2025-10-16
-author: @Goos
 priority: high
 category: feature
 labels:
@@ -27,13 +26,10 @@ scope:
     - tag-chain-validator.ts
 ---
 
-# @SPEC:TRUST-001: TRUST 원칙 자동 검증
 
 ## HISTORY
 ### v0.1.0 (2025-10-16)
 - **ADDED**: TRUST 5원칙 자동 검증 시스템 구현 완료
-- **AUTHOR**: @Goos
-- **REVIEWER**: @Goos (self-review)
 - **TDD CYCLE**: RED → GREEN → REFACTOR (4c66076, 34e1bd9, 1dec08f)
 - **IMPLEMENTATION**:
   - TrustChecker 메인 클래스 구현 (442 LOC)
@@ -52,10 +48,6 @@ scope:
   - tests/unit/core/quality/test_trust_checker.py (474 LOC)
   - tests/unit/core/quality/__init__.py
 - **TAG CHAIN**:
-  - @SPEC:TRUST-001: 1개 (본 문서)
-  - @TEST:TRUST-002: 2개 (테스트 모듈)
-  - @CODE:TRUST-002: 4개 (구현 모듈)
-  - @CODE:TRUST-002:VALIDATOR: 1개 (Validator 프레임워크)
 - **SCOPE COMPLETION**:
   - R-001~R-003: ✅ 완료 (검증 기능, 도구 자동 선택, 보고서 생성)
   - R-004~R-008: ✅ 완료 (이벤트 기반 검증, 오류 메시지 표준)
@@ -65,7 +57,6 @@ scope:
 
 ### v0.0.1 (2025-10-16)
 - **INITIAL**: TRUST 5원칙 자동 검증 시스템 명세 최초 작성
-- **AUTHOR**: @Goos
 - **SCOPE**: Test First, Readable, Unified, Secured, Trackable 자동 검증
 - **CONTEXT**: /alfred:2-run 완료 후 품질 게이트 자동화
 - **DEPENDS_ON**: SPEC-VALID-001 (메타데이터 검증)
@@ -103,8 +94,6 @@ scope:
    - MoAI-ADK 표준 디렉토리 구조 준수
    - `.moai/config.json` 존재 및 `project.language` 정의
 
-2. **@TAG 시스템**:
-   - 코드베이스에 `@SPEC:ID`, `@TEST:ID`, `@CODE:ID` 주석 적용
    - TAG 형식: `@<TYPE>:<DOMAIN>-<NUMBER>`
 
 3. **테스트 환경**:
@@ -152,8 +141,6 @@ scope:
    - 리팩토링 권장 메시지
 
 7. **R-007**: WHEN 고아 TAG가 발견되면, 시스템은 경고 메시지와 함께 TAG 수정을 권장해야 한다
-   - 고아 TAG: `@CODE:ID`는 있으나 `@SPEC:ID`가 없는 경우
-   - 역방향: `@SPEC:ID`는 있으나 `@CODE:ID`가 없는 경우 (구현 누락)
 
 8. **R-008**: WHEN 매개변수 > 5개인 함수가 발견되면, 시스템은 리팩토링을 요구해야 한다
    - 함수명, 파일명, 라인 번호 표시
@@ -184,7 +171,6 @@ scope:
     - 수정 방법 링크 제공
 
 14. **R-014**: IF TAG 체인이 끊어지면, 시스템은 `/alfred:3-sync` 실행을 차단해야 한다
-    - 끊어진 TAG 체인 표시 (예: `@SPEC:AUTH-004` → `@CODE:AUTH-004` 누락)
     - 수정 명령 제안
 
 15. **R-015**: 전체 검증 시간은 10초를 초과하지 않아야 한다 (소규모 프로젝트 기준)
@@ -242,17 +228,10 @@ scope:
    ```
 
 2. **TAG 쌍 매칭**:
-   - `@SPEC:ID` → `@TEST:ID` 존재 확인
-   - `@TEST:ID` → `@CODE:ID` 존재 확인
-   - `@CODE:ID` → `@SPEC:ID` 역참조 확인
 
 3. **고아 TAG 탐지**:
-   - `@CODE:ID`는 있으나 `@SPEC:ID` 없음
-   - `@SPEC:ID`는 있으나 `@CODE:ID` 없음 (구현 누락)
 
 4. **순환 참조 탐지**:
-   - `@SPEC:A` depends_on `@SPEC:B`
-   - `@SPEC:B` depends_on `@SPEC:A`
 
 ### S-004: 보고서 형식
 
@@ -298,8 +277,6 @@ scope:
 ### [T] TAG Chain
 - **Status**: WARNING
 - **Orphan TAGs**:
-  - @CODE:AUTH-003 (no @SPEC:AUTH-003)
-  - @SPEC:USER-005 (no @CODE:USER-005)
 ```
 
 **JSON 형식** (CI/CD 통합용):
@@ -350,7 +327,6 @@ scope:
 ℹ️ TAG Chain: 2개 고아 TAG 발견
   → /alfred:3-sync 실행 전 TAG 수정 필요
   → 고아 TAG:
-    - @CODE:AUTH-003 (no @SPEC:AUTH-003)
 ```
 
 ## Acceptance Criteria
@@ -380,13 +356,9 @@ scope:
 - When: trust-checker 실행
 - Then: 모든 함수의 복잡도가 10 이하면 PASS, 초과 함수가 있으면 FAIL
 
-### AC-006: @TAG 체인 완전성 검증
-- Given: 코드에 @TAG가 주석으로 작성됨
 - When: trust-checker 실행
-- Then: 모든 @CODE:ID가 @SPEC:ID와 연결되면 PASS, 끊어진 체인이 있으면 WARNING
 
 ### AC-007: 고아 TAG 탐지
-- Given: @CODE:ID는 있으나 @SPEC:ID가 없음
 - When: trust-checker 실행
 - Then: 고아 TAG 목록 반환 + WARNING
 
@@ -438,9 +410,7 @@ scope:
 3. **타임아웃**: 검증 시간 초과 시 경고 메시지 (10초 초과)
 4. **파싱 오류**: 소스 코드 파싱 실패 시 건너뛰기 + 경고
 
-## Traceability (@TAG)
 
-- **SPEC**: `@SPEC:TRUST-001` (본 문서)
 - **TEST**: `tests/core/quality/test_trust_checker.py`
 - **CODE**: `src/core/quality/trust_checker.py`
 - **DOC**: `docs/quality/trust-validation.md`

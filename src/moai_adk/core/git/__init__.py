@@ -1,4 +1,3 @@
-# @CODE:CORE-GIT-INIT-001 | SPEC: SPEC-CORE-GIT-001.md | TEST: tests/unit/test_git.py
 """
 Git management module.
 

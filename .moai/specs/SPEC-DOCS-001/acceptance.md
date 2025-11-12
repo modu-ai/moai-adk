@@ -9,12 +9,8 @@ priority: high
 category: documentation
 phase: acceptance
 traceability:
-  spec: "@SPEC:DOCS-001"
-  test: "@TEST:DOCS-001"
-  code: "@CODE:DOCS-001"
 ---
 
-# @ACCEPTANCE:DOCS-001 - Document-master 에이전트 온라인 문서 수용 기준
 
 ## 개요
 
@@ -42,7 +38,6 @@ python scripts/validate_documentation_coverage.py
 - [ ] Python 파일 160개 이상 문서화
 - [ ] Public API 85% 이상 문서화
 - [ ] 실행 가능한 예제 140개 이상 포함
-- [ ] @TAG 참조 95% 이상 연결 완료
 
 ### AC-002: Nextra 기반 문서 사이트
 **Given:** Nextra v3.x 환경이 구성됨
@@ -86,7 +81,6 @@ curl -s https://moai-adk-docs.vercel.app/reference/api | grep -q "New function"
 #### 성공 기준
 - [ ] 코드 변경 감지: 30초 이내
 - [ ] 문서 업데이트: 2분 이내
-- [ ] @TAG 체인 유지: 100%
 - [ ] 배포 성공률: 99%+
 
 ### AC-004: Context7 베스트 프랙티스 통합
@@ -108,7 +102,6 @@ curl -s https://moai-adk-docs.vercel.app/reference/api | grep -q "New function"
 #### 필수 다이어그램
 - [ ] 시스템 아키텍처 다이어그램
 - [ ] Alfred 워크플로우 다이어그램
-- [ ] @TAG 체인 시스템 다이어그램
 - [ ] 에이전트 관계도
 - [ ] TDD 사이클 다이어그램
 

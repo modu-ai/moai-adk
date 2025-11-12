@@ -36,7 +36,6 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
 - ✅ **Guaranteed Testing**: 87.84%+ test coverage through automated TDD
 - ✅ **Living Documentation**: Auto-synced docs that never drift
 - ✅ **Persistent Context**: Alfred remembers project history and patterns
-- ✅ **Complete Traceability**: `@TAG` system links every artifact
 - ✅ **Quality Automation**: TRUST 5 principles enforced throughout
 
 ---
@@ -45,7 +44,6 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
 
 ### Core Infrastructure
 
-- **`command_helpers.py`**: Context management utilities for commands (@CODE:W2-002)
   - Phase result storage and retrieval
   - Project metadata extraction
   - Tech stack auto-detection
@@ -83,18 +81,13 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
 - **Adaptive learning** based on your project patterns
 - **Smart context management** understanding project structure and dependencies
 
-### 4. @TAG System
 
 Complete traceability system linking all artifacts:
 
 ```
-@SPEC:AUTH-001 (Requirements)
     ↓
-@TEST:AUTH-001 (Tests)
     ↓
-@CODE:AUTH-001:SERVICE (Implementation)
     ↓
-@DOC:AUTH-001 (Documentation)
 ```
 
 ### 5. Living Documentation
@@ -268,8 +261,6 @@ MoAI-ADK has completed a comprehensive **Phase 1 Batch 2** upgrade achieving:
 **Safe Auto-Correction**:
 
 - ✅ **3-Level Risk Tiers**: SAFE (auto-fix) / MEDIUM (approval needed) / HIGH (blocked)
-- ✅ **Duplicate TAG Removal**: Automatically remove duplicate @TAGs
-- ✅ **Format Error Fixing**: Auto-fix @CODE AUTH-001 → @CODE:AUTH-001
 - ✅ **Whitespace Normalization**: Consistent spacing between TAGs
 - ✅ **Backup & Rollback**: Auto-backup before fixes, rollback on errors
 
@@ -779,7 +770,6 @@ Primary configuration file created after initialization:
       "no_intermediate_cache": true,
       "realtime_validation": true,
       "scan_tools": ["rg", "grep"],
-      "scan_command": "rg '@TAG' -n",
       "philosophy": "The source of truth for TAGs lives in the code itself"
     },
     "policy": {
@@ -830,10 +820,6 @@ Primary configuration file created after initialization:
         "research_categories": ["RESEARCH", "ANALYSIS", "KNOWLEDGE", "INSIGHT"],
         "auto_tag_research_content": true,
         "research_patterns": {
-          "RESEARCH": ["@RESEARCH:", "research", "investigate", "analyze"],
-          "ANALYSIS": ["@ANALYSIS:", "analysis", "evaluate", "assess"],
-          "KNOWLEDGE": ["@KNOWLEDGE:", "knowledge", "learn", "pattern"],
-          "INSIGHT": ["@INSIGHT:", "insight", "innovate", "optimize"]
         }
       }
     }
@@ -1203,7 +1189,6 @@ That's it! You now have:
 - ✅ Comprehensive tests
 - ✅ Implementation code
 - ✅ Updated documentation
-- ✅ Git history with @TAG references
 
 ### Next Steps
 
@@ -1366,7 +1351,6 @@ _Context:_ User requested changing all agent model directives from `sonnet` to `
 **Result:**
 
 - All 26 files successfully updated
-- Pre-commit @TAG validation passed
 - Feature branch merged to develop with clean history
 
 ### Step 4: Report & Commit
@@ -1731,7 +1715,6 @@ Organized across 6 tiers:
 ### For Teams
 
 - **Unified standards**: TRUST 5 principles enforced across team
-- **Transparent workflow**: Complete audit trail with @TAGs
 - **Collaboration**: Shared context and clear requirements
 - **Onboarding**: New team members understand patterns instantly
 
@@ -1848,7 +1831,6 @@ class UserService {
 #### When to Use Yoda Master
 
 - **Deep technical understanding**: "Why do we use SPEC-first development?"
-- **Principle-based learning**: Understanding TDD philosophy, EARS grammar design, @TAG system architecture
 - **Documentation generation**: Auto-create guides in `.moai/learning/` for future reference
 - **Verification of understanding**: Use AskUserQuestion to ensure comprehension before moving on
 
@@ -1857,7 +1839,6 @@ class UserService {
 Yoda Master leverages **Skill patterns for stability** and **Context7 for latest documentation**:
 
 - `Skill("moai-foundation-specs")` - SPEC-first philosophy and EARS grammar
-- `Skill("moai-foundation-tags")` - @TAG system architecture and traceability
 - `Skill("moai-domain-backend")` - Backend architecture principles
 - `Skill("moai-lang-python")` - Python programming mastery
 
@@ -1906,7 +1887,6 @@ Yoda Master Response:
 
 # Then ask technical depth questions
 "Why does SPEC-first development prevent rework?"
-"How does the @TAG system maintain traceability?"
 "What are the principles behind TRUST 5?"
 ```
 
@@ -2312,4 +2292,3 @@ MoAI-ADK is built on years of research into AI-assisted development, test-driven
 [📖 Read the Full Documentation →](https://adk.mo.ai.kr)
 
 
-<!-- @DOC:TRUST-001 -->

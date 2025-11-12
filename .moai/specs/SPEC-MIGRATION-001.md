@@ -4,7 +4,6 @@
 **상태**: 진행 중
 **담당자**: 개발팀
 **우선순위**: HIGH
-**@TAG**: @SPEC:MIGRATION-001 @DOC:MIGRATION-001 @TASK:MIGRATION-001
 
 ---
 
@@ -153,10 +152,8 @@ const qualityImprovements = [
 ---
 
 ## 요구사항
-**@TAG**: @REQ:MIGRATION-001
 
 ### 기능적 요구사항
-**@TAG**: @REQ:MIGRATION-001-FUNC
 
 #### 1. Bun 통합
 - [ ] **패키지 관리**: `bun install`로 npm 전환
@@ -242,10 +239,8 @@ graph TD
 ---
 
 ## 구현 계획
-**@TAG**: @TASK:MIGRATION-001-PLAN
 
 ### Phase 1: 개발 환경 설정 (2-3일)
-**@TAG**: @TASK:MIGRATION-001-PHASE1
 
 #### 1.1 Bun 설치 및 구성
 ```bash
@@ -375,7 +370,6 @@ jobs:
 ---
 
 ## 검증 체크리스트
-**@TAG**: @TEST:MIGRATION-001
 
 ### 개발 환경 검증
 - [ ] Bun을 통한 모든 개발 작업 정상 동작

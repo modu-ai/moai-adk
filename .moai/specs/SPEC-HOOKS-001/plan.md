@@ -1,4 +1,3 @@
-# @SPEC:HOOKS-001 구현 계획 (사후 분석)
 
 > **⚠️ 사후 문서화 (Reverse Engineering)**
 >
@@ -126,7 +125,6 @@ tests/unit/test_alfred_hooks_core_context.py::test_clear_workflow_context ✅
 
 #### 1.4. tags.py (244 LOC)
 - ✅ `search_tags()`: ripgrep JSON 파싱, mtime 캐싱
-- ✅ `verify_tag_chain()`: @SPEC → @TEST → @CODE 검증
 - ✅ `find_all_tags_by_type()`: TAG 타입별 그루핑
 - ✅ `suggest_tag_reuse()`: 키워드 기반 기존 TAG 추천
 - ✅ `get_library_version()`: 24시간 TTL 캐싱
@@ -237,13 +235,11 @@ EVENT_HANDLERS = {
 ### CODE-FIRST TAG 시스템
 
 #### 1. ripgrep 통합
-- ✅ **명령어**: `rg --json '@SPEC:' .moai/specs/`
 - ✅ **JSON 파싱**: 파일명, 라인 번호, 매칭 텍스트 추출
 - ✅ **mtime 캐싱**: 파일 수정 시 자동 캐시 무효화
 - ✅ **효과**: 중간 인덱스 없이 코드 직접 스캔
 
 #### 2. TAG 체인 검증
-- ✅ **@SPEC → @TEST → @CODE**: 완전성 확인
 - ✅ **고아 TAG 탐지**: CODE는 있는데 SPEC 없으면 고아
 - ✅ **효과**: TAG 무결성 보장
 
@@ -304,7 +300,6 @@ tests/unit/test_alfred_hooks_core_checkpoint.py ✅ 4/4
 - ✅ **Readable**: 모듈별 명확한 책임 분리 (SRP)
 - ✅ **Unified**: 3계층 아키텍처 (CLI, Core, Handler)
 - ✅ **Secured**: Shell Injection, Path Traversal 방어
-- ✅ **Trackable**: @TAG 시스템으로 완전 추적 가능
 
 ### 코드 제약 준수
 
@@ -378,5 +373,4 @@ Alfred Hooks 시스템은 **SPEC-First TDD 원칙에 따라 설계되었어야 �
 ---
 
 **작성일**: 2025-10-16
-**작성자**: @Goos
 **문서 유형**: 사후 분석 (Reverse Engineering)

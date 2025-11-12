@@ -1,12 +1,6 @@
-# @TEST:PHASE-EXECUTOR-VERSION-001 | SPEC: SPEC-PHASE-EXECUTOR-VERSION-001 | CODE: src/moai_adk/core/project/phase_executor.py
 """
 Tests for configuration generation phase preserving version field
 
-@TEST:PHASE-EXECUTOR-VERSION-001 - Phase 4 preserves existing moai.version field
-@TEST:PHASE-EXECUTOR-VERSION-002 - Phase 4 merges new config with existing version
-@TEST:PHASE-EXECUTOR-VERSION-003 - Phase 4 handles version field priority correctly
-@TEST:PHASE-EXECUTOR-VERSION-004 - Phase 4 preserves version during reinitialization
-@TEST:PHASE-EXECUTOR-VERSION-005 - Phase 4 version field validation
 """
 
 import json
@@ -26,7 +20,6 @@ class TestPhaseExecutorVersion:
         WHEN: Phase 4 (configuration generation) executes
         THEN: Should preserve existing moai.version field
         """
-        # @TEST:PHASE-EXECUTOR-VERSION-001
         from moai_adk.core.project.phase_executor import PhaseExecutor
         from moai_adk.core.project.validator import ProjectValidator
 
@@ -81,7 +74,6 @@ class TestPhaseExecutorVersion:
         WHEN: Phase 4 (configuration generation) executes
         THEN: Should merge both configs, preserving version
         """
-        # @TEST:PHASE-EXECUTOR-VERSION-002
         from moai_adk.core.project.phase_executor import PhaseExecutor
         from moai_adk.core.project.validator import ProjectValidator
 
@@ -141,7 +133,6 @@ class TestPhaseExecutorVersion:
         WHEN: Phase 4 (configuration generation) executes
         THEN: Should prioritize existing version (user customizations)
         """
-        # @TEST:PHASE-EXECUTOR-VERSION-003
         from moai_adk.core.project.phase_executor import PhaseExecutor
         from moai_adk.core.project.validator import ProjectValidator
 
@@ -187,7 +178,6 @@ class TestPhaseExecutorVersion:
         WHEN: Phase 4 (configuration generation) executes with reinit=True
         THEN: Should preserve the custom version field
         """
-        # @TEST:PHASE-EXECUTOR-VERSION-004
         from moai_adk.core.project.phase_executor import PhaseExecutor
         from moai_adk.core.project.validator import ProjectValidator
 
@@ -246,7 +236,6 @@ class TestPhaseExecutorVersion:
         WHEN: Phase 4 (configuration generation) executes
         THEN: Should preserve the version field even if invalid
         """
-        # @TEST:PHASE-EXECUTOR-VERSION-005
         from moai_adk.core.project.phase_executor import PhaseExecutor
         from moai_adk.core.project.validator import ProjectValidator
 

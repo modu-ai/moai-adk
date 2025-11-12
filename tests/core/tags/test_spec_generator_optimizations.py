@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @CODE:OPT-SPEC-GENERATOR-001 | @TEST:OPT-SPEC-GENERATOR-001
 """Performance optimization tests for SpecGenerator.
 
 RED Phase: These tests define optimization requirements.

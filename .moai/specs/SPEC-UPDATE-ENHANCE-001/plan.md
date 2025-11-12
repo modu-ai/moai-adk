@@ -1,6 +1,4 @@
-# Implementation Plan: @SPEC:UPDATE-ENHANCE-001
 
-@SPEC:UPDATE-ENHANCE-001 → @PLAN:UPDATE-ENHANCE-001
 
 ## 개요
 
@@ -24,7 +22,6 @@ SessionStart 버전 체크 시스템을 6가지 개선 사항을 통합하여 �
 #!/usr/bin/env python3
 """Version check caching system
 
-@CODE:VERSION-CACHE-001
 """
 
 import json
@@ -36,7 +33,6 @@ from typing import Any, Optional
 class VersionCache:
     """24-hour TTL cache for PyPI version checks
 
-    @CODE:VERSION-CACHE-001
     """
 
     def __init__(self, cache_dir: Path, ttl_hours: int = 24):
@@ -110,7 +106,6 @@ __all__ = ["VersionCache"]
 ```python
 """Version cache unit tests
 
-@TEST:VERSION-CACHE-001
 """
 
 import json
@@ -198,7 +193,6 @@ def is_network_available() -> bool:
     Returns:
         True if network is available, False otherwise
 
-    @CODE:NETWORK-DETECT-001
     """
     import socket
 
@@ -238,8 +232,6 @@ def get_package_version_info(cwd: str = ".") -> dict[str, Any]:
             - "release_notes_url": GitHub releases URL
             - "from_cache": Boolean indicating cache hit
 
-    @CODE:VERSION-CACHE-001
-    @CODE:NETWORK-DETECT-001
     """
     from importlib.metadata import version, PackageNotFoundError
     from pathlib import Path
@@ -384,7 +376,6 @@ def _load_version_check_config(cwd: str) -> dict[str, Any]:
 ```python
 """Offline mode tests
 
-@TEST:OFFLINE-MODE-001
 """
 
 import pytest
@@ -454,9 +445,6 @@ def handle_session_start(payload: HookPayload) -> HookResult:
 
     ... (기존 docstring 유지)
 
-    @TAG:CHECKPOINT-EVENT-001
-    @TAG:HOOKS-TIMEOUT-001
-    @CODE:VERSION-CACHE-001
     """
     # ... (기존 코드 유지)
 
@@ -513,7 +501,6 @@ def handle_session_start(payload: HookPayload) -> HookResult:
 ```python
 """Major version update warning tests
 
-@TEST:MAJOR-UPDATE-WARN-001
 """
 
 import pytest
@@ -617,7 +604,6 @@ def test_minor_update_shows_normal_message():
 ```markdown
 # 버전 체크 시스템 사용 가이드
 
-@DOC:VERSION-CHECK-CONFIG-001
 
 ## 개요
 
@@ -696,7 +682,6 @@ A: `uv` 툴체인이 설치되어 있는지 확인하세요: `uv --version`
 ```python
 """End-to-end version check tests
 
-@TEST:VERSION-CHECK-E2E-001
 """
 
 import pytest
@@ -870,4 +855,3 @@ def test_disabled_version_check(tmp_path):
 
 **END OF PLAN**
 
-@PLAN:UPDATE-ENHANCE-001

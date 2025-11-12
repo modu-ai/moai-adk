@@ -26,7 +26,6 @@ User → Role → Permissions
 
 ```python
 # SPEC: AUTH-030 - RBAC 구현
-# @TAG:AUTH-030
 
 from enum import Enum
 from fastapi import Depends, HTTPException, status

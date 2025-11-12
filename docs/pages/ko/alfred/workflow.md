@@ -269,26 +269,21 @@ TDD 사이클 중 엄격하게 금지되는 행위:
 
 1. **TDD 커밋 사이클 준수**: RED → GREEN → REFACTOR
 2. **커밋 메시지 형식**: 워크플로우 단계와 목적 명시
-3. **@TAG 참조**: SPEC, TEST, CODE 연결 유지
 
 ### 커밋 시퀀스 예시
 
 ```bash
 # RED: 실패하는 테스트 작성
 commit 1: "test: JWT 인증 통합 테스트 추가
-@TEST:AUTH-001 @SPEC:AUTH-001"
 
 # GREEN: 최소 구현
 commit 2: "feat: JWT 토큰 서비스 구현 (최소)
-@CODE:AUTH-001:SERVICE @TEST:AUTH-001"
 
 # REFACTOR: 품질 개선
 commit 3: "refactor: JWT 에러 처리 및 보안 강화
-@CODE:AUTH-001:SECURITY @CODE:AUTH-001:SERVICE"
 
 # Develop으로 merge
 commit 4: "merge: SPEC-AUTH-001을 develop으로 merge
-@SPEC:AUTH-001 @DOC:AUTH-001"
 ```
 
 ### 프로젝트 정리
@@ -462,7 +457,6 @@ ETA: 45 minutes remaining
 Alfred의 4단계 워크플로우는 다음과 같은 핵심 가치를 제공합니다:
 
 1. **투명성**: 모든 단계에서 사용자에게 완전한 가시성 제공
-2. **추적성**: @TAG 시스템으로 모든 산출물 연결
 3. **품질**: TDD 원칙 엄격 준수로 프로덕션급 코드 보장
 4. **효율성**: 전문가 에이전트 위임으로 최적의 결과 신속 달성
 5. **학습**: 프로젝트 패턴으로부터 지속적 학습 및 개선

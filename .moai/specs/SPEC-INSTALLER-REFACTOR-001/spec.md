@@ -4,7 +4,6 @@ version: 0.2.0
 status: completed
 created: 2025-10-06
 updated: 2025-10-18
-author: @Goos
 labels:
   - refactoring
   - quality
@@ -14,24 +13,20 @@ labels:
 priority: high
 ---
 
-# @SPEC:INSTALLER-REFACTOR-001: LOC 제한 준수 리팩토링
 
 ## HISTORY
 
 ### v0.2.0 (2025-10-18)
 - **CHANGED**: deprecated → completed (TypeScript 프로젝트 아카이브)
-- **AUTHOR**: @Goos
 - **REASON**: TypeScript 프로젝트에서 구현 완료된 기능, Python 전환으로 deprecated 처리했으나 실제로는 완료된 것으로 간주
 
 ### v0.1.0 (2025-10-16)
 - **DEPRECATED**: TypeScript 프로젝트용 SPEC, Python 프로젝트에는 적용 불가
-- **AUTHOR**: @Goos
 - **REASON**: MoAI-ADK가 Python 프로젝트로 전환됨에 따라 TypeScript installer 리팩토링 SPEC 불필요
 - **ALTERNATIVE**: Python 프로젝트는 이미 TRUST 원칙 준수 (파일 ≤300 LOC, 함수 ≤50 LOC)
 
 ### v0.0.1 (2025-10-06)
 - **INITIAL**: LOC 제한 준수 리팩토링 명세 작성 (TypeScript용)
-- **AUTHOR**: @Goos
 - **SCOPE**: TypeScript installer 파일들의 LOC 제한 준수
 
 ---
@@ -158,7 +153,6 @@ export class PhaseExecutor {
 
 #### After (분리)
 ```typescript
-// @CODE:INSTALLER-REFACTOR-001:BACKUP
 // backup-manager.ts (<100 LOC)
 export class BackupManager {
   async createBackup(config: InstallationConfig): Promise<void> {
@@ -170,7 +164,6 @@ export class BackupManager {
   }
 }
 
-// @CODE:INSTALLER-REFACTOR-001:DIR
 // directory-builder.ts (<100 LOC)
 export class DirectoryBuilder {
   async createProjectDirectories(config: InstallationConfig): Promise<void> {
@@ -182,7 +175,6 @@ export class DirectoryBuilder {
   }
 }
 
-// @CODE:INSTALLER-REFACTOR-001:GIT
 // git-initializer.ts (<100 LOC)
 export class GitInitializer {
   async initializeRepository(config: InstallationConfig): Promise<void> {
@@ -194,7 +186,6 @@ export class GitInitializer {
   }
 }
 
-// @CODE:INSTALLER-REFACTOR-001:EXECUTOR
 // phase-executor.ts (<200 LOC - 준수)
 export class PhaseExecutor {
   constructor(
@@ -243,7 +234,6 @@ export class TemplateProcessor {
 
 #### After (분리)
 ```typescript
-// @CODE:INSTALLER-REFACTOR-001:PATH
 // template-path-resolver.ts (<150 LOC)
 export class TemplatePathResolver {
   getTemplatesPath(currentFileUrl: string): string {
@@ -261,7 +251,6 @@ export class TemplatePathResolver {
   // ... 기타 경로 해석 메서드
 }
 
-// @CODE:INSTALLER-REFACTOR-001:RENDER
 // template-renderer.ts (<100 LOC)
 export class TemplateRenderer {
   createTemplateVariables(config: InstallationConfig): TemplateData {
@@ -277,7 +266,6 @@ export class TemplateRenderer {
   }
 }
 
-// @CODE:INSTALLER-REFACTOR-001:PROCESSOR
 // template-processor.ts (<200 LOC - 준수)
 export class TemplateProcessor {
   constructor(
@@ -299,9 +287,7 @@ export class TemplateProcessor {
 
 ---
 
-## Traceability (@TAG)
 
-- **SPEC**: @SPEC:INSTALLER-REFACTOR-001
 - **TEST**:
   - `__tests__/backup-manager.test.ts`
   - `__tests__/directory-builder.test.ts`

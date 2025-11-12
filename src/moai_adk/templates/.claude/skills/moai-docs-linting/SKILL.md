@@ -434,7 +434,6 @@ context7_references:
     topic: "Markdownlint Rules"
   - url: "https://www.markdownguide.org/basic-syntax/"
     topic: "Markdown Basic Syntax"
-spec_reference: "@SPEC:DOCS-001"
 ```
 
 ---

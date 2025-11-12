@@ -24,7 +24,6 @@ tags: [fastapi, pagination, sorting, performance, sqlalchemy]
 
 ```python
 # SPEC: API-010 - 페이지네이션 스키마
-# @TAG:API-010
 
 from pydantic import BaseModel, Field
 from typing import List, Generic, TypeVar, Optional
@@ -71,7 +70,6 @@ class CursorPaginatedResponse(BaseModel, Generic[T]):
 
 ```python
 # SPEC: API-011 - 게시글 모델
-# @TAG:API-011
 
 from sqlalchemy import Column, Integer, String, Text, DateTime, Index
 from sqlalchemy.sql import func
@@ -111,7 +109,6 @@ class Post(Base):
 
 ```python
 # SPEC: API-012 - 페이지네이션 CRUD
-# @TAG:API-012
 
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, asc
@@ -219,7 +216,6 @@ def get_posts_cursor_paginated(
 
 ```python
 # SPEC: API-013 - 페이지네이션 API
-# @TAG:API-013
 
 from fastapi import FastAPI, Depends, Query
 from sqlalchemy.orm import Session
@@ -376,7 +372,6 @@ curl "http://localhost:8000/posts/cursor/?cursor=eyJpZCI6MjAsInZhbHVlIjoiMjAyNC0
 
 ```python
 # SPEC: TEST-API-010 - 페이지네이션 테스트
-# @TAG:TEST-API-010
 
 import pytest
 from fastapi.testclient import TestClient

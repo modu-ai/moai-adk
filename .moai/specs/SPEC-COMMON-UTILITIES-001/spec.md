@@ -8,7 +8,6 @@ created: "2025-11-10"
 author: "GoosLab"
 ---
 
-# @SPEC:COMMON-UTILITIES-001 | @EXPERT:BACKEND
 
 ## SPEC Overview
 
@@ -24,9 +23,6 @@ This SPEC defines the common utilities system for MoAI-ADK, which provides reusa
 
 ## Implementation Files
 
-- **CODE**: @CODE:COMMON-UTILITIES-001 - Common utilities implementation
-- **TEST**: @TEST:COMMON-UTILITIES-001 - Common utilities tests
-- **DOC**: @DOC:COMMON-UTILITIES-001 - Common utilities documentation
 
 ## Acceptance Criteria
 
@@ -40,5 +36,4 @@ This SPEC defines the common utilities system for MoAI-ADK, which provides reusa
 ## Traceability Chain
 
 ```
-@SPEC:COMMON-UTILITIES-001 → @CODE:COMMON-UTILITIES-001 → @TEST:COMMON-UTILITIES-001 → @DOC:COMMON-UTILITIES-001
 ```

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @TEST:TEMPLATE-SYSTEM-001 | SPEC: .moai/specs/SPEC-TEMPLATE-SYSTEM-001/spec.md | CODE: @CODE:TEMPLATE-ENGINE-001
 """
 Test suite for template system functionality
 
@@ -9,8 +8,6 @@ This module tests the complete template system including:
 - Error handling and edge cases
 - Integration with MoAI-ADK configuration system
 
-@SPEC:TEMPLATE-SYSTEM-001: 템플릿 시스템 검증 테스트
-@CODE:TEMPLATE-SYSTEM-TEST: 템플릿 시스템 검증 테스트 코드
 """
 
 import json

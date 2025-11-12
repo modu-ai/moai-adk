@@ -9,7 +9,6 @@
 ```markdown
 # SPEC-AUTH-001: User Password Authentication
 
-@SPEC:AUTH-001
 
 ## Requirements
 
@@ -33,7 +32,6 @@
 ```python
 # tests/test_auth_password.py
 
-@TEST:SPEC:AUTH-001
 """
 Password authentication tests
 Coverage target: 96% (exceeds 85% minimum)
@@ -45,11 +43,9 @@ from src.exceptions import RateLimitError
 
 
 class TestPasswordHashing:
-    """@TEST:SPEC:AUTH-001-HASH: Password hashing tests"""
 
     def test_hash_password_creates_bcrypt_hash(self):
         """
-        @TEST:SPEC:AUTH-001-HASH-001: Bcrypt hash creation
         Expected: Non-plaintext hash in bcrypt format
         """
         plaintext = "SecurePass123"
@@ -61,7 +57,6 @@ class TestPasswordHashing:
 
     def test_hash_password_unique_per_salt(self):
         """
-        @TEST:SPEC:AUTH-001-HASH-002: Unique salts
         Expected: Same password → different hashes
         """
         plaintext = "SamePassword"
@@ -72,7 +67,6 @@ class TestPasswordHashing:
 
     def test_hash_password_12_rounds(self):
         """
-        @TEST:SPEC:AUTH-001-HASH-003: November 2025 standard
         Expected: Bcrypt with 12 rounds minimum
         """
         plaintext = "TestPassword"
@@ -84,11 +78,9 @@ class TestPasswordHashing:
 
 
 class TestPasswordVerification:
-    """@TEST:SPEC:AUTH-001-VERIFY: Password verification tests"""
 
     def test_verify_correct_password(self):
         """
-        @TEST:SPEC:AUTH-001-VERIFY-001: Correct password
         Expected: Return True
         """
         plaintext = "CorrectPass123"
@@ -99,7 +91,6 @@ class TestPasswordVerification:
 
     def test_verify_incorrect_password(self):
         """
-        @TEST:SPEC:AUTH-001-VERIFY-002: Wrong password
         Expected: Return False
         """
         hashed = hash_password("CorrectPass123")
@@ -109,7 +100,6 @@ class TestPasswordVerification:
 
     def test_verify_empty_password(self):
         """
-        @TEST:SPEC:AUTH-001-VERIFY-003: Empty password validation
         Expected: Raise ValueError
         """
         with pytest.raises(ValueError):
@@ -117,11 +107,9 @@ class TestPasswordVerification:
 
 
 class TestLoginRateLimiting:
-    """@TEST:SPEC:AUTH-001-RATE: Rate limiting tests"""
 
     def test_login_rate_limit_5_per_minute(self):
         """
-        @TEST:SPEC:AUTH-001-RATE-001: Rate limit enforcement
         Expected: 6th attempt blocked
         """
         email = "testuser@example.com"
@@ -138,7 +126,6 @@ class TestLoginRateLimiting:
 
     def test_rate_limit_reset_on_success(self):
         """
-        @TEST:SPEC:AUTH-001-RATE-002: Reset on successful auth
         Expected: Counter resets after successful login
         """
         email = "testuser@example.com"
@@ -158,11 +145,9 @@ class TestLoginRateLimiting:
 
 
 class TestAccountLockout:
-    """@TEST:SPEC:AUTH-001-LOCKOUT: Account lockout tests"""
 
     def test_account_locked_after_5_failures(self):
         """
-        @TEST:SPEC:AUTH-001-LOCKOUT-001: Lock after 5 failures
         Expected: Account locked for 30 minutes
         """
         email = "secure@example.com"
@@ -182,7 +167,6 @@ class TestAccountLockout:
 
     def test_locked_account_notification(self):
         """
-        @TEST:SPEC:AUTH-001-LOCKOUT-002: Email notification
         Expected: Email sent to user on lockout
         """
         email = "notified@example.com"
@@ -206,7 +190,6 @@ class TestAccountLockout:
 # src/auth/password.py
 
 """
-@CODE:SPEC:AUTH-001
 User password authentication module.
 
 This module handles secure password operations including hashing,
@@ -225,14 +208,12 @@ from typing import Tuple, Optional
 
 logger = logging.getLogger(__name__)
 
-# @CODE:SPEC:AUTH-001-CONFIG: Security configuration
 BCRYPT_ROUNDS = 12  # November 2025 standard (was 10 in older versions)
 RATE_LIMIT_ATTEMPTS = 5
 RATE_LIMIT_WINDOW_MINUTES = 1
 LOCKOUT_DURATION_MINUTES = 30
 
 
-@CODE:SPEC:AUTH-001-HASH
 def hash_password(plaintext: str) -> str:
     """
     Hash password using bcrypt algorithm.
@@ -240,7 +221,6 @@ def hash_password(plaintext: str) -> str:
     Implements OWASP A02:2021 Cryptographic Failures prevention
     using bcrypt with 12 salt rounds (November 2025 standard).
     
-    @CODE:SPEC:AUTH-001-HASH: Password hashing with bcrypt
     
     Security properties:
     - Uses bcrypt (OWASP recommended for passwords)
@@ -262,7 +242,6 @@ def hash_password(plaintext: str) -> str:
         >>> hashed.startswith("$2b$12$")
         True
     """
-    # @CODE:SPEC:AUTH-001-HASH-001: Input validation
     if not plaintext or not isinstance(plaintext, str):
         raise ValueError("Password must be non-empty string")
     
@@ -270,7 +249,6 @@ def hash_password(plaintext: str) -> str:
         raise ValueError("Password too long (max 72 characters for bcrypt)")
     
     try:
-        # @CODE:SPEC:AUTH-001-HASH-002: Generate salt and hash
         salt = bcrypt.gensalt(rounds=BCRYPT_ROUNDS)
         hashed_bytes = bcrypt.hashpw(plaintext.encode('utf-8'), salt)
         hashed_str = hashed_bytes.decode('utf-8')
@@ -283,12 +261,10 @@ def hash_password(plaintext: str) -> str:
         raise ValueError("Password hashing failed") from e
 
 
-@CODE:SPEC:AUTH-001-VERIFY
 def verify_password(plaintext: str, hashed: str) -> bool:
     """
     Verify plaintext password against bcrypt hash.
     
-    @CODE:SPEC:AUTH-001-VERIFY: Password verification
     
     Safe comparison prevents timing attacks by using
     bcrypt's constant-time comparison.
@@ -311,7 +287,6 @@ def verify_password(plaintext: str, hashed: str) -> bool:
         return False
     
     try:
-        # @CODE:SPEC:AUTH-001-VERIFY-001: Constant-time comparison
         return bcrypt.checkpw(
             plaintext.encode('utf-8'),
             hashed.encode('utf-8')
@@ -321,12 +296,10 @@ def verify_password(plaintext: str, hashed: str) -> bool:
         return False
 
 
-@CODE:SPEC:AUTH-001-AUTH
 def authenticate_user(email: str, password: str) -> str:
     """
     Authenticate user and return JWT token.
     
-    @CODE:SPEC:AUTH-001-AUTH: User login with authentication
     
     Implements:
     - Rate limiting (5 attempts per minute)
@@ -354,49 +327,39 @@ def authenticate_user(email: str, password: str) -> str:
     from src.rate_limiter import RateLimiter
     from src.exceptions import RateLimitError, AccountLockedError
     
-    # @CODE:SPEC:AUTH-001-AUTH-001: Rate limiting check
     limiter = RateLimiter()
     if not limiter.allow_attempt(email):
         raise RateLimitError(f"Too many login attempts for {email}")
     
-    # @CODE:SPEC:AUTH-001-AUTH-002: Find user
     user = User.query.filter_by(email=email).first()
     if not user:
         logger.warning(f"Login attempt for non-existent user: {email}")
         raise ValueError("Invalid email or password")
     
-    # @CODE:SPEC:AUTH-001-AUTH-003: Check account lockout
     if _is_account_locked(user):
         raise AccountLockedError("Account locked. Try again later.")
     
-    # @CODE:SPEC:AUTH-001-AUTH-004: Verify password
     if not verify_password(password, user.password_hash):
         _increment_failed_attempts(user)
         logger.warning(f"Failed login for {email}")
         raise ValueError("Invalid email or password")
     
-    # @CODE:SPEC:AUTH-001-AUTH-005: Success - reset counters
     _reset_failed_attempts(user)
     logger.info(f"Successful login for {email}")
     
-    # @CODE:SPEC:AUTH-001-AUTH-006: Generate token
     token = _generate_token(user)
     return token
 
 
 # Helper functions (also tagged)
 
-@CODE:SPEC:AUTH-001-LOCKOUT
 def _is_account_locked(user: 'User') -> bool:
-    """@CODE:SPEC:AUTH-001-LOCKOUT: Check if account locked"""
     if not user.locked_until:
         return False
     return datetime.utcnow() < user.locked_until
 
 
-@CODE:SPEC:AUTH-001-LOCKOUT
 def _increment_failed_attempts(user: 'User') -> None:
-    """@CODE:SPEC:AUTH-001-LOCKOUT: Increment failed attempts"""
     user.failed_attempts += 1
     if user.failed_attempts >= RATE_LIMIT_ATTEMPTS:
         user.locked_until = datetime.utcnow() + timedelta(
@@ -410,17 +373,13 @@ def _increment_failed_attempts(user: 'User') -> None:
     user.save()
 
 
-@CODE:SPEC:AUTH-001-AUTH
 def _reset_failed_attempts(user: 'User') -> None:
-    """@CODE:SPEC:AUTH-001-AUTH: Reset failed attempts counter"""
     user.failed_attempts = 0
     user.locked_until = None
     user.save()
 
 
-@CODE:SPEC:AUTH-001-AUTH
 def _generate_token(user: 'User') -> str:
-    """@CODE:SPEC:AUTH-001-AUTH: Generate JWT token"""
     import jwt
     from datetime import datetime, timedelta
     
@@ -444,7 +403,6 @@ def _generate_token(user: 'User') -> str:
 ```python
 # src/auth/__init__.py
 """
-@CODE:SPEC:AUTH-001
 Authentication module exports.
 
 Follows unified module structure:
@@ -485,7 +443,6 @@ __all__ = [
 #### S: Secured - Security Implementation
 
 ```python
-# @CODE:SPEC:AUTH-001-SECURITY: Security controls
 
 # ✓ OWASP A02: Cryptographic Failures - MITIGATED
 #   Using bcrypt instead of MD5/SHA1
@@ -501,7 +458,6 @@ __all__ = [
 #   Role-based access control (RBAC)
 
 # Security Testing Integration
-@TEST:SPEC:AUTH-SECURITY-001
 def test_password_not_logged():
     """Verify passwords never logged"""
     import logging
@@ -514,7 +470,6 @@ def test_password_not_logged():
             assert "SecretPass123" not in str(call)
             assert "SecretPass" not in str(call)
 
-@TEST:SPEC:AUTH-SECURITY-002
 def test_timing_attack_resistance():
     """Verify timing-attack resistant comparison"""
     import time
@@ -541,7 +496,6 @@ def test_timing_attack_resistance():
 ```markdown
 # docs/authentication.md
 
-@DOC:SPEC:AUTH-001
 Authentication System Documentation
 
 ## Overview
@@ -549,13 +503,9 @@ Authentication System Documentation
 User authentication using secure password hashing and token-based access.
 
 ### References
-- Specification: @SPEC:AUTH-001
-- Implementation: @CODE:SPEC:AUTH-001
-- Tests: @TEST:SPEC:AUTH-001
 
 ## User Authentication
 
-@DOC:SPEC:AUTH-001-AUTH
 ### Login Flow
 
 1. User submits email + password
@@ -567,13 +517,11 @@ User authentication using secure password hashing and token-based access.
 
 ## Security Features
 
-@DOC:SPEC:AUTH-001-SECURITY
 - **Password Hashing**: bcrypt with 12 rounds (OWASP standard)
 - **Rate Limiting**: 5 login attempts per minute per email
 - **Account Lockout**: 30-minute lockout after 5 failures
 - **Notifications**: Email alerts on lockout events
 
-See @CODE:SPEC:AUTH-001 for implementation details.
 ```
 
 #### Complete TRUST 5 Chain for Example 1
@@ -584,24 +532,11 @@ SPEC Layer: SPEC-AUTH-001
   Status: APPROVED
   
 TEST Layer: 15+ Tests, 96% Coverage
-  @TEST:SPEC:AUTH-001-HASH-001: Bcrypt hash creation
-  @TEST:SPEC:AUTH-001-HASH-002: Unique salts
-  @TEST:SPEC:AUTH-001-VERIFY-001: Correct password
-  @TEST:SPEC:AUTH-001-RATE-001: Rate limit enforcement
-  @TEST:SPEC:AUTH-001-LOCKOUT-001: Account lockout
   ... (10+ more)
   
 CODE Layer: 6 Functions + 4 Helpers
-  @CODE:SPEC:AUTH-001-HASH: hash_password()
-  @CODE:SPEC:AUTH-001-VERIFY: verify_password()
-  @CODE:SPEC:AUTH-001-AUTH: authenticate_user()
-  @CODE:SPEC:AUTH-001-LOCKOUT: Lockout helpers
-  @CODE:SPEC:AUTH-001-CONFIG: Configuration
   
 DOC Layer: Complete Guide
-  @DOC:SPEC:AUTH-001: Main documentation
-  @DOC:SPEC:AUTH-001-AUTH: Login flow
-  @DOC:SPEC:AUTH-001-SECURITY: Security features
   
 TRUST 5 Validation:
   ✓ Test First: 96% coverage (exceeds 85% minimum)

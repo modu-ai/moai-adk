@@ -4,7 +4,6 @@ version: 0.1.0
 status: completed
 created: 2025-10-06
 updated: 2025-10-16
-author: @Goos
 priority: high
 category: docs
 labels:
@@ -25,13 +24,11 @@ scope:
     - docs/security-scanning.md
 ---
 
-# @SPEC:DOCS-002: VitePress Phase 2 - 핵심 개념 페이지 3개 추가
 
 ## HISTORY
 
 ### v0.1.0 (2025-10-16)
 - **COMPLETED**: 문서화 완료, Python 프로젝트에 맞게 마크다운 문서 작성
-- **AUTHOR**: @Goos
 - **CHANGES**:
   - docs/guides/architecture.md 작성 완료
   - docs/commands/cli.md 작성 완료
@@ -41,7 +38,6 @@ scope:
 
 ### v0.0.1 (2025-10-06)
 - **INITIAL**: 문서화 명세 최초 작성
-- **AUTHOR**: @Goos
 - **ORIGINAL_SCOPE**: VitePress 기반 문서 (Python 프로젝트로 전환되면서 일반 마크다운으로 변경)
 
 ---
@@ -76,7 +72,6 @@ scope:
 
 2. **콘텐츠 소스 가정**:
    - README.md 608~932줄: Alfred 에이전트 팀 상세 설명
-   - README.md 813~931줄: @TAG 시스템 CODE-FIRST 원칙
    - dev-guide.md: TRUST 5원칙 상세 (Test, Readable, Unified, Secured, Trackable)
 
 3. **Mermaid 다이어그램 가정**:
@@ -95,7 +90,6 @@ scope:
 
 **UR-001**: 시스템은 VitePress docs/concepts/ 디렉토리에 3개 핵심 개념 페이지를 제공해야 한다
 - **alfred-agents.md**: Alfred SuperAgent + 9개 전문 에이전트 팀 구조 및 역할
-- **tag-system.md**: @TAG 추적성 시스템 (CODE-FIRST 원칙, TAG 체인)
 - **trust-principles.md**: TRUST 5원칙 상세 설명 (품질 기준)
 
 **UR-002**: 시스템은 README.md 콘텐츠를 60% 이상 반영해야 한다
@@ -126,12 +120,10 @@ scope:
   - Mermaid 오케스트레이션 다이어그램
   - 에이전트 협업 원칙
 
-**ER-002**: WHEN 사용자가 "@TAG 추적성 시스템" 링크를 클릭하면, TAG 시스템 페이지를 표시해야 한다
 - **트리거**: Sidebar에서 링크 클릭
 - **응답**: tag-system.md 렌더링
 - **구성**:
   - CODE-FIRST 원칙 설명
-  - @SPEC → @TEST → @CODE → @DOC 체인
   - 언어별 TAG 사용 예시 (TypeScript, Python, Dart)
   - TAG 검증 방법 (rg 명령어)
 
@@ -143,7 +135,6 @@ scope:
   - R (Readable): 함수 ≤50 LOC, 복잡도 ≤10
   - U (Unified): 아키텍처 통합성
   - S (Secured): 보안 검증 (SQL Injection, XSS, CSRF)
-  - T (Trackable): @TAG 추적성
 
 **ER-004**: WHEN 콘텐츠가 업데이트되면, 시스템은 자동으로 사이트를 재빌드해야 한다
 - **트리거**: Markdown 파일 저장
@@ -165,7 +156,6 @@ scope:
 - **항목**:
   1. SPEC-First TDD
   2. Alfred 10개 에이전트 (NEW)
-  3. @TAG 추적성 시스템 (NEW)
   4. TRUST 5원칙 (NEW)
 
 **SR-003**: WHILE 프로덕션 빌드 시, 3개 페이지를 정적 HTML로 생성해야 한다
@@ -216,18 +206,13 @@ scope:
 
 ---
 
-## Traceability (@TAG)
 
-- **SPEC**: @SPEC:DOCS-002 (이 문서)
-- **TEST**: @TEST:DOCS-002
   - moai-adk-ts/__tests__/docs/vitepress-build.test.ts (빌드 검증)
   - moai-adk-ts/__tests__/docs/link-validation.test.ts (3개 페이지 존재 확인)
-- **CODE**: @CODE:DOCS-002
   - docs/concepts/alfred-agents.md
   - docs/concepts/tag-system.md
   - docs/concepts/trust-principles.md
   - docs/.vitepress/config.mts (Sidebar 확장)
-- **DOC**: @DOC:DOCS-002 (메타 문서: Phase 2 완료 보고서)
 
 ---
 

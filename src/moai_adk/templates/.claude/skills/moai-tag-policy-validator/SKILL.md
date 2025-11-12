@@ -266,10 +266,8 @@ Quality Assurance
 ```python
 VALIDATION_RULES = {
     "spec_format": {
-        "required": ["@SPEC:ID", "@VERSION", "@STATUS"],
         "forbidden": ["@TODO", "@FIXME"],
         "patterns": {
-            "@SPEC:": r"@[A-Z]+:[A-Z0-9-]+"
         }
     },
     "code_format": {

@@ -50,15 +50,10 @@ graph LR
 - **git-manager**: Git 워크플로우 관리자
 - **qa-validator**: 품질 검증 전문가
 
-## 🔗 @TAG 추적성 시스템
 
 모든 개발 산출물을 연결하는 완전한 추적성을 제공합니다.
 
 ```
-@SPEC-DOCS-001 (요구사항)
-  └── @TEST-DOCS-001-001 (테스트)
-      └── @CODE-DOCS-001-001 (구현)
-          └── @DOC-DOCS-001-001 (문서)
 ```
 
 ## 📚 Skills Ecosystem v4.0 (v0.23.1)

@@ -392,9 +392,7 @@ Quality Metrics:
 - 2025-09-19 | 862d15a7 | Template initialization: remove and variableize locally generated files
 - 2025-09-19 | f03ec637 | Make your memory strategy real: remove non-existent file references
 - 2025-09-19 | b5518b99 | Improved API document creation logic: Conditional creation by project type
-- 2025-09-19 | 07393b2c | SPEC-003: Document synchronization and 16-Core @TAG update completed
 - 2025-09-20 | dbe86343 | SPEC-003 final completion: PR guide and review documents added
-- 2025-09-20 | c18ce0be | SPEC-003: Document synchronization and 16-Core @TAG update completed
 - 2025-09-20 | 41391f38 | MoAI command and documentation updates
 - 2025-09-20 | 5eaaacc2 | Solving 3-sync command lock file problem
 - 2025-09-20 | 96febd85 | Comprehensive reflection of GPT-5 suggestions: Improvement of MoAI-ADK stability and realism
@@ -495,13 +493,10 @@ Quality Metrics:
 - 2025-09-26 | eb6ef99d | REFACTOR: Clean up generated files and reorganize documentation
 - 2025-09-26 | 85e6dd6f | REFACTOR: Comprehensive codebase cleanup and modernization
 - 2025-09-26 | ede90fc7 | MODERNIZE: Complete shell-to-Python migration for cross-platform compatibility
-- 2025-09-26 | aa6bf097 | SPEC-011: Preparation of @TAG traceability system enhancement specification
-- 2025-09-26 | 81f67a85 | GREEN: 100% coverage achieved by adding 18 files @TAG
 - 2025-09-26 | a0ab29e7 | REFACTOR: Implementing advanced TAG tools applying TRUST principles
 - 2025-09-26 | 5e679e64 | SYNC: SPEC-011 Complete synchronization and environment cleanup
 - 2025-09-26 | 824f7644 | DOCS: SPEC-011 Living Document synchronization completed
 - 2025-09-26 | b9529192 | chore(release): bump version to v0.1.18
-- 2025-09-26 | 8b6cda49 | fix(cli): Remove @TASK tags from user-facing help output
 - 2025-09-26 | e6cfff8d | chore(version): Complete v0.1.18 version synchronization
 - 2025-09-26 | df93a6f6 | fix(config): Correct Python version references in tool configurations
 - 2025-09-26 | c43ee3ec | chore(release): Complete v0.1.19 system stability and documentation sync
@@ -527,10 +522,6 @@ Quality Metrics:
 - 2025-09-29 | 09d35de0 | feat: Innovative system diagnostic improvements completed (v0.0.3)
 - 2025-09-29 | 076b2ecb | Security: Prevent .claude, .moai, CLAUDE.md from being shared on GitHub
 - 2025-09-29 | f8343cf4 | Edit: Apply open source policy - moai-adk-ts template released
-- 2025-09-29 | 63c9d0c1 | docs: @AI-TAG terminology unification and document synchronization completed
-- 2025-09-29 | 419275ff | fix: @AI-TAG terminology unification finalized - README.md updated
-- 2025-09-29 | 46970900 | Completed: Full unification of @AI-TAG system documentation
-- 2025-09-29 | 01e4437a | Completed: README.md template synchronization and @AI-TAG terminology unified
 - 2025-09-29 | a64a1803 | Cleanup: Remove outdated test files and backups
 - 2025-09-30 | a51ec793 | fix: EARS methodology correction and API error correction
 - 2025-09-30 | cda0f5e9 | fix: EARS methodology correction and API error correction completed
@@ -544,7 +535,6 @@ Quality Metrics:
 - 2025-09-30 | 3ef43c30 | chore: clean up project for v0.0.1 release
 - 2025-09-30 | bc13a3db | refactor: TAG system CODE-FIRST complete conversion
 - 2025-09-30 | 0b25fc40 | feat(cli): SPEC-019 interactive initialization system completed
-- 2025-09-30 | d0451f54 | sync: TEMPLATES -> ROOT .claude synchronization + @TAG standardization
 - 2025-09-30 | 07a2c80e | fix(installer): Resolve ESM compatible template path and fix package installation.
 - 2025-09-30 | 98249541 | fix(init): Prevent backup folder creation when creating a new project
 - 2025-09-30 | 5db73e41 | improve(init): Improved Personal mode question counter and Next Steps
@@ -642,7 +632,6 @@ Quality Metrics:
 - 2025-10-04 | c81c918b | Merge: main -> develop (fix symbolic link bug)
 - 2025-10-04 | 08abe21c | docs: CHANGELOG.md v0.2.4 update
 - 2025-10-04 | e4339796 | Merge: develop -> main (CHANGELOG v0.2.4)
-- 2025-10-04 | 0a6552ba | docs: Added Contributors section - @Workuul symlink bug fixed
 - 2025-10-04 | 8491b405 | Merge: develop -> main (add Contributors section)
 - 2025-10-06 | 7bacfc8b | Initial MoAI-ADK project setup
 - 2025-10-06 | 62211253 | spec: Add INIT-001 moai init non-interactive support
@@ -925,7 +914,6 @@ Quality Metrics:
 - 2025-10-23 | 63db4454 | Merge develop (v0.4.10) into main for production release
 - 2025-10-23 | 45628750 | fix(docs): Correct Mermaid Gantt chart syntax in all README files
 - 2025-10-23 | b768d2cf | docs: Substitute template variables in CLAUDE.md with project config values
-- 2025-10-23 | df2097ca | feat(hooks): Add TAG Guard system for automatic @TAG validation
 - 2025-10-23 | 4ac671ba | style: ruff Lint error fix (v0.4.11 release ready)
 - 2025-10-23 | 883d96d8 | Merge branch 'develop'
 - 2025-10-23 | 53333dd8 | RELEASE: v0.5.0 - Minor Version Upgrade
@@ -1089,7 +1077,6 @@ Quality Metrics:
 - 2025-10-29 | d97d6a3e | Merge pull request #110 from modu-ai/feature/SPEC-UPDATE-ENHANCE-001
 - 2025-10-29 | e69f1740 | chore(templates): Synchronize Phase 4 TAG system to project templates
 - 2025-10-29 | 471266d6 | chore(templates): Sync core hook handlers and release workflows
-- 2025-10-29 | aa3018e9 | [SPEC-DOC-TAG-001] Phase 1: @DOC tag auto-generation infrastructure
 - 2025-10-29 | c9b5d927 | [SPEC-DOC-TAG-003] Phase 3: Batch migration planning for 33 untagged files
 - 2025-10-29 | c3f2890c | [SPEC-DOC-TAG-004] Phase 4: TAG validation and quality gates planning
 - 2025-10-29 | 2dc967d6 | chore(release): Merge v0.8.2 agent documentation improvements
@@ -1287,7 +1274,6 @@ Quality Metrics:
 - 2025-11-04 | 0f5b885b | docs: Add Windows PowerShell installation guide and clarify WSL vs native setup
 - 2025-11-04 | 0a33ffa9 | feat: Add UI/UX Expert agent with Figma MCP integration and moai-design-systems skill
 - 2025-11-04 | 550fa89d | refactor: Reorganize and optimize agent instruction files
-- 2025-11-04 | bd0dd875 | feat: Implement expert agent proactive delegation and @EXPERT TAG system
 - 2025-11-04 | 0cbc62d4 | docs: Add moai-design-systems skill and expert agents testing guide
 - 2025-11-04 | f7c7d83b | refactor: Full Korean localization of CLAUDE.md and updated MoAI-ADK project context
 - 2025-11-04 | df4301c2 | docs: Add comprehensive analysis of release-new.md directive structure

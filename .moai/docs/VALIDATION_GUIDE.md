@@ -16,7 +16,6 @@ MoAI-ADK의 모든 Skills은 **Enterprise v4.0** 표준을 준수해야 합니�
 - **파일 구조**: SKILL.md, reference.md, examples.md 존재 여부
 - **Progressive Disclosure**: 3단계 구조 (Quick Reference, Implementation, Advanced)
 - **보안**: API 키, eval/exec 패턴, 민감한 정보 노출 감지
-- **TAG 시스템**: @TYPE-NUMBER 형식 및 순환 참조 검증
 
 ---
 
@@ -93,7 +92,6 @@ SKILL.md에 필수 섹션:
 
 ### Phase 5: TAG 시스템 검증
 
-유효한 형식: @SPEC-123, @CODE-456, @TEST-789
 
 ---
 
@@ -146,7 +144,6 @@ description: "Description"
 ### Q5: TAG 형식 오류
 
 **원인**: TAG 형식 비준수
-**해결**: @TYPE-NUMBER 형식으로 수정
 
 ---
 

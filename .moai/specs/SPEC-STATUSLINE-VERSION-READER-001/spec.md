@@ -8,7 +8,6 @@ created: "2025-11-10"
 author: "GoosLab"
 ---
 
-# @SPEC:STATUSLINE-VERSION-READER-001 | @EXPERT:BACKEND
 
 ## SPEC Overview
 
@@ -23,9 +22,6 @@ This SPEC defines the version reader system for MoAI-ADK statusline, which reads
 
 ## Implementation Files
 
-- **CODE**: @CODE:VERSION-READER-001 - Version reader implementation
-- **TEST**: @TEST:STATUSLINE-VERSION-READER-001 - Version reader tests
-- **DOC**: @DOC:STATUSLINE-VERSION-READER-001 - Version reader documentation
 
 ## Acceptance Criteria
 
@@ -39,5 +35,4 @@ This SPEC defines the version reader system for MoAI-ADK statusline, which reads
 ## Traceability Chain
 
 ```
-@SPEC:STATUSLINE-VERSION-READER-001 → @CODE:VERSION-READER-001 → @TEST:STATUSLINE-VERSION-READER-001 → @DOC:STATUSLINE-VERSION-READER-001
 ```

@@ -8,7 +8,6 @@ updated: 2025-10-31
 
 # Implementation Plan: Hook Performance Optimization
 
-## @DOC:PLAN-ENHANCE-PERF-001
 
 > **Objective**: Reduce MoAI-ADK hook execution time from ~100ms to <50ms through caching, lazy loading, and I/O optimization.
 
@@ -162,7 +161,6 @@ def on_session_start():
 
 **Optimization**:
 1. Cache Skills metadata validation results
-2. Lazy-load tag agent only when @TAG operations needed
 3. Skip validation if tool doesn't require Skills
 
 **Implementation**:

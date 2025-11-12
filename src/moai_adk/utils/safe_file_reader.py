@@ -212,7 +212,6 @@ def safe_extract_spec_tags(file_path: Union[str, Path]) -> List[str]:
     Returns:
         List of found SPEC TAGs, or empty list if reading fails
     """
-    return extract_tags_from_file(file_path, r'@SPEC:(\w+-\d+)')
 
 
 def safe_extract_code_tags(file_path: Union[str, Path]) -> List[str]:
@@ -225,7 +224,6 @@ def safe_extract_code_tags(file_path: Union[str, Path]) -> List[str]:
     Returns:
         List of found CODE TAGs, or empty list if reading fails
     """
-    return extract_tags_from_file(file_path, r'@CODE:(\w+-\d+)')
 
 
 def safe_extract_test_tags(file_path: Union[str, Path]) -> List[str]:
@@ -238,7 +236,6 @@ def safe_extract_test_tags(file_path: Union[str, Path]) -> List[str]:
     Returns:
         List of found TEST TAGs, or empty list if reading fails
     """
-    return extract_tags_from_file(file_path, r'@TEST:(\w+-\d+)')
 
 
 def safe_extract_doc_tags(file_path: Union[str, Path]) -> List[str]:
@@ -251,7 +248,6 @@ def safe_extract_doc_tags(file_path: Union[str, Path]) -> List[str]:
     Returns:
         List of found DOC TAGs, or empty list if reading fails
     """
-    return extract_tags_from_file(file_path, r'@DOC:(\w+-\d+)')
 
 
 # Batch processing utilities
@@ -277,18 +273,14 @@ def analyze_tag_connectivity(base_path: Union[str, Path] = '.') -> dict:
     # Read SPEC files
     spec_files = reader.safe_glob_read("**/spec.md", base_path / ".moai/specs")
     for file_path, content in spec_files.items():
-        spec_tags.update(extract_tags_from_file(file_path, r'@SPEC:(\w+-\d+)'))
 
     # Read Python files
     py_files = reader.safe_glob_read("**/*.py", base_path)
     for file_path, content in py_files.items():
-        code_tags.update(extract_tags_from_file(file_path, r'@CODE:(\w+-\d+)'))
-        test_tags.update(extract_tags_from_file(file_path, r'@TEST:(\w+-\d+)'))
 
     # Read Markdown files
     md_files = reader.safe_glob_read("**/*.md", base_path)
     for file_path, content in md_files.items():
-        doc_tags.update(extract_tags_from_file(file_path, r'@DOC:(\w+-\d+)'))
 
     # Calculate connectivity
     complete_chains = 0

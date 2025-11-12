@@ -31,7 +31,6 @@ Alfred passes the user's language directly to you via `Task()` calls.
 2. **Output Language**: Generate TAG verification reports and statistics in user's conversation_language
 
 3. **Always in English** (regardless of conversation_language):
-   - **@TAG identifiers** (CRITICAL: @SPEC:, @TEST:, @CODE:, @DOC: patterns always English)
    - Skill names in invocations: `Skill("moai-alfred-tag-scanning")`
    - TAG chain syntax and format rules
    - File paths and code snippets
@@ -44,7 +43,6 @@ Alfred passes the user's language directly to you via `Task()` calls.
 **Example**:
 - You receive (Korean): "TAG 체인 무결성을 검증해주세요"
 - You invoke: Skill("moai-alfred-tag-scanning"), Skill("moai-foundation-tags")
-- You generate Korean report showing English @TAG identifiers (@SPEC:AUTH-NNN, etc.)
 
 ## 🧰 Required Skills
 
@@ -85,10 +83,8 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 ```
 4-Core (Functional Traceability):
-  @SPEC:DOMAIN-NNN → @TEST:DOMAIN-NNN → @CODE:DOMAIN-NNN → @DOC:DOMAIN-NNN
 
 5-Core (Expert Domain Involvement):
-  @EXPERT:BACKEND | @EXPERT:FRONTEND | @EXPERT:DEVOPS | @EXPERT:UIUX
 ```
 
 ### Valid @EXPERT Domains
@@ -105,7 +101,6 @@ Alfred passes the user's language directly to you via `Task()` calls.
 ```markdown
 # SPEC-AUTH-001: User Authentication
 
-@SPEC:AUTH-001 | @EXPERT:BACKEND | @EXPERT:UIUX
 
 ## Expert Consultations
 - backend-expert: JWT authentication architecture (2025-11-04)
@@ -115,7 +110,6 @@ Alfred passes the user's language directly to you via `Task()` calls.
 ```markdown
 # SPEC-DASHBOARD-001: Analytics Dashboard
 
-@SPEC:DASHBOARD-001 | @EXPERT:BACKEND | @EXPERT:FRONTEND | @EXPERT:UIUX
 
 ## Expert Team
 - backend-expert: Data API design
@@ -126,26 +120,19 @@ Alfred passes the user's language directly to you via `Task()` calls.
 ### @EXPERT TAG Verification Rules
 
 **Valid Format**:
-- Pattern: `@EXPERT:DOMAIN` (where DOMAIN ∈ {BACKEND, FRONTEND, DEVOPS, UIUX})
-- Multiple experts allowed: `@EXPERT:BACKEND | @EXPERT:FRONTEND | @EXPERT:DEVOPS`
-- Case-sensitive: `@EXPERT:BACKEND` ✅ vs `@EXPERT:backend` ❌
 
 **Validation Checks**:
 1. **Domain validity**: Only BACKEND, FRONTEND, DEVOPS, UIUX allowed
-2. **Format compliance**: Pattern must be `@EXPERT:DOMAIN`
 3. **Duplication prevention**: Same domain used multiple times in one SPEC is a warning
 4. **Chain consistency**: @EXPERT domains should match SPEC keywords
 
 **Verification Implementation**:
 ```bash
 # Scan for all @EXPERT TAGs
-rg '@EXPERT:(BACKEND|FRONTEND|DEVOPS|UIUX)' -n .moai/specs/ src/ tests/
 
 # Validate domain values only
-rg '@EXPERT:' -n . | grep -v 'BACKEND\|FRONTEND\|DEVOPS\|UIUX'  # Returns invalid entries
 
 # Find SPEC files with expert involvement
-rg '@EXPERT:' -n .moai/specs/
 ```
 
 ### Range Bounds
@@ -169,7 +156,6 @@ rg '@EXPERT:' -n .moai/specs/
 
 1. **TAG-related operation request**
  - "TAG creation", "TAG search", "TAG verification" pattern detection
- - When entering "@SPEC:", "@TEST:", "@CODE:", "@DOC:" patterns (v5.0 4-Core)
  - "TAG chain verification", "TAG integrity Upon request for “inspection”
 
 2. **MoAI-ADK workflow integration**
@@ -207,10 +193,8 @@ Receive TAG operation requests at command level or from other agents:
 rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/
 
 # Search for a specific domain
-rg '@SPEC:AUTH' -n .moai/specs/
 
 # Limited to a specific scope
-rg '@CODE:' -n src/
 ```
 
 **Why use rg directly**:
@@ -224,17 +208,11 @@ rg '@CODE:' -n src/
 **Chain Verification** (using Bash tool):
 ```bash
 # Check TAG chain of specific SPEC ID
-rg '@SPEC:AUTH-NNN' -n .moai/specs/
-rg '@TEST:AUTH-NNN' -n tests/
-rg '@CODE:AUTH-NNN' -n src/
-rg '@DOC:AUTH-NNN' -n docs/
 ```
 
 **Orphan TAG detection**:
 ```bash
 # If there is a CODE TAG but no SPEC TAG
-rg '@CODE:AUTH-NNN' -n src/ # Check the existence of the CODE
-rg '@SPEC:AUTH-NNN' -n .moai/specs/ # Orphan TAG if SPEC is absent
 ```
 
 **Verification items**:
@@ -248,7 +226,6 @@ rg '@SPEC:AUTH-NNN' -n .moai/specs/ # Orphan TAG if SPEC is absent
 **Prefer to reuse existing TAG** (using Bash tool):
 ```bash
 # Keyword-based similar TAG search
-rg '@SPEC:AUTH' -n .moai/specs/ # AUTH domain TAG search
 rg -i 'authentication' -n .moai/specs/ # SPEC search by keyword
 ```
 
@@ -260,7 +237,6 @@ rg -i 'authentication' -n .moai/specs/ # SPEC search by keyword
 **Create new TAG (if necessary)**:
 - Format: `CATEGORY:DOMAIN-NNN`
 - Establish chain relationship and avoid circular references
-- Require duplicate check before creation: `rg '@SPEC:NEW-ID' -n .moai/specs/`
 
 ### 5. Reporting results
 
@@ -333,7 +309,6 @@ We verify the following quality criteria:
 
 ### Auto-execution situation
 - TAG suggestion when creating a new source file
-- @SPEC:, @TEST:, @CODE: Auto completion when entering pattern
 - Support for TAG linkage when executing the `/alfred:` command
 
 ---
@@ -342,11 +317,9 @@ We verify the following quality criteria:
 
 ### Integration with spec-builder
 
-When creating a SPEC file, @SPEC:ID TAG is automatically created and placed in the .moai/specs/ directory.
 
 ### Linked with code-builder
 
-When implementing TDD, the @TEST:ID → @CODE:ID chain is automatically connected and its integrity is verified.
 
 ### Linked with doc-syncer
 

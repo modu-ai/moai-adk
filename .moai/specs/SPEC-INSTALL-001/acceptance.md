@@ -1,4 +1,3 @@
-# @SPEC:INSTALL-001 인수 기준
 
 ## 1. Acceptance Criteria
 
@@ -424,7 +423,6 @@ AND 적절한 이모지를 사용해야 한다 (✅, ❌, 🤖, ℹ️)
 
 #### 주석 가이드
 
-- **TAG 주석**: 모든 파일 상단에 `@CODE:INSTALL-001` 포함
 - **함수 주석**: JSDoc 스타일 (역할, 파라미터, 반환값)
 - **복잡한 로직**: 인라인 주석으로 이유 설명
 
@@ -481,13 +479,10 @@ validate: (input) => {
 
 ```bash
 # SPEC 문서 확인
-rg '@SPEC:INSTALL-001' -n .moai/specs/
 
 # 테스트 코드 확인
-rg '@TEST:INSTALL-001' -n tests/
 
 # 구현 코드 확인
-rg '@CODE:INSTALL-001' -n src/
 
 # 고아 TAG 검증
 rg '@(SPEC|TEST|CODE):INSTALL-001' -n
@@ -497,7 +492,6 @@ rg '@(SPEC|TEST|CODE):INSTALL-001' -n
 
 - **형식**: `feat(prompts): {변경 내용}`
 - **서명**: `Co-Authored-By: AI-Agent Alfred <noreply@anthropic.com>`
-- **TAG 참조**: 커밋 본문에 `@CODE:INSTALL-001` 포함
 
 ---
 
@@ -612,7 +606,6 @@ time npm run install
 ### 코드 완료 기준
 
 - [ ] 모든 Phase (1~5) 구현 완료
-- [ ] TAG 주석 (`@CODE:INSTALL-001`) 모든 파일에 포함
 - [ ] TypeScript 빌드 에러 0건
 - [ ] ESLint 경고 0건
 

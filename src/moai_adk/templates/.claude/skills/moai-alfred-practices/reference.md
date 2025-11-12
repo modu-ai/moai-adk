@@ -70,7 +70,6 @@ After reading this document:
 
 - Assign IDs as `<DOMAIN>-<###>` (e.g., `AUTH-003`).
 - Update HISTORY with every change.
-- Cross-check usage with `rg '@TAG:ID' -n` searches.
 
 ### Backup Management
 
@@ -111,7 +110,6 @@ After reading this document:
 
    **Output**: `.moai/specs/SPEC-USER-DASHBOARD-001/spec.md`
    - YAML metadata: id, version: 0.0.1, status: draft
-   - @SPEC:USER-DASHBOARD-001 TAG
    - EARS syntax requirements:
      - "The system must display user statistics dashboard"
      - "WHEN user clicks refresh button, THEN fetch latest data from REST API"
@@ -126,7 +124,6 @@ After reading this document:
    - **implementation-planner** (Phase 1):
      - Establish implementation strategy: React component + fetch API + auth guard
      - Library selection: react-query (data fetching), @tanstack/react-query (caching)
-     - TAG design: @CODE:USER-DASHBOARD-001:UI, @CODE:USER-DASHBOARD-001:API
 
    - **tdd-implementer** (Phase 2):
      - **RED**: Write `tests/features/dashboard.test.tsx` (failing tests)
@@ -144,11 +141,6 @@ After reading this document:
    - PR status change: Draft → Ready
 
 **Final Outputs**:
-- SPEC: `.moai/specs/SPEC-USER-DASHBOARD-001/spec.md` (@SPEC:USER-DASHBOARD-001)
-- TEST: `tests/features/dashboard.test.tsx` (@TEST:USER-DASHBOARD-001)
-- CODE: `src/features/Dashboard.tsx` (@CODE:USER-DASHBOARD-001:UI)
-- CODE: `src/api/dashboard.ts` (@CODE:USER-DASHBOARD-001:API)
-- DOCS: `docs/features/USER-DASHBOARD-001.md` (@DOC:USER-DASHBOARD-001)
 
 **Estimated Duration**: 30-45 minutes (SPEC 10min + TDD 20min + Sync 10min)
 
@@ -220,9 +212,6 @@ After reading this document:
      ```bash
      rg '@(SPEC|TEST|CODE):AUTH-TIMEOUT-001' -n
      ```
-     - @SPEC:AUTH-TIMEOUT-001 → `.moai/specs/SPEC-AUTH-TIMEOUT-001/spec.md`
-     - @TEST:AUTH-TIMEOUT-001 → `tests/auth/token.test.ts`
-     - @CODE:AUTH-TIMEOUT-001 → `src/auth/token.ts`
 
 **Final Outputs**:
 - SPEC updated
@@ -266,9 +255,6 @@ After reading this document:
    ```
 
    **Results**:
-   - ✅ @SPEC:USER-DASHBOARD-001 → @TEST:USER-DASHBOARD-001 ✅
-   - ✅ @TEST:USER-DASHBOARD-001 → @CODE:USER-DASHBOARD-001:UI ✅
-   - ✅ @CODE:USER-DASHBOARD-001:UI → @DOC:USER-DASHBOARD-001 ✅
    - 🎉 No orphan TAGs detected
 
 4. **PR Status Change (Draft → Ready)**

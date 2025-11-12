@@ -1,4 +1,3 @@
-# @SPEC:CLI-001 구현 계획서
 
 > **TDD 기반 3단계 구현 전략**
 >
@@ -23,7 +22,6 @@
 **테스트 파일**: `tests/unit/test_doctor_advanced.py`
 
 ```python
-# @TEST:CLI-001 | SPEC: SPEC-CLI-001.md
 
 def test_doctor_detects_python_tools():
     """Python 프로젝트에서 pytest/mypy/ruff 감지"""
@@ -71,7 +69,6 @@ def test_doctor_timeout_under_5_seconds():
 
 `src/moai_adk/core/project/checker.py`:
 ```python
-# @CODE:CLI-001 | SPEC: SPEC-CLI-001.md | TEST: tests/unit/test_doctor_advanced.py
 
 LANGUAGE_TOOLS = {
     "python": {
@@ -119,7 +116,6 @@ class LanguageToolChecker:
 
 `src/moai_adk/cli/commands/doctor.py`:
 ```python
-# @CODE:CLI-001 | SPEC: SPEC-CLI-001.md | TEST: tests/unit/test_doctor_advanced.py
 
 @click.command()
 @click.option("--verbose", is_flag=True, help="Show detailed version information")
@@ -177,7 +173,6 @@ mypy src/moai_adk/cli/commands/doctor.py
 **테스트 파일**: `tests/unit/test_status_advanced.py`
 
 ```python
-# @TEST:CLI-001 | SPEC: SPEC-CLI-001.md
 
 def test_status_detail_shows_tag_chain():
     """--detail 옵션으로 TAG 체인 무결성 표시"""
@@ -202,7 +197,6 @@ def test_status_detail_shows_quality():
 
 def test_status_detects_broken_tag_chain():
     """끊어진 TAG 체인 감지"""
-    # Given: CODE에 @CODE:AUTH-001 있지만 SPEC 없음
     # When: status --detail 실행
     # Then: "⚠ 1 broken chain" 표시
     assert "1 broken chain" in output
@@ -224,7 +218,6 @@ def test_status_json_output():
 
 `src/moai_adk/core/project/tag_checker.py` (신규 생성):
 ```python
-# @CODE:CLI-001 | SPEC: SPEC-CLI-001.md | TEST: tests/unit/test_status_advanced.py
 
 import subprocess
 from dataclasses import dataclass
@@ -242,8 +235,6 @@ class TagChainChecker:
 
     def check_integrity(self) -> TagChainResult:
         """전체 TAG 체인 검증"""
-        spec_tags = self._scan_tags(".moai/specs", "@SPEC:")
-        code_tags = self._scan_tags("src", "@CODE:")
 
         orphans = code_tags - spec_tags
         broken = spec_tags - code_tags
@@ -269,7 +260,6 @@ class TagChainChecker:
         # TAG ID 추출 로직
         tags = set()
         for line in result.stdout.splitlines():
-            # @SPEC:AUTH-001 → AUTH-001
             tag_id = extract_tag_id(line)
             tags.add(tag_id)
         return tags
@@ -279,7 +269,6 @@ class TagChainChecker:
 
 `src/moai_adk/core/project/quality_checker.py` (신규 생성):
 ```python
-# @CODE:CLI-001 | SPEC: SPEC-CLI-001.md | TEST: tests/unit/test_status_advanced.py
 
 import json
 from pathlib import Path
@@ -312,7 +301,6 @@ class QualityChecker:
 
 `src/moai_adk/cli/commands/status.py`:
 ```python
-# @CODE:CLI-001 | SPEC: SPEC-CLI-001.md | TEST: tests/unit/test_status_advanced.py
 
 @click.command()
 @click.option("--detail", is_flag=True, help="Show quality metrics")
@@ -378,7 +366,6 @@ pytest tests/unit/test_status_advanced.py -v
 **테스트 파일**: `tests/unit/test_restore_advanced.py`
 
 ```python
-# @TEST:CLI-001 | SPEC: SPEC-CLI-001.md
 
 def test_restore_list_shows_backups():
     """--list 옵션으로 백업 목록 표시"""
@@ -419,7 +406,6 @@ def test_restore_detects_git_dirty():
 
 `src/moai_adk/core/template/backup.py`:
 ```python
-# @CODE:CLI-001 | SPEC: SPEC-CLI-001.md | TEST: tests/unit/test_restore_advanced.py
 
 @dataclass
 class BackupMetadata:
@@ -450,7 +436,6 @@ def create_backup_with_metadata(backup_dir: Path) -> BackupMetadata:
 
 `src/moai_adk/cli/commands/restore.py`:
 ```python
-# @CODE:CLI-001 | SPEC: SPEC-CLI-001.md | TEST: tests/unit/test_restore_advanced.py
 
 @click.command()
 @click.argument("backup_id", required=False)
@@ -510,7 +495,6 @@ pytest tests/unit/test_restore_advanced.py -v
 **테스트 파일**: `tests/integration/test_cli_advanced_integration.py`
 
 ```python
-# @TEST:CLI-001 | SPEC: SPEC-CLI-001.md
 
 def test_full_cli_workflow():
     """전체 CLI 워크플로우 통합 테스트"""

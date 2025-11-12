@@ -1,5 +1,3 @@
-# @CODE:TEST-TEMPLATE-001 | @SPEC:TEMPLATE-SUBSTITUTION-001
-# @TEST:test_template_substitution
 """Unit tests for template variable substitution (processor.py)"""
 
 

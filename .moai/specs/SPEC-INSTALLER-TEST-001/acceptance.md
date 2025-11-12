@@ -1,4 +1,3 @@
-# @SPEC:INSTALLER-TEST-001: Acceptance Criteria
 
 ## AC-001: 전체 커버리지 85% 달성
 
@@ -32,7 +31,6 @@
 **GIVEN** 테스트 파일을 작성할 때
 **WHEN** 파일 상단에 주석을 추가하면
 **THEN**
-- `@TEST:INSTALLER-TEST-001` TAG가 포함되어야 한다
 - SPEC 파일 경로가 명시되어야 한다
 
 ## AC-005: TDD Red-Green-Refactor 사이클

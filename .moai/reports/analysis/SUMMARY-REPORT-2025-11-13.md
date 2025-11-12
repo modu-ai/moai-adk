@@ -362,4 +362,3 @@ feat(skills): Phase 3 - Refactor moai-lang-python & typescript & go
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: 🎩 Alfred@MoAI

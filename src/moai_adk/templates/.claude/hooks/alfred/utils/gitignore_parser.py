@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @CODE:UTIL-GITIGNORE-001 | SPEC: UTIL-GITIGNORE-001 | TEST: tests/hooks/test_gitignore_parser.py
 """.gitignore parser utility
 
 Parse .gitignore files to extract patterns for exclusion from TAG validation.

@@ -1,4 +1,3 @@
-# @CODE:USER-EXPERIENCE-CLI-001 | @TEST:USER-EXPERIENCE-CLI-001
 
 """
 User Experience Improvement CLI Command

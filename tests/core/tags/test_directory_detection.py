@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @TEST:DIR-DETECTION-001 | @SPEC:TAG-DIRECTORY-DETECTION-001 | @CODE:HOOK-DIR-DETECT-001
 """디렉토리 감지 시스템 테스트
 
 언어별 코드 디렉토리 자동 감지 및 설정 기반 커스터마이징 테스트.

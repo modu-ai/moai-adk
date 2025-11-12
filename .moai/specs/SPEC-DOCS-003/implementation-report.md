@@ -1,4 +1,3 @@
-# @CODE:DOCS-003-IMPL-001 | Chain: @SPEC:DOCS-003 -> @CODE:DOCS-003-IMPL-001
 
 # SPEC-DOCS-003 구현 보고서
 
@@ -65,9 +64,7 @@ MoAI-ADK 문서 체계를 11단계 사용자 여정 기반으로 전면 개선�
 ### 3️⃣ REFACTOR 단계: 품질 개선
 
 #### TAG 체인 추가
-- 모든 42개 문서에 @DOC TAG 추가
 - TAG 커버리지: 100%
-- TAG 체인 형식: `@DOC:XXX-001 | Chain: @SPEC:DOCS-003 -> @DOC:XXX-001`
 
 #### 링크 수정
 - `hooks/post-tool-use-hook.md` 상대 경로 수정
@@ -115,7 +112,6 @@ MoAI-ADK 문서 체계를 11단계 사용자 여정 기반으로 전면 개선�
 #### TAG 추적성
 ```
 TAG가 포함된 문서: 42/42개 (100.0%)
-@DOC TAG 사용: 100%
 TAG 체인 무결성: ✅ 검증 완료
 ```
 
@@ -144,23 +140,14 @@ TAG 체인 무결성: ✅ 검증 완료
 
 ### Primary Chain
 ```
-@SPEC:DOCS-003 (SPEC)
   ↓
-@CODE:DOCS-003-IMPL-001 (Implementation Report)
   ↓
-@DOC:INTRO-001, @DOC:START-001, ... (42개 문서 TAG)
   ↓
-@TEST:DOCS-003-STRUCTURE-001 (구조 테스트)
-@TEST:DOCS-003-CONTENT-001 (내용 테스트)
 ```
 
 ### Implementation TAG
-- `@CODE:DOCS-003-IMPL-001`: 구현 보고서
-- `@DOC:*`: 42개 문서 TAG (100% 커버리지)
 
 ### Quality TAG
-- `@TEST:DOCS-003-STRUCTURE-001`: 구조 검증
-- `@TEST:DOCS-003-CONTENT-001`: 내용 검증
 
 ---
 

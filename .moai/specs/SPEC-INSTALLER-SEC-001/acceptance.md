@@ -1,4 +1,3 @@
-# @SPEC:INSTALLER-SEC-001 인수 기준
 
 ## 📋 개요
 

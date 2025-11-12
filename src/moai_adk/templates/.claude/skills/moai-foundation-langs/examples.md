@@ -269,8 +269,6 @@ git commit -m "chore: update dependencies"
 """
 Shared pytest configuration and fixtures.
 
-@CODE:PYTEST-CONFIG-001
-@TEST:CONFTEST-SHARED-001
 """
 import pytest
 from pathlib import Path
@@ -300,8 +298,6 @@ def sample_data():
 """
 Test core functionality.
 
-@TEST:CORE-TESTS-001
-@SPEC:CORE-FEATURE-001
 """
 import pytest
 from src.core import process_data
@@ -374,8 +370,6 @@ import { describe, it, expect } from 'vitest';
 import { processData } from '../src/core';
 
 /**
- * @TEST:CORE-TESTS-001
- * @SPEC:CORE-FEATURE-001
  */
 describe('processData', () => {
   it('should process valid data', () => {
@@ -426,8 +420,6 @@ import (
     "fmt"
 )
 
-// @CODE:API-HANDLER-001
-// @SPEC:API-ENDPOINT-001
 func ProcessData(input map[string]interface{}) (map[string]interface{}, error) {
     if len(input) == 0 {
         return nil, fmt.Errorf("empty input")
@@ -444,9 +436,7 @@ import (
     "testing"
 )
 
-// @TEST:API-TESTS-001
 func TestProcessData(t *testing.T) {
-    // @TEST:TABLE-DRIVEN-001
     tests := []struct {
         name    string
         input   map[string]interface{}
@@ -503,8 +493,6 @@ go tool cover -html=coverage.out
 ```rust
 /// Process data according to specification.
 ///
-/// @CODE:PROCESS-DATA-001
-/// @SPEC:DATA-PROCESSING-001
 pub fn process_data(input: &str) -> Result<String, String> {
     if input.is_empty() {
         return Err("empty input".to_string());
@@ -516,21 +504,18 @@ pub fn process_data(input: &str) -> Result<String, String> {
 mod tests {
     use super::*;
 
-    /// @TEST:UNIT-TESTS-001
     #[test]
     fn test_process_valid_data() {
         let result = process_data("test");
         assert_eq!(result.unwrap(), "processed: test");
     }
 
-    /// @TEST:ERROR-HANDLING-001
     #[test]
     fn test_process_empty_input() {
         let result = process_data("");
         assert!(result.is_err());
     }
 
-    /// @TEST:PARAMETERIZED-001
     #[test]
     fn test_multiple_inputs() {
         let inputs = vec!["a", "ab", "abc"];
@@ -547,7 +532,6 @@ mod tests {
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use my_crate::process_data;
 
-/// @TEST:BENCH-MAIN-001
 fn bench_process_data(c: &mut Criterion) {
     c.bench_function("process_short", |b| {
         b.iter(|| process_data(black_box("test")))

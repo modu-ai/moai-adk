@@ -190,7 +190,6 @@ ENABLE_CACHE=true
 ```python
 """
 데이터베이스 모델
-@TAG: SPEC-DB-OPT-001
 """
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, create_engine
@@ -274,7 +273,6 @@ def init_db():
 ```python
 """
 게시글 라우트 (최적화 전)
-@TAG: SPEC-DB-OPT-001
 """
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -327,7 +325,6 @@ def get_posts(db: Session = Depends(get_db)):
 ```python
 """
 게시글 라우트 (최적화 후)
-@TAG: SPEC-DB-OPT-001
 """
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session, selectinload, joinedload
@@ -440,7 +437,6 @@ def get_post_optimized(post_id: int, db: Session = Depends(get_db)):
 ```python
 """
 Connection Pool 최적화
-@TAG: SPEC-DB-OPT-001
 """
 from sqlalchemy import create_engine
 from sqlalchemy.pool import QueuePool
@@ -480,7 +476,6 @@ def get_pool_status():
 ```python
 """
 Redis 캐싱
-@TAG: SPEC-DB-OPT-001
 """
 import json
 from typing import Optional, Any
@@ -586,7 +581,6 @@ class CacheManager:
 ```python
 """
 캐싱이 적용된 라우트
-@TAG: SPEC-DB-OPT-001
 """
 from .cache import cached, CacheManager
 
@@ -646,7 +640,6 @@ def create_post(post_data: PostCreate, db: Session = Depends(get_db)):
 
 ```sql
 -- 인덱스 전략
--- @TAG: SPEC-DB-OPT-001
 
 -- 1. 단일 컬럼 인덱스 (이미 생성됨)
 CREATE INDEX idx_users_email ON users(email);
@@ -680,7 +673,6 @@ CREATE INDEX idx_posts_search ON posts USING GIN(
 ```python
 """
 인덱스 성능 분석
-@TAG: SPEC-DB-OPT-001
 """
 from sqlalchemy import text
 
@@ -722,7 +714,6 @@ analysis = analyze_query_performance(
 ```python
 """
 성능 모니터링
-@TAG: SPEC-DB-OPT-001
 """
 import time
 from functools import wraps
@@ -823,7 +814,6 @@ def get_metrics():
 ```python
 """
 부하 테스트
-@TAG: SPEC-DB-OPT-001
 """
 from locust import HttpUser, task, between
 

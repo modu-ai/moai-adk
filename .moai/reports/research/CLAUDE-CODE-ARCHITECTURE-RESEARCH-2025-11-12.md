@@ -885,14 +885,12 @@ const agents = {
              - Title and description
              - Acceptance criteria
              - Technical requirements
-             - @TAG assignments
 
              Follow TRUST 5 principles:
              - Test-first mindset
              - Readable specifications
              - Unified patterns
              - Secured by design
-             - Trackable via @TAGs`,
     tools: ["Read", "Write", "Grep", "Glob"],
     model: "claude-sonnet-4-5-20250929"
   },
@@ -918,7 +916,6 @@ const agents = {
              3. Enhance readability
              4. Ensure tests still pass
 
-             Always include @TEST and @CODE TAGs for traceability.`,
     tools: ["Read", "Write", "Edit", "Bash", "Grep"],
     model: "claude-sonnet-4-5-20250929"
   }
@@ -945,51 +942,34 @@ for await (const message of query({
 ---
 # .claude/skills/moai-foundation-tags/SKILL.md
 name: moai-foundation-tags
-description: Invoked when working with @TAG system for traceability
 version: 1.0.0
 ---
 
-# MoAI Foundation: @TAG System
 
 ## Purpose
-@TAGs provide complete traceability across SPEC → TEST → CODE → DOC lifecycle.
 
 ## TAG Types
 
-### @SPEC-XXX
 - **Location**: SPEC documents
-- **Format**: @SPEC-001, @SPEC-002
 - **Usage**: Unique identifier for each specification
 
-### @TEST-XXX
 - **Location**: Test files
-- **Format**: @TEST-001 → @SPEC-001
 - **Usage**: Links tests to specifications
-- **Required**: Must reference parent @SPEC
 
-### @CODE-XXX
 - **Location**: Implementation files
-- **Format**: @CODE-001 → @TEST-001 → @SPEC-001
 - **Usage**: Links implementation to tests and specs
-- **Required**: Must reference parent @TEST and @SPEC
 
-### @DOC-XXX
 - **Location**: Documentation files
-- **Format**: @DOC-001 → @CODE-001 → @TEST-001 → @SPEC-001
 - **Usage**: Links documentation to implementation
-- **Optional**: References parent @CODE when applicable
 
 ## Usage Examples
 
 ### Test File
 ```python
 # tests/test_authentication.py
-# @TEST-001 → @SPEC-001
 
 import pytest
-from src.auth import login  # @CODE-001
 
-def test_successful_login():  # @TEST-001
     """Test user can login with valid credentials"""
     result = login("user@example.com", "password123")
     assert result.success is True
@@ -998,12 +978,9 @@ def test_successful_login():  # @TEST-001
 ### Implementation File
 ```python
 # src/auth.py
-# @CODE-001 → @TEST-001 → @SPEC-001
 
-def login(email: str, password: str):  # @CODE-001
     """Authenticate user with email and password
 
-    Related: @TEST-001, @SPEC-001
     """
     # Implementation
     pass
@@ -1012,21 +989,15 @@ def login(email: str, password: str):  # @CODE-001
 ## Traceability Chain
 
 ```
-@SPEC-001 (Requirement)
     ↓
-@TEST-001 (Verification)
     ↓
-@CODE-001 (Implementation)
     ↓
-@DOC-001 (Documentation)
 ```
 
 ## Best Practices
 
-1. **Always start with @SPEC**: No @TEST or @CODE without @SPEC
 2. **Link backward**: Each TAG must reference its parent
 3. **Be consistent**: Use the same TAG across commits, PRs, reviews
-4. **Update docs**: Sync @DOC TAGs when @CODE changes
 ```
 
 ### 9.4 Complete MCP Custom Tool Example
@@ -1105,7 +1076,6 @@ const validateSpec = tool(
       has_title: /^#\s+.+/m.test(content),
       has_description: /##\s+Description/i.test(content),
       has_acceptance_criteria: /##\s+Acceptance Criteria/i.test(content),
-      has_tags: /@SPEC-\d{3,}/.test(content),
       has_technical_requirements: /##\s+Technical Requirements/i.test(content)
     };
 
@@ -1113,7 +1083,6 @@ const validateSpec = tool(
     if (!validations.has_title) issues.push("Missing title");
     if (!validations.has_description) issues.push("Missing description section");
     if (!validations.has_acceptance_criteria) issues.push("Missing acceptance criteria");
-    if (!validations.has_tags) issues.push("Missing @SPEC TAG");
 
     if (args.strict && !validations.has_technical_requirements) {
       issues.push("Missing technical requirements (strict mode)");

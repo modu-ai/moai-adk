@@ -1,4 +1,3 @@
-# @CODE:MCP-SETUP-001 | SPEC: SPEC-MCP-SETUP-001/spec.md
 # type: ignore
 """MCP (Model Context Protocol) Setup and Configuration
 

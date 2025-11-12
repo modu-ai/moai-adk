@@ -1,6 +1,5 @@
 """
 Tests for Command Helper Utilities
-@TEST:W2-005 - Command helper function testing
 """
 
 import os
@@ -257,10 +256,8 @@ class TestPreviousPhaseLoading:
 
 
 class TestEdgeCases:
-    """@TEST:W2-006 - Edge case coverage for quality gate improvements"""
 
     def test_extract_metadata_missing_keys(self):
-        """@TEST:W2-008 - Verify default values when config.json incomplete"""
         with tempfile.TemporaryDirectory() as tmpdir:
             project_root = Path(tmpdir)
             (project_root / ".moai" / "config").mkdir(parents=True)
@@ -284,7 +281,6 @@ class TestEdgeCases:
             assert result["language"] == "en"
 
     def test_detect_tech_stack_no_indicators(self):
-        """@TEST:W2-009 - Verify behavior when no language indicators found"""
         with tempfile.TemporaryDirectory() as tmpdir:
             # Empty directory with no indicator files
             result = detect_tech_stack(tmpdir)
@@ -293,7 +289,6 @@ class TestEdgeCases:
             assert result == ["python"]
 
     def test_build_phase_result_minimal_data(self):
-        """@TEST:W2-010 - Verify phase result with only required fields"""
         result = build_phase_result(
             phase_name="0-project",
             status="completed",
@@ -311,7 +306,6 @@ class TestEdgeCases:
         assert "next_phase" not in result
 
     def test_validate_phase_files_outside_project_root(self):
-        """@TEST:W2-007 - Verify error handling for paths outside project root"""
         with tempfile.TemporaryDirectory() as tmpdir:
             project_root = Path(tmpdir)
             (project_root / ".moai" / "config").mkdir(parents=True)
@@ -332,7 +326,6 @@ class TestEdgeCases:
                 assert tmpdir in path or not os.path.isabs(path)
 
     def test_save_context_when_context_manager_unavailable(self, monkeypatch):
-        """@TEST:W2-006 - Test graceful degradation when ContextManager unavailable"""
         import moai_adk.core.command_helpers as helpers
 
         # Mock CONTEXT_MANAGER_AVAILABLE to False

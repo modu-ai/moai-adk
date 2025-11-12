@@ -295,7 +295,6 @@ Each skill includes standardized metadata:
   "created": "2025-11-09",
   "updated": "2025-11-09",
   "validation_status": "complete",
-  "spec_reference": "@SPEC:BAAS-ECOSYSTEM-001"
 }
 ```
 

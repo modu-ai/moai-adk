@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @TEST:VALIDATOR-CORE-001 | Component 3: Central validation system tests
 """Test suite for central validation system
 
 This module tests the unified CentralValidator that:
@@ -246,7 +245,6 @@ class TestOrphanValidator:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             code_file = Path(tmpdir) / "auth.py"
-            code_file.write_text("# @CODE:USER-REG-001\n")
 
             issues = validator.validate([str(code_file)])
             assert len(issues) >= 1
@@ -302,7 +300,6 @@ class TestChainValidator:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             spec_file = Path(tmpdir) / "spec.md"
-            spec_file.write_text("# @SPEC:CHAIN-001\n")
 
             code_file = Path(tmpdir) / "auth.py"
             code_file.write_text("# # REMOVED_ORPHAN_CODE:CHAIN-001\n")
@@ -311,7 +308,6 @@ class TestChainValidator:
             test_file.write_text("# # REMOVED_ORPHAN_TEST:CHAIN-001\n")
 
             doc_file = Path(tmpdir) / "README.md"
-            doc_file.write_text("# @DOC:CHAIN-001\n")
 
             issues = validator.validate([
                 str(spec_file), str(code_file), str(test_file), str(doc_file)
@@ -324,10 +320,8 @@ class TestChainValidator:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             code_file = Path(tmpdir) / "auth.py"
-            code_file.write_text("# @CODE:USER-REG-001\n")
 
             test_file = Path(tmpdir) / "test_auth.py"
-            test_file.write_text("# @TEST:USER-REG-VALIDATOR-001\n")
 
             issues = validator.validate([str(code_file), str(test_file)])
             assert any("SPEC" in issue.message for issue in issues)
@@ -339,10 +333,8 @@ class TestChainValidator:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             spec_file = Path(tmpdir) / "spec.md"
-            spec_file.write_text("# @SPEC:USER-REG-001\n")
 
             test_file = Path(tmpdir) / "test_auth.py"
-            test_file.write_text("# @TEST:USER-REG-VALIDATOR-001\n")
 
             issues = validator.validate([str(spec_file), str(test_file)])
             assert any("CODE" in issue.message or "implementation" in issue.message.lower() for issue in issues)
@@ -353,10 +345,8 @@ class TestChainValidator:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             spec_file = Path(tmpdir) / "spec.md"
-            spec_file.write_text("# @SPEC:USER-REG-001\n")
 
             code_file = Path(tmpdir) / "auth.py"
-            code_file.write_text("# @CODE:USER-REG-001\n")
 
             issues = validator.validate([str(spec_file), str(code_file)])
             assert any("TEST" in issue.message for issue in issues)
@@ -367,13 +357,10 @@ class TestChainValidator:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             spec_file = Path(tmpdir) / "spec.md"
-            spec_file.write_text("# @SPEC:USER-REG-001\n")
 
             code_file = Path(tmpdir) / "auth.py"
-            code_file.write_text("# @CODE:USER-REG-001\n")
 
             test_file = Path(tmpdir) / "test_auth.py"
-            test_file.write_text("# @TEST:USER-REG-VALIDATOR-001\n")
 
             issues = validator.validate([str(spec_file), str(code_file), str(test_file)])
             # DOC is optional, but info message may be generated
@@ -388,11 +375,9 @@ class TestChainValidator:
         with tempfile.TemporaryDirectory() as tmpdir:
             # Complete chain for USER-REG-001
             file1 = Path(tmpdir) / "file1.py"
-            file1.write_text("# @SPEC:USER-REG-001\n# @CODE:USER-REG-001\n# @TEST:USER-REG-VALIDATOR-001\n")
 
             # Incomplete chain for AUTH-002 (missing TEST)
             file2 = Path(tmpdir) / "file2.py"
-            file2.write_text("# @SPEC:AUTH-002\n# # REMOVED_ORPHAN_CODE:AUTH-002\n")
 
             issues = validator.validate([str(file1), str(file2)])
             assert any("AUTH-002" in issue.tag and "TEST" in issue.message for issue in issues)

@@ -1,4 +1,3 @@
-# @CODE:CHECKPOINT-EVENT-001 | SPEC: SPEC-CHECKPOINT-EVENT-001.md | TEST: tests/unit/test_branch_manager.py
 """
 Branch Manager - Manage local checkpoint branches.
 

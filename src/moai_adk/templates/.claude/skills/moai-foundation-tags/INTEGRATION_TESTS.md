@@ -28,7 +28,6 @@ Verify that TAG system integrates with SPEC validation and template generation.
 ```python
 """
 Integration test: TAG system with moai-foundation-specs
-@TEST:TAG-SPEC-INTEGRATION-001: Integration between TAG system and SPEC validation
 """
 
 import pytest
@@ -62,10 +61,6 @@ framework: FastAPI
 coverage: 85%
 ---
 
-# @SPEC:AUTH-001: Authentication System
-# @SPEC:AUTH-001:REQUIREMENT: JWT token validation
-# @SPEC:AUTH-001:ACCEPTANCE: Valid tokens should grant access
-# @SPEC:AUTH-001:CONSTRAINT: Tokens expire in 24 hours
 """
 
     # Validate SPEC
@@ -102,7 +97,6 @@ def test_spec_template_tag_integration():
         "id": "USER-001",
         "title": "User Management System",
         "domain": "USER",
-        "tags": ["@SPEC:USER-001", "@TEST:USER-001", "@CODE:USER-001"]
     }
 
     # Generate template
@@ -143,13 +137,6 @@ framework: FastAPI
 coverage: 85%
 ---
 
-# @SPEC:AUTH-001: Authentication System
-# @SPEC:AUTH-001:REQUIREMENT: JWT token validation
-# @SPEC:AUTH-001:ACCEPTANCE: Valid tokens should grant access
-# @TEST:AUTH-001:UNIT: Test token validation
-# @TEST:AUTH-001:INTEGRATION: Test auth flow
-# @CODE:AUTH-001:API: Authentication endpoints
-# @CODE:AUTH-001:DOMAIN: Token validation logic
 """
 
     # Validate SPEC
@@ -186,7 +173,6 @@ Verify that TAG system integrates with TRUST principle validation.
 ```python
 """
 Integration test: TAG system with moai-foundation-trust
-@TEST:TAG-TRUST-INTEGRATION-001: Integration between TAG system and TRUST validation
 """
 
 import pytest
@@ -205,10 +191,6 @@ def test_trust_tag_integration():
 
     # Create test project with TAG system
     test_project = {
-        "spec_tags": ["@SPEC:AUTH-001", "@SPEC:USER-001"],
-        "test_tags": ["@TEST:AUTH-001:UNIT", "@TEST:USER-001:INTEGRATION"],
-        "code_tags": ["@CODE:AUTH-001:API", "@CODE:USER-001:DOMAIN"],
-        "doc_tags": ["@DOC:AUTH-001:API", "@DOC:USER-001:GUIDE"]
     }
 
     # Scan project for TAGs
@@ -239,7 +221,6 @@ def test_trust_tag_validation_rules():
 
     # Create test TAG with quality metrics
     quality_tag = {
-        "@CODE:AUTH-001:API": {
             "quality_metrics": {
                 "readability": 0.9,
                 "maintainability": 0.85,
@@ -276,14 +257,6 @@ def test_trust_tag_compliance_reporting():
 
     # Create comprehensive TAG project
     comprehensive_project = {
-        "@SPEC:AUTH-001": {"domain": "AUTH", "id": "AUTH-001"},
-        "@TEST:AUTH-001:UNIT": {"domain": "AUTH", "id": "AUTH-001"},
-        "@CODE:AUTH-001:API": {"domain": "AUTH", "id": "AUTH-001"},
-        "@DOC:AUTH-001:API": {"domain": "AUTH", "id": "AUTH-001"},
-        "@SPEC:USER-001": {"domain": "USER", "id": "USER-001"},
-        "@TEST:USER-001:INTEGRATION": {"domain": "USER", "id": "USER-001"},
-        "@CODE:USER-001:DOMAIN": {"domain": "USER", "id": "USER-001"},
-        "@DOC:USER-001:GUIDE": {"domain": "USER", "id": "USER-001"}
     }
 
     # Scan and create TAG objects
@@ -317,7 +290,6 @@ Verify that TAG system integrates with Git for version control and commit correl
 ```python
 """
 Integration test: TAG system with Git
-@TEST:TAG-GIT-INTEGRATION-001: Integration between TAG system and Git version control
 """
 
 import pytest
@@ -336,10 +308,6 @@ def test_git_tag_correlation():
 
     # Create test project with TAGs
     test_tags = [
-        "@SPEC:AUTH-001",
-        "@TEST:AUTH-001:UNIT",
-        "@CODE:AUTH-001:API",
-        "@DOC:AUTH-001:API"
     ]
 
     # Scan project for TAGs
@@ -355,13 +323,10 @@ def test_git_tag_correlation():
     assert len(git_correlation) > 0 or "error" in git_correlation
 
     # Verify tag evolution tracking
-    if "@SPEC:AUTH-001" in project_tags:
         evolution = git_integration.track_tag_evolution(
-            tag_id="@SPEC:AUTH-001",
             timeline_type="monthly"
         )
 
-        assert evolution["tag_id"] == "@SPEC:AUTH-001"
         assert "timeline" in evolution
 
 def test_git_release_notes_integration():
@@ -386,7 +351,6 @@ def test_git_release_notes_integration():
     assert "# Release Notes" in release_notes
 
     # Verify TAG integration in release notes
-    assert "@SPEC:" in release_notes
 
 def test_git_commit_tag_search():
     """Test integration between TAG system and Git commit search."""
@@ -398,7 +362,6 @@ def test_git_commit_tag_search():
     git_integration = GitIntegration(Path("."))
 
     # Search for TAG commits
-    spec_commits = git_integration.find_tag_commits("@SPEC:AUTH-001", limit=5)
 
     # Verify commit-TAG integration
     assert isinstance(spec_commits, list)
@@ -409,7 +372,6 @@ def test_git_commit_tag_search():
         assert "author" in commit
         assert "date" in commit
         assert "message" in commit
-        assert "@SPEC:" in commit["message"]
 ```
 
 ---
@@ -422,7 +384,6 @@ Verify that TAG system integrates with Graphviz for dependency visualization.
 ```python
 """
 Integration test: TAG system with Graphviz visualization
-@TEST:TAG-VIS-INTEGRATION-001: Integration between TAG system and Graphviz visualization
 """
 
 import pytest
@@ -441,13 +402,6 @@ def test_graphviz_integration():
 
     # Create test TAG project
     test_tags = [
-        "@SPEC:AUTH-001",
-        "@TEST:AUTH-001:UNIT",
-        "@CODE:AUTH-001:API",
-        "@DOC:AUTH-001:API",
-        "@SPEC:USER-001",
-        "@TEST:USER-001:INTEGRATION",
-        "@CODE:USER-001:DOMAIN"
     ]
 
     # Parse test TAGs
@@ -461,16 +415,12 @@ def test_graphviz_integration():
         layout_engine="dot",
         include_dependencies=True,
         include_relationships=True,
-        highlight_patterns=["@SPEC:AUTH"]
     )
 
     # Verify graph generation
     assert isinstance(graph_content, str)
     assert len(graph_content) > 0
     assert "digraph TAG_Dependency_Graph" in graph_content
-    assert "@SPEC:AUTH-001" in graph_content
-    assert "@TEST:AUTH-001:UNIT" in graph_content
-    assert "@CODE:AUTH-001:API" in graph_content
 
 def test_graphviz_multiple_formats():
     """Test integration between TAG system and multiple Graphviz formats."""
@@ -483,9 +433,6 @@ def test_graphviz_multiple_formats():
 
     # Create test TAG project
     test_tags = [
-        "@SPEC:AUTH-001",
-        "@TEST:AUTH-001:UNIT",
-        "@CODE:AUTH-001:API"
     ]
 
     # Parse test TAGs
@@ -524,8 +471,6 @@ def test_graphviz_timeline_integration():
 
     # Create test TAG with timeline
     test_tags = [
-        "@SPEC:AUTH-001",
-        "@TEST:AUTH-001:UNIT"
     ]
 
     # Parse test TAGs
@@ -535,7 +480,6 @@ def test_graphviz_timeline_integration():
     # Generate timeline graph
     try:
         timeline_graph = visualizer.generate_timeline_graph(
-            tag_id="@SPEC:AUTH-001",
             timeline_type="monthly"
         )
 
@@ -557,7 +501,6 @@ Verify that TAG system integrates with performance optimization features.
 ```python
 """
 Integration test: TAG system with performance optimization
-@TEST:TAG-PERF-INTEGRATION-001: Integration between TAG system and performance optimization
 """
 
 import pytest
@@ -666,7 +609,6 @@ Verify that TAG system integrates with error handling across different component
 ```python
 """
 Integration test: TAG system error handling integration
-@TEST:TAG-ERROR-INTEGRATION-001: Integration between TAG system and error handling
 """
 
 import pytest
@@ -681,7 +623,6 @@ def test_cross_skill_error_handling():
 
     # Test error handling in tag parsing
     try:
-        invalid_tag = tag_system.parse_tag("@INVALID:TAG:FORMAT", Path("test.md"))
         assert False, "Should have raised ValueError for invalid tag format"
     except ValueError as e:
         assert "Invalid tag pattern" in str(e)
@@ -712,9 +653,6 @@ def test_error_recovery():
 
     # Create test data with potential errors
     test_data = [
-        "@SPEC:AUTH-001",
-        "@INVALID:TAG:FORMAT",  # This should cause an error
-        "@TEST:AUTH-001:UNIT"
     ]
 
     # Process tags with error recovery
@@ -747,7 +685,6 @@ def test_error_logging():
 
     # Test error logging
     try:
-        invalid_tag = tag_system.parse_tag("@INVALID:TAG:FORMAT", Path("test.md"))
     except ValueError as e:
         log_error(e)
 

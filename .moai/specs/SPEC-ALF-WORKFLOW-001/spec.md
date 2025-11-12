@@ -4,7 +4,6 @@ version: 0.1.0
 status: completed
 created: 2025-10-29
 updated: 2025-10-29
-author: @Goos
 priority: high
 category: feature
 labels:
@@ -38,13 +37,11 @@ scope:
     - .claude/agents/spec-builder/main.md
 ---
 
-# @SPEC:ALF-WORKFLOW-001: Alfred 4단계 워크플로우 로직 구현
 
 ## HISTORY
 
 ### v0.1.0 (2025-10-29)
 - **IMPLEMENTATION COMPLETED**: 4단계 워크플로우 구현 완료 (status: draft → completed)
-- **AUTHOR**: @Goos
 - **IMPLEMENTATION**:
   - CLAUDE.md: "4-Step Workflow Logic" 섹션 추가
   - CLAUDE-RULES.md: TodoWrite, Report Generation, Git Commit 규칙 추가
@@ -57,7 +54,6 @@ scope:
 
 ### v0.0.1 (2025-10-29)
 - **INITIAL**: Alfred의 새로운 4단계 워크플로우 로직 SPEC 초안 작성
-- **AUTHOR**: @Goos
 - **SECTIONS**: 환경(Environment), 가정(Assumptions), 요구사항(Requirements), 명세(Specifications), 추적성(Traceability)
 - **CONTEXT**: 기존 Alfred 워크플로우를 체계화하여 의도 파악 → 계획 수립 → 작업 실행 → 보고/커밋의 4단계로 구조화
 
@@ -158,7 +154,6 @@ scope:
 - **4단계**: 의도 파악 (Intent Understanding) → 계획 수립 (Plan Creation) → 작업 실행 (Task Execution) → 보고/커밋 (Report & Commit)
 
 **REQ-ALF-WF-002**: Alfred는 사용자의 configured `conversation_language`로 모든 대화를 수행해야 한다.
-- **예외**: Skill 이름, @TAG 식별자, 기술적 함수/변수명은 영어 유지
 
 **REQ-ALF-WF-003**: 시스템은 작업 진행 상황을 TodoWrite를 통해 실시간 추적해야 한다.
 - **상태**: pending, in_progress, completed
@@ -461,7 +456,6 @@ git-manager (실행):
 │   - Add test_jwt_service.py with token generation tests
 │   - Add test cases for token expiration and refresh
 │
-│   Refs: @SPEC:AUTH-004
 │
 │   🤖 Generated with [Claude Code](https://claude.com/claude-code)
 │
@@ -474,7 +468,6 @@ git-manager (실행):
 │   - Add middleware for token validation
 │   - Support 30-minute token expiration and refresh
 │
-│   Refs: @CODE:AUTH-004
 │
 │   🤖 Generated with [Claude Code](https://claude.com/claude-code)
 │
@@ -487,7 +480,6 @@ git-manager (실행):
     - Add comprehensive error handling
     - Improve type hints for better IDE support
 
-    Refs: @CODE:AUTH-004
 
     🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
@@ -550,17 +542,6 @@ Alfred: [분석 수행]
 
 ### TAG 체계
 
-- **@SPEC:ALF-WORKFLOW-001**: 이 SPEC 문서
-- **@CODE:ALF-WORKFLOW-001:ALFRED**: CLAUDE.md 내 Alfred 지침
-- **@CODE:ALF-WORKFLOW-001:RULES**: CLAUDE-RULES.md 내 규칙
-- **@CODE:ALF-WORKFLOW-001:CMD-PLAN**: 1-plan.md 명령 템플릿
-- **@CODE:ALF-WORKFLOW-001:CMD-RUN**: 2-run.md 명령 템플릿
-- **@CODE:ALF-WORKFLOW-001:CMD-SYNC**: 3-sync.md 명령 템플릿
-- **@CODE:ALF-WORKFLOW-001:AGENT-PLANNER**: implementation-planner/main.md
-- **@CODE:ALF-WORKFLOW-001:AGENT-TDD**: tdd-implementer/main.md
-- **@CODE:ALF-WORKFLOW-001:AGENT-DOC**: doc-syncer/main.md
-- **@CODE:ALF-WORKFLOW-001:AGENT-GIT**: git-manager/main.md
-- **@CODE:ALF-WORKFLOW-001:AGENT-SPEC**: spec-builder/main.md
 
 ### 영향받는 컴포넌트
 
@@ -590,7 +571,6 @@ git diff --name-only feature/SPEC-ALF-WORKFLOW-001
 rg 'AskUserQuestion|TodoWrite|Plan Agent' CLAUDE.md CLAUDE-RULES.md
 
 # 4. 커밋 메시지 검증
-git log --grep="@SPEC:ALF-WORKFLOW-001" --oneline
 ```
 
 ---
@@ -608,4 +588,3 @@ git log --grep="@SPEC:ALF-WORKFLOW-001" --oneline
 
 **마지막 업데이트**: 2025-10-29
 **문서 버전**: v0.0.1
-**작성자**: @Goos

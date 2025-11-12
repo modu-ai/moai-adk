@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @TEST:CI-TAG-VALIDATION-001 | Component 2: CI validator tests
 """Test suite for CI/CD TAG validation
 
 This module tests the CIValidator that integrates with GitHub Actions:
@@ -181,7 +180,6 @@ class TestPRValidation:
 def authenticate():
     pass
 
-# @TEST:AUTH-004
 def test_authenticate():
     pass
 """)
@@ -598,7 +596,6 @@ class TestIntegrationWorkflow:
             # Create test file
             test_file = Path(tmpdir) / "src" / "auth.py"
             test_file.parent.mkdir(parents=True)
-            test_file.write_text("# # REMOVED_ORPHAN_CODE:AUTH-004\n# @TEST:AUTH-004\n")
 
             # Mock file resolution
             with patch.object(Path, 'exists', return_value=True), \

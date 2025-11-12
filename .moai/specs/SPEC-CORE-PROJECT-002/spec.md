@@ -8,7 +8,6 @@ created: "2025-11-10"
 author: "GoosLab"
 ---
 
-# @SPEC:CORE-PROJECT-002 | @EXPERT:BACKEND | @EXPERT:DEVOPS
 
 ## SPEC Overview
 
@@ -23,10 +22,6 @@ This SPEC defines the core project system for MoAI-ADK, which provides comprehen
 
 ## Implementation Files
 
-- **CODE**: @CODE:CORE-PROJECT-001 - Core project functionality
-- **CODE**: @CODE:INIT-005:INIT - Core initialization functionality
-- **TEST**: @TEST:CORE-PROJECT-002 - Core project system tests
-- **DOC**: @DOC:CORE-PROJECT-002 - Core project documentation
 
 ## Acceptance Criteria
 
@@ -40,6 +35,4 @@ This SPEC defines the core project system for MoAI-ADK, which provides comprehen
 ## Traceability Chain
 
 ```
-@SPEC:CORE-PROJECT-002 → @CODE:CORE-PROJECT-001 → @TEST:CORE-PROJECT-002 → @DOC:CORE-PROJECT-002
-@SPEC:CORE-PROJECT-002 → @CODE:INIT-005:INIT → @TEST:CORE-PROJECT-002 → @DOC:CORE-PROJECT-002
 ```

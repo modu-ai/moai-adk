@@ -4,7 +4,6 @@ version: 0.1.0
 status: completed
 created: 2025-10-15
 updated: 2025-10-15
-author: @Goos
 priority: high
 category: refactor
 labels:
@@ -22,13 +21,11 @@ scope:
     - tests/integration
 ---
 
-# @SPEC:TEST-COVERAGE-001: CLI 및 Git 모듈 테스트 커버리지 85% 달성
 
 ## HISTORY
 
 ### v0.1.0 (2025-10-15)
 - **COMPLETED**: TDD 구현 완료 (RED-GREEN-REFACTOR)
-- **AUTHOR**: @Goos
 - **ACHIEVEMENT**:
   - 272 tests 작성 (19 test files)
   - 85.61% coverage 달성 (726/848 statements)
@@ -47,7 +44,6 @@ scope:
 
 ### v0.0.1 (2025-10-15)
 - **INITIAL**: 테스트 커버리지 85% 달성 명세 최초 작성
-- **AUTHOR**: @Goos
 - **SCOPE**: CLI 명령어, Git 모듈, Template 엣지 케이스
 - **CONTEXT**: TRUST 원칙 T (Test First) 위반 해소 - 현재 72.06% → 목표 85%
 
@@ -166,9 +162,7 @@ scope:
   - 커버리지 리포트가 HTML로 생성되어야 한다
   - CI/CD 빌드가 통과해야 한다
 
-## Traceability (@TAG)
 
-- **SPEC**: `@SPEC:TEST-COVERAGE-001`
 - **TEST**: `tests/unit/test_*`, `tests/integration/test_git_workflow.py`
 - **CODE**: `src/moai_adk/cli/commands/*`, `src/moai_adk/core/git/*`
 

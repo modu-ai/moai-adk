@@ -54,9 +54,7 @@ priority: high
 ```python
 # tests/test_auth.py
 import pytest
-from src.auth import authenticate  # @TEST:AUTH-001
 
-def test_invalid_password_denies_access():  # @TEST:AUTH-001
     """SPEC: IF password invalid 3 times, lock account"""
     user = create_test_user()
 
@@ -71,9 +69,7 @@ def test_invalid_password_denies_access():  # @TEST:AUTH-001
 
 ```python
 # src/auth.py
-from src.models import User  # @CODE:AUTH-001
 
-def authenticate(email: str, password: str) -> User:  # @CODE:AUTH-001
     """Authenticate user with email and password."""
     user = User.find_by_email(email)
 
@@ -91,13 +87,10 @@ def authenticate(email: str, password: str) -> User:  # @CODE:AUTH-001
 
 ```python
 # Refactored: Better error handling and type hints
-from typing import Optional  # @CODE:AUTH-001
 from src.models import User
 from src.exceptions import AuthenticationError
 
-MAX_FAILED_ATTEMPTS = 3  # @CODE:AUTH-001
 
-def authenticate(email: str, password: str) -> Optional[User]:  # @CODE:AUTH-001
     """Authenticate user and manage attempt tracking."""
     user = User.find_by_email(email)
     if not user:
@@ -207,12 +200,8 @@ Never load:
 rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/
 
 # Find orphan SPECs (no @CODE references)
-rg '@SPEC:AUTH-001' -n .moai/specs/
-rg '@CODE:AUTH-001' -n src/  # Should have at least one
 
 # Find orphan CODE tags (SPEC missing)
-rg '@CODE:AUTH-001' -n src/
-rg '@SPEC:AUTH-001' -n .moai/specs/  # Should exist
 ```
 
 ## Common Commands
@@ -222,7 +211,6 @@ rg '@SPEC:AUTH-001' -n .moai/specs/  # Should exist
 mkdir -p .moai/specs/SPEC-AUTH-001
 
 # Check for duplicates
-rg "@SPEC:AUTH-001" .moai/specs/  # Should return 0-1 hits
 
 # List all SPECs by status
 rg "^status:" .moai/specs/SPEC-*/spec.md

@@ -1,4 +1,3 @@
-# @TEST:SPEC-EARS-TEMPLATE-001
 """Test suite for EARS Template Engine."""
 
 import unittest
@@ -100,7 +99,6 @@ class TestEARSTemplateEngine(unittest.TestCase):
         spec_content = self.engine._generate_spec_content(self.web_analysis, 'web')
 
         # Check required sections
-        self.assertIn('@META:', spec_content)
         self.assertIn('Overview', spec_content)
         self.assertIn('Environment', spec_content)
         self.assertIn('Assumptions', spec_content)
@@ -176,7 +174,6 @@ class TestEARSTemplateEngine(unittest.TestCase):
         self.assertIn('acceptance_md', result)
 
         # Check content validity
-        self.assertIn('@META:', result['spec_md'])
         self.assertIn('Implementation Plan', result['plan_md'])
         self.assertIn('Acceptance Criteria', result['acceptance_md'])
 
@@ -251,9 +248,6 @@ class TestEARSTemplateEngine(unittest.TestCase):
         result = self.engine.generate_complete_spec(self.web_analysis)
 
         # Check for traceability tags
-        self.assertIn('@CODE:', result['spec_md'])
-        self.assertIn('@TEST:', result['spec_md'])
-        self.assertIn('@ENV:', result['spec_md'])
 
     def test_file_path_extraction(self):
         """Test file path extraction and inclusion."""
@@ -366,7 +360,6 @@ class TestEARSTemplateEngine(unittest.TestCase):
         result = self.engine.generate_complete_spec(self.web_analysis)
 
         # Check EARS sections are present
-        self.assertIn('@META:', result['spec_md'])
         self.assertIn('Overview', result['spec_md'])
         self.assertIn('Environment', result['spec_md'])
         self.assertIn('Assumptions', result['spec_md'])

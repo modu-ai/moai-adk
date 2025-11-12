@@ -1,4 +1,3 @@
-# @ACCEPTANCE:LANGUAGE-DETECTION-001: 인수 기준
 
 ## 개요
 

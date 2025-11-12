@@ -10,7 +10,6 @@ tags: ["documentation", "automation", "integration", "ast", "code-analysis"]
 depends_on: ["DOC-ONLINE-001", "DOC-VISUAL-001", "DOC-TABLE-001"]
 ---
 
-# @SPEC:DOC-INTEGRATION-001 코드-문서 자동 연동 시스템
 
 ## 환경 (Environment)
 
@@ -22,14 +21,12 @@ depends_on: ["DOC-ONLINE-001", "DOC-VISUAL-001", "DOC-TABLE-001"]
   - `jinja2` (문서 템플릿)
   - `pydantic` (데이터 모델링)
 - **연동 모듈**: doc_scanner, doc_generator, tag_manager, doc_server
-- **태그**: @DOC-ONLINE-001, @DOC-VISUAL-001, @DOC-TABLE-001 완료 필수
 
 ## 가정 (Assumptions)
 
 - 코드베이스는 AST 분석이 가능한 구조적 프로그래밍 언어로 작성됨
 - 기존 DOC-ONLINE-001, DOC-VISUAL-001, DOC-TABLE-001 시스템이 완료되어 있음
 - 소스 코드에는 최소한의 문서화 주석이 포함되어 있음
-- 프로젝트 내 TAG 체인(@TAG, @SPEC 등)이 정의되어 있음
 - 동기화된 개발 환경에서 코드 변경과 문서 업데이트가 주기적으로 발생함
 
 ## 요구사항 (Requirements)
@@ -55,7 +52,6 @@ depends_on: ["DOC-ONLINE-001", "DOC-VISUAL-001", "DOC-TABLE-001"]
    - Markdown 및 HTML 다중 포맷 지원
 
 4. **TAG 체인 자동 연동**
-   - 코드 내 @TAG, @SPEC 참조 자동 감지
    - TAG 체인 무결성 검증 및 오류 보고
    - 문서 내 TAG 참조 자동 하이퍼링크화
    - 고아 TAG(Orphaned Tags) 자동 감지
@@ -229,7 +225,6 @@ class TagDetector:
         코드 내 TAG 참조 스캔
 
         Event: TAG 스캔 요청
-        Action: 소스 코드 내 @TAG, @SPEC 패턴 검색
         Response: TagReference 리스트 반환
         State: TAG 감지 완료
         """
@@ -332,7 +327,4 @@ class DocIntegrationAPI:
 
 ## 통합 추적성 (Traceability)
 
-- **선행 SPEC**: @SPEC:DOC-ONLINE-001 (웹 기반 문서 시스템), @SPEC:DOC-VISUAL-001 (시각화 시스템), @SPEC:DOC-TABLE-001 (테이블 데이터 시스템)
-- **후속 구현**: @IMPL:DOC-INTEGRATION-001 (통합 시스템 구현), @TEST:DOC-INTEGRATION-001 (통합 테스트), @DEPLOY:DOC-INTEGRATION-001 (배포 설정)
-- **관련 TAG**: @TAG:DOC-SCANNER, @TAG:AST-ANALYZER, @TAG:DOC-GENERATOR, @TAG:SYNC-ENGINE
 - **의존 모듈**: doc_scanner, ast_analyzer, doc_generator, tag_integrator, sync_engine

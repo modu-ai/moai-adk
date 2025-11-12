@@ -194,7 +194,6 @@
 
 **Given**:
 - tag-agent가 복잡한 정규식으로 코드 블록 검색
-- 패턴: `@SPEC:[A-Z-]+\s*\n.*Requirements`
 
 **When**:
 - tag-agent가 `multiline=true` 옵션으로 Grep 실행
@@ -218,7 +217,6 @@
 **Goal**: head_limit 파라미터로 결과 개수 제한
 
 **Given**:
-- tag-agent가 `@SPEC:` 패턴으로 전체 프로젝트 검색
 - 예상 매칭 결과: 50개 SPEC 문서
 
 **When**:
@@ -306,7 +304,6 @@
 2. `/alfred:2-run SPEC-PROFILE-001` 실행
    - tdd-implementer (Haiku) → 코드 구현
    - Background Bash → pytest 백그라운드 실행
-   - Enhanced Grep → @TAG 검색
 3. 토큰 사용률 80% 도달
    - PreCompact Hook → 상태 자동 저장
 4. 새 세션에서 `--resume-plan` 실행
@@ -316,7 +313,6 @@
 - ✅ **Feature 1**: spec-builder는 Sonnet, tdd-implementer는 Haiku 사용
 - ✅ **Feature 2**: 토큰 80% 도달 시 상태 자동 저장됨
 - ✅ **Feature 3**: pytest가 백그라운드에서 실행되고 완료 알림 수신
-- ✅ **Feature 4**: Enhanced Grep이 @TAG 패턴 정확히 검색
 - ✅ **Feature 5**: 새 세션에서 이전 계획 성공적으로 복원
 - ✅ **Feature 6**: TodoWrite이 Plan 결과에서 자동 초기화됨
 
@@ -347,7 +343,6 @@
    - **Readable**: Ruff 100% 통과
    - **Unified**: 일관된 코딩 스타일
    - **Secured**: 보안 취약점 0개
-   - **Trackable**: @TAG 체인 100% 연결
 
 2. **Test Coverage**
    - Unit tests: 90% 이상
@@ -391,7 +386,6 @@ version: 0.0.1
 status: draft
 ---
 
-## @SPEC:TEST-001
 Sample SPEC for testing Claude Code features
 ```
 

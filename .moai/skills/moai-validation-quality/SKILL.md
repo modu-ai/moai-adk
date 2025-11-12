@@ -134,7 +134,6 @@ ruff check src/
    ✅ Formatting: Passed
    ↓
 7. Delegate to Agents:
-   - tag-agent: Verify @TAG integrity (0 orphans)
    - spec-status-agent: Update SPEC status to "completed"
    ↓
 8. Background Report (Config Check):
@@ -243,7 +242,6 @@ apply_context7_patterns(context7_docs, detected_language)
 - ✅ Guide users on missing tools
 - ✅ Validate ≥85% test coverage (mandatory)
 - ✅ Enforce strict type checking
-- ✅ Zero orphan @TAGs
 
 ### ❌ DON'T:
 - ❌ Assume tools are installed

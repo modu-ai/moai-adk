@@ -1,4 +1,3 @@
-# @CODE:INIT-005:BACKUP | SPEC: .moai/specs/SPEC-INIT-003/spec.md | TEST: tests/unit/test_backup_utils.py
 """Backup utility module (SPEC-INIT-003 v0.3.0)
 
 Selective backup strategy:

@@ -93,20 +93,14 @@ git checkout -b feature/SPEC-001
 # TDD: RED phase
 git commit -m "🔴 RED: test_user_authentication_failed_on_invalid_password
 
-@SPEC:USER-AUTH-001
-@TEST:AUTH:001"
 
 # TDD: GREEN phase
 git commit -m "🟢 GREEN: implement_user_authentication
 
-@SPEC:USER-AUTH-001
-@CODE:AUTH:001"
 
 # TDD: REFACTOR phase
 git commit -m "♻️ REFACTOR: improve_auth_error_handling
 
-@SPEC:USER-AUTH-001
-@CODE:AUTH:001"
 
 # Create PR
 gh pr create --draft --base develop --head feature/SPEC-001
@@ -308,8 +302,6 @@ git survey
 
 Test that login fails gracefully with invalid password.
 
-@SPEC:USER-AUTH-001
-@TEST:AUTH:001
 
 ---
 
@@ -317,8 +309,6 @@ Test that login fails gracefully with invalid password.
 
 Implement login validation in AuthService.
 
-@SPEC:USER-AUTH-001
-@CODE:AUTH:001
 
 ---
 
@@ -326,8 +316,6 @@ Implement login validation in AuthService.
 
 Improve error messages for failed authentication attempts.
 
-@SPEC:USER-AUTH-001
-@CODE:AUTH:002
 ```
 
 ### TAG Reference Format
@@ -336,11 +324,6 @@ Improve error messages for failed authentication attempts.
 @<DOMAIN>:<IDENTIFIER>:<COMPONENT> (optional)
 
 Examples:
-@SPEC:USER-AUTH-001           # SPEC reference
-@TEST:AUTH:001                # Test case
-@CODE:AUTH:001                # Code implementation
-@DOC:AUTH:001                 # Documentation
-@BUG:CRITICAL:PASSWORD_RESET  # Bug reference
 ```
 
 ---
@@ -396,11 +379,8 @@ gh pr merge 123 --squash && gh pr merge 124 --squash
 
 /alfred:2-run SPEC-XXX
   ├─→ RED phase: Write failing tests
-  │   └─→ git commit "🔴 RED: test_description @SPEC:XXX"
   ├─→ GREEN phase: Implement code
-  │   └─→ git commit "🟢 GREEN: implementation @SPEC:XXX"
   └─→ REFACTOR phase: Improve code
-      └─→ git commit "♻️ REFACTOR: optimization @SPEC:XXX"
 
 /alfred:3-sync auto SPEC-XXX
   ├─→ Run quality gates (coverage ≥85%)

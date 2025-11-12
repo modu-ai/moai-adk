@@ -1,4 +1,3 @@
-# SPEC @SPEC:PAY-001 — TBD
 
 ## 목적 (Purpose)
 (목적을 입력하세요)

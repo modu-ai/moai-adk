@@ -2,7 +2,6 @@
 """
 Statusline configuration loader for Claude Code
 
-@CODE:STATUSLINE-CONFIG-LOADER-001 | @SPEC:STATUSLINE-CONFIG-LOADER-002 | @TEST:STATUSLINE-CONFIG-LOADER-002
 
 Loads and manages statusline configuration from .moai/config/statusline-config.yaml
 """

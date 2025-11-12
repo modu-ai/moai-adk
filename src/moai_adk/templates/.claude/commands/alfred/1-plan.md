@@ -24,7 +24,6 @@ skills:
 
 > **Batched Design**: All AskUserQuestion calls follow batched design principles (1-4 questions per call) to minimize user interaction turns. See CLAUDE.md section "Alfred Command Completion Pattern" for details.
 
-<!-- @CODE:ALF-WORKFLOW-001:CMD-PLAN -->
 
 **4-Step Workflow Integration**: This command implements Steps 1-2 of Alfred's workflow (Intent Understanding → Plan Creation). See CLAUDE.md for full workflow details.
 
@@ -456,7 +455,6 @@ Check if SPEC-{SPEC_ID} already exists in the codebase.
 
 Search scope:
 - Primary: .moai/specs/ directory
-- Secondary: All source files with @SPEC: tags
 
 Return:
 - exists: true/false
@@ -563,7 +561,6 @@ The spec-builder agent will:
 
    **HISTORY section** (immediately after YAML):
    ```markdown
-   # @SPEC:DOMAIN-NNN: [SPEC title]
 
    ## HISTORY
 
@@ -597,7 +594,6 @@ The spec-builder agent will:
    **Traceability section**:
    ```markdown
    ## Traceability (@TAG)
-   - **SPEC**: @SPEC:DOMAIN-NNN
    - **TEST**: tests/[domain]/test_[feature].py
    - **CODE**: src/[domain]/[feature].py
    - **DOC**: docs/[domain]/[feature].md

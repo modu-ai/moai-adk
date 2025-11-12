@@ -4,28 +4,23 @@ version: 0.2.0
 status: completed
 created: 2025-10-06
 updated: 2025-10-18
-author: @Goos
 priority: medium
 ---
 
-# @SPEC:INSTALLER-QUALITY-001: Code Quality Integrated Improvements
 
 ## HISTORY
 
 ### v0.2.0 (2025-10-18)
 - **CHANGED**: deprecated → completed (TypeScript 프로젝트 아카이브)
-- **AUTHOR**: @Goos
 - **REASON**: TypeScript 프로젝트에서 구현 완료된 기능, Python 전환으로 deprecated 처리했으나 실제로는 완료된 것으로 간주
 
 ### v0.1.0 (2025-10-16)
 - **DEPRECATED**: TypeScript 프로젝트용 SPEC, Python 프로젝트에는 적용 불가
-- **AUTHOR**: @Goos
 - **REASON**: MoAI-ADK가 Python 프로젝트로 전환됨에 따라 TypeScript installer 품질 SPEC 불필요
 - **ALTERNATIVE**: Python 프로젝트는 trust_checker.py로 TRUST 5원칙 검증 (85% 커버리지, LOC 제한 등)
 
 ### v0.0.1 (2025-10-06)
 - **INITIAL**: Installer 패키지 통합 코드 품질 개선 명세 작성 (TypeScript용)
-- **AUTHOR**: @Goos
 - **SCOPE**: TypeScript installer 패키지 품질 개선
 
 ## 1. 개요
@@ -36,7 +31,6 @@ Installer 패키지의 코드 품질을 전반적으로 개선하여 일관성, 
 ### 1.2 범위
 - **DI 패턴 통일**: 모든 클래스에 일관된 의존성 주입 적용
 - **에러 처리 일관성**: InstallationError 계층 구조 통일
-- **TAG 형식 통일**: `@CODE:ID | SPEC: ... | TEST: ...` 형식
 - **크로스 플랫폼 개선**: Windows 'which' 명령 대체
 - **매직 넘버 제거**: 하드코딩된 값을 상수로 추출
 
@@ -105,7 +99,6 @@ export class PhaseExecutor {
 
 #### After (Constructor Injection)
 ```typescript
-// @CODE:INSTALLER-QUALITY-001 | SPEC: SPEC-INSTALLER-QUALITY-001.md | TEST: tests/core/installer/phase-executor.test.ts
 
 export class PhaseExecutor {
   constructor(
@@ -124,7 +117,6 @@ export class PhaseExecutor {
 
 #### InstallationError 계층 구조
 ```typescript
-// @CODE:INSTALLER-QUALITY-001 | SPEC: SPEC-INSTALLER-QUALITY-001.md | TEST: tests/core/errors/installation-error.test.ts
 
 export class InstallationError extends Error {
   constructor(message: string, public readonly cause?: Error) {
@@ -171,7 +163,6 @@ try {
 
 #### 표준 TAG 형식
 ```typescript
-// @CODE:INSTALLER-QUALITY-001 | SPEC: SPEC-INSTALLER-QUALITY-001.md | TEST: tests/core/installer/installer-core.test.ts
 
 export class InstallerCore {
   // ...
@@ -181,11 +172,8 @@ export class InstallerCore {
 #### 일관성 검증 스크립트
 ```bash
 # TAG 형식 검증
-rg '@CODE:[A-Z]+-[0-9]{3}' moai-adk-ts/src/ --count
-rg '@CODE:[A-Z]+-[0-9]{3} \| SPEC:' moai-adk-ts/src/ --count
 
 # 불일치 찾기
-rg '@CODE:[A-Z]+-[0-9]{3}(?! \| SPEC:)' moai-adk-ts/src/
 ```
 
 ### 3.4 크로스 플랫폼 개선
@@ -230,7 +218,6 @@ const MAX_RETRIES = 3; // 왜 3번?
 
 #### After
 ```typescript
-// @CODE:INSTALLER-QUALITY-001 | SPEC: SPEC-INSTALLER-QUALITY-001.md
 
 export const TIMEOUTS = {
   /** Dependency 설치 타임아웃 (5분) */
@@ -311,5 +298,3 @@ for (let i = 0; i < RETRY_LIMITS.PACKAGE_INSTALL; i++) {
 - `moai-adk-ts/package.json`: cross-spawn 의존성
 
 ### 6.3 관련 TAG
-- `@CODE:INSTALLER-QUALITY-001`: 품질 개선 코드
-- `@TEST:INSTALLER-QUALITY-001`: 품질 개선 테스트

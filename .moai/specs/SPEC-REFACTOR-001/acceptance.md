@@ -1,9 +1,7 @@
-# @SPEC:001 수락 기준
 
 ## TAG BLOCK
 
 ```text
-# @SPEC:REFACTOR-001: Git Manager 리팩토링 수락 기준
 # Parent: SPEC-REFACTOR-001
 # Phase 1: GitBranchManager (REFACTOR-001-P1)
 # Phase 2: GitCommitManager (REFACTOR-001-P2)
@@ -404,11 +402,6 @@ npm run docs
 - TAG 형식 준수
 
 ```bash
-rg '@CODE:REFACTOR-001' -n src/core/git/
-rg '@SPEC:REFACTOR-001' -n src/core/git/
-rg '@SPEC:REFACTOR-001' -n src/core/git/
-rg '@CODE:REFACTOR-001' -n src/core/git/
-rg '@TEST:REFACTOR-001' -n src/core/git/
 # ✅ 모든 TAG 발견됨
 ```
 
@@ -694,11 +687,6 @@ echo "✅ 커버리지 기준 충족"
 
 # 6. TAG 검증
 echo "\n🏷️  6. TAG 체인 검증..."
-rg '@CODE:REFACTOR-001' src/core/git/ -q && echo "✅ @CODE TAG 존재" || echo "❌ @CODE TAG 누락"
-rg '@SPEC:REFACTOR-001' src/core/git/ -q && echo "✅ @SPEC TAG 존재" || echo "❌ @SPEC TAG 누락"
-rg '@SPEC:REFACTOR-001' src/core/git/ -q && echo "✅ @SPEC TAG 존재" || echo "❌ @SPEC TAG 누락"
-rg '@CODE:REFACTOR-001' src/core/git/ -q && echo "✅ @CODE TAG 존재" || echo "❌ @CODE TAG 누락"
-rg '@TEST:REFACTOR-001' src/core/git/ -q && echo "✅ @TEST TAG 존재" || echo "❌ @TEST TAG 누락"
 
 # 7. 순환 의존성 검증
 echo "\n🔄 7. 순환 의존성 검증..."

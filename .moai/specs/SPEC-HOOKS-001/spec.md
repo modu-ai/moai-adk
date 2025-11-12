@@ -4,7 +4,6 @@ version: 0.1.0
 status: completed
 created: 2025-10-16
 updated: 2025-10-16
-author: @Goos
 priority: high
 category: refactor
 labels:
@@ -30,21 +29,18 @@ scope:
     - handlers/notification.py
 ---
 
-# @SPEC:HOOKS-001: Alfred Hooks 시스템 (Event-Driven Context Management)
 
 ## HISTORY
 
 ### v0.1.0 (2025-10-16)
 - **IMPLEMENTATION COMPLETED**: TDD 구현 완료 (22개 테스트 통과)
 - **CONTEXT**: 사후 문서화 (Reverse Engineering)
-- **AUTHOR**: @Goos
 - **TEST**: tests/unit/test_alfred_hooks_*.py (22 tests)
 - **REASON**: SPEC-First 원칙 복원 및 완성된 구현의 공식 명세화
 - **FILES**: 12개 파일 (1,444 LOC), README.md (239 LOC)
 
 ### v0.0.1 (2025-10-16)
 - **INITIAL**: Alfred Hooks 시스템 사후 문서화 시작
-- **AUTHOR**: @Goos
 - **REASON**: 기존 moai_hooks.py (1233 LOC) → 모듈화된 구조 (9 files ≤284 LOC) 마이그레이션 완료 후 SPEC 작성
 
 ---
@@ -168,7 +164,6 @@ scope:
 
 2. **TAG 체인 검증** (선택):
    - WHERE TAG 검색 요청이 있으면
-   - 시스템은 @SPEC → @TEST → @CODE 완전성을 검증할 수 있다
    - 시스템은 고아 TAG를 탐지할 수 있다
 
 3. **워크플로우 컨텍스트 캐싱** (선택):
@@ -207,7 +202,6 @@ scope:
 
 #### 1. `alfred_hooks.py` (Main Entry Point)
 ```python
-# @CODE:HOOKS-001:CLI | SPEC: SPEC-HOOKS-001/spec.md | TEST: N/A (CLI router)
 
 def main():
     """
@@ -222,7 +216,6 @@ def main():
 
 #### 2. `core/project.py` (284 LOC)
 ```python
-# @CODE:HOOKS-001:PROJECT | SPEC: SPEC-HOOKS-001/spec.md | TEST: test_alfred_hooks_core_project.py
 
 def detect_language(cwd: str) -> str
 def get_project_language(cwd: str) -> str
@@ -254,7 +247,6 @@ def count_specs(cwd: str) -> dict[str, int]
 
 #### 3. `core/context.py` (110 LOC)
 ```python
-# @CODE:HOOKS-001:CONTEXT | SPEC: SPEC-HOOKS-001/spec.md | TEST: test_alfred_hooks_core_context.py
 
 def get_jit_context(prompt: str, cwd: str) -> list[str]
 def save_phase_context(phase: str, data: Any, ttl: int = 600)
@@ -271,7 +263,6 @@ def clear_workflow_context()
 
 #### 4. `core/checkpoint.py` (244 LOC)
 ```python
-# @CODE:HOOKS-001:CHECKPOINT | SPEC: SPEC-HOOKS-001/spec.md | TEST: test_alfred_hooks_core_checkpoint.py (implied)
 
 def detect_risky_operation(tool: str, args: dict, cwd: str) -> tuple[bool, str]
 def create_checkpoint(cwd: str, operation: str) -> str
@@ -286,7 +277,6 @@ def list_checkpoints(cwd: str, max_count: int = 10) -> list[dict]
 
 #### 5. `core/tags.py` (244 LOC)
 ```python
-# @CODE:HOOKS-001:TAGS | SPEC: SPEC-HOOKS-001/spec.md | TEST: test_alfred_hooks_core_tags.py
 
 def search_tags(pattern: str, scope: list[str], cache_ttl: int = 60) -> list[dict]
 def verify_tag_chain(tag_id: str) -> dict[str, Any]
@@ -297,15 +287,12 @@ def set_library_version(library: str, version: str)
 ```
 
 **ripgrep 통합**:
-- JSON 출력 파싱: `rg --json '@SPEC:' .moai/specs/`
 - mtime 기반 캐시 무효화 (CODE-FIRST 보장)
-- TAG 체인 검증: @SPEC → @TEST → @CODE 완전성 확인
 
 ### 5개 Event Handlers
 
 #### 6. `handlers/session.py`
 ```python
-# @CODE:HOOKS-001:HANDLER:SESSION | SPEC: SPEC-HOOKS-001/spec.md | TEST: N/A
 
 def handle_session_start(payload: dict) -> HookResult
 def handle_session_end(payload: dict) -> HookResult
@@ -324,7 +311,6 @@ def handle_session_end(payload: dict) -> HookResult
 
 #### 7. `handlers/user.py`
 ```python
-# @CODE:HOOKS-001:HANDLER:USER | SPEC: SPEC-HOOKS-001/spec.md | TEST: N/A
 
 def handle_user_prompt_submit(payload: dict) -> HookResult
 ```
@@ -336,7 +322,6 @@ def handle_user_prompt_submit(payload: dict) -> HookResult
 
 #### 8. `handlers/tool.py`
 ```python
-# @CODE:HOOKS-001:HANDLER:TOOL | SPEC: SPEC-HOOKS-001/spec.md | TEST: N/A
 
 def handle_pre_tool_use(payload: dict) -> HookResult
 def handle_post_tool_use(payload: dict) -> HookResult
@@ -349,7 +334,6 @@ def handle_post_tool_use(payload: dict) -> HookResult
 
 #### 10. `handlers/notification.py`
 ```python
-# @CODE:HOOKS-001:HANDLER:NOTIFICATION | SPEC: SPEC-HOOKS-001/spec.md | TEST: N/A
 
 def handle_notification(payload: dict) -> HookResult
 def handle_stop(payload: dict) -> HookResult
@@ -360,14 +344,9 @@ def handle_subagent_stop(payload: dict) -> HookResult
 
 ---
 
-## Traceability (@TAG)
 
 ### TAG 체계
 
-- **SPEC**: `@SPEC:HOOKS-001` (.moai/specs/SPEC-HOOKS-001/spec.md)
-- **TEST**: `@TEST:HOOKS-001` (tests/unit/test_alfred_hooks_*.py - 22 tests)
-- **CODE**: `@CODE:HOOKS-001` (.claude/hooks/alfred/*.py - 12 files)
-- **DOC**: `@DOC:HOOKS-001` (README.md - 239 LOC)
 
 ### 테스트 커버리지 (22 Tests)
 
@@ -380,20 +359,8 @@ def handle_subagent_stop(payload: dict) -> HookResult
 
 ```
 .claude/hooks/alfred/
-├── alfred_hooks.py              # @CODE:HOOKS-001:CLI
 ├── core/
-│   ├── __init__.py             # @CODE:HOOKS-001:TYPES
-│   ├── project.py              # @CODE:HOOKS-001:PROJECT
-│   ├── context.py              # @CODE:HOOKS-001:CONTEXT
-│   ├── checkpoint.py           # @CODE:HOOKS-001:CHECKPOINT
-│   └── tags.py                 # @CODE:HOOKS-001:TAGS
 └── handlers/
-    ├── __init__.py             # @CODE:HOOKS-001:HANDLER
-    ├── session.py              # @CODE:HOOKS-001:HANDLER:SESSION
-    ├── user.py                 # @CODE:HOOKS-001:HANDLER:USER
-    ├── compact.py              # @CODE:HOOKS-001:HANDLER:COMPACT
-    ├── tool.py                 # @CODE:HOOKS-001:HANDLER:TOOL
-    └── notification.py         # @CODE:HOOKS-001:HANDLER:NOTIFICATION
 ```
 
 ---
@@ -453,7 +420,6 @@ def handle_subagent_stop(payload: dict) -> HookResult
 - ✅ **Readable**: 모듈별 명확한 책임 분리
 - ✅ **Unified**: 3계층 아키텍처 (CLI, Core, Handler)
 - ✅ **Secured**: Shell Injection, Path Traversal 방어
-- ✅ **Trackable**: @TAG 시스템으로 완전 추적 가능
 
 ---
 
@@ -472,5 +438,4 @@ def handle_subagent_stop(payload: dict) -> HookResult
 ---
 
 **최종 업데이트**: 2025-10-16
-**작성자**: @Goos
 **상태**: 구현 완료 (v0.1.0)

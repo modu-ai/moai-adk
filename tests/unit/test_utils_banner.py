@@ -1,4 +1,3 @@
-# @TEST:UTILS-BANNER-001 | SPEC: SPEC-TEST-COVERAGE-001.md
 """Unit tests for banner.py module
 
 Tests for ASCII banner and welcome message printing.

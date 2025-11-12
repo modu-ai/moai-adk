@@ -8,7 +8,6 @@ author: "spec-builder"
 date: "2025-11-05"
 ---
 
-# @ACCEPTANCE:DOC-INTEGRATION-001 코드-문서 자동 연동 시스템 수용 기준
 
 ## 1. 품질 게이트 기준
 
@@ -16,7 +15,6 @@ date: "2025-11-05"
 - ✅ **코드 스캐닝**: Python, TypeScript, JavaScript, Go, Rust 5개 언어 지원
 - ✅ **AST 분석**: 함수, 클래스, 모듈 수준의 구조 분석 정확도 99.9%
 - ✅ **의존성 분석**: 임포트/내보내기 관계 추출 정확도 95%
-- ✅ **TAG 연동**: @TAG, @SPEC 참조 자동 감지 및 하이퍼링크 생성
 - ✅ **실시간 동기화**: 파일 변경 2초 이내 문서 업데이트
 
 ### 1.2 성능 요구사항
@@ -46,7 +44,6 @@ Feature: 전체 프로젝트 코드 스캐닝
     Given 프로젝트에 10,000개의 소스 파일이 있고
       And 파일들이 Python, TypeScript, JavaScript, Go, Rust 5개 언어로 작성되어 있고
       And 각 파일에 최소한의 주석이 포함되어 있고
-      And @TAG, @SPEC 참조가 일부 파일에 포함되어 있을 때
 
     When 사용자가 전체 프로젝트 스캔을 실행하면
       And 스캐너가 파일 시스템을 탐색하고
@@ -74,7 +71,6 @@ Feature: 변경된 파일만 선택적 업데이트
     Given 10,000개 파일로 구성된 프로젝트가 이미 스캔되어 있고
       And 100개의 파일이 수정되거나 추가되었고
       And 수정된 파일에 새로운 함수와 클래스가 포함되어 있고
-      And 일부 파일에 새로운 @TAG 참조가 추가되었을 때
 
     When 시스템이 파일 변경을 감지하고
       And 증분 스캔을 실행하면
@@ -104,7 +100,6 @@ Feature: 파일 시스템 변경 실시간 감지
     Given 실시간 감지 서비스가 실행 중이고
       And 개발자가 Python 파일을 열어 새로운 함수를 추가하고
       And 파일을 저장하고
-      And 함수에 @TAG 참조를 포함시키고
       And 관련 클래스에 새로운 메서드를 추가할 때
 
     When 파일 시스템이 변경 이벤트를 발생시키면
@@ -118,7 +113,6 @@ Feature: 파일 시스템 변경 실시간 감지
     Then 2초 이내에 문서 업데이트가 완료되고
       And 새로운 함수가 API 문서에 나타나고
       And 새로운 메서드가 클래스 문서에 추가되고
-      And @TAG 참조가 하이퍼링크로 변환되고
       And 브라우저에서 새로고침 없이 변경 내용이 보이고
       And 상태 업데이트 알림이 전송되고
       And 변경 이력이 로그에 기록됨
@@ -162,15 +156,10 @@ Feature: 여러 파일 동시 변경 처리
 #### 시나리오 5: TAG 무결성 검증
 ```gherkin
 Feature: TAG 체인 무결성 자동 검증
-  코드 내의 모든 @TAG, @SPEC 참조가 유효한지
   자동으로 검증하고 문제를 보고해야 함
 
   Scenario: 잘못된 TAG 참조 감지
     Given 프로젝트에 다양한 TAG 참조가 포함되어 있고
-      And @SPEC:DOC-ONLINE-001 참조가 존재하고
-      And @SPEC:NON-EXISTENT-001 잘못된 참조가 포함되어 있고
-      And @TAG:VALID-TAG 유효한 참조가 있고
-      And @TAG:ORPHANED-TAG 고아 TAG가 존재하고
       And 중복된 TAG 정의가 있을 때
 
     When TAG 체인 검증을 실행하면
@@ -182,8 +171,6 @@ Feature: TAG 체인 무결성 자동 검증
 
     Then 검증 결과 보고서가 생성되고
       And 유효한 참조는 성공으로 표시되고
-      And @SPEC:NON-EXISTENT-001는 오류로 표시되고
-      And @TAG:ORPHANED-TAG는 고아 TAG로 표시되고
       And 중복된 TAG는 경고로 표시되고
       And 수정 제안이 제공되고
       And 전체 검증이 10초 이내에 완료되고
@@ -198,21 +185,14 @@ Feature: 생성된 문서에 TAG 자동 연동
 
   Scenario: TAG 참조 자동 하이퍼링크화
     Given 생성된 문서에 여러 TAG 참조가 포함되어 있고
-      And "자세한 내용은 @SPEC:DOC-ONLINE-001을 참조하세요" 텍스트가 있고
-      And "@TAG:DOC-SCANNER 모듈이 담당합니다" 설명이 있고
-      And "구현은 @IMPL:DOC-GENERATOR-001을 확인" 지시가 있을 때
 
     When TAG 연동 프로세스가 실행되면
-      And 문서 내 모든 @TAG, @SPEC 패턴을 검색하고
       And 각 참조의 유효성을 확인하고
       And 해당하는 URL을 생성하고
       And 마크다운 링크로 변환하고
       And HTML 앵커 태그로 변환하면
 
     Then 생성된 문서에 TAG 참조가 하이퍼링크로 변환되고
-      And "@SPEC:DOC-ONLINE-001"이 "[DOC-ONLINE-001](/docs/specs/DOC-ONLINE-001)"으로 변환되고
-      And "@TAG:DOC-SCANNER"이 "[DOC-SCANNER](/tags/DOC-SCANNER)"으로 변환되고
-      And "@IMPL:DOC-GENERATOR-001"이 "[DOC-GENERATOR-001](/impl/DOC-GENERATOR-001)"로 변환되고
       And 모든 링크가 정상적으로 작동하고
       and 링크 스타일이 일관되고
       And 사용자가 클릭 시 관련 문서로 이동하고
@@ -358,7 +338,6 @@ Feature: DOC 시리즈 완전 통합
 ### 4.1 테스트 데이터
 - **대규모 프로젝트**: 10,000개 파일, 50만 줄 코드
 - **다양한 언어**: Python, TypeScript, JavaScript, Go, Rust
-- **TAG 참조**: 2,000개의 @TAG, @SPEC 참조
 - **의존성 복잡도**: 상호 의존적인 모듈 구조
 
 ### 4.2 테스트 도구

@@ -1,4 +1,3 @@
-# @TEST:PHASE-EXECUTOR-001 | SPEC: SPEC-TEST-COVERAGE-001.md
 """Integration tests for PhaseExecutor
 
 Tests 5-phase installation workflow:

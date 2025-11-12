@@ -1,4 +1,3 @@
-# @SPEC:UPDATE-REFACTOR-002: Acceptance Criteria
 
 ## Overview
 

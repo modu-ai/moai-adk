@@ -34,7 +34,6 @@ context7_references:
     topic: "README.md generation guidelines and standards"
   - url: "https://github.com/OAI/OpenAPI-Specification"
     topic: "API documentation standards for README integration"
-spec_reference: "@SPEC:README-STANDARDS-001"
 ```
 
 ## 📚 Content

@@ -96,7 +96,6 @@ User: "Can I add the @TAG retroactively?"
 Yes, you can add @TAGs retroactively.
 
 Edit .moai/specs/SPEC-AUTH-001/spec.md and insert:
-  @SPEC:AUTH-001:JWT-VALIDATION
 
 Then run /alfred:3-sync to update documentation links.
 

@@ -1,4 +1,3 @@
-# @CODE:CORE-PROJECT-001 | SPEC: SPEC-CORE-PROJECT-001/spec.md | TEST: tests/unit/test_language_mapping.py
 """Template mapping by language.
 
 Defines template paths for 20 programming languages.

@@ -4,7 +4,6 @@
 >
 > 생성일: 2025-11-13
 >
-> 작성자: Alfred@MoAI
 >
 > 버전: 1.0
 
@@ -425,4 +424,3 @@ def collect_learner_feedback():
 
 **🤖 Generated with [Claude Code](https://claude.com/claude-code)**
 
-**Co-Authored-By: 🎩 Alfred@MoAI**

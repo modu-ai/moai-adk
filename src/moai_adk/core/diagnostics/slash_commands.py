@@ -1,4 +1,3 @@
-# @CODE:CLAUDE-COMMANDS-001:DIAGNOSTIC | SPEC: SPEC-CLAUDE-COMMANDS-001.md | TEST: tests/unit/test_slash_commands.py
 """Slash command diagnostics
 
 Diagnose and validate Claude Code slash command loading issues.

@@ -1,4 +1,3 @@
-# @SPEC:HOOKS-003 인수 기준
 
 > **TRUST 원칙 자동 검증 (PostToolUse 통합)**
 >
@@ -435,5 +434,4 @@ git commit -m "🟢 GREEN: 구현 완료"
 ---
 
 **Last Updated**: 2025-10-16
-**Author**: @Goos
 **Status**: Draft (v0.0.1)

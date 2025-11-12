@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @TEST:ENHANCE-PERF-001:SESSION | SPEC: SPEC-ENHANCE-PERF-001
 """SessionStart Hook Performance Tests
 
 Tests caching performance optimization for get_package_version_info() and get_git_info().
@@ -30,13 +29,11 @@ from core.project import get_git_info, get_package_version_info  # noqa: E402
 class TestSessionStartPerformance:
     """Performance tests for SessionStart Hook optimization
 
-    @TAG:HOOK-PERF-001
     """
 
     def test_version_info_first_call_baseline(self, tmp_path):
         """RED: Measure baseline performance of get_package_version_info()
 
-        @TEST:ENHANCE-PERF-001:VERSION-BASELINE
 
         This test documents the current performance before optimization.
         First call should complete within reasonable time (< 2000ms).
@@ -59,7 +56,6 @@ class TestSessionStartPerformance:
     def test_version_info_cached_call_fast(self, tmp_path):
         """RED: Verify cached call is significantly faster
 
-        @TEST:ENHANCE-PERF-001:VERSION-CACHED
 
         After first call, subsequent calls should hit cache and be much faster.
         Target: < 200ms (reasonable for system with full initialization)
@@ -188,7 +184,6 @@ class TestSessionStartPerformance:
     def test_session_start_total_time(self, tmp_path):
         """RED: Verify total SessionStart time meets target
 
-        @TEST:ENHANCE-PERF-001:TOTAL-TIME
 
         Total time for SessionStart (including all info gathering) should be reasonable.
         First call (cold cache): < 500ms (includes network/git operations)
@@ -240,13 +235,11 @@ class TestSessionStartPerformance:
 class TestCacheHitRate:
     """Tests for cache hit rate tracking
 
-    @TAG:HOOK-PERF-001
     """
 
     def test_cache_hit_rate_in_typical_session(self, tmp_path):
         """RED: Verify cache hit rate > 90% in typical session
 
-        @TEST:ENHANCE-PERF-001:HITRATE
 
         Simulate a typical session with multiple SessionStart calls.
         Cache hit rate should exceed 90%.
@@ -266,13 +259,11 @@ class TestCacheHitRate:
 class TestCacheErrorHandling:
     """Tests for cache error handling and fallback behavior
 
-    @TAG:HOOK-PERF-001
     """
 
     def test_cache_failure_fallback_to_direct_call(self, tmp_path):
         """RED: Verify graceful degradation when cache fails
 
-        @TEST:ENHANCE-PERF-001:FALLBACK
 
         If cache is corrupted or unavailable, should fall back to direct call.
         """

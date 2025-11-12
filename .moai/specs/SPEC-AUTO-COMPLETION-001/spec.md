@@ -1,5 +1,4 @@
 ---
-@META: {
   "id": "SPEC-AUTO-COMPLETION-001",
   "title": "자동 SPEC 생성 완성화 시스템",
   "title_en": "Automated SPEC Completion System",
@@ -16,7 +15,6 @@
 }
 ---
 
-# @SPEC:AUTO-COMPLETION-001: 자동 SPEC 생성 완성화 시스템
 ## Automated SPEC Completion System
 
 ### 개요 (Overview)
@@ -187,10 +185,6 @@ def create_spec_files(spec_id: str, content: Dict[str, str]) -> bool:
 
 ### 추적성 (Traceability)
 
-- **@SPEC:AUTO-COMPLETION-001** ← **@SPEC:TAG-SPEC-GENERATION-001** (기존 spec_generator.py 확장)
-- **@SPEC:AUTO-COMPLETION-001** ← **@SPEC:TAG-AUTO-SPEC-PROPOSAL-001** (pre_tool hook 확장)
-- **@SPEC:AUTO-COMPLETION-001** → **@TEST:AUTO-COMPLETION-001** (테스트)
-- **@SPEC:AUTO-COMPLETION-001** → **@CODE:HOOK-POST-AUTO-SPEC-001** (구현)
 
 ### SUMMARY (English Summary)
 

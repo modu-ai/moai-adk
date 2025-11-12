@@ -1,4 +1,3 @@
-# Implementation Plan: @SPEC:UPDATE-REFACTOR-001
 
 ## Overview
 
@@ -66,7 +65,6 @@
 **완료 조건**:
 - 패키지 배포 완료
 - 사용자 가이드 업데이트
-- @TAG 체인 무결성 검증
 
 ---
 
@@ -258,7 +256,6 @@ Phase 6: 품질 검증
 **검증 항목**:
 - 파일 무결성 (YAML 유효성)
 - 설정 일관성 (config.json ↔ development-guide.md)
-- TAG 체계 (문서 내 @TAG 형식)
 - EARS 구문 (SPEC 템플릿)
 
 ---
@@ -566,7 +563,6 @@ moai restore --latest
    - `--check-quality` 옵션 추가
    - 오류 복구 시나리오 예시 추가
 
-5. **@TAG 체인 검증**:
    ```bash
    rg "@(SPEC|CODE|TEST):UPDATE-REFACTOR-001" -n
    ```
@@ -582,7 +578,6 @@ moai restore --latest
 3. ✅ `9-update.md` 문서 업데이트 (P0, P1 요구사항 반영)
 4. ✅ 모든 AC (Acceptance Criteria) 통과
 5. ✅ 테스트 커버리지 85% 이상 유지
-6. ✅ @TAG 체인 무결성 검증
 7. ✅ 하위 호환성 유지
 
 **품질 기준**:

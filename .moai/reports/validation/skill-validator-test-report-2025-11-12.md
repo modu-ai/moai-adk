@@ -236,7 +236,6 @@ examples.md:
 
 ### TAG 시스템 검증
 
-형식: @TYPE-NUMBER (예: @SPEC-001, @CODE-123)
 
 ```
 유효 TAG: 98% 이상

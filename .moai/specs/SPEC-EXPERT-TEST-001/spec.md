@@ -10,7 +10,6 @@ version: 1.1.0
 
 # SPEC-EXPERT-TEST-001: Full-Stack User Dashboard with Authentication
 
-@SPEC:EXPERT-TEST-001
 
 ## Overview
 
@@ -154,11 +153,6 @@ This specification defines a full-stack user dashboard application that requires
 
 ## Traceability
 
-- @SPEC:EXPERT-TEST-001
-- @EXPERT:BACKEND (API and database design)
-- @EXPERT:FRONTEND (React components and state management)
-- @EXPERT:UIUX (Accessibility and design system)
-- @EXPERT:DEVOPS (CI/CD and deployment)
 
 ## Notes
 

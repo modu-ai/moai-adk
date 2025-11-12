@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @CODE:HOOKS-CLARITY-LOG | SPEC: Individual hook files for better UX
 """PostToolUse Hook: Log Tool Usage and Changes
 
 Claude Code Event: PostToolUse

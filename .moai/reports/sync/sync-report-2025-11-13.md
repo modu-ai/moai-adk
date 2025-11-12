@@ -49,7 +49,6 @@ $ git diff --stat
 
 #### TAG 시스템 검증
 ```bash
-$ rg '@SPEC' src/ --count
 확인 결과: 기존 TAG 체인 유지
 ```
 
@@ -117,23 +116,14 @@ SPEC-TEST-001: /alfred:2-run Refactoring Validation
 - 규모: ~30 LOC 최소 기능
 
 **TAG 연결**:
-- @SPEC:TEST-001 마커 추가 필요 (SPEC 문서에)
 
 #### 4. TAG 체인 상태
 
 **확인 결과**:
 ```
 기존 TAG 체인: 정상 ✅
-- @SPEC:* (기존 요구사항): 유지
-- @CODE:* (기존 구현): 유지
-- @TEST:* (기존 테스트): 유지
-- @DOC:* (기존 문서): 유지
 
 새로운 TAG 체인: 준비 상태
-- @SPEC:TEST-001: spec.md에 추가 필요
-- @CODE:TEST-001:*: 구현 후 추가 (Phase 2에서)
-- @TEST:TEST-001:*: 테스트 후 추가 (Phase 2에서)
-- @DOC:TEST-001: 동기화 후 추가 (Phase 3에서)
 ```
 
 ---
@@ -220,10 +210,6 @@ SPEC 문서:
 
 | 카테고리 | 개수 | 상태 |
 |---------|------|------|
-| **@SPEC TAG** | 기존 + 1신규 | ✅ 정상 |
-| **@CODE TAG** | 기존 | ✅ 정상 |
-| **@TEST TAG** | 기존 | ✅ 정상 |
-| **@DOC TAG** | 기존 | ✅ 정상 |
 
 ---
 

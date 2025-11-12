@@ -4,10 +4,8 @@ version: 0.1.0
 status: draft
 created: 2025-11-05
 updated: 2025-11-05
-author: @Goos
 ---
 
-# @SPEC:CODEBASE-REFACTOR-001: Acceptance Criteria
 
 ## 개요
 
@@ -78,9 +76,6 @@ author: @Goos
 **검증 방법**:
 ```bash
 # TAG 스캔으로 연결 확인
-rg '@CODE:LDE-PRIORITY-001' -A 5 -B 5
-rg '@SPEC:LDE-PRIORITY-001' -A 5 -B 5
-rg '@TEST:LDE-PRIORITY-001' -A 5 -B 5
 
 # 테스트 실행
 pytest tests/unit/core/test_lde_priority.py -v --cov

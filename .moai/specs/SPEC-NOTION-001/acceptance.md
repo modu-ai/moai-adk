@@ -8,13 +8,9 @@ version: 1.0.0
 author: GOOS행
 created_at: "2025-11-13T02:30:00Z"
 tags:
-  - @SPEC:NOTION-001
-  - @ACCEPTANCE:CRITERIA
-  - @TEST:SCENARIOS
 target_branch: feature/SPEC-NOTION-001
 ---
 
-# @SPEC:NOTION-001: 수용 기준
 
 ## 개요
 Notion 전문가 Agent 및 통합 Skills 개발에 대한 상세한 수용 기준. 모든 시나리오 기반 테스트 케이스와 정의된 성공 기준을 포함한 포괄적인 검증 프레임워크.

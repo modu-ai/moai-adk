@@ -8,7 +8,6 @@ created: "2025-11-10"
 author: "GoosLab"
 ---
 
-# @SPEC:TEMPLATE-ENGINE-001 | @EXPERT:BACKEND | @EXPERT:FRONTEND | @EXPERT:DEVOPS
 
 ## SPEC Overview
 
@@ -23,10 +22,6 @@ This SPEC defines the template engine system for MoAI-ADK, which provides Jinja2
 
 ## Implementation Files
 
-- **CODE**: @CODE:TEMPLATE-ENGINE-001 - Template engine implementation
-- **CODE**: @CODE:TEMPLATE-SYNC - Template synchronization functionality
-- **TEST**: @TEST:TEMPLATE-ENGINE-001 - Template engine tests
-- **DOC**: @DOC:TEMPLATE-ENGINE-001 - Template engine documentation
 
 ## Acceptance Criteria
 
@@ -40,5 +35,4 @@ This SPEC defines the template engine system for MoAI-ADK, which provides Jinja2
 ## Traceability Chain
 
 ```
-@SPEC:TEMPLATE-ENGINE-001 → @CODE:TEMPLATE-ENGINE-001 → @TEST:TEMPLATE-ENGINE-001 → @DOC:TEMPLATE-ENGINE-001
 ```

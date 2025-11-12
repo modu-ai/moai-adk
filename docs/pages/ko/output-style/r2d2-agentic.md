@@ -258,7 +258,6 @@ IntentAnalysis(
 # Alfred가 생성한 완전한 솔루션
 class UserProfileService:
     """
-    사용자 프로필 관리 서비스 (@SPEC-USER-001-001)
 
     자동 생성된 코드 - Alfred R2-D2 Agentic System
     생성 시간: 2025-11-11 14:30:25
@@ -271,7 +270,6 @@ class UserProfileService:
 
     def create_profile(self, user_id: str, profile_data: UserProfileCreateDto) -> UserProfileDto:
         """
-        사용자 프로필 생성 (@TEST-USER-001-001)
 
         Args:
             user_id: 사용자 고유 ID
@@ -305,12 +303,10 @@ class UserProfileService:
 
         # 로깅
         self._logger.info(f"User profile created: {profile.id}",
-                         extra={"user_id": user_id, "spec": "@SPEC-USER-001-001"})
 
         return UserProfileDto.from_entity(profile)
 
     def get_profile(self, user_id: str) -> UserProfileDto:
-        """사용자 프로필 조회 (@TEST-USER-001-002)"""
         profile = self._db.get_user_profile(user_id)
         if not profile:
             raise ProfileNotFoundError(f"Profile not found for user {user_id}")
@@ -318,7 +314,6 @@ class UserProfileService:
         return UserProfileDto.from_entity(profile)
 
     def update_profile(self, user_id: str, update_data: UserProfileUpdateDto) -> UserProfileDto:
-        """사용자 프로필 업데이트 (@TEST-USER-001-003)"""
         # 기존 프로필 확인
         existing_profile = self.get_profile(user_id)
 
@@ -340,12 +335,10 @@ class UserProfileService:
         updated_profile = self._db.update_user_profile(user_id, update_data.dict(exclude_unset=True))
 
         self._logger.info(f"User profile updated: {updated_profile.id}",
-                         extra={"user_id": user_id, "spec": "@SPEC-USER-001-001"})
 
         return UserProfileDto.from_entity(updated_profile)
 
     def delete_profile(self, user_id: str) -> None:
-        """사용자 프로필 삭제 (@TEST-USER-001-004)"""
         # 프로필 정보 조회
         profile = self.get_profile(user_id)
 
@@ -357,7 +350,6 @@ class UserProfileService:
         self._db.delete_user_profile(user_id)
 
         self._logger.info(f"User profile deleted: {profile.id}",
-                         extra={"user_id": user_id, "spec": "@SPEC-USER-001-001"})
 
     def _validate_profile_data(self, profile_data: UserProfileCreateDto) -> dict:
         """프로필 데이터 검증"""
@@ -427,7 +419,6 @@ class UserProfileDto(BaseModel):
 # 자동 생성된 완전한 테스트 스위트
 class TestUserProfileService(unittest.TestCase):
     """
-    사용자 프로필 서비스 테스트 (@TEST-USER-001-001)
     Alfred R2-D2 Agentic System Auto-generated Tests
     """
 

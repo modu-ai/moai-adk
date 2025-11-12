@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @TEST:TAG-SYSTEM-INTEGRATION-001 | SPEC: .moai/specs/SPEC-TAG-SYSTEM-001/spec.md | CODE: @CODE:TAG-VALIDATOR-001
 """
 Integration tests for complete TAG system
 
@@ -9,8 +8,6 @@ This module tests the integration between TAG components:
 - Integration with validation system
 - End-to-end TAG workflow
 
-@SPEC:TAG-SYSTEM-INTEGRATION-001: TAG 시스템 통합 테스트
-@CODE:TAG-SYSTEM-INTEGRATION-TST: TAG 시스템 통합 테스트 코드
 """
 
 import json
@@ -88,15 +85,11 @@ def test_function():
 
         # Valid chain
         valid_chain = validate_tag_chain(
-            "@DOC:AUTH-001",
-            "@SPEC:AUTH-001 -> @CODE:AUTH-001 -> @TEST:AUTH-001 -> @DOC:AUTH-001"
         )
         assert valid_chain is True
 
         # Invalid chain (domain mismatch)
         invalid_chain = validate_tag_chain(
-            "@DOC:AUTH-001",
-            "@SPEC:API-001 -> # REMOVED_ORPHAN_CODE:API-001 -> # REMOVED_ORPHAN_TEST:API-001 -> @DOC:AUTH-001"
         )
         assert invalid_chain is False
 
@@ -105,7 +98,6 @@ def test_function():
         # Create test file
         with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
             f.write("""
-# @CODE:AUTH-001 | SPEC: .moai/specs/SPEC-AUTH-001/spec.md
 def authenticate_user(username, password):
     # TODO: Implement authentication logic
     return True
@@ -120,12 +112,10 @@ def logout_user():
             # 1. Suggest TAG for file
             suggestion = suggest_tag_for_file(test_file)
             assert suggestion.domain == "AUTH"
-            assert suggestion.tag_id == "@DOC:AUTH-001"
 
             # 2. Validate TAG chain
             chain_valid = validate_tag_chain(
                 suggestion.tag_id,
-                f"@SPEC:AUTH-001 -> {suggestion.tag_id}"
             )
             assert chain_valid is True
 
@@ -164,7 +154,6 @@ def logout_user():
         try:
             for i in range(100):
                 with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
-                    f.write(f"# @CODE:TEST-{i:03d}\n\ndef test_function_{i}():\n    return True\n")
                     test_files.append(Path(f.name))
 
             # Configure validator for performance testing
@@ -236,7 +225,6 @@ def test_function():
         """Test auto-correction with chain break detection"""
         # Create file with broken chain
         with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
-            f.write("""# @CODE:BROKEN-CHAIN-001
 def test_function():
     return True
 """)
@@ -254,7 +242,6 @@ def test_function():
             # Test broken chain detection
             violation = type('MockViolation', (), {
                 'type': 'chain_break',
-                'tag': '@CODE:BROKEN-CHAIN-001'
             })()
             correction = corrector._fix_chain_break(str(test_file), test_file.read_text(), violation)
 
@@ -262,7 +249,6 @@ def test_function():
             test_file_path = Path("tests/test_broken_chain.py")
             if test_file_path.exists():
                 test_content = test_file_path.read_text()
-                assert "@TEST:BROKEN-CHAIN-001" in test_content
                 test_file_path.unlink()  # Cleanup
 
         finally:

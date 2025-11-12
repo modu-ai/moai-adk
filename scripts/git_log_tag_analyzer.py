@@ -180,7 +180,6 @@ class GitLogTagAnalyzer:
             # 파일 이름에서 CODE 도메인 추출 시도
             potential_code_domain = self._extract_domain_from_filename(src_file)
             if potential_code_domain:
-                improved_mappings[f"@CODE:{potential_code_domain}"] = f"@SPEC:{domain}"
 
         print(f"   제안된 매핑: {len(improved_mappings)}개")
         return improved_mappings

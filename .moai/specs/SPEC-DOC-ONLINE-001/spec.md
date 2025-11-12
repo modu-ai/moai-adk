@@ -18,17 +18,12 @@ estimated_complexity: "medium"
 ## TAG BLOCK
 
 ```yaml
-@SPEC:DOC-ONLINE-001: {
   "title": "온라인 문서 아키텍처 시스템",
   "status": "draft",
   "priority": "high",
   "domain": "documentation",
   "dependencies": [],
   "traceability": {
-    "requirements": ["@REQ:DOC-SYSTEM-001", "@REQ:UI-MONOCHROME-001"],
-    "design": ["@DESIGN:ARCHITECTURE-001"],
-    "implementation": ["@IMP:DOC-AUTOMATION-001", "@IMP:STYLING-001"],
-    "testing": ["@TEST:DOC-INTEGRATION-001"]
   }
 }
 ```
@@ -290,12 +285,6 @@ pipeline:
 ## Traceability (추적성)
 
 ### 의존성 관계
-- `@SPEC:DOC-ONLINE-001` → `@REQ:DOC-SYSTEM-001`: 문서 시스템 기본 요구사항
-- `@SPEC:DOC-ONLINE-001` → `@REQ:UI-MONOCHROME-001`: 무채색 UI 요구사항
-- `@SPEC:DOC-ONLINE-001` → `@DESIGN:ARCHITECTURE-001`: 시스템 아키텍처 설계
-- `@SPEC:DOC-ONLINE-001` → `@IMP:DOC-AUTOMATION-001`: 자동화 구현
-- `@SPEC:DOC-ONLINE-001` → `@IMP:STYLING-001`: 스타일링 구현
-- `@SPEC:DOC-ONLINE-001` → `@TEST:DOC-INTEGRATION-001`: 통합 테스트
 
 ### 변경 이력
 | 버전 | 날짜 | 변경 내용 | 작성자 |

@@ -5,7 +5,6 @@ created: 2025-10-06
 updated: 2025-10-06
 ---
 
-# @TEST:INIT-001 상세 수락 기준
 
 ## 목차
 1. [AC1: TTY 자동 감지](#ac1-tty-자동-감지)
@@ -1125,7 +1124,6 @@ describe('Optional dependencies', () => {
 - [ ] **Readable**: 함수 ≤50 LOC, 복잡도 ≤10
 - [ ] **Unified**: TypeScript 타입 안전성 확보
 - [ ] **Secured**: 입력 검증, 경로 traversal 방지
-- [ ] **Trackable**: @TAG:INIT-001 체인 무결성 확인
 
 ### 문서 동기화
 - [ ] CHANGELOG.md 업데이트

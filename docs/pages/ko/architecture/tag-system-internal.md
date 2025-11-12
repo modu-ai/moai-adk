@@ -1,11 +1,7 @@
 ---
-title: "@TAG 내부 구조"
-description: "MoAI-ADK의 @TAG 시스템 내부 아키텍처와 구현 상세"
 ---
 
-# @TAG 내부 구조
 
-MoAI-ADK의 @TAG 시스템은 코드 기반 요구사항 추적 시스템으로, 12개의 카테고리와 복잡한 내부 아키텍처를 통해 개발 워크플로우 전체에 걸쳐 추적성을 보장합니다.
 
 ## 시스템 아키텍처
 
@@ -63,18 +59,6 @@ sequenceDiagram
 ### 2. 카테고리별 용도
 | 카테고리 | 용도 | 예시 |
 |---------|------|------|
-| REQ | 기능 요구사항 | `@REQ:USER-AUTH-001` |
-| DESIGN | 시스템 설계 | `@DESIGN:ARCH-DB-001` |
-| TASK | 개발 작업 | `@TASK:IMPLEMENT-API-001` |
-| TEST | 테스트 케이스 | `@TEST:UNIT-AUTH-001` |
-| FEATURE | 기능 모듈 | `@FEATURE:LOGIN-MODULE` |
-| API | API 엔드포인트 | `@API:POST-LOGIN` |
-| UI | UI 컴포넌트 | `@UI:LOGIN-FORM` |
-| DATA | 데이터 모델 | `@DATA:USER-MODEL` |
-| RESEARCH | 연구 활동 | `@RESEARCH:PERF-ANALYSIS` |
-| ANALYSIS | 분석 결과 | `@ANALYSIS:BOTTLENECK-001` |
-| KNOWLEDGE | 지식 베이스 | `@KNOWLEDGE:BEST-PRACTICE` |
-| INSIGHT | 통찰력 | `@INSIGHT:OPTIMIZATION-STRATEGY` |
 
 ## 내부 모듈 상세
 

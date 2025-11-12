@@ -1,4 +1,3 @@
-# @TEST:PORTAL-LINK-001 | SPEC: SPEC-PORTAL-LINK-001
 
 import re
 from pathlib import Path

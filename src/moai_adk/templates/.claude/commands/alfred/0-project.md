@@ -13,7 +13,6 @@ allowed-tools:
 > **Architecture**: Commands → Agents → Skills. This command orchestrates ONLY through `Task()` tool.
 > **Delegation Model**: Complete agent-first pattern. All execution delegated to project-manager.
 
-<!-- @CODE:ALF-WORKFLOW-000:CMD-PROJECT -->
 
 **4-Step Workflow Integration**: This command implements Step 0 of Alfred's workflow (Project Bootstrap). See CLAUDE.md for full workflow details.
 
@@ -555,7 +554,6 @@ Each tab completes independently:
 
 **Goal**: Persist phase execution results for explicit context passing to subsequent commands.
 
-<!-- @CODE:W2-001 - Context saving integration -->
 
 ### Step 1: Extract Context from Agent Response
 

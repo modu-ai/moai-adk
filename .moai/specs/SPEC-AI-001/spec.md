@@ -27,7 +27,6 @@ scope:
     - src/moai_adk/**/*.py
 ---
 
-# `@SPEC:AI-001`: Docs-Manager 에이전트를 통한 종합 온라인 문서 자동 생성 시스템
 
 ## Environment (환경 및 전제조건)
 
@@ -104,7 +103,6 @@ scope:
 **UR-003**: 시스템은 실시간 코드-문서 동기화를 지원해야 한다
 - **동기화 대상**: src/moai_adk/ 코드 변경
 - **응답 시간**: 코드 변경 후 1분 내 문서 업데이트
-- **추적성**: @TAG 시스템으로 코드-문서 연동 유지
 - **자동화**: Docs-manager 에이전트가 동기화 프로세스를 관리
 
 **UR-004**: 시스템은 초보자 친화적 학습 경로를 제공해야 한다
@@ -187,7 +185,6 @@ scope:
 
 **C-001**: 모든 코드 예제는 Docs-manager 에이전트가 실제 `src/moai_adk/` 코드를 기반으로 자동 생성해야 한다
 - **금지**: 가상의 코드나 존재하지 않는 기능 설명
-- **검증**: `@CODE:` 태그로 실제 파일 참조 자동 확인
 - **테스트**: 예제 코드 실제 실행 자동 검증
 
 **C-002**: Docs-manager 에이전트는 README.ko.md 분할 시 내용 누락이 없도록 자동으로 관리해야 한다
@@ -306,7 +303,6 @@ Then: 전문적인 Nextra 문서 구조가 자동으로 생성되고 최적화�
    ├── concepts/
    │   ├── spec-first-development.mdx     # SPEC-First 자동 설명
    │   ├── tdd-workflow.mdx               # TDD 워크플로우 자동 시각화
-   │   ├── tag-system.mdx                 # @TAG 시스템 자동 다이어그램
    │   ├── trust-principles.mdx           # TRUST 5원칙 자동 설명
    │   └── alfred-superagent.mdx          # Alfred 아키텍처 자동 분석
    ├── guides/
@@ -444,36 +440,16 @@ Then: 고품질 Mermaid 다이어그램이 자동으로 생성되어 이해도�
            """
 
        async def generate_tag_chain_diagram(self, tags: List[Tag]):
-           """@TAG 시스템 추적성 다이어그램 전문가 수준 자동 생성"""
            return """
            graph LR
-               SPEC[@SPEC:AI-001] --> CODE[@CODE:DOCS-MASTER-001]
-               CODE --> TEST[@TEST:DOCS-MASTER-001]
-               TEST --> DOC[@DOC:DOCS-MASTER-001]
-               DOC --> DEPLOY[@DEPLOY:DOCS-MASTER-001]
            """
    ```
 
 ---
 
-## Traceability (@TAG)
 
-### @TAG 연결 맵
 
 ```
-@SPEC:AI-001 (Documentation-Master Agent Integration)
-├── @CODE:DOCS-MASTER-001 → Docs-manager 에이전트 핵심 구현
-├── @CODE:DOCS-MASTER-002 → Docs-manager 에이전트 Nextra 통합
-├── @CODE:DOCS-MASTER-003 → Docs-manager 에이전트 Context7 실시간 연동
-├── @CODE:DOCS-MASTER-004 → Docs-manager 에이전트 Mermaid 전문가 생성기
-├── @CODE:DOCS-MASTER-005 → Docs-manager 에이전트 품질 보증 시스템
-├── @CODE:DOCS-MASTER-006 → Docs-manager 에이전트 다국어 관리자
-├── @TEST:DOCS-MASTER-001 → Docs-manager 에이전트 통합 테스트
-├── @TEST:DOCS-MASTER-002 → Docs-manager 에이전트 품질 보증 테스트
-├── @TEST:DOCS-MASTER-003 → Docs-manager 에이전트 다국어 테스트
-├── @DOC:DOCS-MASTER-001 → Docs-manager 에이전트 사용자 가이드 (자동 생성)
-├── @DOC:DOCS-MASTER-002 → Docs-manager 에이전트 API 레퍼런스 (자동 생성)
-└── @DOC:DOCS-MASTER-003 → Docs-manager 에이전트 튜토리얼 콜렉션 (자동 생성)
 ```
 
 ### 구현 의존성

@@ -27,7 +27,6 @@ You are a frontend architecture specialist responsible for framework-agnostic fr
 - Code examples: **Always in English** (JSX/TSX/Vue SFC syntax)
 - Comments in code: **Always in English**
 - Commit messages: **Always in English**
-- @TAG identifiers: **Always in English** (@UI:*, @COMPONENT:*, @PAGE:*)
 - Skill names: **Always in English** (explicit syntax only)
 
 **Example**: Korean prompt → Korean architecture guidance + English code examples
@@ -143,11 +142,6 @@ AskUserQuestion:
 
 1. **TAG Chain Design**:
    ```markdown
-   @UI:DASHBOARD-001 → Dashboard layout
-   @COMPONENT:STATS-001 → StatsCard component
-   @PAGE:DASHBOARD-001 → Dashboard page
-   @API:USER-001 → User API integration
-   @TEST:DASHBOARD-001 → Dashboard tests
    ```
 
 2. **Implementation Phases**:
@@ -313,25 +307,13 @@ Example test:
 | **Readable** | Type hints, clean component structure, meaningful names |
 | **Unified** | Consistent patterns across all components |
 | **Secured** | XSS prevention, CSP, secure auth flows |
-| **Trackable** | @TAG system (@UI:*, @COMPONENT:*, @PAGE:*), clear commits |
 
 ### TAG Chain Integrity
 
 **Frontend TAG Types**:
-- `@UI:{DOMAIN}-{NNN}` – UI layout/structure
-- `@COMPONENT:{DOMAIN}-{NNN}` – Reusable components
-- `@PAGE:{DOMAIN}-{NNN}` – Full pages/routes
-- `@API:{DOMAIN}-{NNN}` – API integration layer
-- `@TEST:{DOMAIN}-{NNN}` – Test files
 
 **Example**:
 ```
-@SPEC:DASHBOARD-001 (SPEC document)
-  └─ @UI:DASHBOARD-001 (Layout component)
-      ├─ @COMPONENT:STATS-001 (StatsCard component)
-      ├─ @COMPONENT:CHART-001 (ChartWidget component)
-      └─ @API:ANALYTICS-001 (Analytics API integration)
-          └─ @TEST:ANALYTICS-001 (API integration tests)
 ```
 
 ## 📚 Additional Resources

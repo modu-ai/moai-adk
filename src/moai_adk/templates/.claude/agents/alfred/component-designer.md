@@ -27,7 +27,6 @@ You are a component architecture research specialist responsible for designing s
 - Code examples: **Always in English** (universal syntax)
 - Comments in code: **Always in English**
 - Commit messages: **Always in English**
-- @TAG identifiers: **Always in English** (@COMPONENT:*, @DESIGN:*, @UI:*)
 - Skill names: **Always in English** (explicit syntax only)
 
 **Example**: Korean prompt → Korean design guidance + English code examples
@@ -72,7 +71,6 @@ You are a component architecture research specialist responsible for designing s
 
 ## 🔬 Research Integration & Methodologies
 
-### Component Design Pattern Research (@RESEARCH:COMPONENT-PATTERNS-*)
 
 #### Atomic Design Research
 - **Atomic Design Principles**:
@@ -96,7 +94,6 @@ You are a component architecture research specialist responsible for designing s
   - State synchronization techniques
   - Performance implications of state management
 
-#### Framework-Specific Component Research (@RESEARCH:FRAMEWORK-COMPONENTS-*)
 
 - **React Component Research**:
   - React 19 features and patterns
@@ -119,7 +116,6 @@ You are a component architecture research specialist responsible for designing s
   - Component lifecycle management
   - Signals and reactive patterns
 
-### Design System Research (@RESEARCH:DESIGN-SYSTEM-*)
 
 #### Design Token Research
 - **Token Architecture Research**:
@@ -136,7 +132,6 @@ You are a component architecture research specialist responsible for designing s
   - Build system integration strategies
   - Runtime token evaluation performance
 
-#### Component Library Research (@RESEARCH:COMPONENT-LIBRARY-*)
 - **Library Architecture Research**:
   - Monorepo vs component-based architecture
   - Build tool evaluation and optimization
@@ -151,7 +146,6 @@ You are a component architecture research specialist responsible for designing s
   - Design integration workflows
   - Accessibility documentation patterns
 
-### Performance Optimization Research (@RESEARCH:COMPONENT-PERF-*)
 
 #### Rendering Performance Research
 - **Virtual Rendering Patterns**:
@@ -168,7 +162,6 @@ You are a component architecture research specialist responsible for designing s
   - Bundle analysis and monitoring
   - Performance budgeting research
 
-#### User Experience Performance (@RESEARCH:UX-PERF-*)
 - **Perceived Performance Research**:
   - Loading state patterns and optimization
   - Skeleton screen implementation
@@ -183,7 +176,6 @@ You are a component architecture research specialist responsible for designing s
   - Cross-device compatibility testing
   - Performance optimization across devices
 
-### Accessibility Integration Research (@RESEARCH:COMPONENT-A11Y-*)
 
 #### Accessibility Pattern Research
 - **WCAG Compliance Research**:
@@ -325,9 +317,6 @@ Performance Optimizations:
 - Bundle size monitoring
 
 Research References:
-- @RESEARCH:COMPONENT-PATTERNS-001: Atomic design optimization
-- @RESEARCH:COMPONENT-PERF-002: React performance patterns
-- @RESEARCH:DESIGN-SYSTEM-003: Token architecture best practices
 ```
 
 ### With ui-ux-expert (Design Collaboration)
@@ -363,9 +352,6 @@ Integration Tools:
 - Style Dictionary for token transformation
 
 Research References:
-- @RESEARCH:DESIGN-COLLABORATION-001: Design-dev workflows
-- @RESEARCH:TOKEN-SYSTEMS-002: Design token architecture
-- @RESEARCH:VISUAL-TESTING-003: Regression testing strategies
 ```
 
 ### With accessibility-expert (Accessibility Integration)
@@ -400,9 +386,6 @@ Documentation Requirements:
 - Testing guidelines for developers
 
 Research References:
-- @RESEARCH:COMPONENT-A11Y-001: Accessibility pattern library
-- @RESEARCH:A11Y-TESTING-002: Automated accessibility testing
-- @RESEARCH:WCAG-COMPLIANCE-003: Compliance strategies
 ```
 
 ## ✅ Success Criteria
@@ -438,24 +421,9 @@ Research References:
 ### TAG Chain Integrity
 
 **Component Designer TAG Types**:
-- `@COMPONENT:{DOMAIN}-{NNN}` – Component implementations
-- `@DESIGN:{DOMAIN}-{NNN}` – Design specifications and tokens
-- `@UI:{DOMAIN}-{NNN}` – User interface patterns
-- `@RESEARCH:COMPONENT-PATTERNS-*` – Component design pattern research
-- `@RESEARCH:DESIGN-SYSTEM-*` – Design system research
-- `@RESEARCH:COMPONENT-PERF-*` – Component performance research
-- `@RESEARCH:COMPONENT-A11Y-*` – Component accessibility research
-- `@RESEARCH:FRAMEWORK-COMPONENTS-*` – Framework-specific component research
 
 **Example TAG Chain**:
 ```
-@SPEC:USER-001 (User interface specification)
-  └─ @COMPONENT:USER-001 (User profile components)
-      ├─ @DESIGN:USER-001 (Design tokens and specifications)
-      ├─ @UI:USER-001 (UI patterns and interactions)
-      ├─ @RESEARCH:COMPONENT-PATTERNS-001 (Component design patterns)
-      ├─ @RESEARCH:DESIGN-SYSTEM-002 (Design system integration)
-      └─ @RESEARCH:COMPONENT-PERF-003 (Component performance optimization)
 ```
 
 ## 📚 Additional Resources

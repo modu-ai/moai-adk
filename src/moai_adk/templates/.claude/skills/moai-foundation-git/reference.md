@@ -156,8 +156,6 @@ to ensure proper error handling.
 Test file: tests/auth/test_login.py
 Test function: test_login_invalid_password
 
-@SPEC:USER-AUTH-001
-@TEST:AUTH:LOGIN:001
 ```
 
 ### GREEN Phase Example
@@ -176,8 +174,6 @@ comprehensive error handling.
 Files: src/services/auth_service.py
 Lines: 150 (+)
 
-@SPEC:USER-AUTH-001
-@CODE:AUTH:SERVICE:001
 ```
 
 ### REFACTOR Phase Example
@@ -194,8 +190,6 @@ more helpful feedback to users:
 Performance: No changes
 Coverage: 87% → 89%
 
-@SPEC:USER-AUTH-001
-@CODE:AUTH:SERVICE:002
 ```
 
 ---
@@ -286,8 +280,6 @@ git commit -m "🔴 RED: test_user_registration
 
 Tests basic user registration flow.
 
-@SPEC:USER-REG-005
-@TEST:REGISTER:001"
 
 git push origin feature/SPEC-005
 
@@ -304,8 +296,6 @@ git commit -m "🟢 GREEN: implement_user_registration
 
 Implemented registration service with validation.
 
-@SPEC:USER-REG-005
-@CODE:REGISTER:001"
 
 git push origin feature/SPEC-005
 
@@ -315,8 +305,6 @@ git commit -m "♻️ REFACTOR: improve_registration_error_handling
 
 Added comprehensive error handling and logging.
 
-@SPEC:USER-REG-005
-@CODE:REGISTER:002"
 
 git push origin feature/SPEC-005
 

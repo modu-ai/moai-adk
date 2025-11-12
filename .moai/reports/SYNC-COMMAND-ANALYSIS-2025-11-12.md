@@ -52,7 +52,6 @@ PHASE 4: Completion
 1. Living Document 동기화 (README.md, CHANGELOG.md 등)
 2. API 문서 자동 생성/업데이트
 3. SPEC 문서 동기화
-4. @TAG 시스템 업데이트
 5. 도메인별 문서 생성
 
 **❌ 수행하지 않는 작업** (인프라 파일):

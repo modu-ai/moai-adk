@@ -1,4 +1,3 @@
-# @TEST:TEMPLATE-CONFIG-001 | SPEC: SPEC-TEST-COVERAGE-001.md
 """Unit tests for template/config.py module
 
 Tests for ConfigManager class.

@@ -4,8 +4,6 @@ GitHub Issue Creator for MoAI-ADK quick issue reporting.
 Enables users to quickly create GitHub Issues with standardized templates
 using `/alfred:9-feedback` interactive dialog.
 
-@TAG:ISSUE-CREATOR-001 - GitHub issue creation system
-@TAG:QUICK-REPORTING-001 - Quick issue reporting functionality
 """
 
 import subprocess

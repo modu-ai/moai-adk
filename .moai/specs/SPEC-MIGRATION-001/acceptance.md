@@ -6,22 +6,11 @@ author: "Alfred"
 status: "draft"
 ---
 
-# @ACCEPTANCE:MIGRATION-001: 상세 수락 기준 및 검증 방법
 
 ## 📋 TAG BLOCK
 
 ```
-@TEST:ACC-001-001: 성능 수락 테스트
-@TEST:ACC-001-002: 기능성 수락 테스트
-@TEST:ACC-001-003: 호환성 수락 테스트
-@TEST:ACC-001-004: 품질 수락 테스트
-@TEST:ACC-001-005: 사용자 경험 수락 테스트
 
-@CRITERIA:ACC-001-001: 성능 기준
-@CRITERIA:ACC-001-002: 기능성 기준
-@CRITERIA:ACC-001-003: 안정성 기준
-@CRITERIA:ACC-001-004: 보안 기준
-@CRITERIA:ACC-001-005: 유지보수성 기준
 ```
 
 ## 🎯 개요
@@ -41,7 +30,6 @@ status: "draft"
 
 ## 📊 상세 수락 기준
 
-### 1. 성능 수락 기준 (@CRITERIA:ACC-001-001)
 
 #### 1.1 빌드 성능
 **Given**: 프로덕션 빌드를 실행할 때
@@ -75,7 +63,6 @@ status: "draft"
 - [ ] **검색 정확도**: 95% 이상
 - [ ] **다국어 검색**: 4개 언어 모두 지원
 
-### 2. 기능성 수락 기준 (@CRITERIA:ACC-001-002)
 
 #### 2.1 MDX 호환성
 **Given**: 기존 100+ MDX 파일이 있을 때
@@ -110,7 +97,6 @@ status: "draft"
 - [ ] **검색 결과 하이라이팅**: 검색어 강조 표시
 - [ ] **검색 제안**: 자동 완성 및 제안 기능
 
-### 3. 호환성 수락 기준 (@CRITERIA:ACC-001-003)
 
 #### 3.1 브라우저 호환성
 **Given**: 주요 브라우저로 접속할 때
@@ -145,7 +131,6 @@ status: "draft"
 - [ ] **색상 대비**: 4.5:1 이상 대비율
 - [ ] **포커스 표시**: 명확한 포커스 인디케이터
 
-### 4. 품질 수락 기준 (@CRITERIA:ACC-001-004)
 
 #### 4.1 코드 품질
 **Given**: 새로운 코드베이스가 배포되었을 때
@@ -180,7 +165,6 @@ status: "draft"
 - [ ] **콘텐츠 가독성**: 명확하고 읽기 쉬움
 - [ ] **오류 처리**: 친절한 오러 메시지
 
-### 5. 보안 수락 기준 (@CRITERIA:ACC-001-005)
 
 #### 5.1 보안 검증
 **Given**: 새로운 기술 스택으로 배포되었을 때
@@ -275,15 +259,7 @@ status: "draft"
 ## 🔍 추적성
 
 ### 관련 SPEC
-- @SPEC:MIGRATION-001: 마이그레이션 명세
-- @PLAN:MIGRATION-001: 실행 계획
 
 ### 관련 테스트
-- @TEST:PERFORMANCE-001: 성능 테스트 결과
-- @TEST:FUNCTIONAL-001: 기능 테스트 결과
-- @TEST:SECURITY-001: 보안 테스트 결과
 
 ### 관련 문서
-- @DOC:MIGRATION-REPORT-001: 마이그레이션 보고서
-- @DOC:USER-TESTING-001: 사용자 테스트 결과
-- @DOC:PERFORMANCE-BENCHMARK-001: 성능 벤치마크

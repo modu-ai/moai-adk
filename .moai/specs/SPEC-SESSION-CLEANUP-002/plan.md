@@ -1,6 +1,4 @@
-# Implementation Plan: @SPEC:SESSION-CLEANUP-002
 
-<!-- @PLAN:SESSION-CLEANUP-002 -->
 
 ---
 
@@ -73,7 +71,6 @@ AskUserQuestion(
 - [ ] Python 문법이 올바른가?
 - [ ] 3개 옵션이 모두 정의되었는가?
 
-**@TAG**: `@CODE:CMD-0-PROJECT-IMPL`
 
 ---
 
@@ -111,7 +108,6 @@ AskUserQuestion(
 **Prohibited**: Never suggest next steps in prose.
 ```
 
-**@TAG**: `@CODE:CMD-1-PLAN-IMPL`
 
 ---
 
@@ -149,7 +145,6 @@ AskUserQuestion(
 **Prohibited**: Never suggest next steps in prose.
 ```
 
-**@TAG**: `@CODE:CMD-2-RUN-IMPL`
 
 ---
 
@@ -187,7 +182,6 @@ AskUserQuestion(
 **Prohibited**: Never suggest next steps in prose.
 ```
 
-**@TAG**: `@CODE:CMD-3-SYNC-IMPL`
 
 ---
 
@@ -249,7 +243,6 @@ if user_choice in ["🔄 새 세션 시작", "✅ 세션 완료"]:
     generate_session_summary(session_context)
 ```
 
-**@TAG**: `@CODE:AGENT-ALFRED-CLEANUP`
 ```
 
 **검증**:
@@ -299,7 +292,6 @@ if user_choice in ["🔄 새 세션 시작", "✅ 세션 완료"]:
 3. Extract completed tasks from TodoWrite
 4. Generate Markdown output directly (no Bash wrapping)
 
-**@TAG**: `@CODE:AGENT-ALFRED-SUMMARY`
 ```
 
 **검증**:
@@ -432,7 +424,6 @@ Tests:
 Co-Authored-By: 🎩 Alfred@[MoAI](https://adk.mo.ai.kr)
 ```
 
-**@TAG**: `@COMMIT:SESSION-CLEANUP-002`
 
 ---
 
@@ -519,7 +510,6 @@ Co-Authored-By: 🎩 Alfred@[MoAI](https://adk.mo.ai.kr)
 - **Phase 2C**: 8개 테스트 시나리오 실행
 
 ### tag-agent
-- **Phase 2C**: @TAG 체인 검증
 - Traceability 확인 (SPEC → CODE → TEST)
 
 ### doc-syncer
@@ -543,7 +533,6 @@ Co-Authored-By: 🎩 Alfred@[MoAI](https://adk.mo.ai.kr)
 ### Documentation Quality
 - [ ] CLAUDE.md에 모든 커맨드 패턴이 문서화되었는가?
 - [ ] 예제 코드가 실제 구현과 일치하는가?
-- [ ] @TAG 체인이 올바르게 연결되었는가?
 
 ### User Experience
 - [ ] 옵션 설명이 사용자의 `conversation_language` (Korean)로 작성되었는가?

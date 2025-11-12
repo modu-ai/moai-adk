@@ -833,7 +833,6 @@ context7_references:
     topic: "Software Quality Metrics"
   - url: "https://github.com/moai-adk/moai-adk"
     topic: "MoAI-ADK Documentation Standards"
-spec_reference: "@SPEC:DOCS-001"
 ```
 
 ---

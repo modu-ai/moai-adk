@@ -1,4 +1,3 @@
-# @TEST:TAG-SYNC-001
 """
 Template Processor Tests
 

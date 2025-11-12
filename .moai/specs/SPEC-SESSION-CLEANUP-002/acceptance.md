@@ -1,6 +1,4 @@
-# Acceptance Criteria: @SPEC:SESSION-CLEANUP-002
 
-<!-- @ACCEPTANCE:SESSION-CLEANUP-002 -->
 
 ---
 
@@ -159,7 +157,6 @@ rg "You can now run" src/moai_adk/templates/.claude/commands/alfred-2-run.md
 **Given**:
 - 사용자가 `/alfred:3-sync` 커맨드를 실행한다
 - 문서 동기화가 완료된다 (README.md, CHANGELOG.md 업데이트)
-- @TAG 체인이 검증된다
 
 **When**:
 - 커맨드 종료 직전 (동기화 완료 후)

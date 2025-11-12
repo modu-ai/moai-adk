@@ -1,4 +1,3 @@
-# @SPEC:ALF-WORKFLOW-001 구현 계획
 
 > **4단계 워크플로우 로직 구현 전략**
 >
@@ -401,7 +400,6 @@ User (Completion Notification)
 
 ### 품질 기준
 - ✅ 문서 일관성: 모든 문서가 4단계 워크플로우를 동일하게 설명
-- ✅ TAG 체인 무결성: @SPEC:ALF-WORKFLOW-001이 모든 관련 파일에 존재
 - ✅ 테스트 커버리지: 통합 시나리오 4개 모두 성공
 - ✅ 사용자 경험: AskUserQuestion이 3-5개 질문으로 제한됨
 - ✅ 성능: Plan Agent 호출이 5초 이내 완료
@@ -439,4 +437,3 @@ User (Completion Notification)
 
 **마지막 업데이트**: 2025-10-29
 **문서 버전**: v0.0.1
-**작성자**: @Goos

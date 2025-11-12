@@ -1,4 +1,3 @@
-# Implementation Plan: @SPEC:LANG-FIX-001
 
 ## Overview
 
@@ -189,7 +188,6 @@ Alfred translates user requests to English before invoking you. This ensures:
 
 **Mixed Language Guidance**:
 - ✅ ALWAYS user's language: User-facing content, document body, explanations
-- ✅ ALWAYS English: Code, commit messages, @TAG identifiers, YAML frontmatter, technical keywords
 ```
 
 **Process**:

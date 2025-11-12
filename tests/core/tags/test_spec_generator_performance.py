@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @CODE:PERF-SPEC-GENERATOR-001 | @TEST:PERF-SPEC-GENERATOR-001
 """Performance benchmarks for SpecGenerator.
 
 Measures current baseline performance and validates optimization targets:

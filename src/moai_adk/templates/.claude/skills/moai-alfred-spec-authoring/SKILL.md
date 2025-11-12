@@ -379,9 +379,6 @@ SPEC: [System] SHALL ... when [Boundary]
 - SPEC-YYY: [Conflicting requirement]
 
 ### TAGs
-- @SPEC: SPEC-001 (this document)
-- @TEST: SPEC-001-TEST-001, SPEC-001-TEST-002, ...
-- @CODE: SPEC-001-CODE-001, SPEC-001-CODE-002, ...
 
 ---
 ```
@@ -440,15 +437,9 @@ Feedback Pending    Major Version Bump
 ### TAG Structure (SPEC→TEST→CODE→DOC)
 
 ```
-@SPEC: SPEC-001             # Main specification
   ↓
-@TEST: SPEC-001-TEST-001    # Test case
-@TEST: SPEC-001-TEST-002
   ↓
-@CODE: SPEC-001-CODE-001    # Implementation
-@CODE: SPEC-001-CODE-002
   ↓
-@DOC: SPEC-001-DOC-001      # Documentation
 ```
 
 ### TAG Placement Rules
@@ -457,13 +448,11 @@ Feedback Pending    Major Version Bump
 ```markdown
 ---
 # SPEC-001: Feature Name
-# @SPEC: SPEC-001
 ---
 ```
 
 **Test File**:
 ```python
-# @TEST: SPEC-001-TEST-001
 def test_requirement_001():
     """Test SPEC-001 REQ-001 universal pattern."""
     pass
@@ -471,7 +460,6 @@ def test_requirement_001():
 
 **Implementation**:
 ```python
-# @CODE: SPEC-001-CODE-001
 def authenticate_user(token: str) -> bool:
     """Validate JWT token per SPEC-001."""
     pass
@@ -479,7 +467,6 @@ def authenticate_user(token: str) -> bool:
 
 **Documentation**:
 ```markdown
-<!-- @DOC: SPEC-001-DOC-001 -->
 
 ## Authentication Flow
 
@@ -619,10 +606,6 @@ unwanted_behaviors:
 ```
 ---
 # SPEC-001: Feature Name
-# @SPEC: SPEC-001
-# Related: @TEST: SPEC-001-TEST-001,002,003
-# Implementation: @CODE: SPEC-001-CODE-001,002
-# Documentation: @DOC: SPEC-001-DOC-001
 ---
 ```
 
@@ -709,27 +692,22 @@ messages, retry logic, and delivery tracking for user notifications.
 ### REQ-001 (Universal)
 SPEC: The notification service SHALL send emails asynchronously
 without blocking the calling request.
-@TEST: SPEC-105-TEST-001, SPEC-105-TEST-002
 
 ### REQ-002 (Conditional)
 SPEC: If email delivery fails, the service SHALL retry up to 3 times
 with exponential backoff (1s, 2s, 4s) before marking as failed.
-@TEST: SPEC-105-TEST-003, SPEC-105-TEST-004
 
 ### REQ-003 (Unwanted Behavior)
 SPEC: The service SHALL NOT send duplicate emails to the same recipient
 within a 5-minute window.
-@TEST: SPEC-105-TEST-005
 
 ### REQ-004 (Stakeholder)
 As an application developer, I want to send templated emails
 so that I don't have to manage HTML email formatting.
-@TEST: SPEC-105-TEST-006, SPEC-105-TEST-007
 
 ### REQ-005 (Boundary Condition)
 SPEC: The notification service SHALL process at least 1,000 emails/second
 and SHALL NOT exceed 500MB memory usage under sustained load.
-@TEST: SPEC-105-TEST-008 (load test)
 
 ## Unwanted Behaviors
 

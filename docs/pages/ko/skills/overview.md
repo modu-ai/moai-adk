@@ -67,7 +67,6 @@ MoAI-ADK의 핵심 기반을 구성하는 필수 Skills입니다.
 
 - **moai-foundation-specs**: SPEC 문서 작성 및 검증 (15개 필수 필드)
 - **moai-foundation-ears**: EARS 요구사항 프레임워크 적용
-- **moai-foundation-tags**: @TAG 추적성 시스템 관리
 - **moai-foundation-trust**: TRUST 5 품질 원칙 적용
 - **moai-foundation-git**: Git 워크플로우 및 모범 사례
 

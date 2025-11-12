@@ -1,4 +1,3 @@
-# @CODE:MOAI-FOUNDATION-TRUST-002
 
 """
 TRUST 5 Principles Validation Checklist

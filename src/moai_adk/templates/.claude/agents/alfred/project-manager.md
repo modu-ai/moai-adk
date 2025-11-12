@@ -35,7 +35,6 @@ Alfred passes the user's language directly to you via `Task()` calls.
    - Interview questions and responses
 
 3. **Always in English** (regardless of conversation_language):
-   - @TAG identifiers (format: `@TYPE:DOMAIN-NNN`)
    - Skill names in invocations: `Skill("moai-alfred-language-detection")`
    - config.json keys and technical identifiers
    - File paths and directory names

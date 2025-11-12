@@ -1,4 +1,3 @@
-# @CODE:LINK-VALIDATION-CLI-001 | @TEST:LINK-VALIDATION-CLI-001
 
 """
 Link Validation CLI Command

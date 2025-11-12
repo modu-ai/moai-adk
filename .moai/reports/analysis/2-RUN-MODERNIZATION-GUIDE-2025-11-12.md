@@ -190,15 +190,12 @@ EXECUTION PROTOCOL:
 
 1. RED Phase (Write Failing Tests):
    - Per task from $EXECUTION_TASKS:
-     * Create test file with @TEST TAG
      * Write comprehensive test cases (happy path + edge cases)
      * Execute to verify failure
-     * Include @SPEC reference in docstring
 
 2. GREEN Phase (Minimal Implementation):
    - For each test:
      * Write minimal code to pass test
-     * Create @CODE TAG linking to @TEST
      * Execute and verify pass
      * No optimization yet
 
@@ -208,7 +205,6 @@ EXECUTION PROTOCOL:
      * Remove duplication
      * Apply design patterns from $RESOURCE_OPTIMIZATION
      * Run all tests to verify stability
-     * Create @REFACTOR TAG referencing @CODE
 
 PROGRESS REPORTING:
 - Update TodoWrite after each phase (RED, GREEN, REFACTOR)
@@ -217,7 +213,6 @@ PROGRESS REPORTING:
 
 OUTPUT:
 - Implementation completion report with:
-  * TAGs created (counts: @TEST, @CODE, @REFACTOR)
   * Test coverage percentage
   * Blockers encountered (if any)
   * Architectural decisions made"
@@ -335,8 +330,6 @@ Task(subagent_type="tag-agent",
      description="Initialize SPEC tracking and update status",
      prompt="For SPEC-$ARGUMENTS:
      1. Update status from 'draft' to 'in-progress'
-     2. Create @SPEC-$ARGUMENTS_IMPL TAG
-     3. Initialize TAG chains for: @TEST → @CODE → @DOC
      4. Log status change to .moai/logs/spec-status.log
 
      Output: Status update confirmation with TAG initialization")
@@ -430,7 +423,6 @@ EXECUTION PHASES:
 RED PHASE (Test Writing):
 1. For each task in $TASK_LIST:
    a. Create test file: tests/test_{task_name}.py
-   b. Add @TEST-{COUNTER} TAG with @SPEC-$ARGUMENTS reference
    c. Write failing tests covering:
       - Happy path (main scenario)
       - Edge cases (boundary conditions)
@@ -439,25 +431,19 @@ RED PHASE (Test Writing):
    e. Update TodoWrite: Mark task as "test-written"
 
 2. Commit RED phase:
-   git commit -m "test(@SPEC-$ARGUMENTS): Add failing tests for [task_name]
 
-   Related: @TEST-{COUNTER}, @SPEC-$ARGUMENTS"
 
 GREEN PHASE (Implementation):
 1. For each test from RED:
    a. Create implementation: src/{module_name}/{component}.py
-   b. Add @CODE-{COUNTER} TAG linking to @TEST via comment:
-      # @CODE-{COUNTER} → @TEST-{COUNTER} → @SPEC-$ARGUMENTS
    c. Write minimal code to pass tests (no optimization)
    d. Run tests: pytest tests/test_{task_name}.py
    e. Update TodoWrite: Mark task as "implemented"
    f. Verify coverage: Check new code coverage ≥ 85%
 
 2. Commit GREEN phase:
-   git commit -m "feat(@SPEC-$ARGUMENTS): Implement {component}
 
    - Code coverage: {coverage}%
-   - Related: @CODE-{COUNTER}, @TEST-{COUNTER}, @SPEC-$ARGUMENTS"
 
 REFACTOR PHASE (Optimization):
 1. After GREEN completes:
@@ -469,12 +455,10 @@ REFACTOR PHASE (Optimization):
    f. Update TodoWrite: Mark phase complete
 
 2. Commit REFACTOR phase:
-   git commit -m "refactor(@SPEC-$ARGUMENTS): Improve code quality
 
    - Applied patterns: [list]
    - Improved readability, removed duplication
    - All tests still passing: {test_count}
-   - Related: @CODE-{COUNTER}, @SPEC-$ARGUMENTS"
 
 QUALITY GATES (Built-in):
 - Test coverage: ≥ 85%
@@ -592,7 +576,6 @@ python3 .claude/hooks/alfred/spec_status_hooks.py status_update SPEC-$ARGUMENTS 
 Task(subagent_type="tag-agent",
      description="Update SPEC status and initialize TAG tracking",
      prompt="Update SPEC-$ARGUMENTS status to in-progress.
-             Initialize @SPEC TAG for implementation tracking.
              Reason: Implementation started via /alfred:2-run")
 ```
 

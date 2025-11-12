@@ -1,4 +1,3 @@
-# @SPEC:CLI-ANALYSIS-001 수용 기준 및 테스트 계획
 
 ## 개요
 
@@ -561,7 +560,6 @@ Feature: Basic Analysis Command
 - [x] Ruff 린터 0 경고
 - [x] mypy 타입 체크 0 오류
 - [x] 테스트 커버리지 90%+ 달성
-- [x] @TAG 체인 완성 (@SPEC → @TEST → @CODE → @DOC)
 
 ### 문서화
 

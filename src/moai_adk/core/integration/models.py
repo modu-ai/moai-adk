@@ -1,4 +1,3 @@
-# @CODE:TAG-IMPROVEMENT-INTEGRATION-002
 """
 Integration testing data structures and utilities.
 

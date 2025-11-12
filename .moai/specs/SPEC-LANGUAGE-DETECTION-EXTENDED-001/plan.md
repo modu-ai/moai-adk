@@ -1,11 +1,9 @@
-# @PLAN:LANGUAGE-DETECTION-EXTENDED-001: 11개 언어 전담 CI/CD 워크플로우 확장 구현 계획
 
 ---
 spec_id: LANGUAGE-DETECTION-EXTENDED-001
 version: 0.0.1
 created: 2025-10-30
 updated: 2025-10-30
-author: @GoosLab
 ---
 
 ## 개요
@@ -791,11 +789,6 @@ def detect_java(self) -> bool:
 
 ---
 
-**@TAG 체인**:
-- `@PLAN:LANGUAGE-DETECTION-EXTENDED-001` (이 문서)
-- `@SPEC:LANGUAGE-DETECTION-EXTENDED-001` (요구사항 문서)
-- `@TEST:LANGUAGE-DETECTION-EXTENDED-001` (구현 시 생성)
-- `@CODE:LANGUAGE-DETECTION-EXTENDED-001` (구현 시 생성)
 
 ---
 

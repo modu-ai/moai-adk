@@ -10,18 +10,10 @@ created_at: "2025-11-13T02:20:00Z"
 reviewers: []
 dependencies: []
 related_docs:
-  - "@SPEC:SKILLS-EXPERT-UPGRADE-001"
-  - "@DOC:MCP-INTEGRATION-001"
 tags:
-  - @SPEC:NOTION-001
-  - @DOMAIN:NOTION
-  - @AGENT:NOTION-EXPERT
-  - @INTEGRATION:CONTEXT7
-  - @SKILL:MOAI-DOMAIN-NOTION
 target_branch: feature/SPEC-NOTION-001
 ---
 
-# @SPEC:NOTION-001: Notion 전문가 Agent 및 통합 Skills 개발
 
 ## 개요
 Notion API와 Context7 문서 통합을 기반으로 한 전문가 Agent 및 Skills 시스템 개발. 사용자 친화적인 Notion 작업 자동화와 실시간 문서 통합 기능 제공.
@@ -389,13 +381,6 @@ class Context7Integration:
 ## Traceability (연계성)
 
 ### TAG 체인 관리
-- **@SPEC:NOTION-001**: 이 SPEC 문서
-- **@SPEC:SKILLS-EXPERT-UPGRADE-001**: Skills 전문가 업그레이드 SPEC
-- **@DOC:MCP-INTEGRATION-001**: MCP 통합 문서
-- **@DOMAIN:NOTION**: Notion 도메인 태그
-- **@AGENT:NOTION-EXPERT**: Notion 전문가 Agent 태그
-- **@INTEGRATION:CONTEXT7**: Context7 통합 태그
-- **@SKILL:MOAI-DOMAIN-NOTION**: Domain별 Notion Skill 태그
 
 ### 구현 추적 관리
 - **Code 위치**: `src/moai_adk/agents/notion_expert.py`

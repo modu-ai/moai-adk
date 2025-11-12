@@ -4,7 +4,6 @@ version: 0.1.0
 status: completed
 created: 2025-10-19
 updated: 2025-10-21
-author: @Goos
 priority: high
 category: refactor
 labels:
@@ -14,13 +13,11 @@ labels:
   - code-quality
 ---
 
-# @SPEC:SKILL-REFACTOR-001: Claude Code Skills 표준화
 
 ## HISTORY
 
 ### v0.0.1 (2025-10-19)
 - **INITIAL**: Claude Code Skills 표준화 SPEC 최초 작성
-- **AUTHOR**: @Goos
 - **SCOPE**: 50개 스킬 파일명, YAML 필드, allowed-tools 표준화
 - **CONTEXT**: Anthropic 공식 표준 준수 및 코드 품질 향상
 - **TASKS**:
@@ -31,7 +28,6 @@ labels:
 
 ### v0.1.0 (2025-10-21)
 - **COMPLETED**: 전체 구현 및 검증 완료
-- **AUTHOR**: @Claude (구현)
 - **CHANGES**:
   1. ✅ skill.md → SKILL.md 파일명 변경 완료 (55개 스킬)
   2. ✅ 중복 CC 템플릿 5개 삭제 완료
@@ -123,9 +119,7 @@ labels:
 
 ---
 
-## Traceability (@TAG)
 
-- **SPEC**: @SPEC:SKILL-REFACTOR-001
 - **TEST**: tests/integration/test_skills_structure.py
 - **CODE**: scripts/standardize_skills.py
 - **DOC**: docs/skills/standardization-guide.md
@@ -145,4 +139,3 @@ labels:
 ---
 
 **최종 업데이트**: 2025-10-19
-**작성자**: @Goos

@@ -154,7 +154,6 @@ Each command phase (0-project, 1-plan, 2-run, 3-sync) saves its execution result
 }
 ```
 
-### Helper Utilities (@CODE:W2-002)
 
 `command_helpers.py` provides reusable patterns for commands:
 
@@ -217,9 +216,6 @@ spec-builder agent
 
 ### Implementation Reference
 
-- **SPEC**: @SPEC:CMD-IMPROVE-001 (Week 2)
-- **Code**: @CODE:W2-002 (`src/moai_adk/core/command_helpers.py`)
-- **Tests**: @TEST:W2-001 through @TEST:W2-010 (27 tests, 90.41% coverage)
 
 ## 보안 패턴
 

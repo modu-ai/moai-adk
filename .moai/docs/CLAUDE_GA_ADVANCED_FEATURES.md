@@ -80,7 +80,6 @@ jobs:
 - [ ] 예상 결과
 - [ ] 실제 결과
 - [ ] 에러 메시지 (있으면)
-- [ ] 해당 @TAG 참조
 
 **팁**: \`\`\`
 명령어 출력
@@ -207,8 +206,6 @@ jobs:
 필수 정보:\n
 - [ ] moai-adk 버전\n
 - [ ] 재현 단계\n
-- [ ] 관련 @TAG\n\n
-예: @TAG:BUG-001, @SPEC:AUTH-001`;
             github.rest.issues.createComment({...})
 
       # FEATURE-REQUEST: SPEC 템플릿
@@ -483,7 +480,6 @@ Claude Code GitHub Actions의 특화 영역:
 ✅ Issue 분석 및 이해
    • 자연어 처리로 복잡한 요구사항 파악
    • CLAUDE.md, TRUST 5 규칙 자동 적용
-   • @TAG 시스템과 자동 연동
 
 ✅ 코드 생성
    • MoAI-ADK 패턴 학습 및 적용
@@ -632,7 +628,6 @@ Claude GA (자동)
     ↓
 MoAI GitFlow (자동)
 ├─ TRUST 5 검증
-├─ @TAG 검증
 └─ 테스트 실행
     ↓
 CodeRabbit (자동)

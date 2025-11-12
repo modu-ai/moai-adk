@@ -1,6 +1,3 @@
-# @CODE:CORE-PROJECT-001 | SPEC: SPEC-CORE-PROJECT-001.md | TEST: tests/unit/test_language_detector.py
-# @CODE:LANG-DETECT-001 | SPEC: SPEC-LANG-DETECT-001.md | TEST: tests/unit/test_detector.py
-# @CODE:LDE-EXTENDED-001 | SPEC: SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md | \
 # TEST: tests/unit/test_language_detector_extended.py
 """Language detector module.
 
@@ -24,7 +21,6 @@ class LanguageDetector:
     """
 
     LANGUAGE_PATTERNS = {
-        # @CODE:LDE-PRIORITY-001 | SPEC: SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md
         # Priority order (highest to lowest):
         # 1. Rust, 2. Dart, 3. Swift, 4. Kotlin, 5. C#, 6. Java, 7. Ruby, 8. PHP
         # 9. Go, 10. Python, 11. TypeScript, 12. JavaScript, 13. C++, 14. C, 15. Shell
@@ -36,7 +32,6 @@ class LanguageDetector:
         "csharp": ["*.cs", "*.csproj"],
         "java": ["*.java", "pom.xml", "build.gradle"],
         # Ruby moved for priority (Rails detection)
-        # @CODE:LANG-DETECT-RUBY-001 | SPEC: Issue #51 Language Detection Fix
         "ruby": [
             "*.rb",
             "Gemfile",
@@ -129,7 +124,6 @@ class LanguageDetector:
     def get_workflow_template_path(self, language: str) -> str:
         """Get the GitHub Actions workflow template path for a language.
 
-        @CODE:LDE-WORKFLOW-PATH-001 | SPEC: SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md
 
         Args:
             language: Programming language name (lowercase).
@@ -169,7 +163,6 @@ class LanguageDetector:
     def detect_package_manager(self, path: str | Path = ".") -> str | None:
         """Detect the package manager for the detected language.
 
-        @CODE:LDE-PKG-MGR-001 | SPEC: SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md
 
         Args:
             path: Directory to inspect.
@@ -236,7 +229,6 @@ class LanguageDetector:
     def detect_build_tool(self, path: str | Path = ".", language: str | None = None) -> str | None:
         """Detect the build tool for the detected language.
 
-        @CODE:LDE-BUILD-TOOL-001 | SPEC: SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md
 
         Args:
             path: Directory to inspect.
@@ -279,7 +271,6 @@ class LanguageDetector:
     def get_supported_languages_for_workflows(self) -> list[str]:
         """Get the list of languages with dedicated CI/CD workflow support.
 
-        @CODE:LDE-SUPPORTED-LANGS-001 | SPEC: SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md
 
         Returns:
             List of supported language names (15 total).

@@ -1,7 +1,5 @@
 # ✅ Acceptance Criteria: UV Tool Upgrade Cache Refresh Auto-Retry
 
-> **SPEC Reference**: @SPEC:UPDATE-CACHE-FIX-001
-> **Related Tests**: @TEST:UPDATE-CACHE-FIX-001
 > **Author**: @goos
 > **Created**: 2025-10-30
 > **Version**: v0.0.1
@@ -41,7 +39,6 @@ def test_scenario_stale_cache_auto_retry(mocker):
     """
     캐시 스테일 시 자동 재시도 시나리오 테스트
 
-    @TEST:UPDATE-CACHE-FIX-001-SCENARIO-1
     """
     # Setup: Mock subprocess calls
     mock_run = mocker.patch("subprocess.run")
@@ -118,7 +115,6 @@ def test_scenario_fresh_cache_no_retry(mocker):
     """
     캐시 최신 상태 시 재시도 불필요 시나리오 테스트
 
-    @TEST:UPDATE-CACHE-FIX-001-SCENARIO-2
     """
     # Setup: Mock subprocess call
     mock_run = mocker.patch("subprocess.run")
@@ -199,7 +195,6 @@ def test_scenario_persistent_failure_cache_clear(mocker):
     """
     캐시 정리 실패 시나리오 테스트
 
-    @TEST:UPDATE-CACHE-FIX-001-SCENARIO-3A
     """
     # Setup: Mock subprocess call
     mock_run = mocker.patch("subprocess.run")
@@ -235,7 +230,6 @@ def test_scenario_persistent_failure_retry(mocker):
     """
     재시도 업그레이드 실패 시나리오 테스트
 
-    @TEST:UPDATE-CACHE-FIX-001-SCENARIO-3B
     """
     # Setup: Mock subprocess calls
     mock_run = mocker.patch("subprocess.run")
@@ -306,7 +300,6 @@ def test_scenario_other_package_not_affected(mocker):
     """
     다른 패키지 업그레이드 시 영향 없음 시나리오 테스트
 
-    @TEST:UPDATE-CACHE-FIX-001-SCENARIO-4
     """
     # Setup: Mock subprocess call for different package
     mock_run = mocker.patch("subprocess.run")
@@ -357,7 +350,6 @@ def test_scenario_version_parsing_failure(mocker):
     """
     버전 파싱 실패 시 graceful degradation 시나리오 테스트
 
-    @TEST:UPDATE-CACHE-FIX-001-SCENARIO-5
     """
     # Setup: Mock subprocess call
     mock_run = mocker.patch("subprocess.run")
@@ -409,16 +401,12 @@ def test_scenario_version_parsing_failure(mocker):
 - [ ] **Logging**: DEBUG/INFO/WARNING 레벨로 적절히 로깅
 - [ ] **Code style**: Ruff 린트 통과 (no warnings)
 - [ ] **Type hints**: 모든 함수에 타입 힌트 적용
-- [ ] **Docstrings**: 모든 함수에 docstring 작성 (Args, Returns, @TAG 포함)
 - [ ] **단위 테스트**: 5개 핵심 시나리오 테스트 통과
 - [ ] **Integration test**: 기존 update 테스트 여전히 통과 (회귀 방지)
 
 ### 문서
 
-- [ ] **README.md**: Troubleshooting 섹션 추가 (@DOC:UPDATE-CACHE-FIX-001-001)
-- [ ] **CHANGELOG.md**: Bug fix 기록 (@DOC:UPDATE-CACHE-FIX-001-002)
 - [ ] **SPEC 문서**: spec.md, plan.md, acceptance.md 완성
-- [ ] **TAG 참조**: @CODE/@TEST/@DOC 링크 완성
 - [ ] **수동 검증 절차**: 각 시나리오별 검증 절차 문서화
 
 ### CI/CD
@@ -460,7 +448,6 @@ def test_scenario_version_parsing_failure(mocker):
 ### Phase 3: 문서화
 10. ✅ README.md 업데이트 (Troubleshooting 섹션)
 11. ✅ CHANGELOG.md 업데이트 (v0.9.1 Fixed 섹션)
-12. ✅ @TAG 체인 검증 완료
 13. ✅ 모든 함수에 docstring 작성
 
 ### Phase 4: 배포

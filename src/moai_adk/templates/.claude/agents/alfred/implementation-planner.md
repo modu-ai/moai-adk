@@ -31,7 +31,6 @@ Alfred passes the user's language directly to you via `Task()` calls.
 2. **Output Language**: Generate implementation plans and analysis in user's conversation_language
 
 3. **Always in English**:
-   - @TAG identifiers (format: `@TYPE:DOMAIN-NNN`)
    - Skill names: `Skill("moai-alfred-language-detection")`, `Skill("moai-domain-backend")`
    - Technical function/variable names
    - Code examples

@@ -1,4 +1,3 @@
-# @CODE:CONFIG-INTEGRATION-001
 """Auto-Spec Completion Configuration Reader."""
 
 import json

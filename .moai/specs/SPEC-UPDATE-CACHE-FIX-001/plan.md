@@ -1,6 +1,5 @@
 # 📋 Implementation Plan: UV Tool Upgrade Cache Refresh Auto-Retry
 
-> **SPEC Reference**: @SPEC:UPDATE-CACHE-FIX-001
 > **Author**: @goos
 > **Created**: 2025-10-30
 > **Version**: v0.0.1
@@ -63,7 +62,6 @@ def _detect_stale_cache(
     Returns:
         True if cache is stale, False otherwise
 
-    @CODE:UPDATE-CACHE-FIX-001-001
     """
 ```
 
@@ -98,7 +96,6 @@ def _detect_stale_cache(
 
 **코드 위치**: `src/moai_adk/cli/commands/update.py`
 
-**@TAG 참조**: @CODE:UPDATE-CACHE-FIX-001-001
 
 **검증 방법**:
 - 단위 테스트: `test_detect_stale_cache_true`, `test_detect_stale_cache_false`
@@ -126,7 +123,6 @@ def _clear_uv_package_cache(package_name: str = "moai-adk") -> bool:
     Returns:
         True if cache cleared successfully, False otherwise
 
-    @CODE:UPDATE-CACHE-FIX-001-002
     """
 ```
 
@@ -176,7 +172,6 @@ def _clear_uv_package_cache(package_name: str = "moai-adk") -> bool:
 
 **코드 위치**: `src/moai_adk/cli/commands/update.py`
 
-**@TAG 참조**: @CODE:UPDATE-CACHE-FIX-001-002
 
 **검증 방법**:
 - Mock 테스트: subprocess.run 성공/실패 시나리오
@@ -210,7 +205,6 @@ def _execute_upgrade_with_retry(
     """
     Execute upgrade with automatic cache retry on stale detection.
 
-    @CODE:UPDATE-CACHE-FIX-001-003
     """
     # 1단계: 첫 번째 업그레이드 시도
     result = subprocess.run(
@@ -272,7 +266,6 @@ success = _execute_upgrade_with_retry(installer_cmd, "moai-adk")
 
 **코드 위치**: `src/moai_adk/cli/commands/update.py`
 
-**@TAG 참조**: @CODE:UPDATE-CACHE-FIX-001-003
 
 **검증 방법**:
 - E2E 테스트: 캐시 스테일 상태에서 1회 실행으로 업그레이드 완료
@@ -303,7 +296,6 @@ def test_detect_stale_cache_true(output, current, latest, expected):
     """
     캐시 스테일 감지 테스트 - 긍정 케이스
 
-    @TEST:UPDATE-CACHE-FIX-001-001
     """
     result = _detect_stale_cache(output, current, latest)
     assert result is expected
@@ -321,7 +313,6 @@ def test_detect_stale_cache_false(output, current, latest, expected):
     """
     캐시 스테일 감지 테스트 - 부정 케이스
 
-    @TEST:UPDATE-CACHE-FIX-001-002
     """
     result = _detect_stale_cache(output, current, latest)
     assert result is expected
@@ -333,7 +324,6 @@ def test_clear_cache_success(mocker):
     """
     캐시 정리 성공 테스트
 
-    @TEST:UPDATE-CACHE-FIX-001-003
     """
     mock_run = mocker.patch("subprocess.run")
     mock_run.return_value.returncode = 0
@@ -358,7 +348,6 @@ def test_clear_cache_failure(mocker):
     """
     캐시 정리 실패 테스트
 
-    @TEST:UPDATE-CACHE-FIX-001-004
     """
     mock_run = mocker.patch("subprocess.run")
     mock_run.return_value.returncode = 1
@@ -376,7 +365,6 @@ def test_upgrade_with_retry_stale_cache(mocker):
     """
     캐시 스테일 시 재시도 로직 테스트
 
-    @TEST:UPDATE-CACHE-FIX-001-005
     """
     # Mock subprocess calls
     mock_run = mocker.patch("subprocess.run")
@@ -409,7 +397,6 @@ def test_upgrade_with_retry_stale_cache(mocker):
 
 **Coverage Target**: 90%+ for cache fix code
 
-**@TAG 참조**: @TEST:UPDATE-CACHE-FIX-001
 
 ---
 
@@ -451,7 +438,6 @@ moai-adk update
 - Max retries: 1 (prevents infinite loops)
 ```
 
-**@TAG 참조**: @DOC:UPDATE-CACHE-FIX-001-001
 
 #### 5.2 CHANGELOG.md 업데이트
 
@@ -466,7 +452,6 @@ moai-adk update
   - Root cause: PyPI metadata cache stale between first check and actual upgrade
   - Solution: Auto-detect stale cache, clear with `uv cache clean`, and retry upgrade
   - Impact: Users no longer need to run `moai-adk update` twice
-  - Implementation: @SPEC:UPDATE-CACHE-FIX-001
 
 ### Technical Details
 - Added `_detect_stale_cache()` function for version comparison
@@ -475,7 +460,6 @@ moai-adk update
 - Test coverage: 90%+ for cache fix code
 ```
 
-**@TAG 참조**: @DOC:UPDATE-CACHE-FIX-001-002
 
 ---
 
@@ -489,11 +473,7 @@ moai-adk update
 | `_detect_tool_installer()` | `update.py` | 설치 도구 감지 (uv/pip) |
 
 ### 신규 함수
-| 함수 | 책임 | @TAG |
 |-----|------|------|
-| `_detect_stale_cache()` | 캐시 스테일 감지 | @CODE:UPDATE-CACHE-FIX-001-001 |
-| `_clear_uv_package_cache()` | uv 캐시 정리 | @CODE:UPDATE-CACHE-FIX-001-002 |
-| `_execute_upgrade_with_retry()` | 재시도 로직 통합 | @CODE:UPDATE-CACHE-FIX-001-003 |
 
 ### 외부 의존성
 - `subprocess` (Python 표준 라이브러리)
@@ -548,7 +528,6 @@ moai-adk update
 - ✅ README.md에 Troubleshooting 섹션 추가
 - ✅ CHANGELOG.md에 Bug fix 기록
 - ✅ SPEC 문서 (spec.md, plan.md, acceptance.md) 완성
-- ✅ @TAG 참조 완전성 검증
 
 ---
 
@@ -602,7 +581,6 @@ moai-adk update
 
 ### STEP 4 (문서 동기화)
 1. `/alfred:3-sync` 실행
-2. @TAG 체인 검증
 3. 문서 일관성 확인
 4. PR 완성 및 리뷰 요청
 

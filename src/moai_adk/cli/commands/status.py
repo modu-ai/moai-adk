@@ -1,4 +1,3 @@
-# @CODE:CLI-STATUS-001 | SPEC: SPEC-CLI-001/spec.md | TEST: tests/unit/test_cli_commands.py
 """MoAI-ADK status command
 
 Project status display:

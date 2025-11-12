@@ -4,7 +4,6 @@ version: 0.2.0
 status: completed
 created: 2025-10-06
 updated: 2025-10-18
-author: @Goos
 labels:
   - security
   - template
@@ -13,24 +12,20 @@ labels:
 priority: high
 ---
 
-# @SPEC:INSTALLER-SEC-001: 템플릿 보안 검증 통합
 
 ## HISTORY
 
 ### v0.2.0 (2025-10-18)
 - **CHANGED**: deprecated → completed (TypeScript 프로젝트 아카이브)
-- **AUTHOR**: @Goos
 - **REASON**: TypeScript 프로젝트에서 구현 완료된 기능, Python 전환으로 deprecated 처리했으나 실제로는 완료된 것으로 간주
 
 ### v0.1.0 (2025-10-16)
 - **DEPRECATED**: TypeScript 프로젝트용 SPEC, Python 프로젝트에는 적용 불가
-- **AUTHOR**: @Goos
 - **REASON**: MoAI-ADK가 Python 프로젝트로 전환됨에 따라 TypeScript template 보안 SPEC 불필요
 - **ALTERNATIVE**: Python 프로젝트는 Jinja2 템플릿 사용, 별도 보안 메커니즘 적용
 
 ### v0.0.1 (2025-10-06)
 - **INITIAL**: 템플릿 보안 검증 통합 명세 작성 (TypeScript용)
-- **AUTHOR**: @Goos
 - **SCOPE**: TypeScript template-security.ts 통합
 
 ---
@@ -52,7 +47,6 @@ priority: high
 ### 전제 조건
 - Mustache 템플릿 엔진 사용
 - TRUST 5원칙 중 Secured(보안) 준수 필요
-- CODE-FIRST @TAG 시스템 적용
 
 ---
 
@@ -143,7 +137,6 @@ priority: high
 ### 통합 방식
 
 ```typescript
-// @CODE:INSTALLER-SEC-001 | SPEC: SPEC-INSTALLER-SEC-001.md
 
 import {
   sanitizeTemplateContext,
@@ -208,9 +201,7 @@ throw new InstallationError(
 
 ---
 
-## Traceability (@TAG)
 
-- **SPEC**: @SPEC:INSTALLER-SEC-001
 - **TEST**: `moai-adk-ts/src/core/installer/__tests__/template-security.test.ts`
 - **CODE**:
   - `moai-adk-ts/src/core/installer/template-processor.ts` (보안 통합)

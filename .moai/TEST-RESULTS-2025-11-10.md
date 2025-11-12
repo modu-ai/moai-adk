@@ -322,7 +322,6 @@ Material 테마: 설정됨
 | **R**eadable | ✅ CSS 코드는 주석과 함께 명확 |
 | **U**nified | ✅ 모든 페이지에서 일관적 적용 |
 | **S**ecured | ✅ 보안 취약점 없음 |
-| **T**rackable | ✅ @TAG 시스템으로 추적 가능 |
 
 ### 9.2 Material for MkDocs 호환성
 

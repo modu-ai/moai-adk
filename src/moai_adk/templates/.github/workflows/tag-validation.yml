@@ -1,6 +1,5 @@
 name: TAG Validation
 
-# @DOC:DOC-TAG-004 | Component 2: CI/CD workflow for TAG validation
 # Validates TAG annotations on every PR to ensure quality and consistency
 
 on:

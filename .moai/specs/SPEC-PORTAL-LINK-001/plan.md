@@ -8,7 +8,6 @@ author: GOOS
 priority: high
 ---
 
-# `@SPEC:PORTAL-LINK-001: 구현 계획 및 마일스톤`
 
 ## 개요
 

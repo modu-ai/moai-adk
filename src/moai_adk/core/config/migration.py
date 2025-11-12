@@ -1,4 +1,3 @@
-# @CODE:LANG-FIX-001:MIGRATION | SPEC: .moai/specs/SPEC-LANG-FIX-001/spec.md
 """Configuration migration utilities for legacy flat config structure.
 
 Supports migration from legacy flat config.json structure to new nested language structure.

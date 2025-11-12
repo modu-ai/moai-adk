@@ -3,7 +3,6 @@
 **작성 일시**: 2025-11-10
 **상태**: 최초 작성
 **대상**: 개발자, 기술 리더
-**@TAG**: @DOC:IMPROVEMENT-GUIDE
 
 ---
 
@@ -17,12 +16,7 @@
 
 ### 1.1 핵심 기능
 
-| 기능 | 설명 | @TAG |
 |------|------|------|
-| **성능 최적화** | 대규모 코드베이스에서 TAG 스캔 속도 50% 이상 개선 | @CODE:PERF-OPTIMIZER |
-| **언어 정책 검증** | 인프라 파일 내 언어 혼재 자동 탐지 및 수정 | @CODE:LANG-VALIDATOR |
-| **통합 검증 프레임워크** | 품질 무결성 자동 검증 시스템 | @CODE:QUALITY-FRAMEWORK |
-| **템플릿 동기화** | 패키지 템플릿과 로컬 프로젝트 자동 동기화 | @CODE:TEMPLATE-SYNC |
 
 ### 1.2 시스템 아키텍처
 
@@ -67,7 +61,6 @@ graph TB
 
 ---
 
-## 2. 성능 최적화 모듈 (@CODE:PERF-OPTIMIZER)
 
 ### 2.1 주요 기능
 
@@ -148,7 +141,6 @@ python -m moai_adk.cli monitor --report --output performance-report.md
 
 ---
 
-## 3. 언어 정책 검증기 (@CODE:LANG-VALIDATOR)
 
 ### 3.1 주요 기능
 
@@ -247,7 +239,6 @@ python -m moai_adk.cli fix --language --interactive
 
 ---
 
-## 4. 통합 검증 프레임워크 (@CODE:QUALITY-FRAMEWORK)
 
 ### 4.1 주요 기능
 
@@ -354,7 +345,6 @@ python -m moai_adk.cli validate --consistency --tag-chain
 
 ---
 
-## 5. 템플릿 동기화 시스템 (@CODE:TEMPLATE-SYNC)
 
 ### 5.1 주요 기능
 
@@ -732,4 +722,3 @@ python -m moai_adk.cli backup --all
 **다음 업데이트**: 기능 개선 시점
 **버전**: 1.0.0
 
-**@TAG**: @DOC:IMPROVEMENT-GUIDE @SPEC:IMPROVEMENT-001

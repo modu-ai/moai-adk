@@ -4,7 +4,6 @@ version: 0.1.0
 status: completed
 created: 2025-10-18
 updated: 2025-10-18
-author: @Goos
 priority: high
 category: bugfix
 labels:
@@ -20,7 +19,6 @@ scope:
     - alfred_hooks.py
 ---
 
-# @SPEC:WINDOWS-HOOKS-001: Windows 환경에서 Claude Code 훅 stdin 처리 개선
 
 ## HISTORY
 
@@ -41,12 +39,10 @@ scope:
 - **FILES**:
   - tests/hooks/test_alfred_hooks_stdin.py (155줄 추가)
   - .claude/hooks/alfred/alfred_hooks.py (17줄 변경)
-- **AUTHOR**: @Goos
 - **FIXES**: #25, #31 (GitHub Issues)
 
 ### v0.0.1 (2025-10-18)
 - **INITIAL**: Windows 환경에서 stdin 읽기 개선 명세 작성
-- **AUTHOR**: @Goos
 - **REASON**: GitHub Issue #25, #31에서 보고된 Windows 환경 스크립트 오류 해결
 - **RELATED**: https://github.com/modu-ai/moai-adk/issues/25
 
@@ -241,7 +237,6 @@ else:
 
 ## Traceability (추적성)
 
-- **SPEC**: `@SPEC:WINDOWS-HOOKS-001`
 - **TEST**: `tests/hooks/test_alfred_hooks_stdin.py` (신규 생성 예정)
 - **CODE**: `.claude/hooks/alfred/alfred_hooks.py:123`
 - **DOC**: `.moai/specs/SPEC-WINDOWS-HOOKS-001/spec.md`
@@ -249,5 +244,4 @@ else:
 ---
 
 **작성일**: 2025-10-18
-**작성자**: @Goos
 **버전**: v0.0.1 (INITIAL)

@@ -25,36 +25,10 @@ All three agents now include:
 Implemented comprehensive TAG taxonomy across all agents:
 
 #### Backend Expert Research TAGs
-- `@RESEARCH:PERF-API-*` – API performance studies
-- `@RESEARCH:PERF-DB-*` – Database performance research
-- `@RESEARCH:CLOUD-PERF-*` – Cloud infrastructure performance
-- `@RESEARCH:MICRO-*` – Microservices architecture studies
-- `@ANALYSIS:BOTTLENECK-*` – Bottleneck identification analysis
-- `@KNOWLEDGE:BACKEND-SEC-*` – Backend security knowledge
-- `@KNOWLEDGE:BACKEND-REL-*` – Backend reliability knowledge
-- `@INSIGHT:OPTIMIZE-*` – Optimization recommendations
 
 #### Database Expert Research TAGs
-- `@RESEARCH:DB-PERF-*` – Database performance studies
-- `@RESEARCH:DB-SCALE-*` – Database scaling research
-- `@RESEARCH:DB-FEATURES-*` – Database feature performance analysis
-- `@RESEARCH:NOSQL-PERF-*` – NoSQL performance studies
-- `@ANALYSIS:QUERY-BOTTLENECK-*` – Query bottleneck analysis
-- `@ANALYSIS:DB-BOTTLENECK-*` – Database bottleneck identification
-- `@KNOWLEDGE:DB-SEC-PERF-*` – Database security performance knowledge
-- `@KNOWLEDGE:DB-REL-*` – Database reliability knowledge
-- `@INSIGHT:DB-OPTIMIZE-*` – Database optimization recommendations
 
 #### DevOps Expert Research TAGs
-- `@RESEARCH:CLOUD-COMPARISON-*` – Cloud platform performance studies
-- `@RESEARCH:COST-OPTIMIZATION-*` – Infrastructure cost optimization research
-- `@RESEARCH:DEPLOY-PATTERNS-*` – Deployment pattern analysis
-- `@RESEARCH:CICD-OPTIMIZATION-*` – CI/CD pipeline optimization studies
-- `@RESEARCH:CONTAINER-PERF-*` – Container performance research
-- `@RESEARCH:MICRO-DEPLOY-*` – Microservice deployment studies
-- `@KNOWLEDGE:INFRA-SEC-PERF-*` – Infrastructure security performance knowledge
-- `@KNOWLEDGE:INFRA-REL-*` – Infrastructure reliability knowledge
-- `@INSIGHT:INFRA-OPTIMIZE-*` – Infrastructure optimization recommendations
 
 ## Agent-Specific Enhancements
 
@@ -205,7 +179,6 @@ All agents now include:
 
 Standardized research documentation format:
 ```markdown
-@RESEARCH:DOMAIN-001: Research Title
 - Research Question: Clear problem statement
 - Methodology: Experimental approach
 - Findings: Quantified results
@@ -277,4 +250,3 @@ The integrated TAG research system provides structured documentation and traceab
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: 🎩 Alfred@MoAI

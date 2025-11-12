@@ -1,4 +1,3 @@
-# @SPEC:TRUST-001 Implementation Plan
 
 > **TRUST 원칙 자동 검증 시스템 구현 계획**
 
@@ -70,7 +69,6 @@
 ## Phase 2: TAG 시스템 통합 (우선순위: High)
 
 ### 목표
-- @TAG 체인 검증 로직 구현
 - 고아 TAG 탐지 및 순환 참조 감지
 
 ### 작업 항목
@@ -86,10 +84,7 @@
 #### 2.2 TAG 체인 검증기
 - **파일**: `src/core/quality/tag-chain-validator.ts`
 - **기능**:
-  - `@SPEC:ID` → `@TEST:ID` → `@CODE:ID` 연결 검증
   - 고아 TAG 탐지:
-    - `@CODE:ID` 있으나 `@SPEC:ID` 없음
-    - `@SPEC:ID` 있으나 `@CODE:ID` 없음
   - 순환 참조 탐지 (depends_on 필드 분석)
 - **알고리즘**: S-003 참조
 - **테스트**: `tests/core/quality/test_tag_chain_validator.py`
@@ -238,7 +233,6 @@
   - 도구별 차이 허용 범위 설정 (±2)
 
 ### 리스크 4: TAG 파싱 오류 (Low)
-- **문제**: 잘못된 TAG 형식 (`@CODE:AUTH` 대신 `@CODE AUTH-001`)
 - **완화**:
   - 정규식 패턴 강화 (`@[A-Z]+:[A-Z]+-\d{3}`)
   - 파싱 오류 시 경고 메시지
@@ -265,4 +259,3 @@
 ---
 
 **Last Updated**: 2025-10-16
-**Author**: @Goos

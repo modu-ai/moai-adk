@@ -1,4 +1,3 @@
-# @TEST:LDE-EXTENDED-001 | SPEC: SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md
 """Unit tests for extended language detection (11 new languages).
 
 Tests for LanguageDetector class extensions:
@@ -35,13 +34,11 @@ class TestLanguageDetectionExtended:
         assert detector.detect(tmp_path) == "php"
 
     def test_detect_java(self, tmp_path: Path):
-        """@TEST:LDE-JAVA-MAVEN-001 | Java project detection (pom.xml)."""
         (tmp_path / "pom.xml").touch()
         detector = LanguageDetector()
         assert detector.detect(tmp_path) == "java"
 
     def test_detect_java_gradle(self, tmp_path: Path):
-        """@TEST:LDE-JAVA-GRADLE-001 | Java project detection (build.gradle)."""
         (tmp_path / "build.gradle").touch()
         detector = LanguageDetector()
         assert detector.detect(tmp_path) == "java"
@@ -101,31 +98,26 @@ class TestBuildToolDetection:
     """Test build tool auto-detection for 5 languages."""
 
     def test_maven_detection(self, tmp_path: Path):
-        """@TEST:LDE-BUILD-MAVEN | Maven build tool detection (pom.xml)."""
         (tmp_path / "pom.xml").touch()
         detector = LanguageDetector()
         assert detector.detect_build_tool(tmp_path, language="java") == "maven"
 
     def test_gradle_detection(self, tmp_path: Path):
-        """@TEST:LDE-BUILD-GRADLE | Gradle build tool detection (build.gradle)."""
         (tmp_path / "build.gradle").touch()
         detector = LanguageDetector()
         assert detector.detect_build_tool(tmp_path, language="java") == "gradle"
 
     def test_cmake_detection(self, tmp_path: Path):
-        """@TEST:LDE-BUILD-CMAKE | CMake build tool detection (CMakeLists.txt)."""
         (tmp_path / "CMakeLists.txt").touch()
         detector = LanguageDetector()
         assert detector.detect_build_tool(tmp_path) == "cmake"
 
     def test_spm_detection(self, tmp_path: Path):
-        """@TEST:LDE-BUILD-SPM | Swift Package Manager detection (Package.swift)."""
         (tmp_path / "Package.swift").touch()
         detector = LanguageDetector()
         assert detector.detect_build_tool(tmp_path) == "spm"
 
     def test_dotnet_detection(self, tmp_path: Path):
-        """@TEST:LDE-BUILD-DOTNET | dotnet CLI detection (*.csproj)."""
         (tmp_path / "MyApp.csproj").touch()
         detector = LanguageDetector()
         assert detector.detect_build_tool(tmp_path) == "dotnet"
@@ -135,19 +127,16 @@ class TestPackageManagerDetection:
     """Test package manager auto-detection."""
 
     def test_bundle_detection(self, tmp_path: Path):
-        """@TEST:LDE-PKG-BUNDLE | Bundler detection (Gemfile)."""
         (tmp_path / "Gemfile").touch()
         detector = LanguageDetector()
         assert detector.detect_package_manager(tmp_path) == "bundle"
 
     def test_composer_detection(self, tmp_path: Path):
-        """@TEST:LDE-PKG-COMPOSER | Composer detection (composer.json)."""
         (tmp_path / "composer.json").touch()
         detector = LanguageDetector()
         assert detector.detect_package_manager(tmp_path) == "composer"
 
     def test_cargo_detection(self, tmp_path: Path):
-        """@TEST:LDE-PKG-CARGO | Cargo detection (Cargo.toml)."""
         (tmp_path / "Cargo.toml").touch()
         detector = LanguageDetector()
         assert detector.detect_package_manager(tmp_path) == "cargo"
@@ -157,7 +146,6 @@ class TestPriorityConflicts:
     """Test priority rules when multiple language files coexist."""
 
     def test_kotlin_over_java(self, tmp_path: Path):
-        """@TEST:LDE-PRIORITY-KOTLIN | Kotlin takes priority over Java."""
         (tmp_path / "build.gradle.kts").touch()
         (tmp_path / "pom.xml").touch()
         detector = LanguageDetector()
@@ -165,7 +153,6 @@ class TestPriorityConflicts:
         assert detector.detect(tmp_path) == "kotlin"
 
     def test_cpp_over_c(self, tmp_path: Path):
-        """@TEST:LDE-PRIORITY-CPP | C++ takes priority over C."""
         (tmp_path / "CMakeLists.txt").touch()
         (tmp_path / "main.cpp").touch()
         (tmp_path / "utils.c").touch()
@@ -174,7 +161,6 @@ class TestPriorityConflicts:
         assert detector.detect(tmp_path) == "cpp"
 
     def test_rust_highest_priority(self, tmp_path: Path):
-        """@TEST:LDE-PRIORITY-RUST | Rust has highest priority."""
         (tmp_path / "Cargo.toml").touch()
         (tmp_path / "pyproject.toml").touch()
         detector = LanguageDetector()
@@ -182,7 +168,6 @@ class TestPriorityConflicts:
         assert detector.detect(tmp_path) == "rust"
 
     def test_ruby_over_python(self, tmp_path: Path):
-        """@TEST:LDE-PRIORITY-RUBY | Ruby prioritized over Python."""
         (tmp_path / "Gemfile").touch()
         (tmp_path / "requirements.txt").touch()
         detector = LanguageDetector()
@@ -194,18 +179,15 @@ class TestErrorHandling:
     """Test error handling for edge cases."""
 
     def test_unknown_language_returns_none(self, tmp_path: Path):
-        """@TEST:LDE-ERROR-UNKNOWN | Unknown language returns None."""
         detector = LanguageDetector()
         assert detector.detect(tmp_path) is None
 
     def test_workflow_template_for_unsupported_language(self):
-        """@TEST:LDE-ERROR-WORKFLOW | ValueError for unsupported workflow language."""
         detector = LanguageDetector()
         with pytest.raises(ValueError, match="Unsupported language"):
             detector.get_workflow_template_path("cobol")
 
     def test_no_build_tool_detected(self, tmp_path: Path):
-        """@TEST:LDE-ERROR-BUILD-TOOL | None returned when no build tool found."""
         (tmp_path / "script.py").touch()
         detector = LanguageDetector()
         assert detector.detect_build_tool(tmp_path) is None
@@ -215,13 +197,11 @@ class TestBackwardCompatibility:
     """Test that existing 4 language detections still work (regression tests)."""
 
     def test_existing_python_support(self, tmp_path: Path):
-        """@TEST:LDE-COMPAT-PYTHON | Python detection unchanged."""
         (tmp_path / "pyproject.toml").touch()
         detector = LanguageDetector()
         assert detector.detect(tmp_path) == "python"
 
     def test_existing_javascript_support(self, tmp_path: Path):
-        """@TEST:LDE-COMPAT-JS | JavaScript detection unchanged."""
         (tmp_path / "package.json").touch()
         detector = LanguageDetector()
         # Note: package.json could be detected as typescript if tsconfig exists
@@ -229,13 +209,11 @@ class TestBackwardCompatibility:
         assert detector.detect(tmp_path) in ["javascript", "typescript"]
 
     def test_existing_typescript_support(self, tmp_path: Path):
-        """@TEST:LDE-COMPAT-TS | TypeScript detection unchanged."""
         (tmp_path / "tsconfig.json").touch()
         detector = LanguageDetector()
         assert detector.detect(tmp_path) == "typescript"
 
     def test_existing_go_support(self, tmp_path: Path):
-        """@TEST:LDE-COMPAT-GO | Go detection unchanged."""
         (tmp_path / "go.mod").touch()
         detector = LanguageDetector()
         assert detector.detect(tmp_path) == "go"
@@ -245,19 +223,16 @@ class TestIntegration:
     """Integration tests for workflow template path retrieval."""
 
     def test_get_workflow_template_for_ruby(self):
-        """@TEST:LDE-INTEGRATION-RUBY | Ruby workflow template path."""
         detector = LanguageDetector()
         path = detector.get_workflow_template_path("ruby")
         assert path == ".github/workflows/ruby-tag-validation.yml"
 
     def test_get_workflow_template_for_java(self):
-        """@TEST:LDE-INTEGRATION-JAVA | Java workflow template path."""
         detector = LanguageDetector()
         path = detector.get_workflow_template_path("java")
         assert path == ".github/workflows/java-tag-validation.yml"
 
     def test_supported_languages_count(self):
-        """@TEST:LDE-INTEGRATION-COUNT | 15 languages supported for workflows."""
         detector = LanguageDetector()
         supported = detector.get_supported_languages_for_workflows()
         assert len(supported) == 15

@@ -36,7 +36,6 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
    - Status updates: In user's language
 
 3. **Always in English** (regardless of conversation_language):
-   - TAG identifiers (e.g., `@CODE:TAG-ID`, `@TEST:TAG-ID`)
    - Skill names: `Skill("moai-lang-python")`, `Skill("moai-essentials-debug")`
    - Code syntax and keywords
    - Git commit messages
@@ -83,7 +82,6 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 **Follow these TAG management rules**:
 
 - **Observe TAG order**: Implement in TAG order provided by implementation-planner
-- **Insert TAG marker**: Add `# @CODE:[TAG-ID]` comment to code
 - **Track TAG progress**: Record progress with TodoWrite
 - **Verify TAG completion**: Check completion conditions for each TAG
 
@@ -213,7 +211,6 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 
 1. **Create or modify test file**:
    - Path: tests/test_[module_name].py OR __tests__/[module_name].test.js
-   - Add TAG comment: `# @TEST:[TAG-ID]`
 
 2. **Write test cases**:
    - Normal case (happy path)
@@ -235,7 +232,6 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 
 1. **Create or modify source code file**:
    - Path: src/[module_name].py OR lib/[module_name].js
-   - Add TAG comment: `# @CODE:[TAG-ID]`
 
 2. **Write minimal code**:
    - Simplest code that passes test

@@ -8,7 +8,6 @@ created: "2025-11-10"
 author: "GoosLab"
 ---
 
-# @SPEC:INIT-005-001 | @EXPERT:BACKEND | @EXPERT:DEVOPS
 
 ## SPEC Overview
 
@@ -23,10 +22,6 @@ This SPEC defines the initialization process for MoAI-ADK, which provides compre
 
 ## Implementation Files
 
-- **CODE**: @CODE:INIT-005:CLI - CLI initialization functionality
-- **CODE**: @CODE:INIT-005:INIT - Core initialization functionality
-- **TEST**: @TEST:INIT-005-001 - Initialization process tests
-- **DOC**: @DOC:INIT-005-001 - Initialization documentation
 
 ## Acceptance Criteria
 
@@ -40,6 +35,4 @@ This SPEC defines the initialization process for MoAI-ADK, which provides compre
 ## Traceability Chain
 
 ```
-@SPEC:INIT-005-001 → @CODE:INIT-005:CLI → @TEST:INIT-005-001 → @DOC:INIT-005-001
-@SPEC:INIT-005-001 → @CODE:INIT-005:INIT → @TEST:INIT-005-001 → @DOC:INIT-005-001
 ```

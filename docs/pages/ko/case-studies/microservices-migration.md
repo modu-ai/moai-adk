@@ -165,7 +165,6 @@ Alfred의 Plan 에이전트 활용:
 ```markdown
 # SPEC-MIGRATE-000: 마이그레이션 전략
 
-@TAG:SPEC-MIGRATE-000
 
 ## 아키텍처 패턴
 
@@ -212,7 +211,6 @@ Alfred의 Plan 에이전트 활용:
 ```markdown
 # SPEC-MIGRATE-001: Authentication Service 분리
 
-@TAG:SPEC-MIGRATE-001
 
 ## 목표
 
@@ -255,7 +253,6 @@ Django 모놀리스에서 인증 기능을 독립 서비스로 분리
 #### FastAPI Auth Service 구현
 
 ```python
-# @TAG:CODE-MIGRATE-001:AUTH
 # services/auth/main.py
 
 from fastapi import FastAPI, Depends, HTTPException
@@ -278,7 +275,6 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 class AuthService:
     """
     인증 서비스
-    @TAG:MIGRATE-001
     """
 
     def __init__(self):
@@ -363,7 +359,6 @@ class AuthService:
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     """
     로그인 (OAuth2 표준)
-    @TAG:MIGRATE-001
     """
     auth_service = AuthService()
 
@@ -396,7 +391,6 @@ async def read_users_me(
 ):
     """
     현재 사용자 정보 조회
-    @TAG:MIGRATE-001
     """
     return current_user
 
@@ -406,7 +400,6 @@ async def logout(
 ):
     """
     로그아웃
-    @TAG:MIGRATE-001
     """
     # JWT 토큰을 블랙리스트에 추가
     await blacklist_token(current_user.current_token)
@@ -417,7 +410,6 @@ async def logout(
 #### Strangler Pattern: API Gateway 라우팅
 
 ```python
-# @TAG:CODE-MIGRATE-001:GATEWAY
 # gateway/routing.py
 
 from fastapi import FastAPI, Request
@@ -430,7 +422,6 @@ class StranglerRouter:
     """
     Strangler Fig Pattern 구현
     Feature Flag 기반 트래픽 라우팅
-    @TAG:MIGRATE-001
     """
 
     def __init__(self):
@@ -495,7 +486,6 @@ class StranglerRouter:
 async def login_gateway(request: Request):
     """
     로그인 Gateway
-    @TAG:MIGRATE-001
     """
     router = StranglerRouter()
     return await router.route_auth_request(request)
@@ -504,7 +494,6 @@ async def login_gateway(request: Request):
 async def me_gateway(request: Request):
     """
     사용자 정보 조회 Gateway
-    @TAG:MIGRATE-001
     """
     router = StranglerRouter()
     return await router.route_auth_request(request)
@@ -513,7 +502,6 @@ async def me_gateway(request: Request):
 #### 데이터 동기화: Dual Write
 
 ```python
-# @TAG:CODE-MIGRATE-001:SYNC
 # services/auth/sync.py
 
 from typing import Optional
@@ -521,7 +509,6 @@ from typing import Optional
 class DataSyncService:
     """
     레거시 DB ↔ 신규 DB 양방향 동기화
-    @TAG:MIGRATE-001
     """
 
     def __init__(self):
@@ -592,7 +579,6 @@ class DataSyncService:
 #### 테스트: 마이그레이션 검증
 
 ```python
-# @TAG:TEST-MIGRATE-001
 # tests/migration/auth_migration.test.py
 
 import pytest
@@ -602,7 +588,6 @@ from httpx import AsyncClient
 class TestAuthMigration:
     """
     Auth Service 마이그레이션 검증
-    @TAG:MIGRATE-001
     """
 
     async def test_login_parity(self):
@@ -900,7 +885,6 @@ sequenceDiagram
 ### Saga Pattern: 분산 트랜잭션
 
 ```python
-# @TAG:CODE-MIGRATE-004:SAGA
 # services/order/saga.py
 
 from enum import Enum
@@ -936,7 +920,6 @@ class OrderSaga:
     주문 처리 Saga
     분산 트랜잭션을 여러 단계로 분할하고
     실패 시 보상 트랜잭션 실행
-    @TAG:MIGRATE-004
     """
 
     def __init__(self, order_id: str):

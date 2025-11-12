@@ -4,7 +4,6 @@ version: 0.1.0
 status: draft
 created: 2025-11-05
 updated: 2025-11-05
-author: @Goos
 priority: high
 category: refactor
 labels:
@@ -14,13 +13,11 @@ labels:
   - maintainability
 ---
 
-# @SPEC:CODEBASE-REFACTOR-001: MoAI-ADK 코드베이스 리팩토링
 
 ## HISTORY
 
 ### v0.1.0 (2025-11-05)
 - **INITIAL**: 코드베이스 종합 리팩토링 SPEC 작성
-- **AUTHOR**: @Goos
 - **SCOPE**: TAG 체인 복구, 코드 조직화, 유지보수성 개선
 - **CONTEXT**: TAG 분석 리포트 기반 체계적 리팩토링 필요
 - **TASKS**:
@@ -109,23 +106,12 @@ labels:
 
 ---
 
-## Traceability (@TAG)
 
 ### 핵심 TAG 체인
 
-- **SPEC**: @SPEC:CODEBASE-REFACTOR-001
-- **CODE**: @CODE:CODEBASE-REFACTOR-001 (TAG 복구 로직)
-- **CODE**: @CODE:REORGANIZE-001 (코드 재구성)
-- **CODE**: @CODE:TEST-COVERAGE-001 (테스트 확장)
-- **TEST**: @TEST:CODEBASE-REFACTOR-001 (리팩토링 검증)
-- **TEST**: @TEST:TAG-INTEGRATION-001 (TAG 연동 테스트)
-- **TEST**: @TEST:COVERAGE-001 (커버리지 검증)
 
 ### 관련 기존 TAG
 
-- @SPEC:SKILL-REFACTOR-001 (완료된 Skills 리팩토링)
-- @SPEC:REFACTOR-002 (완료된 Git Manager 리팩토링)
-- @SPEC:UPDATE-REFACTOR-001~003 (진행 중인 업데이트 리팩토링)
 
 ---
 
@@ -137,22 +123,16 @@ labels:
 
 **CODE without SPEC/TEST (27개)**:
 ```
-@CODE:LDE-PRIORITY-001 → @SPEC:LDE-PRIORITY-001 + @TEST:LDE-PRIORITY-001
-@CODE:VERSION-CACHE-INTEGRATION-001 → @SPEC:VERSION-CACHE-INTEGRATION-001 + @TEST:VERSION-CACHE-INTEGRATION-001
 ...
 ```
 
 **TEST without CODE (121개)**:
 ```
-@TEST:HAS-TEST-001 → @CODE:HAS-TEST-001 + @SPEC:HAS-TEST-001
-@TEST:VALIDATOR-COVERAGE-001 → 기존 CODE 연결 또는 CODE 생성
 ...
 ```
 
 **SPEC without CODE (55개)**:
 ```
-@SPEC:DOCS-003 → 실제 필요성 평가 후 CODE 생성 또는 SPEC 아카이브
-@SPEC:INSTALLER-REFACTOR-001 → 구현 여부 확인 및 CODE 연결
 ...
 ```
 

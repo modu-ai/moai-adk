@@ -8,7 +8,6 @@ created: "2025-11-10"
 author: "GoosLab"
 ---
 
-# @SPEC:CLI-INIT-001 | @EXPERT:BACKEND | @EXPERT:DEVOPS
 
 ## SPEC Overview
 
@@ -23,10 +22,6 @@ This SPEC defines the CLI initialization system for MoAI-ADK, which provides com
 
 ## Implementation Files
 
-- **CODE**: @CODE:CLI-003 - Main CLI functionality
-- **CODE**: @CODE:INIT-005:CLI - CLI initialization functionality
-- **TEST**: @TEST:CLI-INIT-001 - CLI init system tests
-- **DOC**: @DOC:CLI-INIT-001 - CLI init documentation
 
 ## Acceptance Criteria
 
@@ -40,6 +35,4 @@ This SPEC defines the CLI initialization system for MoAI-ADK, which provides com
 ## Traceability Chain
 
 ```
-@SPEC:CLI-INIT-001 → @CODE:CLI-003 → @TEST:CLI-INIT-001 → @DOC:CLI-INIT-001
-@SPEC:CLI-INIT-001 → @CODE:INIT-005:CLI → @TEST:CLI-INIT-001 → @DOC:CLI-INIT-001
 ```

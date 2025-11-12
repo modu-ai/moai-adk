@@ -1,4 +1,3 @@
-# @TEST:TAG-PERF-001
 """
 Parallel Processor Tests
 

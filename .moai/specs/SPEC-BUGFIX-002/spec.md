@@ -101,8 +101,6 @@ def _copy_github(self, silent: bool = False) -> None:
     - User files → preserve existing
     - New files → copy from template
 
-    @CODE:BUGFIX-GITHUB-MERGE-001
-    @SPEC:SPEC-BUGFIX-002
     """
     src = self.template_root / ".github"
     dst = self.target_path / ".github"

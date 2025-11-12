@@ -1,4 +1,3 @@
-# @SPEC:LANGUAGE-DETECTION-EXTENDED-001: 11개 언어 전담 CI/CD 워크플로우 확장
 
 ---
 id: LANGUAGE-DETECTION-EXTENDED-001
@@ -6,7 +5,6 @@ version: 1.0.0
 status: completed
 created: 2025-10-30
 updated: 2025-10-31
-author: @GoosLab
 priority: high
 category: feature
 depends_on: LANGUAGE-DETECTION-001
@@ -16,7 +14,6 @@ depends_on: LANGUAGE-DETECTION-001
 
 ### v1.0.0 (2025-10-31) - COMPLETED
 
-- **작성자**: @GoosLab
 - **변경사항**: SPEC 구현 완료 및 PR #135 병합
 - **설명**: 11개 언어 전담 CI/CD 워크플로우 지원 완료, LanguageDetector 클래스 확장, 34개 테스트 추가
 - **커밋**: PR #135 병합 (commit 449e7b42)
@@ -24,7 +21,6 @@ depends_on: LANGUAGE-DETECTION-001
 
 ### v0.0.1 (2025-10-30) - INITIAL
 
-- **작성자**: @GoosLab
 - **변경사항**: 초기 SPEC 작성
 - **설명**: GitHub Issue #131 확장 단계 - 11개 언어 전담 CI/CD 워크플로우 지원 (Ruby, PHP, Java, Rust, Dart, Swift, Kotlin, C#, C, C++, Shell)
 - **의존성**: SPEC-LANGUAGE-DETECTION-001 (기본 4개 언어 지원)
@@ -102,90 +98,64 @@ MoAI-ADK는 현재 4개 언어(Python, JavaScript, TypeScript, Go)에 대한 전
 
 ### 3.1 Ubiquitous Requirements (보편적 요구사항)
 
-**@REQ:LANGUAGE-DETECTION-EXTENDED-001-U1**
 시스템은 기존 4개 언어(Python, JavaScript, TypeScript, Go) 외에 추가 11개 언어(Ruby, PHP, Java, Rust, Dart, Swift, Kotlin, C#, C, C++, Shell)를 자동 감지해야 한다.
 
-**@REQ:LANGUAGE-DETECTION-EXTENDED-001-U2**
 시스템은 각 언어별 최적화된 빌드, 테스트, 린팅 도구를 자동 선택해야 한다.
 
-**@REQ:LANGUAGE-DETECTION-EXTENDED-001-U3**
 시스템은 15개 언어 모두에 대해 전담 CI/CD 워크플로우 템플릿을 제공해야 한다.
 
-**@REQ:LANGUAGE-DETECTION-EXTENDED-001-U4**
 시스템은 하위 호환성을 유지하며 기존 4개 언어 워크플로우에 영향을 주지 않아야 한다.
 
 ### 3.2 Event-driven Requirements (이벤트 기반 요구사항)
 
-**@REQ:LANGUAGE-DETECTION-EXTENDED-001-E1**
 WHEN Ruby 프로젝트가 감지될 때 (`Gemfile` 존재), 시스템은 `ruby-tag-validation.yml` 워크플로우를 선택해야 한다 (RSpec, Rubocop 사용).
 
-**@REQ:LANGUAGE-DETECTION-EXTENDED-001-E2**
 WHEN PHP 프로젝트가 감지될 때 (`composer.json` 존재), 시스템은 `php-tag-validation.yml`를 선택해야 한다 (PHPUnit, PHPCS 사용).
 
-**@REQ:LANGUAGE-DETECTION-EXTENDED-001-E3**
 WHEN Java 프로젝트가 감지될 때 (`pom.xml` 또는 `build.gradle` 존재), 시스템은 `java-tag-validation.yml`를 선택해야 한다 (JUnit 5, Jacoco 사용).
 
-**@REQ:LANGUAGE-DETECTION-EXTENDED-001-E4**
 WHEN Rust 프로젝트가 감지될 때 (`Cargo.toml` 존재), 시스템은 `rust-tag-validation.yml`를 선택해야 한다 (cargo test, clippy 사용).
 
-**@REQ:LANGUAGE-DETECTION-EXTENDED-001-E5**
 WHEN Dart 프로젝트가 감지될 때 (`pubspec.yaml` 존재), 시스템은 `dart-tag-validation.yml`를 선택해야 한다 (flutter test, dart analyze 사용).
 
-**@REQ:LANGUAGE-DETECTION-EXTENDED-001-E6**
 WHEN Swift 프로젝트가 감지될 때 (`Package.swift` 또는 `.xcodeproj` 존재), 시스템은 `swift-tag-validation.yml`를 선택해야 한다 (XCTest, SwiftLint 사용).
 
-**@REQ:LANGUAGE-DETECTION-EXTENDED-001-E7**
 WHEN Kotlin 프로젝트가 감지될 때 (`build.gradle.kts` 존재), 시스템은 `kotlin-tag-validation.yml`를 선택해야 한다 (JUnit 5, ktlint 사용).
 
-**@REQ:LANGUAGE-DETECTION-EXTENDED-001-E8**
 WHEN C# 프로젝트가 감지될 때 (`.csproj` 또는 `.sln` 존재), 시스템은 `csharp-tag-validation.yml`를 선택해야 한다 (xUnit, StyleCop 사용).
 
-**@REQ:LANGUAGE-DETECTION-EXTENDED-001-E9**
 WHEN C 프로젝트가 감지될 때 (`CMakeLists.txt` + `.c` 파일 존재), 시스템은 `c-tag-validation.yml`를 선택해야 한다 (gcc/clang, cppcheck 사용).
 
-**@REQ:LANGUAGE-DETECTION-EXTENDED-001-E10**
 WHEN C++ 프로젝트가 감지될 때 (`CMakeLists.txt` + `.cpp` 파일 존재), 시스템은 `cpp-tag-validation.yml`를 선택해야 한다 (g++/clang++, gtest 사용).
 
-**@REQ:LANGUAGE-DETECTION-EXTENDED-001-E11**
 WHEN Shell 스크립트가 감지될 때 (`.sh` 파일 또는 shebang 존재), 시스템은 `shell-tag-validation.yml`를 선택해야 한다 (shellcheck, bats-core 사용).
 
-**@REQ:LANGUAGE-DETECTION-EXTENDED-001-E12**
 WHEN Java 프로젝트에서 `pom.xml`이 발견될 때, 시스템은 Maven 빌드 도구를 선택해야 한다.
 
-**@REQ:LANGUAGE-DETECTION-EXTENDED-001-E13**
 WHEN Java 프로젝트에서 `build.gradle` 또는 `build.gradle.kts`가 발견될 때, 시스템은 Gradle 빌드 도구를 선택해야 한다.
 
-**@REQ:LANGUAGE-DETECTION-EXTENDED-001-E14**
 WHEN C/C++ 프로젝트에서 `CMakeLists.txt`가 발견될 때, 시스템은 CMake 빌드 도구를 선택해야 한다.
 
 ### 3.3 State-driven Requirements (상태 기반 요구사항)
 
-**@REQ:LANGUAGE-DETECTION-EXTENDED-001-S1**
 WHILE 여러 언어의 설정 파일이 동시에 존재할 때, 시스템은 우선순위 규칙에 따라 하나의 언어만 선택해야 한다.
 
-**@REQ:LANGUAGE-DETECTION-EXTENDED-001-S2**
 WHILE Java/Kotlin 프로젝트를 처리할 때, 시스템은 `pom.xml`과 `build.gradle` 간 빌드 도구 선택을 자동화해야 한다.
 
-**@REQ:LANGUAGE-DETECTION-EXTENDED-001-S3**
 WHILE CI/CD 워크플로우가 실행 중일 때, 시스템은 언어별 환경 설정을 올바르게 적용해야 한다.
 
 ### 3.4 Optional Requirements (선택적 요구사항)
 
-**@REQ:LANGUAGE-DETECTION-EXTENDED-001-O1**
 WHERE 사용자가 특정 언어 버전을 명시한 경우 (예: `ruby-version`, `java-version`), 시스템은 사용자 지정 버전을 우선 적용할 수 있다.
 
-**@REQ:LANGUAGE-DETECTION-EXTENDED-001-O2**
 WHERE 사용자가 커스텀 빌드 스크립트를 제공한 경우, 시스템은 기본 워크플로우 대신 사용자 스크립트를 실행할 수 있다.
 
 ### 3.5 Unwanted Behaviors (원치 않는 동작)
 
-**@REQ:LANGUAGE-DETECTION-EXTENDED-001-N1**
 IF 언어별 워크플로우 템플릿이 누락되면, 시스템은 명확한 에러 메시지를 표시하고 구현을 차단해야 한다.
 
-**@REQ:LANGUAGE-DETECTION-EXTENDED-001-N2**
 IF 호환되지 않는 도구 조합이 감지되면 (예: Maven + Gradle 동시 사용), 시스템은 경고를 발생시켜야 한다.
 
-**@REQ:LANGUAGE-DETECTION-EXTENDED-001-N3**
 IF 언어 감지 결과가 모호할 때 (예: `.c`와 `.cpp` 파일 혼재), 시스템은 사용자에게 명시적 선택을 요청해야 한다.
 
 ---
@@ -509,7 +479,6 @@ def detect_build_tool(self, language: str) -> str:
 
 ### 5.1 상위 의존성
 
-- **@SPEC:LANGUAGE-DETECTION-001** - 기본 4개 언어 지원 (Python, JS, TS, Go)
 - **GitHub Issue #131** - 11개 언어 확장 요청
 
 ### 5.2 관련 컴포넌트
@@ -520,9 +489,6 @@ def detect_build_tool(self, language: str) -> str:
 
 ### 5.3 향후 확장 가능성
 
-- **@FUTURE:LANGUAGE-DETECTION-EXTENDED-002** - 추가 언어 지원 (Scala, Haskell, Elixir 등)
-- **@FUTURE:CUSTOM-WORKFLOW-001** - 사용자 정의 워크플로우 템플릿 지원
-- **@FUTURE:MULTI-LANGUAGE-001** - 다중 언어 프로젝트 지원 (monorepo)
 
 ---
 
@@ -540,11 +506,6 @@ def detect_build_tool(self, language: str) -> str:
 
 ---
 
-**@TAG 체인**:
-- `@SPEC:LANGUAGE-DETECTION-EXTENDED-001` (이 문서)
-- `@TEST:LANGUAGE-DETECTION-EXTENDED-001` (테스트 작성 시)
-- `@CODE:LANGUAGE-DETECTION-EXTENDED-001` (구현 시)
-- `@DOC:LANGUAGE-DETECTION-EXTENDED-001` (문서 업데이트 시)
 
 ---
 

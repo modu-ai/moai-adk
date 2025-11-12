@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @TEST:TAG-POLICY-IMPROVED-001 | @SPEC:TAG-POLICY-IMPROVEMENT-001 | @CODE:HOOK-TAG-FILTER-001
 """TAG 정책 검증 개선: 선택적 파일 필터링 테스트
 
 선택적 파일(docs/, .claude/, CLAUDE.md 등)이 TAG 검증에서

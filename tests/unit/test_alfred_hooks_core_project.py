@@ -176,7 +176,6 @@ def test_get_package_version_offline_mode(tmp_path: Path, monkeypatch: pytest.Mo
 # Phase 3: Major Version Warning Tests
 # ========================================
 
-# @TEST:MAJOR-UPDATE-001
 def test_is_major_version_change_0_to_1(project_module):
     """Detects 0.x → 1.x major version change
 
@@ -184,13 +183,11 @@ def test_is_major_version_change_0_to_1(project_module):
     When: is_major_version_change() is called
     Then: Should return True (major version increased from 0 to 1)
 
-    @CODE:MAJOR-UPDATE-WARN-001
     """
     result = project_module.is_major_version_change("0.8.1", "1.0.0")
     assert result is True
 
 
-# @TEST:MAJOR-UPDATE-002
 def test_is_major_version_no_change_minor_update(project_module):
     """Minor update not flagged as major version change
 
@@ -202,7 +199,6 @@ def test_is_major_version_no_change_minor_update(project_module):
     assert result is False
 
 
-# @TEST:MAJOR-UPDATE-003
 def test_is_major_version_change_1_to_2(project_module):
     """Detects 1.x → 2.x major version change
 
@@ -214,7 +210,6 @@ def test_is_major_version_change_1_to_2(project_module):
     assert result is True
 
 
-# @TEST:MAJOR-UPDATE-004
 def test_is_major_version_change_invalid_versions(project_module):
     """Gracefully handles invalid version strings
 
@@ -228,7 +223,6 @@ def test_is_major_version_change_invalid_versions(project_module):
     assert project_module.is_major_version_change("invalid", "also-invalid") is False
 
 
-# @TEST:MAJOR-UPDATE-005
 def test_get_package_version_includes_release_url(tmp_path: Path, project_module):
     """Release notes URL included in version info
 
@@ -265,7 +259,6 @@ def test_get_package_version_includes_release_url(tmp_path: Path, project_module
     assert "github.com" in result["release_notes_url"]
 
 
-# @TEST:MAJOR-UPDATE-006
 def test_get_package_version_includes_major_flag(tmp_path: Path, project_module):
     """Major update flag included in version info
 

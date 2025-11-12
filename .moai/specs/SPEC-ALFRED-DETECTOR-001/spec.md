@@ -8,7 +8,6 @@ created: "2025-11-10"
 author: "GoosLab"
 ---
 
-# @SPEC:ALFRED-DETECTOR-001 | @EXPERT:BACKEND | @EXPERT:FRONTEND
 
 ## SPEC Overview
 
@@ -23,9 +22,6 @@ This SPEC defines the Alfred detector system for MoAI-ADK, which detects Alfred 
 
 ## Implementation Files
 
-- **CODE**: @CODE:ALFRED-DETECTOR-001 - Alfred detector implementation
-- **TEST**: @TEST:ALFRED-DETECTOR-001 - Alfred detector tests
-- **DOC**: @DOC:ALFRED-DETECTOR-001 - Alfred detector documentation
 
 ## Acceptance Criteria
 
@@ -39,5 +35,4 @@ This SPEC defines the Alfred detector system for MoAI-ADK, which detects Alfred 
 ## Traceability Chain
 
 ```
-@SPEC:ALFRED-DETECTOR-001 → @CODE:ALFRED-DETECTOR-001 → @TEST:ALFRED-DETECTOR-001 → @DOC:ALFRED-DETECTOR-001
 ```

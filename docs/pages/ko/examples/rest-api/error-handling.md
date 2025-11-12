@@ -25,7 +25,6 @@ tags: [fastapi, error-handling, validation, pydantic, exception]
 
 ```python
 # SPEC: API-030 - 커스텀 예외 정의
-# @TAG:API-030
 
 from fastapi import HTTPException, status
 
@@ -73,7 +72,6 @@ class RateLimitException(BaseAPIException):
 
 ```python
 # SPEC: API-031 - 에러 응답 스키마
-# @TAG:API-031
 
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
@@ -130,7 +128,6 @@ class ValidationErrorResponse(ErrorResponse):
 
 ```python
 # SPEC: API-032 - 예외 핸들러
-# @TAG:API-032
 
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
@@ -225,7 +222,6 @@ async def general_exception_handler(
 
 ```python
 # SPEC: API-033 - 에러 처리 통합
-# @TAG:API-033
 
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.exceptions import RequestValidationError
@@ -437,7 +433,6 @@ curl "http://localhost:8000/users/999"
 
 ```python
 # SPEC: TEST-API-030 - 에러 처리 테스트
-# @TAG:TEST-API-030
 
 import pytest
 from fastapi.testclient import TestClient

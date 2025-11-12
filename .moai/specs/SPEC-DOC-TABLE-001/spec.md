@@ -9,9 +9,6 @@ category: "documentation"
 tags: ["documentation", "table-format", "data-visualization", "grayscale-design"]
 depends_on: ["DOC-ONLINE-001", "DOC-VISUAL-001"]
 traceability:
-  - "@SPEC:DOC-TABLE-001"
-  - "@IMPL:table-processor-001"
-  - "@TEST:table-format-test-001"
 ---
 
 # 표 형식 및 데이터 표현 가이드
@@ -222,10 +219,6 @@ traceability:
 ## 추적성 (Traceability)
 
 ### 관련 TAG 참조
-- `@SPEC:DOC-ONLINE-001`: 온라인 문서 기반 기능
-- `@SPEC:DOC-VISUAL-001`: 시각적 디자인 가이드라인
-- `@IMPL:table-processor-001`: 테이블 처리 엔진 구현
-- `@TEST:table-format-test-001`: 테이블 형식 검증 테스트
 
 ### 의존성 관계
 ```

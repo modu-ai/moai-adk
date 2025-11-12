@@ -24,7 +24,6 @@ FastAPI와 SQLAlchemy를 사용하여 사용자(User) 리소스에 대한 CRUD (
 
 ```python
 # SPEC: API-001 - 데이터베이스 연결 설정
-# @TAG:API-001
 
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -65,7 +64,6 @@ def get_db():
 
 ```python
 # SPEC: API-002 - 사용자 데이터 모델 정의
-# @TAG:API-002
 
 from sqlalchemy import Column, Integer, String, Boolean, DateTime
 from sqlalchemy.sql import func
@@ -100,7 +98,6 @@ class User(Base):
 
 ```python
 # SPEC: API-003 - 요청/응답 스키마 정의
-# @TAG:API-003
 
 from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
@@ -137,7 +134,6 @@ class UserResponse(UserBase):
 
 ```python
 # SPEC: API-004 - CRUD 비즈니스 로직
-# @TAG:API-004
 
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -254,7 +250,6 @@ def delete_user(db: Session, user_id: int) -> bool:
 
 ```python
 # SPEC: API-005 - REST API 엔드포인트
-# @TAG:API-005
 
 from fastapi import FastAPI, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -458,7 +453,6 @@ curl -X DELETE "http://localhost:8000/users/1"
 
 ```python
 # SPEC: TEST-API-001 - CRUD API 테스트
-# @TAG:TEST-API-001
 
 import pytest
 from fastapi.testclient import TestClient

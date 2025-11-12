@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @CODE:HOOKS-CLARITY-CLEAN | SPEC: Individual hook files for better UX
 """SessionEnd Hook: Session Cleanup and Finalization
 
 Claude Code Event: SessionEnd

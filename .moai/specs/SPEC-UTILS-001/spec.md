@@ -4,7 +4,6 @@ version: 0.0.1
 status: draft
 created: 2025-11-13
 updated: 2025-11-13
-author: @Goos
 priority: high
 category: utilities
 labels:
@@ -24,7 +23,6 @@ scope:
     - tests/unit/test_utils_banner.py
 ---
 
-# @SPEC:UTILS-001: 유틸리티 배너 기능 강화 및 테스트
 
 > 배너 시스템을 동적으로 구성 가능하도록 개선하고 테스트 커버리지를 85% 이상으로 확대하는 SPEC
 
@@ -32,7 +30,6 @@ scope:
 
 ### v0.0.1 (2025-11-13)
 - **초기 생성**: 배너 시스템 기능 강화 및 테스트 커버리지 확대 SPEC 초기 작성
-- **작성자**: @Goos
 - **범위**: 동적 배너 구성, 테마 지원, 테스트 커버리지 강화
 - **배경**: 기존 배너 기능의 제한적 커스터마이징과 불완전한 테스트 커버리지 개선 필요
 
@@ -276,14 +273,9 @@ def is_color_supported() -> bool:
 
 ---
 
-## 추적성 (@TAG 참조)
 
 | TAG | 파일 | 설명 |
 |-----|------|------|
-| `@SPEC:UTILS-001` | `.moai/specs/SPEC-UTILS-001/spec.md` | 본 문서 |
-| `@CODE:UTILS-001` | `src/moai_adk/utils/banner.py` | 배너 구현 코드 |
-| `@TEST:UTILS-001` | `tests/unit/test_utils_banner.py` | 배너 테스트 |
-| `@DOC:UTILS-001` | `docs/utils/banner.md` | 배너 사용자 문서 |
 
 ---
 

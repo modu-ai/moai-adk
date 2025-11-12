@@ -8,7 +8,6 @@ created: "2025-11-10"
 author: "GoosLab"
 ---
 
-# @SPEC:PORTAL-LINK-001 | @EXPERT:BACKEND | @EXPERT:DEVOPS
 
 ## SPEC Overview
 
@@ -23,9 +22,6 @@ This SPEC defines the portal link validation system for MoAI-ADK, which validate
 
 ## Implementation Files
 
-- **CODE**: @CODE:PORTAL-LINK-001 - Portal link validator implementation
-- **TEST**: @TEST:PORTAL-LINK-001 - Link validation tests
-- **DOC**: @DOC:PORTAL-LINK-001 - Portal link documentation
 
 ## Acceptance Criteria
 
@@ -39,5 +35,4 @@ This SPEC defines the portal link validation system for MoAI-ADK, which validate
 ## Traceability Chain
 
 ```
-@SPEC:PORTAL-LINK-001 → @CODE:PORTAL-LINK-001 → @TEST:PORTAL-LINK-001 → @DOC:PORTAL-LINK-001
 ```

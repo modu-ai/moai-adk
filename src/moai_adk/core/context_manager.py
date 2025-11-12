@@ -1,6 +1,5 @@
 """
 Context Management Module for Commands Layer
-@CODE:CMD-IMPROVE-001-CTX - Context passing and resume functionality
 
 Provides utilities for:
 1. Path validation and absolute path conversion

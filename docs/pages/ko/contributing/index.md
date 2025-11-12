@@ -56,7 +56,6 @@ git commit -m "feat: Add your feature
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: 🎩 Alfred@MoAI"
 
 # Push 및 PR 생성
 git push origin feature/SPEC-YOUR-FEATURE
@@ -151,7 +150,6 @@ PR을 제출하기 전에 다음을 확인해주세요:
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: 🎩 Alfred@MoAI
 ```
 
 **Types:**
@@ -174,7 +172,6 @@ feat: Add MCP server integration support
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: 🎩 Alfred@MoAI
 ```
 
 ## 코드 리뷰 프로세스

@@ -27,7 +27,6 @@ updated: '2025-11-11'
 version: 1.0.0
 ---
 
-# @SPEC:AI-REASONING-001: Senior Engineer Thinking Patterns Integration
 
 ## History
 
@@ -426,9 +425,7 @@ version: 1.0.0
 4. **Phase 4**: Hooks Layer 실시간 지원 기능
 5. **Phase 5**: 학습 시스템과 최적화
 
-## Traceability (@TAG)
 
-- **SPEC**: `@SPEC:AI-REASONING-001` (본 문서)
 - **TEST**: `tests/reasoning/test_reasoning_strategies.py`
 - **CODE**: `src/core/reasoning/reasoning_strategist.py`
 - **DOC**: `docs/reasoning/senior-engineering-patterns.md`

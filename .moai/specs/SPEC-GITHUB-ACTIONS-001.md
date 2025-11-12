@@ -4,12 +4,10 @@ title: Claude Code GitHub Actions 통합
 status: completed
 created: 2025-11-07T17:00:00+09:00
 updated: 2025-11-07T17:00:00+09:00
-author: Alfred@MoAI
 priority: high
 version: 1.0.0
 ---
 
-@SPEC:GITHUB-ACTIONS-001
 
 # SPEC-GITHUB-ACTIONS-001: Claude Code GitHub Actions 통합
 
@@ -35,7 +33,6 @@ When: .github/workflows/ 디렉토리에 생성됨
 Then: 다음을 준수해야 함
   • CLAUDE.md 스타일 준용
   • TRUST 5 원칙 검증
-  • @TAG 시스템 연동
   • CodeRabbit과 충돌 없음
 ```
 
@@ -82,7 +79,6 @@ Given: Pull Request 생성됨
 When: GitHub Actions PR Validator 실행
 Then: 다음을 분석하고 코멘트 게시
   ✓ SPEC 문서 확인
-  ✓ @TAG 참조 검증
   ✓ 테스트 포함 여부
   ✓ TRUST 5 원칙 준수 확인
   ✓ 파일 변경사항 분석
@@ -95,7 +91,6 @@ When: GitHub Actions Auto-Sync Trigger 실행
 Then: 다음을 자동으로 실행
   • 문서 동기화 (향후)
   • CHANGELOG 생성 (향후)
-  • @TAG 무결성 검증
   • 병합 준비 확인
   • 상태 코멘트 게시
 ```
@@ -108,7 +103,6 @@ Given: PR이 다음 상태임
   • 모든 체크 완료
   • CodeRabbit 승인
   • TRUST 5 검증 완료
-  • @TAG 무결성 확인됨
 When: GitHub Actions Merge Readiness Check 실행
 Then: 병합 준비 완료 상태로 표시하고
   • PR을 merge-ready 레이블 추가
@@ -177,7 +171,6 @@ Then: (선택적) 다음을 수행
   • 모든 테스트 통과
   • CodeRabbit 자동 승인
   • TRUST 5 원칙 준수
-  • @TAG 시스템 유효성
   • 코드 리뷰 완료
 ```
 
@@ -186,7 +179,6 @@ Then: (선택적) 다음을 수행
 ❌ 하면 안 됨: GitHub Actions 워크플로우가 CLAUDE.md, TRUST 5를 무시
 올바른 방법:
   • SPEC 문서와 CODE 링크
-  • @TAG로 추적 가능하게 유지
   • 커밋 메시지에 코드, 스펙, 테스트 참조
 ```
 
@@ -239,7 +231,6 @@ Then: (선택적) 다음을 수행
 | **코드 리뷰** | CodeRabbit | 자동 리뷰 + 자동 승인 (Pro) |
 | **버전 관리** | Git (GitFlow) | MoAI-ADK 표준 |
 | **SPEC 관리** | YAML + Markdown | MoAI-ADK 표준 |
-| **태깅 시스템** | @TAG | 추적 가능성 보장 |
 
 ---
 
@@ -280,7 +271,6 @@ GitHub Actions 권한:
 
 ```
 자동 검증:
-  ✅ @TAG 시스템으로 추적
   ✅ TRUST 5 원칙 확인
   ✅ 테스트 커버리지 검증
   ✅ CodeRabbit 자동 리뷰

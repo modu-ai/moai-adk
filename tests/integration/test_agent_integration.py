@@ -97,4 +97,3 @@ def test_tdd_implementer_detects_go_project(tmp_path):
     assert "go-tag-validation.yml" in template_path
 
 
-# @TEST:AI-REASONING-001

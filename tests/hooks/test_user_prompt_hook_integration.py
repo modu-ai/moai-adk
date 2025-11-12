@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @TEST:USER-PROMPT-HOOK-INTEGRATION-001 | @SPEC:HOOK-INTEGRATION-TEST-001 | @CODE:HOOK-INTEGRATION-001
 """UserPromptSubmit Hook 통합 테스트
 
 향상된 JIT 컨텍스트 로딩 및 에이전트 위임 기능의 전체 통합 테스트.

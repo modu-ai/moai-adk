@@ -202,7 +202,6 @@ Glob("src/**/*.py")
 Glob("src/auth/**/*.py")
 
 # ✅ BETTER: Search for specific patterns
-Grep("@CODE:AUTH-", path="src/")
 ```
 
 ---
@@ -251,7 +250,6 @@ Full SPEC content here...
 
 # ✅ GOOD: Reference SPEC by ID (50 tokens)
 See SPEC-AUTH-001 for detailed requirements.
-Related TAGs: @SPEC:AUTH-001, @CODE:AUTH-001, @TEST:AUTH-001
 ```
 
 ---

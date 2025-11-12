@@ -4,7 +4,6 @@ version: 0.1.0
 status: completed
 created: 2025-10-31
 updated: 2025-10-31
-author: @Alfred
 priority: high
 category: perf
 labels:
@@ -45,13 +44,11 @@ related_specs:
 
 ### v0.0.1 (2025-10-31)
 - **INITIAL**: Created hook performance optimization specification
-- **AUTHOR**: @Alfred
 - **SECTIONS**: Environment, Assumptions, Requirements, Specifications, Traceability
 - **MOTIVATION**: Reduce hook execution time from ~100ms to <50ms for faster Claude Code integration
 
 ---
 
-## @SPEC:ENHANCE-PERF-001 Specification
 
 ### Overview
 
@@ -298,12 +295,7 @@ def load_project_metadata() -> dict:
 
 ## Traceability
 
-### @TAG Chain
 
-- **@SPEC:ENHANCE-PERF-001** → This specification
-- **@TEST:ENHANCE-PERF-001** → Performance benchmark tests
-- **@CODE:ENHANCE-PERF-001** → Hook optimization implementation
-- **@DOC:ENHANCE-PERF-001** → Performance tuning guide
 
 ### Related Documents
 

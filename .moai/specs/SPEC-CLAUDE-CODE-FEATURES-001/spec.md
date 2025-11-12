@@ -4,7 +4,6 @@ version: 0.0.1
 status: draft
 created: 2025-11-02
 updated: 2025-11-02
-author: @GOOS
 priority: high
 category: feature
 labels:
@@ -18,7 +17,6 @@ labels:
 
 ### v0.0.1 (2025-11-02)
 - **INITIAL**: MoAI-ADK v0.9.0을 위해 Claude Code v2.0.30+ 신규 기능 6개 통합
-- **AUTHOR**: @GOOS
 - **SCOPE**: Haiku Auto SonnetPlan, PreCompact Hook, Background Bash, Enhanced Grep, Plan Resume, TodoWrite Auto-Init
 - **CONTEXT**: Claude Code 최신 기능을 MoAI-ADK에 통합하여 비용 70-90% 절감, 성능 4-6배 향상
 
@@ -26,7 +24,6 @@ labels:
 
 # SPEC: Claude Code v2.0.30+ Features Integration
 
-## @SPEC:CLAUDE-CODE-FEATURES-001
 
 MoAI-ADK v0.9.0을 위한 Claude Code 신규 기능 6개 통합 명세
 
@@ -178,7 +175,6 @@ MoAI-ADK v0.9.0을 위한 Claude Code 신규 기능 6개 통합 명세
 - 성능이 기존 대비 개선되어야 함
 
 **Event-Driven Requirements:**
-- **WHEN** tag-agent가 `@SPEC:` 패턴을 검색할 때
   - **THEN** `head_limit`을 사용하여 처음 N개 결과만 반환할 수 있어야 함
   - **AND** 결과가 많을 경우 사용자에게 범위 좁히기를 제안해야 함
 
@@ -371,23 +367,11 @@ Alfred (SuperAgent)
 
 ---
 
-## 6. Traceability (@TAG Chain)
 
 ### TAG Hierarchy
 - SPEC:CLAUDE-CODE-FEATURES-001 (이 문서)
-  - **@TEST:CLAUDE-CODE-FEATURES-001** → `tests/integration/test_claude_code_features.py`
-  - **@CODE:HAIKU-AUTO-SONNET** → `src/moai_adk/core/agents/spec_builder.py`
-  - **@CODE:PRECOMPACT-HOOK** → `.claude/hooks/PreCompact.py`
-  - **@CODE:BACKGROUND-BASH** → `src/moai_adk/core/bash_handler.py`
-  - **@CODE:ENHANCED-GREP** → `src/moai_adk/core/grep_engine.py`
-  - **@CODE:PLAN-RESUME** → `src/moai_adk/core/plan_manager.py`
-  - **@CODE:TODOWRITE-AUTO** → `src/moai_adk/core/todowrite_initializer.py`
-  - **@DOC:CLAUDE-CODE-FEATURES** → `.moai/memory/claude-code-features-guide.md`
 
 ### Related SPECs
-- **@SPEC:ALFRED-WORKFLOW-001** (Alfred 4-step workflow)
-- **@SPEC:TRUST5-PRINCIPLES-001** (TRUST 5 enforcement)
-- **@SPEC:TAG-LIFECYCLE-001** (TAG chain management)
 
 ---
 

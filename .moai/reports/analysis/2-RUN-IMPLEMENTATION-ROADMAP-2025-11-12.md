@@ -143,11 +143,7 @@ Task(subagent_type="tag-agent",
    - Record timestamp and reason: 'Implementation started via /alfred:2-run'
 
 2. TAG Initialization
-   - Create @SPEC-$ARGUMENTS_IMPL tracking TAG
    - Initialize TAG chains for implementation:
-     * @TEST-{N} → @SPEC-$ARGUMENTS (test chain)
-     * @CODE-{N} → @TEST-{N} → @SPEC-$ARGUMENTS (code chain)
-     * @REFACTOR-{N} → @CODE-{N} (quality improvements)
    - Set initial counter to 001
 
 3. Logging
@@ -460,8 +456,6 @@ For each task in $TASK_LIST where type="test":
 
 1. Create Test File
    - Location: tests/test_{task_name}.py
-   - Add @TEST-{COUNTER} TAG in header comment
-   - Link to @SPEC-$ARGUMENTS in docstring
 
 2. Write Test Cases
    - Happy path (main scenario from acceptance criteria)
@@ -479,11 +473,8 @@ For each task in $TASK_LIST where type="test":
    - Document test count for this task
 
 5. Commit RED Phase
-   - Message: "test(@SPEC-$ARGUMENTS): Add failing tests for {task_name}"
-   - Include: @TEST-{COUNTER}, @SPEC-$ARGUMENTS tags
    - Example:
      ```
-     test(@SPEC-AUTH-001): Add failing tests for login endpoint
 
      Tests:
      - test_successful_login_with_valid_credentials
@@ -491,7 +482,6 @@ For each task in $TASK_LIST where type="test":
      - test_failed_login_with_nonexistent_user
      - test_rate_limiting_after_5_attempts
 
-     Related: @TEST-001 → @SPEC-AUTH-001
      ```
 
 PHASE 2: GREEN (Minimal Implementation)
@@ -501,8 +491,6 @@ For each task in $TASK_LIST where type="implementation":
 
 1. Create Implementation Files
    - Location: src/{module_name}/{component}.py
-   - Add @CODE-{COUNTER} TAG in header comment
-   - Link chain: @CODE-{COUNTER} → @TEST-{COUNTER} → @SPEC-$ARGUMENTS
 
 2. Write Minimal Code
    - Implement ONLY what's needed to pass tests
@@ -521,16 +509,13 @@ For each task in $TASK_LIST where type="implementation":
    - Record test pass rate, coverage %
 
 5. Commit GREEN Phase
-   - Message: "feat(@SPEC-$ARGUMENTS): Implement {component}"
    - Include: coverage %, test count
    - Example:
      ```
-     feat(@SPEC-AUTH-001): Implement authentication service
 
      - All 8 tests passing
      - Coverage: 92%
      - Implements: login, verify_password, generate_token
-     - Related: @CODE-001 → @TEST-001 → @SPEC-AUTH-001
      ```
 
 PHASE 3: REFACTOR (Code Quality)
@@ -560,17 +545,14 @@ After all GREEN commits:
    - Document improvements made
 
 5. Commit REFACTOR Phase
-   - Message: "refactor(@SPEC-$ARGUMENTS): Improve code quality"
    - Include: improvements summary
    - Example:
      ```
-     refactor(@SPEC-AUTH-001): Improve code quality and readability
 
      - Extracted: password_validation utility function
      - Simplified: token_generation logic (30 LOC → 15 LOC)
      - Applied: Factory pattern for service creation
      - All 8 tests still passing, coverage: 93%
-     - Related: @CODE-001, @SPEC-AUTH-001
      ```
 
 QUALITY ASSURANCE (Automatic)
@@ -681,28 +663,17 @@ TAG SYSTEM REFERENCE
 
 Use these TAG patterns throughout:
 
-@SPEC-$ARGUMENTS
 - Root specification, appears in all TAGs
 
-@TEST-{COUNTER}
-- Format: @TEST-001, @TEST-002, ...
 - Location: test file headers and docstrings
-- Links: @SPEC-$ARGUMENTS
 
-@CODE-{COUNTER}
-- Format: @CODE-001, @CODE-002, ...
 - Location: implementation file headers
-- Links: @TEST-{COUNTER} → @SPEC-$ARGUMENTS
 
-@REFACTOR-{COUNTER}
-- Format: @REFACTOR-001, @REFACTOR-002, ...
 - Optional: Used to tag refactoring improvements
-- Links: @CODE-{COUNTER}
 
 COUNTER INCREMENT RULE:
 - Start at 001 for RED phase
 - Increment for each new test file
-- Carry forward: @TEST-001 → @CODE-001 (same number)
 - Refactor uses same numbers as CODE
 
 FINAL OUTPUT
@@ -711,7 +682,6 @@ FINAL OUTPUT
 After completing all three phases (RED → GREEN → REFACTOR):
 
 Provide summary:
-- Total TAGs created (@TEST, @CODE, @REFACTOR counts)
 - Final test coverage %
 - Final code statistics (LOC, files, modules)
 - Commits created during cycle
@@ -732,7 +702,6 @@ Store: $IMPLEMENTATION_RESULTS
 - [ ] Step 2.2에서 TodoWrite 자동 초기화
 - [ ] Step 2.3 prompt가 100줄 이상의 상세 가이드
 - [ ] RED/GREEN/REFACTOR phases 명확하게 구분
-- [ ] TAG 체인 (@TEST → @CODE → @REFACTOR) 명시
 - [ ] Progress reporting 섹션 포함
 - [ ] Error handling 섹션 포함
 - [ ] Skills 참고 섹션 포함
@@ -791,7 +760,6 @@ Current gaps: {uncovered_files_and_lines}
 3. Run full test suite
    - Verify new tests pass
    - Verify coverage improves to ≥85%
-   - Commit: test(@SPEC-$ARGUMENTS): Add supplementary tests for coverage
 
 Output: New coverage percentage, tests added count")
 ```
@@ -882,28 +850,20 @@ CONTEXT:
 VERIFY COMMITS:
 
 1. Check RED Phase Commits
-   - Format: test(@SPEC-$ARGUMENTS): Add failing tests for ...
-   - Include @TEST-{N} references
    - Each test file has separate commit
 
 2. Check GREEN Phase Commits
-   - Format: feat(@SPEC-$ARGUMENTS): Implement ...
-   - Include coverage %, @CODE-{N} references
    - Each component has separate commit
 
 3. Check REFACTOR Phase Commits
-   - Format: refactor(@SPEC-$ARGUMENTS): Improve code quality
    - Include improvements summary
    - Single commit unless major refactoring
 
 4. Verify TAG Chains
-   - Each @CODE-{N} references @TEST-{N}
-   - Each @TEST-{N} references @SPEC-$ARGUMENTS
    - Complete traceability
 
 5. Final Verification
    - All commits follow conventional commits format
-   - All commits reference @SPEC-$ARGUMENTS
    - No merge conflicts
    - Branch is feature/SPEC-$ARGUMENTS (if using GitFlow)
 

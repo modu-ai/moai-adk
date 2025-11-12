@@ -1,4 +1,3 @@
-# @CODE:TAG-PERF-001
 """
 Parallel Processing Core
 

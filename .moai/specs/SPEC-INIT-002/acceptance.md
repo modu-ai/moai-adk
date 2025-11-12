@@ -7,7 +7,6 @@ created: 2025-10-06
 
 # INIT-002 수락 기준 (Acceptance Criteria)
 
-## @SPEC:INIT-002 | Acceptance Criteria
 
 ---
 
@@ -31,7 +30,6 @@ created: 2025-10-06
 
 - [ ] `moai-adk-ts/src/claude/hooks/session-notice/utils.ts:21-28` 수정 완료
 - [ ] `.claude/commands/moai` → `.claude/commands/alfred` 경로 변경 확인
-- [ ] `@CODE:INIT-002` TAG 주석 추가
 - [ ] TypeScript 컴파일 에러 없음 (`tsc --noEmit`)
 - [ ] ESLint/Biome 검증 통과
 
@@ -56,7 +54,6 @@ created: 2025-10-06
 
 ### Scenario 1: 정상 MoAI 프로젝트 인식
 
-**테스트 ID**: `@TEST:INIT-002:SCENARIO-1`
 
 **Given** (전제 조건):
 
@@ -98,7 +95,6 @@ claude-code /path/to/project-root
 
 ### Scenario 2: 초기화 필요 프로젝트
 
-**테스트 ID**: `@TEST:INIT-002:SCENARIO-2`
 
 **Given** (전제 조건):
 
@@ -139,7 +135,6 @@ claude-code /path/to/project-root
 
 ### Scenario 3: 레거시 경로 프로젝트 (Alfred 미마이그레이션)
 
-**테스트 ID**: `@TEST:INIT-002:SCENARIO-3`
 
 **Given** (전제 조건):
 
@@ -195,7 +190,6 @@ claude-code /path/to/project-root
 
 ### Scenario 4: 빌드 파일 내용 검증
 
-**테스트 ID**: `@TEST:INIT-002:SCENARIO-4`
 
 **Given** (전제 조건):
 
@@ -269,7 +263,6 @@ function isMoAIProject(projectRoot) {
 
 **T - Trackable**:
 
-- [ ] `@CODE:INIT-002` TAG 추가
 - [ ] SPEC 문서 링크 주석 포함
 
 ---

@@ -1,4 +1,3 @@
-# @TEST:UPDATE-REFACTOR-003
 """Unit tests for Phase 3: CLI Options Enhancement
 
 Tests for --templates-only, --yes, --check, and --force options.

@@ -1,4 +1,3 @@
-# @SPEC:DOCS-002 인수 테스트 시나리오
 
 ## 개요
 
@@ -35,14 +34,11 @@ wc -l docs/concepts/alfred-agents.md | awk '{print $1}'
 
 ---
 
-### AC-002: @TAG 추적성 시스템 페이지 표시
 
 **Given**: VitePress 개발 서버가 실행 중이고
 **When**: 사용자가 `http://localhost:5173/concepts/tag-system` 페이지를 방문하면
 **Then**:
-- [ ] 페이지 타이틀 "@TAG 추적성 시스템"이 표시됨
 - [ ] CODE-FIRST 원칙 섹션이 표시됨 (~50 LOC)
-- [ ] TAG 체인 다이어그램이 렌더링됨 (@SPEC → @TEST → @CODE → @DOC)
 - [ ] TAG ID 규칙 설명이 표시됨 (`<도메인>-<3자리>`)
 - [ ] 언어별 TAG 사용 예시 (TypeScript, Python, Dart) 표시됨
 - [ ] TAG 검증 방법 (rg 명령어) 표시됨
@@ -73,7 +69,6 @@ wc -l docs/concepts/tag-system.md | awk '{print $1}'
 - [ ] Readable: 파일 ≤300 LOC, 함수 ≤50 LOC, 복잡도 ≤10 기준
 - [ ] Unified: 아키텍처 통합성, 언어별 표준 도구 설명
 - [ ] Secured: SQL Injection, XSS, CSRF 방어 전략
-- [ ] Trackable: @TAG 체인 무결성, 고아 TAG 탐지
 - [ ] 언어별 도구 비교 표 (Jest/pytest/go test/cargo test 등)
 
 **검증 방법**:
@@ -123,7 +118,6 @@ test -f docs/.vitepress/dist/concepts/trust-principles.html
 - [ ] 4개 항목이 표시됨:
   - SPEC-First TDD 개발 방법 (Phase 1 기존)
   - Alfred 10개 AI 에이전트 팀 (Phase 2 신규)
-  - @TAG 추적성 시스템 (Phase 2 신규)
   - TRUST 5원칙 (Phase 2 신규)
 - [ ] 현재 페이지가 하이라이트됨 (파란색)
 - [ ] 각 링크 클릭 시 해당 페이지로 이동함
@@ -309,4 +303,3 @@ bun run docs:dev
 
 **작성자**: spec-builder 에이전트
 **검토자**: trust-checker 에이전트
-**승인**: @Goos

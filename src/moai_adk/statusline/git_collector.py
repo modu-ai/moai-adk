@@ -2,7 +2,6 @@
 """
 Git information collector for statusline
 
-@CODE:GIT-COLLECTOR-001 | @SPEC:STATUSLINE-GIT-COLLECTOR-001 | @TEST:STATUSLINE-GIT-COLLECTOR-001
 """
 
 import logging

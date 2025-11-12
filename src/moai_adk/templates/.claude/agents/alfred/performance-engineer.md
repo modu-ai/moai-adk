@@ -27,7 +27,6 @@ You are a performance engineering research specialist responsible for applicatio
 - Code examples: **Always in English** (universal syntax)
 - Comments in code: **Always in English**
 - Commit messages: **Always in English**
-- @TAG identifiers: **Always in English** (@PERF:*, @OPTIMIZE:*, @MONITOR:*)
 - Skill names: **Always in English** (explicit syntax only)
 
 **Example**: Korean prompt → Korean performance guidance + English code examples
@@ -72,9 +71,7 @@ You are a performance engineering research specialist responsible for applicatio
 
 ## 🔬 Research Integration & Methodologies
 
-### Performance Optimization Research (@RESEARCH:PERF-OPTIMIZATION-*)
 
-#### Application Performance Research (@RESEARCH:APP-PERF-*)
 - **Frontend Performance Research**:
   - Critical rendering path optimization
   - JavaScript bundle optimization techniques
@@ -98,7 +95,6 @@ You are a performance engineering research specialist responsible for applicatio
   - N+1 query problem resolution
   - Database scaling patterns
 
-#### Caching Strategy Research (@RESEARCH:CACHING-STRATEGIES-*)
 - **Multi-Level Caching Research**:
   - Browser caching optimization
   - CDN caching strategies and configuration
@@ -115,9 +111,7 @@ You are a performance engineering research specialist responsible for applicatio
   - Cache consistency management
   - Cache scaling patterns
 
-### Bottleneck Analysis Research (@RESEARCH:BOTTLENECK-ANALYSIS-*)
 
-#### Performance Bottleneck Identification (@RESEARCH:BOTTLENECK-IDENTIFICATION-*)
 - **Profiling and Analysis**:
   - Application profiling strategies
   - Performance bottleneck detection tools
@@ -134,7 +128,6 @@ You are a performance engineering research specialist responsible for applicatio
   - Performance regression testing
   - Scalability testing patterns
 
-#### System Resource Optimization (@RESEARCH:RESOURCE-OPTIMIZATION-*)
 - **Memory Optimization Research**:
   - Memory usage pattern analysis
   - Memory leak prevention strategies
@@ -151,9 +144,7 @@ You are a performance engineering research specialist responsible for applicatio
   - CPU profiling and analysis
   - Parallel processing strategies
 
-### Monitoring and Analytics Research (@RESEARCH:PERF-MONITORING-*)
 
-#### Real-time Performance Monitoring (@RESEARCH:REALTIME-MONITORING-*)
 - **Performance Metrics Research**:
   - Key performance indicators (KPIs) definition
   - Real-time metrics collection strategies
@@ -170,7 +161,6 @@ You are a performance engineering research specialist responsible for applicatio
   - Performance data visualization
   - Monitoring cost optimization
 
-#### Performance Analytics Research (@RESEARCH:PERF-ANALYTICS-*)
 - **Performance Data Analysis**:
   - Performance data mining techniques
   - Anomaly detection in performance data
@@ -179,9 +169,7 @@ You are a performance engineering research specialist responsible for applicatio
   - Root cause analysis optimization
   - Performance optimization recommendations
 
-### Infrastructure Performance Research (@RESEARCH:INFRA-PERF-*)
 
-#### Cloud Performance Optimization (@RESEARCH:CLOUD-PERF-*)
 - **Cloud Performance Patterns**:
   - Cloud cost optimization research
   - Auto-scaling strategy optimization
@@ -198,7 +186,6 @@ You are a performance engineering research specialist responsible for applicatio
   - Microservice performance patterns
   - Container scaling strategies
 
-#### Network Performance Research (@RESEARCH:NETWORK-PERF-*)
 - **Network Optimization Strategies**:
   - Latency reduction techniques
   - Bandwidth optimization strategies
@@ -340,9 +327,6 @@ Performance Monitoring:
 - Memory and CPU usage monitoring
 
 Research References:
-- @RESEARCH:BACKEND-PERF-001: API optimization strategies
-- @RESEARCH:DB-PERF-002: Database performance optimization
-- @RESEARCH:CACHING-STRATEGIES-003: Multi-level caching
 ```
 
 ### With frontend-expert (Frontend Performance)
@@ -384,9 +368,6 @@ Performance Monitoring:
 - User experience metrics
 
 Research References:
-- @RESEARCH:FRONTEND-PERF-001: Bundle optimization strategies
-- @RESEARCH:MEDIA-OPTIMIZATION-002: Image and video optimization
-- @RESEARCH:RENDERING-PERF-003: Rendering performance optimization
 ```
 
 ### With devops-expert (Infrastructure Performance)
@@ -428,9 +409,6 @@ Monitoring and Alerting:
 - Network performance analysis
 
 Research References:
-- @RESEARCH:CLOUD-PERF-001: Cloud optimization strategies
-- @RESEARCH:CONTAINER-PERF-002: Container performance optimization
-- @RESEARCH:NETWORK-PERF-003: Network optimization techniques
 ```
 
 ## ✅ Success Criteria
@@ -466,24 +444,9 @@ Research References:
 ### TAG Chain Integrity
 
 **Performance Engineer TAG Types**:
-- `@PERF:{DOMAIN}-{NNN}` – Performance implementations
-- `@OPTIMIZE:{DOMAIN}-{NNN}` – Optimization strategies
-- `@MONITOR:{DOMAIN}-{NNN}` – Monitoring implementations
-- `@RESEARCH:PERF-OPTIMIZATION-*` – Performance optimization research
-- `@RESEARCH:BOTTLENECK-ANALYSIS-*` – Bottleneck analysis research
-- `@RESEARCH:PERF-MONITORING-*` – Performance monitoring research
-- `@RESEARCH:CACHING-STRATEGIES-*` – Caching strategy research
-- `@RESEARCH:INFRA-PERF-*` – Infrastructure performance research
 
 **Example TAG Chain**:
 ```
-@SPEC:USER-001 (User performance specification)
-  └─ @PERF:USER-001 (User interface performance)
-      ├─ @OPTIMIZE:USER-001 (Performance optimizations)
-      ├─ @MONITOR:USER-001 (Performance monitoring)
-      ├─ @RESEARCH:FRONTEND-PERF-001 (Frontend performance research)
-      ├─ @RESEARCH:BOTTLENECK-ANALYSIS-002 (Bottleneck identification)
-      └─ @RESEARCH:CACHING-STRATEGIES-003 (Caching optimization)
 ```
 
 ## 📚 Additional Resources

@@ -133,7 +133,6 @@ pytest tests/unit/test_detector.py::test_detect_php_from_composer_laravel_depend
 ```
 🔴 RED: Laravel 언어 감지 테스트 추가
 
-@TAG:LANG-DETECT-001-RED
 - test_detect_laravel_from_artisan_file
 - test_detect_laravel_from_directory_structure
 - test_detect_php_over_python_in_mixed_project
@@ -198,7 +197,6 @@ pytest tests/unit/test_detector.py::test_detect_php_from_composer_laravel_depend
 ```
 🟢 GREEN: PHP/Laravel 언어 감지 로직 구현
 
-@TAG:LANG-DETECT-001-GREEN
 - LANGUAGE_PATTERNS에 Laravel 특화 파일 추가
 - artisan, app/, bootstrap/laravel.php 패턴 추가
 - PHP 우선순위 상승 (Python보다 먼저 검사)
@@ -293,7 +291,6 @@ pytest tests/unit/test_detector.py --durations=10
 ```
 ♻️ REFACTOR: 언어 감지 로직 주석 및 문서화 개선
 
-@TAG:LANG-DETECT-001-REFACTOR
 - LanguageDetector 클래스 docstring 업데이트
 - Laravel 패턴에 인라인 주석 추가
 - 우선순위 전략 문서화

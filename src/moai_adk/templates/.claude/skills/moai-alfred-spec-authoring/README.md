@@ -63,7 +63,6 @@ Consult detailed sections for:
 rg "^(id|version|status|created|updated|author|priority):" .moai/specs/SPEC-AUTH-001/spec.md
 
 # Check for duplicate IDs
-rg "@SPEC:AUTH-001" -n .moai/specs/
 
 # Scan entire TAG chain
 rg '@(SPEC|TEST|CODE|DOC):AUTH-001' -n
@@ -85,7 +84,6 @@ author: @YourHandle
 priority: high
 ---
 
-# @SPEC:AUTH-001: JWT Authentication System
 
 ## HISTORY
 ### v0.0.1 (2025-10-29)

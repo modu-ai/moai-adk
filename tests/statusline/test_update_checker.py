@@ -1,8 +1,6 @@
 """
 Tests for UpdateChecker - 업데이트 확인
 
-@TEST:UPDATE-CHECKER-001 - 업데이트 가용성 확인
-@TEST:UPDATE-CHECKER-002 - 300초 캐싱
 """
 
 from unittest.mock import MagicMock, patch
@@ -19,7 +17,6 @@ class TestUpdateChecker:
         WHEN: check_for_update("0.20.1") 호출
         THEN: available=True, latest_version="0.21.0"
         """
-        # @TEST:UPDATE-CHECKER-001
         from moai_adk.statusline.update_checker import UpdateChecker
 
         checker = UpdateChecker()
@@ -62,7 +59,6 @@ class TestUpdateChecker:
         WHEN: check_for_update() 호출
         THEN: available=False (에러 무시)
         """
-        # @TEST:UPDATE-CHECKER-002
         from moai_adk.statusline.update_checker import UpdateChecker
 
         checker = UpdateChecker()

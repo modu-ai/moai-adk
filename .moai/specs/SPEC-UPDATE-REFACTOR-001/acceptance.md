@@ -1,4 +1,3 @@
-# Acceptance Criteria: @SPEC:UPDATE-REFACTOR-001
 
 ## Overview
 
@@ -591,29 +590,22 @@ npm run test:coverage
 
 ---
 
-### QG002: @TAG 체인 무결성
 
 **기준**: 모든 TAG가 체인으로 연결됨
 
 **검증 방법**:
 ```bash
 # SPEC TAG 확인
-rg "@SPEC:UPDATE-REFACTOR-001" -n
 
 # CODE TAG 확인
-rg "@CODE:UPDATE-REFACTOR-001" -n
 
 # TEST TAG 확인
-rg "@TEST:UPDATE-REFACTOR-001" -n
 
 # 체인 무결성 검증
 rg "@(SPEC|CODE|TEST):UPDATE-REFACTOR-001" -n
 ```
 
 **통과 조건**:
-- [ ] @SPEC TAG 존재 (spec.md)
-- [ ] @CODE TAG 존재 (구현 코드)
-- [ ] @TEST TAG 존재 (테스트 코드)
 - [ ] 고아 TAG 없음
 
 ---
@@ -684,7 +676,6 @@ npm run test -- update-orchestrator.test.ts
 ### Quality Gates (품질 게이트)
 
 - [ ] QG001: 테스트 커버리지 85% 이상
-- [ ] QG002: @TAG 체인 무결성 검증
 - [ ] QG003: 하위 호환성 유지
 - [ ] QG004: 문서 품질 (P0, P1 요구사항 반영)
 

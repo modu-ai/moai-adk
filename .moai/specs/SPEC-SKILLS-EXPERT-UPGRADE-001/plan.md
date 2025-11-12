@@ -9,7 +9,6 @@ priority: high
 type: implementation-plan
 ---
 
-# @SPEC:SKILLS-EXPERT-UPGRADE-001: 구현 계획
 
 ## 개요
 
@@ -45,7 +44,6 @@ type: implementation-plan
   - moai-foundation-ears (EARS 최신 명세 + 20개 실제 예제)
   - moai-foundation-specs (YAML frontmatter + 15개 SPEC 템플릿)
 - **오후 (4시간)**:
-  - moai-foundation-tags (@TAG 시스템 + 30개 추적 패턴)
   - moai-foundation-trust (TRUST 5원칙 + 50개 체크리스트)
 
 #### Day 2: Foundation & Essential 스킬 (4개)

@@ -1,4 +1,3 @@
-# @TEST:PORTAL-USER-EXPERIENCE-001 | SPEC: SPEC-PORTAL-LINK-001
 
 """
 User Experience Tests

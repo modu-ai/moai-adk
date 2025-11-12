@@ -34,7 +34,6 @@ context7_references:
     topic: "Latest Mermaid features and validation patterns"
   - url: "https://mermaid.live"
     topic: "Live Mermaid editor and testing platform"
-spec_reference: "@SPEC:DIAGRAMS-MERMAID-001"
 ```
 
 ## 📚 Content

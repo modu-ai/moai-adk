@@ -1,6 +1,4 @@
-# @SPEC:INIT-004 Acceptance Criteria
 
-## @ACCEPTANCE:INIT-004 수락 기준
 
 ---
 
@@ -246,7 +244,6 @@ npm run test:coverage
 - ✅ 보안 도구 스캔 통과
 
 #### T - Trackable
-- ✅ @TAG 체인 완전성
 - ✅ Git 커밋 메시지 표준 준수
 - ✅ 변경 이력 추적 가능
 

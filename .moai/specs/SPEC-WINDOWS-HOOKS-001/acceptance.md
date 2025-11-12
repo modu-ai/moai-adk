@@ -1,6 +1,5 @@
 # Acceptance Criteria: Windows 환경 stdin 처리 개선
 
-> **SPEC**: @SPEC:WINDOWS-HOOKS-001
 > **상태**: draft (v0.0.1)
 > **작성일**: 2025-10-18
 
@@ -8,7 +7,6 @@
 
 ## 수락 기준 개요
 
-이 문서는 @SPEC:WINDOWS-HOOKS-001의 구현 완료 조건을 정의합니다. 모든 시나리오가 통과해야 SPEC이 완료(status: completed)로 전환됩니다.
 
 ---
 
@@ -232,7 +230,6 @@ def test_stdin_cross_platform(monkeypatch, platform):
   - JSON 파싱 오류 시 명확한 에러 처리
 
 - [ ] **TRUST - Trackable**: 추적성
-  - `@CODE:WINDOWS-HOOKS-001` 태그 추가
   - HISTORY 섹션 업데이트 (v0.1.0 구현 완료)
 
 ### 테스트 통과 기준
@@ -254,7 +251,6 @@ def test_stdin_cross_platform(monkeypatch, platform):
 
 - [ ] **docstring 업데이트**: `main()` 함수 docstring에 stdin 읽기 로직 설명 추가
 - [ ] **HISTORY 업데이트**: SPEC 문서의 HISTORY 섹션에 v0.1.0 항목 추가
-- [ ] **TAG 추가**: `.claude/hooks/alfred/alfred_hooks.py`에 `@CODE:WINDOWS-HOOKS-001` 주석 추가
 
 ---
 
@@ -282,7 +278,6 @@ def test_stdin_cross_platform(monkeypatch, platform):
 4. **문서화**
    - [ ] docstring 업데이트
    - [ ] HISTORY 섹션 업데이트 (v0.1.0)
-   - [ ] `@CODE:WINDOWS-HOOKS-001` 태그 추가
 
 ### 선택 조건 (Nice to Have)
 
@@ -377,6 +372,4 @@ SPEC 완료 후:
 ---
 
 **작성일**: 2025-10-18
-**작성자**: @Goos
-**검증 담당**: @Goos (TDD 구현 시)
 **승인 기준**: 모든 필수 조건 만족 + TRUST 5원칙 준수
