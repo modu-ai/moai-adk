@@ -1,622 +1,515 @@
-# SPEC Authoring Reference
+# SPEC Authoring Reference Guide
 
-## Complete Metadata Field Reference
+## YAML Metadata Field Reference
 
-### Seven Required Fields
+### Required Fields (7)
 
-#### 1. `id` – Unique SPEC Identifier
+#### `code` (String)
+- **Format**: SPEC-XXX (3+ digits)
+- **Example**: SPEC-001, SPEC-105, SPEC-4072
+- **Auto-generated**: By MoAI-ADK when creating new SPEC
+- **Validation**: Must be unique across project
+- **Immutable**: Yes, after creation
 
-**Format**: `<DOMAIN>-<NUMBER>`
+#### `title` (String)
+- **Length**: 50-80 characters (recommended)
+- **Style**: Title Case, descriptive, specific
+- **Example**: ✓ "Email Notification Service with Template Engine"
+- **Anti-pattern**: ✗ "Update feature", ✗ "New SPEC"
+- **Immutable**: No (can be refined)
 
-**Rules**:
-- Immutable after assignment
-- Use uppercase domain names (e.g., `AUTH`, `PAYMENT`, `CONFIG`)
-- Three-digit numbers (001–999)
-- Check for duplicates: `rg "@SPEC:AUTH-001" -n .moai/specs/`
+#### `status` (String: enum)
+- **Valid Values**: `draft` | `active` | `deprecated` | `archived`
+- **Lifecycle**: draft → active → deprecated → archived
+- **Default**: draft
+- **Constraints**:
+  - Only `draft` status allows metadata changes
+  - `deprecated` requires replacement SPEC code
+  - `archived` is immutable
 
-**Examples**:
-- `AUTH-001` (authentication)
-- `INSTALLER-SEC-001` (installer security)
-- `TRUST-001` (TRUST principles)
-- `CONFIG-001` (configuration schema)
+#### `created_at` (ISO 8601 Date)
+- **Format**: YYYY-MM-DD
+- **Example**: 2025-11-12
+- **Immutable**: Yes, set at creation
+- **Timezone**: UTC (Z suffix optional)
 
-**Directory Structure**:
-```
-.moai/specs/SPEC-AUTH-001/
-  ├── spec.md          # Main SPEC document
-  ├── diagrams/        # Optional: architecture diagrams
-  └── examples/        # Optional: code examples
-```
+#### `updated_at` (ISO 8601 Date)
+- **Format**: YYYY-MM-DD
+- **Example**: 2025-11-12
+- **Auto-updated**: By automation on content changes
+- **Manual**: Developers should NOT update
+- **Frequency**: Once per change (git commit)
 
-#### 2. `version` – Semantic Versioning
+#### `priority` (String: enum)
+- **Valid Values**: `critical` | `high` | `medium` | `low`
+- **Business Mapping**:
+  - `critical`: Blocks release (security, data integrity)
+  - `high`: Delivers business value, planned for sprint
+  - `medium`: Nice-to-have, backlog priority
+  - `low`: Technical debt, future consideration
+- **Affects**: Sprint planning, resource allocation
 
-**Format**: `MAJOR.MINOR.PATCH`
-
-**Lifecycle**:
-
-| Version | Status | Description | Trigger |
-|---------|--------|-------------|---------|
-| `0.0.1` | draft | Initial draft | SPEC creation |
-| `0.0.x` | draft | Draft improvements | Content editing |
-| `0.1.0` | completed | Implementation complete | TDD finished + `/alfred:3-sync` |
-| `0.1.x` | completed | Bug fixes, doc updates | Post-implementation patches |
-| `0.x.0` | completed | Feature additions | Minor enhancements |
-| `1.0.0` | completed | Production stable | Stakeholder approval |
-
-**Version Update Example**:
-```markdown
-## HISTORY
-
-### v0.2.0 (2025-11-15)
-- **ADDED**: Multi-factor authentication support
-- **CHANGED**: Token expiration extended from 15 to 30 minutes
-- **AUTHOR**: @YourHandle
-
-### v0.1.0 (2025-10-30)
-- **COMPLETED**: TDD implementation finished
-- **EVIDENCE**: Commits 4c66076, 34e1bd9
-- **TEST COVERAGE**: 89.13%
-
-### v0.0.2 (2025-10-25)
-- **REFINED**: Added password reset flow requirements
-- **AUTHOR**: @YourHandle
-
-### v0.0.1 (2025-10-23)
-- **INITIAL**: JWT authentication SPEC draft created
-```
-
-#### 3. `status` – Progress State
-
-**Values**: `draft` | `active` | `completed` | `deprecated`
-
-**Lifecycle Flow**:
-```
-draft → active → completed → [deprecated]
-  ↓       ↓          ↓
-/alfred:1-plan  /alfred:2-run  /alfred:3-sync
-```
-
-**Transitions**:
-- `draft`: Authoring phase (v0.0.x)
-- `active`: Implementation in progress (v0.0.x → v0.1.0)
-- `completed`: Implementation finished (v0.1.0+)
-- `deprecated`: Marked for removal
-
-#### 4. `created` – Creation Date
-
-**Format**: `YYYY-MM-DD`
-
-**Rules**:
-- Set once, never changed
-- ISO 8601 date format
-- Initial draft date
-
-**Example**: `created: 2025-10-29`
-
-#### 5. `updated` – Last Modified Date
-
-**Format**: `YYYY-MM-DD`
-
-**Rules**:
-- Update on every content change
-- Initially same as `created`
-- Reflects latest edit date
-
-**Update Pattern**:
-```yaml
-created: 2025-10-29   # Never change
-updated: 2025-10-31   # Update on edit
-```
-
-#### 6. `author` – Primary Author
-
-**Format**: `@{GitHubHandle}`
-
-**Rules**:
-- Single value (not an array)
-- @ prefix required
-- Case-sensitive (e.g., `@Goos`, not `@goos`)
-- Additional contributors documented in HISTORY section
-
-**Examples**:
-```yaml
-# Correct
-author: @Goos
-
-# Incorrect
-author: goos           # Missing @
-authors: [@Goos]       # Array not allowed
-author: @goos          # Case mismatch
-```
-
-#### 7. `priority` – Task Priority
-
-**Values**: `critical` | `high` | `medium` | `low`
-
-**Guidelines**:
-
-| Priority | Description | Examples |
-|----------|-------------|----------|
-| `critical` | Production blocker, security vulnerability | Security patches, critical bugs |
-| `high` | Major features, core functionality | Authentication, payment systems |
-| `medium` | Improvements, enhancements | UI polish, performance optimization |
-| `low` | Nice-to-have, documentation | README updates, minor refactoring |
+#### `effort` (Integer: 1-13 Fibonacci)
+- **Valid Values**: 1, 2, 3, 5, 8, 13
+- **Estimation Scale**:
+  - 1: Trivial (< 2 hours)
+  - 2: Small (2-4 hours)
+  - 3: Medium (4-8 hours)
+  - 5: Large (1-2 days)
+  - 8: Extra Large (2-3 days)
+  - 13: Uncertain / Needs breakdown
+- **Note**: If >13, break into multiple SPECs
 
 ---
 
-### Nine Optional Fields
+### Optional Fields (9)
 
-#### 8. `category` – Change Type
+#### `version` (Semantic Versioning)
+- **Format**: MAJOR.MINOR.PATCH
+- **Example**: 1.0.0, 1.2.3, 2.0.0
+- **Increment Rules**:
+  - MAJOR: Breaking changes, API incompatibility
+  - MINOR: New features, backward compatible
+  - PATCH: Bug fixes, documentation
+- **Initial**: 0.1.0 (draft), 1.0.0 (active)
 
-**Values**: `feature` | `bugfix` | `refactor` | `security` | `docs` | `perf`
+#### `deadline` (ISO 8601 Date)
+- **Format**: YYYY-MM-DD
+- **Example**: 2025-12-15
+- **Optional**: Use only if deadline exists
+- **Affects**: Release planning
 
-**Usage**:
-```yaml
-category: feature       # New capability
-category: bugfix        # Defect resolution
-category: refactor      # Code structure improvement
-category: security      # Security enhancement
-category: docs          # Documentation update
-category: perf          # Performance optimization
+#### `epic` (String)
+- **Format**: Epic code (e.g., AUTH-01, NOTIFICATIONS-01)
+- **Purpose**: Group related SPECs by business capability
+- **Example**: AUTH-01 (Authentication epic)
+- **Usage**: Filter SPECs by epic, roadmap planning
+
+#### `depends_on` (Array of SPEC codes)
+- **Format**: [SPEC-XXX, SPEC-YYY, ...]
+- **Meaning**: This SPEC requires completion of referenced SPECs
+- **Validation**: Prevents circular dependencies
+- **Usage**: Identify critical path dependencies
+- **Example**: [SPEC-102, SPEC-104]
+
+#### `domains` (Array of domain strings)
+- **Valid Values**: backend, frontend, database, devops, security, infrastructure, etc.
+- **Purpose**: Route SPEC to appropriate team
+- **Example**: [backend, database, security]
+- **Multi-value**: Most SPECs span 2-3 domains
+
+#### `acceptance_difficulty` (String: enum)
+- **Valid Values**: low | medium | high | critical
+- **Definition**: How hard is it to verify acceptance criteria?
+- **Affects**: QA resource planning
+- **Example**: `high` (complex state management, many edge cases)
+
+#### `rollback_risk` (String: enum)
+- **Valid Values**: low | medium | high | critical
+- **Definition**: Severity if this change must be reverted
+- **Critical**: Data migration, breaking API, security changes
+- **High**: Database schema change, configuration change
+- **Example**: `high` (database migration is difficult to reverse)
+
+#### `risks` (String: multi-line)
+- **Format**: Bullet list of risk statements
+- **Example**:
+  ```
+  - Security: JWT key rotation must be tested
+  - Performance: Token validation on every request
+  - Compatibility: Breaks existing auth tokens
+  ```
+- **Purpose**: Identify risks for planning mitigation
+
+#### `tags` (Array of strings)
+- **Format**: [tag1, tag2, ...]
+- **Purpose**: Enable cross-cutting search and filtering
+- **Example**: [authentication, security, jwt, users]
+- **Naming**: lowercase, hyphenated
+
+---
+
+## EARS Requirement Syntax Reference
+
+### Pattern 1: Universal Requirements
+
+**When**: Core behavior, non-negotiable functionality
+
+**Template**:
+```
+SPEC: The [System] SHALL [Action]
 ```
 
-#### 9. `labels` – Classification Tags
-
-**Format**: String array
-
-**Purpose**: Search, filtering, grouping
-
-**Best Practices**:
-- Use lowercase, kebab-case
-- 2-5 labels per SPEC
-- Avoid duplication with `category`
-
-**Examples**:
-```yaml
-labels:
-  - authentication
-  - jwt
-  - security
-
-labels:
-  - performance
-  - optimization
-  - caching
-
-labels:
-  - installer
-  - template
-  - cross-platform
+**Complete Syntax**:
+```
+SPEC-XXX-REQ-001: The [System Component] SHALL [Action Description]
+[when applicable: under [Conditions]]
+[expected outcome: to achieve [Objective]]
 ```
 
-#### 10-13. Relationship Fields (Dependency Graph)
+**Real Examples**:
 
-##### `depends_on` – Required SPECs
+```
+SPEC-105-REQ-001: The notification service SHALL send emails asynchronously.
 
-**Meaning**: SPECs that must complete first
+SPEC-001-REQ-002: The authentication service SHALL validate all JWT tokens
+using RS256 algorithm against the published public key.
 
-**Example**:
-```yaml
-depends_on:
-  - USER-001      # User model SPEC
-  - TOKEN-001     # Token generation SPEC
+SPEC-204-REQ-003: The database adapter SHALL support connection pooling
+to maintain optimal performance under load.
 ```
 
-**Use Case**: Execution order, parallelization decisions
-
-##### `blocks` – Blocked SPECs
-
-**Meaning**: SPECs blocked until this SPEC completes
-
-**Example**:
-```yaml
-blocks:
-  - AUTH-002      # OAuth integration waits for base auth
-  - PAYMENT-001   # Payment requires authentication
-```
-
-##### `related_specs` – Related SPECs
-
-**Meaning**: Related items without direct dependencies
-
-**Example**:
-```yaml
-related_specs:
-  - SESSION-001   # Session management (related but independent)
-  - AUDIT-001     # Audit logging (cross-cutting concern)
-```
-
-##### `related_issue` – Linked GitHub Issue
-
-**Format**: Full GitHub issue URL
-
-**Example**:
-```yaml
-related_issue: "https://github.com/modu-ai/moai-adk/issues/42"
-```
-
-#### 14-15. Scope Fields (Impact Analysis)
-
-##### `scope.packages` – Affected Packages
-
-**Purpose**: Track which packages/modules are affected
-
-**Example**:
-```yaml
-scope:
-  packages:
-    - src/core/auth
-    - src/core/token
-    - src/api/routes/auth
-```
-
-##### `scope.files` – Key Files
-
-**Purpose**: Reference principal implementation files
-
-**Example**:
-```yaml
-scope:
-  files:
-    - auth-service.ts
-    - token-manager.ts
-    - auth.routes.ts
+**Test Pattern**:
+```python
+def test_universal_requirement():
+    """Verify the system SHALL [Action]."""
+    # Arrange
+    # Act
+    # Assert
+    assert <requirement_met>
 ```
 
 ---
 
-## EARS Requirement Syntax
+### Pattern 2: Conditional Requirements
 
-### Five EARS Patterns
+**When**: Behavior depends on specific conditions
 
-EARS (Easy Approach to Requirements Syntax) uses familiar keywords to provide systematic, testable requirements.
-
-#### Pattern 1: Ubiquitous Requirements
-
-**Template**: `The system shall [capability].`
-
-**Purpose**: Always-active base functionality
-
-**Characteristics**:
-- No preconditions
-- Always applicable
-- Core functionality definition
-
-**Examples**:
-```markdown
-**UR-001**: The system shall provide user authentication.
-
-**UR-002**: The system shall support HTTPS connections.
-
-**UR-003**: The system shall securely store user credentials.
-
-**UR-004**: The mobile app size shall not exceed 50 MB.
-
-**UR-005**: API response time shall not exceed 200ms for 95% of requests.
+**Template**:
+```
+SPEC: If [Condition], then the [System] SHALL [Action]
 ```
 
-**Best Practices**:
-- ✅ Use active voice
-- ✅ Single responsibility per requirement
-- ✅ Measurable outcomes
-- ❌ Avoid ambiguous terms ("user-friendly", "fast")
-
-#### Pattern 2: Event-driven Requirements
-
-**Template**: `WHEN [trigger], the system shall [response].`
-
-**Purpose**: Behavior triggered by specific events
-
-**Characteristics**:
-- Triggered by discrete events
-- Single-shot responses
-- Cause-effect relationships
-
-**Examples**:
-```markdown
-**ER-001**: WHEN the user submits valid credentials, the system shall issue a JWT token.
-
-**ER-002**: WHEN a token expires, the system shall return HTTP 401 Unauthorized.
-
-**ER-003**: WHEN the user clicks "Forgot Password", the system shall send a password reset email.
-
-**ER-004**: WHEN database connection fails, the system shall retry 3 times with exponential backoff.
-
-**ER-005**: WHEN file upload exceeds 10 MB, the system shall reject the upload with an error message.
+**Complete Syntax**:
+```
+SPEC-XXX-REQ-001: If [Condition Description],
+then the [System Component] SHALL [Action Description]
+[expected outcome: returning [Outcome]]
 ```
 
-**Advanced Pattern** (with postconditions):
-```markdown
-**ER-006**: WHEN payment transaction completes, the system shall send confirmation email, then update order status to "paid".
+**Real Examples**:
+
+```
+SPEC-105-REQ-002: If email delivery fails, the notification service
+SHALL retry up to 3 times with exponential backoff (1s, 2s, 4s)
+before marking as failed.
+
+SPEC-001-REQ-004: If a JWT token has expired, the authentication service
+SHALL reject the request and return HTTP 401 Unauthorized
+with error code TOKEN_EXPIRED.
+
+SPEC-204-REQ-005: If connection pool reaches max capacity,
+the adapter SHALL queue requests with a 30-second timeout.
 ```
 
-**Best Practices**:
-- ✅ Single trigger per requirement
-- ✅ Concrete, testable response
-- ✅ Include error conditions
-- ❌ Avoid chaining multiple WHEN clauses
-
-#### Pattern 3: State-driven Requirements
-
-**Template**: `WHILE [state], the system shall [behavior].`
-
-**Purpose**: Persistent behavior during state
-
-**Characteristics**:
-- Active while state persists
-- Continuous monitoring
-- State-dependent behavior
-
-**Examples**:
-```markdown
-**SR-001**: WHILE the user is in an authenticated state, the system shall permit access to protected routes.
-
-**SR-002**: WHILE a token is valid, the system shall extract user ID from token claims.
-
-**SR-003**: WHILE the system is in maintenance mode, the system shall return HTTP 503 Service Unavailable.
-
-**SR-004**: WHILE battery level is below 20%, the mobile app shall reduce background sync frequency.
-
-**SR-005**: WHILE file upload is in progress, the UI shall display a progress bar.
-```
-
-**Best Practices**:
-- ✅ Clearly define state boundaries
-- ✅ Specify state entry/exit conditions
-- ✅ Test state transitions
-- ❌ Avoid overlapping states
-
-#### Pattern 4: Optional Features
-
-**Template**: `WHERE [feature], the system can [behavior].`
-
-**Purpose**: Feature-flag-based conditional functionality
-
-**Characteristics**:
-- Only applies when feature exists
-- Configuration-dependent
-- Product variant support
-
-**Examples**:
-```markdown
-**OF-001**: WHERE multi-factor authentication is enabled, the system can require OTP verification after password confirmation.
-
-**OF-002**: WHERE session logging is enabled, the system can record login timestamp and IP address.
-
-**OF-003**: WHERE premium subscription is enabled, the system can permit unlimited API calls.
-
-**OF-004**: WHERE dark mode is selected, the UI can render in dark color scheme.
-
-**OF-005**: WHERE analytics consent is granted, the system can track user behavior.
-```
-
-**Best Practices**:
-- ✅ Use "can" (permissive) not "shall" (mandatory)
-- ✅ Clearly define feature flag condition
-- ✅ Specify default behavior without feature
-- ❌ Don't make core functionality optional
-
-#### Pattern 5: Unwanted Behaviors
-
-**Template**: `IF [condition], THEN the system shall [respond appropriately].`
-
-**Purpose**: Error handling, quality gates, business rule enforcement
-
-**Characteristics**:
-- Conditional enforcement
-- Quality gates and constraints
-- Business rule validation
-
-**Examples**:
-```markdown
-**UB-001**: IF a token has expired, THEN the system shall deny access and return HTTP 401.
-
-**UB-002**: IF 5 or more login failures occur within 10 minutes, THEN the system shall temporarily lock the account.
-
-**UB-003**: Response processing time shall not exceed 5 seconds.
-
-**UB-004**: IF password length is less than 8 characters, THEN the system shall reject registration.
-
-**UB-005**: IF API rate limit is exceeded, THEN the system shall return HTTP 429 Too Many Requests.
-```
-
-**Simplified Constraints** (no condition):
-```markdown
-**UB-006**: The system shall never store passwords in plaintext.
-
-**UB-007**: All API endpoints except /health and /login shall require authentication.
-```
-
-**Best Practices**:
-- ✅ Use SHALL for strict constraints, SHOULD for recommendations
-- ✅ Quantify limits (time, size, count)
-- ✅ Specify enforcement mechanism
-- ❌ Avoid vague constraints
-
----
-
-## EARS Pattern Selection Guide
-
-| Pattern | Keyword | Use When | Context Example |
-|---------|---------|----------|-----------------|
-| **Ubiquitous** | shall | Core feature, always active | "System shall provide login" |
-| **Event-driven** | WHEN | Response to specific event | "WHEN login fails, show error" |
-| **State-driven** | WHILE | Continuous during state | "WHILE logged in, allow access" |
-| **Optional** | WHERE | Feature flag or config | "WHERE premium enabled, unlock" |
-| **Unwanted Behaviors** | IF-THEN | Error handling, quality gates | "IF expired, deny and return 401" |
-
----
-
-## HISTORY Section Format
-
-The HISTORY section documents all SPEC versions and changes.
-
-### Structure
-
-```markdown
-## HISTORY
-
-### v{MAJOR}.{MINOR}.{PATCH} ({YYYY-MM-DD})
-- **{CHANGE_TYPE}**: {Description}
-- **AUTHOR**: {GitHub handle}
-- **{Additional context}**: {Details}
-```
-
-### Change Types
-
-| Type | Description | Example |
-|------|-------------|---------|
-| **INITIAL** | First draft | `v0.0.1: INITIAL draft created` |
-| **REFINED** | Content update during draft | `v0.0.2: REFINED requirements based on review` |
-| **COMPLETED** | Implementation finished | `v0.1.0: COMPLETED TDD implementation` |
-| **ADDED** | New requirements/features | `v0.2.0: ADDED multi-factor authentication` |
-| **CHANGED** | Modified requirement | `v0.2.0: CHANGED token expiration 15→30 minutes` |
-| **FIXED** | Post-implementation bug fix | `v0.1.1: FIXED token refresh race condition` |
-| **DEPRECATED** | Mark for removal | `v1.5.0: DEPRECATED legacy auth endpoint` |
-
-### Complete HISTORY Example
-
-```markdown
-## HISTORY
-
-### v0.2.0 (2025-11-15)
-- **ADDED**: Multi-factor authentication via OTP
-- **CHANGED**: Token expiration extended to 30 minutes based on user feedback
-- **AUTHOR**: @Goos
-- **REVIEWER**: @SecurityTeam
-- **RATIONALE**: Maintain security posture while improving UX
-
-### v0.1.1 (2025-11-01)
-- **FIXED**: Token refresh race condition
-- **EVIDENCE**: Commit 3f9a2b7
-- **AUTHOR**: @Goos
-
-### v0.1.0 (2025-10-30)
-- **COMPLETED**: TDD implementation finished
-- **AUTHOR**: @Goos
-- **EVIDENCE**: Commits 4c66076, 34e1bd9, 1dec08f
-- **TEST COVERAGE**: 89.13% (target: 85%)
-- **QUALITY METRICS**:
-  - Test Pass Rate: 100% (42/42 tests)
-  - Linting: ruff ✅
-  - Type Checking: mypy ✅
-- **TAG CHAIN**:
-  - @SPEC:AUTH-001: 1 occurrence
-  - @TEST:AUTH-001: 8 occurrences
-  - @CODE:AUTH-001: 12 occurrences
-
-### v0.0.2 (2025-10-25)
-- **REFINED**: Added password reset flow requirements
-- **REFINED**: Clarified token lifetime constraints
-- **AUTHOR**: @Goos
-
-### v0.0.1 (2025-10-23)
-- **INITIAL**: JWT authentication SPEC draft created
-- **AUTHOR**: @Goos
-- **SCOPE**: User authentication, token generation, token validation
-- **CONTEXT**: Q4 2025 product roadmap requirements
+**Test Pattern**:
+```python
+def test_conditional_requirement():
+    """Verify: If [Condition], then SHALL [Action]."""
+    # Arrange: Set up condition
+    # Act: Trigger condition
+    # Assert: Verify expected action
+    assert <action_performed_correctly>
 ```
 
 ---
 
-## TAG Integration
+### Pattern 3: Unwanted Behavior (Negative Requirements)
 
-### TAG Block Format
+**When**: Security constraints, forbidden operations, anti-patterns
 
-All SPEC documents start with a TAG block after the title:
-
-```markdown
-# @SPEC:AUTH-001: JWT Authentication System
+**Template**:
+```
+SPEC: The [System] SHALL NOT [Forbidden Action]
 ```
 
-### TAG Chain Reference
-
-Link related TAGs in SPEC:
-
-```markdown
-## Traceability (@TAG Chain)
-
-### TAG Chain Structure
+**Complete Syntax**:
 ```
-@SPEC:AUTH-001 (this document)
-  ↓
-@TEST:AUTH-001 (tests/auth/service.test.ts)
-  ↓
-@CODE:AUTH-001 (src/auth/service.ts, src/auth/token-manager.ts)
-  ↓
-@DOC:AUTH-001 (docs/api/authentication.md)
+SPEC-XXX-REQ-001: The [System Component] SHALL NOT [Forbidden Action]
+[reason: because [Security Risk | Performance Issue | Data Integrity Issue]]
 ```
 
-### Validation Commands
-```bash
-# Validate SPEC TAG
-rg '@SPEC:AUTH-001' -n .moai/specs/
+**Real Examples**:
 
-# Check for duplicate IDs
-rg '@SPEC:AUTH' -n .moai/specs/
-rg 'AUTH-001' -n
-
-# Scan full TAG chain
-rg '@(SPEC|TEST|CODE|DOC):AUTH-001' -n
 ```
-```
+SPEC-001-REQ-006: The authentication service SHALL NOT accept JWT tokens
+signed with symmetric algorithms (HS256, HS384, HS512)
+in a production environment.
 
----
+SPEC-105-REQ-003: The notification service SHALL NOT send duplicate emails
+to the same recipient within a 5-minute window.
 
-## Validation Commands
-
-### Quick Validation Script
-
-```bash
-#!/usr/bin/env bash
-# validate-spec.sh - SPEC validation helper
-
-SPEC_DIR="$1"
-
-echo "Validating SPEC: $SPEC_DIR"
-
-# Check required fields
-echo -n "Required fields... "
-rg "^(id|version|status|created|updated|author|priority):" "$SPEC_DIR/spec.md" | wc -l | grep -q "7" && echo "✅" || echo "❌"
-
-# Check author format
-echo -n "Author format... "
-rg "^author: @[A-Z]" "$SPEC_DIR/spec.md" > /dev/null && echo "✅" || echo "❌"
-
-# Check version format
-echo -n "Version format... "
-rg "^version: 0\.\d+\.\d+" "$SPEC_DIR/spec.md" > /dev/null && echo "✅" || echo "❌"
-
-# Check HISTORY section
-echo -n "HISTORY section... "
-rg "^## HISTORY" "$SPEC_DIR/spec.md" > /dev/null && echo "✅" || echo "❌"
-
-# Check TAG block
-echo -n "TAG block... "
-rg "^# @SPEC:" "$SPEC_DIR/spec.md" > /dev/null && echo "✅" || echo "❌"
-
-# Check for duplicate IDs
-SPEC_ID=$(basename "$SPEC_DIR" | sed 's/SPEC-//')
-DUPLICATE_COUNT=$(rg "@SPEC:$SPEC_ID" -n .moai/specs/ | wc -l)
-echo -n "Duplicate ID check... "
-[ "$DUPLICATE_COUNT" -eq 1 ] && echo "✅" || echo "❌ (found $DUPLICATE_COUNT occurrences)"
-
-echo "Validation complete!"
+SPEC-204-REQ-007: The database adapter SHALL NOT store plaintext passwords
+or connection credentials in logs or error messages.
 ```
 
-### Usage
-
-```bash
-# Validate single SPEC
-./validate-spec.sh .moai/specs/SPEC-AUTH-001
-
-# Validate all SPECs
-for spec in .moai/specs/SPEC-*/; do
-  ./validate-spec.sh "$spec"
-done
+**Test Pattern**:
+```python
+def test_unwanted_behavior():
+    """Verify system SHALL NOT [Forbidden Action]."""
+    # Arrange: Set up scenario for forbidden action
+    # Act: Attempt forbidden action
+    # Assert: Verify action is prevented/rejected
+    with pytest.raises(ForbiddenError):
+        <forbidden_action>
 ```
 
 ---
 
-**Last Updated**: 2025-10-29
-**Version**: 1.2.0
+### Pattern 4: Stakeholder Requirements
+
+**When**: User stories, feature requirements, stakeholder concerns
+
+**Template**:
+```
+SPEC: As a [User Role], I want [Feature] so that [Benefit]
+```
+
+**Complete Syntax**:
+```
+SPEC-XXX-REQ-001: As a [User Role],
+I want [Feature Description]
+so that [Business Benefit or Outcome]
+```
+
+**Real Examples**:
+
+```
+SPEC-001-REQ-008: As an API consumer, I want to pass JWT tokens
+in the Authorization header so that my requests are authenticated
+without exposing tokens in URLs or query parameters.
+
+SPEC-105-REQ-004: As a business user, I want to receive email notifications
+for account activities so that I stay informed without checking the app constantly.
+
+SPEC-204-REQ-009: As a database administrator, I want connection pooling
+so that I can optimize resource utilization and reduce connection overhead.
+```
+
+**Test Pattern**:
+```python
+def test_stakeholder_requirement():
+    """Verify: As [User], I want [Feature] so that [Benefit]."""
+    # Arrange: Set up user context
+    # Act: User performs action to get feature
+    # Assert: Verify benefit is achieved
+    assert <benefit_achieved>
+```
+
+---
+
+### Pattern 5: Boundary Condition (Edge Cases)
+
+**When**: Performance limits, resource constraints, edge cases
+
+**Template**:
+```
+SPEC: [System] SHALL [Action] when [Boundary Condition]
+```
+
+**Complete Syntax**:
+```
+SPEC-XXX-REQ-001: The [System Component] SHALL [Action Description]
+when [Boundary Condition: specific value, threshold, or edge case],
+achieving [Performance Metric or Outcome]
+```
+
+**Real Examples**:
+
+```
+SPEC-105-REQ-005: The notification service SHALL process at least 1,000 emails/second
+and SHALL NOT exceed 500MB memory usage under sustained load.
+
+SPEC-001-REQ-010: The authentication service SHALL return HTTP 429 Too Many Requests
+when a single IP address attempts more than 10 failed authentication attempts within 5 minutes.
+
+SPEC-204-REQ-011: The database adapter SHALL maintain ≤50ms response time
+when processing 100+ concurrent connections with query complexity score ≥7.
+```
+
+**Test Pattern**:
+```python
+@pytest.mark.benchmark
+def test_boundary_condition(benchmark):
+    """Verify system handles boundary [Condition]."""
+    # Arrange: Set up boundary condition
+    result = benchmark(<action_under_load>)
+    # Assert: Verify metric is met
+    assert result.p99_latency <= 50  # milliseconds
+    assert result.memory_peak <= 500  # MB
+```
+
+---
+
+## EARS Anti-Patterns to Avoid
+
+### Anti-Pattern 1: Vague Language
+
+**Bad**:
+```
+SPEC: The system should authenticate users securely.
+SPEC: The service may retry failed requests.
+SPEC: The API might return errors in some cases.
+```
+
+**Good**:
+```
+SPEC: The system SHALL authenticate users using JWT tokens.
+SPEC: The service SHALL retry failed requests up to 3 times.
+SPEC: The API SHALL return HTTP 400 Bad Request for invalid input.
+```
+
+**Rule**: Replace "should", "may", "might", "could" with "SHALL" or "SHALL NOT"
+
+---
+
+### Anti-Pattern 2: Unobservable Requirements
+
+**Bad**:
+```
+SPEC: The system shall be user-friendly.
+SPEC: The API shall be fast.
+SPEC: Authentication shall be secure.
+```
+
+**Good**:
+```
+SPEC: The API response time SHALL be ≤200ms (p99) for common operations.
+SPEC: Authentication SHALL use RS256 algorithm with key rotation every 90 days.
+SPEC: The UI SHALL have <3 clicks to reach primary feature.
+```
+
+**Rule**: Requirements must be testable/measurable
+
+---
+
+### Anti-Pattern 3: Multiple Requirements in One Statement
+
+**Bad**:
+```
+SPEC: The system SHALL support multiple authentication methods
+and validate tokens securely.
+```
+
+**Good**:
+```
+SPEC-001-REQ-001: The system SHALL support JWT, OAuth2, and API key authentication.
+SPEC-001-REQ-002: The system SHALL validate all authentication tokens
+using cryptographic signatures before accepting requests.
+```
+
+**Rule**: One requirement = one observable behavior
+
+---
+
+## Validation Checklist (Pre-Submission)
+
+### Metadata Validation
+
+| Check | Pass | Fail |
+|-------|------|------|
+| `code` matches SPEC-XXX format | ✓ | Fix format |
+| `title` is 50-80 characters | ✓ | Adjust length |
+| `status` is valid enum value | ✓ | Use draft/active/deprecated/archived |
+| `created_at` is ISO 8601 | ✓ | Use YYYY-MM-DD |
+| `updated_at` is ISO 8601 | ✓ | Use YYYY-MM-DD |
+| `priority` is valid enum | ✓ | Use critical/high/medium/low |
+| `effort` is Fibonacci (1-13) | ✓ | Use 1,2,3,5,8,13 |
+| Optional fields correct type | ✓ | Fix type/format |
+
+### Requirement Syntax
+
+| Check | Pass | Fail |
+|-------|------|------|
+| At least 3 EARS patterns used | ✓ | Add more patterns |
+| Each REQ follows EARS template | ✓ | Rewrite using pattern |
+| Requirements are testable | ✓ | Add measurable criteria |
+| No vague language ("should", "may") | ✓ | Replace with SHALL/SHALL NOT |
+| No compound requirements | ✓ | Split into separate REQs |
+| Numbering is sequential | ✓ | Renumber REQ-001, REQ-002, ... |
+
+### Unwanted Behaviors
+
+| Check | Pass | Fail |
+|-------|------|------|
+| Security constraints listed | ✓ | Add if applicable |
+| Performance constraints listed | ✓ | Add if applicable |
+| Reliability constraints listed | ✓ | Add if applicable |
+| Each UB has test approach | ✓ | Define how to verify non-occurrence |
+| UBs are specific (not generic) | ✓ | Avoid "The system shall be safe" |
+
+### Acceptance Criteria
+
+| Check | Pass | Fail |
+|-------|------|------|
+| All 5 EARS patterns implemented | ✓ | Add missing patterns |
+| All UBs have test cases | ✓ | Add test coverage |
+| Code coverage target ≥85% | ✓ | Increase target if needed |
+| Performance baseline defined | ✓ | Add metrics (latency, throughput) |
+| Security scan scope defined | ✓ | Specify OWASP Top 10 coverage |
+
+### TAG Integration
+
+| Check | Pass | Fail |
+|-------|------|------|
+| @SPEC tag in header | ✓ | Add @SPEC: SPEC-XXX |
+| @TEST tags linked to REQs | ✓ | Add test case references |
+| @CODE tags reserved for impl | ✓ | Add @CODE: placeholders |
+| @DOC tags reserved for docs | ✓ | Add @DOC: placeholders |
+
+### Documentation Quality
+
+| Check | Pass | Fail |
+|-------|------|------|
+| Overview is 2-3 sentences | ✓ | Shorten/clarify |
+| Architecture impact explained | ✓ | Add design decisions |
+| Database changes documented | ✓ | Add schema changes if applicable |
+| Configuration parameters listed | ✓ | Add config details if applicable |
+| Related SPECs referenced | ✓ | Check depends_on array |
+| No TODO or placeholder text | ✓ | Complete all sections |
+
+### Final Review
+
+| Check | Pass | Fail |
+|-------|------|------|
+| Markdown formatting correct | ✓ | Fix syntax |
+| All links are valid | ✓ | Test links |
+| No confidential info exposed | ✓ | Remove sensitive details |
+| Ready for team review | ✓ | Complete all checks above |
+
+---
+
+## Official References
+
+### EARS Syntax Origins
+- EARS Paper: https://ieeexplore.ieee.org/document/5586873
+- Stanford EARS Guide: https://requirements.readthedocs.io/
+
+### Requirement Best Practices
+- IEEE 829 Standard: https://standards.ieee.org/standard/829-2024.html
+- IREB Glossary: https://www.ireb.org/
+- ISO/IEC/IEEE 29148: https://standards.ieee.org/standard/29148-2024.html
+
+### YAML Specification
+- YAML Official: https://yaml.org/
+- YAML v1.2 Spec: https://yaml.org/spec/1.2/spec.html
+
+### Testing Frameworks
+- Pytest: https://docs.pytest.org/
+- Jest: https://jestjs.io/
+- Go Testing: https://pkg.go.dev/testing
+- Rust Testing: https://doc.rust-lang.org/book/ch11-00-testing.html
+
+---
+
+## Summary
+
+This reference provides:
+- Complete YAML field documentation
+- EARS pattern templates with examples
+- Unwanted Behavior patterns
+- Validation checklist (pre-submission)
+- Anti-patterns to avoid
+- Official documentation links
+
+**Use when**: Authoring SPECs, reviewing requirements, or validating metadata.
