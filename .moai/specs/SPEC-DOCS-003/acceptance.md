@@ -1,4 +1,4 @@
-# SPEC-DOCS-003 수락 기준
+# @SPEC:DOCS-003 수락 기준
 
 ## @ACCEPT:DOCS-003 Acceptance Criteria
 

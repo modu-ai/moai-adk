@@ -1,4 +1,4 @@
-# SPEC-TRUST-001 Acceptance Criteria
+# @SPEC:TRUST-001 Acceptance Criteria
 
 > **TRUST 원칙 자동 검증 시스템 수락 기준**
 

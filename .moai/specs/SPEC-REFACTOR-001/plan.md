@@ -1,4 +1,4 @@
-# SPEC-001 구현 계획
+# @SPEC:001 구현 계획
 
 ## TAG BLOCK
 

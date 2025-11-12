@@ -1,4 +1,4 @@
-# SPEC-SKILL-REFACTOR-001 인수 기준 (Acceptance Criteria)
+# @SPEC:SKILL-REFACTOR-001 인수 기준 (Acceptance Criteria)
 
 > Claude Code Skills 표준화 작업 인수 기준
 

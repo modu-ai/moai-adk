@@ -1,4 +1,4 @@
-# SPEC-INIT-004 Implementation Plan
+# @SPEC:INIT-004 Implementation Plan
 
 ## @PLAN:INIT-004 구현 계획
 

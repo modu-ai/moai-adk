@@ -1,4 +1,4 @@
-# SPEC-TRUST-001 Implementation Plan
+# @SPEC:TRUST-001 Implementation Plan
 
 > **TRUST 원칙 자동 검증 시스템 구현 계획**
 

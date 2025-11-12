@@ -1,4 +1,4 @@
-# 수락 기준: SPEC-UPDATE-004
+# 수락 기준: @SPEC:UPDATE-004
 
 > **Sub-agents를 Skills로 통합**
 

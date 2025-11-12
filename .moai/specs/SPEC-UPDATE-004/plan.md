@@ -1,4 +1,4 @@
-# 구현 계획: SPEC-UPDATE-004
+# 구현 계획: @SPEC:UPDATE-004
 
 > **Sub-agents를 Skills로 통합**
 

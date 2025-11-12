@@ -1,4 +1,4 @@
-# SPEC-INSTALL-001 구현 계획
+# @SPEC:INSTALL-001 구현 계획
 
 ## 1. 개요
 

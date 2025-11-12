@@ -1,4 +1,4 @@
-# SPEC-HOOKS-001 수락 기준 (Acceptance Criteria)
+# @SPEC:HOOKS-001 수락 기준 (Acceptance Criteria)
 
 > **✅ 구현 완료 상태 (2025-10-16)**
 >

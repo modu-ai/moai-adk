@@ -1,4 +1,4 @@
-# SPEC-HOOKS-003 인수 기준
+# @SPEC:HOOKS-003 인수 기준
 
 > **TRUST 원칙 자동 검증 (PostToolUse 통합)**
 >

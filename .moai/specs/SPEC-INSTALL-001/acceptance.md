@@ -1,4 +1,4 @@
-# SPEC-INSTALL-001 인수 기준
+# @SPEC:INSTALL-001 인수 기준
 
 ## 1. Acceptance Criteria
 

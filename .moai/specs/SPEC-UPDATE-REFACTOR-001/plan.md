@@ -1,4 +1,4 @@
-# Implementation Plan: SPEC-UPDATE-REFACTOR-001
+# Implementation Plan: @SPEC:UPDATE-REFACTOR-001
 
 ## Overview
 
