@@ -14,6 +14,10 @@ allowed-tools:
 - Grep
 - Glob
 - TodoWrite
+- AskUserQuestion
+- Skill
+skills:
+- moai-alfred-issue-labels
 ---
 
 # 📚 MoAI-ADK Step 3: Document Synchronization (+Optional PR Ready)
@@ -522,6 +526,13 @@ For Team mode projects only:
      - `prompt`: "Transition PR from Draft to Ready. Execute: `gh pr ready`"
 
 3. **Assign reviewers and labels** (if configured)
+   - **Load label schema**: Use Skill("moai-alfred-issue-labels") for semantic labeling
+   - **Apply PR labels**:
+     - Primary: "ready-for-review", "in-progress"
+     - Priority: "priority-high" (urgent), "priority-medium" (normal), "priority-low" (when-time-permits)
+     - Component: "api", "database", "ui", "docs" (based on SPEC scope)
+     - Example: `gh pr edit --add-label "ready-for-review" --add-label "in-progress" --add-label "priority-high"`
+   - **Assign reviewers**: Based on code owners or team configuration
 
 ---
 

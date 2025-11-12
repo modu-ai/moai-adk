@@ -14,6 +14,10 @@ allowed-tools:
 - Bash(gh:*)
 - Bash(rg:*)
 - Bash(mkdir:*)
+- AskUserQuestion
+- Skill
+skills:
+- moai-alfred-issue-labels
 ---
 
 # 🏗️ MoAI-ADK Step 1: Establish a plan (Plan) - Always make a plan first and then proceed.
@@ -662,9 +666,13 @@ Before creating GitHub Issue or PR:
 4. If PR exists → Update, do NOT create duplicate
 5. If both exist → Update both with latest SPEC version
 6. Use alternative search if label filtering fails (some Issues may have no labels)
-7. Always add labels: "spec", "planning", + priority labels
+7. Always add labels via Skill("moai-alfred-issue-labels"):
+   - Primary: "spec", "planning"
+   - Priority: "priority-high" (SPEC requires attention), "priority-medium" (planning), "priority-low" (backlog)
+   - Example: gh issue create --label "spec" --label "planning" --label "priority-high"
 
 See git-manager.md "When writing SPEC" section for detailed duplicate prevention protocol and code examples.
+See Skill("moai-alfred-issue-labels") for complete semantic label taxonomy.
 
 TASK:
 Create feature branch (feature/SPEC-{SPEC_ID}) and Draft PR (→ develop) for completed SPEC document.
