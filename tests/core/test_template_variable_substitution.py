@@ -106,10 +106,10 @@ class TestTemplateVariableSubstitution:
         # Render template
         rendered = template_engine.render_string(template_content, variables)
 
-        # RED: These assertions will fail because substitution is not working correctly
+        # Verify substitution worked correctly
         assert "{{MOAI_VERSION}}" not in rendered, "Template should not contain placeholder"
         assert "0.22.4" in rendered, "Template should contain actual version"
-        assert "> Version: 0.22.4" in rendered, "Version should be properly substituted"
+        assert "> **Version**: 0.22.4" in rendered, "Version should be properly substituted"
 
     def test_multiple_template_variables_substitution(self) -> None:
         """
@@ -234,7 +234,7 @@ class TestTemplateVariableSubstitution:
         templates_dir.mkdir()
 
         # Create multiple template files
-        templates_dir / "config.json.template".write_text("""
+        (templates_dir / "config.json").write_text("""
 {
   "moai": {
     "version": "{{MOAI_VERSION}}",
@@ -246,7 +246,7 @@ class TestTemplateVariableSubstitution:
 }
 """)
 
-        templates_dir / "CLAUDE.md.template".write_text("""
+        (templates_dir / "CLAUDE.md").write_text("""
 # {{PROJECT_NAME}}
 
 > **Version**: {{MOAI_VERSION}}
@@ -277,10 +277,10 @@ This is a test project with version {{MOAI_VERSION}}.
         assert config_content["project"]["name"] == "TestProject", f"project.name should be 'TestProject', got '{config_content['project']['name']}'"
 
         # Check CLAUDE.md
-        claude_content = results["CLAUDE.md.template"]
+        claude_content = results["CLAUDE.md"]
         assert "{{MOAI_VERSION}}" not in claude_content, "CLAUDE.md should not contain placeholder"
         assert "0.22.4" in claude_content, "CLAUDE.md should contain actual version"
-        assert "> Version: 0.22.4" in claude_content, "CLAUDE.md should have substituted version"
+        assert "> **Version**: 0.22.4" in claude_content, "CLAUDE.md should have substituted version"
 
         # Verify files were written
         assert (output_dir / "config.json").exists(), "config.json should exist"
@@ -614,3 +614,260 @@ This is a test project with version {{MOAI_VERSION}}.
         # They should NOT be the same
         assert variables["PROJECT_OWNER"] != variables["USER_NAME"], \
             "PROJECT_OWNER and USER_NAME should be different"
+
+    def test_render_file_with_nonexistent_template(self) -> None:
+        """
+        GIVEN: A path to a non-existent template file
+        WHEN: render_file is called
+        THEN: FileNotFoundError should be raised
+        """
+        template_engine = TemplateEngine()
+        nonexistent_path = Path("/nonexistent/path/template.md")
+        output_path = Path("/tmp/output.md")
+
+        with pytest.raises(FileNotFoundError) as excinfo:
+            template_engine.render_file(nonexistent_path, {}, output_path)
+
+        assert "Template file not found" in str(excinfo.value)
+
+    def test_render_directory_with_nonexistent_directory(self) -> None:
+        """
+        GIVEN: A path to a non-existent template directory
+        WHEN: render_directory is called
+        THEN: FileNotFoundError should be raised
+        """
+        template_engine = TemplateEngine()
+        nonexistent_dir = Path("/nonexistent/template/directory")
+        output_dir = Path("/tmp/output")
+
+        with pytest.raises(FileNotFoundError) as excinfo:
+            template_engine.render_directory(nonexistent_dir, output_dir, {})
+
+        assert "Template directory not found" in str(excinfo.value)
+
+    def test_render_file_with_write_to_output_path(self, tmp_path: Path) -> None:
+        """
+        GIVEN: A template file and an output path
+        WHEN: render_file is called with output_path
+        THEN: Rendered content should be written to output file
+        """
+        template_engine = TemplateEngine()
+
+        # Create template file
+        templates_dir = tmp_path / "templates"
+        templates_dir.mkdir()
+        template_file = templates_dir / "test.txt"
+        template_file.write_text("Hello {{NAME}}")
+
+        # Render with output path
+        output_file = tmp_path / "output.txt"
+        rendered = template_engine.render_file(
+            template_file,
+            {"NAME": "World"},
+            output_file
+        )
+
+        # Verify rendered content
+        assert rendered == "Hello World"
+        assert output_file.exists()
+        assert output_file.read_text() == "Hello World"
+
+    def test_render_template_with_syntax_error(self) -> None:
+        """
+        GIVEN: A template with syntax error
+        WHEN: render_string is called
+        THEN: RuntimeError should be raised
+        """
+        template_engine = TemplateEngine()
+
+        # Invalid template syntax
+        template_content = "{{#if test}} unclosed"
+
+        with pytest.raises(RuntimeError) as excinfo:
+            template_engine.render_string(template_content, {})
+
+        assert "Template rendering error" in str(excinfo.value)
+
+    def test_template_variable_validator_validate_required(self) -> None:
+        """
+        GIVEN: Variables with missing required field
+        WHEN: validate is called
+        THEN: Should return False and error list with missing variable
+        """
+        from moai_adk.core.template_engine import TemplateVariableValidator
+
+        # Missing PROJECT_NAME
+        variables = {
+            "PROJECT_OWNER": "owner",
+            "CODEBASE_LANGUAGE": "python",
+            "SPEC_DIR": ".moai/specs",
+            "DOCS_DIR": ".moai/docs",
+            "TEST_DIR": "tests",
+            "CONVERSATION_LANGUAGE": "en"
+        }
+
+        is_valid, errors = TemplateVariableValidator.validate(variables)
+
+        assert not is_valid
+        assert any("PROJECT_NAME" in error for error in errors)
+
+    def test_template_variable_validator_validate_type_error(self) -> None:
+        """
+        GIVEN: Variables with incorrect type
+        WHEN: validate is called
+        THEN: Should return False and error list with type error
+        """
+        from moai_adk.core.template_engine import TemplateVariableValidator
+
+        # PROJECT_NAME should be str, not int
+        variables = {
+            "PROJECT_NAME": 123,  # Wrong type
+            "PROJECT_OWNER": "owner",
+            "CODEBASE_LANGUAGE": "python",
+            "SPEC_DIR": ".moai/specs",
+            "DOCS_DIR": ".moai/docs",
+            "TEST_DIR": "tests",
+            "CONVERSATION_LANGUAGE": "en"
+        }
+
+        is_valid, errors = TemplateVariableValidator.validate(variables)
+
+        assert not is_valid
+        assert any("Invalid type for PROJECT_NAME" in error for error in errors)
+
+    def test_template_variable_validator_validate_optional_correct(self) -> None:
+        """
+        GIVEN: Variables with correct optional fields
+        WHEN: validate is called
+        THEN: Should return True if all required are present
+        """
+        from moai_adk.core.template_engine import TemplateVariableValidator
+
+        variables = {
+            "PROJECT_NAME": "TestProject",
+            "PROJECT_OWNER": "owner",
+            "CODEBASE_LANGUAGE": "python",
+            "SPEC_DIR": ".moai/specs",
+            "DOCS_DIR": ".moai/docs",
+            "TEST_DIR": "tests",
+            "CONVERSATION_LANGUAGE": "en",
+            "USER_NAME": "TestUser",
+            "ENABLE_TRUST_5": True
+        }
+
+        is_valid, errors = TemplateVariableValidator.validate(variables)
+
+        assert is_valid
+        assert len(errors) == 0
+
+    def test_template_variable_validator_validate_optional_wrong_type(self) -> None:
+        """
+        GIVEN: Optional variable with wrong type
+        WHEN: validate is called
+        THEN: Should return False with type error
+        """
+        from moai_adk.core.template_engine import TemplateVariableValidator
+
+        variables = {
+            "PROJECT_NAME": "TestProject",
+            "PROJECT_OWNER": "owner",
+            "CODEBASE_LANGUAGE": "python",
+            "SPEC_DIR": ".moai/specs",
+            "DOCS_DIR": ".moai/docs",
+            "TEST_DIR": "tests",
+            "CONVERSATION_LANGUAGE": "en",
+            "ENABLE_TRUST_5": "yes"  # Should be bool, not str
+        }
+
+        is_valid, errors = TemplateVariableValidator.validate(variables)
+
+        assert not is_valid
+        assert any("ENABLE_TRUST_5" in error for error in errors)
+
+    def test_render_file_with_template_syntax_error_in_file(self, tmp_path: Path) -> None:
+        """
+        GIVEN: A template file with invalid Jinja2 syntax
+        WHEN: render_file is called
+        THEN: RuntimeError should be raised with error message
+        """
+        template_engine = TemplateEngine()
+
+        # Create template file with syntax error
+        templates_dir = tmp_path / "templates"
+        templates_dir.mkdir()
+        template_file = templates_dir / "bad.txt"
+        template_file.write_text("{{#if invalid}} unclosed")
+
+        with pytest.raises(RuntimeError) as excinfo:
+            template_engine.render_file(template_file, {})
+
+        assert "Template rendering error" in str(excinfo.value)
+
+    def test_render_directory_with_rendering_error(self, tmp_path: Path) -> None:
+        """
+        GIVEN: A directory with template that causes rendering error
+        WHEN: render_directory is called
+        THEN: RuntimeError should be raised with error details
+        """
+        template_engine = TemplateEngine()
+
+        # Create template directory with invalid template
+        templates_dir = tmp_path / "templates"
+        templates_dir.mkdir()
+        (templates_dir / "bad.txt").write_text("{{#if bad}} unclosed")
+
+        output_dir = tmp_path / "output"
+
+        with pytest.raises(RuntimeError) as excinfo:
+            template_engine.render_directory(templates_dir, output_dir, {})
+
+        assert "Error rendering" in str(excinfo.value)
+
+    def test_template_variable_validator_optional_tuple_type(self) -> None:
+        """
+        GIVEN: Optional variable with tuple type specification and wrong value
+        WHEN: validate is called
+        THEN: Should return False with type error mentioning both valid types
+        """
+        from moai_adk.core.template_engine import TemplateVariableValidator
+
+        # USER_NAME accepts (str, type(None)) - test with wrong type
+        variables = {
+            "PROJECT_NAME": "TestProject",
+            "PROJECT_OWNER": "owner",
+            "CODEBASE_LANGUAGE": "python",
+            "SPEC_DIR": ".moai/specs",
+            "DOCS_DIR": ".moai/docs",
+            "TEST_DIR": "tests",
+            "CONVERSATION_LANGUAGE": "en",
+            "USER_NAME": 123  # Should be str or None, not int
+        }
+
+        is_valid, errors = TemplateVariableValidator.validate(variables)
+
+        assert not is_valid
+        assert any("USER_NAME" in error for error in errors)
+
+    def test_template_variable_validator_all_optional_none_values(self) -> None:
+        """
+        GIVEN: All optional variables set to None (valid for some)
+        WHEN: validate is called
+        THEN: Should validate correctly for optional fields that accept None
+        """
+        from moai_adk.core.template_engine import TemplateVariableValidator
+
+        variables = {
+            "PROJECT_NAME": "TestProject",
+            "PROJECT_OWNER": "owner",
+            "CODEBASE_LANGUAGE": "python",
+            "SPEC_DIR": ".moai/specs",
+            "DOCS_DIR": ".moai/docs",
+            "TEST_DIR": "tests",
+            "CONVERSATION_LANGUAGE": "en",
+            "USER_NAME": None  # Valid - USER_NAME accepts (str, None)
+        }
+
+        is_valid, errors = TemplateVariableValidator.validate(variables)
+
+        assert is_valid
+        assert len(errors) == 0

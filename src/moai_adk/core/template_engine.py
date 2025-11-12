@@ -17,10 +17,10 @@ from jinja2 import (
     Environment,
     FileSystemLoader,
     StrictUndefined,
-    Undefined,
     TemplateNotFound,
     TemplateRuntimeError,
     TemplateSyntaxError,
+    Undefined,
 )
 
 
@@ -132,7 +132,7 @@ class TemplateEngine:
         template_dir: Path,
         output_dir: Path,
         variables: Dict[str, Any],
-        pattern: str = "**/*.{md,yml,yaml,json}"
+        pattern: str = "**/*"
     ) -> Dict[str, str]:
         """
         Render all template files in a directory.
@@ -141,7 +141,7 @@ class TemplateEngine:
             template_dir: Source directory containing templates
             output_dir: Destination directory for rendered files
             variables: Dictionary of variables to substitute
-            pattern: Glob pattern for files to process (default: template files)
+            pattern: Glob pattern for files to process (default: all files)
 
         Returns:
             Dictionary mapping input paths to rendered content
@@ -230,7 +230,7 @@ class TemplateVariableValidator:
         "CONVERSATION_LANGUAGE": str,
     }
 
-    OPTIONAL_VARIABLES = {
+    OPTIONAL_VARIABLES: Dict[str, Any] = {
         "PROJECT_DESCRIPTION": (str, type(None)),
         "PROJECT_MODE": str,
         "ENABLE_TRUST_5": bool,
@@ -270,9 +270,11 @@ class TemplateVariableValidator:
             if var_name in variables:
                 if not isinstance(variables[var_name], var_type):
                     if isinstance(var_type, tuple):
-                        type_names = " or ".join(t.__name__ for t in var_type)
+                        type_names = " or ".join(
+                            getattr(t, '__name__', str(t)) for t in var_type
+                        )
                     else:
-                        type_names = var_type.__name__
+                        type_names = getattr(var_type, '__name__', str(var_type))
                     actual_type = type(variables[var_name]).__name__
                     errors.append(
                         f"Invalid type for {var_name}: "

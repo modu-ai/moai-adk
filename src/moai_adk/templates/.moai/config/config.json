@@ -20,7 +20,7 @@
       }
     },
     "require_tags": true,
-    "test_coverage_target": 85
+    "test_coverage_target": 90
   },
   "git_strategy": {
     "personal": {
@@ -44,14 +44,14 @@
       "work_on_main": false
     },
     "team": {
-      "auto_pr": true,
+      "auto_pr": false,
       "develop_branch": "develop",
-      "draft_pr": true,
+      "draft_pr": false,
       "feature_prefix": "feature/SPEC-",
       "main_branch": "main",
       "use_gitflow": true,
       "default_pr_base": "develop",
-      "prevent_main_direct_merge": true
+      "prevent_main_direct_merge": false
     }
   },
   "pipeline": {
