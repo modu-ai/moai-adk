@@ -638,3 +638,38 @@ Exit command with code 0.
 **Last Updated**: 2025-11-09
 **Total Lines**: ~800 (reduced from 2,096)
 **Architecture**: Commands → Agents → Skills
+
+---
+
+## Final Step: Next Action Selection
+
+After documentation synchronization completes, use AskUserQuestion tool to guide user to next action:
+
+```python
+AskUserQuestion({
+    "questions": [{
+        "question": "문서 동기화가 완료되었습니다. 다음으로 무엇을 하시겠습니까?",
+        "header": "다음 단계",
+        "multiSelect": false,
+        "options": [
+            {
+                "label": "새 기능 개발",
+                "description": "/alfred:1-plan 실행하여 새로운 기능 계획"
+            },
+            {
+                "label": "PR 병합 처리",
+                "description": "Pull Request 검토 및 병합"
+            },
+            {
+                "label": "워크플로우 완료",
+                "description": "현재 작업 완료 및 세션 정리"
+            }
+        ]
+    }]
+})
+```
+
+**Important**: 
+- Use conversation language from config (ko)
+- No emojis in any AskUserQuestion fields
+- Always provide clear next step options

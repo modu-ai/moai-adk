@@ -968,3 +968,38 @@ IF any checkbox is unchecked → Identify missing step and complete it before en
 ---
 
 **End of command execution guide**
+
+---
+
+## Final Step: Next Action Selection
+
+After SPEC creation completes, use AskUserQuestion tool to guide user to next action:
+
+```python
+AskUserQuestion({
+    "questions": [{
+        "question": "SPEC 문서 작성이 완료되었습니다. 다음으로 무엇을 하시겠습니까?",
+        "header": "다음 단계",
+        "multiSelect": false,
+        "options": [
+            {
+                "label": "구현 시작",
+                "description": "/alfred:2-run 실행하여 TDD 개발 시작"
+            },
+            {
+                "label": "계획 수정",
+                "description": "SPEC 내용 수정 및 보완"
+            },
+            {
+                "label": "새 기능 추가",
+                "description": "추가 SPEC 문서 작성"
+            }
+        ]
+    }]
+})
+```
+
+**Important**: 
+- Use conversation language from config (ko)
+- No emojis in any AskUserQuestion fields
+- Always provide clear next step options

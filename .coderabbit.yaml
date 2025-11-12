@@ -62,10 +62,10 @@ coderabbit:
       - ✅ Specific actions (When)
       - ✅ Expected outcomes (Then)
 
-      ## Traceability (@TAG System)
-      - ✅ Related @TEST tags referenced
-      - ✅ Related @CODE tags referenced
-      - ✅ Related @DOC tags referenced
+      ## Traceability (Quality Tracking)
+      - ✅ Related test coverage documented
+      - ✅ Related code implementation documented
+      - ✅ Related documentation synchronized
 
       ## Best Practices
       - ✅ Clear and unambiguous language

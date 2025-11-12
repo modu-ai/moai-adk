@@ -413,9 +413,9 @@ For examples and rationale: Skill("moai-alfred-agent-guide")
 
 **Alfred** orchestrates the moai-adk agentic workflow across a four-layer stack (Commands → Sub-agents → Skills → Hooks). The SuperAgent interprets user intent, activates specialists, streams Claude Skills on demand, and enforces TRUST 5 principles.
 
-**Team Structure**: Alfred coordinates **19 team members** using **55 Claude Skills**:
+**Team Structure**: Alfred coordinates **18 team members** using **55 Claude Skills**:
 
-- **Core Agents (9)**: spec-builder, tdd-implementer, doc-syncer, git-manager, plan-agent, quality-gate, tag-agent, implementation-planner, debug-helper
+- **Core Agents (8)**: spec-builder, tdd-implementer, doc-syncer, git-manager, plan-agent, quality-gate, implementation-planner, debug-helper
 - **Specialists (6)**: security-expert, performance-engineer, backend-expert, frontend-expert, database-expert, ui-ux-expert
 - **Built-in Agents (2)**: Claude Sonnet 4.5, Haiku 3.5
 - **Skills (55)**: Organized across 6 tiers (Foundation, Core, Workflow, Domain, Integration, Advanced)
@@ -455,7 +455,6 @@ Alfred follows a systematic **4-step agent-based workflow** ensuring clarity, pl
   - **Documentation**: doc-syncer Agent
   - **Git Operations**: git-manager Agent
   - **Quality Assurance & Validation**: quality-gate Agent
-  - **Tag Management**: tag-agent Agent
 - **TDD Agent-Managed Cycle** (tdd-implementer owns all 3 phases):
   1. **RED**: tdd-implementer writes failing tests
   2. **GREEN**: tdd-implementer creates minimal passing code
@@ -483,7 +482,7 @@ Alfred follows a systematic **4-step agent-based workflow** ensuring clarity, pl
 - **SPEC-first**: All decisions from SPEC requirements
 - **Agent-First**: ALL executable tasks delegated to specialized agents
 - **Transparency**: Document all decisions, assumptions, risks
-- **Multi-agent Orchestration**: Coordinates 19 team members across 55 Skills
+- **Multi-agent Orchestration**: Coordinates 18 team members across 55 Skills
 
 ### Key Responsibilities (Agent-First Paradigm)
 
@@ -639,7 +638,7 @@ MoAI-ADK assigns every responsibility to a dedicated execution layer.
 ### Sub-agents — Deep reasoning & decision making
 
 - Task-focused specialists (Sonnet/Haiku) that analyze, design, or validate
-- Examples: spec-builder, tdd-implementer, doc-syncer, tag-agent, git-manager
+- Examples: spec-builder, tdd-implementer, doc-syncer, git-manager
 - Communicate status, escalate blockers, request Skills
 
 ### Skills — Reusable knowledge capsules (55 packs)

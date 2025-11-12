@@ -70,7 +70,7 @@ jobs:
           echo "  1. Parse the issue description"
           echo "  2. Generate code using Claude API"
           echo "  3. Create a feature branch"
-          echo "  4. Commit changes with @TAG references"
+          echo "  4. Commit changes with proper tracking"
           echo "  5. Create PR with SPEC documentation"
           echo "  6. Link to MoAI-ADK workflow"
           echo ""
@@ -118,10 +118,7 @@ jobs:
             echo "✅ SPEC document detected"
           fi
 
-          # Check for @TAG usage
-          TAGS=$(git diff ${{ github.event.pull_request.base.sha }} | grep -c "@TAG" || echo "0")
-          echo "tag_count=$TAGS" >> $GITHUB_OUTPUT
-          echo "✅ Found $TAGS @TAG references"
+          # Check for tracking quality
 
           # Check for tests
           if git diff ${{ github.event.pull_request.base.sha }} --name-only | grep -q "test"; then
@@ -157,7 +154,6 @@ jobs:
             comment += `| Check | Status |\n`;
             comment += `|-------|--------|\n`;
             comment += `| SPEC Documentation | ${analysis.spec ? '✅' : '⚠️'} |\n`;
-            comment += `| @TAG References | ${analysis.tags > 0 ? '✅ (' + analysis.tags + ')' : '⚠️ (none)' } |\n`;
             comment += `| Test Coverage | ${analysis.tests ? '✅' : '⚠️'} |\n`;
             comment += `\n*Powered by Claude Code + MoAI-ADK*`;
 
@@ -197,7 +193,7 @@ jobs:
           echo "Auto-sync will:"
           echo "  ✅ Synchronize Living Documents"
           echo "  ✅ Update SPEC → CODE → TEST → DOC chain"
-          echo "  ✅ Validate @TAG integrity"
+          echo "  ✅ Validate code quality"
           echo "  ✅ Generate CHANGELOG entries"
           echo "  ✅ Prepare for merge"
 
@@ -239,7 +235,7 @@ jobs:
           echo "  ✅ All CI checks passed"
           echo "  ✅ Tests passing"
           echo "  ✅ TRUST 5 compliance validated"
-          echo "  ✅ @TAG system valid"
+          echo "  ✅ Code quality valid"
           echo ""
           echo "Status: Ready for merge when above conditions met"
 
