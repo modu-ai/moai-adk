@@ -823,6 +823,156 @@ jobs:
 
 ---
 
+## Advanced: TAG Detection & Validation Algorithms
+
+### 1. Missing TAG Detection Algorithm
+
+**Problem**: Missing @SPEC: tags in SPEC files (Type B orphans)
+
+**Detection Process**:
+```python
+def detect_missing_spec_tags():
+    """
+    Scans SPEC files for missing @SPEC: tag markers.
+    Returns list of files needing @SPEC: tag addition.
+    """
+    # 1. Find all .moai/specs/SPEC-*/spec.md files
+    # 2. Read first 10 lines (header section)
+    # 3. Check for pattern: @SPEC-{ID} or @SPEC: {ID}
+    # 4. Flag files with missing @SPEC: marker
+    # 5. Generate fix: Auto-add @SPEC: {ID} after title
+```
+
+**Fix Strategy**:
+- Location: First line after title (`# SPEC-XXX`)
+- Format: `@SPEC:SPEC-XXX | @TEST:TBD | @CODE:TBD | @DOC:TBD`
+- Execution: Via `fix-missing-spec-tags.py --dry-run` before `--apply`
+
+**Validation Checklist**:
+- [ ] Title line exists: `# SPEC-XXX-{name}`
+- [ ] @SPEC: tag added in line 2
+- [ ] TAG ID matches filename
+- [ ] Format follows chain syntax
+
+### 2. TAG Duplication Detection System
+
+**Problem**: Multiple @CODE tags for same @SPEC (middle duplication)
+
+**Detection Algorithm**:
+```
+1. SCAN: Find all @SPEC IDs in codebase
+2. COUNT: For each @SPEC ID, count @CODE occurrences
+3. CLASSIFY:
+   - Single (OK): 1 @CODE per @SPEC
+   - Duplicate (WARN): 2+ @CODE for same @SPEC
+   - Missing (ERR): @SPEC exists but no @CODE
+4. RANK: By authority (topline > inline, earlier > later)
+5. RECOMMEND: Keep primary, merge duplicates
+```
+
+**Unified Tool**: `tag_dedup_manager.py`
+```bash
+# Step 1: Scan only (no changes)
+python3 .moai/scripts/validation/tag_dedup_manager.py --scan-only
+
+# Step 2: Review plan (dry-run)
+python3 .moai/scripts/validation/tag_dedup_manager.py --dry-run
+
+# Step 3: Apply fixes
+python3 .moai/scripts/validation/tag_dedup_manager.py --apply
+```
+
+**Resolution Priorities**:
+1. Topline TAGs win (headers > inline)
+2. Primary location wins (first occurrence)
+3. Authority score wins (config > code > docs)
+4. Renumber duplicates to: {type}:{domain}-{next_num}
+
+### 3. TAG Health Monitoring Checklist
+
+**Weekly Health Check** (Every Monday):
+```python
+metrics = {
+    'tag_coverage': 95,        # % of @SPEC with @CODE
+    'orphan_count': 0,         # @CODE without @SPEC
+    'duplicate_groups': 2,     # Multi-occurrence @SPEC IDs
+    'chain_complete': 98,      # SPEC→TEST→CODE→DOC links
+    'doc_sync': 92,            # SPEC updated? DOC updated?
+    'definition_complete': 94, # Metadata fields filled
+}
+```
+
+**Monitoring Workflow**:
+```bash
+# Run health check
+python3 .moai/scripts/monitoring/tag_health_monitor.py --weekly
+
+# Generate HTML dashboard
+python3 .moai/scripts/monitoring/tag_health_monitor.py --html
+
+# Send Slack alert (if configured)
+python3 .moai/scripts/monitoring/tag_health_monitor.py --notify slack
+```
+
+**Health Grade Scale**:
+- 🟢 95-100: Excellent (no action)
+- 🟡 85-94: Good (monitor warnings)
+- 🟠 75-84: Fair (improvement needed)
+- 🔴 <75: Poor (immediate action required)
+
+**Alert Triggers**:
+- Orphans detected: Alert immediately
+- Coverage <85%: Weekly summary
+- Duplicates found: Manual review
+- Chains broken: Escalate to team
+
+### 4. 95% Traceability Verification Process
+
+**Goal**: Ensure 95% of SPEC → TEST → CODE → DOC chains are complete
+
+**Verification Steps**:
+```
+STEP 1: Coverage Analysis (5 min)
+  - Count total SPEC documents
+  - Verify each has @TEST reference
+  - Verify each has @CODE reference
+  - Verify each has @DOC reference
+
+STEP 2: Chain Integrity (10 min)
+  - For each @SPEC-ID:
+    ✓ Does @TEST-SPEC-ID exist?
+    ✓ Does @CODE-SPEC-ID exist?
+    ✓ Does @DOC-SPEC-ID exist?
+  - Mark as Complete/Incomplete
+
+STEP 3: Quality Score (5 min)
+  - Complete chains / Total SPEC × 100
+  - Target: ≥95%
+
+STEP 4: Gap Analysis (5 min)
+  - List missing components
+  - Categorize by type
+  - Assign owners for completion
+```
+
+**Execution Command**:
+```bash
+# Full traceability audit
+python3 .moai/scripts/validation/tag_dedup_manager.py --full
+
+# Generate audit report
+python3 .moai/scripts/analysis/tag_analyzer.py --audit --report .moai/reports/tag-audit.md
+```
+
+**Pass Criteria**:
+- [ ] ≥95% chains complete (SPEC→TEST→CODE→DOC)
+- [ ] 0 orphan TAGs detected
+- [ ] 0 duplicate TAGs found
+- [ ] All TAGs have proper metadata
+- [ ] Documentation synchronized
+
+---
+
 ## Official References & Standards (50+ Links)
 
 ### TAG System Specifications
