@@ -237,21 +237,21 @@ def format_session_output() -> str:
     # Get MoAI version from config if available
     moai_version = "unknown"
     try:
-        config_path = Path.cwd() / ".moai" / "config.json"
+        config_path = Path.cwd() / ".moai" / "config" / "config.json"
         if config_path.exists():
             config = json.loads(config_path.read_text())
             moai_version = config.get("moai", {}).get("version", "unknown")
     except Exception:
         pass
 
-    # Format output
+    # Format output with proper indentation
     output = [
-        "🚀 MoAI-ADK Session Started",
+        "🚀 {{PROJECT_NAME}} Session Started",
         "",
-        f"🗿 Version: {moai_version} | 🌿 {git_info['branch']}",
-        f"📝 Changes: {git_info['changes']}",
-        f"📋 SPEC Progress: {spec_progress['completed']}/{spec_progress['total']} ({spec_progress['percentage']}%)",
-        f"🔨 Last: {git_info['last_commit']} ({git_info['commit_time']})"
+        f"    🗿 Version: {moai_version} | 🌿 {git_info['branch']}",
+        f"    📝 Changes: {git_info['changes']}",
+        f"    📋 SPEC Progress: {spec_progress['completed']}/{spec_progress['total']} ({spec_progress['percentage']}%)",
+        f"    🔨 Last: {git_info['last_commit']}"
     ]
 
     return "\n".join(output)
