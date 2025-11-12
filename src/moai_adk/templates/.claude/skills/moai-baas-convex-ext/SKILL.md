@@ -2,7 +2,7 @@
 name: moai-baas-convex-ext
 version: 4.0.0
 created: 2025-11-11
-updated: 2025-11-11
+updated: 2025-11-12
 status: active
 description: Enterprise Convex Realtime Database Platform with AI-powered sync architecture, Context7 integration, and intelligent real-time orchestration for scalable collaborative applications
 keywords: ['convex', 'realtime-database', 'sync-engine', 'typescript', 'reactive-database', 'collaboration', 'context7-integration', 'ai-orchestration', 'production-deployment']
@@ -645,7 +645,7 @@ class ConvexRealtimeIntelligence:
 
 ## Changelog
 
-- **v4.0.0** (2025-11-11): Complete rewrite with Context7 integration, AI-powered Convex optimization, enterprise real-time patterns, and intelligent collaboration strategies
+- **v4.0.0** (2025-11-12): Complete Enterprise v4.0 rewrite with Context7 integration, self-hosted Postgres support, dashboard support, real-time sync optimization, collaborative applications expertise integration, AI-powered Convex optimization, enterprise real-time patterns, and intelligent collaboration strategies
 - **v2.0.0** (2025-11-09): Convex Realtime Database with sync and reactive programming support
 - **v1.0.0** (2025-11-09): Initial Convex realtime database integration
 
