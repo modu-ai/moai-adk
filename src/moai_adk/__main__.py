@@ -128,22 +128,3 @@ if __name__ == "__main__":
     sys.exit(main())
 
 
-# Sync 명령어 추가
-@click.command(name='sync')
-@click.option('--skip-docs', is_flag=True, help='문서 동기화 건너뛰기')
-@click.option('--skip-tags', is_flag=True, help='TAG 검증 건너뛰기')
-@click.option('--apply-dedup', is_flag=True, help='TAG 중복 제거 적용')
-@click.option('--dry-run', is_flag=True, default=True, help='시뮬레이션 모드 (기본값: True)')
-def sync_command_func(skip_docs, skip_tags, apply_dedup, dry_run):
-    """MoAI-ADK 프로젝트 동기화 (TAG 중복 제거 포함)"""
-    options = {
-        "skip_docs": skip_docs,
-        "skip_tags": skip_tags,
-        "apply_dedup": apply_dedup,
-        "dry_run": dry_run
-    }
-
-    from moai_adk.cli.commands.sync import sync as sync_cli
-    sys.exit(sync_cli(options))
-
-cli.add_command(sync_command_func)

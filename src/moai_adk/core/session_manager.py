@@ -551,7 +551,6 @@ if __name__ == "__main__":
 
     # Simulate implementation-planner execution
     plan_result = {
-        "tag_chain": ["TAG-001", "TAG-002", "TAG-003"],
         "dependencies": {"fastapi": ">=0.118.3"},
         "status": "success",
     }
@@ -573,12 +572,11 @@ if __name__ == "__main__":
     manager.create_chain(
         chain_id="SPEC-AUTH-001-implementation",
         agent_sequence=["tdd-implementer"],
-        metadata={"tag_sequence": ["TAG-001", "TAG-002", "TAG-003"]},
     )
 
-    # First execution: TAG-001
-    tag_001_result = {
-        "tag": "TAG-001",
+    # First execution: Implementation phase 1
+    implementation_001_result = {
+        "phase": "phase_1",
         "tests_created": ["tests/test_registration.py"],
         "code_created": ["src/auth/registration.py"],
         "status": "success",
@@ -587,7 +585,7 @@ if __name__ == "__main__":
     manager.register_agent_result(
         agent_name="tdd-implementer",
         agent_id="tdd-ghi789",
-        result=tag_001_result,
+        result=implementation_001_result,
         chain_id="SPEC-AUTH-001-implementation",
     )
 

@@ -33,7 +33,7 @@ Includes:
 
 2. **Before updating**:
    - Create backup with `python -m moai_adk backup`
-   - Run `Skill("moai-foundation-tags")` to document current TAG state
+   # TAG system removed
 
 3. **If update fails**:
    - Use backup to restore previous state

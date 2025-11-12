@@ -197,8 +197,8 @@ class TemplateEngine:
 
             # Feature flags
             "ENABLE_TRUST_5": github_config.get("enable_trust_5", True),
-            "ENABLE_TAG_SYSTEM": github_config.get("enable_tag_system", True),
             "ENABLE_ALFRED_COMMANDS": github_config.get("enable_alfred_commands", True),
+            # TAG system has been removed
 
             # Language configuration
             "CONVERSATION_LANGUAGE": config.get("language", {}).get("conversation_language", "en"),

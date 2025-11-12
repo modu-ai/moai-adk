@@ -7,9 +7,7 @@ SPEC-INIT-004 Enhancement:
 - Explicit missing files reporting
 - Required files verification checklist
 
-TAG Chain:
-  SPEC-INIT-004 (spec.md)
-        └─> # REMOVED_ORPHAN_TEST:INIT-005:VALIDATION (test_validator.py)
+# TAG system removed - validation now handled through standard testing
 """
 
 import shutil

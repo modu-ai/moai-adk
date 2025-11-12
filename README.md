@@ -261,7 +261,7 @@ MoAI-ADK has completed a comprehensive **Phase 1 Batch 2** upgrade achieving:
 **Safe Auto-Correction**:
 
 - ✅ **3-Level Risk Tiers**: SAFE (auto-fix) / MEDIUM (approval needed) / HIGH (blocked)
-- ✅ **Whitespace Normalization**: Consistent spacing between TAGs
+- ✅ **Whitespace Normalization**: Consistent code formatting
 - ✅ **Backup & Rollback**: Auto-backup before fixes, rollback on errors
 
 **Implementation Statistics**:
@@ -390,9 +390,9 @@ System generates:
 
 **config.json New Sections**:
 
-- `tags.policy.code_directories`: Language-based directory detection settings
-- `tags.policy.auto_correction`: 3-tier risk-level auto-correction policies
-- `tags.policy.auto_spec_generation`: Enable/disable automatic SPEC generation
+- `policy.code_directories`: Language-based directory detection settings
+- `policy.auto_correction`: 3-tier risk-level auto-correction policies
+- `policy.auto_spec_generation`: Enable/disable automatic SPEC generation
 
 ### Complete Implementation Statistics
 
@@ -693,7 +693,7 @@ The `/alfred:0-project` command automatically performs the following tasks:
 
 - Set project pipeline state to "initialized"
 - Activate Alfred task tracking system
-- Prepare Git history and TAG system
+- Prepare Git history and version tracking
 
 ##### 3️⃣ Project Configuration File Structure
 
@@ -754,7 +754,6 @@ Primary configuration file created after initialization:
         "notes": "Default recommendation. Adjust in .moai/config.json or via SPEC/ADR with documented rationale based on project size."
       }
     },
-    "require_tags": true,
     "simplicity_threshold": 5,
     "test_coverage_target": 85
   },
@@ -762,77 +761,10 @@ Primary configuration file created after initialization:
     "available_commands": ["/alfred:0-project", "/alfred:1-plan", "/alfred:2-run", "/alfred:3-sync"],
     "current_stage": "initialized"
   },
-  "tags": {
-    "auto_sync": true,
-    "storage_type": "code_scan",
-    "categories": ["REQ", "DESIGN", "TASK", "TEST", "FEATURE", "API", "UI", "DATA", "RESEARCH", "ANALYSIS", "KNOWLEDGE", "INSIGHT"],
-    "code_scan_policy": {
-      "no_intermediate_cache": true,
-      "realtime_validation": true,
-      "scan_tools": ["rg", "grep"],
-      "philosophy": "The source of truth for TAGs lives in the code itself"
-    },
-    "policy": {
-      "enforcement_mode": "strict",
-      "require_spec_before_code": true,
-      "require_test_for_code": true,
-      "enforce_chains": true,
-      "mandatory_directories": ["src/", "tests/", ".moai/specs/"],
-      "optional_directories": ["CLAUDE.md", "README.md", "CHANGELOG.md", "CONTRIBUTING.md", ".claude/", ".moai/docs/", ".moai/reports/", ".moai/analysis/", "docs/", "templates/", "examples/"],
-      "code_directories": {
-        "detection_mode": "auto",
-        "patterns": [],
-        "exclude_patterns": ["tests/", "test/", "__tests__/", "spec/", "specs/", "node_modules/", "dist/", "build/", ".next/", ".nuxt/", "examples/", "docs/", "documentation/"],
-        "merge_exclude_patterns": true,
-        "auto_detect_from_language": true,
-        "notes": "Language-based code directory detection. detection_mode: auto (language-based), manual (custom only), hybrid (language + custom)"
-      },
-      "auto_correction": {
-        "enabled": true,
-        "confidence_threshold": 0.8,
-        "create_missing_specs": false,
-        "create_missing_tests": false,
-        "remove_duplicates": true,
-        "backup_before_fix": true,
-        "auto_fix_levels": {"safe": true, "medium_risk": false, "high_risk": false},
-        "user_approval_required": {"safe": false, "medium_risk": true, "high_risk": true}
-      },
-      "auto_spec_generation": {
-        "enabled": true,
-        "mode": "template",
-        "confidence_threshold": 0.6,
-        "require_user_edit": true,
-        "open_in_editor": true,
-        "block_until_edited": true,
-        "notes": "Auto-generate SPEC templates when users forget to create SPEC before code. Requires user approval to proceed."
-      },
-      "realtime_validation": {
-        "enabled": true,
-        "validation_timeout": 5,
-        "enforce_chains": true,
-        "quick_scan_max_files": 30
-      },
-      "research_tags": {
-        "auto_discovery": true,
-        "pattern_matching": true,
-        "cross_reference": true,
-        "knowledge_graph": true,
-        "research_categories": ["RESEARCH", "ANALYSIS", "KNOWLEDGE", "INSIGHT"],
-        "auto_tag_research_content": true,
-        "research_patterns": {
-        }
-      }
-    }
-  },
-  "hooks": {
+    "hooks": {
     "timeout_ms": 2000,
     "graceful_degradation": true,
-    "tag_validation_exceptions": {
-      "enabled": true,
-      "exempt_directories": [".claude/", ".moai/docs/", ".moai/reports/", ".moai/analysis/"],
-      "reason": "System infrastructure and documentation directories do not require TAG annotations"
-    },
-    "notes": "Hook execution timeout (milliseconds). Set graceful_degradation to true to continue even if a hook fails. Optimized to 2 seconds for faster performance."
+        "notes": "Hook execution timeout (milliseconds). Set graceful_degradation to true to continue even if a hook fails. Optimized to 2 seconds for faster performance."
   },
   "session_end": {
     "enabled": true,
@@ -871,7 +803,6 @@ Primary configuration file created after initialization:
   "github": {
     "templates": {
       "enable_trust_5": true,
-      "enable_tag_system": true,
       "enable_alfred_commands": true,
       "spec_directory": ".moai/specs",
       "docs_directory": ".moai/docs",
@@ -1667,7 +1598,7 @@ graph TD
 **Claude Skills** (73+ total)
 Organized across 6 tiers:
 
-- **Foundation**: Core development patterns (SPEC, TDD, TAGs)
+- **Foundation**: Core development patterns (SPEC, TDD)
 - **Essentials**: Testing, debugging, performance, security
 - **Domain-specific**: Backend, frontend, database, mobile, ML, DevOps
 - **Language-specific**: Python, TypeScript, Go, Rust, PHP, Ruby, etc.

@@ -268,85 +268,9 @@ class TrustChecker:
         return complexity
 
     # ========================================
-    # T: Trackable - TAG Chain Validation
+    # T: Trackable - Code Traceability
     # ========================================
-
-    def validate_tag_chain(self, project_path: Path) -> ValidationResult:
-        """
-        Validate TAG chain completeness
-
-        Args:
-            project_path: Project path
-
-        Returns:
-            ValidationResult: Validation result
-        """
-        specs_dir = project_path / ".moai" / "specs"
-        src_dir = project_path / "src"
-
-        # Scan for TAGs
-
-        # Validate the chain
-        broken_chains = []
-        for code_tag in code_tags:
-            tag_id = code_tag.split(":")[-1]
-            if not any(tag_id in spec_tag for spec_tag in spec_tags):
-
-        if not broken_chains:
-            return ValidationResult(passed=True, message="TAG chain complete")
-
-        details = "broken tag chains:\n" + "\n".join(f"  - {chain.lower()}" for chain in broken_chains)
-        details += "\n\nrecommended: add missing spec documents or fix tag references."
-
-        return ValidationResult(passed=False, message=f"{len(broken_chains)} broken TAG chains", details=details)
-
-    def detect_orphan_tags(self, project_path: Path) -> list[str]:
-        """
-        Detect orphan TAGs
-
-        Args:
-            project_path: Project path
-
-        Returns:
-            list[str]: List of orphan TAGs
-        """
-        specs_dir = project_path / ".moai" / "specs"
-        src_dir = project_path / "src"
-
-
-        orphans = []
-        for code_tag in code_tags:
-            tag_id = code_tag.split(":")[-1]
-            if not any(tag_id in spec_tag for spec_tag in spec_tags):
-                orphans.append(code_tag)
-
-        return orphans
-
-    def _scan_tags(self, directory: Path, tag_prefix: str) -> list[str]:
-        """
-        Scan for TAGs in a directory
-
-        Args:
-            directory: Directory to scan
-
-        Returns:
-            list[str]: List of discovered TAGs
-        """
-        if not directory.exists():
-            return []
-
-        tags = []
-        for file in directory.rglob("*"):
-            if file.is_file():
-                try:
-                    content = file.read_text()
-                    for line in content.splitlines():
-                        if tag_prefix in line:
-                            tags.append(line.strip())
-                except (UnicodeDecodeError, PermissionError):
-                    continue
-
-        return tags
+    # TAG system has been removed - tracking now handled through SPEC references
 
     # ========================================
     # Report Generation

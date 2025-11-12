@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """.gitignore parser utility
 
-Parse .gitignore files to extract patterns for exclusion from TAG validation.
+Parse .gitignore files to extract patterns for exclusion.
 
 Features:
 - Parse .gitignore files
@@ -42,7 +42,7 @@ def load_gitignore_patterns(gitignore_path: str = ".gitignore") -> List[str]:
                 if not line or line.startswith('#'):
                     continue
 
-                # Exclude negation patterns (!) - not used in TAG validation
+                # Exclude negation patterns (!) - not used in validation
                 if line.startswith('!'):
                     continue
 

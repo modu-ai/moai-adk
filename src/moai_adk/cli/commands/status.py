@@ -8,9 +8,7 @@ Project status display:
 ## Skill Invocation Guide (English-Only)
 
 ### Related Skills
-- **moai-foundation-tags**: For detailed TAG inventory and orphan detection
-  - Trigger: When you need to verify TAG chain integrity beyond what status shows
-  - Invocation: `Skill("moai-foundation-tags")` to scan full project for orphan TAGs
+# TAG system removed
 
 - **moai-foundation-trust**: For comprehensive TRUST 5-principles verification
   - Trigger: After status shows SPECs exist, to validate code quality
@@ -22,7 +20,7 @@ Project status display:
 
 ### When to Invoke Skills in Related Workflows
 1. **Before starting new SPEC creation**:
-   - Run `Skill("moai-foundation-tags")` to verify no orphan TAGs exist from previous work
+   # TAG system removed
    - Check the SPEC count from status command
 
 2. **After modifications to code/docs**:

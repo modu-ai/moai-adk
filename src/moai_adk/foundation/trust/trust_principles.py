@@ -116,9 +116,8 @@ class TrustPrinciplesValidator:
             'https_enforcement': r'https://|SECURE_SSL_REDIRECT|HSTS',
         }
 
-        # Trackability validation patterns
+        # Trackability validation patterns (TAG system removed)
         self.trackability_patterns = {
-            'tag_references': r'@[A-Z]+-[A-Z]+-\d+',
             'commit_messages': r'^(feat|fix|docs|style|refactor|test|chop)\(',
             'issue_references': r'#\d+|closes #\d+|fixes #\d+',
             'documentation_links': r'\[.*?\]\(.*?\.md\)',
@@ -553,7 +552,6 @@ class TrustPrinciplesValidator:
 
             # Analyze Python files for traceability patterns
             python_files = list(project_dir.rglob("*.py"))
-            tag_references = 0
             commit_patterns = 0
             doc_links = 0
             version_references = 0
@@ -561,10 +559,6 @@ class TrustPrinciplesValidator:
             for file_path in python_files:
                 try:
                     content = file_path.read_text(encoding='utf-8')
-
-                    # Check for TAG references
-                    tag_matches = re.findall(self.trackability_patterns['tag_references'], content)
-                    tag_references += len(tag_matches)
 
                     # Check for commit message patterns
                     commit_matches = re.findall(self.trackability_patterns['commit_messages'], content)
@@ -608,7 +602,6 @@ class TrustPrinciplesValidator:
             metrics = {
                 'has_git': has_git,
                 'doc_files': len(doc_files),
-                'tag_references': tag_references,
                 'commit_patterns': commit_patterns,
                 'doc_links': doc_links,
                 'version_references': version_references,
@@ -623,8 +616,6 @@ class TrustPrinciplesValidator:
 
             if len(doc_files) == 0:
                 recommendations.append("Add project documentation (README.md, API docs)")
-
-            if tag_references < 5:
 
             if not (has_requirements or has_setup or has_pyproject):
                 recommendations.append("Add dependency management files")
