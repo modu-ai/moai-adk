@@ -910,6 +910,69 @@ User Request Received
 
 ---
 
+## 🔧 Helper Scripts
+
+This skill includes utility scripts to support workflow automation.
+
+### spec_status_hooks.py
+
+**Location**: `.claude/skills/moai-alfred-workflow/scripts/spec_status_hooks.py`
+
+**Purpose**: Manages SPEC status transitions during workflow execution
+
+**When Used**:
+- Phase 1 (Analysis): Update SPEC status to `in-progress`
+- Phase 2 (Implementation): Track SPEC implementation status
+- Phase 3 (Validation): Validate SPEC completion readiness
+- Phase 4 (Completion): Mark SPEC as `completed`
+
+**Agents That Use It**:
+- run-orchestrator (calls via implementation-planner)
+- Other phase agents during workflow execution
+
+**Commands**:
+
+```bash
+# Update SPEC status
+python3 scripts/spec_status_hooks.py status_update SPEC-001 \
+  --status in-progress \
+  --reason "Implementation started via /alfred:2-run"
+
+# Validate completion
+python3 scripts/spec_status_hooks.py validate_completion SPEC-001
+
+# Batch update
+python3 scripts/spec_status_hooks.py batch_update \
+  --spec-dir .moai/specs \
+  --status completed
+```
+
+**Integration with Agents**:
+
+When an agent needs to update SPEC status, it should use this script:
+
+```python
+# Example: In implementation-planner or run-orchestrator
+import subprocess
+from pathlib import Path
+
+script_path = Path(".claude/skills/moai-alfred-workflow/scripts/spec_status_hooks.py")
+
+# Update SPEC status
+subprocess.run([
+    "python3", str(script_path), "status_update", spec_id,
+    "--status", "in-progress",
+    "--reason", reason_text
+], check=True)
+```
+
+**Configuration**: Reads from `.moai/config/config.json`
+- SPEC directory location
+- Status tracking preferences
+- Notification settings (optional)
+
+---
+
 ## 📈 Version History
 
 **v4.0.0** (2025-11-12)

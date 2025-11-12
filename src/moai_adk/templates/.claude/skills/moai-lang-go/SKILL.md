@@ -2,249 +2,253 @@
 name: "moai-lang-go"
 version: "4.0.0"
 status: stable
-description: "Enterprise Go for systems and network programming: Go 1.25.4, Fiber v3, gRPC, context patterns, goroutine orchestration, standard library mastery; activates for REST APIs, microservices, concurrent systems, backend infrastructure, and performance-critical code."
-allowed-tools: 
+description: Enterprise Go for systems and network programming Go 1.25.4, Fiber v3, gRPC, context patterns, goroutine orchestration, standard library mastery; activates for REST APIs, microservices, concurrent systems, backend infrastructure, and performance-critical code.
+allowed-tools:
+  - Read
+  - Bash
+  - WebSearch
+  - WebFetch
 ---
 
 # Go Systems Development — Enterprise v4.0
 
-## Skill Metadata
+## Quick Summary
 
-| Field | Value |
-| ----- | ----- |
-| **Version** | **4.0.0 Enterprise** |
-| **Created** | 2025-11-12 |
-| **Updated** | 2025-11-12 |
-| **Lines** | ~950 lines |
-| **Size** | ~30KB |
-| **Tier** | **3 (Professional)** |
-| **Allowed tools** | Read, Bash, WebSearch, WebFetch |
-| **Auto-load** | Go REST APIs, goroutine patterns, gRPC services, microservices |
-| **Trigger cues** | Go, Golang, Fiber, gRPC, goroutine, context, microservice, REST API, concurrent |
+**Primary Focus**: Go 1.25 with Fiber, context patterns, goroutine orchestration, and gRPC
+**Best For**: REST APIs, microservices, concurrent systems, backend infrastructure
+**Key Libraries**: Fiber v3, context (stdlib), sqlc, pgx, gRPC
+**Auto-triggers**: Go, Golang, Fiber, gRPC, goroutine, context, microservice, REST API
+
+| Version | Release | Support |
+|---------|---------|---------|
+| Go 1.25.4 | Nov 2025 | Aug 2026 |
+| Fiber 3.x | 2025 | Active |
+| sqlc 1.26 | 2025 | Active |
+| pgx 5.7 | 2025 | Active |
+
+---
+
+## Three-Level Learning Path
+
+### Level 1: Fundamentals (Read examples.md)
+
+Core Go concepts and patterns:
+- **Go 1.25 Core**: Variables, functions, interfaces, error handling
+- **HTTP Servers**: Basic handlers, JSON responses, routing
+- **Context**: Timeouts, cancellation, value passing
+- **Goroutines & Channels**: Concurrent patterns, synchronization
+- **Examples**: See `examples.md` for full code samples
+
+### Level 2: Advanced Patterns (See reference.md)
+
+Production-ready enterprise patterns:
+- **Fiber Framework**: Middleware, route groups, advanced routing
+- **Advanced Concurrency**: Worker pools, fan-out/fan-in, select patterns
+- **Database Access**: sqlc, pgx, connection pooling
+- **Error Handling**: Custom error types, error wrapping
+- **Pattern Reference**: See `reference.md` for API details and best practices
+
+### Level 3: Production Deployment (Consult security/performance skills)
+
+Enterprise deployment and optimization:
+- **gRPC Services**: Protocol buffers, service definitions, streaming
+- **Docker Deployment**: Multi-stage builds, container optimization
+- **Performance**: Profiling, benchmarking, optimization techniques
+- **Monitoring**: Logging, metrics, observability
+- **Details**: Skill("moai-essentials-perf"), Skill("moai-security-backend")
+
+---
 
 ## Technology Stack (November 2025 Stable)
 
-### Core Language
-- **Go 1.25.4** (Released November 5, 2025)
-  - Compiler improvements
-  - Runtime enhancements
-  - Standard library updates
-  - Maintenance until August 2026
+### Language & Runtime
+- **Go 1.25.4** (November 2025, compiler & runtime improvements)
+- **Unix/Linux first** with Windows/macOS support
+- **Garbage collection** with concurrent sweeper
 
 ### Web Frameworks
-- **Fiber v3.x** (Express-like framework)
-  - High performance
-  - Middleware system
-  - Request routing
-  - Built-in recovery
+- **Fiber v3.x** (Express.js-inspired, high performance)
+- **Echo 4.13.x** (Scalable, middleware-rich)
+- **Chi 5.x** (Lightweight, composable)
 
-- **Echo 4.13.x** (Scalable framework)
-  - Route groups
-  - Middleware support
-  - Custom context
+### Concurrency & RPC
+- **goroutines** (lightweight threads, stdlib)
+- **channels** (typed message passing)
+- **gRPC 1.67** (Protocol buffers, streaming)
+- **Protobuf 3.21** (Message serialization)
 
-- **Chi 5.x** (Composable router)
-  - Lightweight
-  - Middleware chains
-  - Subrouters
+### Data Access
+- **sqlc 1.26** (Type-safe SQL code generation)
+- **pgx 5.7** (PostgreSQL driver with pooling)
+- **context** (Request-scoped data, timeouts)
 
-### RPC & Communication
-- **gRPC 1.67.x** (Service communication)
-  - Protocol Buffers
-  - Streaming support
-  - Load balancing
+### Testing & Quality
+- **testing** (stdlib testing package)
+- **testify 1.9** (Assertions, mocking, suites)
+- **benchmarking** (Built-in performance testing)
 
-- **Protobuf 3.21.x** (Message serialization)
-  - Backward compatibility
-  - Language support
+---
 
-### Database & ORM
-- **sqlc 1.26.x** (Type-safe SQL)
-  - Code generation
-  - Query validation
-  - PostgreSQL-first
+## Go Fundamentals
 
-- **pgx 5.7.x** (PostgreSQL driver)
-  - Async support
-  - Connection pooling
-  - Prepared statements
-
-### Testing & Tooling
-- **testify 1.9.x** (Testing assertions)
-  - Assert helpers
-  - Mock framework
-  - Suite support
-
-- **Go standard library**
-  - testing package
-  - context package
-  - net package
-
-## Level 1: Fundamentals (High Freedom)
-
-### 1. Go 1.25 Features
-
-Go 1.25 provides stability and performance improvements:
-
-**Basic HTTP Server**:
+### Variables & Types
 ```go
-package main
+// Type declarations
+var name string = "John"
+var age int = 30
+price := 19.99  // Type inference
 
-import (
-    "net/http"
-    "log"
-    "fmt"
-)
-
-func helloHandler(w http.ResponseWriter, r *http.Request) {
-    w.Header().Set("Content-Type", "application/json")
-    fmt.Fprintf(w, `{"message": "Hello, World!"}`)
-}
-
-func main() {
-    http.HandleFunc("/hello", helloHandler)
-    log.Println("Server starting on :8080")
-    log.Fatal(http.ListenAndServe(":8080", nil))
-}
-```
-
-**Context Management**:
-```go
-package main
-
-import (
-    "context"
-    "time"
-    "fmt"
-)
-
-func expensiveOperation(ctx context.Context) string {
-    select {
-    case <-time.After(5 * time.Second):
-        return "Operation completed"
-    case <-ctx.Done():
-        return fmt.Sprintf("Cancelled: %v", ctx.Err())
-    }
-}
-
-func main() {
-    // Timeout context
-    ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-    defer cancel()
-    
-    result := expensiveOperation(ctx)
-    fmt.Println(result) // Output: Cancelled: context deadline exceeded
-}
-```
-
-### 2. Fiber Framework (v3)
-
-Fiber is Express.js-inspired Go framework:
-
-**Route Handlers**:
-```go
-package main
-
-import (
-    "github.com/gofiber/fiber/v3"
-)
-
+// Structs
 type User struct {
-    ID   int    `json:"id"`
-    Name string `json:"name"`
-    Email string `json:"email"`
+    ID    int
+    Name  string
+    Email string
 }
+
+// Interfaces
+type Reader interface {
+    Read(p []byte) (n int, err error)
+}
+```
+
+### Functions & Error Handling
+```go
+// Basic function
+func Greet(name string) string {
+    return "Hello, " + name
+}
+
+// Multiple return values
+func Divide(a, b float64) (float64, error) {
+    if b == 0 {
+        return 0, errors.New("division by zero")
+    }
+    return a / b, nil
+}
+
+// Error handling
+result, err := Divide(10, 0)
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+---
+
+## HTTP Server with Fiber
+
+### Quick REST API
+```go
+package main
+
+import "github.com/gofiber/fiber/v3"
 
 func main() {
     app := fiber.New()
-    
-    // GET request
+
+    // GET handler
     app.Get("/users", func(c fiber.Ctx) error {
-        users := []User{
-            {ID: 1, Name: "John", Email: "john@example.com"},
-            {ID: 2, Name: "Jane", Email: "jane@example.com"},
-        }
-        return c.JSON(users)
+        return c.JSON(fiber.Map{"users": []string{"John", "Jane"}})
     })
-    
-    // GET with parameter
-    app.Get("/users/:id", func(c fiber.Ctx) error {
-        id := c.Params("id")
-        return c.JSON(fiber.Map{"id": id})
-    })
-    
-    // POST request
+
+    // POST handler
     app.Post("/users", func(c fiber.Ctx) error {
+        type User struct {
+            Name  string `json:"name"`
+            Email string `json:"email"`
+        }
+
         var user User
         if err := c.BodyParser(&user); err != nil {
-            return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+            return c.Status(fiber.StatusBadRequest).SendString(err.Error())
         }
-        
-        // Save user to database
+
         return c.Status(fiber.StatusCreated).JSON(user)
     })
-    
+
+    // Route parameters
+    app.Get("/users/:id", func(c fiber.Ctx) error {
+        id := c.Params("id")
+        return c.SendString("User: " + id)
+    })
+
     app.Listen(":3000")
 }
 ```
 
-**Middleware**:
+### Middleware
+```go
+app.Use(func(c fiber.Ctx) error {
+    fmt.Println("Before handler")
+    err := c.Next()
+    fmt.Println("After handler")
+    return err
+})
+
+app.Get("/protected", AuthMiddleware, func(c fiber.Ctx) error {
+    return c.SendString("Protected route")
+})
+```
+
+---
+
+## Context & Cancellation
+
+### Timeout Context
 ```go
 package main
 
-import (
-    "github.com/gofiber/fiber/v3"
-    "log"
-    "time"
-)
+import "context"
 
-func main() {
-    app := fiber.New()
-    
-    // Logging middleware
-    app.Use(func(c fiber.Ctx) error {
-        start := time.Now()
-        err := c.Next()
-        duration := time.Since(start)
-        
-        log.Printf("%s %s - %dms", c.Method(), c.Path(), duration.Milliseconds())
-        return err
-    })
-    
-    // Authentication middleware
-    app.Use(func(c fiber.Ctx) error {
-        token := c.Get("Authorization")
-        if token == "" {
-            return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Missing token"})
-        }
-        return c.Next()
-    })
-    
-    app.Get("/protected", func(c fiber.Ctx) error {
-        return c.JSON(fiber.Map{"message": "Access granted"})
-    })
-    
-    app.Listen(":3000")
+ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+defer cancel()
+
+// Use context for operations
+select {
+case <-ctx.Done():
+    fmt.Println("Operation cancelled:", ctx.Err())
+case <-time.After(5 * time.Second):
+    fmt.Println("Operation completed")
 }
 ```
 
-### 3. Goroutine Patterns
-
-Goroutines provide lightweight concurrency:
-
-**Basic Goroutines**:
+### Context with Values
 ```go
-package main
+ctx := context.WithValue(context.Background(), "user_id", "123")
 
-import (
-    "fmt"
-    "time"
-)
+// Retrieve value
+userID, ok := ctx.Value("user_id").(string)
+if ok {
+    fmt.Println("User:", userID)
+}
+```
 
+---
+
+## Goroutines & Channels
+
+### Basic Concurrency
+```go
+// Start goroutine
+go func() {
+    fmt.Println("Running concurrently")
+}()
+
+// Channels
+ch := make(chan int)
+go func() {
+    ch <- 42
+}()
+value := <-ch
+
+// Close channel
+close(ch)
+```
+
+### Worker Pool Pattern
+```go
 func worker(id int, jobs <-chan int, results chan<- int) {
     for job := range jobs {
-        fmt.Printf("Worker %d processing job %d\n", id, job)
-        time.Sleep(1 * time.Second)
         results <- job * 2
     }
 }
@@ -252,374 +256,84 @@ func worker(id int, jobs <-chan int, results chan<- int) {
 func main() {
     jobs := make(chan int, 100)
     results := make(chan int, 100)
-    
+
     // Start 3 workers
     for w := 1; w <= 3; w++ {
         go worker(w, jobs, results)
     }
-    
-    // Send jobs
+
+    // Send jobs and collect results
     for j := 1; j <= 9; j++ {
         jobs <- j
     }
     close(jobs)
-    
-    // Collect results
-    for a := 1; a <= 9; a++ {
-        <-results
-    }
 }
 ```
 
-**WaitGroup for Synchronization**:
-```go
-package main
+---
 
-import (
-    "fmt"
-    "sync"
-    "time"
-)
+## Type-Safe SQL with sqlc
 
-func main() {
-    var wg sync.WaitGroup
-    
-    for i := 1; i <= 5; i++ {
-        wg.Add(1)
-        go func(id int) {
-            defer wg.Done()
-            
-            fmt.Printf("Goroutine %d starting\n", id)
-            time.Sleep(1 * time.Second)
-            fmt.Printf("Goroutine %d done\n", id)
-        }(i)
-    }
-    
-    fmt.Println("Waiting for goroutines...")
-    wg.Wait()
-    fmt.Println("All goroutines completed")
-}
-```
-
-## Level 2: Advanced Patterns (Medium Freedom)
-
-### 1. gRPC Services
-
-gRPC enables high-performance RPC:
-
-**Protocol Buffer Definition**:
-```protobuf
-// user.proto
-syntax = "proto3";
-
-package user;
-
-message User {
-    int32 id = 1;
-    string name = 2;
-    string email = 3;
-}
-
-message GetUserRequest {
-    int32 id = 1;
-}
-
-message ListUsersRequest {
-    int32 limit = 1;
-    int32 offset = 2;
-}
-
-message ListUsersResponse {
-    repeated User users = 1;
-    int32 total = 2;
-}
-
-service UserService {
-    rpc GetUser(GetUserRequest) returns (User);
-    rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
-    rpc CreateUser(User) returns (User);
-}
-```
-
-**gRPC Server Implementation**:
-```go
-package main
-
-import (
-    "context"
-    "log"
-    "net"
-    "google.golang.org/grpc"
-    pb "your-module/gen/proto/user"
-)
-
-type server struct {
-    pb.UnimplementedUserServiceServer
-}
-
-func (s *server) GetUser(ctx context.Context, req *pb.GetUserRequest) (*pb.User, error) {
-    // Database lookup
-    return &pb.User{
-        Id:    req.Id,
-        Name:  "John Doe",
-        Email: "john@example.com",
-    }, nil
-}
-
-func (s *server) ListUsers(ctx context.Context, req *pb.ListUsersRequest) (*pb.ListUsersResponse, error) {
-    users := []*pb.User{
-        {Id: 1, Name: "John", Email: "john@example.com"},
-        {Id: 2, Name: "Jane", Email: "jane@example.com"},
-    }
-    
-    return &pb.ListUsersResponse{
-        Users: users,
-        Total: 2,
-    }, nil
-}
-
-func main() {
-    lis, err := net.Listen("tcp", ":50051")
-    if err != nil {
-        log.Fatalf("Failed to listen: %v", err)
-    }
-    
-    s := grpc.NewServer()
-    pb.RegisterUserServiceServer(s, &server{})
-    
-    log.Println("gRPC server listening on :50051")
-    if err := s.Serve(lis); err != nil {
-        log.Fatalf("Failed to serve: %v", err)
-    }
-}
-```
-
-### 2. Database with sqlc
-
-sqlc generates type-safe database code:
-
-**SQL Queries**:
+### Queries
 ```sql
--- queries/user.sql
-
--- name: GetUserByID :one
-SELECT id, name, email FROM users
-WHERE id = $1;
-
--- name: ListUsers :many
-SELECT id, name, email FROM users
-ORDER BY id
-LIMIT $1 OFFSET $2;
+-- queries.sql
+-- name: GetUser :one
+SELECT id, name, email FROM users WHERE id = $1;
 
 -- name: CreateUser :one
-INSERT INTO users (name, email)
-VALUES ($1, $2)
+INSERT INTO users (name, email) VALUES ($1, $2)
 RETURNING id, name, email;
 
--- name: DeleteUser :exec
-DELETE FROM users WHERE id = $1;
+-- name: ListUsers :many
+SELECT id, name, email FROM users ORDER BY id;
 ```
 
-**Using Generated Code**:
+### Usage
 ```go
-package main
+db := New(pool)
+ctx := context.Background()
 
-import (
-    "context"
-    "log"
-    "your-module/db"
-    "github.com/jackc/pgx/v5"
-)
+// Create user
+user, _ := db.CreateUser(ctx, CreateUserParams{
+    Name:  "John",
+    Email: "john@example.com",
+})
 
-func main() {
-    conn, err := pgx.Connect(context.Background(), "postgres://user:password@localhost/mydb")
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer conn.Close(context.Background())
-    
-    queries := db.New(conn)
-    
-    // Get user
-    user, err := queries.GetUserByID(context.Background(), 1)
-    if err != nil {
-        log.Fatal(err)
-    }
-    log.Printf("User: %+v", user)
-    
-    // Create user
-    newUser, err := queries.CreateUser(context.Background(), db.CreateUserParams{
-        Name:  "Alice",
-        Email: "alice@example.com",
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-    log.Printf("Created: %+v", newUser)
-}
+// Get user
+user, _ := db.GetUser(ctx, 1)
+
+// List users
+users, _ := db.ListUsers(ctx)
 ```
 
-### 3. Testing with testify
+---
 
-testify provides assertion helpers:
+## Production Best Practices
 
-**Unit Tests**:
-```go
-package main
+1. **Use context for timeouts** in concurrent operations
+2. **Handle errors immediately** with meaningful messages
+3. **Use type-safe SQL** with sqlc, not raw queries
+4. **Implement connection pooling** for databases
+5. **Use middleware for cross-cutting concerns** (logging, auth)
+6. **Goroutines should be bounded** to prevent resource exhaustion
+7. **Close channels explicitly** to signal completion
+8. **Use sync.WaitGroup** for goroutine synchronization
+9. **Profile before optimization** with pprof
+10. **Deploy with graceful shutdown** handling
 
-import (
-    "testing"
-    "github.com/stretchr/testify/assert"
-    "github.com/stretchr/testify/require"
-)
+---
 
-func Add(a, b int) int {
-    return a + b
-}
+## Learn More
 
-func TestAdd(t *testing.T) {
-    // Basic assertions
-    assert.Equal(t, 5, Add(2, 3))
-    assert.NotEqual(t, 5, Add(2, 2))
-    
-    // Require (fails immediately)
-    require.True(t, Add(1, 1) == 2)
-}
+- **Examples**: See `examples.md` for Fiber, context, goroutines, and database patterns
+- **Reference**: See `reference.md` for API details, tool versions, and troubleshooting
+- **Go Official**: https://golang.org/
+- **Fiber Docs**: https://docs.gofiber.io/
+- **sqlc**: https://sqlc.dev/
+- **gRPC**: https://grpc.io/
 
-func TestAddMultiple(t *testing.T) {
-    tests := []struct {
-        a, b, expected int
-    }{
-        {1, 1, 2},
-        {0, 0, 0},
-        {-1, 1, 0},
-    }
-    
-    for _, test := range tests {
-        assert.Equal(t, test.expected, Add(test.a, test.b))
-    }
-}
-```
+---
 
-**HTTP Tests**:
-```go
-package main
-
-import (
-    "testing"
-    "net/http"
-    "net/http/httptest"
-    "github.com/stretchr/testify/assert"
-)
-
-func TestGetUser(t *testing.T) {
-    req, _ := http.NewRequest("GET", "/users/1", nil)
-    w := httptest.NewRecorder()
-    
-    handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        w.WriteHeader(http.StatusOK)
-        w.Write([]byte(`{"id": 1, "name": "John"}`))
-    })
-    
-    handler.ServeHTTP(w, req)
-    
-    assert.Equal(t, http.StatusOK, w.Code)
-    assert.Contains(t, w.Body.String(), "John")
-}
-```
-
-## Level 3: Production Deployment (Low Freedom, Expert Only)
-
-### 1. Docker Deployment
-
-**Multi-stage Build**:
-```dockerfile
-FROM golang:1.25-alpine AS builder
-WORKDIR /app
-
-COPY go.mod go.sum ./
-RUN go mod download
-
-COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o app .
-
-FROM alpine:latest
-RUN apk --no-cache add ca-certificates
-WORKDIR /root/
-
-COPY --from=builder /app/app .
-EXPOSE 8080
-
-CMD ["./app"]
-```
-
-### 2. Graceful Shutdown
-
-```go
-package main
-
-import (
-    "context"
-    "fmt"
-    "log"
-    "net/http"
-    "os"
-    "os/signal"
-    "syscall"
-    "time"
-)
-
-func main() {
-    server := &http.Server{
-        Addr:    ":8080",
-        Handler: http.DefaultServeMux,
-    }
-    
-    // Handle shutdown signals
-    sigChan := make(chan os.Signal, 1)
-    signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-    
-    go func() {
-        <-sigChan
-        log.Println("Shutdown signal received")
-        
-        ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-        defer cancel()
-        
-        if err := server.Shutdown(ctx); err != nil {
-            log.Fatalf("Shutdown error: %v", err)
-        }
-    }()
-    
-    log.Println("Server starting on :8080")
-    if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-        log.Fatalf("Server error: %v", err)
-    }
-    
-    log.Println("Server stopped")
-}
-```
-
-## Auto-Load Triggers
-
-This Skill activates when you:
-- Work with Go projects and REST APIs
-- Need to implement gRPC services
-- Handle goroutine orchestration
-- Use context for cancellation
-- Implement microservices
-- Debug concurrent systems
-
-## Best Practices Summary
-
-1. Always use context for goroutine cancellation
-2. Implement proper error handling with wrapping
-3. Use goroutine pools for resource management
-4. Validate input early in handlers
-5. Test concurrent code thoroughly
-6. Monitor goroutine leaks
-7. Use type-safe database code with sqlc
-8. Implement proper logging
-9. Graceful shutdown for long-running services
-10. Profile performance-critical code
+**Skills**: Skill("moai-essentials-debug"), Skill("moai-essentials-perf"), Skill("moai-security-backend")
+**Auto-loads**: Go projects mentioning Fiber, gRPC, goroutine, context, microservice, REST API
 
