@@ -827,6 +827,126 @@ moai-adk init --mcp-auto                # Auto-install all servers
 
 ---
 
+## 🔒 Local-Only Files Policy
+
+> **Critical**: These files are generated for your **local development only** and are **NEVER deployed** with package distributions.
+
+### Local-Only Directories
+
+**Files that must remain local** (Never committed to package template):
+- `.moai/release/` - Release automation infrastructure
+- `.claude/commands/moai/` - Local /moai:release command
+- `.claude/agents/release-manager.md` - Release orchestration agent
+
+### Why Local-Only?
+
+These files serve specific local development purposes:
+
+| File | Purpose | Why Local-Only |
+|------|---------|--------|
+| `.moai/release/RELEASE_SETUP.md` | PyPI token setup guide | Contains token instructions for current environment |
+| `.moai/release/CHECKLIST.md` | Pre-release validation | Project-specific requirements |
+| `.moai/release/quality-check.sh` | Quality validation script | Executes in local environment only |
+| `.moai/release/bump-version.py` | Version management | Operates on local pyproject.toml |
+| `.moai/release/generate-changelog.py` | Changelog automation | Reads local git history |
+| `.moai/release/release-helper.sh` | Utility functions | Local shell environment specific |
+| `.moai/release/release-rollback.sh` | Emergency recovery | Local git operations only |
+| `.claude/commands/moai/release.md` | /moai:release command | Local orchestration only |
+| `.claude/agents/release-manager.md` | Release manager agent | Coordinates local release process |
+
+### {{}} Variable Substitution
+
+When syncing from package template → local project, these variables are auto-substituted:
+
+```text
+{{PROJECT_NAME}}              → Your actual project name
+{{PROJECT_OWNER}}             → Project owner from config
+{{CONVERSATION_LANGUAGE}}     → Your conversation language (ko, en, etc)
+{{CONVERSATION_LANGUAGE_NAME}} → Language full name (Korean, English, etc)
+{{MOAI_VERSION}}              → Current moai-adk version
+{{PROJECT_MODE}}              → Project mode (team, standalone, etc)
+{{CODEBASE_LANGUAGE}}         → Primary language (Python, TypeScript, etc)
+{{PROJECT_DIR}}               → Absolute project directory path
+```
+
+### Synchronization Rules
+
+**Direction**: `src/moai_adk/templates/` → Local Project
+
+**What Gets Synced**:
+1. ✅ `.moai/release/` documentation updates (SETUP, ROLLBACK, CHECKLIST)
+2. ✅ `.moai/release/` script improvements
+3. ✅ `.claude/commands/moai/` command enhancements
+4. ✅ `.claude/agents/release-manager.md` agent improvements
+5. ✅ Variable substitution (replace {{}} with local values)
+
+**What Does NOT Get Synced Back**:
+1. ❌ Local environment variables
+2. ❌ Project-specific PyPI tokens
+3. ❌ Custom release procedures
+4. ❌ Local test data or logs
+
+### Exclusion from Package Distribution
+
+**In `.gitignore`**:
+```gitignore
+# Local-only development files (never deployed)
+/.moai/release/
+/.claude/commands/moai/
+/.claude/agents/release-manager.md
+```
+
+**In `pyproject.toml` (package manifest)**:
+```toml
+[tool.poetry]
+exclude = [
+  ".moai/release/*",
+  ".claude/commands/moai/*",
+  ".claude/agents/release-manager.md",
+]
+```
+
+### Best Practices
+
+✅ **DO**:
+- Keep these files under version control (local only)
+- Update release procedures when process improves
+- Share templates via package updates
+- Use {{}} variables for reusability
+
+❌ **DON'T**:
+- Include in package distribution
+- Commit PyPI tokens to git
+- Hard-code environment-specific paths
+- Deploy with released package
+
+### Updating These Files
+
+**To improve release automation**:
+1. Edit local files (`.moai/release/`, `.claude/commands/moai/`, etc)
+2. Test improvements locally
+3. If broadly useful, update package template: `src/moai_adk/templates/.moai/release/`
+4. Other users get improvements via `moai-adk update`
+
+**To customize for your project**:
+1. Edit local files in `.moai/release/`
+2. Add project-specific logic
+3. These changes stay local (not deployed)
+
+### Rollback After Sync
+
+If sync overwrites your local customizations:
+
+```bash
+# Restore local version from git
+git checkout .moai/release/your-file.sh
+
+# Or manually re-apply customizations
+# after syncing from template
+```
+
+---
+
 ## Project Information
 
 - **Name**: {{PROJECT_NAME}}
