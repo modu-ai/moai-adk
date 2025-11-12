@@ -251,6 +251,57 @@ User receives response in their configured language
 
 ---
 
+## 👤 User Personalization
+
+**Alfred uses the `{{USER_NAME}}` variable to provide personalized greetings and interactions**:
+
+### Configuration
+
+User name is configured in `.moai/config/config.json`:
+
+```json
+{
+  "user": {
+    "name": "{{USER_NAME}}"
+  }
+}
+```
+
+### Usage Rules
+
+1. **When `{{USER_NAME}}` is populated** (configured in user.name):
+   - "{{USER_NAME}}님, 함께 작업해봅시다" (Korean)
+   - "{{USER_NAME}}, let's work together" (English)
+   - "{{USER_NAME}}さん、一緒に作業しましょう" (Japanese)
+
+2. **When `{{USER_NAME}}` is empty** (not configured):
+   - "사용자님, 함께 작업해봅시다" (Korean - default)
+   - "User, let's work together" (English - default)
+   - "ユーザー、一緒に作業しましょう" (Japanese - default)
+
+### Implementation Pattern
+
+Alfred evaluates `{{USER_NAME}}` variable at runtime:
+
+```python
+# Pseudo-code showing the logic
+user_name = config.get("user", {}).get("name", "")
+if user_name:
+    greeting = f"{user_name}님"  # Personalized (Korean)
+else:
+    greeting = "사용자"  # Default to "user" in appropriate language
+```
+
+### Notes
+
+- User name input is **optional** during `/alfred:0-project`
+- Can be configured anytime via `/alfred:0-project setting`
+- Names support all Unicode characters (Korean, English, Japanese, etc)
+- Distinguished from `{{PROJECT_OWNER}}` (GitHub username)
+- Language-appropriate honorifics are applied automatically
+
+---
+
 ## 🏛️ Commands → Agents → Skills Architecture
 
 **CRITICAL**: Strict enforcement of layer separation for system maintainability.
@@ -537,6 +588,113 @@ MoAI-ADK assigns every responsibility to a dedicated execution layer.
 2. Requires reasoning or conversation? → **Sub-agent**
 3. Encodes reusable knowledge or policy? → **Skill**
 4. Orchestrates multiple steps or approvals? → **Command**
+
+---
+
+## 🔄 Skill Reuse Pattern: No Wheel Reinvention
+
+**Core Philosophy**: Maximize existing Skills and Commands before creating new agents.
+
+### Pattern Principle
+
+```
+Before creating new agent/command:
+  1. Search existing 55 Skills for related patterns
+  2. Check existing Commands for similar workflows
+  3. Compose new capability from existing pieces
+  4. Only create new agent/command if truly unique
+```
+
+### Real Example: `/alfred:9-feedback` Improvement
+
+**Scenario**: Improve GitHub issue creation to use semantic labels
+
+**❌ Wrong Approach** (Wheel Reinvention):
+```
+Create new: github-manager agent
+Create new: github-labels skill
+Duplicate label taxonomy
+Result: Code duplication, maintenance burden
+```
+
+**✅ Right Approach** (Skill Reuse):
+```
+1. Discover: `moai-alfred-issue-labels` skill (semantic taxonomy)
+2. Load: skill in 9-feedback command
+3. Apply: existing label mapping (type + priority → labels)
+4. Benefit: Automatic updates, shared taxonomy, no duplication
+
+Result:
+  - Frontmatter change: added `skills: [moai-alfred-issue-labels]`
+  - Label logic: Skill("moai-alfred-issue-labels") instead of hardcoding
+  - Reusable: Other commands can use same skill
+```
+
+### Implementation Pattern
+
+**Step 1: Search existing Skills**
+```bash
+find .claude/skills -type d -name "*label*" -o -name "*issue*" -o -name "*github*"
+```
+
+**Step 2: Load skill in command/agent**
+```yaml
+---
+allowed-tools: [Bash, AskUserQuestion, Skill]
+skills:
+  - moai-alfred-issue-labels
+---
+```
+
+**Step 3: Reference skill in execution**
+```markdown
+Alfred automatically:
+1. Load `Skill("moai-alfred-issue-labels")`
+2. Apply semantic label mapping
+3. Create issue with correct labels
+```
+
+**Step 4: Document reuse pattern**
+```markdown
+Other commands can:
+- Use same skill for consistent labeling
+- Extend skill for new use cases
+- Update skill once → all commands benefit
+```
+
+### Benefits
+
+| Aspect | With Reuse | With Duplication |
+|--------|-----------|-----------------|
+| **Lines of Code** | ~50 (skill ref) | ~200 (hardcoded) |
+| **Maintenance Points** | 1 (skill) | N (each command) |
+| **Update Effort** | 5 min (skill) | 30 min (N commands) |
+| **Testing** | Central | Scattered |
+| **Consistency** | Guaranteed | Manual |
+| **Scalability** | ✅ Easy | ❌ Hard |
+
+### Decision Tree
+
+```
+Need to create new capability?
+  ├─ Is it domain-specific knowledge?
+  │   ├─ YES → Check if Skill exists
+  │   │   ├─ EXISTS → Load & reuse
+  │   │   └─ NOT EXISTS → Create Skill
+  │   └─ NO
+  │
+  ├─ Is it workflow orchestration?
+  │   ├─ YES → Check if Command exists
+  │   │   ├─ EXISTS → Extend via Task
+  │   │   └─ NOT EXISTS → Create Command
+  │   └─ NO
+  │
+  └─ Is it expert reasoning?
+      ├─ YES → Check if Agent exists
+      │   ├─ EXISTS → Delegate via Task
+      │   └─ NOT EXISTS → Create Agent
+      └─ NO → Use direct tool (Read, Write, Bash)
+```
 
 ---
 

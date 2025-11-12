@@ -3,8 +3,10 @@ name: alfred:9-feedback
 description: "Create GitHub issues interactively"
 allowed-tools:
 - Bash(gh:*)
-- Task
 - AskUserQuestion
+- Skill
+skills:
+- moai-alfred-issue-labels
 ---
 
 # 🎯 MoAI-ADK Alfred 9-Feedback: Interactive GitHub Issue Creation
@@ -99,11 +101,31 @@ Or just press Enter to skip.
 ### Step 6: Create Issue (Automatic)
 
 Alfred automatically:
-1. Formats title with emoji: "🐛 [BUG] Login button not responding..."
-2. Prepares body with user description + metadata
-3. Assigns labels: bug, reported, priority-high
-4. Executes: `gh issue create --title ... --body ... --label ...`
-5. Parses issue number from response
+1. **Load label schema** via `Skill("moai-alfred-issue-labels")`
+   - Resolves semantic label taxonomy
+   - Maps type → labels (e.g., bug → "bug", "reported")
+   - Maps priority → labels (e.g., high → "priority-high")
+2. **Formats title with emoji**: "🐛 [BUG] Login button not responding..."
+3. **Prepares body**: User description + creation timestamp + referenced from /alfred:9-feedback
+4. **Executes gh CLI**:
+   ```bash
+   gh issue create \
+     --title "🐛 [BUG] Login button not responding to clicks" \
+     --body "When I click the login button on the homepage, nothing happens..." \
+     --label "bug" \
+     --label "reported" \
+     --label "priority-high"
+   ```
+5. **Parses issue number** from response
+
+**Label Mapping** (via `moai-alfred-issue-labels` skill):
+
+| Type | Primary Labels | Priority | Final Labels |
+|------|---|---|---|
+| 🐛 Bug | bug, reported | High | bug, reported, priority-high |
+| ✨ Feature | feature-request, enhancement | Medium | feature-request, enhancement, priority-medium |
+| ⚡ Improvement | improvement, enhancement | Medium | improvement, enhancement, priority-medium |
+| ❓ Question | question, help-wanted | Medium | question, help-wanted, priority-medium |
 
 **Success Output**:
 ```
@@ -111,7 +133,7 @@ Alfred automatically:
 
 📋 Title: 🐛 [BUG] Login button not responding to clicks
 🔴 Priority: High
-🏷️  Labels: bug, reported, priority-high
+🏷️  Labels: bug, reported, priority-high (via moai-alfred-issue-labels)
 🔗 URL: https://github.com/owner/repo/issues/234
 
 💡 Next: Reference this issue in your commits or link to a SPEC document
@@ -127,14 +149,17 @@ Alfred automatically:
 - ✅ Preserve exact user wording in title and description
 - ✅ Use AskUserQuestion for all user inputs
 - ✅ Allow skipping description (optional field)
-- ✅ Show issue URL after creation
+- ✅ Load `Skill("moai-alfred-issue-labels")` to resolve semantic labels
+- ✅ Apply labels from skill mapping (type + priority → labels)
+- ✅ Show issue URL after creation with applied labels
 
 ### ❌ What NOT to Do
 
 - ❌ Accept command arguments (`/alfred:9-feedback --bug` is wrong—just use `/alfred:9-feedback`)
 - ❌ Skip questions or change order
 - ❌ Rephrase user's input
-- ❌ Create issues without labels
+- ❌ Create issues without labels (always use skill-based mapping)
+- ❌ Hardcode label values (use skill mapping instead)
 
 ---
 
@@ -142,9 +167,10 @@ Alfred automatically:
 
 1. **🚀 No Arguments Needed**: Just `/alfred:9-feedback`
 2. **💬 Conversational**: Intuitive step-by-step dialog
-3. **🏷️ Auto-labeled**: Labels applied automatically
-4. **🔗 Team Visible**: Issues immediately visible
+3. **🏷️ Semantic Labels**: Auto-labeled via `moai-alfred-issue-labels` skill
+4. **🔗 Team Visible**: Issues immediately visible on GitHub
 5. **⏱️ Fast**: Create issues in 30 seconds
+6. **🔄 Reusable**: Label mapping shared with other commands (`/alfred:1-plan`, `/alfred:3-sync`)
 
 ---
 
