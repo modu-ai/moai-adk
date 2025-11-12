@@ -8,7 +8,6 @@ from typing import Dict, Any, List, Optional, Tuple
 from pathlib import Path
 import logging
 
-from moai_adk.core.tags.spec_generator import SpecGenerator
 
 # Configure logging
 logger = logging.getLogger(__name__)

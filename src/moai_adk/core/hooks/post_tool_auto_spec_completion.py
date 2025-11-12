@@ -9,7 +9,6 @@ from typing import Dict, Any, List, Optional
 from pathlib import Path
 import logging
 
-from moai_adk.core.tags.spec_generator import SpecGenerator
 # BaseHook: Simplified base hook class for auto-spec completion
 class BaseHook:
     """Base hook class for auto-spec completion."""
