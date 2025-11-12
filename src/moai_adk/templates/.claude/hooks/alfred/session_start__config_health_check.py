@@ -80,11 +80,41 @@ def check_config_completeness(config: dict[str, Any]) -> tuple[bool, list[str]]:
     return len(missing_fields) == 0, missing_fields
 
 
-def check_moai_version_match() -> tuple[bool, Optional[str], Optional[str]]:
-    """Check if .moai/config/config.json version matches installed moai-adk version
+def get_latest_pypi_version() -> Optional[str]:
+    """Check latest moai-adk version on PyPI
 
     Returns:
-        (is_matched, config_version, installed_version)
+        Latest version string or None if check fails
+    """
+    try:
+        result = subprocess.run(
+            ["pip", "index", "versions", "moai-adk"],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+
+        if result.returncode == 0:
+            # Parse version from pip index output
+            for line in result.stdout.split('\n'):
+                if 'Available versions:' in line:
+                    # Extract first version (latest)
+                    parts = line.split(':')
+                    if len(parts) > 1:
+                        versions = parts[1].strip().split(',')
+                        if versions:
+                            return versions[0].strip()
+
+        return None
+    except Exception:
+        return None
+
+
+def check_moai_version_match() -> tuple[bool, Optional[str], Optional[str], Optional[str]]:
+    """Check installed moai-adk version and available updates
+
+    Returns:
+        (is_matched, installed_version, latest_version, status_message)
     """
     try:
         # Get installed moai-adk version
@@ -102,34 +132,44 @@ def check_moai_version_match() -> tuple[bool, Optional[str], Optional[str]]:
             if "version" in version_line.lower():
                 parts = version_line.split()
                 for part in parts:
-                    if part[0].isdigit():
+                    if part and part[0].isdigit():
                         installed_version = part
                         break
 
-        # Get config version
-        config = get_config_data()
-        if not config:
-            return False, None, installed_version
+        if not installed_version:
+            return False, None, None, None
 
-        config_version = config.get("moai", {}).get("version")
+        # Get latest version from PyPI
+        latest_version = get_latest_pypi_version()
 
-        if installed_version and config_version:
-            is_matched = installed_version == config_version
-            return is_matched, config_version, installed_version
-
-        return False, config_version, installed_version
+        if latest_version:
+            is_matched = installed_version == latest_version
+            if is_matched:
+                status = f"✅ Version: {installed_version} (latest)"
+            else:
+                status = f"⚠️  Version: {installed_version} → {latest_version} update available (run moai-adk update)"
+            return is_matched, installed_version, latest_version, status
+        else:
+            # Can't check PyPI, just show installed version
+            return True, installed_version, None, f"✅ Version: {installed_version}"
 
     except Exception:
-        return False, None, None
+        return False, None, None, None
 
 
 def generate_config_report() -> str:
-    """Generate configuration health check report"""
+    """Generate configuration health check report
+
+    Only shows warnings if problems exist:
+    - Missing configuration sections
+    - Configuration file age > 30 days
+    - Version mismatch or updates available
+    """
     report_lines = []
 
     # Check 1: Configuration exists
     if not check_config_exists():
-        report_lines.append("❌ No project configuration - please run /alfred:0-project")
+        report_lines.append("❌ Configuration not found - run /alfred:0-project to initialize")
         return "\n".join(report_lines)
 
     config = get_config_data()
@@ -138,30 +178,18 @@ def generate_config_report() -> str:
     is_complete, missing_fields = check_config_completeness(config or {})
     if not is_complete:
         report_lines.append(f"⚠️  Missing configuration: {', '.join(missing_fields)}")
-    else:
-        report_lines.append("✅ Configuration complete")
 
-    # Check 3: Configuration age
+    # Check 3: Configuration age (only warn if > 30 days)
     config_age = get_config_age()
-    if config_age is not None:
-        if config_age > 30:
-            report_lines.append(f"⏰ Configuration outdated: {config_age} days ago (update recommended)")
-        elif config_age > 7:
-            report_lines.append(f"⏰ Configuration updated: {config_age} days ago")
-        else:
-            report_lines.append(f"✅ Recent configuration: {config_age} days ago")
+    if config_age is not None and config_age > 30:
+        report_lines.append(f"⏰ Configuration outdated: {config_age} days ago (update recommended)")
 
-    # Check 4: Version match
-    is_matched, config_version, installed_version = check_moai_version_match()
-    if installed_version and config_version:
-        if is_matched:
-            report_lines.append(f"✅ Version matched: {installed_version}")
-        else:
-            report_lines.append(
-                f"⚠️  Version mismatch: config {config_version} vs installed {installed_version} "
-                f"- run /alfred:0-project recommended"
-            )
+    # Check 4: Version status
+    is_matched, installed_version, latest_version, status_message = check_moai_version_match()
+    if status_message:
+        report_lines.append(status_message)
 
+    # If no issues found, return empty (will not display health check section)
     return "\n".join(report_lines)
 
 
@@ -228,7 +256,7 @@ def should_suggest_update() -> bool:
         return True
 
     # Check version match
-    is_matched, _, _ = check_moai_version_match()
+    is_matched, _, _, _ = check_moai_version_match()
     if not is_matched:
         return True
 
@@ -257,28 +285,22 @@ def main() -> None:
         config_report = generate_config_report()
 
         # Determine system message
-        if is_suppressed:
-            # If suppressed and no issues, return minimal response
-            should_update = should_suggest_update()
-            if not should_update:
-                # No issues, suppress everything
-                result: dict[str, Any] = {
-                    "continue": True,
-                    "systemMessage": ""  # Empty message
-                }
-                print(json.dumps(result))
-                sys.exit(0)
-            else:
-                # Issues found, show them even if suppressed
-                system_message = f"⚠️  Configuration issues detected:\n{config_report}"
-        else:
-            # Not suppressed, show full report
+        should_update = should_suggest_update()
+
+        # Build system message based on report content
+        if config_report.strip():
+            # Report has content, show it
             system_message = f"📋 Configuration Health Check:\n{config_report}"
 
-            # Check if we should suggest update
-            should_update = should_suggest_update()
             if should_update:
                 system_message += "\n\n⚠️  Configuration issues detected. Please take action."
+        else:
+            # No issues found, return empty message (suppresses health check section)
+            system_message = ""
+
+        if is_suppressed and not should_update:
+            # Suppressed and no issues detected
+            system_message = ""
 
         # Prepare response
         result: dict[str, Any] = {

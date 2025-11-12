@@ -179,6 +179,10 @@
       }
     }
   },
+  "session": {
+    "suppress_setup_messages": false,
+    "notes": "suppress_setup_messages: false enables SessionStart output. Set to true to suppress messages (show again after 7 days)"
+  },
   "hooks": {
     "timeout_ms": 2000,
     "graceful_degradation": true,
