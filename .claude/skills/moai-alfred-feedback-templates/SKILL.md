@@ -11,6 +11,7 @@ description: |
 keywords: ['feedback', 'templates', 'issue-creation', 'korean', 'structured-templates', 'bug-report', 'feature-request']
 allowed-tools:
   - Read
+  - Bash
 ---
 
 # GitHub 이슈 작성 템플릿 모음 v1.0.0
