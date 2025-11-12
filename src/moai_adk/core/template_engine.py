@@ -181,6 +181,7 @@ class TemplateEngine:
         """
         github_config = config.get("github", {}).get("templates", {})
         project_config = config.get("project", {})
+        user_config = config.get("user", {})
 
         return {
             # Project information
@@ -189,6 +190,9 @@ class TemplateEngine:
             "PROJECT_OWNER": project_config.get("owner", ""),
             "PROJECT_MODE": project_config.get("mode", "team"),  # team or personal
             "CODEBASE_LANGUAGE": project_config.get("codebase_language", "python"),
+
+            # User information
+            "USER_NAME": user_config.get("name", ""),
 
             # Directory structure
             "SPEC_DIR": github_config.get("spec_directory", ".moai/specs"),
@@ -234,6 +238,7 @@ class TemplateVariableValidator:
         "ENABLE_ALFRED_COMMANDS": bool,
         "CONVERSATION_LANGUAGE": str,
         "CONVERSATION_LANGUAGE_NAME": str,
+        "USER_NAME": (str, type(None)),
     }
 
     @classmethod
