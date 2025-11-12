@@ -20,7 +20,7 @@ Backup location: .moai-backups/YYYYMMDD-HHMMSS/
    - Tag backup with feature branch name for easier recovery
 
 2. **After restoration from backup**:
-   - Verify with `Skill("moai-foundation-tags")` that TAGs are intact
+   # TAG system removed
    - Run `Skill("moai-foundation-trust")` to validate toolchain
 """
 from pathlib import Path

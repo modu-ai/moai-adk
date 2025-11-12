@@ -60,15 +60,7 @@ DEFAULT_CONFIG = {
         "git": {
             "timeout_seconds": 2
         },
-        "tag_rules": {
-            "config_file_path": ".moai/tag-rules.json"
-        },
-        "tag_validation": {
-            "default_code_extensions": [
-                ".py", ".ts", ".tsx", ".js", ".jsx", ".go", ".rs", ".java", ".kt",
-                ".rb", ".php", ".c", ".cpp", ".cs", ".swift", ".scala"
-            ]
-        },
+        # TAG system configuration removed
         "defaults": {
             "timeout_ms": 5000,
             "graceful_degradation": True
@@ -244,21 +236,7 @@ class ConfigManager:
         """
         return self.get("hooks.git", {})
 
-    def get_tag_rules_config(self) -> Dict[str, Any]:
-        """Get tag rules configuration.
-
-        Returns:
-            Tag rules configuration dictionary
-        """
-        return self.get("hooks.tag_rules", {})
-
-    def get_tag_validation_config(self) -> Dict[str, Any]:
-        """Get tag validation configuration.
-
-        Returns:
-            Tag validation configuration dictionary
-        """
-        return self.get("hooks.tag_validation", {})
+    # TAG system configuration methods removed
 
     def get_exit_code(self, exit_type: str) -> int:
         """Get exit code for specific exit type.

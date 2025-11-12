@@ -286,22 +286,12 @@ class QualityValidator:
 
         spec_md = spec_content.get('spec_md', '')
 
-        # Check for TAG presence
-        has_tags = self._check_traceability_tags(spec_md)
-
-        # Check for proper TAG formatting
-        tag_formatting = self._check_tag_formatting(spec_md)
-
-        # Check for traceability relationships
-        traceability_relationships = self._check_traceability_relationships(spec_md)
+        # TAG system removed - now check for basic traceability elements
+        has_traceability = '@SPEC:' in spec_md or 'Requirements:' in spec_md
 
         return {
-            'has_traceability_tags': has_tags,
-            'tag_formatting': tag_formatting,
-            'traceability_relationships': traceability_relationships,
-            'overall_traceability': round(
-                (1.0 if has_tags else 0.0 + tag_formatting + traceability_relationships) / 3, 2
-            )
+            'has_traceability_elements': has_traceability,
+            'overall_traceability': 1.0 if has_traceability else 0.5
         }
 
     def _calculate_overall_score(self, details: Dict[str, Any]) -> float:
