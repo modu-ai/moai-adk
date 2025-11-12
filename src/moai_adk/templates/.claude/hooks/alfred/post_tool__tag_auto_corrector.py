@@ -23,9 +23,6 @@ from typing import Any, Dict, List, Optional
 # Add module path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
-from moai_adk.core.tags.auto_corrector import AutoCorrection, AutoCorrectionConfig, TagAutoCorrector
-from moai_adk.core.tags.policy_validator import PolicyValidationConfig, PolicyViolation, TagPolicyValidator
-from moai_adk.core.tags.rollback_manager import RollbackConfig, RollbackManager
 
 # Import hook configuration with fallback
 try:

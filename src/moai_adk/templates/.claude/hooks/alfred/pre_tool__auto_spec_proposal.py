@@ -25,7 +25,6 @@ from typing import Any, Dict, Optional
 # Setup import path for MoAI-ADK modules
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
-from moai_adk.core.tags.spec_generator import SpecGenerator
 
 
 def get_hook_config() -> Dict[str, Any]:

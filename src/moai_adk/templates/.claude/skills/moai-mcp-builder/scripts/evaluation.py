@@ -77,7 +77,6 @@ def parse_evaluation_file(file_path: Path) -> list[dict[str, Any]]:
 
 
 def extract_xml_content(text: str, tag: str) -> str | None:
-    """Extract content from XML tags."""
     pattern = rf"<{tag}>(.*?)</{tag}>"
     matches = re.findall(pattern, text, re.DOTALL)
     return matches[-1].strip() if matches else None
