@@ -315,7 +315,6 @@ def test_git_tag_correlation():
 
     # Correlate with Git history
     git_correlation = git_integration.correlate_tags_with_git(
-        tag_patterns=["@SPEC", "@TEST", "@CODE", "@DOC"],
         since_date="2025-01-01"
     )
 
@@ -340,7 +339,6 @@ def test_git_release_notes_integration():
 
     # Generate release notes from TAGs
     release_notes = git_integration.generate_release_notes(
-        tag_patterns=["@SPEC"],
         since_date="2025-01-01",
         format="markdown"
     )

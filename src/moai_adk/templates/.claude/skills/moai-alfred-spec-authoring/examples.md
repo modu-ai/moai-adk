@@ -435,10 +435,6 @@ def test_load_1000_emails_per_second():
 
 ### TAGs
 
-- **@SPEC**: SPEC-105
-- **@TEST**: SPEC-105-TEST-001 through SPEC-105-TEST-012
-- **@CODE**: SPEC-105-CODE-001 through SPEC-105-CODE-005
-- **@DOC**: SPEC-105-DOC-001 (API documentation)
 
 ---
 

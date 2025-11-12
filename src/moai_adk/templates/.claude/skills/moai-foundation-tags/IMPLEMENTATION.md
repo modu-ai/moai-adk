@@ -196,7 +196,6 @@ class AdvancedTagSystem:
     def scan_project(self, include_patterns: List[str] = None, exclude_patterns: List[str] = None) -> Dict[str, Tag]:
         """Scan entire project for tags with advanced filtering."""
         if include_patterns is None:
-            include_patterns = ["@SPEC", "@TEST", "@CODE", "@DOC", "@META", "@REL", "@QUALITY", "@LIFECYCLE"]
 
         if exclude_patterns is None:
             exclude_patterns = []
@@ -297,7 +296,6 @@ class AdvancedTagSystem:
                                  exclude_patterns: List[str] = None) -> str:
         """Generate dependency graph in DOT format."""
         if include_patterns is None:
-            include_patterns = ["@SPEC", "@TEST", "@CODE"]
 
         if exclude_patterns is None:
 
@@ -341,7 +339,6 @@ class AdvancedTagSystem:
                               since_date: str = None) -> Dict[str, Any]:
         """Correlate tags with Git history."""
         if tag_patterns is None:
-            tag_patterns = ["@SPEC", "@TEST", "@CODE"]
 
         correlation_results = {}
 
@@ -810,7 +807,6 @@ class GitIntegration:
         """Correlate tags with Git history with advanced filtering."""
 
         if tag_patterns is None:
-            tag_patterns = ["@SPEC", "@TEST", "@CODE"]
 
         correlation_results = {}
 
@@ -874,7 +870,6 @@ class GitIntegration:
         """Generate release notes from tagged commits."""
 
         if tag_patterns is None:
-            tag_patterns = ["@SPEC"]
 
         # Get correlated commits
         correlation = self.correlate_tags_with_git(tag_patterns, since_date)
@@ -988,13 +983,11 @@ if __name__ == "__main__":
 
     # Correlate tags with git
     correlation = git_integration.correlate_tags_with_git(
-        tag_patterns=["@SPEC", "@CODE"],
         since_date="2025-01-01"
     )
 
     # Generate release notes
     release_notes = git_integration.generate_release_notes(
-        tag_patterns=["@SPEC"],
         since_date="2025-01-01",
         format="markdown"
     )
@@ -1953,7 +1946,6 @@ I have successfully implemented an advanced TAG system with the following key co
 ## Key Features Implemented:
 
 ✅ **30+ TAG patterns** with specialized subcategories
-✅ **Cross-reference tracing** between different @TAG types
 ✅ **Dependency graph visualization** using Graphviz with multiple layout engines
 ✅ **Git integration** for commit correlation and lineage tracking
 ✅ **Type-safe implementation** with comprehensive dataclasses and enums

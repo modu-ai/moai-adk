@@ -58,17 +58,14 @@ def handle_pre_tool_use(payload: HookPayload) -> HookResult:
         # Do not fail the hook if risk detection errors out
         pass
 
-    # TAG Guard (gentle): warn when recent changes miss @TAG
     issues = scan_recent_changes_for_missing_tags(cwd)
     if issues:
         # Summarize first few issues for display
         preview = "\n".join(f" - {i.path} → Expected tag: {i.expected}" for i in issues[:5])
         more = "" if len(issues) <= 5 else f"\n ({len(issues) - 5} more items exist)"
         msg = (
-            "⚠️ Missing TAG detected: Some created/modified files are missing @TAG.\n"
             f"{preview}{more}\n"
             "Recommended actions:\n"
-            "  1) Add appropriate @TAG (SPEC/TEST/CODE/DOC type) to file header or top comment\n"
             "  2) Verify with rg: rg '@(SPEC|TEST|CODE|DOC):' -n <path>\n"
         )
         return HookResult(system_message=msg, continue_execution=True)

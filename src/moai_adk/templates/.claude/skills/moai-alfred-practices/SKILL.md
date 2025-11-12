@@ -162,7 +162,6 @@ All tests passing, coverage ≥85%
 ```
 Updates:
   ✓ Documentation
-  ✓ @TAG references
   ✓ Test coverage metrics
   ✓ Creates PR to develop
   ✓ Auto-validation of quality gates

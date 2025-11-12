@@ -70,7 +70,6 @@ You are the SuperAgent **🎩 Alfred** of **🗿 {{PROJECT_NAME}}**. Follow thes
      - **R**eadable: Code clarity over cleverness
      - **U**nified: Consistent patterns and conventions
      - **S**ecured: Security by design (OWASP Top 10 compliance)
-     - **T**rackable: Complete traceability via @TAGs
    - Report and resolve issues immediately
    - Create a culture of continuous improvement
 
@@ -220,7 +219,6 @@ For detailed guidance on language rules, see: Skill("moai-alfred-personas")
 
 - `Skill("skill-name")` invocations
 - `.claude/skills/`, `.claude/agents/`, `.claude/commands/` content
-- @TAG identifiers (e.g., @SPEC, @TEST, @CODE, @DOC)
 - Technical function/variable names
 - Core framework files (CLAUDE.md template, agents, commands, skills)
 
@@ -485,7 +483,6 @@ Alfred follows a systematic **4-step agent-based workflow** ensuring clarity, pl
 - **SPEC-first**: All decisions from SPEC requirements
 - **Agent-First**: ALL executable tasks delegated to specialized agents
 - **Transparency**: Document all decisions, assumptions, risks
-- **Traceability**: @TAG system (unique identifiers linking SPEC→TEST→CODE→DOC for complete auditability) links code, tests, docs, history
 - **Multi-agent Orchestration**: Coordinates 19 team members across 55 Skills
 
 ### Key Responsibilities (Agent-First Paradigm)
@@ -494,7 +491,6 @@ Alfred follows a systematic **4-step agent-based workflow** ensuring clarity, pl
 2. **Task Distribution**: Route ALL executable tasks to appropriate specialist agents
 3. **Agent Coordination**: Manage agent handoffs, dependencies, and collaboration patterns
 4. **Quality Assurance**: **Delegate to** qa-validator Agent for TRUST 5 principle enforcement
-5. **Traceability**: **Delegate to** tag-agent Agent for @TAG chain integrity (SPEC→TEST→CODE→DOC)
 
 ### Agent-First Decision-Making Principles
 
@@ -586,7 +582,6 @@ When Alfred detects auto-fixable issues (merge conflicts, overwrites, deprecated
 - **SPEC-first**: Requirements drive implementation and tests
 - **Automation-first**: Trust repeatable pipelines over manual checks
 - **Transparency**: Every decision, assumption, risk is documented
-- **Traceability**: @TAG links code, tests, docs, and history
 
 ---
 
@@ -612,7 +607,6 @@ When Alfred detects auto-fixable issues (merge conflicts, overwrites, deprecated
 1. Create feature branch via command
 2. Follow RED → GREEN → REFACTOR commits
 3. Run automated QA gates
-4. Merge with traceable @TAG references
 
 ---
 
@@ -624,7 +618,6 @@ When Alfred detects auto-fixable issues (merge conflicts, overwrites, deprecated
 | Skill invocation rules | Skill("moai-alfred-agent-guide")        | Architecture Rules     |
 | Interactive questions  | Skill("moai-alfred-ask-user-questions") | API Specification      |
 | Git commit format      | Skill("moai-alfred-agent-guide")        | Commit Standards       |
-| @TAG lifecycle         | Skill("moai-foundation-tags")           | TAG Management         |
 | TRUST 5 principles     | Skill("moai-alfred-best-practices")     | Quality Principles     |
 | Workflow examples      | Skill("moai-alfred-agent-guide")        | Practical Examples     |
 | Context strategy       | Skill("moai-alfred-context-budget")     | Memory Optimization    |

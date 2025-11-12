@@ -30,7 +30,6 @@ def main() -> None:
     Analyzes user prompt patterns and recommends relevant documents:
     - /alfred:1-plan → spec-metadata.md
     - /alfred:2-run → development-guide.md
-    - @TAG mentions → TAG documentation
     - SPEC references → related SPEC files
 
     Exit Codes:

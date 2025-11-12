@@ -70,7 +70,6 @@ TRUST 5 Validation:
   ✓ R - Code readable and maintainable
   ✓ U - Unified with codebase patterns
   ✓ S - Security best practices
-  ✓ T - Traceable via @TAGs
 
 Design Analysis:
   ✓ SOLID principles
@@ -150,9 +149,6 @@ S - Secured:
 
 T - Trackable:
   ├─ SPEC referenced? ✓
-  ├─ Tests linked via @TEST? ✓
-  ├─ Code linked via @CODE? ✓
-  └─ Docs updated via @DOC? ✓
 ```
 
 ---
@@ -299,7 +295,6 @@ Consistent with team patterns
 
 - `moai-alfred-code-reviewer` (Manual review guidance)
 - `moai-essentials-debug` (Debugging techniques)
-- `moai-foundation-tags` (@TAG traceability)
 
 ---
 

@@ -28,7 +28,6 @@
 
 - TRUST 5 Principles: ✅ Compliant
 - Test Coverage: XX% (target ≥ 85%)
-- @TAG Traceability: 100%
 
 ## 🌍 Locale Settings
 

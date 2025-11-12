@@ -166,7 +166,6 @@ The `.moai/config/config.json` file contains all project-level configuration for
 
 **Fields**:
 - `enforce_tdd` (boolean, required): Whether TDD workflow is mandatory
-- `require_tags` (boolean, required): Whether @TAG annotations are required
 - `test_coverage_target` (integer, required): Minimum test coverage percentage (default: 85)
 - `simplicity_threshold` (integer, required): Max number of concurrent projects (default: 5)
 - `principles` (object, optional): Additional principle definitions
@@ -267,7 +266,6 @@ The `.moai/config/config.json` file contains all project-level configuration for
       "no_intermediate_cache": true,
       "realtime_validation": true,
       "scan_tools": ["rg", "grep"],
-      "scan_command": "rg '@TAG' -n",
       "philosophy": "The source of truth for TAGs lives in the code itself"
     }
   }

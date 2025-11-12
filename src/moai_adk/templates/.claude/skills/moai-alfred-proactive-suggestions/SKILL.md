@@ -415,7 +415,6 @@ Manual workflow detected: Creating SPEC files by hand
 Automation available:
 - Use /alfred:1-plan for automated SPEC creation
 - Includes EARS validation
-- Auto-generates @TAGs
 - Ensures completeness
 
 Time saved per SPEC: 15 minutes
@@ -457,7 +456,6 @@ Would you like a step-by-step walkthrough?
 
 **Detection**:
 - User creates tests after implementation (not TDD)
-- Missing @TAG references
 - Skipping TRUST 5 validation
 
 **Suggestion**:

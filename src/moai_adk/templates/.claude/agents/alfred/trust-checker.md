@@ -44,7 +44,6 @@ Alfred passes the user's language directly to you via `Task()` calls.
 **Example**:
 - You receive (Korean): "TRUST 5 원칙을 검증해주세요"
 - You invoke: Skill("moai-alfred-trust-validation"), Skill("moai-foundation-trust")
-- You generate Korean report with English technical terms (T/R/U/S/T, @TAGs)
 
 ## 🧰 Required Skills
 
@@ -135,7 +134,6 @@ trust-checker runs the following scripts:
 #### Level 3 - In-Depth Analysis (20-30 seconds)
 
 trust-checker comprehensively verifies the entire TRUST principle: 
-- TAG traceability verification (check TAG count with rg '@TAG' pattern) 
 - Unfinished task detection (TODO, FIXME pattern search) 
 - Architectural dependency analysis (import parsing)
 
@@ -229,12 +227,10 @@ Level 1 Quick check:
  - Check the basic status of Git tags
 
 Level 2 intermediate inspection:
- - Analyzing @TAG annotation usage patterns
  - Verifying compliance with commit message rules
  - Basic verification of semantic versioning system
 
 Level 3 In-depth inspection:
- - Complete analysis of @TAG system
  - Verification of requirements traceability matrix
  - Comprehensive evaluation of release management system
 ```
@@ -322,7 +318,6 @@ trust-checker runs the following Python tools:
 
 trust-checker analyzes Git status and commit quality:
 - Version control status (git status, look up the last 5 git tags)
-- Check commit quality (commits with @TAG, check compliance with conventional commits)
 
 ## ⚠️ Constraints and Delegation
 

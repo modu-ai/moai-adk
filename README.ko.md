@@ -35,7 +35,6 @@ MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 
 - ✅ **보증된 테스트**: 자동 TDD를 통해 85%+ 테스트 커버리지 달성
 - ✅ **살아있는 문서**: 자동 동기화되어 절대 떨어지지 않는 문서
 - ✅ **지속적인 컨텍스트**: Alfred가 프로젝트 이력과 패턴을 기억
-- ✅ **완전한 추적성**: `@TAG` 시스템으로 모든 산출물 연결
 - ✅ **품질 자동화**: TRUST 5 원칙을 자동으로 강제
 
 ---
@@ -70,7 +69,6 @@ MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 
 - **적응형 학습**: 프로젝트 패턴으로부터 자동 학습
 - **스마트 컨텍스트 관리**: 프로젝트 구조와 의존성 이해
 
-### 4. @TAG 시스템
 
 모든 산출물을 연결하는 완전한 추적성 시스템:
 
@@ -198,7 +196,6 @@ export MOAI_STATUSLINE_MODE=extended
 **안전한 자동 수정**:
 
 - ✅ **3단계 위험도**: SAFE (자동) / MEDIUM (승인필요) / HIGH (차단)
-- ✅ **중복 TAG 제거**: 자동으로 중복 @TAG 제거
 - ✅ **공백 정규화**: TAG 사이 공백을 일관되게 정규화
 - ✅ **백업 및 롤백**: 수정 전 백업, 오류 발생 시 자동 롤백
 
@@ -708,7 +705,6 @@ uv tool install --force moai-adk
       "no_intermediate_cache": true,
       "realtime_validation": true,
       "scan_tools": ["rg", "grep"],
-      "scan_command": "rg '@TAG' -n",
       "philosophy": "TAG의 진실은 소스 코드 자체에 존재한다"
     },
     "policy": {
@@ -1127,7 +1123,6 @@ cd my-awesome-project
 - ✅ 종합적인 테스트
 - ✅ 구현 코드
 - ✅ 업데이트된 문서
-- ✅ @TAG 참조가 포함된 Git 히스토리
 
 ### 다음 단계
 
@@ -1290,7 +1285,6 @@ _배경:_ 사용자가 모든 agent의 모델 지시어를 `sonnet`에서 `inher
 **결과:**
 
 - 26개 파일 모두 성공적으로 업데이트
-- Pre-commit @TAG 검증 통과
 - Feature 브랜치를 develop에 깔끔하게 merge
 
 ### 4단계: 보고 및 커밋
@@ -1835,7 +1829,6 @@ graph TD
 ### 팀을 위해
 
 - **통일된 표준**: TRUST 5 원칙을 팀 전체에 강제
-- **투명한 워크플로우**: @TAG를 통한 완전한 감사 추적
 - **협업**: 공유된 컨텍스트와 명확한 요구사항
 - **온보딩**: 신입 팀원이 패턴을 즉시 이해
 
@@ -1876,7 +1869,6 @@ MoAI-ADK는 사용자의 전문성 수준과 개발 컨텍스트에 맞춰 **5�
 #### Yoda Master를 사용할 때
 
 - **심층적 기술 이해**: "SPEC 우선 개발을 왜 사용할까?"
-- **원리 기반 학습**: TDD 철학, EARS 문법 설계, @TAG 시스템 아키텍처 이해
 - **문서 생성**: `.moai/learning/`에서 향후 참조용 가이드 자동 생성
 - **이해도 검증**: AskUserQuestion을 통해 진행 전 이해도 확인
 
@@ -1885,7 +1877,6 @@ MoAI-ADK는 사용자의 전문성 수준과 개발 컨텍스트에 맞춰 **5�
 Yoda Master는 **안정성을 위한 Skill 패턴**과 **최신 정보를 위한 Context7**을 활용합니다:
 
 - `Skill("moai-foundation-specs")` - SPEC 우선 철학과 EARS 문법
-- `Skill("moai-foundation-tags")` - @TAG 시스템 아키텍처와 추적성
 - `Skill("moai-domain-backend")` - 백엔드 아키텍처 원리
 - `Skill("moai-lang-python")` - Python 프로그래밍 숙달
 
@@ -1934,7 +1925,6 @@ Yoda Master 응답:
 
 # 그 후 기술 깊이 질문을 합니다
 "SPEC 우선 개발이 재작업을 방지하는 이유는?"
-"@TAG 시스템이 추적성을 유지하는 방식은?"
 "TRUST 5 원리는 무엇인가요?"
 ```
 

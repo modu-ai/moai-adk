@@ -77,7 +77,6 @@ trigger_cues: TRUST 준수 확인, 릴리즈 준비 검증, 품질 게이트 적
 #### 📋 메타데이터
 ```yaml
 name: moai-alfred-tag-scanning
-description: @TAG 마커 직접 스캔하여 TAG 인벤토리 생성 (CODE-FIRST 원칙)
 tier: Alfred (워크플로우 내부)
 auto_load: /alfred:3-sync 추적 가능성 게이트
 trigger_cues: TAG Scan, TAG List, TAG Inventory, Find orphan TAG, Check TAG chain
@@ -86,7 +85,6 @@ trigger_cues: TAG Scan, TAG List, TAG Inventory, Find orphan TAG, Check TAG chai
 #### ✅ 강점
 1. **명확한 CODE-FIRST 원칙**: 캐시 없이 직접 스캔 강조
 2. **구체적인 명령어 제시**: `rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/`
-3. **포괄적 TAG 유형 커버**: @SPEC, @TEST, @CODE, @DOC 모두 다룸
 4. **완벽한 메타데이터**: YAML frontmatter 100점
 
 #### 🔴 심각한 문제

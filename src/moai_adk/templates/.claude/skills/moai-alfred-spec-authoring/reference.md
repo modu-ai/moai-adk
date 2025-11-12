@@ -452,7 +452,6 @@ using cryptographic signatures before accepting requests.
 
 | Check | Pass | Fail |
 |-------|------|------|
-| @TEST tags linked to REQs | ✓ | Add test case references |
 
 ### Documentation Quality
 

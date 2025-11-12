@@ -74,7 +74,6 @@ You are the TDD implementer. Implement user login with:
 - GREEN: Implement minimal passing code
 - REFACTOR: Optimize and clean up
 
-Include @AUTH-001 in all references.
 Add docstrings and type hints.
   """
 )
@@ -85,11 +84,9 @@ Add docstrings and type hints.
 **상황**: 새로운 기능 개발
 
 ```
-Step 1: SPEC 작성 (@AUTH-001)
 ────────────────────────────
 spec.md:
 """
-@AUTH-001: Implement JWT authentication
 
 Requirements:
 - Generate JWT tokens
@@ -97,11 +94,9 @@ Requirements:
 - Refresh token support
 """
 
-Step 2: TEST 작성 (@AUTH-001)
 ────────────────────────────
 test_auth.py:
 """
-@AUTH-001: JWT authentication tests
 
 def test_generate_jwt_token():
     # Test valid token generation
@@ -113,11 +108,9 @@ def test_refresh_token():
     # Test token refresh
 """
 
-Step 3: CODE 작성 (@AUTH-001)
 ────────────────────────────
 auth.py:
 """
-@AUTH-001: JWT authentication implementation
 
 def generate_jwt_token(user_id):
     # Implementation
@@ -129,9 +122,7 @@ def refresh_token(token):
     # Implementation
 """
 
-Step 4: COMMIT (@AUTH-001)
 ────────────────────────────
-$ git commit -m "feat(@AUTH-001): Implement JWT authentication
 
 - Add JWT token generation
 - Add token validation with expiration
@@ -199,7 +190,6 @@ class MergeValidator:
         return self.checks["coverage"]
     
     def validate_tags(self):
-        # @TAG 체인 무결성
         Skill("moai-foundation-tags")
         # → 반환: chain_complete (bool)
         self.checks["tags_complete"] = True  # Result from Skill
@@ -210,7 +200,6 @@ class MergeValidator:
         commits = self.get_branch_commits()
         for commit in commits:
             # feat(), test(), refactor(), fix() 형식 확인
-            # @TAG 포함 확인
             pass
         self.checks["commit_format"] = True
         return self.checks["commit_format"]
@@ -261,7 +250,6 @@ def orchestrate_feature_development():
     implementation = Task(
         subagent_type="tdd-implementer",
         description=f"Implement {feature_name}",
-        prompt="Follow RED-GREEN-REFACTOR, add @TAG"
     )
     
     # Step 3: Testing (if not covered in TDD)
@@ -293,7 +281,6 @@ def orchestrate_feature_development():
     commit = Task(
         subagent_type="git-manager",
         description=f"Commit {feature_name}",
-        prompt="TDD commit format, link @TAGs, push"
     )
     
     print("✅ Feature development complete")
@@ -321,7 +308,6 @@ def detect_violations():
     if "TRUST 5" in task_description and "Skill(" not in code:
         violations["skill_not_invoked"] = True
     
-    # Check 3: @TAG 고아 확인
     all_tags = find_all_tags()
     for tag in all_tags:
         if tag_has_no_chain(tag):
@@ -383,13 +369,11 @@ class CommitValidator:
 # Usage
 validator = CommitValidator()
 
-commit_msg = """feat(@AUTH-001): Implement user login
 
 - Add JWT token generation
 - Add credential validation
 - Add error handling
 
-Implements @AUTH-001"""
 
 is_valid, msg = validator.validate_message(commit_msg)
 if is_valid:
@@ -486,7 +470,6 @@ dashboard.print_dashboard()
 
 ### 신규 기능 개발 체크리스트
 
-- [ ] SPEC 작성 (@TAG 포함)
 - [ ] AskUserQuestion로 의도 명확화 (필요 시)
 - [ ] plan-agent로 계획 수립
 - [ ] tdd-implementer로 RED-GREEN-REFACTOR 구현
@@ -504,7 +487,6 @@ dashboard.print_dashboard()
 - [ ] Agent delegation 올바른가?
 - [ ] Command가 직접 실행하는 부분은?
 - [ ] TRUST 5 모두 통과?
-- [ ] @TAG 체인 완전?
 - [ ] 커밋 메시지 형식 맞음?
 - [ ] 테스트 커버리지 ≥ 85%?
 - [ ] 보안 스캔 통과?

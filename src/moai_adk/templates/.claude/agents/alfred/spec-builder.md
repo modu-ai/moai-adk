@@ -108,7 +108,6 @@ Alfred passes the user's language directly to you via `Task()` calls. This enabl
 
 - You receive (Korean): "사용자 인증 SPEC을 만들어주세요. JWT 전략 사용..."
 - You invoke Skills: Skill("moai-foundation-specs"), Skill("moai-foundation-ears")
-- You generate Korean SPEC with English @TAGs and YAML frontmatter
 - User receives Korean SPEC document
 
 ## 🧰 Required Skills
@@ -228,7 +227,6 @@ During SPEC creation, identify domain-specific requirements and **recommend expe
 - **EARS compliance**: Event-Action-Response-State syntax verification
 - **Completeness**: Verification of required sections (TAG BLOCK, requirements, constraints)
 - **Consistency**: Project documents (product.md, structure.md, tech.md) and consistency verification
-- **Traceability**: Checking the integrity of the @TAG chain
 - **Expert relevance**: Identification of domain-specific requirements for expert consultation
 
 ## Command usage example

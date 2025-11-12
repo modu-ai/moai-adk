@@ -175,19 +175,13 @@ def get_user(user_id: int) -> User:
 ```
 
 ### T - Trackable
-**Focus**: Documentation, @TAG traceability, changelog
 
 **Key Questions**:
-- Code linked to SPEC requirements via @SPEC?
-- Tests linked via @TEST?
-- Implementation linked via @CODE?
-- Documentation updated via @DOC?
 - Changelog entry added?
 - Git history clear and atomic?
 - Breaking changes documented?
 - Migration guides for version updates?
 
-**Tools**: @TAG system, git history, changelog
 
 **Examples**:
 ```python
@@ -198,9 +192,6 @@ def calculate_discount(price, customer_type):
     return price
 
 # ✅ Good: Full traceability
-@SPEC("SPEC-042", "VIP customer 20% discount")
-@TEST("test_vip_discount_20_percent")
-@CODE("feature/vip-discount")
 def calculate_discount(price: float, customer_type: str) -> float:
     """Calculate discount based on customer type.
     
@@ -268,7 +259,6 @@ def calculate_discount(price: float, customer_type: str) -> float:
 ✓ Edge cases handled?
 ✓ Error messages helpful?
 ✓ Documentation complete?
-✓ @TAG traceability present?
 ```
 
 ---
@@ -307,7 +297,6 @@ def calculate_discount(price: float, customer_type: str) -> float:
 - **Block on minor issues**: Distinguish critical from nice-to-have
 - **Skip security review**: Always check authentication, validation, secrets
 - **Ignore test coverage**: Enforce ≥85% requirement
-- **Miss @TAG traceability**: Always verify SPEC→TEST→CODE→DOC chain
 
 ---
 
@@ -324,7 +313,6 @@ def calculate_discount(price: float, customer_type: str) -> float:
 
 - `moai-alfred-practices` (Code patterns and best practices)
 - `moai-essentials-refactor` (Refactoring strategies)
-- `moai-foundation-tags` (@TAG system and traceability)
 
 ---
 

@@ -24,7 +24,6 @@ allowed-tools:
 - **4 SPEC Lifecycle States**: Draft, Active, Deprecated, Archived
 - **Version Management**: Semantic versioning (major.minor.patch)
 - **Approval Workflow**: Author → Review → Approval → Deployment
-- **Traceability**: Link SPEC → Code → Tests → Documentation via @SPEC tags
 - **Integration**: Core of `/alfred:1-plan` workflow in MoAI-ADK
 
 ### When to Use This Skill
@@ -156,7 +155,6 @@ REQ-003 (Optional): When mfa_timeout_exceeded the system immediately satisfies
 2. Create feature branch: `feature/SPEC-XXX`
 3. Implement per SPEC requirements
 4. Tests validate against acceptance criteria
-5. Code commits reference SPEC: `@SPEC-XXX`
 
 **During Active Phase**:
 - ✅ Spec is reference for development
@@ -534,7 +532,6 @@ REQ-011-015: [5 state-driven mode requirements]
 - ✅ Create migration guides for major versions
 
 ### 4. Traceability
-- ✅ Use @SPEC tags in code
 - ✅ Link tests to requirements
 - ✅ Link documentation to spec
 - ✅ Create traceability matrix
@@ -579,7 +576,6 @@ TDD cycle:
   GREEN: Implementation
   REFACTOR: Code quality
   ↓
-Code references @SPEC-050 tags
   ↓
 Tests link to requirements
 ```
@@ -598,8 +594,6 @@ Creates PR to develop
 ```
 
 ### With moai-foundation-tags
-- All code changes reference `@SPEC-XXX`
-- Tests tagged with `@TEST-XXX` → linked to `@SPEC-XXX`
 - Documentation includes spec rationale
 - Complete traceability: SPEC → Code → Tests → Docs
 
@@ -745,7 +739,6 @@ Creates PR to develop
 | Stuck in review | Set review deadline, escalate to tech lead |
 | Scope creep | Document as separate SPEC, increment version |
 | Changing requirements | Version bump, impact analysis, re-review |
-| Lost traceability | Use @SPEC tags, create traceability matrix |
 | Too many specs | Organize by domain, create index |
 | Old archived specs | Move to .moai/specs/archive/, compress |
 
@@ -773,7 +766,6 @@ Creates PR to develop
 ## Works Well With
 
 - `moai-foundation-ears` — Write requirements using EARS patterns
-- `moai-foundation-tags` — Trace SPEC through code (@SPEC tags)
 - `moai-foundation-trust` — TRUST 5 quality principles
 - `moai-alfred-agent-guide` — Alfred agent orchestration with SPECs
 

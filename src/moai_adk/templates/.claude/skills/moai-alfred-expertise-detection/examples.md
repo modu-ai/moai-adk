@@ -52,7 +52,6 @@ To start:
 
 Related Skills to learn:
 - Skill("moai-foundation-specs") - SPEC structure
-- Skill("moai-foundation-tags") - @TAG traceability
 - Skill("moai-foundation-trust") - TRUST 5 principles
 
 Would you like me to guide you through /alfred:0-project step-by-step?
@@ -68,8 +67,6 @@ Would you like me to guide you through /alfred:0-project step-by-step?
 User: "/alfred:1-plan"
 Alfred: "What's the SPEC title?"
 User: "User authentication with JWT"
-User: (creates SPEC, but forgets @TAG in one section)
-User: "Can I add the @TAG retroactively?"
 ```
 
 ### Signal Analysis
@@ -79,7 +76,6 @@ User: "Can I add the @TAG retroactively?"
 | Command Usage | Correct command syntax | +1 |
 | Questions | Specific clarification ("Can I?") | +1 |
 | Error Recovery | Notices mistake, asks fix | +1 |
-| Documentation | Knows SPEC format, @TAG concept | +1 |
 | Git Workflow | Uses /alfred commands | +1 |
 
 **Total Score**: 5 → **Intermediate**
@@ -93,13 +89,11 @@ User: "Can I add the @TAG retroactively?"
 
 **Response Example**:
 ```
-Yes, you can add @TAGs retroactively.
 
 Edit .moai/specs/SPEC-AUTH-001/spec.md and insert:
 
 Then run /alfred:3-sync to update documentation links.
 
-Best practice: Add @TAGs during SPEC creation to avoid this step.
 
 Proceed with manual edit?
   [Yes, I'll edit now] [No, regenerate SPEC]
@@ -246,7 +240,6 @@ Related: Skill("moai-foundation-trust") for full TRUST 5 guide
 User: "/alfred:1-plan" (Correct syntax +1)
 User: "What's the difference between SPEC and plan?" (Basic question +2)
 User: (Creates SPEC successfully) (+1)
-User: "How do @TAGs work?" (Basic question +2)
 ```
 
 ### Signal Analysis
@@ -255,7 +248,6 @@ User: "How do @TAGs work?" (Basic question +2)
 - Command usage: Intermediate (+1)
 - Questions: Beginner (+2, +2)
 - SPEC creation: Intermediate (+1)
-- @TAG knowledge: Beginner (+2)
 
 **Total Score**: 8 → **Beginner**
 
@@ -264,7 +256,6 @@ User: "How do @TAGs work?" (Basic question +2)
 ### Alfred Adaptation
 
 **Behavior**: Technical Mentor mode
-**Rationale**: User understands mechanics (commands) but lacks conceptual knowledge (@TAGs, SPEC)
 
 **Response Strategy**: Provide educational explanations while leveraging command proficiency
 

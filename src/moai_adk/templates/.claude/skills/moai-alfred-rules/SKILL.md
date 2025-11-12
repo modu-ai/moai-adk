@@ -261,7 +261,6 @@ Design Activities:
 | **Readable** | Clean code, SOLID 원칙, 주석 포함 |
 | **Unified** | 일관된 패턴, 중복 제거, 네이밍 표준 |
 | **Secured** | OWASP Top 10 확인, 비밀정보 제거 |
-| **Trackable** | @TAG 체인 완전, 추적 가능성 확보 |
 
 ### Phase 4: Produce (생성 & 배포)
 
@@ -579,23 +578,14 @@ requirements:
     - Known CVEs checked
 ```
 
-#### T: Trackable (@TAG Chain)
 ```yaml
 requirements:
   tag_chain:
-    - SPEC@TAG-001 → TEST@TAG-001 → CODE@TAG-001
-    - @TAG format: @DOMAIN-###
     - Complete history traceability
   
   documentation:
-    - @TAG in SPEC
-    - @TAG in test file
-    - @TAG in implementation
-    - @TAG in commit message
   
   validation:
-    - No orphan @TAGs
-    - All @TAGs linked
     - Bidirectional references
 ```
 
@@ -609,33 +599,18 @@ requirements:
 Format: @<DOMAIN>-<###>
 
 Examples:
-  @AUTH-001    (Authentication domain)
-  @API-042     (API domain)
-  @DB-015      (Database domain)
-  @SEC-008     (Security domain)
-  @PERF-003    (Performance domain)
 ```
 
 ### 규칙 7.2: TAG Lifecycle
 
 ```
-Step 1: SPEC (@TAG assigned)
-  └─ Example: @AUTH-001 → User authentication feature
 
-Step 2: TEST (@TAG referenced)
   └─ Example: test_auth.py - test_auth_success()
-             # Tests @AUTH-001: valid credentials
 
-Step 3: CODE (@TAG referenced)
   └─ Example: auth.py - authenticate_user()
-             # Implements @AUTH-001
 
-Step 4: DOC (@TAG referenced)
   └─ Example: CHANGELOG.md
-             Added @AUTH-001 - User authentication
 
-Step 5: COMMIT (@TAG in message)
-  └─ Example: git commit -m "feat(@AUTH-001): Implement authentication"
 ```
 
 ### 규칙 7.3: TAG Validation Rules
@@ -643,24 +618,15 @@ Step 5: COMMIT (@TAG in message)
 **❌ 위반**:
 ```python
 # 1. Orphan TAG (TEST/CODE 없음)
-@AUTH-001 in SPEC only
 
 # 2. 깨진 체인 (missing step)
-@AUTH-001 in SPEC + CODE, but no TEST
 
 # 3. 불일치 (다른 번호)
-SPEC: @AUTH-001
-TEST: @AUTH-002  # Wrong!
-CODE: @AUTH-001
 ```
 
 **✅ 정확**:
 ```python
 # Complete chain
-SPEC:   @AUTH-001 - User authentication
-TEST:   @AUTH-001 - test_authenticate()
-CODE:   @AUTH-001 - authenticate_user()
-COMMIT: "feat(@AUTH-001): Implement authentication"
 ```
 
 ---
@@ -682,7 +648,6 @@ Format:
 
 **RED Commit** (테스트 작성):
 ```
-test(@AUTH-001): Add authentication tests
 
 - test_successful_login()
 - test_invalid_credentials()
@@ -693,7 +658,6 @@ Status: RED (Tests fail as expected)
 
 **GREEN Commit** (구현):
 ```
-feat(@AUTH-001): Implement user authentication
 
 - Implement authenticate_user() function
 - Add token generation
@@ -704,7 +668,6 @@ Status: GREEN (All tests pass)
 
 **REFACTOR Commit** (최적화):
 ```
-refactor(@AUTH-001): Optimize authentication flow
 
 - Extract token validation to separate function
 - Add caching for user lookups
@@ -717,11 +680,6 @@ Status: PASSING (Tests still pass, code improved)
 
 | 타입 | 설명 | 예시 |
 |------|------|------|
-| **feat** | 새 기능 | `feat(@API-042): Add user endpoint` |
-| **fix** | 버그 수정 | `fix(@BUG-001): Fix null pointer` |
-| **test** | 테스트 추가 | `test(@AUTH-001): Add edge cases` |
-| **refactor** | 코드 개선 | `refactor(@PERF-003): Optimize query` |
-| **docs** | 문서화 | `docs(@API-042): Update API docs` |
 | **chore** | 빌드/설정 | `chore: Update dependencies` |
 
 ---
@@ -731,9 +689,6 @@ Status: PASSING (Tests still pass, code improved)
 ### 규칙 9.1: Compliance Checklist
 
 **Before Commit**:
-- [ ] SPEC 작성됨 (@TAG 포함)
-- [ ] TEST 작성됨 (@TAG 참조)
-- [ ] CODE 작성됨 (@TAG 참조)
 - [ ] 테스트 통과 (85%+ coverage)
 - [ ] Linting 통과 (black, flake8)
 - [ ] Security scan 통과 (bandit, safety)

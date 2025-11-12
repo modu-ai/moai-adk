@@ -224,7 +224,6 @@ CRITICAL LANGUAGE CONFIGURATION:
 SPEC DOCUMENT LANGUAGE RULES:
 SPEC documents must follow dual language structure (user language + English summary):
 - YAML metadata: Always English (global standard)
-- @TAG identifiers: Always English (global standard)
 - Skill names in invocations: Always English (global standard)
 - Main content: {{CONVERSATION_LANGUAGE}}
 - SUMMARY section: Always English (for international contributors)
@@ -496,7 +495,6 @@ All SPEC documents content must be written in {{CONVERSATION_LANGUAGE}}:
 - acceptance.md: Main content in {{CONVERSATION_LANGUAGE}}
 
 ALWAYS ENGLISH (global standards):
-- YAML frontmatter and @TAG identifiers
 - Skill names in invocations: Skill("skill-name")
 - Code examples and technical keywords
 - Technical terms and function names
@@ -536,7 +534,6 @@ The spec-builder agent will:
    status: draft
    created: 2025-09-15
    updated: 2025-09-15
-   author: @Goos
    priority: high
    ---
    ```
@@ -547,7 +544,6 @@ The spec-builder agent will:
    - `status`: draft | in_progress | completed | deprecated
    - `created`: YYYY-MM-DD
    - `updated`: YYYY-MM-DD
-   - `author`: GitHub @ prefix + ID (e.g. `@Goos`)
    - `priority`: critical | high | medium | low
 
    **Optional fields** (9 total):
@@ -566,7 +562,6 @@ The spec-builder agent will:
 
    ### v0.0.1 (2025-09-15)
    - **INITIAL**: Initial creation of [feature name] specification
-   - **AUTHOR**: @Goos
    - **SCOPE**: [Brief scope description]
    - **CONTEXT**: [Why this SPEC was created]
    ```
@@ -593,7 +588,6 @@ The spec-builder agent will:
 
    **Traceability section**:
    ```markdown
-   ## Traceability (@TAG)
    - **TEST**: tests/[domain]/test_[feature].py
    - **CODE**: src/[domain]/[feature].py
    - **DOC**: docs/[domain]/[feature].md
@@ -761,7 +755,6 @@ The git-manager agent will:
 
    🤖 Generated with Claude Code
 
-   Co-Authored-By: 🎩 Alfred@MoAI"
    ```
 
 4. **Push branch to remote** (Team mode only):
@@ -817,7 +810,6 @@ After Draft PR is created, CodeRabbit automatically triggers SPEC review:
 - ✅ HISTORY section structure and completeness
 - ✅ EARS requirements clarity (Ubiquitous/Event-driven/State-driven/Optional/Unwanted Behaviors)
 - ✅ Acceptance criteria quality (Given-When-Then scenarios)
-- ✅ @TAG system compliance (SPEC/TEST/CODE/DOC traceability)
 - ✅ Documentation and formatting
 
 **Expected timeline**: 1-2 minutes
@@ -922,7 +914,6 @@ For complete metadata field descriptions, validation rules, and version system g
 - Preparation of EARS structure specifications
 - Preparation of Acceptance Criteria (Given-When-Then)
 - Verification of SPEC document quality
-- Application of @TAG system
 
 **git-manager dedicated area**:
 - Create and manage all Git branches

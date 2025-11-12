@@ -23,22 +23,18 @@ Implement secure user authentication system with email/password login, password 
 
 ## Requirements
 
-@REQ-AUTH-001-001: Users can register with email and password
 - Email format validation
 - Password complexity validation (min 8 chars, 1 uppercase, 1 digit)
 - Unique email constraint
 
-@REQ-AUTH-001-002: Users can log in with email/password
 - Verify email/password combination
 - Rate limit login attempts (max 5 per minute)
 - Return authentication token on success
 
-@REQ-AUTH-001-003: Passwords must be securely hashed
 - Use bcrypt with salt rounds ≥ 10
 - Never store plaintext passwords
 - Support password verification without reversal
 
-@REQ-AUTH-001-004: Account lockout on multiple failures
 - Lock after 5 failed attempts
 - Auto-unlock after 30 minutes
 - Email notification on lockout
@@ -549,7 +545,6 @@ Bug Fix Chain:
 
 ## Example 3: Detecting and Fixing an Orphan TAG
 
-### Scenario: Orphan @CODE TAG Without SPEC
 
 **Found During Scan**:
 ```bash

@@ -14,16 +14,11 @@
 - **Validation**: Must be approved by SPEC reviewer
 
 - **Location**: `tests/test_*.py`
-- **Purpose**: Implement test cases validating @SPEC
-- **Validation**: Must link to existing @SPEC
 
 - **Location**: `src/**/*.py`
-- **Purpose**: Mark code that implements @SPEC requirements
-- **Validation**: Must reference valid @SPEC
 
 - **Location**: `docs/**/*.md`
 - **Purpose**: Link documentation to implementation
-- **Validation**: Must reference @SPEC or @CODE
 
 ## Chain Relationships
 
@@ -38,9 +33,7 @@
 ### Invalid Patterns (Validation Errors)
 
 ```
-PATTERN 1: Floating @TEST (no @SPEC)
 
-PATTERN 2: Orphan @SPEC (no @TEST/@CODE)
 
 PATTERN 3: Circular reference
 
@@ -89,10 +82,6 @@ def validate_chain(spec_tag):
     }
     refs = find_references(spec_tag)
     for ref in refs:
-        if '@SPEC' in ref: chains['spec'] = True
-        if '@TEST' in ref: chains['test'] = True
-        if '@CODE' in ref: chains['code'] = True
-        if '@DOC' in ref: chains['doc'] = True
     return all(chains.values())  # All parts present
 ```
 
@@ -107,17 +96,9 @@ def validate_chain(spec_tag):
 
 ### Semantic Rules
 - TAGs must be unique across codebase
-- @SPEC must exist before linking
-- @TEST must reference valid @SPEC
-- @CODE must reference valid @SPEC
-- @DOC must reference @SPEC or @CODE
 - No circular dependencies allowed
 
 ### Coverage Rules
-- Every @SPEC should have @TEST (≥1)
-- Every @TEST should validate a @SPEC (≥1)
-- Every @CODE should implement a @SPEC (≥1)
-- Test coverage ≥85% for all @CODE
 
 ## Orphan Detection Patterns
 
@@ -151,29 +132,18 @@ WHERE type = 'TEST'
 
 ```
 Found Orphan TAG?
-    ├─ Type A: Unused @SPEC
     │  ├─ Feature cancelled?
-    │  │  └─ Mark @DEPRECATED
     │  └─ Feature pending?
-    │     └─ Link to @TEST/@CODE
     │
-    ├─ Type B: Floating @TEST
     │  ├─ Valid test?
-    │  │  └─ Create missing @SPEC
     │  └─ Obsolete?
-    │     └─ Mark @DEPRECATED
     │
-    ├─ Type C: Stray @CODE
     │  ├─ Active feature?
     │  │  └─ Create SPEC→TEST chain
     │  └─ Legacy code?
-    │     └─ Document with @DOC
     │
-    └─ Type D: Orphan @DOC
        ├─ Source still exists?
-       │  └─ Link to @SPEC/@CODE
        └─ Outdated doc?
-          └─ Mark @DEPRECATED or delete
 ```
 
 ## Version Compatibility
@@ -196,15 +166,10 @@ Found Orphan TAG?
 
 ### Setup Phase
 - [ ] Review TAG system architecture (this Skill Level 1)
-- [ ] Understand four-chain model (@SPEC→@TEST→@CODE→@DOC)
 - [ ] Review naming conventions and syntax rules
 - [ ] Configure `.moai/config.json` TAG settings
 
 ### Development Phase
-- [ ] Create @SPEC for new feature (Day 1)
-- [ ] Add @TEST tags in test files (Days 2-3)
-- [ ] Link @CODE tags in implementation (Days 4-5)
-- [ ] Add @DOC tags in documentation (Day 6)
 - [ ] Run validation script before commit
 
 ### Validation Phase
@@ -228,16 +193,12 @@ apt-get install ripgrep  # Linux
 ```
 
 ### Issue: Circular reference detected
-**Cause**: @SPEC references @CODE that references @TEST that references @SPEC  
 **Solution**: Restructure to avoid loops. Use linear chain only.
 
-### Issue: Coverage < 85% for @SPEC
-**Cause**: @SPEC has @TEST but code coverage metrics are low  
 **Solution**: Add more test cases or improve test quality. Use mutation testing.
 
 ### Issue: Orphan TAGs prevent merge
 **Cause**: CI/CD validation fails on orphan detection  
-**Solution**: Either link orphan or mark as @DEPRECATED before committing.
 
 ## Next Steps
 

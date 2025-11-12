@@ -42,7 +42,6 @@ Documentation validation ensures content accuracy, completeness, and compliance 
 - **Content Accuracy**: Validate code examples, API signatures, configuration patterns
 - **Completeness Checking**: Ensure all required sections present and filled
 - **Quality Metrics**: Measure readability, coverage, translation quality
-- **TAG Verification**: Validate @TAG linkage (@SPEC, @TEST, @CODE, @DOC chains)
 - **Multilingual Consistency**: Verify structure and content alignment across languages
 
 **Key Benefits**:
@@ -58,7 +57,6 @@ Documentation validation ensures content accuracy, completeness, and compliance 
 
 ```yaml
 Rules:
-  - SPEC References: Every feature doc must reference its @SPEC
   - Requirement Coverage: All SPEC requirements addressed in documentation
 ```
 
@@ -81,7 +79,6 @@ Documentation validation ensures content accuracy, completeness, and compliance 
 - **Content Accuracy**: Validate code examples, API signatures, configuration patterns
 - **Completeness Checking**: Ensure all required sections present and filled
 - **Quality Metrics**: Measure readability, coverage, translation quality
-- **TAG Verification**: Validate @TAG linkage (@SPEC, @TEST, @CODE, @DOC chains)
 - **Multilingual Consistency**: Verify structure and content alignment across languages
 
 **Key Benefits**:
@@ -97,7 +94,6 @@ Documentation validation ensures content accuracy, completeness, and compliance 
 
 ```yaml
 Rules:
-  - SPEC References: Every feature doc must reference its @SPEC
   - Requirement Coverage: All SPEC requirements addressed in documentation
 ```
 
@@ -202,10 +198,7 @@ def calculate_quality_score(self, doc_path: Path) -> float:
 Valid Chains:
 
 Chain Rules:
-  - No orphaned @TAGs (every TAG must have parent SPEC)
   - No broken links (referenced TAGs must exist)
-  - All @SPECs documented (every feature has @DOC)
-  - Bidirectional references (@SPEC links to @TEST, @TEST links back to @SPEC)
 ```
 
 **Verification Script Pattern**:
@@ -219,7 +212,6 @@ class TAGVerifier:
         self.doc_refs = {}
 
     def verify_chain(self, spec_id: str) -> ValidationResult:
-        """Verify complete @TAG chain for a SPEC"""
         result = ValidationResult(spec_id)
 
         # Check SPEC exists

@@ -328,7 +328,6 @@ coderabbit:
 ✅ Readable         → 코드 가독성 확인
 ✅ Unified          → 스타일 일관성 확인
 ✅ Secured          → 보안 이슈 검출
-✅ Trackable        → @TAG 시스템 호환
 ```
 
 ### Alfred와의 연동

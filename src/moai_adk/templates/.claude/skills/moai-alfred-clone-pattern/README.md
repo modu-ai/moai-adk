@@ -80,7 +80,6 @@ clone = create_clone(
 ### 3. Autonomous Execution
 Clone executes independently with full capabilities:
 - Plans approach autonomously
-- Documents decisions via @TAG
 - Creates PR if modifications needed
 - Saves learnings to memory
 
@@ -149,7 +148,6 @@ Clones automatically save learnings to improve future tasks:
 
 All clone operations maintain:
 - ✅ TRUST 5 principles
-- ✅ @TAG chain integrity  
 - ✅ All tests passing
 - ✅ PR ready for review
 - ✅ Complete documentation

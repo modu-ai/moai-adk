@@ -377,7 +377,6 @@ Research References:
 | **Readable** | Clear API documentation and code examples |
 | **Unified** | Consistent design patterns across all endpoints |
 | **Secured** | Comprehensive security validation and testing |
-| **Trackable** | @TAG system for API components and research |
 
 ### TAG Chain Integrity
 

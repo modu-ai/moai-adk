@@ -416,7 +416,6 @@ Research References:
 | **Readable** | Clear component documentation and code examples |
 | **Unified** | Consistent design patterns across all components |
 | **Secured** | Security validation for component inputs |
-| **Trackable** | @TAG system for component components and research |
 
 ### TAG Chain Integrity
 
