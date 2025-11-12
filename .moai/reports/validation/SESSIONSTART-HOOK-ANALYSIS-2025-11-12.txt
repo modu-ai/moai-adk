@@ -1,0 +1,246 @@
+CLAUDE CODE SESSIONSTART 훅 시스템 분석 보고서
+========================================
+작성일: 2025-11-12
+대상: MoAI-ADK SessionStart 훅 config 플래그 연동
+
+## 현재 상황 분석
+
+### 1. Claude Code 훅 시스템 아키텍처
+
+Claude Code의 훅 시스템은 3가지 계층으로 구성:
+
+LAYER 1: .claude/settings.json (Claude Code 설정)
+├─ "hooks" 섹션에서 이벤트 정의
+├─ SessionStart, PreToolUse, PostToolUse, SessionEnd 등
+└─ 각 이벤트마다 실행할 Python 스크립트 명시
+
+LAYER 2: .claude/hooks/alfred/*.py (실제 훅 구현)
+├─ session_start__show_project_info.py
+├─ session_start__config_health_check.py
+├─ pre_tool__auto_checkpoint.py
+└─ 기타 이벤트별 Python 스크립트
+
+LAYER 3: .moai/config/config.json (MoAI 설정)
+├─ session.suppress_setup_messages (true/false)
+├─ session.setup_messages_suppressed_at (ISO 8601 timestamp)
+└─ 기타 프로젝트 설정
+
+### 2. 현재 상태
+
+구현 상태:
+✅ .claude/settings.json에서 SessionStart 이벤트 등록됨
+   - session_start__show_project_info.py 실행
+   - session_start__config_health_check.py 실행
+
+✅ 실제 Python 훅 구현 완료
+   - session_start__show_project_info.py: 프로젝트 정보 표시
+   - session_start__config_health_check.py: 설정 상태 확인
+
+✅ .moai/config/config.json에 설정 필드 존재
+   - session.suppress_setup_messages: false (현재값)
+   - session.setup_messages_suppressed_at: "2025-11-12T00:00:00Z"
+
+문제점:
+❌ session_start__show_project_info.py가 suppress_setup_messages 플래그를 무시함
+   - 현재 코드는 "suppress_setup_messages"를 전혀 읽지 않음
+   - 항상 프로젝트 정보를 표시함
+
+❌ session_start__config_health_check.py가 suppress_setup_messages 플래그를 무시함
+   - 설정 상태 체크 결과를 항상 표시함
+   - 플래그 값을 읽지 않음
+
+### 3. 현재 동작 흐름
+
+현재 SessionStart 훅 실행 흐름:
+
+1. Claude Code 세션 시작
+   ↓
+2. .claude/settings.json에 정의된 SessionStart 이벤트 트리거
+   ↓
+3. session_start__show_project_info.py 실행
+   ├─ Git 정보 수집 (브랜치, 변경사항, 최근 커밋)
+   ├─ SPEC 진행상황 수집
+   └─ 시스템 메시지로 출력 (항상 표시)
+   ↓
+4. session_start__config_health_check.py 실행
+   ├─ 설정 완성도 확인
+   ├─ 버전 일치 검증
+   └─ 시스템 메시지로 출력 (항상 표시)
+
+문제: .moai/config/config.json의 session.suppress_setup_messages 플래그가 전혀 반영되지 않음
+
+### 4. 수정 필요 사항
+
+#### 4.1 session_start__show_project_info.py 수정 필요
+
+현재 코드:
+- format_session_output() 함수가 항상 출력 생성
+- suppress_setup_messages 플래그를 전혀 확인하지 않음
+
+필요 수정:
+- should_show_setup_messages() 함수 구현
+- main()에서 플래그 확인 후 조건부로 systemMessage 생성
+- suppress_setup_messages가 true인 경우: 빈 메시지 반환
+
+#### 4.2 session_start__config_health_check.py 수정 필요
+
+현재 코드:
+- 항상 config_report 생성
+- suppress_setup_messages 플래그 무시
+
+필요 수정:
+- should_suppress_setup() 함수로 suppress_setup_messages 확인
+- suppress_setup_messages가 true인 경우: 반환 전 체크 로직만 수행
+- should_update가 false일 때만 sessionEnd로 미룰 수 있도록 구조화
+
+#### 4.3 .claude/SessionStart.md 문서 유지
+
+현재 상태:
+- SessionStart.md에 구현 로직이 명시되어 있음
+- 하지만 실제 구현과 불일치
+
+필요 조치:
+- SessionStart.md 유지 (문서는 정확함)
+- 실제 Python 구현을 문서에 맞게 수정
+
+### 5. 기술적 구현 상세
+
+SessionStart 훅의 동작 원리:
+
+1. .claude/settings.json이 Claude Code에 의해 로드됨
+   {
+     "hooks": {
+       "SessionStart": [
+         {
+           "type": "command",
+           "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session_start__show_project_info.py"
+         },
+         ...
+       ]
+     }
+   }
+
+2. Claude Code가 SessionStart 이벤트 발생
+   - 세션 시작 시에 자동 트리거
+   - 훅 실행 순서는 위에서 아래로 순차 실행
+
+3. Python 스크립트 실행
+   - stdin을 통해 JSON 페이로드 수신 가능
+   - stdout으로 JSON 응답 반환
+   {
+     "continue": true,
+     "systemMessage": "사용자에게 표시할 메시지",
+     "askUserQuestion": {...}  // 선택사항
+   }
+
+4. 반환 값 처리
+   - "continue": true → 다음 훅 실행
+   - "continue": false → 훅 체인 중단
+   - "systemMessage" → Claude Code가 사용자에게 표시
+   - "hookSpecificOutput" → 시스템 로그 기록
+
+### 6. config.json 플래그의 의미
+
+session.suppress_setup_messages:
+
+값: false (현재)
+- 동작: SessionStart 훅이 setup 메시지 항상 표시
+- 사용 시나리오: 프로젝트 초기 설정 또는 사용자가 명시적으로 요청
+
+값: true
+- 동작: SessionStart 훅이 setup 메시지 생략
+- setup_messages_suppressed_at를 확인하여 7일 초과 시 다시 표시
+- 사용 시나리오: 프로젝트가 이미 설정되었고, 이전 setup 메시지를 본 경우
+
+### 7. SessionStart.md 문서의 정확성 검증
+
+문서에 기술된 should_show_setup_messages() 로직:
+
+```python
+def should_show_setup_messages():
+    config_path = Path(".moai/config/config.json")
+
+    if not config_path.exists():
+        return True
+
+    with open(config_path) as f:
+        config = json.load(f)
+
+    if not config.get("project", {}).get("initialized", False):
+        return True
+
+    session_config = config.get("session", {})
+    suppress = session_config.get("suppress_setup_messages", False)
+
+    if not suppress:
+        return True  # suppress가 False이면 항상 표시
+
+    suppressed_at_str = session_config.get("setup_messages_suppressed_at")
+    if not suppressed_at_str:
+        return True
+
+    suppressed_at = datetime.fromisoformat(suppressed_at_str)
+    now = datetime.now(suppressed_at.tzinfo) or datetime.now()
+    days_passed = (now - suppressed_at).days
+
+    return days_passed >= 7  # 7일 초과 시 다시 표시
+```
+
+검증 결과: ✅ 로직 정확함
+
+### 8. 권장 해결 방안
+
+#### Step 1: session_start__show_project_info.py 수정
+- should_show_setup_messages() 함수 추가 (SessionStart.md의 로직 동일)
+- main()에서 조건 확인 후 메시지 생성 여부 결정
+- suppress_setup_messages가 true인 경우: 빈 sessionMessage 반환
+
+#### Step 2: session_start__config_health_check.py 수정
+- should_suppress_setup() 함수 추가
+- suppress_setup_messages가 true일 때 config_report 생성하지 않음
+- 필요 시에만 askUserQuestion 포함
+
+#### Step 3: .claude/settings.json 확인
+- SessionStart 이벤트 정의가 정확한지 검증
+- 스크립트 경로가 올바른지 확인
+- 모두 정상 상태 (수정 불필요)
+
+#### Step 4: 테스트
+- config.json에서 suppress_setup_messages를 false로 설정
+- 새 세션 시작 → setup 메시지 표시되는지 확인
+- config.json에서 suppress_setup_messages를 true로 설정
+- 새 세션 시작 → setup 메시지 표시되지 않는지 확인
+
+### 9. 예상 결과
+
+수정 후 동작:
+
+시나리오 A: suppress_setup_messages = false
+- SessionStart 이벤트 발생
+- session_start__show_project_info.py: 프로젝트 정보 표시
+- session_start__config_health_check.py: 설정 상태 표시
+
+시나리오 B: suppress_setup_messages = true (7일 이내)
+- SessionStart 이벤트 발생
+- session_start__show_project_info.py: 메시지 생략
+- session_start__config_health_check.py: 메시지 생략
+- 세션 시작 후 다른 콘텐츠 표시
+
+시나리오 C: suppress_setup_messages = true (7일 이상 경과)
+- SessionStart 이벤트 발생
+- 플래그 재설정으로 인해 메시지 다시 표시
+- setup_messages_suppressed_at 업데이트
+
+## 결론
+
+Claude Code의 SessionStart 훅 시스템은 올바르게 구성되어 있지만,
+.moai/config/config.json의 suppress_setup_messages 플래그를 해석하는 로직이
+실제 Python 구현에 누락되어 있습니다.
+
+필요한 작업:
+1. session_start__show_project_info.py에 should_show_setup_messages() 로직 추가
+2. session_start__config_health_check.py에 조건부 메시지 생성 로직 추가
+3. 두 파일 모두 SessionStart.md의 로직을 정확히 구현
+
+이 수정으로 config.json의 session.suppress_setup_messages 플래그가 실제로
+SessionStart 훅의 동작을 제어하게 됩니다.

@@ -1,0 +1,427 @@
+CLAUDE CODE SESSIONSTART 훅 - SUPPRESS 플래그 구현 가이드
+=======================================================
+작성일: 2025-11-12
+대상: session_start__*.py 파일의 config 플래그 연동
+
+## 개요
+
+Claude Code의 SessionStart 훅이 .moai/config/config.json의
+session.suppress_setup_messages 플래그를 존중하도록 구현하는 가이드입니다.
+
+## 문제
+
+현재 상태:
+1. .moai/config/config.json에 suppress_setup_messages 플래그 존재
+2. SessionStart 훅 실행 시 플래그를 무시하고 항상 메시지 표시
+
+예상 동작:
+- suppress_setup_messages = false: 메시지 항상 표시
+- suppress_setup_messages = true: 메시지 생략 (7일 초과 시 다시 표시)
+
+## 솔루션 아키텍처
+
+### 1. 수정할 파일
+
+파일 1: /Users/goos/MoAI/MoAI-ADK/.claude/hooks/alfred/session_start__show_project_info.py
+
+변경 사항:
+- should_show_setup_messages() 함수 추가
+- main()에서 플래그 확인 후 조건부 메시지 생성
+
+파일 2: /Users/goos/MoAI/MoAI-ADK/.claude/hooks/alfred/session_start__config_health_check.py
+
+변경 사항:
+- should_suppress_setup() 함수 추가
+- should_update 로직 수정하여 플래그 확인
+
+### 2. 구현 상세 - session_start__show_project_info.py
+
+추가할 함수 (SessionStart.md의 로직 동일):
+
+```python
+def should_show_setup_messages() -> bool:
+    """
+    Determine whether to show setup completion messages.
+
+    Logic:
+    1. Read .moai/config/config.json
+    2. Check session.suppress_setup_messages flag
+    3. If suppress_setup_messages is False, always show messages
+    4. If suppress_setup_messages is True:
+       - Check if more than 7 days have passed since suppression
+       - Show messages if time threshold exceeded
+
+    Returns:
+        bool: True if messages should be shown, False otherwise
+    """
+    from datetime import datetime
+
+    config_path = Path(".moai/config/config.json")
+
+    # If config doesn't exist, show messages
+    if not config_path.exists():
+        return True
+
+    try:
+        with open(config_path) as f:
+            config = json.load(f)
+    except (json.JSONDecodeError, IOError):
+        # If config can't be read, show messages
+        return True
+
+    # Check project initialization status
+    if not config.get("project", {}).get("initialized", False):
+        return True
+
+    # Check suppress_setup_messages flag
+    session_config = config.get("session", {})
+    suppress = session_config.get("suppress_setup_messages", False)
+
+    if not suppress:
+        # Flag is False, show messages
+        return True
+
+    # Flag is True, check time threshold (7 days)
+    suppressed_at_str = session_config.get("setup_messages_suppressed_at")
+    if not suppressed_at_str:
+        # No timestamp recorded, show messages
+        return True
+
+    try:
+        suppressed_at = datetime.fromisoformat(suppressed_at_str)
+        now = datetime.now(suppressed_at.tzinfo) if suppressed_at.tzinfo else datetime.now()
+        days_passed = (now - suppressed_at).days
+
+        # Show messages if more than 7 days have passed
+        return days_passed >= 7
+    except (ValueError, TypeError):
+        # If timestamp is invalid, show messages
+        return True
+```
+
+main() 함수 수정:
+
+현재 코드:
+```python
+def main() -> None:
+    ...
+    try:
+        input_data = sys.stdin.read()
+        _data = json.loads(input_data) if input_data.strip() else {}
+
+        session_output = format_session_output()
+
+        result: dict[str, Any] = {
+            "continue": True,
+            "systemMessage": session_output
+        }
+
+        print(json.dumps(result))
+        sys.exit(0)
+    ...
+```
+
+수정된 코드:
+```python
+def main() -> None:
+    ...
+    try:
+        input_data = sys.stdin.read()
+        _data = json.loads(input_data) if input_data.strip() else {}
+
+        # Check if setup messages should be shown
+        show_messages = should_show_setup_messages()
+
+        # Generate session output conditionally
+        session_output = format_session_output() if show_messages else ""
+
+        result: dict[str, Any] = {
+            "continue": True,
+            "systemMessage": session_output
+        }
+
+        print(json.dumps(result))
+        sys.exit(0)
+    ...
+```
+
+### 3. 구현 상세 - session_start__config_health_check.py
+
+추가할 함수:
+
+```python
+def should_suppress_setup() -> bool:
+    """
+    Determine whether setup messages should be suppressed.
+
+    Returns:
+        bool: True if setup should be suppressed, False otherwise
+    """
+    from datetime import datetime
+
+    config = get_config_data()
+    if not config:
+        # No config, don't suppress
+        return False
+
+    session_config = config.get("session", {})
+    suppress = session_config.get("suppress_setup_messages", False)
+
+    if not suppress:
+        # Flag is False, don't suppress
+        return False
+
+    # Flag is True, check time threshold (7 days)
+    suppressed_at_str = session_config.get("setup_messages_suppressed_at")
+    if not suppressed_at_str:
+        # No timestamp, suppress
+        return True
+
+    try:
+        suppressed_at = datetime.fromisoformat(suppressed_at_str)
+        now = datetime.now(suppressed_at.tzinfo) if suppressed_at.tzinfo else datetime.now()
+        days_passed = (now - suppressed_at).days
+
+        # Suppress if less than 7 days have passed
+        return days_passed < 7
+    except (ValueError, TypeError):
+        # If timestamp is invalid, don't suppress (show messages)
+        return False
+```
+
+main() 함수 수정:
+
+현재 코드:
+```python
+def main() -> None:
+    try:
+        input_data = sys.stdin.read()
+        _data = json.loads(input_data) if input_data.strip() else {}
+
+        config_report = generate_config_report()
+
+        system_message = f"📋 Configuration Health Check:\n{config_report}"
+
+        if should_update:
+            system_message += "\n\n⚠️  Configuration issues detected. Please take action."
+
+        result: dict[str, Any] = {
+            "continue": True,
+            "systemMessage": system_message
+        }
+
+        if should_update:
+            question_data = { ... }
+            result["askUserQuestion"] = question_data
+
+        print(json.dumps(result))
+        sys.exit(0)
+    ...
+```
+
+수정된 코드:
+```python
+def main() -> None:
+    try:
+        input_data = sys.stdin.read()
+        _data = json.loads(input_data) if input_data.strip() else {}
+
+        # Check if setup messages should be suppressed
+        is_suppressed = should_suppress_setup()
+
+        # Generate configuration report
+        config_report = generate_config_report()
+
+        # Determine system message
+        if is_suppressed:
+            # If suppressed and no issues, return minimal response
+            should_update = should_suggest_update()
+            if not should_update:
+                # No issues, suppress everything
+                result: dict[str, Any] = {
+                    "continue": True,
+                    "systemMessage": ""  # Empty message
+                }
+                print(json.dumps(result))
+                sys.exit(0)
+            else:
+                # Issues found, show them even if suppressed
+                system_message = f"⚠️  Configuration issues detected:\n{config_report}"
+        else:
+            # Not suppressed, show full report
+            system_message = f"📋 Configuration Health Check:\n{config_report}"
+
+            if should_update:
+                system_message += "\n\n⚠️  Configuration issues detected. Please take action."
+
+        result: dict[str, Any] = {
+            "continue": True,
+            "systemMessage": system_message
+        }
+
+        if should_update:
+            question_data = { ... }
+            result["askUserQuestion"] = question_data
+
+        print(json.dumps(result))
+        sys.exit(0)
+    ...
+```
+
+## 구현 체크리스트
+
+### 단계 1: session_start__show_project_info.py 수정
+
+- [ ] should_show_setup_messages() 함수 추가
+- [ ] 함수에 datetime import 확인 (이미 있을 수 있음)
+- [ ] main()에서 show_messages 변수 추가
+- [ ] main()에서 session_output을 조건부로 생성
+- [ ] 파일 저장 및 chmod +x 유지 확인
+
+### 단계 2: session_start__config_health_check.py 수정
+
+- [ ] should_suppress_setup() 함수 추가
+- [ ] main()에서 is_suppressed 변수 추가
+- [ ] main()에서 is_suppressed를 확인하여 응답 생성
+- [ ] 파일 저장
+
+### 단계 3: 테스트
+
+- [ ] config.json에서 suppress_setup_messages를 false로 설정
+- [ ] 새 Claude Code 세션 시작
+- [ ] setup 메시지 표시되는지 확인
+  - "🚀 MoAI-ADK Session Started" 메시지 확인
+  - "📋 Configuration Health Check" 메시지 확인
+
+- [ ] config.json에서 suppress_setup_messages를 true로 설정
+- [ ] setup_messages_suppressed_at를 현재 시간으로 업데이트
+- [ ] 새 Claude Code 세션 시작
+- [ ] setup 메시지 표시되지 않는지 확인
+  - 빈 시스템 메시지 또는 최소한의 메시지만 표시
+
+- [ ] 7일 경과 시나리오 테스트
+  - setup_messages_suppressed_at를 7일 전 날짜로 변경
+  - 새 세션 시작 → 메시지 다시 표시되는지 확인
+
+## 구현 후 예상 동작
+
+### 시나리오 1: suppress_setup_messages = false (메시지 항상 표시)
+
+```
+Claude Code 세션 시작
+├─ session_start__show_project_info.py 실행
+│  ├─ should_show_setup_messages() → true 반환
+│  └─ systemMessage: "🚀 MoAI-ADK Session Started\n..."
+└─ session_start__config_health_check.py 실행
+   ├─ should_suppress_setup() → false 반환
+   └─ systemMessage: "📋 Configuration Health Check:\n✅ Configuration complete\n..."
+
+사용자에게 표시됨:
+✓ 프로젝트 정보 (브랜치, 변경사항, 최근 커밋)
+✓ 설정 상태 (완성도, 버전, 업데이트 필요 여부)
+```
+
+### 시나리오 2: suppress_setup_messages = true (7일 이내)
+
+```
+Claude Code 세션 시작
+├─ session_start__show_project_info.py 실행
+│  ├─ should_show_setup_messages() → false 반환 (7일 미경과)
+│  └─ systemMessage: "" (빈 메시지)
+└─ session_start__config_health_check.py 실행
+   ├─ should_suppress_setup() → true 반환
+   ├─ should_update가 false라면:
+   │  └─ systemMessage: "" (빈 메시지)
+   └─ should_update가 true라면:
+      └─ systemMessage: "⚠️  Configuration issues detected:\n..." (이슈만 표시)
+
+사용자에게 표시됨:
+✗ 프로젝트 정보 비표시
+✗ 설정 상태 비표시
+✓ 설정 문제가 있으면 경고만 표시
+```
+
+### 시나리오 3: suppress_setup_messages = true (7일 초과)
+
+```
+Claude Code 세션 시작
+├─ session_start__show_project_info.py 실행
+│  ├─ should_show_setup_messages() → true 반환 (7일 경과)
+│  └─ systemMessage: "🚀 MoAI-ADK Session Started\n..."
+└─ session_start__config_health_check.py 실행
+   ├─ should_suppress_setup() → false 반환 (7일 경과)
+   └─ systemMessage: "📋 Configuration Health Check:\n..."
+
+사용자에게 표시됨:
+✓ 프로젝트 정보 (다시 표시)
+✓ 설정 상태 (다시 표시)
+
+참고: setup_messages_suppressed_at가 현재 시간으로 업데이트되어야 함
+```
+
+## 추가 고려사항
+
+### 1. 플래그 자동 업데이트
+
+현재 구현:
+- setup_messages_suppressed_at는 수동으로만 업데이트됨
+- 7일 초과 후 메시지 재표시 시, 자동으로 타임스탬프 업데이트되지 않음
+
+향후 개선 사항:
+- main()에서 메시지를 표시할 때, 타임스탬프도 함께 업데이트
+- 또는 별도의 post-hook에서 처리
+
+### 2. 타임스탬프 형식
+
+현재 사용:
+- ISO 8601 형식 (예: "2025-11-12T00:00:00Z")
+- datetime.fromisoformat()으로 파싱 가능
+
+주의사항:
+- 타임존 정보 포함 필요 (Z = UTC)
+- 없으면 현재 시간대로 기본 설정
+
+### 3. 에러 핸들링
+
+권장 사항:
+- config.json을 읽을 수 없으면: 메시지 표시 (보수적)
+- 타임스탬프가 유효하지 않으면: 메시지 표시 (보수적)
+- suppress_setup_messages가 명시되지 않으면: false로 간주 (기본값)
+
+## 패키지 템플릿 동기화
+
+이 변경사항을 패키지 템플릿에도 반영:
+
+- /Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/hooks/alfred/session_start__show_project_info.py
+- /Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/hooks/alfred/session_start__config_health_check.py
+
+패키지 템플릿이 source of truth이므로, 로컬 구현 후 템플릿도 업데이트해야 합니다.
+
+## 검증 명령어
+
+구현 후 검증:
+
+```bash
+# 파일이 Python 구문적으로 유효한지 확인
+python3 -m py_compile .claude/hooks/alfred/session_start__show_project_info.py
+python3 -m py_compile .claude/hooks/alfred/session_start__config_health_check.py
+
+# 실제 함수 테스트 (필요 시)
+python3 -c "from pathlib import Path; exec(open('.claude/hooks/alfred/session_start__show_project_info.py').read()); print(should_show_setup_messages())"
+
+# config.json 문법 확인
+cat .moai/config/config.json | jq '.session'
+
+# 훅이 호출되는지 확인 (새 세션 시작 후 로그 확인)
+cat .moai/logs/sessions/*.log | tail -50
+```
+
+## 마무리
+
+이 구현으로:
+1. .moai/config/config.json의 session.suppress_setup_messages 플래그가 실제로 동작
+2. Claude Code의 SessionStart 훅이 설정을 존중
+3. 프로젝트가 이미 설정되었으면 불필요한 메시지 비표시
+4. 7일마다 설정 상태 확인 메시지 다시 표시
+
+이를 통해 Claude Code 세션 시작 시 일관되고 깔끔한 사용자 경험 제공 가능합니다.
