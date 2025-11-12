@@ -433,3 +433,184 @@ This is a test project with version {{MOAI_VERSION}}.
         # In non-strict mode, undefined variables should be empty strings
         assert config["moai"]["version"] == "", \
             f"moai.version should be empty string, got '{config['moai']['version']}'"
+
+    def test_user_name_variable_with_user_config(self) -> None:
+        """
+        GIVEN: Config with user.name field
+        WHEN: get_default_variables is called
+        THEN: USER_NAME should be extracted from config.user.name
+        """
+        # @TEST:USER-PERSONALIZATION-001
+        template_engine = TemplateEngine()
+
+        # Test config with user.name
+        config = {
+            "project": {
+                "name": "TestProject",
+                "owner": "GoosLab"
+            },
+            "user": {
+                "name": "철수"
+            }
+        }
+
+        # Get default variables
+        variables = template_engine.get_default_variables(config)
+
+        # Verify USER_NAME is extracted from config.user.name
+        assert "USER_NAME" in variables, "USER_NAME should be in variables"
+        assert variables["USER_NAME"] == "철수", \
+            f"USER_NAME should be '철수', got '{variables['USER_NAME']}'"
+
+        # Verify PROJECT_OWNER is separate from USER_NAME
+        assert variables["PROJECT_OWNER"] == "GoosLab", \
+            f"PROJECT_OWNER should be 'GoosLab', got '{variables['PROJECT_OWNER']}'"
+
+    def test_user_name_variable_empty_fallback(self) -> None:
+        """
+        GIVEN: Config without user.name field
+        WHEN: get_default_variables is called
+        THEN: USER_NAME should return empty string (fallback)
+        """
+        # @TEST:USER-PERSONALIZATION-002
+        template_engine = TemplateEngine()
+
+        # Test config without user section
+        config = {
+            "project": {
+                "name": "TestProject",
+                "owner": "GoosLab"
+            }
+            # user section missing
+        }
+
+        # Get default variables
+        variables = template_engine.get_default_variables(config)
+
+        # Verify USER_NAME returns empty string
+        assert "USER_NAME" in variables, "USER_NAME should be in variables"
+        assert variables["USER_NAME"] == "", \
+            f"USER_NAME should be empty string, got '{variables['USER_NAME']}'"
+
+    def test_user_name_variable_with_empty_string(self) -> None:
+        """
+        GIVEN: Config with user.name as empty string
+        WHEN: get_default_variables is called
+        THEN: USER_NAME should return empty string
+        """
+        # @TEST:USER-PERSONALIZATION-003
+        template_engine = TemplateEngine()
+
+        # Test config with empty user.name
+        config = {
+            "project": {
+                "name": "TestProject",
+                "owner": "GoosLab"
+            },
+            "user": {
+                "name": ""
+            }
+        }
+
+        # Get default variables
+        variables = template_engine.get_default_variables(config)
+
+        # Verify USER_NAME is empty string
+        assert variables["USER_NAME"] == "", \
+            f"USER_NAME should be empty string, got '{variables['USER_NAME']}'"
+
+    def test_user_name_variable_with_unicode_names(self) -> None:
+        """
+        GIVEN: Config with various unicode names (Korean, English, Japanese)
+        WHEN: get_default_variables is called
+        THEN: USER_NAME should support all unicode characters
+        """
+        # @TEST:USER-PERSONALIZATION-004
+        template_engine = TemplateEngine()
+
+        # Test cases with different unicode names
+        test_cases = [
+            ("철수", "철수"),  # Korean
+            ("John", "John"),  # English
+            ("田中", "田中"),  # Japanese
+            ("Москва", "Москва"),  # Russian
+            ("李明", "李明"),  # Chinese
+        ]
+
+        for input_name, expected_name in test_cases:
+            config = {
+                "project": {"name": "TestProject", "owner": "TestOwner"},
+                "user": {"name": input_name}
+            }
+
+            variables = template_engine.get_default_variables(config)
+
+            assert variables["USER_NAME"] == expected_name, \
+                f"USER_NAME should be '{expected_name}', got '{variables['USER_NAME']}'"
+
+    def test_user_name_substitution_in_config_template(self) -> None:
+        """
+        GIVEN: A config template with {{USER_NAME}} placeholder
+        WHEN: Template is rendered with user name variable
+        THEN: {{USER_NAME}} should be replaced with actual name
+        """
+        # @TEST:USER-PERSONALIZATION-005
+        template_engine = TemplateEngine()
+
+        template_content = """
+{
+  "user": {
+    "name": "{{USER_NAME}}"
+  },
+  "project": {
+    "owner": "{{PROJECT_OWNER}}"
+  }
+}
+"""
+
+        variables = {
+            "USER_NAME": "철수",
+            "PROJECT_OWNER": "GoosLab"
+        }
+
+        # Render template
+        rendered = template_engine.render_string(template_content, variables)
+
+        # Parse JSON to verify
+        config = json.loads(rendered)
+
+        assert config["user"]["name"] == "철수", \
+            f"user.name should be '철수', got '{config['user']['name']}'"
+        assert config["project"]["owner"] == "GoosLab", \
+            f"project.owner should be 'GoosLab', got '{config['project']['owner']}'"
+
+    def test_user_name_variable_not_confused_with_project_owner(self) -> None:
+        """
+        GIVEN: Config with both user.name and project.owner
+        WHEN: Variables are extracted
+        THEN: USER_NAME and PROJECT_OWNER should be distinct variables
+        """
+        # @TEST:USER-PERSONALIZATION-006
+        template_engine = TemplateEngine()
+
+        config = {
+            "project": {
+                "name": "TestProject",
+                "owner": "GoosLab"  # GitHub username
+            },
+            "user": {
+                "name": "김철수"  # Personal name
+            }
+        }
+
+        variables = template_engine.get_default_variables(config)
+
+        # Both variables should exist but have different values
+        assert variables["PROJECT_OWNER"] == "GoosLab", \
+            "PROJECT_OWNER should be GitHub username"
+        assert variables["USER_NAME"] == "김철수", \
+            "USER_NAME should be personal name"
+
+        # They should NOT be the same
+        assert variables["PROJECT_OWNER"] != variables["USER_NAME"], \
+            "PROJECT_OWNER and USER_NAME should be different"
