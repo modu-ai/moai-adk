@@ -163,7 +163,7 @@ def generate_config_report() -> str:
     Only shows warnings if problems exist:
     - Missing configuration sections
     - Configuration file age > 30 days
-    - Version mismatch or updates available
+    - Version mismatch (only if configuration incomplete)
     """
     report_lines = []
 
@@ -177,17 +177,18 @@ def generate_config_report() -> str:
     # Check 2: Configuration completeness
     is_complete, missing_fields = check_config_completeness(config or {})
     if not is_complete:
-        report_lines.append(f"⚠️  Missing configuration: {', '.join(missing_fields)}")
+        report_lines.append(f"⚠️ Missing configuration: {', '.join(missing_fields)}")
 
     # Check 3: Configuration age (only warn if > 30 days)
     config_age = get_config_age()
     if config_age is not None and config_age > 30:
-        report_lines.append(f"⏰ Configuration outdated: {config_age} days ago (update recommended)")
+        report_lines.append(f"⏰ Configuration outdated: {config_age} days old (update recommended)")
 
-    # Check 4: Version status
-    is_matched, installed_version, latest_version, status_message = check_moai_version_match()
-    if status_message:
-        report_lines.append(status_message)
+    # Check 4: Version status (only show if configuration is incomplete)
+    if not is_complete:
+        is_matched, installed_version, latest_version, status_message = check_moai_version_match()
+        if status_message:
+            report_lines.append(status_message)
 
     # If no issues found, return empty (will not display health check section)
     return "\n".join(report_lines)
@@ -289,11 +290,11 @@ def main() -> None:
 
         # Build system message based on report content
         if config_report.strip():
-            # Report has content, show it
-            system_message = f"📋 Configuration Health Check:\n{config_report}"
+            # Report has content, show it with proper formatting
+            system_message = f"📋 Configuration Health Check\n{config_report}"
 
             if should_update:
-                system_message += "\n\n⚠️  Configuration issues detected. Please take action."
+                system_message += "\n⚠️ Configuration issues detected. Please take action."
         else:
             # No issues found, return empty message (suppresses health check section)
             system_message = ""

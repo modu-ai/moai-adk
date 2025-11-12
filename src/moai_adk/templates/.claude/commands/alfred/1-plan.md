@@ -312,20 +312,25 @@ The spec-builder will generate a report in this format:
 
 #### Step 3: Request user approval
 
-After the spec-builder presents the implementation plan report, you MUST ask the user for explicit approval before proceeding to PHASE 2.
+After the spec-builder presents the implementation plan report, use AskUserQuestion tool for explicit approval:
 
-**Ask the user this question**:
+Tool: AskUserQuestion
+Parameters:
+questions:
+  - question: "계획 수립이 완료되었습니다. 이 계획을 기반으로 SPEC 작성을 진행하시겠습니까?"
+    header: "SPEC 생성"
+    multiSelect: false
+    options:
+      - label: "SPEC 작성 진행"
+        description: "승인된 계획을 기반으로 .moai/specs/SPEC-{ID}/ 에 SPEC 파일 생성"
+      - label: "계획 수정 요청"
+        description: "SPEC 작성 전 계획 내용 수정"
+      - label: "초안으로 저장"
+        description: "계획을 초안으로 저장하고 나중에 계속"
+      - label: "취소"
+        description: "계획 폐기하고 계획 단계로 복귀"
 
-"Plan development is complete. Would you like to proceed with SPEC creation based on this plan?"
-
-**Present these options**:
-
-1. **Proceed with SPEC Creation** - Create SPEC files in `.moai/specs/SPEC-{ID}/` based on approved plan
-2. **Request Modifications** - Specify changes to the plan before SPEC creation
-3. **Save as Draft** - Save plan as draft without creating SPEC files yet
-4. **Cancel** - Discard plan and return to planning phase
-
-**Wait for the user to answer**.
+**Wait for user response**, then proceed to Step 4.
 
 #### Step 4: Process user's answer
 
@@ -375,11 +380,32 @@ Your task is to create the SPEC document files in the correct directory structur
 - ❌ `SPEC-001-auth/` (additional text after ID)
 - ❌ `SPEC-AUTH-001-jwt/` (additional text after ID)
 
-**Duplicate check required**: Before creating a new SPEC ID, search existing TAG IDs to prevent duplication:
+**Duplicate check required**: Delegate to tag-agent for comprehensive TAG verification:
 
-```bash
-rg "@SPEC:{ID}" -n .moai/specs/
-```
+Tool: Task
+Parameters:
+- subagent_type: "tag-agent"
+- description: "Verify SPEC ID uniqueness before creation"
+- prompt: """You are the tag-agent.
+
+Language settings:
+- conversation_language: {{CONVERSATION_LANGUAGE}}
+- language_name: {{CONVERSATION_LANGUAGE_NAME}}
+
+TASK:
+Check if SPEC-{SPEC_ID} already exists in the codebase.
+
+Search scope:
+- Primary: .moai/specs/ directory
+- Secondary: All source files with @SPEC: tags
+
+Return:
+- exists: true/false
+- locations: [] (if exists, list all conflicting file paths)
+- recommendation: "safe to create" or "duplicate found - suggest different ID"
+
+Use Skill("moai-alfred-tag-scanning") for comprehensive TAG verification.
+"""
 
 **Composite Domain Rules**:
 - ✅ Allow: `UPDATE-REFACTOR-001` (2 domains)
@@ -439,9 +465,9 @@ Write specifications for EARS structure."""
 The spec-builder agent will:
 
 1. **Create directory structure**:
-   ```bash
-   mkdir -p .moai/specs/SPEC-{ID}/
-   ```
+   - spec-builder agent uses Write tool for file creation
+   - Path: `.moai/specs/SPEC-{ID}/`
+   - Parent directories created automatically by Write tool
 
 2. **Create spec.md** (main SPEC document):
 
@@ -560,13 +586,19 @@ Your task is to handle Git operations based on the project's `spec_git_workflow`
 
 ### Step 1: Check spec_git_workflow setting
 
-First, read the current workflow configuration:
+First, read the current workflow configuration using the Read tool:
 
-```bash
-# Check spec_git_workflow setting from .moai/config/config.json
-spec_workflow=$(grep -o '"spec_git_workflow": "[^"]*"' .moai/config/config.json | cut -d'"' -f4)
-echo "Current SPEC Git workflow: $spec_workflow"
-```
+Tool: Read
+Parameters:
+- file_path: "{{PROJECT_DIR}}/.moai/config/config.json"
+
+Parse the JSON and extract the value of `github.spec_git_workflow`.
+Store this value in variable: `$spec_workflow`
+
+**Expected values**:
+- `"develop_direct"` - Direct commit mode
+- `"feature_branch"` - Auto feature branch creation
+- `"per_spec"` - Ask user per SPEC
 
 ### Step 2: Execute workflow-specific actions
 
@@ -580,10 +612,22 @@ echo "Current SPEC Git workflow: $spec_workflow"
 1. Proceed to Step 3: Create feature branch and PR
 
 **IF `spec_workflow` is "per_spec":**
-1. Ask user: "Which workflow do you want for this SPEC?"
-   - Options: ["Create feature branch + PR", "Direct commit to develop"]
-2. IF user chooses "Create feature branch + PR" → proceed to Step 3
-3. IF user chooses "Direct commit to develop" → skip branch creation
+
+Tool: AskUserQuestion
+Parameters:
+questions:
+  - question: "이 SPEC에 대해 어떤 워크플로우를 사용하시겠습니까?"
+    header: "Git 전략"
+    multiSelect: false
+    options:
+      - label: "Feature 브랜치 + PR 생성"
+        description: "feature/SPEC-{ID} 브랜치를 생성하고 Draft PR을 열어 GitFlow를 따릅니다"
+      - label: "Develop에 직접 커밋"
+        description: "브랜치 생성을 건너뛰고 develop에 직접 커밋합니다"
+
+**Process user response**:
+- IF user chooses "Feature 브랜치 + PR 생성" → proceed to Step 3
+- IF user chooses "Develop에 직접 커밋" → skip Step 3, proceed to completion
 
 ### Step 3: Create Git branch & PR (only for feature_branch workflow)
 
