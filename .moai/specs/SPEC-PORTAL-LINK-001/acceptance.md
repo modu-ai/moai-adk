@@ -8,7 +8,6 @@ author: GOOS
 priority: high
 ---
 
-# `@SPEC:PORTAL-LINK-001: 수용 기준 및 테스트 시나리오`
 
 ## 개요
 

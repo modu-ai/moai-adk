@@ -55,17 +55,12 @@ flowchart LR
 
 [19명 팀원 전체 보기](/ko/agents/19-team-members)
 
-#### 4. @TAG 시스템
 모든 산출물을 연결하는 추적 시스템입니다:
 
 ```
-@SPEC:AUTH-001 (요구사항)
     ↓
-@TEST:AUTH-001 (테스트)
     ↓
-@CODE:AUTH-001:SERVICE (구현)
     ↓
-@DOC:AUTH-001 (문서)
 ```
 
 ## 🛠️ 2단계: 설치 및 설정

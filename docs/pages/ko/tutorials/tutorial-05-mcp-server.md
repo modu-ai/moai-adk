@@ -227,7 +227,6 @@ cp .env.example .env
 ```python
 """
 OpenWeatherMap API 클라이언트
-@TAG: SPEC-MCP-001
 """
 import os
 from typing import Optional, Dict, Any
@@ -349,7 +348,6 @@ class WeatherAPIClient:
 ```python
 """
 MCP Tools 구현
-@TAG: SPEC-MCP-001
 """
 from typing import Any
 from mcp.types import Tool, TextContent
@@ -480,7 +478,6 @@ class WeatherTools:
 ```python
 """
 MCP Resources 구현
-@TAG: SPEC-MCP-001
 """
 from typing import Any
 from mcp.types import Resource, TextResourceContents
@@ -583,7 +580,6 @@ class WeatherResources:
 ```python
 """
 MCP Prompts 구현
-@TAG: SPEC-MCP-001
 """
 from typing import Any
 from mcp.types import Prompt, PromptMessage
@@ -689,7 +685,6 @@ class WeatherPrompts:
 ```python
 """
 Weather MCP Server
-@TAG: SPEC-MCP-001
 """
 import asyncio
 from mcp.server import Server
@@ -790,7 +785,6 @@ weather-mcp = "weather_mcp.server:main"
 ```python
 """
 Tools 테스트
-@TAG: SPEC-MCP-001
 """
 import pytest
 from weather_mcp.weather_api import WeatherAPIClient

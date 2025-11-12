@@ -183,7 +183,6 @@ SPEC 문서 생성과 관리를 담당합니다.
 - **`spec/confidence_scoring.py`**: 신뢰도 점수
 
 ### 2.10 TAG 모듈 (13개 파일)
-@TAG 시스템의 핵심 기능을 담당합니다.
 
 - **`tags/__init__.py`**: TAG 모듈 초기화
 - **`tags/tags.py`**: TAG 데이터 모델

@@ -18,17 +18,11 @@ estimated_complexity: "medium"
 ## TAG BLOCK
 
 ```yaml
-@SPEC:DOC-VISUAL-001: {
   "title": "Mermaid 시각화 시스템",
   "status": "draft",
   "priority": "high",
   "domain": "documentation",
-  "dependencies": ["@SPEC:DOC-ONLINE-001"],
   "traceability": {
-    "requirements": ["@REQ:VISUAL-SYSTEM-001", "@REQ:MONOCHROME-THEME-001"],
-    "design": ["@DESIGN:MERMAID-INTEGRATION-001"],
-    "implementation": ["@IMP:DIAGRAM-GENERATOR-001", "@IMP:THEME-PROCESSOR-001"],
-    "testing": ["@TEST:VISUAL-RENDERING-001"]
   }
 }
 ```
@@ -327,13 +321,6 @@ performance_strategies:
 ## Traceability (추적성)
 
 ### 의존성 관계
-- `@SPEC:DOC-VISUAL-001` → `@SPEC:DOC-ONLINE-001`: 온라인 문서 시스템 기반
-- `@SPEC:DOC-VISUAL-001` → `@REQ:VISUAL-SYSTEM-001`: 시각화 시스템 요구사항
-- `@SPEC:DOC-VISUAL-001` → `@REQ:MONOCHROME-THEME-001`: 무채색 테마 요구사항
-- `@SPEC:DOC-VISUAL-001` → `@DESIGN:MERMAID-INTEGRATION-001`: Mermaid 통합 설계
-- `@SPEC:DOC-VISUAL-001` → `@IMP:DIAGRAM-GENERATOR-001`: 다이어그램 생성 구현
-- `@SPEC:DOC-VISUAL-001` → `@IMP:THEME-PROCESSOR-001`: 테마 처리 구현
-- `@SPEC:DOC-VISUAL-001` → `@TEST:VISUAL-RENDERING-001`: 시각화 렌더링 테스트
 
 ### 변경 이력
 | 버전 | 날짜 | 변경 내용 | 작성자 |

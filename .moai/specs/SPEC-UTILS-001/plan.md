@@ -4,11 +4,9 @@ version: 0.0.1
 status: draft
 created: 2025-11-13
 updated: 2025-11-13
-author: @Goos
 related_spec: SPEC-UTILS-001
 ---
 
-# 구현 계획 (Implementation Plan) - @SPEC:UTILS-001
 
 ## 개요
 
@@ -323,7 +321,6 @@ src/moai_adk/utils/banner.py
 - [ ] 각 함수별 docstring 작성
 - [ ] 사용 예제 3개 이상 작성
 - [ ] 테마별 사용 설명서 작성
-- [ ] @TAG 추적성 확인
 
 ---
 

@@ -4,7 +4,6 @@ version: 0.1.0
 status: completed
 created: 2025-10-16
 updated: 2025-10-18
-author: @Goos
 priority: high
 category: feature
 labels:
@@ -27,18 +26,15 @@ scope:
     - tool.py
 ---
 
-# @SPEC:HOOKS-003: TRUST 원칙 자동 검증 (PostToolUse 통합)
 
 ## HISTORY
 
 ### v0.1.0 (2025-10-18)
 - **CHANGED**: TDD 구현 완료, status를 completed로 변경
-- **AUTHOR**: @Goos
 - **REVIEW**: 구현 검증 완료
 
 ### v0.0.1 (2025-10-16)
 - **INITIAL**: `/alfred:2-run` 완료 후 TRUST 검증 자동 실행 명세 작성
-- **AUTHOR**: @Goos
 - **CONTEXT**: validation-logic-migration.md Phase 1 구현
 - **DEPENDS_ON**: HOOKS-001 (Hooks 시스템 마스터플랜), TRUST-001 (검증 시스템)
 - **REASON**: Alfred 3-stage 워크플로우에서 품질 게이트 자동화 필요
@@ -361,29 +357,18 @@ def format_validation_result(result: dict) -> str:
 
 ---
 
-## Traceability (@TAG)
 
 ### TAG 체인
-- **SPEC**: `@SPEC:HOOKS-003` (본 문서)
-- **TEST**: `@TEST:HOOKS-003` (tests/unit/test_hooks_trust_validation.py)
-- **CODE**: `@CODE:HOOKS-003` (.claude/hooks/alfred/handlers/tool.py)
 
 ### 의존성 TAG
-- **@SPEC:HOOKS-001**: Hooks 시스템 아키�ecture (PostToolUse 핸들러 기반)
-- **@SPEC:TRUST-001**: TRUST 원칙 검증 시스템 (scripts/validate_trust.py)
-- **@SPEC:HOOKS-002**: SPEC 메타데이터 검증 (유사한 자동화 패턴)
 
 ### 코드 위치
 ```
 .claude/hooks/alfred/
 ├── handlers/
-│   ├── tool.py              # @CODE:HOOKS-003 (PostToolUse 핸들러)
-│   └── notification.py      # @CODE:HOOKS-003 (결과 알림)
 ├── core/
-│   └── validation.py        # @CODE:HOOKS-003 (검증 유틸리티)
 └── tests/
     └── unit/
-        └── test_hooks_trust_validation.py  # @TEST:HOOKS-003
 ```
 
 ---
@@ -451,5 +436,4 @@ def format_validation_result(result: dict) -> str:
 ---
 
 **Last Updated**: 2025-10-18
-**Author**: @Goos
 **Status**: Completed (v0.1.0)

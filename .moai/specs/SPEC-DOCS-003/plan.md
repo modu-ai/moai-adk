@@ -1,6 +1,4 @@
-# @SPEC:DOCS-003 구현 계획
 
-## @PLAN:DOCS-003 Implementation Roadmap
 
 ---
 
@@ -589,5 +587,4 @@ graph LR
 ---
 
 **작성일**: 2025-10-17
-**작성자**: @Goos
 **버전**: v0.0.1 (INITIAL)

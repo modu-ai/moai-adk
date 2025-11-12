@@ -1,4 +1,3 @@
-# @SPEC:SKILL-REFACTOR-001 구현 계획서
 
 > Claude Code Skills 표준화 작업 계획
 
@@ -433,4 +432,3 @@ git commit -m "✨ FEATURE: allowed-tools 필드 추가 (명시적 권한 관리
 ---
 
 **최종 업데이트**: 2025-10-19
-**작성자**: @Goos

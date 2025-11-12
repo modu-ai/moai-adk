@@ -1,6 +1,4 @@
-# Acceptance Criteria: @SPEC:SESSION-CLEANUP-001
 
-<!-- @ACCEPTANCE:SESSION-CLEANUP-001 -->
 
 ---
 
@@ -35,7 +33,6 @@ And 질문 본문은 사용자의 conversation_language로 작성되어야 한�
 And Prose 제안 (e.g., "You can now run...")이 출력되지 않아야 한다
 ```
 
-**Test Case**: `@TEST:SESSION-001`
 
 **Validation**:
 - ✅ AskUserQuestion 호출 확인
@@ -67,7 +64,6 @@ And SPEC ID가 옵션 1의 description에 포함되어야 한다
 And Prose 제안이 출력되지 않아야 한다
 ```
 
-**Test Case**: `@TEST:SESSION-002`
 
 **Validation**:
 - ✅ AskUserQuestion 호출 확인
@@ -99,7 +95,6 @@ And AskUserQuestion은 다음 3개 옵션을 포함해야 한다:
 And Prose 제안이 출력되지 않아야 한다
 ```
 
-**Test Case**: `@TEST:SESSION-003`
 
 **Validation**:
 - ✅ AskUserQuestion 호출 확인
@@ -116,7 +111,6 @@ And Prose 제안이 출력되지 않아야 한다
 ```gherkin
 Given Alfred가 /alfred:3-sync 커맨드를 실행 중이다
 And 문서 동기화(README.md, CHANGELOG.md 등)가 완료되었다
-And @TAG 체인이 검증되었다
 And TodoWrite의 모든 작업이 "completed" 상태이다
 
 When 커맨드가 종료되려고 할 때
@@ -131,7 +125,6 @@ And AskUserQuestion은 다음 3개 옵션을 포함해야 한다:
 And Prose 제안이 출력되지 않아야 한다
 ```
 
-**Test Case**: `@TEST:SESSION-004`
 
 **Validation**:
 - ✅ AskUserQuestion 호출 확인
@@ -162,7 +155,6 @@ And 세션 요약은 다음 섹션을 포함해야 한다:
 And 세션 요약은 사용자의 conversation_language로 작성되어야 한다
 ```
 
-**Test Case**: `@TEST:SESSION-005`
 
 **Validation**:
 - ✅ 세션 요약 생성 확인
@@ -194,7 +186,6 @@ And 추출된 작업 목록이 세션 컨텍스트에 저장되어야 한다
 And TodoWrite 상태가 초기화되어야 한다 (optional)
 ```
 
-**Test Case**: `@TEST:SESSION-006`
 
 **Validation**:
 - ✅ TodoWrite에서 completed 작업 추출
@@ -222,7 +213,6 @@ Then 다음 패턴이 출력에 포함되지 않아야 한다:
 And AskUserQuestion tool이 반드시 호출되어야 한다
 ```
 
-**Test Case**: `@TEST:SESSION-007`
 
 **Validation**:
 - ✅ Prose 패턴 검색 (regex)
@@ -246,7 +236,6 @@ And 옵션 개수는 3-4개 범위여야 한다
 And 각 옵션은 label과 description을 포함해야 한다
 ```
 
-**Test Case**: `@TEST:SESSION-008`
 
 **Validation**:
 - ✅ AskUserQuestion 호출 횟수 = 1
@@ -331,7 +320,6 @@ And 각 옵션은 label과 description을 포함해야 한다
 4. **`/alfred:3-sync` End-to-End**
    - 문서 동기화 실행
    - AskUserQuestion 호출 확인
-   - @TAG 체인 검증
 
 ---
 
@@ -379,7 +367,6 @@ And 각 옵션은 label과 description을 포함해야 한다
 ### Quality Gates
 - [ ] Linting 통과 (0 issues)
 - [ ] Type checking 통과 (mypy, pyright)
-- [ ] @TAG 체인 검증 완료
 - [ ] TRUST 5 원칙 준수 확인
 
 ### User Acceptance
@@ -474,8 +461,6 @@ And AskUserQuestion을 다시 호출해야 한다
 
 **Acceptance Criteria Approved By**:
 
-- [ ] **Product Owner**: @GoosLab
-- [ ] **Tech Lead**: @GoosLab
 - [ ] **QA Lead**: TBD
 
 **Date**: 2025-10-30

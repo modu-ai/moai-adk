@@ -112,12 +112,10 @@ class AutoFixStrategy:
 # 실제 예제: v0.23.1 업그레이드
 """
 SAFE 수정 (자동):
-- 중복된 @TAG 제거
 - Trailing whitespace 정규화
 - 일관되지 않은 헤딩 레벨 수정
 
 MEDIUM 수정 (검토 후):
-- 누락된 @TAG 추가
 - 불완전한 섹션 완성
 
 HIGH 수정 (수동):
@@ -141,7 +139,6 @@ class DuplicateTagFixer:
     @staticmethod
     def detect_duplicates(content: str) -> List[str]:
         """중복 TAG 탐지"""
-        tag_pattern = r'@TAG-[A-Z]+-\d{3}'
         tags = re.findall(tag_pattern, content)
 
         # 중복 태그 찾기
@@ -176,14 +173,11 @@ class DuplicateTagFixer:
 # 사용 예제
 before = """
 ## Section 1
-Description with @TAG-SKILL-001
 
 ## Section 2
-Another reference to @TAG-SKILL-001
 """
 
 after, fixed = DuplicateTagFixer.fix(before)
-# 두 번째 @TAG-SKILL-001 제거됨
 ```
 
 #### Format 에러 수정

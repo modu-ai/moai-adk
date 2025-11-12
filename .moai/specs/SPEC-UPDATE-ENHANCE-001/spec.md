@@ -13,7 +13,6 @@ scope: SessionStart hook enhancement with 6 improvements
 
 # SPEC-UPDATE-ENHANCE-001: MoAI-ADK SessionStart 버전 체크 시스템 강화
 
-@SPEC:UPDATE-ENHANCE-001
 
 ## HISTORY
 
@@ -104,29 +103,24 @@ scope: SessionStart hook enhancement with 6 improvements
 
 ### 3.1 보편적 요구사항 (Ubiquitous Requirements)
 
-@REQ:UPDATE-ENHANCE-001-U1
 **R-U1**: 시스템은 **모든 SessionStart 이벤트**에서 버전 정보를 표시해야 한다.
 - **현재**: `🗿 MoAI-ADK Ver: 0.8.1`
 - **업데이트 가능 시**: `🗿 MoAI-ADK Ver: 0.8.1 → 0.9.0 available ✨`
 
-@REQ:UPDATE-ENHANCE-001-U2
 **R-U2**: 시스템은 **24시간 캐시**를 통해 불필요한 PyPI 요청을 줄여야 한다.
 - 캐시 파일 위치: `.moai/cache/version-check.json`
 - 캐시 유효 기간: 24시간 (86400초)
 - 캐시 만료 시 자동 갱신
 
-@REQ:UPDATE-ENHANCE-001-U3
 **R-U3**: 시스템은 **uv tool upgrade** 명령어를 권장해야 한다.
 - **변경 전**: `uv pip install --upgrade moai-adk>=0.9.0`
 - **변경 후**: `uv tool upgrade moai-adk` (uv 공식 권장 방식)
 
-@REQ:UPDATE-ENHANCE-001-U4
 **R-U4**: 시스템은 **오프라인 환경**을 감지하고 네트워크 요청을 건너뛰어야 한다.
 - 네트워크 가용성 사전 체크 (DNS 조회 또는 간단한 핑)
 - 오프라인 감지 시 캐시 데이터 활용
 - 캐시도 없으면 "버전 확인 불가" 표시 없이 건너뛰기
 
-@REQ:UPDATE-ENHANCE-001-U5
 **R-U5**: 시스템은 **사용자 설정**을 통해 체크 빈도를 조정할 수 있어야 한다.
 - Config 옵션: `version_check.frequency` (never, daily, weekly, always)
 - 기본값: `daily` (24시간 캐시 사용)
@@ -134,14 +128,12 @@ scope: SessionStart hook enhancement with 6 improvements
 
 ### 3.2 이벤트 기반 요구사항 (Event-driven Requirements)
 
-@REQ:UPDATE-ENHANCE-001-E1
 **R-E1**: **WHEN** SessionStart 이벤트가 발생하고 캐시가 만료되었을 때,
 **THEN** 시스템은 PyPI API를 호출하고 새 버전 정보를 캐시에 저장해야 한다.
 - 캐시 만료 확인: 파일 수정 시간 + 24시간 < 현재 시간
 - API 호출 타임아웃: 1초 (기존 유지)
 - 성공 시 캐시 파일 갱신
 
-@REQ:UPDATE-ENHANCE-001-E2
 **R-E2**: **WHEN** Major 버전 업데이트가 감지되었을 때 (예: 0.8.x → 1.0.0),
 **THEN** 시스템은 **경고 메시지**와 함께 릴리스 노트 링크를 표시해야 한다.
 ```
@@ -151,7 +143,6 @@ scope: SessionStart hook enhancement with 6 improvements
    ⬆️ Upgrade: uv tool upgrade moai-adk
 ```
 
-@REQ:UPDATE-ENHANCE-001-E3
 **R-E3**: **WHEN** 네트워크가 오프라인 상태이거나 PyPI 접근 실패 시,
 **THEN** 시스템은 에러 로그 없이 캐시 데이터를 활용하거나 건너뛰어야 한다.
 - 오프라인 감지 로직: `socket.create_connection()` 테스트 (0.1초 타임아웃)
@@ -160,13 +151,11 @@ scope: SessionStart hook enhancement with 6 improvements
 
 ### 3.3 상태 기반 요구사항 (State-driven Requirements)
 
-@REQ:UPDATE-ENHANCE-001-S1
 **R-S1**: **WHILE** 캐시가 유효한 동안 (24시간 이내),
 **THEN** 시스템은 PyPI API 호출을 건너뛰고 캐시된 버전 정보를 즉시 표시해야 한다.
 - 성능 목표: SessionStart 지연 시간 **50ms 이하** (95% 개선)
 - 캐시 히트율 목표: 95% 이상
 
-@REQ:UPDATE-ENHANCE-001-S2
 **R-S2**: **WHILE** 사용자가 `version_check.frequency = "never"` 설정을 유지하는 동안,
 **THEN** 시스템은 버전 체크를 완전히 비활성화하고 현재 버전만 표시해야 한다.
 ```
@@ -176,12 +165,10 @@ scope: SessionStart hook enhancement with 6 improvements
 
 ### 3.4 선택적 요구사항 (Optional Requirements)
 
-@REQ:UPDATE-ENHANCE-001-O1
 **R-O1**: 시스템은 **릴리스 노트 URL**을 자동으로 생성하여 표시할 수 있다.
 - GitHub Releases 링크: `https://github.com/modu-ai/moai-adk/releases/tag/v{latest_version}`
 - PyPI API에서 `project_urls` 필드 활용 (가능한 경우)
 
-@REQ:UPDATE-ENHANCE-001-O2
 **R-O2**: 시스템은 **버전 비교 로직**을 강화하여 pre-release 버전을 구분할 수 있다.
 - Stable 버전 우선 (0.9.0 > 0.9.0rc1)
 - Pre-release 버전은 별도 라벨 표시 (`0.9.0-rc1 available (pre-release)`)
@@ -190,24 +177,20 @@ scope: SessionStart hook enhancement with 6 improvements
 
 ## 4. 제약사항 (Constraints)
 
-@CONSTRAINT:UPDATE-ENHANCE-001-C1
 **C-1 성능 제약**: SessionStart 총 실행 시간은 **3초를 초과할 수 없다**.
 - 현재: ~1.2초 (PyPI 체크 포함)
 - 목표: ~0.05초 (캐시 히트 시), ~1.2초 (캐시 미스 시)
 - 측정: 통합 테스트에서 타이밍 검증
 
-@CONSTRAINT:UPDATE-ENHANCE-001-C2
 **C-2 하위 호환성**: 기존 SessionStart 출력 형식을 유지해야 한다.
 - 버전 정보 라인은 기존 위치 유지 (Language 정보 위)
 - 추가 정보는 별도 라인으로 표시 (기존 출력 변경 금지)
 
-@CONSTRAINT:UPDATE-ENHANCE-001-C3
 **C-3 보안 제약**: 캐시 파일은 민감 정보를 포함하지 않아야 한다.
 - 저장 데이터: 버전 번호, 체크 시간, 릴리스 노트 URL만 포함
 - 사용자 정보, 토큰, API 키 등 저장 금지
 - 파일 권한: 644 (읽기 전용)
 
-@CONSTRAINT:UPDATE-ENHANCE-001-C4
 **C-4 에러 처리**: 모든 실패 시나리오에서 graceful degradation 필수.
 - 캐시 파일 손상 → 무시하고 재생성
 - PyPI API 실패 → 캐시 활용 또는 건너뛰기
@@ -343,38 +326,15 @@ def is_major_update(current: str, latest: str) -> bool:
 ### 6.1 TAG 체인
 
 ```
-@SPEC:UPDATE-ENHANCE-001
-  ├─ @REQ:UPDATE-ENHANCE-001-U1 (버전 정보 표시)
-  ├─ @REQ:UPDATE-ENHANCE-001-U2 (24시간 캐싱)
-  ├─ @REQ:UPDATE-ENHANCE-001-U3 (uv tool upgrade 명령어)
-  ├─ @REQ:UPDATE-ENHANCE-001-U4 (오프라인 감지)
-  ├─ @REQ:UPDATE-ENHANCE-001-U5 (사용자 설정)
-  ├─ @REQ:UPDATE-ENHANCE-001-E1 (캐시 갱신 이벤트)
-  ├─ @REQ:UPDATE-ENHANCE-001-E2 (Major 업데이트 경고)
-  ├─ @REQ:UPDATE-ENHANCE-001-E3 (네트워크 실패 처리)
-  ├─ @REQ:UPDATE-ENHANCE-001-S1 (캐시 유효 기간)
-  ├─ @REQ:UPDATE-ENHANCE-001-S2 (버전 체크 비활성화)
-  ├─ @REQ:UPDATE-ENHANCE-001-O1 (릴리스 노트 URL)
-  └─ @REQ:UPDATE-ENHANCE-001-O2 (Pre-release 구분)
 ```
 
 ### 6.2 구현 예정 TAG
 
 ```
-@CODE:VERSION-CACHE-001        # 캐시 관리 모듈
-@CODE:NETWORK-DETECT-001       # 네트워크 감지 로직
-@CODE:VERSION-COMPARE-001      # 버전 비교 로직
-@TEST:VERSION-CACHE-001        # 캐싱 단위 테스트
-@TEST:OFFLINE-MODE-001         # 오프라인 시나리오 테스트
-@TEST:MAJOR-UPDATE-WARN-001    # Major 업데이트 경고 테스트
-@DOC:VERSION-CHECK-CONFIG-001  # 사용자 설정 가이드
 ```
 
 ### 6.3 기존 TAG 참조
 
-- `@TAG:HOOKS-TIMEOUT-001`: 타임아웃 처리 패턴 재사용
-- `@CODE:GITHUB-CONFIG-001`: Config 확장 패턴 참조
-- `@SPEC:MOAI-CONFIG-001`: Config 스키마 업데이트
 
 ---
 
@@ -491,4 +451,3 @@ rm -rf .moai/cache/version-check.json
 
 **END OF SPEC**
 
-@SPEC:UPDATE-ENHANCE-001

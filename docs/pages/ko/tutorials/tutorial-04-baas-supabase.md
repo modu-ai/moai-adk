@@ -238,7 +238,6 @@ npm install
 
 ```sql
 -- Supabase 채팅 앱 스키마
--- @TAG: SPEC-SUPABASE-001
 
 -- 1. profiles 테이블 (사용자 프로필)
 CREATE TABLE profiles (
@@ -379,7 +378,6 @@ USING (
 ```typescript
 /**
  * Supabase 클라이언트 설정
- * @TAG SPEC-SUPABASE-001
  */
 import { createClient } from '@supabase/supabase-js';
 
@@ -429,7 +427,6 @@ export interface Message {
 ```typescript
 /**
  * 인증 컴포넌트
- * @TAG SPEC-SUPABASE-001
  */
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
@@ -535,7 +532,6 @@ export function Auth() {
 ```typescript
 /**
  * Realtime 메시지 구독 Hook
- * @TAG SPEC-SUPABASE-001
  */
 import { useEffect, useState } from 'react';
 import { supabase, Message } from '../lib/supabase';
@@ -672,7 +668,6 @@ export function useRealtimeMessages() {
 ```typescript
 /**
  * 채팅 컴포넌트
- * @TAG SPEC-SUPABASE-001
  */
 import { useState, useEffect, useRef } from 'react';
 import { useRealtimeMessages } from '../hooks/useRealtime';
@@ -774,7 +769,6 @@ export function Chat() {
 ```typescript
 /**
  * 파일 업로드 컴포넌트
- * @TAG SPEC-SUPABASE-001
  */
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
@@ -844,7 +838,6 @@ export function FileUpload({ onUpload }: { onUpload: (url: string) => void }) {
 ```typescript
 /**
  * Edge Function: 새 메시지 알림
- * @TAG SPEC-SUPABASE-001
  */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';

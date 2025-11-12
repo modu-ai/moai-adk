@@ -75,13 +75,9 @@ MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 
 모든 산출물을 연결하는 완전한 추적성 시스템:
 
 ```
-@SPEC:AUTH-001 (요구사항)
     ↓
-@TEST:AUTH-001 (테스트)
     ↓
-@CODE:AUTH-001:SERVICE (구현)
     ↓
-@DOC:AUTH-001 (문서)
 ```
 
 ### 5. 살아있는 문서
@@ -203,7 +199,6 @@ export MOAI_STATUSLINE_MODE=extended
 
 - ✅ **3단계 위험도**: SAFE (자동) / MEDIUM (승인필요) / HIGH (차단)
 - ✅ **중복 TAG 제거**: 자동으로 중복 @TAG 제거
-- ✅ **형식 오류 수정**: @CODE AUTH-001 → @CODE:AUTH-001 자동 수정
 - ✅ **공백 정규화**: TAG 사이 공백을 일관되게 정규화
 - ✅ **백업 및 롤백**: 수정 전 백업, 오류 발생 시 자동 롤백
 
@@ -764,10 +759,6 @@ uv tool install --force moai-adk
         "research_categories": ["RESEARCH", "ANALYSIS", "KNOWLEDGE", "INSIGHT"],
         "auto_tag_research_content": true,
         "research_patterns": {
-          "RESEARCH": ["@RESEARCH:", "research", "investigate", "analyze"],
-          "ANALYSIS": ["@ANALYSIS:", "analysis", "evaluate", "assess"],
-          "KNOWLEDGE": ["@KNOWLEDGE:", "knowledge", "learn", "pattern"],
-          "INSIGHT": ["@INSIGHT:", "insight", "innovate", "optimize"]
         }
       }
     }

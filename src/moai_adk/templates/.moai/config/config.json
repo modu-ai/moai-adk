@@ -1,7 +1,5 @@
 {
   "_meta": {
-    "@CODE:CONFIG-STRUCTURE-001": "@DOC:JSON-CONFIG-001",
-    "@SPEC:PROJECT-CONFIG-001": "@SPEC:MOAI-CONFIG-001"
   },
   "moai": {
     "version": "{{MOAI_VERSION}}",
@@ -266,7 +264,6 @@
     "notes": "Control automatic report generation. 'enabled': turn on/off, 'auto_create': full (true) vs minimal (false) reports. Helps reduce token usage."
   },
   "github": {
-    "@CODE:GITHUB-CONFIG-001": "@DOC:GITHUB-TEMPLATES-001",
     "templates": {
       "enable_trust_5": true,
       "enable_tag_system": true,
@@ -284,8 +281,6 @@
   },
   "document_management": {
     "_meta": {
-      "@CODE:DOCUMENT-MGMT-001": "@DOC:CLEAN-PROJECT-ROOT-001",
-      "@SPEC:DOC-MANAGEMENT-001": "@SPEC:ROOT-POLLUTION-PREVENTION-001"
     },
     "enabled": true,
     "enforce_structure": true,

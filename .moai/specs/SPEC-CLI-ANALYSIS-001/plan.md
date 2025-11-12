@@ -1,4 +1,3 @@
-# @SPEC:CLI-ANALYSIS-001 구현 계획
 
 ## 프로젝트 개요
 

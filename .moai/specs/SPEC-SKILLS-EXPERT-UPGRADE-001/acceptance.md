@@ -9,7 +9,6 @@ priority: high
 type: acceptance-criteria
 ---
 
-# @SPEC:SKILLS-EXPERT-UPGRADE-001: 인수 기준
 
 ## 개요
 
@@ -65,7 +64,6 @@ type: acceptance-criteria
 - [ ] **자동 완성**: SPEC 자동 완성 시스템
 
 #### moai-foundation-tags
-- [ ] **@TAG 시스템**: 10개 카테고리 13개 타입 완전 구현
 - [ ] **추적 패턴**: 30개 이상의 실제 추적 시나리오
 - [ ] **자동 태깅**: 코드 기반 자동 태깅 시스템
 - [ ] **인벤토리 관리**: 태그 인벤토리 생성 및 관리

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @CODE:HOOK-REALTIME-001 | SPEC: TAG-REALTIME-HOOK-001 | TEST: tests/hooks/test_realtime_tag_monitor.py
 """Real-time TAG Monitoring Hook
 
 Continuous TAG status monitoring and real-time violation detection.

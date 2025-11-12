@@ -1,11 +1,6 @@
 """
 Tests for VersionReader - MoAI-ADK 버전 읽기
 
-@TEST:VERSION-READER-001 - 버전 읽기 기본 기능
-@TEST:VERSION-READER-002 - 60초 캐싱
-@TEST:VERSION-READER-003 - 다른 버전 형식 지원
-@TEST:VERSION-READER-004 - 에러 핸들링
-@TEST:VERSION-READER-005 - config.json 구조 변경 처리
 """
 
 import json
@@ -26,7 +21,6 @@ class TestVersionReader:
         WHEN: get_version() 호출
         THEN: "0.20.1" 또는 "v0.20.1" 반환
         """
-        # @TEST:VERSION-READER-001
         from moai_adk.statusline.version_reader import VersionReader
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -71,7 +65,6 @@ class TestVersionReader:
         WHEN: 60초 이내에 두 번 get_version() 호출
         THEN: 캐시에서 반환
         """
-        # @TEST:VERSION-READER-002
         from moai_adk.statusline.version_reader import VersionReader
 
         with tempfile.TemporaryDirectory() as tmpdir:

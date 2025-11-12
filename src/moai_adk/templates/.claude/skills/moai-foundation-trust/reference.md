@@ -176,7 +176,6 @@ find src/ -name "*helper*.py"  # Find any helper.py (split into domain)
 # Consistent pattern: imports → docstring → classes → functions
 
 """
-@CODE:SPEC:AUTH-001
 User authentication module.
 
 Standard structure enforced by architecture validator.
@@ -238,7 +237,6 @@ cryptography==41.0.7  # Pin exact version (not cryptography>=41.0)
 ### Security Test Examples
 
 ```python
-@TEST:SPEC:AUTH-SECURE-001
 def test_password_hash_not_reversible():
     """Verify passwords cannot be reversed"""
     plaintext = "SecurePassword123"
@@ -248,7 +246,6 @@ def test_password_hash_not_reversible():
     assert plaintext not in hashed
     assert len(hashed) > 20  # Bcrypt format
 
-@TEST:SPEC:SQL-INJECTION-001
 def test_query_safe_against_sql_injection():
     """Verify parameterized queries prevent injection"""
     # Dangerous: f"SELECT * FROM users WHERE email='{email}'"
@@ -271,24 +268,14 @@ rg '@(SPEC|TEST|CODE|DOC):' --no-filename -o | sort | uniq -c
 python .moai/scripts/validation/tag_validator.py
 
 # Report by type
-rg '@SPEC:' -c  # Count SPECs
-rg '@TEST:' -c  # Count TESTSs
-rg '@CODE:' -c  # Count CODE
-rg '@DOC:' -c   # Count DOCs
 ```
 
 ### TAG Linking Rules
 
 ```
 Valid links:
-├─ @SPEC:AUTH-001 in .moai/specs/
-├─ @TEST:SPEC:AUTH-001-001 in tests/
-├─ @CODE:SPEC:AUTH-001 in src/
-└─ @DOC:SPEC:AUTH-001 in docs/
 
 Invalid patterns (will fail validation):
-├─ @TEST:ORPHAN-001 (no @SPEC)
-├─ @CODE:FLOATING-001 (no @SPEC)
 ├─ @DOC without @SPEC/@CODE link
 └─ Circular references
 ```

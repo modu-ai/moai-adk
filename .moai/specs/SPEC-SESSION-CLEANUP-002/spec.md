@@ -1,6 +1,5 @@
 # SPEC-SESSION-CLEANUP-002: Alfred 커맨드 파일 실제 구현 - Session Cleanup 패턴 적용
 
-<!-- @SPEC:SESSION-CLEANUP-002 -->
 
 ---
 
@@ -12,7 +11,6 @@ title: Alfred 커맨드 파일 실제 구현 - Session Cleanup 패턴 적용
 category: Implementation
 priority: high
 status: completed
-author: "@GoosLab"
 created: 2025-10-30
 updated: 2025-10-30
 version: 0.0.1
@@ -53,7 +51,6 @@ scope:
 
 | Version | Date       | Author    | Changes                                          |
 | ------- | ---------- | --------- | ------------------------------------------------ |
-| 0.0.1   | 2025-10-30 | @GoosLab  | Phase 2 SPEC creation - Implementation           |
 
 ---
 
@@ -136,17 +133,14 @@ src/moai_adk/templates/.claude/
 - **REQ-IMPL-001**: 시스템은 각 Alfred 커맨드 완료 시 **반드시** AskUserQuestion을 호출해야 한다
   - **Rationale**: 일관된 UX, 사용자 선택권 보장
   - **Priority**: MUST
-  - **@TAG**: `@REQ:IMPL-001`
 
 - **REQ-IMPL-002**: 시스템은 모든 커맨드 완료 시 prose 형태의 제안을 **금지**해야 한다
   - **Rationale**: "You can now run..." 패턴 제거
   - **Priority**: MUST NOT
-  - **@TAG**: `@REQ:IMPL-002`
 
 - **REQ-IMPL-003**: 시스템은 커맨드 완료 전 TodoWrite를 정리해야 한다
   - **Rationale**: 세션 컨텍스트 명확화, 다음 커맨드 clean state 보장
   - **Priority**: MUST
-  - **@TAG**: `@REQ:IMPL-003`
 
 ### Event-driven Requirements (특정 이벤트 발생 시)
 
@@ -155,28 +149,24 @@ src/moai_adk/templates/.claude/
   - Option 2: 🔍 프로젝트 구조 검토 (현재 상태 확인)
   - Option 3: 🔄 새 세션 시작 (`/clear` 실행)
   - **Priority**: MUST
-  - **@TAG**: `@REQ:IMPL-004`
 
 - **REQ-IMPL-005**: WHEN `/alfred:1-plan` 완료 시, 시스템은 3개 옵션을 제시해야 한다
   - Option 1: 🚀 구현 진행 (`/alfred:2-run SPEC-XXX-001` 실행)
   - Option 2: ✏️ SPEC 수정 (현재 SPEC 재작업)
   - Option 3: 🔄 새 세션 시작 (`/clear` 실행)
   - **Priority**: MUST
-  - **@TAG**: `@REQ:IMPL-005`
 
 - **REQ-IMPL-006**: WHEN `/alfred:2-run` 완료 시, 시스템은 3개 옵션을 제시해야 한다
   - Option 1: 📚 문서 동기화 (`/alfred:3-sync` 실행)
   - Option 2: 🧪 추가 테스트/검증 (테스트 재실행)
   - Option 3: 🔄 새 세션 시작 (`/clear` 실행)
   - **Priority**: MUST
-  - **@TAG**: `@REQ:IMPL-006`
 
 - **REQ-IMPL-007**: WHEN `/alfred:3-sync` 완료 시, 시스템은 3개 옵션을 제시해야 한다
   - Option 1: 📋 다음 기능 계획 (`/alfred:1-plan` 실행)
   - Option 2: 🔀 PR 병합 (main 브랜치로 병합)
   - Option 3: ✅ 세션 완료 (작업 종료)
   - **Priority**: MUST
-  - **@TAG**: `@REQ:IMPL-007`
 
 - **REQ-IMPL-008**: WHEN 사용자가 "새 세션" 또는 "세션 완료" 선택 시, 시스템은 세션 요약을 생성해야 한다
   - 완료된 작업 목록 (TodoWrite 기반)
@@ -184,7 +174,6 @@ src/moai_adk/templates/.claude/
   - 변경된 파일 목록 (git diff 기반)
   - 다음 권장 작업 (optional)
   - **Priority**: SHOULD
-  - **@TAG**: `@REQ:IMPL-008`
 
 ### State-driven Requirements (특정 상태일 때)
 
@@ -192,13 +181,11 @@ src/moai_adk/templates/.claude/
   - 모든 작업은 `pending` → `in_progress` → `completed` 순서
   - 정확히 1개의 작업만 `in_progress` 상태 (parallel 승인 제외)
   - **Priority**: MUST
-  - **@TAG**: `@REQ:IMPL-009`
 
 - **REQ-IMPL-010**: WHILE 커맨드 실행 중일 때, 시스템은 모든 `completed` 작업을 추출 및 기록해야 한다
   - AskUserQuestion 호출 직전 실행
   - 세션 요약 생성 시 사용
   - **Priority**: SHOULD
-  - **@TAG**: `@REQ:IMPL-010`
 
 ### Optional Requirements (선택적)
 
@@ -207,19 +194,16 @@ src/moai_adk/templates/.claude/
   - 실행된 커맨드 목록
   - 생성된 SPEC ID
   - **Priority**: MAY
-  - **@TAG**: `@REQ:IMPL-011`
 
 ### Unwanted Behaviors (금지된 동작)
 
 - **REQ-IMPL-012**: 시스템은 AskUserQuestion 없이 커맨드를 종료해서는 **안 된다**
   - **Rationale**: 사용자에게 다음 단계 선택권 제공 필수
   - **Priority**: MUST NOT
-  - **@TAG**: `@REQ:IMPL-012`
 
 - **REQ-IMPL-013**: 시스템은 옵션을 4개 이상 제시해서는 **안 된다**
   - **Rationale**: UX 혼란 방지, 선택 피로 감소
   - **Priority**: SHOULD NOT
-  - **@TAG**: `@REQ:IMPL-013`
 
 ---
 
@@ -368,33 +352,26 @@ if user_choice in ["🔄 새 세션 시작", "✅ 세션 완료"]:
 
 - **NFR-IMPL-001**: AskUserQuestion 호출은 500ms 이내에 완료되어야 한다
   - **Measurement**: Response time < 500ms
-  - **@TAG**: `@NFR:IMPL-001`
 
 - **NFR-IMPL-002**: 세션 요약 생성은 1초 이내에 완료되어야 한다
   - **Measurement**: Generation time < 1000ms
-  - **@TAG**: `@NFR:IMPL-002`
 
 - **NFR-IMPL-003**: TodoWrite 상태 변경은 즉시 반영되어야 한다
   - **Measurement**: State change latency < 100ms
-  - **@TAG**: `@NFR:IMPL-003`
 
 ### Constraints
 
 - **CON-IMPL-001**: AskUserQuestion은 최대 4개 질문까지 batched 가능
   - **Rationale**: TUI 인터랙션 제한
-  - **@TAG**: `@CON:IMPL-001`
 
 - **CON-IMPL-002**: 각 옵션은 3개로 고정 (예외적으로 4개 허용)
   - **Rationale**: UX 혼란 방지, 선택 피로 감소
-  - **@TAG**: `@CON:IMPL-002`
 
 - **CON-IMPL-003**: 세션 요약은 Markdown 형식으로만 출력
   - **Rationale**: 일관된 출력 포맷, 파싱 용이성
-  - **@TAG**: `@CON:IMPL-003`
 
 - **CON-IMPL-004**: Markdown 템플릿 파일은 `.claude/commands/` 디렉토리에 위치
   - **Rationale**: MoAI-ADK 표준 구조
-  - **@TAG**: `@CON:IMPL-004`
 
 ---
 
@@ -402,8 +379,6 @@ if user_choice in ["🔄 새 세션 시작", "✅ 세션 완료"]:
 
 ### Parent Requirements
 
-- **@SPEC:SESSION-CLEANUP-001**: Phase 1 - Alfred 커맨드 완료 후 세션 정리 및 다음 단계 안내 프레임워크
-- **@SPEC:ALF-WORKFLOW-001**: Alfred 4-Step Workflow (Intent → Plan → Execute → Report)
 
 ### Child Requirements
 
@@ -418,12 +393,6 @@ if user_choice in ["🔄 새 세션 시작", "✅ 세션 완료"]:
 
 ### Related Components
 
-- `src/moai_adk/templates/.claude/commands/alfred-0-project.md` → `@CODE:CMD-0-PROJECT-IMPL`
-- `src/moai_adk/templates/.claude/commands/alfred-1-plan.md` → `@CODE:CMD-1-PLAN-IMPL`
-- `src/moai_adk/templates/.claude/commands/alfred-2-run.md` → `@CODE:CMD-2-RUN-IMPL`
-- `src/moai_adk/templates/.claude/commands/alfred-3-sync.md` → `@CODE:CMD-3-SYNC-IMPL`
-- `src/moai_adk/templates/.claude/agents/agent-alfred.md` → `@CODE:AGENT-ALFRED-IMPL`
-- `moai-alfred-ask-user-questions` skill → `@SKILL:INTERACTIVE-QUESTIONS`
 
 ### Test Cases
 
@@ -452,15 +421,12 @@ See acceptance.md for detailed test scenarios:
 
 1. **Q1**: 세션 메타데이터를 `.moai/memory/session-history.json`에 저장할 것인가?
    - **Status**: To be decided (Phase 3에서 논의)
-   - **Owner**: @GoosLab
 
 2. **Q2**: 세션 요약을 파일로 저장할 것인가, 아니면 출력만 할 것인가?
    - **Status**: **출력만** (파일 저장은 Optional - Phase 3)
-   - **Owner**: @GoosLab
 
 3. **Q3**: 각 커맨드별로 옵션 개수를 3개로 고정할 것인가?
    - **Status**: **3개 고정** (예외적으로 4개 허용)
-   - **Owner**: @GoosLab
 
 4. **Q4**: AskUserQuestion 호출 실패 시 어떻게 처리할 것인가?
    - **Status**: **Fallback to prose** (에러 로그 + 다음 커맨드 제안)
@@ -473,7 +439,6 @@ See acceptance.md for detailed test scenarios:
 - **Current Version**: 0.0.1 (Phase 2 SPEC draft)
 - **Status**: Draft
 - **Next Review**: 2025-10-31
-- **Approval Required**: @GoosLab
 - **Implementation Target**: v0.8.0 of MoAI-ADK
 
 ---

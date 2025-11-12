@@ -1,6 +1,5 @@
 """
 Tests for ContextManager module
-@TEST:CMD-IMPROVE-001-CTX-001 - Path validation and context management
 """
 
 import os

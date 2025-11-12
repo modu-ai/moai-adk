@@ -65,36 +65,24 @@ Git 상태 변경 감지 및 동기화 요청을 분석한 결과, 다음 항목
 #### 동기화 전 상태
 - **고아 TAG**: 497개 (1.1% 전체 TAG)
 - **체인 무결성**: 0.0% (심각한 문제)
-- **누락된 @DOC TAG**: 2개 (`@DOC:IMPROVEMENT-GUIDE`, `@DOC:VALIDATION-REPORT`)
 
 #### 동기화 후 상태
 - **고아 TAG**: 13개 (76.4% 개선)
 - **체인 무결성**: 76.4% (실질적 개선)
-- **@DOC TAG 생성**: 2개 완료
 
-### 2. @CODE TAG 배치 ✅
 
 #### 업데이트된 파일
 1. **core/tags/generator.py**:
-   - `@CODE:QUALITY-FRAMEWORK` 추가
 
 2. **core/tags/parser.py**:
-   - `@CODE:QUALITY-FRAMEWORK` 추가
 
 3. **core/language_validator.py**:
-   - `@CODE:LANG-VALIDATOR` 추가
 
 4. **core/tags/ci_validator.py**:
-   - `@CODE:QUALITY-FRAMEWORK` 추가
 
 5. **core/template_engine.py**:
-   - `@CODE:TEMPLATE-SYNC` 추가
 
 #### TAG 추적성 개선
-- **@CODE:PERF-OPTIMIZER**: 100% 구현
-- **@CODE:LANG-VALIDATOR**: 75% 구현 (기능 완성)
-- **@CODE:QUALITY-FRAMEWORK**: 70% 구현 (주요 모듈 완성)
-- **@CODE:TEMPLATE-SYNC**: 20% 구현 (기반 구축 중)
 
 ---
 
@@ -148,7 +136,6 @@ Git 상태 변경 감지 및 동기화 요청을 분석한 결과, 다음 항목
 
 **성과**:
 - 2개의 새로운 문서 생성 (IMPROVEMENT-GUIDE, VALIDATION-REPORT)
-- 5개의 주요 코드 파일에 @CODE TAG 배치
 - SPEC 구현 진행도 62.5% 달성
 
 **영향**:
@@ -259,11 +246,6 @@ Git 상태 변경 감지 및 동기화 요청을 분석한 결과, 다음 항목
 - [SPEC-IMPROVEMENT-001.md](../specs/SPEC-IMPROVEMENT-001/spec.md) - 진행 상태 반영
 
 ### 코드 파일
-- `src/moai_adk/core/tags/generator.py` - @CODE:QUALITY-FRAMEWORK 배치
-- `src/moai_adk/core/tags/parser.py` - @CODE:QUALITY-FRAMEWORK 배치
-- `src/moai_adk/core/language_validator.py` - @CODE:LANG-VALIDATOR 배치
-- `src/moai_adk/core/tags/ci_validator.py` - @CODE:QUALITY-FRAMEWORK 배치
-- `src/moai_adk/core/template_engine.py` - @CODE:TEMPLATE-SYNC 배치
 
 ---
 
@@ -275,7 +257,6 @@ Git 상태 변경 감지 및 동기화 요청을 분석한 결과, 다음 항목
 2. **TAG 시스템**: 고아 TAG 76.4% 개선, 체인 무결성 향상
 3. **새로운 SPEC**: Bun + Biome 마이그레이션 SPEC 생성
 4. **개선 가이드**: 상세한 사용 가이드 및 검증 리포트 생성
-5. **@CODE TAG 배치**: 5개 핵심 파일에 TAG 배치 완료
 
 ### ⚠️ 지속적으로 관리 필요한 항목
 
@@ -310,4 +291,3 @@ Git 상태 변경 감지 및 동기화 요청을 분석한 결과, 다음 항목
 **다음 동기화 예정**: 변경 발생 시 자동 또는 주기적 실행
 **최종 동기화**: 2025-11-10
 
-**@TAG**: @DOC:SYNC-REPORT @SPEC:IMPROVEMENT-001 @CODE:QUALITY-FRAMEWORK

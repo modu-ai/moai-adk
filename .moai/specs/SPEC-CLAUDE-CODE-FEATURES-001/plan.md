@@ -57,7 +57,6 @@ Claude Code v2.0.30+ 신규 기능 6개를 MoAI-ADK v0.9.0에 통합하여:
 
 2. **Integration with tag-agent**
    - `tag-agent.py` 수정: Enhanced Grep 호출 로직 추가
-   - `@SPEC:` 패턴 검색 시 `head_limit=10` 적용
 
 3. **Performance Optimization**
    - 대용량 파일(>10MB) 스트리밍 모드 구현

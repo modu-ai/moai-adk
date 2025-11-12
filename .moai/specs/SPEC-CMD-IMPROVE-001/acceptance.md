@@ -1,4 +1,3 @@
-# 인수 기준: @SPEC:CMD-IMPROVE-001
 
 **SPEC ID**: CMD-IMPROVE-001
 **Title**: Commands 레이어 컨텍스트 전달 및 Resume 기능 통합 개선

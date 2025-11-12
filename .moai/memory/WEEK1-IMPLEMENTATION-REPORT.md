@@ -28,13 +28,11 @@ Week 1 구현은 TDD 원칙에 따라 엄격하게 RED-GREEN-REFACTOR 사이클�
 #### 1.1 소스 코드
 - **파일**: `/Users/goos/MoAI/MoAI-ADK/src/moai_adk/core/context_manager.py`
 - **라인 수**: 290+ 라인
-- **TAG**: @CODE:CMD-IMPROVE-001-CTX
 - **내용**: 컨텍스트 관리 핵심 모듈
 
 #### 1.2 테스트 코드
 - **파일**: `/Users/goos/MoAI/MoAI-ADK/tests/core/test_context_manager.py`
 - **라인 수**: 400+ 라인
-- **TAG**: @TEST:CMD-IMPROVE-001-CTX-001
 - **테스트 케이스 수**: 30개
 - **모든 테스트 성공**: ✅
 
@@ -341,7 +339,6 @@ latest = manager.load_latest_phase()
 - ✅ 명확한 권한 처리
 
 ### 5. Trackable (추적 가능)
-- ✅ TAG 체인: @SPEC:CMD-IMPROVE-001 → @TEST:CMD-IMPROVE-001-CTX-001 → @CODE:CMD-IMPROVE-001-CTX
 - ✅ 정규식 기반 변수 검증
 - ✅ 타임스탐프 자동 생성
 - ✅ 상태 기록 완전 보존
@@ -460,4 +457,3 @@ from moai_adk.core.context_manager import (
 
 **작성일**: 2025-11-12
 **상태**: ✅ Week 1 완료
-**TAG**: @SPEC:CMD-IMPROVE-001 / @TEST:CMD-IMPROVE-001-CTX-001 / @CODE:CMD-IMPROVE-001-CTX

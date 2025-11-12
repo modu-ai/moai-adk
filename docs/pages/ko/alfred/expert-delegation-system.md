@@ -588,7 +588,6 @@ Expert Delegation System은 MoAI-ADK의 **Multi-Language Dynamic System**과 완
 
 **Layer 2 (내부 시스템)**:
 - Skill 호출: `Skill("moai-alfred-agent-guide")` (영어 고정)
-- @TAG 식별자: `@SPEC:AUTH-001` (영어 고정)
 - config.json 키: `conversation_language` (영어 고정)
 
 ### 25+ 언어 지원

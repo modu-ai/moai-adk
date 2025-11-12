@@ -1,4 +1,3 @@
-# @SPEC:LOGGING-001 수용 기준 및 테스트 계획
 
 작성일: 2025-11-13
 버전: 1.0.0
@@ -727,8 +726,6 @@ MOAI_ENV=test python -c "from moai_adk.utils.logger import setup_logger; logger 
 ## 5. 정의된 완료 (Definition of Done)
 
 ### 코드 변경
-- [ ] `@SPEC:LOGGING-001` TAG 추가
-- [ ] `@CODE:LOGGING-001` 검증
 - [ ] 타입 힌팅 완료
 - [ ] docstring 업데이트
 - [ ] 코드 포매팅 (black, isort, flake8) 통과
@@ -743,7 +740,6 @@ MOAI_ENV=test python -c "from moai_adk.utils.logger import setup_logger; logger 
 - [ ] spec.md 작성 및 검증
 - [ ] plan.md 작성 완료
 - [ ] acceptance.md 완성
-- [ ] TAG 체인 정렬 (@SPEC/@CODE/@TEST)
 
 ### 검증
 - [ ] 보안 요구사항 검증

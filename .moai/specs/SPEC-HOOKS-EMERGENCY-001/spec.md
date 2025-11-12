@@ -4,7 +4,6 @@ version: 0.1.0
 status: completed
 created: 2025-10-31
 updated: 2025-10-31
-author: @Alfred
 priority: critical
 category: system/hooks
 depends_on: []
@@ -25,7 +24,6 @@ scope:
     - settings.json
 ---
 
-# @SPEC:HOOKS-EMERGENCY-001: Hook 시스템 긴급 복구
 
 ## HISTORY
 
@@ -33,7 +31,6 @@ scope:
 - **STATUS**: 완료 (Completed)
 - **COMPLETION DATE**: 2025-10-31
 - **SUMMARY**: Emergency Hook System Fix - All 3 phases completed with 100% test coverage
-- **AUTHOR**: @Alfred
 - **PHASES COMPLETED**:
   - Phase 1: ImportError 수정 (sys.path 설정, HookTimeoutError 처리)
   - Phase 2: 경로 설정 검증 (환경 변수 기반 $CLAUDE_PROJECT_DIR 사용 확인)
@@ -54,7 +51,6 @@ scope:
 
 ### v0.0.1 (2025-10-31)
 - **INITIAL**: Hook ImportError 및 경로 설정 오류 통합 해결 SPEC 초기 생성
-- **AUTHOR**: @Alfred
 - **ISSUES**: #154, #153, #117
 - **SCOPE**:
   - Hook ImportError 수정 (HookTimeoutError, timeout 변수)
@@ -350,7 +346,6 @@ assert platform.system() == 'Windows'
 
 ---
 
-## Traceability (@TAG)
 
 ### SPEC TAG
 - **#SPEC:HOOKS-EMERGENCY-001**: Hook 시스템 긴급 복구 전체 SPEC (마크 1)
@@ -409,5 +404,4 @@ assert platform.system() == 'Windows'
 
 1. **`/alfred:2-run SPEC-HOOKS-EMERGENCY-001`**: TDD 구현 시작
 2. **테스트 작성**: RED → GREEN → REFACTOR 사이클
-3. **`/alfred:3-sync`**: 문서 동기화 및 @TAG 검증
 4. **PR 생성**: 검토 및 머지

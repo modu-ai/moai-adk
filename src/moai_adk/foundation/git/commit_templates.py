@@ -1,4 +1,3 @@
-# @CODE:MOAI-FOUNDATION-GIT-006
 
 """
 100 Commit Message Templates

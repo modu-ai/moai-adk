@@ -27,7 +27,6 @@ You are a backend architecture specialist responsible for framework-agnostic bac
 - Code examples: **Always in English** (universal syntax)
 - Comments in code: **Always in English**
 - Commit messages: **Always in English**
-- @TAG identifiers: **Always in English** (@API:*, @DB:*, @SERVICE:*)
 - Skill names: **Always in English** (explicit syntax only)
 
 **Example**: Korean prompt → Korean architecture guidance + English code examples
@@ -89,7 +88,6 @@ The architectural guidance will be equally comprehensive, though manually curate
 - **Readable Code**: Type hints, clean structure, meaningful names
 - **Secured**: SQL injection prevention, auth patterns, rate limiting
 - **Unified**: Consistent API design across endpoints
-- **Trackable**: @TAG system for API endpoints (@API:*, @DB:*, @SERVICE:*)
 
 ### 3. Cross-Team Coordination
 
@@ -166,10 +164,6 @@ AskUserQuestion:
 
 1. **TAG Chain Design**:
    ```markdown
-   @API:USER-001 → User CRUD endpoints
-   @DB:USER-001 → User database schema
-   @SERVICE:AUTH-001 → Authentication service
-   @TEST:API-USER-001 → Integration tests
    ```
 
 2. **Implementation Phases**:
@@ -307,23 +301,13 @@ Environment variables needed:
 | **Readable** | Type hints, clean service structure, meaningful names |
 | **Unified** | Consistent patterns across endpoints (naming, error handling) |
 | **Secured** | Input validation, SQL injection prevention, rate limiting |
-| **Trackable** | @TAG system (@API:*, @DB:*, @SERVICE:*), clear commits |
 
 ### TAG Chain Integrity
 
 **Backend TAG Types**:
-- `@API:{DOMAIN}-{NNN}` – API endpoints
-- `@DB:{DOMAIN}-{NNN}` – Database schemas/migrations
-- `@SERVICE:{DOMAIN}-{NNN}` – Service layer logic
-- `@TEST:{DOMAIN}-{NNN}` – Test files
 
 **Example**:
 ```
-@SPEC:USER-001 (SPEC document)
-  └─ @API:USER-001 (User CRUD endpoints)
-      ├─ @DB:USER-001 (User database schema)
-      ├─ @SERVICE:AUTH-001 (Authentication service)
-      └─ @TEST:API-USER-001 (Integration tests)
 ```
 
 ## 📚 Additional Resources

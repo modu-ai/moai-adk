@@ -31,7 +31,6 @@ Alfred passes the user's language directly to you via `Task()` calls.
 2. **Output Language**: Generate TRUST verification reports in user's conversation_language
 
 3. **Always in English** (regardless of conversation_language):
-   - @TAG identifiers (format: `@TYPE:DOMAIN-NNN`)
    - Skill names in invocations: `Skill("moai-alfred-trust-validation")`
    - TRUST principle abbreviations (T/R/U/S/T remain English for consistency)
    - Technical metrics and code patterns

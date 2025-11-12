@@ -8,7 +8,6 @@ author: "@goos"
 priority: high
 ---
 
-# @SPEC:UPDATE-CACHE-FIX-001: UV Tool Upgrade Cache Refresh Auto-Retry Implementation
 
 ## HISTORY
 
@@ -19,17 +18,12 @@ priority: high
   - Implemented 3 cache detection/refresh/retry functions
   - Created 8 comprehensive test cases (100% passing)
   - All acceptance criteria verified
-  - Full TAG chain: `@SPEC`→`@TEST`→`@CODE`→`@DOC`
   - Test coverage: 100% (target: 90%+)
   - Code quality: ruff+mypy all passing
 
 - **COMPONENTS**:
-  1. `@CODE:UPDATE-CACHE-FIX-001-001`: _detect_stale_cache() function
-  2. `@CODE:UPDATE-CACHE-FIX-001-002`: _clear_uv_package_cache() function
-  3. `@CODE:UPDATE-CACHE-FIX-001-003`: _execute_upgrade_with_retry() integration
 
 - **TEST RESULTS**:
-  - `@TEST:UPDATE-CACHE-FIX-001`: 8/8 tests passing
   - Coverage: 100% of implementation code
   - Execution time: 0.90 seconds
 
@@ -143,7 +137,6 @@ def _detect_stale_cache(
     """
     Detect if uv cache is stale by comparing versions.
 
-    @CODE:UPDATE-CACHE-FIX-001-001
     """
 ```
 
@@ -164,7 +157,6 @@ def _clear_uv_package_cache(package_name: str = "moai-adk") -> bool:
     """
     Clear uv cache for specific package.
 
-    @CODE:UPDATE-CACHE-FIX-001-002
     """
 ```
 
@@ -207,7 +199,6 @@ if result.returncode == 0 and "Nothing to upgrade" in result.stdout:
 return result.returncode == 0
 ```
 
-**@TAG 참조**: @CODE:UPDATE-CACHE-FIX-001-003
 
 ### 에러 처리 전략
 
@@ -234,33 +225,17 @@ logger.warning("Cache clear failed: permission denied")
 logger.error("Upgrade failed after retry: network timeout")
 ```
 
-## Traceability (@TAG)
 
 ### SPEC
-- **Primary**: @SPEC:UPDATE-CACHE-FIX-001
-- **Related**: @SPEC:UPDATE-REFACTOR-001 (기존 update 리팩토링)
 
 ### TEST
-- **Primary**: @TEST:UPDATE-CACHE-FIX-001
 - **Unit Tests**:
-  - `tests/unit/test_update_uv_cache_fix.py::test_detect_stale_cache_true` (@TEST:UPDATE-CACHE-FIX-001-001)
-  - `tests/unit/test_update_uv_cache_fix.py::test_detect_stale_cache_false` (@TEST:UPDATE-CACHE-FIX-001-002)
-  - `tests/unit/test_update_uv_cache_fix.py::test_clear_cache_success` (@TEST:UPDATE-CACHE-FIX-001-003)
-  - `tests/unit/test_update_uv_cache_fix.py::test_clear_cache_failure` (@TEST:UPDATE-CACHE-FIX-001-004)
-  - `tests/unit/test_update_uv_cache_fix.py::test_upgrade_with_retry` (@TEST:UPDATE-CACHE-FIX-001-005)
 
 ### CODE
-- **Primary**: @CODE:UPDATE-CACHE-FIX-001
 - **Implementation**:
-  - `src/moai_adk/cli/commands/update.py::_detect_stale_cache` (@CODE:UPDATE-CACHE-FIX-001-001)
-  - `src/moai_adk/cli/commands/update.py::_clear_uv_package_cache` (@CODE:UPDATE-CACHE-FIX-001-002)
-  - `src/moai_adk/cli/commands/update.py::_execute_upgrade_with_retry` (@CODE:UPDATE-CACHE-FIX-001-003)
 
 ### DOC
-- **Primary**: @DOC:UPDATE-CACHE-FIX-001
 - **Documentation**:
-  - `README.md#troubleshooting-uv-tool-upgrade-issues` (@DOC:UPDATE-CACHE-FIX-001-001)
-  - `CHANGELOG.md#v0.9.1-fixed` (@DOC:UPDATE-CACHE-FIX-001-002)
   - `.moai/specs/SPEC-UPDATE-CACHE-FIX-001/spec.md` (이 문서)
   - `.moai/specs/SPEC-UPDATE-CACHE-FIX-001/plan.md`
   - `.moai/specs/SPEC-UPDATE-CACHE-FIX-001/acceptance.md`

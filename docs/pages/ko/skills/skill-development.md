@@ -35,35 +35,27 @@ context7:
 
 # Skill Title
 
-## @TAG-XXXX-001: Purpose
 
 명확한 목적 설명 (2-3 문장)
 
-## @TAG-XXXX-002: Core Concepts
 
 핵심 개념 설명 (3-5개의 주요 개념)
 
-## @TAG-XXXX-003: Usage Examples
 
 실제 사용 예제 (3-5개의 시나리오)
 
-## @TAG-XXXX-004: Best Practices
 
 권장 사항 (5-7개의 베스트 프랙티스)
 
-## @TAG-XXXX-005: Common Pitfalls
 
 주의사항 및 안티패턴
 
-## @TAG-XXXX-006: Integration
 
 다른 Skills/도구와의 통합 방법
 
-## @TAG-XXXX-007: Troubleshooting
 
 일반적인 문제 및 해결 방법
 
-## @TAG-XXXX-008: References
 
 관련 문서 및 리소스
 ```
@@ -190,11 +182,9 @@ context7:
 
 # WebSocket Server Pattern
 
-## @TAG-WS-001: Purpose
 
 실시간 양방향 통신을 위한 WebSocket 서버 구현 패턴입니다. 채팅, 알림, 협업 도구 등 실시간 기능이 필요한 애플리케이션에 적합합니다.
 
-## @TAG-WS-002: Core Concepts
 
 ### 1. Connection Management
 ```typescript
@@ -261,7 +251,6 @@ function setupHeartbeat(ws: WebSocket) {
 }
 ```
 
-## @TAG-WS-003: Usage Examples
 
 ### Example 1: 기본 WebSocket 서버
 ```typescript
@@ -374,7 +363,6 @@ wss.on('connection', async (ws, req) => {
 })
 ```
 
-## @TAG-WS-004: Best Practices
 
 1. **연결 관리**
    - 클라이언트 ID 생성 및 추적
@@ -411,7 +399,6 @@ wss.on('connection', async (ws, req) => {
    - 메시지 처리 시간 측정
    - 에러율 모니터링
 
-## @TAG-WS-005: Common Pitfalls
 
 ### 1. 메모리 누수
 ```typescript
@@ -460,7 +447,6 @@ ws.on('error', (error) => {
 })
 ```
 
-## @TAG-WS-006: Integration
 
 ### Next.js API Routes
 ```typescript
@@ -518,7 +504,6 @@ wss.on('connection', (ws) => {
 })
 ```
 
-## @TAG-WS-007: Troubleshooting
 
 ### 문제: Connection timeout
 ```typescript
@@ -552,7 +537,6 @@ ws.on('close', () => {
 })
 ```
 
-## @TAG-WS-008: References
 
 - [WebSocket RFC 6455](https://datatracker.ietf.org/doc/html/rfc6455)
 - [ws Library Documentation](https://github.com/websockets/ws)
@@ -561,9 +545,6 @@ ws.on('close', () => {
 
 ## Related Skills
 
-- @REF(moai-pattern-real-time-backend)
-- @REF(moai-baas-convex)
-- @REF(moai-workflow-testing)
 ```
 
 ## Context7 통합 패턴

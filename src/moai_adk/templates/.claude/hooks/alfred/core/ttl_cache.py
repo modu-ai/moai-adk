@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @CODE:ENHANCE-PERF-001:CACHE | SPEC: SPEC-ENHANCE-PERF-001
 """TTL-Based Cache for SessionStart Hook Performance Optimization
 
 Provides transparent caching with automatic time-based expiration (TTL).

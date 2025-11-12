@@ -9,9 +9,6 @@ category: "documentation"
 tags: ["documentation", "acceptance-criteria", "quality-assurance", "table-format"]
 depends_on: ["DOC-ONLINE-001", "DOC-VISUAL-001"]
 traceability:
-  - "@SPEC:DOC-TABLE-001"
-  - "@IMPL:table-processor-001"
-  - "@TEST:table-format-test-001"
 ---
 
 # 표 형식 및 데이터 표현 품질 검증 기준

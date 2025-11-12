@@ -1,9 +1,5 @@
 """
 Integration tests for Command Context Saving functionality
-@TEST:W2-001 - 0-project command saves phase results to JSON
-@TEST:W2-002 - JSON schema validation for saved phase results
-@TEST:W2-003 - All file paths are absolute in saved JSON
-@TEST:W2-004 - No unsubstituted template variables in saved JSON
 
 Tests the integration between 0-project command and ContextManager.
 Verifies that phase results are correctly saved after project-manager execution.
@@ -68,7 +64,6 @@ def context_manager(mock_project_dir):
 class TestProjectCommandContextSaving:
     """Test suite for 0-project command context saving integration"""
 
-    # @TEST:W2-001 - Test JSON file creation
     def test_0_project_saves_phase_result(self, context_manager, mock_project_dir):
         """
         Test that 0-project command saves phase result to JSON file.
@@ -112,7 +107,6 @@ class TestProjectCommandContextSaving:
         assert loaded_data["next_phase"] == "1-plan", "Next phase should be set"
 
 
-    # @TEST:W2-002 - Test JSON schema validation
     def test_0_project_json_schema(self, context_manager, mock_project_dir):
         """
         Test that saved JSON complies with expected schema.
@@ -172,7 +166,6 @@ class TestProjectCommandContextSaving:
             "status should be one of: completed, error, interrupted"
 
 
-    # @TEST:W2-003 - Test absolute paths
     def test_0_project_paths_are_absolute(self, context_manager, mock_project_dir):
         """
         Test that all file paths in saved JSON are absolute.
@@ -217,7 +210,6 @@ class TestProjectCommandContextSaving:
                 f"Path should be within project root: {file_path}"
 
 
-    # @TEST:W2-004 - Test template variable substitution
     def test_0_project_no_template_vars(self, context_manager, mock_project_dir):
         """
         Test that saved JSON contains no unsubstituted template variables.

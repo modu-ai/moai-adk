@@ -56,7 +56,6 @@ without blocking the calling request, returning immediately to the caller.
 - `test_request_returns_immediately`
 - `test_async_processing_in_background`
 
-**Related CODE**: @CODE: SPEC-105-CODE-001
 
 ---
 
@@ -81,7 +80,6 @@ the service SHALL retry up to 3 times with exponential backoff
 - `test_max_retry_limit`
 - `test_failed_status_after_max_retries`
 
-**Related CODE**: @CODE: SPEC-105-CODE-002
 
 ---
 
@@ -109,7 +107,6 @@ to the same recipient within a 5-minute deduplication window.
 - `test_different_templates_allowed`
 - `test_race_condition_prevention`
 
-**Related CODE**: @CODE: SPEC-105-CODE-003
 
 ---
 
@@ -140,7 +137,6 @@ notify.send_email(
 - `test_context_variables_interpolated`
 - `test_template_not_found_error`
 
-**Related CODE**: @CODE: SPEC-105-CODE-004
 
 ---
 
@@ -169,7 +165,6 @@ under sustained load (10-minute duration) with standard templates.
 - `test_memory_usage_sustained_load` (benchmark)
 - `test_cpu_usage_under_load` (benchmark)
 
-**Related CODE**: @CODE: SPEC-105-CODE-005
 
 ---
 

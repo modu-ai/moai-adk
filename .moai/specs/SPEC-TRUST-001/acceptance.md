@@ -1,4 +1,3 @@
-# @SPEC:TRUST-001 Acceptance Criteria
 
 > **TRUST 원칙 자동 검증 시스템 수락 기준**
 
@@ -219,12 +218,10 @@
 
 ---
 
-## TC-006: @TAG 체인 완전성 검증
 
 ### 정상 케이스
 
 **Given**:
-- 코드에 `@SPEC:AUTH-001`, `@TEST:AUTH-001`, `@CODE:AUTH-001`이 모두 존재
 
 **When**:
 - `trust-checker --check=tag-chain` 실행
@@ -241,7 +238,6 @@
 ### 오류 케이스
 
 **Given**:
-- 코드에 `@CODE:AUTH-003`은 있으나 `@SPEC:AUTH-003`이 없음
 
 **When**:
 - `trust-checker --check=tag-chain` 실行
@@ -253,8 +249,6 @@
   ⚠️ TAG Chain: 2 orphan TAGs found
     → /alfred:3-sync 실행 전 TAG 수정 필요
     → 고아 TAG:
-      - @CODE:AUTH-003 (no @SPEC:AUTH-003) at src/auth/service.ts:45
-      - @SPEC:USER-005 (no @CODE:USER-005) at .moai/specs/SPEC-USER-005/spec.md:1
   ```
 - Exit code: 0 (WARNING은 통과, --fail-on-warning 옵션 시 exit 1)
 
@@ -265,7 +259,6 @@
 ### 정상 케이스
 
 **Given**:
-- 모든 `@CODE:ID`가 `@SPEC:ID`와 연결됨
 
 **When**:
 - `trust-checker --check=tag-chain` 실행
@@ -281,7 +274,6 @@
 ### 오류 케이스
 
 **Given**:
-- `@CODE:PAYMENT-007`은 있으나 `@SPEC:PAYMENT-007`이 없음
 
 **When**:
 - `trust-checker --check=tag-chain` 실행
@@ -292,10 +284,8 @@
   ```
   ⚠️ TAG Chain: 1 orphan TAG found
     → 고아 TAG:
-      - @CODE:PAYMENT-007 (no @SPEC:PAYMENT-007) at src/payment/gateway.ts:89
     → 권장 조치:
       1. SPEC-PAYMENT-007 문서 작성
-      2. 또는 @CODE:PAYMENT-007 제거
   ```
 - Exit code: 0
 
@@ -527,4 +517,3 @@
 ---
 
 **Last Updated**: 2025-10-16
-**Author**: @Goos

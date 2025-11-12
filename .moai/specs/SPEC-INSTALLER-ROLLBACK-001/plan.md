@@ -1,4 +1,3 @@
-# @SPEC:INSTALLER-ROLLBACK-001: Implementation Plan
 
 ## 1. Phase 1: InstallationTransaction 클래스 구현
 
@@ -8,7 +7,6 @@
 
 ### 1.2 구현 내용
 ```typescript
-// @CODE:INSTALLER-ROLLBACK-001 | SPEC: SPEC-INSTALLER-ROLLBACK-001.md | TEST: tests/core/installer/installation-transaction.test.ts
 
 export class InstallationTransaction {
   private createdPaths: Set<string>;
@@ -225,4 +223,3 @@ moai-adk install --rollback-report=./  # 리포트 저장
 - [ ] 롤백 리포트 생성 기능
 - [ ] CLI 플래그 추가
 - [ ] 문서 업데이트 (README.md)
-- [ ] `@CODE:INSTALLER-ROLLBACK-001` TAG 추가

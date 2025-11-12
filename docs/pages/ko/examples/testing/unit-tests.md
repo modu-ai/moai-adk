@@ -40,7 +40,6 @@ my-project/
 
 ```python
 # SPEC: CALC-001 - 계산기 함수
-# @TAG:CALC-001
 
 from typing import Union
 
@@ -103,7 +102,6 @@ def calculate_discount(price: float, discount_percent: int) -> float:
 
 ```python
 # SPEC: TEST-CALC-001 - 계산기 단위 테스트
-# @TAG:TEST-CALC-001
 
 import pytest
 from app.calculator import add, divide, calculate_discount
@@ -209,7 +207,6 @@ class TestCalculateDiscount:
 
 ```python
 # SPEC: TEST-USER-001 - 사용자 클래스 테스트
-# @TAG:TEST-USER-001
 
 import pytest
 from app.user import User, UserManager

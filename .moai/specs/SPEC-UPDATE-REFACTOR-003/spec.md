@@ -4,7 +4,6 @@ version: 0.0.1
 status: draft
 created: 2025-10-28
 updated: 2025-10-28
-author: @Goos
 priority: medium
 category: CLI Enhancement
 labels: [self-update, ux-improvement, unified-command]
@@ -15,7 +14,6 @@ related_issue: ["#85"]
 scope: unified-update-command
 ---
 
-# @SPEC:UPDATE-REFACTOR-003: moai-adk Unified Update Command (Option B)
 
 ## HISTORY
 
@@ -348,16 +346,10 @@ console.print("  /alfred:0-project update\n")
 
 ---
 
-## Traceability (@TAG)
 
 **SPEC Chain**:
-- @SPEC:UPDATE-REFACTOR-003 (this document)
-- @SPEC:UPDATE-REFACTOR-002 (parent specification)
 
 **Implementation Chain** (to be populated):
-- @TEST: `tests/unit/test_update_complete.py`
-- @CODE: `src/moai_adk/cli/commands/update_complete.py`
-- @DOC: `README.md`, `CHANGELOG.md`
 
 ---
 
@@ -409,7 +401,6 @@ console.print("  /alfred:0-project update\n")
 2. **Implementation**
    - Create feature branch: `feature/SPEC-UPDATE-REFACTOR-003`
    - Follow TDD (RED → GREEN → REFACTOR)
-   - Reference @TAG in commits
 
 3. **Testing and QA**
    - 85%+ coverage target

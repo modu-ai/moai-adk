@@ -343,14 +343,10 @@ git-manager uses the following Git commands directly:
 
 **Example (locale: "ko")**:
 git-manager creates TDD staged commits in the following format when locale is "ko":
-- RED: "🔴 RED: [Test Description]" with @TEST:[SPEC_ID]-RED
-- GREEN: "🟢 GREEN: [Implementation Description]" with @CODE:[SPEC_ID]-GREEN
 - REFACTOR: "♻️ REFACTOR: [Improvement Description]" with REFACTOR:[SPEC_ID]-CLEAN
 
 **Example (locale: "en")**:
 git-manager creates TDD staged commits in the following format when locale is "en":
-- RED: "🔴 RED: [test description]" with @TEST:[SPEC_ID]-RED
-- GREEN: "🟢 GREEN: [implementation description]" with @CODE:[SPEC_ID]-GREEN
 - REFACTOR: "♻️ REFACTOR: [improvement description]" with REFACTOR:[SPEC_ID]-CLEAN
 
 **Supported languages**: ko (Korean), en (English), ja (Japanese), zh (Chinese)

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @TEST:HOOKS-SCHEMA-001 | SPEC: SPEC-HOOKS-SCHEMA-001.md
 """HookResult JSON 스키마 검증 테스트
 
 Claude Code Hook 표준 스키마를 준수하는지 검증합니다.

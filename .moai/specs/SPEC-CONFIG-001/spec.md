@@ -4,17 +4,14 @@ version: 0.1.0
 status: completed
 created: 2025-10-06
 updated: 2025-10-16
-author: @Goos
 priority: medium
 ---
 
-# @SPEC:CONFIG-001: config.json 스키마 통합 및 표준화
 
 ## HISTORY
 
 ### v0.1.0 (2025-10-16)
 - **COMPLETED**: TDD 구현 완료, 모든 기능 구현 및 테스트 통과
-- **AUTHOR**: @Goos
 - **CHANGES**:
   - config.json에 locale 필드 추가 완료 (src/moai_adk/templates/.moai/config.json:62)
   - 전체 스키마 구조 통합 완료
@@ -23,7 +20,6 @@ priority: medium
 
 ### v0.0.1 (2025-10-06)
 - **INITIAL**: config.json 템플릿과 스키마 통합 명세 작성
-- **AUTHOR**: @Goos
 
 ## 개요
 
@@ -115,8 +111,6 @@ WHEN config.json이 생성될 때,
 // src/core/config/types.ts
 export interface MoAIConfig {
   _meta?: {
-    '@CODE:CONFIG-STRUCTURE-001'?: string;
-    '@SPEC:PROJECT-CONFIG-001'?: string;
   };
 
   project: {
@@ -267,6 +261,3 @@ export interface MoAIConfig {
 
 ## Tags
 
-- @SPEC:CONFIG-001
-- @CODE:CONFIG-STRUCTURE-001
-- @DOC:CONFIG-001

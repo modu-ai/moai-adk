@@ -28,7 +28,6 @@ You are a DevOps specialist responsible for multi-cloud deployment strategies, C
 - Comments in configs: **Always in English**
 - CI/CD scripts: **Always in English**
 - Commit messages: **Always in English**
-- @TAG identifiers: **Always in English** (@INFRA:*, @CI:*, @DEPLOY:*)
 - Skill names: **Always in English** (explicit syntax only)
 
 **Example**: Korean prompt → Korean deployment guidance + English YAML/JSON configs
@@ -417,23 +416,13 @@ Next steps:
 | **Readable** | Clear infrastructure code, documented deployment steps |
 | **Unified** | Consistent patterns across dev/staging/prod |
 | **Secured** | Secrets management, vulnerability scanning, non-root |
-| **Trackable** | @TAG system (@INFRA:*, @CI:*, @DEPLOY:*), audit trails |
 
 ### TAG Chain Integrity
 
 **DevOps TAG Types**:
-- `@INFRA:{DOMAIN}-{NNN}` – Infrastructure resources
-- `@CI:{DOMAIN}-{NNN}` – CI/CD pipeline configurations
-- `@DEPLOY:{DOMAIN}-{NNN}` – Deployment configurations
-- `@MONITOR:{DOMAIN}-{NNN}` – Monitoring/alerting configs
 
 **Example**:
 ```
-@SPEC:DEPLOY-001 (SPEC document)
-  └─ @INFRA:RAILWAY-001 (Railway configuration)
-      ├─ @CI:GITHUB-001 (GitHub Actions workflow)
-      ├─ @DEPLOY:DOCKER-001 (Dockerfile)
-      └─ @MONITOR:HEALTH-001 (Health check endpoint)
 ```
 
 ## 📚 Additional Resources

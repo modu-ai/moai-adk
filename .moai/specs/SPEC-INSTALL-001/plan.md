@@ -1,4 +1,3 @@
-# @SPEC:INSTALL-001 구현 계획
 
 ## 1. 개요
 
@@ -274,7 +273,6 @@ export async function executePhase1(): Promise<Phase1Result> {
 **신규 코드** (Git 검증 추가):
 
 ```typescript
-// @CODE:INSTALL-001 | SPEC: SPEC-INSTALL-001.md | TEST: tests/cli/prompts/init/phase1-basic.test.ts
 import { execCommand } from "../../../utils/exec";
 
 async function validateGitInstallation(): Promise<string> {
@@ -331,7 +329,6 @@ export async function executePhase1(): Promise<Phase1Result> {
 **신규 코드**:
 
 ```typescript
-// @CODE:INSTALL-001 | SPEC: SPEC-INSTALL-001.md | TEST: tests/cli/prompts/init/phase2-developer.test.ts
 import { execCommand } from "../../../utils/exec";
 import inquirer from "inquirer";
 
@@ -392,7 +389,6 @@ export async function executePhase3(
 **신규 코드** (SPEC 선택 추가):
 
 ```typescript
-// @CODE:INSTALL-001 | SPEC: SPEC-INSTALL-001.md | TEST: tests/cli/prompts/init/phase3-mode.test.ts
 export async function executePhase3(
   context: InstallContext
 ): Promise<Phase3Result> {
@@ -444,7 +440,6 @@ export async function executePhase4(
 **신규 코드** (사용자 선택 추가):
 
 ```typescript
-// @CODE:INSTALL-001 | SPEC: SPEC-INSTALL-001.md | TEST: tests/cli/prompts/init/phase4-git.test.ts
 export async function executePhase4(
   context: InstallContext
 ): Promise<Phase4Result> {
@@ -497,7 +492,6 @@ export async function executePhase4(
 **신규 코드**:
 
 ```typescript
-// @CODE:INSTALL-001 | SPEC: SPEC-INSTALL-001.md | TEST: tests/cli/prompts/init/phase5-welcome.test.ts
 import chalk from "chalk";
 
 export interface Phase5Input {
@@ -533,7 +527,6 @@ export function displayWelcomeMessage(input: Phase5Input): void {
 **신규 코드**:
 
 ```typescript
-// @CODE:INSTALL-001 | SPEC: SPEC-INSTALL-001.md
 import { executePhase1 } from "./phase1-basic";
 import { executePhase2 } from "./phase2-developer";
 import { executePhase3 } from "./phase3-mode";
@@ -619,7 +612,6 @@ function buildConfig(context: InstallContext): Config {
 **파일**: `tests/cli/prompts/init/phase2-developer.test.ts`
 
 ```typescript
-// @TEST:INSTALL-001 | SPEC: SPEC-INSTALL-001.md
 import { executePhase2 } from "../../../../src/cli/prompts/init/phase2-developer";
 import { execCommand } from "../../../../src/utils/exec";
 import inquirer from "inquirer";
@@ -682,7 +674,6 @@ describe("Phase 2: 개발자 정보 수집", () => {
 **파일**: `tests/core/installer/integration.test.ts`
 
 ```typescript
-// @TEST:INSTALL-001 | SPEC: SPEC-INSTALL-001.md
 describe("설치 프롬프트 통합 테스트", () => {
   it("Personal 모드 + SPEC 활성화 시나리오", async () => {
     // Given

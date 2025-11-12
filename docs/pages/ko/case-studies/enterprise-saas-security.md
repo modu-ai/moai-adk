@@ -99,7 +99,6 @@ description: "SOC 2 Type 2 준수, Multi-tenant 아키텍처, Zero-trust 보안 
 ```markdown
 # SPEC-SEC-001: Enterprise Authentication
 
-@TAG:SPEC-SEC-001
 
 ## 요구사항 (EARS 형식)
 
@@ -138,7 +137,6 @@ description: "SOC 2 Type 2 준수, Multi-tenant 아키텍처, Zero-trust 보안 
 #### Auth0 Enterprise 통합
 
 ```typescript
-// @TAG:CODE-SEC-001:AUTH
 // lib/auth/auth0-config.ts
 
 import { Auth0Client } from '@auth0/auth0-spa-js'
@@ -196,7 +194,6 @@ export const auth0Config = {
 
 /**
  * Auth0 클라이언트 초기화
- * @TAG:SEC-001
  */
 export const auth0 = new Auth0Client({
   domain: auth0Config.domain,
@@ -213,7 +210,6 @@ export const auth0 = new Auth0Client({
 #### 테스트: 인증 플로우
 
 ```typescript
-// @TAG:TEST-SEC-001
 // tests/auth/enterprise-auth.test.ts
 
 import { describe, it, expect, beforeEach } from 'vitest'
@@ -324,7 +320,6 @@ describe('SEC-001: Enterprise Authentication', () => {
 ```markdown
 # SPEC-SEC-002: Multi-tenant Data Isolation
 
-@TAG:SPEC-SEC-002
 
 ## 요구사항
 
@@ -358,7 +353,6 @@ describe('SEC-001: Enterprise Authentication', () => {
 #### Database Schema with RLS
 
 ```sql
--- @TAG:CODE-SEC-002:DB
 -- supabase/migrations/002_rls.sql
 
 -- 1. 모든 테이블에 tenant_id 추가
@@ -458,7 +452,6 @@ CREATE TRIGGER enforce_tenant_isolation_projects
 #### 테스트: RLS 검증
 
 ```typescript
-// @TAG:TEST-SEC-002
 // tests/security/rls.test.ts
 
 import { describe, it, expect } from 'vitest'
@@ -620,7 +613,6 @@ describe('SEC-002: Row Level Security', () => {
 ```markdown
 # SPEC-SEC-003: Comprehensive Audit Logging
 
-@TAG:SPEC-SEC-003
 
 ## 요구사항
 
@@ -656,7 +648,6 @@ describe('SEC-002: Row Level Security', () => {
 #### Audit Log 구현
 
 ```typescript
-// @TAG:CODE-SEC-003:LIB
 // lib/audit/audit-logger.ts
 
 import { supabase } from '@/lib/supabase'
@@ -710,7 +701,6 @@ export enum AuditAction {
 
 /**
  * 감사 로그를 기록합니다
- * @TAG:SEC-003
  */
 export async function logAudit(entry: AuditLogEntry): Promise<void> {
   try {
@@ -848,7 +838,6 @@ async function alertSecurityTeam(
 #### Audit Log Database Schema
 
 ```sql
--- @TAG:CODE-SEC-003:DB
 -- supabase/migrations/003_audit_logs.sql
 
 -- Audit Logs 테이블 (Append-only)

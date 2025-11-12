@@ -9,31 +9,19 @@
 
 ## TAG Type Specifications
 
-### @SPEC: Specification TAGs
 - **Location**: `.moai/specs/SPEC-XXX/spec.md`
-- **Format**: `@SPEC:[DOMAIN]-[NNN]`
-- **Example**: `@SPEC:AUTH-001`, `@SPEC:PAYMENT-042`
 - **Purpose**: Define requirements and acceptance criteria
 - **Validation**: Must be approved by SPEC reviewer
 
-### @TEST: Testing TAGs
 - **Location**: `tests/test_*.py`
-- **Format**: `@TEST:SPEC:[DOMAIN]-[NNN]-[SUB]`
-- **Example**: `@TEST:SPEC:AUTH-001-001`, `@TEST:SPEC:AUTH-001-002`
 - **Purpose**: Implement test cases validating @SPEC
 - **Validation**: Must link to existing @SPEC
 
-### @CODE: Implementation TAGs
 - **Location**: `src/**/*.py`
-- **Format**: `@CODE:SPEC:[DOMAIN]-[NNN]-[SUB]`
-- **Example**: `@CODE:SPEC:AUTH-001`, `@CODE:SPEC:AUTH-001-001`
 - **Purpose**: Mark code that implements @SPEC requirements
 - **Validation**: Must reference valid @SPEC
 
-### @DOC: Documentation TAGs
 - **Location**: `docs/**/*.md`
-- **Format**: `@DOC:SPEC:[DOMAIN]-[NNN][-SUB]`
-- **Example**: `@DOC:SPEC:AUTH-001`, `@DOC:SPEC:AUTH-001-USER-GUIDE`
 - **Purpose**: Link documentation to implementation
 - **Validation**: Must reference @SPEC or @CODE
 
@@ -42,31 +30,21 @@
 ### Valid Chain Links (November 2025)
 
 ```
-@SPEC:AUTH-001
     ↓ depends_on
-@TEST:SPEC:AUTH-001-001 (must exist)
     ↓ validates
-@CODE:SPEC:AUTH-001 (must exist)
     ↓ described_by
-@DOC:SPEC:AUTH-001 (should exist)
 ```
 
 ### Invalid Patterns (Validation Errors)
 
 ```
 PATTERN 1: Floating @TEST (no @SPEC)
-@TEST:ORPHAN-001  ← ERROR: No @SPEC reference
 
 PATTERN 2: Orphan @SPEC (no @TEST/@CODE)
-@SPEC:UNUSED-001  ← WARNING: Not implemented
 
 PATTERN 3: Circular reference
-@SPEC:A-001 references @CODE:B-001
-@CODE:B-001 references @TEST:A-001  ← ERROR: Circular
 
 PATTERN 4: Version mismatch
-@SPEC:OLD-001 (v3.0)
-@CODE:SPEC:OLD-001 (v4.0)  ← ERROR: Version mismatch
 ```
 
 ## Scanning & Detection Commands
@@ -74,16 +52,10 @@ PATTERN 4: Version mismatch
 ### Find TAGs in Codebase
 ```bash
 # All TAGs by type
-rg '@SPEC:[A-Z]+-\d+' --no-filename -o | sort | uniq
-rg '@TEST:SPEC:' --no-filename -o | sort | uniq
-rg '@CODE:SPEC:' --no-filename -o | sort | uniq
-rg '@DOC:' --no-filename -o | sort | uniq
 
 # Count TAGs
-rg '@SPEC:|@TEST:|@CODE:|@DOC:' --count-matches
 
 # Find specific TAG
-rg '@SPEC:AUTH-001' -n
 
 # Find all references to TAG
 rg 'AUTH-001' -n
@@ -219,10 +191,6 @@ Found Orphan TAG?
 
 | Feature | v3 Pattern | v4 Pattern | Action |
 |---------|-----------|-----------|--------|
-| SPEC TAG | `@TAG-OLD-001` | `@SPEC:DOMAIN-001` | Update all references |
-| TEST TAG | `@TEST-OLD-001` | `@TEST:SPEC:DOMAIN-001-001` | Update structure |
-| CODE TAG | `@CODE-OLD-001` | `@CODE:SPEC:DOMAIN-001` | Update references |
-| DOC TAG | `@DOC-OLD-001` | `@DOC:SPEC:DOMAIN-001` | Standardize |
 
 ## Integration Checklist
 
@@ -257,7 +225,6 @@ brew install ripgrep  # macOS
 apt-get install ripgrep  # Linux
 
 # Rescan
-rg '@SPEC:' .
 ```
 
 ### Issue: Circular reference detected

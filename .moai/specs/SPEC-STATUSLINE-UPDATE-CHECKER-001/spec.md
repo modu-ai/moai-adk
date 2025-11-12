@@ -8,7 +8,6 @@ created: "2025-11-10"
 author: "GoosLab"
 ---
 
-# @SPEC:STATUSLINE-UPDATE-CHECKER-001 | @EXPERT:BACKEND
 
 ## SPEC Overview
 
@@ -23,9 +22,6 @@ This SPEC defines the statusline update checker system for MoAI-ADK, which monit
 
 ## Implementation Files
 
-- **CODE**: @CODE:UPDATE-CHECKER-001 - Update checker implementation
-- **TEST**: @TEST:STATUSLINE-UPDATE-CHECKER-001 - Update checker tests
-- **DOC**: @DOC:STATUSLINE-UPDATE-CHECKER-001 - Update checker documentation
 
 ## Acceptance Criteria
 
@@ -39,5 +35,4 @@ This SPEC defines the statusline update checker system for MoAI-ADK, which monit
 ## Traceability Chain
 
 ```
-@SPEC:STATUSLINE-UPDATE-CHECKER-001 → @CODE:UPDATE-CHECKER-001 → @TEST:STATUSLINE-UPDATE-CHECKER-001 → @DOC:STATUSLINE-UPDATE-CHECKER-001
 ```

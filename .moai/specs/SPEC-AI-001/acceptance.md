@@ -7,7 +7,6 @@ updated: 2025-11-11
 author: @user
 ---
 
-# `@SPEC:AI-001`: Documentation-Master 에이전트 수용 기준
 
 ## Definition of Done
 

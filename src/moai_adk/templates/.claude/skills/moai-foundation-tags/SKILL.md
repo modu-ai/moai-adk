@@ -97,14 +97,12 @@ Each link type defines a specific relationship:
 1. SPEC Created:
    File: .moai/specs/SPEC-001/spec.md
    Header: # SPEC-001: Authentication System
-   TAG: @SPEC:AUTH-001
    Status: APPROVED
 
 2. Tests Written (RED phase):
    File: tests/test_auth.py
    Content:
      """
-     @TEST:SPEC:AUTH-001
      Validates SPEC-001 authentication requirements
      """
      def test_login_with_valid_credentials():
@@ -114,7 +112,6 @@ Each link type defines a specific relationship:
 3. Code Implemented (GREEN phase):
    File: src/auth.py
    Content:
-     @CODE:SPEC:AUTH-001
      def authenticate(username, password):
          # @CODE-SPEC-001-001: Password validation
          if validate_password(password):
@@ -124,14 +121,10 @@ Each link type defines a specific relationship:
    File: docs/auth.md
    Header: # Authentication
    Content:
-     @DOC:SPEC:AUTH-001
      ## User Login
      Users authenticate using username and password...
 
 5. Traceability Chain:
-   @SPEC:AUTH-001 --implements--> @TEST:SPEC:AUTH-001
-   @TEST:SPEC:AUTH-001 --validates--> @CODE:SPEC:AUTH-001
-   @CODE:SPEC:AUTH-001 --described-by--> @DOC:SPEC:AUTH-001
 ```
 
 ---
@@ -142,7 +135,6 @@ Each link type defines a specific relationship:
 
 **When**: SPEC document is created  
 **Where**: `.moai/specs/SPEC-XXX/spec.md`  
-**Format**: `@SPEC:DOMAIN-NNN` or `@SPEC:PROJECT-NAME-NNN`  
 **Validation**: Must be unique in codebase
 
 ```markdown
@@ -150,7 +142,6 @@ Each link type defines a specific relationship:
 title: SPEC-001 User Authentication
 created_at: 2025-11-12
 status: DRAFT
-@SPEC:AUTH-001
 ---
 
 # User Authentication System
@@ -166,9 +157,7 @@ status: DRAFT
 **TEST TAGs Created**:
 ```python
 """
-@TEST:SPEC:AUTH-001-001
 Validates user login with valid credentials
-Depends on: @SPEC:AUTH-001
 Coverage: Happy path
 """
 def test_login_valid():
@@ -179,9 +168,7 @@ def test_login_valid():
 ```python
 def authenticate(username, password):
     """
-    @CODE:SPEC:AUTH-001
     Implements authentication logic
-    References: @TEST:SPEC:AUTH-001-001
     """
     return verify_password(username, password)
 ```
@@ -189,7 +176,6 @@ def authenticate(username, password):
 **Documentation TAGs Created**:
 ```markdown
 ## Authentication
-@DOC:SPEC:AUTH-001
 Authentication module handles user login...
 ```
 
@@ -213,9 +199,6 @@ Authentication module handles user login...
 **When**: Feature is superseded or removed  
 **Process**:
 ```markdown
-@DEPRECATED:SPEC:AUTH-001
-Superseded by: @SPEC:AUTH-002
-Migration path: See @DOC:AUTH-MIGRATION-001
 End-of-life: 2026-05-01
 ```
 
@@ -237,7 +220,6 @@ All TAGs must satisfy:
 Rule 1: Unique Identifier
 ├─ TAG must be unique across entire codebase
 ├─ Format: @[TYPE]:[DOMAIN]-[NNN]
-└─ Example: @SPEC:AUTH-001, @TEST:SPEC:AUTH-001
 
 Rule 2: Proper Hierarchy
 ├─ @SPEC must exist before @TEST/@CODE
@@ -272,7 +254,6 @@ Rule 5: Documentation
 rg '@SPEC|@TEST|@CODE|@DOC' -n
 
 # Find orphans
-rg '@SPEC:[A-Z]+-[0-9]+' -n | \
   while read spec; do
     grep -r "$spec" --exclude-dir=.git || echo "ORPHAN: $spec"
   done
@@ -295,10 +276,8 @@ Orphan TAGs are references that exist but lack proper linking:
 **Type A: Unreferenced @SPEC**
 ```python
 # Problem: Created but never used
-@SPEC:UNUSED-001  # No @TEST links this
 
 # Solution: Either implement or deprecate
-@DEPRECATED:SPEC:UNUSED-001
 Reason: Feature cancelled
 Decision: 2025-11-12
 ```
@@ -306,32 +285,24 @@ Decision: 2025-11-12
 **Type B: Floating @TEST**
 ```python
 # Problem: Test exists but @SPEC missing
-@TEST:ORPHAN-001  # No @SPEC to validate
 
 # Solution: Link to existing @SPEC or create it
-@TEST:SPEC:AUTH-001-001  # Now linked
 ```
 
 **Type C: Stray @CODE**
 ```python
 # Problem: Code has TAG but no @SPEC/@TEST
 def feature():
-    @CODE:FLOATING-001
     # Missing @SPEC and @TEST
 
 # Solution: Trace requirements
-@SPEC:FEATURE-001  # Create
-@TEST:SPEC:FEATURE-001  # Create
-@CODE:SPEC:FEATURE-001  # Link properly
 ```
 
 **Type D: Orphan @DOC**
 ```markdown
 # Documentation exists but no source
-@DOC:UNDOCUMENTED-001  # Missing @SPEC/@CODE links
 
 # Solution: Link to implementation
-@DOC:SPEC:AUTH-001  # Now linked
 ```
 
 ### Detection Workflow (November 2025)
@@ -389,11 +360,8 @@ def analyze_orphan(tag):
 **Step 3: Remediation Phase**
 ```bash
 # Option 1: Link existing orphan
-# Change: @TEST:ORPHAN-001
-# To:     @TEST:SPEC:AUTH-001-001
 
 # Option 2: Mark as deprecated
-# Add: @DEPRECATED:SPEC:UNUSED-001
 
 # Option 3: Create missing link
 # Create SPEC if orphan is @TEST/@CODE
@@ -413,10 +381,6 @@ Generated: 2025-11-12
 Coverage: 1,247 features
 
 Total TAGs: 4,892
-├─ @SPEC: 1,000 (100% approved)
-├─ @TEST: 3,000 (99.2% coverage)
-├─ @CODE: 2,500 (100% implemented)
-└─ @DOC: 892 (89.2% complete)
 
 Quality Metrics:
 ├─ Orphan TAGs: 0 (0%)
@@ -426,9 +390,6 @@ Quality Metrics:
 └─ Documentation complete: 89.2%
 
 Chain Integrity:
-├─ @SPEC → @TEST: 100%
-├─ @TEST → @CODE: 99.8%
-├─ @CODE → @DOC: 89.2%
 └─ Circular refs: 0
 
 Validation Status:
@@ -443,10 +404,6 @@ Validation Status:
 ```
 Feature     | SPEC    | TEST    | CODE    | DOC     | Status
 ------------|---------|---------|---------|---------|----------
-Auth        | @SPEC:AUTH-001 | ✓ 12 | ✓ 45 | ✓ 8 | COMPLETE
-Payment     | @SPEC:PAY-001  | ✓ 18 | ✓ 62 | ✓ 5 | COMPLETE
-Reporting   | @SPEC:REP-001  | ✓ 25 | ✓ 88 | ⚠ 3 | MISSING_DOC
-Admin       | @SPEC:ADM-001  | ✓ 8  | ✓ 28 | ✓ 4 | COMPLETE
 Legacy API  | @DEPRECATED    | -    | -    | ✓ 2 | DEPRECATED
 ```
 
@@ -464,10 +421,6 @@ Legacy API  | @DEPRECATED    | -    | -    | ✓ 2 | DEPRECATED
   └─ Type (SPEC, TEST, CODE, DOC)
 
 Examples:
-├─ @SPEC:AUTH-001           (Requirement)
-├─ @TEST:SPEC:AUTH-001-001  (Unit test)
-├─ @CODE:SPEC:AUTH-001-001  (Implementation)
-└─ @DOC:SPEC:AUTH-001       (Documentation)
 ```
 
 ### TAG Assignment Matrix
@@ -485,17 +438,12 @@ Examples:
 When removing features:
 
 1. Mark with @DEPRECATED
-   @DEPRECATED:SPEC:OLD-001
-   Superseded by: @SPEC:NEW-001
    EOL Date: 2026-05-01
 
 2. Create migration guide
-   @DOC:MIGRATION:OLD-001-to-NEW-001
    Link: docs/migrations/old-to-new.md
 
 3. Update @CODE references
-   All @CODE:SPEC:OLD-001 become
-   @CODE:SPEC:OLD-001 @DEPRECATED
 
 4. Maintain 6-month runway
    Old feature supported during migration window
@@ -555,10 +503,6 @@ v3.x Pattern:
   @TAG-OLD-001
 
 v4.0.0 Pattern:
-  @SPEC:AUTH-001          (Specification)
-  @TEST:SPEC:AUTH-001     (Testing)
-  @CODE:SPEC:AUTH-001     (Implementation)
-  @DOC:SPEC:AUTH-001      (Documentation)
 
 Migration:
   1. Audit existing @TAG-* references
@@ -580,7 +524,6 @@ Migration:
 ```markdown
 # SPEC-042: Email Notifications
 
-@SPEC:EMAIL-NOTIFY-042
 
 ## Requirements
 - Send email on user signup
@@ -592,13 +535,11 @@ Migration:
 ```python
 # tests/test_email.py
 
-@TEST:SPEC:EMAIL-NOTIFY-042-001
 def test_send_email_on_signup():
     """Verify email sent after user registration"""
     user = create_user("test@example.com")
     assert email_sent_to("test@example.com")
 
-@TEST:SPEC:EMAIL-NOTIFY-042-002
 def test_rate_limiting():
     """Verify rate limit enforced"""
     for i in range(101):
@@ -612,20 +553,15 @@ def test_rate_limiting():
 ```python
 # src/notifications.py
 
-@CODE:SPEC:EMAIL-NOTIFY-042
 def send_email(to, subject, body, html=False):
     """
     Send email notification
     
     References:
-    - @TEST:SPEC:EMAIL-NOTIFY-042-001
-    - @TEST:SPEC:EMAIL-NOTIFY-042-002
     """
-    # @CODE:SPEC:EMAIL-NOTIFY-042-001: Rate limit check
     if rate_limiter.check(to):
         raise RateLimitError()
     
-    # @CODE:SPEC:EMAIL-NOTIFY-042-002: Send via SMTP
     smtp = get_smtp_connection()
     smtp.send(to, subject, body, html=html)
 ```
@@ -634,7 +570,6 @@ def send_email(to, subject, body, html=False):
 ```markdown
 # Email Notifications
 
-@DOC:SPEC:EMAIL-NOTIFY-042
 
 ## Overview
 Send transactional emails to users...
@@ -642,11 +577,9 @@ Send transactional emails to users...
 ## API Reference
 
 ### send_email(to, subject, body, html=False)
-@DOC:SPEC:EMAIL-NOTIFY-042-001
 Sends an email notification...
 
 ### Rate Limiting
-@DOC:SPEC:EMAIL-NOTIFY-042-002
 Rate limited to 100 emails per minute per recipient...
 ```
 
@@ -654,7 +587,6 @@ Rate limited to 100 emails per minute per recipient...
 
 **Before (Monolithic)**
 ```python
-@CODE:AUTH-OLD-001
 def authenticate(user, password, mfa=None):
     # 200 lines of validation logic
     pass
@@ -662,23 +594,16 @@ def authenticate(user, password, mfa=None):
 
 **After (Refactored)**
 ```python
-@CODE:SPEC:AUTH-REFACTOR-001
 def authenticate(user, password, mfa=None):
     """
-    @CODE:SPEC:AUTH-REFACTOR-001
-    Refactored from @CODE:AUTH-OLD-001
     """
-    validate_password(user, password)  # @CODE:SPEC:AUTH-REFACTOR-001-001
     if mfa:
-        validate_mfa(user, mfa)  # @CODE:SPEC:AUTH-REFACTOR-001-002
     return True
 
-@CODE:SPEC:AUTH-REFACTOR-001-001
 def validate_password(user, password):
     """Extracted password validation"""
     # 50 lines
 
-@CODE:SPEC:AUTH-REFACTOR-001-002
 def validate_mfa(user, code):
     """Extracted MFA validation"""
     # 50 lines
@@ -689,30 +614,23 @@ def validate_mfa(user, code):
 **Issue Reported**
 ```
 BUG-101: Password reset token expires prematurely
-Linked to: @SPEC:AUTH-001
 ```
 
 **Fix Process**
 ```python
-@SPEC:AUTH-BUG-FIX-101
 title: Fix password reset token expiration
 
-@TEST:SPEC:AUTH-BUG-FIX-101-001
 def test_token_valid_24_hours():
     """Token should remain valid for 24 hours"""
     token = generate_reset_token("user@example.com")
     assert token_valid_after(token, hours=23)
     assert not token_valid_after(token, hours=25)
 
-@CODE:SPEC:AUTH-BUG-FIX-101
 def generate_reset_token(email):
     """Fixed: was using 12 hours, now 24 hours"""
-    # @CODE:SPEC:AUTH-BUG-FIX-101-001: Corrected expiration
     return create_token(email, expires_in_hours=24)  # Was 12
 
-@DOC:SPEC:AUTH-BUG-FIX-101
 ## Password Reset Token Fix
-@DOC:SPEC:AUTH-BUG-FIX-101-001: Token valid for 24 hours
 ```
 
 ---
@@ -733,10 +651,6 @@ echo ""
 
 # 1. Count TAGs by type
 echo "TAG Distribution:"
-rg '@SPEC:' --count-matches
-rg '@TEST:' --count-matches
-rg '@CODE:' --count-matches
-rg '@DOC:' --count-matches
 
 # 2. Find orphans
 echo ""
@@ -746,8 +660,6 @@ python << 'PYEOF'
 import re
 import subprocess
 
-specs = set(re.findall(r'@SPEC:[A-Z]+-\d+', 
-    subprocess.run(['rg', '@SPEC:', '--no-filename', '-o'], capture_output=True, text=True).stdout))
 
 orphans = []
 for spec in specs:
@@ -827,30 +739,22 @@ jobs:
 
 ### 1. Missing TAG Detection Algorithm
 
-**Problem**: Missing @SPEC: tags in SPEC files (Type B orphans)
 
 **Detection Process**:
 ```python
 def detect_missing_spec_tags():
     """
-    Scans SPEC files for missing @SPEC: tag markers.
-    Returns list of files needing @SPEC: tag addition.
     """
     # 1. Find all .moai/specs/SPEC-*/spec.md files
     # 2. Read first 10 lines (header section)
-    # 3. Check for pattern: @SPEC-{ID} or @SPEC: {ID}
-    # 4. Flag files with missing @SPEC: marker
-    # 5. Generate fix: Auto-add @SPEC: {ID} after title
 ```
 
 **Fix Strategy**:
 - Location: First line after title (`# SPEC-XXX`)
-- Format: `@SPEC:SPEC-XXX | @TEST:TBD | @CODE:TBD | @DOC:TBD`
 - Execution: Via `fix-missing-spec-tags.py --dry-run` before `--apply`
 
 **Validation Checklist**:
 - [ ] Title line exists: `# SPEC-XXX-{name}`
-- [ ] @SPEC: tag added in line 2
 - [ ] TAG ID matches filename
 - [ ] Format follows chain syntax
 

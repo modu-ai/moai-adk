@@ -11,7 +11,6 @@ issue: "#129"
 
 # SPEC-BUGFIX-001: Windows Compatibility Fix
 
-@SPEC:BUGFIX-001
 
 ## Problem Statement
 
@@ -186,7 +185,6 @@ def main() -> None:
         - ✅ Windows (threading.Timer)
         - ✅ Unix/Linux/macOS (signal.SIGALRM)
 
-    @TAG:HOOKS-TIMEOUT-002
     """
     # Set global 5-second timeout for entire hook execution
     with CrossPlatformTimeout(5):

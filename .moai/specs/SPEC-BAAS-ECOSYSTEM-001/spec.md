@@ -7,20 +7,6 @@ status: active
 priority: P0
 owner: GoosLab
 related_tags:
-  - "@SPEC:BAAS-ECOSYSTEM-001"
-  - "@CODE:BAAS-FOUNDATION"
-  - "@CODE:BAAS-SUPABASE"
-  - "@CODE:BAAS-VERCEL"
-  - "@CODE:BAAS-NEON"
-  - "@CODE:BAAS-CLERK"
-  - "@CODE:BAAS-RAILWAY"
-  - "@CODE:BAAS-CONVEX"
-  - "@CODE:BAAS-FIREBASE"
-  - "@CODE:BAAS-CLOUDFLARE"
-  - "@CODE:BAAS-AUTH0"
-  - "@TEST:BAAS-PLATFORM-DETECTION"
-  - "@TEST:BAAS-PATTERN-VALIDATION"
-  - "@DOC:BAAS-ARCHITECTURE"
 linked_specs: []
 implementation_phases: 6
 timeline_weeks: 6

@@ -452,10 +452,7 @@ using cryptographic signatures before accepting requests.
 
 | Check | Pass | Fail |
 |-------|------|------|
-| @SPEC tag in header | ✓ | Add @SPEC: SPEC-XXX |
 | @TEST tags linked to REQs | ✓ | Add test case references |
-| @CODE tags reserved for impl | ✓ | Add @CODE: placeholders |
-| @DOC tags reserved for docs | ✓ | Add @DOC: placeholders |
 
 ### Documentation Quality
 

@@ -2,7 +2,6 @@
 """
 Enhanced Version reader for MoAI-ADK from config.json with performance optimizations
 
-@CODE:VERSION-READER-001 | @SPEC:STATUSLINE-VERSION-READER-001 | @TEST:STATUSLINE-VERSION-READER-001
 Refactored for improved performance, error handling, configurability, and caching strategies
 """
 

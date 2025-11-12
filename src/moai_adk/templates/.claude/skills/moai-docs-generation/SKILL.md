@@ -63,7 +63,6 @@ context7_references:
     topic: "TypeScript Documentation Pattern"
   - url: "https://github.com/prettier/prettier"
     topic: "Code Formatting Standards"
-spec_reference: "@SPEC:DOCS-001"
 ```
 
 ---
@@ -382,7 +381,6 @@ context7_references:
     topic: "TypeScript Documentation Pattern"
   - url: "https://github.com/prettier/prettier"
     topic: "Code Formatting Standards"
-spec_reference: "@SPEC:DOCS-001"
 ```
 
 ---

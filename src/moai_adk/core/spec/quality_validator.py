@@ -1,4 +1,3 @@
-# @CODE:QUALITY-VALIDATOR-001
 """Quality Validator for Auto-Generated SPECs."""
 
 import re
@@ -169,8 +168,6 @@ class QualityValidator:
         overall_compliance = sum(section_scores.values()) / len(required_sections)
 
         # Check for META information
-        has_meta = '@META:' in spec_md
-        has_tags = any(tag in spec_md for tag in ['@SPEC:', '@TEST:', '@CODE:', '@ENV:'])
 
         # Check for proper structure
         has_proper_headings = self._check_heading_structure(spec_md)
@@ -600,7 +597,6 @@ class QualityValidator:
 
     def _check_traceability_tags(self, spec_md: str) -> bool:
         """Check for traceability tags."""
-        traceability_tags = ['@SPEC:', '@TEST:', '@CODE:', '@ENV:']
         return any(tag in spec_md for tag in traceability_tags)
 
     def _check_tag_formatting(self, spec_md: str) -> float:

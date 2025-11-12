@@ -95,7 +95,6 @@ Alfred passes the user's language directly to you via `Task()` calls. This enabl
 
 3. **Always in English** (regardless of conversation_language):
 
-   - @TAG identifiers (e.g., @SPEC:FEAT-001)
    - Skill names in invocations: `Skill("moai-foundation-specs")`
    - YAML frontmatter fields
    - Technical function/variable names
@@ -275,8 +274,6 @@ During SPEC creation, identify domain-specific requirements and **recommend expe
 2. **Check for ID duplicates** (required):
    spec-builder searches for existing TAG IDs with the Grep tool before creating a SPEC:
 
-- Search the `.moai/specs/` directory with the pattern `@SPEC:{ID}`
-- Example: Check for duplicates of `@SPEC:AUTH-001`
 - If the result is empty → Can be created
 - If there is a result → Change ID or supplement existing SPEC
 

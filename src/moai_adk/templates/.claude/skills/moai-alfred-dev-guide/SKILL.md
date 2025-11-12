@@ -34,8 +34,6 @@ Alfred's SPEC-First TDD workflow orchestrates the complete development lifecycle
 **Core Principle**: **No spec, no code. No tests, no implementation.**
 
 **Key Capabilities**:
-- SPEC-driven requirements engineering with @SPEC:ID tags
-- TDD cycle with @TEST:ID → @CODE:ID → @DOC:ID traceability
 - TRUST 5 principles enforcement (Test-driven, Readable, Unified, Secured, Evaluated)
 - Context engineering (JIT document loading)
 - Automated documentation generation (Sphinx, JSDoc)
@@ -64,7 +62,6 @@ Alfred's SPEC-First TDD workflow orchestrates the complete development lifecycle
 id: SPEC-001
 title: User Authentication System
 status: approved
-tags: ["@SPEC:001", "authentication", "security"]
 ---
 
 ## Requirements
@@ -122,7 +119,6 @@ def auth_service(tmp_path):
     service.close()  # Cleanup
 
 def test_login_with_valid_credentials(auth_service):
-    """@TEST:001-01: Login should succeed with correct credentials"""
     # RED: This test will fail because login() doesn't exist
     auth_service.create_user("alice", "secure_password_123")
     
@@ -133,7 +129,6 @@ def test_login_with_valid_credentials(auth_service):
     assert auth_service.is_token_valid(token) is True
 
 def test_login_with_invalid_password(auth_service):
-    """@TEST:001-02: Login should fail with wrong password"""
     auth_service.create_user("bob", "correct_password")
     
     with pytest.raises(AuthenticationError) as exc_info:
@@ -148,7 +143,6 @@ def test_login_with_invalid_password(auth_service):
     ("a" * 256, "pass", "Username too long"),
 ])
 def test_login_input_validation(auth_service, username, password, error):
-    """@TEST:001-03: Login should validate input parameters"""
     with pytest.raises(ValidationError) as exc_info:
         auth_service.login(username, password)
     
@@ -172,7 +166,6 @@ tests/test_auth.py::test_login_input_validation[case-3] FAILED         [100%]
 ```
 
 **Key Principles**:
-- **@TEST:ID tags**: Link tests to SPEC requirements
 - **Fixtures**: Reusable test setup with `yield` pattern
 - **Parametrization**: Test multiple inputs with single function
 - **Explicit assertions**: Clear failure messages
@@ -192,20 +185,16 @@ import datetime
 from typing import Optional
 
 class AuthenticationError(Exception):
-    """@CODE:001-E01: Authentication failure exception"""
     def __init__(self, message: str, code: str = "AUTH_ERROR"):
         super().__init__(message)
         self.code = code
 
 class ValidationError(Exception):
-    """@CODE:001-E02: Input validation exception"""
     pass
 
 class AuthService:
-    """@CODE:001: User authentication service
     
     Implements JWT-based authentication with bcrypt password hashing.
-    Links to: @SPEC:001, @TEST:001-*
     """
     
     def __init__(self, db_path: str, secret_key: str = "test-secret"):
@@ -214,7 +203,6 @@ class AuthService:
         self.conn = None
     
     def initialize(self):
-        """@CODE:001-01: Initialize database schema"""
         self.conn = sqlite3.connect(self.db_path)
         cursor = self.conn.cursor()
         cursor.execute("""
@@ -228,7 +216,6 @@ class AuthService:
         self.conn.commit()
     
     def create_user(self, username: str, password: str):
-        """@CODE:001-02: Create new user with hashed password"""
         password_hash = hashlib.sha256(password.encode()).hexdigest()
         cursor = self.conn.cursor()
         cursor.execute(
@@ -238,7 +225,6 @@ class AuthService:
         self.conn.commit()
     
     def login(self, username: str, password: str) -> str:
-        """@CODE:001-03: Authenticate user and return JWT token
         
         Args:
             username: User's login name
@@ -284,7 +270,6 @@ class AuthService:
         return token
     
     def is_token_valid(self, token: str) -> bool:
-        """@CODE:001-04: Verify JWT token signature and expiry"""
         try:
             jwt.decode(token, self.secret_key, algorithms=["HS256"])
             return True
@@ -294,7 +279,6 @@ class AuthService:
             return False
     
     def close(self):
-        """@CODE:001-05: Close database connection"""
         if self.conn:
             self.conn.close()
 ```
@@ -316,7 +300,6 @@ tests/test_auth.py::test_login_input_validation[case-3] PASSED          [100%]
 ```
 
 **Key Principles**:
-- **@CODE:ID tags**: Link code to tests and SPEC
 - **Minimal logic**: No gold-plating, just pass tests
 - **Clear docstrings**: Sphinx-compatible documentation
 - **Type hints**: Python 3.9+ type annotations
@@ -362,7 +345,6 @@ def login(self, username: str, password: str) -> str:
 
 ```python
 def login(self, username: str, password: str) -> str:
-    """@CODE:001-03: Authenticate user and return JWT token
     
     Implements SPEC-001-REQ-01 with validation, hashing, and JWT generation.
     
@@ -559,7 +541,6 @@ def test_multiple_users(user_factory, auth_service):
     ("user", "ab", "Password too short (min 8 characters)"),
 ])
 def test_login_validation_errors(auth_service, username, password, expected_error):
-    """@TEST:001-04: Comprehensive input validation testing"""
     with pytest.raises(ValidationError) as exc_info:
         auth_service.login(username, password)
     
@@ -573,7 +554,6 @@ def test_login_validation_errors(auth_service, username, password, expected_erro
     (24, False),   # 1 day old
 ])
 def test_token_expiry(auth_service, user_factory, token_age_hours, expected_valid, monkeypatch):
-    """@TEST:001-05: JWT token expiry validation"""
     user = user_factory("test_user", "password")
     
     # Mock time to simulate aged token
@@ -650,7 +630,6 @@ describe('UserService', () => {
   });
 
   test('should create user with hashed password', async () => {
-    // @TEST:002-01: User creation with password hashing
     const username = 'alice';
     const password = 'secure_password';
     const hashedPassword = 'hashed_abc123';
@@ -672,7 +651,6 @@ describe('UserService', () => {
   });
 
   test('should handle database errors gracefully', async () => {
-    // @TEST:002-02: Error handling for database failures
     mockAuthService.hashPassword.mockResolvedValue('hashed');
     mockDatabase.insertUser.mockRejectedValue(
       new Error('UNIQUE constraint failed')
@@ -722,7 +700,6 @@ import { AuthForm } from '../components/AuthForm';
 
 describe('AuthForm Component', () => {
   test('renders login form correctly', () => {
-    // @TEST:003-01: Login form UI snapshot
     const tree = renderer
       .create(<AuthForm mode="login" onSubmit={jest.fn()} />)
       .toJSON();
@@ -731,7 +708,6 @@ describe('AuthForm Component', () => {
   });
 
   test('renders signup form with validation errors', () => {
-    // @TEST:003-02: Signup form with error state
     const errors = {
       username: 'Username already exists',
       password: 'Password too weak'
@@ -765,7 +741,6 @@ describe('AuthForm Component', () => {
   });
 
   test('handles dynamic data in snapshots', () => {
-    // @TEST:003-03: Dynamic timestamp handling
     const user = {
       id: Math.floor(Math.random() * 1000),
       username: 'testuser',
@@ -856,7 +831,6 @@ Feature: User Authentication
       | alice    | secure123 | admin |
       | bob      | secret456 | user  |
 
-  @TEST:004-01
   Scenario: Successful login with valid credentials
     Given I am not authenticated
     When I log in with username "alice" and password "secure123"
@@ -864,7 +838,6 @@ Feature: User Authentication
     And the token should contain my username "alice"
     And the token should expire in 1 hour
 
-  @TEST:004-02
   Scenario: Failed login with invalid password
     Given I am not authenticated
     When I log in with username "alice" and password "wrong_password"
@@ -872,7 +845,6 @@ Feature: User Authentication
     And I should not receive a JWT token
     And the failed attempt should be logged
 
-  @TEST:004-03
   Scenario Outline: Input validation errors
     Given I am not authenticated
     When I log in with username "<username>" and password "<password>"
@@ -884,7 +856,6 @@ Feature: User Authentication
       | alice    |           | Password cannot be empty   |
       | a_256    | pass      | Username too long          |
 
-  @TEST:004-04
   Scenario: Token expiry validation
     Given I am authenticated as "alice"
     And my token was issued 30 minutes ago
@@ -972,7 +943,6 @@ Feature: User Authentication
     ✔ Given the authentication service is initialized
     ✔ And the following users exist:
 
-  @TEST:004-01
   Scenario: Successful login with valid credentials
     ✔ Given I am not authenticated
     ✔ When I log in with username "alice" and password "secure123"
@@ -980,7 +950,6 @@ Feature: User Authentication
     ✔ And the token should contain my username "alice"
     ✔ And the token should expire in 1 hour
 
-  @TEST:004-02
   Scenario: Failed login with invalid password
     ✔ Given I am not authenticated
     ✔ When I log in with username "alice" and password "wrong_password"
@@ -1136,13 +1105,9 @@ Authentication Module
 **@TAG Lifecycle**:
 
 ```
-@SPEC:001 (requirement)
     ↓
-@TEST:001-01 (failing test - RED)
     ↓
-@CODE:001-03 (implementation - GREEN)
     ↓
-@DOC:001 (documentation - SYNC)
 ```
 
 **Tag Validation Script**:
@@ -1154,7 +1119,6 @@ from pathlib import Path
 from typing import Dict, List, Set
 
 def extract_tags(file_path: Path, tag_type: str) -> Set[str]:
-    """Extract all @TAG:ID patterns from file.
     
     Args:
         file_path: Path to source file
@@ -1237,8 +1201,6 @@ $ python scripts/validate_tags.py
 ✅ @TAG Chain Validation PASSED
 
 SPEC → TEST → CODE → DOC Chain:
-  @SPEC:001 → @TEST:001-01,002,003,004,005 → @CODE:001-01,02,03,04,05 → @DOC:001
-  @SPEC:002 → @TEST:002-01,002 → @CODE:002-01,02 → @DOC:002
 ```
 
 ---
@@ -1267,7 +1229,6 @@ class UserService:
 # ✅ CORRECT: Test-first approach
 # Step 1: Write failing test (RED)
 def test_delete_user_removes_from_database(auth_service, user_factory):
-    """@TEST:005-01: User deletion should remove all user data"""
     user_id = user_factory("alice", "password")
     
     auth_service.delete_user(user_id)
@@ -1278,7 +1239,6 @@ def test_delete_user_removes_from_database(auth_service, user_factory):
 
 # Step 2: Implement minimal code (GREEN)
 def delete_user(self, user_id: int):
-    """@CODE:005-01: Delete user from database"""
     cursor = self.conn.cursor()
     cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
     self.conn.commit()
@@ -1735,7 +1695,6 @@ $ /alfred:2-run SPEC-001
 # --- RED Commit ---
 Alfred (tdd-implementer agent):
   1. Reads SPEC-001/spec.md
-  2. Creates tests/test_auth.py with @TEST:001-* tags
   3. Runs pytest → 5 failed ❌
   4. Git commit: "test(SPEC-001): Add failing tests for authentication"
 
@@ -1745,7 +1704,6 @@ TodoWrite:
 
 # --- GREEN Commit ---
 Alfred (tdd-implementer agent):
-  1. Creates src/auth.py with @CODE:001-* tags
   2. Minimal implementation to pass tests
   3. Runs pytest → 5 passed ✅
   4. Git commit: "feat(SPEC-001): Implement basic authentication"
@@ -1770,10 +1728,8 @@ $ /alfred:3-sync auto SPEC-001
 
 Alfred (doc-syncer agent):
   1. Validates @TAG chain:
-     @SPEC:001 → @TEST:001-* → @CODE:001-* ✅
   
   2. Generates Sphinx documentation:
-     docs/source/auth.rst with @DOC:001 tag
   
   3. Runs quality gates:
      - Coverage: 93% (≥85% ✅)

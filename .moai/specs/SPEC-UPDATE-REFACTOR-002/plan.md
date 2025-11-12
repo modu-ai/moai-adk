@@ -1,4 +1,3 @@
-# @SPEC:UPDATE-REFACTOR-002: Implementation Plan
 
 ## Overview
 
@@ -481,5 +480,4 @@ def test_update_yes_flag():
 - ✅ CHANGELOG documented
 - ✅ Docstrings complete
 - ✅ Platform-tested on macOS/Linux/Windows
-- ✅ SPEC document linked via @TAG in code
 - ✅ Ready for `/alfred:3-sync` documentation sync

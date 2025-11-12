@@ -1,11 +1,7 @@
 ---
-title: "@TAG 검증"
-description: "MoAI-ADK의 @TAG 유효성 검사 시스템과 품질 보증"
 ---
 
-# @TAG 검증
 
-@TAG 검증 시스템은 모든 TAG가 정확한 형식을 따르고, 완전한 체인을 형성하며, 프로젝트 정책을 준수하는지 확인하는 품질 보증 메커니즘입니다.
 
 ## 검증 시스템 아키텍처
 
@@ -110,14 +106,8 @@ def validate_identifier_chars(self, identifier: str) -> ValidationResult:
 ```
 잘못된 예:
 - @user-login-001 (소문자 카테고리)
-- @REQ:user_login (소문자 식별자)
-- @REQ:USER-LOGIN-001 EXTRA (추가 텍스트)
-- @REQ:001 (의미 없는 식별자)
 
 올바른 예:
-- @REQ:USER-LOGIN-001
-- @API:POST-LOGIN
-- @TEST:UNIT-AUTH-001
 ```
 
 #### 중복 TAG 검출
@@ -147,10 +137,6 @@ class SemanticValidator:
         """
         카테고리별 올바른 사용 검증:
 
-        @REQ: 최상위 요구사항만 정의
-        @API: 실제 HTTP 엔드포인트에만 사용
-        @TEST: 테스트 파일/함수에만 사용
-        @UI: UI 컴포넌트에만 사용
         """
         if tag.category == 'API':
             return self.validate_api_usage(tag, context)
@@ -203,8 +189,6 @@ class ChainValidator:
     def validate_requirement_chain(self, req_tag: TAG, all_tags: List[TAG]) -> ChainValidationResult:
         """
         요구사항 체인 검증:
-        1. @REQ는 최소 하나의 구현 TAG 참조
-        2. 구현 TAG는 최소 하나의 @TEST 참조
         3. 체인이 완전히 연결되어야 함
         """
         implementation_tags = self.find_implementations(req_tag, all_tags)
@@ -213,7 +197,6 @@ class ChainValidator:
         if not implementation_tags:
             return ChainValidationResult(
                 is_valid=False,
-                issue=f"@REQ:{req_tag.identifier}에 구현 TAG가 없음"
             )
 
         if not test_tags:
@@ -647,7 +630,6 @@ def suggest_missing_tags(self, chain_analysis: ChainAnalysis) -> List[Suggestion
       "*.generated.*"
     ],
     "allowed_duplicates": [
-      "@COMMON:SECURITY-AUTH-001"
     ]
   }
 }

@@ -8,7 +8,6 @@ updated: 2025-10-31
 
 # Acceptance Criteria: Hook Performance Optimization
 
-## @TEST:ENHANCE-PERF-001
 
 > **Objective**: Define measurable acceptance criteria for hook performance optimization in Given-When-Then format.
 

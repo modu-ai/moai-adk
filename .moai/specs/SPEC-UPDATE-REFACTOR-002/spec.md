@@ -4,7 +4,6 @@ version: 0.0.3
 status: completed
 created: 2025-10-28
 updated: 2025-10-29
-author: @Goos
 priority: high
 category: CLI Enhancement
 labels: [self-update, package-upgrade, user-experience, performance-optimization]
@@ -15,7 +14,6 @@ related_issue: ["#85"]
 scope: package-upgrade-detection, ux-improvement-strategy, template-version-management
 ---
 
-# @SPEC:UPDATE-REFACTOR-002: moai-adk Self-Update Integration Feature
 
 ## HISTORY
 
@@ -64,7 +62,6 @@ scope: package-upgrade-detection, ux-improvement-strategy, template-version-mana
 
 ### v0.0.1 (2025-10-28)
 - **INITIAL**: Initial creation of moai-adk self-update integration specification
-- **AUTHOR**: @Goos
 - **SCOPE**: Automatic tool detection, 2-stage upgrade workflow, CLI option enhancements
 - **CONTEXT**: Current update command only syncs templates. Users must manually run `uv tool upgrade` or `pip install --upgrade`. This SPEC adds automatic installer detection and integrated package upgrade flow.
 
@@ -167,11 +164,8 @@ scope: package-upgrade-detection, ux-improvement-strategy, template-version-mana
 
 ---
 
-## Traceability (@TAG)
 
 **SPEC Chain**:
-- **SPEC**: @SPEC:UPDATE-REFACTOR-002 (this document)
-- **Related SPEC**: @SPEC:INIT-005 (initialization system)
 
 **Implementation Chain** (to be populated in Phase 2):
 - **TEST**: `tests/cli/commands/test_update.py`

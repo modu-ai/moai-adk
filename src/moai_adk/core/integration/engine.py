@@ -1,4 +1,3 @@
-# @CODE:TAG-INTEGRATION-FRAMEWORK-002
 """
 Integration testing execution engine.
 

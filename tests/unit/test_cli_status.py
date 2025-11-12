@@ -38,4 +38,3 @@ class TestStatusCommand:
             assert "project" in result.output.lower() or "status" in result.output.lower() or result.exit_code in [0, 1]
 
 
-# @TEST:USER-EXPERIENCE-001

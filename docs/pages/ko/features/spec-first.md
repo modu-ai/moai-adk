@@ -30,10 +30,6 @@ flowchart TD
     Docs["문서 자동 생성"] -->
     Deploy["배포 및 운영"]
 
-    SPEC -->|@TAG 연결| TDD
-    TDD -->|@TAG 연결| Code
-    Code -->|@TAG 연결| Test
-    Test -->|@TAG 연결| Docs
 
     classDef specNode stroke:#ff9800,stroke-width:3px,color:#000
     classDef codeNode stroke:#4caf50,stroke-width:2px,color:#000
@@ -85,7 +81,6 @@ EARS(Easy Approach to Requirements Syntax)는 구조화된 요구사 명세서 �
 요구사항을 만족시키기 위한 상세 기술 명세
 
 ### 추적성 (Traceability)
-@TAG 시스템을 통한 모든 산출물 연결 정보
 ```
 
 ### 자동 생성된 SPEC 예시
@@ -165,12 +160,6 @@ EARS(Easy Approach to Requirements Syntax)는 구조화된 요구사 명세서 �
 
 | 구분 | 식별자 | 설명 |
 |------|--------|------|
-| **요구사항** | @SPEC:AUTH-001 | 본 명세서 |
-| **테스트** | @TEST:AUTH-001 | 인증 통합 테스트 |
-| **코드** | @CODE:AUTH-001:SERVICE | JWT 서비스 구현 |
-| **코드** | @CODE:AUTH-001:MIDDLEWARE | 인증 미들웨어 |
-| **코드** | @CODE:AUTH-001:ROUTES | API 라우터 |
-| **문서** | @DOC:AUTH-001 | API 문서 |
 ```
 
 ---
@@ -282,7 +271,6 @@ class SPECGenerator:
             format="ears"
         )
 
-        # 3. @TAG 연결 정보 추가
         tag_info = await self._generate_tag_links(analysis_result)
         spec_template["traceability"] = tag_info
 
@@ -375,38 +363,22 @@ class UserService:
 ### 추적성 (Traceability)
 | 구분 | 식별자 | 설명 |
 |------|--------|------|
-| **요구사항** | @SPEC:USER-001 | 본 명세서 |
-| **테스트** | @TEST:USER-001 | 사용자 서비스 테스트 |
-| **코드** | @CODE:USER-001:SERVICE | UserService 클래스 |
-| **문서** | @DOC:USER-001 | API 문서 |
 ```
 
 ---
 
-## 🔗 @TAG 추적 시스템
 
-### @TAG 시스템의 구조
 
-MoAI-ADK의 @TAG 시스템은 모든 산출물을 완벽하게 연결합니다:
 
 ```mermaid
 graph TD
-    SPEC["@SPEC:PROJECT-001<br/>요구사항 명세"]
 
     subgraph "구현 산출물"
-        TEST["@TEST:PROJECT-001<br/>테스트 스위트"]
-        CODE1["@CODE:PROJECT-001:SERVICE<br/>핵심 서비스"]
-        CODE2["@CODE:PROJECT-001:API<br/>API 구현"]
-        CODE3["@CODE:PROJECT-001:MODEL<br/>데이터 모델"]
     end
 
     subgraph "문서 산출물"
-        DOC1["@DOC:PROJECT-001<br/>API 문서"]
-        DOC2["@DOC:PROJECT-001:GUIDE<br/>사용자 가이드"]
-        DOC3["@DOC:PROJECT-001:ARCH<br/>아키텍처 문서"]
     end
 
-    GIT["Git 커밋<br/>@TAG 포함"]
 
     SPEC --> TEST
     SPEC --> CODE1
@@ -433,26 +405,11 @@ graph TD
     class GIT gitNode
 ```
 
-### @TAG 카테고리
 
 | 카테고리 | 설명 | 예시 |
 |----------|------|------|
-| **REQ** | 비즈니스 요구사항 | @REQ:CART-001:CHECKOUT |
-| **DESIGN** | 설계 결정 | @DESIGN:AUTH-001:SCHEMA |
-| **TASK** | 개발 작업 | @TASK:API-001:IMPLEMENT |
-| **TEST** | 테스트 코드 | @TEST:USER-001:INTEGRATION |
-| **FEATURE** | 기능 구현 | @FEATURE:PAYMENT:PROCESSOR |
-| **API** | API 엔드포인트 | @API:USER-002:PROFILE |
-| **UI** | UI 컴포넌트 | @UI:DASHBOARD:WIDGET |
-| **DATA** | 데이터 스키마 | @DATA:ORDER:SCHEMA |
-| **RESEARCH** | 연구 활동 | @RESEARCH:PERF-001:ANALYSIS |
-| **ANALYSIS** | 분석 결과 | @ANALYSIS:SECURITY:SCAN |
-| **KNOWLEDGE** | 지식 베이스 | @KNOWLEDGE:DATABASE:OPTIMIZATION |
-| **INSIGHT** | 인사이트 | @INSIGHT:ARCHITECTURE:PATTERN |
 
-### 실시간 @TAG 검증
 
-MoAI-ADK는 실시간으로 @TAG 시스템을 검증합니다:
 
 ```python
 class TagValidator:
@@ -462,9 +419,7 @@ class TagValidator:
         self.integrity_checker = IntegrityChecker()
 
     async def validate_tags_in_realtime(self, file_path, content):
-        """실시간 @TAG 검증"""
 
-        # 1. @TAG 스캔
         tags = await self.scanner.scan_content(content)
 
         # 2. 체인 분석
@@ -701,7 +656,6 @@ cat .moai/specs/SPEC-AUTH-001/plan.md
 # 1. RED 단계: 실패하는 테스트 작성
 # 2. GREEN 단계: 최소 구현 코드 작성
 # 3. REFACTOR 단계: 코드 품질 개선
-# 4. 각 단계마다 @TAG 연결 자동화
 ```
 
 ### 복잡한 시스템의 SPEC 분할
@@ -710,21 +664,11 @@ cat .moai/specs/SPEC-AUTH-001/plan.md
 
 ```mermaid
 flowchart TD
-    MainSPEC["@SPEC:ECOM-PLAT-001<br/>전자상거래 플랫폼"] -->
 
     subgraph "하위 SPEC"
-        UserSPEC["@SPEC:USER-001<br/>사용자 관리"]
-        ProductSPEC["@SPEC:PRODUCT-001<br/>상품 관리"]
-        OrderSPEC["@SPEC:ORDER-001<br/>주문 처리"]
-        PaymentSPEC["@SPEC:PAYMENT-001<br/>결제 시스템"]
-        CartSPEC["@SPEC:CART-001<br/>장바구니"]
-        NotificationSPEC["@SPEC:NOTIF-001<br/>알림 시스템"]
     end
 
     subgraph "교차 SPEC"
-        IntegrationSPEC["@SPEC:INTEGRATION-001<br/>시스템 통합"]
-        SecuritySPEC["@SPEC:SECURITY-001<br/>보안 정책"]
-        PerformanceSPEC["@SPEC:PERF-001<br/>성능 요구사항"]
     end
 
     MainSPEC --> UserSPEC
@@ -846,7 +790,6 @@ SPEC-First 개발은 MoAI-ADK의 핵심 철학이며, 다음과 같은 가치를
 ### 핵심 가치
 
 1. **명확성**: 요구사항의 불확실성을 제거하여 재작업 최소화
-2. **추적성**: @TAG 시스템으로 모든 산출물의 완전한 연결 보장
 3. **품질**: 자동화된 품질 검증으로 높은 품질의 SPEC 생성
 4. **효율성**: 자동화된 프로세스로 개발 시간 단축
 5. **협업**: 명확한 명세서로 팀 간 원활한 커뮤니케이션

@@ -284,8 +284,6 @@ from jinja2 import (
 
 ### T: Traceable (추적 가능성)
 
-- ✅ TAG 정의 (`@CODE:TEMPLATE-ENGINE-001`)
-- ✅ SPEC 참조 (`@SPEC:TEMPLATE-SYSTEM-001`)
 - ✅ 테스트 TAG 정의
 
 **평가**: ✅ PASS
@@ -297,10 +295,6 @@ from jinja2 import (
 ### 발견된 TAG
 
 ```
-@CODE:TEMPLATE-ENGINE-001
-@SPEC:TEMPLATE-SYSTEM-001
-@TEST:TEMPLATE-SYSTEM-001
-@DOC:TEMPLATE-SYSTEM-001
 ```
 
 ### TAG 체인 연결
@@ -313,7 +307,6 @@ DOC
 
 - ✅ TAG 정의 명확
 - ✅ 체인 연결 완성
-- ❌ 테스트 TAG (@TEST:TEMPLATE-VARIABLE-SUBSTITUTION-XXX) 세분화 필요
 
 **평가**: ✅ ACCEPTABLE
 

@@ -1,4 +1,3 @@
-# @TEST:HOOK-POST-AUTO-SPEC-001
 """Test suite for PostToolUse auto-spec completion hook."""
 
 import unittest
@@ -263,7 +262,6 @@ class UserAuth:
         spec_content = generate_complete_spec(mock_analysis, self.test_code_file)
 
         # Verify EARS format structure
-        self.assertIn('@META:', spec_content['spec_md'])
         self.assertIn('Overview', spec_content['spec_md'])
         self.assertIn('Environment', spec_content['spec_md'])
         self.assertIn('Requirements', spec_content['spec_md'])

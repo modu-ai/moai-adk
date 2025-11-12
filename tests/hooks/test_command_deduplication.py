@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @TEST:HOOKS-COMMAND-DEDUPE-001 | SPEC: SPEC-HOOKS-COMMAND-DEDUPE-001.md
 """Command Deduplication Within 3-Second Windows Tests
 
 GitHub Issue #207: Hook duplication bug - Commands being executed twice within 3 seconds

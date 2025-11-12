@@ -1,5 +1,4 @@
 ---
-@META: {
   "id": "ACCEPT-AUTO-COMPLETION-001",
   "spec_id": "SPEC-AUTO-COMPLETION-001",
   "title": "자동 SPEC 생성 완성화 시스템 검수 기준",
@@ -11,7 +10,6 @@
 }
 ---
 
-# @ACCEPT:AUTO-COMPLETION-001: 검수 기준
 ## Acceptance Criteria
 
 ### 검수 개요 (Acceptance Overview)

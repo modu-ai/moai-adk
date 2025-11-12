@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @CODE:HOOK-POST-TAG-001 | SPEC: TAG-POST-HOOK-001 | TEST: tests/hooks/test_post_tool_tag_corrector.py
 """PostToolUse Hook: TAG Auto-Correction and Monitoring
 
 Validates and auto-corrects TAG state after Edit/Write/MultiEdit execution.

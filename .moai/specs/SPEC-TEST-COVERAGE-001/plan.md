@@ -1,4 +1,3 @@
-# @SPEC:TEST-COVERAGE-001 구현 계획서
 
 ## 개요
 

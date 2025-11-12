@@ -1,4 +1,3 @@
-# @SPEC:SKILL-REFACTOR-001 인수 기준 (Acceptance Criteria)
 
 > Claude Code Skills 표준화 작업 인수 기준
 
@@ -291,4 +290,3 @@ git status --short
 ---
 
 **최종 업데이트**: 2025-10-19
-**작성자**: @Goos

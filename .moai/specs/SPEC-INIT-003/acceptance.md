@@ -1,6 +1,4 @@
-# @SPEC:INIT-003 인수 기준 (v0.2.1)
 
-> **@SPEC:INIT-003 Acceptance Criteria - 백업 조건 완화**
 >
 > 이 문서는 SPEC-INIT-003 "Init 백업 및 병합 옵션" 기능의 완료 조건을 정의합니다.
 
@@ -34,8 +32,6 @@
   - **R**eadable: 백업 및 병합 알고리즘 명확한 주석
   - **U**nified: TypeScript 타입 안전성 100%
   - **S**ecured: 파일 경로 검증, 백업 메타데이터 무결성
-  - **T**rackable: `@CODE:INIT-003:BACKUP`, `@CODE:INIT-003:MERGE` TAG 부여
-- ✅ TAG 체인 무결성: `@SPEC:INIT-003` → `@TEST:INIT-003` → `@CODE:INIT-003`
 
 ---
 
@@ -408,17 +404,10 @@ bun run test:coverage
 
 ```bash
 # Phase A TAG 체인 검증
-rg '@CODE:INIT-003:BACKUP' -n moai-adk-ts/src/core/installer/
 
 # Phase B TAG 체인 검증
-rg '@CODE:INIT-003:MERGE' -n moai-adk-ts/src/cli/commands/project/
 
 # 예상 결과:
-# .moai/specs/SPEC-INIT-003/spec.md:@SPEC:INIT-003
-# __tests__/core/installer/*.test.ts:@TEST:INIT-003:BACKUP
-# __tests__/cli/commands/project/*.test.ts:@TEST:INIT-003:MERGE
-# src/core/installer/*.ts:@CODE:INIT-003:BACKUP
-# src/cli/commands/project/*.ts:@CODE:INIT-003:MERGE
 ```
 
 #### 3. 백업 메타데이터 무결성

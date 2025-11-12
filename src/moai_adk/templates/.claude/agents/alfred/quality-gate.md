@@ -31,7 +31,6 @@ Alfred passes the user's language directly to you via `Task()` calls.
 2. **Output Language**: Generate quality verification reports in user's conversation_language
 
 3. **Always in English** (regardless of conversation_language):
-   - @TAG identifiers (format: `@TYPE:DOMAIN-NNN`)
    - Skill names in invocations: `Skill("moai-alfred-trust-validation")`
    - Technical evaluation terms (PASS/WARNING/CRITICAL remain English for consistency)
    - File paths and code snippets
@@ -170,7 +169,6 @@ Alfred passes the user's language directly to you via `Task()` calls.
 #### 3.3 TAG chain verification
 
 1. **Explore TAG comments**:
- - Search for "# @CODE:" or "// @CODE:" with Grep
  - Extract TAG list by file
 
 2. **TAG order verification**:

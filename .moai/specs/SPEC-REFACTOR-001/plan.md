@@ -1,10 +1,7 @@
-# @SPEC:001 구현 계획
 
 ## TAG BLOCK
 
 ```text
-# @SPEC:REFACTOR-001 | Chain: @SPEC:REFACTOR-001 -> @SPEC:REFACTOR-001 -> @CODE:REFACTOR-001 -> @TEST:REFACTOR-001
-# Related: @CODE:REFACTOR-001
 ```
 
 ## 우선순위별 마일스톤
@@ -514,13 +511,10 @@ describe('GitBranchManager', () => {
 
 **각 파일 헤더**:
 ```typescript
-// @CODE:<ID> | Chain: @SPEC:<ID> -> @SPEC:<ID> -> @CODE:<ID> -> @TEST:<ID>
-// Related: @CODE:<ID>, @CODE:<ID>
 
 /**
  * @file Brief description
  * @author MoAI Team
- * @tags @CODE:<ID>
  */
 ```
 

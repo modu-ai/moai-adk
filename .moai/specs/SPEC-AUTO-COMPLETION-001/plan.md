@@ -1,5 +1,4 @@
 ---
-@META: {
   "id": "PLAN-AUTO-COMPLETION-001",
   "spec_id": "SPEC-AUTO-COMPLETION-001",
   "title": "자동 SPEC 생성 완성화 시스템 구현 계획",
@@ -11,7 +10,6 @@
 }
 ---
 
-# @PLAN:AUTO-COMPLETION-001: 구현 계획
 ## Implementation Plan
 
 ### 구현 단계 (Implementation Phases)

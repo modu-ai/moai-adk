@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @TEST:HOOKS-EXECUTION-TRACKING-001 | SPEC: SPEC-HOOKS-EXECUTION-TRACKING-001.md
 """Hook Execution Counting and Duplicate Prevention Tests
 
 GitHub Issue #207: Hook duplication bug - Hook execution state tracking issues

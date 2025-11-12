@@ -41,7 +41,6 @@ sequenceDiagram
 
 ```python
 # SPEC: AUTH-020 - OAuth2 소셜 로그인
-# @TAG:AUTH-020
 
 from fastapi import FastAPI
 from authlib.integrations.starlette_client import OAuth

@@ -1,4 +1,3 @@
-# @TEST:TAG-IMPROVEMENT-INTEGRATION-003
 """
 Test integration testing utilities.
 """

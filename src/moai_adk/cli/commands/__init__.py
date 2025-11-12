@@ -1,4 +1,3 @@
-# @CODE:CLI-INIT-005 | SPEC: SPEC-CLI-001/spec.md | TEST: tests/unit/test_cli_commands.py
 """CLI command module
 
 Core commands:

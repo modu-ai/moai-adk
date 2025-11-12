@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @CODE:HOOKS-CLARITY-CLEAN | SPEC: Daily analysis handler with self-learning
 """Daily Analysis Handler: Trigger daily session analysis and self-learning
 
 This handler implements daily session analysis with self-learning capabilities

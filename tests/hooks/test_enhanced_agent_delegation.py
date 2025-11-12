@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @TEST:ENHANCED-AGENT-DELEGATION-001 | @SPEC:AGENT-DELEGATION-ENHANCEMENT-001 | @CODE:HOOK-AGENT-DELEGATION-001
 """향상된 에이전트 위임 Hook 테스트
 
 사용자 프롬프트 분석을 통한 전문가 에이전트 위임 및 Skills JIT 컨텍스트 로딩 기능 테스트.

@@ -120,7 +120,6 @@ Use @TAG references instead of full context:
 "The user configuration from the previous 20 messages..."
 
 ✅ Good (efficient reference):
-"@CONFIG:USER-PREFS-001 (see session notes)"
 ```
 
 **Technique 3: Structured Context Architecture**

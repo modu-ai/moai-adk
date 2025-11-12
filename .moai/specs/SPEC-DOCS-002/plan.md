@@ -1,4 +1,3 @@
-# @SPEC:DOCS-002 구현 계획서
 
 ## 개요
 
@@ -53,9 +52,7 @@ Phase 2는 VitePress 문서 사이트에 **핵심 개념 3개 페이지**를 추
 4. **에이전트 협업 원칙** (100 LOC)
    - 단일 책임 원칙
    - 중앙 조율 (Alfred만 에이전트 간 작업 조율)
-   - 품질 게이트 (TRUST, @TAG 검증)
 
-### 2. @TAG 추적성 시스템 (~250 LOC)
 
 **파일**: `docs/concepts/tag-system.md`
 
@@ -67,26 +64,18 @@ Phase 2는 VitePress 문서 사이트에 **핵심 개념 3개 페이지**를 추
 
    - TAG의 진실은 코드 자체에만 존재
    - 중간 캐시 없음 (코드 직접 스캔)
-   - `rg '@TAG' -n` 방식
 
 2. **TAG 체인** (80 LOC)
 
    ```mermaid
    graph LR
-       A[@SPEC:ID] --> B[@TEST:ID]
-       B --> C[@CODE:ID]
-       C --> D[@DOC:ID]
    ```
 
-   - @SPEC → @TEST → @CODE → @DOC 4단계
    - TAG ID 규칙: `<도메인>-<3자리>`
    - 버전 관리: v0.1.0 (INITIAL) → v1.0.0 (안정화)
 
 3. **언어별 TAG 사용 예시** (100 LOC)
 
-   - TypeScript: `// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md`
-   - Python: `# @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md`
-   - Dart: `// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md`
 
 4. **TAG 검증 방법** (20 LOC)
 
@@ -133,7 +122,6 @@ Phase 2는 VitePress 문서 사이트에 **핵심 개념 3개 페이지**를 추
    - 입력 검증, 환경 변수 사용
 
 5. **T (Trackable)** (40 LOC)
-   - @TAG 체인 무결성
    - 고아 TAG 자동 탐지
    - TAG ID 중복 방지
 
@@ -254,4 +242,3 @@ Phase 2는 VitePress 문서 사이트에 **핵심 개념 3개 페이지**를 추
 
 **작성자**: spec-builder 에이전트
 **검토자**: trust-checker 에이전트
-**승인**: @Goos

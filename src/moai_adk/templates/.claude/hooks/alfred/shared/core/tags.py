@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @CODE:HOOK-TAG-001 | SPEC: TBD | TEST: tests/hooks/test_tag_validation.py
 """TAG validation helpers for MoAI-ADK hooks
 
 Fast checks used by PreToolUse/PostToolUse to nudge users when
@@ -67,7 +66,6 @@ class TagIssue:
 @dataclass
 class Rule:
     include: List[str]
-    expect: str  # '@SPEC:' | '@TEST:' | '@CODE:' | '@DOC:'
     exclude: List[str]
 
 
@@ -77,8 +75,6 @@ def _load_rules(cwd: str) -> List[Rule]:
     Schema example:
     {
       "rules": [
-        {"include": ["**/*_test.py", "**/*.test.ts"], "expect": "@TEST:", "exclude": []},
-        {"include": ["docs/**/*.md", "**/README.md"], "expect": "@DOC:", "exclude": []}
       ]
     }
     """
@@ -92,7 +88,6 @@ def _load_rules(cwd: str) -> List[Rule]:
                 include = list(it.get("include", []))
                 expect = str(it.get("expect", ""))
                 exclude = list(it.get("exclude", []))
-                if include and expect in ("@SPEC:", "@TEST:", "@CODE:", "@DOC:"):
                     rules.append(Rule(include=include, expect=expect, exclude=exclude))
             if rules:
                 return rules
@@ -101,7 +96,6 @@ def _load_rules(cwd: str) -> List[Rule]:
 
     # Defaults (ordered)
     return [
-        Rule(include=[".moai/specs/**", "**/SPEC-*/spec.md"], expect="@SPEC:", exclude=[]),
         Rule(
             include=[
                 "**/*_test.py",
@@ -116,17 +110,14 @@ def _load_rules(cwd: str) -> List[Rule]:
                 "**/*.spec.tsx",
                 "tests/**",
             ],
-            expect="@TEST:",
             exclude=[".claude/**"],
         ),
         Rule(
             include=["docs/**/*.md", "**/README.md", "**/*.api.md"],
-            expect="@DOC:",
             exclude=[".claude/**"],
         ),
         Rule(
             include=["**/*"],
-            expect="@CODE:",
             exclude=[
                 "tests/**",
                 "docs/**",
@@ -156,7 +147,6 @@ def _needs_tag_str(path_str: str, rules: List[Rule]) -> Optional[str]:
     p = path_str
     for rule in rules:
         if _match_any(p, rule.include) and not _match_any(p, rule.exclude):
-            if rule.expect == "@CODE:":
                 # CODE: limit to source-like extensions to reduce noise
                 if not any(p.endswith(ext) for ext in DEFAULT_CODE_EXTS):
                     continue

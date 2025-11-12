@@ -1,4 +1,3 @@
-# @SPEC:ALF-WORKFLOW-001 인수 기준
 
 > **4단계 워크플로우 로직 검증 시나리오**
 >
@@ -85,7 +84,6 @@
 ```bash
 # TodoWrite 작업 수 확인 (6개)
 # Git 커밋 수 확인 (3개)
-git log --oneline --grep="@SPEC:AUTH-001" | wc -l  # 결과: 3
 
 # 보고서 파일 미존재 확인
 ls *.md | grep -E "(GUIDE|REPORT|ANALYSIS)"  # 결과: 빈 출력
@@ -211,7 +209,6 @@ git log --oneline --grep="DASHBOARD-001"
   - Add redis-py package to requirements.txt
   - Resolve blocker for SPEC-CACHE-001 implementation
 
-  Refs: @SPEC:CACHE-001
   ```
 
 **검증 방법**:
@@ -282,7 +279,6 @@ git log --oneline --grep="Redis dependencies"
   - Add new feature section to README.md
   - Add v0.8.3 release notes to CHANGELOG.md
 
-  Refs: @SPEC:DOCS-001
   ```
 
 **검증 방법**:
@@ -404,7 +400,6 @@ find . -name "*GUIDE*.md" -o -name "*REPORT*.md" -o -name "*ANALYSIS*.md" | wc -
 # 결과: 0 (README.md 등 공식 문서 제외)
 
 # Git 커밋만 확인
-git log --oneline --grep="@SPEC:API-001"
 ```
 
 ---
@@ -427,7 +422,6 @@ rg "4-step workflow|four-step workflow|Intent Understanding|Plan Creation|Task E
 ### Gate 2: TAG 체인 무결성
 
 **기준**:
-- ✅ @SPEC:ALF-WORKFLOW-001이 10개 파일에 존재
 - ✅ 각 파일에 고유한 서브 TAG 존재 (예: :ALFRED, :RULES, :CMD-PLAN)
 - ✅ 모든 TAG가 spec.md의 Traceability 섹션에 문서화됨
 
@@ -437,7 +431,6 @@ rg "4-step workflow|four-step workflow|Intent Understanding|Plan Creation|Task E
 rg "@(SPEC|CODE):ALF-WORKFLOW-001" -n CLAUDE.md CLAUDE-RULES.md .claude/
 
 # TAG 수 확인 (10개 이상)
-rg "@CODE:ALF-WORKFLOW-001" -n | wc -l
 # 예상 결과: 10
 ```
 
@@ -445,17 +438,14 @@ rg "@CODE:ALF-WORKFLOW-001" -n | wc -l
 
 **기준**:
 - ✅ TDD 단계별 커밋 분리 (test, feat, refactor)
-- ✅ 모든 커밋에 `@SPEC:ALF-WORKFLOW-001` 참조
 - ✅ 모든 커밋에 Alfred co-authorship 포함
 - ✅ 커밋 메시지가 Conventional Commits 형식 준수
 
 **검증 방법**:
 ```bash
 # TDD 단계별 커밋 확인
-git log --oneline --grep="@SPEC:ALF-WORKFLOW-001" | grep -E "^(test|feat|refactor):"
 
 # Alfred co-authorship 확인
-git log --grep="@SPEC:ALF-WORKFLOW-001" | grep "Co-Authored-By: 🎩 Alfred"
 ```
 
 ### Gate 4: TodoWrite 상태 전이
@@ -606,4 +596,3 @@ ls .moai/specs/ -d SPEC-* | wc -l
 
 **마지막 업데이트**: 2025-10-29
 **문서 버전**: v0.0.1
-**작성자**: @Goos

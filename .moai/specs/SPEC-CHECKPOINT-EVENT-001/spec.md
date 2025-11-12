@@ -4,7 +4,6 @@ version: 0.1.0
 status: completed
 created: 2025-10-15
 updated: 2025-10-16
-author: @Goos
 priority: high
 category: feature
 labels:
@@ -14,13 +13,11 @@ labels:
   - event-driven
 ---
 
-# @SPEC:CHECKPOINT-EVENT-001: Event-Driven Checkpoint 시스템
 
 ## HISTORY
 
 ### v0.1.0 (2025-10-16)
 - **COMPLETED**: TDD 구현 완료, 모든 기능 구현 및 테스트 통과
-- **AUTHOR**: @Goos
 - **CHANGES**:
   - checkpoint.py 구현 완료 (src/moai_adk/core/git/checkpoint.py)
   - event_detector.py 구현 완료 (src/moai_adk/core/git/event_detector.py)
@@ -31,7 +28,6 @@ labels:
 
 ### v0.0.1 (2025-10-15)
 - **INITIAL**: Event-Driven Checkpoint 시스템 명세 작성
-- **AUTHOR**: @Goos
 - **REASON**: 기존 시간 기반(5분 간격) checkpoint → 이벤트 기반 전환으로 불필요한 태그 생성 방지
 
 ---
@@ -180,5 +176,4 @@ tests/unit/
 ---
 
 **작성**: 2025-10-15
-**작성자**: @Goos
 **우선순위**: High

@@ -1,4 +1,3 @@
-# @CODE:CLAUDE-INTEGRATION-001 | SPEC: SPEC-CLAUDE-INTEGRATION-001/spec.md
 """
 Claude Code CLI integration for advanced variable substitution and automation.
 

@@ -4,7 +4,6 @@ version: 0.1.0
 status: completed
 created: 2025-10-19
 updated: 2025-10-19
-author: @Goos
 priority: high
 category: refactor
 labels:
@@ -27,12 +26,10 @@ scope:
     - moai-alfred-trust-validation/skill.md
 ---
 
-# @SPEC:UPDATE-004: Sub-agents를 Skills로 통합
 
 ## HISTORY
 ### v0.1.0 (2025-10-19)
 - **COMPLETED**: Sub-agents Skills 통합 + AskUserQuestion 섹션 통합 완료
-- **AUTHOR**: @Goos
 - **CHANGES**:
   - Phase 1: tag-agent, trust-checker → Skills 통합 (06a9da2)
   - Phase 2: spec-builder EARS 가이드 분리 (cf8ce97)
@@ -40,11 +37,9 @@ scope:
   - Phase 3-extra: Commands/Agents AskUserQuestion 섹션 추가 (a2fff92)
   - Sync: 문서 동기화 및 보고서 생성 (b331f59)
 - **RESULT**: Agent 프롬프트 1,200 LOC 감소 (40% 이상), DRY 원칙 준수
-- **TAG**: @SPEC:UPDATE-004 → @CODE:UPDATE-004 (Agent/Skills 파일)
 
 ### v0.0.1 (2025-10-19)
 - **INITIAL**: Sub-agents와 Skills의 명확한 역할 분리 및 중복 프롬프트 제거 명세 작성
-- **AUTHOR**: @Goos
 - **REASON**: Agent 프롬프트 비대화 방지, 유지보수성 향상, DRY 원칙 준수
 
 ---
@@ -205,7 +200,6 @@ model: haiku
 # TAG 시스템 관리
 
 ## TAG 체계
-@SPEC:ID → @TEST:ID → @CODE:ID → @DOC:ID
 
 ## TAG 규칙
 - TAG ID는 영구 불변
@@ -244,7 +238,6 @@ category: guidance
 # TAG 시스템 스캔 가이드
 
 ## TAG 체계
-@SPEC:ID → @TEST:ID → @CODE:ID → @DOC:ID
 
 ## TAG 규칙
 ... (전체 가이드)
@@ -507,11 +500,7 @@ wc -l .claude/skills/moai-alfred-ears-authoring/skill.md
 
 ## 10. 메타데이터
 
-**TAG**: @SPEC:UPDATE-004
 **관련 TAG**:
-- @SPEC:UPDATE-001 (Skills Flat 구조 변경)
-- @SPEC:UPDATE-002 (Skills name 필드 prefix 제거)
-- @SPEC:UPDATE-003 (moai-alfred-ears-authoring Skill 추가)
 
 **의존성**:
 - UPDATE-001 완료 (Skills Flat 구조)
@@ -522,6 +511,5 @@ wc -l .claude/skills/moai-alfred-ears-authoring/skill.md
 
 ---
 
-**작성자**: @Goos
 **최초 작성일**: 2025-10-19
 **최종 수정일**: 2025-10-19

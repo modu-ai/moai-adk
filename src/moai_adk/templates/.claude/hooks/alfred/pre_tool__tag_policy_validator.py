@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @CODE:HOOK-PRE-TAG-001 | SPEC: TAG-PRE-HOOK-001 | TEST: tests/hooks/test_pre_tool_tag_validator.py
 """PreToolUse Hook: TAG 정책 위반 실시간 차단
 
 Edit/Write/MultiEdit 실행 전 TAG 정책 위반을 탐지하고 차단.

@@ -324,20 +324,11 @@ src/moai_adk/templates/.claude/agents/alfred/
 
 ### 4. TAG 시스템 검증
 
-**필수 형식**: @TYPE-NUMBER
 
 **유효 타입**:
-- @SPEC (사양/요구사항)
-- @TEST (테스트 케이스)
-- @CODE (코드 구현)
-- @DOC (문서)
-- @BUG (버그 보고)
-- @TASK (작업/할일)
-- @DESIGN (설계 결정)
 
 **체인 검증**:
 ```
-@SPEC-001 → @TEST-001 → @CODE-001 → @DOC-001
 ```
 
 ---
@@ -508,4 +499,3 @@ src/moai_adk/templates/.claude/agents/alfred/
 
 🤖 Generated with Claude Code
 
-Co-Authored-By: 🎩 Alfred@MoAI

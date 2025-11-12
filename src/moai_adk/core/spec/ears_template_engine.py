@@ -1,4 +1,3 @@
-# @CODE:SPEC-EARS-TEMPLATE-001
 """EARS Template Engine for Auto-Generated SPECs."""
 
 import re
@@ -401,7 +400,6 @@ class EARSTemplateEngine:
 
         # Add meta information
         spec_md = f"""---
-@META: {{
   "id": "SPEC-{spec_id}",
   "title": "Auto-generated SPEC for {extraction['file_name']}",
   "title_en": "Auto-generated SPEC for {extraction['file_name']}",
@@ -419,7 +417,6 @@ class EARSTemplateEngine:
 }}
 ---
 
-# @SPEC:{spec_id}: Auto-generated SPEC for {extraction['file_name']}
 ## Auto-generated SPEC for {extraction['file_name']}
 
 ### Overview
@@ -690,11 +687,6 @@ class EARSTemplateEngine:
 
 ### Traceability
 
-- **@SPEC:{spec_id}** ← **`@CODE:HOOK-POST-AUTO-SPEC-001`** (Hook auto-generation)
-- **@SPEC:{spec_id}** ← **`@CODE:CONFIDENCE-SCORING-001`** (Confidence scoring)
-- **@SPEC:{spec_id}** ← **`@CODE:SPEC-EARS-TEMPLATE-001`** (Template generation)
-- **@SPEC:{spec_id}** → **@TEST:{spec_id}** (Tests)
-- **@SPEC:{spec_id}** → **@CODE:{spec_id}** (Implementation)"""
 
     def _generate_edit_guide(self, extraction: Dict[str, Any], domain: str) -> str:
         """Generate edit guide section."""
@@ -736,7 +728,6 @@ class EARSTemplateEngine:
 
         # Generate implementation plan based on complexity and domain
         plan_content = f"""---
-@META: {{
   "id": "PLAN-{spec_id}",
   "spec_id": "SPEC-{spec_id}",
   "title": "Auto-generated Implementation Plan for {extraction['file_name']}",
@@ -748,7 +739,6 @@ class EARSTemplateEngine:
 }}
 ---
 
-# @PLAN:{spec_id}: Auto-generated Implementation Plan
 ## Auto-generated Implementation Plan for {extraction['file_name']}
 
 ### Implementation Phases
@@ -940,7 +930,6 @@ Client → [Load Balancer] → [API Gateway] → [Service 1]
         config = custom_config or {}
 
         acceptance_content = f"""---
-@META: {{
   "id": "ACCEPT-{spec_id}",
   "spec_id": "SPEC-{spec_id}",
   "title": "Auto-generated Acceptance Criteria for {extraction['file_name']}",
@@ -952,7 +941,6 @@ Client → [Load Balancer] → [API Gateway] → [Service 1]
 }}
 ---
 
-# @ACCEPT:{spec_id}: Auto-generated Acceptance Criteria
 ## Auto-generated Acceptance Criteria for {extraction['file_name']}
 
 ### Acceptance Criteria

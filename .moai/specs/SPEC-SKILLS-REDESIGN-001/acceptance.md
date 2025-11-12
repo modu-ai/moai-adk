@@ -1,4 +1,3 @@
-# @SPEC:SKILLS-REDESIGN-001 검수 기준 (Acceptance Criteria)
 
 > **목적**: Skills 4-Tier 아키텍처 재설계 완료 후 검증 기준 정의
 > **형식**: Given-When-Then (Gherkin 스타일)

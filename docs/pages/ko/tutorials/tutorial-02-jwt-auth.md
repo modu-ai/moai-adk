@@ -253,7 +253,6 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 ```python
 """
 애플리케이션 설정
-@TAG: SPEC-JWT-AUTH-001
 """
 from pydantic_settings import BaseSettings
 
@@ -288,7 +287,6 @@ settings = Settings()
 ```python
 """
 데이터베이스 모델 및 세션
-@TAG: SPEC-JWT-AUTH-001
 """
 import uuid
 from datetime import datetime
@@ -360,7 +358,6 @@ def init_db():
 ```python
 """
 JWT 및 암호화 유틸리티
-@TAG: SPEC-JWT-AUTH-001
 """
 from datetime import datetime, timedelta
 from typing import Optional
@@ -467,7 +464,6 @@ def decode_token(token: str) -> dict:
 ```python
 """
 Pydantic 모델 (Request/Response)
-@TAG: SPEC-JWT-AUTH-001
 """
 from datetime import datetime
 from typing import Optional
@@ -525,7 +521,6 @@ class UserUpdate(BaseModel):
 ```python
 """
 인증 비즈니스 로직
-@TAG: SPEC-JWT-AUTH-001
 """
 from datetime import datetime, timedelta
 from uuid import UUID
@@ -717,7 +712,6 @@ def logout_user(db: Session, refresh_token_str: str):
 ```python
 """
 FastAPI 의존성
-@TAG: SPEC-JWT-AUTH-001
 """
 from uuid import UUID
 from fastapi import Depends, HTTPException, status
@@ -787,7 +781,6 @@ async def get_current_user(
 ```python
 """
 인증 관련 라우트
-@TAG: SPEC-JWT-AUTH-001
 """
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
@@ -851,7 +844,6 @@ def logout(token_data: TokenRefresh, db: Session = Depends(get_db)):
 ```python
 """
 사용자 관련 라우트 (인증 필요)
-@TAG: SPEC-JWT-AUTH-001
 """
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -903,7 +895,6 @@ def update_my_profile(
 ```python
 """
 JWT 인증 API 애플리케이션
-@TAG: SPEC-JWT-AUTH-001
 """
 from fastapi import FastAPI
 from .database import init_db
@@ -940,7 +931,6 @@ def root():
 ```python
 """
 인증 API 테스트
-@TAG: SPEC-JWT-AUTH-001
 """
 import pytest
 from fastapi.testclient import TestClient

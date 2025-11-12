@@ -1,4 +1,3 @@
-# @CODE:TAG-PERF-002
 """
 Cache System
 

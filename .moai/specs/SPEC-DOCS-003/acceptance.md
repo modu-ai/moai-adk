@@ -1,6 +1,4 @@
-# @SPEC:DOCS-003 수락 기준
 
-## @ACCEPT:DOCS-003 Acceptance Criteria
 
 ---
 
@@ -34,7 +32,6 @@
 
 - [ ] **MoAI-ADK 해결책 제시**:
   - SPEC-First TDD 방법론
-  - CODE-FIRST @TAG 시스템
   - TRUST 5원칙 자동 적용
   - Alfred SuperAgent + 9개 전문 에이전트
 
@@ -556,5 +553,4 @@ jobs:
 ---
 
 **작성일**: 2025-10-17
-**작성자**: @Goos
 **버전**: v0.0.1 (INITIAL)

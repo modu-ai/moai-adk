@@ -1,4 +1,3 @@
-# @SPEC:HOOKS-001 수락 기준 (Acceptance Criteria)
 
 > **✅ 구현 완료 상태 (2025-10-16)**
 >
@@ -159,12 +158,9 @@ Python, TypeScript, JavaScript, Java, Go, Rust, Dart, Swift, Kotlin, Ruby, PHP, 
 ### Core Module: tags.py (7 Tests)
 
 #### AC-3.1: TAG 검색 (ripgrep)
-**Given**: `.moai/specs/SPEC-AUTH-001.md` 파일에 `@SPEC:AUTH-001`이 포함되어 있을 때
-**When**: `search_tags("@SPEC:AUTH", scope=[".moai/specs/"])` 함수를 호출하면
 **Then**: 다음 정보를 포함한 리스트를 반환해야 한다:
 - `file`: `.moai/specs/SPEC-AUTH-001/spec.md`
 - `line`: 10 (예시)
-- `text`: `@SPEC:AUTH-001`
 
 **테스트**: `test_search_tags`
 **상태**: ✅ 통과
@@ -173,7 +169,6 @@ Python, TypeScript, JavaScript, Java, Go, Rust, Dart, Swift, Kotlin, Ruby, PHP, 
 
 #### AC-3.2: mtime 기반 캐시 무효화
 **Given**: TAG 검색 캐시가 생성되었고, 파일이 수정되었을 때
-**When**: `search_tags("@SPEC:AUTH", cache_ttl=60)` 함수를 다시 호출하면
 **Then**: 캐시를 무효화하고 파일을 다시 스캔해야 한다 (mtime 변경 감지)
 
 **테스트**: `test_cache_invalidation`
@@ -183,9 +178,6 @@ Python, TypeScript, JavaScript, Java, Go, Rust, Dart, Swift, Kotlin, Ruby, PHP, 
 
 #### AC-3.3: TAG 체인 검증 (완전한 체인)
 **Given**: 다음 TAG가 모두 존재할 때:
-- `.moai/specs/SPEC-AUTH-001.md`: `@SPEC:AUTH-001`
-- `tests/test_auth.py`: `@TEST:AUTH-001`
-- `src/auth.py`: `@CODE:AUTH-001`
 
 **When**: `verify_tag_chain("AUTH-001")` 함수를 호출하면
 **Then**: 다음 딕셔너리를 반환해야 한다:
@@ -204,7 +196,6 @@ Python, TypeScript, JavaScript, Java, Go, Rust, Dart, Swift, Kotlin, Ruby, PHP, 
 ---
 
 #### AC-3.4: TAG 체인 검증 (고아 TAG)
-**Given**: `src/auth.py`에 `@CODE:AUTH-001`이 있지만, `@SPEC:AUTH-001`이 없을 때
 **When**: `verify_tag_chain("AUTH-001")` 함수를 호출하면
 **Then**: 다음 딕셔너리를 반환해야 한다:
 ```python
@@ -224,7 +215,6 @@ Python, TypeScript, JavaScript, Java, Go, Rust, Dart, Swift, Kotlin, Ruby, PHP, 
 #### AC-3.5: TAG 타입별 검색
 **Given**: 프로젝트에 여러 TAG가 존재할 때
 **When**: `find_all_tags_by_type("SPEC")` 함수를 호출하면
-**Then**: 모든 @SPEC TAG를 도메인별로 그룹화한 딕셔너리를 반환해야 한다:
 ```python
 {
     "AUTH": ["AUTH-001", "AUTH-002"],
@@ -440,7 +430,6 @@ PreToolUse: 60ms ✅ (checkpoint 생성 포함)
 - ✅ 위험 작업 감지 및 Checkpoint 자동 생성
 
 #### Trackable (추적성)
-- ✅ @TAG 시스템으로 SPEC ↔ CODE 완전 추적
 - ✅ TAG 체인 검증 (verify_tag_chain)
 - ✅ 고아 TAG 탐지
 
@@ -471,7 +460,6 @@ PreToolUse: 60ms ✅ (checkpoint 생성 포함)
 - ✅ 코드 제약 준수 (≤300 LOC, ≤50 LOC, ≤5 params)
 - ✅ TRUST 5원칙 준수 확인
 - ✅ 문서 작성 완료 (README.md, SPEC.md, plan.md, acceptance.md)
-- ✅ TAG 체인 무결성 확인 (@SPEC → @TEST → @CODE)
 
 ### 선택 조건
 
@@ -550,6 +538,5 @@ PreToolUse: 60ms ✅ (checkpoint 생성 포함)
 ---
 
 **승인일**: 2025-10-16
-**승인자**: @Goos
 **버전**: v0.1.0 (구현 완료)
 **다음 단계**: `/alfred:3-sync` 실행하여 TAG 체인 검증 및 문서 동기화

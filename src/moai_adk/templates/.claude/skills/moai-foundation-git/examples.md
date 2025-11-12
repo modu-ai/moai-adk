@@ -27,23 +27,17 @@ git checkout feature/SPEC-006
 
 git commit -m "🔴 RED: test_password_strength_validation
 
-@SPEC:PASSWORD-VALIDATION-006
-@TEST:PASSWORD:001"
 
 # === GREEN Phase ===
 # Implement password validation
 
 git commit -m "🟢 GREEN: implement_password_strength_check
 
-@SPEC:PASSWORD-VALIDATION-006
-@CODE:PASSWORD:001"
 
 # === REFACTOR Phase ===
 
 git commit -m "♻️ REFACTOR: improve_password_error_messages
 
-@SPEC:PASSWORD-VALIDATION-006
-@CODE:PASSWORD:002"
 
 # Create PR
 gh pr create \\
@@ -63,7 +57,6 @@ git checkout develop
 git pull origin develop
 
 # Implement and commit directly
-git commit -m "🟢 GREEN: implement_hash_algorithm @SPEC:HASH-003"
 git push origin develop
 
 # CI/CD gates validate automatically

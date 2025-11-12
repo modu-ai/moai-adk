@@ -1,4 +1,3 @@
-# @TEST:CONFIG-INTEGRATION-001
 """Test suite for Auto-Spec Configuration Reader."""
 
 import unittest

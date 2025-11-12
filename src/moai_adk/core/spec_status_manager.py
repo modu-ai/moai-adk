@@ -63,10 +63,7 @@ class SpecStatusManager:
                         # Extract frontmatter (YAML or @META format)
                         frontmatter = None
 
-                        # Handle @META: format
-                        if content.startswith('---\n@META:'):
                             # Parse @META format (JSON-like)
-                            meta_match = re.search(r'@META:\s*\{(.*?)\}', content, re.DOTALL)
                             if meta_match:
                                 try:
                                     meta_text = meta_match.group(1)
@@ -411,13 +408,11 @@ class SpecStatusManager:
                     for line_num, line in enumerate(lines, 1):
                         for tag_id in code_tags:
                             # Check if tag is present in a non-comment line
-                            if f"@CODE:{tag_id}" in line:
                                 # Remove common comment markers and check if tag is still present
                                 stripped_line = line.strip()
                                 comment_free = stripped_line.replace('#', '').replace('//', '')
 
                                 # Tag should be actual implementation, not just a comment
-                                if f"@CODE:{tag_id}" in comment_free:
                                     # Further check - tag should be followed by actual code
                                     # Look for function definitions, class definitions, or significant code blocks
                                     tag_line_index = lines.index(line) if line in lines else -1
@@ -477,7 +472,6 @@ class SpecStatusManager:
                     with open(test_file, 'r', encoding='utf-8') as f:
                         content = f.read()
                         for tag_id in test_tags:
-                            if f"@TEST:{tag_id}" in content:
                                 implemented_tags.add(tag_id)
                 except Exception as e:
                     logger.warning(f"Error reading test file {test_file}: {e}")

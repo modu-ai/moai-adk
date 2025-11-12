@@ -1,6 +1,4 @@
-# Acceptance Criteria: @SPEC:UPDATE-ENHANCE-001
 
-@SPEC:UPDATE-ENHANCE-001 → @ACCEPTANCE:UPDATE-ENHANCE-001
 
 ## 개요
 
@@ -851,4 +849,3 @@ def test_e2e_version_check_workflow(tmp_path, mock_pypi):
 
 **END OF ACCEPTANCE CRITERIA**
 
-@ACCEPTANCE:UPDATE-ENHANCE-001

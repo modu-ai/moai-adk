@@ -1,4 +1,3 @@
-# @SPEC:CLI-001 인수 기준 (Acceptance Criteria)
 
 > **Given-When-Then 형식의 구체적인 시나리오**
 >
@@ -113,8 +112,6 @@ time moai doctor --verbose
 
 **Given**:
 - 1개 SPEC: `.moai/specs/SPEC-AUTH-001/spec.md`
-- 1개 CODE: `src/auth/service.py` with `@CODE:AUTH-001`
-- 1개 TEST: `tests/auth/test_service.py` with `@TEST:AUTH-001`
 
 **When**:
 ```bash
@@ -128,8 +125,6 @@ moai status --detail
 ### Scenario 4.2: 끊어진 TAG 체인 감지
 
 **Given**:
-- CODE에 `@CODE:AUTH-001` 존재
-- SPEC에 `@SPEC:AUTH-001` 없음 (삭제됨)
 
 **When**:
 ```bash
@@ -145,8 +140,6 @@ moai status --detail
 ### Scenario 4.3: 고아 TAG 감지
 
 **Given**:
-- SPEC에 `@SPEC:AUTH-001` 존재
-- CODE에 `@CODE:AUTH-001` 없음 (미구현)
 
 **When**:
 ```bash

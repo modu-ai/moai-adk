@@ -115,11 +115,9 @@ trigger_cues: TAG Scan, TAG List, TAG Inventory, Find orphan TAG, Check TAG chai
 
 3. [HIGH] 3-5개 구체적 사용 사례
    - "TAG-001 → TEST 없음 → orphan 감지"
-   - "중복 @CODE:AUTH-001 발견"
    - "깨진 SPEC 참조 수리" 워크플로우
 
 4. [MEDIUM] 에러 처리 가이드
-   - 잘못된 TAG 형식 (@CODE-001 vs @CODE:001)
    - 권한 문제로 인한 스캔 실패
    - 매우 큰 코드베이스 성능 최적화
 ```
@@ -129,13 +127,10 @@ trigger_cues: TAG Scan, TAG List, TAG Inventory, Find orphan TAG, Check TAG chai
 # TAG-scanning 개선된 템플릿
 
 ## 정상 TAG 체인 (✅)
-@SPEC:AUTH-001 → tests/auth.test.ts (@TEST:AUTH-001) → src/auth.ts (@CODE:AUTH-001) → docs/auth.md (@DOC:AUTH-001)
 
 ## orphan TAG (❌)
-@CODE:PAYMENT-005 발견 → SPEC/TEST/DOC 없음 → 고아 태그 경고
 
 ## 중복 ID (⚠️)
-@CODE:UTIL-003 (3개 파일에서 발견) → 중복 경고
 ```
 
 ---

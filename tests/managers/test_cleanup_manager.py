@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @TEST:CLEANUP-MANAGER-001 | TAG: TAG-CLEANUP-MANAGER-TEST-001
 
 """
 Test suite for Cleanup Manager module

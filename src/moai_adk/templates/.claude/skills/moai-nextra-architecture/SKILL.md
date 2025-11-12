@@ -31,7 +31,6 @@ context7_references:
     topic: "Nextra framework best practices and configuration"
   - url: "https://vercel.com/templates/next.js"
     topic: "Next.js deployment and optimization strategies"
-spec_reference: "@SPEC:DOCS-ARCHITECTURE-001"
 ```
 
 ## 📚 Content

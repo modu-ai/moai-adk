@@ -1,4 +1,3 @@
-# @CODE:DOC-TAG-004 | Component 4: Automated TAG reporting workflow
 name: TAG Report Generation
 
 on:

@@ -8,7 +8,6 @@ created: "2025-11-10"
 author: "GoosLab"
 ---
 
-# @SPEC:STATUSLINE-MAIN-002 | @EXPERT:BACKEND | @EXPERT:FRONTEND | @EXPERT:UIUX
 
 ## SPEC Overview
 
@@ -23,9 +22,6 @@ This SPEC defines the main statusline system for MoAI-ADK, which provides compre
 
 ## Implementation Files
 
-- **CODE**: @CODE:STATUSLINE-MAIN-001 - Statusline main implementation
-- **TEST**: @TEST:STATUSLINE-MAIN-002 - Statusline main tests
-- **DOC**: @DOC:STATUSLINE-MAIN-002 - Statusline main documentation
 
 ## Acceptance Criteria
 
@@ -39,5 +35,4 @@ This SPEC defines the main statusline system for MoAI-ADK, which provides compre
 ## Traceability Chain
 
 ```
-@SPEC:STATUSLINE-MAIN-002 → @CODE:STATUSLINE-MAIN-001 → @TEST:STATUSLINE-MAIN-002 → @DOC:STATUSLINE-MAIN-002
 ```

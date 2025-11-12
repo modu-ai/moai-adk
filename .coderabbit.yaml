@@ -48,7 +48,6 @@ coderabbit:
       - ✅ HISTORY section exists immediately after frontmatter
       - ✅ HISTORY entries in reverse chronological order (latest first)
       - ✅ Version history properly documented
-      - ✅ Main heading includes @SPEC:ID: format
 
       ## EARS Requirements
       - ✅ Ubiquitous requirements defined
@@ -64,7 +63,6 @@ coderabbit:
       - ✅ Expected outcomes (Then)
 
       ## Traceability (@TAG System)
-      - ✅ @SPEC:ID tag present in heading
       - ✅ Related @TEST tags referenced
       - ✅ Related @CODE tags referenced
       - ✅ Related @DOC tags referenced

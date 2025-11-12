@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @TEST:SPEC-GENERATION-WORKFLOW-001 | @SPEC:TAG-HOOK-WORKFLOW-001 | @CODE:HOOK-SPEC-WORKFLOW-001
 """SPEC 자동 생성 워크플로우 Hook 통합 테스트
 
 사용자가 SPEC 없이 코드 파일을 생성하려 할 때 Hook이 SPEC 자동 생성을 제안하고,
@@ -34,7 +33,6 @@ class TestSpecGenerationHookOffer:
         #
         #     # 1. src/auth.py 생성 시도 (SPEC 없음)
         #     code_file = src_dir / "auth.py"
-        #     code_file.write_text("# @CODE:AUTH-001\ndef login(): pass\n")
         #
         #     # 2. Hook 실행
         #     from moai_adk.core.hooks.tag_policy_hook import should_validate_tool
@@ -136,7 +134,6 @@ class TestSpecGenerationUserAcceptance:
         #
         # assert result["success"] == True
         # assert result["spec_path"].exists()
-        # assert "# @SPEC:AUTH" in result["spec_path"].read_text()
         # assert "## HISTORY" in result["spec_path"].read_text()
         # assert "## Requirements" in result["spec_path"].read_text()
         pass
@@ -167,7 +164,6 @@ class TestSpecGenerationUserAcceptance:
         #     spec_file.parent.mkdir(parents=True)
         #
         #     # 1. 템플릿 생성 직후 (불완전)
-        #     spec_file.write_text("# @SPEC:AUTH\n## HISTORY\n...incomplete...\n")
         #
         #     from moai_adk.core.hooks.tag_policy_hook import is_spec_edited
         #
@@ -175,7 +171,6 @@ class TestSpecGenerationUserAcceptance:
         #     assert is_spec_edited(spec_file) == False
         #
         #     # 3. 사용자가 실제로 내용 추가 (시뮬레이션)
-        #     spec_file.write_text("""# @SPEC:AUTH
         # ## HISTORY
         # - 2025-01-01: Initial creation
         #
@@ -235,7 +230,6 @@ class TestSpecGenerationFullWorkflow:
         #     # Step 1: 사용자가 src/auth.py 생성 시도 (SPEC 없음)
         #     code_file = src_dir / "auth.py"
         #     code_content = '''
-        # # @CODE:AUTH-001
         # def login(username: str, password: str) -> bool:
         #     """사용자 로그인"""
         #     pass
@@ -261,7 +255,6 @@ class TestSpecGenerationFullWorkflow:
         #
         #     spec_file = Path(result["spec_path"])
         #     assert spec_file.exists()
-        #     assert "@SPEC:AUTH" in spec_file.read_text()
         #
         #     # Step 5: 사용자가 SPEC 편집 (시뮬레이션)
         #     spec_content = spec_file.read_text()
@@ -329,7 +322,6 @@ class TestSpecGenerationEdgeCases:
         #     spec_dir = tmpdir_path / ".moai" / "specs" / "SPEC-AUTH"
         #     spec_dir.mkdir(parents=True)
         #     spec_file = spec_dir / "spec.md"
-        #     spec_file.write_text("# @SPEC:AUTH\n...")
         #
         #     # 코드 생성 시도
         #     from moai_adk.core.hooks.tag_policy_hook import offer_spec_generation
@@ -345,7 +337,6 @@ class TestSpecGenerationEdgeCases:
 
     def test_multiple_code_files_same_domain(self):
         """같은 도메인의 여러 코드 파일"""
-        # # src/auth/login.py, src/auth/logout.py 모두 @CODE:AUTH-001
         # code_files = [
         #     ("src/auth/login.py", "AUTH"),
         #     ("src/auth/logout.py", "AUTH"),

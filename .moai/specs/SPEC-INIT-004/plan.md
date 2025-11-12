@@ -1,6 +1,4 @@
-# @SPEC:INIT-004 Implementation Plan
 
-## @PLAN:INIT-004 구현 계획
 
 ---
 
@@ -279,7 +277,6 @@ describe('moai-adk init (E2E)', () => {
   - **Readable**: ESLint/Prettier 통과
   - **Unified**: 함수 ≤50 LOC
   - **Secured**: 보안 이슈 없음
-  - **Trackable**: @TAG 체인 완전
 
 ### 문서화
 - ✅ CHANGELOG.md 업데이트

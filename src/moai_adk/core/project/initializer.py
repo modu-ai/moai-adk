@@ -1,4 +1,3 @@
-# @CODE:CORE-PROJECT-001 | @SPEC:CORE-PROJECT-002 | @TEST:CORE-PROJECT-002 | @CODE:INIT-005:INIT
 # SPEC: SPEC-CORE-PROJECT-001.md, SPEC-INIT-003.md
 # TEST: tests/unit/test_project_initializer.py, tests/unit/test_init_reinit.py
 """Project Initialization Module
@@ -64,7 +63,6 @@ class ProjectInitializer:
         Returns:
             List of created memory files
 
-        @CODE:INIT-MEMORY-001 | Auto-generate session memory files
         """
         memory_dir = self.path / ".moai" / "memory"
         memory_dir.mkdir(parents=True, exist_ok=True)

@@ -325,8 +325,6 @@ def test_valid_function():
 - Function implemented correctly
 - All tests passing
 
-@CODE:BATCH-{i:03d}-001
-@TEST:BATCH-{i:03d}-001
 """)
 
             # Create docs directory and sync report to pass docs_synced check
@@ -341,12 +339,10 @@ def test_valid_function():
             # Create implementation for first two specs only
             if i < 2:
                 (temp_project_dir / "src" / f"batch_{i}.py").write_text(f"""
-# @CODE:BATCH-{i:03d}-001
 def batch_function_{i}():
     return True
 """)
                 (temp_project_dir / "tests" / f"test_batch_{i}.py").write_text(f"""
-# @TEST:BATCH-{i:03d}-001
 def test_batch_function_{i}():
     assert batch_function_{i}()
 """)
@@ -379,12 +375,8 @@ status: draft
 
 ## Complex TAG Structure
 
-@REQ:INTEGRATION-001-001: Requirement
-@DESIGN:INTEGRATION-001-001: Design
-@TASK:INTEGRATION-001-001: Task
 # REMOVED_ORPHAN_CODE:INTEGRATION-001-001: Code implementation
 # REMOVED_ORPHAN_TEST:INTEGRATION-001-001: Test implementation
-@DOC:INTEGRATION-001-001: Documentation
 """)
 
         # Test TAG scanning integration

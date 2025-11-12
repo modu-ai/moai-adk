@@ -5,12 +5,10 @@ status: completed
 created: 2025-10-06
 updated: 2025-10-06
 completed: 2025-10-06
-author: @Goos
 related_issue: "https://github.com/modu-ai/moai-adk/issues/2"
 priority: high
 ---
 
-# @SPEC:INIT-005: moai init 비대화형 환경 지원 및 의존성 자동 설치
 
 ## HISTORY
 
@@ -26,12 +24,9 @@ priority: high
   - `b01403e docs(sync): Complete SPEC-INIT-001, REFACTOR-001, BRAND-001`
   - `49cc5c7 Merge: feature/INIT-001 → develop`
   - `3c41c3a feat(init): Add non-interactive mode support with TTY detection`
-  - @CODE:INIT-001 TAG 다수 발견
 
 ### v0.1.0 (2025-10-06)
 - **INITIAL**: moai init 비대화형 환경 지원 및 의존성 자동 설치 명세 작성
-- **AUTHOR**: @Goos
-- **REVIEW**: @AI-Alfred
 - **CONTEXT**: GitHub Issue #2 기반
 - **SCOPE**: TTY 자동 감지, --yes 플래그, 의존성 자동 설치, 선택적 의존성 분리, Docker 멀티 플랫폼 테스트
 
@@ -456,36 +451,23 @@ AND .moai/config.json 생성 확인
 
 ---
 
-## Traceability (@TAG 체인)
 
 ### TAG 체인 구조
 ```
-@SPEC:INIT-005 (본 문서)
   ↓
-@TEST:INIT-001 (tests/cli/init.test.ts)
   ↓
-@CODE:INIT-001 (src/cli/init.ts)
-  ├─ @CODE:INIT-001:CLI (Commander.js 등록)
-  ├─ @CODE:INIT-001:TTY (TTY 감지 로직)
-  ├─ @CODE:INIT-001:INSTALLER (의존성 자동 설치)
-  └─ @CODE:INIT-001:DOCTOR (선택적 의존성 분리)
   ↓
-@DOC:INIT-001 (docs/cli/init.md, CHANGELOG.md)
 ```
 
 ### 검증 명령어
 ```bash
 # SPEC 문서 확인
-rg '@SPEC:INIT-005' -n .moai/specs/
 
 # 테스트 파일 확인
-rg '@TEST:INIT-001' -n tests/
 
 # 구현 코드 확인
-rg '@CODE:INIT-001' -n src/
 
 # 문서 확인
-rg '@DOC:INIT-001' -n docs/
 
 # 전체 TAG 체인 무결성 검증
 rg '@(SPEC|TEST|CODE|DOC):INIT-001' -n

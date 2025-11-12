@@ -1,4 +1,3 @@
-# @CODE:PORTAL-LINK-001 | @SPEC:PORTAL-LINK-001 | @TEST:PORTAL-LINK-001: Online documentation link validation utilities | @TEST:PORTAL-LINK-001: Link validation tests
 
 """
 Link Validation Utilities

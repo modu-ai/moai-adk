@@ -1,9 +1,6 @@
 """
 Tests for Enhanced VersionReader - Refactored version reading functionality
 
-@TEST:VERSION-READER-ENHANCED-001 - Enhanced version reading with caching
-@TEST:VERSION-READER-ENHANCED-002 - Configuration and error handling
-@TEST:VERSION-READER-ENHANCED-003 - Async support and performance
 """
 
 import json
@@ -30,7 +27,6 @@ class TestEnhancedVersionReader:
         WHEN: VersionReader initialized with config
         THEN: Should use custom settings
         """
-        # @TEST:VERSION-READER-ENHANCED-001
         custom_config = VersionConfig(
             cache_ttl_seconds=30,
             fallback_version="custom-fallback",

@@ -1,4 +1,3 @@
-# @TEST:QUALITY-VALIDATOR-001
 """Test suite for Quality Validator."""
 
 import unittest
@@ -21,7 +20,6 @@ class TestQualityValidator(unittest.TestCase):
 
         # Sample high-quality SPEC content
         self.high_quality_spec = {
-            'spec_md': '''# @SPEC:TEST-001: High Quality SPEC
 ## 개요 (Overview)
 This is a comprehensive test specification for a high-quality system.
 
@@ -47,10 +45,6 @@ This is a comprehensive test specification for a high-quality system.
 - SPEC-003: Security measures
 
 ## 추적성 (Traceability)
-- @SPEC:TEST-001 ← @CODE:HOOK-POST-AUTO-SPEC-001
-- @SPEC:TEST-001 → # REMOVED_ORPHAN_TEST:TEST-001
-- @SPEC:TEST-001 → # REMOVED_ORPHAN_CODE:TEST-001''',
-            'plan_md': '''# @PLAN:TEST-001: Implementation Plan
 ## 구현 단계 (Implementation Phases)
 ### 1단계: 요구사항 분석 (Priority: High)
 - [ ] 기능 요구사항 상세화
@@ -86,7 +80,6 @@ This is a comprehensive test specification for a high-quality system.
 1. **즉시 실행**: 요구사항 분석 (1-2일)
 2. **주간 목표**: 설계 완료 (3-5일)
 3. **2주 목표**: 개발 완료 (7-14일)''',
-            'acceptance_md': '''# @ACCEPT:TEST-001: Acceptance Criteria
 ## 검수 기준 (Acceptance Criteria)
 
 ### 기본 기능 검수 (Basic Functionality)
@@ -531,7 +524,6 @@ No proper headings'''
     def test_traceability_tags_check(self):
         """Test traceability tags check."""
         # Has tags
-        with_tags = '''@SPEC:TEST-001 is related to # REMOVED_ORPHAN_CODE:TEST-001 and # REMOVED_ORPHAN_TEST:TEST-001'''
         self.assertTrue(self.validator._check_traceability_tags(with_tags))
 
         # No tags
@@ -541,12 +533,10 @@ No proper headings'''
     def test_tag_formatting_check(self):
         """Test tag formatting check."""
         # Good formatting
-        well_formatted = '''@SPEC:TEST-001, # REMOVED_ORPHAN_TEST:TEST-001, # REMOVED_ORPHAN_CODE:TEST-001, @ENV:TEST-001'''
         score = self.validator._check_tag_formatting(well_formatted)
         self.assertEqual(score, 1.0)
 
         # Poor formatting
-        poorly_formatted = '''@SPEC:TEST-001, BAD-TAG:TEST-001, # REMOVED_ORPHAN_TEST:TEST-001'''
         score = self.validator._check_tag_formatting(poorly_formatted)
         self.assertLess(score, 1.0)
 

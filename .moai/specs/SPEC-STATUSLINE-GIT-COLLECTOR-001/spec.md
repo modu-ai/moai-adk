@@ -8,7 +8,6 @@ created: "2025-11-10"
 author: "GoosLab"
 ---
 
-# @SPEC:STATUSLINE-GIT-COLLECTOR-001 | @EXPERT:BACKEND | @EXPERT:DEVOPS
 
 ## SPEC Overview
 
@@ -23,9 +22,6 @@ This SPEC defines the git collector system for MoAI-ADK statusline, which collec
 
 ## Implementation Files
 
-- **CODE**: @CODE:GIT-COLLECTOR-001 - Git collector implementation
-- **TEST**: @TEST:STATUSLINE-GIT-COLLECTOR-001 - Git collector tests
-- **DOC**: @DOC:STATUSLINE-GIT-COLLECTOR-001 - Git collector documentation
 
 ## Acceptance Criteria
 
@@ -39,5 +35,4 @@ This SPEC defines the git collector system for MoAI-ADK statusline, which collec
 ## Traceability Chain
 
 ```
-@SPEC:STATUSLINE-GIT-COLLECTOR-001 → @CODE:GIT-COLLECTOR-001 → @TEST:STATUSLINE-GIT-COLLECTOR-001 → @DOC:STATUSLINE-GIT-COLLECTOR-001
 ```

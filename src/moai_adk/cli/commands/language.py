@@ -1,4 +1,3 @@
-# @CODE:CLI-LANGUAGE-001 | SPEC: SPEC-LANG-EXTENSION-001/spec.md
 """Language management commands for MoAI-ADK.
 
 Provides commands for language configuration, template processing,

@@ -11,8 +11,6 @@ This implementation provides an advanced TAG system with 30+ tracking patterns, 
 Advanced TAG system with 30+ tracking patterns, cross-referencing, dependency visualization,
 Git integration, and automated validation.
 
-@CODE:TAG-SYSTEM-001: Advanced TAG system core implementation
-@SPEC:TAG-SYSTEM-001: Comprehensive TAG system architecture
 """
 
 import re
@@ -136,36 +134,20 @@ class AdvancedTagSystem:
         # Enhanced pattern matching for 30+ patterns
         patterns = [
             # SPEC patterns
-            (r"@SPEC:([A-Z]+-\d{3}):([A-Z]+)(?::([A-Z]+))?", TagCategory.SPEC, None),
-            (r"@SPEC:([A-Z]+-\d{3}):([A-Z]+)-([A-Z]+)", TagCategory.SPEC, None),
 
             # TEST patterns
-            (r"@TEST:([A-Z]+-\d{3}):([A-Z]+)(?::([A-Z]+))?", TagCategory.TEST, TestSubcategory),
-            (r"@TEST:([A-Z]+-\d{3}):([A-Z]+)-([A-Z]+)", TagCategory.TEST, TestSubcategory),
 
             # CODE patterns
-            (r"@CODE:([A-Z]+-\d{3}):([A-Z]+)(?::([A-Z]+))?", TagCategory.CODE, CodeSubcategory),
-            (r"@CODE:([A-Z]+-\d{3}):([A-Z]+)-([A-Z]+)", TagCategory.CODE, CodeSubcategory),
 
             # DOC patterns
-            (r"@DOC:([A-Z]+-\d{3}):([A-Z]+)(?::([A-Z]+))?", TagCategory.DOC, None),
-            (r"@DOC:([A-Z]+-\d{3}):([A-Z]+)-([A-Z]+)", TagCategory.DOC, None),
 
             # META patterns
-            (r"@META:([A-Z]+)(?::([A-Z]+))?", TagCategory.META, None),
-            (r"@META:([A-Z]+)-([A-Z]+)", TagCategory.META, None),
 
             # REL patterns
-            (r"@REL:([A-Z]+)(?::([A-Z]+))?", TagCategory.REL, None),
-            (r"@REL:([A-Z]+)-([A-Z]+)", TagCategory.REL, None),
 
             # QUALITY patterns
-            (r"@QUALITY:([A-Z]+)(?::([A-Z]+))?", TagCategory.QUALITY, None),
-            (r"@QUALITY:([A-Z]+)-([A-Z]+)", TagCategory.QUALITY, None),
 
             # LIFECYCLE patterns
-            (r"@LIFECYCLE:([A-Z]+)(?::([A-Z]+))?", TagCategory.LIFECYCLE, LifecyclePhase),
-            (r"@LIFECYCLE:([A-Z]+)-([A-Z]+)", TagCategory.LIFECYCLE, LifecyclePhase),
         ]
 
         for pattern, category, subcategory_enum in patterns:
@@ -318,7 +300,6 @@ class AdvancedTagSystem:
             include_patterns = ["@SPEC", "@TEST", "@CODE"]
 
         if exclude_patterns is None:
-            exclude_patterns = ["@LIFECYCLE:DEPRECATED"]
 
         graph_content = []
         graph_content.append("digraph TAG_Dependency_Graph {")
@@ -633,8 +614,6 @@ if __name__ == "__main__":
 """
 Dependency visualization module for TAG system.
 
-@CODE:TAG-DEP-VIS-001: Dependency visualization with Graphviz
-@SPEC:TAG-DEP-VIS-001: Visual representation of TAG relationships
 """
 
 from pathlib import Path
@@ -800,7 +779,6 @@ if __name__ == "__main__":
         layout_engine="dot",
         include_dependencies=True,
         include_relationships=True,
-        highlight_patterns=["@SPEC:AUTH"]
     )
 
     print(f"Generated dependency graph: {output_file}")
@@ -811,8 +789,6 @@ if __name__ == "__main__":
 """
 Git integration module for TAG system.
 
-@CODE:TAG-GIT-001: Git integration with tag correlation
-@SPEC:TAG-GIT-001: Git history correlation with TAG system
 """
 
 import subprocess
@@ -1025,7 +1001,6 @@ if __name__ == "__main__":
 
     # Track tag evolution
     evolution = git_integration.track_tag_evolution(
-        tag_id="@SPEC:PROJECT-001",
         timeline_type="monthly"
     )
 
@@ -1039,8 +1014,6 @@ if __name__ == "__main__":
 """
 Advanced search and filter module for TAG system.
 
-@CODE:TAG-SEARCH-001: Advanced tag search and filtering
-@SPEC:TAG-SEARCH-001: Comprehensive tag search capabilities
 """
 
 import re
@@ -1472,7 +1445,6 @@ if __name__ == "__main__":
     search_filter = TagSearchFilter(tag_system)
 
     # Search by pattern
-    results = search_filter.search_tags("@SPEC:AUTH.*", search_type="pattern")
     print(f"Found {len(results)} AUTH tags")
 
     # Filter by criteria
@@ -1493,8 +1465,6 @@ if __name__ == "__main__":
 """
 Performance optimization module for TAG system.
 
-@CODE:TAG-PERF-001: Performance optimization for large-scale TAG systems
-@SPEC:TAG-PERF-001: Performance optimization strategies and caching
 """
 
 import pickle

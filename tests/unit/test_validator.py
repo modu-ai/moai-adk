@@ -1,5 +1,3 @@
-# @TEST:VALIDATOR-COVERAGE-001 | SPEC: SPEC-TEST-COVERAGE-001.md
-# @TEST:INIT-004:VALIDATION | Chain: SPEC-INIT-004 -> CODE-INIT-004 -> TEST-INIT-004
 # # REMOVED_ORPHAN_TEST:INIT-005:VERIFY-001 | Test verification of all required files upon successful completion
 # # REMOVED_ORPHAN_TEST:INIT-005:VERIFY-002 | Test Alfred command files validation
 # # REMOVED_ORPHAN_TEST:INIT-005:ALFRED-TEST | Test all 4 Alfred command files validation
@@ -16,7 +14,6 @@ SPEC-INIT-004 Tests:
 
 TAG Chain:
   SPEC-INIT-004 (spec.md)
-    └─> @CODE:INIT-004:VALIDATION (validator.py)
         └─> # REMOVED_ORPHAN_TEST:INIT-005:VALIDATION (this file)
 
 Test Categories:

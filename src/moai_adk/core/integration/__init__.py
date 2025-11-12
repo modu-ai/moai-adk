@@ -1,4 +1,3 @@
-# @CODE:TAG-INTEGRATION-FRAMEWORK-001
 """
 Integration Testing Framework
 

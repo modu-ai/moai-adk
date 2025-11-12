@@ -2,7 +2,6 @@
 """
 Statusline module for Claude Code status display
 
-@SPEC:CLAUDE-STATUSLINE-001
 Provides real-time status information display in Claude Code terminal
 
 Enhanced version includes:

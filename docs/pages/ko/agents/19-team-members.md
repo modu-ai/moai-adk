@@ -89,7 +89,6 @@ flowchart TD
 **책임**:
 - EARS 형식 요구사항 작성
 - 사용자 요청을 구조화된 SPEC으로 변환
-- @TAG 시스템 연결 설계
 - 모호성 제거 및 명확성 보장
 
 **사용 시점**:
@@ -101,13 +100,11 @@ flowchart TD
 **주요 능력**:
 - **EARS 패턴 전문가**: While, When, Where, If-Then 구조
 - **요구사항 분석**: 사용자 입력에서 핵심 요구사항 추출
-- **추적성 설계**: @SPEC → @TEST → @CODE 체인 설계
 
 **코드 예제**:
 ```markdown
 # spec-builder가 생성하는 SPEC 문서 구조
 
-@SPEC:AUTH-001
 ## Overview
 JWT 기반 사용자 인증 시스템 구현
 
@@ -128,9 +125,6 @@ JWT 기반 사용자 인증 시스템 구현
 - AND SHALL refresh token before expiration
 
 ## Test Cases
-@TEST:AUTH-001:LOGIN - Login success scenario
-@TEST:AUTH-001:INVALID - Invalid credentials handling
-@TEST:AUTH-001:EXPIRED - Token expiration handling
 ```
 
 **성능 메트릭**:
@@ -292,10 +286,8 @@ class ProjectManager:
 
 ### 4. tag-agent
 
-**🏷️ 역할**: @TAG 시스템 관리 및 추적성 보장 전문가
 
 **책임**:
-- @TAG 체인 무결성 검증
 - 코드-테스트-문서 추적성 보장
 - TAG 정책 적용 및 검증
 - 실시간 TAG 스캔
@@ -308,8 +300,6 @@ class ProjectManager:
 ```
 
 **주요 능력**:
-- **실시간 스캔**: `rg '@TAG'` 기반 코드 스캔
-- **체인 검증**: @SPEC → @TEST → @CODE → @DOC 연결 확인
 - **정책 적용**: mandatory_directories, optional_directories 규칙
 
 **코드 예제**:
@@ -319,23 +309,18 @@ class ProjectManager:
 class TagAgent:
     def validate_tag_chain(self, spec_id: str) -> ValidationResult:
         """
-        @TAG 체인 무결성 검증
         """
         result = ValidationResult()
 
-        # 1. @SPEC 존재 확인
         spec_tags = self.scan_spec_tags(spec_id)
         result.add_check("spec", len(spec_tags) > 0)
 
-        # 2. @TEST 존재 확인
         test_tags = self.scan_test_tags(spec_id)
         result.add_check("test", len(test_tags) > 0)
 
-        # 3. @CODE 존재 확인
         code_tags = self.scan_code_tags(spec_id)
         result.add_check("code", len(code_tags) > 0)
 
-        # 4. @DOC 존재 확인 (선택)
         doc_tags = self.scan_doc_tags(spec_id)
         result.add_check("doc", len(doc_tags) >= 0)  # Optional
 
@@ -349,12 +334,9 @@ class TagAgent:
 
     def scan_code_tags(self, spec_id: str) -> list[CodeTag]:
         """
-        코드에서 @CODE:SPEC-ID TAG 스캔
         """
-        # rg '@CODE:AUTH-001' -n src/
         tags = []
         for file in self.get_code_files():
-            matches = self.rg_scan(f"@CODE:{spec_id}", file)
             for match in matches:
                 tags.append(CodeTag(
                     spec_id=spec_id,
@@ -722,7 +704,6 @@ export const UserProfile: React.FC<UserProfileProps> = ({
 
 # 1. 단위 테스트 (70% of tests)
 class TestUserService:
-    """@TEST:AUTH-001:UNIT"""
 
     def test_create_user_success(self):
         # Arrange
@@ -752,7 +733,6 @@ class TestUserService:
 
 # 2. 통합 테스트 (20% of tests)
 class TestUserAPI:
-    """@TEST:AUTH-001:INTEGRATION"""
 
     def test_create_user_endpoint(self, client, db):
         # Arrange
@@ -771,7 +751,6 @@ class TestUserAPI:
 
 # 3. E2E 테스트 (10% of tests)
 class TestUserFlow:
-    """@TEST:AUTH-001:E2E"""
 
     def test_complete_user_registration_flow(self, browser):
         # Arrange
@@ -1021,19 +1000,13 @@ class DocSyncer:
 git add tests/
 git commit -m "test: Add failing tests for AUTH-001
 
-@TEST:AUTH-001:LOGIN - Login success scenario
-@TEST:AUTH-001:INVALID - Invalid credentials handling
-@TEST:AUTH-001:EXPIRED - Token expiration handling
 
 🤖 Generated with Claude Code
-Co-Authored-By: 🎩 Alfred@MoAI"
 
 # GREEN Phase
 git add src/
 git commit -m "feat: Implement JWT authentication (minimal)
 
-@CODE:AUTH-001:SERVICE - JWT token service
-@CODE:AUTH-001:UTILS - Token validation utilities
 
 Implements:
 - Token generation with 24-hour expiration
@@ -1041,18 +1014,15 @@ Implements:
 - Redis session storage
 
 🤖 Generated with Claude Code
-Co-Authored-By: 🎩 Alfred@MoAI"
 
 # REFACTOR Phase
 git commit -m "refactor: Extract token validation logic
 
-@CODE:AUTH-001:SERVICE - Improved error handling
 - Extract validation logic to separate class
 - Add connection pooling for Redis
 - Improve error messages
 
 🤖 Generated with Claude Code
-Co-Authored-By: 🎩 Alfred@MoAI"
 
 # PR 생성
 gh pr create --base develop --head feature/SPEC-AUTH-001 --title "feat: JWT Authentication System" --body "$(cat <<'EOF'
@@ -1070,12 +1040,8 @@ Implements JWT-based authentication system with Redis session storage.
 - [x] Integration tests: API endpoints
 - [x] E2E tests: Complete auth flow
 
-@SPEC:AUTH-001
-@TEST:AUTH-001
-@CODE:AUTH-001
 
 🤖 Generated with Claude Code
-Co-Authored-By: 🎩 Alfred@MoAI
 EOF
 )"
 ```

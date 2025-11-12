@@ -4,7 +4,6 @@ version: 1.0.0
 status: completed
 created: 2025-01-06
 updated: 2025-11-06
-author: @Goos
 priority: high
 category: documentation
 labels:
@@ -26,7 +25,6 @@ scope:
     - docs/**/*.mdx
 ---
 
-# `@SPEC:DOCS-001`: MoAI-ADK 종합 온라인 문서 생성 시스템
 
 ## History
 
@@ -43,7 +41,6 @@ scope:
 
 ### v1.0.0 (2025-01-06)
 - **초기 작성**: README.ko.md 분할 및 재구성 명세
-- **작성자**: @Goos
 - **주요 변경사항**:
   - README.ko.md(3295줄)을 주제별로 분할
   - 실제 코드 기반 예제 중심 문서화
@@ -125,7 +122,6 @@ scope:
 **UR-003**: 시스템은 실시간 코드-문서 동기화를 지원해야 한다
 - **동기화 대상**: src/moai_adk/ 코드 변경
 - **응답 시간**: 코드 변경 후 2분 내 문서 업데이트
-- **추적성**: @TAG 시스템으로 코드-문서 연동 유지
 
 **UR-004**: 시스템은 초보자 친화적 학습 경로를 제공해야 한다
 - **빠른 시작**: 5분 내 핵심 개념 이해 및 첫 예제 실행
@@ -205,7 +201,6 @@ scope:
 
 **C-001**: 모든 코드 예제는 실제 `src/moai_adk/` 코드를 기반으로 해야 한다
 - **금지**: 가상의 코드나 존재하지 않는 기능 설명
-- **검증**: `@CODE:` 태그로 실제 파일 참조
 - **테스트**: 예제 코드 실제 실행 확인
 
 **C-002**: README.ko.md 분할 시 내용 누락이 없어야 한다
@@ -370,12 +365,8 @@ Then: Mermaid 다이어그램이 자동으로 생성되어 시각적 이해를 �
            """
 
        def generate_tag_chain_diagram(self, tags: List[Tag]):
-           """@TAG 시스템 추적성 다이어그램"""
            return """
            graph LR
-               SPEC[@SPEC:ID] --> TEST[@TEST:ID]
-               TEST --> CODE[@CODE:ID]
-               CODE --> DOC[@DOC:ID]
            """
    ```
 
@@ -395,7 +386,6 @@ getting-started/
 concepts/
 ├── spec-first.md           # SPEC-First 개념
 ├── tdd.md                  # TDD with RED-GREEN-REFACTOR
-├── tag-system.md           # @TAG 시스템
 ├── trust-principles.md     # TRUST 5원칙
 ├── alfred-superagent.md    # Alfred 슈퍼에이전트
 └── workflow.md             # 4단계 개발 워크플로우
@@ -467,9 +457,6 @@ graph BT
 #### 3.3 TAG 체인 시스템
 ```mermaid
 graph LR
-    SPEC[@SPEC:ID] --> TEST[@TEST:ID]
-    TEST --> CODE[@CODE:ID]
-    CODE --> DOC[@DOC:ID]
 ```
 
 ### 4. 표 형식 가이드
@@ -517,24 +504,9 @@ docs/
 
 ---
 
-## Traceability (@TAG)
 
-### @TAG 연결 맵
 
 ```
-@SPEC:DOCS-001 (v2.0.0)
-├── @CODE:DOCS-GENERATOR-001 → Document-master 에이전트 구현
-├── @CODE:NEXTRA-CONFIG-001 → Nextra 설정 및 테마
-├── @CODE:CONTEXT7-INTEGRATION-001 → Context7 베스트 프랙티스 통합
-├── @CODE:MERMAID-AUTO-001 → 자동 다이어그램 생성기
-├── @CODE:DOCS-SYNC-001 → 실시간 코드-문서 동기화
-├── @TEST:DOCS-GENERATION-001 → 문서 자동 생성 테스트
-├── @TEST:NEXTRA-BUILD-001 → Nextra 빌드 및 배포 테스트
-├── @TEST:CONTEXT7-VALIDATION-001 → 베스트 프랙티스 검증 테스트
-├── @DOC:USER-GUIDE-001 → 사용자 가이드 문서 (자동 생성)
-├── @DOC:API-REFERENCE-001 → API 레퍼런스 (자동 생성)
-├── @DOC:TUTORIALS-001 → 튜토리얼 콜렉션 (자동 생성)
-└── @DOC:SKILLS-REFERENCE-001 → Skills 레퍼런스 (자동 생성)
 ```
 
 ### 구현 의존성
@@ -604,7 +576,6 @@ graph TD
 
 **코드 예제 품질**:
 - 실제 실행 가능 예제: 100%
-- `@CODE:` 태그 연결: 100%
 - 테스트 통과율: 100%
 
 **다국어 진행률**:

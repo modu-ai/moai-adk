@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @TEST:HOOKS-SESSION-DEDUPE-001 | SPEC: SPEC-HOOKS-SESSION-DEDUPE-001.md
 """SessionStart Hook Phase Detection Deduplication Tests
 
 GitHub Issue #207: Hook duplication bug - SessionStart hook being called multiple times

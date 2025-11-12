@@ -2,7 +2,6 @@
 """
 Alfred task detector for statusline
 
-@CODE:ALFRED-DETECTOR-001 | @SPEC:STATUSLINE-ALFRED-DETECTOR-001 | @TEST:STATUSLINE-ALFRED-DETECTOR-001
 """
 
 import json

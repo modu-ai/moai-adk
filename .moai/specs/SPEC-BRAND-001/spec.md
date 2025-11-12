@@ -5,11 +5,9 @@ status: completed
 created: 2025-10-06
 updated: 2025-10-06
 completed: 2025-10-06
-author: @Goos
 priority: high
 ---
 
-# @SPEC:BRAND-001: AI-Agent Alfred 브랜딩 일관성 통일
 
 ## HISTORY
 
@@ -28,8 +26,6 @@ priority: high
 
 ### v0.1.0 (2025-10-06)
 - **INITIAL**: Claude Code → AI-Agent Alfred 브랜딩 변경 명세 작성
-- **AUTHOR**: @Goos
-- **REVIEW**: @AI-Alfred
 - **SCOPE**: Git 메시지, 문서, 커밋 서명, PR/Issue 전체 업데이트
 - **CONTEXT**: 프로젝트 정체성 강화 및 브랜딩 일관성 확보
 
@@ -369,26 +365,20 @@ AND 에이전트 간 협업 설명에서 일관된 브랜딩을 유지해야 한
 
 ---
 
-## Traceability (@TAG 체인)
 
 ### TAG 체인 구조
 ```
-@SPEC:BRAND-001 (본 문서)
   ↓
-@TEST:BRAND-001 (없음 - 문서 업데이트는 수동 검증)
   ↓
-@CODE:BRAND-001 (없음 - Git 템플릿 및 문서 변경)
   ├─ CLAUDE.md (Line 14, 52)
   ├─ Git 커밋 템플릿 (미래 커밋)
   └─ GitHub 템플릿 (선택적)
   ↓
-@DOC:BRAND-001 (본 SPEC 문서)
 ```
 
 ### 검증 명령어
 ```bash
 # SPEC 문서 확인
-rg '@SPEC:BRAND-001' -n .moai/specs/
 
 # 브랜딩 문구 확인
 rg "Generated with AI-Agent Alfred" -n

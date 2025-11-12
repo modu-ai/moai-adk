@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @CODE:HOOK-AUTO-SPEC-001 | @SPEC:TAG-AUTO-SPEC-PROPOSAL-001
 """PreToolUse Hook: Automatic SPEC Proposal on Code File Changes
 
 Claude Code Event: PreToolUse

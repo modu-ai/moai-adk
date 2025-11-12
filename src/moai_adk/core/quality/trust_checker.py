@@ -31,9 +31,6 @@ MAX_CYCLOMATIC_COMPLEXITY = 10
 DEFAULT_FILE_ENCODING = "utf-8"
 
 # TAG prefixes
-TAG_PREFIX_SPEC = "@SPEC:"
-TAG_PREFIX_CODE = "@CODE:"
-TAG_PREFIX_TEST = "@TEST:"
 
 
 class TrustChecker:
@@ -288,15 +285,12 @@ class TrustChecker:
         src_dir = project_path / "src"
 
         # Scan for TAGs
-        spec_tags = self._scan_tags(specs_dir, "@SPEC:")
-        code_tags = self._scan_tags(src_dir, "@CODE:")
 
         # Validate the chain
         broken_chains = []
         for code_tag in code_tags:
             tag_id = code_tag.split(":")[-1]
             if not any(tag_id in spec_tag for spec_tag in spec_tags):
-                broken_chains.append(f"@CODE:{tag_id} (no @SPEC:{tag_id})")
 
         if not broken_chains:
             return ValidationResult(passed=True, message="TAG chain complete")
@@ -319,8 +313,6 @@ class TrustChecker:
         specs_dir = project_path / ".moai" / "specs"
         src_dir = project_path / "src"
 
-        spec_tags = self._scan_tags(specs_dir, "@SPEC:")
-        code_tags = self._scan_tags(src_dir, "@CODE:")
 
         orphans = []
         for code_tag in code_tags:
@@ -336,7 +328,6 @@ class TrustChecker:
 
         Args:
             directory: Directory to scan
-            tag_prefix: TAG prefix (for example, "@SPEC:", "@CODE:")
 
         Returns:
             list[str]: List of discovered TAGs
@@ -442,4 +433,3 @@ class TrustChecker:
         }
 
 
-# @CODE:TRUST-001

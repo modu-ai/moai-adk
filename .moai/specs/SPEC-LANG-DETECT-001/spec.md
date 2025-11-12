@@ -4,7 +4,6 @@ version: 0.1.0
 status: completed
 created: 2025-10-19
 updated: 2025-10-19
-author: @Alfred
 priority: high
 category: bugfix
 labels:
@@ -20,7 +19,6 @@ scope:
     - test_detector.py
 ---
 
-# @SPEC:LANG-DETECT-001: PHP/Laravel 언어 감지 개선
 
 ## HISTORY
 
@@ -36,7 +34,6 @@ scope:
 
 ### v0.0.1 (2025-10-19)
 - **INITIAL**: Laravel 프로젝트 PHP 언어 감지 오류 수정 명세 작성
-- **AUTHOR**: @Alfred
 - **SCOPE**: LanguageDetector 클래스 PHP 패턴 확장 및 우선순위 조정
 - **CONTEXT**: GitHub Issue #36 - Laravel 프로젝트가 Python으로 잘못 인식되는 문제 해결
 - **RELATED**: https://github.com/modu-ai/moai-adk/issues/36
@@ -157,9 +154,7 @@ LANGUAGE_PATTERNS = {
 
 ---
 
-## Traceability (@TAG)
 
-- **SPEC**: @SPEC:LANG-DETECT-001
 - **TEST**: `tests/unit/test_detector.py` (Laravel 감지 테스트 추가)
 - **CODE**: `src/moai_adk/core/project/detector.py` (LANGUAGE_PATTERNS 수정)
 - **DOC**: `README.md` (언어 지원 목록 업데이트 선택)

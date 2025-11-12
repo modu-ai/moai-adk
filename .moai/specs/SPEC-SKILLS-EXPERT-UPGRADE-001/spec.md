@@ -20,7 +20,6 @@ updated: 2025-11-11
 version: 1.0.0
 ---
 
-# @SPEC:SKILLS-EXPERT-UPGRADE-001: 전문가 수준 스킬 업그레이드 (186개)
 
 > **비전**: context7 MCP 도구와 웹 검색을 통한 186개 스킬의 전문가 수준 업그레이드
 >
@@ -80,7 +79,6 @@ version: 1.0.0
 **대상 스킬**: moai-foundation-*, moai-essentials-*
 - **moai-foundation-ears**: EARS v2.1 최신 명세 + 실제 요구사항 예제 20개
 - **moai-foundation-specs**: YAML frontmatter 7필드 + 실제 SPEC 템플릿 15개
-- **moai-foundation-tags**: @TAG 시스템 + 실제 추적 패턴 30개
 - **moai-foundation-trust**: TRUST 5원칙 + 실제 검증 체크리스트 50개
 - **moai-foundation-git**: GitFlow + 실제 커밋 메시지 예제 100개
 - **moai-foundation-langs**: 언어 감지 + 24개 언어 signature

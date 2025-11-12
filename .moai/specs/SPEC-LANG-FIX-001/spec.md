@@ -4,20 +4,17 @@ version: 0.0.1
 status: draft
 created: 2025-10-29
 updated: 2025-10-29
-author: @Alfred
 priority: critical
 category: system-architecture
 labels: [localization, i18n, multi-language, bug-fix]
 scope: complete-rewrite
 ---
 
-# @SPEC:LANG-FIX-001: Complete Language Localization System Implementation
 
 ## HISTORY
 
 ### v0.0.1 (2025-10-29)
 - **INITIAL**: Initial creation of comprehensive language localization fix specification
-- **AUTHOR**: @Alfred
 - **SCOPE**: Fix language settings being ignored across all commands, agents, and templates
 - **CONTEXT**: Current implementation claims to support multi-language but doesn't pass language configuration to sub-agents, resulting in 100% English output regardless of user language setting
 
@@ -85,9 +82,7 @@ scope: complete-rewrite
 - **REQ-C-004**: IF sub-agent receives language parameter, THEN it MUST generate output in that language (NOT guess from prompt)
 - **REQ-C-005**: ALL internal prompts, skills, code comments, and technical documentation MUST remain in English
 
-## Traceability (@TAG)
 
-- **SPEC**: @SPEC:LANG-FIX-001
 - **TEST**: tests/language/test_localization.py, tests/integration/test_command_language_flow.py
 - **CODE**: src/moai_adk/core/project/phase_executor.py, src/moai_adk/core/template/processor.py
 - **DOC**: CLAUDE.md (Language Architecture section), .moai/memory/language-config-schema.md
@@ -190,7 +185,6 @@ Task(
 - If `conversation_language="ja"` → Output in Japanese
 - Otherwise → Output in English
 
-**Mixed Language**: ALWAYS English for code, @TAGs, technical terms.
 ```
 
 **Files**:

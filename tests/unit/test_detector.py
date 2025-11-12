@@ -1,4 +1,3 @@
-# @TEST:DETECTOR-COVERAGE-001 | SPEC: SPEC-TEST-COVERAGE-001.md
 """Unit tests for detector.py module
 
 Tests for LanguageDetector class.
@@ -203,7 +202,6 @@ class TestLanguageDetectorCheckPatterns:
         assert result is True
 
 
-# @TEST:LANG-DETECT-001 | SPEC: SPEC-LANG-DETECT-001.md
 class TestLanguageDetectorLaravel:
     """Test Laravel project detection"""
 

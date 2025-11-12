@@ -1,4 +1,3 @@
-# @SPEC:INSTALLER-ROLLBACK-001: Acceptance Criteria
 
 ## AC-001: 파일/디렉토리 추적
 

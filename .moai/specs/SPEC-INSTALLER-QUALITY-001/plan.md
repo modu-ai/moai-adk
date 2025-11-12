@@ -1,4 +1,3 @@
-# @SPEC:INSTALLER-QUALITY-001: Implementation Plan
 
 ## 1. Phase 1: 상수 추출 및 정의
 
@@ -8,7 +7,6 @@
 
 ### 1.2 구현 내용
 ```typescript
-// @CODE:INSTALLER-QUALITY-001 | SPEC: SPEC-INSTALLER-QUALITY-001.md | TEST: tests/core/installer/installer-constants.test.ts
 
 export const TIMEOUTS = {
   DEPENDENCY_INSTALL: 5 * 60 * 1000,
@@ -54,7 +52,6 @@ rg '"npm"' moai-adk-ts/src/core/installer/ -n
 
 ### 2.2 에러 클래스 목록
 ```typescript
-// @CODE:INSTALLER-QUALITY-001 | SPEC: SPEC-INSTALLER-QUALITY-001.md | TEST: tests/core/errors/installation-error.test.ts
 
 export class InstallationError extends Error {
   constructor(message: string, public readonly cause?: Error);
@@ -125,7 +122,6 @@ export class PhaseExecutor {
 
 ### 3.3 Factory 패턴 도입
 ```typescript
-// @CODE:INSTALLER-QUALITY-001 | SPEC: SPEC-INSTALLER-QUALITY-001.md
 
 export class InstallerFactory {
   static create(): InstallerCore {
@@ -158,10 +154,8 @@ export class InstallerFactory {
 ### 4.1 TAG 스캔 및 검증
 ```bash
 # 현재 TAG 형식 확인
-rg '@CODE:[A-Z]+-[0-9]{3}' moai-adk-ts/src/core/installer/ -A 0
 
 # 통일된 형식이 아닌 TAG 찾기
-rg '@CODE:[A-Z]+-[0-9]{3}(?! \| SPEC:)' moai-adk-ts/src/core/installer/
 ```
 
 ### 4.2 TAG 자동 업데이트 스크립트
@@ -176,10 +170,7 @@ const files = globSync('moai-adk-ts/src/core/installer/**/*.ts');
 for (const file of files) {
   let content = readFileSync(file, 'utf-8');
 
-  // @CODE:ID만 있는 경우
   content = content.replace(
-    /\/\/ @CODE:([A-Z]+-[0-9]{3})$/gm,
-    '// @CODE:$1 | SPEC: SPEC-$1.md | TEST: tests/core/installer/...test.ts'
   );
 
   writeFileSync(file, content);

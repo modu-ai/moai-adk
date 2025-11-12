@@ -1,6 +1,5 @@
 # SPEC-UPDATE-004 Phase 3 검증 보고서
 
-<!-- @DOC:UPDATE-004:PHASE3 | SPEC: .moai/specs/SPEC-UPDATE-004/spec.md -->
 
 ## 실행 일시
 2025-10-19
@@ -87,17 +86,13 @@
 
 ### TAG 마커 위치
 ```
-@CODE:UPDATE-004:PHASE1 (2곳)
 ├─ .claude/skills/moai-alfred-tag-scanning/SKILL.md
 └─ .claude/skills/moai-alfred-trust-validation/SKILL.md
 
-@CODE:UPDATE-004:PHASE2 (3곳)
 ├─ .claude/skills/moai-alfred-ears-authoring/SKILL.md (3회)
 
-@DOC:UPDATE-004:PHASE1 (1곳)
 └─ CLAUDE.md (Deprecated Agent 섹션)
 
-@DOC:UPDATE-004:PHASE3 (1곳)
 └─ 본 검증 보고서
 ```
 

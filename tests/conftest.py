@@ -1,4 +1,3 @@
-# @TEST:CONFTEST-001 | SPEC: SPEC-TEST-COVERAGE-001.md
 """Pytest configuration and shared fixtures for MoAI-ADK tests"""
 
 import shutil

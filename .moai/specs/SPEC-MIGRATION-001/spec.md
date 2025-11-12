@@ -8,47 +8,14 @@ category: "MIGRATION"
 priority: "high"
 ---
 
-# @SPEC:MIGRATION-001: Next.js 16 + Nextra 4.6.0 통합 마이그레이션
 
 ## 📋 TAG BLOCK
 
 ```
-@REQ:MIGRATION-001-001: Next.js 16 업그레이드 요구사항
-@REQ:MIGRATION-001-002: Nextra 4.6.0 마이그레이션 요구사항
-@REQ:MIGRATION-001-003: React 19 업그레이드 요구사항
-@REQ:MIGRATION-001-004: Pages Router → App Router 전환 요구사항
-@REQ:MIGRATION-001-005: 다국어 100+ MDX 파일 호환성 요구사항
-@REQ:MIGRATION-001-006: 성능 개선 목표 (빌드 50%, LCP 25%)
-@REQ:MIGRATION-001-007: FlexSearch → Pagefind 검색 엔진 전환
-@REQ:MIGRATION-001-008: Turbopack 빌드 시스템 도입
-@REQ:MIGRATION-001-009: Bun 패키지 매니저 도입
-@REQ:MIGRATION-001-010: Biome 린터/포매터 도입
 
-@DESIGN:MIGRATION-001-001: 마이그레이션 아키텍처 설계
-@DESIGN:MIGRATION-001-002: 12단계 실행 계획
-@DESIGN:MIGRATION-001-003: 롤백 전략 설계
-@DESIGN:MIGRATION-001-004: 위험 평가 및 완화 계획
 
-@TASK:MIGRATION-001-001: 의존성 업그레이드 준비
-@TASK:MIGRATION-001-002: 프로젝트 구조 재설계
-@TASK:MIGRATION-001-003: Nextra 설정 마이그레이션
-@TASK:MIGRATION-001-004: 다국어 콘텐츠 호환성 검증
-@TASK:MIGRATION-001-005: 검색 엔진 전환
-@TASK:MIGRATION-001-006: 테스트 및 검증
 
-@TEST:MIGRATION-001-001: 빌드 성능 테스트
-@TEST:MIGRATION-001-002: 렌더링 성능 테스트
-@TEST:MIGRATION-001-003: 다국어 기능 테스트
-@TEST:MIGRATION-001-004: 검색 기능 테스트
-@TEST:MIGRATION-001-005: 회귀 테스트
 
-@FEATURE:MIGRATION-001-001: App Router 호환성
-@FEATURE:MIGRATION-001-002: React 19 기능 활용
-@FEATURE:MIGRATION-001-003: Turbopack 빌드 성능
-@FEATURE:MIGRATION-001-004: Pagefind 검색 성능
-@FEATURE:MIGRATION-001-005: 자동화된 마이그레이션 검증
-@FEATURE:MIGRATION-001-006: Bun 빌드 성능 최적화
-@FEATURE:MIGRATION-001-007: Biome 코드 품질 자동화
 ```
 
 ## 🎯 개요
@@ -458,15 +425,7 @@ export interface PagefindConfig {
 ## 🔍 추적성
 
 ### 관련 SPEC
-- @SPEC:DOCS-001: 기존 문서 사이트 설정
-- @SPEC:BUILD-001: 빌드 프로세스 명세
 
 ### 관련 코드
-- @CODE:NEXT-CONFIG-001: Next.js 설정 파일
-- @CODE:NEXTRA-THEME-001: Nextra 테마 설정
-- @CODE:SEARCH-001: 검색 기능 구현
 
 ### 관련 테스트
-- @TEST:BUILD-001: 빌드 프로세스 테스트
-- @TEST:SEARCH-001: 검색 기능 테스트
-- @TEST:I18N-001: 다국어 기능 테스트

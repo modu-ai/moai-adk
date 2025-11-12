@@ -1,4 +1,3 @@
-# 구현 계획: @SPEC:UPDATE-004
 
 > **Sub-agents를 Skills로 통합**
 
@@ -143,8 +142,6 @@ def detect_orphan_tags():
 ### TAG 무결성 검증
 \`\`\`bash
 # SPEC → TEST 연결 확인
-for spec in $(rg '@SPEC:' -o); do
-    test_exists=$(rg "@TEST:${spec#*:}" tests/)
     if [ -z "$test_exists" ]; then
         echo "Missing test for $spec"
     fi
@@ -624,5 +621,4 @@ wc -l .claude/agents/alfred/{tag-agent,trust-checker,spec-builder}.md
 
 ---
 
-**작성자**: @Goos
 **최초 작성일**: 2025-10-19

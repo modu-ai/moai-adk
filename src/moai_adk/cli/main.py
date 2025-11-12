@@ -1,4 +1,3 @@
-# @CODE:PY314-001 | SPEC: SPEC-CLI-001/spec.md | TEST: tests/unit/test_cli_backup.py
 """CLI Main Module
 
 CLI entry module:
@@ -13,4 +12,3 @@ from moai_adk.__main__ import cli, show_logo  # type: ignore[attr-defined]
 __all__ = ["cli", "show_logo"]
 
 
-# @CODE:USER-EXPERIENCE-001

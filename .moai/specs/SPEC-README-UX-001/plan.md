@@ -191,7 +191,6 @@ git add README.md
 git commit -m "$(cat <<'EOF'
 📝 DOCS: README.md uv 설치 방법을 tool 모드로 개선
 
-@TAG:README-UX-001
 - Quick Start: uv tool install 권장, uv pip install 대안 병기
 - 업그레이드: uv tool upgrade 추가
 - 재설치: uv tool uninstall/install 추가
@@ -219,7 +218,6 @@ EOF
 
 ### 커밋 이력
 - **단일 커밋**: "DOCS: README.md uv 설치 방법 개선"
-- **태그**: @TAG:README-UX-001
 - **이슈 종료**: Fixes #35
 
 ---

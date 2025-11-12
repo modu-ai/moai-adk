@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @TEST:SPEC-GENERATOR-001 | @SPEC:TAG-SPEC-GENERATION-001 | @CODE:SPEC-AUTO-GEN-001
 """SPEC 템플릿 자동 생성 테스트
 
 코드 파일 분석 후 EARS 포맷 SPEC 템플릿 자동 생성 기능 테스트.
@@ -34,7 +33,6 @@ class TestSpecTemplateGeneration:
         # template = generator.generate_spec_template(code_file, domain="AUTH")
 
         # assert template["spec_path"] == ".moai/specs/SPEC-AUTH/spec.md"
-        # assert "@SPEC:AUTH" in template["content"]
         # assert "HISTORY" in template["content"]
         # assert "TODO" in template["content"]
         pass
@@ -50,7 +48,6 @@ class TestSpecTemplateGeneration:
         # content = template["content"]
 
         # # EARS 포맷 섹션 확인
-        # assert "# @SPEC" in content
         # assert "## HISTORY" in content
         # assert "## Requirements" in content
         # assert "Ubiquitous Requirements" in content
@@ -344,7 +341,6 @@ class TestSpecGenerationIntegration:
         # result = generator.generate_spec_template(file_path, domain="PAYMENT")
 
         # assert result["spec_path"].startswith(".moai/specs/SPEC-")
-        # assert "@SPEC:" in result["content"]
         # assert result["confidence"] >= 0.6
         # assert len(result["suggestions"]) > 0
         pass
@@ -363,7 +359,6 @@ class TestSpecGenerationIntegration:
         # # 신뢰도 낮음
         # assert result["confidence"] < 0.5
         # # 하지만 템플릿은 생성됨
-        # assert "@SPEC:" in result["content"]
         # # 충분한 가이드 제공
         # assert len(result["suggestions"]) > 5
         pass
@@ -392,7 +387,6 @@ class TestMultiLanguageSupport:
         #     domain="AUTH"
         # )
 
-        # assert "@SPEC:AUTH" in result["content"]
         pass
 
     def test_go_spec_generation(self):
@@ -416,7 +410,6 @@ class TestMultiLanguageSupport:
         #     domain="PAYMENT"
         # )
 
-        # assert "@SPEC:PAYMENT" in result["content"]
         pass
 
 

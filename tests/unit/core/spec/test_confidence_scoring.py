@@ -1,4 +1,3 @@
-# @TEST:CONFIDENCE-SCORING-001
 """Test suite for Confidence Scoring System."""
 
 import unittest

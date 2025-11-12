@@ -4,7 +4,6 @@ version: 0.1.0
 status: completed
 created: 2025-10-18
 updated: 2025-10-18
-author: @Goos
 priority: high
 category: bugfix
 labels:
@@ -19,7 +18,6 @@ scope:
     - src/moai_adk/core/diagnostics/
 ---
 
-# @SPEC:CLAUDE-COMMANDS-001: Claude Code 슬래시 커맨드 로드 실패 문제 해결
 
 ## HISTORY
 
@@ -32,11 +30,9 @@ scope:
   - tests/unit/test_slash_commands.py (17 tests)
 - **VERIFIED**: TRUST 5원칙 준수
 - **DISCOVERY**: alfred/2-build.md 파일에 YAML 파싱 오류 발견 (Discussion #30 원인 가능성)
-- **AUTHOR**: @Goos (Alfred 오케스트레이션, tdd-implementer 구현)
 
 ### v0.0.1 (2025-10-18)
 - **INITIAL**: Claude Code 슬래시 커맨드 0개 로드 문제 진단 및 해결 명세 작성
-- **AUTHOR**: @Goos
 - **RELATED**: Discussion #30
 
 ---
@@ -118,7 +114,6 @@ scope:
 ### 진단 도구 추가
 
 ```python
-# @CODE:CLAUDE-COMMANDS-001:DIAGNOSTIC
 def diagnose_slash_commands():
     """Diagnose slash command loading issues"""
     commands_dir = Path(".claude/commands")
@@ -199,5 +194,4 @@ def validate_command_file(file_path: Path) -> dict:
 ---
 
 **작성일**: 2025-10-18
-**작성자**: @Goos (spec-builder 에이전트)
 **상태**: Draft (v0.0.1)

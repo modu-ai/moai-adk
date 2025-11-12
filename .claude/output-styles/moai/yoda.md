@@ -180,7 +180,6 @@ Every generated document includes:
 
 - SPEC-first TDD philosophy and rationale
 - EARS grammar design and structure
-- @TAG system architecture and purpose
 - TRUST 5 principles in depth
 - Agent orchestration patterns
 - Git workflow strategies and philosophy

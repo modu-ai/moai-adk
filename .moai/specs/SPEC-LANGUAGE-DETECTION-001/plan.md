@@ -1,4 +1,3 @@
-# @PLAN:LANGUAGE-DETECTION-001: 구현 계획
 
 ## 개요
 

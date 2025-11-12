@@ -25,7 +25,6 @@ graph TD
     C --> C2[요구사항 구조화]
     C --> C3[검증 자동화]
 
-    D --> D1[@TAG 시스템]
     D --> D2[추적성 관리]
     D --> D3[크로스 레퍼런스]
 
@@ -174,21 +173,13 @@ So that 시스템 응답성이 보장되어야 한다
 ## 3. moai-foundation-tags
 
 ### 개요
-@TAG 추적성 시스템을 통해 모든 개발 산출물의 연결성을 관리합니다.
 
-### @TAG 시스템 구조
 
 ```mermaid
 graph TD
-    A[@TAG 시스템] --> B[태그 유형]
     A --> C[추적성 체인]
     A --> D[자동화된 검증]
 
-    B --> B1[@SPEC-*]
-    B --> B2[@TEST-*]
-    B --> B3[@CODE-*]
-    B --> B4[@DOC-*]
-    B --> B5[@RESEARCH-*]
 
     C --> C1[단방향 추적]
     C --> C2[양방향 추적]
@@ -205,29 +196,17 @@ graph TD
 
 | 태그 유형 | 패턴 | 사용 예시 | 설명 |
 |----------|------|----------|------|
-| **SPEC** | `@SPEC-XXX-XXX` | `@SPEC-DOCS-001` | 명세서 식별자 |
-| **TEST** | `@TEST-XXX-XXX` | `@TEST-DOCS-001-001` | 테스트 케이스 식별자 |
-| **CODE** | `@CODE-XXX-XXX` | `@CODE-DOCS-001-001` | 코드 구현 식별자 |
-| **DOC** | `@DOC-XXX-XXX` | `@DOC-DOCS-001-001` | 문서 식별자 |
-| **RESEARCH** | `@RESEARCH:*` | `@RESEARCH:COMM-001` | 리서치 아티팩트 |
 
 ### 추적성 체인 관리
 
 #### 1. 단방향 추적
 ```markdown
 # SPEC → TEST → CODE → DOC 순서
-@SPEC-DOCS-001 (명세서)
-  └── @TEST-DOCS-001-001 (단위 테스트)
-      └── @CODE-DOCS-001-001 (구현 코드)
-          └── @DOC-DOCS-001-001 (API 문서)
 ```
 
 #### 2. 양방향 추적
 ```markdown
 # 역방향 추적도 지원
-@CODE-DOCS-001-001 (구현 코드)
-  └── @TEST-DOCS-001-001 (관련 테스트)
-      └── @SPEC-DOCS-001 (원본 명세서)
 ```
 
 ### 자동화된 추적성 검증
@@ -404,16 +383,12 @@ class SecureAPIService:
 # 추적 가능한 코드 변경
 def process_payment(payment_data: PaymentData) -> PaymentResult:
     """
-    결제 처리 (@SPEC-PAY-001-001)
 
     변경 이력:
-    - 2025-11-11: 초기 구현 (@CODE-PAY-001-001)
-    - 2025-11-12: 리팩토링 및 오류 처리 개선 (@CODE-PAY-001-002)
     """
 
     # 변경 추적을 위한 로깅
     logger.info(f"Processing payment: {payment_data.order_id}",
-                extra={"spec": "@SPEC-PAY-001-001", "code": "@CODE-PAY-001-002"})
 
     try:
         # 결제 처리 로직
@@ -508,9 +483,6 @@ Google OAuth 및 GitHub OAuth 로그인 기능을 구현했습니다.
 - 사용자 인증 흐름 개선
 - 에러 처리 및 재시도 로직 구현
 
-Closes @SPEC-AUTH-001
-@CODE-AUTH-001-001
-@TEST-AUTH-001-001
 ```
 
 #### 커밋 타입
@@ -536,7 +508,6 @@ if ! grep -qE "$commit_regex" "$1"; then
     exit 1
 fi
 
-# 2. @TAG 검증
 if git diff --cached --name-only | grep -q "\.md\|\.py\|\.js\|\.ts"; then
     python scripts/validate_tags.py
 fi

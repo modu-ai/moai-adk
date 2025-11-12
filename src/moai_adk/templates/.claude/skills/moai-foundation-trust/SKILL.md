@@ -150,7 +150,6 @@ Rule T4: Test quality equals code quality
 
 ```python
 # Day 1: Write failing test (RED)
-@TEST:SPEC:AUTH-001-001
 def test_password_hashing_creates_unique_hashes():
     """
     Requirement: Each password hash must be unique (different salt)
@@ -164,7 +163,6 @@ def test_password_hashing_creates_unique_hashes():
 
 
 # Days 2-3: Write minimal code (GREEN)
-@CODE:SPEC:AUTH-001-001
 def hash_password(plaintext: str) -> str:
     """Hash password using bcrypt"""
     salt = bcrypt.gensalt(rounds=12)
@@ -173,7 +171,6 @@ def hash_password(plaintext: str) -> str:
 
 
 # Days 4-5: Refactor for quality
-@CODE:SPEC:AUTH-001-001
 def hash_password(plaintext: str) -> str:
     """
     Hash password using bcrypt with enterprise security settings
@@ -252,7 +249,6 @@ Rule R4: Consistent style
 
 **Before (Unreadable)**:
 ```python
-@CODE:BAD-001
 def f(x, y):
     """Process data"""
     if x > 0:
@@ -272,7 +268,6 @@ def f(x, y):
 
 **After (Readable)**:
 ```python
-@CODE:SPEC:ANALYTICS-001
 def calculate_weighted_average(weight_factor: float, values: List[float]) -> Optional[float]:
     """
     Calculate weighted average of values
@@ -325,14 +320,9 @@ def calculate_weighted_average(weight_factor: float, values: List[float]) -> Opt
 src/
 ├─ auth/
 │  ├─ __init__.py
-│  ├─ authenticate.py      (@CODE:SPEC:AUTH-001)
-│  ├─ verify.py            (@CODE:SPEC:AUTH-002)
-│  └─ hash.py              (@CODE:SPEC:AUTH-003)
 │
 ├─ payment/
 │  ├─ __init__.py
-│  ├─ processor.py         (@CODE:SPEC:PAYMENT-001)
-│  └─ webhook.py           (@CODE:SPEC:PAYMENT-002)
 │
 └─ models/
    ├─ __init__.py
@@ -340,14 +330,10 @@ src/
    └─ order.py
 
 tests/
-├─ test_auth.py            (@TEST:SPEC:AUTH-001)
-├─ test_payment.py         (@TEST:SPEC:PAYMENT-001)
 └─ integration/
    └─ test_payment_flow.py
 
 docs/
-├─ authentication.md       (@DOC:SPEC:AUTH-001)
-├─ payment.md              (@DOC:SPEC:PAYMENT-001)
 └─ api/
    └─ auth.md
 ```
@@ -445,20 +431,14 @@ MoAI-ADK enforces **all 10 OWASP Top 10** vulnerabilities prevention:
 1. Broken Access Control (AuthZ failures)
    ├─ Risk: Unauthorized feature access
    ├─ Prevention: Role-based access control (RBAC)
-   ├─ Example: @CODE:SPEC:AUTH-RBAC-001
-   └─ Test: @TEST:SPEC:AUTH-RBAC-001
 
 2. Cryptographic Failures (Weak encryption)
    ├─ Risk: Data breach through weak crypto
    ├─ Prevention: Use bcrypt (not MD5), TLS 1.3+
-   ├─ Example: @CODE:SPEC:AUTH-CRYPTO-001
-   └─ Test: @TEST:SPEC:AUTH-CRYPTO-001
 
 3. Injection (SQL, NoSQL, OS command)
    ├─ Risk: SQL injection, command execution
    ├─ Prevention: Parameterized queries, input validation
-   ├─ Example: @CODE:SPEC:QUERY-SAFE-001
-   └─ Test: @TEST:SPEC:QUERY-SAFE-001
 
 4. Insecure Design (No threat modeling)
    ├─ Risk: Design flaws in architecture
@@ -469,8 +449,6 @@ MoAI-ADK enforces **all 10 OWASP Top 10** vulnerabilities prevention:
 5. Security Misconfiguration (Default/exposed settings)
    ├─ Risk: Exposed credentials, debug mode in prod
    ├─ Prevention: Environment-specific config, secrets management
-   ├─ Example: @CODE:SPEC:CONFIG-SECURE-001
-   └─ Test: @TEST:SPEC:CONFIG-SECURE-001
 
 6. Vulnerable Components (Outdated libraries)
    ├─ Risk: Known CVE exploitation
@@ -481,8 +459,6 @@ MoAI-ADK enforces **all 10 OWASP Top 10** vulnerabilities prevention:
 7. Authentication Failures (Weak auth)
    ├─ Risk: Account takeover
    ├─ Prevention: MFA, rate limiting, strong password policies
-   ├─ Example: @CODE:SPEC:AUTH-MFA-001
-   └─ Test: @TEST:SPEC:AUTH-MFA-001
 
 8. Software & Data Integrity Failures (Untrusted updates)
    ├─ Risk: Tampered code/data
@@ -493,14 +469,10 @@ MoAI-ADK enforces **all 10 OWASP Top 10** vulnerabilities prevention:
 9. Logging & Monitoring Failures (Blind to attacks)
    ├─ Risk: Attacks undetected
    ├─ Prevention: Comprehensive logging + alerts
-   ├─ Example: @CODE:SPEC:LOGGING-AUDIT-001
-   └─ Test: @TEST:SPEC:LOGGING-AUDIT-001
 
 10. SSRF (Server-Side Request Forgery)
     ├─ Risk: Attack internal services through app
     ├─ Prevention: Input validation, network segmentation
-    ├─ Example: @CODE:SPEC:SSRF-PREVENT-001
-    └─ Test: @TEST:SPEC:SSRF-PREVENT-001
 ```
 
 ### Security Validation Matrix
@@ -548,7 +520,6 @@ Rule S4: Dependency Security
 ### Example: Secure Password Hashing
 
 ```python
-@CODE:SPEC:AUTH-SECURE-001
 def hash_password(plaintext: str) -> str:
     """
     Hash password securely using bcrypt
@@ -567,11 +538,9 @@ def hash_password(plaintext: str) -> str:
     """
     import bcrypt
     
-    # @CODE:SPEC:AUTH-SECURE-001-001: Validate input
     if not plaintext or not isinstance(plaintext, str):
         raise ValueError("Password must be non-empty string")
     
-    # @CODE:SPEC:AUTH-SECURE-001-002: Hash with bcrypt
     BCRYPT_ROUNDS = 12  # November 2025 standard
     salt = bcrypt.gensalt(rounds=BCRYPT_ROUNDS)
     hashed = bcrypt.hashpw(plaintext.encode('utf-8'), salt)
@@ -579,21 +548,16 @@ def hash_password(plaintext: str) -> str:
     return hashed.decode('utf-8')
 
 
-@TEST:SPEC:AUTH-SECURE-001
 def test_password_hash_secure():
-    """@TEST:SPEC:AUTH-SECURE-001: Verify security properties"""
     plaintext = "MyPassword123"
     hashed = hash_password(plaintext)
     
-    # @TEST:SPEC:AUTH-SECURE-001-001: Non-reversible
     assert plaintext not in hashed
     assert "MyPassword" not in hashed
     
-    # @TEST:SPEC:AUTH-SECURE-001-002: Unique per salt
     hashed2 = hash_password(plaintext)
     assert hashed != hashed2
     
-    # @TEST:SPEC:AUTH-SECURE-001-003: Uses bcrypt marker
     assert hashed.startswith("$2")  # bcrypt prefix
 ```
 
@@ -615,25 +579,21 @@ def test_password_hash_secure():
 Rule T1: Every feature has SPEC
 ├─ SPEC created before implementation
 ├─ SPEC has clear requirements
-├─ SPEC identifies using @SPEC:DOMAIN-NNN
 └─ Review: SPEC approved by stakeholder
 
 Rule T2: SPEC linked to TESTS
 ├─ Every requirement has test case
-├─ Tests tagged with @TEST:SPEC:DOMAIN-NNN
 ├─ Coverage: >=85%
 └─ Validation: Coverage report >= 85%
 
 Rule T3: TESTS linked to CODE
 ├─ Every @TEST references a @SPEC
 ├─ Code implements test requirements
-├─ Code tagged with @CODE:SPEC:DOMAIN-NNN
 └─ Validation: All tests pass
 
 Rule T4: CODE linked to DOCS
 ├─ Documentation describes @CODE
 ├─ Users know what code does
-├─ Docs tagged with @DOC:SPEC:DOMAIN-NNN
 └─ Validation: Docs match code
 ```
 
@@ -642,28 +602,21 @@ Rule T4: CODE linked to DOCS
 ```
 SPEC Layer
   .moai/specs/SPEC-001/spec.md
-  @SPEC:AUTH-001: "Implement secure password hashing"
   
   ↓ implements
   
 TEST Layer
   tests/test_auth.py
-  @TEST:SPEC:AUTH-001-001: "Test password hash security"
-  @TEST:SPEC:AUTH-001-002: "Test unique salt generation"
   
   ↓ validates
   
 CODE Layer
   src/auth.py
-  @CODE:SPEC:AUTH-001: "def hash_password()"
-  @CODE:SPEC:AUTH-001-001: "Generate bcrypt hash"
-  @CODE:SPEC:AUTH-001-002: "Use 12 salt rounds"
   
   ↓ described by
   
 DOC Layer
   docs/auth.md
-  @DOC:SPEC:AUTH-001: "Password Security"
   "Passwords are hashed using bcrypt..."
 
 Complete chain: SPEC → TEST → CODE → DOC ✓
@@ -790,18 +743,14 @@ Ready for production deployment ✓
 ```
 /alfred:1-plan "New Feature"
     ↓
-    Creates SPEC-001 (@SPEC:FEATURE-001)
     Status: DRAFT
     
 /alfred:2-run SPEC-001
     ↓
     RED Phase: Write tests
-    ├─ Create @TEST:SPEC:FEATURE-001-001
-    ├─ Create @TEST:SPEC:FEATURE-001-002
     └─ Tests fail (no code yet)
     
     GREEN Phase: Write code
-    ├─ Create @CODE:SPEC:FEATURE-001
     ├─ Implement minimum for tests to pass
     └─ All tests pass
     
@@ -821,7 +770,6 @@ Ready for production deployment ✓
     
 /alfred:3-sync auto SPEC-001
     ↓
-    Create @DOC:SPEC:FEATURE-001
     Documentation describes feature
     
     Traceability Complete

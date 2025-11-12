@@ -1,4 +1,3 @@
-# @SPEC:INSTALLER-QUALITY-001: Acceptance Criteria
 
 ## AC-001: 모든 클래스 생성자 기반 DI 사용
 
@@ -35,7 +34,6 @@
 **GIVEN** 모든 소스 코드 파일이 존재할 때
 **WHEN** 파일 상단의 TAG를 확인하면
 **THEN**
-- `@CODE:ID | SPEC: ... | TEST: ...` 형식이어야 한다
 - SPEC 경로가 명시되어야 한다
 - TEST 경로가 명시되어야 한다
 - ID는 `[A-Z]+-[0-9]{3}` 패턴이어야 한다

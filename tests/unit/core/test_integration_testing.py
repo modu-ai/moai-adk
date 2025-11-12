@@ -1,4 +1,3 @@
-# @TEST:TAG-IMPROVEMENT-INTEGRATION-001
 """
 Integration Testing Framework Tests
 

@@ -1,5 +1,4 @@
 ---
-"@META:SPEC-001": {
   "spec_id": "SPEC-IMPROVEMENT-001",
   "title": "통합 개선 프레임워크",
   "version": "1.0.0",
@@ -14,9 +13,6 @@
   "related_specs": [],
   "dependencies": [],
   "traceability": {
-    "requirements": ["@REQ:PERF-001", "@REQ:LANG-001", "@REQ:VAL-001"],
-    "features": ["@FEAT:PERF-OPTIMIZATION", "@FEAT:LANG-VALIDATION", "@FEAT:CI-IMPROVEMENT"],
-    "tests": ["@TEST:PERF-001", "@TEST:LANG-001", "@TEST:VAL-001"],
     "code": []
   }
 }
@@ -186,22 +182,11 @@
 ## Traceability
 
 ### 관련 SPEC
-- `@SPEC:MIGRATION-001`: Next.js 마이그레이션 SPEC (참고)
-- `@SPEC:BAAS-ECOSYSTEM-001`: 생태계 통합 SPEC (연관)
 
 ### 구현 추적
 - 코드:
-  - ✅ `@CODE:PERF-OPTIMIZER`: 성능 최적화 시스템 완료 (병렬 처리 및 캐싱)
-  - ✅ `@CODE:LANG-VALIDATOR`: 언어 정책 검증기 완료 (자동 검증)
-  - 🔄 `@CODE:QUALITY-FRAMEWORK`: 통합 검증 프레임워크 부분적 완료
-  - ❌ `@CODE:TEMPLATE-SYNC`: 템플릿 동기화 미구현
 - 테스트:
-  - ✅ `@TEST:PERF-001`: 성능 최적화 테스트 완료
-  - 🔄 `@TEST:LANG-001`: 언어 검증 테스트 부분적 완료
-  - 🔄 `@TEST:VAL-001`: 검증 프레임워크 테스트 진행 중
 - 문서:
-  - ✅ `@DOC:IMPROVEMENT-GUIDE`: 개선 가이드 생성 완료
-  - ✅ `@DOC:VALIDATION-REPORT`: 검증 보고서 생성 완료
 
 ### 변경 이력
 - v1.0.0 (2025-11-10): 초기 SPEC 작성

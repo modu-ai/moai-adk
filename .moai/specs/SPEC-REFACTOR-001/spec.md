@@ -9,7 +9,6 @@ author: @goos
 priority: high
 ---
 
-# @SPEC:REFACTOR-002: Git Manager 리팩토링
 
 ## HISTORY
 
@@ -23,7 +22,6 @@ priority: high
 - **EVIDENCE**:
   - `b01403e docs(sync): Complete SPEC-INIT-001, REFACTOR-001, BRAND-001`
   - `16263b3 refactor(tags): Unify TAG chain for SPEC-REFACTOR-001`
-  - @CODE:REFACTOR-001:* TAG 체인 구축 완료
 
 ### v0.1.0 (2025-09-15)
 - **INITIAL**: Git Manager 리팩토링 명세 작성
@@ -34,8 +32,6 @@ priority: high
 ## TAG BLOCK
 
 ```text
-# @SPEC:REFACTOR-002: Git Manager 리팩토링
-# Related: @CODE:REFACTOR-001:*, @TEST:REFACTOR-001:*
 ```
 
 ## Environment (환경 및 가정사항)
@@ -328,26 +324,15 @@ __tests__/core/git/
 ### TAG 체인
 
 ```
-@SPEC:REFACTOR-002 (요구사항)
-  └─> @SPEC:REFACTOR-002 (설계)
-        └─> @CODE:REFACTOR-001 (작업)
-              └─> @TEST:REFACTOR-001 (검증)
 ```
 
 ### 관련 TAG
 
-- `@CODE:REFACTOR-001` - 리팩토링 기능
-- `@CODE:GIT-MGR-001` - Git Manager API
-- `@CODE:GIT-001` - Git 데이터 타입
-- `@TEST:REFACTOR-001` - 리팩토링 테스트
 
 ### 기존 TAG 유지
 
 모든 기존 TAG는 새로운 모듈로 이동하되, 추적성 유지:
 
-- `@CODE:GIT-001` → 유지 및 확장
-- `@SPEC:GIT-001` → 참조 유지
-- `@SPEC:GIT-001` → 업데이트
 
 ## 성공 지표
 

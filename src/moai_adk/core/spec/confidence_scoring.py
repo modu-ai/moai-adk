@@ -1,4 +1,3 @@
-# @CODE:CONFIDENCE-SCORING-001
 """Confidence Scoring System for Auto-SPEC Generation."""
 
 import re

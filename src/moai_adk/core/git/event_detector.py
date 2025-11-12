@@ -1,4 +1,3 @@
-# @CODE:CHECKPOINT-EVENT-001 | SPEC: SPEC-CHECKPOINT-EVENT-001.md | TEST: tests/unit/test_event_detector.py
 """
 Event Detector - Identify risky operations.
 
@@ -11,7 +10,6 @@ from pathlib import Path
 class EventDetector:
     """Detect potentially risky operations."""
 
-    # @CODE:CHECKPOINT-EVENT-001:DOMAIN - Critical file list
     CRITICAL_FILES = {
         "CLAUDE.md",
         "config.json",

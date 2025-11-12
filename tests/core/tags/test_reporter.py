@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @TEST:DOC-TAG-004 | Component 4: Documentation & Reporting tests
 """Test suite for TAG reporting and documentation system
 
 This module tests the reporting system that:
@@ -64,8 +63,6 @@ class TestTagInventory:
             tag_id="DOC-TAG-001",
             file_path="/path/to/file.py",
             line_number=42,
-            context="# @CODE:DOC-TAG-001 | Implementation",
-            related_tags=["@SPEC:DOC-TAG-001", "@TEST:DOC-TAG-001"],
             last_modified=datetime.now(),
             status="active"
         )
@@ -131,11 +128,9 @@ class TestInventoryGenerator:
             # Create test files with TAGs
             test_file = Path(tmpdir) / "test.py"
             test_file.write_text("""
-# @SPEC:AUTH-004 | Authentication specification
 # # REMOVED_ORPHAN_CODE:AUTH-004 | Login implementation
 def login():
     pass
-# @TEST:AUTH-004 | Login tests
             """)
 
             generator = InventoryGenerator()
@@ -179,7 +174,6 @@ def login():
             "AUTH": [
                 TagInventory(
                     tag_id="AUTH-001", file_path="/auth.py", line_number=1,
-                    context="# @SPEC:AUTH-004", related_tags=[],
                     last_modified=datetime.now(), status="active"
                 )
             ]
@@ -331,10 +325,8 @@ class TestCoverageAnalyzer:
         with tempfile.TemporaryDirectory() as tmpdir:
             test_file = Path(tmpdir) / "complete.py"
             test_file.write_text("""
-# @SPEC:COMPLETE-001
 # # REMOVED_ORPHAN_CODE:COMPLETE-001
 # # REMOVED_ORPHAN_TEST:COMPLETE-001
-# @DOC:COMPLETE-001
             """)
 
             analyzer = CoverageAnalyzer()
@@ -350,9 +342,6 @@ class TestCoverageAnalyzer:
         with tempfile.TemporaryDirectory() as tmpdir:
             test_file = Path(tmpdir) / "spec_only.py"
             test_file.write_text("""
-# @SPEC:NO-IMPL-001
-# @SPEC:HAS-IMPL-001
-# @CODE:HAS-IMPL-001
             """)
 
             analyzer = CoverageAnalyzer()
@@ -366,9 +355,6 @@ class TestCoverageAnalyzer:
         with tempfile.TemporaryDirectory() as tmpdir:
             test_file = Path(tmpdir) / "code.py"
             test_file.write_text("""
-# @CODE:NO-TEST-001
-# @CODE:HAS-TEST-001
-# @TEST:HAS-TEST-001
             """)
 
             analyzer = CoverageAnalyzer()
@@ -382,9 +368,6 @@ class TestCoverageAnalyzer:
         with tempfile.TemporaryDirectory() as tmpdir:
             test_file = Path(tmpdir) / "code.py"
             test_file.write_text("""
-# @CODE:NO-DOC-001
-# @CODE:HAS-DOC-001
-# @DOC:HAS-DOC-001
             """)
 
             analyzer = CoverageAnalyzer()
@@ -398,15 +381,11 @@ class TestCoverageAnalyzer:
         with tempfile.TemporaryDirectory() as tmpdir:
             test_file = Path(tmpdir) / "mixed.py"
             test_file.write_text("""
-# @SPEC:FULL-001
 # # REMOVED_ORPHAN_CODE:FULL-001
 # # REMOVED_ORPHAN_TEST:FULL-001
-# @DOC:FULL-001
 
-# @SPEC:PARTIAL-001
 # # REMOVED_ORPHAN_CODE:PARTIAL-001
 
-# @SPEC:NONE-001
             """)
 
             analyzer = CoverageAnalyzer()
@@ -532,7 +511,6 @@ class TestReportGenerator:
         with tempfile.TemporaryDirectory() as tmpdir:
             test_file = Path(tmpdir) / "test.py"
             test_file.write_text("""
-# @SPEC:MATRIX-001
 # # REMOVED_ORPHAN_CODE:MATRIX-001
 # # REMOVED_ORPHAN_TEST:MATRIX-001
             """)
@@ -562,7 +540,6 @@ class TestReportGenerator:
         with tempfile.TemporaryDirectory() as tmpdir:
             test_file = Path(tmpdir) / "test.py"
             test_file.write_text("""
-# @SPEC:COMBINED-001
 # # REMOVED_ORPHAN_CODE:COMBINED-001
 # # REMOVED_ORPHAN_TEST:COMBINED-001
             """)
@@ -627,7 +604,6 @@ class TestReportFormatting:
                 file_path="/test.py",
                 line_number=10,
                 context="# # REMOVED_ORPHAN_CODE:FORMAT-001",
-                related_tags=["@SPEC:FORMAT-001"],
                 last_modified=datetime.now(),
                 status="active"
             )
@@ -720,8 +696,6 @@ class TestReportGeneratorIntegration:
 
             # Auth module with complete chain
             (src_dir / "auth.py").write_text("""
-# @SPEC:AUTH-LOGIN-001 | User login specification
-# @CODE:AUTH-LOGIN-001 | Login implementation
 def login(username, password):
     pass
             """)
@@ -730,7 +704,6 @@ def login(username, password):
             tests_dir = Path(tmpdir) / "tests"
             tests_dir.mkdir()
             (tests_dir / "test_auth.py").write_text("""
-# @TEST:AUTH-LOGIN-001 | Login tests
 def test_login():
     pass
             """)
@@ -739,7 +712,6 @@ def test_login():
             docs_dir = Path(tmpdir) / "docs"
             docs_dir.mkdir()
             (docs_dir / "auth.md").write_text("""
-# @DOC:AUTH-LOGIN-001 | Authentication guide
             """)
 
             # Generate reports
@@ -776,9 +748,6 @@ def test_login():
             src_dir.mkdir()
 
             (src_dir / "incomplete.py").write_text("""
-# @SPEC:ORPHAN-001 | Spec without implementation
-# @CODE:NO-TEST-001 | Code without tests
-# @TEST:NO-CODE-001 | Test without code
             """)
 
             output_dir = Path(tmpdir) / "reports"

@@ -56,8 +56,6 @@ def calculate_user_metrics(user_id: str) -> Dict[str, Any]:
     """
     사용자 지표 계산
 
-    @API:GET-USERS-{id}-METRICS
-    @TASK:CALCULATE-METRICS-001
     """
     metrics = {
         "login_count": get_login_count(user_id),
@@ -114,15 +112,10 @@ def calculate_user_metrics(user_id: str) -> Dict[str, Any]:
 - 세션 타임아웃은 30분
 
 ## 요구사항 (Requirements)
-@REQ:AUTH-PERFORMANCE-001: 로그인 응답 시간 500ms 이하
-@REQ:AUTH-SECURITY-001: 2단계 인증 지원
 
 ## 명세 (Specifications)
-@DESIGN:AUTH-ARCH-002: 마이크로서비스 기반 인증 아키텍처
-@API:POST-AUTH-V2: 개선된 로그인 API
 
 ## 추적성 (Traceability)
-@REQ:AUTH-PERFORMANCE-001 → @TASK:OPTIMIZE-DB-QUERY → @TEST:PERFORMANCE-LOAD-001
 ```
 
 ## TAG 시스템 활용
@@ -132,26 +125,15 @@ def calculate_user_metrics(user_id: str) -> Dict[str, Any]:
 #### 일관된 명명 규칙
 ```
 # 좋은 예시
-@REQ:USER-AUTH-LOGIN-001  # 카테고리-모듈-기능-시퀀스
-@API:POST-AUTH-LOGIN       # HTTP메소드-리소스
-@TEST:UNIT-LOGIN-001       # 테스트타입-모듈-시퀀스
 
 # 나쁜 예시
-@REQ:userlogin            # 소문자, 의미 없는 식별자
-@API:login                # HTTP 메소드 누락
-@TEST:test1               # 의미 없는 식별자
 ```
 
 #### 의미 있는 식별자
 ```
 # 좋은 예시
-@REQ:CART-ADD-SUCCESS-001    # 장바구니-기능-결과-시퀀스
-@API:GET-PRODUCTS-FILTER     # HTTP-리소스-기능
 
 # 의미 있는 접두사 사용
-@USER:PROFILE-UPDATE-001     # 사용자 관련
-@PAYMENT:PROCESS-CARD-001    # 결제 관련
-@NOTIFICATION:SEND-EMAIL-001 # 알림 관련
 ```
 
 ### 2. 체인 관리 원칙
@@ -159,16 +141,9 @@ def calculate_user_metrics(user_id: str) -> Dict[str, Any]:
 #### 완전한 체인 구성
 ```mermaid
 graph LR
-    A[@REQ:FEATURE] --> B[@DESIGN:ARCH]
-    B --> C[@TASK:IMPLEMENT]
-    C --> D[@API/UI/DATA]
-    D --> E[@TEST:UNIT/INTEGRATION]
 ```
 
 #### 체인 검증 체크리스트
-- [ ] 모든 @REQ가 구현 TAG를 참조하는가?
-- [ ] 모든 @API가 @REQ를 참조하는가?
-- [ ] 모든 @TEST가 구현 TAG를 참조하는가?
 - [ ] 체인에 끊어진 링크가 없는가?
 
 ### 3. TAG 배치 전략
@@ -180,16 +155,11 @@ def user_login(email: str, password: str):
     사용자 로그인 처리
 
     # 함수 레벨 TAG
-    @API:POST-AUTH-LOGIN
-    @REQ:USER-AUTH-001
-    @TASK:IMPLEMENT-LOGIN-001
     """
 
     # 복잡한 로직에는 상세 TAG
     if validate_user(email, password):
-        # @TASK:VALIDATE-CREDENTIALS-001
         token = generate_jwt_token(user_id)
-        # @TASK:GENERATE-JWT-001
         return {"token": token}
 ```
 

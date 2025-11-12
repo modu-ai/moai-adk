@@ -18,7 +18,6 @@ description: "6주 만에 MVP 완성, 87.5% 테스트 커버리지, 제로 프�
 - ✅ **87.5% 테스트 커버리지** 달성 (목표 80% 초과)
 - ✅ **제로 프로덕션 버그** (첫 3개월 무사고 운영)
 - ✅ **평균 응답 시간 120ms** (사용자 경험 최적화)
-- ✅ **완벽한 SPEC-코드-테스트 추적성** (100% @TAG 커버리지)
 
 ---
 
@@ -113,7 +112,6 @@ Alfred의 `/alfred:1-plan` 명령으로 10개 주요 SPEC 생성:
 ```markdown
 # SPEC-CART-001: 장바구니 기능
 
-@TAG:SPEC-CART-001
 
 ## 요구사항 (EARS 형식)
 
@@ -162,7 +160,6 @@ Alfred의 `/alfred:2-run` 명령으로 TDD 사이클 실행:
 #### 1. RED: 테스트 먼저 작성
 
 ```typescript
-// @TAG:TEST-CART-001
 // tests/cart.test.ts
 
 import { describe, it, expect } from 'vitest'
@@ -226,7 +223,6 @@ describe('CART-001: 장바구니 기능', () => {
 #### 2. GREEN: 최소한의 구현
 
 ```typescript
-// @TAG:CODE-CART-001:LIB
 // lib/cart.ts
 
 import { supabase } from '@/lib/supabase'
@@ -292,7 +288,6 @@ export async function removeFromCart(cartItemId: string) {
 Alfred의 code-quality 에이전트가 제안:
 
 ```typescript
-// @TAG:CODE-CART-001:LIB (개선 버전)
 // lib/cart.ts
 
 import { supabase } from '@/lib/supabase'
@@ -300,7 +295,6 @@ import { CartItem, CartItemInput } from '@/types'
 
 /**
  * 장바구니에 상품을 추가합니다
- * @TAG:CART-001
  */
 export async function addToCart(
   input: CartItemInput
@@ -415,7 +409,6 @@ export async function removeFromCart(
 Alfred의 BaaS Skills가 자동 생성:
 
 ```sql
--- @TAG:CODE-CART-001:DB
 -- supabase/migrations/001_cart.sql
 
 -- 장바구니 테이블
@@ -462,7 +455,6 @@ CREATE TRIGGER update_cart_items_updated_at
 #### 검색 기능 구현
 
 ```typescript
-// @TAG:CODE-SEARCH-001:LIB
 // lib/search.ts
 
 import { supabase } from '@/lib/supabase'
@@ -470,7 +462,6 @@ import { Product, SearchFilters } from '@/types'
 
 /**
  * 상품을 검색합니다
- * @TAG:SEARCH-001
  */
 export async function searchProducts(
   query: string,
@@ -566,7 +557,6 @@ async function getCartWithProducts(userId: string) {
 #### 통합 테스트
 
 ```typescript
-// @TAG:TEST-INTEGRATION-001
 // tests/integration/checkout.test.ts
 
 import { describe, it, expect, beforeEach } from 'vitest'
@@ -760,7 +750,6 @@ sequenceDiagram
 **2. 코드 품질**
 - TDD 엄격 준수로 첫 3개월 프로덕션 버그 제로
 - 87.5% 테스트 커버리지로 안전한 리팩토링
-- @TAG 시스템으로 100% 추적 가능한 코드베이스
 
 **3. 유지보수성**
 - SPEC-코드-테스트 완벽한 동기화

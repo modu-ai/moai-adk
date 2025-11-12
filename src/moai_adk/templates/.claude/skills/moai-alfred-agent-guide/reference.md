@@ -82,7 +82,6 @@ The **code-builder pipeline** runs two Sonnet specialists in sequence: **impleme
 1. **Automatic Keyword Detection**: When `implementation-planner` analyzes a SPEC, it scans for expert trigger keywords
 2. **Proactive Delegation**: If keywords match, `implementation-planner` automatically invokes the relevant expert agent(s)
 3. **Expert Consultation**: Each expert provides domain-specific architecture guidance, technology recommendations, and risk analysis
-4. **Integration**: Expert feedback is integrated into the implementation plan and tagged with `@EXPERT:DOMAIN` for traceability
 
 ### Example: Full-Stack Authentication SPEC
 
@@ -93,7 +92,6 @@ SPEC Keywords: 'api', 'authentication', 'design', 'accessibility'
 → Trigger ui-ux-expert (for login UI & accessibility)
 
 Result:
-@SPEC:AUTH-001 | @EXPERT:BACKEND | @EXPERT:UIUX
 
 Implementation Plan includes:
 - Backend: JWT token strategy, rate limiting, audit logging

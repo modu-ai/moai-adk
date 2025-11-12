@@ -4,7 +4,6 @@ version: 0.1.0
 status: completed
 created: 2025-10-19
 updated: 2025-10-19
-author: @Alfred
 priority: medium
 category: docs
 labels:
@@ -18,7 +17,6 @@ scope:
     - README.md
 ---
 
-# @SPEC:README-UX-001: README.md uv 설치 방법 개선
 
 ## HISTORY
 
@@ -35,7 +33,6 @@ scope:
 
 ### v0.0.1 (2025-10-19)
 - **INITIAL**: README.md 설치 방법을 uv 권장 방식으로 개선하는 명세 작성
-- **AUTHOR**: @Alfred
 - **SCOPE**: `uv pip install` → `uv tool install` 변경 (3곳)
 - **CONTEXT**: GitHub Issue #35 - uv 공식 권장 방식인 tool install 적용
 - **RELATED**: https://github.com/modu-ai/moai-adk/issues/35
@@ -167,9 +164,7 @@ uv pip install moai-adk --force-reinstall
 
 ---
 
-## Traceability (@TAG)
 
-- **SPEC**: @SPEC:README-UX-001
 - **DOC**: `README.md` (3곳 수정)
 - **RELATED ISSUE**: https://github.com/modu-ai/moai-adk/issues/35
 - **REFERENCE**: https://github.com/astral-sh/uv (uv 공식 문서)

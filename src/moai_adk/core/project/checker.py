@@ -1,4 +1,3 @@
-# @CODE:CLI-STATUS-002 | SPEC: SPEC-CLI-001.md | TEST: tests/unit/test_cli_commands.py
 """System requirements validation module.
 
 Checks whether required and optional tools are installed.
@@ -24,7 +23,6 @@ class SystemChecker:
         "docker": "docker --version",
     }
 
-    # @CODE:CLI-STATUS-002:DATA - Language toolchain mapping (20 languages)
     LANGUAGE_TOOLS: dict[str, dict[str, list[str]]] = {
         "python": {
             "required": ["python3", "pip"],

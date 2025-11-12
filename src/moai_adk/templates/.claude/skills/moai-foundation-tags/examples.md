@@ -14,7 +14,6 @@ title: SPEC-001 User Authentication System
 created: 2025-11-12
 status: APPROVED
 author: spec-builder
-@SPEC:AUTH-001
 ---
 
 # SPEC-001: User Authentication System
@@ -61,7 +60,6 @@ Implement secure user authentication system with email/password login, password 
 """
 User Authentication Tests
 
-@TEST:SPEC:AUTH-001
 Validates all requirements in SPEC-001
 """
 
@@ -76,11 +74,9 @@ from src.auth import (
 
 
 class TestUserRegistration:
-    """@TEST:SPEC:AUTH-001-001: User registration"""
 
     def test_register_with_valid_email_password(self):
         """
-        @TEST:SPEC:AUTH-001-001-001: Registration with valid inputs
         Requirements: Email format + password complexity
         """
         user = register_user("test@example.com", "SecurePass123")
@@ -89,19 +85,16 @@ class TestUserRegistration:
         assert not user.password_plaintext  # Never stored
 
     def test_register_reject_invalid_email(self):
-        """@TEST:SPEC:AUTH-001-001-002: Email format validation"""
         with pytest.raises(ValueError) as exc:
             register_user("invalid-email", "SecurePass123")
         assert "invalid email" in str(exc.value)
 
     def test_register_reject_weak_password(self):
-        """@TEST:SPEC:AUTH-001-001-003: Password complexity validation"""
         with pytest.raises(ValueError) as exc:
             register_user("test@example.com", "weak")
         assert "password" in str(exc.value).lower()
 
     def test_register_reject_duplicate_email(self):
-        """@TEST:SPEC:AUTH-001-001-004: Unique email constraint"""
         register_user("test@example.com", "SecurePass123")
         with pytest.raises(ValueError) as exc:
             register_user("test@example.com", "AnotherPass123")
@@ -109,7 +102,6 @@ class TestUserRegistration:
 
 
 class TestUserLogin:
-    """@TEST:SPEC:AUTH-001-002: User login"""
 
     @pytest.fixture
     def registered_user(self):
@@ -117,7 +109,6 @@ class TestUserLogin:
 
     def test_login_with_correct_credentials(self, registered_user):
         """
-        @TEST:SPEC:AUTH-001-002-001: Successful login
         Requirement: Verify credentials and return token
         """
         token = authenticate_user("user@example.com", "TestPass123")
@@ -125,14 +116,12 @@ class TestUserLogin:
         assert len(token) > 0
 
     def test_login_reject_incorrect_password(self, registered_user):
-        """@TEST:SPEC:AUTH-001-002-002: Reject wrong password"""
         with pytest.raises(ValueError) as exc:
             authenticate_user("user@example.com", "WrongPassword")
         assert "invalid" in str(exc.value).lower()
 
     def test_login_rate_limiting(self, registered_user):
         """
-        @TEST:SPEC:AUTH-001-002-003: Rate limit 5 attempts/minute
         Requirement: Prevent brute force attacks
         """
         # First 5 attempts should fail
@@ -147,38 +136,31 @@ class TestUserLogin:
 
 
 class TestPasswordHashing:
-    """@TEST:SPEC:AUTH-001-003: Password security"""
 
     def test_hash_password_non_reversible(self):
-        """@TEST:SPEC:AUTH-001-003-001: Bcrypt hashing"""
         hashed = hash_password("SecurePass123")
         # Hash should not contain original password
         assert "SecurePass123" not in hashed
         assert len(hashed) > 20
 
     def test_hash_password_unique_per_salt(self):
-        """@TEST:SPEC:AUTH-001-003-002: Unique salts"""
         hash1 = hash_password("SamePassword")
         hash2 = hash_password("SamePassword")
         # Same password should produce different hashes (different salt)
         assert hash1 != hash2
 
     def test_verify_password_correct(self):
-        """@TEST:SPEC:AUTH-001-003-003: Password verification"""
         hashed = hash_password("TestPass123")
         assert verify_password("TestPass123", hashed) is True
 
     def test_verify_password_incorrect(self):
-        """@TEST:SPEC:AUTH-001-003-004: Reject wrong password"""
         hashed = hash_password("TestPass123")
         assert verify_password("WrongPass123", hashed) is False
 
 
 class TestAccountLockout:
-    """@TEST:SPEC:AUTH-001-004: Account security"""
 
     def test_account_locked_after_5_failures(self):
-        """@TEST:SPEC:AUTH-001-004-001: Lockout after 5 attempts"""
         register_user("secure@example.com", "SecurePass123")
         
         # 5 failed attempts
@@ -191,14 +173,12 @@ class TestAccountLockout:
         assert status.is_locked is True
 
     def test_account_locked_notification(self):
-        """@TEST:SPEC:AUTH-001-004-002: Email notification on lockout"""
         # Trigger lockout (implementation detail)
         # Email should be sent
         # Note: Real test would use email mock
         pass
 
     def test_account_auto_unlock_after_30_minutes(self):
-        """@TEST:SPEC:AUTH-001-004-003: Auto-unlock timeout"""
         # This would use mock time travel
         # Test that account unlocks after 30 minutes
         pass
@@ -212,14 +192,9 @@ class TestAccountLockout:
 """
 User Authentication Module
 
-@CODE:SPEC:AUTH-001
 Implements user authentication requirements from SPEC-001
 
 References:
-- @TEST:SPEC:AUTH-001-001-001 (User registration)
-- @TEST:SPEC:AUTH-001-002-001 (User login)
-- @TEST:SPEC:AUTH-001-003 (Password hashing)
-- @TEST:SPEC:AUTH-001-004 (Account lockout)
 """
 
 import re
@@ -233,12 +208,10 @@ from src.rate_limiter import RateLimiter
 rate_limiter = RateLimiter(max_attempts=5, window_minutes=1)
 
 
-@CODE:SPEC:AUTH-001-001
 def register_user(email: str, password: str) -> User:
     """
     Register new user with email and password
     
-    @CODE:SPEC:AUTH-001-001: User registration
     Validates email format and password complexity
     
     Args:
@@ -251,19 +224,15 @@ def register_user(email: str, password: str) -> User:
     Raises:
         ValueError: If email format invalid or password weak
     """
-    # @CODE:SPEC:AUTH-001-001-001: Email validation
     if not _is_valid_email(email):
         raise ValueError("Email format invalid")
     
-    # @CODE:SPEC:AUTH-001-001-002: Password complexity
     if not _is_strong_password(password):
         raise ValueError("Password must be ≥8 chars with uppercase and digit")
     
-    # @CODE:SPEC:AUTH-001-001-003: Unique constraint
     if User.query.filter_by(email=email).first():
         raise ValueError(f"Email {email} already exists")
     
-    # @CODE:SPEC:AUTH-001-001-004: Hash password before storage
     hashed_pwd = hash_password(password)
     
     user = User(email=email, password_hash=hashed_pwd)
@@ -271,12 +240,10 @@ def register_user(email: str, password: str) -> User:
     return user
 
 
-@CODE:SPEC:AUTH-001-002
 def authenticate_user(email: str, password: str) -> str:
     """
     Authenticate user and return token
     
-    @CODE:SPEC:AUTH-001-002: User login
     Verifies credentials with rate limiting
     
     Args:
@@ -290,11 +257,9 @@ def authenticate_user(email: str, password: str) -> str:
         ValueError: If credentials invalid
         RateLimitError: If too many attempts
     """
-    # @CODE:SPEC:AUTH-001-002-003: Rate limiting
     if not rate_limiter.allow_attempt(email):
         raise RateLimitError(f"Too many login attempts for {email}")
     
-    # @CODE:SPEC:AUTH-001-004-001: Check lockout status
     user = User.query.filter_by(email=email).first()
     if not user:
         raise ValueError("Invalid email or password")
@@ -302,7 +267,6 @@ def authenticate_user(email: str, password: str) -> str:
     if _is_account_locked(user):
         raise ValueError("Account locked. Try again later.")
     
-    # @CODE:SPEC:AUTH-001-002-001: Credential verification
     if not verify_password(password, user.password_hash):
         _increment_failed_attempts(user)
         raise ValueError("Invalid email or password")
@@ -315,12 +279,10 @@ def authenticate_user(email: str, password: str) -> str:
     return token
 
 
-@CODE:SPEC:AUTH-001-003
 def hash_password(plaintext: str) -> str:
     """
     Hash password using bcrypt
     
-    @CODE:SPEC:AUTH-001-003: Password security
     Implements secure hashing with salt
     
     Args:
@@ -329,18 +291,15 @@ def hash_password(plaintext: str) -> str:
     Returns:
         Hashed password (bcrypt format)
     """
-    # @CODE:SPEC:AUTH-001-003-001: Bcrypt with salt rounds ≥ 10
     salt = bcrypt.gensalt(rounds=12)
     hashed = bcrypt.hashpw(plaintext.encode('utf-8'), salt)
     return hashed.decode('utf-8')
 
 
-@CODE:SPEC:AUTH-001-003
 def verify_password(plaintext: str, hashed: str) -> bool:
     """
     Verify plaintext password against hash
     
-    @CODE:SPEC:AUTH-001-003: Password verification
     
     Args:
         plaintext: Plain text password to verify
@@ -357,16 +316,12 @@ def verify_password(plaintext: str, hashed: str) -> bool:
 
 # Helper functions (also tagged)
 
-@CODE:SPEC:AUTH-001-001-001
 def _is_valid_email(email: str) -> bool:
-    """@CODE:SPEC:AUTH-001-001-001: Email format validation"""
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return re.match(pattern, email) is not None
 
 
-@CODE:SPEC:AUTH-001-001-002
 def _is_strong_password(password: str) -> bool:
-    """@CODE:SPEC:AUTH-001-001-002: Password complexity check"""
     return (
         len(password) >= 8 and
         any(c.isupper() for c in password) and
@@ -374,27 +329,20 @@ def _is_strong_password(password: str) -> bool:
     )
 
 
-@CODE:SPEC:AUTH-001-004
 def _is_account_locked(user: User) -> bool:
-    """@CODE:SPEC:AUTH-001-004: Check lock status"""
     if not user.locked_until:
         return False
     return datetime.utcnow() < user.locked_until
 
 
-@CODE:SPEC:AUTH-001-004-001
 def _increment_failed_attempts(user: User) -> None:
-    """@CODE:SPEC:AUTH-001-004-001: Track failed attempts"""
     user.failed_attempts += 1
     if user.failed_attempts >= 5:
-        # @CODE:SPEC:AUTH-001-004-001: Lock for 30 minutes
         user.locked_until = datetime.utcnow() + timedelta(minutes=30)
     user.save()
 
 
-@CODE:SPEC:AUTH-001-004
 def _reset_failed_attempts(user: User) -> None:
-    """@CODE:SPEC:AUTH-001-004: Reset attempts on success"""
     user.failed_attempts = 0
     user.locked_until = None
     user.save()
@@ -402,7 +350,6 @@ def _reset_failed_attempts(user: User) -> None:
 
 def get_account_lock_status(email: str) -> dict:
     """
-    @CODE:SPEC:AUTH-001-004: Get lockout status
     """
     user = User.query.filter_by(email=email).first()
     if not user:
@@ -416,7 +363,6 @@ def get_account_lock_status(email: str) -> dict:
 
 
 def _generate_token(user: User) -> str:
-    """@CODE:SPEC:AUTH-001-002: Generate auth token"""
     import jwt
     payload = {
         "user_id": user.id,
@@ -433,17 +379,14 @@ def _generate_token(user: User) -> str:
 ```markdown
 # User Authentication
 
-@DOC:SPEC:AUTH-001
 Complete guide to user authentication system
 
 ## Overview
 
-@DOC:SPEC:AUTH-001-001: User Registration
 Users can register with email and password. The system validates email format and enforces password complexity requirements.
 
 ## User Registration
 
-@DOC:SPEC:AUTH-001-001
 ### Creating a New Account
 
 ```python
@@ -459,7 +402,6 @@ user = register_user("newuser@example.com", "SecurePass123")
 
 ## User Login
 
-@DOC:SPEC:AUTH-001-002
 ### Authenticating Users
 
 ```python
@@ -478,7 +420,6 @@ except ValueError:
 
 ## Password Security
 
-@DOC:SPEC:AUTH-001-003
 ### How Passwords Are Stored
 
 Passwords are hashed using bcrypt with 12 rounds of salting. This ensures:
@@ -488,7 +429,6 @@ Passwords are hashed using bcrypt with 12 rounds of salting. This ensures:
 
 ## Account Lockout
 
-@DOC:SPEC:AUTH-001-004
 ### Security Features
 
 - **Brute Force Protection**: Limited login attempts prevent automated attacks
@@ -503,30 +443,15 @@ See [migration-guide.md] for upgrading from legacy authentication.
 ```
 SPEC Layer:
   .moai/specs/SPEC-001/spec.md
-  @SPEC:AUTH-001
 
 TEST Layer:
   tests/test_auth.py
-  @TEST:SPEC:AUTH-001-001  (Registration)
-  @TEST:SPEC:AUTH-001-002  (Login)
-  @TEST:SPEC:AUTH-001-003  (Hashing)
-  @TEST:SPEC:AUTH-001-004  (Lockout)
 
 CODE Layer:
   src/auth.py
-  @CODE:SPEC:AUTH-001       (Main module)
-  @CODE:SPEC:AUTH-001-001   (register_user)
-  @CODE:SPEC:AUTH-001-002   (authenticate_user)
-  @CODE:SPEC:AUTH-001-003   (Password functions)
-  @CODE:SPEC:AUTH-001-004   (Lockout logic)
 
 DOC Layer:
   docs/authentication.md
-  @DOC:SPEC:AUTH-001        (Main doc)
-  @DOC:SPEC:AUTH-001-001    (Registration section)
-  @DOC:SPEC:AUTH-001-002    (Login section)
-  @DOC:SPEC:AUTH-001-003    (Security section)
-  @DOC:SPEC:AUTH-001-004    (Lockout section)
 
 Chain Verification:
   ✓ 1 SPEC with 4 sub-requirements
@@ -546,7 +471,6 @@ Chain Verification:
 #### Original SPEC Reference
 
 ```
-@SPEC:AUTH-001
   Requirement: "Passwords must be securely hashed"
   Status: APPROVED
 ```
@@ -558,7 +482,6 @@ BUG-042: Password reset tokens expire after 12 hours
 Expected: 24 hours
 Current: 12 hours
 Impact: Users unable to reset password after 12 hours
-Linked To: @SPEC:AUTH-001 (password security requirement)
 ```
 
 #### Fix Process
@@ -566,16 +489,13 @@ Linked To: @SPEC:AUTH-001 (password security requirement)
 **1. Create Bug Fix SPEC**
 
 ```markdown
-@SPEC:BUG-FIX-AUTH-TOKEN-001
 title: Fix password reset token expiration
-relates_to: @SPEC:AUTH-001
 severity: HIGH
 ```
 
 **2. Write Tests (RED)**
 
 ```python
-@TEST:SPEC:BUG-FIX-AUTH-TOKEN-001-001
 def test_reset_token_valid_24_hours():
     """Token should remain valid for 24 hours"""
     user = register_user("test@example.com", "Pass123")
@@ -591,7 +511,6 @@ def test_reset_token_valid_24_hours():
 **3. Implement Fix (GREEN)**
 
 ```python
-@CODE:SPEC:BUG-FIX-AUTH-TOKEN-001
 def create_password_reset_token(email: str) -> str:
     """
     Create password reset token
@@ -602,7 +521,6 @@ def create_password_reset_token(email: str) -> str:
     user = User.query.filter_by(email=email).first()
     payload = {
         "email": email,
-        # @CODE:SPEC:BUG-FIX-AUTH-TOKEN-001-001: Fixed to 24 hours
         "exp": datetime.utcnow() + timedelta(hours=24)  # Was: hours=12
     }
     return jwt.encode(payload, "secret", algorithm="HS256")
@@ -611,7 +529,6 @@ def create_password_reset_token(email: str) -> str:
 **4. Document Fix (DOC)**
 
 ```markdown
-@DOC:SPEC:BUG-FIX-AUTH-TOKEN-001
 ## Password Reset Token Fix
 
 **Issue**: Reset tokens expired after 12 hours  
@@ -619,7 +536,6 @@ def create_password_reset_token(email: str) -> str:
 **Date**: 2025-11-13  
 **Status**: RESOLVED
 
-See @DOC:SPEC:AUTH-001-003 for password security details
 ```
 
 **5. TAG Chain for Bug Fix**
@@ -627,11 +543,6 @@ See @DOC:SPEC:AUTH-001-003 for password security details
 ```
 Bug Fix Chain:
 ├─ Issue: BUG-042
-├─ Related SPEC: @SPEC:AUTH-001
-├─ Fix SPEC: @SPEC:BUG-FIX-AUTH-TOKEN-001
-├─ Test: @TEST:SPEC:BUG-FIX-AUTH-TOKEN-001-001
-├─ Code: @CODE:SPEC:BUG-FIX-AUTH-TOKEN-001
-└─ Doc: @DOC:SPEC:BUG-FIX-AUTH-TOKEN-001
 ```
 
 ---
@@ -642,15 +553,11 @@ Bug Fix Chain:
 
 **Found During Scan**:
 ```bash
-$ rg '@CODE:' src/
-src/payment.py:15: @CODE:PAYMENT-PROCESSOR-001
-# But no @SPEC:PAYMENT-PROCESSOR-001 exists!
 ```
 
 **Analysis**:
 ```python
 # File: src/payment.py
-@CODE:PAYMENT-PROCESSOR-001
 def process_payment(order_id, amount):
     """
     Process payment through Stripe
@@ -663,19 +570,16 @@ def process_payment(order_id, amount):
 
 **Step 1: Create Missing SPEC**
 ```markdown
-@SPEC:PAYMENT-PROCESSOR-001
 title: Payment Processing Module
 description: Process payments via Stripe API
 ```
 
 **Step 2: Create Tests**
 ```python
-@TEST:SPEC:PAYMENT-PROCESSOR-001-001
 def test_process_valid_payment():
     """Process payment with valid inputs"""
     pass
 
-@TEST:SPEC:PAYMENT-PROCESSOR-001-002
 def test_process_payment_rate_limit():
     """Respect Stripe rate limits"""
     pass
@@ -683,7 +587,6 @@ def test_process_payment_rate_limit():
 
 **Step 3: Link Code**
 ```python
-@CODE:SPEC:PAYMENT-PROCESSOR-001
 def process_payment(order_id, amount):
     """Now properly linked to SPEC"""
     pass
@@ -691,7 +594,6 @@ def process_payment(order_id, amount):
 
 **Step 4: Document**
 ```markdown
-@DOC:SPEC:PAYMENT-PROCESSOR-001
 ## Payment Processing
 Handles order payment processing via Stripe...
 ```

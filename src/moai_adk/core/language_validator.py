@@ -1,10 +1,8 @@
-# @CODE:TAG-LANG-001
 """
 Language Validator
 
 Provides comprehensive language validation capabilities for programming languages.
 
-@CODE:LANG-VALIDATOR: Language policy validation system
 """
 
 import os

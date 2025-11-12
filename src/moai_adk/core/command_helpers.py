@@ -1,6 +1,5 @@
 """
 Command Helper Utilities
-@CODE:W2-002 - Reusable patterns for command integration
 
 Provides helper functions for commands to interact with ContextManager
 and perform common operations like context extraction and validation.

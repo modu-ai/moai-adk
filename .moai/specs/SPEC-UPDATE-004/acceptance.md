@@ -1,4 +1,3 @@
-# 수락 기준: @SPEC:UPDATE-004
 
 > **Sub-agents를 Skills로 통합**
 
@@ -30,8 +29,6 @@ And 결과가 기존 tag-agent와 동일해야 함
 
 #### Scenario 2: 고아 TAG 탐지
 ```gherkin
-Given .moai/specs/에 @SPEC:ORPHAN-001이 있음
-And src/에 @CODE:ORPHAN-001은 없음
 When Alfred가 고아 TAG 탐지를 실행
 Then "ORPHAN-001은 고아 TAG입니다" 메시지가 반환되어야 함
 ```
@@ -39,20 +36,15 @@ Then "ORPHAN-001은 고아 TAG입니다" 메시지가 반환되어야 함
 **검증 방법**:
 ```bash
 # 고아 TAG 생성 (테스트용)
-echo "# @SPEC:ORPHAN-001" > .moai/specs/SPEC-ORPHAN-001/spec.md
 
 # 탐지 실행
 @agent-tag-agent "고아 TAG 탐지"
 
 # 예상 결과
-# ❌ ORPHAN-001: @CODE 없음 (고아 TAG)
 ```
 
 #### Scenario 3: TAG 체인 검증
 ```gherkin
-Given @SPEC:AUTH-001이 존재함
-And @TEST:AUTH-001이 존재함
-And @CODE:AUTH-001이 존재함
 When Alfred가 TAG 체인 검증을 실행
 Then "AUTH-001 TAG 체인이 완전합니다" 메시지가 반환되어야 함
 ```
@@ -60,9 +52,6 @@ Then "AUTH-001 TAG 체인이 완전합니다" 메시지가 반환되어야 함
 **검증 방법**:
 ```bash
 # TAG 체인 검증
-rg "@SPEC:AUTH-001" .moai/specs/
-rg "@TEST:AUTH-001" tests/
-rg "@CODE:AUTH-001" src/
 
 # 결과: 모두 존재하면 통과
 ```
@@ -556,8 +545,6 @@ bash .moai/specs/SPEC-UPDATE-004/verify-spec-update-004.sh
 ## 8. 수락 승인
 
 ### 8.1 승인자
-- **프로젝트 매니저**: @Goos
-- **기술 리드**: @Alfred
 
 ### 8.2 승인 기준
 - [ ] 모든 Phase 완료 조건 충족
@@ -575,5 +562,4 @@ approval:
 
 ---
 
-**작성자**: @Goos
 **최초 작성일**: 2025-10-19

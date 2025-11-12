@@ -4,28 +4,23 @@ version: 0.2.0
 status: completed
 created: 2025-10-06
 updated: 2025-10-18
-author: @Goos
 priority: high
 ---
 
-# @SPEC:INSTALLER-TEST-001: Test Coverage 85% Achievement
 
 ## HISTORY
 
 ### v0.2.0 (2025-10-18)
 - **CHANGED**: deprecated → completed (TypeScript 프로젝트 아카이브)
-- **AUTHOR**: @Goos
 - **REASON**: TypeScript 프로젝트에서 구현 완료된 기능, Python 전환으로 deprecated 처리했으나 실제로는 완료된 것으로 간주
 
 ### v0.1.0 (2025-10-16)
 - **DEPRECATED**: TypeScript 프로젝트용 SPEC, Python 프로젝트에는 적용 불가
-- **AUTHOR**: @Goos
 - **REASON**: MoAI-ADK가 Python 프로젝트로 전환됨에 따라 TypeScript 테스트 SPEC 불필요
 - **ALTERNATIVE**: Python 프로젝트는 이미 425개 pytest 테스트로 85% 커버리지 달성
 
 ### v0.0.1 (2025-10-06)
 - **INITIAL**: Installer 패키지 테스트 커버리지 85% 달성 명세 작성 (TypeScript용)
-- **AUTHOR**: @Goos
 - **SCOPE**: TypeScript installer 패키지 테스트
 
 ## 1. 개요
@@ -60,7 +55,6 @@ Installer 패키지의 모든 핵심 파일에 대해 85% 이상의 테스트 �
 
 **REQ-TEST-002**: 시스템은 Vitest 프레임워크를 사용하여 테스트를 작성해야 한다.
 
-**REQ-TEST-003**: 시스템은 각 테스트 파일에 `@TEST:INSTALLER-TEST-001` TAG를 포함해야 한다.
 
 **REQ-TEST-004**: 시스템은 TDD Red-Green-Refactor 사이클을 따라야 한다.
 
@@ -96,7 +90,6 @@ Installer 패키지의 모든 핵심 파일에 대해 85% 이상의 테스트 �
 
 ### 3.1 테스트 구조
 ```typescript
-// @TEST:INSTALLER-TEST-001 | SPEC: SPEC-INSTALLER-TEST-001.md
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TargetClass } from '../path/to/target';
 
@@ -149,5 +142,3 @@ pnpm test:coverage
 - `moai-adk-ts/vitest.config.ts`: 커버리지 설정
 
 ### 5.3 관련 TAG
-- `@TEST:INSTALLER-TEST-001`: 테스트 파일 TAG
-- `@CODE:REFACTOR-001`: 리팩토링된 소스 코드 TAG

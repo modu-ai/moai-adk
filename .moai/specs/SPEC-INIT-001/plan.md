@@ -5,7 +5,6 @@ created: 2025-10-06
 updated: 2025-10-06
 ---
 
-# @CODE:INIT-001 구현 계획
 
 ## 목차
 1. [구현 전략 개요](#구현-전략-개요)
@@ -449,7 +448,6 @@ GitHub Issue #2의 문제를 근본적으로 해결하면서 기존 대화형 �
 - [ ] **Readable**: Biome 린트 통과, 함수 ≤50 LOC
 - [ ] **Unified**: TypeScript 타입 안전성 확보
 - [ ] **Secured**: 입력 검증, 경로 traversal 방지
-- [ ] **Trackable**: @TAG:INIT-001 체인 무결성 확인
 
 ---
 

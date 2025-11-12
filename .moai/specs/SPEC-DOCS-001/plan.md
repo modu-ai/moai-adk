@@ -4,7 +4,6 @@ version: 1.0.0
 status: draft
 created: 2025-01-06
 updated: 2025-01-06
-author: @Goos
 priority: high
 category: documentation
 phase: planning
@@ -13,12 +12,8 @@ related_specs:
   - SPEC-INIT-001
   - SPEC-CONFIG-001
 traceability:
-  spec: "@SPEC:DOCS-001"
-  test: "@TEST:DOCS-001"
-  code: "@CODE:DOCS-001"
 ---
 
-# `@PLAN:DOCS-001: Document-master 에이전트 온라인 문서 구현 계획`
 
 ## 요약 (Summary)
 
@@ -68,7 +63,6 @@ SPEC-DOCS-001 v2.0.0의 요구사항을 만족시키기 위한 Document-master �
 - [ ] `docs/concepts/`
   - `spec-first.md` - SPEC-First 개념
   - `tdd.md` - TDD 개념
-  - `tag-system.md` - @TAG 시스템
   - `trust-principles.md` - TRUST 5원칙
   - `alfred-superagent.md` - Alfred 슈퍼에이전트
   - `workflow.md` - 4단계 워크플로우
@@ -122,10 +116,8 @@ SPEC-DOCS-001 v2.0.0의 요구사항을 만족시키기 위한 Document-master �
   ls -la hello-world/.moai/
   ```
 
-- [ ] `@CODE:` 태그로 실제 파일 연결
   ```markdown
   <!-- 코드 예제 -->
-  `@CODE:DOCS-001:INIT-EXAMPLE | SPEC: SPEC-DOCS-001`
   ```
 
 ### Phase 3: Mermaid 다이어그램 (우선순위: 중간)
@@ -156,9 +148,6 @@ SPEC-DOCS-001 v2.0.0의 요구사항을 만족시키기 위한 Document-master �
 - [ ] TAG 체인 시스템 다이어그램
   ```mermaid
   graph LR
-      SPEC[@SPEC:ID] --> TEST[@TEST:ID]
-      TEST --> CODE[@CODE:ID]
-      CODE --> DOC[@DOC:ID]
   ```
 
 #### 3.2 다이어그램 구현
@@ -293,6 +282,5 @@ SPEC-DOCS-001 v2.0.0의 요구사항을 만족시키기 위한 Document-master �
 
 ## 연락 정보 (Contact)
 
-- **담당자**: @Goos
 - **리뷰어**: Alfred SuperAgent
 - **관련 SPEC**: SPEC-INSTALL-001, SPEC-INIT-001

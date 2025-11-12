@@ -4,7 +4,6 @@ version: 0.1.0
 status: completed
 created: 2025-10-19
 updated: 2025-10-20
-author: @Alfred
 priority: high
 category: refactor
 labels:
@@ -18,7 +17,6 @@ scope:
     - 44개 모든 SKILL.md
 ---
 
-# @SPEC:SKILLS-REDESIGN-001: Skills 4-Tier 아키텍처 재설계
 
 > **비전**: "Layered Skills Architecture"를 통한 Progressive Disclosure 최적화
 >
@@ -79,7 +77,6 @@ scope:
 - **Works with**: moai-foundation-tags, moai-foundation-specs
 
 #### F-1.2: moai-foundation-tags (기존: tag-scanning)
-- **기능**: @TAG 직접 스캔, 인벤토리 생성 (CODE-FIRST)
 - **트리거**: `/alfred:3-sync` 자동 호출
 - **Output**: tag-inventory.md
 - **Works with**: moai-foundation-trust, moai-foundation-specs
@@ -221,7 +218,6 @@ Tier 4: moai-domain-{domain}
 
 ### v0.1.0 (2025-10-20)
 - **COMPLETED**: Skills 4-Tier 아키텍처 구현 완료
-- **AUTHOR**: @Alfred
 - **CHANGES**:
   - 모든 스킬 재구성: 46개 → 44개 (2개 삭제)
   - Tier 1: Foundation (6개) - 명명 및 구조 완성
@@ -251,5 +247,4 @@ Tier 4: moai-domain-{domain}
 ---
 
 **완료**: SPEC-SKILLS-REDESIGN-001 (v0.1.0)
-**작성자**: @Alfred SuperAgent
 **상태**: 구현 완료, 문서 동기화 완료

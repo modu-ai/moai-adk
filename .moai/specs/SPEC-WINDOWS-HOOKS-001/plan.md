@@ -1,6 +1,5 @@
 # 구현 계획: Windows 환경 stdin 처리 개선
 
-> **SPEC**: @SPEC:WINDOWS-HOOKS-001
 > **상태**: draft (v0.0.1)
 > **작성일**: 2025-10-18
 
@@ -350,5 +349,4 @@ alfred_hooks.py (main)
 ---
 
 **작성일**: 2025-10-18
-**작성자**: @Goos
 **다음 단계**: `/alfred:2-run WINDOWS-HOOKS-001` 실행

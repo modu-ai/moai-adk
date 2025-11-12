@@ -6,21 +6,11 @@ author: "Alfred"
 status: "draft"
 ---
 
-# @PLAN:MIGRATION-001: 실행 계획 및 기술 접근 방식
 
 ## 📋 TAG BLOCK
 
 ```
-@TASK:PLAN-001-001: Phase 1-4 실행 (기반 구축)
-@TASK:PLAN-001-002: Phase 5-8 실행 (핵심 기능)
-@TASK:PLAN-001-003: Phase 9-12 실행 (검증 및 안정화)
-@TASK:PLAN-001-004: 위험 관리 및 롤백 준비
-@TASK:PLAN-001-005: 성능 모니터링 및 최적화
 
-@TEST:PLAN-001-001: 단계별 기능 테스트
-@TEST:PLAN-001-002: 성능 벤치마크 테스트
-@TEST:PLAN-001-003: 회귀 테스트 및 검증
-@TEST:PLAN-001-004: 사용자 수용 테스트
 ```
 
 ## 🎯 개요
@@ -595,15 +585,7 @@ status: "draft"
 ## 🔍 추적성
 
 ### 관련 SPEC
-- @SPEC:MIGRATION-001: 마이그레이션 명세
-- @SPEC:DOCS-001: 기존 문서 설정
 
 ### 관련 코드
-- @CODE:NEXT-CONFIG-001: Next.js 설정
-- @CODE:NEXTRA-THEME-001: 테마 설정
-- @CODE:BUILD-PIPELINE-001: 빌드 파이프라인
 
 ### 관련 테스트
-- @TEST:PERFORMANCE-001: 성능 테스트
-- @TEST:I18N-001: 다국어 테스트
-- @TEST:SEARCH-001: 검색 기능 테스트

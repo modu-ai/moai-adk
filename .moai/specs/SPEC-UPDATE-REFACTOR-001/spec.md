@@ -49,11 +49,8 @@ category: refactor
 - **CONTEXT**: 문서-구현 불일치 해소, Alfred 중앙 오케스트레이션 복원
 - **SCOPE**: Phase 4 템플릿 복사 전략 전면 재설계 (Node.js fs → Claude Code 도구)
 
-## @TAG BLOCK
 
 ```text
-# @SPEC:UPDATE-REFACTOR-001 | Chain: @SPEC:UPDATE-REFACTOR-001 -> @CODE:UPDATE-REFACTOR-001 -> @TEST:UPDATE-REFACTOR-001 -> @DOC:UPDATE-REFACTOR-001
-# Related: @CODE:UPD-001, @CODE:UPD-TPL-001, @SPEC:UPDATE-CONFIG-002
 # Category: REFACTOR, CRITICAL, ALIGNMENT
 ```
 
@@ -127,7 +124,6 @@ category: refactor
 - 기존 사용자가 실행 중인 `/alfred:9-update`와의 하위 호환성 유지 (인터페이스 동일)
 - 테스트 커버리지 85% 이상 유지
 - 성능 저하 없음 (Claude Code 도구 사용으로 인한 속도는 허용)
-- @TAG 추적성 유지
 
 ## Requirements (기능 요구사항)
 
@@ -135,7 +131,6 @@ category: refactor
 
 #### R001: Alfred 중앙 오케스트레이션 복원
 
-**@SPEC:UPDATE-REFACTOR-001-R001**
 
 **WHEN** 사용자가 `/alfred:9-update`를 실행하면, Alfred는 다음 역할을 수행해야 한다:
 
@@ -153,7 +148,6 @@ category: refactor
 
 #### R002: 프로젝트 문서 지능적 보호
 
-**@SPEC:UPDATE-REFACTOR-001-R002**
 
 **WHEN** 프로젝트 문서(.moai/project/\*.md, CLAUDE.md)를 업데이트할 때, 시스템은 다음 절차를 따라야 한다:
 
@@ -195,7 +189,6 @@ category: refactor
 
 #### R003: 훅 파일 실행 권한 처리
 
-**@SPEC:UPDATE-REFACTOR-001-R003**
 
 **WHEN** .claude/hooks/alfred/ 디렉토리의 파일을 복사하면, 시스템은 다음을 수행해야 한다:
 
@@ -220,7 +213,6 @@ category: refactor
 
 #### R004: Output Styles 복사 포함
 
-**@SPEC:UPDATE-REFACTOR-001-R004**
 
 시스템은 .claude/output-styles/alfred/ 디렉토리를 템플릿 복사 대상에 포함해야 한다.
 
@@ -245,7 +237,6 @@ category: refactor
 
 #### R005: 검증 로직 강화
 
-**@SPEC:UPDATE-REFACTOR-001-R005**
 
 **WHEN** Phase 5 검증 단계에서, 시스템은 다음을 확인해야 한다:
 
@@ -282,7 +273,6 @@ category: refactor
 
 #### R006: 오류 복구 전략
 
-**@SPEC:UPDATE-REFACTOR-001-R006**
 
 **IF** Phase 4 실행 중 오류가 발생하면, 시스템은 다음 복구 전략을 적용해야 한다:
 
@@ -312,7 +302,6 @@ category: refactor
 
 #### R007: 품질 검증 옵션 구현
 
-**@SPEC:UPDATE-REFACTOR-001-R007**
 
 **WHERE** 사용자가 `--check-quality` 옵션을 제공하면, 시스템은 trust-checker를 호출할 수 있다:
 
@@ -324,7 +313,6 @@ category: refactor
 
 - 파일 무결성 (YAML frontmatter 유효성)
 - 설정 일관성 (config.json ↔ development-guide.md)
-- TAG 체계 (문서 내 @TAG 형식)
 - EARS 구문 (SPEC 템플릿 명세)
 
 **실행 방식**:
@@ -347,7 +335,6 @@ Phase 6: 품질 검증
 
 #### R008: 예상 파일 개수 동적 검증
 
-**@SPEC:UPDATE-REFACTOR-001-R008**
 
 시스템은 템플릿 디렉토리에서 예상 파일 개수를 동적으로 계산할 수 있다:
 
@@ -365,7 +352,6 @@ IF N != M → 경고 출력
 
 #### R009: 로그 메시지 개선
 
-**@SPEC:UPDATE-REFACTOR-001-R009**
 
 시스템은 각 파일 복사 시 상세한 로그를 출력할 수 있다:
 
@@ -455,7 +441,6 @@ Alfred (CLAUDE.md 컨텍스트)
 
 ##### A. 명령어 파일 복사 (.claude/commands/alfred/)
 
-**@SPEC:UPDATE-REFACTOR-001-PHASE4-A**
 
 ```text
 [Step 1] npm root 확인
@@ -486,7 +471,6 @@ Alfred (CLAUDE.md 컨텍스트)
 
 ##### B. 에이전트 파일 복사 (.claude/agents/alfred/)
 
-**@SPEC:UPDATE-REFACTOR-001-PHASE4-B**
 
 절차는 A와 동일, 경로만 변경:
 
@@ -497,7 +481,6 @@ Alfred (CLAUDE.md 컨텍스트)
 
 ##### C. 훅 파일 복사 + 권한 부여 (.claude/hooks/alfred/)
 
-**@SPEC:UPDATE-REFACTOR-001-PHASE4-C**
 
 ```text
 [Step 1-3] A와 동일 (경로: .claude/hooks/alfred/*.cjs)
@@ -515,7 +498,6 @@ Alfred (CLAUDE.md 컨텍스트)
 
 ##### D. Output Styles 복사 (.claude/output-styles/alfred/)
 
-**@SPEC:UPDATE-REFACTOR-001-PHASE4-D** _(신규 추가)_
 
 ```text
 [Step 1] 템플릿 파일 검색
@@ -532,7 +514,6 @@ Alfred (CLAUDE.md 컨텍스트)
 
 ##### E. 개발 가이드 복사 (.moai/memory/development-guide.md)
 
-**@SPEC:UPDATE-REFACTOR-001-PHASE4-E**
 
 ```text
 [Step 1] 파일 읽기
@@ -552,7 +533,6 @@ Alfred (CLAUDE.md 컨텍스트)
 
 ##### F-I. 프로젝트 문서 복사 (지능적 보호)
 
-**@SPEC:UPDATE-REFACTOR-001-PHASE4-FGH**
 
 각 파일(product.md, structure.md, tech.md, CLAUDE.md)마다 다음 절차:
 
@@ -596,7 +576,6 @@ Alfred (CLAUDE.md 컨텍스트)
 
 #### 3.1 파일 개수 검증
 
-**@SPEC:UPDATE-REFACTOR-001-PHASE5-COUNT**
 
 ```text
 [Check 1] 명령어 파일
@@ -629,7 +608,6 @@ Alfred (CLAUDE.md 컨텍스트)
 
 #### 3.2 YAML Frontmatter 검증
 
-**@SPEC:UPDATE-REFACTOR-001-PHASE5-YAML**
 
 ```text
 [Sample Check] 명령어 파일 검증
@@ -649,7 +627,6 @@ Alfred (CLAUDE.md 컨텍스트)
 
 #### 3.3 버전 정보 확인
 
-**@SPEC:UPDATE-REFACTOR-001-PHASE5-VERSION**
 
 ```text
 [Check 1] development-guide.md 버전
@@ -855,7 +832,6 @@ Phase 6: 품질 검증
 
 - [ ] 테스트 커버리지 85% 이상
 - [ ] 모든 오류에 대한 복구 전략 존재
-- [ ] @TAG 체인 무결성 유지
 - [ ] 하위 호환성 유지 (기존 사용자에게 영향 없음)
 
 ---
@@ -1027,9 +1003,6 @@ Phase 6: 품질 검증
 
 ### 관련 SPEC
 
-- @SPEC:UPDATE-CONFIG-002 (UpdateConfiguration 타입)
-- @SPEC:UPDATE-RESULT-002 (UpdateResult 타입)
-- @SPEC:REFACTOR-002 (git-manager.ts 리팩토링 참고)
 
 ### 관련 코드
 
@@ -1048,7 +1021,6 @@ Phase 6: 품질 검증
 - Readable: 코드 가독성 및 문서화
 - Unified: 타입 안전성
 - Secured: 입력 검증 및 권한 관리
-- Trackable: @TAG 체인 추적성
 
 ---
 
@@ -1135,13 +1107,10 @@ Phase 4 완료! (총 31개 파일 복사)
 
 ```bash
 # SPEC TAG 확인
-rg "@SPEC:UPDATE-REFACTOR-001" -n
 
 # CODE TAG 확인 (구현 후)
-rg "@CODE:UPDATE-REFACTOR-001" -n
 
 # TEST TAG 확인 (테스트 후)
-rg "@TEST:UPDATE-REFACTOR-001" -n
 
 # 체인 무결성 검증
 rg "@(SPEC|CODE|TEST):UPDATE-REFACTOR-001" -n

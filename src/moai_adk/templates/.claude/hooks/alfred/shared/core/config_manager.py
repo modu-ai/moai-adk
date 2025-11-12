@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @CODE:HOOKS-CONFIG-001 | SPEC: HOOKS-STANDARDIZATION-003
 """Configuration Manager for Alfred Hooks
 
 Provides centralized configuration management with fallbacks and validation.

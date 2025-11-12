@@ -30,7 +30,6 @@ uv pip install fastapi python-jose[cryptography] passlib[bcrypt] python-multipar
 
 ```python
 # SPEC: AUTH-001 - JWT 인증 유틸리티
-# @TAG:AUTH-001
 
 from datetime import datetime, timedelta
 from typing import Optional
@@ -149,7 +148,6 @@ def decode_access_token(token: str) -> TokenData:
 
 ```python
 # SPEC: AUTH-002 - 사용자 모델
-# @TAG:AUTH-002
 
 from sqlalchemy import Column, Integer, String, Boolean, DateTime
 from sqlalchemy.sql import func
@@ -239,7 +237,6 @@ def authenticate_user(db: Session, username: str, password: str) -> Optional[mod
 
 ```python
 # SPEC: AUTH-003 - 인증 API
-# @TAG:AUTH-003
 
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -462,7 +459,6 @@ curl -X GET "http://localhost:8000/users/me" \
 
 ```python
 # SPEC: TEST-AUTH-001 - JWT 인증 테스트
-# @TAG:TEST-AUTH-001
 
 import pytest
 from fastapi.testclient import TestClient

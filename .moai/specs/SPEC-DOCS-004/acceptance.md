@@ -1,6 +1,5 @@
 # Acceptance Criteria: README.md Documentation Update to v0.8.2
 
-**@ACCEPTANCE:DOCS-004**
 
 ## Overview
 
@@ -9,10 +8,6 @@ Comprehensive acceptance criteria for verifying README.md updates to v0.8.2, inc
 ## TAG BLOCK
 
 ```
-@ACCEPTANCE:DOCS-004
-@SPEC:DOCS-004
-@PLAN:DOCS-004
-@TEST:DOCS-004-README-VALIDATION
 ```
 
 ## Acceptance Criteria Format
@@ -25,7 +20,6 @@ All criteria follow **Given-When-Then** format for clarity and testability.
 
 ### AC-1.1: Install Command Version
 
-**@TEST:DOCS-004-AC-001-INSTALL**
 
 **GIVEN** README.md contains installation instructions
 **WHEN** user reads the install command at line 1970
@@ -45,7 +39,6 @@ grep -n "uv tool install moai-adk==0.4.11" README.md
 
 ### AC-1.2: PyPI Package Link
 
-**@TEST:DOCS-004-AC-002-PYPI**
 
 **GIVEN** Community & Support section exists in README.md
 **WHEN** user views PyPI package information at line 1992
@@ -64,7 +57,6 @@ curl -I https://pypi.org/project/moai-adk/ | grep "HTTP/2 200"
 
 ### AC-1.3: GitHub Release Link
 
-**@TEST:DOCS-004-AC-003-RELEASE**
 
 **GIVEN** Community & Support section exists in README.md
 **WHEN** user views Latest Release information at line 1993
@@ -87,14 +79,12 @@ gh release view v0.8.2 --json name,tagName
 
 ### AC-2.1: Six New Version Entries
 
-**@TEST:DOCS-004-AC-004-HISTORY**
 
 **GIVEN** README.md "Latest Updates" section exists (lines 1960-1968)
 **WHEN** user views the version history table
 **THEN** the table shall contain entries for:
 1. v0.8.2 (EARS terminology update)
 2. v0.8.1 (Command rename)
-3. v0.8.0 (@DOC TAG auto-generation)
 4. v0.7.0 (Language localization)
 5. v0.6.3 (3-Stage workflow)
 6. v0.6.0 (Architecture refactor)
@@ -120,7 +110,6 @@ grep "v0.6.0" README.md
 
 ### AC-2.2: Feature Description Accuracy
 
-**@TEST:DOCS-004-AC-005-FEATURES**
 
 **GIVEN** version history table contains 6 new entries
 **WHEN** user reads feature descriptions
@@ -130,7 +119,6 @@ grep "v0.6.0" README.md
 |---------|------------------|------------|
 | v0.8.2 | "EARS", "Unwanted Behaviors", "Constraints" | ✅ |
 | v0.8.1 | "Command rename", "9-help", "9-feedback" | ✅ |
-| v0.8.0 | "@DOC TAG", "auto-generation", "SessionStart" | ✅ |
 | v0.7.0 | "language", "localization", "5 languages" or "English, Korean" | ✅ |
 | v0.6.3 | "3-Stage", "70-80%", "performance" | ✅ |
 | v0.6.0 | "architecture", "SPEC metadata", "7 required" | ✅ |
@@ -151,7 +139,6 @@ grep "v0.7.0" README.md | grep -qE "(5 languages|English.*Korean.*Japanese)"
 
 ### AC-3.1: Global "55+" Standardization
 
-**@TEST:DOCS-004-AC-006-SKILLS-COUNT**
 
 **GIVEN** README.md contains multiple references to Skills count
 **WHEN** searching for Skills count mentions
@@ -174,7 +161,6 @@ grep -n "55+" README.md | grep -i skills
 
 ### AC-3.2: Consistent Notation Format
 
-**@TEST:DOCS-004-AC-007-SKILLS-FORMAT**
 
 **GIVEN** Skills count is standardized to "55+"
 **WHEN** user encounters Skills references
@@ -202,7 +188,6 @@ grep -n "55+" README.md
 
 ### AC-4.1: Badge Reflects Current Coverage
 
-**@TEST:DOCS-004-AC-008-COVERAGE-BADGE**
 
 **GIVEN** project test suite has measurable coverage
 **WHEN** coverage measurement runs: `pytest --cov=moai_adk --cov-report=term`
@@ -227,7 +212,6 @@ echo "Measured: ${coverage_value}%, Badge: ${badge_value}%"
 
 ### AC-4.2: Badge Link Accessibility
 
-**@TEST:DOCS-004-AC-009-BADGE-LINK**
 
 **GIVEN** coverage badge is displayed in README.md
 **WHEN** user clicks badge link
@@ -249,7 +233,6 @@ curl -I "$badge_link" | grep "HTTP"
 
 ### AC-5.1: Korean README Update
 
-**@TEST:DOCS-004-AC-010-KOREAN**
 
 **GIVEN** README.ko.md exists as Korean translation
 **WHEN** comparing README.ko.md to README.md
@@ -274,7 +257,6 @@ grep -q "v0.7.0" README.ko.md      # Should return success
 
 ### AC-5.2: Japanese README Update
 
-**@TEST:DOCS-004-AC-011-JAPANESE**
 
 **GIVEN** README.ja.md exists as Japanese translation
 **WHEN** comparing README.ja.md to README.md
@@ -285,7 +267,6 @@ grep -q "v0.7.0" README.ko.md      # Should return success
 
 ### AC-5.3: Chinese README Update
 
-**@TEST:DOCS-004-AC-012-CHINESE**
 
 **GIVEN** README.zh.md exists as Chinese translation
 **WHEN** comparing README.zh.md to README.md
@@ -296,7 +277,6 @@ grep -q "v0.7.0" README.ko.md      # Should return success
 
 ### AC-5.4: Translation Consistency Matrix
 
-**@TEST:DOCS-004-AC-013-TRANSLATION-MATRIX**
 
 **GIVEN** all 4 README files have been updated
 **WHEN** performing consistency check
@@ -328,7 +308,6 @@ done
 
 ### AC-6.1: PyPI Package Accessibility
 
-**@TEST:DOCS-004-AC-014-PYPI-ACCESS**
 
 **GIVEN** README.md contains PyPI package link
 **WHEN** HTTP GET request is made to https://pypi.org/project/moai-adk/
@@ -342,7 +321,6 @@ curl -I https://pypi.org/project/moai-adk/ | grep "HTTP/2 200"
 
 ### AC-6.2: GitHub Release Accessibility
 
-**@TEST:DOCS-004-AC-015-RELEASE-ACCESS**
 
 **GIVEN** README.md contains GitHub release link
 **WHEN** HTTP GET request is made to https://github.com/modu-ai/moai-adk/releases/tag/v0.8.2
@@ -356,7 +334,6 @@ gh release view v0.8.2 --json name,tagName,publishedAt
 
 ### AC-6.3: Coverage Service Accessibility
 
-**@TEST:DOCS-004-AC-016-COVERAGE-ACCESS**
 
 **GIVEN** README.md contains Codecov badge link
 **WHEN** HTTP GET request is made to Codecov URL
@@ -376,7 +353,6 @@ curl -I "$badge_url" | grep "HTTP"
 
 ### AC-7.1: No Version Inconsistencies
 
-**@TEST:DOCS-004-AC-017-NO-OLD-VERSIONS**
 
 **GIVEN** README.md has been updated to v0.8.2
 **WHEN** searching for old version references
@@ -395,7 +371,6 @@ echo $?  # Expected: 1 (no matches)
 
 ### AC-7.2: Emoji Icons Consistency
 
-**@TEST:DOCS-004-AC-018-EMOJI-CONSISTENCY**
 
 **GIVEN** version history table contains entries with emoji icons
 **WHEN** reviewing emoji usage
@@ -416,7 +391,6 @@ grep -oP "^\| \*\*v0\.\d+\.\d+\*\*  \| [^\|]*" README.md | wc -l
 
 ### AC-7.3: Date Format Consistency
 
-**@TEST:DOCS-004-AC-019-DATE-FORMAT**
 
 **GIVEN** version history table contains date column
 **WHEN** reviewing date values
@@ -438,7 +412,6 @@ grep "^\| \*\*v0\." README.md | grep -oP "\d{4}-\d{2}-\d{2}" | wc -l
 
 ### AC-8.1: "Constraints" Replaced with "Unwanted Behaviors"
 
-**@TEST:DOCS-004-AC-020-EARS-TERMINOLOGY**
 
 **GIVEN** EARS methodology section exists in README.md (if applicable)
 **WHEN** searching for EARS-related terminology
@@ -460,27 +433,23 @@ grep -n "Constraints" README.md | grep -i "ears"
 
 ### AC-9.1: Proper Commit Message
 
-**@TEST:DOCS-004-AC-021-COMMIT-MESSAGE**
 
 **GIVEN** README updates have been staged for commit
 **WHEN** commit is created
 **THEN** commit message shall include:
 - Conventional commit format: `docs(readme): ...`
 - Description of changes (version update, changelog expansion, etc.)
-- TAG references: `@SPEC:DOCS-004`, `@DOC:README-VERSION-UPDATE-001`
 - MoAI-ADK signature: "🤖 Generated with Claude Code"
 - Co-author line: "Co-Authored-By: Claude <noreply@anthropic.com>"
 
 **Validation Method**:
 ```bash
 # After commit, check message
-git log -1 --pretty=%B | grep "@SPEC:DOCS-004"
 git log -1 --pretty=%B | grep "Co-Authored-By: Claude"
 ```
 
 ### AC-9.2: Correct Files Staged
 
-**@TEST:DOCS-004-AC-022-FILES-STAGED**
 
 **GIVEN** documentation update is complete
 **WHEN** staging files for commit
@@ -507,7 +476,6 @@ git diff --name-only --cached | sort
 
 ### AC-10.1: No Broken Markdown Formatting
 
-**@TEST:DOCS-004-AC-023-MARKDOWN-VALID**
 
 **GIVEN** README.md has been updated
 **WHEN** rendering README in markdown viewer
@@ -526,7 +494,6 @@ gh api repos/modu-ai/moai-adk/readme --jq .content | base64 -d > /tmp/readme_pre
 
 ### AC-10.2: No Accidental Content Deletion
 
-**@TEST:DOCS-004-AC-024-NO-DELETION**
 
 **GIVEN** README.md before and after update
 **WHEN** comparing line counts
@@ -639,17 +606,9 @@ echo "✅ All SPEC-DOCS-004 acceptance tests passed!"
 
 ## Traceability
 
-**Parent SPEC**: @SPEC:DOCS-004
-**Implementation Plan**: @PLAN:DOCS-004
-**Test Coverage**: @TEST:DOCS-004-README-VALIDATION
 
 **Related Tests**:
-- @TEST:DOCS-004-AC-001-INSTALL - Install command version
-- @TEST:DOCS-004-AC-004-HISTORY - Version history completeness
-- @TEST:DOCS-004-AC-006-SKILLS-COUNT - Skills count standardization
-- @TEST:DOCS-004-AC-013-TRANSLATION-MATRIX - Translation parity
 
 ---
 
 **Last Updated**: 2025-10-29
-**Author**: @GOOS

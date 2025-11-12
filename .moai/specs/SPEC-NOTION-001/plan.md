@@ -8,13 +8,9 @@ version: 1.0.0
 author: GOOS행
 created_at: "2025-11-13T02:25:00Z"
 tags:
-  - @SPEC:NOTION-001
-  - @PLAN:IMPLEMENTATION
-  - @PHASE:DEVELOPMENT
 target_branch: feature/SPEC-NOTION-001
 ---
 
-# @SPEC:NOTION-001: 구현 계획
 
 ## 개요
 Notion 전문가 Agent 및 통합 Skills 개발을 위한 상세한 구현 계획. 단계별 접근법과 기술적 세부사항을 포함한 포괄적인 실행 로드맵 제공.

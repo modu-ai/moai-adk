@@ -1,6 +1,4 @@
-# @CODE:INIT-PHASE-002 | SPEC: .moai/specs/SPEC-INIT-003/spec.md | TEST: tests/unit/test_init_reinit.py
 # type: ignore
-# @CODE:TEST-COVERAGE-001 | SPEC: SPEC-TEST-COVERAGE-001.md | TEST: tests/unit/test_phase_executor.py
 """Phase-based installation executor (SPEC-INIT-003 v0.4.2)
 
 Runs the project initialization across five phases:
@@ -309,7 +307,6 @@ class PhaseExecutor:
 
         # Set template variable context (if provided)
         if config:
-            # @TAG:LANG-FIX-001:PY-CONFIG | Read language from nested config structure
             language_config: dict[str, Any] = config.get("language", {})
             if not isinstance(language_config, dict):
                 language_config = {}
@@ -577,8 +574,6 @@ class PhaseExecutor:
     ) -> None:
         """Phase 5: validation and wrap-up.
 
-        @CODE:INIT-PHASE-001 | Phase 5 verification logic
-        @REQ:VALIDATION-002 | SPEC-INIT-004: Verify required files after initialization completion
 
         Args:
             project_path: Project path.

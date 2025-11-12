@@ -4,7 +4,6 @@ version: 0.1.0
 status: completed
 created: 2025-10-15
 updated: 2025-10-15
-author: @Goos
 priority: high
 category: feature
 labels:
@@ -26,13 +25,11 @@ scope:
     - checker.py
 ---
 
-# @SPEC:CLI-001: CLI 명령어 고도화 - doctor/status/restore 개선
 
 ## HISTORY
 
 ### v0.1.0 (2025-10-15)
 - **COMPLETED**: doctor 명령어 고도화 (20개 언어 도구 체인 검증) 구현 완료
-- **AUTHOR**: @Goos
 - **REVIEW**: N/A (Personal implementation)
 - **CHANGES**:
   - Phase 1: 언어별 도구 체인 매핑 (LANGUAGE_TOOLS 상수, checker.py 431 LOC)
@@ -45,7 +42,6 @@ scope:
 
 ### v0.0.1 (2025-10-15)
 - **INITIAL**: CLI 명령어 고도화 명세 최초 작성
-- **AUTHOR**: @Goos
 - **SCOPE**: doctor/status/restore 명령어 기능 확장
 - **CONTEXT**: 85.61% 테스트 커버리지 달성 후 사용성 개선 단계 진입
 - **MOTIVATION**:
@@ -292,7 +288,6 @@ scope:
 
 ### AC-11: status TAG 체인 끊어짐 감지
 
-- **Given**: CODE에 `@CODE:AUTH-004`이 있지만 SPEC이 없을 때
 - **When**: `moai status --detail` 실행
 - **Then**:
   - TAG 체인 무결성: "⚠ 1 broken chain"
@@ -308,9 +303,7 @@ scope:
   - Git status 요약 표시
   - 계속 진행 여부 확인: "Proceed? (y/n)"
 
-## Traceability (@TAG)
 
-- **SPEC**: `@SPEC:CLI-001`
 - **TEST**:
   - `tests/unit/test_doctor.py`
   - `tests/unit/test_status.py`

@@ -1,4 +1,3 @@
-# @SPEC:HOOKS-003 구현 계획서
 
 > **TRUST 원칙 자동 검증 (PostToolUse 통합)**
 >
@@ -237,22 +236,18 @@ def format_validation_result(result: dict) -> str:
 ```
 .claude/hooks/alfred/
 ├── handlers/
-│   ├── tool.py              # @CODE:HOOKS-003 (PostToolUse 핸들러)
 │   │   ├── detect_tdd_completion()
 │   │   ├── is_alfred_build_command()
 │   │   └── handle_post_tool_use()
-│   └── notification.py      # @CODE:HOOKS-003 (결과 알림)
 │       ├── collect_pending_validation_results()
 │       └── format_validation_result()
 ├── core/
-│   └── validation.py        # @CODE:HOOKS-003 (검증 유틸리티)
 │       ├── trigger_trust_validation()
 │       ├── collect_validation_result()
 │       ├── save_validation_pid()
 │       └── load_validation_pids()
 └── tests/
     └── unit/
-        └── test_hooks_trust_validation.py  # @TEST:HOOKS-003
 ```
 
 ### 데이터 흐름
@@ -397,7 +392,6 @@ def format_validation_result(result: dict) -> str:
 - [ ] spec.md에 EARS 구문 충실히 적용 (10개 요구사항)
 - [ ] plan.md에 3단계 마일스톤, 기술적 접근, 아키텍처, 리스크 명시
 - [ ] acceptance.md에 6개 Given-When-Then 시나리오 작성
-- [ ] TAG 체인 명확히 표기 (@SPEC, @TEST, @CODE)
 - [ ] 의존성 TAG 명시 (HOOKS-001, TRUST-001)
 - [ ] 테스트 커버리지 ≥85% 목표 명시
 - [ ] 성능 목표 명시 (<100ms PostToolUse, <10ms Git 파싱)
@@ -405,5 +399,4 @@ def format_validation_result(result: dict) -> str:
 ---
 
 **Last Updated**: 2025-10-16
-**Author**: @Goos
 **Status**: Draft (v0.0.1)

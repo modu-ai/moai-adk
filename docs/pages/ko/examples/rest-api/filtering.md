@@ -24,7 +24,6 @@ tags: [fastapi, filtering, search, sqlalchemy, query]
 
 ```python
 # SPEC: API-020 - 필터링 스키마
-# @TAG:API-020
 
 from pydantic import BaseModel, Field
 from typing import Optional
@@ -68,7 +67,6 @@ class ProductFilterParams(BaseModel):
 
 ```python
 # SPEC: API-021 - 동적 쿼리 필터링
-# @TAG:API-021
 
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_, desc, asc
@@ -189,7 +187,6 @@ def get_filtered_products(
 
 ```python
 # SPEC: API-022 - 필터링 API
-# @TAG:API-022
 
 from fastapi import FastAPI, Depends, Query
 from sqlalchemy.orm import Session
@@ -368,7 +365,6 @@ query = query.filter(
 
 ```python
 # SPEC: TEST-API-020 - 필터링 테스트
-# @TAG:TEST-API-020
 
 import pytest
 from fastapi.testclient import TestClient

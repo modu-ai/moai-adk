@@ -8,7 +8,6 @@ created: "2025-11-10"
 author: "GoosLab"
 ---
 
-# @SPEC:STATUSLINE-RENDERER-001 | @EXPERT:FRONTEND | @EXPERT:UIUX
 
 ## SPEC Overview
 
@@ -23,9 +22,6 @@ This SPEC defines the statusline renderer system for MoAI-ADK, which provides co
 
 ## Implementation Files
 
-- **CODE**: @CODE:STATUSLINE-RENDERER-001 - Statusline renderer implementation
-- **TEST**: @TEST:STATUSLINE-RENDERER-001 - Statusline renderer tests
-- **DOC**: @DOC:STATUSLINE-RENDERER-001 - Statusline renderer documentation
 
 ## Acceptance Criteria
 
@@ -39,5 +35,4 @@ This SPEC defines the statusline renderer system for MoAI-ADK, which provides co
 ## Traceability Chain
 
 ```
-@SPEC:STATUSLINE-RENDERER-001 → @CODE:STATUSLINE-RENDERER-001 → @TEST:STATUSLINE-RENDERER-001 → @DOC:STATUSLINE-RENDERER-001
 ```

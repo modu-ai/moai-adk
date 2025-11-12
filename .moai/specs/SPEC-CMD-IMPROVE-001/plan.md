@@ -1,4 +1,3 @@
-# 구현 계획: @SPEC:CMD-IMPROVE-001
 
 **SPEC ID**: CMD-IMPROVE-001
 **Title**: Commands 레이어 컨텍스트 전달 및 Resume 기능 통합 개선
@@ -573,7 +572,6 @@ def cleanup_expired_states(state_dir: str) -> int:
 - [x] Week 1: 컨텍스트 매니저 핵심 모듈 완성
 - [x] Week 2: command_helpers.py 구현 완료 (2025-11-12)
   - 27 tests, 90.41% coverage
-  - @CODE:W2-002, @TEST:W2-001 through W2-010
 - [ ] Week 3-4: 4개 Command 파일 리팩토링
 - [ ] Week 5-6: Resume 핸들러 구현
 - [ ] Week 7-8: 문서화 및 E2E 테스트

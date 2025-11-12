@@ -54,7 +54,6 @@ Alfred가 다음 설정을 안내합니다:
 **품질 설정:**
 - 테스트 커버리지 목표: 85%
 - TDD 강제: 활성화
-- @TAG 시스템: 활성화
 
 ## 2단계: 핵심 기능 SPEC 작성
 
@@ -751,24 +750,15 @@ todo-app/
 - **보안**: 자동 보안 스캔 및 취약점 검출
 - **성능**: 자동 성능 테스트 및 최적화
 
-### ✅ @TAG 추적성
 
 ```
-@SPEC-AUTH-001 (사용자 인증 시스템)
     ↓
-@TEST-AUTH-001 (인증 테스트 스위트)
     ↓
-@CODE-AUTH-001:SERVICE (인증 서비스 구현)
     ↓
-@DOC-AUTH-001 (API 문서)
 
-@SPEC-TODO-001 (To-Do CRUD 기능)
     ↓
-@TEST-TODO-001 (To-Do 테스트 스위트)
     ↓
-@CODE-TODO-001:SERVICE (To-Do 서비스 구현)
     ↓
-@DOC-TODO-001 (To-Do API 문서)
 ```
 
 ## 다음 단계

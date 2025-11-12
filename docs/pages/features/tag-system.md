@@ -1,26 +1,17 @@
 ---
-title: "@TAG 추적성 시스템"
-description: "완전한 추적성을 위한 @TAG 시스템으로 모든 산출물 연결"
 ---
 
-# @TAG 추적성 시스템
 
-@TAG 시스템은 MoAI-ADK의 핵심 추적성 기능으로, 요구사항부터 코드, 테스트, 문서까지 모든 산출물을 완벽하게 연결합니다.
 
 ## 🎯 시스템 개요
 
-@TAG 시스템은 **소스 코드 자체에 진실이 존재한다**는 철학을 기반으로 하며, 모든 개발 산출물 간의 완벽한 추적성을 보장합니다.
 
 ### 추적성 체인
 
 ```
-@SPEC:AUTH-001 (요구사항)
     ↓
-@TEST:AUTH-001 (테스트)
     ↓
-@CODE:AUTH-001:SERVICE (구현)
     ↓
-@DOC:AUTH-001 (문서)
 ```
 
 ## 🏷️ TAG 카테고리
@@ -29,18 +20,6 @@ MoAI-ADK는 13개의 TAG 카테고리를 지원하여 모든 종류의 개발 �
 
 | 카테고리 | 설명 | 사용 예시 |
 |---------|------|-----------|
-| **REQ** | 요구사항 | `@REQ:USER-001` |
-| **DESIGN** | 설계 결정 | `@DESIGN:ARCH-001` |
-| **TASK** | 작업 항목 | `@TASK:REFACTOR-001` |
-| **TEST** | 테스트 관련 | `@TEST:API-001` |
-| **FEATURE** | 기능 구현 | `@FEATURE:AUTH-001` |
-| **API** | API 엔드포인트 | `@API:USER-SERVICE` |
-| **UI** | 사용자 인터페이스 | `@UI:LOGIN-FORM` |
-| **DATA** | 데이터 관리 | `@DATA:DATABASE-001` |
-| **RESEARCH** | 연구 활동 | `@RESEARCH:PERFORMANCE-001` |
-| **ANALYSIS** | 분석 결과 | `@ANALYSIS:BOTTLENECK-001` |
-| **KNOWLEDGE** | 지식 축적 | `@KNOWLEDGE:PATTERN-001` |
-| **INSIGHT** | 인사이트 | `@INSIGHT:OPTIMIZATION-001` |
 
 ## 🔧 TAG 정책 설정
 
@@ -159,7 +138,6 @@ MoAI-ADK는 13개의 TAG 카테고리를 지원하여 모든 종류의 개발 �
 
 ```bash
 # TAG 검색 명령어
-rg '@TAG' -n
 
 # 스캔 도구
 - rg (ripgrep) - 기본
@@ -182,10 +160,6 @@ rg '@TAG' -n
 ```json
 {
   "research_patterns": {
-    "RESEARCH": ["@RESEARCH:", "research", "investigate", "analyze"],
-    "ANALYSIS": ["@ANALYSIS:", "analysis", "evaluate", "assess"],
-    "KNOWLEDGE": ["@KNOWLEDGE:", "knowledge", "learn", "pattern"],
-    "INSIGHT": ["@INSIGHT:", "insight", "innovate", "optimize"]
   }
 }
 ```
@@ -197,10 +171,8 @@ rg '@TAG' -n
 ```python
 # src/auth_service.py
 class AuthService:
-    """@CODE:AUTH-001:SERVICE 사용자 인증 서비스"""
 
     def login(self, username: str, password: str) -> str:
-        """@TEST:AUTH-001 로그인 기능 구현"""
         # JWT 토큰 생성 및 반환
         pass
 ```
@@ -208,7 +180,6 @@ class AuthService:
 ```python
 # tests/test_auth.py
 def test_login_success():
-    """@TEST:AUTH-001:SUCCESS 로그인 성공 테스트"""
     # 테스트 구현
     pass
 ```
@@ -218,19 +189,16 @@ def test_login_success():
 ```python
 # performance_analysis.py
 """
-@ANALYSIS:PERF-001
 API 성능 병목 현상 분석 결과
 
 주요 발견:
 - 데이터베이스 쿼리 최적화 필요
 - 캐싱 전략 개선 제안
 
-@KNOWLEDGE:CACHING-001
 캐싱 패턴 모범 사례 정리
 """
 
 def analyze_performance():
-    """@RESEARCH:PERFORMANCE-001 성능 분석 연구"""
     pass
 ```
 
@@ -241,12 +209,6 @@ def analyze_performance():
 
 ## 추적성
 
-- @SPEC:AUTH-001 (본 문서)
-- @CODE:AUTH-001:SERVICE (AuthService 구현)
-- @CODE:AUTH-001:CONTROLLER (AuthController 구현)
-- @TEST:AUTH-001 (통합 테스트)
-- @TEST:AUTH-001:UNIT (단위 테스트)
-- @DOC:AUTH-001 (API 문서)
 ```
 
 ## 🛡️ 훅 통합
@@ -285,8 +247,6 @@ def analyze_performance():
 
 ### 1. TAG 명명 규칙
 
-- **형식**: `@CATEGORY:IDENTIFIER[:SUBCATEGORY]`
-- **예시**: `@SPEC:AUTH-001`, `@CODE:AUTH-001:SERVICE`
 - **일관성**: 프로젝트 전체 동일한 규칙 사용
 
 ### 2. 체인 유지
@@ -294,7 +254,6 @@ def analyze_performance():
 ```python
 # 좋은 예시
 def user_registration():
-    """@CODE:USER-001:SERVICE @SPEC:USER-001"""
     # 구현
     pass
 
@@ -311,18 +270,9 @@ def user_registration():
 
 | 구성요소 | TAG | 상태 |
 |---------|-----|------|
-| 사용자 인증 | @SPEC:AUTH-001 | ✅ 완료 |
-| JWT 서비스 | @CODE:AUTH-001:SERVICE | ✅ 완료 |
-| 인증 테스트 | @TEST:AUTH-001 | ✅ 완료 |
-| API 문서 | @DOC:AUTH-001 | ✅ 완료 |
 ```
 
 ## 🔄 통합 워크플로우
 
-1. **SPEC 생성**: `@SPEC:FEATURE-001`
-2. **코드 구현**: `@CODE:FEATURE-001:SERVICE`
-3. **테스트 작성**: `@TEST:FEATURE-001`
-4. **문서화**: `@DOC:FEATURE-001`
 5. **검증**: 실시간 TAG 연결성 확인
 
-이러한 @TAG 시스템을 통해 MoAI-ADK는 요구사항부터 배포까지 모든 단계의 완벽한 추적성을 보장합니다.

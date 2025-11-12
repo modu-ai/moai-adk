@@ -5,11 +5,9 @@ status: completed
 created: 2025-10-06
 updated: 2025-10-06
 completed: 2025-10-06
-author: @Goos
 priority: medium
 ---
 
-# @SPEC:INIT-002: Session Notice 초기화 체크 로직 Alfred 브랜딩 정렬
 
 ## HISTORY
 
@@ -25,15 +23,12 @@ priority: medium
   - `2510118 Merge feature/INIT-002: Alfred branding path detection`
   - `bc37263 feat(init): Add SPEC-INIT-002 documentation`
   - `e8cee54 fix(hooks): Update session-notice to check Alfred commands path`
-  - @CODE:INIT-002 TAG 발견
 
 ### v0.1.0 (2025-10-06)
 
 - **INITIAL**: Session Notice 초기화 체크 로직 Alfred 브랜딩 정렬 명세 작성
 - **CONTEXT**: `.claude/commands/moai` → `.claude/commands/alfred` 경로 변경 필요
 - **REASON**: Alfred 브랜딩 통일 및 프로젝트 인식 정확도 향상
-- **AUTHOR**: @Goos
-- **REVIEW**: @AI-Alfred (spec-builder)
 
 ---
 
@@ -199,10 +194,6 @@ npm run build:hooks
 
 ### TAG 체인
 
-- **@SPEC:INIT-002**: 본 문서
-- **@CODE:INIT-002**: `moai-adk-ts/src/claude/hooks/session-notice/utils.ts:21-28`
-- **@TEST:INIT-002**: 수동 검증 (세션 시작 시 프로젝트 인식 확인)
-- **@DOC:INIT-002**: 본 SPEC 문서 (Living Document 자동 생성)
 
 ### 관련 SPEC
 
@@ -221,7 +212,6 @@ npm run build:hooks
 ### 필수 체크리스트
 
 - [ ] `utils.ts:21-28` 코드 수정 완료
-- [ ] `@CODE:INIT-002` TAG 주석 추가
 - [ ] `npm run build:hooks` 빌드 성공
 - [ ] `.claude/hooks/alfred/session-notice.cjs` 배포 확인
 - [ ] 새 세션 시작 시 프로젝트 인식 정상 동작 확인

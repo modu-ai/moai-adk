@@ -1,4 +1,3 @@
-# @SPEC:INSTALLER-TEST-001: Implementation Plan
 
 ## 1. Phase 1: Critical Files (Priority 1)
 
@@ -134,7 +133,6 @@ cat coverage/coverage-summary.json | jq '.["path/to/file.ts"]'
 
 ## 8. 체크리스트
 
-- [ ] 모든 테스트 파일에 `@TEST:INSTALLER-TEST-001` TAG 추가
 - [ ] 각 파일 커버리지 ≥ 85% 달성
 - [ ] 전체 커버리지 ≥ 85% 달성
 - [ ] CI/CD에 커버리지 게이트 추가

@@ -1,7 +1,6 @@
 # MoAI-ADK Statusline Configuration for Claude Code
 # Integrated statusline configuration for Claude Code
 #
-# @DOC:STATUSLINE-CONFIG-001
 
 statusline:
   enabled: true

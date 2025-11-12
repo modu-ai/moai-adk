@@ -4,7 +4,6 @@ version: 0.0.1
 status: completed
 created: 2025-10-17
 updated: 2025-10-17
-author: @Goos
 priority: high
 category: bugfix
 labels:
@@ -22,29 +21,18 @@ scope:
 
 # SPEC-INIT-004: moai-adk init 명령어 CLAUDE.md 의존성 제거 및 커맨드 생성 기능 수정
 
-## @SPEC:INIT-004 TAG BLOCK
 
 ```
-@SPEC:INIT-004
 ├─ Environment
-│  └─ @ENV:INIT-CONTEXT-001: 신규 설치 vs 기존 프로젝트 감지
 ├─ Assumptions
-│  └─ @ASSUME:TEMPLATE-STRUCTURE-001: 템플릿 디렉토리 구조 표준
 ├─ Requirements
-│  ├─ @REQ:CLAUDE-MD-OPTIONAL-001: CLAUDE.md 선택적 파일화
-│  ├─ @REQ:COMMAND-GENERATION-001: Alfred 커맨드 파일 자동 생성
-│  └─ @REQ:VALIDATION-002: 초기화 완료 후 필수 파일 검증
 └─ Specifications
-   ├─ @SPEC:INIT-FLOW-001: 초기화 흐름 개선
-   ├─ @SPEC:ERROR-HANDLING-001: 에러 처리 전략
-   └─ @SPEC:VERIFICATION-002: 검증 로직 추가
 ```
 
 ## HISTORY
 
 ### v0.0.1 (2025-10-17)
 - **INITIAL**: SPEC-INIT-004 초안 작성
-- **AUTHOR**: @Goos
 - **ISSUE**: https://github.com/modu-ai/moai-adk/issues/26
 - **PROBLEM**: CLAUDE.md 부재 시 init 실패, Alfred 커맨드 파일 미생성
 - **SOLUTION**: CLAUDE.md 선택적 처리, 템플릿 복사 로직 개선, 검증 추가
@@ -53,7 +41,6 @@ scope:
 
 ## 1. Environment (환경 및 가정사항)
 
-### @ENV:INIT-CONTEXT-001 신규 설치 vs 기존 프로젝트 감지
 
 **현재 문제**:
 - `moai-adk init` 실행 시 CLAUDE.md 파일 부재를 오류로 처리
@@ -78,7 +65,6 @@ scope:
 
 ## 2. Assumptions (전제 조건)
 
-### @ASSUME:TEMPLATE-STRUCTURE-001 템플릿 디렉토리 구조 표준
 
 **전제**:
 - 템플릿 디렉토리 구조가 다음과 같이 표준화되어 있음:
@@ -148,7 +134,6 @@ scope:
 
 ## 4. Specifications (상세 명세)
 
-### @SPEC:INIT-FLOW-001 초기화 흐름 개선
 
 #### 4.1 현재 문제점
 
@@ -235,7 +220,6 @@ async function verifyInstallation(): Promise<void> {
 }
 ```
 
-### @SPEC:ERROR-HANDLING-001 에러 처리 전략
 
 #### 4.3 에러 분류 및 처리
 
@@ -268,7 +252,6 @@ throw new InstallerError(
 );
 ```
 
-### @SPEC:VERIFICATION-002 검증 로직 추가
 
 #### 4.5 검증 체크리스트
 

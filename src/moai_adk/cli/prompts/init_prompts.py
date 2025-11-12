@@ -1,4 +1,3 @@
-# @CODE:CLI-PROMPTS-001 | SPEC: SPEC-CLI-001/spec.md
 """Project initialization prompts
 
 Collect interactive project settings

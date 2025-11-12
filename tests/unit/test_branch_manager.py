@@ -1,4 +1,3 @@
-# @TEST:CHECKPOINT-EVENT-001 | SPEC: SPEC-CHECKPOINT-EVENT-001.md
 """
 Branch Manager 테스트.
 

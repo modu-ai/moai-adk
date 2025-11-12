@@ -1,6 +1,5 @@
 # SPEC-SESSION-CLEANUP-001: Alfred 커맨드 완료 후 세션 정리 및 다음 단계 안내 프레임워크
 
-<!-- @SPEC:SESSION-CLEANUP-001 -->
 
 ---
 
@@ -12,7 +11,6 @@ title: Alfred 커맨드 완료 후 세션 정리 및 다음 단계 안내 프레
 category: Enhancement
 priority: high
 status: completed
-author: "@GoosLab"
 created: 2025-10-30
 updated: 2025-10-30
 version: 0.1.0
@@ -43,7 +41,6 @@ review_status: pending
 
 | Version | Date       | Author    | Changes                                          |
 | ------- | ---------- | --------- | ------------------------------------------------ |
-| 0.1.0   | 2025-10-30 | @GoosLab  | Initial SPEC creation                            |
 
 ---
 
@@ -108,12 +105,10 @@ Alfred는 MoAI-ADK의 SuperAgent로서 4개의 핵심 커맨드(`/alfred:0-proje
 - **REQ-SESSION-001**: Alfred는 모든 커맨드 완료 시 **반드시** AskUserQuestion을 사용하여 다음 단계를 물어야 한다
   - **Rationale**: 일관된 UX, prose 제안 금지
   - **Priority**: MUST
-  - **@TAG**: `@REQ:SESSION-001`
 
 - **REQ-SESSION-002**: Alfred는 커맨드 완료 시 TodoWrite를 정리해야 한다
   - **Rationale**: 세션 컨텍스트 명확화
   - **Priority**: MUST
-  - **@TAG**: `@REQ:SESSION-002`
 
 ### Event-driven Requirements
 
@@ -122,28 +117,24 @@ Alfred는 MoAI-ADK의 SuperAgent로서 4개의 핵심 커맨드(`/alfred:0-proje
   - Option 2: 🔍 프로젝트 구조 검토 (현재 상태 확인)
   - Option 3: 🔄 새 세션 시작 (`/clear` 실행)
   - **Priority**: MUST
-  - **@TAG**: `@REQ:SESSION-003`
 
 - **REQ-SESSION-004**: WHEN `/alfred:1-plan` 완료 시, 시스템은 3가지 옵션을 제시해야 한다
   - Option 1: 🚀 구현 진행 (`/alfred:2-run` 실행)
   - Option 2: ✏️ SPEC 수정 (현재 SPEC 재작업)
   - Option 3: 🔄 새 세션 시작 (`/clear` 실행)
   - **Priority**: MUST
-  - **@TAG**: `@REQ:SESSION-004`
 
 - **REQ-SESSION-005**: WHEN `/alfred:2-run` 완료 시, 시스템은 3가지 옵션을 제시해야 한다
   - Option 1: 📚 문서 동기화 (`/alfred:3-sync` 실행)
   - Option 2: 🧪 추가 테스트/검증 (테스트 재실행)
   - Option 3: 🔄 새 세션 시작 (`/clear` 실행)
   - **Priority**: MUST
-  - **@TAG**: `@REQ:SESSION-005`
 
 - **REQ-SESSION-006**: WHEN `/alfred:3-sync` 완료 시, 시스템은 3가지 옵션을 제시해야 한다
   - Option 1: 📋 다음 기능 계획 (`/alfred:1-plan` 실행)
   - Option 2: 🔀 PR 병합 (main 브랜치로 병합)
   - Option 3: ✅ 세션 완료 (작업 종료)
   - **Priority**: MUST
-  - **@TAG**: `@REQ:SESSION-006`
 
 - **REQ-SESSION-007**: WHEN 사용자가 "새 세션" 또는 "세션 완료" 선택 시, 시스템은 세션 요약을 생성해야 한다
   - 완료된 작업 목록
@@ -151,7 +142,6 @@ Alfred는 MoAI-ADK의 SuperAgent로서 4개의 핵심 커맨드(`/alfred:0-proje
   - 변경된 파일 목록
   - 다음 권장 작업 (optional)
   - **Priority**: SHOULD
-  - **@TAG**: `@REQ:SESSION-007`
 
 ### State-driven Requirements
 
@@ -159,25 +149,21 @@ Alfred는 MoAI-ADK의 SuperAgent로서 4개의 핵심 커맨드(`/alfred:0-proje
   - 모든 작업은 `pending` → `in_progress` → `completed` 순서를 따름
   - 정확히 1개의 작업만 `in_progress` 상태 (parallel 승인 제외)
   - **Priority**: MUST
-  - **@TAG**: `@REQ:SESSION-008`
 
 - **REQ-SESSION-009**: WHILE 세션 정리 중일 때, 시스템은 모든 completed 작업을 기록해야 한다
   - TodoWrite에서 `completed` 상태의 모든 작업 추출
   - 세션 요약에 포함
   - **Priority**: SHOULD
-  - **@TAG**: `@REQ:SESSION-009`
 
 ### Unwanted Behaviors
 
 - **REQ-SESSION-010**: 시스템은 prose로 "You can now run..."과 같은 제안을 해서는 **안 된다**
   - **Rationale**: 일관성 없는 UX, AskUserQuestion 우회
   - **Priority**: MUST NOT
-  - **@TAG**: `@REQ:SESSION-010`
 
 - **REQ-SESSION-011**: 시스템은 AskUserQuestion 없이 커맨드를 종료해서는 **안 된다**
   - **Rationale**: 사용자에게 다음 단계 선택권 제공 필수
   - **Priority**: MUST NOT
-  - **@TAG**: `@REQ:SESSION-011`
 
 ### Optional Requirements
 
@@ -186,7 +172,6 @@ Alfred는 MoAI-ADK의 SuperAgent로서 4개의 핵심 커맨드(`/alfred:0-proje
   - 실행된 커맨드 목록
   - 생성된 SPEC ID
   - **Priority**: MAY
-  - **@TAG**: `@REQ:SESSION-012`
 
 ---
 
@@ -265,7 +250,6 @@ AskUserQuestion(
 
 ### Parent Requirements
 
-- **@SPEC:ALF-WORKFLOW-001**: Alfred 4-Step Workflow (Intent → Plan → Execute → Report)
 
 ### Child Requirements
 
@@ -273,12 +257,6 @@ AskUserQuestion(
 
 ### Related Components
 
-- `.claude/commands/alfred-0-project.md` → `@CODE:CMD-0-PROJECT`
-- `.claude/commands/alfred-1-plan.md` → `@CODE:CMD-1-PLAN`
-- `.claude/commands/alfred-2-run.md` → `@CODE:CMD-2-RUN`
-- `.claude/commands/alfred-3-sync.md` → `@CODE:CMD-3-SYNC`
-- `.claude/agents/agent-alfred.md` → `@CODE:AGENT-ALFRED`
-- `moai-alfred-ask-user-questions` skill → `@SKILL:INTERACTIVE-QUESTIONS`
 
 ### Test Cases
 
@@ -307,15 +285,12 @@ See acceptance.md for detailed test case definitions:
 
 1. **Q1**: 세션 메타데이터를 `.moai/memory/session-history.json`에 저장할 것인가?
    - **Status**: To be decided
-   - **Owner**: @GoosLab
 
 2. **Q2**: 각 커맨드별로 옵션 개수를 3개로 고정할 것인가, 아니면 유연하게 할 것인가?
    - **Status**: **3-4개로 제한** (UX 최적화)
-   - **Owner**: @GoosLab
 
 3. **Q3**: 세션 요약을 파일로 저장할 것인가, 아니면 출력만 할 것인가?
    - **Status**: To be decided
-   - **Owner**: @GoosLab
 
 ---
 
@@ -324,6 +299,5 @@ See acceptance.md for detailed test case definitions:
 - **Current Version**: 0.1.0
 - **Status**: Draft
 - **Next Review**: 2025-10-31
-- **Approval Required**: @GoosLab
 
 ---

@@ -30,7 +30,6 @@ You are a UI/UX design specialist responsible for user-centered design, accessib
 - Component names: **Always in English** (Button, Card, Modal, etc.)
 - Design token names: **Always in English** (color-primary-500, spacing-md)
 - Git commit messages: **Always in English**
-- @TAG identifiers: **Always in English** (@DESIGN:*, @A11Y:*, @COMPONENT:*)
 
 **Example**: Korean prompt → Korean design guidance + English Figma exports and Playwright tests
 
@@ -319,12 +318,7 @@ The result will be equally comprehensive, though manual.
 
 1. **TAG Chain Design**:
    ```markdown
-   @DESIGN:DASHBOARD-001 → Dashboard specifications
    @A11Y:DASHBOARD-001 → Accessibility compliance
-   @UX:FLOW-LOGIN-001 → Login user flow
-   @COMPONENT:BUTTON-001 → Button component design
-   @TOKEN:COLOR-001 → Color design tokens
-   @TEST:A11Y-DASHBOARD-001 → Accessibility tests
    ```
 
 2. **Implementation Phases**:
@@ -571,12 +565,7 @@ Target: 85%+ coverage
 - ✅ Testing automated (Playwright + axe accessibility tests)
 
 ### TAG Chain Integrity
-- `@DESIGN:{DOMAIN}-{NNN}` – Design specifications
 - `@A11Y:{DOMAIN}-{NNN}` – Accessibility compliance
-- `@UX:{FLOW}-{NNN}` – User flows
-- `@COMPONENT:{NAME}-{NNN}` – Component design
-- `@TOKEN:{TYPE}-{NNN}` – Design tokens
-- `@TEST:A11Y-{NNN}` – Accessibility tests
 
 ## 📚 Additional Resources
 

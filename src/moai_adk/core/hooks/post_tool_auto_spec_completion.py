@@ -1,4 +1,3 @@
-# @CODE:HOOK-POST-AUTO-SPEC-001
 """PostToolUse Hook for Automated SPEC Completion System."""
 
 import os
@@ -298,7 +297,6 @@ class PostToolAutoSpecCompletion(BaseHook):
     def _generate_spec_content(self, analysis: Dict[str, Any], spec_id: str, file_name: str) -> str:
         """Generate main spec.md content."""
         template = f"""---
-@META: {{
   "id": "SPEC-{spec_id}",
   "title": "Auto-generated SPEC for {file_name}",
   "title_en": "Auto-generated SPEC for {file_name}",
@@ -315,7 +313,6 @@ class PostToolAutoSpecCompletion(BaseHook):
 }}
 ---
 
-# @SPEC:{spec_id}: Auto-generated SPEC for {file_name}
 ## Auto-generated SPEC for {file_name}
 
 ### Overview
@@ -361,9 +358,6 @@ class PostToolAutoSpecCompletion(BaseHook):
 
 ### Traceability
 
-- **@SPEC:{spec_id}** ← **`@CODE:HOOK-POST-AUTO-SPEC-001`** (hook auto-generated)
-- **@SPEC:{spec_id}** → **@TEST:{spec_id}** (tests)
-- **@SPEC:{spec_id}** → **@CODE:{spec_id}** (implementation)
 
 ### Edit Guide
 
@@ -385,7 +379,6 @@ class PostToolAutoSpecCompletion(BaseHook):
     def _generate_plan_content(self, analysis: Dict[str, Any], spec_id: str, file_name: str) -> str:
         """Generate plan.md content."""
         return f"""---
-@META: {{
   "id": "PLAN-{spec_id}",
   "spec_id": "SPEC-{spec_id}",
   "title": "Auto-generated Implementation Plan for {file_name}",
@@ -396,7 +389,6 @@ class PostToolAutoSpecCompletion(BaseHook):
 }}
 ---
 
-# @PLAN:{spec_id}: Auto-generated Implementation Plan
 ## Auto-generated Implementation Plan for {file_name}
 
 ### Implementation Phases
@@ -488,7 +480,6 @@ class PostToolAutoSpecCompletion(BaseHook):
     def _generate_acceptance_content(self, analysis: Dict[str, Any], spec_id: str, file_name: str) -> str:
         """Generate acceptance.md content."""
         return f"""---
-@META: {{
   "id": "ACCEPT-{spec_id}",
   "spec_id": "SPEC-{spec_id}",
   "title": "Auto-generated Acceptance Criteria for {file_name}",
@@ -499,7 +490,6 @@ class PostToolAutoSpecCompletion(BaseHook):
 }}
 ---
 
-# @ACCEPT:{spec_id}: Auto-generated Acceptance Criteria
 ## Auto-generated Acceptance Criteria for {file_name}
 
 ### Acceptance Criteria

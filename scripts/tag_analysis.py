@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
-# @CODE:TAG-ANALYSIS-001
 """TAG 연결 상태 분석 스크립트
 
 src/ 디렉토리와 .moai/specs/ 디렉토리의 TAG 연결 상태를 분석하여
 고아 TAG 현황을 파악하고 개선 방안을 제시합니다.
 
-@SPEC:TAG-ANALYSIS-001
 """
 
 import re
@@ -295,24 +293,19 @@ class TagAnalyzer:
         # CODE가 없는 SPEC TAG
         for spec_domain in self.spec_tags:
             if spec_domain not in self.spec_to_code:
-                orphan_tags["spec_without_code"].append(f"@SPEC:{spec_domain}")
 
         # SPEC이 없는 CODE TAG
         for code_domain in self.code_tags:
             if code_domain not in self.code_to_spec:
-                orphan_tags["code_without_spec"].append(f"@CODE:{code_domain}")
             if code_domain not in self.code_to_test:
-                orphan_tags["code_without_test"].append(f"@CODE:{code_domain}")
 
         # CODE가 없는 TEST TAG
         for test_domain in self.test_tags:
             if test_domain not in self.test_to_code:
-                orphan_tags["test_without_code"].append(f"@TEST:{test_domain}")
 
         # SPEC이 없는 DOC TAG
         for doc_domain in self.doc_tags:
             if doc_domain not in self.all_tags["SPEC"]:
-                orphan_tags["doc_without_spec"].append(f"@DOC:{doc_domain}")
 
         return orphan_tags
 
@@ -337,13 +330,9 @@ class TagAnalyzer:
 
         for domain in all_domains:
             chain_status = []
-            if f"@SPEC:{domain}" in self.spec_tags:
                 chain_status.append("SPEC")
-            if f"@CODE:{domain}" in self.code_tags:
                 chain_status.append("CODE")
-            if f"@TEST:{domain}" in self.test_tags:
                 chain_status.append("TEST")
-            if f"@DOC:{domain}" in self.doc_tags:
                 chain_status.append("DOC")
 
             if len(chain_status) == 4:
@@ -368,10 +357,6 @@ class TagAnalyzer:
         domain_stats = {}
         for domain in (self.spec_tags | self.code_tags | self.test_tags | self.doc_tags):
             domain_stats[domain] = {
-                "has_spec": f"@SPEC:{domain}" in self.spec_tags,
-                "has_code": f"@CODE:{domain}" in self.code_tags,
-                "has_test": f"@TEST:{domain}" in self.test_tags,
-                "has_doc": f"@DOC:{domain}" in self.doc_tags
             }
 
         return {

@@ -1,12 +1,6 @@
-# @TEST:TEMPLATE-SUBSTITUTION-001 | SPEC: SPEC-TEMPLATE-VAR-SUBSTITUTION-001 | CODE: src/moai_adk/core/template_engine.py
 """
 Tests for template variable substitution ({{MOAI_VERSION}} → actual version)
 
-@TEST:TEMPLATE-SUBSTITUTION-001 - {{MOAI_VERSION}} substitution in config.json template
-@TEST:TEMPLATE-SUBSTITUTION-002 - {{MOAI_VERSION}} substitution in CLAUDE.md template
-@TEST:TEMPLATE-SUBSTITUTION-003 - Multiple template variables simultaneous substitution
-@TEST:TEMPLATE-SUBSTITUTION-004 - Version substitution in file-based templates
-@TEST:TEMPLATE-SUBSTITUTION-005 - Version substitution in directory-based rendering
 """
 
 import json
@@ -27,7 +21,6 @@ class TestTemplateVariableSubstitution:
         WHEN: Template is rendered with version variable
         THEN: {{MOAI_VERSION}} should be replaced with actual version string
         """
-        # @TEST:TEMPLATE-SUBSTITUTION-001
         template_engine = TemplateEngine()
 
         # Template content with placeholder
@@ -70,7 +63,6 @@ class TestTemplateVariableSubstitution:
         WHEN: Template is rendered with version variable
         THEN: {{MOAI_VERSION}} should be replaced with actual version string
         """
-        # @TEST:TEMPLATE-SUBSTITUTION-002
         template_engine = TemplateEngine()
 
         # Template content with placeholder
@@ -117,7 +109,6 @@ class TestTemplateVariableSubstitution:
         WHEN: Template is rendered with all variables
         THEN: All placeholders should be substituted correctly
         """
-        # @TEST:TEMPLATE-SUBSTITUTION-003
         template_engine = TemplateEngine()
 
         # Template content with multiple placeholders
@@ -173,7 +164,6 @@ class TestTemplateVariableSubstitution:
         WHEN: Files are rendered using TemplateEngine
         THEN: {{MOAI_VERSION}} should be replaced with actual version
         """
-        # @TEST:TEMPLATE-SUBSTITUTION-004
         template_engine = TemplateEngine()
 
         # Create template files
@@ -226,7 +216,6 @@ class TestTemplateVariableSubstitution:
         WHEN: Directory is rendered using TemplateEngine
         THEN: {{MOAI_VERSION}} should be replaced with actual version in all files
         """
-        # @TEST:TEMPLATE-SUBSTITUTION-005
         template_engine = TemplateEngine()
 
         # Create template directory
@@ -440,7 +429,6 @@ This is a test project with version {{MOAI_VERSION}}.
         WHEN: get_default_variables is called
         THEN: USER_NAME should be extracted from config.user.name
         """
-        # @TEST:USER-PERSONALIZATION-001
         template_engine = TemplateEngine()
 
         # Test config with user.name
@@ -472,7 +460,6 @@ This is a test project with version {{MOAI_VERSION}}.
         WHEN: get_default_variables is called
         THEN: USER_NAME should return empty string (fallback)
         """
-        # @TEST:USER-PERSONALIZATION-002
         template_engine = TemplateEngine()
 
         # Test config without user section
@@ -498,7 +485,6 @@ This is a test project with version {{MOAI_VERSION}}.
         WHEN: get_default_variables is called
         THEN: USER_NAME should return empty string
         """
-        # @TEST:USER-PERSONALIZATION-003
         template_engine = TemplateEngine()
 
         # Test config with empty user.name
@@ -525,7 +511,6 @@ This is a test project with version {{MOAI_VERSION}}.
         WHEN: get_default_variables is called
         THEN: USER_NAME should support all unicode characters
         """
-        # @TEST:USER-PERSONALIZATION-004
         template_engine = TemplateEngine()
 
         # Test cases with different unicode names
@@ -554,7 +539,6 @@ This is a test project with version {{MOAI_VERSION}}.
         WHEN: Template is rendered with user name variable
         THEN: {{USER_NAME}} should be replaced with actual name
         """
-        # @TEST:USER-PERSONALIZATION-005
         template_engine = TemplateEngine()
 
         template_content = """
@@ -590,7 +574,6 @@ This is a test project with version {{MOAI_VERSION}}.
         WHEN: Variables are extracted
         THEN: USER_NAME and PROJECT_OWNER should be distinct variables
         """
-        # @TEST:USER-PERSONALIZATION-006
         template_engine = TemplateEngine()
 
         config = {

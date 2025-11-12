@@ -1,4 +1,3 @@
-# @TEST:TAG-PERF-002
 """
 Cache System Tests
 

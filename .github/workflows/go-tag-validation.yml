@@ -1,4 +1,3 @@
-# @CODE:LANG-GO-001 | SPEC: SPEC-LANGUAGE-DETECTION-001.md | TEST: tests/test_workflows.py
 # Go Project TAG Validation Workflow
 # Automatically validates TAGs with go test, golangci-lint, and coverage
 

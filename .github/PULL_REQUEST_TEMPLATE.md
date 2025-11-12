@@ -6,14 +6,12 @@
 
 - Related SPEC: `SPEC-AUTH-001` (e.g., JWT authentication system)
 - Directory: `.moai/specs/SPEC-AUTH-001/`
-- @TAG Links: @SPEC:AUTH-001 @CODE:AUTH-001 (auto-tagging)
 
 ## ✅ SPEC Quality Checks
 
 - [ ] YAML Front Matter: 7 required fields (id, version, status, created, updated, author, priority)
 - [ ] HISTORY Section: Record versioned change log (include v0.0.1 INITIAL)
 - [ ] EARS Requirements: Ubiquitous, Event-driven, State-driven, Optional, Unwanted Behaviors
-- [ ] @SPEC:ID TAG: Include TAG in doc and check duplicates (`rg "@SPEC:<ID>" -n`)
 
 ## 🤖 Automated Validation Status
 

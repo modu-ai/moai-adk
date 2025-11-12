@@ -59,16 +59,13 @@ Documentation validation ensures content accuracy, completeness, and compliance 
 ```yaml
 Rules:
   - SPEC References: Every feature doc must reference its @SPEC
-  - TAG Chain: @SPEC:ID → @TEST:ID → @CODE:ID → @DOC:ID linkage valid
   - Requirement Coverage: All SPEC requirements addressed in documentation
-  - Unwanted Behavior: Document "what NOT to do" from @SPEC:UNWANTED
 ```
 
 **Example - Good**:
 ```markdown
 # Feature: User Authentication
 
-@SPEC:SECURITY-001: User Authentication Requirements
 
 ---
 
@@ -101,23 +98,18 @@ Documentation validation ensures content accuracy, completeness, and compliance 
 ```yaml
 Rules:
   - SPEC References: Every feature doc must reference its @SPEC
-  - TAG Chain: @SPEC:ID → @TEST:ID → @CODE:ID → @DOC:ID linkage valid
   - Requirement Coverage: All SPEC requirements addressed in documentation
-  - Unwanted Behavior: Document "what NOT to do" from @SPEC:UNWANTED
 ```
 
 **Example - Good**:
 ```markdown
 # Feature: User Authentication
 
-@SPEC:SECURITY-001: User Authentication Requirements
 
 ---
 
 Implementation
-Code examples reference @CODE:AUTH-HANDLER
 
-@DOC:AUTH-HANDLER provides additional context
 ```
 
 **Example - Bad**:
@@ -208,10 +200,6 @@ def calculate_quality_score(self, doc_path: Path) -> float:
 
 ```yaml
 Valid Chains:
-  - @SPEC:FEATURE-001 → Feature specification
-    ├─ @TEST:FEATURE-001 → Test cases for feature
-    ├─ @CODE:FEATURE-HANDLER → Implementation code
-    └─ @DOC:FEATURE-GUIDE → User documentation
 
 Chain Rules:
   - No orphaned @TAGs (every TAG must have parent SPEC)
@@ -236,20 +224,16 @@ class TAGVerifier:
 
         # Check SPEC exists
         if spec_id not in self.spec_docs:
-            result.errors.append(f"@SPEC:{spec_id} not found")
             return result
 
         # Check TEST exists
         if spec_id not in self.test_docs:
-            result.warnings.append(f"@TEST:{spec_id} missing (required)")
 
         # Check CODE references
         if spec_id not in self.code_refs:
-            result.warnings.append(f"@CODE:* references missing")
 
         # Check DOC exists
         if spec_id not in self.doc_refs:
-            result.errors.append(f"@DOC:{spec_id} missing (required)")
 
         return result
 ```
@@ -491,7 +475,6 @@ context7_references:
     topic: "Software Quality Metrics"
   - url: "https://github.com/moai-adk/moai-adk"
     topic: "MoAI-ADK SPEC Standards"
-spec_reference: "@SPEC:DOCS-001"
 ```
 
 ---

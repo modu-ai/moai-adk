@@ -137,7 +137,6 @@ SPEC 작성 및 계획 수립을 담당합니다. spec-builder 에이전트를 �
 - 상세 기능 명세
 
 ### 추적성 (Traceability)
-- @TAG 연결 정보
 ```
 
 ---

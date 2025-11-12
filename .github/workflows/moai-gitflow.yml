@@ -297,7 +297,6 @@ jobs:
       - name: Run PowerShell Package Validation Tests
         shell: powershell
         run: |
-          # @TAG:POWERSHELL-CI-001 | Windows CI/CD PowerShell validation
 
           $ErrorActionPreference = "Continue"
           $testResults = @{}
@@ -408,7 +407,6 @@ jobs:
       - name: Run pytest Tests (Windows)
         shell: powershell
         run: |
-          # @TAG:POWERSHELL-CI-002 | Windows pytest execution
           pytest tests/ -v --tb=short --cov=src/moai_adk --cov-report=term-missing
         continue-on-error: ${{ github.event.pull_request.draft == true }}
 

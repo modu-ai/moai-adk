@@ -1,4 +1,3 @@
-# @SPEC:AI-REASONING-001: 수용 기준 (Acceptance Criteria)
 
 ## 개요
 

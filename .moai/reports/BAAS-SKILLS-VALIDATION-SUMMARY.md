@@ -95,7 +95,6 @@ Comprehensive validation of 10 BaaS platform Skills across Claude Code official 
 
 **2. Metadata Quality**
 - All include YAML frontmatter with required fields
-- All properly tagged with `@SPEC:BAAS-ECOSYSTEM-001`
 - All include relevant agent assignments (3-6 per skill)
 - Context7 references: 4-5 per skill (excellent external linking)
 
@@ -176,7 +175,6 @@ All skills meet or exceed minimum requirements:
 ✅ 100% - Every skill includes:
 - 4-5 Context7 references to official documentation
 - Direct links to platform docs
-- @SPEC reference for traceability
 
 ---
 
@@ -199,7 +197,6 @@ All skills meet or exceed minimum requirements:
 | Rule | Status | Notes |
 |------|--------|-------|
 | English language | 100% | Policy compliant |
-| SPEC reference | 100% | @SPEC:BAAS-ECOSYSTEM-001 |
 | Agent assignments | 100% | 3-6 relevant agents per skill |
 | Word count targets | 100% | All meet or exceed minimums |
 

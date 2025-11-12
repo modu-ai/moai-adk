@@ -4,11 +4,9 @@ version: 0.0.1
 status: draft
 created: 2025-11-13
 updated: 2025-11-13
-author: @Goos
 related_spec: SPEC-UTILS-001
 ---
 
-# 인수 기준 및 테스트 시나리오 - @SPEC:UTILS-001
 
 ## 개요
 
@@ -599,7 +597,6 @@ pytest tests/unit/test_utils_banner.py -v
 - [ ] 각 함수의 docstring 작성
 - [ ] 파라미터 및 반환값 문서화
 - [ ] 사용 예제 3개 이상 포함
-- [ ] @TAG 추적성 검증
 
 ### 품질 보증
 - [ ] 라인 커버리지 85% 이상

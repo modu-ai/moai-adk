@@ -1,12 +1,6 @@
-# @TEST:STATUSLINE-VERSION-001 | SPEC: SPEC-STATUSLINE-VERSION-001 | CODE: src/moai_adk/statusline/renderer.py
 """
 Tests for statusline displaying version instead of unknown
 
-@TEST:STATUSLINE-VERSION-001 - Statusline displays actual version instead of "unknown"
-@TEST:STATUSLINE-VERSION-002 - Statusline handles missing version gracefully
-@TEST:STATUSLINE-VERSION-003 - Statusline reads version from config correctly
-@TEST:STATUSLINE-VERSION-004 - Statusline version caching behavior
-@TEST:STATUSLINE-VERSION-005 - Statusline version display formatting
 """
 
 import json
@@ -26,7 +20,6 @@ class TestStatuslineVersionDisplay:
         WHEN: Statusline is rendered
         THEN: Should display actual version instead of "unknown"
         """
-        # @TEST:STATUSLINE-VERSION-001
         from moai_adk.statusline.renderer import StatuslineRenderer, StatuslineData
         from moai_adk.statusline.version_reader import VersionReader
 
@@ -74,7 +67,6 @@ class TestStatuslineVersionDisplay:
         WHEN: Statusline is rendered
         THEN: Should handle gracefully and show appropriate message
         """
-        # @TEST:STATUSLINE-VERSION-002
         from moai_adk.statusline.renderer import StatuslineRenderer, StatuslineData
         from moai_adk.statusline.version_reader import VersionReader
 
@@ -121,7 +113,6 @@ class TestStatuslineVersionDisplay:
         WHEN: Statusline uses VersionReader
         THEN: Should read version from config path
         """
-        # @TEST:STATUSLINE-VERSION-003
         from moai_adk.statusline.renderer import StatuslineRenderer, StatuslineData
         from moai_adk.statusline.version_reader import VersionReader
 
@@ -173,7 +164,6 @@ class TestStatuslineVersionDisplay:
         WHEN: Statusline is rendered multiple times
         THEN: Should use cached version for performance
         """
-        # @TEST:STATUSLINE-VERSION-004
         from moai_adk.statusline.renderer import StatuslineRenderer, StatuslineData
         from moai_adk.statusline.version_reader import VersionReader
 
@@ -226,7 +216,6 @@ class TestStatuslineVersionDisplay:
         WHEN: Statusline is rendered
         THEN: Should display version in consistent format
         """
-        # @TEST:STATUSLINE-VERSION-005
         from moai_adk.statusline.renderer import StatuslineRenderer, StatuslineData
         from moai_adk.statusline.version_reader import VersionReader
 

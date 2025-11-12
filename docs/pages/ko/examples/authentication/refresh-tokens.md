@@ -35,7 +35,6 @@ Refresh Token: 긴 만료 시간 (7-30일)
 
 ```python
 # SPEC: AUTH-010 - 리프레시 토큰 구현
-# @TAG:AUTH-010
 
 from datetime import datetime, timedelta
 from typing import Optional

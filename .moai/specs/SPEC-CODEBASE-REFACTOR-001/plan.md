@@ -4,10 +4,8 @@ version: 0.1.0
 status: draft
 created: 2025-11-05
 updated: 2025-11-05
-author: @Goos
 ---
 
-# @SPEC:CODEBASE-REFACTOR-001: Implementation Plan
 
 ## 개요
 
@@ -71,10 +69,6 @@ author: @Goos
 
 #### 2.1 CODE without SPEC/TEST 복구 (27개)
 - **대상 TAG**:
-  - `@CODE:LDE-PRIORITY-001`
-  - `@CODE:VERSION-CACHE-INTEGRATION-001`
-  - `@CODE:LDE-BUILD-TOOL-001`
-  - `@CODE:NETWORK-DETECT-001`
   - 등 23개 추가 TAG
 
 - **작업 순서**:
@@ -85,10 +79,6 @@ author: @Goos
 
 #### 2.2 SPEC without CODE 복구 (우선 20개)
 - **대상 TAG**:
-  - `@SPEC:INSTALLER-REFACTOR-001`
-  - `@SPEC:INSTALLER-QUALITY-001`
-  - `@SPEC:TEST-COVERAGE-001`
-  - `@SPEC:REFACTOR-001`
   - 등 16개 추가 TAG
 
 - **작업 순서**:
@@ -99,10 +89,6 @@ author: @Goos
 
 #### 2.3 TEST without CODE 복구 (우선 30개)
 - **대상 TAG**:
-  - `@TEST:HAS-TEST-001`
-  - `@TEST:VALIDATOR-COVERAGE-001`
-  - `@TEST:GIT-BRANCH-001`
-  - `@TEST:LDE-007`
   - 등 26개 추가 TAG
 
 - **작업 순서**:

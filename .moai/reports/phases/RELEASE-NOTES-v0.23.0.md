@@ -366,7 +366,6 @@ For detailed commit history, see `CHANGELOG.md`
 ---
 
 **🤖 Generated with Claude Code**
-**👨‍💼 Co-Authored-By: 🎩 Alfred@MoAI**
 
 ---
 

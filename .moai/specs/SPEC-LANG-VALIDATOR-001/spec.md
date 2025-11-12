@@ -8,7 +8,6 @@ created: "2025-11-10"
 author: "GoosLab"
 ---
 
-# @SPEC:LANG-VALIDATOR-001 | @EXPERT:BACKEND | @EXPERT:UIUX
 
 ## SPEC Overview
 
@@ -23,9 +22,6 @@ This SPEC defines the language validation system for MoAI-ADK, providing compreh
 
 ## Implementation Files
 
-- **CODE**: @CODE:TAG-LANG-001 - Core language validation implementation
-- **TEST**: @TEST:LANG-VALIDATOR-001 - Language validation tests
-- **DOC**: @DOC:LANG-VALIDATOR-001 - Language validation documentation
 
 ## Acceptance Criteria
 
@@ -39,5 +35,4 @@ This SPEC defines the language validation system for MoAI-ADK, providing compreh
 ## Traceability Chain
 
 ```
-@SPEC:LANG-VALIDATOR-001 → @CODE:TAG-LANG-001 → @TEST:LANG-VALIDATOR-001 → @DOC:LANG-VALIDATOR-001
 ```

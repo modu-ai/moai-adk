@@ -1,6 +1,4 @@
-# Implementation Plan: @SPEC:SESSION-CLEANUP-001
 
-<!-- @PLAN:SESSION-CLEANUP-001 -->
 
 ---
 
@@ -282,7 +280,6 @@ if user_choice in ["새 세션", "세션 완료"]:
 - Cross-reference 업데이트
 
 ### tag-agent
-- @TAG 체인 검증
 - Traceability 확인
 - SPEC traceability 검증
 
@@ -303,7 +300,6 @@ if user_choice in ["새 세션", "세션 완료"]:
 ### Documentation Quality
 - [ ] CLAUDE.md에 모든 커맨드 패턴이 문서화되었는가?
 - [ ] 예제 코드가 실제 구현과 일치하는가?
-- [ ] @TAG 체인이 올바르게 연결되었는가?
 
 ### User Experience
 - [ ] 옵션 설명이 사용자의 `conversation_language`로 작성되었는가?
@@ -346,7 +342,6 @@ if user_choice in ["새 세션", "세션 완료"]:
 
 4. **문서 일관성 확인**
    - ✅ CLAUDE.md에 모든 패턴 문서화
-   - ✅ @TAG 체인 검증 완료
 
 ---
 

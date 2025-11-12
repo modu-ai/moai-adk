@@ -8,7 +8,6 @@ created: "2025-11-10"
 author: "GoosLab"
 ---
 
-# @SPEC:USER-EXPERIENCE-001 | @EXPERT:FRONTEND | @EXPERT:UIUX
 
 ## SPEC Overview
 
@@ -23,9 +22,6 @@ This SPEC defines the user experience improvement system for MoAI-ADK, which foc
 
 ## Implementation Files
 
-- **CODE**: @CODE:USER-EXPERIENCE-IMPROVEMENT-001 - User experience implementation
-- **TEST**: @TEST:USER-EXPERIENCE-IMPROVEMENT-001 - User experience tests
-- **DOC**: @DOC:USER-EXPERIENCE-001 - User experience documentation
 
 ## Acceptance Criteria
 
@@ -39,5 +35,4 @@ This SPEC defines the user experience improvement system for MoAI-ADK, which foc
 ## Traceability Chain
 
 ```
-@SPEC:USER-EXPERIENCE-001 → @CODE:USER-EXPERIENCE-IMPROVEMENT-001 → @TEST:USER-EXPERIENCE-IMPROVEMENT-001 → @DOC:USER-EXPERIENCE-001
 ```

@@ -8,7 +8,6 @@ author: "spec-builder"
 date: "2025-11-05"
 ---
 
-# @PLAN:DOC-INTEGRATION-001 코드-문서 자동 연동 시스템 구현 계획
 
 ## 1. 프로젝트 개요
 
@@ -263,6 +262,5 @@ AST 파싱 → 구조 분석 → 의존성 추출
 
 이 구현 계획에 따라 다음 단계로 진행합니다:
 1. **핵심 인프라 구축**: `doc_scanner` 및 `ast_analyzer` 모듈 개발 시작
-2. **의존성 SPEC 확인**: @SPEC:DOC-ONLINE-001, @SPEC:DOC-VISUAL-001, @SPEC:DOC-TABLE-001 구현 상태 확인
 3. **개발 환경 준비**: 테스트 데이터 및 개발 도구 구성
 4. **첫 번째 마일스톤 실행**: 파일 스캐닝 및 AST 파싱 기능 구현

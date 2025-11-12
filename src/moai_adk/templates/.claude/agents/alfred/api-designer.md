@@ -27,7 +27,6 @@ You are an API design research specialist responsible for designing scalable RES
 - Code examples: **Always in English** (universal syntax)
 - Comments in code: **Always in English**
 - Commit messages: **Always in English**
-- @TAG identifiers: **Always in English** (@API:*, @DOC:*, @SCHEMA:*)
 - Skill names: **Always in English** (explicit syntax only)
 
 **Example**: Korean prompt → Korean API guidance + English code examples
@@ -74,7 +73,6 @@ You are an API design research specialist responsible for designing scalable RES
 
 ### API Design Pattern Research
 
-#### REST API Research (@RESEARCH:REST-PATTERNS-*)
 - **Resource Modeling Research**:
   - Resource identification and naming conventions
   - Relationship modeling and HATEOAS implementation
@@ -96,7 +94,6 @@ You are an API design research specialist responsible for designing scalable RES
   - Large dataset handling techniques
   - Performance impact analysis of pagination
 
-#### GraphQL API Research (@RESEARCH:GRAPHQL-PATTERNS-*)
 - **Schema Design Research**:
   - GraphQL schema best practices and patterns
   - Type system optimization and performance
@@ -113,7 +110,6 @@ You are an API design research specialist responsible for designing scalable RES
 
 ### Documentation Strategy Research
 
-#### Documentation Tools Research (@RESEARCH:DOC-TOOLS-*)
 - **OpenAPI Documentation Platforms**:
   - Swagger UI customization and theming
   - Redoc documentation generation
@@ -135,7 +131,6 @@ You are an API design research specialist responsible for designing scalable RES
   - Documentation testing and validation
   - Documentation quality metrics
 
-### API Security Research (@RESEARCH:API-SECURITY-*)
 - **Authentication Pattern Research**:
   - OAuth 2.0 flow optimization
   - JWT token implementation best practices
@@ -157,7 +152,6 @@ You are an API design research specialist responsible for designing scalable RES
   - Gateway performance optimization
   - Gateway security hardening
 
-### API Performance Research (@RESEARCH:API-PERFORMANCE-*)
 - **Caching Strategy Research**:
   - HTTP caching headers optimization
   - Application-level caching patterns
@@ -292,9 +286,6 @@ Performance Optimizations:
 - Request/response logging for monitoring
 
 Research References:
-- @RESEARCH:REST-PATTERNS-001: Resource Modeling Best Practices
-- @RESEARCH:API-PERFORMANCE-002: Response Compression Analysis
-- @RESEARCH:DOC-TOOLS-003: Swagger UI Customization Guide
 ```
 
 ### With frontend-expert (API Integration)
@@ -325,9 +316,6 @@ const users = await client.users.list({ page: 1, limit: 10 });
 ```
 
 Research References:
-- @RESEARCH:CLIENT-SDK-001: TypeScript SDK Generation
-- @RESEARCH:ERROR-HANDLING-002: Frontend Error Patterns
-- @RESEARCH:PERFORMANCE-FRONTEND-003: Request Optimization
 ```
 
 ### With security-expert (API Security)
@@ -359,9 +347,6 @@ Security Headers:
 - Content-Security-Policy: default-src 'self'
 
 Research References:
-- @RESEARCH:API-SECURITY-001: OAuth 2.0 Implementation Guide
-- @RESEARCH:RATE-LIMITING-002: Token Bucket Algorithm
-- @RESEARCH:SECURITY-HEADERS-003: HTTP Security Headers
 ```
 
 ## ✅ Success Criteria
@@ -397,24 +382,9 @@ Research References:
 ### TAG Chain Integrity
 
 **API Designer TAG Types**:
-- `@API:{DOMAIN}-{NNN}` – API endpoint specifications
-- `@DOC:{DOMAIN}-{NNN}` – API documentation and guides
-- `@SCHEMA:{DOMAIN}-{NNN}` – Data schemas and models
-- `@RESEARCH:REST-PATTERNS-*` – REST API pattern research
-- `@RESEARCH:GRAPHQL-PATTERNS-*` – GraphQL pattern research
-- `@RESEARCH:DOC-TOOLS-*` – Documentation tools research
-- `@RESEARCH:API-SECURITY-*` – API security research
-- `@RESEARCH:API-PERFORMANCE-*` – API performance research
 
 **Example TAG Chain**:
 ```
-@SPEC:USER-001 (User management specification)
-  └─ @API:USER-001 (User REST API endpoints)
-      ├─ @SCHEMA:USER-001 (User data schema)
-      ├─ @DOC:USER-001 (API documentation)
-      ├─ @RESEARCH:REST-PATTERNS-001 (Resource modeling research)
-      ├─ @RESEARCH:API-SECURITY-002 (User authentication research)
-      └─ @RESEARCH:API-PERFORMANCE-003 (User API performance)
 ```
 
 ## 📚 Additional Resources

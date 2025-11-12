@@ -1,4 +1,3 @@
-# @TEST:SPEC-EARS-TEMPLATE-001
 """Test suite for EARS Template Engine."""
 
 import unittest
@@ -104,7 +103,6 @@ class TestEARSTemplateEngine(unittest.TestCase):
         self.assertIn('acceptance_md', result)
 
         # Check content validity
-        self.assertIn('@META:', result['spec_md'])
         self.assertIn('Implementation Plan', result['plan_md'])
         self.assertIn('Acceptance Criteria', result['acceptance_md'])
 
@@ -124,7 +122,6 @@ class TestEARSTemplateEngine(unittest.TestCase):
         self.assertIn('acceptance_md', result)
 
         # Check content validity
-        self.assertIn('@META:', result['spec_md'])
         self.assertIn('Implementation Plan', result['plan_md'])
         self.assertIn('Acceptance Criteria', result['acceptance_md'])
 
@@ -324,7 +321,6 @@ class TestEARSTemplateEngine(unittest.TestCase):
         )
 
         # Check meta information in spec
-        self.assertIn('@META:', result['spec_md'])
         self.assertIn('id', result['spec_md'])
         self.assertIn('spec_id', result['spec_md'])
         self.assertIn('title', result['spec_md'])

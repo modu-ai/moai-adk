@@ -4,7 +4,6 @@ version: 1.2.0
 status: draft
 created: 2025-11-07
 updated: 2025-11-07
-author: @GOOS
 priority: high
 category: feature
 labels:
@@ -21,7 +20,6 @@ labels:
 - **FEATURE**: MoAI-ADK 버전 정보 표시 기능 추가
 - **FEATURE**: 업데이트 안내 기능 추가 (아이콘 + 최신 버전 표시)
 - **UPDATE**: 상태줄 레이아웃에 [VERSION] 필드 추가
-- **UPDATE**: 요구사항 2개 추가 (@REQ:STATUSLINE-UBQ-006, @REQ:STATUSLINE-EVENT-006)
 - **UPDATE**: 색상 팔레트에 업데이트 알림 색상 추가
 - **SCOPE**: 7가지 핵심 정보 표시 (모델, 시간, 디렉토리, 버전, Git branch, Git 상태, 작업 상태)
 - **RATIONALE**: MoAI-ADK 프로젝트 버전을 한 눈에 파악하고 업데이트 가용성을 실시간으로 인지
@@ -33,7 +31,6 @@ labels:
 
 ### v1.0.0 (2025-11-07)
 - **INITIAL**: MoAI-ADK 개발자를 위한 Claude Code 상태줄 기능 명세
-- **AUTHOR**: @GOOS
 - **SCOPE**: 개발 진행 상황, 프로젝트 상태, Git 정보를 통합 표시
 - **CONTEXT**: Alfred 워크플로우 진행 상황을 한 눈에 파악
 
@@ -41,7 +38,6 @@ labels:
 
 # SPEC: Claude Code 상태줄 (Statusline) 기능
 
-## @SPEC:CLAUDE-STATUSLINE-001
 
 MoAI-ADK 개발자가 Claude Code 상태줄에서 실시간 모델 정보, 세션 시간, 프로젝트 상태, Git 정보, Alfred 워크플로우 진행 상황을 통합 확인할 수 있는 기능 명세
 
@@ -102,37 +98,31 @@ MoAI-ADK 개발자가 Claude Code 상태줄에서 실시간 모델 정보, 세�
 
 ### 3.1 Ubiquitous Requirements (항상 표시되어야 함)
 
-@REQ:STATUSLINE-UBQ-001
 **모델 및 세션 정보 표시**
 - GIVEN: Claude Code 세션이 활성화되어 있을 때
 - WHEN: 상태줄을 렌더링할 때
 - THEN: 현재 모델 이름 (예: `Haiku 4.5`) 과 세션 경과 시간을 표시해야 함
 
-@REQ:STATUSLINE-UBQ-002
 **현재 working directory 표시**
 - GIVEN: 프로젝트 디렉토리가 설정된 상태
 - WHEN: 상태줄을 렌더링할 때
 - THEN: 현재 디렉토리의 마지막 경로 부분 (예: `MoAI-ADK`) 또는 상대 경로를 표시해야 함
 
-@REQ:STATUSLINE-UBQ-003
 **현재 Git branch 표시**
 - GIVEN: Git repository 활성화 상태
 - WHEN: 상태줄을 렌더링할 때
 - THEN: 현재 branch 이름 (예: `feature/SPEC-AUTH-001`, `develop`, `main`) 을 표시해야 함
 
-@REQ:STATUSLINE-UBQ-004
 **Git 저장소 상태 표시**
 - GIVEN: Git repository에서 변경이 발생했을 때
 - WHEN: 상태줄을 렌더링할 때
 - THEN: Staged changes (+N), Unstaged changes (M N), Untracked files (?) 의 개수를 표시해야 함
 
-@REQ:STATUSLINE-UBQ-005
 **활성 Alfred 작업 및 단계 표시**
 - GIVEN: `/alfred:1-plan`, `/alfred:2-run`, `/alfred:3-sync` 등 Alfred 명령이 실행 중일 때
 - WHEN: 상태줄을 렌더링할 때
 - THEN: 현재 실행 중인 Alfred 명령의 이름과 진행 상태 (예: `[PLAN]`, `[RUN-GREEN]`, `[SYNC]`) 를 표시해야 함
 
-@REQ:STATUSLINE-UBQ-006
 **MoAI-ADK 버전 표시**
 - GIVEN: MoAI-ADK 프로젝트가 활성화되어 있을 때
 - WHEN: 상태줄을 렌더링할 때
@@ -140,31 +130,26 @@ MoAI-ADK 개발자가 Claude Code 상태줄에서 실시간 모델 정보, 세�
 
 ### 3.2 Event-Driven Requirements (특정 이벤트 발생 시)
 
-@REQ:STATUSLINE-EVENT-001
 **활성 SPEC ID 표시**
 - GIVEN: `/alfred:1-plan` 또는 `/alfred:2-run` 명령이 SPEC을 작업 중일 때
 - WHEN: 상태줄을 업데이트할 때
 - THEN: 활성 SPEC의 ID (예: `SPEC-AUTH-001`) 와 현재 단계 (예: `RED`, `GREEN`, `REFACTOR`) 를 표시해야 함
 
-@REQ:STATUSLINE-EVENT-002
 **TDD 사이클 단계 표시**
 - GIVEN: `/alfred:2-run` 명령이 TDD 사이클 중일 때
 - WHEN: 상태줄을 업데이트할 때
 - THEN: 현재 단계 (RED/GREEN/REFACTOR) 와 현재 작업 중인 테스트/코드 파일 정보를 표시해야 함
 
-@REQ:STATUSLINE-EVENT-003
 **활성 TodoWrite 작업 표시**
 - GIVEN: TodoWrite tool로 작업 목록이 추적 중일 때
 - WHEN: 상태줄을 업데이트할 때
 - THEN: 현재 in_progress 작업의 개수와 completed 작업의 진행률을 표시해야 함
 
-@REQ:STATUSLINE-EVENT-004
 **경고 및 오류 표시**
 - GIVEN: 테스트 실패, 빌드 오류, Git 충돌 등이 발생했을 때
 - WHEN: 상태줄을 업데이트할 때
 - THEN: 경고 아이콘과 함께 오류 유형 (예: `⚠ TESTS FAILED`, `✗ CONFLICTS`) 를 표시해야 함
 
-@REQ:STATUSLINE-EVENT-006
 **업데이트 안내 표시**
 - GIVEN: MoAI-ADK 업데이트가 가능할 때
 - WHEN: 상태줄을 업데이트할 때 (300초 캐싱, 60초 주기로 확인)
@@ -174,7 +159,6 @@ MoAI-ADK 개발자가 Claude Code 상태줄에서 실시간 모델 정보, 세�
 
 ### 3.3 State-Driven Requirements (상태에 따라 변경)
 
-@REQ:STATUSLINE-STATE-001
 **branch 색상 동적 변경**
 - GIVEN: 현재 branch가 feature, develop, 또는 main일 때
 - WHEN: 상태줄을 렌더링할 때
@@ -183,7 +167,6 @@ MoAI-ADK 개발자가 Claude Code 상태줄에서 실시간 모델 정보, 세�
   - develop → Cyan/Blue (통합 브랜치)
   - main → Green (릴리스 브랜치)
 
-@REQ:STATUSLINE-STATE-002
 **Git 변경 상태 색상 표시**
 - GIVEN: Git에서 변경 사항이 감지되었을 때
 - WHEN: 상태줄을 렌더링할 때
@@ -193,7 +176,6 @@ MoAI-ADK 개발자가 Claude Code 상태줄에서 실시간 모델 정보, 세�
   - Untracked (?) → Red/Pink
   - Clean → No indicator
 
-@REQ:STATUSLINE-STATE-003
 **세션 시간 기반 상태 표시**
 - GIVEN: 세션 경과 시간이 증가할 때
 - WHEN: 상태줄을 렌더링할 때
@@ -204,19 +186,16 @@ MoAI-ADK 개발자가 Claude Code 상태줄에서 실시간 모델 정보, 세�
 
 ### 3.4 Optional Requirements (선택적 표시)
 
-@REQ:STATUSLINE-OPT-001
 **최근 커밋 메시지 스니펫 표시**
 - GIVEN: 개발자가 설정에서 상세 정보 표시를 활성화했을 때
 - WHEN: 상태줄의 확장 영역을 렌더링할 때
 - THEN: 최근 커밋의 첫 50자를 표시해야 함
 
-@REQ:STATUSLINE-OPT-002
 **활성 SPEC 목록 미니 표시**
 - GIVEN: 개발자가 '다중 SPEC 모드'를 활성화했을 때
 - WHEN: 상태줄의 확장 영역을 렌더링할 때
 - THEN: 현재 프로젝트의 활성 SPEC 3개의 ID 목록을 표시해야 함
 
-@REQ:STATUSLINE-OPT-003
 **AI 토큰 사용량 표시 (고급)**
 - GIVEN: Claude Code API에서 토큰 메트릭을 제공하고 개발자가 활성화했을 때
 - WHEN: 상태줄을 렌더링할 때
@@ -396,21 +375,10 @@ Alfred 작업 상태 조회 실패    [?] (물음표)
 ## 6. Traceability
 
 ### Related SPECs
-- @SPEC:CLAUDE-CODE-FEATURES-001 - Claude Code v2.0.30+ 신규 기능 통합
-- @SPEC:ALF-WORKFLOW-001 - Alfred 워크플로우 4단계 프로세스
 
 ### Related Code Modules
-- @CODE:STATUSLINE-ENGINE-001 - 상태줄 렌더링 엔진
-- @CODE:CACHE-MANAGER-001 - 캐싱 및 성능 최적화
-- @CODE:GIT-INFO-COLLECTOR-001 - Git 정보 수집
-- @CODE:SESSION-METRICS-001 - 세션 메트릭 추적
-- @CODE:VERSION-READER-001 - MoAI-ADK 버전 정보 읽기
-- @CODE:UPDATE-CHECKER-001 - 업데이트 가용성 확인
 
 ### Related Documentation
-- @DOC:STATUSLINE-CONFIG-001 - 설정 및 커스터마이제이션 가이드
-- @DOC:STATUSLINE-EXAMPLES-001 - 실제 사용 예시
-- @DOC:PERFORMANCE-GUIDE-001 - 성능 최적화 가이드
 
 ---
 

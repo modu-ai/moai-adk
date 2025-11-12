@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @TEST:REALTIME-MONITOR-IMPROVED-001 | @SPEC:TAG-REALTIME-IMPROVEMENT-001 | @CODE:HOOK-SCAN-FILTER-001
 """실시간 TAG 모니터 개선: 파일 스캔 최적화 테스트
 
 선택적 파일(docs/, .claude/, .moai/docs/ 등)을 스캔에서 제외하고
