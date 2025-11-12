@@ -2,7 +2,7 @@
 name: moai-baas-neon-ext
 version: 4.0.0
 created: 2025-11-11
-updated: 2025-11-11
+updated: 2025-11-12
 status: active
 description: Enterprise Neon Serverless PostgreSQL Platform with AI-powered database architecture, Context7 integration, and intelligent branching orchestration for scalable modern applications
 keywords: ['neon', 'postgresql', 'serverless-database', 'database-branching', 'autoscaling', 'pg-bouncer', 'context7-integration', 'ai-orchestration', 'production-deployment']
@@ -725,7 +725,7 @@ class NeonPerformanceIntelligence:
 
 ## Changelog
 
-- **v4.0.0** (2025-11-11): Complete rewrite with Context7 integration, AI-powered Neon optimization, enterprise serverless patterns, and intelligent branching workflows
+- **v4.0.0** (2025-11-12): Complete Enterprise v4.0 rewrite with Context7 integration, PostgreSQL Anonymizer extension, Azure Native GA, serverless auto-scaling, branch and restore workflows integration, AI-powered Neon optimization, enterprise serverless patterns, and intelligent branching workflows
 - **v1.0.0** (2025-11-09): Initial Neon serverless PostgreSQL integration
 
 ---
