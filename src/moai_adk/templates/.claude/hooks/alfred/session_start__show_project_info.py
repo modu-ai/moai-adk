@@ -156,6 +156,62 @@ def get_git_info() -> dict[str, Any]:
         }
 
 
+def check_version_update() -> tuple[str, bool]:
+    """Check if version update is available
+
+    Returns:
+        (status_indicator, has_update)
+        - status_indicator: "(latest)" or "→ X.X.X available"
+        - has_update: True if update available
+    """
+    try:
+        # Get installed version first
+        installed_result = subprocess.run(
+            ["pip", "show", "moai-adk"],
+            capture_output=True,
+            text=True,
+            timeout=3
+        )
+
+        installed_version = None
+        if installed_result.returncode == 0:
+            for line in installed_result.stdout.split('\n'):
+                if line.startswith('Version:'):
+                    installed_version = line.split(':')[1].strip()
+                    break
+
+        if not installed_version:
+            return "(latest)", False
+
+        # Try to get latest version via pip index
+        index_result = subprocess.run(
+            ["pip", "index", "versions", "moai-adk"],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+
+        if index_result.returncode == 0:
+            for line in index_result.stdout.split('\n'):
+                if 'Available versions:' in line:
+                    parts = line.split(':')
+                    if len(parts) > 1:
+                        versions = parts[1].strip().split(',')
+                        if versions:
+                            latest = versions[0].strip()
+                            # Only report update if versions are different
+                            if latest != installed_version:
+                                return f"→ {latest} available", True
+                            else:
+                                return "(latest)", False
+
+        # Can't check via index, assume we're on latest
+        return "(latest)", False
+    except Exception:
+        # If check fails, assume we're on latest
+        return "(latest)", False
+
+
 def get_test_info() -> dict[str, Any]:
     """Get test coverage and status information
 
@@ -229,7 +285,7 @@ def calculate_risk(git_info: dict, spec_progress: dict, test_info: dict) -> str:
 
 
 def format_session_output() -> str:
-    """Format the complete session start output"""
+    """Format the complete session start output with proper line alignment"""
     # Gather information
     git_info = get_git_info()
     spec_progress = get_spec_progress()
@@ -244,14 +300,17 @@ def format_session_output() -> str:
     except Exception:
         pass
 
-    # Format output with proper indentation
+    # Check for version updates
+    version_status, _has_update = check_version_update()
+
+    # Format output with each item on separate line
     output = [
         "🚀 {{PROJECT_NAME}} Session Started",
-        "",
-        f"    🗿 Version: {moai_version} | 🌿 {git_info['branch']}",
-        f"    📝 Changes: {git_info['changes']}",
-        f"    📋 SPEC Progress: {spec_progress['completed']}/{spec_progress['total']} ({spec_progress['percentage']}%)",
-        f"    🔨 Last: {git_info['last_commit']}"
+        f"📦 Version: {moai_version} {version_status}",
+        f"🌿 Branch: {git_info['branch']}",
+        f"🔄 Changes: {git_info['changes']}",
+        f"🎯 SPEC Progress: {spec_progress['completed']}/{spec_progress['total']} ({int(spec_progress['percentage'])}%)",
+        f"🔨 Last Commit: {git_info['last_commit']}"
     ]
 
     return "\n".join(output)
