@@ -3,7 +3,7 @@
     "SPEC-First: Use /alfred:1-plan to define requirements first and everything connects together",
     "TDD Cycle: RED (write tests) → GREEN (minimal code) → REFACTOR (improve) ensures quality",
     "4-Phase Workflow: /alfred:1-plan plan → /alfred:2-run implement → /alfred:3-sync validate → git deploy",
-    "TRUST 5 Principles: Test(≥85%) + Readable + Unified + Secured(OWASP) + Trackable(TAG) = Quality",
+    "TRUST 5 Principles: Test(≥85%) + Readable + Unified + Secured(OWASP) + Trackable = Quality",
     "Alfred Agents: 19 expert team members automatically handle planning, implementation, testing, validation",
     "Conversation Style: /output-style r2d2 (hands-on partner) or /output-style yoda (deep learning) available",
     "Task Tracking: TodoWrite keeps progress visible and prevents any tasks from being missed",
