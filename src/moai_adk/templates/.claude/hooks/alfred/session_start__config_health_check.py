@@ -14,11 +14,13 @@ Features:
 - Propose re-running /alfred:0-project if necessary
 """
 
+import importlib.metadata
 import json
-import subprocess
 import sys
 import time
-from datetime import datetime
+import urllib.request
+import urllib.error
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Optional
 
@@ -80,66 +82,116 @@ def check_config_completeness(config: dict[str, Any]) -> tuple[bool, list[str]]:
     return len(missing_fields) == 0, missing_fields
 
 
-def get_latest_pypi_version() -> Optional[str]:
-    """Check latest moai-adk version on PyPI
+def get_version_cache_file() -> Path:
+    """Get path to version cache file"""
+    cache_dir = Path.cwd() / ".moai" / "cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    return cache_dir / "version-check.json"
+
+
+def load_version_cache() -> Optional[dict[str, Any]]:
+    """Load version check cache if valid (< 24 hours old)
 
     Returns:
-        Latest version string or None if check fails
+        Cached version data if valid, None otherwise
     """
     try:
-        result = subprocess.run(
-            ["pip", "index", "versions", "moai-adk"],
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
+        cache_file = get_version_cache_file()
+        if not cache_file.exists():
+            return None
 
-        if result.returncode == 0:
-            # Parse version from pip index output
-            for line in result.stdout.split('\n'):
-                if 'Available versions:' in line:
-                    # Extract first version (latest)
-                    parts = line.split(':')
-                    if len(parts) > 1:
-                        versions = parts[1].strip().split(',')
-                        if versions:
-                            return versions[0].strip()
+        cache_data = json.loads(cache_file.read_text())
+        last_check = cache_data.get("last_check")
+
+        if not last_check:
+            return None
+
+        # Parse timestamp and check if < 24 hours old
+        last_check_dt = datetime.fromisoformat(last_check)
+        if datetime.now() - last_check_dt < timedelta(hours=24):
+            return cache_data
 
         return None
     except Exception:
         return None
 
 
+def save_version_cache(data: dict[str, Any]) -> None:
+    """Save version check cache with timestamp"""
+    try:
+        cache_file = get_version_cache_file()
+        cache_file.parent.mkdir(parents=True, exist_ok=True)
+
+        cache_data = {
+            **data,
+            "last_check": datetime.now().isoformat()
+        }
+        cache_file.write_text(json.dumps(cache_data, indent=2))
+    except Exception:
+        pass  # Silently fail on cache write
+
+
+def get_latest_pypi_version() -> Optional[str]:
+    """Check latest moai-adk version from PyPI with caching
+
+    Uses 24-hour cache to avoid repeated PyPI API calls.
+    Falls back to cached data if API call fails.
+
+    Returns:
+        Latest version string or None if check fails
+    """
+    # Try cache first
+    cached = load_version_cache()
+    if cached and cached.get("latest"):
+        return cached["latest"]
+
+    try:
+        # Use PyPI JSON API (faster than pip index)
+        url = "https://pypi.org/pypi/moai-adk/json"
+        with urllib.request.urlopen(url, timeout=3) as response:
+            data = json.loads(response.read().decode())
+            latest = data.get("info", {}).get("version")
+
+            if latest:
+                # Save to cache
+                save_version_cache({"latest": latest})
+                return latest
+    except (urllib.error.URLError, Exception):
+        # Fall back to cached version if available
+        if cached and cached.get("latest"):
+            return cached["latest"]
+
+    return None
+
+
+def get_installed_version() -> Optional[str]:
+    """Get installed moai-adk version using importlib.metadata
+
+    Returns:
+        Version string or None if package not installed
+    """
+    try:
+        return importlib.metadata.version("moai-adk")
+    except importlib.metadata.PackageNotFoundError:
+        return None
+
+
 def check_moai_version_match() -> tuple[bool, Optional[str], Optional[str], Optional[str]]:
     """Check installed moai-adk version and available updates
+
+    Uses importlib.metadata for fast version detection.
 
     Returns:
         (is_matched, installed_version, latest_version, status_message)
     """
     try:
-        # Get installed moai-adk version
-        result = subprocess.run(
-            ["moai-adk", "--version"],
-            capture_output=True,
-            text=True,
-            timeout=3
-        )
-
-        installed_version = None
-        if result.returncode == 0:
-            # Parse version from output (e.g., "0.21.1")
-            version_line = result.stdout.strip()
-            if "version" in version_line.lower():
-                parts = version_line.split()
-                for part in parts:
-                    if part and part[0].isdigit():
-                        installed_version = part
-                        break
+        # Get installed moai-adk version (no subprocess, ~10ms)
+        installed_version = get_installed_version()
 
         if not installed_version:
             return False, None, None, None
 
-        # Get latest version from PyPI
+        # Get latest version from PyPI (cached, ~1ms after first call)
         latest_version = get_latest_pypi_version()
 
         if latest_version:
