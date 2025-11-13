@@ -51,17 +51,8 @@ logs/
 # Test coverage
 .coverage
 coverage.json
-coverage.xml
-htmlcov/
 
-# Documentation and build artifacts
-docs/
-dist/
-
-# Next.js and build config (site-specific, not needed in package)
-next.config.js
-theme.config.tsx
-vercel.json
+# Next.js build output
 docs/.next/
 docs/out/
 

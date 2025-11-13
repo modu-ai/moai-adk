@@ -217,7 +217,7 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      pull-requests: read
+      pull-requests: write
       contents: read
 
     steps:
