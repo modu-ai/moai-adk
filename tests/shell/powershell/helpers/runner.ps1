@@ -1,5 +1,5 @@
 # PowerShell 테스트 러너 헬퍼
-# @TAG:POWERSHELL-TEST-002 | PowerShell test execution framework
+# TEST-POWERSHELL-TEST-002: PowerShell test execution framework
 
 param(
     [Parameter(Mandatory=$false)]

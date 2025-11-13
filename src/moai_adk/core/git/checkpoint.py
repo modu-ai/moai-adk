@@ -109,10 +109,7 @@ class CheckpointManager:
         return self.branch_manager.list_checkpoint_branches()
 
     def _log_checkpoint(
-        self,
-        checkpoint_id: str,
-        operation: str,
-        is_safety: bool = False
+        self, checkpoint_id: str, operation: str, is_safety: bool = False
     ) -> None:
         """
         Append checkpoint metadata to the log file.

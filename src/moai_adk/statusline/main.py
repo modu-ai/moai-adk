@@ -127,7 +127,9 @@ def safe_collect_output_style() -> str:
                     "streaming": "R2-D2",
                     "explanatory": "Explanatory",
                     "concise": "Concise",
-                    "detailed": "Detailed"
+                    "detailed": "Detailed",
+                    "yoda": "🧙 Yoda Master",
+                    "yoda-master": "🧙 Yoda Master",
                 }
 
                 return style_mapping.get(output_style, output_style.title())
@@ -156,10 +158,7 @@ def safe_check_update(current_version: str) -> tuple[bool, Optional[str]]:
         return False, None
 
 
-def build_statusline_data(
-    session_context: dict,
-    mode: str = "compact"
-) -> str:
+def build_statusline_data(session_context: dict, mode: str = "compact") -> str:
     """
     Build complete statusline string from all data sources.
 
@@ -204,16 +203,16 @@ def build_statusline_data(
         data = StatuslineData(
             model=model,
             version=version,
-            output_style=output_style,    # Dynamically read from Claude Code settings
-            memory_usage="256MB",        # TODO: Get actual memory usage
-            todo_count="3 tasks",        # TODO: Get actual TODO count
+            output_style=output_style,  # Dynamically read from Claude Code settings
+            memory_usage="256MB",  # TODO: Get actual memory usage
+            todo_count="3 tasks",  # TODO: Get actual TODO count
             branch=branch,
             git_status=git_status,
             duration=duration,
             directory=directory,
             active_task=active_task,
             update_available=update_available,
-            latest_version=latest_version
+            latest_version=latest_version,
         )
 
         # Render statusline with labeled sections
@@ -225,6 +224,7 @@ def build_statusline_data(
     except Exception as e:
         # Graceful degradation on any error
         import logging
+
         logging.warning(f"Statusline rendering error: {e}")
         return ""
 
@@ -244,10 +244,10 @@ def main():
 
     # Determine display mode (priority: session context > environment > config > default)
     mode = (
-        session_context.get("statusline", {}).get("mode") or
-        os.environ.get("MOAI_STATUSLINE_MODE") or
-        config.get("statusline.mode") or
-        "extended"
+        session_context.get("statusline", {}).get("mode")
+        or os.environ.get("MOAI_STATUSLINE_MODE")
+        or config.get("statusline.mode")
+        or "extended"
     )
 
     # Build and output statusline

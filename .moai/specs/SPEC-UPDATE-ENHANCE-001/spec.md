@@ -23,7 +23,7 @@ scope: SessionStart hook enhancement with 6 improvements
 - **PERFORMANCE**: 95% improvement achieved (cache hit: 10-20ms vs 200-400ms)
 - **QUALITY GATE**: PASS ✅
 - **COMMITS**: 3 commits (Phase 1-4 complete)
-- **TAG CHAIN**: 89% complete (26 TEST TAGs, 1 DOC TAG, 4 CODE TAGs implemented)
+- **SPEC CHAIN**: 89% complete (26 TEST SPECs, 1 DOC SPEC, 4 CODE SPECs implemented)
 
 ### v0.0.1 (2025-10-29)
 - **INITIAL**: SessionStart 버전 체크 시스템 강화 (SPEC-UPDATE-ENHANCE-001)

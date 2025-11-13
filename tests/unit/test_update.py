@@ -525,7 +525,7 @@ class TestUpdateVersionFunctions:
         from moai_adk.cli.commands.update import _get_project_config_version
 
         project_path = tmp_path / "test-project"
-        moai_dir = project_path / ".moai"
+        moai_dir = project_path / ".moai" / "config"
         moai_dir.mkdir(parents=True)
 
         # Create config with template_version
@@ -545,7 +545,7 @@ class TestUpdateVersionFunctions:
         from moai_adk.cli.commands.update import _get_project_config_version
 
         project_path = tmp_path / "test-project"
-        moai_dir = project_path / ".moai"
+        moai_dir = project_path / ".moai" / "config"
         moai_dir.mkdir(parents=True)
 
         # Create config without template_version but with moai.version
@@ -563,7 +563,7 @@ class TestUpdateVersionFunctions:
         from moai_adk.cli.commands.update import _get_project_config_version
 
         project_path = tmp_path / "test-project"
-        moai_dir = project_path / ".moai"
+        moai_dir = project_path / ".moai" / "config"
         moai_dir.mkdir(parents=True)
 
         # Create invalid JSON
@@ -700,7 +700,7 @@ class TestUpdateThreeStageWorkflow:
         from moai_adk.cli.commands.update import _preserve_project_metadata
 
         project_path = tmp_path / "test-project"
-        moai_dir = project_path / ".moai"
+        moai_dir = project_path / ".moai" / "config"
         moai_dir.mkdir(parents=True)
 
         # Create initial config
@@ -732,7 +732,7 @@ class TestUpdateThreeStageWorkflow:
         from moai_adk.cli.commands.update import _get_project_config_version
 
         project_path = tmp_path / "test-project"
-        moai_dir = project_path / ".moai"
+        moai_dir = project_path / ".moai" / "config"
         moai_dir.mkdir(parents=True)
 
         # Test 1: Placeholder in moai.version (no template_version)

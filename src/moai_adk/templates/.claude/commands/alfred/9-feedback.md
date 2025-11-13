@@ -3,7 +3,7 @@ name: alfred:9-feedback
 description: "GitHub 이슈 빠르게 생성하기 (자동 정보 수집 + 템플릿)"
 allowed-tools:
 - Bash(gh:*)
-- Bash(python3:*)
+- Bash(uv:*)
 - AskUserQuestion
 - Skill
 skills:

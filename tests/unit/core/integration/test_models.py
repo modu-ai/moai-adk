@@ -3,7 +3,6 @@ Test integration testing models and data structures.
 """
 
 import pytest
-from datetime import datetime
 
 from moai_adk.core.integration.models import (
     IntegrationTestResult, TestComponent, TestSuite, TestStatus,

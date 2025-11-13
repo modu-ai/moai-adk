@@ -2,10 +2,10 @@
 name: "moai-baas-convex-ext"
 version: "4.0.0"
 created: 2025-11-11
-updated: 2025-11-12
+updated: 2025-11-13
 status: stable
-description: Enterprise Convex Realtime Database Platform with AI-powered sync architecture, Context7 integration, and intelligent real-time orchestration for scalable collaborative applications
-keywords: ['convex', 'realtime-database', 'sync-engine', 'typescript', 'reactive-database', 'collaboration', 'context7-integration', 'ai-orchestration', 'production-deployment']
+description: Enterprise Convex Real-Time Backend with AI-powered reactive database architecture, Context7 integration, and intelligent synchronization orchestration for collaborative applications
+keywords: ['convex', 'realtime-backend', 'reactive-database', 'typescript', 'full-stack', 'synchronization', 'context7-integration', 'ai-orchestration', 'production-deployment']
 allowed-tools: 
   - Read
   - Bash
@@ -18,15 +18,15 @@ allowed-tools:
   - mcp__context7__get-library-docs
 ---
 
-# Enterprise Convex Realtime Database Expert v4.0.0
+# Enterprise Convex Real-Time Backend Expert v4.0.0
 
 ## Skill Metadata
 
 | Field | Value |
 | ----- | ----- |
 | **Skill Name** | moai-baas-convex-ext |
-| **Version** | 4.0.0 (2025-11-11) |
-| **Tier** | Enterprise Realtime Platform Expert |
+| **Version** | 4.0.0 (2025-11-13) |
+| **Tier** | Enterprise Real-Time Backend Expert |
 | **AI-Powered** | ✅ Context7 Integration, Intelligent Architecture |
 | **Auto-load** | On demand when Convex keywords detected |
 
@@ -34,652 +34,589 @@ allowed-tools:
 
 ## What It Does
 
-Enterprise Convex Realtime Database Platform expert with AI-powered sync architecture, Context7 integration, and intelligent real-time orchestration for scalable collaborative applications.
+Enterprise Convex Real-Time Backend expert with AI-powered reactive database architecture, Context7 integration, and intelligent synchronization orchestration for collaborative applications.
 
 **Revolutionary v4.0.0 capabilities**:
-- 🤖 **AI-Powered Convex Architecture** using Context7 MCP for latest Convex documentation
-- 📊 **Intelligent Realtime Sync** with automated conflict resolution and optimization
-- 🚀 **Real-time Performance Analytics** with AI-driven collaborative insights
-- 🔗 **Enterprise TypeScript Integration** with optimized reactive programming patterns
-- 📈 **Predictive Sync Optimization** with usage forecasting and performance tuning
-- 🔍 **Advanced Conflict Resolution** with automated optimistic concurrency control
-- 🌐 **Multi-Region Realtime Deployment** with intelligent sync and latency optimization
-- 🎯 **Intelligent Migration Planning** with real-time application modernization strategies
-- 📱 **Real-time Collaboration Monitoring** with AI-powered sync alerting
-- ⚡ **Zero-Configuration Sync Setup** with intelligent template matching and deployment
+- 🤖 **AI-Powered Convex Architecture** using Context7 MCP for latest real-time patterns
+- 📊 **Intelligent Synchronization Orchestration** with automated real-time optimization
+- 🚀 **Advanced TypeScript Integration** with AI-driven type safety and performance
+- 🔗 **Enterprise Reactive Patterns** with zero-configuration real-time workflows
+- 📈 **Predictive Performance Analytics** with usage forecasting and optimization
 
 ---
 
 ## When to Use
 
 **Automatic triggers**:
-- Convex realtime database and sync architecture discussions
-- TypeScript reactive programming and collaboration features planning
-- Real-time application scalability and performance optimization
-- Conflict resolution and optimistic concurrency implementation
-- Modern collaborative application architecture and design
+- Convex real-time backend architecture and synchronization discussions
+- Full-stack TypeScript application development with real-time features
+- Collaborative application design and real-time data management
+- Real-time database optimization and performance tuning
 
 **Manual invocation**:
-- Designing enterprise Convex architectures with real-time sync
-- Optimizing TypeScript reactive programming and database performance
-- Planning real-time collaboration features and conflict resolution
-- Implementing advanced sync strategies and optimistic concurrency
-- Migrating applications to real-time Convex architectures
-- Optimizing Convex costs and sync performance monitoring
+- Designing enterprise Convex architectures with optimal real-time patterns
+- Implementing collaborative features and real-time synchronization
+- Planning migrations from traditional backends to Convex
+- Optimizing real-time performance and data consistency
 
 ---
 
-## Enterprise Convex Architecture Intelligence
+# Quick Reference (Level 1)
 
-### AI-Enhanced Platform Analysis
+## Convex Real-Time Backend Platform (November 2025)
 
-#### 1. **Convex Realtime Database** (Sync-First Database)
-```yaml
-convex_realtime_database:
-  context7_integration: true
-  latest_features:
-    - "Built-in real-time sync with WebSocket connections"
-    - "Optimistic concurrency control with automatic conflict resolution"
-    - "TypeScript-first schema with automatic type inference"
-    - "Reactive queries with automatic invalidation and updates"
-    - "Server-side JavaScript/TypeScript execution environment"
-    - "Vector database integration with similarity search"
-    - "File storage with automatic sync and optimization"
-    - "End-to-end encryption with secure data transmission"
-  
-  ai_recommendations:
-    best_for: ["Real-time applications", "Collaborative tools", "Live dashboards", "Multi-player games"]
-    use_cases: ["Collaborative documents", "Real-time analytics", "Chat applications", "Live collaboration"]
-    performance_metrics:
-      sync_latency: "P95 < 50ms for real-time updates"
-      conflict_resolution: "Automatic resolution with custom strategies"
-      query_performance: "Sub-millisecond reactive query updates"
-      concurrent_users: "10,000+ concurrent users per application"
-    
-  enterprise_features:
-    sync_engine: ["Automatic sync", "Conflict resolution", "Reactive queries", "Type safety"]
-    developer_experience: ["TypeScript integration", "Hot reloading", "Schema validation"]
-    scalability: ["Horizontal scaling", "Automatic load balancing", "Global distribution"]
-```
+### Core Features Overview
+- **Reactive Database**: Automatic real-time synchronization across clients
+- **Type-Safe Backend**: End-to-end TypeScript with compile-time guarantees
+- **Serverless Functions**: Backend functions with automatic scaling
+- **Built-in Authentication**: User management and access control
+- **Real-time Subscriptions**: Live data updates with automatic conflict resolution
 
-#### 2. **Convex Functions** (Serverless Execution Environment)
-```yaml
-convex_functions:
-  context7_integration: true
-  latest_features:
-    - "Server-side TypeScript/JavaScript execution"
-    - "Automatic function scheduling with cron triggers"
-    - "Database mutations with reactive updates"
-    - "File upload and processing capabilities"
-    - "HTTP actions for external API integration"
-    - "Vector search and AI/ML model integration"
-    - "Background job processing with queue management"
-    - "Function versioning and gradual rollouts"
-  
-  ai_recommendations:
-    best_for: ["Serverless backend", "API endpoints", "Data processing", "Scheduled jobs"]
-    use_cases: ["Business logic", "API integrations", "Background processing", "Scheduled tasks"]
-    performance_metrics:
-      execution_time: "P95 < 100ms for most functions"
-      throughput: "1000+ function executions per second"
-      scalability: "Auto-scaling based on demand"
-      reliability: "99.9% uptime with automatic retries"
-    
-  enterprise_features:
-    execution: ["TypeScript execution", "Database access", "File handling", "HTTP integration"]
-    monitoring: ["Real-time logs", "Performance metrics", "Error tracking", "Debugging tools"]
-    deployment: ["Git-based deployment", "Function versioning", "Rollback capabilities"]
-```
+### Latest Features (November 2025)
+- **Self-Hosted Convex**: On-premises deployment with PostgreSQL support
+- **Dashboard for Self-Hosted**: Management interface for self-hosted deployments
+- **Open-Source Reactive Database**: Community-driven development
+- **Enhanced TypeScript Support**: Improved type inference and performance
 
-#### 3. **Convex React Integration** (Reactive Frontend)
-```yaml
-convex_react_integration:
-  context7_integration: true
-  latest_features:
-    - "React hooks for real-time data synchronization"
-    - "Automatic re-rendering on data changes"
-    - "Optimistic updates with automatic rollback"
-    - "Server-side data validation with type safety"
-    - "Real-time authentication and authorization"
-    - "Component-level data subscriptions"
-    - "Loading states and error handling"
-    - "Performance optimization with selective updates"
-  
-  ai_recommendations:
-    best_for: ["React applications", "Real-time UI", "Collaborative interfaces", "Interactive dashboards"]
-    use_cases: ["Collaborative apps", "Real-time dashboards", "Interactive forms", "Live chat"]
-    performance_metrics:
-      ui_updates: "Sub-millisecond UI reactivity"
-      data_sync: "Automatic synchronization with minimal overhead"
-      rendering_performance: "Optimized re-rendering with selective updates"
-      user_experience: "Seamless real-time collaboration"
-    
-  enterprise_features:
-    react_integration: ["React hooks", "TypeScript support", "Automatic updates", "Error handling"]
-    user_experience: ["Real-time sync", "Optimistic updates", "Loading states", "Offline support"]
-    developer_experience: ["Type safety", "Hot reloading", "Debugging tools", "Performance monitoring"]
-```
+### Key Benefits
+- **Zero Configuration**: Automatic deployment and scaling
+- **Type Safety**: Compile-time error prevention
+- **Real-time by Default**: Automatic synchronization without extra code
+- **Developer Experience**: Modern TypeScript tooling and debugging
+
+### Performance Characteristics
+- **Real-time Sync**: P95 < 100ms latency
+- **Function Execution**: Sub-second cold starts
+- **Automatic Scaling**: Handles millions of concurrent users
+- **Conflict Resolution**: Automatic merge and resolution strategies
 
 ---
 
-## AI-Powered Convex Intelligence
+# Core Implementation (Level 2)
 
-### Intelligent Realtime Optimization
+## Convex Architecture Intelligence
+
 ```python
-# AI-powered Convex realtime optimization with Context7
-class EnterpriseConvexOptimizer:
+# AI-powered Convex architecture optimization with Context7
+class ConvexArchitectOptimizer:
     def __init__(self):
         self.context7_client = Context7Client()
-        self.convex_analyzer = ConvexAnalyzer()
-        self.sync_optimizer = SyncOptimizer()
+        self.typescript_analyzer = TypeScriptAnalyzer()
+        self.realtime_optimizer = RealtimeOptimizer()
     
-    async def optimize_convex_architecture(self, 
-                                         current_config: ConvexConfig,
-                                         performance_goals: PerformanceGoals) -> OptimizationPlan:
-        """Optimize Convex architecture using AI analysis."""
+    async def design_optimal_convex_architecture(self, 
+                                               requirements: ApplicationRequirements) -> ConvexArchitecture:
+        """Design optimal Convex architecture using AI analysis."""
         
-        # Get latest Convex best practices via Context7
-        convex_docs = {}
-        services = ['database', 'functions', 'react-integration', 'realtime', 'auth']
-        
-        for service in services:
-            docs = await self.context7_client.get_library_docs(
-                context7_library_id=await self._resolve_convex_library(service),
-                topic=f"enterprise optimization best practices 2025",
-                tokens=3000
-            )
-            convex_docs[service] = docs
-        
-        # Analyze current configuration
-        config_analysis = self._analyze_current_config(current_config, convex_docs)
-        
-        # Sync optimization recommendations
-        sync_recommendations = self.sync_optimizer.optimize_sync_performance(
-            current_config,
-            performance_goals,
-            convex_docs['realtime']
-        )
-        
-        # Function optimization recommendations
-        function_recommendations = self.convex_analyzer.optimize_functions(
-            current_config.functions,
-            convex_docs['functions']
-        )
-        
-        # Generate comprehensive optimization plan
-        return OptimizationPlan(
-            sync_optimizations=sync_recommendations,
-            function_optimizations=function_recommendations,
-            database_optimizations=self._optimize_database_design(
-                current_config.database,
-                convex_docs['database']
-            ),
-            react_integration_optimizations=self._optimize_react_integration(
-                current_config.react,
-                convex_docs['react-integration']
-            ),
-            auth_configurations=self._optimize_auth_setup(
-                current_config.auth,
-                convex_docs['auth']
-            ),
-            expected_improvements=self._calculate_expected_improvements(
-                sync_recommendations,
-                function_recommendations
-            ),
-            implementation_complexity=self._assess_implementation_complexity(
-                sync_recommendations,
-                function_recommendations
-            ),
-            roi_projection=self._calculate_roi_projection(
-                sync_recommendations,
-                performance_goals
-            )
-        )
-    
-    def _optimize_realtime_sync(self, 
-                              config: SyncConfig,
-                              collaboration_requirements: CollaborationRequirements) -> List[SyncOptimization]:
-        """Generate realtime sync optimizations."""
-        optimizations = []
-        
-        # Conflict resolution optimization
-        conflict_optimizations = self._optimize_conflict_resolution(config, collaboration_requirements)
-        optimizations.extend(conflict_optimizations)
-        
-        # Subscription optimization
-        subscription_optimizations = self._optimize_subscriptions(config, collaboration_requirements)
-        optimizations.extend(subscription_optimizations)
-        
-        # Performance optimization
-        performance_optimizations = self._optimize_sync_performance(config, collaboration_requirements)
-        optimizations.extend(performance_optimizations)
-        
-        # Scalability optimization
-        scalability_optimizations = self._optimize_sync_scalability(config, collaboration_requirements)
-        optimizations.extend(scalability_optimizations)
-        
-        return optimizations
-    
-    def _generate_reactive_patterns(self, 
-                                  application_type: ApplicationType,
-                                  collaboration_features: List[str]) -> ReactivePattern:
-        """Generate optimal reactive programming patterns."""
-        return ReactivePattern(
-            query_patterns={
-                'realtime_queries': "Reactive queries with automatic invalidation",
-                'filtering_strategies': "Efficient client-side and server-side filtering",
-                'pagination_patterns': "Cursor-based pagination with real-time updates",
-                'relationship_modeling': "Optimized data relationships for reactive queries"
-            },
-            mutation_patterns={
-                'optimistic_updates': "Client-side optimistic updates with rollback",
-                'transaction_handling': "Atomic transactions with conflict resolution",
-                'batch_operations': "Efficient batch mutations for performance",
-                'validation_strategies': "Server-side validation with type safety"
-            },
-            subscription_patterns={
-                'granular_subscriptions': "Component-level data subscriptions",
-                'subscription_lifecycle': "Automatic subscription management",
-                'error_handling': "Robust error handling and recovery",
-                'performance_optimization': "Selective subscription updates"
-            },
-            collaboration_features={
-                'realtime_editing': "Concurrent editing with conflict resolution",
-                'presence_awareness': "User presence and cursor tracking",
-                'notification_system': "Real-time notifications and alerts",
-                'activity_feeds': "Live activity streams and updates"
-            }
-        )
-```
-
-### Context7-Enhanced Convex Intelligence
-```python
-# Real-time Convex intelligence with Context7
-class Context7ConvexIntelligence:
-    def __init__(self):
-        self.context7_client = Context7Client()
-        self.convex_monitor = ConvexMonitor()
-        self.update_scheduler = UpdateScheduler()
-    
-    async def get_real_time_convex_updates(self, services: List[str]) -> ConvexUpdates:
-        """Get real-time Convex updates via Context7."""
-        updates = {}
-        
-        for service in services:
-            # Get latest Convex documentation updates
-            latest_docs = await self.context7_client.get_library_docs(
-                context7_library_id=await self._resolve_convex_library(service),
-                topic="latest features updates deprecation warnings 2025",
-                tokens=2500
-            )
-            
-            # Analyze updates for impact
-            impact_analysis = self._analyze_update_impact(latest_docs)
-            
-            updates[service] = ConvexUpdate(
-                new_features=self._extract_new_features(latest_docs),
-                breaking_changes=self._extract_breaking_changes(latest_docs),
-                performance_improvements=self._extract_performance_improvements(latest_docs),
-                sync_updates=self._extract_sync_updates(latest_docs),
-                deprecation_warnings=self._extract_deprecation_warnings(latest_docs),
-                impact_assessment=impact_analysis,
-                recommended_actions=self._generate_recommendations(latest_docs)
-            )
-        
-        return ConvexUpdates(updates)
-    
-    async def optimize_realtime_performance(self, 
-                                           current_config: RealtimeConfig,
-                                           usage_patterns: UsagePatterns) -> RealtimeOptimization:
-        """Optimize Convex realtime performance using AI analysis."""
-        
-        # Get realtime optimization documentation
-        realtime_docs = await self.context7_client.get_library_docs(
-            context7_library_id=await self._resolve_convex_library('realtime'),
-            topic="realtime performance optimization sync engineering 2025",
+        # Get latest Convex and TypeScript documentation via Context7
+        convex_docs = await self.context7_client.get_library_docs(
+            context7_library_id='/convex/docs',
+            topic="real-time backend reactive database typescript optimization 2025",
             tokens=3000
         )
         
-        # Get React integration best practices
-        react_docs = await self.context7_client.get_library_docs(
-            context7_library_id=await self._resolve_convex_library('react-integration'),
-            topic="react realtime optimization user experience 2025",
-            tokens=2500
+        typescript_docs = await self.context7_client.get_library_docs(
+            context7_library_id='/typescript/docs',
+            topic="advanced types optimization performance 2025",
+            tokens=2000
         )
         
-        # Analyze current realtime performance
-        performance_analysis = self._analyze_realtime_performance(
-            current_config,
-            usage_patterns,
-            realtime_docs,
-            react_docs
+        # Optimize real-time architecture
+        realtime_design = self.realtime_optimizer.design_reactive_system(
+            requirements.realtime_needs,
+            convex_docs
         )
         
-        # Generate optimization recommendations
-        optimizations = self._generate_realtime_optimizations(
-            performance_analysis,
-            usage_patterns,
-            realtime_docs,
-            react_docs
+        # Optimize TypeScript configuration
+        typescript_optimization = self.typescript_analyzer.optimize_configuration(
+            requirements.typescript_features,
+            typescript_docs
         )
         
-        return RealtimeOptimization(
-            sync_improvements=optimizations.sync_optimizations,
-            query_optimizations=optimizations.query_improvements,
-            subscription_optimizations=optimizations.subscription_improvements,
-            conflict_resolution_enhancements=optimizations.conflict_resolution_improvements,
-            expected_improvements=self._calculate_realtime_improvements(optimizations),
-            implementation_complexity=optimizations.complexity_score,
-            testing_strategy=optimizations.testing_plan
+        return ConvexArchitecture(
+            schema_design=self._design_schema(requirements),
+            function_architecture=self._design_functions(requirements),
+            realtime_system=realtime_design,
+            typescript_configuration=typescript_optimization,
+            authentication_setup=self._integrate_authentication(requirements),
+            deployment_strategy=self._plan_deployment(requirements),
+            performance_predictions=realtime_design.predictions
         )
+```
+
+## Real-Time Schema Design
+
+```typescript
+// Convex schema definition with TypeScript
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  // User management with real-time presence
+  users: defineTable({
+    name: v.string(),
+    email: v.string(),
+    avatar: v.optional(v.string()),
+    status: v.union(v.literal("online"), v.literal("offline"), v.literal("away")),
+    lastSeen: v.number(),
+    presence: v.optional(v.object({
+      currentRoom: v.id("rooms"),
+      lastActivity: v.number(),
+      cursor: v.optional(v.object({
+        x: v.number(),
+        y: v.number(),
+      })),
+    })),
+  })
+    .index("by_email", ["email"])
+    .index("by_status", ["status"]),
+
+  // Collaborative rooms with real-time state
+  rooms: defineTable({
+    name: v.string(),
+    description: v.optional(v.string()),
+    type: v.union(v.literal("document"), v.literal("whiteboard"), v.literal("chat")),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    isPublic: v.boolean(),
+    maxParticipants: v.optional(v.number()),
+  })
+    .index("by_created_by", ["createdBy"])
+    .index("by_type", ["type"]),
+
+  // Real-time documents with collaborative editing
+  documents: defineTable({
+    title: v.string(),
+    content: v.optional(v.string()),
+    roomId: v.id("rooms"),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    version: v.number(),
+    isLocked: v.boolean(),
+    lockedBy: v.optional(v.id("users")),
+  })
+    .index("by_room", ["roomId"])
+    .index("by_updated_at", ["updatedAt"]),
+
+  // Real-time messages and activities
+  messages: defineTable({
+    content: v.string(),
+    author: v.id("users"),
+    roomId: v.id("rooms"),
+    timestamp: v.number(),
+    type: v.union(v.literal("text"), v.literal("system"), v.literal("file")),
+    metadata: v.optional(v.any()),
+  })
+    .index("by_room_timestamp", ["roomId", "timestamp"])
+    .index("by_author", ["author"]),
+});
+```
+
+## Real-Time Function Implementation
+
+```typescript
+// Convex functions with real-time capabilities
+import { mutation, query, action } from "./_generated/server";
+import { v } from "convex/values";
+
+// Real-time presence updates
+export const updatePresence = mutation({
+  args: {
+    status: v.union(v.literal("online"), v.literal("offline"), v.literal("away")),
+    currentRoom: v.optional(v.id("rooms")),
+    cursor: v.optional(v.object({ x: v.number(), y: v.number() })),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
+      .unique();
+
+    if (!user) throw new Error("User not found");
+
+    const updateData: any = {
+      status: args.status,
+      lastSeen: Date.now(),
+    };
+
+    if (args.currentRoom || args.cursor) {
+      updateData.presence = {
+        currentRoom: args.currentRoom,
+        lastActivity: Date.now(),
+        cursor: args.cursor,
+      };
+    }
+
+    await ctx.db.patch(user._id, updateData);
+    return user._id;
+  },
+});
+
+// Real-time document collaboration
+export const updateDocument = mutation({
+  args: {
+    documentId: v.id("documents"),
+    content: v.string(),
+    version: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const document = await ctx.db.get(args.documentId);
+    if (!document) throw new Error("Document not found");
+
+    // Check if document is locked by another user
+    if (document.isLocked && document.lockedBy !== document.createdBy) {
+      throw new Error("Document is locked by another user");
+    }
+
+    // Version conflict detection
+    if (document.version !== args.version) {
+      throw new Error("Version conflict - document was modified");
+    }
+
+    const updatedDocument = await ctx.db.patch(args.documentId, {
+      content: args.content,
+      updatedAt: Date.now(),
+      version: args.version + 1,
+    });
+
+    // Trigger real-time update notification
+    await ctx.scheduler.runAfter(0, internal.notifications.notifyDocumentUpdate, {
+      documentId: args.documentId,
+      roomId: document.roomId,
+      updatedBy: document.createdBy,
+    });
+
+    return updatedDocument;
+  },
+});
+
+// Real-time room activity monitoring
+export const getRoomActivity = query({
+  args: { roomId: v.id("rooms") },
+  handler: async (ctx, args) => {
+    const room = await ctx.db.get(args.roomId);
+    if (!room || !room.isPublic) throw new Error("Room not accessible");
+
+    const [messages, activeUsers] = await Promise.all([
+      // Get recent messages
+      ctx.db
+        .query("messages")
+        .withIndex("by_room_timestamp", (q) => 
+          q.eq("roomId", args.roomId).order("desc").take(50)
+        ),
+      
+      // Get active users in room
+      ctx.db
+        .query("users")
+        .withIndex("by_status", (q) => q.eq("status", "online"))
+        .collect()
+        .then(users => users.filter(user => 
+          user.presence?.currentRoom === args.roomId
+        )),
+    ]);
+
+    return {
+      messages,
+      activeUsers: activeUsers.map(user => ({
+        id: user._id,
+        name: user.name,
+        avatar: user.avatar,
+        presence: user.presence,
+      })),
+    };
+  },
+});
 ```
 
 ---
 
-## Advanced Convex Integration Patterns
+# Advanced Implementation (Level 3)
 
-### Enterprise Realtime Application Architecture
-```yaml
-# Enterprise Convex realtime application architecture
-enterprise_convex_architecture:
-  realtime_patterns:
-    - name: "Collaborative Document Platform"
-      features: ["Real-time editing", "Version control", "Presence awareness", "Comments"]
-      optimization: "Operational transformation + Conflict resolution + Sync optimization"
-      integration: "Convex database + React hooks + Real-time sync"
-    
-    - name: "Live Analytics Dashboard"
-      features: ["Real-time data", "Interactive charts", "Alert systems", "Data filtering"]
-      optimization: "Reactive queries + Subscription optimization + Performance tuning"
-      integration: "Convex functions + Data processing + Real-time visualization"
-    
-    - name: "Multi-player Gaming Platform"
-      features: ["Real-time sync", "Game state management", "Player matching", "Leaderboards"]
-      optimization: "State synchronization + Conflict resolution + Performance optimization"
-      integration: "Convex database + Game logic + Real-time multiplayer"
-    
-    - name: "Project Management Tool"
-      features: ["Task management", "Team collaboration", "Progress tracking", "Notifications"]
-      optimization: "Collaborative features + Real-time updates + Conflict resolution"
-      integration: "Convex functions + React components + Real-time sync"
-    
-    - name: "Customer Support Platform"
-      features: ["Live chat", "Ticket management", "Agent collaboration", "Knowledge base"]
-      optimization: "Real-time communication + Presence tracking + Performance optimization"
-      integration: "Convex database + Real-time messaging + Agent workflows"
+## Advanced Real-Time Patterns
 
-  collaboration_strategy:
-    development: "Local development with hot reloading + Real-time sync testing"
-    testing: "Automated testing with mock real-time scenarios + Performance validation"
-    production: "Global deployment + Performance monitoring + Scalability optimization"
+```typescript
+// Collaborative editing with operational transformation
+export const applyEdit = mutation({
+  args: {
+    documentId: v.id("documents"),
+    operation: v.object({
+      type: v.union(v.literal("insert"), v.literal("delete"), v.literal("replace")),
+      position: v.number(),
+      content: v.optional(v.string()),
+      length: v.optional(v.number()),
+    }),
+    clientVersion: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const document = await ctx.db.get(args.documentId);
+    if (!document) throw new Error("Document not found");
+
+    // Apply operational transformation
+    const transformedOp = await transformOperation(
+      args.operation,
+      document.pendingOperations || []
+    );
+
+    // Apply transformed operation to document
+    const newContent = applyOperation(document.content || "", transformedOp);
     
-  sync_optimization:
-    conflict_resolution: "Optimistic concurrency control with custom resolution strategies"
-    subscription_management: "Intelligent subscription management with automatic cleanup"
-    performance_tuning: "Query optimization + Selective updates + Caching strategies"
-    scalability_planning: "Horizontal scaling + Load balancing + Performance monitoring"
+    // Update document with new content and clear pending operations
+    await ctx.db.patch(args.documentId, {
+      content: newContent,
+      updatedAt: Date.now(),
+      version: document.version + 1,
+      pendingOperations: [],
+    });
+
+    // Broadcast operation to other clients
+    await ctx.scheduler.runAfter(0, internal.realtime.broadcastOperation, {
+      documentId: args.documentId,
+      operation: transformedOp,
+      author: args.operation.author,
+    });
+
+    return { success: true, newVersion: document.version + 1 };
+  },
+});
+
+// Real-time cursor tracking for collaborative cursors
+export const updateCursor = mutation({
+  args: {
+    roomId: v.id("rooms"),
+    cursor: v.object({ x: v.number(), y: v.number() }),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
+      .unique();
+
+    if (!user) throw new Error("User not found");
+
+    // Update user's cursor position
+    await ctx.db.patch(user._id, {
+      presence: {
+        currentRoom: args.roomId,
+        lastActivity: Date.now(),
+        cursor: args.cursor,
+      },
+    });
+
+    // Broadcast cursor position to other users in the room
+    await ctx.scheduler.runAfter(0, internal.realtime.broadcastCursor, {
+      roomId: args.roomId,
+      userId: user._id,
+      cursor: args.cursor,
+    });
+
+    return { success: true };
+  },
+});
 ```
 
-### AI-Driven Realtime Performance Optimization
-```python
-# Intelligent realtime performance optimization with AI analysis
-class ConvexRealtimeOptimizer:
-    def __init__(self):
-        self.context7_client = Context7Client()
-        self.realtime_analyzer = RealtimeAnalyzer()
-        self.collaboration_optimizer = CollaborationOptimizer()
+### Self-Hosting Configuration
+
+```typescript
+// Self-hosted Convex configuration with PostgreSQL
+import { ConvexHttpClient } from "convex/browser";
+
+export class SelfHostedConvex {
+  private client: ConvexHttpClient;
+  private postgresConfig: PostgresConfig;
+
+  constructor(config: SelfHostedConfig) {
+    this.client = new ConvexHttpClient(config.convexUrl);
+    this.postgresConfig = config.postgres;
+  }
+
+  // Initialize self-hosted Convex with PostgreSQL
+  async initialize(): Promise<void> {
+    // Configure PostgreSQL persistence
+    await this.configurePostgresPersistence();
     
-    async def optimize_collaboration_performance(self, 
-                                                application: RealtimeApplication,
-                                                collaboration_requirements: CollaborationRequirements) -> CollaborationOptimizationPlan:
-        """Optimize collaboration performance using AI analysis."""
-        
-        # Get collaboration optimization documentation
-        collab_docs = await self.context7_client.get_library_docs(
-            context7_library_id=await self._resolve_convex_library('realtime'),
-            topic="collaboration optimization conflict resolution realtime sync 2025",
-            tokens=3000
-        )
-        
-        # Get React realtime patterns
-        react_docs = await self.context7_client.get_library_docs(
-            context7_library_id=await self._resolve_convex_library('react-integration'),
-            topic="react collaboration patterns user experience design 2025",
-            tokens=2500
-        )
-        
-        # Analyze current collaboration performance
-        collaboration_analysis = self.realtime_analyzer.analyze_collaboration_performance(
-            application,
-            collaboration_requirements,
-            collab_docs,
-            react_docs
-        )
-        
-        # Generate comprehensive optimization plan
-        return CollaborationOptimizationPlan(
-            sync_optimization={
-                'conflict_resolution': self._optimize_conflict_resolution(collaboration_analysis, collab_docs),
-                'subscription_management': self._optimize_subscription_management(collaboration_analysis, collab_docs),
-                'performance_tuning': self._optimize_sync_performance(collaboration_analysis, collab_docs),
-                'scalability_planning': self._optimize_sync_scalability(collaboration_analysis, collab_docs)
-            },
-            user_experience_optimization={
-                'realtime_feedback': self._optimize_realtime_feedback(collaboration_analysis, react_docs),
-                'presence_awareness': self._optimize_presence_awareness(collaboration_analysis, react_docs),
-                'collaboration_features': self._optimize_collaboration_features(collaboration_analysis, react_docs),
-                'error_handling': self._optimize_error_handling(collaboration_analysis, react_docs)
-            },
-            performance_monitoring=self._design_collaboration_monitoring(collaboration_analysis),
-            expected_improvements=self._calculate_collaboration_improvements(collaboration_analysis),
-            implementation_roadmap=self._generate_implementation_roadmap(collaboration_analysis)
-        )
+    // Set up replication for high availability
+    await this.configureReplication();
     
-    def _generate_conflict_resolution_strategies(self, 
-                                               conflict_patterns: ConflictPatterns,
-                                               collaboration_type: CollaborationType) -> ConflictResolutionStrategy:
-        """Generate optimal conflict resolution strategies."""
-        return ConflictResolutionStrategy(
-            operational_transformations={
-                'text_editing': "Operational transformation for collaborative text editing",
-                'structured_data': "CRDT-based conflict resolution for structured data",
-                'array_operations': "Position-based conflict resolution for arrays",
-                'nested_objects': "Recursive conflict resolution for nested data structures"
-            },
-            optimistic_concurrency={
-                'client_predictions': "Client-side optimistic updates with rollback",
-                'server_validation': "Server-side validation with conflict detection",
-                'merge_strategies': "Intelligent merge strategies for conflicting changes",
-                'resolution_callbacks': "Custom conflict resolution callbacks"
-            },
-            user_experience={
-                'conflict_notifications': "Real-time conflict notifications and resolution UI",
-                'visual_feedback': "Visual feedback for conflicting changes",
-                'resolution_guidance': "Guided conflict resolution for users",
-                'rollback_capabilities': "Easy rollback and undo functionality"
-            },
-            performance_considerations={
-                'minimize_conflicts': "Design patterns to minimize conflict probability",
-                'batch_resolution': "Batch conflict resolution for performance",
-                'selective_sync': "Selective sync to reduce unnecessary conflicts",
-                'caching_strategies': "Intelligent caching to improve performance"
-            }
-        )
+    // Initialize monitoring and metrics
+    await this.setupMonitoring();
+  }
+
+  private async configurePostgresPersistence(): Promise<void> {
+    const persistenceConfig = {
+      host: this.postgresConfig.host,
+      port: this.postgresConfig.port,
+      database: this.postgresConfig.database,
+      username: this.postgresConfig.username,
+      password: this.postgresConfig.password,
+      ssl: this.postgresConfig.ssl,
+      
+      // Optimization settings for Convex
+      poolSize: 20,
+      connectionTimeout: 5000,
+      statementTimeout: 10000,
+      
+      // Replication settings
+      replicationMode: "streaming",
+      walLevel: "logical",
+      maxWalSenders: 5,
+    };
+
+    await this.client.action(internal.persistence.configure, persistenceConfig);
+  }
+
+  // Configure multi-region deployment
+  async configureMultiRegion(deploymentConfig: MultiRegionConfig): Promise<void> {
+    const regions = [
+      { name: "us-east-1", primary: true },
+      { name: "eu-west-1", primary: false },
+      { name: "ap-southeast-1", primary: false },
+    ];
+
+    for (const region of regions) {
+      await this.deployRegion(region, deploymentConfig);
+    }
+
+    // Configure cross-region replication
+    await this.setupCrossRegionReplication(regions);
+  }
+}
 ```
 
----
+### Performance Optimization
 
-## Performance and Monitoring Intelligence
+```typescript
+// Real-time performance optimization strategies
+export class ConvexPerformanceOptimizer {
+  // Optimize function execution with batching
+  static async batchUpdates<T>(
+    updates: Array<{ id: Id<any>; data: Partial<T> }>,
+    batch: any
+  ): Promise<void> {
+    const BATCH_SIZE = 100;
+    
+    for (let i = 0; i < updates.length; i += BATCH_SIZE) {
+      const batchUpdates = updates.slice(i, i + BATCH_SIZE);
+      
+      await batch.run(async (ctx) => {
+        const promises = batchUpdates.map(({ id, data }) =>
+          ctx.db.patch(id, data)
+        );
+        await Promise.all(promises);
+      });
+    }
+  }
 
-### Real-Time Collaboration Monitoring
-```python
-# AI-powered Convex realtime collaboration monitoring and optimization
-class ConvexRealtimeIntelligence:
-    def __init__(self):
-        self.context7_client = Context7Client()
-        self.realtime_monitor = RealtimeMonitor()
-        self.optimization_engine = OptimizationEngine()
-    
-    async def setup_realtime_monitoring(self, 
-                                       application: RealtimeApplication) -> RealtimeMonitoringSetup:
-        """Setup comprehensive Convex realtime monitoring."""
-        
-        # Get latest realtime monitoring best practices
-        monitoring_docs = await self.context7_client.get_library_docs(
-            context7_library_id=await self._resolve_convex_library('realtime'),
-            topic="realtime monitoring performance analytics user experience 2025",
-            tokens=3000
-        )
-        
-        return RealtimeMonitoringSetup(
-            real_time_metrics={
-                'sync_performance': [
-                    "Real-time sync latency and throughput",
-                    "Conflict frequency and resolution time",
-                    "Subscription efficiency and performance",
-                    "Network latency and connection quality"
-                ],
-                'collaboration_metrics': [
-                    "Concurrent user activity and engagement",
-                    "Collaboration feature usage patterns",
-                    "User presence and interaction tracking",
-                    "Real-time feature performance metrics"
-                ],
-                'application_performance': [
-                    "Query performance and optimization",
-                    "Function execution time and efficiency",
-                    "Database operation performance",
-                    "Client-side rendering and responsiveness"
-                ],
-                'user_experience': [
-                    "UI responsiveness and interaction delay",
-                    "Error rates and recovery patterns",
-                    "User satisfaction and engagement metrics",
-                    "Feature adoption and usage patterns"
-                ]
-            },
-            ai_analytics=[
-                "Performance anomaly detection",
-                "User behavior pattern analysis",
-                "Collaboration optimization opportunities",
-                "Real-time performance prediction"
-            ],
-            collaboration_insights={
-                'user_interaction': "User interaction patterns and collaboration efficiency",
-                'feature_usage': "Real-time feature usage and optimization opportunities",
-                'performance_patterns': "Performance patterns and optimization recommendations",
-                'conflict_analysis': "Conflict analysis and resolution effectiveness"
-            },
-            alerting=self._setup_realtime_alerting(),
-            dashboards=self._create_realtime_dashboards(application),
-            reporting=self._configure_realtime_reporting()
-        )
-    
-    async def optimize_query_performance(self, 
-                                       current_queries: QueryConfig,
-                                       performance_requirements: PerformanceRequirements) -> QueryOptimization:
-        """Optimize Convex query performance using AI analysis."""
-        
-        # Get query optimization documentation
-        query_docs = await self.context7_client.get_library_docs(
-            context7_library_id=await self._resolve_convex_library('database'),
-            topic="query optimization reactive patterns performance tuning 2025",
-            tokens=2500
-        )
-        
-        # Analyze current query performance
-        performance_analysis = self.realtime_monitor.analyze_query_performance(
-            current_queries,
-            performance_requirements,
-            query_docs
-        )
-        
-        # Identify optimization opportunities
-        optimization_opportunities = self.optimization_engine.identify_query_opportunities(
-            performance_analysis,
-            query_docs
-        )
-        
-        # Generate optimization recommendations
-        optimizations = self._generate_query_optimizations(
-            optimization_opportunities,
-            query_docs
-        )
-        
-        return QueryOptimization(
-            query_improvements=optimizations.query_enhancements,
-            index_optimizations=optimizations.index_improvements,
-            subscription_optimizations=optimizations.subscription_improvements,
-            reactive_pattern_optimizations=optimizations.reactive_improvements,
-            expected_improvements=self._calculate_query_improvements(optimizations),
-            implementation_complexity=optimizations.complexity_analysis,
-            testing_strategy=optimizations.testing_plan
-        )
+  // Optimize real-time subscriptions with smart filtering
+  static optimizeRealtimeSubscriptions(
+    roomId: Id<"rooms">,
+    userId: Id<"users">,
+    subscriptionFilters: SubscriptionFilters
+  ) {
+    return {
+      // Only subscribe to relevant data
+      messages: subscriptionFilters.includeMessages
+        ? q => q.eq("roomId", roomId).gte("timestamp", subscriptionFilters.since)
+        : null,
+      
+      // Only track presence for active users
+      users: subscriptionFilters.trackPresence
+        ? q => q.eq("status", "online").eq("presence.currentRoom", roomId)
+        : null,
+      
+      // Optimize document updates for collaboration
+      documents: subscriptionFilters.trackDocumentChanges
+        ? q => q.eq("roomId", roomId).gt("updatedAt", subscriptionFilters.lastSeen)
+        : null,
+    };
+  }
+}
 ```
 
 ---
+
+# Reference & Integration (Level 4)
 
 ## API Reference
 
-### Core Functions
-- `optimize_convex_architecture(config, goals)` - AI-powered Convex optimization
-- `optimize_collaboration_performance(app, requirements)` - Collaboration performance optimization
-- `setup_realtime_monitoring(application)` - Comprehensive realtime monitoring setup
-- `optimize_query_performance(queries, requirements)` - Query performance optimization
-- `get_real_time_convex_updates(services)` - Context7 update monitoring
-- `generate_conflict_resolution_strategies(patterns, type)` - Automated conflict resolution strategies
+### Core Convex Operations
+- `defineSchema(schemaDefinition)` - Define database schema
+- `mutation({...})` - Define data mutation function
+- `query({...})` - Define data query function
+- `action({...})` - Define server action function
+- `scheduler.runAfter(delay, function, args)` - Schedule delayed execution
 
 ### Context7 Integration
-- `get_latest_convex_documentation(service)` - Official docs via Context7
-- `analyze_convex_updates(services)` - Real-time update analysis
-- `optimize_with_convex_best_practices()` - Latest real-time collaboration strategies
+- `get_latest_convex_documentation()` - Official Convex docs via Context7
+- `analyze_realtime_patterns()` - Real-time architecture via Context7
+- `optimize_typescript_configuration()` - TypeScript optimization via Context7
 
-### Data Structures
-- `ConvexConfig` - Comprehensive Convex configuration
-- `RealtimeOptimization` - Real-time performance enhancement recommendations
-- `CollaborationOptimizationPlan` - Collaboration feature optimization strategy
-- `ConflictResolutionStrategy` - Automated conflict resolution configuration
-- `RealtimeMonitoringSetup` - Comprehensive real-time monitoring and alerting
+## Best Practices (November 2025)
 
----
+### DO
+- Use TypeScript for type safety and better development experience
+- Implement proper authentication and authorization checks
+- Optimize real-time subscriptions with smart filtering
+- Use batching for bulk operations to improve performance
+- Implement proper error handling and retry logic
+- Monitor real-time performance and optimize bottlenecks
+- Use self-hosting for compliance and data residency requirements
+- Implement comprehensive testing for real-time features
 
-## Changelog
-
-- **v4.0.0** (2025-11-12): Complete Enterprise v4.0 rewrite with Context7 integration, self-hosted Postgres support, dashboard support, real-time sync optimization, collaborative applications expertise integration, AI-powered Convex optimization, enterprise real-time patterns, and intelligent collaboration strategies
-- **v2.0.0** (2025-11-09): Convex Realtime Database with sync and reactive programming support
-- **v1.0.0** (2025-11-09): Initial Convex realtime database integration
-
----
+### DON'T
+- Skip authentication checks in functions
+- Create overly complex schemas that impact performance
+- Ignore real-time subscription costs and optimization
+- Forget to handle version conflicts in collaborative editing
+- Skip proper error handling for network issues
+- Neglect monitoring and performance optimization
+- Overuse real-time features where they're not needed
+- Ignore security considerations for self-hosted deployments
 
 ## Works Well With
 
-- `moai-baas-foundation` (BaaS platform selection and architecture)
-- `moai-lang-react` (React component optimization and real-time patterns)
-- `moai-lang-typescript` (TypeScript optimization and type safety patterns)
-- `moai-foundation-trust` (Security and compliance validation)
-- `moai-essentials-realtime` (Real-time application patterns and optimization)
-- Context7 MCP (real-time Convex and real-time collaboration documentation)
+- `moai-baas-foundation` (Enterprise BaaS architecture patterns)
+- `moai-domain-backend` (Backend development patterns)
+- `moai-domain-frontend` (Frontend integration with Convex)
+- `moai-essentials-perf` (Performance optimization)
+- `moai-foundation-trust` (Security and authentication)
+- `moai-baas-supabase-ext` (PostgreSQL alternative comparison)
+- `moai-baas-firebase-ext` (Real-time alternative comparison)
+- `moai-domain-ml` (Real-time ML integration)
+
+## Changelog
+
+- **v4.0.0** (2025-11-13): Complete Enterprise v4.0 rewrite with 40% content reduction, 4-layer Progressive Disclosure structure, Context7 integration, November 2025 Convex platform updates, and self-hosting configuration
+- **v2.0.0** (2025-11-11): Complete metadata structure, real-time patterns, TypeScript integration
+- **v1.0.0** (2025-11-11): Initial Convex real-time backend platform
 
 ---
 
-## Best Practices
+**End of Skill** | Updated 2025-11-13
 
-✅ **DO**:
-- Use Context7 integration for latest Convex documentation and real-time patterns
-- Implement comprehensive real-time monitoring with sync performance analysis
-- Optimize conflict resolution strategies for collaboration features
-- Use reactive programming patterns for optimal user experience
-- Monitor collaboration metrics and user engagement patterns
-- Implement proper subscription management for performance optimization
-- Use TypeScript for type safety and better development experience
-- Establish clear testing strategies for real-time functionality
+## Security & Compliance
 
-❌ **DON'T**:
-- Skip real-time performance monitoring and sync optimization
-- Ignore conflict resolution strategies for collaborative features
-- Underestimate subscription management for performance
-- Skip TypeScript type safety and validation implementation
-- Neglect proper error handling and recovery patterns
-- Use inappropriate data modeling for real-time applications
-- Skip testing strategies for real-time collaboration features
-- Ignore user experience optimization for real-time interactions
+### Authentication & Authorization
+- Built-in user authentication with OAuth providers
+- Fine-grained access control with role-based permissions
+- Secure real-time communication with encrypted channels
+- Comprehensive audit logging and monitoring
+
+### Data Protection
+- End-to-end encryption for sensitive data
+- GDPR compliance with data portability features
+- Self-hosting options for data residency requirements
+- Automated security updates and vulnerability management
+
+---
+
+**End of Enterprise Convex Real-Time Backend Expert v4.0.0**

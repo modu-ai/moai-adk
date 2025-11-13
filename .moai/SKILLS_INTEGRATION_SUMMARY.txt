@@ -362,7 +362,7 @@ Version: 1.0 (Final)
 Status: READY FOR PRODUCTION
 
 For questions or updates, refer to:
-  - Original SPEC: @SPEC:BAAS-ECOSYSTEM-001
+  - Original SPEC: SPEC-BAAS-ECOSYSTEM-001
   - Manifest: .moai/skills/baas-skills-manifest.json
   - Git commit: 8db81975
   - Skills documentation: .claude/skills/moai-baas-*/SKILL.md

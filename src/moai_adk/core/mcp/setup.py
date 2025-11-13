@@ -52,7 +52,9 @@ class MCPSetupManager:
                             # Convert "command": "npx", "args": ["-y", "pkg"]
                             # to "command": "cmd", "args": ["/c", "npx", "-y", "pkg"]
                             server_config["command"] = "cmd"
-                            server_config["args"] = ["/c", "npx"] + server_config.get("args", [])
+                            server_config["args"] = ["/c", "npx"] + server_config.get(
+                                "args", []
+                            )
                         else:
                             server_config["command"] = adapted_command
 
@@ -63,6 +65,7 @@ class MCPSetupManager:
         try:
             # Get the package template path
             import moai_adk
+
             package_path = Path(moai_adk.__file__).parent
             template_mcp_path = package_path / "templates" / ".mcp.json"
 
@@ -71,22 +74,24 @@ class MCPSetupManager:
                 project_mcp_path = self.project_path / ".mcp.json"
 
                 # Read template
-                with open(template_mcp_path, 'r') as f:
+                with open(template_mcp_path, "r") as f:
                     mcp_config = json.load(f)
 
                 # Adapt for platform
                 adapted_config = self._adapt_mcp_config_for_platform(mcp_config)
 
                 # Write adapted config to project
-                with open(project_mcp_path, 'w') as f:
+                with open(project_mcp_path, "w") as f:
                     json.dump(adapted_config, f, indent=2)
 
-                server_names = list(adapted_config.get('mcpServers', {}).keys())
+                server_names = list(adapted_config.get("mcpServers", {}).keys())
                 console.print("✅ MCP configuration copied and adapted for platform")
 
                 # Show platform info
                 if self.is_windows:
-                    console.print("🪟 Windows platform detected - npx commands wrapped with 'cmd /c'")
+                    console.print(
+                        "🪟 Windows platform detected - npx commands wrapped with 'cmd /c'"
+                    )
 
                 console.print(f"📋 Configured servers: {', '.join(server_names)}")
                 return True

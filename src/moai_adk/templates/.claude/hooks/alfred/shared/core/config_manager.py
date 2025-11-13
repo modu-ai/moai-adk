@@ -60,8 +60,7 @@ DEFAULT_CONFIG = {
         "git": {
             "timeout_seconds": 2
         },
-        # TAG system configuration removed
-        "defaults": {
+                "defaults": {
             "timeout_ms": 5000,
             "graceful_degradation": True
         }
@@ -236,8 +235,7 @@ class ConfigManager:
         """
         return self.get("hooks.git", {})
 
-    # TAG system configuration methods removed
-
+    
     def get_exit_code(self, exit_type: str) -> int:
         """Get exit code for specific exit type.
 

@@ -6,8 +6,6 @@ SPEC-INIT-004 Enhancement:
 - Alfred command files validation (Phase 5)
 - Explicit missing files reporting
 - Required files verification checklist
-
-# TAG system removed - validation now handled through standard testing
 """
 
 import shutil
@@ -80,13 +78,13 @@ class ProjectValidator:
 
         # Parent directory must exist
         if not project_path.parent.exists():
-            raise ValidationError(f"Parent directory does not exist: {project_path.parent}")
+            raise ValidationError(
+                f"Parent directory does not exist: {project_path.parent}"
+            )
 
         # Prevent initialization inside the MoAI-ADK package
         if self._is_inside_moai_package(project_path):
-            raise ValidationError(
-                "Cannot initialize inside MoAI-ADK package directory"
-            )
+            raise ValidationError("Cannot initialize inside MoAI-ADK package directory")
 
     def validate_installation(self, project_path: Path) -> None:
         """Validate installation results.
@@ -139,7 +137,7 @@ class ProjectValidator:
             if pyproject.exists():
                 try:
                     content = pyproject.read_text(encoding="utf-8")
-                    if "name = \"moai-adk\"" in content or 'name = "moai-adk"' in content:
+                    if 'name = "moai-adk"' in content or 'name = "moai-adk"' in content:
                         return True
                 except Exception:
                     pass

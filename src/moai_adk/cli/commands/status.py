@@ -8,9 +8,8 @@ Project status display:
 ## Skill Invocation Guide (English-Only)
 
 ### Related Skills
-# TAG system removed
 
-- **moai-foundation-trust**: For comprehensive TRUST 5-principles verification
+- **moai-foundation-trust**: For comprehensive TRUST 4-principles verification
   - Trigger: After status shows SPECs exist, to validate code quality
   - Invocation: `Skill("moai-foundation-trust")` to verify all quality gates
 
@@ -20,7 +19,6 @@ Project status display:
 
 ### When to Invoke Skills in Related Workflows
 1. **Before starting new SPEC creation**:
-   # TAG system removed
    - Check the SPEC count from status command
 
 2. **After modifications to code/docs**:
@@ -29,7 +27,7 @@ Project status display:
 
 3. **Periodic health checks**:
    - Run status command regularly
-   - When SPEC count grows, verify with `Skill("moai-foundation-tags")` and `Skill("moai-foundation-trust")`
+   - When SPEC count grows, verify with `Skill("moai-foundation-trust")`
 """
 
 import json
@@ -58,7 +56,9 @@ def status() -> None:
         config_path = Path.cwd() / ".moai" / "config" / "config.json"
         if not config_path.exists():
             console.print("[yellow]⚠ No .moai/config/config.json found[/yellow]")
-            console.print("[dim]Run [cyan]python -m moai_adk init .[/cyan] to initialize the project[/dim]")
+            console.print(
+                "[dim]Run [cyan]python -m moai_adk init .[/cyan] to initialize the project[/dim]"
+            )
             raise click.Abort()
 
         with open(config_path) as f:
@@ -66,7 +66,9 @@ def status() -> None:
 
         # Count SPEC documents
         specs_dir = Path.cwd() / ".moai" / "specs"
-        spec_count = len(list(specs_dir.glob("SPEC-*/spec.md"))) if specs_dir.exists() else 0
+        spec_count = (
+            len(list(specs_dir.glob("SPEC-*/spec.md"))) if specs_dir.exists() else 0
+        )
 
         # Build the status table
         table = Table(show_header=False, box=None, padding=(0, 2))
@@ -76,7 +78,9 @@ def status() -> None:
         # Read from project section (with legacy fallback)
         project = config.get("project", {})
         table.add_row("Mode", project.get("mode") or config.get("mode", "unknown"))
-        table.add_row("Locale", project.get("locale") or config.get("locale", "unknown"))
+        table.add_row(
+            "Locale", project.get("locale") or config.get("locale", "unknown")
+        )
         table.add_row("SPECs", str(spec_count))
 
         # Optionally include Git information

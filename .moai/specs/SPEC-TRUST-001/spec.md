@@ -47,7 +47,7 @@ scope:
   - src/moai_adk/core/quality/__init__.py
   - tests/unit/core/quality/test_trust_checker.py (474 LOC)
   - tests/unit/core/quality/__init__.py
-- **TAG CHAIN**:
+- **SPEC CHAIN**:
 - **SCOPE COMPLETION**:
   - R-001~R-003: ✅ 완료 (검증 기능, 도구 자동 선택, 보고서 생성)
   - R-004~R-008: ✅ 완료 (이벤트 기반 검증, 오류 메시지 표준)
@@ -204,7 +204,7 @@ scope:
     ↓
 [4/5] S - Security Scan 검증 (취약점)
     ↓
-[5/5] T - TAG Chain 검증 (고아 TAG, 순환 참조)
+[5/5] T - SPEC Chain 검증 (고아 SPEC, 순환 참조)
     ↓
 검증 통과 → REFACTOR 단계 진행
 검증 실패 → 오류 보고서 + 커밋 차단
@@ -248,7 +248,7 @@ scope:
 - ❌ Code Constraints: 3 violations
 - ✅ Type Safety: 100%
 - ✅ Security Scan: 0 vulnerabilities
-- ⚠️ TAG Chain: 2 orphan TAGs
+- ⚠️ SPEC Chain: 2 orphan SPECs
 
 ## Details
 
@@ -274,9 +274,9 @@ scope:
 - **Status**: PASS
 - **Vulnerabilities**: 0
 
-### [T] TAG Chain
+### [T] SPEC Chain
 - **Status**: WARNING
-- **Orphan TAGs**:
+- **Orphan SPECs**:
 ```
 
 **JSON 형식** (CI/CD 통합용):
@@ -324,9 +324,9 @@ scope:
     - src/installer/template-processor.ts: 342 LOC
     - src/core/git-manager.ts: 315 LOC
 
-ℹ️ TAG Chain: 2개 고아 TAG 발견
-  → /alfred:3-sync 실행 전 TAG 수정 필요
-  → 고아 TAG:
+ℹ️ SPEC Chain: 2개 고아 SPEC 발견
+  → /alfred:3-sync 실행 전 SPEC 수정 필요
+  → 고아 SPEC:
 ```
 
 ## Acceptance Criteria
@@ -358,9 +358,9 @@ scope:
 
 - When: trust-checker 실행
 
-### AC-007: 고아 TAG 탐지
+### AC-007: 고아 SPEC 탐지
 - When: trust-checker 실행
-- Then: 고아 TAG 목록 반환 + WARNING
+- Then: 고아 SPEC 목록 반환 + WARNING
 
 ### AC-008: 검증 결과 보고서 생성
 - Given: trust-checker 실행 완료
@@ -385,13 +385,13 @@ scope:
 | **R** ead   | AC-002, AC-003, AC-004, AC-005 | 코드 제약 (LOC, 복잡도) |
 | **U** nify  | AC-010                         | 언어별 도구 통합        |
 | **S** ecure | AC-013 (R-013)                 | 보안 취약점 스캔        |
-| **T** race  | AC-006, AC-007                 | TAG 체인 검증, 고아 TAG |
+| **T** race  | AC-006, AC-007                 | SPEC 체인 검증, 고아 SPEC |
 
 ## Technical Approach
 
 ### 도구 선택
 
-1. **TAG 스캔**: ripgrep (고성능 정규식 검색)
+1. **SPEC 스캔**: ripgrep (고성능 정규식 검색)
 2. **커버리지**: 언어별 표준 도구 (coverage.py, Vitest, JaCoCo 등)
 3. **코드 분석**: AST 파싱 (언어별 파서 라이브러리)
 4. **보안 스캔**: Snyk, npm audit, pip-audit 등

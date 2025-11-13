@@ -17,6 +17,7 @@ try:
         validate_and_convert_path,
         validate_no_template_vars,
     )
+
     CONTEXT_MANAGER_AVAILABLE = True
 except ImportError:
     CONTEXT_MANAGER_AVAILABLE = False
@@ -41,7 +42,7 @@ def extract_project_metadata(project_root: str) -> Dict[str, Any]:
     if not os.path.exists(config_path):
         raise FileNotFoundError(f"Config file not found: {config_path}")
 
-    with open(config_path, 'r') as f:
+    with open(config_path, "r") as f:
         config = json.load(f)
 
     # Extract key metadata
@@ -95,7 +96,7 @@ def build_phase_result(
     status: str,
     outputs: Dict[str, Any],
     files_created: List[str],
-    next_phase: Optional[str] = None
+    next_phase: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Build standardized phase result dictionary.
@@ -112,7 +113,7 @@ def build_phase_result(
     """
     phase_result = {
         "phase": phase_name,
-        "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+        "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "status": status,
         "outputs": outputs,
         "files_created": files_created,
@@ -124,10 +125,7 @@ def build_phase_result(
     return phase_result
 
 
-def validate_phase_files(
-    relative_paths: List[str],
-    project_root: str
-) -> List[str]:
+def validate_phase_files(relative_paths: List[str], project_root: str) -> List[str]:
     """
     Validate and convert relative file paths to absolute paths.
 
@@ -162,7 +160,7 @@ def _prepare_phase_data(
     status: str,
     outputs: Dict[str, Any],
     absolute_paths: List[str],
-    next_phase: Optional[str]
+    next_phase: Optional[str],
 ) -> Dict[str, Any]:
     """
     Prepare phase data for saving.
@@ -182,7 +180,7 @@ def _prepare_phase_data(
         status=status,
         outputs=outputs,
         files_created=absolute_paths,
-        next_phase=next_phase
+        next_phase=next_phase,
     )
 
     # Validate no unsubstituted template variables
@@ -192,10 +190,7 @@ def _prepare_phase_data(
     return phase_data
 
 
-def _validate_and_save(
-    context_mgr: Any,
-    phase_data: Dict[str, Any]
-) -> str:
+def _validate_and_save(context_mgr: Any, phase_data: Dict[str, Any]) -> str:
     """
     Validate and save phase data.
 
@@ -217,7 +212,7 @@ def save_command_context(
     outputs: Dict[str, Any],
     files_created: List[str],
     next_phase: Optional[str] = None,
-    status: str = "completed"
+    status: str = "completed",
 ) -> Optional[str]:
     """
     Save command phase context using ContextManager.

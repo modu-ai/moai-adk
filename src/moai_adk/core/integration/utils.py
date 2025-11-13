@@ -5,13 +5,12 @@ This module contains utility functions for component discovery,
 dependency resolution, and test result analysis.
 """
 
-import inspect
-import tempfile
 import shutil
+import tempfile
 from pathlib import Path
-from typing import Dict, List, Any, Optional, Set
+from typing import Any, Dict, List, Optional
 
-from .models import TestComponent, TestSuite, IntegrationTestResult, ComponentNotFoundError
+from .models import IntegrationTestResult, TestComponent
 
 
 class ComponentDiscovery:
@@ -47,7 +46,7 @@ class ComponentDiscovery:
             component = TestComponent(
                 name=module_name,
                 component_type="python_module",
-                version="1.0.0"  # Default version
+                version="1.0.0",  # Default version
             )
             components.append(component)
 
@@ -115,7 +114,9 @@ class TestResultAnalyzer:
         return (passed / len(results)) * 100
 
     @staticmethod
-    def get_failed_tests(results: List[IntegrationTestResult]) -> List[IntegrationTestResult]:
+    def get_failed_tests(
+        results: List[IntegrationTestResult],
+    ) -> List[IntegrationTestResult]:
         """
         Get list of failed tests.
 
@@ -145,7 +146,7 @@ class TestResultAnalyzer:
                 "failed": 0,
                 "success_rate": 0.0,
                 "total_time": 0.0,
-                "avg_time": 0.0
+                "avg_time": 0.0,
             }
 
         passed = sum(1 for result in results if result.passed)
@@ -158,7 +159,7 @@ class TestResultAnalyzer:
             "failed": failed,
             "success_rate": TestResultAnalyzer.calculate_success_rate(results),
             "total_time": total_time,
-            "avg_time": total_time / len(results)
+            "avg_time": total_time / len(results),
         }
 
 

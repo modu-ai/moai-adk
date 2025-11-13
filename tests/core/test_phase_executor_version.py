@@ -6,9 +6,7 @@ Tests for configuration generation phase preserving version field
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
 
-import pytest
 
 
 class TestPhaseExecutorVersion:
@@ -16,16 +14,17 @@ class TestPhaseExecutorVersion:
 
     def test_phase_4_preserves_existing_version_field(self, tmp_path: Path) -> None:
         """
-        GIVEN: Existing .moai/config.json with moai.version field
+        GIVEN: Existing .moai/config/config.json with moai.version field
         WHEN: Phase 4 (configuration generation) executes
         THEN: Should preserve existing moai.version field
         """
         from moai_adk.core.project.phase_executor import PhaseExecutor
         from moai_adk.core.project.validator import ProjectValidator
 
-        # Create existing config with custom version
-        config_path = tmp_path / ".moai" / "config.json"
-        config_path.parent.mkdir(parents=True, exist_ok=True)
+        # Create existing config with custom version in the correct directory structure
+        config_dir = tmp_path / ".moai" / "config"
+        config_dir.mkdir(parents=True, exist_ok=True)
+        config_path = config_dir / "config.json"
 
         existing_config = {
             "moai": {
@@ -56,13 +55,15 @@ class TestPhaseExecutorVersion:
 
         # Verify phase 4 succeeded
         assert len(result) == 1, f"Phase 4 should return one file, got {len(result)}"
-        assert str(config_path) in result, f"Should return config file path"
+        actual_config_path = tmp_path / ".moai" / "config" / "config.json"
+        assert str(actual_config_path) in result, f"Should return actual config file path {actual_config_path}"
 
         # Read and verify preserved config
-        with open(config_path, "r", encoding="utf-8") as f:
+        actual_config_path = tmp_path / ".moai" / "config" / "config.json"
+        with open(actual_config_path, "r", encoding="utf-8") as f:
             final_config = json.load(f)
 
-        # RED: These assertions will fail because Phase 4 doesn't preserve the version field
+        # Verify that the existing version field is preserved
         assert "moai" in final_config, "Final config should have 'moai' section"
         assert "version" in final_config["moai"], "moai section should have 'version' field"
         assert final_config["moai"]["version"] == "1.5.0-custom", \
@@ -70,16 +71,17 @@ class TestPhaseExecutorVersion:
 
     def test_phase_4_merges_new_config_with_existing_version(self, tmp_path: Path) -> None:
         """
-        GIVEN: Existing .moai/config.json with version and new config with other fields
+        GIVEN: Existing .moai/config/config.json with version and new config with other fields
         WHEN: Phase 4 (configuration generation) executes
         THEN: Should merge both configs, preserving version
         """
         from moai_adk.core.project.phase_executor import PhaseExecutor
         from moai_adk.core.project.validator import ProjectValidator
 
-        # Create existing config with version
-        config_path = tmp_path / ".moai" / "config.json"
-        config_path.parent.mkdir(parents=True, exist_ok=True)
+        # Create existing config with version in the correct directory structure
+        config_dir = tmp_path / ".moai" / "config"
+        config_dir.mkdir(parents=True, exist_ok=True)
+        config_path = config_dir / "config.json"
 
         existing_config = {
             "moai": {
@@ -111,11 +113,15 @@ class TestPhaseExecutorVersion:
         # Execute phase 4
         result = executor.execute_configuration_phase(tmp_path, new_config)
 
-        # Read and verify merged config
-        with open(config_path, "r", encoding="utf-8") as f:
+        # Verify phase 4 succeeded
+        actual_config_path = tmp_path / ".moai" / "config" / "config.json"
+        assert str(actual_config_path) in result, f"Should return actual config file path {actual_config_path}"
+
+      # Read and verify merged config
+        with open(actual_config_path, "r", encoding="utf-8") as f:
             final_config = json.load(f)
 
-        # RED: These assertions will fail because Phase 4 doesn't merge correctly
+        # Verify that the existing version field is preserved
         assert "moai" in final_config, "Final config should have 'moai' section"
         assert "version" in final_config["moai"], "moai section should have 'version' field"
         assert final_config["moai"]["version"] == "2.0.0-existing", \
@@ -136,9 +142,10 @@ class TestPhaseExecutorVersion:
         from moai_adk.core.project.phase_executor import PhaseExecutor
         from moai_adk.core.project.validator import ProjectValidator
 
-        # Create existing config with custom version
-        config_path = tmp_path / ".moai" / "config.json"
-        config_path.parent.mkdir(parents=True, exist_ok=True)
+        # Create existing config with custom version in the correct directory structure
+        config_dir = tmp_path / ".moai" / "config"
+        config_dir.mkdir(parents=True, exist_ok=True)
+        config_path = config_dir / "config.json"
 
         existing_config = {
             "moai": {
@@ -164,10 +171,11 @@ class TestPhaseExecutorVersion:
         result = executor.execute_configuration_phase(tmp_path, new_config)
 
         # Read and verify final config
-        with open(config_path, "r", encoding="utf-8") as f:
+        actual_config_path = tmp_path / ".moai" / "config" / "config.json"
+        with open(actual_config_path, "r", encoding="utf-8") as f:
             final_config = json.load(f)
 
-        # RED: This assertion will fail because Phase 4 doesn't preserve existing version
+        # This assertion should pass - Phase 4 should preserve existing version
         # It should keep the user's custom version, not the template version
         assert final_config["moai"]["version"] == "3.1.0-user-custom", \
             f"Should preserve user's custom version '3.1.0-user-custom', got {final_config['moai']['version']}"
@@ -181,9 +189,10 @@ class TestPhaseExecutorVersion:
         from moai_adk.core.project.phase_executor import PhaseExecutor
         from moai_adk.core.project.validator import ProjectValidator
 
-        # Create existing config with custom version
-        config_path = tmp_path / ".moai" / "config.json"
-        config_path.parent.mkdir(parents=True, exist_ok=True)
+        # Create existing config with custom version in the correct directory structure
+        config_dir = tmp_path / ".moai" / "config"
+        config_dir.mkdir(parents=True, exist_ok=True)
+        config_path = config_dir / "config.json"
 
         custom_version = "5.0.0-my-custom-version"
         existing_config = {
@@ -217,10 +226,11 @@ class TestPhaseExecutorVersion:
         result = executor.execute_configuration_phase(tmp_path, new_config)
 
         # Read and verify final config
-        with open(config_path, "r", encoding="utf-8") as f:
+        actual_config_path = tmp_path / ".moai" / "config" / "config.json"
+        with open(actual_config_path, "r", encoding="utf-8") as f:
             final_config = json.load(f)
 
-        # RED: These assertions will fail because Phase 4 doesn't preserve version during reinit
+        # Verify that the custom version is preserved during reinitialization
         assert "moai" in final_config, "Final config should have 'moai' section"
         assert "version" in final_config["moai"], "moai section should have 'version' field"
         assert final_config["moai"]["version"] == custom_version, \
@@ -240,8 +250,9 @@ class TestPhaseExecutorVersion:
         from moai_adk.core.project.validator import ProjectValidator
 
         # Create existing config with invalid version (should still be preserved)
-        config_path = tmp_path / ".moai" / "config.json"
-        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_dir = tmp_path / ".moai" / "config"
+        config_dir.mkdir(parents=True, exist_ok=True)
+        config_path = config_dir / "config.json"
 
         existing_config = {
             "moai": {
@@ -281,9 +292,10 @@ class TestPhaseExecutorVersion:
         WHEN: Phase 4 (configuration generation) executes
         THEN: Should not add version field (create new config)
         """
-        # Create existing config without moai section
-        config_path = tmp_path / ".moai" / "config.json"
-        config_path.parent.mkdir(parents=True, exist_ok=True)
+        # Create existing config without moai section in the correct directory structure
+        config_dir = tmp_path / ".moai" / "config"
+        config_dir.mkdir(parents=True, exist_ok=True)
+        config_path = config_dir / "config.json"
 
         existing_config = {
             "project": {
@@ -329,9 +341,10 @@ class TestPhaseExecutorVersion:
         from moai_adk.core.project.phase_executor import PhaseExecutor
         from moai_adk.core.project.validator import ProjectValidator
 
-        # Create existing config with version and other fields
-        config_path = tmp_path / ".moai" / "config.json"
-        config_path.parent.mkdir(parents=True, exist_ok=True)
+        # Create existing config with version and other fields in the correct directory structure
+        config_dir = tmp_path / ".moai" / "config"
+        config_dir.mkdir(parents=True, exist_ok=True)
+        config_path = config_dir / "config.json"
 
         existing_config = {
             "moai": {
@@ -376,10 +389,11 @@ class TestPhaseExecutorVersion:
         result = executor.execute_configuration_phase(tmp_path, new_config)
 
         # Read and verify final config
-        with open(config_path, "r", encoding="utf-8") as f:
+        actual_config_path = tmp_path / ".moai" / "config" / "config.json"
+        with open(actual_config_path, "r", encoding="utf-8") as f:
             final_config = json.load(f)
 
-        # RED: These assertions will fail because Phase 4 doesn't preserve version correctly
+        # Verify that the version is preserved during multiple changes
         assert "moai" in final_config, "Final config should have 'moai' section"
         assert "version" in final_config["moai"], "moai section should have 'version' field"
         assert final_config["moai"]["version"] == "4.2.1-stable", \

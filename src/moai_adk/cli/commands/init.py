@@ -35,10 +35,10 @@ from rich.console import Console
 from rich.progress import BarColumn, Progress, SpinnerColumn, TaskID, TextColumn
 
 from moai_adk import __version__
-from moai_adk.statusline.version_reader import VersionReader, VersionConfig
 from moai_adk.cli.prompts import prompt_project_setup
 from moai_adk.core.mcp.setup import MCPSetupManager
 from moai_adk.core.project.initializer import ProjectInitializer
+from moai_adk.statusline.version_reader import VersionConfig, VersionReader
 from moai_adk.utils.banner import print_banner, print_welcome_message
 
 console = Console()
@@ -143,7 +143,7 @@ def init(
             version_config = VersionConfig(
                 cache_ttl_seconds=10,  # Very short cache for CLI
                 fallback_version=__version__,
-                debug_mode=False
+                debug_mode=False,
             )
             version_reader = VersionReader(version_config)
             current_version = version_reader.get_version()
@@ -176,7 +176,9 @@ def init(
             # Handle MCP options in non-interactive mode
             if mcp_auto:
                 mcp_servers = ["context7", "playwright", "sequential-thinking"]
-                console.print("[cyan]🔧 MCP servers:[/cyan] Auto-installing all recommended servers")
+                console.print(
+                    "[cyan]🔧 MCP servers:[/cyan] Auto-installing all recommended servers"
+                )
             elif with_mcp:
                 mcp_servers = list(with_mcp)
                 console.print(f"[cyan]🔧 MCP servers:[/cyan] {', '.join(mcp_servers)}")
@@ -188,7 +190,9 @@ def init(
 
             # Check for MCP CLI options in interactive mode (warn user)
             if mcp_auto or with_mcp:
-                console.print("[yellow]⚠️  MCP options ignored in interactive mode[/yellow]")
+                console.print(
+                    "[yellow]⚠️  MCP options ignored in interactive mode[/yellow]"
+                )
                 console.print("   Please use the interactive prompts instead.\n")
 
             # Interactive prompt
@@ -218,7 +222,9 @@ def init(
         if initializer.is_initialized():
             # Always reinitialize without confirmation (force mode by default)
             if non_interactive:
-                console.print("\n[green]🔄 Reinitializing project (force mode)...[/green]\n")
+                console.print(
+                    "\n[green]🔄 Reinitializing project (force mode)...[/green]\n"
+                )
             else:
                 # Interactive mode: Simple notification
                 console.print("\n[cyan]🔄 Reinitializing project...[/cyan]")
@@ -257,7 +263,7 @@ def init(
                         version_config = VersionConfig(
                             cache_ttl_seconds=5,  # Very short cache for config update
                             fallback_version=__version__,
-                            debug_mode=False
+                            debug_mode=False,
                         )
                         version_reader = VersionReader(version_config)
                         current_version = version_reader.get_version()
@@ -321,9 +327,7 @@ def init(
             )
             console.print(f"  [dim]🌐 Language:[/dim]  {language_display}")
             console.print(f"  [dim]🔧 Mode:[/dim]      {result.mode}")
-            console.print(
-                f"  [dim]🌍 Locale:[/dim]    {result.locale}"
-            )
+            console.print(f"  [dim]🌍 Locale:[/dim]    {result.locale}")
             console.print(
                 f"  [dim]📄 Files:[/dim]     {len(result.created_files)} created"
             )
@@ -339,13 +343,17 @@ def init(
                 mcp_manager = MCPSetupManager(project_path)
                 mcp_success = mcp_manager.setup_mcp_servers(mcp_servers)
                 if not mcp_success:
-                    console.print("[yellow]⚠️  MCP setup completed with warnings[/yellow]")
+                    console.print(
+                        "[yellow]⚠️  MCP setup completed with warnings[/yellow]"
+                    )
 
             # Show backup info if reinitialized
             if is_reinit:
                 backup_dir = project_path / ".moai-backups"
                 if backup_dir.exists():
-                    latest_backup = max(backup_dir.iterdir(), key=lambda p: p.stat().st_mtime)
+                    latest_backup = max(
+                        backup_dir.iterdir(), key=lambda p: p.stat().st_mtime
+                    )
                     console.print(f"  [dim]💾 Backup:[/dim]    {latest_backup.name}/")
 
             console.print(f"\n{separator}")
@@ -353,11 +361,19 @@ def init(
             # Show config merge notice if reinitialized
             if is_reinit:
                 console.print("\n[yellow]⚠️  Configuration Notice:[/yellow]")
-                console.print("  All template files have been [bold]force overwritten[/bold]")
-                console.print("  Previous files are backed up in [cyan].moai-backups/backup/[/cyan]")
+                console.print(
+                    "  All template files have been [bold]force overwritten[/bold]"
+                )
+                console.print(
+                    "  Previous files are backed up in [cyan].moai-backups/backup/[/cyan]"
+                )
                 console.print("\n  [cyan]To merge your previous config:[/cyan]")
-                console.print("  Run [bold]/alfred:0-project[/bold] command in Claude Code")
-                console.print("  It will merge backup config when [dim]optimized=false[/dim]\n")
+                console.print(
+                    "  Run [bold]/alfred:0-project[/bold] command in Claude Code"
+                )
+                console.print(
+                    "  It will merge backup config when [dim]optimized=false[/dim]\n"
+                )
 
             console.print("\n[cyan]🚀 Next Steps:[/cyan]")
             if not is_current_dir:
@@ -381,11 +397,19 @@ def init(
             # Figma token setup guidance
             if mcp_servers and "figma" in mcp_servers:
                 console.print("\n[yellow]🔐 Figma Access Token Setup:[/yellow]")
-                console.print("  [dim]Figma MCP requires an access token to function:[/dim]")
-                console.print("  1. Visit: https://www.figma.com/developers/api#access-tokens")
+                console.print(
+                    "  [dim]Figma MCP requires an access token to function:[/dim]"
+                )
+                console.print(
+                    "  1. Visit: https://www.figma.com/developers/api#access-tokens"
+                )
                 console.print("  2. Create a new access token")
-                console.print("  3. Run [bold]/alfred:0-project[/bold] and follow the Figma setup prompts")
-                console.print("  4. The token will be securely stored in your environment\n")
+                console.print(
+                    "  3. Run [bold]/alfred:0-project[/bold] and follow the Figma setup prompts"
+                )
+                console.print(
+                    "  4. The token will be securely stored in your environment\n"
+                )
 
             if not is_current_dir:
                 console.print("  [blue]3.[/blue] Start developing with MoAI-ADK!\n")
@@ -405,7 +429,9 @@ def init(
         raise click.Abort()
     except FileExistsError as e:
         console.print("\n[yellow]⚠ Project already initialized[/yellow]")
-        console.print("[dim]  Use 'python -m moai_adk status' to check configuration[/dim]\n")
+        console.print(
+            "[dim]  Use 'python -m moai_adk status' to check configuration[/dim]\n"
+        )
         raise click.Abort() from e
     except Exception as e:
         console.print(f"\n[red]✗ Initialization failed: {e}[/red]\n")

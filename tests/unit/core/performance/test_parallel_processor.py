@@ -6,7 +6,7 @@ Test cases for parallel processing core functionality.
 
 import pytest
 import asyncio
-from typing import List, Dict, Any
+from typing import Dict, Any
 
 
 class TestParallelProcessor:

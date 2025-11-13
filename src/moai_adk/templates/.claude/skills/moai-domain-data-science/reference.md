@@ -1,6 +1,6 @@
-# moai-domain-data-science - Official Documentation References
+# Data Science Domain - Official Documentation References
 
-_Last updated: 2025-11-12_
+_Last updated: 2025-11-13_
 
 ## Core Libraries (November 2025 Stable)
 
@@ -66,7 +66,7 @@ _Last updated: 2025-11-12_
 
 ---
 
-## Official Documentation Links by Topic
+## Key Documentation Links by Topic
 
 ### Neural Networks & Deep Learning
 
@@ -129,19 +129,6 @@ _Last updated: 2025-11-12_
 
 ---
 
-## Release Notes & Changelog
-
-### 2025 Releases
-
-- **TensorFlow 2.20.0**: https://github.com/tensorflow/tensorflow/releases
-- **PyTorch 2.9.0** (Oct 2025): https://pytorch.org/blog/pytorch-2-9/
-- **scikit-learn 1.7.2** (Sep 2025): https://scikit-learn.org/stable/whats_new.html
-- **pandas 2.3.3** (Sep 2025): https://pandas.pydata.org/docs/whatsnew/v2.3.3.html
-- **polars 1.x**: https://github.com/pola-rs/polars/releases
-- **Optuna 3.x**: https://github.com/optuna/optuna/releases
-
----
-
 ## Installation Commands
 
 ```bash
@@ -179,59 +166,29 @@ pip install dvc
 
 ---
 
-## Recommended Learning Resources
-
-### Courses & Tutorials
-
-- **PyTorch Official Tutorials**: https://pytorch.org/tutorials/
-- **TensorFlow Tutorials**: https://www.tensorflow.org/tutorials
-- **Fast.ai Deep Learning**: https://course.fast.ai/
-- **Kaggle Courses**: https://www.kaggle.com/learn
-
-### Books
-
-- **Hands-On Machine Learning** (Aurélien Géron) - sklearn, TensorFlow, Keras
-- **Deep Learning** (Goodfellow, Bengio, Courville) - theory & PyTorch
-- **Introduction to Statistical Learning** - classical ML with R code (adaptable to Python)
-- **Time Series Analysis** (Box & Jenkins) - foundational theory
-
-### Communities
-
-- **PyTorch Discuss**: https://discuss.pytorch.org/
-- **TensorFlow Community**: https://www.tensorflow.org/community
-- **scikit-learn GitHub**: https://github.com/scikit-learn/scikit-learn
-- **Kaggle**: https://www.kaggle.com/ (competitions & datasets)
-
----
-
 ## Quick Reference by Use Case
 
 ### Binary Classification
-
 - Reference: https://scikit-learn.org/stable/modules/model_evaluation.html
 - Metrics: accuracy, precision, recall, F1, ROC-AUC
 - Tools: scikit-learn, XGBoost, PyTorch
 
 ### Time Series Forecasting
-
 - ARIMA: https://www.statsmodels.org/stable/tsa.html
 - Prophet: https://facebook.github.io/prophet/
 - LSTM: https://pytorch.org/docs/stable/generated/torch.nn.LSTM.html
 
 ### Image Classification
-
 - CNN Tutorial: https://pytorch.org/tutorials/beginner/basics/cnn_cifar10_tutorial.html
 - Transfer Learning: https://pytorch.org/vision/stable/models.html
 - TensorFlow: https://www.tensorflow.org/api_docs/python/tf/keras/applications
 
 ### Hyperparameter Tuning
-
 - scikit-learn GridSearchCV: https://scikit-learn.org/stable/modules/grid_search.html
 - Optuna: https://optuna.readthedocs.io/en/stable/
 - Ray Tune: https://docs.ray.io/en/latest/tune/
 
 ### Feature Engineering
-
 - scikit-learn Preprocessing: https://scikit-learn.org/stable/modules/preprocessing.html
 - pandas Feature Creation: https://pandas.pydata.org/docs/user_guide/basics.html
 - polars Expressions: https://docs.pola.rs/user-guide/expressions/
@@ -250,6 +207,6 @@ pip install dvc
 
 ---
 
-**Last Updated**: 2025-11-12  
+**Last Updated**: 2025-11-13  
 **Coverage**: 20+ libraries with official docs  
 **Tested**: All links verified for November 2025 releases

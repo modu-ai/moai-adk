@@ -84,19 +84,19 @@ Provide any additional context or information related to the bug.
 ```markdown
 ## 🐛 Bug Description
 
-Executing `/alfred:2-run` command fails at the TAG validation step.
+Executing `/alfred:2-run` command fails during the implementation validation step.
 
 ## 🔄 Steps to Reproduce
 
 1. Initialize project with `python -m moai_adk init .`
 2. Run `/alfred:1-plan "User Authentication"` to create Plan & SPEC
 3. Execute `/alfred:2-run SPEC-AUTH-001`
-4. Error occurs at TAG validation step
+4. Error occurs during implementation validation step
 
 ## 💥 Expected vs Actual Behavior
 
 - **Expected Behavior**: TDD cycle should complete successfully
-- **Actual Behavior**: Example error (TAG ID varies by implementation)
+- **Actual Behavior**: Implementation validation failed
 
 ## 🖥️ Environment Information
 
@@ -107,8 +107,8 @@ Executing `/alfred:2-run` command fails at the TAG validation step.
 ## 📸 Screenshots or Logs
 
 ```bash
-Error: TAG validation failed
-TAG not found in tests/ directory (TAG ID varies by implementation)
+Error: Implementation validation failed
+Please ensure all tests are passing before proceeding
 ```
 ```
 
@@ -483,14 +483,14 @@ Error: Cannot find module '...'
 ```markdown
 ## 🐛 버그 설명
 
-`/alfred:2-run` 명령 실행 시 TAG 검증 단계에서 오류가 발생합니다.
+`/alfred:2-run` 명령 실행 시 구현 검증 단계에서 오류가 발생합니다.
 
 ## 🔄 재현 단계
 
 1. `python -m moai_adk init .` 명령으로 프로젝트 초기화
 2. `/alfred:1-plan "사용자 인증"` 실행하여 Plan & SPEC 생성
 3. `/alfred:2-run SPEC-AUTH-001` 실행
-4. TAG 검증 단계에서 오류 발생
+4. 구현 검증 단계에서 오류 발생
 
 ## 💥 예상 동작 vs 실제 동작
 
@@ -505,8 +505,8 @@ Error: Cannot find module '...'
 ## 📸 스크린샷 또는 로그
 
 ```bash
-Error: TAG validation failed
-TAG not found in tests/ directory (TAG ID varies by implementation)
+Error: Implementation validation failed
+Please ensure all tests are passing before proceeding
 ```
 ```
 

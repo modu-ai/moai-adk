@@ -75,9 +75,9 @@ class ProjectInitializer:
             "recent_patterns": {
                 "frequent_file_edits": [],
                 "test_failures": [],
-                "git_operations": "daily commits, feature branches"
+                "git_operations": "daily commits, feature branches",
             },
-            "next_priorities": []
+            "next_priorities": [],
         }
         project_notes_file = memory_dir / "project-notes.json"
         project_notes_file.write_text(json.dumps(project_notes, indent=2))
@@ -89,7 +89,7 @@ class ProjectInitializer:
             "command_timestamp": None,
             "hours_ago": None,
             "active_spec": None,
-            "current_branch": "main"
+            "current_branch": "main",
         }
         session_hint_file = memory_dir / "session-hint.json"
         session_hint_file.write_text(json.dumps(session_hint, indent=2))
@@ -101,10 +101,10 @@ class ProjectInitializer:
             "expertise_signals": {
                 "ask_question_skip_rate": 0.0,
                 "custom_workflows": 0,
-                "estimated_level": "beginner"
+                "estimated_level": "beginner",
             },
             "skip_questions": [],
-            "last_updated": datetime.now().isoformat() + "Z"
+            "last_updated": datetime.now().isoformat() + "Z",
         }
         user_patterns_file = memory_dir / "user-patterns.json"
         user_patterns_file.write_text(json.dumps(user_patterns, indent=2))
@@ -183,24 +183,24 @@ class ProjectInitializer:
             if locale == "other" and custom_language:
                 language_config = {
                     "conversation_language": "other",
-                    "conversation_language_name": custom_language
+                    "conversation_language_name": custom_language,
                 }
             elif locale in ["ko", "en", "ja", "zh"]:
                 language_names = {
                     "ko": "한국어",
                     "en": "English",
                     "ja": "日本語",
-                    "zh": "中文"
+                    "zh": "中文",
                 }
                 language_config = {
                     "conversation_language": locale,
-                    "conversation_language_name": language_names.get(locale, "English")
+                    "conversation_language_name": language_names.get(locale, "English"),
                 }
             else:
                 # Default fallback
                 language_config = {
                     "conversation_language": locale,
-                    "conversation_language_name": "English"
+                    "conversation_language_name": "English",
                 }
 
             config_data: dict[str, str | bool | dict] = {
@@ -216,18 +216,16 @@ class ProjectInitializer:
                         "confidence": None,  # Will be calculated by project-manager
                         "markers": [],  # Will be populated by project-manager
                         "confirmed_by": None,  # Will be "user" after project-manager confirmation
-                    }
+                    },
                 },
-                "language": language_config
+                "language": language_config,
             }
             config_files = self.executor.execute_configuration_phase(
                 self.path, config_data, progress_callback
             )
 
             # Phase 5: Validation (verify and finalize)
-            self.executor.execute_validation_phase(
-                self.path, mode, progress_callback
-            )
+            self.executor.execute_validation_phase(self.path, mode, progress_callback)
 
             # Phase 6: Create runtime memory files (auto-generated per user/session)
             memory_files = self._create_memory_files()

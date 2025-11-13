@@ -129,62 +129,13 @@ jobs:
           agent_encoding_validation()
           "
 
-      - name: 🏷️ Agent-Based TAG Chain Validation
-        timeout-minutes: ${{ env.AGENT_VALIDATION_TIMEOUT }}
-        run: |
-          echo "Running agent-based TAG chain integrity validation..."
-          uv run python -c "
-          import json
-          from pathlib import Path
-          from moai_adk.core.tags.validator import CentralValidator
-          from moai_adk.core.tags.validator import ValidationConfig
-
-          # Agent-optimized validation config
-          config = ValidationConfig(
-              strict_mode=True,
-              check_duplicates=True,
-              check_orphans=True,
-              check_chain_integrity=True,
-              report_format='json'
-          )
-
-          validator = CentralValidator(config=config)
-          result = validator.validate_directory('.')
-
-          # Agent-based analysis
-          stats = result.get('statistics', {})
-          total_tags = stats.get('total_tags', 0)
-          total_issues = stats.get('total_issues', 0)
-          complete_chains = stats.get('complete_chains', 0)
-
-          print(f'🏷️ Agent TAG Validation Results:')
-          print(f'  Total TAGs: {total_tags}')
-          print(f'  Complete chains: {complete_chains}')
-          print(f'  Issues found: {total_issues}')
-
-          if result.get('is_valid', False):
-              print(f'✅ TAG chain integrity validated by agent')
-          else:
-              print(f'❌ TAG chain validation failed')
-              issues = result.get('issues', [])
-              for issue in issues[:5]:  # Show first 5 issues
-                  print(f'  - {issue.get(\"type\", \"unknown\")}: {issue.get(\"message\", \"no message\")}')
-              if total_issues > 5:
-                  print(f'  ... and {total_issues - 5} more issues')
-              exit(1)
-
-          # Save agent report
-          with open('agent-tag-report.json', 'w') as f:
-              json.dump(result, f, indent=2)
-          "
-
+  
       - name: Upload agent validation reports
         uses: actions/upload-artifact@v4
         with:
           name: agent-validation-reports
           path: |
             agent-encoding-report.json
-            agent-tag-report.json
           retention-days: 7
 
   # ========================================
@@ -492,7 +443,6 @@ jobs:
           if [[ "${{ needs.agent-validation.result }}" == "success" ]]; then
             echo "## ✅ Agent-Based Pre-Validation" >> $GITHUB_STEP_SUMMARY
             echo "- Encoding validation: PASSED" >> $GITHUB_STEP_SUMMARY
-            echo "- TAG chain integrity: PASSED" >> $GITHUB_STEP_SUMMARY
           else
             echo "## ❌ Agent-Based Pre-Validation" >> $GITHUB_STEP_SUMMARY
             echo "- Agent validation failed" >> $GITHUB_STEP_SUMMARY

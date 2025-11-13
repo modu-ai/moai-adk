@@ -48,7 +48,7 @@ scope:
   - 현재 doctor는 4개 기본 체크만 수행 (Python, Git, .moai, config.json)
   - 20개 언어별 도구 체인 검증 부재
   - 문제 발견 시 자동 수정 제안 및 가이드 부재
-  - status는 정적 정보만 표시 (TAG 체인 무결성, 코드 품질 지표 부재)
+  - status는 정적 정보만 표시 (SPEC 체인 무결성, 코드 품질 지표 부재)
   - restore는 기본 복원만 지원 (선택적 복원, 롤백 히스토리 부재)
 
 ## Environment (환경)
@@ -81,7 +81,7 @@ scope:
 - WHEN `moai doctor` 실행 시, 시스템은 현재 프로젝트 언어를 감지하고 필수 도구를 검증해야 한다
 - WHEN `moai doctor --verbose` 실행 시, 시스템은 모든 선택 도구 및 버전 정보를 표시해야 한다
 - WHEN `moai doctor --fix` 실행 시, 시스템은 누락된 도구에 대한 설치 명령어를 제안하고 사용자 승인 후 실행해야 한다
-- WHEN `moai status --detail` 실행 시, 시스템은 TAG 체인 무결성, 테스트 커버리지, 코드 품질 지표를 추가 표시해야 한다
+- WHEN `moai status --detail` 실행 시, 시스템은 SPEC 체인 무결성, 테스트 커버리지, 코드 품질 지표를 추가 표시해야 한다
 - WHEN `moai restore --list` 실행 시, 시스템은 사용 가능한 모든 백업 목록과 메타데이터를 표시해야 한다
 - WHEN `moai restore --dry-run <backup-id>` 실행 시, 시스템은 복원될 파일 목록과 변경 사항을 미리 보여야 한다
 - WHEN 진단 중 치명적 문제 발견 시, 시스템은 빨간색 경고와 함께 해결 가이드를 표시해야 한다
@@ -150,11 +150,11 @@ scope:
 
 **목표**: 정적 정보 → 동적 품질 지표 추가
 
-1. **TAG 체인 무결성 검증**:
+1. **SPEC 체인 무결성 검증**:
    - `rg '@(SPEC|TEST|CODE|DOC):' -n` 실행
-   - 고아 TAG 탐지: SPEC은 있는데 CODE 없음
+   - 고아 SPEC 탐지: SPEC은 있는데 CODE 없음
    - 끊어진 체인 탐지: CODE는 있는데 SPEC 없음
-   - 결과 요약: "TAG 체인: 100% (0 orphans, 0 broken)"
+   - 결과 요약: "SPEC 체인: 100% (0 orphans, 0 broken)"
 
 2. **테스트 커버리지 표시**:
    - `pytest --cov --cov-report=json` 결과 파싱
@@ -167,7 +167,7 @@ scope:
    - 결과: "Code Quality: 0 warnings, 0 complexity issues"
 
 4. **status 명령어 옵션**:
-   - `--detail`: TAG 체인 + 커버리지 + 품질 지표 표시
+   - `--detail`: SPEC 체인 + 커버리지 + 품질 지표 표시
    - `--json`: JSON 형식 출력 (CI/CD 통합용)
 
 ### Phase 3: restore 고도화 (+선택적 복원)
@@ -219,7 +219,7 @@ scope:
 - **When**: `moai status --detail` 실행
 - **Then**:
   - 기본 정보 표시 (Mode, Locale, SPECs, Branch, Git Status)
-  - TAG 체인 무결성: "100% (0 orphans, 0 broken)"
+  - SPEC 체인 무결성: "100% (0 orphans, 0 broken)"
   - 테스트 커버리지: "85.61% ✓ (goal: 85%)"
   - 코드 품질: "0 warnings, 0 complexity issues"
 
@@ -286,12 +286,12 @@ scope:
   - 기본 도구만 검증 (Python, Git)
   - 언어 설정 가이드 표시: `.moai/config.json` 수동 설정
 
-### AC-11: status TAG 체인 끊어짐 감지
+### AC-11: status SPEC 체인 끊어짐 감지
 
 - **When**: `moai status --detail` 실행
 - **Then**:
-  - TAG 체인 무결성: "⚠ 1 broken chain"
-  - 끊어진 TAG 목록 표시: "AUTH-001: CODE exists but SPEC missing"
+  - SPEC 체인 무결성: "⚠ 1 broken chain"
+  - 끊어진 SPEC 목록 표시: "AUTH-001: CODE exists but SPEC missing"
   - 수정 가이드: `/alfred:1-plan AUTH-001` 실행 안내
 
 ### AC-12: restore Git dirty state 경고

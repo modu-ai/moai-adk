@@ -20,9 +20,9 @@ Backup location: .moai-backups/YYYYMMDD-HHMMSS/
    - Tag backup with feature branch name for easier recovery
 
 2. **After restoration from backup**:
-   # TAG system removed
    - Run `Skill("moai-foundation-trust")` to validate toolchain
 """
+
 from pathlib import Path
 
 import click
@@ -38,7 +38,7 @@ console = Console()
     "--path",
     type=click.Path(exists=True),
     default=".",
-    help="Project path (default: current directory)"
+    help="Project path (default: current directory)",
 )
 def backup(path: str) -> None:
     """Create a backup of the current project.
@@ -64,7 +64,9 @@ def backup(path: str) -> None:
         backup_path = processor.create_backup()
 
         # Success message
-        console.print(f"[green]✓ Backup completed: {backup_path.relative_to(project_path)}[/green]")
+        console.print(
+            f"[green]✓ Backup completed: {backup_path.relative_to(project_path)}[/green]"
+        )
 
         # Show backup contents
         backup_items = list(backup_path.iterdir())

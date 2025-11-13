@@ -218,7 +218,7 @@ graph TD
     end
 
     subgraph Skills["📚 Skills 레이어 - 292개 캡슐"]
-        S1["Foundation<br/>SPEC·TDD·TAGs"]
+        S1["Foundation<br/>SPEC·TDD"]
         S2["Essentials<br/>Testing·Debug·Perf"]
         S3["Domain<br/>Backend·Frontend·DB"]
         S4["Language<br/>Python·TS·Go·Rust<br/>Alfred·Operations"]
@@ -365,7 +365,6 @@ MoAI-ADK 설치 및 첫 프로젝트 설정
 ### 📚 [스킬 시스템](/ko/skills/overview)
 292개 프로덕션 준비 스킬 탐색
 
-### 🏷️ [TAG 시스템](/ko/features/tag-system)
 
 ### 📖 [튜토리얼](/ko/tutorials/first-project)
 단계별 가이드로 MoAI-ADK 마스터

@@ -9,9 +9,8 @@ Author: Alfred@MoAI
 Date: 2025-11-11
 """
 
-import os
 from pathlib import Path
-from typing import Optional, List, Union
+from typing import List, Optional, Union
 
 
 class SafeFileReader:
@@ -26,15 +25,15 @@ class SafeFileReader:
 
     # Encoding priority order (most common to least common)
     DEFAULT_ENCODINGS = [
-        'utf-8',        # Standard UTF-8
-        'cp1252',       # Windows-1252 (Western European)
-        'iso-8859-1',   # Latin-1 (Western European)
-        'latin1',        # Alternative Latin-1
-        'utf-16',       # UTF-16 with BOM detection
-        'ascii',         # Pure ASCII fallback
+        "utf-8",  # Standard UTF-8
+        "cp1252",  # Windows-1252 (Western European)
+        "iso-8859-1",  # Latin-1 (Western European)
+        "latin1",  # Alternative Latin-1
+        "utf-16",  # UTF-16 with BOM detection
+        "ascii",  # Pure ASCII fallback
     ]
 
-    def __init__(self, encodings: Optional[List[str]] = None, errors: str = 'ignore'):
+    def __init__(self, encodings: Optional[List[str]] = None, errors: str = "ignore"):
         """
         Initialize SafeFileReader.
 
@@ -73,7 +72,7 @@ class SafeFileReader:
 
         # Final fallback with specified error handling
         try:
-            return file_path.read_text(encoding='utf-8', errors=self.errors)
+            return file_path.read_text(encoding="utf-8", errors=self.errors)
         except Exception as e:
             print(f"Error: Could not read {file_path}: {e}")
             return None
@@ -94,7 +93,7 @@ class SafeFileReader:
 
         return content.splitlines(keepends=True)
 
-    def safe_glob_read(self, pattern: str, base_path: Union[str, Path] = '.') -> dict:
+    def safe_glob_read(self, pattern: str, base_path: Union[str, Path] = ".") -> dict:
         """
         Safely read multiple files matching a glob pattern.
 
@@ -134,7 +133,9 @@ class SafeFileReader:
 
 
 # Global convenience functions
-def safe_read_file(file_path: Union[str, Path], encodings: Optional[List[str]] = None) -> Optional[str]:
+def safe_read_file(
+    file_path: Union[str, Path], encodings: Optional[List[str]] = None
+) -> Optional[str]:
     """
     Convenience function to safely read a single file.
 
@@ -149,7 +150,9 @@ def safe_read_file(file_path: Union[str, Path], encodings: Optional[List[str]] =
     return reader.read_text(file_path)
 
 
-def safe_read_lines(file_path: Union[str, Path], encodings: Optional[List[str]] = None) -> List[str]:
+def safe_read_lines(
+    file_path: Union[str, Path], encodings: Optional[List[str]] = None
+) -> List[str]:
     """
     Convenience function to safely read file lines.
 
@@ -164,8 +167,11 @@ def safe_read_lines(file_path: Union[str, Path], encodings: Optional[List[str]] 
     return reader.read_lines(file_path)
 
 
-def safe_glob_read(pattern: str, base_path: Union[str, Path] = '.',
-                    encodings: Optional[List[str]] = None) -> dict:
+def safe_glob_read(
+    pattern: str,
+    base_path: Union[str, Path] = ".",
+    encodings: Optional[List[str]] = None,
+) -> dict:
     """
     Convenience function to safely read multiple files.
 
@@ -183,8 +189,8 @@ def safe_glob_read(pattern: str, base_path: Union[str, Path] = '.',
 
 if __name__ == "__main__":
     # Test the safe file reader
-    import sys
     import logging
+    import sys
 
     # Set up logging
     logging.basicConfig(level=logging.INFO)

@@ -4,10 +4,9 @@ version: 4.0.0
 status: production
 description: |
   Enterprise multi-agent workflow orchestration specialist. Master workflow 
-  design, agent coordination, task delegation, and process automation. Build 
-  scalable, intelligent workflow systems with Context7 MCP integration and 
-  comprehensive monitoring. Design complex agent interactions with fault tolerance 
-  and performance optimization.
+  design, agent coordination, task delegation, and process automation with Context7 
+  MCP integration and comprehensive monitoring. Build scalable, intelligent 
+  workflow systems with fault tolerance and performance optimization.
 allowed-tools: ["Read", "Write", "Edit", "Bash", "Glob", "WebFetch", "WebSearch"]
 tags: ["workflow", "automation", "agents", "orchestration", "context7", "mcp", "multi-agent"]
 ---
@@ -21,7 +20,6 @@ tags: ["workflow", "automation", "agents", "orchestration", "context7", "mcp", "
 - **Process Automation**: End-to-end workflow automation  
 - **Task Orchestration**: Complex task scheduling and management
 - **Context7 Integration**: 13,157+ code examples and documentation lookup
-- **Workflow Engines**: Airflow, Prefect, Dagster integration
 - **Monitoring**: Comprehensive workflow performance tracking
 
 ### Quick Setup
@@ -238,35 +236,6 @@ class FeatureDevelopmentTemplate(WorkflowTemplate):
         }, depends_on=[impl_task.id])
         
         return workflow
-
-class BugFixTemplate(WorkflowTemplate):
-    def __init__(self):
-        super().__init__("bug_fix", "Bug fix workflow from identification to resolution")
-    
-    def create_workflow(self, engine: WorkflowEngine, config: Dict) -> Workflow:
-        workflow = engine.create_workflow(
-            name=f"bug_fix_{config.get('bug_id', 'unknown')}",
-            description=config.get('bug_description', '')
-        )
-        
-        # Bug analysis stage
-        analysis_task = workflow.add_stage("bug_analysis", "debug-helper", {
-            "bug_description": config.get('bug_description', ''),
-            "error_logs": config.get('error_logs', [])
-        })
-        
-        # Fix implementation stage
-        fix_task = workflow.add_stage("fix_implementation", "tdd-implementer", {
-            "analysis_id": analysis_task.id
-        }, depends_on=[analysis_task.id])
-        
-        # Testing stage
-        workflow.add_stage("testing", "quality-gate", {
-            "fix_id": fix_task.id,
-            "regression_tests": True
-        }, depends_on=[fix_task.id])
-        
-        return workflow
 ```
 
 ## Level 3: Advanced Features
@@ -311,45 +280,9 @@ class WorkflowScheduler:
         
         await self.workflow_queue.put((-priority.value, workflow_item))
         return workflow_id
-    
-    async def start_scheduler(self):
-        while True:
-            try:
-                priority_item = await asyncio.wait_for(
-                    self.workflow_queue.get(), timeout=1.0
-                )
-                workflow = priority_item[1]['workflow']
-                
-                if priority_item[1]['scheduled_time'] <= datetime.now():
-                    asyncio.create_task(self._execute_workflow(
-                        priority_item[1]['workflow_id'], workflow
-                    ))
-                else:
-                    # Re-queue for later
-                    await asyncio.sleep(
-                        (priority_item[1]['scheduled_time'] - datetime.now()).total_seconds()
-                    )
-                    await self.workflow_queue.put(priority_item)
-                    
-            except asyncio.TimeoutError:
-                continue
-
-class WorkflowTemplateManager:
-    def __init__(self):
-        self.templates = {}
-        self._register_default_templates()
-    
-    def _register_default_templates(self):
-        self.register_template(FeatureDevelopmentTemplate())
-        self.register_template(BugFixTemplate())
-    
-    def create_workflow_from_template(self, template_name: str, 
-                                    engine: WorkflowEngine, config: Dict) -> Optional[Workflow]:
-        template = self.templates.get(template_name)
-        return template.create_workflow(engine, config) if template else None
 ```
 
-### Error Handling
+### Error Handling & Recovery
 
 ```python
 class WorkflowErrorHandler:
@@ -421,44 +354,7 @@ class WorkflowMetrics:
         }
 ```
 
-### Security Management
-
-```python
-class WorkflowSecurityManager:
-    def __init__(self):
-        self.security_policies = {
-            'input_validation': True,
-            'audit_logging': True,
-            'access_control': True
-        }
-    
-    def validate_workflow_inputs(self, workflow: Workflow) -> Dict[str, Any]:
-        validation_results = {'valid': True, 'warnings': [], 'errors': []}
-        
-        for task in workflow.tasks:
-            if self._contains_sensitive_data(task.input_data):
-                validation_results['warnings'].append(
-                    f"Task {task.id} contains potentially sensitive data"
-                )
-            
-            if not self._validate_input_structure(task.input_data):
-                validation_results['errors'].append(
-                    f"Task {task.id} has invalid input structure"
-                )
-                validation_results['valid'] = False
-        
-        return validation_results
-    
-    def _contains_sensitive_data(self, data: Dict[str, Any]) -> bool:
-        sensitive_patterns = ['password', 'secret', 'token', 'key', 'credential']
-        data_str = str(data).lower()
-        return any(pattern in data_str for pattern in sensitive_patterns)
-    
-    def _validate_input_structure(self, data: Dict[str, Any]) -> bool:
-        return isinstance(data, dict)
-```
-
-## Usage Guidelines
+## Level 4: Reference & Integration
 
 ### When to Use
 
@@ -474,7 +370,7 @@ class WorkflowSecurityManager:
 - Basic automation without coordination needs
 - Quick prototyping without enterprise requirements
 
-### Common Patterns
+### Common Usage Patterns
 
 ```python
 # Feature Development Workflow
@@ -501,40 +397,29 @@ bug_workflow_id = await scheduler.submit_workflow(
 )
 ```
 
-### Best Practices
+### Security & Compliance
 
-1. **Start Simple**: Begin with basic sequential workflows
-2. **Monitor Performance**: Use built-in metrics to optimize execution time
-3. **Handle Errors**: Implement proper error handling and recovery strategies
-4. **Cache Intelligently**: Leverage Context7 caching for repeated lookups
-5. **Resource Management**: Monitor agent utilization and task distribution
+**TRUST Principles Applied**:
+- **Test First**: All workflows include validation stages and quality gates
+- **Readable**: Clear workflow structure with comprehensive logging
+- **Unified**: Consistent patterns across all workflow templates  
+- **Secured**: Built-in input validation and security checks
+- **Traceable**: Complete audit trail with workflow execution history
 
-## Related Skills
-
-- `moai-alfred-agent-guide` - Agent selection and delegation patterns
-- `moai-cc-claude-md` - Documentation generation
-- `moai-essentials-debug` - Error handling and troubleshooting
-- `moai-foundation-trust` - Security and compliance principles
-- `moai-domain-backend` - Backend-specific workflow patterns
-- `moai-domain-testing` - Testing workflow integration
-
-## Security & Compliance
-
-### TRUST Principles Applied
-
-**T**est First: All workflows include validation stages and quality gates
-**R**eadable: Clear workflow structure with comprehensive logging
-**U**nified: Consistent patterns across all workflow templates  
-**S**ecured: Built-in input validation and security checks
-**T**raceable: Complete audit trail with workflow execution history
-
-### Enterprise Security Features
-
+**Enterprise Security Features**:
 - **Input Validation**: Automated security scanning of workflow inputs
 - **Access Control**: Role-based access to workflow operations
 - **Audit Logging**: Complete execution history with security events
 - **Data Encryption**: Sensitive data protection in transit and at rest
-- **Compliance Reporting**: Built-in compliance checks and reporting
+
+### Related Skills
+
+- `moai-alfred-agent-guide` - Agent selection and delegation patterns
+- `moai-alfred-spec-authoring` - SPEC creation workflows
+- `moai-essentials-debug` - Error handling and troubleshooting
+- `moai-foundation-trust` - Security and compliance principles
+- `moai-domain-backend` - Backend-specific workflow patterns
+- `moai-domain-testing` - Testing workflow integration
 
 ---
 

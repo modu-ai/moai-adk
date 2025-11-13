@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class GitInfo:
     """Git repository information"""
+
     branch: str
     staged: int
     modified: int
@@ -149,7 +150,7 @@ class GitCollector:
 
             # Check unstaged/working directory changes (second character)
             # Detects: M(modified), D(deleted), A(added), R(renamed), C(copied), T(type changed)
-            if len(status) > 1 and status[1] not in (' ', '.'):
+            if len(status) > 1 and status[1] not in (" ", "."):
                 modified += 1
 
             # Check untracked files

@@ -1,4 +1,3 @@
-
 """
 User Experience Enhancement Utilities
 
@@ -25,6 +24,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class PerformanceMetrics:
     """Performance metrics for user experience analysis"""
+
     load_time: float
     response_time: float
     success_rate: float
@@ -36,17 +36,18 @@ class PerformanceMetrics:
     def is_good(self) -> bool:
         """Check if performance meets quality thresholds"""
         return (
-            self.load_time <= 2.0 and
-            self.response_time <= 1.0 and
-            self.success_rate >= 0.9 and
-            self.throughput >= 10 and
-            self.error_rate <= 0.1
+            self.load_time <= 2.0
+            and self.response_time <= 1.0
+            and self.success_rate >= 0.9
+            and self.throughput >= 10
+            and self.error_rate <= 0.1
         )
 
 
 @dataclass
 class NavigationMetrics:
     """Navigation structure metrics for UX analysis"""
+
     structure_score: float
     link_count: int
     depth: int
@@ -57,16 +58,17 @@ class NavigationMetrics:
     def is_good(self) -> bool:
         """Check if navigation structure meets quality thresholds"""
         return (
-            self.structure_score >= 0.8 and
-            self.link_count >= 5 and
-            self.depth <= 3 and
-            self.completeness >= 0.9
+            self.structure_score >= 0.8
+            and self.link_count >= 5
+            and self.depth <= 3
+            and self.completeness >= 0.9
         )
 
 
 @dataclass
 class ContentMetrics:
     """Content quality metrics for UX analysis"""
+
     accuracy_score: float
     completeness_score: float
     organization_score: float
@@ -77,16 +79,17 @@ class ContentMetrics:
     def is_good(self) -> bool:
         """Check if content quality meets quality thresholds"""
         return (
-            self.accuracy_score >= 0.9 and
-            self.completeness_score >= 0.9 and
-            self.organization_score >= 0.8 and
-            self.readability_score >= 0.8
+            self.accuracy_score >= 0.9
+            and self.completeness_score >= 0.9
+            and self.organization_score >= 0.8
+            and self.readability_score >= 0.8
         )
 
 
 @dataclass
 class AccessibilityMetrics:
     """Accessibility metrics for UX analysis"""
+
     keyboard_navigation: bool
     screen_reader_support: bool
     color_contrast: bool
@@ -97,13 +100,15 @@ class AccessibilityMetrics:
     @property
     def is_good(self) -> bool:
         """Check if accessibility meets quality thresholds"""
-        return all([
-            self.keyboard_navigation,
-            self.screen_reader_support,
-            self.color_contrast,
-            self.responsive_design,
-            self.aria_labels
-        ])
+        return all(
+            [
+                self.keyboard_navigation,
+                self.screen_reader_support,
+                self.color_contrast,
+                self.responsive_design,
+                self.aria_labels,
+            ]
+        )
 
 
 class UserExperienceAnalyzer(HTTPClient):
@@ -128,7 +133,7 @@ class UserExperienceAnalyzer(HTTPClient):
             timeout=timeout,
             headers={
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-            }
+            },
         )
         return self
 
@@ -150,7 +155,7 @@ class UserExperienceAnalyzer(HTTPClient):
             urljoin(self.base_url, "/getting-started"),
             urljoin(self.base_url, "/api"),
             urljoin(self.base_url, "/guides"),
-            urljoin(self.base_url, "/search")
+            urljoin(self.base_url, "/search"),
         ]
 
         load_times = []
@@ -187,7 +192,7 @@ class UserExperienceAnalyzer(HTTPClient):
 
         # Mock measurements (actual implementation would use real metrics)
         response_time = 0.5  # Mock response time
-        throughput = 15.0    # Mock throughput
+        throughput = 15.0  # Mock throughput
         error_rate = 1.0 - success_rate
 
         return PerformanceMetrics(
@@ -195,7 +200,7 @@ class UserExperienceAnalyzer(HTTPClient):
             response_time=response_time,
             success_rate=success_rate,
             throughput=throughput,
-            error_rate=error_rate
+            error_rate=error_rate,
         )
 
     async def analyze_navigation(self) -> NavigationMetrics:
@@ -212,10 +217,10 @@ class UserExperienceAnalyzer(HTTPClient):
                 "Getting Started": ["Installation", "Configuration", "First Steps"],
                 "API Documentation": ["Core API", "Authentication", "Webhooks"],
                 "Guides": ["Best Practices", "Examples", "Troubleshooting"],
-                "Search": ["Advanced Search", "Filters", "Results"]
+                "Search": ["Advanced Search", "Filters", "Results"],
             },
             "depth": 2,
-            "total_links": 15
+            "total_links": 15,
         }
 
         # Calculate structure score
@@ -225,7 +230,7 @@ class UserExperienceAnalyzer(HTTPClient):
             structure_score=structure_score,
             link_count=int(navigation_data["total_links"]),
             depth=int(navigation_data["depth"]),
-            completeness=0.95
+            completeness=0.95,
         )
 
     def _calculate_structure_score(self, navigation_data: Dict) -> float:
@@ -236,11 +241,15 @@ class UserExperienceAnalyzer(HTTPClient):
         overall navigation quality.
         """
         main_links = len(navigation_data["main_links"])
-        sub_links_count = sum(len(links) for links in navigation_data["sub_links"].values())
+        sub_links_count = sum(
+            len(links) for links in navigation_data["sub_links"].values()
+        )
 
         # Calculate structure score (considering link balance and hierarchy)
         balance_score = min(1.0, main_links / 4.0)  # Main link balance
-        hierarchy_score = max(0.5, 1.0 - navigation_data["depth"] / 5.0)  # Hierarchy depth
+        hierarchy_score = max(
+            0.5, 1.0 - navigation_data["depth"] / 5.0
+        )  # Hierarchy depth
         coverage_score = min(1.0, sub_links_count / 20.0)  # Sub-link coverage
 
         return (balance_score + hierarchy_score + coverage_score) / 3.0
@@ -259,7 +268,7 @@ class UserExperienceAnalyzer(HTTPClient):
             "images": 15,
             "links": 30,
             "readability_score": 8.5,
-            "completeness_score": 0.95
+            "completeness_score": 0.95,
         }
 
         # Calculate accuracy score
@@ -271,7 +280,7 @@ class UserExperienceAnalyzer(HTTPClient):
             accuracy_score=accuracy_score,
             completeness_score=content_data["completeness_score"],
             organization_score=organization_score,
-            readability_score=readability_score
+            readability_score=readability_score,
         )
 
     def _calculate_accuracy_score(self, content_data: Dict) -> float:
@@ -311,7 +320,7 @@ class UserExperienceAnalyzer(HTTPClient):
             "screen_reader_support": True,
             "color_contrast": True,
             "responsive_design": True,
-            "aria_labels": True
+            "aria_labels": True,
         }
 
         return AccessibilityMetrics(
@@ -319,7 +328,7 @@ class UserExperienceAnalyzer(HTTPClient):
             screen_reader_support=accessibility_data["screen_reader_support"],
             color_contrast=accessibility_data["color_contrast"],
             responsive_design=accessibility_data["responsive_design"],
-            aria_labels=accessibility_data["aria_labels"]
+            aria_labels=accessibility_data["aria_labels"],
         )
 
     async def generate_report(self) -> Dict[str, Any]:
@@ -343,10 +352,10 @@ class UserExperienceAnalyzer(HTTPClient):
 
             # Calculate overall score
             overall_score = (
-                performance.success_rate * 0.3 +
-                navigation.structure_score * 0.2 +
-                content.accuracy_score * 0.3 +
-                (1 if accessibility.is_good else 0) * 0.2
+                performance.success_rate * 0.3
+                + navigation.structure_score * 0.2
+                + content.accuracy_score * 0.3
+                + (1 if accessibility.is_good else 0) * 0.2
             )
 
             # Generate improvement recommendations
@@ -361,7 +370,7 @@ class UserExperienceAnalyzer(HTTPClient):
                 "content": content,
                 "accessibility": accessibility,
                 "recommendations": recommendations,
-                "generated_at": datetime.now().isoformat()
+                "generated_at": datetime.now().isoformat(),
             }
 
     def _generate_recommendations(
@@ -369,7 +378,7 @@ class UserExperienceAnalyzer(HTTPClient):
         performance: PerformanceMetrics,
         navigation: NavigationMetrics,
         content: ContentMetrics,
-        accessibility: AccessibilityMetrics
+        accessibility: AccessibilityMetrics,
     ) -> List[str]:
         """
         Generate improvement recommendations
@@ -382,30 +391,46 @@ class UserExperienceAnalyzer(HTTPClient):
         # Performance improvement recommendations
         if not performance.is_good:
             if performance.load_time > 2.0:
-                recommendations.append("Improve page load time: Optimize images, use CDN, consider code splitting")
+                recommendations.append(
+                    "Improve page load time: Optimize images, use CDN, consider code splitting"
+                )
             if performance.error_rate > 0.1:
-                recommendations.append("Improve error handling: Enhance 404 pages, improve error messages")
+                recommendations.append(
+                    "Improve error handling: Enhance 404 pages, improve error messages"
+                )
 
         # Navigation improvement recommendations
         if not navigation.is_good:
             if navigation.structure_score < 0.8:
-                recommendations.append("Redesign navigation structure: Simplify hierarchy, reorganize categories")
+                recommendations.append(
+                    "Redesign navigation structure: Simplify hierarchy, reorganize categories"
+                )
             if navigation.completeness < 0.9:
-                recommendations.append("Improve link completeness: Connect missing pages, add breadcrumb links")
+                recommendations.append(
+                    "Improve link completeness: Connect missing pages, add breadcrumb links"
+                )
 
         # Content improvement recommendations
         if not content.is_good:
             if content.accuracy_score < 0.9:
-                recommendations.append("Improve content accuracy: Update information, validate code examples")
+                recommendations.append(
+                    "Improve content accuracy: Update information, validate code examples"
+                )
             if content.organization_score < 0.8:
-                recommendations.append("Improve content structure: Add section divisions, table of contents, related links")
+                recommendations.append(
+                    "Improve content structure: Add section divisions, table of contents, related links"
+                )
 
         # Accessibility improvement recommendations
         if not accessibility.is_good:
             if not accessibility.keyboard_navigation:
-                recommendations.append("Improve keyboard navigation: Optimize tab order, add keyboard shortcuts")
+                recommendations.append(
+                    "Improve keyboard navigation: Optimize tab order, add keyboard shortcuts"
+                )
             if not accessibility.screen_reader_support:
-                recommendations.append("Improve screen reader support: Add ARIA labels, use semantic HTML")
+                recommendations.append(
+                    "Improve screen reader support: Add ARIA labels, use semantic HTML"
+                )
 
         return recommendations
 
@@ -420,11 +445,7 @@ def generate_improvement_plan(analysis_report: Dict[str, Any]) -> Dict[str, Any]
     overall_score = analysis_report["overall_score"]
 
     # Set priorities
-    priorities: Dict[str, List[str]] = {
-        "high": [],
-        "medium": [],
-        "low": []
-    }
+    priorities: Dict[str, List[str]] = {"high": [], "medium": [], "low": []}
 
     # Performance priorities
     performance = analysis_report["performance"]
@@ -460,7 +481,7 @@ def generate_improvement_plan(analysis_report: Dict[str, Any]) -> Dict[str, Any]
     timeline = {
         "immediate": priorities["high"],
         "short_term": priorities["medium"],
-        "long_term": priorities["low"]
+        "long_term": priorities["low"],
     }
 
     return {
@@ -474,8 +495,8 @@ def generate_improvement_plan(analysis_report: Dict[str, Any]) -> Dict[str, Any]
             "performance_score": 0.9,
             "content_score": 0.9,
             "accessibility_score": 1.0,
-            "overall_score": 0.85
-        }
+            "overall_score": 0.85,
+        },
     }
 
 
@@ -491,10 +512,12 @@ if __name__ == "__main__":
         print(f"Performance Score: {analysis_report['performance'].success_rate:.2f}")
         print(f"Navigation Score: {analysis_report['navigation'].structure_score:.2f}")
         print(f"Content Score: {analysis_report['content'].accuracy_score:.2f}")
-        print(f"Accessibility Score: {1.0 if analysis_report['accessibility'].is_good else 0.0:.2f}")
+        print(
+            f"Accessibility Score: {1.0 if analysis_report['accessibility'].is_good else 0.0:.2f}"
+        )
 
         print("\nImprovement Recommendations:")
-        for recommendation in analysis_report['recommendations']:
+        for recommendation in analysis_report["recommendations"]:
             print(f"- {recommendation}")
 
         # Generate improvement plan

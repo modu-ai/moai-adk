@@ -2,6 +2,7 @@
 Statusline renderer for Claude Code status display
 
 """
+
 # type: ignore
 
 from dataclasses import dataclass
@@ -13,6 +14,7 @@ from .config import StatuslineConfig  # type: ignore[attr-defined]
 @dataclass
 class StatuslineData:
     """Status line data structure containing all necessary information"""
+
     model: str
     version: str
     output_style: str
@@ -86,7 +88,7 @@ class StatuslineRenderer:
     def _build_compact_parts(self, data: StatuslineData) -> List[str]:
         """
         Build parts list for compact mode with labeled sections
-        Format: 🤖 Model | 🗿 Version | 💬 Output Style | 📋 TODO | 🔀 Git: Branch | Changes
+        Format: 🤖 Model | 🗿 Version | Output Style | 📋 TODO | 🔀 Git: Branch | Changes
 
         Args:
             data: StatuslineData instance
@@ -106,7 +108,11 @@ class StatuslineRenderer:
 
         # Add output style if display enabled
         if self._display_config.output_style and data.output_style.strip():
-            parts.append(f"💬 {data.output_style}")
+            # Use Yoda-specific emoji for Yoda styles only
+            if "yoda" in data.output_style.lower() or "Yoda Master" in data.output_style:
+                parts.append(f"🧙 {data.output_style}")
+            else:
+                parts.append(f"{data.output_style}")
 
         # Add todo count if display enabled
         if self._display_config.todo_count and data.todo_count.strip():
@@ -129,7 +135,7 @@ class StatuslineRenderer:
     def _fit_to_constraint(self, data: StatuslineData, max_length: int) -> str:
         """
         Fit statusline to character constraint by truncating
-        Format: 🤖 Model | 🗿 Version | 💬 Output Style | 📋 TODO | 🔀 Git: Branch | Changes
+        Format: 🤖 Model | 🗿 Version | Output Style | 📋 TODO | 🔀 Git: Branch | Changes
 
         Args:
             data: StatuslineData instance
@@ -147,7 +153,11 @@ class StatuslineRenderer:
 
         # Add optional parts only if they have content
         if self._display_config.output_style and data.output_style.strip():
-            parts.append(f"💬 {data.output_style}")
+            # Use Yoda-specific emoji for Yoda styles only
+            if "yoda" in data.output_style.lower() or "Yoda Master" in data.output_style:
+                parts.append(f"🧙 {data.output_style}")
+            else:
+                parts.append(f"{data.output_style}")
         if self._display_config.todo_count and data.todo_count.strip():
             parts.append(f"📋 {data.todo_count}")
 
@@ -197,7 +207,7 @@ class StatuslineRenderer:
         """
         Render extended mode: Full path and detailed info with labels
         Constraint: <= 120 characters
-        Format: 🤖 Model | 🗿 Version | 💬 Output Style | 📋 TODO | 🔀 Git: Branch | Changes
+        Format: 🤖 Model | 🗿 Version | Output Style | 📋 TODO | 🔀 Git: Branch | Changes
 
         Args:
             data: StatuslineData instance
@@ -219,7 +229,11 @@ class StatuslineRenderer:
 
         # Add output style if display enabled
         if self._display_config.output_style and data.output_style.strip():
-            parts.append(f"💬 {data.output_style}")
+            # Use Yoda-specific emoji for Yoda styles only
+            if "yoda" in data.output_style.lower() or "Yoda Master" in data.output_style:
+                parts.append(f"🧙 {data.output_style}")
+            else:
+                parts.append(f"{data.output_style}")
 
         # Add todo count if display enabled
         if self._display_config.todo_count and data.todo_count.strip():
@@ -249,7 +263,11 @@ class StatuslineRenderer:
 
             # Add optional parts only if they have content
             if self._display_config.output_style and data.output_style.strip():
-                parts.append(f"💬 {data.output_style}")
+                # Use Yoda-specific emoji for Yoda styles only
+                if "yoda" in data.output_style.lower() or "Yoda Master" in data.output_style:
+                    parts.append(f"🧙 {data.output_style}")
+                else:
+                    parts.append(f"{data.output_style}")
             if self._display_config.todo_count and data.todo_count.strip():
                 parts.append(f"📋 {data.todo_count}")
 
@@ -291,7 +309,10 @@ class StatuslineRenderer:
         # and if display is enabled and status not empty
         if self._display_config.git_status and data.git_status:
             status_label = f"Chg: {data.git_status}"
-            if len(result) + len(status_label) + len(self._format_config.separator) <= 40:
+            if (
+                len(result) + len(status_label) + len(self._format_config.separator)
+                <= 40
+            ):
                 result += f"{self._format_config.separator}{status_label}"
 
         return result
@@ -317,7 +338,7 @@ class StatuslineRenderer:
             for i, part in enumerate(parts):
                 if "SPEC" in part and i + 1 < len(parts):
                     # Found SPEC ID, include it
-                    spec_truncated = "-".join(parts[:i+2])
+                    spec_truncated = "-".join(parts[: i + 2])
                     if len(spec_truncated) <= max_length:
                         return spec_truncated
 

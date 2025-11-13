@@ -179,11 +179,11 @@ def on_pre_tool_use(tool_name: str, args: dict):
 
 **Current Bottlenecks**:
 - SPEC metadata refresh (~50ms)
-- Tag validation (~30ms)
+- SPEC validation (~30ms)
 
 **Optimization**:
 1. Batch SPEC metadata updates (write once per session)
-2. Cache tag validation results
+2. Cache SPEC validation results
 3. Use buffered file writes for metadata updates
 
 **Implementation**:

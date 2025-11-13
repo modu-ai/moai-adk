@@ -8,13 +8,12 @@ Provides utilities for:
 4. Template variable substitution
 """
 
-import os
 import json
-import tempfile
+import os
 import re
-from pathlib import Path
-from typing import Dict, Any, Optional
+import tempfile
 from datetime import datetime, timezone
+from typing import Any, Dict, Optional
 
 # Constants
 PROJECT_ROOT_SAFETY_MSG = "Path outside project root: {}"
@@ -38,8 +37,9 @@ def _is_path_within_root(abs_path: str, project_root: str) -> bool:
         real_abs_path = os.path.realpath(abs_path)
         real_project_root = os.path.realpath(project_root)
 
-        return (real_abs_path == real_project_root or
-                real_abs_path.startswith(real_project_root + os.sep))
+        return real_abs_path == real_project_root or real_abs_path.startswith(
+            real_project_root + os.sep
+        )
     except OSError:
         return False
 
@@ -130,13 +130,11 @@ def save_phase_result(data: Dict[str, Any], target_path: str) -> None:
     try:
         # Create temp file in target directory for atomic rename
         temp_fd, temp_path = tempfile.mkstemp(
-            dir=target_dir,
-            prefix='.tmp_phase_',
-            suffix='.json'
+            dir=target_dir, prefix=".tmp_phase_", suffix=".json"
         )
 
         # Write JSON to temp file
-        with os.fdopen(temp_fd, 'w') as f:
+        with os.fdopen(temp_fd, "w") as f:
             json.dump(data, f, indent=2)
 
         temp_fd = None  # File handle is now closed
@@ -166,7 +164,7 @@ def load_phase_result(source_path: str) -> Dict[str, Any]:
     if not os.path.exists(source_path):
         raise FileNotFoundError(f"Phase result file not found: {source_path}")
 
-    with open(source_path, 'r') as f:
+    with open(source_path, "r") as f:
         data = json.load(f)
 
     return data
@@ -196,7 +194,7 @@ def substitute_template_variables(text: str, context: Dict[str, str]) -> str:
 
 # Regex pattern for detecting unsubstituted template variables
 # Matches {{VARIABLE}}, {{VAR_NAME}}, {{VAR1}}, etc.
-TEMPLATE_VAR_PATTERN = r'\{\{[A-Z_][A-Z0-9_]*\}\}'
+TEMPLATE_VAR_PATTERN = r"\{\{[A-Z_][A-Z0-9_]*\}\}"
 
 
 def validate_no_template_vars(text: str) -> None:
@@ -233,12 +231,7 @@ class ContextManager:
             project_root: Root directory of the project
         """
         self.project_root = project_root
-        self.state_dir = os.path.join(
-            project_root,
-            ".moai",
-            "memory",
-            "command-state"
-        )
+        self.state_dir = os.path.join(project_root, ".moai", "memory", "command-state")
         os.makedirs(self.state_dir, exist_ok=True)
 
     def save_phase_result(self, data: Dict[str, Any]) -> str:
@@ -268,10 +261,9 @@ class ContextManager:
             Phase result dictionary or None if no phase files exist
         """
         # List all phase files
-        phase_files = sorted([
-            f for f in os.listdir(self.state_dir)
-            if f.endswith('.json')
-        ])
+        phase_files = sorted(
+            [f for f in os.listdir(self.state_dir) if f.endswith(".json")]
+        )
 
         if not phase_files:
             return None

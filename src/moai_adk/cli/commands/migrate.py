@@ -4,10 +4,11 @@ Migration CLI command for MoAI-ADK
 Provides command-line interface for project version migrations.
 """
 
-import click
-from pathlib import Path
 import logging
 import sys
+from pathlib import Path
+
+import click
 
 from moai_adk.core.migration import VersionMigrator
 
@@ -105,9 +106,11 @@ def migrate(check, dry_run, no_cleanup, rollback, list_backups):
 
             click.echo("📊 Migration Status:\n")
             click.echo(f"Current Version: {version_info['detected_version']}")
-            click.echo(f"Needs Migration: {'Yes' if version_info['needs_migration'] else 'No'}")
+            click.echo(
+                f"Needs Migration: {'Yes' if version_info['needs_migration'] else 'No'}"
+            )
 
-            if version_info['needs_migration']:
+            if version_info["needs_migration"]:
                 click.echo(f"Target Version: {migration_info['target_version']}")
                 click.echo(f"Files to migrate: {migration_info['file_count']}")
                 click.echo("\n💡 Run 'moai-adk migrate' to execute migration")
@@ -139,9 +142,7 @@ def migrate(check, dry_run, no_cleanup, rollback, list_backups):
             return
 
         # Execute migration
-        success = migrator.migrate_to_v024(
-            dry_run=False, cleanup=not no_cleanup
-        )
+        success = migrator.migrate_to_v024(dry_run=False, cleanup=not no_cleanup)
 
         if success:
             click.echo("\n🎉 Migration completed successfully!")

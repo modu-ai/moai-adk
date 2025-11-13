@@ -9,7 +9,7 @@ allowed-tools:
 - MultiEdit
 - Bash(git:*)
 - Bash(gh:*)
-- Bash(python3:*)
+- Bash(uv:*)
 - Task
 - Grep
 - Glob
@@ -18,6 +18,7 @@ allowed-tools:
 - Skill
 skills:
 - moai-alfred-issue-labels
+model: "haiku"
 ---
 
 # 📚 MoAI-ADK Step 3: Document Synchronization (+Optional PR Ready)
@@ -63,9 +64,8 @@ This command supports **4 operational modes**:
 
 | Agent | Core Skill | Purpose |
 | ------------ | ------------------------------ | ------------------------------ |
-| tag-agent | `moai-alfred-tag-scanning` | Verify TAG system integrity |
+| doc-syncer | `moai-alfred-code-scanning` | Synchronize Living Documents |
 | quality-gate | `moai-alfred-trust-validation` | Check code quality before sync |
-| doc-syncer | `moai-alfred-tag-scanning` | Synchronize Living Documents |
 | git-manager | `moai-alfred-git-workflow` | Handle Git operations |
 
 **Note**: TUI Survey Skill is loaded once at Phase 0 and reused throughout all user interactions.
@@ -76,9 +76,9 @@ This command supports **4 operational modes**:
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│ PHASE 1: Analysis & Planning (tag-agent + doc-syncer)   │
+│ PHASE 1: Analysis & Planning (doc-syncer)                │
 │  - Verify prerequisites                                  │
-│  - Analyze project status (Git + TAG)                    │
+│  - Analyze project status (Git + implementation)          │
 │  - Request user approval                                 │
 └──────────────────────────────────────────────────────────┘
                           ↓
@@ -92,7 +92,7 @@ This command supports **4 operational modes**:
 │ (doc-syncer + quality)  │   │ Exit (no changes)    │
 │  - Create backup        │   └──────────────────────┘
 │  - Sync documents       │
-│  - Verify TAGs          │
+│  - Verify quality       │
 └─────────────────────────┘
           ↓
 ┌──────────────────────────────────────────────────────────┐
@@ -128,7 +128,7 @@ Execute these verification steps:
    - IF not a Git repo → Print error and exit
 
 4. **Verify Python environment** (optional, non-fatal):
-   - Execute: `which python3`
+   - Execute: `which uv`
    - IF not found → Print warning but continue
 
 **Result**: Prerequisites verified. TUI system ready.
@@ -407,7 +407,7 @@ Use Task tool:
 
 1. **Batch update all completed SPECs**:
    ```bash
-   python3 .claude/hooks/alfred/spec_status_hooks.py batch_update
+   uv run .claude/hooks/alfred/spec_status_hooks.py batch_update
    ```
 
 2. **Verify status updates**:
@@ -417,8 +417,8 @@ Use Task tool:
 
 3. **Handle individual SPEC validation (if needed)**:
    ```bash
-   python3 .claude/hooks/alfred/spec_status_hooks.py validate_completion <SPEC_ID>
-   python3 .claude/hooks/alfred/spec_status_hooks.py status_update <SPEC_ID> --status completed --reason "Documentation synchronized successfully"
+   uv run .claude/hooks/alfred/spec_status_hooks.py validate_completion <SPEC_ID>
+   uv run .claude/hooks/alfred/spec_status_hooks.py status_update <SPEC_ID> --status completed --reason "Documentation synchronized successfully"
    ```
 
 4. **Generate status update summary**:

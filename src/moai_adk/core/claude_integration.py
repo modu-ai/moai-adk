@@ -6,13 +6,12 @@ and multi-language support for commands, agents, and output styles.
 """
 
 import json
-import sys
 import subprocess
 import tempfile
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
-from .language_config import get_language_info, get_native_name
+from .language_config import get_language_info
 from .template_engine import TemplateEngine
 
 
@@ -37,9 +36,7 @@ class ClaudeCLIIntegration:
         self.template_engine = template_engine or TemplateEngine()
 
     def generate_claude_settings(
-        self,
-        variables: Dict[str, Any],
-        output_path: Optional[Path] = None
+        self, variables: Dict[str, Any], output_path: Optional[Path] = None
     ) -> Path:
         """Generate Claude settings JSON file with variables.
 
@@ -52,9 +49,7 @@ class ClaudeCLIIntegration:
         """
         if output_path is None:
             temp_file = tempfile.NamedTemporaryFile(
-                mode='w',
-                suffix='.json',
-                delete=False
+                mode="w", suffix=".json", delete=False
             )
             output_path = Path(temp_file.name)
             temp_file.close()
@@ -63,10 +58,12 @@ class ClaudeCLIIntegration:
             "variables": variables,
             "template_context": {
                 "conversation_language": variables.get("CONVERSATION_LANGUAGE", "en"),
-                "conversation_language_name": variables.get("CONVERSATION_LANGUAGE_NAME", "English"),
+                "conversation_language_name": variables.get(
+                    "CONVERSATION_LANGUAGE_NAME", "English"
+                ),
                 "project_name": variables.get("PROJECT_NAME", ""),
-                "codebase_language": variables.get("CODEBASE_LANGUAGE", "python")
-            }
+                "codebase_language": variables.get("CODEBASE_LANGUAGE", "python"),
+            },
         }
 
         output_path.write_text(json.dumps(settings, indent=2, ensure_ascii=False))
@@ -77,7 +74,7 @@ class ClaudeCLIIntegration:
         command_template: str,
         variables: Dict[str, Any],
         print_mode: bool = True,
-        output_format: str = "json"
+        output_format: str = "json",
     ) -> Dict[str, Any]:
         """Process Claude command with template variables.
 
@@ -92,7 +89,9 @@ class ClaudeCLIIntegration:
         """
         try:
             # Process template variables
-            processed_command = self.template_engine.render_string(command_template, variables)
+            processed_command = self.template_engine.render_string(
+                command_template, variables
+            )
 
             # Build Claude CLI command
             cmd_parts = ["claude"]
@@ -110,10 +109,7 @@ class ClaudeCLIIntegration:
 
             # Execute Claude CLI
             result = subprocess.run(
-                cmd_parts,
-                capture_output=True,
-                text=True,
-                encoding='utf-8'
+                cmd_parts, capture_output=True, text=True, encoding="utf-8"
             )
 
             # Cleanup settings file
@@ -128,7 +124,7 @@ class ClaudeCLIIntegration:
                 "stderr": result.stderr,
                 "returncode": result.returncode,
                 "processed_command": processed_command,
-                "variables_used": variables
+                "variables_used": variables,
             }
 
         except Exception as e:
@@ -136,13 +132,13 @@ class ClaudeCLIIntegration:
                 "success": False,
                 "error": str(e),
                 "processed_command": command_template,
-                "variables_used": variables
+                "variables_used": variables,
             }
 
     def generate_multilingual_descriptions(
         self,
         base_descriptions: Dict[str, str],
-        target_languages: Optional[list[str]] = None
+        target_languages: Optional[list[str]] = None,
     ) -> Dict[str, Dict[str, str]]:
         """Generate multilingual descriptions for commands/agents.
 
@@ -184,7 +180,7 @@ Translation:"""
                     translation_prompt,
                     {"CONVERSATION_LANGUAGE": lang_code},
                     print_mode=True,
-                    output_format="text"
+                    output_format="text",
                 )
 
                 if translation_result["success"]:
@@ -201,7 +197,7 @@ Translation:"""
         base_description: str,
         tools: list[str],
         model: str = "sonnet",
-        target_languages: Optional[list[str]] = None
+        target_languages: Optional[list[str]] = None,
     ) -> Dict[str, Any]:
         """Create Claude agent with multilingual description support.
 
@@ -220,17 +216,18 @@ Translation:"""
 
         # Generate multilingual descriptions
         descriptions = self.generate_multilingual_descriptions(
-            {agent_name: base_description},
-            target_languages
+            {agent_name: base_description}, target_languages
         )
 
         agent_config = {
             "name": agent_name,
-            "description": descriptions[agent_name]["en"],  # Primary English description
+            "description": descriptions[agent_name][
+                "en"
+            ],  # Primary English description
             "tools": tools,
             "model": model,
             "descriptions": descriptions[agent_name],  # All language versions
-            "multilingual_support": True
+            "multilingual_support": True,
         }
 
         return agent_config
@@ -242,7 +239,7 @@ Translation:"""
         argument_hint: list[str],
         tools: list[str],
         model: str = "haiku",
-        target_languages: Optional[list[str]] = None
+        target_languages: Optional[list[str]] = None,
     ) -> Dict[str, Any]:
         """Create Claude command with multilingual description support.
 
@@ -262,18 +259,19 @@ Translation:"""
 
         # Generate multilingual descriptions
         descriptions = self.generate_multilingual_descriptions(
-            {command_name: base_description},
-            target_languages
+            {command_name: base_description}, target_languages
         )
 
         command_config = {
             "name": command_name,
-            "description": descriptions[command_name]["en"],  # Primary English description
+            "description": descriptions[command_name][
+                "en"
+            ],  # Primary English description
             "argument-hint": argument_hint,
             "tools": tools,
             "model": model,
             "descriptions": descriptions[command_name],  # All language versions
-            "multilingual_support": True
+            "multilingual_support": True,
         }
 
         return command_config
@@ -281,7 +279,7 @@ Translation:"""
     def process_json_stream_input(
         self,
         input_data: Union[Dict[str, Any], str],
-        variables: Optional[Dict[str, Any]] = None
+        variables: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Process JSON stream input for Claude CLI.
 
@@ -302,7 +300,9 @@ Translation:"""
             # Process any string values in input_data with variables
             for key, value in input_data.items():
                 if isinstance(value, str) and "{{" in value and "}}" in value:
-                    input_data[key] = self.template_engine.render_string(value, variables)
+                    input_data[key] = self.template_engine.render_string(
+                        value, variables
+                    )
 
         return input_data
 
@@ -312,7 +312,7 @@ Translation:"""
         variables: Dict[str, Any],
         input_format: str = "stream-json",
         output_format: str = "stream-json",
-        additional_options: Optional[list[str]] = None
+        additional_options: Optional[list[str]] = None,
     ) -> Dict[str, Any]:
         """Execute Claude command in headless mode with full variable processing.
 
@@ -328,7 +328,9 @@ Translation:"""
         """
         try:
             # Process prompt template
-            processed_prompt = self.template_engine.render_string(prompt_template, variables)
+            processed_prompt = self.template_engine.render_string(
+                prompt_template, variables
+            )
 
             # Build Claude command
             cmd_parts = ["claude", "--print"]
@@ -354,7 +356,7 @@ Translation:"""
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True,
-                    encoding='utf-8'
+                    encoding="utf-8",
                 )
 
                 stdout_lines = []
@@ -365,7 +367,11 @@ Translation:"""
                     stdout_line = process.stdout.readline()
                     stderr_line = process.stderr.readline()
 
-                    if stdout_line == '' and stderr_line == '' and process.poll() is not None:
+                    if (
+                        stdout_line == ""
+                        and stderr_line == ""
+                        and process.poll() is not None
+                    ):
                         break
 
                     if stdout_line:
@@ -380,14 +386,15 @@ Translation:"""
             else:
                 # Non-streaming execution
                 result = subprocess.run(
-                    cmd_parts,
-                    capture_output=True,
-                    text=True,
-                    encoding='utf-8'
+                    cmd_parts, capture_output=True, text=True, encoding="utf-8"
                 )
 
-                stdout_lines = result.stdout.strip().split('\n') if result.stdout else []
-                stderr_lines = result.stderr.strip().split('\n') if result.stderr else []
+                stdout_lines = (
+                    result.stdout.strip().split("\n") if result.stdout else []
+                )
+                stderr_lines = (
+                    result.stderr.strip().split("\n") if result.stderr else []
+                )
                 returncode = result.returncode
 
             # Cleanup
@@ -402,7 +409,7 @@ Translation:"""
                 "stderr": stderr_lines,
                 "returncode": returncode,
                 "processed_prompt": processed_prompt,
-                "variables": variables
+                "variables": variables,
             }
 
         except Exception as e:
@@ -410,5 +417,5 @@ Translation:"""
                 "success": False,
                 "error": str(e),
                 "prompt_template": prompt_template,
-                "variables": variables
+                "variables": variables,
             }

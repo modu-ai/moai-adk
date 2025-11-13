@@ -6,9 +6,9 @@ which migrations are needed.
 """
 
 import json
-from pathlib import Path
-from typing import Optional, Dict, List
 import logging
+from pathlib import Path
+from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -26,9 +26,7 @@ class VersionDetector:
         self.project_root = Path(project_root)
         self.old_config = self.project_root / ".moai" / "config.json"
         self.new_config = self.project_root / ".moai" / "config" / "config.json"
-        self.old_statusline = (
-            self.project_root / ".claude" / "statusline-config.yaml"
-        )
+        self.old_statusline = self.project_root / ".claude" / "statusline-config.yaml"
         self.new_statusline = (
             self.project_root / ".moai" / "config" / "statusline-config.yaml"
         )

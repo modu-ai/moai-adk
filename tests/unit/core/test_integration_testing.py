@@ -5,14 +5,12 @@ Test cases for integration testing functionality.
 """
 
 import pytest
-import asyncio
 import tempfile
 from pathlib import Path
 
 from moai_adk.core.integration import (
     IntegrationTester, IntegrationTestResult, TestComponent, TestSuite
 )
-from moai_adk.core.integration.models import TestStatus
 
 
 class TestIntegrationTester:

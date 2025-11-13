@@ -18,12 +18,11 @@ Usage:
     python3 scripts/upgrade-skills-to-v4.py --validate-all
 """
 
-import os
 import re
 import yaml
 import shutil
 from pathlib import Path
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict
 from dataclasses import dataclass
 from datetime import datetime
 

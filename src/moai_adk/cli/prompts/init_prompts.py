@@ -47,10 +47,10 @@ def prompt_project_setup(
     answers: ProjectSetupAnswers = {
         "project_name": "",
         "mode": "personal",  # Default: will be configurable in /alfred:0-project
-        "locale": "en",      # Default: will be configurable in /alfred:0-project
-        "language": None,    # Will be detected in /alfred:0-project
-        "author": "",        # Will be set in /alfred:0-project
-        "mcp_servers": [],   # Selected MCP servers
+        "locale": "en",  # Default: will be configurable in /alfred:0-project
+        "language": None,  # Will be detected in /alfred:0-project
+        "author": "",  # Will be set in /alfred:0-project
+        "mcp_servers": [],  # Selected MCP servers
         "custom_language": None,  # User input for other language
     }
 
@@ -94,9 +94,9 @@ def prompt_project_setup(
                 {"name": "English", "value": "en"},
                 {"name": "日本語 (Japanese)", "value": "ja"},
                 {"name": "中文 (Chinese)", "value": "zh"},
-                {"name": "Other - Manual input", "value": "other"}
+                {"name": "Other - Manual input", "value": "other"},
             ],
-            default=initial_locale or "en"
+            default=initial_locale or "en",
         ).ask()
 
         if language_choice is None:
@@ -106,7 +106,7 @@ def prompt_project_setup(
             # Prompt for manual input
             custom_lang = questionary.text(
                 "Enter your language:",
-                validate=lambda text: len(text) > 0 or "Language is required"
+                validate=lambda text: len(text) > 0 or "Language is required",
             ).ask()
 
             if custom_lang is None:
@@ -121,16 +121,22 @@ def prompt_project_setup(
                 "ko": "한국어 (Korean)",
                 "en": "English",
                 "ja": "日本語 (Japanese)",
-                "zh": "中文 (Chinese)"
+                "zh": "中文 (Chinese)",
             }
-            console.print(f"[cyan]🌐 Selected Language:[/cyan] {language_names.get(language_choice, language_choice)}")
+            console.print(
+                f"[cyan]🌐 Selected Language:[/cyan] {language_names.get(language_choice, language_choice)}"
+            )
 
         # Auto-install MCP servers
         mcp_servers = ["context7", "playwright", "sequential-thinking"]
         answers["mcp_servers"] = mcp_servers
         console.print("\n[blue]🔧 MCP (Model Context Protocol) Configuration[/blue]")
-        console.print("[dim]Enhance AI capabilities with MCP servers (auto-installing recommended servers)[/dim]\n")
-        console.print(f"[green]✅ MCP servers auto-installed: {', '.join(mcp_servers)}[/green]")
+        console.print(
+            "[dim]Enhance AI capabilities with MCP servers (auto-installing recommended servers)[/dim]\n"
+        )
+        console.print(
+            f"[green]✅ MCP servers auto-installed: {', '.join(mcp_servers)}[/green]"
+        )
 
         return answers
 

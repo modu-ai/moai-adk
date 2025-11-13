@@ -130,7 +130,6 @@ jobs:
         if: always()
         run: |
           echo "✅ SPEC Check: ${{ steps.analyze.outputs.spec_mentioned }}"
-          echo "✅ TAG References: ${{ steps.analyze.outputs.tag_count }}"
           echo "✅ Tests: ${{ steps.analyze.outputs.tests_added }}"
           echo ""
           echo "Future enhancement:"
@@ -146,7 +145,6 @@ jobs:
           script: |
             const analysis = {
               spec: '${{ steps.analyze.outputs.spec_mentioned }}' === 'true',
-              tags: parseInt('${{ steps.analyze.outputs.tag_count }}' || '0'),
               tests: '${{ steps.analyze.outputs.tests_added }}' === 'true'
             };
 

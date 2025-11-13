@@ -57,8 +57,12 @@ class SessionManager:
         """
         # Default paths
         project_root = Path.cwd()
-        self._session_file = session_file or project_root / ".moai" / "memory" / "agent-sessions.json"
-        self._transcript_dir = transcript_dir or project_root / ".moai" / "logs" / "agent-transcripts"
+        self._session_file = (
+            session_file or project_root / ".moai" / "memory" / "agent-sessions.json"
+        )
+        self._transcript_dir = (
+            transcript_dir or project_root / ".moai" / "logs" / "agent-transcripts"
+        )
 
         # Ensure directories exist
         self._session_file.parent.mkdir(parents=True, exist_ok=True)
@@ -82,7 +86,9 @@ class SessionManager:
                     self._sessions = data.get("sessions", {})
                     self._chains = data.get("chains", {})
                     self._metadata = data.get("metadata", {})
-                logger.info(f"Loaded {len(self._sessions)} sessions from {self._session_file}")
+                logger.info(
+                    f"Loaded {len(self._sessions)} sessions from {self._session_file}"
+                )
             except json.JSONDecodeError as e:
                 logger.warning(f"Failed to load sessions: {e}")
                 self._sessions = {}
@@ -436,7 +442,9 @@ class SessionManager:
         with open(chains_file, "w", encoding="utf-8") as f:
             json.dump(chains_data, f, indent=2, ensure_ascii=False)
 
-        logger.info(f"Created workflow chain: {chain_id} with {len(agent_sequence)} agents")
+        logger.info(
+            f"Created workflow chain: {chain_id} with {len(agent_sequence)} agents"
+        )
 
 
 # Global instance (singleton pattern)
@@ -459,6 +467,7 @@ def get_session_manager() -> SessionManager:
 
 
 # Convenience functions for direct use
+
 
 def register_agent(
     agent_name: str,
@@ -597,11 +606,11 @@ if __name__ == "__main__":
 
     print(f"Resume ID for tdd-implementer: {resume_id}")
 
-    # Should resume? (continuing TAG-002)
+    # Should resume? (continuing user auth flow)
     should_resume_decision = manager.should_resume(
         agent_name="tdd-implementer",
-        current_task="Implement TAG-002: User login endpoint",
-        previous_task="Implement TAG-001: User registration endpoint",
+        current_task="Implement user login endpoint",
+        previous_task="Implement user registration endpoint",
     )
 
     print(f"Should resume? {should_resume_decision}")
@@ -623,7 +632,10 @@ if __name__ == "__main__":
 
     # All experts run independently (no resume)
     experts_results = {
-        "backend-expert": {"recommendations": ["Use JWT for auth"], "agent_id": "backend-jkl012"},
+        "backend-expert": {
+            "recommendations": ["Use JWT for auth"],
+            "agent_id": "backend-jkl012",
+        },
         "security-expert": {
             "vulnerabilities": ["Rate limiting needed"],
             "agent_id": "security-mno345",

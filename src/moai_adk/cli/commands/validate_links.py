@@ -1,4 +1,3 @@
-
 """
 Link Validation CLI Command
 
@@ -15,42 +14,42 @@ from moai_adk.utils.link_validator import LinkValidator
 def create_parser(subparsers) -> argparse.ArgumentParser:
     """Create link validation parser"""
     parser = subparsers.add_parser(
-        'validate-links',
-        help='Validate online documentation links',
-        description='Automatically validate all online documentation links in README.ko.md'
+        "validate-links",
+        help="Validate online documentation links",
+        description="Automatically validate all online documentation links in README.ko.md",
     )
 
     parser.add_argument(
-        '--file', '-f',
+        "--file",
+        "-f",
         type=str,
-        default='README.ko.md',
-        help='File path to validate (default: README.ko.md)'
+        default="README.ko.md",
+        help="File path to validate (default: README.ko.md)",
     )
 
     parser.add_argument(
-        '--max-concurrent', '-c',
+        "--max-concurrent",
+        "-c",
         type=int,
         default=3,
-        help='Maximum number of links to validate concurrently (default: 3)'
+        help="Maximum number of links to validate concurrently (default: 3)",
     )
 
     parser.add_argument(
-        '--timeout', '-t',
+        "--timeout",
+        "-t",
         type=int,
         default=8,
-        help='Request timeout in seconds (default: 8)'
+        help="Request timeout in seconds (default: 8)",
     )
 
-    parser.add_argument(
-        '--output', '-o',
-        type=str,
-        help='File path to save results'
-    )
+    parser.add_argument("--output", "-o", type=str, help="File path to save results")
 
     parser.add_argument(
-        '--verbose', '-v',
-        action='store_true',
-        help='Display detailed progress information'
+        "--verbose",
+        "-v",
+        action="store_true",
+        help="Display detailed progress information",
     )
 
     return parser
@@ -67,8 +66,7 @@ def run_command(args) -> int:
 
         # Create validator
         validator = LinkValidator(
-            max_concurrent=args.max_concurrent,
-            timeout=args.timeout
+            max_concurrent=args.max_concurrent, timeout=args.timeout
         )
 
         if args.verbose:
@@ -101,7 +99,7 @@ def run_command(args) -> int:
         # Save to file
         if args.output:
             output_path = Path(args.output)
-            output_path.write_text(report, encoding='utf-8')
+            output_path.write_text(report, encoding="utf-8")
             print(f"\nResults saved to: {output_path}")
 
         # Return exit code

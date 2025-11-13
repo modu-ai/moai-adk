@@ -21,7 +21,7 @@ priority: high
   - 문서 전체 브랜딩 통일
 - **EVIDENCE**:
   - `b01403e docs(sync): Complete SPEC-INIT-001, REFACTOR-001, BRAND-001`
-  - `16263b3 refactor(tags): Unify TAG chain for SPEC-REFACTOR-001 and SPEC-BRAND-001`
+  - `16263b3 refactor(tags): Unify SPEC chain for SPEC-REFACTOR-001 and SPEC-BRAND-001`
   - `d21f034 docs: Update branding from Claude Code to AI-Agent Alfred`
 
 ### v0.1.0 (2025-10-06)

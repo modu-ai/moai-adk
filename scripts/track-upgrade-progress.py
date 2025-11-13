@@ -12,7 +12,6 @@ Usage:
 import re
 from pathlib import Path
 from collections import defaultdict
-from typing import Dict, List
 
 
 def analyze_progress(skills_dir=".claude/skills", detailed=False):

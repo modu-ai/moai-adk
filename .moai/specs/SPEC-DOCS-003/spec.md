@@ -306,7 +306,7 @@ markdown_extensions:
 
 ## Traceability
 
-### TAG Chain
+### SPEC Chain
 
 ```
 ```
@@ -315,7 +315,7 @@ markdown_extensions:
 
 - **README.md**: 메인 프로젝트 소개 (스토리라인 일관성 유지)
 - **.moai/project/product.md**: 제품 정의 (미션, 사용자, 문제, 전략)
-- **.moai/memory/development-guide.md**: 개발 가이드 (TRUST 원칙, TAG 시스템)
+- **.moai/memory/development-guide.md**: 개발 가이드 (TRUST 원칙, SPEC 시스템)
 - **SPEC-DOCS-001**: 기존 문서 SPEC (중복 방지)
 - **SPEC-DOCS-002**: 기존 문서 SPEC (중복 방지)
 

@@ -6,81 +6,80 @@ Supports extended language list with native names and automatic translation capa
 
 from typing import Dict, Optional
 
-
 # Enhanced language configuration with native names
 LANGUAGE_CONFIG: Dict[str, Dict[str, str]] = {
     "en": {
         "name": "English",
         "native_name": "English",
         "code": "en",
-        "family": "indo-european"
+        "family": "indo-european",
     },
     "ko": {
         "name": "Korean",
         "native_name": "한국어",
         "code": "ko",
-        "family": "koreanic"
+        "family": "koreanic",
     },
     "ja": {
         "name": "Japanese",
         "native_name": "日本語",
         "code": "ja",
-        "family": "japonic"
+        "family": "japonic",
     },
     "es": {
         "name": "Spanish",
         "native_name": "Español",  # Spanish native representation
         "code": "es",
-        "family": "indo-european"
+        "family": "indo-european",
     },
     "fr": {
         "name": "French",
         "native_name": "Français",
         "code": "fr",
-        "family": "indo-european"
+        "family": "indo-european",
     },
     "de": {
         "name": "German",
         "native_name": "Deutsch",
         "code": "de",
-        "family": "indo-european"
+        "family": "indo-european",
     },
     "zh": {
         "name": "Chinese",
         "native_name": "中文",
         "code": "zh",
-        "family": "sino-tibetan"
+        "family": "sino-tibetan",
     },
     "pt": {
         "name": "Portuguese",
         "native_name": "Português",
         "code": "pt",
-        "family": "indo-european"
+        "family": "indo-european",
     },
     "ru": {
         "name": "Russian",
         "native_name": "Русский",
         "code": "ru",
-        "family": "indo-european"
+        "family": "indo-european",
     },
     "it": {
         "name": "Italian",
         "native_name": "Italiano",
         "code": "it",
-        "family": "indo-european"
+        "family": "indo-european",
     },
     "ar": {
         "name": "Arabic",
         "native_name": "العربية",
         "code": "ar",
-        "family": "afro-asiatic"
+        "family": "afro-asiatic",
     },
     "hi": {
         "name": "Hindi",
         "native_name": "हिन्दी",
         "code": "hi",
-        "family": "indo-european"
-    }
+        "family": "indo-european",
+    },
 }
 
 

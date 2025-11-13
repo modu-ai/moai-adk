@@ -106,9 +106,9 @@ time moai doctor --verbose
 
 ---
 
-## AC-4: status 명령어 - TAG 체인 무결성
+## AC-4: status 명령어 - SPEC 체인 무결성
 
-### Scenario 4.1: 완벽한 TAG 체인
+### Scenario 4.1: 완벽한 SPEC 체인
 
 **Given**:
 - 1개 SPEC: `.moai/specs/SPEC-AUTH-001/spec.md`
@@ -119,10 +119,10 @@ moai status --detail
 ```
 
 **Then**:
-- "TAG Chain: 100% (0 orphans, 0 broken)" 표시
+- "SPEC Chain: 100% (0 orphans, 0 broken)" 표시
 - 정상 상태 아이콘 ✓
 
-### Scenario 4.2: 끊어진 TAG 체인 감지
+### Scenario 4.2: 끊어진 SPEC 체인 감지
 
 **Given**:
 
@@ -132,12 +132,12 @@ moai status --detail
 ```
 
 **Then**:
-- "TAG Chain: ⚠ 50% (0 orphans, 1 broken)" 표시
-- 끊어진 TAG 상세: "AUTH-001: CODE exists but SPEC missing"
+- "SPEC Chain: ⚠ 50% (0 orphans, 1 broken)" 표시
+- 끊어진 SPEC 상세: "AUTH-001: CODE exists but SPEC missing"
 - 수정 가이드: "Run `/alfred:1-plan AUTH-001` to create missing SPEC"
 - Exit code: 0 (경고지만 실행 성공)
 
-### Scenario 4.3: 고아 TAG 감지
+### Scenario 4.3: 고아 SPEC 감지
 
 **Given**:
 
@@ -147,8 +147,8 @@ moai status --detail
 ```
 
 **Then**:
-- "TAG Chain: ⚠ 50% (1 orphan, 0 broken)" 표시
-- 고아 TAG 상세: "AUTH-001: SPEC exists but CODE not implemented"
+- "SPEC Chain: ⚠ 50% (1 orphan, 0 broken)" 표시
+- 고아 SPEC 상세: "AUTH-001: SPEC exists but CODE not implemented"
 - 수정 가이드: "Run `/alfred:2-run AUTH-001` to implement"
 
 ---
@@ -571,7 +571,7 @@ moai doctor --export diagnosis.json
 - [ ] AC-1: doctor 명령어 Python 도구 감지
 - [ ] AC-2: doctor 언어 미감지 처리
 - [ ] AC-3: doctor 성능 제약 (< 5초)
-- [ ] AC-4: status TAG 체인 무결성
+- [ ] AC-4: status SPEC 체인 무결성
 - [ ] AC-5: status 테스트 커버리지
 - [ ] AC-6: status 코드 품질 지표
 - [ ] AC-7: status JSON 출력

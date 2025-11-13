@@ -8,9 +8,8 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
 
-from moai_adk.core.project.initializer import ProjectInitializer, InstallationResult
+from moai_adk.core.project.initializer import ProjectInitializer
 
 
 class TestVersionFieldInitialization:

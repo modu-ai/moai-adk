@@ -683,9 +683,24 @@ class EARSTemplateEngine:
 
     def _generate_traceability(self, spec_id: str) -> str:
         """Generate traceability section."""
-        return f"""
+        return """
 
 ### Traceability
+
+**Requirements Traceability Matrix:**
+- Functional requirements → Design specifications → Test cases
+- Non-functional requirements → Architecture decisions → Validation tests
+- Business requirements → User stories → Acceptance criteria
+
+**Implementation Traceability:**
+- Design specifications → Code modules → Unit tests
+- API specifications → Endpoints → Integration tests
+- Database design → Schemas → Data validation tests
+
+**Change Management:**
+- All changes tracked with timestamps
+- Impact analysis documented
+- Stakeholder approvals recorded"""
 
 
     def _generate_edit_guide(self, extraction: Dict[str, Any], domain: str) -> str:
@@ -695,11 +710,11 @@ class EARSTemplateEngine:
 ### Edit Guide
 
 **User Review Checklist:**
-1. ✅ Verify technical clarity
-2. ✅ Specify requirements in detail
-3. ✅ Review domain terminology
-4. ✅ Define state and event requirements
-5. ✅ Detail specifications
+1. [OK] Verify technical clarity
+2. [OK] Specify requirements in detail
+3. [OK] Review domain terminology
+4. [OK] Define state and event requirements
+5. [OK] Detail specifications
 
 **Quality Improvement Suggestions:**
 - Add domain-specific terminology
@@ -728,17 +743,15 @@ class EARSTemplateEngine:
 
         # Generate implementation plan based on complexity and domain
         plan_content = f"""---
-  "id": "PLAN-{spec_id}",
-  "spec_id": "SPEC-{spec_id}",
-  "title": "Auto-generated Implementation Plan for {extraction['file_name']}",
-  "version": "1.0.0",
-  "status": "pending",
-  "created": "{time.strftime('%Y-%m-%d')}",
-  "author": "@alfred-auto",
-  "domain": "{domain}"
-}}
+id: "PLAN-{spec_id}"
+spec_id: "SPEC-{spec_id}"
+title: "Auto-generated Implementation Plan for {extraction['file_name']}"
+version: "1.0.0"
+status: "pending"
+created: "{time.strftime('%Y-%m-%d')}"
+author: "@alfred-auto"
+domain: "{domain}"
 ---
-
 ## Auto-generated Implementation Plan for {extraction['file_name']}
 
 ### Implementation Phases
