@@ -165,19 +165,25 @@ class TemplateMerger:
         user_ask = set(user_data.get("permissions", {}).get("ask", []))
         merged_ask = sorted(template_ask | user_ask)
 
-        # Build final merged settings
-        merged = {
-            "env": merged_env,
-            "hooks": template_data.get("hooks", {}),  # Template priority
-            "permissions": {
-                "defaultMode": template_data.get("permissions", {}).get(
-                    "defaultMode", "default"
-                ),
-                "allow": merged_allow,
-                "ask": merged_ask,
-                "deny": merged_deny,
-            },
+        # Start with full template (include all fields from template)
+        merged = template_data.copy()
+
+        # Override with merged values
+        merged["env"] = merged_env
+        merged["permissions"] = {
+            "defaultMode": template_data.get("permissions", {}).get(
+                "defaultMode", "default"
+            ),
+            "allow": merged_allow,
+            "ask": merged_ask,
+            "deny": merged_deny,
         }
+
+        # Preserve user customizations for specific fields (if exist in backup/existing)
+        preserve_fields = ["outputStyle", "spinnerTipsEnabled"]
+        for field in preserve_fields:
+            if field in user_data:
+                merged[field] = user_data[field]
 
         existing_path.write_text(
             json.dumps(merged, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
