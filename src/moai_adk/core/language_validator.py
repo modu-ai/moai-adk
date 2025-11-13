@@ -5,16 +5,15 @@ Provides comprehensive language validation capabilities for programming language
 
 """
 
-import os
-import re
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Set, Tuple, Union
+from typing import Any, Dict, List, Optional, Set, Tuple
+
+from .language_detector import (
     LANGUAGE_DIRECTORY_MAP,
-    get_language_by_file_extension,
     get_all_supported_languages,
-    validate_language as validate_language_exists,
+    get_exclude_patterns,
+    get_language_by_file_extension,
     is_code_directory,
-    get_exclude_patterns
 )
 
 
@@ -46,7 +45,7 @@ class LanguageValidator:
         "clojure": [".clj", ".cljs", ".cljc"],
         "haskell": [".hs", ".lhs"],
         "lua": [".lua"],
-        "ocaml": [".ml", ".mli",".mll", ".mly"],
+        "ocaml": [".ml", ".mli", ".mll", ".mly"],
         "elixir": [".ex", ".exs"],
         "bash": [".sh", ".bash"],
         "powershell": [".ps1", ".psm1", ".psd1"],
@@ -61,7 +60,11 @@ class LanguageValidator:
         "dockerfile": ["dockerfile", "dockerfile.", "dockerfile.*"],
     }
 
-    def __init__(self, supported_languages: Optional[List[str]] = None, auto_validate: bool = True):
+    def __init__(
+        self,
+        supported_languages: Optional[List[str]] = None,
+        auto_validate: bool = True,
+    ):
         """
         Initialize the language validator.
 
@@ -84,12 +87,14 @@ class LanguageValidator:
 
         # Initialize analysis cache for statistics tracking
         self._analysis_cache = {
-            'last_analysis_files': 0,
-            'detected_extensions': [],
-            'supported_languages_found': 0
+            "last_analysis_files": 0,
+            "detected_extensions": [],
+            "supported_languages_found": 0,
         }
 
-    def _validate_and_normalize_input(self, value: Any, input_type: str) -> Optional[Any]:
+    def _validate_and_normalize_input(
+        self, value: Any, input_type: str
+    ) -> Optional[Any]:
         """
         Validate and normalize input values.
 
@@ -100,15 +105,15 @@ class LanguageValidator:
         Returns:
             Normalized value or None if validation fails
         """
-        if not value and input_type != 'language':  # Empty language is valid sometimes
+        if not value and input_type != "language":  # Empty language is valid sometimes
             return None
 
-        if input_type == 'language':
+        if input_type == "language":
             if not isinstance(value, str):
                 return None
             return value.strip().lower() if value else None
 
-        elif input_type == 'file_path':
+        elif input_type == "file_path":
             if isinstance(value, str):
                 return Path(value).resolve()
             elif isinstance(value, Path):
@@ -116,7 +121,7 @@ class LanguageValidator:
             else:
                 return None
 
-        elif input_type == 'list':
+        elif input_type == "list":
             if not isinstance(value, list):
                 return None
             return value
@@ -134,7 +139,7 @@ class LanguageValidator:
             True if language is supported, False otherwise.
         """
         if self.auto_validate:
-            normalized_lang = self._validate_and_normalize_input(language, 'language')
+            normalized_lang = self._validate_and_normalize_input(language, "language")
             if normalized_lang is None:
                 return False
         else:
@@ -153,7 +158,7 @@ class LanguageValidator:
             Detected language code or None if not recognized.
         """
         if self.auto_validate:
-            path_obj = self._validate_and_normalize_input(file_path, 'file_path')
+            path_obj = self._validate_and_normalize_input(file_path, "file_path")
             if path_obj is None:
                 return None
         else:
@@ -184,7 +189,7 @@ class LanguageValidator:
             List of expected directory patterns.
         """
         if self.auto_validate:
-            normalized_lang = self._validate_and_normalize_input(language, 'language')
+            normalized_lang = self._validate_and_normalize_input(language, "language")
             if normalized_lang is None:
                 return []
         else:
@@ -207,7 +212,7 @@ class LanguageValidator:
             List of file extensions (including dot).
         """
         if self.auto_validate:
-            normalized_lang = self._validate_and_normalize_input(language, 'language')
+            normalized_lang = self._validate_and_normalize_input(language, "language")
             if normalized_lang is None:
                 return []
         else:
@@ -238,7 +243,7 @@ class LanguageValidator:
             Detected language code or None if not recognized.
         """
         if self.auto_validate:
-            normalized_name = self._validate_and_normalize_input(file_name, 'file_path')
+            normalized_name = self._validate_and_normalize_input(file_name, "file_path")
             if normalized_name is None:
                 return None
         else:
@@ -290,7 +295,7 @@ class LanguageValidator:
             return True
 
         if self.auto_validate:
-            normalized_lang = self._validate_and_normalize_input(language, 'language')
+            normalized_lang = self._validate_and_normalize_input(language, "language")
             if normalized_lang is None:
                 return False
         else:
@@ -323,7 +328,9 @@ class LanguageValidator:
 
         return language.strip().lower()
 
-    def validate_project_configuration(self, config: Dict[str, Any]) -> Tuple[bool, List[str]]:
+    def validate_project_configuration(
+        self, config: Dict[str, Any]
+    ) -> Tuple[bool, List[str]]:
         """
         Validate project configuration for language support.
 
@@ -334,7 +341,7 @@ class LanguageValidator:
             Tuple of (is_valid, issues) where is_valid is boolean and issues is list of strings.
         """
         if self.auto_validate:
-            validated_config = self._validate_and_normalize_input(config, 'dict')
+            validated_config = self._validate_and_normalize_input(config, "dict")
             if validated_config is None:
                 return False, ["Invalid configuration format"]
 
@@ -370,13 +377,18 @@ class LanguageValidator:
             return False, issues
 
         # Additional validation for empty strings and whitespace-only names
-        if isinstance(project_config["name"], str) and not project_config["name"].strip():
+        if (
+            isinstance(project_config["name"], str)
+            and not project_config["name"].strip()
+        ):
             issues.append("Project name cannot be empty or contain only whitespace")
             return False, issues
 
         return True, issues
 
-    def validate_project_structure(self, project_files: Dict[str, bool], language: str) -> Tuple[bool, List[str]]:
+    def validate_project_structure(
+        self, project_files: Dict[str, bool], language: str
+    ) -> Tuple[bool, List[str]]:
         """
         Validate project structure for a specific language.
 
@@ -388,8 +400,12 @@ class LanguageValidator:
             Tuple of (is_valid, issues) where is_valid is boolean and issues is list of strings.
         """
         if self.auto_validate:
-            validated_project_files = self._validate_and_normalize_input(project_files, 'dict')
-            validated_language = self._validate_and_normalize_input(language, 'language')
+            validated_project_files = self._validate_and_normalize_input(
+                project_files, "dict"
+            )
+            validated_language = self._validate_and_normalize_input(
+                language, "language"
+            )
             if validated_project_files is None or validated_language is None:
                 return False, ["Invalid input format for project structure validation"]
 
@@ -414,7 +430,9 @@ class LanguageValidator:
                     break
 
             if not found_files_in_dir and expected_dir != "{package_name}/":
-                issues.append(f"No source files found in expected directory: {expected_dir}")
+                issues.append(
+                    f"No source files found in expected directory: {expected_dir}"
+                )
 
         # Check for files in unexpected directories
         config = {}  # Using empty config for default exclude patterns
@@ -439,7 +457,7 @@ class LanguageValidator:
             Dictionary mapping language codes to file counts.
         """
         if self.auto_validate:
-            validated_files = self._validate_and_normalize_input(files, 'list')
+            validated_files = self._validate_and_normalize_input(files, "list")
             if validated_files is None:
                 return {}
         else:
@@ -457,16 +475,16 @@ class LanguageValidator:
                     total_files += 1
 
                     # Track detected extensions for analysis
-                    if hasattr(file_path, 'suffix'):
+                    if hasattr(file_path, "suffix"):
                         detected_extensions.add(file_path.suffix.lower())
                     elif isinstance(file_path, str):
                         detected_extensions.add(Path(file_path).suffix.lower())
 
         # Add analysis information
-        if hasattr(self, '_analysis_cache'):
-            self._analysis_cache['last_analysis_files'] = total_files
-            self._analysis_cache['detected_extensions'] = list(detected_extensions)
-            self._analysis_cache['supported_languages_found'] = len(stats)
+        if hasattr(self, "_analysis_cache"):
+            self._analysis_cache["last_analysis_files"] = total_files
+            self._analysis_cache["detected_extensions"] = list(detected_extensions)
+            self._analysis_cache["supported_languages_found"] = len(stats)
 
         return stats
 
@@ -484,7 +502,7 @@ class LanguageValidator:
         Clear the analysis cache.
         """
         self._analysis_cache = {
-            'last_analysis_files': 0,
-            'detected_extensions': [],
-            'supported_languages_found': 0
+            "last_analysis_files": 0,
+            "detected_extensions": [],
+            "supported_languages_found": 0,
         }

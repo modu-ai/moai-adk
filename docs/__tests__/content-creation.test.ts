@@ -1,5 +1,5 @@
 /**
- * @TAG:CONTENT-CREATION-001
+ * TEST-CONTENT-CREATION-001: Content creation functionality tests
  * 핵심 콘텐츠 생성 테스트
  *
  * 기본 콘텐츠 구조 검증:
@@ -10,7 +10,7 @@
  * 5. 메타데이터 검증
  */
 
-describe('Content Creation (@TAG:CONTENT-CREATION-001)', () => {
+describe('Content Creation Tests', () => {
   describe('Main Content Structure', () => {
     it('should have main page content', () => {
       // 테스트: 메인 페이지 콘텐츠가 존재하는지

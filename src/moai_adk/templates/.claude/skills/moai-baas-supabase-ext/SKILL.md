@@ -2,10 +2,10 @@
 name: "moai-baas-supabase-ext"
 version: "4.0.0"
 created: 2025-11-11
-updated: 2025-11-12
+updated: 2025-11-13
 status: stable
-description: Enterprise Supabase PostgreSQL Platform with AI-powered architecture, Context7 integration, and intelligent open-source BaaS orchestration for scalable production applications
-keywords: ['supabase', 'postgresql', 'rls', 'row-level-security', 'realtime', 'edge-functions', 'enterprise-integration', 'context7-integration', 'ai-orchestration', 'production-deployment']
+description: Enterprise Supabase PostgreSQL Platform with AI-powered open-source BaaS architecture, Context7 integration, and intelligent PostgreSQL orchestration for scalable modern applications
+keywords: ['supabase', 'postgresql', 'open-source', 'realtime', 'row-level-security', 'edge-functions', 'context7-integration', 'ai-orchestration', 'production-deployment']
 allowed-tools: 
   - Read
   - Bash
@@ -18,15 +18,15 @@ allowed-tools:
   - mcp__context7__get-library-docs
 ---
 
-# Enterprise Supabase Platform Expert v4.0.0
+# Enterprise Supabase PostgreSQL Platform Expert v4.0.0
 
 ## Skill Metadata
 
 | Field | Value |
 | ----- | ----- |
 | **Skill Name** | moai-baas-supabase-ext |
-| **Version** | 4.0.0 (2025-11-11) |
-| **Tier** | Enterprise Platform Expert |
+| **Version** | 4.0.0 (2025-11-13) |
+| **Tier** | Enterprise Database Platform Expert |
 | **AI-Powered** | ✅ Context7 Integration, Intelligent Architecture |
 | **Auto-load** | On demand when Supabase keywords detected |
 
@@ -34,698 +34,436 @@ allowed-tools:
 
 ## What It Does
 
-Enterprise Supabase PostgreSQL Platform expert with AI-powered architecture optimization, Context7 integration, and intelligent open-source BaaS orchestration for scalable production applications.
+Enterprise Supabase PostgreSQL Platform expert with AI-powered open-source BaaS architecture, Context7 integration, and intelligent PostgreSQL orchestration for scalable modern applications.
 
 **Revolutionary v4.0.0 capabilities**:
 - 🤖 **AI-Powered Supabase Architecture** using Context7 MCP for latest PostgreSQL documentation
-- 📊 **Intelligent PostgreSQL Optimization** with automated performance tuning recommendations
-- 🚀 **Real-time Performance Analytics** with AI-driven database optimization insights
-- 🔗 **Enterprise Open-Source Integration** with zero-configuration PostgreSQL extensions
-- 📈 **Predictive Cost Analysis** with usage forecasting and resource optimization
-- 🔍 **Advanced Security Implementation** with automated RLS policy generation and compliance
-- 🌐 **Multi-Region PostgreSQL Deployment** with intelligent replication and failover
-- 🎯 **Intelligent Migration Planning** with PostgreSQL migration strategies and automation
-- 📱 **Real-time Database Monitoring** with AI-powered performance alerting
-- ⚡ **Zero-Configuration Setup** with intelligent template matching and deployment
+- 📊 **Intelligent Real-time Orchestration** with automated subscription optimization
+- 🚀 **Advanced PostgreSQL Optimization** with AI-driven query tuning and indexing
+- 🔗 **Enterprise Row-Level Security** with zero-configuration data protection
+- 📈 **Predictive Performance Analytics** with usage forecasting and optimization
 
 ---
 
 ## When to Use
 
 **Automatic triggers**:
-- Supabase project architecture and optimization discussions
-- PostgreSQL database design and performance optimization
-- Row Level Security (RLS) policy implementation and auditing
-- Real-time subscription architecture and scaling strategies
-- Edge Functions development and deployment patterns
+- Supabase PostgreSQL architecture and real-time feature discussions
+- Row-level security implementation and optimization
+- Edge Functions and serverless backend development
+- Open-source BaaS platform evaluation and integration
 
 **Manual invocation**:
-- Designing enterprise Supabase architectures with PostgreSQL
-- Optimizing PostgreSQL performance and RLS policies
+- Designing enterprise Supabase architectures with PostgreSQL optimization
+- Implementing real-time subscriptions and data synchronization
 - Planning PostgreSQL to Supabase migrations
-- Implementing advanced real-time features and subscriptions
-- Scaling Supabase applications for enterprise use
-- Integrating Supabase with PostgreSQL extensions and tools
+- Configuring advanced security with Row-Level Security
 
 ---
 
-## Enterprise Supabase Architecture Intelligence
+# Quick Reference (Level 1)
 
-### AI-Enhanced Platform Analysis
+## Supabase PostgreSQL Platform (November 2025)
 
-#### 1. **Supabase PostgreSQL Enterprise** (Database with AI Optimization)
-```yaml
-supabase_postgresql_enterprise:
-  context7_integration: true
-  latest_features:
-    - "PostgreSQL 16+ with latest extensions"
-    - "pgvector for vector similarity search"
-    - "Advanced RLS with policy conditions"
-    - "Real-time subscriptions with WebSockets"
-    - "Database branching for development workflows"
-    - "Point-in-time recovery with 30-day retention"
-    - "Connection pooling with PgBouncer"
-    - "Read replicas for read scaling"
-  
-  ai_recommendations:
-    best_for: ["PostgreSQL-centric apps", "Real-time features", "Open-source stack"]
-    use_cases: ["SaaS platforms", "Real-time dashboards", "API-first applications"]
-    performance_metrics:
-      transaction_throughput: "50k+ TPS"
-      query_latency: "P95 < 50ms"
-      concurrent_connections: "10k+ with pooling"
-      real_time_latency: "P95 < 100ms"
-    
-  enterprise_features:
-    security: ["Row-Level Security", "Database encryption", "Audit logging"]
-    monitoring: ["Query performance insights", "Real-time metrics", "Connection analytics"]
-    deployment: ["Multi-region deployment", "Automated backups", "Database branching"]
-```
+### Core Features Overview
+- **PostgreSQL 16+**: Latest version with extensions and performance improvements
+- **Real-time Subscriptions**: WebSocket-based real-time data synchronization
+- **Row-Level Security (RLS)**: Fine-grained data access control
+- **Edge Functions**: Deno runtime with 28+ global regions
+- **File Storage**: Object storage with CDN integration
+- **Authentication**: Multi-provider auth with PostgreSQL integration
 
-#### 2. **Supabase Edge Functions Enterprise** (Serverless TypeScript Functions)
-```yaml
-edge_functions_enterprise:
-  context7_integration: true
-  latest_features:
-    - "Deno runtime with TypeScript 5.7+"
-    - "Edge deployment across 28+ regions"
-    - "Automatic CORS and security headers"
-    - "Environment variable management"
-    - "Function versioning and rollback"
-    - "Integrated authentication middleware"
-    - "Database connection pooling"
-    - "Real-time WebSocket support"
-  
-  ai_recommendations:
-    best_for: ["API endpoints", "Data processing", "Real-time features"]
-    use_cases: ["Webhook handlers", "Data transformation", "Authentication flows"]
-    performance_metrics:
-      cold_start: "< 50ms average"
-      throughput: "10k+ requests/second"
-      scalability: "Auto-scaling to 1000+ instances"
-      timeout: "Up to 25 seconds"
-    
-  enterprise_features:
-    security: ["JWT authentication", "Request validation", "Rate limiting"]
-    monitoring: ["Real-time logs", "Error tracking", "Performance metrics"]
-    deployment: ["Git integration", "Environment promotion", "A/B testing"]
-```
+### Key PostgreSQL Extensions
+- **pgvector**: Vector similarity search for AI applications
+- **pg_cron**: Scheduled database jobs and maintenance
+- **PostgREST**: Automatic REST API generation from PostgreSQL schemas
+- **pg_graphql**: GraphQL API generation from PostgreSQL
 
-#### 3. **Supabase Auth Enterprise** (Authentication & Authorization)
-```yaml
-supabase_auth_enterprise:
-  context7_integration: true
-  latest_features:
-    - "Multi-provider authentication (50+ providers)"
-    - "Advanced JWT with custom claims"
-    - "Row Level Security integration"
-    - "Multi-factor authentication (MFA)"
-    - "SSO with SAML 2.0 and OIDC"
-    - "Passwordless authentication options"
-    - "Advanced user management"
-    - "Custom auth flows with hooks"
-  
-  ai_recommendations:
-    best_for: ["User authentication", "Authorization", "Security compliance"]
-    use_cases: ["SaaS platforms", "Enterprise applications", "Multi-tenant systems"]
-    performance_metrics:
-      authentication_latency: "P95 < 300ms"
-      concurrent_sessions: "1M+ active users"
-      mfa_methods: ["TOTP", "SMS", "Email", "WebAuthn"]
-      sso_protocols: ["SAML 2.0", "OpenID Connect", "CAS"]
-    
-  enterprise_features:
-    security: ["MFA enforcement", "SSO integration", "Advanced RLS policies"]
-    monitoring: ["Authentication events", "Security alerts", "User activity analytics"]
-    deployment: ["Multi-tenant support", "Custom domains", "Branding options"]
-```
+### Latest Features (November 2025)
+- **Database Branching**: Development workflows with isolated environments
+- **Improved Auth Section**: User bans and authenticated logs
+- **Official Vercel Integration**: Seamless deployment and management
+- **Enhanced Edge Functions**: Improved cold start performance
+
+### Performance Characteristics
+- **Query Performance**: P95 < 50ms latency
+- **Real-time Latency**: WebSocket connections < 100ms
+- **Throughput**: 50k+ TPS with connection pooling
+- **Global Coverage**: 28+ edge regions worldwide
 
 ---
 
-## AI-Powered Supabase Intelligence
+# Core Implementation (Level 2)
 
-### Intelligent PostgreSQL Optimization
+## Supabase Architecture Intelligence
+
 ```python
-# AI-powered Supabase PostgreSQL optimization with Context7
-class EnterpriseSupabaseOptimizer:
+# AI-powered Supabase architecture optimization with Context7
+class SupabaseArchitectOptimizer:
     def __init__(self):
         self.context7_client = Context7Client()
         self.postgresql_analyzer = PostgreSQLAnalyzer()
-        self.rls_optimizer = RLSOptimizer()
+        self.realtime_optimizer = RealtimeOptimizer()
     
-    async def optimize_supabase_architecture(self, 
-                                           current_config: SupabaseConfig,
-                                           performance_goals: PerformanceGoals) -> OptimizationPlan:
-        """Optimize Supabase architecture using AI analysis."""
+    async def design_optimal_supabase_architecture(self, 
+                                                 requirements: ApplicationRequirements) -> SupabaseArchitecture:
+        """Design optimal Supabase architecture using AI analysis."""
         
-        # Get latest Supabase and PostgreSQL best practices via Context7
-        supabase_docs = {}
-        services = ['postgresql', 'auth', 'storage', 'realtime', 'edge-functions']
-        
-        for service in services:
-            docs = await self.context7_client.get_library_docs(
-                context7_library_id=await self._resolve_supabase_library(service),
-                topic=f"enterprise optimization best practices 2025",
-                tokens=3000
-            )
-            supabase_docs[service] = docs
-        
-        # Get PostgreSQL specific documentation
-        pg_docs = await self.context7_client.get_library_docs(
-            context7_library_id=await self._resolve_postgresql_library(),
-            topic="performance tuning optimization indexes 2025",
-            tokens=3000
-        )
-        
-        # Analyze current configuration
-        config_analysis = self._analyze_current_config(current_config, supabase_docs, pg_docs)
-        
-        # PostgreSQL optimization recommendations
-        postgresql_recommendations = self.postgresql_analyzer.generate_recommendations(
-            current_config.database,
-            performance_goals,
-            supabase_docs['postgresql'],
-            pg_docs
-        )
-        
-        # RLS optimization recommendations
-        rls_recommendations = self.rls_optimizer.optimize_policies(
-            current_config.auth,
-            supabase_docs['auth']
-        )
-        
-        # Generate comprehensive optimization plan
-        return OptimizationPlan(
-            database_optimizations=postgresql_recommendations,
-            rls_improvements=rls_recommendations,
-            auth_enhancements=self._optimize_auth_configuration(current_config.auth, supabase_docs['auth']),
-            storage_optimizations=self._optimize_storage_configuration(current_config.storage, supabase_docs['storage']),
-            realtime_improvements=self._optimize_realtime_configuration(current_config.realtime, supabase_docs['realtime']),
-            expected_improvements=self._calculate_expected_improvements(
-                postgresql_recommendations,
-                rls_recommendations
-            ),
-            implementation_complexity=self._assess_implementation_complexity(
-                postgresql_recommendations,
-                rls_recommendations
-            ),
-            roi_projection=self._calculate_roi_projection(
-                postgresql_recommendations,
-                performance_goals
-            )
-        )
-    
-    def _optimize_postgresql_performance(self, 
-                                       config: DatabaseConfig,
-                                       supabase_docs: dict,
-                                       pg_docs: dict) -> List[DatabaseOptimization]:
-        """Generate PostgreSQL-specific performance optimizations."""
-        optimizations = []
-        
-        # Query optimization
-        query_recommendations = self._analyze_query_patterns(config, pg_docs)
-        optimizations.extend(query_recommendations)
-        
-        # Index optimization
-        index_recommendations = self._optimize_database_indexes(config, pg_docs)
-        optimizations.extend(index_recommendations)
-        
-        # Connection and pooling optimization
-        connection_recommendations = self._optimize_connections(config, supabase_docs['postgresql'])
-        optimizations.extend(connection_recommendations)
-        
-        # Extension utilization
-        extension_recommendations = self._optimize_extensions(config, pg_docs)
-        optimizations.extend(extension_recommendations)
-        
-        return optimizations
-    
-    def _generate_rls_policies(self, 
-                              schema: DatabaseSchema,
-                              requirements: SecurityRequirements) -> List[RLSPolicy]:
-        """Generate Row Level Security policies using AI analysis."""
-        policies = []
-        
-        for table in schema.tables:
-            # Analyze table access patterns
-            access_patterns = self._analyze_table_access_patterns(table)
-            
-            # Generate base RLS policies
-            base_policies = self._generate_base_rls_policies(table, access_patterns)
-            policies.extend(base_policies)
-            
-            # Generate role-specific policies
-            role_policies = self._generate_role_specific_policies(table, requirements)
-            policies.extend(role_policies)
-            
-            # Generate time-based policies if needed
-            if requirements.temporal_access:
-                temporal_policies = self._generate_temporal_policies(table, requirements)
-                policies.extend(temporal_policies)
-        
-        return policies
-```
-
-### Context7-Enhanced Supabase Intelligence
-```python
-# Real-time Supabase intelligence with Context7
-class Context7SupabaseIntelligence:
-    def __init__(self):
-        self.context7_client = Context7Client()
-        self.supabase_monitor = SupabaseMonitor()
-        self.update_scheduler = UpdateScheduler()
-    
-    async def get_real_time_supabase_updates(self, services: List[str]) -> SupabaseUpdates:
-        """Get real-time Supabase updates via Context7."""
-        updates = {}
-        
-        for service in services:
-            # Get latest Supabase documentation updates
-            latest_docs = await self.context7_client.get_library_docs(
-                context7_library_id=await self._resolve_supabase_library(service),
-                topic="latest features updates deprecation warnings 2025",
-                tokens=2500
-            )
-            
-            # Analyze updates for impact
-            impact_analysis = self._analyze_update_impact(latest_docs)
-            
-            updates[service] = SupabaseUpdate(
-                new_features=self._extract_new_features(latest_docs),
-                breaking_changes=self._extract_breaking_changes(latest_docs),
-                performance_improvements=self._extract_performance_improvements(latest_docs),
-                security_updates=self._extract_security_updates(latest_docs),
-                deprecation_warnings=self._extract_deprecation_warnings(latest_docs),
-                impact_assessment=impact_analysis,
-                recommended_actions=self._generate_recommendations(latest_docs)
-            )
-        
-        return SupabaseUpdates(updates)
-    
-    async def optimize_database_configuration(self, 
-                                             current_config: DatabaseConfig,
-                                             performance_goals: PerformanceGoals) -> DatabaseOptimization:
-        """Optimize Supabase database configuration using AI analysis."""
-        
-        # Get PostgreSQL optimization best practices
-        pg_best_practices = await self.context7_client.get_library_docs(
-            context7_library_id=await self._resolve_postgresql_library(),
-            topic="performance tuning configuration optimization 2025",
-            tokens=3000
-        )
-        
-        # Get Supabase specific optimizations
-        supabase_best_practices = await self.context7_client.get_library_docs(
-            context7_library_id=await self._resolve_supabase_library('postgresql'),
-            topic="database optimization tuning connection pooling 2025",
-            tokens=2500
-        )
-        
-        # Analyze current configuration
-        config_analysis = self._analyze_database_configuration(
-            current_config,
-            pg_best_practices,
-            supabase_best_practices
-        )
-        
-        # Generate optimization recommendations
-        optimizations = self._generate_database_optimizations(
-            config_analysis,
-            performance_goals,
-            pg_best_practices,
-            supabase_best_practices
-        )
-        
-        return DatabaseOptimization(
-            configuration_changes=optimizations.config_changes,
-            index_recommendations=optimizations.index_improvements,
-            query_optimizations=optimizations.query_improvements,
-            connection_tuning=optimizations.connection_optimizations,
-            extension_recommendations=optimizations.extension_suggestions,
-            expected_improvements=optimizations.performance_gains,
-            implementation_complexity=optimizations.complexity_score,
-            rollback_plan=optimizations.rollback_strategy
-        )
-```
-
----
-
-## Advanced Supabase Integration Patterns
-
-### Enterprise Multi-Service Architecture
-```yaml
-# Enterprise Supabase multi-service architecture
-enterprise_supabase_architecture:
-  microservices_pattern:
-    - name: "User Authentication Service"
-      services: ["Supabase Auth", "PostgreSQL RLS"]
-      features: ["Multi-provider auth", "MFA", "SSO", "User roles"]
-      integration: "Supabase Auth SDK + RLS policies"
-    
-    - name: "Real-time Data Service"
-      services: ["PostgreSQL", "Supabase Realtime"]
-      features: ["Real-time subscriptions", "Change data capture", "Live queries"]
-      integration: "PostgreSQL + Realtime subscriptions"
-    
-    - name: "Serverless Processing Service"
-      services: ["Edge Functions", "PostgreSQL"]
-      features: ["API endpoints", "Data processing", "Webhook handlers"]
-      integration: "Edge Functions + Database access"
-    
-    - name: "File Storage Service"
-      services: ["Supabase Storage", "PostgreSQL"]
-      features: ["Object storage", "Image transformation", "CDN delivery"]
-      integration: "Storage SDK + Database metadata"
-    
-    - name: "API Management Service"
-      services: ["PostgreSQL", "PostgREST", "Edge Functions"]
-      features: ["REST API generation", "GraphQL support", "Rate limiting"]
-      integration: "PostgREST + Custom middleware"
-
-  hybrid_strategy:
-    development: "Local Docker + Supabase CLI"
-    staging: "Supabase branch with production-like data"
-    production: "Multi-region Supabase enterprise deployment"
-    
-  disaster_recovery:
-    backup_strategy: "Automated continuous backups + Point-in-time recovery"
-    failover_mechanism: "Read replicas + Automated failover"
-    data_replication: "Streaming replication across regions"
-```
-
-### AI-Driven PostgreSQL Migration
-```python
-# Intelligent PostgreSQL to Supabase migration planning
-class PostgreSQLToSupabaseMigrationPlanner:
-    def __init__(self):
-        self.context7_client = Context7Client()
-        self.postgresql_analyzer = PostgreSQLAnalyzer()
-        self.migration_engine = MigrationEngine()
-    
-    async def plan_postgresql_to_supabase_migration(self, 
-                                                   postgresql_db: PostgreSQLDatabase,
-                                                   target_supabase_features: List[str]) -> MigrationPlan:
-        """Plan PostgreSQL to Supabase migration with AI-driven analysis."""
-        
-        # Get Supabase migration documentation
-        supabase_docs = {}
-        for feature in target_supabase_features:
-            docs = await self.context7_client.get_library_docs(
-                context7_library_id=await self._resolve_supabase_library(feature),
-                topic=f"migration best practices enterprise patterns 2025",
-                tokens=3000
-            )
-            supabase_docs[feature] = docs
-        
-        # Analyze current PostgreSQL database
-        postgresql_analysis = self.postgresql_analyzer.analyze_database(postgresql_db)
-        
-        # Assess migration complexity
-        complexity_analysis = self._assess_migration_complexity(
-            postgresql_analysis,
-            target_supabase_features,
-            supabase_docs
-        )
-        
-        # Generate migration roadmap
-        roadmap = self._generate_migration_roadmap(
-            postgresql_analysis,
-            target_supabase_features,
-            complexity_analysis
-        )
-        
-        return MigrationPlan(
-            phases=roadmap.phases,
-            migration_strategies={
-                'schema_migration': self._plan_schema_migration(postgresql_analysis, supabase_docs['postgresql']),
-                'data_migration': self._plan_data_migration(postgresql_analysis, supabase_docs['postgresql']),
-                'rls_migration': self._plan_rls_migration(postgresql_analysis, supabase_docs['auth']),
-                'auth_integration': self._plan_auth_integration(postgresql_analysis, supabase_docs['auth']),
-                'realtime_setup': self._plan_realtime_setup(postgresql_analysis, supabase_docs['realtime'])
-            },
-            timeline_estimate=self._calculate_timeline(roadmap),
-            cost_projection=self._calculate_migration_costs(roadmap),
-            risk_mitigation=complexity_analysis.mitigation_strategies,
-            rollback_strategy=self._generate_rollback_plan(roadmap)
-        )
-    
-    def _generate_migration_phases(self, 
-                                 postgresql_analysis: PostgreSQLAnalysis,
-                                 supabase_features: List[str],
-                                 complexity: ComplexityAnalysis) -> List[MigrationPhase]:
-        """Generate detailed migration phases."""
-        phases = []
-        
-        # Phase 1: Assessment and Preparation
-        phases.append(MigrationPhase(
-            name="Assessment and Preparation",
-            duration="2-3 weeks",
-            activities=[
-                "PostgreSQL database schema analysis",
-                "Dependency mapping and compatibility check",
-                "Performance baseline establishment",
-                "Security and compliance assessment"
-            ],
-            deliverables=[
-                "Database compatibility report",
-                "Migration strategy document",
-                "Risk assessment matrix"
-            ],
-            success_criteria=[
-                "All database objects catalogued",
-                "Compatibility issues identified",
-                "Migration approach defined"
-            ]
-        ))
-        
-        # Phase 2: Supabase Project Setup
-        phases.append(MigrationPhase(
-            name="Supabase Project Setup",
-            duration="1-2 weeks",
-            activities=[
-                "Create Supabase project with appropriate configuration",
-                "Setup database extensions and configurations",
-                "Implement RLS policies structure",
-                "Configure authentication providers"
-            ],
-            deliverables=[
-                "Configured Supabase project",
-                "Database schema structure",
-                "Authentication configuration"
-            ],
-            success_criteria=[
-                "Supabase project provisioned",
-                "Extensions installed",
-                "Auth providers configured"
-            ]
-        ))
-        
-        # Phase 3: Schema and Data Migration
-        phases.append(MigrationPhase(
-            name="Schema and Data Migration",
-            duration="3-6 weeks",
-            activities=[
-                "Migrate database schema to Supabase",
-                "Implement Row Level Security policies",
-                "Migrate data with validation",
-                "Setup real-time subscriptions"
-            ],
-            deliverables=[
-                "Migrated database schema",
-                "RLS policies implemented",
-                "Migrated and validated data"
-            ],
-            success_criteria=[
-                "Schema successfully migrated",
-                "RLS policies working correctly",
-                "Data integrity verified"
-            ]
-        ))
-        
-        # Phase 4: Integration and Testing
-        phases.append(MigrationPhase(
-            name="Integration and Testing",
-            duration="2-4 weeks",
-            activities=[
-                "Update application connection strings",
-                "Implement Supabase client SDKs",
-            ],
-            deliverables=[
-                "Updated application code",
-                "Comprehensive test results",
-                "Performance validation report"
-            ],
-            success_criteria=[
-                "All tests passing",
-                "Performance targets met",
-                "Security controls validated"
-            ]
-        ))
-        
-        return phases
-```
-
----
-
-## Performance Optimization Intelligence
-
-### Real-Time PostgreSQL Monitoring
-```python
-# AI-powered PostgreSQL performance monitoring and optimization
-class SupabasePerformanceIntelligence:
-    def __init__(self):
-        self.context7_client = Context7Client()
-        self.postgresql_monitor = PostgreSQLMonitor()
-        self.optimization_engine = OptimizationEngine()
-    
-    async def optimize_database_performance(self, 
-                                          current_metrics: DatabaseMetrics) -> OptimizationPlan:
-        """Optimize PostgreSQL database performance using AI analysis."""
-        
-        # Get latest PostgreSQL optimization strategies
-        optimization_docs = await self.context7_client.get_library_docs(
-            context7_library_id=await self._resolve_postgresql_library(),
-            topic="performance optimization query tuning indexing 2025",
-            tokens=3000
-        )
-        
-        # Get Supabase specific optimizations
+        # Get latest Supabase and PostgreSQL documentation via Context7
         supabase_docs = await self.context7_client.get_library_docs(
-            context7_library_id=await self._resolve_supabase_library('postgresql'),
-            topic="connection pooling performance tuning 2025",
+            context7_library_id='/supabase/docs',
+            topic="postgresql rls realtime edge-functions optimization 2025",
+            tokens=3000
+        )
+        
+        postgresql_docs = await self.context7_client.get_library_docs(
+            context7_library_id='/postgresql/docs',
+            topic="performance optimization indexing extensions 2025",
             tokens=2000
         )
         
-        # Analyze current performance
-        performance_analysis = self.postgresql_monitor.analyze_performance(
-            current_metrics,
-            optimization_docs,
+        # Optimize PostgreSQL configuration
+        db_optimization = self.postgresql_analyzer.optimize_configuration(
+            requirements.database_workload,
+            postgresql_docs
+        )
+        
+        # Design real-time architecture
+        realtime_design = self.realtime_optimizer.design_realtime_system(
+            requirements.realtime_needs,
             supabase_docs
         )
         
-        # Identify optimization opportunities
-        optimization_opportunities = self.optimization_engine.identify_opportunities(
-            performance_analysis,
-            optimization_docs,
-            supabase_docs
+        return SupabaseArchitecture(
+            database_configuration=db_optimization,
+            realtime_system=realtime_design,
+            edge_functions=self._design_edge_functions(requirements),
+            storage_configuration=self._optimize_storage(requirements),
+            auth_integration=self._integrate_authentication(requirements),
+            rls_policies=self._design_row_level_security(requirements),
+            performance_predictions=db_optimization.predictions
         )
+```
+
+## Row-Level Security Implementation
+
+```sql
+-- Comprehensive RLS policies for enterprise applications
+-- Enable RLS on sensitive tables
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
+
+-- User can only access their own profile
+CREATE POLICY "Users can view own profile" ON profiles
+    FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own profile" ON profiles
+    FOR UPDATE USING (auth.uid() = user_id);
+
+-- Project access based on team membership
+CREATE POLICY "Team members can view team projects" ON projects
+    FOR SELECT USING (
+        user_id IN (
+            SELECT user_id FROM team_members 
+            WHERE team_id = projects.team_id
+        )
+    );
+
+CREATE POLICY "Team admins can manage team projects" ON projects
+    FOR ALL USING (
+        user_id IN (
+            SELECT user_id FROM team_members 
+            WHERE team_id = projects.team_id AND role = 'admin'
+        )
+    );
+
+-- Document access with role-based permissions
+CREATE POLICY "Document access control" ON documents
+    FOR ALL USING (
+        CASE
+            WHEN is_public THEN true
+            WHEN owner_id = auth.uid() THEN true
+            WHEN user_id IN (
+                SELECT user_id FROM document_shares
+                WHERE document_id = documents.id AND permission IN ('read', 'write', 'admin')
+            ) THEN true
+            ELSE false
+        END
+    );
+```
+
+## Real-time Subscription Patterns
+
+```typescript
+// Advanced real-time subscription management
+import { RealtimeChannel } from '@supabase/supabase-js';
+
+class RealtimeManager {
+  private subscriptions: Map<string, RealtimeChannel> = new Map();
+  
+  subscribeToDataChanges(
+    table: string, 
+    filter: object, 
+    callback: (payload: any) => void
+  ): string {
+    const subscriptionId = `${table}_${Date.now()}`;
+    
+    const channel = supabase
+      .channel(subscriptionId)
+      .on(
+        'postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: table,
+          filter: filter
+        },
+        callback
+      )
+      .subscribe();
+    
+    this.subscriptions.set(subscriptionId, channel);
+    return subscriptionId;
+  }
+  
+  subscribeToUserSpecificData(userId: string) {
+    return {
+      profile: this.subscribeToDataChanges(
+        'profiles',
+        { user_id: `eq.${userId}` },
+        (payload) => this.handleProfileUpdate(payload)
+      ),
+      projects: this.subscribeToDataChanges(
+        'projects',
+        { team_id: `in.(${this.getUserTeamIds(userId).join(',')})` },
+        (payload) => this.handleProjectUpdate(payload)
+      ),
+      notifications: this.subscribeToDataChanges(
+        'notifications',
+        { user_id: `eq.${userId}` },
+        (payload) => this.handleNotification(payload)
+      )
+    };
+  }
+  
+  unsubscribe(subscriptionId: string) {
+    const channel = this.subscriptions.get(subscriptionId);
+    if (channel) {
+      supabase.removeChannel(channel);
+      this.subscriptions.delete(subscriptionId);
+    }
+  }
+}
+```
+
+---
+
+# Advanced Implementation (Level 3)
+
+## Edge Functions Development
+
+```typescript
+// Advanced Edge Function with TypeScript
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+interface NotificationPayload {
+  userId: string;
+  type: 'message' | 'mention' | 'project_update';
+  title: string;
+  body: string;
+  data?: Record<string, any>;
+}
+
+serve(async (req) => {
+  try {
+    const { userId, type, title, body, data }: NotificationPayload = await req.json();
+    
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Validate user exists and has notifications enabled
+    const { data: user, error: userError } = await supabase
+      .from('profiles')
+      .select('id, notification_preferences')
+      .eq('id', userId)
+      .single();
+    
+    if (userError || !user?.notification_preferences?.[type]) {
+      return new Response(JSON.stringify({ error: 'Invalid user or preferences' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // Store notification in database
+    const { error: insertError } = await supabase
+      .from('notifications')
+      .insert({
+        user_id: userId,
+        type,
+        title,
+        body,
+        data,
+        created_at: new Date().toISOString()
+      });
+    
+    if (insertError) throw insertError;
+    
+    // Trigger real-time notification
+    const { error: realtimeError } = await supabase
+      .channel('notifications')
+      .send({
+        type: 'broadcast',
+        event: 'new_notification',
+        payload: { userId, type, title, body, data }
+      });
+    
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+  } catch (error) {
+    console.error('Notification function error:', error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+});
+```
+
+### Migration from Firebase to Supabase
+
+```python
+class FirebaseToSupabaseMigrator:
+    def __init__(self):
+        self.supabase_client = SupabaseClient()
+        self.firebase_client = FirebaseClient()
+        self.data_transformer = DataTransformer()
+    
+    async def migrate_firestore_to_supabase(self, 
+                                          firebase_config: FirebaseConfig,
+                                          supabase_config: SupabaseConfig) -> MigrationResult:
+        """Migrate Firestore collections to Supabase PostgreSQL."""
         
-        # Generate optimization plan
-        return OptimizationPlan(
-            query_optimizations=optimization_opportunities.query_improvements,
-            index_recommendations=optimization_opportunities.index_improvements,
-            configuration_tuning=optimization_opportunities.config_changes,
-            connection_optimizations=optimization_opportunities.connection_improvements,
-            expected_improvements=self._calculate_expected_improvements(
-                optimization_opportunities
-            ),
-            implementation_complexity=optimization_opportunities.complexity_analysis,
-            roi_projections=self._calculate_roi_projections(optimization_opportunities)
-        )
-    
-    def setup_intelligent_monitoring(self) -> DatabaseMonitoringSetup:
-        """Setup intelligent PostgreSQL monitoring."""
-        return DatabaseMonitoringSetup(
-            real_time_metrics=[
-                "Query execution time distribution",
-                "Connection pool utilization",
-                "Index usage statistics",
-                "Table and index bloat analysis",
-                "Lock wait times and deadlocks",
-                "Cache hit ratios (buffer cache, index cache)",
-                "Autovacuum activity and effectiveness",
-                "WAL generation and replication lag"
-            ],
-            ai_alerts=[
-                "Slow query detection and analysis",
-                "Connection pool exhaustion alerts",
-                "Index usage optimization opportunities",
-                "Table bloat warnings and recommendations",
-                "Unusual lock wait patterns",
-                "Performance regression detection",
-                "Resource utilization anomalies"
-            ],
-            dashboards=self._create_intelligent_dashboards(),
-            notification_channels=self._setup_notification_channels(),
-            automated_responses=self._configure_automated_responses()
-        )
-    
-    def _optimize_rls_policies(self, 
-                              current_policies: List[RLSPolicy],
-                              performance_requirements: PerformanceRequirements) -> RLSPolicyOptimization:
-        """Optimize Row Level Security policies for performance."""
-        return RLSPolicyOptimization(
-            policy_simplification=self._simplify_complex_policies(current_policies),
-            index_recommendations=self._recommend_rls_indexes(current_policies),
-            query_optimization=self._optimize_rls_queries(current_policies),
-            caching_strategies=self._implement_rls_caching(current_policies),
-            expected_improvements=self._calculate_rls_improvements(current_policies)
+        # Get all Firestore collections
+        collections = await self.firebase_client.list_collections()
+        
+        migration_results = []
+        
+        for collection in collections:
+            # Get all documents from collection
+            documents = await self.firebase_client.get_collection_documents(collection)
+            
+            # Transform Firebase data to PostgreSQL schema
+            transformed_data = await self.data_transformer.transform_firestore_to_postgresql(
+                documents, collection
+            )
+            
+            # Create PostgreSQL table if not exists
+            await self.supabase_client.create_table_from_schema(
+                collection, transformed_data.schema
+            )
+            
+            # Insert transformed data
+            insert_result = await self.supabase_client.bulk_insert(
+                collection, transformed_data.data
+            )
+            
+            migration_results.append({
+                collection: collection,
+                documents_migrated: len(documents),
+                status: insert_result.status
+            })
+        
+        return MigrationResult(
+            collections_migrated=len(collections),
+            total_documents=sum(r['documents_migrated'] for r in migration_results),
+            results=migration_results,
+            success=True
         )
 ```
 
 ---
 
+# Reference & Integration (Level 4)
+
 ## API Reference
 
-### Core Functions
-- `optimize_supabase_architecture(config, goals)` - AI-powered Supabase optimization
-- `plan_postgresql_to_supabase_migration(database, features)` - Intelligent migration planning
-- `optimize_database_performance(metrics)` - Real-time PostgreSQL optimization
-- `get_real_time_supabase_updates(services)` - Context7 update monitoring
-- `setup_intelligent_monitoring()` - AI-powered database monitoring setup
-- `generate_rls_policies(schema, requirements)` - Automated RLS policy generation
+### Core Supabase Operations
+- `create_table(schema_definition)` - Create PostgreSQL table
+- `enable_rls(table_name)` - Enable Row-Level Security
+- `create_policy(table, name, definition)` - Create RLS policy
+- `deploy_edge_function(name, code)` - Deploy Edge Function
+- `create_realtime_subscription(channel, filter)` - Create real-time subscription
 
 ### Context7 Integration
-- `get_latest_supabase_documentation(service)` - Official docs via Context7
-- `analyze_supabase_updates(services)` - Real-time update analysis
-- `optimize_with_postgresql_best_practices()` - Latest PostgreSQL optimization strategies
+- `get_latest_supabase_documentation()` - Official Supabase docs via Context7
+- `analyze_postgresql_optimization()` - PostgreSQL performance via Context7
+- `optimize_realtime_architecture()` - Real-time best practices via Context7
 
-### Data Structures
-- `SupabaseConfig` - Comprehensive Supabase service configuration
-- `DatabaseOptimization` - PostgreSQL performance optimization recommendations
-- `MigrationPlan` - Detailed PostgreSQL to Supabase migration strategy
-- `RLSPolicy` - Row Level Security policy definition and optimization
-- `PerformanceIntelligence` - Real-time PostgreSQL monitoring and alerting
+## Best Practices (November 2025)
 
----
+### DO
+- Use Row-Level Security for all data access control
+- Implement comprehensive database indexing for performance
+- Optimize Edge Functions for cold start performance
+- Use database branching for development workflows
+- Implement connection pooling for high-throughput applications
+- Monitor real-time subscriptions for performance and cost
+- Use PostgreSQL extensions for specialized functionality
+- Implement proper backup and disaster recovery
 
-## Changelog
-
-- **v4.0.0** (2025-11-12): Complete Enterprise v4.0 rewrite with Context7 integration, Supabase v2.24.0, CLI v2.58.5, pgvector vector search, edge functions dashboard, dashboard improvements integration, AI-powered Supabase optimization, enterprise PostgreSQL patterns, and intelligent migration planning
-- **v2.0.0** (2025-11-09): Supabase Advanced Guide with RLS and production best practices
-- **v1.0.0** (2025-11-09): Initial Supabase platform integration
-
----
+### DON'T
+- Skip RLS policies on sensitive data tables
+- Overcomplicate real-time subscriptions with excessive filters
+- Ignore Edge Function cold start optimization
+- Use production database for development testing
+- Neglect PostgreSQL query optimization
+- Forget to monitor real-time subscription costs
+- Skip database migration testing
+- Ignore security best practices for Edge Functions
 
 ## Works Well With
 
-- `moai-baas-foundation` (BaaS platform selection and architecture)
-- `moai-lang-postgresql` (PostgreSQL database optimization and patterns)
-- `moai-foundation-trust` (security and compliance validation)
-- `moai-essentials-perf` (performance optimization and monitoring)
-- `moai-essentials-migration` (PostgreSQL migration automation)
-- Context7 MCP (real-time Supabase and PostgreSQL documentation)
+- `moai-baas-foundation` (Enterprise BaaS architecture patterns)
+- `moai-domain-database` (Database design and optimization)
+- `moai-baas-neon-ext` (PostgreSQL alternative comparison)
+- `moai-essentials-perf` (Performance optimization)
+- `moai-security-api` (API security and authorization)
+- `moai-foundation-trust` (Security and compliance)
+- `moai-baas-firebase-ext` (Firebase migration comparison)
+- `moai-domain-backend` (Backend database integration)
+
+## Changelog
+
+- **v4.0.0** (2025-11-13): Complete Enterprise v4.0 rewrite with 40% content reduction, 4-layer Progressive Disclosure structure, Context7 integration, November 2025 Supabase platform updates, and advanced PostgreSQL optimization
+- **v2.0.0** (2025-11-11): Complete metadata structure, RLS patterns, Edge Functions
+- **v1.0.0** (2025-11-11): Initial Supabase PostgreSQL platform
 
 ---
 
-## Best Practices
+**End of Skill** | Updated 2025-11-13
 
-✅ **DO**:
-- Use Context7 integration for latest Supabase and PostgreSQL documentation
-- Implement comprehensive Row Level Security policies for data protection
-- Plan PostgreSQL migrations with detailed dependency and compatibility analysis
-- Use AI-powered optimization recommendations for database performance
-- Monitor database performance with real-time query analysis
-- Implement connection pooling and read replicas for scalability
-- Use database branching for development and testing workflows
-- Establish clear backup and disaster recovery strategies
+## Security & Compliance
 
-❌ **DON'T**:
-- Skip Row Level Security policy implementation for sensitive data
-- Ignore PostgreSQL performance tuning and optimization opportunities
-- Underestimate migration complexity from standalone PostgreSQL
-- Skip real-time performance monitoring and alerting
-- Use inappropriate data types or missing indexes
-- Neglect connection pooling configuration for high-traffic applications
-- Ignore backup and point-in-time recovery setup
-- Skip security audit and compliance validation
+### PostgreSQL Security
+- Row-Level Security for fine-grained access control
+- PostgreSQL native encryption and authentication
+- Comprehensive audit logging and monitoring
+- Advanced user privilege management
+
+### Data Protection
+- End-to-end encryption for data in transit and at rest
+- GDPR compliance with data portability and deletion
+- HIPAA ready configuration for healthcare applications
+- SOC2 Type II security controls implementation
+
+---
+
+**End of Enterprise Supabase PostgreSQL Platform Expert v4.0.0**

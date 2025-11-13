@@ -11,12 +11,12 @@ author: "GoosLab"
 
 ## SPEC Overview
 
-This SPEC defines the validation system for MoAI-ADK, which provides comprehensive validation capabilities for TAG chains, code quality, and system integrity.
+This SPEC defines the validation system for MoAI-ADK, which provides comprehensive validation capabilities for SPEC chains, code quality, and system integrity.
 
 ## Requirements
 
-- **TAG Chain Validation**: Validate complete TAG chains (SPEC → CODE → TEST → DOC)
-- **Code Quality Validation**: Validate code structure and TAG adherence
+- **SPEC Chain Validation**: Validate complete SPEC chains (SPEC → CODE → TEST → DOC)
+- **Code Quality Validation**: Validate code structure and SPEC adherence
 - **System Integrity**: Validate overall system integrity and consistency
 - **Performance**: Optimize validation processes for large codebases
 
@@ -25,8 +25,8 @@ This SPEC defines the validation system for MoAI-ADK, which provides comprehensi
 
 ## Acceptance Criteria
 
-- ✅ Comprehensive TAG chain validation
-- ✅ Code quality validation with TAG adherence
+- ✅ Comprehensive SPEC chain validation
+- ✅ Code quality validation with SPEC adherence
 - ✅ System integrity validation
 - ✅ Performance optimization for validation
 - ✅ Error reporting and suggestions

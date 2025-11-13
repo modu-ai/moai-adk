@@ -5,13 +5,13 @@ Coordinates version detection, backup creation, file migration,
 and cleanup processes for automatic project upgrades.
 """
 
-from pathlib import Path
-from typing import Optional, Dict
 import logging
+from pathlib import Path
+from typing import Dict
 
-from .version_detector import VersionDetector
 from .backup_manager import BackupManager
 from .file_migrator import FileMigrator
+from .version_detector import VersionDetector
 
 logger = logging.getLogger(__name__)
 
@@ -99,9 +99,7 @@ class VersionMigrator:
             # Step 2: Get migration plan
             logger.info("\n📋 Step 2: Analyzing migration requirements...")
             plan = self.detector.get_migration_plan()
-            logger.info(
-                f"   - {len(plan['create'])} directories to create"
-            )
+            logger.info(f"   - {len(plan['create'])} directories to create")
             logger.info(f"   - {len(plan['move'])} files to move")
 
             # Step 3: Execute migration
@@ -131,9 +129,7 @@ class VersionMigrator:
                     cleaned = self.file_migrator.cleanup_old_files(plan["cleanup"])
                     logger.info(f"✅ Cleaned up {cleaned} old files")
                 else:
-                    logger.info(
-                        "\n⏭️  Step 5: Skipped cleanup (old files preserved)"
-                    )
+                    logger.info("\n⏭️  Step 5: Skipped cleanup (old files preserved)")
 
                 logger.info("\n✨ Migration to v0.24.0 completed successfully!")
                 return True

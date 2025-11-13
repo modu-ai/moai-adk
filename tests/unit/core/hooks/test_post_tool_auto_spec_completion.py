@@ -1,11 +1,9 @@
 """Test suite for PostToolUse auto-spec completion hook."""
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
-import json
+from unittest.mock import Mock, patch
 import os
 import tempfile
-from pathlib import Path
 
 # Import the hook to test
 from moai_adk.core.hooks.post_tool_auto_spec_completion import PostToolAutoSpecCompletion

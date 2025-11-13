@@ -19,10 +19,8 @@ import time
 import tempfile
 import os
 from pathlib import Path
-from unittest.mock import patch, MagicMock, mock_open
-from typing import Dict, Any, List
+from typing import Dict, Any
 import threading
-from datetime import datetime, timedelta
 
 # Setup import path for shared modules (following existing pattern)
 HOOKS_DIR = Path(__file__).parent.parent.parent / ".claude" / "hooks" / "alfred"
@@ -43,7 +41,6 @@ sys.path = [
 # Import the actual deduplication functions
 try:
     from utils.state_tracking import deduplicate_command, mark_command_complete, get_state_manager
-    from core import HookConfiguration
 except ImportError as e:
     print(f"Import error: {e}", file=sys.stderr)
     # Create mock functions for testing
@@ -52,6 +49,13 @@ except ImportError as e:
 
     def mark_command_complete(command, cwd, config):
         pass
+
+# Mock HookConfiguration since it's not available in the current structure
+class HookConfiguration:
+    def __init__(self, command_dedupe_window=3.0, state_cache_ttl=5.0, enable_caching=True):
+        self.command_dedupe_window = command_dedupe_window
+        self.state_cache_ttl = state_cache_ttl
+        self.enable_caching = enable_caching
 
 
 class TestCommandDeduplication:

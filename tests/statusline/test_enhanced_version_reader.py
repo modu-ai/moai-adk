@@ -13,8 +13,7 @@ import pytest
 
 from moai_adk.statusline.version_reader import (
     VersionReader,
-    VersionConfig,
-    VersionReadError
+    VersionConfig
 )
 
 

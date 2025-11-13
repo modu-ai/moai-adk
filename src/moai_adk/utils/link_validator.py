@@ -1,4 +1,3 @@
-
 """
 Link Validation Utilities
 Online documentation link validation utilities
@@ -11,7 +10,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
-from moai_adk.utils.common import HTTPClient, create_report_path, extract_links_from_text, is_valid_url
+from moai_adk.utils.common import (
+    HTTPClient,
+    create_report_path,
+    extract_links_from_text,
+    is_valid_url,
+)
 from moai_adk.utils.safe_file_reader import SafeFileReader
 
 logger = logging.getLogger(__name__)
@@ -20,6 +24,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class LinkResult:
     """Link validation result"""
+
     url: str
     status_code: int
     is_valid: bool
@@ -35,6 +40,7 @@ class LinkResult:
 @dataclass
 class ValidationResult:
     """Overall validation result"""
+
     total_links: int
     valid_links: int
     invalid_links: int
@@ -90,7 +96,7 @@ class LinkValidator(HTTPClient):
                     status_code=0,
                     is_valid=False,
                     response_time=0.0,
-                    error_message="Invalid URL format"
+                    error_message="Invalid URL format",
                 )
 
             # HTTP request
@@ -101,7 +107,7 @@ class LinkValidator(HTTPClient):
                 status_code=response.status_code,
                 is_valid=response.success,
                 response_time=response.load_time,
-                error_message=response.error_message
+                error_message=response.error_message,
             )
 
         except Exception as e:
@@ -110,7 +116,7 @@ class LinkValidator(HTTPClient):
                 status_code=0,
                 is_valid=False,
                 response_time=0.0,
-                error_message=f"Unexpected error: {str(e)}"
+                error_message=f"Unexpected error: {str(e)}",
             )
 
     async def validate_all_links(self, links: List[str]) -> ValidationResult:
@@ -125,7 +131,9 @@ class LinkValidator(HTTPClient):
                 result = await self.validate_link(link)
                 results.append(result)
                 # Log progress
-                logger.info(f"Validation complete: {link} -> {result.status_code} ({result.is_valid})")
+                logger.info(
+                    f"Validation complete: {link} -> {result.status_code} ({result.is_valid})"
+                )
                 return result
 
         # Validate all links asynchronously
@@ -141,7 +149,7 @@ class LinkValidator(HTTPClient):
             valid_links=valid_links,
             invalid_links=invalid_links,
             results=results,
-            completed_at=datetime.now()
+            completed_at=datetime.now(),
         )
 
     def generate_report(self, validation_result: ValidationResult) -> str:
@@ -150,7 +158,9 @@ class LinkValidator(HTTPClient):
 
         report = []
         report.append("# Online Documentation Link Validation Report")
-        report.append(f"**Validation Time**: {validation_result.completed_at.strftime('%Y-%m-%d %H:%M:%S')}")
+        report.append(
+            f"**Validation Time**: {validation_result.completed_at.strftime('%Y-%m-%d %H:%M:%S')}"
+        )
         report.append(f"**Total Links**: {validation_result.total_links}")
         report.append(f"**Valid Links**: {validation_result.valid_links}")
         report.append(f"**Invalid Links**: {validation_result.invalid_links}")
@@ -187,7 +197,9 @@ class LinkValidator(HTTPClient):
         if validation_result.valid_links > 0:
             report.append("## ✅ Successful Links")
             report.append("")
-            report.append(f"Total of {validation_result.valid_links} links validated successfully.")
+            report.append(
+                f"Total of {validation_result.valid_links} links validated successfully."
+            )
 
         return "\n".join(report)
 
@@ -205,10 +217,7 @@ def validate_readme_links(readme_path: Optional[Path] = None) -> ValidationResul
     if not links:
         logger.warning("No links to validate")
         return ValidationResult(
-            total_links=0,
-            valid_links=0,
-            invalid_links=0,
-            results=[]
+            total_links=0, valid_links=0, invalid_links=0, results=[]
         )
 
     logger.info(f"Validating total of {len(links)} links...")
@@ -219,7 +228,7 @@ def validate_readme_links(readme_path: Optional[Path] = None) -> ValidationResul
     # Generate and save report
     report = validator.generate_report(result)
     report_path = create_report_path(Path("."), "link_validation")
-    report_path.write_text(report, encoding='utf-8')
+    report_path.write_text(report, encoding="utf-8")
     logger.info(f"Report saved to: {report_path}")
 
     return result
@@ -236,5 +245,5 @@ if __name__ == "__main__":
 
     # Save to file
     report_path = Path("link_validation_report.md")
-    report_path.write_text(report, encoding='utf-8')
+    report_path.write_text(report, encoding="utf-8")
     print(f"\nReport saved to: {report_path}")

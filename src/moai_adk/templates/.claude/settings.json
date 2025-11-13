@@ -120,7 +120,6 @@
       "Bash(which:*)",
       "Bash(make:*)",
       "Bash(python:*)",
-      "Bash(python3:*)",
       "Bash(uv:*)",
       "Bash(pytest:*)",
       "Bash(mypy:*)",

@@ -4,7 +4,6 @@ Tests for template variable substitution ({{MOAI_VERSION}} → actual version)
 """
 
 import json
-import tempfile
 from pathlib import Path
 
 import pytest

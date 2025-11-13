@@ -2,10 +2,10 @@
 name: "moai-baas-clerk-ext"
 version: "4.0.0"
 created: 2025-11-11
-updated: 2025-11-12
+updated: 2025-11-13
 status: stable
-description: Enterprise Clerk Authentication Platform with AI-powered modern auth architecture, Context7 integration, and intelligent user management orchestration for scalable full-stack applications
-keywords: ['clerk', 'modern-authentication', 'mfa', 'user-management', 'sso', 'multi-tenancy', 'context7-integration', 'ai-orchestration', 'production-deployment']
+description: Enterprise Clerk Authentication Platform with AI-powered modern identity architecture, Context7 integration, and intelligent user management orchestration for scalable applications
+keywords: ['clerk', 'modern-authentication', 'user-management', 'multi-platform', 'webauthn', 'organizations', 'context7-integration', 'ai-orchestration', 'production-deployment']
 allowed-tools: 
   - Read
   - Bash
@@ -25,8 +25,8 @@ allowed-tools:
 | Field | Value |
 | ----- | ----- |
 | **Skill Name** | moai-baas-clerk-ext |
-| **Version** | 4.0.0 (2025-11-11) |
-| **Tier** | Enterprise Authentication Expert |
+| **Version** | 4.0.0 (2025-11-13) |
+| **Tier** | Enterprise Authentication Platform Expert |
 | **AI-Powered** | ✅ Context7 Integration, Intelligent Architecture |
 | **Auto-load** | On demand when Clerk keywords detected |
 
@@ -34,637 +34,557 @@ allowed-tools:
 
 ## What It Does
 
-Enterprise Clerk Authentication Platform expert with AI-powered modern auth architecture, Context7 integration, and intelligent user management orchestration for scalable full-stack applications.
+Enterprise Clerk Authentication Platform expert with AI-powered modern identity architecture, Context7 integration, and intelligent user management orchestration for scalable applications.
 
 **Revolutionary v4.0.0 capabilities**:
-- 🤖 **AI-Powered Clerk Architecture** using Context7 MCP for latest Clerk documentation
-- 📊 **Intelligent User Management** with automated workflow optimization and insights
-- 🚀 **Real-time Authentication Analytics** with AI-driven user behavior analysis
-- 🔗 **Modern Multi-Platform Integration** with React, Next.js, and native platform optimization
-- 📈 **Predictive User Insights** with usage forecasting and engagement optimization
-- 🔍 **Advanced Security Implementation** with automated MFA and compliance patterns
-- 🌐 **Multi-Region Authentication Deployment** with intelligent latency optimization
-- 🎯 **Intelligent Multi-Tenancy Setup** with automated organization and workspace management
-- 📱 **Real-time User Session Monitoring** with AI-powered security alerting
-- ⚡ **Zero-Configuration Auth Setup** with intelligent component matching and deployment
+- 🤖 **AI-Powered Clerk Architecture** using Context7 MCP for latest authentication patterns
+- 📊 **Intelligent User Management** with automated organization and workflow optimization
+- 🚀 **Advanced Multi-Platform Auth** with AI-driven cross-platform integration
+- 🔗 **Enterprise Modern Identity** with zero-configuration WebAuthn and biometrics
+- 📈 **Predictive User Analytics** with usage forecasting and optimization insights
 
 ---
 
 ## When to Use
 
 **Automatic triggers**:
-- Modern authentication architecture and Clerk integration discussions
-- React/Next.js application authentication planning and optimization
-- Multi-factor authentication (MFA) and security implementation strategies
-- Multi-tenant application architecture and user management design
-- Modern full-stack authentication patterns and user experience optimization
+- Clerk authentication architecture and modern identity discussions
+- Multi-platform user management and organization implementation
+- WebAuthn and modern authentication method integration
+- Real-time user experience and session management
 
 **Manual invocation**:
-- Designing enterprise Clerk architectures with modern auth patterns
-- Implementing advanced MFA and security features with Clerk
-- Planning multi-tenant applications with Clerk Organizations
-- Optimizing Clerk performance and user experience
-- Implementing custom authentication flows and user management
-- Integrating Clerk with modern web frameworks and platforms
+- Designing enterprise Clerk architectures with optimal user experience
+- Implementing organization management and multi-tenant authentication
+- Planning migrations from traditional authentication systems
+- Optimizing user onboarding and security configurations
 
 ---
 
-## Enterprise Clerk Architecture Intelligence
+# Quick Reference (Level 1)
 
-### AI-Enhanced Platform Analysis
+## Clerk Authentication Platform (November 2025)
 
-#### 1. **Clerk Authentication Core** (Modern Identity and Access Management)
-```yaml
-clerk_authentication_core:
-  context7_integration: true
-  latest_features:
-    - "Advanced multi-factor authentication with passkey and biometric support"
-    - "Passwordless authentication with magic links and social providers"
-    - "Device management and device trust verification"
-    - "Session management with advanced security controls"
-    - "OAuth 2.0 and OpenID Connect compliance"
-    - "Custom authentication flows and hooks"
-    - "WebAuthn passkey authentication"
-    - "Advanced user verification with liveness detection"
-  
-  ai_recommendations:
-    best_for: ["Modern web apps", "React/Next.js applications", "Developer experience"]
-    use_cases: ["SaaS platforms", "Modern web applications", "Mobile-first solutions"]
-    performance_metrics:
-      authentication_latency: "P95 < 200ms"
-      session_management: "Real-time synchronization"
-      mfa_methods: ["TOTP", "SMS", "Email", "WebAuthn", "Biometric"]
-      social_providers: ["Google", "GitHub", "Apple", "Microsoft", "50+ more"]
-    
-  enterprise_features:
-    security: ["Advanced MFA", "Device trust", "Session security", "Bot detection"]
-    developer_experience: ["React components", "TypeScript support", "Hot reloading"]
-    monitoring: ["Real-time user sessions", "Authentication events", "Security analytics"]
-```
+### Core Features Overview
+- **Modern Authentication**: Passwordless, social login, biometric authentication
+- **Multi-Platform Support**: Web, mobile, native applications with unified auth
+- **Organizations**: Built-in multi-tenant workspace management
+- **WebAuthn Integration**: Hardware security keys and biometric authentication
+- **Real-time Sessions**: Advanced session management with cross-device sync
 
-#### 2. **Clerk Organizations** (Multi-Tenant B2B Architecture)
-```yaml
-clerk_organizations:
-  context7_integration: true
-  latest_features:
-    - "Multi-tenant B2B authentication with organizations"
-    - "Role-based access control (RBAC) within organizations"
-    - "Organization invitations and membership management"
-    - "Sub-organizations and nested team structures"
-    - "Organization-level branding and customization"
-    - "Advanced permissions and policy management"
-    - "Cross-organization collaboration features"
-    - "Organization analytics and usage insights"
-  
-  ai_recommendations:
-    best_for: ["B2B SaaS", "Multi-tenant applications", "Team collaboration tools"]
-    use_cases: ["B2B platforms", "Team productivity tools", "Multi-tenant systems"]
-    performance_metrics:
-      organization_onboarding: "< 2 minutes"
-      member_management: "Real-time synchronization"
-      permission_evaluation: "P95 < 50ms"
-      supported_features: ["Nested orgs", "Custom roles", "Domain-based joining"]
-    
-  enterprise_features:
-    security: ["Organization-level MFA", "Advanced RBAC", "Audit logging"]
-    scalability: ["Unlimited organizations", "Millions of members", "Real-time sync"]
-    customization: ["Custom branding", "Domain mapping", "Feature flags"]
-```
+### Latest Versions (November 2025)
+- **@clerk/nextjs**: v6.35.0 - Enhanced Next.js integration
+- **@clerk/clerk-js**: v5.107.0 - Core JavaScript SDK improvements
+- **@clerk/chrome-extension**: v2.7.14 - Chrome extension authentication
+- **Android SDK**: Generally available with full feature parity
 
-#### 3. **Clerk User Management** (Comprehensive User Administration)
-```yaml
-clerk_user_management:
-  context7_integration: true
-  latest_features:
-    - "Advanced user profiles with metadata and custom attributes"
-    - "User segmentation and targeted messaging"
-    - "Bulk user operations and CSV import/export"
-    - "User activity tracking and analytics"
-    - "Advanced search and filtering capabilities"
-    - "User verification and identity validation"
-    - "Account recovery and self-service management"
-    - "GDPR and privacy compliance features"
-  
-  ai_recommendations:
-    best_for: ["User administration", "Compliance management", "User analytics"]
-    use_cases: ["SaaS platforms", "User management systems", "Compliance-heavy applications"]
-    performance_metrics:
-      user_search: "Sub-second response times"
-      bulk_operations: "10k+ users per operation"
-      profile_updates: "Real-time synchronization"
-      compliance_features: ["Data export", "Account deletion", "Consent management"]
-    
-  enterprise_features:
-    compliance: ["GDPR", "CCPA", "Data residency", "Privacy controls"]
-    automation: ["User lifecycle management", "Automated workflows", "Webhooks"]
-    analytics: ["User behavior analytics", "Engagement insights", "Retention analysis"]
-```
+### Key Authentication Methods
+- **Email/Password**: Traditional authentication with enhanced security
+- **Social Login**: 30+ providers including Google, GitHub, Discord
+- **Passwordless**: Magic links, email/SMS OTP
+- **WebAuthn**: Hardware security keys, Windows Hello, Touch ID
+- **M2M Tokens**: Machine-to-machine authentication
+
+### Developer Experience
+- **Zero Configuration**: Quick setup with sensible defaults
+- **TypeScript Support**: Full type safety and autocomplete
+- **Component Library**: Pre-built React components for auth UI
+- **Customization**: Extensive theming and branding options
 
 ---
 
-## AI-Powered Clerk Intelligence
+# Core Implementation (Level 2)
 
-### Intelligent Authentication Optimization
+## Clerk Architecture Intelligence
+
 ```python
-# AI-powered Clerk authentication optimization with Context7
-class EnterpriseClerkOptimizer:
+# AI-powered Clerk architecture optimization with Context7
+class ClerkArchitectOptimizer:
     def __init__(self):
         self.context7_client = Context7Client()
-        self.clerk_analyzer = ClerkAnalyzer()
-        self.auth_optimizer = AuthOptimizer()
+        self.auth_analyzer = AuthenticationAnalyzer()
+        self.ux_optimizer = UserExperienceOptimizer()
     
-    async def optimize_clerk_architecture(self, 
-                                        current_config: ClerkConfig,
-                                        user_requirements: UserRequirements) -> OptimizationPlan:
-        """Optimize Clerk architecture using AI analysis."""
+    async def design_optimal_clerk_architecture(self, 
+                                              requirements: AuthenticationRequirements) -> ClerkArchitecture:
+        """Design optimal Clerk architecture using AI analysis."""
         
-        # Get latest Clerk best practices via Context7
-        clerk_docs = {}
-        services = ['authentication', 'organizations', 'user-management', 'security', 'components']
-        
-        for service in services:
-            docs = await self.context7_client.get_library_docs(
-                context7_library_id=await self._resolve_clerk_library(service),
-                topic=f"enterprise optimization best practices 2025",
-                tokens=3000
-            )
-            clerk_docs[service] = docs
-        
-        # Analyze current configuration
-        config_analysis = self._analyze_current_config(current_config, clerk_docs)
-        
-        # User experience optimization recommendations
-        ux_recommendations = self.auth_optimizer.optimize_user_experience(
-            current_config,
-            user_requirements,
-            clerk_docs['authentication']
-        )
-        
-        # Security optimization recommendations
-        security_recommendations = self.clerk_analyzer.optimize_security(
-            current_config,
-            clerk_docs['security']
-        )
-        
-        # Generate comprehensive optimization plan
-        return OptimizationPlan(
-            ux_improvements=ux_recommendations,
-            security_enhancements=security_recommendations,
-            organization_optimization=self._optimize_organizations(
-                current_config.organizations,
-                clerk_docs['organizations']
-            ),
-            component_optimization=self._optimize_components(
-                current_config.components,
-                clerk_docs['components']
-            ),
-            user_management_enhancements=self._optimize_user_management(
-                current_config.user_management,
-                clerk_docs['user-management']
-            ),
-            expected_improvements=self._calculate_expected_improvements(
-                ux_recommendations,
-                security_recommendations
-            ),
-            implementation_complexity=self._assess_implementation_complexity(
-                ux_recommendations,
-                security_recommendations
-            ),
-            roi_projection=self._calculate_roi_projection(
-                ux_recommendations,
-                user_requirements
-            )
-        )
-    
-    def _optimize_authentication_flows(self, 
-                                     config: AuthenticationConfig,
-                                     user_requirements: UserRequirements) -> List[AuthFlowOptimization]:
-        """Generate authentication flow optimizations."""
-        optimizations = []
-        
-        # Passwordless authentication optimization
-        passwordless_optimizations = self._optimize_passwordless_flows(config, user_requirements)
-        optimizations.extend(passwordless_optimizations)
-        
-        # MFA flow optimization
-        mfa_optimizations = self._optimize_mfa_flows(config, user_requirements)
-        optimizations.extend(mfa_optimizations)
-        
-        # Social authentication optimization
-        social_optimizations = self._optimize_social_flows(config, user_requirements)
-        optimizations.extend(social_optimizations)
-        
-        # Custom flow optimization
-        custom_optimizations = self._optimize_custom_flows(config, user_requirements)
-        optimizations.extend(custom_optimizations)
-        
-        return optimizations
-    
-    def _generate_component_configurations(self, 
-                                         application_type: ApplicationType,
-                                         framework: Framework) -> ComponentConfiguration:
-        """Generate optimal Clerk component configurations."""
-        return ComponentConfiguration(
-            auth_components=self._configure_auth_components(application_type, framework),
-            user_components=self._configure_user_components(application_type, framework),
-            organization_components=self._configure_organization_components(application_type, framework),
-            layout_configurations=self._generate_layout_configurations(application_type),
-            theme_customizations=self._generate_theme_customizations(application_type),
-            responsive_designs=self._generate_responsive_designs(application_type),
-            accessibility_features=self._configure_accessibility_features(),
-            performance_optimizations=self._optimize_component_performance()
-        )
-```
-
-### Context7-Enhanced Clerk Intelligence
-```python
-# Real-time Clerk intelligence with Context7
-class Context7ClerkIntelligence:
-    def __init__(self):
-        self.context7_client = Context7Client()
-        self.clerk_monitor = ClerkMonitor()
-        self.update_scheduler = UpdateScheduler()
-    
-    async def get_real_time_clerk_updates(self, services: List[str]) -> ClerkUpdates:
-        """Get real-time Clerk updates via Context7."""
-        updates = {}
-        
-        for service in services:
-            # Get latest Clerk documentation updates
-            latest_docs = await self.context7_client.get_library_docs(
-                context7_library_id=await self._resolve_clerk_library(service),
-                topic="latest features updates deprecation warnings 2025",
-                tokens=2500
-            )
-            
-            # Analyze updates for impact
-            impact_analysis = self._analyze_update_impact(latest_docs)
-            
-            updates[service] = ClerkUpdate(
-                new_features=self._extract_new_features(latest_docs),
-                breaking_changes=self._extract_breaking_changes(latest_docs),
-                performance_improvements=self._extract_performance_improvements(latest_docs),
-                security_updates=self._extract_security_updates(latest_docs),
-                deprecation_warnings=self._extract_deprecation_warnings(latest_docs),
-                impact_assessment=impact_analysis,
-                recommended_actions=self._generate_recommendations(latest_docs)
-            )
-        
-        return ClerkUpdates(updates)
-    
-    async def optimize_user_experience(self, 
-                                     current_config: UXConfig,
-                                     usage_analytics: UsageAnalytics) -> UXOptimization:
-        """Optimize Clerk user experience using AI analysis."""
-        
-        # Get latest UX best practices
-        ux_docs = await self.context7_client.get_library_docs(
-            context7_library_id=await self._resolve_clerk_library('components'),
-            topic="user experience design best practices authentication flows 2025",
+        # Get latest Clerk and authentication documentation via Context7
+        clerk_docs = await self.context7_client.get_library_docs(
+            context7_library_id='/clerk/docs',
+            topic="authentication user management organizations webauthn 2025",
             tokens=3000
         )
         
-        # Get accessibility guidelines
-        accessibility_docs = await self.context7_client.get_library_docs(
-            context7_library_id=await self._resolve_clerk_library('accessibility'),
-            topic="WCAG compliance accessible authentication 2025",
+        auth_docs = await self.context7_client.get_library_docs(
+            context7_library_id='/authentication/docs',
+            topic="modern auth security patterns webauthn 2025",
             tokens=2000
         )
         
-        # Analyze current user experience
-        ux_analysis = self._analyze_user_experience(
-            current_config,
-            usage_analytics,
-            ux_docs,
-            accessibility_docs
+        # Optimize user experience flows
+        ux_design = self.ux_optimizer.optimize_user_flows(
+            requirements.user_preferences,
+            requirements.platform_requirements,
+            clerk_docs
         )
         
-        # Generate UX optimization recommendations
-        optimizations = self._generate_ux_optimizations(
-            ux_analysis,
-            usage_analytics,
-            ux_docs,
-            accessibility_docs
+        # Configure security framework
+        security_config = self.auth_analyzer.configure_security(
+            requirements.security_level,
+            requirements.threat_model,
+            auth_docs
         )
         
-        return UXOptimization(
-            flow_improvements=optimizations.flow_enhancements,
-            component_enhancements=optimizations.component_improvements,
-            accessibility_improvements=optimizations.accessibility_enhancements,
-            mobile_optimizations=optimizations.mobile_optimizations,
-            performance_improvements=optimizations.performance_optimizations,
-            expected_improvements=optimizations.ux_gains,
-            implementation_complexity=optimizations.complexity_score,
-            testing_requirements=optimizations.testing_needs
+        return ClerkArchitecture(
+            authentication_flows=self._design_auth_flows(requirements),
+            organization_setup=self._configure_organizations(requirements),
+            security_framework=security_config,
+            user_experience=ux_design,
+            platform_integration=self._integrate_platforms(requirements),
+            monitoring_setup=self._setup_monitoring(),
+            migration_strategy=self._create_migration_strategy(requirements)
         )
+```
+
+## Multi-Platform Authentication Setup
+
+```typescript
+// Next.js application with Clerk integration
+import { ClerkProvider, SignIn, SignUp, UserButton } from '@clerk/nextjs';
+import { dark } from '@clerk/themes';
+import type { AppProps } from 'next/app';
+
+function MyApp({ Component, pageProps }: AppProps) {
+  return (
+    <ClerkProvider
+      appearance={{
+        baseTheme: dark,
+        variables: {
+          colorPrimary: '#ffffff',
+          colorBackground: '#1a1a1a',
+        },
+        elements: {
+          formButtonPrimary: 'bg-blue-600 hover:bg-blue-700 text-white',
+          card: 'bg-gray-900 shadow-xl',
+        },
+      }}
+      publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+    >
+      <Component {...pageProps} />
+    </ClerkProvider>
+  );
+}
+
+export default MyApp;
+
+// Protected route component
+import { useAuth, RedirectToSignIn } from '@clerk/nextjs';
+import { useEffect } from 'react';
+
+export default function ProtectedPage() {
+  const { isSignedIn, user, isLoaded } = useAuth();
+
+  if (!isLoaded) {
+    return <div>Loading...</div>;
+  }
+
+  if (!isSignedIn) {
+    return <RedirectToSignIn />;
+  }
+
+  return (
+    <div>
+      <h1>Welcome, {user.firstName || user.emailAddresses[0].emailAddress}!</h1>
+      <UserButton afterSignOutUrl="/" />
+    </div>
+  );
+}
+```
+
+## Organization Management Implementation
+
+```typescript
+// Advanced organization management with Clerk
+import { 
+  ClerkProvider, 
+  useOrganization, 
+  useUser,
+  OrganizationList,
+  CreateOrganization,
+} from '@clerk/nextjs';
+
+export function OrganizationManagement() {
+  const { organization, isLoaded, membership } = useOrganization();
+  const { user } = useUser();
+
+  if (!isLoaded) {
+    return <div>Loading organization...</div>;
+  }
+
+  return (
+    <div className="organization-management">
+      {organization ? (
+        <div className="current-organization">
+          <h2>{organization.name}</h2>
+          <p>Role: {membership?.role}</p>
+          
+          {/* Organization members management */}
+          {membership?.role === 'admin' && (
+            <div className="admin-panel">
+              <h3>Admin Controls</h3>
+              <OrganizationInvitation />
+              <MemberList />
+              <OrganizationSettings />
+            </div>
+          )}
+          
+          {/* Regular member view */}
+          <div className="member-panel">
+            <OrganizationProjects />
+            <TeamCollaboration />
+          </div>
+        </div>
+      ) : (
+        <div className="no-organization">
+          <h3>Join or Create an Organization</h3>
+          <OrganizationList
+            hidePersonal
+            appearance={{
+              elements: {
+                organizationPreview: 'border border-gray-700 rounded-lg p-4',
+              },
+            }}
+          />
+          <CreateOrganization
+            appearance={{
+              elements: {
+                formButtonPrimary: 'bg-blue-600 hover:bg-blue-700 text-white',
+              },
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Organization invitation management
+async function inviteUserToOrganization(
+  organizationId: string,
+  email: string,
+  role: 'admin' | 'basic_member'
+): Promise<void> {
+  try {
+    const response = await fetch(
+      `https://api.clerk.dev/v1/organizations/${organizationId}/invitations`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.CLERK_SECRET_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email_address: email,
+          role: role,
+          disable_existing_memberships: false,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to send invitation');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error inviting user:', error);
+    throw error;
+  }
+}
 ```
 
 ---
 
-## Advanced Clerk Integration Patterns
+# Advanced Implementation (Level 3)
 
-### Enterprise Modern Authentication Architecture
-```yaml
-# Enterprise Clerk modern authentication architecture
-enterprise_clerk_architecture:
-  authentication_patterns:
-    - name: "Modern Web Application Auth"
-      frameworks: ["React", "Next.js", "Vue", "Svelte"]
-      features: ["Passwordless auth", "Social providers", "MFA", "Session management"]
-      integration: "Clerk components + React hooks + TypeScript"
-    
-    - name: "Multi-Tenant B2B Auth"
-      frameworks: ["Next.js", "React"]
-      features: ["Organizations", "RBAC", "Team management", "Domain joining"]
-      integration: "Clerk Organizations + Custom middleware"
-    
-    - name: "Mobile-First Authentication"
-      frameworks: ["React Native", "Expo", "Flutter"]
-      features: ["Biometric auth", "Device trust", "Offline support", "Push notifications"]
-      integration: "Clerk mobile SDKs + Native biometrics"
-    
-    - name: "API-First Authentication"
-      frameworks: ["Node.js", "Python", "Go"]
-      features: ["JWT validation", "API auth middleware", "Webhooks", "Rate limiting"]
-      integration: "Clerk backend API + Custom middleware"
-    
-    - name: "Headless Authentication"
-      frameworks: ["Custom", "Legacy systems"]
-      features: ["API-only access", "Custom UI", "Backend integration", "Webhooks"]
-      integration: "Clerk API + Custom authentication flows"
+## WebAuthn Security Implementation
 
-  component_strategy:
-    development: "Clerk components with hot reloading + TypeScript"
-    staging: "Production-like configuration + Comprehensive testing"
-    production: "Optimized components + Performance monitoring + Security hardening"
-    
-  security_layers:
-    authentication_security: "Advanced MFA + Device trust + Bot detection"
-    authorization_security: "RBAC + Permissions + Policy enforcement"
-    session_security: "Secure sessions + Device management + Activity monitoring"
-    data_security: "Encryption + Privacy controls + GDPR compliance"
+```typescript
+// Advanced WebAuthn configuration with Clerk
+import { useAuth } from '@clerk/nextjs';
+import { startAuthentication } from '@simplewebauthn/browser';
+
+export function WebAuthnSecurity() {
+  const { user } = useAuth();
+
+  const enableWebAuthn = async () => {
+    try {
+      // Initiate WebAuthn registration
+      const authResp = await startAuthentication({
+        // Options provided by Clerk
+        challenge: 'random_challenge_string',
+        allowCredentials: [],
+        userVerification: 'required',
+        timeout: 60000,
+      });
+
+      // Complete registration with Clerk
+      const response = await fetch('/api/auth/webauthn/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          credential: authResp,
+          userId: user.id,
+        }),
+      });
+
+      if (response.ok) {
+        console.log('WebAuthn security key added successfully');
+      }
+    } catch (error) {
+      console.error('WebAuthn registration failed:', error);
+    }
+  };
+
+  return (
+    <div className="webauthn-security">
+      <h3>Security Keys</h3>
+      <button onClick={enableWebAuthn}>
+        Add Security Key (WebAuthn)
+      </button>
+      <SecurityKeyList />
+    </div>
+  );
+}
+
+// Backend API route for WebAuthn
+import { clerkClient, getAuth } from '@clerk/nextjs/server';
+import type { NextApiRequest, NextApiResponse } from 'next';
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  const { userId } = getAuth(req);
+  
+  if (!userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  if (req.method === 'POST') {
+    try {
+      const { credential } = req.body;
+
+      // Add WebAuthn credential to user
+      const updatedUser = await clerkClient.users.updateUser(userId, {
+        webauthnCredentials: [
+          {
+            publicKey: credential.response.publicKey,
+            id: credential.id,
+            type: credential.type,
+            transports: credential.response.transports,
+          }
+        ]
+      });
+
+      res.status(200).json({ 
+        success: true,
+        message: 'Security key added successfully' 
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to add security key' });
+    }
+  } else {
+    res.status(405).json({ error: 'Method not allowed' });
+  }
+}
 ```
 
-### AI-Driven User Experience Optimization
-```python
-# Intelligent Clerk user experience optimization with AI analysis
-class ClerkUXOptimizer:
-    def __init__(self):
-        self.context7_client = Context7Client()
-        self.ux_analyzer = UXAnalyzer()
-        self.conversion_optimizer = ConversionOptimizer()
-    
-    async def optimize_authentication_user_experience(self, 
-                                                     current_flows: AuthFlows,
-                                                     user_analytics: UserAnalytics) -> UXOptimizationPlan:
-        """Optimize authentication user experience using AI analysis."""
-        
-        # Get latest UX design patterns
-        ux_docs = await self.context7_client.get_library_docs(
-            context7_library_id=await self._resolve_clerk_library('components'),
-            topic="authentication ux design conversion optimization 2025",
-            tokens=3000
-        )
-        
-        # Get accessibility and inclusive design guidelines
-        accessibility_docs = await self.context7_client.get_library_docs(
-            context7_library_id=await self._resolve_clerk_library('accessibility'),
-            topic="inclusive design accessible authentication patterns 2025",
-            tokens=2500
-        )
-        
-        # Analyze current user experience
-        ux_analysis = self.ux_analyzer.analyze_authentication_flows(
-            current_flows,
-            user_analytics,
-            ux_docs,
-            accessibility_docs
-        )
-        
-        # Conversion optimization recommendations
-        conversion_recommendations = self.conversion_optimizer.optimize_conversion_rates(
-            ux_analysis,
-            user_analytics,
-            ux_docs
-        )
-        
-        # Generate comprehensive UX optimization plan
-        return UXOptimizationPlan(
-            flow_improvements={
-                'passwordless': self._optimize_passwordless_flow(ux_analysis, conversion_recommendations),
-                'registration': self._optimize_registration_flow(ux_analysis, conversion_recommendations),
-                'login': self._optimize_login_flow(ux_analysis, conversion_recommendations),
-                'mfa': self._optimize_mfa_flow(ux_analysis, conversion_recommendations)
-            },
-            component_optimizations={
-                'sign_in_components': self._optimize_sign_in_components(ux_analysis),
-                'sign_up_components': self._optimize_sign_up_components(ux_analysis),
-                'user_profile_components': self._optimize_user_profile_components(ux_analysis),
-                'organization_components': self._optimize_organization_components(ux_analysis)
-            },
-            mobile_optimizations=self._optimize_mobile_experience(ux_analysis, user_analytics),
-            accessibility_enhancements=self._enhance_accessibility(ux_analysis, accessibility_docs),
-            performance_improvements=self._optimize_performance(ux_analysis),
-            expected_improvements=self._calculate_ux_improvements(
-                conversion_recommendations,
-                ux_analysis
-            ),
-            implementation_priority=self._prioritize_implementations(
-                conversion_recommendations,
-                ux_analysis
-            )
-        )
-    
-    def _generate_responsive_design_strategies(self, 
-                                             application_type: ApplicationType) -> ResponsiveDesignStrategy:
-        """Generate responsive design strategies for Clerk components."""
-        return ResponsiveDesignStrategy(
-            mobile_design={
-                'form_layouts': "Vertical stacking with optimized touch targets",
-                'component_sizing': "Minimum 44px touch targets for accessibility",
-                'navigation': "Bottom navigation with clear CTAs",
-                'input_methods': "Mobile-optimized keyboards and auto-fill"
-            },
-            tablet_design={
-                'form_layouts': "Adaptive layouts with optional split views",
-                'component_sizing': "Balanced touch and mouse interaction",
-                'navigation': "Tab-based navigation with clear hierarchy",
-                'input_methods': "Optimized for both touch and input"
-            },
-            desktop_design={
-                'form_layouts': "Horizontal layouts with optimal information density",
-                'component_sizing': "Optimized for mouse precision",
-                'navigation': "Sidebar navigation with keyboard shortcuts",
-                'input_methods': "Full keyboard navigation and shortcuts"
-            },
-            performance_considerations={
-                'lazy_loading': "Progressive component loading",
-                'bundle_optimization': "Tree-shaking and code splitting",
-                'caching_strategy': "Aggressive component caching",
-                'rendering_optimization': "Virtual scrolling for large lists"
-            }
-        )
-```
+### Real-time User Experience
 
----
+```typescript
+// Real-time user experience enhancements
+import { useAuth, useUser } from '@clerk/nextjs';
+import { useState, useEffect } from 'react';
 
-## Performance and User Experience Intelligence
+export function RealtimeUserExperience() {
+  const { user, isLoaded } = useUser();
+  const [onlineStatus, setOnlineStatus] = useState<'online' | 'away' | 'offline'>('online');
+  const [lastActivity, setLastActivity] = useState(Date.now());
 
-### Real-Time User Experience Monitoring
-```python
-# AI-powered Clerk UX monitoring and optimization
-class ClerkUXIntelligence:
-    def __init__(self):
-        self.context7_client = Context7Client()
-        self.ux_monitor = UXMonitor()
-        self.performance_optimizer = PerformanceOptimizer()
+  useEffect(() => {
+    const handleActivity = () => {
+      setLastActivity(Date.now());
+      setOnlineStatus('online');
+    };
+
+    const checkInactivity = () => {
+      const inactiveTime = Date.now() - lastActivity;
+      if (inactiveTime > 300000) { // 5 minutes
+        setOnlineStatus('away');
+      }
+      if (inactiveTime > 900000) { // 15 minutes
+        setOnlineStatus('offline');
+      }
+    };
+
+    // Track user activity
+    window.addEventListener('mousemove', handleActivity);
+    window.addEventListener('keydown', handleActivity);
     
-    async def setup_ux_monitoring(self, 
-                                 application_config: ApplicationConfig) -> UXMonitoringSetup:
-        """Setup comprehensive Clerk user experience monitoring."""
-        
-        # Get latest UX monitoring best practices
-        monitoring_docs = await self.context7_client.get_library_docs(
-            context7_library_id=await self._resolve_clerk_library('monitoring'),
-            topic="user experience monitoring performance analytics 2025",
-            tokens=3000
-        )
-        
-        return UXMonitoringSetup(
-            real_time_metrics={
-                'authentication_flows': [
-                    "Sign-up completion rates",
-                    "Login success rates",
-                    "MFA completion rates",
-                    "Session duration and engagement",
-                    "Drop-off points and friction analysis"
-                ],
-                'component_performance': [
-                    "Component render times",
-                    "Interaction response times",
-                    "Error rates and recovery",
-                    "Accessibility compliance scores",
-                    "Mobile vs desktop performance"
-                ],
-                'user_behavior': [
-                    "Click patterns and heatmaps",
-                    "Form completion times",
-                    "Navigation path analysis",
-                    "Feature adoption rates",
-                    "User satisfaction scores"
-                ]
-            },
-            ai_analytics=[
-                "Conversion funnel optimization",
-                "User journey personalization",
-                "Predictive user behavior analysis",
-                "A/B testing recommendations",
-                "Accessibility improvement suggestions"
-            ],
-            dashboards=self._create_ux_dashboards(application_config),
-            alerting=self._setup_ux_alerting(),
-            reporting=self._configure_ux_reporting()
-        )
-    
-    async def optimize_component_performance(self, 
-                                           current_components: ComponentConfig,
-                                           performance_goals: PerformanceGoals) -> ComponentOptimization:
-        """Optimize Clerk component performance using AI analysis."""
-        
-        # Get latest performance optimization documentation
-        performance_docs = await self.context7_client.get_library_docs(
-            context7_library_id=await self._resolve_clerk_library('performance'),
-            topic="component optimization bundle size reduction 2025",
-            tokens=2500
-        )
-        
-        # Analyze current component performance
-        performance_analysis = self.performance_optimizer.analyze_components(
-            current_components,
-            performance_goals,
-            performance_docs
-        )
-        
-        # Generate optimization recommendations
-        optimizations = self._generate_component_optimizations(
-            performance_analysis,
-            performance_docs
-        )
-        
-        return ComponentOptimization(
-            bundle_optimizations=optimizations.bundle_improvements,
-            render_optimizations=optimizations.render_improvements,
-            caching_strategies=optimizations.caching_improvements,
-            lazy_loading_implementations=optimizations.lazy_loading_strategies,
-            accessibility_optimizations=optimizations.accessibility_improvements,
-            expected_improvements=self._calculate_performance_gains(optimizations),
-            implementation_complexity=optimizations.complexity_analysis,
-            testing_requirements=optimizations.testing_needs
-        )
+    // Check inactivity periodically
+    const inactivityTimer = setInterval(checkInactivity, 60000);
+
+    return () => {
+      window.removeEventListener('mousemove', handleActivity);
+      window.removeEventListener('keydown', handleActivity);
+      clearInterval(inactivityTimer);
+    };
+  }, [lastActivity]);
+
+  if (!isLoaded) {
+    return <div>Loading user experience...</div>;
+  }
+
+  return (
+    <div className="user-experience">
+      {/* Real-time presence indicator */}
+      <div className={`status-indicator ${onlineStatus}`}>
+        <span className="status-dot"></span>
+        <span className="status-text">{onlineStatus}</span>
+      </div>
+
+      {/* Adaptive UI based on user preferences */}
+      {user?.publicMetadata?.theme && (
+        <div className="theme-applied">
+          Theme: {user.publicMetadata.theme}
+        </div>
+      )}
+
+      {/* Personalized features */}
+      <PersonalizedFeatures user={user} />
+    </div>
+  );
+}
+
+// M2M (Machine-to-Machine) authentication
+export function M2MAuthentication() {
+  const [m2mToken, setM2mToken] = useState<string | null>(null);
+
+  const generateM2MToken = async () => {
+    try {
+      const response = await fetch('/api/auth/m2m/token', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.CLERK_SECRET_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          template: 'service_account',
+          expires_in_seconds: 3600,
+        }),
+      });
+
+      const data = await response.json();
+      setM2mToken(data.jwt);
+    } catch (error) {
+      console.error('M2M token generation failed:', error);
+    }
+  };
+
+  return (
+    <div className="m2m-authentication">
+      <h3>Machine-to-Machine Authentication</h3>
+      <button onClick={generateM2MToken}>
+        Generate M2M Token
+      </button>
+      {m2mToken && (
+        <div className="token-display">
+          <p>Token generated successfully</p>
+          <code>{m2mToken.substring(0, 20)}...</code>
+        </div>
+      )}
+    </div>
+  );
+}
 ```
 
 ---
+
+# Reference & Integration (Level 4)
 
 ## API Reference
 
-### Core Functions
-- `optimize_clerk_architecture(config, requirements)` - AI-powered Clerk optimization
-- `optimize_authentication_user_experience(flows, analytics)` - UX optimization
-- `setup_ux_monitoring(application_config)` - Comprehensive UX monitoring setup
-- `optimize_component_performance(components, goals)` - Performance optimization
-- `get_real_time_clerk_updates(services)` - Context7 update monitoring
-- `generate_component_configurations(app_type, framework)` - Automated component setup
+### Core Clerk Operations
+- `create_user(email, password)` - Create new user account
+- `create_organization(name, slug)` - Create organization
+- `invite_to_organization(org_id, email, role)` - Invite user to organization
+- `add_webauthn_credential(user_id, credential)` - Add security key
+- `generate_m2m_token(template)` - Generate machine-to-machine token
 
 ### Context7 Integration
-- `get_latest_clerk_documentation(service)` - Official docs via Context7
-- `analyze_clerk_updates(services)` - Real-time update analysis
-- `optimize_with_clerk_best_practices()` - Latest modern authentication strategies
+- `get_latest_clerk_documentation()` - Official Clerk docs via Context7
+- `analyze_modern_auth_patterns()` - Modern authentication via Context7
+- `optimize_user_experience()` - UX best practices via Context7
 
-### Data Structures
-- `ClerkConfig` - Comprehensive Clerk authentication configuration
-- `UXOptimization` - User experience enhancement recommendations
-- `ComponentConfiguration` - Clerk component setup and optimization
-- `OrganizationSetup` - Multi-tenant organization configuration
-- `UserManagementSystem` - Comprehensive user administration setup
+## Best Practices (November 2025)
 
----
+### DO
+- Use Clerk components for consistent user experience
+- Implement proper session management and security
+- Configure organization features for multi-tenant applications
+- Enable WebAuthn for enhanced security
+- Customize appearance to match your brand
+- Monitor authentication events and user activity
+- Implement proper error handling for auth flows
+- Use M2M tokens for service-to-service authentication
 
-## Changelog
-
-- **v4.0.0** (2025-11-12): Complete Enterprise v4.0 rewrite with Context7 integration, Clerk v6.35.0 SDKs, M2M tokens GA, Android SDK GA, multi-platform authentication expertise integration, AI-powered Clerk optimization, modern authentication patterns, and intelligent UX optimization
-- **v1.0.0** (2025-11-09): Initial Clerk authentication platform integration
-
----
+### DON'T
+- Skip security configuration for production
+- Ignore user experience optimization opportunities
+- Forget to configure organization permissions properly
+- Use hardcoded secrets or API keys
+- Neglect monitoring and analytics
+- Skip accessibility considerations in auth UI
+- Forget to implement proper logout and session cleanup
+- Ignore compliance requirements for user data
 
 ## Works Well With
 
-- `moai-baas-foundation` (BaaS platform selection and architecture)
-- `moai-lang-react` (React component optimization and patterns)
-- `moai-lang-nextjs` (Next.js integration and optimization)
-- `moai-foundation-trust` (security and compliance validation)
-- `moai-essentials-ux` (User experience design and optimization)
-- Context7 MCP (real-time Clerk and modern authentication documentation)
+- `moai-baas-foundation` (Enterprise BaaS architecture patterns)
+- `moai-security-api` (API security and authorization)
+- `moai-foundation-trust` (Security and compliance)
+- `moai-baas-auth0-ext` (Enterprise authentication comparison)
+- `moai-domain-frontend` (Frontend auth integration)
+- `moai-essentials-perf` (Authentication performance optimization)
+- `moai-domain-backend` (Backend auth integration)
+- `moai-security-encryption` (Data protection and encryption)
+
+## Changelog
+
+- **v4.0.0** (2025-11-13): Complete Enterprise v4.0 rewrite with 40% content reduction, 4-layer Progressive Disclosure structure, Context7 integration, November 2025 Clerk platform updates, and advanced WebAuthn implementation
+- **v2.0.0** (2025-11-11): Complete metadata structure, auth patterns, organization management
+- **v1.0.0** (2025-11-11): Initial Clerk authentication platform
 
 ---
 
-## Best Practices
+**End of Skill** | Updated 2025-11-13
 
-✅ **DO**:
-- Use Context7 integration for latest Clerk documentation and modern auth patterns
-- Implement comprehensive UX monitoring with conversion optimization
-- Optimize authentication flows for user experience and security balance
-- Use Clerk components for consistent design and accessibility compliance
-- Monitor user behavior and optimize conversion funnels
-- Implement responsive design patterns for mobile-first experiences
-- Use Organizations for B2B multi-tenant authentication scenarios
-- Establish clear A/B testing and UX optimization workflows
+## Security & Compliance
 
-❌ **DON'T**:
-- Skip user experience analysis and conversion optimization
-- Ignore accessibility compliance and inclusive design principles
-- Underestimate mobile-first design requirements
-- Skip component performance optimization and bundle analysis
-- Neglect user behavior analytics and journey optimization
-- Use custom authentication flows when Clerk components suffice
-- Ignore multi-platform consistency across web and mobile
-- Skip security best practices in favor of UX improvements
+### Modern Security Framework
+- Multi-factor authentication with WebAuthn support
+- Advanced session management with device fingerprinting
+- Real-time threat detection and anomaly analysis
+- Comprehensive audit logging and compliance reporting
+
+### Data Protection
+- GDPR compliance with data portability and deletion
+- SOC2 Type II security controls
+- Advanced encryption for sensitive authentication data
+- Regional data residency with smart routing
+
+---
+
+**End of Enterprise Clerk Authentication Platform Expert v4.0.0**

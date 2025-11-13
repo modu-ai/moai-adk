@@ -21,7 +21,7 @@ priority: high
   - git-pr-manager.ts
 - **EVIDENCE**:
   - `b01403e docs(sync): Complete SPEC-INIT-001, REFACTOR-001, BRAND-001`
-  - `16263b3 refactor(tags): Unify TAG chain for SPEC-REFACTOR-001`
+  - `16263b3 refactor(tags): Unify SPEC chain for SPEC-REFACTOR-001`
 
 ### v0.1.0 (2025-09-15)
 - **INITIAL**: Git Manager 리팩토링 명세 작성

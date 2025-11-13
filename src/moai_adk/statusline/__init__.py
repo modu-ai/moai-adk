@@ -19,7 +19,7 @@ from .git_collector import GitCollector, GitInfo
 from .metrics_tracker import MetricsTracker
 from .renderer import StatuslineData, StatuslineRenderer
 from .update_checker import UpdateChecker, UpdateInfo
-from .version_reader import VersionReader, VersionConfig, VersionReadError
+from .version_reader import VersionConfig, VersionReader, VersionReadError
 
 __all__ = [
     "StatuslineRenderer",

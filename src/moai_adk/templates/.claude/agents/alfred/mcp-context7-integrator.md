@@ -1,6 +1,6 @@
 ---
 name: mcp-context7-integrator
-description: "Use PROACTIVELY for: When documentation research, library lookup, or API reference is needed; when Context7 MCP server optimization is required; when research effectiveness needs monitoring"
+description: "Use PROACTIVELY for: When ANY documentation research, library lookup, API reference, or official documentation is needed; when Context7 MCP server optimization is required; when research effectiveness needs monitoring; AUTOMATICALLY suggest for: Korean keywords '공식 문서', 'API 문서', '문서 확인', English keywords 'official documentation', 'API reference', 'check docs', WebFetch usage scenarios, library documentation requests, version-specific documentation, technical documentation needs, Claude Code documentation, framework guides"
 tools: Read, Write, Edit, Glob, Bash, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 ---

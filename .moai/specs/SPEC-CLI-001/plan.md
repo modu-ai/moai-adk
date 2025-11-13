@@ -175,11 +175,11 @@ mypy src/moai_adk/cli/commands/doctor.py
 ```python
 
 def test_status_detail_shows_tag_chain():
-    """--detail 옵션으로 TAG 체인 무결성 표시"""
+    """--detail 옵션으로 SPEC 체인 무결성 표시"""
     # Given: 1개 SPEC, 1개 CODE TAG
     # When: status --detail 실행
-    # Then: "TAG Chain: 100% (0 orphans, 0 broken)"
-    assert "TAG Chain: 100%" in output
+    # Then: "SPEC Chain: 100% (0 orphans, 0 broken)"
+    assert "SPEC Chain: 100%" in output
 
 def test_status_detail_shows_coverage():
     """--detail 옵션으로 테스트 커버리지 표시"""
@@ -196,7 +196,7 @@ def test_status_detail_shows_quality():
     assert "Code Quality: 0 warnings" in output
 
 def test_status_detects_broken_tag_chain():
-    """끊어진 TAG 체인 감지"""
+    """끊어진 SPEC 체인 감지"""
     # When: status --detail 실행
     # Then: "⚠ 1 broken chain" 표시
     assert "1 broken chain" in output
@@ -214,7 +214,7 @@ def test_status_json_output():
 
 ### 🟢 GREEN: 최소 구현 (1일)
 
-**1. TAG 체인 검증 로직**
+**1. SPEC 체인 검증 로직**
 
 `src/moai_adk/core/project/tag_checker.py` (신규 생성):
 ```python
@@ -224,17 +224,17 @@ from dataclasses import dataclass
 
 @dataclass
 class TagChainResult:
-    """TAG 체인 검증 결과"""
+    """SPEC 체인 검증 결과"""
     total_tags: int
     orphans: list[str]  # SPEC 없이 CODE만 있는 TAG
     broken: list[str]   # CODE 없이 SPEC만 있는 TAG
     integrity: float    # (total - orphans - broken) / total
 
 class TagChainChecker:
-    """TAG 체인 무결성 검증"""
+    """SPEC 체인 무결성 검증"""
 
     def check_integrity(self) -> TagChainResult:
-        """전체 TAG 체인 검증"""
+        """전체 SPEC 체인 검증"""
 
         orphans = code_tags - spec_tags
         broken = spec_tags - code_tags
@@ -313,7 +313,7 @@ def status(detail: bool, json_output: bool) -> None:
     spec_count = count_specs()
 
     if detail:
-        # TAG 체인 무결성
+        # SPEC 체인 무결성
         tag_checker = TagChainChecker()
         tag_result = tag_checker.check_integrity()
 

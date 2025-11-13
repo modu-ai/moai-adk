@@ -5,11 +5,11 @@ created: 2025-11-12
 updated: 2025-11-12
 status: stable
 tier: foundation
-description: "Complete TRUST 5 principles guide covering Test First, Readable, Unified, Secured, Trackable. Validation methods, enterprise quality gates, metrics, and November 2025 standards. Enterprise v4.0 with 50+ software quality standards references."
+description: "Complete TRUST 4 principles guide covering Test First, Readable, Unified, Secured. Validation methods, enterprise quality gates, metrics, and November 2025 standards. Enterprise v4.0 with 50+ software quality standards references."
 allowed-tools: "Read, Glob, Grep, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
 primary-agent: "alfred"
 secondary-agents: [qa-validator, trust-checker, test-engineer, security-expert]
-keywords: [TRUST-5, quality, testing, readability, security, traceability, metrics, enterprise]
+keywords: [TRUST-4, quality, testing, readability, security, traceability, metrics, enterprise]
 tags: [foundation, trust, quality, principles, governance, standards]
 orchestration: 
 can_resume: true
@@ -30,11 +30,11 @@ depends_on: []
 
 ## Progressive Disclosure
 
-### Level 1: Core Concepts (TRUST 5 Framework)
+### Level 1: Core Concepts (TRUST 4 Framework)
 
 ### What It Does
 
-This foundational Skill defines **TRUST 5**, the core quality principles for MoAI-ADK:
+This foundational Skill defines **TRUST 4**, the core quality principles for MoAI-ADK:
 
 - **T**est First: Write tests before implementation (≥85% coverage)
 - **R**eadable: Code clarity over cleverness
@@ -49,7 +49,7 @@ Each principle includes:
 - **Govern**: Enterprise-grade enforcement
 - **50+ Standards References**: Official sources
 
-**Core Principle**: TRUST 5 is **non-negotiable**. Every line of code must satisfy all five principles or it's not production-ready.
+**Core Principle**: TRUST 4 is **non-negotiable**. Every line of code must satisfy all four principles or it's not production-ready.
 
 ---
 
@@ -556,63 +556,6 @@ def test_password_hash_secure():
 
 ---
 
-## Principle 5: Trackable (T)
-
-### Definition
-
-
-
-### Traceability Rules
-
-**Mandatory (STRICT Mode)**:
-
-```
-Rule T1: Every feature has SPEC
-├─ SPEC created before implementation
-├─ SPEC has clear requirements
-└─ Review: SPEC approved by stakeholder
-
-Rule T2: SPEC linked to TESTS
-├─ Every requirement has test case
-├─ Coverage: >=85%
-└─ Validation: Coverage report >= 85%
-
-Rule T3: TESTS linked to CODE
-├─ Code implements test requirements
-└─ Validation: All tests pass
-
-Rule T4: CODE linked to DOCS
-├─ Users know what code does
-└─ Validation: Docs match code
-```
-
-### Traceability Chain Example
-
-```
-SPEC Layer
-  .moai/specs/SPEC-001/spec.md
-  
-  ↓ implements
-  
-TEST Layer
-  tests/test_auth.py
-  
-  ↓ validates
-  
-CODE Layer
-  src/auth.py
-  
-  ↓ described by
-  
-DOC Layer
-  docs/auth.md
-  "Passwords are hashed using bcrypt..."
-
-Complete chain: SPEC → TEST → CODE → DOC ✓
-```
-
----
-
 ### Level 2: Practical Validation & Governance
 
 ## Enterprise Quality Gates
@@ -623,7 +566,7 @@ Complete chain: SPEC → TEST → CODE → DOC ✓
 #!/bin/bash
 # .github/workflows/quality-gates.yml
 
-echo "TRUST 5 Quality Gate Validation"
+echo "TRUST 4 Quality Gate Validation"
 echo "================================"
 
 # T: Test First
@@ -661,25 +604,17 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# T: Trackable
-echo "5. Traceability..."
-python .moai/scripts/validation/tag_validator.py
-if [ $? -ne 0 ]; then
-    echo "FAILED: Missing or broken TAGs"
-    exit 1
-fi
-
 echo ""
 echo "SUCCESS: All quality gates passed!"
 echo "Ready to merge"
 ```
 
-### TRUST 5 Metrics Dashboard
+### TRUST 4 Metrics Dashboard
 
 **Monthly Report** (November 2025):
 
 ```
-TRUST 5 Quality Metrics
+TRUST 4 Quality Metrics
 Generated: 2025-11-12
 Project: moai-adk v0.22.5
 
@@ -712,13 +647,6 @@ S: Secured
 ├─ Security score: 9.8/10
 └─ Status: PASS
 
-T: Trackable
-├─ TAG coverage: 100% ✓ PASS
-├─ Orphan TAGs: 0 (target: 0) ✓ PASS
-├─ Broken chains: 0 (target: 0) ✓ PASS
-├─ Traceability: SPEC→TEST→CODE→DOC
-└─ Status: PASS
-
 OVERALL QUALITY: A+ (EXCELLENT)
 Ready for production deployment ✓
 ```
@@ -727,43 +655,39 @@ Ready for production deployment ✓
 
 ## Integration Patterns
 
-### TRUST 5 in Workflow
+### TRUST 4 in Workflow
 
 ```
 /alfred:1-plan "New Feature"
     ↓
     Status: DRAFT
-    
+
 /alfred:2-run SPEC-001
     ↓
     RED Phase: Write tests
     └─ Tests fail (no code yet)
-    
+
     GREEN Phase: Write code
     ├─ Implement minimum for tests to pass
     └─ All tests pass
-    
+
     REFACTOR Phase: Improve code
-    ├─ Apply TRUST 5 validation
+    ├─ Apply TRUST 4 validation
     ├─ Improve readability (R)
     ├─ Ensure unified patterns (U)
-    ├─ Add security checks (S)
-    └─ Verify traceability (T)
-    
+    └─ Add security checks (S)
+
     Quality Gates
     ├─ Test coverage: 96% >= 85% ✓
     ├─ Pylint: 9.2 >= 8.0 ✓
     ├─ Security scan: 0 vulnerabilities ✓
-    ├─ TAG validation: All chains valid ✓
     └─ Status: PASS
-    
+
 /alfred:3-sync auto SPEC-001
     ↓
     Documentation describes feature
-    
-    Traceability Complete
-    SPEC → TEST → CODE → DOC
-    All TRUST 5 principles validated
+
+    All TRUST 4 principles validated
     ✓ Ready to merge
 ```
 
@@ -773,11 +697,11 @@ Ready for production deployment ✓
 
 ## Security & Quality Audit
 
-### Quarterly TRUST 5 Audit Checklist
+### Quarterly TRUST 4 Audit Checklist
 
 **This section contains enterprise governance framework and audit procedures.**
 
-### TRUST 5 Enforcement Matrix
+### TRUST 4 Enforcement Matrix
 
 | Principle | Owner | Validation | Frequency | Escalation |
 |-----------|-------|-----------|-----------|-----------|
@@ -785,11 +709,10 @@ Ready for production deployment ✓
 | **Readable** | code-reviewer | CI/CD + pylint | Every commit | Review required |
 | **Unified** | tech-lead | CI/CD + linter | Every commit | Design review |
 | **Secured** | security-expert | Bandit + audit | Every commit | Blocks merge |
-| **Trackable** | tag-agent | TAG validator | Every commit | Blocks merge |
 
 ### Compliance Mappings (November 2025)
 
-**TRUST 5 → Industry Standards**:
+**TRUST 4 → Industry Standards**:
 
 | TRUST Principle | ISO 9001 | CMMI | SOC 2 | OWASP | NIST |
 |-----------------|----------|------|-------|-------|------|
@@ -797,7 +720,6 @@ Ready for production deployment ✓
 | **R: Readable** | Documentation | PM practices | Source integrity | A04 | SP 800-53 |
 | **U: Unified** | Consistency | CM practices | Configuration | A08 | SC-2 |
 | **S: Secured** | Security plan | SP security | Security | OWASP Top 10 | SP 800-53 |
-| **T: Trackable** | Traceability | Configuration | Audit trails | A01 | AT-2 |
 
 ---
 
@@ -843,12 +765,12 @@ Ready for production deployment ✓
 
 ## Summary
 
-TRUST 5 is the **foundation of code quality** in MoAI-ADK. Every feature must satisfy all five principles:
+TRUST 4 is the **foundation of code quality** in MoAI-ADK. Every feature must satisfy all four principles:
 
 1. **Test First**: Comprehensive tests with ≥85% coverage
 2. **Readable**: Clear code with low complexity
 3. **Unified**: Consistent patterns across codebase
 4. **Secured**: OWASP compliance and security by design
 
-Together, TRUST 5 ensures code is **correct, maintainable, secure, and auditable**.
+Together, TRUST 4 ensures code is **correct, maintainable, secure, and production-ready**.
 

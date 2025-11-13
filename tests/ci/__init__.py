@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CI/CD test package for TAG validation
+"""CI/CD test package for validation
 
 This package contains tests for the CI/CD pipeline integration:
 - CIValidator module tests

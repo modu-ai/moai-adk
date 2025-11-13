@@ -187,7 +187,7 @@ IF 언어 감지 결과가 모호할 때 (예: `.c`와 `.cpp` 파일 혼재), �
 #### 4.2.1 Ruby 워크플로우 (`ruby-tag-validation.yml`)
 
 ```yaml
-name: Ruby TAG Validation
+name: Ruby SPEC Validation
 on: [push, pull_request]
 jobs:
   test:
@@ -205,7 +205,7 @@ jobs:
 #### 4.2.2 PHP 워크플로우 (`php-tag-validation.yml`)
 
 ```yaml
-name: PHP TAG Validation
+name: PHP SPEC Validation
 on: [push, pull_request]
 jobs:
   test:
@@ -224,7 +224,7 @@ jobs:
 #### 4.2.3 Java 워크플로우 (`java-tag-validation.yml`)
 
 ```yaml
-name: Java TAG Validation
+name: Java SPEC Validation
 on: [push, pull_request]
 jobs:
   test:
@@ -243,7 +243,7 @@ jobs:
 #### 4.2.4 Rust 워크플로우 (`rust-tag-validation.yml`)
 
 ```yaml
-name: Rust TAG Validation
+name: Rust SPEC Validation
 on: [push, pull_request]
 jobs:
   test:
@@ -259,7 +259,7 @@ jobs:
 #### 4.2.5 Dart/Flutter 워크플로우 (`dart-tag-validation.yml`)
 
 ```yaml
-name: Dart TAG Validation
+name: Dart SPEC Validation
 on: [push, pull_request]
 jobs:
   test:
@@ -280,7 +280,7 @@ jobs:
 #### 4.2.6 Swift 워크플로우 (`swift-tag-validation.yml`)
 
 ```yaml
-name: Swift TAG Validation
+name: Swift SPEC Validation
 on: [push, pull_request]
 jobs:
   test:
@@ -295,7 +295,7 @@ jobs:
 #### 4.2.7 Kotlin 워크플로우 (`kotlin-tag-validation.yml`)
 
 ```yaml
-name: Kotlin TAG Validation
+name: Kotlin SPEC Validation
 on: [push, pull_request]
 jobs:
   test:
@@ -313,7 +313,7 @@ jobs:
 #### 4.2.8 C# 워크플로우 (`csharp-tag-validation.yml`)
 
 ```yaml
-name: C# TAG Validation
+name: C# SPEC Validation
 on: [push, pull_request]
 jobs:
   test:
@@ -331,7 +331,7 @@ jobs:
 #### 4.2.9 C 워크플로우 (`c-tag-validation.yml`)
 
 ```yaml
-name: C TAG Validation
+name: C SPEC Validation
 on: [push, pull_request]
 jobs:
   test:
@@ -347,7 +347,7 @@ jobs:
 #### 4.2.10 C++ 워크플로우 (`cpp-tag-validation.yml`)
 
 ```yaml
-name: C++ TAG Validation
+name: C++ SPEC Validation
 on: [push, pull_request]
 jobs:
   test:
@@ -363,7 +363,7 @@ jobs:
 #### 4.2.11 Shell 워크플로우 (`shell-tag-validation.yml`)
 
 ```yaml
-name: Shell TAG Validation
+name: Shell SPEC Validation
 on: [push, pull_request]
 jobs:
   test:

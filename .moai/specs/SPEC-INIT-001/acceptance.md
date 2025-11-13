@@ -950,7 +950,7 @@ npm test
 echo "2. Running Docker multi-platform tests..."
 npm run test:docker
 
-echo "3. Checking TAG chain integrity..."
+echo "3. Checking SPEC chain integrity..."
 rg '@(SPEC|TEST|CODE):INIT-001' -n
 
 echo "All tests passed! Ready for deployment."
@@ -1129,7 +1129,7 @@ describe('Optional dependencies', () => {
 - [ ] CHANGELOG.md 업데이트
 - [ ] docs/cli/init.md 작성
 - [ ] GitHub Issue #2에 결과 보고
-- [ ] TAG 체인 검증 완료
+- [ ] SPEC 체인 검증 완료
 
 ### 배포 준비
 - [ ] 모든 플랫폼 테스트 통과 (macOS, Linux, Windows)

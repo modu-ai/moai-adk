@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional
 
 class IssueType(Enum):
     """Supported GitHub issue types."""
+
     BUG = "bug"
     FEATURE = "feature"
     IMPROVEMENT = "improvement"
@@ -22,6 +23,7 @@ class IssueType(Enum):
 
 class IssuePriority(Enum):
     """Issue priority levels."""
+
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
@@ -31,6 +33,7 @@ class IssuePriority(Enum):
 @dataclass
 class IssueConfig:
     """Configuration for issue creation."""
+
     issue_type: IssueType
     title: str
     description: str
@@ -57,7 +60,10 @@ class GitHubIssueCreator:
         IssueType.BUG: ["bug", "reported"],
         IssueType.FEATURE: ["feature-request", "enhancement"],
         IssueType.IMPROVEMENT: ["improvement", "enhancement"],
-        IssueType.QUESTION: ["question", "help wanted"],  # Fixed: "help-wanted" → "help wanted" (GitHub standard)
+        IssueType.QUESTION: [
+            "question",
+            "help wanted",
+        ],  # Fixed: "help-wanted" → "help wanted" (GitHub standard)
     }
 
     # Priority emoji
@@ -95,10 +101,7 @@ class GitHubIssueCreator:
         """
         try:
             result = subprocess.run(
-                ["gh", "auth", "status"],
-                capture_output=True,
-                text=True,
-                timeout=5
+                ["gh", "auth", "status"], capture_output=True, text=True, timeout=5
             )
             if result.returncode != 0:
                 raise RuntimeError(
@@ -143,7 +146,9 @@ class GitHubIssueCreator:
         # Collect labels
         labels = self.LABEL_MAP.get(config.issue_type, []).copy()
         if config.priority:
-            labels.append(config.priority.value)  # Fixed: removed "priority-" prefix (use direct label names)
+            labels.append(
+                config.priority.value
+            )  # Fixed: removed "priority-" prefix (use direct label names)
         if config.category:
             labels.append(f"category-{config.category.lower().replace(' ', '-')}")
         if config.custom_labels:
@@ -151,9 +156,13 @@ class GitHubIssueCreator:
 
         # Build gh command
         gh_command = [
-            "gh", "issue", "create",
-            "--title", full_title,
-            "--body", body,
+            "gh",
+            "issue",
+            "create",
+            "--title",
+            full_title,
+            "--body",
+            body,
         ]
 
         # Add labels
@@ -166,10 +175,7 @@ class GitHubIssueCreator:
 
         try:
             result = subprocess.run(
-                gh_command,
-                capture_output=True,
-                text=True,
-                timeout=30
+                gh_command, capture_output=True, text=True, timeout=30
             )
 
             if result.returncode != 0:
@@ -254,7 +260,9 @@ class GitHubIssueCreator:
                 output += f"🏷️  Labels: {', '.join(result['labels'])}\n"
             return output
         else:
-            return f"❌ Failed to create issue: {result.get('message', 'Unknown error')}"
+            return (
+                f"❌ Failed to create issue: {result.get('message', 'Unknown error')}"
+            )
 
 
 class IssueCreatorFactory:
@@ -263,7 +271,9 @@ class IssueCreatorFactory:
     """
 
     @staticmethod
-    def create_bug_issue(title: str, description: str, priority: IssuePriority = IssuePriority.HIGH) -> IssueConfig:
+    def create_bug_issue(
+        title: str, description: str, priority: IssuePriority = IssuePriority.HIGH
+    ) -> IssueConfig:
         """Create a bug report issue configuration."""
         return IssueConfig(
             issue_type=IssueType.BUG,
@@ -300,7 +310,9 @@ class IssueCreatorFactory:
         )
 
     @staticmethod
-    def create_question_issue(title: str, description: str, priority: IssuePriority = IssuePriority.LOW) -> IssueConfig:
+    def create_question_issue(
+        title: str, description: str, priority: IssuePriority = IssuePriority.LOW
+    ) -> IssueConfig:
         """Create a question/discussion issue configuration."""
         return IssueConfig(
             issue_type=IssueType.QUESTION,

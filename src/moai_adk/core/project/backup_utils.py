@@ -57,8 +57,6 @@ def get_backup_targets(project_path: Path) -> list[str]:
     return targets
 
 
-
-
 def is_protected_path(rel_path: Path) -> bool:
     """Check whether the path is protected.
 
@@ -69,6 +67,4 @@ def is_protected_path(rel_path: Path) -> bool:
         True when the path should be excluded from backups.
     """
     rel_str = str(rel_path).replace("\\", "/")
-    return any(
-        rel_str.startswith(p.lstrip("./").rstrip("/")) for p in PROTECTED_PATHS
-    )
+    return any(rel_str.startswith(p.lstrip("./").rstrip("/")) for p in PROTECTED_PATHS)

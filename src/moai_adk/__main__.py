@@ -33,7 +33,10 @@ def show_logo() -> None:
 
     # Print with Rich styling
     console.print(logo, style="cyan bold", highlight=False)
-    console.print("  Modu-AI's Agentic Development Kit w/ SuperAgent 🎩 Alfred", style="yellow bold")
+    console.print(
+        "  Modu-AI's Agentic Development Kit w/ SuperAgent 🎩 Alfred",
+        style="yellow bold",
+    )
     console.print()
     console.print("  Version: ", style="green", end="")
     console.print(__version__, style="cyan bold")
@@ -55,6 +58,7 @@ def cli(ctx: click.Context) -> None:
     if ctx.invoked_subcommand is None:
         show_logo()
 
+
 cli.add_command(init)
 cli.add_command(doctor)
 cli.add_command(status)
@@ -64,12 +68,25 @@ cli.add_command(update)
 
 
 # 링크 검증 명령
-@click.command(name='validate-links')
-@click.option('--file', '-f', default='README.ko.md', help='검증할 파일 경로 (기본값: README.ko.md)')
-@click.option('--max-concurrent', '-c', type=int, default=3, help='동시에 검증할 최대 링크 수 (기본값: 3)')
-@click.option('--timeout', '-t', type=int, default=8, help='요청 타임아웃 (초) (기본값: 8)')
-@click.option('--output', '-o', help='결과를 저장할 파일 경로')
-@click.option('--verbose', '-v', is_flag=True, help='상세한 진행 상황 표시')
+@click.command(name="validate-links")
+@click.option(
+    "--file",
+    "-f",
+    default="README.ko.md",
+    help="검증할 파일 경로 (기본값: README.ko.md)",
+)
+@click.option(
+    "--max-concurrent",
+    "-c",
+    type=int,
+    default=3,
+    help="동시에 검증할 최대 링크 수 (기본값: 3)",
+)
+@click.option(
+    "--timeout", "-t", type=int, default=8, help="요청 타임아웃 (초) (기본값: 8)"
+)
+@click.option("--output", "-o", help="결과를 저장할 파일 경로")
+@click.option("--verbose", "-v", is_flag=True, help="상세한 진행 상황 표시")
 def validate_links(file, max_concurrent, timeout, output, verbose):
     """온라인 문서 링크 검증"""
     from moai_adk.cli.commands.validate_links import run_command as validate_links_run
@@ -79,25 +96,47 @@ def validate_links(file, max_concurrent, timeout, output, verbose):
 
 
 # 사용자 경험 개선 명령
-@click.command(name='improve-ux')
-@click.option('--url', '-u', default='https://adk.mo.ai.kr', help='분석할 URL (기본값: https://adk.mo.ai.kr)')
-@click.option('--output', '-o', help='분석 결과를 저장할 파일 경로')
-@click.option('--format', '-f', type=click.Choice(['json', 'markdown', 'text']),
-              default='markdown', help='출력 형식 (기본값: markdown)')
-@click.option('--verbose', '-v', is_flag=True, help='상세한 진행 상황 표시')
-@click.option('--max-workers', '-w', type=int, default=5, help='동시에 처리할 최대 작업 수 (기본값: 5)')
+@click.command(name="improve-ux")
+@click.option(
+    "--url",
+    "-u",
+    default="https://adk.mo.ai.kr",
+    help="분석할 URL (기본값: https://adk.mo.ai.kr)",
+)
+@click.option("--output", "-o", help="분석 결과를 저장할 파일 경로")
+@click.option(
+    "--format",
+    "-f",
+    type=click.Choice(["json", "markdown", "text"]),
+    default="markdown",
+    help="출력 형식 (기본값: markdown)",
+)
+@click.option("--verbose", "-v", is_flag=True, help="상세한 진행 상황 표시")
+@click.option(
+    "--max-workers",
+    "-w",
+    type=int,
+    default=5,
+    help="동시에 처리할 최대 작업 수 (기본값: 5)",
+)
 def improve_ux(url, output, format, verbose, max_workers):
     """사용자 경험 개선 분석"""
+
     # 임시 args 객체 생성
     class Args:
         def __init__(self, **kwargs):
             for key, value in kwargs.items():
                 setattr(self, key, value)
 
-    args = Args(url=url, output=output, format=format, verbose=verbose, max_workers=max_workers)
+    args = Args(
+        url=url, output=output, format=format, verbose=verbose, max_workers=max_workers
+    )
 
     # CLI 명령 실행
-    from moai_adk.cli.commands.improve_user_experience import run_command as improve_ux_run
+    from moai_adk.cli.commands.improve_user_experience import (
+        run_command as improve_ux_run,
+    )
+
     sys.exit(improve_ux_run(args))
 
 
@@ -126,5 +165,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-
-

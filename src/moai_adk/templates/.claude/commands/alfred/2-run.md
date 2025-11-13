@@ -69,7 +69,7 @@ All complexity is handled by the **run-orchestrator** agent.
 **Orchestrates all 4 phases:**
 - Coordinates implementation-planner for SPEC analysis
 - Manages tdd-implementer for TDD implementation
-- Verifies with quality-gate for TRUST 5 compliance
+- Verifies with quality-gate for TRUST 4 compliance
 - Creates commits via git-manager
 
 ### Supporting Agents (called by run-orchestrator)
@@ -78,7 +78,7 @@ All complexity is handled by the **run-orchestrator** agent.
 |-------|---------|------|
 | **implementation-planner** | Analyzes SPEC and creates execution strategy | Phase 1 |
 | **tdd-implementer** | Implements code through TDD cycle | Phase 2 |
-| **quality-gate** | Verifies TRUST 5 principles | Phase 2 (after tdd-implementer) |
+| **quality-gate** | Verifies TRUST 4 principles | Phase 2 (after tdd-implementer) |
 | **git-manager** | Creates and manages Git commits | Phase 3 |
 
 ### Skills Used (by agents, not command)
@@ -108,7 +108,7 @@ The run-orchestrator:
 1. Initializes TodoWrite for task tracking
 2. Checks domain readiness (if multi-domain SPEC)
 3. Invokes tdd-implementer for RED → GREEN → REFACTOR cycle
-4. Invokes quality-gate for TRUST 5 validation
+4. Invokes quality-gate for TRUST 4 validation
 5. Handles quality gate results (PASS/WARNING/CRITICAL)
 
 ### Phase 3: Git Operations

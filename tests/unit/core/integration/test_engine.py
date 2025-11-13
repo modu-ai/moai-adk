@@ -4,10 +4,9 @@ Test integration testing execution engine.
 
 import pytest
 import time
-from unittest.mock import Mock, patch
 
 from moai_adk.core.integration.engine import TestEngine
-from moai_adk.core.integration.models import IntegrationTestResult, TestStatus
+from moai_adk.core.integration.models import TestStatus
 
 
 class TestEngine:

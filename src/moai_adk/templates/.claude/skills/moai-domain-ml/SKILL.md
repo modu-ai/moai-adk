@@ -1,967 +1,1113 @@
 ---
-name: "moai-domain-ml"
-version: "4.0.0"
-description: Enterprise-grade machine learning expertise with AI-powered model development, intelligent MLOps automation, advanced deep learning architectures, and production-grade ML deployment strategies; activates for ML model development, MLOps implementation, deep learning projects, and comprehensive machine learning system architecture.
-allowed-tools: 
-  - Read
-  - Bash
-  - WebSearch
-  - WebFetch
-status: stable
+name: moai-domain-ml
+version: 4.0.0
+status: production
+description: |
+  Enterprise Machine Learning specialist with TensorFlow 2.20.0, PyTorch 2.9.0, 
+  Scikit-learn 1.7.2 expertise. Master AutoML, neural architecture search, MLOps 
+  automation, and production ML deployment. Build scalable ML pipelines with 
+  comprehensive monitoring and experiment tracking.
+allowed-tools: ["Read", "Write", "Edit", "Bash", "Glob", "WebFetch", "WebSearch"]
+tags: ["machine-learning", "tensorflow", "pytorch", "scikit-learn", "automl", "mlops", "deep-learning"]
 ---
 
-# 🤖 Enterprise ML Architect & AI-Enhanced Machine Learning Systems
+# Enterprise Machine Learning
 
-## 🚀 AI-Driven ML Capabilities
+## Level 1: Quick Reference
 
-**Intelligent Model Development**:
-- AI-powered hyperparameter optimization and architecture search
-- Machine learning-based model selection and ensemble optimization
-- Smart feature engineering and automated data preprocessing
-- Predictive model performance estimation and optimization
-- Automated model debugging and interpretability analysis
-- Intelligent model compression and optimization for deployment
+### Core Capabilities
+- **Deep Learning**: TensorFlow 2.20.0, PyTorch 2.9.0, JAX 0.4.33
+- **Classical ML**: Scikit-learn 1.7.2, XGBoost 2.0.3, LightGBM 4.4.0
+- **AutoML**: H2O AutoML 3.44.0, AutoGluon 1.0.0, TPOT 0.12.2
+- **MLOps**: MLflow 2.9.0, Kubeflow 1.8.0, DVC 3.48.0
+- **Deployment**: ONNX 1.16.0, TensorFlow Serving, TorchServe, Seldon Core
 
-**Cognitive MLOps Automation**:
-- Self-optimizing ML pipelines with continuous learning
-- Autonomous model monitoring and performance degradation detection
-- Intelligent data pipeline optimization and feature drift detection
-- AI-powered model explainability and compliance validation
-- Predictive resource allocation and cost optimization
-- Automated A/B testing and model comparison
+### Quick Setup Examples
 
-## 🎯 Skill Metadata
-| Field | Value |
-| ----- | ----- |
-| **Version** | **4.0.0 Enterprise** |
-| **Created** | 2025-11-11 |
-| **Updated** | 2025-11-11 |
-| **Allowed tools** | Read, Bash, WebSearch, WebFetch |
-| **Auto-load** | On-demand for ML architecture requests |
-| **Trigger cues** | Machine learning, MLOps, deep learning, model deployment, data science, AI/ML, neural networks, model optimization |
-| **Tier** | **4 (Enterprise)** |
-| **AI Features** | AutoML, MLOps automation, intelligent optimization |
-
-## 🔍 Intelligent ML Analysis
-
-### **AI-Powered ML Assessment**
-```
-🧠 Comprehensive ML Analysis:
-├── Model Intelligence
-│   ├── AI-powered architecture search
-│   ├── Intelligent hyperparameter optimization
-│   ├── Automated model selection
-│   └── Predictive performance optimization
-├── Data Pipeline Analytics
-│   ├── Smart feature engineering
-│   ├── Intelligent data preprocessing
-│   ├── Automated data quality validation
-│   └── Predictive drift detection
-├── Production Intelligence
-│   ├── AI-powered deployment optimization
-│   ├── Intelligent monitoring and alerting
-│   ├── Automated scaling and resource management
-│   └── Predictive maintenance and updates
-└── Business Intelligence
-    ├── AI-driven model impact analysis
-    ├── Intelligent ROI optimization
-    ├── Automated compliance validation
-    └── Predictive business outcome modeling
-```
-
-## 🏗️ Advanced ML Architecture v4.0
-
-### **AI-Enhanced ML Framework**
-
-**Intelligent ML Architecture**:
-```
-🤖 Cognitive ML Architecture:
-├── AutoML Evolution
-│   ├── AI-powered neural architecture search
-│   ├── Intelligent hyperparameter optimization
-│   ├── Automated feature engineering
-│   └── Predictive model selection
-├── Deep Learning Intelligence
-│   ├── Advanced neural architecture patterns
-│   ├── Transfer learning optimization
-│   ├── Intelligent model compression
-│   └── Explainable AI integration
-├── MLOps Automation
-│   ├── AI-powered CI/CD for ML
-│   ├── Intelligent model monitoring
-│   ├── Automated deployment strategies
-│   └── Predictive scaling and optimization
-├── Data Intelligence
-│   ├── Smart data pipeline orchestration
-│   ├── Intelligent data versioning
-│   ├── Automated data quality checks
-│   └── Predictive feature store management
-└── Enterprise Integration
-    ├── AI-driven model governance
-    ├── Intelligent compliance automation
-    ├── Automated security validation
-    └── Smart cost optimization
-```
-
-**AI-Optimized ML Implementation**:
 ```python
-"""
-Enterprise ML Framework v4.0 with AI-Powered Automation
-"""
-
-import asyncio
-import numpy as np
-import pandas as pd
-from typing import Dict, List, Optional, Any, Tuple
-from dataclasses import dataclass
-from datetime import datetime, timedelta
-import json
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingRegressor
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import cross_val_score
+# TensorFlow 2.20.0 with modern Keras API
 import tensorflow as tf
 from tensorflow import keras
+
+# Create a simple neural network
+model = keras.Sequential([
+    keras.layers.Dense(128, activation='relu', input_shape=(784,)),
+    keras.layers.Dropout(0.2),
+    keras.layers.Dense(64, activation='relu'),
+    keras.layers.Dropout(0.2),
+    keras.layers.Dense(10, activation='softmax')
+])
+
+model.compile(
+    optimizer='adam',
+    loss='sparse_categorical_crossentropy',
+    metrics=['accuracy']
+)
+
+# Train with modern callbacks
+callbacks = [
+    keras.callbacks.EarlyStopping(patience=5, restore_best_weights=True),
+    keras.callbacks.ReduceLROnPlateau(factor=0.5, patience=3),
+    keras.callbacks.ModelCheckpoint('best_model.h5', save_best_only=True)
+]
+
+# model.fit(X_train, y_train, validation_data=(X_val, y_val), 
+#           epochs=100, batch_size=32, callbacks=callbacks)
+```
+
+```python
+# PyTorch 2.9.0 with modern features
 import torch
 import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
 
-# AI-powered AutoML Framework
-class AIAutoMLFramework:
-    def __init__(self):
-        self.architecture_searcher = self._initialize_architecture_searcher()
-        self.hyperparameter_optimizer = self._initialize_hyperparameter_optimizer()
-        self.feature_engineer = self._initialize_feature_engineer()
-        self.model_selector = self._initialize_model_selector()
-        self.performance_predictor = self._initialize_performance_predictor()
-        
-    async def automated_ml_pipeline(self, 
-                                  data: pd.DataFrame,
-                                  target_column: str,
-                                  problem_type: str,
-                                  constraints: Dict = None) -> Dict:
-        """Complete automated ML pipeline with AI optimization"""
-        
-        # Data analysis and preprocessing
-        data_analysis = await self._analyze_data_intelligently(data, target_column)
-        
-        # AI-powered feature engineering
-        engineered_features = await self._engineer_features_intelligently(
-            data, target_column, data_analysis
+class NeuralNetwork(nn.Module):
+    def __init__(self, input_size, hidden_size, num_classes):
+        super().__init__()
+        self.layers = nn.Sequential(
+            nn.Linear(input_size, hidden_size),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(hidden_size, hidden_size // 2),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(hidden_size // 2, num_classes)
         )
-        
-        # Automated model architecture search
-        architectures = await self.architecture_searcher.search(
-            engineered_features, target_column, problem_type, constraints
-        )
-        
-        # Intelligent hyperparameter optimization
-        optimized_models = []
-        for architecture in architectures:
-            optimized_model = await self._optimize_hyperparameters(
-                architecture, engineered_features, target_column
-            )
-            optimized_models.append(optimized_model)
-        
-        # AI-powered model selection
-        best_model = await self.model_selector.select_best(
-            optimized_models, engineered_features, target_column
-        )
-        
-        # Automated model explainability
-        explainability = await self._generate_explainability_analysis(
-            best_model, engineered_features, target_column
-        )
-        
-        # Predict performance in production
-        production_prediction = await self.performance_predictor.predict(
-            best_model, data_analysis
-        )
-        
-        return {
-            'data_analysis': data_analysis,
-            'engineered_features': engineered_features,
-            'architectures_tested': len(architectures),
-            'optimized_models': optimized_models,
-            'best_model': best_model,
-            'explainability': explainability,
-            'production_prediction': production_prediction,
-            'automation_confidence': self._calculate_automation_confidence(
-                best_model, production_prediction
-            )
-        }
+    
+    def forward(self, x):
+        return self.layers(x)
 
-# AI-Powered Deep Learning Architectures
-class AIDeepLearningArchitectures:
-    def __init__(self):
-        self.architecture_generator = self._initialize_architecture_generator()
-        self.transfer_optimizer = self._initialize_transfer_optimizer()
-        self.compression_engine = self._initialize_compression_engine()
-        self.explainability_engine = self._initialize_explainability_engine()
-        
-    async def generate_optimal_architecture(self, 
-                                           problem_type: str,
-                                           data_shape: Tuple,
-                                           constraints: Dict = None) -> Dict:
-        """AI-powered optimal architecture generation"""
-        
-        # Generate candidate architectures
-        candidates = await self.architecture_generator.generate(
-            problem_type, data_shape, constraints
-        )
-        
-        # Evaluate architectures with performance prediction
-        evaluated_candidates = []
-        for candidate in candidates:
-            performance_estimate = await self._estimate_architecture_performance(
-                candidate, data_shape, problem_type
-            )
-            
-            evaluated_candidates.append({
-                'architecture': candidate,
-                'performance_estimate': performance_estimate,
-                'complexity_score': self._calculate_complexity(candidate),
-                'resource_requirements': self._estimate_resources(candidate)
-            })
-        
-        # Select optimal architecture
-        optimal = await self._select_optimal_architecture(evaluated_candidates)
-        
-        return {
-            'optimal_architecture': optimal,
-            'candidates_evaluated': len(evaluated_candidates),
-            'performance_estimate': optimal['performance_estimate'],
-            'architecture_code': await self._generate_architecture_code(
-                optimal['architecture']
-            ),
-            'deployment_recommendations': await self._generate_deployment_recommendations(
-                optimal
-            )
-        }
+# Initialize with device management
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+model = NeuralNetwork(784, 128, 10).to(device)
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+criterion = nn.CrossEntropyLoss()
 
-class NeuralArchitectureSearch:
-    def __init__(self):
-        self.search_space = self._define_search_space()
-        self.performance_estimator = self._initialize_performance_estimator()
-        self.search_strategy = self._initialize_search_strategy()
-        
-    async def search(self, 
-                    input_shape: Tuple,
-                    num_classes: int,
-                    max_depth: int = 10,
-                    search_budget: int = 100) -> Dict:
-        """AI-powered neural architecture search"""
-        
-        best_architecture = None
-        best_performance = -float('inf')
-        search_history = []
-        
-        for iteration in range(search_budget):
-            # Generate candidate architecture
-            candidate = await self._generate_candidate(
-                input_shape, num_classes, max_depth, search_history
-            )
-            
-            # Estimate performance without training
-            performance_estimate = await self.performance_estimator.estimate(
-                candidate, input_shape, num_classes
-            )
-            
-            # Update best architecture
-            if performance_estimate > best_performance:
-                best_performance = performance_estimate
-                best_architecture = candidate
-            
-            # Record search history
-            search_history.append({
-                'iteration': iteration,
-                'architecture': candidate,
-                'performance_estimate': performance_estimate,
-                'complexity': self._calculate_architecture_complexity(candidate)
-            })
-            
-            # Adapt search strategy based on results
-            await self._adapt_search_strategy(search_history)
-        
-        # Validate best architecture
-        validation_result = await self._validate_architecture(
-            best_architecture, input_shape, num_classes
-        )
-        
-        return {
-            'best_architecture': best_architecture,
-            'performance_estimate': best_performance,
-            'search_iterations': search_budget,
-            'validation_result': validation_result,
-            'search_efficiency': self._calculate_search_efficiency(search_history),
-            'architecture_code': await self._convert_to_code(best_architecture)
-        }
-
-# AI-Powered Feature Engineering
-class AIFeatureEngineering:
-    def __init__(self):
-        self.feature_generator = self._initialize_feature_generator()
-        self.feature_selector = self._initialize_feature_selector()
-        self.feature_transformer = self._initialize_feature_transformer()
-        self.drift_detector = self._initialize_drift_detector()
-        
-    async def automated_feature_engineering(self, 
-                                           data: pd.DataFrame,
-                                           target_column: str,
-                                           domain_knowledge: Dict = None) -> Dict:
-        """Comprehensive automated feature engineering"""
-        
-        # Analyze data characteristics
-        data_analysis = await self._analyze_data_characteristics(data)
-        
-        # Generate new features
-        generated_features = await self.feature_generator.generate(
-            data, target_column, data_analysis, domain_knowledge
-        )
-        
-        # Select best features
-        selected_features = await self.feature_selector.select(
-            generated_features, target_column
-        )
-        
-        # Transform features optimally
-        transformed_features = await self.feature_transformer.transform(
-            selected_features, target_column
-        )
-        
-        # Detect potential feature drift
-        drift_analysis = await self.drift_detector.analyze(
-            transformed_features, target_column
-        )
-        
-        return {
-            'original_features': len(data.columns),
-            'generated_features': len(generated_features.columns),
-            'selected_features': len(selected_features.columns),
-            'transformed_features': transformed_features,
-            'drift_analysis': drift_analysis,
-            'feature_importance': await self._calculate_feature_importance(
-                transformed_features, target_column
-            ),
-            'engineering_confidence': self._calculate_engineering_confidence(
-                transformed_features, target_column
-            )
-        }
-
-# AI-Powered Model Deployment and Monitoring
-class AIMLOpsAutomation:
-    def __init__(self):
-        self.deployment_optimizer = self._initialize_deployment_optimizer()
-        self.monitoring_system = self._initialize_monitoring_system()
-        self.scaling_optimizer = self._initialize_scaling_optimizer()
-        self.explainability_manager = self._initialize_explainability_manager()
-        
-    async def deploy_model_with_ai(self, 
-                                 model: Any,
-                                 deployment_config: Dict,
-                                 monitoring_config: Dict = None) -> Dict:
-        """AI-powered model deployment with optimization"""
-        
-        # Optimize deployment configuration
-        optimized_config = await self.deployment_optimizer.optimize(
-            model, deployment_config
-        )
-        
-        # Deploy with AI monitoring
-        deployment_result = await self._deploy_with_monitoring(
-            model, optimized_config, monitoring_config
-        )
-        
-        # Setup intelligent monitoring
-        monitoring_setup = await self.monitoring_system.setup(
-            deployment_result, model, optimized_config
-        )
-        
-        # Configure auto-scaling
-        scaling_config = await self.scaling_optimizer.configure(
-            deployment_result, optimized_config
-        )
-        
-        return {
-            'deployment_result': deployment_result,
-            'optimized_config': optimized_config,
-            'monitoring_setup': monitoring_setup,
-            'scaling_config': scaling_config,
-            'deployment_id': deployment_result['id'],
-            'monitoring_active': True,
-            'auto_scaling_enabled': True
-        }
-    
-    async def monitor_model_performance(self, 
-                                      model_id: str,
-                                      time_window: int = 3600) -> Dict:
-        """AI-powered model performance monitoring"""
-        
-        # Collect performance metrics
-        metrics = await self._collect_performance_metrics(model_id, time_window)
-        
-        # Detect performance anomalies
-        anomalies = await self._detect_performance_anomalies(metrics)
-        
-        # Analyze data drift
-        drift_analysis = await self._analyze_data_drift(model_id, time_window)
-        
-        # Generate insights and recommendations
-        insights = await self._generate_performance_insights(
-            metrics, anomalies, drift_analysis
-        )
-        
-        return {
-            'model_id': model_id,
-            'monitoring_period': time_window,
-            'performance_metrics': metrics,
-            'anomalies_detected': anomalies,
-            'drift_analysis': drift_analysis,
-            'insights': insights,
-            'health_score': self._calculate_model_health_score(
-                metrics, anomalies, drift_analysis
-            ),
-            'recommendations': await self._generate_maintenance_recommendations(
-                insights
-            )
-        }
-
-# Enterprise ML Implementation
-async def demonstrate_enterprise_ml():
-    # Initialize AI ML components
-    automl_framework = AIAutoMLFramework()
-    dl_architectures = AIDeepLearningArchitectures()
-    feature_engineer = AIFeatureEngineering()
-    mlops_automation = AIMLOpsAutomation()
-    
-    # Generate sample data
-    np.random.seed(42)
-    data = pd.DataFrame({
-        'feature_1': np.random.randn(1000),
-        'feature_2': np.random.randn(1000),
-        'feature_3': np.random.randn(1000),
-        'target': np.random.randint(0, 2, 1000)
-    })
-    
-    # Run automated ML pipeline
-    ml_pipeline = await automl_framework.automated_ml_pipeline(
-        data, 'target', 'classification'
-    )
-    
-    print("=== Enterprise ML Pipeline ===")
-    print(f"Architectures Tested: {ml_pipeline['architectures_tested']}")
-    print(f"Optimized Models: {len(ml_pipeline['optimized_models'])}")
-    print(f"Best Model Performance: {ml_pipeline['best_model']['performance']:.3f}")
-    print(f"Automation Confidence: {ml_pipeline['automation_confidence']:.3f}")
-    
-    # Generate optimal deep learning architecture
-    dl_result = await dl_architectures.generate_optimal_architecture(
-        'classification', (10,), constraints={'max_params': 1000000}
-    )
-    
-    print(f"\n=== Deep Learning Architecture ===")
-    print(f"Performance Estimate: {dl_result['performance_estimate']:.3f}")
-    print(f"Candidates Evaluated: {dl_result['candidates_evaluated']}")
-    
-    # Automated feature engineering
-    feature_result = await feature_engineer.automated_feature_engineering(
-        data, 'target'
-    )
-    
-    print(f"\n=== Feature Engineering ===")
-    print(f"Generated Features: {feature_result['generated_features']}")
-    print(f"Selected Features: {feature_result['selected_features']}")
-    print(f"Engineering Confidence: {feature_result['engineering_confidence']:.3f}")
-    
-    # Deploy model with AI optimization
-    mock_model = ml_pipeline['best_model']['model_object']
-    deployment_result = await mlops_automation.deploy_model_with_ai(
-        mock_model, {'environment': 'production', 'scaling': 'auto'}
-    )
-    
-    print(f"\n=== MLOps Deployment ===")
-    print(f"Deployment ID: {deployment_result['deployment_id']}")
-    print(f"Monitoring Active: {deployment_result['monitoring_active']}")
-    print(f"Auto-Scaling Enabled: {deployment_result['auto_scaling_enabled']}")
-
-if __name__ == "__main__":
-    asyncio.run(demonstrate_enterprise_ml())
+# Training loop with modern practices
+# for epoch in range(epochs):
+#     model.train()
+#     for batch_x, batch_y in train_loader:
+#         batch_x, batch_y = batch_x.to(device), batch_y.to(device)
+#         optimizer.zero_grad()
+#         outputs = model(batch_x)
+#         loss = criterion(outputs, batch_y)
+#         loss.backward()
+#         optimizer.step()
 ```
 
-## 📊 Advanced MLOps Implementation
+## Level 2: Practical Implementation
 
-### **AI-Enhanced ML Operations**
+### ML Pipeline Architecture
 
-**Cognitive MLOps Framework**:
+#### 1. Data Processing Pipeline
+
 ```python
-# AI-Powered MLOps Pipeline
-import asyncio
-from typing import Dict, List, Optional
-import json
-from datetime import datetime, timedelta
+# Modern data processing with scikit-learn 1.7.2
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
+import pandas as pd
+import numpy as np
 
-class AIMLOpsPipeline:
+class MlDataProcessor:
     def __init__(self):
-        self.pipeline_orchestrator = self._initialize_pipeline_orchestrator()
-        self.quality_gate = self._initialize_quality_gate()
-        self.deployment_manager = self._initialize_deployment_manager()
-        self.monitoring_system = self._initialize_monitoring_system()
+        self.numeric_features = []
+        self.categorical_features = []
+        self.preprocessor = None
+        self.feature_names = []
+    
+    def fit(self, X: pd.DataFrame):
+        """Fit the data processor"""
+        # Identify feature types
+        self.numeric_features = X.select_dtypes(include=['int64', 'float64']).columns.tolist()
+        self.categorical_features = X.select_dtypes(include=['object', 'category']).columns.tolist()
         
-    async def automated_ml_pipeline(self, 
-                                  pipeline_config: Dict,
-                                  data_source: str,
-                                  model_config: Dict) -> Dict:
-        """Complete automated ML pipeline with AI optimization"""
+        # Create preprocessing pipeline
+        numeric_transformer = Pipeline(steps=[
+            ('imputer', SimpleImputer(strategy='median')),
+            ('scaler', StandardScaler())
+        ])
         
-        pipeline_execution = {
-            'stages': [],
-            'quality_gates': [],
-            'deployments': [],
-            'monitoring': {}
+        categorical_transformer = Pipeline(steps=[
+            ('imputer', SimpleImputer(strategy='most_frequent')),
+            ('onehot', OneHotEncoder(handle_unknown='ignore', sparse_output=False))
+        ])
+        
+        self.preprocessor = ColumnTransformer(
+            transformers=[
+                ('num', numeric_transformer, self.numeric_features),
+                ('cat', categorical_transformer, self.categorical_features)
+            ])
+        
+        # Fit and store feature names
+        self.preprocessor.fit(X)
+        self._generate_feature_names()
+        
+        return self
+    
+    def transform(self, X: pd.DataFrame) -> np.ndarray:
+        """Transform the data"""
+        return self.preprocessor.transform(X)
+    
+    def fit_transform(self, X: pd.DataFrame) -> np.ndarray:
+        """Fit and transform in one step"""
+        return self.fit(X).transform(X)
+    
+    def _generate_feature_names(self):
+        """Generate feature names after transformation"""
+        feature_names = []
+        
+        # Numeric features keep their names
+        feature_names.extend(self.numeric_features)
+        
+        # Categorical features get prefixed names
+        cat_transformer = self.preprocessor.named_transformers_['cat']
+        cat_encoder = cat_transformer.named_steps['onehot']
+        
+        for i, feature in enumerate(self.categorical_features):
+            categories = cat_encoder.categories_[i]
+            feature_names.extend([f"{feature}_{cat}" for cat in categories])
+        
+        self.feature_names = feature_names
+    
+    def get_feature_names(self) -> list:
+        """Get the transformed feature names"""
+        return self.feature_names
+
+# Usage example
+# processor = MlDataProcessor()
+# X_processed = processor.fit_transform(X_train)
+# feature_names = processor.get_feature_names()
+```
+
+#### 2. Model Training with Experiment Tracking
+
+```python
+# MLflow experiment tracking integration
+import mlflow
+import mlflow.pytorch
+import mlflow.tensorflow
+from mlflow.tracking import MlflowClient
+import json
+from datetime import datetime
+
+class ExperimentTracker:
+    def __init__(self, experiment_name: str, tracking_uri: str = None):
+        self.experiment_name = experiment_name
+        self.tracking_uri = tracking_uri
+        
+        if tracking_uri:
+            mlflow.set_tracking_uri(tracking_uri)
+        
+        mlflow.set_experiment(experiment_name)
+        self.client = MlflowClient()
+    
+    def log_experiment(self, model, X_train, X_val, y_train, y_val, 
+                      model_params: dict, metrics: dict, tags: dict = None):
+        """Log a complete ML experiment"""
+        
+        with mlflow.start_run() as run:
+            # Log parameters
+            for param, value in model_params.items():
+                mlflow.log_param(param, value)
+            
+            # Log tags
+            if tags:
+                mlflow.set_tags(tags)
+            
+            # Train and evaluate model
+            model.fit(X_train, y_train)
+            train_pred = model.predict(X_train)
+            val_pred = model.predict(X_val)
+            
+            # Calculate and log metrics
+            from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+            
+            train_metrics = {
+                'train_accuracy': accuracy_score(y_train, train_pred),
+                'train_precision': precision_score(y_train, train_pred, average='weighted'),
+                'train_recall': recall_score(y_train, train_pred, average='weighted'),
+                'train_f1': f1_score(y_train, train_pred, average='weighted')
+            }
+            
+            val_metrics = {
+                'val_accuracy': accuracy_score(y_val, val_pred),
+                'val_precision': precision_score(y_val, val_pred, average='weighted'),
+                'val_recall': recall_score(y_val, val_pred, average='weighted'),
+                'val_f1': f1_score(y_val, val_pred, average='weighted')
+            }
+            
+            # Log all metrics
+            all_metrics = {**train_metrics, **val_metrics, **metrics}
+            for metric, value in all_metrics.items():
+                mlflow.log_metric(metric, value)
+            
+            # Log model artifacts
+            if hasattr(model, 'feature_importances_'):
+                # Log feature importance for tree-based models
+                feature_importance = dict(zip(range(len(model.feature_importances_)), 
+                                           model.feature_importances_))
+                mlflow.log_dict(feature_importance, 'feature_importance.json')
+            
+            # Log the model
+            try:
+                mlflow.sklearn.log_model(model, 'model')
+            except:
+                # Fallback for other model types
+                mlflow.log_dict({'model_type': type(model).__name__}, 'model_info.json')
+            
+            return run.info.run_id
+    
+    def compare_experiments(self, metric: str = 'val_accuracy', top_n: int = 5):
+        """Compare experiments and return top performers"""
+        
+        # Get experiment info
+        experiment = self.client.get_experiment_by_name(self.experiment_name)
+        runs = self.client.search_runs(
+            experiment_ids=[experiment.experiment_id],
+            order_by=[f"metrics.{metric} DESC"]
+        )
+        
+        # Extract relevant information
+        results = []
+        for run in runs[:top_n]:
+            results.append({
+                'run_id': run.info.run_id,
+                'status': run.info.status,
+                'start_time': datetime.fromtimestamp(run.info.start_time / 1000),
+                'end_time': datetime.fromtimestamp(run.info.end_time / 1000) if run.info.end_time else None,
+                'metrics': run.data.metrics,
+                'params': run.data.params,
+                'tags': run.data.tags
+            })
+        
+        return results
+
+# Usage example
+# tracker = ExperimentTracker("text_classification_experiments")
+# run_id = tracker.log_experiment(
+#     model=rf_classifier,
+#     X_train=X_train, X_val=X_val, y_train=y_train, y_val=y_val,
+#     model_params={'n_estimators': 100, 'max_depth': 10},
+#     metrics={'training_time': 45.2},
+#     tags={'model_type': 'random_forest', 'dataset_version': 'v1.2'}
+# )
+```
+
+#### 3. Model Evaluation and Validation
+
+```python
+# Comprehensive model evaluation framework
+from sklearn.model_selection import cross_val_score, learning_curve, validation_curve
+from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+
+class ModelEvaluator:
+    def __init__(self):
+        self.results = {}
+    
+    def evaluate_classification(self, model, X_test, y_test, class_names=None):
+        """Comprehensive classification evaluation"""
+        
+        # Make predictions
+        y_pred = model.predict(X_test)
+        y_pred_proba = None
+        
+        if hasattr(model, 'predict_proba'):
+            y_pred_proba = model.predict_proba(X_test)
+        
+        # Calculate metrics
+        from sklearn.metrics import (
+            accuracy_score, precision_score, recall_score, f1_score,
+            classification_report, confusion_matrix, roc_auc_score
+        )
+        
+        metrics = {
+            'accuracy': accuracy_score(y_test, y_pred),
+            'precision_macro': precision_score(y_test, y_pred, average='macro'),
+            'recall_macro': recall_score(y_test, y_pred, average='macro'),
+            'f1_macro': f1_score(y_test, y_pred, average='macro'),
+            'precision_weighted': precision_score(y_test, y_pred, average='weighted'),
+            'recall_weighted': recall_score(y_test, y_pred, average='weighted'),
+            'f1_weighted': f1_score(y_test, y_pred, average='weighted')
         }
         
-        # Stage 1: Data ingestion and validation
-        data_stage = await self._execute_data_stage(data_source, pipeline_config)
-        pipeline_execution['stages'].append(data_stage)
+        # ROC AUC for binary classification
+        if len(np.unique(y_test)) == 2 and y_pred_proba is not None:
+            metrics['roc_auc'] = roc_auc_score(y_test, y_pred_proba[:, 1])
         
-        # Quality gate 1: Data quality
-        data_quality_gate = await self.quality_gate.validate_data_quality(
-            data_stage['processed_data']
+        # Generate classification report
+        report = classification_report(y_test, y_pred, target_names=class_names, 
+                                     output_dict=True)
+        
+        # Confusion matrix
+        cm = confusion_matrix(y_test, y_pred)
+        
+        self.results = {
+            'metrics': metrics,
+            'classification_report': report,
+            'confusion_matrix': cm.tolist(),
+            'predictions': y_pred.tolist(),
+            'probabilities': y_pred_proba.tolist() if y_pred_proba is not None else None
+        }
+        
+        return self.results
+    
+    def cross_validate_model(self, model, X, y, cv=5, scoring=['accuracy', 'f1_weighted']):
+        """Perform cross-validation with multiple metrics"""
+        
+        cv_results = {}
+        
+        for metric in scoring:
+            scores = cross_val_score(model, X, y, cv=cv, scoring=metric)
+            cv_results[metric] = {
+                'scores': scores.tolist(),
+                'mean': scores.mean(),
+                'std': scores.std(),
+                'cv': cv
+            }
+        
+        self.results['cross_validation'] = cv_results
+        return cv_results
+    
+    def learning_curve_analysis(self, model, X, y, cv=5, train_sizes=None):
+        """Generate learning curve analysis"""
+        
+        if train_sizes is None:
+            train_sizes = np.linspace(0.1, 1.0, 10)
+        
+        train_sizes_abs, train_scores, val_scores = learning_curve(
+            model, X, y, cv=cv, train_sizes=train_sizes, n_jobs=-1
         )
-        pipeline_execution['quality_gates'].append(data_quality_gate)
         
-        if not data_quality_gate['passed']:
-            return self._handle_quality_gate_failure(pipeline_execution, data_quality_gate)
+        learning_curve_data = {
+            'train_sizes': train_sizes_abs.tolist(),
+            'train_scores_mean': train_scores.mean(axis=1).tolist(),
+            'train_scores_std': train_scores.std(axis=1).tolist(),
+            'val_scores_mean': val_scores.mean(axis=1).tolist(),
+            'val_scores_std': val_scores.std(axis=1).tolist()
+        }
         
-        # Stage 2: Feature engineering
-        feature_stage = await self._execute_feature_engineering_stage(
-            data_stage['processed_data'], model_config
+        self.results['learning_curve'] = learning_curve_data
+        return learning_curve_data
+    
+    def generate_evaluation_report(self, model_name: str = "Model"):
+        """Generate a comprehensive evaluation report"""
+        
+        report = f"# {model_name} Evaluation Report\n\n"
+        
+        if 'metrics' in self.results:
+            report += "## Performance Metrics\n\n"
+            for metric, value in self.results['metrics'].items():
+                report += f"- **{metric}**: {value:.4f}\n"
+            report += "\n"
+        
+        if 'cross_validation' in self.results:
+            report += "## Cross-Validation Results\n\n"
+            for metric, cv_data in self.results['cross_validation'].items():
+                report += f"- **{metric}**: {cv_data['mean']:.4f} (±{cv_data['std']:.4f})\n"
+            report += "\n"
+        
+        if 'classification_report' in self.results:
+            report += "## Classification Report\n\n"
+            report += "```\n"
+            for class_name, metrics in self.results['classification_report'].items():
+                if isinstance(metrics, dict):
+                    report += f"Class: {class_name}\n"
+                    for metric, value in metrics.items():
+                        if isinstance(value, float):
+                            report += f"  {metric}: {value:.4f}\n"
+                        else:
+                            report += f"  {metric}: {value}\n"
+                    report += "\n"
+            report += "```\n\n"
+        
+        return report
+
+# Usage example
+# evaluator = ModelEvaluator()
+# results = evaluator.evaluate_classification(model, X_test, y_test, class_names=['A', 'B', 'C'])
+# cv_results = evaluator.cross_validate_model(model, X, y)
+# report = evaluator.generate_evaluation_report("Random Forest Classifier")
+```
+
+### AutoML Implementation
+
+#### 4. Automated Machine Learning Pipeline
+
+```python
+# AutoML with hyperparameter optimization
+from sklearn.model_selection import RandomizedSearchCV, GridSearchCV
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+import numpy as np
+import time
+
+class AutoMLPipeline:
+    def __init__(self, task_type='classification', random_state=42):
+        self.task_type = task_type
+        self.random_state = random_state
+        self.best_model = None
+        self.best_score = None
+        self.results = {}
+        
+        # Define model search space
+        self.models = {
+            'random_forest': {
+                'model': RandomForestClassifier(random_state=random_state),
+                'params': {
+                    'n_estimators': [50, 100, 200],
+                    'max_depth': [5, 10, 15, None],
+                    'min_samples_split': [2, 5, 10],
+                    'min_samples_leaf': [1, 2, 4]
+                }
+            },
+            'gradient_boosting': {
+                'model': GradientBoostingClassifier(random_state=random_state),
+                'params': {
+                    'n_estimators': [50, 100, 200],
+                    'learning_rate': [0.01, 0.1, 0.2],
+                    'max_depth': [3, 5, 7],
+                    'subsample': [0.8, 0.9, 1.0]
+                }
+            },
+            'logistic_regression': {
+                'model': LogisticRegression(random_state=random_state, max_iter=1000),
+                'params': {
+                    'C': [0.1, 1.0, 10.0],
+                    'penalty': ['l1', 'l2'],
+                    'solver': ['liblinear', 'saga']
+                }
+            }
+        }
+        
+        if task_type == 'classification':
+            self.models['svm'] = {
+                'model': SVC(random_state=random_state, probability=True),
+                'params': {
+                    'C': [0.1, 1.0, 10.0],
+                    'kernel': ['rbf', 'linear'],
+                    'gamma': ['scale', 'auto']
+                }
+            }
+    
+    def search_best_model(self, X_train, X_val, y_train, y_val, 
+                         search_method='random', n_iter=50, cv=5):
+        """Search for the best model using hyperparameter optimization"""
+        
+        print(f"Starting AutoML search with {search_method} search...")
+        
+        best_score = -np.inf
+        best_model = None
+        best_params = None
+        search_results = []
+        
+        for model_name, model_config in self.models.items():
+            print(f"Testing {model_name}...")
+            
+            start_time = time.time()
+            
+            # Choose search method
+            if search_method == 'random':
+                search = RandomizedSearchCV(
+                    model_config['model'],
+                    model_config['params'],
+                    n_iter=n_iter,
+                    cv=cv,
+                    scoring='accuracy',
+                    random_state=self.random_state,
+                    n_jobs=-1
+                )
+            else:  # grid search
+                search = GridSearchCV(
+                    model_config['model'],
+                    model_config['params'],
+                    cv=cv,
+                    scoring='accuracy',
+                    n_jobs=-1
+                )
+            
+            # Fit the search
+            search.fit(X_train, y_train)
+            
+            # Evaluate on validation set
+            val_score = search.score(X_val, y_val)
+            
+            search_time = time.time() - start_time
+            
+            result = {
+                'model_name': model_name,
+                'best_params': search.best_params_,
+                'cv_score': search.best_score_,
+                'val_score': val_score,
+                'search_time': search_time,
+                'best_estimator': search.best_estimator_
+            }
+            
+            search_results.append(result)
+            
+            print(f"  - CV Score: {search.best_score_:.4f}")
+            print(f"  - Val Score: {val_score:.4f}")
+            print(f"  - Time: {search_time:.2f}s")
+            
+            # Update best model
+            if val_score > best_score:
+                best_score = val_score
+                best_model = search.best_estimator_
+                best_params = search.best_params_
+        
+        self.best_model = best_model
+        self.best_score = best_score
+        self.results = {
+            'search_results': search_results,
+            'best_model_name': best_model.__class__.__name__,
+            'best_params': best_params,
+            'best_score': best_score
+        }
+        
+        print(f"\nBest model: {best_model.__class__.__name__}")
+        print(f"Best validation score: {best_score:.4f}")
+        
+        return best_model
+    
+    def ensemble_models(self, X_train, y_train, top_k=3):
+        """Create an ensemble of the top k models"""
+        
+        if not self.results:
+            raise ValueError("Run search_best_model first")
+        
+        # Sort models by validation score
+        sorted_results = sorted(
+            self.results['search_results'],
+            key=lambda x: x['val_score'],
+            reverse=True
         )
-        pipeline_execution['stages'].append(feature_stage)
         
-        # Stage 3: Model training with AutoML
-        training_stage = await self._execute_training_stage(
-            feature_stage['features'], model_config
+        # Select top k models
+        top_models = [result['best_estimator'] for result in sorted_results[:top_k]]
+        
+        from sklearn.ensemble import VotingClassifier
+        
+        # Create voting ensemble
+        ensemble = VotingClassifier(
+            estimators=[(f"model_{i}", model) for i, model in enumerate(top_models)],
+            voting='soft'
         )
-        pipeline_execution['stages'].append(training_stage)
         
-        # Quality gate 2: Model performance
-        model_quality_gate = await self.quality_gate.validate_model_performance(
-            training_stage['trained_model'], feature_stage['features']
-        )
-        pipeline_execution['quality_gates'].append(model_quality_gate)
+        # Train ensemble
+        ensemble.fit(X_train, y_train)
         
-        if not model_quality_gate['passed']:
-            return self._handle_quality_gate_failure(pipeline_execution, model_quality_gate)
+        return ensemble
+    
+    def generate_search_report(self):
+        """Generate a comprehensive AutoML search report"""
         
-        # Stage 4: Model deployment
-        deployment_stage = await self._execute_deployment_stage(
-            training_stage['trained_model'], pipeline_config
-        )
-        pipeline_execution['stages'].append(deployment_stage)
-        pipeline_execution['deployments'].append(deployment_stage)
+        if not self.results:
+            return "No search results available. Run search_best_model first."
         
-        # Stage 5: Monitoring setup
-        monitoring_stage = await self._setup_monitoring(
-            deployment_stage['deployment'], training_stage['trained_model']
-        )
-        pipeline_execution['monitoring'] = monitoring_stage
+        report = "# AutoML Search Report\n\n"
+        report += f"**Best Model**: {self.results['best_model_name']}\n"
+        report += f"**Best Score**: {self.results['best_score']:.4f}\n\n"
+        
+        report += "## Search Results\n\n"
+        report += "| Model | CV Score | Val Score | Time (s) |\n"
+        report += "|-------|----------|-----------|----------|\n"
+        
+        for result in sorted(self.results['search_results'], 
+                           key=lambda x: x['val_score'], reverse=True):
+            report += f"| {result['model_name']} | {result['cv_score']:.4f} | "
+            report += f"{result['val_score']:.4f} | {result['search_time']:.2f} |\n"
+        
+        report += "\n## Best Hyperparameters\n\n"
+        report += f"**Model**: {self.results['best_model_name']}\n\n"
+        
+        for param, value in self.results['best_params'].items():
+            report += f"- **{param}**: {value}\n"
+        
+        return report
+
+# Usage example
+# automl = AutoMLPipeline(task_type='classification')
+# best_model = automl.search_best_model(X_train, X_val, y_train, y_val)
+# ensemble_model = automl.ensemble_models(X_train, y_train)
+# report = automl.generate_search_report()
+```
+
+## Level 3: Advanced Integration
+
+### MLOps and Production Deployment
+
+#### 1. Model Serving with REST API
+
+```python
+# FastAPI model serving with MLflow integration
+from fastapi import FastAPI, HTTPException, BackgroundTasks
+from pydantic import BaseModel
+import mlflow.pyfunc
+import numpy as np
+import pandas as pd
+import json
+from typing import List, Optional, Dict, Any
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+class PredictionRequest(BaseModel):
+    features: List[Dict[str, Any]]
+    model_version: Optional[str] = "latest"
+    return_probabilities: Optional[bool] = False
+
+class PredictionResponse(BaseModel):
+    predictions: List[Any]
+    probabilities: Optional[List[List[float]]] = None
+    model_version: str
+    prediction_time_ms: float
+    request_id: str
+
+class ModelServer:
+    def __init__(self, model_uri: str, app_name: str = "ml-model-server"):
+        self.app = FastAPI(title=app_name)
+        self.model_uri = model_uri
+        self.model = None
+        self.model_version = "unknown"
+        self.executor = ThreadPoolExecutor(max_workers=4)
+        
+        # Load model
+        self._load_model()
+        
+        # Setup routes
+        self._setup_routes()
+    
+    def _load_model(self):
+        """Load model from MLflow"""
+        try:
+            self.model = mlflow.pyfunc.load_model(self.model_uri)
+            
+            # Extract model version from URI if possible
+            if "runs:/" in self.model_uri:
+                self.model_version = self.model_uri.split("/")[-1]
+            
+            logger.info(f"Model loaded successfully from {self.model_uri}")
+            logger.info(f"Model version: {self.model_version}")
+            
+        except Exception as e:
+            logger.error(f"Failed to load model: {str(e)}")
+            raise
+    
+    def _setup_routes(self):
+        """Setup FastAPI routes"""
+        
+        @self.app.get("/health")
+        async def health_check():
+            return {"status": "healthy", "model_version": self.model_version}
+        
+        @self.app.get("/model/info")
+        async def model_info():
+            if not self.model:
+                raise HTTPException(status_code=503, detail="Model not loaded")
+            
+            return {
+                "model_uri": self.model_uri,
+                "model_version": self.model_version,
+                "model_type": type(self.model).__name__
+            }
+        
+        @self.app.post("/predict", response_model=PredictionResponse)
+        async def predict(request: PredictionRequest, background_tasks: BackgroundTasks):
+            """Make predictions with the loaded model"""
+            
+            if not self.model:
+                raise HTTPException(status_code=503, detail="Model not loaded")
+            
+            start_time = time.time()
+            request_id = f"req_{int(time.time() * 1000)}"
+            
+            try:
+                # Convert features to DataFrame
+                df = pd.DataFrame(request.features)
+                
+                # Make prediction in background thread
+                loop = asyncio.get_event_loop()
+                predictions = await loop.run_in_executor(
+                    self.executor,
+                    self._predict_sync,
+                    df,
+                    request.return_probabilities
+                )
+                
+                prediction_time = (time.time() - start_time) * 1000
+                
+                # Log prediction request
+                background_tasks.add_task(
+                    self._log_prediction,
+                    request_id,
+                    len(request.features),
+                    prediction_time
+                )
+                
+                response = PredictionResponse(
+                    predictions=predictions["predictions"],
+                    probabilities=predictions.get("probabilities"),
+                    model_version=self.model_version,
+                    prediction_time_ms=prediction_time,
+                    request_id=request_id
+                )
+                
+                return response
+                
+            except Exception as e:
+                logger.error(f"Prediction failed: {str(e)}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self.app.post("/predict/batch")
+        async def predict_batch(requests: List[PredictionRequest]):
+            """Batch prediction endpoint"""
+            
+            if not self.model:
+                raise HTTPException(status_code=503, detail="Model not loaded")
+            
+            start_time = time.time()
+            
+            try:
+                results = []
+                
+                for request in requests:
+                    df = pd.DataFrame(request.features)
+                    
+                    loop = asyncio.get_event_loop()
+                    predictions = await loop.run_in_executor(
+                        self.executor,
+                        self._predict_sync,
+                        df,
+                        request.return_probabilities
+                    )
+                    
+                    results.append({
+                        "predictions": predictions["predictions"],
+                        "probabilities": predictions.get("probabilities"),
+                        "model_version": self.model_version
+                    })
+                
+                total_time = (time.time() - start_time) * 1000
+                
+                return {
+                    "results": results,
+                    "total_requests": len(requests),
+                    "total_time_ms": total_time,
+                    "avg_time_per_request_ms": total_time / len(requests)
+                }
+                
+            except Exception as e:
+                logger.error(f"Batch prediction failed: {str(e)}")
+                raise HTTPException(status_code=500, detail=str(e))
+    
+    def _predict_sync(self, df: pd.DataFrame, return_probabilities: bool = False):
+        """Synchronous prediction method"""
+        
+        if return_probabilities and hasattr(self.model, 'predict_proba'):
+            predictions = self.model.predict(df)
+            probabilities = self.model.predict_proba(df).tolist()
+            return {
+                "predictions": predictions.tolist(),
+                "probabilities": probabilities
+            }
+        else:
+            predictions = self.model.predict(df)
+            return {
+                "predictions": predictions.tolist()
+            }
+    
+    def _log_prediction(self, request_id: str, num_samples: int, prediction_time: float):
+        """Log prediction request for monitoring"""
+        
+        log_entry = {
+            "request_id": request_id,
+            "timestamp": datetime.now().isoformat(),
+            "num_samples": num_samples,
+            "prediction_time_ms": prediction_time,
+            "model_version": self.model_version
+        }
+        
+        logger.info(f"Prediction logged: {json.dumps(log_entry)}")
+
+# Usage example
+# server = ModelServer("runs:/12345abcdef/model")
+# app = server.app
+```
+
+#### 2. Model Monitoring and Drift Detection
+
+```python
+# Production model monitoring and drift detection
+import numpy as np
+import pandas as pd
+from scipy import stats
+from sklearn.metrics import accuracy_score, precision_score, recall_score
+import plotly.graph_objects as go
+import plotly.express as px
+from datetime import datetime, timedelta
+import json
+import asyncio
+from typing import Dict, List, Tuple
+
+class ModelMonitor:
+    def __init__(self, model_performance_threshold: float = 0.05):
+        self.performance_threshold = performance_threshold
+        self.reference_data = None
+        self.performance_history = []
+        self.drift_alerts = []
+    
+    def set_reference_data(self, X_ref: pd.DataFrame, y_ref: pd.Series = None):
+        """Set reference data for drift detection"""
+        self.reference_data = {
+            'X': X_ref,
+            'y': y_ref,
+            'feature_stats': self._calculate_feature_statistics(X_ref)
+        }
+        
+        if y_ref is not None:
+            self.reference_data['target_distribution'] = y_ref.value_counts(normalize=True).to_dict()
+    
+    def _calculate_feature_statistics(self, X: pd.DataFrame) -> Dict:
+        """Calculate feature statistics for reference"""
+        stats = {}
+        
+        for column in X.columns:
+            if X[column].dtype in ['int64', 'float64']:
+                stats[column] = {
+                    'mean': X[column].mean(),
+                    'std': X[column].std(),
+                    'min': X[column].min(),
+                    'max': X[column].max(),
+                    'q25': X[column].quantile(0.25),
+                    'q75': X[column].quantile(0.75)
+                }
+            else:
+                stats[column] = {
+                    'value_counts': X[column].value_counts(normalize=True).to_dict()
+                }
+        
+        return stats
+    
+    def detect_data_drift(self, X_current: pd.DataFrame, 
+                          method: str = 'ks_test') -> Dict:
+        """Detect data drift compared to reference data"""
+        
+        if self.reference_data is None:
+            raise ValueError("Reference data not set")
+        
+        X_ref = self.reference_data['X']
+        ref_stats = self.reference_data['feature_stats']
+        
+        drift_results = {}
+        
+        for column in X_current.columns:
+            if column not in X_ref.columns:
+                continue
+            
+            if X_current[column].dtype in ['int64', 'float64']:
+                # Numerical features
+                current_data = X_current[column].dropna()
+                ref_data = X_ref[column].dropna()
+                
+                if method == 'ks_test':
+                    # Kolmogorov-Smirnov test
+                    statistic, p_value = stats.ks_2samp(current_data, ref_data)
+                    drift_detected = p_value < 0.05
+                    
+                    drift_results[column] = {
+                        'drift_detected': drift_detected,
+                        'ks_statistic': statistic,
+                        'p_value': p_value,
+                        'ref_mean': ref_stats[column]['mean'],
+                        'current_mean': current_data.mean(),
+                        'ref_std': ref_stats[column]['std'],
+                        'current_std': current_data.std()
+                    }
+                
+                elif method == 'wasserstein':
+                    # Wasserstein distance
+                    from scipy.stats import wasserstein_distance
+                    distance = wasserstein_distance(current_data, ref_data)
+                    
+                    drift_results[column] = {
+                        'wasserstein_distance': distance,
+                        'ref_mean': ref_stats[column]['mean'],
+                        'current_mean': current_data.mean(),
+                        'drift_detected': distance > 0.1  # Threshold can be adjusted
+                    }
+            
+            else:
+                # Categorical features
+                current_dist = X_current[column].value_counts(normalize=True).to_dict()
+                ref_dist = ref_stats[column]['value_counts']
+                
+                # Calculate KL divergence
+                kl_divergence = self._calculate_kl_divergence(current_dist, ref_dist)
+                
+                drift_results[column] = {
+                    'kl_divergence': kl_divergence,
+                    'drift_detected': kl_divergence > 0.1,
+                    'ref_distribution': ref_dist,
+                    'current_distribution': current_dist
+                }
+        
+        # Calculate overall drift score
+        drift_columns = [col for col, result in drift_results.items() 
+                        if result.get('drift_detected', False)]
+        overall_drift_score = len(drift_columns) / len(drift_results)
         
         return {
-            'pipeline_id': self._generate_pipeline_id(),
-            'execution': pipeline_execution,
-            'status': 'success',
-            'duration': self._calculate_pipeline_duration(pipeline_execution),
-            'model_performance': training_stage['performance_metrics'],
-            'deployment_url': deployment_stage['endpoint_url'],
-            'monitoring_dashboard': monitoring_stage['dashboard_url']
+            'feature_drift': drift_results,
+            'overall_drift_score': overall_drift_score,
+            'drifted_features': drift_columns,
+            'timestamp': datetime.now().isoformat()
         }
-
-class AIModelMonitoring:
-    def __init__(self):
-        self.metrics_collector = self._initialize_metrics_collector()
-        self.drift_detector = self._initialize_drift_detector()
-        self.performance_analyzer = self._initialize_performance_analyzer()
-        self.alert_system = self._initialize_alert_system()
+    
+    def _calculate_kl_divergence(self, p: Dict, q: Dict) -> float:
+        """Calculate KL divergence between two distributions"""
         
-    async def comprehensive_model_monitoring(self, 
-                                          model_id: str,
-                                          monitoring_config: Dict) -> Dict:
-        """Comprehensive AI-powered model monitoring"""
+        # Ensure both distributions have the same keys
+        all_keys = set(p.keys()) | set(q.keys())
         
-        # Real-time metrics collection
-        metrics = await self.metrics_collector.collect_real_time_metrics(
-            model_id, monitoring_config
-        )
+        for key in all_keys:
+            if key not in p:
+                p[key] = 1e-10  # Small value to avoid division by zero
+            if key not in q:
+                q[key] = 1e-10
         
-        # Performance analysis
-        performance_analysis = await self.performance_analyzer.analyze(
-            metrics, model_id
-        )
+        # Normalize
+        p_total = sum(p.values())
+        q_total = sum(q.values())
         
-        # Drift detection
-        drift_analysis = await self.drift_detector.detect_drift(
-            metrics, model_id
-        )
+        p_norm = {k: v / p_total for k, v in p.items()}
+        q_norm = {k: v / q_total for k, v in q.items()}
         
-        # Generate alerts if needed
-        alerts = await self.alert_system.generate_alerts(
-            performance_analysis, drift_analysis, monitoring_config
-        )
+        # Calculate KL divergence
+        kl_div = 0
+        for key in all_keys:
+            kl_div += p_norm[key] * np.log(p_norm[key] / q_norm[key])
         
-        # Generate monitoring report
-        monitoring_report = {
-            'model_id': model_id,
-            'monitoring_timestamp': datetime.now().isoformat(),
-            'performance_metrics': performance_analysis,
-            'drift_analysis': drift_analysis,
-            'alerts': alerts,
-            'health_score': self._calculate_health_score(
-                performance_analysis, drift_analysis
-            ),
-            'recommendations': await self._generate_monitoring_recommendations(
-                performance_analysis, drift_analysis
-            )
+        return kl_div
+    
+    def monitor_model_performance(self, y_true: np.ndarray, y_pred: np.ndarray,
+                                 model_name: str = "model"):
+        """Monitor model performance and detect degradation"""
+        
+        # Calculate performance metrics
+        accuracy = accuracy_score(y_true, y_pred)
+        precision = precision_score(y_true, y_pred, average='weighted')
+        recall = recall_score(y_true, y_pred, average='weighted')
+        
+        performance_entry = {
+            'timestamp': datetime.now().isoformat(),
+            'model_name': model_name,
+            'accuracy': accuracy,
+            'precision': precision,
+            'recall': recall
         }
         
-        return monitoring_report
-
-class AIModelExplainability:
-    def __init__(self):
-        self.explainer_generator = self._initialize_explainer_generator()
-        self.interpretability_analyzer = self._initialize_interpretability_analyzer()
-        self.fairness_analyzer = self._initialize_fairness_analyzer()
+        self.performance_history.append(performance_entry)
         
-    async def generate_comprehensive_explainability(self, 
-                                                   model: Any,
-                                                   data: pd.DataFrame,
-                                                   explanation_type: str = 'global') -> Dict:
-        """Generate comprehensive model explainability analysis"""
-        
-        explainability_results = {}
-        
-        # Global explanations
-        if explanation_type in ['global', 'both']:
-            global_explanations = await self.explainer_generator.generate_global(
-                model, data
-            )
-            explainability_results['global_explanations'] = global_explanations
+        # Check for performance degradation
+        if len(self.performance_history) > 1:
+            prev_performance = self.performance_history[-2]
+            accuracy_change = abs(accuracy - prev_performance['accuracy'])
             
-            # Feature importance
-            feature_importance = await self._calculate_feature_importance(
-                model, data
-            )
-            explainability_results['feature_importance'] = feature_importance
+            if accuracy_change > self.performance_threshold:
+                alert = {
+                    'timestamp': datetime.now().isoformat(),
+                    'alert_type': 'performance_degradation',
+                    'model_name': model_name,
+                    'metric': 'accuracy',
+                    'previous_value': prev_performance['accuracy'],
+                    'current_value': accuracy,
+                    'change': accuracy_change,
+                    'threshold': self.performance_threshold
+                }
+                
+                self.drift_alerts.append(alert)
+        
+        return performance_entry
+    
+    def generate_monitoring_report(self) -> str:
+        """Generate comprehensive monitoring report"""
+        
+        report = "# Model Monitoring Report\n\n"
+        report += f"**Generated**: {datetime.now().isoformat()}\n\n"
+        
+        # Performance history
+        if self.performance_history:
+            report += "## Performance History\n\n"
+            report += "| Timestamp | Model | Accuracy | Precision | Recall |\n"
+            report += "|-----------|-------|----------|-----------|--------|\n"
             
-            # Model behavior analysis
-            behavior_analysis = await self.interpretability_analyzer.analyze_behavior(
-                model, data
-            )
-            explainability_results['behavior_analysis'] = behavior_analysis
+            for entry in self.performance_history[-10:]:  # Last 10 entries
+                report += f"| {entry['timestamp']} | {entry['model_name']} | "
+                report += f"{entry['accuracy']:.4f} | {entry['precision']:.4f} | "
+                report += f"{entry['recall']:.4f} |\n"
+            report += "\n"
         
-        # Local explanations
-        if explanation_type in ['local', 'both']:
-            local_explanations = await self.explainer_generator.generate_local(
-                model, data.sample(10)  # Sample for local explanations
-            )
-            explainability_results['local_explanations'] = local_explanations
+        # Drift alerts
+        if self.drift_alerts:
+            report += "## Drift Alerts\n\n"
+            
+            for alert in self.drift_alerts[-5:]:  # Last 5 alerts
+                report += f"### {alert['alert_type'].replace('_', ' ').title()}\n"
+                report += f"- **Time**: {alert['timestamp']}\n"
+                report += f"- **Model**: {alert['model_name']}\n"
+                report += f"- **Metric**: {alert['metric']}\n"
+                report += f"- **Change**: {alert['previous_value']:.4f} → {alert['current_value']:.4f}\n"
+                report += f"- **Threshold**: {alert['threshold']}\n\n"
         
-        # Fairness analysis
-        fairness_analysis = await self.fairness_analyzer.analyze_fairness(
-            model, data
-        )
-        explainability_results['fairness_analysis'] = fairness_analysis
-        
-        # Generate explainability report
-        explainability_report = {
-            'model_type': type(model).__name__,
-            'data_shape': data.shape,
-            'explanation_type': explanation_type,
-            'explainability_results': explainability_results,
-            'explainability_score': self._calculate_explainability_score(
-                explainability_results
-            ),
-            'recommendations': await self._generate_explainability_recommendations(
-                explainability_results
-            ),
-            'compliance_check': await self._check_explainability_compliance(
-                explainability_results
-            )
-        }
-        
-        return explainability_report
+        return report
 
-# MLOps Implementation Example
-async def demonstrate_mlops():
-    mlops_pipeline = AIMLOpsPipeline()
-    monitoring_system = AIModelMonitoring()
-    explainability_system = AIModelExplainability()
-    
-    # Sample pipeline configuration
-    pipeline_config = {
-        'environment': 'production',
-        'quality_gates': {
-            'data_quality_threshold': 0.95,
-            'model_performance_threshold': 0.85
-        },
-        'deployment': {
-            'auto_scaling': True,
-            'canary_deployment': True
-        }
-    }
-    
-    # Model configuration
-    model_config = {
-        'problem_type': 'classification',
-        'algorithms': ['random_forest', 'gradient_boosting', 'neural_network'],
-        'cross_validation': 5,
-        'hyperparameter_optimization': True
-    }
-    
-    # Run automated ML pipeline
-    pipeline_result = await mlops_pipeline.automated_ml_pipeline(
-        pipeline_config, 'data/source.csv', model_config
-    )
-    
-    print("=== MLOps Pipeline ===")
-    print(f"Pipeline ID: {pipeline_result['pipeline_id']}")
-    print(f"Status: {pipeline_result['status']}")
-    print(f"Duration: {pipeline_result['duration']:.2f}s")
-    print(f"Model Performance: {pipeline_result['model_performance']['accuracy']:.3f}")
-    
-    # Model monitoring
-    monitoring_result = await monitoring_system.comprehensive_model_monitoring(
-        pipeline_result['deployments'][0]['deployment_id'],
-        {'metrics': ['accuracy', 'latency', 'drift']}
-    )
-    
-    print(f"\n=== Model Monitoring ===")
-    print(f"Health Score: {monitoring_result['health_score']:.3f}")
-    print(f"Alerts: {len(monitoring_result['alerts'])}")
-    
-    # Model explainability
-    explainability_result = await explainability_system.generate_comprehensive_explainability(
-        None,  # Mock model
-        None,  # Mock data
-        'both'
-    )
-    
-    print(f"\n=== Model Explainability ===")
-    print(f"Explainability Score: {explainability_result['explainability_score']:.3f}")
-    print(f"Compliance Check: {explainability_result['compliance_check']['passed']}")
-
-if __name__ == "__main__":
-    asyncio.run(demonstrate_mlops())
+# Usage example
+# monitor = ModelMonitor(performance_threshold=0.05)
+# monitor.set_reference_data(X_train, y_train)
+# drift_results = monitor.detect_data_drift(X_current)
+# performance = monitor.monitor_model_performance(y_true, y_pred)
+# report = monitor.generate_monitoring_report()
 ```
 
-## 🔮 Future-Ready ML Technologies
+## Related Skills
 
-### **Emerging ML Trends**
+- **moai-domain-data-science**: Data science workflows and analysis
+- **moai-domain-testing**: ML model testing and validation
+- **moai-domain-devops**: MLOps infrastructure and deployment
+- **moai-essentials-refactor**: Model optimization and refactoring
 
-**Next-Generation ML Evolution**:
-```
-🚀 ML Innovation Roadmap:
-├── Foundation Models Evolution
-│   ├── Large language model optimization
-│   ├── Multimodal model integration
-│   ├── Efficient fine-tuning strategies
-│   └── Domain-specific foundation models
-├── Federated Learning
-│   ├── Privacy-preserving ML
-│   ├── Distributed model training
-│   ├── Secure aggregation protocols
-│   └── Cross-silo collaboration
-├── Edge AI and TinyML
-│   ├── On-device ML optimization
-│   ├── Model compression techniques
-│   ├── Low-power AI inference
-│   └── Edge deployment strategies
-├── Quantum ML Integration
-│   ├── Quantum-inspired algorithms
-│   ├── Hybrid quantum-classical models
-│   ├── Quantum advantage demonstration
-│   └── Quantum-resistant ML
-└── Explainable AI Evolution
-    ├── Interpretable neural networks
-    ├── Causal inference integration
-    ├── Counterfactual explanations
-    └── Regulatory compliance automation
-```
+## Quick Start Checklist
 
-## 📋 Enterprise Implementation Guide
+- [ ] Select appropriate ML framework (TensorFlow 2.20/PyTorch 2.9/Scikit-learn 1.7)
+- [ ] Set up experiment tracking with MLflow
+- [ ] Implement data preprocessing pipeline
+- [ ] Configure AutoML for hyperparameter optimization
+- [ ] Setup model monitoring and drift detection
+- [ ] Deploy model serving with FastAPI
+- [ ] Implement performance monitoring
+- [ ] Create model retraining pipeline
 
-### **Production ML Deployment**
+## Performance Optimization Tips
 
-**AI-Optimized ML Infrastructure**:
-```yaml
-# Kubernetes ML Platform with AI Optimization
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: ml-pipeline-orchestrator
-  namespace: ml-production
-  annotations:
-    ai.ml.optimization: "enabled"
-    ai.automl.features: "comprehensive"
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: ml-pipeline-orchestrator
-  template:
-    metadata:
-      annotations:
-        ai.ml.monitoring: "real-time"
-        ai.model.registry: "intelligent"
-    spec:
-      containers:
-      - name: ml-orchestrator
-        image: ml/ai-orchestrator:v4.0.0
-        env:
-        - name: AI_ML_OPTIMIZATION
-          value: "enabled"
-        - name: AUTOML_FRAMEWORK
-          value: "active"
-        - name: INTELLIGENT_MONITORING
-          value: "enabled"
-        resources:
-          requests:
-            cpu: 2000m
-            memory: 8Gi
-            nvidia.com/gpu: 1
-          limits:
-            cpu: 4000m
-            memory: 16Gi
-            nvidia.com/gpu: 2
-        volumeMounts:
-        - name: model-storage
-          mountPath: /models
-        - name: data-storage
-          mountPath: /data
-      volumes:
-      - name: model-storage
-        persistentVolumeClaim:
-          claimName: ml-models-pvc
-      - name: data-storage
-        persistentVolumeClaim:
-          claimName: ml-data-pvc
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: ml-api-service
-  namespace: ml-production
-spec:
-  selector:
-    app: ml-pipeline-orchestrator
-  ports:
-  - port: 8080
-    targetPort: 8080
-  type: ClusterIP
-```
-
-## 🎯 Performance Benchmarks & Success Metrics
-
-### **Enterprise ML Standards**
-
-**AI-Enhanced ML KPIs**:
-```
-📊 Advanced ML Metrics:
-├── Model Performance Excellence
-│   ├── Model Accuracy: > 95% (AI-optimized)
-│   ├── F1-Score: > 0.90 (Automated tuning)
-│   ├── AUC-ROC: > 0.95 (Advanced algorithms)
-│   └── Precision/Recall: > 0.90 (Balanced optimization)
-├── MLOps Efficiency
-│   ├── Training Time Reduction: > 60% (AI optimization)
-│   ├── Deployment Time: < 10 minutes (Automated)
-│   ├── Model Monitoring Latency: < 1 minute
-│   └── Pipeline Success Rate: > 98%
-├── Resource Optimization
-│   ├── GPU Utilization: > 85% (AI scheduling)
-│   ├── Memory Efficiency: > 90% (Intelligent optimization)
-│   ├── Cost Reduction: > 40% (AutoML)
-│   └── Energy Efficiency: > 80% (Green ML)
-├── Business Impact
-│   ├── Model ROI: > 300% (AI-powered optimization)
-│   ├── Time-to-Value: < 2 weeks (Rapid deployment)
-│   ├── User Adoption: > 90% (Intelligent UI)
-│   └── Compliance Score: > 95% (Automated validation)
-└── Innovation Velocity
-    ├── Model Update Frequency: > 10/week (Automated)
-    ├── Experiment Success Rate: > 80% (AI-guided)
-    ├── Research to Production: < 1 month (Streamlined)
-    └── AI Feature Integration: > 95% coverage
-```
-
-## 📚 Comprehensive References
-
-### **Enterprise ML Documentation**
-
-**ML Framework Resources**:
-- **TensorFlow Documentation**: https://www.tensorflow.org/docs
-- **PyTorch Documentation**: https://pytorch.org/docs/
-- **Scikit-learn Documentation**: https://scikit-learn.org/stable/
-- **Keras Documentation**: https://keras.io/
-- **XGBoost Documentation**: https://xgboost.readthedocs.io/
-
-**MLOps and Automation**:
-- **Kubeflow Documentation**: https://www.kubeflow.org/docs/
-- **MLflow Documentation**: https://mlflow.org/docs/latest/index.html
-- **DVC (Data Version Control)**: https://dvc.org/doc
-- **BentoML Documentation**: https://docs.bentoml.com/
-
-**Research and Best Practices**:
-- **Papers With Code**: https://paperswithcode.com/
-- **arXiv Machine Learning**: https://arxiv.org/list/cs.LG/recent
-- **Google AI Blog**: https://ai.googleblog.com/
-- **OpenAI Research**: https://openai.com/research/
-
-## 📝 Version 4.0.0 Enterprise Changelog
-
-### **Major Enhancements**
-
-**🤖 AI-Powered Features**:
-- Added comprehensive AutoML framework with neural architecture search
-- Integrated intelligent hyperparameter optimization and model selection
-- Implemented AI-powered feature engineering and drift detection
-- Added automated MLOps pipeline orchestration with quality gates
-- Included real-time model monitoring with predictive maintenance
-
-**🧠 Advanced Architecture**:
-- Enhanced deep learning architectures with transfer learning optimization
-- Added foundation model integration and fine-tuning capabilities
-- Implemented edge AI and TinyML optimization for deployment
-- Added quantum-resistant ML patterns for future-readiness
-- Enhanced explainable AI with comprehensive interpretability analysis
-
-**📊 Operations Excellence**:
-- AI-powered MLOps automation with continuous integration and deployment
-- Intelligent resource optimization and auto-scaling for ML workloads
-- Advanced monitoring with drift detection and performance prediction
-- Automated compliance validation and governance integration
-- Smart cost optimization and resource right-sizing
-
-**🔧 Developer Experience**:
-- AI-assisted model development and optimization
-- Intelligent debugging and error analysis for ML systems
-- Automated documentation generation and model versioning
-- Real-time collaboration with AI-powered recommendations
-- Comprehensive visualization and reporting capabilities
-
-## 🤝 Works Seamlessly With
-
-- **moai-domain-data-science**: Data analysis and scientific computing
-- **moai-domain-backend**: Backend ML service integration
-- **moai-domain-frontend**: ML-powered frontend features
-- **moai-domain-database**: ML data storage and retrieval optimization
-- **moai-domain-devops**: ML infrastructure and deployment automation
-- **moai-domain-security**: ML security and privacy protection
-- **moai-domain-monitoring**: ML system monitoring and observability
+1. **Data Preprocessing**: Use ColumnTransformer for consistent preprocessing
+2. **Hyperparameter Tuning**: Use RandomizedSearchCV for efficient optimization
+3. **Model Selection**: Consider ensemble methods for better performance
+4. **Experiment Tracking**: Use MLflow for reproducible experiments
+5. **Monitoring**: Implement drift detection and performance monitoring
+6. **Deployment**: Use FastAPI for scalable model serving
+7. **AutoML**: Leverage AutoML for automated model selection
+8. **MLOps**: Implement CI/CD pipelines for model deployment
 
 ---
 
-**Version**: 4.0.0 Enterprise  
-**Last Updated**: 2025-11-11  
-**Enterprise Ready**: ✅ Production-Grade with AI Integration  
-**AI Features**: 🤖 AutoML & MLOps Automation  
-**Performance**: 📊 Model Accuracy > 95% with AI Optimization  
-**Innovation**: 🚀 Foundation Models & Quantum ML Ready
+**Enterprise Machine Learning** - Build production-ready ML systems with comprehensive monitoring, automated experimentation, and scalable deployment infrastructure.

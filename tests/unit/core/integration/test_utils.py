@@ -2,17 +2,15 @@
 Test integration testing utilities.
 """
 
-import pytest
 import tempfile
-import shutil
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from moai_adk.core.integration.utils import (
     ComponentDiscovery, TestResultAnalyzer, TestEnvironment
 )
 from moai_adk.core.integration.models import (
-    TestComponent, TestSuite, IntegrationTestResult, TestStatus
+    TestComponent, IntegrationTestResult
 )
 
 

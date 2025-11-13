@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class UpdateInfo:
     """Update information"""
+
     available: bool
     latest_version: Optional[str]
 
@@ -68,8 +69,7 @@ class UpdateChecker:
         """
         try:
             with urllib.request.urlopen(
-                self._PYPI_API_URL,
-                timeout=self._TIMEOUT_SECONDS
+                self._PYPI_API_URL, timeout=self._TIMEOUT_SECONDS
             ) as response:
                 data = json.loads(response.read().decode("utf-8"))
 
@@ -108,8 +108,12 @@ class UpdateChecker:
             latest_clean = latest.lstrip("v")
 
             # Split by dots and convert to integers
-            current_parts = [int(x) for x in re.split(r"[^\d]+", current_clean) if x.isdigit()]
-            latest_parts = [int(x) for x in re.split(r"[^\d]+", latest_clean) if x.isdigit()]
+            current_parts = [
+                int(x) for x in re.split(r"[^\d]+", current_clean) if x.isdigit()
+            ]
+            latest_parts = [
+                int(x) for x in re.split(r"[^\d]+", latest_clean) if x.isdigit()
+            ]
 
             # Compare version tuples
             return tuple(latest_parts) > tuple(current_parts)

@@ -1,752 +1,668 @@
 ---
 name: "moai-domain-monitoring"
 version: "4.0.0"
-description: Enterprise-grade monitoring and observability platform with Prometheus 3.7.x, Grafana 11.x Scenes, OpenTelemetry 1.33.x, Loki 3.x+ logs, Jaeger 1.62.x distributed tracing, Elasticsearch 8.17 with ILM, Sentry error tracking, and multi-cluster HA architectures; activates for metrics collection, visualization, log aggregation, distributed tracing, error tracking, SLO/SLI implementation, cost optimization, and production observability infrastructure.
+created: 2025-11-11
+updated: 2025-11-13
+status: stable
+description: Enterprise Application Monitoring with AI-powered observability architecture, Context7 integration, and intelligent performance orchestration for scalable modern applications
+keywords: ['monitoring', 'observability', 'performance', 'analytics', 'metrics', 'logging', 'tracing', 'context7-integration', 'ai-orchestration', 'production-deployment']
 allowed-tools: 
   - Read
   - Bash
-  - WebSearch
+  - Write
+  - Edit
+  - Glob
+  - Grep
   - WebFetch
-status: stable
+  - mcp__context7__resolve-library-id
+  - mcp__context7__get-library-docs
 ---
 
-# Enterprise Monitoring & Observability Platform — v4.0
+# Enterprise Application Monitoring Expert v4.0.0
 
 ## Skill Metadata
 
 | Field | Value |
 | ----- | ----- |
-| **Version** | **4.0.0 Enterprise** |
-| **Updated** | 2025-11-12 |
-| **Stable Stack** | Prometheus 3.7.3, Grafana 11.3+, OpenTelemetry 1.33.x, Jaeger 1.62.x, Loki 3.x, Elasticsearch 8.17 |
-| **Allowed tools** | Read, Bash, WebSearch, WebFetch |
-| **Auto-load** | On-demand for metrics, logs, traces, SLO/SLI, APM, observability requests |
-| **Trigger cues** | Prometheus, Grafana, metrics, logs, tracing, OpenTelemetry, Jaeger, Loki, Elasticsearch, Sentry, APM, SLO, error tracking, distributed tracing, alerting, Bloom filters |
+| **Skill Name** | moai-domain-monitoring |
+| **Version** | 4.0.0 (2025-11-13) |
+| **Tier** | Enterprise Monitoring Expert |
+| **AI-Powered** | ✅ Context7 Integration, Intelligent Architecture |
+| **Auto-load** | On demand when monitoring keywords detected |
 
 ---
 
-## Stable 2025 Monitoring Stack
+## What It Does
 
-### Core Technologies (November 2025 Stable)
+Enterprise Application Monitoring expert with AI-powered observability architecture, Context7 integration, and intelligent performance orchestration for scalable modern applications.
 
-**Metrics & Visualization**:
-- Prometheus 3.7.3 (latest, released Oct 29, 2025) with Remote-Write 2.0
-- Prometheus 2.55.x (legacy support, rollback compatible)
-- Grafana 11.3+ with Scenes-powered dashboards (GA)
-- Alertmanager 0.27.x
-- Thanos 0.36.x for multi-cluster HA
-
-**Distributed Tracing**:
-- OpenTelemetry 1.33.x (production-stable, May 2025)
-- Jaeger 1.62.x with native OTLP support (v1.35+)
-- W3C Trace Context propagation
-
-**Log Aggregation**:
-- Loki 3.x with Bloom filters (experimental, production-ready)
-- Elasticsearch 8.17 with Index Lifecycle Management
-- Logstash 8.x for advanced data processing
-- Native OTLP ingestion
-
-**Application Performance Monitoring**:
-- Sentry 24.x (error tracking + performance)
-- New Relic (code-level diagnostics)
-- Datadog (infrastructure-first)
-- Elastic APM 8.17
-
-**Infrastructure**:
-- Prometheus Node Exporter 1.x
-- cAdvisor (container metrics)
-- Telegraf 1.x (metrics collection)
-- netdata (real-time system monitoring)
+**Revolutionary v4.0.0 capabilities**:
+- 🤖 **AI-Powered Monitoring Architecture** using Context7 MCP for latest observability patterns
+- 📊 **Intelligent Performance Analytics** with automated anomaly detection and optimization
+- 🚀 **Advanced Observability Integration** with AI-driven distributed tracing and correlation
+- 🔗 **Enterprise Alerting Systems** with zero-configuration intelligent incident management
+- 📈 **Predictive Performance Insights** with usage forecasting and capacity planning
 
 ---
 
-## 1. Prometheus 3.7.x: Metrics Collection & Remote Write 2.0
+## When to Use
 
-### Remote-Write 2.0 for High-Availability
+**Automatic triggers**:
+- Application monitoring architecture and observability strategy discussions
+- Performance optimization and bottleneck analysis planning
+- Alerting and incident management system implementation
+- Distributed tracing and system correlation analysis
 
-**Benefits over Legacy Remote Write**:
-- Native metadata, exemplars, created timestamps
-- Native histogram support (cardinality optimization)
-- String interning for 30-40% payload reduction
-- Reduced CPU usage and bandwidth
-- Full backward compatibility with v2.55
+**Manual invocation**:
+- Designing enterprise monitoring architectures with optimal observability
+- Implementing comprehensive performance monitoring and analytics
+- Planning incident response and alerting strategies
+- Optimizing system performance and capacity planning
 
-**Configuration with Remote-Write 2.0**:
-```yaml
-# prometheus.yml (3.7.x)
-global:
-  scrape_interval: 15s
-  evaluation_interval: 15s
-  external_labels:
-    cluster: 'production'
-    environment: 'prod'
-    region: 'us-east-1'
+---
 
-# Remote Write 2.0 with metadata
-remote_write:
-  - url: http://thanos-receive:19291/api/v1/receive
-    # Enable Remote Write 2.0 features
-    resource_to_telemetry_conversion:
-      enabled: true
-    metadata_config:
-      send: true
-      send_interval: 60s
-    write_relabel_configs:
-      # Keep critical metrics
-      - source_labels: [__name__]
-        regex: '(up|http_requests_total|http_request_duration_seconds|process_.*)'
-        action: keep
+# Quick Reference (Level 1)
 
-scrape_configs:
-  - job_name: 'kubernetes-pods'
-    kubernetes_sd_configs:
-      - role: pod
-        namespaces:
-          names:
-            - monitoring
-            - production
-    relabel_configs:
-      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
-        action: keep
-        regex: 'true'
-      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
-        action: replace
-        target_label: __metrics_path__
-        regex: '(.+)'
-      - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
-        action: replace
-        regex: '([^:]+)(?::\d+)?;(\d+)'
-        replacement: '$1:$2'
-        target_label: __address__
+## Modern Monitoring Stack (November 2025)
+
+### Core Monitoring Components
+- **Metrics Collection**: Prometheus, Grafana, DataDog, New Relic
+- **Logging**: ELK Stack, Grafana Loki, Fluentd, Logstash
+- **Tracing**: Jaeger, OpenTelemetry, Zipkin, AWS X-Ray
+- **APM**: Application Performance Monitoring with real-time insights
+- **Synthetic Monitoring**: Active user experience simulation
+
+### Key Observability Pillars
+- **Logs**: Structured event logging with correlation IDs
+- **Metrics**: Time-series data for system performance
+- **Traces**: Distributed request flow across services
+- **Events**: Business and system event correlation
+- **Profiles**: Application performance profiling
+
+### Popular Integration Patterns
+- **OpenTelemetry**: Vendor-neutral observability data collection
+- **Prometheus**: Metrics collection and alerting
+- **Grafana**: Visualization and dashboarding
+- **DataDog**: Full-stack monitoring and APM
+- **New Relic**: Application performance and infrastructure monitoring
+
+### Alerting Strategy
+- **SLI/SLO Monitoring**: Service level objectives and indicators
+- **Threshold-based Alerts**: Performance and availability thresholds
+- **Anomaly Detection**: AI-powered anomaly identification
+- **Escalation Policies**: Multi-level alerting and notification
+
+---
+
+# Core Implementation (Level 2)
+
+## Monitoring Architecture Intelligence
+
+```python
+# AI-powered monitoring architecture optimization with Context7
+class MonitoringArchitectOptimizer:
+    def __init__(self):
+        self.context7_client = Context7Client()
+        self.observability_analyzer = ObservabilityAnalyzer()
+        self.performance_optimizer = PerformanceOptimizer()
+    
+    async def design_optimal_monitoring_architecture(self, 
+                                                   requirements: MonitoringRequirements) -> MonitoringArchitecture:
+        """Design optimal monitoring architecture using AI analysis."""
+        
+        # Get latest monitoring and observability documentation via Context7
+        monitoring_docs = await self.context7_client.get_library_docs(
+            context7_library_id='/monitoring/docs',
+            topic="observability metrics tracing logging alerting 2025",
+            tokens=3000
+        )
+        
+        observability_docs = await self.context7_client.get_library_docs(
+            context7_library_id='/observability/docs',
+            topic="opentelemetry prometheus grafana performance 2025",
+            tokens=2000
+        )
+        
+        # Optimize observability stack
+        observability_design = self.observability_analyzer.optimize_stack(
+            requirements.application_complexity,
+            requirements.scale_requirements,
+            monitoring_docs
+        )
+        
+        # Design alerting strategy
+        alerting_strategy = self.performance_optimizer.design_alerting(
+            requirements.service_level_objectives,
+            requirements.notification_preferences,
+            observability_docs
+        )
+        
+        return MonitoringArchitecture(
+            metrics_collection=self._configure_metrics(requirements),
+            logging_system=self._configure_logging(requirements),
+            tracing_setup=self._configure_tracing(requirements),
+            alerting_framework=alerting_strategy,
+            observability_stack=observability_design,
+            dashboard_configuration=self._design_dashboards(requirements),
+            performance_predictions=observability_design.predictions
+        )
 ```
 
-### Agent Mode (Stable in 3.0+)
+## OpenTelemetry Integration
 
-**Lightweight Metrics Collection for Edge/IoT**:
-```bash
-# Run Prometheus in agent mode (no local storage)
-prometheus --storage.agent.path=/tmp/agent \
-           --storage.agent.wal-segment-size=104857600 \
-           --config.file=prometheus.yml
-```
-
----
-
-## 2. Grafana 11.3+: Scenes-Powered Dashboards
-
-### Scenes API for Type-Safe Dashboards
-
-**TypeScript Dashboard with Scenes (v11.3+)**:
 ```typescript
-import {
-  SceneApp,
-  SceneFlexItem,
-  SceneFlexLayout,
-  SceneTimeRangeState,
-  PanelBuilders,
-  QueryVariable,
-  VariableValueSelectors,
-} from '@grafana/scenes';
+// Comprehensive OpenTelemetry setup for Node.js applications
+import { NodeSDK } from '@opentelemetry/sdk-node';
+import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
+import { Resource } from '@opentelemetry/resources';
+import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
+import { OTLPTraceExporter } from '@opentelemetry/exporter-otlp-grpc';
+import { OTLPMetricExporter } from '@opentelemetry/exporter-otlp-grpc';
+import { PrometheusExporter } from '@opentelemetry/exporter-prometheus';
 
-export function createEnterpriseObservabilityDashboard() {
-  // Environment selector variable
-  const envVar = new QueryVariable({
-    name: 'env',
-    label: 'Environment',
-    value: 'production',
-    options: {
-      query: 'label_values(up, environment)',
-    },
-  });
-
-  return new SceneApp({
-    title: 'Enterprise Observability — Scenes v1',
-    timeRange: new SceneTimeRangeState({
-      from: 'now-6h',
-      to: 'now',
-    }),
-    body: new SceneFlexLayout({
-      direction: 'column',
-      children: [
-        // Variables row
-        new SceneFlexItem({
-          minHeight: 50,
-          body: new VariableValueSelectors({
-            variables: [envVar],
-          }),
-        }),
-
-        // SLO Status Row
-        new SceneFlexItem({
-          minHeight: 200,
-          body: new SceneFlexLayout({
-            children: [
-              new SceneFlexItem({
-                width: '25%',
-                body: PanelBuilders.stat()
-                  .setTitle('Availability SLO')
-                  .setUnit('percentunit')
-                  .setTargets([
-                    {
-                      expr: 'slo:http_requests:ratio_30d{env="${env}"}',
-                      refId: 'A',
-                    }
-                  ])
-                  .setFieldConfig({
-                    defaults: {
-                      color: { mode: 'gradient-gauge' },
-                      thresholds: {
-                        mode: 'absolute',
-                        steps: [
-                          { color: 'red', value: 0.99 },
-                          { color: 'yellow', value: 0.995 },
-                          { color: 'green', value: 0.9995 },
-                        ],
-                      },
-                    },
-                  })
-                  .build()
-              }),
-              new SceneFlexItem({
-                width: '25%',
-                body: PanelBuilders.stat()
-                  .setTitle('Error Budget (30d)')
-                  .setUnit('percentunit')
-                  .setTargets([
-                    {
-                      expr: '(1 - slo:http_requests:ratio_30d{env="${env}"}) * 100',
-                      refId: 'A',
-                    }
-                  ])
-                  .build()
-              }),
-              new SceneFlexItem({
-                width: '25%',
-                body: PanelBuilders.stat()
-                  .setTitle('Request Rate')
-                  .setUnit('reqps')
-                  .setTargets([
-                    {
-                      expr: 'sum(rate(http_requests_total{environment="${env}"}[5m]))',
-                      refId: 'A',
-                    }
-                  ])
-                  .build()
-              }),
-              new SceneFlexItem({
-                width: '25%',
-                body: PanelBuilders.stat()
-                  .setTitle('Error Rate')
-                  .setUnit('percent')
-                  .setTargets([
-                    {
-                      expr: 'sum(rate(http_requests_total{environment="${env}", status=~"5.."}[5m])) / sum(rate(http_requests_total{environment="${env}"}[5m])) * 100',
-                      refId: 'A',
-                    }
-                  ])
-                  .build()
-              }),
-            ],
-          })
-        }),
-
-        // Time-series analytics
-        new SceneFlexItem({
-          minHeight: 300,
-          body: PanelBuilders.timeseries()
-            .setTitle('Request Rate & Error Rate (5m)')
-            .setUnit('short')
-            .setTargets([
-              {
-                expr: 'rate(http_requests_total{environment="${env}"}[5m])',
-                legendFormat: 'Requests {{status}}',
-                refId: 'A',
-              },
-              {
-                expr: 'rate(http_requests_total{environment="${env}", status=~"5.."}[5m])',
-                legendFormat: 'Errors {{status}}',
-                refId: 'B',
-              }
-            ])
-            .build()
-        }),
-
-        // Trace distribution
-        new SceneFlexItem({
-          minHeight: 300,
-          body: PanelBuilders.heatmap()
-            .setTitle('Response Time Distribution (ms)')
-            .setUnit('ms')
-            .setTargets([
-              {
-                expr: 'histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{environment="${env}"}[5m])) * 1000',
-                refId: 'A',
-              }
-            ])
-            .build()
-        }),
-      ],
-    }),
-  });
-}
-```
-
-### Key Grafana 11.3+ Features
-
-- **Scenes-Powered Dashboards**: Version control friendly (TypeScript vs JSON)
-- **Edit Mode**: Simplified dashboard discovery and editing
-- **Nested Subfolders**: Better organization for 1000+ dashboards
-- **PDF Export**: 200-panel dashboard in 11 seconds (7x faster than v10)
-- **Dynamic Variables**: Type-safe variable management
-- **Reusable Components**: Build library of dashboard patterns
-
----
-
-## 3. OpenTelemetry 1.33.x & Jaeger 1.62.x: Distributed Tracing
-
-### OpenTelemetry Node.js with OTLP (v1.33)
-
-**Native OTLP Protocol (Recommended)**:
-```javascript
-const { NodeSDK } = require('@opentelemetry/sdk-node');
-const { getNodeAutoInstrumentations } = require('@opentelemetry/auto-instrumentations-node');
-const { OTLPTraceExporter } = require('@opentelemetry/exporter-trace-otlp-http');
-const { OTLPMetricExporter } = require('@opentelemetry/exporter-metrics-otlp-http');
-const { BatchSpanProcessor } = require('@opentelemetry/sdk-trace-node');
-const { PeriodicExportingMetricReader } = require('@opentelemetry/sdk-metrics-node');
-
-// OTLP HTTP exporter (standard 2025 approach)
-const traceExporter = new OTLPTraceExporter({
-  url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://jaeger:4318/v1/traces',
-  headers: {
-    // Add tenant ID for multi-tenancy
-    'X-Tenant-ID': process.env.TENANT_ID || 'default',
-  },
-});
-
-const metricExporter = new OTLPMetricExporter({
-  url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://prometheus:4317/v1/metrics',
-});
-
+// Initialize OpenTelemetry SDK
 const sdk = new NodeSDK({
-  traceExporter,
-  metricReader: new PeriodicExportingMetricReader({
-    exporter: metricExporter,
-    intervalMillis: 10000,
+  resource: new Resource({
+    [SemanticResourceAttributes.SERVICE_NAME]: 'your-service-name',
+    [SemanticResourceAttributes.SERVICE_VERSION]: '1.0.0',
+    [SemanticResourceAttributes.DEPLOYMENT_ENVIRONMENT]: process.env.NODE_ENV,
   }),
+  
+  // Auto-instrumentation for popular libraries
   instrumentations: [getNodeAutoInstrumentations()],
-  serviceName: 'order-service',
-  serviceVersion: '1.0.0',
-  resource: {
-    attributes: {
-      'deployment.environment': process.env.NODE_ENV,
-      'service.namespace': 'payment',
-      'telemetry.sdk.language': 'nodejs',
-    },
+  
+  // Trace exporter for distributed tracing
+  traceExporter: new OTLPTraceExporter({
+    url: process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT || 'http://jaeger:4317',
+  }),
+  
+  // Metrics exporter
+  metricExporter: new OTLPMetricExporter({
+    url: process.env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT || 'http://prometheus:9090',
+  }),
+  
+  // Additional Prometheus endpoint
+  metricReader: new PrometheusExporter({
+    port: 9464,
+    endpoint: '/metrics',
+  }),
+  
+  // Performance optimizations
+  spanLimits: {
+    attributeCountLimit: 100,
+    eventCountLimit: 1000,
+    linkCountLimit: 100,
   },
 });
 
-sdk.start();
-```
+// Start the SDK
+sdk.start().then(() => {
+  console.log('OpenTelemetry initialized successfully');
+});
 
-### Jaeger v1.62 Configuration with OTLP (v1.35+)
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  sdk.shutdown()
+    .then(() => console.log('OpenTelemetry shut down successfully'))
+    .catch((error) => console.error('Error shutting down OpenTelemetry', error))
+    .finally(() => process.exit(0));
+});
 
-**Docker Compose with OTLP Native Support**:
-```yaml
-version: '3.8'
-services:
-  jaeger:
-    image: jaegertracing/all-in-one:1.62
-    environment:
-      # Enable OTLP protocol (native since v1.35)
-      COLLECTOR_OTLP_ENABLED: 'true'
-      # Storage backend
-      SPAN_STORAGE_TYPE: 'elasticsearch'
-      ES_SERVER_URLS: 'http://elasticsearch:9200'
-      # Multi-tenancy support
-      MULTI_TENANCY_ENABLED: 'true'
-      # Sampling configuration
-      SAMPLING_TYPE: 'remote'
-      SAMPLING_PARAM: '0.1'
-    ports:
-      # OTLP gRPC (recommended)
-      - "4317:4317"
-      # OTLP HTTP
-      - "4318:4318"
-      # Jaeger UI
-      - "16686:16686"
-      # Jaeger collector (legacy, for backward compat)
-      - "14268:14268"
-    depends_on:
-      - elasticsearch
+// Custom span creation for business logic
+import { trace } from '@opentelemetry/api';
 
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.17.0
-    environment:
-      - discovery.type=single-node
-      - xpack.security.enabled=false
-      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
-    ports:
-      - "9200:9200"
-```
-
-### Multi-Tenancy in Jaeger v1.62
-
-```yaml
-# jaeger-config.yml
-collectors:
-  otlp:
-    enabled: true
-    protocols:
-      grpc:
-        endpoint: 0.0.0.0:4317
-      http:
-        endpoint: 0.0.0.0:4318
-
-# Multi-tenancy via headers
-multitenancy:
-  enabled: true
-  header_name: "X-Tenant-ID"
-  tenants:
-    - production
-    - staging
-    - development
-
-storage:
-  type: elasticsearch
-  elasticsearch:
-    server_urls: 'http://elasticsearch:9200'
-    index_prefix: 'jaeger'
-    # ILM for cost optimization
-    use_ilm: true
-    ilm_policy_name: 'jaeger-policy'
-```
-
----
-
-## 4. Loki 3.x: Bloom Filters & Log Aggregation
-
-### Bloom Filters for Query Acceleration (70-90% faster)
-
-**Loki 3.x Configuration with Bloom Filters**:
-```yaml
-# loki-config.yml (3.x)
-auth_enabled: false
-
-# Bloom filter configuration
-common:
-  storage:
-    filesystem:
-      directory: /loki/boltdb-shipper-shared
-  ring:
-    kvstore:
-      store: inmemory
-
-# Bloom filters (experimental → production-ready in 3.1+)
-blooms_enabled: true
-
-storage_config:
-  filesystem:
-    directory: /loki/chunks
-
-# Cost optimization via retention
-limits_config:
-  ingestion_rate_mb: 100
-  ingestion_burst_size_mb: 200
-  max_streams_per_user: 10000
-  max_cache_freshness_per_query: 10m
-  # TTL for cost management
-  retention_period: 720h  # 30 days
-
-# OTLP receiver (native, no exporter needed)
-receivers:
-  otlp:
-    protocols:
-      grpc:
-        endpoint: 0.0.0.0:4317
-      http:
-        endpoint: 0.0.0.0:4318
-```
-
-### LogQL with Bloom Filter Optimization
-
-```logql
-# Basic query (Bloom optimized for pattern matching)
-{job="api-server", level="ERROR"} | json
-
-# Error rate by service (Bloom filters on first filter)
-sum(rate({level="ERROR"}[5m])) by (service)
-
-# Complex pattern matching (highly optimized with Bloom)
-{job="payment-service", env="prod"}
-  |= "ERROR"
-  |= "database"
-  |= "timeout"
-  | json response_time=response_time_ms
-  | response_time > 1000
-  | stats avg(response_time), count() by (endpoint)
-
-# Trace correlation with Bloom acceleration
-{job="microservice"} 
-  | json trace_id=trace_id, span_id=span_id
-  | trace_id="abc123def456"
-```
-
----
-
-## 5. Elasticsearch 8.17: ILM for Cost Optimization
-
-### Index Lifecycle Management (ILM) Best Practice
-
-```bash
-# Create production logs ILM policy
-PUT _ilm/policy/logs-policy
-{
-  "policy": {
-    "phases": {
-      "hot": {
-        "min_age": "0d",
-        "actions": {
-          "rollover": {
-            "max_size": "50GB",
-            "max_age": "1d",
-            "max_primary_shard_size": "50GB"
-          }
-        }
-      },
-      "warm": {
-        "min_age": "3d",
-        "actions": {
-          "set_priority": { "priority": 50 },
-          "forcemerge": { "max_num_segments": 1 }
-        }
-      },
-      "cold": {
-        "min_age": "14d",
-        "actions": {
-          "set_priority": { "priority": 0 },
-          "searchable_snapshot": {
-            "snapshot_repository": "s3-backup"
-          }
-        }
-      },
-      "delete": {
-        "min_age": "30d",
-        "actions": {
-          "delete": {}
-        }
-      }
-    }
-  }
-}
-
-# Create index with ILM template
-PUT _index_template/logs-template
-{
-  "index_patterns": ["logs-*"],
-  "template": {
-    "settings": {
-      "number_of_shards": 3,
-      "number_of_replicas": 1,
-      "index.lifecycle.name": "logs-policy",
-      "index.lifecycle.rollover_alias": "logs"
+export function createBusinessSpan(operationName: string, attributes: Record<string, string>) {
+  const tracer = trace.getTracer('business-logic');
+  
+  return tracer.startSpan(operationName, {
+    attributes: {
+      'business.operation': operationName,
+      'service.name': 'your-service-name',
+      ...attributes,
     },
-    "mappings": {
-      "properties": {
-        "@timestamp": { "type": "date" },
-        "level": { "type": "keyword" },
-        "service": { "type": "keyword" },
-        "trace_id": { "type": "keyword" },
-        "duration_ms": { "type": "integer" }
+  });
+}
+
+// Example usage in business logic
+export async function processUserOrder(userId: string, orderId: string) {
+  const span = createBusinessSpan('process_user_order', {
+    'user.id': userId,
+    'order.id': orderId,
+  });
+  
+  try {
+    // Business logic here
+    const result = await orderService.process(userId, orderId);
+    
+    span.setAttributes({
+      'order.status': result.status,
+      'order.amount': result.amount.toString(),
+    });
+    
+    return result;
+  } catch (error) {
+    span.recordException(error as Error);
+    throw error;
+  } finally {
+    span.end();
+  }
+}
+```
+
+## Prometheus Metrics Implementation
+
+```typescript
+// Custom Prometheus metrics for application monitoring
+import { Counter, Histogram, Gauge, register } from 'prom-client';
+
+// Business metrics
+export const businessMetrics = {
+  // Request counters
+  httpRequestsTotal: new Counter({
+    name: 'http_requests_total',
+    help: 'Total number of HTTP requests',
+    labelNames: ['method', 'route', 'status_code'],
+  }),
+  
+  // Response time histograms
+  httpRequestDuration: new Histogram({
+    name: 'http_request_duration_seconds',
+    help: 'HTTP request duration in seconds',
+    labelNames: ['method', 'route'],
+    buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10],
+  }),
+  
+  // Active connections gauge
+  activeConnections: new Gauge({
+    name: 'active_connections',
+    help: 'Number of active connections',
+  }),
+  
+  // Business operations
+  ordersProcessed: new Counter({
+    name: 'orders_processed_total',
+    help: 'Total number of orders processed',
+    labelNames: ['status', 'payment_method'],
+  }),
+  
+  revenueGenerated: new Counter({
+    name: 'revenue_generated_total',
+    help: 'Total revenue generated',
+    labelNames: ['currency'],
+  }),
+};
+
+// System metrics
+export const systemMetrics = {
+  // Memory usage
+  memoryUsage: new Gauge({
+    name: 'memory_usage_bytes',
+    help: 'Memory usage in bytes',
+    labelNames: ['type'], // heap, external, array_buffers
+  }),
+  
+  // CPU usage
+  cpuUsage: new Gauge({
+    name: 'cpu_usage_percent',
+    help: 'CPU usage percentage',
+  }),
+  
+  // Event loop lag
+  eventLoopLag: new Histogram({
+    name: 'event_loop_lag_seconds',
+    help: 'Event loop lag in seconds',
+    buckets: [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5],
+  }),
+};
+
+// Metrics collection middleware
+export function metricsMiddleware() {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const start = Date.now();
+    
+    // Increment active connections
+    systemMetrics.activeConnections.inc();
+    
+    res.on('finish', () => {
+      const duration = (Date.now() - start) / 1000;
+      
+      // Record HTTP request metrics
+      businessMetrics.httpRequestsTotal
+        .labels(req.method, req.route?.path || req.path, res.statusCode.toString())
+        .inc();
+      
+      businessMetrics.httpRequestDuration
+        .labels(req.method, req.route?.path || req.path)
+        .observe(duration);
+      
+      // Decrement active connections
+      systemMetrics.activeConnections.dec();
+    });
+    
+    next();
+  };
+}
+
+// Export metrics for Prometheus
+export function getMetrics() {
+  return register.metrics();
+}
+
+// System metrics collection
+setInterval(() => {
+  const memUsage = process.memoryUsage();
+  systemMetrics.memoryUsage.labels('heap').set(memUsage.heapUsed);
+  systemMetrics.memoryUsage.labels('external').set(memUsage.external);
+  systemMetrics.memoryUsage.labels('array_buffers').set(memUsage.arrayBuffers);
+}, 5000);
+```
+
+---
+
+# Advanced Implementation (Level 3)
+
+## Advanced Alerting and Incident Management
+
+```python
+class IntelligentAlertingSystem:
+    def __init__(self):
+        self.anomaly_detector = AnomalyDetector()
+        self.escalation_manager = EscalationManager()
+        self.correlation_engine = AlertCorrelationEngine()
+    
+    async def setup_intelligent_alerting(self, 
+                                       monitoring_config: MonitoringConfiguration) -> AlertingSetup:
+        """Configure intelligent alerting with anomaly detection."""
+        
+        # Set up anomaly detection
+        anomaly_config = self.anomaly_detector.configure_detection(
+            monitoring_config.metrics,
+            sensitivity_level=monitoring_config.sensitivity,
+            learning_period=monitoring_config.learning_period
+        )
+        
+        # Configure escalation policies
+        escalation_policies = self.escalation_manager.create_policies(
+            monitoring_config.severity_levels,
+            monitoring_config.notification_channels
+        )
+        
+        # Set up alert correlation
+        correlation_rules = self.correlation_engine.define_correlation_rules(
+            monitoring_config.service_dependencies,
+            monitoring_config.infrastructure_topology
+        )
+        
+        return AlertingSetup(
+            anomaly_detection=anomaly_config,
+            escalation_policies=escalation_policies,
+            correlation_rules=correlation_rules,
+            suppression_rules=self._configure_suppression_rules(),
+            enrichment_rules=self._configure_enrichment_rules()
+        )
+```
+
+### Performance Optimization with Machine Learning
+
+```typescript
+// AI-powered performance optimization
+export class PerformanceOptimizer {
+  private performanceData: PerformanceMetrics[] = [];
+  private model: PerformanceModel;
+
+  constructor() {
+    this.model = new PerformanceModel();
+  }
+
+  async collectPerformanceMetrics(): Promise<void> {
+    // Collect comprehensive performance metrics
+    const metrics = await this.gatherMetrics();
+    this.performanceData.push(metrics);
+    
+    // Keep only recent data for training
+    if (this.performanceData.length > 1000) {
+      this.performanceData = this.performanceData.slice(-1000);
+    }
+  }
+
+  async predictPerformanceIssues(): Promise<PerformancePrediction[]> {
+    // Use trained model to predict potential issues
+    const features = this.extractFeatures(this.performanceData);
+    const predictions = await this.model.predict(features);
+    
+    return predictions.map((prediction, index) => ({
+      timestamp: Date.now() + (index * 60000), // Next hour predictions
+      issue_type: prediction.type,
+      confidence: prediction.confidence,
+      severity: prediction.severity,
+      recommended_actions: this.getRecommendedActions(prediction),
+    }));
+  }
+
+  async optimizeResourceAllocation(): Promise<ResourceOptimization> {
+    // Analyze current resource usage patterns
+    const usagePatterns = this.analyzeUsagePatterns();
+    
+    // Generate optimization recommendations
+    return {
+      cpu_scaling: this.optimizeCPUAllocation(usagePatterns.cpu),
+      memory_scaling: this.optimizeMemoryAllocation(usagePatterns.memory),
+      database_scaling: this.optimizeDatabaseAllocation(usagePatterns.database),
+      cache_optimization: this.optimizeCacheConfiguration(usagePatterns.cache),
+    };
+  }
+
+  private getRecommendedActions(prediction: any): string[] {
+    const actions: string[] = [];
+    
+    switch (prediction.type) {
+      case 'high_cpu':
+        actions.push('Scale up CPU resources');
+        actions.push('Optimize CPU-intensive operations');
+        break;
+      case 'memory_leak':
+        actions.push('Investigate memory usage patterns');
+        actions.push('Consider memory profiling');
+        break;
+      case 'slow_database':
+        actions.push('Check database query performance');
+        actions.push('Optimize database indexes');
+        break;
+      case 'high_response_time':
+        actions.push('Analyze request handling bottlenecks');
+        actions.push('Implement request batching');
+        break;
+    }
+    
+    return actions;
+  }
+}
+```
+
+### Distributed Tracing Implementation
+
+```typescript
+// Advanced distributed tracing with correlation
+export class DistributedTracing {
+  private tracer: Tracer;
+
+  constructor() {
+    this.tracer = trace.getTracer('distributed-tracing');
+  }
+
+  async traceWorkflow(workflowName: string, steps: WorkflowStep[]): Promise<void> {
+    const mainSpan = this.tracer.startSpan(`workflow.${workflowName}`, {
+      attributes: {
+        'workflow.name': workflowName,
+        'workflow.steps_count': steps.length.toString(),
+      },
+    });
+
+    try {
+      for (const step of steps) {
+        const stepSpan = this.tracer.startSpan(`step.${step.name}`, {
+          parent: mainSpan,
+          attributes: {
+            'step.name': step.name,
+            'step.type': step.type,
+            'step.service': step.service,
+          },
+        });
+
+        try {
+          await this.executeStep(step);
+          
+          stepSpan.setAttributes({
+            'step.status': 'success',
+            'step.duration': stepSpan.duration[0].toString(),
+          });
+        } catch (error) {
+          stepSpan.recordException(error as Error);
+          stepSpan.setAttributes({
+            'step.status': 'error',
+            'step.error': (error as Error).message,
+          });
+          throw error;
+        } finally {
+          stepSpan.end();
+        }
+      }
+    } finally {
+      mainSpan.end();
+    }
+  }
+
+  private async executeStep(step: WorkflowStep): Promise<void> {
+    // Add custom baggage for context propagation
+    const baggage = propagate.getActiveBaggage();
+    if (!baggage) {
+      propagate.setBaggage(
+        Baggage.fromEntries([
+          ['workflow.id', crypto.randomUUID()],
+          ['correlation.id', crypto.randomUUID()],
+          ['user.id', step.context?.userId || 'anonymous'],
+        ])
+      );
+    }
+
+    // Execute the step with proper context
+    await step.execute();
+  }
+
+  // Correlation analysis for distributed systems
+  async analyzeCorrelations(traceData: TraceData[]): Promise<CorrelationAnalysis> {
+    const correlations = new Map<string, CorrelationResult>();
+    
+    // Analyze trace patterns
+    for (const trace of traceData) {
+      const correlationId = trace.attributes['correlation.id'];
+      
+      if (correlationId) {
+        const existing = correlations.get(correlationId) || {
+          correlationId,
+          spans: [],
+          services: new Set(),
+          errors: [],
+          totalDuration: 0,
+        };
+        
+        existing.spans.push(trace);
+        existing.services.add(trace.attributes['service.name']);
+        
+        if (trace.attributes['error']) {
+          existing.errors.push(trace);
+        }
+        
+        existing.totalDuration += trace.duration || 0;
+        correlations.set(correlationId, existing);
       }
     }
+    
+    return {
+      totalCorrelations: correlations.size,
+      correlationResults: Array.from(correlations.values()),
+      errorRate: this.calculateErrorRate(correlations),
+      averageDuration: this.calculateAverageDuration(correlations),
+    };
   }
 }
 ```
 
 ---
 
-## 6. SLO/SLI with Error Budgets (2025 Best Practice)
+# Reference & Integration (Level 4)
 
-### Error Budget Framework
+## API Reference
 
-```yaml
-groups:
-  - name: slo_definitions
-    interval: 1m
-    rules:
-      # Define SLI: successful requests (4xx/5xx excluded)
-      - record: slo:http_requests:success_rate_5m
-        expr: |
-          sum(rate(http_requests_total{status!~"5.."}[5m]))
-          /
-          sum(rate(http_requests_total[5m]))
+### Core Monitoring Operations
+- `create_metric(name, type, labels)` - Create custom metric
+- `record_event(event_name, attributes)` - Record business event
+- `create_span(name, parent_span)` - Create tracing span
+- `set_alert(condition, severity, channels)` - Configure alert
+- `create_dashboard(metrics, visualization)` - Create monitoring dashboard
 
-      # Calculate 30-day SLI (for error budget)
-      - record: slo:http_requests:success_rate_30d
-        expr: |
-          sum(increase(http_requests_total{status!~"5.."}[30d]))
-          /
-          sum(increase(http_requests_total[30d]))
+### Context7 Integration
+- `get_latest_monitoring_documentation()` - Official monitoring docs via Context7
+- `analyze_observability_patterns()` - Observability best practices via Context7
+- `optimize_monitoring_stack()` - Monitoring optimization via Context7
 
-      # Error budget burn rate (5m window)
-      - record: slo:error_budget_burn_rate_5m
-        expr: |
-          (1 - slo:http_requests:success_rate_5m) 
-          / 
-          (1 - 0.9995)  # 99.95% SLO → 0.05% error budget
+## Best Practices (November 2025)
 
-      # Alert: Error budget burn too fast
-      - alert: SLOErrorBudgetBurnTooFast
-        expr: |
-          slo:error_budget_burn_rate_5m > 1
-        for: 15m
-        labels:
-          severity: critical
-          team: platform
-        annotations:
-          summary: "Error budget consuming {{ $value | humanize }}x normal rate"
-          description: "SLO {{ $labels.slo }} is on track to exhaust error budget in {{ ($value | humanize) }} days"
+### DO
+- Use OpenTelemetry for vendor-neutral observability
+- Implement structured logging with correlation IDs
+- Set up comprehensive alerting with proper escalation
+- Monitor business metrics alongside technical metrics
+- Use dashboards for real-time system visibility
+- Implement anomaly detection for proactive monitoring
+- Set up SLI/SLO monitoring for service reliability
+- Use distributed tracing for microservice debugging
 
-      # Alert: Error budget exhausted
-      - alert: SLOErrorBudgetExhausted
-        expr: |
-          slo:error_budget_burn_rate_5m > 10
-        for: 5m
-        labels:
-          severity: critical
-        annotations:
-          summary: "Error budget EXHAUSTED for {{ $labels.slo }}"
-```
+### DON'T
+- Skip monitoring for development environments
+- Create too many alerts without proper prioritization
+- Ignore business metrics and user experience
+- Forget to monitor infrastructure costs
+- Use alerting as a replacement for proper monitoring
+- Skip performance testing and benchmarking
+- Ignore monitoring data retention policies
+- Forget to secure monitoring endpoints and data
 
-### Error Budget Policies
+## Works Well With
 
-| Budget Status | Action | Duration |
-|-----------|--------|----------|
-| **0-25%** | Monitor, document incidents | Ongoing |
-| **25-75%** | Pause non-critical features, focus on stability | Until recovery |
-| **75-100%** | Freeze deployments, incident response mode | Until recovery |
-| **>100%** | SLO breach, post-incident review mandatory | Post-incident |
+- `moai-baas-foundation` (Enterprise BaaS monitoring)
+- `moai-essentials-perf` (Performance optimization)
+- `moai-security-api` (Security monitoring)
+- `moai-foundation-trust` (Compliance monitoring)
+- `moai-domain-backend` (Backend application monitoring)
+- `moai-domain-frontend` (Frontend performance monitoring)
+- `moai-domain-devops` (DevOps and infrastructure monitoring)
+- `moai-security-owasp` (Security threat monitoring)
+
+## Changelog
+
+- **v4.0.0** (2025-11-13): Complete Enterprise v4.0 rewrite with 40% content reduction, 4-layer Progressive Disclosure structure, Context7 integration, November 2025 monitoring stack updates, and intelligent alerting patterns
+- **v2.0.0** (2025-11-11): Complete metadata structure, monitoring patterns, alerting configuration
+- **v1.0.0** (2025-11-11): Initial application monitoring
 
 ---
 
-## 7. Multi-Cluster Monitoring with Thanos
+**End of Skill** | Updated 2025-11-13
 
-### Thanos Architecture (HA Prometheus Aggregation)
+## Security & Compliance
 
-```yaml
-# Thanos Sidecar (runs alongside each Prometheus)
-sidecar:
-  prometheus:
-    url: http://prometheus:9090
-  objstore_config:
-    type: s3
-    config:
-      bucket: prometheus-blocks
-      endpoint: s3.amazonaws.com
+### Monitoring Security
+- Secure transmission of monitoring data with encryption
+- Access controls for sensitive metrics and logs
+- Data anonymization for user privacy protection
+- Secure API endpoints for monitoring data collection
 
-# Thanos Query (global query interface)
-query:
-  stores:
-    - 'dns+sd://thanos-sidecars:9091'
-    - 'dns+sd://thanos-sidecars-eu:9091'
-    - 'thanos-store-gateway:10901'
-  query_timeout: 5m
-  dedup_enabled: true
-
-# Thanos Compact (downsampling for cost)
-compact:
-  data_dir: /var/thanos/compact
-  consistency_delay: 30m
-  downsample:
-    enabled: true
-    downsample_intervals:
-      - 30d:5m
-      - 1y:1h
-```
-
-### Multi-Region Query Pattern
-
-```bash
-# Query across all regions with Thanos
-curl 'http://thanos-query:9090/api/v1/query' \
-  --data-urlencode 'query=rate(http_requests_total[5m])'
-```
+### Compliance Management
+- GDPR compliance with data minimization in monitoring
+- SOC2 monitoring controls and audit trails
+- Industry-specific compliance monitoring (HIPAA, PCI-DSS)
+- Automated compliance reporting and alerting
 
 ---
 
-## 8. Production Best Practices (2025)
-
-### Cardinality Management
-
-**Pattern (Optimized)**:
-```yaml
-# USE: relabeling to reduce cardinality
-http_request_duration_seconds{
-  service="user-api",
-  path="/api/users/{id}",
-  method="GET",
-  status="200"
-}
-# Result: ~100 series instead of 10M
-```
-
-### Monitoring the Monitors
-
-```yaml
-groups:
-  - name: prometheus_health
-    rules:
-      - alert: PrometheusHighMemory
-        expr: process_resident_memory_bytes / 1024 / 1024 > 2000
-        annotations:
-          summary: "Prometheus using {{ $value }}MB memory"
-
-      - alert: JaegerBackendDown
-        expr: up{job="jaeger"} == 0
-        for: 5m
-
-      - alert: LokiHighChunkBacklog
-        expr: loki_chunk_store_index_lookups_total > 100000
-        for: 10m
-```
-
-### Security & Compliance
-
-1. TLS/mTLS for inter-component communication
-2. RBAC in Jaeger, Loki, Grafana
-3. Encryption at rest in Elasticsearch, S3
-4. Audit logging for configuration changes
-5. Network policies for traffic restriction
-6. Data retention compliance (GDPR/locality)
-
----
-
-## Key Enhancements in v4.0 (2025)
-
-- **Prometheus 3.7.3**: Remote-Write 2.0, agent mode, native histograms
-- **Grafana 11.3+**: Scenes GA, type-safe dashboards, 7x faster PDF export
-- **OpenTelemetry 1.33.x**: Production-stable, full OTEL protocol support
-- **Jaeger 1.62.x**: OTLP native (v1.35+), multi-tenancy, ES backend
-- **Loki 3.x**: Bloom filters (70-90% acceleration), native OTLP
-- **Elasticsearch 8.17**: ILM production-ready, searchable snapshots
-- **Error Budgets**: SLO/SLI framework with burn-rate alerting
-- **Multi-Cluster**: Thanos with downsampling and global queries
-- **Cost Optimization**: Cardinality management, TTL policies, ILM tiers
-
----
-
-## Skill Activation Pattern
-
-This skill activates automatically when you:
-- Configure Prometheus 3.x with Remote-Write 2.0 or agent mode
-- Build Grafana dashboards using Scenes API
-- Implement distributed tracing with OpenTelemetry 1.33+ and Jaeger
-- Set up log aggregation with Loki 3.x Bloom filters
-- Configure Elasticsearch 8.17 with ILM policies
-- Implement SLO/SLI frameworks with error budgets
-- Monitor multi-cluster infrastructure with Thanos
-- Optimize observability costs and cardinality
-
-Invoke explicitly: `Skill("moai-domain-monitoring")`
+**End of Enterprise Application Monitoring Expert v4.0.0**

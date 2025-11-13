@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CacheConfig:
     """Cache TTL configuration"""
+
     git_ttl_seconds: int = 5
     metrics_ttl_seconds: int = 10
     alfred_ttl_seconds: int = 1
@@ -30,6 +31,7 @@ class CacheConfig:
 @dataclass
 class ColorConfig:
     """Color configuration"""
+
     enabled: bool = True
     theme: str = "auto"  # auto | light | dark | high-contrast
     palette: Dict[str, str] = None
@@ -37,41 +39,43 @@ class ColorConfig:
     def __post_init__(self):
         if self.palette is None:
             self.palette = {
-                "model": "38;5;33",              # Blue
-                "output_style": "38;5;219",     # Pink/Magenta
-                "feature_branch": "38;5;226",   # Yellow
-                "develop_branch": "38;5;51",    # Cyan
-                "main_branch": "38;5;46",       # Green
-                "staged": "38;5;46",            # Green
-                "modified": "38;5;208",         # Orange
-                "untracked": "38;5;196",        # Red
-                "update_available": "38;5;208", # Orange
-                "memory_usage": "38;5;172",     # Brown/Orange
-                "duration": "38;5;240",         # Gray
-                "todo_count": "38;5;123",       # Purple
-                "separator": "38;5;250",        # Light Gray
+                "model": "38;5;33",  # Blue
+                "output_style": "38;5;219",  # Pink/Magenta
+                "feature_branch": "38;5;226",  # Yellow
+                "develop_branch": "38;5;51",  # Cyan
+                "main_branch": "38;5;46",  # Green
+                "staged": "38;5;46",  # Green
+                "modified": "38;5;208",  # Orange
+                "untracked": "38;5;196",  # Red
+                "update_available": "38;5;208",  # Orange
+                "memory_usage": "38;5;172",  # Brown/Orange
+                "duration": "38;5;240",  # Gray
+                "todo_count": "38;5;123",  # Purple
+                "separator": "38;5;250",  # Light Gray
             }
 
 
 @dataclass
 class DisplayConfig:
     """Information display settings - Custom ordered status bar"""
-    model: bool = True                  # 🤖 Model name (glm-4.6, claude-3.5-sonnet, etc.)
-    version: bool = True                # 🗿 MoAI-ADK version (0.23.0, etc.)
-    output_style: bool = True           # ✍️ Output style (Explanatory, Concise, etc.)
-    memory_usage: bool = True           # 💾 Session memory usage
-    todo_count: bool = True             # 📋 Active TODO items count
-    branch: bool = True                 # 🔀 Git branch
-    git_status: bool = True             # ✅2 M1 ?10 Git changes status
-    duration: bool = True               # ⏱️ Session elapsed time
-    directory: bool = True              # 📁 Project name/directory
-    active_task: bool = True            # 🎯 Alfred active task
-    update_indicator: bool = True       # 🔄 Update notification
+
+    model: bool = True  # 🤖 Model name (glm-4.6, claude-3.5-sonnet, etc.)
+    version: bool = True  # 🗿 MoAI-ADK version (0.23.0, etc.)
+    output_style: bool = True  # ✍️ Output style (Explanatory, Concise, etc.)
+    memory_usage: bool = True  # 💾 Session memory usage
+    todo_count: bool = True  # 📋 Active TODO items count
+    branch: bool = True  # 🔀 Git branch
+    git_status: bool = True  # ✅2 M1 ?10 Git changes status
+    duration: bool = True  # ⏱️ Session elapsed time
+    directory: bool = True  # 📁 Project name/directory
+    active_task: bool = True  # 🎯 Alfred active task
+    update_indicator: bool = True  # 🔄 Update notification
 
 
 @dataclass
 class FormatConfig:
     """Format configuration"""
+
     max_branch_length: int = 20
     truncate_with: str = "..."
     separator: str = " | "
@@ -82,27 +86,28 @@ class FormatConfig:
     def __post_init__(self):
         if self.icons is None:
             self.icons = {
-                "git": "🔀",                 # Git branch icon (more intuitive than 📊)
-                "staged": "✅",              # Staged files
-                "modified": "📝",            # Modified files
-                "untracked": "❓",           # Untracked files
-                "added": "➕",               # Added files
-                "deleted": "➖",             # Deleted files
-                "renamed": "🔄",             # Renamed files
-                "conflict": "⚠️",           # Conflict files
-                "model": "🤖",               # AI model
-                "output_style": "✍️",        # Writing style
-                "duration": "⏱️",            # Time duration
-                "memory": "💾",              # Memory usage
-                "todo": "📋",                # TODO items
-                "update": "🔄",              # Update available
-                "project": "📁",             # Project directory
+                "git": "🔀",  # Git branch icon (more intuitive than 📊)
+                "staged": "✅",  # Staged files
+                "modified": "📝",  # Modified files
+                "untracked": "❓",  # Untracked files
+                "added": "➕",  # Added files
+                "deleted": "➖",  # Deleted files
+                "renamed": "🔄",  # Renamed files
+                "conflict": "⚠️",  # Conflict files
+                "model": "🤖",  # AI model
+                "output_style": "✍️",  # Writing style
+                "duration": "⏱️",  # Time duration
+                "memory": "💾",  # Memory usage
+                "todo": "📋",  # TODO items
+                "update": "🔄",  # Update available
+                "project": "📁",  # Project directory
             }
 
 
 @dataclass
 class ErrorHandlingConfig:
     """Error handling configuration"""
+
     graceful_degradation: bool = True
     log_level: str = "warning"  # warning | error
     fallback_text: str = ""
@@ -174,6 +179,7 @@ class StatuslineConfig:
         """
         try:
             import yaml
+
             with open(path, "r", encoding="utf-8") as f:
                 data = yaml.safe_load(f)
             return data or {}
@@ -193,6 +199,7 @@ class StatuslineConfig:
             Parsed configuration dictionary
         """
         import json
+
         try:
             with open(path, "r", encoding="utf-8") as f:
                 return json.load(f)
@@ -238,17 +245,17 @@ class StatuslineConfig:
                     "update_ttl_seconds": 300,
                 },
                 "display": {
-                    "model": True,                  # 🤖 Model name (glm-4.6, claude-3.5-sonnet, etc.)
-                    "version": True,                # 🗿 MoAI-ADK version (0.23.0, etc.)
-                    "output_style": True,           # ✍️ Output style (Explanatory, Concise, etc.)
-                    "memory_usage": True,           # 💾 Session memory usage
-                    "todo_count": True,             # 📋 Active TODO items count
-                    "branch": True,                 # 🔀 Git branch
-                    "git_status": True,             # ✅2 M1 ?10 Git changes status
-                    "duration": True,               # ⏱️ Session elapsed time
-                    "directory": True,              # 📁 Project name/directory
-                    "active_task": True,            # 🎯 Alfred active task
-                    "update_indicator": True,       # 🔄 Update notification
+                    "model": True,  # 🤖 Model name (glm-4.6, claude-3.5-sonnet, etc.)
+                    "version": True,  # 🗿 MoAI-ADK version (0.23.0, etc.)
+                    "output_style": True,  # ✍️ Output style (Explanatory, Concise, etc.)
+                    "memory_usage": True,  # 💾 Session memory usage
+                    "todo_count": True,  # 📋 Active TODO items count
+                    "branch": True,  # 🔀 Git branch
+                    "git_status": True,  # ✅2 M1 ?10 Git changes status
+                    "duration": True,  # ⏱️ Session elapsed time
+                    "directory": True,  # 📁 Project name/directory
+                    "active_task": True,  # 🎯 Alfred active task
+                    "update_indicator": True,  # 🔄 Update notification
                 },
                 "error_handling": {
                     "graceful_degradation": True,
@@ -260,22 +267,22 @@ class StatuslineConfig:
                     "truncate_with": "...",
                     "separator": " | ",
                     "icons": {
-                        "git": "🔀",                 # Git branch icon (more intuitive than 📊)
-                        "staged": "✅",              # Staged files
-                        "modified": "📝",            # Modified files
-                        "untracked": "❓",           # Untracked files
-                        "added": "➕",               # Added files
-                        "deleted": "➖",             # Deleted files
-                        "renamed": "🔄",             # Renamed files
-                        "conflict": "⚠️",           # Conflict files
-                        "model": "🤖",               # AI model
-                        "output_style": "✍️",        # Writing style
-                        "duration": "⏱️",            # Time duration
-                        "memory": "💾",              # Memory usage
-                        "todo": "📋",                # TODO items
-                        "update": "🔄",              # Update available
-                        "project": "📁",             # Project directory
-                    }
+                        "git": "🔀",  # Git branch icon (more intuitive than 📊)
+                        "staged": "✅",  # Staged files
+                        "modified": "📝",  # Modified files
+                        "untracked": "❓",  # Untracked files
+                        "added": "➕",  # Added files
+                        "deleted": "➖",  # Deleted files
+                        "renamed": "🔄",  # Renamed files
+                        "conflict": "⚠️",  # Conflict files
+                        "model": "🤖",  # AI model
+                        "output_style": "✍️",  # Writing style
+                        "duration": "⏱️",  # Time duration
+                        "memory": "💾",  # Memory usage
+                        "todo": "📋",  # TODO items
+                        "update": "🔄",  # Update available
+                        "project": "📁",  # Project directory
+                    },
                 },
             }
         }

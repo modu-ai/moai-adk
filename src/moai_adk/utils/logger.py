@@ -37,7 +37,10 @@ class SensitiveDataFilter(logging.Filter):
 
     PATTERNS = [
         (r"sk-[a-zA-Z0-9]+", "***REDACTED***"),  # API Key
-        (r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", "***REDACTED***"),  # Email
+        (
+            r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
+            "***REDACTED***",
+        ),  # Email
         (r"(?i)(password|passwd|pwd)[\s:=]+\S+", r"\1: ***REDACTED***"),  # Password
     ]
 

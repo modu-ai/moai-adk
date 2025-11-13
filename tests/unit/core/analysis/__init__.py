@@ -1,1 +1,1 @@
-"""Test infrastructure for TAG analysis modules."""
+"""Test infrastructure for analysis modules."""

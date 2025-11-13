@@ -6,9 +6,8 @@ Tests for statusline displaying version instead of unknown
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
-import pytest
 
 
 class TestStatuslineVersionDisplay:
@@ -361,7 +360,6 @@ class TestStatuslineVersionDisplay:
         THEN: Should handle error gracefully and show helpful message
         """
         from moai_adk.statusline.renderer import StatuslineRenderer, StatuslineData
-        from moai_adk.statusline.version_reader import VersionReader
 
         # Create statusline data with error version
         data = StatuslineData(

@@ -5,10 +5,7 @@ Test cases for caching system functionality.
 """
 
 import pytest
-import asyncio
 import tempfile
-import shutil
-from typing import Dict, Any, Optional
 
 
 class TestCacheSystem:

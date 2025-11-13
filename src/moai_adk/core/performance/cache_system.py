@@ -7,8 +7,7 @@ Provides persistent caching capabilities with TTL support for improved performan
 import json
 import os
 import time
-import hashlib
-from typing import Dict, Any, Optional, List, Union
+from typing import Any, Dict, List, Optional
 
 
 class CacheSystem:
@@ -31,6 +30,7 @@ class CacheSystem:
 
         if cache_dir is None:
             import tempfile
+
             self.cache_dir = os.path.join(tempfile.gettempdir(), "moai_adk_cache")
         else:
             self.cache_dir = cache_dir
@@ -145,10 +145,7 @@ class CacheSystem:
         except (TypeError, ValueError) as e:
             raise TypeError(f"Cache value must be JSON serializable: {e}")
 
-        data = {
-            "value": value,
-            "created_at": time.time()
-        }
+        data = {"value": value, "created_at": time.time()}
 
         if ttl is not None:
             if not isinstance(ttl, (int, float)) or ttl < 0:
@@ -246,13 +243,15 @@ class CacheSystem:
         for file_name in os.listdir(self.cache_dir):
             if file_name.endswith(self.file_extension):
                 file_path = os.path.join(self.cache_dir, file_name)
-                key = file_name[:-len(self.file_extension)]  # Remove extension
+                key = file_name[: -len(self.file_extension)]  # Remove extension
 
                 if self.exists(key):
                     count += 1
         return count
 
-    def set_if_not_exists(self, key: str, value: Any, ttl: Optional[float] = None) -> bool:
+    def set_if_not_exists(
+        self, key: str, value: Any, ttl: Optional[float] = None
+    ) -> bool:
         """
         Set a value only if the key doesn't exist.
 
@@ -315,5 +314,5 @@ class CacheSystem:
             "expired_files": expired_files,
             "valid_files": total_files - expired_files,
             "cache_directory": self.cache_dir,
-            "auto_cleanup_enabled": self.auto_cleanup
+            "auto_cleanup_enabled": self.auto_cleanup,
         }

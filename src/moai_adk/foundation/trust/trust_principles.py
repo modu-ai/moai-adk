@@ -1,13 +1,11 @@
-
 """
-TRUST 5 Principles Implementation
+TRUST 4 Principles Implementation
 
 Comprehensive implementation of TRUST principles for MoAI-ADK:
 - Test First: Comprehensive testing strategy
 - Readable: Code clarity and maintainability
 - Unified: Consistent architecture and patterns
 - Secured: Security best practices and validation
-- Trackable: Complete traceability and auditability
 
 Features:
 - Automated principle scoring
@@ -17,25 +15,25 @@ Features:
 - Complete audit trails
 """
 
-import json
 import re
-from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
+from typing import Any, Dict, List
 
 
 class TrustPrinciple(Enum):
-    """TRUST 5 principles enumeration"""
+    """TRUST 4 principles enumeration"""
+
     TEST_FIRST = "test_first"
     READABLE = "readable"
     UNIFIED = "unified"
     SECURED = "secured"
-    TRACKABLE = "trackable"
 
 
 class ComplianceLevel(Enum):
     """Compliance level enumeration"""
+
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
@@ -46,6 +44,7 @@ class ComplianceLevel(Enum):
 @dataclass
 class PrincipleScore:
     """Individual principle scoring"""
+
     principle: TrustPrinciple
     score: float  # 0.0 - 100.0
     compliance_level: ComplianceLevel
@@ -57,6 +56,7 @@ class PrincipleScore:
 @dataclass
 class TrustAssessment:
     """Complete TRUST assessment"""
+
     principle_scores: Dict[TrustPrinciple, PrincipleScore]
     overall_score: float
     compliance_level: ComplianceLevel
@@ -67,61 +67,60 @@ class TrustAssessment:
 
 
 class TrustPrinciplesValidator:
-    """TRUST 5 principles validator and analyzer"""
+    """TRUST 4 principles validator and analyzer"""
 
     def __init__(self):
         self.principle_weights = {
-            TrustPrinciple.TEST_FIRST: 0.25,
-            TrustPrinciple.READABLE: 0.20,
-            TrustPrinciple.UNIFIED: 0.20,
+            TrustPrinciple.TEST_FIRST: 0.30,
+            TrustPrinciple.READABLE: 0.25,
+            TrustPrinciple.UNIFIED: 0.25,
             TrustPrinciple.SECURED: 0.20,
-            TrustPrinciple.TRACKABLE: 0.15
         }
 
         # Test First validation patterns
         self.test_patterns = {
-            'unit_tests': r'def test_.*\(|class Test.*:',
-            'integration_tests': r'@integration_test|test_integration_',
-            'coverage_directive': r'# pragma: cover|@pytest\.mark\.cover',
-            'assertion_count': r'\bassert\b.*>=|\bshould_\w+\(',
-            'test_docstrings': r'def test_\w+.*\n\s*""".*?"""',
+            "unit_tests": r"def test_.*\(|class Test.*:",
+            "integration_tests": r"@integration_test|test_integration_",
+            "coverage_directive": r"# pragma: cover|@pytest\.mark\.cover",
+            "assertion_count": r"\bassert\b.*>=|\bshould_\w+\(",
+            "test_docstrings": r'def test_\w+.*\n\s*""".*?"""',
         }
 
         # Readability validation patterns
         self.readability_patterns = {
-            'function_length': r'def \w+\([^)]*\):(.*\n){1,50}',
-            'class_length': r'class \w+:',
-            'variable_naming': r'\b[a-z_][a-z0-9_]*\b',
-            'constant_naming': r'\b[A-Z_][A-Z0-9_]*\b',
-            'docstrings': r'def \w+.*\n\s*""".*?"""',
-            'type_hints': r': \w+\[?\]?]|: Optional\[|: Dict\[|: List\[',
+            "function_length": r"def \w+\([^)]*\):(.*\n){1,50}",
+            "class_length": r"class \w+:",
+            "variable_naming": r"\b[a-z_][a-z0-9_]*\b",
+            "constant_naming": r"\b[A-Z_][A-Z0-9_]*\b",
+            "docstrings": r'def \w+.*\n\s*""".*?"""',
+            "type_hints": r": \w+\[?\]?]|: Optional\[|: Dict\[|: List\[",
         }
 
         # Unified validation patterns
         self.unified_patterns = {
-            'import_structure': r'^(import|from)\s+\w+',
-            'naming_convention': r'\b\w+(?:Error|Exception|Manager|Service|Handler|Validator)\b',
-            'file_structure': r'^(class|def)\s+',
-            'error_handling': r'except\s+\w+:|raise\s+\w+\(',
-            'logging_pattern': r'logger\.\w+|logging\.\w+',
+            "import_structure": r"^(import|from)\s+\w+",
+            "naming_convention": r"\b\w+(?:Error|Exception|Manager|Service|Handler|Validator)\b",
+            "file_structure": r"^(class|def)\s+",
+            "error_handling": r"except\s+\w+:|raise\s+\w+\(",
+            "logging_pattern": r"logger\.\w+|logging\.\w+",
         }
 
         # Security validation patterns
         self.security_patterns = {
-            'sql_injection': r'(cursor\.execute|db\.query)\s*\(\s*["\'][^"\']*%[^"\']*["\']',
-            'xss_prevention': r'escape\(|sanitize\(|validate\(',
-            'auth_check': r'@login_required|@permission_required|is_authenticated',
-            'input_validation': r're\.match\(|validator\.|form\.is_valid\(\)',
-            'secret_management': r'\.env|SECRET_KEY|API_KEY|PASSWORD',
-            'https_enforcement': r'https://|SECURE_SSL_REDIRECT|HSTS',
+            "sql_injection": r'(cursor\.execute|db\.query)\s*\(\s*["\'][^"\']*%[^"\']*["\']',
+            "xss_prevention": r"escape\(|sanitize\(|validate\(",
+            "auth_check": r"@login_required|@permission_required|is_authenticated",
+            "input_validation": r"re\.match\(|validator\.|form\.is_valid\(\)",
+            "secret_management": r"\.env|SECRET_KEY|API_KEY|PASSWORD",
+            "https_enforcement": r"https://|SECURE_SSL_REDIRECT|HSTS",
         }
 
-        # Trackability validation patterns (TAG system removed)
+        # Trackability validation patterns
         self.trackability_patterns = {
-            'commit_messages': r'^(feat|fix|docs|style|refactor|test|chop)\(',
-            'issue_references': r'#\d+|closes #\d+|fixes #\d+',
-            'documentation_links': r'\[.*?\]\(.*?\.md\)',
-            'version_tracking': r'v\d+\.\d+\.\d+|\d+\.\d+\.\d+',
+            "commit_messages": r"^(feat|fix|docs|style|refactor|test|chop)\(",
+            "issue_references": r"#\d+|closes #\d+|fixes #\d+",
+            "documentation_links": r"\[.*?\]\(.*?\.md\)",
+            "version_tracking": r"v\d+\.\d+\.\d+|\d+\.\d+\.\d+",
         }
 
     def validate_test_first(self, project_path: str) -> PrincipleScore:
@@ -146,7 +145,7 @@ class TrustPrinciplesValidator:
 
             for file_path in python_files:
                 try:
-                    content = file_path.read_text(encoding='utf-8')
+                    content = file_path.read_text(encoding="utf-8")
 
                     for pattern_name, pattern in self.test_patterns.items():
                         total_test_patterns += 1
@@ -161,17 +160,19 @@ class TrustPrinciplesValidator:
             score = min(100, (test_ratio * 30) + (pattern_coverage * 70))
 
             metrics = {
-                'test_files': len(test_files),
-                'source_files': len(source_files),
-                'test_ratio': round(test_ratio, 2),
-                'pattern_coverage': round(pattern_coverage, 2),
-                'total_patterns': total_test_patterns,
-                'found_patterns': found_test_patterns
+                "test_files": len(test_files),
+                "source_files": len(source_files),
+                "test_ratio": round(test_ratio, 2),
+                "pattern_coverage": round(pattern_coverage, 2),
+                "total_patterns": total_test_patterns,
+                "found_patterns": found_test_patterns,
             }
 
             # Generate recommendations
             if test_ratio < 0.5:
-                recommendations.append("Increase test file coverage (aim for 1:1 ratio with source files)")
+                recommendations.append(
+                    "Increase test file coverage (aim for 1:1 ratio with source files)"
+                )
 
             if pattern_coverage < 0.7:
                 recommendations.append("Add comprehensive test patterns and assertions")
@@ -202,7 +203,7 @@ class TrustPrinciplesValidator:
             compliance_level=compliance,
             issues=issues,
             recommendations=recommendations,
-            metrics=metrics
+            metrics=metrics,
         )
 
     def validate_readable(self, project_path: str) -> PrincipleScore:
@@ -224,11 +225,11 @@ class TrustPrinciplesValidator:
 
             for file_path in python_files:
                 try:
-                    content = file_path.read_text(encoding='utf-8')
-                    lines = content.split('\n')
+                    content = file_path.read_text(encoding="utf-8")
+                    lines = content.split("\n")
 
                     # Analyze functions
-                    function_matches = re.finditer(r'def\s+(\w+)\([^)]*\):', content)
+                    function_matches = re.finditer(r"def\s+(\w+)\([^)]*\):", content)
                     for match in function_matches:
                         total_functions += 1
 
@@ -237,8 +238,10 @@ class TrustPrinciplesValidator:
                         func_lines = 0
                         indent_level = None
 
-                        for i, line in enumerate(content[func_start:].split('\n')[1:], 1):
-                            if line.strip() == '':
+                        for i, line in enumerate(
+                            content[func_start:].split("\n")[1:], 1
+                        ):
+                            if line.strip() == "":
                                 continue
 
                             current_indent = len(line) - len(line.lstrip())
@@ -250,26 +253,32 @@ class TrustPrinciplesValidator:
 
                         if func_lines > 50:
                             long_functions += 1
-                            issues.append(f"Long function in {file_path.name}: {match.group(1)} ({func_lines} lines)")
+                            issues.append(
+                                f"Long function in {file_path.name}: {match.group(1)} ({func_lines} lines)"
+                            )
 
                         # Check for docstring
-                        func_content = content[func_start:func_start + 1000]  # Check next 1000 chars
-                        if '"""' in func_content.split('\n')[1:5]:
+                        func_content = content[
+                            func_start : func_start + 1000
+                        ]  # Check next 1000 chars
+                        if '"""' in func_content.split("\n")[1:5]:
                             functions_with_docstrings += 1
 
                         # Check for type hints
-                        if '->' in match.group(0) or ':' in match.group(0):
+                        if "->" in match.group(0) or ":" in match.group(0):
                             functions_with_type_hints += 1
 
                     # Analyze classes
-                    class_matches = re.finditer(r'class\s+(\w+)[\(\:]:', content)
+                    class_matches = re.finditer(r"class\s+(\w+)[\(\:]:", content)
                     for match in class_matches:
                         total_classes += 1
 
                         # Check for docstring
                         class_start = match.start()
-                        class_content = content[class_start:class_start + 500]  # Check next 500 chars
-                        if '"""' in class_content.split('\n')[1:3]:
+                        class_content = content[
+                            class_start : class_start + 500
+                        ]  # Check next 500 chars
+                        if '"""' in class_content.split("\n")[1:3]:
                             classes_with_docstrings += 1
 
                 except Exception as e:
@@ -281,18 +290,22 @@ class TrustPrinciplesValidator:
             long_function_ratio = 1 - (long_functions / max(total_functions, 1))
             class_docstring_ratio = classes_with_docstrings / max(total_classes, 1)
 
-            score = (docstring_ratio * 30 + type_hint_ratio * 25 +
-                   long_function_ratio * 25 + class_docstring_ratio * 20)
+            score = (
+                docstring_ratio * 30
+                + type_hint_ratio * 25
+                + long_function_ratio * 25
+                + class_docstring_ratio * 20
+            )
 
             metrics = {
-                'total_functions': total_functions,
-                'functions_with_docstrings': functions_with_docstrings,
-                'functions_with_type_hints': functions_with_type_hints,
-                'long_functions': long_functions,
-                'total_classes': total_classes,
-                'classes_with_docstrings': classes_with_docstrings,
-                'docstring_ratio': round(docstring_ratio, 2),
-                'type_hint_ratio': round(type_hint_ratio, 2)
+                "total_functions": total_functions,
+                "functions_with_docstrings": functions_with_docstrings,
+                "functions_with_type_hints": functions_with_type_hints,
+                "long_functions": long_functions,
+                "total_classes": total_classes,
+                "classes_with_docstrings": classes_with_docstrings,
+                "docstring_ratio": round(docstring_ratio, 2),
+                "type_hint_ratio": round(type_hint_ratio, 2),
             }
 
             # Generate recommendations
@@ -328,7 +341,7 @@ class TrustPrinciplesValidator:
             compliance_level=compliance,
             issues=issues,
             recommendations=recommendations,
-            metrics=metrics
+            metrics=metrics,
         )
 
     def validate_unified(self, project_path: str) -> PrincipleScore:
@@ -351,7 +364,7 @@ class TrustPrinciplesValidator:
 
             for file_path in python_files:
                 try:
-                    content = file_path.read_text(encoding='utf-8')
+                    content = file_path.read_text(encoding="utf-8")
 
                     # Check unified patterns
                     for pattern_name, pattern in self.unified_patterns.items():
@@ -359,15 +372,17 @@ class TrustPrinciplesValidator:
                             unified_patterns_found += 1
 
                     # Check naming violations
-                    if re.search(r'class\s+[a-z]', content):  # Class starting with lowercase
+                    if re.search(
+                        r"class\s+[a-z]", content
+                    ):  # Class starting with lowercase
                         naming_violations += 1
 
                     # Count error handling
-                    error_matches = re.findall(r'except\s+\w+:', content)
+                    error_matches = re.findall(r"except\s+\w+:", content)
                     error_handling_count += len(error_matches)
 
                     # Count logging usage
-                    logging_matches = re.findall(r'logger\.\w+|logging\.\w+', content)
+                    logging_matches = re.findall(r"logger\.\w+|logging\.\w+", content)
                     logging_count += len(logging_matches)
 
                 except Exception as e:
@@ -379,21 +394,27 @@ class TrustPrinciplesValidator:
             logging_ratio = logging_count / max(file_count, 1)
             naming_quality = 1 - (naming_violations / max(file_count, 1))
 
-            score = (pattern_coverage * 40 + error_handling_ratio * 25 +
-                   logging_ratio * 20 + naming_quality * 15)
+            score = (
+                pattern_coverage * 40
+                + error_handling_ratio * 25
+                + logging_ratio * 20
+                + naming_quality * 15
+            )
 
             metrics = {
-                'files_analyzed': file_count,
-                'unified_patterns_found': unified_patterns_found,
-                'pattern_coverage': round(pattern_coverage, 2),
-                'error_handling_count': error_handling_count,
-                'logging_count': logging_count,
-                'naming_violations': naming_violations
+                "files_analyzed": file_count,
+                "unified_patterns_found": unified_patterns_found,
+                "pattern_coverage": round(pattern_coverage, 2),
+                "error_handling_count": error_handling_count,
+                "logging_count": logging_count,
+                "naming_violations": naming_violations,
             }
 
             # Generate recommendations
             if pattern_coverage < 0.7:
-                recommendations.append("Improve code structure consistency across files")
+                recommendations.append(
+                    "Improve code structure consistency across files"
+                )
 
             if error_handling_count < file_count * 0.5:
                 recommendations.append("Add comprehensive error handling")
@@ -424,7 +445,7 @@ class TrustPrinciplesValidator:
             compliance_level=compliance,
             issues=issues,
             recommendations=recommendations,
-            metrics=metrics
+            metrics=metrics,
         )
 
     def validate_secured(self, project_path: str) -> PrincipleScore:
@@ -443,7 +464,7 @@ class TrustPrinciplesValidator:
 
             for file_path in python_files:
                 try:
-                    content = file_path.read_text(encoding='utf-8')
+                    content = file_path.read_text(encoding="utf-8")
 
                     # Check for security patterns
                     for pattern_name, pattern in self.security_patterns.items():
@@ -451,22 +472,26 @@ class TrustPrinciplesValidator:
                         if matches:
                             security_patterns_found += len(matches)
 
-                            if pattern_name in ['sql_injection', 'secret_management']:
+                            if pattern_name in ["sql_injection", "secret_management"]:
                                 high_risk_patterns += len(matches)
                                 for match in matches:
-                                    security_issues.append(f"High-risk pattern in {file_path.name}: {pattern_name}")
+                                    security_issues.append(
+                                        f"High-risk pattern in {file_path.name}: {pattern_name}"
+                                    )
 
                     # Check for hardcoded secrets (basic pattern)
                     secret_patterns = [
                         r'password\s*=\s*["\'][^"\']+["\']',
                         r'api_key\s*=\s*["\'][^"\']+["\']',
                         r'secret\s*=\s*["\'][^"\']+["\']',
-                        r'token\s*=\s*["\'][^"\']+["\']'
+                        r'token\s*=\s*["\'][^"\']+["\']',
                     ]
 
                     for pattern in secret_patterns:
                         if re.search(pattern, content, re.IGNORECASE):
-                            security_issues.append(f"Potential hardcoded secret in {file_path.name}")
+                            security_issues.append(
+                                f"Potential hardcoded secret in {file_path.name}"
+                            )
                             high_risk_patterns += 1
 
                 except Exception as e:
@@ -486,25 +511,29 @@ class TrustPrinciplesValidator:
             score = min(100, base_score + security_bonus)
 
             metrics = {
-                'security_patterns_found': security_patterns_found,
-                'high_risk_patterns': high_risk_patterns,
-                'security_issues': len(security_issues),
-                'files_analyzed': len(python_files)
+                "security_patterns_found": security_patterns_found,
+                "high_risk_patterns": high_risk_patterns,
+                "security_issues": len(security_issues),
+                "files_analyzed": len(python_files),
             }
 
             # Generate recommendations
             if high_risk_patterns > 0:
-                recommendations.append("Address high-risk security patterns immediately")
+                recommendations.append(
+                    "Address high-risk security patterns immediately"
+                )
                 issues.extend(security_issues[:5])  # Add first 5 issues
 
             if security_patterns_found < 10:
                 recommendations.append("Implement more security validation patterns")
 
-            recommendations.extend([
-                "Use environment variables for secrets",
-                "Implement input validation and sanitization",
-                "Add authentication and authorization checks"
-            ])
+            recommendations.extend(
+                [
+                    "Use environment variables for secrets",
+                    "Implement input validation and sanitization",
+                    "Add authentication and authorization checks",
+                ]
+            )
 
             # Determine compliance level
             if score >= 95:
@@ -529,121 +558,7 @@ class TrustPrinciplesValidator:
             compliance_level=compliance,
             issues=issues,
             recommendations=recommendations,
-            metrics=metrics
-        )
-
-    def validate_trackable(self, project_path: str) -> PrincipleScore:
-        """Validate Trackable principle"""
-        issues = []
-        recommendations = []
-        metrics = {}
-
-        try:
-            project_dir = Path(project_path)
-
-            # Check for Git history
-            git_dir = project_dir / '.git'
-            has_git = git_dir.exists()
-
-            # Check for documentation
-            doc_files = []
-            for pattern in ['*.md', '*.rst', '*.txt']:
-                doc_files.extend(project_dir.rglob(pattern))
-
-            # Analyze Python files for traceability patterns
-            python_files = list(project_dir.rglob("*.py"))
-            commit_patterns = 0
-            doc_links = 0
-            version_references = 0
-
-            for file_path in python_files:
-                try:
-                    content = file_path.read_text(encoding='utf-8')
-
-                    # Check for commit message patterns
-                    commit_matches = re.findall(self.trackability_patterns['commit_messages'], content)
-                    commit_patterns += len(commit_matches)
-
-                    # Check for documentation links
-                    doc_matches = re.findall(self.trackability_patterns['documentation_links'], content)
-                    doc_links += len(doc_matches)
-
-                    # Check for version tracking
-                    version_matches = re.findall(self.trackability_patterns['version_tracking'], content)
-                    version_references += len(version_matches)
-
-                except Exception as e:
-                    issues.append(f"Error analyzing {file_path}: {str(e)}")
-
-            # Check for requirements.txt, setup.py, pyproject.toml
-            has_requirements = (project_dir / 'requirements.txt').exists()
-            has_setup = (project_dir / 'setup.py').exists()
-            has_pyproject = (project_dir / 'pyproject.toml').exists()
-
-            # Calculate score
-            traceability_score = 0
-
-            if has_git:
-                traceability_score += 25
-
-            if len(doc_files) > 0:
-                traceability_score += 20
-
-            if has_requirements or has_setup or has_pyproject:
-                traceability_score += 15
-
-            # Bonus points for traceability patterns
-            pattern_bonus = min(40, (tag_references * 5) + (commit_patterns * 3) +
-                             (doc_links * 2) + (version_references * 2))
-            traceability_score += pattern_bonus
-
-            score = min(100, traceability_score)
-
-            metrics = {
-                'has_git': has_git,
-                'doc_files': len(doc_files),
-                'commit_patterns': commit_patterns,
-                'doc_links': doc_links,
-                'version_references': version_references,
-                'has_requirements': has_requirements,
-                'has_setup': has_setup,
-                'has_pyproject': has_pyproject
-            }
-
-            # Generate recommendations
-            if not has_git:
-                recommendations.append("Initialize Git repository for version tracking")
-
-            if len(doc_files) == 0:
-                recommendations.append("Add project documentation (README.md, API docs)")
-
-            if not (has_requirements or has_setup or has_pyproject):
-                recommendations.append("Add dependency management files")
-
-            # Determine compliance level
-            if score >= 90:
-                compliance = ComplianceLevel.CRITICAL
-            elif score >= 80:
-                compliance = ComplianceLevel.HIGH
-            elif score >= 70:
-                compliance = ComplianceLevel.MEDIUM
-            elif score >= 60:
-                compliance = ComplianceLevel.LOW
-            else:
-                compliance = ComplianceLevel.NONE
-
-        except Exception as e:
-            issues.append(f"Error validating Trackable principle: {str(e)}")
-            score = 0
-            compliance = ComplianceLevel.NONE
-
-        return PrincipleScore(
-            principle=TrustPrinciple.TRACKABLE,
-            score=round(score, 2),
-            compliance_level=compliance,
-            issues=issues,
-            recommendations=recommendations,
-            metrics=metrics
+            metrics=metrics,
         )
 
     def assess_project(self, project_path: str) -> TrustAssessment:
@@ -651,11 +566,12 @@ class TrustPrinciplesValidator:
         principle_scores = {}
 
         # Validate each principle
-        principle_scores[TrustPrinciple.TEST_FIRST] = self.validate_test_first(project_path)
+        principle_scores[TrustPrinciple.TEST_FIRST] = self.validate_test_first(
+            project_path
+        )
         principle_scores[TrustPrinciple.READABLE] = self.validate_readable(project_path)
         principle_scores[TrustPrinciple.UNIFIED] = self.validate_unified(project_path)
         principle_scores[TrustPrinciple.SECURED] = self.validate_secured(project_path)
-        principle_scores[TrustPrinciple.TRACKABLE] = self.validate_trackable(project_path)
 
         # Calculate overall score
         overall_score = 0
@@ -666,8 +582,11 @@ class TrustPrinciplesValidator:
         # Calculate passed checks
         total_checks = sum(len(score.metrics) for score in principle_scores.values())
         passed_checks = sum(
-            sum(1 for metric_value in score.metrics.values()
-                if isinstance(metric_value, (int, float)) and metric_value > 0)
+            sum(
+                1
+                for metric_value in score.metrics.values()
+                if isinstance(metric_value, (int, float)) and metric_value > 0
+            )
             for score in principle_scores.values()
         )
 
@@ -675,9 +594,16 @@ class TrustPrinciplesValidator:
         score_levels = [score.compliance_level for score in principle_scores.values()]
         if all(level == ComplianceLevel.CRITICAL for level in score_levels):
             overall_compliance = ComplianceLevel.CRITICAL
-        elif all(level in [ComplianceLevel.CRITICAL, ComplianceLevel.HIGH] for level in score_levels):
+        elif all(
+            level in [ComplianceLevel.CRITICAL, ComplianceLevel.HIGH]
+            for level in score_levels
+        ):
             overall_compliance = ComplianceLevel.HIGH
-        elif all(level in [ComplianceLevel.CRITICAL, ComplianceLevel.HIGH, ComplianceLevel.MEDIUM] for level in score_levels):
+        elif all(
+            level
+            in [ComplianceLevel.CRITICAL, ComplianceLevel.HIGH, ComplianceLevel.MEDIUM]
+            for level in score_levels
+        ):
             overall_compliance = ComplianceLevel.MEDIUM
         elif all(level != ComplianceLevel.NONE for level in score_levels):
             overall_compliance = ComplianceLevel.LOW
@@ -687,14 +613,16 @@ class TrustPrinciplesValidator:
         # Create audit trail
         audit_trail = []
         for principle, score in principle_scores.items():
-            audit_trail.append({
-                'principle': principle.value,
-                'score': score.score,
-                'compliance_level': score.compliance_level.value,
-                'issues_count': len(score.issues),
-                'recommendations_count': len(score.recommendations),
-                'metrics': score.metrics
-            })
+            audit_trail.append(
+                {
+                    "principle": principle.value,
+                    "score": score.score,
+                    "compliance_level": score.compliance_level.value,
+                    "issues_count": len(score.issues),
+                    "recommendations_count": len(score.recommendations),
+                    "metrics": score.metrics,
+                }
+            )
 
         return TrustAssessment(
             principle_scores=principle_scores,
@@ -702,17 +630,19 @@ class TrustPrinciplesValidator:
             compliance_level=overall_compliance,
             passed_checks=passed_checks,
             total_checks=total_checks,
-            audit_trail=audit_trail
+            audit_trail=audit_trail,
         )
 
     def generate_report(self, assessment: TrustAssessment) -> str:
         """Generate comprehensive TRUST assessment report"""
         report = []
-        report.append("# TRUST 5 Principles Assessment Report")
+        report.append("# TRUST 4 Principles Assessment Report")
         report.append(f"Generated: {assessment.timestamp}")
         report.append(f"Overall Score: {assessment.overall_score}/100")
         report.append(f"Compliance Level: {assessment.compliance_level.value.upper()}")
-        report.append(f"Passed Checks: {assessment.passed_checks}/{assessment.total_checks}")
+        report.append(
+            f"Passed Checks: {assessment.passed_checks}/{assessment.total_checks}"
+        )
         report.append("")
 
         # Principle breakdown
@@ -746,13 +676,21 @@ class TrustPrinciplesValidator:
         report.append("")
 
         if assessment.overall_score >= 80:
-            report.append("✅ **EXCELLENT**: Project meets TRUST principles at a high level")
+            report.append(
+                "✅ **EXCELLENT**: Project meets TRUST principles at a high level"
+            )
         elif assessment.overall_score >= 70:
-            report.append("🟡 **GOOD**: Project mostly follows TRUST principles with some areas for improvement")
+            report.append(
+                "🟡 **GOOD**: Project mostly follows TRUST principles with some areas for improvement"
+            )
         elif assessment.overall_score >= 60:
-            report.append("🟠 **NEEDS IMPROVEMENT**: Project has significant gaps in TRUST principles")
+            report.append(
+                "🟠 **NEEDS IMPROVEMENT**: Project has significant gaps in TRUST principles"
+            )
         else:
-            report.append("❌ **CRITICAL**: Project requires immediate attention to TRUST principles")
+            report.append(
+                "❌ **CRITICAL**: Project requires immediate attention to TRUST principles"
+            )
 
         report.append("")
         report.append("## Next Steps")
@@ -765,7 +703,9 @@ class TrustPrinciplesValidator:
 
         if all_recommendations:
             report.append("### Priority Recommendations")
-            for i, rec in enumerate(set(all_recommendations[:10]), 1):  # Top 10 unique recommendations
+            for i, rec in enumerate(
+                set(all_recommendations[:10]), 1
+            ):  # Top 10 unique recommendations
                 report.append(f"{i}. {rec}")
 
         return "\n".join(report)

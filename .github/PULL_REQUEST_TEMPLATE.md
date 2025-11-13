@@ -26,7 +26,7 @@
 
 ## 📊 Quality Metrics (auto-calculated)
 
-- TRUST 5 Principles: ✅ Compliant
+- TRUST 4 Principles: ✅ Compliant
 - Test Coverage: XX% (target ≥ 85%)
 
 ## 🌍 Locale Settings
@@ -55,12 +55,11 @@
 
 - [ ] Update README
 - [ ] Sync API docs
-- [ ] Update TAG index
 - [ ] Update HISTORY section (SPEC docs)
 
 ---
 
 🚀 MoAI-ADK: Professional development without Git commands via a 3-stage pipeline!
 
-Reviewers: Check TRUST 5 compliance and SPEC metadata completeness only.
+Reviewers: Check TRUST 4 compliance and SPEC metadata completeness only.
 

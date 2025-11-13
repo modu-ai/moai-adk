@@ -227,11 +227,7 @@ jobs:
             fi
           fi
 
-      # TAG system validation (code files only)
-      - name: 🏷️ TAG System Validation
-        run: |
-          echo "✅ TAG validation is handled automatically in the tag_validator.py hook"
-
+    
       # Run per-branch stages
       - name: 📝 SPEC Stage (feature branch)
         if: startsWith(github.ref, 'refs/heads/feature/')

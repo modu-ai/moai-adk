@@ -4,8 +4,6 @@ import unittest
 import tempfile
 import os
 import json
-from pathlib import Path
-from unittest.mock import patch, mock_open
 
 from moai_adk.core.config.auto_spec_config import AutoSpecConfig
 

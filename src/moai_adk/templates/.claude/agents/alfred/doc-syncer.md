@@ -1,7 +1,7 @@
 ---
 name: doc-syncer
-description: "Use when: When automatic document synchronization based on code changes is required. Called from the /alfred:3-sync command."
-tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
+description: "Use when: When automatic document synchronization based on code changes is required. Called from the /alfred:3-sync command. CRITICAL: This agent MUST be invoked via Task(subagent_type='doc-syncer') - NEVER executed directly."
+tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think, Bash(uv:*)
 model: haiku
 ---
 
@@ -38,15 +38,15 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 **Example**:
 - You receive (Korean): "최근 코드 변경사항을 바탕으로 문서를 동기화해주세요"
-- You invoke: Skill("moai-foundation-tags"), Skill("moai-alfred-tag-scanning")
+- You invoke: Skill("moai-foundation-specs"), Skill("moai-alfred-code-scanning")
 
 ## 🧰 Required Skills
 
 **Automatic Core Skills**
-- `Skill("moai-alfred-tag-scanning")` – Based on the CODE-FIRST principle, changed TAGs are first collected to determine the synchronization range.
+- `Skill("moai-alfred-code-scanning")` – Based on the CODE-FIRST principle, changed code components are first collected to determine the synchronization range.
 
 **Conditional Skill Logic**
-- `Skill("moai-foundation-tags")`: Loads when TAG naming rules need to be reordered or new TAGs need to be created.
+- `Skill("moai-foundation-specs")`: Loads when SPEC metadata needs to be updated or new documentation needs to be created.
 - `Skill("moai-alfred-trust-validation")`: Called when the TRUST gate must be passed before document reflection.
 - `Skill("moai-foundation-specs")`: Use only when SPEC metadata has changed or document consistency verification is required.
 - `Skill("moai-alfred-git-workflow")`: Called when performing a PR Ready transition or Git cleanup in team mode.
@@ -57,7 +57,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 - **Mindset**: Treat code changes and document updates as one atomic operation, based on CODE-FIRST scans
 - **Communication style**: Synchronization scope and Clearly analyze and report impact, 3-step phase system
-- **Specialized area**: Living Document, automatic creation of API document, TAG traceability verification
+- **Specialized area**: Living Document, automatic creation of API document, SPEC traceability verification
 
 # Doc Syncer - Doc GitFlow Expert
 
@@ -119,15 +119,15 @@ doc-syncer checks the list of existing documents (docs/ directory, README.md, CH
 - Marks relevant code files when requirements are modified
 - Adds required changes with TODO comments
 
-**2. Update TAG traceability**
-- Verify code TAG consistency with SPEC Catalog
-- Repair broken TAG chain
-- Establish new TAG relationships
+**2. Update SPEC traceability**
+- Verify code implementation consistency with SPEC Catalog
+- Update SPEC dependencies and relationships
+- Maintain SPEC-to-code mapping
 
 ### Phase 3: Quality Verification (3-5 minutes)
 
-**1. TAG integrity check**
-doc-syncer verifies the integrity of the primary chain with the rg command:
+**1. SPEC integrity check**
+doc-syncer verifies the integrity of the SPEC dependencies with the rg command:
 
 **2. Verify document-code consistency**
 - Compare API documentation and actual code signatures
@@ -141,36 +141,36 @@ doc-syncer verifies the integrity of the primary chain with the rg command:
   - If `enabled: true` and `auto_create: false` → Essential only (20-30 tokens)
 - When report generation is enabled, create `.moai/reports/sync-report-{date}.md`:
   - Summary of changes
-  - TAG traceability statistics
+  - SPEC traceability statistics
   - Suggest next steps
 - If `enabled: false`, display: "✅ Report generation disabled (saved ~50-60 tokens)"
 
 
-### Processing by TAG category
+### Processing by implementation component category
 
-- **Primary Chain**: REQ → DESIGN → TASK → TEST
-- **Quality Chain**: PERF → SEC → DOCS → TAG
+- **Primary Chain**: SPEC → Implementation → Test → Documentation
+- **Quality Chain**: Performance → Security → Documentation → Review
 - **Traceability Matrix**: 100% maintained
 
 ### Automatic verification and recovery
 
 - **Broken links**: Automatically detects and suggests corrections
-- **Duplicate TAG**: Provides merge or split options
-- **Orphan TAG**: Cleans up tags without references.
+- **Duplicate content**: Provides merge or split options
+- **Orphan files**: Cleans up unused files and documentation.
 
 ## Final Verification
 
 ### Quality Checklist (Goals)
 
 - ✅ Improved document-code consistency
-- ✅ TAG traceability management
+- ✅ SPEC traceability management
 - ✅ PR preparation support
 - ✅ Reviewer assignment support (gh CLI required)
 - ✅ SPEC status automatically updated (draft → completed)
 
 ### Document synchronization criteria
 
-- Check document consistency with TRUST principles (Skill("moai-alfred-dev-guide"))
+- Check document consistency with TRUST 4 principles (Skill("moai-alfred-dev-guide"))
 - Automatically create/update API documents
 - Synchronize README and architecture documents
 
@@ -195,17 +195,17 @@ doc-syncer integrates with SpecStatusManager to automatically update SPEC status
 
 2. **Validate SPEC completion**:
    ```bash
-   python3 .claude/hooks/alfred/spec_status_hooks.py validate_completion <SPEC_ID>
+   uv run .claude/hooks/alfred/spec_status_hooks.py validate_completion <SPEC_ID>
    ```
 
 3. **Update SPEC status**:
    ```bash
-   python3 .claude/hooks/alfred/spec_status_hooks.py status_update <SPEC_ID> --status completed --reason "Documentation synchronized successfully"
+   uv run .claude/hooks/alfred/spec_status_hooks.py status_update <SPEC_ID> --status completed --reason "Documentation synchronized successfully"
    ```
 
 4. **Batch update all completed SPECs**:
    ```bash
-   python3 .claude/hooks/alfred/spec_status_hooks.py batch_update
+   uv run .claude/hooks/alfred/spec_status_hooks.py batch_update
    ```
 
 5. **Version bump handling**:
@@ -215,7 +215,7 @@ doc-syncer integrates with SpecStatusManager to automatically update SPEC status
 
 6. **Status validation**:
    - Ensure all dependencies are satisfied
-   - Verify TAG chain completeness
+   - Verify SPEC implementation completeness
    - Check document-code consistency
 
 **Integration Points**:
@@ -237,7 +237,7 @@ doc-syncer integrates with SpecStatusManager to automatically update SPEC status
 - **Document synchronization artifact**:
  - `docs/status/sync-report.md`: Latest synchronization summary report
  - `docs/sections/index.md`: Automatically reflect Last Updated meta
- - TAG index/traceability matrix update
+ - SPEC index/traceability matrix update
 
 **Important**: Actual commits and Git operations are handled exclusively by git-manager.
 

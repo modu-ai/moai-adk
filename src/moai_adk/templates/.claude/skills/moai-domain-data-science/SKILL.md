@@ -1,1014 +1,1295 @@
 ---
-name: "moai-domain-data-science"
-version: "4.0.0"
-description: Production-grade data science expertise with TensorFlow, PyTorch, scikit-learn, pandas, polars, and enterprise analytics; activates for neural networks, machine learning pipelines, statistical analysis, feature engineering, hyperparameter optimization, and business intelligence with 2025 stable versions.
-allowed-tools: 
-  - Read
-  - Bash
-  - WebSearch
-  - WebFetch
-status: stable
+name: moai-domain-data-science
+version: 4.0.0
+status: production
+description: |
+  Production-grade data science specialist with TensorFlow 2.20.0, PyTorch 2.9.0, 
+  Scikit-learn 1.7.2 expertise. Master data processing, ML pipeline development, 
+  model deployment, and statistical analysis. Build end-to-end data science 
+  solutions with comprehensive experimentation and visualization.
+allowed-tools: ["Read", "Write", "Edit", "Bash", "Glob", "WebFetch", "WebSearch"]
+tags: ["data-science", "tensorflow", "pytorch", "scikit-learn", "pandas", "numpy", "visualization", "statistics"]
 ---
 
-# Enterprise Data Science & AI Analytics (Production Edition)
+# Data Science & Analytics
 
-## Core Technology Stack (November 2025 Stable)
+## Level 1: Quick Reference
 
-| Library | Version | Purpose |
-| --- | --- | --- |
-| **TensorFlow** | 2.20.0 | Deep learning (CNN, RNN, Transformer) |
-| **PyTorch** | 2.9.0 | Neural networks with production readiness |
-| **PyTorch Lightning** | 2.x | Simplified distributed training |
-| **scikit-learn** | 1.7.2 | Classical ML pipelines & evaluation |
-| **pandas** | 2.3.3 | Data manipulation & preprocessing |
-| **polars** | 1.x | High-performance large-scale data |
-| **NumPy** | 2.x | Numerical computing backbone |
-| **Optuna** | 3.x | Hyperparameter optimization |
-| **scipy** | 1.x | Statistical tests & optimization |
-| **matplotlib** | 3.10.x | Static visualization |
-| **seaborn** | 0.13.x | Statistical visualization |
+### Core Capabilities
+- **Data Processing**: Pandas 2.2.0, NumPy 1.26.0, Dask 2024.1.0
+- **Machine Learning**: TensorFlow 2.20.0, PyTorch 2.9.0, Scikit-learn 1.7.2
+- **Visualization**: Matplotlib 3.8.0, Seaborn 0.13.0, Plotly 5.17.0
+- **Statistics**: SciPy 1.12.0, Statsmodels 0.14.0, Pingouin 0.8.0
+- **Big Data**: Spark 3.5.0, Polars 0.20.0, Apache Arrow 14.0.0
+- **Experimentation**: MLflow 2.9.0, Weights & Biases, Neptune
 
----
+### Quick Setup Examples
 
-## Level 1: Data Processing & Exploration
+```python
+# Data science workflow starter
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, confusion_matrix
 
-### Pattern 1: pandas DataFrame Operations (Production)
+# Load and explore data
+df = pd.read_csv('data.csv')
+print(f"Dataset shape: {df.shape}")
+print(f"Missing values: {df.isnull().sum().sum()}")
 
-**Scenario**: Load, explore, and preprocess tabular data for ML pipelines.
+# Basic preprocessing
+X = df.drop('target', axis=1)
+y = df['target']
+
+# Split data
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Train model
+model = RandomForestClassifier(n_estimators=100, random_state=42)
+model.fit(X_train, y_train)
+
+# Evaluate
+y_pred = model.predict(X_test)
+print(classification_report(y_test, y_pred))
+```
+
+```python
+# Modern data visualization with Plotly
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+
+# Interactive scatter plot
+fig = px.scatter(df, x='feature1', y='feature2', color='target',
+                 size='feature3', hover_data=['feature4'])
+fig.show()
+
+# Multi-subplot dashboard
+fig = make_subplots(
+    rows=2, cols=2,
+    subplot_titles=('Distribution', 'Correlation', 'Time Series', 'Feature Importance')
+)
+# Add traces...
+fig.show()
+```
+
+## Level 2: Practical Implementation
+
+### Data Processing & Analysis Pipeline
+
+#### 1. Advanced Data Preprocessing
 
 ```python
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import StandardScaler, LabelEncoder
-
-# Load and explore
-df = pd.read_csv('data.csv')
-print(df.head())
-print(df.info())
-print(df.describe())
-
-# Handle missing values strategically
-# For numerical: forward fill, then mean imputation
-df['numeric_col'] = df['numeric_col'].fillna(method='ffill').fillna(df['numeric_col'].mean())
-# For categorical: mode imputation
-df['category_col'] = df['category_col'].fillna(df['category_col'].mode()[0])
-
-# Remove duplicates
-df = df.drop_duplicates()
-
-# Feature engineering
-df['age_group'] = pd.cut(df['age'], bins=[0, 18, 35, 50, 100], labels=['child', 'young', 'adult', 'senior'])
-
-# Encoding categorical variables
-le = LabelEncoder()
-df['encoded_category'] = le.fit_transform(df['category_col'])
-
-# Scaling numerical features
-scaler = StandardScaler()
-df[['numeric_col', 'another_col']] = scaler.fit_transform(df[['numeric_col', 'another_col']])
-
-# Handle outliers with IQR method
-Q1 = df['price'].quantile(0.25)
-Q3 = df['price'].quantile(0.75)
-IQR = Q3 - Q1
-df = df[(df['price'] >= Q1 - 1.5 * IQR) & (df['price'] <= Q3 + 1.5 * IQR)]
-```
-
-**Reference**: https://pandas.pydata.org/docs/
-
----
-
-### Pattern 2: polars High-Performance Data (Production)
-
-**Scenario**: Process large datasets (>1GB) with polars for 10-100x speed improvement.
-
-```python
-import polars as pl
-
-# Load with polars - 10x faster than pandas
-df = pl.read_csv('large_file.csv')
-
-# Lazy evaluation for memory efficiency
-lazy_df = pl.scan_csv('huge_file.csv')
-
-# Column operations
-result = (
-    lazy_df
-    .filter(pl.col('age') > 25)
-    .select([
-        'name',
-        'age',
-        (pl.col('salary') * 1.1).alias('salary_with_raise')
-    ])
-    .group_by('department')
-    .agg([
-        pl.col('salary').mean().alias('avg_salary'),
-        pl.col('age').max().alias('max_age')
-    ])
-    .collect()  # Execute lazy chain
-)
-
-# Conversion to pandas for visualization
-df_pandas = result.to_pandas()
-
-# String operations (1.x syntax)
-df = pl.DataFrame({
-    'text': ['hello world', 'HELLO PYTHON', 'Data Science']
-})
-result = df.with_columns(
-    pl.col('text').str.to_lowercase().alias('lower'),
-    pl.col('text').str.lengths().alias('length')
-)
-
-# Performance: Compare execution time
-import time
-start = time.time()
-polars_result = pl.scan_csv('data.csv').select('*').collect()
-print(f"Polars: {time.time() - start:.3f}s")
-```
-
-**Reference**: https://docs.pola.rs/
-
----
-
-## Level 2: Machine Learning Pipelines
-
-### Pattern 3: scikit-learn Complete Pipeline (Production)
-
-**Scenario**: Build, train, and evaluate classification model with proper cross-validation.
-
-```python
-import numpy as np
-from sklearn.model_selection import (
-    train_test_split, GridSearchCV, cross_val_score, 
-    StratifiedKFold
-)
+from sklearn.preprocessing import StandardScaler, LabelEncoder, RobustScaler
+from sklearn.impute import SimpleImputer, KNNImputer
+from sklearn.feature_selection import SelectKBest, f_classif, RFE
+from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import (
-    classification_report, confusion_matrix, 
-    roc_auc_score, roc_curve
-)
+from scipy import stats
+import warnings
+warnings.filterwarnings('ignore')
 
-# 1. Data preparation
-X = np.random.rand(1000, 20)  # 20 features
-y = np.random.randint(0, 2, 1000)  # Binary classification
-
-# Split with stratification to maintain class distribution
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42, stratify=y
-)
-
-# 2. Build pipeline (preprocessing + model)
-pipeline = Pipeline([
-    ('scaler', StandardScaler()),
-    ('classifier', RandomForestClassifier(random_state=42))
-])
-
-# 3. Hyperparameter tuning with GridSearchCV
-param_grid = {
-    'classifier__n_estimators': [50, 100, 200],
-    'classifier__max_depth': [5, 10, None],
-    'classifier__min_samples_split': [2, 5, 10]
-}
-
-grid_search = GridSearchCV(
-    pipeline,
-    param_grid,
-    cv=StratifiedKFold(n_splits=5),
-    scoring='f1',
-    n_jobs=-1,
-    verbose=1
-)
-
-# 4. Train
-grid_search.fit(X_train, y_train)
-print(f"Best params: {grid_search.best_params_}")
-print(f"Best cross-val score: {grid_search.best_score_:.4f}")
-
-# 5. Evaluate on test set
-y_pred = grid_search.predict(X_test)
-y_proba = grid_search.predict_proba(X_test)[:, 1]
-
-print("\n=== Classification Report ===")
-print(classification_report(y_test, y_pred))
-
-print("\n=== Confusion Matrix ===")
-print(confusion_matrix(y_test, y_pred))
-
-print(f"ROC-AUC Score: {roc_auc_score(y_test, y_proba):.4f}")
-
-# 6. Cross-validation score (outer CV)
-cv_scores = cross_val_score(
-    grid_search.best_estimator_, 
-    X_train, y_train, 
-    cv=5, 
-    scoring='f1'
-)
-print(f"CV Scores: {cv_scores}")
-print(f"Mean CV Score: {cv_scores.mean():.4f} (+/- {cv_scores.std():.4f})")
-```
-
-**Reference**: https://scikit-learn.org/stable/modules/grid_search.html
-
----
-
-### Pattern 4: PyTorch CNN for Image Classification (Production)
-
-**Scenario**: Build, train, and evaluate CNN on CIFAR-10 dataset.
-
-```python
-import torch
-import torch.nn as nn
-import torch.optim as optim
-from torch.utils.data import DataLoader
-from torchvision import datasets, transforms
-
-# Device setup
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-print(f"Using device: {device}")
-
-# Data loading with augmentation
-train_transform = transforms.Compose([
-    transforms.RandomHorizontalFlip(),
-    transforms.RandomCrop(32, padding=4),
-    transforms.ToTensor(),
-    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-])
-
-test_transform = transforms.Compose([
-    transforms.ToTensor(),
-    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-])
-
-train_dataset = datasets.CIFAR10(
-    root='./data', train=True, download=True, transform=train_transform
-)
-test_dataset = datasets.CIFAR10(
-    root='./data', train=False, download=True, transform=test_transform
-)
-
-train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
-test_loader = DataLoader(test_dataset, batch_size=128, shuffle=False)
-
-# Define CNN architecture
-class CIFAR10CNN(nn.Module):
+class DataPreprocessor:
     def __init__(self):
-        super(CIFAR10CNN, self).__init__()
-        # Conv block 1
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=3, padding=1)
-        self.bn1 = nn.BatchNorm2d(64)
-        self.conv2 = nn.Conv2d(64, 64, kernel_size=3, padding=1)
-        self.bn2 = nn.BatchNorm2d(64)
-        self.pool = nn.MaxPool2d(2, 2)
+        self.numeric_features = []
+        self.categorical_features = []
+        self.preprocessor = None
+        self.feature_selector = None
+        self.outlier_detector = None
         
-        # Conv block 2
-        self.conv3 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
-        self.bn3 = nn.BatchNorm2d(128)
-        self.conv4 = nn.Conv2d(128, 128, kernel_size=3, padding=1)
-        self.bn4 = nn.BatchNorm2d(128)
+    def analyze_data(self, df: pd.DataFrame) -> dict:
+        """Comprehensive data analysis"""
+        analysis = {
+            'shape': df.shape,
+            'dtypes': df.dtypes.to_dict(),
+            'missing_values': df.isnull().sum().to_dict(),
+            'missing_percentage': (df.isnull().sum() / len(df) * 100).to_dict(),
+            'duplicates': df.duplicated().sum(),
+            'numeric_summary': df.describe().to_dict(),
+            'categorical_summary': {},
+            'correlation_matrix': None
+        }
         
-        # Fully connected
-        self.fc1 = nn.Linear(128 * 8 * 8, 256)
-        self.fc2 = nn.Linear(256, 10)
-        self.dropout = nn.Dropout(0.5)
+        # Categorical features analysis
+        for col in df.select_dtypes(include=['object', 'category']).columns:
+            analysis['categorical_summary'][col] = {
+                'unique_count': df[col].nunique(),
+                'unique_values': df[col].unique().tolist()[:10],  # First 10 values
+                'value_counts': df[col].value_counts().head().to_dict()
+            }
         
-    def forward(self, x):
-        # Conv block 1
-        x = self.pool(self.bn2(torch.relu(self.conv2(self.bn1(torch.relu(self.conv1(x)))))))
-        # Conv block 2
-        x = self.pool(self.bn4(torch.relu(self.conv4(self.bn3(torch.relu(self.conv3(x)))))))
-        # Flatten
-        x = x.view(x.size(0), -1)
-        # Fully connected
-        x = self.dropout(torch.relu(self.fc1(x)))
-        x = self.fc2(x)
-        return x
-
-# Initialize model, loss, optimizer
-model = CIFAR10CNN().to(device)
-criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=0.001)
-
-# Training loop
-def train_epoch(epoch):
-    model.train()
-    total_loss = 0
-    correct = 0
-    total = 0
+        # Correlation matrix for numeric features
+        numeric_df = df.select_dtypes(include=[np.number])
+        if len(numeric_df.columns) > 1:
+            analysis['correlation_matrix'] = numeric_df.corr().to_dict()
+        
+        return analysis
     
-    for batch_idx, (images, labels) in enumerate(train_loader):
-        images, labels = images.to(device), labels.to(device)
+    def detect_outliers(self, df: pd.DataFrame, method: str = 'iqr') -> pd.DataFrame:
+        """Detect outliers using various methods"""
+        numeric_df = df.select_dtypes(include=[np.number])
+        outliers_info = {}
         
-        # Forward
-        outputs = model(images)
-        loss = criterion(outputs, labels)
+        for col in numeric_df.columns:
+            if method == 'iqr':
+                Q1 = df[col].quantile(0.25)
+                Q3 = df[col].quantile(0.75)
+                IQR = Q3 - Q1
+                lower_bound = Q1 - 1.5 * IQR
+                upper_bound = Q3 + 1.5 * IQR
+                outliers = df[(df[col] < lower_bound) | (df[col] > upper_bound)]
+                
+            elif method == 'zscore':
+                z_scores = np.abs(stats.zscore(df[col].dropna()))
+                outliers = df[z_scores > 3]
+                
+            elif method == 'isolation_forest':
+                from sklearn.ensemble import IsolationForest
+                iso_forest = IsolationForest(contamination=0.1, random_state=42)
+                outlier_labels = iso_forest.fit_predict(df[[col]].dropna())
+                outliers = df[outlier_labels == -1]
+            
+            outliers_info[col] = {
+                'count': len(outliers),
+                'percentage': len(outliers) / len(df) * 100,
+                'indices': outliers.index.tolist()
+            }
         
-        # Backward
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        
-        total_loss += loss.item()
-        _, predicted = outputs.max(1)
-        correct += predicted.eq(labels).sum().item()
-        total += labels.size(0)
-        
-        if (batch_idx + 1) % 100 == 0:
-            print(f"Epoch {epoch}, Batch {batch_idx+1}: Loss={loss.item():.4f}")
+        return outliers_info
     
-    accuracy = 100.0 * correct / total
-    avg_loss = total_loss / len(train_loader)
-    return avg_loss, accuracy
-
-# Evaluation function
-def evaluate():
-    model.eval()
-    correct = 0
-    total = 0
+    def build_preprocessing_pipeline(self, X: pd.DataFrame, 
+                                   handle_outliers: bool = True,
+                                   feature_selection: bool = True,
+                                   selection_method: str = 'k_best') -> Pipeline:
+        """Build comprehensive preprocessing pipeline"""
+        
+        # Identify feature types
+        self.numeric_features = X.select_dtypes(include=[np.number]).columns.tolist()
+        self.categorical_features = X.select_dtypes(include=['object', 'category']).columns.tolist()
+        
+        # Numeric preprocessing
+        numeric_transformer = Pipeline(steps=[
+            ('imputer', SimpleImputer(strategy='median')),
+            ('scaler', RobustScaler())  # More robust to outliers than StandardScaler
+        ])
+        
+        # Categorical preprocessing
+        categorical_transformer = Pipeline(steps=[
+            ('imputer', SimpleImputer(strategy='most_frequent')),
+            ('encoder', LabelEncoder()) if len(self.categorical_features) == 1 else 
+            ('onehot', SimpleImputer(strategy='most_frequent'))
+        ])
+        
+        # Column transformer
+        preprocessor = ColumnTransformer(
+            transformers=[
+                ('num', numeric_transformer, self.numeric_features),
+                ('cat', categorical_transformer, self.categorical_features)
+            ])
+        
+        pipeline_steps = [('preprocessor', preprocessor)]
+        
+        # Feature selection
+        if feature_selection and selection_method == 'k_best':
+            selector = SelectKBest(score_func=f_classif, k=10)
+            pipeline_steps.append(('feature_selection', selector))
+        elif feature_selection and selection_method == 'rfe':
+            from sklearn.ensemble import RandomForestClassifier
+            estimator = RandomForestClassifier(n_estimators=100, random_state=42)
+            selector = RFE(estimator=estimator, n_features_to_select=10)
+            pipeline_steps.append(('feature_selection', selector))
+        
+        self.preprocessor = Pipeline(pipeline_steps)
+        return self.preprocessor
     
-    with torch.no_grad():
-        for images, labels in test_loader:
-            images, labels = images.to(device), labels.to(device)
-            outputs = model(images)
-            _, predicted = outputs.max(1)
-            correct += predicted.eq(labels).sum().item()
-            total += labels.size(0)
+    def transform_data(self, X: pd.DataFrame, y: pd.Series = None) -> np.ndarray:
+        """Transform data using preprocessing pipeline"""
+        
+        if self.preprocessor is None:
+            self.build_preprocessing_pipeline(X)
+        
+        if y is not None:
+            return self.preprocessor.fit_transform(X, y)
+        else:
+            return self.preprocessor.transform(X)
     
-    accuracy = 100.0 * correct / total
-    return accuracy
+    def get_feature_importance(self, X: pd.DataFrame, y: pd.Series) -> dict:
+        """Get feature importance using various methods"""
+        
+        # Prepare data
+        X_processed = self.transform_data(X, y)
+        
+        feature_importance = {}
+        
+        # Random Forest importance
+        rf = RandomForestClassifier(n_estimators=100, random_state=42)
+        rf.fit(X_processed, y)
+        
+        # Get feature names (simplified for this example)
+        feature_names = [f"feature_{i}" for i in range(X_processed.shape[1])]
+        
+        feature_importance['random_forest'] = dict(zip(feature_names, rf.feature_importances_))
+        
+        # Mutual information
+        from sklearn.feature_selection import mutual_info_classif
+        mi_scores = mutual_info_classif(X_processed, y)
+        feature_importance['mutual_info'] = dict(zip(feature_names, mi_scores))
+        
+        # ANOVA F-test
+        from sklearn.feature_selection import f_classif
+        f_scores, _ = f_classif(X_processed, y)
+        feature_importance['anova_f'] = dict(zip(feature_names, f_scores))
+        
+        return feature_importance
+    
+    def create_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Create engineered features"""
+        
+        df_engineered = df.copy()
+        numeric_cols = df.select_dtypes(include=[np.number]).columns
+        
+        # Polynomial features for top correlated columns
+        if len(numeric_cols) >= 2:
+            # Interaction features
+            for i, col1 in enumerate(numeric_cols[:3]):  # Limit to first 3 columns
+                for col2 in numeric_cols[i+1:4]:  # Limit interactions
+                    df_engineered[f'{col1}_x_{col2}'] = df[col1] * df[col2]
+                    df_engineered[f'{col1}_div_{col2}'] = df[col1] / (df[col2] + 1e-6)
+        
+        # Polynomial features
+        for col in numeric_cols[:3]:  # Limit to first 3 columns
+            df_engineered[f'{col}_squared'] = df[col] ** 2
+            df_engineered[f'{col}_cubed'] = df[col] ** 3
+            df_engineered[f'{col}_log'] = np.log1p(np.abs(df[col]))
+            df_engineered[f'{col}_sqrt'] = np.sqrt(np.abs(df[col]))
+        
+        # Statistical features
+        if len(numeric_cols) >= 3:
+            df_engineered['mean_of_numeric'] = df[numeric_cols].mean(axis=1)
+            df_engineered['std_of_numeric'] = df[numeric_cols].std(axis=1)
+            df_engineered['min_of_numeric'] = df[numeric_cols].min(axis=1)
+            df_engineered['max_of_numeric'] = df[numeric_cols].max(axis=1)
+            df_engineered['sum_of_numeric'] = df[numeric_cols].sum(axis=1)
+        
+        # Date/time features (if date columns exist)
+        date_cols = df.select_dtypes(include=['datetime64']).columns
+        for col in date_cols:
+            df_engineered[f'{col}_year'] = df[col].dt.year
+            df_engineered[f'{col}_month'] = df[col].dt.month
+            df_engineered[f'{col}_day'] = df[col].dt.day
+            df_engineered[f'{col}_dayofweek'] = df[col].dt.dayofweek
+            df_engineered[f'{col}_quarter'] = df[col].dt.quarter
+        
+        return df_engineered
 
-# Train for 10 epochs
-for epoch in range(1, 11):
-    train_loss, train_acc = train_epoch(epoch)
-    test_acc = evaluate()
-    print(f"Epoch {epoch}: Train Loss={train_loss:.4f}, Train Acc={train_acc:.2f}%, Test Acc={test_acc:.2f}%")
-
-print("Training complete!")
+# Usage example
+# preprocessor = DataPreprocessor()
+# analysis = preprocessor.analyze_data(df)
+# outliers = preprocessor.detect_outliers(df, method='iqr')
+# pipeline = preprocessor.build_preprocessing_pipeline(X)
+# X_processed = preprocessor.transform_data(X, y)
+# feature_importance = preprocessor.get_feature_importance(X, y)
 ```
 
-**Reference**: https://pytorch.org/docs/stable/nn.html
-
----
-
-### Pattern 5: PyTorch Lightning for Simplified Training (Production)
-
-**Scenario**: Same CNN as above but with PyTorch Lightning for cleaner code and automatic distributed training.
-
-```python
-import pytorch_lightning as pl
-from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
-
-class CIFAR10LightningModule(pl.LightningModule):
-    def __init__(self, learning_rate=0.001):
-        super().__init__()
-        self.save_hyperparameters()
-        
-        # Model architecture (same as above)
-        self.model = CIFAR10CNN()
-        self.criterion = nn.CrossEntropyLoss()
-    
-    def forward(self, x):
-        return self.model(x)
-    
-    def training_step(self, batch, batch_idx):
-        x, y = batch
-        logits = self(x)
-        loss = self.criterion(logits, y)
-        
-        # Metrics
-        _, predicted = logits.max(1)
-        acc = (predicted == y).float().mean()
-        
-        self.log('train_loss', loss, on_step=True, on_epoch=True)
-        self.log('train_acc', acc, on_step=False, on_epoch=True)
-        return loss
-    
-    def validation_step(self, batch, batch_idx):
-        x, y = batch
-        logits = self(x)
-        loss = self.criterion(logits, y)
-        
-        _, predicted = logits.max(1)
-        acc = (predicted == y).float().mean()
-        
-        self.log('val_loss', loss)
-        self.log('val_acc', acc)
-        return loss
-    
-    def test_step(self, batch, batch_idx):
-        x, y = batch
-        logits = self(x)
-        loss = self.criterion(logits, y)
-        
-        _, predicted = logits.max(1)
-        acc = (predicted == y).float().mean()
-        
-        self.log('test_loss', loss)
-        self.log('test_acc', acc)
-    
-    def configure_optimizers(self):
-        return torch.optim.Adam(
-            self.parameters(), 
-            lr=self.hparams.learning_rate
-        )
-
-# Training with Lightning
-model = CIFAR10LightningModule(learning_rate=0.001)
-
-# Callbacks
-early_stop = EarlyStopping(
-    monitor='val_acc',
-    mode='max',
-    patience=3,
-    verbose=True
-)
-
-checkpoint = ModelCheckpoint(
-    monitor='val_acc',
-    mode='max',
-    save_top_k=1,
-    dirpath='checkpoints/',
-    filename='best-model'
-)
-
-# Trainer
-trainer = pl.Trainer(
-    max_epochs=10,
-    accelerator='auto',  # Auto GPU/CPU
-    devices=1,
-    callbacks=[early_stop, checkpoint],
-    enable_progress_bar=True
-)
-
-# Train
-trainer.fit(
-    model,
-    train_dataloaders=train_loader,
-    val_dataloaders=test_loader
-)
-
-# Test
-trainer.test(model, dataloaders=test_loader)
-```
-
-**Reference**: https://lightning.ai/docs/pytorch/stable/
-
----
-
-## Level 3: Advanced Analytics
-
-### Pattern 6: Hyperparameter Optimization with Optuna (Production)
-
-**Scenario**: Optimize hyperparameters for XGBoost classifier using Optuna with pruning.
-
-```python
-import optuna
-from optuna.pruners import HyperbandPruner
-from optuna.samplers import TPESampler
-import xgboost as xgb
-from sklearn.model_selection import cross_val_score
-
-# Define objective function
-def objective(trial):
-    # Suggest hyperparameters
-    params = {
-        'n_estimators': trial.suggest_int('n_estimators', 50, 500),
-        'max_depth': trial.suggest_int('max_depth', 3, 15),
-        'learning_rate': trial.suggest_float('learning_rate', 1e-3, 0.3, log=True),
-        'subsample': trial.suggest_float('subsample', 0.5, 1.0),
-        'colsample_bytree': trial.suggest_float('colsample_bytree', 0.5, 1.0),
-        'gamma': trial.suggest_float('gamma', 0, 10),
-        'reg_alpha': trial.suggest_float('reg_alpha', 0, 10),
-        'reg_lambda': trial.suggest_float('reg_lambda', 0, 10),
-    }
-    
-    # Cross-validation scoring
-    model = xgb.XGBClassifier(**params, random_state=42, use_label_encoder=False)
-    
-    score = cross_val_score(
-        model, X_train, y_train, 
-        cv=5, 
-        scoring='f1'
-    ).mean()
-    
-    return score
-
-# Create study with TPE sampler and Hyperband pruner
-sampler = TPESampler(seed=42)
-pruner = HyperbandPruner()
-
-study = optuna.create_study(
-    direction='maximize',
-    sampler=sampler,
-    pruner=pruner
-)
-
-# Optimize
-study.optimize(objective, n_trials=100, show_progress_bar=True)
-
-# Best trial
-best_trial = study.best_trial
-print(f"Best F1 Score: {best_trial.value:.4f}")
-print(f"Best Hyperparameters: {best_trial.params}")
-
-# Visualization
-optuna.visualization.plot_param_importances(study).show()
-optuna.visualization.plot_optimization_history(study).show()
-
-# Train final model with best params
-best_model = xgb.XGBClassifier(**best_trial.params, random_state=42)
-best_model.fit(X_train, y_train)
-final_score = best_model.score(X_test, y_test)
-print(f"Final Test Accuracy: {final_score:.4f}")
-```
-
-**Reference**: https://optuna.readthedocs.io/en/stable/
-
----
-
-### Pattern 7: Statistical Testing (Production)
-
-**Scenario**: Compare two groups and calculate effect sizes with scipy.
+#### 2. Statistical Analysis & Hypothesis Testing
 
 ```python
 import scipy.stats as stats
-import numpy as np
-
-# Generate sample data
-group_a = np.random.normal(loc=100, scale=15, size=100)
-group_b = np.random.normal(loc=110, scale=15, size=100)
-
-# 1. Normality test (Shapiro-Wilk)
-stat_a, p_a = stats.shapiro(group_a)
-stat_b, p_b = stats.shapiro(group_b)
-print(f"Group A Normality: p={p_a:.4f}")
-print(f"Group B Normality: p={p_b:.4f}")
-
-# 2. Equal variance test (Levene)
-stat, p = stats.levene(group_a, group_b)
-print(f"Equal Variance Test: p={p:.4f}")
-
-# 3. Independent t-test
-t_stat, p_value = stats.ttest_ind(group_a, group_b)
-print(f"T-test: t={t_stat:.4f}, p={p_value:.4f}")
-
-# 4. Cohen's d (effect size)
-cohens_d = (group_a.mean() - group_b.mean()) / np.sqrt(
-    ((len(group_a) - 1) * group_a.std()**2 + 
-     (len(group_b) - 1) * group_b.std()**2) / 
-    (len(group_a) + len(group_b) - 2)
-)
-print(f"Cohen's d: {cohens_d:.4f}")
-
-# Interpretation
-if abs(cohens_d) < 0.2:
-    effect = "negligible"
-elif abs(cohens_d) < 0.5:
-    effect = "small"
-elif abs(cohens_d) < 0.8:
-    effect = "medium"
-else:
-    effect = "large"
-print(f"Effect Size: {effect}")
-
-# 5. Non-parametric alternative (Mann-Whitney U)
-u_stat, p_mw = stats.mannwhitneyu(group_a, group_b, alternative='two-sided')
-print(f"Mann-Whitney U: U={u_stat:.4f}, p={p_mw:.4f}")
-
-# 6. ANOVA for multiple groups
-group_c = np.random.normal(loc=105, scale=15, size=100)
-f_stat, p_anova = stats.f_oneway(group_a, group_b, group_c)
-print(f"One-way ANOVA: F={f_stat:.4f}, p={p_anova:.4f}")
-```
-
-**Reference**: https://docs.scipy.org/doc/scipy/reference/stats.html
-
----
-
-### Pattern 8: Time Series Forecasting (Production)
-
-**Scenario**: ARIMA and Prophet for stock price forecasting.
-
-```python
-import pandas as pd
-from statsmodels.tsa.arima.model import ARIMA
-from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
-import matplotlib.pyplot as plt
-
-# Load time series data
-df = pd.read_csv('stock_prices.csv', parse_dates=['Date'], index_col='Date')
-data = df['Close'].asfreq('D')  # Daily frequency
-
-# 1. Check stationarity (ADF test)
-from statsmodels.tsa.stattools import adfuller
-result = adfuller(data)
-print(f"ADF Test p-value: {result[1]:.4f}")
-if result[1] > 0.05:
-    print("Data is non-stationary, differencing required")
-    data_diff = data.diff().dropna()
-
-# 2. Plot ACF and PACF to determine order
-fig, axes = plt.subplots(1, 2, figsize=(12, 4))
-plot_acf(data, lags=20, ax=axes[0])
-plot_pacf(data, lags=20, ax=axes[1])
-plt.show()
-
-# 3. ARIMA model
-model = ARIMA(data, order=(1, 1, 1))  # (p, d, q)
-fitted = model.fit()
-print(fitted.summary())
-
-# 4. Forecast
-forecast = fitted.get_forecast(steps=30)
-forecast_df = forecast.conf_int()
-forecast_df['forecast'] = forecast.predicted_mean
-
-print("\nNext 30 days forecast:")
-print(forecast_df.head())
-
-# 5. Prophet (simpler, better for business data)
-from prophet import Prophet
-
-df_prophet = pd.DataFrame({
-    'ds': data.index,
-    'y': data.values
-})
-
-model_prophet = Prophet(
-    yearly_seasonality=True,
-    weekly_seasonality=True,
-    daily_seasonality=False,
-    interval_width=0.95
-)
-model_prophet.fit(df_prophet)
-
-future = model_prophet.make_future_dataframe(periods=30, freq='D')
-forecast_prophet = model_prophet.predict(future)
-
-print("\nProphet forecast (last 10 + 30 future):")
-print(forecast_prophet[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].tail(40))
-
-# Visualization
-model_prophet.plot(forecast_prophet)
-plt.show()
-```
-
-**Reference**: https://www.statsmodels.org/stable/tsa.html
-
----
-
-## Level 4: Visualization & Reporting
-
-### Pattern 9: Advanced Visualization (Production)
-
-**Scenario**: Create publication-quality plots with matplotlib and seaborn.
-
-```python
-import matplotlib.pyplot as plt
-import seaborn as sns
+import statsmodels.api as sm
+from statsmodels.stats.power import TTestPower, GofChisquarePower
+from statsmodels.stats.multicomp import pairwise_tukeyhsd
+import pingouin as pg
 import numpy as np
 import pandas as pd
 
-# Setup
-sns.set_style("whitegrid")
-plt.rcParams['figure.figsize'] = (12, 8)
+class StatisticalAnalyzer:
+    def __init__(self):
+        self.results = {}
+    
+    def descriptive_statistics(self, data: pd.DataFrame, 
+                             columns: list = None) -> dict:
+        """Comprehensive descriptive statistics"""
+        
+        if columns is None:
+            columns = data.select_dtypes(include=[np.number]).columns.tolist()
+        
+        stats_dict = {}
+        
+        for col in columns:
+            series = data[col].dropna()
+            
+            stats_dict[col] = {
+                'count': len(series),
+                'mean': series.mean(),
+                'median': series.median(),
+                'std': series.std(),
+                'var': series.var(),
+                'min': series.min(),
+                'max': series.max(),
+                'range': series.max() - series.min(),
+                'q25': series.quantile(0.25),
+                'q75': series.quantile(0.75),
+                'iqr': series.quantile(0.75) - series.quantile(0.25),
+                'skewness': stats.skew(series),
+                'kurtosis': stats.kurtosis(series),
+                'cv': series.std() / series.mean() if series.mean() != 0 else np.nan
+            }
+            
+            # Confidence intervals
+            confidence_level = 0.95
+            degrees_freedom = len(series) - 1
+            sample_mean = series.mean()
+            sample_std = series.std()
+            standard_error = sample_std / np.sqrt(len(series))
+            
+            t_critical = stats.t.ppf((1 + confidence_level) / 2, degrees_freedom)
+            margin_error = t_critical * standard_error
+            
+            stats_dict[col]['confidence_interval'] = {
+                'lower': sample_mean - margin_error,
+                'upper': sample_mean + margin_error,
+                'level': confidence_level
+            }
+        
+        return stats_dict
+    
+    def normality_tests(self, data: pd.Series, alpha: float = 0.05) -> dict:
+        """Test for normality using multiple methods"""
+        
+        data_clean = data.dropna()
+        
+        # Shapiro-Wilk test (for n < 5000)
+        shapiro_stat, shapiro_p = stats.shapiro(data_clean[:5000])
+        
+        # Kolmogorov-Smirnov test
+        ks_stat, ks_p = stats.kstest(data_clean, 'norm', 
+                                     args=(data_clean.mean(), data_clean.std()))
+        
+        # Anderson-Darling test
+        ad_stat, ad_critical_values, ad_significance_levels = stats.anderson(data_clean, 'norm')
+        
+        # D'Agostino's K2 test
+        dagostino_stat, dagostino_p = stats.normaltest(data_clean)
+        
+        results = {
+            'shapiro_wilk': {
+                'statistic': shapiro_stat,
+                'p_value': shapiro_p,
+                'is_normal': shapiro_p > alpha,
+                'alpha': alpha
+            },
+            'kolmogorov_smirnov': {
+                'statistic': ks_stat,
+                'p_value': ks_p,
+                'is_normal': ks_p > alpha,
+                'alpha': alpha
+            },
+            'anderson_darling': {
+                'statistic': ad_stat,
+                'critical_values': dict(zip(ad_significance_levels, ad_critical_values)),
+                'is_normal': ad_stat < ad_critical_values[2]  # 5% significance
+            },
+            'dagostino_k2': {
+                'statistic': dagostino_stat,
+                'p_value': dagostino_p,
+                'is_normal': dagostino_p > alpha,
+                'alpha': alpha
+            }
+        }
+        
+        return results
+    
+    def hypothesis_testing(self, data1: pd.Series, data2: pd.Series = None,
+                          test_type: str = 'auto', alpha: float = 0.05,
+                          alternative: str = 'two-sided') -> dict:
+        """Comprehensive hypothesis testing"""
+        
+        if data2 is None:
+            # One-sample tests
+            if test_type == 'auto':
+                # Determine appropriate test based on normality
+                normality = self.normality_tests(data1, alpha)
+                
+                # Use t-test if data appears normal, otherwise Wilcoxon
+                if normality['shapiro_wilk']['is_normal']:
+                    return self._one_sample_t_test(data1, alpha, alternative)
+                else:
+                    return self._one_sample_wilcoxon_test(data1, alpha, alternative)
+        
+        else:
+            # Two-sample tests
+            if test_type == 'auto':
+                # Check normality and equal variance assumptions
+                normality1 = self.normality_tests(data1, alpha)
+                normality2 = self.normality_tests(data2, alpha)
+                
+                # Levene's test for equal variances
+                levene_stat, levene_p = stats.levene(data1.dropna(), data2.dropna())
+                
+                if (normality1['shapiro_wilk']['is_normal'] and 
+                    normality2['shapiro_wilk']['is_normal'] and 
+                    levene_p > alpha):
+                    # Use t-test if assumptions are met
+                    return self._two_sample_t_test(data1, data2, alpha, alternative)
+                else:
+                    # Use non-parametric test
+                    return self._mann_whitney_test(data1, data2, alpha, alternative)
+        
+        return {'error': 'Invalid test configuration'}
+    
+    def _one_sample_t_test(self, data: pd.Series, alpha: float, alternative: str) -> dict:
+        """One-sample t-test"""
+        
+        t_stat, p_value = stats.ttest_1samp(data.dropna(), 0, alternative=alternative)
+        
+        degrees_freedom = len(data.dropna()) - 1
+        confidence_level = 1 - alpha
+        
+        # Effect size (Cohen's d)
+        cohens_d = data.mean() / data.std()
+        
+        return {
+            'test': 'One-sample t-test',
+            'statistic': t_stat,
+            'p_value': p_value,
+            'degrees_freedom': degrees_freedom,
+            'alpha': alpha,
+            'is_significant': p_value < alpha,
+            'alternative': alternative,
+            'effect_size': cohens_d,
+            'effect_size_interpretation': self._interpret_cohens_d(cohens_d)
+        }
+    
+    def _one_sample_wilcoxon_test(self, data: pd.Series, alpha: float, alternative: str) -> dict:
+        """One-sample Wilcoxon signed-rank test"""
+        
+        wilcoxon_stat, p_value = stats.wilcoxon(data.dropna(), alternative=alternative)
+        
+        return {
+            'test': 'One-sample Wilcoxon signed-rank test',
+            'statistic': wilcoxon_stat,
+            'p_value': p_value,
+            'alpha': alpha,
+            'is_significant': p_value < alpha,
+            'alternative': alternative,
+            'note': 'Non-parametric test - does not assume normality'
+        }
+    
+    def _two_sample_t_test(self, data1: pd.Series, data2: pd.Series, 
+                          alpha: float, alternative: str) -> dict:
+        """Two-sample t-test"""
+        
+        t_stat, p_value = stats.ttest_ind(data1.dropna(), data2.dropna(), alternative=alternative)
+        
+        # Effect size (Cohen's d)
+        n1, n2 = len(data1.dropna()), len(data2.dropna())
+        pooled_std = np.sqrt(((n1-1)*data1.var() + (n2-1)*data2.var()) / (n1+n2-2))
+        cohens_d = (data1.mean() - data2.mean()) / pooled_std
+        
+        return {
+            'test': 'Two-sample t-test',
+            'statistic': t_stat,
+            'p_value': p_value,
+            'alpha': alpha,
+            'is_significant': p_value < alpha,
+            'alternative': alternative,
+            'effect_size': cohens_d,
+            'effect_size_interpretation': self._interpret_cohens_d(cohens_d),
+            'sample_sizes': {'sample1': n1, 'sample2': n2}
+        }
+    
+    def _mann_whitney_test(self, data1: pd.Series, data2: pd.Series, 
+                          alpha: float, alternative: str) -> dict:
+        """Mann-Whitney U test"""
+        
+        u_stat, p_value = stats.mannwhitneyu(data1.dropna(), data2.dropna(), 
+                                          alternative=alternative)
+        
+        return {
+            'test': 'Mann-Whitney U test',
+            'statistic': u_stat,
+            'p_value': p_value,
+            'alpha': alpha,
+            'is_significant': p_value < alpha,
+            'alternative': alternative,
+            'note': 'Non-parametric test - does not assume normality'
+        }
+    
+    def _interpret_cohens_d(self, d: float) -> str:
+        """Interpret Cohen's d effect size"""
+        
+        abs_d = abs(d)
+        if abs_d < 0.2:
+            return 'negligible'
+        elif abs_d < 0.5:
+            return 'small'
+        elif abs_d < 0.8:
+            return 'medium'
+        else:
+            return 'large'
+    
+    def correlation_analysis(self, data: pd.DataFrame, 
+                           method: str = 'pearson') -> dict:
+        """Comprehensive correlation analysis"""
+        
+        numeric_data = data.select_dtypes(include=[np.number])
+        
+        if method == 'pearson':
+            corr_matrix, p_values = self._pearson_correlation(numeric_data)
+        elif method == 'spearman':
+            corr_matrix, p_values = self._spearman_correlation(numeric_data)
+        elif method == 'kendall':
+            corr_matrix, p_values = self._kendall_correlation(numeric_data)
+        
+        # Find significant correlations
+        significant_correlations = []
+        for i, col1 in enumerate(numeric_data.columns):
+            for j, col2 in enumerate(numeric_data.columns):
+                if i < j:  # Avoid duplicates
+                    corr_val = corr_matrix.iloc[i, j]
+                    p_val = p_values.iloc[i, j]
+                    
+                    if abs(corr_val) > 0.3 and p_val < 0.05:  # Thresholds
+                        significant_correlations.append({
+                            'variable1': col1,
+                            'variable2': col2,
+                            'correlation': corr_val,
+                            'p_value': p_val,
+                            'strength': self._interpret_correlation(corr_val)
+                        })
+        
+        return {
+            'correlation_matrix': corr_matrix.to_dict(),
+            'p_value_matrix': p_values.to_dict(),
+            'significant_correlations': significant_correlations,
+            'method': method
+        }
+    
+    def _pearson_correlation(self, data: pd.DataFrame) -> tuple:
+        """Pearson correlation with p-values"""
+        
+        n = len(data)
+        corr_matrix = data.corr(method='pearson')
+        
+        # Calculate p-values
+        p_values = pd.DataFrame(index=data.columns, columns=data.columns)
+        
+        for i, col1 in enumerate(data.columns):
+            for j, col2 in enumerate(data.columns):
+                if i <= j:
+                    corr, p_val = stats.pearsonr(data[col1].dropna(), data[col2].dropna())
+                    p_values.iloc[i, j] = p_val
+                    p_values.iloc[j, i] = p_val
+                else:
+                    p_values.iloc[i, j] = p_values.iloc[j, i]
+        
+        return corr_matrix, p_values
+    
+    def _interpret_correlation(self, r: float) -> str:
+        """Interpret correlation coefficient magnitude"""
+        
+        abs_r = abs(r)
+        if abs_r < 0.1:
+            return 'negligible'
+        elif abs_r < 0.3:
+            return 'weak'
+        elif abs_r < 0.5:
+            return 'moderate'
+        elif abs_r < 0.7:
+            return 'strong'
+        else:
+            return 'very strong'
+    
+    def power_analysis(self, effect_size: float, alpha: float = 0.05, 
+                      power: float = 0.8, sample_size: int = None,
+                      test_type: str = 't-test') -> dict:
+        """Statistical power analysis"""
+        
+        if test_type == 't-test':
+            power_analysis = TTestPower()
+            
+            if sample_size is None:
+                # Calculate required sample size
+                required_n = power_analysis.solve_power(
+                    effect_size=effect_size,
+                    alpha=alpha,
+                    power=power,
+                    alternative='two-sided'
+                )
+                return {
+                    'test_type': test_type,
+                    'required_sample_size': required_n,
+                    'effect_size': effect_size,
+                    'alpha': alpha,
+                    'desired_power': power
+                }
+            else:
+                # Calculate achieved power
+                achieved_power = power_analysis.power(
+                    effect_size=effect_size,
+                    nobs=sample_size,
+                    alpha=alpha,
+                    alternative='two-sided'
+                )
+                return {
+                    'test_type': test_type,
+                    'sample_size': sample_size,
+                    'achieved_power': achieved_power,
+                    'effect_size': effect_size,
+                    'alpha': alpha
+                }
+        
+        return {'error': 'Unsupported test type for power analysis'}
 
-# Create sample data
-data = pd.DataFrame({
-    'Category': np.repeat(['A', 'B', 'C'], 100),
-    'Value': np.random.normal(0, 1, 300),
-    'Group': np.tile(['Group1', 'Group2'], 150)
-})
-
-# 1. Distribution plots
-fig, axes = plt.subplots(2, 2, figsize=(12, 10))
-
-# Histogram with KDE
-axes[0, 0].hist(data['Value'], bins=30, kde=True, alpha=0.7, color='skyblue')
-axes[0, 0].set_title('Distribution of Values')
-
-# Box plot
-sns.boxplot(data=data, x='Category', y='Value', ax=axes[0, 1], palette='Set2')
-axes[0, 1].set_title('Box Plot by Category')
-
-# Violin plot
-sns.violinplot(data=data, x='Category', y='Value', hue='Group', ax=axes[1, 0], split=False)
-axes[1, 0].set_title('Violin Plot with Hue')
-
-# Scatter with regression
-x = np.random.normal(0, 1, 200)
-y = 2 * x + np.random.normal(0, 0.5, 200)
-sns.regplot(x=x, y=y, ax=axes[1, 1], scatter_kws={'alpha': 0.5})
-axes[1, 1].set_title('Scatter Plot with Regression Line')
-
-plt.tight_layout()
-plt.savefig('distributions.png', dpi=300, bbox_inches='tight')
-
-# 2. Correlation heatmap
-correlation_matrix = data[['Value']].corr()
-sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', center=0, 
-            square=True, linewidths=1, cbar_kws={"shrink": 0.8})
-plt.title('Correlation Heatmap')
-plt.savefig('correlation.png', dpi=300, bbox_inches='tight')
-
-# 3. Multi-plot grid
-g = sns.FacetGrid(data, col='Category', hue='Group', height=4, aspect=1.2)
-g.map(plt.hist, 'Value', bins=20, alpha=0.7)
-g.add_legend()
-plt.savefig('facet_grid.png', dpi=300, bbox_inches='tight')
-
-print("Plots saved successfully!")
+# Usage example
+# analyzer = StatisticalAnalyzer()
+# desc_stats = analyzer.descriptive_statistics(df)
+# normality = analyzer.normality_tests(df['column'])
+# hypothesis_result = analyzer.hypothesis_testing(df['group1'], df['group2'])
+# corr_analysis = analyzer.correlation_analysis(df)
+# power_result = analyzer.power_analysis(effect_size=0.5, sample_size=100)
 ```
 
-**Reference**: https://matplotlib.org/stable/gallery/
-
----
-
-### Pattern 10: Interactive Dashboards with Plotly (Production)
-
-**Scenario**: Build interactive dashboard for business metrics.
+#### 3. Machine Learning Model Development
 
 ```python
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-import plotly.express as px
-import pandas as pd
+from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score
+from sklearn.preprocessing import StandardScaler
+import xgboost as xgb
+import lightgbm as lgb
+import optuna
 
-# Sample data
-sales_data = pd.DataFrame({
-    'Month': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-    'Sales': [100, 150, 130, 200, 250, 220],
-    'Profit': [20, 35, 25, 50, 70, 60],
-    'Units': [1000, 1200, 1100, 1500, 1800, 1600]
-})
+class MLModelBuilder:
+    def __init__(self):
+        self.models = {}
+        self.best_model = None
+        self.feature_importance = {}
+        self.evaluation_results = {}
+    
+    def prepare_data(self, X: pd.DataFrame, y: pd.Series, 
+                    test_size: float = 0.2, random_state: int = 42) -> tuple:
+        """Prepare data for machine learning"""
+        
+        # Handle missing values
+        X_clean = X.fillna(X.median(numeric_only=True))
+        for col in X_clean.select_dtypes(include=['object', 'category']).columns:
+            X_clean[col] = X_clean[col].fillna(X_clean[col].mode()[0] if not X_clean[col].mode().empty else 'unknown')
+        
+        # Encode categorical variables
+        X_encoded = pd.get_dummies(X_clean, drop_first=True)
+        
+        # Split data
+        X_train, X_test, y_train, y_test = train_test_split(
+            X_encoded, y, test_size=test_size, random_state=random_state, stratify=y
+        )
+        
+        return X_train, X_test, y_train, y_test
+    
+    def build_base_models(self, X_train, X_test, y_train, y_test) -> dict:
+        """Build and evaluate multiple base models"""
+        
+        models = {
+            'logistic_regression': LogisticRegression(max_iter=1000, random_state=42),
+            'random_forest': RandomForestClassifier(n_estimators=100, random_state=42),
+            'gradient_boosting': GradientBoostingClassifier(random_state=42),
+            'xgboost': xgb.XGBClassifier(random_state=42, eval_metric='logloss'),
+            'lightgbm': lgb.LGBMClassifier(random_state=42, verbose=-1)
+        }
+        
+        results = {}
+        
+        for name, model in models.items():
+            print(f"Training {name}...")
+            
+            # Train model
+            model.fit(X_train, y_train)
+            
+            # Make predictions
+            y_pred = model.predict(X_test)
+            y_pred_proba = None
+            
+            if hasattr(model, 'predict_proba'):
+                y_pred_proba = model.predict_proba(X_test)[:, 1]
+            
+            # Evaluate
+            accuracy = model.score(X_test, y_test)
+            
+            if len(np.unique(y_test)) == 2 and y_pred_proba is not None:
+                roc_auc = roc_auc_score(y_test, y_pred_proba)
+            else:
+                roc_auc = None
+            
+            # Cross-validation
+            cv_scores = cross_val_score(model, X_train, y_train, cv=5, scoring='accuracy')
+            
+            results[name] = {
+                'model': model,
+                'accuracy': accuracy,
+                'roc_auc': roc_auc,
+                'cv_mean': cv_scores.mean(),
+                'cv_std': cv_scores.std(),
+                'predictions': y_pred,
+                'probabilities': y_pred_proba
+            }
+            
+            # Feature importance
+            if hasattr(model, 'feature_importances_'):
+                importance_dict = dict(zip(X_train.columns, model.feature_importances_))
+                self.feature_importance[name] = importance_dict
+        
+        self.models = results
+        return results
+    
+    def hyperparameter_tuning(self, X_train, y_train, model_type: str = 'random_forest',
+                            n_trials: int = 100) -> dict:
+        """Hyperparameter tuning using Optuna"""
+        
+        def objective(trial):
+            if model_type == 'random_forest':
+                params = {
+                    'n_estimators': trial.suggest_int('n_estimators', 50, 300),
+                    'max_depth': trial.suggest_int('max_depth', 3, 20),
+                    'min_samples_split': trial.suggest_int('min_samples_split', 2, 20),
+                    'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 10),
+                    'max_features': trial.suggest_categorical('max_features', ['sqrt', 'log2', None])
+                }
+                model = RandomForestClassifier(**params, random_state=42, n_jobs=-1)
+                
+            elif model_type == 'xgboost':
+                params = {
+                    'n_estimators': trial.suggest_int('n_estimators', 50, 300),
+                    'max_depth': trial.suggest_int('max_depth', 3, 10),
+                    'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.3),
+                    'subsample': trial.suggest_float('subsample', 0.6, 1.0),
+                    'colsample_bytree': trial.suggest_float('colsample_bytree', 0.6, 1.0),
+                    'gamma': trial.suggest_float('gamma', 0, 5),
+                    'reg_alpha': trial.suggest_float('reg_alpha', 0, 5),
+                    'reg_lambda': trial.suggest_float('reg_lambda', 0, 5)
+                }
+                model = xgb.XGBClassifier(**params, random_state=42, eval_metric='logloss')
+                
+            elif model_type == 'lightgbm':
+                params = {
+                    'n_estimators': trial.suggest_int('n_estimators', 50, 300),
+                    'max_depth': trial.suggest_int('max_depth', 3, 15),
+                    'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.3),
+                    'num_leaves': trial.suggest_int('num_leaves', 20, 150),
+                    'feature_fraction': trial.suggest_float('feature_fraction', 0.6, 1.0),
+                    'bagging_fraction': trial.suggest_float('bagging_fraction', 0.6, 1.0),
+                    'bagging_freq': trial.suggest_int('bagging_freq', 1, 10),
+                    'min_child_samples': trial.suggest_int('min_child_samples', 5, 100)
+                }
+                model = lgb.LGBMClassifier(**params, random_state=42, verbose=-1)
+            
+            # Cross-validation
+            scores = cross_val_score(model, X_train, y_train, cv=5, scoring='accuracy')
+            return scores.mean()
+        
+        # Create study
+        study = optuna.create_study(direction='maximize')
+        study.optimize(objective, n_trials=n_trials)
+        
+        # Train best model
+        best_params = study.best_params
+        
+        if model_type == 'random_forest':
+            best_model = RandomForestClassifier(**best_params, random_state=42, n_jobs=-1)
+        elif model_type == 'xgboost':
+            best_model = xgb.XGBClassifier(**best_params, random_state=42, eval_metric='logloss')
+        elif model_type == 'lightgbm':
+            best_model = lgb.LGBMClassifier(**best_params, random_state=42, verbose=-1)
+        
+        best_model.fit(X_train, y_train)
+        
+        return {
+            'best_model': best_model,
+            'best_params': best_params,
+            'best_score': study.best_value,
+            'study': study
+        }
+    
+    def evaluate_model(self, model, X_test, y_test, model_name: str = "model") -> dict:
+        """Comprehensive model evaluation"""
+        
+        # Make predictions
+        y_pred = model.predict(X_test)
+        y_pred_proba = None
+        
+        if hasattr(model, 'predict_proba'):
+            y_pred_proba = model.predict_proba(X_test)
+            if len(np.unique(y_test)) == 2:
+                y_pred_proba_binary = y_pred_proba[:, 1]
+            else:
+                y_pred_proba_binary = None
+        
+        # Basic metrics
+        accuracy = model.score(X_test, y_test)
+        
+        # Classification report
+        class_report = classification_report(y_test, y_pred, output_dict=True)
+        
+        # Confusion matrix
+        conf_matrix = confusion_matrix(y_test, y_pred)
+        
+        # ROC AUC for binary classification
+        roc_auc = None
+        if y_pred_proba_binary is not None:
+            roc_auc = roc_auc_score(y_test, y_pred_proba_binary)
+        
+        # Feature importance
+        feature_importance = None
+        if hasattr(model, 'feature_importances_'):
+            feature_importance = dict(zip(X_test.columns, model.feature_importances_))
+        
+        evaluation = {
+            'model_name': model_name,
+            'accuracy': accuracy,
+            'classification_report': class_report,
+            'confusion_matrix': conf_matrix.tolist(),
+            'roc_auc': roc_auc,
+            'feature_importance': feature_importance,
+            'predictions': y_pred.tolist(),
+            'probabilities': y_pred_proba.tolist() if y_pred_proba is not None else None
+        }
+        
+        self.evaluation_results[model_name] = evaluation
+        return evaluation
+    
+    def ensemble_models(self, X_train, X_test, y_train, y_test, 
+                       models_to_ensemble: list = None) -> dict:
+        """Create ensemble models"""
+        
+        if models_to_ensemble is None:
+            models_to_ensemble = ['random_forest', 'xgboost', 'lightgbm']
+        
+        # Select models for ensemble
+        ensemble_models = []
+        for model_name in models_to_ensemble:
+            if model_name in self.models:
+                ensemble_models.append((model_name, self.models[model_name]['model']))
+        
+        if not ensemble_models:
+            raise ValueError("No valid models found for ensemble")
+        
+        # Voting ensemble
+        from sklearn.ensemble import VotingClassifier
+        
+        voting_ensemble = VotingClassifier(
+            estimators=ensemble_models,
+            voting='soft' if len(np.unique(y_train)) == 2 else 'hard'
+        )
+        
+        voting_ensemble.fit(X_train, y_train)
+        voting_evaluation = self.evaluate_model(voting_ensemble, X_test, y_test, "voting_ensemble")
+        
+        # Stacking ensemble
+        from sklearn.ensemble import StackingClassifier
+        
+        base_estimators = [(name, model['model']) for name, model in self.models.items() 
+                          if name in models_to_ensemble]
+        
+        stacking_ensemble = StackingClassifier(
+            estimators=base_estimators,
+            final_estimator=LogisticRegression(max_iter=1000, random_state=42),
+            cv=5
+        )
+        
+        stacking_ensemble.fit(X_train, y_train)
+        stacking_evaluation = self.evaluate_model(stacking_ensemble, X_test, y_test, "stacking_ensemble")
+        
+        return {
+            'voting_ensemble': voting_evaluation,
+            'stacking_ensemble': stacking_evaluation,
+            'voting_model': voting_ensemble,
+            'stacking_model': stacking_ensemble
+        }
+    
+    def model_explainability(self, model, X_test, feature_names: list = None) -> dict:
+        """Model explainability using SHAP and LIME"""
+        
+        try:
+            import shap
+            import lime
+            import lime.lime_tabular
+            
+            if feature_names is None:
+                feature_names = X_test.columns.tolist()
+            
+            explainability_results = {}
+            
+            # SHAP explanations
+            if hasattr(model, 'predict_proba'):
+                explainer = shap.TreeExplainer(model)
+                shap_values = explainer.shap_values(X_test)
+                
+                # For binary classification, use the positive class
+                if isinstance(shap_values, list) and len(shap_values) == 2:
+                    shap_values_positive = shap_values[1]
+                else:
+                    shap_values_positive = shap_values
+                
+                explainability_results['shap'] = {
+                    'values': shap_values_positive.tolist(),
+                    'base_values': explainer.expected_value.tolist() if hasattr(explainer.expected_value, '__iter__') else explainer.expected_value,
+                    'feature_names': feature_names
+                }
+                
+                # Feature importance from SHAP
+                shap_importance = np.abs(shap_values_positive).mean(0)
+                shap_importance_dict = dict(zip(feature_names, shap_importance))
+                explainability_results['shap_importance'] = shap_importance_dict
+            
+            # LIME explanations
+            lime_explainer = lime.lime_tabular.LimeTabularExplainer(
+                X_test.values,
+                feature_names=feature_names,
+                mode='classification',
+                discretize_continuous=True
+            )
+            
+            # Explain a few instances
+            lime_explanations = []
+            for i in range(min(5, len(X_test))):
+                exp = lime_explainer.explain_instance(
+                    X_test.iloc[i].values,
+                    model.predict_proba,
+                    num_features=10
+                )
+                lime_explanations.append({
+                    'instance_index': i,
+                    'explanation': exp.as_list(),
+                    'score': exp.score
+                })
+            
+            explainability_results['lime'] = lime_explanations
+            
+        except ImportError:
+            explainability_results = {'error': 'SHAP and LIME packages not installed'}
+        
+        return explainability_results
 
-# Create subplots
-fig = make_subplots(
-    rows=2, cols=2,
-    subplot_titles=('Sales Trend', 'Profit Margin', 'Units Sold', 'Revenue Distribution'),
-    specs=[[{'secondary_y': False}, {'secondary_y': True}],
-           [{'type': 'bar'}, {'type': 'pie'}]]
-)
-
-# 1. Sales trend line
-fig.add_trace(
-    go.Scatter(x=sales_data['Month'], y=sales_data['Sales'], 
-               mode='lines+markers', name='Sales',
-               line=dict(color='blue', width=3),
-               marker=dict(size=8)),
-    row=1, col=1
-)
-
-# 2. Profit with secondary Y-axis
-fig.add_trace(
-    go.Scatter(x=sales_data['Month'], y=sales_data['Profit'],
-               mode='lines', name='Profit',
-               line=dict(color='red', width=2)),
-    row=1, col=2, secondary_y=False
-)
-
-# 3. Units bar chart
-fig.add_trace(
-    go.Bar(x=sales_data['Month'], y=sales_data['Units'],
-           name='Units', marker=dict(color='green')),
-    row=2, col=1
-)
-
-# 4. Revenue pie chart
-fig.add_trace(
-    go.Pie(labels=sales_data['Month'], values=sales_data['Sales'],
-           name='Revenue'),
-    row=2, col=2
-)
-
-# Update layout
-fig.update_layout(
-    title_text="Sales Dashboard 2025",
-    height=800,
-    showlegend=True,
-    hovermode='x unified'
-)
-
-fig.update_xaxes(title_text="Month", row=1, col=1)
-fig.update_yaxes(title_text="Sales (K)", row=1, col=1)
-
-fig.show()
-# fig.write_html("dashboard.html")  # Save as HTML
+# Usage example
+# ml_builder = MLModelBuilder()
+# X_train, X_test, y_train, y_test = ml_builder.prepare_data(X, y)
+# base_models = ml_builder.build_base_models(X_train, X_test, y_train, y_test)
+# tuning_result = ml_builder.hyperparameter_tuning(X_train, y_train, 'xgboost')
+# evaluation = ml_builder.evaluate_model(tuning_result['best_model'], X_test, y_test, 'tuned_xgboost')
+# ensemble_results = ml_builder.ensemble_models(X_train, X_test, y_train, y_test)
+# explainability = ml_builder.model_explainability(tuning_result['best_model'], X_test)
 ```
 
-**Reference**: https://plotly.com/python/
+## Level 3: Advanced Integration
 
----
+### Production ML Systems
 
-## Level 5: Production Patterns
-
-### Pattern 11: Feature Engineering Pipeline (Production)
-
-**Scenario**: Complete feature engineering for Kaggle dataset (Titanic).
+#### 4. ML Pipeline with Experiment Tracking
 
 ```python
-import pandas as pd
-import numpy as np
-from sklearn.preprocessing import LabelEncoder, OneHotEncoder
-from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline as SKPipeline
+import mlflow
+import mlflow.sklearn
+import mlflow.xgboost
+import joblib
+import json
+from datetime import datetime
+import os
 
-# Load data
-df = pd.read_csv('titanic.csv')
+class ProductionMLPipeline:
+    def __init__(self, experiment_name: str, tracking_uri: str = None):
+        self.experiment_name = experiment_name
+        
+        if tracking_uri:
+            mlflow.set_tracking_uri(tracking_uri)
+        
+        mlflow.set_experiment(experiment_name)
+        self.experiment_id = mlflow.get_experiment_by_name(experiment_name).experiment_id
+        
+        self.pipeline_stages = []
+        self.run_id = None
+    
+    def run_complete_pipeline(self, data_path: str, target_column: str,
+                            model_types: list = None, save_models: bool = True) -> dict:
+        """Run complete ML pipeline with experiment tracking"""
+        
+        with mlflow.start_run(run_name=f"pipeline_run_{datetime.now().strftime('%Y%m%d_%H%M%S')}") as run:
+            self.run_id = run.info.run_id
+            
+            # Log dataset information
+            mlflow.log_param("data_path", data_path)
+            mlflow.log_param("target_column", target_column)
+            
+            # Stage 1: Data Loading and Exploration
+            print("Stage 1: Loading and exploring data...")
+            data = self._load_data(data_path)
+            data_info = self._explore_data(data)
+            
+            for key, value in data_info.items():
+                if isinstance(value, (int, float)):
+                    mlflow.log_metric(f"data_{key}", value)
+                else:
+                    mlflow.log_param(f"data_{key}", str(value))
+            
+            # Stage 2: Data Preprocessing
+            print("Stage 2: Preprocessing data...")
+            preprocessor = DataPreprocessor()
+            processed_data = preprocessor.create_features(data)
+            
+            X = processed_data.drop(target_column, axis=1)
+            y = processed_data[target_column]
+            
+            X_train, X_test, y_train, y_test = preprocessor.prepare_data(X, y)
+            
+            mlflow.log_param("train_size", len(X_train))
+            mlflow.log_param("test_size", len(X_test))
+            mlflow.log_param("feature_count", X_train.shape[1])
+            
+            # Stage 3: Model Training and Evaluation
+            print("Stage 3: Training and evaluating models...")
+            if model_types is None:
+                model_types = ['random_forest', 'xgboost', 'lightgbm']
+            
+            ml_builder = MLModelBuilder()
+            model_results = ml_builder.build_base_models(X_train, X_test, y_train, y_test)
+            
+            best_model_name = None
+            best_score = 0
+            best_model = None
+            
+            for model_name, result in model_results.items():
+                if model_name in model_types:
+                    # Log model metrics
+                    mlflow.log_metric(f"{model_name}_accuracy", result['accuracy'])
+                    mlflow.log_metric(f"{model_name}_cv_mean", result['cv_mean'])
+                    
+                    if result['roc_auc'] is not None:
+                        mlflow.log_metric(f"{model_name}_roc_auc", result['roc_auc'])
+                    
+                    # Log model
+                    try:
+                        if 'xgboost' in model_name:
+                            mlflow.xgboost.log_model(result['model'], f"{model_name}_model")
+                        else:
+                            mlflow.sklearn.log_model(result['model'], f"{model_name}_model")
+                    except:
+                        pass
+                    
+                    # Track best model
+                    if result['accuracy'] > best_score:
+                        best_score = result['accuracy']
+                        best_model_name = model_name
+                        best_model = result['model']
+            
+            # Stage 4: Hyperparameter Tuning for Best Model
+            print("Stage 4: Hyperparameter tuning...")
+            if best_model_name:
+                tuning_result = ml_builder.hyperparameter_tuning(
+                    X_train, y_train, 
+                    model_type=best_model_name.replace('_tuned', ''),
+                    n_trials=50
+                )
+                
+                # Log best parameters
+                for param, value in tuning_result['best_params'].items():
+                    mlflow.log_param(f"best_{param}", value)
+                
+                mlflow.log_metric("best_tuned_score", tuning_result['best_score'])
+                
+                # Evaluate tuned model
+                tuned_evaluation = ml_builder.evaluate_model(
+                    tuning_result['best_model'], X_test, y_test, 
+                    f"{best_model_name}_tuned"
+                )
+                
+                mlflow.log_metric("tuned_model_accuracy", tuned_evaluation['accuracy'])
+                if tuned_evaluation['roc_auc'] is not None:
+                    mlflow.log_metric("tuned_model_roc_auc", tuned_evaluation['roc_auc'])
+                
+                # Update best model if tuning improved performance
+                if tuned_evaluation['accuracy'] > best_score:
+                    best_model = tuning_result['best_model']
+                    best_score = tuned_evaluation['accuracy']
+                
+                # Log feature importance
+                if tuned_evaluation['feature_importance']:
+                    importance_json = json.dumps(tuned_evaluation['feature_importance'])
+                    mlflow.log_text(importance_json, "feature_importance.json")
+            
+            # Stage 5: Ensemble Creation
+            print("Stage 5: Creating ensemble models...")
+            try:
+                ensemble_results = ml_builder.ensemble_models(X_train, X_test, y_train, y_test)
+                
+                for ensemble_type, result in ensemble_results.items():
+                    if 'evaluation' in ensemble_type:
+                        mlflow.log_metric(f"{ensemble_type}_accuracy", result['accuracy'])
+                        if result['roc_auc'] is not None:
+                            mlflow.log_metric(f"{ensemble_type}_roc_auc", result['roc_auc'])
+            except:
+                print("Ensemble creation failed, continuing...")
+            
+            # Stage 6: Model Explainability
+            print("Stage 6: Generating model explanations...")
+            if best_model is not None:
+                explainability = ml_builder.model_explainability(best_model, X_test)
+                
+                if 'shap_importance' in explainability:
+                    shap_importance_json = json.dumps(explainability['shap_importance'])
+                    mlflow.log_text(shap_importance_json, "shap_importance.json")
+            
+            # Save final model
+            if save_models and best_model is not None:
+                model_path = f"models/{best_model_name}_final"
+                os.makedirs(model_path, exist_ok=True)
+                joblib.dump(best_model, f"{model_path}/model.joblib")
+                mlflow.log_artifact(f"{model_path}/model.joblib", "final_model")
+            
+            # Generate pipeline report
+            pipeline_results = {
+                'run_id': self.run_id,
+                'experiment_id': self.experiment_id,
+                'data_info': data_info,
+                'best_model': best_model_name,
+                'best_score': best_score,
+                'model_results': {name: {'accuracy': result['accuracy'], 'cv_mean': result['cv_mean']} 
+                                for name, result in model_results.items()},
+                'timestamp': datetime.now().isoformat()
+            }
+            
+            # Log pipeline results
+            results_json = json.dumps(pipeline_results, indent=2)
+            mlflow.log_text(results_json, "pipeline_results.json")
+            
+            return pipeline_results
+    
+    def _load_data(self, data_path: str) -> pd.DataFrame:
+        """Load data from various formats"""
+        
+        if data_path.endswith('.csv'):
+            return pd.read_csv(data_path)
+        elif data_path.endswith('.parquet'):
+            return pd.read_parquet(data_path)
+        elif data_path.endswith('.json'):
+            return pd.read_json(data_path)
+        else:
+            raise ValueError(f"Unsupported file format: {data_path}")
+    
+    def _explore_data(self, df: pd.DataFrame) -> dict:
+        """Basic data exploration"""
+        
+        return {
+            'shape': df.shape,
+            'missing_values': df.isnull().sum().sum(),
+            'duplicate_rows': df.duplicated().sum(),
+            'numeric_columns': len(df.select_dtypes(include=[np.number]).columns),
+            'categorical_columns': len(df.select_dtypes(include=['object', 'category']).columns),
+            'memory_usage_mb': df.memory_usage(deep=True).sum() / 1024**2
+        }
+    
+    def compare_experiments(self, metric: str = 'accuracy', top_k: int = 5) -> dict:
+        """Compare multiple experiments"""
+        
+        from mlflow.tracking import MlflowClient
+        
+        client = MlflowClient()
+        runs = client.search_runs(
+            experiment_ids=[self.experiment_id],
+            order_by=[f"metrics.{metric} DESC"]
+        )
+        
+        comparison_results = []
+        
+        for run in runs[:top_k]:
+            run_data = {
+                'run_id': run.info.run_id,
+                'status': run.info.status,
+                'start_time': datetime.fromtimestamp(run.info.start_time / 1000),
+                'params': dict(run.data.params),
+                'metrics': dict(run.data.metrics)
+            }
+            comparison_results.append(run_data)
+        
+        return {
+            'comparison_metric': metric,
+            'top_runs': comparison_results,
+            'total_runs': len(runs)
+        }
+    
+    def deploy_model(self, run_id: str = None, model_name: str = "production_model") -> dict:
+        """Prepare model for deployment"""
+        
+        if run_id is None:
+            run_id = self.run_id
+        
+        if run_id is None:
+            raise ValueError("No run ID provided and no current run found")
+        
+        # Load model from MLflow
+        model_uri = f"runs:/{run_id}/final_model"
+        model = mlflow.sklearn.load_model(model_uri)
+        
+        # Create deployment package
+        deployment_info = {
+            'model_uri': model_uri,
+            'run_id': run_id,
+            'model_name': model_name,
+            'deployment_timestamp': datetime.now().isoformat(),
+            'model_type': type(model).__name__
+        }
+        
+        # Save deployment info
+        os.makedirs('deployment', exist_ok=True)
+        with open('deployment/deployment_info.json', 'w') as f:
+            json.dump(deployment_info, f, indent=2)
+        
+        # Copy model to deployment directory
+        joblib.dump(model, 'deployment/model.joblib')
+        
+        return deployment_info
 
-# 1. Handle missing values
-df['Age'].fillna(df['Age'].median(), inplace=True)
-df['Embarked'].fillna(df['Embarked'].mode()[0], inplace=True)
-df['Cabin'].fillna('Unknown', inplace=True)
-
-# 2. Feature extraction
-df['Deck'] = df['Cabin'].str[0]
-df['FamilySize'] = df['SibSp'] + df['Parch']
-df['IsAlone'] = (df['FamilySize'] == 0).astype(int)
-df['Title'] = df['Name'].str.extract(' ([A-Za-z]+)\.', expand=False)
-
-# 3. Binning continuous features
-df['AgeGroup'] = pd.cut(df['Age'], bins=[0, 12, 18, 35, 60, 100], 
-                        labels=['Child', 'Teenager', 'Adult', 'MiddleAge', 'Senior'])
-
-# 4. Encoding
-label_encoders = {}
-for col in ['Sex', 'Embarked', 'Title']:
-    le = LabelEncoder()
-    df[col + '_encoded'] = le.fit_transform(df[col])
-    label_encoders[col] = le
-
-# 5. Feature selection (remove low importance)
-features_to_drop = ['PassengerId', 'Name', 'Ticket', 'Cabin', 'Sex', 'Embarked', 'Title']
-X = df.drop(columns=features_to_drop + ['Survived'])
-y = df['Survived']
-
-print(f"Feature count: {X.shape[1]}")
-print(f"Feature names: {X.columns.tolist()}")
-
-# 6. Feature importance check
-from sklearn.ensemble import RandomForestClassifier
-
-model = RandomForestClassifier(n_estimators=100, random_state=42)
-model.fit(X, y)
-
-feature_importance = pd.DataFrame({
-    'Feature': X.columns,
-    'Importance': model.feature_importances_
-}).sort_values('Importance', ascending=False)
-
-print("\nTop 10 Important Features:")
-print(feature_importance.head(10))
-
-# Remove low-importance features
-important_features = feature_importance[feature_importance['Importance'] > 0.01]['Feature'].tolist()
-X_selected = X[important_features]
-
-print(f"Features after selection: {X_selected.shape[1]}")
+# Usage example
+# pipeline = ProductionMLPipeline("data_science_experiment")
+# results = pipeline.run_complete_pipeline("data.csv", "target")
+# comparison = pipeline.compare_experiments()
+# deployment_info = pipeline.deploy_model()
 ```
 
-**Reference**: https://scikit-learn.org/stable/modules/preprocessing.html
+## Related Skills
+
+- **moai-domain-ml**: Advanced machine learning techniques
+- **moai-domain-testing**: Model testing and validation
+- **moai-document-processing**: Data processing and extraction
+- **moai-essentials-refactor**: Code optimization and performance
+
+## Quick Start Checklist
+
+- [ ] Load and explore dataset structure
+- [ ] Perform comprehensive data preprocessing
+- [ ] Conduct statistical analysis and hypothesis testing
+- [ ] Build baseline machine learning models
+- [ ] Implement hyperparameter tuning
+- [ ] Create ensemble models for better performance
+- [ ] Generate model explanations and feature importance
+- [ ] Set up experiment tracking with MLflow
+
+## Data Science Best Practices
+
+1. **Data Understanding**: Always explore and understand your data first
+2. **Preprocessing**: Handle missing values, outliers, and feature engineering
+3. **Statistical Validation**: Use appropriate statistical tests and validation
+4. **Model Selection**: Try multiple algorithms and compare performance
+5. **Cross-Validation**: Use proper cross-validation techniques
+6. **Hyperparameter Tuning**: Optimize model parameters systematically
+7. **Interpretability**: Use SHAP, LIME for model explanations
+8. **Experiment Tracking**: Log all experiments for reproducibility
 
 ---
 
-### Pattern 12: Model Evaluation & Cross-Validation (Production)
-
-**Scenario**: Complete evaluation framework with multiple metrics and CV strategies.
-
-```python
-import numpy as np
-from sklearn.model_selection import (
-    KFold, StratifiedKFold, TimeSeriesSplit,
-    cross_validate, cross_val_predict
-)
-from sklearn.metrics import (
-    accuracy_score, precision_score, recall_score, f1_score,
-    confusion_matrix, classification_report,
-    roc_auc_score, roc_curve, auc,
-    precision_recall_curve, average_precision_score
-)
-from sklearn.ensemble import RandomForestClassifier
-import matplotlib.pyplot as plt
-
-# Setup
-X, y = np.random.rand(500, 20), np.random.randint(0, 2, 500)
-model = RandomForestClassifier(random_state=42)
-
-# 1. Multiple CV strategies
-cv_strategies = {
-    'KFold': KFold(n_splits=5, shuffle=True, random_state=42),
-    'StratifiedKFold': StratifiedKFold(n_splits=5, shuffle=True, random_state=42),
-    'TimeSeriesSplit': TimeSeriesSplit(n_splits=5)  # For time series
-}
-
-# 2. Cross-validation with multiple metrics
-scoring = {
-    'accuracy': 'accuracy',
-    'precision': 'precision',
-    'recall': 'recall',
-    'f1': 'f1',
-    'roc_auc': 'roc_auc'
-}
-
-cv_results = cross_validate(
-    model, X, y,
-    cv=cv_strategies['StratifiedKFold'],
-    scoring=scoring,
-    return_train_score=True
-)
-
-# Print results
-print("=== Cross-Validation Results ===")
-for metric in scoring.keys():
-    train_score = cv_results[f'train_{metric}']
-    test_score = cv_results[f'test_{metric}']
-    print(f"{metric.upper()}:")
-    print(f"  Train: {train_score.mean():.4f} (+/- {train_score.std():.4f})")
-    print(f"  Test:  {test_score.mean():.4f} (+/- {test_score.std():.4f})")
-
-# 3. Detailed evaluation metrics
-y_pred = cross_val_predict(model, X, y, cv=cv_strategies['StratifiedKFold'])
-y_proba = cross_val_predict(model, X, y, cv=cv_strategies['StratifiedKFold'], 
-                            method='predict_proba')[:, 1]
-
-print("\n=== Classification Report ===")
-print(classification_report(y, y_pred))
-
-print("\n=== Confusion Matrix ===")
-print(confusion_matrix(y, y_pred))
-
-# 4. ROC-AUC curve
-fpr, tpr, thresholds = roc_curve(y, y_proba)
-roc_auc = auc(fpr, tpr)
-
-plt.figure(figsize=(8, 6))
-plt.plot(fpr, tpr, label=f'ROC Curve (AUC={roc_auc:.4f})', linewidth=2)
-plt.plot([0, 1], [0, 1], 'k--', label='Random Classifier')
-plt.xlabel('False Positive Rate')
-plt.ylabel('True Positive Rate')
-plt.legend()
-plt.title('ROC Curve')
-plt.savefig('roc_curve.png', dpi=300, bbox_inches='tight')
-
-# 5. Precision-Recall curve
-precision, recall, _ = precision_recall_curve(y, y_proba)
-avg_precision = average_precision_score(y, y_proba)
-
-plt.figure(figsize=(8, 6))
-plt.plot(recall, precision, label=f'PR Curve (AP={avg_precision:.4f})', linewidth=2)
-plt.xlabel('Recall')
-plt.ylabel('Precision')
-plt.legend()
-plt.title('Precision-Recall Curve')
-plt.savefig('pr_curve.png', dpi=300, bbox_inches='tight')
-
-print(f"\nROC-AUC: {roc_auc_score(y, y_proba):.4f}")
-print(f"Average Precision: {avg_precision:.4f}")
-```
-
-**Reference**: https://scikit-learn.org/stable/modules/model_evaluation.html
-
----
-
-## Skill Metadata
-
-| Field | Value |
-| --- | --- |
-| **Version** | **4.1.0 Production** |
-| **Last Updated** | 2025-11-12 |
-| **Status** | Production-Ready |
-| **Tier** | 4 (Enterprise) |
-| **Coverage** | 12 production patterns |
-| **Code Examples** | 100% copy-paste ready |
-| **Tested With** | Python 3.10+ |
-
----
-
-## Integration Map
-
-**Works seamlessly with**:
-- **moai-domain-ml**: Advanced deep learning models
-- **moai-domain-backend**: Data API integration
-- **moai-domain-database**: Data storage & retrieval
-- **moai-domain-devops**: MLOps & pipeline automation
-- **moai-domain-monitoring**: Model performance tracking
-- **moai-domain-frontend**: Dashboard visualization
-
----
-
-## Key Principles
-
-1. **Production First**: All code is tested and production-ready
-2. **Copy-Paste Ready**: Every example runs standalone with minimal setup
-3. **Version-Specific**: Uses November 2025 stable versions only
-4. **Best Practices**: Follows official documentation recommendations
-5. **Progressive Disclosure**: Starts simple (Level 1) to advanced (Level 5)
-
----
-
-**Version**: 4.1.0 Production  
-**Last Updated**: 2025-11-12  
-**Status**: Enterprise-Ready with November 2025 Stable Stack  
-**Quality**: Production-grade code, 100% tested patterns
+**Data Science & Analytics** - Build end-to-end data science solutions with comprehensive statistical analysis, machine learning, and experiment tracking capabilities.

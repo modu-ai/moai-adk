@@ -1,15 +1,15 @@
 ---
-title: Alfred의 19명 팀원 에이전트
+title: Alfred의 18명 팀원 에이전트
 description: MoAI-ADK 전문가 팀 완전 가이드 - 역할, 책임, 협업 패턴
 ---
 
-# Alfred의 19명 팀원 에이전트
+# Alfred의 18명 팀원 에이전트
 
-> **v0.23.0 기준**: 29개 전문 에이전트 중 핵심 19명의 역할과 협업 패턴
+> **v0.23.0 기준**: 28개 전문 에이전트 중 핵심 18명의 역할과 협업 패턴
 
 ## 개요
 
-Alfred SuperAgent는 **19명의 전문 팀원**을 관리하며, 각 에이전트는 특정 도메인의 전문가로서 최고 수준의 결과물을 제공합니다. 이들은 Alfred의 지능형 위임 시스템을 통해 자동으로 선택되고 조정됩니다.
+Alfred SuperAgent는 **18명의 전문 팀원**을 관리하며, 각 에이전트는 특정 도메인의 전문가로서 최고 수준의 결과물을 제공합니다. 이들은 Alfred의 지능형 위임 시스템을 통해 자동으로 선택되고 조정됩니다.
 
 ### 팀 구성
 
@@ -17,11 +17,10 @@ Alfred SuperAgent는 **19명의 전문 팀원**을 관리하며, 각 에이전�
 flowchart TD
     Alfred["🎩 Alfred SuperAgent<br/>중앙 오케스트레이터"]
 
-    subgraph "Core Planning (4명)"
+    subgraph "Core Planning (3명)"
         P1["spec-builder<br/>요구사항 전문가"]
         P2["implementation-planner<br/>구현 전략가"]
         P3["project-manager<br/>프로젝트 관리자"]
-        P4["tag-agent<br/>추적성 전문가"]
     end
 
     subgraph "Development (3명)"
@@ -33,7 +32,7 @@ flowchart TD
     subgraph "Quality Assurance (3명)"
         Q1["test-engineer<br/>테스트 전문가"]
         Q2["qa-validator<br/>품질 검증자"]
-        Q3["trust-checker<br/>TRUST 5 검증자"]
+        Q3["trust-checker<br/>TRUST 4 검증자"]
     end
 
     subgraph "Documentation (1명)"
@@ -284,79 +283,9 @@ class ProjectManager:
 
 ---
 
-### 4. tag-agent
-
-
-**책임**:
-- 코드-테스트-문서 추적성 보장
-- TAG 정책 적용 및 검증
-- 실시간 TAG 스캔
-
-**사용 시점**:
-```bash
-# 모든 명령어에서 자동 활성화
-/alfred:2-run → TAG 체인 검증
-/alfred:3-sync → TAG 동기화 확인
-```
-
-**주요 능력**:
-- **정책 적용**: mandatory_directories, optional_directories 규칙
-
-**코드 예제**:
-```python
-# tag-agent의 TAG 체인 검증 로직
-
-class TagAgent:
-    def validate_tag_chain(self, spec_id: str) -> ValidationResult:
-        """
-        """
-        result = ValidationResult()
-
-        spec_tags = self.scan_spec_tags(spec_id)
-        result.add_check("spec", len(spec_tags) > 0)
-
-        test_tags = self.scan_test_tags(spec_id)
-        result.add_check("test", len(test_tags) > 0)
-
-        code_tags = self.scan_code_tags(spec_id)
-        result.add_check("code", len(code_tags) > 0)
-
-        doc_tags = self.scan_doc_tags(spec_id)
-        result.add_check("doc", len(doc_tags) >= 0)  # Optional
-
-        # 5. 체인 연결 검증
-        chain_intact = self.verify_chain_connections(
-            spec_tags, test_tags, code_tags, doc_tags
-        )
-        result.add_check("chain", chain_intact)
-
-        return result
-
-    def scan_code_tags(self, spec_id: str) -> list[CodeTag]:
-        """
-        """
-        tags = []
-        for file in self.get_code_files():
-            for match in matches:
-                tags.append(CodeTag(
-                    spec_id=spec_id,
-                    file=file,
-                    line=match.line,
-                    context=match.context
-                ))
-        return tags
-```
-
-**성능 메트릭**:
-- TAG 체인 무결성: 99.5%
-- 스캔 속도: <2초 (중간 프로젝트)
-- 정책 준수율: 98%
-
----
-
 ## Development Agents (개발 에이전트)
 
-### 5. tdd-implementer
+### 4. tdd-implementer
 
 **🔴 역할**: TDD 기반 구현 전문가
 
@@ -452,7 +381,7 @@ class TDDImplementer:
 
 ---
 
-### 6. code-builder
+### 5. code-builder
 
 **💻 역할**: 깨끗한 코드 작성 전문가
 

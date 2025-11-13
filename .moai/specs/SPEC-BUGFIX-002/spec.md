@@ -73,7 +73,7 @@ Apply the same "smart merge" logic used for `.claude/`, `CLAUDE.md`, and `settin
 .github/
 └── workflows/
     ├── moai-adk-ci.yml          # MoAI-ADK CI pipeline
-    ├── moai-adk-tag-validation.yml  # TAG validation
+    ├── moai-adk-spec-validation.yml  # SPEC validation
     └── moai-adk-auto-update.yml     # Auto-update system
 ```
 

@@ -224,13 +224,13 @@
 **Given**:
 
 **When**:
-- `trust-checker --check=tag-chain` 실행
+- `trust-checker --check=spec-chain` 실행
 
 **Then**:
 - 검증 결과: ✅ PASS
 - 출력 메시지:
   ```
-  ✅ TAG Chain: All TAGs are properly linked
+  ✅ SPEC Chain: All SPECs are properly linked
     → SPEC: 15 | TEST: 15 | CODE: 15 | DOC: 12
   ```
 - Exit code: 0
@@ -246,28 +246,28 @@
 - 검증 결과: ⚠️ WARNING
 - 출력 메시지:
   ```
-  ⚠️ TAG Chain: 2 orphan TAGs found
-    → /alfred:3-sync 실행 전 TAG 수정 필요
-    → 고아 TAG:
+  ⚠️ SPEC Chain: 2 orphan SPECs found
+    → /alfred:3-sync 실행 전 SPEC 수정 필요
+    → 고아 SPEC:
   ```
 - Exit code: 0 (WARNING은 통과, --fail-on-warning 옵션 시 exit 1)
 
 ---
 
-## TC-007: 고아 TAG 탐지
+## TC-007: 고아 SPEC 탐지
 
 ### 정상 케이스
 
 **Given**:
 
 **When**:
-- `trust-checker --check=tag-chain` 실행
+- `trust-checker --check=spec-chain` 실행
 
 **Then**:
 - 검증 결과: ✅ PASS
 - 출력 메시지:
   ```
-  ✅ TAG Chain: No orphan TAGs
+  ✅ SPEC Chain: No orphan SPECs
   ```
 - Exit code: 0
 
@@ -276,14 +276,14 @@
 **Given**:
 
 **When**:
-- `trust-checker --check=tag-chain` 실행
+- `trust-checker --check=spec-chain` 실행
 
 **Then**:
 - 검증 결과: ⚠️ WARNING
 - 출력 메시지:
   ```
-  ⚠️ TAG Chain: 1 orphan TAG found
-    → 고아 TAG:
+  ⚠️ SPEC Chain: 1 orphan SPEC found
+    → 고아 SPEC:
     → 권장 조치:
       1. SPEC-PAYMENT-007 문서 작성
   ```
@@ -316,7 +316,7 @@
   - ❌ Code Constraints: 3 violations
   - ✅ Type Safety: 100%
   - ✅ Security Scan: 0 vulnerabilities
-  - ⚠️ TAG Chain: 2 orphan TAGs
+  - ⚠️ SPEC Chain: 2 orphan SPECs
 
   ## Details
   ...
@@ -343,7 +343,7 @@
       "codeConstraints": { "status": "FAIL", "violations": 3 },
       "typeSafety": { "status": "PASS", "errors": 0 },
       "securityScan": { "status": "PASS", "vulnerabilities": 0 },
-      "tagChain": { "status": "WARNING", "orphans": 2 }
+      "specChain": { "status": "WARNING", "orphans": 2 }
     },
     "details": { ... }
   }
@@ -440,7 +440,7 @@
   2. [2/5] Code Constraints 검증
   3. [3/5] Type Safety 검증
   4. [4/5] Security Scan 검증
-  5. [5/5] TAG Chain 검증
+  5. [5/5] SPEC Chain 검증
 - 검증 통과 시: REFACTOR 단계 진행
 - 검증 실패 시: 오류 메시지 표시 + 커밋 차단
 
@@ -472,7 +472,7 @@
 **목표**: 전체 검증 ≤10초
 
 **측정 항목**:
-- TAG 스캔: ≤2초
+- SPEC 스캔: ≤2초
 - 테스트 커버리지: ≤3초
 - 코드 제약: ≤2초
 - 타입 검증: ≤2초
@@ -500,7 +500,7 @@
 - [ ] 보안 취약점 0개 (High/Critical)
 
 ### 경고 기준 (통과 가능, 개선 권장)
-- [ ] TAG 체인 완전성 (고아 TAG 있을 시 WARNING)
+- [ ] SPEC 체인 완전성 (고아 SPEC 있을 시 WARNING)
 - [ ] 타입 오류 (TypeScript strict 모드)
 
 ---

@@ -5,10 +5,10 @@ Handles the actual file movement and directory creation
 during migration processes.
 """
 
+import logging
 import shutil
 from pathlib import Path
 from typing import Dict, List
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -166,7 +166,9 @@ class FileMigrator:
 
             if self.move_file(source, dest, copy_instead=True):
                 results["moved_files"] += 1
-                logger.info(f"✅ {move_op['description']}: {move_op['from']} → {move_op['to']}")
+                logger.info(
+                    f"✅ {move_op['description']}: {move_op['from']} → {move_op['to']}"
+                )
             else:
                 results["errors"].append(
                     f"Failed to move: {move_op['from']} → {move_op['to']}"

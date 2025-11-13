@@ -1546,7 +1546,7 @@ graph TD
     end
 
     subgraph Skills["📚 Skills Layer - 73+ Capsules"]
-        S1["Foundation<br/>SPEC·TDD·TAGs"]
+        S1["Foundation<br/>SPEC·TDD·TRUST"]
         S2["Essentials<br/>Testing·Debug·Perf"]
         S3["Domain<br/>Backend·Frontend·DB"]
         S4["Language<br/>Python·TS·Go·Rust<br/>Alfred·Operations"]

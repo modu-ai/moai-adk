@@ -18,55 +18,59 @@ Features:
 """
 
 import json
-import traceback
 import logging
 import sys
-import time
-from pathlib import Path
-from datetime import datetime, timezone
-from typing import Dict, List, Any, Optional, Callable, Union
-from dataclasses import dataclass, asdict
-from enum import Enum
-import subprocess
 import threading
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import time
+import traceback
+from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
+from enum import Enum
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
 
 # Configure comprehensive logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
-        logging.FileHandler('/tmp/moai_error_recovery.log'),
-        logging.StreamHandler(sys.stdout)
-    ]
+        logging.FileHandler("/tmp/moai_error_recovery.log"),
+        logging.StreamHandler(sys.stdout),
+    ],
 )
 
 logger = logging.getLogger(__name__)
 
+
 class ErrorSeverity(Enum):
     """Error severity levels"""
-    CRITICAL = "critical"    # System failure, immediate attention required
-    HIGH = "high"           # Major functionality impacted
-    MEDIUM = "medium"       # Partial functionality impacted
-    LOW = "low"            # Minor issue, can be deferred
-    INFO = "info"          # Informational message
+
+    CRITICAL = "critical"  # System failure, immediate attention required
+    HIGH = "high"  # Major functionality impacted
+    MEDIUM = "medium"  # Partial functionality impacted
+    LOW = "low"  # Minor issue, can be deferred
+    INFO = "info"  # Informational message
+
 
 class ErrorCategory(Enum):
     """Error categories for classification"""
-    SYSTEM = "system"              # System-level errors
-    CONFIGURATION = "configuration" # Configuration errors
-    RESEARCH = "research"          # Research workflow errors
-    INTEGRATION = "integration"    # Integration errors
-    COMMUNICATION = "communication" # Agent/communication errors
-    VALIDATION = "validation"      # Validation errors
-    PERFORMANCE = "performance"    # Performance issues
-    RESOURCE = "resource"          # Resource exhaustion
-    NETWORK = "network"           # Network-related errors
-    USER_INPUT = "user_input"     # User input errors
+
+    SYSTEM = "system"  # System-level errors
+    CONFIGURATION = "configuration"  # Configuration errors
+    RESEARCH = "research"  # Research workflow errors
+    INTEGRATION = "integration"  # Integration errors
+    COMMUNICATION = "communication"  # Agent/communication errors
+    VALIDATION = "validation"  # Validation errors
+    PERFORMANCE = "performance"  # Performance issues
+    RESOURCE = "resource"  # Resource exhaustion
+    NETWORK = "network"  # Network-related errors
+    USER_INPUT = "user_input"  # User input errors
+
 
 @dataclass
 class ErrorReport:
     """Comprehensive error report structure"""
+
     id: str
     timestamp: datetime
     severity: ErrorSeverity
@@ -79,9 +83,11 @@ class ErrorReport:
     recovery_successful: bool = False
     resolution_message: Optional[str] = None
 
+
 @dataclass
 class RecoveryAction:
     """Recovery action definition"""
+
     name: str
     description: str
     action_type: str  # "automatic", "manual", "assisted"
@@ -92,15 +98,18 @@ class RecoveryAction:
     max_attempts: int = 3
     success_criteria: Optional[str] = None
 
+
 @dataclass
 class RecoveryResult:
     """Result of recovery action"""
+
     success: bool
     action_name: str
     message: str
     duration: float
     details: Dict[str, Any] = None
     next_actions: List[str] = None
+
 
 class ErrorRecoverySystem:
     """Comprehensive error handling and recovery system"""
@@ -118,7 +127,7 @@ class ErrorRecoverySystem:
             "total_errors": 0,
             "by_severity": {},
             "by_category": {},
-            "recovery_success_rate": 0.0
+            "recovery_success_rate": 0.0,
         }
 
         # System health monitoring
@@ -126,7 +135,7 @@ class ErrorRecoverySystem:
             "status": "healthy",
             "last_check": datetime.now(timezone.utc),
             "issues": [],
-            "metrics": {}
+            "metrics": {},
         }
 
         # Initialize recovery actions
@@ -134,14 +143,20 @@ class ErrorRecoverySystem:
 
         # Background monitoring thread
         self.monitoring_active = True
-        self.monitor_thread = threading.Thread(target=self._background_monitoring, daemon=True)
+        self.monitor_thread = threading.Thread(
+            target=self._background_monitoring, daemon=True
+        )
         self.monitor_thread.start()
 
         logger.info("Error Recovery System initialized")
 
-    def handle_error(self, error: Exception, context: Dict[str, Any] = None,
-                    severity: ErrorSeverity = ErrorSeverity.MEDIUM,
-                    category: ErrorCategory = ErrorCategory.SYSTEM) -> ErrorReport:
+    def handle_error(
+        self,
+        error: Exception,
+        context: Dict[str, Any] = None,
+        severity: ErrorSeverity = ErrorSeverity.MEDIUM,
+        category: ErrorCategory = ErrorCategory.SYSTEM,
+    ) -> ErrorReport:
         """
         Handle an error with comprehensive logging and recovery
 
@@ -167,12 +182,12 @@ class ErrorRecoverySystem:
             details={
                 "exception_type": type(error).__name__,
                 "exception_module": type(error).__module__,
-                "error_code": getattr(error, 'code', None)
+                "error_code": getattr(error, "code", None),
             },
             stack_trace=traceback.format_exc(),
             context=context or {},
             recovery_attempted=False,
-            recovery_successful=False
+            recovery_successful=False,
         )
 
         # Log error
@@ -196,7 +211,9 @@ class ErrorRecoverySystem:
                 logger.info(f"Automatic recovery successful for error {error_id}")
                 self.active_errors.pop(error_id, None)
             else:
-                logger.warning(f"Automatic recovery failed for error {error_id}: {recovery_result.message}")
+                logger.warning(
+                    f"Automatic recovery failed for error {error_id}: {recovery_result.message}"
+                )
 
         # Update system health
         self._update_system_health()
@@ -213,8 +230,9 @@ class ErrorRecoverySystem:
         self.recovery_actions[action.name] = action
         logger.info(f"Registered recovery action: {action.name}")
 
-    def attempt_manual_recovery(self, error_id: str, action_name: str,
-                               parameters: Dict[str, Any] = None) -> RecoveryResult:
+    def attempt_manual_recovery(
+        self, error_id: str, action_name: str, parameters: Dict[str, Any] = None
+    ) -> RecoveryResult:
         """
         Attempt manual recovery for a specific error
 
@@ -230,14 +248,14 @@ class ErrorRecoverySystem:
             return RecoveryResult(
                 success=False,
                 action_name=action_name,
-                message=f"Error {error_id} not found in active errors"
+                message=f"Error {error_id} not found in active errors",
             )
 
         if action_name not in self.recovery_actions:
             return RecoveryResult(
                 success=False,
                 action_name=action_name,
-                message=f"Recovery action {action_name} not found"
+                message=f"Recovery action {action_name} not found",
             )
 
         error_report = self.active_errors[error_id]
@@ -259,7 +277,7 @@ class ErrorRecoverySystem:
                     action_name=action_name,
                     message="Manual recovery completed successfully",
                     duration=duration,
-                    details={"result": result}
+                    details={"result": result},
                 )
 
                 # Update error report
@@ -274,7 +292,7 @@ class ErrorRecoverySystem:
                     success=False,
                     action_name=action_name,
                     message="Manual recovery returned unsuccessful result",
-                    duration=duration
+                    duration=duration,
                 )
 
         except Exception as e:
@@ -284,7 +302,7 @@ class ErrorRecoverySystem:
                 action_name=action_name,
                 message=f"Manual recovery failed: {str(e)}",
                 duration=duration,
-                details={"exception": str(e)}
+                details={"exception": str(e)},
             )
 
         return recovery_result
@@ -306,7 +324,7 @@ class ErrorRecoverySystem:
             "error_stats": self.error_stats.copy(),
             "issues": self.system_health["issues"].copy(),
             "metrics": self.system_health["metrics"].copy(),
-            "recovery_actions_available": len(self.recovery_actions)
+            "recovery_actions_available": len(self.recovery_actions),
         }
 
     def get_error_summary(self, limit: int = 50) -> Dict[str, Any]:
@@ -355,10 +373,10 @@ class ErrorRecoverySystem:
                     "severity": error.severity.value,
                     "category": error.category.value,
                     "message": error.message,
-                    "recovered": error.recovery_successful
+                    "recovered": error.recovery_successful,
                 }
                 for error in recent_errors[-10:]  # Last 10 errors
-            ]
+            ],
         }
 
     def generate_troubleshooting_guide(self) -> Dict[str, Any]:
@@ -373,19 +391,21 @@ class ErrorRecoverySystem:
             "common_issues": [],
             "recovery_procedures": {},
             "prevention_tips": [],
-            "emergency_procedures": []
+            "emergency_procedures": [],
         }
 
         # Analyze common issues
         error_patterns = self._identify_error_patterns(self.error_history)
         for pattern, frequency in error_patterns.items():
             if frequency > 2:  # Issues that occurred more than twice
-                guide["common_issues"].append({
-                    "pattern": pattern,
-                    "frequency": frequency,
-                    "severity": self._get_pattern_severity(pattern),
-                    "solutions": self._get_solutions_for_pattern(pattern)
-                })
+                guide["common_issues"].append(
+                    {
+                        "pattern": pattern,
+                        "frequency": frequency,
+                        "severity": self._get_pattern_severity(pattern),
+                        "solutions": self._get_solutions_for_pattern(pattern),
+                    }
+                )
 
         # Generate recovery procedures
         for action_name, action in self.recovery_actions.items():
@@ -393,7 +413,7 @@ class ErrorRecoverySystem:
                 "description": action.description,
                 "type": action.action_type,
                 "for_severities": [s.value for s in action.severity_filter],
-                "for_categories": [c.value for c in action.category_filter]
+                "for_categories": [c.value for c in action.category_filter],
             }
 
         # Prevention tips
@@ -420,7 +440,9 @@ class ErrorRecoverySystem:
         removed_count = len(old_errors)
 
         # Keep only recent errors
-        self.error_history = [e for e in self.error_history if e.timestamp >= cutoff_date]
+        self.error_history = [
+            e for e in self.error_history if e.timestamp >= cutoff_date
+        ]
 
         # Save updated error history
         self._save_error_history()
@@ -430,93 +452,109 @@ class ErrorRecoverySystem:
         return {
             "removed_count": removed_count,
             "remaining_count": len(self.error_history),
-            "cutoff_date": cutoff_date.isoformat()
+            "cutoff_date": cutoff_date.isoformat(),
         }
 
     def _initialize_recovery_actions(self):
         """Initialize default recovery actions"""
         # System recovery actions
-        self.register_recovery_action(RecoveryAction(
-            name="restart_research_engines",
-            description="Restart research engines and clear caches",
-            action_type="automatic",
-            severity_filter=[ErrorSeverity.HIGH, ErrorSeverity.CRITICAL],
-            category_filter=[ErrorCategory.RESEARCH, ErrorCategory.SYSTEM],
-            handler=self._restart_research_engines,
-            timeout=30.0
-        ))
+        self.register_recovery_action(
+            RecoveryAction(
+                name="restart_research_engines",
+                description="Restart research engines and clear caches",
+                action_type="automatic",
+                severity_filter=[ErrorSeverity.HIGH, ErrorSeverity.CRITICAL],
+                category_filter=[ErrorCategory.RESEARCH, ErrorCategory.SYSTEM],
+                handler=self._restart_research_engines,
+                timeout=30.0,
+            )
+        )
 
-        self.register_recovery_action(RecoveryAction(
-            name="restore_config_backup",
-            description="Restore configuration from last known good backup",
-            action_type="automatic",
-            severity_filter=[ErrorSeverity.CRITICAL],
-            category_filter=[ErrorCategory.CONFIGURATION],
-            handler=self._restore_config_backup,
-            timeout=15.0
-        ))
+        self.register_recovery_action(
+            RecoveryAction(
+                name="restore_config_backup",
+                description="Restore configuration from last known good backup",
+                action_type="automatic",
+                severity_filter=[ErrorSeverity.CRITICAL],
+                category_filter=[ErrorCategory.CONFIGURATION],
+                handler=self._restore_config_backup,
+                timeout=15.0,
+            )
+        )
 
-        self.register_recovery_action(RecoveryAction(
-            name="clear_agent_cache",
-            description="Clear agent communication cache and reset connections",
-            action_type="automatic",
-            severity_filter=[ErrorSeverity.MEDIUM, ErrorSeverity.HIGH],
-            category_filter=[ErrorCategory.COMMUNICATION],
-            handler=self._clear_agent_cache,
-            timeout=10.0
-        ))
+        self.register_recovery_action(
+            RecoveryAction(
+                name="clear_agent_cache",
+                description="Clear agent communication cache and reset connections",
+                action_type="automatic",
+                severity_filter=[ErrorSeverity.MEDIUM, ErrorSeverity.HIGH],
+                category_filter=[ErrorCategory.COMMUNICATION],
+                handler=self._clear_agent_cache,
+                timeout=10.0,
+            )
+        )
 
-        self.register_recovery_action(RecoveryAction(
-            name="validate_research_integrity",
-            description="Validate research component integrity and repair if needed",
-            action_type="assisted",
-            severity_filter=[ErrorSeverity.HIGH],
-            category_filter=[ErrorCategory.RESEARCH, ErrorCategory.VALIDATION],
-            handler=self._validate_research_integrity,
-            timeout=60.0
-        ))
+        self.register_recovery_action(
+            RecoveryAction(
+                name="validate_research_integrity",
+                description="Validate research component integrity and repair if needed",
+                action_type="assisted",
+                severity_filter=[ErrorSeverity.HIGH],
+                category_filter=[ErrorCategory.RESEARCH, ErrorCategory.VALIDATION],
+                handler=self._validate_research_integrity,
+                timeout=60.0,
+            )
+        )
 
-        self.register_recovery_action(RecoveryAction(
-            name="rollback_last_changes",
-            description="Rollback last research integration changes",
-            action_type="manual",
-            severity_filter=[ErrorSeverity.CRITICAL],
-            category_filter=[ErrorCategory.INTEGRATION, ErrorCategory.RESEARCH],
-            handler=self._rollback_last_changes,
-            timeout=45.0
-        ))
+        self.register_recovery_action(
+            RecoveryAction(
+                name="rollback_last_changes",
+                description="Rollback last research integration changes",
+                action_type="manual",
+                severity_filter=[ErrorSeverity.CRITICAL],
+                category_filter=[ErrorCategory.INTEGRATION, ErrorCategory.RESEARCH],
+                handler=self._rollback_last_changes,
+                timeout=45.0,
+            )
+        )
 
-        self.register_recovery_action(RecoveryAction(
-            name="reset_system_state",
-            description="Reset system to known good state",
-            action_type="manual",
-            severity_filter=[ErrorSeverity.CRITICAL],
-            category_filter=[ErrorCategory.SYSTEM],
-            handler=self._reset_system_state,
-            timeout=120.0
-        ))
+        self.register_recovery_action(
+            RecoveryAction(
+                name="reset_system_state",
+                description="Reset system to known good state",
+                action_type="manual",
+                severity_filter=[ErrorSeverity.CRITICAL],
+                category_filter=[ErrorCategory.SYSTEM],
+                handler=self._reset_system_state,
+                timeout=120.0,
+            )
+        )
 
         # Performance recovery actions
-        self.register_recovery_action(RecoveryAction(
-            name="optimize_performance",
-            description="Optimize system performance and clear bottlenecks",
-            action_type="automatic",
-            severity_filter=[ErrorSeverity.MEDIUM],
-            category_filter=[ErrorCategory.PERFORMANCE],
-            handler=self._optimize_performance,
-            timeout=30.0
-        ))
+        self.register_recovery_action(
+            RecoveryAction(
+                name="optimize_performance",
+                description="Optimize system performance and clear bottlenecks",
+                action_type="automatic",
+                severity_filter=[ErrorSeverity.MEDIUM],
+                category_filter=[ErrorCategory.PERFORMANCE],
+                handler=self._optimize_performance,
+                timeout=30.0,
+            )
+        )
 
         # Resource recovery actions
-        self.register_recovery_action(RecoveryAction(
-            name="free_resources",
-            description="Free up system resources and memory",
-            action_type="automatic",
-            severity_filter=[ErrorSeverity.MEDIUM, ErrorSeverity.HIGH],
-            category_filter=[ErrorCategory.RESOURCE],
-            handler=self._free_resources,
-            timeout=20.0
-        ))
+        self.register_recovery_action(
+            RecoveryAction(
+                name="free_resources",
+                description="Free up system resources and memory",
+                action_type="automatic",
+                severity_filter=[ErrorSeverity.MEDIUM, ErrorSeverity.HIGH],
+                category_filter=[ErrorCategory.RESOURCE],
+                handler=self._free_resources,
+                timeout=20.0,
+            )
+        )
 
     def _attempt_automatic_recovery(self, error_report: ErrorReport) -> RecoveryResult:
         """Attempt automatic recovery for an error"""
@@ -524,9 +562,11 @@ class ErrorRecoverySystem:
 
         # Find suitable recovery actions
         for action_name, action in self.recovery_actions.items():
-            if (action.action_type == "automatic" and
-                error_report.severity in action.severity_filter and
-                error_report.category in action.category_filter):
+            if (
+                action.action_type == "automatic"
+                and error_report.severity in action.severity_filter
+                and error_report.category in action.category_filter
+            ):
                 suitable_actions.append(action)
 
         # Try actions in order of priority
@@ -544,7 +584,7 @@ class ErrorRecoverySystem:
                         action_name=action.name,
                         message=f"Automatic recovery successful: {action.name}",
                         duration=duration,
-                        details={"result": result}
+                        details={"result": result},
                     )
 
             except Exception as e:
@@ -554,10 +594,12 @@ class ErrorRecoverySystem:
         return RecoveryResult(
             success=False,
             action_name="none",
-            message="No suitable automatic recovery action succeeded"
+            message="No suitable automatic recovery action succeeded",
         )
 
-    def _restart_research_engines(self, error_report: ErrorReport, parameters: Dict[str, Any]) -> bool:
+    def _restart_research_engines(
+        self, error_report: ErrorReport, parameters: Dict[str, Any]
+    ) -> bool:
         """Restart research engines and clear caches"""
         try:
             logger.info("Restarting research engines...")
@@ -565,12 +607,13 @@ class ErrorRecoverySystem:
             # Clear research engine caches
             cache_dirs = [
                 self.project_root / ".moai" / "cache",
-                self.project_root / ".claude" / "cache"
+                self.project_root / ".claude" / "cache",
             ]
 
             for cache_dir in cache_dirs:
                 if cache_dir.exists():
                     import shutil
+
                     shutil.rmtree(cache_dir)
                     cache_dir.mkdir(parents=True, exist_ok=True)
 
@@ -589,7 +632,9 @@ class ErrorRecoverySystem:
             logger.error(f"Failed to restart research engines: {str(e)}")
             return False
 
-    def _restore_config_backup(self, error_report: ErrorReport, parameters: Dict[str, Any]) -> bool:
+    def _restore_config_backup(
+        self, error_report: ErrorReport, parameters: Dict[str, Any]
+    ) -> bool:
         """Restore configuration from backup"""
         try:
             logger.info("Restoring configuration from backup...")
@@ -610,6 +655,7 @@ class ErrorRecoverySystem:
             # Restore configuration
             config_file = self.project_root / ".moai" / "config" / "config.json"
             import shutil
+
             shutil.copy2(latest_backup, config_file)
 
             logger.info(f"Configuration restored from {latest_backup}")
@@ -619,7 +665,9 @@ class ErrorRecoverySystem:
             logger.error(f"Failed to restore configuration: {str(e)}")
             return False
 
-    def _clear_agent_cache(self, error_report: ErrorReport, parameters: Dict[str, Any]) -> bool:
+    def _clear_agent_cache(
+        self, error_report: ErrorReport, parameters: Dict[str, Any]
+    ) -> bool:
         """Clear agent communication cache"""
         try:
             logger.info("Clearing agent cache...")
@@ -628,6 +676,7 @@ class ErrorRecoverySystem:
             agent_state_dir = self.project_root / ".moai" / "agent_state"
             if agent_state_dir.exists():
                 import shutil
+
                 shutil.rmtree(agent_state_dir)
                 agent_state_dir.mkdir(parents=True, exist_ok=True)
 
@@ -635,6 +684,7 @@ class ErrorRecoverySystem:
             comm_cache_dir = self.project_root / ".moai" / "comm_cache"
             if comm_cache_dir.exists():
                 import shutil
+
                 shutil.rmtree(comm_cache_dir)
                 comm_cache_dir.mkdir(parents=True, exist_ok=True)
 
@@ -645,7 +695,9 @@ class ErrorRecoverySystem:
             logger.error(f"Failed to clear agent cache: {str(e)}")
             return False
 
-    def _validate_research_integrity(self, error_report: ErrorReport, parameters: Dict[str, Any]) -> Dict[str, Any]:
+    def _validate_research_integrity(
+        self, error_report: ErrorReport, parameters: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Validate research component integrity"""
         validation_results = {
             "skills_valid": True,
@@ -653,7 +705,7 @@ class ErrorRecoverySystem:
             "commands_valid": True,
             "hooks_valid": True,
             "issues_found": [],
-            "repairs_made": []
+            "repairs_made": [],
         }
 
         try:
@@ -665,11 +717,15 @@ class ErrorRecoverySystem:
                 for skill_file in skills_dir.glob("*.md"):
                     if not self._validate_skill_file(skill_file):
                         validation_results["skills_valid"] = False
-                        validation_results["issues_found"].append(f"Invalid skill file: {skill_file}")
+                        validation_results["issues_found"].append(
+                            f"Invalid skill file: {skill_file}"
+                        )
 
                         # Attempt repair
                         if self._repair_skill_file(skill_file):
-                            validation_results["repairs_made"].append(f"Repaired: {skill_file}")
+                            validation_results["repairs_made"].append(
+                                f"Repaired: {skill_file}"
+                            )
 
             # Validate agents
             agents_dir = self.project_root / ".claude" / "agents" / "alfred"
@@ -677,7 +733,9 @@ class ErrorRecoverySystem:
                 for agent_file in agents_dir.glob("*.md"):
                     if not self._validate_agent_file(agent_file):
                         validation_results["agents_valid"] = False
-                        validation_results["issues_found"].append(f"Invalid agent file: {agent_file}")
+                        validation_results["issues_found"].append(
+                            f"Invalid agent file: {agent_file}"
+                        )
 
             # Validate commands
             commands_dir = self.project_root / ".claude" / "commands" / "alfred"
@@ -685,9 +743,13 @@ class ErrorRecoverySystem:
                 for command_file in commands_dir.glob("*.md"):
                     if not self._validate_command_file(command_file):
                         validation_results["commands_valid"] = False
-                        validation_results["issues_found"].append(f"Invalid command file: {command_file}")
+                        validation_results["issues_found"].append(
+                            f"Invalid command file: {command_file}"
+                        )
 
-            logger.info(f"Research integrity validation completed. Issues: {len(validation_results['issues_found'])}, Repairs: {len(validation_results['repairs_made'])}")
+            logger.info(
+                f"Research integrity validation completed. Issues: {len(validation_results['issues_found'])}, Repairs: {len(validation_results['repairs_made'])}"
+            )
 
         except Exception as e:
             logger.error(f"Research integrity validation failed: {str(e)}")
@@ -695,7 +757,9 @@ class ErrorRecoverySystem:
 
         return validation_results
 
-    def _rollback_last_changes(self, error_report: ErrorReport, parameters: Dict[str, Any]) -> bool:
+    def _rollback_last_changes(
+        self, error_report: ErrorReport, parameters: Dict[str, Any]
+    ) -> bool:
         """Rollback last research integration changes"""
         try:
             logger.info("Rolling back last research changes...")
@@ -727,7 +791,9 @@ class ErrorRecoverySystem:
             logger.error(f"Rollback operation failed: {str(e)}")
             return False
 
-    def _reset_system_state(self, error_report: ErrorReport, parameters: Dict[str, Any]) -> bool:
+    def _reset_system_state(
+        self, error_report: ErrorReport, parameters: Dict[str, Any]
+    ) -> bool:
         """Reset system to known good state"""
         try:
             logger.info("Resetting system to known good state...")
@@ -737,12 +803,13 @@ class ErrorRecoverySystem:
                 self.project_root / ".moai" / "cache",
                 self.project_root / ".claude" / "cache",
                 self.project_root / ".moai" / "agent_state",
-                self.project_root / ".moai" / "comm_cache"
+                self.project_root / ".moai" / "comm_cache",
             ]
 
             for cache_dir in cache_dirs:
                 if cache_dir.exists():
                     import shutil
+
                     shutil.rmtree(cache_dir)
                     cache_dir.mkdir(parents=True, exist_ok=True)
 
@@ -759,7 +826,9 @@ class ErrorRecoverySystem:
             logger.error(f"System state reset failed: {str(e)}")
             return False
 
-    def _optimize_performance(self, error_report: ErrorReport, parameters: Dict[str, Any]) -> bool:
+    def _optimize_performance(
+        self, error_report: ErrorReport, parameters: Dict[str, Any]
+    ) -> bool:
         """Optimize system performance"""
         try:
             logger.info("Optimizing system performance...")
@@ -767,12 +836,13 @@ class ErrorRecoverySystem:
             # Clear temporary files
             temp_dirs = [
                 self.project_root / ".moai" / "temp",
-                self.project_root / ".claude" / "temp"
+                self.project_root / ".claude" / "temp",
             ]
 
             for temp_dir in temp_dirs:
                 if temp_dir.exists():
                     import shutil
+
                     shutil.rmtree(temp_dir)
 
             # Optimize database connections if applicable
@@ -780,6 +850,7 @@ class ErrorRecoverySystem:
 
             # Clear memory caches
             import gc
+
             gc.collect()
 
             logger.info("Performance optimization completed")
@@ -789,13 +860,16 @@ class ErrorRecoverySystem:
             logger.error(f"Performance optimization failed: {str(e)}")
             return False
 
-    def _free_resources(self, error_report: ErrorReport, parameters: Dict[str, Any]) -> bool:
+    def _free_resources(
+        self, error_report: ErrorReport, parameters: Dict[str, Any]
+    ) -> bool:
         """Free up system resources"""
         try:
             logger.info("Freeing up system resources...")
 
             # Clear memory caches
             import gc
+
             gc.collect()
 
             # Close any open file handles
@@ -822,7 +896,7 @@ class ErrorRecoverySystem:
         # Log to file
         error_file = self.error_log_dir / f"error_{error_report.id}.json"
         try:
-            with open(error_file, 'w') as f:
+            with open(error_file, "w") as f:
                 json.dump(asdict(error_report), f, indent=2, default=str)
         except Exception as e:
             logger.error(f"Failed to log error to file: {str(e)}")
@@ -833,7 +907,7 @@ class ErrorRecoverySystem:
             ErrorSeverity.HIGH: logging.ERROR,
             ErrorSeverity.MEDIUM: logging.WARNING,
             ErrorSeverity.LOW: logging.INFO,
-            ErrorSeverity.INFO: logging.INFO
+            ErrorSeverity.INFO: logging.INFO,
         }.get(error_report.severity, logging.WARNING)
 
         logger.log(log_level, f"Error {error_report.id}: {error_report.message}")
@@ -859,8 +933,14 @@ class ErrorRecoverySystem:
         current_time = datetime.now(timezone.utc)
 
         # Determine system status
-        critical_errors = [e for e in self.active_errors.values() if e.severity == ErrorSeverity.CRITICAL]
-        high_errors = [e for e in self.active_errors.values() if e.severity == ErrorSeverity.HIGH]
+        critical_errors = [
+            e
+            for e in self.active_errors.values()
+            if e.severity == ErrorSeverity.CRITICAL
+        ]
+        high_errors = [
+            e for e in self.active_errors.values() if e.severity == ErrorSeverity.HIGH
+        ]
 
         if critical_errors:
             self.system_health["status"] = "critical"
@@ -876,7 +956,7 @@ class ErrorRecoverySystem:
         self.system_health["metrics"] = {
             "active_errors": len(self.active_errors),
             "total_errors": len(self.error_history),
-            "recovery_success_rate": self._calculate_recovery_rate(self.error_history)
+            "recovery_success_rate": self._calculate_recovery_rate(self.error_history),
         }
 
         # Identify issues
@@ -885,9 +965,17 @@ class ErrorRecoverySystem:
                 "type": "active_errors",
                 "count": len(self.active_errors),
                 "severity_distribution": {
-                    severity: len([e for e in self.active_errors.values() if e.severity.value == severity])
-                    for severity in set(e.severity.value for e in self.active_errors.values())
-                }
+                    severity: len(
+                        [
+                            e
+                            for e in self.active_errors.values()
+                            if e.severity.value == severity
+                        ]
+                    )
+                    for severity in set(
+                        e.severity.value for e in self.active_errors.values()
+                    )
+                },
             }
         ]
 
@@ -907,12 +995,17 @@ class ErrorRecoverySystem:
 
     def _check_error_patterns(self):
         """Check for concerning error patterns"""
-        recent_errors = [e for e in self.error_history
-                        if (datetime.now(timezone.utc) - e.timestamp).total_seconds() < 300]  # Last 5 minutes
+        recent_errors = [
+            e
+            for e in self.error_history
+            if (datetime.now(timezone.utc) - e.timestamp).total_seconds() < 300
+        ]  # Last 5 minutes
 
         # Check for error bursts
         if len(recent_errors) > 10:
-            logger.warning(f"High error rate detected: {len(recent_errors)} errors in last 5 minutes")
+            logger.warning(
+                f"High error rate detected: {len(recent_errors)} errors in last 5 minutes"
+            )
 
         # Check for repeated errors
         error_messages = [e.message for e in recent_errors]
@@ -950,7 +1043,7 @@ class ErrorRecoverySystem:
             "system:Exception": "critical",
             "configuration:Exception": "high",
             "communication:Exception": "medium",
-            "validation:Exception": "medium"
+            "validation:Exception": "medium",
         }
 
         for key, severity in severity_map.items():
@@ -965,18 +1058,18 @@ class ErrorRecoverySystem:
             "research:Exception": [
                 "Restart research engines",
                 "Clear research cache",
-                "Validate research components"
+                "Validate research components",
             ],
             "system:Exception": [
                 "Check system resources",
                 "Restart system components",
-                "Verify system configuration"
+                "Verify system configuration",
             ],
             "configuration:Exception": [
                 "Restore configuration backup",
                 "Validate configuration syntax",
-                "Check configuration permissions"
-            ]
+                "Check configuration permissions",
+            ],
         }
 
         for key, sols in solutions.items():
@@ -999,7 +1092,9 @@ class ErrorRecoverySystem:
             tips.append("Regularly validate configuration files before making changes")
 
         if category_counts.get("research", 0) > 5:
-            tips.append("Monitor research engine performance and clear caches regularly")
+            tips.append(
+                "Monitor research engine performance and clear caches regularly"
+            )
 
         if category_counts.get("communication", 0) > 5:
             tips.append("Ensure stable network connections for agent communication")
@@ -1011,51 +1106,51 @@ class ErrorRecoverySystem:
         return [
             {
                 "condition": "System completely unresponsive",
-                "procedure": "Use system_reset recovery action to restore to known good state"
+                "procedure": "Use system_reset recovery action to restore to known good state",
             },
             {
                 "condition": "Critical research engine failure",
-                "procedure": "Rollback last research changes using rollback_last_changes action"
+                "procedure": "Rollback last research changes using rollback_last_changes action",
             },
             {
                 "condition": "Configuration corruption",
-                "procedure": "Restore configuration from backup using restore_config_backup action"
+                "procedure": "Restore configuration from backup using restore_config_backup action",
             },
             {
                 "condition": "Multiple agent communication failures",
-                "procedure": "Clear agent cache and restart communication channels"
-            }
+                "procedure": "Clear agent cache and restart communication channels",
+            },
         ]
 
     # Helper methods for component validation and repair
     def _validate_skill_file(self, skill_file: Path) -> bool:
         """Validate skill file format"""
         try:
-            with open(skill_file, 'r', encoding='utf-8') as f:
+            with open(skill_file, "r", encoding="utf-8") as f:
                 content = f.read()
 
             # Basic validation
-            return ('---' in content and len(content) > 100)
+            return "---" in content and len(content) > 100
         except:
             return False
 
     def _validate_agent_file(self, agent_file: Path) -> bool:
         """Validate agent file format"""
         try:
-            with open(agent_file, 'r', encoding='utf-8') as f:
+            with open(agent_file, "r", encoding="utf-8") as f:
                 content = f.read()
 
-            return ('role:' in content and len(content) > 200)
+            return "role:" in content and len(content) > 200
         except:
             return False
 
     def _validate_command_file(self, command_file: Path) -> bool:
         """Validate command file format"""
         try:
-            with open(command_file, 'r', encoding='utf-8') as f:
+            with open(command_file, "r", encoding="utf-8") as f:
                 content = f.read()
 
-            return ('name:' in content and 'allowed-tools:' in content)
+            return "name:" in content and "allowed-tools:" in content
         except:
             return False
 
@@ -1063,13 +1158,13 @@ class ErrorRecoverySystem:
         """Attempt to repair skill file"""
         try:
             # Basic repair - ensure file has minimum required content
-            with open(skill_file, 'r', encoding='utf-8') as f:
+            with open(skill_file, "r", encoding="utf-8") as f:
                 content = f.read()
 
-            if not content.startswith('---'):
+            if not content.startswith("---"):
                 content = f"---\nname: {skill_file.stem}\ndescription: Repaired skill file\n---\n\n{content}"
 
-            with open(skill_file, 'w', encoding='utf-8') as f:
+            with open(skill_file, "w", encoding="utf-8") as f:
                 f.write(content)
 
             return True
@@ -1094,6 +1189,7 @@ class ErrorRecoverySystem:
     def _close_file_handles(self):
         """Close open file handles"""
         import gc
+
         gc.collect()  # Force garbage collection to close file handles
 
     def _terminate_hanging_processes(self):
@@ -1105,13 +1201,17 @@ class ErrorRecoverySystem:
         """Save error history to file"""
         history_file = self.error_log_dir / "error_history.json"
         try:
-            with open(history_file, 'w') as f:
-                json.dump([asdict(e) for e in self.error_history], f, indent=2, default=str)
+            with open(history_file, "w") as f:
+                json.dump(
+                    [asdict(e) for e in self.error_history], f, indent=2, default=str
+                )
         except Exception as e:
             logger.error(f"Failed to save error history: {str(e)}")
 
+
 # Global error recovery system instance
 _error_recovery_system = None
+
 
 def get_error_recovery_system(project_root: Path = None) -> ErrorRecoverySystem:
     """Get or create global error recovery system instance"""
@@ -1120,17 +1220,25 @@ def get_error_recovery_system(project_root: Path = None) -> ErrorRecoverySystem:
         _error_recovery_system = ErrorRecoverySystem(project_root)
     return _error_recovery_system
 
-def handle_error(error: Exception, context: Dict[str, Any] = None,
-                severity: ErrorSeverity = ErrorSeverity.MEDIUM,
-                category: ErrorCategory = ErrorCategory.SYSTEM) -> ErrorReport:
+
+def handle_error(
+    error: Exception,
+    context: Dict[str, Any] = None,
+    severity: ErrorSeverity = ErrorSeverity.MEDIUM,
+    category: ErrorCategory = ErrorCategory.SYSTEM,
+) -> ErrorReport:
     """Convenience function to handle errors using global system"""
     return get_error_recovery_system().handle_error(error, context, severity, category)
 
+
 # Decorator for automatic error handling
-def error_handler(severity: ErrorSeverity = ErrorSeverity.MEDIUM,
-                 category: ErrorCategory = ErrorCategory.SYSTEM,
-                 context: Dict[str, Any] = None):
+def error_handler(
+    severity: ErrorSeverity = ErrorSeverity.MEDIUM,
+    category: ErrorCategory = ErrorCategory.SYSTEM,
+    context: Dict[str, Any] = None,
+):
     """Decorator for automatic error handling"""
+
     def decorator(func):
         def wrapper(*args, **kwargs):
             try:
@@ -1141,12 +1249,15 @@ def error_handler(severity: ErrorSeverity = ErrorSeverity.MEDIUM,
                     "module": func.__module__,
                     "args": str(args)[:100],  # Limit length
                     "kwargs": str(kwargs)[:100],
-                    **(context or {})
+                    **(context or {}),
                 }
                 handle_error(e, error_context, severity, category)
                 raise
+
         return wrapper
+
     return decorator
+
 
 if __name__ == "__main__":
     # Demo usage
@@ -1163,7 +1274,7 @@ if __name__ == "__main__":
             e,
             context={"demo": True},
             severity=ErrorSeverity.MEDIUM,
-            category=ErrorCategory.SYSTEM
+            category=ErrorCategory.SYSTEM,
         )
         print(f"Handled error: {error_report.id}")
 

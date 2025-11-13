@@ -1,5 +1,5 @@
 /**
- * @TAG:FOUNDATION-SETUP-001
+ * TEST-FOUNDATION-SETUP-001: Nextra foundation setup tests
  * Nextra 기반 문서 시스템 기능 테스트
  *
  * 기본 설정 검증:
@@ -10,7 +10,7 @@
  * 5. 깃허브 연동이 올바르게 설정되어 있는지
  */
 
-describe('Nextra Foundation Setup (@TAG:FOUNDATION-SETUP-001)', () => {
+describe('Nextra Foundation Setup Tests', () => {
   describe('Configuration Validation', () => {
     it('should have proper Nextra configuration', () => {
       // 테스트: Nextra 설정이 올바르게 구성되어 있는지

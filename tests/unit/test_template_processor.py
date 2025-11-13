@@ -604,8 +604,8 @@ class TestMergeConfig:
 
     def test_merge_config_preserves_existing_values(self, tmp_path: Path) -> None:
         """Should preserve existing config values"""
-        config_dir = tmp_path / ".moai"
-        config_dir.mkdir()
+        config_dir = tmp_path / ".moai" / "config"
+        config_dir.mkdir(parents=True)
         config_path = config_dir / "config.json"
         config_path.write_text(
             json.dumps(
@@ -629,8 +629,8 @@ class TestMergeConfig:
 
     def test_merge_config_uses_defaults_for_new_project(self, tmp_path: Path) -> None:
         """Should use defaults when no existing config"""
-        config_dir = tmp_path / ".moai"
-        config_dir.mkdir()
+        config_dir = tmp_path / ".moai" / "config"
+        config_dir.mkdir(parents=True)
 
         processor = TemplateProcessor(tmp_path)
         merged = processor.merge_config(detected_language="python")
@@ -645,8 +645,8 @@ class TestMergeConfig:
         self, tmp_path: Path
     ) -> None:
         """Should use detected language for new projects"""
-        config_dir = tmp_path / ".moai"
-        config_dir.mkdir()
+        config_dir = tmp_path / ".moai" / "config"
+        config_dir.mkdir(parents=True)
 
         processor = TemplateProcessor(tmp_path)
         merged = processor.merge_config(detected_language="go")

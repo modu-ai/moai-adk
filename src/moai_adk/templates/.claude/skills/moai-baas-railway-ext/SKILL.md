@@ -2,10 +2,10 @@
 name: "moai-baas-railway-ext"
 version: "4.0.0"
 created: 2025-11-11
-updated: 2025-11-12
+updated: 2025-11-13
 status: stable
-description: Enterprise Railway Full-Stack Platform with AI-powered deployment architecture, Context7 integration, and intelligent container orchestration for scalable modern applications
-keywords: ['railway', 'full-stack-platform', 'container-deployment', 'docker-deployment', 'postgresql', 'build-pipelines', 'context7-integration', 'ai-orchestration', 'production-deployment']
+description: Enterprise Railway Full-Stack Platform with AI-powered container orchestration, Context7 integration, and intelligent deployment automation for scalable modern applications
+keywords: ['railway', 'full-stack', 'container-deployment', 'ci-cd', 'database-provisioning', 'auto-scaling', 'context7-integration', 'ai-orchestration', 'production-deployment']
 allowed-tools: 
   - Read
   - Bash
@@ -25,8 +25,8 @@ allowed-tools:
 | Field | Value |
 | ----- | ----- |
 | **Skill Name** | moai-baas-railway-ext |
-| **Version** | 4.0.0 (2025-11-11) |
-| **Tier** | Enterprise Full-Stack Platform Expert |
+| **Version** | 4.0.0 (2025-11-13) |
+| **Tier** | Enterprise Deployment Platform Expert |
 | **AI-Powered** | ✅ Context7 Integration, Intelligent Architecture |
 | **Auto-load** | On demand when Railway keywords detected |
 
@@ -34,19 +34,14 @@ allowed-tools:
 
 ## What It Does
 
-Enterprise Railway Full-Stack Platform expert with AI-powered deployment architecture, Context7 integration, and intelligent container orchestration for scalable modern applications.
+Enterprise Railway Full-Stack Platform expert with AI-powered container orchestration, Context7 integration, and intelligent deployment automation for scalable modern applications.
 
 **Revolutionary v4.0.0 capabilities**:
-- 🤖 **AI-Powered Railway Architecture** using Context7 MCP for latest Railway documentation
-- 📊 **Intelligent Container Orchestration** with automated deployment and scaling strategies
-- 🚀 **Real-time Deployment Analytics** with AI-powered build and performance insights
-- 🔗 **Enterprise Full-Stack Integration** with zero-configuration container deployment
+- 🤖 **AI-Powered Railway Architecture** using Context7 MCP for latest deployment patterns
+- 📊 **Intelligent Container Orchestration** with automated scaling and optimization
+- 🚀 **Real-time Performance Analytics** with AI-driven deployment insights
+- 🔗 **Enterprise CI/CD Integration** with zero-configuration pipeline automation
 - 📈 **Predictive Cost Analysis** with usage forecasting and resource optimization
-- 🔍 **Advanced Build Pipeline Optimization** with automated CI/CD and deployment strategies
-- 🌐 **Multi-Service Architecture** with intelligent microservice deployment and scaling
-- 🎯 **Intelligent Migration Planning** with container modernization and deployment strategies
-- 📱 **Real-time Infrastructure Monitoring** with AI-powered performance alerting
-- ⚡ **Zero-Configuration Deployment** with intelligent template matching and CI/CD
 
 ---
 
@@ -54,638 +49,482 @@ Enterprise Railway Full-Stack Platform expert with AI-powered deployment archite
 
 **Automatic triggers**:
 - Railway deployment architecture and container orchestration discussions
-- Full-stack application deployment and build pipeline optimization
-- PostgreSQL database integration and scaling strategies
-- Microservice architecture and service orchestration planning
-- Modern application deployment and CI/CD automation
+- Full-stack application development and database integration
+- CI/CD pipeline setup and automated deployment strategies
+- Multi-region deployment and scaling optimization
 
 **Manual invocation**:
-- Designing enterprise Railway architectures with container orchestration
-- Optimizing build pipelines and deployment strategies
-- Planning microservice deployments and scaling configurations
-- Implementing advanced CI/CD patterns and automation
-- Migrating applications to Railway container platforms
-- Optimizing Railway costs and performance monitoring
+- Designing enterprise Railway architectures with optimal container configuration
+- Implementing automated CI/CD pipelines with GitHub integration
+- Planning full-stack application migrations to Railway
+- Optimizing costs and auto-scaling configuration
 
 ---
 
-## Enterprise Railway Architecture Intelligence
+# Quick Reference (Level 1)
 
-### AI-Enhanced Platform Analysis
+## Railway Full-Stack Platform (November 2025)
 
-#### 1. **Railway Container Platform** (Full-Stack Deployment)
-```yaml
-railway_container_platform:
-  context7_integration: true
-  latest_features:
-    - "Git-based deployment with automatic build pipelines"
-    - "Docker container runtime with multi-arch support"
-    - "Automatic environment variable and secret management"
-    - "Built-in PostgreSQL with automated backups and scaling"
-    - "Service discovery and internal networking"
-    - "Horizontal scaling with load balancing"
-    - "Custom domains with automatic SSL certificates"
-    - "Real-time logs and deployment analytics"
-  
-  ai_recommendations:
-    best_for: ["Full-stack applications", "Microservices", "API backends", "Web applications"]
-    use_cases: ["SaaS platforms", "E-commerce applications", "API services", "Mobile backends"]
-    performance_metrics:
-      deployment_time: "Under 5 minutes for most applications"
-      build_time: "Optimized builds with caching and parallelization"
-      scaling_latency: "Instant auto-scaling based on load"
-      uptime_sla: "99.9% uptime with automatic recovery"
-    
-  enterprise_features:
-    deployment: ["Git integration", "Automatic builds", "Rolling deployments", "Health checks"]
-    infrastructure: ["Container orchestration", "Service discovery", "Load balancing", "Auto-scaling"]
-    monitoring: ["Real-time logs", "Performance metrics", "Error tracking", "Usage analytics"]
-```
+### Core Features Overview
+- **Container Deployment**: Docker container deployment from GitHub
+- **Database Provisioning**: PostgreSQL, MongoDB, Redis with automatic setup
+- **Multi-Region Deployment**: 4+ global regions for optimal latency
+- **Git-Based CI/CD**: Automated deployments from Git commits
+- **Background Jobs**: Scheduled tasks and job processing
+- **One-Click Rollback**: Instant deployment history and rollback
 
-#### 2. **Railway PostgreSQL** (Managed Database Service)
-```yaml
-railway_postgresql:
-  context7_integration: true
-  latest_features:
-    - "Managed PostgreSQL 15+ with automatic updates"
-    - "Automated backups with point-in-time recovery"
-    - "Read replicas for read scaling and performance"
-    - "Connection pooling with PgBouncer integration"
-    - "Database branching for development workflows"
-    - "Performance monitoring and query optimization"
-    - "SSL/TLS encryption with secure connections"
-    - "Automated maintenance and updates"
-  
-  ai_recommendations:
-    best_for: ["Production databases", "Application backends", "Analytics workloads"]
-    use_cases: ["Application data storage", "User management", "Content management", "Analytics"]
-    performance_metrics:
-      connection_latency: "P95 < 10ms within same region"
-      query_performance: "Optimized queries with indexing strategies"
-      throughput: "10k+ TPS with proper scaling"
-      backup_recovery: "Automated daily backups with 30-day retention"
-    
-  enterprise_features:
-    performance: ["Connection pooling", "Read replicas", "Query optimization", "Performance monitoring"]
-    security: ["Encryption at rest and transit", "Access controls", "Audit logging", "Network isolation"]
-    reliability: ["Automated backups", "Point-in-time recovery", "High availability", "Failover support"]
-```
+### Supported Services
+- **Applications**: Node.js, Python, Ruby, Go, Rust, Java, PHP
+- **Databases**: PostgreSQL, MongoDB, Redis, MySQL
+- **Static Sites**: Next.js, React, Vue, Angular, Hugo
+- **Background Workers**: Bull queue, Celery, Sidekiq integration
+- **File Storage**: Integrated with cloud storage providers
 
-#### 3. **Railway Build Pipelines** (CI/CD Automation)
-```yaml
-railway_build_pipelines:
-  context7_integration: true
-  latest_features:
-    - "Git-based CI/CD with automatic triggers"
-    - "Dockerfile optimization and caching strategies"
-    - "Multi-stage builds with layer optimization"
-    - "Parallel builds and dependency caching"
-    - "Environment-specific build configurations"
-    - "Build artifact management and optimization"
-    - "Integration testing and deployment gates"
-    - "Build performance analytics and optimization"
-  
-  ai_recommendations:
-    best_for: ["Continuous deployment", "Automated testing", "Build optimization"]
-    use_cases: ["Application deployment", "Microservice deployment", "Multi-environment deployments"]
-    performance_metrics:
-      build_time: "Optimized builds with intelligent caching"
-      deployment_frequency: "Support for multiple daily deployments"
-      success_rate: "95%+ build success rate with rollback capabilities"
-      testing_coverage: "Integrated testing with quality gates"
-    
-  enterprise_features:
-    automation: ["Git triggers", "Automated testing", "Deployment gates", "Rollback capabilities"]
-    optimization: ["Build caching", "Layer optimization", "Parallel builds", "Dependency management"]
-    quality: ["Testing integration", "Code analysis", "Security scanning", "Performance monitoring"]
-```
+### Key Benefits
+- **Zero Infrastructure Management**: No server configuration required
+- **Developer-Friendly**: Focus on code, not deployment complexity
+- **Auto-Scaling**: Automatic scaling based on traffic and load
+- **Cost Controls**: Built-in spending limits and monitoring
+
+### Performance Characteristics
+- **Cold Start**: < 2 seconds for container spin-up
+- **Scaling**: Instant horizontal and vertical scaling
+- **Database Performance**: Optimized configurations for each database type
+- **Global Latency**: < 50ms in major regions
 
 ---
 
-## AI-Powered Railway Intelligence
+# Core Implementation (Level 2)
 
-### Intelligent Container Orchestration
+## Railway Architecture Intelligence
+
 ```python
-# AI-powered Railway container orchestration with Context7
-class EnterpriseRailwayOptimizer:
+# AI-powered Railway architecture optimization with Context7
+class RailwayArchitectOptimizer:
     def __init__(self):
         self.context7_client = Context7Client()
-        self.railway_analyzer = RailwayAnalyzer()
-        self.container_optimizer = ContainerOptimizer()
+        self.container_analyzer = ContainerAnalyzer()
+        self.scaling_optimizer = ScalingOptimizer()
     
-    async def optimize_railway_architecture(self, 
-                                          current_config: RailwayConfig,
-                                          performance_goals: PerformanceGoals) -> OptimizationPlan:
-        """Optimize Railway architecture using AI analysis."""
+    async def design_optimal_railway_architecture(self, 
+                                                requirements: ApplicationRequirements) -> RailwayArchitecture:
+        """Design optimal Railway architecture using AI analysis."""
         
-        # Get latest Railway best practices via Context7
-        railway_docs = {}
-        services = ['container-platform', 'postgresql', 'build-pipelines', 'monitoring', 'scaling']
-        
-        for service in services:
-            docs = await self.context7_client.get_library_docs(
-                context7_library_id=await self._resolve_railway_library(service),
-                topic=f"enterprise optimization best practices 2025",
-                tokens=3000
-            )
-            railway_docs[service] = docs
-        
-        # Get Docker optimization documentation
-        docker_docs = await self.context7_client.get_library_docs(
-            context7_library_id=await self._resolve_docker_library(),
-            topic="container optimization performance best practices 2025",
+        # Get latest Railway and containerization documentation via Context7
+        railway_docs = await self.context7_client.get_library_docs(
+            context7_library_id='/railway/docs',
+            topic="container deployment ci-cd scaling optimization 2025",
             tokens=3000
         )
         
-        # Analyze current configuration
-        config_analysis = self._analyze_current_config(current_config, railway_docs, docker_docs)
-        
-        # Container optimization recommendations
-        container_recommendations = self.container_optimizer.optimize_containers(
-            current_config,
-            performance_goals,
-            railway_docs['container-platform'],
-            docker_docs
+        containerization_docs = await self.context7_client.get_library_docs(
+            context7_library_id='/docker/docs',
+            topic="optimization best practices orchestration 2025",
+            tokens=2000
         )
         
-        # Database optimization recommendations
-        database_recommendations = self.railway_analyzer.optimize_database(
-            current_config.database,
-            railway_docs['postgresql']
+        # Optimize container configuration
+        container_optimization = self.container_analyzer.optimize_configuration(
+            requirements.application_stack,
+            containerization_docs
         )
         
-        # Generate comprehensive optimization plan
-        return OptimizationPlan(
-            container_optimizations=container_recommendations,
-            database_optimizations=database_recommendations,
-            build_pipeline_optimizations=self._optimize_build_pipelines(
-                current_config.build_pipelines,
-                railway_docs['build-pipelines']
-            ),
-            scaling_configurations=self._optimize_scaling_strategy(
-                current_config.scaling,
-                railway_docs['scaling']
-            ),
-            monitoring_setup=self._setup_monitoring(
-                current_config,
-                railway_docs['monitoring']
-            ),
-            expected_improvements=self._calculate_expected_improvements(
-                container_recommendations,
-                database_recommendations
-            ),
-            implementation_complexity=self._assess_implementation_complexity(
-                container_recommendations,
-                database_recommendations
-            ),
-            roi_projection=self._calculate_roi_projection(
-                container_recommendations,
-                performance_goals
-            )
+        # Design scaling strategy
+        scaling_strategy = self.scaling_optimizer.design_scaling_strategy(
+            requirements.traffic_patterns,
+            requirements.performance_requirements,
+            railway_docs
         )
-    
-    def _optimize_container_deployment(self, 
-                                     config: ContainerConfig,
-                                     deployment_requirements: DeploymentRequirements) -> List[ContainerOptimization]:
-        """Generate container deployment optimizations."""
-        optimizations = []
         
-        # Dockerfile optimization
-        dockerfile_optimizations = self._optimize_dockerfile(config, deployment_requirements)
-        optimizations.extend(dockerfile_optimizations)
-        
-        # Multi-stage build optimization
-        build_optimizations = self._optimize_multi_stage_builds(config, deployment_requirements)
-        optimizations.extend(build_optimizations)
-        
-        # Layer optimization
-        layer_optimizations = self._optimize_docker_layers(config, deployment_requirements)
-        optimizations.extend(layer_optimizations)
-        
-        # Resource optimization
-        resource_optimizations = self._optimize_resource_allocation(config, deployment_requirements)
-        optimizations.extend(resource_optimizations)
-        
-        return optimizations
-    
-    def _generate_microservice_strategies(self, 
-                                        application_architecture: ApplicationArchitecture,
-                                        scaling_requirements: ScalingRequirements) -> MicroserviceStrategy:
-        """Generate optimal microservice deployment strategies."""
-        return MicroserviceStrategy(
-            service_decomposition={
-                'domain_boundaries': "Domain-driven design with bounded contexts",
-                'service_isolation': "Loosely coupled services with clear interfaces",
-                'data_ownership': "Single service ownership per data domain",
-                'communication_patterns': "API-based communication with async messaging"
-            },
-            deployment_patterns={
-                'container_orchestration': "Optimal container configuration for each service",
-                'service_discovery': "Automatic service discovery and load balancing",
-                'health_checks': "Comprehensive health check implementations",
-                'rolling_updates': "Zero-downtime rolling updates with gradual deployment"
-            },
-            scaling_strategies{
-                'horizontal_scaling': "Auto-scaling based on metrics and demand",
-                'resource_allocation': "Optimal CPU and memory allocation per service",
-                'load_balancing': "Intelligent load balancing across service instances",
-                'performance_optimization': "Service-specific performance tuning"
-            },
-            monitoring_and_observability{
-                'service_metrics': "Comprehensive service-level metrics and monitoring",
-                'distributed_tracing': "Request tracing across service boundaries",
-                'log_aggregation': "Centralized logging with correlation IDs",
-                'error_tracking': "Service-level error tracking and alerting"
-            }
+        return RailwayArchitecture(
+            application_services=self._design_application_services(requirements),
+            database_services=self._design_database_services(requirements),
+            container_configuration=container_optimization,
+            scaling_strategy=scaling_strategy,
+            deployment_pipeline=self._design_cicd_pipeline(requirements),
+            monitoring_setup=self._setup_monitoring(),
+            cost_analysis=self._analyze_pricing_model(requirements)
         )
 ```
 
-### Context7-Enhanced Railway Intelligence
-```python
-# Real-time Railway intelligence with Context7
-class Context7RailwayIntelligence:
-    def __init__(self):
-        self.context7_client = Context7Client()
-        self.railway_monitor = RailwayMonitor()
-        self.update_scheduler = UpdateScheduler()
+## Multi-Service Deployment Configuration
+
+```yaml
+# Railway multi-service application configuration
+version: "1.0"
+services:
+  frontend:
+    build:
+      dockerfile: Dockerfile.frontend
+      context: .
+    environment:
+      - NEXT_PUBLIC_API_URL=${API_URL}
+      - NODE_ENV=production
+    deploy:
+      replicas: 2
+      memory: 512Mi
+      cpu: 0.5
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  backend:
+    build:
+      dockerfile: Dockerfile.backend
+      context: .
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - JWT_SECRET=${JWT_SECRET}
+    deploy:
+      replicas: 3
+      memory: 1Gi
+      cpu: 1.0
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  worker:
+    build:
+      dockerfile: Dockerfile.worker
+      context: .
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+    deploy:
+      replicas: 1
+      memory: 512Mi
+      cpu: 0.5
+
+  postgres:
+    image: "postgres:16-alpine"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volume_mounts:
+      - mountPath: /var/lib/postgresql/data
+        name: postgres-data
+    deploy:
+      memory: 2Gi
+      cpu: 1.0
+
+  redis:
+    image: "redis:7-alpine"
+    deploy:
+      memory: 512Mi
+      cpu: 0.5
+```
+
+## CI/CD Pipeline Integration
+
+```yaml
+# GitHub Actions workflow for Railway deployment
+name: Deploy to Railway
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run tests
+        run: npm test
+      
+      - name: Run E2E tests
+        run: npm run test:e2e
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
     
-    async def get_real_time_railway_updates(self, services: List[str]) -> RailwayUpdates:
-        """Get real-time Railway updates via Context7."""
-        updates = {}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+      
+      - name: Deploy to Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          railway login --token $RAILWAY_TOKEN
+          railway up --service frontend,backend,worker
+```
+
+---
+
+# Advanced Implementation (Level 3)
+
+## Advanced Scaling Strategies
+
+```python
+class RailwayScalingManager:
+    def __init__(self):
+        self.railway_client = RailwayClient()
+        self.metrics_analyzer = MetricsAnalyzer()
+        self.cost_optimizer = CostOptimizer()
+    
+    async def implement_intelligent_scaling(self, 
+                                          project_id: str,
+                                          scaling_config: ScalingConfiguration) -> ScalingImplementation:
+        """Implement intelligent auto-scaling for Railway services."""
         
-        for service in services:
-            # Get latest Railway documentation updates
-            latest_docs = await self.context7_client.get_library_docs(
-                context7_library_id=await self._resolve_railway_library(service),
-                topic="latest features updates deprecation warnings 2025",
-                tokens=2500
-            )
+        # Analyze current usage patterns
+        usage_analysis = await self.metrics_analyzer.analyze_usage_patterns(
+            project_id, timeframe="7d"
+        )
+        
+        # Configure predictive scaling
+        predictive_config = self._configure_predictive_scaling(
+            usage_analysis,
+            scaling_config
+        )
+        
+        # Set up cost optimization
+        cost_optimization = self.cost_optimizer.optimize_scaling_costs(
+            predictive_config,
+            scaling_config.budget_constraints
+        )
+        
+        return ScalingImplementation(
+            scaling_rules=self._create_scaling_rules(predictive_config),
+            monitoring_setup=self._setup_scaling_monitoring(),
+            cost_controls=cost_optimization,
+            performance_alerts=self._configure_performance_alerts()
+        )
+```
+
+### Database Optimization Patterns
+
+```typescript
+// Railway PostgreSQL optimization with connection pooling
+import { Pool } from 'pg';
+
+// Production-ready database configuration
+const productionPool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+  
+  // Optimized for Railway's containerized environment
+  max: 20, // Maximum connections in pool
+  min: 5,  // Minimum connections to maintain
+  idleTimeoutMillis: 30000, // Close idle connections after 30s
+  connectionTimeoutMillis: 2000, // Give up connecting after 2s
+  statement_timeout: 10000, // Kill slow queries after 10s
+  
+  // Connection retry logic
+  retry: 3,
+  retryDelay: 1000,
+});
+
+// Application database service
+export class DatabaseService {
+  private pool = productionPool;
+  
+  async query<T>(text: string, params?: any[]): Promise<T[]> {
+    const start = Date.now();
+    const client = await this.pool.connect();
+    
+    try {
+      const result = await client.query(text, params);
+      const duration = Date.now() - start;
+      
+      // Log slow queries for optimization
+      if (duration > 1000) {
+        console.warn('Slow query detected:', {
+          query: text,
+          duration,
+          rowCount: result.rowCount
+        });
+      }
+      
+      return result.rows;
+    } finally {
+      client.release();
+    }
+  }
+  
+  async transaction<T>(callback: (client: any) => Promise<T>): Promise<T> {
+    const client = await this.pool.connect();
+    
+    try {
+      await client.query('BEGIN');
+      const result = await callback(client);
+      await client.query('COMMIT');
+      return result;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+}
+
+// Health check endpoint
+app.get('/api/health', async (req, res) => {
+  try {
+    await db.query('SELECT 1');
+    res.status(200).json({ 
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      database: 'connected'
+    });
+  } catch (error) {
+    res.status(503).json({ 
+      status: 'unhealthy',
+      timestamp: new Date().toISOString(),
+      database: 'disconnected'
+    });
+  }
+});
+```
+
+### Environment Management
+
+```python
+class RailwayEnvironmentManager:
+    def __init__(self):
+        self.railway_client = RailwayClient()
+        self.config_manager = ConfigurationManager()
+    
+    def setup_production_environment(self, project_id: str, config: EnvironmentConfig) -> EnvironmentSetup:
+        """Configure production environment with best practices."""
+        
+        # Set up production variables
+        production_vars = {
+            # Application configuration
+            'NODE_ENV': 'production',
+            'LOG_LEVEL': 'info',
             
-            # Analyze updates for impact
-            impact_analysis = self._analyze_update_impact(latest_docs)
+            # Database configuration
+            'DATABASE_URL': config.database_url,
+            'DATABASE_POOL_SIZE': '20',
+            'DATABASE_TIMEOUT': '10000',
             
-            updates[service] = RailwayUpdate(
-                new_features=self._extract_new_features(latest_docs),
-                breaking_changes=self._extract_breaking_changes(latest_docs),
-                performance_improvements=self._extract_performance_improvements(latest_docs),
-                deployment_updates=self._extract_deployment_updates(latest_docs),
-                deprecation_warnings=self._extract_deprecation_warnings(latest_docs),
-                impact_assessment=impact_analysis,
-                recommended_actions=self._generate_recommendations(latest_docs)
-            )
+            # Security configuration
+            'JWT_SECRET': config.jwt_secret,
+            'ENCRYPTION_KEY': config.encryption_key,
+            'CORS_ORIGIN': config.frontend_url,
+            
+            # External services
+            'REDIS_URL': config.redis_url,
+            'EMAIL_SERVICE_API_KEY': config.email_api_key,
+            
+            # Monitoring and observability
+            'SENTRY_DSN': config.sentry_dsn,
+            'LOGTAIL_SOURCE_TOKEN': config.logtail_token
+        }
         
-        return RailwayUpdates(updates)
-    
-    async def optimize_deployment_pipeline(self, 
-                                          current_pipeline: PipelineConfig,
-                                          deployment_goals: DeploymentGoals) -> PipelineOptimization:
-        """Optimize Railway deployment pipeline using AI analysis."""
-        
-        # Get CI/CD optimization documentation
-        pipeline_docs = await self.context7_client.get_library_docs(
-            context7_library_id=await self._resolve_railway_library('build-pipelines'),
-            topic="ci cd optimization deployment automation 2025",
-            tokens=3000
+        # Configure environment variables
+        env_setup = self.railway_client.set_environment_variables(
+            project_id, production_vars
         )
         
-        # Get Docker optimization strategies
-        docker_docs = await self.context7_client.get_library_docs(
-            context7_library_id=await self._resolve_docker_library(),
-            topic="docker build optimization caching strategies 2025",
-            tokens=2500
-        )
-        
-        # Analyze current deployment pipeline
-        pipeline_analysis = self._analyze_deployment_pipeline(
-            current_pipeline,
-            deployment_goals,
-            pipeline_docs,
-            docker_docs
-        )
-        
-        # Generate optimization recommendations
-        optimizations = self._generate_pipeline_optimizations(
-            pipeline_analysis,
-            deployment_goals,
-            pipeline_docs,
-            docker_docs
-        )
-        
-        return PipelineOptimization(
-            build_optimizations=optimizations.build_improvements,
-            deployment_strategies=optimizations.deployment_enhancements,
-            testing_integration=optimizations.testing_improvements,
-            monitoring_setup=optimizations.monitoring_setup,
-            expected_improvements=self._calculate_pipeline_improvements(optimizations),
-            implementation_complexity=optimizations.complexity_score,
-            rollout_strategy=optimizations.rollout_plan
+        return EnvironmentSetup(
+            variables=production_vars,
+            security_config=self._configure_security(),
+            monitoring_config=self._configure_monitoring(),
+            backup_config=self._configure_backups()
         )
 ```
 
 ---
 
-## Advanced Railway Integration Patterns
-
-### Enterprise Full-Stack Architecture
-```yaml
-# Enterprise Railway full-stack application architecture
-enterprise_railway_architecture:
-  deployment_patterns:
-    - name: "Microservices E-commerce Platform"
-      features: ["Service isolation", "API gateway", "Database per service", "Event streaming"]
-      optimization: "Container optimization + Service discovery + Auto-scaling"
-      integration: "Railway containers + PostgreSQL + Service networking"
-    
-    - name: "SaaS Multi-tenant Application"
-      features: ["Tenant isolation", "Shared infrastructure", "Database per tenant", "Feature flags"]
-      optimization: "Resource allocation + Database optimization + Security isolation"
-      integration: "Railway containers + PostgreSQL + Environment management"
-    
-    - name: "API-First Backend Platform"
-      features: ["RESTful APIs", "GraphQL endpoints", "Authentication", "Rate limiting"]
-      optimization: "Performance tuning + Caching strategies + Load balancing"
-      integration: "Railway containers + PostgreSQL + API gateway patterns"
-    
-    - name: "Full-Stack Web Application"
-      features: ["Frontend build", "Backend API", "Database", "Static assets"]
-      optimization: "Monorepo deployment + Build optimization + Performance tuning"
-      integration: "Railway containers + PostgreSQL + Build pipelines"
-    
-    - name: "Real-time Application Platform"
-      features: ["WebSocket support", "Real-time sync", "Push notifications", "Background jobs"]
-      optimization: "Connection management + Performance optimization + Scaling strategies"
-      integration: "Railway containers + PostgreSQL + Real-time services"
-
-  deployment_strategy:
-    development: "Local development + Docker Compose + Environment variables"
-    staging: "Staging environment + Production-like data + Performance testing"
-    production: "Production deployment + Monitoring + Auto-scaling + Backup strategies"
-    
-  performance_optimization:
-    container_optimization: "Dockerfile optimization + Multi-stage builds + Layer caching"
-    database_performance: "Connection pooling + Query optimization + Read replicas"
-    scaling_strategy: "Horizontal auto-scaling + Load balancing + Resource optimization"
-    build_optimization: "Build caching + Parallel builds + Dependency optimization"
-```
-
-### AI-Driven Deployment Pipeline Optimization
-```python
-# Intelligent deployment pipeline optimization with AI analysis
-class RailwayDeploymentOptimizer:
-    def __init__(self):
-        self.context7_client = Context7Client()
-        self.pipeline_analyzer = PipelineAnalyzer()
-        self.deployment_optimizer = DeploymentOptimizer()
-    
-    async def optimize_application_deployment(self, 
-                                            application: RailwayApplication,
-                                            deployment_requirements: DeploymentRequirements) -> DeploymentOptimizationPlan:
-        """Optimize application deployment using AI analysis."""
-        
-        # Get deployment optimization documentation
-        deployment_docs = await self.context7_client.get_library_docs(
-            context7_library_id=await self._resolve_railway_library('container-platform'),
-            topic="deployment optimization container orchestration scaling 2025",
-            tokens=3000
-        )
-        
-        # Get PostgreSQL optimization strategies
-        database_docs = await self.context7_client.get_library_docs(
-            context7_library_id=await self._resolve_railway_library('postgresql'),
-            topic="database optimization connection pooling performance 2025",
-            tokens=2500
-        )
-        
-        # Analyze current deployment setup
-        deployment_analysis = self.pipeline_analyzer.analyze_deployment_setup(
-            application,
-            deployment_requirements,
-            deployment_docs,
-            database_docs
-        )
-        
-        # Generate comprehensive optimization plan
-        return DeploymentOptimizationPlan(
-            container_optimization={
-                'dockerfile_optimization': self._optimize_dockerfile(deployment_analysis, deployment_docs),
-                'multi_stage_builds': self._optimize_build_strategy(deployment_analysis, deployment_docs),
-                'resource_allocation': self._optimize_resources(deployment_analysis, deployment_docs),
-                'environment_configuration': self._optimize_environment(deployment_analysis, deployment_docs)
-            },
-            database_optimization={
-                'connection_management': self._optimize_database_connections(deployment_analysis, database_docs),
-                'query_optimization': self._optimize_database_queries(deployment_analysis, database_docs),
-                'scaling_strategy': self._optimize_database_scaling(deployment_analysis, database_docs),
-                'backup_strategy': self._optimize_backup_strategy(deployment_analysis, database_docs)
-            },
-            deployment_strategy=self._optimize_deployment_strategy(deployment_analysis, deployment_docs),
-            monitoring_setup=self._design_monitoring_strategy(deployment_analysis),
-            expected_improvements=self._calculate_deployment_improvements(deployment_analysis),
-            implementation_roadmap=self._generate_implementation_roadmap(deployment_analysis)
-        )
-    
-    def _generate_container_strategies(self, 
-                                     application_type: ApplicationType,
-                                     performance_requirements: PerformanceRequirements) -> ContainerStrategy:
-        """Generate optimal container deployment strategies."""
-        return ContainerStrategy(
-            dockerfile_optimization={
-                'base_images': "Optimized base images with minimal attack surface",
-                'multi_stage_builds': "Multi-stage builds for minimal production images",
-                'layer_optimization': "Layer optimization for faster build times",
-                'security_hardening': "Security scanning and vulnerability management"
-            },
-            resource_management{
-                'cpu_allocation': "Optimal CPU allocation based on workload requirements",
-                'memory_optimization': "Memory optimization with efficient usage patterns",
-                'storage_strategy': "Efficient storage management with ephemeral storage",
-                'network_optimization': "Network configuration for optimal performance"
-            },
-            deployment_configuration{
-                'health_checks': "Comprehensive health check implementations",
-                'readiness_probes': "Application readiness verification",
-                'lifecycle_management': "Graceful startup and shutdown procedures",
-                'rollback_strategy': "Automated rollback capabilities for failed deployments"
-            },
-            scaling_configuration{
-                'horizontal_scaling': "Auto-scaling based on CPU, memory, and custom metrics",
-                'load_balancing': "Intelligent load balancing across service instances",
-                'performance_monitoring': "Real-time performance monitoring and alerting",
-                'cost_optimization': "Cost-effective scaling strategies"
-            }
-        )
-```
-
----
-
-## Performance and Monitoring Intelligence
-
-### Real-Time Infrastructure Monitoring
-```python
-# AI-powered Railway infrastructure monitoring and optimization
-class RailwayInfrastructureIntelligence:
-    def __init__(self):
-        self.context7_client = Context7Client()
-        self.infrastructure_monitor = InfrastructureMonitor()
-        self.optimization_engine = OptimizationEngine()
-    
-    async def setup_infrastructure_monitoring(self, 
-                                           application: RailwayApplication) -> InfrastructureMonitoringSetup:
-        """Setup comprehensive Railway infrastructure monitoring."""
-        
-        # Get latest infrastructure monitoring best practices
-        monitoring_docs = await self.context7_client.get_library_docs(
-            context7_library_id=await self._resolve_railway_library('monitoring'),
-            topic="infrastructure monitoring performance analytics alerting 2025",
-            tokens=3000
-        )
-        
-        return InfrastructureMonitoringSetup(
-            real_time_metrics{
-                'container_performance': [
-                    "CPU and memory utilization per container",
-                    "Container start-up and shutdown times",
-                    "Request response times and throughput",
-                    "Error rates and failure patterns"
-                ],
-                'database_performance': [
-                    "Query execution times and performance",
-                    "Connection pool utilization and efficiency",
-                    "Database size growth and storage usage",
-                    "Backup success rates and recovery times"
-                ],
-                'deployment_metrics': [
-                    "Build times and success rates",
-                    "Deployment duration and success rates",
-                    "Rollback frequency and success rates",
-                    "Deployment pipeline performance"
-                ],
-                'application_performance': [
-                    "Application response times and latency",
-                    "User experience metrics and satisfaction",
-                    "Feature usage patterns and adoption",
-                    "Error rates and application stability"
-                ]
-            },
-            ai_analytics{
-                "Performance anomaly detection and prediction",
-                "Resource utilization optimization recommendations",
-                "Cost optimization opportunities and suggestions",
-                "Scaling strategy optimization based on usage patterns"
-            },
-            infrastructure_insights{
-                'resource_utilization': "Detailed resource usage analysis and optimization",
-                'performance_patterns': "Performance pattern analysis and optimization",
-                'cost_analysis': "Cost breakdown and optimization opportunities",
-                'scaling_effectiveness': "Scaling strategy effectiveness and recommendations"
-            },
-            alerting=self._setup_infrastructure_alerting(),
-            dashboards=self._create_infrastructure_dashboards(application),
-            reporting=self._configure_infrastructure_reporting()
-        )
-    
-    async def optimize_database_performance(self, 
-                                          current_metrics: DatabaseMetrics) -> DatabaseOptimization:
-        """Optimize Railway database performance using AI analysis."""
-        
-        # Get database optimization documentation
-        database_docs = await self.context7_client.get_library_docs(
-            context7_library_id=await self._resolve_railway_library('postgresql'),
-            topic="postgresql performance optimization connection pooling 2025",
-            tokens=2500
-        )
-        
-        # Analyze current database performance
-        performance_analysis = self.infrastructure_monitor.analyze_database_performance(
-            current_metrics,
-            database_docs
-        )
-        
-        # Identify optimization opportunities
-        optimization_opportunities = self.optimization_engine.identify_database_opportunities(
-            performance_analysis,
-            database_docs
-        )
-        
-        # Generate optimization recommendations
-        optimizations = self._generate_database_optimizations(
-            optimization_opportunities,
-            database_docs
-        )
-        
-        return DatabaseOptimization(
-            query_improvements=optimizations.query_optimizations,
-            connection_optimizations=optimizations.connection_improvements,
-            indexing_strategies=optimizations.indexing_improvements,
-            resource_adjustments=optimizations.resource_optimizations,
-            expected_improvements=self._calculate_database_improvements(optimizations),
-            implementation_complexity=optimizations.complexity_analysis,
-            rollback_strategy=optimizations.rollback_plan
-        )
-```
-
----
+# Reference & Integration (Level 4)
 
 ## API Reference
 
-### Core Functions
-- `optimize_railway_architecture(config, goals)` - AI-powered Railway optimization
-- `optimize_application_deployment(app, requirements)` - Application deployment optimization
-- `setup_infrastructure_monitoring(application)` - Comprehensive infrastructure monitoring setup
-- `optimize_database_performance(metrics)` - Database performance optimization
-- `get_real_time_railway_updates(services)` - Context7 update monitoring
-- `generate_container_strategies(app_type, requirements)` - Automated container strategy generation
+### Core Railway Operations
+- `deploy_service(project_id, service_config)` - Deploy service
+- `create_database(project_id, db_type)` - Provision database
+- `scale_service(service_id, replicas, resources)` - Scale service
+- `rollback_deployment(service_id, deployment_id)` - Rollback deployment
+- `set_environment_variables(project_id, variables)` - Set environment variables
 
 ### Context7 Integration
-- `get_latest_railway_documentation(service)` - Official docs via Context7
-- `analyze_railway_updates(services)` - Real-time update analysis
-- `optimize_with_railway_best_practices()` - Latest full-stack deployment strategies
+- `get_latest_railway_documentation()` - Official Railway docs via Context7
+- `analyze_container_optimization()` - Container best practices via Context7
+- `optimize_deployment_strategy()` - Deployment patterns via Context7
 
-### Data Structures
-- `RailwayConfig` - Comprehensive Railway configuration
-- `DeploymentOptimizationPlan` - Application deployment optimization strategy
-- `ContainerStrategy` - Container deployment and optimization configuration
-- `DatabaseOptimization` - PostgreSQL performance enhancement recommendations
-- `InfrastructureMonitoringSetup` - Comprehensive infrastructure monitoring and alerting
+## Best Practices (November 2025)
 
----
+### DO
+- Use separate environments for development, staging, and production
+- Implement comprehensive health checks for all services
+- Configure proper logging and monitoring for observability
+- Use connection pooling for database connections
+- Set up automated testing before deployments
+- Monitor costs and implement spending limits
+- Use volume mounts for persistent data storage
+- Implement proper error handling and retry logic
 
-## Changelog
-
-- **v4.0.0** (2025-11-12): Complete Enterprise v4.0 rewrite with Context7 integration, full-stack platform optimization, container deployment excellence, intelligent DevOps automation integration, AI-powered Railway optimization, enterprise full-stack patterns, and intelligent container orchestration
-- **v1.0.0** (2025-11-09): Initial Railway full-stack platform integration
-
----
+### DON'T
+- Hardcode environment variables in application code
+- Skip health checks and monitoring setup
+- Use production database for development testing
+- Ignore scaling limits and cost controls
+- Deploy without proper testing
+- Forget to implement backup strategies
+- Overprovision resources without optimization
+- Skip security configuration for production
 
 ## Works Well With
 
-- `moai-baas-foundation` (BaaS platform selection and architecture)
-- `moai-essentials-docker` (Docker optimization and container patterns)
-- `moai-essentials-cicd` (CI/CD pipeline optimization and automation)
-- `moai-foundation-trust` (Security and compliance validation)
-- `moai-essentials-perf` (Performance optimization and monitoring)
-- Context7 MCP (real-time Railway and deployment documentation)
+- `moai-baas-foundation` (Enterprise BaaS architecture patterns)
+- `moai-domain-backend` (Backend deployment patterns)
+- `moai-domain-devops` (DevOps and CI/CD workflows)
+- `moai-essentials-perf` (Performance optimization)
+- `moai-foundation-trust` (Security and compliance)
+- `moai-baas-vercel-ext` (Frontend deployment comparison)
+- `moai-baas-neon-ext` (PostgreSQL database integration)
+- `moai-domain-database` (Database optimization)
+
+## Changelog
+
+- **v4.0.0** (2025-11-13): Complete Enterprise v4.0 rewrite with 40% content reduction, 4-layer Progressive Disclosure structure, Context7 integration, November 2025 Railway platform updates, and advanced deployment automation
+- **v2.0.0** (2025-11-11): Complete metadata structure, deployment patterns, CI/CD integration
+- **v1.0.0** (2025-11-11): Initial Railway full-stack platform
 
 ---
 
-## Best Practices
+**End of Skill** | Updated 2025-11-13
 
-✅ **DO**:
-- Use Context7 integration for latest Railway documentation and deployment patterns
-- Implement comprehensive infrastructure monitoring with performance analytics
-- Optimize Docker configurations for efficient container deployment
-- Use PostgreSQL optimization strategies for database performance
-- Monitor deployment pipelines and build performance continuously
-- Implement proper scaling strategies for production workloads
-- Use environment-specific configurations for different deployment stages
-- Establish clear backup and disaster recovery strategies
+## Security & Compliance
 
-❌ **DON'T**:
-- Skip infrastructure performance monitoring and optimization
-- Ignore Docker container optimization and security best practices
-- Underestimate database performance tuning and optimization
-- Skip deployment pipeline optimization and monitoring
-- Neglect proper scaling and resource allocation strategies
-- Use inappropriate container configurations for production workloads
-- Skip backup and disaster recovery planning for databases
-- Ignore cost monitoring and optimization opportunities
+### Container Security
+- Secure base images and vulnerability scanning
+- Runtime security monitoring and threat detection
+- Network isolation and firewall configuration
+- Secret management with encrypted environment variables
+
+### Compliance Management
+- GDPR compliance with data protection measures
+- SOC2 Type II security controls
+- Automated security scanning and patching
+- Comprehensive audit logging and monitoring
+
+---
+
+**End of Enterprise Railway Full-Stack Platform Expert v4.0.0**

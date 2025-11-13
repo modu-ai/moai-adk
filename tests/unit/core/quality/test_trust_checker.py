@@ -8,7 +8,6 @@ Given-When-Then 구조를 따르는 20개의 테스트 케이스:
 - AC-003: 함수 ≤50 LOC (2개: pass/fail)
 - AC-004: 매개변수 ≤5개 (2개: pass/fail)
 - AC-005: 순환 복잡도 ≤10 (2개: pass/fail)
-- AC-007: 고아 TAG 탐지 (2개: detected/none)
 - AC-008: 보고서 생성 (2개: markdown/json)
 - AC-009: 오류 메시지 (2개: specific/generic)
 - AC-010: 언어별 도구 선택 (2개: python/typescript)
@@ -297,7 +296,7 @@ def complex_function(x):
 
         # Assert
         assert result.passed is True
-        assert "TAG chain complete" in result.message
+        assert "chain complete" in result.message
 
     @pytest.mark.xfail(reason='Test data migration needed')
     def test_should_fail_when_tag_chain_broken(self, trust_checker, sample_project_path):
@@ -316,34 +315,7 @@ def complex_function(x):
         assert "auth-001" in result.details.lower()  # 소문자로 변환되므로 소문자로 검색
         assert "broken" in result.details.lower()
 
-    # ========================================
-    # AC-007: 고아 TAG 탐지
-    # ========================================
-
-    @pytest.mark.xfail(reason='Test data migration needed')
-    def test_should_detect_orphan_tags(self, trust_checker, sample_project_path):
-        """
-        When: trust_checker.detect_orphan_tags() 실행
-        Then: 고아 TAG 목록 반환
-        """
-        # Arrange
-        (sample_project_path / "src" / "user.py").write_text("# # REMOVED_ORPHAN_CODE:USER-005")
-
-        # Act
-        orphans = trust_checker.detect_orphan_tags(sample_project_path)
-
-        # Assert
-        assert len(orphans) > 0
-        assert any("USER-005" in tag for tag in orphans)
-
-    @pytest.mark.xfail(reason='Test data migration needed')
-    def test_should_return_empty_when_no_orphan_tags(self, trust_checker, sample_project_path):
-        """
-        Given: 모든 TAG가 올바르게 연결됨
-        When: trust_checker.detect_orphan_tags() 실행
-        Then: 빈 목록 반환
-        """
-        # Arrange
+            # Arrange
         (sample_project_path / ".moai" / "specs").mkdir(parents=True)
         (sample_project_path / "src" / "user.py").write_text("# # REMOVED_ORPHAN_CODE:USER-001")
 

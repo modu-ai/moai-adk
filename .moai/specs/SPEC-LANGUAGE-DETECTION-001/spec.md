@@ -234,7 +234,7 @@ def get_workflow_template_path(self, language: str) -> Path:
 #### Python 템플릿 (`python-tag-validation.yml`)
 
 ```yaml
-name: TAG Validation (Python)
+name: SPEC Validation (Python)
 
 on:
   push:
@@ -254,14 +254,14 @@ jobs:
         run: pip install uv
       - name: Install dependencies
         run: uv sync
-      - name: Run TAG validation
+      - name: Run SPEC validation
         run: uv run pytest tests/test_tags.py
 ```
 
 #### JavaScript 템플릿 (`javascript-tag-validation.yml`)
 
 ```yaml
-name: TAG Validation (JavaScript)
+name: SPEC Validation (JavaScript)
 
 on:
   push:
@@ -279,14 +279,14 @@ jobs:
           node-version: '20'
       - name: Install dependencies
         run: npm ci
-      - name: Run TAG validation
+      - name: Run SPEC validation
         run: npm run test:tags
 ```
 
 #### TypeScript 템플릿 (`typescript-tag-validation.yml`)
 
 ```yaml
-name: TAG Validation (TypeScript)
+name: SPEC Validation (TypeScript)
 
 on:
   push:
@@ -306,7 +306,7 @@ jobs:
         run: npm ci
       - name: Type check
         run: npm run type-check
-      - name: Run TAG validation
+      - name: Run SPEC validation
         run: npm run test:tags
 ```
 

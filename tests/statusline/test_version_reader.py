@@ -6,10 +6,8 @@ Tests for VersionReader - MoAI-ADK 버전 읽기
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
 from datetime import datetime, timedelta
 
-import pytest
 
 
 class TestVersionReader:

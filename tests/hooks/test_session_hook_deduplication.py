@@ -12,11 +12,9 @@ TDD History:
     - REFACTOR: Optimize phase detection and state management
 """
 
-import json
 import sys
-import time
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from typing import Dict, Any
 
 # Setup import path for shared modules (following existing pattern)
