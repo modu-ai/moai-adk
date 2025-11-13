@@ -1,4 +1,3 @@
-# @CODE:TAG-INTEGRATION-FRAMEWORK-002
 """
 Integration testing execution engine.
 
@@ -8,13 +7,10 @@ integration tests with timeout handling and concurrent execution.
 
 import asyncio
 import time
-from typing import Dict, List, Any, Optional, Callable, Union
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Callable, List, Optional
 
-from .models import (
-    IntegrationTestResult, TestComponent, TestSuite, TestStatus,
-    IntegrationTestError, TestTimeoutError, ComponentNotFoundError
-)
+from .models import IntegrationTestResult, TestStatus
 
 
 class TestEngine:
@@ -47,10 +43,7 @@ class TestEngine:
         return f"test_{self._test_counter:04d}"
 
     def execute_test(
-        self,
-        test_func: Callable,
-        test_name: str = None,
-        components: List[str] = None
+        self, test_func: Callable, test_name: str = None, components: List[str] = None
     ) -> IntegrationTestResult:
         """
         Execute a single integration test.
@@ -71,9 +64,7 @@ class TestEngine:
 
         start_time = time.time()
         result = IntegrationTestResult(
-            test_name=test_name,
-            passed=False,
-            components_tested=components
+            test_name=test_name, passed=False, components_tested=components
         )
 
         try:
@@ -83,7 +74,9 @@ class TestEngine:
                 try:
                     test_result = future.result(timeout=self.test_timeout)
                     result.passed = bool(test_result)
-                    result.status = TestStatus.PASSED if result.passed else TestStatus.FAILED
+                    result.status = (
+                        TestStatus.PASSED if result.passed else TestStatus.FAILED
+                    )
 
                 except TimeoutError:
                     result.error_message = f"Test timed out after {self.test_timeout}s"
@@ -99,10 +92,7 @@ class TestEngine:
         return result
 
     async def execute_test_async(
-        self,
-        test_func: Callable,
-        test_name: str = None,
-        components: List[str] = None
+        self, test_func: Callable, test_name: str = None, components: List[str] = None
     ) -> IntegrationTestResult:
         """
         Execute a single integration test asynchronously.
@@ -117,17 +107,11 @@ class TestEngine:
         """
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
-            None,
-            self.execute_test,
-            test_func,
-            test_name,
-            components
+            None, self.execute_test, test_func, test_name, components
         )
 
     def run_concurrent_tests(
-        self,
-        tests: List[tuple],
-        timeout: Optional[float] = None
+        self, tests: List[tuple], timeout: Optional[float] = None
     ) -> List[IntegrationTestResult]:
         """
         Run multiple tests concurrently.
@@ -147,8 +131,7 @@ class TestEngine:
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             # Submit all tests
             future_to_test = {
-                executor.submit(self.execute_test, *test): test
-                for test in tests
+                executor.submit(self.execute_test, *test): test for test in tests
             }
 
             # Collect results as they complete
@@ -161,16 +144,14 @@ class TestEngine:
                     error_result = IntegrationTestResult(
                         test_name=test_info[1] if len(test_info) > 1 else "unknown",
                         passed=False,
-                        error_message=f"Execution error: {str(e)}"
+                        error_message=f"Execution error: {str(e)}",
                     )
                     results.append(error_result)
 
         return results
 
     async def run_concurrent_tests_async(
-        self,
-        tests: List[tuple],
-        timeout: Optional[float] = None
+        self, tests: List[tuple], timeout: Optional[float] = None
     ) -> List[IntegrationTestResult]:
         """
         Run multiple tests concurrently asynchronously.
@@ -184,8 +165,5 @@ class TestEngine:
         """
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
-            None,
-            self.run_concurrent_tests,
-            tests,
-            timeout
+            None, self.run_concurrent_tests, tests, timeout
         )

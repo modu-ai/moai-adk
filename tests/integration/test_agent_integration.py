@@ -1,4 +1,4 @@
-# @TEST:LANG-003 | SPEC: SPEC-LANGUAGE-DETECTION-001.md | CODE: .claude/agents/alfred/tdd-implementer.md
+# # REMOVED_ORPHAN_TEST:LANG-003 | SPEC: SPEC-LANGUAGE-DETECTION-001.md | CODE: .claude/agents/alfred/tdd-implementer.md
 """Integration tests for tdd-implementer agent language detection.
 
 Tests that tdd-implementer correctly detects project language and selects
@@ -95,3 +95,5 @@ def test_tdd_implementer_detects_go_project(tmp_path):
     # Assert: Go workflow selected
     assert language == "go"
     assert "go-tag-validation.yml" in template_path
+
+

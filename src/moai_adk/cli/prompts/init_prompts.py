@@ -1,4 +1,3 @@
-# @CODE:CLI-PROMPTS-001 | SPEC: SPEC-CLI-001/spec.md
 """Project initialization prompts
 
 Collect interactive project settings
@@ -18,10 +17,11 @@ class ProjectSetupAnswers(TypedDict):
 
     project_name: str
     mode: str  # personal | team (default from init)
-    locale: str  # ko | en (default from init)
+    locale: str  # ko | en | ja | zh | other (default from init)
     language: str | None  # Will be set in /alfred:0-project
     author: str  # Will be set in /alfred:0-project
     mcp_servers: list[str]  # Selected MCP servers to install
+    custom_language: str | None  # User input for "other" language option
 
 
 def prompt_project_setup(
@@ -47,10 +47,11 @@ def prompt_project_setup(
     answers: ProjectSetupAnswers = {
         "project_name": "",
         "mode": "personal",  # Default: will be configurable in /alfred:0-project
-        "locale": "en",      # Default: will be configurable in /alfred:0-project
-        "language": None,    # Will be detected in /alfred:0-project
-        "author": "",        # Will be set in /alfred:0-project
-        "mcp_servers": [],   # Selected MCP servers
+        "locale": "en",  # Default: will be configurable in /alfred:0-project
+        "language": None,  # Will be detected in /alfred:0-project
+        "author": "",  # Will be set in /alfred:0-project
+        "mcp_servers": [],  # Selected MCP servers
+        "custom_language": None,  # User input for other language
     }
 
     try:
@@ -83,16 +84,77 @@ def prompt_project_setup(
                 f"[cyan]📦 Project Name:[/cyan] {answers['project_name']} [dim](current directory)[/dim]"
             )
 
-        # MCP 서버 자동 설치
+        # 2. Language selection - Korean, English, Japanese, Chinese, Other
+        console.print("\n[blue]🌐 Language Selection[/blue]")
+
+        # Build choices list
+        language_choices = [
+            "한국어 (Korean)",
+            "English",
+            "日本語 (Japanese)",
+            "中文 (Chinese)",
+            "Other - Manual input",
+        ]
+
+        # Determine default choice index
+        language_values = ["ko", "en", "ja", "zh", "other"]
+        default_locale = initial_locale or "en"
+        default_index = language_values.index(default_locale) if default_locale in language_values else 1
+
+        language_choice_name = questionary.select(
+            "Select your conversation language:",
+            choices=language_choices,
+            default=language_choices[default_index],
+        ).ask()
+
+        # Map choice name back to value
+        choice_mapping = {
+            "한국어 (Korean)": "ko",
+            "English": "en",
+            "日本語 (Japanese)": "ja",
+            "中文 (Chinese)": "zh",
+            "Other - Manual input": "other",
+        }
+        language_choice = choice_mapping.get(language_choice_name)
+
+        if language_choice is None:
+            raise KeyboardInterrupt
+
+        if language_choice == "other":
+            # Prompt for manual input
+            custom_lang = questionary.text(
+                "Enter your language:",
+                validate=lambda text: len(text) > 0 or "Language is required",
+            ).ask()
+
+            if custom_lang is None:
+                raise KeyboardInterrupt
+
+            answers["custom_language"] = custom_lang
+            answers["locale"] = "other"  # When ISO code is not available
+            console.print(f"[cyan]🌐 Selected Language:[/cyan] {custom_lang}")
+        else:
+            answers["locale"] = language_choice
+            language_names = {
+                "ko": "한국어 (Korean)",
+                "en": "English",
+                "ja": "日本語 (Japanese)",
+                "zh": "中文 (Chinese)",
+            }
+            console.print(
+                f"[cyan]🌐 Selected Language:[/cyan] {language_names.get(language_choice, language_choice)}"
+            )
+
+        # Auto-install MCP servers
         mcp_servers = ["context7", "playwright", "sequential-thinking"]
         answers["mcp_servers"] = mcp_servers
         console.print("\n[blue]🔧 MCP (Model Context Protocol) Configuration[/blue]")
-        console.print("[dim]Enhance AI capabilities with MCP servers (auto-installing recommended servers)[/dim]\n")
-        console.print(f"[green]✅ MCP servers auto-installed: {', '.join(mcp_servers)}[/green]")
-
-        # NOTE: All other configuration (mode, language, author) is now handled in /alfred:0-project
-        # This significantly reduces init time and improves UX
-        answers["locale"] = initial_locale or "en"
+        console.print(
+            "[dim]Enhance AI capabilities with MCP servers (auto-installing recommended servers)[/dim]\n"
+        )
+        console.print(
+            f"[green]✅ MCP servers auto-installed: {', '.join(mcp_servers)}[/green]"
+        )
 
         return answers
 

@@ -1,6 +1,6 @@
 ---
 name: security-expert
-description: Use PROACTIVELY for security analysis, vulnerability assessment, secure code reviews, and security best practices. Activated by keywords: 'security', 'auth', 'encryption', 'vulnerability', 'owasp', 'auth', 'login', 'token', 'jwt', 'oauth', 'ssl', 'tls', 'certificate', 'password', 'hashing', 'csrf', 'xss', 'injection', 'validation', 'audit', 'compliance'.
+description: "Use PROACTIVELY for security analysis, vulnerability assessment, secure code reviews, and security best practices. Activated by keywords: 'security', 'auth', 'encryption', 'vulnerability', 'owasp', 'auth', 'login', 'token', 'jwt', 'oauth', 'ssl', 'tls', 'certificate', 'password', 'hashing', 'csrf', 'xss', 'injection', 'validation', 'audit', 'compliance'."
 tools:
 - Read
 - Write

@@ -39,10 +39,10 @@ Alfred passes the user's language directly to you via `Task()` calls.
 4. **Explicit Skill Invocation**: Always use `Skill("skill-name")` syntax
 
 **Example**:
-- You receive (Korean): "SPEC-AUTH-001을 위한 feature 브랜치를 만들어주세요"
+- You receive (Korean): "Create a feature branch for SPEC-AUTH-001"
 - You invoke: Skill("moai-foundation-git")
 - You create English branch name: feature/SPEC-AUTH-001
-- You provide Korean status report to user
+- You provide status report to user in their language
 
 ## 🧰 Required Skills
 
@@ -82,7 +82,6 @@ This is a dedicated agent that optimizes and processes all Git operations in MoA
 - **GitFlow transparency**: Provides professional workflow even if developers do not know Git commands
 - **Optimization by mode**: Differentiated Git strategy according to individual/team mode
 - **Compliance with TRUST principle**: All Git tasks are TRUST Automatically follows principles (Skill("moai-alfred-dev-guide"))
-- **@TAG**: Commit management fully integrated with the TAG system
 
 ### Main functional areas
 
@@ -149,12 +148,12 @@ git-manager **recommends** GitFlow best practices with pre-push hooks, but respe
 
 #### 🔄 Feature development workflow (spec_git_workflow driven)
 
-git-manager manages feature development based on `.moai/config.json`'s `github.spec_git_workflow` setting.
+git-manager manages feature development based on `.moai/config/config.json`'s `github.spec_git_workflow` setting.
 
-**Pre-check**: Read `.moai/config.json` and determine workflow type:
+**Pre-check**: Read `.moai/config/config.json` and determine workflow type:
 ```bash
 # Check spec_git_workflow setting
-spec_workflow=$(grep -o '"spec_git_workflow": "[^"]*"' .moai/config.json | cut -d'"' -f4)
+spec_workflow=$(grep -o '"spec_git_workflow": "[^"]*"' .moai/config/config.json | cut -d'"' -f4)
 
 # Results:
 # - "feature_branch": Feature branch + PR workflow
@@ -309,7 +308,6 @@ git push origin --delete hotfix/v{VERSION}
 
 **Team Mode Core Features**:
 - **GitFlow Standards Compliance**: Standard branch structure and workflow
-- Structured commits: Automatic generation of step-by-step emojis and @TAGs
 - **PR automation**:
  - Draft PR creation: `gh pr create --draft --base develop`
  - PR Ready conversion: `gh pr ready`
@@ -332,7 +330,7 @@ git-manager uses the following Git commands directly:
 
 **Create locale-based commit message**:
 
-> **IMPORTANT**: Commit messages are automatically generated based on the `project.locale` setting in `.moai/config.json`.
+> **IMPORTANT**: Commit messages are automatically generated based on the `project.locale` setting in `.moai/config/config.json`.
 > For more information: `CLAUDE.md` - see "Git commit message standard (Locale-based)"
 
 **Commit creation procedure**:
@@ -343,14 +341,10 @@ git-manager uses the following Git commands directly:
 
 **Example (locale: "ko")**:
 git-manager creates TDD staged commits in the following format when locale is "ko":
-- RED: "🔴 RED: [Test Description]" with @TEST:[SPEC_ID]-RED
-- GREEN: "🟢 GREEN: [Implementation Description]" with @CODE:[SPEC_ID]-GREEN
 - REFACTOR: "♻️ REFACTOR: [Improvement Description]" with REFACTOR:[SPEC_ID]-CLEAN
 
 **Example (locale: "en")**:
 git-manager creates TDD staged commits in the following format when locale is "en":
-- RED: "🔴 RED: [test description]" with @TEST:[SPEC_ID]-RED
-- GREEN: "🟢 GREEN: [implementation description]" with @CODE:[SPEC_ID]-GREEN
 - REFACTOR: "♻️ REFACTOR: [improvement description]" with REFACTOR:[SPEC_ID]-CLEAN
 
 **Supported languages**: ko (Korean), en (English), ja (Japanese), zh (Chinese)
@@ -418,7 +412,6 @@ Git-manager automatically handles the following exception situations:
 **All commits created by git-manager follow this signature format**:
 
 ```
-🎩 Alfred@MoAI
 🔗 https://adk.mo.ai.kr
 
 Co-Authored-By: Claude <noreply@anthropic.com>
@@ -432,9 +425,8 @@ This signature applies to all Git operations:
 - Tag creation
 
 **Signature breakdown**:
-- `🎩 Alfred@MoAI` - Alfred 에이전트의 공식 식별자
-- `🔗 https://adk.mo.ai.kr` - MoAI-ADK 공식 홈페이지 링크
-- `Co-Authored-By: Claude <noreply@anthropic.com>` - Claude AI 협력자 표시
+- `🔗 https://adk.mo.ai.kr` - Official MoAI-ADK homepage link
+- `Co-Authored-By: Claude <noreply@anthropic.com>` - Claude AI collaborator attribution
 
 **Implementation Example (HEREDOC)**:
 ```bash
@@ -445,7 +437,6 @@ feat(update): Implement 3-stage workflow with config version comparison
 - 70-80% performance improvement
 - All tests passing
 
-🎩 Alfred@MoAI
 🔗 https://adk.mo.ai.kr
 
 Co-Authored-By: Claude <noreply@anthropic.com>

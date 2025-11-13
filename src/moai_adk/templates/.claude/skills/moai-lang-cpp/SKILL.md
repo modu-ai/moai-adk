@@ -1,12 +1,12 @@
 ---
-name: moai-lang-cpp
-version: 2.0.0
+name: "moai-lang-cpp"
+version: "2.0.0"
 created: 2025-10-22
 updated: 2025-10-22
-status: active
+status: stable
 description: C++23 best practices with Google Test 1.15, clang-format 19, and modern C++ standards.
 keywords: ['cpp', 'gtest', 'clang-format', 'cmake']
-allowed-tools:
+allowed-tools: 
   - Read
   - Bash
 ---

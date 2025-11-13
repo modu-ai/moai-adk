@@ -1,6 +1,5 @@
 """
 Shell 테스트 공유 픽스처 및 설정
-@TAG:POWERSHELL-TEST-001 | Test framework for cross-platform shell validation
 """
 
 import subprocess

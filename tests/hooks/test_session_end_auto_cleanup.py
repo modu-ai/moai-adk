@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @TEST:SESSION-END-CLEANUP-001 | SPEC: SESSION-END-HOOK-001 | @CODE:HOOK-SESSION-END-001
 """SessionEnd Hook: 세션 종료 시 정리 및 상태 저장 테스트
 
 세션 종료 시 수행되는 작업들을 검증합니다:
@@ -66,7 +65,6 @@ def temp_project(tmp_path):
 class TestSessionMetricsSaving:
     """세션 메트릭 저장 테스트 (P0-1)
 
-    @TAG:SESSION-END-METRICS-001
     """
 
     def test_session_metrics_directory_created(self, temp_project):
@@ -134,7 +132,6 @@ class TestSessionMetricsSaving:
 class TestWorkStateSaving:
     """작업 상태 스냅샷 저장 테스트 (P0-2)
 
-    @TAG:SESSION-END-STATE-001
     """
 
     def test_work_state_file_created(self, temp_project):
@@ -184,7 +181,6 @@ class TestWorkStateSaving:
 class TestFileCleanup:
     """임시 파일 정리 테스트 (P1-1)
 
-    @TAG:SESSION-END-CLEANUP-001
     """
 
     def test_cleanup_old_temp_files(self, temp_project):
@@ -237,7 +233,6 @@ class TestFileCleanup:
 class TestSessionSummary:
     """세션 요약 생성 테스트 (P1-3)
 
-    @TAG:SESSION-END-SUMMARY-001
     """
 
     def test_session_summary_format(self):
@@ -294,7 +289,6 @@ class TestSessionSummary:
 class TestSessionEndIntegration:
     """SessionEnd 통합 테스트
 
-    @TAG:SESSION-END-INTEGRATION-001
     """
 
     def test_session_end_all_features_enabled(self, temp_project):
@@ -365,7 +359,6 @@ class TestSessionEndIntegration:
 class TestConfigLoading:
     """세션 종료 설정 로드 테스트
 
-    @TAG:SESSION-END-CONFIG-001
     """
 
     def test_config_session_end_section(self, temp_project):

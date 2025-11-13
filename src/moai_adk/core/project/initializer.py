@@ -1,4 +1,3 @@
-# @CODE:CORE-PROJECT-001 | @SPEC:CORE-PROJECT-002 | @TEST:CORE-PROJECT-002 | @CODE:INIT-005:INIT
 # SPEC: SPEC-CORE-PROJECT-001.md, SPEC-INIT-003.md
 # TEST: tests/unit/test_project_initializer.py, tests/unit/test_init_reinit.py
 """Project Initialization Module
@@ -64,7 +63,6 @@ class ProjectInitializer:
         Returns:
             List of created memory files
 
-        @CODE:INIT-MEMORY-001 | Auto-generate session memory files
         """
         memory_dir = self.path / ".moai" / "memory"
         memory_dir.mkdir(parents=True, exist_ok=True)
@@ -77,9 +75,9 @@ class ProjectInitializer:
             "recent_patterns": {
                 "frequent_file_edits": [],
                 "test_failures": [],
-                "git_operations": "daily commits, feature branches"
+                "git_operations": "daily commits, feature branches",
             },
-            "next_priorities": []
+            "next_priorities": [],
         }
         project_notes_file = memory_dir / "project-notes.json"
         project_notes_file.write_text(json.dumps(project_notes, indent=2))
@@ -91,7 +89,7 @@ class ProjectInitializer:
             "command_timestamp": None,
             "hours_ago": None,
             "active_spec": None,
-            "current_branch": "main"
+            "current_branch": "main",
         }
         session_hint_file = memory_dir / "session-hint.json"
         session_hint_file.write_text(json.dumps(session_hint, indent=2))
@@ -103,10 +101,10 @@ class ProjectInitializer:
             "expertise_signals": {
                 "ask_question_skip_rate": 0.0,
                 "custom_workflows": 0,
-                "estimated_level": "beginner"
+                "estimated_level": "beginner",
             },
             "skip_questions": [],
-            "last_updated": datetime.now().isoformat() + "Z"
+            "last_updated": datetime.now().isoformat() + "Z",
         }
         user_patterns_file = memory_dir / "user-patterns.json"
         user_patterns_file.write_text(json.dumps(user_patterns, indent=2))
@@ -119,6 +117,7 @@ class ProjectInitializer:
         mode: str = "personal",
         locale: str = "en",  # Changed from "ko" to "en" (will be configurable in /alfred:0-project)
         language: str | None = None,
+        custom_language: str | None = None,
         backup_enabled: bool = True,
         progress_callback: ProgressCallback | None = None,
         reinit: bool = False,
@@ -127,8 +126,9 @@ class ProjectInitializer:
 
         Args:
             mode: Project mode (personal/team) - Default: personal (configurable in /alfred:0-project)
-            locale: Locale (ko/en/ja/zh) - Default: en (configurable in /alfred:0-project)
+            locale: Locale (ko/en/ja/zh/other) - Default: en (configurable in /alfred:0-project)
             language: Force language specification (auto-detect if None) - Will be detected in /alfred:0-project
+            custom_language: Custom language name when locale="other" (user input)
             backup_enabled: Whether to enable backup
             progress_callback: Progress callback
             reinit: Reinitialization mode (v0.3.0, SPEC-INIT-003)
@@ -178,6 +178,31 @@ class ProjectInitializer:
             )
 
             # Phase 4: Configuration (generate config.json)
+            # Handle language configuration
+            language_config = {}
+            if locale == "other" and custom_language:
+                language_config = {
+                    "conversation_language": "other",
+                    "conversation_language_name": custom_language,
+                }
+            elif locale in ["ko", "en", "ja", "zh"]:
+                language_names = {
+                    "ko": "한국어",
+                    "en": "English",
+                    "ja": "日本語",
+                    "zh": "中文",
+                }
+                language_config = {
+                    "conversation_language": locale,
+                    "conversation_language_name": language_names.get(locale, "English"),
+                }
+            else:
+                # Default fallback
+                language_config = {
+                    "conversation_language": locale,
+                    "conversation_language_name": "English",
+                }
+
             config_data: dict[str, str | bool | dict] = {
                 "project": {
                     "name": self.path.name,
@@ -191,17 +216,16 @@ class ProjectInitializer:
                         "confidence": None,  # Will be calculated by project-manager
                         "markers": [],  # Will be populated by project-manager
                         "confirmed_by": None,  # Will be "user" after project-manager confirmation
-                    }
-                }
+                    },
+                },
+                "language": language_config,
             }
             config_files = self.executor.execute_configuration_phase(
                 self.path, config_data, progress_callback
             )
 
             # Phase 5: Validation (verify and finalize)
-            self.executor.execute_validation_phase(
-                self.path, mode, progress_callback
-            )
+            self.executor.execute_validation_phase(self.path, mode, progress_callback)
 
             # Phase 6: Create runtime memory files (auto-generated per user/session)
             memory_files = self._create_memory_files()

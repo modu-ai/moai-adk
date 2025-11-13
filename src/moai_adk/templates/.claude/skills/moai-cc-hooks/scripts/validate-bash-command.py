@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @CODE:HOOK-BASH-001 | SPEC: TBD | TEST: tests/hooks/test_bash_validation.py
 # Bash command validator (from Context7 official docs)
 import json
 import re

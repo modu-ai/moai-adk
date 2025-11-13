@@ -1,4 +1,3 @@
-# @TEST:DETECTOR-COVERAGE-001 | SPEC: SPEC-TEST-COVERAGE-001.md
 """Unit tests for detector.py module
 
 Tests for LanguageDetector class.
@@ -203,7 +202,6 @@ class TestLanguageDetectorCheckPatterns:
         assert result is True
 
 
-# @TEST:LANG-DETECT-001 | SPEC: SPEC-LANG-DETECT-001.md
 class TestLanguageDetectorLaravel:
     """Test Laravel project detection"""
 
@@ -275,7 +273,7 @@ class TestLanguageDetectorLaravel:
         assert result == "php"
 
 
-# @TEST:LANG-002 | SPEC: SPEC-LANGUAGE-DETECTION-001.md
+# # REMOVED_ORPHAN_TEST:LANG-002 | SPEC: SPEC-LANGUAGE-DETECTION-001.md
 class TestLanguageDetectorPackageManager:
     """Test package manager detection for JavaScript/TypeScript projects"""
 
@@ -358,7 +356,7 @@ class TestLanguageDetectorPackageManager:
         assert result == "npm"
 
 
-# @TEST:LANG-002 | SPEC: SPEC-LANGUAGE-DETECTION-001.md
+# # REMOVED_ORPHAN_TEST:LANG-002 | SPEC: SPEC-LANGUAGE-DETECTION-001.md
 class TestLanguageDetectorWorkflowTemplate:
     """Test workflow template path selection"""
 

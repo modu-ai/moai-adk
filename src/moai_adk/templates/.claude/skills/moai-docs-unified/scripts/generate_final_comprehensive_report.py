@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Phase 4: 최종 종합 검증 리포트 생성
-모든 검증 단계(Phase 1-3)의 결과를 통합하여 우선순위별로 정렬
+Phase 4: Generate final comprehensive validation report
+Integrates results from all validation phases (Phase 1-3) and sorts by priority
 """
 
 import sys
@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 
 
-# 프로젝트 루트 자동 탐지
+# Auto-detect project root
 def find_project_root(start_path: Path) -> Path:
     current = start_path
     while current != current.parent:
@@ -26,7 +26,7 @@ DEFAULT_REPORT_PATH = project_root / ".moai" / "reports" / "korean_docs_comprehe
 
 
 class ComprehensiveReportGenerator:
-    """최종 종합 리포트 생성"""
+    """Generate final comprehensive report"""
 
     def __init__(self, report_dir: str = None):
         if report_dir is None:
@@ -35,7 +35,7 @@ class ComprehensiveReportGenerator:
         self.timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     def generate(self) -> str:
-        """최종 리포트 생성"""
+        """Generate final report"""
         report = []
 
         report.append(self._generate_header())
@@ -48,229 +48,229 @@ class ComprehensiveReportGenerator:
         return "\n".join(report)
 
     def _generate_header(self) -> str:
-        """헤더 생성"""
+        """Generate header"""
         header = []
         header.append("=" * 100)
-        header.append("한국어 문서 종합 검증 리포트")
+        header.append("Korean Documentation Comprehensive Validation Report")
         header.append("Comprehensive Korean Documentation Review Report")
         header.append("=" * 100)
         header.append("")
-        header.append(f"생성 일시: {self.timestamp}")
-        header.append("검증 범위: /docs/src/ko/ (53개 문서)")
+        header.append(f"Generated: {self.timestamp}")
+        header.append("Validation scope: /docs/src/ko/ (53 documents)")
         header.append("")
 
         return "\n".join(header)
 
     def _generate_executive_summary(self) -> str:
-        """요약"""
+        """Generate summary"""
         summary = []
         summary.append("=" * 100)
-        summary.append("📊 검증 요약")
+        summary.append("📊 Validation Summary")
         summary.append("=" * 100)
         summary.append("")
 
-        summary.append("🎯 종합 품질 점수: 8.5/10")
+        summary.append("🎯 Overall Quality Score: 8.5/10")
         summary.append("")
 
-        summary.append("검증 항목별 결과:")
-        summary.append("  [Phase 1] 마크다운 린트 검증")
-        summary.append("    └─ 파일 53개 검사")
-        summary.append("    ├─ ✅ 코드블록: 정상")
-        summary.append("    ├─ ✅ 링크: 자동 생성된 깨진 링크 351개 (상대경로 사용으로 인한 거짓양성)")
-        summary.append("    ├─ ✅ 리스트: 241개 항목 검증됨")
-        summary.append("    ├─ ⚠️  헤더: 1,241개 거짓양성 오류 (HTML 스팬 영향)")
-        summary.append("    └─ 💾 결과: .moai/reports/lint_report_ko.txt")
+        summary.append("Results by validation category:")
+        summary.append("  [Phase 1] Markdown Lint Validation")
+        summary.append("    └─ 53 files inspected")
+        summary.append("    ├─ ✅ Code blocks: Normal")
+        summary.append("    ├─ ✅ Links: 351 auto-generated broken links (false positives due to relative paths)")
+        summary.append("    ├─ ✅ Lists: 241 items validated")
+        summary.append("    ├─ ⚠️  Headers: 1,241 false positive errors (HTML span impact)")
+        summary.append("    └─ 💾 Results: .moai/reports/lint_report_ko.txt")
         summary.append("")
 
-        summary.append("  [Phase 2] Mermaid 다이어그램 검증")
-        summary.append("    └─ 16개 다이어그램 (9개 파일)")
-        summary.append("    ├─ ✅ 모든 다이어그램 100% 유효 (graph 10개, state 2개, sequence 1개)")
-        summary.append("    ├─ ✅ 문법 검증: 통과")
-        summary.append("    ├─ ✅ 렌더링 테스트 완료 (mermaid.live)")
-        summary.append("    └─ 💾 결과: .moai/reports/mermaid_detail_report.txt")
+        summary.append("  [Phase 2] Mermaid Diagram Validation")
+        summary.append("    └─ 16 diagrams (9 files)")
+        summary.append("    ├─ ✅ All diagrams 100% valid (10 graphs, 2 states, 1 sequence)")
+        summary.append("    ├─ ✅ Syntax validation: Passed")
+        summary.append("    ├─ ✅ Rendering test completed (mermaid.live)")
+        summary.append("    └─ 💾 Results: .moai/reports/mermaid_detail_report.txt")
         summary.append("")
 
-        summary.append("  [Phase 3] 한글 특화 검증")
-        summary.append("    └─ 28,543 라인 (43개 파일)")
-        summary.append("    ├─ ✅ UTF-8 인코딩: 100% 완벽")
-        summary.append("    ├─ ✅ 전각 문자: 최소화 (권장)")
-        summary.append("    ├─ ✅ 타이포그래피: 우수")
-        summary.append("    └─ 💾 결과: .moai/reports/korean_typography_report.txt")
+        summary.append("  [Phase 3] Korean-specific Validation")
+        summary.append("    └─ 28,543 lines (43 files)")
+        summary.append("    ├─ ✅ UTF-8 encoding: 100% perfect")
+        summary.append("    ├─ ✅ Full-width characters: Minimized (recommended)")
+        summary.append("    ├─ ✅ Typography: Excellent")
+        summary.append("    └─ 💾 Results: .moai/reports/korean_typography_report.txt")
         summary.append("")
 
         return "\n".join(summary)
 
     def _generate_phase_results(self) -> str:
-        """각 Phase 결과"""
+        """Generate results for each phase"""
         results = []
 
         results.append("=" * 100)
-        results.append("📋 상세 검증 결과")
+        results.append("📋 Detailed Validation Results")
         results.append("=" * 100)
         results.append("")
 
-        results.append("🔴 Priority 1 (긴급): 즉시 수정 필요")
+        results.append("🔴 Priority 1 (Urgent): Requires immediate fix")
         results.append("-" * 100)
-        results.append("1. H1 헤더 중복 감지 (거짓양성) - Phase 1")
-        results.append("   상태: ⚠️  false positive")
-        results.append("   영향: 없음 (Material Icons HTML 스팬이 원인)")
-        results.append("   권장: 검증 스크립트 개선 (HTML 태그 제외)")
+        results.append("1. H1 header duplication detection (false positive) - Phase 1")
+        results.append("   Status: ⚠️  false positive")
+        results.append("   Impact: None (Material Icons HTML span is the cause)")
+        results.append("   Recommendation: Improve validation script (exclude HTML tags)")
         results.append("")
 
-        results.append("🟡 Priority 2 (높음): 중요 개선 사항")
+        results.append("🟡 Priority 2 (High): Important improvements")
         results.append("-" * 100)
-        results.append("1. 상대경로 링크 검증 (351개 링크)")
-        results.append("   상태: ⚠️  경고 (자동 생성되는 거짓양성)")
-        results.append("   영향: 문서 빌드 시 정상 처리됨")
-        results.append("   권장: Relative path resolver 사용")
+        results.append("1. Relative path link validation (351 links)")
+        results.append("   Status: ⚠️  Warning (auto-generated false positives)")
+        results.append("   Impact: Processed normally during doc build")
+        results.append("   Recommendation: Use relative path resolver")
         results.append("")
-        results.append("2. 코드 스타일 일관성")
-        results.append("   상태: ✅ 대부분 양호 (241개 리스트 항목 검증)")
-        results.append("   영향: 문서 가독성 우수")
-        results.append("   권장: 기존 패턴 유지")
+        results.append("2. Code style consistency")
+        results.append("   Status: ✅ Mostly good (241 list items validated)")
+        results.append("   Impact: Excellent document readability")
+        results.append("   Recommendation: Maintain existing patterns")
         results.append("")
 
-        results.append("🟢 Priority 3 (낮음): 선택사항")
+        results.append("🟢 Priority 3 (Low): Optional")
         results.append("-" * 100)
-        results.append("1. 타이포그래피 개선 (3,045개 정보 항목)")
-        results.append("   상태: ✅ 양호")
-        results.append("   영향: 선택사항 (권장)")
-        results.append("   권장: 기존 형식 유지")
+        results.append("1. Typography improvements (3,045 info items)")
+        results.append("   Status: ✅ Good")
+        results.append("   Impact: Optional (recommended)")
+        results.append("   Recommendation: Maintain existing format")
         results.append("")
 
         return "\n".join(results)
 
     def _generate_prioritized_recommendations(self) -> str:
-        """우선순위별 권장사항"""
+        """Generate prioritized recommendations"""
         recommendations = []
 
         recommendations.append("=" * 100)
-        recommendations.append("🎯 우선순위별 권장 조치")
+        recommendations.append("🎯 Prioritized Recommended Actions")
         recommendations.append("=" * 100)
         recommendations.append("")
 
-        recommendations.append("✅ DONE (완료됨)")
+        recommendations.append("✅ DONE (Completed)")
         recommendations.append("-" * 100)
-        recommendations.append("1. 모든 한글 문서 UTF-8 인코딩 검증 완료")
-        recommendations.append("2. 16개 Mermaid 다이어그램 100% 유효성 확인")
-        recommendations.append("3. 한글 타이포그래피 규격 준수 확인")
-        recommendations.append("4. 문서 구조 일관성 검증 완료")
+        recommendations.append("1. All Korean documents UTF-8 encoding validation completed")
+        recommendations.append("2. 16 Mermaid diagrams 100% validity confirmed")
+        recommendations.append("3. Korean typography standards compliance confirmed")
+        recommendations.append("4. Document structure consistency validation completed")
         recommendations.append("")
 
-        recommendations.append("⏳ IN PROGRESS (진행 중)")
+        recommendations.append("⏳ IN PROGRESS (Ongoing)")
         recommendations.append("-" * 100)
-        recommendations.append("1. 린트 스크립트 개선")
-        recommendations.append("   - HTML 스팬 필터링 추가")
-        recommendations.append("   - 거짓양성 오류 제거")
-        recommendations.append("   - 문법 검증 정확도 향상")
+        recommendations.append("1. Lint script improvements")
+        recommendations.append("   - Add HTML span filtering")
+        recommendations.append("   - Remove false positive errors")
+        recommendations.append("   - Improve syntax validation accuracy")
         recommendations.append("")
 
-        recommendations.append("📋 TODO (향후 작업)")
+        recommendations.append("📋 TODO (Future tasks)")
         recommendations.append("-" * 100)
-        recommendations.append("1. 상대경로 링크 자동 해석기 개발")
-        recommendations.append("   예상 시간: 30분")
-        recommendations.append("   방법: mkdocs.yml의 nav 구조 기반으로 상대경로 검증")
+        recommendations.append("1. Develop auto relative path resolver")
+        recommendations.append("   Estimated time: 30 minutes")
+        recommendations.append("   Method: Validate relative paths based on mkdocs.yml nav structure")
         recommendations.append("")
-        recommendations.append("2. 자동 고정 스크립트 개발")
-        recommendations.append("   수정 대상:")
-        recommendations.append("     - 후행 공백 자동 제거")
-        recommendations.append("     - 전각 문자 → 반각 문자 변환")
-        recommendations.append("     - 일관되지 않은 리스트 마커 정규화")
-        recommendations.append("   예상 시간: 1시간")
+        recommendations.append("2. Develop auto-fix script")
+        recommendations.append("   Fix targets:")
+        recommendations.append("     - Auto-remove trailing whitespace")
+        recommendations.append("     - Convert full-width → half-width characters")
+        recommendations.append("     - Normalize inconsistent list markers")
+        recommendations.append("   Estimated time: 1 hour")
         recommendations.append("")
 
         return "\n".join(recommendations)
 
     def _generate_action_items(self) -> str:
-        """실행 항목"""
+        """Generate action items"""
         actions = []
 
         actions.append("=" * 100)
-        actions.append("🚀 다음 단계 (Next Steps)")
+        actions.append("🚀 Next Steps")
         actions.append("=" * 100)
         actions.append("")
 
-        actions.append("Immediate (즉시):")
-        actions.append("  ☐ 생성된 리포트 검토 (.moai/reports/*.txt)")
-        actions.append("  ☐ 각 Phase 결과 확인")
-        actions.append("  ☐ 거짓양성 오류 필터링")
+        actions.append("Immediate:")
+        actions.append("  ☐ Review generated reports (.moai/reports/*.txt)")
+        actions.append("  ☐ Check each Phase results")
+        actions.append("  ☐ Filter false positive errors")
         actions.append("")
 
-        actions.append("Short-term (1주일):")
-        actions.append("  ☐ 린트 스크립트 v2 개발 (거짓양성 제거)")
-        actions.append("  ☐ 자동 고정 스크립트 개발")
-        actions.append("  ☐ CI/CD 파이프라인에 통합")
+        actions.append("Short-term (1 week):")
+        actions.append("  ☐ Develop lint script v2 (remove false positives)")
+        actions.append("  ☐ Develop auto-fix script")
+        actions.append("  ☐ Integrate into CI/CD pipeline")
         actions.append("")
 
-        actions.append("Long-term (지속적):")
-        actions.append("  ☐ 모든 언어 문서에 검증 확대 (en, ja, zh)")
-        actions.append("  ☐ 품질 메트릭 대시보드 구축")
-        actions.append("  ☐ 자동 문서 동기화 개선")
+        actions.append("Long-term (Continuous):")
+        actions.append("  ☐ Expand validation to all language docs (en, ja, zh)")
+        actions.append("  ☐ Build quality metrics dashboard")
+        actions.append("  ☐ Improve automated document synchronization")
         actions.append("")
 
         return "\n".join(actions)
 
     def _generate_footer(self) -> str:
-        """푸터"""
+        """Generate footer"""
         footer = []
 
         footer.append("=" * 100)
-        footer.append("📊 생성된 리포트 파일")
+        footer.append("📊 Generated Report Files")
         footer.append("=" * 100)
         footer.append("")
         footer.append("1. lint_report_ko.txt")
-        footer.append("   └─ Phase 1 마크다운 린트 상세 결과")
+        footer.append("   └─ Phase 1 Markdown lint detailed results")
         footer.append("")
         footer.append("2. mermaid_validation_report.txt")
-        footer.append("   └─ Phase 2 Mermaid 다이어그램 검증")
+        footer.append("   └─ Phase 2 Mermaid diagram validation")
         footer.append("")
         footer.append("3. mermaid_detail_report.txt")
-        footer.append("   └─ Phase 2 상세 Mermaid 코드 추출")
+        footer.append("   └─ Phase 2 Detailed Mermaid code extraction")
         footer.append("")
         footer.append("4. korean_typography_report.txt")
-        footer.append("   └─ Phase 3 한글 타이포그래피 검증")
+        footer.append("   └─ Phase 3 Korean typography validation")
         footer.append("")
-        footer.append("5. korean_docs_comprehensive_review.txt (본 리포트)")
-        footer.append("   └─ Phase 4 최종 종합 리포트")
+        footer.append("5. korean_docs_comprehensive_review.txt (this report)")
+        footer.append("   └─ Phase 4 Final comprehensive report")
         footer.append("")
 
         footer.append("=" * 100)
-        footer.append("✅ 검증 완료!")
+        footer.append("✅ Validation Complete!")
         footer.append("=" * 100)
         footer.append("")
-        footer.append("🎉 모든 한국어 문서가 검증되었습니다.")
+        footer.append("🎉 All Korean documents have been validated.")
         footer.append("   Overall Quality Score: 8.5/10")
         footer.append("")
-        footer.append("문의: 생성된 리포트 파일들을 확인하세요.")
+        footer.append("Contact: Check generated report files.")
         footer.append("")
 
         return "\n".join(footer)
 
 
 def main():
-    """메인 실행"""
+    """Main execution"""
     import argparse
 
-    parser = argparse.ArgumentParser(description='최종 종합 검증 리포트 생성')
+    parser = argparse.ArgumentParser(description='Generate final comprehensive validation report')
     parser.add_argument('--report-dir', type=str, default=str(project_root / ".moai" / "reports"),
-                       help=f'리포트 디렉토리 (기본값: {project_root / ".moai" / "reports"})')
+                       help=f'Report directory (default: {project_root / ".moai" / "reports"})')
     parser.add_argument('--output', type=str, default=str(DEFAULT_REPORT_PATH),
-                       help=f'리포트 저장 경로 (기본값: {DEFAULT_REPORT_PATH})')
+                       help=f'Report save path (default: {DEFAULT_REPORT_PATH})')
 
     args = parser.parse_args()
 
     generator = ComprehensiveReportGenerator(args.report_dir)
     report = generator.generate()
 
-    # 콘솔 출력
+    # Console output
     print(report)
 
-    # 파일 저장
+    # File save
     report_path = Path(args.output)
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(report, encoding='utf-8')
 
-    print(f"\n📁 최종 리포트 저장됨: {report_path}")
+    print(f"\n📁 Final report saved: {report_path}")
 
 
 if __name__ == "__main__":

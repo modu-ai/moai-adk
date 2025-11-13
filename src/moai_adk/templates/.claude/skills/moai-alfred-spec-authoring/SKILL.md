@@ -1,219 +1,507 @@
 ---
-name: moai-alfred-spec-authoring
-version: 1.2.0
+name: "moai-alfred-spec-authoring"
+version: "4.0.0"
 created: 2025-10-23
-updated: 2025-11-02
-status: active
-description: SPEC document authoring guide - YAML metadata, EARS syntax (5 patterns with Unwanted Behaviors), validation checklist
-keywords: ['spec', 'authoring', 'ears', 'metadata', 'requirements', 'tdd', 'planning']
-allowed-tools:
+updated: 2025-11-13
+status: stable
+tier: Alfred
+description: >-
+  Complete SPEC document authoring guide with YAML metadata structure (7 required + 9 optional fields),
+  EARS requirement syntax (5 patterns including Unwanted Behaviors), version lifecycle management,
+  TAG integration, pre-submission validation checklist, and real-world SPEC examples.
+keywords: 
+  - spec
+  - authoring
+  - ears
+  - metadata
+  - requirements
+  - tdd
+  - planning
+  - yaml-metadata
+  - requirement-syntax
+  - validation-checklist
+allowed-tools: 
   - Read
   - Bash
   - Glob
 ---
 
-# SPEC Authoring Skill
+# SPEC Authoring Skill (Enterprise v4.0.0)
 
-## Skill Metadata
+## Level 1: Quick Reference
 
-| Field | Value |
-| ----- | ----- |
-| **Skill Name** | moai-alfred-spec-authoring |
-| **Version** | 1.2.0 (2025-11-02) |
-| **Allowed tools** | Read, Bash, Glob |
-| **Auto-load** | `/alfred:1-plan`, SPEC authoring tasks |
-| **Tier** | Alfred |
+### Core Capabilities
+- **YAML Metadata Structure**: 7 required + 9 optional fields for complete SPEC management
+- **EARS Requirement Syntax**: 5 patterns (Universal, Conditional, Unwanted Behavior, Stakeholder, Boundary)
+- **Version Lifecycle**: draft → active → deprecated → archived with state management
+- **TAG Integration**: SPEC→TEST→CODE→DOC traceability
+- **Validation Checklist**: 25+ pre-submission validation criteria
 
+### Quick SPEC Template
+
+```yaml
+---
+code: SPEC-001
+title: Add User Authentication with JWT
+status: draft
+created_at: 2025-11-13
+updated_at: 2025-11-13
+priority: high
+effort: 8
+version: 1.0.0
+epic: AUTH-01
+domains:
+  - backend
+  - security
+  - database
 ---
 
-## What It Does
+# SPEC-001: Add User Authentication with JWT
 
-Comprehensive guide for authoring SPEC documents in MoAI-ADK. Provides YAML metadata structure (7 required + 9 optional fields), official EARS requirement syntax (5 patterns including Unwanted Behaviors), version management lifecycle, TAG integration, and validation strategies.
+## Overview
+Implement secure JWT-based user authentication with password hashing and token validation.
 
-**Key capabilities**:
-- Step-by-step SPEC creation workflow
-- Complete metadata field reference with lifecycle rules
-- EARS syntax templates and real-world patterns
-- Pre-submission validation checklist
-- Common pitfalls prevention guide
-- `/alfred:1-plan` workflow integration
+## Requirements
 
+### REQ-001 (Universal)
+SPEC: The authentication service SHALL validate JWT tokens using RS256 algorithm against the public key.
+
+### REQ-002 (Conditional)
+SPEC: If a JWT token has expired, then the authentication service SHALL reject the request and return HTTP 401.
+
+### REQ-003 (Unwanted Behavior)
+SPEC: The authentication service SHALL NOT accept JWT tokens signed with symmetric algorithms (HS256, HS384, HS512).
+
+### REQ-004 (Stakeholder)
+As an API consumer, I want to pass JWT tokens in the Authorization header so that my requests are authenticated.
+
+### REQ-005 (Boundary Condition)
+SPEC: The authentication service SHALL return HTTP 429 when a single IP attempts more than 10 failed authentications in 5 minutes.
+
+## Unwanted Behaviors
+
+### Security Constraints
+- The system SHALL NOT store JWT secrets in source code
+- The system SHALL NOT log JWT tokens or sensitive claims
+
+### Performance Constraints
+- The system SHALL NOT block on token validation (async pattern)
+- The system SHALL NOT cache tokens indefinitely
+
+## Acceptance Criteria
+- [ ] All 5 REQ patterns implemented and tested
+- [ ] Code coverage ≥85%
+- [ ] Security scan passed (OWASP Top 10)
+- [ ] Performance: JWT validation p99 latency ≤200ms
+```
+
+### EARS Pattern Summary
+
+| Pattern | Syntax | Use Case |
+|---------|--------|----------|
+| Universal | `The [System] SHALL [Action]` | Core system behavior |
+| Conditional | `If [Condition], then [System] SHALL [Action]` | Conditional logic |
+| Unwanted Behavior | `The [System] SHALL NOT [Action]` | Security constraints |
+| Stakeholder | `As a [Role], I want [Feature] so that [Benefit]` | User stories |
+| Boundary Condition | `[System] SHALL [Action] when [Condition]` | Edge cases |
+
+## Level 2: Core Implementation
+
+### YAML Metadata Structure
+
+#### 7 Required Fields
+
+```yaml
 ---
+# SPEC identifier (auto-generated)
+code: SPEC-001
 
-## When to Use
+# SPEC title (descriptive, 50-80 chars)
+title: Add User Authentication with JWT
 
-**Automatic triggers**:
+# SPEC status (draft | active | deprecated | archived)
+status: draft
+
+# Creation timestamp (ISO 8601: YYYY-MM-DD)
+created_at: 2025-11-13
+
+# Last updated timestamp (ISO 8601: YYYY-MM-DD)
+updated_at: 2025-11-13
+
+# Business priority (critical | high | medium | low)
+priority: high
+
+# Estimated effort in story points (1-13 scale)
+effort: 8
+---
+```
+
+#### 9 Optional Fields
+
+```yaml
+# Version tracking (semantic versioning: major.minor.patch)
+version: 1.0.0
+
+# Deadline target date (ISO 8601: YYYY-MM-DD)
+deadline: 2025-12-15
+
+# Epic this SPEC belongs to (e.g., AUTH-01, ONBOARDING-02)
+epic: AUTH-01
+
+# Related SPEC codes (dependencies or conflicts)
+depends_on:
+  - SPEC-002
+  - SPEC-003
+
+# Affected domains (for routing to specialists)
+domains:
+  - backend
+  - security
+  - database
+
+# Acceptance criteria complexity rating
+acceptance_difficulty: high
+
+# Rollback complexity rating (critical | high | medium | low)
+rollback_risk: medium
+
+# Risk assessment notes
+risks: |
+  - Security: JWT key rotation must be tested
+  - Performance: Token validation on every request
+
+# Custom tags for filtering/searching
+tags:
+  - authentication
+  - security
+  - jwt
+  - users
+```
+
+### EARS Requirement Syntax
+
+#### Pattern 1: Universal (Always True)
+
+**Syntax**:
+```
+SPEC: The [System] SHALL [Action]
+```
+
+**Example**:
+```
+SPEC-001-REQ-001: The authentication service SHALL validate
+all JWT tokens using RS256 algorithm against the public key.
+
+Related TEST:
+- test_valid_jwt_with_rs256_signature
+- test_invalid_jwt_with_wrong_algorithm
+```
+
+#### Pattern 2: Conditional (If-Then)
+
+**Syntax**:
+```
+SPEC: If [Condition], then the [System] SHALL [Action]
+```
+
+**Example**:
+```
+SPEC-001-REQ-002: If a JWT token has expired,
+then the authentication service SHALL reject the request
+and return HTTP 401 Unauthorized with error code TOKEN_EXPIRED.
+
+Related TEST:
+- test_expired_token_returns_401
+- test_expired_token_error_message
+```
+
+#### Pattern 3: Unwanted Behavior (Negative Requirement)
+
+**Syntax**:
+```
+SPEC: The [System] SHALL NOT [Action]
+```
+
+**Example**:
+```
+SPEC-001-REQ-003: The authentication service SHALL NOT
+accept JWT tokens signed with symmetric algorithms (HS256, HS384, HS512)
+in a production environment.
+
+Related TEST:
+- test_reject_hs256_signed_token
+- test_reject_hs384_signed_token
+- test_reject_hs512_signed_token
+```
+
+#### Pattern 4: Stakeholder (User Role-Specific)
+
+**Syntax**:
+```
+SPEC: As a [User Role], I want [Feature] so that [Benefit]
+```
+
+**Example**:
+```
+SPEC-001-REQ-004: As an API consumer,
+I want to pass JWT tokens in the Authorization header
+so that my requests are authenticated without exposing tokens.
+
+Related TEST:
+- test_jwt_from_authorization_header
+- test_jwt_in_query_param_rejected
+- test_malformed_authorization_header
+```
+
+#### Pattern 5: Boundary Condition (Edge Cases)
+
+**Syntax**:
+```
+SPEC: [System] SHALL [Action] when [Boundary Condition]
+```
+
+**Example**:
+```
+SPEC-001-REQ-005: The authentication service SHALL return
+HTTP 429 Too Many Requests when a single IP address
+attempts more than 10 failed authentication attempts within 5 minutes.
+
+Related TEST:
+- test_rate_limit_after_10_failures
+- test_rate_limit_window_5_minutes
+- test_rate_limit_by_ip_address
+```
+
+## Level 3: Advanced Features
+
+### Version Lifecycle Management
+
+#### Lifecycle States
+
+```
+DRAFT → ACTIVE → DEPRECATED → ARCHIVED
+  ↓                  ↓
+Under Review    Stable, In Use
+  ↓                  ↓
+Changes Expected    Changes Require
+Feedback Pending    Major Version Bump
+```
+
+#### State Transitions
+
+**DRAFT → ACTIVE**:
+- All acceptance criteria defined
+- At least 2 reviewers approved
+- No critical open issues
+- `version` bumped to 1.0.0
+- Status change commit created
+
+**ACTIVE → DEPRECATED**:
+- Marked with deprecation reason
+- Migration path documented
+- Replacement SPEC linked
+- 30-day notice period
+- Status change commit created
+
+**DEPRECATED → ARCHIVED**:
+- No active code references
+- All dependent SPECs archived
+- Historical record maintained
+- No further changes allowed
+- Archive commit created
+
+### Unwanted Behaviors Section
+
+**Critical** security and quality constraints that MUST be tested:
+
+```yaml
+unwanted_behaviors:
+  security:
+    - The system SHALL NOT store JWT secrets in source code
+    - The system SHALL NOT log JWT tokens or sensitive claims
+    - The system SHALL NOT accept mixed algorithm tokens
+
+  performance:
+    - The system SHALL NOT block on token validation (async pattern)
+    - The system SHALL NOT cache tokens indefinitely
+
+  reliability:
+    - The system SHALL NOT fail authentication if secondary cache is down
+    - The system SHALL NOT accept malformed JSON Web Tokens
+
+  data_integrity:
+    - The system SHALL NOT modify token claims during validation
+    - The system SHALL NOT accept tokens from untrusted issuers
+```
+
+**Each Unwanted Behavior** requires:
+1. Test case verifying non-occurrence
+2. Security scanning (where applicable)
+3. Performance profiling (where applicable)
+
+### TAG Integration for Traceability
+
+#### TAG Structure (SPEC→TEST→CODE→DOC)
+
+```
+      ↓
+      ↓
+      ↓
+```
+
+#### TAG Placement Rules
+
+**SPEC Document**:
+```markdown
+---
+# SPEC-001: Feature Name
+---
+```
+
+**Test File**:
+```python
+def test_requirement_001():
+    """Test SPEC-001 REQ-001 universal pattern."""
+    pass
+```
+
+**Implementation**:
+```python
+def authenticate_user(token: str) -> bool:
+    """Validate JWT token per SPEC-001."""
+    pass
+```
+
+**Documentation**:
+```markdown
+## Authentication Flow
+Per SPEC-001, the system SHALL validate all JWT tokens...
+```
+
+## Level 4: Reference & Integration
+
+### Pre-Submission Validation Checklist
+
+#### Metadata Validation
+- [ ] `code` field filled (SPEC-XXX format)
+- [ ] `title` is descriptive (50-80 characters)
+- [ ] `status` is one of: draft | active | deprecated | archived
+- [ ] `created_at` is ISO 8601 format (YYYY-MM-DD)
+- [ ] `updated_at` matches actual update date
+- [ ] `priority` is one of: critical | high | medium | low
+- [ ] `effort` is between 1-13 (story points)
+
+#### Requirement Syntax
+- [ ] At least 3 REQ patterns used (Universal, Conditional, Unwanted)
+- [ ] Each REQ follows EARS syntax strictly
+- [ ] Requirements are specific and testable
+- [ ] No ambiguous language ("should", "may", "might")
+- [ ] All REQs are actionable (have test cases)
+
+#### Unwanted Behaviors
+- [ ] Security constraints listed (if applicable)
+- [ ] Performance constraints listed (if applicable)
+- [ ] Reliability constraints listed (if applicable)
+- [ ] Data integrity constraints listed (if applicable)
+- [ ] Each Unwanted Behavior has a test approach
+
+#### Acceptance Criteria
+- [ ] All 5 EARS patterns implemented
+- [ ] All Unwanted Behaviors testable
+- [ ] Code coverage target ≥85% specified
+- [ ] Security scan type specified
+- [ ] Performance baseline defined (if applicable)
+
+#### Final Review
+- [ ] No TODO or placeholder text
+- [ ] All links are valid (internal and external)
+- [ ] Formatting is consistent (markdown syntax)
+- [ ] No confidential information exposed
+- [ ] Ready for team review
+
+### Common Pitfalls & Anti-Patterns
+
+#### Anti-Pattern 1: Ambiguous Requirements
+
+**Bad**:
+```
+SPEC-001-REQ-001: The system should authenticate users quickly.
+```
+
+**Good**:
+```
+SPEC-001-REQ-001: The authentication service SHALL validate JWT tokens
+and return a response within 50ms on average,
+with p99 latency not exceeding 200ms.
+```
+
+#### Anti-Pattern 2: Vague Acceptance Criteria
+
+**Bad**:
+```
+- The feature should work
+- Tests should pass
+- No obvious bugs
+```
+
+**Good**:
+```
+- [ ] All 12 test cases pass (unit + integration)
+- [ ] Code coverage ≥85% (src/auth/validate.py)
+- [ ] Security scan: OWASP Top 10 coverage complete
+- [ ] Performance: JWT validation p99 latency ≤200ms
+```
+
+#### Anti-Pattern 3: Missing Unwanted Behaviors
+
+**Bad**:
+```
+# (No unwanted_behaviors section)
+```
+
+**Good**:
+```
+unwanted_behaviors:
+  security:
+    - The system SHALL NOT store plaintext passwords
+    - The system SHALL NOT log authentication tokens
+```
+
+### When to Use
+
+**Automatic Triggers**:
 - `/alfred:1-plan` command execution
 - SPEC document creation requests
 - Requirements clarification discussions
 - Feature planning sessions
+- Change request handling
 
-**Manual invocation**:
-- Learn SPEC authoring best practices
-- Validate existing SPEC documents
-- Troubleshoot metadata issues
-- Understand EARS syntax patterns
+**Manual Invocation**:
+- SPEC template guidance
+- Metadata field clarification
+- EARS syntax validation
+- Version management questions
+- TAG traceability setup
 
----
+### Related Skills
 
-## Quick Start: 5-Step SPEC Creation
+- `moai-alfred-best-practices` - TRUST 5 principles for SPEC authoring
+- `moai-alfred-spec-validation` - Automated SPEC validation
+- `moai-foundation-specs` - SPEC lifecycle management
+- `moai-foundation-trust` - Security and compliance principles
+- `moai-alfred-workflow` - SPEC creation workflows
 
-### Step 1: Initialize SPEC Directory
+### TRUST Principles Applied
 
-```bash
-mkdir -p .moai/specs/SPEC-{DOMAIN}-{NUMBER}
-# Example: Authentication feature
-mkdir -p .moai/specs/SPEC-AUTH-001
-```
-
-### Step 2: Write YAML Front Matter
-
-```yaml
----
-id: AUTH-001
-version: 0.0.1
-status: draft
-created: 2025-10-29
-updated: 2025-10-29
-author: @YourGitHubHandle
-priority: high
----
-```
-
-### Step 3: Add SPEC Title & HISTORY
-
-```markdown
-# @SPEC:AUTH-001: JWT Authentication System
-
-## HISTORY
-
-### v0.0.1 (2025-10-29)
-- **INITIAL**: JWT authentication SPEC draft created
-- **AUTHOR**: @YourHandle
-```
-
-### Step 4: Define Environment & Assumptions
-
-```markdown
-## Environment
-
-**Runtime**: Node.js 20.x or later
-**Framework**: Express.js
-**Database**: PostgreSQL 15+
-
-## Assumptions
-
-1. User credentials stored in PostgreSQL
-2. JWT secrets managed via environment variables
-3. Server clock synchronized with NTP
-```
-
-### Step 5: Write EARS Requirements
-
-```markdown
-## Requirements
-
-### Ubiquitous Requirements
-**UR-001**: The system shall provide JWT-based authentication.
-
-### Event-driven Requirements
-**ER-001**: WHEN the user submits valid credentials, the system shall issue a JWT token with 15-minute expiration.
-
-### State-driven Requirements
-**SR-001**: WHILE the user is in an authenticated state, the system shall permit access to protected resources.
-
-### Optional Features
-**OF-001**: WHERE multi-factor authentication is enabled, the system can require OTP verification after password confirmation.
-
-### Unwanted Behaviors
-**UB-001**: IF a token has expired, THEN the system shall deny access and return HTTP 401.
-```
+**T**est First: All requirements include test cases and validation criteria
+**R**eadable: Clear EARS syntax with unambiguous language
+**U**nified: Consistent structure across all SPEC documents
+**S**ecured: Unwanted Behaviors section with security constraints
+**T**raceable: TAG integration for complete requirement traceability
 
 ---
 
-## Five EARS Pattern Overview
-
-| Pattern | Keyword | Purpose | Example |
-|---------|---------|---------|---------|
-| **Ubiquitous** | shall | Core functionality always active | "The system shall provide login capability" |
-| **Event-driven** | WHEN | Response to specific events | "WHEN login fails, display error" |
-| **State-driven** | WHILE | Persistent behavior during state | "WHILE in authenticated state, permit access" |
-| **Optional** | WHERE | Conditional features based on flags | "WHERE premium enabled, unlock feature" |
-| **Unwanted Behaviors** | IF-THEN | Error handling, quality gates, business rules | "IF token expires, deny access + return 401" |
-
----
-
-## Seven Required Metadata Fields
-
-1. **id**: `<DOMAIN>-<NUMBER>` (e.g., `AUTH-001`) - Immutable identifier
-2. **version**: `MAJOR.MINOR.PATCH` (e.g., `0.0.1`) - Semantic versioning
-3. **status**: `draft` | `active` | `completed` | `deprecated`
-4. **created**: `YYYY-MM-DD` - Initial creation date
-5. **updated**: `YYYY-MM-DD` - Final modification date
-6. **author**: `@GitHubHandle` - Primary author (@ prefix required)
-7. **priority**: `critical` | `high` | `medium` | `low`
-
-**Version Lifecycle**:
-- `0.0.x` → draft (authoring phase)
-- `0.1.0` → completed (implementation done)
-- `1.0.0` → stable (production-ready)
-
----
-
-## Validation Checklist
-
-### Metadata Validation
-- [ ] All 7 required fields present
-- [ ] `author` field includes @ prefix
-- [ ] `version` format is `0.x.y`
-- [ ] `id` is not duplicated (`rg "@SPEC:AUTH-001" -n .moai/specs/`)
-
-### Content Validation
-- [ ] YAML Front Matter complete
-- [ ] Title includes `@SPEC:{ID}` TAG block
-- [ ] HISTORY section has v0.0.1 INITIAL entry
-- [ ] Environment section defined
-- [ ] Assumptions section defined (minimum 3 items)
-- [ ] Requirements section uses EARS patterns
-- [ ] Traceability section shows TAG chain structure
-
-### EARS Syntax Validation
-- [ ] Ubiquitous: "shall" + capability
-- [ ] Event-driven: Starts with "WHEN [trigger]"
-- [ ] State-driven: Starts with "WHILE [state]"
-- [ ] Optional: Starts with "WHERE [feature]", uses "can"
-- [ ] Unwanted Behaviors: "IF-THEN" or direct constraint expression
-
----
-
-## Common Pitfalls
-
-1. ❌ **Changing SPEC ID after assignment** → Breaks TAG chain
-2. ❌ **Skipping HISTORY updates** → Content changes without audit trail
-3. ❌ **Jumping version numbers** → v0.0.1 → v1.0.0 without intermediate steps
-4. ❌ **Ambiguous requirements** → "Fast and user-friendly" (unmeasurable)
-5. ❌ **Missing @ prefix in author** → `author: Goos` instead of `author: @Goos`
-6. ❌ **Mixing EARS patterns** → Multiple keywords in single requirement
-
----
-
-## Related Skills
-
-- `moai-foundation-ears` - Official EARS syntax patterns
-- `moai-foundation-specs` - Metadata validation automation
-- `moai-foundation-tags` - TAG system integration
-- `moai-alfred-spec-metadata-validation` - Automated validation
-
----
-
-## Detailed Reference
-
-- **Full Metadata Reference**: [reference.md](./reference.md)
-- **Practical Examples**: [examples.md](./examples.md)
-
----
-
-**Last Updated**: 2025-10-29
-**Version**: 1.2.0
-**Maintained By**: MoAI-ADK Team
-**Support**: Use `/alfred:1-plan` command for guided SPEC creation
+**Enterprise v4.0 Compliance**: Progressive disclosure with comprehensive EARS syntax, validation checklists, and lifecycle management.
+**Last Updated**: 2025-11-13  
+**Dependencies**: YAML metadata format, EARS specification, TAG system
+**See Also**: [examples.md](./examples.md) for detailed SPEC examples

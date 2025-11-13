@@ -1,12 +1,12 @@
 # MoAI-ADK config.json Schema Documentation
 
-> **Purpose**: This document defines the official schema structure for `.moai/config.json` file, which serves as the single source of truth for all MoAI-ADK project configuration.
+> **Purpose**: This document defines the official schema structure for `.moai/config/config.json` file, which serves as the single source of truth for all MoAI-ADK project configuration.
 
 ---
 
 ## 📋 Schema Overview
 
-The `.moai/config.json` file contains all project-level configuration for MoAI-ADK, including:
+The `.moai/config/config.json` file contains all project-level configuration for MoAI-ADK, including:
 - Project metadata and settings
 - User preferences (language, nickname)
 - Git workflow strategies
@@ -44,15 +44,11 @@ The `.moai/config.json` file contains all project-level configuration for MoAI-A
 ```json
 {
   "_meta": {
-    "@CODE:CONFIG-STRUCTURE-001": "@DOC:JSON-CONFIG-001",
-    "@SPEC:PROJECT-CONFIG-001": "@SPEC:MOAI-CONFIG-001"
   }
 }
 ```
 
 **Fields**:
-- `@CODE:*`: TAG references to code implementation
-- `@SPEC:*`: TAG references to specification documents
 
 ---
 
@@ -170,7 +166,6 @@ The `.moai/config.json` file contains all project-level configuration for MoAI-A
 
 **Fields**:
 - `enforce_tdd` (boolean, required): Whether TDD workflow is mandatory
-- `require_tags` (boolean, required): Whether @TAG annotations are required
 - `test_coverage_target` (integer, required): Minimum test coverage percentage (default: 85)
 - `simplicity_threshold` (integer, required): Max number of concurrent projects (default: 5)
 - `principles` (object, optional): Additional principle definitions
@@ -271,7 +266,6 @@ The `.moai/config.json` file contains all project-level configuration for MoAI-A
       "no_intermediate_cache": true,
       "realtime_validation": true,
       "scan_tools": ["rg", "grep"],
-      "scan_command": "rg '@TAG' -n",
       "philosophy": "The source of truth for TAGs lives in the code itself"
     }
   }
@@ -395,7 +389,7 @@ import json
 from pathlib import Path
 
 def read_config():
-    config_path = Path(".moai/config.json")
+    config_path = Path(".moai/config/config.json")
     with open(config_path, "r", encoding="utf-8") as f:
         return json.load(f)
 
@@ -411,7 +405,7 @@ import json
 from pathlib import Path
 
 def update_user_nickname(new_nickname: str):
-    config_path = Path(".moai/config.json")
+    config_path = Path(".moai/config/config.json")
 
     # Read existing config
     with open(config_path, "r", encoding="utf-8") as f:

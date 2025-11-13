@@ -1,4 +1,3 @@
-# @CODE:TEMPLATE-MERGER-001 | SPEC: SPEC-INIT-003/spec.md | Chain: TEMPLATE-001
 """Template file merger (SPEC-INIT-003 v0.3.0).
 
 Intelligently merges existing user files with new templates.
@@ -50,7 +49,9 @@ class TemplateMerger:
         # Merge when project info exists
         if project_info:
             # Remove the project info section from the template
-            template_project_start, _ = self._find_project_info_section(template_content)
+            template_project_start, _ = self._find_project_info_section(
+                template_content
+            )
             if template_project_start != -1:
                 template_content = template_content[:template_project_start].rstrip()
 
@@ -104,7 +105,7 @@ class TemplateMerger:
         Returns:
             Merged configuration dictionary.
         """
-        config_path = self.target_path / ".moai" / "config.json"
+        config_path = self.target_path / ".moai" / "config" / "config.json"
 
         # Load existing config if present
         existing_config: dict[str, Any] = {}
@@ -114,19 +115,17 @@ class TemplateMerger:
 
         # Build new config while preferring existing values
         new_config: dict[str, str] = {
-            "projectName": existing_config.get(
-                "projectName", self.target_path.name
-            ),
+            "projectName": existing_config.get("projectName", self.target_path.name),
             "mode": existing_config.get("mode", "personal"),
             "locale": existing_config.get("locale", "ko"),
-            "language": existing_config.get(
-                "language", detected_language or "generic"
-            ),
+            "language": existing_config.get("language", detected_language or "generic"),
         }
 
         return new_config
 
-    def merge_settings_json(self, template_path: Path, existing_path: Path, backup_path: Path | None = None) -> None:
+    def merge_settings_json(
+        self, template_path: Path, existing_path: Path, backup_path: Path | None = None
+    ) -> None:
         """Smart merge for .claude/settings.json.
 
         Rules:
@@ -171,16 +170,17 @@ class TemplateMerger:
             "env": merged_env,
             "hooks": template_data.get("hooks", {}),  # Template priority
             "permissions": {
-                "defaultMode": template_data.get("permissions", {}).get("defaultMode", "default"),
+                "defaultMode": template_data.get("permissions", {}).get(
+                    "defaultMode", "default"
+                ),
                 "allow": merged_allow,
                 "ask": merged_ask,
-                "deny": merged_deny
-            }
+                "deny": merged_deny,
+            },
         }
 
         existing_path.write_text(
-            json.dumps(merged, indent=2, ensure_ascii=False) + "\n",
-            encoding="utf-8"
+            json.dumps(merged, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
         )
 
     def merge_github_workflows(self, template_dir: Path, existing_dir: Path) -> None:
@@ -214,7 +214,9 @@ class TemplateMerger:
                 dst_item = existing_dir / rel_path
 
                 # Handle workflow files specially
-                if rel_path.parent.name == "workflows" and rel_path.name.endswith(".yml"):
+                if rel_path.parent.name == "workflows" and rel_path.name.endswith(
+                    ".yml"
+                ):
                     # Only update MoAI-ADK managed workflows (moai-*.yml)
                     if rel_path.name.startswith("moai-"):
                         dst_item.parent.mkdir(parents=True, exist_ok=True)

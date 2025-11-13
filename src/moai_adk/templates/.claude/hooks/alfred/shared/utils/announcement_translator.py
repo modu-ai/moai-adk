@@ -41,28 +41,28 @@ REFERENCE_ANNOUNCEMENTS_EN = [
 
 # Hardcoded Korean translations
 ANNOUNCEMENTS_KO = [
-    "계획 우선: 혼란을 피하기 위해 먼저 만들 것을 적어놓세요 (/alfred:1-plan)",
-    "✅ 5가지 약속: 테스트 우선 + 읽기 쉬운 코드 + 깔끔한 조직 + 보안 + 추적 가능",
-    "작업 목록: 지속적인 진행률 추적으로 놓친 것이 없음",
-    "언어 분리: 우리는 당신의 언어로 소통하고 컴퓨터는 영어로 이해",
-    "모든 것이 연결됨: 계획→테스트→코드→문서가 모두 연결됨",
-    "⚡ 병렬 처리: 독립적인 작업은 동시에 처리 가능",
-    "도구 우선: 작업을 시작하기 전에 적절한 도구 찾기",
-    "단계별: 원하는 것→계획→실행→결과 보고",
-    "자동 생성 목록: 계획에서 자동으로 작업 목록 생성",
-    "❓ 불확실할 때 질문: 뭔가 명확하지 않으면 바로 물어보세요",
-    "🧪 자동 품질 검사: 코드 자동 검증 (5가지 핵심 원칙)",
-    "다중 언어 지원: Python, JavaScript 등 자동 검증",
-    "⚡ 멈추지 않음: 도구를 사용할 수 없어도 계속 진행 가능",
-    "유연한 접근: 팀 협업 또는 개인 작업 선택 가능",
-    "🧹 자동 정리: 작업 완료 후 불필요한 항목 자동 제거",
-    "⚡ 빠른 업데이트: 3초 내 새 버전 감지, 필요한 것만 가져오기",
-    "온디맨드 로딩: 현재 도구만 로드하여 메모리 절약",
-    "완전한 히스토리: 계획부터 코드까지 모든 단계 기록",
-    "버그 보고: 30초 내 GitHub에 버그 보고서 제출",
-    "🩺 상태 확인: 'moai-adk doctor'로 현재 상태 즉시 확인",
-    "안전한 업데이트: 'moai-adk update'로 새 기능 안전하게 추가",
-    "🧹 작업 완료 후: '/clear'로 다음 작업을 위해 대화 정리"
+    "Start with a plan: Write down what you want to build first to avoid confusion (/alfred:1-plan)",
+    "✅ 5 promises: Test-first + Easy-to-read code + Clean organization + Secure + Trackable",
+    "Task list: Continuous progress tracking ensures nothing gets missed",
+    "Language separation: We communicate in your language, computers understand in English",
+    "Everything connected: Plan→Test→Code→Docs are all linked together",
+    "⚡ Parallel processing: Independent tasks can be handled simultaneously",
+    "Tools first: Find the right tools before starting any work",
+    "Step by step: What you want→Plan→Execute→Report results",
+    "Auto-generated lists: Planning automatically creates task lists",
+    "❓ Ask when confused: If something isn't clear, just ask right away",
+    "🧪 Automatic quality checks: Code automatically verified against 5 core principles",
+    "Multi-language support: Automatic validation for Python, JavaScript, and more",
+    "⚡ Never stops: Can continue even when tools are unavailable",
+    "Flexible approach: Choose between team collaboration or individual work as needed",
+    "🧹 Auto cleanup: Automatically removes unnecessary items when work is complete",
+    "⚡ Quick updates: New versions detected in 3 seconds, only fetch what's needed",
+    "On-demand loading: Only loads current tools to save memory",
+    "Complete history: All steps from planning to code are recorded for easy reference",
+    "Bug reporting: File bug reports to GitHub in 30 seconds",
+    "🩺 Health check: Use 'moai-adk doctor' to instantly check current status",
+    "Safe updates: Use 'moai-adk update' to safely add new features",
+    "🧹 When work is done: Use '/clear' to clean up conversation for the next task"
 ]
 
 # Hardcoded Japanese translations
@@ -101,7 +101,7 @@ HARDCODED_TRANSLATIONS = {
 
 def get_language_from_config(project_root: Path = None) -> str:
     """
-    Retrieve conversation_language from .moai/config.json
+    Retrieve conversation_language from .moai/config/config.json
 
     Args:
         project_root: Project root directory (defaults to current working directory)
@@ -235,7 +235,7 @@ def update_settings_json(announcements: List[str], project_root: Path = None):
 def auto_translate_and_update(project_root: Path = None):
     """
     Complete auto-translation workflow:
-    1. Read language from .moai/config.json
+    1. Read language from .moai/config/config.json
     2. Translate announcements to that language
     3. Update .claude/settings.json
 
@@ -265,7 +265,7 @@ if __name__ == "__main__":
     Usage:
         python announcement_translator.py [language_code]
 
-    If language_code is not provided, reads from .moai/config.json
+    If language_code is not provided, reads from .moai/config/config.json
     """
     import sys
 

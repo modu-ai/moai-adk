@@ -45,7 +45,6 @@ return (
 - All MoAI-ADK tools available
 - All 55 Skills accessible
 - TRUST 5 principles enforced
-- @TAG chain integrity maintained
 
 ### Decision Matrix
 
@@ -71,12 +70,7 @@ All clones must adhere to TRUST 5 principles:
 2. **Readable**: Maintain clear, documented code
 3. **Unified**: Follow project conventions
 4. **Secured**: No security vulnerabilities
-5. **Trackable**: Complete @TAG chain
 
-### @TAG System
-- Clones maintain @TAG chain integrity
-- All decisions documented with @TAG references
-- Clone learnings tagged with @CLONE-LEARNING
 
 ## Error Handling
 
@@ -126,7 +120,6 @@ All clones must adhere to TRUST 5 principles:
 ### Safety Mechanisms
 1. **Context isolation**: Each clone has isolated context
 2. **Permission inheritance**: Clones inherit main Alfred's permissions
-3. **Audit trail**: All actions logged with @TAG references
 4. **Emergency stop**: Main Alfred can terminate any clone
 
 ## Troubleshooting
@@ -153,6 +146,4 @@ cat .moai/memory/clone-learnings.json
 # Verify clone permissions
 ls -la .moai/
 
-# Check @TAG integrity
-find . -name "*.py" -exec grep "@TAG" {} \;
 ```

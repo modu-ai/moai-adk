@@ -1,7 +1,6 @@
-# @CODE:PY314-001 | SPEC: SPEC-PY314-001.md | TEST: tests/unit/test_config_manager.py
 """Configuration Manager
 
-Manage .moai/config.json:
+Manage .moai/config/config.json:
 - Read and write configuration files
 - Support deep merges
 - Preserve UTF-8 content
@@ -14,15 +13,9 @@ from typing import Any
 
 
 class ConfigManager:
-    """Read and write .moai/config.json."""
+    """Read and write .moai/config/config.json."""
 
-    DEFAULT_CONFIG = {
-        "mode": "personal",
-        "locale": "ko",
-        "moai": {
-            "version": "0.3.0"
-        }
-    }
+    DEFAULT_CONFIG = {"mode": "personal", "locale": "ko", "moai": {"version": "0.3.0"}}
 
     def __init__(self, config_path: Path) -> None:
         """Initialize the ConfigManager.
@@ -72,7 +65,9 @@ class ConfigManager:
         merged = self._deep_merge(current, updates)
         self.save(merged)
 
-    def _deep_merge(self, base: dict[str, Any], updates: dict[str, Any]) -> dict[str, Any]:
+    def _deep_merge(
+        self, base: dict[str, Any], updates: dict[str, Any]
+    ) -> dict[str, Any]:
         """Recursively deep-merge dictionaries.
 
         Args:
@@ -85,7 +80,11 @@ class ConfigManager:
         result = base.copy()
 
         for key, value in updates.items():
-            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            if (
+                key in result
+                and isinstance(result[key], dict)
+                and isinstance(value, dict)
+            ):
                 # When both sides are dicts, merge recursively
                 result[key] = self._deep_merge(result[key], value)
             else:

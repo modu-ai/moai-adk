@@ -6,7 +6,6 @@ This module tests configuration-based version checking with:
 - Disabled version check mode
 - Backward compatibility with old configs
 
-@TEST:CONFIG-001-01 to @TEST:CONFIG-001-08
 """
 import importlib.util
 import io
@@ -51,7 +50,6 @@ def project_module():
 # Phase 4: Config Integration Tests
 # ========================================
 
-# @TEST:CONFIG-001-01
 def test_get_version_check_config_defaults(tmp_path: Path, project_module):
     """Returns defaults if config missing
 
@@ -59,7 +57,6 @@ def test_get_version_check_config_defaults(tmp_path: Path, project_module):
     When: get_version_check_config() is called
     Then: Should return defaults (enabled=True, frequency="daily")
 
-    @CODE:CONFIG-INTEGRATION-001
     """
     project_dir = tmp_path / "project"
     project_dir.mkdir()
@@ -72,7 +69,6 @@ def test_get_version_check_config_defaults(tmp_path: Path, project_module):
     assert result["cache_ttl_hours"] == 24
 
 
-# @TEST:CONFIG-001-02
 def test_get_version_check_config_custom(tmp_path: Path, project_module):
     """Reads custom frequency from config
 
@@ -106,7 +102,6 @@ def test_get_version_check_config_custom(tmp_path: Path, project_module):
     assert result["cache_ttl_hours"] == 168
 
 
-# @TEST:CONFIG-001-03
 def test_version_check_disabled(tmp_path: Path, project_module):
     """Skips check when disabled
 
@@ -149,7 +144,6 @@ def test_version_check_disabled(tmp_path: Path, project_module):
         mock_urlopen.assert_not_called()
 
 
-# @TEST:CONFIG-001-04
 def test_cache_ttl_by_frequency(tmp_path: Path, project_module):
     """Uses correct TTL for frequency
 
@@ -192,7 +186,6 @@ def test_cache_ttl_by_frequency(tmp_path: Path, project_module):
     assert result["cache_ttl_hours"] == float('inf')
 
 
-# @TEST:CONFIG-001-05
 def test_session_start_respects_config(tmp_path: Path, project_module):
     """SessionStart respects version check config
 
@@ -231,7 +224,6 @@ def test_session_start_respects_config(tmp_path: Path, project_module):
             mock_urlopen.assert_not_called()
 
 
-# @TEST:CONFIG-001-06
 def test_version_check_config_backward_compatible(tmp_path: Path, project_module):
     """Works with old config format
 
@@ -262,7 +254,6 @@ def test_version_check_config_backward_compatible(tmp_path: Path, project_module
     assert result["cache_ttl_hours"] == 24
 
 
-# @TEST:CONFIG-001-07
 def test_full_version_check_workflow_with_config(tmp_path: Path, project_module):
     """Complete workflow end-to-end
 
@@ -332,7 +323,6 @@ def test_full_version_check_workflow_with_config(tmp_path: Path, project_module)
         mock_urlopen.assert_not_called()
 
 
-# @TEST:CONFIG-001-08
 def test_backward_compatibility_old_cache(tmp_path: Path, project_module):
     """Works with old cache format
 

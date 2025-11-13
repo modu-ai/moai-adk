@@ -1,153 +1,236 @@
 ---
 name: alfred:9-feedback
-description: "Create GitHub issues interactively"
+description: "Quickly create GitHub issues (automatic information collection + templates)"
 allowed-tools:
 - Bash(gh:*)
-- Task
+- Bash(uv:*)
 - AskUserQuestion
+- Skill
+skills:
+- moai-alfred-issue-labels
+- moai-alfred-feedback-templates
 ---
 
-# 🎯 MoAI-ADK Alfred 9-Feedback: Interactive GitHub Issue Creation
+# 🎯 MoAI-ADK Alfred 9-Feedback: GitHub Issue Quick Creation Tool
 
-> **Purpose**: Create GitHub Issues through an interactive multi-step dialog. Simple command → guided questions → automatic issue creation.
+> **Purpose**: Record bugs, feature requests, improvement suggestions, and questions quickly and accurately on GitHub.
 
 ## 📋 Command Purpose
 
-Enable developers to instantly report bugs, request features, suggest improvements, and ask questions through conversational dialogs. No command arguments needed—just run `/alfred:9-feedback` and answer questions.
+Enables developers to immediately record bugs or ideas as GitHub issues when discovered.
 
-**Command Format**:
+- ✅ **Fast**: Complete issue creation in 2-3 steps
+- ✅ **Accurate**: Automatically collect version and environment information
+- ✅ **Organized**: Structured templates by label
+- ✅ **Simple**: Just run the command (`/alfred:9-feedback`)
+
+**How to use**:
 ```bash
 /alfred:9-feedback
 ```
 
-That's it! Alfred guides you through the rest.
+Done!
 
 ---
 
-## 🚀 Interactive Execution Flow
+## 🚀 Execution Process (2 Steps)
 
-### Step 1: Start Command
+### Step 1: Execute Command
 ```bash
 /alfred:9-feedback
 ```
 
-Alfred responds and proceeds to Step 2.
+Just enter this, and Alfred handles the rest.
 
 ---
 
-### Step 2: Select Issue Type (AskUserQuestion)
+### Step 2: Collect Required Information at Once (AskUserQuestion - multiSelect)
 
-First, invoke `Skill("moai-alfred-ask-user-questions")` to get the latest best practices for interactive prompts.
+**With a single question**, select all of the following:
 
-Then use AskUserQuestion with:
-
-**Question**: "What type of issue do you want to create?"
-
-**Options**:
 ```
-[ ] 🐛 Bug Report - Something isn't working
-[ ] ✨ Feature Request - Suggest new functionality
-[ ] ⚡ Improvement - Enhance existing features
-[ ] ❓ Question/Discussion - Ask the team
-```
-
-**User Selection**: Selects one (e.g., 🐛 Bug Report)
-
----
-
-### Step 3: Enter Issue Title (AskUserQuestion)
-
-**Question**: "What is the issue title? (Be concise)"
-
-**Example Input**:
-```
-Login button on homepage not responding to clicks
+┌─ Issue Type (required, single selection)
+│  ├─ 🐛 Bug Report - Problem occurred
+│  ├─ ✨ Feature Request - Propose new feature
+│  ├─ ⚡ Improvement - Improve existing feature
+│  ├─ 📚 Documentation - Improve documentation
+│  ├─ 🔄 Refactoring - Improve code structure
+│  └─ ❓ Question - Ask the team
+│
+├─ Priority (default: medium)
+│  ├─ 🔴 Critical - System down, data loss
+│  ├─ 🟠 High - Major feature failure
+│  ├─ 🟡 Medium - General priority
+│  └─ 🟢 Low - Can be done later
+│
+└─ Template Selection (optional)
+   ├─ ✅ Auto-generate Template (recommended)
+   └─ 📝 Write Manually
 ```
 
 ---
 
-### Step 4: Enter Description (AskUserQuestion)
+### Step 3: Review & Fill Auto-Generated Template
 
-**Question**: "Provide a detailed description (optional—press Enter to skip)"
+Alfred automatically generates a template matching the selected issue type.
 
-**Example Input**:
+For example, when **Bug Report** is selected:
+
+```markdown
+## Bug Description
+
+[Space for user input]
+
+## Steps to Reproduce
+
+1. [User input]
+2. [User input]
+3. [User input]
+
+## Expected Behavior
+
+[Space for user input]
+
+## Actual Behavior
+
+[Space for user input]
+
+## Environment Information
+
+🔍 Automatically collected information:
+- MoAI-ADK version: 0.22.5
+- Python version: 3.11.5
+- OS: macOS 14.2
+- Current branch: feature/SPEC-001
+- Uncommitted changes: 3 files
 ```
-When I click the login button on the homepage, nothing happens.
-Tested on Chrome 120.0 on macOS 14.2.
-Expected: Login modal should appear
-Actual: No response
-```
 
-Or just press Enter to skip.
+Users only need to fill in the `[Space for user input]` sections.
 
 ---
 
-### Step 5: Select Priority (AskUserQuestion)
+Alfred automatically handles:
 
-**Question**: "What's the priority level?"
+1. **Environment Information Collection** (`python3 .moai/scripts/feedback-collect-info.py`):
+   - MoAI-ADK version
+   - Python version, OS
+   - Git status (current branch, uncommitted changes)
+   - Current SPEC being worked on
 
-**Options**:
-```
-[ ] 🔴 Critical - System down, data loss, security breach
-[ ] 🟠 High - Major feature broken, significant impact
-[✓] 🟡 Medium - Normal priority (default)
-[ ] 🟢 Low - Minor issues, nice-to-have
-```
+2. **Label Mapping** (`Skill("moai-alfred-issue-labels")`):
+   - Issue type → labels (e.g., bug → "bug", "reported")
+   - Priority → labels (e.g., high → "priority-high")
 
-**User Selection**: Selects priority (e.g., 🟠 High)
+3. **Auto-generate Title**: "🐛 [BUG] Bug description..."
+
+4. **GitHub Issue Creation**:
+   ```bash
+   gh issue create \
+     --title "🐛 [BUG] Bug description" \
+     --body "## Bug Description\n...[template + environment info]..." \
+     --label "bug" \
+     --label "reported" \
+     --label "priority-high"
+   ```
+
+5. **Display Result**:
+   ```
+   ✅ GitHub Issue #234 created successfully!
+
+   📋 Title: 🐛 [BUG] Bug description
+   🔴 Priority: High
+   🏷️ Labels: bug, reported, priority-high
+   🔗 URL: https://github.com/owner/repo/issues/234
+
+   💡 Next: Reference this issue in commit messages or link to SPEC
+   ```
 
 ---
 
-### Step 6: Create Issue (Automatic)
+## 📊 Label Mapping (via `Skill("moai-alfred-issue-labels")`)
 
-Alfred automatically:
-1. Formats title with emoji: "🐛 [BUG] Login button not responding..."
-2. Prepares body with user description + metadata
-3. Assigns labels: bug, reported, priority-high
-4. Executes: `gh issue create --title ... --body ... --label ...`
-5. Parses issue number from response
-
-**Success Output**:
-```
-✅ GitHub Issue #234 created successfully!
-
-📋 Title: 🐛 [BUG] Login button not responding to clicks
-🔴 Priority: High
-🏷️  Labels: bug, reported, priority-high
-🔗 URL: https://github.com/owner/repo/issues/234
-
-💡 Next: Reference this issue in your commits or link to a SPEC document
-```
+| Type | Main Labels | Priority | Final Labels |
+|------|-------------|----------|--------------|
+| 🐛 Bug | bug, reported | High | bug, reported, priority-high |
+| ✨ Feature | feature-request, enhancement | Medium | feature-request, enhancement, priority-medium |
+| ⚡ Improvement | improvement, enhancement | Medium | improvement, enhancement, priority-medium |
+| 📚 Documentation | documentation | Medium | documentation, priority-medium |
+| 🔄 Refactoring | refactor | Medium | refactor, priority-medium |
+| ❓ Question | question, help-wanted | Medium | question, help-wanted, priority-medium |
 
 ---
 
-## ⚠️ Important Rules
+## ⚠️ Rules
 
-### ✅ What to Do
+### ✅ Must Do
 
-- ✅ Ask all 4 questions in sequence (type → title → description → priority)
-- ✅ Preserve exact user wording in title and description
-- ✅ Use AskUserQuestion for all user inputs
-- ✅ Allow skipping description (optional field)
-- ✅ Show issue URL after creation
+- ✅ Collect required information at once with multiSelect (issue type, priority)
+- ✅ Accurately preserve user input
+- ✅ Execute auto-information collection script (`python3 .moai/scripts/feedback-collect-info.py`)
+- ✅ Map labels with `Skill("moai-alfred-issue-labels")`
+- ✅ Provide templates with `Skill("moai-alfred-feedback-templates")`
+- ✅ Display Issue URL after creation
 
-### ❌ What NOT to Do
+### ❌ Must Not Do
 
-- ❌ Accept command arguments (`/alfred:9-feedback --bug` is wrong—just use `/alfred:9-feedback`)
-- ❌ Skip questions or change order
-- ❌ Rephrase user's input
+- ❌ Use command arguments (`/alfred:9-feedback --bug` is wrong → just use `/alfred:9-feedback`)
+- ❌ Ask more than 4 questions
+- ❌ Modify user input
 - ❌ Create issues without labels
+- ❌ Hard-code labels (use skill-based mapping)
 
 ---
 
-## 💡 Key Benefits
+## 💡 Key Advantages
 
-1. **🚀 No Arguments Needed**: Just `/alfred:9-feedback`
-2. **💬 Conversational**: Intuitive step-by-step dialog
-3. **🏷️ Auto-labeled**: Labels applied automatically
-4. **🔗 Team Visible**: Issues immediately visible
-5. **⏱️ Fast**: Create issues in 30 seconds
+1. **⚡ Fast**: Complete in 2-3 steps within 30 seconds
+2. **🤖 Automated**: Automatically collect version and environment information
+3. **📋 Accurate**: Structured templates by label
+4. **🏷️ Meaningful**: Classification based on `moai-alfred-issue-labels` skill
+5. **🔄 Reusable**: Share labels with `/alfred:1-plan`, `/alfred:3-sync`
+6. **Multi-language**: All text written in user's conversation language
 
 ---
 
-**Supported since**: MoAI-ADK v0.7.0+
+## 📝 Usage Example
+
+**Step 1**: Execute command
+```bash
+/alfred:9-feedback
+```
+
+**Step 2**: Select required information
+```
+Issue Type: [🐛 Bug Report] selected
+Priority: [🟠 High] selected
+Template: [✅ Auto-generate] selected
+```
+
+**Step 3**: Fill template
+```markdown
+## Bug Description
+Login button does not respond when clicked.
+
+## Steps to Reproduce
+1. Access homepage
+2. Click login button in top right corner
+3. No response
+
+## Expected Behavior
+Login modal should appear
+
+## Actual Behavior
+Nothing happens
+
+## Environment Information
+🔍 Automatically collected information:
+- MoAI-ADK version: 0.22.5
+- Python version: 3.11.5
+- OS: macOS 14.2
+```
+
+**Result**: Issue #234 automatically created + URL displayed ✅
+
+---
+
+**Supported Version**: MoAI-ADK v0.22.5+

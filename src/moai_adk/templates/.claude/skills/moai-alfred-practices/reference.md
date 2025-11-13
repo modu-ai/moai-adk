@@ -70,7 +70,6 @@ After reading this document:
 
 - Assign IDs as `<DOMAIN>-<###>` (e.g., `AUTH-003`).
 - Update HISTORY with every change.
-- Cross-check usage with `rg '@TAG:ID' -n` searches.
 
 ### Backup Management
 
@@ -111,7 +110,6 @@ After reading this document:
 
    **Output**: `.moai/specs/SPEC-USER-DASHBOARD-001/spec.md`
    - YAML metadata: id, version: 0.0.1, status: draft
-   - @SPEC:USER-DASHBOARD-001 TAG
    - EARS syntax requirements:
      - "The system must display user statistics dashboard"
      - "WHEN user clicks refresh button, THEN fetch latest data from REST API"
@@ -126,7 +124,6 @@ After reading this document:
    - **implementation-planner** (Phase 1):
      - Establish implementation strategy: React component + fetch API + auth guard
      - Library selection: react-query (data fetching), @tanstack/react-query (caching)
-     - TAG design: @CODE:USER-DASHBOARD-001:UI, @CODE:USER-DASHBOARD-001:API
 
    - **tdd-implementer** (Phase 2):
      - **RED**: Write `tests/features/dashboard.test.tsx` (failing tests)
@@ -139,16 +136,10 @@ After reading this document:
    ```
 
    **Alfred Internal Execution**:
-   - TAG chain verification: @SPEC ↔ @TEST ↔ @CODE
    - Living Document update: README.md, CHANGELOG.md
    - PR status change: Draft → Ready
 
 **Final Outputs**:
-- SPEC: `.moai/specs/SPEC-USER-DASHBOARD-001/spec.md` (@SPEC:USER-DASHBOARD-001)
-- TEST: `tests/features/dashboard.test.tsx` (@TEST:USER-DASHBOARD-001)
-- CODE: `src/features/Dashboard.tsx` (@CODE:USER-DASHBOARD-001:UI)
-- CODE: `src/api/dashboard.ts` (@CODE:USER-DASHBOARD-001:API)
-- DOCS: `docs/features/USER-DASHBOARD-001.md` (@DOC:USER-DASHBOARD-001)
 
 **Estimated Duration**: 30-45 minutes (SPEC 10min + TDD 20min + Sync 10min)
 
@@ -214,21 +205,16 @@ After reading this document:
      - Readable: ✅ ruff lint passed
      - Unified: ✅ mypy type safety passed
      - Secured: ✅ trivy security scan passed
-     - Trackable: ✅ @TAG chain normal
 
    - **TAG Chain Verification**:
      ```bash
      rg '@(SPEC|TEST|CODE):AUTH-TIMEOUT-001' -n
      ```
-     - @SPEC:AUTH-TIMEOUT-001 → `.moai/specs/SPEC-AUTH-TIMEOUT-001/spec.md`
-     - @TEST:AUTH-TIMEOUT-001 → `tests/auth/token.test.ts`
-     - @CODE:AUTH-TIMEOUT-001 → `src/auth/token.ts`
 
 **Final Outputs**:
 - SPEC updated
 - TEST added
 - CODE modified (1 line)
-- Git commit: `fix(auth): Extend JWT expiration to 30 minutes (was 5 minutes) - Refs: @AUTH-TIMEOUT-001`
 
 **Estimated Duration**: 15-20 minutes (Analysis 5min + SPEC 5min + TDD 5min + Verification 5min)
 
@@ -258,7 +244,6 @@ After reading this document:
    **doc-syncer Analysis**:
    - README.md update needed: Add "User Dashboard" to Features section
    - CHANGELOG.md creation needed: v0.4.2 release notes
-   - TAG integrity verified: All @CODE linked to @SPEC
 
 3. **TAG Integrity Check**
    ```bash
@@ -266,9 +251,6 @@ After reading this document:
    ```
 
    **Results**:
-   - ✅ @SPEC:USER-DASHBOARD-001 → @TEST:USER-DASHBOARD-001 ✅
-   - ✅ @TEST:USER-DASHBOARD-001 → @CODE:USER-DASHBOARD-001:UI ✅
-   - ✅ @CODE:USER-DASHBOARD-001:UI → @DOC:USER-DASHBOARD-001 ✅
    - 🎉 No orphan TAGs detected
 
 4. **PR Status Change (Draft → Ready)**

@@ -51,11 +51,7 @@ def handle_session_start(payload: HookPayload) -> HookResult:
         - FIX: Prevent duplicate output of clear step (only compact step is displayed)
         - UPDATE: Migrated to Claude Code standard Hook schema
         - HOTFIX: Add graceful degradation for timeout scenarios (Issue #66)
-        - Phase 3: Add major version warning and release notes display (@TEST:MAJOR-UPDATE-001-07/08)
 
-    @TAG:CHECKPOINT-EVENT-001
-    @TAG:HOOKS-TIMEOUT-001
-    @CODE:MAJOR-UPDATE-WARN-001
     """
     # Claude Code SessionStart runs in several stages (clear, compact, etc.)
     # Ignore the "clear" stage and output messages only at the "compact" stage

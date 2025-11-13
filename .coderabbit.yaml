@@ -48,7 +48,6 @@ coderabbit:
       - ✅ HISTORY section exists immediately after frontmatter
       - ✅ HISTORY entries in reverse chronological order (latest first)
       - ✅ Version history properly documented
-      - ✅ Main heading includes @SPEC:ID: format
 
       ## EARS Requirements
       - ✅ Ubiquitous requirements defined
@@ -63,11 +62,10 @@ coderabbit:
       - ✅ Specific actions (When)
       - ✅ Expected outcomes (Then)
 
-      ## Traceability (@TAG System)
-      - ✅ @SPEC:ID tag present in heading
-      - ✅ Related @TEST tags referenced
-      - ✅ Related @CODE tags referenced
-      - ✅ Related @DOC tags referenced
+      ## Traceability (Quality Tracking)
+      - ✅ Related test coverage documented
+      - ✅ Related code implementation documented
+      - ✅ Related documentation synchronized
 
       ## Best Practices
       - ✅ Clear and unambiguous language
@@ -93,8 +91,7 @@ coderabbit:
     - "COMMAND_DOCUMENTATION_STANDARDS.md"
     - "COMMAND_EXAMPLES.md"
     - "DOCUMENTATION_INDEX.md"
-    - "fix_duplicate_tags.py"
-    - "package-lock.json"
+      - "package-lock.json"
     - "uv.lock"
 
   # Review instructions

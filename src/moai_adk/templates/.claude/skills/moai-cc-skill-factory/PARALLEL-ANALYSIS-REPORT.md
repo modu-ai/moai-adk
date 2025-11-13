@@ -77,7 +77,6 @@ trigger_cues: TRUST 준수 확인, 릴리즈 준비 검증, 품질 게이트 적
 #### 📋 메타데이터
 ```yaml
 name: moai-alfred-tag-scanning
-description: @TAG 마커 직접 스캔하여 TAG 인벤토리 생성 (CODE-FIRST 원칙)
 tier: Alfred (워크플로우 내부)
 auto_load: /alfred:3-sync 추적 가능성 게이트
 trigger_cues: TAG Scan, TAG List, TAG Inventory, Find orphan TAG, Check TAG chain
@@ -86,7 +85,6 @@ trigger_cues: TAG Scan, TAG List, TAG Inventory, Find orphan TAG, Check TAG chai
 #### ✅ 강점
 1. **명확한 CODE-FIRST 원칙**: 캐시 없이 직접 스캔 강조
 2. **구체적인 명령어 제시**: `rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/`
-3. **포괄적 TAG 유형 커버**: @SPEC, @TEST, @CODE, @DOC 모두 다룸
 4. **완벽한 메타데이터**: YAML frontmatter 100점
 
 #### 🔴 심각한 문제
@@ -115,11 +113,9 @@ trigger_cues: TAG Scan, TAG List, TAG Inventory, Find orphan TAG, Check TAG chai
 
 3. [HIGH] 3-5개 구체적 사용 사례
    - "TAG-001 → TEST 없음 → orphan 감지"
-   - "중복 @CODE:AUTH-001 발견"
    - "깨진 SPEC 참조 수리" 워크플로우
 
 4. [MEDIUM] 에러 처리 가이드
-   - 잘못된 TAG 형식 (@CODE-001 vs @CODE:001)
    - 권한 문제로 인한 스캔 실패
    - 매우 큰 코드베이스 성능 최적화
 ```
@@ -129,13 +125,10 @@ trigger_cues: TAG Scan, TAG List, TAG Inventory, Find orphan TAG, Check TAG chai
 # TAG-scanning 개선된 템플릿
 
 ## 정상 TAG 체인 (✅)
-@SPEC:AUTH-001 → tests/auth.test.ts (@TEST:AUTH-001) → src/auth.ts (@CODE:AUTH-001) → docs/auth.md (@DOC:AUTH-001)
 
 ## orphan TAG (❌)
-@CODE:PAYMENT-005 발견 → SPEC/TEST/DOC 없음 → 고아 태그 경고
 
 ## 중복 ID (⚠️)
-@CODE:UTIL-003 (3개 파일에서 발견) → 중복 경고
 ```
 
 ---
