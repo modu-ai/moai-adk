@@ -6,6 +6,7 @@ Provides consistent error handling, logging, and response formatting across all 
 
 import json
 import logging
+import os
 import sys
 import time
 from datetime import datetime
@@ -235,7 +236,3 @@ class HookErrorHandler:
         """
         print(json.dumps(response, ensure_ascii=False, indent=2))
         sys.exit(exit_code)
-
-
-# Import os module for logging
-import os
