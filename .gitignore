@@ -52,9 +52,8 @@ logs/
 .coverage
 coverage.json
 
-# Next.js build output
-docs/.next/
-docs/out/
+# Docs (local-only, never deployed)
+docs/
 
 
 # Environment variables and deployment secrets
