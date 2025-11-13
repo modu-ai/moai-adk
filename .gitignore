@@ -51,6 +51,8 @@ logs/
 .coverage
 coverage.json
 
+# Documentation (local-only, never deployed)
+docs/
 
 # Environment variables and deployment secrets
 .env*
