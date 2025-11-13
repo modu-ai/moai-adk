@@ -30,11 +30,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/alfred/session_start__show_project_info.py"
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session_start__show_project_info.py"
           },
           {
             "type": "command",
-            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/alfred/session_start__config_health_check.py"
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session_start__config_health_check.py"
           }
         ]
       }
@@ -45,11 +45,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/alfred/pre_tool__auto_checkpoint.py"
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/pre_tool__auto_checkpoint.py"
           },
           {
             "type": "command",
-            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/alfred/pre_tool__auto_spec_proposal.py"
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/pre_tool__auto_spec_proposal.py"
           }
         ]
       }
@@ -59,7 +59,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/alfred/user_prompt__jit_load_docs.py"
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/user_prompt__jit_load_docs.py"
           }
         ]
       }
@@ -69,7 +69,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/alfred/session_end__auto_cleanup.py"
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session_end__auto_cleanup.py"
           }
         ]
       }
@@ -179,7 +179,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "uv run {{PROJECT_DIR}}/.moai/scripts/statusline.py"
+    "command": "uv run $CLAUDE_PROJECT_DIR/.moai/scripts/statusline.py"
   },
   "spinnerTipsEnabled": true,
   "outputStyle": "🤖 R2-D2"
