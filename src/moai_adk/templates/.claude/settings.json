@@ -46,10 +46,6 @@
           {
             "type": "command",
             "command": "uv run {{PROJECT_DIR}}/.claude/hooks/alfred/pre_tool__auto_checkpoint.py"
-          },
-            {
-            "type": "command",
-            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/alfred/pre_tool__auto_spec_proposal.py"
           }
         ]
       }

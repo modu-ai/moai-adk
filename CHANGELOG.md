@@ -4,6 +4,54 @@ All commits to MoAI-ADK are listed below in chronological order. Each entry show
 
 ## Recent Releases
 
+### v0.25.3 (2025-11-14)
+
+**Hook Cleanup & Template Variable Standardization**
+
+**Summary**: Removes problematic auto SPEC proposal hook and standardizes template variable usage patterns across the MoAI-ADK package. Improves development experience and clarifies configuration initialization rules.
+
+**What Changed**:
+
+1. **Removed Auto SPEC Proposal Hook** ✅
+   - **Problem**: `pre_tool__auto_spec_proposal.py` caused PreToolUse hook errors
+     - `NameError: name 'scan_recent_changes_for_missing_tags' is not defined`
+     - Hook executed on every code file modification
+   - **Root Cause**: Undefined function call in hook handler
+   - **Solution**: Completely removed problematic hook and related code
+   - **Result**: PreToolUse hooks now only handle checkpoint detection
+
+2. **Template Variable Standardization** ✅
+   - **Problem**: Confusion between package templates (`{{VARIABLES}}`) and local project files
+   - **Root Cause**: No clear documentation of separation pattern
+   - **Solution**: Documented permanent rule in ~/.claude/CLAUDE.md
+     - Package templates use `{{PROJECT_DIR}}`, `{{MOAI_VERSION}}` etc.
+     - Local projects use substituted values during development
+   - **Result**: Clear, consistent pattern for template vs. local file management
+
+3. **Config Initialization Rule Added** ✅
+   - **Problem**: Local projects missing `.moai/config/config.json` causes statusline version display failure
+   - **Solution**: Added initialization rule and verification checklist
+   - **Result**: Statusline now correctly displays version (e.g., `0.25.3`)
+
+4. **UV-Only Execution Rule Documented** ✅
+   - **Problem**: Inconsistent command execution patterns across project
+   - **Solution**: Documented permanent rule - use `uv run` only, never `python -m` or `pip`
+   - **Result**: Consistent development experience, reproducible builds
+
+**Testing Completed**:
+- ✅ Removed hook no longer causes PreToolUse errors
+- ✅ Statusline displays correct version after config initialization
+- ✅ Template variable patterns verified in package and local projects
+- ✅ UV-only execution rule validated
+
+**Impact**:
+- **Quality**: Removes error-prone hook, improves stability
+- **Clarity**: Clear documentation of template/local patterns
+- **DX**: Better development experience with consistent rules
+- **Users Affected**: All users experiencing PreToolUse hook errors or unclear configuration patterns
+
+---
+
 ### v0.25.2 (2025-11-14)
 
 **Critical Hotfix: Settings.json Template Fields & Merge Readiness Check Permissions**
@@ -506,7 +554,6 @@ pip install moai-adk==0.25.0
 - **Code Quality**: Fixed remaining Ruff line length violations and MyPy type checking errors
 - **NPM Configuration Cleanup**: Removed deprecated npm configuration files (package.json, package-lock.json)
 - **Test Marker Configuration**: Added pytest.mark.e2e marker configuration for end-to-end tests
-- **Hook Restoration**: Restored pre_tool__auto_spec_proposal hook file for proper functionality
 
 Quality Metrics:
 - Test Coverage: 98%+ (1,244+ passing tests)
