@@ -56,29 +56,6 @@ coverage.json
 docs/.next/
 docs/out/
 
-# Claude Code local configuration (user-specific, do not track)
-# Root-level .claude/ is ignored, but package templates are tracked
-/.claude/
-/CLAUDE.md
-/.claude/settings.local.json
-# Track package templates (source of truth for distribution)
-!src/moai_adk/templates/.claude/
-
-# MoAI local development directory (user-specific, do not track)
-# Contains local caches, logs, temp files, and user configurations
-# Root-level .moai/ is ignored, but package templates are tracked
-/.moai/
-# Track package templates (source of truth for distribution)
-!src/moai_adk/templates/.moai/
-
-# Documentation build output and local development
-/docs/node_modules/
-/docs/.next/
-/docs/coverage/
-/docs/__tests__/
-/docs/guides/
-/docs/*.backup
-/docs/*.disabled
 
 # Environment variables and deployment secrets
 .env*
@@ -92,4 +69,17 @@ docs/out/
 .uv_cache
 .uv-cache
 .venv_issue43_py313
+
+# Local development files (not in package distribution)
+# These are auto-synced from package templates, keep local copies in .gitignore
+/.claude/
+/.moai/
+/CLAUDE.md
+/.mcp.json
+
+# Package templates MUST be tracked (source of truth for new projects)
+# DO NOT exclude: src/moai_adk/templates/.claude/
+# DO NOT exclude: src/moai_adk/templates/.moai/
+# DO NOT exclude: src/moai_adk/templates/CLAUDE.md
+# DO NOT exclude: src/moai_adk/templates/.mcp.json
 
