@@ -2,20 +2,21 @@
 Tests for Command Helper Utilities
 """
 
-import os
 import json
+import os
 import tempfile
-import pytest
 from pathlib import Path
+
+import pytest
 
 try:
     from moai_adk.core.command_helpers import (
-        extract_project_metadata,
-        detect_tech_stack,
         build_phase_result,
-        validate_phase_files,
-        save_command_context,
+        detect_tech_stack,
+        extract_project_metadata,
         load_previous_phase,
+        save_command_context,
+        validate_phase_files,
     )
 except ImportError:
     pytest.skip("command_helpers not available", allow_module_level=True)

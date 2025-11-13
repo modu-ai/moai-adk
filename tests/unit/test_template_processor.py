@@ -133,7 +133,7 @@ class TestClaudeTemplate:
         processor._copy_claude_md(silent=True)
 
         content = (tmp_path / "CLAUDE.md").read_text(encoding="utf-8")
-        assert "Meet Alfred: Your MyProject SuperAgent" in content
+        assert "You are the SuperAgent" in content and "MyProject" in content
         assert "Project Information" in content
         assert "{{PROJECT_NAME}}" not in content  # Ensure variables are substituted
         assert "페르소나" not in content

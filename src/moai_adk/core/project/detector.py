@@ -133,8 +133,18 @@ class LanguageDetector:
         Raises:
             ValueError: If language is not supported for workflows.
         """
-        # No workflow mapping available - TAG validation workflows removed
-        return None
+        # Language-specific workflow template mapping
+        workflow_templates = {
+            "python": "python-tag-validation.yml",
+            "javascript": "javascript-tag-validation.yml",
+            "typescript": "typescript-tag-validation.yml",
+            "go": "go-tag-validation.yml",
+        }
+
+        if language not in workflow_templates:
+            raise ValueError(f"Language '{language}' is not supported for workflows")
+
+        return workflow_templates[language]
 
     def detect_package_manager(self, path: str | Path = ".") -> str | None:
         """Detect the package manager for the detected language.

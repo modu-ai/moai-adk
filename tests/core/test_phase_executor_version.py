@@ -8,7 +8,6 @@ import tempfile
 from pathlib import Path
 
 
-
 class TestPhaseExecutorVersion:
     """Test configuration generation phase preserving version field"""
 

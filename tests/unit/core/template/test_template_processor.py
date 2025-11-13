@@ -8,7 +8,6 @@ import tempfile
 from pathlib import Path
 
 
-
 class TestTemplateProcessor:
     """Test suite for template processor functionality."""
 

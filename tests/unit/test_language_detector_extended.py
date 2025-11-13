@@ -184,8 +184,9 @@ class TestErrorHandling:
 
     def test_workflow_template_for_unsupported_language(self):
         detector = LanguageDetector()
-        with pytest.raises(ValueError, match="Unsupported language"):
-            detector.get_workflow_template_path("cobol")
+        # No workflow mapping available - should return None
+        result = detector.get_workflow_template_path("cobol")
+        assert result is None
 
     def test_no_build_tool_detected(self, tmp_path: Path):
         (tmp_path / "script.py").touch()

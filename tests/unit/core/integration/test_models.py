@@ -5,8 +5,13 @@ Test integration testing models and data structures.
 import pytest
 
 from moai_adk.core.integration.models import (
-    IntegrationTestResult, TestComponent, TestSuite, TestStatus,
-    IntegrationTestError, TestTimeoutError, ComponentNotFoundError
+    ComponentNotFoundError,
+    IntegrationTestError,
+    IntegrationTestResult,
+    TestComponent as TestComponentClass,
+    TestStatus as TestStatusEnum,
+    TestSuite as TestSuiteClass,
+    TestTimeoutError,
 )
 
 
@@ -26,7 +31,7 @@ class TestIntegrationTestResult:
         assert result.passed is True
         assert result.execution_time == 1.5
         assert result.components_tested == ["comp1", "comp2"]
-        assert result.status == TestStatus.PASSED
+        assert result.status == TestStatusEnum.PASSED
 
     def test_result_with_error(self):
         """Test result with error"""
@@ -38,7 +43,7 @@ class TestIntegrationTestResult:
 
         assert result.passed is False
         assert result.error_message == "Something went wrong"
-        assert result.status == TestStatus.FAILED
+        assert result.status == TestStatusEnum.FAILED
 
     def test_result_defaults(self):
         """Test result with default values"""
@@ -50,7 +55,7 @@ class TestIntegrationTestResult:
         assert result.error_message is None
         assert result.execution_time == 0.0
         assert result.components_tested == []
-        assert result.status == TestStatus.PASSED
+        assert result.status == TestStatusEnum.PASSED
 
 
 class TestComponent:
@@ -58,7 +63,7 @@ class TestComponent:
 
     def test_component_creation(self):
         """Test basic component creation"""
-        component = TestComponent(
+        component = TestComponentClass(
             name="test_component",
             component_type="python_module",
             version="1.0.0",
@@ -72,7 +77,7 @@ class TestComponent:
 
     def test_component_defaults(self):
         """Test component with default dependencies"""
-        component = TestComponent(
+        component = TestComponentClass(
             name="test_comp",
             component_type="module",
             version="2.0.0"
@@ -86,10 +91,10 @@ class TestSuite:
 
     def test_suite_creation(self):
         """Test basic suite creation"""
-        comp1 = TestComponent("comp1", "type1", "1.0.0")
-        comp2 = TestComponent("comp2", "type2", "2.0.0")
+        comp1 = TestComponentClass("comp1", "type1", "1.0.0")
+        comp2 = TestComponentClass("comp2", "type2", "2.0.0")
 
-        suite = TestSuite(
+        suite = TestSuiteClass(
             name="test_suite",
             description="Test suite description",
             components=[comp1, comp2],
@@ -103,8 +108,8 @@ class TestSuite:
 
     def test_suite_defaults(self):
         """Test suite with default test cases"""
-        component = TestComponent("comp", "type", "1.0.0")
-        suite = TestSuite(
+        component = TestComponentClass("comp", "type", "1.0.0")
+        suite = TestSuiteClass(
             name="empty_suite",
             description="Empty test suite",
             components=[component]
@@ -145,17 +150,17 @@ class TestStatus:
 
     def test_status_values(self):
         """Test status enum values"""
-        assert TestStatus.PENDING.value == "pending"
-        assert TestStatus.RUNNING.value == "running"
-        assert TestStatus.PASSED.value == "passed"
-        assert TestStatus.FAILED.value == "failed"
-        assert TestStatus.SKIPPED.value == "skipped"
+        assert TestStatusEnum.PENDING.value == "pending"
+        assert TestStatusEnum.RUNNING.value == "running"
+        assert TestStatusEnum.PASSED.value == "passed"
+        assert TestStatusEnum.FAILED.value == "failed"
+        assert TestStatusEnum.SKIPPED.value == "skipped"
 
     def test_status_comparison(self):
         """Test status comparison"""
-        status1 = TestStatus.PASSED
-        status2 = TestStatus.PASSED
-        status3 = TestStatus.FAILED
+        status1 = TestStatusEnum.PASSED
+        status2 = TestStatusEnum.PASSED
+        status3 = TestStatusEnum.FAILED
 
         assert status1 == status2
         assert status1 != status3

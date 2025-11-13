@@ -4,9 +4,10 @@ Parallel Processor Tests
 Test cases for parallel processing core functionality.
 """
 
-import pytest
 import asyncio
-from typing import Dict, Any
+from typing import Any, Dict
+
+import pytest
 
 
 class TestParallelProcessor:

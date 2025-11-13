@@ -3,18 +3,15 @@ Tests for Enhanced VersionReader - Refactored version reading functionality
 
 """
 
+import asyncio
 import json
 import tempfile
-import asyncio
-from pathlib import Path
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import pytest
 
-from moai_adk.statusline.version_reader import (
-    VersionReader,
-    VersionConfig
-)
+from moai_adk.statusline.version_reader import VersionConfig, VersionReader
 
 
 class TestEnhancedVersionReader:

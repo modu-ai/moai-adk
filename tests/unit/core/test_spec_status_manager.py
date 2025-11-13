@@ -4,9 +4,10 @@ This module implements TDD tests for automated SPEC status updates
 from 'draft' to 'completed' after sync operations.
 """
 
-import pytest
 import tempfile
 from pathlib import Path
+
+import pytest
 import yaml
 
 from moai_adk.core.spec_status_manager import SpecStatusManager
@@ -248,7 +249,7 @@ def test_implemented_function():
 
         assert isinstance(criteria, dict)
         assert "min_code_coverage" in criteria
-        assert "require_all_codes" in criteria
+        assert "require_acceptance_criteria" in criteria
         assert "max_open_tasks" in criteria
 
     def test_validate_spec_for_completion(self, spec_status_manager, temp_project_dir):

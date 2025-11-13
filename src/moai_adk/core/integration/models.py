@@ -28,8 +28,8 @@ class IntegrationTestResult:
     passed: bool
     error_message: Optional[str] = None
     execution_time: float = 0.0
-    components_tested: List[str] = None
-    status: TestStatus = TestStatus.PENDING
+    components_tested: Optional[List[str]] = None
+    status: Optional[TestStatus] = None
 
     def __post_init__(self):
         if self.components_tested is None:
@@ -38,6 +38,8 @@ class IntegrationTestResult:
             self.status = TestStatus.PASSED
         elif self.error_message:
             self.status = TestStatus.FAILED
+        else:
+            self.status = TestStatus.PENDING
 
 
 @dataclass
@@ -47,7 +49,7 @@ class TestComponent:
     name: str
     component_type: str
     version: str
-    dependencies: List[str] = None
+    dependencies: Optional[List[str]] = None
 
     def __post_init__(self):
         if self.dependencies is None:
@@ -61,7 +63,7 @@ class TestSuite:
     name: str
     description: str
     components: List[TestComponent]
-    test_cases: List[str] = None
+    test_cases: Optional[List[str]] = None
 
     def __post_init__(self):
         if self.test_cases is None:
