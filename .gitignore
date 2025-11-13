@@ -19,7 +19,6 @@ node_modules/
 *-backup/
 *_backup_*/
 hooks_backup_*/
-docs_backup_*/
 
 # Virtual environment
 venv/
@@ -51,10 +50,6 @@ logs/
 # Test coverage
 .coverage
 coverage.json
-
-# Next.js build output
-docs/.next/
-docs/out/
 
 
 # Environment variables and deployment secrets
