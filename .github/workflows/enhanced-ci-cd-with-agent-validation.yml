@@ -48,86 +48,106 @@ jobs:
 
       - name: Install dependencies
         run: |
+          pip install -e . --no-deps
           uv sync --all-extras --dev
 
       - name: 🔍 Agent-Based Encoding Validation
         timeout-minutes: ${{ env.AGENT_VALIDATION_TIMEOUT }}
         run: |
           echo "Running comprehensive encoding validation with agent patterns..."
-          python3 -c "
-          import os
-          import json
-          from pathlib import Path
-          from moai_adk.utils.safe_file_reader import SafeFileReader
+          python3 << 'EOF'
+import os
+import json
+from pathlib import Path
 
-          def agent_encoding_validation():
-              '''DevOps expert agent encoding validation pattern'''
-              reader = SafeFileReader()
-              issues = []
-              stats = {
-                  'total_files': 0,
-                  'utf8_files': 0,
-                  'encoding_issues': 0,
-                  'file_types': {}
-              }
+def agent_encoding_validation():
+    """DevOps expert agent encoding validation pattern - pure Python implementation"""
+    issues = []
+    stats = {
+        'total_files': 0,
+        'utf8_files': 0,
+        'encoding_issues': 0,
+        'file_types': {}
+    }
 
-              # Enhanced file type detection (agent pattern)
-              code_patterns = ['**/*.py', '**/*.js', '**/*.ts', '**/*.tsx', '**/*.jsx']
-              doc_patterns = ['**/*.md', '**/*.rst', '**/*.txt']
-              config_patterns = ['**/*.yml', '**/*.yaml', '**/*.json', '**/*.toml']
+    # Enhanced file type detection (agent pattern)
+    code_patterns = ['**/*.py', '**/*.js', '**/*.ts', '**/*.tsx', '**/*.jsx']
+    doc_patterns = ['**/*.md', '**/*.rst', '**/*.txt']
+    config_patterns = ['**/*.yml', '**/*.yaml', '**/*.json', '**/*.toml']
 
-              all_patterns = code_patterns + doc_patterns + config_patterns
+    all_patterns = code_patterns + doc_patterns + config_patterns
 
-              for pattern in all_patterns:
-                  for file_path in Path('.').glob(pattern):
-                      if any(skip in str(file_path) for skip in ['.git', '__pycache__', 'node_modules']):
-                          continue
+    for pattern in all_patterns:
+        for file_path in Path('.').glob(pattern):
+            # Skip excluded directories
+            skip_dirs = {'.git', '__pycache__', 'node_modules', '.venv', 'venv', '.next', 'dist', 'build', '.pytest_cache', '.coverage'}
+            if any(skip in file_path.parts for skip in skip_dirs):
+                continue
 
-                      stats['total_files'] += 1
-                      file_ext = file_path.suffix
-                      stats['file_types'][file_ext] = stats['file_types'].get(file_ext, 0) + 1
+            if not file_path.is_file():
+                continue
 
-                      # Agent-based validation with fallback
-                      content = reader.read_text(file_path)
-                      if content is not None:
-                          stats['utf8_files'] += 1
-                      else:
-                          stats['encoding_issues'] += 1
-                          issues.append({
-                              'file': str(file_path),
-                              'type': 'encoding_error',
-                              'message': 'Cannot read file with UTF-8 or fallback encodings'
-                          })
+            stats['total_files'] += 1
+            file_ext = file_path.suffix
+            stats['file_types'][file_ext] = stats['file_types'].get(file_ext, 0) + 1
 
-              # Generate agent validation report
-              report = {
-                  'status': 'passed' if not issues else 'failed',
-                  'statistics': stats,
-                  'issues': issues,
-                  'encoding_compliance': (stats['utf8_files'] / stats['total_files'] * 100) if stats['total_files'] > 0 else 100
-              }
+            # Try to read with UTF-8
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    f.read()
+                stats['utf8_files'] += 1
+            except UnicodeDecodeError:
+                # Try fallback encodings
+                fallback_encodings = ['utf-8-sig', 'iso-8859-1', 'cp1252', 'utf-16']
+                found_encoding = None
+                for encoding in fallback_encodings:
+                    try:
+                        with open(file_path, 'r', encoding=encoding) as f:
+                            f.read()
+                        found_encoding = encoding
+                        break
+                    except:
+                        continue
 
-              # Output results
-              print(f'🔍 Agent Encoding Validation Results:')
-              print(f'  Total files: {stats[\"total_files\"]}')
-              print(f'  UTF-8 compatible: {stats[\"utf8_files\"]}')
-              print(f'  Encoding issues: {stats[\"encoding_issues\"]}')
-              print(f'  Compliance rate: {report[\"encoding_compliance\"]:.1f}%')
+                if found_encoding:
+                    stats['utf8_files'] += 1
+                else:
+                    stats['encoding_issues'] += 1
+                    issues.append({
+                        'file': str(file_path),
+                        'type': 'encoding_error',
+                        'message': f'Cannot read file with UTF-8 or fallback encodings'
+                    })
 
-              if issues:
-                  print(f'❌ Encoding issues found:')
-                  for issue in issues:
-                      print(f'  - {issue[\"file\"]}: {issue[\"message\"]}')
-                  exit(1)
-              else:
-                  print(f'✅ All files pass agent encoding validation')
+    # Generate agent validation report
+    report = {
+        'status': 'passed' if not issues else 'failed',
+        'statistics': stats,
+        'issues': issues,
+        'encoding_compliance': (stats['utf8_files'] / stats['total_files'] * 100) if stats['total_files'] > 0 else 100
+    }
 
-              # Save report for downstream jobs
-              with open('agent-encoding-report.json', 'w') as f:
-                  json.dump(report, f, indent=2)
+    # Output results
+    print(f'🔍 Agent Encoding Validation Results:')
+    print(f'  Total files: {stats["total_files"]}')
+    print(f'  UTF-8 compatible: {stats["utf8_files"]}')
+    print(f'  Encoding issues: {stats["encoding_issues"]}')
+    print(f'  Compliance rate: {report["encoding_compliance"]:.1f}%')
 
-          agent_encoding_validation()
-          "
+    if issues:
+        print(f'❌ Encoding issues found:')
+        for issue in issues:
+            print(f'  - {issue["file"]}: {issue["message"]}')
+        exit(1)
+    else:
+        print(f'✅ All files pass agent encoding validation')
+
+    # Save report for downstream jobs
+    with open('agent-encoding-report.json', 'w') as f:
+        json.dump(report, f, indent=2)
+
+agent_encoding_validation()
+EOF
 
   
       - name: Upload agent validation reports
