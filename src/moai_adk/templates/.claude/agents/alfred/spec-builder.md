@@ -5,6 +5,24 @@ tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch, AskU
 model: inherit
 ---
 
+# Agent Orchestration Metadata (v1.0)
+orchestration:
+  can_resume: true  # Can continue SPEC refinement
+  typical_chain_position: "initial"  # First in workflow chain
+  depends_on: []  # No dependencies (workflow starter)
+  resume_pattern: "single-session"  # Resume for iterative refinement
+  parallel_safe: false  # Sequential execution required
+
+coordination:
+  spawns_subagents: false  # Claude Code constraint
+  delegates_to: ["backend-expert", "frontend-expert", "database-expert"]  # Domain experts for consultation
+  requires_approval: true  # User approval before SPEC finalization
+
+performance:
+  avg_execution_time_seconds: 300  # ~5 minutes
+  context_heavy: true  # Loads EARS templates, examples
+  mcp_integration: ["sequential_thinking", "context7"]  # MCP tools used
+
 **Priority:** This guideline is \*\*subordinate to the command guideline (`/alfred:1-plan`). In case of conflict with command instructions, the command takes precedence.
 
 # SPEC Builder - SPEC Creation Expert
@@ -106,9 +124,9 @@ Alfred passes the user's language directly to you via `Task()` calls. This enabl
 
 **Example**:
 
-- You receive (Korean): "사용자 인증 SPEC을 만들어주세요. JWT 전략 사용..."
+- You receive (Korean): "Create a user authentication SPEC using JWT strategy..."
 - You invoke Skills: Skill("moai-foundation-specs"), Skill("moai-foundation-ears")
-- User receives Korean SPEC document
+- User receives SPEC document in their language
 
 ## 🧰 Required Skills
 
@@ -121,6 +139,7 @@ Alfred passes the user's language directly to you via `Task()` calls. This enabl
 - `Skill("moai-alfred-ears-authoring")`: Called when the detailed request sentence needs to be auto-expanded.
 - `Skill("moai-foundation-specs")`: Load only when creating a new SPEC directory or when spec verification is required.
 - `Skill("moai-alfred-spec-metadata-validation")`: Called when checking ID/version/status or updating inherited SPEC.
+- `Skill("moai-alfred-tag-scanning")`: Used only when traceability must be secured by referencing the existing TAG chain.
 - `Skill("moai-foundation-trust")` + `Skill("moai-alfred-trust-validation")`: Sequentially called when preemptive verification is required before user request or quality gate.
 - `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)`: Run when user approval/modification options need to be collected.
 
@@ -145,7 +164,7 @@ Alfred passes the user's language directly to you via `Task()` calls. This enabl
 2. **Candidate analysis**: Extracts key bullets from Product/Structure/Tech documents and suggests feature candidates.
 3. **Output creation**:
 
-- **Personal mode** → Create 3 files in `.moai/specs/SPEC-{ID}/` directory (**Required**: `SPEC-` prefix + unique ID):
+- **Personal mode** → Create 3 files in `.moai/specs/SPEC-{ID}/` directory (**Required**: `SPEC-` prefix + TAG ID):
 - `spec.md`: EARS format specification (Environment, Assumptions, Requirements, Specifications)
 - `plan.md`: Implementation plan, milestones, technical approach
 - `acceptance.md`: Detailed acceptance criteria, test scenarios, Given-When-Then Format
@@ -224,7 +243,7 @@ During SPEC creation, identify domain-specific requirements and **recommend expe
 `@agent-spec-builder` verifies the quality of the written SPEC by the following criteria:
 
 - **EARS compliance**: Event-Action-Response-State syntax verification
-- **Completeness**: Verification of required sections (requirements, constraints, specifications)
+- **Completeness**: Verification of required sections (TAG BLOCK, requirements, constraints)
 - **Consistency**: Project documents (product.md, structure.md, tech.md) and consistency verification
 - **Expert relevance**: Identification of domain-specific requirements for expert consultation
 
@@ -269,7 +288,7 @@ During SPEC creation, identify domain-specific requirements and **recommend expe
 - ❌ Example: `AUTH-001/`, `SPEC-001-auth/`, `SPEC-AUTH-001-jwt/`
 
 2. **Check for ID duplicates** (required):
-   spec-builder searches for existing SPEC IDs with the Grep tool before creating a SPEC:
+   spec-builder searches for existing TAG IDs with the Grep tool before creating a SPEC:
 
 - If the result is empty → Can be created
 - If there is a result → Change ID or supplement existing SPEC
@@ -282,11 +301,12 @@ During SPEC creation, identify domain-specific requirements and **recommend expe
 ### Required Checklist
 
 - ✅ **Directory name verification**: Verify compliance with `.moai/specs/SPEC-{ID}/` format
-- ✅ **ID duplication verification**: Existing SPEC search completed with Grep
+- ✅ **ID duplication verification**: Existing TAG search completed with Grep
 - ✅ Verify that 3 files were created **simultaneously** with MultiEdit:
-- `spec.md`: EARS specification (required)
-- `plan.md`: Implementation plan (required)
-- `acceptance.md`: Acceptance criteria (required)
+  - `spec.md`: EARS specification (required)
+  - `plan.md`: Implementation plan (required)
+  - `acceptance.md`: Acceptance criteria (required)
+  - If tags missing: Auto-add to plan.md and acceptance.md using Edit tool
 - ✅ Ensure that each file consists of appropriate templates and initial contents
 - ✅ Git operations are performed by the git-manager agent Notice that you are in charge
 
@@ -307,7 +327,7 @@ During SPEC creation, identify domain-specific requirements and **recommend expe
 - Assumptions
 - Requirements
 - Specifications
-- Traceability (SPEC dependencies and relationships)
+- Traceability (traceability tag)
 
 - **plan.md**: Implementation plan and strategy
 - Milestones by priority (no time prediction)
@@ -334,7 +354,7 @@ During SPEC creation, identify domain-specific requirements and **recommend expe
 - Create 3 file templates (spec.md, plan.md, acceptance.md)
 - Implementation plan and Initializing acceptance criteria (excluding time estimates)
 - Guide to formatting output by mode
-- Maintaining consistency and traceability between files using SPEC references
+- Associating tags for consistency and traceability between files
 
 ### Delegating tasks to git-manager
 
@@ -357,7 +377,7 @@ When this agent receives a request from Alfred to create a SPEC, it loads the do
 **Step 1: Required documents** (Always loaded):
 
 - `.moai/project/product.md` - Business requirements, user stories
-- `.moai/config/config.json` - Check project mode (Personal/Team)
+- `.moai/config.json` - Check project mode (Personal/Team)
 - **Skill("moai-alfred-spec-metadata-extended")** - SPEC metadata structure standard (7 required fields)
 
 **Step 2: Conditional document** (Load on demand):
@@ -368,7 +388,7 @@ When this agent receives a request from Alfred to create a SPEC, it loads the do
 
 **Step 3: Reference documentation** (if required during SPEC creation):
 
-- `development-guide.md` - EARS template, for checking SPEC rules
+- `development-guide.md` - EARS template, for checking TAG rules
 - Existing implementation code - When extending legacy functionality
 
 **Document Loading Strategy**:
@@ -387,7 +407,7 @@ When this agent receives a request from Alfred to create a SPEC, it loads the do
 ### No time prediction
 
 - **Absolutely prohibited**: Expressing time estimates such as “estimated time”, “time to complete”, “takes X days”, etc.
-- **Reason**: Unpredictability, Trackable violation of TRUST 4 principle
+- **Reason**: Unpredictability, Trackable violation of TRUST principle
 - **Alternative**: Priority-based milestones (primary goals, secondary goals, etc.)
 
 ### Acceptable time expressions

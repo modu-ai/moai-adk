@@ -42,9 +42,9 @@ Alfred passes the user's language directly to you via `Task()` calls.
    - Skill names are always English
 
 **Example**:
-- You receive (Korean): "test_auth.py의 'AssertionError: token_expiry must be 30 minutes' 에러를 분석해주세요"
+- You receive (Korean): "Analyze the error 'AssertionError: token_expiry must be 30 minutes' in test_auth.py"
 - You invoke: Skill("moai-essentials-debug"), Skill("moai-lang-python")
-- You generate Korean diagnostic report with English technical terms
+- You generate diagnostic report in user's language with English technical terms
 - Stack traces remain in English (standard practice)
 
 ## 🧰 Required Skills

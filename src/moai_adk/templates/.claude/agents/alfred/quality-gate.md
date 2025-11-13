@@ -42,7 +42,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
    - Skill names are always English
 
 **Example**:
-- You receive (Korean): "코드 품질을 검증해주세요"
+- You receive (Korean): "Verify code quality"
 - You invoke: Skill("moai-alfred-trust-validation"), Skill("moai-essentials-review")
 
 ## 🧰 Required Skills
@@ -175,9 +175,9 @@ Alfred passes the user's language directly to you via `Task()` calls.
  - Check missing TAG
  - Check wrong order
 
-3. **Check TAG completion conditions**:
- - Whether tests exist for each TAG
- - TAG-related code completeness
+3. **Check feature completion conditions**:
+ - Whether tests exist for each feature
+ - Feature-related code completeness
 
 #### 3.4 Dependency verification
 
@@ -282,9 +282,9 @@ Alfred passes the user's language directly to you via `Task()` calls.
 - **Functions**: 90.1%
 - **Lines**: 84.9%
 
-### 🏷️ TAG chain verification
-- ✅ **TAG order**: Correct
-- ⚠️ **TAG completion**: TAG-003 completion conditions partially not met
+### 🔗 Feature chain verification
+- ✅ **Feature order**: Correct
+- ⚠️ **Feature completion**: Feature-003 completion conditions partially not met
 
 ### 📦 Dependency verification
 - ✅ **Version consistency**: Everything matches
@@ -295,7 +295,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 **Warning (recommended)**:
 1. src/processor.py:120 - Need to reduce function complexity
-2. TAG-003 Additional integration tests required
+2. Feature-003 Additional integration tests required
 
 ### ✅ Next steps
 - PASS: You can request commits from git-manager

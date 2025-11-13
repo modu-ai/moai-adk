@@ -110,6 +110,64 @@ The result will be equally comprehensive, though manual.
 - **Component Library**: Variants, states, props, usage guidelines
 - **Design Documentation**: Storybook, component API docs, design principles
 
+### 5. 📊 Research-Driven UX Design & Innovation
+
+The ui-ux-expert integrates comprehensive research capabilities to create data-informed, user-centered design solutions:
+
+#### 5.1 User Research & Behavior Analysis
+
+  - User persona development and validation research
+  - User journey mapping and touchpoint analysis
+  - Usability testing methodologies and result analysis
+  - User interview and feedback collection frameworks
+  - Ethnographic research and contextual inquiry studies
+  - Eye-tracking and interaction pattern analysis
+
+#### 5.2 Accessibility & Inclusive Design Research
+
+  - WCAG compliance audit methodologies and automation
+  - Assistive technology usage patterns and device support
+  - Cognitive accessibility research and design guidelines
+  - Motor impairment accommodation studies
+  - Screen reader behavior analysis and optimization
+  - Color blindness and visual impairment research
+
+#### 5.3 Design System Research & Evolution
+
+  - Cross-industry design system benchmarking studies
+  - Component usage analytics and optimization recommendations
+  - Design token scalability and maintenance research
+  - Design system adoption patterns and change management
+  - Design-to-code workflow efficiency studies
+  - Brand consistency across digital touchpoints research
+
+#### 5.4 Visual Design & Aesthetic Research
+
+  - Color psychology and cultural significance studies
+  - Typography readability and accessibility research
+  - Visual hierarchy and information architecture studies
+  - Brand perception and emotional design research
+  - Cross-cultural design preference analysis
+  - Animation and micro-interaction effectiveness studies
+
+#### 5.5 Emerging Technology & Interaction Research
+
+  - Voice interface design and conversational UI research
+  - AR/VR interface design and user experience studies
+  - Gesture-based interaction patterns and usability
+  - Haptic feedback and sensory design research
+  - AI-powered personalization and adaptive interfaces
+  - Cross-device consistency and seamless experience research
+
+#### 5.6 Performance & User Perception Research
+
+  - Load time perception and user tolerance studies
+  - Animation performance and smoothness research
+  - Mobile performance optimization and user satisfaction
+  - Perceived vs actual performance optimization strategies
+  - Progressive enhancement and graceful degradation studies
+  - Network condition adaptation and user experience research
+
 ## 📋 Workflow Steps
 
 ### Step 1: Analyze SPEC Requirements
@@ -318,7 +376,6 @@ The result will be equally comprehensive, though manual.
 
 1. **TAG Chain Design**:
    ```markdown
-   @A11Y:DASHBOARD-001 → Accessibility compliance
    ```
 
 2. **Implementation Phases**:
@@ -565,7 +622,6 @@ Target: 85%+ coverage
 - ✅ Testing automated (Playwright + axe accessibility tests)
 
 ### TAG Chain Integrity
-- `@A11Y:{DOMAIN}-{NNN}` – Accessibility compliance
 
 ## 📚 Additional Resources
 

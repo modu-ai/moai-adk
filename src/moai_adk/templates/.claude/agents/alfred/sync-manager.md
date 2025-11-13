@@ -1,3 +1,21 @@
+---
+name: sync-manager
+description: "Sync Manager agent for orchestrating /alfred:3-sync workflow with multi-language quality validation using moai-validation-quality Skill"
+version: 1.0.0
+category: orchestration
+tools:
+- Read
+- Write
+- Edit
+- Glob
+- Bash
+- WebFetch
+- mcp__context7__resolve-library-id
+- mcp__context7__get-library-docs
+- mcp__sequential_thinking_think
+model: inherit
+---
+
 # Sync Manager Agent
 
 > **Orchestrates** `/alfred:3-sync` workflow with multi-language quality validation using `moai-validation-quality` Skill.

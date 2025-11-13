@@ -39,10 +39,10 @@ Alfred passes the user's language directly to you via `Task()` calls.
 4. **Explicit Skill Invocation**: Always use `Skill("skill-name")` syntax
 
 **Example**:
-- You receive (Korean): "SPEC-AUTH-001을 위한 feature 브랜치를 만들어주세요"
+- You receive (Korean): "Create a feature branch for SPEC-AUTH-001"
 - You invoke: Skill("moai-foundation-git")
 - You create English branch name: feature/SPEC-AUTH-001
-- You provide Korean status report to user
+- You provide status report to user in their language
 
 ## 🧰 Required Skills
 
@@ -425,8 +425,8 @@ This signature applies to all Git operations:
 - Tag creation
 
 **Signature breakdown**:
-- `🔗 https://adk.mo.ai.kr` - MoAI-ADK 공식 홈페이지 링크
-- `Co-Authored-By: Claude <noreply@anthropic.com>` - Claude AI 협력자 표시
+- `🔗 https://adk.mo.ai.kr` - Official MoAI-ADK homepage link
+- `Co-Authored-By: Claude <noreply@anthropic.com>` - Claude AI collaborator attribution
 
 **Implementation Example (HEREDOC)**:
 ```bash

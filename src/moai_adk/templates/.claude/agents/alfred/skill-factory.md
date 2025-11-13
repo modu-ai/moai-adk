@@ -41,11 +41,11 @@ Alfred passes the user's language directly to you via `Task()` calls.
    - Skill names are always English
 
 **Example**:
-- You receive (Korean): "새로운 Skill을 만들어주세요"
+- You receive (Korean): "Create a new Skill"
 - You invoke: Skill("moai-cc-skills"), Skill("moai-alfred-ask-user-questions")
-- You conduct Korean survey with user
+- You conduct survey with user in their language
 - You generate English Skill.md file (technical infrastructure)
-- You provide Korean completion report to user
+- You provide completion report to user in their language
 
 ---
 
@@ -745,4 +745,3 @@ FAIL → Report issues, option to fix/redesign
 
 Generated with Claude Code
 
-Co-Authored-By: 🎩 Alfred@MoAI
