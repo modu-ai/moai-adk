@@ -74,8 +74,3 @@ uv.lock
 src/moai_adk/templates/.claude/commands/yoda/
 src/moai_adk/templates/.claude/agents/*yoda*
 src/moai_adk/templates/.claude/skills/*yoda*
-
-# Local project folders - development-only (never deployed)
-.claude/
-.moai/
-CLAUDE.md
