@@ -56,28 +56,25 @@ coverage.json
 docs/.next/
 docs/out/
 
-# Claude and MoAI configuration (user-specific, root only)
-# Package templates (src/moai_adk/templates/) are tracked
+# Claude Code local configuration (user-specific, do not track)
+# Package templates in src/moai_adk/templates/.claude/ are tracked separately
 /.claude/
 /CLAUDE.md
+/.claude/settings.local.json
 
-# MoAI dynamic content (로컬 프로젝트만 무시)
-.moai/logs/
-.moai/temp/
-.moai/cache/
-.moai/memory/
-.moai/config/
+# MoAI local development directory (user-specific, do not track)
+# Contains local caches, logs, temp files, and user configurations
+# Package templates in src/moai_adk/templates/.moai/ are tracked separately
+/.moai/
 
-# Yoda system output (로컬 강의 자료 생성만)
-.moai/yoda/output/*.md
-.moai/yoda/output/*.pdf
-.moai/yoda/output/*.pptx
-.moai/yoda/output/*.docx
-.moai/yoda/output/*-notion-link.txt
-
-# MoAI reports (임시 보고서만 무시)
-.moai/reports/*.tmp
-.moai/reports/*-draft.*
+# Documentation build output and local development
+/docs/node_modules/
+/docs/.next/
+/docs/coverage/
+/docs/__tests__/
+/docs/guides/
+/docs/*.backup
+/docs/*.disabled
 
 # Environment variables and deployment secrets
 .env*
@@ -91,3 +88,4 @@ docs/out/
 .uv_cache
 .uv-cache
 .venv_issue43_py313
+
