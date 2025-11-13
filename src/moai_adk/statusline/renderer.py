@@ -17,9 +17,7 @@ class StatuslineData:
 
     model: str
     version: str
-    output_style: str
     memory_usage: str
-    todo_count: str
     branch: str
     git_status: str
     duration: str
@@ -98,33 +96,21 @@ class StatuslineRenderer:
         """
         parts = []
 
-        # Add model if display enabled
+        # Add model if display enabled (most important - cloud service context)
         if self._display_config.model:
             parts.append(f"🤖 {data.model}")
 
-        # Add version if display enabled
+        # Add version if display enabled (system status)
         if self._display_config.version:
             parts.append(f"🗿 Ver {data.version}")
 
-        # Add output style if display enabled
-        if self._display_config.output_style and data.output_style.strip():
-            # Use Yoda-specific emoji for Yoda styles only
-            if "yoda" in data.output_style.lower() or "Yoda Master" in data.output_style:
-                parts.append(f"🧙 {data.output_style}")
-            else:
-                parts.append(f"{data.output_style}")
-
-        # Add todo count if display enabled
-        if self._display_config.todo_count and data.todo_count.strip():
-            parts.append(f"📋 {data.todo_count}")
-
-        # Add branch if display enabled
-        if self._display_config.branch:
-            parts.append(f"🔀 {data.branch}")
-
         # Add git status if display enabled and status not empty
         if self._display_config.git_status and data.git_status:
-            parts.append(f"{data.git_status}")
+            parts.append(f"📊 {data.git_status}")
+
+        # Add Git info (development context)
+        if self._display_config.branch:
+            parts.append(f"🔀 {data.branch}")
 
         # Add active_task if display enabled and not empty
         if self._display_config.active_task and data.active_task.strip():
@@ -151,20 +137,12 @@ class StatuslineRenderer:
             f"🗿 Ver {data.version}",
         ]
 
-        # Add optional parts only if they have content
-        if self._display_config.output_style and data.output_style.strip():
-            # Use Yoda-specific emoji for Yoda styles only
-            if "yoda" in data.output_style.lower() or "Yoda Master" in data.output_style:
-                parts.append(f"🧙 {data.output_style}")
-            else:
-                parts.append(f"{data.output_style}")
-        if self._display_config.todo_count and data.todo_count.strip():
-            parts.append(f"📋 {data.todo_count}")
+        # Add git status if display enabled and status not empty
+        if self._display_config.git_status and data.git_status:
+            parts.append(f"📊 {data.git_status}")
 
+        # Add Git info
         parts.append(f"🔀 {truncated_branch}")
-
-        if data.git_status:
-            parts.append(f"{data.git_status}")
 
         # Only add active_task if it's not empty
         if data.active_task.strip():
@@ -178,10 +156,10 @@ class StatuslineRenderer:
             parts = [
                 f"🤖 {data.model}",
                 f"🗿 Ver {data.version}",
-                f"📊 Git: {truncated_branch}",
             ]
             if data.git_status:
-                parts.append(f"Changes: {data.git_status}")
+                parts.append(f"📊 {data.git_status}")
+            parts.append(f"🔀 {truncated_branch}")
             if data.active_task.strip():
                 parts.append(data.active_task)
             result = self._format_config.separator.join(parts)
@@ -191,10 +169,10 @@ class StatuslineRenderer:
             parts = [
                 f"🤖 {data.model}",
                 f"🗿 Ver {data.version}",
-                f"📊 Git: {truncated_branch}",
             ]
             if data.git_status:
-                parts.append(f"Changes: {data.git_status}")
+                parts.append(f"📊 {data.git_status}")
+            parts.append(f"🔀 {truncated_branch}")
             result = self._format_config.separator.join(parts)
 
         # Final fallback to minimal if still too long
@@ -227,25 +205,13 @@ class StatuslineRenderer:
         if self._display_config.version:
             parts.append(f"🗿 Ver {data.version}")
 
-        # Add output style if display enabled
-        if self._display_config.output_style and data.output_style.strip():
-            # Use Yoda-specific emoji for Yoda styles only
-            if "yoda" in data.output_style.lower() or "Yoda Master" in data.output_style:
-                parts.append(f"🧙 {data.output_style}")
-            else:
-                parts.append(f"{data.output_style}")
-
-        # Add todo count if display enabled
-        if self._display_config.todo_count and data.todo_count.strip():
-            parts.append(f"📋 {data.todo_count}")
-
-        # Add branch if display enabled
-        if self._display_config.branch:
-            parts.append(f"🔀 {branch}")
-
         # Add git status if display enabled and status not empty
         if self._display_config.git_status and data.git_status:
-            parts.append(f"{data.git_status}")
+            parts.append(f"📊 {data.git_status}")
+
+        # Add Git info (development context)
+        if self._display_config.branch:
+            parts.append(f"🔀 {branch}")
 
         # Add active_task if display enabled and not empty
         if self._display_config.active_task and data.active_task.strip():
