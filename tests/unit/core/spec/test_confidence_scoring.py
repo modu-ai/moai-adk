@@ -1,11 +1,9 @@
-# @TEST:CONFIDENCE-SCORING-001
 """Test suite for Confidence Scoring System."""
 
-import unittest
-import tempfile
 import os
+import tempfile
+import unittest
 from unittest.mock import Mock, patch
-import ast
 
 from moai_adk.core.spec.confidence_scoring import ConfidenceScoringSystem
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `moai-project-config-manager` skill provides comprehensive configuration management for MoAI projects, handling all `.moai/config.json` CRUD operations with robust validation, error handling, and intelligent merge strategies.
+The `moai-project-config-manager` skill provides comprehensive configuration management for MoAI projects, handling all `.moai/config/config.json` CRUD operations with robust validation, error handling, and intelligent merge strategies.
 
 ## Key Features
 

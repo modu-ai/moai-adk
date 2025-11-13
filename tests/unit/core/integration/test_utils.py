@@ -1,20 +1,13 @@
-# @TEST:TAG-IMPROVEMENT-INTEGRATION-003
 """
 Test integration testing utilities.
 """
 
-import pytest
 import tempfile
-import shutil
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
-from moai_adk.core.integration.utils import (
-    ComponentDiscovery, TestResultAnalyzer, TestEnvironment
-)
-from moai_adk.core.integration.models import (
-    TestComponent, TestSuite, IntegrationTestResult, TestStatus
-)
+from moai_adk.core.integration.models import IntegrationTestResult, TestComponent
+from moai_adk.core.integration.utils import ComponentDiscovery, TestEnvironment, TestResultAnalyzer as IntegrationTestResultAnalyzer
 
 
 class TestComponentDiscovery:
@@ -77,8 +70,7 @@ class TestResultAnalyzer:
 
     def test_calculate_success_rate_empty(self):
         """Test success rate calculation with empty results"""
-        analyzer = TestResultAnalyzer()
-        rate = analyzer.calculate_success_rate([])
+        rate = IntegrationTestResultAnalyzer.calculate_success_rate([])
 
         assert rate == 0.0
 
@@ -90,8 +82,7 @@ class TestResultAnalyzer:
             IntegrationTestResult("test3", True)
         ]
 
-        analyzer = TestResultAnalyzer()
-        rate = analyzer.calculate_success_rate(results)
+        rate = IntegrationTestResultAnalyzer.calculate_success_rate(results)
 
         assert rate == 100.0
 
@@ -104,8 +95,7 @@ class TestResultAnalyzer:
             IntegrationTestResult("test4", False)
         ]
 
-        analyzer = TestResultAnalyzer()
-        rate = analyzer.calculate_success_rate(results)
+        rate = IntegrationTestResultAnalyzer.calculate_success_rate(results)
 
         assert rate == 50.0  # 2 out of 4 passed
 
@@ -118,8 +108,7 @@ class TestResultAnalyzer:
             IntegrationTestResult("test4", True)
         ]
 
-        analyzer = TestResultAnalyzer()
-        failed = analyzer.get_failed_tests(results)
+        failed = IntegrationTestResultAnalyzer.get_failed_tests(results)
 
         assert len(failed) == 2
         assert failed[0].test_name == "test2"
@@ -129,8 +118,7 @@ class TestResultAnalyzer:
 
     def test_get_execution_stats_empty(self):
         """Test execution stats with empty results"""
-        analyzer = TestResultAnalyzer()
-        stats = analyzer.get_execution_stats([])
+        stats = IntegrationTestResultAnalyzer.get_execution_stats([])
 
         expected = {
             "total": 0,
@@ -151,8 +139,7 @@ class TestResultAnalyzer:
             IntegrationTestResult("test3", True, execution_time=3.0)
         ]
 
-        analyzer = TestResultAnalyzer()
-        stats = analyzer.get_execution_stats(results)
+        stats = IntegrationTestResultAnalyzer.get_execution_stats(results)
 
         assert stats["total"] == 3
         assert stats["passed"] == 2

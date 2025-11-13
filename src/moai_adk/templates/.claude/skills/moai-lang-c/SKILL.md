@@ -1,124 +1,93 @@
 ---
-name: moai-lang-c
-version: 2.0.0
+name: "moai-lang-c"
+version: "2.0.0"
 created: 2025-10-22
-updated: 2025-10-22
-status: active
-description: C17/C23 best practices with Unity test framework, cppcheck, and Make/CMake build systems.
-keywords: ['c', 'unity', 'cppcheck', 'cmake', 'make']
-allowed-tools:
+updated: 2025-11-11
+status: stable
+description: C programming language patterns, memory management, and systems programming best practices. Use when writing C applications, managing memory manually, or implementing low-level optimizations.
+keywords: ['c', 'memory-management', 'systems-programming', 'low-level', 'performance']
+allowed-tools: 
   - Read
   - Bash
+  - Glob
 ---
 
-# Lang C Skill
+# C Programming Language Skill
 
 ## Skill Metadata
 
 | Field | Value |
 | ----- | ----- |
 | **Skill Name** | moai-lang-c |
-| **Version** | 2.0.0 (2025-10-22) |
-| **Allowed tools** | Read (read_file), Bash (terminal) |
-| **Auto-load** | On demand when keywords detected |
-| **Tier** | Language |
+| **Version** | 2.0.0 (2025-11-11) |
+| **Allowed tools** | Read, Bash, Glob |
+| **Auto-load** | On demand when C patterns detected |
+| **Tier** | Language (Foundation) |
 
 ---
 
 ## What It Does
 
-C17/C23 best practices with Unity test framework, cppcheck, and Make/CMake build systems.
+C programming language patterns, memory management, and systems programming best practices.
 
 **Key capabilities**:
-- ✅ Best practices enforcement for language domain
-- ✅ TRUST 5 principles integration
-- ✅ Latest tool versions (2025-10-22)
-- ✅ TDD workflow support
+- ✅ Memory management patterns
+- ✅ Systems programming techniques
+- ✅ Performance optimization
+- ✅ Low-level data structures
+- ✅ Cross-platform compatibility
 
 ---
 
 ## When to Use
 
-**Automatic triggers**:
-- Related code discussions and file patterns
-- SPEC implementation (`/alfred:2-run`)
-- Code review requests
-
-**Manual invocation**:
-- Review code for TRUST 5 compliance
-- Design new features
-- Troubleshoot issues
+- ✅ Writing C applications
+- ✅ Managing memory manually
+- ✅ Implementing low-level optimizations
+- ✅ Creating system software
 
 ---
 
-## Tool Version Matrix (2025-10-22)
+## Core C Patterns
 
-| Tool | Version | Purpose | Status |
-|------|---------|---------|--------|
-| **GCC** | 14.2.0 | Primary | ✅ Current |
-| **Clang** | 19.1.7 | Primary | ✅ Current |
-| **cppcheck** | 2.16.0 | Primary | ✅ Current |
-| **CMake** | 3.31.0 | Primary | ✅ Current |
+### Memory Management
+1. **Dynamic Allocation**: malloc, calloc, realloc patterns
+2. **Memory Safety**: Buffer overflow prevention
+3. **Resource Management**: RAII-like patterns in C
+4. **Memory Profiling**: Leak detection and optimization
+5. **Stack vs Heap**: Appropriate usage scenarios
+
+### Systems Programming
+- **File I/O**: Robust file handling patterns
+- **Process Management**: Process creation and communication
+- **Network Programming**: Socket programming patterns
+- **System Calls**: Proper system call usage
+- **Error Handling**: Robust error management
 
 ---
-
-## Inputs
-
-- Language-specific source directories
-- Configuration files
-- Test suites and sample data
-
-## Outputs
-
-- Test/lint execution plan
-- TRUST 5 review checkpoints
-- Migration guidance
-
-## Failure Modes
-
-- When required tools are not installed
-- When dependencies are missing
-- When test coverage falls below 85%
 
 ## Dependencies
 
-- Access to project files via Read/Bash tools
-- Integration with `moai-foundation-langs` for language detection
-- Integration with `moai-foundation-trust` for quality gates
-
----
-
-## References (Latest Documentation)
-
-_Documentation links updated 2025-10-22_
-
----
-
-## Changelog
-
-- **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
-- **v1.0.0** (2025-03-29): Initial Skill release
+- C compiler (GCC, Clang)
+- Build systems (Make, CMake)
+- Debugging tools (GDB, Valgrind)
+- Standard C library
 
 ---
 
 ## Works Well With
 
-- `moai-foundation-trust` (quality gates)
-- `moai-alfred-code-reviewer` (code review)
-- `moai-essentials-debug` (debugging support)
+- `moai-lang-cpp` (C++ integration)
+- `moai-essentials-debug` (Debugging patterns)
+- `moai-essentials-perf` (Performance optimization)
 
 ---
 
-## Best Practices
+## Changelog
 
-✅ **DO**:
-- Follow language best practices
-- Use latest stable tool versions
-- Maintain test coverage ≥85%
-- Document all public APIs
+- **v2.0.0** (2025-11-11): Added complete metadata, C programming patterns
+- **v1.0.0** (2025-10-22): Initial C language support
 
-❌ **DON'T**:
-- Skip quality gates
-- Use deprecated tools
-- Ignore security warnings
-- Mix testing frameworks
+---
+
+**End of Skill** | Updated 2025-11-11

@@ -1,4 +1,3 @@
-# @TEST:CLI-INTEGRATION-001 | SPEC: SPEC-TEST-COVERAGE-001.md
 """CLI Integration Tests
 
 CLI 명령어 통합 테스트:

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @CODE:HOOKS-CLARITY-CKPT | SPEC: Individual hook files for better UX
 """PreToolUse Hook: Automatic Safety Checkpoint Creation
 
 Claude Code Event: PreToolUse

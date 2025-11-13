@@ -31,7 +31,6 @@ Alfred passes the user's language directly to you via `Task()` calls.
 2. **Output Language**: Generate implementation plans and analysis in user's conversation_language
 
 3. **Always in English**:
-   - @TAG identifiers (format: `@TYPE:DOMAIN-NNN`)
    - Skill names: `Skill("moai-alfred-language-detection")`, `Skill("moai-domain-backend")`
    - Technical function/variable names
    - Code examples
@@ -39,9 +38,9 @@ Alfred passes the user's language directly to you via `Task()` calls.
 4. **Explicit Skill Invocation**: Always use `Skill("skill-name")` syntax
 
 **Example**:
-- You receive (Korean): "SPEC-AUTH-001을 분석하고 구현 전략을 만들어주세요"
+- You receive (Korean): "Analyze SPEC-AUTH-001 and create an implementation strategy"
 - You invoke: Skill("moai-alfred-language-detection"), Skill("moai-domain-backend")
-- You generate Korean implementation strategy with English technical terms
+- You generate implementation strategy in user's language with English technical terms
 
 ## 🧰 Required Skills
 
@@ -111,7 +110,7 @@ Example 1: Backend API Requirements
 ─────────────────────────────────────
 SPEC Keywords Detected: ['api', 'authentication', 'database', 'server']
 → Delegate to: backend-expert
-→ Task Prompt: "SPEC-AUTH-001에서 REST API와 데이터베이스 스키마를 설계해주세요"
+→ Task Prompt: "Design REST API and database schema for SPEC-AUTH-001"
 
 Example 2: Full-Stack Application
 ──────────────────────────────────

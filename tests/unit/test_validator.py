@@ -1,5 +1,3 @@
-# @TEST:VALIDATOR-COVERAGE-001 | SPEC: SPEC-TEST-COVERAGE-001.md
-# @TEST:INIT-004:VALIDATION | Chain: SPEC-INIT-004 -> CODE-INIT-004 -> TEST-INIT-004
 # # REMOVED_ORPHAN_TEST:INIT-005:VERIFY-001 | Test verification of all required files upon successful completion
 # # REMOVED_ORPHAN_TEST:INIT-005:VERIFY-002 | Test Alfred command files validation
 # # REMOVED_ORPHAN_TEST:INIT-005:ALFRED-TEST | Test all 4 Alfred command files validation
@@ -14,9 +12,8 @@ SPEC-INIT-004 Tests:
 - Integration with phase_executor
 - Comprehensive validation coverage (directories, files, Alfred commands)
 
-TAG Chain:
+SPEC Chain:
   SPEC-INIT-004 (spec.md)
-    └─> @CODE:INIT-004:VALIDATION (validator.py)
         └─> # REMOVED_ORPHAN_TEST:INIT-005:VALIDATION (this file)
 
 Test Categories:
@@ -63,7 +60,7 @@ class TestProjectValidatorConstants:
         """Should define required files"""
         assert hasattr(ProjectValidator, "REQUIRED_FILES")
         assert isinstance(ProjectValidator.REQUIRED_FILES, list)
-        assert ".moai/config.json" in ProjectValidator.REQUIRED_FILES
+        assert ".moai/config/config.json" in ProjectValidator.REQUIRED_FILES
         assert "CLAUDE.md" in ProjectValidator.REQUIRED_FILES
 
 
@@ -169,7 +166,9 @@ class TestValidateInstallation:
 
         # Create all required files
         for file in ProjectValidator.REQUIRED_FILES:
-            (tmp_project_dir / file).write_text("# Test")
+            file_path = tmp_project_dir / file
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            file_path.write_text("# Test")
 
         # Create all Alfred command files (SPEC-INIT-004)
         alfred_dir = tmp_project_dir / ".claude" / "commands" / "alfred"
@@ -206,7 +205,9 @@ class TestValidateAlfredCommands:
 
         # Create all required files
         for file in ProjectValidator.REQUIRED_FILES:
-            (tmp_project_dir / file).write_text("# Test")
+            file_path = tmp_project_dir / file
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            file_path.write_text("# Test")
 
         # Create .claude/commands/alfred directory
         alfred_dir = tmp_project_dir / ".claude" / "commands" / "alfred"
@@ -228,7 +229,9 @@ class TestValidateAlfredCommands:
 
         # Create all required files
         for file in ProjectValidator.REQUIRED_FILES:
-            (tmp_project_dir / file).write_text("# Test")
+            file_path = tmp_project_dir / file
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            file_path.write_text("# Test")
 
         # Create all Alfred command files
         alfred_dir = tmp_project_dir / ".claude" / "commands" / "alfred"
@@ -256,7 +259,9 @@ class TestValidateAlfredCommands:
 
         # Create all required files
         for file in ProjectValidator.REQUIRED_FILES:
-            (tmp_project_dir / file).write_text("# Test")
+            file_path = tmp_project_dir / file
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            file_path.write_text("# Test")
 
         # Create Alfred directory but only some files
         alfred_dir = tmp_project_dir / ".claude" / "commands" / "alfred"

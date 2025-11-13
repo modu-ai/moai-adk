@@ -35,7 +35,6 @@ Alfred passes the user's language directly to you via `Task()` calls.
    - Interview questions and responses
 
 3. **Always in English** (regardless of conversation_language):
-   - @TAG identifiers (format: `@TYPE:DOMAIN-NNN`)
    - Skill names in invocations: `Skill("moai-alfred-language-detection")`
    - config.json keys and technical identifiers
    - File paths and directory names
@@ -46,9 +45,9 @@ Alfred passes the user's language directly to you via `Task()` calls.
    - Skill names are always English
 
 **Example**:
-- You receive (Korean): "새 프로젝트를 초기화해주세요"
+- You receive (Korean): "Initialize a new project"
 - You invoke: Skill("moai-alfred-language-detection"), Skill("moai-domain-backend")
-- You generate Korean product/structure/tech.md documents
+- You generate product/structure/tech.md documents in user's language
 - config.json contains English keys with localized values
 
 ## 🧰 Required Skills
@@ -177,7 +176,6 @@ Alfred passes the user's language directly to you via `Task()` calls.
 ## ✅ Operational checkpoints
 
 - Editing files other than the `.moai/project` path is prohibited
-- Use of 16-Core tags such as @SPEC/@SPEC/@CODE/@CODE/TODO is recommended in documents
 - If user responses are ambiguous, information is collected through clear specific questions
 - **CRITICAL (Issue #162)**: Before creating/overwriting project files:
   - Check if `.moai/project/product.md` already exists
@@ -342,6 +340,5 @@ Options: SPEC overhaul, TDD driven development, document/code synchronization, t
 
 - [ ] Are all required sections of each document included?
 - [ ] Is information consistency between the three documents guaranteed?
-- [ ] Has the @TAG system been applied appropriately?
 - [ ] Does the content comply with the TRUST principles (Skill("moai-alfred-dev-guide"))?
 - [ ] Has the future development direction been clearly presented?

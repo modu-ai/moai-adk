@@ -1,7 +1,6 @@
 """
 Test cases for Alfred command completion patterns (SPEC-SESSION-CLEANUP-001)
 
-<!-- @TEST:SESSION-CLEANUP-001 -->
 
 This test suite verifies that all 4 Alfred commands (/alfred:0-project, /alfred:1-plan,
 /alfred:2-run, /alfred:3-sync) have proper AskUserQuestion completion patterns.

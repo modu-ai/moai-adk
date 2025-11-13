@@ -14,13 +14,11 @@ version: 0.1.0
 status: active
 created: 2025-11-03
 updated: 2025-11-03
-author: @GOOS
 priority: high
 ---
 
 # User Authentication SPEC
 
-@SPEC:AUTH-001
 
 ## Ubiquitous Requirements
 - The system shall provide user authentication via email and password.
@@ -57,13 +55,11 @@ priority: high
 ```python
 # tests/test_auth.py
 import pytest
-from src.auth import signup, login, verify_email  # @TEST:AUTH-001
 from src.models import User
 
 class TestSignup:
     """SPEC: User signup and verification workflow"""
 
-    def test_signup_creates_user(self):  # @TEST:AUTH-001
         """SPEC: The system shall create user account."""
         response = signup(email="user@example.com", password="securePass123")
 
@@ -72,12 +68,10 @@ class TestSignup:
         assert user is not None
         assert user.verified is False
 
-    def test_invalid_email_rejected(self):  # @TEST:AUTH-001
         """SPEC: The system shall validate email format."""
         with pytest.raises(ValueError):
             signup(email="invalid-email", password="securePass123")
 
-    def test_weak_password_rejected(self):  # @TEST:AUTH-001
         """SPEC: Enforce 8-character minimum password length."""
         with pytest.raises(ValueError):
             signup(email="user@example.com", password="short")
@@ -85,7 +79,6 @@ class TestSignup:
 class TestLogin:
     """SPEC: User login and session management"""
 
-    def test_successful_login(self):  # @TEST:AUTH-001
         """SPEC: The system shall authenticate valid credentials."""
         user = create_test_user("user@example.com", "securePass123", verified=True)
 
@@ -94,7 +87,6 @@ class TestLogin:
         assert token is not None
         assert isinstance(token, str)
 
-    def test_failed_login_locks_account(self):  # @TEST:AUTH-001
         """SPEC: WHEN login fails 3 times, lock account."""
         user = create_test_user("user@example.com", "securePass123", verified=True)
 
@@ -110,13 +102,11 @@ class TestLogin:
 
 ```python
 # src/auth.py
-from datetime import datetime, timedelta  # @CODE:AUTH-001
 import bcrypt
 import jwt
 from src.models import User
 from src.email import send_verification_email
 
-def signup(email: str, password: str) -> dict:  # @CODE:AUTH-001
     """Create new user account with email verification."""
     # Validate inputs
     if "@" not in email:
@@ -136,7 +126,6 @@ def signup(email: str, password: str) -> dict:  # @CODE:AUTH-001
 
     return {"status": "created", "user_id": user.id}
 
-def login(email: str, password: str) -> str:  # @CODE:AUTH-001
     """Authenticate user and return JWT token."""
     user = User.find_by_email(email)
     if not user:
@@ -166,7 +155,6 @@ def login(email: str, password: str) -> str:  # @CODE:AUTH-001
 
 ```python
 # src/auth.py (refactored)
-from datetime import datetime, timedelta  # @CODE:AUTH-001
 import bcrypt
 import jwt
 from typing import Dict, Optional
@@ -174,9 +162,6 @@ from src.models import User
 from src.email import send_verification_email
 from src.config import Settings
 
-MAX_FAILED_ATTEMPTS = 3  # @CODE:AUTH-001
-LOCKOUT_DURATION_HOURS = 1  # @CODE:AUTH-001
-MIN_PASSWORD_LENGTH = 8  # @CODE:AUTH-001
 
 def _validate_email(email: str) -> None:
     """Validate email format."""
@@ -188,7 +173,6 @@ def _validate_password(password: str) -> None:
     if len(password) < MIN_PASSWORD_LENGTH:
         raise ValueError(f"Password must be at least {MIN_PASSWORD_LENGTH} characters")
 
-def signup(email: str, password: str) -> Dict[str, any]:  # @CODE:AUTH-001
     """Create new user account with email verification.
 
     Args:
@@ -212,7 +196,6 @@ def signup(email: str, password: str) -> Dict[str, any]:  # @CODE:AUTH-001
 
     return {"status": "created", "user_id": user.id}
 
-def login(email: str, password: str) -> str:  # @CODE:AUTH-001
     """Authenticate user and return JWT token."""
     user = User.find_by_email(email)
     if not user:
@@ -276,9 +259,6 @@ User authentication system with email verification and brute-force protection.
 rg '@(SPEC|TEST|CODE|DOC):AUTH-001' -n .moai/specs/ tests/ src/ docs/
 
 # Output:
-# .moai/specs/SPEC-AUTH-001/spec.md:@SPEC:AUTH-001
-# tests/test_auth.py:@TEST:AUTH-001 (4 matches)
-# src/auth.py:@CODE:AUTH-001 (5 matches)
 # README.md:SPEC-AUTH-001
 
 ✅ TAG chain verified: SPEC→TEST→CODE→DOC
@@ -320,7 +300,6 @@ Context saved: ~200 MB
 - [x] RED: Tests written first, all fail
 - [x] GREEN: Minimal code passes all tests
 - [x] REFACTOR: Code improved, tests still pass
-- [x] @TAG chain complete: SPEC→TEST(4)→CODE(5)→README
 
 ## R – Readable
 - [x] Function names: signup(), login(), _validate_email()

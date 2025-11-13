@@ -1,4 +1,3 @@
-# @CODE:TAG-PERF-001
 """
 Parallel Processing Core
 
@@ -6,8 +5,7 @@ Provides efficient parallel processing capabilities for concurrent task executio
 """
 
 import asyncio
-from typing import Callable, List, Dict, Any, Optional, Union, Coroutine
-from concurrent.futures import ThreadPoolExecutor
+from typing import Any, Callable, Coroutine, Dict, List, Optional, Union
 
 
 class ParallelProcessor:
@@ -27,8 +25,11 @@ class ParallelProcessor:
         """
         self.max_workers = max_workers
 
-    async def process_tasks(self, tasks: List[Callable],
-                          progress_callback: Optional[Callable[[int, int], None]] = None) -> List[Dict[str, Any]]:
+    async def process_tasks(
+        self,
+        tasks: List[Callable],
+        progress_callback: Optional[Callable[[int, int], None]] = None,
+    ) -> List[Dict[str, Any]]:
         """
         Process multiple tasks concurrently.
 
@@ -100,8 +101,12 @@ class ParallelProcessor:
 
         raise TypeError(f"Task must be callable or a coroutine, got {type(task)}")
 
-    def _update_progress(self, progress_callback: Optional[Callable[[int, int], None]],
-                        completed: int, total: int) -> None:
+    def _update_progress(
+        self,
+        progress_callback: Optional[Callable[[int, int], None]],
+        completed: int,
+        total: int,
+    ) -> None:
         """Update progress callback if provided."""
         if progress_callback is not None:
             try:

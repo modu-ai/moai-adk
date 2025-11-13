@@ -1,5 +1,3 @@
-# @CODE:MOAI-FOUNDATION-GIT-006
-
 """
 100 Commit Message Templates
 
@@ -12,10 +10,9 @@ Comprehensive collection of commit message templates:
 - Maintenance templates
 """
 
-import json
-from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Any, Dict, List, Optional
 
 
 class CommitCategory(Enum):
@@ -67,9 +64,9 @@ class CommitTemplates:
                     "feat(ui): Implement dark theme toggle",
                     "feat(api): Add user profile endpoints",
                     "feat(db): Add user preferences table",
-                    "feat(notifications): Implement email notifications"
+                    "feat(notifications): Implement email notifications",
                 ],
-                keywords=["add", "implement", "create", "new", "feature", "addition"]
+                keywords=["add", "implement", "create", "new", "feature", "addition"],
             ),
             CommitTemplate(
                 type="feat",
@@ -81,9 +78,9 @@ class CommitTemplates:
                     "feat(cart): Add discount coupon support",
                     "feat(search): Add advanced filtering",
                     "feat(profile): Add avatar upload",
-                    "feat(settings): Add notification preferences"
+                    "feat(settings): Add notification preferences",
                 ],
-                keywords=["functionality", "capability", "support", "implement"]
+                keywords=["functionality", "capability", "support", "implement"],
             ),
             CommitTemplate(
                 type="feat",
@@ -95,10 +92,10 @@ class CommitTemplates:
                     "feat(user): Implement personal dashboard",
                     "feat(guest): Implement public profile",
                     "feat(manager): Implement team management",
-                    "feat(editor): Implement content editing"
+                    "feat(editor): Implement content editing",
                 ],
-                keywords=["implement", "user", "role", "specific", "targeted"]
-            )
+                keywords=["implement", "user", "role", "specific", "targeted"],
+            ),
         ]
 
         # Bug fix templates (15)
@@ -113,9 +110,9 @@ class CommitTemplates:
                     "fix(ui): Fix responsive layout issue",
                     "fix(api): Fix error response format",
                     "fix(db): Fix query performance issue",
-                    "fix(session): Fix session timeout problem"
+                    "fix(session): Fix session timeout problem",
                 ],
-                keywords=["fix", "bug", "error", "issue", "problem", "resolve"]
+                keywords=["fix", "bug", "error", "issue", "problem", "resolve"],
             ),
             CommitTemplate(
                 type="fix",
@@ -127,9 +124,9 @@ class CommitTemplates:
                     "fix(ui): Resolve layout issues in mobile",
                     "fix(db): Resolve connection pooling",
                     "fix(auth): Resolve token validation",
-                    "fix(cache): Resolve cache invalidation"
+                    "fix(cache): Resolve cache invalidation",
                 ],
-                keywords=["resolve", "issue", "type", "component", "specific"]
+                keywords=["resolve", "issue", "type", "component", "specific"],
             ),
             CommitTemplate(
                 type="fix",
@@ -141,10 +138,10 @@ class CommitTemplates:
                     "fix(ui): Correct button alignment (#456)",
                     "fix(db): Fix query timeout (#789)",
                     "fix(auth): Update regex validation (#321)",
-                    "fix(session): Extend timeout period (#654)"
+                    "fix(session): Extend timeout period (#654)",
                 ],
-                keywords=["bug", "tracking", "id", "ticket", "issue"]
-            )
+                keywords=["bug", "tracking", "id", "ticket", "issue"],
+            ),
         ]
 
         # Documentation templates (10)
@@ -159,9 +156,9 @@ class CommitTemplates:
                     "docs: Add installation guide",
                     "docs: Fix typo in README",
                     "docs: Update contribution guidelines",
-                    "docs: Add user manual sections"
+                    "docs: Add user manual sections",
                 ],
-                keywords=["docs", "documentation", "update", "add", "fix", "manual"]
+                keywords=["docs", "documentation", "update", "add", "fix", "manual"],
             ),
             CommitTemplate(
                 type="docs",
@@ -173,10 +170,10 @@ class CommitTemplates:
                     "docs(ui): Update component docs",
                     "db(docs): Add schema documentation",
                     "config(docs): Update configuration guide",
-                    "security(docs): Add security documentation"
+                    "security(docs): Add security documentation",
                 ],
-                keywords=["scope", "specific", "document", "guide", "reference"]
-            )
+                keywords=["scope", "specific", "document", "guide", "reference"],
+            ),
         ]
 
         # Performance templates (10)
@@ -191,9 +188,16 @@ class CommitTemplates:
                     "perf(db): Add database indexes",
                     "perf(cache): Implement caching strategy",
                     "perf(ui): Optimize rendering",
-                    "perf(auth): Optimize authentication flow"
+                    "perf(auth): Optimize authentication flow",
                 ],
-                keywords=["perf", "performance", "optimize", "improve", "speed", "efficiency"]
+                keywords=[
+                    "perf",
+                    "performance",
+                    "optimize",
+                    "improve",
+                    "speed",
+                    "efficiency",
+                ],
             ),
             CommitTemplate(
                 type="perf",
@@ -205,10 +209,10 @@ class CommitTemplates:
                     "perf(api): Optimize for high traffic",
                     "perf(cache): Optimize for cache misses",
                     "perf(ui): Optimize for mobile devices",
-                    "perf(auth): Optimize for concurrent users"
+                    "perf(auth): Optimize for concurrent users",
                 ],
-                keywords=["optimize", "component", "scenario", "specific", "use case"]
-            )
+                keywords=["optimize", "component", "scenario", "specific", "use case"],
+            ),
         ]
 
         # Testing templates (10)
@@ -223,9 +227,9 @@ class CommitTemplates:
                     "test(api): Add integration tests",
                     "test(ui): Add component tests",
                     "test(db): Add database tests",
-                    "test(utils): Add utility function tests"
+                    "test(utils): Add utility function tests",
                 ],
-                keywords=["test", "testing", "unit", "integration", "coverage", "spec"]
+                keywords=["test", "testing", "unit", "integration", "coverage", "spec"],
             ),
             CommitTemplate(
                 type="test",
@@ -237,10 +241,10 @@ class CommitTemplates:
                     "test(ui): Add e2e tests for components",
                     "test(db): Add integration tests for models",
                     "test(auth): Add security tests for login",
-                    "test(perf): Add performance tests for queries"
+                    "test(perf): Add performance tests for queries",
                 ],
-                keywords=["add", "test", "type", "component", "specific", "coverage"]
-            )
+                keywords=["add", "test", "type", "component", "specific", "coverage"],
+            ),
         ]
 
         # Refactoring templates (10)
@@ -255,9 +259,16 @@ class CommitTemplates:
                     "refactor(api): Clean up endpoint handlers",
                     "refactor(db): Optimize database queries",
                     "refactor(ui): Extract common components",
-                    "refactor(utils): Extract helper functions"
+                    "refactor(utils): Extract helper functions",
                 ],
-                keywords=["refactor", "refactoring", "clean", "simplify", "optimize", "restructure"]
+                keywords=[
+                    "refactor",
+                    "refactoring",
+                    "clean",
+                    "simplify",
+                    "optimize",
+                    "restructure",
+                ],
             ),
             CommitTemplate(
                 type="refactor",
@@ -269,10 +280,10 @@ class CommitTemplates:
                     "refactor(ui): Extract button component",
                     "refactor(db): Extract query builder",
                     "refactor(utils): Extract validation functions",
-                    "refactor(config): Extract environment config"
+                    "refactor(config): Extract environment config",
                 ],
-                keywords=["extract", "component", "source", "separate", "isolate"]
-            )
+                keywords=["extract", "component", "source", "separate", "isolate"],
+            ),
         ]
 
         # Security templates (8)
@@ -287,9 +298,16 @@ class CommitTemplates:
                     "security(auth): Implement rate limiting",
                     "security(db): Encrypt sensitive data",
                     "security(ui): Add XSS protection",
-                    "security(config): Update security headers"
+                    "security(config): Update security headers",
                 ],
-                keywords=["security", "secure", "protect", "vulnerability", "safety", "compliance"]
+                keywords=[
+                    "security",
+                    "secure",
+                    "protect",
+                    "vulnerability",
+                    "safety",
+                    "compliance",
+                ],
             ),
             CommitTemplate(
                 type="security",
@@ -301,10 +319,17 @@ class CommitTemplates:
                     "security(auth): Fix token leakage",
                     "security(ui): Fix XSS vulnerability",
                     "security(db): Fix data exposure",
-                    "security(config): Fix misconfiguration"
+                    "security(config): Fix misconfiguration",
                 ],
-                keywords=["fix", "vulnerability", "security", "risk", "threat", "exploit"]
-            )
+                keywords=[
+                    "fix",
+                    "vulnerability",
+                    "security",
+                    "risk",
+                    "threat",
+                    "exploit",
+                ],
+            ),
         ]
 
         # Dependency templates (7)
@@ -319,9 +344,16 @@ class CommitTemplates:
                     "deps(api): Update HTTP client",
                     "deps(ui): Update React packages",
                     "deps(db): Update database driver",
-                    "deps(build): Update build tools"
+                    "deps(build): Update build tools",
                 ],
-                keywords=["deps", "dependencies", "update", "upgrade", "package", "library"]
+                keywords=[
+                    "deps",
+                    "dependencies",
+                    "update",
+                    "upgrade",
+                    "package",
+                    "library",
+                ],
             )
         ]
 
@@ -337,9 +369,15 @@ class CommitTemplates:
                     "config: Add new configuration file",
                     "config: Update build configuration",
                     "config: Update deployment settings",
-                    "config: Update CI/CD pipeline"
+                    "config: Update CI/CD pipeline",
                 ],
-                keywords=["config", "configuration", "settings", "environment", "setup"]
+                keywords=[
+                    "config",
+                    "configuration",
+                    "settings",
+                    "environment",
+                    "setup",
+                ],
             )
         ]
 
@@ -355,24 +393,31 @@ class CommitTemplates:
                     "infra: Add Kubernetes configuration",
                     "infra: Update cloud infrastructure",
                     "infra: Add monitoring setup",
-                    "infra: Update deployment scripts"
+                    "infra: Update deployment scripts",
                 ],
-                keywords=["infra", "infrastructure", "deployment", "cloud", "container", "kubernetes"]
+                keywords=[
+                    "infra",
+                    "infrastructure",
+                    "deployment",
+                    "cloud",
+                    "container",
+                    "kubernetes",
+                ],
             )
         ]
 
         # Add all templates
         all_templates = (
-            feature_templates * 2 +  # Repeat to get more variety
-            bug_fix_templates * 2 +
-            documentation_templates +
-            performance_templates +
-            testing_templates +
-            refactoring_templates +
-            security_templates +
-            dependency_templates +
-            configuration_templates +
-            infrastructure_templates
+            feature_templates * 2  # Repeat to get more variety
+            + bug_fix_templates * 2
+            + documentation_templates
+            + performance_templates
+            + testing_templates
+            + refactoring_templates
+            + security_templates
+            + dependency_templates
+            + configuration_templates
+            + infrastructure_templates
         )
 
         # Add templates to registry
@@ -393,7 +438,9 @@ class CommitTemplates:
         """Get template by commit type"""
         return self.templates.get(commit_type)
 
-    def generate_from_template(self, template: CommitTemplate, scope: str, description: str) -> Dict[str, Any]:
+    def generate_from_template(
+        self, template: CommitTemplate, scope: str, description: str
+    ) -> Dict[str, Any]:
         """Generate commit from template"""
         import re
 
@@ -405,9 +452,16 @@ class CommitTemplates:
             pattern = pattern.replace("{description}", description)
 
         # Check for other placeholders
-        placeholders = re.findall(r'\{([^}]+)\}', pattern)
+        placeholders = re.findall(r"\{([^}]+)\}", pattern)
         for placeholder in placeholders:
-            if placeholder in ["feature_name", "user_type", "issue_type", "component", "scenario", "vulnerability_type"]:
+            if placeholder in [
+                "feature_name",
+                "user_type",
+                "issue_type",
+                "component",
+                "scenario",
+                "vulnerability_type",
+            ]:
                 pattern = pattern.replace(f"{{{placeholder}}}", placeholder)
 
         return {
@@ -416,7 +470,7 @@ class CommitTemplates:
             "description": description,
             "pattern": pattern,
             "category": template.category.value,
-            "keywords": template.keywords
+            "keywords": template.keywords,
         }
 
     def add_template(self, template: CommitTemplate):
@@ -436,16 +490,14 @@ class CommitTemplates:
 
         # Find most used types
         most_used_types = sorted(
-            self.templates.items(),
-            key=lambda x: len(x[1].examples),
-            reverse=True
+            self.templates.items(), key=lambda x: len(x[1].examples), reverse=True
         )[:5]
 
         return {
             "total_templates": total_templates,
             "categories": category_stats,
             "most_used_types": most_used_types,
-            "template_types": list(self.templates.keys())
+            "template_types": list(self.templates.keys()),
         }
 
     def search_templates(self, query: str) -> List[CommitTemplate]:
@@ -454,10 +506,12 @@ class CommitTemplates:
         matching_templates = []
 
         for template in self.templates.values():
-            if (query_lower in template.type.lower() or
-                query_lower in template.description.lower() or
-                any(query_lower in keyword.lower() for keyword in template.keywords) or
-                any(query_lower in example.lower() for example in template.examples)):
+            if (
+                query_lower in template.type.lower()
+                or query_lower in template.description.lower()
+                or any(query_lower in keyword.lower() for keyword in template.keywords)
+                or any(query_lower in example.lower() for example in template.examples)
+            ):
                 matching_templates.append(template)
 
         return matching_templates
@@ -467,7 +521,10 @@ class CommitTemplates:
         matching_templates = []
 
         for template in self.templates.values():
-            if any(keyword.lower() in [k.lower() for k in template.keywords] for keyword in keywords):
+            if any(
+                keyword.lower() in [k.lower() for k in template.keywords]
+                for keyword in keywords
+            ):
                 matching_templates.append(template)
 
         return matching_templates
@@ -483,14 +540,14 @@ class CommitTemplates:
                     "description": template.description,
                     "examples": template.examples,
                     "keywords": template.keywords,
-                    "priority": template.priority
+                    "priority": template.priority,
                 }
                 for name, template in self.templates.items()
             },
             "categories": {
                 category.value: [t.type for t in templates]
                 for category, templates in self.categories.items()
-            }
+            },
         }
 
     def import_templates(self, templates_data: Dict[str, Any]):
@@ -503,6 +560,6 @@ class CommitTemplates:
                 description=template_data["description"],
                 examples=template_data.get("examples", []),
                 keywords=template_data.get("keywords", []),
-                priority=template_data.get("priority", 0)
+                priority=template_data.get("priority", 0),
             )
             self.add_template(template)

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-# @TEST:REALTIME-MONITOR-IMPROVED-001 | @SPEC:TAG-REALTIME-IMPROVEMENT-001 | @CODE:HOOK-SCAN-FILTER-001
-"""실시간 TAG 모니터 개선: 파일 스캔 최적화 테스트
+"""실시간 모니터 개선: 파일 스캔 최적화 테스트
 
 선택적 파일(docs/, .claude/, .moai/docs/ 등)을 스캔에서 제외하고
 필수 파일만 스캔하는 성능 최적화 테스트 모음.
@@ -164,8 +163,8 @@ class TestScanPerformanceImprovement:
     def test_hook_execution_timeline(self):
         """Hook 실행 시간 타임라인 (성능)"""
         # PreToolUse Hook 전체 실행 시간:
-        # 1. pre_tool__realtime_tag_monitor.py: 2초 (개선 후)
-        # 2. pre_tool__tag_policy_validator.py: 1초
+        # 1. pre_tool__realtime_monitor.py: 2초 (개선 후)
+        # 2. pre_tool__policy_validator.py: 1초
         # 총: 3초 (개선 전: 4초)
 
         monitor_time_s = 2  # 개선 후

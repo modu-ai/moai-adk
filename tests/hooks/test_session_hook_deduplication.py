@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @TEST:HOOKS-SESSION-DEDUPE-001 | SPEC: SPEC-HOOKS-SESSION-DEDUPE-001.md
 """SessionStart Hook Phase Detection Deduplication Tests
 
 GitHub Issue #207: Hook duplication bug - SessionStart hook being called multiple times
@@ -13,12 +12,10 @@ TDD History:
     - REFACTOR: Optimize phase detection and state management
 """
 
-import json
 import sys
-import time
 from pathlib import Path
-from unittest.mock import patch, MagicMock
-from typing import Dict, Any
+from typing import Any, Dict
+from unittest.mock import patch
 
 # Setup import path for shared modules (following existing pattern)
 HOOKS_DIR = Path(__file__).parent.parent.parent / ".claude" / "hooks" / "alfred"

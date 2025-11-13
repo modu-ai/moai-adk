@@ -4,11 +4,10 @@ This module implements TDD tests for automated SPEC status updates
 from 'draft' to 'completed' after sync operations.
 """
 
-import pytest
 import tempfile
-import os
 from pathlib import Path
-from unittest.mock import Mock, patch
+
+import pytest
 import yaml
 
 from moai_adk.core.spec_status_manager import SpecStatusManager
@@ -90,8 +89,8 @@ class TestSpecStatusManager:
         assert "SPEC-TEST-001" in draft_specs
         assert "SPEC-COMPLETE-001" not in draft_specs
 
-    def test_is_spec_implementation_completed_all_tags_present(self, spec_status_manager, temp_project_dir):
-        """Test completion detection when all required TAGs are present"""
+    def test_is_spec_implementation_completed_all_codes_present(self, spec_status_manager, temp_project_dir):
+        """Test completion detection when all required codes are present"""
         # Create corresponding code and test files
         spec_dir = temp_project_dir / ".moai" / "specs" / "SPEC-FULL-001"
         spec_dir.mkdir()
@@ -116,7 +115,7 @@ class TestSpecStatusManager:
 # REMOVED_ORPHAN_TEST:FULL-001-002: Integration tests
 """)
 
-        # Create code files with matching TAGs
+        # Create code files with matching codes
         src_file = temp_project_dir / "src" / "main.py"
         src_file.write_text("""
 # # REMOVED_ORPHAN_CODE:FULL-001-001
@@ -128,7 +127,7 @@ def helper_function():
     pass
 """)
 
-        # Create test files with matching TAGs
+        # Create test files with matching codes
         test_file = temp_project_dir / "tests" / "test_main.py"
         test_file.write_text("""
 # # REMOVED_ORPHAN_TEST:FULL-001-001
@@ -144,9 +143,9 @@ def test_helper_function():
         is_completed = spec_status_manager.is_spec_implementation_completed("SPEC-FULL-001")
         assert is_completed is True
 
-    def test_is_spec_implementation_completed_missing_tags(self, spec_status_manager, temp_project_dir):
-        """Test completion detection when some TAGs are missing"""
-        # Create SPEC with multiple TAGs
+    def test_is_spec_implementation_completed_missing_codes(self, spec_status_manager, temp_project_dir):
+        """Test completion detection when some codes are missing"""
+        # Create SPEC with multiple codes
         spec_dir = temp_project_dir / ".moai" / "specs" / "SPEC-PARTIAL-001"
         spec_dir.mkdir()
 
@@ -250,7 +249,7 @@ def test_implemented_function():
 
         assert isinstance(criteria, dict)
         assert "min_code_coverage" in criteria
-        assert "require_all_tags" in criteria
+        assert "require_acceptance_criteria" in criteria
         assert "max_open_tasks" in criteria
 
     def test_validate_spec_for_completion(self, spec_status_manager, temp_project_dir):
@@ -325,8 +324,6 @@ def test_valid_function():
 - Function implemented correctly
 - All tests passing
 
-@CODE:BATCH-{i:03d}-001
-@TEST:BATCH-{i:03d}-001
 """)
 
             # Create docs directory and sync report to pass docs_synced check
@@ -341,12 +338,10 @@ def test_valid_function():
             # Create implementation for first two specs only
             if i < 2:
                 (temp_project_dir / "src" / f"batch_{i}.py").write_text(f"""
-# @CODE:BATCH-{i:03d}-001
 def batch_function_{i}():
     return True
 """)
                 (temp_project_dir / "tests" / f"test_batch_{i}.py").write_text(f"""
-# @TEST:BATCH-{i:03d}-001
 def test_batch_function_{i}():
     assert batch_function_{i}()
 """)
@@ -363,9 +358,9 @@ def test_batch_function_{i}():
         assert len(results["updated"]) == 2
         assert len(results["skipped"]) == 1
 
-    def test_integration_with_existing_tags(self, spec_status_manager, temp_project_dir):
-        """Test integration with existing TAG system"""
-        # Create SPEC with complex TAG structure
+    def test_integration_with_existing_codes(self, spec_status_manager, temp_project_dir):
+        """Test integration with existing code system"""
+        # Create SPEC with complex code structure
         spec_dir = temp_project_dir / ".moai" / "specs" / "SPEC-INTEGRATION-001"
         spec_dir.mkdir()
 
@@ -377,16 +372,12 @@ status: draft
 ---
 # Integration Test
 
-## Complex TAG Structure
+## Complex Code Structure
 
-@REQ:INTEGRATION-001-001: Requirement
-@DESIGN:INTEGRATION-001-001: Design
-@TASK:INTEGRATION-001-001: Task
 # REMOVED_ORPHAN_CODE:INTEGRATION-001-001: Code implementation
 # REMOVED_ORPHAN_TEST:INTEGRATION-001-001: Test implementation
-@DOC:INTEGRATION-001-001: Documentation
 """)
 
-        # Test TAG scanning integration
+        # Test code scanning integration
         completion_result = spec_status_manager.is_spec_implementation_completed("SPEC-INTEGRATION-001")
         assert isinstance(completion_result, bool)

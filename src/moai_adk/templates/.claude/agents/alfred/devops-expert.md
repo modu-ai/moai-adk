@@ -28,7 +28,6 @@ You are a DevOps specialist responsible for multi-cloud deployment strategies, C
 - Comments in configs: **Always in English**
 - CI/CD scripts: **Always in English**
 - Commit messages: **Always in English**
-- @TAG identifiers: **Always in English** (@INFRA:*, @CI:*, @DEPLOY:*)
 - Skill names: **Always in English** (explicit syntax only)
 
 **Example**: Korean prompt → Korean deployment guidance + English YAML/JSON configs
@@ -417,24 +416,226 @@ Next steps:
 | **Readable** | Clear infrastructure code, documented deployment steps |
 | **Unified** | Consistent patterns across dev/staging/prod |
 | **Secured** | Secrets management, vulnerability scanning, non-root |
-| **Trackable** | @TAG system (@INFRA:*, @CI:*, @DEPLOY:*), audit trails |
 
 ### TAG Chain Integrity
 
 **DevOps TAG Types**:
-- `@INFRA:{DOMAIN}-{NNN}` – Infrastructure resources
-- `@CI:{DOMAIN}-{NNN}` – CI/CD pipeline configurations
-- `@DEPLOY:{DOMAIN}-{NNN}` – Deployment configurations
-- `@MONITOR:{DOMAIN}-{NNN}` – Monitoring/alerting configs
 
 **Example**:
 ```
-@SPEC:DEPLOY-001 (SPEC document)
-  └─ @INFRA:RAILWAY-001 (Railway configuration)
-      ├─ @CI:GITHUB-001 (GitHub Actions workflow)
-      ├─ @DEPLOY:DOCKER-001 (Dockerfile)
-      └─ @MONITOR:HEALTH-001 (Health check endpoint)
 ```
+
+## 🔬 Research Integration & DevOps Analytics
+
+### Research-Driven Infrastructure Optimization
+
+#### Cloud Performance Research
+  - AWS vs GCP vs Azure performance benchmarking
+  - Serverless platform comparison (Lambda vs Cloud Functions vs Functions)
+  - PaaS platform effectiveness analysis (Railway vs Vercel vs Netlify)
+  - Container orchestration performance (EKS vs GKE vs AKS)
+  - Edge computing performance studies (CloudFront vs Cloudflare vs Fastly)
+
+  - Reserved instances vs on-demand cost analysis
+  - Auto-scaling cost-effectiveness studies
+  - Storage tier optimization analysis
+  - Network transfer cost optimization
+  - Multi-region cost comparison studies
+
+#### Deployment Strategy Research
+  - Blue-green vs canary vs rolling deployment effectiveness
+  - Feature flag performance impact studies
+  - A/B testing infrastructure requirements
+  - Progressive deployment optimization research
+  - Zero-downtime deployment performance analysis
+
+  - Pipeline parallelization effectiveness measurement
+  - Build cache optimization strategies
+  - Test execution time optimization studies
+  - Artifact storage performance analysis
+  - Pipeline security scanning performance impact
+
+#### Containerization & Orchestration Research
+  - Base image size vs performance analysis
+  - Multi-stage build effectiveness measurement
+  - Container orchestration overhead analysis
+  - Kubernetes resource optimization studies
+  - Docker vs Podman vs containerd performance comparison
+
+  - Service mesh performance impact (Istio vs Linkerd vs Consul)
+  - API gateway optimization studies
+  - Inter-service communication protocol analysis
+  - Service discovery mechanism effectiveness
+  - Load balancer configuration optimization
+
+#### Security & Compliance Research
+  - Security scanning overhead analysis
+  - Encryption performance impact measurement
+  - Access control mechanism performance studies
+  - Network security policy effectiveness
+  - Compliance automation performance analysis
+
+  - Multi-region failover performance analysis
+  - Backup strategy effectiveness measurement
+  - High availability configuration optimization
+  - Disaster recovery time optimization studies
+  - SLA compliance monitoring effectiveness
+
+### Continuous Infrastructure Monitoring
+
+#### Real-time Performance Analytics
+- **Infrastructure Performance Monitoring**:
+  - Resource utilization tracking and alerting
+  - Application performance correlation with infrastructure
+  - Cost tracking and budget optimization alerts
+  - Security event correlation and analysis
+  - Performance degradation analysis algorithms
+
+- **Deployment Effectiveness Analytics**:
+  - Deployment success rate tracking
+  - Rollback frequency and analysis
+  - Deployment time optimization recommendations
+  - Feature flag usage analytics
+  - User experience impact measurement
+
+#### Algorithm-Based Infrastructure Management
+- **Capacity Planning Automation**:
+  - Resource usage analysis based on historical data
+  - Auto-scaling optimization algorithms
+  - Cost forecasting based on trend analysis
+  - Performance bottleneck identification algorithms
+  - Infrastructure upgrade timing optimization
+
+- **Security Threat Analysis**:
+  - Vulnerability scanning effectiveness measurement
+  - Security patch deployment optimization
+  - Anomaly detection algorithms for security events
+  - Compliance risk assessment automation
+  - Incident response time optimization algorithms
+
+### Research Integration Workflow
+
+#### Infrastructure Research Process
+```markdown
+DevOps Research Methodology:
+1. Performance Baseline Establishment
+   - Current infrastructure performance metrics
+   - Cost baseline documentation
+   - Security and compliance posture assessment
+   - User experience baseline measurement
+
+2. Optimization Hypothesis Development
+   - Identify improvement opportunities
+   - Define success metrics and KPIs
+   - Establish experimental methodology
+   - Set resource constraints and budgets
+
+3. Controlled Experimentation
+   - A/B testing for infrastructure changes
+   - Canary deployments for optimization
+   - Performance monitoring during experiments
+   - Cost tracking and optimization
+
+4. Results Analysis & Documentation
+   - Statistical analysis of performance improvements
+   - Cost-benefit analysis documentation
+   - Security impact assessment
+   - Implementation guidelines creation
+
+5. Knowledge Integration & Automation
+   - Update infrastructure as code templates
+   - Create automated optimization rules
+   - Document lessons learned
+   - Share findings with DevOps community
+```
+
+#### Security Research Framework
+```markdown
+Infrastructure Security Research:
+1. Threat Modeling & Analysis
+   - Attack surface identification
+   - Vulnerability scanning effectiveness
+   - Security control performance measurement
+   - Compliance requirement analysis
+
+2. Security Optimization Implementation
+   - Security tool deployment and configuration
+   - Policy automation and enforcement
+   - Security monitoring setup
+   - Incident response procedure testing
+
+3. Effectiveness Measurement
+   - Security incident frequency analysis
+   - Mean time to detection (MTTD) optimization
+   - Mean time to response (MTTR) improvement
+   - Compliance audit success rate tracking
+```
+
+### Advanced Research TAG System
+
+#### DevOps Research TAG Types
+
+#### Research Documentation Examples
+```markdown
+- Research Question: Which serverless platform provides better performance/cost ratio?
+- Methodology: Identical API endpoints deployed across platforms, 1M requests testing
+- Findings: Railway 45% lower cost, 20% better P95 response time, 99.95% vs 99.9% uptime
+- Recommendations: Use Railway for full-stack applications, Lambda for event-driven workloads
+
+- Problem Identified: 45-minute pipeline time affecting deployment frequency
+- Solution Implemented: Parallel test execution, optimized Docker layer caching
+- Results: Reduced pipeline time to 18 minutes, 60% improvement in deployment velocity
+- Impact: 3x increase in daily deployments, improved developer productivity
+```
+
+### Infrastructure Automation Research
+
+#### Intelligent Auto-scaling
+- **Algorithm-Based Auto-scaling**:
+  - Statistical pattern analysis for scaling predictions
+  - Cost-aware optimization algorithms
+  - Performance threshold-based scaling
+  - Multi-resource optimization algorithms
+  - Seasonal and trend-based adaptation patterns
+
+#### Security Automation Research
+- **Automated Security Orchestration**:
+  - Vulnerability scanning automation
+  - Automated patch deployment optimization
+  - Security policy as code effectiveness
+  - Incident response automation studies
+  - Compliance checking automation
+
+### Industry Benchmarking Integration
+
+#### DevOps Metrics Research
+- **DORA Metrics Optimization**:
+  - Deployment frequency improvement studies
+  - Lead time for changes reduction research
+  - Mean time to recovery (MTTR) optimization
+  - Change failure rate reduction analysis
+
+- **DevOps Excellence Patterns**:
+  - High-performing DevOps teams characteristics
+  - Toolchain optimization studies
+  - Team productivity impact analysis
+  - Technology adoption effectiveness research
+
+### Community Knowledge Integration
+
+#### Open Source Research
+- **DevOps Tool Effectiveness Studies**:
+  - Open-source vs commercial tool comparison
+  - Tool integration performance analysis
+  - Community support effectiveness measurement
+  - Custom tool development ROI analysis
+
+#### Industry Collaboration Research
+- **Best Practice Validation**:
+  - Industry standard effectiveness measurement
+  - Emerging technology adoption studies
+  - Conference knowledge implementation
+  - Expert community insights integration
 
 ## 📚 Additional Resources
 
@@ -444,6 +645,12 @@ Next steps:
 - `moai-essentials-security` – Secrets management, vulnerability scanning
 - `moai-lang-python`, `moai-lang-typescript`, `moai-lang-go` – Framework-specific deployment
 
+**Research Resources**:
+- Context7 MCP for latest DevOps tool documentation
+- WebFetch for industry benchmarks and case studies
+- Cloud provider performance metrics and documentation
+- DevOps community forums and research papers
+
 **Documentation Links**:
 - Railway: https://docs.railway.app
 - Vercel: https://vercel.com/docs
@@ -451,7 +658,7 @@ Next steps:
 - Docker: https://docs.docker.com
 - Kubernetes: https://kubernetes.io/docs
 
-**Context Engineering**: Load SPEC, config.json, and `moai-domain-devops` Skill first. Fetch platform-specific Skills on-demand.
+**Context Engineering**: Load SPEC, config.json, and `moai-domain-devops` Skill first. Fetch platform-specific Skills on-demand. Integrate research findings into all infrastructure decisions.
 
 **No Time Predictions**: Avoid "2-3 days", "1 week". Use "Priority High/Medium/Low" or "Phase 1: Staging, Phase 2: Production" instead.
 

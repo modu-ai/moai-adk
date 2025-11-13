@@ -1,4 +1,3 @@
-# @TEST:PHASE-EXECUTOR-001 | SPEC: SPEC-TEST-COVERAGE-001.md
 """Integration tests for PhaseExecutor
 
 Tests 5-phase installation workflow:
@@ -94,9 +93,10 @@ class TestPreparationPhase:
         self, executor: PhaseExecutor, tmp_path: Path
     ) -> None:
         """Should create backup when MoAI files exist"""
-        # Create existing .moai directory
+        # Create existing .moai directory with config
         (tmp_path / ".moai").mkdir()
-        (tmp_path / ".moai" / "config.json").write_text("{}")
+        (tmp_path / ".moai" / "config").mkdir()
+        (tmp_path / ".moai" / "config" / "config.json").write_text("{}")
 
         executor.execute_preparation_phase(tmp_path, backup_enabled=True)
 
@@ -112,7 +112,8 @@ class TestPreparationPhase:
     ) -> None:
         """Should skip backup when backup_enabled=False"""
         (tmp_path / ".moai").mkdir()
-        (tmp_path / ".moai" / "config.json").write_text("{}")
+        (tmp_path / ".moai" / "config").mkdir()
+        (tmp_path / ".moai" / "config" / "config.json").write_text("{}")
 
         executor.execute_preparation_phase(tmp_path, backup_enabled=False)
 
@@ -257,7 +258,7 @@ class TestConfigurationPhase:
         created_files = executor.execute_configuration_phase(tmp_path, config)
 
         # Config file should be created
-        config_path = tmp_path / ".moai" / "config.json"
+        config_path = tmp_path / ".moai" / "config" / "config.json"
         assert config_path.exists()
         assert str(config_path) in created_files
 
@@ -278,7 +279,7 @@ class TestConfigurationPhase:
         executor.execute_configuration_phase(tmp_path, config)
 
         # Verify config content
-        config_path = tmp_path / ".moai" / "config.json"
+        config_path = tmp_path / ".moai" / "config" / "config.json"
         saved_config = json.loads(config_path.read_text())
 
         # Check project section
@@ -300,7 +301,8 @@ class TestValidationPhase:
         for directory in executor.REQUIRED_DIRECTORIES:
             (tmp_path / directory).mkdir(parents=True, exist_ok=True)
         (tmp_path / "CLAUDE.md").write_text("# Project")
-        (tmp_path / ".moai" / "config.json").write_text("{}")
+        (tmp_path / ".moai" / "config").mkdir(parents=True, exist_ok=True)
+        (tmp_path / ".moai" / "config" / "config.json").write_text("{}")
 
         # Create Alfred command files (SPEC-INIT-004)
         alfred_dir = tmp_path / ".claude" / "commands" / "alfred"
@@ -321,7 +323,8 @@ class TestValidationPhase:
         for directory in executor.REQUIRED_DIRECTORIES:
             (tmp_path / directory).mkdir(parents=True, exist_ok=True)
         (tmp_path / "CLAUDE.md").write_text("# Project")
-        (tmp_path / ".moai" / "config.json").write_text("{}")
+        (tmp_path / ".moai" / "config").mkdir(parents=True, exist_ok=True)
+        (tmp_path / ".moai" / "config" / "config.json").write_text("{}")
 
         # Create Alfred command files (SPEC-INIT-004)
         alfred_dir = tmp_path / ".claude" / "commands" / "alfred"
@@ -360,7 +363,8 @@ class TestValidationPhase:
         for directory in executor.REQUIRED_DIRECTORIES:
             (tmp_path / directory).mkdir(parents=True, exist_ok=True)
         (tmp_path / "CLAUDE.md").write_text("# Project")
-        (tmp_path / ".moai" / "config.json").write_text("{}")
+        (tmp_path / ".moai" / "config").mkdir(parents=True, exist_ok=True)
+        (tmp_path / ".moai" / "config" / "config.json").write_text("{}")
 
         # Create Alfred command files (SPEC-INIT-004)
         alfred_dir = tmp_path / ".claude" / "commands" / "alfred"
@@ -385,7 +389,8 @@ class TestValidationPhase:
         for directory in executor.REQUIRED_DIRECTORIES:
             (tmp_path / directory).mkdir(parents=True, exist_ok=True)
         (tmp_path / "CLAUDE.md").write_text("# Project")
-        (tmp_path / ".moai" / "config.json").write_text("{}")
+        (tmp_path / ".moai" / "config").mkdir(parents=True, exist_ok=True)
+        (tmp_path / ".moai" / "config" / "config.json").write_text("{}")
 
         # Create Alfred command files (SPEC-INIT-004)
         alfred_dir = tmp_path / ".claude" / "commands" / "alfred"

@@ -15,7 +15,7 @@
 #### Tier 1: CRITICAL (Always Load) — ~10K tokens
 
 **Must load at session start**:
-- `.moai/config.json` (project configuration)
+- `.moai/config/config.json` (project configuration)
 - `.moai/project/product.md` (business requirements)
 - `.moai/project/structure.md` (architecture design)
 - `.moai/project/tech.md` (technology stack)
@@ -202,7 +202,6 @@ Glob("src/**/*.py")
 Glob("src/auth/**/*.py")
 
 # ✅ BETTER: Search for specific patterns
-Grep("@CODE:AUTH-", path="src/")
 ```
 
 ---
@@ -251,7 +250,6 @@ Full SPEC content here...
 
 # ✅ GOOD: Reference SPEC by ID (50 tokens)
 See SPEC-AUTH-001 for detailed requirements.
-Related TAGs: @SPEC:AUTH-001, @CODE:AUTH-001, @TEST:AUTH-001
 ```
 
 ---

@@ -14,7 +14,6 @@ class TestWorkflowFileCreation:
 
     def test_workflow_file_creation(self):
         """Should create all 4 language-specific workflow templates"""
-        # @TAG:LANG-001 - Create workflow templates
         templates_dir = Path(__file__).parent.parent / "src" / "moai_adk" / "templates" / ".github" / "workflows"
 
         python_workflow = templates_dir / "python-tag-validation.yml"

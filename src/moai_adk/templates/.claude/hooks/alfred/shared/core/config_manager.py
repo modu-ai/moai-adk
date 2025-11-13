@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @CODE:HOOKS-CONFIG-001 | SPEC: HOOKS-STANDARDIZATION-003
 """Configuration Manager for Alfred Hooks
 
 Provides centralized configuration management with fallbacks and validation.
@@ -61,16 +60,7 @@ DEFAULT_CONFIG = {
         "git": {
             "timeout_seconds": 2
         },
-        "tag_rules": {
-            "config_file_path": ".moai/tag-rules.json"
-        },
-        "tag_validation": {
-            "default_code_extensions": [
-                ".py", ".ts", ".tsx", ".js", ".jsx", ".go", ".rs", ".java", ".kt",
-                ".rb", ".php", ".c", ".cpp", ".cs", ".swift", ".scala"
-            ]
-        },
-        "defaults": {
+                "defaults": {
             "timeout_ms": 5000,
             "graceful_degradation": True
         }
@@ -85,7 +75,7 @@ class ConfigManager:
         """Initialize configuration manager.
 
         Args:
-            config_path: Path to configuration file (defaults to .moai/config.json)
+            config_path: Path to configuration file (defaults to .moai/config/config.json)
         """
         self.config_path = config_path or Path.cwd() / ".moai" / "config.json"
         self._config = None
@@ -245,22 +235,7 @@ class ConfigManager:
         """
         return self.get("hooks.git", {})
 
-    def get_tag_rules_config(self) -> Dict[str, Any]:
-        """Get tag rules configuration.
-
-        Returns:
-            Tag rules configuration dictionary
-        """
-        return self.get("hooks.tag_rules", {})
-
-    def get_tag_validation_config(self) -> Dict[str, Any]:
-        """Get tag validation configuration.
-
-        Returns:
-            Tag validation configuration dictionary
-        """
-        return self.get("hooks.tag_validation", {})
-
+    
     def get_exit_code(self, exit_type: str) -> int:
         """Get exit code for specific exit type.
 

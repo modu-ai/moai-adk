@@ -9,20 +9,18 @@ allowed-tools:
 - MultiEdit
 - Bash(git:*)
 - Bash(gh:*)
-- Bash(python3:*)
+- Bash(uv:*)
 - Task
 - Grep
 - Glob
 - TodoWrite
+model: "haiku"
 ---
 
 # 📚 MoAI-ADK Step 3: Document Synchronization (+Optional PR Ready)
 
-> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
->
 > **Batched Design**: All AskUserQuestion calls follow batched design principles (1-4 questions per call) to minimize user interaction turns. See CLAUDE.md section "Alfred Command Completion Pattern" for details.
 
-<!-- @CODE:ALF-WORKFLOW-003:CMD-SYNC -->
 
 **4-Step Workflow Integration**: This command implements Step 4 of Alfred's workflow (Report & Commit with conditional report generation). See CLAUDE.md for full workflow details.
 
@@ -30,11 +28,25 @@ allowed-tools:
 
 ## 🎯 Command Purpose
 
-Synchronize code changes to Living Documents and verify @TAG system to ensure complete traceability.
+**CRITICAL**: This command orchestrates ONLY - delegates all sync work to doc-syncer agent
+
 
 **Document sync to**: $ARGUMENTS
 
-> **Standard workflow**: STEP 1 (Analysis & Planning) → User Approval → STEP 2 (Document Sync) → STEP 3 (Git Commit & PR)
+**Agent Delegation Pattern**:
+```bash
+# ✅ CORRECT: Delegate to doc-syncer agent
+Task(
+  subagent_type="doc-syncer",
+  description="Synchronize documentation for $ARGUMENTS",
+  prompt="You are the doc-syncer agent. Analyze changes and synchronize all relevant documentation."
+)
+
+# ❌ WRONG: Direct document manipulation
+Edit file.md "update documentation"
+```
+
+> **Standard workflow**: STEP 1 (Analysis & Planning) → User Approval → STEP 2 (Document Sync via Agent) → STEP 3 (Git Commit & PR)
 
 ---
 
@@ -63,9 +75,9 @@ This command supports **4 operational modes**:
 
 | Agent | Core Skill | Purpose |
 | ------------ | ------------------------------ | ------------------------------ |
-| tag-agent | `moai-alfred-tag-scanning` | Verify TAG system integrity |
+| quality-gate | `moai-alfred-trust-validation` | Verify project integrity |
 | quality-gate | `moai-alfred-trust-validation` | Check code quality before sync |
-| doc-syncer | `moai-alfred-tag-scanning` | Synchronize Living Documents |
+| doc-syncer | `moai-docs-sync` | Synchronize Living Documents |
 | git-manager | `moai-alfred-git-workflow` | Handle Git operations |
 
 **Note**: TUI Survey Skill is loaded once at Phase 0 and reused throughout all user interactions.
@@ -78,7 +90,7 @@ This command supports **4 operational modes**:
 ┌──────────────────────────────────────────────────────────┐
 │ PHASE 1: Analysis & Planning (tag-agent + doc-syncer)   │
 │  - Verify prerequisites                                  │
-│  - Analyze project status (Git + TAG)                    │
+│  - Analyze project status (Git + SPEC)                    │
 │  - Request user approval                                 │
 └──────────────────────────────────────────────────────────┘
                           ↓
@@ -92,7 +104,7 @@ This command supports **4 operational modes**:
 │ (doc-syncer + quality)  │   │ Exit (no changes)    │
 │  - Create backup        │   └──────────────────────┘
 │  - Sync documents       │
-│  - Verify TAGs          │
+│  - Verify SPECs          │
 └─────────────────────────┘
           ↓
 ┌──────────────────────────────────────────────────────────┐
@@ -109,15 +121,14 @@ This command supports **4 operational modes**:
 
 ## 🔧 PHASE 1: Analysis & Planning
 
-**Goal**: Gather project context, verify TAG system, and get user approval.
+**Goal**: Gather project context, verify project status, and get user approval.
 
 ### Step 1.1: Verify Prerequisites & Load Skills
 
 Execute these verification steps:
 
-1. **Load the TUI Skill immediately**:
-   - Invoke: `Skill("moai-alfred-ask-user-questions")`
-   - This enables interactive menus for all user interactions
+1. **TUI System Ready**:
+   - Interactive menus are available for all user interactions
 
 2. **Verify MoAI-ADK structure**:
    - Check: `.moai/` directory exists
@@ -158,7 +169,7 @@ Gather context for synchronization planning:
 
 4. **Handle status mode early exit**:
    - IF mode is `status` → Execute quick check only:
-     - Print current TAG health
+     - Print current project health
      - Print changed files count
      - Print recommendation
      - EXIT command (no further processing)
@@ -167,37 +178,21 @@ Gather context for synchronization planning:
 
 ---
 
-### Step 1.3: Invoke Tag-Agent for TAG Verification
+### Step 1.3: Project Status Verification
 
-**Your task**: Call tag-agent to verify TAG system integrity across entire project.
+**Your task**: Verify project status across entire project.
 
-Use Task tool:
-- `subagent_type`: "tag-agent"
-- `description`: "Verify TAG system across entire project"
-- `prompt`:
-  ```
-  Please perform comprehensive @TAG system verification across the entire project.
+**Required Scope**: Scan ALL source files, not just changed files.
 
-  **Required Scope**: Scan ALL source files, not just changed files.
+**Verification Items**:
+- Project integrity assessment
+- Issues detection and resolution
 
-  **Verification Items**:
-  1. @SPEC TAGs in .moai/specs/ directory
-  2. @TEST TAGs in tests/ directory
-  3. @CODE TAGs in src/ directory
-  4. @DOC TAGs in docs/ directory
+**Output Format**:
+- Complete list of issues with locations
+- Project integrity assessment (Healthy / Issues Detected)
 
-  **Orphan Detection** (Required):
-  - Detect @CODE TAGs with no matching @SPEC
-  - Detect @SPEC TAGs with no matching @CODE
-  - Detect @TEST TAGs with no matching @SPEC
-  - Detect @DOC TAGs with no matching @SPEC/@CODE
-
-  **Output Format**:
-  - Provide complete list of orphan TAGs with locations
-  - TAG chain integrity assessment (Healthy / Issues Detected)
-  ```
-
-**Store**: Response in `$TAG_VALIDATION_RESULTS`
+**Store**: Response in `$PROJECT_VALIDATION_RESULTS`
 
 ---
 
@@ -225,12 +220,12 @@ Use Task tool:
   Synchronization mode: [auto/force/status/project]
   Changed files: [from git diff]
 
-  TAG verification results: [from tag-agent]
+  Project verification results: [from analysis]
 
   Required output:
   1. Summary of documents to update
   2. SPEC documents requiring synchronization
-  3. TAG repairs needed
+  3. Project improvements needed
   4. Estimated work scope
 
   Ensure all document updates align with conversation_language setting.
@@ -259,11 +254,11 @@ Present synchronization plan and get user decision:
    🎯 Synchronization Strategy:
    - Living Documents: [list]
    - SPEC documents: [list]
-   - TAG repairs needed: [count]
+   - Project improvements needed: [count]
 
-   ⚠️ TAG System Status:
-   - TAG chain integrity: [Healthy / Issues]
-   - Orphan TAGs: [count]
+   ⚠️ Project Status:
+   - Project integrity: [Healthy / Issues]
+   - Project issues: [count]
    - Broken references: [count]
 
    ═══════════════════════════════════════════════════════
@@ -276,13 +271,13 @@ Present synchronization plan and get user decision:
    - `options`: 4 choices:
      1. "✅ Proceed with Sync" → Execute synchronization
      2. "🔄 Request Modifications" → Modify strategy
-     3. "🔍 Review Details" → See full TAG results
+     3. "🔍 Review Details" → See full project results
      4. "❌ Abort" → Cancel (no changes made)
 
 3. **Process user response**:
    - IF "Proceed" → Go to PHASE 2
    - IF "Modifications" → Ask for changes, re-run PHASE 1
-   - IF "Review Details" → Show TAG results, re-ask approval
+   - IF "Review Details" → Show project results, re-ask approval
    - IF "Abort" → Go to PHASE 4 (graceful exit)
 
 **Result**: User decision captured. Command proceeds or exits.
@@ -291,7 +286,7 @@ Present synchronization plan and get user decision:
 
 ## 🚀 PHASE 2: Execute Document Synchronization
 
-**Goal**: Synchronize documents with code changes, update TAGs, verify quality.
+**Goal**: Synchronize documents with code changes, update SPECs, verify quality.
 
 ### Step 2.1: Create Safety Backup
 
@@ -340,7 +335,7 @@ Use Task tool:
   **Execute the approved synchronization plan**:
 
   Previous analysis results:
-  - TAG verification: [from tag-agent]
+  - Project verification: [from tag-agent]
   - Synchronization strategy: [from doc-syncer analysis]
 
   **Task Instructions**:
@@ -351,15 +346,13 @@ Use Task tool:
      - Update README (if needed)
      - Synchronize Architecture documents
 
-  2. @TAG system updates:
-     - Update TAG index (.moai/indexes/tags.db)
-     - Repair orphan TAGs (if possible)
+     - Update SPEC index (.moai/indexes/tags.db)
+     - Fix project issues (if possible)
      - Restore broken references
 
   3. SPEC synchronization:
      - Ensure SPEC documents match implementation
      - Update EARS statements if needed
-     - Link @CODE/@TEST TAGs correctly
 
   4. Domain-based documentation:
      - Detect changed domains (frontend/backend/devops/database/ml/mobile)
@@ -367,7 +360,7 @@ Use Task tool:
 
   5. Generate synchronization report:
      - File location: .moai/reports/sync-report-$TIMESTAMP.md
-     - Include: Updated file list, TAG repairs, results summary
+     - Include: Updated file list, Project improvements, results summary
 
   **Important**: Use conversation_language for all document updates.
 
@@ -397,14 +390,13 @@ Use Task tool:
   **Task**: Verify that document synchronization meets TRUST 5 principles.
 
   Synchronization results: [from doc-syncer]
-  TAG validation: [from tag-agent]
 
   **Verification checks**:
-  1. Test First: Are all TAG chains complete?
+  1. Test First: Are all project links complete?
   2. Readable: Are documents well-formatted?
   3. Unified: Are all documents consistent?
   4. Secured: Are no credentials exposed?
-  5. Trackable: Are all TAGs properly linked?
+  5. Trackable: Are all SPECs properly linked?
 
   **Output**: PASS / FAIL with details
   ```
@@ -478,9 +470,9 @@ Use Task tool:
   Synchronized Living Documents:
   - [list from synchronization results]
 
-  TAG system updates:
+  Project updates:
   - [count] repairs completed
-  - TAG index updated
+  - SPEC index updated
 
   SPEC synchronization:
   - [count] SPECs updated
@@ -490,7 +482,6 @@ Use Task tool:
 
   Generated with Claude Code
 
-  Co-Authored-By: Alfred <alfred@mo.ai.kr>
 
   **Important**:
   - Pass commit message in HEREDOC format
@@ -568,19 +559,15 @@ Print comprehensive summary:
 - Scope: [scope]
 - Files updated: [count]
 - Files created: [count]
-- TAG repairs: [count]
+- Project improvements: [count]
 
 📚 Documents Updated:
 - Living Documents: [list]
 - SPEC documents: [list]
 - Domain-specific reports: [count]
 
-🔗 TAG System Status:
-- @SPEC TAGs: [count]
-- @CODE TAGs: [count]
-- @TEST TAGs: [count]
-- @DOC TAGs: [count]
-- TAG chain integrity: [PASS / WARNING]
+🔗 Project Status:
+- Project integrity: [PASS / WARNING]
 
 📄 Reports Generated:
 - Master sync report: .moai/reports/sync-report-$TIMESTAMP.md
@@ -639,7 +626,7 @@ Exit command with code 0.
 ## 📚 Quick Reference
 
 **For synchronization details, consult**:
-- `Skill("moai-alfred-tag-scanning")` - TAG system
+- `Skill("moai-alfred-trust-validation")` - Project validation
 - `Skill("moai-alfred-git-workflow")` - Git operations
 - `Skill("moai-alfred-trust-validation")` - Quality gates
 - CLAUDE.md - Full workflow documentation
@@ -648,3 +635,38 @@ Exit command with code 0.
 **Last Updated**: 2025-11-09
 **Total Lines**: ~800 (reduced from 2,096)
 **Architecture**: Commands → Agents → Skills
+
+---
+
+## Final Step: Next Action Selection
+
+After documentation synchronization completes, use AskUserQuestion tool to guide user to next action:
+
+```python
+AskUserQuestion({
+    "questions": [{
+        "question": "Documentation synchronization is complete. What would you like to do next?",
+        "header": "Next Steps",
+        "multiSelect": false,
+        "options": [
+            {
+                "label": "Develop New Feature",
+                "description": "Execute /alfred:1-plan to plan new feature"
+            },
+            {
+                "label": "Process PR Merge",
+                "description": "Review and merge Pull Request"
+            },
+            {
+                "label": "Complete Workflow",
+                "description": "Complete current work and clean up session"
+            }
+        ]
+    }]
+})
+```
+
+**Important**:
+- Use conversation language from config
+- No emojis in any AskUserQuestion fields
+- Always provide clear next step options

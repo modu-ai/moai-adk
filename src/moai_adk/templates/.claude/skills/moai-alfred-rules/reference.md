@@ -1,539 +1,305 @@
-# CLAUDE-RULES.md
+# moai-alfred-rules Reference (v4.0.0)
 
-> MoAI-ADK Mandatory Rules & Standards
+## 공식 자료 & 링크 (November 2025 Enterprise Standard)
+
+### Architecture & Design Patterns
+
+| 자료 | 링크 | 설명 |
+|-----|------|------|
+| **Agentic AI Design Patterns 2025** | https://www.infoq.com/articles/agentic-ai-architecture-framework/ | Enterprise agent architecture patterns |
+| **ReAct Framework** | https://arxiv.org/abs/2210.03629 | Reasoning + Acting patterns |
+| **Multi-Agent Orchestration** | https://infoq.com/news/2025/10/ai-agent-orchestration/ | Agent coordination patterns |
+
+### TDD & Testing
+
+| 자료 | 링크 | 설명 |
+|-----|------|------|
+| **pytest Documentation** | https://docs.pytest.org/ | Test framework & best practices |
+| **TDD Best Practices** | https://martinfowler.com/bliki/TestDrivenDevelopment.html | Martin Fowler on TDD |
+| **Coverage.py** | https://coverage.readthedocs.io/ | Code coverage measurement |
+
+### Code Quality Standards
+
+| 자료 | 링크 | 설명 |
+|-----|------|------|
+| **SOLID Principles** | https://en.wikipedia.org/wiki/SOLID | Object-oriented design principles |
+| **Clean Code** | https://www.oreilly.com/library/view/clean-code-a/9780136083238/ | Robert Martin's clean code guide |
+| **OWASP Top 10** | https://owasp.org/www-project-top-ten/ | Security vulnerabilities |
+
+### Git & Version Control
+
+| 자료 | 링크 | 설명 |
+|-----|------|------|
+| **Conventional Commits** | https://www.conventionalcommits.org/ | Commit message standard |
+| **Git Flow** | https://nvie.com/posts/a-successful-git-branching-model/ | Branching model |
+| **Semantic Versioning** | https://semver.org/ | Version numbering standard |
 
 ---
 
-## For Alfred: Why This Document Matters
+## 아키텍처 규칙 매트릭스
 
-When Alfred reads this document:
-1. Before invoking a Skill - "Is this Skill invocation mandatory or optional?"
-2. When user questions are ambiguous - "Should I use AskUserQuestion in this situation?"
-3. When verifying code - "Have all TRUST 5 principles been followed?"
-4. Before git commits - "Is this commit message format correct?"
-5. When checking TAG chain integrity - "Have TAG rules been followed?"
+### Command vs Agent vs Skill
 
-Alfred's Decision Making:
-- "Must I invoke a Skill in this situation?"
-- "Should I execute AskUserQuestion for the user's ambiguous question?"
-- "Does this code/commit comply with all our rules?"
-
-After reading this document:
-- Understand 10 mandatory Skill invocation scenarios
-- Master 5 mandatory situations for AskUserQuestion
-- Apply TRUST 5's 5 quality gates
-- Master TAG rules and validation methods
-
----
-→ Related Documents:
-- [For Agent selection criteria, see CLAUDE-AGENTS-GUIDE.md](./CLAUDE-AGENTS-GUIDE.md#agent-selection-decision-tree)
-- [For specific execution examples, see CLAUDE-PRACTICES.md](./CLAUDE-PRACTICES.md#practical-workflow-examples)
+| 계층 | 책임 | 금지 | 필수 |
+|-----|------|------|------|
+| **Command** | 조율만 | bash 직접 실행, Skill 호출 | Task() 위임 |
+| **Agent** | 도메인 전문, 계획/실행 | 상태 유지, 다른 Agent 직접 호출 | Skill 호출, 분석/결정 |
+| **Skill** | 재사용 가능 playbook | Task() 실행, 다른 Skill 호출 | Read, Glob, Grep |
 
 ---
 
-## 🎯 Skill Invocation Rules 
+## 10 Mandatory Skills 참조 매트릭스
 
-### ✅ Mandatory Skill Explicit Invocation
+| # | Skill | 호출 조건 | 반환값 |
+|---|-------|---------|--------|
+| 1 | moai-foundation-trust | TRUST 5 검증 필요 | Score + violations |
+| 3 | moai-foundation-specs | SPEC 작성/검증 | Template + validation |
+| 4 | moai-foundation-ears | EARS 형식 필요 | Format guide |
+| 5 | moai-foundation-git | Git 워크플로우 | Branch + commit rules |
+| 6 | moai-foundation-langs | 언어 감지 | Language + framework |
+| 7 | moai-essentials-debug | 디버깅 필요 | Error analysis |
+| 8 | moai-essentials-refactor | 코드 개선 | Refactoring suggestions |
+| 9 | moai-essentials-perf | 성능 최적화 | Optimization tips |
+| 10 | moai-essentials-review | 코드 리뷰 | Quality report |
 
-**CRITICAL**: All 55 Skills in MoAI-ADK must be invoked **explicitly** using the `Skill("skill-name")` syntax. DO NOT use direct tools (Bash, Grep, Read) when a dedicated Skill exists for the task.
+---
 
-| **User Request Keywords** | **Skill to Invoke** | **Invocation Pattern** | **Prohibited Actions** |
-|----------------------|-------------------|----------------------|-------------------|
-| TRUST validation, code quality check, quality gate, coverage check, test coverage | `moai-foundation-trust` | `Skill("moai-foundation-trust")` | ❌ Direct ruff/mypy |
-| TAG validation, tag check, orphan detection, TAG scan, TAG chain | `moai-foundation-tags` | `Skill("moai-foundation-tags")` | ❌ Direct rg search |
-| SPEC validation, spec check, SPEC metadata, spec authoring | `moai-foundation-specs` | `Skill("moai-foundation-specs")` | ❌ Direct YAML reading |
-| EARS syntax, requirement authoring, requirement formatting | `moai-foundation-ears` | `Skill("moai-foundation-ears")` | ❌ Generic templates |
-| Git workflow, branch management, PR policy, commit strategy | `moai-foundation-git` | `Skill("moai-foundation-git")` | ❌ Direct git commands |
-| Language detection, stack detection, framework identification | `moai-foundation-langs` | `Skill("moai-foundation-langs")` | ❌ Manual detection |
-| Debugging, error analysis, bug fix, exception handling | `moai-essentials-debug` | `Skill("moai-essentials-debug")` | ❌ Generic diagnostics |
-| Refactoring, code improvement, code cleanup, design patterns | `moai-essentials-refactor` | `Skill("moai-essentials-refactor")` | ❌ Direct modifications |
-| Performance optimization, profiling, bottleneck analysis | `moai-essentials-perf` | `Skill("moai-essentials-perf")` | ❌ Guesswork |
-| Code review, quality review, architecture review, security review | `moai-essentials-review` | `Skill("moai-essentials-review")` | ❌ Generic review |
+## AskUserQuestion 패턴 체크리스트
 
-### Skill Tier Overview (55 Total Skills)
-
-| **Tier** | **Count** | **Purpose** | **Auto-Trigger Conditions** |
-|----------|-----------|------------|--------------------------|
-| **Foundation** | 6 | Core TRUST/TAG/SPEC/EARS/Git/Language principles | Keyword detection in user request |
-| **Essentials** | 4 | Debug/Perf/Refactor/Review workflows | Error detection, refactor triggers |
-| **Alfred** | 11 | Workflow orchestration (SPEC authoring, TDD, sync, Git) | Command execution (`/alfred:*`) |
-| **Domain** | 10 | Backend, Frontend, Web API, Database, Security, DevOps, Data Science, ML, Mobile, CLI | Domain-specific keywords |
-| **Language** | 23 | Python, TypeScript, Go, Rust, Java, Kotlin, Swift, Dart, C/C++, C#, Scala, Ruby, PHP, JavaScript, SQL, Shell, and more | File extension detection (`.py`, `.ts`, `.go`, etc.) |
-| **Ops** | 1 | Claude Code session settings, output styles | Session start/configuration |
-
-### Progressive Disclosure Pattern
-
-All Skills follow the **Progressive Disclosure** principle:
-
-1. **Metadata** (always available): Skill name, description, triggers, keywords
-2. **Content** (on-demand): Full SKILL.md loads when explicitly invoked via `Skill("name")`
-3. **Supporting** (JIT): Templates, examples, and resources load only when needed
-
-### 🌍 Language Boundary in Skill Invocation
-
-**CRITICAL: Three-Layer Language Rule**
+### 사용 여부 결정 트리
 
 ```
-Layer 1: User Conversation
-├─ ALWAYS: Use user's configured conversation_language
-├─ Example: Korean user → respond in Korean only
-├─ Example: Japanese user → respond in Japanese only
-└─ Includes: questions, explanations, all dialogue
-
-Layer 2: Internal Operations ← THE KEY DIFFERENCE
-├─ Task() prompts → **English**
-├─ Skill() invocations → **English**
-├─ Sub-agent communication → **English**
-├─ Git commits → **English**
-├─ Error messages (internal) → **English**
-└─ ALL technical instructions → **English**
-
-Layer 3: Skills & Code
-├─ Descriptions → English only
-├─ Examples → English only
-├─ Code comments → English only
-└─ ✅ NO multilingual versions needed!
+User Intent Clear?
+├─ YES → 계속 진행
+└─ NO → AskUserQuestion 사용
+    ├─ Tech stack unclear? → 옵션 제시
+    ├─ Architecture decision? → 트레이드오프 설명
+    ├─ Intent ambiguous? → 명확화 질문
+    ├─ Component impact? → 영향도 확인
+    └─ Resource constraints? → 제약 조건 확인
 ```
 
-**Why This Works**:
-- ✅ **100% Reliability**: English prompts always match English Skill keywords = guaranteed activation
-- ✅ **Zero Maintenance**: 55 Skills in English only (no 55 × N language variants)
-- ✅ **Infinite Scalability**: Add Korean/Japanese/Spanish/Russian/any language with ZERO Skill modifications
-- ✅ **Industry Standard**: Localized UI + English backend = standard i18n pattern (like Netflix, Google, AWS)
+### 올바른 형식
 
-**The Golden Rule**:
-```
-User Language ≠ Internal Language
-                ↓
-        100% Skill Match Guaranteed
-        English-only Skills = Complete Scalability!
-```
-
-**Sub-agent Implementation Example**:
-```
-User Input (any language):  "Create authentication system"  / "認証システムを実装"  / "Implementar sistema de autenticación"
-     ↓
-Alfred (internal):          "Implement authentication system"
-     ↓
-Task(prompt="Create JWT authentication SPEC with 30-minute token expiry",
-     subagent_type="spec-builder")
-     ↓
-spec-builder (receives English):
-  Skill("moai-foundation-specs") ← 100% match!
-  Skill("moai-foundation-ears") ← 100% match!
-     ↓
-Alfred (receives):          English SPEC output
-     ↓
-Alfred (translates):        User's language response
-     ↓
-User Receives:              Response in their configured language
-```
-
-### Explicit Invocation Syntax
-
-**Standard Pattern**:
 ```python
-Skill("skill-name")  # Invoke any Skill explicitly
+AskUserQuestion({
+  question: "명확한 질문 (한글)",
+  header: "카테고리",
+  multiSelect: false,
+  options: [
+    {
+      label: "옵션 1",
+      description: "설명"
+    },
+    {
+      label: "옵션 2",
+      description: "설명"
+    }
+  ]
+})
 ```
 
-**With Context** (recommended):
+---
+
+## TRUST 5 Gate Validation Checklist
+
+### Test Coverage
+
+```bash
+# Coverage 측정
+pytest --cov=src tests/
+
+# 목표: ≥ 85%
+# 확인: 모든 브랜치 커버
+```
+
+### Readable (가독성)
+
+```bash
+# 형식 검사
+black --check src/
+flake8 src/
+pylint src/
+
+# 타입 검사
+mypy src/
+```
+
+### Unified (일관성)
+
+```bash
+# Import 순서
+isort --check src/
+
+# Linting
+pylint src/
+
+# 중복 확인
+radon cc src/  # Cyclomatic complexity
+```
+
+### Secured (보안)
+
+```bash
+# 보안 스캔
+bandit -r src/
+
+# 의존성 취약점
+safety check
+
+# 비밀 검사
+detect-secrets scan
+```
+
+
+```bash
+grep -r "@[A-Z]+-[0-9]\+" .
+
+# 체인 검증
+# SPEC, TEST, CODE, COMMIT 모두 포함?
+```
+
+---
+
+## 커밋 메시지 형식 예제
+
+### RED (테스트 작성)
+
+```
+
+- Implement test_successful_login()
+- Implement test_invalid_credentials()
+- Implement test_expired_token()
+
+All tests RED (expected to fail at this stage).
+```
+
+### GREEN (구현)
+
+```
+
+- Add authenticate_user() function
+- Add JWT token generation
+- Add credential validation
+- Add error handling
+
+All tests now GREEN (passing).
+```
+
+### REFACTOR (최적화)
+
+```
+
+- Extract token validation to separate function
+- Add in-memory cache for user lookups
+- Improve error messages for better UX
+- Add type hints for clarity
+
+All tests PASSING (quality improved, tests still pass).
+```
+
+---
+
+## Agent Delegation 패턴
+
+### 정책 결정 → Delegation
+
 ```python
-# Example: Validate code quality
-Skill("moai-foundation-trust")
+# 패턴 1: 계획 필요
+if planning_required:
+    Task(
+        subagent_type="plan-agent",
+        description="Break down this feature",
+        prompt="Create detailed plan with risks, timeline, dependencies"
+    )
 
-# Example: Debug runtime error
-Skill("moai-essentials-debug")
-```
+# 패턴 2: 코드 개발
+if code_needed:
+    Task(
+        subagent_type="tdd-implementer",
+        description="Implement feature X",
+    )
 
-### Example Workflows Using Explicit Skill Invocation
+# 패턴 3: 테스트
+if testing_needed:
+    Task(
+        subagent_type="test-engineer",
+        description="Write tests for feature X",
+        prompt="Achieve 85%+ coverage, test edge cases"
+    )
 
-**Workflow 1: Code Quality Validation (TRUST 5)**
-```
-User: "Check code quality"
-    ↓
-Invoke: Skill("moai-foundation-trust")
-    → Verify Test First: pytest coverage ≥85%
-    → Verify Readable: ruff lint + linter checks
-    → Verify Unified: mypy type safety
-    → Verify Secured: security scanner (trivy)
-    → Verify Trackable: @TAG chain validation
-    → Return: Quality report with TRUST 5-principles
-```
+# 패턴 4: 문서화
+if docs_needed:
+    Task(
+        subagent_type="doc-syncer",
+        description="Document feature X",
+    )
 
-**Workflow 2: TAG Orphan Detection (Full Project)**
-```
-User: "Find all TAG orphans in the project"
-    ↓
-Invoke: Skill("moai-foundation-tags")
-    → Scan entire project: .moai/specs/, tests/, src/, docs/
-    → Detect @CODE without @SPEC
-    → Detect @SPEC without @CODE
-    → Detect @TEST without @SPEC
-    → Detect @DOC without @SPEC/@CODE
-    → Return: Complete orphan report with locations
-```
-
-**Workflow 3: SPEC Authoring with EARS**
-```
-User: "Create AUTH-001 JWT authentication SPEC"
-    ↓
-Invoke: Skill("moai-foundation-specs")
-    → Validate SPEC structure (YAML metadata, HISTORY)
-    ↓
-Invoke: Skill("moai-foundation-ears")
-    → Format requirements using EARS syntax
-    → Ubiquitous: "The system must provide JWT-based authentication"
-    → Event: "WHEN valid credentials provided, THEN issue JWT token"
-    → Constraints: "Token expiration ≤ 30 minutes"
-    ↓
-Return: Properly formatted SPEC file with @SPEC:AUTH-001 TAG
-```
-
-**Workflow 4: Debugging with Error Context**
-```
-User: "TypeError: Cannot read property 'name' of undefined"
-    ↓
-Invoke: Skill("moai-essentials-debug")
-    → Analyze stack trace
-    → Identify root cause: null/undefined object access
-    → Check related SPEC: @SPEC:USER-003
-    → Check missing test cases: @TEST:USER-003
-    → Suggest fix: Add null check, update test
-    → Recommend: Re-run /alfred:2-run
+# 패턴 5: Git 커밋
+if commit_needed:
+    Task(
+        subagent_type="git-manager",
+        description="Commit changes",
+    )
 ```
 
 ---
 
-## 🎯 Interactive Question Rules
+## TAG 무결성 검증 스크립트
 
-### Mandatory AskUserQuestion Usage
+```python
+# tag_validator.py
 
-**IMPORTANT**: When the user needs to make a **choice** or **decision**, you **MUST** use AskUserQuestion. DO NOT make assumptions or implement directly.
+import re
+from pathlib import Path
 
-| Situation Type | Examples | Invocation | Required |
-|---------------|----------|------------|----------|
-| **Multiple valid approaches exist** | Database choice (PostgreSQL vs MongoDB), state management library (Redux vs Zustand), test framework selection | `AskUserQuestion(...)` | ✅ Required |
-| **Architecture/design decisions** | Microservices vs monolithic, client-side vs server-side rendering, authentication method (JWT vs OAuth) | `AskUserQuestion(...)` | ✅ Required |
-| **Ambiguous or high-level requirements** | "Add a dashboard", "Optimize performance", "Add multi-language support" | `AskUserQuestion(...)` | ✅ Required |
-| **Requests affecting existing components** | Refactoring scope, backward compatibility, migration strategy | `AskUserQuestion(...)` | ✅ Required |
-| **User experience/business logic decisions** | UI layout, data display method, workflow order | `AskUserQuestion(...)` | ✅ Required |
+TAG_PATTERN = r'@[A-Z]+-\d{3}'
 
-### Optional AskUserQuestion Usage
+def find_all_tags(directory):
+    tags = {}
+    for file in Path(directory).rglob('*'):
+        if file.is_file() and file.suffix in ['.py', '.md', '.txt']:
+            content = file.read_text()
+            matches = re.findall(TAG_PATTERN, content)
+            for tag in matches:
+                if tag not in tags:
+                    tags[tag] = []
+                tags[tag].append(str(file))
+    return tags
 
-You can proceed without AskUserQuestion in the following situations:
+def validate_tag_chain(tags):
+    """Validate complete TAG chains"""
+    issues = []
+    
+    for tag, files in tags.items():
+        has_spec = any('spec' in f.lower() for f in files)
+        has_test = any('test' in f.lower() for f in files)
+        has_code = any('src' in f for f in files)
+        has_commit = any('.git' in f for f in files)
+        
+        if not has_spec:
+            issues.append(f"{tag}: Missing SPEC definition")
+        if not has_test:
+            issues.append(f"{tag}: Missing TEST")
+        if not has_code:
+            issues.append(f"{tag}: Missing CODE")
+    
+    return issues
 
-- ✅ User has already provided clear instructions
-- ✅ Standard conventions or best practices are obvious
-- ✅ Technical constraints allow only one approach
-- ✅ User explicitly states "just implement it, I've already decided"
-
-### Example: Correct AskUserQuestion Usage
-
-#### ❌ **Incorrect Response** (Making assumptions)
-
-```
-User: "Add a dashboard page"
-
-Claude: [Proceeding without asking]
-- Tech: React + TypeScript
-- Layout: Left sidebar + main content
-- Chart library: Recharts
-- Data source: Direct REST API calls
-
-Starting implementation...
-```
-
-**Problem**: High risk of rework due to not understanding actual user intent.
-
-#### ✅ **Correct Response** (Asking questions)
-
-```
-User: "Add a dashboard page"
-
-Claude: I'll need to clarify a few decisions for the dashboard implementation.
-
-AskUserQuestion(...)
-
-[Example questions]
-- "Data source?" → [REST API | GraphQL | Local state]
-- "Primary chart type?" → [Time series | Category comparison | Distribution]
-- "Real-time updates needed?" → [Yes | No | Every 10 seconds]
-- "Access restrictions?" → [Admin only | Logged-in users | Public]
-
-[After user responses]
-Confirmed selections:
-- Data: REST API
-- Charts: Time series
-- Real-time: No
-- Access: Logged-in users
-
-Now implementing based on these requirements...
-```
-
-**Benefits**: Clear intent understanding, minimized rework, accurate implementation.
-
-### Best Practices for AskUserQuestion
-
-1. **Limit to 3-5 questions**
-   - ✅ "Choose from 3 mutually exclusive options"
-   - ❌ "10+ options" (user fatigue)
-
-2. **Options must be specific**
-   - ✅ "PostgreSQL (ACID, JSON support)", "MongoDB (horizontal scaling, flexible schema)"
-   - ❌ "Database 1", "Database 2"
-
-3. **Always include "Other" option**
-   - User's choice may not be listed
-   - "Other" allows custom input
-
-4. **Summary step after selection**
-   - Display user selections summary
-   - "Proceed with these choices?" final confirmation
-
-5. **Integrate with Context Engineering**
-   - Analyze existing code/SPEC before AskUserQuestion
-   - Provide context like "Your project currently uses X"
-
-### When NOT to Use AskUserQuestion
-
-❌ When user has already given specific instructions:
-```
-User: "Implement state management using Zustand"
-→ AskUserQuestion unnecessary (already decided)
-```
-
-❌ When only one technical choice exists:
-```
-User: "Improve type safety in TypeScript"
-→ AskUserQuestion unnecessary (type system is fixed)
+if __name__ == "__main__":
+    tags = find_all_tags(".")
+    issues = validate_tag_chain(tags)
+    
+    if issues:
+        print("TAG Chain Issues Found:")
+        for issue in issues:
+            print(f"  - {issue}")
+    else:
+        print("All TAG chains valid!")
 ```
 
 ---
 
-## Alfred's Next-Step Suggestion Principles
-
-### Pre-suggestion Checklist
-
-Before suggesting the next step, always verify:
-- You have the latest status from agents.
-- All blockers are documented with context.
-- Required approvals or user confirmations are noted.
-- Suggested tasks include clear owners and outcomes.
-- There is at most one "must-do" suggestion per step.
-
-**cc-manager validation sequence**
-
-1. **SPEC** – Confirm the SPEC file exists and note its status (`draft`, `active`, `completed`, `archived`). If missing, queue `/alfred:1-plan`.
-2. **TEST & CODE** – Check whether tests and implementation files exist and whether the latest test run passed. Address failing tests before proposing new work.
-3. **DOCS & TAGS** – Ensure `/alfred:3-sync` is not pending, Living Docs and TAG chains are current, and no orphan TAGs remain.
-4. **GIT & PR** – Review the current branch, Draft/Ready PR state, and uncommitted changes. Highlight required Git actions explicitly.
-5. **BLOCKERS & APPROVALS** – List outstanding approvals, unanswered questions, TodoWrite items, or dependency risks.
-
-> cc-manager enforces this order. Reference the most recent status output when replying, and call out the next mandatory action (or confirm that all gates have passed).
-
-### Poor Suggestion Examples (❌)
-
-- Suggesting tasks already completed.
-- Mixing unrelated actions in one suggestion.
-- Proposing work without explaining the problem or expected result.
-- Ignoring known blockers or assumptions.
-
-### Good Suggestion Examples (✅)
-
-- Link the suggestion to a clear goal or risk mitigation.
-- Reference evidence (logs, diffs, test output).
-- Provide concrete next steps with estimated effort.
-
-### Suggestion Restrictions
-
-- Do not recommend direct commits; always go through review.
-- Avoid introducing new scope without confirming priority.
-- Never suppress warnings or tests without review.
-- Do not rely on manual verification when automation exists.
-
-### Suggestion Priorities
-
-1. Resolve production blockers → 2. Restore failing tests → 3. Close gaps against SPEC → 4. Improve DX/automation.
-
----
-
-## Error Message Standard (Shared)
-
-### Severity Icons
-
-- 🔴 Critical failure (stop immediately)
-- 🟠 Major issue (needs immediate attention)
-- 🟡 Warning (monitor closely)
-- 🔵 Info (no action needed)
-
-### Message Format
-
-```
-🔴 <Title>
-- Cause: <root cause>
-- Scope: <affected components>
-- Evidence: <logs/screenshots/links>
-- Next Step: <required action>
-```
-
----
-
-## Git Commit Message Standard (Locale-aware)
-
-### TDD Stage Commit Templates
-
-| Stage    | Template                                                   |
-| -------- | ---------------------------------------------------------- |
-| RED      | `test: add failing test for <feature>`                     |
-| GREEN    | `feat: implement <feature> to pass tests`                  |
-| REFACTOR | `refactor: clean up <component> without changing behavior` |
-
-### Commit Structure
-
-```
-<type>(scope): <subject>
-
-- Context of the change
-- Additional notes (optional)
-
-Refs: @TAG-ID (if applicable)
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: 🎩 Alfred@[MoAI](https://adk.mo.ai.kr)
-```
-
-**Signature Standard**: All git commits created through MoAI-ADK are attributed to **🎩 Alfred@[MoAI](https://adk.mo.ai.kr)**, the MoAI SuperAgent orchestrating all Git operations. This ensures clear traceability and accountability for all automated workflows.
-
----
-
-## @TAG Lifecycle
-
-### Core Principles
-
-- TAG IDs never change once assigned.
-- Content can evolve; log updates in HISTORY.
-- Tie implementations and tests to the same TAG.
-
-### TAG Structure
-
-- `@SPEC:ID` in specs
-- `@CODE:ID` in source
-- `@TEST:ID` in tests
-- `@DOC:ID` in docs
-
-### TAG Block Template
-
-```
-// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: tests/auth/service.test.ts
-```
-
-### HISTORY Example
-
-```
-### v0.0.1 (2025-09-15)
-
-- **INITIAL**: Draft the JWT-based authentication SPEC.
-```
-
-### TAG Core Rules
-
-- **TAG ID**: `<Domain>-<3 digits>` (e.g., `AUTH-003`) — immutable.
-- **TAG Content**: Flexible but record changes in HISTORY.
-- **Versioning**: Semantic Versioning (`v0.0.1 → v0.1.0 → v1.0.0`).
-  - Detailed rules: see `@.moai/memory/SPEC-METADATA.md#versioning`.
-- **TAG References**: Use file names without versions (e.g., `SPEC-AUTH-001.md`).
-- **Duplicate Check**: `rg "@SPEC:AUTH" -n` or `rg "AUTH-001" -n`.
-- **Code-first**: The source of truth lives in code.
-
-### @CODE Subcategories (Comment Level)
-
-- `@CODE:ID:API` — REST/GraphQL endpoints
-- `@CODE:ID:UI` — Components and UI
-- `@CODE:ID:DATA` — Data models, schemas, types
-- `@CODE:ID:DOMAIN` — Business logic
-- `@CODE:ID:INFRA` — Infra, databases, integrations
-
-### TAG Validation & Integrity
-
-**Avoid duplicates**:
-```bash
-rg "@SPEC:AUTH" -n          # Search AUTH specs
-rg "@CODE:AUTH-001" -n      # Targeted ID search
-rg "AUTH-001" -n            # Global ID search
-```
-
-**TAG chain verification** (`/alfred:3-sync` runs automatically):
-```bash
-rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/
-
-# Detect orphaned TAGs
-rg '@CODE:AUTH-001' -n src/          # CODE exists
-rg '@SPEC:AUTH-001' -n .moai/specs/  # SPEC missing → orphan
-```
-
----
-
-## TRUST 5 Principles (Language-agnostic)
-
-> Detailed guide: `@.moai/memory/DEVELOPMENT-GUIDE.md#trust-5-principles`
-
-Alfred enforces these quality gates on every change:
-
-- **T**est First: Use the best testing tool per language (Jest/Vitest, pytest, go test, cargo test, JUnit, flutter test, ...).
-- **R**eadable: Run linters (ESLint/Biome, ruff, golint, clippy, dart analyze, ...).
-- **U**nified: Ensure type safety or runtime validation.
-- **S**ecured: Apply security/static analysis tools.
-- **T**rackable: Maintain @TAG coverage directly in code.
-
-**Language-specific guidance**: `.moai/memory/DEVELOPMENT-GUIDE.md#trust-5-principles`.
-
----
-
-## Language-specific Code Rules
-
-**Global constraints**:
-- Files ≤ 300 LOC
-- Functions ≤ 50 LOC
-- Parameters ≤ 5
-- Cyclomatic complexity ≤ 10
-
-**Quality targets**:
-- Test coverage ≥ 85%
-- Intent-revealing names
-- Early guard clauses
-- Use language-standard tooling
-
-**Testing strategy**:
-- Prefer the standard framework per language
-- Keep tests isolated and deterministic
-- Derive cases directly from the SPEC
-
----
-
-## TDD Workflow Checklist
-
-**Step 1: SPEC authoring** (`/alfred:1-plan`)
-- [ ] Create `.moai/specs/SPEC-<ID>/spec.md` (with directory structure)
-- [ ] Add YAML front matter (id, version: 0.0.1, status: draft, created)
-- [ ] Include the `@SPEC:ID` TAG
-- [ ] Write the **HISTORY** section (v0.0.1 INITIAL)
-- [ ] Use EARS syntax for requirements
-- [ ] Check for duplicate IDs: `rg "@SPEC:<ID>" -n`
-
-**Step 2: TDD implementation** (`/alfred:2-run`)
-- [ ] **RED**: Write `@TEST:ID` under `tests/` and watch it fail
-- [ ] **GREEN**: Add `@CODE:ID` under `src/` and make the test pass
-- [ ] **REFACTOR**: Improve code quality; document TDD history in comments
-- [ ] List SPEC/TEST file paths in the TAG block
-
-**Step 3: Documentation sync** (`/alfred:3-sync`)
-- [ ] Scan TAGs: `rg '@(SPEC|TEST|CODE):' -n`
-- [ ] Ensure no orphan TAGs remain
-- [ ] Regenerate the Living Document
-- [ ] Move PR status from Draft → Ready
-
----
-
-**Last Updated**: 2025-10-27
-**Document Version**: v1.0.0
+**최종 업데이트**: 2025-11-12
+**버전**: 4.0.0
+**유지보수자**: GoosLab

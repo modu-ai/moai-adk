@@ -7,31 +7,34 @@ Purpose: Automatically detect and propose configuration updates
 Execution: Triggered automatically when Claude Code session begins
 
 Features:
-- Check if .moai/config.json exists
+- Check if .moai/config/config.json exists
 - Verify configuration completeness
 - Detect stale configurations (older than 30 days)
 - Suggest updates via interactive prompt
 - Propose re-running /alfred:0-project if necessary
 """
 
+import importlib.metadata
 import json
-import subprocess
 import sys
 import time
+import urllib.request
+import urllib.error
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Optional
 
 
 def check_config_exists() -> bool:
-    """Check if .moai/config.json exists"""
-    config_path = Path.cwd() / ".moai" / "config.json"
+    """Check if .moai/config/config.json exists"""
+    config_path = Path.cwd() / ".moai" / "config" / "config.json"
     return config_path.exists()
 
 
 def get_config_data() -> Optional[dict[str, Any]]:
-    """Read and parse .moai/config.json"""
+    """Read and parse .moai/config/config.json"""
     try:
-        config_path = Path.cwd() / ".moai" / "config.json"
+        config_path = Path.cwd() / ".moai" / "config" / "config.json"
         if not config_path.exists():
             return None
         return json.loads(config_path.read_text())
@@ -42,7 +45,7 @@ def get_config_data() -> Optional[dict[str, Any]]:
 def get_config_age() -> Optional[int]:
     """Get configuration file age in days"""
     try:
-        config_path = Path.cwd() / ".moai" / "config.json"
+        config_path = Path.cwd() / ".moai" / "config" / "config.json"
         if not config_path.exists():
             return None
 
@@ -79,56 +82,146 @@ def check_config_completeness(config: dict[str, Any]) -> tuple[bool, list[str]]:
     return len(missing_fields) == 0, missing_fields
 
 
-def check_moai_version_match() -> tuple[bool, Optional[str], Optional[str]]:
-    """Check if .moai/config.json version matches installed moai-adk version
+def get_version_cache_file() -> Path:
+    """Get path to version cache file"""
+    cache_dir = Path.cwd() / ".moai" / "cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    return cache_dir / "version-check.json"
+
+
+def load_version_cache() -> Optional[dict[str, Any]]:
+    """Load version check cache if valid (< 24 hours old)
 
     Returns:
-        (is_matched, config_version, installed_version)
+        Cached version data if valid, None otherwise
     """
     try:
-        # Get installed moai-adk version
-        result = subprocess.run(
-            ["moai-adk", "--version"],
-            capture_output=True,
-            text=True,
-            timeout=3
-        )
+        cache_file = get_version_cache_file()
+        if not cache_file.exists():
+            return None
 
-        installed_version = None
-        if result.returncode == 0:
-            # Parse version from output (e.g., "0.21.1")
-            version_line = result.stdout.strip()
-            if "version" in version_line.lower():
-                parts = version_line.split()
-                for part in parts:
-                    if part[0].isdigit():
-                        installed_version = part
-                        break
+        cache_data = json.loads(cache_file.read_text())
+        last_check = cache_data.get("last_check")
 
-        # Get config version
-        config = get_config_data()
-        if not config:
-            return False, None, installed_version
+        if not last_check:
+            return None
 
-        config_version = config.get("moai", {}).get("version")
+        # Parse timestamp and check if < 24 hours old
+        last_check_dt = datetime.fromisoformat(last_check)
+        if datetime.now() - last_check_dt < timedelta(hours=24):
+            return cache_data
 
-        if installed_version and config_version:
-            is_matched = installed_version == config_version
-            return is_matched, config_version, installed_version
+        return None
+    except Exception:
+        return None
 
-        return False, config_version, installed_version
+
+def save_version_cache(data: dict[str, Any]) -> None:
+    """Save version check cache with timestamp"""
+    try:
+        cache_file = get_version_cache_file()
+        cache_file.parent.mkdir(parents=True, exist_ok=True)
+
+        cache_data = {
+            **data,
+            "last_check": datetime.now().isoformat()
+        }
+        cache_file.write_text(json.dumps(cache_data, indent=2))
+    except Exception:
+        pass  # Silently fail on cache write
+
+
+def get_latest_pypi_version() -> Optional[str]:
+    """Check latest moai-adk version from PyPI with caching
+
+    Uses 24-hour cache to avoid repeated PyPI API calls.
+    Falls back to cached data if API call fails.
+
+    Returns:
+        Latest version string or None if check fails
+    """
+    # Try cache first
+    cached = load_version_cache()
+    if cached and cached.get("latest"):
+        return cached["latest"]
+
+    try:
+        # Use PyPI JSON API (faster than pip index)
+        url = "https://pypi.org/pypi/moai-adk/json"
+        with urllib.request.urlopen(url, timeout=3) as response:
+            data = json.loads(response.read().decode())
+            latest = data.get("info", {}).get("version")
+
+            if latest:
+                # Save to cache
+                save_version_cache({"latest": latest})
+                return latest
+    except (urllib.error.URLError, Exception):
+        # Fall back to cached version if available
+        if cached and cached.get("latest"):
+            return cached["latest"]
+
+    return None
+
+
+def get_installed_version() -> Optional[str]:
+    """Get installed moai-adk version using importlib.metadata
+
+    Returns:
+        Version string or None if package not installed
+    """
+    try:
+        return importlib.metadata.version("moai-adk")
+    except importlib.metadata.PackageNotFoundError:
+        return None
+
+
+def check_moai_version_match() -> tuple[bool, Optional[str], Optional[str], Optional[str]]:
+    """Check installed moai-adk version and available updates
+
+    Uses importlib.metadata for fast version detection.
+
+    Returns:
+        (is_matched, installed_version, latest_version, status_message)
+    """
+    try:
+        # Get installed moai-adk version (no subprocess, ~10ms)
+        installed_version = get_installed_version()
+
+        if not installed_version:
+            return False, None, None, None
+
+        # Get latest version from PyPI (cached, ~1ms after first call)
+        latest_version = get_latest_pypi_version()
+
+        if latest_version:
+            is_matched = installed_version == latest_version
+            if is_matched:
+                status = f"✅ Version: {installed_version} (latest)"
+            else:
+                status = f"⚠️  Version: {installed_version} → {latest_version} update available (run moai-adk update)"
+            return is_matched, installed_version, latest_version, status
+        else:
+            # Can't check PyPI, just show installed version
+            return True, installed_version, None, f"✅ Version: {installed_version}"
 
     except Exception:
-        return False, None, None
+        return False, None, None, None
 
 
 def generate_config_report() -> str:
-    """Generate configuration health check report"""
+    """Generate configuration health check report
+
+    Only shows warnings if problems exist:
+    - Missing configuration sections
+    - Configuration file age > 30 days
+    - Version mismatch (only if configuration incomplete)
+    """
     report_lines = []
 
     # Check 1: Configuration exists
     if not check_config_exists():
-        report_lines.append("❌ 프로젝트 설정 없음 - /alfred:0-project을(를) 실행해야 합니다")
+        report_lines.append("❌ Configuration not found - run /alfred:0-project to initialize")
         return "\n".join(report_lines)
 
     config = get_config_data()
@@ -136,32 +229,57 @@ def generate_config_report() -> str:
     # Check 2: Configuration completeness
     is_complete, missing_fields = check_config_completeness(config or {})
     if not is_complete:
-        report_lines.append(f"⚠️  설정 누락: {', '.join(missing_fields)}")
-    else:
-        report_lines.append("✅ 설정 완성됨")
+        report_lines.append(f"⚠️ Missing configuration: {', '.join(missing_fields)}")
 
-    # Check 3: Configuration age
+    # Check 3: Configuration age (only warn if > 30 days)
     config_age = get_config_age()
-    if config_age is not None:
-        if config_age > 30:
-            report_lines.append(f"⏰ 설정 오래됨: {config_age}일 전 (업데이트 권장)")
-        elif config_age > 7:
-            report_lines.append(f"⏰ 설정 업데이트: {config_age}일 전")
-        else:
-            report_lines.append(f"✅ 최근 설정: {config_age}일 전")
+    if config_age is not None and config_age > 30:
+        report_lines.append(f"⏰ Configuration outdated: {config_age} days old (update recommended)")
 
-    # Check 4: Version match
-    is_matched, config_version, installed_version = check_moai_version_match()
-    if installed_version and config_version:
-        if is_matched:
-            report_lines.append(f"✅ 버전 일치: {installed_version}")
-        else:
-            report_lines.append(
-                f"⚠️  버전 불일치: 설정 {config_version} vs 설치됨 {installed_version} "
-                f"- /alfred:0-project 실행 권장"
-            )
+    # Check 4: Version status (only show if configuration is incomplete)
+    if not is_complete:
+        is_matched, installed_version, latest_version, status_message = check_moai_version_match()
+        if status_message:
+            report_lines.append(status_message)
 
+    # If no issues found, return empty (will not display health check section)
     return "\n".join(report_lines)
+
+
+def should_suppress_setup() -> bool:
+    """Determine whether setup messages should be suppressed.
+
+    Returns:
+        bool: True if setup should be suppressed, False otherwise
+    """
+    config = get_config_data()
+    if not config:
+        # No config, don't suppress
+        return False
+
+    session_config = config.get("session", {})
+    suppress = session_config.get("suppress_setup_messages", False)
+
+    if not suppress:
+        # Flag is False, don't suppress
+        return False
+
+    # Flag is True, check time threshold (7 days)
+    suppressed_at_str = session_config.get("setup_messages_suppressed_at")
+    if not suppressed_at_str:
+        # No timestamp, suppress
+        return True
+
+    try:
+        suppressed_at = datetime.fromisoformat(suppressed_at_str)
+        now = datetime.now(suppressed_at.tzinfo) if suppressed_at.tzinfo else datetime.now()
+        days_passed = (now - suppressed_at).days
+
+        # Suppress if less than 7 days have passed
+        return days_passed < 7
+    except (ValueError, TypeError):
+        # If timestamp is invalid, don't suppress (show messages)
+        return False
 
 
 def should_suggest_update() -> bool:
@@ -191,7 +309,7 @@ def should_suggest_update() -> bool:
         return True
 
     # Check version match
-    is_matched, _, _ = check_moai_version_match()
+    is_matched, _, _, _ = check_moai_version_match()
     if not is_matched:
         return True
 
@@ -213,17 +331,29 @@ def main() -> None:
         input_data = sys.stdin.read()
         _data = json.loads(input_data) if input_data.strip() else {}
 
+        # Check if setup messages should be suppressed
+        is_suppressed = should_suppress_setup()
+
         # Generate configuration report
         config_report = generate_config_report()
 
-        # Check if we should suggest update
+        # Determine system message
         should_update = should_suggest_update()
 
-        # Build system message with health check report
-        system_message = f"📋 Configuration Health Check:\n{config_report}"
+        # Build system message based on report content
+        if config_report.strip():
+            # Report has content, show it with proper formatting
+            system_message = f"📋 Configuration Health Check\n{config_report}"
 
-        if should_update:
-            system_message += "\n\n⚠️  Configuration issues detected. Please take action."
+            if should_update:
+                system_message += "\n⚠️ Configuration issues detected. Please take action."
+        else:
+            # No issues found, return empty message (suppresses health check section)
+            system_message = ""
+
+        if is_suppressed and not should_update:
+            # Suppressed and no issues detected
+            system_message = ""
 
         # Prepare response
         result: dict[str, Any] = {

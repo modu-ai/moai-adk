@@ -1,4 +1,3 @@
-# @TEST:GIT-COMMIT-001 | SPEC: SPEC-TEST-COVERAGE-001.md
 """Unit tests for git/commit.py module
 
 Tests for commit message formatting utilities.

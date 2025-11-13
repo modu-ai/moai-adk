@@ -1,64 +1,65 @@
 {
   "companyAnnouncements": [
-    "Start with a plan: Write down what you want to build first to avoid confusion (/alfred:1-plan)",
-    "✅ 5 promises: Test-first + Easy-to-read code + Clean organization + Secure + Trackable",
-    "Task list: Continuous progress tracking ensures nothing gets missed",
-    "Language separation: We communicate in your language, computers understand in English",
-    "Everything connected: Plan→Test→Code→Docs are all linked together",
-    "⚡ Parallel processing: Independent tasks can be handled simultaneously",
-    "Tools first: Find the right tools before starting any work",
-    "Step by step: What you want→Plan→Execute→Report results",
-    "Auto-generated lists: Planning automatically creates task lists",
-    "❓ Ask when confused: If something isn't clear, just ask right away",
-    "🧪 Automatic quality checks: Code automatically verified against 5 core principles",
-    "Multi-language support: Automatic validation for Python, JavaScript, and more",
-    "⚡ Never stops: Can continue even when tools are unavailable",
-    "Flexible approach: Choose between team collaboration or individual work as needed",
-    "🧹 Auto cleanup: Automatically removes unnecessary items when work is complete",
-    "⚡ Quick updates: New versions detected in 3 seconds, only fetch what's needed",
-    "On-demand loading: Only loads current tools to save memory",
-    "Complete history: All steps from planning to code are recorded for easy reference",
-    "Bug reporting: File bug reports to GitHub in 30 seconds",
-    "🩺 Health check: Use 'moai-adk doctor' to instantly check current status",
-    "Safe updates: Use 'moai-adk update' to safely add new features",
-    "🧹 When work is done: Use '/clear' to clean up conversation for the next task"
+    "SPEC-First: Use /alfred:1-plan to define requirements first and everything connects together",
+    "TDD Cycle: RED (write tests) → GREEN (minimal code) → REFACTOR (improve) ensures quality",
+    "4-Phase Workflow: /alfred:1-plan plan → /alfred:2-run implement → /alfred:3-sync validate → git deploy",
+    "TRUST 5 Principles: Test(≥85%) + Readable + Unified + Secured(OWASP) + Trackable = Quality",
+    "Alfred Agents: 19 expert team members automatically handle planning, implementation, testing, validation",
+    "Conversation Style: /output-style r2d2 (hands-on partner) or /output-style yoda (deep learning) available",
+    "Task Tracking: TodoWrite keeps progress visible and prevents any tasks from being missed",
+    "55+ Skill Library: Verified patterns and best practices enable hallucination-free implementation",
+    "Auto Validation: After coding, TRUST 5, test coverage, and security checks run automatically",
+    "GitFlow Strategy: feature/SPEC-XXX → develop → main structure for safe deployment pipeline",
+    "Context7 Updates: All library versions stay current with real-time API information",
+    "Parallel Processing: Independent tasks (tests, docs, deployment) run simultaneously to save time",
+    "Health Check: moai-adk doctor diagnoses configuration, version, and dependency issues in seconds",
+    "Doc Sync: /alfred:3-sync auto synchronizes tests, code, and documentation automatically",
+    "Language Separation: Communicate in your language, write code in project language, package in English",
+    "Multi-language Support: Korean, English, Japanese, Spanish, and 25+ languages for conversation",
+    "Safe Updates: moai-adk update brings new features automatically while preserving existing settings",
+    "Auto Cleanup: Session end automatically cleans .moai/temp/ cache and logs to save space",
+    "Error Recovery: Failed commits and merge conflicts are auto-analyzed with solutions provided",
+    "Security First: Environment variables, API keys, and credentials auto-added to .gitignore for protection",
+    "Context Optimization: Efficient use of 200K token window enables handling of large projects",
+    "Quick Feedback: Questions? Ask immediately - Alfred interprets intent and clarifies automatically",
+    "Clean Exit: End sessions with /clear to reset context and prepare for the next task"
   ],
   "hooks": {
     "SessionStart": [
       {
         "hooks": [
           {
-            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/alfred/session_start__show_project_info.py",
             "type": "command",
-            "description": "Display project info and language configuration at session start"
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session_start__show_project_info.py"
+          },
+          {
+            "type": "command",
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session_start__config_health_check.py"
           }
         ]
       }
     ],
     "PreToolUse": [
       {
+        "matcher": "Edit|Write|MultiEdit",
         "hooks": [
           {
-            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/alfred/pre_tool__auto_checkpoint.py",
             "type": "command",
-            "description": "Create automatic checkpoint before file modifications"
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/pre_tool__auto_checkpoint.py"
           },
-          {
-            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/alfred/pre_tool__auto_spec_proposal.py",
+            {
             "type": "command",
-            "description": "Automatically propose SPEC generation on code file creation/modification"
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/pre_tool__auto_spec_proposal.py"
           }
-        ],
-        "matcher": "Edit|Write|MultiEdit"
+        ]
       }
     ],
     "UserPromptSubmit": [
       {
         "hooks": [
           {
-            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/alfred/user_prompt__jit_load_docs.py",
             "type": "command",
-            "description": "Load documentation on-demand based on user intent"
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/user_prompt__jit_load_docs.py"
           }
         ]
       }
@@ -67,23 +68,10 @@
       {
         "hooks": [
           {
-            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/alfred/session_end__cleanup.py",
             "type": "command",
-            "description": "Clean up session state and temporary files"
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session_end__auto_cleanup.py"
           }
         ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "hooks": [
-          {
-            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/alfred/post_tool__log_changes.py",
-            "type": "command",
-            "description": "Log file changes for audit and tracking"
-          }
-        ],
-        "matcher": "Edit|Write|MultiEdit"
       }
     ]
   },
@@ -117,7 +105,6 @@
       "Bash(which:*)",
       "Bash(make:*)",
       "Bash(python:*)",
-      "Bash(python3:*)",
       "Bash(uv:*)",
       "Bash(pytest:*)",
       "Bash(mypy:*)",
@@ -139,7 +126,11 @@
       "Bash(diff:*)",
       "Bash(wc:*)",
       "Bash(sort:*)",
-      "Bash(uniq:*)"
+      "Bash(uniq:*)",
+      "Bash(xargs:*)",
+      "Bash(comm:*)",
+      "Bash(lsof:*)",
+      "Bash(time:*)"
     ],
     "ask": [
       "Bash(git add:*)",
@@ -187,10 +178,9 @@
     ]
   },
   "statusLine": {
-    "enabled": true,
     "type": "command",
-    "command": "uv run {{PROJECT_DIR}}/.moai/scripts/statusline.py"
+    "command": "uv run $CLAUDE_PROJECT_DIR/.moai/scripts/statusline.py"
   },
   "spinnerTipsEnabled": true,
-  "outputStyle": "streaming"
+  "outputStyle": "🤖 R2-D2"
 }

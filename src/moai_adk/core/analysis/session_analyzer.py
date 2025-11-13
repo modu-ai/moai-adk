@@ -74,7 +74,7 @@ class SessionAnalyzer:
 
             try:
                 # Handle both JSON and JSONL formats
-                if session_file.suffix == '.jsonl':
+                if session_file.suffix == ".jsonl":
                     # JSONL format: read line by line
                     sessions = []
                     with open(session_file, encoding="utf-8") as f:
@@ -86,7 +86,9 @@ class SessionAnalyzer:
                                     sessions.append(session)
                                 except json.JSONDecodeError as e:
                                     if self.verbose:
-                                        print(f"⚠️ Error reading line {line_num} in {session_file}: {e}")
+                                        print(
+                                            f"⚠️ Error reading line {line_num} in {session_file}: {e}"
+                                        )
 
                     # Analyze each session from the JSONL file
                     for session in sessions:
@@ -118,13 +120,28 @@ class SessionAnalyzer:
             summary = cast(str, session.get("summary", "")).lower()
 
             # Simple analysis of session summaries
-            if any(keyword in summary for keyword in ["error", "fail", "issue", "problem"]):
-                self.patterns["failed_sessions"] = cast(int, self.patterns["failed_sessions"]) + 1
-                tool_failures = cast(defaultdict[str, int], self.patterns["tool_failures"])
+            if any(
+                keyword in summary for keyword in ["error", "fail", "issue", "problem"]
+            ):
+                self.patterns["failed_sessions"] = (
+                    cast(int, self.patterns["failed_sessions"]) + 1
+                )
+                tool_failures = cast(
+                    defaultdict[str, int], self.patterns["tool_failures"]
+                )
                 tool_failures["session_error_in_summary"] += 1
 
             # Extract potential tool usage from summary
-            tool_keywords = ["test", "build", "deploy", "analyze", "create", "update", "fix", "check"]
+            tool_keywords = [
+                "test",
+                "build",
+                "deploy",
+                "analyze",
+                "create",
+                "update",
+                "fix",
+                "check",
+            ]
             tool_usage = cast(defaultdict[str, int], self.patterns["tool_usage"])
             for keyword in tool_keywords:
                 if keyword in summary:
@@ -136,7 +153,9 @@ class SessionAnalyzer:
 
         # Handle detailed event format (legacy session-*.json format)
         events = cast(list[Dict[str, Any]], session.get("events", []))
-        self.patterns["total_events"] = cast(int, self.patterns["total_events"]) + len(events)
+        self.patterns["total_events"] = cast(int, self.patterns["total_events"]) + len(
+            events
+        )
 
         has_error = False
 
@@ -152,20 +171,26 @@ class SessionAnalyzer:
             # Tool error patterns
             elif event_type == "tool_error":
                 error_msg = cast(str, event.get("error", "unknown error"))
-                tool_failures = cast(defaultdict[str, int], self.patterns["tool_failures"])
+                tool_failures = cast(
+                    defaultdict[str, int], self.patterns["tool_failures"]
+                )
                 tool_failures[error_msg[:50]] += 1  # First 50 characters
                 has_error = True
 
             # Permission requests
             elif event_type == "permission_request":
                 perm_type = cast(str, event.get("permission_type", "unknown"))
-                perm_requests = cast(defaultdict[str, int], self.patterns["permission_requests"])
+                perm_requests = cast(
+                    defaultdict[str, int], self.patterns["permission_requests"]
+                )
                 perm_requests[perm_type] += 1
 
             # Hook failures
             elif event_type == "hook_failure":
                 hook_name = cast(str, event.get("hook_name", "unknown"))
-                hook_failures = cast(defaultdict[str, int], self.patterns["hook_failures"])
+                hook_failures = cast(
+                    defaultdict[str, int], self.patterns["hook_failures"]
+                )
                 hook_failures[hook_name] += 1
                 has_error = True
 
@@ -174,11 +199,15 @@ class SessionAnalyzer:
                 cmd_str = cast(str, event.get("command", "")).split()
                 if cmd_str:
                     cmd = cmd_str[0]
-                    cmd_freq = cast(defaultdict[str, int], self.patterns["command_frequency"])
+                    cmd_freq = cast(
+                        defaultdict[str, int], self.patterns["command_frequency"]
+                    )
                     cmd_freq[cmd] += 1
 
         if has_error:
-            self.patterns["failed_sessions"] = cast(int, self.patterns["failed_sessions"]) + 1
+            self.patterns["failed_sessions"] = (
+                cast(int, self.patterns["failed_sessions"]) + 1
+            )
 
     def generate_report(self) -> str:
         """
@@ -223,9 +252,7 @@ class SessionAnalyzer:
 
         # Top tool usage
         tool_usage = cast(defaultdict[str, int], self.patterns["tool_usage"])
-        sorted_tools = sorted(
-            tool_usage.items(), key=lambda x: x[1], reverse=True
-        )
+        sorted_tools = sorted(tool_usage.items(), key=lambda x: x[1], reverse=True)
 
         report += "| Tool | Usage Count |\n|------|----------|\n"
         for tool, count in sorted_tools[:10]:
@@ -264,7 +291,9 @@ class SessionAnalyzer:
         # Permission request analysis
         report += "\n## Permission Request Patterns\n\n"
 
-        perm_requests = cast(defaultdict[str, int], self.patterns["permission_requests"])
+        perm_requests = cast(
+            defaultdict[str, int], self.patterns["permission_requests"]
+        )
         if perm_requests:
             sorted_perms = sorted(
                 perm_requests.items(),
@@ -293,7 +322,9 @@ class SessionAnalyzer:
         suggestions: list[str] = []
 
         # High permission requests - review permission settings
-        perm_requests = cast(defaultdict[str, int], self.patterns["permission_requests"])
+        perm_requests = cast(
+            defaultdict[str, int], self.patterns["permission_requests"]
+        )
         if perm_requests:
             top_perm = max(
                 perm_requests.items(),
@@ -360,7 +391,9 @@ class SessionAnalyzer:
 
         return "\n\n".join(suggestions)
 
-    def save_report(self, output_path: Optional[Path] = None, project_path: Optional[Path] = None) -> Path:
+    def save_report(
+        self, output_path: Optional[Path] = None, project_path: Optional[Path] = None
+    ) -> Path:
         """
         Save report to file
 
@@ -401,8 +434,6 @@ class SessionAnalyzer:
             self.patterns["success_rate"] = (
                 (total_sessions - failed_sessions) / total_sessions * 100
             )
-            self.patterns["average_session_length"] = (
-                total_events / total_sessions
-            )
+            self.patterns["average_session_length"] = total_events / total_sessions
 
         return self.patterns.copy()

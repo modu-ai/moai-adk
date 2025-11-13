@@ -1,4 +1,3 @@
-# @CODE:TEMPLATE-BACKUP-001 | SPEC: SPEC-INIT-003/spec.md | Chain: TEMPLATE-001
 """Template backup manager (SPEC-INIT-003 v0.3.0).
 
 Creates and manages backups to protect user data during template updates.

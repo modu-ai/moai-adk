@@ -1,6 +1,4 @@
-# @TEST:AUTH-004
 
-# SPEC:@SPEC:AUTH-004
 
 import unittest
 

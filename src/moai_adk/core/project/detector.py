@@ -1,6 +1,3 @@
-# @CODE:CORE-PROJECT-001 | SPEC: SPEC-CORE-PROJECT-001.md | TEST: tests/unit/test_language_detector.py
-# @CODE:LANG-DETECT-001 | SPEC: SPEC-LANG-DETECT-001.md | TEST: tests/unit/test_detector.py
-# @CODE:LDE-EXTENDED-001 | SPEC: SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md | \
 # TEST: tests/unit/test_language_detector_extended.py
 """Language detector module.
 
@@ -24,11 +21,9 @@ class LanguageDetector:
     """
 
     LANGUAGE_PATTERNS = {
-        # @CODE:LDE-PRIORITY-001 | SPEC: SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md
         # Priority order (highest to lowest):
         # 1. Rust, 2. Dart, 3. Swift, 4. Kotlin, 5. C#, 6. Java, 7. Ruby, 8. PHP
         # 9. Go, 10. Python, 11. TypeScript, 12. JavaScript, 13. C++, 14. C, 15. Shell
-
         "rust": ["*.rs", "Cargo.toml"],
         "dart": ["*.dart", "pubspec.yaml"],
         "swift": ["*.swift", "Package.swift"],
@@ -36,22 +31,21 @@ class LanguageDetector:
         "csharp": ["*.cs", "*.csproj"],
         "java": ["*.java", "pom.xml", "build.gradle"],
         # Ruby moved for priority (Rails detection)
-        # @CODE:LANG-DETECT-RUBY-001 | SPEC: Issue #51 Language Detection Fix
         "ruby": [
             "*.rb",
             "Gemfile",
-            "Gemfile.lock",           # Bundler: lock file (unique to Ruby)
-            "config/routes.rb",       # Rails: routing file (unique identifier)
-            "app/controllers/",       # Rails: controller directory
-            "Rakefile"                # Rails/Ruby: task file
+            "Gemfile.lock",  # Bundler: lock file (unique to Ruby)
+            "config/routes.rb",  # Rails: routing file (unique identifier)
+            "app/controllers/",  # Rails: controller directory
+            "Rakefile",  # Rails/Ruby: task file
         ],
         # PHP after Ruby (Laravel detection)
         "php": [
             "*.php",
             "composer.json",
-            "artisan",                # Laravel: CLI tool (unique identifier)
-            "app/",                   # Laravel: application directory
-            "bootstrap/laravel.php"   # Laravel: bootstrap file
+            "artisan",  # Laravel: CLI tool (unique identifier)
+            "app/",  # Laravel: application directory
+            "bootstrap/laravel.php",  # Laravel: bootstrap file
         ],
         "go": ["*.go", "go.mod"],
         "python": ["*.py", "pyproject.toml", "requirements.txt", "setup.py"],
@@ -129,7 +123,6 @@ class LanguageDetector:
     def get_workflow_template_path(self, language: str) -> str:
         """Get the GitHub Actions workflow template path for a language.
 
-        @CODE:LDE-WORKFLOW-PATH-001 | SPEC: SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md
 
         Args:
             language: Programming language name (lowercase).
@@ -140,36 +133,22 @@ class LanguageDetector:
         Raises:
             ValueError: If language is not supported for workflows.
         """
-        workflow_mapping = {
-            "python": ".github/workflows/python-tag-validation.yml",
-            "javascript": ".github/workflows/javascript-tag-validation.yml",
-            "typescript": ".github/workflows/typescript-tag-validation.yml",
-            "go": ".github/workflows/go-tag-validation.yml",
-            "ruby": ".github/workflows/ruby-tag-validation.yml",
-            "php": ".github/workflows/php-tag-validation.yml",
-            "java": ".github/workflows/java-tag-validation.yml",
-            "rust": ".github/workflows/rust-tag-validation.yml",
-            "dart": ".github/workflows/dart-tag-validation.yml",
-            "swift": ".github/workflows/swift-tag-validation.yml",
-            "kotlin": ".github/workflows/kotlin-tag-validation.yml",
-            "csharp": ".github/workflows/csharp-tag-validation.yml",
-            "c": ".github/workflows/c-tag-validation.yml",
-            "cpp": ".github/workflows/cpp-tag-validation.yml",
-            "shell": ".github/workflows/shell-tag-validation.yml",
+        # Language-specific workflow template mapping
+        workflow_templates = {
+            "python": "python-tag-validation.yml",
+            "javascript": "javascript-tag-validation.yml",
+            "typescript": "typescript-tag-validation.yml",
+            "go": "go-tag-validation.yml",
         }
 
-        if language.lower() not in workflow_mapping:
-            raise ValueError(
-                f"Unsupported language: {language}. "
-                f"Supported languages: {', '.join(workflow_mapping.keys())}"
-            )
+        if language not in workflow_templates:
+            raise ValueError(f"Language '{language}' is not supported for workflows")
 
-        return workflow_mapping[language.lower()]
+        return workflow_templates[language]
 
     def detect_package_manager(self, path: str | Path = ".") -> str | None:
         """Detect the package manager for the detected language.
 
-        @CODE:LDE-PKG-MGR-001 | SPEC: SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md
 
         Args:
             path: Directory to inspect.
@@ -233,10 +212,11 @@ class LanguageDetector:
 
         return None
 
-    def detect_build_tool(self, path: str | Path = ".", language: str | None = None) -> str | None:
+    def detect_build_tool(
+        self, path: str | Path = ".", language: str | None = None
+    ) -> str | None:
         """Detect the build tool for the detected language.
 
-        @CODE:LDE-BUILD-TOOL-001 | SPEC: SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md
 
         Args:
             path: Directory to inspect.
@@ -279,7 +259,6 @@ class LanguageDetector:
     def get_supported_languages_for_workflows(self) -> list[str]:
         """Get the list of languages with dedicated CI/CD workflow support.
 
-        @CODE:LDE-SUPPORTED-LANGS-001 | SPEC: SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md
 
         Returns:
             List of supported language names (15 total).

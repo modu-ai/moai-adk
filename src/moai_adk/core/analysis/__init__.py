@@ -1,7 +1,7 @@
 """
 MoAI-ADK Analysis Module
 
-Claude Code 세션 분석 및 메타 분석 기능 제공
+Provides Claude Code session analysis and meta-analysis capabilities
 """
 
 from .session_analyzer import SessionAnalyzer

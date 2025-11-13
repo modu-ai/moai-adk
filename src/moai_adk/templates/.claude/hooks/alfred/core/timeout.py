@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @CODE:BUGFIX-001:CROSS-PLATFORM-TIMEOUT | SPEC: SPEC-BUGFIX-001
 """Cross-Platform Timeout Handler for Windows & Unix Compatibility
 
 Provides a unified timeout mechanism that works on both Windows (threading-based)

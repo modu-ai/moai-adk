@@ -1,4 +1,3 @@
-# @CODE:LOGGER-MAIN-001 | @SPEC:LOGGER-MAIN-001 | @TEST:LOGGER-MAIN-001 | SPEC: SPEC-LOGGING-001/spec.md | TEST: tests/unit/test_logger.py
 """
 Logging system built on Python's logging module
 
@@ -36,10 +35,12 @@ class SensitiveDataFilter(logging.Filter):
         API Key: ***REDACTED***
     """
 
-    # @CODE:LOGGER-MAIN-001 | @SPEC:LOGGER-MAIN-001 | @TEST:LOGGER-MAIN-001:DOMAIN - Define sensitive data patterns
     PATTERNS = [
         (r"sk-[a-zA-Z0-9]+", "***REDACTED***"),  # API Key
-        (r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", "***REDACTED***"),  # Email
+        (
+            r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
+            "***REDACTED***",
+        ),  # Email
         (r"(?i)(password|passwd|pwd)[\s:=]+\S+", r"\1: ***REDACTED***"),  # Password
     ]
 
@@ -107,7 +108,6 @@ def setup_logger(
         - Sensitive data (API Key, Email, Password) is automatically masked.
         - Existing handlers are removed to prevent duplicates.
     """
-    # @CODE:LOGGER-MAIN-001 | @SPEC:LOGGER-MAIN-001 | @TEST:LOGGER-MAIN-001:DOMAIN - Determine logging level
     if level is None:
         env = os.getenv("MOAI_ENV", "").lower()
         level_map = {
@@ -117,31 +117,26 @@ def setup_logger(
         }
         level = level_map.get(env, logging.INFO)
 
-    # @CODE:LOGGER-MAIN-001 | @SPEC:LOGGER-MAIN-001 | @TEST:LOGGER-MAIN-001:INFRA - Create and configure logger
     logger = logging.getLogger(name)
     logger.setLevel(level)
     logger.handlers.clear()  # Remove existing handlers to avoid duplicates
 
-    # @CODE:LOGGER-MAIN-001 | @SPEC:LOGGER-MAIN-001 | @TEST:LOGGER-MAIN-001:INFRA - Ensure log directory exists
     if log_dir is None:
         log_dir = ".moai/logs"
     log_path = Path(log_dir)
     log_path.mkdir(parents=True, exist_ok=True)
 
-    # @CODE:LOGGER-MAIN-001 | @SPEC:LOGGER-MAIN-001 | @TEST:LOGGER-MAIN-001:INFRA - Define log format
     formatter = logging.Formatter(
         fmt="[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    # @CODE:LOGGER-MAIN-001 | @SPEC:LOGGER-MAIN-001 | @TEST:LOGGER-MAIN-001:INFRA - Console handler
     console_handler = logging.StreamHandler()
     console_handler.setLevel(level)
     console_handler.setFormatter(formatter)
     console_handler.addFilter(SensitiveDataFilter())
     logger.addHandler(console_handler)
 
-    # @CODE:LOGGER-MAIN-001 | @SPEC:LOGGER-MAIN-001 | @TEST:LOGGER-MAIN-001:INFRA - File handler
     log_file = log_path / "moai.log"
     file_handler = logging.FileHandler(log_file, encoding="utf-8")
     file_handler.setLevel(level)

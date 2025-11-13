@@ -1,0 +1,85 @@
+# MoAI-ADK Statusline Configuration for Claude Code
+# Integrated statusline configuration for Claude Code
+#
+
+statusline:
+  enabled: true
+
+  # Display mode: compact (80 chars) | extended (120 chars) | minimal (40 chars)
+  mode: "extended"
+
+  # Refresh interval in milliseconds (Claude Code API limitation: 300ms)
+  refresh_interval_ms: 300
+
+  # Color configuration
+  colors:
+    enabled: true
+    theme: "auto"  # auto | light | dark | high-contrast
+    palette:
+      model: "38;5;33"        # Blue
+      output_style: "38;5;219"   # Pink/Magenta
+      feature_branch: "38;5;226"   # Yellow
+      develop_branch: "38;5;51"    # Cyan
+      main_branch: "38;5;46"       # Green
+      staged: "38;5;46"            # Green
+      modified: "38;5;208"         # Orange
+      untracked: "38;5;196"        # Red
+      update_available: "38;5;208" # Orange
+      memory_usage: "38;5;172"     # Brown/Orange
+      duration: "38;5;240"         # Gray
+      todo_count: "38;5;123"       # Purple
+      separator: "38;5;250"        # Light Gray
+
+  # Caching configuration (performance optimization)
+  cache:
+    git_ttl_seconds: 5           # Git command results
+    metrics_ttl_seconds: 10      # Session metrics
+    alfred_ttl_seconds: 1        # Alfred task state
+    todo_ttl_seconds: 3          # TODO items count
+    memory_ttl_seconds: 5        # Memory usage information
+    output_style_ttl_seconds: 60 # Output style configuration
+    version_ttl_seconds: 60      # Version information
+    update_ttl_seconds: 300      # Update check (PyPI API)
+
+  # Information display settings - Custom ordered status bar
+  display:
+    model: true                  # 🤖 Model name (glm-4.6, claude-3.5-sonnet, etc.)
+    version: true                # 🗿 MoAI-ADK version (0.23.0, etc.)
+    output_style: true           # ✍️ Output style (Explanatory, Concise, etc.)
+    memory_usage: true           # 💾 Session memory usage
+    todo_count: true             # 📋 Active TODO items count
+    branch: true                 # 🔀 Git branch
+    git_status: true             # ✅2 M1 ?10 Git changes status
+    duration: true               # ⏱️ Session elapsed time
+    directory: true              # 📁 Project name/directory
+    active_task: true            # 🎯 Alfred active task
+    update_indicator: true       # 🔄 Update notification
+
+  # Error handling
+  error_handling:
+    graceful_degradation: true   # Return default values on error
+    log_level: "warning"         # warning | error
+    fallback_text: ""            # Text to display on error (blank recommended)
+
+  # Format configuration
+  format:
+    max_branch_length: 20        # Truncate long branch names
+    truncate_with: "..."         # Truncation indicator
+    separator: " | "             # Section separator
+
+    # Icon configuration for better visual recognition
+    icons:
+      git: "🔀"                 # Git branch icon (more intuitive than 📊)
+      staged: "✅"              # Staged files
+      modified: "📝"            # Modified files
+      untracked: "❓"           # Untracked files
+      added: "➕"               # Added files
+      deleted: "➖"             # Deleted files
+      renamed: "🔄"             # Renamed files
+      conflict: "⚠️"           # Conflict files
+      model: "🤖"               # AI model
+      output_style: "💬"        # Writing style
+      duration: "⏱️"            # Time duration
+      todo: "📋"                # TODO items
+      update: "🔄"              # Update available
+      project: "📁"             # Project directory

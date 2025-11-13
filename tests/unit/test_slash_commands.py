@@ -1,4 +1,3 @@
-# @TEST:CLAUDE-COMMANDS-001 | SPEC: SPEC-CLAUDE-COMMANDS-001.md
 """Unit tests for slash command diagnostics
 
 Tests for diagnosing Claude Code slash command loading issues:

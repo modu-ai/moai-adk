@@ -1,12 +1,12 @@
 ---
-name: moai-domain-web-api
-version: 2.0.0
+name: "moai-domain-web-api"
+version: "2.0.0"
 created: 2025-10-22
 updated: 2025-10-22
-status: active
+status: stable
 description: REST API and GraphQL design with OpenAPI 3.1, authentication, versioning, and rate limiting.
 keywords: ['rest', 'graphql', 'openapi', 'api-design', 'authentication']
-allowed-tools:
+allowed-tools: 
   - Read
   - Bash
 ---
