@@ -4,6 +4,55 @@ All commits to MoAI-ADK are listed below in chronological order. Each entry show
 
 ## Recent Releases
 
+### v0.25.1 (2025-11-14)
+
+**Bug Fixes Release: Init Command, CI/CD Workflow, Template Variables**
+
+**Summary**: Critical bug fixes for init command questionary compatibility, CI/CD workflow validation, and template variable substitution. All issues resolved for stable 0.25.x branch.
+
+**What Changed**:
+
+1. **Init Command Questionary Compatibility Fix** ✅
+   - Fixed language selection prompt failure
+   - Changed from dict-based to list-based questionary choices
+   - Implemented index-based default selection with proper mapping
+   - Both interactive and non-interactive modes now working correctly
+
+2. **CI/CD Workflow ModuleNotFoundError Fix** ✅
+   - Replaced dependency-heavy SafeFileReader with pure Python implementation
+   - Enhanced encoding validation with fallback patterns (utf-8-sig, iso-8859-1, cp1252, utf-16)
+   - Added proper package installation in workflow (`pip install -e . --no-deps`)
+   - Agent-based pre-validation now working without errors
+
+3. **Settings Template Variable Substitution Fix** ✅
+   - Corrected PROJECT_DIR template variables in .claude/settings.json
+   - Template: `{{PROJECT_DIR}}` → Context: `$CLAUDE_PROJECT_DIR`
+   - Verified correct substitution in generated projects
+   - SessionStart/PreToolUse/UserPromptSubmit hooks now execute properly
+
+4. **Package Version Metadata Sync** ✅
+   - Updated pyproject.toml to 0.25.1
+   - Version reflected in `moai-adk --version`
+   - Config files generated with correct version
+   - Package deployment ready for PyPI
+
+**Testing Completed**:
+- ✅ moai-adk init in /tmp directory
+- ✅ Language selection (ko/en/ja/zh/other)
+- ✅ Config generation with correct version
+- ✅ Package installation verification
+- ✅ GitFlow workflow validation
+- ✅ Template variable substitution verification
+
+**Installation**:
+```bash
+pip install moai-adk==0.25.1
+# or
+uv install moai-adk==0.25.1
+```
+
+---
+
 ### v0.25.0 (2025-11-14)
 
 **Infrastructure & Quality Assurance Release: English Translation, Skills Documentation, Complete Test Suite**
