@@ -37,7 +37,6 @@ Invoke: doc-syncer
    - Write regression test
    - Fix implementation
 3. Invoke: git-manager
-   - Commit with @TAG
 
 ---
 

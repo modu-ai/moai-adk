@@ -33,16 +33,14 @@
     "test:coverage": "vitest --coverage"
   },
   "dependencies": {
-    "@next/third-parties": "^16.0.0",
-    "next": "16.0.0",
-    "nextra": "^4.6.0",
-    "nextra-theme-docs": "^4.6.0",
-    "pagefind": "^1.3.0",
-    "react": "^18.0.0",
-    "react-dom": "^18.0.0"
+    "next": "14.2.15",
+    "nextra": "^3.3.1",
+    "nextra-theme-docs": "^3.3.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "@next/bundle-analyzer": "^16.0.0",
+    "@next/bundle-analyzer": "^14.2.15",
     "@types/node": "^20.0.0",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",

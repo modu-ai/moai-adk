@@ -1,7 +1,3 @@
-# @CODE:CORE-PROJECT-003 | SPEC: SPEC-CORE-PROJECT-001.md, SPEC-INIT-004.md
-# @CODE:INIT-VALIDATOR-001:VALIDATION | Chain: SPEC-INIT-004 -> CODE-INIT-004 -> TEST-INIT-004
-# @REQ:VALIDATION-002 | SPEC-INIT-004: Initial verification after installation completion
-# @SPEC:VERIFICATION-002 | SPEC-INIT-004: Verification logic implementation
 """Project initialization validation module.
 
 Validates system requirements and installation results.
@@ -10,11 +6,6 @@ SPEC-INIT-004 Enhancement:
 - Alfred command files validation (Phase 5)
 - Explicit missing files reporting
 - Required files verification checklist
-
-TAG Chain:
-  SPEC-INIT-004 (spec.md)
-    └─> @CODE:INIT-VALIDATOR-001:VALIDATION (this file)
-        └─> @TEST:INIT-005:VALIDATION (test_validator.py)
 """
 
 import shutil
@@ -42,7 +33,7 @@ class ProjectValidator:
 
     # Required files
     REQUIRED_FILES = [
-        ".moai/config.json",
+        ".moai/config/config.json",
         "CLAUDE.md",
     ]
 
@@ -87,20 +78,17 @@ class ProjectValidator:
 
         # Parent directory must exist
         if not project_path.parent.exists():
-            raise ValidationError(f"Parent directory does not exist: {project_path.parent}")
+            raise ValidationError(
+                f"Parent directory does not exist: {project_path.parent}"
+            )
 
         # Prevent initialization inside the MoAI-ADK package
         if self._is_inside_moai_package(project_path):
-            raise ValidationError(
-                "Cannot initialize inside MoAI-ADK package directory"
-            )
+            raise ValidationError("Cannot initialize inside MoAI-ADK package directory")
 
     def validate_installation(self, project_path: Path) -> None:
         """Validate installation results.
 
-        @CODE:INIT-VALIDATOR-001:VERIFY-001 | Verification of all required files upon successful completion
-        @SPEC:VERIFICATION-002 | SPEC-INIT-004: Verification checklist implementation
-        @REQ:VALIDATION-002 | UR-003: All required files verified after init completes
 
         Args:
             project_path: Project path.
@@ -109,22 +97,17 @@ class ProjectValidator:
             ValidationError: Raised when installation was incomplete.
         """
         # Verify required directories
-        # @CODE:INIT-VALIDATOR-001:VALIDATION-001 | Core project structure validation
         for directory in self.REQUIRED_DIRECTORIES:
             dir_path = project_path / directory
             if not dir_path.exists():
                 raise ValidationError(f"Required directory not found: {directory}")
 
         # Verify required files
-        # @CODE:INIT-VALIDATOR-001:VALIDATION-002 | Required configuration files validation
         for file in self.REQUIRED_FILES:
             file_path = project_path / file
             if not file_path.exists():
                 raise ValidationError(f"Required file not found: {file}")
 
-        # @CODE:INIT-VALIDATOR-001:VERIFY-002 | Verify required Alfred command files (SPEC-INIT-004)
-        # @REQ:COMMAND-GENERATION-001 | All 4 Alfred command files must be created
-        # @CODE:INIT-VALIDATOR-001:ALFRED-VALIDATION | Alfred command file integrity check
         alfred_dir = project_path / ".claude" / "commands" / "alfred"
         missing_commands = []
         for cmd in self.REQUIRED_ALFRED_COMMANDS:
@@ -134,8 +117,6 @@ class ProjectValidator:
 
         if missing_commands:
             missing_list = ", ".join(missing_commands)
-            # @SPEC:ERROR-HANDLING-001 | Clear error messages upon missing files
-            # @CODE:INIT-VALIDATOR-001:ERROR-MESSAGE | Clear reporting of missing Alfred command files
             raise ValidationError(
                 f"Required Alfred command files not found: {missing_list}"
             )
@@ -156,7 +137,7 @@ class ProjectValidator:
             if pyproject.exists():
                 try:
                     content = pyproject.read_text(encoding="utf-8")
-                    if "name = \"moai-adk\"" in content or 'name = "moai-adk"' in content:
+                    if 'name = "moai-adk"' in content or 'name = "moai-adk"' in content:
                         return True
                 except Exception:
                     pass

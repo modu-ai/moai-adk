@@ -1,4 +1,3 @@
-# @CODE:LANG-FIX-001:TEST | SPEC: .moai/specs/SPEC-LANG-FIX-001/spec.md
 """Unit tests for language configuration reading and template variable substitution.
 
 Tests verify that:

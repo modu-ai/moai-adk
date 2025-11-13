@@ -2,7 +2,6 @@
 """
 Session metrics tracker for statusline
 
-@CODE:METRICS-TRACKER-001
 """
 
 import logging

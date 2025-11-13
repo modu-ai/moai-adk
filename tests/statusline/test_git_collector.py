@@ -1,9 +1,6 @@
 """
 Tests for GitCollector - Git 정보 수집 및 캐싱
 
-@TEST:GIT-COLLECTOR-001 - Git branch 감지
-@TEST:GIT-COLLECTOR-002 - Git 변경 사항 계산
-@TEST:GIT-COLLECTOR-003 - 5초 캐싱
 """
 
 from unittest.mock import MagicMock, patch
@@ -21,7 +18,6 @@ class TestGitCollector:
         WHEN: collect_git_info()를 호출
         THEN: 현재 branch 이름을 정확히 반환 (예: feature/SPEC-AUTH-001, develop, main)
         """
-        # @TEST:GIT-COLLECTOR-001
         from moai_adk.statusline.git_collector import GitCollector
 
         collector = GitCollector()
@@ -67,7 +63,6 @@ class TestGitCollector:
         WHEN: collect_git_info()를 호출
         THEN: staged=3, modified=2, untracked=1
         """
-        # @TEST:GIT-COLLECTOR-002
         from moai_adk.statusline.git_collector import GitCollector
 
         collector = GitCollector()
@@ -117,7 +112,6 @@ class TestGitCollector:
         WHEN: 5초 이내에 두 번 collect_git_info() 호출
         THEN: 캐시에서 반환되고 git 명령은 한 번만 실행
         """
-        # @TEST:GIT-COLLECTOR-003
 
         from moai_adk.statusline.git_collector import GitCollector
 

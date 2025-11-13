@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @TEST:HOOKS-EXECUTION-TRACKING-001 | SPEC: SPEC-HOOKS-EXECUTION-TRACKING-001.md
 """Hook Execution Counting and Duplicate Prevention Tests
 
 GitHub Issue #207: Hook duplication bug - Hook execution state tracking issues
@@ -15,17 +14,15 @@ TDD History:
 """
 
 import json
-import sys
-import time
-import tempfile
 import os
-from pathlib import Path
-from unittest.mock import patch, MagicMock, mock_open
-from typing import Dict, Any, List, Optional
-import threading
-from datetime import datetime, timedelta
 import sqlite3
+import sys
+import tempfile
+import threading
+import time
 import uuid
+from pathlib import Path
+from typing import Any, Dict, List
 
 # Setup import path for shared modules (following existing pattern)
 HOOKS_DIR = Path(__file__).parent.parent.parent / ".claude" / "hooks" / "alfred"

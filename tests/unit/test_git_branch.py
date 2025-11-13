@@ -1,4 +1,3 @@
-# @TEST:GIT-BRANCH-001 | SPEC: SPEC-TEST-COVERAGE-001.md
 """Unit tests for git/branch.py module
 
 Tests for branch naming utilities.

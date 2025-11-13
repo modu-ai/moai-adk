@@ -1,4 +1,3 @@
-# @CODE:CHECKPOINT-EVENT-001 | SPEC: SPEC-CHECKPOINT-EVENT-001.md | TEST: tests/unit/test_branch_manager.py
 """
 Branch Manager - Manage local checkpoint branches.
 
@@ -114,8 +113,7 @@ class BranchManager:
 
         # Sort in chronological order (branches marked via mark_as_old first)
         sorted_checkpoints = sorted(
-            checkpoints,
-            key=lambda name: (name not in self._old_branches, name)
+            checkpoints, key=lambda name: (name not in self._old_branches, name)
         )
 
         # Delete the excess branches
@@ -131,7 +129,9 @@ class BranchManager:
         if len(checkpoints) > self.MAX_CHECKPOINTS:
             # Sort alphabetically (older timestamps first)
             sorted_checkpoints = sorted(checkpoints)
-            to_delete = sorted_checkpoints[: len(sorted_checkpoints) - self.MAX_CHECKPOINTS]
+            to_delete = sorted_checkpoints[
+                : len(sorted_checkpoints) - self.MAX_CHECKPOINTS
+            ]
 
             for branch_name in to_delete:
                 self.repo.delete_head(branch_name, force=True)

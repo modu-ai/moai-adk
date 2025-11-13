@@ -1,4 +1,3 @@
-# @CODE:TAG-IMPROVEMENT-INTEGRATION-002
 """
 Integration testing data structures and utilities.
 
@@ -7,12 +6,13 @@ for integration testing across the MoAI-ADK system.
 """
 
 from dataclasses import dataclass
-from typing import Dict, List, Any, Optional
 from enum import Enum
+from typing import List, Optional
 
 
 class TestStatus(Enum):
     """Test status enumeration"""
+
     PENDING = "pending"
     RUNNING = "running"
     PASSED = "passed"
@@ -23,12 +23,13 @@ class TestStatus(Enum):
 @dataclass
 class IntegrationTestResult:
     """Test result data structure"""
+
     test_name: str
     passed: bool
     error_message: Optional[str] = None
     execution_time: float = 0.0
-    components_tested: List[str] = None
-    status: TestStatus = TestStatus.PENDING
+    components_tested: Optional[List[str]] = None
+    status: Optional[TestStatus] = None
 
     def __post_init__(self):
         if self.components_tested is None:
@@ -37,15 +38,18 @@ class IntegrationTestResult:
             self.status = TestStatus.PASSED
         elif self.error_message:
             self.status = TestStatus.FAILED
+        else:
+            self.status = TestStatus.PENDING
 
 
 @dataclass
 class TestComponent:
     """Test component definition"""
+
     name: str
     component_type: str
     version: str
-    dependencies: List[str] = None
+    dependencies: Optional[List[str]] = None
 
     def __post_init__(self):
         if self.dependencies is None:
@@ -55,10 +59,11 @@ class TestComponent:
 @dataclass
 class TestSuite:
     """Test suite definition"""
+
     name: str
     description: str
     components: List[TestComponent]
-    test_cases: List[str] = None
+    test_cases: Optional[List[str]] = None
 
     def __post_init__(self):
         if self.test_cases is None:
@@ -67,14 +72,17 @@ class TestSuite:
 
 class IntegrationTestError(Exception):
     """Base exception for integration testing"""
+
     pass
 
 
 class TestTimeoutError(IntegrationTestError):
     """Test timeout exception"""
+
     pass
 
 
 class ComponentNotFoundError(IntegrationTestError):
     """Component not found exception"""
+
     pass

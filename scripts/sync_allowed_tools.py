@@ -4,8 +4,6 @@ allowed-tools 필드 동기화 스크립트
 .claude/skills/ 에서 src/moai_adk/templates/.claude/skills/ 로 동기화
 """
 
-import sys
-import re
 from pathlib import Path
 
 def extract_yaml_frontmatter(content: str) -> tuple:

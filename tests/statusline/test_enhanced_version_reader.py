@@ -1,24 +1,17 @@
 """
 Tests for Enhanced VersionReader - Refactored version reading functionality
 
-@TEST:VERSION-READER-ENHANCED-001 - Enhanced version reading with caching
-@TEST:VERSION-READER-ENHANCED-002 - Configuration and error handling
-@TEST:VERSION-READER-ENHANCED-003 - Async support and performance
 """
 
+import asyncio
 import json
 import tempfile
-import asyncio
-from pathlib import Path
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import pytest
 
-from moai_adk.statusline.version_reader import (
-    VersionReader,
-    VersionConfig,
-    VersionReadError
-)
+from moai_adk.statusline.version_reader import VersionConfig, VersionReader
 
 
 class TestEnhancedVersionReader:
@@ -30,7 +23,6 @@ class TestEnhancedVersionReader:
         WHEN: VersionReader initialized with config
         THEN: Should use custom settings
         """
-        # @TEST:VERSION-READER-ENHANCED-001
         custom_config = VersionConfig(
             cache_ttl_seconds=30,
             fallback_version="custom-fallback",

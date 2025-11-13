@@ -1,4 +1,4 @@
-# @TEST:LANG-001 | SPEC: SPEC-LANGUAGE-DETECTION-001.md | CODE: src/moai_adk/templates/.github/workflows/
+# # REMOVED_ORPHAN_TEST:LANG-001 | SPEC: SPEC-LANGUAGE-DETECTION-001.md | CODE: src/moai_adk/templates/.github/workflows/
 """Unit tests for language-specific workflow templates
 
 Tests workflow file creation and correctness for Python, JavaScript, TypeScript, and Go.
@@ -14,7 +14,6 @@ class TestWorkflowFileCreation:
 
     def test_workflow_file_creation(self):
         """Should create all 4 language-specific workflow templates"""
-        # @TAG:LANG-001 - Create workflow templates
         templates_dir = Path(__file__).parent.parent / "src" / "moai_adk" / "templates" / ".github" / "workflows"
 
         python_workflow = templates_dir / "python-tag-validation.yml"

@@ -1,9 +1,6 @@
 """
 Tests for StatuslineRenderer - Compact 모드에서 기본 정보 포맷팅 기능
 
-@TEST:STATUSLINE-RENDERER-001 - Compact 모드 기본 정보 포맷팅
-@TEST:STATUSLINE-RENDERER-002 - 80자 제한 준수
-@TEST:STATUSLINE-RENDERER-003 - 정보 순서 검증
 """
 
 from dataclasses import dataclass
@@ -33,7 +30,6 @@ class TestStatuslineRendererCompactMode:
         THEN: 80자 이내이고 "|" 구분자가 포함되며 필수 정보가 모두 포함됨
         Format: 🤖 Model | Ver Version | Git: Branch | GitStatus | Task
         """
-        # @TEST:STATUSLINE-RENDERER-001
         from moai_adk.statusline.renderer import StatuslineRenderer
 
         renderer = StatuslineRenderer()
@@ -68,7 +64,6 @@ class TestStatuslineRendererCompactMode:
         WHEN: render()를 Compact 모드로 호출
         THEN: 항상 80자 이내를 유지함
         """
-        # @TEST:STATUSLINE-RENDERER-002
         from moai_adk.statusline.renderer import StatuslineRenderer
 
         renderer = StatuslineRenderer()
@@ -104,7 +99,6 @@ class TestStatuslineRendererCompactMode:
         WHEN: render()를 Compact 모드로 호출
         THEN: 🤖 Model | Ver Version | Git: Branch | Status | Task 순서를 준수
         """
-        # @TEST:STATUSLINE-RENDERER-003
         from moai_adk.statusline.renderer import StatuslineRenderer
 
         renderer = StatuslineRenderer()

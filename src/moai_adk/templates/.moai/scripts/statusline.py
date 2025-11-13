@@ -5,7 +5,6 @@ MoAI-ADK Statusline Runner
 Wrapper script to run the statusline module.
 Executes via: uv run .moai/scripts/statusline.py
 
-@CODE:STATUSLINE-RUNNER-001
 """
 
 import subprocess

@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-# @CODE:VERSION-CACHE-001
 """Version information cache with TTL support
 
 TTL-based caching system for version check results to minimize network calls
 during SessionStart hook execution.
 
-SPEC: SPEC-UPDATE-ENHANCE-001 - SessionStart 버전 체크 시스템 강화
+SPEC: SPEC-UPDATE-ENHANCE-001 - SessionStart version check system enhancement
 Phase 1: Cache System Implementation
 """
 

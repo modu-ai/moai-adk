@@ -75,7 +75,7 @@ def smart_merge_strategy(comparison_result):
 ### Critical Files to Monitor
 - `.claude/settings.json` - Claude Code configuration
 - `.claude/hooks/` - Hook scripts
-- `.moai/config.json` - MoAI project configuration
+- `.moai/config/config.json` - MoAI project configuration
 - Template directories and files
 
 ## Conflict Resolution Patterns

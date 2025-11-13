@@ -1,8 +1,6 @@
 """
 Tests for MetricsTracker - 세션 메트릭 추적
 
-@TEST:METRICS-TRACKER-001 - 세션 경과 시간 계산
-@TEST:METRICS-TRACKER-002 - 시간 범위별 포맷
 """
 
 from datetime import datetime, timedelta
@@ -19,7 +17,6 @@ class TestMetricsTracker:
         WHEN: get_duration() 호출
         THEN: "5m 30s" 또는 "5m" 포맷
         """
-        # @TEST:METRICS-TRACKER-001
         from moai_adk.statusline.metrics_tracker import MetricsTracker
 
         tracker = MetricsTracker()
@@ -39,7 +36,6 @@ class TestMetricsTracker:
         WHEN: get_duration() 호출
         THEN: "2m" 포맷 (5분 이내는 초 단위 생략 가능)
         """
-        # @TEST:METRICS-TRACKER-002
         from moai_adk.statusline.metrics_tracker import MetricsTracker
 
         tracker = MetricsTracker()

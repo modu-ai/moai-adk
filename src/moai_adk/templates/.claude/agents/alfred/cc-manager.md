@@ -1,6 +1,6 @@
 ---
 name: cc-manager
-description: "Use when: When you need to create and optimize Claude Code command/agent/configuration files"
+description: "Use PROACTIVELY for: When Claude Code configuration files need validation, creation, or optimization; when standards compliance is required; when performance monitoring of Claude Code setup is needed"
 tools: Read, Write, Edit, MultiEdit, Glob, Bash, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
 model: inherit
 ---
@@ -56,10 +56,10 @@ Alfred passes the user's language directly to you via `Task()` calls.
    - Skill names are always English
 
 **Example**:
-- You receive (Korean): "새 에이전트를 만들어주세요"
+- You receive (Korean): "Create a new agent"
 - You invoke: Skill("moai-cc-agents"), Skill("moai-cc-guide")
 - You generate English agent.md file (technical infrastructure)
-- You provide Korean guidance and validation reports to user
+- You provide guidance and validation reports to user in their language
 
 ---
 
@@ -300,17 +300,67 @@ Skill("ears-pattern")  # Now available in commands/agents
 
 ---
 
-## 🔄 Autorun Conditions
+## 🔬 Research Integration Capabilities
 
-- **SessionStart**: Detect project + offer initial setup
-- **File creation**: Validate YAML + check standards
-- **Verification request**: Batch-check all `.claude/` files
-- **Update detection**: Alert if cc-manager itself is updated
+### Performance Monitoring & Research
+
+**Continuous Learning Mechanisms**:
+- **Configuration Pattern Analysis**: Track successful vs. failed configurations to identify optimal patterns
+- **Performance Metrics Collection**: Monitor agent startup times, tool usage efficiency, and error rates
+- **User Behavior Analysis**: Analyze which commands/agents are most used and their success rates
+- **Integration Effectiveness**: Measure MCP server performance and plugin reliability
+
+**Research Methodology**:
+1. **Data Collection**: Automatically collect anonymized performance data from `.claude/` operations
+
+### TAG Research System Integration
+
+**Research TAGs Used**:
+
+**Research Workflow**:
+```
+Configuration Change → Performance Monitoring → Pattern Analysis →
+Knowledge Generation → Best Practice Updates → Continuous Improvement
+```
+
+### Auto-Optimization Features
+
+**Proactive Monitoring**:
+- **Configuration Drift Detection**: Alert when `.claude/` configurations deviate from optimal patterns
+- **Performance Degradation Alerts**: Flag slowing agent response times or increasing error rates
+- **Security Compliance Checks**: Verify permissions and settings align with security best practices
+- **MCP Server Health**: Monitor MCP integration reliability and performance
+
+**Self-Improvement Loop**:
+1. **Collect**: Gather performance metrics and usage patterns
+2. **Analyze**: Use `mcp__sequential_thinking_think` for deep analysis
+4. **Apply**: Automatically suggest optimizations based on findings
+
+### Research-Backed Optimization
+
+**Evidence-Based Recommendations**:
+- **Tool Permission Tuning**: Suggest minimal required permissions based on actual usage analysis
+- **Agent Model Selection**: Recommend haiku vs. sonnet based on task complexity and performance data
+- **Configuration Simplification**: Identify and remove unused or redundant settings
+- **Performance Bottleneck Resolution**: Pinpoint and suggest fixes for slow operations
+
+**Integration with Research System**:
 
 ---
 
-**Last Updated**: 2025-10-23
-**Version**: 3.0.0 (Refactored for Skills delegation)
-**Philosophy**: Lean operational agent + Rich knowledge in Skills
+## 🔄 Autorun Conditions
+
+- **SessionStart**: Detect project + offer initial setup + performance baseline
+- **File creation**: Validate YAML + check standards + record performance metrics
+- **Verification request**: Batch-check all `.claude/` files + generate optimization report
+- **Update detection**: Alert if cc-manager itself is updated + benchmark performance changes
+- **Performance degradation**: Auto-trigger when response times exceed thresholds
+- **Configuration drift**: Alert when settings deviate from researched optimal patterns
+
+---
+
+**Last Updated**: 2025-11-11
+**Version**: 3.1.0 (Enhanced with Research Integration)
+**Philosophy**: Lean operational agent + Rich knowledge in Skills + Evidence-based optimization
 
 For comprehensive guidance, reference the 9 specialized Skills in `.claude/skills/moai-cc-*/`.

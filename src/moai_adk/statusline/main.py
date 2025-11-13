@@ -3,7 +3,6 @@
 """
 Claude Code Statusline Integration
 
-@CODE:STATUSLINE-MAIN-001 | @SPEC:STATUSLINE-MAIN-002 | @TEST:STATUSLINE-MAIN-002
 
 Main entry point for MoAI-ADK statusline rendering in Claude Code.
 Collects all necessary information from the project and renders it
@@ -108,6 +107,9 @@ def safe_collect_version() -> str:
         return "unknown"
 
 
+# safe_collect_output_style function removed - no longer needed
+
+
 def safe_check_update(current_version: str) -> tuple[bool, Optional[str]]:
     """
     Safely check for updates with fallback.
@@ -127,10 +129,7 @@ def safe_check_update(current_version: str) -> tuple[bool, Optional[str]]:
         return False, None
 
 
-def build_statusline_data(
-    session_context: dict,
-    mode: str = "compact"
-) -> str:
+def build_statusline_data(session_context: dict, mode: str = "compact") -> str:
     """
     Build complete statusline string from all data sources.
 
@@ -170,17 +169,18 @@ def build_statusline_data(
         version = safe_collect_version()
         update_available, latest_version = safe_check_update(version)
 
-        # Build StatuslineData
+        # Build StatuslineData with dynamic fields
         data = StatuslineData(
             model=model,
-            duration=duration,
-            directory=directory,
             version=version,
+            memory_usage="256MB",  # TODO: Get actual memory usage
             branch=branch,
             git_status=git_status,
+            duration=duration,
+            directory=directory,
             active_task=active_task,
             update_available=update_available,
-            latest_version=latest_version
+            latest_version=latest_version,
         )
 
         # Render statusline with labeled sections
@@ -192,6 +192,7 @@ def build_statusline_data(
     except Exception as e:
         # Graceful degradation on any error
         import logging
+
         logging.warning(f"Statusline rendering error: {e}")
         return ""
 
@@ -211,10 +212,10 @@ def main():
 
     # Determine display mode (priority: session context > environment > config > default)
     mode = (
-        session_context.get("statusline", {}).get("mode") or
-        os.environ.get("MOAI_STATUSLINE_MODE") or
-        config.get("statusline.mode") or
-        "extended"
+        session_context.get("statusline", {}).get("mode")
+        or os.environ.get("MOAI_STATUSLINE_MODE")
+        or config.get("statusline.mode")
+        or "extended"
     )
 
     # Build and output statusline

@@ -88,7 +88,6 @@ jobs:
           spec_priority=$(grep "^priority:" "$spec_file" | sed 's/^priority: *//' | tr -d ' "')
 
           # Extract title from H1 heading
-          spec_title=$(grep "^# @SPEC:" "$spec_file" | sed 's/^# @SPEC:[^:]*: //')
 
           echo "✅ Extracted SPEC metadata:"
           echo "  ID: $spec_id"

@@ -23,4 +23,3 @@
 - **R**eadable: Max 300 LOC per file
 - **U**nified: Type safety
 - **S**ecured: Input validation
-- **T**rackable: @TAG system

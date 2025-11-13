@@ -1,8 +1,8 @@
 #!/bin/bash
-# @CODE:EMERGENCY-ROLLBACK-001
-"""Emergency rollback script for TAG policy system
+# SCRIPT-EMERGENCY-ROLLBACK-001: Emergency rollback script
+"""Emergency rollback script for MoAI-ADK system
 
-This script provides emergency recovery functionality for the TAG policy system
+This script provides emergency recovery functionality for the MoAI-ADK system
 in case of critical failures or issues. It can restore the system to a previous
 stable state.
 
@@ -16,8 +16,6 @@ Options:
     --list              List available checkpoints
     --emergency         Emergency rollback to oldest stable checkpoint
     --help              Show this help message
-
-@SPEC:EMERGENCY-ROLLBACK-001
 """
 
 set -euo pipefail

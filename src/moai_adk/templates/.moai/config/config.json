@@ -1,0 +1,274 @@
+{
+  "_meta": {
+  },
+  "moai": {
+    "version": "{{MOAI_VERSION}}",
+    "update_check_frequency": "daily",
+    "version_check": {
+      "enabled": true,
+      "cache_ttl_hours": 24
+    }
+  },
+  "constitution": {
+    "enforce_tdd": true,
+    "principles": {
+      "simplicity": {
+        "max_projects": 5,
+        "notes": "Default recommendation. Adjust in .moai/config.json or via SPEC/ADR with documented rationale based on project size."
+      }
+    },
+    "test_coverage_target": 90
+  },
+  "git_strategy": {
+    "personal": {
+      "auto_checkpoint": "event-driven",
+      "checkpoint_events": [
+        "delete",
+        "refactor",
+        "merge",
+        "script",
+        "critical-file"
+      ],
+      "checkpoint_type": "local-branch",
+      "max_checkpoints": 10,
+      "cleanup_days": 7,
+      "push_to_remote": false,
+      "auto_commit": true,
+      "branch_prefix": "feature/SPEC-",
+      "develop_branch": "develop",
+      "main_branch": "main",
+      "prevent_branch_creation": false,
+      "work_on_main": false
+    },
+    "team": {
+      "auto_pr": false,
+      "develop_branch": "develop",
+      "draft_pr": false,
+      "feature_prefix": "feature/SPEC-",
+      "main_branch": "main",
+      "use_gitflow": true,
+      "default_pr_base": "develop",
+      "prevent_main_direct_merge": false
+    }
+  },
+  "pipeline": {
+    "available_commands": [
+      "/alfred:0-project",
+      "/alfred:1-plan",
+      "/alfred:2-run",
+      "/alfred:3-sync"
+    ]
+  },
+  "language": {
+    "conversation_language": "{{CONVERSATION_LANGUAGE}}",
+    "conversation_language_name": "{{CONVERSATION_LANGUAGE_NAME}}",
+    "agent_prompt_language": "{{CONVERSATION_LANGUAGE}}",
+    "notes": "Language for sub-agent internal prompts (english=global standard, localized=user's conversation language)"
+  },
+  "project": {
+    "name": "{{PROJECT_NAME}}",
+    "description": "{{PROJECT_DESCRIPTION}}",
+    "owner": "{{PROJECT_OWNER}}",
+    "mode": "{{PROJECT_MODE}}",
+    "locale": "{{CONVERSATION_LANGUAGE}}",
+    "language": "{{CODEBASE_LANGUAGE}}",
+    "created_at": "{{CREATION_TIMESTAMP}}",
+    "initialized": true,
+    "optimized": false
+  },
+  "user": {
+    "name": "{{USER_NAME}}",
+    "notes": "Personal name for Alfred's personalized greetings (e.g., '철수', 'John'). Leave empty for default greetings like '사용자님'"
+  },
+  "session": {
+    "suppress_setup_messages": false,
+    "notes": "suppress_setup_messages: false enables SessionStart output. Set to true to suppress messages (show again after 7 days)"
+  },
+  "hooks": {
+    "timeout_ms": 2000,
+    "graceful_degradation": true,
+    "notes": "Hook execution timeout (milliseconds). Set graceful_degradation to true to continue even if a hook fails. Optimized to 2 seconds for faster performance."
+  },
+  "session_end": {
+    "enabled": true,
+    "metrics": {
+      "enabled": true,
+      "save_location": ".moai/logs/sessions/"
+    },
+    "work_state": {
+      "enabled": true,
+      "save_location": ".moai/memory/last-session-state.json"
+    },
+    "cleanup": {
+      "enabled": true,
+      "temp_files": true,
+      "cache_files": true,
+      "patterns": [
+        ".moai/temp/*",
+        ".moai/cache/*.tmp"
+      ]
+    },
+    "warnings": {
+      "uncommitted_changes": true
+    },
+    "summary": {
+      "enabled": true,
+      "max_lines": 5
+    },
+    "notes": "SessionEnd hook configuration. Executed when Claude Code session ends. Controls metrics saving, work state preservation, cleanup, warnings, and summary generation."
+  },
+  "auto_cleanup": {
+    "enabled": true,
+    "cleanup_days": 7,
+    "max_reports": 10,
+    "cleanup_targets": [
+      ".moai/reports/*.json",
+      ".moai/reports/*.md",
+      ".moai/cache/*",
+      ".moai/temp/*"
+    ]
+  },
+  "daily_analysis": {
+    "enabled": true,
+    "analysis_time": "00:00",
+    "analyze_sessions": true,
+    "analyze_tools": true,
+    "analyze_errors": true,
+    "analyze_permissions": true,
+    "auto_optimize": false,
+    "report_location": ".moai/reports/daily-"
+  },
+  "report_generation": {
+    "enabled": true,
+    "auto_create": false,
+    "warn_user": true,
+    "user_choice": "Minimal",
+    "configured_at": "{{CREATION_TIMESTAMP}}",
+    "allowed_locations": [
+      ".moai/docs/",
+      ".moai/reports/",
+      ".moai/analysis/",
+      ".moai/specs/SPEC-*/"
+    ],
+    "notes": "Control automatic report generation. 'enabled': turn on/off, 'auto_create': full (true) vs minimal (false) reports. Helps reduce token usage."
+  },
+  "github": {
+    "templates": {
+      "enable_trust_5": true,
+      "enable_alfred_commands": true,
+      "spec_directory": ".moai/specs",
+      "docs_directory": ".moai/docs",
+      "test_directory": "tests",
+      "notes": "Configure GitHub templates for project customization. When enable_* flags are false, corresponding MoAI-specific sections are omitted from templates."
+    },
+    "auto_delete_branches": null,
+    "auto_delete_branches_checked": false,
+    "spec_git_workflow": "per_spec",
+    "spec_git_workflow_configured": false,
+    "notes": "auto_delete_branches: whether to auto-delete feature branches after merge. spec_git_workflow: 'feature_branch' (auto), 'develop_direct' (direct), 'per_spec' (ask per SPEC - flexible, user controls each workflow)"
+  },
+  "document_management": {
+    "_meta": {
+    },
+    "enabled": true,
+    "enforce_structure": true,
+    "block_root_pollution": false,
+    "directories": {
+      "reports": {
+        "base": ".moai/reports/",
+        "categories": ["inspection", "phases", "sync", "analysis", "validation", "daily"],
+        "auto_categorize": true,
+        "retention_days": 90
+      },
+      "logs": {
+        "base": ".moai/logs/",
+        "categories": ["sessions", "agent-transcripts", "errors", "execution"],
+        "retention_days": 30
+      },
+      "scripts": {
+        "base": ".moai/scripts/",
+        "categories": ["dev", "conversion", "validation", "analysis", "maintenance"],
+        "retention_days": null
+      },
+      "temp": {
+        "base": ".moai/temp/",
+        "categories": ["tests", "coverage", "work", "research"],
+        "retention_days": 7,
+        "auto_cleanup": true
+      },
+      "backups": {
+        "base": ".moai/backups/",
+        "categories": ["specs", "docs", "hooks", "skills", "config", "legacy"],
+        "retention_days": 90,
+        "max_backups_per_type": 10
+      },
+      "cache": {
+        "base": ".moai/cache/",
+        "categories": ["mcp", "analysis"],
+        "retention_days": 30,
+        "auto_cleanup": true
+      }
+    },
+    "root_whitelist": [
+      "README.md", "README.*.md",
+      "CHANGELOG.md", "CONTRIBUTING.md", "CLAUDE.md",
+      "LICENSE", "LICENSE.*",
+      "pyproject.toml", "setup.py", "setup.cfg",
+      "package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml",
+      ".gitignore", ".gitattributes", ".editorconfig", ".prettierrc", ".eslintrc*",
+      "Makefile", "Dockerfile", "docker-compose.yml", ".dockerignore",
+      "tsconfig.json", "jsconfig.json", "next.config.js", "vite.config.js"
+    ],
+    "file_patterns": {
+      "reports": {
+        "inspection": ["FINAL-INSPECTION-*.md", "*-inspection-*.md"],
+        "phases": ["PHASE*-COMPLETION-*.md", "*-phase-*.md"],
+        "sync": ["sync-report-*.md", "*-sync-*.md"],
+        "analysis": ["*-ANALYSIS-*.md", "*-analysis-*.md"],
+        "validation": ["*-validation-*.md", "*-quality-*.md"],
+        "daily": ["daily-*.md", "*-daily-report-*.md"]
+      },
+      "scripts": {
+        "dev": ["init-*.sh", "setup-*.sh", "*-dev-*.py"],
+        "conversion": ["fix-*.js", "convert-*.py", "migrate-*.js"],
+        "validation": ["validate_*.py", "lint_*.py", "check_*.sh"],
+        "analysis": ["*_analyzer.py", "analyze_*.py", "*_monitor.py"],
+        "maintenance": ["cleanup_*.sh", "maintain_*.py"]
+      },
+      "temp": {
+        "tests": ["test-*.spec.js", "*_test.tmp", "*.test.temp"],
+        "coverage": ["coverage.json", ".coverage", "*.lcov"],
+        "work": ["*.tmp", "*.temp", "*.bak", "*.draft"]
+      },
+      "backups": {
+        "docs": ["docs_backup_*", "docs-backup-*"],
+        "hooks": ["hooks_backup_*", "hooks-backup-*"],
+        "specs": ["specs_backup_*", "specs-backup-*"],
+        "config": ["config_backup_*", "config-backup-*"]
+      }
+    },
+    "validation": {
+      "enabled": true,
+      "on_file_create": true,
+      "on_session_end": true,
+      "warn_violations": true,
+      "block_violations": false
+    },
+    "auto_migration": {
+      "enabled": true,
+      "scan_on_startup": false,
+      "suggest_moves": true,
+      "auto_move": false,
+      "require_user_approval": true
+    },
+    "cleanup": {
+      "enabled": true,
+      "schedule": "session_end",
+      "dry_run": false,
+      "preserve_recent_days": 3,
+      "max_items_per_cleanup": 100,
+      "notify_before_delete": true
+    },
+    "notes": "Document management system to prevent project root pollution. Enforces .moai/ hierarchy for all internal files. Auto-categorizes by file patterns. Cleanup policy preserves recent files."
+  }
+}

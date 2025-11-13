@@ -17,6 +17,9 @@ node_modules/
 .moai-backups/
 *.backup/
 *-backup/
+*_backup_*/
+hooks_backup_*/
+docs_backup_*/
 
 # Virtual environment
 venv/
@@ -48,3 +51,35 @@ logs/
 # Test coverage
 .coverage
 coverage.json
+
+# Next.js build output
+docs/.next/
+docs/out/
+
+
+# Environment variables and deployment secrets
+.env*
+.vercel/
+.netlify/
+.firebase/
+.aws/
+.mypy_cache
+.playwright-mcp
+.ruff_cache
+.uv_cache
+.uv-cache
+.venv_issue43_py313
+
+# Local development files (not in package distribution)
+# These are auto-synced from package templates, keep local copies in .gitignore
+/.claude/
+/.moai/
+/CLAUDE.md
+/.mcp.json
+
+# Package templates MUST be tracked (source of truth for new projects)
+# DO NOT exclude: src/moai_adk/templates/.claude/
+# DO NOT exclude: src/moai_adk/templates/.moai/
+# DO NOT exclude: src/moai_adk/templates/CLAUDE.md
+# DO NOT exclude: src/moai_adk/templates/.mcp.json
+

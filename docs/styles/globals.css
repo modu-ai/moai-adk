@@ -1,262 +1,173 @@
-/* ============================================================
-   Font Loading - Optimized for Multilingual Support
-   ============================================================ */
+/* ============================================
+   MoAI-ADK Documentation Styles
+   Web Fonts & Theme Colors
+   ============================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard-dynamic-subset.css');
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+/* ============================================
+   1. Web Fonts Loading
+   Note: Fonts are loaded via <link> tags in theme.config.tsx Head component
+   ============================================ */
 
-/* Material Icons for UI elements */
-@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
+/* ============================================
+   2. CSS Variables - Light Theme
+   ============================================ */
 
-/* ============================================================
-   CSS Variables - Light & Dark Theme
-   ============================================================ */
-
-/* LIGHT THEME - Root variables */
 :root {
-  /* Primary colors - light theme */
-  --color-primary-fg: #000000;           /* Black text */
-  --color-primary-fg-light: #333333;     /* Dark gray variant */
-  --color-primary-bg: #FFFFFF;           /* White background */
+  /* Nextra Primary Color Override - 무채색 테마 */
+  --nextra-primary-hue: 0deg !important;
+  --nextra-primary-saturation: 0% !important;
+  --nextra-primary-lightness: 0% !important;
+  
+  /* Primary Colors */
+  --color-primary-fg: #000000;
+  --color-primary-fg-light: #333333;
+  --color-primary-bg: #FFFFFF;
 
-  /* Accent colors - light theme */
-  --color-accent-fg: #666666;            /* Medium gray */
+  /* Accent Colors */
+  --color-accent-fg: #666666;
   --color-accent-fg-transparent: rgba(102, 102, 102, 0.1);
 
-  /* Background colors - light theme */
-  --color-bg: #FFFFFF;                   /* Main white background */
-  --color-bg-light: #F9F9F9;             /* Almost white */
-  --color-bg-dark: #F0F0F0;              /* Light gray */
+  /* Background Colors */
+  --color-bg: #FFFFFF;
+  --color-bg-light: #F9F9F9;
+  --color-bg-dark: #F0F0F0;
 
-  /* Surface colors - light theme */
-  --color-surface: #F5F5F5;              /* Light gray surface */
-  --color-surface-light: #FBFBFB;        /* Almost white surface */
-  --color-surface-dark: #F0F0F0;         /* Muted gray surface */
+  /* Surface Colors */
+  --color-surface: #F5F5F5;
+  --color-surface-light: #FBFBFB;
+  --color-surface-dark: #F0F0F0;
 
-  /* Text colors - light theme */
-  --color-text: #000000;                 /* Pure black text */
-  --color-text-secondary: #666666;       /* Medium gray text */
-  --color-text-disabled: #AAAAAA;        /* Disabled text gray */
+  /* Text Colors */
+  --color-text: #000000;
+  --color-text-secondary: #666666;
+  --color-text-disabled: #AAAAAA;
 
-  /* Border colors - light theme */
-  --color-border: #DDDDDD;               /* Light gray border */
-  --color-border-light: #EEEEEE;         /* Very light gray border */
-  --color-border-dark: #CCCCCC;          /* Medium gray border */
+  /* Border Colors */
+  --color-border: #DDDDDD;
+  --color-border-light: #EEEEEE;
+  --color-border-dark: #CCCCCC;
 
-  /* Code block colors - light theme */
-  --color-code-bg: #F0F0F0;              /* Light gray code background */
-  --color-code-fg: #000000;              /* Black code text */
-  --color-code-border: #DDDDDD;          /* Light gray code border */
+  /* Code Colors */
+  --color-code-bg: #F0F0F0;
+  --color-code-fg: #000000;
+  --color-code-border: #DDDDDD;
 
-  /* Font variables */
-  --font-sans: 'Pretendard', 'Inter', 'Roboto', system-ui, -apple-system, sans-serif;
-  --font-en: 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
-  --font-ko: 'Pretendard', 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  /* Shadow System */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+
+  /* Font Families */
+  --font-korean: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  --font-english: 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
   --font-code: 'JetBrains Mono', 'Hack', 'Consolas', 'Monaco', monospace;
+  --font-icons: 'Material Icons';
 
   /* Transitions */
-  --transition-normal: 250ms ease-in-out;
-  --transition-slow: 350ms ease-in-out;
-
-  /* Shadows - light theme */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-
-  color-scheme: light dark;
+  --transition-fast: 150ms ease;
+  --transition-normal: 300ms ease;
+  --transition-slow: 500ms ease;
 }
 
-/* DARK THEME - Override all variables for dark mode */
+/* ============================================
+   3. CSS Variables - Dark Theme
+   ============================================ */
+
 [data-theme="dark"],
 html.dark {
-  /* Primary colors - dark theme */
-  --color-primary-fg: #FFFFFF;           /* White text */
-  --color-primary-fg-light: #EEEEEE;     /* Light gray variant */
-  --color-primary-bg: #121212;           /* Dark background */
+  /* Nextra Primary Color Override - 무채색 테마 */
+  --nextra-primary-hue: 0deg !important;
+  --nextra-primary-saturation: 0% !important;
+  --nextra-primary-lightness: 100% !important;
 
-  /* Accent colors - dark theme */
-  --color-accent-fg: #BBBBBB;            /* Light gray accent */
-  --color-accent-fg-transparent: rgba(187, 187, 187, 0.1);
+  /* Primary Colors */
+  --color-primary-fg: #FFFFFF;
+  --color-primary-bg: #121212;
 
-  /* Background colors - dark theme */
-  --color-bg: #121212;                   /* Main dark background */
-  --color-bg-light: #1E1E1E;             /* Slightly lighter dark */
-  --color-bg-dark: #0A0A0A;              /* Darker background */
+  /* Background Colors */
+  --color-bg: #121212;
+  --color-bg-light: #1E1E1E;
+  --color-bg-dark: #0A0A0A;
 
-  /* Surface colors - dark theme */
-  --color-surface: #1E1E1E;              /* Dark surface */
-  --color-surface-light: #2A2A2A;        /* Lighter dark surface */
-  --color-surface-dark: #0A0A0A;         /* Darker surface */
+  /* Surface Colors */
+  --color-surface: #1E1E1E;
+  --color-surface-light: #2A2A2A;
+  --color-surface-dark: #121212;
 
-  /* Text colors - dark theme */
-  --color-text: #FFFFFF;                 /* White text */
-  --color-text-secondary: #BBBBBB;       /* Light gray text */
-  --color-text-disabled: #777777;        /* Disabled text gray */
+  /* Text Colors */
+  --color-text: #FFFFFF;
+  --color-text-secondary: #BBBBBB;
+  --color-text-disabled: #777777;
 
-  /* Border colors - dark theme */
-  --color-border: #333333;               /* Dark gray border */
-  --color-border-light: #444444;         /* Lighter dark border */
-  --color-border-dark: #222222;          /* Darker border */
+  /* Border Colors */
+  --color-border: #333333;
+  --color-border-light: #2A2A2A;
+  --color-border-dark: #444444;
 
-  /* Code block colors - dark theme */
-  --color-code-bg: #1E1E1E;              /* Dark gray code background */
-  --color-code-fg: #FFFFFF;              /* White code text */
-  --color-code-border: #333333;          /* Dark code border */
+  /* Code Colors */
+  --color-code-bg: #1E1E1E;
+  --color-code-fg: #FFFFFF;
+  --color-code-border: #333333;
 
-  /* Shadows - dark theme */
+  /* Shadow System (lighter for dark theme) */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
-
-  color-scheme: dark;
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6);
 }
 
-/* ============================================================
-   Base Element Styles
-   ============================================================ */
+/* ============================================
+   4. Base Styles
+   ============================================ */
 
 html {
-  /* Prevent italic styles globally */
-  font-style: normal;
-}
-
-body {
-  font-family: var(--font-sans);
-  background-color: var(--color-bg);
+  font-family: var(--font-korean);
   color: var(--color-text);
+  background-color: var(--color-bg);
   transition: background-color var(--transition-normal), color var(--transition-normal);
 }
 
-/* Korean typography optimizations */
-html[lang="ko"] {
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-korean);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================================
+   5. Typography
+   ============================================ */
+
+/* Korean text optimization */
+:lang(ko) {
+  font-family: var(--font-korean);
   letter-spacing: -0.5px;
   line-height: 1.6;
 }
 
-html[lang="ko"] body {
-  font-family: var(--font-ko);
-}
-
-/* English typography optimizations */
-html[lang="en"] {
-  letter-spacing: 0;
+/* English text */
+:lang(en) {
+  font-family: var(--font-english);
+  letter-spacing: normal;
   line-height: 1.5;
 }
 
-html[lang="en"] body {
-  font-family: var(--font-en);
-}
-
-/* ============================================================
-   Text Elements
-   ============================================================ */
-
-/* Remove all italic styles */
-*,
-*::before,
-*::after,
-em,
-i,
-cite,
-var,
-dfn {
-  font-style: normal !important;
-}
-
-/* Headings */
-h1, h2, h3, h4, h5, h6 {
-  font-weight: 700;
-  letter-spacing: -0.025em;
-  line-height: 1.25;
-  color: var(--color-text);
-  transition: color var(--transition-normal);
-}
-
-/* Korean headings - extra letter spacing reduction */
-html[lang="ko"] h1,
-html[lang="ko"] h2,
-html[lang="ko"] h3,
-html[lang="ko"] h4,
-html[lang="ko"] h5,
-html[lang="ko"] h6 {
-  letter-spacing: -2px;
-}
-
-/* Paragraph and text */
-p, li, span, div {
-  color: inherit;
-}
-
-/* Links */
-a {
-  color: var(--color-text);
-  text-decoration: none;
-  transition: color var(--transition-normal), text-decoration var(--transition-normal);
-}
-
-a:hover {
-  color: var(--color-text-secondary);
-  text-decoration: underline;
-}
-
-/* ============================================================
-   Code & Pre Elements
-   ============================================================ */
-
-code, pre, kbd, samp {
-  font-family: var(--font-code) !important;
-  font-feature-settings: 'liga' 0;
-  font-variant-ligatures: none;
-}
-
-code {
-  background-color: var(--color-code-bg);
-  color: var(--color-code-fg);
-  border: 1px solid var(--color-code-border);
-  border-radius: 4px;
-  padding: 0.2em 0.4em;
-  font-size: 0.85em;
-  transition: background-color var(--transition-normal), color var(--transition-normal);
-}
-
+/* Code blocks */
+code,
 pre {
-  background-color: var(--color-code-bg);
-  color: var(--color-code-fg);
-  border: 1px solid var(--color-code-border);
-  border-radius: 6px;
-  padding: 1em;
-  overflow-x: auto;
-  box-shadow: var(--shadow-sm);
-  transition: background-color var(--transition-normal), color var(--transition-normal);
+  font-family: var(--font-code);
+  font-feature-settings: 'liga' 0;
 }
 
-/* Code blocks with line numbers and syntax highlighting */
-div.highlight {
-  padding: 1.2em 1.5em !important;
-  margin: 1.5em 0.5em !important;
-  background-color: var(--color-code-bg) !important;
-}
-
-div.highlight pre {
-  margin: 0 !important;
-  padding: 0 !important;
-  background-color: transparent !important;
-  border: none !important;
-}
-
-div.highlight code {
-  background-color: transparent !important;
-  padding: 0 !important;
-  border: none !important;
-}
-
-/* ============================================================
-   Material Icons
-   ============================================================ */
+/* ============================================
+   6. Material Icons
+   ============================================ */
 
 .material-icons {
-  font-family: 'Material Icons' !important;
+  font-family: var(--font-icons);
   font-weight: normal;
   font-style: normal;
   font-size: 24px;
@@ -268,217 +179,551 @@ div.highlight code {
   word-wrap: normal;
   direction: ltr;
   -webkit-font-feature-settings: 'liga';
-  font-feature-settings: 'liga';
   -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-  vertical-align: middle;
+  color: var(--color-text);
+}
+
+/* ============================================
+   7. Print Styles (Light theme only)
+   ============================================ */
+
+@media print {
+  * {
+    background-color: white !important;
+    color: black !important;
+  }
+}
+
+/* ============================================
+   8. Links & Interactive Elements
+   ============================================ */
+
+/* Logo link - no underline */
+a[href="/"] {
+  text-decoration: none !important;
+}
+
+a[href="/"]:hover {
+  text-decoration: none !important;
+}
+
+/* Links - Light Theme */
+a {
+  color: var(--color-text);
+  text-decoration: underline;
+  text-decoration-color: var(--color-text-secondary);
+  transition: color var(--transition-fast), text-decoration-color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--color-text-secondary);
+  text-decoration-color: var(--color-text);
+}
+
+a:focus {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+/* Links - Dark Theme */
+[data-theme="dark"] a,
+html.dark a {
+  color: var(--color-text);
+  text-decoration-color: var(--color-text-secondary);
+}
+
+[data-theme="dark"] a:hover,
+html.dark a:hover {
+  color: var(--color-text-secondary);
+  text-decoration-color: var(--color-text);
+}
+
+/* Nextra specific link styles */
+.nextra-focus {
   color: var(--color-text) !important;
 }
 
-/* ============================================================
-   Tables
-   ============================================================ */
-
-table {
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  overflow: hidden;
-  box-shadow: var(--shadow-sm);
-  transition: border-color var(--transition-normal), box-shadow var(--transition-normal);
+.nextra-focus:hover {
+  color: var(--color-text-secondary) !important;
 }
 
-thead {
-  background-color: var(--color-surface-dark);
+/* Primary links (like in content) */
+a[class*="text-primary"] {
+  color: var(--color-text) !important;
 }
 
-th {
-  background-color: var(--color-surface-dark);
+a[class*="text-primary"]:hover {
+  color: var(--color-text-secondary) !important;
+}
+
+/* ============================================
+   8.5. Tailwind Color Overrides
+   ============================================ */
+
+/* Override Tailwind gray colors with theme colors */
+.text-gray-900,
+._text-gray-900 {
+  color: var(--color-text) !important;
+}
+
+.text-gray-600,
+._text-gray-600 {
+  color: var(--color-text-secondary) !important;
+}
+
+.text-gray-500,
+._text-gray-500 {
+  color: var(--color-text-secondary) !important;
+}
+
+.text-gray-400,
+._text-gray-400 {
+  color: var(--color-text-disabled) !important;
+}
+
+.text-gray-300,
+._text-gray-300 {
+  color: var(--color-text-disabled) !important;
+}
+
+/* Background colors */
+.bg-gray-100,
+._bg-gray-100 {
+  background-color: var(--color-bg-light) !important;
+}
+
+.bg-gray-50,
+._bg-gray-50 {
+  background-color: var(--color-surface-light) !important;
+}
+
+/* Slate colors (Nextra uses slate for headings) */
+.text-slate-900,
+._text-slate-900 {
+  color: var(--color-text) !important;
+}
+
+.text-slate-100,
+._text-slate-100 {
+  color: var(--color-text) !important;
+}
+
+/* Dark mode text colors */
+[data-theme="dark"] .text-gray-900,
+[data-theme="dark"] ._text-gray-900,
+html.dark .text-gray-900,
+html.dark ._text-gray-900 {
+  color: var(--color-text) !important;
+}
+
+[data-theme="dark"] .text-gray-600,
+[data-theme="dark"] ._text-gray-600,
+html.dark .text-gray-600,
+html.dark ._text-gray-600 {
+  color: var(--color-text-secondary) !important;
+}
+
+[data-theme="dark"] .text-gray-500,
+[data-theme="dark"] ._text-gray-500,
+html.dark .text-gray-500,
+html.dark ._text-gray-500 {
+  color: var(--color-text-secondary) !important;
+}
+
+[data-theme="dark"] .text-gray-400,
+[data-theme="dark"] ._text-gray-400,
+html.dark .text-gray-400,
+html.dark ._text-gray-400 {
+  color: var(--color-text-disabled) !important;
+}
+
+[data-theme="dark"] .text-gray-300,
+[data-theme="dark"] ._text-gray-300,
+html.dark .text-gray-300,
+html.dark ._text-gray-300 {
+  color: var(--color-text-disabled) !important;
+}
+
+/* Dark mode background colors */
+[data-theme="dark"] .bg-gray-100,
+[data-theme="dark"] ._bg-gray-100,
+html.dark .bg-gray-100,
+html.dark ._bg-gray-100 {
+  background-color: var(--color-bg-light) !important;
+}
+
+[data-theme="dark"] .bg-gray-50,
+[data-theme="dark"] ._bg-gray-50,
+html.dark .bg-gray-50,
+html.dark ._bg-gray-50 {
+  background-color: var(--color-surface-light) !important;
+}
+
+[data-theme="dark"] .text-slate-900,
+[data-theme="dark"] ._text-slate-900,
+html.dark .text-slate-900,
+html.dark ._text-slate-900 {
+  color: var(--color-text) !important;
+}
+
+[data-theme="dark"] .text-slate-100,
+[data-theme="dark"] ._text-slate-100,
+html.dark .text-slate-100,
+html.dark ._text-slate-100 {
+  color: var(--color-text) !important;
+}
+
+/* ============================================
+   8.6. Tailwind Primary Color Overrides (무채색)
+   ============================================ */
+
+/* Primary background colors - Light Theme */
+.bg-primary-100,
+._bg-primary-100 {
+  background-color: var(--color-surface) !important;
+}
+
+.bg-primary-400,
+._bg-primary-400 {
+  background-color: var(--color-surface-dark) !important;
+}
+
+.bg-primary-500,
+._bg-primary-500 {
+  background-color: var(--color-border) !important;
+}
+
+/* Primary text colors - Light Theme */
+.text-primary-600,
+._text-primary-600 {
+  color: var(--color-text) !important;
+}
+
+.text-primary-800,
+._text-primary-800 {
+  color: var(--color-text) !important;
+}
+
+/* Primary border colors - Light Theme */
+.border-primary-500,
+._border-primary-500 {
+  border-color: var(--color-border) !important;
+}
+
+/* Primary background colors - Dark Theme */
+[data-theme="dark"] .bg-primary-100,
+[data-theme="dark"] ._bg-primary-100,
+html.dark .bg-primary-100,
+html.dark ._bg-primary-100 {
+  background-color: var(--color-surface) !important;
+}
+
+[data-theme="dark"] .bg-primary-400,
+[data-theme="dark"] ._bg-primary-400,
+html.dark .bg-primary-400,
+html.dark ._bg-primary-400 {
+  background-color: var(--color-surface-light) !important;
+}
+
+[data-theme="dark"] .bg-primary-500,
+[data-theme="dark"] ._bg-primary-500,
+html.dark .bg-primary-500,
+html.dark ._bg-primary-500 {
+  background-color: var(--color-border) !important;
+}
+
+/* Primary text colors - Dark Theme */
+[data-theme="dark"] .text-primary-600,
+[data-theme="dark"] ._text-primary-600,
+html.dark .text-primary-600,
+html.dark ._text-primary-600 {
+  color: var(--color-text) !important;
+}
+
+[data-theme="dark"] .text-primary-800,
+[data-theme="dark"] ._text-primary-800,
+html.dark .text-primary-800,
+html.dark ._text-primary-800 {
+  color: var(--color-text) !important;
+}
+
+/* Primary border colors - Dark Theme */
+[data-theme="dark"] .border-primary-500,
+[data-theme="dark"] ._border-primary-500,
+html.dark .border-primary-500,
+html.dark ._border-primary-500 {
+  border-color: var(--color-border) !important;
+}
+
+/* Primary with opacity - Light Theme (Tailwind uses /10 syntax) */
+[class*="bg-primary-400"][class*="/10"],
+[class*="_bg-primary-400"][class*="/10"] {
+  background-color: var(--color-accent-fg-transparent) !important;
+}
+
+/* Primary with opacity - Dark Theme */
+[data-theme="dark"] [class*="bg-primary-400"][class*="/10"],
+[data-theme="dark"] [class*="_bg-primary-400"][class*="/10"],
+html.dark [class*="bg-primary-400"][class*="/10"],
+html.dark [class*="_bg-primary-400"][class*="/10"] {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Nextra primary color classes - 더 구체적인 오버라이드 */
+[class*="primary"] {
+  --tw-primary-opacity: 1;
+}
+
+/* 모든 primary 색상을 무채색으로 - CSS 변수 오버라이드 */
+:root {
+  --primary-50: #FBFBFB;
+  --primary-100: #F5F5F5;
+  --primary-200: #F0F0F0;
+  --primary-300: #EEEEEE;
+  --primary-400: #DDDDDD;
+  --primary-500: #CCCCCC;
+  --primary-600: #666666;
+  --primary-700: #333333;
+  --primary-800: #000000;
+  --primary-900: #000000;
+}
+
+[data-theme="dark"],
+html.dark {
+  --primary-50: #0A0A0A;
+  --primary-100: #121212;
+  --primary-200: #1E1E1E;
+  --primary-300: #2A2A2A;
+  --primary-400: #333333;
+  --primary-500: #444444;
+  --primary-600: #BBBBBB;
+  --primary-700: #EEEEEE;
+  --primary-800: #FFFFFF;
+  --primary-900: #FFFFFF;
+}
+
+/* ============================================
+   9. Buttons & Form Elements
+   ============================================ */
+
+/* Buttons */
+button {
   color: var(--color-text);
-  font-weight: 600;
-  border-bottom: 2px solid var(--color-border);
-  padding: 0.75em;
-  transition: background-color var(--transition-normal), color var(--transition-normal);
-}
-
-td {
-  border-bottom: 1px solid var(--color-border);
-  color: var(--color-text);
-  padding: 0.75em;
-  transition: border-color var(--transition-normal), color var(--transition-normal);
-}
-
-tbody tr:hover {
-  background-color: var(--color-surface);
-  transition: background-color var(--transition-normal);
-}
-
-/* ============================================================
-   Blockquotes & Admonitions
-   ============================================================ */
-
-blockquote {
-  border-left: 4px solid var(--color-border);
-  background-color: var(--color-surface);
-  color: var(--color-text-secondary);
-  padding: 1em 1.5em;
-  margin: 1em 0;
-  border-radius: 0 6px 6px 0;
-  box-shadow: var(--shadow-sm);
-  transition: background-color var(--transition-normal), color var(--transition-normal), border-color var(--transition-normal);
-}
-
-.admonition,
-.callout {
-  border: 1px solid var(--color-border);
-  border-left: 4px solid var(--color-border);
-  background-color: var(--color-surface);
-  color: var(--color-text);
-  padding: 1em;
-  margin: 1em 0;
-  border-radius: 6px;
-  box-shadow: var(--shadow-sm);
-  transition: background-color var(--transition-normal), color var(--transition-normal), border-color var(--transition-normal);
-}
-
-.admonition-title,
-.callout-title {
-  color: var(--color-text);
-  font-weight: 600;
-  margin-bottom: 0.5em;
-  border-bottom: 1px solid var(--color-border);
-  padding-bottom: 0.5em;
-  transition: color var(--transition-normal), border-color var(--transition-normal);
-}
-
-/* ============================================================
-   Buttons & Form Elements
-   ============================================================ */
-
-button, .button {
-  background-color: var(--color-text);
-  color: var(--color-bg);
-  border: none;
-  border-radius: 6px;
-  padding: 0.5em 1em;
-  font-weight: 500;
-  transition: background-color var(--transition-normal), color var(--transition-normal), transform var(--transition-normal), box-shadow var(--transition-normal);
-  box-shadow: var(--shadow-sm);
-}
-
-button:hover, .button:hover {
-  background-color: var(--color-text-secondary);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
-}
-
-button:active, .button:active {
-  transform: translateY(0);
-  box-shadow: var(--shadow-sm);
-}
-
-input, textarea, select {
-  background-color: var(--color-surface);
-  color: var(--color-text);
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  padding: 0.5em;
-  font-family: inherit;
-  transition: background-color var(--transition-normal), color var(--transition-normal), border-color var(--transition-normal);
-}
-
-input:focus, textarea:focus, select:focus {
-  background-color: var(--color-surface);
-  border-color: var(--color-text);
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
-  outline: none;
-}
-
-[data-theme="dark"] input:focus,
-[data-theme="dark"] textarea:focus,
-[data-theme="dark"] select:focus,
-html.dark input:focus,
-html.dark textarea:focus,
-html.dark select:focus {
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
-}
-
-/* ============================================================
-   Images
-   ============================================================ */
-
-img {
-  border-radius: 8px;
-  box-shadow: var(--shadow-md);
-  transition: transform var(--transition-normal), box-shadow var(--transition-normal);
-  max-width: 100%;
-  height: auto;
-  display: block;
-}
-
-img:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
-}
-
-/* ============================================================
-   Selection & Scrollbar
-   ============================================================ */
-
-::selection {
-  background-color: var(--color-surface);
-  color: var(--color-text);
-}
-
-/* Scrollbar styling */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--color-surface);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-secondary);
-}
-
-/* ============================================================
-   Utility Classes
-   ============================================================ */
-
-.no-italic {
-  font-style: normal !important;
-}
-
-.text-primary {
-  color: var(--color-primary-fg);
-}
-
-.text-secondary {
-  color: var(--color-text-secondary);
-}
-
-.text-disabled {
-  color: var(--color-text-disabled);
-}
-
-.bg-surface {
-  background-color: var(--color-surface);
-}
-
-.border-default {
+  background-color: transparent;
   border-color: var(--color-border);
+  transition: all var(--transition-fast);
 }
 
-/* ============================================================
-   Accessibility & Performance
-   ============================================================ */
+button:hover {
+  color: var(--color-text-secondary);
+  background-color: var(--color-surface);
+}
+
+button:focus {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+/* Input fields */
+input[type="text"],
+input[type="search"],
+input[type="email"],
+input[type="password"],
+textarea {
+  color: var(--color-text);
+  background-color: var(--color-surface);
+  border-color: var(--color-border);
+  transition: all var(--transition-fast);
+}
+
+input[type="text"]:focus,
+input[type="search"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+textarea:focus {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+  border-color: var(--color-text);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-text-secondary);
+  opacity: 0.7;
+}
+
+/* ============================================
+   10. Nextra Component Overrides
+   ============================================ */
+
+/* Navigation & Sidebar */
+.nextra-nav-container {
+  background-color: var(--color-bg);
+  border-bottom-color: var(--color-border);
+  min-height: 60px;
+  height: 60px;
+}
+
+.nextra-sidebar-container {
+  background-color: var(--color-bg);
+  border-right-color: var(--color-border);
+}
+
+/* Search input */
+input[type="search"],
+input[role="combobox"] {
+  background-color: var(--color-surface) !important;
+  color: var(--color-text) !important;
+  border-color: var(--color-border) !important;
+}
+
+input[type="search"]::placeholder,
+input[role="combobox"]::placeholder {
+  color: var(--color-text-secondary) !important;
+}
+
+/* Table of Contents */
+.nextra-toc {
+  border-left-color: var(--color-border);
+}
+
+.nextra-toc a {
+  color: var(--color-text-secondary);
+}
+
+.nextra-toc a:hover {
+  color: var(--color-text);
+}
+
+/* Content area */
+.nextra-content {
+  color: var(--color-text);
+  background-color: var(--color-bg);
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--color-text);
+}
+
+/* Code blocks */
+pre,
+code {
+  background-color: var(--color-code-bg) !important;
+  color: var(--color-code-fg) !important;
+  border-color: var(--color-code-border) !important;
+}
+
+/* Footer */
+footer {
+  background-color: var(--color-bg-light) !important;
+  color: var(--color-text-secondary) !important;
+  border-top-color: var(--color-border) !important;
+  text-align: center !important;
+  line-height: 1.2 !important;
+  letter-spacing: -1px !important;
+  min-height: 60px !important;
+  height: 60px !important;
+  padding: 0.75rem 1rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+footer > div {
+  justify-content: center !important;
+  text-align: center !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Footer container 중앙 정렬 강제 */
+footer > div[class*="_mx-auto"] {
+  justify-content: center !important;
+  text-align: center !important;
+}
+
+footer > div[class*="_mx-auto"] > div {
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  text-align: center !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  gap: 0.25rem !important;
+}
+
+[data-theme="dark"] footer,
+html.dark footer {
+  background-color: var(--color-bg-light) !important;
+}
+
+footer a {
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  transition: opacity var(--transition-fast);
+}
+
+footer a:hover {
+  color: var(--color-text);
+  opacity: 0.75;
+}
+
+footer p {
+  text-align: center !important;
+  margin: 0 !important;
+  letter-spacing: -1px !important;
+  line-height: 1.2 !important;
+}
+
+/* Footer 텍스트 스타일 - 자간 -1px, 행간 줄이기 */
+footer a,
+footer span {
+  letter-spacing: -1px !important;
+  line-height: 1.2 !important;
+}
+
+/* Breadcrumb */
+.nextra-breadcrumb {
+  color: var(--color-text-secondary);
+}
+
+.nextra-breadcrumb a {
+  color: var(--color-text-secondary);
+}
+
+.nextra-breadcrumb a:hover {
+  color: var(--color-text);
+}
+
+/* ============================================
+   11. Dark Mode Specific Overrides
+   ============================================ */
+
+[data-theme="dark"] .nextra-nav-container,
+html.dark .nextra-nav-container {
+  background-color: var(--color-bg);
+  border-bottom-color: var(--color-border);
+}
+
+[data-theme="dark"] .nextra-sidebar-container,
+html.dark .nextra-sidebar-container {
+  background-color: var(--color-bg);
+  border-right-color: var(--color-border);
+}
+
+[data-theme="dark"] input[type="search"],
+[data-theme="dark"] input[role="combobox"],
+html.dark input[type="search"],
+html.dark input[role="combobox"] {
+  background-color: var(--color-surface) !important;
+  color: var(--color-text) !important;
+}
+
+/* ============================================
+   12. Accessibility
+   ============================================ */
 
 @media (prefers-reduced-motion: reduce) {
   * {
@@ -488,66 +733,4 @@ img:hover {
   }
 }
 
-/* Print styles */
-@media print {
-  body {
-    background-color: white;
-    color: black;
-  }
 
-  a {
-    color: black;
-    text-decoration: underline;
-  }
-
-  [data-theme="dark"],
-  html.dark {
-    background-color: white;
-    color: black;
-  }
-}
-
-/* ============================================================
-   Responsive Typography
-   ============================================================ */
-
-@media (max-width: 768px) {
-  h1 {
-    font-size: 1.75rem;
-  }
-
-  h2 {
-    font-size: 1.5rem;
-  }
-
-  h3 {
-    font-size: 1.25rem;
-  }
-
-  body {
-    font-size: 0.95rem;
-    line-height: 1.5;
-  }
-
-  code {
-    font-size: 0.8em;
-  }
-}
-
-@media (max-width: 480px) {
-  h1 {
-    font-size: 1.5rem;
-  }
-
-  h2 {
-    font-size: 1.25rem;
-  }
-
-  h3 {
-    font-size: 1rem;
-  }
-
-  body {
-    font-size: 0.9rem;
-  }
-}

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @TEST:HOOKS-HANDLERS-001 | SPEC: SPEC-HOOKS-HANDLERS-001.md
 """Alfred Hooks 핸들러 테스트
 
 모든 Hook 이벤트 핸들러의 동작을 검증합니다.
@@ -70,15 +69,14 @@ class TestPreToolUseHandler:
     """
 
     def test_pre_tool_use_safe_operation(self):
-        """안전한 작업은 기본 결과 반환 (TAG Guard 포함 가능)
+        """안전한 작업은 기본 결과 반환
 
         SPEC 요구사항:
             - WHEN 안전한 작업이 감지되면, continue_execution=True를 반환해야 한다
-            - TAG Guard가 누락된 TAG를 감지하면 systemMessage를 포함할 수 있다
 
         Given: 안전한 Bash 명령어 payload
         When: handle_pre_tool_use()를 호출하면
-        Then: {"continue": true}를 반환하고, 선택적으로 TAG 경고 메시지를 포함할 수 있다
+        Then: {"continue": true}를 반환한다
         """
         payload: HookPayload = {
             "cwd": ".",
@@ -93,9 +91,6 @@ class TestPreToolUseHandler:
         output = result.to_dict()
         assert "continue" in output
         assert output["continue"] is True
-        # TAG Guard may add systemMessage if missing TAGs detected
-        if "systemMessage" in output:
-            assert "TAG" in output["systemMessage"] or "tag" in output["systemMessage"].lower()
 
     @patch("handlers.tool.detect_risky_operation")
     @patch("handlers.tool.create_checkpoint")
@@ -197,7 +192,6 @@ class TestSessionStartHandler:
     ):
         """Major version update shows warning with release notes
 
-        @TEST:MAJOR-UPDATE-007
 
         SPEC Requirements:
             - WHEN major version update is available (e.g., 0.8.1 → 1.0.0),
@@ -246,7 +240,6 @@ class TestSessionStartHandler:
     ):
         """Regular update shows version info with release notes
 
-        @TEST:REGULAR-UPDATE-008
 
         SPEC Requirements:
             - WHEN minor/patch update is available (e.g., 0.8.1 → 0.9.0),
@@ -346,7 +339,6 @@ class TestUserPromptSubmitHandler:
     @patch("handlers.user.get_jit_context")
     @patch("handlers.user.Path")
     def test_user_prompt_submit_alfred_command_logging(self, mock_path_class, mock_get_jit):
-        # @TEST:HOOKS-COMMAND-LOGGING-001
         """Alfred 명령어 실행 시 로깅 기능
 
         SPEC 요구사항:
@@ -383,7 +375,6 @@ class TestUserPromptSubmitHandler:
 
     @patch("handlers.user.get_jit_context")
     def test_user_prompt_submit_non_alfred_command_no_logging(self, mock_get_jit):
-        # @TEST:HOOKS-COMMAND-LOGGING-002
         """Alfred가 아닌 명령어는 로깅하지 않음
 
         SPEC 요구사항:
@@ -410,7 +401,6 @@ class TestUserPromptSubmitHandler:
     @patch("handlers.user.get_jit_context")
     @patch("handlers.user.Path")
     def test_user_prompt_submit_logging_graceful_failure(self, mock_path_class, mock_get_jit):
-        # @TEST:HOOKS-COMMAND-LOGGING-003
         """로깅 실패 시에도 메인 플로우는 계속됨 (비차단)
 
         SPEC 요구사항:

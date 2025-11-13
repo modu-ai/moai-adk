@@ -1,10 +1,6 @@
 """
 Tests for StatuslineConfig - Configuration loading and management
 
-@TEST:STATUSLINE-CONFIG-001 - Default configuration loading
-@TEST:STATUSLINE-CONFIG-002 - Configuration value retrieval with dot notation
-@TEST:STATUSLINE-CONFIG-003 - Cache configuration parsing
-@TEST:STATUSLINE-CONFIG-004 - Singleton pattern
 """
 
 import pytest

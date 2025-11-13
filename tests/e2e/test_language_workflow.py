@@ -1,4 +1,3 @@
-# @CODE:LANG-FIX-001:E2E | SPEC: .moai/specs/SPEC-LANG-FIX-001/spec.md
 """End-to-end tests for complete language localization workflows.
 
 Tests verify complete user workflows for Korean, Japanese, and Spanish:

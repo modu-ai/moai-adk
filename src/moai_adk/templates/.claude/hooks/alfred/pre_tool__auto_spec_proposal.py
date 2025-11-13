@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @CODE:HOOK-AUTO-SPEC-001 | @SPEC:TAG-AUTO-SPEC-PROPOSAL-001
 """PreToolUse Hook: Automatic SPEC Proposal on Code File Changes
 
 Claude Code Event: PreToolUse
@@ -26,17 +25,16 @@ from typing import Any, Dict, Optional
 # Setup import path for MoAI-ADK modules
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
-from moai_adk.core.tags.spec_generator import SpecGenerator
 
 
 def get_hook_config() -> Dict[str, Any]:
-    """Load hook configuration from .moai/config.json.
+    """Load hook configuration from .moai/config/config.json.
 
     Returns:
         Hook configuration dictionary with defaults.
     """
     try:
-        config_file = Path(".moai/config.json")
+        config_file = Path(".moai/config/config.json")
         if config_file.exists():
             with open(config_file, "r", encoding="utf-8") as f:
                 config = json.load(f)

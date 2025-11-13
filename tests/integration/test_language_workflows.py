@@ -1,4 +1,4 @@
-# @TEST:LANG-004-WORKFLOWS | SPEC: SPEC-LANGUAGE-DETECTION-001.md | CODE: src/moai_adk/core/project/detector.py
+# # REMOVED_ORPHAN_TEST:LANG-004-WORKFLOWS | SPEC: SPEC-LANGUAGE-DETECTION-001.md | CODE: src/moai_adk/core/project/detector.py
 """Comprehensive tests for language-specific workflow templates.
 
 Tests workflow template creation, language detection, and package manager detection

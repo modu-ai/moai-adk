@@ -1,4 +1,3 @@
-# @CODE:PY314-001 | SPEC: SPEC-PY314-001.md | TEST: tests/unit/test_commands.py
 """CLI Main Module
 
 CLI entry module:
@@ -6,6 +5,7 @@ CLI entry module:
 - Click-based CLI framework
 - Rich console terminal output
 """
+
 # type: ignore
 
 from moai_adk.__main__ import cli, show_logo  # type: ignore[attr-defined]
