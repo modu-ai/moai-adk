@@ -51,8 +51,17 @@ logs/
 # Test coverage
 .coverage
 coverage.json
+coverage.xml
+htmlcov/
 
-# Next.js build output
+# Documentation and build artifacts
+docs/
+dist/
+
+# Next.js and build config (site-specific, not needed in package)
+next.config.js
+theme.config.tsx
+vercel.json
 docs/.next/
 docs/out/
 
@@ -76,11 +85,6 @@ docs/out/
 /.moai/
 /CLAUDE.md
 /.mcp.json
-
-# Documentation and build artifacts
-docs/
-dist/
-htmlcov/
 
 # Package templates MUST be tracked (source of truth for new projects)
 # DO NOT exclude: src/moai_adk/templates/.claude/
