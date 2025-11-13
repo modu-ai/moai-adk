@@ -1,9 +1,0 @@
-export default {
-  "index": "코드 예제",
-  "rest-api": "REST API",
-  "database": "데이터베이스",
-  "testing": "테스팅",
-  "authentication": "인증",
-  "performance": "성능",
-  "security": "보안"
-};
