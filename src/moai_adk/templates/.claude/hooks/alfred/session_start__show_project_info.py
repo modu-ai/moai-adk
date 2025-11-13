@@ -255,6 +255,41 @@ def get_git_info() -> dict[str, Any]:
         }
 
 
+@staticmethod
+def _parse_version(version_str: str) -> tuple[int, ...]:
+    """Parse version string to comparable tuple
+
+    Args:
+        version_str: Version string (e.g., "0.25.4")
+
+    Returns:
+        Tuple of integers for comparison (e.g., (0, 25, 4))
+    """
+    try:
+        import re
+        clean = version_str.lstrip("v")
+        parts = [int(x) for x in re.split(r"[^\d]+", clean) if x.isdigit()]
+        return tuple(parts) if parts else (0,)
+    except Exception:
+        return (0,)
+
+
+@staticmethod
+def _is_newer_version(newer: str, older: str) -> bool:
+    """Compare two versions (semantic versioning)
+
+    Args:
+        newer: Version that might be newer
+        older: Version that might be older
+
+    Returns:
+        True if newer > older
+    """
+    newer_parts = check_version_update._parse_version(newer)
+    older_parts = check_version_update._parse_version(older)
+    return newer_parts > older_parts
+
+
 def check_version_update() -> tuple[str, bool]:
     """Check if version update is available (fast version using cached data)
 
@@ -263,7 +298,7 @@ def check_version_update() -> tuple[str, bool]:
 
     Returns:
         (status_indicator, has_update)
-        - status_indicator: "(latest)" or "→ X.X.X available"
+        - status_indicator: "(latest)", "(dev)" or "→ X.X.X available"
         - has_update: True if update available
     """
     try:
@@ -290,10 +325,15 @@ def check_version_update() -> tuple[str, bool]:
         if not latest_version:
             return "(latest)", False
 
-        # Compare versions
-        if latest_version != installed_version:
+        # Compare versions with semantic versioning
+        if check_version_update._is_newer_version(latest_version, installed_version):
+            # PyPI has newer version
             return f"→ {latest_version} available", True
+        elif check_version_update._is_newer_version(installed_version, latest_version):
+            # Local version is newer (development version)
+            return "(dev)", False
         else:
+            # Same version
             return "(latest)", False
 
     except Exception:

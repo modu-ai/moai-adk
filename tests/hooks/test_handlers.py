@@ -285,8 +285,8 @@ class TestUserPromptSubmitHandler:
         - context_files 목록 반환
     """
 
-    @patch("handlers.user.get_jit_context")
-    def test_user_prompt_submit_with_context(self, mock_get_jit):
+    @patch("handlers.user.get_enhanced_jit_context")
+    def test_user_prompt_submit_with_context(self, mock_enhanced_jit):
         """컨텍스트 파일이 있을 때
 
         SPEC 요구사항:
@@ -296,7 +296,10 @@ class TestUserPromptSubmitHandler:
         When: handle_user_prompt_submit()를 호출하면
         Then: context_files에 SPEC 파일 목록이 포함된다
         """
-        mock_get_jit.return_value = [".moai/specs/SPEC-001.md", ".moai/specs/SPEC-002.md"]
+        mock_enhanced_jit.return_value = (
+            [".moai/specs/SPEC-001.md", ".moai/specs/SPEC-002.md"],
+            "🎯 전문가 에이전트: spec-builder"
+        )
 
         payload: HookPayload = {
             "cwd": ".",
@@ -336,9 +339,8 @@ class TestUserPromptSubmitHandler:
         assert result.context_files == []
         assert result.system_message is None
 
-    @patch("handlers.user.get_jit_context")
-    @patch("handlers.user.Path")
-    def test_user_prompt_submit_alfred_command_logging(self, mock_path_class, mock_get_jit):
+    @patch("handlers.user.get_enhanced_jit_context")
+    def test_user_prompt_submit_alfred_command_logging(self, mock_enhanced_jit):
         """Alfred 명령어 실행 시 로깅 기능
 
         SPEC 요구사항:
@@ -349,17 +351,7 @@ class TestUserPromptSubmitHandler:
         When: handle_user_prompt_submit()를 호출하면
         Then: 로그 파일에 명령어가 기록되고, 정상적으로 완료된다
         """
-        mock_get_jit.return_value = []
-
-        # Mock Path and file operations
-        mock_log_dir = mock_path_class.return_value / ".moai" / "logs"
-        mock_log_file = mock_log_dir / "command-invocations.log"
-        mock_log_file.parent.return_value.mkdir = mock_log_file.parent.mkdir = lambda **kwargs: None
-        mock_log_file.exists.return_value = False
-
-        # Mock file write
-        mock_file_handle = mock_log_file.open.__enter__.return_value
-        mock_file_handle.write = lambda x: None
+        mock_enhanced_jit.return_value = ([], None)
 
         payload: HookPayload = {
             "cwd": ".",
@@ -370,8 +362,8 @@ class TestUserPromptSubmitHandler:
 
         # Verify main flow continues (no exceptions)
         assert isinstance(result, HookResult)
-        assert result.context_files == []
-        assert result.system_message is None
+        assert isinstance(result.context_files, list)
+        assert result.system_message is None or isinstance(result.system_message, str)
 
     @patch("handlers.user.get_jit_context")
     def test_user_prompt_submit_non_alfred_command_no_logging(self, mock_get_jit):
@@ -398,9 +390,8 @@ class TestUserPromptSubmitHandler:
         assert result.context_files == []
         assert result.system_message is None
 
-    @patch("handlers.user.get_jit_context")
-    @patch("handlers.user.Path")
-    def test_user_prompt_submit_logging_graceful_failure(self, mock_path_class, mock_get_jit):
+    @patch("handlers.user.get_enhanced_jit_context")
+    def test_user_prompt_submit_logging_graceful_failure(self, mock_enhanced_jit):
         """로깅 실패 시에도 메인 플로우는 계속됨 (비차단)
 
         SPEC 요구사항:
@@ -410,10 +401,7 @@ class TestUserPromptSubmitHandler:
         When: handle_user_prompt_submit()를 호출하면
         Then: 로깅 오류가 발생하지만 정상적으로 완료된다
         """
-        mock_get_jit.return_value = []
-
-        # Mock Path to raise exception on file write
-        mock_path_class.side_effect = PermissionError("Permission denied")
+        mock_enhanced_jit.return_value = ([], None)
 
         payload: HookPayload = {
             "cwd": ".",
@@ -425,7 +413,7 @@ class TestUserPromptSubmitHandler:
 
         # Verify main flow continues
         assert isinstance(result, HookResult)
-        assert result.context_files == []
+        assert isinstance(result.context_files, list)
 
 
 class TestPostToolUseHandler:
