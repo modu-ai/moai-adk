@@ -2,7 +2,7 @@
   "_meta": {
   },
   "moai": {
-    "version": "{{MOAI_VERSION}}",
+    "version": "0.22.5",
     "update_check_frequency": "daily",
     "version_check": {
       "enabled": true,
@@ -60,34 +60,36 @@
     ]
   },
   "language": {
-    "conversation_language": "{{CONVERSATION_LANGUAGE}}",
-    "conversation_language_name": "{{CONVERSATION_LANGUAGE_NAME}}",
-    "agent_prompt_language": "{{CONVERSATION_LANGUAGE}}",
+    "conversation_language": "ko",
+    "conversation_language_name": "Korean",
+    "agent_prompt_language": "ko",
     "notes": "Language for sub-agent internal prompts (english=global standard, localized=user's conversation language)"
   },
   "project": {
-    "name": "{{PROJECT_NAME}}",
-    "description": "{{PROJECT_DESCRIPTION}}",
-    "owner": "{{PROJECT_OWNER}}",
-    "mode": "{{PROJECT_MODE}}",
-    "locale": "{{CONVERSATION_LANGUAGE}}",
-    "language": "{{CODEBASE_LANGUAGE}}",
-    "created_at": "{{CREATION_TIMESTAMP}}",
+    "name": "moai-adk",
+    "description": "MoAI Agentic Development Kit - SPEC-First TDD with Alfred SuperAgent & Complete Skills v2.0",
+    "owner": "GoosLab",
+    "mode": "team",
+    "locale": "ko",
+    "language": "Python",
+    "created_at": "2025-11-11T23:57:10Z",
     "initialized": true,
-    "optimized": false
+    "optimized": true,
+    "optimized_at": "2025-11-13T00:00:00Z",
+    "last_settings_update": "2025-11-13T00:00:00Z"
   },
   "user": {
-    "name": "{{USER_NAME}}",
-    "notes": "Personal name for Alfred's personalized greetings (e.g., '철수', 'John'). Leave empty for default greetings like '사용자님'"
+    "name": "GOOS행"
   },
   "session": {
     "suppress_setup_messages": false,
+    "setup_messages_suppressed_at": "2025-11-12T02:00:00Z",
     "notes": "suppress_setup_messages: false enables SessionStart output. Set to true to suppress messages (show again after 7 days)"
   },
-  "hooks": {
+    "hooks": {
     "timeout_ms": 2000,
     "graceful_degradation": true,
-    "notes": "Hook execution timeout (milliseconds). Set graceful_degradation to true to continue even if a hook fails. Optimized to 2 seconds for faster performance."
+        "notes": "Hook execution timeout (milliseconds). Set graceful_degradation to true to continue even if a hook fails. Optimized to 2 seconds for faster performance."
   },
   "session_end": {
     "enabled": true,
@@ -143,7 +145,7 @@
     "auto_create": false,
     "warn_user": true,
     "user_choice": "Minimal",
-    "configured_at": "{{CREATION_TIMESTAMP}}",
+    "configured_at": "2025-11-11T23:57:10Z",
     "allowed_locations": [
       ".moai/docs/",
       ".moai/reports/",
@@ -155,21 +157,20 @@
   "github": {
     "templates": {
       "enable_trust_5": true,
+      "enable_tag_system": false,
       "enable_alfred_commands": true,
       "spec_directory": ".moai/specs",
       "docs_directory": ".moai/docs",
       "test_directory": "tests",
       "notes": "Configure GitHub templates for project customization. When enable_* flags are false, corresponding MoAI-specific sections are omitted from templates."
     },
-    "auto_delete_branches": null,
+    "auto_delete_branches": false,
     "auto_delete_branches_checked": false,
     "spec_git_workflow": "per_spec",
-    "spec_git_workflow_configured": false,
+    "spec_git_workflow_configured": true,
     "notes": "auto_delete_branches: whether to auto-delete feature branches after merge. spec_git_workflow: 'feature_branch' (auto), 'develop_direct' (direct), 'per_spec' (ask per SPEC - flexible, user controls each workflow)"
   },
   "document_management": {
-    "_meta": {
-    },
     "enabled": true,
     "enforce_structure": true,
     "block_root_pollution": false,
