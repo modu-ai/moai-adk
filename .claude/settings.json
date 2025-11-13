@@ -73,17 +73,6 @@
           }
         ]
       }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/post_tool__tag_auto_corrector.py"
-          }
-        ]
-      }
     ]
   },
   "permissions": {
