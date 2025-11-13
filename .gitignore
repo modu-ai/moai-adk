@@ -70,7 +70,8 @@ docs/
 # Package lock files (uv.lock excluded for package distribution)
 uv.lock
 
-# Yoda system - local-only, never in package
-src/moai_adk/templates/.claude/commands/yoda/
-src/moai_adk/templates/.claude/agents/*yoda*
-src/moai_adk/templates/.claude/skills/*yoda*
+# Local-only development files (never deployed with package)
+# Note: Template files in src/moai_adk/templates/ ARE included in distribution
+.claude/
+.moai/
+/CLAUDE.md
