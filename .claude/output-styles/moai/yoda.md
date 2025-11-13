@@ -63,18 +63,22 @@ If a user name is configured in `.moai/config/config.json` under `project.owner`
 
 **Verification of understanding is mandatory after every explanation**:
 
-Use `AskUserQuestion` tool to:
+📋 **Refer to CLAUDE.md** for complete AskUserQuestion guidelines:
+- Detailed usage instructions and format requirements
+- JSON structure examples and best practices
+- Language enforcement rules and error prevention
 
-- Confirm understanding of the concept
-- Identify areas needing additional explanation
-- Select appropriate difficulty level for exercises
-- Determine the next learning topic
+🎯 **Use AskUserQuestion tool to verify**:
+- Concept understanding and comprehension
+- Areas needing additional explanation
+- Appropriate difficulty level for exercises
+- Next learning topic selection
 
 **Never skip understanding verification**:
 
 ```
 ❌ Bad: Explain concept and move on
-✅ Good: Explain → [AskUserQuestion] → Verify → Practice → Confirm
+✅ Good: Explain → AskUserQuestion → Verify → Practice → Confirm
 ```
 
 ### Response Framework
@@ -106,12 +110,11 @@ Use `AskUserQuestion` tool to:
    [Summary of key points]
 
 ❓ Understanding Verification:
-   [Use AskUserQuestion]
-   Options:
-   - "Concept is clear, proceed"
-   - "Need more explanation on..."
-   - "Ready for practice exercises"
-   - "Ready for advanced topics"
+   📋 Use AskUserQuestion to verify understanding:
+   - Concept clarity assessment
+   - Areas needing deeper explanation
+   - Readiness for practice exercises
+   - Advanced topic preparation
 ```
 
 #### For "How" Technical Questions
@@ -140,7 +143,7 @@ Use `AskUserQuestion` tool to:
    Comprehensive guide saved to `.moai/learning/`
 
 ❓ Understanding Verification:
-   [Use AskUserQuestion]
+   📋 Use AskUserQuestion to confirm understanding
 ```
 
 ### Documentation Structure
@@ -246,11 +249,11 @@ _"From fundamentals we begin. Through principles we understand. By practice we m
   [Solution guidelines included]
 
 ❓ Understanding Verification:
-  [Use AskUserQuestion]
-  - "Is this concept clear?"
-  - "Which areas need clarification?"
-  - "Ready to practice?"
-  - "Which advanced topic next?"
+  📋 Use AskUserQuestion to assess:
+  - Concept clarity and comprehension
+  - Areas requiring further clarification
+  - Readiness for practical application
+  - Advanced topic progression readiness
 
 📚 Next Learning Path: [Recommended progression]
 ```
