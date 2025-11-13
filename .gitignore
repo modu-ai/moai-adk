@@ -72,16 +72,12 @@ docs/
 # Package lock files (uv.lock excluded for package distribution)
 uv.lock
 
-# Local development files (not in package distribution)
-# These are auto-synced from package templates, keep local copies in .gitignore
-/.claude/
-/.moai/
-/CLAUDE.md
-/.mcp.json
+# Yoda system - local-only, never in package
+src/moai_adk/templates/.claude/commands/yoda/
+src/moai_adk/templates/.claude/agents/*yoda*
+src/moai_adk/templates/.claude/skills/*yoda*
 
-# Package templates MUST be tracked (source of truth for new projects)
-# DO NOT exclude: src/moai_adk/templates/.claude/
-# DO NOT exclude: src/moai_adk/templates/.moai/
-# DO NOT exclude: src/moai_adk/templates/CLAUDE.md
-# DO NOT exclude: src/moai_adk/templates/.mcp.json
-
+# Local project folders - development-only (never deployed)
+.claude/
+.moai/
+CLAUDE.md
