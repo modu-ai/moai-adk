@@ -87,17 +87,35 @@ def prompt_project_setup(
         # 2. Language selection - Korean, English, Japanese, Chinese, Other
         console.print("\n[blue]🌐 Language Selection[/blue]")
 
-        language_choice = questionary.select(
+        # Build choices list
+        language_choices = [
+            "한국어 (Korean)",
+            "English",
+            "日本語 (Japanese)",
+            "中文 (Chinese)",
+            "Other - Manual input",
+        ]
+
+        # Determine default choice index
+        language_values = ["ko", "en", "ja", "zh", "other"]
+        default_locale = initial_locale or "en"
+        default_index = language_values.index(default_locale) if default_locale in language_values else 1
+
+        language_choice_name = questionary.select(
             "Select your conversation language:",
-            choices=[
-                {"name": "한국어 (Korean)", "value": "ko"},
-                {"name": "English", "value": "en"},
-                {"name": "日本語 (Japanese)", "value": "ja"},
-                {"name": "中文 (Chinese)", "value": "zh"},
-                {"name": "Other - Manual input", "value": "other"},
-            ],
-            default=initial_locale or "en",
+            choices=language_choices,
+            default=language_choices[default_index],
         ).ask()
+
+        # Map choice name back to value
+        choice_mapping = {
+            "한국어 (Korean)": "ko",
+            "English": "en",
+            "日本語 (Japanese)": "ja",
+            "中文 (Chinese)": "zh",
+            "Other - Manual input": "other",
+        }
+        language_choice = choice_mapping.get(language_choice_name)
 
         if language_choice is None:
             raise KeyboardInterrupt
