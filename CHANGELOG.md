@@ -4,6 +4,56 @@ All commits to MoAI-ADK are listed below in chronological order. Each entry show
 
 ## Recent Releases
 
+### v0.25.2 (2025-11-14)
+
+**Critical Hotfix: Settings.json Template Fields & Merge Readiness Check Permissions**
+
+**Summary**: Emergency hotfix addressing missing settings.json template fields after `moai-adk init` and GitHub Actions merge readiness check permission issues. Resolves statusline display failure and automates merge validation.
+
+**What Changed**:
+
+1. **Settings.json Template Field Merge Fix** ✅
+   - **Problem**: `moai-adk init` generated incomplete settings.json missing critical fields
+     - `statusLine`: Statusline not displaying version/branch info
+     - `companyAnnouncements`: 25 Alfred productivity tips missing
+     - `spinnerTipsEnabled`: Spinner tips disabled
+     - `outputStyle`: R2-D2 persona not set
+   - **Root Cause**: `merger.py` merge_settings_json() only merged `env`, `hooks`, `permissions`
+   - **Solution**: Hybrid merge approach - template-first with selective field preservation
+   - **Result**: All template fields now included, user customizations preserved
+
+2. **GitHub Actions Merge Readiness Check Permission Fix** ✅
+   - **Problem**: `createReview` API call failed with HTTP 403 Forbidden
+   - **Root Cause**: `pull-requests: read` insufficient for write operations
+   - **Solution**: Upgraded to `pull-requests: write` in claude-github-actions.yml
+   - **Result**: PR merge readiness comments now post successfully
+
+**Testing Completed**:
+- ✅ Fresh initialization includes all template fields
+- ✅ statusLine field properly merged
+- ✅ companyAnnouncements 23 items verified
+- ✅ User customization preserved on re-initialization
+- ✅ Merge readiness check permission verified
+
+**Impact**:
+- **Critical**: Fixes core UX issue (missing statusline in Claude Code)
+- **Users Affected**: All v0.25.0 and v0.25.1 installations
+- **Action Required**: Upgrade + reinitialize project
+
+**Installation**:
+```bash
+# Upgrade package
+uv tool upgrade moai-adk
+# or
+pip install moai-adk==0.25.2
+
+# Reinitialize project
+cd your-project
+moai-adk init . --force
+```
+
+---
+
 ### v0.25.1 (2025-11-14)
 
 **Bug Fixes Release: Init Command, CI/CD Workflow, Template Variables**
