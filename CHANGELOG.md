@@ -6,11 +6,13 @@ All commits to MoAI-ADK are listed below in chronological order. Each entry show
 
 ### v0.25.5 (2025-11-14)
 
-**Test Suite Completion & Bug Fixes for Pytest v9.0 Compatibility**
+Test Suite Completion & Bug Fixes for Pytest v9.0 Compatibility
 
-**Summary**: Fixes 18 failing pytest tests by updating test expectations to match current implementation behavior and adding pytest.mark.skip to incomplete hook tracking tests. Achieves 100% test pass rate with 240 tests passing.
+#### Summary
 
-**What Changed**:
+Fixes 18 failing pytest tests by updating test expectations to match current implementation behavior and adding pytest.mark.skip to incomplete hook tracking tests. Achieves 100% test pass rate with 240 tests passing.
+
+#### What Changed
 
 1. **Enhanced Agent Delegation Tests (7 tests)** ✅
    - **Fixed**: Adjusted confidence threshold expectations from >0.5 to >0.3 (single keyword match)
@@ -31,7 +33,7 @@ All commits to MoAI-ADK are listed below in chronological order. Each entry show
    - **Result**: Tests properly marked as pending implementation
 
 **Testing Results**:
-```
+```text
 ======================== 240 passed, 12 skipped in 9.21s ========================
 ```
 - Total tests: 252 (240 passing + 12 skipped)
