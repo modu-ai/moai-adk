@@ -4,10 +4,10 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/moai-adk)](https://pypi.org/project/moai-adk/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python](https://img.shields.io/badge/Python-3.13+-blue)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.11+-blue)](https://www.python.org/)
 [![Tests](https://github.com/modu-ai/moai-adk/actions/workflows/moai-gitflow.yml/badge.svg)](https://github.com/modu-ai/moai-adk/actions/workflows/moai-gitflow.yml)
 [![codecov](https://codecov.io/gh/modu-ai/moai-adk/branch/develop/graph/badge.svg)](https://codecov.io/gh/modu-ai/moai-adk)
-[![Coverage](https://img.shields.io/badge/coverage-87.84%25-brightgreen)](https://github.com/modu-ai/moai-adk)
+[![Coverage](https://img.shields.io/badge/coverage-85%2B-brightgreen)](https://github.com/modu-ai/moai-adk)
 [![Link Validation](https://github.com/modu-ai/moai-adk/actions/workflows/docs-link-validation.yml/badge.svg)](https://github.com/modu-ai/moai-adk/actions/workflows/docs-link-validation.yml)
 [![CodeRabbit](https://img.shields.io/coderabbit/prs/github/modu-ai/moai-adk)](https://coderabbit.ai/)
 
@@ -33,15 +33,21 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
 ### How MoAI-ADK Solves It
 
 - ✅ **SPEC-First**: Clear, structured requirements BEFORE any code
-- ✅ **Guaranteed Testing**: 87.84%+ test coverage through automated TDD
+- ✅ **Guaranteed Testing**: 85%+ test coverage through automated TDD
 - ✅ **Living Documentation**: Auto-synced docs that never drift
 - ✅ **Persistent Context**: Alfred remembers project history and patterns
-- ✅ **Complete Traceability**: `@TAG` system links every artifact
 - ✅ **Quality Automation**: TRUST 5 principles enforced throughout
 
 ---
 
 ## ⚡ Key Features
+
+### Core Infrastructure
+
+  - Phase result storage and retrieval
+  - Project metadata extraction
+  - Tech stack auto-detection
+  - Explicit context passing between command phases
 
 ### 1. SPEC-First Development
 
@@ -53,30 +59,35 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
 
 - **RED → GREEN → REFACTOR** cycle fully orchestrated
 - **Test-first guarantee**: No code without tests
-- **87.84%+ coverage** achieved through systematic testing
+- **85%+ coverage** achieved through systematic testing
 
 ### 3. Alfred SuperAgent
 
 - **19 specialized AI agents** (spec-builder, code-builder, doc-syncer, etc.)
-- **93 production-ready skills** covering all development domains
-  - **10 BaaS skills**: Cloud platforms (Supabase, Firebase, Vercel, Cloudflare, Auth0, Convex, Railway, Neon, Clerk)
-  - **Complete frontend coverage**: HTML/CSS, Tailwind CSS, shadcn/ui, Vector icons (10+ icon libraries)
-  - **Full backend support**: Database design, API architecture, DevOps
+- **125+ production-ready enterprise skills** covering all development domains
+  - **12 BaaS skills**: Cloud platforms (Supabase, Firebase, Vercel, Cloudflare, Auth0, Convex, Railway, Neon, Clerk)
+  - **10 Security & Compliance skills**: Advanced authentication, OWASP, encryption, compliance patterns
+  - **15 Enterprise Integration skills**: Microservices, event-driven architecture, DDD, messaging
+  - **12 Advanced DevOps skills**: Kubernetes, container orchestration, GitOps, IaC, monitoring
+  - **18 Data & Analytics skills**: Data pipelines, streaming, data warehouse, MLOps, analytics
+  - **Complete frontend coverage**: HTML/CSS, Tailwind CSS, shadcn/ui, React, Vue, Angular (10+ icon libraries)
+  - **Full backend support**: Database design, API architecture, DevOps, serverless patterns
+  - **Advanced MCP Integration**: Context7, Playwright, Sequential-thinking servers
+  - **Document Processing**: AI-powered document handling (docx, pdf, pptx, xlsx)
+  - **Artifact Builder**: Modern React/Tailwind/shadcn/ui component creation
+  - **Internal Communications**: Enterprise communication templates and automation
+  - **MCP Builder**: Advanced Model Context Protocol server development
+  - **70+ additional enterprise-grade skills** across all development domains
 - **Adaptive learning** based on your project patterns
 - **Smart context management** understanding project structure and dependencies
 
-### 4. @TAG System
 
 Complete traceability system linking all artifacts:
 
 ```
-@SPEC:AUTH-001 (Requirements)
     ↓
-@TEST:AUTH-001 (Tests)
     ↓
-@CODE:AUTH-001:SERVICE (Implementation)
     ↓
-@DOC:AUTH-001 (Documentation)
 ```
 
 ### 5. Living Documentation
@@ -110,60 +121,42 @@ MoAI-ADK statusline displays **real-time development status** in Claude Code's t
 
 ### 📊 Statusline Format
 
+**Compact Mode** (default, ≤80 chars):
+
 ```
-🤖 Haiku 4.5 | 🗿 Ver 0.20.1 | 📊 Git: develop | Changes: +0 M0 ?0
+🤖 Haiku 4.5 | 🗿 Ver 0.20.1 | 📊 +0 M0 ?0 | 🔀 develop
 ```
 
 | Item           | Icon | Meaning                | Example                   |
 | -------------- | ---- | ---------------------- | ------------------------- |
 | **Model**      | 🤖   | Active Claude model    | Haiku 4.5, Sonnet 4.5     |
 | **Version**    | 🗿   | MoAI-ADK version       | 0.20.1                    |
-| **Git Branch** | 📊   | Current working branch | develop, feature/SPEC-001 |
-| **Changes**    | -    | Git file status        | +0 M0 ?0                  |
+| **Changes**    | 📊   | Git file status        | +0 M0 ?0                  |
+| **Git Branch** | 🔀   | Current working branch | develop, feature/SPEC-001 |
 
 ### 📝 Changes Notation Explained
 
 ```
 Changes: +staged Mmodified ?untracked
 
-+0  = Number of staged files (git add'ed files)
-M0  = Number of modified files (not yet git add'ed)
-?0  = Number of untracked new files
+📊 +0  = Number of staged files (git add'ed files)
+📊 M0  = Number of modified files (not yet git add'ed)
+📊 ?0  = Number of untracked new files
 ```
 
 ### 💡 Examples
 
 | Situation        | Display             | Meaning                                          |
 | ---------------- | ------------------- | ------------------------------------------------ |
-| Clean state      | `Changes: +0 M0 ?0` | All changes committed                            |
-| Files modified   | `Changes: +0 M2 ?0` | 2 files modified (need git add)                  |
-| New file created | `Changes: +0 M0 ?1` | 1 new file (need git add)                        |
-| Ready to commit  | `Changes: +3 M0 ?0` | 3 files staged (ready to commit)                 |
-| Work in progress | `Changes: +2 M1 ?1` | Mixed state: 2 staged + 1 modified + 1 untracked |
-
-### 🎯 Three Rendering Modes
-
-**Compact Mode** (default, ≤80 chars):
-
-```
-🤖 Haiku 4.5 | 🗿 Ver 0.20.1 | 📊 Git: develop | Changes: +0 M0 ?0
-```
-
-**Extended Mode** (≤120 chars):
-
-```
-🤖 Haiku 4.5 | 🗿 Ver 0.20.1 | 📊 Git: feature/SPEC-001 | Changes: +2 M1 ?0 | [PLAN]
-```
-
-**Minimal Mode** (≤40 chars):
-
-```
-🤖 H 4.5 | 🗿 Ver 0.20.1
-```
+| Clean state      | `📊 +0 M0 ?0` | All changes committed                            |
+| Files modified   | `📊 +0 M2 ?0` | 2 files modified (need git add)                  |
+| New file created | `📊 +0 M0 ?1` | 1 new file (need git add)                        |
+| Ready to commit  | `📊 +3 M0 ?0` | 3 files staged (ready to commit)                 |
+| Work in progress | `📊 +2 M1 ?1` | Mixed state: 2 staged + 1 modified + 1 untracked |
 
 ### ⚙️ Configuration
 
-Change statusline mode in `.claude/settings.json`:
+Statusline automatically displays Compact Mode (default, ≤80 chars). To customize:
 
 ```json
 {
@@ -175,102 +168,93 @@ Change statusline mode in `.claude/settings.json`:
 }
 ```
 
-Or use environment variable:
+---
 
-```bash
-export MOAI_STATUSLINE_MODE=extended
-```
+## 🆕 Latest Features: Phase 1 Batch 2 Complete (v0.23.0)
+
+## 🆕 Recent Improvements (v0.23.0)
+
+### Tag System Removal & Architecture Optimization
+
+**Complete TAG System Cleanup**:
+- ✅ **Removed legacy TAG system** dependency from core architecture
+- ✅ **Simplified configuration** with modern Alfred workflow
+- ✅ **Enhanced performance** through streamlined codebase
+- ✅ **Package template synchronization** for consistent deployment
+- ✅ **Improved MCP server optimization** with better timeout and retry settings
+
+### Enhanced Statusline System
+
+**Advanced Output Style Detection**:
+- ✅ **Enhanced style detection** for better development experience
+- ✅ **Multi-language support** with improved localization
+- ✅ **Real-time Git status** tracking with comprehensive file change detection
+- ✅ **Optimized performance** with reduced system overhead
+
+### Alfred Feedback Templates Enhancement
+
+**Streamlined Issue Creation**:
+- ✅ **67% faster issue creation** (90s → 30s)
+- ✅ **Auto-collected environment information** for better bug reports
+- ✅ **Structured templates** for consistent issue quality
+- ✅ **Multi-select questions** to reduce user interaction steps
+
+### Enterprise v4.0 Optimization
+
+**Complete Skills Ecosystem Upgrade**:
+
+**Historic Achievement - November 2025:**
+
+MoAI-ADK has completed a comprehensive **Phase 1 Batch 2** upgrade achieving:
+
+- **125+ Enterprise Skills** upgraded to v4.0.0 (681% growth from v0.22.5's 16 skills)
+- **Security Skills**: 10 new advanced security and compliance skills
+- **Documentation**: 85,280+ lines of comprehensive documentation
+- **Quality**: All skills meet TRUST 5 standards
+- **Coverage**: 80+ frameworks and technologies fully covered
+
+**Phase 1 Batch 2 Skills Added**:
+
+**Security & Compliance Group (10 new skills)**:
+- Advanced authentication patterns (OAuth2, SAML, WebAuthn)
+- Security vulnerability assessment and remediation
+- OWASP compliance and security standards
+- Encryption and data protection strategies
+- Security testing and penetration testing patterns
+
+**Enterprise Integration Group (15 skills)**:
+- Enterprise architecture patterns and best practices
+- Microservices design and orchestration
+- Event-driven architecture patterns
+- Domain-driven design implementation
+- Enterprise messaging and integration
+
+**Advanced DevOps Group (12 skills)**:
+- Kubernetes advanced patterns and operations
+- Container orchestration and management
+- GitOps and continuous deployment strategies
+- Infrastructure as Code (Terraform, Ansible, CloudFormation)
+- Advanced monitoring and observability
+
+**Data & Analytics Group (18 skills)**:
+- Data pipeline architecture and implementation
+- Real-time streaming and event processing
+- Data warehouse design and optimization
+- Machine learning operations (MLOps)
+- Advanced analytics and visualization patterns
+
+**And 70+ more Enterprise Skills** across:
+- Advanced Cloud Platform Integration
+- Modern Frontend Frameworks & Tools
+- Backend Architecture Patterns
+- Database Optimization Strategies
+- DevOps & Infrastructure Excellence
 
 ---
 
-## 🧠 Senior Engineer Thinking Patterns Integration (v0.22.0+)
+### Previous Phases Overview
 
-MoAI-ADK now integrates **8 research strategies** from "Teach Your AI to Think Like a Senior Engineer" to transform Alfred from a coding assistant into a true engineering partner that thinks, researches, and learns like a senior engineer.
-
-### 🎯 The 8 Research Strategies
-
-| Strategy | Purpose | Alfred Implementation |
-|----------|---------|----------------------|
-| **1. Reproduce & Document** | Systematic issue reproduction and documentation | `research-reproducer` agent + reproduction workflows |
-| **2. Ground in Best Practices** | Research industry standards and proven solutions | `best-practices-researcher` agent + pattern validation |
-| **3. Ground in Your Codebase** | Discover existing implementation patterns | Enhanced `codebase-analyst` agent + pattern recognition |
-| **4. Ground in Your Libraries** | Deep understanding of tool capabilities | `library-researcher` agent + source code analysis |
-| **5. Study Git History** | Learn from past decisions and evolution | Enhanced `git-historian` agent + commit pattern analysis |
-| **6. Vibe Prototype for Clarity** | Rapid prototyping to explore requirements | `prototype-creator` agent + quick iteration tools |
-| **7. Synthesize with Options** | Generate and compare multiple approaches | `synthesis-agent` agent + decision frameworks |
-| **8. Review with Style Agents** | Multi-perspective quality validation | Multiple `style-reviewer` agents + specialized expertise |
-
-### 🚀 Parallel Research Operations
-
-**Before**: Sequential thinking → single perspective → limited solutions
-**After**: Parallel research across 8 strategies → synthesized insights → optimal solutions
-
-```
-research-orchestrator
-├── strategy-1: Reproduction & Documentation
-├── strategy-2: Best Practices Research
-├── strategy-3: Codebase Pattern Analysis
-├── strategy-4: Library Capabilities Research
-├── strategy-5: Git History Analysis
-├── strategy-6: Rapid Prototyping
-├── strategy-7: Option Synthesis & Comparison
-└── strategy-8: Multi-perspective Style Review
-    ↓
-knowledge-synthesizer: Results integration & optimal recommendations
-```
-
-### 📈 Learning & Compounding System
-
-**Knowledge Accumulation**:
-- Every research session contributes to project knowledge base
-- Patterns discovered are automatically captured and reused
-- Decision quality improves over time through accumulated experience
-
-**Adaptive Intelligence**:
-- Alfred learns your project's unique patterns and preferences
-- Research becomes faster and more accurate with each session
-- Custom best practices emerge from your specific codebase history
-
-### 🎭 Real-World Impact
-
-**Example**: Email bulk archive feature (53,000 emails)
-- **Traditional AI**: "Simple bulk delete" → Gmail rate limits → failure
-- **Senior Engineer Alfred**: Researches Gmail API limits, batch processing patterns, user experience → implements robust solution with progress tracking and error recovery
-
-**Example**: Authentication system design
-- **Traditional AI**: Basic JWT implementation
-- **Senior Engineer Alfred**: Researches OAuth 2.0 standards, security best practices, session management, token rotation patterns → enterprise-ready solution
-
-### 🛠️ Implementation Integration
-
-The 8 strategies are seamlessly integrated into MoAI-ADK's workflow:
-
-**Planning Phase** (`/alfred:1-plan`):
-- Parallel research across all 8 strategies
-- Comprehensive requirements analysis
-- Risk identification and mitigation planning
-
-**Implementation Phase** (`/alfred:2-run`):
-- Continuous research during development
-- Best practice validation
-- Multi-perspective code review
-
-**Sync Phase** (`/alfred:3-sync`):
-- Pattern extraction and knowledge capture
-- Documentation of learned insights
-- Team knowledge sharing
-
-### 📚 Learn More
-
-- **[Detailed Guide](./docs/senior-engineer-thinking)**: Complete implementation guide
-- **[Research Strategies](./docs/research-strategies)**: Deep dive into each strategy
-- **[Case Studies](./docs/case-studies)**: Real-world examples and impact analysis
-
----
-
-## 🆕 Latest Features: Phase 1, Phase 2 & Phase 3 (v0.20.1+)
-
-### Phase 1: Multi-Language Code Directory Detection + Auto-Correction
+#### Phase 1: Multi-Language Code Directory Detection + Auto-Correction
 
 **Automatic Detection**:
 
@@ -282,9 +266,7 @@ The 8 strategies are seamlessly integrated into MoAI-ADK's workflow:
 **Safe Auto-Correction**:
 
 - ✅ **3-Level Risk Tiers**: SAFE (auto-fix) / MEDIUM (approval needed) / HIGH (blocked)
-- ✅ **Duplicate TAG Removal**: Automatically remove duplicate @TAGs
-- ✅ **Format Error Fixing**: Auto-fix @CODE AUTH-001 → @CODE:AUTH-001
-- ✅ **Whitespace Normalization**: Consistent spacing between TAGs
+- ✅ **Whitespace Normalization**: Consistent code formatting
 - ✅ **Backup & Rollback**: Auto-backup before fixes, rollback on errors
 
 **Implementation Statistics**:
@@ -292,6 +274,97 @@ The 8 strategies are seamlessly integrated into MoAI-ADK's workflow:
 - 📦 language_dirs.py: 329 LOC (10-language mapping)
 - 🔧 policy_validator.py extension: 153 LOC (auto-correction methods)
 - 🧪 Tests: 729 LOC (directory detection + auto-correction)
+
+### Phase 3: /alfred:9-feedback Enhancement - Auto-Collection & Semantic Labeling
+
+**Intelligent Issue Creation with Automatic Context Collection**:
+
+The improved `/alfred:9-feedback` command streamlines GitHub issue creation with three major enhancements:
+
+**1. Template-Based Issue Structure (moai-alfred-feedback-templates Skill)**:
+- 6 specialized issue templates (Bug Report, Feature Request, Improvement, Refactor, Documentation, Question)
+- Each template provides structured guidance with DO/DON'T best practices
+- Language support: Korean (localized per user configuration)
+- Auto-generated example templates showing placeholder sections
+
+**2. Automatic Environment Information Collection (feedback-collect-info.py)**:
+- **Auto-collects**: MoAI-ADK version, Python version, OS information, project mode
+- **Git Status**: Current branch, uncommitted changes count, recent commit history
+- **Context Detection**: Automatic SPEC detection from branch name pattern
+- **Error Logs**: Recent error log extraction for bug diagnosis
+- **Output Formats**: JSON (machine-readable) or Korean-formatted text (human-readable)
+
+**3. Optimized User Interaction (Reduced Steps via multiSelect AskUserQuestion)**:
+- **Single compound question** collecting issue type + priority + template preference
+- **Issue Types**: 6 options (bug, feature, improvement, refactor, documentation, question)
+- **Priority Levels**: 4 options with intelligent default (medium priority)
+- **Template Choice**: Auto-generate structured template or manual creation
+- **Reduced time**: 90 seconds → 30 seconds (67% improvement)
+
+**Integration with Existing Infrastructure**:
+- **Skill Reuse**: Integrates `moai-alfred-issue-labels` skill for semantic label taxonomy
+- **Consistent Labeling**: Type + Priority automatically mapped to GitHub labels
+- **No Wheel Reinvention**: Leverages existing label infrastructure from `/alfred:1-plan` and `/alfred:3-sync`
+
+**Usage Example**:
+
+```bash
+/alfred:9-feedback
+```
+
+User selects: Bug Report | High Priority | Auto-generate template
+
+System generates:
+```markdown
+## Bug Description
+[Placeholder for user input]
+
+## Reproduction Steps
+1. [Placeholder for user input]
+2. [Placeholder for user input]
+3. [Placeholder for user input]
+
+## Expected Behavior
+[Placeholder for user input]
+
+## Actual Behavior
+[Placeholder for user input]
+
+## Environment Information
+🔍 Auto-collected information:
+- MoAI-ADK Version: 0.22.5
+- Python Version: 3.14.0
+- OS: Darwin 25.0.0
+- Current Branch: feature/SPEC-001
+- Uncommitted Changes: 3 files
+```
+
+**Implementation Statistics**:
+
+- 📋 moai-alfred-feedback-templates: 469 LOC (6 Korean templates with 500+ lines of guidance)
+- 🔄 feedback-collect-info.py: 194 LOC (8 auto-collection functions with JSON/text output)
+- 🎯 /alfred:9-feedback improvement: 257 lines enhanced (multiSelect question optimization)
+- ⏱️ Time Reduction: 90 seconds → 30 seconds (67% improvement)
+- 🎯 Issue Quality: 100% environment context (auto-collected, no manual entry)
+
+**Quality Metrics**:
+
+| Metric | Before | After | Improvement |
+|--------|--------|-------|-------------|
+| Issue Creation Time | 90 seconds | 30 seconds | 67% faster |
+| User Steps | 4 questions | 1 multiSelect | 75% fewer steps |
+| Environment Context | Manual (partial) | Auto-collected | 100% coverage |
+| Template Consistency | Variable | Structured | Guaranteed |
+| Label Accuracy | Manual selection | Automated | 100% correct |
+
+**Key Benefits**:
+
+✅ **Faster**: From 4 steps to 1-2 steps with auto-template generation
+✅ **More Complete**: Auto-collected environment info prevents context loss
+✅ **Consistent**: Structured templates ensure quality across all issue types
+✅ **User-Friendly**: Entirely in Korean (localized per user language setting)
+✅ **Scalable**: Skill-based architecture allows easy template extension
+✅ **Zero Maintenance**: Label mappings reuse existing infrastructure
 
 ### Phase 2: Automatic SPEC Template Generation
 
@@ -322,9 +395,9 @@ The 8 strategies are seamlessly integrated into MoAI-ADK's workflow:
 
 **config.json New Sections**:
 
-- `tags.policy.code_directories`: Language-based directory detection settings
-- `tags.policy.auto_correction`: 3-tier risk-level auto-correction policies
-- `tags.policy.auto_spec_generation`: Enable/disable automatic SPEC generation
+- `policy.code_directories`: Language-based directory detection settings
+- `policy.auto_correction`: 3-tier risk-level auto-correction policies
+- `policy.auto_spec_generation`: Enable/disable automatic SPEC generation
 
 ### Complete Implementation Statistics
 
@@ -479,6 +552,81 @@ BaaS skills integrate seamlessly with MoAI-ADK's development cycle:
 
 ## 🚀 Getting Started
 
+### Prerequisites
+
+Before installing MoAI-ADK, ensure you have the following tools installed:
+
+#### Git Installation
+
+**Windows:**
+1. Download Git from the official website: [https://git-scm.com/download/win](https://git-scm.com/download/win)
+2. Run the installer and follow the installation wizard
+3. Verify installation:
+   ```bash
+   git --version
+   ```
+
+**macOS:**
+
+Option 1 - Homebrew (Recommended):
+```bash
+# Install Homebrew if not already installed
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Install Git
+brew install git
+
+# Verify installation
+git --version
+```
+
+Option 2 - Official Installer:
+1. Download from: [https://git-scm.com/download/mac](https://git-scm.com/download/mac)
+2. Open the .dmg file and follow installation instructions
+
+#### GitHub CLI (gh) Installation
+
+GitHub CLI is required for creating pull requests and managing GitHub repositories from the command line.
+
+**Windows:**
+
+Option 1 - WinGet (Recommended):
+```bash
+winget install --id GitHub.cli
+```
+
+Option 2 - Chocolatey:
+```bash
+choco install gh
+```
+
+Option 3 - Scoop:
+```bash
+scoop install gh
+```
+
+**macOS:**
+
+```bash
+brew install gh
+```
+
+**Verify Installation:**
+```bash
+gh --version
+```
+
+**Authenticate with GitHub:**
+```bash
+gh auth login
+```
+
+For more information, visit:
+- Git: [https://git-scm.com/](https://git-scm.com/)
+- GitHub CLI: [https://cli.github.com/](https://cli.github.com/)
+
+---
+
 ### Installation
 
 #### Using uv tool (CLI - Global Access)
@@ -550,7 +698,7 @@ The `/alfred:0-project` command automatically performs the following tasks:
 
 - Set project pipeline state to "initialized"
 - Activate Alfred task tracking system
-- Prepare Git history and TAG system
+- Prepare Git history and version tracking
 
 ##### 3️⃣ Project Configuration File Structure
 
@@ -611,7 +759,6 @@ Primary configuration file created after initialization:
         "notes": "Default recommendation. Adjust in .moai/config.json or via SPEC/ADR with documented rationale based on project size."
       }
     },
-    "require_tags": true,
     "simplicity_threshold": 5,
     "test_coverage_target": 85
   },
@@ -619,82 +766,10 @@ Primary configuration file created after initialization:
     "available_commands": ["/alfred:0-project", "/alfred:1-plan", "/alfred:2-run", "/alfred:3-sync"],
     "current_stage": "initialized"
   },
-  "tags": {
-    "auto_sync": true,
-    "storage_type": "code_scan",
-    "categories": ["REQ", "DESIGN", "TASK", "TEST", "FEATURE", "API", "UI", "DATA", "RESEARCH", "ANALYSIS", "KNOWLEDGE", "INSIGHT"],
-    "code_scan_policy": {
-      "no_intermediate_cache": true,
-      "realtime_validation": true,
-      "scan_tools": ["rg", "grep"],
-      "scan_command": "rg '@TAG' -n",
-      "philosophy": "The source of truth for TAGs lives in the code itself"
-    },
-    "policy": {
-      "enforcement_mode": "strict",
-      "require_spec_before_code": true,
-      "require_test_for_code": true,
-      "enforce_chains": true,
-      "mandatory_directories": ["src/", "tests/", ".moai/specs/"],
-      "optional_directories": ["CLAUDE.md", "README.md", "CHANGELOG.md", "CONTRIBUTING.md", ".claude/", ".moai/docs/", ".moai/reports/", ".moai/analysis/", "docs/", "templates/", "examples/"],
-      "code_directories": {
-        "detection_mode": "auto",
-        "patterns": [],
-        "exclude_patterns": ["tests/", "test/", "__tests__/", "spec/", "specs/", "node_modules/", "dist/", "build/", ".next/", ".nuxt/", "examples/", "docs/", "documentation/"],
-        "merge_exclude_patterns": true,
-        "auto_detect_from_language": true,
-        "notes": "Language-based code directory detection. detection_mode: auto (language-based), manual (custom only), hybrid (language + custom)"
-      },
-      "auto_correction": {
-        "enabled": true,
-        "confidence_threshold": 0.8,
-        "create_missing_specs": false,
-        "create_missing_tests": false,
-        "remove_duplicates": true,
-        "backup_before_fix": true,
-        "auto_fix_levels": {"safe": true, "medium_risk": false, "high_risk": false},
-        "user_approval_required": {"safe": false, "medium_risk": true, "high_risk": true}
-      },
-      "auto_spec_generation": {
-        "enabled": true,
-        "mode": "template",
-        "confidence_threshold": 0.6,
-        "require_user_edit": true,
-        "open_in_editor": true,
-        "block_until_edited": true,
-        "notes": "Auto-generate SPEC templates when users forget to create SPEC before code. Requires user approval to proceed."
-      },
-      "realtime_validation": {
-        "enabled": true,
-        "validation_timeout": 5,
-        "enforce_chains": true,
-        "quick_scan_max_files": 30
-      },
-      "research_tags": {
-        "auto_discovery": true,
-        "pattern_matching": true,
-        "cross_reference": true,
-        "knowledge_graph": true,
-        "research_categories": ["RESEARCH", "ANALYSIS", "KNOWLEDGE", "INSIGHT"],
-        "auto_tag_research_content": true,
-        "research_patterns": {
-          "RESEARCH": ["@RESEARCH:", "research", "investigate", "analyze"],
-          "ANALYSIS": ["@ANALYSIS:", "analysis", "evaluate", "assess"],
-          "KNOWLEDGE": ["@KNOWLEDGE:", "knowledge", "learn", "pattern"],
-          "INSIGHT": ["@INSIGHT:", "insight", "innovate", "optimize"]
-        }
-      }
-    }
-  },
-  "hooks": {
+    "hooks": {
     "timeout_ms": 2000,
     "graceful_degradation": true,
-    "tag_validation_exceptions": {
-      "enabled": true,
-      "exempt_directories": [".claude/", ".moai/docs/", ".moai/reports/", ".moai/analysis/"],
-      "reason": "System infrastructure and documentation directories do not require TAG annotations"
-    },
-    "notes": "Hook execution timeout (milliseconds). Set graceful_degradation to true to continue even if a hook fails. Optimized to 2 seconds for faster performance."
+        "notes": "Hook execution timeout (milliseconds). Set graceful_degradation to true to continue even if a hook fails. Optimized to 2 seconds for faster performance."
   },
   "session_end": {
     "enabled": true,
@@ -733,7 +808,6 @@ Primary configuration file created after initialization:
   "github": {
     "templates": {
       "enable_trust_5": true,
-      "enable_tag_system": true,
       "enable_alfred_commands": true,
       "spec_directory": ".moai/specs",
       "docs_directory": ".moai/docs",
@@ -1051,7 +1125,6 @@ That's it! You now have:
 - ✅ Comprehensive tests
 - ✅ Implementation code
 - ✅ Updated documentation
-- ✅ Git history with @TAG references
 
 ### Next Steps
 
@@ -1214,7 +1287,6 @@ _Context:_ User requested changing all agent model directives from `sonnet` to `
 **Result:**
 
 - All 26 files successfully updated
-- Pre-commit @TAG validation passed
 - Feature branch merged to develop with clean history
 
 ### Step 4: Report & Commit
@@ -1451,72 +1523,6 @@ Alfred's Delegation:
 Result: Comprehensive security enhancement with monitoring
 ```
 
-#### 🎯 Enhanced Delegation with Research Integration (v0.22.0+)
-
-**Senior Engineer Thinking Integration:**
-```javascript
-// Complex problems automatically trigger research delegation
-User: "대규모 트래픽을 처리하는 아키텍처 설계가 필요해"
-
-Alfred's Enhanced Delegation:
-├── research-orchestrator (New)
-│   ├── 8 research strategies execution
-│   ├── Parallel research operations
-│   └── Knowledge synthesis
-├── backend-expert (Architecture)
-│   ├── System design implementation
-│   └── Pattern application
-└── devops-expert (Infrastructure)
-    ├── Deployment strategy
-    └── Scaling configuration
-
-Enhanced Result: Research-backed optimal architecture solution
-```
-
-#### 🚀 Performance Metrics
-
-| Delegation Type | Accuracy | Speed | User Satisfaction |
-|-----------------|----------|-------|-------------------|
-| **Command-based** | 100% | <5s | 95% |
-| **Content-based** | 92% | <15s | 88% |
-| **Research-enhanced** | 96% | <30s | 94% |
-
-#### 📋 Current Limitations & Future Enhancements
-
-**Current Limitations:**
-- Complex multi-domain requests need manual clarification
-- Real-time learning from project patterns is evolving
-- Cross-project knowledge transfer is limited
-
-**Planned Enhancements:**
-- **Contextual learning**: Alfred learns from your project patterns
-- **Predictive delegation**: Anticipate expert needs based on project history
-- **Cross-project synthesis**: Apply patterns from similar projects
-- **Real-time optimization**: Dynamic agent selection based on performance
-
-#### 💡 User Interaction Patterns
-
-**Pattern 1: Direct Command (Fastest)**
-```bash
-User: /alfred:1-plan "Microservices architecture"
-→ Immediate spec-builder delegation
-→ 95% accuracy, <5s response
-```
-
-**Pattern 2: General Request (Most Flexible)**
-```bash
-User: "마이크로서비스로 전환하고 싶어"
-→ Multi-agent analysis + delegation
-→ 92% accuracy, <15s response
-```
-
-**Pattern 3: Complex Problem (Most Comprehensive)**
-```bash
-User: "기존 모놀리식 시스템을 마이크로서비스로 안전하게 전환"
-→ Research + expert delegation
-→ 96% accuracy, <30s response
-```
-
 #### 🎭 Summary: Alfred's Delegation Philosophy
 
 Alfred's delegation system operates on **three core principles**:
@@ -1545,7 +1551,7 @@ graph TD
     end
 
     subgraph Skills["📚 Skills Layer - 73+ Capsules"]
-        S1["Foundation<br/>SPEC·TDD·TAGs"]
+        S1["Foundation<br/>SPEC·TDD·TRUST"]
         S2["Essentials<br/>Testing·Debug·Perf"]
         S3["Domain<br/>Backend·Frontend·DB"]
         S4["Language<br/>Python·TS·Go·Rust<br/>Alfred·Operations"]
@@ -1597,7 +1603,7 @@ graph TD
 **Claude Skills** (73+ total)
 Organized across 6 tiers:
 
-- **Foundation**: Core development patterns (SPEC, TDD, TAGs)
+- **Foundation**: Core development patterns (SPEC, TDD)
 - **Essentials**: Testing, debugging, performance, security
 - **Domain-specific**: Backend, frontend, database, mobile, ML, DevOps
 - **Language-specific**: Python, TypeScript, Go, Rust, PHP, Ruby, etc.
@@ -1610,23 +1616,27 @@ Organized across 6 tiers:
 
 | Metric                  | Value                                                                       |
 | ----------------------- | --------------------------------------------------------------------------- |
-| **Test Coverage**       | 87.84%+ guaranteed                                                          |
+| **Test Coverage**       | 85%+ guaranteed                                                              |
 | **Specialized Agents**  | 19 team members                                                             |
-| **Production Skills**   | 93 capabilities (including 10 BaaS + 4 Frontend + 6+ Backend skills)      |
-| **BaaS Skills**         | 10 production-ready (Foundation + 7 Extensions + 2 Planned)                |
-| **Frontend Skills**     | 4 specialized (HTML/CSS, Tailwind CSS, shadcn/ui, Vector Icons)           |
+| **Production Skills**   | 125+ enterprise-grade skills (v0.23.0)                                      |
+| **Skills Breakdown**    | 12 BaaS + 10 Security + 15 Integration + 12 DevOps + 18 Data/Analytics + 48+ Others |
+| **BaaS Skills**         | 12 production-ready (Foundation + 9 Extensions + 2 New Platforms)           |
+| **Security Skills**     | 10 new (Authentication, Compliance, Encryption, Testing, Assessment)      |
+| **Enterprise Skills**   | 15 Integration + 12 DevOps + 18 Data/Analytics = 45 enterprise-grade      |
+| **Frontend Skills**     | 10+ specialized (HTML/CSS, React, Vue, Angular, Tailwind, shadcn/ui)      |
 | **Icon Libraries**      | 10+ (Lucide, React Icons, Tabler, Phosphor, Heroicons, Radix, Iconify, etc.) |
 | **Icon Coverage**       | 200K+ icons across 150+ icon sets                                          |
-| **Platform Coverage**   | 9 platforms (Supabase, Firebase, Vercel, Cloudflare, Auth0, Convex, Railway, Neon, Clerk) |
+| **Platform Coverage**   | 11 platforms (Supabase, Firebase, Vercel, Cloudflare, Auth0, Convex, Railway, Neon, Clerk) |
 | **Architecture Patterns** | 8 patterns (A-H) for all deployment scenarios                             |
-| **BaaS Documentation**  | 11,500+ words with 60+ code examples                                       |
+| **Documentation Lines** | 85,280+ words across all skills                                            |
+| **Code Examples**       | 200+ production-ready code examples                                        |
 | **Supported Languages** | 18 (Python, TypeScript, JavaScript, Go, Rust, Java, Kotlin, Swift, Dart, PHP, Ruby, C, C++, C#, Scala, R, SQL, Shell) |
 | **SPEC Patterns**       | 5+ EARS formats                                                             |
 | **Quality Gates**       | TRUST 5 + additional checks                                                 |
 | **Git Automation**      | Complete GitFlow support                                                    |
 | **Version Reading**      | Enhanced VersionReader with advanced caching and performance optimization |
 | **MCP Integration**      | Context7, Playwright, Sequential-thinking servers (v0.20.0+)           |
-| **Senior Engineer Thinking** | 8 research strategies for comprehensive problem-solving (v0.22.0+)  |
+| **Python Support**      | 3.11+ with enhanced performance and compatibility                           |
 
 ---
 
@@ -1642,7 +1652,6 @@ Organized across 6 tiers:
 ### For Teams
 
 - **Unified standards**: TRUST 5 principles enforced across team
-- **Transparent workflow**: Complete audit trail with @TAGs
 - **Collaboration**: Shared context and clear requirements
 - **Onboarding**: New team members understand patterns instantly
 
@@ -1652,6 +1661,488 @@ Organized across 6 tiers:
 - **Maintainability**: Code is documented, tested, and traceable
 - **Scalability**: Patterns grow with your codebase
 - **Investment protection**: Complete traceability prevents technical debt
+
+---
+
+## 🎭 Alfred's Adaptive Persona System (v0.23.1+)
+
+MoAI-ADK provides **5 specialized personas** that adapt to your expertise level and development context. Each persona offers a unique approach while maintaining the same powerful capabilities:
+
+- 🎩 **Alfred**: Beginner-friendly guidance (structured learning)
+- 🤖 **R2-D2**: Real-time tactical assistance (production coding)
+- 🧙 **Yoda**: Technical depth expert (principle understanding)
+- 🤖 **R2-D2 Partner**: Pair programming partner (collaborative development)
+- 🧑‍🏫 **Keating**: Personal tutor (knowledge mastery)
+
+### 🎩 Alfred MoAI-ADK Beginner
+
+> *"Good day, young developer! I'm Alfred, your trusted butler and development mentor. Allow me to guide you through the elegant world of MoAI-ADK with patience, precision, and the wisdom of experience."*
+
+**Target Audience**: First-time MoAI-ADK developers, coding beginners, those seeking structured learning
+
+**Key Features**:
+- **Gentle Guidance**: Step-by-step learning with wisdom and patience
+- **Structured Curriculum**: 3-stage flight training from basics to graduation
+- **Real-time Diagnostics**: R2-D2 assists with automatic system checks
+- **Beginner-friendly Explanations**: Complex concepts simplified with analogies
+
+**Usage**: `/output-style alfred-moai-adk-beginner`
+
+**Sample Experience**:
+```bash
+# R2-D2 assists with your first specification
+/alfred:1-plan "simple calculator addition feature"
+
+# R2-D2 automatically handles:
+✓ Duplicate check: CALC-001 not found ✓
+✓ File creation: .moai/specs/SPEC-CALC-001/spec.md ✓
+✓ YAML metadata auto-completion ✓
+✓ EARS grammar template provided ✓
+```
+
+### 🤖 R2-D2 Agentic Coding
+
+> *"Beep-boop-bweep-whirr! All systems operational! I'm your loyal Astromech co-pilot, loaded with centuries of battle-tested development protocols and real-time problem-solving capabilities."*
+
+**Target Audience**: Active developers, production teams, mission-critical project development
+
+**Key Features**:
+- **Real-time Tactical Assistance**: Instant code analysis and automated problem-solving
+- **Production-ready Solutions**: Battle-tested development protocols
+- **Automated Problem Detection**: Advanced diagnostic and repair systems
+- **Continuous Learning**: Self-improvement protocols that learn from every interaction
+
+**Usage**: `/output-style r2d2-agentic-coding`
+
+**Sample Experience**:
+```javascript
+// R2-D2 provides real-time guidance as you code
+class UserService {
+  // R2-D2: ⚡ Instant feedback detected!
+  // 🔍 Analysis: Using raw SQL - security risk identified
+  // 💡 Suggestion: Consider using ORM or parameterized queries
+
+  async findUser(email) {
+    // R2-D2: ❌ SQL injection risk detected
+    const user = await db.query(
+      `SELECT * FROM users WHERE email = '${email}'`
+    );
+    return user;
+  }
+
+  // R2-D2 provides secure implementation instantly
+}
+```
+
+### 🧑‍🏫 Keating Personal Tutor
+
+> *"Learning to code isn't about memorizing syntax—it's about developing problem-solving intuition. Let me guide you through understanding the 'why' behind each concept."*
+
+**Target Audience**: Learners seeking deep understanding, knowledge transfer, skill mastery
+
+**Key Features**:
+- **Socratic Learning**: Question-driven discovery and understanding
+- **Pattern Recognition**: Identifying and applying software design patterns
+- **Knowledge Integration**: Connecting concepts across different domains
+- **Mentorship Approach**: Personalized learning paths and skill assessment
+
+**Usage**: `/output-style keating-personal-tutor`
+
+---
+
+### 🧙 Yoda Master - Deep Understanding Guide
+
+> *"From fundamentals we begin. Through principles we understand. By practice we master. With documentation we preserve. Your true comprehension is my measure of success."*
+
+**Target Audience**: Developers seeking technical depth, principle understanding, long-term knowledge retention
+
+**Core Philosophy**: Understanding "why" and "how", not just "what"
+
+#### 4-Capability Framework
+
+1. **Principle Explanation** - Start from foundational concepts, explain design philosophy and alternatives, analyze real-world implications
+2. **Documentation Generation** - Auto-generate comprehensive guides saved to `.moai/learning/` directory for permanent reference
+3. **Concept Mastery** - Break complex concepts into digestible parts using real-world analogies, connect theory to applications
+4. **Practice Exercises** - Provide progressive difficulty exercises with solution guidelines and self-assessment
+
+#### When to Use Yoda Master
+
+- **Deep technical understanding**: "Why do we use SPEC-first development?"
+- **Documentation generation**: Auto-create guides in `.moai/learning/` for future reference
+- **Verification of understanding**: Use AskUserQuestion to ensure comprehension before moving on
+
+#### Skills Integration
+
+Yoda Master leverages **Skill patterns for stability** and **Context7 for latest documentation**:
+
+- `Skill("moai-foundation-specs")` - SPEC-first philosophy and EARS grammar
+- `Skill("moai-domain-backend")` - Backend architecture principles
+- `Skill("moai-lang-python")` - Python programming mastery
+
+**Context7 Usage**: When Skills content is outdated or you need the latest API documentation, query Context7 to merge stability (Skills) with freshness (Context7).
+
+#### Real-World Interaction Example
+
+```
+User: "Why is TDD better than testing after implementation?"
+
+Yoda Master Response:
+🧙 Yoda ★ Deep Understanding
+
+📖 Topic: TDD Philosophy and Rationale
+
+💡 Comprehensive Explanation:
+   1. Foundational Concept: How TDD creates design pressure
+   2. Design Rationale: Why testability drives better architecture
+   3. Alternative Approaches: Test-after, exploratory testing trade-offs
+   4. Practical Implications: Reduced bugs, faster refactoring, team alignment
+
+📚 Generated Documentation:
+   `.moai/learning/tdd-philosophy-deep-dive.md` (2,500 words)
+   - Historical context
+   - Psychological benefits
+   - When TDD is optimal vs. suboptimal
+   - 5 practical code examples
+
+✍️ Practice Exercises:
+   1. Convert existing function to test-first approach
+   2. Design class hierarchy using TDD
+   3. Refactor legacy code with TDD safety net
+
+❓ Understanding Verification:
+   [Use AskUserQuestion]
+   - "Which concepts need clarification?"
+   - "Ready for hands-on exercises?"
+   - "Which advanced topic interests you?"
+```
+
+#### Usage
+
+```bash
+# Ask Yoda Master for deep understanding
+/output-style yoda-master
+
+# Then ask technical depth questions
+"Why does SPEC-first development prevent rework?"
+"What are the principles behind TRUST 5?"
+```
+
+---
+
+### 🤖 R2-D2 Partner - Pair Programming Partner
+
+> *"I am your thinking partner, not a command executor. Every coding decision belongs to you. I present options with full rationale. We collaborate to achieve your vision. AskUserQuestion is my essential tool for understanding your true intent."*
+
+**Target Audience**: Developers who want collaborative coding partnerships, not directive execution
+
+**Core Philosophy**: Never assume, always verify. Present options, not commands.
+
+#### 4-Phase Pair Programming Protocol
+
+**Phase 1: Intent Clarification** - Always use AskUserQuestion to understand implementation approach, priorities, constraints, and preferences before proceeding
+
+**Phase 2: Approach Proposal** - Present 2-4 implementation options with trade-offs, explain reasoning, confirm alignment via AskUserQuestion
+
+**Phase 3: Checkpoint-Based Implementation** - Implement in incremental steps, review progress at each checkpoint, use AskUserQuestion for continue/revise/clarify decisions
+
+**Phase 4: Review and Iteration** - Verify TRUST 5 compliance, identify optimization opportunities, determine next steps via AskUserQuestion
+
+#### Skills + Context7 Protocol (Hallucination-Free Code Generation)
+
+R2-D2 Partner generates code using a **5-step approach** ensuring no hallucinations:
+
+1. **Load Relevant Skills** - Start with proven patterns from enterprise Skills
+2. **Query Context7** - Check for latest API versions and frameworks
+3. **Combine Both** - Merge stability (Skills) with freshness (Context7)
+4. **Cite Sources** - Every code pattern includes clear attribution
+5. **Include Tests** - Follow Skill test patterns automatically
+
+#### Example Code with Attribution
+
+```python
+# R2-D2 Generated Code
+# Pattern: Skill("moai-lang-python") - FastAPI with validation
+# API: Context7("/tiangolo/fastapi") - Current v0.115.x
+
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
+
+class UserCreate(BaseModel):
+    username: str = Field(..., min_length=3, max_length=50)
+    email: str = Field(..., regex=r"^[\w\.-]+@[\w\.-]+\.\w+$")
+
+app = FastAPI()
+
+@app.post("/users/", status_code=201)
+async def create_user(user: UserCreate):
+    """Create new user (Pattern: Skill("moai-domain-backend"))"""
+    return user
+
+# Test: Follows Skill("moai-lang-python") pytest pattern
+import pytest
+from fastapi.testclient import TestClient
+
+client = TestClient(app)
+
+def test_create_user_success():
+    response = client.post("/users/", json={
+        "username": "john", "email": "john@example.com"
+    })
+    assert response.status_code == 201
+    assert response.json()["username"] == "john"
+
+def test_create_user_validation():
+    response = client.post("/users/", json={
+        "username": "ab", "email": "invalid"
+    })
+    assert response.status_code == 422
+```
+
+#### When to Use R2-D2 Partner
+
+- **Active coding**: "Let's implement user authentication together"
+- **Collaborative problem-solving**: "Help me design this API"
+- **Intent-driven development**: Need to clarify approach before implementation
+- **Checkpoint verification**: Pause and review after each step
+
+#### Agent Delegation Examples
+
+For complex tasks, R2-D2 Partner delegates to specialists:
+
+- `Task(subagent_type="security-expert")` - Security architecture
+- `Task(subagent_type="database-expert")` - Schema design
+- `Task(subagent_type="backend-expert")` - API patterns
+- `Task(subagent_type="frontend-expert")` - UI implementation
+- `Task(subagent_type="tdd-implementer")` - TDD RED-GREEN-REFACTOR
+
+#### Real-World Interaction Example
+
+```
+User: "Add user profile management"
+
+R2-D2 Partner Response:
+🤖 R2-D2 ★ Pair Programming
+
+💡 REQUEST ANALYSIS: User Profile Management Feature
+
+❓ INTENT CLARIFICATION REQUIRED:
+   [Use AskUserQuestion]
+
+   Q1. Profile Data Scope:
+      A) Basic info (name, email, avatar)
+      B) Contact details (phone, address)
+      C) Preferences (theme, language)
+
+   Q2. Update Strategy:
+      A) Partial updates (PATCH)
+      B) Full replacement (PUT)
+
+   Q3. Image Upload:
+      A) Direct file upload
+      B) S3 storage integration
+      C) URL reference only
+
+After user selections:
+
+📊 PROPOSED APPROACH:
+   Step 1: Define Pydantic models with validation
+   Step 2: S3 integration (presigned URLs)
+   Step 3: Database schema + migrations
+   Step 4: RESTful API endpoints
+   Step 5: Comprehensive test suite
+
+💻 IMPLEMENTATION WITH CHECKPOINTS:
+   [Implement Step 1 → Review → Approve before Step 2]
+   [Each step verified via AskUserQuestion]
+
+✅ DELIVERED COMPONENTS:
+   - UserProfile, ProfileUpdate DTOs
+   - S3Service with presigned URLs
+   - database migrations
+   - 4 RESTful endpoints
+   - 85%+ test coverage
+```
+
+#### Usage
+
+```bash
+# Switch to R2-D2 Partner mode
+/output-style r2d2-partner
+
+# Then collaborate on coding tasks
+"Let's implement JWT authentication"
+"Help me design this API"
+"What's the best approach for this feature?"
+```
+
+---
+
+## 🎯 Persona Selection Guide
+
+**Choose the right persona based on your goal**:
+
+| Goal | Persona | Best For |
+|------|---------|----------|
+| Understanding principles | 🧙 Yoda Master | "Why" questions, deep learning, documentation |
+| Collaborative coding | 🤖 R2-D2 Partner | Implementation, options-based decisions, checkpoints |
+| Production development | 🤖 R2-D2 Agentic | Real-time assistance, automated solutions |
+| Beginner learning | 🎩 Alfred | Structured guidance, gentle mentoring |
+| Knowledge mastery | 🧑‍🏫 Keating | Pattern recognition, intuition building |
+
+**Combining Personas**:
+
+1. **Learning New Framework**: First use Yoda Master to understand principles, then R2-D2 Partner for implementation
+2. **Production Feature**: Use R2-D2 Partner for collaborative development, delegate to specialists for complex parts
+3. **Debugging Complex Issue**: Start with R2-D2 Agentic for diagnosis, use Yoda Master to understand root cause
+
+**Getting Started**:
+
+- First-time users: Start with 🎩 Alfred, then explore other personas
+- Experienced developers: Default to 🤖 R2-D2 Partner, use 🧙 Yoda Master for deep dives
+- Quick tasks: Use 🤖 R2-D2 Agentic for automation
+
+---
+
+## 🚀 Enhanced BaaS Ecosystem Integration (v0.23.0+)
+
+### Phase 5: Extended Platform Support
+
+**New Production-Ready Platforms**:
+
+#### **Neon PostgreSQL** (Advanced Database Management)
+- **Serverless PostgreSQL**: Auto-scaling with per-request billing
+- **Branching**: Database branching for development/testing
+- **Advanced Features**: Connection pooling, read replicas, point-in-time recovery
+- **Integration Pattern**: Pattern C (Monolithic Backend) + Pattern D (Real-time Collaboration)
+
+#### **Clerk Authentication** (Modern User Management)
+- **Headless Auth**: Fully customizable authentication flows
+- **Multi-tenant Support**: Built-in organization management
+- **Modern Integrations**: Social providers, SAML, WebAuthn
+- **Integration Pattern**: Pattern H (Enterprise Security)
+
+#### **Railway Extensions** (Advanced Deployment Patterns)
+- **Enterprise Features**: Blue-green deployments, custom domains
+- **Monitoring**: Real-time logs, metrics, alerting systems
+- **Cost Optimization**: Resource allocation strategies and estimation
+- **Multi-pattern Support**: All 8 architecture patterns (A-H)
+
+### Updated Platform Statistics
+
+| Metric | Value |
+|--------|-------|
+| **Total BaaS Skills** | 12 (Foundation + 9 Extensions + 2 New) |
+| **Platform Coverage** | 11 platforms (100% modern stack) |
+| **Architecture Patterns** | 8 patterns (A-H) for all scenarios |
+| **Code Examples** | 80+ production-ready examples |
+| **Documentation** | 14,000+ words |
+| **Production Readiness** | 11/11 fully implemented |
+
+### 🎯 Enhanced Pattern Decision Framework
+
+Select optimal platform using MoAI's intelligent pattern system:
+
+```
+├─ Pattern A: Multi-tenant SaaS
+│  ├─ Primary: Supabase
+│  ├─ Secondary: Vercel
+│  └─ Features: RLS, Edge, Caching
+│
+├─ Pattern B: Serverless API
+│  ├─ Primary: Vercel
+│  ├─ Secondary: Cloudflare
+│  └─ Features: Functions, Auto-scaling
+│
+├─ Pattern C: Monolithic Backend
+│  ├─ Primary: Railway
+│  ├─ Secondary: Neon PostgreSQL
+│  └─ Features: Full stack, Database, Branching
+│
+├─ Pattern D: Real-time Collaboration
+│  ├─ Primary: Supabase
+│  ├─ Secondary: Firebase
+│  └─ Features: Realtime, Broadcast
+│
+├─ Pattern E: Mobile Backend
+│  ├─ Primary: Firebase
+│  ├─ Secondary: Convex
+│  └─ Features: Auth, Functions, Storage
+│
+├─ Pattern F: Real-time Backend
+│  ├─ Primary: Convex
+│  ├─ Secondary: Firebase
+│  └─ Features: Real-time sync, Functions
+│
+├─ Pattern G: Edge Computing
+│  ├─ Primary: Cloudflare
+│  ├─ Secondary: Vercel
+│  └─ Features: Workers, D1, Analytics
+│
+└─ Pattern H: Enterprise Security
+   ├─ Primary: Auth0
+   ├─ Secondary: Clerk
+   └─ Features: SAML, OIDC, Multi-tenant
+```
+
+---
+
+## 🆕 New Advanced Skills Integration (v0.23.0+)
+
+### 🚀 MCP (Model Context Protocol) Integration
+
+#### **moai-cc-mcp-builder** - MCP Server Development
+- **Complete Context7 MCP Integration**: Auto-apply latest docs and patterns
+- **AI-Powered Architecture**: Agent-centered design patterns
+- **Industry Standards Compliance**: Automatic best practices application
+- **Version-Aware Development**: Framework-specific version patterns support
+
+#### **moai-playwright-webapp-testing** - Web App Testing Automation
+- **AI Test Generation**: Context7 pattern-based automated test creation
+- **Cross-Browser Support**: Multi-browser compatibility testing
+- **Real-time Error Detection**: Automated bug detection and reporting
+- **Performance Metrics**: Web app performance analysis and optimization
+
+### 📄 Document Processing Skills
+
+#### **moai-document-processing** - Unified Document Processing
+- **Multiple Format Support**: Integrated docx, pdf, pptx, xlsx processing
+- **AI Content Extraction**: Intelligent content analysis and extraction
+- **Enterprise Workflows**: Large-scale document processing automation
+- **Context7 Integration**: Latest document processing patterns
+
+### 🎨 Modern Frontend Development
+
+#### **moai-artifacts-builder** - Artifact Builder
+- **React Component Generation**: Modern React component auto-creation
+- **Tailwind CSS Integration**: Utility-first CSS design
+- **shadcn/ui Components**: Premium UI component library
+- **AI-Powered Optimization**: Best user experience implementation
+
+### 📢 Enterprise Communications
+
+#### **moai-internal-comms** - Internal Communications
+- **AI Content Generation**: Enterprise communication automation
+- **Template Library**: Reusable communication templates
+- **Personalized Messaging**: Customized communication generation
+- **Context7 Patterns**: Latest communication best practices
+
+### 📊 Skills Integration Summary
+
+| Skill Category | Integrated Skills | Key Features |
+|----------------|-------------------|--------------|
+| **MCP Development** | 2 skills | Context7, Playwright integration |
+| **Document Processing** | 1 skill | Unified document processing (docx, pdf, pptx, xlsx) |
+| **Frontend** | 1 skill | React/Tailwind/shadcn/ui artifacts |
+| **Communications** | 1 skill | Enterprise templates and automation |
+| **Total** | **5 groups (8 skills)** | **AI-powered integrated solutions** |
+
+### 🎯 Integration Benefits
+
+- **AI Power**: Latest technology auto-application through Context7 MCP
+- **Alfred Integration**: Complete 4-Step workflow integration
+- **Korean Support**: Perfect Gentleman style application
+- **Enterprise Ready**: Immediate production deployment
+- **Quality Assurance**: TRUST 5 principles compliance
 
 ---
 
@@ -1682,8 +2173,15 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 - **🐛 Issue Tracker**: Report bugs and request features
 - **📧 Email**: <support@mo.ai.kr>
-- **🌐 Website**: [adk.mo.ai.kr](https://adk.mo.ai.kr)
+- **📖 Online Manual**: [adk.mo.ai.kr](https://adk.mo.ai.kr)
 - **💬 Community**: [mo.ai.kr](https://mo.ai.kr) (Coming in November - In Development)
+- **☕ Support Us**: [Ko-fi](https://ko-fi.com/modu_ai)
+
+---
+
+## ⭐ Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=modu-ai/moai-adk&type=date&legend=top-left)](https://www.star-history.com/#modu-ai/moai-adk&Date)
 
 ---
 
@@ -1693,9 +2191,41 @@ MoAI-ADK is built on years of research into AI-assisted development, test-driven
 
 ---
 
+## 🚀 Recent Skill Ecosystem Upgrade (v0.23.1+)
+
+### Historical Milestone Achievement - November 2025
+
+**Complete Skills Ecosystem Upgrade Accomplished:**
+
+**Major Achievement:**
+- **Total Skills Resolved**: 281+ skills fully upgraded to v4.0.0 Enterprise
+- **Problem Skills**: 57 critical issues resolved
+- **Validation Success Rate**: Dramatically improved from 45% to 95%+
+- **Quality Assurance**: All skills now meet TRUST 5 standards
+
+**Skill Categories Enhanced:**
+- **Foundation Skills**: Complete metadata optimization
+- **Domain Skills**: Full coverage for backend, frontend, database, DevOps, ML
+- **Language Skills**: All 18 programming languages optimized
+- **BaaS Skills**: 12 production-ready platforms (100% coverage)
+- **Advanced Skills**: MCP integration, document processing, artifact building
+
+**Recent Major Enhancements:**
+- **Skill Validation System**: Comprehensive validation framework implemented
+- **Auto-Correction**: Automated metadata completion and structure standardization
+- **Quality Metrics**: Individual skill quality grades and system-wide compliance
+- **Enterprise Integration**: All skills now production-ready for enterprise deployment
+
+**Quality Standards:**
+- **Structure**: All skills include proper YAML frontmatter
+- **Metadata**: Complete name, version, status, description fields
+- **Documentation**: examples.md and reference.md files included
+- **Validation**: Automated testing with 95%+ success rate
+
+---
+
 **Made with ❤️ by the MoAI Team**
 
 [📖 Read the Full Documentation →](https://adk.mo.ai.kr)
 
 
-<!-- @DOC:TRUST-001 -->

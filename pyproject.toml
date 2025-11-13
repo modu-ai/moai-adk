@@ -1,6 +1,6 @@
 [project]
 name = "moai-adk"
-version = "0.22.5"
+version = "0.23.0"
 description = "MoAI Agentic Development Kit - SPEC-First TDD with Alfred SuperAgent & Complete Skills v2.0"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -97,6 +97,13 @@ include = [
     "src/moai_adk/templates/.claude/**/*",
     "src/moai_adk/templates/.moai/**/*",
     "src/moai_adk/templates/.github/**/*"
+]
+# Exclude developer-only tools and utilities from package distribution
+exclude = [
+    "src/moai_adk/templates/.moai/scripts/dev/**/*",  # Developer-only utilities
+    "src/moai_adk/templates/.moai/scripts/*/test_*.py",  # Test scripts
+    "src/moai_adk/templates/.moai/backups/**/*",  # Backup files
+    "src/moai_adk/templates/.moai/temp/**/*",  # Temporary files
 ]
 
 [project.scripts]

@@ -1,15 +1,13 @@
-# @TEST:HOOK-POST-AUTO-SPEC-001
 """Test suite for PostToolUse auto-spec completion hook."""
 
-import unittest
-from unittest.mock import Mock, patch, MagicMock
-import json
 import os
 import tempfile
-from pathlib import Path
+import unittest
+from unittest.mock import Mock, patch
 
 # Import the hook to test
 from moai_adk.core.hooks.post_tool_auto_spec_completion import PostToolAutoSpecCompletion
+
 
 # Mock functions for testing (these are now methods of the class)
 def should_trigger_spec_completion(tool_name: str, tool_args: Dict[str, Any]) -> bool:
@@ -263,7 +261,6 @@ class UserAuth:
         spec_content = generate_complete_spec(mock_analysis, self.test_code_file)
 
         # Verify EARS format structure
-        self.assertIn('@META:', spec_content['spec_md'])
         self.assertIn('Overview', spec_content['spec_md'])
         self.assertIn('Environment', spec_content['spec_md'])
         self.assertIn('Requirements', spec_content['spec_md'])

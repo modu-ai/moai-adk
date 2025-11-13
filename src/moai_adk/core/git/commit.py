@@ -1,4 +1,3 @@
-# @CODE:CORE-GIT-COMMIT-001 | SPEC: SPEC-CORE-GIT-001.md | TEST: tests/unit/test_git.py
 """
 Commit message formatting utilities.
 

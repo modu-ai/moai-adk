@@ -1,4 +1,3 @@
-# @CODE:INIT-005:BACKUP | SPEC: .moai/specs/SPEC-INIT-003/spec.md | TEST: tests/unit/test_backup_utils.py
 """Backup utility module (SPEC-INIT-003 v0.3.0)
 
 Selective backup strategy:
@@ -10,7 +9,7 @@ from pathlib import Path
 
 # Backup targets (OR condition - back up when any exist)
 BACKUP_TARGETS = [
-    ".moai/config.json",
+    ".moai/config/config.json",
     ".moai/project/",
     ".moai/memory/",
     ".claude/",
@@ -58,8 +57,6 @@ def get_backup_targets(project_path: Path) -> list[str]:
     return targets
 
 
-
-
 def is_protected_path(rel_path: Path) -> bool:
     """Check whether the path is protected.
 
@@ -70,6 +67,4 @@ def is_protected_path(rel_path: Path) -> bool:
         True when the path should be excluded from backups.
     """
     rel_str = str(rel_path).replace("\\", "/")
-    return any(
-        rel_str.startswith(p.lstrip("./").rstrip("/")) for p in PROTECTED_PATHS
-    )
+    return any(rel_str.startswith(p.lstrip("./").rstrip("/")) for p in PROTECTED_PATHS)

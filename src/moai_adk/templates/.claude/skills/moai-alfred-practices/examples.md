@@ -53,7 +53,6 @@
 /alfred:3-sync
 # Update README with email verification docs
 # Update CHANGELOG with SPEC-AUTH-015 reference
-# Git commit with @TAG links
 ```
 
 ---

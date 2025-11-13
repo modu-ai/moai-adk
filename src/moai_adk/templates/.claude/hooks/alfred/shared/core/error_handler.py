@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# @CODE:HOOKS-ERROR-001 | SPEC: HOOKS-STANDARDIZATION-001
 """Standard Error Handler for Alfred Hooks
 
 Provides consistent error handling, logging, and response formatting across all hooks.
@@ -7,6 +6,7 @@ Provides consistent error handling, logging, and response formatting across all 
 
 import json
 import logging
+import os
 import sys
 import time
 from datetime import datetime
@@ -215,6 +215,18 @@ class HookErrorHandler:
             data=data
         )
 
+    def create_success(self, message: str = "Operation completed successfully", data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Alias for handle_success for backward compatibility.
+
+        Args:
+            message: Success message
+            data: Additional data to include
+
+        Returns:
+            Success response (same as handle_success)
+        """
+        return self.handle_success(message, data)
+
     def print_and_exit(self, response: Dict[str, Any], exit_code: int = 0):
         """Print response and exit with appropriate code.
 
@@ -224,7 +236,3 @@ class HookErrorHandler:
         """
         print(json.dumps(response, ensure_ascii=False, indent=2))
         sys.exit(exit_code)
-
-
-# Import os module for logging
-import os

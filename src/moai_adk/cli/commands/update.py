@@ -1,5 +1,3 @@
-# @CODE:UPDATE-MAIN-001 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002
-
 """Update command
 
 Update MoAI-ADK to the latest version available on PyPI with 3-stage workflow:
@@ -28,18 +26,18 @@ Includes:
 
 ### When to Invoke Skills in Related Workflows
 1. **After successful update**:
-   - Run `Skill("moai-foundation-trust")` to validate all TRUST 5 gates
+   - Run `Skill("moai-foundation-trust")` to validate all TRUST 4 gates
    - Run `Skill("moai-foundation-langs")` to confirm language toolchain still works
    - Run project doctor command for full system validation
 
 2. **Before updating**:
    - Create backup with `python -m moai_adk backup`
-   - Run `Skill("moai-foundation-tags")` to document current TAG state
 
 3. **If update fails**:
    - Use backup to restore previous state
    - Debug with `python -m moai_adk doctor --verbose`
 """
+
 # type: ignore
 
 from __future__ import annotations
@@ -56,6 +54,7 @@ from packaging import version
 from rich.console import Console
 
 from moai_adk import __version__
+from moai_adk.core.migration import VersionMigrator
 from moai_adk.core.template.processor import TemplateProcessor
 
 console = Console()
@@ -68,7 +67,6 @@ PIPX_COMMAND = ["pipx", "upgrade", "moai-adk"]
 PIP_COMMAND = ["pip", "install", "--upgrade", "moai-adk"]
 
 
-# @CODE:UPDATE-TEMPLATE-004 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002
 # Custom exceptions for better error handling
 class UpdateError(Exception):
     """Base exception for update operations."""
@@ -108,7 +106,11 @@ def _is_installed_via_uv_tool() -> bool:
     """
     try:
         result = subprocess.run(
-            ["uv", "tool", "list"], capture_output=True, text=True, timeout=TOOL_DETECTION_TIMEOUT, check=False
+            ["uv", "tool", "list"],
+            capture_output=True,
+            text=True,
+            timeout=TOOL_DETECTION_TIMEOUT,
+            check=False,
         )
         return result.returncode == 0 and "moai-adk" in result.stdout
     except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
@@ -123,7 +125,11 @@ def _is_installed_via_pipx() -> bool:
     """
     try:
         result = subprocess.run(
-            ["pipx", "list"], capture_output=True, text=True, timeout=TOOL_DETECTION_TIMEOUT, check=False
+            ["pipx", "list"],
+            capture_output=True,
+            text=True,
+            timeout=TOOL_DETECTION_TIMEOUT,
+            check=False,
         )
         return result.returncode == 0 and "moai-adk" in result.stdout
     except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
@@ -138,14 +144,17 @@ def _is_installed_via_pip() -> bool:
     """
     try:
         result = subprocess.run(
-            ["pip", "show", "moai-adk"], capture_output=True, text=True, timeout=TOOL_DETECTION_TIMEOUT, check=False
+            ["pip", "show", "moai-adk"],
+            capture_output=True,
+            text=True,
+            timeout=TOOL_DETECTION_TIMEOUT,
+            check=False,
         )
         return result.returncode == 0
     except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
         return False
 
 
-# @CODE:UPDATE-CONTEXT-MAIN-001 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002
 def _detect_tool_installer() -> list[str] | None:
     """Detect which tool installed moai-adk.
 
@@ -185,7 +194,6 @@ def _detect_tool_installer() -> list[str] | None:
         return None
 
 
-# @CODE:UPDATE-VERSION-002 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002
 def _get_current_version() -> str:
     """Get currently installed moai-adk version.
 
@@ -212,7 +220,9 @@ def _get_latest_version() -> str:
         import urllib.request
 
         url = "https://pypi.org/pypi/moai-adk/json"
-        with urllib.request.urlopen(url, timeout=5) as response:  # nosec B310 - URL is hardcoded HTTPS to PyPI API, no user input
+        with urllib.request.urlopen(
+            url, timeout=5
+        ) as response:  # nosec B310 - URL is hardcoded HTTPS to PyPI API, no user input
             data = json.loads(response.read().decode("utf-8"))
             return cast(str, data["info"]["version"])
     except (urllib.error.URLError, json.JSONDecodeError, KeyError, TimeoutError) as e:
@@ -242,7 +252,6 @@ def _compare_versions(current: str, latest: str) -> int:
         return 1
 
 
-# @CODE:UPDATE-SYNC-006 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002
 def _get_package_config_version() -> str:
     """Get the current package template version.
 
@@ -257,11 +266,10 @@ def _get_package_config_version() -> str:
     return __version__
 
 
-# @CODE:UPDATE-PACKAGE-007 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002
 def _get_project_config_version(project_path: Path) -> str:
     """Get current project config.json template version.
 
-    This reads the project's .moai/config.json to determine the current
+    This reads the project's .moai/config/config.json to determine the current
     template version that the project is configured with.
 
     Args:
@@ -277,9 +285,11 @@ def _get_project_config_version(project_path: Path) -> str:
 
     def _is_placeholder(value: str) -> bool:
         """Check if value contains unsubstituted template placeholders."""
-        return isinstance(value, str) and value.startswith("{{") and value.endswith("}}")
+        return (
+            isinstance(value, str) and value.startswith("{{") and value.endswith("}}")
+        )
 
-    config_path = project_path / ".moai" / "config.json"
+    config_path = project_path / ".moai" / "config" / "config.json"
 
     if not config_path.exists():
         # No config yet, treat as version 0.0.0 (needs initial sync)
@@ -303,8 +313,9 @@ def _get_project_config_version(project_path: Path) -> str:
         raise ValueError(f"Failed to parse project config.json: {e}") from e
 
 
-# @CODE:UPDATE-CACHE-MAIN-001 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002
-def _detect_stale_cache(upgrade_output: str, current_version: str, latest_version: str) -> bool:
+def _detect_stale_cache(
+    upgrade_output: str, current_version: str, latest_version: str
+) -> bool:
     """
     Detect if uv cache is stale by comparing versions.
 
@@ -349,7 +360,6 @@ def _detect_stale_cache(upgrade_output: str, current_version: str, latest_versio
         return False
 
 
-# @CODE:UPDATE-CACHE-002 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002
 def _clear_uv_package_cache(package_name: str = "moai-adk") -> bool:
     """
     Clear uv cache for specific package.
@@ -400,8 +410,9 @@ def _clear_uv_package_cache(package_name: str = "moai-adk") -> bool:
         return False
 
 
-# @CODE:UPDATE-CACHE-003 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002
-def _execute_upgrade_with_retry(installer_cmd: list[str], package_name: str = "moai-adk") -> bool:
+def _execute_upgrade_with_retry(
+    installer_cmd: list[str], package_name: str = "moai-adk"
+) -> bool:
     """
     Execute upgrade with automatic cache retry on stale detection.
 
@@ -448,7 +459,9 @@ def _execute_upgrade_with_retry(installer_cmd: list[str], package_name: str = "m
     """
     # Stage 1: First upgrade attempt
     try:
-        result = subprocess.run(installer_cmd, capture_output=True, text=True, timeout=60, check=False)
+        result = subprocess.run(
+            installer_cmd, capture_output=True, text=True, timeout=60, check=False
+        )
     except subprocess.TimeoutExpired:
         raise  # Re-raise timeout for caller to handle
     except Exception:
@@ -476,7 +489,13 @@ def _execute_upgrade_with_retry(installer_cmd: list[str], package_name: str = "m
 
             # Stage 6: Retry upgrade
             try:
-                result = subprocess.run(installer_cmd, capture_output=True, text=True, timeout=60, check=False)
+                result = subprocess.run(
+                    installer_cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                    check=False,
+                )
 
                 if result.returncode == 0:
                     return True
@@ -511,7 +530,9 @@ def _execute_upgrade(installer_cmd: list[str]) -> bool:
         subprocess.TimeoutExpired: If upgrade times out
     """
     try:
-        result = subprocess.run(installer_cmd, capture_output=True, text=True, timeout=60, check=False)
+        result = subprocess.run(
+            installer_cmd, capture_output=True, text=True, timeout=60, check=False
+        )
         return result.returncode == 0
     except subprocess.TimeoutExpired:
         raise  # Re-raise timeout for caller to handle
@@ -554,10 +575,14 @@ def _sync_templates(project_path: Path, force: bool = False) -> bool:
         processor.copy_templates(backup=False, silent=True)
 
         # Validate template substitution
-        validation_passed = _validate_template_substitution_with_rollback(project_path, backup_path)
+        validation_passed = _validate_template_substitution_with_rollback(
+            project_path, backup_path
+        )
         if not validation_passed:
             if backup_path:
-                console.print(f"[yellow]🔄 Rolling back to backup: {backup_path.name}[/yellow]")
+                console.print(
+                    f"[yellow]🔄 Rolling back to backup: {backup_path.name}[/yellow]"
+                )
                 backup.restore_backup(backup_path)
             return False
 
@@ -572,7 +597,9 @@ def _sync_templates(project_path: Path, force: bool = False) -> bool:
     except Exception as e:
         console.print(f"[red]✗ Template sync failed: {e}[/red]")
         if backup_path:
-            console.print(f"[yellow]🔄 Rolling back to backup: {backup_path.name}[/yellow]")
+            console.print(
+                f"[yellow]🔄 Rolling back to backup: {backup_path.name}[/yellow]"
+            )
             try:
                 backup = TemplateBackup(project_path)
                 backup.restore_backup(backup_path)
@@ -604,14 +631,17 @@ def set_optimized_false(project_path: Path) -> None:
     Args:
         project_path: Project path (absolute).
     """
-    config_path = project_path / ".moai" / "config.json"
+    config_path = project_path / ".moai" / "config" / "config.json"
     if not config_path.exists():
         return
 
     try:
         config_data = json.loads(config_path.read_text(encoding="utf-8"))
         config_data.setdefault("project", {})["optimized"] = False
-        config_path.write_text(json.dumps(config_data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        config_path.write_text(
+            json.dumps(config_data, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
     except (json.JSONDecodeError, KeyError):
         # Ignore errors if config.json is invalid
         pass
@@ -619,18 +649,24 @@ def set_optimized_false(project_path: Path) -> None:
 
 def _load_existing_config(project_path: Path) -> dict[str, Any]:
     """Load existing config.json if available."""
-    config_path = project_path / ".moai" / "config.json"
+    config_path = project_path / ".moai" / "config" / "config.json"
     if config_path.exists():
         try:
             return json.loads(config_path.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
-            console.print("[yellow]⚠ Existing config.json could not be parsed. Proceeding with defaults.[/yellow]")
+            console.print(
+                "[yellow]⚠ Existing config.json could not be parsed. Proceeding with defaults.[/yellow]"
+            )
     return {}
 
 
 def _is_placeholder(value: Any) -> bool:
     """Check if a string value is an unsubstituted template placeholder."""
-    return isinstance(value, str) and value.strip().startswith("{{") and value.strip().endswith("}}")
+    return (
+        isinstance(value, str)
+        and value.strip().startswith("{{")
+        and value.strip().endswith("}}")
+    )
 
 
 def _coalesce(*values: Any, default: str = "") -> str:
@@ -695,7 +731,8 @@ def _build_template_context(
 
     # Detect OS for cross-platform Hook path configuration
     hook_project_dir = (
-        "%CLAUDE_PROJECT_DIR%" if platform.system() == "Windows"
+        "%CLAUDE_PROJECT_DIR%"
+        if platform.system() == "Windows"
         else "$CLAUDE_PROJECT_DIR"
     )
 
@@ -713,7 +750,9 @@ def _build_template_context(
         "CREATION_TIMESTAMP": created_at,
         "PROJECT_DIR": hook_project_dir,
         "CONVERSATION_LANGUAGE": language_config.get("conversation_language", "en"),
-        "CONVERSATION_LANGUAGE_NAME": language_config.get("conversation_language_name", "English"),
+        "CONVERSATION_LANGUAGE_NAME": language_config.get(
+            "conversation_language_name", "English"
+        ),
         "CODEBASE_LANGUAGE": project_section.get("language", "generic"),
         "PROJECT_OWNER": project_section.get("author", "@user"),
         "AUTHOR": project_section.get("author", "@user"),
@@ -730,7 +769,7 @@ def _preserve_project_metadata(
 
     Also updates template_version to track which template version is synchronized.
     """
-    config_path = project_path / ".moai" / "config.json"
+    config_path = project_path / ".moai" / "config" / "config.json"
     if not config_path.exists():
         return
 
@@ -757,18 +796,21 @@ def _preserve_project_metadata(
     if locale:
         project_data["locale"] = locale
 
-    language = _coalesce(existing_project.get("language"), existing_config.get("language"))
+    language = _coalesce(
+        existing_project.get("language"), existing_config.get("language")
+    )
     if language:
         project_data["language"] = language
 
     config_data.setdefault("moai", {})
     config_data["moai"]["version"] = version_for_config
 
-    # @CODE:UPDATE-VERSION-008 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002: Update template_version to track sync status
     # This allows Stage 2 to compare package vs project template versions
     project_data["template_version"] = version_for_config
 
-    config_path.write_text(json.dumps(config_data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    config_path.write_text(
+        json.dumps(config_data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
 
 
 def _apply_context_to_file(processor: TemplateProcessor, target_path: Path) -> None:
@@ -781,7 +823,9 @@ def _apply_context_to_file(processor: TemplateProcessor, target_path: Path) -> N
     except UnicodeDecodeError:
         return
 
-    substituted, warnings = processor._substitute_variables(content)  # pylint: disable=protected-access
+    substituted, warnings = processor._substitute_variables(
+        content
+    )  # pylint: disable=protected-access
     if warnings:
         console.print("[yellow]⚠ Template warnings:[/yellow]")
         for warning in warnings:
@@ -807,25 +851,33 @@ def _validate_template_substitution(project_path: Path) -> None:
             continue
 
         try:
-            content = file_path.read_text(encoding='utf-8')
+            content = file_path.read_text(encoding="utf-8")
             # Look for unsubstituted template variables
-            unsubstituted = re.findall(r'\{\{([A-Z_]+)\}\}', content)
+            unsubstituted = re.findall(r"\{\{([A-Z_]+)\}\}", content)
             if unsubstituted:
                 unique_vars = sorted(set(unsubstituted))
-                issues_found.append(f"{file_path.relative_to(project_path)}: {', '.join(unique_vars)}")
+                issues_found.append(
+                    f"{file_path.relative_to(project_path)}: {', '.join(unique_vars)}"
+                )
         except Exception as e:
-            console.print(f"[yellow]⚠️ Could not validate {file_path.relative_to(project_path)}: {e}[/yellow]")
+            console.print(
+                f"[yellow]⚠️ Could not validate {file_path.relative_to(project_path)}: {e}[/yellow]"
+            )
 
     if issues_found:
         console.print("[red]✗ Template substitution validation failed:[/red]")
         for issue in issues_found:
             console.print(f"   {issue}")
-        console.print("[yellow]💡 Run '/alfred:0-project' to fix template variables[/yellow]")
+        console.print(
+            "[yellow]💡 Run '/alfred:0-project' to fix template variables[/yellow]"
+        )
     else:
         console.print("[green]✅ Template substitution validation passed[/green]")
 
 
-def _validate_template_substitution_with_rollback(project_path: Path, backup_path: Path | None) -> bool:
+def _validate_template_substitution_with_rollback(
+    project_path: Path, backup_path: Path | None
+) -> bool:
     """Validate template substitution with rollback capability.
 
     Returns:
@@ -846,14 +898,18 @@ def _validate_template_substitution_with_rollback(project_path: Path, backup_pat
             continue
 
         try:
-            content = file_path.read_text(encoding='utf-8')
+            content = file_path.read_text(encoding="utf-8")
             # Look for unsubstituted template variables
-            unsubstituted = re.findall(r'\{\{([A-Z_]+)\}\}', content)
+            unsubstituted = re.findall(r"\{\{([A-Z_]+)\}\}", content)
             if unsubstituted:
                 unique_vars = sorted(set(unsubstituted))
-                issues_found.append(f"{file_path.relative_to(project_path)}: {', '.join(unique_vars)}")
+                issues_found.append(
+                    f"{file_path.relative_to(project_path)}: {', '.join(unique_vars)}"
+                )
         except Exception as e:
-            console.print(f"[yellow]⚠️ Could not validate {file_path.relative_to(project_path)}: {e}[/yellow]")
+            console.print(
+                f"[yellow]⚠️ Could not validate {file_path.relative_to(project_path)}: {e}[/yellow]"
+            )
 
     if issues_found:
         console.print("[red]✗ Template substitution validation failed:[/red]")
@@ -861,9 +917,13 @@ def _validate_template_substitution_with_rollback(project_path: Path, backup_pat
             console.print(f"   {issue}")
 
         if backup_path:
-            console.print("[yellow]🔄 Rolling back due to validation failure...[/yellow]")
+            console.print(
+                "[yellow]🔄 Rolling back due to validation failure...[/yellow]"
+            )
         else:
-            console.print("[yellow]💡 Run '/alfred:0-project' to fix template variables[/yellow]")
+            console.print(
+                "[yellow]💡 Run '/alfred:0-project' to fix template variables[/yellow]"
+            )
             console.print("[red]⚠️ No backup available - manual fix required[/red]")
 
         return False
@@ -872,7 +932,6 @@ def _validate_template_substitution_with_rollback(project_path: Path, backup_pat
         return True
 
 
-# @CODE:UPDATE-METADATA-003 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002
 def _show_version_info(current: str, latest: str) -> None:
     """Display version information.
 
@@ -885,7 +944,6 @@ def _show_version_info(current: str, latest: str) -> None:
     console.print(f"   Latest version:  {latest}")
 
 
-# @CODE:UPDATE-CONFIG-005 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002
 def _show_installer_not_found_help() -> None:
     """Show help when installer not found."""
     console.print("[red]❌ Cannot detect package installer[/red]\n")
@@ -920,14 +978,18 @@ def _show_network_error_help() -> None:
     console.print("Options:")
     console.print("  1. Check network connection")
     console.print("  2. Try again with: [cyan]moai-adk update --force[/cyan]")
-    console.print("  3. Skip version check: [cyan]moai-adk update --templates-only[/cyan]")
+    console.print(
+        "  3. Skip version check: [cyan]moai-adk update --templates-only[/cyan]"
+    )
 
 
 def _show_template_sync_failure_help() -> None:
     """Show help when template sync fails."""
     console.print("[yellow]⚠️  Template sync failed[/yellow]\n")
     console.print("Rollback options:")
-    console.print("  1. Restore from backup: [cyan]cp -r .moai-backups/TIMESTAMP .moai/[/cyan]")
+    console.print(
+        "  1. Restore from backup: [cyan]cp -r .moai-backups/TIMESTAMP .moai/[/cyan]"
+    )
     console.print("  2. Skip backup and retry: [cyan]moai-adk update --force[/cyan]")
     console.print("  3. Report issue: https://github.com/modu-ai/moai-adk/issues")
 
@@ -939,13 +1001,88 @@ def _show_timeout_error_help() -> None:
     console.print("  [cyan]moai-adk update --yes --force[/cyan]")
 
 
+def _execute_migration_if_needed(project_path: Path, yes: bool = False) -> bool:
+    """Check and execute migration if needed.
+
+    Args:
+        project_path: Project directory path
+        yes: Auto-confirm without prompting
+
+    Returns:
+        True if no migration needed or migration succeeded, False if migration failed
+    """
+    try:
+        migrator = VersionMigrator(project_path)
+
+        # Check if migration is needed
+        if not migrator.needs_migration():
+            return True
+
+        # Get migration info
+        info = migrator.get_migration_info()
+        console.print("\n[cyan]🔄 Migration Required[/cyan]")
+        console.print(f"   Current version: {info['current_version']}")
+        console.print(f"   Target version:  {info['target_version']}")
+        console.print(f"   Files to migrate: {info['file_count']}")
+        console.print()
+        console.print("   This will migrate configuration files to new locations:")
+        console.print("   • .moai/config.json → .moai/config/config.json")
+        console.print(
+            "   • .claude/statusline-config.yaml → .moai/config/statusline-config.yaml"
+        )
+        console.print()
+        console.print("   A backup will be created automatically.")
+        console.print()
+
+        # Confirm with user (unless --yes)
+        if not yes:
+            if not click.confirm(
+                "Do you want to proceed with migration?", default=True
+            ):
+                console.print(
+                    "[yellow]⚠️  Migration skipped. Some features may not work correctly.[/yellow]"
+                )
+                console.print(
+                    "[cyan]💡 Run 'moai-adk migrate' manually when ready[/cyan]"
+                )
+                return False
+
+        # Execute migration
+        console.print("[cyan]🚀 Starting migration...[/cyan]")
+        success = migrator.migrate_to_v024(dry_run=False, cleanup=True)
+
+        if success:
+            console.print("[green]✅ Migration completed successfully![/green]")
+            return True
+        else:
+            console.print("[red]❌ Migration failed[/red]")
+            console.print(
+                "[cyan]💡 Use 'moai-adk migrate --rollback' to restore from backup[/cyan]"
+            )
+            return False
+
+    except Exception as e:
+        console.print(f"[red]❌ Migration error: {e}[/red]")
+        logger.error(f"Migration failed: {e}", exc_info=True)
+        return False
+
+
 @click.command()
-@click.option("--path", type=click.Path(exists=True), default=".", help="Project path (default: current directory)")
+@click.option(
+    "--path",
+    type=click.Path(exists=True),
+    default=".",
+    help="Project path (default: current directory)",
+)
 @click.option("--force", is_flag=True, help="Skip backup and force the update")
 @click.option("--check", is_flag=True, help="Only check version (do not update)")
-@click.option("--templates-only", is_flag=True, help="Skip package upgrade, sync templates only")
+@click.option(
+    "--templates-only", is_flag=True, help="Skip package upgrade, sync templates only"
+)
 @click.option("--yes", is_flag=True, help="Auto-confirm all prompts (CI/CD mode)")
-def update(path: str, force: bool, check: bool, templates_only: bool, yes: bool) -> None:
+def update(
+    path: str, force: bool, check: bool, templates_only: bool, yes: bool
+) -> None:
     """Update command with 3-stage workflow (v0.6.3+).
 
     Stage 1 (Package Version Check):
@@ -988,7 +1125,9 @@ def update(path: str, force: bool, check: bool, templates_only: bool, yes: bool)
             except RuntimeError as e:
                 console.print(f"[red]Error: {e}[/red]")
                 if not force:
-                    console.print("[yellow]⚠ Cannot check for updates. Use --force to update anyway.[/yellow]")
+                    console.print(
+                        "[yellow]⚠ Cannot check for updates. Use --force to update anyway.[/yellow]"
+                    )
                     raise click.Abort()
                 # With --force, proceed to Stage 2 even if version check fails
                 current = __version__
@@ -1000,12 +1139,16 @@ def update(path: str, force: bool, check: bool, templates_only: bool, yes: bool)
         if check:
             comparison = _compare_versions(current, latest)
             if comparison < 0:
-                console.print(f"\n[yellow]📦 Update available: {current} → {latest}[/yellow]")
+                console.print(
+                    f"\n[yellow]📦 Update available: {current} → {latest}[/yellow]"
+                )
                 console.print("   Run 'moai-adk update' to upgrade")
             elif comparison == 0:
                 console.print(f"[green]✓ Already up to date ({current})[/green]")
             else:
-                console.print(f"[cyan]ℹ️  Dev version: {current} (latest: {latest})[/cyan]")
+                console.print(
+                    f"[cyan]ℹ️  Dev version: {current} (latest: {latest})[/cyan]"
+                )
             return
 
         # Step 2: Handle --templates-only (skip upgrade, go straight to sync)
@@ -1024,7 +1167,9 @@ def update(path: str, force: bool, check: bool, templates_only: bool, yes: bool)
                 raise click.Abort()
 
             console.print("   [green]✅ .claude/ update complete[/green]")
-            console.print("   [green]✅ .moai/ update complete (specs/reports preserved)[/green]")
+            console.print(
+                "   [green]✅ .moai/ update complete (specs/reports preserved)[/green]"
+            )
             console.print("   [green]🔄 CLAUDE.md merge complete[/green]")
             console.print("   [green]🔄 config.json merge complete[/green]")
             console.print("\n[green]✓ Template sync complete![/green]")
@@ -1034,7 +1179,6 @@ def update(path: str, force: bool, check: bool, templates_only: bool, yes: bool)
         comparison = _compare_versions(current, latest)
 
         # Stage 1: Package Upgrade (if current < latest)
-        # @CODE:UPDATE-STAGE1-009 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002
         if comparison < 0:
             console.print(f"\n[cyan]📦 Upgrading: {current} → {latest}[/cyan]")
 
@@ -1060,7 +1204,9 @@ def update(path: str, force: bool, check: bool, templates_only: bool, yes: bool)
             try:
                 upgrade_result = _execute_upgrade(installer_cmd)
                 if not upgrade_result:
-                    raise UpgradeError(f"Upgrade command failed: {' '.join(installer_cmd)}")
+                    raise UpgradeError(
+                        f"Upgrade command failed: {' '.join(installer_cmd)}"
+                    )
             except subprocess.TimeoutExpired:
                 _show_timeout_error_help()
                 raise click.Abort()
@@ -1070,13 +1216,22 @@ def update(path: str, force: bool, check: bool, templates_only: bool, yes: bool)
 
             # Prompt re-run
             console.print("\n[green]✓ Upgrade complete![/green]")
-            console.print("[cyan]📢 Run 'moai-adk update' again to sync templates[/cyan]")
+            console.print(
+                "[cyan]📢 Run 'moai-adk update' again to sync templates[/cyan]"
+            )
             return
 
-        # Stage 2: Config Version Comparison
-        # @CODE:UPDATE-STAGE2-010 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002: Stage 2 - Compare template versions to determine if sync needed
+        # Stage 1.5: Migration Check (NEW in v0.24.0)
         console.print(f"✓ Package already up to date ({current})")
 
+        # Execute migration if needed
+        if not _execute_migration_if_needed(project_path, yes):
+            console.print("[yellow]⚠️  Update continuing without migration[/yellow]")
+            console.print(
+                "[cyan]💡 Some features may require migration to work correctly[/cyan]"
+            )
+
+        # Stage 2: Config Version Comparison
         try:
             package_config_version = _get_package_config_version()
             project_config_version = _get_project_config_version(project_path)
@@ -1091,23 +1246,32 @@ def update(path: str, force: bool, check: bool, templates_only: bool, yes: bool)
         console.print(f"   Project config:   {project_config_version}")
 
         try:
-            config_comparison = _compare_versions(package_config_version, project_config_version)
+            config_comparison = _compare_versions(
+                package_config_version, project_config_version
+            )
         except version.InvalidVersion as e:
             # Handle invalid version strings (e.g., unsubstituted template placeholders, corrupted configs)
             console.print(f"[yellow]⚠ Invalid version format in config: {e}[/yellow]")
-            console.print("[cyan]ℹ️  Forcing template sync to repair configuration...[/cyan]")
+            console.print(
+                "[cyan]ℹ️  Forcing template sync to repair configuration...[/cyan]"
+            )
             # Force template sync by treating project version as outdated
             config_comparison = 1  # package_config_version > project_config_version
 
         # If versions are equal, no sync needed
         if config_comparison <= 0:
-            console.print(f"\n[green]✓ Project already has latest template version ({project_config_version})[/green]")
-            console.print("[cyan]ℹ️  Templates are up to date! No changes needed.[/cyan]")
+            console.print(
+                f"\n[green]✓ Project already has latest template version ({project_config_version})[/green]"
+            )
+            console.print(
+                "[cyan]ℹ️  Templates are up to date! No changes needed.[/cyan]"
+            )
             return
 
         # Stage 3: Template Sync (Only if package_config_version > project_config_version)
-        # @CODE:UPDATE-STAGE3-011 | @SPEC:CLI-UPDATE-002 | @TEST:CLI-UPDATE-002: Stage 3 - Template sync only if versions differ
-        console.print(f"\n[cyan]📄 Syncing templates ({project_config_version} → {package_config_version})...[/cyan]")
+        console.print(
+            f"\n[cyan]📄 Syncing templates ({project_config_version} → {package_config_version})...[/cyan]"
+        )
 
         # Create backup unless --force
         if not force:
@@ -1115,7 +1279,9 @@ def update(path: str, force: bool, check: bool, templates_only: bool, yes: bool)
             try:
                 processor = TemplateProcessor(project_path)
                 backup_path = processor.create_backup()
-                console.print(f"   [green]✓ Backup: {backup_path.relative_to(project_path)}/[/green]")
+                console.print(
+                    f"   [green]✓ Backup: {backup_path.relative_to(project_path)}/[/green]"
+                )
             except Exception as e:
                 console.print(f"   [yellow]⚠ Backup failed: {e}[/yellow]")
                 console.print("   [yellow]⚠ Continuing without backup...[/yellow]")
@@ -1136,13 +1302,19 @@ def update(path: str, force: bool, check: bool, templates_only: bool, yes: bool)
             raise click.Abort()
 
         console.print("   [green]✅ .claude/ update complete[/green]")
-        console.print("   [green]✅ .moai/ update complete (specs/reports preserved)[/green]")
+        console.print(
+            "   [green]✅ .moai/ update complete (specs/reports preserved)[/green]"
+        )
         console.print("   [green]🔄 CLAUDE.md merge complete[/green]")
         console.print("   [green]🔄 config.json merge complete[/green]")
-        console.print("   [yellow]⚙️  Set optimized=false (optimization needed)[/yellow]")
+        console.print(
+            "   [yellow]⚙️  Set optimized=false (optimization needed)[/yellow]"
+        )
 
         console.print("\n[green]✓ Update complete![/green]")
-        console.print("[cyan]ℹ️  Next step: Run /alfred:0-project update to optimize template changes[/cyan]")
+        console.print(
+            "[cyan]ℹ️  Next step: Run /alfred:0-project update to optimize template changes[/cyan]"
+        )
 
     except Exception as e:
         console.print(f"[red]✗ Update failed: {e}[/red]")

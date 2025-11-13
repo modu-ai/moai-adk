@@ -1,4 +1,3 @@
-# @TEST:UPDATE-COVERAGE-001 | SPEC: SPEC-TEST-COVERAGE-001.md
 """Unit tests for update.py command
 
 Tests for update command with various scenarios.
@@ -495,7 +494,6 @@ class TestUpdateCommand:
                 assert "Syncing templates" in result.output
 
 
-# @TEST:UPDATE-VERSION-FUNCTIONS-001 | SPEC: SPEC-UPDATE-REFACTOR-002
 class TestUpdateVersionFunctions:
     """Test version detection functions (Phase 1 of v0.6.3)"""
 
@@ -527,7 +525,7 @@ class TestUpdateVersionFunctions:
         from moai_adk.cli.commands.update import _get_project_config_version
 
         project_path = tmp_path / "test-project"
-        moai_dir = project_path / ".moai"
+        moai_dir = project_path / ".moai" / "config"
         moai_dir.mkdir(parents=True)
 
         # Create config with template_version
@@ -547,7 +545,7 @@ class TestUpdateVersionFunctions:
         from moai_adk.cli.commands.update import _get_project_config_version
 
         project_path = tmp_path / "test-project"
-        moai_dir = project_path / ".moai"
+        moai_dir = project_path / ".moai" / "config"
         moai_dir.mkdir(parents=True)
 
         # Create config without template_version but with moai.version
@@ -565,7 +563,7 @@ class TestUpdateVersionFunctions:
         from moai_adk.cli.commands.update import _get_project_config_version
 
         project_path = tmp_path / "test-project"
-        moai_dir = project_path / ".moai"
+        moai_dir = project_path / ".moai" / "config"
         moai_dir.mkdir(parents=True)
 
         # Create invalid JSON
@@ -578,7 +576,6 @@ class TestUpdateVersionFunctions:
             assert "Failed to parse project config.json" in str(e)
 
 
-# @TEST:UPDATE-THREE-STAGE-WORKFLOW-001 | SPEC: SPEC-UPDATE-REFACTOR-002
 class TestUpdateThreeStageWorkflow:
     """Test 3-stage workflow (Phase 2 of v0.6.3)"""
 
@@ -703,7 +700,7 @@ class TestUpdateThreeStageWorkflow:
         from moai_adk.cli.commands.update import _preserve_project_metadata
 
         project_path = tmp_path / "test-project"
-        moai_dir = project_path / ".moai"
+        moai_dir = project_path / ".moai" / "config"
         moai_dir.mkdir(parents=True)
 
         # Create initial config
@@ -728,7 +725,6 @@ class TestUpdateThreeStageWorkflow:
         assert updated_config["project"]["template_version"] == "0.6.1"
         assert updated_config["moai"]["version"] == "0.6.1"
 
-    # @TEST:PLACEHOLDER-HANDLING-001 - Tests for unsubstituted template placeholders
     def test_get_project_config_version_with_placeholder(self, tmp_path):
         """Test that _get_project_config_version detects and handles placeholder values"""
         import json
@@ -736,7 +732,7 @@ class TestUpdateThreeStageWorkflow:
         from moai_adk.cli.commands.update import _get_project_config_version
 
         project_path = tmp_path / "test-project"
-        moai_dir = project_path / ".moai"
+        moai_dir = project_path / ".moai" / "config"
         moai_dir.mkdir(parents=True)
 
         # Test 1: Placeholder in moai.version (no template_version)

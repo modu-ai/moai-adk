@@ -15,7 +15,6 @@ Comprehensive guide for authoring SPEC documents in MoAI-ADK projects. Provides 
 - **7 Required + 9 Optional Metadata Fields**: Complete reference with lifecycle examples
 - **5 Official EARS Patterns**: Ubiquitous, Event-driven, State-driven, Optional, Unwanted Behaviors
 - **Version Lifecycle**: Semantic versioning from draft to production
-- **TAG Integration**: @SPEC, @TEST, @CODE, @DOC chain management
 - **Validation Tools**: Pre-submission checklist and automation scripts
 - **Common Pitfalls**: Prevention strategies for 7 major issues
 
@@ -63,7 +62,6 @@ Consult detailed sections for:
 rg "^(id|version|status|created|updated|author|priority):" .moai/specs/SPEC-AUTH-001/spec.md
 
 # Check for duplicate IDs
-rg "@SPEC:AUTH-001" -n .moai/specs/
 
 # Scan entire TAG chain
 rg '@(SPEC|TEST|CODE|DOC):AUTH-001' -n
@@ -81,11 +79,9 @@ version: 0.0.1
 status: draft
 created: 2025-10-29
 updated: 2025-10-29
-author: @YourHandle
 priority: high
 ---
 
-# @SPEC:AUTH-001: JWT Authentication System
 
 ## HISTORY
 ### v0.0.1 (2025-10-29)

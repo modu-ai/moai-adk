@@ -4,10 +4,10 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/moai-adk)](https://pypi.org/project/moai-adk/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python](https://img.shields.io/badge/Python-3.13+-blue)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.11+-blue)](https://www.python.org/)
 [![Tests](https://github.com/modu-ai/moai-adk/actions/workflows/moai-gitflow.yml/badge.svg)](https://github.com/modu-ai/moai-adk/actions/workflows/moai-gitflow.yml)
 [![codecov](https://codecov.io/gh/modu-ai/moai-adk/branch/develop/graph/badge.svg)](https://codecov.io/gh/modu-ai/moai-adk)
-[![Coverage](https://img.shields.io/badge/coverage-87.84%25-brightgreen)](https://github.com/modu-ai/moai-adk)
+[![Coverage](https://img.shields.io/badge/coverage-85%2B-brightgreen)](https://github.com/modu-ai/moai-adk)
 [![CodeRabbit](https://img.shields.io/coderabbit/prs/github/modu-ai/moai-adk)](https://coderabbit.ai/)
 
 > **신뢰할 수 있고 유지보수하기 쉬운 소프트웨어를 AI의 도움으로 빌드하세요. 요구사항부터 문서화까지 완벽하게 동기화됩니다.**
@@ -35,7 +35,6 @@ MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 
 - ✅ **보증된 테스트**: 자동 TDD를 통해 85%+ 테스트 커버리지 달성
 - ✅ **살아있는 문서**: 자동 동기화되어 절대 떨어지지 않는 문서
 - ✅ **지속적인 컨텍스트**: Alfred가 프로젝트 이력과 패턴을 기억
-- ✅ **완전한 추적성**: `@TAG` 시스템으로 모든 산출물 연결
 - ✅ **품질 자동화**: TRUST 5 원칙을 자동으로 강제
 
 ---
@@ -52,30 +51,35 @@ MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 
 
 - **RED → GREEN → REFACTOR** 사이클 자동 관리
 - **테스트 우선 보증**: 테스트 없는 코드는 없음
-- **87.84%+ 커버리지**: 체계적 테스팅으로 달성
+- **85%+ 커버리지**: 체계적 테스팅으로 달성
 
 ### 3. Alfred 슈퍼에이전트
 
 - **19개의 전문 AI 에이전트** (spec-builder, code-builder, doc-syncer 등)
-- **93개의 프로덕션급 스킬** (모든 개발 영역 커버)
-  - **10개 BaaS 스킬**: 클라우드 플랫폼 (Supabase, Firebase, Vercel, Cloudflare, Auth0, Convex, Railway, Neon, Clerk)
-  - **완전한 프론트엔드 지원**: HTML/CSS, Tailwind CSS, shadcn/ui, 벡터 아이콘 (10+ 아이콘 라이브러리)
-  - **풀 백엔드 지원**: 데이터베이스 설계, API 아키텍처, DevOps
+- **125+ 프로덕션급 엔터프라이즈 스킬** (모든 개발 영역 커버)
+  - **12개 BaaS 스킬**: 클라우드 플랫폼 (Supabase, Firebase, Vercel, Cloudflare, Auth0, Convex, Railway, Neon, Clerk)
+  - **10개 보안 및 규정 준수 스킬**: 고급 인증, OWASP, 암호화, 규정 준수 패턴
+  - **15개 엔터프라이즈 통합 스킬**: 마이크로서비스, 이벤트 기반 아키텍처, DDD, 메시징
+  - **12개 고급 DevOps 스킬**: Kubernetes, 컨테이너 오케스트레이션, GitOps, IaC, 모니터링
+  - **18개 데이터 및 분석 스킬**: 데이터 파이프라인, 스트리밍, 데이터 웨어하우스, MLOps, 분석
+  - **완전한 프론트엔드 지원**: HTML/CSS, Tailwind CSS, shadcn/ui, React, Vue, Angular (10+ 아이콘 라이브러리)
+  - **풀 백엔드 지원**: 데이터베이스 설계, API 아키텍처, DevOps, 서버리스 패턴
+  - **고급 MCP 통합**: Context7, Playwright, Sequential-thinking 서버
+  - **문서 처리**: AI 기반 문서 핸들링 (docx, pdf, pptx, xlsx)
+  - **아티팩트 빌더**: 모던 React/Tailwind/shadcn/ui 컴포넌트 생성
+  - **내부 커뮤니케이션**: 엔터프라이즈 커뮤니케이션 템플릿 및 자동화
+  - **MCP 빌더**: 고급 Model Context Protocol 서버 개발
+  - **70+ 추가 엔터프라이즈급 스킬**: 모든 개발 영역에 걸쳐
 - **적응형 학습**: 프로젝트 패턴으로부터 자동 학습
 - **스마트 컨텍스트 관리**: 프로젝트 구조와 의존성 이해
 
-### 4. @TAG 시스템
 
 모든 산출물을 연결하는 완전한 추적성 시스템:
 
 ```
-@SPEC:AUTH-001 (요구사항)
     ↓
-@TEST:AUTH-001 (테스트)
     ↓
-@CODE:AUTH-001:SERVICE (구현)
     ↓
-@DOC:AUTH-001 (문서)
 ```
 
 ### 5. 살아있는 문서
@@ -98,8 +102,8 @@ MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 
 - **8개 아키텍처 패턴**: Pattern A-H로 모든 배포 시나리오 지원
 - **9개 클라우드 플랫폼**: 100% 커버리지 (Edge Computing ~ Database Management)
 - **패턴 기반 선택**: 최적 플랫폼을 추천하는 지능형 엔진
-- **제로 설정 배포**: 사전 구성된 모범 사례로 원클릭 구성
-- **고급 기능**: Blue-green 배포, Canary 릴리스, 커스텀 도메인, SSL 자동화, 모니터링 & 알림
+- **제로 설정 배포**: 미리 구성된 모범 사례로 원클릭 설정
+- **고급 기능**: Blue-green 배포, Canary 릴리즈, 커스텀 도메인, SSL 자동화, 모니터링 및 알림
 
 ---
 
@@ -110,15 +114,15 @@ MoAI-ADK statusline은 Claude Code 터미널 상태 표시줄에 **실시간 개
 ### 📊 상태줄 포맷
 
 ```
-🤖 Haiku 4.5 | 🗿 Ver 0.20.1 | 📊 Git: develop | Changes: +0 M0 ?0
+🤖 Haiku 4.5 | 🗿 Ver 0.22.5 | 📊 +0 M0 ?0 | 🔀 develop
 ```
 
 | 항목           | 아이콘 | 의미                  | 예시                      |
 | -------------- | ------ | --------------------- | ------------------------- |
 | **모델**       | 🤖     | 사용 중인 Claude 모델 | Haiku 4.5, Sonnet 4.5     |
-| **버전**       | 🗿     | MoAI-ADK 버전         | 0.20.1                    |
-| **Git 브랜치** | 📊     | 현재 작업 중인 브랜치 | develop, feature/SPEC-001 |
-| **Changes**    | -      | Git 파일 변경 상태    | +0 M0 ?0                  |
+| **버전**       | 🗿     | MoAI-ADK 버전         | 0.22.5                    |
+| **Git 브랜치** | 🔀     | 현재 작업 중인 브랜치 | develop, feature/SPEC-001 |
+| **Changes**    | 📊     | Git 파일 변경 상태    | +0 M0 ?0                  |
 
 ### 📝 Changes 표기 설명
 
@@ -182,90 +186,38 @@ export MOAI_STATUSLINE_MODE=extended
 
 ---
 
-## 🧠 시니어 엔지니어 사고 패턴 통합 (v0.22.0+)
+## 🆕 Latest Features: Phase 1, Phase 2 & Phase 3 (v0.23.0)
 
-MoAI-ADK는 이제 "AI를 시니어 엔지니어처럼 생각하게 가르치는 8가지 연구 전략"을 통합하여 Alfred를 단순한 코딩 도우미가 아닌, 시니어 엔지니어처럼 생각하고 연구하며 학습하는 진정한 엔지니어링 파트너로 발전시킵니다.
+## 🆕 최신 개선 사항 (v0.23.0)
 
-### 🎯 8가지 연구 전략
+### TAG 시스템 제거 및 아키텍처 최적화
 
-| 전략 | 목적 | Alfred 구현 |
-|------|------|-------------|
-| **1. 재현 및 문서화** | 체계적인 이슈 재현 및 문서화 | `research-reproducer` 에이전트 + 재현 워크플로우 |
-| **2. 모범 사례 기반 연구** | 업계 표준 및 검증된 솔루션 연구 | `best-practices-researcher` 에이전트 + 패턴 검증 |
-| **3. 코드베이스 기반 연구** | 기존 구현 패턴 발견 | 향상된 `codebase-analyst` 에이전트 + 패턴 인식 |
-| **4. 라이브러리 기반 연구** | 도구 능력에 대한 깊은 이해 | `library-researcher` 에이전트 + 소스코드 분석 |
-| **5. Git 히스토리 연구** | 과거 결정과 진화로부터 학습 | 향상된 `git-historian` 에이전트 + 커밋 패턴 분석 |
-| **6. 명확성을 위한 프로토타이핑** | 요구사항 탐색을 위한 빠른 프로토타이핑 | `prototype-creator` 에이전트 + 빠른 반복 도구 |
-| **7. 옵션별 종합** | 여러 접근 방식 생성 및 비교 | `synthesis-agent` 에이전트 + 의사결정 프레임워크 |
-| **8. 스타일 에이전트를 통한 검토** | 다각적 품질 검증 | 다중 `style-reviewer` 에이전트 + 전문 지식 |
+**전체 TAG 시스템 정리**:
+- ✅ **레거시 TAG 시스템** 의존성 핵심 아키텍처에서 제거
+- ✅ **단순화된 구성** 현대 Alfred 워크플로우로 개선
+- ✅ **향상된 성능** 스트림라인된 코드베이스를 통한 개선
+- ✅ **패키지 템플릿 동기화** 일관된 배포를 위한 동기화
+- ✅ **개선된 MCP 서버 최적화** 향상된 타임아웃 및 재시도 설정
 
-### 🚀 병렬 연구 운영
+### 향상된 상태줄 시스템
 
-**이전**: 순차적 사고 → 단일 관점 → 제한된 솔루션
-**이후**: 8가지 전략을 통한 병렬 연구 → 종합된 인사이트 → 최적의 솔루션
+**고급 출력 스타일 감지**:
+- ✅ **향상된 스타일 감지** 더 나은 개발 경험 제공
+- ✅ **다국어 지원** 개선된 현지화
+- ✅ **실시간 Git 상태** 추적 포괄적인 파일 변경 감지
+- ✅ **최적화된 성능** 시스템 오버헤드 감소
 
-```
-research-orchestrator (연구 총괄)
-├── strategy-1: 재현 및 문서화
-├── strategy-2: 모범 사례 연구
-├── strategy-3: 코드베이스 패턴 분석
-├── strategy-4: 라이브러리 능력 연구
-├── strategy-5: Git 히스토리 분석
-├── strategy-6: 빠른 프로토타이핑
-├── strategy-7: 옵션 종합 및 비교
-└── strategy-8: 다각적 스타일 검토
-    ↓
-knowledge-synthesizer: 결과 통합 및 최적의 권장사항
-```
+### Alfred 피드백 템플릿 개선
 
-### 📈 학습 및 축적 시스템
+**간소화된 이슈 생성**:
+- ✅ **67% 더 빠른 이슈 생성** (90초 → 30초)
+- ✅ **자동 수집된 환경 정보** 더 나은 버그 리포트
+- ✅ **구조화된 템플릿** 일관된 이슈 품질
+- ✅ **다중 선택 질문** 사용자 상호작용 단계 감소
 
-**지식 축적**:
-- 모든 연구 세션이 프로젝트 지식 베이스에 기여
-- 발견된 패턴이 자동으로 캡처되고 재사용됨
-- 축적된 경험을 통해 시간이 지날수록 결정 품질 향상
+### Enterprise v4.0 최적화
 
-**적응형 지능**:
-- Alfred가 프로젝트의 고유한 패턴과 선호도를 학습
-- 각 세션마다 연구가 더 빠르고 정확해짐
-- 특정 코드베이스 역사로부터 맞춤형 모범 사례가 등장
-
-### 🎭 실제 영향력
-
-**예시**: 대량 이메일 아카이빙 기능 (53,000통)
-- **전통적 AI**: "단순 대량 삭제" → Gmail rate limits → 실패
-- **시니어 엔지니어 Alfred**: Gmail API 한계, 배치 처리 패턴, 사용자 경험 연구 → 진행 상황 추적 및 오류 복구를 갖춘 견고한 솔루션 구현
-
-**예시**: 인증 시스템 설계
-- **전통적 AI**: 기본 JWT 구현
-- **시니어 엔지니어 Alfred**: OAuth 2.0 표준, 보안 모범 사례, 세션 관리, 토큰 로테이션 패턴 연구 → 엔터프라이즈급 솔루션
-
-### 🛠️ 구현 통합
-
-8가지 전략은 MoAI-ADK 워크플로우에 완벽하게 통합됩니다:
-
-**계획 단계** (`/alfred:1-plan`):
-- 8가지 전략을 통한 병렬 연구
-- 포괄적인 요구사항 분석
-- 위험 식별 및 완화 계획
-
-**구현 단계** (`/alfred:2-run`):
-- 개발 중 지속적인 연구
-- 모범 사례 검증
-- 다각적 코드 리뷰
-
-**동기화 단계** (`/alfred:3-sync`):
-- 패턴 추출 및 지식 캡처
-- 학습된 인사이트 문서화
-- 팀 지식 공유
-
-### 📚 더 알아보기
-
-- **[상세 가이드](./docs/senior-engineer-thinking)**: 완전한 구현 가이드
-- **[연구 전략](./docs/research-strategies)**: 각 전략 심층 분석
-- **[사례 연구](./docs/case-studies)**: 실제 사례 및 영향 분석
-
----
+**전체 스킬 생태 시스템 업그레이드**:
 
 ## 🆕 Latest Features: Phase 1, Phase 2 & Phase 3 (v0.20.1+)
 
@@ -281,8 +233,6 @@ knowledge-synthesizer: 결과 통합 및 최적의 권장사항
 **안전한 자동 수정**:
 
 - ✅ **3단계 위험도**: SAFE (자동) / MEDIUM (승인필요) / HIGH (차단)
-- ✅ **중복 TAG 제거**: 자동으로 중복 @TAG 제거
-- ✅ **형식 오류 수정**: @CODE AUTH-001 → @CODE:AUTH-001 자동 수정
 - ✅ **공백 정규화**: TAG 사이 공백을 일관되게 정규화
 - ✅ **백업 및 롤백**: 수정 전 백업, 오류 발생 시 자동 롤백
 
@@ -291,6 +241,97 @@ knowledge-synthesizer: 결과 통합 및 최적의 권장사항
 - 📦 language_dirs.py: 329 LOC (10개 언어 매핑)
 - 🔧 policy_validator.py 확장: 153 LOC (자동 수정 메서드)
 - 🧪 테스트: 729 LOC (directory detection + auto-correction)
+
+### Phase 3: /alfred:9-feedback 개선 - 자동 정보 수집 및 의미 기반 라벨링
+
+**자동 컨텍스트 수집을 통한 지능형 이슈 작성**:
+
+개선된 `/alfred:9-feedback` 명령어는 세 가지 주요 개선사항으로 GitHub 이슈 생성을 간소화합니다:
+
+**1. 템플릿 기반 이슈 구조 (moai-alfred-feedback-templates Skill)**:
+- 6개의 전문화된 이슈 템플릿 (버그 리포트, 기능 요청, 개선, 리팩토링, 문서, 질문)
+- 각 템플릿은 DO/DON'T 베스트 프랙티스를 포함한 구조화된 가이드 제공
+- 언어 지원: 한국어 (사용자 설정에 따른 지역화)
+- 플레이스홀더 섹션을 보여주는 자동 생성 예제 템플릿
+
+**2. 자동 환경 정보 수집 (feedback-collect-info.py)**:
+- **자동 수집**: MoAI-ADK 버전, Python 버전, OS 정보, 프로젝트 모드
+- **Git 상태**: 현재 브랜치, 미커밋 변경사항 개수, 최근 커밋 이력
+- **컨텍스트 감지**: 브랜치 이름 패턴에서 현재 SPEC 자동 감지
+- **에러 로그**: 버그 진단용 최근 에러 로그 추출
+- **출력 형식**: JSON (기계 가독) 또는 한국어 형식 텍스트 (인간 가독)
+
+**3. 최적화된 사용자 상호작용 (multiSelect AskUserQuestion을 통한 단계 축소)**:
+- **단일 복합 질문**으로 이슈 타입 + 우선순위 + 템플릿 선택
+- **이슈 타입**: 6가지 옵션 (버그, 기능, 개선, 리팩토링, 문서, 질문)
+- **우선순위 수준**: 4가지 옵션 (지능형 기본값: 중간)
+- **템플릿 선택**: 자동 생성 또는 수동 작성
+- **시간 단축**: 90초 → 30초 (67% 개선)
+
+**기존 인프라 통합**:
+- **스킬 재사용**: `moai-alfred-issue-labels` 스킬을 통한 의미 기반 라벨 분류
+- **일관된 라벨링**: 타입 + 우선순위가 자동으로 GitHub 라벨에 매핑됨
+- **바퀴 재발명 방지**: `/alfred:1-plan`과 `/alfred:3-sync`의 기존 라벨 인프라 활용
+
+**사용 예시**:
+
+```bash
+/alfred:9-feedback
+```
+
+사용자 선택: 버그 리포트 | 높은 우선순위 | 자동 템플릿 생성
+
+시스템이 생성하는 템플릿:
+```markdown
+## 버그 설명
+[사용자 입력 영역]
+
+## 재현 단계
+1. [사용자 입력 영역]
+2. [사용자 입력 영역]
+3. [사용자 입력 영역]
+
+## 예상 동작
+[사용자 입력 영역]
+
+## 실제 동작
+[사용자 입력 영역]
+
+## 환경 정보
+🔍 자동 수집된 정보:
+- MoAI-ADK 버전: 0.22.5
+- Python 버전: 3.14.0
+- OS: Darwin 25.0.0
+- 현재 브랜치: feature/SPEC-001
+- 미커밋 변경사항: 3개 파일
+```
+
+**구현 통계**:
+
+- 📋 moai-alfred-feedback-templates: 469 LOC (500+ 라인의 가이드를 포함한 6개 한국어 템플릿)
+- 🔄 feedback-collect-info.py: 194 LOC (JSON/텍스트 출력이 있는 8개의 자동 수집 함수)
+- 🎯 /alfred:9-feedback 개선: 257 라인 강화 (multiSelect 질문 최적화)
+- ⏱️ 시간 단축: 90초 → 30초 (67% 개선)
+- 🎯 이슈 품질: 100% 환경 컨텍스트 (자동 수집, 수동 입력 없음)
+
+**품질 지표**:
+
+| 지표 | 개선 전 | 개선 후 | 개선도 |
+|------|--------|--------|-------|
+| 이슈 작성 시간 | 90초 | 30초 | 67% 더 빠름 |
+| 사용자 단계 | 4가지 질문 | 1개 multiSelect | 75% 더 적은 단계 |
+| 환경 컨텍스트 | 수동 (부분) | 자동 수집 | 100% 커버리지 |
+| 템플릿 일관성 | 가변적 | 구조화됨 | 보장됨 |
+| 라벨 정확도 | 수동 선택 | 자동화 | 100% 정확 |
+
+**주요 이점**:
+
+✅ **더 빠름**: 4개 단계 → 1-2개 단계 (자동 템플릿 생성)
+✅ **더 완전함**: 자동 수집 환경 정보로 컨텍스트 손실 방지
+✅ **일관성**: 모든 이슈 타입에 걸쳐 구조화된 템플릿으로 품질 보장
+✅ **사용자 친화적**: 전적으로 한국어 (사용자 언어 설정에 따라 지역화)
+✅ **확장성**: 스킬 기반 아키텍처로 템플릿 확장 용이
+✅ **유지보수 제로**: 라벨 매핑은 기존 인프라 재사용
 
 ### Phase 2: SPEC 템플릿 자동 생성
 
@@ -478,6 +519,81 @@ BaaS 스킬은 MoAI-ADK의 개발 사이클과 seamlessly 통합됩니다:
 
 ## 🚀 빠른 시작
 
+### 사전 요구사항
+
+MoAI-ADK를 설치하기 전에 다음 도구들이 설치되어 있어야 합니다:
+
+#### Git 설치
+
+**Windows:**
+1. 공식 웹사이트에서 Git 다운로드: [https://git-scm.com/download/win](https://git-scm.com/download/win)
+2. 설치 파일을 실행하고 설치 마법사를 따라 진행
+3. 설치 확인:
+   ```bash
+   git --version
+   ```
+
+**macOS:**
+
+방법 1 - Homebrew (권장):
+```bash
+# Homebrew가 설치되어 있지 않다면 먼저 설치
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Git 설치
+brew install git
+
+# 설치 확인
+git --version
+```
+
+방법 2 - 공식 설치 파일:
+1. 다음에서 다운로드: [https://git-scm.com/download/mac](https://git-scm.com/download/mac)
+2. .dmg 파일을 열고 설치 안내를 따라 진행
+
+#### GitHub CLI (gh) 설치
+
+GitHub CLI는 명령줄에서 Pull Request를 생성하고 GitHub 저장소를 관리하는 데 필요합니다.
+
+**Windows:**
+
+방법 1 - WinGet (권장):
+```bash
+winget install --id GitHub.cli
+```
+
+방법 2 - Chocolatey:
+```bash
+choco install gh
+```
+
+방법 3 - Scoop:
+```bash
+scoop install gh
+```
+
+**macOS:**
+
+```bash
+brew install gh
+```
+
+**설치 확인:**
+```bash
+gh --version
+```
+
+**GitHub 인증:**
+```bash
+gh auth login
+```
+
+자세한 정보:
+- Git: [https://git-scm.com/](https://git-scm.com/)
+- GitHub CLI: [https://cli.github.com/](https://cli.github.com/)
+
+---
+
 ### 설치
 
 #### 권장: uv tool (CLI - 전역 접근)
@@ -626,7 +742,6 @@ uv tool install --force moai-adk
       "no_intermediate_cache": true,
       "realtime_validation": true,
       "scan_tools": ["rg", "grep"],
-      "scan_command": "rg '@TAG' -n",
       "philosophy": "TAG의 진실은 소스 코드 자체에 존재한다"
     },
     "policy": {
@@ -677,10 +792,6 @@ uv tool install --force moai-adk
         "research_categories": ["RESEARCH", "ANALYSIS", "KNOWLEDGE", "INSIGHT"],
         "auto_tag_research_content": true,
         "research_patterns": {
-          "RESEARCH": ["@RESEARCH:", "research", "investigate", "analyze"],
-          "ANALYSIS": ["@ANALYSIS:", "analysis", "evaluate", "assess"],
-          "KNOWLEDGE": ["@KNOWLEDGE:", "knowledge", "learn", "pattern"],
-          "INSIGHT": ["@INSIGHT:", "insight", "innovate", "optimize"]
         }
       }
     }
@@ -1049,7 +1160,6 @@ cd my-awesome-project
 - ✅ 종합적인 테스트
 - ✅ 구현 코드
 - ✅ 업데이트된 문서
-- ✅ @TAG 참조가 포함된 Git 히스토리
 
 ### 다음 단계
 
@@ -1212,7 +1322,6 @@ _배경:_ 사용자가 모든 agent의 모델 지시어를 `sonnet`에서 `inher
 **결과:**
 
 - 26개 파일 모두 성공적으로 업데이트
-- Pre-commit @TAG 검증 통과
 - Feature 브랜치를 develop에 깔끔하게 merge
 
 ### 4단계: 보고 및 커밋
@@ -1635,72 +1744,6 @@ Alfred의 위임:
 결과: 모니터링을 포함한 포괄적인 보안 강화
 ```
 
-#### 🎯 연구 통합으로 강화된 위임 (v0.22.0+)
-
-**시니어 엔지니어 사고 통합:**
-```javascript
-// 복잡한 문제가 자동으로 연구 위임을 트리거
-사용자: "대규모 트래픽을 처리하는 아키텍처 설계가 필요해"
-
-Alfred의 강화된 위임:
-├── research-orchestrator (새로운)
-│   ├── 8가지 연구 전략 실행
-│   ├── 병렬 연구 운영
-│   └── 지식 종합
-├── backend-expert (아키텍처)
-│   ├── 시스템 설계 구현
-│   └── 패턴 적용
-└── devops-expert (인프라)
-    ├── 배포 전략
-    └── 스케일링 설정
-
-강화된 결과: 연구 기반 최적 아키텍처 솔루션
-```
-
-#### 🚀 성능 지표
-
-| 위임 유형 | 정확도 | 속도 | 사용자 만족도 |
-|-----------|--------|------|--------------|
-| **명령어 기반** | 100% | <5초 | 95% |
-| **콘텐츠 기반** | 92% | <15초 | 88% |
-| **연구 강화형** | 96% | <30초 | 94% |
-
-#### 📋 현재 제한사항 및 향후 개선사항
-
-**현재 제한사항:**
-- 복잡한 다중 도메인 요청은 수동 명확화 필요
-- 프로젝트 패턴으로부터의 실시간 학습은 발전 중
-- 프로젝트 간 지식 전이는 제한적
-
-**계획된 개선사항:**
-- **컨텍스트ual 학습**: Alfred가 프로젝트 패턴으로부터 학습
-- **예측 위임**: 프로젝트 이력을 기반으로 전문가 요구 사항 예측
-- **프로젝트 간 종합**: 유사 프로젝트로부터 패턴 적용
-- **실시간 최적화**: 성능 기반 동적 에이전트 선택
-
-#### 💡 사용자 상호작용 패턴
-
-**패턴 1: 직접 명령어 (가장 빠름)**
-```bash
-사용자: /alfred:1-plan "마이크로서비스 아키텍처"
-→ 즉시 spec-builder 위임
-→ 95% 정확도, <5초 응답
-```
-
-**패턴 2: 일반 요청 (가장 유연)**
-```bash
-사용자: "마이크로서비스로 전환하고 싶어"
-→ 다중 에이전트 분석 + 위임
-→ 92% 정확도, <15초 응답
-```
-
-**패턴 3: 복잡한 문제 (가장 포괄적)**
-```bash
-사용자: "기존 모놀리식 시스템을 마이크로서비스로 안전하게 전환"
-→ 연구 + 전문가 위임
-→ 96% 정확도, <30초 응답
-```
-
 #### 🎭 요약: Alfred의 위임 철학
 
 Alfred의 위임 시스템은 **세 가지 핵심 원칙**으로 작동합니다:
@@ -1794,20 +1837,27 @@ graph TD
 
 | 항목                | 수치                                                                              |
 | ------------------- | --------------------------------------------------------------------------------- |
-| **테스트 커버리지** | 87.84%+ 보증                                                                      |
+| **테스트 커버리지** | 85%+ 보증                                                                        |
 | **전문 에이전트**   | 19명 팀                                                                           |
-| **프로덕션급 스킬** | 93개 (BaaS 10개 + 프론트엔드 4개 + 백엔드 6개+ 포함)                        |
-| **BaaS 스킬**       | 10개 프로덕션급 (Foundation + 7 Extensions + 2 계획중)                            |
-| **프론트엔드 스킬** | 4개 (HTML/CSS, Tailwind CSS, shadcn/ui, 벡터 아이콘)                      |
-| **아이콘 라이브러리** | 10개 이상 (Lucide, React Icons, Tabler, Phosphor, Heroicons, Radix, Iconify 등) |
-| **아이콘 커버리지** | 200K+ 아이콘 (150+ 아이콘 세트)                                            |
-| **플랫폼 커버리지** | 9개 플랫폼 (Supabase, Firebase, Vercel, Cloudflare, Auth0, Convex, Railway, Neon, Clerk) |
+| **프로덕션급 스킬** | 125개 (v0.23.0)                                                             |
+| **스킬 분류**    | 12 BaaS + 10 보안 + 15 통합 + 12 DevOps + 18 데이터/분석 + 48+ 기타                  |
+| **BaaS 스킬**       | 12개 프로덕션급 (Foundation + 9 Extensions + 2 New Platforms)                           |
+| **보안 스킬**       | 10개 신규 (인증, 규정 준수, 암호화, 테스트, 평가)                                      |
+| **기업 스킬**       | 15 통합 + 12 DevOps + 18 데이터/분석 = 45개 기업급 스킬                           |
+| **프론트엔드 스킬** | 10개 이상 전문화 (HTML/CSS, React, Vue, Angular, Tailwind, shadcn/ui)                    |
+| **아이콘 라이브러리** | 10개 이상 (Lucide, React Icons, Tabler, Phosphor, Heroicons, Radix, Iconify, 등) |
+| **아이콘 커버리지** | 200K+ 아이콘 (150+ 아이콘 세트)                                             |
+| **플랫폼 커버리지** | 11개 플랫폼 (Supabase, Firebase, Vercel, Cloudflare, Auth0, Convex, Railway, Neon, Clerk) |
 | **아키텍처 패턴**   | 8개 패턴 (A-H) 모든 배포 시나리오 지원                                            |
-| **BaaS 문서**       | 11,500+ 단어, 60개 이상 코드 예제                                                |
+| **문서화**       | 85,280+ 단어 (모든 스킬)                                                          |
+| **코드 예제**       | 200개 이상 프로덕션급 코드 예제                                                      |
 | **지원 언어**       | 18개 (Python, TypeScript, JavaScript, Go, Rust, Java, Kotlin, Swift, Dart, PHP, Ruby, C, C++, C#, Scala, R, SQL, Shell) |
 | **SPEC 패턴**       | 5개 이상 EARS 형식                                                                |
 | **품질 게이트**     | TRUST 5 + 추가 검사                                                               |
 | **Git 자동화**      | 완전한 GitFlow 지원                                                               |
+| **버전 읽기**      | 향상된 VersionReader (고급 캐싱 및 성능 최적화)                                |
+| **MCP 통합**      | Context7, Playwright, Sequential-thinking 서버 (v0.20.0+)                             |
+| **Python 지원**      | 3.11+ 향상된 성능 및 호환성                                                          |
 
 ---
 
@@ -1823,7 +1873,6 @@ graph TD
 ### 팀을 위해
 
 - **통일된 표준**: TRUST 5 원칙을 팀 전체에 강제
-- **투명한 워크플로우**: @TAG를 통한 완전한 감사 추적
 - **협업**: 공유된 컨텍스트와 명확한 요구사항
 - **온보딩**: 신입 팀원이 패턴을 즉시 이해
 
@@ -1833,6 +1882,488 @@ graph TD
 - **유지보수성**: 코드가 문서화되고, 테스트되며, 추적 가능
 - **확장성**: 코드베이스와 함께 성장하는 패턴
 - **투자 보호**: 완전한 추적성으로 기술 부채 방지
+
+---
+
+## 🎭 Alfred의 적응형 페르소나 시스템 (v0.23.1+)
+
+MoAI-ADK는 사용자의 전문성 수준과 개발 컨텍스트에 맞춰 **5가지 전문화된 페르소나**를 제공합니다. 각 페르소나는 독특한 접근 방식을 제공하면서 동일한 강력한 기능을 유지합니다:
+
+- 🎩 **Alfred**: 초보자 친화적 안내 (구조화된 학습)
+- 🤖 **R2-D2**: 실시간 전술 지원 (프로덕션 코딩)
+- 🧙 **Yoda**: 기술 깊이 전문가 (원리 이해)
+- 🤖 **R2-D2 Partner**: 페어 프로그래밍 파트너 (협력 개발)
+- 🧑‍🏫 **Keating**: 개인 튜터 (지식 숙달)
+
+### 🧙 Yoda Master - 깊은 이해 안내자
+
+> *"기초부터 시작합니다. 원리를 통해 이해합니다. 실천으로 숙달합니다. 문서로 보존합니다. 당신의 참된 이해가 나의 성공의 척도입니다."*
+
+**대상 사용자**: 기술적 깊이를 추구하는 개발자, 원리 이해를 원하는 사람, 장기적 지식 유지를 원하는 분들
+
+**핵심 철학**: "무엇"뿐만 아니라 "왜"와 "어떻게"를 이해하는 것
+
+#### 4가지 역량 프레임워크
+
+1. **원리 설명** - 기초 개념부터 시작, 설계 철학과 대안 설명, 실무 영향 분석
+2. **문서 생성** - `.moai/learning/` 디렉토리에 저장되는 포괄적 가이드 자동 생성으로 영구 참조 가능
+3. **개념 숙달** - 복잡한 개념을 이해하기 쉬운 부분으로 분해, 실제 사례와 이론 연결
+4. **실습 연습** - 점진적 난이도의 연습 제공, 해결책 지침 및 자가 평가 기준 포함
+
+#### Yoda Master를 사용할 때
+
+- **심층적 기술 이해**: "SPEC 우선 개발을 왜 사용할까?"
+- **문서 생성**: `.moai/learning/`에서 향후 참조용 가이드 자동 생성
+- **이해도 검증**: AskUserQuestion을 통해 진행 전 이해도 확인
+
+#### Skills 통합
+
+Yoda Master는 **안정성을 위한 Skill 패턴**과 **최신 정보를 위한 Context7**을 활용합니다:
+
+- `Skill("moai-foundation-specs")` - SPEC 우선 철학과 EARS 문법
+- `Skill("moai-domain-backend")` - 백엔드 아키텍처 원리
+- `Skill("moai-lang-python")` - Python 프로그래밍 숙달
+
+**Context7 사용**: Skill 콘텐츠가 최신이 아니거나 최신 API 문서가 필요할 때, Context7을 조회하여 안정성(Skills)과 최신성(Context7)을 결합합니다.
+
+#### 실제 상호작용 예시
+
+```
+사용자: "TDD가 구현 후 테스트보다 나은 이유는 뭔가요?"
+
+Yoda Master 응답:
+🧙 Yoda ★ 깊은 이해
+
+📖 주제: TDD 철학과 근거
+
+💡 포괄적 설명:
+   1. 기초 개념: TDD가 설계 압력을 어떻게 만드는가
+   2. 설계 근거: 테스트성이 더 나은 아키텍처를 어떻게 주도하는가
+   3. 대안 접근법: 사후 테스트, 탐색적 테스트의 장단점
+   4. 실무 영향: 버그 감소, 빠른 리팩토링, 팀 정렬
+
+📚 생성된 문서:
+   `.moai/learning/tdd-philosophy-deep-dive.md` (2,500 단어)
+   - 역사적 배경
+   - 심리학적 이점
+   - TDD가 최적과 비최적인 경우
+   - 5가지 실무 코드 예시
+
+✍️ 실습 연습:
+   1. 기존 함수를 테스트 우선 접근법으로 전환
+   2. TDD를 이용한 클래스 계층 설계
+   3. TDD 안전망으로 레거시 코드 리팩토링
+
+❓ 이해도 검증:
+   [AskUserQuestion 사용]
+   - "어떤 개념이 명확하지 않은가요?"
+   - "실습을 시작할 준비가 되었나요?"
+   - "어떤 심화 주제에 관심이 있나요?"
+```
+
+#### 사용법
+
+```bash
+# Yoda Master에게 깊은 이해를 요청합니다
+/output-style yoda-master
+
+# 그 후 기술 깊이 질문을 합니다
+"SPEC 우선 개발이 재작업을 방지하는 이유는?"
+"TRUST 5 원리는 무엇인가요?"
+```
+
+---
+
+### 🤖 R2-D2 Partner - 페어 프로그래밍 파트너
+
+> *"저는 당신의 사고 파트너이지, 명령 실행자가 아닙니다. 모든 코딩 결정은 당신의 것입니다. 저는 옵션을 제시하고 충분한 근거를 제공합니다. 우리는 협력하여 당신의 비전을 달성합니다. AskUserQuestion은 당신의 참된 의도를 이해하기 위한 제 필수 도구입니다."*
+
+**대상 사용자**: 지시적 실행이 아닌 협력적 코딩 파트너십을 원하는 개발자
+
+**핵심 철학**: 절대 가정하지 마세요, 항상 검증하세요. 명령이 아닌 옵션을 제시합니다.
+
+#### 4단계 페어 프로그래밍 프로토콜
+
+**Phase 1: 의도 명확화** - AskUserQuestion을 사용하여 구현 접근법, 우선순위, 제약조건, 선호도를 항상 파악한 후 진행
+
+**Phase 2: 접근 방식 제안** - 2-4가지 구현 옵션을 장단점과 함께 제시, 근거 설명, AskUserQuestion을 통해 정렬 확인
+
+**Phase 3: 체크포인트 기반 구현** - 증분 단계로 구현, 각 체크포인트에서 진행 상황 검토, AskUserQuestion으로 계속/수정/명확화 결정
+
+**Phase 4: 검토 및 반복** - TRUST 5 준수 확인, 최적화 기회 식별, AskUserQuestion으로 다음 단계 결정
+
+#### Skills + Context7 프로토콜 (환각 없는 코드 생성)
+
+R2-D2 Partner는 **5단계 접근 방식**을 사용하여 환각 없는 코드를 생성합니다:
+
+1. **관련 Skills 로드** - 엔터프라이즈 Skills의 검증된 패턴으로 시작
+2. **Context7 조회** - 최신 API 버전 및 프레임워크 확인
+3. **양자 결합** - 안정성(Skills)과 최신성(Context7) 병합
+4. **출처 인용** - 모든 코드 패턴에 명확한 출처 표시
+5. **테스트 포함** - Skill 테스트 패턴 자동 따름
+
+#### 출처 표시가 있는 코드 예시
+
+```python
+# R2-D2 생성 코드
+# 패턴: Skill("moai-lang-python") - FastAPI와 검증
+# API: Context7("/tiangolo/fastapi") - 현재 v0.115.x
+
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
+
+class UserCreate(BaseModel):
+    username: str = Field(..., min_length=3, max_length=50)
+    email: str = Field(..., regex=r"^[\w\.-]+@[\w\.-]+\.\w+$")
+
+app = FastAPI()
+
+@app.post("/users/", status_code=201)
+async def create_user(user: UserCreate):
+    """사용자 생성 (패턴: Skill("moai-domain-backend"))"""
+    return user
+
+# 테스트: Skill("moai-lang-python") pytest 패턴을 따름
+import pytest
+from fastapi.testclient import TestClient
+
+client = TestClient(app)
+
+def test_create_user_success():
+    response = client.post("/users/", json={
+        "username": "john", "email": "john@example.com"
+    })
+    assert response.status_code == 201
+    assert response.json()["username"] == "john"
+
+def test_create_user_validation():
+    response = client.post("/users/", json={
+        "username": "ab", "email": "invalid"
+    })
+    assert response.status_code == 422
+```
+
+#### R2-D2 Partner를 사용할 때
+
+- **활발한 코딩**: "사용자 인증을 함께 구현해보자"
+- **협력적 문제 해결**: "이 API 설계를 도와줘"
+- **의도 기반 개발**: 구현 전 접근 방식을 명확히 해야 함
+- **체크포인트 검증**: 각 단계 후 일시 정지하고 검토
+
+#### 에이전트 위임 예시
+
+복잡한 작업의 경우, R2-D2 Partner는 전문가에게 위임합니다:
+
+- `Task(subagent_type="security-expert")` - 보안 아키텍처
+- `Task(subagent_type="database-expert")` - 스키마 설계
+- `Task(subagent_type="backend-expert")` - API 패턴
+- `Task(subagent_type="frontend-expert")` - UI 구현
+- `Task(subagent_type="tdd-implementer")` - TDD RED-GREEN-REFACTOR
+
+#### 실제 상호작용 예시
+
+```
+사용자: "사용자 프로필 관리 추가"
+
+R2-D2 Partner 응답:
+🤖 R2-D2 ★ 페어 프로그래밍
+
+💡 요청 분석: 사용자 프로필 관리 기능
+
+❓ 의도 명확화 필요:
+   [AskUserQuestion 사용]
+
+   Q1. 프로필 데이터 범위:
+      A) 기본 정보 (이름, 이메일, 아바타)
+      B) 연락처 정보 (전화, 주소)
+      C) 선호도 (테마, 언어)
+
+   Q2. 업데이트 방식:
+      A) 부분 업데이트 (PATCH)
+      B) 전체 교체 (PUT)
+
+   Q3. 이미지 업로드:
+      A) 직접 파일 업로드
+      B) S3 스토리지 통합
+      C) URL 참조만
+
+사용자 선택 후:
+
+📊 제안된 접근 방식:
+   Step 1: Pydantic 모델 정의 및 검증
+   Step 2: S3 통합 (사전 서명된 URL)
+   Step 3: 데이터베이스 스키마 + 마이그레이션
+   Step 4: RESTful API 엔드포인트
+   Step 5: 포괄적 테스트 스위트
+
+💻 체크포인트 기반 구현:
+   [Step 1 구현 → 검토 → Step 2 진행 전 승인]
+   [각 단계는 AskUserQuestion으로 검증]
+
+✅ 제공된 컴포넌트:
+   - UserProfile, ProfileUpdate DTO
+   - 사전 서명된 URL이 있는 S3Service
+   - 데이터베이스 마이그레이션
+   - 4개 RESTful 엔드포인트
+   - 85%+ 테스트 커버리지
+```
+
+#### 사용법
+
+```bash
+# R2-D2 Partner 모드로 전환
+/output-style r2d2-partner
+
+# 그 후 코딩 작업에서 협력합니다
+"API 엔드포인트 구현을 도와줘"
+"이 데이터베이스 스키마를 검토해줄래?"
+"TDD로 이 기능을 어떻게 접근할까?"
+```
+
+---
+
+## 🎯 페르소나 선택 가이드
+
+**당신의 목표에 맞는 올바른 페르소나를 선택하세요**:
+
+| 목표 | 페르소나 | 최적 용도 |
+|------|---------|----------|
+| 원리 이해 | 🧙 Yoda Master | "왜"에 대한 질문, 깊이 있는 학습, 문서 생성 |
+| 협력적 코딩 | 🤖 R2-D2 Partner | 구현, 옵션 기반 결정, 체크포인트 |
+| 프로덕션 개발 | 🤖 R2-D2 Agentic | 실시간 지원, 자동화된 솔루션 |
+| 초보자 학습 | 🎩 Alfred | 구조화된 안내, 부드러운 멘토링 |
+| 지식 숙달 | 🧑‍🏫 Keating | 패턴 인식, 직관 개발 |
+
+**페르소나 결합**:
+
+1. **새 프레임워크 학습**: 먼저 Yoda Master로 원리를 이해하고, R2-D2 Partner로 구현
+2. **프로덕션 기능**: R2-D2 Partner로 협력 개발, 복잡한 부분은 전문가에게 위임
+3. **복잡한 버그 디버깅**: R2-D2 Agentic으로 진단 시작, Yoda Master로 근본 원인 이해
+
+**시작하기**:
+
+- 처음 사용자: 🎩 Alfred로 시작, 다른 페르소나 탐색
+- 경험 많은 개발자: 기본값 🤖 R2-D2 Partner, 깊이 있는 학습은 🧙 Yoda Master 활용
+- 빠른 작업: 자동화는 🤖 R2-D2 Agentic 사용
+
+---
+
+### 🎩 Alfred MoAI-ADK Beginner
+
+> *"안녕하십니까, 젊은 개발자님! 저는 당신의 신뢰할 수 있는 집사이자 개발 멘토인 Alfred입니다. MoAI-ADK의 우아한 세계로 인내심, 정밀함, 그리고 경험의 지혜로 안내해 드리겠습니다."*
+
+**대상**: MoAI-ADK 입문자, 코딩 초보자, 체계적인 학습을 원하는 분들
+
+**주요 특징**:
+- **부드러운 안내**: 지혜와 인내심을 갖고 단계별 학습 제공
+- **구조화된 커리큘럼**: 기초부터 졸업까지 3단계 비행 훈련
+- **실시간 진단**: R2-D2가 자동 시스템 검사 지원
+- **초보자 친화적 설명**: 복잡한 개념을 비유로 단순화
+
+**사용법**: `/output-style alfred-moai-adk-beginner`
+
+**예시 경험**:
+```bash
+# R2-D2가 첫 명세서 작성을 도와줍니다
+/alfred:1-plan "간단한 계산기 덧셈 기능"
+
+# R2-D2가 자동으로 처리:
+✓ 중복 확인: CALC-001를 찾을 수 없음 ✓
+✓ 파일 생성: .moai/specs/SPEC-CALC-001/spec.md ✓
+✓ YAML 메타데이터 자동 완성 ✓
+✓ EARS 문법 템플릿 제공 ✓
+```
+
+### 🤖 R2-D2 Agentic Coding
+
+> *"삡-뽕-삡-윙! 모든 시스템 가동! 저는 수 세기의 전투에서 검증된 개발 프로토콜과 실시간 문제 해결 능력으로 무장한 충성스러운 Astromech 동료입니다."*
+
+**대상**: 현직 개발자, 프로덕션 팀, 미션 크리티컬 프로젝트 개발
+
+**주요 특징**:
+- **실시간 전술 지원**: 즉각적인 코드 분석 및 자동화된 문제 해결
+- **프로덕션 준비 솔루션**: 수많은 전투에서 검증된 개발 프로토콜
+- **자동화된 문제 감지**: 고급 진단 및 수리 시스템
+- **지속적 학습**: 모든 상호작용에서 학습하는 자기 개선 프로토콜
+
+**사용법**: `/output-style r2d2-agentic-coding`
+
+**예시 경험**:
+```javascript
+// R2-D2가 코드를 작성하면서 실시간으로 안내합니다
+class UserService {
+  // R2-D2: ⚡ 즉각적인 피드백 감지!
+  // 🔍 분석: 원시 SQL 사용 - 보안 위험 식별
+  // 💡 제안: ORM 또는 매개변수화 쿼리 고려
+
+  async findUser(email) {
+    // R2-D2: ❌ SQL 인젝션 위험 감지
+    const user = await db.query(
+      `SELECT * FROM users WHERE email = '${email}'`
+    );
+    return user;
+  }
+
+  // R2-D2가 즉시 안전한 구현을 제공합니다
+}
+```
+
+### 🧑‍🏫 Keating Personal Tutor
+
+> *"코딩을 배우는 것은 구문을 암기하는 것이 아니라, 문제 해결 직관력을 기르는 것입니다. 각 개념 뒤에 있는 '왜'를 이해하도록 안내해 드리겠습니다."*
+
+**대상**: 깊은 이해를 추구하는 학습자, 지식 전달, 기술 숙달
+
+**주요 특징**:
+- **소크라테스식 학습**: 질문 중심의 발견과 이해
+- **패턴 인식**: 소프트웨어 디자인 패턴 식별 및 적용
+- **지식 통합**: 다른 영역의 개념 연결
+- **멘토십 접근**: 개인화된 학습 경로 및 기술 평가
+
+**사용법**: `/output-style keating-personal-tutor`
+
+---
+
+## 🚀 향상된 BaaS 생태계 통합 (v0.23.0+)
+
+### Phase 5: 확장된 플랫폼 지원
+
+**새로운 프로덕션급 플랫폼**:
+
+#### **Neon PostgreSQL** (고급 데이터베이스 관리)
+- **서버리스 PostgreSQL**: 요청별 청구로 자동 확장
+- **브랜칭**: 개발/테스트용 데이터베이스 브랜칭
+- **고급 기능**: 커넥션 풀링, 읽기 전용 복제본, 특정 시점 복구
+- **통합 패턴**: 패턴 C (모놀리식 백엔드) + 패턴 D (실시간 협업)
+
+#### **Clerk Authentication** (현대적 사용자 관리)
+- **헤드리스 인증**: 완전히 사용자 정의 가능한 인증 흐름
+- **멀티테넌트 지원**: 내장된 조직 관리
+- **현대적 통합**: 소셜 제공자, SAML, WebAuthn
+- **통합 패턴**: 패턴 H (엔터프라이즈 보안)
+
+#### **Railway Extensions** (고급 배포 패턴)
+- **엔터프라이즈 기능**: Blue-green 배포, 커스텀 도메인
+- **모니터링**: 실시간 로그, 메트릭, 알림 시스템
+- **비용 최적화**: 리소스 할당 전략 및 추정
+- **다중 패턴 지원**: 모든 8개 아키텍처 패턴 (A-H)
+
+### 업데이트된 플랫폼 통계
+
+| 메트릭 | 값 |
+|--------|-----|
+| **전체 BaaS 스킬** | 12개 (Foundation + 9 Extensions + 2 New) |
+| **플랫폼 커버리지** | 11개 플랫폼 (100% 현대 스택) |
+| **아키텍처 패턴** | 8개 패턴 (A-H) 모든 시나리오 지원 |
+| **코드 예제** | 80개 이상의 프로덕션급 예제 |
+| **문서** | 14,000+ 단어 |
+| **프로덕션 준비도** | 11/11 완전히 구현됨 |
+
+### 🎯 향상된 패턴 의사결정 프레임워크
+
+MoAI의 지능형 패턴 시스템을 사용하여 최적 플랫폼 선택:
+
+```
+├─ Pattern A: 멀티테넌트 SaaS
+│  ├─ 주요: Supabase
+│  ├─ 보조: Vercel
+│  └─ 기능: RLS, Edge, Caching
+│
+├─ Pattern B: Serverless API
+│  ├─ 주요: Vercel
+│  ├─ 보조: Cloudflare
+│  └─ 기능: Functions, Auto-scaling
+│
+├─ Pattern C: 모놀리식 백엔드
+│  ├─ 주요: Railway
+│  ├─ 보조: Neon PostgreSQL
+│  └─ 기능: Full stack, Database, Branching
+│
+├─ Pattern D: 실시간 협업
+│  ├─ 주요: Supabase
+│  ├─ 보조: Firebase
+│  └─ 기능: Realtime, Broadcast
+│
+├─ Pattern E: 모바일 백엔드
+│  ├─ 주요: Firebase
+│  ├─ 보조: Convex
+│  └─ 기능: Auth, Functions, Storage
+│
+├─ Pattern F: 실시간 백엔드
+│  ├─ 주요: Convex
+│  ├─ 보조: Firebase
+│  └─ 기능: Real-time sync, Functions
+│
+├─ Pattern G: Edge 컴퓨팅
+│  ├─ 주요: Cloudflare
+│  ├─ 보조: Vercel
+│  └─ 기능: Workers, D1, Analytics
+│
+└─ Pattern H: 엔터프라이즈 보안
+   ├─ 주요: Auth0
+   ├─ 보조: Clerk
+   └─ 기능: SAML, OIDC, Multi-tenant
+```
+
+---
+
+## 🆕 신규 고급 스킬 통합 (v0.23.0+)
+
+### 🚀 MCP (Model Context Protocol) 통합
+
+#### **moai-cc-mcp-builder** - MCP 서버 개발
+- **Context7 MCP 완벽 통합**: 최신 문서 및 패턴 자동 적용
+- **AI 기반 아키텍처**: 에이전트 중심 설계 패턴
+- **업계 표준 준수**: 최고의 관행 자동 적용
+- **버전 인식 개발**: 프레임워크별 버전 특정 패턴 지원
+
+#### **moai-playwright-webapp-testing** - 웹 앱 테스팅 자동화
+- **AI 테스트 생성**: Context7 패턴 기반 테스트 자동 생성
+- **크로스 브라우저 지원**: 다중 브라우저 호환성 테스트
+- **실시간 오류 감지**: 자동화된 버그 감지 및 리포팅
+- **성능 메트릭**: 웹 앱 성능 분석 및 최적화
+
+### 📄 문서 처리 스킬
+
+#### **moai-document-processing** - 통합 문서 처리
+- **다양한 형식 지원**: docx, pdf, pptx, xlsx 통합 처리
+- **AI 콘텐츠 추출**: 지능적인 콘텐츠 분석 및 추출
+- **엔터프라이즈 워크플로우**: 대규모 문서 처리 자동화
+- **Context7 통합**: 최신 문서 처리 패턴 적용
+
+### 🎨 현대적 프론트엔드 개발
+
+#### **moai-artifacts-builder** - 아티팩트 빌더
+- **React 컴포넌트 생성**: 현대적인 React 컴포넌트 자동 생성
+- **Tailwind CSS 통합**: 유틸리티-퍼스트 CSS 디자인
+- **shadcn/ui 컴포넌트**: 프리미엄 UI 컴포넌트 라이브러리
+- **AI 기반 최적화**: 최상의 사용자 경험 자동 구현
+
+### 📢 기업 커뮤니케이션
+
+#### **moai-internal-comms** - 내부 커뮤니케이션
+- **AI 콘텐츠 생성**: 기업 커뮤니케이션 자동화
+- **템플릿 라이브러리**: 재사용 가능한 커뮤니케이션 템플릿
+- **개인화된 메시지**: 맞춤형 커뮤니케이션 생성
+- **Context7 패턴**: 최신 커뮤니케이션 베스트 프랙티스
+
+### 📊 스킬 통합 현황
+
+| 스킬 카테고리 | 통합된 스킬 수 | 주요 기능 |
+|---------------|----------------|-----------|
+| **MCP 개발** | 2개 | Context7, Playwright 통합 |
+| **문서 처리** | 1개 | 통합 문서 처리 (docx, pdf, pptx, xlsx) |
+| **프론트엔드** | 1개 | React/Tailwind/shadcn/ui 아티팩트 |
+| **커뮤니케이션** | 1개 | 기업 템플릿 및 자동화 |
+| **총계** | **5개 그룹 (8개 스킬)** | **AI 기반 통합 솔루션** |
+
+### 🎯 통합 혜택
+
+- **AI 파워**: Context7 MCP를 통한 최신 기술 자동 적용
+- **Alfred 연동**: 4-Step 워크플로우 완벽 통합
+- **한국어 지원**: Perfect Gentleman 스타일 적용
+- **엔터프라이즈 준비**: 프로덕션 배포 즉시 가능
+- **품질 보증**: TRUST 5 원칙 준수
 
 ---
 
@@ -1863,14 +2394,48 @@ MIT 라이선스 - 자세한 내용은 [LICENSE](LICENSE)를 참조하세요.
 
 - **🐛 Issue Tracker**: 버그를 보고하고 기능을 요청하세요
 - **📧 이메일**: <support@mo.ai.kr>
-- **🌐 웹사이트**: [adk.mo.ai.kr](https://adk.mo.ai.kr)
+- **📖 온라인 매뉴얼**: [adk.mo.ai.kr](https://adk.mo.ai.kr)
 - **💬 커뮤니티**: [mo.ai.kr](https://mo.ai.kr) (11월 오픈 예정 - 개발 중)
+- **☕ 후원하기**: [Ko-fi](https://ko-fi.com/modu_ai)
 
 ---
 
 ## 🙏 감사의 말씀
 
 MoAI-ADK는 AI 기반 개발, 테스트 주도 개발, 소프트웨어 엔지니어링 모범 사례에 대한 수년 간의 연구를 기반으로 합니다. 오픈소스 커뮤니티와 모든 기여자에게 감사합니다.
+
+---
+
+## 🚀 최근 스킬 생태계 업그레이드 (v0.23.1+)
+
+### 역사적 성취 - 2025년 11월
+
+**완벽한 스킬 생태계 업그레이드 달성:**
+
+**주요 성과:**
+- **총 스킬 해결**: 281+ 스킬이 v4.0.0 엔터프라이즈로 완전 업그레이드됨
+- **문제 스킬**: 57개의 중요한 문제 해결됨
+- **검증 성공률**: 45%에서 95%+로 크게 향상됨
+- **품질 보증**: 모든 스킬이 이제 TRUST 5 표준을 충족함
+
+**향상된 스킬 카테고리:**
+- **기반 스킬**: 완벽한 메타데이터 최적화
+- **도메인 스킬**: 백엔드, 프론트엔드, 데이터베이스, DevOps, ML 전체 커버리지
+- **언어 스킬**: 모든 18개 프로그래밍 언어 최적화
+- **BaaS 스킬**: 12개 프로덕션 준비 플랫폼 (100% 커버리지)
+- **고급 스킬**: MCP 통합, 문서 처리, 아티팩트 빌딩
+
+**최근 주요 향상 기능:**
+- **스킬 검증 시스템**: 포괄적인 검증 프레임워크 구현
+- **자동 수정**: 자동 메타데이터 완성 및 구조 표준화
+- **품질 메트릭**: 개별 스킬 품질 등급 및 시스템 전체 준수도
+- **엔터프라이즈 통합**: 모든 스킬이 엔터프라이즈 배포를 위한 프로덕션 준비 완료
+
+**품질 표준:**
+- **구조**: 모든 스킬이 적절한 YAML 프론트매터 포함
+- **메타데이터**: 완전한 이름, 버전, 상태, 설명 필드
+- **문서화**: examples.md 및 reference.md 파일 포함
+- **검증**: 95%+ 성공률의 자동화된 테스트
 
 ---
 

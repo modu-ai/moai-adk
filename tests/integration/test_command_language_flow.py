@@ -1,4 +1,3 @@
-# @CODE:LANG-FIX-001:INTEGRATION | SPEC: .moai/specs/SPEC-LANG-FIX-001/spec.md
 """Integration tests for language configuration flow across commands and agents.
 
 Tests verify that:

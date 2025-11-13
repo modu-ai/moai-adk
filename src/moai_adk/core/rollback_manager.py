@@ -16,25 +16,26 @@ Supports:
 - Rollback validation and verification
 """
 
-import json
-import shutil
-import subprocess
 import hashlib
-from pathlib import Path
-from datetime import datetime, timezone
-from typing import Dict, List, Any, Optional, Tuple
-from dataclasses import dataclass, asdict
+import json
 import logging
-import sys
 import os
+import shutil
+import sys
+from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Dict, List, Tuple
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 @dataclass
 class RollbackPoint:
     """Represents a rollback point with metadata"""
+
     id: str
     timestamp: datetime
     description: str
@@ -43,15 +44,18 @@ class RollbackPoint:
     checksum: str
     metadata: Dict[str, Any]
 
+
 @dataclass
 class RollbackResult:
     """Result of a rollback operation"""
+
     success: bool
     rollback_point_id: str
     message: str
     restored_files: List[str]
     failed_files: List[str] = None
     validation_results: Dict[str, Any] = None
+
 
 class RollbackManager:
     """Comprehensive rollback management system"""
@@ -78,7 +82,7 @@ class RollbackManager:
             self.project_root / ".claude" / "skills",
             self.project_root / ".claude" / "agents",
             self.project_root / ".claude" / "commands",
-            self.project_root / ".claude" / "hooks"
+            self.project_root / ".claude" / "hooks",
         ]
 
     def create_rollback_point(self, description: str, changes: List[str] = None) -> str:
@@ -128,8 +132,8 @@ class RollbackManager:
                     "code_backup": code_backup_path,
                     "project_root": str(self.project_root),
                     "created_by": "rollback_manager",
-                    "version": "1.0.0"
-                }
+                    "version": "1.0.0",
+                },
             )
 
             # Register rollback point
@@ -145,8 +149,12 @@ class RollbackManager:
             self._cleanup_partial_backup(rollback_id)
             raise
 
-    def rollback_to_point(self, rollback_id: str, validate_before: bool = True,
-                         validate_after: bool = True) -> RollbackResult:
+    def rollback_to_point(
+        self,
+        rollback_id: str,
+        validate_before: bool = True,
+        validate_after: bool = True,
+    ) -> RollbackResult:
         """
         Rollback to a specific rollback point
 
@@ -163,7 +171,7 @@ class RollbackManager:
                 success=False,
                 rollback_point_id=rollback_id,
                 message=f"Rollback point {rollback_id} not found",
-                restored_files=[]
+                restored_files=[],
             )
 
         logger.info(f"Rolling back to point {rollback_id}")
@@ -179,7 +187,7 @@ class RollbackManager:
                         success=False,
                         rollback_point_id=rollback_id,
                         message=f"Rollback point validation failed: {validation_result['message']}",
-                        restored_files=[]
+                        restored_files=[],
                     )
 
             # Perform rollback
@@ -201,7 +209,7 @@ class RollbackManager:
                 message=f"Rollback {'completed successfully' if success else 'completed with errors'}",
                 restored_files=restored_files,
                 failed_files=failed_files or [],
-                validation_results=validation_results
+                validation_results=validation_results,
             )
 
             logger.info(f"Rollback {rollback_id} completed. Success: {success}")
@@ -213,11 +221,12 @@ class RollbackManager:
                 success=False,
                 rollback_point_id=rollback_id,
                 message=f"Rollback failed with error: {str(e)}",
-                restored_files=[]
+                restored_files=[],
             )
 
-    def rollback_research_integration(self, component_type: str = None,
-                                    component_name: str = None) -> RollbackResult:
+    def rollback_research_integration(
+        self, component_type: str = None, component_name: str = None
+    ) -> RollbackResult:
         """
         Specialized rollback for research integration changes
 
@@ -228,22 +237,28 @@ class RollbackManager:
         Returns:
             RollbackResult with operation details
         """
-        logger.info(f"Rolling back research integration: {component_type}:{component_name}")
+        logger.info(
+            f"Rolling back research integration: {component_type}:{component_name}"
+        )
 
         try:
             # Find relevant rollback points for research integration
-            research_rollback_points = self._find_research_rollback_points(component_type, component_name)
+            research_rollback_points = self._find_research_rollback_points(
+                component_type, component_name
+            )
 
             if not research_rollback_points:
                 return RollbackResult(
                     success=False,
                     rollback_point_id="",
                     message="No suitable rollback points found for research integration",
-                    restored_files=[]
+                    restored_files=[],
                 )
 
             # Use the most recent suitable rollback point
-            latest_rollback = max(research_rollback_points, key=lambda x: x["timestamp"])
+            latest_rollback = max(
+                research_rollback_points, key=lambda x: x["timestamp"]
+            )
 
             # Perform targeted rollback
             restored_files, failed_files = self._perform_research_rollback(
@@ -261,7 +276,7 @@ class RollbackManager:
                 message=f"Research integration rollback {'completed successfully' if success else 'completed with errors'}",
                 restored_files=restored_files,
                 failed_files=failed_files or [],
-                validation_results=validation_results
+                validation_results=validation_results,
             )
 
         except Exception as e:
@@ -270,7 +285,7 @@ class RollbackManager:
                 success=False,
                 rollback_point_id="",
                 message=f"Research integration rollback failed: {str(e)}",
-                restored_files=[]
+                restored_files=[],
             )
 
     def list_rollback_points(self, limit: int = 10) -> List[Dict[str, Any]]:
@@ -286,13 +301,15 @@ class RollbackManager:
         rollback_points = []
 
         for rollback_id, rollback_data in self.registry.items():
-            rollback_points.append({
-                "id": rollback_id,
-                "timestamp": rollback_data["timestamp"],
-                "description": rollback_data["description"],
-                "changes_count": len(rollback_data.get("changes", [])),
-                "used": rollback_data.get("used", False)
-            })
+            rollback_points.append(
+                {
+                    "id": rollback_id,
+                    "timestamp": rollback_data["timestamp"],
+                    "description": rollback_data["description"],
+                    "changes_count": len(rollback_data.get("changes", [])),
+                    "used": rollback_data.get("used", False),
+                }
+            )
 
         # Sort by timestamp (newest first) and limit
         rollback_points.sort(key=lambda x: x["timestamp"], reverse=True)
@@ -311,17 +328,23 @@ class RollbackManager:
             "recommendations": [],
             "rollback_points_count": len(self.registry),
             "backup_size": self._calculate_backup_size(),
-            "last_rollback": None
+            "last_rollback": None,
         }
 
         try:
             # Check backup directories exist
-            required_dirs = [self.backup_root, self.config_backup_dir,
-                           self.code_backup_dir, self.docs_backup_dir]
+            required_dirs = [
+                self.backup_root,
+                self.config_backup_dir,
+                self.code_backup_dir,
+                self.docs_backup_dir,
+            ]
 
             for dir_path in required_dirs:
                 if not dir_path.exists():
-                    validation_results["issues"].append(f"Missing backup directory: {dir_path}")
+                    validation_results["issues"].append(
+                        f"Missing backup directory: {dir_path}"
+                    )
                     validation_results["system_healthy"] = False
 
             # Validate rollback points
@@ -332,18 +355,24 @@ class RollbackManager:
                     invalid_rollback_points.append(rollback_id)
 
             if invalid_rollback_points:
-                validation_results["issues"].append(f"Invalid rollback points: {invalid_rollback_points}")
+                validation_results["issues"].append(
+                    f"Invalid rollback points: {invalid_rollback_points}"
+                )
                 validation_results["system_healthy"] = False
 
             # Check available disk space
             backup_size = validation_results["backup_size"]
             free_space = shutil.disk_usage(self.backup_root).free
             if backup_size > free_space * 0.8:  # Using more than 80% of free space
-                validation_results["recommendations"].append("Consider cleaning up old rollback points")
+                validation_results["recommendations"].append(
+                    "Consider cleaning up old rollback points"
+                )
 
             # Check last rollback
             if self.registry:
-                last_rollback = max(self.registry.values(), key=lambda x: x["timestamp"])
+                last_rollback = max(
+                    self.registry.values(), key=lambda x: x["timestamp"]
+                )
                 validation_results["last_rollback"] = last_rollback["timestamp"]
 
         except Exception as e:
@@ -352,7 +381,9 @@ class RollbackManager:
 
         return validation_results
 
-    def cleanup_old_rollbacks(self, keep_count: int = 10, dry_run: bool = True) -> Dict[str, Any]:
+    def cleanup_old_rollbacks(
+        self, keep_count: int = 10, dry_run: bool = True
+    ) -> Dict[str, Any]:
         """
         Clean up old rollback points
 
@@ -378,7 +409,7 @@ class RollbackManager:
                 "would_free_space": sum(
                     self._get_directory_size(Path(rp["backup_path"]))
                     for rp in to_delete
-                )
+                ),
             }
 
         # Perform actual cleanup
@@ -398,7 +429,9 @@ class RollbackManager:
                 deleted_count += 1
 
             except Exception as e:
-                logger.warning(f"Failed to delete rollback point {rollback_point['id']}: {str(e)}")
+                logger.warning(
+                    f"Failed to delete rollback point {rollback_point['id']}: {str(e)}"
+                )
 
         # Save updated registry
         self._save_registry()
@@ -407,7 +440,7 @@ class RollbackManager:
             "dry_run": False,
             "deleted_count": deleted_count,
             "kept_count": len(to_keep),
-            "freed_space": freed_space
+            "freed_space": freed_space,
         }
 
     def _generate_rollback_id(self) -> str:
@@ -420,7 +453,7 @@ class RollbackManager:
         """Load rollback registry from file"""
         if self.registry_file.exists():
             try:
-                with open(self.registry_file, 'r') as f:
+                with open(self.registry_file, "r") as f:
                     return json.load(f)
             except Exception as e:
                 logger.warning(f"Failed to load rollback registry: {str(e)}")
@@ -430,7 +463,7 @@ class RollbackManager:
     def _save_registry(self):
         """Save rollback registry to file"""
         try:
-            with open(self.registry_file, 'w') as f:
+            with open(self.registry_file, "w") as f:
                 json.dump(self.registry, f, indent=2, default=str)
         except Exception as e:
             logger.error(f"Failed to save rollback registry: {str(e)}")
@@ -441,8 +474,8 @@ class RollbackManager:
         config_backup_path = rollback_dir / "config"
         config_backup_path.mkdir(parents=True, exist_ok=True)
 
-        # Backup .moai/config.json
-        config_file = self.project_root / ".moai" / "config.json"
+        # Backup .moai/config/config.json
+        config_file = self.project_root / ".moai" / "config" / "config.json"
         if config_file.exists():
             shutil.copy2(config_file, config_backup_path / "config.json")
 
@@ -454,7 +487,9 @@ class RollbackManager:
         # Backup .claude/settings.local.json
         local_settings_file = self.project_root / ".claude" / "settings.local.json"
         if local_settings_file.exists():
-            shutil.copy2(local_settings_file, config_backup_path / "settings.local.json")
+            shutil.copy2(
+                local_settings_file, config_backup_path / "settings.local.json"
+            )
 
         return str(config_backup_path)
 
@@ -497,12 +532,14 @@ class RollbackManager:
         """Calculate checksum for backup integrity verification"""
         checksum_hash = hashlib.sha256()
 
-        for file_path in backup_dir.rglob('*'):
+        for file_path in backup_dir.rglob("*"):
             if file_path.is_file():
-                with open(file_path, 'rb') as f:
+                with open(file_path, "rb") as f:
                     # Update hash with file content and path
                     checksum_hash.update(f.read())
-                    checksum_hash.update(str(file_path.relative_to(backup_dir)).encode())
+                    checksum_hash.update(
+                        str(file_path.relative_to(backup_dir)).encode()
+                    )
 
         return checksum_hash.hexdigest()
 
@@ -511,7 +548,7 @@ class RollbackManager:
         validation_result = {
             "valid": True,
             "message": "Rollback point is valid",
-            "warnings": []
+            "warnings": [],
         }
 
         try:
@@ -525,17 +562,21 @@ class RollbackManager:
             # Verify checksum
             current_checksum = self._calculate_backup_checksum(backup_path)
             if current_checksum != rollback_point.checksum:
-                validation_result["warnings"].append("Backup checksum mismatch - possible corruption")
+                validation_result["warnings"].append(
+                    "Backup checksum mismatch - possible corruption"
+                )
 
             # Check essential files exist
             required_files = [
                 backup_path / "config" / "config.json",
-                backup_path / "research"
+                backup_path / "research",
             ]
 
             missing_files = [f for f in required_files if not f.exists()]
             if missing_files:
-                validation_result["warnings"].append(f"Missing backup files: {missing_files}")
+                validation_result["warnings"].append(
+                    f"Missing backup files: {missing_files}"
+                )
 
         except Exception as e:
             validation_result["valid"] = False
@@ -543,7 +584,9 @@ class RollbackManager:
 
         return validation_result
 
-    def _perform_rollback(self, rollback_point: RollbackPoint) -> Tuple[List[str], List[str]]:
+    def _perform_rollback(
+        self, rollback_point: RollbackPoint
+    ) -> Tuple[List[str], List[str]]:
         """Perform the actual rollback operation"""
         backup_path = Path(rollback_point.backup_path)
         restored_files = []
@@ -553,9 +596,13 @@ class RollbackManager:
             # Restore configuration
             config_backup = backup_path / "config"
             if config_backup.exists():
-                for config_file in config_backup.rglob('*'):
+                for config_file in config_backup.rglob("*"):
                     if config_file.is_file():
-                        target_path = self.project_root / ".moai" / config_file.relative_to(config_backup)
+                        target_path = (
+                            self.project_root
+                            / ".moai"
+                            / config_file.relative_to(config_backup)
+                        )
                         target_path.parent.mkdir(parents=True, exist_ok=True)
                         try:
                             shutil.copy2(config_file, target_path)
@@ -566,9 +613,11 @@ class RollbackManager:
             # Restore research components
             research_backup = backup_path / "research"
             if research_backup.exists():
-                for research_file in research_backup.rglob('*'):
+                for research_file in research_backup.rglob("*"):
                     if research_file.is_file():
-                        target_path = self.project_root / research_file.relative_to(research_backup)
+                        target_path = self.project_root / research_file.relative_to(
+                            research_backup
+                        )
                         target_path.parent.mkdir(parents=True, exist_ok=True)
                         try:
                             shutil.copy2(research_file, target_path)
@@ -579,9 +628,11 @@ class RollbackManager:
             # Restore code files
             code_backup = backup_path / "code"
             if code_backup.exists():
-                for code_file in code_backup.rglob('*'):
+                for code_file in code_backup.rglob("*"):
                     if code_file.is_file():
-                        target_path = self.project_root / code_file.relative_to(code_backup)
+                        target_path = self.project_root / code_file.relative_to(
+                            code_backup
+                        )
                         target_path.parent.mkdir(parents=True, exist_ok=True)
                         try:
                             shutil.copy2(code_file, target_path)
@@ -595,9 +646,12 @@ class RollbackManager:
 
         return restored_files, failed_files
 
-    def _perform_research_rollback(self, rollback_point: Dict[str, Any],
-                                 component_type: str = None,
-                                 component_name: str = None) -> Tuple[List[str], List[str]]:
+    def _perform_research_rollback(
+        self,
+        rollback_point: Dict[str, Any],
+        component_type: str = None,
+        component_name: str = None,
+    ) -> Tuple[List[str], List[str]]:
         """Perform targeted research component rollback"""
         backup_path = Path(rollback_point["backup_path"])
         research_backup = backup_path / "research"
@@ -625,7 +679,9 @@ class RollbackManager:
                             shutil.copy2(component_file, target_file)
                             restored_files.append(str(target_file))
                         else:
-                            failed_files.append((component_name, "Component file not found in backup"))
+                            failed_files.append(
+                                (component_name, "Component file not found in backup")
+                            )
                     else:
                         # Restore entire component type
                         if target_dir.exists():
@@ -633,7 +689,9 @@ class RollbackManager:
                         shutil.copytree(component_backup_dir, target_dir)
                         restored_files.append(str(target_dir))
                 else:
-                    failed_files.append((component_type, "Component type not found in backup"))
+                    failed_files.append(
+                        (component_type, "Component type not found in backup")
+                    )
             else:
                 # Restore all research components
                 for research_dir in research_backup.iterdir():
@@ -655,15 +713,15 @@ class RollbackManager:
         validation_results = {
             "config_valid": True,
             "research_valid": True,
-            "issues": []
+            "issues": [],
         }
 
         try:
             # Validate configuration
-            config_file = self.project_root / ".moai" / "config.json"
+            config_file = self.project_root / ".moai" / "config" / "config.json"
             if config_file.exists():
                 try:
-                    with open(config_file, 'r') as f:
+                    with open(config_file, "r") as f:
                         json.load(f)  # Validate JSON syntax
                 except json.JSONDecodeError:
                     validation_results["config_valid"] = False
@@ -676,13 +734,15 @@ class RollbackManager:
             for research_dir in self.research_dirs:
                 if research_dir.exists():
                     # Check for readable files
-                    for file_path in research_dir.rglob('*.md'):
+                    for file_path in research_dir.rglob("*.md"):
                         try:
-                            with open(file_path, 'r', encoding='utf-8') as f:
+                            with open(file_path, "r", encoding="utf-8") as f:
                                 f.read()  # Validate file can be read
                         except Exception as e:
                             validation_results["research_valid"] = False
-                            validation_results["issues"].append(f"Cannot read {file_path}: {str(e)}")
+                            validation_results["issues"].append(
+                                f"Cannot read {file_path}: {str(e)}"
+                            )
 
         except Exception as e:
             validation_results["issues"].append(f"Validation error: {str(e)}")
@@ -696,43 +756,52 @@ class RollbackManager:
             "agents_valid": True,
             "commands_valid": True,
             "hooks_valid": True,
-            "issues": []
+            "issues": [],
         }
 
         component_checks = [
             ("skills", "Skills", self.project_root / ".claude" / "skills"),
             ("agents", "Agents", self.project_root / ".claude" / "agents"),
             ("commands", "Commands", self.project_root / ".claude" / "commands"),
-            ("hooks", "Hooks", self.project_root / ".claude" / "hooks")
+            ("hooks", "Hooks", self.project_root / ".claude" / "hooks"),
         ]
 
         for component_key, component_name, component_path in component_checks:
             if component_path.exists():
                 # Check component structure
-                files = list(component_path.rglob('*.md'))
+                files = list(component_path.rglob("*.md"))
                 if not files:
                     validation_results[f"{component_key}_valid"] = False
-                    validation_results["issues"].append(f"{component_name} directory is empty")
+                    validation_results["issues"].append(
+                        f"{component_name} directory is empty"
+                    )
 
                 # Validate file content
                 for file_path in files[:5]:  # Check first 5 files
                     try:
-                        with open(file_path, 'r', encoding='utf-8') as f:
+                        with open(file_path, "r", encoding="utf-8") as f:
                             content = f.read()
                             if not content.strip():
                                 validation_results[f"{component_key}_valid"] = False
-                                validation_results["issues"].append(f"Empty file: {file_path}")
+                                validation_results["issues"].append(
+                                    f"Empty file: {file_path}"
+                                )
                     except Exception as e:
                         validation_results[f"{component_key}_valid"] = False
-                        validation_results["issues"].append(f"Cannot read {file_path}: {str(e)}")
+                        validation_results["issues"].append(
+                            f"Cannot read {file_path}: {str(e)}"
+                        )
             else:
                 validation_results[f"{component_key}_valid"] = False
-                validation_results["issues"].append(f"{component_name} directory not found")
+                validation_results["issues"].append(
+                    f"{component_name} directory not found"
+                )
 
         return validation_results
 
-    def _find_research_rollback_points(self, component_type: str = None,
-                                     component_name: str = None) -> List[Dict[str, Any]]:
+    def _find_research_rollback_points(
+        self, component_type: str = None, component_name: str = None
+    ) -> List[Dict[str, Any]]:
         """Find rollback points related to research integration"""
         research_rollback_points = []
 
@@ -764,7 +833,9 @@ class RollbackManager:
         """Mark rollback point as used in registry"""
         if rollback_id in self.registry:
             self.registry[rollback_id]["used"] = True
-            self.registry[rollback_id]["used_timestamp"] = datetime.now(timezone.utc).isoformat()
+            self.registry[rollback_id]["used_timestamp"] = datetime.now(
+                timezone.utc
+            ).isoformat()
             self._save_registry()
 
     def _cleanup_partial_backup(self, rollback_id: str):
@@ -789,12 +860,13 @@ class RollbackManager:
         """Get total size of directory in bytes"""
         total_size = 0
         try:
-            for file_path in directory.rglob('*'):
+            for file_path in directory.rglob("*"):
                 if file_path.is_file():
                     total_size += file_path.stat().st_size
         except Exception:
             pass  # Ignore errors in size calculation
         return total_size
+
 
 # Command-line interface for rollback manager
 def main():
@@ -802,34 +874,46 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="MoAI-ADK Rollback Manager")
-    subparsers = parser.add_subparsers(dest='command', help='Available commands')
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # Create rollback point
-    create_parser = subparsers.add_parser('create', help='Create rollback point')
-    create_parser.add_argument('description', help='Description of changes')
-    create_parser.add_argument('--changes', nargs='*', help='List of changes')
+    create_parser = subparsers.add_parser("create", help="Create rollback point")
+    create_parser.add_argument("description", help="Description of changes")
+    create_parser.add_argument("--changes", nargs="*", help="List of changes")
 
     # List rollback points
-    list_parser = subparsers.add_parser('list', help='List rollback points')
-    list_parser.add_argument('--limit', type=int, default=10, help='Maximum number to show')
+    list_parser = subparsers.add_parser("list", help="List rollback points")
+    list_parser.add_argument(
+        "--limit", type=int, default=10, help="Maximum number to show"
+    )
 
     # Perform rollback
-    rollback_parser = subparsers.add_parser('rollback', help='Rollback to point')
-    rollback_parser.add_argument('rollback_id', help='Rollback point ID')
-    rollback_parser.add_argument('--no-validate', action='store_true', help='Skip validation')
+    rollback_parser = subparsers.add_parser("rollback", help="Rollback to point")
+    rollback_parser.add_argument("rollback_id", help="Rollback point ID")
+    rollback_parser.add_argument(
+        "--no-validate", action="store_true", help="Skip validation"
+    )
 
     # Research rollback
-    research_parser = subparsers.add_parser('research-rollback', help='Rollback research components')
-    research_parser.add_argument('--type', help='Component type (skills, agents, commands, hooks)')
-    research_parser.add_argument('--name', help='Component name')
+    research_parser = subparsers.add_parser(
+        "research-rollback", help="Rollback research components"
+    )
+    research_parser.add_argument(
+        "--type", help="Component type (skills, agents, commands, hooks)"
+    )
+    research_parser.add_argument("--name", help="Component name")
 
     # Validate system
-    validate_parser = subparsers.add_parser('validate', help='Validate rollback system')
+    validate_parser = subparsers.add_parser("validate", help="Validate rollback system")
 
     # Cleanup
-    cleanup_parser = subparsers.add_parser('cleanup', help='Cleanup old rollback points')
-    cleanup_parser.add_argument('--keep', type=int, default=10, help='Number to keep')
-    cleanup_parser.add_argument('--execute', action='store_true', help='Execute cleanup (default: dry run)')
+    cleanup_parser = subparsers.add_parser(
+        "cleanup", help="Cleanup old rollback points"
+    )
+    cleanup_parser.add_argument("--keep", type=int, default=10, help="Number to keep")
+    cleanup_parser.add_argument(
+        "--execute", action="store_true", help="Execute cleanup (default: dry run)"
+    )
 
     args = parser.parse_args()
 
@@ -841,57 +925,60 @@ def main():
     rollback_manager = RollbackManager()
 
     try:
-        if args.command == 'create':
+        if args.command == "create":
             rollback_id = rollback_manager.create_rollback_point(
                 args.description, args.changes
             )
             print(f"Rollback point created: {rollback_id}")
 
-        elif args.command == 'list':
+        elif args.command == "list":
             rollback_points = rollback_manager.list_rollback_points(args.limit)
             print(f"Available rollback points (showing {len(rollback_points)}):")
             for rp in rollback_points:
                 status = "USED" if rp["used"] else "AVAILABLE"
                 print(f"  {rp['id']} - {rp['description']} ({status})")
 
-        elif args.command == 'rollback':
+        elif args.command == "rollback":
             result = rollback_manager.rollback_to_point(
-                args.rollback_id,
-                validate_before=not args.no_validate
+                args.rollback_id, validate_before=not args.no_validate
             )
             if result.success:
-                print(f"Rollback completed successfully")
+                print("Rollback completed successfully")
                 print(f"Restored {len(result.restored_files)} files")
             else:
                 print(f"Rollback failed: {result.message}")
 
-        elif args.command == 'research-rollback':
+        elif args.command == "research-rollback":
             result = rollback_manager.rollback_research_integration(
                 args.type, args.name
             )
             if result.success:
-                print(f"Research rollback completed successfully")
+                print("Research rollback completed successfully")
             else:
                 print(f"Research rollback failed: {result.message}")
 
-        elif args.command == 'validate':
+        elif args.command == "validate":
             validation = rollback_manager.validate_rollback_system()
-            print(f"Rollback system health: {'HEALTHY' if validation['system_healthy'] else 'UNHEALTHY'}")
-            if validation['issues']:
+            print(
+                f"Rollback system health: {'HEALTHY' if validation['system_healthy'] else 'UNHEALTHY'}"
+            )
+            if validation["issues"]:
                 print("Issues found:")
-                for issue in validation['issues']:
+                for issue in validation["issues"]:
                     print(f"  - {issue}")
-            if validation['recommendations']:
+            if validation["recommendations"]:
                 print("Recommendations:")
-                for rec in validation['recommendations']:
+                for rec in validation["recommendations"]:
                     print(f"  - {rec}")
 
-        elif args.command == 'cleanup':
+        elif args.command == "cleanup":
             result = rollback_manager.cleanup_old_rollback_points(
                 args.keep, dry_run=not args.execute
             )
             if result["dry_run"]:
-                print(f"Dry run: Would delete {result['would_delete_count']} rollback points")
+                print(
+                    f"Dry run: Would delete {result['would_delete_count']} rollback points"
+                )
                 print(f"Would free {result['would_free_space'] / 1024 / 1024:.1f} MB")
             else:
                 print(f"Deleted {result['deleted_count']} rollback points")
@@ -900,6 +987,7 @@ def main():
     except Exception as e:
         print(f"Error: {str(e)}")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

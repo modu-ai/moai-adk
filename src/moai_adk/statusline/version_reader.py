@@ -2,26 +2,26 @@
 """
 Enhanced Version reader for MoAI-ADK from config.json with performance optimizations
 
-@CODE:VERSION-READER-001 | @SPEC:STATUSLINE-VERSION-READER-001 | @TEST:STATUSLINE-VERSION-READER-001
 Refactored for improved performance, error handling, configurability, and caching strategies
 """
 
+import asyncio
 import json
 import logging
 import re
-import asyncio
 import time
-from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Optional, Dict, Any, List, Tuple
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
 
 class VersionSource(Enum):
     """Enum for version source tracking"""
+
     CONFIG_FILE = "config_file"
     FALLBACK = "fallback"
     PACKAGE = "package"
@@ -31,6 +31,7 @@ class VersionSource(Enum):
 @dataclass
 class CacheEntry:
     """Cache entry with metadata"""
+
     version: str
     timestamp: datetime
     source: VersionSource
@@ -41,6 +42,7 @@ class CacheEntry:
 @dataclass
 class VersionConfig:
     """Configuration for version reading behavior with enhanced options"""
+
     # Cache configuration
     cache_ttl_seconds: int = 60
     cache_enabled: bool = True
@@ -68,13 +70,15 @@ class VersionConfig:
     track_performance_metrics: bool = True
 
     # Version field priority configuration
-    version_fields: List[str] = field(default_factory=lambda: [
-        "project.version",
-        "moai.version",
-        "version",
-        "moai.template_version",
-        "template_version"
-    ])
+    version_fields: List[str] = field(
+        default_factory=lambda: [
+            "project.version",
+            "moai.version",
+            "version",
+            "moai.template_version",
+            "template_version",
+        ]
+    )
 
 
 class VersionReader:
@@ -102,7 +106,7 @@ class VersionReader:
         "moai.version",
         "version",
         "moai.template_version",
-        "template_version"
+        "template_version",
     ]
 
     def __init__(self, config: Optional[VersionConfig] = None):
@@ -113,26 +117,26 @@ class VersionReader:
             config: Version configuration object. If None, uses defaults.
         """
         self.config = config or self.DEFAULT_CONFIG
-        self._config_path = Path.cwd() / ".moai" / "config.json"
+        self._config_path = Path.cwd() / ".moai" / "config" / "config.json"
 
         # Enhanced caching with LRU support
         self._cache: Dict[str, CacheEntry] = {}
         self._cache_stats = {
-            'hits': 0,
-            'misses': 0,
-            'errors': 0,
-            'cache_hits_by_source': {
+            "hits": 0,
+            "misses": 0,
+            "errors": 0,
+            "cache_hits_by_source": {
                 VersionSource.CONFIG_FILE.value: 0,
                 VersionSource.CACHE.value: 0,
-                VersionSource.FALLBACK.value: 0
-            }
+                VersionSource.FALLBACK.value: 0,
+            },
         }
 
         # Performance tracking
         self._performance_metrics = {
-            'read_times': [],
-            'validation_times': [],
-            'cache_operation_times': []
+            "read_times": [],
+            "validation_times": [],
+            "cache_operation_times": [],
         }
 
         # Version field configuration (backwards compatibility)
@@ -147,6 +151,11 @@ class VersionReader:
 
         # Logging
         self._logger = logging.getLogger(__name__)
+
+        # Backwards compatibility cache attributes
+        self._version_cache: Optional[str] = None
+        self._cache_time: Optional[datetime] = None
+        self._cache_ttl = timedelta(seconds=self.config.cache_ttl_seconds)
 
         if self.config.debug_mode:
             self._logger.info(f"VersionReader initialized with config: {self.config}")
@@ -179,14 +188,18 @@ class VersionReader:
             # Check cache first
             version = self._check_cache()
             if version is not None:
-                self._cache_stats['hits'] += 1
-                self._cache_stats['cache_hits_by_source'][VersionSource.CACHE.value] += 1
+                self._cache_stats["hits"] += 1
+                self._cache_stats["cache_hits_by_source"][
+                    VersionSource.CACHE.value
+                ] += 1
                 return version
 
             # Read from config file
             version = self._read_version_from_config_sync()
+            if not version:
+                version = self._get_fallback_version()
             self._update_cache(version, VersionSource.CONFIG_FILE)
-            self._cache_stats['misses'] += 1
+            self._cache_stats["misses"] += 1
             return version
 
         except Exception as e:
@@ -194,7 +207,7 @@ class VersionReader:
             return self._get_fallback_version()
 
         finally:
-            self._log_performance(start_time, 'sync_read')
+            self._log_performance(start_time, "sync_read")
 
     async def get_version_async(self) -> str:
         """
@@ -209,14 +222,18 @@ class VersionReader:
             # Check cache first
             version = self._check_cache()
             if version is not None:
-                self._cache_stats['hits'] += 1
-                self._cache_stats['cache_hits_by_source'][VersionSource.CACHE.value] += 1
+                self._cache_stats["hits"] += 1
+                self._cache_stats["cache_hits_by_source"][
+                    VersionSource.CACHE.value
+                ] += 1
                 return version
 
             # Read from config file asynchronously
             version = await self._read_version_from_config_async()
+            if not version:
+                version = self._get_fallback_version()
             self._update_cache(version, VersionSource.CONFIG_FILE)
-            self._cache_stats['misses'] += 1
+            self._cache_stats["misses"] += 1
             return version
 
         except Exception as e:
@@ -224,7 +241,7 @@ class VersionReader:
             return self._get_fallback_version()
 
         finally:
-            self._log_performance(start_time, 'async_read')
+            self._log_performance(start_time, "async_read")
 
     # Enhanced internal methods
     def _check_cache(self) -> Optional[str]:
@@ -246,11 +263,15 @@ class VersionReader:
             if self._is_cache_entry_valid(entry):
                 entry.access_count += 1
                 entry.last_access = datetime.now()
-                self._cache_stats['hits'] += 1
-                self._cache_stats['cache_hits_by_source'][VersionSource.CACHE.value] += 1
+                self._cache_stats["hits"] += 1
+                self._cache_stats["cache_hits_by_source"][
+                    VersionSource.CACHE.value
+                ] += 1
 
                 if self.config.debug_mode:
-                    self._logger.debug(f"Cache hit: {entry.version} (source: {entry.source.value})")
+                    self._logger.debug(
+                        f"Cache hit: {entry.version} (source: {entry.source.value})"
+                    )
 
                 return entry.version
 
@@ -286,11 +307,7 @@ class VersionReader:
             return
 
         config_key = str(self._config_path)
-        entry = CacheEntry(
-            version=version,
-            timestamp=datetime.now(),
-            source=source
-        )
+        entry = CacheEntry(version=version, timestamp=datetime.now(), source=source)
 
         self._cache[config_key] = entry
 
@@ -299,7 +316,9 @@ class VersionReader:
             self._evict_oldest_cache_entry()
 
         if self.config.debug_mode:
-            self._logger.debug(f"Cache updated with version: {version} (source: {source.value})")
+            self._logger.debug(
+                f"Cache updated with version: {version} (source: {source.value})"
+            )
 
     def _evict_oldest_cache_entry(self) -> None:
         """
@@ -329,7 +348,7 @@ class VersionReader:
             error: Exception that occurred
             start_time: When the operation started
         """
-        self._cache_stats['errors'] += 1
+        self._cache_stats["errors"] += 1
 
         error_msg = f"Error reading version: {error}"
         if self.config.debug_mode:
@@ -337,7 +356,7 @@ class VersionReader:
         else:
             self._logger.warning(error_msg)
 
-        self._log_performance(start_time, 'error_read')
+        self._log_performance(start_time, "error_read")
 
     def _log_performance(self, start_time: float, operation: str) -> None:
         """
@@ -351,7 +370,7 @@ class VersionReader:
             return
 
         duration = time.time() - start_time
-        metric_name = f'{operation}_duration'
+        metric_name = f"{operation}_duration"
 
         if metric_name not in self._performance_metrics:
             self._performance_metrics[metric_name] = []
@@ -369,28 +388,52 @@ class VersionReader:
             Dictionary containing performance metrics
         """
         metrics = {
-            'cache_stats': self._cache_stats.copy(),
-            'cache_size': len(self._cache),
-            'max_cache_size': self.config.cache_size,
-            'performance_metrics': {}
+            "cache_stats": self._cache_stats.copy(),
+            "cache_size": len(self._cache),
+            "max_cache_size": self.config.cache_size,
+            "performance_metrics": {},
         }
 
         # Calculate average times for each operation
         for operation, times in self._performance_metrics.items():
             if times:
-                metrics['performance_metrics'][operation] = {
-                    'count': len(times),
-                    'average': sum(times) / len(times),
-                    'min': min(times),
-                    'max': max(times),
-                    'total': sum(times)
+                metrics["performance_metrics"][operation] = {
+                    "count": len(times),
+                    "average": sum(times) / len(times),
+                    "min": min(times),
+                    "max": max(times),
+                    "total": sum(times),
                 }
 
         return metrics
 
+    def _read_version_from_config_sync(self) -> str:
+        """
+        Synchronous version of reading from .moai/config/config.json.
+
+        Returns:
+            Version string or empty string if not found
+        """
+        try:
+            if not self._config_path.exists():
+                logger.debug(f"Config file not found: {self._config_path}")
+                return ""
+
+            try:
+                config_data = self._read_json_sync(self._config_path)
+                version = self._extract_version_from_config(config_data)
+                return version if version else ""
+            except json.JSONDecodeError as e:
+                logger.error(f"Invalid JSON in config {self._config_path}: {e}")
+                return ""
+
+        except Exception as e:
+            logger.error(f"Error reading version from config: {e}")
+            return ""
+
     async def _read_version_from_config_async(self) -> str:
         """
-        Read version from .moai/config.json asynchronously.
+        Read version from .moai/config/config.json asynchronously.
 
         Returns:
             Version string or empty string if not found
@@ -431,7 +474,9 @@ class VersionReader:
         logger.debug("No version field found in config")
         return ""
 
-    def _get_nested_value(self, config: Dict[str, Any], field_path: str) -> Optional[str]:
+    def _get_nested_value(
+        self, config: Dict[str, Any], field_path: str
+    ) -> Optional[str]:
         """
         Get nested value from config using dot notation.
 
@@ -442,7 +487,7 @@ class VersionReader:
         Returns:
             Value or None if not found
         """
-        keys = field_path.split('.')
+        keys = field_path.split(".")
         current = config
 
         for key in keys:
@@ -463,7 +508,7 @@ class VersionReader:
         Returns:
             Short version string
         """
-        return version[1:] if version.startswith('v') else version
+        return version[1:] if version.startswith("v") else version
 
     def _format_display_version(self, version: str) -> str:
         """
@@ -477,7 +522,7 @@ class VersionReader:
         """
         if version == "unknown":
             return "MoAI-ADK unknown version"
-        elif version.startswith('v'):
+        elif version.startswith("v"):
             return f"MoAI-ADK {version}"
         else:
             return f"MoAI-ADK v{version}"
@@ -505,27 +550,6 @@ class VersionReader:
         self._logger.debug(f"Using fallback version: {fallback}")
         return fallback
 
-    # Backwards compatibility methods
-    def _update_cache(self, version: str, source: VersionSource = VersionSource.FALLBACK) -> None:
-        """
-        Backwards compatibility method for existing tests.
-        """
-        # For backwards compatibility, use old cache structure if tests expect it
-        self._version_cache = version
-        self._cache_time = datetime.now()
-        logger.debug(f"Cache updated with version: {version}")
-
-    def _is_cache_valid(self) -> bool:
-        """
-        Check if version cache is still valid (backwards compatibility).
-        """
-        if not self.config.cache_enabled:
-            return False
-
-        if self._version_cache is None or self._cache_time is None:
-            return False
-
-        return datetime.now() - self._cache_time < self._cache_ttl
 
     async def _file_exists_async(self, path: Path) -> bool:
         """Async file existence check"""
@@ -544,21 +568,6 @@ class VersionReader:
         """Synchronous JSON file reading"""
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
-
-    def _is_cache_valid(self) -> bool:
-        """
-        Check if version cache is still valid.
-
-        Returns:
-            True if cache is valid and not expired
-        """
-        if not self.config.cache_enabled:
-            return False
-
-        if self._version_cache is None or self._cache_time is None:
-            return False
-
-        return datetime.now() - self._cache_time < self._cache_ttl
 
     # Backwards compatibility cache methods
     def clear_cache(self) -> None:
@@ -634,4 +643,5 @@ class VersionReader:
 
 class VersionReadError(Exception):
     """Exception raised when version cannot be read"""
+
     pass

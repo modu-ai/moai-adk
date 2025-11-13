@@ -1,6 +1,4 @@
-# @CODE:INIT-PHASE-002 | SPEC: .moai/specs/SPEC-INIT-003/spec.md | TEST: tests/unit/test_init_reinit.py
 # type: ignore
-# @CODE:TEST-COVERAGE-001 | SPEC: SPEC-TEST-COVERAGE-001.md | TEST: tests/unit/test_phase_executor.py
 """Phase-based installation executor (SPEC-INIT-003 v0.4.2)
 
 Runs the project initialization across five phases:
@@ -21,12 +19,11 @@ import subprocess
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from rich.console import Console
 
 from moai_adk import __version__
-from moai_adk.statusline.version_reader import VersionReader, VersionConfig
 from moai_adk.core.project.backup_utils import (
     get_backup_targets,
     has_any_moai_files,
@@ -34,6 +31,7 @@ from moai_adk.core.project.backup_utils import (
 )
 from moai_adk.core.project.validator import ProjectValidator
 from moai_adk.core.template.processor import TemplateProcessor
+from moai_adk.statusline.version_reader import VersionConfig, VersionReader
 
 console = Console()
 
@@ -90,7 +88,7 @@ class PhaseExecutor:
                 fallback_version=__version__,
                 version_format_regex=r"^v?(\d+\.\d+\.\d+(-[a-zA-Z0-9]+)?)$",
                 cache_enabled=True,
-                debug_mode=False
+                debug_mode=False,
             )
             self._version_reader = VersionReader(config)
         return self._version_reader
@@ -111,12 +109,24 @@ class PhaseExecutor:
 
             # Enhanced version context with multiple format options
             version_context["MOAI_VERSION"] = moai_version
-            version_context["MOAI_VERSION_SHORT"] = self._format_short_version(moai_version)
-            version_context["MOAI_VERSION_DISPLAY"] = self._format_display_version(moai_version)
-            version_context["MOAI_VERSION_TRIMMED"] = self._format_trimmed_version(moai_version, max_length=10)
-            version_context["MOAI_VERSION_SEMVER"] = self._format_semver_version(moai_version)
-            version_context["MOAI_VERSION_VALID"] = "true" if moai_version != "unknown" else "false"
-            version_context["MOAI_VERSION_SOURCE"] = self._get_version_source(version_reader)
+            version_context["MOAI_VERSION_SHORT"] = self._format_short_version(
+                moai_version
+            )
+            version_context["MOAI_VERSION_DISPLAY"] = self._format_display_version(
+                moai_version
+            )
+            version_context["MOAI_VERSION_TRIMMED"] = self._format_trimmed_version(
+                moai_version, max_length=10
+            )
+            version_context["MOAI_VERSION_SEMVER"] = self._format_semver_version(
+                moai_version
+            )
+            version_context["MOAI_VERSION_VALID"] = (
+                "true" if moai_version != "unknown" else "false"
+            )
+            version_context["MOAI_VERSION_SOURCE"] = self._get_version_source(
+                version_reader
+            )
 
             # Add performance metrics for debugging
             cache_age = version_reader.get_cache_age_seconds()
@@ -130,10 +140,18 @@ class PhaseExecutor:
             # Use fallback version with comprehensive fallback formatting
             fallback_version = __version__
             version_context["MOAI_VERSION"] = fallback_version
-            version_context["MOAI_VERSION_SHORT"] = self._format_short_version(fallback_version)
-            version_context["MOAI_VERSION_DISPLAY"] = self._format_display_version(fallback_version)
-            version_context["MOAI_VERSION_TRIMMED"] = self._format_trimmed_version(fallback_version, max_length=10)
-            version_context["MOAI_VERSION_SEMVER"] = self._format_semver_version(fallback_version)
+            version_context["MOAI_VERSION_SHORT"] = self._format_short_version(
+                fallback_version
+            )
+            version_context["MOAI_VERSION_DISPLAY"] = self._format_display_version(
+                fallback_version
+            )
+            version_context["MOAI_VERSION_TRIMMED"] = self._format_trimmed_version(
+                fallback_version, max_length=10
+            )
+            version_context["MOAI_VERSION_SEMVER"] = self._format_semver_version(
+                fallback_version
+            )
             version_context["MOAI_VERSION_VALID"] = "true"
             version_context["MOAI_VERSION_SOURCE"] = "fallback_package"
             version_context["MOAI_VERSION_CACHE_AGE"] = "unavailable"
@@ -150,7 +168,7 @@ class PhaseExecutor:
         Returns:
             Short version string
         """
-        return version[1:] if version.startswith('v') else version
+        return version[1:] if version.startswith("v") else version
 
     def _format_display_version(self, version: str) -> str:
         """
@@ -164,7 +182,7 @@ class PhaseExecutor:
         """
         if version == "unknown":
             return "MoAI-ADK unknown version"
-        elif version.startswith('v'):
+        elif version.startswith("v"):
             return f"MoAI-ADK {version}"
         else:
             return f"MoAI-ADK v{version}"
@@ -184,7 +202,7 @@ class PhaseExecutor:
             return "unknown"
 
         # Remove 'v' prefix for trimming
-        clean_version = version[1:] if version.startswith('v') else version
+        clean_version = version[1:] if version.startswith("v") else version
 
         # Trim if necessary
         if len(clean_version) > max_length:
@@ -205,11 +223,12 @@ class PhaseExecutor:
             return "0.0.0"
 
         # Remove 'v' prefix and extract semantic version
-        clean_version = version[1:] if version.startswith('v') else version
+        clean_version = version[1:] if version.startswith("v") else version
 
         # Extract core semantic version (remove pre-release and build metadata)
         import re
-        semver_match = re.match(r'^(\d+\.\d+\.\d+)', clean_version)
+
+        semver_match = re.match(r"^(\d+\.\d+\.\d+)", clean_version)
         if semver_match:
             return semver_match.group(1)
         return "0.0.0"
@@ -249,9 +268,7 @@ class PhaseExecutor:
             progress_callback: Optional progress callback.
         """
         self.current_phase = 1
-        self._report_progress(
-            "Phase 1: Preparation and backup...", progress_callback
-        )
+        self._report_progress("Phase 1: Preparation and backup...", progress_callback)
 
         # Validate system requirements
         self.validator.validate_system_requirements()
@@ -300,23 +317,21 @@ class PhaseExecutor:
             List of created files or directories.
         """
         self.current_phase = 3
-        self._report_progress(
-            "Phase 3: Installing resources...", progress_callback
-        )
+        self._report_progress("Phase 3: Installing resources...", progress_callback)
 
         # Copy resources via TemplateProcessor in silent mode
         processor = TemplateProcessor(project_path)
 
         # Set template variable context (if provided)
         if config:
-            # @TAG:LANG-FIX-001:PY-CONFIG | Read language from nested config structure
             language_config: dict[str, Any] = config.get("language", {})
             if not isinstance(language_config, dict):
                 language_config = {}
 
             # Detect OS for cross-platform Hook path configuration
             hook_project_dir = (
-                "%CLAUDE_PROJECT_DIR%" if platform.system() == "Windows"
+                "%CLAUDE_PROJECT_DIR%"
+                if platform.system() == "Windows"
                 else "$CLAUDE_PROJECT_DIR"
             )
 
@@ -332,14 +347,20 @@ class PhaseExecutor:
                 "PROJECT_VERSION": config.get("version", "0.1.0"),
                 "PROJECT_OWNER": config.get("author", "@user"),
                 "AUTHOR": config.get("author", "@user"),
-                "CONVERSATION_LANGUAGE": language_config.get("conversation_language", "en"),
-                "CONVERSATION_LANGUAGE_NAME": language_config.get("conversation_language_name", "English"),
+                "CONVERSATION_LANGUAGE": language_config.get(
+                    "conversation_language", "en"
+                ),
+                "CONVERSATION_LANGUAGE_NAME": language_config.get(
+                    "conversation_language_name", "English"
+                ),
                 "CODEBASE_LANGUAGE": config.get("language", "generic"),
                 "PROJECT_DIR": hook_project_dir,
             }
             processor.set_context(context)
 
-        processor.copy_templates(backup=False, silent=True)  # Avoid progress bar conflicts
+        processor.copy_templates(
+            backup=False, silent=True
+        )  # Avoid progress bar conflicts
 
         # Return a simplified list of generated assets
         return [
@@ -374,7 +395,7 @@ class PhaseExecutor:
         logger = logging.getLogger(__name__)
 
         # Read existing config to preserve user settings (Issue #165)
-        config_path = project_path / ".moai" / "config.json"
+        config_path = project_path / ".moai" / "config" / "config.json"
         existing_config: dict[str, Any] = {}
         if config_path.exists():
             try:
@@ -386,7 +407,9 @@ class PhaseExecutor:
                 existing_config = {}
 
         # Enhanced config merging with comprehensive version preservation
-        merged_config = self._merge_configuration_preserving_versions(config, existing_config)
+        merged_config = self._merge_configuration_preserving_versions(
+            config, existing_config
+        )
 
         # Enhanced version handling using VersionReader for consistency
         try:
@@ -394,11 +417,17 @@ class PhaseExecutor:
             current_config_version = version_reader.get_version()
 
             # Ensure version consistency across the merged config
-            self._ensure_version_consistency(merged_config, current_config_version, existing_config)
+            self._ensure_version_consistency(
+                merged_config, current_config_version, existing_config
+            )
 
-            logger.debug(f"Version consistency check completed. Current version: {current_config_version}")
+            logger.debug(
+                f"Version consistency check completed. Current version: {current_config_version}"
+            )
         except Exception as e:
-            logger.warning(f"Version consistency check failed: {e}. Using fallback version.")
+            logger.warning(
+                f"Version consistency check failed: {e}. Using fallback version."
+            )
             merged_config["moai"]["version"] = __version__
 
         # Write final config with enhanced formatting
@@ -408,9 +437,7 @@ class PhaseExecutor:
         return [str(config_path)]
 
     def _merge_configuration_preserving_versions(
-        self,
-        new_config: dict[str, Any],
-        existing_config: dict[str, Any]
+        self, new_config: dict[str, Any], existing_config: dict[str, Any]
     ) -> dict[str, Any]:
         """
         Merge configurations while preserving user settings and version information.
@@ -429,7 +456,10 @@ class PhaseExecutor:
         config_sections = {
             "moai": {"preserve_all": True, "priority": "user"},
             "user": {"preserve_keys": ["nickname"], "priority": "user"},
-            "language": {"preserve_keys": ["conversation_language", "conversation_language_name"], "priority": "user"},
+            "language": {
+                "preserve_keys": [],
+                "priority": "new",
+            },  # Use new language config during init
             "project": {"preserve_keys": [], "priority": "new"},
             "git": {"preserve_keys": [], "priority": "new"},
         }
@@ -448,7 +478,7 @@ class PhaseExecutor:
         merged_config: dict[str, Any],
         existing_config: dict[str, Any],
         section_name: str,
-        strategy: dict[str, Any]
+        strategy: dict[str, Any],
     ) -> None:
         """
         Merge a specific configuration section.
@@ -459,6 +489,7 @@ class PhaseExecutor:
             section_name: Name of the section to merge
             strategy: Merge strategy for this section
         """
+        logger = logging.getLogger(__name__)
         if section_name not in merged_config:
             merged_config[section_name] = {}
 
@@ -467,8 +498,15 @@ class PhaseExecutor:
 
         if strategy["priority"] == "user":
             # User priority: preserve existing values
+            preserve_keys = strategy.get("preserve_keys", [])
+            # Convert frozenset to list if needed
+            if isinstance(preserve_keys, frozenset):
+                preserve_keys = list(preserve_keys)
+            elif not isinstance(preserve_keys, list):
+                preserve_keys = list(preserve_keys) if preserve_keys else []
+
             for key, value in existing_section.items():
-                if strategy.get("preserve_all", False) or key in strategy.get("preserve_keys", []):
+                if strategy.get("preserve_all", False) or key in preserve_keys:
                     section_config[key] = value
                     logger.debug(f"Preserved {section_name}.{key} = {value}")
         else:
@@ -482,7 +520,7 @@ class PhaseExecutor:
         self,
         config: dict[str, Any],
         current_version: str,
-        existing_config: dict[str, Any]
+        existing_config: dict[str, Any],
     ) -> None:
         """
         Ensure version consistency across the configuration.
@@ -515,8 +553,12 @@ class PhaseExecutor:
         elif "version" in config_moai:
             # Version already in new config, validate it
             config_version = config_moai["version"]
-            if config_version == "unknown" or not self._is_valid_version_format(config_version):
-                logger.debug(f"Invalid config version {config_version}, updating to current: {current_version}")
+            if config_version == "unknown" or not self._is_valid_version_format(
+                config_version
+            ):
+                logger.debug(
+                    f"Invalid config version {config_version}, updating to current: {current_version}"
+                )
                 config_moai["version"] = current_version
         else:
             # No version found, use current version
@@ -534,10 +576,13 @@ class PhaseExecutor:
             True if version format is valid
         """
         import re
+
         pattern = r"^v?(\d+\.\d+\.\d+(-[a-zA-Z0-9]+)?)$"
         return bool(re.match(pattern, version))
 
-    def _write_configuration_file(self, config_path: Path, config: dict[str, Any]) -> None:
+    def _write_configuration_file(
+        self, config_path: Path, config: dict[str, Any]
+    ) -> None:
         """
         Write configuration file with enhanced formatting and error handling.
 
@@ -569,8 +614,6 @@ class PhaseExecutor:
     ) -> None:
         """Phase 5: validation and wrap-up.
 
-        @CODE:INIT-PHASE-001 | Phase 5 verification logic
-        @REQ:VALIDATION-002 | SPEC-INIT-004: Verify required files after initialization completion
 
         Args:
             project_path: Project path.
@@ -608,6 +651,8 @@ class PhaseExecutor:
         if backup_path.exists():
             shutil.rmtree(backup_path)
 
+        # Create backup directories
+        backups_dir.mkdir(parents=True, exist_ok=True)
         backup_path.mkdir(parents=True, exist_ok=True)
 
         # Collect backup targets
@@ -674,9 +719,7 @@ class PhaseExecutor:
             # Only log on error; failures are non-fatal
             pass
 
-    def _report_progress(
-        self, message: str, callback: ProgressCallback | None
-    ) -> None:
+    def _report_progress(self, message: str, callback: ProgressCallback | None) -> None:
         """Report progress.
 
         Args:

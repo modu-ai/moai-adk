@@ -1,8 +1,6 @@
 """
 Tests for AlfredDetector - Alfred 작업 감지
 
-@TEST:ALFRED-DETECTOR-001 - 활성 Alfred 명령 감지
-@TEST:ALFRED-DETECTOR-002 - 미활성 상태
 """
 
 import json
@@ -21,7 +19,6 @@ class TestAlfredDetector:
         WHEN: detect_active_task() 호출
         THEN: command="run", spec_id="AUTH-001"
         """
-        # @TEST:ALFRED-DETECTOR-001
         from moai_adk.statusline.alfred_detector import AlfredDetector
 
         detector = AlfredDetector()
@@ -49,7 +46,6 @@ class TestAlfredDetector:
         WHEN: detect_active_task() 호출
         THEN: spec_id=None
         """
-        # @TEST:ALFRED-DETECTOR-002
         from moai_adk.statusline.alfred_detector import AlfredDetector
 
         detector = AlfredDetector()

@@ -1,14 +1,13 @@
-# @CODE:TAG-INTEGRATION-FRAMEWORK-001
 """
 Integration Testing Framework
 
 Provides comprehensive integration testing capabilities for MoAI-ADK components.
 """
 
-from .integration_tester import IntegrationTester
-from .models import IntegrationTestResult, TestComponent, TestSuite, TestStatus
 from .engine import TestEngine
-from .utils import ComponentDiscovery, TestResultAnalyzer, TestEnvironment
+from .integration_tester import IntegrationTester
+from .models import IntegrationTestResult, TestComponent, TestStatus, TestSuite
+from .utils import ComponentDiscovery, TestEnvironment, TestResultAnalyzer
 
 __all__ = [
     "IntegrationTester",
@@ -19,5 +18,5 @@ __all__ = [
     "TestEngine",
     "ComponentDiscovery",
     "TestResultAnalyzer",
-    "TestEnvironment"
+    "TestEnvironment",
 ]

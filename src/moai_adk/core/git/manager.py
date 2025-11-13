@@ -1,4 +1,3 @@
-# @CODE:CORE-GIT-MANAGER-001 | SPEC: SPEC-CORE-GIT-001/spec.md | TEST: tests/unit/test_git.py
 """
 Git repository management built on GitPython.
 

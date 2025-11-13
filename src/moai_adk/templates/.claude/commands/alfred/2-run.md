@@ -3,29 +3,15 @@ name: alfred:2-run
 description: "Execute TDD implementation cycle"
 argument-hint: "SPEC-ID - All with SPEC ID to implement (e.g. SPEC-001) or all \"SPEC Implementation\""
 allowed-tools:
-  - Read
-  - Write
-  - Edit
-  - MultiEdit
-  - Bash(python3:*)
-  - Bash(pytest:*)
-  - Bash(npm:*)
-  - Bash(node:*)
-  - Bash(git:*)
   - Task
-  - WebFetch
-  - Grep
-  - Glob
-  - TodoWrite
 ---
 
 # ⚒️ MoAI-ADK Step 2: Execute Implementation (Run) - TDD Implementation
 
-> **Critical Note**: ALWAYS invoke `Skill("moai-alfred-ask-user-questions")` before using `AskUserQuestion` tool. This skill provides up-to-date best practices, field specifications, and validation rules for interactive prompts.
+> **Architecture**: Commands → Agents → Skills. This command orchestrates ONLY through `Task()` tool.
 >
-> **Batched Design**: All AskUserQuestion calls follow batched design principles (1-4 questions per call) to minimize user interaction turns. See CLAUDE.md section "Alfred Command Completion Pattern" for details.
+> **Delegation Model**: Complete agent-first pattern. All execution delegated to run-orchestrator.
 
-<!-- @CODE:ALF-WORKFLOW-002:CMD-RUN -->
 
 **4-Step Workflow Integration**: This command implements Step 3 of Alfred's workflow (Task Execution with TodoWrite tracking). See CLAUDE.md for full workflow details.
 
@@ -33,390 +19,275 @@ allowed-tools:
 
 ## 🎯 Command Purpose
 
-Execute planned tasks based on SPEC document analysis. Supports TDD implementation, prototyping, and documentation work.
+Execute TDD implementation of SPEC requirements through complete agent delegation.
 
-**Run on**: $ARGUMENTS
+The `/alfred:2-run` command orchestrates the complete implementation workflow:
+1. **Phase 1**: SPEC analysis and execution plan creation
+2. **Phase 2**: TDD implementation (RED → GREEN → REFACTOR)
+3. **Phase 3**: Git commit management
+4. **Phase 4**: Completion and next steps guidance
+
+**Run on**: `$ARGUMENTS` (SPEC ID, e.g., SPEC-001)
+
+---
 
 ## 💡 Execution Philosophy: "Plan → Run → Sync"
 
-`/alfred:2-run` performs planned tasks through various execution strategies.
-
-### 3 Main Scenarios
-
-#### Scenario 1: TDD Implementation (main method) ⭐
-```bash
-/alfred:2-run SPEC-AUTH-001
-→ RED → GREEN → REFACTOR
-→ Implement high-quality code through test-driven development
-```
-
-#### Scenario 2: Prototyping
-```bash
-/alfred:2-run SPEC-PROTO-001
-→ Prototype implementation for quick verification
-→ Quick feedback with minimal testing
-```
-
-#### Scenario 3: Documentation Tasks
-```bash
-/alfred:2-run SPEC-DOCS-001
-→ Writing documentation and generating sample code
-→ API documentation, tutorials, guides, etc.
-```
-
-## 📋 Execution Flow
-
-1. **SPEC Analysis**: Requirements extraction and complexity assessment
-2. **Implementation Strategy**: Determine optimized approach (TDD, prototype, documentation)
-3. **User Confirmation**: Review and approve action plan
-4. **Execute Task**: Perform work according to approved plan
-5. **Git Operations**: Create step-by-step commits with git-manager
-
----
-
-## 🧠 Associated Skills & Agents
-
-| Agent                  | Core Skill                       | Purpose                                 |
-| ---------------------- | -------------------------------- | --------------------------------------- |
-| implementation-planner | `moai-alfred-language-detection` | Detect language and design architecture |
-| tdd-implementer        | `moai-essentials-debug`          | Implement TDD (RED → GREEN → REFACTOR)  |
-| quality-gate           | `moai-alfred-trust-validation`   | Verify TRUST 5 principles               |
-| git-manager            | `moai-alfred-git-workflow`       | Commit and manage Git workflows         |
-
-**Note**: TUI Survey Skill is used for user confirmations during the run phase and is shared across all interactive prompts.
-
----
-
-## 🚀 PHASE 1: Analysis & Planning
-
-**Goal**: Analyze SPEC requirements and create execution plan.
-
-### Step 1.1: Load Skills & Prepare Context
-
-1. **Load TUI Skill immediately**:
-   - Invoke: `Skill("moai-alfred-ask-user-questions")`
-   - This enables interactive menus for all user interactions
-
-2. **Read SPEC document**:
-   - Read: `.moai/specs/SPEC-$ARGUMENTS/spec.md`
-   - Determine if codebase exploration is needed (existing patterns, similar implementations)
-
-3. **Update SPEC status to in-progress**:
-   ```bash
-   python3 .claude/hooks/alfred/spec_status_hooks.py status_update SPEC-$ARGUMENTS --status in-progress --reason "Implementation started via /alfred:2-run"
-   ```
-
-4. **Optionally invoke Explore agent for codebase analysis**:
-   - IF SPEC requires understanding existing code patterns:
-     - Use Task tool with `subagent_type: "Explore"`
-     - Prompt: "Analyze codebase for SPEC-$ARGUMENTS: Similar implementations, test patterns, architecture, libraries/versions"
-     - Thoroughness: "medium"
-   - ELSE: Skip and proceed directly to Step 1.3
-
-**Result**: SPEC context gathered. Ready for planning.
-
----
-
-### Step 1.2: Invoke Implementation-Planner Agent
-
-**Your task**: Call implementation-planner to analyze SPEC and create execution strategy.
-
-Use Task tool:
-- `subagent_type`: "implementation-planner"
-- `description`: "SPEC analysis and execution strategy establishment"
-- `prompt`:
-  ```
-  You are the implementation-planner agent.
-
-CRITICAL LANGUAGE CONFIGURATION:
-- You receive instructions in agent_prompt_language from config (default: English for global standard)
-- You must respond in conversation_language from config (user's preferred language)
-- Example: If agent_prompt_language="en" and conversation_language="ko", you receive English instructions but respond in Korean
-
-  **Task**: Analyze SPEC and create execution plan.
-
-  SPEC ID: $ARGUMENTS
-  Language settings from .moai/config.json:
-  - agent_prompt_language: Instructions language
-  - conversation_language: Response language
-
-  **Analyze**:
-  1. Requirements extraction and complexity assessment
-  2. Library selection (use WebFetch for latest stable versions)
-  3. TAG chain design
-  4. Step-by-step execution plan
-  5. Risk factors and mitigation strategies
-
-  **Consider**: Exploration results if provided
-
-  **Output**: Execution plan report with:
-  - Complexity (Low/Medium/High)
-  - Estimated work time
-  - Selected language and approach
-  - Latest library versions
-  - Risk factors
-  - Quality gate targets
-  ```
-
-**Store**: Response in `$EXECUTION_PLAN`
-
----
-
-### Step 1.3: Request User Approval
-
-Present plan to user:
-
-1. **Display plan report**:
-   ```
-   ═══════════════════════════════════════════════════════
-   📋 Execution Plan: SPEC-$ARGUMENTS
-   ═══════════════════════════════════════════════════════
-
-   📊 Analysis Results:
-   - Complexity: [Low/Medium/High]
-   - Estimated Time: [Time]
-   - Key Challenges: [List]
-
-   🎯 Strategy:
-   - Language: [Language]
-   - Approach: [Approach]
-   - Core modules: [List]
-
-   📦 Dependencies:
-   - [Package version list]
-
-   ⚠️ Risks:
-   - [Risk list]
-
-   ═══════════════════════════════════════════════════════
-   ```
-
-2. **Ask for user approval using AskUserQuestion**:
-   - `question`: "Implementation plan is ready. How would you like to proceed?"
-   - `header`: "Plan Approval"
-   - `multiSelect`: false
-   - `options`: 4 choices:
-     1. "✅ Proceed with TDD" → Start implementation
-     2. "🔍 Research First" → Deep dive into codebase
-     3. "🔄 Request Modifications" → Change strategy
-     4. "⏸️ Postpone" → Save plan for later
-
-3. **Process user response**:
-   - IF "Proceed" → Go to PHASE 2
-   - IF "Research First" → Re-run Explore agent, update plan, re-ask approval
-   - IF "Modifications" → Ask for changes, update plan, re-ask approval
-   - IF "Postpone" → Save plan to `.moai/specs/SPEC-$ARGUMENTS/plan.md`, create commit, exit
-
-**Result**: User decision captured. Command proceeds or exits.
-
----
-
-## 🔧 PHASE 2: Execute Task (TDD Implementation)
-
-**Goal**: Execute approved implementation plan with TDD cycle.
-
-### Step 2.1: Initialize Progress Tracking
-
-Use TodoWrite to track all tasks:
-
-1. **Parse tasks from execution plan**:
-   - Extract all TAG IDs and descriptions
-   - Create TodoWrite entry for each task
-
-2. **Initialize TodoWrite**:
-   - Set all tasks to "pending"
-   - Ready for status updates during execution
-
----
-
-### Step 2.2: Check Domain Readiness (Optional)
-
-For multi-domain SPECs:
-
-1. **Read SPEC metadata** for `domains:` field
-2. **For each domain**, invoke Explore agent for readiness check:
-   - Domain examples: frontend, backend, devops, database, data-science, mobile
-   - Prompt: "Brief readiness check for [domain] implementation of SPEC-$ARGUMENTS (3-4 key points)"
-3. **Store feedback** in memory for tdd-implementer
-
----
-
-### Step 2.3: Invoke TDD-Implementer Agent
-
-**Your task**: Call tdd-implementer to execute the approved plan with TDD cycle.
-
-Use Task tool:
-- `subagent_type`: "tdd-implementer"
-- `description`: "Execute TDD implementation cycle"
-- `prompt`:
-  ```
-  You are the tdd-implementer agent.
-
-CRITICAL LANGUAGE CONFIGURATION:
-- You receive instructions in agent_prompt_language from config (default: English for global standard)
-- You must respond in conversation_language from config (user's preferred language)
-- Example: If agent_prompt_language="en" and conversation_language="ko", you receive English instructions but respond in Korean
-
-Language settings:
-  - conversation_language: {{CONVERSATION_LANGUAGE}}
-  - Code must be in English
-  - Code comments: per project language rules
-
-  **Execute Approved Plan**:
-  - SPEC ID: $ARGUMENTS
-  - Execution plan: [from implementation-planner]
-  - Domain expertise: [if available from Step 2.2]
-
-  **TDD Cycle for each TAG**:
-  1. RED: Write failing test (@TEST:TAG)
-  2. GREEN: Minimal implementation (@CODE:TAG)
-  3. REFACTOR: Code quality improvement
-
-  **Skills to use**:
-  - Skill("moai-alfred-language-detection") - Language detection
-  - Skill("moai-essentials-debug") - Debugging if errors occur
-
-  **Output**: Implementation completion report with TAG status
-  ```
-
-**Store**: Response in `$IMPLEMENTATION_RESULTS`
-
----
-
-### Step 2.4: Invoke Quality-Gate Agent
-
-After tdd-implementer completes, call quality-gate for TRUST 5 verification:
-
-Use Task tool:
-- `subagent_type`: "quality-gate"
-- `description`: "TRUST principle verification"
-- `prompt`:
-  ```
-  You are the quality-gate agent.
-
-CRITICAL LANGUAGE CONFIGURATION:
-- You receive instructions in agent_prompt_language from config (default: English for global standard)
-- You must respond in conversation_language from config (user's preferred language)
-- Example: If agent_prompt_language="en" and conversation_language="ko", you receive English instructions but respond in Korean
-
-  **Verify TRUST 5 principles**:
-  1. Test First: Coverage ≥ 85% (from .moai/config.json)
-  2. Readable: File ≤ 300 LOC, function ≤ 50 LOC
-  3. Unified: Consistent architecture and patterns
-  4. Secured: No exposed credentials
-  5. Trackable: Complete TAG chain
-
-  **Also verify**:
-  - Code style (linter/formatter)
-  - No critical issues
-
-  **Output**: PASS / WARNING / CRITICAL with details
-  ```
-
-**Handle result**:
-- IF PASS → Proceed to PHASE 3
-- IF WARNING → Ask user: "Accept warnings?" or "Fix first?"
-- IF CRITICAL → Block progress, report details, wait for fixes
-
----
-
-## 🚀 PHASE 3: Git Operations
-
-**Goal**: Create Git commits for all completed work.
-
-### Step 3.1: Invoke Git-Manager Agent
-
-**Your task**: Call git-manager to create structured commits.
-
-Use Task tool:
-- `subagent_type`: "git-manager"
-- `description`: "Create Git commits for TDD cycle"
-- `prompt`:
-  ```
-  You are the git-manager agent.
-
-CRITICAL LANGUAGE CONFIGURATION:
-- You receive instructions in agent_prompt_language from config (default: English for global standard)
-- You must respond in conversation_language from config (user's preferred language)
-- Example: If agent_prompt_language="en" and conversation_language="ko", you receive English instructions but respond in Korean
-
-  **Create commits**:
-  - SPEC ID: $ARGUMENTS
-  - Completed tasks: [from TodoWrite]
-  - TDD phases: RED → GREEN → REFACTOR
-
-  **Commit structure**:
-  - RED: test(SPEC-{ID}): Add failing tests
-  - GREEN: feat(SPEC-{ID}): Implement feature
-  - REFACTOR: refactor(SPEC-{ID}): Improve code quality
-
-  **Git strategy**: Use GitFlow if team mode (feature → develop)
-
-  **Output**: Commit summary
-  ```
-
-**Verify**: Commits were created successfully
-
----
-
-### Step 3.2: Verify and Complete
-
-1. **Execute**: `git log -1 --oneline`
-2. **Display** commit summary to user
-3. **Next guidance**: "Commits created on feature branch. Run `/alfred:3-sync` to create PR."
-
----
-
-## 🎯 PHASE 4: Next Steps
-
-**Goal**: Guide user to next action.
-
-### Step 4.1: Ask for Next Action
-
-Use AskUserQuestion:
-- `question`: "Implementation is complete. What would you like to do next?"
-- `header`: "Next Steps"
-- `multiSelect`: false
-- `options`: 4 choices:
-  - "📄 Synchronize Documentation" → `/alfred:3-sync auto`
-  - "🚀 Implement More Features" → `/alfred:2-run SPEC-XXX`
-  - "🔄 Start New Session" → `/clear` (recommended)
-  - "✅ Complete" → End workflow
-
-### Step 4.2: Display Summary
+`/alfred:2-run` performs SPEC implementation through a complete agent delegation model:
 
 ```
-═══════════════════════════════════════════════════════
-✅ Implementation Complete
-═══════════════════════════════════════════════════════
-
-SPEC: SPEC-$ARGUMENTS
-TAGs: [count] completed
-Commits: [count] created
-Quality: [PASS/WARNING/CRITICAL]
-
-Next: [Based on user selection]
-═══════════════════════════════════════════════════════
+User Command: /alfred:2-run SPEC-001
+    ↓
+/alfred:2-run Command
+    └─ Task(subagent_type="run-orchestrator")
+        ├─ Phase 1: Analysis & Planning
+        ├─ Phase 2: TDD Implementation
+        ├─ Phase 3: Git Operations
+        └─ Phase 4: Completion
+            ↓
+        Output: Implemented feature with passing tests and commits
 ```
+
+### Key Principle: Zero Direct Tool Usage
+
+**This command uses ONLY Task() tool:**
+- ❌ No Read (file operations delegated)
+- ❌ No Write (file operations delegated)
+- ❌ No Edit (file operations delegated)
+- ❌ No Bash (all bash commands delegated)
+- ❌ No TodoWrite (delegated to run-orchestrator)
+- ✅ **Only Task()** for orchestration
+
+All complexity is handled by the **run-orchestrator** agent.
+
+---
+
+## 🧠 Associated Agents & Skills
+
+### Primary Agent: run-orchestrator
+
+**Orchestrates all 4 phases:**
+- Coordinates implementation-planner for SPEC analysis
+- Manages tdd-implementer for TDD implementation
+- Verifies with quality-gate for TRUST 5 compliance
+- Creates commits via git-manager
+
+### Supporting Agents (called by run-orchestrator)
+
+| Agent | Purpose | When |
+|-------|---------|------|
+| **implementation-planner** | Analyzes SPEC and creates execution strategy | Phase 1 |
+| **tdd-implementer** | Implements code through TDD cycle | Phase 2 |
+| **quality-gate** | Verifies TRUST 5 principles | Phase 2 (after tdd-implementer) |
+| **git-manager** | Creates and manages Git commits | Phase 3 |
+
+### Skills Used (by agents, not command)
+
+- `Skill("moai-alfred-workflow")` - Workflow orchestration
+- `Skill("moai-alfred-todowrite-pattern")` - Task tracking
+- `Skill("moai-alfred-ask-user-questions")` - User interaction
+- `Skill("moai-alfred-reporting")` - Result reporting
+- Domain-specific skills (selected per language/framework)
+
+---
+
+## 🚀 Execution (Delegated to run-orchestrator)
+
+### Phase 1: Analysis & Planning
+
+The run-orchestrator:
+1. Reads SPEC document
+2. Invokes implementation-planner to analyze requirements
+3. Presents execution plan to user
+4. Handles user approval flow (proceed/modify/postpone)
+5. Updates SPEC status if approved
+
+### Phase 2: TDD Implementation
+
+The run-orchestrator:
+1. Initializes TodoWrite for task tracking
+2. Checks domain readiness (if multi-domain SPEC)
+3. Invokes tdd-implementer for RED → GREEN → REFACTOR cycle
+4. Invokes quality-gate for TRUST 5 validation
+5. Handles quality gate results (PASS/WARNING/CRITICAL)
+
+### Phase 3: Git Operations
+
+The run-orchestrator:
+1. Invokes git-manager to create commits
+2. Verifies commits were created successfully
+3. Displays commit summary
+
+### Phase 4: Completion
+
+The run-orchestrator:
+1. Displays implementation summary
+2. Asks user for next steps
+3. Guides to `/alfred:3-sync` or new feature
+
+---
+
+## 📋 Execution Flow (High-Level)
+
+```
+/alfred:2-run SPEC-XXX
+    ↓
+Parse SPEC ID from $ARGUMENTS
+    ↓
+Task(
+  subagent_type="run-orchestrator",
+  description="Orchestrate SPEC-XXX implementation",
+  prompt="Execute all 4 phases for SPEC-XXX"
+)
+    ↓
+Run-Orchestrator handles:
+├─ Phase 1: Planning (calls implementation-planner)
+├─ Phase 2: Implementation (calls tdd-implementer + quality-gate)
+├─ Phase 3: Git (calls git-manager)
+└─ Phase 4: Completion (user interaction)
+    ↓
+Output: Summary and next steps
+```
+
+---
+
+## 🎯 Command Implementation
+
+### Step 1: Orchestrator Invocation
+
+**Use Task tool to invoke run-orchestrator:**
+
+```
+Task(
+  subagent_type="run-orchestrator",
+  description="Orchestrate SPEC-$ARGUMENTS implementation workflow",
+  prompt="""
+You are the run-orchestrator agent.
+
+Task: Execute SPEC-$ARGUMENTS implementation through 4 phases.
+
+SPEC ID: $ARGUMENTS
+
+Execute:
+1. PHASE 1: Analysis & Planning
+   - Analyze SPEC requirements
+   - Create execution strategy
+   - Get user approval
+
+2. PHASE 2: TDD Implementation
+   - Initialize task tracking
+   - Execute TDD cycle (RED → GREEN → REFACTOR)
+   - Validate quality gates
+
+3. PHASE 3: Git Operations
+   - Create commits for all work
+   - Verify commits
+
+4. PHASE 4: Completion
+   - Display summary
+   - Ask next steps
+   - Guide user
+
+Use your tools:
+- Task: Delegate to specialist agents (implementation-planner, tdd-implementer, quality-gate, git-manager)
+- AskUserQuestion: User interaction (approval, quality gate decisions, next steps)
+- TodoWrite: Task progress tracking
+- Read: Config file access only
+
+Report final status and guide user to next action.
+"""
+)
+```
+
+---
+
+## 📊 Design Improvements (vs Previous Version)
+
+| Metric | Before | After | Improvement |
+|--------|--------|-------|-------------|
+| **Command LOC** | ~420 | ~120 | **71% reduction** |
+| **allowed-tools** | 14 types | 1 type | **93% reduction** |
+| **Direct tool usage** | Yes (Read/Bash) | No | **100% eliminated** |
+| **Agent count** | 4 separate calls | 1 orchestrator | **100% simplified** |
+| **User approval flow** | In command | In agent | **Cleaner separation** |
+| **Error handling** | Dispersed | Centralized | **Better structure** |
+
+---
+
+## 🔍 Verification Checklist
+
+After implementation, verify:
+
+- [ ] ✅ Command has ONLY `Task` in allowed-tools
+- [ ] ✅ Command contains NO `Read`, `Write`, `Edit`, `Bash` usage
+- [ ] ✅ Command delegates ALL execution to run-orchestrator
+- [ ] ✅ Command file is ~120 lines (vs ~420 before)
+- [ ] ✅ run-orchestrator agent exists and works
+- [ ] ✅ All 4 phases execute through orchestrator
 
 ---
 
 ## 📚 Quick Reference
 
-**For implementation details, consult**:
-- `Skill("moai-alfred-language-detection")` - Language-specific TDD tools
-- `Skill("moai-essentials-debug")` - Debugging strategies
-- `Skill("moai-alfred-trust-validation")` - TRUST 5 principles
-- CLAUDE.md - Full workflow documentation
+**This command**:
+- Accepts SPEC ID: `/alfred:2-run SPEC-AUTH-001`
+- Delegates to: run-orchestrator agent
+- Outputs: Implementation summary with next steps
 
-**Quality Gate Checklist**:
-- ✅ Test coverage ≥ 85%
-- ✅ Code style compliance
-- ✅ TAG chain completeness
-- ✅ No security vulnerabilities
-- ✅ TRUST 5 principles met
+**For details, see**:
+- `.claude/agents/run-orchestrator.md` - Orchestrator responsibilities
+- `.claude/agents/alfred/implementation-planner.md` - SPEC analysis
+- `.claude/agents/alfred/tdd-implementer.md` - TDD implementation
+- `.claude/agents/alfred/quality-gate.md` - Quality validation
+- `.claude/agents/alfred/git-manager.md` - Git operations
 
-**Version**: 2.1.0 (Agent-Delegated Pattern)
-**Last Updated**: 2025-11-09
-**Total Lines**: ~400 (reduced from 619)
-**Architecture**: Commands → Agents → Skills
+**Architecture Pattern**:
+```
+Commands (Orchestration)
+    ↓ Task()
+Agents (Execution)
+    ↓ Skill()
+Skills (Knowledge)
+```
+
+---
+
+**Version**: 3.0.0 (Agent-First Orchestration)
+**Updated**: 2025-11-12
+**Pattern**: Complete Agent Delegation
+**Compliance**: Claude Code Best Practices
+
+---
+
+## Final Step: Next Action Selection
+
+After TDD implementation completes, use AskUserQuestion tool to guide user to next action:
+
+```python
+AskUserQuestion({
+    "questions": [{
+        "question": "Implementation is complete. What would you like to do next?",
+        "header": "Next Steps",
+        "multiSelect": false,
+        "options": [
+            {
+                "label": "Sync Documentation",
+                "description": "Execute /alfred:3-sync to organize documentation and create PR"
+            },
+            {
+                "label": "Additional Implementation",
+                "description": "Implement more features"
+            },
+            {
+                "label": "Quality Verification",
+                "description": "Review tests and code quality"
+            }
+        ]
+    }]
+})
+```
+
+**Important**:
+- Use conversation language from config
+- No emojis in any AskUserQuestion fields
+- Always provide clear next step options

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Bash 테스트 러너 (cross-platform)
-# @TAG:SHELL-TEST-001 | Bash test execution framework
+# TEST-SHELL-TEST-001: Bash test execution framework
 
 set -e
 

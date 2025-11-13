@@ -1,4 +1,3 @@
-# @TEST:BACKUP-UTILS-001 | SPEC: SPEC-TEST-COVERAGE-001.md
 """Unit tests for backup_utils.py module
 
 Tests for backup utility functions.
@@ -25,7 +24,7 @@ class TestBackupConstants:
 
     def test_backup_targets_contains_key_files(self):
         """Should contain key MoAI files"""
-        assert ".moai/config.json" in BACKUP_TARGETS
+        assert ".moai/config/config.json" in BACKUP_TARGETS
         assert "CLAUDE.md" in BACKUP_TARGETS
         assert ".github/" in BACKUP_TARGETS
 
@@ -47,8 +46,8 @@ class TestHasAnyMoaiFiles:
         assert result is False
 
     def test_returns_true_for_moai_config(self, tmp_project_dir: Path):
-        """Should return True when .moai/config.json exists"""
-        config_file = tmp_project_dir / ".moai" / "config.json"
+        """Should return True when .moai/config/config.json exists"""
+        config_file = tmp_project_dir / ".moai" / "config" / "config.json"
         config_file.parent.mkdir(parents=True, exist_ok=True)
         config_file.write_text("{}")
 
@@ -91,7 +90,7 @@ class TestGetBackupTargets:
     def test_returns_existing_targets(self, tmp_project_dir: Path):
         """Should return only existing targets"""
         # Create some targets
-        config_file = tmp_project_dir / ".moai" / "config.json"
+        config_file = tmp_project_dir / ".moai" / "config" / "config.json"
         config_file.parent.mkdir(parents=True, exist_ok=True)
         config_file.write_text("{}")
 
@@ -100,7 +99,7 @@ class TestGetBackupTargets:
 
         result = get_backup_targets(tmp_project_dir)
 
-        assert ".moai/config.json" in result
+        assert ".moai/config/config.json" in result
         assert "CLAUDE.md" in result
         assert len(result) == 2
 

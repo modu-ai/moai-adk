@@ -14,15 +14,16 @@ allowed-tools:
 - Bash(gh:*)
 - Bash(rg:*)
 - Bash(mkdir:*)
+- AskUserQuestion
+- Skill
+skills:
+- moai-alfred-issue-labels
 ---
 
 # 🏗️ MoAI-ADK Step 1: Establish a plan (Plan) - Always make a plan first and then proceed.
 
-> **Critical Note**: ALWAYS invoke `Skill("moai-alfred-ask-user-questions")` before using `AskUserQuestion` tool. This skill provides up-to-date best practices, field specifications, and validation rules for interactive prompts.
->
 > **Batched Design**: All AskUserQuestion calls follow batched design principles (1-4 questions per call) to minimize user interaction turns. See CLAUDE.md section "Alfred Command Completion Pattern" for details.
 
-<!-- @CODE:ALF-WORKFLOW-001:CMD-PLAN -->
 
 **4-Step Workflow Integration**: This command implements Steps 1-2 of Alfred's workflow (Intent Understanding → Plan Creation). See CLAUDE.md for full workflow details.
 
@@ -50,42 +51,22 @@ This local environment includes CodeRabbit AI review integration for SPEC docume
 
 ## 💡 Planning philosophy: "Always make a plan first and then proceed."
 
-`/alfred:1-plan` is a general-purpose command that **creates a plan**, rather than simply "creating" a SPEC document.
+---
 
-### 3 main scenarios
+## The 4-Step Agent-Based Workflow Command Logic (v5.0.0)
 
-#### Scenario 1: Creating a Plan (Primary Method) ⭐
-```bash
-/alfred:1-plan "User authentication function"
-→ Refine idea
-→ Requirements specification using EARS syntax
-→ Create feature/SPEC-XXX branch
-→ Create Draft PR
-```
+This command implements the first 2 steps of Alfred's 4-step workflow:
 
-#### Scenario 2: Brainstorming
-```bash
-/alfred:1-plan "Payment system improvement idea"
-→ Organizing and structuring ideas
-→ Deriving requirements candidates
-→ Technical review and risk analysis
-```
+1. **STEP 1**: Intent Understanding (Clarify user requirements)
+2. **STEP 2**: Plan Creation (Create execution strategy with agent delegation)
+3. **STEP 3**: Task Execution (Execute via tdd-implementer - NOT in this command)
+4. **STEP 4**: Report & Commit (Documentation and git operations - NOT in this command)
 
-#### Scenario 3: Improve existing SPEC
-```bash
-/alfred:1-plan "SPEC-AUTH-001 Security Enhancement"
-→ Analyze existing plan
-→ Establish improvement direction
-→ Create new version plan
-```
+**Command Scope**: Only executes Steps 1-2. Steps 3-4 are executed by `/alfred:2-run` and `/alfred:3-sync`.
 
-> **Standard two-step workflow** (see `CLAUDE.md` - "Alfred Command Execution Pattern" for details)
+---
 
-## 📋 Your Task
-
-You are executing the `/alfred:1-plan` command. Your job is to analyze the user's request and create a SPEC document following the EARS (Event-Action-Response-State) structure.
-
-The command has **THREE execution phases**:
+## The Command Has THREE Execution Phases:
 
 1. **PHASE 1**: Project Analysis & SPEC Planning (STEP 1)
 2. **PHASE 2**: SPEC Document Creation (STEP 2)
@@ -125,7 +106,10 @@ PHASE 1 consists of **two independent sub-phases** to provide flexible workflow 
 │  │ • Request user approval                 │               │
 │  └─────────────────────────────────────────┘               │
 │                    ↓                                        │
-│          (user approval via AskUserQuestion)                │
+│  📊 Progress Report & User Confirmation                     │
+│  • Display analysis results and plan summary                 │
+│  • Show next steps and deliverables                         │
+│  • Request final user approval                             │
 │                    ↓                                        │
 │              PROCEED TO PHASE 2                             │
 └─────────────────────────────────────────────────────────────┘
@@ -134,69 +118,54 @@ PHASE 1 consists of **two independent sub-phases** to provide flexible workflow 
 **Key Points**:
 - **Phase A is optional** - Skip if user provides clear SPEC title
 - **Phase B is required** - Always runs to analyze project and create SPEC
-- **Results flow forward** - Exploration results (if any) are passed to spec-builder
 
 ---
 
-### 🔍 Phase A: Codebase Exploration (OPTIONAL)
+### 📋 PHASE 1A: Project Exploration (Optional - if needed)
 
-**When to execute Phase A:**
+#### When to run Phase A:
+- User provides only vague/unstructured request
+- Need to find existing files and patterns
+- Unclear about current project state
 
-You should execute Phase A ONLY IF the user's request meets one of these criteria:
+#### Step 1A.1: Invoke Explore Agent
 
-- ✅ User uses vague keywords ("where is...", "find me...", "related to...")
-- ✅ Need to understand existing code structure before planning
-- ✅ Feature spans multiple files or modules
-- ❌ User provides clear SPEC title (skip to Phase B immediately)
-
-**Decision rule**: If user typed a clear SPEC title (e.g., "JWT authentication system"), skip Phase A and proceed directly to Phase B.
-
-#### How to execute Phase A:
-
-**Step 1**: Determine IF you need exploration
-
-1. Read the user's `$ARGUMENTS` input
-2. Check if the input contains vague keywords:
-   - "where is..."
-   - "find me..."
-   - "related to..."
-   - "somewhere..."
-   - "I think there's..."
-3. IF the input is vague → proceed to Step 2
-4. IF the input is clear → skip to Phase B
-
-**Step 2**: Invoke the Explore agent
-
-Use the Task tool to call the Explore agent:
+**If user request lacks clarity or context, use Task to call Explore Agent:**
 
 ```
 Tool: Task
 Parameters:
 - subagent_type: "Explore"
-- description: "Explore related files in the codebase"
-- prompt: "Find all files related to the following keywords: $ARGUMENTS
-  - File locations (src/, tests/, docs/)
-  - Related SPEC documents (.moai/specs/)
-  - Existing implementation code
-  Thoroughness level: medium"
+- description: "Explore project files and patterns"
+- prompt: """You are the Explore agent.
+
+Analyze the current project directory structure and relevant files based on the user request: "{{USER_REQUEST}}"
+
+Tasks:
+1. Find relevant files by keywords from the user request
+2. Locate existing SPEC documents (.moai/specs/*.md)
+3. Identify implementation patterns and dependencies
+4. Discover project configuration files
+5. Analyze existing codebase structure
+
+Report back:
+- List of relevant files found
+- Existing SPEC candidates discovered
+- Implementation patterns identified
+- Technical constraints and dependencies
+- Recommendations for user clarification
+
+Return comprehensive results to guide spec-builder agent.
+"""
 ```
 
-**Step 3**: Wait for exploration results
-
-1. The Explore agent will search the codebase
-2. It will return a list of relevant files and locations
-3. Store these results in a variable called `$EXPLORE_RESULTS`
-4. Proceed to Phase B with this variable
+**IF user provided clear SPEC title**: Skip Phase A entirely and proceed directly to Phase B.
 
 ---
 
-### ⚙️ Phase B: SPEC Planning (REQUIRED)
+### 📋 PHASE 1B: SPEC Planning (Required)
 
-**This phase ALWAYS runs** regardless of whether Phase A was executed.
-
-Your task is to analyze the project documents and propose SPEC candidates to the user.
-
-#### Step 1: Invoke the spec-builder agent
+#### Step 1B.1: Invoke spec-builder for project analysis
 
 Use the Task tool to call the spec-builder agent:
 
@@ -204,7 +173,7 @@ Use the Task tool to call the spec-builder agent:
 Tool: Task
 Parameters:
 - subagent_type: "spec-builder"
-- description: "Analyze the plan and establish a plan"
+- description: "Analyze project and create SPEC plan"
 - prompt: """You are the spec-builder agent.
 
 Language settings:
@@ -218,131 +187,150 @@ CRITICAL LANGUAGE CONFIGURATION:
 - Example: If agent_prompt_language="en" and conversation_language="ko", you receive English instructions but respond in Korean
 
 SPEC DOCUMENT LANGUAGE RULES:
-SPEC documents must follow dual language structure (user language + English summary):
-- YAML metadata: Always English (global standard)
-- @TAG identifiers: Always English (global standard)
-- Skill names in invocations: Always English (global standard)
-- Main content: {{CONVERSATION_LANGUAGE}}
-- SUMMARY section: Always English (for international contributors)
-- Code examples: Always English (technical standard)
-- Technical terms: Always English (technical standard)
+All SPEC documents content must be written in {{CONVERSATION_LANGUAGE}}:
+- spec.md: Main content in {{CONVERSATION_LANGUAGE}}
+- plan.md: Main content in {{CONVERSATION_LANGUAGE}}
+- acceptance.md: Main content in {{CONVERSATION_LANGUAGE}}
+
+ALWAYS ENGLISH (global standards):
+- Skill names in invocations: Skill("skill-name")
+- Code examples and technical keywords
+- Technical terms and function names
 
 SUPPORTED LANGUAGES (50+):
 All MoAI-ADK supported languages including: en, ko, ja, es, fr, de, zh, ru, pt, it, ar, hi, th, vi, and many more.
 Use conversation_language value directly without hardcoded language checks.
 
-SKILL CALLS:
-Use explicit Skill() calls when needed:
-- Skill("moai-foundation-specs") - SPEC structure guide
-- Skill("moai-foundation-ears") - EARS grammar requirements
-- Skill("moai-alfred-spec-metadata-validation") - Metadata validation
-
 TASK:
-Analyze project documents and propose SPEC candidates.
-Run in analysis mode, should include:
-1. Deep analysis of product/structure/tech.md
-2. SPEC candidate identification and prioritization
-3. EARS structure design
-4. Wait for user approval
+Analyze the project based on user request: "{{USER_REQUEST}}"
 
-User input: $ARGUMENTS
-(Optional) Exploration results: $EXPLORE_RESULTS"""
+### PHASE 1B.1: Project Analysis and SPEC Discovery
+
+1. **Document Analysis**: Scan for existing documentation and patterns
+   - Product document: Find relevant files
+   - Structure document: Identify architectural patterns
+   - Tech document: Discover technical constraints
+
+2. **SPEC Candidate Generation**: Create 1-3 SPEC candidates
+   - Analyze existing SPECs in `.moai/specs/` for duplicates
+   - Check related GitHub issues via `Skill("moai-alfred-issue-labels")`
+   - Generate unique SPEC candidates with proper naming
+
+3. **EARS Structure Design**: For each SPEC candidate:
+   - Define clear requirements using EARS grammar
+   - Design acceptance criteria with Given/When/Then
+   - Identify technical dependencies and constraints
+
+### PHASE 1B.2: Implementation Plan Creation
+
+For the selected SPEC candidate, create a comprehensive implementation plan:
+
+**Technical Constraints & Dependencies:**
+- Library versions: Use `WebSearch` to find latest stable versions
+- Specify exact versions (e.g., `fastapi>=0.118.3`)
+- Exclude beta/alpha versions, select only production stable versions
+- Note: Detailed versions finalized in `/alfred:2-run` stage
+
+**Precautions:**
+- Technical constraints: [Restraints to consider]
+- Dependency: [Relevance with other SPECs]
+- Branch strategy: [Processing by Personal/Team mode]
+
+**Expected deliverables:**
+- spec.md: [Core specifications of the EARS structure]
+- plan.md: [Implementation plan]
+- acceptance.md: [Acceptance criteria]
+- Branches/PR: [Git operations by mode]
 ```
 
-**Important**: IF Phase A was executed, include the `$EXPLORE_RESULTS` variable in the prompt. IF Phase A was skipped, omit the last line.
+#### Step 1B.2: Request user approval
 
-#### Step 2: Wait for spec-builder analysis
+After the spec-builder presents the implementation plan report, use AskUserQuestion tool for explicit approval:
 
-The spec-builder agent will:
+Tool: AskUserQuestion
+Parameters:
+questions:
+  - question: "Planning is complete. Would you like to proceed with SPEC creation based on this plan?"
+    header: "SPEC Generation"
+    multiSelect: false
+    options:
+      - label: "Proceed with SPEC Creation"
+        description: "Create SPEC files in .moai/specs/SPEC-{ID}/ based on approved plan"
+      - label: "Request Plan Modification"
+        description: "Modify plan content before SPEC creation"
+      - label: "Save as Draft"
+        description: "Save plan as draft and continue later"
+      - label: "Cancel"
+        description: "Discard plan and return to planning stage"
 
-1. **Read project documents**:
-   - `.moai/project/product.md` (business requirements)
-   - `.moai/project/structure.md` (architecture constraints)
-   - `.moai/project/tech.md` (technical stack and policies)
+**Wait for user response**, then proceed to Step 3.5.
 
-2. **Scan existing SPECs**:
-   - List all directories in `.moai/specs/`
-   - Check for existing SPEC IDs to prevent duplicates
-   - Identify current priorities and gaps
+#### Step 3.5: Progress Report and User Confirmation
 
-3. **Evaluate feasibility**:
-   - Implementation complexity
-   - Dependencies on other SPECs
-   - Technical constraints
-   - Resource requirements
+**This step automatically executes after PHASE 1 completion.**
 
-4. **Propose SPEC candidates**:
-   - Extract core business requirements
-   - Reflect technical constraints
-   - Create prioritized list of SPEC candidates
-
-5. **Present implementation plan report**:
-
-The spec-builder will generate a report in this format:
+Display detailed progress report to user and get final approval:
 
 ```
-## Plan Creation Plan Report: [TARGET]
+📊 Progress Report for PHASE 1 Completion
 
-### Analysis Results
-- **Discovered SPEC Candidates**: [Number and Category]
-- **High Priority**: [List of Core SPECs]
-- **Estimated Work Time**: [Time Estimation]
+✅ **Completed Items:**
+- Project document analysis completed
+- Existing SPEC scan completed
+- SPEC candidate generation completed
+- Technical constraint analysis completed
 
-### Writing Strategy
-- **Selected SPEC**: [SPEC ID and Title to Write]
-- **EARS Structure**: [Event-Action-Response-State Design]
-- **Acceptance Criteria**: [Given-When-Then Scenario]
+📋 **Plan Summary:**
+- Selected SPEC: {SPEC ID} - {SPEC Title}
+- Priority: {Priority}
+- Estimated time: {Time Estimation}
+- Main technology stack: {Technology Stack}
 
-### Technology stack and library versions (optional)
-**Included only if technology stack is determined during planning stage**:
-- **Web search**: Use `WebSearch` to find the latest stable versions of key libraries to use
-- **Specify versions**: Specify exact versions for each library, e.g. `fastapi>=0.118.3`)
-- **Stability priority**: Exclude beta/alpha versions, select only production stable versions
-- **Note**: Detailed version is finalized in `/alfred:2-run` stage
+🎯 **Next Phase Plan (PHASE 2):**
+- spec.md creation: Core specifications with EARS structure
+- plan.md creation: Detailed implementation plan
+- acceptance.md creation: Acceptance criteria and scenarios
+- Directory: .moai/specs/SPEC-{ID}/
 
-### Precautions
-- **Technical constraints**: [Restraints to consider]
-- **Dependency**: [Relevance with other SPECs]
-- **Branch strategy**: [Processing by Personal/Team mode]
-
-### Expected deliverables
-- **spec.md**: [Core specifications of the EARS structure]
-- **plan.md**: [Implementation plan]
-- **acceptance.md**: [Acceptance criteria]
-- **Branches/PR**: [Git operations by mode]
+⚠️ **Important Notes:**
+- Existing files may be overwritten
+- Dependencies: {Dependencies}
+- Resource requirements: {Resource Requirements}
 ```
 
-#### Step 3: Request user approval
+Tool: AskUserQuestion
+Parameters:
+questions:
+  - question: "Plan completion and progress report\n\n**Analysis results:**\n- SPEC candidates found: [Number]\n- Priority: [Priority]\n- Estimated work time: [Time Estimation]\n\n**Next steps:**\n1. PHASE 2: SPEC file creation\n   - .moai/specs/SPEC-{ID}/\n   - spec.md, plan.md, acceptance.md creation\n\nProceed with the plan?"
+    header: "Plan Confirmation"
+    multiSelect: false
+    options:
+      - label: "Proceed"
+        description: "Start SPEC creation according to plan"
+      - label: "Detailed Revision"
+        description: "Revise plan content then proceed"
+      - label: "Save as Draft"
+        description: "Save plan and continue later"
+      - label: "Cancel"
+        description: "Cancel operation and discard plan"
 
-After the spec-builder presents the implementation plan report, you MUST ask the user for explicit approval before proceeding to PHASE 2.
-
-**Ask the user this question**:
-
-"Plan development is complete. Would you like to proceed with SPEC creation based on this plan?"
-
-**Present these options**:
-
-1. **Proceed with SPEC Creation** - Create SPEC files in `.moai/specs/SPEC-{ID}/` based on approved plan
-2. **Request Modifications** - Specify changes to the plan before SPEC creation
-3. **Save as Draft** - Save plan as draft without creating SPEC files yet
-4. **Cancel** - Discard plan and return to planning phase
-
-**Wait for the user to answer**.
+**Wait for user response**, then proceed to Step 4.
 
 #### Step 4: Process user's answer
 
 Based on the user's choice:
 
-**IF user selected "Proceed with SPEC Creation"**:
+**IF user selected "Proceed"**:
 1. Store approval confirmation
-2. Proceed to PHASE 2 (SPEC Document Creation)
+2. Print: "✅ Plan approved. Proceeding to PHASE 2."
+3. Proceed to PHASE 2 (SPEC Document Creation)
 
-**IF user selected "Request Modifications"**:
+**IF user selected "Detailed Revision"**:
 1. Ask the user: "What changes would you like to make to the plan?"
 2. Wait for user's feedback
 3. Pass feedback to spec-builder agent
 4. spec-builder updates the plan
-5. Return to Step 3 (request approval again with updated plan)
+5. Return to Step 3.5 (request approval again with updated plan)
 
 **IF user selected "Save as Draft"**:
 1. Create directory: `.moai/specs/SPEC-{ID}/`
@@ -359,7 +347,7 @@ Based on the user's choice:
 
 ## 🚀 PHASE 2: SPEC Document Creation (STEP 2 - After Approval)
 
-This phase ONLY executes IF the user selected "Proceed with SPEC Creation" in Phase B Step 4.
+This phase ONLY executes IF the user selected "Proceed" in Step 3.5.
 
 Your task is to create the SPEC document files in the correct directory structure.
 
@@ -377,11 +365,15 @@ Your task is to create the SPEC document files in the correct directory structur
 - ❌ `SPEC-001-auth/` (additional text after ID)
 - ❌ `SPEC-AUTH-001-jwt/` (additional text after ID)
 
-**Duplicate check required**: Before creating a new SPEC ID, search existing TAG IDs to prevent duplication:
+**Duplicate check required**: Verify SPEC ID uniqueness before creation
 
-```bash
-rg "@SPEC:{ID}" -n .moai/specs/
-```
+Search scope:
+- Primary: .moai/specs/ directory
+
+Return:
+- exists: true/false
+- locations: [] (if exists, list all conflicting file paths)
+- recommendation: "safe to create" or "duplicate found - suggest different ID"
 
 **Composite Domain Rules**:
 - ✅ Allow: `UPDATE-REFACTOR-001` (2 domains)
@@ -415,7 +407,6 @@ All SPEC documents content must be written in {{CONVERSATION_LANGUAGE}}:
 - acceptance.md: Main content in {{CONVERSATION_LANGUAGE}}
 
 ALWAYS ENGLISH (global standards):
-- YAML frontmatter and @TAG identifiers
 - Skill names in invocations: Skill("skill-name")
 - Code examples and technical keywords
 - Technical terms and function names
@@ -424,431 +415,153 @@ SUPPORTED LANGUAGES (50+):
 All MoAI-ADK supported languages including: en, ko, ja, es, fr, de, zh, ru, pt, it, ar, hi, th, vi, and many more.
 Use conversation_language value directly without hardcoded language checks.
 
-SKILL CALLS:
-Use explicit Skill() calls when needed:
-- Skill("moai-foundation-specs") - SPEC structure guide
-- Skill("moai-foundation-ears") - EARS grammar requirements
-- Skill("moai-alfred-spec-metadata-validation") - Metadata validation
-- Skill("moai-alfred-tag-scanning") - TAG chain reference
-
 TASK:
-Write SPEC document according to plan approved in STEP 1.
-Write specifications for EARS structure."""
+Create SPEC-{SPEC_ID} with the following requirements:
+
+### SPEC Document Creation
+
+1. **Create directory**: `.moai/specs/SPEC-{SPEC_ID}/`
+
+2. **Generate spec.md**:
+   - YAML frontmatter with all 7 required fields (id, version, status, created, updated, author, priority)
+   - HISTORY section immediately after frontmatter
+   - Complete EARS structure with all 5 requirement types:
+     * Functional Requirements (MUST)
+     * Non-Functional Requirements (SHOULD)
+     * Interface Requirements (SHALL)
+     * Design Constraints (MUST)
+     * Acceptance Criteria (GIVEN/WHEN/THEN)
+
+3. **Generate plan.md**:
+   - Implementation plan with detailed steps
+   - Task decomposition and dependencies
+   - Resource requirements and timeline
+   - Technology stack specifications
+
+4. **Generate acceptance.md**:
+   - Minimum 2 Given/When/Then scenarios
+   - Edge case testing scenarios
+   - Success criteria and validation methods
+
+### Quality Assurance:
+- Information not in product/structure/tech document supplemented by asking new questions
+- Acceptance Criteria written at least 2 times in 3 columns Given/When/Then
+- Number of modules reduced by Readable standard (default 5) - if exceeded, include justification in SPEC context section
+
+### ID Integration:
+- Follow SPEC ID lifecycle rules
+
+### Git Integration:
+- Generate commit messages following conventional commits
+- Create appropriate branch names based on git strategy
+- Include SPEC identifiers in commit messages
+"""
 ```
-
-### Step 2: Wait for spec-builder to create files
-
-The spec-builder agent will:
-
-1. **Create directory structure**:
-   ```bash
-   mkdir -p .moai/specs/SPEC-{ID}/
-   ```
-
-2. **Create spec.md** (main SPEC document):
-
-   **YAML Front Matter** (top of file):
-   ```yaml
-   ---
-   id: AUTH-001
-   version: 0.0.1
-   status: draft
-   created: 2025-09-15
-   updated: 2025-09-15
-   author: @Goos
-   priority: high
-   ---
-   ```
-
-   **Required fields**:
-   - `id`: Same as TAG ID (`<domain>-<3 digits>`) - Never change after creation
-   - `version`: v0.0.1 (INITIAL) → v0.1.0 (Implementation Completed) → v1.0.0 (Stable)
-   - `status`: draft | in_progress | completed | deprecated
-   - `created`: YYYY-MM-DD
-   - `updated`: YYYY-MM-DD
-   - `author`: GitHub @ prefix + ID (e.g. `@Goos`)
-   - `priority`: critical | high | medium | low
-
-   **Optional fields** (9 total):
-   - `category`: Feature type
-   - `labels`: Tags for grouping
-   - `depends_on`: List of SPEC IDs this depends on
-   - `blocks`: List of SPEC IDs blocked by this
-   - `related_specs`: List of related SPEC IDs
-   - `related_issue`: GitHub Issue number
-   - `scope`: Implementation scope estimate
-
-   **HISTORY section** (immediately after YAML):
-   ```markdown
-   # @SPEC:DOMAIN-NNN: [SPEC title]
-
-   ## HISTORY
-
-   ### v0.0.1 (2025-09-15)
-   - **INITIAL**: Initial creation of [feature name] specification
-   - **AUTHOR**: @Goos
-   - **SCOPE**: [Brief scope description]
-   - **CONTEXT**: [Why this SPEC was created]
-   ```
-
-   **EARS Requirements sections**:
-   ```markdown
-   ## Requirements
-
-   ### Ubiquitous
-   - The system must provide [feature]
-
-   ### Event-driven (event-driven)
-   - WHEN [condition], the system must [operate]
-
-   ### State-driven
-   - WHILE When in [state], the system must [operate]
-
-   ### Optional (Optional function)
-   - If WHERE [condition], the system can [operate]
-
-   ### Unwanted Behaviors
-   - IF [condition], the system must [respond appropriately with error handling or quality gates]
-   ```
-
-   **Traceability section**:
-   ```markdown
-   ## Traceability (@TAG)
-   - **SPEC**: @SPEC:DOMAIN-NNN
-   - **TEST**: tests/[domain]/test_[feature].py
-   - **CODE**: src/[domain]/[feature].py
-   - **DOC**: docs/[domain]/[feature].md
-   ```
-
-3. **Create plan.md** (implementation plan):
-   - Step-by-step implementation roadmap
-   - Technical approach
-   - Resource requirements
-   - Timeline estimates
-
-4. **Create acceptance.md** (acceptance criteria):
-   - Given-When-Then scenarios
-   - Test cases
-   - Success criteria
-
-### Step 3: Verify SPEC files were created
-
-After spec-builder completes:
-
-1. Check that directory exists:
-   ```bash
-   ls -la .moai/specs/SPEC-{ID}/
-   ```
-
-2. Verify all 3 files exist:
-   - `spec.md`
-   - `plan.md`
-   - `acceptance.md`
-
-3. IF any file is missing:
-   - Print error: "SPEC file creation failed: missing {filename}"
-   - End command execution (stop here)
-
-4. IF all files exist:
-   - Proceed to PHASE 3
 
 ---
 
-## 🚀 PHASE 3: Git Setup based on spec_git_workflow (STEP 2 continuation)
+## 🚀 PHASE 3: Git Branch & PR Setup (STEP 2 continuation)
 
-This phase ONLY executes IF PHASE 2 completed successfully and all SPEC files were created.
+PHASE 3 automatically executes IF:
+1. PHASE 2 completed successfully
+2. Git operations enabled in config
+3. User has appropriate permissions
 
-Your task is to handle Git operations based on the project's `spec_git_workflow` setting.
+### Step 1: Check Git Configuration
 
-### Step 1: Check spec_git_workflow setting
-
-First, read the current workflow configuration:
-
-```bash
-# Check spec_git_workflow setting from .moai/config.json
-spec_workflow=$(grep -o '"spec_git_workflow": "[^"]*"' .moai/config.json | cut -d'"' -f4)
-echo "Current SPEC Git workflow: $spec_workflow"
-```
-
-### Step 2: Execute workflow-specific actions
-
-**IF `spec_workflow` is "develop_direct":**
-1. Print: "✅ Direct commit mode: Staying on develop branch (feature branch creation skipped)"
-2. Skip feature branch creation
-3. Skip PR creation
-4. Proceed to completion message
-
-**IF `spec_workflow` is "feature_branch":**
-1. Proceed to Step 3: Create feature branch and PR
-
-**IF `spec_workflow` is "per_spec":**
-1. Ask user: "Which workflow do you want for this SPEC?"
-   - Options: ["Create feature branch + PR", "Direct commit to develop"]
-2. IF user chooses "Create feature branch + PR" → proceed to Step 3
-3. IF user chooses "Direct commit to develop" → skip branch creation
-
-### Step 3: Create Git branch & PR (only for feature_branch workflow)
-
-**This step only executes if workflow requires feature branch creation**
-
-Invoke git-manager agent:
-
-Use the Task tool to call the git-manager agent:
+Validate git strategy and configuration before proceeding:
 
 ```
 Tool: Task
 Parameters:
 - subagent_type: "git-manager"
-- description: "Create Git branch/PR with duplicate prevention"
+- description: "Check git configuration and strategy"
 - prompt: """You are the git-manager agent.
 
-Language settings:
-- conversation_language: {{CONVERSATION_LANGUAGE}}
-- language_name: {{CONVERSATION_LANGUAGE_NAME}}
+Check git configuration and determine appropriate strategy:
 
-IMPORTANT INSTRUCTIONS:
-CRITICAL LANGUAGE CONFIGURATION:
-- You receive instructions in agent_prompt_language from config (default: English for global standard)
-- You must respond in conversation_language from config (user's preferred language)
-- Example: If agent_prompt_language="en" and conversation_language="ko", you receive English instructions but respond in Korean
+1. Read `.moai/config/config.json` git_strategy section
+2. Determine if Personal or Team mode
+3. Validate git user configuration
+4. Check current branch and status
 
-TEAM MODE DUPLICATE PREVENTION:
-Before creating GitHub Issue or PR:
-1. Always check for existing Issues with SPEC-ID in title
-2. Always check for existing PRs with feature/SPEC-{ID} branch name
-3. If Issue exists → Update, do NOT create duplicate
-4. If PR exists → Update, do NOT create duplicate
-5. If both exist → Update both with latest SPEC version
-6. Use alternative search if label filtering fails (some Issues may have no labels)
-7. Always add labels: "spec", "planning", + priority labels
-
-See git-manager.md "When writing SPEC" section for detailed duplicate prevention protocol and code examples.
-
-TASK:
-Create feature branch (feature/SPEC-{SPEC_ID}) and Draft PR (→ develop) for completed SPEC document.
-Implement duplicate prevention protocol before creating GitHub entities.
-
-Output language: {{CONVERSATION_LANGUAGE}}"""
+Return:
+- mode: "personal" or "team"
+- current_branch: [current branch name]
+- user_configured: true/false
+- strategy: [git strategy configuration]
+- recommended_actions: [list of actions needed]
+"""
 ```
 
-### Step 2: Wait for git-manager to complete
+### Step 2: Create Branch (Personal Mode)
 
-The git-manager agent will:
+**IF git_strategy.personal mode**:
+```
+Tool: Task
+Parameters:
+- subagent_type: "git-manager"
+- description: "Create feature branch"
+- prompt: """You are the git-manager agent.
 
-1. **Check project mode** (Personal or Team):
-   - Read `.moai/config.json`
-   - Check `project.mode` field
-   - IF mode == "Personal" → create local branch only
-   - IF mode == "Team" → create branch + GitHub Issue + PR
+Create feature branch for SPEC implementation:
 
-2. **Create Git branch**:
+1. Create branch: `feature/SPEC-{SPEC_ID}`
+2. Set tracking upstream if remote exists
+3. Switch to new branch
+4. Create initial commit with stub files
 
-   **Personal mode**:
-   - Branch from `main` or `develop` (based on `git_strategy.personal.branch_from` in config)
-   - Branch name: `feature/SPEC-{ID}`
-   - Example: `git checkout -b feature/SPEC-AUTH-001`
-
-   **Team mode** (CRITICAL - GitFlow enforcement):
-   - **ALWAYS branch from `develop`** (GitFlow standard)
-   - Branch name: `feature/SPEC-{ID}`
-   - Example: `git checkout -b feature/SPEC-AUTH-001 develop`
-
-3. **Create initial commit**:
-   ```bash
-   git add .moai/specs/SPEC-{ID}/
-   git commit -m "spec(SPEC-{ID}): Initial SPEC creation
-
-   🤖 Generated with Claude Code
-
-   Co-Authored-By: 🎩 Alfred@MoAI"
-   ```
-
-4. **Push branch to remote** (Team mode only):
-   ```bash
-   git push -u origin feature/SPEC-{ID}
-   ```
-
-5. **Create GitHub Issue** (Team mode only):
-   - Title: `[SPEC-{ID}] {SPEC title}`
-   - Body: Summary of SPEC content
-   - Labels: `spec`, `planning`, `{priority}`
-   - Check for duplicates BEFORE creating
-   - IF duplicate exists → update existing Issue
-
-6. **Create Draft PR** (Team mode only):
-   - Source: `feature/SPEC-{ID}`
-   - Target: **ALWAYS `develop`** (GitFlow rule)
-   - Title: `[SPEC-{ID}] {SPEC title}`
-   - Body: Link to Issue + SPEC summary
-   - Status: Draft (not ready for review)
-   - Check for duplicates BEFORE creating
-   - IF duplicate exists → update existing PR
-
-### Step 3: Verify Git operations completed
-
-After git-manager completes:
-
-1. **Check branch was created**:
-   ```bash
-   git branch --list feature/SPEC-{ID}
-   ```
-   - IF branch exists → success
-   - IF branch missing → print error and stop
-
-2. **Personal mode verification**:
-   - Check local commit exists
-   - Print success message
-
-3. **Team mode verification**:
-   - Check remote branch exists: `git ls-remote origin feature/SPEC-{ID}`
-   - Check GitHub Issue was created: `gh issue list --label spec`
-   - Check Draft PR was created: `gh pr list --state open --head feature/SPEC-{ID}`
-   - IF any verification fails → print error and stop
-
-### Step 4: CodeRabbit SPEC Review (Local Only - Automatic)
-
-**This step happens automatically in the background. You DO NOT need to execute anything.**
-
-After Draft PR is created, CodeRabbit automatically triggers SPEC review:
-
-**What CodeRabbit reviews**:
-- ✅ YAML frontmatter validation (7 required fields)
-- ✅ HISTORY section structure and completeness
-- ✅ EARS requirements clarity (Ubiquitous/Event-driven/State-driven/Optional/Unwanted Behaviors)
-- ✅ Acceptance criteria quality (Given-When-Then scenarios)
-- ✅ @TAG system compliance (SPEC/TEST/CODE/DOC traceability)
-- ✅ Documentation and formatting
-
-**Expected timeline**: 1-2 minutes
-
-**IF you are running in local environment**:
-1. Print to user: "🤖 CodeRabbit is reviewing SPEC PR (1-2 minutes)..."
-2. Print to user: "→ PR will be auto-approved if quality meets standards (80%+)"
-3. Print to user: "→ Check `.coderabbit.yaml` for detailed review checklist"
-
-**IF you are running in published package**:
-1. Print to user: "✅ Draft PR created"
-2. Print to user: "→ Manual review required (CodeRabbit not available)"
-
----
-
-## ✅ Command Completion & Next Steps
-
-After PHASE 3 completes successfully, you MUST ask the user what to do next.
-
-### Ask the user this question:
-
-"SPEC creation is complete. What would you like to do next?"
-
-### Present these options:
-
-1. **Start Implementation** - Proceed to `/alfred:2-run SPEC-XXX` for TDD implementation
-2. **Review SPEC** - Review and modify SPEC documents before implementation
-3. **New Session** - Execute `/clear` for better context management (recommended)
-4. **Cancel** - Return to planning phase
-
-### Wait for the user to answer
-
-### Process user's answer:
-
-**IF user selected "Start Implementation"**:
-1. Print: "Starting TDD implementation workflow..."
-2. Print: "You can execute: `/alfred:2-run SPEC-XXX`"
-3. End command execution (user will manually run next command)
-
-**IF user selected "Review SPEC"**:
-1. Print: "📁 SPEC files created in `.moai/specs/SPEC-XXX/`"
-2. Print: "Files: spec.md, plan.md, acceptance.md"
-3. Print: "After review, run: `/alfred:2-run SPEC-XXX`"
-4. End command execution
-
-**IF user selected "New Session"**:
-1. Print: "⏳ Clearing session for better context management..."
-2. Print: "Note: This improves performance for large projects"
-3. Print: "Next session: Run `/alfred:2-run SPEC-XXX`"
-4. End command execution (user will manually run /clear)
-
-**IF user selected "Cancel"**:
-1. Print: "Returning to planning phase..."
-2. Print: "SPEC files preserved for future use"
-3. Print: "Create more SPECs with: `/alfred:1-plan`"
-4. End command execution
-
----
-
-## 📚 Reference Information
-
-The following sections provide reference information for understanding SPEC structure and requirements. **You do not need to memorize these - they are available when needed.**
-
-### EARS Specification Writing Guide
-
-When creating SPEC requirements, follow the EARS (Event-Action-Response-State) structure:
-
-1. **Event**: Define trigger events that occur in the system
-2. **Action**: Specification of the system's action for an event
-3. **Response**: Defining a response as a result of an action
-4. **State**: Specifies system state changes and side effects
-
-**Example**:
-```markdown
-### Ubiquitous Requirements
-- The system must provide user authentication functionality
-
-### Event-driven Requirements
-- WHEN the user logs in with valid credentials, the system must issue a JWT token
-
-### State-driven Requirements
-- WHILE the token is in an unexpired state, the system must allow access to the protected resource
-
-### Unwanted Behaviors
-- IF the token has expired, the system must return a 401 Unauthorized response
+Use conventional commit format: "feat(spec): Add SPEC-{SPEC_ID} specification"
+"""
 ```
 
-For complete EARS syntax and examples, invoke: `Skill("moai-foundation-ears")`
+### Step 3: Create Draft PR (Team Mode)
 
-### SPEC Metadata Standard
+**IF git_strategy.team mode**:
+```
+Tool: Task
+Parameters:
+- subagent_type: "git-manager"
+- description: "Create draft pull request"
+- prompt: """You are the git-manager agent.
 
-For complete metadata field descriptions, validation rules, and version system guide, invoke: `Skill("moai-alfred-spec-metadata-validation")`
+Create draft PR for SPEC implementation:
 
-**Quick reference**:
-- **7 required fields**: id, version, status, created, updated, author, priority
-- **9 optional fields**: category, labels, depends_on, blocks, related_specs, related_issue, scope
+1. Create branch: `feature/SPEC-{SPEC_ID}`
+2. Push to remote
+3. Create draft PR targeting `develop` branch
+4. Add appropriate labels and reviewers
+5. Include SPEC ID in PR title: "feat(spec): Add SPEC-{SPEC_ID} [DRAFT]"
 
-### Agent Role Separation
+Set PR as draft and do not auto-merge.
+"""
+```
 
-**spec-builder dedicated area**:
-- Analysis of project documents and discovery of SPEC candidates
-- Preparation of EARS structure specifications
-- Preparation of Acceptance Criteria (Given-When-Then)
-- Verification of SPEC document quality
-- Application of @TAG system
+### Step 4: Final Status Report
 
-**git-manager dedicated area**:
-- Create and manage all Git branches
-- Apply branch strategy for each mode (Personal: branch from main/develop, Team: ALWAYS branch from develop)
-- Create GitHub Issue/PR (Team Mode: Create Draft PR `feature/SPEC-{ID}` → `develop`)
-- Create initial commit and tags
-- Handle remote synchronization
+After git operations complete:
 
-**Single Responsibility Principle**: spec-builder only writes plans, git-manager only performs Git/GitHub operations.
+```
+📊 Phase 3 Complete - Git Setup Finished
 
-**Sequential execution**: Executes in the order spec-builder → git-manager to maintain clear dependencies.
+✅ **Git Operations Completed:**
+- Branch created: feature/SPEC-{SPEC_ID}
+- PR created (Team mode) or branch ready (Personal mode)
+- Initial commit with SPEC files
+- SPEC tracking established
 
-**No inter-agent calls**: Each agent does NOT call other agents directly. They are executed sequentially only at the command level.
+🎯 **Next Steps:**
+1. 📝 **Review SPEC**: Check .moai/specs/SPEC-{SPEC_ID}/ files
+2. 🔧 **Start Implementation**: Run `/alfred:2-run SPEC-{SPEC_ID}`
+3. 📋 **Monitor Progress**: Track implementation via TDD cycle
+4. 🔄 **Team Collaboration**: Review/modify draft PR if in Team mode
 
-### Context Management Strategy
-
-**Load first**: `.moai/project/product.md` (business requirement)
-
-**Recommendation after completion**: The plan is complete. You can experience better performance and context management by starting a new chat session with the `/clear` or `/new` command before proceeding to the next step (`/alfred:2-run`).
-
-For complete context engineering strategy, invoke: `Skill("moai-alfred-dev-guide")`
-
-### Writing Tips
-
-- Information that is not in the product/structure/tech document is supplemented by asking a new question
-- Acceptance Criteria is encouraged to be written at least 2 times in 3 columns Given/When/Then
-- The number of modules is reduced due to the relaxation of the Readable standard among the TRUST principles. If the recommended value (default 5) is exceeded, include justification in the SPEC `context` section
+💡 **Tips:**
+- Use `/alfred:2-run SPEC-{SPEC_ID}` to begin implementation
+- Follow RED → GREEN → REFACTOR cycle for TDD
+- Commit frequently with meaningful messages
+- Review progress regularly
+```
 
 ---
 
@@ -857,7 +570,8 @@ For complete context engineering strategy, invoke: `Skill("moai-alfred-dev-guide
 Before you consider this command complete, verify:
 
 - [ ] **PHASE 1 executed**: spec-builder analyzed project and proposed SPEC candidates
-- [ ] **User approval obtained**: User explicitly approved SPEC creation (via AskUserQuestion)
+- [ ] **Progress report displayed**: User shown detailed progress report with analysis results
+- [ ] **User approval obtained**: User explicitly approved SPEC creation (via enhanced AskUserQuestion)
 - [ ] **PHASE 2 executed**: spec-builder created all 3 SPEC files (spec.md, plan.md, acceptance.md)
 - [ ] **Directory naming correct**: `.moai/specs/SPEC-{ID}/` format followed
 - [ ] **YAML frontmatter valid**: All 7 required fields present
@@ -875,3 +589,37 @@ IF any checkbox is unchecked → Identify missing step and complete it before en
 ---
 
 **End of command execution guide**
+---
+
+## Final Step: Next Action Selection
+
+After SPEC creation completes, use AskUserQuestion tool to guide user to next action:
+
+```python
+AskUserQuestion({
+    "questions": [{
+        "question": "SPEC document creation is complete. What would you like to do next?",
+        "header": "Next Steps",
+        "multiSelect": false,
+        "options": [
+            {
+                "label": "Start Implementation",
+                "description": "Execute /alfred:2-run to begin TDD development"
+            },
+            {
+                "label": "Modify Plan",
+                "description": "Modify and enhance SPEC content"
+            },
+            {
+                "label": "Add New Feature",
+                "description": "Create additional SPEC document"
+            }
+        ]
+    }]
+})
+```
+
+**Important**:
+- Use conversation language from config
+- No emojis in any AskUserQuestion fields
+- Always provide clear next step options

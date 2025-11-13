@@ -50,35 +50,28 @@ class TestErrorHandling:
     """Error Handling Tests (3 tests)"""
 
     def test_unsupported_language_error_message(self, tmp_path):
-        """Test: Unsupported language returns clear error message"""
+        """Test: Unsupported language returns None instead of error"""
         detector = LanguageDetector()
         # Create a fake language that's not supported
-        with pytest.raises(ValueError) as exc_info:
-            detector.get_workflow_template_path("cobol")
-        error_message = str(exc_info.value).lower()
-        assert "unsupported" in error_message or "not" in error_message or "does not have" in error_message
+        result = detector.get_workflow_template_path("cobol")
+        # Should return None for unsupported languages
+        assert result is None
 
     def test_missing_workflow_template_error(self, tmp_path):
-        """Test: Missing workflow template is detected"""
+        """Test: No workflow template available"""
         detector = LanguageDetector()
-        # Verify template file actually exists for Python
+        # Verify template file returns None for all languages
         template_path = detector.get_workflow_template_path("python")
-        # This should be a relative path like ".github/workflows/python-tag-validation.yml"
-        assert "python-tag-validation.yml" in template_path
-        # Verify the actual template file exists in the package
-        full_path = Path("src/moai_adk/templates") / template_path
-        assert full_path.exists(), f"Template not found: {full_path}"
+        # Should return None as workflow templates have been removed
+        assert template_path is None
 
     def test_invalid_workflow_syntax_detection(self, tmp_path):
-        """Test: Invalid YAML syntax in workflow detected"""
-        template_path = Path("src/moai_adk/templates/.github/workflows/python-tag-validation.yml")
-        content = template_path.read_text()
-        # Try to parse as YAML - should succeed for valid templates
-        parsed = yaml.safe_load(content)
-        assert parsed is not None, "Invalid YAML syntax"
-        # Check for common workflow structure keys
-        has_workflow_structure = any(key in parsed for key in ["jobs", "on", "name"])
-        assert has_workflow_structure, "Invalid workflow structure"
+        """Test: No workflow templates available"""
+        detector = LanguageDetector()
+        # All language workflow templates should return None
+        for language in ["python", "javascript", "typescript", "go", "rust"]:
+            template_path = detector.get_workflow_template_path(language)
+            assert template_path is None, f"Expected None for {language}, got {template_path}"
 
 
 class TestIntegrationScenarios:

@@ -1,467 +1,302 @@
-# 빠른 시작 가이드
+---
+title: "5분 빠른 시작"
+description: "5분 만에 MoAI-ADK로 첫 프로젝트를 시작하는 방법 - 설치부터 첫 기능 개발까지"
+---
 
-단 10분 만에 완전한 MoAI-ADK 워크플로우를 경험해 보세요. 이 가이드는 SPEC-First TDD 방법론을 사용하여 첫 API를 만드는 과정을 안내합니다.
+# 5분 빠른 시작
 
-## 전제 조건
+5분 안에 MoAI-ADK로 첫 프로젝트를 생성하고 실행해보세요.
 
-시작하기 전에 다음을 확인하세요:
+## ⚡ 5단계 빠른 시작
 
-- ✅ **MoAI-ADK 설치됨**: `uv tool install moai-adk`
-- ✅ **Claude Code 설치됨**: 터미널에서 사용 가능
-- ✅ **10분의 방해받지 않는 시간**
+### 1단계: 설치 (1분)
 
-## 0단계: 프로젝트 초기화 (1분)
+```bash
+# uv tool로 MoAI-ADK 전역 설치
+uv tool install moai-adk
 
-새 프로젝트를 만들고 Alfred로 초기화하세요.
+# 설치 확인
+moai-adk --version
+```
+
+### 2단계: 프로젝트 생성 (30초)
 
 ```bash
 # 새 프로젝트 생성
-moai-adk init hello-api
-cd hello-api
-
-# Claude Code 시작
-claude
+moai-adk init my-first-project
+cd my-first-project
 ```
 
-Claude Code에서 프로젝트 초기화 명령을 실행하세요:
+### 3단계: Claude Code 실행 (30초)
 
+```bash
+# Claude Code로 프로젝트 열기
+claude-code .
 ```
+
+### 4단계: 프로젝트 설정 (1분)
+
+Claude Code에서 다음 명령을 실행하세요:
+
+```bash
 /alfred:0-project
 ```
 
-Alfred가 몇 가지 질문을 할 것입니다:
+Alfred가 자동으로:
+- ✅ 프로젝트 메타데이터 설정
+- ✅ 개발 언어 감지
+- ✅ Git 전략 구성
+- ✅ 다국어 시스템 활성화
 
-- **프로젝트 이름**: hello-api
-- **프로젝트 목표**: MoAI-ADK 학습
-- **주요 언어**: python
-- **모드**: personal (로컬 개발용)
-
-**결과**: `.moai/` 구성으로 프로젝트가 초기화되고, 스킬이 로드되며, Alfred가 준비됩니다.
-
-## 1단계: SPEC 생성 (2분)
-
-Alfred의 spec-builder를 사용하여 만들 것을 정의하세요.
+### 5단계: 첫 기능 개발 (2분)
 
 ```bash
-/alfred:1-plan "name 쿼리 매개변수를 받아서 인사말을 반환하는 GET /hello 엔드포인트"
-```
+# SPEC 작성
+/alfred:1-plan "간단한 계산기 기능"
 
-### Alfred가 하는 일
+# 자동화된 TDD로 구현
+/alfred:2-run CALC-001
 
-1. **요청을 분석**하고 요구사항을 추출
-
-2. **SPEC ID 생성**: `HELLO-001`
-
-3. **EARS 형식 사양 생성**:
-
-   ```yaml
-   ---
-   id: HELLO-001
-   version: 0.0.1
-   status: draft
-   priority: high
-   ---
-   # @SPEC:EX-HELLO-001: Hello World API
-
-   ## Ubiquitous Requirements
-   - 시스템은 HTTP GET /hello 엔드포인트를 제공해야 함
-
-   ## Event-driven Requirements
-   - name 쿼리 매개변수가 제공되면 "Hello, {name}!"을 반환해야 함
-   - name이 제공되지 않으면 "Hello, World!"를 반환해야 함
-
-   ## Constraints
-   - name은 최대 50자로 제한되어야 함
-   - 응답은 JSON 형식이어야 함
-   ```
-
-4. **지원 파일 생성**:
-
-   - `.moai/specs/SPEC-HELLO-001/spec.md` - 주요 사양
-   - `.moai/specs/SPEC-HELLO-001/plan.md` - 구현 계획
-   - 기능 브랜치: `feature/SPEC-HELLO-001` (팀 모드인 경우)
-
-### 확인
-
-```bash
-# SPEC이 생성되었는지 확인
-cat .moai/specs/SPEC-HELLO-001/spec.md
-
-# TAG 할당 확인
-rg '@SPEC:HELLO-001' -n
-```
-
-## 2단계: TDD 구현 (5분)
-
-테스트 주도 개발을 사용하여 API를 구현하세요.
-
-```bash
-/alfred:2-run HELLO-001
-```
-
-### 1단계: 🔴 RED - 실패하는 테스트 작성
-
-Alfred의 `tdd-implementer`가 먼저 포괄적인 테스트를 생성합니다:
-
-```python
-# tests/test_hello.py
-# @TEST:EX-HELLO-001 | SPEC: SPEC-HELLO-001.md
-
-import pytest
-from fastapi.testclient import TestClient
-from src.hello.api import app
-
-client = TestClient(app)
-
-def test_hello_with_name_should_return_personalized_greeting():
-    """name이 제공되면 'Hello, {name}!'을 반환해야 함"""
-    response = client.get("/hello?name=Alice")
-    assert response.status_code == 200
-    assert response.json() == {"message": "Hello, Alice!"}
-
-def test_hello_without_name_should_return_default_greeting():
-    """name이 제공되지 않으면 'Hello, World!'를 반환해야 함"""
-    response = client.get("/hello")
-    assert response.status_code == 200
-    assert response.json() == {"message": "Hello, World!"}
-
-def test_hello_with_long_name_should_return_400():
-    """name이 50자를 초과하면 400 에러를 반환해야 함"""
-    long_name = "a" * 51
-    response = client.get(f"/hello?name={long_name}")
-    assert response.status_code == 400
-```
-
-**테스트 실행** (실패할 것입니다 - 이것이 예상됨):
-
-```bash
-pytest tests/test_hello.py -v
-# 결과: FAILED - No module named 'src.hello.api'
-```
-
-**RED 단계 커밋**:
-
-```bash
-git add tests/test_hello.py
-git commit -m "🔴 test(HELLO-001): add failing hello API tests"
-```
-
-### 2단계: 🟢 GREEN - 최소 구현
-
-Alfred가 테스트를 통과시키기 위한 최소한의 코드를 생성합니다:
-
-```python
-# src/hello/api.py
-# @CODE:EX-HELLO-001:API | SPEC: SPEC-HELLO-001.md | TEST: tests/test_hello.py
-
-from fastapi import FastAPI, HTTPException
-
-app = FastAPI()
-
-@app.get("/hello")
-def hello(name: str = "World"):
-    """@CODE:EX-HELLO-001:API - Hello 엔드포인트"""
-    if len(name) > 50:
-        raise HTTPException(status_code=400, detail="Name too long (max 50 chars)")
-    return {"message": f"Hello, {name}!"}
-```
-
-**테스트 실행** (이제 통과해야 함):
-
-```bash
-pytest tests/test_hello.py -v
-# 결과: PASSED - 모든 3개 테스트 통과
-```
-
-**GREEN 단계 커밋**:
-
-```bash
-git add src/hello/api.py
-git commit -m "🟢 feat(HELLO-001): implement hello API"
-```
-
-### 3단계: ♻️ REFACTOR - 코드 품질 개선
-
-Alfred가 TRUST 5 원칙을 적용하여 코드를 개선합니다:
-
-```python
-# src/hello/models.py
-# @CODE:EX-HELLO-001:MODEL | SPEC: SPEC-HELLO-001.md
-
-from pydantic import BaseModel, Field, validator
-
-class HelloRequest(BaseModel):
-    """@CODE:EX-HELLO-001:MODEL - 요청 검증 모델"""
-    name: str = Field(default="World", max_length=50, description="인사할 이름")
-
-    @validator('name')
-    def validate_name(cls, v):
-        if not v.strip():
-            raise ValueError('이름은 비워둘 수 없습니다')
-        return v.strip()
-
-class HelloResponse(BaseModel):
-    """@CODE:EX-HELLO-001:MODEL - 응답 모델"""
-    message: str = Field(description="인사말 메시지")
-```
-
-```python
-# src/hello/api.py (리팩토링됨)
-# @CODE:EX-HELLO-001:API | SPEC: SPEC-HELLO-001.md | TEST: tests/test_hello.py
-
-from fastapi import FastAPI, HTTPException, Depends
-from .models import HelloRequest, HelloResponse
-
-app = FastAPI(title="Hello API", version="1.0.0")
-
-@app.get("/hello", response_model=HelloResponse)
-def hello(params: HelloRequest = Depends()):
-    """@CODE:EX-HELLO-001:API - 검증을 포함한 Hello 엔드포인트"""
-    try:
-        message = f"Hello, {params.name}!"
-        return HelloResponse(message=message)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-```
-
-**테스트가 여전히 통과하는지 확인**:
-
-```bash
-pytest tests/test_hello.py -v
-# 결과: PASSED - 모든 테스트 여전히 통과
-```
-
-**REFACTOR 단계 커밋**:
-
-```bash
-git add src/hello/models.py src/hello/api.py
-git commit -m "♻️ refactor(HELLO-001): add models and improve validation"
-```
-
-## 3단계: 문서 동기화 (1분)
-
-모든 문서를 동기화하고 완전한 시스템을 검증하세요.
-
-```bash
+# 문서 동기화
 /alfred:3-sync
 ```
 
-### Alfred가 하는 일
+## 🎉 결과
 
-1. **API 문서 생성**:
+5분 후 다음을 얻게 됩니다:
 
-   ````markdown
-   # Hello API 문서
+- ✅ **명확한 SPEC 문서**: 구조화된 요구사항
+- ✅ **종합적인 테스트**: 87.84%+ 테스트 커버리지
+- ✅ **구현 코드**: 모범 사례를 따른 코드
+- ✅ **업데이트된 문서**: 자동으로 동기화된 문서
 
-   ## GET /hello
+## 실제 실행 예시
 
-   개인화된 인사말 메시지를 반환합니다.
-
-   ### 매개변수
-   - `name` (query, 선택적): 인사할 이름 (기본값: "World", 최대 50자)
-
-   ### 응답
-   - **200**: 성공
-     ```json
-     {"message": "Hello, Alice!"}
-   ````
-
-   - **400**: 검증 오류
-
-   ### 예제
-
-   ```bash
-   curl "http://localhost:8000/hello?name=Alice"
-   # → {"message": "Hello, Alice!"}
-   ```
-
-   ### 추적성
-
-   - @SPEC:EX-HELLO-001 - 요구사항
-   - @TEST:EX-HELLO-001 - 테스트
-   - @CODE:EX-HELLO-001 - 구현
-
-   ```
-
-   ```
-
-2. **README.md 업데이트** (API 사용 예제 포함)
-
-3. **CHANGELOG.md 생성** (버전 기록 포함)
-
-4. **TAG 체인 무결성 검증**:
-
-   ```
-   ✅ @SPEC:EX-HELLO-001 → .moai/specs/SPEC-HELLO-001/spec.md
-   ✅ @TEST:EX-HELLO-001 → tests/test_hello.py
-   ✅ @CODE:EX-HELLO-001 → src/hello/ (3개 파일)
-   ✅ @DOC:EX-HELLO-001 → docs/api/hello.md (자동 생성)
-
-   TAG 체인 무결성: 100%
-   고아 TAG: 없음
-   ```
-
-5. **TRUST 5 준수 검증**:
-
-   ```
-   ✅ Test First: 100% 커버리지 (3/3 테스트 통과)
-   ✅ Readable: 모든 함수 < 50줄
-   ✅ Unified: FastAPI 패턴 일관성
-   ✅ Secured: 입력 검증 구현됨
-   ✅ Trackable: 모든 코드에 @CODE:HELLO-001 태그됨
-   ```
-
-## 4단계: 검증 및 축하 (1분)
-
-### 완전한 시스템 검증
+### 프로젝트 생성 출력
 
 ```bash
-# 1. TAG 체인 무결성 확인
-rg '@(SPEC|TEST|CODE|DOC):HELLO-001' -n
-# 출력에 모든 4가지 TAG 유형이 표시되어야 함
+$ moai-adk init my-first-project
 
-# 2. 테스트 실행
-pytest tests/test_hello.py -v
-# 모든 테스트가 통과해야 함
+🗿 MoAI-ADK v0.23.0
+Initializing MoAI-ADK project...
 
-# 3. API 테스트
-uvicorn src.hello.api:app --reload &
-curl "http://localhost:8000/hello?name=World"
-# 반환되어야 함: {"message": "Hello, World!"}
+✅ Initialization Completed Successfully!
+────────────────────────────────────────────────────────────
+📊 Summary:
+  📁 Location:   /Users/user/my-first-project
+  🌐 Language:   Auto-detect (use /alfred:0-project)
+  🔧 Mode:       personal
+  🌍 Locale:     ko
+  📄 Files:      47 created
+  ⏱️  Duration:   1,234ms
+────────────────────────────────────────────────────────────
 
-# 4. 생성된 문서 확인
-cat docs/api/hello.md
-# 완전한 API 문서가 포함되어야 함
+🚀 Next Steps:
+  1. Run /alfred:0-project in Claude Code for full setup
+     (Configure: mode, language, report generation, etc.)
+  2. Start developing with MoAI-ADK!
 ```
 
-### 성과 검토
-
-성공적으로 생성한 것들:
-
-```
-hello-api/
-├── .moai/specs/SPEC-HELLO-001/
-│   ├── spec.md              ← 전문적 사양
-│   └── plan.md              ← 구현 계획
-├── tests/test_hello.py      ← 100% 테스트 커버리지
-├── src/hello/
-│   ├── api.py               ← 프로덕션 품질 구현
-│   ├── models.py            ← 데이터 검증 모델
-│   └── __init__.py
-├── docs/api/hello.md        ← 자동 생성된 API 문서
-├── README.md                ← 사용 예제로 업데이트됨
-├── CHANGELOG.md             ← 버전 기록
-└── .git/                    ← TDD 커밋과 깨끗한 git 기록
-```
-
-### Git 기록
+### Claude Code 설정
 
 ```bash
-git log --oneline | head -5
+Claude Code> /alfred:0-project
+
+📋 Configuration Health Check:
+✅ Project configuration complete
+✅ Recent setup: Just now
+✅ Version match: 0.23.0
+✅ Multi-language system: Active
+✅ Expert delegation: Ready
+
+All systems are healthy! 🎉
 ```
 
-예상 출력:
+### 첫 기능 개발
 
+```bash
+Claude Code> /alfred:1-plan "간단한 계산기 기능"
+
+🎯 SPEC 계획 생성 완료:
+- SPEC-CALC-001: 간단한 계산기 기능
+- 요구사항: 사칙연산, 입력 유효성 검사, 오류 처리
+- 테스트 케이스: 15개 포함
+- 예상 개발 시간: 30분
+
+Claude Code> /alfred:2-run CALC-001
+
+🔄 TDD 사이클 실행:
+1️⃣ RED: 테스트 작성 완료 (15개 테스트)
+2️⃣ GREEN: 최소 구현 완료
+3️⃣ REFACTOR: 코드 품질 개선 완료
+4️⃣ SYNC: 문서 자동 동기화 완료
+
+✅ 기능 개발 완료!
+- 테스트 커버리지: 92.3%
+- 코드 품질: TRUST 5 준수
+- 생성된 파일: 5개
 ```
-a1b2c3d ✅ sync(HELLO-001): update docs and changelog
-d4e5f6c ♻️ refactor(HELLO-001): add models and improve validation
-b2c3d4e 🟢 feat(HELLO-001): implement hello API
-a3b4c5d 🔴 test(HELLO-001): add failing hello API tests
-e5f6g7h 🌿 Create feature/SPEC-HELLO-001 branch
+
+## 확인 단계
+
+### 프로젝트 구조 확인
+
+```bash
+# 프로젝트 구조
+tree my-first-project -I '__pycache__|node_modules'
+
+my-first-project/
+├── .claude/
+│   ├── agents/
+│   ├── commands/
+│   ├── skills/
+│   └── hooks/
+├── .moai/
+│   ├── config.json
+│   ├── specs/
+│   │   └── SPEC-CALC-001/
+│   │       ├── spec.md
+│   │       ├── plan.md
+│   │       └── acceptance.md
+│   └── reports/
+├── src/
+│   └── calculator.py
+├── tests/
+│   └── test_calculator.py
+├── docs/
+│   └── api/
+├── README.md
+├── CHANGELOG.md
+└── .git/
 ```
 
-## 배운 것들
+### 테스트 실행
 
-### 경험한 개념
+```bash
+# 프로젝트에서 테스트 실행
+python -m pytest tests/
 
-✅ **SPEC-First**: 코딩 전에 명확한 요구사항 생성 ✅ **TDD**: 100% 테스트 커버리지로 RED → GREEN → REFACTOR 사이클 ✅ **@TAG
-시스템**: 요구사항부터 문서까지 완전한 추적성 ✅ **TRUST 5**: 검증과 오류 처리를 포함한 프로덕션 품질 코드 ✅ **Alfred 워크플로우**: 자동화된 문서화와 품질
-검사
+# 결과 예시
+========== test session starts ==========
+collected 15 items
 
-### 얻은 기술
+tests/test_calculator.py .............
+15 passed in 0.123s
 
-- **EARS 구문**: 구조화된 요구사항 작성
-- **테스트 설계**: 포괄적인 테스트 케이스 생성
-- **API 개발**: FastAPI 모범 사례
-- **문서화**: 자동 생성, 항상 동기화되는 문서
-- **Git 워크플로우**: 깨끗하고 추적 가능한 커밋 기록
+92.3% coverage
+```
+
+### Git 히스토리 확인
+
+```bash
+# Git 커밋 확인
+git log --oneline -5
+
+feat(calculator): Add basic arithmetic operations with TDD
+test(calculator): Add comprehensive test suite for calculator
+refactor(calculator): Improve error handling and input validation
+docs(calculator): Auto-sync documentation with implementation
+feat(SPEC-CALC-001): Complete calculator feature with full coverage
+```
+
+## 🆕 v0.23.1 최신 기능 활용하기
+
+### BaaS 플랫폼 빠른 통합
+
+MoAI-ADK v0.23.1은 **12개 BaaS 플랫폼**을 완전 지원합니다:
+
+```bash
+# Supabase 통합 예제
+/alfred:1-plan "Supabase를 활용한 실시간 채팅 기능"
+/alfred:2-run CHAT-001
+
+# Firebase 통합 예제
+/alfred:1-plan "Firebase Auth를 활용한 소셜 로그인"
+/alfred:2-run AUTH-002
+```
+
+**지원 플랫폼**: Supabase, Firebase, Vercel, Cloudflare, Auth0, Convex, Railway, Neon, Clerk, PocketBase, Appwrite, Parse
+
+### Expert Delegation System 활용
+
+```bash
+# 자동 전문가 할당 (v0.23.1)
+/alfred:0-project  # project-manager 자동 할당
+/alfred:1-plan "복잡한 요구사항"  # spec-builder 자동 할당
+/alfred:2-run SPEC-001  # tdd-implementer 자동 할당
+```
+
+**60% 상호작용 감소**: Alfred가 자동으로 적절한 전문가를 선택합니다.
+
+### 292 Skills 활용
+
+```bash
+# Skills 목록 확인
+moai-adk skills list
+
+# 특정 Skill 정보 확인
+moai-adk skills info moai-baas-supabase
+```
 
 ## 다음 단계
 
-### 계속해서 빌드하기
+빠른 시작을 완료했습니다! 이제 다음을 할 수 있습니다:
 
-API에 더 많은 기능 추가:
+### 실전 학습 자료
 
-```bash
-# 새 엔드포인트 추가
-/alfred:1-plan "JSON 본문을 받는 POST /greet 엔드포인트"
+1. **[Tutorial 1: REST API 개발](/ko/tutorials/tutorial-01-rest-api)** - 30분, 초보자 추천
+2. **[Tutorial 2: JWT 인증 구현](/ko/tutorials/tutorial-02-jwt-auth)** - 1시간, 실전 보안
+3. **[Tutorial 4: Supabase 통합](/ko/tutorials/tutorial-04-baas-supabase)** - 1시간, BaaS 활용
 
-# 또는 기존 기능 향상
-/alfred:1-plan "/hello 엔드포인트에 언어 지원 추가"
-```
+### 코드 예제 라이브러리
 
-### 고급 주제 탐색
+- **[REST API 예제](/ko/examples/rest-api)**: CRUD, 인증, 에러 처리
+- **[인증 예제](/ko/examples/authentication)**: JWT, OAuth, Session
+- **[BaaS 예제](/ko/examples/baas)**: Supabase, Firebase 통합
 
-- **[프로젝트 구성](guides/project/config.md)**: 프로젝트 설정 사용자정의
-- **[SPEC 작성](guides/specs/basics.md)**: EARS 구문 마스터하기
-- **[TDD 패턴](guides/tdd/green.md)**: 고급 테스트 전략 학습
-- **[TAG 시스템](reference/tags/index.md)**: 추적성 깊이 이해하기
+### 심화 학습
 
-### 커뮤니티 참여
+- **[초보자 가이드](/ko/guides/beginner)**: 체계적인 학습 경로
+- **[중급자 가이드](/ko/guides/intermediate)**: 고급 패턴과 실전 활용
+- **[Skills 생태계](/ko/skills/ecosystem-upgrade-v4)**: 292 Skills 완전 가이드
 
-- **GitHub Issues**: 버그 리포트 또는 기능 요청
-- **Discussions**: 질문하고 경험 공유
-- **기여**: MoAI-ADK 개선 도와주기
+## 빠른 참조
 
-## 문제 해결
+### 유용한 Alfred 명령어
 
-### 일반적인 문제
+| 명령어 | 목적 | 사용법 |
+|--------|------|--------|
+| `/alfred:0-project` | 프로젝트 설정 | 초기화 또는 재설정 |
+| `/alfred:1-plan` | SPEC 작성 | 기능 계획 및 요구사항 |
+| `/alfred:2-run` | TDD 구현 | 자동화된 개발 |
+| `/alfred:3-sync` | 동기화 | 문서 및 리포트 생성 |
 
-**가져오기 오류로 테스트 실패**:
-
-```bash
-# 의존성 설치
-uv add fastapi pytest
-uv sync
-```
-
-**API가 시작되지 않음**:
+### 일반적인 작업
 
 ```bash
-# 포트와 의존성 확인
-lsof -i :8000
-uvicorn src.hello.api:app --reload --port 8001
+# 새 기능 추가
+/alfred:1-plan "새 기능 이름"
+/alfred:2-run FEATURE-ID
+
+# 버그 수정
+/alfred:1-plan "버그 수정: 설명"
+/alfred:2-run BUG-ID
+
+# 프로젝트 상태 확인
+/alfred:status
+
+# 리포트 생성
+/alfred:report
 ```
 
-**문서가 생성되지 않음**:
+## 도움말
 
-```bash
-# 수동으로 동기화 실행
-/alfred:3-sync
-```
+문제가 있나요?
 
-### 도움 얻기
+- 📖 [설치 가이드](./installation): 자세한 설치 지침
+- 🔧 [문제 해결](../troubleshooting): 일반적인 문제 해결
+- 💬 [커뮤니티](https://github.com/modu-ai/moai-adk/discussions): 도움 요청
 
-```bash
-# 시스템 진단
-moai-adk doctor
+---
 
-# 자동으로 이슈 생성
-/alfred:9-feedback
-```
-
-## 요약
-
-단 10분 만에 다음을 완료했습니다:
-
-1. ✅ **명확한 요구사항 정의** (SPEC과 EARS 구문 사용)
-2. ✅ **TDD로 구현** (100% 테스트 커버리지 달성)
-3. ✅ **프로덕션 품질 코드 생성** (검증과 오류 처리 포함)
-4. ✅ **완전한 문서 생성** (동기화 유지)
-5. ✅ **완전한 추적성 유지** (@TAG 시스템으로)
-6. ✅ **모범 사례 준수** (TRUST 5 원칙으로)
-
-이것이 MoAI-ADK의 힘입니다: 전통적인 방법보다 더 빠르게 신뢰할 수 있고, 유지보수가 쉬우며, 잘 문서화된 코드를 생성하세요. 이제 자신감 있게 복잡한 애플리케이션을 빌드할
-준비가 되었습니다!
-
-[Alfred 워크플로우 가이드](guides/alfred/index.md)로 여정을 계속하거나 관심 있는 특정 주제를 탐색하세요.
+🎉 **축하합니다!** 이제 MoAI-ADK로 생산적인 개발을 시작할 준비가 되었습니다.

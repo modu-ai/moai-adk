@@ -1,541 +1,578 @@
 # SPEC Authoring Examples
 
-## Real-World EARS Examples
+## Example 1: Complete Feature SPEC with All 5 EARS Patterns
 
-### Example 1: E-commerce Checkout
+**File**: `.moai/specs/SPEC-105/spec.md`
 
-```markdown
-### Ubiquitous Requirements
-**UR-001**: The system shall provide a shopping cart feature.
-**UR-002**: The system shall support credit card payment.
-
-### Event-driven Requirements
-**ER-001**: WHEN the user adds an item to the cart, the system shall update the cart total.
-**ER-002**: WHEN payment succeeds, the system shall send a confirmation email.
-**ER-003**: WHEN inventory is insufficient, the system shall display an "Out of Stock" message.
-
-### State-driven Requirements
-**SR-001**: WHILE items exist in the cart, the system shall reserve inventory for 30 minutes.
-**SR-002**: WHILE payment is being processed, the UI shall display a loading indicator.
-
-### Optional Features
-**OF-001**: WHERE express shipping is selected, the system can calculate express shipping cost.
-**OF-002**: WHERE gift wrapping is available, the system can offer gift wrapping option.
-
-### Unwanted Behaviors
-**UB-001**: IF cart total is less than $50, THEN the system shall add a $5 shipping fee.
-**UB-002**: IF 3 payment failures occur, THEN the system shall lock the order for 1 hour.
-**UB-003**: Order processing time shall not exceed 5 seconds.
-```
-
-### Example 2: Mobile App Push Notifications
-
-```markdown
-### Ubiquitous Requirements
-**UR-001**: The app shall support push notifications.
-**UR-002**: The app shall allow users to enable/disable notifications.
-
-### Event-driven Requirements
-**ER-001**: WHEN a new message arrives, the app shall display a push notification.
-**ER-002**: WHEN the user taps a notification, the app shall navigate to the message screen.
-**ER-003**: WHEN notification permission is denied, the app shall display an in-app banner.
-
-### State-driven Requirements
-**SR-001**: WHILE the app is in foreground state, the system shall display in-app banner instead of push notification.
-**SR-002**: WHILE Do Not Disturb mode is enabled, the system shall mute all notifications.
-
-### Optional Features
-**OF-001**: WHERE notification sound is enabled, the system can play notification sound.
-**OF-002**: WHERE notification grouping is supported, the system can group notifications by conversation.
-
-### Unwanted Behaviors
-**UB-001**: IF 10 or more notifications are pending, THEN the system shall consolidate them into a summary notification.
-**UB-002**: Notification delivery latency shall not exceed 5 seconds.
-```
-
+```yaml
 ---
-
-## Complete SPEC Examples
-
-### Example 1: Minimal SPEC
-
-```markdown
----
-id: HELLO-001
-version: 0.0.1
-status: draft
-created: 2025-10-29
-updated: 2025-10-29
-author: @Goos
-priority: low
----
-
-# @SPEC:HELLO-001: Hello World API
-
-## HISTORY
-
-### v0.0.1 (2025-10-29)
-- **INITIAL**: Hello World API SPEC draft created
-- **AUTHOR**: @Goos
-
-## Environment
-
-**Runtime**: Node.js 20.x
-**Framework**: Express.js
-
-## Assumptions
-
-1. Single endpoint required
-2. No authentication needed
-3. JSON response format
-
-## Requirements
-
-### Ubiquitous Requirements
-
-**UR-001**: The system shall provide a GET /hello endpoint.
-
-### Event-driven Requirements
-
-**ER-001**: WHEN a GET request is sent to /hello, the system shall return JSON `{"message": "Hello, World!"}`.
-
-### Unwanted Behaviors
-
-**UB-001**: Response time shall not exceed 50ms.
-```
-
-### Example 2: Production-Grade SPEC
-
-```markdown
----
-id: AUTH-001
-version: 0.1.0
-status: completed
-created: 2025-10-29
-updated: 2025-10-30
-author: @Goos
+code: SPEC-105
+title: Email Notification Service with Template Engine
+status: active
+created_at: 2025-11-12
+updated_at: 2025-11-12
 priority: high
-category: feature
-labels:
-  - authentication
-  - jwt
-  - security
+effort: 8
+version: 1.0.0
+epic: NOTIFICATIONS-01
 depends_on:
-  - USER-001
-  - TOKEN-001
-blocks:
-  - AUTH-002
-  - PAYMENT-001
-related_issue: "https://github.com/modu-ai/moai-adk/issues/42"
-scope:
-  packages:
-    - src/core/auth
-    - src/core/token
-    - src/api/routes/auth
-  files:
-    - auth-service.ts
-    - token-manager.ts
-    - auth.routes.ts
+  - SPEC-104
+  - SPEC-102
+domains:
+  - backend
+  - infrastructure
+acceptance_difficulty: high
+rollback_risk: high
+risks: |
+  - Performance: 1000+ emails/second stress testing required
+  - Reliability: SMTP provider failover must be tested
+  - Security: Email address enumeration attack mitigation needed
+tags:
+  - notifications
+  - email
+  - async
+  - templates
 ---
 
-# @SPEC:AUTH-001: JWT Authentication System
+# SPEC-105: Email Notification Service with Template Engine
 
-## HISTORY
+## Overview
 
-### v0.1.0 (2025-10-30)
-- **COMPLETED**: TDD implementation finished
-- **AUTHOR**: @Goos
-- **EVIDENCE**: Commits 4c66076, 34e1bd9, 1dec08f
-- **TEST COVERAGE**: 89.13% (target: 85%)
-- **QUALITY METRICS**:
-  - Test Pass Rate: 100% (42/42 tests)
-  - Linting: ruff ✅
-  - Type Checking: mypy ✅
-- **TAG CHAIN**:
-  - @SPEC:AUTH-001: 1 occurrence
-  - @TEST:AUTH-001: 8 occurrences
-  - @CODE:AUTH-001: 12 occurrences
-
-### v0.0.2 (2025-10-25)
-- **REFINED**: Added password reset flow requirements
-- **REFINED**: Clarified token lifetime constraints
-- **AUTHOR**: @Goos
-
-### v0.0.1 (2025-10-29)
-- **INITIAL**: JWT authentication SPEC draft created
-- **AUTHOR**: @Goos
-- **SCOPE**: User authentication, token generation, token validation
-- **CONTEXT**: Q4 2025 product roadmap requirements
-
-## Environment
-
-**Execution Context**:
-- Runtime: Node.js 20.x or later
-- Framework: Express.js
-- Database: PostgreSQL 15+
-
-**Technical Stack**:
-- JWT library: jsonwebtoken ^9.0.0
-- Hashing: bcrypt ^5.1.0
-
-**Constraints**:
-- Token lifetime: 15 minutes (access), 7 days (refresh)
-- Security: HTTPS required in production
-
-## Assumptions
-
-1. **User Storage**: User credentials are stored in PostgreSQL
-2. **Secret Management**: JWT secrets are managed via environment variables
-3. **Clock Sync**: Server clock is synchronized with NTP
-4. **Password Policy**: Minimum 8 characters enforced during registration
+Implement asynchronous email notification service with support for templated
+messages, intelligent retry logic with exponential backoff, delivery tracking,
+and deduplication to prevent duplicate emails within time windows.
 
 ## Requirements
 
-### Ubiquitous Requirements
+### REQ-001: Universal Pattern - Basic Email Sending
 
-**UR-001**: The system shall provide JWT-based authentication.
-
-**UR-002**: The system shall support user login with email and password.
-
-**UR-003**: The system shall issue both access and refresh tokens.
-
-### Event-driven Requirements
-
-**ER-001**: WHEN the user submits valid credentials, the system shall issue a JWT access token with 15-minute expiration.
-
-**ER-002**: WHEN a token expires, the system shall return HTTP 401 Unauthorized.
-
-**ER-003**: WHEN a refresh token is presented, the system shall issue a new access token if the refresh token is valid.
-
-### State-driven Requirements
-
-**SR-001**: WHILE the user is in an authenticated state, the system shall permit access to protected resources.
-
-**SR-002**: WHILE a token is valid, the system shall extract the user ID from token claims.
-
-### Optional Features
-
-**OF-001**: WHERE multi-factor authentication is enabled, the system can require OTP verification after password confirmation.
-
-**OF-002**: WHERE session logging is enabled, the system can record login timestamp and IP address.
-
-### Unwanted Behaviors
-
-**UB-001**: IF a token has expired, THEN the system shall deny access and return HTTP 401.
-
-**UB-002**: IF 5 or more login failures occur within 10 minutes, THEN the system shall temporarily lock the account.
-
-**UB-003**: Access token lifetime shall not exceed 15 minutes.
-
-**UB-004**: Refresh token lifetime shall not exceed 7 days.
-
-## Traceability (@TAG Chain)
-
-### TAG Chain Structure
 ```
-@SPEC:AUTH-001 (this document)
-  ↓
-@TEST:AUTH-001 (tests/auth/service.test.ts)
-  ↓
-@CODE:AUTH-001 (src/auth/service.ts, src/auth/token-manager.ts)
-  ↓
-@DOC:AUTH-001 (docs/api/authentication.md)
+SPEC-105-REQ-001: The notification service SHALL send emails asynchronously
+without blocking the calling request, returning immediately to the caller.
 ```
 
-### Validation Commands
-```bash
-# Validate SPEC TAG
-rg '@SPEC:AUTH-001' -n .moai/specs/
+**Related TEST**:
+- `test_email_sent_asynchronously`
+- `test_request_returns_immediately`
+- `test_async_processing_in_background`
 
-# Check for duplicate IDs
-rg '@SPEC:AUTH' -n .moai/specs/
-rg 'AUTH-001' -n
-
-# Scan full TAG chain
-rg '@(SPEC|TEST|CODE|DOC):AUTH-001' -n
-```
-
-## Decision Log
-
-### Decision 1: JWT vs Session Cookies (2025-10-29)
-**Context**: Need stateless authentication for microservices
-**Decision**: Use JWT tokens
-**Alternatives Considered**:
-  - Session cookies (rejected: stateful, not scalable)
-  - OAuth 2.0 (deferred: too complex for MVP)
-**Consequences**:
-  - ✅ Stateless, scalable
-  - ✅ Service-to-service authentication
-  - ❌ Token revocation complexity
-
-### Decision 2: Token Expiration 15 minutes (2025-10-30)
-**Context**: Balance between security and UX
-**Decision**: 15-minute access token, 7-day refresh token
-**Rationale**: Industry standard, OWASP best practices
-**References**: OWASP JWT best practices
-
-## Requirements Traceability Matrix
-
-| Req ID | Description | Test Cases | Status |
-|--------|-------------|------------|--------|
-| UR-001 | JWT authentication | test_authenticate_valid_user | ✅ |
-| ER-001 | Token issuance | test_token_generation | ✅ |
-| ER-002 | Token expiration | test_expired_token_rejection | ✅ |
-| SR-001 | Authenticated access | test_protected_route_access | ✅ |
-| UB-001 | Token lifetime | test_token_expiry_constraint | ✅ |
-```
 
 ---
 
-## Advanced Patterns
+### REQ-002: Conditional Pattern - Retry Logic
 
-### Pattern 1: Versioned Requirements
-
-Document requirement evolution across versions:
-
-```markdown
-### v0.2.0 (2025-11-15)
-**UR-001** (CHANGED): The system shall respond within 200ms for 99% of requests.
-  - Previous (v0.1.0): 95% of requests
-  - Rationale: User feedback-driven performance improvement
-
-### v0.1.0 (2025-10-30)
-**UR-001**: The system shall respond within 200ms for 95% of requests.
+```
+SPEC-105-REQ-002: If email delivery fails on the first attempt,
+the service SHALL retry up to 3 times with exponential backoff
+(1 second, 2 seconds, 4 seconds) before marking the email as failed.
 ```
 
-### Pattern 2: Requirements Traceability Matrix
+**Detailed Behavior**:
+- Attempt 1: Send immediately
+- Attempt 2 (if failed): Wait 1 second, retry
+- Attempt 3 (if failed): Wait 2 seconds, retry
+- Attempt 4 (if failed): Wait 4 seconds, retry
+- Final failure: Mark as FAILED, trigger alert
 
-Explicitly link requirements to test cases:
+**Related TEST**:
+- `test_retry_on_first_failure`
+- `test_exponential_backoff_timing`
+- `test_max_retry_limit`
+- `test_failed_status_after_max_retries`
 
-```markdown
-## Requirements Traceability Matrix
-
-| Req ID | Description | Test Cases | Status |
-|--------|-------------|------------|--------|
-| UR-001 | JWT authentication | test_authenticate_valid_user | ✅ |
-| ER-001 | Token issuance | test_token_generation | ✅ |
-| ER-002 | Token expiration | test_expired_token_rejection | ✅ |
-| SR-001 | Authenticated access | test_protected_route_access | ✅ |
-| UB-001 | Token lifetime | test_token_expiry_constraint | ✅ |
-```
-
-### Pattern 3: Decision Log
-
-Document architectural decisions within the SPEC:
-
-```markdown
-## Decision Log
-
-### Decision 1: JWT vs Session Cookies (2025-10-29)
-**Context**: Need stateless authentication for microservices
-**Decision**: Use JWT tokens
-**Alternatives Considered**:
-  - Session cookies (rejected: stateful, not scalable)
-  - OAuth 2.0 (deferred: too complex for MVP)
-**Consequences**:
-  - ✅ Stateless, scalable
-  - ✅ Service-to-service authentication
-  - ❌ Token revocation complexity
-
-### Decision 2: Token Expiration 15 minutes (2025-10-30)
-**Context**: Balance between security and UX
-**Decision**: 15-minute access token, 7-day refresh token
-**Rationale**: Industry standard, OWASP best practices
-**References**: OWASP JWT best practices
-```
 
 ---
 
-## Troubleshooting
+### REQ-003: Unwanted Behavior Pattern - Duplicate Prevention
 
-### Issue: "Duplicate SPEC ID detected"
-
-**Symptom**: `rg "@SPEC:AUTH-001" -n` returns multiple results
-
-**Resolution**:
-```bash
-# Find all occurrences
-rg "@SPEC:AUTH-001" -n .moai/specs/
-
-# Keep one SPEC, rename the other
-# Update TAG references in code/tests
-rg '@SPEC:AUTH-001' -l src/ tests/ | xargs sed -i 's/@SPEC:AUTH-001/@SPEC:AUTH-002/g'
+```
+SPEC-105-REQ-003: The service SHALL NOT send duplicate emails
+to the same recipient within a 5-minute deduplication window.
 ```
 
-### Issue: "Version number doesn't match status"
+**Implementation Details**:
+- Hash email recipient + template type + key parameters
+- Store hash in Redis with 5-minute TTL
+- Check hash before queuing new emails
+- Return duplicate-prevented status to caller
 
-**Symptom**: `status: completed` but `version: 0.0.1`
+**Unwanted Scenarios**:
+- Duplicate email to same user within 5-minute window
+- Different template versions sent to same user in rapid succession
+- Race condition causing duplicate sends
 
-**Resolution**:
+**Related TEST**:
+- `test_duplicate_email_prevented`
+- `test_dedup_window_5_minutes`
+- `test_different_templates_allowed`
+- `test_race_condition_prevention`
+
+
+---
+
+### REQ-004: Stakeholder Pattern - Developer Experience
+
+```
+SPEC-105-REQ-004: As an application developer,
+I want to send templated emails through a simple API
+so that I don't have to manage HTML email formatting and rendering.
+```
+
+**Developer Experience**:
+```python
+# Simple, clean API
+notify.send_email(
+    recipient="user@example.com",
+    template_name="welcome_email",
+    context={
+        "user_name": "John Doe",
+        "activation_link": "https://..."
+    }
+)
+# Returns immediately, email sent asynchronously
+```
+
+**Related TEST**:
+- `test_simple_api_usage`
+- `test_context_variables_interpolated`
+- `test_template_not_found_error`
+
+
+---
+
+### REQ-005: Boundary Condition Pattern - Load Requirements
+
+```
+SPEC-105-REQ-005: The notification service SHALL process at least
+1,000 emails per second and SHALL NOT exceed 500MB memory usage
+under sustained load (10-minute duration) with standard templates.
+```
+
+**Performance Targets**:
+- Throughput: ≥1,000 emails/second
+- Memory: ≤500MB sustained
+- CPU: ≤80% single core
+- Latency: ≤50ms to queue (p99)
+
+**Test Conditions**:
+- Template size: 10KB (realistic HTML)
+- Recipient list: 100K unique recipients
+- Duration: 10 minutes sustained
+- Concurrency: 10+ sender processes
+
+**Related TEST**:
+- `test_load_1000_emails_per_second` (benchmark)
+- `test_memory_usage_sustained_load` (benchmark)
+- `test_cpu_usage_under_load` (benchmark)
+
+
+---
+
+## Unwanted Behaviors
+
+### Security Constraints
+
+| Behavior | Rationale | Test |
+|----------|-----------|------|
+| The system SHALL NOT store plaintext email addresses in logs | Prevents PII exposure | `test_email_address_not_in_logs` |
+| The system SHALL NOT expose SMTP credentials in error messages | Prevents credential leakage | `test_credentials_not_in_errors` |
+| The system SHALL NOT send emails to unverified sender addresses | Prevents abuse/spoofing | `test_unverified_sender_rejected` |
+
+### Performance Constraints
+
+| Behavior | Rationale | Test |
+|----------|-----------|------|
+| The system SHALL NOT block on SMTP connection | Prevents slowdown for caller | `test_smtp_nonblocking` |
+| The system SHALL NOT load entire email template into memory per recipient | Prevents memory explosion | `test_streaming_template_rendering` |
+| The system SHALL NOT exceed network bandwidth quota | Prevents infrastructure overload | `test_bandwidth_throttling` |
+
+### Reliability Constraints
+
+| Behavior | Rationale | Test |
+|----------|-----------|------|
+| The system SHALL NOT lose email jobs if service restarts | Ensures durability | `test_job_persistence_on_restart` |
+| The system SHALL NOT fail authentication if secondary cache is down | Ensures availability | `test_fallback_without_redis` |
+
+---
+
+## Acceptance Criteria
+
+- [ ] **REQ-001**: Async email sending verified (non-blocking)
+- [ ] **REQ-002**: Retry logic with exponential backoff implemented and tested
+- [ ] **REQ-003**: Duplicate detection within 5-minute window working
+- [ ] **REQ-004**: Simple API (recipient + template + context) functional
+- [ ] **REQ-005**: Load test results: 1000+ emails/sec, ≤500MB memory
+- [ ] **Code Coverage**: ≥85% (`src/notifications/email.py`)
+- [ ] **Security Scan**: OWASP Top 10 compliance verified
+- [ ] **Performance Baseline**: p99 latency ≤50ms for queue operation
+- [ ] **Documentation**: API guide with 5+ usage examples
+- [ ] **Integration**: Verified with production email provider (SendGrid/SES)
+
+---
+
+## Implementation Notes
+
+### Architecture
+
+```
+Application Code
+    ↓
+notify.send_email() [Non-blocking]
+    ↓
+Async Job Queue (Redis/Celery)
+    ↓
+Email Worker Process
+    ├─ Template Rendering
+    ├─ Header/Footer Injection
+    ├─ Variable Substitution
+    ├─ SMTP Retry Logic
+    └─ Delivery Tracking Database
+
+Monitoring:
+- Email queue depth
+- Failed emails count
+- Retry attempt distribution
+- SMTP provider response times
+```
+
+### Database Schema
+
+```sql
+-- Email jobs table
+CREATE TABLE email_jobs (
+    id BIGSERIAL PRIMARY KEY,
+    recipient_email VARCHAR(255),
+    template_name VARCHAR(100),
+    context JSONB,
+    status ENUM ('pending', 'processing', 'sent', 'failed'),
+    attempt_count INT DEFAULT 0,
+    next_retry_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW(),
+    sent_at TIMESTAMP,
+    error_message TEXT
+);
+
+CREATE INDEX idx_status_retry ON email_jobs(status, next_retry_at);
+CREATE INDEX idx_recipient_dedup ON email_jobs(recipient_email, template_name);
+```
+
+### Configuration
+
 ```yaml
-# Update version to reflect completion
-version: 0.1.0  # Implementation completed
-status: completed
+# notifications.yaml
+email:
+  provider: sendgrid  # sendgrid | aws-ses | mailgun
+  api_key: ${SENDGRID_API_KEY}
+  
+  retry:
+    max_attempts: 3
+    backoff_base: 1000  # milliseconds
+    backoff_multiplier: 2
+  
+  deduplication:
+    enabled: true
+    window_seconds: 300  # 5 minutes
+    backend: redis
+  
+  performance:
+    batch_size: 100  # emails per SMTP connection
+    max_concurrent: 10  # concurrent SMTP connections
+    worker_count: 5  # background worker processes
+  
+  monitoring:
+    log_email_addresses: false  # never log PII
+    log_templates: true  # log template names
+    track_delivery: true  # store delivery events
 ```
 
-### Issue: "HISTORY section missing version entry"
+---
 
-**Symptom**: Content changed but no new HISTORY entry
+## Testing Strategy
 
-**Resolution**:
-```markdown
-## HISTORY
+### Unit Tests (45% coverage)
 
-### v0.0.2 (2025-10-25)  ← Add new entry
-- **REFINED**: XYZ requirement updated
-- **AUTHOR**: @YourHandle
+```python
+# tests/test_email_service.py
 
-### v0.0.1 (2025-10-23)
-- **INITIAL**: Initial draft
+import pytest
+from src.notifications.email import EmailService, DuplicateEmailError
+
+@pytest.fixture
+def email_service():
+    """Create email service instance for testing."""
+    return EmailService(config="test")
+
+class TestBasicSending:
+    """Test REQ-001: Async email sending."""
+    
+    def test_send_email_returns_immediately(self, email_service):
+        """Test that send_email returns immediately without blocking."""
+        start = time.time()
+        result = email_service.send_email(
+            recipient="user@example.com",
+            template_name="welcome",
+            context={"name": "John"}
+        )
+        duration = time.time() - start
+        
+        assert duration < 0.1  # <100ms
+        assert result["job_id"] is not None
+        assert result["status"] == "queued"
+
+class TestRetryLogic:
+    """Test REQ-002: Retry with exponential backoff."""
+    
+    def test_retry_after_first_failure(self, email_service, mock_smtp):
+        """Test exponential backoff after first SMTP failure."""
+        mock_smtp.fail_count = 1  # Fail first attempt
+        
+        email_service.send_email(...)
+        email_service.process_jobs()  # First attempt (fails)
+        
+        # Check retry scheduled
+        next_retry = email_service.get_next_retry_time()
+        assert next_retry == 1  # 1 second
+
+class TestDuplication:
+    """Test REQ-003: Duplicate prevention."""
+    
+    def test_duplicate_prevented(self, email_service):
+        """Test duplicate emails rejected within window."""
+        # Send first email
+        email_service.send_email(
+            recipient="user@example.com",
+            template_name="welcome",
+            context={"key": "value"}
+        )
+        
+        # Try to send duplicate
+        with pytest.raises(DuplicateEmailError):
+            email_service.send_email(
+                recipient="user@example.com",
+                template_name="welcome",
+                context={"key": "value"}
+            )
 ```
 
-### Issue: "Author field missing @ prefix"
+### Integration Tests (35% coverage)
 
-**Symptom**: `author: Goos` instead of `author: @Goos`
+```python
+# tests/test_email_integration.py
 
-**Resolution**:
+@pytest.mark.integration
+class TestEmailIntegration:
+    """Integration tests with real Redis and database."""
+    
+    def test_end_to_end_email_flow(self, integration_db, redis):
+        """Test complete flow: send → queue → process → deliver."""
+        service = EmailService(db=integration_db, cache=redis)
+        
+        # Send email
+        result = service.send_email(
+            recipient="test@example.com",
+            template_name="welcome"
+        )
+        
+        # Process queue
+        service.process_jobs()
+        
+        # Verify in database
+        job = integration_db.get_job(result["job_id"])
+        assert job.status == "sent"
+```
+
+### Load Tests (10% coverage)
+
+```bash
+# tests/load/load_test.py
+
+import concurrent.futures
+import time
+
+def test_load_1000_emails_per_second():
+    """Benchmark: 1000 emails/second for 10 minutes."""
+    service = EmailService()
+    
+    start_memory = get_memory_usage()
+    start_time = time.time()
+    
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        for i in range(600_000):  # 600k emails over 10 minutes
+            executor.submit(
+                service.send_email,
+                recipient=f"user{i}@example.com",
+                template_name="welcome"
+            )
+    
+    duration = time.time() - start_time
+    peak_memory = get_memory_usage()
+    
+    throughput = 600_000 / duration
+    memory_used = peak_memory - start_memory
+    
+    assert throughput >= 1000  # emails/second
+    assert memory_used <= 500  # MB
+```
+
+---
+
+## References
+
+### Official Documentation
+
+- **Sendgrid API**: https://docs.sendgrid.com/
+- **AWS SES**: https://docs.aws.amazon.com/ses/
+- **Mailgun API**: https://documentation.mailgun.com/
+- **Email RFC 5322**: https://tools.ietf.org/html/rfc5322
+- **MIME Types RFC 2045**: https://tools.ietf.org/html/rfc2045
+
+### Related SPECs
+
+- **SPEC-104**: User Profile Service (prerequisite)
+- **SPEC-102**: Email Template Schema Definition (prerequisite)
+- **SPEC-106**: Email Delivery Tracking (follow-up)
+- **SPEC-107**: Notification Preferences (optional dependency)
+
+### TAGs
+
+
+---
+
+## Example 2: Simple Bug Fix SPEC
+
+**File**: `.moai/specs/SPEC-012/spec.md`
+
 ```yaml
-# Incorrect
-author: Goos
-author: goos
+---
+code: SPEC-012
+title: Fix Race Condition in User Cache Invalidation
+status: active
+created_at: 2025-11-12
+updated_at: 2025-11-12
+priority: high
+effort: 3
+version: 1.0.0
+domains:
+  - backend
+  - cache
+tags:
+  - bug-fix
+  - concurrency
+  - cache
+---
 
-# Correct
-author: @Goos
+# SPEC-012: Fix Race Condition in User Cache Invalidation
+
+## Overview
+
+Address race condition in user profile cache invalidation that allows stale
+data to be served when multiple updates occur rapidly. Implementation uses
+distributed locking to ensure sequential cache updates.
+
+## Requirements
+
+### REQ-001: Universal - Mutex Protection
+
+```
+SPEC-012-REQ-001: The cache invalidation mechanism SHALL use
+distributed mutual exclusion (mutex) to prevent concurrent updates
+to the same user profile cache entry.
 ```
 
-### Issue: "EARS pattern mixing"
+### REQ-002: Unwanted Behavior - Race Condition Prevention
 
-**Symptom**: "WHEN user logs in, WHILE session is active, the system shall..."
+```
+SPEC-012-REQ-002: The system SHALL NOT serve stale user profile data
+when multiple concurrent updates occur to the same user record.
+```
 
-**Resolution**:
-```markdown
-# Bad (pattern mixing)
-**ER-001**: WHEN user logs in, WHILE session is active, the system shall permit access.
+## Acceptance Criteria
 
-# Good (separate requirements)
-**ER-001**: WHEN user successfully logs in, the system shall create a session.
-**SR-001**: WHILE session is active, the system shall permit access to protected resources.
+- [ ] Race condition test case fails before fix
+- [ ] Distributed lock implementation added
+- [ ] Race condition test case passes after fix
+- [ ] Performance impact <5% (lock acquisition time)
+- [ ] Code coverage ≥85%
+
+## Testing
+
+```python
+def test_race_condition_prevented():
+    """Test that concurrent updates don't cause stale data."""
+    user_id = 123
+    
+    # Simulate 10 concurrent updates
+    def update_user(new_data):
+        user_service.update(user_id, new_data)
+        cached = cache.get(f"user:{user_id}")
+        return cached
+    
+    results = run_concurrent(
+        update_user,
+        num_threads=10,
+        args=[{"name": f"User {i}"} for i in range(10)]
+    )
+    
+    # All threads should see their own update
+    # (no stale/mixed data from other threads)
+    assert len(set(results)) == 10  # 10 unique final states
 ```
 
 ---
 
-## Best Practices Summary
+## Example 3: Minimal SPEC for Quick Fix
 
-### ✅ DO (Best Practices)
+**File**: `.moai/specs/SPEC-025/spec.md`
 
-1. **Check for duplicate IDs before creating**
-   ```bash
-   rg "@SPEC:AUTH-001" -n .moai/specs/
-   rg "AUTH-001" -n
-   ```
-
-2. **Update HISTORY on every content change**
-   ```markdown
-   ### v0.0.2 (2025-10-25)
-   - **REFINED**: XYZ added
-   - **AUTHOR**: @YourHandle
-   ```
-
-3. **Follow version lifecycle strictly**
-   ```
-   0.0.1 → 0.0.2 → ... → 0.1.0 → 0.1.1 → ... → 1.0.0
-   (draft)  (draft)       (completed)  (patches)     (stable)
-   ```
-
-4. **Use @ prefix in author field**
-   ```yaml
-   author: @Goos  # Correct
-   ```
-
-5. **Write testable, measurable requirements**
-   ```markdown
-   # Good
-   **UR-001**: API response time shall not exceed 200ms for 95% of requests.
-
-   # Bad
-   **UR-001**: The system should be fast.
-   ```
-
-6. **Include all 7 required metadata fields**
-   ```yaml
-   id: AUTH-001
-   version: 0.0.1
-   status: draft
-   created: 2025-10-29
-   updated: 2025-10-29
-   author: @Goos
-   priority: high
-   ```
-
-7. **Use EARS patterns consistently**
-
-### ❌ DON'T (Anti-Patterns)
-
-1. **Don't change SPEC ID after assignment**
-   - Breaks TAG chain
-   - Orphans existing code/tests
-   - Loses Git history
-
-2. **Don't skip HISTORY updates**
-   - Loses change rationale
-   - Unclear version progression
-   - Audit trail gaps
-
-3. **Don't jump version numbers without reason**
-   ```markdown
-   # Bad: 0.0.1 → 1.0.0
-   # Good: 0.0.1 → 0.0.2 → ... → 0.1.0 → 1.0.0
-   ```
-
-4. **Don't write ambiguous requirements**
-   - Avoid "fast", "user-friendly", "good"
-   - Use measurable criteria
-
-5. **Don't mix EARS patterns in one requirement**
-
-6. **Don't skip validation before submission**
-   ```bash
-   ./validate-spec.sh .moai/specs/SPEC-AUTH-001
-   ```
-
-7. **Don't create duplicate SPEC IDs**
-
+```yaml
+---
+code: SPEC-025
+title: Update Dependency: TypeScript 5.9.0
+status: active
+created_at: 2025-11-12
+updated_at: 2025-11-12
+priority: medium
+effort: 1
+domains:
+  - frontend
+tags:
+  - dependencies
+  - typescript
 ---
 
-## Integration Workflow
+# SPEC-025: Update Dependency: TypeScript 5.9.0
 
-### `/alfred:1-plan` Integration
+## Requirements
 
-When `/alfred:1-plan` is called, the `spec-builder` agent uses this Skill to:
+### REQ-001
 
-1. **Analyze**: User request and project context
-2. **Generate**: SPEC candidates with appropriate structure
-3. **Validate**: Metadata completeness
-4. **Create**: `.moai/specs/SPEC-{ID}/spec.md` with EARS requirements
-5. **Initialize**: Git workflow (feature branch, Draft PR)
-
-### spec-builder Integration Points
-
-```markdown
-Phase 1: SPEC candidate generation
-  ↓ (uses moai-spec-authoring for metadata structure)
-Phase 2: User approval
-  ↓
-Phase 3: SPEC file creation
-  ↓ (applies EARS templates from this Skill)
-Phase 4: Git workflow initialization
-  ↓
-Phase 5: Handoff to /alfred:2-run
+```
+SPEC-025-REQ-001: The project SHALL update TypeScript
+from 5.8.x to 5.9.x in package.json.
 ```
 
-### Agent Collaboration
+### REQ-002
 
-- **spec-builder**: Creates SPEC using this Skill's templates
-- **tag-agent**: Validates TAG format and uniqueness
-- **trust-checker**: Verifies metadata completeness
-- **git-manager**: Creates feature branch and Draft PR
+```
+SPEC-025-REQ-002: The build system SHALL NOT show
+any new TypeScript compiler errors after the update.
+```
+
+## Acceptance Criteria
+
+- [ ] package.json: `"typescript": "^5.9.0"`
+- [ ] package-lock.json regenerated
+- [ ] `npm run build` passes
+- [ ] All tests pass
+- [ ] No new linting errors
 
 ---
 
-**Last Updated**: 2025-10-29
-**Version**: 1.2.0
+# Summary
+
+These examples demonstrate:
+1. **Complete feature SPEC** (SPEC-105): All 5 EARS patterns, comprehensive testing
+2. **Bug fix SPEC** (SPEC-012): Smaller scope, focused requirements
+3. **Minimal SPEC** (SPEC-025): Quick updates, simple requirements
+
+Use these as templates when authoring your own SPECs.

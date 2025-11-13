@@ -1,0 +1,967 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2025-11-12",
+  "description": "Complete tab-based settings schema for /alfred:0-project setting command",
+  "api_constraints": {
+    "max_questions_per_batch": 4,
+    "min_options_per_question": 2,
+    "max_options_per_question": 4,
+    "auto_other_option": true,
+    "no_emojis": true,
+    "note": "Fifth option is always 'Other' for custom input"
+  },
+  "tabs": [
+    {
+      "id": "tab_1_user_language",
+      "label": "탭 1: 사용자 및 언어",
+      "description": "Alfred 이름 설정 및 대화 언어 선택",
+      "icon": "👤",
+      "setting_count": 3,
+      "batch_count": 1,
+      "batches": [
+        {
+          "batch_id": "1.1",
+          "label": "기본 설정",
+          "question_count": 3,
+          "questions": [
+            {
+              "question": "사용자 이름은 현재 'GoosLab'으로 설정되어 있습니다. 이 이름이 맞나요?",
+              "header": "사용자 이름",
+              "field": "user.name",
+              "type": "text_input",
+              "multiSelect": false,
+              "easy_description": "Alfred와 대화할 때 사용할 사용자 이름입니다. 원하는 이름으로 설정할 수 있습니다.",
+              "options": [
+                {
+                  "label": "네, 현재 설정 유지",
+                  "description": "GoosLab - 그대로 유지"
+                },
+                {
+                  "label": "아니요, 변경하기",
+                  "description": "아래의 입력창에 새로운 이름을 입력하세요"
+                }
+              ],
+              "current_value": "GoosLab",
+              "required": true
+            },
+            {
+              "question": "Alfred와 대화할 때 사용할 언어는? (현재: 한국어/ko)",
+              "header": "대화 언어",
+              "field": "language.conversation_language",
+              "type": "select_single",
+              "multiSelect": false,
+              "easy_description": "모든 대화, 문서, 코드 주석이 이 언어로 생성됩니다. 선택 후 conversation_language_name은 자동으로 업데이트됩니다.",
+              "options": [
+                {
+                  "label": "한국어 (ko)",
+                  "description": "모든 콘텐츠가 한국어로 생성됩니다"
+                },
+                {
+                  "label": "영어 (en)",
+                  "description": "모든 콘텐츠가 영어로 생성됩니다"
+                },
+                {
+                  "label": "일본어 (ja)",
+                  "description": "모든 콘텐츠가 일본어로 생성됩니다"
+                },
+                {
+                  "label": "스페인어 (es)",
+                  "description": "모든 콘텐츠가 스페인어로 생성됩니다"
+                }
+              ],
+              "current_value": "ko",
+              "required": true
+            },
+            {
+              "question": "에이전트 내부 프롬프트 언어는 현재 Korean(ko)으로 설정되어 있습니다. 이를 어떻게 설정하시겠습니까?",
+              "header": "에이전트 프롬프트 언어",
+              "field": "language.agent_prompt_language",
+              "type": "select_single",
+              "multiSelect": false,
+              "easy_description": "Alfred와 Sub-agents가 내부적으로 사용할 언어입니다. 보통은 대화 언어와 같게 설정합니다.",
+              "options": [
+                {
+                  "label": "Korean - 한국어로 유지",
+                  "description": "모든 에이전트 메시지도 한국어"
+                },
+                {
+                  "label": "English - 영어로 변경",
+                  "description": "MoAI-ADK 오픈소스 유지보수 모드"
+                },
+                {
+                  "label": "직접 입력",
+                  "description": "다른 언어로 변경"
+                }
+              ],
+              "current_value": "ko",
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tab_2_project_info",
+      "label": "탭 2: 프로젝트 기본 정보",
+      "description": "프로젝트 이름, 설명, 소유자, 모드 설정",
+      "icon": "📋",
+      "setting_count": 4,
+      "batch_count": 2,
+      "batches": [
+        {
+          "batch_id": "2.1",
+          "label": "프로젝트 메타데이터",
+          "question_count": 4,
+          "questions": [
+            {
+              "question": "프로젝트 이름은? (현재: moai-adk)",
+              "header": "프로젝트 이름",
+              "field": "project.name",
+              "type": "text_input",
+              "multiSelect": false,
+              "easy_description": "GitHub, package.json 등에서 사용되는 프로젝트의 공식 이름입니다.",
+              "current_value": "moai-adk",
+              "required": true
+            },
+            {
+              "question": "프로젝트 설명은? (현재: MoAI Agentic Development Kit)",
+              "header": "프로젝트 설명",
+              "field": "project.description",
+              "type": "text_input",
+              "multiSelect": false,
+              "easy_description": "프로젝트의 목적과 기능을 간단히 설명합니다.",
+              "current_value": "MoAI Agentic Development Kit",
+              "required": true
+            },
+            {
+              "question": "프로젝트 소유자는? (현재: GoosLab) - GitHub Owner를 설정합니다",
+              "header": "프로젝트 소유자",
+              "field": "project.owner",
+              "type": "text_input",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "현재 값 유지",
+                  "description": "GoosLab를 그대로 사용합니다"
+                },
+                {
+                  "label": "다른 소유자로 변경",
+                  "description": "Other를 선택하여 새로운 소유자를 입력하세요"
+                }
+              ],
+              "current_value": "GoosLab",
+              "required": true
+            },
+            {
+              "question": "프로젝트 모드는? (현재: team)",
+              "header": "프로젝트 모드",
+              "field": "project.mode",
+              "type": "select_single",
+              "multiSelect": false,
+              "easy_description": "Personal은 1인 개발, Team은 팀 협업 모드입니다.",
+              "options": [
+                {
+                  "label": "Personal (1인 개발)",
+                  "description": "개인 프로젝트용 설정"
+                },
+                {
+                  "label": "Team (팀 협업)",
+                  "description": "팀 협업을 위한 GitFlow 설정"
+                }
+              ],
+              "current_value": "team",
+              "required": true
+            }
+          ]
+        },
+        {
+          "batch_id": "2.2",
+          "label": "프로젝트 모드",
+          "question_count": 0,
+          "note": "Note: project.locale, codebase_language, optimized_language auto-determined via internal analysis",
+          "auto_processed_fields": [
+            {
+              "field": "project.locale",
+              "auto_determination": "Based on conversation_language selection. ko→ko_KR, en→en_US, ja→ja_JP, es→es_ES",
+              "reason": "Auto-updated when conversation_language changes. No user input needed."
+            },
+            {
+              "field": "project.default_language",
+              "auto_determination": "Derived from conversation_language. ko→ko, en→en, ja→ja, es→es",
+              "reason": "Auto-updated when conversation_language changes. No user input needed."
+            },
+            {
+              "field": "project.optimized_for_language",
+              "auto_determination": "Derived from conversation_language. ko→ko, en→en, ja→ja, es→es",
+              "reason": "Auto-updated when conversation_language changes. No user input needed."
+            }
+          ],
+          "questions": []
+        }
+      ]
+    },
+    {
+      "id": "tab_3_git_strategy",
+      "label": "탭 3: Git 전략 및 워크플로우",
+      "description": "Personal/Team Git 설정 및 커밋/브랜치 전략",
+      "icon": "🌿",
+      "setting_count": 16,
+      "batch_count": 4,
+      "batches": [
+        {
+          "batch_id": "3.1",
+          "label": "Personal 체크포인트 설정",
+          "question_count": 4,
+          "questions": [
+            {
+              "question": "Personal 체크포인트를 활성화하시겠습니까? (현재: true)",
+              "header": "체크포인트 활성화",
+              "field": "git_strategy.personal.checkpoint_enabled",
+              "type": "select_single",
+              "multiSelect": false,
+              "easy_description": "특정 구간마다 자동으로 체크포인트를 생성할지 설정합니다.",
+              "options": [
+                {
+                  "label": "활성화",
+                  "description": "정기적 체크포인트 생성"
+                },
+                {
+                  "label": "비활성화",
+                  "description": "체크포인트 자동 생성 안 함"
+                }
+              ],
+              "current_value": true,
+              "required": false
+            },
+            {
+              "question": "체크포인트 간격은? (현재: 30)",
+              "header": "체크포인트 간격(분)",
+              "field": "git_strategy.personal.checkpoint_interval",
+              "type": "number_input",
+              "multiSelect": false,
+              "easy_description": "N분마다 체크포인트 커밋을 생성합니다. (단위: 분)",
+              "current_value": 30,
+              "required": false
+            },
+            {
+              "question": "자동 커밋을 활성화하시겠습니까? (현재: false)",
+              "header": "자동 커밋",
+              "field": "git_strategy.personal.auto_commit",
+              "type": "select_single",
+              "multiSelect": false,
+              "easy_description": "변경사항을 자동으로 커밋할지 설정합니다.",
+              "options": [
+                {
+                  "label": "활성화",
+                  "description": "자동 커밋 활성화"
+                },
+                {
+                  "label": "비활성화",
+                  "description": "수동 커밋만 사용"
+                }
+              ],
+              "current_value": false,
+              "required": false
+            },
+            {
+              "question": "자동 푸시를 활성화하시겠습니까? (현재: true)",
+              "header": "자동 푸시",
+              "field": "git_strategy.personal.auto_push",
+              "type": "select_single",
+              "multiSelect": false,
+              "easy_description": "커밋 후 자동으로 원격 저장소에 푸시할지 설정합니다.",
+              "options": [
+                {
+                  "label": "활성화",
+                  "description": "자동 푸시 활성화"
+                },
+                {
+                  "label": "비활성화",
+                  "description": "수동 푸시만 사용"
+                }
+              ],
+              "current_value": true,
+              "required": false
+            }
+          ]
+        },
+        {
+          "batch_id": "3.2",
+          "label": "Personal 커밋/브랜치 설정",
+          "question_count": 4,
+          "questions": [
+            {
+              "question": "커밋 메시지 서명(Sign-off)을 사용하시겠습니까? (현재: true)",
+              "header": "커밋 서명",
+              "field": "git_strategy.personal.use_signed_commits",
+              "type": "select_single",
+              "multiSelect": false,
+              "easy_description": "모든 커밋에 DCO(Developer Certificate of Origin) 서명을 추가합니다.",
+              "options": [
+                {
+                  "label": "사용",
+                  "description": "커밋 서명 추가"
+                },
+                {
+                  "label": "미사용",
+                  "description": "서명 없이 커밋"
+                }
+              ],
+              "current_value": true,
+              "required": false
+            },
+            {
+              "question": "기본 브랜치는? (현재: main)",
+              "header": "기본 브랜치",
+              "field": "git_strategy.personal.main_branch",
+              "type": "select_single",
+              "multiSelect": false,
+              "easy_description": "pull/merge request의 기본 대상 브랜치입니다.",
+              "options": [
+                {
+                  "label": "main",
+                  "description": "main 브랜치를 기본으로 사용"
+                },
+                {
+                  "label": "master",
+                  "description": "master 브랜치를 기본으로 사용"
+                },
+                {
+                  "label": "develop",
+                  "description": "develop 브랜치를 기본으로 사용"
+                }
+              ],
+              "current_value": "main",
+              "required": true
+            },
+            {
+              "question": "기능 브랜치 접두사는? (현재: feature/)",
+              "header": "기능 브랜치 접두사",
+              "field": "git_strategy.personal.feature_branch_prefix",
+              "type": "text_input",
+              "multiSelect": false,
+              "easy_description": "새 기능을 위한 브랜치 이름 접두사입니다. (예: feature/SPEC-001)",
+              "current_value": "feature/",
+              "required": false
+            },
+            {
+              "question": "버그픽스 브랜치 접두사는? (현재: bugfix/)",
+              "header": "버그픽스 브랜치 접두사",
+              "field": "git_strategy.personal.bugfix_branch_prefix",
+              "type": "text_input",
+              "multiSelect": false,
+              "easy_description": "버그 수정을 위한 브랜치 이름 접두사입니다.",
+              "current_value": "bugfix/",
+              "required": false
+            }
+          ]
+        },
+        {
+          "batch_id": "3.3",
+          "label": "Personal 브랜치 정책 및 Team PR",
+          "question_count": 4,
+          "questions": [
+            {
+              "question": "Personal develop 브랜치 사용 여부? (현재: false)",
+              "header": "Personal develop 브랜치",
+              "field": "git_strategy.personal.use_develop_branch",
+              "type": "select_single",
+              "multiSelect": false,
+              "easy_description": "Personal 모드에서도 develop 브랜치를 중간 통합 브랜치로 사용할지 설정합니다.",
+              "options": [
+                {
+                  "label": "사용",
+                  "description": "develop 브랜치 활용"
+                },
+                {
+                  "label": "미사용",
+                  "description": "develop 브랜치 미사용"
+                }
+              ],
+              "current_value": false,
+              "required": false
+            },
+            {
+              "question": "PR 상세 요구사항 활성화? (현재: false)",
+              "header": "PR 상세 요구사항",
+              "field": "git_strategy.personal.require_detailed_pr_description",
+              "type": "select_single",
+              "multiSelect": false,
+              "easy_description": "Pull Request에서 필수 템플릿 사용을 강제할지 설정합니다.",
+              "options": [
+                {
+                  "label": "필수",
+                  "description": "상세 PR 설명 필수"
+                },
+                {
+                  "label": "선택",
+                  "description": "상세 PR 설명 선택"
+                }
+              ],
+              "current_value": false,
+              "required": false
+            },
+            {
+              "question": "Team PR 기본 브랜치는? (현재: develop)",
+              "header": "Team PR 기본 브랜치",
+              "field": "git_strategy.team.pr_base_branch",
+              "type": "select_single",
+              "multiSelect": false,
+              "easy_description": "팀 모드에서 PR이 merge될 기본 브랜치입니다.",
+              "options": [
+                {
+                  "label": "develop",
+                  "description": "develop 브랜치를 기본으로"
+                },
+                {
+                  "label": "main",
+                  "description": "main 브랜치를 기본으로"
+                },
+                {
+                  "label": "staging",
+                  "description": "staging 브랜치를 기본으로"
+                }
+              ],
+              "current_value": "develop",
+              "required": true
+            },
+            {
+              "question": "Team develop 브랜치 이름은? (현재: develop)",
+              "header": "Team develop 브랜치",
+              "field": "git_strategy.team.develop_branch",
+              "type": "text_input",
+              "multiSelect": false,
+              "easy_description": "팀이 사용하는 통합 브랜치의 이름입니다.",
+              "current_value": "develop",
+              "required": true
+            }
+          ]
+        },
+        {
+          "batch_id": "3.4",
+          "label": "Team GitFlow 정책",
+          "question_count": 4,
+          "questions": [
+            {
+              "question": "GitFlow 정책 사용 여부? (현재: true)",
+              "header": "GitFlow 사용",
+              "field": "git_strategy.team.use_gitflow",
+              "type": "select_single",
+              "multiSelect": false,
+              "easy_description": "표준 GitFlow 워크플로우를 따를지 설정합니다.",
+              "options": [
+                {
+                  "label": "사용",
+                  "description": "GitFlow 정책 준수"
+                },
+                {
+                  "label": "커스텀",
+                  "description": "커스텀 워크플로우"
+                }
+              ],
+              "current_value": true,
+              "required": true
+            },
+            {
+              "question": "PR 자동 머지 정책은? (현재: false)",
+              "header": "PR 자동 머지",
+              "field": "git_strategy.team.auto_merge_pr",
+              "type": "select_single",
+              "multiSelect": false,
+              "easy_description": "CI/CD 통과 후 자동으로 PR을 머지할지 설정합니다.",
+              "options": [
+                {
+                  "label": "활성화",
+                  "description": "자동 머지 활성화"
+                },
+                {
+                  "label": "비활성화",
+                  "description": "수동 승인 필수"
+                }
+              ],
+              "current_value": false,
+              "required": false
+            },
+            {
+              "question": "코드 리뷰 필수 여부? (현재: true)",
+              "header": "코드 리뷰 필수",
+              "field": "git_strategy.team.require_code_review",
+              "type": "select_single",
+              "multiSelect": false,
+              "easy_description": "PR 머지 전에 코드 리뷰 승인을 필수로 할지 설정합니다.",
+              "options": [
+                {
+                  "label": "필수",
+                  "description": "코드 리뷰 필수"
+                },
+                {
+                  "label": "선택",
+                  "description": "코드 리뷰 선택사항"
+                }
+              ],
+              "current_value": true,
+              "required": false
+            },
+            {
+              "question": "릴리스 버전 관리는? (현재: semantic)",
+              "header": "버전 관리 방식",
+              "field": "git_strategy.team.version_strategy",
+              "type": "select_single",
+              "multiSelect": false,
+              "easy_description": "릴리스 버전 넘버링 방식입니다.",
+              "options": [
+                {
+                  "label": "시맨틱 버전 (Semantic)",
+                  "description": "MAJOR.MINOR.PATCH (예: 1.2.3)"
+                },
+                {
+                  "label": "캘린더 버전 (Calendar)",
+                  "description": "YYYY.MM.DD 형식"
+                },
+                {
+                  "label": "순차 버전 (Sequential)",
+                  "description": "V1, V2, V3 형식"
+                },
+                {
+                  "label": "기타",
+                  "description": "Other를 선택하여 커스텀 방식을 입력하세요"
+                }
+              ],
+              "current_value": "semantic",
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tab_4_quality_reports",
+      "label": "탭 4: 품질 원칙 및 리포트",
+      "description": "TRUST 5 원칙, 리포트 생성 정책, 저장 위치 설정",
+      "icon": "✅",
+      "setting_count": 9,
+      "batch_count": 3,
+      "batches": [
+        {
+          "batch_id": "4.1",
+          "label": "Constitution 설정",
+          "question_count": 4,
+          "questions": [
+            {
+              "question": "테스트 커버리지 최소값은? (현재: 85)",
+              "header": "테스트 커버리지",
+              "field": "constitution.minimum_test_coverage",
+              "type": "number_input",
+              "multiSelect": false,
+              "easy_description": "모든 코드의 최소 테스트 커버리지 비율입니다. (단위: %)",
+              "current_value": 85,
+              "required": true
+            },
+            {
+              "question": "Linting 정책은? (현재: strict)",
+              "header": "Linting 정책",
+              "field": "constitution.linting_policy",
+              "type": "select_single",
+              "multiSelect": false,
+              "easy_description": "코드 스타일 검사의 엄격한 수준을 설정합니다.",
+              "options": [
+                {
+                  "label": "엄격함 (Strict)",
+                  "description": "모든 규칙 준수 필수"
+                },
+                {
+                  "label": "표준 (Standard)",
+                  "description": "기본 규칙만 적용"
+                },
+                {
+                  "label": "느슨함 (Relaxed)",
+                  "description": "최소 규칙만 적용"
+                }
+              ],
+              "current_value": "strict",
+              "required": false
+            },
+            {
+              "question": "타입 체크 방식은? (현재: strict)",
+              "header": "타입 체크",
+              "field": "constitution.type_checking",
+              "type": "select_single",
+              "multiSelect": false,
+              "easy_description": "TypeScript/Python 타입 검사의 엄격한 수준입니다.",
+              "options": [
+                {
+                  "label": "엄격함 (Strict)",
+                  "description": "모든 타입 지정 필수"
+                },
+                {
+                  "label": "표준 (Standard)",
+                  "description": "기본 타입 지정"
+                },
+                {
+                  "label": "느슨함 (Relaxed)",
+                  "description": "선택적 타입 지정"
+                }
+              ],
+              "current_value": "strict",
+              "required": false
+            },
+            {
+              "question": "TAG 추적 사용 여부? (현재: true)",
+              "header": "TAG 추적",
+              "field": "constitution.require_tag_tracing",
+              "type": "select_single",
+              "multiSelect": false,
+              "options": [
+                {
+                  "label": "필수",
+                },
+                {
+                  "label": "선택",
+                }
+              ],
+              "current_value": true,
+              "required": false
+            }
+          ]
+        },
+        {
+          "batch_id": "4.2",
+          "label": "리포트 생성 정책",
+          "question_count": 4,
+          "questions": [
+            {
+              "question": "리포트 생성 활성화? (현재: true)",
+              "header": "리포트 생성",
+              "field": "report_generation.enabled",
+              "type": "select_single",
+              "multiSelect": false,
+              "easy_description": "작업 완료 후 자동으로 리포트를 생성할지 설정합니다.",
+              "options": [
+                {
+                  "label": "활성화",
+                  "description": "자동 리포트 생성"
+                },
+                {
+                  "label": "비활성화",
+                  "description": "리포트 생성 안 함"
+                }
+              ],
+              "current_value": true,
+              "required": false
+            },
+            {
+              "question": "자동 리포트 생성 여부? (현재: false)",
+              "header": "자동 리포트",
+              "field": "report_generation.auto_create",
+              "type": "select_single",
+              "multiSelect": false,
+              "easy_description": "사용자 확인 없이 자동으로 리포트를 생성할지 설정합니다.",
+              "options": [
+                {
+                  "label": "자동",
+                  "description": "사용자 확인 없이 자동 생성"
+                },
+                {
+                  "label": "확인 후",
+                  "description": "사용자 승인 후 생성"
+                }
+              ],
+              "current_value": false,
+              "required": false
+            },
+            {
+              "question": "리포트 형식은? (현재: markdown)",
+              "header": "리포트 형식",
+              "field": "report_generation.format",
+              "type": "select_single",
+              "multiSelect": false,
+              "easy_description": "생성되는 리포트의 형식을 선택합니다.",
+              "options": [
+                {
+                  "label": "Markdown",
+                  "description": ".md 파일 형식"
+                },
+                {
+                  "label": "HTML",
+                  "description": ".html 파일 형식"
+                },
+                {
+                  "label": "JSON",
+                  "description": ".json 파일 형식"
+                },
+                {
+                  "label": "기타",
+                  "description": "Other를 선택하여 다른 형식을 입력하세요"
+                }
+              ],
+              "current_value": "markdown",
+              "required": false
+            },
+            {
+              "question": "리포트에 포함할 내용은? (다중선택, 현재: metrics, coverage, logs)",
+              "header": "리포트 내용",
+              "field": "report_generation.include",
+              "type": "select_multiple",
+              "multiSelect": true,
+              "easy_description": "리포트에 포함할 내용을 선택하세요. (여러 개 선택 가능)",
+              "options": [
+                {
+                  "label": "메트릭",
+                  "description": "성능 및 품질 메트릭 포함"
+                },
+                {
+                  "label": "커버리지",
+                  "description": "테스트 커버리지 정보 포함"
+                },
+                {
+                  "label": "로그",
+                  "description": "작업 로그 포함"
+                },
+                {
+                  "label": "요약",
+                  "description": "실행 요약 포함"
+                }
+              ],
+              "current_value": ["metrics", "coverage", "logs"],
+              "required": false
+            }
+          ]
+        },
+        {
+          "batch_id": "4.3",
+          "label": "리포트 저장 위치",
+          "question_count": 1,
+          "questions": [
+            {
+              "question": "리포트 저장 위치를 선택하세요. (다중선택, 현재: .moai/reports)",
+              "header": "리포트 저장 위치",
+              "field": "report_generation.allowed_locations",
+              "type": "select_multiple",
+              "multiSelect": true,
+              "easy_description": "리포트를 저장할 위치를 선택하세요. 여러 위치 지정 가능합니다.",
+              "options": [
+                {
+                  "label": ".moai/reports/ (권장)",
+                  "description": "MoAI 프로젝트 리포트 디렉토리"
+                },
+                {
+                  "label": ".moai/temp/",
+                  "description": "임시 디렉토리"
+                },
+                {
+                  "label": "프로젝트 루트",
+                  "description": "프로젝트 최상위 디렉토리"
+                }
+              ],
+              "current_value": [".moai/reports"],
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tab_5_system_github",
+      "label": "탭 5: 시스템 및 GitHub 연동",
+      "description": "MoAI 시스템 설정 및 GitHub 자동화 설정",
+      "icon": "⚙️",
+      "setting_count": 8,
+      "batch_count": 2,
+      "batches": [
+        {
+          "batch_id": "5.1",
+          "label": "MoAI 시스템 설정",
+          "question_count": 4,
+          "questions": [
+            {
+              "question": "MoAI 자동 업데이트 사용 여부? (현재: true)",
+              "header": "MoAI 자동 업데이트",
+              "field": "moai.auto_update",
+              "type": "select_single",
+              "multiSelect": false,
+              "easy_description": "MoAI 버전을 자동으로 업데이트할지 설정합니다.",
+              "options": [
+                {
+                  "label": "활성화",
+                  "description": "최신 버전 자동 업데이트"
+                },
+                {
+                  "label": "비활성화",
+                  "description": "수동 업데이트만 사용"
+                }
+              ],
+              "current_value": true,
+              "required": false
+            },
+            {
+              "question": "Telemetry 수집 동의? (현재: true)",
+              "header": "Telemetry 수집",
+              "field": "moai.enable_telemetry",
+              "type": "select_single",
+              "multiSelect": false,
+              "easy_description": "사용 통계 수집에 동의합니다. (익명 처리됨)",
+              "options": [
+                {
+                  "label": "동의",
+                  "description": "익명 통계 수집 허용"
+                },
+                {
+                  "label": "거부",
+                  "description": "통계 수집 거부"
+                }
+              ],
+              "current_value": true,
+              "required": false
+            },
+            {
+              "question": "디버그 모드 활성화? (현재: false)",
+              "header": "디버그 모드",
+              "field": "moai.debug_mode",
+              "type": "select_single",
+              "multiSelect": false,
+              "easy_description": "상세한 로그 및 디버그 정보를 출력합니다.",
+              "options": [
+                {
+                  "label": "활성화",
+                  "description": "디버그 로그 활성화"
+                },
+                {
+                  "label": "비활성화",
+                  "description": "일반 로그만 출력"
+                }
+              ],
+              "current_value": false,
+              "required": false
+            },
+            {
+              "question": "로그 레벨은? (현재: info)",
+              "header": "로그 레벨",
+              "field": "moai.log_level",
+              "type": "select_single",
+              "multiSelect": false,
+              "easy_description": "로그 상세 수준을 설정합니다.",
+              "options": [
+                {
+                  "label": "DEBUG",
+                  "description": "모든 상세 정보 로깅"
+                },
+                {
+                  "label": "INFO",
+                  "description": "일반 정보 로깅"
+                },
+                {
+                  "label": "WARNING",
+                  "description": "경고 이상만 로깅"
+                },
+                {
+                  "label": "ERROR",
+                  "description": "에러만 로깅"
+                }
+              ],
+              "current_value": "info",
+              "required": false
+            }
+          ]
+        },
+        {
+          "batch_id": "5.2",
+          "label": "GitHub 자동화 설정",
+          "question_count": 3,
+          "questions": [
+            {
+              "question": "GitHub PR 자동 생성? (현재: true)",
+              "header": "GitHub PR 자동화",
+              "field": "github.auto_create_pr",
+              "type": "select_single",
+              "multiSelect": false,
+              "easy_description": "작업 완료 후 자동으로 PR을 생성할지 설정합니다.",
+              "options": [
+                {
+                  "label": "자동",
+                  "description": "자동 PR 생성"
+                },
+                {
+                  "label": "수동",
+                  "description": "수동 PR 생성"
+                }
+              ],
+              "current_value": true,
+              "required": false
+            },
+            {
+              "question": "GitHub 이슈 템플릿 사용? (현재: true)",
+              "header": "이슈 템플릿",
+              "field": "github.use_issue_template",
+              "type": "select_single",
+              "multiSelect": false,
+              "easy_description": "이슈 작성 시 템플릿을 자동으로 적용합니다.",
+              "options": [
+                {
+                  "label": "사용",
+                  "description": "템플릿 자동 적용"
+                },
+                {
+                  "label": "미사용",
+                  "description": "템플릿 미적용"
+                }
+              ],
+              "current_value": true,
+              "required": false
+            },
+            {
+              "question": "GitHub PR 템플릿 사용? (현재: true)",
+              "header": "PR 템플릿",
+              "field": "github.use_pr_template",
+              "type": "select_single",
+              "multiSelect": false,
+              "easy_description": "PR 작성 시 템플릿을 자동으로 적용합니다.",
+              "options": [
+                {
+                  "label": "사용",
+                  "description": "템플릿 자동 적용"
+                },
+                {
+                  "label": "미사용",
+                  "description": "템플릿 미적용"
+                }
+              ],
+              "current_value": true,
+              "required": false
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "navigation_flow": {
+    "description": "User navigation through tabs and batches",
+    "entry_point": "tab_1_user_language.batches[0]",
+    "completion_order": [
+      "tab_1_user_language (required - Foundation)",
+      "tab_2_project_info (recommended - Metadata)",
+      "tab_3_git_strategy (recommended - Workflow)",
+      "tab_4_quality_reports (optional - Quality)",
+      "tab_5_system_github (optional - Integration)"
+    ],
+    "validation_sequence": [
+      "Tab 1 - Validate language settings consistency",
+      "Tab 3 - Validate Git strategy conflicts between Personal/Team",
+      "Tab 4 - Validate report generation consistency",
+      "Final - Perform atomic update to config.json"
+    ]
+  },
+  "implementation_notes": {
+    "total_settings": 41,
+    "total_batches": 12,
+    "total_tabs": 5,
+    "total_questions": 40,
+    "max_questions_per_batch": 4,
+    "changes_from_v1": "Tab 1: 4→3 settings (removed conversation_language_name auto-processing). Tab 2: 7→4 settings (3 locale/language fields auto-processed). Total: 44→41 settings, 43→40 questions.",
+    "language_support": "All 50+ languages via 'Other' option",
+    "emoji_status": "NONE (strictly no emojis per AskUserQuestion constraints)",
+    "multiselect_support": true,
+    "custom_input_support": true,
+    "atomic_update": "Use deep merge with backup/rollback",
+    "auto_processing_note": "Fields in Tab 2 Batch 2.2 are auto-determined from conversation_language: locale (ko→ko_KR), default_language (ko→ko), optimized_for_language (ko→ko). No user input needed."
+  }
+}

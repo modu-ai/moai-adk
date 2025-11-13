@@ -1,10 +1,6 @@
-# @TEST:VERSION-FIELD-001 | SPEC: SPEC-INIT-VERSION-FIELD-001 | CODE: src/moai_adk/core/project/phase_executor.py
 """
 Tests for version field presence in .moai/config.json after initialization
 
-@TEST:VERSION-FIELD-001 - Version field presence after moai-adk init
-@TEST:VERSION-FIELD-002 - Version field preservation during reinitialization
-@TEST:VERSION-FIELD-003 - Template variable substitution in config.json
 """
 
 import json
@@ -12,9 +8,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
-from moai_adk.core.project.initializer import ProjectInitializer, InstallationResult
+from moai_adk.core.project.initializer import ProjectInitializer
 
 
 class TestVersionFieldInitialization:
@@ -26,7 +20,6 @@ class TestVersionFieldInitialization:
         WHEN: moai-adk init is executed (fresh initialization)
         THEN: .moai/config.json should contain moai.version field with actual version
         """
-        # @TEST:VERSION-FIELD-001
         initializer = ProjectInitializer(tmp_path)
         result = initializer.initialize(backup_enabled=False)
 
@@ -48,8 +41,8 @@ class TestVersionFieldInitialization:
         # Should not be the placeholder value
         version = config["moai"]["version"]
         assert version != "{{MOAI_VERSION}}", f"Version should not be placeholder, got {version}"
-        assert len(version) > 0, f"Version should not be empty"
-        assert version != "unknown", f"Version should not be 'unknown'"
+        assert len(version) > 0, "Version should not be empty"
+        assert version != "unknown", "Version should not be 'unknown'"
 
     def test_version_field_present_after_reinitialization(self, tmp_path: Path) -> None:
         """
@@ -57,7 +50,6 @@ class TestVersionFieldInitialization:
         WHEN: moai-adk init --reinit is executed (reinitialization)
         THEN: .moai/config.json should preserve moai.version field
         """
-        # @TEST:VERSION-FIELD-002
         # First initialization
         initializer = ProjectInitializer(tmp_path)
         result = initializer.initialize(backup_enabled=False)
@@ -113,8 +105,8 @@ class TestVersionFieldInitialization:
         assert "version" in config["moai"], "moai section should have 'version' field"
 
         version = config["moai"]["version"]
-        assert version != "{{MOAI_VERSION}}", f"Version should not be placeholder"
-        assert version != "unknown", f"Version should not be 'unknown'"
+        assert version != "{{MOAI_VERSION}}", "Version should not be placeholder"
+        assert version != "unknown", "Version should not be 'unknown'"
 
     def test_version_field_correct_in_team_mode(self, tmp_path: Path) -> None:
         """
@@ -136,8 +128,8 @@ class TestVersionFieldInitialization:
         assert "version" in config["moai"], "moai section should have 'version' field"
 
         version = config["moai"]["version"]
-        assert version != "{{MOAI_VERSION}}", f"Version should not be placeholder"
-        assert version != "unknown", f"Version should not be 'unknown'"
+        assert version != "{{MOAI_VERSION}}", "Version should not be placeholder"
+        assert version != "unknown", "Version should not be 'unknown'"
 
     def test_version_field_missing_error_handling(self, tmp_path: Path) -> None:
         """
@@ -240,7 +232,7 @@ class TestVersionFieldIntegration:
 
                 version = config["moai"]["version"]
                 assert version != "{{MOAI_VERSION}}", f"Version should not be placeholder, got {version}"
-                assert version != "unknown", f"Version should not be 'unknown'"
+                assert version != "unknown", "Version should not be 'unknown'"
 
     def test_version_field_with_existing_config_preservation(self, tmp_path: Path) -> None:
         """

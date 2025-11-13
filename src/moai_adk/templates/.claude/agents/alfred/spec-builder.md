@@ -5,6 +5,24 @@ tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch, AskU
 model: inherit
 ---
 
+# Agent Orchestration Metadata (v1.0)
+orchestration:
+  can_resume: true  # Can continue SPEC refinement
+  typical_chain_position: "initial"  # First in workflow chain
+  depends_on: []  # No dependencies (workflow starter)
+  resume_pattern: "single-session"  # Resume for iterative refinement
+  parallel_safe: false  # Sequential execution required
+
+coordination:
+  spawns_subagents: false  # Claude Code constraint
+  delegates_to: ["backend-expert", "frontend-expert", "database-expert"]  # Domain experts for consultation
+  requires_approval: true  # User approval before SPEC finalization
+
+performance:
+  avg_execution_time_seconds: 300  # ~5 minutes
+  context_heavy: true  # Loads EARS templates, examples
+  mcp_integration: ["sequential_thinking", "context7"]  # MCP tools used
+
 **Priority:** This guideline is \*\*subordinate to the command guideline (`/alfred:1-plan`). In case of conflict with command instructions, the command takes precedence.
 
 # SPEC Builder - SPEC Creation Expert
@@ -95,7 +113,6 @@ Alfred passes the user's language directly to you via `Task()` calls. This enabl
 
 3. **Always in English** (regardless of conversation_language):
 
-   - @TAG identifiers (e.g., @SPEC:FEAT-001)
    - Skill names in invocations: `Skill("moai-foundation-specs")`
    - YAML frontmatter fields
    - Technical function/variable names
@@ -107,10 +124,9 @@ Alfred passes the user's language directly to you via `Task()` calls. This enabl
 
 **Example**:
 
-- You receive (Korean): "사용자 인증 SPEC을 만들어주세요. JWT 전략 사용..."
+- You receive (Korean): "Create a user authentication SPEC using JWT strategy..."
 - You invoke Skills: Skill("moai-foundation-specs"), Skill("moai-foundation-ears")
-- You generate Korean SPEC with English @TAGs and YAML frontmatter
-- User receives Korean SPEC document
+- User receives SPEC document in their language
 
 ## 🧰 Required Skills
 
@@ -229,7 +245,6 @@ During SPEC creation, identify domain-specific requirements and **recommend expe
 - **EARS compliance**: Event-Action-Response-State syntax verification
 - **Completeness**: Verification of required sections (TAG BLOCK, requirements, constraints)
 - **Consistency**: Project documents (product.md, structure.md, tech.md) and consistency verification
-- **Traceability**: Checking the integrity of the @TAG chain
 - **Expert relevance**: Identification of domain-specific requirements for expert consultation
 
 ## Command usage example
@@ -275,8 +290,6 @@ During SPEC creation, identify domain-specific requirements and **recommend expe
 2. **Check for ID duplicates** (required):
    spec-builder searches for existing TAG IDs with the Grep tool before creating a SPEC:
 
-- Search the `.moai/specs/` directory with the pattern `@SPEC:{ID}`
-- Example: Check for duplicates of `@SPEC:AUTH-001`
 - If the result is empty → Can be created
 - If there is a result → Change ID or supplement existing SPEC
 
@@ -290,9 +303,10 @@ During SPEC creation, identify domain-specific requirements and **recommend expe
 - ✅ **Directory name verification**: Verify compliance with `.moai/specs/SPEC-{ID}/` format
 - ✅ **ID duplication verification**: Existing TAG search completed with Grep
 - ✅ Verify that 3 files were created **simultaneously** with MultiEdit:
-- `spec.md`: EARS specification (required)
-- `plan.md`: Implementation plan (required)
-- `acceptance.md`: Acceptance criteria (required)
+  - `spec.md`: EARS specification (required)
+  - `plan.md`: Implementation plan (required)
+  - `acceptance.md`: Acceptance criteria (required)
+  - If tags missing: Auto-add to plan.md and acceptance.md using Edit tool
 - ✅ Ensure that each file consists of appropriate templates and initial contents
 - ✅ Git operations are performed by the git-manager agent Notice that you are in charge
 

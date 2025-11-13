@@ -1,0 +1,43 @@
+{
+  "name": "moai-security-identity",
+  "title": "SAML 2.0 & OIDC Identity Management",
+  "version": "4.0.0",
+  "category": "security",
+  "status": "production",
+  "published_date": "2025-11-12",
+  "last_updated": "2025-11-12",
+  "difficulty": "advanced",
+  "trust_score": 9.9,
+  "keywords": ["SAML", "OIDC", "OAuth 2.0", "SSO", "identity", "JWT", "SCIM"],
+  "tech_stack": {
+    "language": "JavaScript/Node.js",
+    "frameworks": ["Express", "Passport.js"],
+    "libraries": ["@node-saml/passport-saml", "openid-client", "jsonwebtoken"]
+  },
+  "features": [
+    "SAML 2.0 authentication",
+    "OIDC/OAuth 2.0 implementation",
+    "JWT token validation",
+    "JIT provisioning",
+    "SCIM 2.0 user sync",
+    "Multi-protocol SSO",
+    "Identity threat detection (Context7)"
+  ],
+  "coverage": {
+    "lines": 556,
+    "codeExamples": 5,
+    "reference_links": 30,
+    "production_ready": true
+  },
+  "dependencies": {
+    "@node-saml/passport-saml": "^3.2.4",
+    "passport-openidconnect": "latest",
+    "openid-client": "latest",
+    "jsonwebtoken": "latest"
+  },
+  "enterprise_features": {
+    "multi_protocol_sso": "SAML + OIDC support (72% enterprise adoption)",
+    "federation": "B2B SAML federation",
+    "provisioning": "Automatic user provisioning via SCIM"
+  }
+}

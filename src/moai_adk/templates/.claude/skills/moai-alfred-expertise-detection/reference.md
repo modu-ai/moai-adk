@@ -74,7 +74,6 @@ Apply adaptations (verbosity, confirmations, suggestions)
 
 **Example**:
 - Detected: Expert (score 2)
-- User says: "explain @TAG system"
 - Override: Beginner mode (verbose explanation)
 
 ---

@@ -1,5 +1,3 @@
-# @CODE:CLI-DOCTOR-001 | SPEC: SPEC-CLI-001/spec.md | TEST: tests/unit/test_doctor.py
-# @CODE:CLAUDE-COMMANDS-001:CLI | SPEC: SPEC-CLAUDE-COMMANDS-001/spec.md | TEST: tests/unit/test_slash_commands.py
 """MoAI-ADK doctor command
 
 System diagnostics command:
@@ -49,12 +47,25 @@ console = Console()
 
 
 @click.command()
-@click.option("--verbose", "-v", is_flag=True, help="Show detailed tool versions and language detection")
+@click.option(
+    "--verbose",
+    "-v",
+    is_flag=True,
+    help="Show detailed tool versions and language detection",
+)
 @click.option("--fix", is_flag=True, help="Suggest fixes for missing tools")
 @click.option("--export", type=click.Path(), help="Export diagnostics to JSON file")
 @click.option("--check", type=str, help="Check specific tool only")
-@click.option("--check-commands", is_flag=True, help="Diagnose slash command loading issues")
-def doctor(verbose: bool, fix: bool, export: str | None, check: str | None, check_commands: bool) -> None:
+@click.option(
+    "--check-commands", is_flag=True, help="Diagnose slash command loading issues"
+)
+def doctor(
+    verbose: bool,
+    fix: bool,
+    export: str | None,
+    check: str | None,
+    check_commands: bool,
+) -> None:
     """Check system requirements and project health
 
     Verifies:
@@ -81,7 +92,9 @@ def doctor(verbose: bool, fix: bool, export: str | None, check: str | None, chec
             diagnostics_data["detected_language"] = language
 
             if verbose:
-                console.print(f"[dim]Detected language: {language or 'Unknown'}[/dim]\n")
+                console.print(
+                    f"[dim]Detected language: {language or 'Unknown'}[/dim]\n"
+                )
 
             if language:
                 checker = SystemChecker()
@@ -110,7 +123,10 @@ def doctor(verbose: bool, fix: bool, export: str | None, check: str | None, chec
 
         # In fix mode, suggest installation commands for missing tools
         if fix and "language_tools" in diagnostics_data:
-            _suggest_fixes(diagnostics_data["language_tools"], diagnostics_data.get("detected_language"))
+            _suggest_fixes(
+                diagnostics_data["language_tools"],
+                diagnostics_data.get("detected_language"),
+            )
 
         # When exporting, write diagnostics to JSON
         if export:
@@ -122,16 +138,22 @@ def doctor(verbose: bool, fix: bool, export: str | None, check: str | None, chec
             console.print("\n[green]✓ All checks passed[/green]")
         else:
             console.print("\n[yellow]⚠ Some checks failed[/yellow]")
-            console.print("[dim]Run [cyan]python -m moai_adk doctor --verbose[/cyan] for detailed diagnostics[/dim]")
+            console.print(
+                "[dim]Run [cyan]python -m moai_adk doctor --verbose[/cyan] for detailed diagnostics[/dim]"
+            )
 
     except Exception as e:
         console.print(f"[red]✗ Diagnostic failed: {e}[/red]")
         raise
 
 
-def _display_language_tools(language: str, tools: dict[str, bool], checker: SystemChecker) -> None:
+def _display_language_tools(
+    language: str, tools: dict[str, bool], checker: SystemChecker
+) -> None:
     """Display a table of language-specific tools (helper)"""
-    table = Table(show_header=True, header_style="bold cyan", title=f"{language.title()} Tools")
+    table = Table(
+        show_header=True, header_style="bold cyan", title=f"{language.title()} Tools"
+    )
     table.add_column("Tool", style="dim")
     table.add_column("Status", justify="center")
     table.add_column("Version", style="blue")
@@ -256,5 +278,7 @@ def _check_slash_commands() -> None:
     elif total == 0:
         console.print("[yellow]⚠ No command files found in .claude/commands/[/yellow]")
     else:
-        console.print(f"[yellow]⚠ Only {valid}/{total} command files are valid[/yellow]")
+        console.print(
+            f"[yellow]⚠ Only {valid}/{total} command files are valid[/yellow]"
+        )
         console.print("[dim]Fix the issues above to enable slash commands[/dim]")
