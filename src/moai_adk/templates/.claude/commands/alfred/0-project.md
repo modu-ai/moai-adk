@@ -211,47 +211,47 @@ The SETTINGS MODE uses a tab-based batch question system to provide organized, u
 When user runs `/alfred:0-project setting` (without tab_ID), present tab selection:
 
 ```markdown
-어떤 설정 탭을 수정하시겠습니까?
+Which settings tab would you like to modify?
 
 Options:
-1. 탭 1: 사용자 및 언어 (User & Language)
-   - 사용자 이름, 대화 언어, 에이전트 프롬프트 언어 설정
+1. Tab 1: User & Language
+   - Configure user name, conversation language, agent prompt language
 
-2. 탭 2: 프로젝트 기본 정보 (Project Info)
-   - 프로젝트 이름, 설명, 소유자, 모드 설정
+2. Tab 2: Project Basic Information
+   - Configure project name, description, owner, mode
 
-3. 탭 3: Git 전략 및 워크플로우 (Git Strategy)
-   - Personal/Team Git 설정, 커밋/브랜치 전략
+3. Tab 3: Git Strategy & Workflow
+   - Configure Personal/Team Git settings, commit/branch strategy
 
-4. 탭 4: 품질 원칙 및 리포트 (Quality & Reports)
-   - TRUST 5, 리포트 생성, 저장 위치 설정
+4. Tab 4: Quality Principles & Reports
+   - Configure TRUST 5, report generation, storage location
 
-5. 탭 5: 시스템 및 GitHub 연동 (System & GitHub)
-   - MoAI 시스템, GitHub 자동화 설정
+5. Tab 5: System & GitHub Integration
+   - Configure MoAI system, GitHub automation
 
-6. 모든 탭 수정하기 (Modify All Tabs)
-   - 권장됨 (Recommended): 탭 1 → 탭 2 → 탭 3 → 나머지
+6. Modify All Tabs
+   - Recommended: Tab 1 → Tab 2 → Tab 3 → Others
 ```
 
 **After Tab Completion**:
 ```markdown
-추가로 다른 설정 탭을 수정하시겠습니까?
+Would you like to modify another settings tab?
 
-1. 아니오, 설정 끝내기 (No, finish settings)
-2. 다른 탭 선택하기 (Select another tab)
+1. No, finish settings
+2. Select another tab
 ```
 
 ### Tab Schema Reference
 
 Location: `.claude/skills/moai-project-batch-questions/tab_schema.json`
 
-**Tab 1: 사용자 및 언어** (Required Foundation)
+**Tab 1: User & Language** (Required Foundation)
 - Batch 1.1: Basic settings (3 questions - UPDATED: removed conversation_language_name)
   - User name, conversation language, agent prompt language
   - NOTE: conversation_language_name is auto-updated when conversation_language changes
 - Setting count: 3 | Critical checkpoint
 
-**Tab 2: 프로젝트 기본 정보** (Recommended)
+**Tab 2: Project Basic Information** (Recommended)
 - Batch 2.1: Project metadata (4 questions)
   - Project name, description, owner, mode
 - Batch 2.2: Auto-processed locale settings (0 questions - UPDATED: internal analysis only)
@@ -259,20 +259,20 @@ Location: `.claude/skills/moai-project-batch-questions/tab_schema.json`
   - NOTE: No user input needed. These 3 fields update automatically when conversation_language changes
 - Setting count: 4
 
-**Tab 3: Git 전략 및 워크플로우** (Recommended with Validation)
+**Tab 3: Git Strategy & Workflow** (Recommended with Validation)
 - Batch 3.1: Personal checkpoint settings (4 questions)
 - Batch 3.2: Personal commit/branch settings (4 questions)
 - Batch 3.3: Personal policy & Team PR (4 questions)
 - Batch 3.4: Team GitFlow policy (4 questions)
 - Setting count: 16 | Critical checkpoint for Git conflicts
 
-**Tab 4: 품질 원칙 및 리포트** (Optional)
+**Tab 4: Quality Principles & Reports** (Optional)
 - Batch 4.1: Constitution settings (4 questions)
 - Batch 4.2: Report generation policy (4 questions)
 - Batch 4.3: Report storage location (1 question)
 - Setting count: 9
 
-**Tab 5: 시스템 및 GitHub 연동** (Optional)
+**Tab 5: System & GitHub Integration** (Optional)
 - Batch 5.1: MoAI system settings (4 questions)
 - Batch 5.2: GitHub automation settings (3 questions)
 - Setting count: 8
@@ -299,34 +299,34 @@ Extract:
 Call: AskUserQuestion(
   questions: [
     {
-      question: "사용자 이름을 어떻게 설정하시겠습니까? (현재: GoosLab)",
-      header: "사용자 이름",
+      question: "How would you like to configure the user name? (current: GoosLab)",
+      header: "User Name",
       multiSelect: false,
       options: [
-        {label: "현재 값 유지", description: "GoosLab 그대로 사용합니다"},
-        {label: "변경하기", description: "Other를 선택하여 새 이름을 입력하세요"}
+        {label: "Keep Current Value", description: "Continue using GoosLab"},
+        {label: "Change", description: "Select Other to enter a new name"}
       ]
     },
     {
-      question: "Alfred와 대화할 때 사용할 언어는? (현재: 한국어/ko)",
-      header: "대화 언어",
+      question: "What language should Alfred use in conversations? (current: Korean/ko)",
+      header: "Conversation Language",
       multiSelect: false,
       options: [
-        {label: "한국어 (ko)", description: "모든 콘텐츠가 한국어로 생성됩니다"},
-        {label: "영어 (en)", description: "모든 콘텐츠가 영어로 생성됩니다"},
-        {label: "일본어 (ja)", description: "모든 콘텐츠가 일본어로 생성됩니다"},
-        {label: "스페인어 (es)", description: "모든 콘텐츠가 스페인어로 생성됩니다"}
+        {label: "Korean (ko)", description: "All content will be generated in Korean"},
+        {label: "English (en)", description: "All content will be generated in English"},
+        {label: "Japanese (ja)", description: "All content will be generated in Japanese"},
+        {label: "Spanish (es)", description: "All content will be generated in Spanish"}
       ]
     },
     {
-      question: "선택한 언어의 표시 이름은? (현재: Korean)",
-      header: "언어 표시명",
+      question: "What is the display name for the selected language? (current: Korean)",
+      header: "Language Display Name",
       multiSelect: false,
       options: [...]
     },
     {
-      question: "에이전트 프롬프트 언어는? (현재: conversation 동일)",
-      header: "에이전트 프롬프트 언어",
+      question: "What language should agent prompts use? (current: same as conversation)",
+      header: "Agent Prompt Language",
       multiSelect: false,
       options: [...]
     }
@@ -419,9 +419,9 @@ Step 4: Loads current values from config.json
   - language.conversation_language: "ko"
   - language.agent_prompt_language: "ko"
 Step 5: Calls AskUserQuestion with 3 questions (UPDATED: removed language_display_name)
-  - Question 1: "사용자 이름은 현재 'GoosLab'으로 설정되어 있습니다. 이 이름이 맞나요?"
-  - Question 2: "Alfred와 대화할 때 사용할 언어는? (현재: 한국어/ko)"
-  - Question 3: "에이전트 내부 프롬프트 언어는 현재 Korean(ko)으로 설정되어 있습니다. 이를 어떻게 설정하시겠습니까?"
+  - Question 1: "The user name is currently set to 'GoosLab'. Is this correct?"
+  - Question 2: "What language should Alfred use in conversations? (current: Korean/ko)"
+  - Question 3: "The agent internal prompt language is currently set to Korean(ko). How would you like to configure this?"
 Step 6: Receives user responses
 Step 7: Processes each response (map to config fields)
   - user.name response → user.name
@@ -469,17 +469,17 @@ User runs: `/alfred:0-project setting` (without tab_ID) → Tab Selection Screen
 
 ```
 Flow:
-1. Show Tab Selection Screen (어떤 설정 탭을 수정하시겠습니까?)
-2. User selects tab or "모든 탭 수정하기"
+1. Show Tab Selection Screen (Which settings tab would you like to modify?)
+2. User selects tab or "Modify All Tabs"
 3. Execute selected tab
    - Tab 1 (REQUIRED): User & Language (3 questions)
    - Tab 2 (RECOMMENDED): Project Info (4 questions in batch 2.1 + auto-processing in batch 2.2)
    - Tab 3 (RECOMMENDED): Git Strategy (4 batches, 16 questions with validation)
    - Tab 4 (OPTIONAL): Quality & Reports (3 batches, 9 questions)
    - Tab 5 (OPTIONAL): System & GitHub (2 batches, 7 questions)
-4. After tab completion, ask: "추가로 다른 설정 탭을 수정하시겠습니까?"
-   - 아니오, 설정 끝내기 (exit)
-   - 다른 탭 선택하기 (select another tab)
+4. After tab completion, ask: "Would you like to modify another settings tab?"
+   - No, finish settings (exit)
+   - Select another tab (select another tab)
 5. Final atomic update after user finishes
 
 Each tab completes independently:
@@ -497,7 +497,7 @@ Each tab completes independently:
   "tabs": [
     {
       "id": "tab_1_user_language",
-      "label": "탭 1: 사용자 및 언어",
+      "label": "Tab 1: User & Language",
       "batches": [
         {
           "batch_id": "1.1",
@@ -602,17 +602,17 @@ Agent delegates to Skill("moai-project-config-manager"):
 ### Step 1: Display Completion Status
 
 Show mode-specific completion message in user's language:
-- **INITIALIZATION**: "초기화 완료 / Project initialization complete"
+- **INITIALIZATION**: "Project initialization complete"
 - **AUTO-DETECT**: Configuration review/modification complete
-- **SETTINGS**: "설정 업데이트 완료 / Settings updated successfully"
-- **UPDATE**: "템플릿 최적화 완료 / Templates optimized and updated"
+- **SETTINGS**: "Settings updated successfully"
+- **UPDATE**: "Templates optimized and updated"
 
 ### Step 2: Offer Next Steps
 
 Use AskUserQuestion in user's language:
-- **From Initialization**: SPEC 작성 / Review 구조 / 새 세션
-- **From Settings**: 계속 설정 / 문서 동기화 / 종료
-- **From Update**: 변경사항 검토 / 설정 수정 / 종료
+- **From Initialization**: Write SPEC / Review Structure / New Session
+- **From Settings**: Continue Settings / Sync Documentation / Exit
+- **From Update**: Review Changes / Modify Settings / Exit
 
 **Critical**: NO EMOJIS in AskUserQuestion fields. Use clear text only.
 
@@ -674,28 +674,28 @@ After command execution completes, use AskUserQuestion tool to guide user to nex
 ```python
 AskUserQuestion({
     "questions": [{
-        "question": "프로젝트 설정이 완료되었습니다. 다음으로 무엇을 하시겠습니까?",
-        "header": "다음 단계",
+        "question": "Project setup is complete. What would you like to do next?",
+        "header": "Next Steps",
         "multiSelect": false,
         "options": [
             {
-                "label": "스펙 작성",
-                "description": "/alfred:1-plan 실행하여 기능 사양 정의"
+                "label": "Write Specification",
+                "description": "Execute /alfred:1-plan to define feature specifications"
             },
             {
-                "label": "프로젝트 구조 검토",
-                "description": "현재 프로젝트 상태 및 설정 확인"
+                "label": "Review Project Structure",
+                "description": "Check current project status and settings"
             },
             {
-                "label": "새 세션 시작",
-                "description": "작업 공간 초기화 및 새로 시작"
+                "label": "Start New Session",
+                "description": "Initialize workspace and start fresh"
             }
         ]
     }]
 })
 ```
 
-**Important**: 
-- Use conversation language from config (ko)
+**Important**:
+- Use conversation language from config
 - No emojis in any AskUserQuestion fields
 - Always provide clear next step options

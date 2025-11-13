@@ -69,7 +69,7 @@ All complexity is handled by the **run-orchestrator** agent.
 **Orchestrates all 4 phases:**
 - Coordinates implementation-planner for SPEC analysis
 - Manages tdd-implementer for TDD implementation
-- Verifies with quality-gate for TRUST 4 compliance
+- Verifies with quality-gate for TRUST 5 compliance
 - Creates commits via git-manager
 
 ### Supporting Agents (called by run-orchestrator)
@@ -78,7 +78,7 @@ All complexity is handled by the **run-orchestrator** agent.
 |-------|---------|------|
 | **implementation-planner** | Analyzes SPEC and creates execution strategy | Phase 1 |
 | **tdd-implementer** | Implements code through TDD cycle | Phase 2 |
-| **quality-gate** | Verifies TRUST 4 principles | Phase 2 (after tdd-implementer) |
+| **quality-gate** | Verifies TRUST 5 principles | Phase 2 (after tdd-implementer) |
 | **git-manager** | Creates and manages Git commits | Phase 3 |
 
 ### Skills Used (by agents, not command)
@@ -108,7 +108,7 @@ The run-orchestrator:
 1. Initializes TodoWrite for task tracking
 2. Checks domain readiness (if multi-domain SPEC)
 3. Invokes tdd-implementer for RED → GREEN → REFACTOR cycle
-4. Invokes quality-gate for TRUST 4 validation
+4. Invokes quality-gate for TRUST 5 validation
 5. Handles quality gate results (PASS/WARNING/CRITICAL)
 
 ### Phase 3: Git Operations
@@ -266,28 +266,28 @@ After TDD implementation completes, use AskUserQuestion tool to guide user to ne
 ```python
 AskUserQuestion({
     "questions": [{
-        "question": "구현이 완료되었습니다. 다음으로 무엇을 하시겠습니까?",
-        "header": "다음 단계",
+        "question": "Implementation is complete. What would you like to do next?",
+        "header": "Next Steps",
         "multiSelect": false,
         "options": [
             {
-                "label": "문서 동기화",
-                "description": "/alfred:3-sync 실행하여 문서 정리 및 PR 생성"
+                "label": "Sync Documentation",
+                "description": "Execute /alfred:3-sync to organize documentation and create PR"
             },
             {
-                "label": "추가 구현",
-                "description": "더 많은 기능 구현"
+                "label": "Additional Implementation",
+                "description": "Implement more features"
             },
             {
-                "label": "품질 검증",
-                "description": "테스트 및 코드 품질 검토"
+                "label": "Quality Verification",
+                "description": "Review tests and code quality"
             }
         ]
     }]
 })
 ```
 
-**Important**: 
-- Use conversation language from config (ko)
+**Important**:
+- Use conversation language from config
 - No emojis in any AskUserQuestion fields
 - Always provide clear next step options

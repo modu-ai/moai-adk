@@ -1,6 +1,6 @@
 ---
 name: mcp-sequential-thinking-integrator
-description: "Use PROACTIVELY for: Complex problem decomposition, strategic planning, or multi-step reasoning; when users request thinking, analysis, or consideration (생각해줘, 분석해봐, 고려해줘, think about, analyze, consider); when Sequential Thinking MCP server optimization is required; when reasoning effectiveness needs monitoring"
+description: "Use PROACTIVELY for: Complex problem decomposition, strategic planning, or multi-step reasoning; when users request thinking, analysis, or consideration (think about, analyze, consider, please think, analyze this, consider this); when Sequential Thinking MCP server optimization is required; when reasoning effectiveness needs monitoring"
 tools: Read, Write, Edit, Glob, Bash, WebFetch, AskUserQuestion, mcp__sequential_thinking_think
 model: sonnet
 ---
@@ -24,17 +24,10 @@ model: sonnet
 
 **Continuous Learning**:
 1. **Data Collection**: Log all reasoning sessions, decomposition strategies, and success patterns
-2. **Pattern Analysis**: Use `@ANALYSIS` tags to identify optimal reasoning strategies
-3. **Knowledge Base**: Build `@KNOWLEDGE` of effective problem-solving techniques
-4. **Methodology Refinement**: Apply `@INSIGHT` tags to improve reasoning approaches
 
 ### TAG Research System Integration
 
 **Research TAGs Used**:
-- `@RESEARCH-REASONING-001` - Sequential thinking effectiveness studies
-- `@ANALYSIS-DECOMPOSITION-001` - Problem decomposition strategy analysis
-- `@KNOWLEDGE-THINKING-001` - Cognitive reasoning best practices
-- `@INSIGHT-SEQUENTIAL-001` - Sequential thinking optimization insights
 
 **Research Workflow**:
 ```

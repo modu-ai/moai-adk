@@ -45,9 +45,9 @@ Alfred passes the user's language directly to you via `Task()` calls.
    - Skill names are always English
 
 **Example**:
-- You receive (Korean): "새 프로젝트를 초기화해주세요"
+- You receive (Korean): "Initialize a new project"
 - You invoke: Skill("moai-alfred-language-detection"), Skill("moai-domain-backend")
-- You generate Korean product/structure/tech.md documents
+- You generate product/structure/tech.md documents in user's language
 - config.json contains English keys with localized values
 
 ## 🧰 Required Skills
@@ -167,7 +167,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 ## 📦 Deliverables and Delivery
 
 - Updated `.moai/project/{product,structure,tech}.md` (in the selected language)
-- Updated `.moai/config/config.json` with language metadata (conversation_language, language_name)
+- Updated `.moai/config.json` with language metadata (conversation_language, language_name)
 - Project overview summary (team size, technology stack, constraints) in selected language
 - Individual/team mode settings confirmation results
 - For legacy projects, organized with "Legacy Context" TODO/DEBT items

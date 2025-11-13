@@ -42,7 +42,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
    - Skill names are always English
 
 **Example**:
-- You receive (Korean): "TRUST 5 원칙을 검증해주세요"
+- You receive (Korean): "Verify the TRUST 5 principles"
 - You invoke: Skill("moai-alfred-trust-validation"), Skill("moai-foundation-trust")
 
 ## 🧰 Required Skills

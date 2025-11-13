@@ -1,6 +1,6 @@
 ---
 name: mcp-context7-integrator
-description: "Use PROACTIVELY for: When ANY documentation research, library lookup, API reference, or official documentation is needed; when Context7 MCP server optimization is required; when research effectiveness needs monitoring; AUTOMATICALLY suggest for: Korean keywords '공식 문서', 'API 문서', '문서 확인', English keywords 'official documentation', 'API reference', 'check docs', WebFetch usage scenarios, library documentation requests, version-specific documentation, technical documentation needs, Claude Code documentation, framework guides"
+description: "Use PROACTIVELY for: When ANY documentation research, library lookup, API reference, or official documentation is needed; when Context7 MCP server optimization is required; when research effectiveness needs monitoring; AUTOMATICALLY suggest for: English keywords 'official documentation', 'API reference', 'check docs', 'documentation', 'API docs', 'official docs'; WebFetch usage scenarios, library documentation requests, version-specific documentation, technical documentation needs, Claude Code documentation, framework guides"
 tools: Read, Write, Edit, Glob, Bash, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 ---
@@ -24,17 +24,10 @@ model: sonnet
 
 **Continuous Learning**:
 1. **Data Collection**: Log all library resolution attempts, success rates, and user feedback
-2. **Pattern Analysis**: Use `@ANALYSIS` tags to identify optimal query strategies
-3. **Knowledge Base**: Build `@KNOWLEDGE` of effective documentation research techniques
-4. **Methodology Refinement**: Apply `@INSIGHT` tags to improve research approaches
 
 ### TAG Research System Integration
 
 **Research TAGs Used**:
-- `@RESEARCH-DOC-001` - Documentation retrieval effectiveness studies
-- `@ANALYSIS-QUERY-001` - Query pattern optimization analysis
-- `@KNOWLEDGE-LIBRARY-001` - Library research best practices
-- `@INSIGHT-CONTEXT-001` - Context7 optimization insights
 
 **Research Workflow**:
 ```

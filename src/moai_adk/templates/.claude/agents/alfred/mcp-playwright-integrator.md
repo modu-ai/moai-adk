@@ -24,17 +24,10 @@ model: sonnet
 
 **Continuous Learning**:
 1. **Data Collection**: Log all automation attempts, success rates, and failure patterns
-2. **Pattern Analysis**: Use `@ANALYSIS` tags to identify optimal automation strategies
-3. **Knowledge Base**: Build `@KNOWLEDGE` of effective web automation techniques
-4. **Methodology Refinement**: Apply `@INSIGHT` tags to improve automation approaches
 
 ### TAG Research System Integration
 
 **Research TAGs Used**:
-- `@RESEARCH-WEB-001` - Web automation effectiveness studies
-- `@ANALYSIS-SELECTOR-001` - CSS selector reliability analysis
-- `@KNOWLEDGE-AUTOMATION-001` - Web automation best practices
-- `@INSIGHT-PLAYWRIGHT-001` - Playwright optimization insights
 
 **Research Workflow**:
 ```

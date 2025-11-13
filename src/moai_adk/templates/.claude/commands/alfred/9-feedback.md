@@ -1,6 +1,6 @@
 ---
 name: alfred:9-feedback
-description: "GitHub 이슈 빠르게 생성하기 (자동 정보 수집 + 템플릿)"
+description: "Quickly create GitHub issues (automatic information collection + templates)"
 allowed-tools:
 - Bash(gh:*)
 - Bash(uv:*)
@@ -11,226 +11,226 @@ skills:
 - moai-alfred-feedback-templates
 ---
 
-# 🎯 MoAI-ADK Alfred 9-Feedback: GitHub 이슈 빠른 작성 도구
+# 🎯 MoAI-ADK Alfred 9-Feedback: GitHub Issue Quick Creation Tool
 
-> **목적**: 버그, 기능 요청, 개선 제안, 질문을 빠르고 정확하게 GitHub에 기록합니다.
+> **Purpose**: Record bugs, feature requests, improvement suggestions, and questions quickly and accurately on GitHub.
 
-## 📋 명령어 목적
+## 📋 Command Purpose
 
-개발자가 버그를 발견하거나 아이디어가 생기면 즉시 GitHub 이슈로 기록할 수 있도록 지원합니다.
+Enables developers to immediately record bugs or ideas as GitHub issues when discovered.
 
-- ✅ **빠름**: 2-3단계로 이슈 생성 완료
-- ✅ **정확함**: 자동으로 버전, 환경 정보 수집
-- ✅ **정리됨**: 라벨별 구조화된 템플릿
-- ✅ **간단함**: 명령어만 실행하면 끝 (`/alfred:9-feedback`)
+- ✅ **Fast**: Complete issue creation in 2-3 steps
+- ✅ **Accurate**: Automatically collect version and environment information
+- ✅ **Organized**: Structured templates by label
+- ✅ **Simple**: Just run the command (`/alfred:9-feedback`)
 
-**사용 방법**:
+**How to use**:
 ```bash
 /alfred:9-feedback
 ```
 
-완료!
+Done!
 
 ---
 
-## 🚀 실행 프로세스 (2단계)
+## 🚀 Execution Process (2 Steps)
 
-### Step 1: 명령어 실행
+### Step 1: Execute Command
 ```bash
 /alfred:9-feedback
 ```
 
-이렇게만 입력하면, Alfred가 나머지를 처리합니다.
+Just enter this, and Alfred handles the rest.
 
 ---
 
-### Step 2: 필수 정보 한 번에 수집 (AskUserQuestion - multiSelect)
+### Step 2: Collect Required Information at Once (AskUserQuestion - multiSelect)
 
-**한 번의 질문**으로 다음을 모두 선택합니다:
+**With a single question**, select all of the following:
 
 ```
-┌─ 이슈 타입 (필수, 중복선택 불가)
-│  ├─ 🐛 버그 리포트 - 문제 발생
-│  ├─ ✨ 기능 요청 - 새로운 기능 제안
-│  ├─ ⚡ 개선 사항 - 기존 기능 개선
-│  ├─ 📚 문서 - 문서 개선
-│  ├─ 🔄 리팩토링 - 코드 구조 개선
-│  └─ ❓ 질문 - 팀에 물어보기
+┌─ Issue Type (required, single selection)
+│  ├─ 🐛 Bug Report - Problem occurred
+│  ├─ ✨ Feature Request - Propose new feature
+│  ├─ ⚡ Improvement - Improve existing feature
+│  ├─ 📚 Documentation - Improve documentation
+│  ├─ 🔄 Refactoring - Improve code structure
+│  └─ ❓ Question - Ask the team
 │
-├─ 우선순위 (기본값: 중간)
-│  ├─ 🔴 긴급 - 시스템 중단, 데이터 손실
-│  ├─ 🟠 높음 - 주요 기능 장애
-│  ├─ 🟡 중간 - 일반 우선순위
-│  └─ 🟢 낮음 - 나중에 괜찮음
+├─ Priority (default: medium)
+│  ├─ 🔴 Critical - System down, data loss
+│  ├─ 🟠 High - Major feature failure
+│  ├─ 🟡 Medium - General priority
+│  └─ 🟢 Low - Can be done later
 │
-└─ 템플릿 선택 (선택사항)
-   ├─ ✅ 자동 템플릿 생성 (권장)
-   └─ 📝 직접 작성하기
+└─ Template Selection (optional)
+   ├─ ✅ Auto-generate Template (recommended)
+   └─ 📝 Write Manually
 ```
 
 ---
 
-### Step 3: 자동 생성된 템플릿 확인 & 입력
+### Step 3: Review & Fill Auto-Generated Template
 
-Alfred가 선택한 이슈 타입에 맞는 템플릿을 자동으로 생성합니다.
+Alfred automatically generates a template matching the selected issue type.
 
-예를 들어, **버그 리포트** 선택 시:
+For example, when **Bug Report** is selected:
 
 ```markdown
-## 버그 설명
+## Bug Description
 
-[사용자가 입력할 공간]
+[Space for user input]
 
-## 재현 단계
+## Steps to Reproduce
 
-1. [사용자가 입력]
-2. [사용자가 입력]
-3. [사용자가 입력]
+1. [User input]
+2. [User input]
+3. [User input]
 
-## 예상 동작
+## Expected Behavior
 
-[사용자가 입력할 공간]
+[Space for user input]
 
-## 실제 동작
+## Actual Behavior
 
-[사용자가 입력할 공간]
+[Space for user input]
 
-## 환경 정보
+## Environment Information
 
-🔍 자동 수집된 정보:
-- MoAI-ADK 버전: 0.22.5
-- Python 버전: 3.11.5
+🔍 Automatically collected information:
+- MoAI-ADK version: 0.22.5
+- Python version: 3.11.5
 - OS: macOS 14.2
-- 현재 브랜치: feature/SPEC-001
-- 커밋되지 않은 변경사항: 3개
+- Current branch: feature/SPEC-001
+- Uncommitted changes: 3 files
 ```
 
-사용자는 `[사용자가 입력할 공간]` 부분만 채우면 됩니다.
+Users only need to fill in the `[Space for user input]` sections.
 
 ---
 
-Alfred가 자동으로 처리합니다:
+Alfred automatically handles:
 
-1. **환경 정보 수집** (`python3 .moai/scripts/feedback-collect-info.py`):
-   - MoAI-ADK 버전
-   - Python 버전, OS
-   - Git 상태 (현재 브랜치, 커밋되지 않은 변경사항)
-   - 작업 중인 SPEC
+1. **Environment Information Collection** (`python3 .moai/scripts/feedback-collect-info.py`):
+   - MoAI-ADK version
+   - Python version, OS
+   - Git status (current branch, uncommitted changes)
+   - Current SPEC being worked on
 
-2. **라벨 매핑** (`Skill("moai-alfred-issue-labels")`):
-   - 이슈 타입 → 라벨 (예: 버그 → "bug", "reported")
-   - 우선순위 → 라벨 (예: 높음 → "priority-high")
+2. **Label Mapping** (`Skill("moai-alfred-issue-labels")`):
+   - Issue type → labels (e.g., bug → "bug", "reported")
+   - Priority → labels (e.g., high → "priority-high")
 
-3. **제목 자동 생성**: "🐛 [BUG] 버그 설명..."
+3. **Auto-generate Title**: "🐛 [BUG] Bug description..."
 
-4. **GitHub Issue 생성**:
+4. **GitHub Issue Creation**:
    ```bash
    gh issue create \
-     --title "🐛 [BUG] 버그 설명" \
-     --body "## 버그 설명\n...[템플릿 + 환경 정보]..." \
+     --title "🐛 [BUG] Bug description" \
+     --body "## Bug Description\n...[template + environment info]..." \
      --label "bug" \
      --label "reported" \
      --label "priority-high"
    ```
 
-5. **결과 표시**:
+5. **Display Result**:
    ```
-   ✅ GitHub Issue #234 생성 완료!
+   ✅ GitHub Issue #234 created successfully!
 
-   📋 제목: 🐛 [BUG] 버그 설명
-   🔴 우선순위: 높음
-   🏷️ 라벨: bug, reported, priority-high
+   📋 Title: 🐛 [BUG] Bug description
+   🔴 Priority: High
+   🏷️ Labels: bug, reported, priority-high
    🔗 URL: https://github.com/owner/repo/issues/234
 
-   💡 다음: 커밋 메시지에서 이 Issue를 참조하거나 SPEC과 연결하세요
+   💡 Next: Reference this issue in commit messages or link to SPEC
    ```
 
 ---
 
-## 📊 라벨 매핑 (via `Skill("moai-alfred-issue-labels")`)
+## 📊 Label Mapping (via `Skill("moai-alfred-issue-labels")`)
 
-| 타입 | 주요 라벨 | 우선순위 | 최종 라벨 |
-|------|---------|---------|---------|
-| 🐛 버그 | bug, reported | 높음 | bug, reported, priority-high |
-| ✨ 기능 | feature-request, enhancement | 중간 | feature-request, enhancement, priority-medium |
-| ⚡ 개선 | improvement, enhancement | 중간 | improvement, enhancement, priority-medium |
-| 📚 문서 | documentation | 중간 | documentation, priority-medium |
-| 🔄 리팩토링 | refactor | 중간 | refactor, priority-medium |
-| ❓ 질문 | question, help-wanted | 중간 | question, help-wanted, priority-medium |
-
----
-
-## ⚠️ 규칙
-
-### ✅ 해야 할 것
-
-- ✅ multiSelect로 필수 정보 한 번에 수집 (이슈 타입, 우선순위)
-- ✅ 사용자 입력을 정확하게 보존하기
-- ✅ 자동 정보 수집 스크립트 실행 (`python3 .moai/scripts/feedback-collect-info.py`)
-- ✅ `Skill("moai-alfred-issue-labels")`로 라벨 매핑하기
-- ✅ `Skill("moai-alfred-feedback-templates")`로 템플릿 제공하기
-- ✅ 생성 후 Issue URL 표시하기
-
-### ❌ 하지 말아야 할 것
-
-- ❌ 명령어 인자 사용 (`/alfred:9-feedback --bug` 잘못됨 → 그냥 `/alfred:9-feedback` 사용)
-- ❌ 4단계 이상 질문하기
-- ❌ 사용자 입력 수정하기
-- ❌ 라벨 없이 Issue 생성하기
-- ❌ 라벨 하드코딩하기 (스킬 기반 매핑 사용)
+| Type | Main Labels | Priority | Final Labels |
+|------|-------------|----------|--------------|
+| 🐛 Bug | bug, reported | High | bug, reported, priority-high |
+| ✨ Feature | feature-request, enhancement | Medium | feature-request, enhancement, priority-medium |
+| ⚡ Improvement | improvement, enhancement | Medium | improvement, enhancement, priority-medium |
+| 📚 Documentation | documentation | Medium | documentation, priority-medium |
+| 🔄 Refactoring | refactor | Medium | refactor, priority-medium |
+| ❓ Question | question, help-wanted | Medium | question, help-wanted, priority-medium |
 
 ---
 
-## 💡 주요 장점
+## ⚠️ Rules
 
-1. **⚡ 빠름**: 2-3단계로 30초 이내 완료
-2. **🤖 자동**: 버전, 환경 정보 자동 수집
-3. **📋 정확함**: 라벨별 구조화된 템플릿
-4. **🏷️ 의미있음**: `moai-alfred-issue-labels` 스킬 기반 분류
-5. **🔄 재사용 가능**: `/alfred:1-plan`, `/alfred:3-sync`과 라벨 공유
-6. **한국어**: 모든 텍스트가 한국어로 작성됨
+### ✅ Must Do
+
+- ✅ Collect required information at once with multiSelect (issue type, priority)
+- ✅ Accurately preserve user input
+- ✅ Execute auto-information collection script (`python3 .moai/scripts/feedback-collect-info.py`)
+- ✅ Map labels with `Skill("moai-alfred-issue-labels")`
+- ✅ Provide templates with `Skill("moai-alfred-feedback-templates")`
+- ✅ Display Issue URL after creation
+
+### ❌ Must Not Do
+
+- ❌ Use command arguments (`/alfred:9-feedback --bug` is wrong → just use `/alfred:9-feedback`)
+- ❌ Ask more than 4 questions
+- ❌ Modify user input
+- ❌ Create issues without labels
+- ❌ Hard-code labels (use skill-based mapping)
 
 ---
 
-## 📝 사용 예시
+## 💡 Key Advantages
 
-**1단계**: 명령어 실행
+1. **⚡ Fast**: Complete in 2-3 steps within 30 seconds
+2. **🤖 Automated**: Automatically collect version and environment information
+3. **📋 Accurate**: Structured templates by label
+4. **🏷️ Meaningful**: Classification based on `moai-alfred-issue-labels` skill
+5. **🔄 Reusable**: Share labels with `/alfred:1-plan`, `/alfred:3-sync`
+6. **Multi-language**: All text written in user's conversation language
+
+---
+
+## 📝 Usage Example
+
+**Step 1**: Execute command
 ```bash
 /alfred:9-feedback
 ```
 
-**2단계**: 필수 정보 선택
+**Step 2**: Select required information
 ```
-이슈 타입: [🐛 버그 리포트] 선택
-우선순위: [🟠 높음] 선택
-템플릿: [✅ 자동 생성] 선택
+Issue Type: [🐛 Bug Report] selected
+Priority: [🟠 High] selected
+Template: [✅ Auto-generate] selected
 ```
 
-**3단계**: 템플릿 작성
+**Step 3**: Fill template
 ```markdown
-## 버그 설명
-로그인 버튼을 클릭해도 반응이 없습니다.
+## Bug Description
+Login button does not respond when clicked.
 
-## 재현 단계
-1. 홈페이지 접속
-2. 오른쪽 상단의 로그인 버튼 클릭
-3. 아무 반응 없음
+## Steps to Reproduce
+1. Access homepage
+2. Click login button in top right corner
+3. No response
 
-## 예상 동작
-로그인 모달이 나타나야 함
+## Expected Behavior
+Login modal should appear
 
-## 실제 동작
-아무 일도 일어나지 않음
+## Actual Behavior
+Nothing happens
 
-## 환경 정보
-🔍 자동 수집된 정보:
-- MoAI-ADK 버전: 0.22.5
-- Python 버전: 3.11.5
+## Environment Information
+🔍 Automatically collected information:
+- MoAI-ADK version: 0.22.5
+- Python version: 3.11.5
 - OS: macOS 14.2
 ```
 
-**결과**: Issue #234 자동 생성 + URL 표시 ✅
+**Result**: Issue #234 automatically created + URL displayed ✅
 
 ---
 
-**지원 버전**: MoAI-ADK v0.22.5+
+**Supported Version**: MoAI-ADK v0.22.5+
