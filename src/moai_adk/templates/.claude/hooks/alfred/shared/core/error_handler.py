@@ -214,6 +214,18 @@ class HookErrorHandler:
             data=data
         )
 
+    def create_success(self, message: str = "Operation completed successfully", data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Alias for handle_success for backward compatibility.
+
+        Args:
+            message: Success message
+            data: Additional data to include
+
+        Returns:
+            Success response (same as handle_success)
+        """
+        return self.handle_success(message, data)
+
     def print_and_exit(self, response: Dict[str, Any], exit_code: int = 0):
         """Print response and exit with appropriate code.
 
