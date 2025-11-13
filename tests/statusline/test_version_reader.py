@@ -5,9 +5,8 @@ Tests for VersionReader - MoAI-ADK 버전 읽기
 
 import json
 import tempfile
-from pathlib import Path
 from datetime import datetime, timedelta
-
+from pathlib import Path
 
 
 class TestVersionReader:
@@ -33,7 +32,7 @@ class TestVersionReader:
 
             # RED: 이 테스트는 실패할 것입니다. 현재 구현에서 버전이 올바르게 읽히지 않음
             assert "0.20.1" in version, f"Expected version 0.20.1, got {version}"
-            assert version != "unknown", f"Version should not be 'unknown'"
+            assert version != "unknown", "Version should not be 'unknown'"
 
     def test_version_with_v_prefix(self):
         """

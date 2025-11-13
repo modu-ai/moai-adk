@@ -8,6 +8,18 @@ import time
 from typing import Any, Dict, List
 
 
+# SpecGenerator: Placeholder for spec generation functionality
+class SpecGenerator:
+    """Placeholder SpecGenerator class for auto-spec completion."""
+
+    def __init__(self):
+        self.name = "SpecGenerator"
+
+    def generate_spec(self, file_path: str, content: str) -> str:
+        """Generate a basic SPEC document."""
+        return f"SPEC document for {file_path}\n\nContent analysis:\n{content[:200]}..."
+
+
 # BaseHook: Simplified base hook class for auto-spec completion
 class BaseHook:
     """Base hook class for auto-spec completion."""

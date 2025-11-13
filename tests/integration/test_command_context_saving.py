@@ -5,20 +5,20 @@ Tests the integration between 0-project command and ContextManager.
 Verifies that phase results are correctly saved after project-manager execution.
 """
 
-import os
 import json
+import os
 import tempfile
-import pytest
-from pathlib import Path
 from datetime import datetime, timezone
+from pathlib import Path
 
+import pytest
 
 # Import ContextManager
 try:
     from moai_adk.core.context_manager import (
         ContextManager,
-        validate_and_convert_path,
         substitute_template_variables,
+        validate_and_convert_path,
         validate_no_template_vars,
     )
 except ImportError:

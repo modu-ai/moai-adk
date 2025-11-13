@@ -152,6 +152,11 @@ class VersionReader:
         # Logging
         self._logger = logging.getLogger(__name__)
 
+        # Backwards compatibility cache attributes
+        self._version_cache: Optional[str] = None
+        self._cache_time: Optional[datetime] = None
+        self._cache_ttl = timedelta(seconds=self.config.cache_ttl_seconds)
+
         if self.config.debug_mode:
             self._logger.info(f"VersionReader initialized with config: {self.config}")
 
@@ -191,6 +196,8 @@ class VersionReader:
 
             # Read from config file
             version = self._read_version_from_config_sync()
+            if not version:
+                version = self._get_fallback_version()
             self._update_cache(version, VersionSource.CONFIG_FILE)
             self._cache_stats["misses"] += 1
             return version
@@ -223,6 +230,8 @@ class VersionReader:
 
             # Read from config file asynchronously
             version = await self._read_version_from_config_async()
+            if not version:
+                version = self._get_fallback_version()
             self._update_cache(version, VersionSource.CONFIG_FILE)
             self._cache_stats["misses"] += 1
             return version
@@ -398,6 +407,30 @@ class VersionReader:
 
         return metrics
 
+    def _read_version_from_config_sync(self) -> str:
+        """
+        Synchronous version of reading from .moai/config/config.json.
+
+        Returns:
+            Version string or empty string if not found
+        """
+        try:
+            if not self._config_path.exists():
+                logger.debug(f"Config file not found: {self._config_path}")
+                return ""
+
+            try:
+                config_data = self._read_json_sync(self._config_path)
+                version = self._extract_version_from_config(config_data)
+                return version if version else ""
+            except json.JSONDecodeError as e:
+                logger.error(f"Invalid JSON in config {self._config_path}: {e}")
+                return ""
+
+        except Exception as e:
+            logger.error(f"Error reading version from config: {e}")
+            return ""
+
     async def _read_version_from_config_async(self) -> str:
         """
         Read version from .moai/config/config.json asynchronously.
@@ -517,29 +550,6 @@ class VersionReader:
         self._logger.debug(f"Using fallback version: {fallback}")
         return fallback
 
-    # Backwards compatibility methods
-    def _update_cache(
-        self, version: str, source: VersionSource = VersionSource.FALLBACK
-    ) -> None:
-        """
-        Backwards compatibility method for existing tests.
-        """
-        # For backwards compatibility, use old cache structure if tests expect it
-        self._version_cache = version
-        self._cache_time = datetime.now()
-        logger.debug(f"Cache updated with version: {version}")
-
-    def _is_cache_valid(self) -> bool:
-        """
-        Check if version cache is still valid (backwards compatibility).
-        """
-        if not self.config.cache_enabled:
-            return False
-
-        if self._version_cache is None or self._cache_time is None:
-            return False
-
-        return datetime.now() - self._cache_time < self._cache_ttl
 
     async def _file_exists_async(self, path: Path) -> bool:
         """Async file existence check"""
@@ -558,21 +568,6 @@ class VersionReader:
         """Synchronous JSON file reading"""
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
-
-    def _is_cache_valid(self) -> bool:
-        """
-        Check if version cache is still valid.
-
-        Returns:
-            True if cache is valid and not expired
-        """
-        if not self.config.cache_enabled:
-            return False
-
-        if self._version_cache is None or self._cache_time is None:
-            return False
-
-        return datetime.now() - self._cache_time < self._cache_ttl
 
     # Backwards compatibility cache methods
     def clear_cache(self) -> None:

@@ -1,12 +1,13 @@
 """Test suite for PostToolUse auto-spec completion hook."""
 
-import unittest
-from unittest.mock import Mock, patch
 import os
 import tempfile
+import unittest
+from unittest.mock import Mock, patch
 
 # Import the hook to test
 from moai_adk.core.hooks.post_tool_auto_spec_completion import PostToolAutoSpecCompletion
+
 
 # Mock functions for testing (these are now methods of the class)
 def should_trigger_spec_completion(tool_name: str, tool_args: Dict[str, Any]) -> bool:

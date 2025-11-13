@@ -354,13 +354,13 @@ This is a test project with version {{MOAI_VERSION}}.
 
         # RED: These assertions will fail because the test demonstrates the current behavior
         # The existing values should be preserved
-        assert config["moai"]["version"] == "0.22.4", f"moai.version should be substituted"
+        assert config["moai"]["version"] == "0.22.4", "moai.version should be substituted"
         assert config["moai"]["update_check_frequency"] == "daily", \
-            f"moai.update_check_frequency should be preserved"
+            "moai.update_check_frequency should be preserved"
         assert config["constitution"]["test_coverage_target"] == 85, \
-            f"constitution.test_coverage_target should be preserved"
+            "constitution.test_coverage_target should be preserved"
         assert config["constitution"]["enforce_tdd"] is True, \
-            f"constitution.enforce_tdd should be preserved"
+            "constitution.enforce_tdd should be preserved"
 
     def test_version_substitution_error_handling(self) -> None:
         """

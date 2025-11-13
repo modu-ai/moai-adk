@@ -8,7 +8,6 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-
 from moai_adk.core.project.initializer import ProjectInitializer
 
 
@@ -42,8 +41,8 @@ class TestVersionFieldInitialization:
         # Should not be the placeholder value
         version = config["moai"]["version"]
         assert version != "{{MOAI_VERSION}}", f"Version should not be placeholder, got {version}"
-        assert len(version) > 0, f"Version should not be empty"
-        assert version != "unknown", f"Version should not be 'unknown'"
+        assert len(version) > 0, "Version should not be empty"
+        assert version != "unknown", "Version should not be 'unknown'"
 
     def test_version_field_present_after_reinitialization(self, tmp_path: Path) -> None:
         """
@@ -106,8 +105,8 @@ class TestVersionFieldInitialization:
         assert "version" in config["moai"], "moai section should have 'version' field"
 
         version = config["moai"]["version"]
-        assert version != "{{MOAI_VERSION}}", f"Version should not be placeholder"
-        assert version != "unknown", f"Version should not be 'unknown'"
+        assert version != "{{MOAI_VERSION}}", "Version should not be placeholder"
+        assert version != "unknown", "Version should not be 'unknown'"
 
     def test_version_field_correct_in_team_mode(self, tmp_path: Path) -> None:
         """
@@ -129,8 +128,8 @@ class TestVersionFieldInitialization:
         assert "version" in config["moai"], "moai section should have 'version' field"
 
         version = config["moai"]["version"]
-        assert version != "{{MOAI_VERSION}}", f"Version should not be placeholder"
-        assert version != "unknown", f"Version should not be 'unknown'"
+        assert version != "{{MOAI_VERSION}}", "Version should not be placeholder"
+        assert version != "unknown", "Version should not be 'unknown'"
 
     def test_version_field_missing_error_handling(self, tmp_path: Path) -> None:
         """
@@ -233,7 +232,7 @@ class TestVersionFieldIntegration:
 
                 version = config["moai"]["version"]
                 assert version != "{{MOAI_VERSION}}", f"Version should not be placeholder, got {version}"
-                assert version != "unknown", f"Version should not be 'unknown'"
+                assert version != "unknown", "Version should not be 'unknown'"
 
     def test_version_field_with_existing_config_preservation(self, tmp_path: Path) -> None:
         """

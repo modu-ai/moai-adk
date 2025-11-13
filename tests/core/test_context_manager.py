@@ -2,19 +2,20 @@
 Tests for ContextManager module
 """
 
-import os
 import json
+import os
 import tempfile
-import pytest
 from pathlib import Path
+
+import pytest
 
 # Import will be added after implementation
 try:
     from moai_adk.core.context_manager import (
         ContextManager,
-        validate_and_convert_path,
-        save_phase_result,
         load_phase_result,
+        save_phase_result,
+        validate_and_convert_path,
     )
 except ImportError:
     # Module not yet implemented, tests will fail as expected (RED phase)
@@ -79,8 +80,8 @@ class TestPathValidation:
 
         result = validate_and_convert_path(abs_path, temp_project_dir)
 
-        assert result == abs_path, f"Absolute path should be returned as-is"
-        assert os.path.isabs(result), f"Result should remain absolute"
+        assert result == abs_path, "Absolute path should be returned as-is"
+        assert os.path.isabs(result), "Result should remain absolute"
 
     def test_path_outside_project_root_rejected(self, temp_project_dir):
         """Test that paths outside project root are rejected"""
@@ -124,8 +125,8 @@ class TestPathValidation:
 
         result = validate_and_convert_path(file_path, temp_project_dir)
 
-        assert result.endswith("new_file.md"), f"File path should be accepted"
-        assert not os.path.exists(result), f"File doesn't need to exist yet"
+        assert result.endswith("new_file.md"), "File path should be accepted"
+        assert not os.path.exists(result), "File doesn't need to exist yet"
 
     def test_path_normalization(self, temp_project_dir):
         """Test that paths with ./ and multiple slashes are normalized"""
@@ -170,7 +171,7 @@ class TestAtomicJsonWrite:
         with open(target_path, 'r') as f:
             loaded_data = json.load(f)
 
-        assert loaded_data == test_data, f"Written data should match original"
+        assert loaded_data == test_data, "Written data should match original"
 
     def test_atomic_write_uses_temp_file(self, temp_state_dir):
         """Test that atomic write uses temporary files during write"""

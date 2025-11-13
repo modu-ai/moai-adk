@@ -651,6 +651,8 @@ class PhaseExecutor:
         if backup_path.exists():
             shutil.rmtree(backup_path)
 
+        # Create backup directories
+        backups_dir.mkdir(parents=True, exist_ok=True)
         backup_path.mkdir(parents=True, exist_ok=True)
 
         # Collect backup targets

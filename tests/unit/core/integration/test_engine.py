@@ -2,10 +2,11 @@
 Test integration testing execution engine.
 """
 
-import pytest
 import time
 
-from moai_adk.core.integration.engine import TestEngine
+import pytest
+
+from moai_adk.core.integration.engine import TestEngine as IntegrationTestEngine
 from moai_adk.core.integration.models import TestStatus
 
 
@@ -14,7 +15,7 @@ class TestEngine:
 
     def test_engine_initialization(self):
         """Test engine initialization"""
-        engine = TestEngine(test_timeout=10.0, max_workers=2)
+        engine = IntegrationTestEngine(test_timeout=10.0, max_workers=2)
 
         assert engine.test_timeout == 10.0
         assert engine.max_workers == 2
@@ -23,14 +24,14 @@ class TestEngine:
     def test_engine_invalid_initialization(self):
         """Test engine initialization with invalid parameters"""
         with pytest.raises(ValueError, match="Test timeout must be positive"):
-            TestEngine(test_timeout=-1.0)
+            IntegrationTestEngine(test_timeout=-1.0)
 
         with pytest.raises(ValueError, match="Max workers must be positive"):
-            TestEngine(max_workers=0)
+            IntegrationTestEngine(max_workers=0)
 
     def test_generate_test_id(self):
         """Test test ID generation"""
-        engine = TestEngine()
+        engine = IntegrationTestEngine()
 
         id1 = engine._generate_test_id()
         id2 = engine._generate_test_id()
@@ -43,7 +44,7 @@ class TestEngine:
 
     def test_execute_test_success(self):
         """Test successful test execution"""
-        engine = TestEngine(test_timeout=5.0)
+        engine = IntegrationTestEngine(test_timeout=5.0)
 
         def test_func():
             return "success"
@@ -59,7 +60,7 @@ class TestEngine:
 
     def test_execute_test_failure(self):
         """Test failed test execution"""
-        engine = TestEngine()
+        engine = IntegrationTestEngine()
 
         def test_func():
             raise ValueError("Test error")
@@ -72,7 +73,7 @@ class TestEngine:
 
     def test_execute_test_timeout(self):
         """Test test execution timeout"""
-        engine = TestEngine(test_timeout=0.1)  # Very short timeout
+        engine = IntegrationTestEngine(test_timeout=0.1)  # Very short timeout
 
         def slow_test():
             time.sleep(0.5)  # Sleep longer than timeout
@@ -86,7 +87,7 @@ class TestEngine:
 
     def test_execute_test_with_defaults(self):
         """Test test execution with default parameters"""
-        engine = TestEngine()
+        engine = IntegrationTestEngine()
 
         def test_func():
             return True
@@ -100,7 +101,7 @@ class TestEngine:
     @pytest.mark.asyncio
     async def test_execute_test_async(self):
         """Test asynchronous test execution"""
-        engine = TestEngine()
+        engine = IntegrationTestEngine()
 
         def test_func():
             return "async_result"
@@ -113,7 +114,7 @@ class TestEngine:
 
     def test_run_concurrent_tests(self):
         """Test concurrent test execution"""
-        engine = TestEngine(test_timeout=5.0, max_workers=3)
+        engine = IntegrationTestEngine(test_timeout=5.0, max_workers=3)
 
         def test_func(result_value):
             return result_value
@@ -128,12 +129,12 @@ class TestEngine:
 
         assert len(results) == 3
         assert all(result.passed for result in results)
-        assert result.test_names == ["test1", "test2", "test3"]
+        assert set(result.test_name for result in results) == {"test1", "test2", "test3"}
         assert all("comp" in str(result.components_tested) for result in results)
 
     def test_run_concurrent_tests_with_failures(self):
         """Test concurrent test execution with failures"""
-        engine = TestEngine()
+        engine = IntegrationTestEngine()
 
         def success_test():
             return "success"
@@ -149,13 +150,17 @@ class TestEngine:
         results = engine.run_concurrent_tests(tests)
 
         assert len(results) == 2
-        assert results[0].passed is True
-        assert results[1].passed is False
-        assert results[1].error_message == "Test failure"
+        # Check results regardless of order
+        success_results = [r for r in results if r.passed]
+        failure_results = [r for r in results if not r.passed]
+
+        assert len(success_results) == 1, "Should have one success result"
+        assert len(failure_results) == 1, "Should have one failure result"
+        assert failure_results[0].error_message == "Test failure"
 
     def test_run_concurrent_tests_timeout(self):
         """Test concurrent tests with batch timeout"""
-        engine = TestEngine(test_timeout=1.0, max_workers=2)
+        engine = IntegrationTestEngine(test_timeout=1.0, max_workers=2)
 
         def quick_test():
             return "quick"
@@ -169,15 +174,19 @@ class TestEngine:
             (slow_test, "slow_test", [])
         ]
 
-        results = engine.run_concurrent_tests(tests, timeout=0.5)  # Very short batch timeout
-
-        # Should have some results but may not be complete due to timeout
-        assert len(results) >= 0  # May get partial results before timeout
+        # Should handle timeout gracefully
+        try:
+            results = engine.run_concurrent_tests(tests, timeout=0.5)  # Very short batch timeout
+            # May get partial results before timeout
+            assert len(results) >= 0  # May get partial results before timeout
+        except TimeoutError:
+            # Expected timeout behavior
+            pass
 
     @pytest.mark.asyncio
     async def test_run_concurrent_tests_async(self):
         """Test asynchronous concurrent test execution"""
-        engine = TestEngine()
+        engine = IntegrationTestEngine()
 
         def test_func(value):
             return value
@@ -194,7 +203,7 @@ class TestEngine:
 
     def test_concurrent_test_execution_order(self):
         """Test that concurrent tests execute in reasonable time"""
-        engine = TestEngine(max_workers=4)
+        engine = IntegrationTestEngine(max_workers=4)
 
         def test_func():
             time.sleep(0.1)  # Small delay

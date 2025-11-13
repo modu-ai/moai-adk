@@ -214,8 +214,8 @@ class TestEnhancedUserHandler:
 
     def test_handle_user_prompt_submit_with_agent_delegation(self):
         """에이전트 위임과 함께 사용자 프롬프트 제출 핸들러 테스트"""
-        from shared.handlers.user import handle_user_prompt_submit
         from shared.core import HookPayload
+        from shared.handlers.user import handle_user_prompt_submit
 
         # Mock the enhanced context
         with patch('shared.handlers.user.get_enhanced_jit_context') as mock_context:
@@ -240,8 +240,8 @@ class TestEnhancedUserHandler:
 
     def test_handle_user_prompt_submit_backward_compatibility(self):
         """이전 버전과의 호환성 테스트"""
-        from shared.handlers.user import handle_user_prompt_submit
         from shared.core import HookPayload
+        from shared.handlers.user import handle_user_prompt_submit
 
         # Mock traditional context (no agent delegation)
         with patch('shared.handlers.user.get_enhanced_jit_context') as mock_context:
@@ -260,8 +260,8 @@ class TestEnhancedUserHandler:
 
     def test_handle_user_prompt_submit_alfred_command_logging(self):
         """Alfred 명령어 로깅 테스트"""
-        from shared.handlers.user import handle_user_prompt_submit
         from shared.core import HookPayload
+        from shared.handlers.user import handle_user_prompt_submit
 
         with patch('shared.handlers.user.get_enhanced_jit_context') as mock_context, \
              patch('builtins.open', create=True) as mock_open, \

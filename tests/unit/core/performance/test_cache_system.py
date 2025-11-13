@@ -4,8 +4,9 @@ Cache System Tests
 Test cases for caching system functionality.
 """
 
-import pytest
 import tempfile
+
+import pytest
 
 
 class TestCacheSystem:

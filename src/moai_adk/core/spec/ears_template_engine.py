@@ -1,12 +1,10 @@
 """EARS Template Engine for Auto-Generated SPECs."""
 
-import re
-import json
-import time
-import random
-from typing import Dict, Any, List, Optional, Tuple
-from pathlib import Path
 import logging
+import re
+import time
+from pathlib import Path
+from typing import Any, Dict
 
 from moai_adk.core.spec.confidence_scoring import ConfidenceScoringSystem
 

@@ -14,8 +14,8 @@ TDD History:
 
 import sys
 from pathlib import Path
+from typing import Any, Dict
 from unittest.mock import patch
-from typing import Dict, Any
 
 # Setup import path for shared modules (following existing pattern)
 HOOKS_DIR = Path(__file__).parent.parent.parent / ".claude" / "hooks" / "alfred"

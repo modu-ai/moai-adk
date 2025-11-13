@@ -4,10 +4,10 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/moai-adk)](https://pypi.org/project/moai-adk/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python](https://img.shields.io/badge/Python-3.13+-blue)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.11+-blue)](https://www.python.org/)
 [![Tests](https://github.com/modu-ai/moai-adk/actions/workflows/moai-gitflow.yml/badge.svg)](https://github.com/modu-ai/moai-adk/actions/workflows/moai-gitflow.yml)
 [![codecov](https://codecov.io/gh/modu-ai/moai-adk/branch/develop/graph/badge.svg)](https://codecov.io/gh/modu-ai/moai-adk)
-[![Coverage](https://img.shields.io/badge/coverage-87.84%25-brightgreen)](https://github.com/modu-ai/moai-adk)
+[![Coverage](https://img.shields.io/badge/coverage-85%2B-brightgreen)](https://github.com/modu-ai/moai-adk)
 [![CodeRabbit](https://img.shields.io/coderabbit/prs/github/modu-ai/moai-adk)](https://coderabbit.ai/)
 
 > **신뢰할 수 있고 유지보수하기 쉬운 소프트웨어를 AI의 도움으로 빌드하세요. 요구사항부터 문서화까지 완벽하게 동기화됩니다.**
@@ -51,21 +51,25 @@ MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 
 
 - **RED → GREEN → REFACTOR** 사이클 자동 관리
 - **테스트 우선 보증**: 테스트 없는 코드는 없음
-- **87.84%+ 커버리지**: 체계적 테스팅으로 달성
+- **85%+ 커버리지**: 체계적 테스팅으로 달성
 
 ### 3. Alfred 슈퍼에이전트
 
 - **19개의 전문 AI 에이전트** (spec-builder, code-builder, doc-syncer 등)
-- **105개의 프로덕션급 스킬** (모든 개발 영역 커버)
-  - **12개 BaaS 스킬**: 확장된 클라우드 플랫폼 (Foundation + 9 Extensions + 2 New Platforms)
-  - **완전한 프론트엔드 지원**: HTML/CSS, Tailwind CSS, shadcn/ui, 벡터 아이콘 (10+ 아이콘 라이브러리)
-  - **풀 백엔드 지원**: 데이터베이스 설계, API 아키텍처, DevOps
+- **125+ 프로덕션급 엔터프라이즈 스킬** (모든 개발 영역 커버)
+  - **12개 BaaS 스킬**: 클라우드 플랫폼 (Supabase, Firebase, Vercel, Cloudflare, Auth0, Convex, Railway, Neon, Clerk)
+  - **10개 보안 및 규정 준수 스킬**: 고급 인증, OWASP, 암호화, 규정 준수 패턴
+  - **15개 엔터프라이즈 통합 스킬**: 마이크로서비스, 이벤트 기반 아키텍처, DDD, 메시징
+  - **12개 고급 DevOps 스킬**: Kubernetes, 컨테이너 오케스트레이션, GitOps, IaC, 모니터링
+  - **18개 데이터 및 분석 스킬**: 데이터 파이프라인, 스트리밍, 데이터 웨어하우스, MLOps, 분석
+  - **완전한 프론트엔드 지원**: HTML/CSS, Tailwind CSS, shadcn/ui, React, Vue, Angular (10+ 아이콘 라이브러리)
+  - **풀 백엔드 지원**: 데이터베이스 설계, API 아키텍처, DevOps, 서버리스 패턴
   - **고급 MCP 통합**: Context7, Playwright, Sequential-thinking 서버
-  - **통합 문서 처리**: AI 기반 문서 핸들링 (docx, pdf, pptx, xlsx)
+  - **문서 처리**: AI 기반 문서 핸들링 (docx, pdf, pptx, xlsx)
   - **아티팩트 빌더**: 모던 React/Tailwind/shadcn/ui 컴포넌트 생성
-  - **기업 내부 커뮤니케이션**: 커뮤니케이션 템플릿 및 자동화
+  - **내부 커뮤니케이션**: 엔터프라이즈 커뮤니케이션 템플릿 및 자동화
   - **MCP 빌더**: 고급 Model Context Protocol 서버 개발
-  - **2025년 최신 스킬**: 전문화된 스킬 그룹이 완벽히 통합되고 검증됨
+  - **70+ 추가 엔터프라이즈급 스킬**: 모든 개발 영역에 걸쳐
 - **적응형 학습**: 프로젝트 패턴으로부터 자동 학습
 - **스마트 컨텍스트 관리**: 프로젝트 구조와 의존성 이해
 
@@ -98,8 +102,8 @@ MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 
 - **8개 아키텍처 패턴**: Pattern A-H로 모든 배포 시나리오 지원
 - **9개 클라우드 플랫폼**: 100% 커버리지 (Edge Computing ~ Database Management)
 - **패턴 기반 선택**: 최적 플랫폼을 추천하는 지능형 엔진
-- **제로 설정 배포**: 사전 구성된 모범 사례로 원클릭 구성
-- **고급 기능**: Blue-green 배포, Canary 릴리스, 커스텀 도메인, SSL 자동화, 모니터링 & 알림
+- **제로 설정 배포**: 미리 구성된 모범 사례로 원클릭 설정
+- **고급 기능**: Blue-green 배포, Canary 릴리즈, 커스텀 도메인, SSL 자동화, 모니터링 및 알림
 
 ---
 
@@ -110,15 +114,15 @@ MoAI-ADK statusline은 Claude Code 터미널 상태 표시줄에 **실시간 개
 ### 📊 상태줄 포맷
 
 ```
-🤖 Haiku 4.5 | 🗿 Ver 0.20.1 | 📊 Git: develop | Changes: +0 M0 ?0
+🤖 Haiku 4.5 | 🗿 Ver 0.22.5 | 📊 +0 M0 ?0 | 🔀 develop
 ```
 
 | 항목           | 아이콘 | 의미                  | 예시                      |
 | -------------- | ------ | --------------------- | ------------------------- |
 | **모델**       | 🤖     | 사용 중인 Claude 모델 | Haiku 4.5, Sonnet 4.5     |
-| **버전**       | 🗿     | MoAI-ADK 버전         | 0.20.1                    |
-| **Git 브랜치** | 📊     | 현재 작업 중인 브랜치 | develop, feature/SPEC-001 |
-| **Changes**    | -      | Git 파일 변경 상태    | +0 M0 ?0                  |
+| **버전**       | 🗿     | MoAI-ADK 버전         | 0.22.5                    |
+| **Git 브랜치** | 🔀     | 현재 작업 중인 브랜치 | develop, feature/SPEC-001 |
+| **Changes**    | 📊     | Git 파일 변경 상태    | +0 M0 ?0                  |
 
 ### 📝 Changes 표기 설명
 
@@ -181,6 +185,39 @@ export MOAI_STATUSLINE_MODE=extended
 ```
 
 ---
+
+## 🆕 Latest Features: Phase 1, Phase 2 & Phase 3 (v0.23.0)
+
+## 🆕 최신 개선 사항 (v0.23.0)
+
+### TAG 시스템 제거 및 아키텍처 최적화
+
+**전체 TAG 시스템 정리**:
+- ✅ **레거시 TAG 시스템** 의존성 핵심 아키텍처에서 제거
+- ✅ **단순화된 구성** 현대 Alfred 워크플로우로 개선
+- ✅ **향상된 성능** 스트림라인된 코드베이스를 통한 개선
+- ✅ **패키지 템플릿 동기화** 일관된 배포를 위한 동기화
+- ✅ **개선된 MCP 서버 최적화** 향상된 타임아웃 및 재시도 설정
+
+### 향상된 상태줄 시스템
+
+**고급 출력 스타일 감지**:
+- ✅ **향상된 스타일 감지** 더 나은 개발 경험 제공
+- ✅ **다국어 지원** 개선된 현지화
+- ✅ **실시간 Git 상태** 추적 포괄적인 파일 변경 감지
+- ✅ **최적화된 성능** 시스템 오버헤드 감소
+
+### Alfred 피드백 템플릿 개선
+
+**간소화된 이슈 생성**:
+- ✅ **67% 더 빠른 이슈 생성** (90초 → 30초)
+- ✅ **자동 수집된 환경 정보** 더 나은 버그 리포트
+- ✅ **구조화된 템플릿** 일관된 이슈 품질
+- ✅ **다중 선택 질문** 사용자 상호작용 단계 감소
+
+### Enterprise v4.0 최적화
+
+**전체 스킬 생태 시스템 업그레이드**:
 
 ## 🆕 Latest Features: Phase 1, Phase 2 & Phase 3 (v0.20.1+)
 
@@ -1800,20 +1837,27 @@ graph TD
 
 | 항목                | 수치                                                                              |
 | ------------------- | --------------------------------------------------------------------------------- |
-| **테스트 커버리지** | 92%+ 보증                                                                        |
+| **테스트 커버리지** | 85%+ 보증                                                                        |
 | **전문 에이전트**   | 19명 팀                                                                           |
-| **프로덕션급 스킬** | 101개 (BaaS 10개 + 프론트엔드 4개 + 백엔드 6개+ + 신규 고급 스킬 8개 포함)      |
-| **BaaS 스킬**       | 12개 프로덕션급 (Foundation + 9 Extensions + 2 New)                            |
-| **프론트엔드 스킬** | 4개 (HTML/CSS, Tailwind CSS, shadcn/ui, 벡터 아이콘)                      |
-| **아이콘 라이브러리** | 10개 이상 (Lucide, React Icons, Tabler, Phosphor, Heroicons, Radix, Iconify 등) |
-| **아이콘 커버리지** | 200K+ 아이콘 (150+ 아이콘 세트)                                            |
+| **프로덕션급 스킬** | 125개 (v0.23.0)                                                             |
+| **스킬 분류**    | 12 BaaS + 10 보안 + 15 통합 + 12 DevOps + 18 데이터/분석 + 48+ 기타                  |
+| **BaaS 스킬**       | 12개 프로덕션급 (Foundation + 9 Extensions + 2 New Platforms)                           |
+| **보안 스킬**       | 10개 신규 (인증, 규정 준수, 암호화, 테스트, 평가)                                      |
+| **기업 스킬**       | 15 통합 + 12 DevOps + 18 데이터/분석 = 45개 기업급 스킬                           |
+| **프론트엔드 스킬** | 10개 이상 전문화 (HTML/CSS, React, Vue, Angular, Tailwind, shadcn/ui)                    |
+| **아이콘 라이브러리** | 10개 이상 (Lucide, React Icons, Tabler, Phosphor, Heroicons, Radix, Iconify, 등) |
+| **아이콘 커버리지** | 200K+ 아이콘 (150+ 아이콘 세트)                                             |
 | **플랫폼 커버리지** | 11개 플랫폼 (Supabase, Firebase, Vercel, Cloudflare, Auth0, Convex, Railway, Neon, Clerk) |
 | **아키텍처 패턴**   | 8개 패턴 (A-H) 모든 배포 시나리오 지원                                            |
-| **BaaS 문서**       | 14,000+ 단어, 80개 이상 코드 예제                                                |
+| **문서화**       | 85,280+ 단어 (모든 스킬)                                                          |
+| **코드 예제**       | 200개 이상 프로덕션급 코드 예제                                                      |
 | **지원 언어**       | 18개 (Python, TypeScript, JavaScript, Go, Rust, Java, Kotlin, Swift, Dart, PHP, Ruby, C, C++, C#, Scala, R, SQL, Shell) |
 | **SPEC 패턴**       | 5개 이상 EARS 형식                                                                |
 | **품질 게이트**     | TRUST 5 + 추가 검사                                                               |
 | **Git 자동화**      | 완전한 GitFlow 지원                                                               |
+| **버전 읽기**      | 향상된 VersionReader (고급 캐싱 및 성능 최적화)                                |
+| **MCP 통합**      | Context7, Playwright, Sequential-thinking 서버 (v0.20.0+)                             |
+| **Python 지원**      | 3.11+ 향상된 성능 및 호환성                                                          |
 
 ---
 

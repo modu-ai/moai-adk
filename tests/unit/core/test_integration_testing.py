@@ -4,13 +4,12 @@ Integration Testing Framework Tests
 Test cases for integration testing functionality.
 """
 
-import pytest
 import tempfile
 from pathlib import Path
 
-from moai_adk.core.integration import (
-    IntegrationTester, IntegrationTestResult, TestComponent, TestSuite
-)
+import pytest
+
+from moai_adk.core.integration import IntegrationTester, IntegrationTestResult, TestComponent, TestSuite
 
 
 class TestIntegrationTester:

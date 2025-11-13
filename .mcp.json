@@ -24,7 +24,7 @@
       "timeout": 15000,
       "retries": 2,
       "env": {
-        "NOTION_TOKEN": "${NOTION_TOKEN}"
+        "NOTION_TOKEN": "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"
       }
     }
   }

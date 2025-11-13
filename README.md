@@ -4,10 +4,10 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/moai-adk)](https://pypi.org/project/moai-adk/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python](https://img.shields.io/badge/Python-3.13+-blue)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.11+-blue)](https://www.python.org/)
 [![Tests](https://github.com/modu-ai/moai-adk/actions/workflows/moai-gitflow.yml/badge.svg)](https://github.com/modu-ai/moai-adk/actions/workflows/moai-gitflow.yml)
 [![codecov](https://codecov.io/gh/modu-ai/moai-adk/branch/develop/graph/badge.svg)](https://codecov.io/gh/modu-ai/moai-adk)
-[![Coverage](https://img.shields.io/badge/coverage-87.84%25-brightgreen)](https://github.com/modu-ai/moai-adk)
+[![Coverage](https://img.shields.io/badge/coverage-85%2B-brightgreen)](https://github.com/modu-ai/moai-adk)
 [![Link Validation](https://github.com/modu-ai/moai-adk/actions/workflows/docs-link-validation.yml/badge.svg)](https://github.com/modu-ai/moai-adk/actions/workflows/docs-link-validation.yml)
 [![CodeRabbit](https://img.shields.io/coderabbit/prs/github/modu-ai/moai-adk)](https://coderabbit.ai/)
 
@@ -33,7 +33,7 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
 ### How MoAI-ADK Solves It
 
 - ✅ **SPEC-First**: Clear, structured requirements BEFORE any code
-- ✅ **Guaranteed Testing**: 87.84%+ test coverage through automated TDD
+- ✅ **Guaranteed Testing**: 85%+ test coverage through automated TDD
 - ✅ **Living Documentation**: Auto-synced docs that never drift
 - ✅ **Persistent Context**: Alfred remembers project history and patterns
 - ✅ **Quality Automation**: TRUST 5 principles enforced throughout
@@ -59,7 +59,7 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
 
 - **RED → GREEN → REFACTOR** cycle fully orchestrated
 - **Test-first guarantee**: No code without tests
-- **87.84%+ coverage** achieved through systematic testing
+- **85%+ coverage** achieved through systematic testing
 
 ### 3. Alfred SuperAgent
 
@@ -121,60 +121,42 @@ MoAI-ADK statusline displays **real-time development status** in Claude Code's t
 
 ### 📊 Statusline Format
 
+**Compact Mode** (default, ≤80 chars):
+
 ```
-🤖 Haiku 4.5 | 🗿 Ver 0.20.1 | 📊 Git: develop | Changes: +0 M0 ?0
+🤖 Haiku 4.5 | 🗿 Ver 0.20.1 | 📊 +0 M0 ?0 | 🔀 develop
 ```
 
 | Item           | Icon | Meaning                | Example                   |
 | -------------- | ---- | ---------------------- | ------------------------- |
 | **Model**      | 🤖   | Active Claude model    | Haiku 4.5, Sonnet 4.5     |
 | **Version**    | 🗿   | MoAI-ADK version       | 0.20.1                    |
-| **Git Branch** | 📊   | Current working branch | develop, feature/SPEC-001 |
-| **Changes**    | -    | Git file status        | +0 M0 ?0                  |
+| **Changes**    | 📊   | Git file status        | +0 M0 ?0                  |
+| **Git Branch** | 🔀   | Current working branch | develop, feature/SPEC-001 |
 
 ### 📝 Changes Notation Explained
 
 ```
 Changes: +staged Mmodified ?untracked
 
-+0  = Number of staged files (git add'ed files)
-M0  = Number of modified files (not yet git add'ed)
-?0  = Number of untracked new files
+📊 +0  = Number of staged files (git add'ed files)
+📊 M0  = Number of modified files (not yet git add'ed)
+📊 ?0  = Number of untracked new files
 ```
 
 ### 💡 Examples
 
 | Situation        | Display             | Meaning                                          |
 | ---------------- | ------------------- | ------------------------------------------------ |
-| Clean state      | `Changes: +0 M0 ?0` | All changes committed                            |
-| Files modified   | `Changes: +0 M2 ?0` | 2 files modified (need git add)                  |
-| New file created | `Changes: +0 M0 ?1` | 1 new file (need git add)                        |
-| Ready to commit  | `Changes: +3 M0 ?0` | 3 files staged (ready to commit)                 |
-| Work in progress | `Changes: +2 M1 ?1` | Mixed state: 2 staged + 1 modified + 1 untracked |
-
-### 🎯 Three Rendering Modes
-
-**Compact Mode** (default, ≤80 chars):
-
-```
-🤖 Haiku 4.5 | 🗿 Ver 0.20.1 | 📊 Git: develop | Changes: +0 M0 ?0
-```
-
-**Extended Mode** (≤120 chars):
-
-```
-🤖 Haiku 4.5 | 🗿 Ver 0.20.1 | 📊 Git: feature/SPEC-001 | Changes: +2 M1 ?0 | [PLAN]
-```
-
-**Minimal Mode** (≤40 chars):
-
-```
-🤖 H 4.5 | 🗿 Ver 0.20.1
-```
+| Clean state      | `📊 +0 M0 ?0` | All changes committed                            |
+| Files modified   | `📊 +0 M2 ?0` | 2 files modified (need git add)                  |
+| New file created | `📊 +0 M0 ?1` | 1 new file (need git add)                        |
+| Ready to commit  | `📊 +3 M0 ?0` | 3 files staged (ready to commit)                 |
+| Work in progress | `📊 +2 M1 ?1` | Mixed state: 2 staged + 1 modified + 1 untracked |
 
 ### ⚙️ Configuration
 
-Change statusline mode in `.claude/settings.json`:
+Statusline automatically displays Compact Mode (default, ≤80 chars). To customize:
 
 ```json
 {
@@ -186,17 +168,40 @@ Change statusline mode in `.claude/settings.json`:
 }
 ```
 
-Or use environment variable:
-
-```bash
-export MOAI_STATUSLINE_MODE=extended
-```
-
 ---
 
 ## 🆕 Latest Features: Phase 1 Batch 2 Complete (v0.23.0)
 
-### Complete Skills Ecosystem Upgrade to Enterprise v4.0
+## 🆕 Recent Improvements (v0.23.0)
+
+### Tag System Removal & Architecture Optimization
+
+**Complete TAG System Cleanup**:
+- ✅ **Removed legacy TAG system** dependency from core architecture
+- ✅ **Simplified configuration** with modern Alfred workflow
+- ✅ **Enhanced performance** through streamlined codebase
+- ✅ **Package template synchronization** for consistent deployment
+- ✅ **Improved MCP server optimization** with better timeout and retry settings
+
+### Enhanced Statusline System
+
+**Advanced Output Style Detection**:
+- ✅ **Enhanced style detection** for better development experience
+- ✅ **Multi-language support** with improved localization
+- ✅ **Real-time Git status** tracking with comprehensive file change detection
+- ✅ **Optimized performance** with reduced system overhead
+
+### Alfred Feedback Templates Enhancement
+
+**Streamlined Issue Creation**:
+- ✅ **67% faster issue creation** (90s → 30s)
+- ✅ **Auto-collected environment information** for better bug reports
+- ✅ **Structured templates** for consistent issue quality
+- ✅ **Multi-select questions** to reduce user interaction steps
+
+### Enterprise v4.0 Optimization
+
+**Complete Skills Ecosystem Upgrade**:
 
 **Historic Achievement - November 2025:**
 
@@ -1611,7 +1616,7 @@ Organized across 6 tiers:
 
 | Metric                  | Value                                                                       |
 | ----------------------- | --------------------------------------------------------------------------- |
-| **Test Coverage**       | 92%+ guaranteed                                                              |
+| **Test Coverage**       | 85%+ guaranteed                                                              |
 | **Specialized Agents**  | 19 team members                                                             |
 | **Production Skills**   | 125+ enterprise-grade skills (v0.23.0)                                      |
 | **Skills Breakdown**    | 12 BaaS + 10 Security + 15 Integration + 12 DevOps + 18 Data/Analytics + 48+ Others |
@@ -1631,6 +1636,7 @@ Organized across 6 tiers:
 | **Git Automation**      | Complete GitFlow support                                                    |
 | **Version Reading**      | Enhanced VersionReader with advanced caching and performance optimization |
 | **MCP Integration**      | Context7, Playwright, Sequential-thinking servers (v0.20.0+)           |
+| **Python Support**      | 3.11+ with enhanced performance and compatibility                           |
 
 ---
 

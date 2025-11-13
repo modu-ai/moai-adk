@@ -296,8 +296,9 @@ class TestHookPerformanceAndScalability:
 
     def test_hook_memory_usage(self):
         """Hook 메모리 사용량 테스트"""
-        import psutil
         import os
+
+        import psutil
 
         # Get current process
         process = psutil.Process(os.getpid())
