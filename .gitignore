@@ -77,6 +77,11 @@ docs/out/
 /CLAUDE.md
 /.mcp.json
 
+# Documentation and build artifacts
+docs/
+dist/
+htmlcov/
+
 # Package templates MUST be tracked (source of truth for new projects)
 # DO NOT exclude: src/moai_adk/templates/.claude/
 # DO NOT exclude: src/moai_adk/templates/.moai/

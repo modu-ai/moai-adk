@@ -1,6 +1,0 @@
-export default {
-  "workflow": "워크플로우",
-  "commands": "명령어",
-  "agents": "에이전트",
-  "expert-delegation-system": "Expert Delegation System"
-};
