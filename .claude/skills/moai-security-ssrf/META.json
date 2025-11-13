@@ -1,0 +1,42 @@
+{
+  "name": "moai-security-ssrf",
+  "title": "SSRF & Server-Side Attack Prevention",
+  "version": "4.0.0",
+  "category": "security",
+  "status": "production",
+  "published_date": "2025-11-12",
+  "last_updated": "2025-11-12",
+  "difficulty": "intermediate",
+  "trust_score": 9.8,
+  "keywords": ["SSRF", "URL validation", "server security", "OWASP", "egress control"],
+  "tech_stack": {
+    "language": "JavaScript/Node.js",
+    "frameworks": ["Express", "node-fetch"],
+    "libraries": ["valid-url", "dns module"]
+  },
+  "features": [
+    "Allowlist-based URL validation",
+    "DNS rebinding protection",
+    "Private IP blocking",
+    "HTTP redirect handling",
+    "WAF integration",
+    "Threat intelligence (Context7)",
+    "Metrics & monitoring"
+  ],
+  "coverage": {
+    "lines": 689,
+    "codeExamples": 5,
+    "reference_links": 24,
+    "production_ready": true
+  },
+  "dependencies": {
+    "node-fetch": "^3.x",
+    "valid-url": "^1.x",
+    "context7-mcp": "optional"
+  },
+  "progressive_disclosure": {
+    "level_1_foundations": "URL validation basics, private IP detection",
+    "level_2_intermediate": "Allowlist patterns, DNS rebinding, redirects, network segmentation",
+    "level_3_advanced": "Context7 MCP, WAF integration, metrics"
+  }
+}

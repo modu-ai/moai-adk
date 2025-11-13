@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allowedTools": [
+      "Read(**/*.{js,ts,json,md})",
+      "Edit(**/*.{js,ts})",
+      "Glob(**/*)",
+      "Grep(**/*)",
+      "Bash(git:*)",
+      "Bash(npm:*)",
+      "Bash(npm run:*)",
+      "Bash(pytest:*)",
+      "Bash(python:*)"
+    ],
+    "deniedTools": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)",
+      "Bash(rm -rf:*)",
+      "Bash(sudo:*)",
+      "Bash(curl:*)"
+    ]
+  },
+  "permissionMode": "ask",
+  "spinnerTipsEnabled": true,
+  "disableAllHooks": false,
+  "env": {
+    "ANTHROPIC_API_KEY": "${ANTHROPIC_API_KEY}",
+    "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+  }
+}

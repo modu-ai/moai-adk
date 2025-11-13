@@ -33,59 +33,217 @@ env/
 *.swp
 *.swo
 *~
+*.sublime-workspace
+*.sublime-project
+.vscode/settings.json
+.vscode/launch.json
+.idea/workspace.xml
+.idea/misc.xml
 
 # OS
 .DS_Store
 Thumbs.db
+desktop.ini
+.AppleDouble
+.LSOverride
+._*
 
 # Logs
 *.log
 logs/
+*.log.*
 
 # Temporary files
 *.tmp
 *.temp
 *.bak
 *.backup
+*~
+.#*
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+*.dbm
+*.rdb
+
+# Secrets and credentials (CRITICAL)
+.env
+.env.local
+.env.*.local
+.env.production.local
+.env.development.local
+secrets/
+credentials/
+*.pem
+*.key
+*.pfx
+*.p12
+*.jks
+.aws/credentials
+.aws/config
+.gcloud/
+google-credentials.json
+firebase-key.json
 
 # Test coverage
 .coverage
 coverage.json
 
-# Docs (local-only, never deployed)
-docs/
+# Docs build artifacts (but track documentation files)
+docs/.next/
+docs/node_modules/
+docs/.turbo/
 
 # Environment variables and deployment secrets
-.env*
 .vercel/
+.vercel/project.json
 .netlify/
+.netlify/state.json
 .firebase/
-.aws/
 .mypy_cache
+.mypy_cache/
 .playwright-mcp
 .ruff_cache
 .uv_cache
 .uv-cache
 .venv_issue43_py313
 
+# Python specific
+*.egg
+*.eggs
+*.pot
+*.po
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Node specific
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Build tools
+.turbo/
+.next/
+out/
+.nuxt/
+dist-ssr/
+*.local
+
+# Editor directories and files
+.DS_Store
+.idea/
+.idea_modules/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.project
+.pydevproject
+.settings/
+
+# Mac
+.AppleDouble
+.LSOverride
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Windows
+[Dd]esktop.ini
+[Ss]ystem32/
+Thumbs.db
+ehthumbs.db
+
+# Linux
+.directory
+
+# CI/CD
+.github/workflows/*.yml.bak
+.gitlab-ci.yml.bak
+
 # Package lock files (uv.lock excluded for package distribution)
 uv.lock
 
-# Local-only development files (never deployed with package)
-# Note: Template files in src/moai_adk/templates/ ARE included in distribution
-.claude/
-.moai/
-/CLAUDE.md
-/.mcp.json
+# ============================================================================
+# Local Development Files (TRACKED for synchronization)
+# Note: These are synced from package templates but NOT deployed
+# ============================================================================
+# ✅ DO TRACK: .claude/, .moai/config/, .moai/scripts/, CLAUDE.md, .mcp.json
+# These are needed for local development and syncing with package templates
 
-# Yoda system - local-only development tool (never deployed with package)
-# CRITICAL: These must NEVER be in package distribution
+# ============================================================================
+# Local-Only Runtime Files (IGNORED - Never Track)
+# ============================================================================
+# .moai/ runtime files (local-only, never deploy)
+.moai/cache/              # Runtime cache (version checks, git info)
+.moai/logs/               # Session logs and command invocations
+.moai/memory/             # Runtime state (command execution, subagent logs)
+.moai/docs/               # Local documentation (not in template)
+.moai/temp/               # Temporary files
+.moai/backups/            # Backup files
+
+# Local-Only Development Tools (IGNORED - Never Track, Never Deploy)
+.moai/release/            # /moai:release command (local-only tool)
+.moai/yoda/               # Yoda system (local-only lecture material tool)
+.claude/commands/moai/release.md  # /moai:release command definition
+
+# ============================================================================
+# Package Template Exclusions (Never Deploy)
+# These files exist in package templates but should NEVER be deployed
+# ============================================================================
+# Yoda system in package templates (local-only, never deploy)
 src/moai_adk/templates/.claude/commands/yoda/
 src/moai_adk/templates/.claude/agents/yoda-master.md
 src/moai_adk/templates/.claude/skills/moai-yoda-system/
 
-# Package templates MUST be tracked (source of truth for new projects)
-# DO NOT exclude: src/moai_adk/templates/.claude/ (except yoda above)
-# DO NOT exclude: src/moai_adk/templates/.moai/
-# DO NOT exclude: src/moai_adk/templates/CLAUDE.md
-# DO NOT exclude: src/moai_adk/templates/.mcp.json
+# Development-only scripts in templates (never deploy)
+src/moai_adk/templates/.moai/scripts/dev/
+src/moai_adk/templates/.moai/scripts/*/test_*.py
+
+# Template backups and temp files (never deploy)
+src/moai_adk/templates/.moai/backups/
+src/moai_adk/templates/.moai/temp/
+
+# ============================================================================
+# IMPORTANT: What IS Tracked (Do NOT Add to .gitignore)
+# ============================================================================
+# ✅ TRACKED: Package templates (source of truth)
+#    - src/moai_adk/templates/.claude/ (except Yoda)
+#    - src/moai_adk/templates/.moai/config/
+#    - src/moai_adk/templates/.moai/scripts/statusline.py
+#    - src/moai_adk/templates/CLAUDE.md
+#    - src/moai_adk/templates/.mcp.json
+#
+# ✅ TRACKED: Local development sync files (for updates to templates)
+#    - .claude/ (except /moai:release command)
+#    - .moai/config/ (local substituted values)
+#    - .moai/scripts/statusline.py (synced from template)
+#    - CLAUDE.md (local substituted values)
+#    - .mcp.json (local config - review before committing credentials!)
+# ============================================================================
