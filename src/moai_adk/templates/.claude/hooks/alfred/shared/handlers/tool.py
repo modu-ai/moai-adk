@@ -58,18 +58,6 @@ def handle_pre_tool_use(payload: HookPayload) -> HookResult:
         # Do not fail the hook if risk detection errors out
         pass
 
-    issues = scan_recent_changes_for_missing_tags(cwd)
-    if issues:
-        # Summarize first few issues for display
-        preview = "\n".join(f" - {i.path} → Expected tag: {i.expected}" for i in issues[:5])
-        more = "" if len(issues) <= 5 else f"\n ({len(issues) - 5} more items exist)"
-        msg = (
-            f"{preview}{more}\n"
-            "Recommended actions:\n"
-            "  2) Verify with rg: rg '@(SPEC|TEST|CODE|DOC):' -n <path>\n"
-        )
-        return HookResult(system_message=msg, continue_execution=True)
-
     return HookResult(continue_execution=True)
 
 
