@@ -19,6 +19,7 @@ node_modules/
 *-backup/
 *_backup_*/
 hooks_backup_*/
+docs_backup_*/
 
 # Virtual environment
 venv/
@@ -75,3 +76,16 @@ uv.lock
 .claude/
 .moai/
 /CLAUDE.md
+/.mcp.json
+
+# Yoda system - local-only development tool (never deployed with package)
+# CRITICAL: These must NEVER be in package distribution
+src/moai_adk/templates/.claude/commands/yoda/
+src/moai_adk/templates/.claude/agents/yoda-master.md
+src/moai_adk/templates/.claude/skills/moai-yoda-system/
+
+# Package templates MUST be tracked (source of truth for new projects)
+# DO NOT exclude: src/moai_adk/templates/.claude/ (except yoda above)
+# DO NOT exclude: src/moai_adk/templates/.moai/
+# DO NOT exclude: src/moai_adk/templates/CLAUDE.md
+# DO NOT exclude: src/moai_adk/templates/.mcp.json
