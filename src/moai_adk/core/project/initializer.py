@@ -12,6 +12,7 @@ Phase-based 5-step initialization process:
 # type: ignore
 
 import json
+import stat
 import time
 from datetime import datetime
 from pathlib import Path
@@ -176,6 +177,18 @@ class ProjectInitializer:
             resource_files = self.executor.execute_resource_phase(
                 self.path, config, progress_callback
             )
+
+            # Post-Phase 3: Fix shell script permissions
+            # git may not preserve file permissions, so explicitly set them
+            scripts_dir = self.path / ".moai" / "scripts"
+            if scripts_dir.exists():
+                for script_file in scripts_dir.glob("*.sh"):
+                    try:
+                        current_mode = script_file.stat().st_mode
+                        new_mode = current_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
+                        script_file.chmod(new_mode)
+                    except Exception:
+                        pass  # Silently ignore permission errors
 
             # Phase 4: Configuration (generate config.json)
             # Handle language configuration
