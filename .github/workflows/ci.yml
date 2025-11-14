@@ -1,0 +1,213 @@
+name: Continuous Integration
+
+# 트리거: PR, develop/main 브랜치 push
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [develop, main]
+
+# 권한 설정
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  code-quality:
+    name: 🔍 Code Quality Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: 📦 Install uv
+        uses: astral-sh/setup-uv@v2
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+
+      - name: 📋 Install dependencies
+        run: |
+          echo "📦 Installing project dependencies..."
+          uv sync
+
+      - name: 🎨 Check code formatting (black)
+        run: |
+          echo "🎨 Checking code formatting with black..."
+          uv run black --check src/ tests/ .claude/ --line-length=120
+          echo "✅ Code formatting check passed"
+
+      - name: 🔧 Lint code (ruff)
+        run: |
+          echo "🔧 Linting code with ruff..."
+          uv run ruff check src/ tests/ .claude/ --fix
+          echo "✅ Ruff lint check passed"
+
+      - name: 📝 Type checking (mypy)
+        run: |
+          echo "📝 Type checking with mypy..."
+          uv run mypy src/ --strict --ignore-missing-imports || true
+          echo "✅ Type checking complete (warnings allowed)"
+
+      - name: 🔐 Security check (bandit)
+        run: |
+          echo "🔐 Security scanning with bandit..."
+          uv run bandit -r src/ -ll || true
+          echo "✅ Security scan complete (low/medium issues allowed)"
+
+  test:
+    name: 🧪 Unit & Integration Tests
+    runs-on: ubuntu-latest
+    needs: code-quality
+
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: 📦 Install uv
+        uses: astral-sh/setup-uv@v2
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+
+      - name: 📋 Install dependencies
+        run: |
+          echo "📦 Installing project dependencies for Python ${{ matrix.python-version }}..."
+          uv sync
+
+      - name: 🧪 Run tests with coverage
+        run: |
+          echo "🧪 Running pytest with coverage..."
+          uv run pytest tests/ \
+            --cov=src/moai_adk \
+            --cov-report=xml \
+            --cov-report=html \
+            --cov-report=term \
+            -v
+
+      - name: 📊 Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
+          flags: unittests
+          name: codecov-py${{ matrix.python-version }}
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  build:
+    name: 🏗️ Build Package
+    runs-on: ubuntu-latest
+    needs: [code-quality, test]
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: 📦 Install uv
+        uses: astral-sh/setup-uv@v2
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+
+      - name: 🔨 Build package
+        run: |
+          echo "🔨 Building package..."
+          uv build
+          echo "✅ Package built successfully"
+          ls -lh dist/
+
+      - name: 📦 Verify package contents
+        run: |
+          echo "📦 Verifying package contents..."
+
+          # Check wheel
+          python -m zipfile -l dist/moai_adk-*.whl | head -20
+
+          # Check tarball
+          tar -tzf dist/moai_adk-*.tar.gz | head -20
+
+          echo "✅ Package contents verified"
+
+      - name: 📤 Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-py313
+          path: dist/
+          retention-days: 7
+
+  quality-gate:
+    name: ✅ Quality Gate
+    runs-on: ubuntu-latest
+    needs: [code-quality, test, build]
+    if: always()
+
+    steps:
+      - name: 📊 Check results
+        run: |
+          echo "📊 Quality Gate Results:"
+          echo ""
+          echo "Code Quality: ${{ needs.code-quality.result }}"
+          echo "Tests: ${{ needs.test.result }}"
+          echo "Build: ${{ needs.build.result }}"
+          echo ""
+
+          if [ "${{ needs.code-quality.result }}" == "failure" ]; then
+            echo "❌ Code quality check failed"
+            exit 1
+          fi
+
+          if [ "${{ needs.test.result }}" == "failure" ]; then
+            echo "❌ Test failed"
+            exit 1
+          fi
+
+          if [ "${{ needs.build.result }}" == "failure" ]; then
+            echo "❌ Build failed"
+            exit 1
+          fi
+
+          echo "✅ All quality gates passed"
+
+      - name: 📝 Summary
+        if: always()
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << 'SUMMARY'
+          ## ✅ CI Pipeline Summary
+
+          | Check | Result |
+          |-------|--------|
+          | Code Quality | ${{ needs.code-quality.result }} |
+          | Tests | ${{ needs.test.result }} |
+          | Build | ${{ needs.build.result }} |
+
+          ### Details
+          - **Code Quality**: ruff, black, mypy, bandit
+          - **Tests**: Python 3.11, 3.12, 3.13 with coverage
+          - **Build**: Package build and verification
+          SUMMARY

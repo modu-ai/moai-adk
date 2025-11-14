@@ -97,6 +97,11 @@ git commit -m "docs: Update CHANGELOG for vX.X.X"
 #  3. Publish to PyPI
 #  4. Create GitHub release
 #  5. Tag commit
+
+# ⚠️ AUTOMATED: main 브랜치 병합 시 CI/CD가 자동으로 PyPI 배포 수행
+# CI/CD Pipeline: .github/workflows/release.yml
+#  - Trigger: push to main with tag v*.*.*
+#  - Action: Auto build → PyPI publish → GitHub Release
 ```
 
 ### 5. Emergency Rollback
@@ -131,10 +136,41 @@ echo "PYPI_TOKEN=..." >> .env
 # 3. Store in: ~/MoAI/MoAI-ADK/.github/workflows/secrets.json
 ```
 
+### GitHub Release 문서 작성 규칙
+
+```
+📝 GitHub Release Notes 포맷:
+
+## 🎯 한글 섹션 (한국어)
+- 기능 설명
+- 버그 수정
+- 개선사항
+- 주의사항
+
+---
+
+## 🎯 English Section
+- Feature descriptions (English)
+- Bug fixes (English)
+- Improvements (English)
+- Notes (English)
+
+🤖 Generated with Claude Code
+
+Co-Authored-By: 🎩 Alfred@MoAI
+```
+
+**규칙**:
+1. 항상 한글 섹션 먼저 작성
+2. `---` 구분선으로 구분
+3. 그 다음 영문 섹션 작성
+4. Footer: 🤖 Generated with Claude Code + Co-Authored-By
+
 ### See Also
 - `.moai/release/RELEASE_SETUP.md` - Detailed setup instructions
 - `.moai/release/ROLLBACK_GUIDE.md` - Emergency procedures
 - `.moai/release/CHECKLIST.md` - 6-phase release validation
+- `.github/workflows/release.yml` - Automated PyPI deployment (CI/CD)
 
 ---
 
@@ -145,6 +181,42 @@ echo "PYPI_TOKEN=..." >> .env
 - **Rollback Strategy**: Git history-aware with PyPI API integration
 - **Safety Checks**: Pre-flight validation before each operation
 - **Error Recovery**: Comprehensive error handling with rollback support
+
+## 🔄 Automated CI/CD Deployment
+
+### Main Branch → PyPI Automatic Deployment
+
+**Trigger**: Push to main with tag `v*.*.*`
+
+**Workflow**: `.github/workflows/release.yml`
+
+**Steps** (자동 실행):
+1. 코드 품질 검증 (Quality checks)
+2. 패키지 빌드 (Build package)
+3. PyPI 배포 (Publish to PyPI)
+4. GitHub Release 생성 (Create GitHub Release)
+5. 배포 완료 알림 (Post deployment comment)
+
+**Requirements**:
+- PYPI_API_TOKEN secret configured in GitHub
+- Version tag must match `v*.*.*` format
+- All tests must pass
+- Code quality standards must be met
+
+**Manual Override**:
+```bash
+# Local testing before main push
+/moai:release release       # Test locally
+git add .                   # Stage changes
+git commit -m "Release v0.X.X"
+git push origin main        # Triggers CI/CD
+# → CI/CD automatically handles PyPI deployment
+```
+
+**Monitoring**:
+- GitHub Actions: `.github/workflows/release.yml`
+- PyPI Package: https://pypi.org/project/moai-adk/
+- GitHub Releases: Releases page
 
 ---
 

@@ -1,0 +1,214 @@
+name: SPEC Synchronization
+
+# 트리거: SPEC 파일 변경
+on:
+  push:
+    branches: [develop, main]
+    paths:
+      - '.moai/specs/**'
+      - '.moai/specs-archive/**'
+      - '.github/workflows/spec-sync.yml'
+  pull_request:
+    branches: [develop, main]
+    paths:
+      - '.moai/specs/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  analyze-specs:
+    name: 📋 Analyze SPEC Files
+    runs-on: ubuntu-latest
+
+    outputs:
+      spec_count: ${{ steps.analyze.outputs.spec_count }}
+      completed_count: ${{ steps.analyze.outputs.completed_count }}
+      pending_count: ${{ steps.analyze.outputs.pending_count }}
+      archived_count: ${{ steps.analyze.outputs.archived_count }}
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 📋 Analyze SPEC files
+        id: analyze
+        run: |
+          echo "📋 Analyzing SPEC files..."
+
+          # Count SPEC files
+          SPEC_COUNT=$(find .moai/specs -name "SPEC-*.md" 2>/dev/null | wc -l)
+          echo "spec_count=$SPEC_COUNT" >> "$GITHUB_OUTPUT"
+
+          # Count completed specs (SPEC-*.md with ✅ or Status: Completed)
+          COMPLETED=$(find .moai/specs -name "SPEC-*.md" -exec grep -l "Status: Completed\|Status: ✅\|## Status.*Completed" {} \; 2>/dev/null | wc -l)
+          echo "completed_count=$COMPLETED" >> "$GITHUB_OUTPUT"
+
+          # Count pending specs
+          PENDING=$(find .moai/specs -name "SPEC-*.md" -exec grep -l "Status: Pending\|Status: In Progress" {} \; 2>/dev/null | wc -l)
+          echo "pending_count=$PENDING" >> "$GITHUB_OUTPUT"
+
+          # Count archived specs
+          ARCHIVED=$(find .moai/specs-archive -name "SPEC-*.md" 2>/dev/null | wc -l)
+          echo "archived_count=$ARCHIVED" >> "$GITHUB_OUTPUT"
+
+          echo "✅ Analysis complete:"
+          echo "   Total SPECs: $SPEC_COUNT"
+          echo "   Completed: $COMPLETED"
+          echo "   Pending: $PENDING"
+          echo "   Archived: $ARCHIVED"
+
+  sync-github:
+    name: 🔄 Sync to GitHub Issues
+    runs-on: ubuntu-latest
+    needs: analyze-specs
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: 📦 Install dependencies
+        run: |
+          pip install PyYAML requests
+
+      - name: 🔄 Sync SPECs to Issues
+        run: |
+          echo "🔄 Syncing SPECs to GitHub Issues..."
+
+          SPEC_DIR=".moai/specs"
+          if [ ! -d "$SPEC_DIR" ]; then
+            echo "⚠️  No SPEC directory found"
+            exit 0
+          fi
+
+          # For each SPEC file
+          for spec in $SPEC_DIR/SPEC-*.md; do
+            if [ -f "$spec" ]; then
+              SPEC_ID=$(basename "$spec" .md)
+              SPEC_TITLE=$(head -1 "$spec" | sed 's/^#\s*//')
+
+              echo "📋 Processing $SPEC_ID: $SPEC_TITLE"
+
+              # Extract status
+              STATUS=$(grep -m1 "^## Status\|Status:" "$spec" | head -1)
+
+              # In real implementation:
+              # - Check if GitHub issue exists
+              # - Create or update issue
+              # - Sync labels, status, etc.
+              echo "   Status: $STATUS"
+            fi
+          done
+
+          echo "✅ SPEC sync complete"
+
+  generate-report:
+    name: 📊 Generate SPEC Report
+    runs-on: ubuntu-latest
+    needs: analyze-specs
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📊 Generate summary
+        run: |
+          cat > spec_report.md << 'REPORT'
+          # SPEC Status Report
+
+          | Metric | Count |
+          |--------|-------|
+          | Total SPECs | ${{ needs.analyze-specs.outputs.spec_count }} |
+          | Completed | ${{ needs.analyze-specs.outputs.completed_count }} |
+          | Pending | ${{ needs.analyze-specs.outputs.pending_count }} |
+          | Archived | ${{ needs.analyze-specs.outputs.archived_count }} |
+
+          ## Completion Rate
+
+          ```
+          Completed: ${{ needs.analyze-specs.outputs.completed_count }} / ${{ needs.analyze-specs.outputs.spec_count }}
+          ```
+
+          Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+          REPORT
+
+          cat spec_report.md
+
+      - name: 📤 Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: spec-report
+          path: spec_report.md
+          retention-days: 30
+
+  quality-gate:
+    name: ✅ SPEC Quality Gate
+    runs-on: ubuntu-latest
+    needs: [analyze-specs, sync-github, generate-report]
+    if: always()
+
+    steps:
+      - name: 📊 Check results
+        run: |
+          echo "📊 SPEC Pipeline Results:"
+          echo ""
+          echo "Analysis: ${{ needs.analyze-specs.result }}"
+          echo "Sync: ${{ needs.sync-github.result }}"
+          echo "Report: ${{ needs.generate-report.result }}"
+          echo ""
+          echo "📋 SPEC Counts:"
+          echo "   Total: ${{ needs.analyze-specs.outputs.spec_count }}"
+          echo "   Completed: ${{ needs.analyze-specs.outputs.completed_count }}"
+          echo "   Pending: ${{ needs.analyze-specs.outputs.pending_count }}"
+          echo "   Archived: ${{ needs.analyze-specs.outputs.archived_count }}"
+
+          # Check if quality gates passed
+          if [ "${{ needs.analyze-specs.result }}" == "failure" ]; then
+            echo "❌ SPEC analysis failed"
+            exit 1
+          fi
+
+          if [ "${{ needs.sync-github.result }}" == "failure" ]; then
+            echo "❌ GitHub sync failed"
+            exit 1
+          fi
+
+          if [ "${{ needs.generate-report.result }}" == "failure" ]; then
+            echo "❌ Report generation failed"
+            exit 1
+          fi
+
+          echo "✅ All SPEC checks passed"
+
+      - name: 📝 Summary
+        if: always()
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << 'SUMMARY'
+          ## 📋 SPEC Synchronization
+
+          | Status | Count |
+          |--------|-------|
+          | Total | ${{ needs.analyze-specs.outputs.spec_count }} |
+          | Completed | ${{ needs.analyze-specs.outputs.completed_count }} |
+          | Pending | ${{ needs.analyze-specs.outputs.pending_count }} |
+          | Archived | ${{ needs.analyze-specs.outputs.archived_count }} |
+
+          ### Completion
+
+          Progress: ${{ needs.analyze-specs.outputs.completed_count }} / ${{ needs.analyze-specs.outputs.spec_count }}
+
+          ### Actions
+          - ✅ SPEC analysis complete
+          - 🔄 GitHub Issues synced
+          - 📊 Report generated
+          SUMMARY

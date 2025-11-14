@@ -1,0 +1,212 @@
+name: Documentation
+
+# 트리거: docs/ 폴더 변경 또는 수동 트리거
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'docs/**'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'docs/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  deployments: write
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: 📚 Validate Documentation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔍 Check markdown files exist
+        run: |
+          echo "🔍 Validating documentation structure..."
+          if [ ! -d "docs" ]; then
+            echo "⚠️  docs/ folder not found"
+            exit 1
+          fi
+
+          MARKDOWN_COUNT=$(find docs -name "*.md" | wc -l)
+          echo "✅ Found $MARKDOWN_COUNT markdown files"
+
+      - name: 🔗 Validate markdown links
+        run: |
+          echo "🔗 Checking internal links..."
+
+          # Check for broken relative links
+          BROKEN=0
+          while IFS= read -r file; do
+            # Extract markdown links [text](url)
+            if grep -o '\[.*\](.*\.md[^)]*)' "$file" | cut -d'(' -f2 | sed 's/)//' | while read -r link; do
+              # Skip external links
+              if [[ ! "$link" =~ ^http ]]; then
+                # Resolve relative link
+                LINKDIR=$(dirname "$file")
+                LINKFILE="$LINKDIR/$link"
+                if [ ! -f "$LINKFILE" ]; then
+                  echo "⚠️  Broken link in $file: $link → $LINKFILE"
+                  BROKEN=$((BROKEN + 1))
+                fi
+              fi
+            done; do
+              [ $BROKEN -gt 0 ] && break
+            done
+          done < <(find docs -name "*.md")
+
+          if [ $BROKEN -gt 0 ]; then
+            echo "⚠️  Found broken links (warnings allowed)"
+          else
+            echo "✅ All internal links valid"
+          fi
+
+      - name: 📝 Check markdown formatting
+        run: |
+          echo "📝 Checking markdown formatting..."
+
+          # Check for common markdown issues
+          ISSUES=0
+
+          # Check for missing spaces after # in headers
+          if grep -r "^#[^ ]" docs/*.md 2>/dev/null; then
+            echo "⚠️  Found headers without spaces"
+            ISSUES=$((ISSUES + 1))
+          fi
+
+          # Check for trailing whitespace
+          if grep -r "[[:space:]]$" docs/*.md 2>/dev/null; then
+            echo "⚠️  Found trailing whitespace"
+            ISSUES=$((ISSUES + 1))
+          fi
+
+          if [ $ISSUES -gt 0 ]; then
+            echo "⚠️  Found $ISSUES formatting issues (warnings allowed)"
+          else
+            echo "✅ Markdown formatting valid"
+          fi
+
+  build:
+    name: 🏗️ Build Documentation
+    runs-on: ubuntu-latest
+    needs: validate
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔍 Check for docs build config
+        run: |
+          echo "🔍 Checking documentation build configuration..."
+
+          # Check if docs has package.json (Next.js/Nextra)
+          if [ -f "docs/package.json" ]; then
+            echo "✅ Next.js/Nextra configuration found"
+            echo "BUILD_TYPE=nextjs" >> $GITHUB_ENV
+          # Check if docs has requirements.txt (Sphinx/MkDocs Python)
+          elif [ -f "docs/requirements.txt" ]; then
+            echo "✅ Python documentation build found"
+            echo "BUILD_TYPE=python" >> $GITHUB_ENV
+          else
+            echo "⚠️  No build configuration found (static docs)"
+            echo "BUILD_TYPE=static" >> $GITHUB_ENV
+          fi
+
+      - name: 📦 Setup Node.js (Next.js)
+        if: env.BUILD_TYPE == 'nextjs'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-glob: "docs/package-lock.json"
+
+      - name: 🐍 Setup Python (Python docs)
+        if: env.BUILD_TYPE == 'python'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: 🏗️ Build Next.js docs
+        if: env.BUILD_TYPE == 'nextjs'
+        run: |
+          echo "🏗️  Building Next.js documentation..."
+          cd docs
+          npm ci
+          npm run build
+          echo "✅ Next.js build successful"
+
+      - name: 🏗️ Build Python docs
+        if: env.BUILD_TYPE == 'python'
+        run: |
+          echo "🏗️  Building Python documentation..."
+          cd docs
+          pip install -r requirements.txt
+          # Assume Sphinx or MkDocs
+          if [ -f "conf.py" ]; then
+            make html
+          else
+            echo "⚠️  Unknown Python doc format"
+          fi
+          echo "✅ Python docs build attempted"
+
+      - name: 📤 Upload build artifacts
+        if: env.BUILD_TYPE != 'static'
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-build
+          path: docs/.next
+          retention-days: 7
+
+  quality-gate:
+    name: ✅ Docs Quality Gate
+    runs-on: ubuntu-latest
+    needs: [validate, build]
+    if: always()
+
+    steps:
+      - name: 📊 Check results
+        run: |
+          echo "📊 Documentation Quality Gate:"
+          echo ""
+          echo "Validation: ${{ needs.validate.result }}"
+          echo "Build: ${{ needs.build.result }}"
+          echo ""
+
+          if [ "${{ needs.validate.result }}" == "failure" ]; then
+            echo "❌ Validation failed"
+            exit 1
+          fi
+
+          if [ "${{ needs.build.result }}" == "failure" ]; then
+            echo "❌ Build failed"
+            exit 1
+          fi
+
+          echo "✅ All documentation checks passed"
+
+      - name: 📝 Summary
+        if: always()
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << 'SUMMARY'
+          ## 📚 Documentation Pipeline
+
+          | Check | Result |
+          |-------|--------|
+          | Validation | ${{ needs.validate.result }} |
+          | Build | ${{ needs.build.result }} |
+
+          ### Validated
+          - Markdown structure
+          - Internal links
+          - Formatting standards
+          SUMMARY
