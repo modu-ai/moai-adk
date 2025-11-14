@@ -47,7 +47,7 @@ if __name__ == "__main__":
 
     # Try to run full statusline with moai-adk module
     result = subprocess.run(
-        [sys.executable, "-m", "moai_adk.statusline.main"],
+        ["uv", "run", "--project", cwd, "python", "-m", "moai_adk.statusline.main"],
         cwd=cwd,
         capture_output=True,
         text=True,
