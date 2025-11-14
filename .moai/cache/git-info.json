@@ -1,7 +1,7 @@
 {
   "branch": "main",
-  "last_commit": "f95d369c Fix: Support Claude Code environment variable for working directory detection",
-  "commit_time": "3 minutes ago",
-  "changes": 11,
-  "last_check": "2025-11-14T10:07:56.660989"
+  "last_commit": "0cc03690 chore: Bump version to 0.25.6 - Statusline fallback fix",
+  "commit_time": "19 hours ago",
+  "changes": 2,
+  "last_check": "2025-11-15T05:04:19.408719"
 }

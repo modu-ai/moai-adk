@@ -175,7 +175,8 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "uv run ./.moai/scripts/statusline.py"
+    "command": ".moai/scripts/statusline.sh",
+    "padding": 0
   },
   "spinnerTipsEnabled": true,
   "outputStyle": "🤖 R2-D2"
