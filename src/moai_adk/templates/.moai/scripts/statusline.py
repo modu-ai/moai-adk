@@ -12,9 +12,36 @@ Features:
 """
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
+
+
+def get_moai_project_root() -> Path | None:
+    """
+    Find the MoAI-ADK project root directory.
+
+    This script is at: .moai/scripts/statusline.py
+    We need to find the project root that has .moai/config/config.json
+
+    Returns:
+        Project root path if found, None otherwise
+    """
+    try:
+        script_path = Path(__file__).resolve()
+        # From .moai/scripts/ to project root: go up 3 levels
+        # .moai/scripts/statusline.py -> .moai/ -> project_root/
+        potential_root = script_path.parent.parent.parent
+
+        # Verify this is a MoAI-ADK project by checking for .moai/config/config.json
+        config_path = potential_root / ".moai" / "config" / "config.json"
+        if config_path.exists():
+            return potential_root
+
+        return None
+    except Exception:
+        return None
 
 
 def fallback_statusline(cwd: str) -> None:
@@ -45,13 +72,26 @@ if __name__ == "__main__":
     # Get working directory from command line argument or use current directory
     cwd = sys.argv[1] if len(sys.argv) > 1 else "."
 
-    # Try to run full statusline with moai-adk module
-    result = subprocess.run(
-        ["uv", "run", "--project", cwd, "python", "-m", "moai_adk.statusline.main"],
-        cwd=cwd,
-        capture_output=True,
-        text=True,
-    )
+    # Find MoAI-ADK project root to use its environment
+    project_root = get_moai_project_root()
+
+    if project_root:
+        # Use uv run with explicit project context to ensure moai-adk package is available
+        # This is important when this script is called from a different directory via Claude Code
+        result = subprocess.run(
+            ["uv", "run", "--project", str(project_root), "python", "-m", "moai_adk.statusline.main"],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+        )
+    else:
+        # Fall back to direct execution if project root not found
+        result = subprocess.run(
+            [sys.executable, "-m", "moai_adk.statusline.main"],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+        )
 
     if result.returncode != 0:
         # Module not found or error - fall back to config-based display
