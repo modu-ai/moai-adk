@@ -4,6 +4,49 @@ All commits to MoAI-ADK are listed below in chronological order. Each entry show
 
 ## Recent Releases
 
+### v0.25.6 (2025-11-14)
+
+Statusline Fallback Mode Fix - UV Environment & Working Directory Context
+
+#### Summary
+
+Fixes critical statusline fallback mode issue when running from different directories. The statusline was displaying `📦 Version: 0.25.5 (fallback mode)` instead of full statusline format `🤖 Sonnet 4.5 | 🗿 Ver 0.25.5 | 📊 +0 M42 ?5 | 🔀 main`. Root causes identified and resolved:
+
+1. **UV Environment Isolation**: subprocess calls were using isolated Python environment without moai-adk package
+2. **Working Directory Context Loss**: `.claude/settings.json` statusline command wasn't passing directory context
+
+#### What Changed
+
+**Fix 1: Explicit Project Context (Commit 79fe611a)**
+- Added `get_moai_project_root()` function to detect project root from script location
+- Modified subprocess call to use `uv run --project <root>` for explicit environment
+- Ensures moai-adk package is loaded from correct project environment
+- Resolves ModuleNotFoundError when running from different directories
+
+**Fix 2: Environment Variable Support (Commit f95d369c)**
+- Added `CLAUDE_PROJECT_DIR` environment variable support
+- Implemented 3-level fallback chain: CLI args → env var → current directory
+- Enables Claude Code to pass working directory context automatically
+- Fallback mechanism: if environment variable not set, uses current working directory
+
+**Files Modified**:
+- `.moai/scripts/statusline.py` - Wrapper script with project detection and env var support
+- `src/moai_adk/templates/.moai/scripts/statusline.py` - Template synchronized with main wrapper
+
+**Testing Results**:
+- ✅ MoAI-ADK main repo: Full statusline with Git info
+- ✅ `/tmp/moai-test`: Full statusline in new environment
+- ✅ Other project folders: Full statusline in any directory
+- ✅ All 1342 pytest tests passing
+
+**Impact**:
+- Statusline now displays correctly in all environments
+- Fallback mode only triggered for actual errors (no module found)
+- Works seamlessly across different working directories
+- No breaking changes to existing functionality
+
+---
+
 ### v0.25.5 (2025-11-14)
 
 Test Suite Completion & Bug Fixes for Pytest v9.0 Compatibility

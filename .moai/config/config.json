@@ -2,7 +2,7 @@
   "_meta": {
   },
   "moai": {
-    "version": "0.25.5",
+    "version": "0.25.6",
     "update_check_frequency": "daily",
     "version_check": {
       "enabled": true,
