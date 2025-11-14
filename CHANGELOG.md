@@ -1,5 +1,52 @@
 # Changelog
 
+# v0.25.7 (2025-11-15)
+
+## 📚 Documentation Enhancement Release - CLAUDE.md v4.0 Integration
+
+This release completes the comprehensive CLAUDE.md enhancement with Alfred Workflow Protocol integration, providing enhanced guidance for Claude Code v4.0+ features.
+
+### 📖 Key Improvements
+
+- **Complete CLAUDE.md v4.0 Enhancement**: Alfred Workflow Protocol with Plan Mode, MCP Integration, and Enhanced Context Management
+- **Local CLAUDE.md Synchronization**: Automatic synchronization between local and package templates
+- **Korean Language Improvements**: Enhanced Korean translation quality for better user guidance
+- **Shell Script Permissions**: Ensure shell scripts are executable for package distribution
+
+### 🔧 Changes
+
+#### Documentation Enhancements
+- Comprehensive CLAUDE.md enhancement with Alfred Workflow Protocol (3511432c)
+- Local CLAUDE.md synchronization and Korean improvement report (096907ae)
+- Final summary report in Korean - CLAUDE.md improvement project completed (d76199aa)
+- Ensure shell script executable permissions for package distribution (3511432c)
+- Fix statusline fallback mode with universal shell wrapper (dfaf43fb)
+
+### 📦 Installation
+
+\`\`\`bash
+pip install moai-adk==0.25.7
+# or
+uv add moai-adk==0.25.7
+\`\`\`
+
+### 🎯 What's New in This Release
+
+**Claude Code v4.0 Integration**:
+- Enhanced Alfred Workflow Protocol documentation
+- Plan Mode integration for complex task decomposition
+- MCP server integration patterns
+- Advanced context management strategies
+
+**Development Experience**:
+- Better guidance for SPEC-First TDD workflow
+- Improved Korean language documentation
+- Enhanced persona system (🎩 Alfred, 🧙 Yoda, 🤖 R2-D2, 🧑‍🏫 Keating)
+
+---
+
+
+
 All commits to MoAI-ADK are listed below in chronological order. Each entry shows the commit date, short hash, and an English summary derived from the original git log message.
 
 ## Recent Releases
