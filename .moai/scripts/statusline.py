@@ -69,8 +69,11 @@ def fallback_statusline(cwd: str) -> None:
 
 
 if __name__ == "__main__":
-    # Get working directory from command line argument or use current directory
-    cwd = sys.argv[1] if len(sys.argv) > 1 else "."
+    # Get working directory from:
+    # 1. Command line argument
+    # 2. Environment variable (Claude Code sets this)
+    # 3. Current directory
+    cwd = sys.argv[1] if len(sys.argv) > 1 else os.environ.get("CLAUDE_PROJECT_DIR", ".")
 
     # Find MoAI-ADK project root to use its environment
     project_root = get_moai_project_root()
