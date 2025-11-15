@@ -53,6 +53,9 @@ desktop.ini
 logs/
 *.log.*
 
+# Documentation
+docs/
+
 # Temporary files
 *.tmp
 *.temp
@@ -208,19 +211,11 @@ uv.lock
 .moai/temp/               # Temporary files
 .moai/backups/            # Backup files
 
-# Local-Only Development Tools (IGNORED - Never Track, Never Deploy)
-.moai/release/            # /moai:release command (local-only tool)
-.moai/yoda/               # Yoda system (local-only lecture material tool)
-.claude/commands/moai/release.md  # /moai:release command definition
 
 # ============================================================================
 # Package Template Exclusions (Never Deploy)
 # These files exist in package templates but should NEVER be deployed
 # ============================================================================
-# Yoda system in package templates (local-only, never deploy)
-src/moai_adk/templates/.claude/commands/yoda/
-src/moai_adk/templates/.claude/agents/yoda-master.md
-src/moai_adk/templates/.claude/skills/moai-yoda-system/
 
 # Development-only scripts in templates (never deploy)
 src/moai_adk/templates/.moai/scripts/dev/
@@ -247,3 +242,4 @@ src/moai_adk/templates/.moai/temp/
 #    - CLAUDE.md (local substituted values)
 #    - .mcp.json (local config - review before committing credentials!)
 # ============================================================================
+

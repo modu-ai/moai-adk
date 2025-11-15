@@ -453,7 +453,7 @@ class RollbackManager:
         """Load rollback registry from file"""
         if self.registry_file.exists():
             try:
-                with open(self.registry_file, "r") as f:
+                with open(self.registry_file, "r", encoding="utf-8") as f:
                     return json.load(f)
             except Exception as e:
                 logger.warning(f"Failed to load rollback registry: {str(e)}")
@@ -463,8 +463,8 @@ class RollbackManager:
     def _save_registry(self):
         """Save rollback registry to file"""
         try:
-            with open(self.registry_file, "w") as f:
-                json.dump(self.registry, f, indent=2, default=str)
+            with open(self.registry_file, "w", encoding="utf-8") as f:
+                json.dump(self.registry, f, indent=2, default=str, ensure_ascii=False)
         except Exception as e:
             logger.error(f"Failed to save rollback registry: {str(e)}")
             raise
@@ -721,7 +721,7 @@ class RollbackManager:
             config_file = self.project_root / ".moai" / "config" / "config.json"
             if config_file.exists():
                 try:
-                    with open(config_file, "r") as f:
+                    with open(config_file, "r", encoding="utf-8") as f:
                         json.load(f)  # Validate JSON syntax
                 except json.JSONDecodeError:
                     validation_results["config_valid"] = False

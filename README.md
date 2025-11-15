@@ -81,6 +81,68 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
 - **Adaptive learning** based on your project patterns
 - **Smart context management** understanding project structure and dependencies
 
+### Skills Quick Reference
+
+**How to Find & Use Skills**:
+
+1. **Discover Skills**: Use `Skill("skill-name")` to invoke any skill
+2. **Progressive Learning**: Start with SKILL.md → REFERENCE.md → EXAMPLES.md
+3. **Domain Combinations**: Frontend + Backend + BaaS = Full-Stack mastery
+
+**Top 15 Most Used Skills**:
+
+| # | Skill Name | Domain | Best For |
+|---|------------|--------|----------|
+| 1 | `moai-foundation-specs` | Core | SPEC-First development, EARS patterns |
+| 2 | `moai-lang-python` | Language | Python 3.13+ best practices, FastAPI |
+| 3 | `moai-domain-backend` | Backend | API architecture, REST/GraphQL design |
+| 4 | `moai-baas-supabase` | BaaS | PostgreSQL + Realtime + Auth integration |
+| 5 | `moai-security-oauth` | Security | OAuth2, SAML, WebAuthn implementation |
+| 6 | `moai-mcp-context7-integrator` | MCP | Latest documentation, research |
+| 7 | `moai-essentials-debug` | Essentials | Error analysis, root cause diagnosis |
+| 8 | `moai-domain-frontend` | Frontend | UI/UX, component design, styling |
+| 9 | `moai-artifacts-builder` | Frontend | React + Tailwind + shadcn/ui components |
+| 10 | `moai-cc-mcp-plugins` | MCP | MCP server orchestration, plugin management |
+| 11 | `moai-lang-typescript` | Language | TypeScript, Next.js, React patterns |
+| 12 | `moai-domain-database` | Database | Schema design, query optimization |
+| 13 | `moai-domain-cloud` | Cloud | AWS, GCP, Azure, Kubernetes patterns |
+| 14 | `moai-essentials-perf` | Performance | Optimization, profiling, scaling |
+| 15 | `moai-domain-security` | Security | OWASP, encryption, threat modeling |
+
+**Skill Categories**:
+
+- **Foundation**: SPEC, TDD, TRUST 5 principles (4 skills)
+- **Essentials**: Testing, debugging, performance, security (8 skills)
+- **Domain**: Backend, frontend, database, mobile, ML, DevOps, cloud (25+ skills)
+- **Language**: Python, TypeScript, Go, Rust, PHP, Ruby, Java, C++, etc. (18 skills)
+- **BaaS**: Supabase, Firebase, Vercel, Cloudflare, Auth0, Convex, Railway, Neon, Clerk (12 skills)
+- **Advanced**: MCP builders, document processing, artifact building, internal comms (10+ skills)
+- **Total**: 124+ enterprise-grade skills
+
+**Common Skill Combinations**:
+
+```
+🚀 Full-Stack Web App:
+├─ moai-domain-backend (API design)
+├─ moai-lang-python or moai-lang-typescript (Server implementation)
+├─ moai-domain-frontend (UI components)
+├─ moai-baas-supabase (Database + Auth)
+└─ moai-domain-cloud (Deployment)
+
+🛡️ Secure Enterprise App:
+├─ moai-domain-security (Architecture)
+├─ moai-security-oauth (Authentication)
+├─ moai-security-owasp (Compliance)
+├─ moai-security-encryption (Data protection)
+└─ moai-essentials-debug (Monitoring)
+
+⚡ Performance-Critical System:
+├─ moai-essentials-perf (Optimization)
+├─ moai-domain-database (Query tuning)
+├─ moai-domain-cloud (Scaling)
+├─ moai-mcp-context7-integrator (Latest patterns)
+└─ moai-essentials-debug (Profiling)
+```
 
 Complete traceability system linking all artifacts:
 
@@ -183,7 +245,29 @@ Alfred delegates to 19 specialized agents:
 | `quality-gate` | Testing & validation | QA & verification |
 | `mcp-context7-integrator` | Research & learning | Best practices |
 | `plan` | Task decomposition | Breaking down complexity |
-| And 9 more... | Various specializations | Domain-specific work |
+| `backend-expert` | Backend architecture | Server implementation |
+| `frontend-expert` | Frontend architecture | UI/UX implementation |
+| `database-expert` | Database optimization | Schema & query design |
+| `devops-expert` | Deployment automation | Infrastructure setup |
+| `security-expert` | Security assessment | Vulnerability patching |
+| `performance-engineer` | Performance optimization | Bottleneck analysis |
+| `monitoring-expert` | Observability & alerting | System health monitoring |
+| `api-designer` | REST/GraphQL design | API specification |
+| `component-designer` | UI components | Design systems |
+| `accessibility-expert` | WCAG compliance | Inclusive design |
+| `migration-expert` | Database migrations | Schema evolution |
+| `git-manager` | Version control | Git automation |
+| `implementation-planner` | Strategy planning | Multi-phase execution |
+| `debug-helper` | Error analysis | Root cause diagnosis |
+| `format-expert` | Code formatting | Style enforcement |
+| `trust-checker` | Quality validation | TRUST 5 compliance |
+| `skill-factory` | Skill development | Knowledge capsules |
+| `agent-factory` | Agent creation | Custom automation |
+| `sync-manager` | Doc synchronization | Change tracking |
+| `mcp-context7-integrator` | Latest documentation | Research & learning |
+| `mcp-playwright-integrator` | Web automation | End-to-end testing |
+| `mcp-notion-integrator` | Notion workspace | Database management |
+| And 6 more... | Various specializations | Emerging domains |
 
 ### Practical Example: Building a Payment Feature
 
@@ -245,6 +329,37 @@ With Agent Delegation:
    - No token sharing between agents
    - Massive context savings
    - Better results through specialization
+
+### Agent Delegation Quick Start Guide
+
+**Command-Based Delegation** (Explicit & Recommended for Beginners):
+
+```bash
+# SPEC creation with spec-builder
+/alfred:1-plan "User authentication with JWT"
+# → spec-builder agent activated
+# → Generates SPEC-AUTH-001 document
+
+# Implementation with tdd-implementer
+/alfred:2-run AUTH-001
+# → tdd-implementer agent activated
+# → Follows RED-GREEN-REFACTOR cycle
+
+# Documentation sync with doc-syncer
+/alfred:3-sync auto SPEC-001
+# → doc-syncer agent activated
+# → Auto-updates documentation
+```
+
+**Advanced Delegation** (Task() Function for Complex Scenarios):
+
+For multi-step workflows, agent chaining, and specialized task delegation:
+- Sequential workflows (Step 1 → Step 2 → Step 3 with dependencies)
+- Parallel execution (Multiple agents working simultaneously)
+- Context passing (Sharing results between agents)
+- Session sharing (Multi-day projects with Context7 MCP)
+
+**See CLAUDE.md → "🤖 Advanced Agent Delegation Patterns"** section for detailed Task() syntax, examples, and configuration.
 
 ### Learn More
 

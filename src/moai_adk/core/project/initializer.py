@@ -232,6 +232,46 @@ class ProjectInitializer:
                     },
                 },
                 "language": language_config,
+                "constitution": {
+                    "enforce_tdd": True,
+                    "principles": {
+                        "simplicity": {
+                            "max_projects": 5,
+                            "notes": "Default recommendation. Adjust in .moai/config.json or via SPEC/ADR with documented rationale based on project size.",
+                        }
+                    },
+                    "test_coverage_target": 90,
+                },
+                "git_strategy": {
+                    "personal": {
+                        "auto_checkpoint": "event-driven",
+                        "checkpoint_events": ["delete", "refactor", "merge", "script", "critical-file"],
+                        "checkpoint_type": "local-branch",
+                        "max_checkpoints": 10,
+                        "cleanup_days": 7,
+                        "push_to_remote": False,
+                        "auto_commit": True,
+                        "branch_prefix": "feature/SPEC-",
+                        "develop_branch": "develop",
+                        "main_branch": "main",
+                        "prevent_branch_creation": False,
+                        "work_on_main": False,
+                    },
+                    "team": {
+                        "auto_pr": False,
+                        "develop_branch": "develop",
+                        "draft_pr": False,
+                        "feature_prefix": "feature/SPEC-",
+                        "main_branch": "main",
+                        "use_gitflow": True,
+                        "default_pr_base": "develop",
+                        "prevent_main_direct_merge": False,
+                    },
+                },
+                "session": {
+                    "suppress_setup_messages": False,
+                    "notes": "suppress_setup_messages: false enables SessionStart output. Set to true to suppress messages (show again after 7 days)",
+                },
             }
             config_files = self.executor.execute_configuration_phase(
                 self.path, config_data, progress_callback

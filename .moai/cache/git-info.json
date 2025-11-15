@@ -1,7 +1,7 @@
 {
-  "branch": "main",
-  "last_commit": "0cc03690 chore: Bump version to 0.25.6 - Statusline fallback fix",
-  "commit_time": "19 hours ago",
-  "changes": 2,
-  "last_check": "2025-11-15T05:04:19.408719"
+  "branch": "develop",
+  "last_commit": "b8629011 feat: Implement SPEC-PROJECT-INIT-IDEMPOTENT-001 - Project initialization idempotency",
+  "commit_time": "60 minutes ago",
+  "changes": 39,
+  "last_check": "2025-11-16T07:55:48.072405"
 }

@@ -90,7 +90,7 @@ class CacheSystem:
             if file_name.endswith(self.file_extension):
                 file_path = os.path.join(self.cache_dir, file_name)
                 try:
-                    with open(file_path, "r") as f:
+                    with open(file_path, "r", encoding="utf-8") as f:
                         data = json.load(f)
 
                     if self._is_expired(data):
@@ -105,8 +105,8 @@ class CacheSystem:
     def _write_data(self, file_path: str, data: Dict[str, Any]) -> None:
         """Write data to file with error handling."""
         try:
-            with open(file_path, "w") as f:
-                json.dump(data, f, indent=2)
+            with open(file_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
         except (OSError, TypeError) as e:
             raise OSError(f"Failed to write cache file {file_path}: {e}")
 
@@ -116,7 +116,7 @@ class CacheSystem:
             return None
 
         try:
-            with open(file_path, "r") as f:
+            with open(file_path, "r", encoding="utf-8") as f:
                 return json.load(f)
         except (json.JSONDecodeError, OSError):
             # File is corrupted, remove it

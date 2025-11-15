@@ -134,8 +134,8 @@ def save_phase_result(data: Dict[str, Any], target_path: str) -> None:
         )
 
         # Write JSON to temp file
-        with os.fdopen(temp_fd, "w") as f:
-            json.dump(data, f, indent=2)
+        with os.fdopen(temp_fd, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
 
         temp_fd = None  # File handle is now closed
 
@@ -164,7 +164,7 @@ def load_phase_result(source_path: str) -> Dict[str, Any]:
     if not os.path.exists(source_path):
         raise FileNotFoundError(f"Phase result file not found: {source_path}")
 
-    with open(source_path, "r") as f:
+    with open(source_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
     return data

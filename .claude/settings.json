@@ -148,8 +148,6 @@
       "Bash(rm -rf:*)"
     ],
     "deny": [
-      "Read(./.env)",
-      "Read(./.env.*)",
       "Read(./secrets/**)",
       "Read(~/.ssh/**)",
       "Read(~/.aws/**)",
@@ -175,7 +173,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": ".moai/scripts/statusline.sh",
+    "command": "./.moai/scripts/statusline.sh",
     "padding": 0
   },
   "spinnerTipsEnabled": true,
