@@ -24,6 +24,42 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Optional
 
+try:
+    from packaging.version import Version
+except ImportError:
+    # Fallback: provide a simple Version class if packaging is not available
+    class Version:  # type: ignore
+        def __init__(self, version_string: str) -> None:
+            self.version = version_string
+        
+        def __eq__(self, other: object) -> bool:
+            if isinstance(other, Version):
+                return self.version == other.version
+            return self.version == str(other)
+        
+        def __lt__(self, other: object) -> bool:
+            if isinstance(other, Version):
+                return self.version < other.version
+            return self.version < str(other)
+        
+        def __gt__(self, other: object) -> bool:
+            if isinstance(other, Version):
+                return self.version > other.version
+            return self.version > str(other)
+        
+        def __le__(self, other: object) -> bool:
+            if isinstance(other, Version):
+                return self.version <= other.version
+            return self.version <= str(other)
+        
+        def __ge__(self, other: object) -> bool:
+            if isinstance(other, Version):
+                return self.version >= other.version
+            return self.version >= str(other)
+        
+        def __str__(self) -> str:
+            return self.version
+
 
 def check_config_exists() -> bool:
     """Check if .moai/config/config.json exists"""
@@ -65,7 +101,7 @@ def check_config_completeness(config: dict[str, Any]) -> tuple[bool, list[str]]:
     Returns:
         (is_complete, missing_fields)
     """
-    required_sections = ["project", "language", "git_strategy", "constitution"]
+    required_sections = ["project", "language", "git_strategy", "constitution", "session"]
     missing_fields = []
 
     for section in required_sections:
@@ -195,12 +231,26 @@ def check_moai_version_match() -> tuple[bool, Optional[str], Optional[str], Opti
         latest_version = get_latest_pypi_version()
 
         if latest_version:
-            is_matched = installed_version == latest_version
-            if is_matched:
-                status = f"✅ Version: {installed_version} (latest)"
-            else:
-                status = f"⚠️  Version: {installed_version} → {latest_version} update available (run moai-adk update)"
-            return is_matched, installed_version, latest_version, status
+            try:
+                # Use semantic versioning comparison
+                installed_ver = Version(str(installed_version))
+                latest_ver = Version(str(latest_version))
+                is_matched = installed_ver == latest_ver
+                
+                if is_matched:
+                    status = f"✅ Version: {installed_version} (latest)"
+                else:
+                    is_newer = installed_ver > latest_ver
+                    if is_newer:
+                        status = f"ℹ️  Version: {installed_version} (pre-release, latest stable: {latest_version})"
+                    else:
+                        status = f"⚠️  Version: {installed_version} → {latest_version} update available (run moai-adk update)"
+                return is_matched, installed_version, latest_version, status
+            except Exception:
+                # Fallback to string comparison if Version parsing fails
+                is_matched = installed_version == latest_version
+                status = f"✅ Version: {installed_version}" if is_matched else f"ℹ️  Version: {installed_version} (check available)"
+                return is_matched, installed_version, latest_version, status
         else:
             # Can't check PyPI, just show installed version
             return True, installed_version, None, f"✅ Version: {installed_version}"
