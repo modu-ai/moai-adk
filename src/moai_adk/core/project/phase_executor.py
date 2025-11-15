@@ -316,6 +316,8 @@ class PhaseExecutor:
         Returns:
             List of created files or directories.
         """
+        import stat
+
         self.current_phase = 3
         self._report_progress("Phase 3: Installing resources...", progress_callback)
 
@@ -361,6 +363,24 @@ class PhaseExecutor:
         processor.copy_templates(
             backup=False, silent=True
         )  # Avoid progress bar conflicts
+
+        # Post-process: Set executable permission on shell scripts
+        # This is necessary because git may not preserve file permissions during clone/checkout
+        scripts_dir = project_path / ".moai" / "scripts"
+        logger = logging.getLogger(__name__)
+        if scripts_dir.exists():
+            logger.debug(f"Processing shell scripts in {scripts_dir}")
+            for script_file in scripts_dir.glob("*.sh"):
+                try:
+                    # Add execute permission for user, group, and others
+                    current_mode = script_file.stat().st_mode
+                    new_mode = current_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
+                    script_file.chmod(new_mode)
+                    logger.debug(f"Set executable permission on {script_file}: {oct(current_mode)} -> {oct(new_mode)}")
+                except Exception as e:
+                    logger.warning(f"Failed to set executable permission on {script_file}: {e}")
+        else:
+            logger.debug(f"Scripts directory not found: {scripts_dir}")
 
         # Return a simplified list of generated assets
         return [
