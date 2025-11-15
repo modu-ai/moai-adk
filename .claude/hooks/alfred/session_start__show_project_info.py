@@ -404,16 +404,23 @@ def format_session_output() -> str:
 
     Uses caches for config and SPEC progress to minimize file I/O.
     Parallel git command execution for fast data gathering.
+    Includes configuration optimization status for user awareness.
     """
     # Gather information (in parallel for git, cached for config/SPEC)
     git_info = get_git_info()
     spec_progress = get_spec_progress()
 
-    # Get MoAI version from cached config
+    # Get MoAI version and optimization status from cached config
     moai_version = "unknown"
     config = get_cached_config()
+    optimized = True  # Default to true
+    optimized_indicator = "✅"
+
     if config:
         moai_version = config.get("moai", {}).get("version", "unknown")
+        # Get optimization status
+        optimized = config.get("project", {}).get("optimized", True)
+        optimized_indicator = "✅" if optimized else "⚠️"
 
     # Check for version updates (uses Phase 1 cache)
     version_status, _has_update = check_version_update()
@@ -422,6 +429,7 @@ def format_session_output() -> str:
     output = [
         "🚀 MoAI-ADK Session Started",
         f"📦 Version: {moai_version} {version_status}",
+        f"⚙️  Config Status: {optimized_indicator} {'ready' if optimized else 'merge required'}",
         f"🌿 Branch: {git_info['branch']}",
         f"🔄 Changes: {git_info['changes']}",
         f"🎯 SPEC Progress: {spec_progress['completed']}/{spec_progress['total']} ({int(spec_progress['percentage'])}%)",

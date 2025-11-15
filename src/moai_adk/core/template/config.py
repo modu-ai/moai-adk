@@ -116,3 +116,41 @@ class ConfigManager:
         except (json.JSONDecodeError, KeyError, OSError):
             # Ignore errors if config.json is invalid or inaccessible
             pass
+
+    @staticmethod
+    def set_optimized_with_timestamp(config_path: Path, value: bool) -> None:
+        """Set the optimized field with timestamp in config.json.
+
+        When value=True: Set optimized_at to current ISO timestamp
+        When value=False: Set optimized_at to null
+
+        Args:
+            config_path: Path to config.json.
+            value: Value to set (True or False).
+        """
+        if not config_path.exists():
+            return
+
+        try:
+            from datetime import datetime, timezone
+
+            with open(config_path, encoding="utf-8") as f:
+                config = json.load(f)
+
+            config.setdefault("project", {})["optimized"] = value
+
+            if value:
+                # Set timestamp when optimizing
+                now = datetime.now(timezone.utc)
+                timestamp_str = now.isoformat().replace("+00:00", "Z")
+                config["project"]["optimized_at"] = timestamp_str
+            else:
+                # Clear timestamp when not optimized
+                config["project"]["optimized_at"] = None
+
+            with open(config_path, "w", encoding="utf-8") as f:
+                json.dump(config, f, ensure_ascii=False, indent=2)
+                f.write("\n")  # Add trailing newline
+        except (json.JSONDecodeError, KeyError, OSError):
+            # Ignore errors if config.json is invalid or inaccessible
+            pass

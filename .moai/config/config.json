@@ -74,7 +74,9 @@
     "language": "Python",
     "created_at": "2025-11-14T00:00:00Z",
     "initialized": true,
-    "optimized": false
+    "optimized": false,
+    "optimized_at": null,
+    "_notes": "optimized=false: Template updated, config merge required. optimized=true: Configuration fully merged and verified."
   },
   "user": {
     "name": "Goos",
