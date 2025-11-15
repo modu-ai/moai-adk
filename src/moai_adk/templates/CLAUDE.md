@@ -384,7 +384,7 @@ Alfred analyzes problems using **deep contextual reasoning**:
 
 **What is Task() Delegation?**
 
-Task() 함수를 통해 복잡한 작업을 **전문 에이전트에게 위임**합니다. 각 에이전트는 특정 도메인 전문 지식을 가지고 있으며, 독립적인 컨텍스트에서 실행되어 토큰을 절약합니다.
+Task() function delegates complex work to **specialized agents**. Each agent has domain expertise and runs in isolated context to save tokens.
 
 **Basic Usage**:
 
@@ -474,15 +474,15 @@ For any task:
 
 **Why Token Management Matters**:
 
-Claude Code의 200,000 토큰 컨텍스트 윈도우는 충분해 보이지만, 대규모 프로젝트에서는 빠르게 소진됩니다:
+Claude Code's 200,000-token context window seems sufficient but depletes quickly in large projects:
 
-- **전체 코드베이스 로드**: 50,000+ 토큰
-- **SPEC 문서들**: 20,000 토큰
-- **대화 히스토리**: 30,000 토큰
-- **템플릿/스킬 가이드**: 20,000 토큰
-- **👉 이미 120,000 토큰 사용!**
+- **Full codebase load**: 50,000+ tokens
+- **SPEC documents**: 20,000 tokens
+- **Conversation history**: 30,000 tokens
+- **Templates/skill guides**: 20,000 tokens
+- **→ Already 120,000 tokens used!**
 
-**Agent Delegation으로 85% 절약 가능**:
+**Save 85% with Agent Delegation**:
 
 ```
 ❌ Without Delegation (Monolithic):
@@ -527,7 +527,7 @@ Total: 23,000 tokens (82% reduction!)
 
 **Sequential Workflow**:
 
-전 단계의 결과를 다음 단계의 입력으로 사용:
+Use output from previous step as input to next step:
 
 ```python
 # Step 1: Requirements gathering
@@ -615,7 +615,7 @@ else:
 
 **Explicit Context Passing**:
 
-각 에이전트에게 명시적으로 필요한 컨텍스트 전달:
+Pass required context explicitly to each agent:
 
 ```python
 # Rich context with constraints
@@ -638,7 +638,7 @@ result = await Task(
 
 **Implicit Context** (Alfred manages automatically):
 
-Alfred가 자동으로 수집하는 컨텍스트:
+Context automatically collected by Alfred:
 
 ```
 ✅ Project structure from .moai/config.json
@@ -676,7 +676,7 @@ implementation = await session.execute_task(
 
 **What is Agent Resume?**
 
-에이전트 실행 중 세션을 저장했다가, 나중에 같은 상태에서 계속 실행할 수 있는 기능:
+Save agent session during execution and resume from same state later:
 
 ```python
 # Session 1: Start research (Day 1)
@@ -696,9 +696,9 @@ continued_research = await Task(
 # Picks up where it left off!
 ```
 
-**Agent Session Sharing** (결과 전달):
+**Agent Session Sharing** (Share Results):
 
-한 에이전트의 결과를 다른 에이전트가 활용:
+Use output from one agent in another agent:
 
 ```python
 # Agent 1: Research phase
