@@ -20,6 +20,7 @@ Features:
 import json
 import logging
 import sys
+import tempfile
 import threading
 import time
 import traceback
@@ -34,7 +35,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
-        logging.FileHandler("/tmp/moai_error_recovery.log"),
+        logging.FileHandler(Path(tempfile.gettempdir()) / "moai_error_recovery.log"),
         logging.StreamHandler(sys.stdout),
     ],
 )
@@ -896,8 +897,8 @@ class ErrorRecoverySystem:
         # Log to file
         error_file = self.error_log_dir / f"error_{error_report.id}.json"
         try:
-            with open(error_file, "w") as f:
-                json.dump(asdict(error_report), f, indent=2, default=str)
+            with open(error_file, "w", encoding="utf-8") as f:
+                json.dump(asdict(error_report), f, indent=2, default=str, ensure_ascii=False)
         except Exception as e:
             logger.error(f"Failed to log error to file: {str(e)}")
 

@@ -8,6 +8,7 @@ Refactored for improved performance, error handling, configurability, and cachin
 import asyncio
 import json
 import logging
+import os
 import re
 import time
 from dataclasses import dataclass, field
@@ -70,12 +71,13 @@ class VersionConfig:
     track_performance_metrics: bool = True
 
     # Version field priority configuration
+    # Order: 1) MoAI package version, 2) Project version, 3) Fallbacks
     version_fields: List[str] = field(
         default_factory=lambda: [
-            "project.version",
-            "moai.version",
-            "version",
-            "moai.template_version",
+            "moai.version",          # ← 1순위: MoAI-ADK 버전
+            "project.version",       # ← 2순위: 프로젝트 버전
+            "version",               # ← 3순위: 일반 버전
+            "project.template_version",  # ← 4순위: 템플릿 버전
             "template_version",
         ]
     )
@@ -101,23 +103,37 @@ class VersionReader:
     DEFAULT_CONFIG = VersionConfig()
 
     # Supported version fields in order of priority
+    # Order: 1) MoAI package version, 2) Project version, 3) Fallbacks
     DEFAULT_VERSION_FIELDS = [
-        "project.version",
-        "moai.version",
-        "version",
-        "moai.template_version",
+        "moai.version",          # ← 1순위: MoAI-ADK 버전
+        "project.version",       # ← 2순위: 프로젝트 버전
+        "version",               # ← 3순위: 일반 버전
+        "project.template_version",  # ← 4순위: 템플릿 버전
         "template_version",
     ]
 
-    def __init__(self, config: Optional[VersionConfig] = None):
+    def __init__(self, config: Optional[VersionConfig] = None, working_dir: Optional[Path] = None):
         """
         Initialize version reader with enhanced configuration.
 
         Args:
             config: Version configuration object. If None, uses defaults.
+            working_dir: Working directory to search for config. If None, uses environment detection.
         """
         self.config = config or self.DEFAULT_CONFIG
-        self._config_path = Path.cwd() / ".moai" / "config" / "config.json"
+
+        # Determine working directory with priority:
+        # 1. Explicit working_dir parameter
+        # 2. CLAUDE_PROJECT_DIR environment variable (set by Claude Code)
+        # 3. Current working directory
+        if working_dir:
+            base_dir = Path(working_dir)
+        elif "CLAUDE_PROJECT_DIR" in os.environ:
+            base_dir = Path(os.environ["CLAUDE_PROJECT_DIR"])
+        else:
+            base_dir = Path.cwd()
+
+        self._config_path = base_dir / ".moai" / "config" / "config.json"
 
         # Enhanced caching with LRU support
         self._cache: Dict[str, CacheEntry] = {}
@@ -546,9 +562,43 @@ class VersionReader:
         Returns:
             Fallback version string
         """
+        # Try to get version from package metadata first
+        pkg_version = self._get_package_version()
+        if pkg_version:
+            self._logger.debug(f"Using package metadata version: {pkg_version}")
+            return pkg_version
+
+        # Fall back to configured fallback version
         fallback = self.config.fallback_version
-        self._logger.debug(f"Using fallback version: {fallback}")
+        self._logger.debug(f"Using configured fallback version: {fallback}")
         return fallback
+
+    def _get_package_version(self) -> str:
+        """
+        Get version from installed moai-adk package metadata.
+
+        This allows the statusline to work even when .moai/config/config.json
+        is not found, as long as the moai-adk package is installed.
+
+        Returns:
+            Version string or empty string if package not found
+        """
+        try:
+            from importlib.metadata import version, PackageNotFoundError
+
+            try:
+                pkg_version = version("moai-adk")
+                self._logger.debug(f"Found moai-adk package version: {pkg_version}")
+                return pkg_version
+            except PackageNotFoundError:
+                self._logger.debug("moai-adk package not found in metadata")
+                return ""
+        except ImportError:
+            self._logger.debug("importlib.metadata not available")
+            return ""
+        except Exception as e:
+            self._logger.debug(f"Error getting package version: {e}")
+            return ""
 
 
     async def _file_exists_async(self, path: Path) -> bool:

@@ -360,20 +360,23 @@ def init(
 
             # Show config merge notice if reinitialized
             if is_reinit:
-                console.print("\n[yellow]⚠️  Configuration Notice:[/yellow]")
-                console.print(
-                    "  All template files have been [bold]force overwritten[/bold]"
-                )
-                console.print(
-                    "  Previous files are backed up in [cyan].moai-backups/backup/[/cyan]"
-                )
-                console.print("\n  [cyan]To merge your previous config:[/cyan]")
-                console.print(
-                    "  Run [bold]/alfred:0-project[/bold] command in Claude Code"
-                )
-                console.print(
-                    "  It will merge backup config when [dim]optimized=false[/dim]\n"
-                )
+                console.print("\n[yellow]⚠️  Configuration Status: optimized=false (merge required)[/yellow]")
+                console.print()
+                console.print("[cyan]What Happened:[/cyan]")
+                console.print("  ✅ Template files updated to latest version")
+                console.print("  💾 Your previous settings backed up in: [cyan].moai-backups/backup/[/cyan]")
+                console.print("  ⏳ Configuration merge required")
+                console.print()
+                console.print("[cyan]What is optimized=false?[/cyan]")
+                console.print("  • Template version changed (you get new features)")
+                console.print("  • Your previous settings are safe (backed up)")
+                console.print("  • Next: Run /alfred:0-project to merge")
+                console.print()
+                console.print("[cyan]What Happens Next:[/cyan]")
+                console.print("  1. Run [bold]/alfred:0-project[/bold] in Claude Code")
+                console.print("  2. System intelligently merges old settings + new template")
+                console.print("  3. After successful merge → optimized becomes true")
+                console.print("  4. You're ready to continue developing\n")
 
             console.print("\n[cyan]🚀 Next Steps:[/cyan]")
             if not is_current_dir:

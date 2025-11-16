@@ -1,0 +1,41 @@
+{
+  "name": "moai-security-compliance",
+  "title": "Regulatory Compliance & Audit Logging",
+  "version": "4.0.0",
+  "category": "security",
+  "status": "production",
+  "published_date": "2025-11-12",
+  "last_updated": "2025-11-12",
+  "difficulty": "advanced",
+  "trust_score": 9.9,
+  "keywords": ["GDPR", "HIPAA", "SOC 2", "PCI DSS", "compliance", "audit", "logging"],
+  "tech_stack": {
+    "language": "JavaScript/Node.js",
+    "frameworks": ["Express", "MongoDB"],
+    "libraries": ["winston", "node-cron", "aws-sdk"]
+  },
+  "features": [
+    "GDPR compliance framework",
+    "HIPAA audit logging",
+    "SOC 2 evidence collection",
+    "ISO 27001 controls",
+    "PCI DSS payment protection",
+    "Right-to-erasure (GDPR)",
+    "Data retention policies",
+    "Drata integration"
+  ],
+  "coverage": {
+    "lines": 497,
+    "codeExamples": 5,
+    "reference_links": 30,
+    "production_ready": true
+  },
+  "regulatory_frameworks": {
+    "gdpr": "EU Regulation 2016/679",
+    "hipaa": "45 CFR Part 164",
+    "soc2": "AICPA Trust Service Criteria",
+    "iso27001": "ISO/IEC 27001:2022",
+    "pci_dss": "v4.0"
+  },
+  "2025_trend": "83-85% enterprises require SOC 2 compliance from vendors"
+}

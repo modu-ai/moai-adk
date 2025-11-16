@@ -54,6 +54,7 @@ from packaging import version
 from rich.console import Console
 
 from moai_adk import __version__
+from moai_adk.core.merge import MergeAnalyzer
 from moai_adk.core.migration import VersionMigrator
 from moai_adk.core.template.processor import TemplateProcessor
 
@@ -562,6 +563,34 @@ def _sync_templates(project_path: Path, force: bool = False) -> bool:
             if backup.has_existing_files():
                 backup_path = backup.create_backup()
                 console.print(f"💾 Created backup: {backup_path.name}")
+
+                # Merge analysis using Claude Code headless mode
+                try:
+                    analyzer = MergeAnalyzer(project_path)
+                    # Template source path from installed package
+                    template_path = (
+                        Path(__file__).parent.parent.parent / "templates"
+                    )
+
+                    console.print("\n[cyan]🔍 병합 분석 시작 (최대 2분 소요)...[/cyan]")
+                    console.print("[dim]   Claude Code로 지능형 병합 분석을 진행 중입니다.[/dim]")
+                    console.print("[dim]   기다려주세요...[/dim]\n")
+                    analysis = analyzer.analyze_merge(backup_path, template_path)
+
+                    # Ask user confirmation
+                    if not analyzer.ask_user_confirmation(analysis):
+                        console.print(
+                            "[yellow]⚠️  사용자가 업데이트를 취소했습니다.[/yellow]"
+                        )
+                        backup.restore_backup(backup_path)
+                        return False
+                except Exception as e:
+                    console.print(
+                        f"[yellow]⚠️  병합 분석 실패: {e}[/yellow]"
+                    )
+                    console.print(
+                        "[yellow]자동 병합으로 계속합니다.[/yellow]"
+                    )
 
         # Load existing config
         existing_config = _load_existing_config(project_path)

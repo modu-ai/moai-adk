@@ -74,7 +74,9 @@
     "language": "{{CODEBASE_LANGUAGE}}",
     "created_at": "{{CREATION_TIMESTAMP}}",
     "initialized": true,
-    "optimized": false
+    "optimized": false,
+    "optimized_at": null,
+    "_notes": "optimized=false: Template updated, config merge required. optimized=true: Configuration fully merged and verified."
   },
   "user": {
     "name": "{{USER_NAME}}",

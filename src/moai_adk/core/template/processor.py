@@ -712,6 +712,8 @@ class TemplateProcessor:
         Returns:
             List of warnings.
         """
+        import stat
+
         warnings = []
 
         # Text files: read, substitute, write
@@ -735,6 +737,12 @@ class TemplateProcessor:
         else:
             # Binary file or no context: simple copy
             shutil.copy2(src, dst)
+
+        # Ensure executable permission for shell scripts
+        if src.suffix == ".sh":
+            # Always make shell scripts executable regardless of source permissions
+            dst_mode = dst.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
+            dst.chmod(dst_mode)
 
         return warnings
 

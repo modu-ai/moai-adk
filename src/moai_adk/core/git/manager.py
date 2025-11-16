@@ -4,13 +4,17 @@ Git repository management built on GitPython.
 SPEC: .moai/specs/SPEC-CORE-GIT-001/spec.md
 """
 
+from pathlib import Path
+
 from git import InvalidGitRepositoryError, Repo
+
+from moai_adk.core.git.conflict_detector import GitConflictDetector
 
 
 class GitManager:
     """Manage interactions with a Git repository."""
 
-    def __init__(self, repo_path: str = "."):
+    def __init__(self, repo_path: str | Path = "."):
         """
         Initialize the GitManager.
 
@@ -22,6 +26,8 @@ class GitManager:
         """
         self.repo = Repo(repo_path)
         self.git = self.repo.git
+        self.repo_path = Path(repo_path).resolve()
+        self.conflict_detector = GitConflictDetector(self.repo_path)
 
     def is_repo(self) -> bool:
         """
@@ -124,3 +130,89 @@ class GitManager:
             self.git.push("--set-upstream", "origin", target_branch)
         else:
             self.git.push()
+
+    def check_merge_conflicts(
+        self, feature_branch: str, base_branch: str
+    ) -> dict:
+        """
+        Check if merge is possible without conflicts.
+
+        Args:
+            feature_branch: Feature branch to merge from
+            base_branch: Base branch to merge into
+
+        Returns:
+            Dictionary with merge status and conflict information
+
+        Examples:
+            >>> manager = GitManager()
+            >>> result = manager.check_merge_conflicts("feature/auth", "develop")
+            >>> if result["can_merge"]:
+            ...     print("Ready to merge")
+            ... else:
+            ...     print(f"Conflicts: {result['conflicts']}")
+        """
+        return self.conflict_detector.can_merge(feature_branch, base_branch)
+
+    def has_merge_conflicts(self, feature_branch: str, base_branch: str) -> bool:
+        """
+        Quick check if merge would have conflicts.
+
+        Args:
+            feature_branch: Feature branch to merge from
+            base_branch: Base branch to merge into
+
+        Returns:
+            True if conflicts exist, False otherwise
+
+        Examples:
+            >>> manager = GitManager()
+            >>> if manager.has_merge_conflicts("feature/auth", "develop"):
+            ...     print("Conflicts detected")
+        """
+        result = self.conflict_detector.can_merge(feature_branch, base_branch)
+        return not result.get("can_merge", False)
+
+    def get_conflict_summary(self, feature_branch: str, base_branch: str) -> str:
+        """
+        Get human-readable summary of merge conflicts.
+
+        Args:
+            feature_branch: Feature branch to merge from
+            base_branch: Base branch to merge into
+
+        Returns:
+            String summary of conflicts for user presentation
+
+        Examples:
+            >>> manager = GitManager()
+            >>> summary = manager.get_conflict_summary("feature/auth", "develop")
+            >>> print(summary)
+        """
+        result = self.conflict_detector.can_merge(feature_branch, base_branch)
+        conflicts = result.get("conflicts", [])
+        return self.conflict_detector.summarize_conflicts(conflicts)
+
+    def auto_resolve_safe_conflicts(self) -> bool:
+        """
+        Auto-resolve safe config file conflicts.
+
+        Returns:
+            True if auto-resolution succeeded, False otherwise
+
+        Examples:
+            >>> manager = GitManager()
+            >>> if manager.auto_resolve_safe_conflicts():
+            ...     print("Safe conflicts resolved automatically")
+        """
+        return self.conflict_detector.auto_resolve_safe()
+
+    def abort_merge(self) -> None:
+        """
+        Abort an in-progress merge and clean up state.
+
+        Examples:
+            >>> manager = GitManager()
+            >>> manager.abort_merge()
+        """
+        self.conflict_detector.cleanup_merge_state()

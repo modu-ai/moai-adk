@@ -79,8 +79,8 @@ class BackupManager:
         }
 
         metadata_path = backup_dir / "backup_metadata.json"
-        with open(metadata_path, "w") as f:
-            json.dump(metadata, f, indent=2)
+        with open(metadata_path, "w", encoding="utf-8") as f:
+            json.dump(metadata, f, indent=2, ensure_ascii=False)
 
         logger.info(f"✅ Backup created successfully: {backup_dir}")
         return backup_dir
@@ -102,7 +102,7 @@ class BackupManager:
                 metadata_path = backup_dir / "backup_metadata.json"
                 if metadata_path.exists():
                     try:
-                        with open(metadata_path, "r") as f:
+                        with open(metadata_path, "r", encoding="utf-8") as f:
                             metadata = json.load(f)
                             backups.append(
                                 {
@@ -142,7 +142,7 @@ class BackupManager:
 
         try:
             # Read metadata
-            with open(metadata_path, "r") as f:
+            with open(metadata_path, "r", encoding="utf-8") as f:
                 metadata = json.load(f)
 
             logger.info(f"Restoring backup from {backup_path}")
