@@ -1,4 +1,44 @@
 # Changelog
+
+# v0.25.10 - Package Distribution Fix (2025-11-16)
+
+## 패키지 배포 최적화
+
+### 버그 수정
+
+- **수정**: `.claude/output-styles/moai` 폴더가 패키지에 포함되지 않는 문제 해결
+- **개선**: `pyproject.toml` hatch.build 섹션에 숨김 디렉토리 명시적 포함
+- **개선**: `MANIFEST.in`에 재귀적 포함 규칙 강화
+- **개선**: 패키지 무결성 검증 강화
+
+### 기술적 변경사항
+
+#### pyproject.toml 개선
+- `.claude/output-styles/**/*` 명시적 포함
+- `.claude/commands/**/*`, `.claude/agents/**/*`, `.claude/skills/**/*` 명시적 포함
+- `.moai/config/**/*`, `.moai/scripts/**/*` 명시적 포함
+- Yoda 시스템 관련 파일 제외 규칙 확대
+- `target-version` 설정값 정정 (0.25.9 → py311)
+
+#### MANIFEST.in 최적화
+- 모든 hidden directories 재귀 포함 명시
+- `.claude/output-styles/moai` 디렉토리 특별 처리
+- 패키지 배포 일관성 보장
+
+### 영향 범위
+
+- **사용자**: 새로 설치하는 모든 사용자가 완전한 output-styles 디렉토리 확인 가능
+- **CI/CD**: 패키지 빌드 프로세스 신뢰성 증가
+- **배포**: PyPI 배포 후 모든 파일이 정상적으로 포함됨
+
+## 설치
+
+```bash
+pip install moai-adk==0.25.10
+```
+
+---
+
 # v0.25.9 (2025-11-16)
 
 ## 주요 변경사항
