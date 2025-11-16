@@ -1,0 +1,416 @@
+name: Package Verify
+
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'src/**'
+      - 'pyproject.toml'
+      - 'scripts/verify-package-integrity.py'
+      - '.github/workflows/package-verify.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'src/**'
+      - 'pyproject.toml'
+      - 'scripts/verify-package-integrity.py'
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: "3.11"
+  UV_CACHE_DIR: ~/.cache/uv
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-source:
+    name: Source Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Verify source files
+        run: |
+          python3 scripts/verify-package-integrity.py
+          echo "Source files verification passed!"
+
+      - name: Check directory structure
+        run: |
+          echo "Checking critical directories..."
+          test -d "src/moai_adk" && echo "✓ src/moai_adk" || exit 1
+          test -d "src/moai_adk/templates" && echo "✓ src/moai_adk/templates" || exit 1
+          test -d "src/moai_adk/templates/.claude/output-styles/moai" && echo "✓ output-styles/moai" || exit 1
+
+          echo ""
+          echo "Checking output-styles files..."
+          output_dir="src/moai_adk/templates/.claude/output-styles/moai"
+          file_count=$(ls -1 "$output_dir" | wc -l)
+          echo "Files in output-styles: $file_count"
+          ls -la "$output_dir"
+
+          if [ $file_count -lt 2 ]; then
+            echo "✗ Expected at least 2 files in output-styles"
+            exit 1
+          fi
+          echo "✓ output-styles files verified"
+
+
+  build-package:
+    name: Build Package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: verify-source
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install uv
+
+      - name: Cache uv packages
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.UV_CACHE_DIR }}
+          key: uv-${{ runner.os }}-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            uv-${{ runner.os }}-
+
+      - name: Build distribution
+        run: |
+          echo "Building wheel and source distributions..."
+          uv build
+          echo ""
+          echo "Build artifacts:"
+          ls -lh dist/
+
+      - name: Verify build artifacts
+        run: |
+          echo "Checking build artifacts..."
+          wheel_count=$(ls dist/*.whl 2>/dev/null | wc -l)
+          tarball_count=$(ls dist/*.tar.gz 2>/dev/null | wc -l)
+
+          echo "Wheels: $wheel_count"
+          echo "Tarballs: $tarball_count"
+
+          if [ $wheel_count -eq 0 ] || [ $tarball_count -eq 0 ]; then
+            echo "✗ Missing build artifacts"
+            exit 1
+          fi
+          echo "✓ Build artifacts verified"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
+          if-no-files-found: error
+
+
+  verify-wheel:
+    name: Verify Wheel
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: build-package
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Verify wheel integrity
+        run: |
+          echo "Verifying wheel package..."
+          python3 scripts/verify-package-integrity.py dist/*.whl
+          echo "✓ Wheel verification passed!"
+
+      - name: List wheel contents
+        run: |
+          echo "Wheel contents:"
+          python3 << 'EOF'
+          import zipfile
+          import glob
+
+          wheels = glob.glob('dist/*.whl')
+          if wheels:
+              wheel_path = wheels[0]
+              print(f"Wheel: {wheel_path}")
+              with zipfile.ZipFile(wheel_path, 'r') as z:
+                  files = z.namelist()
+                  print(f"Total files: {len(files)}")
+                  print("\nKey directories:")
+                  dirs = set()
+                  for f in files:
+                      parts = f.split('/')
+                      if len(parts) > 1:
+                          dirs.add(parts[0])
+                  for d in sorted(dirs):
+                      print(f"  - {d}/")
+          EOF
+
+
+  verify-tarball:
+    name: Verify Tarball
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: build-package
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Verify tarball integrity
+        run: |
+          echo "Verifying tarball package..."
+          python3 scripts/verify-package-integrity.py dist/*.tar.gz
+          echo "✓ Tarball verification passed!"
+
+      - name: List tarball contents
+        run: |
+          echo "Tarball contents:"
+          python3 << 'EOF'
+          import tarfile
+          import glob
+
+          tarballs = glob.glob('dist/*.tar.gz')
+          if tarballs:
+              tar_path = tarballs[0]
+              print(f"Tarball: {tar_path}")
+              with tarfile.open(tar_path, 'r:gz') as t:
+                  members = t.getmembers()
+                  print(f"Total items: {len(members)}")
+                  print("\nKey files:")
+                  files = [m.name for m in members if m.isfile()]
+                  for f in sorted(files)[:10]:
+                      print(f"  - {f}")
+                  if len(files) > 10:
+                      print(f"  ... and {len(files) - 10} more files")
+          EOF
+
+
+  test-installation:
+    name: Test Installation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: build-package
+
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Test wheel installation
+        run: |
+          echo "Testing wheel installation (Python ${{ matrix.python-version }})..."
+          python3 -m venv test-env-wheel
+          source test-env-wheel/bin/activate
+
+          echo "Installing wheel..."
+          pip install --upgrade pip
+          pip install dist/*.whl
+
+          echo ""
+          echo "Verifying installation..."
+          python3 << 'EOF'
+          import moai_adk
+          import os
+
+          # Check module import
+          print(f"✓ moai_adk imported successfully")
+          print(f"  Location: {moai_adk.__file__}")
+
+          # Check version
+          if hasattr(moai_adk, '__version__'):
+              print(f"  Version: {moai_adk.__version__}")
+
+          # Check templates directory
+          pkg = os.path.dirname(moai_adk.__file__)
+          templates_path = os.path.join(pkg, 'templates')
+          if os.path.exists(templates_path):
+              print(f"✓ Templates directory found")
+              print(f"  Location: {templates_path}")
+
+          # Check output-styles
+          output_path = os.path.join(pkg, 'templates/.claude/output-styles/moai')
+          if os.path.exists(output_path):
+              files = os.listdir(output_path)
+              print(f"✓ Output styles found ({len(files)} files)")
+              for f in sorted(files):
+                  print(f"  - {f}")
+              if len(files) < 2:
+                  raise AssertionError(f"Expected at least 2 files, got {len(files)}")
+          else:
+              raise AssertionError(f"Missing output-styles: {output_path}")
+
+          print("\n✅ Installation verification passed!")
+          EOF
+
+      - name: Test tarball installation
+        run: |
+          echo "Testing tarball installation (Python ${{ matrix.python-version }})..."
+          python3 -m venv test-env-tar
+          source test-env-tar/bin/activate
+
+          echo "Installing tarball..."
+          pip install --upgrade pip
+          pip install dist/*.tar.gz
+
+          echo ""
+          echo "Verifying installation..."
+          python3 << 'EOF'
+          import moai_adk
+          import os
+
+          # Check module import
+          print(f"✓ moai_adk imported successfully (from tarball)")
+
+          # Check output-styles
+          pkg = os.path.dirname(moai_adk.__file__)
+          output_path = os.path.join(pkg, 'templates/.claude/output-styles/moai')
+          files = os.listdir(output_path)
+          assert len(files) >= 2, f"Expected at least 2 files, got {len(files)}"
+          print(f"✓ Output styles verified ({len(files)} files)")
+
+          print("\n✅ Tarball installation passed!")
+          EOF
+
+      - name: Clean up test environments
+        if: always()
+        run: |
+          rm -rf test-env-wheel test-env-tar
+
+
+  final-report:
+    name: Final Report
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [verify-source, build-package, verify-wheel, verify-tarball, test-installation]
+    if: always()
+
+    steps:
+      - name: Check job statuses
+        run: |
+          echo "Job Status Report:"
+          echo "=================="
+
+          verify_source_status="${{ needs.verify-source.result }}"
+          build_package_status="${{ needs.build-package.result }}"
+          verify_wheel_status="${{ needs.verify-wheel.result }}"
+          verify_tarball_status="${{ needs.verify-tarball.result }}"
+          test_installation_status="${{ needs.test-installation.result }}"
+
+          echo ""
+          echo "Results:"
+          [ "$verify_source_status" = "success" ] && echo "✅ Source files verified" || echo "❌ Source files verification failed"
+          [ "$build_package_status" = "success" ] && echo "✅ Wheel built successfully" || echo "❌ Build failed"
+          [ "$verify_wheel_status" = "success" ] && echo "✅ Wheel contents verified" || echo "❌ Wheel verification failed"
+          [ "$verify_tarball_status" = "success" ] && echo "✅ Tarball contents verified" || echo "❌ Tarball verification failed"
+          [ "$test_installation_status" = "success" ] && echo "✅ Installation test passed" || echo "❌ Installation test failed"
+
+          echo ""
+          if [ "$verify_source_status" = "success" ] && \
+             [ "$build_package_status" = "success" ] && \
+             [ "$verify_wheel_status" = "success" ] && \
+             [ "$verify_tarball_status" = "success" ] && \
+             [ "$test_installation_status" = "success" ]; then
+            echo "🎉 All checks passed! Package ready for PyPI."
+            exit 0
+          else
+            echo "⚠️ Some checks failed. Review the logs above."
+            exit 1
+          fi
+
+      - name: Generate summary
+        if: success()
+        run: |
+          cat > $GITHUB_STEP_SUMMARY << 'EOF'
+          # Package Verification Report
+
+          ## ✅ All Checks Passed!
+
+          | Check | Status |
+          |-------|--------|
+          | Source files verified | ✅ |
+          | Wheel built successfully | ✅ |
+          | Wheel contents verified | ✅ |
+          | Tarball contents verified | ✅ |
+          | Installation test passed | ✅ |
+
+          **Package ready for PyPI distribution.**
+          EOF
+
+      - name: Generate failure summary
+        if: failure()
+        run: |
+          cat > $GITHUB_STEP_SUMMARY << 'EOF'
+          # Package Verification Report
+
+          ## ⚠️ Some Checks Failed
+
+          Please review the workflow logs for details.
+
+          | Check | Status |
+          |-------|--------|
+          | Source files verified | ${{ needs.verify-source.result == 'success' && '✅' || '❌' }} |
+          | Wheel built successfully | ${{ needs.build-package.result == 'success' && '✅' || '❌' }} |
+          | Wheel contents verified | ${{ needs.verify-wheel.result == 'success' && '✅' || '❌' }} |
+          | Tarball contents verified | ${{ needs.verify-tarball.result == 'success' && '✅' || '❌' }} |
+          | Installation test passed | ${{ needs.test-installation.result == 'success' && '✅' || '❌' }} |
+          EOF

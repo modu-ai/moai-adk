@@ -1,7 +1,17 @@
-# Include template directories (including hidden dirs starting with .)
+# Include all template directories (including hidden dirs starting with .)
 recursive-include src/moai_adk/templates *
+
+# Explicitly include hidden directories to ensure proper package distribution
+# (Hidden directories may be missed by standard recursive-include)
 recursive-include src/moai_adk/templates/.claude *
+recursive-include src/moai_adk/templates/.claude/output-styles *
+recursive-include src/moai_adk/templates/.claude/commands *
+recursive-include src/moai_adk/templates/.claude/agents *
+recursive-include src/moai_adk/templates/.claude/skills *
+recursive-include src/moai_adk/templates/.claude/hooks *
 recursive-include src/moai_adk/templates/.moai *
+recursive-include src/moai_adk/templates/.moai/config *
+recursive-include src/moai_adk/templates/.moai/scripts *
 recursive-include src/moai_adk/templates/.github *
 
 # Include documentation
