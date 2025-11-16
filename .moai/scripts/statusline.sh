@@ -56,13 +56,36 @@ check_dependencies() {
 run_via_package() {
     debug_log "Attempting to run via installed package..."
 
+    # Try 1: uv run (if project has venv with moai-adk)
     if echo "$INPUT_JSON" | uv run python -m moai_adk.statusline.main 2>/dev/null; then
-        debug_log "Successfully ran via installed package"
+        debug_log "Successfully ran via uv run"
         return 0
-    else
-        debug_log "Failed to run via installed package"
-        return 1
     fi
+
+    # Try 2: Direct Python (if moai-adk installed globally)
+    if echo "$INPUT_JSON" | python -m moai_adk.statusline.main 2>/dev/null; then
+        debug_log "Successfully ran via global python"
+        return 0
+    fi
+
+    # Try 3: Python3 explicitly
+    if echo "$INPUT_JSON" | python3 -m moai_adk.statusline.main 2>/dev/null; then
+        debug_log "Successfully ran via python3"
+        return 0
+    fi
+
+    # Try 4: moai-adk command (if installed via pipx/uv tool)
+    if command -v moai-adk >/dev/null 2>&1; then
+        # Get the Python path from moai-adk installation
+        MOAI_PYTHON=$(which moai-adk | xargs head -1 | sed 's/^#!//')
+        if [ -n "$MOAI_PYTHON" ] && echo "$INPUT_JSON" | "$MOAI_PYTHON" -m moai_adk.statusline.main 2>/dev/null; then
+            debug_log "Successfully ran via moai-adk python"
+            return 0
+        fi
+    fi
+
+    debug_log "Failed to run via any package method"
+    return 1
 }
 
 # Try to run statusline via local project

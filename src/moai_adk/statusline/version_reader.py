@@ -71,12 +71,13 @@ class VersionConfig:
     track_performance_metrics: bool = True
 
     # Version field priority configuration
+    # Order: 1) MoAI package version, 2) Project version, 3) Fallbacks
     version_fields: List[str] = field(
         default_factory=lambda: [
-            "project.version",
-            "moai.version",
-            "version",
-            "moai.template_version",
+            "moai.version",          # ← 1순위: MoAI-ADK 버전
+            "project.version",       # ← 2순위: 프로젝트 버전
+            "version",               # ← 3순위: 일반 버전
+            "project.template_version",  # ← 4순위: 템플릿 버전
             "template_version",
         ]
     )
@@ -102,11 +103,12 @@ class VersionReader:
     DEFAULT_CONFIG = VersionConfig()
 
     # Supported version fields in order of priority
+    # Order: 1) MoAI package version, 2) Project version, 3) Fallbacks
     DEFAULT_VERSION_FIELDS = [
-        "project.version",
-        "moai.version",
-        "version",
-        "moai.template_version",
+        "moai.version",          # ← 1순위: MoAI-ADK 버전
+        "project.version",       # ← 2순위: 프로젝트 버전
+        "version",               # ← 3순위: 일반 버전
+        "project.template_version",  # ← 4순위: 템플릿 버전
         "template_version",
     ]
 

@@ -175,7 +175,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "{{PROJECT_DIR}}/.moai/scripts/statusline.sh",
+    "command": "uv run python -m moai_adk.statusline.main",
     "padding": 0
   },
   "spinnerTipsEnabled": true,

@@ -738,12 +738,11 @@ class TemplateProcessor:
             # Binary file or no context: simple copy
             shutil.copy2(src, dst)
 
-        # Preserve executable permission for shell scripts
+        # Ensure executable permission for shell scripts
         if src.suffix == ".sh":
-            src_stat = src.stat()
-            if src_stat.st_mode & stat.S_IXUSR:  # Source is executable
-                dst_mode = dst.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
-                dst.chmod(dst_mode)
+            # Always make shell scripts executable regardless of source permissions
+            dst_mode = dst.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
+            dst.chmod(dst_mode)
 
         return warnings
 

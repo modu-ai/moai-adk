@@ -72,10 +72,11 @@
     "mode": "development",
     "locale": "ko",
     "language": "Python",
+    "template_version": "0.25.8",
     "created_at": "2025-11-14T00:00:00Z",
     "initialized": true,
-    "optimized": false,
-    "optimized_at": null,
+    "optimized": true,
+    "optimized_at": "2025-11-16T00:00:00Z",
     "_notes": "optimized=false: Template updated, config merge required. optimized=true: Configuration fully merged and verified."
   },
   "user": {

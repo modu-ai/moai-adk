@@ -572,7 +572,9 @@ def _sync_templates(project_path: Path, force: bool = False) -> bool:
                         Path(__file__).parent.parent.parent / "templates"
                     )
 
-                    console.print("\n[cyan]🔍 분석 중: Claude Code로 병합 분석 진행...[/cyan]")
+                    console.print("\n[cyan]🔍 병합 분석 시작 (최대 2분 소요)...[/cyan]")
+                    console.print("[dim]   Claude Code로 지능형 병합 분석을 진행 중입니다.[/dim]")
+                    console.print("[dim]   기다려주세요...[/dim]\n")
                     analysis = analyzer.analyze_merge(backup_path, template_path)
 
                     # Ask user confirmation

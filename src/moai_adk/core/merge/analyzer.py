@@ -13,7 +13,9 @@ from typing import Any, Optional
 
 import click
 from rich.console import Console
+from rich.live import Live
 from rich.panel import Panel
+from rich.spinner import Spinner
 from rich.table import Table
 
 console = Console()
@@ -60,8 +62,6 @@ class MergeAnalyzer:
                 - summary: 종합 요약
                 - error: 오류 메시지 (있는 경우)
         """
-        console.print("🔍 분석 중: Claude Code로 병합 분석 진행 중...")
-
         # 1. 비교할 파일 수집
         diff_files = self._collect_diff_files(backup_path, template_path)
 
@@ -70,32 +70,34 @@ class MergeAnalyzer:
             backup_path, template_path, diff_files
         )
 
-        # 3. Claude Code headless 실행
+        # 3. Claude Code headless 실행 (스피너 표시)
+        spinner = Spinner("dots", text="[cyan]Claude Code 분석 진행 중...[/cyan]")
+
         try:
-            result = subprocess.run(
-                self._build_claude_command(),
-                input=prompt,
-                capture_output=True,
-                text=True,
-                timeout=self.CLAUDE_TIMEOUT,
-            )
+            with Live(spinner, refresh_per_second=12):
+                result = subprocess.run(
+                    self._build_claude_command(),
+                    input=prompt,
+                    capture_output=True,
+                    text=True,
+                    timeout=self.CLAUDE_TIMEOUT,
+                )
 
             if result.returncode == 0:
                 try:
                     analysis = json.loads(result.stdout)
+                    console.print("[green]✅ 분석 완료[/green]")
                     return analysis
                 except json.JSONDecodeError as e:
                     console.print(
-                        f"⚠️  Claude 응답 파싱 오류: {e}",
-                        style="yellow",
+                        f"[yellow]⚠️  Claude 응답 파싱 오류: {e}[/yellow]"
                     )
                     return self._fallback_analysis(
                         backup_path, template_path, diff_files
                     )
             else:
                 console.print(
-                    f"⚠️  Claude 실행 오류: {result.stderr[:200]}",
-                    style="yellow",
+                    f"[yellow]⚠️  Claude 실행 오류: {result.stderr[:200]}[/yellow]"
                 )
                 return self._fallback_analysis(
                     backup_path, template_path, diff_files
@@ -103,20 +105,17 @@ class MergeAnalyzer:
 
         except subprocess.TimeoutExpired:
             console.print(
-                "⚠️  Claude 분석 타임아웃 (120초 초과)",
-                style="yellow",
+                "[yellow]⚠️  Claude 분석 타임아웃 (120초 초과)[/yellow]"
             )
             return self._fallback_analysis(
                 backup_path, template_path, diff_files
             )
         except FileNotFoundError:
             console.print(
-                "❌ Claude Code를 찾을 수 없습니다.",
-                style="red",
+                "[red]❌ Claude Code를 찾을 수 없습니다.[/red]"
             )
             console.print(
-                "   Claude Code 설치: https://claude.com/claude-code",
-                style="cyan",
+                "[cyan]   Claude Code 설치: https://claude.com/claude-code[/cyan]"
             )
             return self._fallback_analysis(
                 backup_path, template_path, diff_files
