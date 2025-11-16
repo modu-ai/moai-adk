@@ -1,4 +1,46 @@
 # Changelog
+# v0.25.9 (2025-11-16)
+
+## 주요 변경사항
+
+### 🐛 버그 수정 및 개선사항
+
+#### StatusLine 표시 문제 해결 (Windows/Mac/Linux)
+- **수정**: 버전 표시 우선순위 변경 - `moai.version`이 이제 `project.version`보다 우선
+- **개선**: Windows 사용자도 StatusLine을 볼 수 있도록 cross-platform 지원 추가
+- **개선**: statusline.sh에 4가지 Python 실행 fallback 메서드 추가
+- **수정**: .sh 파일 실행 권한 자동 설정 (permission denied 오류 해결)
+
+#### Update 명령 사용자 경험 개선
+- **개선**: 병합 분석 중 시각적 스피너 표시 (최대 2분)
+- **개선**: "기다려주세요..." 메시지와 명확한 진행 상황 표시
+- **수정**: config.json에 누락된 template_version 필드 추가
+
+### 📊 기술적 변경사항
+
+- `src/moai_adk/statusline/version_reader.py`: VERSION_FIELDS 우선순위 재정렬
+- `src/moai_adk/core/merge/analyzer.py`: Rich Live 스피너 지원 추가
+- `src/moai_adk/core/template/processor.py`: .sh 파일에 항상 chmod +x 적용
+- `src/moai_adk/templates/.claude/settings.json`: Python 직접 실행으로 변경
+- 추가: Windows 전용 설정을 위한 settings.windows.json
+
+### 🎯 사용자 영향
+
+- **이전**: StatusLine에 "Ver unknown" 표시, 분석 중 화면 정지
+- **이후**: StatusLine에 "Ver 0.25.9" 정상 표시, 분석 중 애니메이션 스피너
+
+모든 사용자(Windows/Mac/Linux)가 StatusLine을 제대로 볼 수 있으며
+긴 작업 중에도 더 나은 피드백을 받을 수 있습니다.
+
+## 설치
+
+\`\`\`bash
+pip install moai-adk==0.25.9
+\`\`\`
+
+---
+
+
 
 # v0.25.8 (2025-11-16)
 
