@@ -319,13 +319,7 @@ jobs:
           # Test 2: Module Loading
           Write-Host "[TEST] Module Loading" -ForegroundColor Yellow
           try {
-              python @"
-          import moai_adk
-          from moai_adk import cli, core, templates
-          modules = ['cli', 'core', 'templates']
-          for mod in modules:
-              print(f'✓ {mod} module loaded')
-"@ 2>&1 | Out-Null
+              python -c 'import moai_adk; from moai_adk import cli, core, templates; modules = ["cli", "core", "templates"]; [print(f"✓ {mod} module loaded") for mod in modules]' 2>&1 | Out-Null
               Write-Host "✓ All modules loaded successfully" -ForegroundColor Green
               $testResults["Module Loading"] = $true
           } catch {
@@ -410,4 +404,3 @@ jobs:
         run: |
           Write-Host "🪟 PowerShell cross-platform tests complete" -ForegroundColor Green
         shell: powershell
-

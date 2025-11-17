@@ -175,7 +175,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "uv run python -m moai_adk.statusline.main",
+    "command": "uvx moai-adk statusline",
     "padding": 0
   },
   "spinnerTipsEnabled": true,

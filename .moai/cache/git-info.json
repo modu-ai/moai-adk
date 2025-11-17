@@ -1,7 +1,7 @@
 {
-  "branch": "develop",
-  "last_commit": "4ada4b71 docs: Update CHANGELOG for v0.25.8",
-  "commit_time": "29 minutes ago",
-  "changes": 2,
-  "last_check": "2025-11-16T08:48:46.973440"
+  "branch": "main",
+  "last_commit": "4e2d8f07 Merge develop into main for v0.25.10 release",
+  "commit_time": "31 hours ago",
+  "changes": 19,
+  "last_check": "2025-11-17T17:43:19.784425"
 }

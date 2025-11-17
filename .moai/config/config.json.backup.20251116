@@ -1,7 +1,8 @@
 {
-  "_meta": {},
+  "_meta": {
+  },
   "moai": {
-    "version": "0.25.10",
+    "version": "0.25.8",
     "update_check_frequency": "daily",
     "version_check": {
       "enabled": true,
@@ -71,7 +72,7 @@
     "mode": "development",
     "locale": "ko",
     "language": "Python",
-    "template_version": "0.25.10",
+    "template_version": "0.25.8",
     "created_at": "2025-11-14T00:00:00Z",
     "initialized": true,
     "optimized": true,
@@ -170,196 +171,83 @@
     "notes": "auto_delete_branches: whether to auto-delete feature branches after merge. spec_git_workflow: 'feature_branch' (auto), 'develop_direct' (direct), 'per_spec' (ask per SPEC - flexible, user controls each workflow)"
   },
   "document_management": {
-    "_meta": {},
+    "_meta": {
+    },
     "enabled": true,
     "enforce_structure": true,
     "block_root_pollution": false,
     "directories": {
       "reports": {
         "base": ".moai/reports/",
-        "categories": [
-          "inspection",
-          "phases",
-          "sync",
-          "analysis",
-          "validation",
-          "daily"
-        ],
+        "categories": ["inspection", "phases", "sync", "analysis", "validation", "daily"],
         "auto_categorize": true,
         "retention_days": 90
       },
       "logs": {
         "base": ".moai/logs/",
-        "categories": [
-          "sessions",
-          "agent-transcripts",
-          "errors",
-          "execution"
-        ],
+        "categories": ["sessions", "agent-transcripts", "errors", "execution"],
         "retention_days": 30
       },
       "scripts": {
         "base": ".moai/scripts/",
-        "categories": [
-          "dev",
-          "conversion",
-          "validation",
-          "analysis",
-          "maintenance"
-        ],
+        "categories": ["dev", "conversion", "validation", "analysis", "maintenance"],
         "retention_days": null
       },
       "temp": {
         "base": ".moai/temp/",
-        "categories": [
-          "tests",
-          "coverage",
-          "work",
-          "research"
-        ],
+        "categories": ["tests", "coverage", "work", "research"],
         "retention_days": 7,
         "auto_cleanup": true
       },
       "backups": {
         "base": ".moai/backups/",
-        "categories": [
-          "specs",
-          "docs",
-          "hooks",
-          "skills",
-          "config",
-          "legacy"
-        ],
+        "categories": ["specs", "docs", "hooks", "skills", "config", "legacy"],
         "retention_days": 90,
         "max_backups_per_type": 10
       },
       "cache": {
         "base": ".moai/cache/",
-        "categories": [
-          "mcp",
-          "analysis"
-        ],
+        "categories": ["mcp", "analysis"],
         "retention_days": 30,
         "auto_cleanup": true
       }
     },
     "root_whitelist": [
-      "README.md",
-      "README.*.md",
-      "CHANGELOG.md",
-      "CONTRIBUTING.md",
-      "CLAUDE.md",
-      "LICENSE",
-      "LICENSE.*",
-      "pyproject.toml",
-      "setup.py",
-      "setup.cfg",
-      "package.json",
-      "package-lock.json",
-      "yarn.lock",
-      "pnpm-lock.yaml",
-      ".gitignore",
-      ".gitattributes",
-      ".editorconfig",
-      ".prettierrc",
-      ".eslintrc*",
-      "Makefile",
-      "Dockerfile",
-      "docker-compose.yml",
-      ".dockerignore",
-      "tsconfig.json",
-      "jsconfig.json",
-      "next.config.js",
-      "vite.config.js"
+      "README.md", "README.*.md",
+      "CHANGELOG.md", "CONTRIBUTING.md", "CLAUDE.md",
+      "LICENSE", "LICENSE.*",
+      "pyproject.toml", "setup.py", "setup.cfg",
+      "package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml",
+      ".gitignore", ".gitattributes", ".editorconfig", ".prettierrc", ".eslintrc*",
+      "Makefile", "Dockerfile", "docker-compose.yml", ".dockerignore",
+      "tsconfig.json", "jsconfig.json", "next.config.js", "vite.config.js"
     ],
     "file_patterns": {
       "reports": {
-        "inspection": [
-          "FINAL-INSPECTION-*.md",
-          "*-inspection-*.md"
-        ],
-        "phases": [
-          "PHASE*-COMPLETION-*.md",
-          "*-phase-*.md"
-        ],
-        "sync": [
-          "sync-report-*.md",
-          "*-sync-*.md"
-        ],
-        "analysis": [
-          "*-ANALYSIS-*.md",
-          "*-analysis-*.md"
-        ],
-        "validation": [
-          "*-validation-*.md",
-          "*-quality-*.md"
-        ],
-        "daily": [
-          "daily-*.md",
-          "*-daily-report-*.md"
-        ]
+        "inspection": ["FINAL-INSPECTION-*.md", "*-inspection-*.md"],
+        "phases": ["PHASE*-COMPLETION-*.md", "*-phase-*.md"],
+        "sync": ["sync-report-*.md", "*-sync-*.md"],
+        "analysis": ["*-ANALYSIS-*.md", "*-analysis-*.md"],
+        "validation": ["*-validation-*.md", "*-quality-*.md"],
+        "daily": ["daily-*.md", "*-daily-report-*.md"]
       },
       "scripts": {
-        "dev": [
-          "init-*.sh",
-          "setup-*.sh",
-          "*-dev-*.py"
-        ],
-        "conversion": [
-          "fix-*.js",
-          "convert-*.py",
-          "migrate-*.js"
-        ],
-        "validation": [
-          "validate_*.py",
-          "lint_*.py",
-          "check_*.sh"
-        ],
-        "analysis": [
-          "*_analyzer.py",
-          "analyze_*.py",
-          "*_monitor.py"
-        ],
-        "maintenance": [
-          "cleanup_*.sh",
-          "maintain_*.py"
-        ]
+        "dev": ["init-*.sh", "setup-*.sh", "*-dev-*.py"],
+        "conversion": ["fix-*.js", "convert-*.py", "migrate-*.js"],
+        "validation": ["validate_*.py", "lint_*.py", "check_*.sh"],
+        "analysis": ["*_analyzer.py", "analyze_*.py", "*_monitor.py"],
+        "maintenance": ["cleanup_*.sh", "maintain_*.py"]
       },
       "temp": {
-        "tests": [
-          "test-*.spec.js",
-          "*_test.tmp",
-          "*.test.temp"
-        ],
-        "coverage": [
-          "coverage.json",
-          ".coverage",
-          "*.lcov"
-        ],
-        "work": [
-          "*.tmp",
-          "*.temp",
-          "*.bak",
-          "*.draft"
-        ]
+        "tests": ["test-*.spec.js", "*_test.tmp", "*.test.temp"],
+        "coverage": ["coverage.json", ".coverage", "*.lcov"],
+        "work": ["*.tmp", "*.temp", "*.bak", "*.draft"]
       },
       "backups": {
-        "docs": [
-          "docs_backup_*",
-          "docs-backup-*"
-        ],
-        "hooks": [
-          "hooks_backup_*",
-          "hooks-backup-*"
-        ],
-        "specs": [
-          "specs_backup_*",
-          "specs-backup-*"
-        ],
-        "config": [
-          "config_backup_*",
-          "config-backup-*"
-        ]
+        "docs": ["docs_backup_*", "docs-backup-*"],
+        "hooks": ["hooks_backup_*", "hooks-backup-*"],
+        "specs": ["specs_backup_*", "specs-backup-*"],
+        "config": ["config_backup_*", "config-backup-*"]
       }
     },
     "validation": {

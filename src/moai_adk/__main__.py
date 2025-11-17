@@ -22,6 +22,7 @@ from moai_adk.cli.commands.init import init
 from moai_adk.cli.commands.migrate import migrate
 from moai_adk.cli.commands.status import status
 from moai_adk.cli.commands.update import update
+from moai_adk.statusline.main import build_statusline_data
 
 console = Console()
 
@@ -65,6 +66,28 @@ cli.add_command(status)
 cli.add_command(backup)
 cli.add_command(migrate)
 cli.add_command(update)
+
+
+# statusline 명령 (Claude Code statusline 렌더링용)
+@click.command(name="statusline")
+def statusline() -> None:
+    """Render Claude Code statusline (internal use only)"""
+    import json
+    import sys
+
+    try:
+        # stdin에서 JSON 컨텍스트 읽기
+        input_data = sys.stdin.read() if not sys.stdin.isatty() else "{}"
+        context = json.loads(input_data) if input_data else {}
+    except (json.JSONDecodeError, EOFError, ValueError):
+        context = {}
+
+    # statusline 렌더링
+    output = build_statusline_data(context, mode="extended")
+    print(output, end="")
+
+
+cli.add_command(statusline)
 
 
 # 링크 검증 명령
