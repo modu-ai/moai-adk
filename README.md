@@ -514,7 +514,7 @@ Hook Model Selection Strategy:
 All hooks are implemented and tested:
 
 ```
-.claude/hooks/alfred/
+.claude/hooks/moai/
 ├─ session_start__config_health_check.py (Config validation)
 ├─ session_start__show_project_info.py (Project display)
 ├─ user_prompt__jit_load_docs.py (JIT document loading)

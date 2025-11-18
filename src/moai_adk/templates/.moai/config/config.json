@@ -70,10 +70,10 @@
   },
   "pipeline": {
     "available_commands": [
-      "/alfred:0-project",
-      "/alfred:1-plan",
-      "/alfred:2-run",
-      "/alfred:3-sync"
+      "/moai:0-project",
+      "/moai:1-plan",
+      "/moai:2-run",
+      "/moai:3-sync"
     ]
   },
   "language": {
