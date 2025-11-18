@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Spec Status Manager Hook for Alfred Commands
+"""Spec Status Manager CLI Tool
 
-Integrates SpecStatusManager with /alfred:2-run and /alfred:3-sync commands
-to automatically update SPEC status based on implementation and sync completion.
+Provides command-line interface for managing SPEC status tracking.
 
 Usage:
-    python3 spec_status_hooks.py <command> <spec_id> [options]
+    python3 -m moai_adk.cli.spec_status <command> <spec_id> [options]
+    moai-spec <command> <spec_id> [options]
 
 Commands:
     - status_update: Update SPEC status
@@ -20,20 +20,17 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
-
-try:
-    from shared.core.config_manager import ConfigManager  # noqa: E402
-except ImportError:
-    ConfigManager = None  # type: ignore
-
 try:
     from moai_adk.core.spec_status_manager import SpecStatusManager
 except ImportError:
-    # Fallback for development environment
+    # Fallback: look in current directory
+    from pathlib import Path
+    import sys
     sys.path.insert(0, str(Path(__file__).parent.parent))
-    from core.spec_status_manager import SpecStatusManager
+    try:
+        from core.spec_status_manager import SpecStatusManager
+    except ImportError:
+        raise ImportError("SpecStatusManager not found")
 
 
 def update_spec_status(spec_id: str, new_status: str, reason: str = "") -> Dict[str, Any]:
