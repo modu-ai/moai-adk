@@ -24,40 +24,16 @@ from typing import Any, Dict
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
 try:
+    from shared.core.config_manager import ConfigManager  # noqa: E402
+except ImportError:
+    ConfigManager = None  # type: ignore
+
+try:
     from moai_adk.core.spec_status_manager import SpecStatusManager
 except ImportError:
     # Fallback for development environment
     sys.path.insert(0, str(Path(__file__).parent.parent))
     from core.spec_status_manager import SpecStatusManager
-
-
-def load_config() -> Dict[str, Any]:
-    """Load MoAI project configuration
-
-    Returns:
-        Configuration dictionary
-    """
-    config_file = Path(".moai/config/config.json")
-    if config_file.exists():
-        try:
-            with open(config_file, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except Exception as e:
-            print(f"Warning: Failed to load config: {e}", file=sys.stderr)
-
-    # Default configuration
-    return {
-        "project": {
-            "name": "moai-project",
-            "mode": "personal"
-        },
-        "git_strategy": {
-            "mode": "personal"
-        },
-        "language": {
-            "conversation_language": "en"
-        }
-    }
 
 
 def update_spec_status(spec_id: str, new_status: str, reason: str = "") -> Dict[str, Any]:

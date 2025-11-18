@@ -24,6 +24,14 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Optional
 
+# Add src to path for ConfigManager import
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
+
+try:
+    from shared.core.config_manager import ConfigManager  # noqa: E402
+except ImportError:
+    ConfigManager = None  # type: ignore
+
 
 def check_config_exists() -> bool:
     """Check if .moai/config/config.json exists"""
@@ -32,12 +40,15 @@ def check_config_exists() -> bool:
 
 
 def get_config_data() -> Optional[dict[str, Any]]:
-    """Read and parse .moai/config/config.json"""
+    """Read and parse .moai/config/config.json using ConfigManager"""
     try:
-        config_path = Path.cwd() / ".moai" / "config" / "config.json"
-        if not config_path.exists():
-            return None
-        return json.loads(config_path.read_text())
+        if ConfigManager:
+            return ConfigManager().load_config()
+        else:
+            config_path = Path.cwd() / ".moai" / "config" / "config.json"
+            if not config_path.exists():
+                return None
+            return json.loads(config_path.read_text())
     except Exception:
         return None
 

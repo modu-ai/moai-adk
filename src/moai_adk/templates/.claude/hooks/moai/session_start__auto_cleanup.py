@@ -24,6 +24,11 @@ from typing import Dict, List, Optional
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
 try:
+    from shared.core.config_manager import ConfigManager  # noqa: E402
+except ImportError:
+    ConfigManager = None  # type: ignore
+
+try:
     from shared.utils.common import format_duration, get_summary_stats
 except ImportError:
     # Fallback implementations if module not found
@@ -77,19 +82,6 @@ def get_graceful_degradation() -> bool:
     except Exception:
         pass
     return True
-
-
-def load_config() -> Dict:
-    """설정 파일 로드"""
-    try:
-        config_file = Path(".moai/config/config.json")
-        if config_file.exists():
-            with open(config_file, 'r', encoding='utf-8') as f:
-                return json.load(f)
-    except Exception:
-        pass
-
-    return {}
 
 
 def should_cleanup_today(last_cleanup: Optional[str], cleanup_days: int = 7) -> bool:
@@ -544,7 +536,10 @@ def main():
             start_time = time.time()
 
             # 설정 로드
-            config = load_config()
+            if ConfigManager:
+                config = ConfigManager().load_config()
+            else:
+                config = {}
 
             # 마지막 정리 날짜 확인
             last_cleanup = config.get("auto_cleanup", {}).get("last_cleanup")

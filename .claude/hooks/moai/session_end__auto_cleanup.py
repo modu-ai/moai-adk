@@ -31,6 +31,11 @@ from typing import Dict, List, Optional
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
 try:
+    from shared.core.config_manager import ConfigManager  # noqa: E402
+except ImportError:
+    ConfigManager = None  # type: ignore
+
+try:
     from shared.utils.common import format_duration, get_summary_stats
 except ImportError:
     # Fallback implementations if module not found
@@ -84,19 +89,6 @@ def get_graceful_degradation() -> bool:
     except Exception:
         pass
     return True
-
-
-def load_config() -> Dict:
-    """Load configuration file"""
-    try:
-        config_file = Path(".moai/config/config.json")
-        if config_file.exists():
-            with open(config_file, 'r', encoding='utf-8') as f:
-                return json.load(f)
-    except Exception:
-        pass
-
-    return {}
 
 
 def cleanup_old_files(config: Dict) -> Dict[str, int]:
@@ -627,7 +619,10 @@ def main():
             start_time = time.time()
 
             # Load configuration
-            config = load_config()
+            if ConfigManager:
+                config = ConfigManager().load_config()
+            else:
+                config = {}
 
             # Generate hook payload (simple version)
             payload = {"cwd": str(Path.cwd())}

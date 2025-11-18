@@ -1,7 +1,7 @@
 {
   "branch": "release/0.26.0",
-  "last_commit": "8c9a6319 refactor: Remove chrome-devtools MCP references from documentation",
-  "commit_time": "10 minutes ago",
-  "changes": 7,
-  "last_check": "2025-11-19T07:23:55.584778"
+  "last_commit": "0785debc refactor(hooks/moai): Phase 1 cleanup - Remove duplicates & consolidate utilities",
+  "commit_time": "5 minutes ago",
+  "changes": 2,
+  "last_check": "2025-11-19T07:31:28.451548"
 }

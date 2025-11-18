@@ -31,6 +31,7 @@ if str(SHARED_DIR) not in sys.path:
 try:
     from shared.core.timeout import CrossPlatformTimeout  # noqa: E402
     from shared.core.timeout import TimeoutError as PlatformTimeoutError  # noqa: E402
+    from shared.core.config_manager import ConfigManager  # noqa: E402
 except ImportError:
     # Fallback for timeout if shared module unavailable
     import signal
@@ -48,17 +49,7 @@ except ImportError:
         def cancel(self):
             signal.alarm(0)
 
-
-def load_config() -> Dict:
-    """Load configuration from .moai/config/config.json"""
-    try:
-        config_file = Path(".moai/config/config.json")
-        if config_file.exists():
-            with open(config_file, 'r', encoding='utf-8') as f:
-                return json.load(f)
-    except Exception:
-        pass
-    return {}
+    ConfigManager = None  # type: ignore
 
 
 def get_file_pattern_category(filename: str, config: Dict) -> Optional[Tuple[str, str]]:
@@ -232,7 +223,10 @@ def handle_pre_tool_use(payload: Dict) -> Dict[str, Any]:
         Hook response dictionary
     """
     # Load configuration
-    config = load_config()
+    if ConfigManager:
+        config = ConfigManager().load_config()
+    else:
+        config = {}
 
     # Check if document management is enabled
     doc_mgmt = config.get("document_management", {})
