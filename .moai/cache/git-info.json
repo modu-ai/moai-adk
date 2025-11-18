@@ -1,7 +1,7 @@
 {
   "branch": "release/0.26.0",
-  "last_commit": "02eb5104 feat(template): Add moai folder structure to package templates",
-  "commit_time": "24 minutes ago",
-  "changes": 15,
-  "last_check": "2025-11-18T20:05:49.775576"
+  "last_commit": "7a0cdaf3 chore(version): Update SPEC-MIGRATION-001 to v0.26.0",
+  "commit_time": "9 minutes ago",
+  "changes": 3,
+  "last_check": "2025-11-18T20:24:57.772877"
 }

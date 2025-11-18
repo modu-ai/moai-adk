@@ -61,10 +61,12 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
 - **Test-first guarantee**: No code without tests
 - **85%+ coverage** achieved through systematic testing
 
-### 3. Alfred SuperAgent
+### 3. Alfred SuperAgent (v0.26.0)
 
-- **19 specialized AI agents** (spec-builder, code-builder, doc-syncer, etc.)
-- **125+ production-ready enterprise skills** covering all development domains
+**고급 AI 기반 다중 에이전트 오케스트레이션 시스템**
+
+- **19개의 전문화된 AI 에이전트** (spec-builder, tdd-implementer, backend-expert, frontend-expert, database-expert, security-expert, docs-manager, performance-engineer, monitoring-expert, api-designer, quality-gate 등)
+- **125개 이상의 프로덕션 레디 엔터프라이즈 스킬** 모든 개발 도메인 커버
   - **12 BaaS skills**: Cloud platforms (Supabase, Firebase, Vercel, Cloudflare, Auth0, Convex, Railway, Neon, Clerk)
   - **10 Security & Compliance skills**: Advanced authentication, OWASP, encryption, compliance patterns
   - **15 Enterprise Integration skills**: Microservices, event-driven architecture, DDD, messaging
@@ -158,6 +160,35 @@ Complete traceability system linking all artifacts:
 - **Zero manual updates** required
 - **Multi-language support** (Python, TypeScript, Go, Rust, etc.)
 - **Automatic diagram generation** from code structure
+
+### 5.5 Progressive Disclosure 아키텍처
+
+**빠른 참고**: 한 페이지에 핵심만 요약
+**상세 정보**: 더 깊은 이해를 위한 핵심 섹션
+**고급 내용**: `.moai/memory/` 파일의 완전한 가이드
+
+```
+README.md (이 파일)
+  ├─ 빠른 개요 & 사용 패턴
+  └─ 상세 가이드 링크 →
+
+.moai/memory/
+  ├─ agent-delegation.md          (고급 Task() 패턴)
+  ├─ token-efficiency.md           (컨텍스트 관리 전략)
+  ├─ git-workflow-detailed.md      (GitHub Flow 심화 가이드)
+  ├─ claude-code-features.md       (v4.0+ 기능)
+  ├─ settings-config.md            (설정 레퍼런스)
+  └─ troubleshooting-extended.md   (확장 FAQ & 솔루션)
+
+CLAUDE.md
+  ├─ 기본 개념 & 철학
+  └─ 메모리 파일 상호 참조
+```
+
+**장점**:
+- 📚 **초보자**: README부터 시작, 필요에 따라 링크 따라가기
+- 🔍 **경험자**: `.moai/memory/` 파일로 고급 패턴 바로 확인
+- 🎯 **레퍼런스**: CLAUDE.md를 완전한 명세서로 활용
 
 ### 6. Quality Assurance
 
@@ -280,7 +311,7 @@ Result quality: Lower (too much context noise)
 
 **Alfred's Approach** (Delegation):
 ```
-/alfred:1-plan "Build payment processing feature"
+/moai:1-plan "Build payment processing feature"
 ├─ Plan agent: Creates SPEC (5,000 tokens)
 ├─ Frontend agent: Builds UI (8,000 tokens)
 ├─ Backend agent: Creates API (10,000 tokens)
@@ -314,7 +345,7 @@ With Agent Delegation:
 
 1. **Use Plan Mode for complex tasks**:
    ```bash
-   /alfred:1-plan "Your complex feature description"
+   /moai:1-plan "Your complex feature description"
    ```
    Alfred automatically breaks it down and delegates to optimal agents
 
@@ -336,17 +367,17 @@ With Agent Delegation:
 
 ```bash
 # SPEC creation with spec-builder
-/alfred:1-plan "User authentication with JWT"
+/moai:1-plan "User authentication with JWT"
 # → spec-builder agent activated
 # → Generates SPEC-AUTH-001 document
 
 # Implementation with tdd-implementer
-/alfred:2-run AUTH-001
+/moai:2-run AUTH-001
 # → tdd-implementer agent activated
 # → Follows RED-GREEN-REFACTOR cycle
 
 # Documentation sync with doc-syncer
-/alfred:3-sync auto SPEC-001
+/moai:3-sync auto SPEC-001
 # → doc-syncer agent activated
 # → Auto-updates documentation
 ```
@@ -359,7 +390,7 @@ For multi-step workflows, agent chaining, and specialized task delegation:
 - Context passing (Sharing results between agents)
 - Session sharing (Multi-day projects with Context7 MCP)
 
-**See CLAUDE.md → "🤖 Advanced Agent Delegation Patterns"** section for detailed Task() syntax, examples, and configuration.
+**See CLAUDE.md → "🤖 Advanced Agent Delegation Patterns"** section (or `.moai/memory/agent-delegation.md` for detailed examples) for detailed Task() syntax, examples, and configuration.
 
 ### Learn More
 
@@ -369,7 +400,10 @@ For comprehensive agent delegation patterns including:
 - Agent chaining (passing results between agents)
 - Context7 MCP session sharing across multi-day projects)
 
-**See CLAUDE.md → "🤖 Advanced Agent Delegation Patterns"** section for detailed examples, configuration, and best practices.
+**See CLAUDE.md → "🤖 Advanced Agent Delegation Patterns"** section or refer to:
+- **`.moai/memory/agent-delegation.md`**: Detailed Task() delegation patterns, sequential/parallel workflows
+- **`.moai/memory/mcp-integration.md`**: Context7 MCP session management and integration
+- **`.moai/memory/claude-code-features.md`**: Claude Code v4.0+ features and Plan Mode
 
 ---
 
@@ -533,11 +567,11 @@ MoAI-ADK has completed a comprehensive **Phase 1 Batch 2** upgrade achieving:
 - 🔧 policy_validator.py extension: 153 LOC (auto-correction methods)
 - 🧪 Tests: 729 LOC (directory detection + auto-correction)
 
-### Phase 3: /alfred:9-feedback Enhancement - Auto-Collection & Semantic Labeling
+### Phase 3: /moai:9-feedback Enhancement - Auto-Collection & Semantic Labeling
 
 **Intelligent Issue Creation with Automatic Context Collection**:
 
-The improved `/alfred:9-feedback` command streamlines GitHub issue creation with three major enhancements:
+The improved `/moai:9-feedback` command streamlines GitHub issue creation with three major enhancements:
 
 **1. Template-Based Issue Structure (moai-alfred-feedback-templates Skill)**:
 - 6 specialized issue templates (Bug Report, Feature Request, Improvement, Refactor, Documentation, Question)
@@ -562,12 +596,12 @@ The improved `/alfred:9-feedback` command streamlines GitHub issue creation with
 **Integration with Existing Infrastructure**:
 - **Skill Reuse**: Integrates `moai-alfred-issue-labels` skill for semantic label taxonomy
 - **Consistent Labeling**: Type + Priority automatically mapped to GitHub labels
-- **No Wheel Reinvention**: Leverages existing label infrastructure from `/alfred:1-plan` and `/alfred:3-sync`
+- **No Wheel Reinvention**: Leverages existing label infrastructure from `/moai:1-plan` and `/moai:3-sync`
 
 **Usage Example**:
 
 ```bash
-/alfred:9-feedback
+/moai:9-feedback
 ```
 
 User selects: Bug Report | High Priority | Auto-generate template
@@ -601,7 +635,7 @@ System generates:
 
 - 📋 moai-alfred-feedback-templates: 469 LOC (6 Korean templates with 500+ lines of guidance)
 - 🔄 feedback-collect-info.py: 194 LOC (8 auto-collection functions with JSON/text output)
-- 🎯 /alfred:9-feedback improvement: 257 lines enhanced (multiSelect question optimization)
+- 🎯 /moai:9-feedback improvement: 257 lines enhanced (multiSelect question optimization)
 - ⏱️ Time Reduction: 90 seconds → 30 seconds (67% improvement)
 - 🎯 Issue Quality: 100% environment context (auto-collected, no manual entry)
 
@@ -781,17 +815,17 @@ Select optimal platform using MoAI's intelligent pattern system:
 
 BaaS skills integrate seamlessly with MoAI-ADK's development cycle:
 
-1. **Planning Phase** (`/alfred:1-plan`):
+1. **Planning Phase** (`/moai:1-plan`):
    - Pattern-based platform selection
    - Architecture recommendation
    - Cost estimation
 
-2. **Implementation Phase** (`/alfred:2-run`):
+2. **Implementation Phase** (`/moai:2-run`):
    - Auto-configured SDK setup
    - Best practices enforcement
    - Troubleshooting automation
 
-3. **Deployment Phase** (`/alfred:3-sync`):
+3. **Deployment Phase** (`/moai:3-sync`):
    - Infrastructure as Code generation
    - CI/CD pipeline configuration
    - Monitoring setup
@@ -913,18 +947,18 @@ uv tool install --force moai-adk
 
 #### ⚠️ 중요: 프로젝트 구성 및 설정
 
-설치 또는 업그레이드 후, 프로젝트를 초기화하고 구성하기 위해 `/alfred:0-project`를 실행**해야 합니다**.
+설치 또는 업그레이드 후, 프로젝트를 초기화하고 구성하기 위해 `/moai:0-project`를 실행**해야 합니다**.
 
 ##### 1️⃣ 프로젝트 초기화 명령
 
 ```bash
 # 프로젝트 설정을 구성하고 환경에 맞게 최적화합니다
-/alfred:0-project
+/moai:0-project
 ```
 
 ##### 2️⃣ 프로젝트 구성이 수행하는 작업
 
-`/alfred:0-project` 명령은 자동으로 다음 작업을 수행합니다:
+`/moai:0-project` 명령은 자동으로 다음 작업을 수행합니다:
 
 **프로젝트 메타데이터 설정**
 
@@ -1021,7 +1055,7 @@ uv tool install --force moai-adk
     "test_coverage_target": 85
   },
   "pipeline": {
-    "available_commands": ["/alfred:0-project", "/alfred:1-plan", "/alfred:2-run", "/alfred:3-sync"],
+    "available_commands": ["/moai:0-project", "/moai:1-plan", "/moai:2-run", "/moai:3-sync"],
     "current_stage": "initialized"
   },
     "hooks": {
@@ -1083,9 +1117,9 @@ uv tool install --force moai-adk
 }
 ```
 
-### 🤖 /alfred:0-project Expert Delegation System (v0.23.0)
+### 🤖 /moai:0-project Expert Delegation System (v0.23.0)
 
-The `/alfred:0-project` command implements a **4-stage expert delegation system** that automatically assigns specialized expert agents for each execution mode.
+The `/moai:0-project` command implements a **4-stage expert delegation system** that automatically assigns specialized expert agents for each execution mode.
 
 #### Expert Assignment by Execution Mode
 
@@ -1140,7 +1174,7 @@ User execution → Context analysis → Mode determination → Expert assignment
 
 #### Multi-Language Dynamic System Support
 
-`/alfred:0-project` provides **perfect support for 25+ languages**:
+`/moai:0-project` provides **perfect support for 25+ languages**:
 
 ```json
 "language": {
@@ -1186,7 +1220,7 @@ All systems are healthy!
 ```
 User: moai-adk init my-project
           ↓
-/alfred:0-project execution
+/moai:0-project execution
           ↓
 INITIALIZATION mode detected → project-manager assigned
           ↓
@@ -1197,7 +1231,7 @@ Complete: Project fully initialized
 
 **Existing Project Upgrade**
 ```
-User: /alfred:0-project
+User: /moai:0-project
           ↓
 AUTO-DETECT mode detected → project-manager assigned
           ↓
@@ -1250,7 +1284,7 @@ After project initialization, you can customize settings:
 moai-adk --version
 
 # Optionally re-optimize settings (maintains existing config)
-/alfred:0-project
+/moai:0-project
 ```
 
 **After Major Version Upgrade - Configuration Migration**
@@ -1260,7 +1294,7 @@ moai-adk --version
 uv tool upgrade moai-adk
 
 # 2. Migrate project configuration
-/alfred:0-project
+/moai:0-project
 
 # 3. Review changes
 git diff .moai/config.json
@@ -1277,7 +1311,7 @@ git commit -m "Upgrade MoAI-ADK configuration"
 cp .moai/config.json .moai/config.json.backup
 
 # Reset configuration
-/alfred:0-project --reset
+/moai:0-project --reset
 ```
 
 ##### 6️⃣ Automatic Configuration Health Check (SessionStart Hook)
@@ -1288,10 +1322,10 @@ Every time a Claude Code session starts, MoAI-ADK **automatically** verifies pro
 
 | Item                   | What It Checks                                                  | When Issues Detected                           |
 | ---------------------- | --------------------------------------------------------------- | ---------------------------------------------- |
-| Configuration Exists   | Verify `.moai/config.json` file exists                          | If missing: must run `/alfred:0-project`       |
-| Configuration Complete | Check required sections (project, language, git_strategy, etc.) | If incomplete: must re-run `/alfred:0-project` |
+| Configuration Exists   | Verify `.moai/config.json` file exists                          | If missing: must run `/moai:0-project`       |
+| Configuration Complete | Check required sections (project, language, git_strategy, etc.) | If incomplete: must re-run `/moai:0-project` |
 | Configuration Age      | Check file modification time (30+ days detected)                | If outdated: update recommended                |
-| Version Match          | Compare installed moai-adk version with config version          | If mismatch: must re-run `/alfred:0-project`   |
+| Version Match          | Compare installed moai-adk version with config version          | If mismatch: must re-run `/moai:0-project`   |
 
 **SessionStart Hook User Interaction**
 
@@ -1305,10 +1339,10 @@ When configuration issues are detected, you're prompted with interactive choices
 Configuration issues detected. Select an action to proceed:
 
 1️⃣ Initialize Project
-   → Run /alfred:0-project to initialize new project configuration
+   → Run /moai:0-project to initialize new project configuration
 
 2️⃣ Update Settings
-   → Run /alfred:0-project to update/verify existing configuration
+   → Run /moai:0-project to update/verify existing configuration
 
 3️⃣ Skip for Now
    → Continue without configuration update (not recommended)
@@ -1343,17 +1377,17 @@ All settings are healthy!
 
 **⚠️ Important Notes**
 
-Before starting development, you **MUST** run `/alfred:0-project`. This command:
+Before starting development, you **MUST** run `/moai:0-project`. This command:
 
 - ✅ Creates project metadata and structure
 - ✅ Sets language, Git, and TDD policies
 - ✅ Initializes Alfred task tracking system
-- ✅ Configures pipeline state (updated by `/alfred:1-plan`, `/alfred:2-run`, etc.)
+- ✅ Configures pipeline state (updated by `/moai:1-plan`, `/moai:2-run`, etc.)
 - ✅ Sets up status bar and monitoring systems
 
 If you skip configuration:
 
-- ❌ Alfred commands (`/alfred:1-plan`, `/alfred:2-run`, etc.) won't work
+- ❌ Alfred commands (`/moai:1-plan`, `/moai:2-run`, etc.) won't work
 - ❌ Pipeline state tracking unavailable
 - ❌ Automated TDD workflow unavailable
 
@@ -1365,16 +1399,16 @@ moai-adk init my-awesome-project
 cd my-awesome-project
 
 # 1. Optimize project configuration
-/alfred:0-project
+/moai:0-project
 
 # 2. Create a SPEC for a feature
-/alfred:1-plan "User authentication with JWT"
+/moai:1-plan "User authentication with JWT"
 
 # 3. Implement with automated TDD
-/alfred:2-run AUTH-001
+/moai:2-run AUTH-001
 
 # 4. Sync documentation automatically
-/alfred:3-sync
+/moai:3-sync
 ```
 
 That's it! You now have:
@@ -1672,10 +1706,10 @@ Alfred implements a **sophisticated multi-layer delegation system** that automat
 
 **1. Command-Based Delegation (Explicit)**
 ```bash
-/alfred:1-plan → spec-builder agent activated
-/alfred:2-run → tdd-implementer + domain experts activated
-/alfred:3-sync → doc-syncer + validation agents activated
-/alfred:0-project → 4 expert agents based on mode
+/moai:1-plan → spec-builder agent activated
+/moai:2-run → tdd-implementer + domain experts activated
+/moai:3-sync → doc-syncer + validation agents activated
+/moai:0-project → 4 expert agents based on mode
 ```
 
 **2. Skill-Based Delegation (Context-Aware)**
@@ -1949,7 +1983,7 @@ MoAI-ADK provides **5 specialized personas** that adapt to your expertise level 
 **Sample Experience**:
 ```bash
 # R2-D2 assists with your first specification
-/alfred:1-plan "simple calculator addition feature"
+/moai:1-plan "simple calculator addition feature"
 
 # R2-D2 automatically handles:
 ✓ Duplicate check: CALC-001 not found ✓
