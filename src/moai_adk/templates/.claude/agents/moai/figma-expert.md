@@ -1,7 +1,7 @@
 ---
 name: figma-expert
 description: "Use PROACTIVELY when: Figma design analysis, Design-to-Code conversion, Design Tokens extraction, Component Library creation, or WCAG accessibility validation is needed. Triggered by SPEC keywords: 'figma', 'design system', 'design tokens', 'ui components', 'design-to-code', 'figma file', 'component library'. CRITICAL: This agent MUST be invoked via Task(subagent_type='figma-expert') - NEVER executed directly."
-tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, AskUserQuestion, mcp__figma-remote-mcp__get-design-context, mcp__figma-remote-mcp__get-variable-defs, mcp__figma-remote-mcp__get-screenshot, mcp__figma-remote-mcp__get-metadata, mcp__figma-remote-mcp__get-code-connect-map, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
+tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, AskUserQuestion, mcp__figma-dev-mode-mcp-server__get_design_context, mcp__figma-dev-mode-mcp-server__get_variable_defs, mcp__figma-dev-mode-mcp-server__get_screenshot, mcp__figma-dev-mode-mcp-server__get_metadata, mcp__figma-dev-mode-mcp-server__get_figjam, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
 model: inherit
 permissionMode: ask
 skills:
@@ -25,7 +25,7 @@ coordination:
 performance:
   avg_execution_time_seconds: 600  # ~10 minutes (design analysis + code generation)
   context_heavy: true  # Loads Figma design data, Design Tokens, component metadata
-  mcp_integration: ["figma-remote-mcp", "context7", "sequential_thinking"]  # MCP tools used
+  mcp_integration: ["figma-dev-mode-mcp-server", "context7", "sequential_thinking"]  # MCP tools used
 
 ---
 
@@ -345,7 +345,7 @@ export const Button: React.FC<ButtonProps> = ({
 
 **Usage**:
 ```typescript
-mcp__figma-remote-mcp__get-design-context({
+mcp__figma-dev-mode-mcp-server__get_design_context({
   fileKey: "ABC123XYZ",
   nodeId: "10:25"
 })
@@ -370,7 +370,7 @@ mcp__figma-remote-mcp__get-design-context({
 
 **Usage**:
 ```typescript
-mcp__figma-remote-mcp__get-variable-defs({
+mcp__figma-dev-mode-mcp-server__get_variable_defs({
   fileKey: "ABC123XYZ"
 })
 ```
@@ -397,7 +397,7 @@ mcp__figma-remote-mcp__get-variable-defs({
 
 **Usage**:
 ```typescript
-mcp__figma-remote-mcp__get-screenshot({
+mcp__figma-dev-mode-mcp-server__get_screenshot({
   fileKey: "ABC123XYZ",
   nodeId: "10:25"
 })
@@ -418,7 +418,7 @@ mcp__figma-remote-mcp__get-screenshot({
 
 **Usage**:
 ```typescript
-mcp__figma-remote-mcp__get-metadata({
+mcp__figma-dev-mode-mcp-server__get_metadata({
   fileKey: "ABC123XYZ"
 })
 ```
@@ -438,7 +438,7 @@ mcp__figma-remote-mcp__get-metadata({
 
 **Usage**:
 ```typescript
-mcp__figma-remote-mcp__get-code-connect-map({
+mcp__figma-dev-mode-mcp-server__get_figjam({
   fileKey: "ABC123XYZ"
 })
 ```
@@ -896,7 +896,7 @@ Next Steps:
 - `moai-essentials-perf` – Image optimization
 
 **MCP Tools**:
-- Figma Remote MCP (5 tools: design context, variables, screenshot, metadata, code connect)
+- Figma Dev Mode MCP Server (5 tools: design context, variables, screenshot, metadata, figjam)
 - Context7 MCP (latest documentation)
 - Sequential Thinking MCP (complex reasoning)
 
@@ -911,6 +911,6 @@ Next Steps:
 **Agent Tier**: Domain (Alfred Sub-agents)
 **Supported Design Tools**: Figma (via MCP)
 **Supported Output Frameworks**: React, Vue, HTML/CSS, TypeScript
-**Figma MCP Integration**: Enabled (5 tools: design-context, variable-defs, screenshot, metadata, code-connect-map)
+**Figma MCP Integration**: Enabled (5 tools: design-context, variable-defs, screenshot, metadata, figjam)
 **Context7 Integration**: Enabled for real-time framework documentation
 **WCAG Compliance**: 2.2 AA standard
