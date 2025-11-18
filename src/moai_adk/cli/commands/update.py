@@ -56,6 +56,7 @@ from rich.console import Console
 from moai_adk import __version__
 from moai_adk.core.merge import MergeAnalyzer
 from moai_adk.core.migration import VersionMigrator
+from moai_adk.core.migration.alfred_to_moai_migrator import AlfredToMoaiMigrator
 from moai_adk.core.template.processor import TemplateProcessor
 
 console = Console()
@@ -595,12 +596,38 @@ def _sync_templates(project_path: Path, force: bool = False) -> bool:
         # Load existing config
         existing_config = _load_existing_config(project_path)
 
+        # Stage 1.5: Alfred → Moai migration (NEW)
+        # Execute migration before template sync
+        migrator = AlfredToMoaiMigrator(project_path)
+        if migrator.needs_migration():
+            console.print("\n[cyan]🔄 Alfred → Moai 폴더 구조 마이그레이션[/cyan]")
+            try:
+                if not migrator.execute_migration(backup_path):
+                    console.print(
+                        "[red]❌ Alfred → Moai 마이그레이션 실패[/red]"
+                    )
+                    if backup_path:
+                        console.print(
+                            f"[yellow]🔄 백업에서 복원 중...[/yellow]"
+                        )
+                        backup = TemplateBackup(project_path)
+                        backup.restore_backup(backup_path)
+                    return False
+            except Exception as e:
+                console.print(
+                    f"[red]❌ 마이그레이션 중 에러: {e}[/red]"
+                )
+                if backup_path:
+                    backup = TemplateBackup(project_path)
+                    backup.restore_backup(backup_path)
+                return False
+
         # Build context
         context = _build_template_context(project_path, existing_config, __version__)
         if context:
             processor.set_context(context)
 
-        # Copy templates
+        # Copy templates (moai 폴더 포함)
         processor.copy_templates(backup=False, silent=True)
 
         # Validate template substitution

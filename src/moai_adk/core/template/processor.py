@@ -859,16 +859,20 @@ class TemplateProcessor:
         # Create .claude directory if not exists
         dst.mkdir(parents=True, exist_ok=True)
 
-        # Alfred folders to copy wholesale (overwrite)
-        alfred_folders = [
+        # Alfred and Moai folders to copy wholesale (overwrite)
+        # Including both legacy alfred/ and new moai/ structure
+        alfred_moai_folders = [
             "hooks/alfred",
+            "hooks/moai",
             "commands/alfred",  # Contains 0-project.md, 1-plan.md, 2-run.md, 3-sync.md
+            "commands/moai",
             "output-styles/moai",
             "agents/alfred",
+            "agents/moai",
         ]
 
-        # 1. Copy Alfred folders wholesale (backup before delete & overwrite)
-        for folder in alfred_folders:
+        # 1. Copy Alfred and Moai folders wholesale (backup before delete & overwrite)
+        for folder in alfred_moai_folders:
             src_folder = src / folder
             dst_folder = dst / folder
 
