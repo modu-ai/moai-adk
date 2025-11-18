@@ -9,6 +9,7 @@ description: |
   comprehensive monitoring and experiment tracking.
 allowed-tools: ["Read", "Write", "Edit", "Bash", "Glob", "WebFetch", "WebSearch"]
 tags: ["machine-learning", "tensorflow", "pytorch", "scikit-learn", "automl", "mlops", "deep-learning"]
+updated: 2025-11-18
 ---
 
 # Enterprise Machine Learning

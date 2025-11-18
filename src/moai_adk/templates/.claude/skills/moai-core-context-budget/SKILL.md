@@ -7,6 +7,7 @@ primary-agent: "alfred"
 secondary-agents: ["session-manager", "plan-agent"]
 keywords: ["context", "optimization", "memory", "tokens", "performance", "mcp", "claude-code"]
 status: stable
+updated: 2025-11-18
 ---
 
 # moai-core-context-budget

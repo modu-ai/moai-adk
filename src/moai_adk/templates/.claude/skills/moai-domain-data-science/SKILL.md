@@ -1,6 +1,7 @@
 ---
 name: moai-domain-data-science
 version: "4.0.0"
+updated: 2025-11-18
 status: stable
 description: |
   Production-grade data science specialist with TensorFlow 2.20.0, PyTorch 2.9.0, 

@@ -1,6 +1,7 @@
 ---
 name: moai-domain-database
 version: "4.0.0"
+updated: 2025-11-18
 status: stable
 description: |
   Enterprise database architecture specialist with PostgreSQL 17, MySQL 8.4 LTS, 

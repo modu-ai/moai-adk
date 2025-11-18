@@ -8,6 +8,7 @@ description: |
   validation framework, and advanced features. Contains algorithms, workflows, and patterns.
 allowed-tools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep"]
 tags: ["agent-factory", "agent-generation", "intelligence-engine", "domain-detection", "model-selection", "context7", "templates", "validation"]
+updated: 2025-11-18
 ---
 
 # Agent Factory Intelligence Engine

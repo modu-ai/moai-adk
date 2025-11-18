@@ -1,3 +1,11 @@
+---
+name: "moai-domain-backend"
+version: "4.0.0"
+created: 2025-11-18
+updated: 2025-11-18
+status: stable
+---
+
 # Enterprise Backend Architecture - v4.0.0
 
 **Modern async patterns, microservices, API design, and production deployment**

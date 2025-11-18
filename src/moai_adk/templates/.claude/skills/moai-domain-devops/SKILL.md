@@ -8,6 +8,7 @@ allowed_tools:
   - WebSearch
   - WebFetch
 status: stable
+updated: 2025-11-18
 ---
 
 # Enterprise DevOps Architect - Production-Grade v4.0

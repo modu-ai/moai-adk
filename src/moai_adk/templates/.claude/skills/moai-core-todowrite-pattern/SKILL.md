@@ -15,6 +15,7 @@ version_history:
 - 2.0.0: Introduced three-state model
 - 1.0.0: Initial TodoWrite patterns
 status: stable
+updated: 2025-11-18
 ---
 
 # TodoWrite Task Tracking & State Management Patterns

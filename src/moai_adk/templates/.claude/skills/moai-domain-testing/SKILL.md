@@ -7,6 +7,7 @@ allowed_tools:
   - Bash
   - WebSearch
   - WebFetch
+updated: 2025-11-18
 status: stable
 ---
 

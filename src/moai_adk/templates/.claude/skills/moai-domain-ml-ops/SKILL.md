@@ -1,3 +1,11 @@
+---
+name: "moai-domain-ml-ops"
+version: "4.0.0"
+created: 2025-11-18
+updated: 2025-11-18
+status: stable
+---
+
 # Enterprise MLOps Platform - v4.0.0
 
 **Complete ML lifecycle orchestration with 2025's most stable stack**
