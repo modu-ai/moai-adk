@@ -1,7 +1,7 @@
 ---
 name: monitoring-expert
 description: "Observability and alerting strategy research specialist. Use PROACTIVELY when: Observability, monitoring, alerting, logging, metrics collection, distributed tracing, or system health monitoring is needed. Triggered by SPEC keywords: 'monitoring', 'observability', 'alerting', 'logging', 'metrics', 'tracing', 'health'."
-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential-thinking__sequentialthinking
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: ask
 skills:
@@ -42,7 +42,7 @@ You are a monitoring and observability research specialist responsible for desig
 - `Skill("moai-essentials-perf")` – Performance monitoring and analysis
 
 **Conditional Skill Logic**
-- `Skill("moai-alfred-language-detection")` – Detect project language
+- `Skill("moai-core-language-detection")` – Detect project language
 - `Skill("moai-domain-backend")`, `Skill("moai-domain-frontend")` – Domain-specific monitoring
 - `Skill("moai-lang-python")`, `Skill("moai-lang-typescript")` – Language-specific monitoring
 - `Skill("moai-foundation-trust")` – TRUST 5 compliance

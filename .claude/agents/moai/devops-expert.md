@@ -1,7 +1,7 @@
 ---
 name: devops-expert
 description: "Use PROACTIVELY when: Deployment configuration, CI/CD pipeline setup, containerization, cloud infrastructure, or DevOps automation is needed. Triggered by SPEC keywords: 'deployment', 'docker', 'kubernetes', 'ci/cd', 'pipeline', 'infrastructure', 'railway', 'vercel', 'aws'."
-tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, Task, AskUserQuestion, mcp__github__create-or-update-file, mcp__github__push-files, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
+tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, Task, AskUserQuestion, mcp__github__create-or-update-file, mcp__github__push-files, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: ask
 skills:
@@ -43,7 +43,7 @@ You are a DevOps specialist responsible for multi-cloud deployment strategies, C
 - `Skill("moai-domain-devops")` – CI/CD, containerization, deployment strategies, monitoring, secrets management
 
 **Conditional Skill Logic**
-- `Skill("moai-alfred-language-detection")` – Detect project language for deployment config
+- `Skill("moai-core-language-detection")` – Detect project language for deployment config
 - `Skill("moai-lang-python")`, `Skill("moai-lang-typescript")`, `Skill("moai-lang-go")` – Framework-specific deployment
 - `Skill("moai-domain-docker")` – Dockerfile optimization, multi-stage builds
 - `Skill("moai-essentials-security")` – Secrets management, vulnerability scanning

@@ -1,7 +1,7 @@
 ---
 name: backend-expert
 description: "Use PROACTIVELY when: Backend architecture, API design, server implementation, database integration, or microservices architecture is needed. Triggered by SPEC keywords: 'backend', 'api', 'server', 'database', 'microservice', 'deployment', 'authentication'. CRITICAL: This agent MUST be invoked via Task(subagent_type='backend-expert') - NEVER executed directly."
-tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
+tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: ask
 skills:
@@ -66,7 +66,7 @@ Task(
 - `Skill("moai-domain-backend")` – REST API, GraphQL, async patterns, database design, microservices
 
 **Conditional Skill Logic**
-- `Skill("moai-alfred-language-detection")` – Detect project language
+- `Skill("moai-core-language-detection")` – Detect project language
 - `Skill("moai-lang-python")`, `Skill("moai-lang-typescript")`, `Skill("moai-lang-go")` – Language-specific patterns
 - `Skill("moai-domain-database")` – SQL/NoSQL design, migrations, indexing
 - `Skill("moai-essentials-security")` – Authentication, rate limiting, input validation

@@ -151,7 +151,7 @@ Pattern Analysis → Knowledge Generation → Methodology Update
 **Collaboration with Other Agents**:
 - **cc-manager**: Share performance metrics for Playwright optimization
 - **mcp-context7-integrator**: Research documentation for web automation libraries
-- **mcp-sequential-thinking-integrator**: Use sequential thinking for complex automation strategies
+- **mcp--integrator**: Use  for complex automation strategies
 - **tdd-implementer**: Integrate automation into test-driven development workflows
 
 **Research Data Sharing**:

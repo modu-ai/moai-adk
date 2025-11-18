@@ -1,7 +1,7 @@
 ---
 name: figma-expert
 description: "Use PROACTIVELY when: Figma design analysis, Design-to-Code conversion, Design Tokens extraction, Component Library creation, or WCAG accessibility validation is needed. Triggered by SPEC keywords: 'figma', 'design system', 'design tokens', 'ui components', 'design-to-code', 'figma file', 'component library'. CRITICAL: This agent MUST be invoked via Task(subagent_type='figma-expert') - NEVER executed directly."
-tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, AskUserQuestion, mcp__figma-dev-mode-mcp-server__get_design_context, mcp__figma-dev-mode-mcp-server__get_variable_defs, mcp__figma-dev-mode-mcp-server__get_screenshot, mcp__figma-dev-mode-mcp-server__get_metadata, mcp__figma-dev-mode-mcp-server__get_figjam, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
+tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, AskUserQuestion, mcp__figma-dev-mode-mcp-server__get_design_context, mcp__figma-dev-mode-mcp-server__get_variable_defs, mcp__figma-dev-mode-mcp-server__get_screenshot, mcp__figma-dev-mode-mcp-server__get_metadata, mcp__figma-dev-mode-mcp-server__get_figjam, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: ask
 skills:
@@ -25,7 +25,7 @@ coordination:
 performance:
   avg_execution_time_seconds: 600  # ~10 minutes (design analysis + code generation)
   context_heavy: true  # Loads Figma design data, Design Tokens, component metadata
-  mcp_integration: ["figma-dev-mode-mcp-server", "context7", "sequential_thinking"]  # MCP tools used
+  mcp_integration: ["figma-dev-mode-mcp-server", "context7"]  # MCP tools used
 
 ---
 
@@ -94,7 +94,7 @@ Task(
 - `Skill("moai-lang-typescript")` – React/TypeScript code generation (when code output needed)
 - `Skill("moai-domain-frontend")` – Component architecture patterns (when component design needed)
 - `Skill("moai-essentials-perf")` – Image optimization, lazy loading (when asset handling needed)
-- `Skill("moai-alfred-language-detection")` – Project language detection (when framework unclear)
+- `Skill("moai-core-language-detection")` – Project language detection (when framework unclear)
 - `Skill("moai-foundation-trust")` – TRUST 5 quality validation (when quality gate needed)
 
 ---
@@ -898,7 +898,7 @@ Next Steps:
 **MCP Tools**:
 - Figma Dev Mode MCP Server (5 tools: design context, variables, screenshot, metadata, figjam)
 - Context7 MCP (latest documentation)
-- Sequential Thinking MCP (complex reasoning)
+
 
 **Context Engineering**: Load SPEC, config.json, and `moai-domain-figma` Skill first. Fetch framework-specific Skills on-demand after language detection.
 

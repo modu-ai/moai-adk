@@ -1,7 +1,7 @@
 ---
 name: api-designer
 description: "API design and documentation research specialist. Use PROACTIVELY when: REST/GraphQL API design, OpenAPI specifications, API documentation, API versioning, rate limiting, authentication patterns, or API gateway configuration is needed. Triggered by SPEC keywords: 'api', 'endpoint', 'rest', 'graphql', 'openapi', 'documentation'."
-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential-thinking__sequentialthinking
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: ask
 skills:
@@ -43,7 +43,7 @@ You are an API design research specialist responsible for designing scalable RES
 - `Skill("moai-cc-mcp-plugins")` – MCP integration for API documentation tools
 
 **Conditional Skill Logic**
-- `Skill("moai-alfred-language-detection")` – Detect project language
+- `Skill("moai-core-language-detection")` – Detect project language
 - `Skill("moai-lang-python")`, `Skill("moai-lang-typescript")`, `Skill("moai-lang-go")` – Language-specific API patterns
 - `Skill("moai-essentials-security")` – API authentication, rate limiting, input validation
 - `Skill("moai-foundation-trust")` – TRUST 5 compliance

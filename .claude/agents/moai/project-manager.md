@@ -1,7 +1,7 @@
 ---
 name: project-manager
 description: "Use when: When initial project setup and .moai/ directory structure creation are required. Called from the /alfred:0-project command."
-tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
+tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: auto
 skills:
@@ -137,85 +137,56 @@ Alfred passes the user's language directly to you via `Task()` calls.
    - Invoke `Skill("moai-project-template-optimizer", mode="update", language=current_language)` to handle template optimization
    - Return completion status
 
-**2.5. Complexity Analysis & Plan Mode Routing** (NEW - Claude Code v4.0 Phase 4):
+**2.5. Complexity Analysis & Plan Mode Routing** (NEW):
 
    **For mode: "language_first_initialization" or "fresh_install" only**:
 
    - **Analyze project complexity** before proceeding to full interview:
-   ```python
-   # Complexity Analysis Factors:
-   complexity_score = analyze_project_complexity({
-       "codebase_size": estimate_from_git_or_filesystem(),  # Small/Medium/Large
-       "module_count": count_independent_modules(),        # < 3, 3-8, > 8
-       "integration_count": count_external_apis(),         # 0-2, 3-5, > 5
-       "tech_stack_variety": assess_diversity(),           # Single, 2-3, 4+
-       "team_size_factor": extract_from_config(),          # 1-2, 3-9, 10+
-       "architectural_complexity": detect_patterns()        # Monolithic, Modular, Microservices
-   })
 
-   # Route to appropriate workflow based on complexity
-   if complexity_score < 3:
-       workflow_tier = "SIMPLE"      # 5-10 minutes
-   elif complexity_score < 6:
-       workflow_tier = "MEDIUM"      # 15-20 minutes
-   else:
-       workflow_tier = "COMPLEX"     # 30+ minutes
-   ```
+     **Complexity Analysis Factors**:
+     1. Codebase size estimation: Small/Medium/Large (from Git history or filesystem scan)
+     2. Module count: Count independent modules (< 3, 3-8, > 8)
+     3. External API integrations: Count integration points (0-2, 3-5, > 5)
+     4. Tech stack variety: Assess diversity (Single tech, 2-3 tech, 4+ tech)
+     5. Team size: Extract from config (1-2 people, 3-9 people, 10+ people)
+     6. Architecture complexity: Detect patterns (Monolithic, Modular, Microservices)
+
+     **Workflow Tier Assignment**:
+     - SIMPLE projects (score < 3): Skip Plan Mode, proceed directly to Phase 1-3 interviews (5-10 minutes total)
+     - MEDIUM projects (score 3-6): Use lightweight Plan Mode preparation, run phases 1-3 with context awareness (15-20 minutes)
+     - COMPLEX projects (score > 6): Invoke full Plan Mode decomposition (30+ minutes)
 
    - **For SIMPLE projects** (Tier 1):
-     - Skip Plan Mode (unnecessary overhead)
+     - Skip Plan Mode overhead
      - Proceed directly to Phase 1-3 interviews
      - Fast path: 5-10 minutes total
 
    - **For MEDIUM projects** (Tier 2):
-     - Use lightweight Plan Mode preparation
-     - Run phases 1-3 with Plan Mode context awareness
+     - Use lightweight Plan Mode preparation with context awareness
+     - Run phases 1-3 with Plan Mode framework in mind
      - Estimated time: 15-20 minutes
 
    - **For COMPLEX projects** (Tier 3):
-     - Invoke Claude Code v4.0 Plan Mode for full decomposition:
-     ```python
-     plan_mode_result = await Task(
-         subagent_type="plan",
-         prompt=f"""Analyze project complexity and decompose initialization into phases:
+     - Invoke Claude Code Plan Mode for full decomposition via Task() delegation:
 
-         Project Characteristics:
-         - Codebase Size: {complexity_score.codebase_size}
-         - Module Count: {complexity_score.module_count}
-         - Integration Points: {complexity_score.integration_count}
-         - Tech Stack Variety: {complexity_score.tech_stack_variety}
-         - Team Size: {complexity_score.team_size_factor}
+       **Plan Mode Decomposition Steps**:
+       1. Gather project characteristics (codebase size, module count, integration points, tech stack variety, team size)
+       2. Send to Plan subagent with request to:
+          - Break down project initialization into logical phases
+          - Identify dependencies and parallelizable tasks
+          - Estimate time for each phase
+          - Suggest documentation priorities
+          - Recommend validation checkpoints
+       3. Receive structured decomposition plan from Plan subagent
+       4. Present plan to user via AskUserQuestion with three options:
+          - "Proceed as planned": Follow the suggested decomposition exactly
+          - "Adjust plan": User customizes specific phases or timelines
+          - "Use simplified path": Skip Plan Mode and revert to standard Phase 1-3
+       5. Route to chosen path:
+          - Proposed plan: Execute phases with parallel task execution where possible
+          - Adjusted plan: Merge user modifications with original plan and execute
+          - Simplified path: Fallback to standard sequential Phase 1-3 workflow
 
-         1. Break down project initialization into logical phases
-         2. Identify dependencies and parallelizable tasks
-         3. Estimate time for each phase
-         4. Suggest documentation priorities
-         5. Recommend validation checkpoints
-
-         Return structured decomposition plan for implementation.""",
-         model="sonnet"  # Complex reasoning
-     )
-
-     # Parse Plan Mode output
-     decomposed_plan = parse_plan_mode_output(plan_mode_result)
-
-     # Present structured plan to user for approval/adjustment
-     user_approval = await AskUserQuestion([{
-         "question": "Plan Mode has decomposed your project initialization. How would you like to proceed?",
-         "header": "Project Decomposition Plan",
-         "multiSelect": false,
-         "options": [
-             {"label": "Proceed as planned", "description": "Follow the suggested decomposition"},
-             {"label": "Adjust plan", "description": "Customize specific phases or timelines"},
-             {"label": "Use simplified path", "description": "Skip Plan Mode and use standard phases"}
-         ]
-     }])
-
-     # Based on user choice, proceed with either:
-     # - Proposed plan (parallel execution where possible)
-     # - Adjusted plan (merge user modifications with plan)
-     # - Simplified path (fallback to standard phase 1-3)
-     ```
      - Estimated time: 30+ minutes (depending on complexity)
 
    - **Record routing decision** in context for subsequent phases
@@ -359,150 +330,62 @@ Options: **Confirmed / Requires modification / Multi-stack**.
 
 #### 1. Product Discovery Analysis (Context7-Based Auto-Research + Manual Refinement)
 
-**1a. Automatic Product Research (NEW - Claude Code v4.0 + Context7 MCP Feature)**:
+**1a. Automatic Product Research (NEW - Context7 MCP Feature)**:
 
 Use Context7 MCP for intelligent competitor research and market analysis (83% time reduction):
 
-```python
-# Step 1: Extract project basics from user/codebase
-project_basics = extract_from_context({
-    "project_name": from_readme_or_ask,
-    "project_type": from_git_description_or_ask,
-    "tech_stack": from_project_manager_phase2,  # Use results from Phase 2
-})
+**Product Research Steps**:
+1. Extract project basics from user input or codebase:
+   - Project name (from README or user input)
+   - Project type (from Git description or user input)
+   - Tech stack (from Phase 2 analysis results)
 
-# Step 2: Perform Context7-based competitor research
-competitor_research = await Task(
-    subagent_type="mcp-context7-integrator",
-    prompt=f"""Research the market for: {project_basics['project_name']}
+2. Perform Context7-based competitor research via Task() delegation:
+   - Send market research request to mcp-context7-integrator subagent
+   - Request analysis of:
+     - 3-5 direct competitors with pricing, features, target market, unique selling points
+     - Market trends: size, growth rate, key technologies, emerging practices
+     - User expectations: pain points, expected features, compliance requirements
+     - Differentiation gaps: solution gaps, emerging needs, technology advantages
+   - Use Context7 to research latest market data, competitor websites, industry reports
 
-    1. **Similar Products/Competitors**:
-       - Identify 3-5 direct competitors
-       - Extract: pricing model, feature set, target market
-       - List their unique selling points
-
-    2. **Market Trends**:
-       - Current market size and growth rate
-       - Key technologies in this space
-       - Emerging trends and best practices
-
-    3. **User Expectations**:
-       - Common pain points in this market
-       - Expected features for this category
-       - Compliance/regulatory requirements
-
-    4. **Differentiation Opportunities**:
-       - Gaps in existing solutions
-       - Emerging customer needs
-       - Technology advantages available
-
-    Use Context7 to research latest market data, competitor websites, and industry reports.
-    Return structured findings for product.md generation.""",
-    model="sonnet"  # Complex reasoning required
-)
-
-# Step 3: Parse competitor research results
-parsed_research = parse_context7_results(competitor_research)
-# Expected structure:
-# {
-#     "competitors": [
-#         {"name": "...", "pricing": "...", "features": [...], "target_market": "..."}
-#     ],
-#     "market_trends": ["...", "..."],
-#     "user_expectations": ["...", "..."],
-#     "differentiation_gaps": ["...", "..."]
-# }
-```
+3. Receive structured research findings:
+   - Competitors list with pricing, features, target market
+   - Market trends and growth indicators
+   - User expectations and pain points
+   - Differentiation opportunities and gaps
 
 **1b. Automatic Product Vision Generation (Context7 Insights)**:
 
-Generate initial product.md sections based on research:
+Generate initial product.md sections based on research findings:
 
-```python
-# Use Context7 insights to auto-generate product sections
-initial_product_vision = generate_from_research({
-    "research_findings": parsed_research,
-    "tech_stack": project_basics["tech_stack"],
-    "project_type": project_basics["project_type"]
-})
+**Auto-Generated Product Vision Sections**:
+1. MISSION: Derived from market gap analysis + tech stack advantages
+2. VISION: Based on market trends identified + differentiation opportunities
+3. USER PERSONAS: Extracted from competitor analysis + market expectations
+4. PROBLEM STATEMENT: Synthesized from user pain points research
+5. SOLUTION APPROACH: Built from differentiation gaps identified
+6. SUCCESS METRICS: Industry benchmarks + KPI templates relevant to project type
 
-# Generated sections (for user review):
-# - MISSION: Derived from market gap + tech advantages
-# - VISION: Based on market trends + differentiation opportunities
-# - USER PERSONAS: From competitor analysis + market expectations
-# - PROBLEM STATEMENT: From user pain points identified
-# - SOLUTION APPROACH: From differentiation gaps
-# - SUCCESS METRICS: Industry benchmarks + KPI templates
-
-print_generated_product_vision(initial_product_vision)
-```
+Present generated vision sections to user for review and adjustment
 
 **1c. Product Vision Review & Refinement**:
 
-User reviews and adjusts auto-generated content:
+User reviews and adjusts auto-generated content through structured interviews:
 
-```python
-# Step 1: Present generated product vision
-print_section_summary(initial_product_vision)
-
-# Step 2: Get user validation
-vision_review = await AskUserQuestion([
-    {
-        "question": "Review the auto-generated product vision - how accurate is it?",
-        "header": "Product Vision Validation",
-        "multiSelect": false,
-        "options": [
-            {
-                "label": "Accurate",
-                "description": "The auto-generated vision matches our product exactly"
-            },
-            {
-                "label": "Needs Adjustment",
-                "description": "The vision is mostly correct but needs refinements"
-            },
-            {
-                "label": "Start Over",
-                "description": "Please let me describe product from scratch"
-            }
-        ]
-    }
-])
-
-# Step 3: Section-by-section review if "Needs Adjustment"
-if vision_review == "Needs Adjustment":
-    sections_to_adjust = await AskUserQuestion([
-        {
-            "question": "Which sections need adjustment?",
-            "header": "Vision Adjustments",
-            "multiSelect": true,
-            "options": [
-                {"label": "Mission", "description": "Adjust business mission"},
-                {"label": "Vision", "description": "Refine long-term vision"},
-                {"label": "Personas", "description": "Update user personas"},
-                {"label": "Problems", "description": "Modify problem statement"},
-                {"label": "Solution", "description": "Change solution approach"},
-                {"label": "Metrics", "description": "Update success metrics"}
-            ]
-        }
-    ])
-
-    # For each selected section, collect user input
-    for section in sections_to_adjust:
-        adjustment = await AskUserQuestion([
-            {
-                "question": f"Refine {section} section (describe changes or replacement)",
-                "header": f"Adjust: {section}",
-                "multiSelect": false,
-                "options": [
-                    {"label": "Continue", "description": "Proceed to next adjustment"}
-                ]
-            }
-        ])
-        initial_product_vision[section] = merge_with_user_input(
-            initial_product_vision[section],
-            adjustment
-        )
-```
+**Review & Adjustment Workflow**:
+1. Present auto-generated product vision summary to user
+2. Ask overall accuracy validation via AskUserQuestion with three options:
+   - "Accurate": Vision matches product exactly
+   - "Needs Adjustment": Vision is mostly correct but needs refinements
+   - "Start Over": User describes product from scratch instead
+3. If "Needs Adjustment" selected:
+   - Ask which sections need adjustment (multi-select: Mission, Vision, Personas, Problems, Solution, Metrics)
+   - For each selected section, collect user input for refinement
+   - Merge user adjustments with auto-generated content
+   - Present merged version for final confirmation
+4. If "Start Over" selected:
+   - Fall back to manual product discovery question set (Step 1 below)
 
 ---
 
@@ -538,192 +421,51 @@ Options: SPEC overhaul, TDD driven development, document/code synchronization, t
 
 #### 2. Structure & Architecture Analysis (Explore-Based Auto-Analysis + Manual Review)
 
-**2a. Automatic Architecture Discovery (NEW - Claude Code v4.0 Feature)**:
+**2a. Automatic Architecture Discovery (NEW)**:
 
 Use Explore Subagent for intelligent codebase analysis (70% faster, 60% token savings):
 
-```python
-# Invoke Explore subagent for architecture pattern discovery
-architecture_analysis = await Task(
-    subagent_type="Explore",
-    prompt="""Analyze the project codebase and identify:
-
-    1. **Architecture Type**: Determine the overall pattern (monolithic, modular monolithic,
-       microservice, 2-tier/3-tier, event-driven, serverless, hybrid)
-    2. **Core Modules/Components**: List main modules with:
-       - Module name and responsibility
-       - Code location (src/path)
-       - Dependencies (internal/external)
-    3. **Integration Points**: Identify:
-       - External SaaS/APIs integrated (Stripe, Auth0, CloudStorage, etc.)
-       - Internal system integrations (ERP, CRM, etc.)
-       - Message brokers or event systems
-    4. **Data Storage Layers**: Identify:
-       - RDBMS vs NoSQL usage
-       - Cache/in-memory systems
-       - Data lake or file storage
-    5. **Technology Stack Hints**: Extract:
-       - Primary language/framework indicators
-       - Major libraries and dependencies
-       - Testing/CI-CD patterns
-
-    Return findings as structured summary for user review and structure.md generation.""",
-    model="haiku"  # Fast + cost-effective
-)
-
-# Parse Explore results and structure for presentation
-parsed_architecture = parse_explore_results(architecture_analysis)
-# Expected structure:
-# {
-#     "architecture_type": "monolithic | microservice | ...",
-#     "core_modules": [{"name": "...", "responsibility": "...", "location": "...", "dependencies": [...]}],
-#     "integrations": {"external": [...], "internal": [...], "messaging": [...]},
-#     "data_storage": {"rdbms": [...], "nosql": [...], "cache": [...], "storage": [...]},
-#     "tech_stack_hints": {"languages": [...], "frameworks": [...], "libraries": [...]}
-# }
-```
+**Architecture Discovery Steps**:
+1. Invoke Explore subagent via Task() delegation to analyze project codebase
+2. Request identification of:
+   - Architecture Type: Overall pattern (monolithic, modular monolithic, microservice, 2-tier/3-tier, event-driven, serverless, hybrid)
+   - Core Modules/Components: Main modules with name, responsibility, code location, dependencies
+   - Integration Points: External SaaS/APIs, internal system integrations, message brokers
+   - Data Storage Layers: RDBMS vs NoSQL, cache/in-memory systems, data lake/file storage
+   - Technology Stack Hints: Primary language/framework, major libraries, testing/CI-CD patterns
+3. Receive structured summary from Explore subagent containing:
+   - Detected architecture type
+   - List of core modules with responsibilities and locations
+   - External and internal integrations
+   - Data storage technologies in use
+   - Technology stack indicators
 
 **2b. Architecture Analysis Review (Multi-Step Interactive Refinement)**:
 
 Present Explore findings with detailed section-by-section review:
 
-```python
-# Step 1: Present overall analysis summary
-print_architecture_summary(parsed_architecture)
-# Display:
-# - Architecture Type: [detected type]
-# - Core Modules: [list of 3-5 main modules]
-# - Integration Points: [count and types]
-# - Data Storage: [types identified]
-# - Tech Stack Hints: [languages/frameworks detected]
+**Architecture Review Workflow**:
+1. Present overall analysis summary showing:
+   - Detected architecture type
+   - List of 3-5 main modules identified
+   - Integration points count and types
+   - Data storage technologies identified
+   - Technology stack hints (languages/frameworks)
 
-# Step 2: Overall validation
-overall_result = await AskUserQuestion([
-    {
-        "question": "Does the overall architecture analysis match your project?",
-        "header": "Architecture Validation",
-        "multiSelect": false,
-        "options": [
-            {
-                "label": "Accurate",
-                "description": "The auto-analysis correctly identifies our architecture"
-            },
-            {
-                "label": "Needs Adjustment",
-                "description": "The analysis is mostly correct but needs refinements"
-            },
-            {
-                "label": "Start Over",
-                "description": "Please let me describe from scratch"
-            }
-        ]
-    }
-])
+2. Ask overall architecture validation via AskUserQuestion with three options:
+   - "Accurate": Auto-analysis correctly identifies architecture
+   - "Needs Adjustment": Analysis mostly correct but needs refinements
+   - "Start Over": User describes architecture from scratch
 
-# Step 3: Section-by-section review if "Needs Adjustment"
-if overall_result == "Needs Adjustment":
+3. If "Needs Adjustment" selected, perform section-by-section review:
+   - **Architecture Type**: Confirm detected type (monolithic, modular, microservice, etc.) or select correct type from options
+   - **Core Modules**: Validate detected modules; if incorrect, collect adjustments (add/remove/rename/reorder)
+   - **Integrations**: Confirm external and internal integrations; collect updates if needed
+   - **Data Storage**: Validate identified storage technologies (RDBMS, NoSQL, cache, etc.); update if needed
+   - **Tech Stack**: Confirm or adjust language, framework, and library detections
 
-    # Review Architecture Type
-    arch_type_review = await AskUserQuestion([
-        {
-            "question": f"Architecture Type detected: '{parsed_architecture['architecture_type']}'",
-            "header": "Architecture Type",
-            "multiSelect": false,
-            "options": [
-                {"label": "Correct", "description": "Detection is accurate"},
-                {"label": "Wrong", "description": "Need to change"}
-            ]
-        }
-    ])
-    if arch_type_review == "Wrong":
-        arch_options = await AskUserQuestion([
-            {
-                "question": "Select the correct architecture type:",
-                "header": "Architecture Type",
-                "multiSelect": false,
-                "options": [
-                    {"label": "Monolithic", "description": "Single unified application"},
-                    {"label": "Modular Monolithic", "description": "Single app with clear modules"},
-                    {"label": "Microservices", "description": "Multiple independent services"},
-                    {"label": "2-Tier/3-Tier", "description": "Layer-based architecture"},
-                    {"label": "Event-Driven", "description": "Event-based communication"},
-                    {"label": "Serverless", "description": "Function-based serverless"},
-                    {"label": "Hybrid", "description": "Multiple architecture patterns"}
-                ]
-            }
-        ])
-        parsed_architecture['architecture_type'] = arch_options
-
-    # Review Core Modules
-    modules_review = await AskUserQuestion([
-        {
-            "question": f"Identified modules: {', '.join([m['name'] for m in parsed_architecture['core_modules']])}",
-            "header": "Core Modules",
-            "multiSelect": false,
-            "options": [
-                {"label": "Correct", "description": "Module list is accurate"},
-                {"label": "Need Changes", "description": "Add/remove/rename modules"}
-            ]
-        }
-    ])
-    if modules_review == "Need Changes":
-        module_adjustments = await AskUserQuestion([
-            {
-                "question": "Which module changes are needed?",
-                "header": "Module Adjustments",
-                "multiSelect": true,
-                "options": [
-                    {"label": "Add modules", "description": "Add new modules"},
-                    {"label": "Remove modules", "description": "Remove incorrect modules"},
-                    {"label": "Rename modules", "description": "Rename existing modules"},
-                    {"label": "Reorder modules", "description": "Change module priority"}
-                ]
-            }
-        ])
-
-    # Review Integrations
-    integrations_review = await AskUserQuestion([
-        {
-            "question": f"Identified integrations: {len(parsed_architecture['integrations']['external'])} external, {len(parsed_architecture['integrations']['internal'])} internal",
-            "header": "Integrations",
-            "multiSelect": false,
-            "options": [
-                {"label": "Correct", "description": "Integration list is accurate"},
-                {"label": "Need Changes", "description": "Add/remove integrations"}
-            ]
-        }
-    ])
-    if integrations_review == "Need Changes":
-        # Collect new integrations
-        integration_details = await AskUserQuestion([
-            {
-                "question": "Provide integration updates (add missing or remove incorrect)",
-                "header": "Integration Details",
-                "multiSelect": false,
-                "options": [
-                    {"label": "Continue", "description": "Ready to proceed (free text above)"}
-                ]
-            }
-        ])
-
-    # Review Data Storage
-    storage_review = await AskUserQuestion([
-        {
-            "question": f"Identified storage: RDBMS ({len(parsed_architecture['data_storage']['rdbms'])}), NoSQL ({len(parsed_architecture['data_storage']['nosql'])})",
-            "header": "Data Storage",
-            "multiSelect": false,
-            "options": [
-                {"label": "Correct", "description": "Storage detection is accurate"},
-                {"label": "Need Changes", "description": "Update storage technologies"}
-            ]
-        }
-    ])
-
-elif overall_result == "Start Over":
-    # Fall back to traditional question set (Step 2c below)
-    # Proceed with manual architecture specification
-    ...
-```
+4. If "Start Over" selected:
+   - Fall back to traditional manual architecture question set (Step 2c)
 
 **2c. Original Manual Questions (Fallback)**:
 
@@ -747,174 +489,70 @@ If user chooses "Start Over", use traditional interview format:
 
 #### 3. Tech & Delivery Analysis (Context7-Based Version Lookup + Manual Review)
 
-**3a. Automatic Technology Version Lookup (NEW - Claude Code v4.0 + Context7 MCP)**:
+**3a. Automatic Technology Version Lookup (NEW)**:
 
 Use Context7 MCP for real-time version queries and compatibility validation (100% accuracy):
 
-```python
-# Step 1: Detect tech stack from codebase + Phase 2 results
-detected_stack = detect_tech_stack({
-    "from_dependencies": parse_requirements_txt_or_packagejson(),
-    "from_phase2_analysis": project_basics["tech_stack"],
-    "from_codebase": scan_for_patterns()
-})
+**Technology Version Lookup Steps**:
+1. Detect current tech stack from:
+   - Dependency files (requirements.txt, package.json, pom.xml, etc.)
+   - Phase 2 analysis results
+   - Codebase pattern scanning
 
-# Step 2: Query latest stable versions via Context7
-version_lookup = await Task(
-    subagent_type="mcp-context7-integrator",
-    prompt=f"""For each technology in the stack, provide:
+2. Query latest stable versions via Context7 MCP using Task() delegation:
+   - Send technology list to mcp-context7-integrator subagent
+   - Request for each technology:
+     - Latest stable version (production-ready)
+     - Breaking changes from current version
+     - Available security patches
+     - Dependency compatibility with other technologies
+     - LTS (Long-term support) status
+     - Planned deprecations in roadmap
+   - Use Context7 to fetch official documentation and release notes
 
-    Technologies to check:
-    {json.dumps(detected_stack)}
-
-    For EACH technology:
-    1. **Latest Stable Version**: Current production-ready version
-    2. **Breaking Changes**: Major changes from current version
-    3. **Security Updates**: Critical/important security patches available
-    4. **Dependency Compatibility**: Check compatibility with other technologies
-    5. **LTS Status**: Long-term support availability
-    6. **Deprecation Warnings**: Planned deprecations for the roadmap
-
-    Use Context7 to fetch official documentation and release notes.
-    Return structured version matrix for tech.md generation.""",
-    model="haiku"  # Version lookup is straightforward
-)
-
-# Step 3: Build compatibility matrix
-compatibility_matrix = analyze_version_compatibility({
-    "detected": detected_stack,
-    "latest": version_lookup,
-    "constraints": project_type_constraints()
-})
-```
+3. Build compatibility matrix showing:
+   - Detected current versions
+   - Latest stable versions available
+   - Compatibility issues between technologies
+   - Recommended versions based on project constraints
 
 **3b. Technology Stack Validation & Version Recommendation**:
 
-Present findings and validate/adjust versions:
+Present findings and validate/adjust versions through structured interview:
 
-```python
-# Step 1: Present compatibility analysis
-print_tech_stack_summary(compatibility_matrix)
-
-# Step 2: Get user validation
-tech_review = await AskUserQuestion([
-    {
-        "question": "Review the technology stack version recommendations - are they acceptable?",
-        "header": "Tech Stack Validation",
-        "multiSelect": false,
-        "options": [
-            {
-                "label": "Accept All",
-                "description": "Use recommended versions for all technologies"
-            },
-            {
-                "label": "Custom Selection",
-                "description": "Choose specific versions to update or keep"
-            },
-            {
-                "label": "Use Current",
-                "description": "Keep all current versions without updates"
-            }
-        ]
-    }
-])
-
-# Step 3: Custom version selection if needed
-if tech_review == "Custom Selection":
-    for tech in compatibility_matrix:
-        version_choice = await AskUserQuestion([
-            {
-                "question": f"Version for {tech['technology']}:",
-                "header": f"{tech['technology']} Version",
-                "multiSelect": false,
-                "options": [
-                    {
-                        "label": "Current",
-                        "description": f"{tech['current_version']} (currently used)"
-                    },
-                    {
-                        "label": "Upgrade",
-                        "description": f"{tech['latest_stable']} (latest stable)"
-                    },
-                    {
-                        "label": "Specific",
-                        "description": "Enter custom version (free text)"
-                    }
-                ]
-            }
-        ])
-        tech['selected_version'] = version_choice
-```
+**Tech Stack Validation Workflow**:
+1. Present compatibility matrix summary showing current and recommended versions
+2. Ask overall validation via AskUserQuestion with three options:
+   - "Accept All": Use recommended versions for all technologies
+   - "Custom Selection": Choose specific versions to update or keep current
+   - "Use Current": Keep all current versions without updates
+3. If "Custom Selection" selected:
+   - For each technology, ask version preference:
+     - "Current": Keep currently used version
+     - "Upgrade": Update to latest stable version
+     - "Specific": User enters custom version via free text
+   - Record user's version selections
+4. If "Accept All" or version selection complete:
+   - Proceed to build & deployment configuration (Step 3c)
 
 **3c. Build & Deployment Configuration**:
 
-Collect pipeline and deployment information:
+Collect pipeline and deployment information through structured interviews:
 
-```python
-# Step 1: Build tools
-build_tools = await AskUserQuestion([
-    {
-        "question": "Build tools and package managers:",
-        "header": "Build Tools",
-        "multiSelect": true,
-        "options": [
-            {"label": "uv", "description": "Python package manager"},
-            {"label": "pip", "description": "Python pip"},
-            {"label": "npm/yarn/pnpm", "description": "Node.js package manager"},
-            {"label": "Maven/Gradle", "description": "Java build tools"},
-            {"label": "Make", "description": "Make/Makefile"},
-            {"label": "Custom", "description": "Custom build scripts"}
-        ]
-    }
-])
-
-# Step 2: Test frameworks
-test_setup = await AskUserQuestion([
-    {
-        "question": "Testing framework and coverage goals:",
-        "header": "Testing Strategy",
-        "multiSelect": false,
-        "options": [
-            {"label": "pytest (Python)", "description": "Target coverage: 85%+"},
-            {"label": "unittest (Python)", "description": "Target coverage: 80%+"},
-            {"label": "Jest/Vitest", "description": "Target coverage: 85%+"},
-            {"label": "Custom", "description": "Other framework (specify coverage)"}
-        ]
-    }
-])
-
-# Step 3: Deployment environment
-deployment = await AskUserQuestion([
-    {
-        "question": "Deployment target and strategy:",
-        "header": "Deployment Configuration",
-        "multiSelect": false,
-        "options": [
-            {"label": "Docker + K8s", "description": "Container orchestration"},
-            {"label": "Cloud (AWS/GCP/Azure)", "description": "Managed cloud platform"},
-            {"label": "Vercel/Railway", "description": "Platform-as-a-Service (PaaS)"},
-            {"label": "On-premise", "description": "Self-hosted infrastructure"},
-            {"label": "Serverless", "description": "Function-based deployment"}
-        ]
-    }
-])
-
-# Step 4: Quality & Security
-quality_setup = await AskUserQuestion([
-    {
-        "question": "TRUST 5 principle adoption status:",
-        "header": "Quality Standards",
-        "multiSelect": true,
-        "options": [
-            {"label": "Test-First", "description": "TDD/BDD approach"},
-            {"label": "Readable", "description": "Code style/formatting"},
-            {"label": "Unified", "description": "Design patterns"},
-            {"label": "Secured", "description": "Security scanning"},
-            {"label": "Trackable", "description": "SPEC/requirement linking"}
-        ]
-    }
-])
-```
+**Build & Deployment Workflow**:
+1. Ask about build tools via AskUserQuestion (multi-select):
+   - Options: uv, pip, npm/yarn/pnpm, Maven/Gradle, Make, Custom build scripts
+   - Record selected build tools
+2. Ask about testing framework via AskUserQuestion:
+   - Options: pytest (Python, 85%+ coverage), unittest (80%+ coverage), Jest/Vitest (85%+ coverage), Custom
+   - Record testing framework and coverage goal
+3. Ask about deployment target via AskUserQuestion:
+   - Options: Docker + Kubernetes, Cloud (AWS/GCP/Azure), PaaS (Vercel/Railway), On-premise, Serverless
+   - Record deployment target and strategy
+4. Ask about TRUST 5 principle adoption via AskUserQuestion (multi-select):
+   - Options: Test-First (TDD/BDD), Readable (code style), Unified (design patterns), Secured (security scanning), Trackable (SPEC linking)
+   - Record TRUST 5 adoption status
+5. Collect operation & monitoring information (separate step following 3c)
 
 ---
 
@@ -934,40 +572,24 @@ quality_setup = await AskUserQuestion([
 - Ask about log collection stack (ELK, Loki, CloudWatch, etc.), APM, and notification channels (Slack, Opsgenie, etc.).
 - Whether you have a failure response playbook, take MTTR goals as input and map them to the operation section of `tech.md`.
 
-#### 4. Plan Mode Decomposition & Optimization (Claude Code v4.0 Phase 4.2 - NEW)
+#### 4. Plan Mode Decomposition & Optimization (NEW)
 
 **IF** complexity_tier == "COMPLEX" and user approved Plan Mode:
 
 - **Implement Plan Mode Decomposition Results**:
   1. Extract decomposed phases from Plan Mode analysis
-  2. Identify parallelizable tasks from the structured plan
+  2. Identify parallelizable tasks from structured plan
   3. Create task dependency map for optimal execution order
   4. Estimate time for each major phase
   5. Suggest validation checkpoints between phases
 
-- **Dynamic Workflow Routing**:
-  ```python
-  # Execute phases based on complexity tier and plan approval
-
-  for phase in decomposed_plan.phases:
-      if phase.can_parallelize:
-          # Execute in parallel with independent phases
-          results = await asyncio.gather(
-              interview_phase(phase.interview_items),
-              research_phase(phase.research_items),
-              validation_phase(phase.checkpoints)
-          )
-      else:
-          # Execute sequentially (phase depends on previous)
-          results = await execute_sequential_phase(phase)
-
-      # Checkpoint validation
-      checkpoint_results = validate_checkpoint(phase.validation_items)
-      if checkpoint_results.has_blockers:
-          present_blockers_to_user(checkpoint_results)
-          adjustment = get_user_adjustment()
-          apply_adjustment_to_plan(adjustment)
-  ```
+- **Dynamic Workflow Execution**:
+  - For each phase in the decomposed plan:
+    - **If parallelizable**: Execute interview, research, and validation tasks in parallel
+    - **If sequential**: Execute phase after completing previous dependencies
+  - At each checkpoint: Validate phase results, present any blockers to user, collect adjustments
+  - Apply user adjustments to plan and continue
+  - Record phase completion status
 
 - **Progress Tracking & User Communication**:
   - Display real-time progress against Plan Mode timeline

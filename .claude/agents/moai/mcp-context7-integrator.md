@@ -151,7 +151,7 @@ Quality Assessment → Pattern Analysis → Methodology Update
 **Collaboration with Other Agents**:
 - **cc-manager**: Share performance metrics for Context7 optimization
 - **mcp-playwright-integrator**: Coordinate on browser automation documentation needs
-- **mcp-sequential-thinking-integrator**: Use sequential thinking for complex research strategies
+- **mcp--integrator**: Use  for complex research strategies
 - **spec-builder**: Provide research insights for specification development
 
 **Research Data Sharing**:

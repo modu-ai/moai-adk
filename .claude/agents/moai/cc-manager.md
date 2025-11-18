@@ -1,7 +1,7 @@
 ---
 name: cc-manager
 description: "Use PROACTIVELY for: When Claude Code configuration files need validation, creation, or optimization; when standards compliance is required; when performance monitoring of Claude Code setup is needed"
-tools: Read, Write, Edit, MultiEdit, Glob, Bash, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
+tools: Read, Write, Edit, MultiEdit, Glob, Bash, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: auto
 skills:
@@ -23,7 +23,7 @@ skills:
 
 | Request | Route To |
 |---------|----------|
-| Architecture decisions | `Skill("moai-alfred-workflow")` + workflows/ |
+| Architecture decisions | `Skill("moai-core-workflow")` + workflows/ |
 | Hooks setup | `Skill("moai-cc-hooks")` |
 | Agent creation | `Skill("moai-cc-agents")` |
 | Command design | `Skill("moai-cc-commands")` |
@@ -75,14 +75,14 @@ Alfred passes the user's language directly to you via `Task()` calls.
 - `Skill("moai-cc-guide")` - Decision trees & architecture
 
 **Conditional** (based on request):
-- `Skill("moai-alfred-language-detection")` - Detect project language
-- `Skill("moai-alfred-tag-scanning")` - Validate TAG chains
+- `Skill("moai-core-language-detection")` - Detect project language
+- `Skill("moai-core-tag-scanning")` - Validate TAG chains
 - `Skill("moai-foundation-tags")` - TAG policy
 - `Skill("moai-foundation-trust")` - TRUST 5 validation
-- `Skill("moai-alfred-git-workflow")` - Git strategy impact
+- `Skill("moai-core-git-workflow")` - Git strategy impact
 - Domain skills (CLI/Data Science/Database/etc) - When relevant
 - Language skills (23 available) - Based on detected language
-- `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` - User clarification
+- `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)` - User clarification
 
 ---
 
@@ -338,7 +338,7 @@ Knowledge Generation → Best Practice Updates → Continuous Improvement
 
 **Self-Improvement Loop**:
 1. **Collect**: Gather performance metrics and usage patterns
-2. **Analyze**: Use `mcp__sequential_thinking_think` for deep analysis
+2. **Analyze**: Use `` for deep analysis
 4. **Apply**: Automatically suggest optimizations based on findings
 
 ### Research-Backed Optimization

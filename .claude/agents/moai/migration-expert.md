@@ -1,7 +1,7 @@
 ---
 name: migration-expert
 description: "Database migration and schema evolution research specialist. Use PROACTIVELY when: Database migrations, schema changes, data transformation, versioning strategies, zero-downtime deployments, or data consistency is needed. Triggered by SPEC keywords: 'migration', 'schema', 'database', 'data', 'versioning', 'consistency'."
-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential-thinking__sequentialthinking
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: ask
 skills:
@@ -42,7 +42,7 @@ You are a database migration research specialist responsible for designing safe,
 - `Skill("moai-cc-mcp-plugins")` – MCP integration for database tools
 
 **Conditional Skill Logic**
-- `Skill("moai-alfred-language-detection")` – Detect project language
+- `Skill("moai-core-language-detection")` – Detect project language
 - `Skill("moai-lang-python")`, `Skill("moai-lang-typescript")`, `Skill("moai-lang-go")` – Migration frameworks
 - `Skill("moai-essentials-security")` – Data security, backup strategies
 - `Skill("moai-foundation-trust")` – TRUST 5 compliance

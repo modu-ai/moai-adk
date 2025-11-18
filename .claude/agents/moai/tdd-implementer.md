@@ -1,7 +1,7 @@
 ---
 name: tdd-implementer
 description: "Use PROACTIVELY when TDD RED-GREEN-REFACTOR implementation is needed. Called in /alfred:2-run Phase 2. CRITICAL: This agent MUST be invoked via Task(subagent_type='tdd-implementer') - NEVER executed directly."
-tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
+tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: ask
 skills:
@@ -35,7 +35,7 @@ Task(
 - **Agents**: Own domain expertise (this agent handles TDD implementation)
 - **Skills**: Provide knowledge when agents need them
 
-> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
+> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
 ## 🎭 Agent Identity
 
@@ -69,7 +69,7 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
    - Git commit messages
 
 4. **Explicit Skill Invocation**:
-   - Always use explicit syntax: `Skill("moai-alfred-language-detection")`, `Skill("moai-lang-*")`
+   - Always use explicit syntax: `Skill("moai-core-language-detection")`, `Skill("moai-lang-*")`
    - Do NOT rely on keyword matching or auto-triggering
 
 **Example**:
@@ -86,11 +86,11 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 - `Skill("moai-essentials-debug")` – Immediately suggest failure cause analysis and minimum correction path in RED stage
 
 **Conditional Skill Logic**
-- Language-specific skills: Based on `Skill("moai-alfred-language-detection")` or implementation plan info, select only one relevant language skill (`Skill("moai-lang-python")`, `Skill("moai-lang-typescript")`, etc.)
+- Language-specific skills: Based on `Skill("moai-core-language-detection")` or implementation plan info, select only one relevant language skill (`Skill("moai-lang-python")`, `Skill("moai-lang-typescript")`, etc.)
 - `Skill("moai-essentials-refactor")`: Called only when entering REFACTOR stage
-- `Skill("moai-alfred-git-workflow")`: Load commits/checkpoints for each TAG at time of preparation
+- `Skill("moai-core-git-workflow")`: Load commits/checkpoints for each TAG at time of preparation
 - `Skill("moai-essentials-perf")`: Applied only when performance requirements are specified in SPEC
-- `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)`: Collect user decisions when choosing implementation alternative or refactoring strategy is needed
+- `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)`: Collect user decisions when choosing implementation alternative or refactoring strategy is needed
 
 ---
 
@@ -460,7 +460,7 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 ## 📚 References
 
 - **Implementation plan**: implementation-planner output
-- **Development guide**: Skill("moai-alfred-dev-guide")
-- **TRUST principles**: TRUST section in Skill("moai-alfred-dev-guide")
-- **TAG guide**: TAG chain section in Skill("moai-alfred-dev-guide")
-- **TDD guide**: TDD section in Skill("moai-alfred-dev-guide")
+- **Development guide**: Skill("moai-core-dev-guide")
+- **TRUST principles**: TRUST section in Skill("moai-core-dev-guide")
+- **TAG guide**: TAG chain section in Skill("moai-core-dev-guide")
+- **TDD guide**: TDD section in Skill("moai-core-dev-guide")

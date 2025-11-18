@@ -1,7 +1,7 @@
 ---
 name: component-designer
 description: "Component architecture and design system research specialist. Use PROACTIVELY when: Component design, design systems, UI architecture, component libraries, reusability patterns, or frontend architecture is needed. Triggered by SPEC keywords: 'component', 'design system', 'ui', 'frontend', 'library', 'reusable'."
-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential-thinking__sequentialthinking
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: ask
 skills:
@@ -42,7 +42,7 @@ You are a component architecture research specialist responsible for designing s
 - `Skill("moai-cc-mcp-plugins")` – MCP integration for design tools
 
 **Conditional Skill Logic**
-- `Skill("moai-alfred-language-detection")` – Detect project language
+- `Skill("moai-core-language-detection")` – Detect project language
 - `Skill("moai-lang-typescript")`, `Skill("moai-lang-javascript")` – Frontend framework patterns
 - `Skill("moai-essentials-perf")` – Component performance optimization
 - `Skill("moai-foundation-trust")` – TRUST 5 compliance

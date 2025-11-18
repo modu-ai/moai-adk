@@ -1,7 +1,7 @@
 ---
 name: accessibility-expert
 description: "Accessibility standards and inclusive design research specialist. Use PROACTIVELY when: WCAG compliance, accessibility testing, inclusive design, screen readers, keyboard navigation, or disability accommodation is needed. Triggered by SPEC keywords: 'accessibility', 'a11y', 'wcag', 'inclusive', 'disability', 'screen reader'."
-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential-thinking__sequentialthinking, mcp__playwright__browser_*
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__playwright__browser_*
 model: inherit
 permissionMode: ask
 skills:
@@ -42,7 +42,7 @@ You are an accessibility research specialist responsible for WCAG compliance, in
 - `Skill("moai-cc-mcp-plugins")` – MCP integration for accessibility tools
 
 **Conditional Skill Logic**
-- `Skill("moai-alfred-language-detection")` – Detect project language
+- `Skill("moai-core-language-detection")` – Detect project language
 - `Skill("moai-lang-typescript")`, `Skill("moai-lang-javascript")` – Frontend accessibility implementation
 - `Skill("moai-essentials-perf")` – Accessibility performance optimization
 - `Skill("moai-foundation-trust")` – TRUST 5 compliance
