@@ -149,7 +149,7 @@ class ProjectInitializer:
             if utils_dir.exists():
                 sys.path.insert(0, str(utils_dir))
                 try:
-                    from announcement_translator import translate_announcements, get_language_from_config
+                    from announcement_translator import get_language_from_config, translate_announcements
                     language = get_language_from_config(self.path)
                     announcements = translate_announcements(language, self.path)
                     settings_local["companyAnnouncements"] = announcements

@@ -133,7 +133,7 @@ class AlfredToMoaiMigrator:
                     )
                     logger.info(f"✅ 백업 완료: {backup_path}")
                 except Exception as e:
-                    logger.error(f"❌ 에러: 백업 생성 실패")
+                    logger.error("❌ 에러: 백업 생성 실패")
                     logger.error(f"원인: {str(e)}")
                     return False
             else:
@@ -177,7 +177,7 @@ class AlfredToMoaiMigrator:
                 self._update_settings_json_hooks()
                 logger.info("✅ settings.json Hook 경로 업데이트됨")
             except Exception as e:
-                logger.error(f"❌ 에러: settings.json 업데이트 실패")
+                logger.error("❌ 에러: settings.json 업데이트 실패")
                 logger.error(f"원인: {str(e)}")
                 self._rollback_migration(backup_path)
                 return False
@@ -188,7 +188,7 @@ class AlfredToMoaiMigrator:
                 self._delete_alfred_folders(alfred_detected)
                 logger.info("✅ Alfred 폴더 삭제됨")
             except Exception as e:
-                logger.error(f"❌ 에러: Alfred 폴더 삭제 실패")
+                logger.error("❌ 에러: Alfred 폴더 삭제 실패")
                 logger.error(f"원인: {str(e)}")
                 self._rollback_migration(backup_path)
                 return False

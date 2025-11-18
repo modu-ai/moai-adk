@@ -6,15 +6,13 @@ for intelligent backup vs new template comparison and recommendations.
 
 import json
 import subprocess
-import sys
 from difflib import unified_diff
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import click
 from rich.console import Console
 from rich.live import Live
-from rich.panel import Panel
 from rich.spinner import Spinner
 from rich.table import Table
 

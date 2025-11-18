@@ -5,11 +5,12 @@ Recalculates all formulas in an Excel file using LibreOffice
 """
 
 import json
-import sys
-import subprocess
 import os
 import platform
+import subprocess
+import sys
 from pathlib import Path
+
 from openpyxl import load_workbook
 
 
@@ -19,19 +20,19 @@ def setup_libreoffice_macro():
         macro_dir = os.path.expanduser('~/Library/Application Support/LibreOffice/4/user/basic/Standard')
     else:
         macro_dir = os.path.expanduser('~/.config/libreoffice/4/user/basic/Standard')
-    
+
     macro_file = os.path.join(macro_dir, 'Module1.xba')
-    
+
     if os.path.exists(macro_file):
         with open(macro_file, 'r') as f:
             if 'RecalculateAndSave' in f.read():
                 return True
-    
+
     if not os.path.exists(macro_dir):
-        subprocess.run(['soffice', '--headless', '--terminate_after_init'], 
+        subprocess.run(['soffice', '--headless', '--terminate_after_init'],
                       capture_output=True, timeout=10)
         os.makedirs(macro_dir, exist_ok=True)
-    
+
     macro_content = '''<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
 <script:module xmlns:script="http://openoffice.org/2000/script" script:name="Module1" script:language="StarBasic">
@@ -41,7 +42,7 @@ def setup_libreoffice_macro():
       ThisComponent.close(True)
     End Sub
 </script:module>'''
-    
+
     try:
         with open(macro_file, 'w') as f:
             f.write(macro_content)
@@ -63,18 +64,18 @@ def recalc(filename, timeout=30):
     """
     if not Path(filename).exists():
         return {'error': f'File {filename} does not exist'}
-    
+
     abs_path = str(Path(filename).absolute())
-    
+
     if not setup_libreoffice_macro():
         return {'error': 'Failed to setup LibreOffice macro'}
-    
+
     cmd = [
         'soffice', '--headless', '--norestore',
         'vnd.sun.star.script:Standard.Module1.RecalculateAndSave?language=Basic&location=application',
         abs_path
     ]
-    
+
     # Handle timeout command differences between Linux and macOS
     if platform.system() != 'Windows':
         timeout_cmd = 'timeout' if platform.system() == 'Linux' else None
@@ -85,27 +86,27 @@ def recalc(filename, timeout=30):
                 timeout_cmd = 'gtimeout'
             except (FileNotFoundError, subprocess.TimeoutExpired):
                 pass
-        
+
         if timeout_cmd:
             cmd = [timeout_cmd, str(timeout)] + cmd
-    
+
     result = subprocess.run(cmd, capture_output=True, text=True)
-    
+
     if result.returncode != 0 and result.returncode != 124:  # 124 is timeout exit code
         error_msg = result.stderr or 'Unknown error during recalculation'
         if 'Module1' in error_msg or 'RecalculateAndSave' not in error_msg:
             return {'error': 'LibreOffice macro not configured properly'}
         else:
             return {'error': error_msg}
-    
+
     # Check for Excel errors in the recalculated file - scan ALL cells
     try:
         wb = load_workbook(filename, data_only=True)
-        
+
         excel_errors = ['#VALUE!', '#DIV/0!', '#REF!', '#NAME?', '#NULL!', '#NUM!', '#N/A']
         error_details = {err: [] for err in excel_errors}
         total_errors = 0
-        
+
         for sheet_name in wb.sheetnames:
             ws = wb[sheet_name]
             # Check ALL rows and columns - no limits
@@ -118,16 +119,16 @@ def recalc(filename, timeout=30):
                                 error_details[err].append(location)
                                 total_errors += 1
                                 break
-        
+
         wb.close()
-        
+
         # Build result summary
         result = {
             'status': 'success' if total_errors == 0 else 'errors_found',
             'total_errors': total_errors,
             'error_summary': {}
         }
-        
+
         # Add non-empty error categories
         for err_type, locations in error_details.items():
             if locations:
@@ -135,7 +136,7 @@ def recalc(filename, timeout=30):
                     'count': len(locations),
                     'locations': locations[:20]  # Show up to 20 locations
                 }
-        
+
         # Add formula count for context - also check ALL cells
         wb_formulas = load_workbook(filename, data_only=False)
         formula_count = 0
@@ -146,11 +147,11 @@ def recalc(filename, timeout=30):
                     if cell.value and isinstance(cell.value, str) and cell.value.startswith('='):
                         formula_count += 1
         wb_formulas.close()
-        
+
         result['total_formulas'] = formula_count
-        
+
         return result
-        
+
     except Exception as e:
         return {'error': str(e)}
 
@@ -166,10 +167,10 @@ def main():
         print("  - error_summary: Breakdown by error type with locations")
         print("    - #VALUE!, #DIV/0!, #REF!, #NAME?, #NULL!, #NUM!, #N/A")
         sys.exit(1)
-    
+
     filename = sys.argv[1]
     timeout = int(sys.argv[2]) if len(sys.argv) > 2 else 30
-    
+
     result = recalc(filename, timeout)
     print(json.dumps(result, indent=2))
 

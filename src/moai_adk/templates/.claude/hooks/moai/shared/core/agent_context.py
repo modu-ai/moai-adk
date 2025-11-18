@@ -8,7 +8,7 @@ Intelligently analyzes user prompts to recommend specialist agents and skills
 import json
 import re
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Any, Dict, List, Optional, Tuple
 
 from .context import get_jit_context
 

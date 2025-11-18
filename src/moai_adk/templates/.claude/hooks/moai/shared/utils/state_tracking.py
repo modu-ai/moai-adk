@@ -6,16 +6,23 @@ command deduplication, and duplicate prevention.
 """
 
 import json
-import logging
 import threading
 import time
-from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Dict, Any, Optional, List
 import uuid
 import weakref
+from datetime import datetime
+from typing import Any, Dict, Optional
 
-from core import HookPayload, HookResult, HookConfiguration, ExecutionResult, get_logger, get_performance_metrics, record_execution_metrics, record_cache_hit, record_cache_miss, configure_logging
+from core import (
+    ExecutionResult,
+    HookConfiguration,
+    configure_logging,
+    get_logger,
+    get_performance_metrics,
+    record_cache_hit,
+    record_cache_miss,
+    record_execution_metrics,
+)
 
 
 class SingletonMeta(type):
@@ -935,5 +942,6 @@ def force_cleanup_all_singletons() -> None:
 
 # Module-level cleanup on import/unload
 import atexit
+
 atexit.register(cleanup_all_state_managers)
 atexit.register(force_cleanup_all_singletons)

@@ -563,7 +563,7 @@ def _preserve_user_settings(project_path: Path) -> dict[str, Path | None]:
             backup_path = backup_dir / "settings.local.json"
             backup_path.write_text(settings_local.read_text(encoding="utf-8"))
             preserved["settings.local.json"] = backup_path
-            console.print(f"   [cyan]💾 Backed up user settings[/cyan]")
+            console.print("   [cyan]💾 Backed up user settings[/cyan]")
         except Exception as e:
             logger.warning(f"Failed to backup settings.local.json: {e}")
             preserved["settings.local.json"] = None
@@ -594,7 +594,7 @@ def _restore_user_settings(project_path: Path, preserved: dict[str, Path | None]
             backup_path = preserved["settings.local.json"]
             settings_local = claude_dir / "settings.local.json"
             settings_local.write_text(backup_path.read_text(encoding="utf-8"))
-            console.print(f"   [cyan]✓ Restored user settings[/cyan]")
+            console.print("   [cyan]✓ Restored user settings[/cyan]")
         except Exception as e:
             console.print(f"   [yellow]⚠️ Failed to restore settings.local.json: {e}[/yellow]")
             logger.warning(f"Failed to restore settings.local.json: {e}")
@@ -669,7 +669,7 @@ def _sync_templates(project_path: Path, force: bool = False) -> bool:
                     )
                     if backup_path:
                         console.print(
-                            f"[yellow]🔄 백업에서 복원 중...[/yellow]"
+                            "[yellow]🔄 백업에서 복원 중...[/yellow]"
                         )
                         backup = TemplateBackup(project_path)
                         backup.restore_backup(backup_path)

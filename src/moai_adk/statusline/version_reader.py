@@ -584,7 +584,7 @@ class VersionReader:
             Version string or empty string if package not found
         """
         try:
-            from importlib.metadata import version, PackageNotFoundError
+            from importlib.metadata import PackageNotFoundError, version
 
             try:
                 pkg_version = version("moai-adk")

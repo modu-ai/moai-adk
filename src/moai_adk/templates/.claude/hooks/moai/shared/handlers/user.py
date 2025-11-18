@@ -8,7 +8,6 @@ from datetime import datetime
 from pathlib import Path
 
 from core import HookPayload, HookResult
-from core.context import get_jit_context
 from core.agent_context import get_enhanced_jit_context
 
 

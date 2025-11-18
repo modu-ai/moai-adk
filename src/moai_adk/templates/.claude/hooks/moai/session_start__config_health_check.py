@@ -18,8 +18,8 @@ import importlib.metadata
 import json
 import sys
 import time
-import urllib.request
 import urllib.error
+import urllib.request
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Optional

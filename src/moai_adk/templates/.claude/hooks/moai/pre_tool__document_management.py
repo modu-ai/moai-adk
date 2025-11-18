@@ -20,7 +20,7 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 # Setup import path for shared modules
 HOOKS_DIR = Path(__file__).parent

@@ -8,6 +8,7 @@ Provides comprehensive language validation capabilities for programming language
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
+
 # Language detector functionality removed due to missing dependency
 # Using simplified language detection for now
 def get_all_supported_languages():
@@ -16,7 +17,6 @@ def get_all_supported_languages():
 
 def get_language_by_file_extension(extension: str) -> Optional[str]:
     """Get programming language by file extension."""
-    from pathlib import Path
 
     # Handle Path objects and strings
     if hasattr(extension, 'suffix'):

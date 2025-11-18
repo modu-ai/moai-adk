@@ -11,7 +11,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 from git import InvalidGitRepositoryError, Repo
 
@@ -376,7 +375,7 @@ class GitConflictDetector:
 
             return True
 
-        except Exception as e:
+        except Exception:
             # Abort rebase if it fails
             try:
                 self.git.rebase("--abort")
