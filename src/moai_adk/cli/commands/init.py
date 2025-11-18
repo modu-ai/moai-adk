@@ -99,7 +99,7 @@ def create_progress_callback(progress: Progress, task_ids: Sequence[TaskID]):
 @click.option(
     "--with-mcp",
     multiple=True,
-    type=click.Choice(["context7", "figma", "playwright", "sequential-thinking"]),
+    type=click.Choice(["context7", "playwright", "sequential-thinking", "notion", "figma"]),
     help="Install MCP servers automatically (can be used multiple times)",
 )
 @click.option(

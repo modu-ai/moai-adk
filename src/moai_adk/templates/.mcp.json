@@ -17,6 +17,24 @@
       "args": ["-y", "@modelcontextprotocol/server-sequential-thinking@latest"],
       "timeout": 30000,
       "retries": 3
+    },
+    "notion": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-notion@latest"],
+      "timeout": 30000,
+      "retries": 3,
+      "env": {
+        "NOTION_API_KEY": "${NOTION_API_KEY}"
+      }
+    },
+    "figma": {
+      "command": "npx",
+      "args": ["-y", "figma-dev-mode-mcp-server@latest"],
+      "timeout": 30000,
+      "retries": 3,
+      "env": {
+        "FIGMA_PERSONAL_ACCESS_TOKEN": "${FIGMA_PERSONAL_ACCESS_TOKEN}"
+      }
     }
   }
 }

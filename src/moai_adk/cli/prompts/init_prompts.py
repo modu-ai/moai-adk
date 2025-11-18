@@ -145,16 +145,66 @@ def prompt_project_setup(
                 f"[cyan]🌐 Selected Language:[/cyan] {language_names.get(language_choice, language_choice)}"
             )
 
-        # Auto-install MCP servers
-        mcp_servers = ["context7", "playwright", "sequential-thinking"]
-        answers["mcp_servers"] = mcp_servers
+        # MCP Server Selection
         console.print("\n[blue]🔧 MCP (Model Context Protocol) Configuration[/blue]")
         console.print(
-            "[dim]Enhance AI capabilities with MCP servers (auto-installing recommended servers)[/dim]\n"
+            "[dim]Select MCP servers to enable (Space to toggle, Enter to confirm)[/dim]\n"
         )
-        console.print(
-            f"[green]✅ MCP servers auto-installed: {', '.join(mcp_servers)}[/green]"
-        )
+
+        # Define MCP server options with descriptions
+        mcp_options = [
+            {
+                "name": "✅ Context7 - AI documentation lookup (Recommended)",
+                "value": "context7",
+                "checked": True,
+            },
+            {
+                "name": "✅ Playwright - Browser automation and testing (Recommended)",
+                "value": "playwright",
+                "checked": True,
+            },
+            {
+                "name": "✅ Sequential Thinking - Multi-step reasoning (Recommended)",
+                "value": "sequential-thinking",
+                "checked": True,
+            },
+            {
+                "name": "📝 Notion - Workspace integration (requires API key)",
+                "value": "notion",
+                "checked": False,
+            },
+            {
+                "name": "🎨 Figma - Design-to-code integration (requires token)",
+                "value": "figma",
+                "checked": False,
+            },
+        ]
+
+        # Show checkbox selection
+        mcp_servers = questionary.checkbox(
+            "Select MCP servers:",
+            choices=[
+                questionary.Choice(opt["name"], value=opt["value"], checked=opt["checked"])
+                for opt in mcp_options
+            ],
+        ).ask()
+
+        if mcp_servers is None:
+            raise KeyboardInterrupt
+
+        answers["mcp_servers"] = mcp_servers
+        console.print(f"\n[green]✅ Selected MCP servers: {', '.join(mcp_servers)}[/green]")
+
+        # Show setup instructions for optional servers
+        if "notion" in mcp_servers:
+            console.print("\n[yellow]📝 Notion setup required:[/yellow]")
+            console.print("   Set NOTION_API_KEY environment variable")
+            console.print("   Guide: https://developers.notion.com/docs/authorization")
+
+        if "figma" in mcp_servers:
+            console.print("\n[yellow]🎨 Figma setup required:[/yellow]")
+            console.print("   Set FIGMA_PERSONAL_ACCESS_TOKEN environment variable")
+            console.print("   Guide: https://www.figma.com/developers/api#access-tokens")
 
         return answers
 
