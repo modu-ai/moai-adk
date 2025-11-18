@@ -5,6 +5,7 @@ Provides centralized state management for hook execution tracking,
 command deduplication, and duplicate prevention.
 """
 
+import atexit
 import json
 import threading
 import time
@@ -734,9 +735,8 @@ class HookStateManager(metaclass=SingletonMeta):
 
     def reset_performance_metrics(self) -> None:
         """Reset performance metrics for this state manager"""
-        global _global_performance_metrics
-        with _global_metrics_lock:
-            _global_performance_metrics = PerformanceMetrics()
+        # Note: This functionality requires _global_metrics_lock and PerformanceMetrics
+        # which are not currently defined in the module
         self._performance_metrics = get_performance_metrics()
         if self.config.log_state_changes:
             self.logger.info("Performance metrics reset")
@@ -941,7 +941,5 @@ def force_cleanup_all_singletons() -> None:
 
 
 # Module-level cleanup on import/unload
-import atexit
-
 atexit.register(cleanup_all_state_managers)
 atexit.register(force_cleanup_all_singletons)

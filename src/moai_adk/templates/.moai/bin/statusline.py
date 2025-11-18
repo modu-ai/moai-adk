@@ -117,7 +117,7 @@ def fallback_statusline(input_json, project_root):
         )
         if result.returncode == 0:
             branch = result.stdout.strip()
-    except:
+    except Exception:
         pass
 
     # Build statusline
@@ -133,7 +133,7 @@ def main():
     # Read input from stdin
     try:
         input_json = sys.stdin.read()
-    except:
+    except Exception:
         input_json = ""
 
     # Find project root

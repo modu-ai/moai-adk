@@ -17,15 +17,17 @@ Features:
 - Emergency recovery procedures
 """
 
+import hashlib
 import json
 import logging
+import os
 import sys
 import tempfile
 import threading
 import time
 import traceback
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
@@ -1132,7 +1134,7 @@ class ErrorRecoverySystem:
 
             # Basic validation
             return "---" in content and len(content) > 100
-        except:
+        except (OSError, UnicodeDecodeError):
             return False
 
     def _validate_agent_file(self, agent_file: Path) -> bool:
@@ -1142,7 +1144,7 @@ class ErrorRecoverySystem:
                 content = f.read()
 
             return "role:" in content and len(content) > 200
-        except:
+        except (OSError, UnicodeDecodeError):
             return False
 
     def _validate_command_file(self, command_file: Path) -> bool:
@@ -1152,7 +1154,7 @@ class ErrorRecoverySystem:
                 content = f.read()
 
             return "name:" in content and "allowed-tools:" in content
-        except:
+        except (OSError, UnicodeDecodeError):
             return False
 
     def _repair_skill_file(self, skill_file: Path) -> bool:
@@ -1169,7 +1171,7 @@ class ErrorRecoverySystem:
                 f.write(content)
 
             return True
-        except:
+        except (OSError, UnicodeDecodeError):
             return False
 
     def _reinitialize_research_components(self):

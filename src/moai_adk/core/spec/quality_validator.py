@@ -10,6 +10,9 @@ from moai_adk.core.spec.confidence_scoring import ConfidenceScoringSystem
 # Configure logging
 logger = logging.getLogger(__name__)
 
+# Traceability tag patterns
+TRACEABILITY_TAGS = ["@SPEC:", "@REQ:", "@TEST:", "@IMPL:", "@DOC:"]
+
 
 class QualityValidator:
     """
@@ -184,6 +187,10 @@ class QualityValidator:
         overall_compliance = sum(section_scores.values()) / len(required_sections)
 
         # Check for META information
+        has_meta = "---" in spec_md and "title:" in spec_md
+
+        # Check for tags
+        has_tags = self._check_traceability_tags(spec_md)
 
         # Check for proper structure
         has_proper_headings = self._check_heading_structure(spec_md)
@@ -633,7 +640,7 @@ class QualityValidator:
 
     def _check_traceability_tags(self, spec_md: str) -> bool:
         """Check for traceability tags."""
-        return any(tag in spec_md for tag in traceability_tags)
+        return any(tag in spec_md for tag in TRACEABILITY_TAGS)
 
     def _check_tag_formatting(self, spec_md: str) -> float:
         """Check proper tag formatting."""

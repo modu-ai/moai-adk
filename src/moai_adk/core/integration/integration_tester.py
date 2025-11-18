@@ -113,12 +113,15 @@ class IntegrationTester:
         """
         results = []
 
+        def placeholder_test():
+            """Placeholder test function"""
+            return True
+
         for test_case_name in test_suite.test_cases:
             # This is a simplified implementation
             # In practice, you would map test case names to actual test functions
-            test_func = lambda: True  # Placeholder
             result = self.run_test(
-                test_func, test_case_name, [c.name for c in test_suite.components]
+                placeholder_test, test_case_name, [c.name for c in test_suite.components]
             )
             results.append(result)
 

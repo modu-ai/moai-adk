@@ -115,7 +115,7 @@ class ClaudeCLIIntegration:
             # Cleanup settings file
             try:
                 settings_file.unlink()
-            except:
+            except OSError:
                 pass  # Ignore cleanup errors
 
             return {
@@ -400,7 +400,7 @@ Translation:"""
             # Cleanup
             try:
                 settings_file.unlink()
-            except:
+            except OSError:
                 pass
 
             return {

@@ -1,7 +1,7 @@
 {
   "branch": "release/0.26.0",
-  "last_commit": "8a1722d0 chore(sequential-thinking): Remove all MCP server references from documentation",
-  "commit_time": "17 minutes ago",
-  "changes": 893,
-  "last_check": "2025-11-19T05:14:35.621891"
+  "last_commit": "5076b8a2 refactor: Ruff \uc790\ub3d9 \uc218\uc815 \uc801\uc6a9 (454\uac1c \u2192 126\uac1c, -72%)",
+  "commit_time": "3 minutes ago",
+  "changes": 13,
+  "last_check": "2025-11-19T06:09:15.619511"
 }

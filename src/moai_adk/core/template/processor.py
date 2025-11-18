@@ -467,14 +467,6 @@ class TemplateProcessor:
         package_root = current_file.parent.parent.parent
         return package_root / "templates"
 
-    def set_context(self, context: dict[str, str]) -> None:
-        """Set variable substitution context.
-
-        Args:
-            context: Dictionary of template variables.
-        """
-        self.context = context
-
     def _substitute_variables(self, content: str) -> tuple[str, list[str]]:
         """
         Substitute template variables in content with enhanced validation and caching.

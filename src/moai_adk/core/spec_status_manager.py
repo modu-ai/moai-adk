@@ -97,7 +97,7 @@ class SpecStatusManager:
                                                 fixed_text,
                                             )
                                         frontmatter = yaml.safe_load(fixed_text)
-                                    except:
+                                    except yaml.YAMLError:
                                         logger.error(
                                             f"Could not parse YAML for {spec_dir.name} even after fixes"
                                         )
@@ -208,7 +208,7 @@ class SpecStatusManager:
                                     r"author:\s*@(\w+)", r'author: "\1"', fixed_text
                                 )
                             frontmatter = yaml.safe_load(fixed_text) or {}
-                        except:
+                        except yaml.YAMLError:
                             logger.error(
                                 f"Could not parse YAML for {spec_id} even after fixes"
                             )
