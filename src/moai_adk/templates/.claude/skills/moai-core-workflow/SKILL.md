@@ -1,7 +1,7 @@
 ---
 name: moai-core-workflow
-version: 4.0.0
-status: production
+version: "4.0.0"
+status: stable
 description: |
   Enterprise multi-agent workflow orchestration specialist. Master workflow 
   design, agent coordination, task delegation, and process automation with Context7 
@@ -140,7 +140,7 @@ class Workflow:
     description: str
     engine: WorkflowEngine
     tasks: List[Task] = field(default_factory=list)
-    status: str = "created"
+    status: stable = "created"
     created_at: datetime = field(default_factory=datetime.now)
     
     def add_stage(self, stage_name: str, agent_type: str,
@@ -326,7 +326,7 @@ class WorkflowMetrics:
             'task_completion_times': []
         }
     
-    def record_workflow_completion(self, workflow_id: str, execution_time: float, status: str):
+    def record_workflow_completion(self, workflow_id: str, execution_time: float, status: stable):
         if status == 'completed':
             self.metrics['workflows_completed'] += 1
         else:
@@ -424,6 +424,6 @@ bug_workflow_id = await scheduler.submit_workflow(
 ---
 
 **Enterprise v4.0 Compliance**: Progressive disclosure with comprehensive error handling, security controls, and monitoring.
-**Last Updated**: 2025-11-13  
+**Last Updated**: 2025-11-18  
 **Dependencies**: Context7 MCP integration, Alfred agent system
 **See Also**: [examples.md](./examples.md) for detailed usage examples

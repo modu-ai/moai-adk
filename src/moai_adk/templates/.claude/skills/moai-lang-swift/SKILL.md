@@ -2,7 +2,7 @@
 name: "moai-lang-swift"
 version: "4.0.0"
 created: 2025-10-22
-updated: 2025-11-12
+updated: 2025-11-18
 status: stable
 description: Swift 6.0 enterprise development with async/await, SwiftUI, Combine, and Swift Concurrency. Advanced patterns for iOS, macOS, server-side Swift, and enterprise mobile applications with Context7 MCP integration.
 keywords: ['swift', 'swiftui', 'async-await', 'swift-concurrency', 'combine', 'ios', 'macos', 'server-side-swift', 'context7']
@@ -396,4 +396,4 @@ vapor_docs = get_library_docs(
 
 ---
 
-_Last updated: 2025-11-12 | Maintained by moai-adk team_
+_Last updated: 2025-11-18 | Maintained by moai-adk team_

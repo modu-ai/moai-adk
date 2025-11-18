@@ -2,7 +2,7 @@
 name: "moai-core-personas"
 version: "4.0.0"
 created: 2025-11-05
-updated: 2025-11-13
+updated: 2025-11-18
 status: stable
 tier: specialization
 description: "Adaptive communication patterns and role selection based on user expertise level and request type. Use for personalized user interactions, expertise detection, and dynamic communication adaptation."
@@ -475,24 +475,24 @@ PERSONA_METRICS = {
 
 ## 📈 Version History
 
-**v4.0.0** (2025-11-13)
+**v4.0.0** (2025-11-18)
 - ✨ Optimized 4-layer Progressive Disclosure structure
 - ✨ Reduced from 706 to 290 lines (59% reduction)
 - ✨ Enhanced persona transition system
 - ✨ Added personalization engine
 - ✨ Improved performance optimization
 
-**v3.0.0** (2025-11-12)
+**v4.0.0** (2025-11-18)
 - ✨ Context7 MCP integration
 - ✨ Enhanced expertise detection algorithms
 - ✨ Advanced persona adaptation features
 
-**v2.0.0** (2025-11-05)
+**v4.0.0** (2025-11-18)
 - ✨ Dynamic persona selection
 - ✨ Expertise level detection
 - ✨ Team-based communication patterns
 
-**v1.0.0** (2025-10-15)
+**v4.0.0** (2025-11-18)
 - ✨ Initial persona system
 - ✨ Basic communication adaptation
 - ✅ User expertise detection
@@ -500,6 +500,6 @@ PERSONA_METRICS = {
 ---
 
 **Generated with**: MoAI-ADK Skill Factory v4.0  
-**Last Updated**: 2025-11-13  
+**Last Updated**: 2025-11-18  
 **Maintained by**: Primary Agent (alfred)  
 **Optimization**: 59% size reduction while preserving all functionality

@@ -3,17 +3,8 @@ name: moai:3-sync
 description: "Synchronize documentation and finalize PR"
 argument-hint: 'Mode target path - Mode: auto (default)|force|status|project, target path: Synchronization target path'
 allowed-tools:
-- Read
-- Write
-- Edit
-- MultiEdit
-- Bash(git:*)
-- Bash(gh:*)
-- Bash(uv:*)
 - Task
-- Grep
-- Glob
-- TodoWrite
+- AskUserQuestion
 model: "haiku"
 ---
 

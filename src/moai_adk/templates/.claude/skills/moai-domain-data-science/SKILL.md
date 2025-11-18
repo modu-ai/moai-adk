@@ -1,7 +1,7 @@
 ---
 name: moai-domain-data-science
-version: 4.0.0
-status: production
+version: "4.0.0"
+status: stable
 description: |
   Production-grade data science specialist with TensorFlow 2.20.0, PyTorch 2.9.0, 
   Scikit-learn 1.7.2 expertise. Master data processing, ML pipeline development, 

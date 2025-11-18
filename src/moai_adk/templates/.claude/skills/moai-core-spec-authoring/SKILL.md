@@ -2,7 +2,7 @@
 name: "moai-core-spec-authoring"
 version: "4.0.0"
 created: 2025-10-23
-updated: 2025-11-13
+updated: 2025-11-18
 status: stable
 tier: Alfred
 description: >-
@@ -43,12 +43,12 @@ allowed-tools:
 ---
 code: SPEC-001
 title: Add User Authentication with JWT
-status: draft
+status: stable
 created_at: 2025-11-13
 updated_at: 2025-11-13
 priority: high
 effort: 8
-version: 1.0.0
+version: "4.0.0"
 epic: AUTH-01
 domains:
   - backend
@@ -120,7 +120,7 @@ code: SPEC-001
 title: Add User Authentication with JWT
 
 # SPEC status (draft | active | deprecated | archived)
-status: draft
+status: stable
 
 # Creation timestamp (ISO 8601: YYYY-MM-DD)
 created_at: 2025-11-13
@@ -140,7 +140,7 @@ effort: 8
 
 ```yaml
 # Version tracking (semantic versioning: major.minor.patch)
-version: 1.0.0
+version: "4.0.0"
 
 # Deadline target date (ISO 8601: YYYY-MM-DD)
 deadline: 2025-12-15
@@ -502,6 +502,6 @@ unwanted_behaviors:
 ---
 
 **Enterprise v4.0 Compliance**: Progressive disclosure with comprehensive EARS syntax, validation checklists, and lifecycle management.
-**Last Updated**: 2025-11-13  
+**Last Updated**: 2025-11-18  
 **Dependencies**: YAML metadata format, EARS specification, TAG system
 **See Also**: [examples.md](./examples.md) for detailed SPEC examples

@@ -2,7 +2,7 @@
 name: "moai-domain-notion"
 version: "4.0.0"
 created: 2025-08-15
-updated: 2025-11-13
+updated: 2025-11-18
 status: stable
 tier: Enterprise
 description: "Enterprise Notion integration with MCP server architecture, database operations, and content management"
@@ -313,4 +313,4 @@ mcp__notion__notion-search(...)
 
 ---
 
-**Version**: 4.0.0 | **Status**: Production Ready | **Last Updated**: 2025-11-13
+**Version**: 4.0.0 | **Status**: Production Ready | **Last Updated**: 2025-11-18

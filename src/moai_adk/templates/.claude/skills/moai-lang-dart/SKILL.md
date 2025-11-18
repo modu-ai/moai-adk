@@ -2,7 +2,7 @@
 name: "moai-lang-dart"
 version: "4.0.0"
 created: 2025-10-22
-updated: 2025-11-12
+updated: 2025-11-18
 status: stable
 description: Dart 3.5 enterprise development with Flutter 3.24, advanced async programming, state management, and cross-platform mobile development. Enterprise patterns for scalable applications with Context7 MCP integration.
 keywords: ['dart', 'flutter', 'async-programming', 'state-management', 'cross-platform', 'mobile-development', 'enterprise', 'context7']

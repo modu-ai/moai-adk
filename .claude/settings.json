@@ -1,10 +1,10 @@
 {
   "companyAnnouncements": [
-    "SPEC-First: Use /alfred:1-plan to define requirements first and everything connects together",
+    "SPEC-First: Use /moai:1-plan to define requirements first and everything connects together",
     "TDD Cycle: RED (write tests) → GREEN (minimal code) → REFACTOR (improve) ensures quality",
-    "4-Phase Workflow: /alfred:1-plan plan → /alfred:2-run implement → /alfred:3-sync validate → git deploy",
+    "4-Phase Workflow: /moai:1-plan plan → /moai:2-run implement → /moai:3-sync validate → git deploy",
     "TRUST 5 Principles: Test(≥85%) + Readable + Unified + Secured(OWASP) + Trackable = Quality",
-    "Alfred Agents: 19 expert team members automatically handle planning, implementation, testing, validation",
+    "moai Agents: 19 expert team members automatically handle planning, implementation, testing, validation",
     "Conversation Style: /output-style r2d2 (hands-on partner) or /output-style yoda (deep learning) available",
     "Task Tracking: TodoWrite keeps progress visible and prevents any tasks from being missed",
     "55+ Skill Library: Verified patterns and best practices enable hallucination-free implementation",
@@ -13,7 +13,7 @@
     "Context7 Updates: All library versions stay current with real-time API information",
     "Parallel Processing: Independent tasks (tests, docs, deployment) run simultaneously to save time",
     "Health Check: moai-adk doctor diagnoses configuration, version, and dependency issues in seconds",
-    "Doc Sync: /alfred:3-sync auto synchronizes tests, code, and documentation automatically",
+    "Doc Sync: /moai:3-sync auto synchronizes tests, code, and documentation automatically",
     "Language Separation: Communicate in your language, write code in project language, package in English",
     "Multi-language Support: Korean, English, Japanese, Spanish, and 25+ languages for conversation",
     "Safe Updates: moai-adk update brings new features automatically while preserving existing settings",
@@ -21,7 +21,7 @@
     "Error Recovery: Failed commits and merge conflicts are auto-analyzed with solutions provided",
     "Security First: Environment variables, API keys, and credentials auto-added to .gitignore for protection",
     "Context Optimization: Efficient use of 200K token window enables handling of large projects",
-    "Quick Feedback: Questions? Ask immediately - Alfred interprets intent and clarifies automatically",
+    "Quick Feedback: Questions? Ask immediately - moai interprets intent and clarifies automatically",
     "Clean Exit: End sessions with /clear to reset context and prepare for the next task"
   ],
   "hooks": {
@@ -30,11 +30,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run {{PROJECT_DIR}}/.moai/bin/statusline.py"
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_start__show_project_info.py"
           },
           {
             "type": "command",
-            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/alfred/session_start__config_health_check.py"
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_start__config_health_check.py"
           }
         ]
       }
@@ -45,7 +45,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/alfred/pre_tool__auto_checkpoint.py"
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_tool__auto_checkpoint.py"
           }
         ]
       }
@@ -55,7 +55,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/alfred/user_prompt__jit_load_docs.py"
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/moai/user_prompt__jit_load_docs.py"
           }
         ]
       }
@@ -65,7 +65,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/alfred/session_end__auto_cleanup.py"
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_end__auto_cleanup.py"
           }
         ]
       }
@@ -108,7 +108,7 @@
       "Bash(black:*)",
       "Bash(coverage:*)",
       "Bash(moai-adk:*)",
-      "Bash(alfred:*)",
+      "Bash(moai:*)",
       "Bash(gh pr create:*)",
       "Bash(gh pr view:*)",
       "Bash(gh pr list:*)",
@@ -129,7 +129,7 @@
       "Bash(time:*)"
     ],
     "ask": [
-    "Bash(git add:*)",
+      "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(git merge:*)",
@@ -172,7 +172,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "uv run {{PROJECT_DIR}}/.moai/bin/statusline.py",
+    "command": "uv run $CLAUDE_PROJECT_DIR/.moai/bin/statusline.py",
     "padding": 0
   },
   "spinnerTipsEnabled": true,

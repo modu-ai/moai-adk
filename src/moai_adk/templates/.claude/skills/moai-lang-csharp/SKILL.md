@@ -2,7 +2,7 @@
 name: "moai-lang-csharp"
 version: "4.0.0"
 created: 2025-11-11
-updated: 2025-11-12
+updated: 2025-11-18
 status: stable
 description: "Enterprise C# 13 development with .NET 9, async/await, LINQ, Entity Framework Core, ASP.NET Core, and Context7 MCP integration for modern backend and enterprise applications."
 keywords: [csharp, dotnet9, csharp13, aspnetcore, entityframework, backend, async, context7, enterprise]
@@ -359,4 +359,4 @@ aspnetcore_docs = get_library_docs(
 
 ---
 
-_Last updated: 2025-11-12 | Maintained by moai-adk team_
+_Last updated: 2025-11-18 | Maintained by moai-adk team_

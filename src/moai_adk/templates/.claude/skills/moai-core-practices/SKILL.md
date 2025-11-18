@@ -2,7 +2,7 @@
 name: "moai-core-practices"
 version: "4.0.0"
 created: 2025-11-05
-updated: 2025-11-12
+updated: 2025-11-18
 status: stable
 description: Enterprise practical workflows, context engineering strategies, JIT (Just-In-Time) retrieval optimization, real-world execution examples, debugging patterns, and moai-adk workflow mastery; activates for workflow pattern learning, context optimization, debugging issue resolution, feature implementation end-to-end, and team knowledge transfer
 keywords: ['workflow-patterns', 'context-engineering', 'jit-retrieval', 'agent-usage', 'debugging-patterns', 'feature-implementation', 'practical-examples', 'moai-adk-mastery', 'knowledge-transfer', 'enterprise-workflows']
@@ -22,7 +22,7 @@ allowed-tools:
 | Field | Value |
 | ----- | ----- |
 | **Skill Name** | moai-core-practices |
-| **Version** | 4.0.0 Enterprise (2025-11-12) |
+| **Version** | 4.0.0 Enterprise (2025-11-18) |
 | **Focus** | Practical execution patterns, real-world scenarios |
 | **Auto-load** | When workflow guidance or debugging help needed |
 | **Included Patterns** | 15+ real-world scenarios |
@@ -339,5 +339,5 @@ Reusable context:
 
 **For detailed workflow examples**: [reference.md](reference.md)  
 **For real-world scenarios**: [examples.md](examples.md)  
-**Last Updated**: 2025-11-12  
+**Last Updated**: 2025-11-18  
 **Status**: Production Ready (Enterprise v4.0.0)

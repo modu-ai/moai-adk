@@ -1,6 +1,7 @@
 ---
 name: "moai-lang-python"
 version: "4.0.0"
+updated: 2025-11-18
 description: Enterprise-grade Python expertise with production patterns for Python 3.13.9, FastAPI 0.115.x, Django 5.2 LTS, Pydantic v2, SQLAlchemy 2.0; activates for API development, ORM usage, async patterns, testing frameworks, and production deployment strategies.
 allowed-tools:
   - Read

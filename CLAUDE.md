@@ -2,7 +2,7 @@
 
 **SPEC-First TDD Development with Alfred SuperAgent v0.26.0 - Claude Code Integration**
 
-> **Document Language**: Korean > **Project Owner**: GoosLab > **Config**: `.moai/config/config.json` > **Version**: 0.25.11 (from .moai/config.json)
+> **Document Language**: Korean > **Project Owner**: GoosLab > **Config**: `.moai/config/config.json` > **Version**: 0.26.0 (from .moai/config.json)
 > **Current Conversation Language**: Korean (conversation_language: "ko")
 > **Claude Code Compatibility**: Latest v4.0+ Features Integrated
 
@@ -10,27 +10,28 @@
 
 ---
 
-## 📖 Table of Contents
+## 📖 목차
 
-- [SPEC-First Philosophy](#spec-first-philosophy)
-- [TRUST 5 Quality Principles](#trust-5-quality-principles)
-- [Quick Start (5분)](#quick-start-your-first-feature-5-minutes)
-- **[🆕 Alfred 자동 SPEC 판단](#alfred-auto-spec-decision)** - SPEC 필요성 자동 판단 및 워크플로우
-- **[🆕 세션 초기화 & 토큰 효율성](#session-clear-token-efficiency)** - `/clear` 패턴 및 컨텍스트 관리
-- [Alfred SuperAgent](#alfred-superagent---claude-code-v40-integration)
-- [Alfred Workflow Protocol](#alfred-workflow-protocol---5-phases)
-- [Alfred's Intelligence](#alfred's-intelligence)
-- [Alfred Persona System](#alfred-persona-system)
-- [Language Architecture](#language-architecture--claude-code-integration)
-- [Claude Code v4.0 Architecture](#claude-code-v40-architecture-integration)
-- [Agent & Skill Orchestration (개요)](#agent--skill-orchestration) → [상세: @.moai/memory/agent-delegation.md](#)
-- [Token Efficiency (개요)](#token-efficiency-with-agent-delegation) → [상세: @.moai/memory/token-efficiency.md](#)
-- [MCP Integration](#mcp-integration--external-services)
-- [Git Workflow (간략)](#selection-based-github-flow-v0260) → [상세: @.moai/memory/git-workflow-detailed.md](#)
-- [Performance Monitoring](#performance-monitoring--optimization)
-- [Security & Best Practices](#security--best-practices)
-- [Troubleshooting](#enhanced-troubleshooting) → [확장: @.moai/memory/troubleshooting-extended.md](#)
-- [Future-Ready Architecture](#future-ready-architecture)
+- [SPEC-First 철학](#spec-first-철학)
+- [TRUST 5 품질 원칙](#trust-5-품질-원칙)
+- [빠른 시작 (5분)](#빠른-시작-첫-기능-5분)
+- **[🆕 Alfred 자동 SPEC 판단](#alfred-자동-spec-판단)** - SPEC 필요성 자동 판단 및 워크플로우
+- **[🆕 세션 초기화 & 토큰 효율성](#세션-초기화--토큰-효율성)** - `/clear` 패턴 및 컨텍스트 관리
+- [Alfred 슈퍼에이전트](#alfred-슈퍼에이전트---claude-code-v40-통합)
+- [Alfred 워크플로우 프로토콜](#alfred-워크플로우-프로토콜---5-단계)
+- [Alfred의 지능](#alfred의-지능)
+- [Alfred 페르소나 시스템](#alfred-페르소나-시스템)
+- [언어 아키텍처](#언어-아키텍처--claude-code-통합)
+- [Claude Code v4.0 아키텍처](#claude-code-v40-아키텍처-통합)
+- [에이전트 & Skill 오케스트레이션 (개요)](#에이전트--skill-오케스트레이션) → [상세: @.moai/memory/agent-delegation.md](#)
+- [토큰 효율성 (개요)](#토큰-효율성과-에이전트-위임) → [상세: @.moai/memory/token-efficiency.md](#)
+- [MCP 통합](#mcp-통합--외부-서비스)
+- [Git 워크플로우 (간략)](#선택-기반-github-flow-v0260) → [상세: @.moai/memory/git-workflow-detailed.md](#)
+- [성능 모니터링](#성능-모니터링--최적화)
+- **[🆕 커맨드 준수 가이드라인](#커맨드-준수-가이드라인-command-compliance-guidelines)** - Zero Direct Tool Usage 원칙
+- [보안 및 모범 사례](#보안-및-모범-사례)
+- [문제 해결](#확장-문제-해결) → [확장: @.moai/memory/troubleshooting-extended.md](#)
+- [미래 대비 아키텍처](#미래-대비-아키텍처)
 
 ---
 
@@ -436,23 +437,30 @@ Alfred analyzes problems using **deep contextual reasoning**:
 
 ---
 
-## 🌐 Enhanced Language Architecture & Claude Code Integration
+## 🌐 언어 아키텍처 & Claude Code 통합
 
-### Multi-Language Support with Claude Code
+### 다중 언어 지원 (Claude Code)
 
-**Layer 1: User-Facing Content (Korean)**
-- All conversations, responses, and interactions
-- Generated documents and SPEC content
-- Code comments and commit messages (project-specific)
-- Interactive Questions and user prompts
+**레이어 1: 사용자 대면 콘텐츠 (한글)**
+- 모든 대화, 응답 및 상호작용
+- 생성된 SPEC 및 문서
+- 코드 주석 및 커밋 메시지 (로컬 프로젝트)
+- 대화형 질문 및 사용자 프롬프트
 
-**Layer 2: Claude Code Infrastructure (English)**
-- Skill invocations: `Skill("skill-name")`
-- MCP server configurations
-- Plugin manifest files
-- Claude Code settings and hooks
+**레이어 2: Claude Code 인프라 (영문)**
+- Skill 호출: `Skill("skill-name")`
+- MCP 서버 구성
+- Plugin 매니페스트 파일
+- Claude Code 설정 및 훅
+- 패키지 템플릿 및 내부 문서
 
-### Claude Code Language Configuration
+**레이어 3: 로컬 프로젝트 규칙 (한글)**
+- `.claude/` 설정 파일 (로컬 사용)
+- 프로젝트별 커밋 메시지
+- GitHub 릴리스 노트
+- 보안 및 배포 규칙
+
+### Claude Code 언어 설정
 
 ```json
 {
@@ -465,24 +473,41 @@ Alfred analyzes problems using **deep contextual reasoning**:
 }
 ```
 
-### AskUserQuestion Integration (Enhanced)
+### 로컬 언어 규칙 (MoAI-ADK)
 
-**Critical Rule**: Use AskUserQuestion for ALL user interactions, following Claude Code v4.0 patterns:
+| 카테고리 | 언어 | 예시 |
+|---------|------|------|
+| **사용자 대면** | 한글 | 대화, SPEC, 리포트, 코드 주석, 커밋 |
+| **시스템 인프라** | 영문 | `Skill()` 호출, `.claude/` 파일, 패키지 템플릿 |
+| **패키지 파일** | 영문 | 템플릿 파일, 배포 스크립트 |
+
+### 의사결정 트리
+
+```
+사용자/개발자가 읽는가?
+  → YES: 한글 (conversation_language)
+  → NO (시스템): 영문
+  → 불명확: 한글 (사용자 우선)
+```
+
+### 대화형 질문 통합 (고급)
+
+**필수 규칙**: Claude Code v4.0 패턴에 따라 모든 사용자 상호작용에 AskUserQuestion 사용:
 
 ```json
 {
   "questions": [{
-    "question": "Implementation approach preference?",
-    "header": "Architecture Decision",
+    "question": "구현 방식 선호도는?",
+    "header": "아키텍처 결정",
     "multiSelect": false,
     "options": [
       {
-        "label": "Standard Approach",
-        "description": "Proven pattern with Claude Code best practices"
+        "label": "표준 방식",
+        "description": "Claude Code 검증된 패턴"
       },
       {
-        "label": "Optimized Approach",
-        "description": "Performance-focused with MCP integration"
+        "label": "최적화 방식",
+        "description": "성능 중심의 MCP 통합"
       }
     ]
   }]
@@ -896,22 +921,181 @@ EOF
 
 ---
 
-## 🔒 Enhanced Security & Best Practices
+## 🎯 커맨드 준수 가이드라인 (Command Compliance Guidelines)
 
-### Claude Code v4.0 Security Features
+### Zero Direct Tool Usage 원칙
 
-**Sandbox Mode**:
+MoAI-ADK의 모든 **프로덕션 커맨드**는 다음 원칙을 엄격하게 준수합니다:
+
+**✅ 허용**:
+- `Task()` - 에이전트 위임
+- `AskUserQuestion()` - 사용자 상호작용
+- `Skill()` - 특정 스킬 호출
+
+**❌ 금지**:
+- `Read()`, `Write()`, `Edit()` - 직접 파일 작업
+- `Bash()` - 직접 시스템 명령
+- `Grep()`, `Glob()` - 직접 파일 탐색
+- `TodoWrite()` - 직접 작업 추적
+
+### 이유
+
+| 측면 | 직접 도구 사용 | 에이전트 위임 |
+|------|-----------|-----------|
+| **아키텍처** | 산재된 책임 | 명확한 역할 분리 |
+| **토큰 효율** | 낭비 | 80-85% 절약 |
+| **유지보수** | 어려움 | 일관된 패턴 |
+| **테스트** | 복잡함 | 재사용 가능한 에이전트 |
+| **확장성** | 제한적 | 높음 |
+
+### 커맨드 분류
+
+| 커맨드 | 배포 | 준수 상태 | 조치 |
+|--------|------|----------|------|
+| `/moai:0-project` | ✅ 패키지 | ✅ 준수 | 유지 |
+| `/moai:1-plan` | ✅ 패키지 | ✅ 준수 | v0.26.0+ 준수 |
+| `/moai:2-run` | ✅ 패키지 | ✅ 준수 | 유지 |
+| `/moai:3-sync` | ✅ 패키지 | ✅ 준수 | v0.26.0+ 준수 |
+| `/moai:9-feedback` | ✅ 패키지 | ⚠️ 예외 | 도구 특화 (허용) |
+| `/moai:99-release` | ❌ 로컬 | ⚠️ 예외 | 예외 문서화 |
+
+### 예외 패턴
+
+**로컬 전용 도구**는 "Zero Direct Tool Usage" 원칙의 예외를 받을 수 있습니다:
+
+```markdown
+---
+⚠️ **EXCEPTION: Local-Only Development Tool**
+
+이 커맨드는 "Zero Direct Tool Usage" 원칙의 예외입니다:
+
+**예외 사유**:
+1. 로컬 개발 전용 (패키지 배포 안됨)
+2. 메인테이너 또는 특정 역할 전용
+3. 직접 시스템 접근이 필수
+4. 일반 사용자에게 영향 없음
+
+**프로덕션 커맨드**: 패키지와 함께 배포되는 커맨드는
+엄격한 에이전트 위임 원칙 준수 필수
+---
+```
+
+**예외 기준**:
+- ✅ 패키지 배포 안됨 (로컬 전용)
+- ✅ 메인테이너 또는 특정 역할만 사용
+- ✅ 직접 시스템 접근이 필수
+- ✅ 일반 사용자 영향 없음
+
+### 에이전트 위임 패턴
+
+#### Before (직접 도구 사용)
+
+```markdown
+allowed-tools:
+  - Read
+  - Grep
+  - Write
+  - Bash(git:*)
+
+## SPEC 생성
+
+Execute: grep -r "SPEC-" .moai/specs/
+Read: .moai/specs/*/spec.md
+```
+
+#### After (에이전트 위임)
+
+```markdown
+allowed-tools:
+  - Task
+  - AskUserQuestion
+  - Skill
+
+## SPEC 생성
+
+Use Task tool:
+- subagent_type: "Explore"
+- prompt: "Find existing SPEC documents"
+
+Use Task tool:
+- subagent_type: "spec-builder"
+- prompt: "Create comprehensive SPEC document"
+```
+
+### 새 커맨드 개발 체크리스트
+
+새로운 커맨드를 개발할 때 다음 체크리스트를 사용하세요:
+
+```markdown
+## 새 커맨드 개발 체크리스트
+
+### allowed-tools 준수
+- [ ] ONLY 다음 포함:
+  - [ ] `Task` (필수)
+  - [ ] `AskUserQuestion` (필요 시)
+  - [ ] `Skill` (필요 시)
+
+- [ ] NEVER 다음 포함:
+  - [ ] `Read()`, `Write()`, `Edit()`
+  - [ ] `Bash()` (예외 문서화된 경우만)
+  - [ ] `TodoWrite()`, `Grep()`, `Glob()`
+
+### 에이전트 위임 패턴
+- [ ] 파일 작업 → `Task()` 위임
+- [ ] Git 작업 → `Task()` 위임
+- [ ] 코드 탐색 → `Task()` 위임
+- [ ] 사용자 상호작용 → `AskUserQuestion()` 위임
+
+### 문서화
+- [ ] `allowed-tools` 명확히 명시
+- [ ] 각 단계의 에이전트 위임 설명
+- [ ] 예외가 있으면 명시적으로 문서화
+
+### 패키지 템플릿 동기화
+- [ ] 로컬 파일: `.claude/commands/moai/`
+- [ ] 패키지 템플릿: `src/moai_adk/templates/.claude/commands/moai/`
+- [ ] 두 파일 SSOT 유지 (동일 내용)
+
+### 검증
+- [ ] `grep` 명령으로 금지된 도구 없음 확인
+- [ ] 테스트 시나리오 작성 및 통과 확인
+- [ ] 로컬 및 패키지 파일 `diff` 동일성 확인
+```
+
+### 커맨드 검증 명령어
+
+```bash
+# 1. allowed-tools 검증
+grep -A 10 "^allowed-tools:" .claude/commands/moai/your-command.md
+
+# 2. 금지된 도구 탐지
+grep -E "^\s*(Read|Write|Edit|Bash|Grep|Glob|TodoWrite)" .claude/commands/moai/your-command.md
+# 결과: 매치 없음 (empty)
+
+# 3. 패키지 템플릿 동기화 검증
+diff .claude/commands/moai/your-command.md \
+     src/moai_adk/templates/.claude/commands/moai/your-command.md
+# 결과: (no differences)
+```
+
+---
+
+## 🔒 보안 및 모범 사례
+
+### Claude Code v4.0 보안 기능
+
+**샌드박스 모드**:
 
 ```json
 {
   "sandbox": {
     "allowUnsandboxedCommands": false,
-    "validatedCommands": ["git:*", "npm:*", "node:*"]
+    "validatedCommands": ["git:*", "npm:*", "node:*", "uv:*"]
   }
 }
 ```
 
-**Security Hooks**:
+**보안 훅**:
 
 ```python
 #!/usr/bin/env python3
@@ -932,8 +1116,8 @@ DANGEROUS_PATTERNS = [
 def validate_command(command):
     for pattern in DANGEROUS_PATTERNS:
         if re.search(pattern, command):
-            return False, f"Dangerous pattern detected: {pattern}"
-    return True, "Command safe"
+            return False, f"위험한 패턴 감지: {pattern}"
+    return True, "안전함"
 
 if __name__ == "__main__":
     input_data = json.load(sys.stdin)
@@ -941,10 +1125,46 @@ if __name__ == "__main__":
     is_safe, message = validate_command(command)
 
     if not is_safe:
-        print(f"SECURITY BLOCK: {message}", file=sys.stderr)
+        print(f"보안 차단: {message}", file=sys.stderr)
         sys.exit(2)
     sys.exit(0)
 ```
+
+### 배포 시크릿 보호
+
+**필수 .gitignore 패턴**:
+
+```gitignore
+# 플랫폼 시크릿
+.vercel/
+.netlify/
+.firebase/
+.aws/credentials
+
+# 환경 파일 (모든 변형)
+.env*
+.env.local
+.env.local.db
+```
+
+**규칙**: `.vercel/`, `.env`, `.aws/credentials`, 또는 플랫폼 설정 파일을 git에 커밋하지 않습니다.
+
+**왜 중요한가?**
+- 노출된 `.vercel/project.json` → 공격자가 projectId/orgId 획득 → 전체 API 액세스 가능
+- `.env` 파일 → 데이터베이스 인증 정보, API 키 노출
+
+**실수로 커밋한 경우**:
+```bash
+# 1. 즉시 자격증명 재생성 (Vercel/AWS/GitHub 대시보드)
+# 2. 히스토리에서 제거
+git filter-branch --tree-filter 'rm -f .vercel/project.json' HEAD && git push --force
+# 3. 접근 로그 감사
+```
+
+**Alfred의 정책**:
+- ❌ `.vercel/`, `.env`, 자격증명 디렉토리에 쓰기 차단
+- 🚨 커밋 전 시크릿 감지 시 경고
+- ✅ 프로젝트 초기화 시 `.gitignore` 패턴 자동 추가
 
 ---
 
@@ -1012,6 +1232,39 @@ ls -la .claude/agents/moai/
 
 ---
 
+## 📚 Extended Resources (메모리 파일)
+
+CLAUDE.md의 주요 내용은 이 문서에서 설명하며, 심화된 주제는 다음 메모리 파일에서 찾을 수 있습니다:
+
+| 파일 | 목적 | 크기 | 업데이트 |
+|------|------|------|----------|
+| **agent-delegation.md** | Advanced Task() delegation patterns, sequential/parallel execution, context passing, session management | 286줄 | 2025-11-18 |
+| **alfred-personas.md** | Alfred 페르소나 시스템, 역할 기반 커뮤니케이션, 적응형 행동 | 482줄 | 2025-11-18 |
+| **claude-code-features.md** | Claude Code v4.0 기능, Plan Mode, Explore subagent, MCP integration, context management | 334줄 | 2025-11-18 |
+| **git-workflow-detailed.md** | Selection-Based GitHub Flow, Personal/Team 모드, 워크플로우 비교, Alfred 통합 | 201줄 | 2025-11-18 |
+| **mcp-integration.md** | Model Context Protocol 가이드, 서버 설정, 사용 패턴, Context7 통합 | 456줄 | 2025-11-18 |
+| **mcp-setup-guide.md** | MCP 초기화, 서버 연결, 설정, 문제 해결 | 140줄 | 2025-11-18 |
+| **settings-config.md** | Claude Code 설정, 권한, 보안, 훅, MCP 서버 구성 | 385줄 | 2025-11-18 |
+| **token-efficiency.md** | 토큰 예산 관리, 세션 초기화, 에이전트 위임, 컨텍스트 최적화, Phase 계획 | 226줄 | 2025-11-18 |
+| **troubleshooting-extended.md** | 에러 분석, MCP 문제, 성능 이슈, 로그 접근, Debug 모드, 지원 리소스 | 369줄 | 2025-11-18 |
+
+**총 메모리 파일**: 9개 | **총 줄 수**: 2,879줄 | **언어**: 100% English
+
+### 메모리 파일 사용법
+
+```bash
+# 메모리 파일 직접 읽기
+cat .moai/memory/agent-delegation.md
+
+# 특정 주제로 검색
+grep -n "Sequential Workflow" .moai/memory/agent-delegation.md
+
+# CLAUDE.md 참조 확인
+grep "@.moai/memory" CLAUDE.md
+```
+
+---
+
 ## 🔮 Future-Ready Architecture
 
 ### Claude Code Evolution Compatibility
@@ -1046,7 +1299,7 @@ This CLAUDE.md template is designed for:
 
 ---
 
-**Last Updated**: 2025-11-13
+**Last Updated**: 2025-11-18
 **Claude Code Compatibility**: v4.0+
 **Alfred Integration**: Enhanced with Plan Mode, MCP, and Modern Architecture
 **Optimized**: Performance, Security, and Developer Experience

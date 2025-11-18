@@ -2,7 +2,7 @@
 name: "moai-core-dev-guide"
 version: "4.0.0"
 created: 2025-11-02
-updated: 2025-11-12
+updated: 2025-11-18
 tier: Alfred
 allowed-tools: "Read, Bash(rg:*), Bash(grep:*)"
 primary-agent: "alfred"
@@ -53,7 +53,7 @@ Alfred's SPEC-First TDD workflow orchestrates the complete development lifecycle
 ---
 id: SPEC-001
 title: User Authentication System
-status: approved
+status: stable
 ---
 
 ## Requirements
@@ -428,7 +428,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: "4.0.0"
       
       - name: Install dependencies
         run: |
@@ -599,5 +599,5 @@ Research date: 2025-11-12
 ---
 
 **Version**: 4.0.0  
-**Last Updated**: 2025-11-12  
+**Last Updated**: 2025-11-18  
 **Maintained By**: Alfred SuperAgent (MoAI-ADK)

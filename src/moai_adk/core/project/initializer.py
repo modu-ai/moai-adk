@@ -141,6 +141,26 @@ class ProjectInitializer:
             },
         }
 
+        # Add companyAnnouncements in user's selected language
+        try:
+            import sys
+            utils_dir = Path(__file__).parent.parent.parent / "templates" / ".claude" / "hooks" / "moai" / "shared" / "utils"
+
+            if utils_dir.exists():
+                sys.path.insert(0, str(utils_dir))
+                try:
+                    from announcement_translator import translate_announcements, get_language_from_config
+                    language = get_language_from_config(self.path)
+                    announcements = translate_announcements(language, self.path)
+                    settings_local["companyAnnouncements"] = announcements
+                except Exception as e:
+                    print(f"[ProjectInitializer] Warning: Failed to add announcements: {e}")
+                finally:
+                    sys.path.remove(str(utils_dir))
+
+        except Exception as e:
+            print(f"[ProjectInitializer] Warning: Announcement module not available: {e}")
+
         settings_local_file = claude_dir / "settings.local.json"
         settings_local_file.write_text(json.dumps(settings_local, indent=2, ensure_ascii=False))
         created_files.append(str(settings_local_file))

@@ -1,6 +1,7 @@
 ---
 name: "moai-lang-javascript"
 version: "4.0.0"
+updated: 2025-11-18
 status: stable
 description: "Enterprise JavaScript for Node.js and browser: Node.js 22.11.0 LTS (Jod), npm 11.x, ES2025 features, async operations, module systems, package management; activates for server-side development, scripting, tooling, package management, and runtime optimization."
 allowed-tools: 

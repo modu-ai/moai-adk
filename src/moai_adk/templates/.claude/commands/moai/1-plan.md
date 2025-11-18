@@ -3,17 +3,7 @@ name: moai:1-plan
 description: "Define specifications and create development branch"
 argument-hint: Title 1 Title 2 ... | SPEC-ID modifications
 allowed-tools:
-- Read
-- Write
-- Edit
-- MultiEdit
-- Grep
-- Glob
-- TodoWrite
-- Bash(git:*)
-- Bash(gh:*)
-- Bash(rg:*)
-- Bash(mkdir:*)
+- Task
 - AskUserQuestion
 - Skill
 skills:

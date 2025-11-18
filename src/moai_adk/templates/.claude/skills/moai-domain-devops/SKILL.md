@@ -86,7 +86,7 @@ spec:
         runAsUser: 1001
       containers:
       - name: web-app
-        image: myapp:v1.0.0@sha256:abc123...
+        image: myapp:v4.0.0@sha256:abc123...
         ports:
         - containerPort: 8080
         resources:
@@ -332,17 +332,17 @@ spec:
 apiVersion: v2
 name: web-app
 description: Production-grade web application
-version: 1.0.0
+version: "4.0.0"
 dependencies:
   - name: postgresql
-    version: 12.x.x
+    version: "4.0.0"x.x
     repository: https://charts.bitnami.com/bitnami
 
 # values.yaml
 replicaCount: 3
 image:
   repository: myapp
-  tag: "v1.0.0"
+  tag: "v4.0.0"
 service:
   type: ClusterIP
   port: 80
@@ -441,6 +441,6 @@ kubectl scale deployment/web-app-$([ "$NEW_VERSION" = "blue" ] && echo "green" |
 ---
 
 **Version**: 4.0.0 Enterprise  
-**Last Updated**: 2025-11-13  
+**Last Updated**: 2025-11-18  
 **Status**: Production Ready  
 **Tech Stack**: Kubernetes 1.31, Docker 27.x, Terraform 1.9, Prometheus 2.55, Grafana 11.x

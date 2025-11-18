@@ -710,6 +710,26 @@ def _sync_templates(project_path: Path, force: bool = False) -> bool:
         # Set optimized=false
         set_optimized_false(project_path)
 
+        # Update companyAnnouncements in settings.local.json
+        try:
+            import sys
+            utils_dir = Path(__file__).parent.parent.parent / "templates" / ".claude" / "hooks" / "moai" / "shared" / "utils"
+
+            if utils_dir.exists():
+                sys.path.insert(0, str(utils_dir))
+                try:
+                    from announcement_translator import auto_translate_and_update
+                    console.print("[cyan]Updating announcements...[/cyan]")
+                    auto_translate_and_update(project_path)
+                    console.print("[green]✓ Announcements updated[/green]")
+                except Exception as e:
+                    console.print(f"[yellow]⚠️  Announcement update failed: {e}[/yellow]")
+                finally:
+                    sys.path.remove(str(utils_dir))
+
+        except Exception as e:
+            console.print(f"[yellow]⚠️  Announcement module not available: {e}[/yellow]")
+
         return True
     except Exception as e:
         console.print(f"[red]✗ Template sync failed: {e}[/red]")

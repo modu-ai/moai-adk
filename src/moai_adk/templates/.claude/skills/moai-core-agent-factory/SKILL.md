@@ -1,7 +1,7 @@
 ---
 name: moai-core-agent-factory
-version: 1.0.0
-status: production
+version: "4.0.0"
+status: stable
 description: |
   Agent Factory master skill for intelligent Claude Code agent generation.
   Includes requirement analysis, domain detection, model selection, template system,

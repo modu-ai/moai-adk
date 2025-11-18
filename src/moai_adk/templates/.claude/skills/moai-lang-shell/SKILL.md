@@ -1,6 +1,7 @@
 ---
 name: "moai-lang-shell"
 version: "4.0.0"
+updated: 2025-11-18
 tier: Language
 description: Enterprise Shell scripting with Bash 5.2, ShellCheck, bats-core testing, POSIX compliance, and Context7 MCP integration for defensive scripting patterns.
 primary-agent: "alfred"
@@ -457,4 +458,4 @@ This skill integrates with Context7 for real-time documentation access:
 
 ---
 
-_Last updated: 2025-11-13_
+_Last updated: 2025-11-18_

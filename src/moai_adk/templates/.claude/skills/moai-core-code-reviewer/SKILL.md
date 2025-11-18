@@ -2,7 +2,7 @@
 name: "moai-core-code-reviewer"
 version: "4.0.0"
 created: 2025-11-11
-updated: 2025-11-12
+updated: 2025-11-18
 status: stable
 description: Enterprise systematic code review orchestrator with TRUST 5 principles, multi-language support, Context7 integration, AI-powered quality checks, SOLID principle validation, security vulnerability detection, and maintainability analysis across 25+ programming languages; activates for code reviews, quality standard validation, TRUST 5 enforcement, architectural audits, and automated review automation
 keywords: ['code-review', 'TRUST-5', 'quality-assurance', 'SOLID-principles', 'security-scanning', 'maintainability-analysis', 'ai-code-review', 'context7-integration', 'automated-review', 'enterprise-quality']
@@ -25,7 +25,7 @@ allowed-tools:
 | Field | Value |
 | ----- | ----- |
 | **Skill Name** | moai-core-code-reviewer |
-| **Version** | 4.0.0 Enterprise (2025-11-12) |
+| **Version** | 4.0.0 Enterprise (2025-11-18) |
 | **Core Framework** | TRUST 5 principles, Context7 integration |
 | **AI Integration** | ✅ Context7 MCP, AI quality checks, pattern matching |
 | **Auto-load** | When conducting code reviews or quality checks |
@@ -318,5 +318,5 @@ def calculate_discount(price: float, customer_type: str) -> float:
 
 **For detailed review checklists**: [reference.md](reference.md)  
 **For real-world examples**: [examples.md](examples.md)  
-**Last Updated**: 2025-11-12  
+**Last Updated**: 2025-11-18  
 **Status**: Production Ready (Enterprise v4.0.0)

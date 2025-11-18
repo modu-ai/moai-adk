@@ -2,7 +2,7 @@
 name: "moai-core-language-detection"
 version: "4.0.0"
 created: "2025-10-22"
-updated: "2025-11-12"
+updated: 2025-11-18
 tier: Alfred
 description: "Auto-detects project language and framework from package.json, pyproject.toml, Cargo.toml, go.mod, and other configuration files with comprehensive pattern matching based on 17,253+ production code examples."
 allowed-tools: "Read, Bash(rg:*), Bash(grep:*)"
@@ -449,17 +449,17 @@ module github.com/username/my-go-app
 go 1.21
 
 require (
-    github.com/gin-gonic/gin v1.9.1
-    github.com/golang-migrate/migrate/v4 v4.16.2
-    github.com/lib/pq v1.10.9
-    github.com/spf13/viper v1.17.0
-    github.com/stretchr/testify v1.8.4
+    github.com/gin-gonic/gin v4.0.0
+    github.com/golang-migrate/migrate/v4 v4.0.0
+    github.com/lib/pq v4.0.0
+    github.com/spf13/viper v4.0.0
+    github.com/stretchr/testify v4.0.0
 )
 
 require (
-    github.com/bytedance/sonic v1.9.1 // indirect
-    github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
-    github.com/gabriel-vasile/mimetype v1.4.2 // indirect
+    github.com/bytedance/sonic v4.0.0 // indirect
+    github.com/chenzhuoyu/base64x v4.0.0-20221115062448-fe3a3abad311 // indirect
+    github.com/gabriel-vasile/mimetype v4.0.0 // indirect
 )
 ```
 

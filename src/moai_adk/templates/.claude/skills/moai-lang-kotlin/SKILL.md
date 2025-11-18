@@ -2,7 +2,7 @@
 name: "moai-lang-kotlin"
 version: "4.0.0"
 created: 2025-10-22
-updated: 2025-11-13
+updated: 2025-11-18
 status: stable
 description: Kotlin 2.0 Multiplatform Enterprise Development with KMP, Coroutines, Compose Multiplatform, and Context7 MCP integration. Advanced patterns for mobile, backend, and cross-platform development.
 keywords: ['kotlin', 'kmp', 'coroutines', 'compose', 'android', 'multiplatform', 'enterprise', 'context7']
@@ -505,4 +505,4 @@ val client = HttpClient {
 
 ---
 
-_Last updated: 2025-11-13_
+_Last updated: 2025-11-18_

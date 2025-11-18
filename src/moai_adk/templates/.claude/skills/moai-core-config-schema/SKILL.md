@@ -2,7 +2,7 @@
 name: "moai-core-config-schema"
 version: "4.0.0"
 created: 2025-11-11
-updated: 2025-11-12
+updated: 2025-11-18
 status: stable
 description: Enterprise configuration schema validation and management orchestrator with JSON Schema v2024-12, Context7 integration, semantic versioning compliance, environment variable management, secrets handling, multi-environment support, and configuration-as-code best practices; activates for config validation, schema enforcement, environment setup, secrets management, and configuration audits
 keywords: ['configuration-schema', 'json-schema', 'config-management', 'environment-management', 'secrets-handling', 'semantic-versioning', 'configuration-as-code', 'schema-validation', 'multi-environment', 'enterprise-config']
@@ -24,7 +24,7 @@ allowed-tools:
 | Field | Value |
 | ----- | ----- |
 | **Skill Name** | moai-core-config-schema |
-| **Version** | 4.0.0 Enterprise (2025-11-12) |
+| **Version** | 4.0.0 Enterprise (2025-11-18) |
 | **Standards** | JSON Schema v2024-12, RFC 8174 keywords, TOML/YAML best practices |
 | **AI Integration** | ✅ Context7 MCP for official docs |
 | **Auto-load** | When config validation or management needed |
@@ -431,5 +431,5 @@ function validateSecrets(config: AppConfig): void {
 
 **For detailed schema reference**: [reference.md](reference.md)  
 **For real-world examples**: [examples.md](examples.md)  
-**Last Updated**: 2025-11-12  
+**Last Updated**: 2025-11-18  
 **Status**: Production Ready (Enterprise v4.0.0)

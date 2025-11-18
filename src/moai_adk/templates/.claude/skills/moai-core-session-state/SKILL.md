@@ -3,7 +3,7 @@ name: "moai-core-session-state"
 version: "4.0.0"
 tier: Alfred
 created: 2025-11-05
-updated: 2025-11-12
+updated: 2025-11-18
 status: stable
 description: Enterprise session state management, token budget optimization, runtime tracking, session handoff protocols, context continuity for Claude Sonnet 4.5 and Haiku 4.5 with context awareness features
 keywords: ['session', 'state', 'context-window', 'token-budget', 'handoff', 'continuity', 'context-awareness']
@@ -569,4 +569,4 @@ def sync_memory_files(session_state):
 
 Learn more in `reference.md` for detailed implementation guides, recovery procedures, advanced coordination patterns, and November 2025 API examples.
 
-**Skill Status**: Production Ready | Last Updated: 2025-11-12 | Model Support: Sonnet 4.5, Haiku 4.5 | Enterprise v4.0.0
+**Skill Status**: Production Ready | Last Updated**: 2025-11-18 | Model Support: Sonnet 4.5, Haiku 4.5 | Enterprise v4.0.0

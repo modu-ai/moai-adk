@@ -1,7 +1,7 @@
 {
   "branch": "release/0.26.0",
-  "last_commit": "33ab96ea fix: Restore GLM and MCP architecture consistency",
-  "commit_time": "6 minutes ago",
-  "changes": 50,
-  "last_check": "2025-11-18T21:58:48.769970"
+  "last_commit": "fe238ef8 feat(SPEC-UPDATE-PKG-001): Phase 1 - Memory Files metadata and CLAUDE.md index",
+  "commit_time": "63 minutes ago",
+  "changes": 89,
+  "last_check": "2025-11-19T00:36:32.920612"
 }

@@ -1,8 +1,8 @@
 ---
 name: moai-core-feedback-templates
-version: 1.0.0
+version: "4.0.0"
 created: 2025-11-12
-updated: 2025-11-12
+updated: 2025-11-18
 status: stable
 language: ko
 description: |
@@ -13,7 +13,7 @@ allowed-tools:
   - Read
 ---
 
-# GitHub 이슈 작성 템플릿 모음 v1.0.0
+# GitHub 이슈 작성 템플릿 모음 v4.0.0
 
 ## 개요
 
@@ -460,10 +460,10 @@ MoAI-ADK 개발자, 버그/기능 리포팅이 처음인 팀원
 
 - **명령어**: `/alfred:9-feedback`
 - **라벨 분류법**: `Skill("moai-core-issue-labels")`
-- **이전 버전**: v0.22.5+부터 지원
+- **이전 버전**: v4.0.0+부터 지원
 
 ---
 
-**Last Updated**: 2025-11-12
-**Status**: Production Ready (v1.0.0)
+**Last Updated**: 2025-11-18
+**Status**: Production Ready (v4.0.0)
 **Language**: Korean (한국어)

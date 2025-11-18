@@ -11,6 +11,22 @@ allowed-tools:
 
 # 🚀 MoAI-ADK Release Automation
 
+## EXCEPTION: Local-Only Development Tool
+
+This command is exempt from "Zero Direct Tool Usage" principle because:
+
+1. **Local development only** - Not distributed with package distributions
+2. **Maintainer-only usage** - GoosLab (project owner) exclusive access
+3. **Direct system access required** - PyPI release automation requires direct shell commands for:
+   - Version bumping in multiple files
+   - Package building and publishing
+   - GitHub release tag management
+4. **Local-only tool exception pattern** - Similar to `/moai:9-feedback` command
+
+**Production commands** (`/moai:0-project`, `/moai:1-plan`, `/moai:2-run`, `/moai:3-sync`) must strictly adhere to agent delegation principle.
+
+---
+
 > **Local-Only Tool**: This command is for local development only, similar to the Yoda system.
 > Never deployed with package distributions.
 > Use for PyPI releases, version bumping, changelog generation, and emergency rollbacks.

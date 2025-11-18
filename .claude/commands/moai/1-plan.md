@@ -3,21 +3,11 @@ name: moai:1-plan
 description: "Define specifications and create development branch"
 argument-hint: Title 1 Title 2 ... | SPEC-ID modifications
 allowed-tools:
-- Read
-- Write
-- Edit
-- MultiEdit
-- Grep
-- Glob
-- TodoWrite
-- Bash(git:*)
-- Bash(gh:*)
-- Bash(rg:*)
-- Bash(mkdir:*)
+- Task
 - AskUserQuestion
 - Skill
 skills:
-- moai-alfred-issue-labels
+- moai-core-issue-labels
 ---
 
 # 🏗️ MoAI-ADK Step 1: Establish a plan (Plan) - Always make a plan first and then proceed.
@@ -213,7 +203,7 @@ Analyze the project based on user request: "{{USER_REQUEST}}"
 
 2. **SPEC Candidate Generation**: Create 1-3 SPEC candidates
    - Analyze existing SPECs in `.moai/specs/` for duplicates
-   - Check related GitHub issues via `Skill("moai-alfred-issue-labels")`
+   - Check related GitHub issues via `Skill("moai-core-issue-labels")`
    - Generate unique SPEC candidates with proper naming
 
 3. **EARS Structure Design**: For each SPEC candidate:

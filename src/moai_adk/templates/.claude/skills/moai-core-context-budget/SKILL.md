@@ -282,7 +282,7 @@ Total Memory Budget: < 1,250 lines (~25K tokens)
 <!-- .moai/memory/session-summary.md -->
 # Session Summary
 
-**Last Updated**: 2025-01-12 14:30
+**Last Updated**: 2025-11-18 14:30
 **Current Sprint**: Feature/Auth-Refactor
 **Active Tasks**: 2 in progress, 3 pending
 
@@ -338,7 +338,7 @@ None currently.
 <!-- ✅ GOOD: Lean Memory File (180 lines) -->
 # Session Summary
 
-**Last Updated**: 2025-01-12 14:30
+**Last Updated**: 2025-11-18 14:30
 
 ## Active Work (This Session)
 - OAuth integration: 70% (src/auth/oauth.ts)
@@ -761,8 +761,8 @@ Result: Complete, high-quality responses
 
 ## Changelog
 
-- **v4.0.0** (2025-01-12): Enterprise upgrade with 2025 best practices, aggressive clearing patterns, MCP optimization, strategic chunking
-- **v1.0.0** (2025-03-29): Initial release
+- **v4.0.0** (2025-11-18): Enterprise upgrade with 2025 best practices, aggressive clearing patterns, MCP optimization, strategic chunking
+- **v4.0.0** (2025-11-18): Initial release
 
 ---
 

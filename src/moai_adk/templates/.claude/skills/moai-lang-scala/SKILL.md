@@ -1,8 +1,8 @@
 ---
 name: "moai-lang-scala"
-version: "2.1.0"
+version: "4.0.0"
 created: 2025-10-22
-updated: 2025-11-02
+updated: 2025-11-18
 status: stable
 description: Scala 3.6+ best practices with ScalaTest 3.2, sbt 1.10, functional programming patterns, and Play Framework.
 keywords: ['scala', 'scalatest', 'sbt', 'functional', 'play-framework']
