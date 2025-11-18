@@ -950,6 +950,29 @@ if __name__ == "__main__":
 
 ## 📚 Enhanced Documentation Reference
 
+### Memory Files Index (Updated 2025-11-18)
+
+**Core Architecture (4 files)**:
+- **claude-code-features.md** - Claude Code v4.0 features, MCP integration, context management, model selection strategies
+- **agent-delegation.md** - Agent orchestration, Task() delegation patterns, session management, multi-day workflows
+- **token-efficiency.md** - Token optimization, model selection (Sonnet 4.5 vs Haiku 4.5), context budgeting, `/clear` patterns
+- **alfred-personas.md** - Alfred, Yoda, R2-D2, Keating personas, communication styles, mode switching
+
+**Integration & Configuration (3 files)**:
+- **settings-config.md** - .claude/settings.json configuration, sandbox mode, permissions, hooks, MCP server setup
+- **mcp-integration.md** - MCP servers (Context7, GitHub, Filesystem, Notion), authentication, error handling
+- **mcp-setup-guide.md** - Complete MCP setup, testing, debugging, troubleshooting guide
+
+**Workflow & Process (2 files)**:
+- **git-workflow-detailed.md** - Personal Mode (GitHub Flow), Team Mode (Git-Flow), branch strategies, CI/CD integration
+- **troubleshooting-extended.md** - Error patterns, agent issues, MCP connection problems, debugging commands
+
+**Version Information**:
+- Last Updated: 2025-11-18
+- Supported Claude Code: v4.0+
+- Supported MoAI-ADK: 0.26.0+
+- Language: English (all Memory files are English-only)
+
 ### Claude Code v4.0 Integration Map
 
 | Feature | Claude Native | Alfred Integration | Enhancement |

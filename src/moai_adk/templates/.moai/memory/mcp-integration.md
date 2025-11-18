@@ -445,4 +445,7 @@ implementation = Task(
 
 **Last Updated**: 2025-11-18
 **Version**: v0.26.0
-**Format**: Markdown | **Language**: Korean
+**Format**: Markdown | **Language**: English
+**Context7 MCP**: Latest (@upstash/context7-mcp@latest)
+**GitHub MCP**: Latest (@anthropic-ai/mcp-server-github)
+**Filesystem MCP**: Latest (@modelcontextprotocol/server-filesystem)

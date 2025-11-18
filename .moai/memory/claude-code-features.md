@@ -1,3 +1,11 @@
+---
+filename: claude-code-features.md
+version: 1.0.0
+updated_date: 2025-11-18
+language: English
+scope: Both
+---
+
 # Claude Code v4.0+ Features & Architecture
 
 **Complete guide for Claude Code v4.0 integration with MoAI-ADK.**

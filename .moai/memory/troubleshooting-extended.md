@@ -1,3 +1,11 @@
+---
+filename: troubleshooting-extended.md
+version: 1.0.0
+updated_date: 2025-11-18
+language: English
+scope: Both
+---
+
 # Extended Troubleshooting Guide
 
 **Common issues, error messages, and solutions for MoAI-ADK and Claude Code integration.**

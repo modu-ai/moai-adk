@@ -374,4 +374,5 @@ cat .claude/mcp.json | jq '.mcpServers'
 
 **Last Updated**: 2025-11-18
 **Version**: v0.26.0
-**Format**: Markdown | **Language**: Korean
+**Format**: Markdown | **Language**: English
+**MCP Servers**: Latest versions (Context7, GitHub, Filesystem)

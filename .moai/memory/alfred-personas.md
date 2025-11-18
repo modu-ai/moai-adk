@@ -1,3 +1,11 @@
+---
+filename: alfred-personas.md
+version: 1.0.0
+updated_date: 2025-11-18
+language: English
+scope: MoAI-ADK
+---
+
 # Alfred Persona System
 
 **Complete guide for understanding and switching between Alfred personas.**

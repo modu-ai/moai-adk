@@ -358,4 +358,5 @@ export LOG_LEVEL=debug
 ---
 
 **Last Updated**: 2025-11-18
-**Format**: Markdown | **Language**: Korean
+**Format**: Markdown | **Language**: English
+**Scope**: MoAI-ADK & Claude Code v4.0 Integration Troubleshooting

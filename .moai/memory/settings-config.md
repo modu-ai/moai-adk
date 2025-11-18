@@ -1,3 +1,11 @@
+---
+filename: settings-config.md
+version: 1.0.0
+updated_date: 2025-11-18
+language: English
+scope: Both
+---
+
 # Claude Code Settings Configuration
 
 **Complete guide for configuring Claude Code v4.0 settings for MoAI-ADK.**

@@ -190,4 +190,6 @@ git push origin --tags
 ---
 
 **Last Updated**: 2025-11-18
-**Format**: Markdown | **Language**: Korean
+**Format**: Markdown | **Language**: English
+**Scope**: Selection-Based GitHub Flow (Personal/Team Mode)
+**Version**: v0.26.0+ (GitHub Flow for both modes)

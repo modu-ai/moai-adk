@@ -215,4 +215,4 @@ Token Budget: 80,000
 ---
 
 **Last Updated**: 2025-11-18
-**Format**: Markdown | **Language**: Korean
+**Format**: Markdown | **Language**: English

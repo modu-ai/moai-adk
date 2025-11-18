@@ -275,4 +275,6 @@ tests = await Task(
 ---
 
 **Last Updated**: 2025-11-18
-**Format**: Markdown | **Language**: Korean
+**Format**: Markdown | **Language**: English
+**Scope**: MoAI-ADK Advanced Agent Delegation Patterns
+**MCP Integration**: Context7 session management (latest)

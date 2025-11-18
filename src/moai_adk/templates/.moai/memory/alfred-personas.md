@@ -471,4 +471,5 @@ What's your situation?
 
 **Last Updated**: 2025-11-18
 **Version**: v0.26.0
-**Format**: Markdown | **Language**: Korean
+**Format**: Markdown | **Language**: English
+**Scope**: Alfred Persona System Guide - Alfred, Yoda, R2-D2, Keating

@@ -1,3 +1,11 @@
+---
+filename: token-efficiency.md
+version: 1.0.0
+updated_date: 2025-11-18
+language: English
+scope: Both
+---
+
 # Token Efficiency & Context Management
 
 **Advanced strategies for maximizing token efficiency in Claude Code and MoAI-ADK.**

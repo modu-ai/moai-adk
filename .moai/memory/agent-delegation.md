@@ -1,8 +1,16 @@
+---
+filename: agent-delegation.md
+version: 1.0.0
+updated_date: 2025-11-18
+language: English
+scope: MoAI-ADK
+---
+
 # Advanced Agent Delegation Patterns
 
 **Advanced Task() delegation, chaining, context passing, and session management strategies for MoAI-ADK.**
 
-> **See also**: CLAUDE.md → "Agent & Skill Orchestration (개요)" for quick overview
+> **See also**: CLAUDE.md → "Agent & Skill Orchestration" for quick overview
 
 ---
 

@@ -1,3 +1,11 @@
+---
+filename: mcp-integration.md
+version: 1.0.0
+updated_date: 2025-11-18
+language: English
+scope: MoAI-ADK
+---
+
 # MCP Integration Guide
 
 **Complete guide for Model Context Protocol integration with MoAI-ADK.**

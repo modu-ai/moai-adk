@@ -1,3 +1,11 @@
+---
+filename: mcp-setup-guide.md
+version: 1.0.0
+updated_date: 2025-11-18
+language: English
+scope: MoAI-ADK
+---
+
 # MCP Integration Setup Guide
 
 **Model Context Protocol (MCP) configuration and best practices for MoAI-ADK.**

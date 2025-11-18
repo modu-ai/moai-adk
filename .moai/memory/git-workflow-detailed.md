@@ -1,8 +1,16 @@
+---
+filename: git-workflow-detailed.md
+version: 1.0.0
+updated_date: 2025-11-18
+language: English
+scope: MoAI-ADK
+---
+
 # Selection-Based GitHub Flow - Detailed Guide
 
 **Complete guide for Personal Mode (1-2 developers) and Team Mode (3+ developers) Git workflows in MoAI-ADK v0.26.0+.**
 
-> **See also**: CLAUDE.md → "Selection-Based GitHub Flow (간략)" for quick overview
+> **See also**: CLAUDE.md → "Selection-Based GitHub Flow" for quick overview
 
 ---
 
