@@ -1,7 +1,7 @@
 {
   "branch": "release/0.26.0",
-  "last_commit": "76720c43 chore: Bump version 0.25.11 \u2192 0.26.0 - Worktree Mode Release",
-  "commit_time": "7 minutes ago",
-  "changes": 38,
-  "last_check": "2025-11-18T18:16:28.341375"
+  "last_commit": "55d7eff7 docs(hooks): Add Claude Code v2.0.43 integration documentation",
+  "commit_time": "9 minutes ago",
+  "changes": 1,
+  "last_check": "2025-11-18T18:50:55.518045"
 }

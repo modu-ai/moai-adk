@@ -152,103 +152,56 @@ main (production)
 
 ### Team Mode (3+ Contributors)
 
-**Philosophy: "Systematic collaboration, fully automated with standard GitFlow"**
+**Philosophy: "Systematic collaboration, fully automated with GitHub Flow"**
 
-**Activation**: Automatically activated when:
-- Git contributor count ≥ `auto_switch_threshold` (default: 3)
-- OR explicitly set `git_strategy.team.enabled: true`
+**Activation**: Manually enabled via `.moai/config/config.json`:
+```json
+{
+  "git_strategy": {
+    "team": {
+      "enabled": true  // Set to true for team mode
+    }
+  }
+}
+```
 
-#### 📊 Standard GitFlow branch structure
+#### 📊 GitHub Flow branch structure
 
 ```
 main (production)
-├─ hotfix/* # Urgent bug fix (main-based)
- └─ release/* # Release preparation (develop-based)
-
-develop (development)
-└─ feature/* # Develop new features (based on develop)
+└─ feature/SPEC-* # Features branch directly from main
 ```
 
-**Why Team Mode for 3+ contributors**:
-- Git-Flow handles complex merge scenarios better
-- Multiple reviewers benefit from develop as integration branch
-- Feature branches provide isolation for parallel development
-- Release/hotfix workflows manage production stability
+**Why Team Mode uses GitHub Flow**:
+- Simple, consistent workflow for all project sizes
+- Minimal complexity (no develop/release/hotfix branches)
+- Faster feedback loops with main-based workflow
+- Code review enforcement via PR settings (min_reviewers: 1)
+- All contributors work on same base branch (main)
 
-**Branch roles**:
+**Key Differences from Personal Mode**:
+- **Code Review**: Required (min_reviewers: 1)
+- **Release Cycle**: Slightly longer (~15-20 min) due to review process
+- **PR Flow**: Same as Personal, but with mandatory approval before merge
+
+**Branch roles** (Team Mode):
 - **main**: Production deployment branch (always in a stable state)
-- **develop**: Development integration branch (preparation for the next release)
-- **feature/**: Develop new features (develop → develop)
-- **release/**: Prepare for release (develop → main + develop)
-- **hotfix/**: Hot fix (main → main + develop)
+- **feature/SPEC-XXX**: Feature branch (feature/SPEC-XXX → main with review)
 
-#### ⚠️ GitFlow Advisory Policy (v0.3.5+)
+#### 🔄 Feature development workflow (GitHub Flow + Code Review)
 
-**Policy Mode**: Advisory (recommended, not mandatory)
+git-manager manages feature development with mandatory code review in Team Mode.
 
-git-manager **recommends** GitFlow best practices with pre-push hooks, but respects your discretion:
-
-- ⚠️ **develop → main recommended**: A warning is displayed when main is pushed from a branch other than develop (but allowed)
-- ⚠️ **force-push warning**: A warning is displayed when a force push is made (but allowed)
-- ✅ **Provides flexibility**: Users can proceed at their own discretion.
-
-**Detailed policy**: See Skill("moai-alfred-gitflow-policy")
-
-#### 🔄 Feature development workflow (Hybrid Personal-Pro Mode aware)
-
-git-manager manages feature development based on `.moai/config/config.json` settings.
-
-**Pre-check 1: Detect current mode** (Hybrid Personal-Pro Workflow):
-```bash
-# Read git_strategy.mode from config
-git_mode=$(grep -o '"mode": "[^"]*"' .moai/config/config.json | head -1 | cut -d'"' -f4)
-
-# Results: "hybrid" (auto-switches based on contributor count)
-if [ "$git_mode" = "hybrid" ]; then
-  # Auto-detect mode based on contributor count
-  contributor_count=$(git log --format='%aN' | sort | uniq | wc -l)
-  auto_switch_threshold=$(grep -o '"auto_switch_threshold": [0-9]*' .moai/config/config.json | cut -d' ' -f2)
-
-  if [ "$contributor_count" -ge "$auto_switch_threshold" ]; then
-    current_mode="team"
-  else
-    current_mode="personal"
-  fi
-fi
-
-# Read base_branch for current mode
-if [ "$current_mode" = "personal" ]; then
-  base_branch=$(grep -o '"personal".*"base_branch": "[^"]*"' .moai/config/config.json | grep -o '"base_branch": "[^"]*"' | cut -d'"' -f4)
-else
-  base_branch=$(grep -o '"team".*"base_branch": "[^"]*"' .moai/config/config.json | grep -o '"base_branch": "[^"]*"' | cut -d'"' -f4)
-fi
-
-# Result: base_branch is either "main" (personal) or "develop" (team)
-```
-
-**Pre-check 2: Determine spec_git_workflow**:
-```bash
-# Check spec_git_workflow setting
-spec_workflow=$(grep -o '"spec_git_workflow": "[^"]*"' .moai/config/config.json | cut -d'"' -f4)
-
-# Results:
-# - "feature_branch": Feature branch + PR workflow
-# - "develop_direct": Direct commit to develop
-# - "per_spec": Ask user per SPEC
-```
-
-**Workflow Option 1: Feature Branch + PR** (`spec_git_workflow: "feature_branch"`)
+**Workflow**: Feature Branch + PR (GitHub Flow standard for all projects):
 
 **1. When writing a SPEC** (`/alfred:1-plan`):
 ```bash
-# Create a feature branch from the appropriate base branch (personal: main, team: develop)
-git checkout $base_branch
+# Create a feature branch from main
+git checkout main
 git checkout -b feature/SPEC-{ID}
 
-# Create Draft PR (feature → base_branch)
-# Personal mode: feature → main
-# Team mode: feature → develop
-gh pr create --draft --base $base_branch --head feature/SPEC-{ID}
+# Create Draft PR (feature → main)
+gh pr create --draft --base main --head feature/SPEC-{ID}
 ```
 
 **2. When implementing TDD** (`/alfred:2-run`):
@@ -265,88 +218,34 @@ git commit -m "♻️ REFACTOR: [Improvement description]"
 git push origin feature/SPEC-{ID}
 gh pr ready
 
-# Automatic merge with --auto-merge flag
+# Require code review approval before merge
+# After approval by min_reviewers (default: 1):
 gh pr merge --squash --delete-branch
-git checkout develop
-git pull origin develop
-```
-
----
-
-**Workflow Option 2: Direct Commit to Develop** (`spec_git_workflow: "develop_direct"`)
-
-**1. When writing a SPEC** (`/alfred:1-plan`):
-```bash
-# Skip branch creation, work directly on develop
-git checkout develop
-# SPEC documents created directly on develop
-```
-
-**2. When implementing TDD** (`/alfred:2-run`):
-```bash
-# RED → GREEN → REFACTOR commit directly to develop
-git commit -m "🔴 RED: [Test description]"
-git commit -m "🟢 GREEN: [Implementation description]"
-git commit -m "♻️ REFACTOR: [Improvement description]"
-```
-
-**3. When synchronization completes** (`/alfred:3-sync`):
-```bash
-# Direct push to develop (no PR)
-git push origin develop
-```
-
----
-
-**Workflow Option 3: Ask Per SPEC** (`spec_git_workflow: "per_spec"`)
-
-**When writing each SPEC** (`/alfred:1-plan`):
-```
-Use AskUserQuestion to ask user:
-"Which git workflow for this SPEC?"
-Options:
-- Feature Branch + PR
-- Direct Commit to Develop
-```
-Then execute corresponding workflow above
-
-#### 🚀 Release workflow (release/*)
-
-**Create release branch** (develop → release):
-```bash
-# Create a release branch from develop
-git checkout develop
-git pull origin develop
-git checkout -b release/v{VERSION}
-
-# Update version (pyproject.toml, __init__.py, etc.)
-# Write release notes
-git commit -m "chore: Bump version to {VERSION}"
-git push origin release/v{VERSION}
-```
-
-**Release complete** (release → main + develop):
-```bash
-# 1. Merge and tag into main
 git checkout main
 git pull origin main
-git merge --no-ff release/v{VERSION}
-git tag -a v{VERSION} -m "Release v{VERSION}"
-git push origin main --tags
-
-# 2. Backmerge into develop (synchronize version updates)
-git checkout develop
-git merge --no-ff release/v{VERSION}
-git push origin develop
-
-# 3. Delete the release branch
-git branch -d release/v{VERSION}
-git push origin --delete release/v{VERSION}
 ```
 
-#### 🔥 Hotfix workflow (hotfix/*)
+#### 🚀 Release workflow (GitHub Flow + Tags on main)
 
-**Create hotfix branch** (main → hotfix):
+**Tag and release directly on main**:
+```bash
+# On main branch
+git checkout main
+git pull origin main
+
+# Update version (pyproject.toml, __init__.py, etc.)
+git commit -m "chore: Bump version to {VERSION}"
+
+# Create tag (triggers CI/CD deployment to PyPI)
+git tag -a v{VERSION} -m "Release v{VERSION}"
+git push origin main --tags
+```
+
+**No separate release branches**: Releases are tagged directly on main (same as Personal Mode).
+
+#### 🔄 Hotfix workflow (GitHub Flow + hotfix/* prefix)
+
+**1. Create hotfix branch** (main → hotfix):
 ```bash
 # Create a hotfix branch from main
 git checkout main
@@ -356,42 +255,38 @@ git checkout -b hotfix/v{VERSION}
 # Bug fix
 git commit -m "🔥 HOTFIX: [Correction description]"
 git push origin hotfix/v{VERSION}
+
+# Create PR (hotfix → main)
+gh pr create --base main --head hotfix/v{VERSION}
 ```
 
-**hotfix completed** (hotfix → main + develop):
+**2. After approval and merge**:
 ```bash
-# 1. Merge and tag into main
+# Tag the hotfix release
 git checkout main
-git merge --no-ff hotfix/v{VERSION}
+git pull origin main
 git tag -a v{VERSION} -m "Hotfix v{VERSION}"
 git push origin main --tags
 
-# 2. Backmerge into develop (synchronize modifications)
-git checkout develop
-git merge --no-ff hotfix/v{VERSION}
-git push origin develop
-
-# 3. Delete hotfix branch
+# Delete hotfix branch
 git branch -d hotfix/v{VERSION}
 git push origin --delete hotfix/v{VERSION}
 ```
 
-#### 📋 Branch life cycle summary
+#### 📋 Branch life cycle summary (GitHub Flow)
 
-| Job type                      | based branch | target branch | Merge method | reverse merge |
-| ----------------------------- | ------------ | ------------- | ------------ | ------------- |
-| Feature development (feature) | develop      | develop       | squash       | N/A           |
-| release                       | develop      | main          | --no-ff      | develop       |
-| hotfix                        | main         | main          | --no-ff      | develop       |
+| Job type | Based Branch | Target Branch | PR Required | Merge Method |
+|----------|--------------|---------------|-------------|--------------|
+| Feature (feature/SPEC-*) | main | main | Yes (review) | Squash + delete |
+| Hotfix (hotfix/*) | main | main | Yes (review) | Squash + delete |
+| Release | N/A (tag on main) | N/A | N/A (direct tag) | Tag only |
 
-**Team Mode Core Features**:
-- **GitFlow Standards Compliance**: Standard branch structure and workflow
-- **PR automation**:
- - Draft PR creation: `gh pr create --draft --base develop`
- - PR Ready conversion: `gh pr ready`
- - **Auto merge**: `gh pr merge --squash --delete-branch` (feature only)
-- **Branch cleanup**: Automatically delete feature branch and develop Synchronization
-- **Release/Hotfix**: Compliance with standard GitFlow process (main + develop simultaneous updates)
+**Team Mode Core Features** (GitHub Flow + Code Review):
+- **Simple Main-Based Workflow**: No develop/release branches, only main
+- **PR Mandatory Code Review**: min_reviewers: 1 (configurable)
+- **Automated Release**: Tag creation on main triggers CI/CD
+- **Fast Feedback Loops**: Same base branch for all contributors
+- **Consistent Process**: Same GitHub Flow for all team sizes
 
 ## 📋 Simplified core functionality
 
@@ -429,63 +324,52 @@ git-manager creates TDD staged commits in the following format when locale is "e
 
 ### 3. Branch management
 
-**Branching strategy by mode** (Hybrid Personal-Pro Workflow):
+**Branching strategy by mode** (Selection-Based GitHub Flow):
 
-Git-manager uses different branching strategies depending on detected mode:
+Git-manager uses consistent main-based branching for both Personal and Team modes:
 
-**Personal Mode** (1-2 contributors):
+**Personal Mode** (enabled: true, team: false):
 - **Base branch**: `main` (configured in `.moai/config/config.json` → `git_strategy.personal.base_branch`)
 - **Branch creation**: `git checkout main && git checkout -b feature/SPEC-{ID}`
-- **Merge target**: main (direct merge, no intermediate develop)
+- **Merge target**: main (optional review)
 - **Release**: Tag on main triggers CI/CD deployment to PyPI
 
-**Team Mode** (3+ contributors):
-- **Base branch**: `develop` (configured in `.moai/config/config.json` → `git_strategy.team.base_branch`)
-- **Branch creation**: `git checkout develop && git checkout -b feature/SPEC-{ID}`
-- **Merge target**: develop (PR + review)
-- **Release process**: develop → release → main (Git-Flow standard)
+**Team Mode** (enabled: true, personal: false):
+- **Base branch**: `main` (configured in `.moai/config/config.json` → `git_strategy.team.base_branch`)
+- **Branch creation**: `git checkout main && git checkout -b feature/SPEC-{ID}`
+- **Merge target**: main (mandatory review, min_reviewers: 1)
+- **Release process**: Tag on main (same as Personal)
 
-**Mode Detection** (Automatic):
+**Mode Selection** (Manual):
 ```bash
-# Read contributor count from git log
-contributor_count=$(git log --format='%aN' | sort | uniq | wc -l)
+# Check git_strategy settings in .moai/config/config.json
+personal_enabled=$(grep -A5 '"personal"' .moai/config/config.json | grep -o '"enabled": [^,}]*')
+team_enabled=$(grep -A5 '"team"' .moai/config/config.json | grep -o '"enabled": [^,}]*')
 
-# Read auto_switch_threshold (default: 3)
-threshold=$(grep -o '"auto_switch_threshold": [0-9]*' .moai/config/config.json | cut -d' ' -f2)
-
-# Switch mode automatically
-if [ "$contributor_count" -ge "$threshold" ]; then
-  current_mode="team"  # Use develop base
-else
-  current_mode="personal"  # Use main base
-fi
+# Result: User selects mode manually via enabled: true/false
+# No auto-switching based on contributor count
 ```
 
 ### 4. Synchronization management
 
-**Secure Remote Sync** (Hybrid Mode Aware):
+**Secure Remote Sync** (Selection-Based GitHub Flow):
 
-git-manager performs secure remote synchronization based on current mode:
+git-manager performs secure remote synchronization with consistent main-based workflow:
 
-**Personal Mode Sync**:
+**Common Sync Pattern** (Both Personal and Team):
 1. Create a checkpoint tag: `git tag -a "checkpoint-..." -m "..."`
 2. Ensure on main: `git checkout main`
 3. Check remote changes: `git fetch origin`
 4. Pull latest: `git pull origin main`
-5. Push current branch: `git push origin HEAD`
-
-**Team Mode Sync**:
-1. Create a checkpoint tag: `git tag -a "checkpoint-..." -m "..."`
-2. Detect current branch (feature/SPEC-* or develop)
-3. For feature branches:
-   - Check remote: `git fetch origin`
-   - Rebase on develop: `git rebase origin/develop`
+5. For feature branches (after PR merge):
+   - Rebase on main: `git rebase origin/main`
    - Push to remote: `git push origin feature/SPEC-{ID}`
-4. For develop:
-   - Check remote: `git fetch origin`
-   - Rebase: `git rebase origin/develop`
-   - Push: `git push origin develop`
-5. After doc-syncer: PR status update and auto-merge (if --auto-merge flag)
+6. After doc-syncer: Final push and PR update (Team Mode only requires review approval)
+
+**Team Mode Specific** (with Code Review):
+- After PR ready: Require review approval before merge
+- CI/CD checks must pass before merge
+- Auto-merge only after all approvals
 
 ## 🔧 MoAI workflow integration
 

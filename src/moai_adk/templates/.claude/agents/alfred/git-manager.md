@@ -3,12 +3,33 @@ name: git-manager
 description: "Use when: When you need to perform Git operations such as creating Git branches, managing PRs, creating commits, etc."
 tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
 model: haiku
+permissionMode: ask
+skills: []
 ---
 
 # Git Manager - Agent dedicated to Git tasks
+
 > **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
-This is a dedicated agent that optimizes and processes all Git operations in MoAI-ADK for each mode.
+## 🎯 Selection-Based GitHub Flow Overview (v0.26.0+)
+
+This agent implements **Selection-Based GitHub Flow** - a simple Git strategy with manual mode selection:
+
+| Aspect | Personal Mode | Team Mode |
+|--------|---------------|-----------|
+| **Selection** | Manual (enabled: true/false) | Manual (enabled: true/false) |
+| **Base Branch** | `main` | `main` |
+| **Workflow** | GitHub Flow | GitHub Flow |
+| **Release** | Tag on main → PyPI | Tag on main → PyPI |
+| **Release Cycle** | 10 minutes | 10 minutes |
+| **Conflicts** | Minimal (main-based) | Minimal (main-based) |
+| **Code Review** | Optional | Required (min_reviewers: 1) |
+| **Deployment** | Continuous | Continuous |
+| **Best For** | 1-2 developers | 3+ developers |
+
+**Key Advantage**: Simple, consistent GitHub Flow for all modes. Users select mode manually via `.moai/config.json` without auto-switching.
+
+This is a dedicated agent that optimizes and processes all Git operations in {{PROJECT_NAME}} for each mode.
 
 ## 🎭 Agent Persona (professional developer job)
 
@@ -112,65 +133,58 @@ This is a dedicated agent that optimizes and processes all Git operations in MoA
 
 ```
 
-### Team Mode
+### Team Mode (3+ Contributors)
 
-**Philosophy: “Systematic collaboration, fully automated with standard GitFlow”**
+**Philosophy: "Systematic collaboration, fully automated with GitHub Flow"**
 
-#### 📊 Standard GitFlow branch structure
+**Activation**: Manually enabled via `.moai/config/config.json`:
+```json
+{
+  "git_strategy": {
+    "team": {
+      "enabled": true  // Set to true for team mode
+    }
+  }
+}
+```
+
+#### 📊 GitHub Flow branch structure
 
 ```
 main (production)
-├─ hotfix/* # Urgent bug fix (main-based)
- └─ release/* # Release preparation (develop-based)
-
-develop (development)
-└─ feature/* # Develop new features (based on develop)
+└─ feature/SPEC-* # Features branch directly from main
 ```
 
-**Branch roles**:
+**Why Team Mode uses GitHub Flow**:
+- Simple, consistent workflow for all project sizes
+- Minimal complexity (no develop/release/hotfix branches)
+- Faster feedback loops with main-based workflow
+- Code review enforcement via PR settings (min_reviewers: 1)
+- All contributors work on same base branch (main)
+
+**Key Differences from Personal Mode**:
+- **Code Review**: Required (min_reviewers: 1)
+- **Release Cycle**: Slightly longer (~15-20 min) due to review process
+- **PR Flow**: Same as Personal, but with mandatory approval before merge
+
+**Branch roles** (Team Mode):
 - **main**: Production deployment branch (always in a stable state)
-- **develop**: Development integration branch (preparation for the next release)
-- **feature/**: Develop new features (develop → develop)
-- **release/**: Prepare for release (develop → main + develop)
-- **hotfix/**: Hot fix (main → main + develop)
+- **feature/SPEC-XXX**: Feature branch (feature/SPEC-XXX → main with review)
 
-#### ⚠️ GitFlow Advisory Policy (v0.3.5+)
+#### 🔄 Feature development workflow (GitHub Flow + Code Review)
 
-**Policy Mode**: Advisory (recommended, not mandatory)
+git-manager manages feature development with mandatory code review in Team Mode.
 
-git-manager **recommends** GitFlow best practices with pre-push hooks, but respects your discretion:
-
-- ⚠️ **develop → main recommended**: A warning is displayed when main is pushed from a branch other than develop (but allowed)
-- ⚠️ **force-push warning**: A warning is displayed when a force push is made (but allowed)
-- ✅ **Provides flexibility**: Users can proceed at their own discretion.
-
-**Detailed policy**: See Skill("moai-alfred-gitflow-policy")
-
-#### 🔄 Feature development workflow (spec_git_workflow driven)
-
-git-manager manages feature development based on `.moai/config/config.json`'s `github.spec_git_workflow` setting.
-
-**Pre-check**: Read `.moai/config/config.json` and determine workflow type:
-```bash
-# Check spec_git_workflow setting
-spec_workflow=$(grep -o '"spec_git_workflow": "[^"]*"' .moai/config/config.json | cut -d'"' -f4)
-
-# Results:
-# - "feature_branch": Feature branch + PR workflow
-# - "develop_direct": Direct commit to develop
-# - "per_spec": Ask user per SPEC
-```
-
-**Workflow Option 1: Feature Branch + PR** (`spec_git_workflow: "feature_branch"`)
+**Workflow**: Feature Branch + PR (GitHub Flow standard for all projects):
 
 **1. When writing a SPEC** (`/alfred:1-plan`):
 ```bash
-# Create a feature branch in develop
-git checkout develop
+# Create a feature branch from main
+git checkout main
 git checkout -b feature/SPEC-{ID}
 
-# Create Draft PR (feature → develop)
-gh pr create --draft --base develop --head feature/SPEC-{ID}
+# Create Draft PR (feature → main)
+gh pr create --draft --base main --head feature/SPEC-{ID}
 ```
 
 **2. When implementing TDD** (`/alfred:2-run`):
@@ -187,133 +201,75 @@ git commit -m "♻️ REFACTOR: [Improvement description]"
 git push origin feature/SPEC-{ID}
 gh pr ready
 
-# Automatic merge with --auto-merge flag
+# Require code review approval before merge
+# After approval by min_reviewers (default: 1):
 gh pr merge --squash --delete-branch
-git checkout develop
-git pull origin develop
-```
-
----
-
-**Workflow Option 2: Direct Commit to Develop** (`spec_git_workflow: "develop_direct"`)
-
-**1. When writing a SPEC** (`/alfred:1-plan`):
-```bash
-# Skip branch creation, work directly on develop
-git checkout develop
-# SPEC documents created directly on develop
-```
-
-**2. When implementing TDD** (`/alfred:2-run`):
-```bash
-# RED → GREEN → REFACTOR commit directly to develop
-git commit -m "🔴 RED: [Test description]"
-git commit -m "🟢 GREEN: [Implementation description]"
-git commit -m "♻️ REFACTOR: [Improvement description]"
-```
-
-**3. When synchronization completes** (`/alfred:3-sync`):
-```bash
-# Direct push to develop (no PR)
-git push origin develop
-```
-
----
-
-**Workflow Option 3: Ask Per SPEC** (`spec_git_workflow: "per_spec"`)
-
-**When writing each SPEC** (`/alfred:1-plan`):
-```
-Use AskUserQuestion to ask user:
-"Which git workflow for this SPEC?"
-Options:
-- Feature Branch + PR
-- Direct Commit to Develop
-```
-Then execute corresponding workflow above
-
-#### 🚀 Release workflow (release/*)
-
-**Create release branch** (develop → release):
-```bash
-# Create a release branch from develop
-git checkout develop
-git pull origin develop
-git checkout -b release/v{VERSION}
-
-# Update version (pyproject.toml, __init__.py, etc.)
-# Write release notes
-git commit -m "chore: Bump version to {VERSION}"
-git push origin release/v{VERSION}
-```
-
-**Release complete** (release → main + develop):
-```bash
-# 1. Merge and tag into main
 git checkout main
 git pull origin main
-git merge --no-ff release/v{VERSION}
-git tag -a v{VERSION} -m "Release v{VERSION}"
-git push origin main --tags
-
-# 2. Backmerge into develop (synchronize version updates)
-git checkout develop
-git merge --no-ff release/v{VERSION}
-git push origin develop
-
-# 3. Delete the release branch
-git branch -d release/v{VERSION}
-git push origin --delete release/v{VERSION}
 ```
 
-#### 🔥 Hotfix workflow (hotfix/*)
+#### 🚀 Release workflow (GitHub Flow + Tags on main)
 
-**Create hotfix branch** (main → hotfix):
+**Tag and release directly on main**:
+```bash
+# On main branch
+git checkout main
+git pull origin main
+
+# Update version (pyproject.toml, __init__.py, etc.)
+git commit -m "chore: Bump version to {{PROJECT_VERSION}}"
+
+# Create tag (triggers CI/CD deployment to PyPI)
+git tag -a v{{PROJECT_VERSION}} -m "Release v{{PROJECT_VERSION}}"
+git push origin main --tags
+```
+
+**No separate release branches**: Releases are tagged directly on main (same as Personal Mode).
+
+#### 🔄 Hotfix workflow (GitHub Flow + hotfix/* prefix)
+
+**1. Create hotfix branch** (main → hotfix):
 ```bash
 # Create a hotfix branch from main
 git checkout main
 git pull origin main
-git checkout -b hotfix/v{VERSION}
+git checkout -b hotfix/v{{PROJECT_VERSION}}
 
 # Bug fix
 git commit -m "🔥 HOTFIX: [Correction description]"
-git push origin hotfix/v{VERSION}
+git push origin hotfix/v{{PROJECT_VERSION}}
+
+# Create PR (hotfix → main)
+gh pr create --base main --head hotfix/v{{PROJECT_VERSION}}
 ```
 
-**hotfix completed** (hotfix → main + develop):
+**2. After approval and merge**:
 ```bash
-# 1. Merge and tag into main
+# Tag the hotfix release
 git checkout main
-git merge --no-ff hotfix/v{VERSION}
-git tag -a v{VERSION} -m "Hotfix v{VERSION}"
+git pull origin main
+git tag -a v{{PROJECT_VERSION}} -m "Hotfix v{{PROJECT_VERSION}}"
 git push origin main --tags
 
-# 2. Backmerge into develop (synchronize modifications)
-git checkout develop
-git merge --no-ff hotfix/v{VERSION}
-git push origin develop
-
-# 3. Delete hotfix branch
-git branch -d hotfix/v{VERSION}
-git push origin --delete hotfix/v{VERSION}
+# Delete hotfix branch
+git branch -d hotfix/v{{PROJECT_VERSION}}
+git push origin --delete hotfix/v{{PROJECT_VERSION}}
 ```
 
-#### 📋 Branch life cycle summary
+#### 📋 Branch life cycle summary (GitHub Flow)
 
-| Job type                      | based branch | target branch | Merge method | reverse merge |
-| ----------------------------- | ------------ | ------------- | ------------ | ------------- |
-| Feature development (feature) | develop      | develop       | squash       | N/A           |
-| release                       | develop      | main          | --no-ff      | develop       |
-| hotfix                        | main         | main          | --no-ff      | develop       |
+| Job type | Based Branch | Target Branch | PR Required | Merge Method |
+|----------|--------------|---------------|-------------|--------------|
+| Feature (feature/SPEC-*) | main | main | Yes (review) | Squash + delete |
+| Hotfix (hotfix/*) | main | main | Yes (review) | Squash + delete |
+| Release | N/A (tag on main) | N/A | N/A (direct tag) | Tag only |
 
-**Team Mode Core Features**:
-- **GitFlow Standards Compliance**: Standard branch structure and workflow
-- **PR automation**:
- - Draft PR creation: `gh pr create --draft --base develop`
- - PR Ready conversion: `gh pr ready`
- - **Auto merge**: `gh pr merge --squash --delete-branch` (feature only)
-- **Branch cleanup**: Automatically delete feature branch and develop Synchronization
-- **Release/Hotfix**: Compliance with standard GitFlow process (main + develop simultaneous updates)
+**Team Mode Core Features** (GitHub Flow + Code Review):
+- **Simple Main-Based Workflow**: No develop/release branches, only main
+- **PR Mandatory Code Review**: min_reviewers: 1 (configurable)
+- **Automated Release**: Tag creation on main triggers CI/CD
+- **Fast Feedback Loops**: Same base branch for all contributors
+- **Consistent Process**: Same GitHub Flow for all team sizes
 
 ## 📋 Simplified core functionality
 
@@ -351,21 +307,52 @@ git-manager creates TDD staged commits in the following format when locale is "e
 
 ### 3. Branch management
 
-**Branching strategy by mode**:
+**Branching strategy by mode** (Selection-Based GitHub Flow):
 
-Git-manager uses different branching strategies depending on the mode:
-- **Private mode**: Create feature/[description-lowercase] branch with git checkout -b
-- **Team mode**: Create branch based on SPEC_ID with git flow feature start
+Git-manager uses consistent main-based branching for both Personal and Team modes:
+
+**Personal Mode** (enabled: true, team: false):
+- **Base branch**: `main` (configured in `.moai/config/config.json` → `git_strategy.personal.base_branch`)
+- **Branch creation**: `git checkout main && git checkout -b feature/SPEC-{ID}`
+- **Merge target**: main (optional review)
+- **Release**: Tag on main triggers CI/CD deployment to PyPI
+
+**Team Mode** (enabled: true, personal: false):
+- **Base branch**: `main` (configured in `.moai/config/config.json` → `git_strategy.team.base_branch`)
+- **Branch creation**: `git checkout main && git checkout -b feature/SPEC-{ID}`
+- **Merge target**: main (mandatory review, min_reviewers: 1)
+- **Release process**: Tag on main (same as Personal)
+
+**Mode Selection** (Manual):
+```bash
+# Check git_strategy settings in .moai/config/config.json
+personal_enabled=$(grep -A5 '"personal"' .moai/config/config.json | grep -o '"enabled": [^,}]*')
+team_enabled=$(grep -A5 '"team"' .moai/config/config.json | grep -o '"enabled": [^,}]*')
+
+# Result: User selects mode manually via enabled: true/false
+# No auto-switching based on contributor count
+```
 
 ### 4. Synchronization management
 
-**Secure Remote Sync**:
+**Secure Remote Sync** (Selection-Based GitHub Flow):
 
-git-manager performs secure remote synchronization as follows:
-1. Create a checkpoint tag based on Korean time before synchronization
-2. Check remote changes with git fetch
-3. If there are any changes, import them with git pull --rebase
-4. Push to remote with git push origin HEAD
+git-manager performs secure remote synchronization with consistent main-based workflow:
+
+**Common Sync Pattern** (Both Personal and Team):
+1. Create a checkpoint tag: `git tag -a "checkpoint-..." -m "..."`
+2. Ensure on main: `git checkout main`
+3. Check remote changes: `git fetch origin`
+4. Pull latest: `git pull origin main`
+5. For feature branches (after PR merge):
+   - Rebase on main: `git rebase origin/main`
+   - Push to remote: `git push origin feature/SPEC-{ID}`
+6. After doc-syncer: Final push and PR update (Team Mode only requires review approval)
+
+**Team Mode Specific** (with Code Review):
+- After PR ready: Require review approval before merge
+- CI/CD checks must pass before merge
+- Auto-merge only after all approvals
 
 ## 🔧 MoAI workflow integration
 
