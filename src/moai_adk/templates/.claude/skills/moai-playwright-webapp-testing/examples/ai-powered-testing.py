@@ -5,9 +5,10 @@ Context7 MCP integration with intelligent test generation
 
 import asyncio
 import json
+import time
 from typing import Dict, List, Optional
 
-from playwright.sync_api import Page, sync_playwright
+from playwright.sync_api import Page, expect, sync_playwright
 
 
 class AITestGenerator:
@@ -217,7 +218,6 @@ class CrossBrowserOrchestrator:
     async def execute_test_in_browser(self, page: Page, test_script: str) -> Dict:
         """Execute test script and capture results"""
 
-        import time
         start_time = time.time()
 
         # Simulate test execution
@@ -232,7 +232,7 @@ class CrossBrowserOrchestrator:
         try:
             expect(page.locator('h1')).to_be_visible()
             assertions_passed += 1
-        except:
+        except AssertionError:
             pass
 
         execution_time = time.time() - start_time
