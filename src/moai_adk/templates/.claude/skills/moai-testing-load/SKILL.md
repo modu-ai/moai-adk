@@ -2845,7 +2845,7 @@ Payment: p99 < 1s, error < 0.01%
 
 **Tool Versions**: k6 0.54+, Gatling 3.13+, Prometheus 3.1+, Grafana 11.4+
 
-**Generation Method**: Claude Code v4.0 | **Language**: English (100%)
+**Generation Method**: Claude Code   | **Language**: English (100%)
 
 **Last Updated**: 2025-11-19
 
@@ -3006,7 +3006,7 @@ home,furniture,Desks, chairs, shelving
 
 ## Change Log
 
-**v4.0.0 (2025-11-19)** - Current
+** .0 (2025-11-19)** - Current
 - Complete rewrite with k6 and Gatling focus
 - CI/CD integration (GitHub Actions, GitLab, Jenkins)
 - Advanced monitoring (Prometheus, Grafana)

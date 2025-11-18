@@ -249,5 +249,5 @@ CLAUDE.md
 
 ---
 
-**보고서 작성**: Claude Code v4.0 + MoAI-ADK Zero Direct Tool Usage 프로토콜
+**보고서 작성**: Claude Code + MoAI-ADK Zero Direct Tool Usage 프로토콜
 **승인**: Phase 3 완료, Git 커밋 준비됨

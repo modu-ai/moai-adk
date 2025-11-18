@@ -293,7 +293,7 @@ Output: {{EXAMPLE_3_OUTPUT}}
 **Version**: 1.0.0
 **Status**: Production-Ready
 **Model**: {{MODEL_SELECTION}} (Complex reasoning required)
-**Compatible with Claude Code v4.0+**
+**Compatible with Claude Code+**
 **Last Updated**: {{CREATION_DATE}}
 
 ---

@@ -1,4 +1,4 @@
-# Enterprise MLOps Platform - v4.0.0
+# Enterprise MLOps Platform - 
 
 **Complete ML lifecycle orchestration with 2025's most stable stack**
 

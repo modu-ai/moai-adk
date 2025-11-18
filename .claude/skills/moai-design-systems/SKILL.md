@@ -151,7 +151,7 @@ status: stable
 }
 ```
 
-**Style Dictionary Configuration** (v4.0+):
+**Style Dictionary Configuration** ( +):
 
 ```javascript
 // style-dictionary.config.js

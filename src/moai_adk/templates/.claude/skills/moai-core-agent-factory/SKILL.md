@@ -85,7 +85,7 @@ User Requirement
   ├─ Gate 1: YAML syntax
   ├─ Gate 2: Structure completeness
   ├─ Gate 3: Content quality
-  └─ Gate 4: TRUST 5 + Claude Code v4.0
+  └─ Gate 4: TRUST 5 + Claude Code  
     ↓
 Production-Ready Agent ✅
 ```
@@ -146,7 +146,7 @@ Production-Ready Agent ✅
 1. **Gate 1**: YAML syntax validation
 2. **Gate 2**: Required sections verification
 3. **Gate 3**: Content quality checks
-4. **Gate 4**: TRUST 5 + Claude Code v4.0 compliance
+4. **Gate 4**: TRUST 5 + Claude Code   compliance
 
 **Includes**: 5 core test cases + 3 edge cases
 
@@ -188,7 +188,7 @@ Skill("moai-core-agent-factory")  # This master skill
 
 ### With @agent-cc-manager
 After generation, delegate to @agent-cc-manager for:
-- Claude Code v4.0 compliance verification
+- Claude Code   compliance verification
 - `.claude/settings.json` validation
 - MCP server configuration check
 - Hook registration validation
@@ -284,7 +284,7 @@ moai-core-agent-factory/
 ✅ **Practical**: Includes algorithms with code examples
 ✅ **Tested**: 5 core + 3 edge case test scenarios
 ✅ **Enterprise**: Versioning, compliance, optimization
-✅ **Official**: Follows Claude Code v4.0 standards
+✅ **Official**: Follows Claude Code   standards
 
 ---
 

@@ -14,7 +14,7 @@ allowed-tools:
   - Glob
 ---
 
-# SPEC Foundation Skill - Expert v4.0
+# SPEC Foundation Skill - Expert  
 
 ## Skill Overview
 
@@ -746,7 +746,7 @@ Creates PR to develop
 
 ## Changelog
 
-### v4.0.0 (2025-11-12) - November 2025 Stable
+###  (2025-11-12) - November 2025 Stable
 - Complete restructure: Lifecycle states, version management, practical examples
 - 5 SPEC lifecycle stages (Draft, Review, Active, Deprecated, Archived)
 - Semantic versioning strategy with clear rules

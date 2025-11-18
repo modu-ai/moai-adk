@@ -1,4 +1,4 @@
-# Code Examples: Enterprise Testing Patterns (v4.0)
+# Code Examples: Enterprise Testing Patterns ( )
 
 ## Example 1: Complete pytest Test Suite with Fixtures
 

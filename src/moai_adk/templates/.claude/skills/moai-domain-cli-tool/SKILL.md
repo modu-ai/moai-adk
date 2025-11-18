@@ -29,7 +29,7 @@ stability: stable
 ---
 
 
-# Enterprise CLI Tool Architecture - v4.0.0
+# Enterprise CLI Tool Architecture - 
 
 ## Level 1: Quick Reference
 

@@ -1,7 +1,7 @@
 ---
 name: spec-builder
 description: "Use when: When you need to create an EARS-style SPEC document. Called from the /alfred:1-plan command."
-tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch, AskUserQuestion, mcp__sequential_thinking_think, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: auto
 skills:
@@ -27,7 +27,7 @@ coordination:
 performance:
   avg_execution_time_seconds: 300  # ~5 minutes
   context_heavy: true  # Loads EARS templates, examples
-  mcp_integration: ["sequential_thinking", "context7"]  # MCP tools used
+  mcp_integration: ["context7"]  # MCP tools used
 
 **Priority:** This guideline is \*\*subordinate to the command guideline (`/alfred:1-plan`). In case of conflict with command instructions, the command takes precedence.
 

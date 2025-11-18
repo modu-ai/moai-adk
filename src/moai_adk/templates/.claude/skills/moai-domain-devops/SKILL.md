@@ -14,7 +14,7 @@ stability: stable
 ---
 
 
-# Enterprise DevOps Architect - Production-Grade v4.0
+# Enterprise DevOps Architect - Production-Grade  
 
 ## Technology Stack (2025 Stable)
 
@@ -90,7 +90,7 @@ spec:
         runAsUser: 1001
       containers:
       - name: web-app
-        image: myapp:v4.0.0@sha256:abc123...
+        image: myapp: .0@sha256:abc123...
         ports:
         - containerPort: 8080
         resources:
@@ -346,7 +346,7 @@ dependencies:
 replicaCount: 3
 image:
   repository: myapp
-  tag: "v4.0.0"
+  tag: " .0"
 service:
   type: ClusterIP
   port: 80

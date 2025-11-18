@@ -14,7 +14,7 @@ allowed-tools:
 
 
 
-# LLM Fine-Tuning and Parameter-Efficient Adaptation — Enterprise v4.0
+# LLM Fine-Tuning and Parameter-Efficient Adaptation — Enterprise  
 
 ## Quick Summary
 

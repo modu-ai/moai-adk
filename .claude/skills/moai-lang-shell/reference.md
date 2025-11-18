@@ -550,7 +550,7 @@ parallel --pipe --block 10M command < largefile.txt
 
 ## Changelog
 
-- **v4.0.0** (2025-11-13): Reference documentation update
+- ** .0** (2025-11-13): Reference documentation update
 - **v3.0.0** (2025-03-15): POSIX compliance guide
 - **v2.0.0** (2025-01-10): Testing and linting guide
 - **v1.0.0** (2024-12-01): Initial release

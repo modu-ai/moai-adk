@@ -75,7 +75,7 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
   - **18 Data & Analytics skills**: Data pipelines, streaming, data warehouse, MLOps, analytics
   - **Complete frontend coverage**: HTML/CSS, Tailwind CSS, shadcn/ui, React, Vue, Angular (10+ icon libraries)
   - **Full backend support**: Database design, API architecture, DevOps, serverless patterns
-  - **Advanced MCP Integration**: Context7, Playwright, Sequential-thinking servers
+  - **Advanced MCP Integration**: Context7, Playwright, Notion, Figma servers
   - **Document Processing**: AI-powered document handling (docx, pdf, pptx, xlsx)
   - **Artifact Builder**: Modern React/Tailwind/shadcn/ui component creation
   - **Internal Communications**: Enterprise communication templates and automation
@@ -177,7 +177,7 @@ README.md (This file)
   ├─ agent-delegation.md          (Advanced Task() patterns)
   ├─ token-efficiency.md           (Context management strategies)
   ├─ git-workflow-detailed.md      (GitHub Flow deep dive)
-  ├─ claude-code-features.md       (v4.0+ capabilities)
+  ├─ claude-code-features.md       (Claude Code capabilities)
   ├─ settings-config.md            (Configuration reference)
   └─ troubleshooting-extended.md   (Extended FAQ & solutions)
 
@@ -246,7 +246,7 @@ Total: 23,000 tokens (82% reduction!)
 
 ### How Alfred Optimizes
 
-**1. Plan Mode Breakdown** (Available in Claude Code v4.0):
+**1. Plan Mode Breakdown**:
 - Complex task: "Build full-stack app" → Broken into 10 focused subtasks
 - Each subtask assigned to optimal agent
 - 50% token savings through targeted execution
@@ -404,7 +404,7 @@ For comprehensive agent delegation patterns including:
 **See CLAUDE.md → "🤖 Advanced Agent Delegation Patterns"** section or refer to:
 - **`.moai/memory/agent-delegation.md`**: Detailed Task() delegation patterns, sequential/parallel workflows
 - **`.moai/memory/mcp-integration.md`**: Context7 MCP session management and integration
-- **`.moai/memory/claude-code-features.md`**: Claude Code v4.0+ features and Plan Mode
+- **`.moai/memory/claude-code-features.md`**: Claude Code features and Plan Mode
 
 ---
 
@@ -628,15 +628,15 @@ For detailed hook architecture, implementation guide, and advanced usage:
 - ✅ **Structured templates** for consistent issue quality
 - ✅ **Multi-select questions** to reduce user interaction steps
 
-### Enterprise v4.0 Optimization
+### Enterprise Skills Ecosystem
 
-**Complete Skills Ecosystem Upgrade**:
+**Complete Skills Coverage**:
 
 **Historic Achievement - November 2025:**
 
 MoAI-ADK has completed a comprehensive **Phase 1 Batch 2** upgrade achieving:
 
-- **125+ Enterprise Skills** upgraded to v4.0.0 (681% growth from v0.22.5's 16 skills)
+- **125+ Enterprise Skills** covering all development domains (681% growth from v0.22.5's 16 skills)
 - **Security Skills**: 10 new advanced security and compliance skills
 - **Documentation**: 85,280+ lines of comprehensive documentation
 - **Quality**: All skills meet TRUST 5 standards
@@ -2139,7 +2139,7 @@ Organized across 6 tiers:
 | **Quality Gates**       | TRUST 5 + additional checks                                                 |
 | **Git Automation**      | Complete GitFlow support                                                    |
 | **Version Reading**      | Enhanced VersionReader with advanced caching and performance optimization |
-| **MCP Integration**      | Context7, Playwright, Sequential-thinking servers (v0.20.0+)           |
+| **MCP Integration**      | Context7, Playwright, Notion, Figma servers (v0.20.0+)           |
 | **Python Support**      | 3.11+ with enhanced performance and compatibility                           |
 
 ---
@@ -2702,7 +2702,7 @@ MoAI-ADK is built on years of research into AI-assisted development, test-driven
 **Complete Skills Ecosystem Upgrade Accomplished:**
 
 **Major Achievement:**
-- **Total Skills Resolved**: 281+ skills fully upgraded to v4.0.0 Enterprise
+- **Total Skills Resolved**: 281+ enterprise skills fully optimized
 - **Problem Skills**: 57 critical issues resolved
 - **Validation Success Rate**: Dramatically improved from 45% to 95%+
 - **Quality Assurance**: All skills now meet TRUST 5 standards

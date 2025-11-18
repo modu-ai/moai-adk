@@ -85,7 +85,7 @@ CLAUDE.md에 새로운 섹션 추가:
 | 32 | TOC | troubleshooting-extended.md | ✅ | 확장 링크 |
 | 152 | Bash Commands | git-workflow-detailed.md | ✅ | 상세 가이드 |
 | 282 | 세션 초기화 | token-efficiency.md | ✅ | 상세 가이드 |
-| 505 | Claude Code v4.0 | claude-code-features.md | ✅ | 상세 가이드 |
+| 505 | Claude Code | claude-code-features.md | ✅ | 상세 가이드 |
 | 663 | Agent Delegation | agent-delegation.md | ✅ | 상세 가이드 |
 | 717 | Claude Code Settings | settings-config.md | ✅ | 기본 설정 |
 | 811 | Git Workflow | git-workflow-detailed.md | ✅ | 상세 가이드 |
@@ -119,7 +119,7 @@ CLAUDE.md의 주요 내용은 설명하고, 심화된 내용은 다음 메모리
 |------|------|------|----------|
 | agent-delegation.md | Advanced Task() delegation patterns, sequential/parallel execution, context passing, session management | 286줄 | 2025-11-18 |
 | alfred-personas.md | Alfred 페르소나 시스템, 역할 기반 커뮤니케이션, 적응형 행동 | 482줄 | 2025-11-18 |
-| claude-code-features.md | Claude Code v4.0 기능, Plan Mode, Explore subagent, MCP integration | 334줄 | 2025-11-18 |
+| claude-code-features.md | Claude Code 기능, Plan Mode, Explore subagent, MCP integration | 334줄 | 2025-11-18 |
 | git-workflow-detailed.md | Selection-Based GitHub Flow, Personal/Team 모드, 워크플로우 비교 | 201줄 | 2025-11-18 |
 | mcp-integration.md | Model Context Protocol 가이드, 서버 설정, 사용 패턴 | 456줄 | 2025-11-18 |
 | mcp-setup-guide.md | MCP 초기화, 서버 연결, 문제 해결 | 140줄 | 2025-11-18 |

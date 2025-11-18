@@ -294,13 +294,13 @@ Thanks to the entire MoAI team for comprehensive testing across Windows, macOS, 
 
 # v0.25.7 (2025-11-15)
 
-## 📚 Documentation Enhancement Release - CLAUDE.md v4.0 Integration
+## 📚 Documentation Enhancement Release - CLAUDE.md Integration
 
-This release completes the comprehensive CLAUDE.md enhancement with Alfred Workflow Protocol integration, providing enhanced guidance for Claude Code v4.0+ features.
+This release completes the comprehensive CLAUDE.md enhancement with Alfred Workflow Protocol integration, providing enhanced guidance for Claude Code features.
 
 ### 📖 Key Improvements
 
-- **Complete CLAUDE.md v4.0 Enhancement**: Alfred Workflow Protocol with Plan Mode, MCP Integration, and Enhanced Context Management
+- **Complete CLAUDE.md Enhancement**: Alfred Workflow Protocol with Plan Mode, MCP Integration, and Enhanced Context Management
 - **Local CLAUDE.md Synchronization**: Automatic synchronization between local and package templates
 - **Korean Language Improvements**: Enhanced Korean translation quality for better user guidance
 - **Shell Script Permissions**: Ensure shell scripts are executable for package distribution
@@ -324,7 +324,7 @@ uv add moai-adk==0.25.7
 
 ### 🎯 What's New in This Release
 
-**Claude Code v4.0 Integration**:
+**Claude Code Integration**:
 - Enhanced Alfred Workflow Protocol documentation
 - Plan Mode integration for complex task decomposition
 - MCP server integration patterns
@@ -830,7 +830,7 @@ pip install moai-adk==0.25.0
    - **Prohibited Actions Standardization**: Updated Alfred's prohibited actions to emphasize Task() delegation and eliminate direct tool usage
    - **AskUserQuestion Format**: Standardized to proper JSON format with questions array structure
    - **4-Layer Architecture Implementation**: Updated from 3-layer to 4-layer (Commands → Sub-agents → Skills → Hooks)
-   - **MCP Integration Enhancement**: Added actual tool usage patterns for context7, playwright, sequential-thinking servers
+   - **MCP Integration Enhancement**: Added actual tool usage patterns for context7, playwright servers
    - **Variable Substitution**: Enhanced template variable documentation with clear examples
 
 3. **Package Template Synchronization**
@@ -970,10 +970,10 @@ pip install moai-adk==0.25.0
 
 ### v0.23.1 (2025-11-11)
 
-**Historic Release: Complete Skills Ecosystem Upgrade v4.0.0 Enterprise**
+**Historic Release: Complete Skills Ecosystem Upgrade**
 
 **Major Achievement: 57 Problem Skills Resolved**
-- **Total Skills Processed**: 281+ skills completely upgraded to v4.0.0 Enterprise
+- **Total Skills Processed**: 281+ enterprise skills fully optimized
 - **Validation Success Rate**: Dramatically improved from 45% to 95%+
 - **Critical Issues Resolved**: Metadata completion, structure standardization, documentation generation
 - **Quality Assurance**: All skills now meet TRUST 5 principles and production standards
@@ -1051,7 +1051,7 @@ Quality Metrics:
 
 - **MCP Configuration Fix**: Fixed critical MCP server configuration schema validation error
 - **Schema Compliance**: Changed root key from "servers" to "mcpServers" per official MCP specification
-- **Server Optimization**: Removed Figma from default installation (now optional), improved context7, playwright, sequential-thinking configurations
+- **Server Optimization**: Removed Figma from default installation (now optional), improved context7, playwright configurations
 - **Performance Enhancements**: Added timeout and retry configurations, NODE_OPTIONS memory settings for Node.js servers
 - **Template Synchronization**: Updated both local and package templates with corrected MCP configuration
 

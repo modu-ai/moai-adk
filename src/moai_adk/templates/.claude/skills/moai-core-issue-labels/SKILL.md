@@ -30,7 +30,7 @@ stability: stable
 ---
 
 
-# Enterprise GitHub Issue Labeling Orchestrator v4.0.0
+# Enterprise GitHub Issue Labeling Orchestrator 
 
 ## Skill Metadata
 
@@ -232,4 +232,4 @@ Duplicate → linked to original
 **For detailed label reference**: [reference.md](reference.md)  
 **For real-world examples**: [examples.md](examples.md)  
 **Last Updated**: 2025-11-18  
-**Status**: Production Ready (Enterprise v4.0.0)
+**Status**: Production Ready (Enterprise )

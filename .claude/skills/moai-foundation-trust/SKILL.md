@@ -5,7 +5,7 @@ created: 2025-11-12
 updated: 2025-11-12
 status: stable
 tier: foundation
-description: "Complete TRUST 4 principles guide covering Test First, Readable, Unified, Secured. Validation methods, enterprise quality gates, metrics, and November 2025 standards. Enterprise v4.0 with 50+ software quality standards references."
+description: "Complete TRUST 4 principles guide covering Test First, Readable, Unified, Secured. Validation methods, enterprise quality gates, metrics, and November 2025 standards. Enterprise   with 50+ software quality standards references."
 allowed-tools: "Read, Glob, Grep, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
 primary-agent: "alfred"
 secondary-agents: [qa-validator, trust-checker, test-engineer, security-expert]

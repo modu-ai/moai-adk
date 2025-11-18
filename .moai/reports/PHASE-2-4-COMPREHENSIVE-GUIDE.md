@@ -97,7 +97,7 @@ SPEC-UPDATE-PKG-001의 **Phase 2-4 (131개 Skills 업데이트)**를 위한 종�
 
 **Skills 카테고리**:
 - **Essentials (10)**: debug, perf, refactor, etc.
-- **MCP Integration (8)**: context7, sequential-thinking, playwright, etc.
+- **MCP Integration (7)**: context7, playwright, etc.
 - **BaaS Integration (6)**: vercel, clerk, supabase, etc.
 - **Specialized Domain (49)**: security, performance, migration, etc.
 

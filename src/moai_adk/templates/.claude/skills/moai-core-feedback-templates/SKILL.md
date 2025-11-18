@@ -24,7 +24,7 @@ stability: stable
 ---
 
 
-# GitHub 이슈 작성 템플릿 모음 v4.0.0
+# GitHub 이슈 작성 템플릿 모음 
 
 ## 개요
 
@@ -471,10 +471,10 @@ MoAI-ADK 개발자, 버그/기능 리포팅이 처음인 팀원
 
 - **명령어**: `/alfred:9-feedback`
 - **라벨 분류법**: `Skill("moai-core-issue-labels")`
-- **이전 버전**: v4.0.0+부터 지원
+- **이전 버전**: +부터 지원
 
 ---
 
 **Last Updated**: 2025-11-18
-**Status**: Production Ready (v4.0.0)
+**Status**: Production Ready ( .0)
 **Language**: Korean (한국어)

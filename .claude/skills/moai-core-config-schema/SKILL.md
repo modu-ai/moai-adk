@@ -17,7 +17,7 @@ allowed-tools:
   - WebFetch
 ---
 
-# Enterprise Configuration Schema Management v4.0.0
+# Enterprise Configuration Schema Management 
 
 ## Skill Metadata
 
@@ -119,9 +119,9 @@ LOG_LEVEL=debug
 ```json
 {
   "$schema": "https://json-schema.org/draft/2024-12/schema",
-  "$id": "https://moai-adk.dev/schemas/config-v4.0.0.json",
+  "$id": "https://moai-adk.dev/schemas/config- .0.json",
   "title": "MoAI-ADK Configuration Schema",
-  "description": "Configuration schema for MoAI Agentic Development Kit v4.0.0",
+  "description": "Configuration schema for MoAI Agentic Development Kit ",
   "type": "object",
   "required": ["project", "language", "git_strategy"],
   "properties": {
@@ -362,7 +362,7 @@ interface AppConfig {
 
 function validateConfig(config: unknown): AppConfig {
   // Validate against schema
-  const schema = require('./schemas/config-v4.0.0.json');
+  const schema = require('./schemas/config- .0.json');
   const valid = ajv.validate(schema, config);
   
   if (!valid) {
@@ -432,4 +432,4 @@ function validateSecrets(config: AppConfig): void {
 **For detailed schema reference**: [reference.md](reference.md)  
 **For real-world examples**: [examples.md](examples.md)  
 **Last Updated**: 2025-11-12  
-**Status**: Production Ready (Enterprise v4.0.0)
+**Status**: Production Ready (Enterprise )

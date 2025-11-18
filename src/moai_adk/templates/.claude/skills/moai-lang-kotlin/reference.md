@@ -564,7 +564,7 @@ val docs = mcp__context7__get-library-docs(
 
 ## Changelog
 
-- **v4.0.0** (2025-11-13): Reference documentation update
+- ** .0** (2025-11-13): Reference documentation update
 - **v3.0.0** (2025-03-15): Multiplatform patterns
 - **v2.0.0** (2025-01-10): Basic patterns
 - **v1.0.0** (2024-12-01): Initial release

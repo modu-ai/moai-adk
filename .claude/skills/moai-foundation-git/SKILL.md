@@ -12,7 +12,7 @@ allowed-tools:
   - Bash
 ---
 
-# Foundation Git Skill (Enterprise v4.0.0)
+# Foundation Git Skill (Enterprise )
 
 ## Skill Metadata
 
@@ -33,7 +33,7 @@ allowed-tools:
 
 Comprehensive Git workflow automation and PR policy enforcement for MoAI-ADK workflows, supporting multiple branching strategies, latest Git 2.47-2.50 features, and GitHub CLI automation.
 
-**Enterprise v4.0.0 Capabilities**:
+**Enterprise  Capabilities**:
 - ✅ Three flexible branching strategies (Feature Branch, Direct Commit, Per-SPEC)
 - ✅ Git 2.47+ incremental multi-pack indexes (MIDX) optimization
 - ✅ Branch base detection with `%(is-base:)` atom
@@ -69,7 +69,7 @@ Comprehensive Git workflow automation and PR policy enforcement for MoAI-ADK wor
 
 ---
 
-## Branching Strategies (Enterprise v4.0.0)
+## Branching Strategies (Enterprise )
 
 ### Strategy 1: Feature Branch + PR (Recommended for Teams)
 
@@ -473,7 +473,7 @@ git config --global feature.experimental true
 
 ---
 
-## Best Practices (Enterprise v4.0.0)
+## Best Practices (Enterprise )
 
 ✅ **DO**:
 - Choose workflow at SPEC creation (align with team)
@@ -528,4 +528,4 @@ git config --global feature.experimental true
 
 Learn more in `reference.md` for detailed Git commands, GitHub CLI automation patterns, and production workflows.
 
-**Skill Status**: Production Ready | Last Updated: 2025-11-12 | Enterprise v4.0.0
+**Skill Status**: Production Ready | Last Updated: 2025-11-12 | Enterprise 

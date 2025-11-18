@@ -1,4 +1,4 @@
-# Git & GitHub Workflows - Practical Examples (v4.0.0)
+# Git & GitHub Workflows - Practical Examples ( .0)
 
 **Last Updated**: 2025-11-12 | **Enterprise Patterns** | **Production Ready**
 

@@ -26,7 +26,7 @@ stability: stable
 ---
 
 
-# AI-Powered Enterprise Refactoring - v4.0.0
+# AI-Powered Enterprise Refactoring - 
 
 ## Skill Overview
 

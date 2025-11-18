@@ -10,7 +10,7 @@ allowed_tools:
 status: stable
 ---
 
-# Enterprise Testing Framework & Quality Assurance - v4.0.0
+# Enterprise Testing Framework & Quality Assurance - 
 
 ## Skill Overview
 

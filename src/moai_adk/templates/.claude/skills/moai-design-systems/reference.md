@@ -336,7 +336,7 @@ When modal opens:
 **GitHub**: https://github.com/style-dictionary/style-dictionary  
 **Migration Guide**: https://styledictionary.com/version-4/migration/
 
-### Key Features (v4.0+)
+### Key Features ( +)
 
 **DTCG Compatibility**:
 - Supports both DTCG 2025.10 format (`$value`, `$type`) and original format (`value`, `type`)

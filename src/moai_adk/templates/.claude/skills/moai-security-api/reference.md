@@ -138,7 +138,7 @@
 - API Security: https://www.cisecurity.org/blog/securing-apis/
 
 ### PCI-DSS Compliance
-- PCI-DSS v4.0: https://www.pcisecuritystandards.org/
+- PCI-DSS  : https://www.pcisecuritystandards.org/
 - Secure Coding Practices: https://www.pcisecuritystandards.org/documents/PCI_Secure_Coding_Practices.pdf
 
 ## Conference Talks & Articles

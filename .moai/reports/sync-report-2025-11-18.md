@@ -82,10 +82,9 @@ doc_sync_phase: "Phase 3"
 
 #### 2.1 에이전트 분류 (32개)
 
-**Auto-Approval Agents** (11개):
+**Auto-Approval Agents** (10개):
 - spec-builder, docs-manager, quality-gate, sync-manager
-- mcp-context7-integrator, mcp-sequential-thinking-integrator
-- mcp-playwright-integrator, mcp-notion-integrator
+- mcp-context7-integrator, mcp-playwright-integrator, mcp-notion-integrator
 - agent-factory, skill-factory, format-expert
 
 **Ask-Approval Agents** (21개):

@@ -484,7 +484,7 @@ context7_references:
 
 ## 📈 Version History
 
-**v4.0.0** (2025-11-12)
+** .0** (2025-11-12)
 - ✨ Context7 MCP integration
 - ✨ Progressive Disclosure structure
 - ✨ 10+ code examples
@@ -497,6 +497,6 @@ context7_references:
 
 ---
 
-**Generated with**: MoAI-ADK Skill Factory v4.0  
+**Generated with**: MoAI-ADK Skill Factory    
 **Last Updated**: 2025-11-12  
 **Maintained by**: Primary Agent (doc-syncer)

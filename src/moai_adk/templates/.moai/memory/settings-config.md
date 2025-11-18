@@ -1,6 +1,6 @@
 # Claude Code Settings Configuration
 
-**Complete guide for configuring Claude Code v4.0 settings for MoAI-ADK.**
+**Complete guide for configuring Claude Code settings for MoAI-ADK.**
 
 > **See also**: CLAUDE.md → "Claude Code Settings" for quick reference
 

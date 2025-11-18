@@ -324,7 +324,7 @@ class RestoreError(ConfigError):
 
 ## 📈 Version History
 
-**v4.0.0** (2025-11-13)
+** .0** (2025-11-13)
 - ✨ Optimized 4-layer Progressive Disclosure structure
 - ✨ Reduced from 707 to 260 lines (63% reduction)
 - ✨ Enhanced configuration templates and profiles
@@ -348,7 +348,7 @@ class RestoreError(ConfigError):
 
 ---
 
-**Generated with**: MoAI-ADK Skill Factory v4.0  
+**Generated with**: MoAI-ADK Skill Factory    
 **Last Updated**: 2025-11-13  
 **Maintained by**: Primary Agent (alfred)  
 **Optimization**: 63% size reduction while preserving all functionality

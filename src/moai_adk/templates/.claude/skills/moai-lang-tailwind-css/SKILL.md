@@ -20,7 +20,7 @@ allowed-tools:
 
 > **Primary Agent**: frontend-expert
 > **Secondary Agent**: ui-ux-expert
-> **Version**: 1.0.0 (Tailwind CSS v4.0+)
+> **Version**: 1.0.0 (Tailwind CSS  +)
 > **Keywords**: tailwind, tailwind css, utility-first, css framework, responsive, customization, design tokens, performance
 
 ---
@@ -40,7 +40,7 @@ allowed-tools:
 | **Customization** | Extend theme in config | `tailwind.config.js` |
 | **Performance** | Purges unused styles at build | Only shipped classes in CSS |
 
-**Installation (v4.0+)**:
+**Installation ( +)**:
 ```bash
 npm install -D tailwindcss
 

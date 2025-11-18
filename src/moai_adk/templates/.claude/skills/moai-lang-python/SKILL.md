@@ -14,7 +14,7 @@ allowed-tools:
 
 
 
-# Modern Python Development — Enterprise v4.0
+# Modern Python Development — Enterprise  
 
 ## Quick Summary
 

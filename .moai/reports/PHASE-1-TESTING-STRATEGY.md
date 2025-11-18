@@ -11,7 +11,7 @@
 
 ### What Was Implemented
 
-**Project Manager Enhancement** with Claude Code v4.0 features:
+**Project Manager Enhancement** with Claude Code features:
 
 1. **2a. Automatic Architecture Discovery**
    - Explore Subagent task invocation
@@ -68,7 +68,7 @@ def test_parse_explore_results():
 ```python
 def test_architecture_validation_questions():
     """Verify architecture validation questions are properly formatted"""
-    # Check: Question structure matches Claude Code v4.0 format
+    # Check: Question structure matches Claude Code format
     # Check: All required fields present (question, header, options)
     # Check: Options are mutually exclusive where required
     # Check: Descriptions are concise and clear
@@ -228,7 +228,7 @@ Expected Time: 5 minutes
 ## Validation Checklist
 
 ### Code Quality
-- [ ] Explore task invocation follows Claude Code v4.0 patterns
+- [ ] Explore task invocation follows Claude Code patterns
 - [ ] `parse_explore_results()` handles various output formats
 - [ ] AskUserQuestion options match tool specifications
 - [ ] Error handling covers all failure modes

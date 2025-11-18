@@ -93,7 +93,7 @@ import { PrometheusDatasource } from '@grafana/scenes';
 
 export function createProductionObservabilityDashboard() {
   return new SceneApp({
-    title: 'Production Observability - v4.0',
+    title: 'Production Observability -  ',
     timeRange: new SceneTimeRangeState({
       from: 'now-6h',
       to: 'now',

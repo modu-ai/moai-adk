@@ -14,7 +14,7 @@ allowed-tools:
 
 
 
-# Lang Kotlin Skill - Enterprise v4.0.0
+# Lang Kotlin Skill - Enterprise 
 
 ## Skill Overview
 
@@ -499,7 +499,7 @@ val client = HttpClient {
 
 ## Changelog
 
-- **v4.0.0** (2025-11-13): Refactored to Progressive Disclosure with comprehensive examples.md and reference.md
+- ** .0** (2025-11-13): Refactored to Progressive Disclosure with comprehensive examples.md and reference.md
 - **v3.0.0** (2025-03-15): Added KMP and multiplatform patterns
 - **v2.0.0** (2025-01-10): Basic Kotlin patterns and best practices
 - **v1.0.0** (2024-12-01): Initial release

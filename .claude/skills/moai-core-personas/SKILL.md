@@ -475,7 +475,7 @@ PERSONA_METRICS = {
 
 ## 📈 Version History
 
-**v4.0.0** (2025-11-13)
+** .0** (2025-11-13)
 - ✨ Optimized 4-layer Progressive Disclosure structure
 - ✨ Reduced from 706 to 290 lines (59% reduction)
 - ✨ Enhanced persona transition system
@@ -499,7 +499,7 @@ PERSONA_METRICS = {
 
 ---
 
-**Generated with**: MoAI-ADK Skill Factory v4.0  
+**Generated with**: MoAI-ADK Skill Factory    
 **Last Updated**: 2025-11-13  
 **Maintained by**: Primary Agent (alfred)  
 **Optimization**: 59% size reduction while preserving all functionality

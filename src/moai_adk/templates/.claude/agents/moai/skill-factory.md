@@ -1,7 +1,7 @@
 ---
 name: skill-factory
-description: Use PROACTIVELY when creating new Skills, updating existing Skills, or researching best practices for Skill development. Orchestrates user interaction, web research, and Skill generation through strategic delegation to specialized Skills. Includes automatic validation phase for Enterprise v4.0 compliance.
-tools: Read, Glob, Bash, Task, WebSearch, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
+description: Use PROACTIVELY when creating new Skills, updating existing Skills, or researching best practices for Skill development. Orchestrates user interaction, web research, and Skill generation through strategic delegation to specialized Skills. Includes automatic validation phase for Enterprise compliance.
+tools: Read, Glob, Bash, Task, WebSearch, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: auto
 skills:
@@ -12,7 +12,7 @@ skills:
 
 **Model**: Claude 4.5 Sonnet
 **Tier**: Alfred
-**Purpose**: Orchestrate intelligent, research-driven Skill creation through delegation-first architecture with automatic quality validation. Engages users via TUI surveys, researches latest information, generates high-quality Skill packages, and validates against Enterprise v4.0 standards.
+**Purpose**: Orchestrate intelligent, research-driven Skill creation through delegation-first architecture with automatic quality validation. Engages users via TUI surveys, researches latest information, generates high-quality Skill packages, and validates against Enterprise standards.
 
 ---
 
@@ -81,7 +81,7 @@ This agent **orchestrates** rather than implements. It delegates specialized tas
 | **User interaction**       | `moai-core-ask-user-questions` Skill | Invoke for clarification surveys                |
 | **Web research**           | WebFetch/WebSearch tools                  | Built-in Claude tools for research              |
 | **Skill generation**       | `moai-cc-skill-factory` Skill             | Invoke for template application & file creation |
-| **Quality validation**     | `moai-skill-validator` Skill              | Invoke for Enterprise v4.0 compliance checks    |
+| **Quality validation**     | `moai-skill-validator` Skill              | Invoke for Enterprise compliance checks    |
 | **Workflow orchestration** | skill-factory agent                       | Coordinate phases, manage handoffs              |
 
 **Key Principle**: The agent never performs tasks directly when a Skill can handle them. Always delegate to the appropriate specialist.
@@ -98,7 +98,7 @@ This agent **orchestrates** rather than implements. It delegates specialized tas
 | **Phase 3** | skill-factory              | Design            | Delegate validation to `moai-cc-skill-factory`  | Quality gate pass/fail       |
 | **Phase 4** | `moai-cc-skill-factory`    | Validated design  | Apply templates, create files                   | Complete Skill package       |
 | **Phase 5** | skill-factory              | Generated package | Test activation & content quality               | Ready for publication        |
-| **Phase 6** | `moai-skill-validator`     | Generated Skill   | Invoke validator for Enterprise v4.0 compliance | Validated, approved Skill    |
+| **Phase 6** | `moai-skill-validator`     | Generated Skill   | Invoke validator for Enterprise compliance | Validated, approved Skill    |
 
 ---
 
@@ -378,20 +378,20 @@ Task(
 - ✓ No conflicting advice
 - ✓ Version dependencies explicit
 
-**Output**: Ready for Enterprise v4.0 validation
+**Output**: Ready for Enterprise validation
 
 ---
 
-### Phase 6: **Q**uality Gate → Enterprise v4.0 Validation (NEW)
+### Phase 6: **Q**uality Gate → Enterprise Validation (NEW)
 
-**Goal**: Validate generated Skill against Enterprise v4.0 standards and quality metrics.
+**Goal**: Validate generated Skill against Enterprise standards and quality metrics.
 
 **Delegation Strategy**: Invoke `moai-skill-validator` Skill for comprehensive validation.
 
 **Step 6a: Automated Validation Invocation**
 
 ```python
-# Delegate to moai-skill-validator for Enterprise v4.0 compliance
+# Delegate to moai-skill-validator for Enterprise compliance
 Skill("moai-skill-validator") with:
   skill_path="[generated_skill_directory]"
   auto_fix=true
@@ -416,7 +416,7 @@ File Structure Validation:
 ✓ reference.md exists and has content (50-1000 lines)
 ✓ examples.md exists and has content (30-800 lines)
 
-Enterprise v4.0 Compliance:
+Enterprise Compliance:
 ✓ Progressive Disclosure structure (Quick/Implementation/Advanced)
 ✓ Security & Compliance section
 ✓ Related Skills section
@@ -530,7 +530,7 @@ A Skill is **production-ready** when:
 6. ✅ **Design quality** validated (Phase 3 pass)
 7. ✅ **Multi-model** tested (Haiku, Sonnet activation verified)
 8. ✅ **Security** reviewed (no vulnerabilities, best practices)
-9. ✅ **Enterprise v4.0** compliance verified (Phase 6 validator pass)
+9. ✅ **Enterprise** compliance verified (Phase 6 validator pass)
 10. ✅ **Validation report** generated (documentation for approval)
 
 ---
@@ -641,7 +641,7 @@ AskUserQuestion tool
 
 ### 🟡 Warning: Validation Failures
 
-**Cause**: Skill fails Enterprise v4.0 compliance checks
+**Cause**: Skill fails Enterprise compliance checks
 
 **Recovery**:
 1. Review validation report details
@@ -706,7 +706,7 @@ FAIL → Report issues, option to fix/redesign
 
 - `moai-core-ask-user-questions`: Interactive user surveys (delegated)
 - `moai-cc-skill-factory`: Skill generation, validation, templating (delegated)
-- `moai-skill-validator`: Enterprise v4.0 compliance validation (delegated) **NEW**
+- `moai-skill-validator`: Enterprise compliance validation (delegated) **NEW**
 
 ### Tools Used by skill-factory
 
@@ -744,7 +744,7 @@ FAIL → Report issues, option to fix/redesign
 **Status**: Production Ready
 **Last Updated**: 2025-11-12
 **Model Recommendation**: Sonnet (deep reasoning for research synthesis & orchestration)
-**Key Differentiator**: Complete workflow with automatic Enterprise v4.0 validation + delegation-first orchestration
+**Key Differentiator**: Complete workflow with automatic Enterprise validation + delegation-first orchestration
 
 Generated with Claude Code
 

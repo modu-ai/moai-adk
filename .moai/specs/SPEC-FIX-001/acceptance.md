@@ -22,7 +22,7 @@ Given (전제조건):
   - Python 3.13.9+ 설치됨
   - moai-adk 패키지 설치됨
   - .moai/config/config.json 파일 존재
-  - Claude Code v4.0+ 활성화
+  - + 활성화
 
 When (실행):
   - Claude Code가 새로운 세션을 시작함
@@ -276,6 +276,7 @@ $ python -m cProfile -s cumulative -c "uvx moai-adk statusline" 2>&1
 ```
 
 **검증 항목**:
+
 - [ ] 정확한 emojis (🤖, 🗿, 📊, 🔀)
 - [ ] 올바른 모델명 (Haiku, Sonnet, Opus)
 - [ ] 정확한 버전 (0.26.0)

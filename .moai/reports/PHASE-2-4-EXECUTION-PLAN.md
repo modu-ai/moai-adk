@@ -88,7 +88,7 @@
 
 **Skills to Update** (73개):
 - **Essentials** (10): debug, perf, refactor, etc.
-- **MCP Integration** (8): context7, sequential-thinking, playwright, etc.
+- **MCP Integration** (7): context7, playwright, etc.
 - **BaaS Integration** (6): vercel, clerk, supabase, etc.
 - **Specialized Domain** (49): security, performance, components, etc.
 

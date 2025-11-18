@@ -46,7 +46,7 @@ depends_on:
 stability: stable
 ---
 
-# moai-cloud-aws-advanced — Enterprise AWS Architectures (v4.0)
+# moai-cloud-aws-advanced — Enterprise AWS Architectures ( )
 
 **Advanced AWS Container, Serverless, and Orchestration Expertise**
 

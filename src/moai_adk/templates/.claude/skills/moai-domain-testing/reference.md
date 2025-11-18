@@ -24,7 +24,7 @@
 
 **Official Documentation**:
 - [Vitest Official](https://vitest.dev/)
-- [Vitest Blog v4.0 Release](https://vitest.dev/blog/vitest-4)
+- [Vitest Blog   Release](https://vitest.dev/blog/vitest-4)
 - [Browser Mode Documentation](https://vitest.dev/guide/browser.html)
 - [Visual Regression Testing](https://vitest.dev/guide/visual-regression.html)
 

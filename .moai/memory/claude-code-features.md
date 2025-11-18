@@ -6,11 +6,11 @@ language: English
 scope: Both
 ---
 
-# Claude Code v4.0+ Features & Architecture
+# Claude Code Features & Architecture
 
-**Complete guide for Claude Code v4.0 integration with MoAI-ADK.**
+**Complete guide for Claude Code integration with MoAI-ADK.**
 
-> **See also**: CLAUDE.md → "Claude Code v4.0 Features" for quick overview
+> **See also**: CLAUDE.md → "Claude Code Features" for quick overview
 
 ---
 
@@ -93,7 +93,7 @@ Hooks provide automated checks and context seeding:
 
 ---
 
-## Claude Code v4.0 Key Features
+## Claude Code Key Features
 
 ### Plan Mode
 

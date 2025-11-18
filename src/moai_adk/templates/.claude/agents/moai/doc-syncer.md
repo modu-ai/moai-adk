@@ -1,7 +1,7 @@
 ---
 name: doc-syncer
 description: "Use when: When automatic document synchronization based on code changes is required. Called from the /alfred:3-sync command. CRITICAL: This agent MUST be invoked via Task(subagent_type='doc-syncer') - NEVER executed directly."
-tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think, Bash(uv:*)
+tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, Bash(uv:*)
 model: haiku
 permissionMode: auto
 skills:

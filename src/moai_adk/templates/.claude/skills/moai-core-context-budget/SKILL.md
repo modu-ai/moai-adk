@@ -438,12 +438,7 @@ Each enabled MCP server adds tool definitions to system prompt, consuming contex
     //   "args": ["-y", "@playwright/mcp"]
     // },
     
-    // ✅ ENABLED: Documentation research
-    "sequential-thinking": {
-      "command": "npx",
-      "args": ["-y", "@sequential-thinking/mcp"]
-    }
-    
+        
     // ❌ DISABLED: Slackbot not in use
     // "slack": {
     //   "command": "npx",
@@ -460,12 +455,11 @@ Each enabled MCP server adds tool definitions to system prompt, consuming contex
 /context
 
 # Example output:
-# MCP Servers (3 enabled):
+# MCP Servers (2 enabled):
 # - context7: 847 tokens (tool definitions)
-# - sequential-thinking: 412 tokens
 # - playwright: 1,234 tokens (DISABLED to save tokens)
 #
-# Total MCP Overhead: 1,259 tokens
+# Total MCP Overhead: 847 tokens
 ```
 
 ### MCP Usage Strategy
@@ -481,12 +475,12 @@ class MCPUsageStrategy:
             "rationale": "Research phase, need API docs access"
         },
         "testing_phase": {
-            "enable": ["playwright", "sequential-thinking"],
+            "enable": ["playwright"],
             "disable": ["context7", "slack"],
             "rationale": "E2E testing, browser automation needed"
         },
         "code_review": {
-            "enable": ["github", "sequential-thinking"],
+            "enable": ["github"],
             "disable": ["context7", "playwright", "slack"],
             "rationale": "PR review, need GitHub API access"
         },
@@ -760,7 +754,6 @@ Result: Complete, high-quality responses
 | Claude Code | 1.5.0+ | CLI interface |
 | Claude Sonnet | 4.5+ | Model (200K context) |
 | Context7 MCP | Latest | Documentation research |
-| Sequential Thinking MCP | Latest | Problem solving |
 
 ---
 
@@ -775,8 +768,8 @@ Result: Complete, high-quality responses
 
 ## Changelog
 
-- **v4.0.0** (2025-11-18): Enterprise upgrade with 2025 best practices, aggressive clearing patterns, MCP optimization, strategic chunking
-- **v4.0.0** (2025-11-18): Initial release
+- ** .0** (2025-11-18): Enterprise upgrade with 2025 best practices, aggressive clearing patterns, MCP optimization, strategic chunking
+- ** .0** (2025-11-18): Initial release
 
 ---
 

@@ -913,7 +913,7 @@ recovery.recover_invalid_state(task_id)
 
 ---
 
-**Skill Status**: ✅ Production Ready (v4.0.0)
+**Skill Status**: ✅ Production Ready ( .0)
 **Last Updated**: 2025-11-18
 **Minimum MoAI-ADK Version**: 0.20.0
 **Research Base**: 18,075 production code examples

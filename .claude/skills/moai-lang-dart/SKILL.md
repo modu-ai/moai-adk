@@ -13,7 +13,7 @@ allowed-tools:
   - mcp__context7__get-library-docs
 ---
 
-# Dart - Enterprise v4.0.0
+# Dart - Enterprise 
 
 ## Metadata
 

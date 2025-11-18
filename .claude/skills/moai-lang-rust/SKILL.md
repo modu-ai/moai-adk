@@ -6,7 +6,7 @@ version: "4.0.0"
 status: stable
 ---
 
-# Rust Systems Programming — Enterprise v4.0
+# Rust Systems Programming — Enterprise  
 
 ## Technology Stack (November 2025 Stable)
 

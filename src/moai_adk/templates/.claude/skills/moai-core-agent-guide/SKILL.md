@@ -14,7 +14,7 @@ stability: stable
 ---
 
 
-# MoAI Agent Architecture & Delegation Guide - v4.0.0
+# MoAI Agent Architecture & Delegation Guide - 
 
 **Master guide for agent selection, delegation patterns, and orchestration strategies**
 

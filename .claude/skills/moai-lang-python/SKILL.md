@@ -10,7 +10,7 @@ allowed-tools:
 status: stable
 ---
 
-# Modern Python Development — Enterprise v4.0
+# Modern Python Development — Enterprise  
 
 ## Quick Summary
 

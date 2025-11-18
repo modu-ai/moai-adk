@@ -12,13 +12,7 @@
       "timeout": 30000,
       "retries": 3
     },
-    "sequential-thinking": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking@latest"],
-      "timeout": 30000,
-      "retries": 3
-    },
-    "notion": {
+        "notion": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-notion@latest"],
       "timeout": 30000,

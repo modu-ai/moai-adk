@@ -287,7 +287,6 @@ jq -s 'sort_by(-.execution_time_ms) | .[0:5]' .moai/logs/agent-performance.jsonl
 | mcp-context7-integrator | `.claude/agents/alfred/mcp-context7-integrator.md` | ask | ✅ |
 | mcp-notion-integrator | `.claude/agents/alfred/mcp-notion-integrator.md` | ask | ✅ |
 | mcp-playwright-integrator | `.claude/agents/alfred/mcp-playwright-integrator.md` | ask | ✅ |
-| mcp-sequential-thinking-integrator | `.claude/agents/alfred/mcp-sequential-thinking-integrator.md` | ask | ✅ |
 
 #### 검증 결과
 ```bash

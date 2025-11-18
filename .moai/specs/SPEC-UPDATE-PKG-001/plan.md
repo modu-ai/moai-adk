@@ -20,6 +20,7 @@
 **Status**: Pending
 
 #### Goals
+
 - Update all 9 Memory files to English language
 - Update CLAUDE.md with latest version references
 - Create Memory File Index in CLAUDE.md
@@ -28,13 +29,15 @@
 #### Tasks
 
 **Task 1.1: Analyze Current Memory Files**
-- Read all 9 .moai/memory/*.md files
+
+- Read all 9 .moai/memory/\*.md files
 - Identify any non-English content
 - Document current version references
 - List all cross-references that need updating
 - Estimated effort: 1 hour
 
 **Task 1.2: Update CLAUDE.md Version References**
+
 - Add comprehensive version matrix for all frameworks
 - List Python versions (3.13.9, FastAPI, Django, Pydantic, SQLAlchemy, etc.)
 - List JavaScript/TypeScript versions (Node.js 24, React 19, Next.js 15, etc.)
@@ -44,7 +47,8 @@
 - Estimated effort: 2 hours
 
 **Task 1.3: Update claude-code-features.md**
-- Latest Claude Code v4.0 features
+
+- Latest features
 - Plan Mode, Explore subagent, MCP integration
 - Model selection (Sonnet 4.5 vs Haiku 4.5)
 - Thinking mode, context management
@@ -53,6 +57,7 @@
 - Estimated effort: 1.5 hours
 
 **Task 1.4: Update agent-delegation.md**
+
 - Latest agent delegation patterns (Session 1-4 format)
 - Context7 MCP agent resume patterns
 - Multi-day project workflows
@@ -61,6 +66,7 @@
 - Estimated effort: 1 hour
 
 **Task 1.5: Update token-efficiency.md**
+
 - Update token pricing (Sonnet 4.5, Haiku 4.5)
 - Latest model selection strategy
 - Update phase-based token planning
@@ -69,6 +75,7 @@
 - Estimated effort: 1 hour
 
 **Task 1.6: Update settings-config.md & mcp-integration.md**
+
 - Update MCP server configurations
 - Latest Context7, GitHub, Filesystem, Notion servers
 - Update sandbox settings and permission examples
@@ -77,6 +84,7 @@
 - Estimated effort: 1 hour
 
 **Task 1.7: Update troubleshooting-extended.md & git-workflow-detailed.md**
+
 - Latest error patterns and solutions
 - Verify GitHub Flow (Personal Mode) correctness
 - Verify Git-Flow (Team Mode) documentation
@@ -85,6 +93,7 @@
 - Estimated effort: 1 hour
 
 **Task 1.8: Create Memory File Index in CLAUDE.md**
+
 - Document all 9 Memory files with descriptions
 - Create cross-reference map
 - Link each Memory file to related Skills
@@ -93,12 +102,14 @@
 - Estimated effort: 0.5 hours
 
 #### Tools & Resources
+
 - spec-builder agent: SPEC validation
 - docs-manager agent: Documentation updates
 - Context7 MCP: Latest framework documentation
 - Editor tools: Read, Edit, Write
 
 #### Definition of Done
+
 - All 9 Memory files in English (0% non-English content)
 - CLAUDE.md updated with comprehensive version references
 - Memory File Index created and linked
@@ -114,7 +125,8 @@
 **Status**: Pending
 
 #### Goals
-- Update 21 moai-lang-* Skills with latest framework versions
+
+- Update 21 moai-lang-\* Skills with latest framework versions
 - Add production-ready code examples for each language
 - Ensure 85%+ test coverage
 - Maintain English-only documentation
@@ -124,22 +136,26 @@
 **Managed Languages (21 Skills)**:
 
 1. **Backend Languages** (4):
+
    - moai-lang-python: Python 3.13.9, FastAPI 0.121.0, Django 5.2.8, Pydantic 2.12.0, SQLAlchemy 2.0.44
    - moai-lang-go: Go 1.25.x, Fiber 3.0 beta, gRPC latest
    - moai-lang-rust: Rust 1.84.x, Tokio, actix-web
    - moai-lang-java: Java 25, Spring Boot 3.4.x, Jakarta EE 11
 
 2. **Frontend Languages** (3):
+
    - moai-lang-typescript: TypeScript 5.9.3, Node.js 24.11.0 LTS, React 19.2.x, Next.js 15.5
    - moai-lang-javascript: JavaScript ES2025, Node.js 24.11.0 LTS
    - moai-lang-html-css: HTML5, CSS 4, Tailwind CSS 4.0
 
 3. **Framework-Specific** (3):
+
    - moai-lang-react: React 19.2.x, React Router 7, Hooks patterns
    - moai-lang-vue: Vue 3.5.x, Pinia 2.x, TypeScript integration
    - moai-lang-angular: Angular 19.0.x, TypeScript 5.9.3, RxJS 7.x
 
 4. **Additional Languages** (5):
+
    - moai-lang-php: PHP 8.4, Laravel 11.x, Composer 2.8.x
    - moai-lang-ruby: Ruby 3.4.x, Rails 7.x, Bundler 2.6.x
    - moai-lang-csharp: C# 13, .NET 9.0, ASP.NET Core 9.0
@@ -147,11 +163,13 @@
    - moai-lang-swift: Swift 6.0, SwiftUI latest, iOS 18 compatible
 
 5. **Markup & Configuration** (3):
+
    - moai-lang-sql: PostgreSQL 16.4, MySQL 9.0, SQL patterns
    - moai-lang-shell: Bash 5.3, Shell scripting best practices
    - moai-lang-yaml: YAML 1.2, configuration patterns
 
 6. **Data & Serialization** (2):
+
    - moai-lang-graphql: GraphQL 17.x, Apollo Server 4.x, graphql-core
    - moai-lang-markdown: CommonMark 0.30, Markdown patterns
 
@@ -163,6 +181,7 @@
 For each of the 21 Skills, execute:
 
 **Task 2.X.1: Update Version References**
+
 - Update framework version (latest stable as of 2025-11-18)
 - Update package versions (npm, pip, cargo, maven, composer, etc.)
 - Update version release dates
@@ -170,6 +189,7 @@ For each of the 21 Skills, execute:
 - Link to CLAUDE.md version matrix
 
 **Task 2.X.2: Create Production-Ready Examples**
+
 - Example 1: Basic usage pattern
 - Example 2: Advanced pattern with best practices
 - Example 3: Integration with other technologies
@@ -182,6 +202,7 @@ For each of the 21 Skills, execute:
 - Estimated effort: 1 hour per skill
 
 **Task 2.X.3: Add/Update Test Coverage**
+
 - Create test file if missing
 - Ensure 85%+ code coverage for examples
 - Include unit, integration, and end-to-end tests
@@ -189,12 +210,14 @@ For each of the 21 Skills, execute:
 - Estimated effort: 0.5 hours per skill
 
 **Task 2.X.4: Cross-Reference to Related Skills**
-- Link to moai-domain-* Skills that use this language
+
+- Link to moai-domain-\* Skills that use this language
 - Link to moai-core-workflow for SPEC usage
-- Link to moai-essentials-* for advanced patterns
+- Link to moai-essentials-\* for advanced patterns
 - Link to CLAUDE.md for version info
 
 **Task 2.X.5: Quality Review & English Verification**
+
 - Verify all content is in English
 - Check TRUST 5 compliance (Test, Readable, Unified, Secured, Trackable)
 - Validate all code examples run without errors
@@ -203,24 +226,29 @@ For each of the 21 Skills, execute:
 #### Implementation Sequence
 
 **Agent 1: Backend Languages (2.1-2.4)**
+
 - Python, Go, Rust, Java (4 skills × 2 hrs = 8 hrs total)
 - Parallel execution: 5.3 hours
 
 **Agent 2: Frontend Languages (2.5-2.7)**
+
 - TypeScript, JavaScript, HTML/CSS (3 skills × 2 hrs = 6 hrs)
 - Parallel execution: 2 hours
 
 **Agent 3: Additional Languages (2.8-2.11)**
+
 - React, Vue, Angular, PHP, Ruby, C#, Kotlin, Swift, SQL, Shell, YAML, GraphQL, Markdown, Docker (14 skills)
 - Parallel execution: 5.3 hours
 
 #### Tools & Resources
+
 - backend-expert agent: Update Python, Go, Rust, Java
 - frontend-expert agent: Update TypeScript, JavaScript, React, Vue, Angular, HTML/CSS
 - tdd-implementer agent: Create test coverage
 - Context7 MCP: Latest framework documentation
 
 #### Definition of Done
+
 - All 21 Skills with latest versions
 - 3+ production-ready examples per Skill
 - 85%+ test coverage per Skill
@@ -237,34 +265,42 @@ For each of the 21 Skills, execute:
 **Status**: Pending
 
 #### Goals
-- Update 16 moai-domain-* Skills with latest framework versions
-- Update 21 moai-core-* and moai-*-* Skills with latest patterns
+
+- Update 16 moai-domain-\* Skills with latest framework versions
+- Update 21 moai-core-_ and moai-_-\* Skills with latest patterns
 - Ensure consistency across domain implementations
 - Maintain English-only documentation
 
 #### Task Distribution
 
 **Backend Domain Skills (3)**: moai-domain-backend, database, devops
+
 - Agent: backend-expert (6 hours)
 
 **Frontend Domain Skills (2)**: moai-domain-frontend, mobile
+
 - Agent: frontend-expert (4 hours)
 
 **Security & Infrastructure (3)**: moai-domain-security, baas, devops
+
 - Agent: security-expert (6 hours)
 
 **Core MoAI Patterns (7)**: moai-core-workflow, agent-guide, context-budget, personas, etc.
+
 - Agent: quality-gate (8 hours)
 
 **Specialized Domains (5)**: moai-domain-ml-ops, analytics, iot, cli-tool, figma
+
 - Agent: specialized-expert (6 hours)
 
 **MCP & Integration (3)**: moai-context7-lang-integration, moai-mcp-builder, mcp-plugins
+
 - Agent: mcp-integrator (4 hours)
 
 #### Implementation Sequence
 
 Execute 6 parallel agent tasks:
+
 - Task 3.1-3.3: Backend domains (6 hrs)
 - Task 3.4-3.5: Frontend domains (4 hrs)
 - Task 3.6-3.8: Security & infrastructure (6 hrs)
@@ -275,6 +311,7 @@ Execute 6 parallel agent tasks:
 **Total**: 24 hours sequential → 4 hours parallel (6 agents)
 
 #### Definition of Done
+
 - All 37 Skills updated
 - Latest versions for all frameworks referenced
 - Consistency across similar domains
@@ -291,6 +328,7 @@ Execute 6 parallel agent tasks:
 **Status**: Pending
 
 #### Goals
+
 - Update 73 specialized Skills
 - Comprehensive cross-reference validation
 - Final TRUST 5 quality audit
@@ -323,17 +361,21 @@ Execute 6 parallel agent tasks:
 #### Implementation Approach
 
 **Agent 1: Security & BaaS (14 Skills)**
+
 - 7 hours for security + integration specs
 
 **Agent 2: Documentation & Foundation (10 Skills)**
+
 - 5 hours for essentials + documentation + foundation
 
 **Agent 3: MCP & Advanced (49 Skills)**
+
 - All remaining Skills
 - MCP server implementations, Claude Code features, specialized implementations
 - 8 hours
 
 **Subtasks per Skill**:
+
 1. Update version references
 2. Add/update code examples
 3. Ensure test coverage 85%+
@@ -343,24 +385,28 @@ Execute 6 parallel agent tasks:
 #### Validation Tasks (Running in Parallel)
 
 **Task 4.V.1: Cross-Reference Validation Script**
+
 - Automated validation of all internal links
 - Check for broken references to CLAUDE.md, Memory files, Skills
 - Generate validation report
 - Duration: 2 hours
 
 **Task 4.V.2: Language Compliance Audit**
+
 - Scan all Memory files for non-English content
 - Scan all Skills for non-English content
 - Identify and flag for correction
 - Duration: 1 hour
 
 **Task 4.V.3: Version Reference Consistency**
+
 - Verify all version references match CLAUDE.md
 - Check for duplicates or conflicts
 - Identify any outdated references
 - Duration: 1 hour
 
 **Task 4.V.4: TRUST 5 Quality Audit**
+
 - Test-first: Verify 85%+ coverage per Skill
 - Readable: Check documentation quality and structure
 - Unified: Verify pattern consistency across Skills
@@ -369,12 +415,14 @@ Execute 6 parallel agent tasks:
 - Duration: 3 hours
 
 **Task 4.V.5: Build & Release Readiness**
+
 - Create release notes
 - Document breaking changes (if any)
 - Prepare deployment checklist
 - Duration: 1 hour
 
 #### Tools & Resources
+
 - security-expert agent: Security Skills (8)
 - backend-expert agent: BaaS + Infrastructure (6)
 - docs-manager agent: Documentation + Foundation (4)
@@ -383,6 +431,7 @@ Execute 6 parallel agent tasks:
 - CI/CD integration
 
 #### Definition of Done
+
 - All 73 Skills updated
 - Validation report: 0 broken references
 - Language audit: 100% English in package files
@@ -398,12 +447,14 @@ Execute 6 parallel agent tasks:
 ### Version Management Strategy
 
 **Single Source of Truth**: CLAUDE.md
+
 - All framework versions listed in CLAUDE.md
 - Memory files reference versions in CLAUDE.md
 - Skills reference via CLAUDE.md + Context7 MCP
 - No hard-coded versions in individual files (except examples)
 
 **Version Update Process**:
+
 1. Check latest stable version from official source
 2. Update CLAUDE.md version matrix
 3. Update Memory files with reference to CLAUDE.md
@@ -414,6 +465,7 @@ Execute 6 parallel agent tasks:
 ### Code Quality Standards
 
 **TRUST 5 Compliance**:
+
 - **Test-first**: 85%+ code coverage required for all Skills
 - **Readable**: Clear documentation, well-structured examples
 - **Unified**: Consistent patterns across all Skills
@@ -421,6 +473,7 @@ Execute 6 parallel agent tasks:
 - **Trackable**: All updates traced via SPEC tags
 
 **Example Quality Checklist**:
+
 - [ ] Runs without errors
 - [ ] Has proper error handling
 - [ ] Includes security considerations
@@ -432,6 +485,7 @@ Execute 6 parallel agent tasks:
 ### Cross-Reference Validation
 
 **Automated Validation**:
+
 ```bash
 # Validate all internal references
 python .moai/scripts/validate-references.py
@@ -444,6 +498,7 @@ python .moai/scripts/validate-references.py
 ```
 
 **Manual Review**:
+
 - Final review by docs-manager agent
 - Cross-check with CLAUDE.md
 - Verify all links work
@@ -451,16 +506,19 @@ python .moai/scripts/validate-references.py
 ### Parallel Execution Strategy
 
 **Agent Delegation**:
+
 - Phase 2: 3 agents (backend, frontend, other languages)
 - Phase 3: 6 agents (domain specialties)
 - Phase 4: 3 agents (security/baas, docs/foundation, mcp/advanced)
 
 **Parallel Task Handling**:
+
 - Each agent works on independent Skills
 - Validation tasks run in parallel with Phase 4 updates
 - Reduced execution time: 60 hours → 21.3 hours (65% savings)
 
 **Session Management**:
+
 - Phase 1: Sequential (critical path)
 - After Phase 1: `/clear` to optimize token usage
 - Phase 2-4: Parallel with isolated agent contexts
@@ -471,8 +529,10 @@ python .moai/scripts/validate-references.py
 ## Milestones & Deliverables
 
 ### Milestone 1: Memory Files Complete (Week 1)
+
 **Date**: 2025-11-19
 **Deliverables**:
+
 - 9 updated Memory files in .moai/memory/
 - Updated CLAUDE.md with version matrix
 - Memory File Index created
@@ -480,26 +540,32 @@ python .moai/scripts/validate-references.py
 - Status: COMPLETE and VERIFIED
 
 ### Milestone 2: Language Skills Complete (Week 2)
+
 **Date**: 2025-11-22
 **Deliverables**:
-- 21 moai-lang-* Skills updated
+
+- 21 moai-lang-\* Skills updated
 - Production-ready examples for each language
 - Test coverage: 85%+ per Skill
 - Language compliance audit (100% English)
 - Status: COMPLETE and TESTED
 
 ### Milestone 3: Domain & Core Skills Complete (Week 3-4)
+
 **Date**: 2025-11-26
 **Deliverables**:
-- 37 moai-domain-* + moai-core-* Skills updated
+
+- 37 moai-domain-_ + moai-core-_ Skills updated
 - Version consistency verified
 - Cross-skill dependencies documented
 - Status: COMPLETE and VALIDATED
 
 ### Milestone 4: Production Ready (Week 5)
+
 **Date**: 2025-11-28
 **Deliverables**:
-- 73 moai-* specialized Skills updated
+
+- 73 moai-\* specialized Skills updated
 - Comprehensive validation report
 - TRUST 5 audit: 100% compliance
 - Release notes with all changes
@@ -511,40 +577,50 @@ python .moai/scripts/validate-references.py
 ## Risk Management
 
 ### Risk 1: Incomplete Skills Updates
+
 **Probability**: High | **Impact**: High
 **Mitigation**:
+
 - Checklist per Skill (version, examples, tests, English, cross-references)
 - Staged rollout by priority
 - Automated validation before commit
 - Regular progress tracking
 
 ### Risk 2: Broken Cross-References
+
 **Probability**: Medium | **Impact**: High
 **Mitigation**:
+
 - Automated validation script before each commit
 - Manual final review by docs-manager
 - GitHub Actions CI/CD validation
 - Immediate fix process for broken links
 
 ### Risk 3: Token Budget Overrun
+
 **Probability**: Medium | **Impact**: Low
 **Mitigation**:
+
 - Use `/clear` after Phase 1
 - Parallel agent execution (multiple agents = smaller contexts)
 - Monitor `/context` throughout
 - Phase-based approach with session resets
 
 ### Risk 4: Version Conflicts
+
 **Probability**: Low | **Impact**: Medium
 **Mitigation**:
+
 - Single source of truth (CLAUDE.md)
 - Version consistency check in Phase 4
 - Automated conflict detection
 - Clear deprecation notices for old versions
 
 ### Risk 5: TRUST 5 Non-Compliance
+
 **Probability**: Low | **Impact**: High
 **Mitigation**:
+
 - Automated test coverage validation (85%+ required)
 - Quality gate checks before commit
 - Manual TRUST 5 audit in Phase 4
@@ -555,6 +631,7 @@ python .moai/scripts/validate-references.py
 ## Success Metrics
 
 ### Quantitative Metrics
+
 - **Phase Completion**: All 4 phases completed by 2025-11-28
 - **File Coverage**: 9/9 Memory files + 131/131 Skills updated
 - **Broken References**: 0 broken links in validation report
@@ -563,6 +640,7 @@ python .moai/scripts/validate-references.py
 - **TRUST 5 Score**: 100% compliance across all metrics
 
 ### Qualitative Metrics
+
 - **Usability**: Clear examples that developers can copy and use
 - **Consistency**: Uniform patterns across all Skills
 - **Maintainability**: Future updates follow same process
@@ -574,6 +652,7 @@ python .moai/scripts/validate-references.py
 ## Technology Stack
 
 **Tools**:
+
 - Editor tools: Read, Write, Edit for file management
 - Bash tools: Git commands, version checking, validation scripts
 - Grep tools: Cross-reference searching, content analysis
@@ -581,6 +660,7 @@ python .moai/scripts/validate-references.py
 - MCP tools: Context7 for latest documentation lookups
 
 **Agents**:
+
 - spec-builder: SPEC validation and management
 - backend-expert: Backend language and domain updates
 - frontend-expert: Frontend technology updates
@@ -595,18 +675,21 @@ python .moai/scripts/validate-references.py
 ## Communication & Handoff
 
 ### Stakeholder Updates
+
 - Phase 1 complete: Update CLAUDE.md in repository
 - Phase 2 complete: Announce language Skills ready for use
 - Phase 3 complete: Announce domain Skills available
 - Phase 4 complete: Release notes and deployment instructions
 
 ### Documentation
+
 - CHANGELOG entry per phase
 - Migration guide (if breaking changes)
 - Release notes with all updates
 - Deprecation notices for old versions
 
 ### Integration
+
 - GitHub branch: feature/SPEC-UPDATE-PKG-001
 - PR target: main (Personal Mode GitHub Flow)
 - PR description: Links to SPEC document + validation report
@@ -623,6 +706,7 @@ python .moai/scripts/validate-references.py
 ## Appendix: Validation Checklist
 
 ### Pre-Implementation Checklist
+
 - [ ] SPEC-UPDATE-PKG-001 approved
 - [ ] Team notified of update schedule
 - [ ] Backup created of current Memory files and Skills
@@ -632,6 +716,7 @@ python .moai/scripts/validate-references.py
 ### Per-Phase Checklist
 
 **Phase 1**:
+
 - [ ] All 9 Memory files updated to English
 - [ ] CLAUDE.md version matrix complete
 - [ ] Memory File Index created
@@ -639,19 +724,22 @@ python .moai/scripts/validate-references.py
 - [ ] `/clear` executed before Phase 2
 
 **Phase 2**:
-- [ ] All 21 lang-* Skills updated
+
+- [ ] All 21 lang-\* Skills updated
 - [ ] Examples: 3+ per Skill, production-ready
 - [ ] Test coverage: 85%+ per Skill
 - [ ] Language audit: 100% English
 - [ ] TRUST 5: 100% compliance
 
 **Phase 3**:
-- [ ] All 37 domain-* + core-* Skills updated
+
+- [ ] All 37 domain-_ + core-_ Skills updated
 - [ ] Version consistency: PASS
 - [ ] Cross-skill dependencies: Documented
 - [ ] Quality audit: PASS
 
 **Phase 4**:
+
 - [ ] All 73 specialized Skills updated
 - [ ] Comprehensive validation report: Complete
 - [ ] TRUST 5 audit: 100% compliance
@@ -659,6 +747,7 @@ python .moai/scripts/validate-references.py
 - [ ] Breaking changes: Documented
 
 ### Post-Implementation Checklist
+
 - [ ] Git commit: feature/SPEC-UPDATE-PKG-001
 - [ ] GitHub PR: Ready for review
 - [ ] Validation report: Published

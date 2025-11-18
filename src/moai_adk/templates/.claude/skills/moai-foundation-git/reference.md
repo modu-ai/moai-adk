@@ -1,4 +1,4 @@
-# Git & GitHub Automation - Enterprise Reference (v4.0.0)
+# Git & GitHub Automation - Enterprise Reference ( .0)
 
 **Last Updated**: 2025-11-12 | Version: 4.0.0 Enterprise | Git 2.47-2.50, GitHub CLI 2.83.0
 

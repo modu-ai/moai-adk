@@ -14,7 +14,7 @@ allowed-tools:
 
 
 
-# C# - Enterprise v4.0.0
+# C# - Enterprise 
 
 ## Metadata
 
@@ -343,7 +343,7 @@ aspnetcore_docs = get_library_docs(
 
 ## Changelog
 
-- **v4.0.0** (2025-11-12): Enterprise upgrade - Progressive Disclosure structure, 83% content reduction, Context7 integration
+- ** .0** (2025-11-12): Enterprise upgrade - Progressive Disclosure structure, 83% content reduction, Context7 integration
 - **v3.0.0** (2025-03-15): C# 12 and .NET 8 patterns
 - **v2.0.0** (2025-01-10): Basic C# async/await patterns
 - **v1.0.0** (2024-12-01): Initial release

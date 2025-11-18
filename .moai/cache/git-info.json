@@ -1,7 +1,7 @@
 {
   "branch": "release/0.26.0",
-  "last_commit": "a44e1e6a feat(SPEC-UPDATE-PKG-001): Complete Enterprise Skills Package v4.0.0 Upgrade",
-  "commit_time": "2 hours ago",
-  "changes": 45,
-  "last_check": "2025-11-19T02:59:21.944070"
+  "last_commit": "8a1722d0 chore(sequential-thinking): Remove all MCP server references from documentation",
+  "commit_time": "17 minutes ago",
+  "changes": 893,
+  "last_check": "2025-11-19T05:14:35.621891"
 }

@@ -103,8 +103,8 @@ _Documentation links updated 2025-10-22_
 
 ## Changelog
 
-- **v4.0.0** (2025-11-18): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
-- **v4.0.0** (2025-11-18): Initial Skill release
+- ** .0** (2025-11-18): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
+- ** .0** (2025-11-18): Initial Skill release
 
 ---
 

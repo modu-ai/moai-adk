@@ -10,7 +10,7 @@ allowed-tools:
 status: stable
 ---
 
-# Modern TypeScript Development — Enterprise v4.0
+# Modern TypeScript Development — Enterprise  
 
 ## Quick Summary
 

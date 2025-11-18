@@ -18,7 +18,7 @@ allowed-tools:
   - WebFetch
 ---
 
-# Enterprise Systematic Code Review Orchestrator v4.0.0
+# Enterprise Systematic Code Review Orchestrator 
 
 ## Skill Metadata
 
@@ -319,4 +319,4 @@ def calculate_discount(price: float, customer_type: str) -> float:
 **For detailed review checklists**: [reference.md](reference.md)  
 **For real-world examples**: [examples.md](examples.md)  
 **Last Updated**: 2025-11-12  
-**Status**: Production Ready (Enterprise v4.0.0)
+**Status**: Production Ready (Enterprise )

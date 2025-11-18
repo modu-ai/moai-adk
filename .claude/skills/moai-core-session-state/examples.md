@@ -1,4 +1,4 @@
-# Session State Management - Practical Examples (v4.0.0)
+# Session State Management - Practical Examples ( .0)
 
 **Last Updated**: 2025-11-12 | **Enterprise Patterns** | **Production Ready**
 
@@ -399,11 +399,6 @@ def optimize_mcp_for_code_analysis():
             'enabled': True,
             'token_cost': 3000,
             'used_in_last_hour': False
-        },
-        'sequential-thinking': {
-            'enabled': True,
-            'token_cost': 1500,
-            'used_in_last_hour': True
         }
     }
     

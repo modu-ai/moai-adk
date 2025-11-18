@@ -14,7 +14,7 @@ allowed-tools:
   - WebFetch
 ---
 
-# Enterprise AI-Powered Expertise Detection v4.0.0
+# Enterprise AI-Powered Expertise Detection 
 
 ## Skill Metadata
 
@@ -287,4 +287,4 @@ Expert:     "reification", "lifting", "unfold semantics"
 **For detailed detection patterns**: [reference.md](reference.md)  
 **For real-world examples**: [examples.md](examples.md)  
 **Last Updated**: 2025-11-12  
-**Status**: Production Ready (Enterprise v4.0.0)
+**Status**: Production Ready (Enterprise )

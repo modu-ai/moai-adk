@@ -26,11 +26,11 @@ stability: stable
 ---
 
 
-# Enterprise Notion Integration v4.0.0
+# Enterprise Notion Integration 
 
 **🌐 Advanced Notion Workspace Management & Database Operations**
 
-> **Version**: 4.0.0 (Enterprise v4.0 Optimized)
+> **Version**: 4.0.0 (Enterprise   Optimized)
 > **Status**: Production Ready
 > **Coverage**: Complete Notion API integration with MCP support
 

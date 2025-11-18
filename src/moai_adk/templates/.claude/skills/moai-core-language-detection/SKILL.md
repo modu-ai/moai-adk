@@ -464,17 +464,17 @@ module github.com/username/my-go-app
 go 1.21
 
 require (
-    github.com/gin-gonic/gin v4.0.0
-    github.com/golang-migrate/migrate/v4 v4.0.0
-    github.com/lib/pq v4.0.0
-    github.com/spf13/viper v4.0.0
-    github.com/stretchr/testify v4.0.0
+    github.com/gin-gonic/gin 
+    github.com/golang-migrate/migrate/v4 
+    github.com/lib/pq 
+    github.com/spf13/viper 
+    github.com/stretchr/testify 
 )
 
 require (
-    github.com/bytedance/sonic v4.0.0 // indirect
-    github.com/chenzhuoyu/base64x v4.0.0-20221115062448-fe3a3abad311 // indirect
-    github.com/gabriel-vasile/mimetype v4.0.0 // indirect
+    github.com/bytedance/sonic  // indirect
+    github.com/chenzhuoyu/base64x -20221115062448-fe3a3abad311 // indirect
+    github.com/gabriel-vasile/mimetype  // indirect
 )
 ```
 

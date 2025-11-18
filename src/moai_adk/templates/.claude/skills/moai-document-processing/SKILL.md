@@ -31,7 +31,7 @@ stability: stable
 ---
 
 
-# AI-Powered Enterprise Document Processing Skill v4.0.0
+# AI-Powered Enterprise Document Processing Skill 
 
 ## Skill Metadata
 
@@ -521,7 +521,7 @@ class AIDocumentProcessingLearner:
 
 ---
 
-**End of AI-Powered Enterprise Document Processing Skill v4.0.0**  
+**End of AI-Powered Enterprise Document Processing Skill **  
 *Enhanced with Context7 MCP integration and revolutionary AI capabilities*
 
 ---

@@ -17,7 +17,7 @@ typical_chain_position: "middle"
 depends_on: []
 ---
 
-# moai-domain-cloud — Enterprise Cloud Architecture (v4.0)
+# moai-domain-cloud — Enterprise Cloud Architecture ( )
 
 **Enterprise-Grade Cloud Architecture Expertise**
 

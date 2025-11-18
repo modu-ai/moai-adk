@@ -14,7 +14,7 @@ stability: stable
 ---
 
 
-# Environment Security & Secrets Management - v4.0.0
+# Environment Security & Secrets Management - 
 
 **Secure environment variable and credentials management patterns for production systems**
 

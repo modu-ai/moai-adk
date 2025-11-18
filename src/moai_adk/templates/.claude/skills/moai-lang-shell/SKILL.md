@@ -14,7 +14,7 @@ allowed-tools:
 
 
 
-# moai-lang-shell - Enterprise v4.0.0
+# moai-lang-shell - Enterprise 
 
 ## Skill Overview
 
@@ -450,7 +450,7 @@ This skill integrates with Context7 for real-time documentation access:
 
 ## Changelog
 
-- **v4.0.0** (2025-11-13): Refactored to Progressive Disclosure with comprehensive examples.md and reference.md
+- ** .0** (2025-11-13): Refactored to Progressive Disclosure with comprehensive examples.md and reference.md
 - **v3.0.0** (2025-03-15): Added POSIX compliance guide
 - **v2.0.0** (2025-01-10): Testing and linting guide
 - **v1.0.0** (2024-12-01): Initial release

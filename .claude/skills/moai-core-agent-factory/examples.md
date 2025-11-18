@@ -122,7 +122,7 @@ Gate 3: Content Validation ✓
 
 Gate 4: Quality Gate Integration ✓
   - TRUST 5 compliance: PASS
-  - Claude Code v4.0: PASS
+  - Claude Code  : PASS
 
 Status: APPROVED ✓
 ```
@@ -305,7 +305,7 @@ Gate 3: Content Validation ✓
 Gate 4: Quality Gate Integration
   → Delegate to @agent-cc-manager
   → Validate MCP integration
-  → Check Claude Code v4.0 compliance
+  → Check Claude Code   compliance
   → Status: APPROVED ✓
 
 Status: APPROVED ✓
@@ -415,11 +415,10 @@ Tool permissions:
   Domain (backend): [Write, Edit, Bash, WebFetch]
   Capability (analyze): [Read, Grep]
   Capability (research): [WebFetch, WebSearch, mcp_context7_tools]
-  Complexity >= 8: [mcp__sequential_thinking_think, AskUserQuestion]
-  
+  Complexity >= 8: [AskUserQuestion]
+
   Final: [Read, Grep, Glob, Bash, WebFetch, WebSearch, AskUserQuestion,
-          mcp__context7__resolve-library-id, mcp__context7__get-library-docs,
-          mcp__sequential_thinking_think]
+          mcp__context7__resolve-library-id, mcp__context7__get-library-docs]
 ```
 
 **Stage 5: Agent Specification**
@@ -427,7 +426,7 @@ Tool permissions:
 ---
 name: security-auditor
 description: "Use PROACTIVELY when: Performing full-stack security audits, checking OWASP compliance, identifying vulnerability patterns, multi-framework security analysis. Called from security reviews and compliance audits. CRITICAL: This agent MUST be invoked via Task(subagent_type='security-auditor') - NEVER executed directly."
-tools: Read, Grep, Glob, Bash, WebFetch, WebSearch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
+tools: Read, Grep, Glob, Bash, WebFetch, WebSearch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 ---
 
@@ -602,7 +601,7 @@ Stage 6: Final cc-manager Validation
 ✓ Tool permissions follow principle of least privilege
 ✓ MCP integration valid (Context7 for research)
 ✓ No overly broad permissions
-✓ Complies with Claude Code v4.0
+✓ Complies with Claude Code  
 
 Status: PRODUCTION READY ✓
 Time: 28 minutes

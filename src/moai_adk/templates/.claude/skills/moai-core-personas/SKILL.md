@@ -487,31 +487,31 @@ PERSONA_METRICS = {
 
 ## 📈 Version History
 
-**v4.0.0** (2025-11-18)
+** .0** (2025-11-18)
 - ✨ Optimized 4-layer Progressive Disclosure structure
 - ✨ Reduced from 706 to 290 lines (59% reduction)
 - ✨ Enhanced persona transition system
 - ✨ Added personalization engine
 - ✨ Improved performance optimization
 
-**v4.0.0** (2025-11-18)
+** .0** (2025-11-18)
 - ✨ Context7 MCP integration
 - ✨ Enhanced expertise detection algorithms
 - ✨ Advanced persona adaptation features
 
-**v4.0.0** (2025-11-18)
+** .0** (2025-11-18)
 - ✨ Dynamic persona selection
 - ✨ Expertise level detection
 - ✨ Team-based communication patterns
 
-**v4.0.0** (2025-11-18)
+** .0** (2025-11-18)
 - ✨ Initial persona system
 - ✨ Basic communication adaptation
 - ✅ User expertise detection
 
 ---
 
-**Generated with**: MoAI-ADK Skill Factory v4.0  
+**Generated with**: MoAI-ADK Skill Factory    
 **Last Updated**: 2025-11-18  
 **Maintained by**: Primary Agent (alfred)  
 **Optimization**: 59% size reduction while preserving all functionality

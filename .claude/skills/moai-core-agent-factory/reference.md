@@ -64,7 +64,6 @@ Add by Capability:
 
 Add by Complexity:
 - >= 6:         [AskUserQuestion]
-- >= 8:         [mcp__sequential_thinking_think]
 ```
 
 ### 6. Skill Recommendation
@@ -166,7 +165,7 @@ overall_quality:         >= 0.70 (70%)
 
 ### Gate 4: Quality Integration
 - [ ] TRUST 5 compliance (Test/Readable/Unified/Secured/Trackable)
-- [ ] Claude Code v4.0 standards
+- [ ] Claude Code   standards
 - [ ] Enterprise requirements (if applicable)
 - [ ] Pass quality-gate agent
 
@@ -377,7 +376,7 @@ Enterprise Compliance:              SOC2/GDPR/HIPAA ready
 - [ ] YAML syntax validated
 - [ ] Tool permissions approved
 - [ ] MCP configurations checked
-- [ ] Claude Code v4.0 compliance verified
+- [ ] Claude Code   compliance verified
 
 ### With @agent-quality-gate
 - [ ] TRUST 5 compliance checked

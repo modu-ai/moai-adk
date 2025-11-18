@@ -26,7 +26,7 @@ allowed-tools:
   - Glob
 ---
 
-# SPEC Authoring Skill (Enterprise v4.0.0)
+# SPEC Authoring Skill (Enterprise )
 
 ## Level 1: Quick Reference
 
@@ -501,7 +501,7 @@ unwanted_behaviors:
 
 ---
 
-**Enterprise v4.0 Compliance**: Progressive disclosure with comprehensive EARS syntax, validation checklists, and lifecycle management.
+**Enterprise   Compliance**: Progressive disclosure with comprehensive EARS syntax, validation checklists, and lifecycle management.
 **Last Updated**: 2025-11-13  
 **Dependencies**: YAML metadata format, EARS specification, TAG system
 **See Also**: [examples.md](./examples.md) for detailed SPEC examples

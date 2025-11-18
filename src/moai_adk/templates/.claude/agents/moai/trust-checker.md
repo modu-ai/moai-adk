@@ -1,7 +1,7 @@
 ---
 name: trust-checker
 description: "Use when: When verification of compliance with TRUST 5 principles such as code quality, security, and test coverage is required."
-tools: Read, Grep, Glob, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
+tools: Read, Grep, Glob, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: ask
 skills: []

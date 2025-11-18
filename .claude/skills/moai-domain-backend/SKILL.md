@@ -1,4 +1,4 @@
-# Enterprise Backend Architecture - v4.0.0
+# Enterprise Backend Architecture - 
 
 **Modern async patterns, microservices, API design, and production deployment**
 

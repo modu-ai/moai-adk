@@ -95,7 +95,7 @@ This document defines all variables used in agent templates and provides guidanc
 | `{{MCP_LIBRARIES}}` | Context7 MCP research targets | `/tiangolo/fastapi, /expressjs/express` | Complex |
 | `{{MCP_PATTERN}}` | MCP integration pattern | `Resolve library → Fetch docs → Extract patterns` | Complex |
 | `{{MCP_QUALITY_THRESHOLD}}` | Minimum quality score | `≥70% documentation coverage` | Complex |
-| `{{MCP_TOOLS}}` | Array of MCP tools used | `["context7", "sequential_thinking"]` | Complex |
+| `{{MCP_TOOLS}}` | Array of MCP tools used | `["context7"]` | Complex |
 | `{{FALLBACK_STRATEGY}}` | What to do if MCP fails | `Use WebFetch for framework docs + established patterns` | Complex |
 
 ### 10. Model & Performance Variables

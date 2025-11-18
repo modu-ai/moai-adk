@@ -14,7 +14,7 @@ allowed-tools:
 
 
 
-# JavaScript Runtime & Ecosystem — Enterprise v4.0
+# JavaScript Runtime & Ecosystem — Enterprise  
 
 ## Skill Metadata
 

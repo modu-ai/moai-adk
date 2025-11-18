@@ -12,7 +12,7 @@ allowed-tools:
 - WebFetch
 ---
 
-# Retrieval-Augmented Generation (RAG) — Enterprise v4.0
+# Retrieval-Augmented Generation (RAG) — Enterprise  
 
 ## Quick Summary
 

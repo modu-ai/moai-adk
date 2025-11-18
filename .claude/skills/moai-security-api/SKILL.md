@@ -742,7 +742,7 @@ verifyWebhookSignature(payload, signature, secret)
 
 ## 📈 Version History
 
-**v4.0.0** (2025-11-13)
+** .0** (2025-11-13)
 - ✨ Optimized 4-layer Progressive Disclosure structure
 - ✨ Reduced from 695 to 340 lines (51% reduction)
 - ✨ Enhanced OAuth 2.1 with PKCE patterns
@@ -765,7 +765,7 @@ verifyWebhookSignature(payload, signature, secret)
 
 ---
 
-**Generated with**: MoAI-ADK Skill Factory v4.0  
+**Generated with**: MoAI-ADK Skill Factory    
 **Last Updated**: 2025-11-13  
 **Security Classification**: Enterprise API Security  
 **Optimization**: 51% size reduction while maintaining comprehensive security coverage

@@ -10,7 +10,7 @@ allowed-tools:
   - AskUserQuestion
 ---
 
-# Enterprise Interactive Survey Orchestrator v4.0.0
+# Enterprise Interactive Survey Orchestrator 
 
 ## Skill Metadata
 
@@ -440,4 +440,4 @@ if (answer["Destructive Op"] === "Proceed") {
 **For detailed API specifications**: [reference.md](reference.md)  
 **For real-world examples**: [examples.md](examples.md)  
 **Last Updated**: 2025-11-12  
-**Status**: Production Ready (Enterprise v4.0.0)
+**Status**: Production Ready (Enterprise )

@@ -49,7 +49,7 @@ depends_on:
 stability: stable
 ---
 
-# moai-cloud-gcp-advanced — Enterprise Google Cloud Architectures (v4.0)
+# moai-cloud-gcp-advanced — Enterprise Google Cloud Architectures ( )
 
 **Advanced GCP Serverless, ML, Analytics, and Kubernetes Production Patterns**
 

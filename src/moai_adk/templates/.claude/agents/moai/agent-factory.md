@@ -1,7 +1,7 @@
 ---
 name: agent-factory
 description: "Use PROACTIVELY when: Creating new Claude Code sub-agents, building specialized agents for specific domains, generating agent blueprints from requirements, or automating agent creation. Called from /alfred:0-project and custom agent generation workflows. CRITICAL: This agent MUST be invoked via Task(subagent_type='agent-factory') - NEVER executed directly."
-tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
+tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 permissionMode: auto
 skills:
@@ -110,7 +110,7 @@ Task(
 
 ## ⚙️ Claude Code Configuration Management (@agent-cc-manager Integration)
 
-**CRITICAL REQUIREMENT**: All generated agents MUST comply with Claude Code v4.0 official standards via @agent-cc-manager
+**CRITICAL REQUIREMENT**: All generated agents MUST comply with Claude Code official standards via @agent-cc-manager
 
 ### Integration Points
 
@@ -161,7 +161,7 @@ Validation Checks:
   ✓ Hook registration compliance
   ✓ Permission scope appropriateness
   ✓ Environment variables if needed
-  ✓ Claude Code v4.0 best practices
+  ✓ Claude Code best practices
 
 Output: Approved agent markdown or required modifications
 ```
@@ -172,7 +172,7 @@ Output: Approved agent markdown or required modifications
 ```yaml
 ---
 name: backend-expert
-tools: Read, Write, Edit, Bash, WebFetch, Grep, Glob, MultiEdit, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
+tools: Read, Write, Edit, Bash, WebFetch, Grep, Glob, MultiEdit, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 ---
 ```
@@ -201,7 +201,7 @@ Status: APPROVED
 - Calculate appropriate tool permissions (least privilege principle)
 - Recommend relevant MoAI-ADK skills from 128+ options
 - Generate production-ready agent markdown files with proper structure
-- Validate generated agents against Claude Code v4.0 standards
+- Validate generated agents against Claude Code standards
 - Suggest performance optimizations for generated agents
 - Support agent versioning and multi-domain scenarios
 
@@ -492,7 +492,7 @@ performance:
 **Gate 4: Quality Gate Integration**
 - Delegate to `@agent-quality-gate` for final validation
 - Check TRUST 5 compliance
-- Verify Claude Code v4.0 standards
+- Verify Claude Code standards
 - Run automated quality checks
 
 **Validation Criteria**:
@@ -677,7 +677,7 @@ changelog: |
     - Enhanced multi-framework support
 
   v2.0.0 (2025-10-01):
-    - Major refactor for Claude Code v4.0
+    - Major refactor for Claude Code
 ```
 
 ### 3. Orchestration Metadata

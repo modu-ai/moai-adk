@@ -423,7 +423,7 @@ bug_workflow_id = await scheduler.submit_workflow(
 
 ---
 
-**Enterprise v4.0 Compliance**: Progressive disclosure with comprehensive error handling, security controls, and monitoring.
+**Enterprise   Compliance**: Progressive disclosure with comprehensive error handling, security controls, and monitoring.
 **Last Updated**: 2025-11-13  
 **Dependencies**: Context7 MCP integration, Alfred agent system
 **See Also**: [examples.md](./examples.md) for detailed usage examples

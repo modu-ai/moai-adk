@@ -74,7 +74,7 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
   - **18 Data & Analytics skills**: Data pipelines, streaming, data warehouse, MLOps, analytics
   - **Complete frontend coverage**: HTML/CSS, Tailwind CSS, shadcn/ui, React, Vue, Angular (10+ icon libraries)
   - **Full backend support**: Database design, API architecture, DevOps, serverless patterns
-  - **Advanced MCP Integration**: Context7, Playwright, Sequential-thinking servers
+  - **Advanced MCP Integration**: Context7, Playwright, Notion, Figma servers
   - **Document Processing**: AI-powered document handling (docx, pdf, pptx, xlsx)
   - **Artifact Builder**: Modern React/Tailwind/shadcn/ui component creation
   - **Internal Communications**: Enterprise communication templates and automation
@@ -176,7 +176,7 @@ README.md (이 파일)
   ├─ agent-delegation.md          (고급 Task() 패턴)
   ├─ token-efficiency.md           (컨텍스트 관리 전략)
   ├─ git-workflow-detailed.md      (GitHub Flow 심화 가이드)
-  ├─ claude-code-features.md       (v4.0+ 기능)
+  ├─ claude-code-features.md       (Claude Code 기능)
   ├─ settings-config.md            (설정 레퍼런스)
   └─ troubleshooting-extended.md   (확장 FAQ & 솔루션)
 
@@ -245,7 +245,7 @@ Claude Code의 200,000토큰 컨텍스트 윈도우는 충분해 보이지만 �
 
 ### Alfred가 최적화하는 방법
 
-**1. Plan Mode 분석** (Claude Code v4.0에서 사용 가능):
+**1. Plan Mode 분석** (Plan Mode 분석):
 - 복잡한 작업: "풀스택 앱 구축" → 10개의 집중된 하위 작업으로 분해
 - 각 하위 작업은 최적의 에이전트에 할당
 - 목표 지정 실행을 통해 50% 토큰 절약
@@ -403,7 +403,7 @@ For comprehensive agent delegation patterns including:
 **See CLAUDE.md → "🤖 Advanced Agent Delegation Patterns"** section or refer to:
 - **`.moai/memory/agent-delegation.md`**: Detailed Task() delegation patterns, sequential/parallel workflows
 - **`.moai/memory/mcp-integration.md`**: Context7 MCP session management and integration
-- **`.moai/memory/claude-code-features.md`**: Claude Code v4.0+ features and Plan Mode
+- **`.moai/memory/claude-code-features.md`**: Claude Code features and Plan Mode
 
 ---
 
@@ -491,7 +491,7 @@ Statusline automatically displays Compact Mode (default, ≤80 chars). To custom
 - ✅ **Structured templates** for consistent issue quality
 - ✅ **Multi-select questions** to reduce user interaction steps
 
-### Enterprise v4.0 Optimization
+### Enterprise Skills Ecosystem
 
 **Complete Skills Ecosystem Upgrade**:
 
@@ -499,7 +499,7 @@ Statusline automatically displays Compact Mode (default, ≤80 chars). To custom
 
 MoAI-ADK has completed a comprehensive **Phase 1 Batch 2** upgrade achieving:
 
-- **125+ Enterprise Skills** upgraded to v4.0.0 (681% growth from v0.22.5's 16 skills)
+- **125+ Enterprise Skills** covering all domains (681% growth from v0.22.5's 16 skills)
 - **Security Skills**: 10 new advanced security and compliance skills
 - **Documentation**: 85,280+ lines of comprehensive documentation
 - **Quality**: All skills meet TRUST 5 standards
@@ -1940,7 +1940,7 @@ Organized across 6 tiers:
 | **Quality Gates**       | TRUST 5 + additional checks                                                 |
 | **Git Automation**      | Complete GitFlow support                                                    |
 | **Version Reading**      | Enhanced VersionReader with advanced caching and performance optimization |
-| **MCP Integration**      | Context7, Playwright, Sequential-thinking servers (v0.20.0+)           |
+| **MCP Integration**      | Context7, Playwright, Notion, Figma servers (v0.20.0+)           |
 | **Python Support**      | 3.11+ with enhanced performance and compatibility                           |
 
 ---
@@ -2503,7 +2503,7 @@ MoAI-ADK is built on years of research into AI-assisted development, test-driven
 **Complete Skills Ecosystem Upgrade Accomplished:**
 
 **Major Achievement:**
-- **Total Skills Resolved**: 281+ skills fully upgraded to v4.0.0 Enterprise
+- **Total Skills Resolved**: 281+ skills fully fully optimized
 - **Problem Skills**: 57 critical issues resolved
 - **Validation Success Rate**: Dramatically improved from 45% to 95%+
 - **Quality Assurance**: All skills now meet TRUST 5 standards

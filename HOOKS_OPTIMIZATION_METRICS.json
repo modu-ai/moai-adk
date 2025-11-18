@@ -1,0 +1,431 @@
+{
+  "metadata": {
+    "title": "Claude Code Hooks 최적화 실행 치수 (MoAI-ADK v0.26.0)",
+    "created_date": "2025-11-19",
+    "version": "1.0.0",
+    "analysis_type": "Structural Analysis + Optimization Planning",
+    "status": "✅ Complete - Ready for Phase 2 Execution"
+  },
+
+  "current_state": {
+    "files": {
+      "hook_files": 9,
+      "shared_modules": 12,
+      "utilities": 4,
+      "pycache_dirs": 4,
+      "init_files": 10,
+      "total_tracked": 39,
+      "total_with_pycache": 43
+    },
+    "directories": {
+      "total": 14,
+      "empty": 2,
+      "depth_levels": 4
+    },
+    "code_statistics": {
+      "total_lines": 4847,
+      "duplicate_lines": "~150-200",
+      "average_hook_size_lines": 204,
+      "largest_hook_lines": 628,
+      "smallest_hook_lines": 98
+    },
+    "issues_identified": {
+      "critical": 3,
+      "major": 4,
+      "minor": 3
+    }
+  },
+
+  "optimizations": {
+    "phase_2_code_duplication": {
+      "title": "코드 중복 제거",
+      "priority": 1,
+      "effort_days": 5,
+      "impact_level": "Critical",
+      "actions": [
+        {
+          "id": "2.1.1",
+          "description": "moai/core/ 전체 디렉토리 제거",
+          "files_affected": [
+            ".claude/hooks/moai/core/project.py",
+            ".claude/hooks/moai/core/timeout.py",
+            ".claude/hooks/moai/core/ttl_cache.py",
+            ".claude/hooks/moai/core/version_cache.py"
+          ],
+          "file_count": 4,
+          "size_bytes": 12288,
+          "hooks_affected": 9,
+          "replacement_path": "moai/shared/core/",
+          "validation_method": "import test + syntax check"
+        },
+        {
+          "id": "2.1.2",
+          "description": "moai/utils/timeout.py 제거 및 통합",
+          "files_affected": [
+            ".claude/hooks/moai/utils/timeout.py"
+          ],
+          "file_count": 1,
+          "size_bytes": 2048,
+          "hooks_affected": 3,
+          "replacement_path": "moai/shared/core/timeout.py",
+          "validation_method": "grep + import test"
+        },
+        {
+          "id": "2.2",
+          "description": "임포트 경로 통일 (상대 → 절대)",
+          "files_affected": [
+            "session_start__show_project_info.py",
+            "session_start__auto_cleanup.py",
+            "session_start__config_health_check.py",
+            "pre_tool__auto_checkpoint.py",
+            "pre_tool__document_management.py",
+            "post_tool__enable_streaming_ui.py",
+            "post_tool__log_changes.py",
+            "subagent_start__context_optimizer.py",
+            "subagent_stop__lifecycle_tracker.py"
+          ],
+          "file_count": 9,
+          "import_patterns_before": 3,
+          "import_patterns_after": 1,
+          "validation_method": "grep + mypy type check"
+        }
+      ],
+      "expected_results": {
+        "files_removed": 5,
+        "size_reduction_bytes": 14336,
+        "code_duplication_reduction_percent": 100,
+        "import_consistency_improvement": 40,
+        "maintenance_effort_reduction_percent": 25
+      }
+    },
+
+    "phase_3_structure_cleanup": {
+      "title": "구조 정리",
+      "priority": 3,
+      "effort_days": 3,
+      "impact_level": "Major",
+      "actions": [
+        {
+          "id": "3.1.1",
+          "description": "빈 디렉토리 제거 (moai/handlers/)",
+          "directory": ".claude/hooks/moai/handlers/",
+          "is_empty": true,
+          "hooks_dependent": 0,
+          "risk_level": "Very Low"
+        },
+        {
+          "id": "3.1.2",
+          "description": "빈 디렉토리 제거 (moai/shared/config/)",
+          "directory": ".claude/hooks/moai/shared/config/",
+          "is_empty": true,
+          "hooks_dependent": 0,
+          "risk_level": "Very Low"
+        },
+        {
+          "id": "3.2",
+          "description": "spec_status_hooks.py 이동 (CLI 유틸리티)",
+          "current_path": ".claude/hooks/moai/spec_status_hooks.py",
+          "target_path": "src/moai_adk/cli/spec_status_hooks.py",
+          "file_size_bytes": 9216,
+          "is_hook": false,
+          "reason": "CLI 유틸리티 (Hook 스펙 미준수)",
+          "validation_method": "argparse 확인 + 기능 테스트"
+        },
+        {
+          "id": "3.3",
+          "description": "__pycache__ 제거 및 .gitignore 업데이트",
+          "pycache_directories": 4,
+          "estimated_size_bytes": 65536,
+          "validation_method": "find + git check"
+        }
+      ],
+      "expected_results": {
+        "directories_removed": 2,
+        "files_relocated": 1,
+        "pycache_entries_cleaned": 4,
+        "total_size_reduction_bytes": 74752,
+        "git_pollution_reduction": "Complete"
+      }
+    },
+
+    "phase_4_hook_refactoring": {
+      "title": "Hook 파일 분할 (선택사항)",
+      "priority": 4,
+      "effort_days": 10,
+      "impact_level": "Medium",
+      "optional": true,
+      "actions": [
+        {
+          "id": "4.1",
+          "description": "session_start__auto_cleanup.py 분할",
+          "current_file": {
+            "path": ".claude/hooks/moai/session_start__auto_cleanup.py",
+            "lines": 628,
+            "responsibilities": 3
+          },
+          "split_into": [
+            {
+              "type": "shared_handler",
+              "name": "shared/handlers/file_cleanup.py",
+              "lines": 200,
+              "functions": ["cleanup_old_files", "cleanup_directory", "update_cleanup_stats"]
+            },
+            {
+              "type": "shared_handler",
+              "name": "shared/handlers/daily_analysis.py",
+              "lines": 250,
+              "functions": ["generate_daily_analysis", "analyze_session_logs", "format_analysis_report"]
+            },
+            {
+              "type": "hook",
+              "name": "session_start__auto_cleanup.py",
+              "lines": 150,
+              "functions": ["main"]
+            }
+          ],
+          "risk_level": "Medium",
+          "validation_method": "Hook execution test + line count verification"
+        }
+      ],
+      "expected_results": {
+        "hook_files_refactored": 1,
+        "handler_modules_created": 2,
+        "average_hook_size_reduction_percent": 12,
+        "code_reusability_improvement_percent": 20
+      }
+    },
+
+    "phase_5_documentation": {
+      "title": "문서화 및 검증",
+      "priority": 5,
+      "effort_days": 5,
+      "impact_level": "Low",
+      "actions": [
+        {
+          "id": "5.1",
+          "description": "Hook 표준 헤더 추가",
+          "files_affected": 9,
+          "header_template_lines": 35,
+          "coverage_before": "70%",
+          "coverage_after": "95%"
+        },
+        {
+          "id": "5.2",
+          "description": "Hook 검증 스크립트 생성",
+          "script_path": ".moai/scripts/validate-hooks.py",
+          "new_file": true,
+          "checks_included": [
+            "file_existence",
+            "naming_convention",
+            "json_schema",
+            "import_paths",
+            "timeout_handling"
+          ]
+        }
+      ],
+      "expected_results": {
+        "documentation_coverage_improvement_percent": 25,
+        "validation_automation_coverage_percent": 100
+      }
+    },
+
+    "phase_6_testing": {
+      "title": "테스트 및 배포",
+      "priority": 6,
+      "effort_days": 5,
+      "impact_level": "Critical",
+      "test_matrix": {
+        "hook_execution_tests": {
+          "session_start": 3,
+          "pre_tool_use": 2,
+          "post_tool_use": 2,
+          "subagent_events": 2,
+          "total_hooks": 9
+        },
+        "validation_tests": [
+          "JSON schema validation",
+          "Import path resolution",
+          "Timeout handling (5 seconds)",
+          "Graceful degradation",
+          "Cache operations",
+          "Error recovery"
+        ],
+        "ci_cd_integration": {
+          "linting": "ruff check",
+          "type_checking": "mypy",
+          "syntax_validation": "py_compile",
+          "hook_validation": ".moai/scripts/validate-hooks.py"
+        }
+      }
+    }
+  },
+
+  "metrics_comparison": {
+    "before_optimization": {
+      "tracked_files": 39,
+      "total_with_pycache": 43,
+      "directories": 14,
+      "empty_directories": 2,
+      "lines_of_code": 4847,
+      "duplicate_lines": 180,
+      "import_pattern_varieties": 3,
+      "code_duplication_percent": 3.7,
+      "maintainability_index": 68,
+      "file_size_largest_kb": 0.628,
+      "directory_depth_levels": 4,
+      "git_pollution_items": 4
+    },
+    "after_optimization": {
+      "tracked_files": 34,
+      "total_with_pycache": 34,
+      "directories": 12,
+      "empty_directories": 0,
+      "lines_of_code": 4667,
+      "duplicate_lines": 0,
+      "import_pattern_varieties": 1,
+      "code_duplication_percent": 0.0,
+      "maintainability_index": 82,
+      "file_size_largest_kb": 0.420,
+      "directory_depth_levels": 3,
+      "git_pollution_items": 0
+    },
+    "improvements": {
+      "files_reduction_count": 5,
+      "files_reduction_percent": 12.8,
+      "lines_reduction_count": 180,
+      "lines_reduction_percent": 3.7,
+      "duplicate_elimination_percent": 100,
+      "import_simplification_percent": 66.7,
+      "maintainability_improvement": 14,
+      "directory_simplification_percent": 14.3,
+      "git_cleanliness": "Complete"
+    }
+  },
+
+  "risk_assessment": {
+    "high_risk_items": [
+      {
+        "id": "risk-1",
+        "description": "Hook execution failure after import path changes",
+        "probability": "Medium (3/5)",
+        "impact": "High (affects all hooks)",
+        "mitigation": "Comprehensive import testing before each phase + SessionStart regression test",
+        "residual_risk": "Low"
+      },
+      {
+        "id": "risk-2",
+        "description": "Cache behavior issues after refactoring",
+        "probability": "Low (2/5)",
+        "impact": "Medium (performance degradation)",
+        "mitigation": "Cache logic unit tests + integration tests",
+        "residual_risk": "Very Low"
+      }
+    ],
+    "medium_risk_items": [
+      {
+        "id": "risk-3",
+        "description": "Template-local sync issues during migration",
+        "probability": "Medium (3/5)",
+        "impact": "Medium (SSOT violation)",
+        "mitigation": "Sync verification script + double-check both locations",
+        "residual_risk": "Low"
+      }
+    ],
+    "low_risk_items": [
+      {
+        "id": "risk-4",
+        "description": "Incomplete __pycache__ cleanup",
+        "probability": "Low (2/5)",
+        "impact": "Very Low (cosmetic)",
+        "mitigation": "Automated .gitignore verification",
+        "residual_risk": "Very Low"
+      }
+    ]
+  },
+
+  "deliverables": {
+    "phase_2": {
+      "documents": [
+        "HOOKS_OPTIMIZATION_PLAN.md (Phase 2 section)"
+      ],
+      "code_changes": {
+        "files_modified": 9,
+        "files_deleted": 5,
+        "directories_deleted": 1,
+        "lines_changed": 450
+      },
+      "validation": [
+        "All hook execution tests pass",
+        "Import path verification",
+        "Type checking (mypy) passes"
+      ]
+    },
+    "phase_3": {
+      "documents": [
+        "HOOKS_OPTIMIZATION_PLAN.md (Phase 3 section)"
+      ],
+      "code_changes": {
+        "files_moved": 1,
+        "directories_deleted": 2,
+        "gitignore_updates": 1
+      }
+    },
+    "phase_4": {
+      "documents": [
+        "HOOKS_OPTIMIZATION_PLAN.md (Phase 4 section)"
+      ],
+      "code_changes": {
+        "files_created": 2,
+        "files_modified": 1,
+        "lines_added": 450,
+        "lines_removed": 180
+      }
+    },
+    "phase_5": {
+      "documents": [
+        "HOOK_MAINTENANCE_GUIDE.md",
+        "HOOK_API_REFERENCE.md",
+        ".moai/scripts/validate-hooks.py"
+      ]
+    },
+    "phase_6": {
+      "ci_cd_configs": [
+        ".github/workflows/hooks-lint.yml"
+      ],
+      "release_notes": [
+        "CHANGELOG.md (v0.27.0 entry)"
+      ]
+    }
+  },
+
+  "summary": {
+    "total_phases": 6,
+    "total_effort_days": 33,
+    "total_effort_weeks": 6.6,
+    "estimated_cost_reduction_percent": 25,
+    "maintainability_improvement_percent": 20,
+    "reliability_improvement_percent": 15,
+    "status": "✅ Analysis Complete - Ready for Implementation",
+    "next_action": "Start Phase 2: Code Duplication Removal",
+    "recommendation": "Implement Phase 2-3 immediately (high impact, low risk), defer Phase 4 unless specifically requested"
+  },
+
+  "quality_gates": {
+    "phase_2_completion": {
+      "all_imports_validated": false,
+      "no_duplicate_code": false,
+      "no_circular_imports": false,
+      "all_hooks_executable": false,
+      "type_checking_passes": false,
+      "status": "⏳ Pending"
+    },
+    "phase_6_completion": {
+      "all_tests_pass": false,
+      "ci_cd_green": false,
+      "documentation_complete": false,
+      "rollback_plan_tested": false,
+      "release_approved": false,
+      "status": "⏳ Pending"
+    }
+  }
+}

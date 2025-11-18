@@ -6,7 +6,7 @@ description: "Enterprise JavaScript for Node.js and browser: Node.js 22.11.0 LTS
 allowed-tools: 
 ---
 
-# JavaScript Runtime & Ecosystem — Enterprise v4.0
+# JavaScript Runtime & Ecosystem — Enterprise  
 
 ## Skill Metadata
 

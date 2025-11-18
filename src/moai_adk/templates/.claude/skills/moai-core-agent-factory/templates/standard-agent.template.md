@@ -154,5 +154,5 @@ Result: {{DELEGATION_RESULT}}
 
 **Created**: {{CREATION_DATE}}
 **Version**: 1.0.0
-**Compatible with Claude Code v4.0+**
+**Compatible with Claude Code+**
 **Last Updated**: {{CREATION_DATE}}

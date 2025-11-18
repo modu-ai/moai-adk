@@ -27,7 +27,7 @@ stability: stable
 ---
 
 
-# Enterprise Master-Clone Pattern Skill v4.0.0
+# Enterprise Master-Clone Pattern Skill 
 
 ## Skill Metadata
 
@@ -64,7 +64,7 @@ Provides comprehensive guidance for Alfred's **Master-Clone pattern** - a delega
 - Task can run autonomously without continuous user input
 
 **Examples**:
-- Large-scale migrations (v4.0.0 → v4.0.0 affecting 200 files)
+- Large-scale migrations ( .0 →  affecting 200 files)
 - Refactoring across many files (100+ imports, API changes)
 - Parallel exploration/evaluation tasks
 - Complex architecture restructuring
@@ -154,19 +154,19 @@ const comparison = {
 ```typescript
 // Step 1: Analyze current state
 const analysisResult = await Task({
-  description: "Analyze v4.0.0 codebase structure",
+  description: "Analyze  codebase structure",
   prompt: "Scan project for all imports of 'old-api'. Document usage patterns, edge cases, and dependencies. Provide summary with file-by-file breakdown."
 });
 
 // Step 2: Plan migration strategy (depends on analysis)
 const planResult = await Task({
-  description: "Plan migration strategy from v4.0.0 to v4.0.0",
+  description: "Plan migration strategy from  to ",
   prompt: `Using this analysis: ${analysisResult}\n\nCreate a step-by-step migration plan with:\n- Phased approach (phase 1, 2, 3)\n- Risk mitigation\n- Testing strategy\n- Rollback procedure`
 });
 
 // Step 3: Execute migration (depends on plan)
 const migrationResult = await Task({
-  description: "Execute v4.0.0 → v4.0.0 migration",
+  description: "Execute  →  migration",
   prompt: `Using this plan: ${planResult}\n\nExecute the migration:\n- Update imports\n- Modify APIs\n- Update tests\n- Verify compatibility`
 });
 
@@ -330,4 +330,4 @@ return validateIntegration(refactorResults);
 **For detailed API specifications**: [reference.md](reference.md)  
 **For real-world examples**: [examples.md](examples.md)  
 **Last Updated**: 2025-11-18  
-**Status**: Production Ready (Enterprise v4.0.0)
+**Status**: Production Ready (Enterprise )

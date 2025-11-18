@@ -173,7 +173,7 @@ Updated: 2025-11-19 | Status: Ready for Execution
 - Skills: skill-factory, skills, cc-skills
 - Other: subagent-lifecycle, claude-md
 
-**Task**: Align with Claude Code v4.0+ features
+**Task**: Align with Claude Code+ features
 
 ### Batch 6: Security & Compliance (10 Skills - 3-4 hours)
 **Team**: 1-2 developers  

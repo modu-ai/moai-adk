@@ -129,7 +129,7 @@ Claude Code v2.0.37 ~ v2.0.43 업데이트에서 제공된 새로운 Hook 기능
   - security-expert, performance-engineer, devops-expert, monitoring-expert
   - git-manager, component-designer, ui-ux-expert, figma-expert
   - accessibility-expert, debug-helper, migration-expert, implementation-planner
-  - mcp-context7-integrator, mcp-notion-integrator, mcp-playwright-integrator, mcp-sequential-thinking-integrator
+  - mcp-context7-integrator, mcp-notion-integrator, mcp-playwright-integrator
 
 **R1.3: 에이전트 Skills 정의**
 - 시스템 SHALL 각 에이전트의 frontmatter에 skills 필드 추가
@@ -359,7 +359,6 @@ Claude Code v2.0.37 ~ v2.0.43 업데이트에서 제공된 새로운 Hook 기능
 | mcp-context7-integrator | Context7 통합 | 외부 서비스 연동 |
 | mcp-notion-integrator | Notion 통합 | Notion 데이터 작성 |
 | mcp-playwright-integrator | Playwright 통합 | 테스트 코드 작성 |
-| mcp-sequential-thinking-integrator | 순차 사고 통합 | 상세 분석 |
 
 #### 2.2 SubagentStart Hook: Context Optimizer
 

@@ -201,18 +201,11 @@ Execute via `/` prefix in Claude Code. All delegate to agents automatically.
 │   ├── agent-transcripts/          # 에이전트 트랜스크립트
 │   └── *.log                       # 명령어, 에러 로그
 │
-├── directives/                     # 📋 지시문 및 명령어 스펙
-│   ├── 00-START-HERE.md           # 시작 가이드
-│   ├── AGENT-DIRECTIVE-*.md       # 에이전트 지시문
-│   ├── COMMAND-DIRECTIVE-*.md     # 명령어 지시문
-│   └── README-SPECIFICATIONS.md   # 스펙 개요
+├── bin/                            # 🔧 시스템 스크립트 (내부 용)
+│   └── statusline.py               # 상태 라인 표시
 │
-├── config/                         # ⚙️ 설정 파일
-│   └── config.json                 # 프로젝트 설정 (필수)
-│
-└── scripts/                        # 🔧 유틸리티 스크립트
-    ├── statusline.py               # 상태 라인 표시
-    └── analysis/                   # 분석 스크립트
+└── config/                         # ⚙️ 설정 파일
+    └── config.json                 # 프로젝트 설정 (필수)
 ```
 
 **저장 규칙**:
@@ -224,7 +217,6 @@ Execute via `/` prefix in Claude Code. All delegate to agents automatically.
 | **생성 문서** | `docs-manager` | `.moai/docs/` | API 문서, 가이드 등 |
 | **완료 리포트** | `/moai:3-sync` | `.moai/reports/` | Phase, SPEC 완료 리포트 |
 | **참고 자료** | 수동 (유지보수) | `.moai/memory/` | CLAUDE.md 임포트용 문서 |
-| **지시문** | 수동 (유지보수) | `.moai/directives/` | 에이전트/명령어 스펙 |
 | **실행 로그** | 자동 (시스템) | `.moai/logs/` | 세션, 트랜스크립트 |
 
 **❌ 금지 사항**:

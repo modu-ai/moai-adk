@@ -1,4 +1,4 @@
-# moai-core-rules Examples (v4.0.0)
+# moai-core-rules Examples ( .0)
 
 ## 실제 적용 예제 (10+ Scenarios)
 

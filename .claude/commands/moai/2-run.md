@@ -10,10 +10,10 @@ allowed-tools:
 
 > **Architecture**: Commands → Agents → Skills. This command orchestrates ONLY through `Task()` tool.
 >
-> **Delegation Model**: Complete agent-first pattern. All execution delegated to run-orchestrator.
+> **Delegation Model**: Phase-based sequential agent delegation. Command orchestrates 4 phases directly.
 
 
-**4-Step Workflow Integration**: This command implements Step 3 of Alfred's workflow (Task Execution with TodoWrite tracking). See CLAUDE.md for full workflow details.
+**Workflow**: Phase 1 → Analysis & Planning → Phase 2 → TDD Implementation → Phase 3 → Git Operations → Phase 4 → Completion & Guidance.
 
 ---
 
@@ -33,46 +33,44 @@ The `/moai:2-run` command orchestrates the complete implementation workflow:
 
 ## 💡 Execution Philosophy: "Plan → Run → Sync"
 
-`/moai:2-run` performs SPEC implementation through a complete agent delegation model:
+`/moai:2-run` performs SPEC implementation through phase-based sequential agent delegation:
 
 ```
 User Command: /moai:2-run SPEC-001
     ↓
-/moai:2-run Command
-    └─ Task(subagent_type="run-orchestrator")
-        ├─ Phase 1: Analysis & Planning
-        ├─ Phase 2: TDD Implementation
-        ├─ Phase 3: Git Operations
-        └─ Phase 4: Completion
-            ↓
-        Output: Implemented feature with passing tests and commits
+Phase 1: Task(subagent_type="implementation-planner")
+    → SPEC Analysis & Execution Plan Creation
+    ↓
+Phase 2: Task(subagent_type="tdd-implementer")
+    → RED → GREEN → REFACTOR TDD Cycle
+    ↓
+Phase 2.5: Task(subagent_type="quality-gate")
+    → TRUST 5 Quality Validation
+    ↓
+Phase 3: Task(subagent_type="git-manager")
+    → Commit Creation & Git Operations
+    ↓
+Phase 4: AskUserQuestion(...)
+    → Completion Summary & Next Steps Guidance
+    ↓
+Output: Implemented feature with passing tests and commits
 ```
 
 ### Key Principle: Zero Direct Tool Usage
 
-**This command uses ONLY Task() tool:**
-- ❌ No Read (file operations delegated)
-- ❌ No Write (file operations delegated)
-- ❌ No Edit (file operations delegated)
-- ❌ No Bash (all bash commands delegated)
-- ❌ No TodoWrite (delegated to run-orchestrator)
-- ✅ **Only Task()** for orchestration
+**This command uses ONLY these tools:**
+- ✅ **Task()** for phase agent delegation (implementation-planner → tdd-implementer → quality-gate → git-manager)
+- ✅ **AskUserQuestion()** for user approval and next steps
+- ✅ **TodoWrite()** for task tracking
+- ❌ No Read/Write/Edit/Bash (all delegated to agents)
 
-All complexity is handled by the **run-orchestrator** agent.
+Command orchestrates phases sequentially; agents handle complexity.
 
 ---
 
-## 🧠 Associated Agents & Skills
+## 🧠 Phase Agents & Skills
 
-### Primary Agent: run-orchestrator
-
-**Orchestrates all 4 phases:**
-- Coordinates implementation-planner for SPEC analysis
-- Manages tdd-implementer for TDD implementation
-- Verifies with quality-gate for TRUST 5 compliance
-- Creates commits via git-manager
-
-### Supporting Agents (called by run-orchestrator)
+### Phase Agents (Sequential Execution)
 
 | Agent | Purpose | When |
 |-------|---------|------|
@@ -91,39 +89,47 @@ All complexity is handled by the **run-orchestrator** agent.
 
 ---
 
-## 🚀 Execution (Delegated to run-orchestrator)
+## 🚀 Phase Execution Details
 
 ### Phase 1: Analysis & Planning
 
-The run-orchestrator:
-1. Reads SPEC document
-2. Invokes implementation-planner to analyze requirements
-3. Presents execution plan to user
-4. Handles user approval flow (proceed/modify/postpone)
-5. Updates SPEC status if approved
+Command calls `Task(subagent_type="implementation-planner")`:
+1. Agent reads SPEC document
+2. Analyzes requirements and creates execution strategy
+3. Returns plan for user approval
+4. Waits for user confirmation (proceed/modify/postpone)
+5. Stores plan context for Phase 2
 
 ### Phase 2: TDD Implementation
 
-The run-orchestrator:
-1. Initializes TodoWrite for task tracking
+Command calls `Task(subagent_type="tdd-implementer")`:
+1. Agent initializes task tracking (TodoWrite)
 2. Checks domain readiness (if multi-domain SPEC)
-3. Invokes tdd-implementer for RED → GREEN → REFACTOR cycle
-4. Invokes quality-gate for TRUST 5 validation
-5. Handles quality gate results (PASS/WARNING/CRITICAL)
+3. Executes RED → GREEN → REFACTOR cycle
+4. Returns implementation results and coverage metrics
+
+### Phase 2.5: Quality Validation
+
+Command calls `Task(subagent_type="quality-gate")`:
+1. Agent verifies TRUST 5 principles (Test-first, Readable, Unified, Secured, Trackable)
+2. Validates test coverage (>= 85%)
+3. Checks security compliance
+4. Returns quality assessment (PASS/WARNING/CRITICAL)
 
 ### Phase 3: Git Operations
 
-The run-orchestrator:
-1. Invokes git-manager to create commits
-2. Verifies commits were created successfully
-3. Displays commit summary
+Command calls `Task(subagent_type="git-manager")`:
+1. Agent creates feature branch if needed
+2. Creates commits with implementation changes
+3. Verifies commits were successful
+4. Returns commit summary
 
-### Phase 4: Completion
+### Phase 4: Completion & Guidance
 
-The run-orchestrator:
+Command calls `AskUserQuestion()`:
 1. Displays implementation summary
-2. Asks user for next steps
-3. Guides to `/moai:3-sync` or new feature
+2. Shows next action options
+3. Guides user to `/moai:3-sync` or additional features
 
 ---
 
@@ -134,69 +140,127 @@ The run-orchestrator:
     ↓
 Parse SPEC ID from $ARGUMENTS
     ↓
-Task(
-  subagent_type="run-orchestrator",
-  description="Orchestrate SPEC-XXX implementation",
-  prompt="Execute all 4 phases for SPEC-XXX"
-)
+✅ Phase 1: Task(subagent_type="implementation-planner")
+    → Analyze SPEC → Create execution plan → Get approval
     ↓
-Run-Orchestrator handles:
-├─ Phase 1: Planning (calls implementation-planner)
-├─ Phase 2: Implementation (calls tdd-implementer + quality-gate)
-├─ Phase 3: Git (calls git-manager)
-└─ Phase 4: Completion (user interaction)
+✅ Phase 2: Task(subagent_type="tdd-implementer")
+    → RED-GREEN-REFACTOR → Tests passing → Coverage verified
     ↓
-Output: Summary and next steps
+✅ Phase 2.5: Task(subagent_type="quality-gate")
+    → Validate TRUST 5 principles → Return quality status
+    ↓
+✅ Phase 3: Task(subagent_type="git-manager")
+    → Create feature branch → Commit changes → Verify commits
+    ↓
+✅ Phase 4: AskUserQuestion(...)
+    → Display summary → Guide next steps → Offer options
+    ↓
+Output: "Implementation complete. Next step: /moai:3-sync"
 ```
 
 ---
 
 ## 🎯 Command Implementation
 
-### Step 1: Orchestrator Invocation
+### Sequential Phase Execution
 
-**Use Task tool to invoke run-orchestrator:**
+**Command implementation flow:**
 
 ```
-Task(
-  subagent_type="run-orchestrator",
-  description="Orchestrate SPEC-$ARGUMENTS implementation workflow",
+# Phase 1: SPEC Analysis & Planning
+plan_result = Task(
+  subagent_type="implementation-planner",
+  description="Analyze SPEC-$ARGUMENTS and create execution plan",
   prompt="""
-You are the run-orchestrator agent.
-
-Task: Execute SPEC-$ARGUMENTS implementation through 4 phases.
-
 SPEC ID: $ARGUMENTS
 
-Execute:
-1. PHASE 1: Analysis & Planning
-   - Analyze SPEC requirements
-   - Create execution strategy
-   - Get user approval
-
-2. PHASE 2: TDD Implementation
-   - Initialize task tracking
-   - Execute TDD cycle (RED → GREEN → REFACTOR)
-   - Validate quality gates
-
-3. PHASE 3: Git Operations
-   - Create commits for all work
-   - Verify commits
-
-4. PHASE 4: Completion
-   - Display summary
-   - Ask next steps
-   - Guide user
-
-Use your tools:
-- Task: Delegate to specialist agents (implementation-planner, tdd-implementer, quality-gate, git-manager)
-- AskUserQuestion: User interaction (approval, quality gate decisions, next steps)
-- TodoWrite: Task progress tracking
-- Read: Config file access only
-
-Report final status and guide user to next action.
+Analyze this SPEC and create detailed execution plan:
+1. Extract requirements and success criteria
+2. Identify implementation phases and tasks
+3. Determine tech stack and dependencies
+4. Estimate complexity and effort
+5. Create step-by-step execution strategy
+6. Present plan for user approval
 """
 )
+
+# User approval checkpoint
+approval = AskUserQuestion({
+    "question": "Does this execution plan look good?",
+    "header": "Plan Review",
+    "multiSelect": false,
+    "options": [
+        {"label": "Proceed with plan", "description": "Start implementation"},
+        {"label": "Modify plan", "description": "Request changes"},
+        {"label": "Postpone", "description": "Stop here, continue later"}
+    ]
+})
+
+# Phase 2: TDD Implementation
+if approval == "Proceed with plan":
+    implementation_result = Task(
+        subagent_type="tdd-implementer",
+        description="Implement SPEC-$ARGUMENTS using TDD cycle",
+        prompt="""
+SPEC ID: $ARGUMENTS
+
+Execute complete TDD implementation:
+1. Write failing tests (RED phase)
+2. Implement minimal code (GREEN phase)
+3. Refactor for quality (REFACTOR phase)
+4. Ensure test coverage >= 85%
+5. Verify all tests passing
+6. Return implementation summary
+"""
+    )
+
+    # Phase 2.5: Quality Validation
+    quality_result = Task(
+        subagent_type="quality-gate",
+        description="Validate TRUST 5 compliance for SPEC-$ARGUMENTS",
+        prompt="""
+SPEC ID: $ARGUMENTS
+
+Validate implementation against TRUST 5 principles:
+- T: Test-first (tests exist and pass)
+- R: Readable (code is clear and documented)
+- U: Unified (follows project patterns)
+- S: Secured (no security vulnerabilities)
+- T: Trackable (changes are logged and traceable)
+
+Return quality assessment with specific findings.
+"""
+    )
+
+    # Phase 3: Git Operations
+    if quality_result.status == "PASS":
+        git_result = Task(
+            subagent_type="git-manager",
+            description="Create commits for SPEC-$ARGUMENTS implementation",
+            prompt="""
+SPEC ID: $ARGUMENTS
+
+Create git commits for implementation:
+1. Create feature branch: feature/SPEC-$ARGUMENTS
+2. Stage all relevant files
+3. Create meaningful commits (follow conventional commits)
+4. Verify commits created successfully
+5. Return commit summary
+"""
+        )
+
+        # Phase 4: Completion & Guidance
+        next_steps = AskUserQuestion({
+            "question": "Implementation complete. What would you like to do next?",
+            "header": "Next Steps",
+            "multiSelect": false,
+            "options": [
+                {"label": "Sync Documentation", "description": "/moai:3-sync"},
+                {"label": "Implement Another Feature", "description": "/moai:1-plan"},
+                {"label": "Review Results", "description": "Examine the implementation"},
+                {"label": "Finish", "description": "Session complete"}
+            ]
+        })
 ```
 
 ---
@@ -218,12 +282,15 @@ Report final status and guide user to next action.
 
 After implementation, verify:
 
-- [ ] ✅ Command has ONLY `Task` in allowed-tools
+- [ ] ✅ Command has ONLY `Task`, `AskUserQuestion`, `TodoWrite` in allowed-tools
 - [ ] ✅ Command contains NO `Read`, `Write`, `Edit`, `Bash` usage
-- [ ] ✅ Command delegates ALL execution to run-orchestrator
-- [ ] ✅ Command file is ~120 lines (vs ~420 before)
-- [ ] ✅ run-orchestrator agent exists and works
-- [ ] ✅ All 4 phases execute through orchestrator
+- [ ] ✅ Command delegates execution to phase agents sequentially
+- [ ] ✅ Phase 1: implementation-planner executes successfully
+- [ ] ✅ Phase 2: tdd-implementer executes successfully
+- [ ] ✅ Phase 2.5: quality-gate validates TRUST 5
+- [ ] ✅ Phase 3: git-manager creates commits
+- [ ] ✅ Phase 4: User guided to next steps
+- [ ] ✅ User approval checkpoints working
 
 ---
 
@@ -231,15 +298,14 @@ After implementation, verify:
 
 **This command**:
 - Accepts SPEC ID: `/moai:2-run SPEC-AUTH-001`
-- Delegates to: run-orchestrator agent
+- Orchestrates phases sequentially with user checkpoints
 - Outputs: Implementation summary with next steps
 
 **For details, see**:
-- `.claude/agents/run-orchestrator.md` - Orchestrator responsibilities
-- `.claude/agents/moai/implementation-planner.md` - SPEC analysis
-- `.claude/agents/moai/tdd-implementer.md` - TDD implementation
-- `.claude/agents/moai/quality-gate.md` - Quality validation
-- `.claude/agents/moai/git-manager.md` - Git operations
+- `.claude/agents/moai/implementation-planner.md` - Phase 1: SPEC analysis
+- `.claude/agents/moai/tdd-implementer.md` - Phase 2: TDD implementation
+- `.claude/agents/moai/quality-gate.md` - Phase 2.5: Quality validation
+- `.claude/agents/moai/git-manager.md` - Phase 3: Git operations
 
 **Architecture Pattern**:
 ```
@@ -252,10 +318,10 @@ Skills (Knowledge)
 
 ---
 
-**Version**: 3.0.0 (Agent-First Orchestration)
-**Updated**: 2025-11-12
-**Pattern**: Complete Agent Delegation
-**Compliance**: Claude Code Best Practices
+**Version**: 3.1.0 (Command-Level Phase Orchestration)
+**Updated**: 2025-11-19
+**Pattern**: Sequential Phase-Based Agent Delegation
+**Compliance**: Claude Code Best Practices + Zero Direct Tool Usage
 
 ---
 

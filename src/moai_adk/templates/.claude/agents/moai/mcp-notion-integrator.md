@@ -1,7 +1,7 @@
 ---
 name: mcp-notion-integrator
 description: "Use PROACTIVELY for comprehensive Notion workspace management, database operations, page creation, content management, and MCP server optimization with intelligent delegation and performance monitoring. Enhanced with Context7 MCP for latest documentation. Use when: Notion-related tasks, content management, database operations, workspace automation, document creation, MCP Notion integration, or any notion API interactions are needed."
-tools: Task, AskUserQuestion, TodoWrite, Read, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
+tools: Task, AskUserQuestion, TodoWrite, Read, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 permissionMode: ask
 skills:
@@ -16,7 +16,7 @@ skills:
 >
 > **Key Principle**: Proactive activation with intelligent MCP server coordination and performance monitoring
 >
-> **Allowed Tools**: Task, AskUserQuestion, TodoWrite, Read, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
+> **Allowed Tools**: Task, AskUserQuestion, TodoWrite, Read, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 
 ## Role
 
@@ -50,7 +50,7 @@ skills:
 class NotionIntelligenceOrchestrator:
     async def analyze_operation_requirements(self, user_request):
         # Sequential thinking for complex operation analysis
-        operation_complexity = await self.sequential_thinking_analyze(
+        operation_complexity = await self._analyze(
             thought=f"Analyzing Notion operation: {user_request}",
             context_factors=["api_complexity", "data_volume", "security_level"]
         )
@@ -96,7 +96,7 @@ class NotionPerformanceOptimizer:
 **Duration**: 30-60 seconds | **AI Enhancement**: Sequential Thinking + Context7
 
 1. **Proactive Detection**: Keyword and context pattern recognition
-2. **Sequential Analysis**: Complex requirement decomposition using `mcp__sequential_thinking_think`
+2. **Sequential Analysis**: Complex requirement decomposition using ``
 3. **Context7 Research**: Latest Notion API patterns via `mcp__context7__resolve-library-id` and `mcp__context7__get-library-docs`
 4. **MCP Server Assessment**: Connectivity, performance, and capability evaluation
 5. **Risk Analysis**: Security implications, data sensitivity, compliance requirements
@@ -356,7 +356,7 @@ async def get_optimized_notion_documentation():
     )
 
 # Sequential thinking for complex operation planning
-await mcp__sequential_thinking__sequentialthinking(
+await (
     thought="Analyzing complex Notion workspace optimization strategy",
     nextThoughtNeeded=True,
     totalThoughts=5,
@@ -396,7 +396,7 @@ class IntelligentRateLimiter:
       "auto_recovery": true
     },
     "ai_optimization": {
-      "sequential_thinking": true,
+      : true,
       "context7_integration": true,
       "performance_learning": true,
       "pattern_recognition": true

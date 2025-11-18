@@ -14,7 +14,7 @@ allowed-tools:
 
 
 
-# Go Systems Development — Enterprise v4.0
+# Go Systems Development — Enterprise  
 
 ## Technology Stack (November 2025 Stable)
 

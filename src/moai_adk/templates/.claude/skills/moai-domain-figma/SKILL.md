@@ -16,7 +16,7 @@ stability: stable
 ---
 
 
-# Design Systems & Figma Integration - v4.0.0
+# Design Systems & Figma Integration - 
 
 **Enterprise design system architecture with Figma API, design tokens, and automation**
 

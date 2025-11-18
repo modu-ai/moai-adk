@@ -330,7 +330,7 @@ Acceptance Criteria:
 ## 👤 작성자 정보
 
 **프로젝트 소유자**: GoosLab
-**생성 도구**: Claude Code v4.0 + MoAI-ADK Zero Direct Tool Usage Protocol
+**생성 도구**: Claude Code + MoAI-ADK Zero Direct Tool Usage Protocol
 **생성 일시**: 2025-11-19 00:55 UTC
 **상태**: 프로덕션 준비 완료
 
