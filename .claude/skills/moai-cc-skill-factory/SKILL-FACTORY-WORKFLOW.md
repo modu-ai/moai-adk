@@ -169,8 +169,8 @@ Expand `moai-essentials-debug` from 3 languages to **all 23 languages** with deb
 
 ```
 Python:        pdb, pudb 2024.1, debugpy 1.8.0
-TypeScript:    chrome-devtools, node inspect, VS Code
-JavaScript:    node --inspect, chrome-devtools
+TypeScript:    node inspect, VS Code
+JavaScript:    node --inspect, VS Code
 Go:            delve 1.22, VS Code Go
 Rust:          rust-gdb, rust-lldb, CodeLLDB
 Java:          jdb, IntelliJ IDEA, VS Code
