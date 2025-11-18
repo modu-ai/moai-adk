@@ -1,28 +1,17 @@
 ---
 name: moai-lang-dart
 version: 4.0.0
-created: 2025-10-22
-updated: '2025-11-18'
+updated: '2025-11-19'
 status: stable
+stability: stable
 description: Dart 3.5 enterprise development with Flutter 3.24, advanced async programming,
-  state management, and cross-platform mobile development. Enterprise patterns for
-  scalable applications with Context7 MCP integration.
-keywords:
-- dart
-- flutter
-- async-programming
-- state-management
-- cross-platform
-- mobile-development
-- enterprise
-- context7
 allowed-tools:
 - Read
 - Bash
-- mcp__context7__resolve-library-id
-- mcp__context7__get-library-docs
-stability: stable
+- WebSearch
+- WebFetch
 ---
+
 
 
 # Dart - Enterprise v4.0.0

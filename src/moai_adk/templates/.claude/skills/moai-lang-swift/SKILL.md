@@ -1,29 +1,17 @@
 ---
 name: moai-lang-swift
 version: 4.0.0
-created: 2025-10-22
-updated: '2025-11-18'
+updated: '2025-11-19'
 status: stable
+stability: stable
 description: Swift 6.0 enterprise development with async/await, SwiftUI, Combine,
-  and Swift Concurrency. Advanced patterns for iOS, macOS, server-side Swift, and
-  enterprise mobile applications with Context7 MCP integration.
-keywords:
-- swift
-- swiftui
-- async-await
-- swift-concurrency
-- combine
-- ios
-- macos
-- server-side-swift
-- context7
 allowed-tools:
 - Read
 - Bash
-- mcp__context7__resolve-library-id
-- mcp__context7__get-library-docs
-stability: stable
+- WebSearch
+- WebFetch
 ---
+
 
 
 # Swift - Enterprise v4.0.0

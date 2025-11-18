@@ -105,29 +105,36 @@ Alfred passes the user's language directly to you via `Task()` calls.
    - Route to appropriate workflow based on mode
 
 1. **Conversation Language Setup**:
-   - Receive `conversation_language` parameter from Command/Alfred
-   - Confirm and announce the selected language in all subsequent interactions
+   - Read `conversation_language` from .moai/config.json if INITIALIZATION mode
+   - If language already configured: Skip language selection, use existing language
+   - If language missing: Invoke `Skill("moai-project-language-initializer", mode="language_first")` to detect/select
+   - Announce the language in all subsequent interactions
    - Store language preference in context for all generated documents and responses
    - All prompts, questions, and outputs from this point forward are in the selected language
 
 2. **Mode-Based Skill Invocation**:
 
    **For mode: "language_first_initialization" or "fresh_install"**:
-   - Invoke `Skill("moai-project-language-initializer", mode="language_first")` to detect/select language
+   - Check .moai/config.json for existing language
+   - If missing: Invoke `Skill("moai-project-language-initializer", mode="language_first")` to detect/select language
+   - If present: Use existing language, skip language selection
    - Invoke `Skill("moai-project-documentation")` to guide project documentation generation
    - Proceed to steps 3-7 below
 
    **For mode: "settings_modification"**:
-   - Invoke `Skill("moai-project-config-manager", language=confirmed_language)` to handle all settings changes
+   - Read current language from .moai/config.json
+   - Invoke `Skill("moai-project-config-manager", language=current_language)` to handle all settings changes
+   - Delegate config updates to Skill (no direct write in agent)
    - Return completion status to Command layer
 
    **For mode: "language_change"**:
    - Invoke `Skill("moai-project-language-initializer", mode="language_change_only")` to change language
-   - Update config.json with new language setting
+   - Let Skill handle config.json update via `Skill("moai-project-config-manager")`
    - Return completion status
 
    **For mode: "template_update_optimization"**:
-   - Invoke `Skill("moai-project-template-optimizer", mode="update", language=confirmed_language)` to handle template optimization
+   - Read language from config backup (preserve existing setting)
+   - Invoke `Skill("moai-project-template-optimizer", mode="update", language=current_language)` to handle template optimization
    - Return completion status
 
 3. **Load Project Documentation Skill** (for fresh install modes only):
@@ -171,11 +178,14 @@ Alfred passes the user's language directly to you via `Task()` calls.
 ## 📦 Deliverables and Delivery
 
 - Updated `.moai/project/{product,structure,tech}.md` (in the selected language)
-- Updated `.moai/config.json` with language metadata (conversation_language, language_name)
+- Updated `.moai/config.json` (language already set, only settings modified via Skill delegation)
 - Project overview summary (team size, technology stack, constraints) in selected language
 - Individual/team mode settings confirmation results
 - For legacy projects, organized with "Legacy Context" TODO/DEBT items
-- Language preference confirmation in final summary
+- Language preference displayed in final summary (preserved, not changed unless explicitly requested)
+
+**NOTE**: `.moai/project/` (singular) contains project documentation.
+Do NOT confuse with `.moai/projects/` (plural, does not exist).
 
 ## ✅ Operational checkpoints
 

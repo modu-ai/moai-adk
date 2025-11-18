@@ -1,24 +1,17 @@
 ---
 name: moai-lang-java
 version: 4.0.0
-created: 2025-10-22
-updated: '2025-11-18'
+updated: '2025-11-19'
 status: stable
+stability: stable
 description: Java programming language patterns, object-oriented design, and enterprise
-  application development. Use when building enterprise applications, Android apps,
-  or large-scale systems.
-keywords:
-- java
-- object-oriented
-- enterprise
-- spring
-- android
 allowed-tools:
 - Read
 - Bash
-- Glob
-stability: stable
+- WebSearch
+- WebFetch
 ---
+
 
 
 # Java Programming Language Skill

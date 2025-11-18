@@ -1,21 +1,17 @@
 ---
 name: moai-lang-r
 version: 4.0.0
-created: 2025-10-22
-updated: '2025-11-18'
+updated: '2025-11-19'
 status: stable
+stability: stable
 description: R 4.4+ best practices with testthat 3.2, lintr 3.2, and data analysis
-  patterns.
-keywords:
-- r
-- testthat
-- lintr
-- data-analysis
 allowed-tools:
 - Read
 - Bash
-stability: stable
+- WebSearch
+- WebFetch
 ---
+
 
 
 # Lang R Skill

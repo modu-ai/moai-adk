@@ -2,83 +2,78 @@
 name: moai-core-rules
 version: 4.0.0
 created: 2025-11-02
-updated: '2025-11-18'
+updated: 2025-11-19
 status: stable
 tier: Alfred
-description: "Alfred SuperAgent\uC758 \uD544\uC218 \uADDC\uCE59\uC744 \uC815\uC758\
-  \uD569\uB2C8\uB2E4. November 2025 enterprise standard \uAE30\uBC18. 3-Layer architecture,\
-  \ 4-Step workflow, Agent-first paradigm, Skill invocation rules, AskUserQuestion\
-  \ patterns, TRUST 5 quality gates, TAG chain integrity, commit message standards.\
-  \ \uC0AC\uC6A9: \uC6CC\uD06C\uD50C\uB85C\uC6B0 \uADDC\uCE59 \uAC80\uC99D, \uD488\
-  \uC9C8 \uAC8C\uC774\uD2B8 \uD655\uC778, MoAI-ADK \uD45C\uC900 \uC900\uC218, \uC544\
-  \uD0A4\uD14D\uCC98 \uADDC\uCE59 \uAC80\uC99D."
+description: "Defines the essential rules for Alfred SuperAgent. Based on November 2025 enterprise standard. 3-Layer architecture, 4-Step workflow, Agent-first paradigm, Skill invocation rules, AskUserQuestion patterns, TRUST 5 quality gates, TAG chain integrity, commit message standards. Usage: Workflow rule validation, quality gate confirmation, MoAI-ADK standard compliance, architecture rule validation."
 keywords:
-- rules
-- agent-first
-- skill-invocation
-- ask-user-question
-- trust-5
-- tag-chain
-- workflow-compliance
-- quality-gates
-- 4-step-workflow
-- architecture-rules
+  - rules
+  - agent-first
+  - skill-invocation
+  - ask-user-question
+  - trust-5
+  - tag-chain
+  - workflow-compliance
+  - quality-gates
+  - 4-step-workflow
+  - architecture-rules
 allowed-tools: Read, Glob, Grep, Bash, AskUserQuestion, TodoWrite
 stability: stable
 ---
 
+# Alfred SuperAgent Core Rules
 
-## Skill 개요
+## Skill Overview
 
-**moai-core-rules**는 Alfred SuperAgent의 의사결정과 실행을 제어하는 핵심 프레임워크입니다.
+**moai-core-rules** is the essential framework controlling Alfred SuperAgent's decision-making and execution.
 
-| 항목 | 값 |
-|------|-----|
-| 버전 | 4.0.0 (November 2025 enterprise) |
-| 티어 | Alfred (상위 계층) |
-| 자동 로드 | 규칙 검증, 품질 게이트, 아키텍처 규칙 필요 시 |
-| 아키텍처 패러다임 | Agent-First (Command → Agent → Skill → Hook) |
-| 워크플로우 모델 | 4-Step ADAP Workflow |
+| Item | Value |
+|------|-------|
+| Version | 4.0.0 (November 2025 enterprise) |
+| Tier | Alfred (top layer) |
+| Auto-load | Triggered when rule validation, quality gates, or architecture rules needed |
+| Architecture Paradigm | Agent-First (Command → Agent → Skill → Hook) |
+| Workflow Model | 4-Step ADAP Workflow |
 
 ---
 
-## 무엇을 하는가?
+## What Does It Do?
 
-### 핵심 책임
+### Core Responsibilities
 
-1. **3-Layer Architecture 정의**: Commands → Agents → Skills 계층 분리
-2. **4-Step Workflow 규칙**: ADAP (Analyze, Design, Assure, Produce) + Intent
-3. **Agent-First Paradigm**: 모든 실행 작업을 agents에 위임
-4. **Skill 호출 규칙**: 10+ mandatory patterns, invocation syntax
-5. **AskUserQuestion 패턴**: 5가지 필수 사용 시나리오
-6. **TRUST 5 Quality Gates**: T/R/U/S/T 각각의 검증 기준
-7. **TAG Chain Integrity**: SPEC→TEST→CODE→DOC 추적
+1. **3-Layer Architecture Definition**: Commands → Agents → Skills layer separation
+2. **4-Step Workflow Rules**: ADAP (Analyze, Design, Assure, Produce) + Intent
+3. **Agent-First Paradigm**: Delegate all execution work to agents
+4. **Skill Invocation Rules**: 10+ mandatory patterns, invocation syntax
+5. **AskUserQuestion Patterns**: 5 essential usage scenarios
+6. **TRUST 5 Quality Gates**: Validation criteria for T/R/U/S/T each
+7. **TAG Chain Integrity**: SPEC→TEST→CODE→DOC traceability
 8. **Commit Message Standards**: TDD cycle message formats
 
 ---
 
-## 언제 사용하는가?
+## When to Use
 
-### 필수 시나리오 (MUST use)
+### Essential Scenarios (MUST use)
 
-| 상황 | 사용 여부 |
-|------|---------|
-| ✅ Skill() 호출 규칙 검증 | **필수** |
-| ✅ Command vs Agent 역할 분리 | **필수** |
-| ✅ AskUserQuestion 사용 판단 | **필수** |
-| ✅ TRUST 5 준수 확인 | **필수** |
-| ✅ TAG 체인 무결성 검증 | **필수** |
-| ✅ 커밋 메시지 형식 확인 | **필수** |
-| ✅ 워크플로우 compliance 검증 | **필수** |
-| ✅ Agent delegation 올바른지 확인 | **필수** |
-| ✅ 품질 게이트(quality gate) 통과 | **필수** |
-| ✅ 아키텍처 규칙 위반 감지 | **필수** |
+| Situation | Usage |
+|-----------|-------|
+| ✅ Validate Skill() invocation rules | **Required** |
+| ✅ Clarify Command vs Agent responsibilities | **Required** |
+| ✅ Decide on AskUserQuestion usage | **Required** |
+| ✅ Confirm TRUST 5 compliance | **Required** |
+| ✅ Validate TAG chain integrity | **Required** |
+| ✅ Verify commit message format | **Required** |
+| ✅ Validate workflow compliance | **Required** |
+| ✅ Confirm Agent delegation correctness | **Required** |
+| ✅ Validate quality gates (quality gate) | **Required** |
+| ✅ Detect architecture rule violations | **Required** |
 
 ---
 
 ## Rule 1: 3-Layer Architecture (November 2025 Standard)
 
-### 계층 구조
+### Layer Structure
 
 ```
 ┌─────────────────────────────────────┐
@@ -103,80 +98,80 @@ stability: stable
 └─────────────────────────────────────┘
 ```
 
-### 규칙 1.1: Commands - Orchestration ONLY
+### Rule 1.1: Commands - Orchestration ONLY
 
-**금지 사항 (❌)**:
+**Forbidden (❌)**:
 ```bash
-# ❌ WRONG: 직접 작업 실행
+# ❌ WRONG: Direct task execution
 echo "Building application..."
 python setup.py build
 git commit -m "Build"
 
-# ❌ WRONG: Skill 직접 호출
-Skill("moai-core-rules")  # Commands에서 금지!
+# ❌ WRONG: Direct Skill invocation
+Skill("moai-core-rules")  # Forbidden in Commands!
 
-# ❌ WRONG: 복잡한 로직 구현
+# ❌ WRONG: Complex logic implementation
 if feature_type == "backend":
-  # 복잡한 비즈니스 로직...
+  # Complex business logic...
 ```
 
-**필수 사항 (✅)**:
+**Required (✅)**:
 ```bash
-# ✅ CORRECT: Agent에 위임
+# ✅ CORRECT: Delegate to Agent
 Task(
   subagent_type="tdd-implementer",
   description="Build and test application",
   prompt="Implement feature with RED-GREEN-REFACTOR cycle"
 )
 
-# ✅ CORRECT: 의사결정만 하고 위임
+# ✅ CORRECT: Decision-making only, then delegate
 if user_approval_needed:
-  AskUserQuestion(...)  # 사용자 확인 후 위임
+  AskUserQuestion(...)  # Confirm with user, then delegate
   Task(subagent_type="implementation-planner", ...)
 ```
 
-### 규칙 1.2: Agents - Domain Expertise Ownership
+### Rule 1.2: Agents - Domain Expertise Ownership
 
-**agent의 책임**:
-- ✅ 복잡한 분석 & 추론 (deep reasoning)
-- ✅ 계획 수립 (planning)
-- ✅ 의사결정 (decision-making)
-- ✅ Skill 호출 및 조율 (orchestration within domain)
-- ✅ 작업 실행 (execution)
+**Agent responsibilities**:
+- ✅ Complex analysis & reasoning (deep reasoning)
+- ✅ Planning (planning)
+- ✅ Decision-making (decision-making)
+- ✅ Skill invocation and coordination (orchestration within domain)
+- ✅ Task execution (execution)
 
-**예시: tdd-implementer Agent**:
+**Example: tdd-implementer Agent**:
 ```
 Agent receives: "Implement user authentication"
   ↓
-1. Analyze: SPEC 검토, 요구사항 분석
-2. Design: 아키텍처 설계
-3. RED: test-engineer Skill 호출 → 테스트 작성
-4. GREEN: 코드 구현
-5. REFACTOR: 최적화
-6. Commit: git-manager 호출 → commit
+1. Analyze: Review SPEC, analyze requirements
+2. Design: Architecture design
+3. RED: Invoke test-engineer Skill → Write tests
+4. GREEN: Implement code
+5. REFACTOR: Optimize
+6. Commit: Invoke git-manager → Commit
   ↓
 Returns: Fully tested, documented, committed code
 ```
 
-### 규칙 1.3: Skills - Knowledge Capsules (Stateless)
+### Rule 1.3: Skills - Knowledge Capsules (Stateless)
 
-**Skill 특성**:
-- ✅ 상태가 없음 (stateless)
-- ✅ 재사용 가능 (reusable)
-- ✅ Agent에 의해 호출됨 (called by agents)
-- ✅ 1000줄 이하 (< 1000 lines)
-- ✅ 단일 주제 (single topic)
+**Skill characteristics**:
+- ✅ Stateless (no state)
+- ✅ Reusable (can be invoked multiple times)
+- ✅ Called by agents (agents invoke Skills)
+- ✅ Under 1000 lines (< 1000 lines)
+- ✅ Single topic (focused expertise)
 
-**금지 (❌)**:
+**Forbidden (❌)**:
 ```bash
-# ❌ WRONG: Skill이 다른 Skill 호출
-Skill("moai-foundation-git")  # ← Skills에서 금지!
+# ❌ WRONG: Skill calling other Skill
+Skill("moai-foundation-git")  # Forbidden in Skills!
 
-# ❌ WRONG: Skill이 Task() 실행
-Task(subagent_type="...")  # ← Skills에서 금지!
+# ❌ WRONG: Skill executing Task()
+Task(subagent_type="...")  # Forbidden in Skills!
 
-# ❌ WRONG: Skill이 상태 유지
-state = {"counter": 0}  # ← Stateless 위반
+# ❌ WRONG: Skill maintaining state
+state = {"counter": 0}  # Violates stateless principle
 ```
 
 ---
@@ -210,33 +205,33 @@ Phase 4: PRODUCE
 └──────────────────┘
 ```
 
-### Phase 0: Intent (사용자 의도 파악)
+### Phase 0: Intent (Understanding User Intent)
 
-**규칙 0.1**: Intent가 모호하면 AskUserQuestion 사용
+**Rule 0.1**: Use AskUserQuestion if intent is ambiguous
 
 ```
-상황: "데이터 처리 모듈 만들어줘"
+Situation: "Create a data processing module"
 
-Step 1: Intent 평가
-  ├─ Clarity: LOW (어떤 데이터? 어떤 처리?)
-  └─ Action: AskUserQuestion 사용
+Step 1: Evaluate Intent
+  ├─ Clarity: LOW (What data? What processing?)
+  └─ Action: Use AskUserQuestion
 
-Step 2: 명확화
+Step 2: Clarification
 AskUserQuestion({
-  question: "어떤 데이터를 처리하나요?",
+  question: "What data are you processing?",
   options: [
-    "CSV 파일",
-    "데이터베이스",
-    "API 응답"
+    "CSV file",
+    "Database",
+    "API response"
   ]
 })
 
-Step 3: 명확한 요구사항 확보 후 다음 phase로
+Step 3: Proceed to next phase with clarified requirements
 ```
 
-### Phase 1: Analyze (정보 수집 & 연구)
+### Phase 1: Analyze (Information Gathering & Research)
 
-**도구**: WebSearch, WebFetch
+**Tools**: WebSearch, WebFetch
 
 ```
 Task 1: Research latest information
@@ -255,54 +250,54 @@ Task 3: Identify version-specific guidance
   └─ Deprecation warnings
 ```
 
-### Phase 2: Design (아키텍처 설계)
+### Phase 2: Design (Architecture Design)
 
-**입력**: Phase 1의 연구 결과
-**출력**: November 2025 최신 정보를 기반한 설계
+**Input**: Phase 1 research results
+**Output**: Design based on November 2025 latest information
 
 ```
 Design Activities:
-  ├─ 최신 정보 기반 이름 지정
-  ├─ 현재 버전 명시
-  ├─ 최신 패턴 포함
-  ├─ 공식 문서 링크
-  └─ 마지막 업데이트 날짜 포함
+  ├─ Naming based on latest information
+  ├─ Specify current version
+  ├─ Include latest patterns
+  ├─ Link to official documentation
+  └─ Include last update date
 ```
 
-### Phase 3: Assure (품질 검증)
+### Phase 3: Assure (Quality Validation)
 
 **TRUST 5 Quality Gates**:
 
-| Gate | 검증 기준 |
-|------|----------|
-| **Test** | 85%+ coverage, 모든 경로 테스트 |
-| **Readable** | Clean code, SOLID 원칙, 주석 포함 |
-| **Unified** | 일관된 패턴, 중복 제거, 네이밍 표준 |
-| **Secured** | OWASP Top 10 확인, 비밀정보 제거 |
+| Gate | Validation Criteria |
+|------|------------------|
+| **Test** | 85%+ coverage, all code paths tested |
+| **Readable** | Clean code, SOLID principles, comments included |
+| **Unified** | Consistent patterns, no duplication, naming standards |
+| **Secured** | OWASP Top 10 verified, secrets removed |
 
-### Phase 4: Produce (생성 & 배포)
+### Phase 4: Produce (Generation & Release)
 
-**책임**: Skill 호출 (예: moai-skill-factory)
+**Responsibility**: Skill invocation (e.g., moai-skill-factory)
 
 ```
 Actions:
-  ├─ 템플릿 적용
-  ├─ 파일 생성
-  ├─ 메타데이터 추가
-  ├─ 최신 정보 embedded
-  ├─ 공식 문서 링크 포함
-  └─ Version date 표기
+  ├─ Apply templates
+  ├─ Generate files
+  ├─ Add metadata
+  ├─ Embed latest information
+  ├─ Include official documentation links
+  └─ Include version date
 ```
 
 ---
 
 ## Rule 3: Agent-First Paradigm (Critical Enforcement)
 
-### 금지된 작업 (❌ ABSOLUTELY FORBIDDEN)
+### Forbidden Tasks (❌ ABSOLUTELY FORBIDDEN)
 
-Alfred (또는 Command)가 직접 실행하면 **절대** 안 됩니다:
+Alfred (or Command) MUST NEVER directly execute:
 
-1. **직접 bash 명령 실행** ❌
+1. **Direct bash command execution** ❌
    ```bash
    # ❌ WRONG
    bash("git commit -m 'message'")
@@ -312,7 +307,7 @@ Alfred (또는 Command)가 직접 실행하면 **절대** 안 됩니다:
    Task(subagent_type="git-manager", prompt="Commit changes")
    ```
 
-2. **파일 읽기/쓰기** ❌
+2. **File read/write** ❌
    ```bash
    # ❌ WRONG
    with open("file.py", "w") as f:
@@ -322,7 +317,7 @@ Alfred (또는 Command)가 직접 실행하면 **절대** 안 됩니다:
    Task(subagent_type="file-manager", prompt="Create file")
    ```
 
-3. **Git 직접 조작** ❌
+3. **Direct Git manipulation** ❌
    ```bash
    # ❌ WRONG
    subprocess.run(["git", "push", "origin", "main"])
@@ -331,7 +326,7 @@ Alfred (또는 Command)가 직접 실행하면 **절대** 안 됩니다:
    Task(subagent_type="git-manager", prompt="Push changes")
    ```
 
-4. **코드 분석 직접 실행** ❌
+4. **Direct code analysis** ❌
    ```bash
    # ❌ WRONG
    lines = len(open("file.py").readlines())
@@ -340,7 +335,7 @@ Alfred (또는 Command)가 직접 실행하면 **절대** 안 됩니다:
    Task(subagent_type="code-analyzer", prompt="Analyze code")
    ```
 
-5. **테스트 직접 실행** ❌
+5. **Direct test execution** ❌
    ```bash
    # ❌ WRONG
    subprocess.run(["pytest", "tests/"])
@@ -349,80 +344,80 @@ Alfred (또는 Command)가 직접 실행하면 **절대** 안 됩니다:
    Task(subagent_type="test-engineer", prompt="Run tests")
    ```
 
-### 의무 위임 (✅ MANDATORY DELEGATION)
+### Mandatory Delegation (✅ MANDATORY DELEGATION)
 
-| 작업 | 위임 대상 | 패턴 |
-|------|---------|------|
-| 계획 수립 | plan-agent | `Task(subagent_type="plan-agent", ...)` |
-| 코드 개발 | tdd-implementer | `Task(subagent_type="tdd-implementer", ...)` |
-| 테스트 작성 | test-engineer | `Task(subagent_type="test-engineer", ...)` |
-| 문서화 | doc-syncer | `Task(subagent_type="doc-syncer", ...)` |
-| Git 작업 | git-manager | `Task(subagent_type="git-manager", ...)` |
-| 품질 검증 | qa-validator | `Task(subagent_type="qa-validator", ...)` |
-| 사용자 질문 | ask-user-questions | `AskUserQuestion(...)` |
+| Task | Delegate To | Pattern |
+|------|----------|---------|
+| Planning | plan-agent | `Task(subagent_type="plan-agent", ...)` |
+| Code development | tdd-implementer | `Task(subagent_type="tdd-implementer", ...)` |
+| Test writing | test-engineer | `Task(subagent_type="test-engineer", ...)` |
+| Documentation | doc-syncer | `Task(subagent_type="doc-syncer", ...)` |
+| Git operations | git-manager | `Task(subagent_type="git-manager", ...)` |
+| Quality validation | qa-validator | `Task(subagent_type="qa-validator", ...)` |
+| User questions | ask-user-questions | `AskUserQuestion(...)` |
 
 ---
 
 ## Rule 4: 10 Mandatory Skill Invocations
 
-### 규칙 4.1: Skill Invocation Pattern
+### Rule 4.1: Skill Invocation Pattern
 
 **Syntax**:
 ```python
 Skill("skill-name")  # Explicit invocation only
 ```
 
-### 10가지 필수 Skill
+### 10 Essential Skills
 
-| # | Skill | 용도 | Invocation |
-|---|-------|------|-----------|
-| 1 | moai-foundation-trust | TRUST 5 검증 | `Skill("moai-foundation-trust")` |
-| 2 | moai-foundation-tags | TAG 검증 & 추적 | `Skill("moai-foundation-tags")` |
-| 3 | moai-foundation-specs | SPEC 작성 & 검증 | `Skill("moai-foundation-specs")` |
-| 4 | moai-foundation-ears | EARS 요구사항 형식 | `Skill("moai-foundation-ears")` |
-| 5 | moai-foundation-git | Git 워크플로우 | `Skill("moai-foundation-git")` |
-| 6 | moai-foundation-langs | 언어 & 스택 감지 | `Skill("moai-foundation-langs")` |
-| 7 | moai-essentials-debug | 디버깅 & 에러 분석 | `Skill("moai-essentials-debug")` |
-| 8 | moai-essentials-refactor | 리팩토링 & 개선 | `Skill("moai-essentials-refactor")` |
-| 9 | moai-essentials-perf | 성능 최적화 | `Skill("moai-essentials-perf")` |
-| 10 | moai-essentials-review | 코드 리뷰 & 품질 | `Skill("moai-essentials-review")` |
+| # | Skill | Purpose | Invocation |
+|---|-------|---------|-----------|
+| 1 | moai-foundation-trust | TRUST 5 validation | `Skill("moai-foundation-trust")` |
+| 2 | moai-foundation-tags | TAG validation & traceability | `Skill("moai-foundation-tags")` |
+| 3 | moai-foundation-specs | SPEC writing & validation | `Skill("moai-foundation-specs")` |
+| 4 | moai-foundation-ears | EARS requirement format | `Skill("moai-foundation-ears")` |
+| 5 | moai-foundation-git | Git workflow | `Skill("moai-foundation-git")` |
+| 6 | moai-foundation-langs | Language & stack detection | `Skill("moai-foundation-langs")` |
+| 7 | moai-essentials-debug | Debugging & error analysis | `Skill("moai-essentials-debug")` |
+| 8 | moai-essentials-refactor | Refactoring & improvement | `Skill("moai-essentials-refactor")` |
+| 9 | moai-essentials-perf | Performance optimization | `Skill("moai-essentials-perf")` |
+| 10 | moai-essentials-review | Code review & quality | `Skill("moai-essentials-review")` |
 
-### 규칙 4.2: Skill Invocation 예제
+### Rule 4.2: Skill Invocation Examples
 
 ```python
-# Context 1: TRUST 5 검증 필요
+# Context 1: TRUST 5 validation needed
 if validation_required:
     Skill("moai-foundation-trust")
-    # → 반환: TRUST score, violations, recommendations
+    # → Returns: TRUST score, violations, recommendations
 
-# Context 2: TAG 체인 검증
+# Context 2: TAG chain validation
 if tag_integrity_check:
     Skill("moai-foundation-tags")
-    # → 반환: 고아 TAG, 깨진 체인, 제안
+    # → Returns: orphaned TAGs, broken chains, suggestions
 
-# Context 3: SPEC 작성
+# Context 3: SPEC writing
 if spec_needed:
     Skill("moai-foundation-specs")
-    # → 반환: SPEC template, validation results
+    # → Returns: SPEC template, validation results
 
-# Context 4: Git 워크플로우
+# Context 4: Git workflow
 if git_decision_needed:
     Skill("moai-foundation-git")
-    # → 반환: branch strategy, commit format, merge rules
+    # → Returns: branch strategy, commit format, merge rules
 ```
 
 ---
 
-## Rule 5: AskUserQuestion Patterns (5가지 필수 시나리오)
+## Rule 5: AskUserQuestion Patterns (5 Essential Scenarios)
 
-### 규칙 5.1: MANDATORY Scenarios
+### Rule 5.1: MANDATORY Scenarios
 
-**Scenario 1: 기술 스택 모호**
+**Scenario 1: Ambiguous technology stack**
 ```
-상황: "Python 웹 프레임워크 추천해줄래?"
+Situation: "Recommend a Python web framework?"
 
 AskUserQuestion({
-  question: "어떤 유형의 애플리케이션?",
+  question: "What type of application?",
   header: "Application Type",
   options: [
     { label: "REST API", description: "High performance APIs" },
@@ -432,12 +427,12 @@ AskUserQuestion({
 })
 ```
 
-**Scenario 2: 아키텍처 결정**
+**Scenario 2: Architecture decision**
 ```
-상황: "데이터베이스 모델을 어떻게 설계?"
+Situation: "How should I design the database model?"
 
 AskUserQuestion({
-  question: "어떤 데이터 특성?",
+  question: "What are your data characteristics?",
   header: "Data Model",
   options: [
     { label: "Relational", description: "Structured, ACID" },
@@ -447,28 +442,28 @@ AskUserQuestion({
 })
 ```
 
-**Scenario 3: 의도 모호**
+**Scenario 3: Ambiguous intent**
 ```
-상황: "코드 개선해줄래?"
+Situation: "Improve the code?"
 
 AskUserQuestion({
-  question: "어떤 측면을 개선?",
+  question: "Which aspect to improve?",
   header: "Improvement Focus",
   options: [
     { label: "Performance", description: "Speed & efficiency" },
     { label: "Readability", description: "Code clarity" },
     { label: "Security", description: "Vulnerability fixes" }
   ],
-  multiSelect: true  # 복수 선택 허용
+  multiSelect: true  # Allow multiple selection
 })
 ```
 
-**Scenario 4: 기존 컴포넌트 영향**
+**Scenario 4: Existing component impact**
 ```
-상황: "패키지 업그레이드하려는데 호환성?"
+Situation: "Want to upgrade a package, compatibility?"
 
 AskUserQuestion({
-  question: "기존 코드 호환성 유지 필요?",
+  question: "Need to maintain existing code compatibility?",
   header: "Compatibility",
   options: [
     { label: "Full compatibility", description: "Maintain all APIs" },
@@ -478,12 +473,12 @@ AskUserQuestion({
 })
 ```
 
-**Scenario 5: 자원 제약**
+**Scenario 5: Resource constraints**
 ```
-상황: "시스템 리팩토링 계획 수립"
+Situation: "Plan a system refactoring"
 
 AskUserQuestion({
-  question: "예상 개발 기간?",
+  question: "Expected development timeline?",
   header: "Timeline",
   options: [
     { label: "1 week", description: "Focused scope" },
@@ -493,18 +488,18 @@ AskUserQuestion({
 })
 ```
 
-### 규칙 5.2: 올바른 사용법
+### Rule 5.2: Correct Usage
 
-**❌ WRONG** (평문 질문):
+**❌ WRONG** (Plain text question):
 ```
-사용자: "뭘 선호해?"
-응답: "음... 생각해봤는데 아마도..."
+User: "What would you prefer?"
+Response: "Well, thinking about it... probably..."
 ```
 
 **✅ CORRECT** (AskUserQuestion):
 ```
 AskUserQuestion({
-  question: "어떤 접근을 선호하시나요?",
+  question: "Which approach do you prefer?",
   header: "Approach",
   multiSelect: false,
   options: [
@@ -518,7 +513,7 @@ AskUserQuestion({
 
 ## Rule 6: TRUST 5 Quality Gates (November 2025 Enterprise)
 
-### 각 Gate의 검증 기준
+### Validation Criteria for Each Gate
 
 #### T: Test First (85%+ Coverage)
 ```yaml
@@ -526,9 +521,9 @@ requirements:
   coverage: "≥ 85%"
   coverage_tools: ["pytest-cov", "coverage.py"]
   test_types:
-    - unit_tests: "각 함수/메서드"
-    - integration_tests: "모듈 간 상호작용"
-    - edge_cases: "경계값, 에러 처리"
+    - unit_tests: "Each function/method"
+    - integration_tests: "Module interactions"
+    - edge_cases: "Boundary values, error handling"
   
 validation:
   - All code paths executed
@@ -541,13 +536,13 @@ validation:
 ```yaml
 requirements:
   code_standards:
-    - SOLID 원칙 준수
+    - SOLID principles
     - DRY (Don't Repeat Yourself)
     - KISS (Keep It Simple, Stupid)
   
   documentation:
     - Function docstrings
-    - Complex logic comments
+    - Comments for complex logic
     - Type hints (Python 3.10+)
   
   naming:
@@ -596,12 +591,14 @@ requirements:
     - Known CVEs checked
 ```
 
+#### T: Trackable (Complete Traceability)
 ```yaml
 requirements:
   tag_chain:
     - Complete history traceability
   
   documentation:
+    - SPEC → TEST → CODE → DOC
   
   validation:
     - Bidirectional references
@@ -611,38 +608,40 @@ requirements:
 
 ## Rule 7: TAG Chain Integrity Rules
 
-### 규칙 7.1: TAG Naming Convention
+### Rule 7.1: TAG Naming Convention
 
 ```
 Format: @<DOMAIN>-<###>
 
 Examples:
+@AUTH-001, @PAYMENT-042, @FRONTEND-003
 ```
 
-### 규칙 7.2: TAG Lifecycle
+### Rule 7.2: TAG Lifecycle
 
 ```
+SPEC → TEST → CODE → DOC
 
+Complete chain:
   └─ Example: test_auth.py - test_auth_success()
 
   └─ Example: auth.py - authenticate_user()
 
   └─ Example: CHANGELOG.md
-
 ```
 
-### 규칙 7.3: TAG Validation Rules
+### Rule 7.3: TAG Validation Rules
 
-**❌ 위반**:
+**❌ Violations**:
 ```python
-# 1. Orphan TAG (TEST/CODE 없음)
+# 1. Orphan TAG (TEST/CODE missing)
 
-# 2. 깨진 체인 (missing step)
+# 2. Broken chain (missing step)
 
-# 3. 불일치 (다른 번호)
+# 3. Mismatch (different numbers)
 ```
 
-**✅ 정확**:
+**✅ Correct**:
 ```python
 # Complete chain
 ```
@@ -651,7 +650,7 @@ Examples:
 
 ## Rule 8: Commit Message Standards (TDD Cycle)
 
-### 규칙 8.1: Commit Format
+### Rule 8.1: Commit Format
 
 ```
 Format:
@@ -662,10 +661,11 @@ Format:
 <footer>
 ```
 
-### 규칙 8.2: TDD Cycle Commits
+### Rule 8.2: TDD Cycle Commits
 
-**RED Commit** (테스트 작성):
+**RED Commit** (Write tests):
 ```
+test(@AUTH-001): Add authentication tests
 
 - test_successful_login()
 - test_invalid_credentials()
@@ -674,8 +674,9 @@ Format:
 Status: RED (Tests fail as expected)
 ```
 
-**GREEN Commit** (구현):
+**GREEN Commit** (Implement):
 ```
+feat(@AUTH-001): Implement authentication
 
 - Implement authenticate_user() function
 - Add token generation
@@ -684,8 +685,9 @@ Status: RED (Tests fail as expected)
 Status: GREEN (All tests pass)
 ```
 
-**REFACTOR Commit** (최적화):
+**REFACTOR Commit** (Optimize):
 ```
+refactor(@AUTH-001): Improve authentication code
 
 - Extract token validation to separate function
 - Add caching for user lookups
@@ -694,76 +696,80 @@ Status: GREEN (All tests pass)
 Status: PASSING (Tests still pass, code improved)
 ```
 
-### 규칙 8.3: Commit 타입 (Conventional Commits)
+### Rule 8.3: Commit Types (Conventional Commits)
 
-| 타입 | 설명 | 예시 |
-|------|------|------|
-| **chore** | 빌드/설정 | `chore: Update dependencies` |
+| Type | Description | Example |
+|------|-------------|---------|
+| **chore** | Build/configuration | `chore: Update dependencies` |
+| **test** | Test code | `test: Add authentication tests` |
+| **feat** | New feature | `feat: Add user authentication` |
+| **fix** | Bug fix | `fix: Correct login validation` |
+| **refactor** | Code improvement | `refactor: Optimize token validation` |
 
 ---
 
 ## Rule 9: Workflow Compliance Validation
 
-### 규칙 9.1: Compliance Checklist
+### Rule 9.1: Compliance Checklist
 
 **Before Commit**:
-- [ ] 테스트 통과 (85%+ coverage)
-- [ ] Linting 통과 (black, flake8)
-- [ ] Security scan 통과 (bandit, safety)
-- [ ] 비밀정보 제거 (no secrets)
-- [ ] 커밋 메시지 형식 맞음
+- [ ] Tests pass (85%+ coverage)
+- [ ] Linting passes (black, flake8)
+- [ ] Security scan passes (bandit, safety)
+- [ ] Secrets removed (no secrets)
+- [ ] Commit message format correct
 
 **Before Merge**:
-- [ ] TAG 체인 완전
-- [ ] TRUST 5 통과
-- [ ] Code review 완료
-- [ ] CI/CD 통과
-- [ ] PR 설명 포함
+- [ ] TAG chain complete
+- [ ] TRUST 5 passes
+- [ ] Code review done
+- [ ] CI/CD passes
+- [ ] PR description included
 
-### 규칙 9.2: Violation Response
+### Rule 9.2: Violation Response
 
 **Violation Detected**:
 ```
-1. 자동 탐지 (hook)
-2. 사용자에게 알림
-3. 수정 요청
-4. 재검증
-5. Pass/Fail 결정
+1. Auto-detect (hook)
+2. Notify user
+3. Request fix
+4. Re-validate
+5. Pass/Fail decision
 ```
 
 ---
 
 ## 3-Level Progressive Disclosure
 
-### Level 1: 빠른 시작 (Beginner - 10분)
+### Level 1: Quick Start (Beginner - 10 minutes)
 
-**당신이 알아야 할 것**:
-1. Command = 조율만, Agent = 실행
-2. Skill = 전문 도구
-3. 규칙 위반 → 에러
+**What you need to know**:
+1. Command = orchestration only, Agent = execution
+2. Skill = specialized tool
+3. Rule violation → error
 
-### Level 2: 실무 패턴 (Intermediate - 30분)
+### Level 2: Practical Patterns (Intermediate - 30 minutes)
 
-**당신이 해야 할 것**:
-1. AskUserQuestion 사용 시점 판단
-2. TRUST 5 검증
-3. TAG 체인 유지
-4. 커밋 메시지 형식
+**What you should do**:
+1. Decide when to use AskUserQuestion
+2. Validate TRUST 5
+3. Maintain TAG chain
+4. Follow commit message format
 
-### Level 3: 심화 (Advanced - 1시간)
+### Level 3: Advanced (Advanced - 1 hour)
 
-**당신이 최적화할 것**:
-1. Agent delegation 전략
-2. Skill 조합 활용
-3. Workflow 자동화
-4. 규칙 예외 관리
+**What you should optimize**:
+1. Agent delegation strategy
+2. Skill combination usage
+3. Workflow automation
+4. Exception management
 
 ---
 
-## 공식 자료 & 참고 링크
+## Official References & Links
 
 ### Architecture References
-- Command-Agent-Skill 패턴: Internal moai-adk documentation
+- Command-Agent-Skill pattern: Internal moai-adk documentation
 - ADAP Workflow: Internal workflow definition
 
 ### Quality Standards
@@ -778,6 +784,8 @@ Status: PASSING (Tests still pass, code improved)
 
 ---
 
-**버전**: 4.0.0 (November 2025 Enterprise Standard)
-**최종 업데이트**: 2025-11-12
-**유지보수자**: GoosLab (Alfred SuperAgent Framework)
+**Version**: 4.0.0 (November 2025 Enterprise Standard)
+**Last Updated**: 2025-11-19
+**Maintainer**: GoosLab (Alfred SuperAgent Framework)
+**Language**: English
+**Status**: Enterprise Production Ready ✅

@@ -39,14 +39,16 @@ Initialize or update project metadata with **language-first architecture**. Supp
 
 ---
 
-## 🌐 Language-First Architecture
+## 🌐 Language Configuration (Pre-set by moai-adk CLI)
 
-**Core Principle**: Language selection ALWAYS happens BEFORE any other configuration.
+**Core Principle**: Language is already configured by `moai-adk init` or `moai-adk update` CLI commands.
+- `/moai:0-project` reads language from `.moai/config/config.json`
+- Language change only when explicitly requested (SETTINGS mode, Tab 1)
 
-- **Initialization**: Language selection → Project interview → Documentation
-- **Auto-Detect**: Language confirmation → Settings options
-- **Settings**: Language context → Tab-based configuration
-- **Update**: Language confirmation → Template optimization
+- **Initialization**: Read language from config → Project interview → Documentation
+- **Auto-Detect**: Display current language → Settings options (with language change shortcut)
+- **Settings**: Display current language in Tab 1 → Optional language change
+- **Update**: Preserve language from config → Template optimization
 
 ---
 
@@ -112,32 +114,35 @@ Use Task tool:
   **Task**: Analyze project context and route to appropriate mode.
 
   **Detected Mode**: $MODE (INITIALIZATION/AUTO-DETECT/SETTINGS/UPDATE)
-  **Language Context**: Determine from .moai/config.json if exists
+  **Language Context**: Read from .moai/config.json if exists
 
   **For INITIALIZATION**:
-  - Invoke Skill("moai-project-language-initializer", mode="language_first")
+  - Check .moai/config.json for language setting
+  - If missing: Invoke Skill("moai-project-language-initializer", mode="language_first")
+  - If present: Use existing language, skip language selection
   - Conduct language-aware user interview
   - Generate project documentation
   - Invoke Skill("moai-project-config-manager") for config creation
 
   **For AUTO-DETECT**:
-  - Confirm current language settings
-  - If "Change Language" → Invoke Skill("moai-project-language-initializer", mode="language_change_only")
-  - Display current configuration
-  - Offer: Modify Settings / Review Configuration / Re-initialize / Cancel
+  - Read current language from .moai/config.json
+  - Display current configuration (including language)
+  - Offer: Modify Settings / Change Language Only / Review Configuration / Re-initialize / Cancel
+  - If "Change Language Only" → Go to Tab 1 in SETTINGS mode
+  - Otherwise route to selected sub-action
 
   **For SETTINGS**:
+  - Load current language from .moai/config.json
   - Load tab schema from .claude/skills/moai-project-batch-questions/tab_schema.json
-  - Confirm language context first
   - Execute batch questions via moai-project-batch-questions skill
-  - Process responses and update config.json atomically
+  - Process responses and update config.json atomically via Skill("moai-project-config-manager")
   - Report changes and validation results
 
   **For UPDATE**:
-  - Confirm language context
+  - Read language from config backup (preserve existing setting)
   - Invoke Skill("moai-project-template-optimizer") for smart merging
   - Update templates and configuration
-  - Auto-translate announcements to current language
+  - Auto-translate announcements to current language if needed
 
   **Output**: Mode-specific completion report with next steps
   ```
@@ -155,31 +160,34 @@ Use Task tool:
 The project-manager agent handles all mode-specific workflows:
 
 **INITIALIZATION MODE**:
-- Language-first user interview (via Skill)
+- Read language from config.json (or use CLI default if missing)
+- Conduct language-aware user interview (via Skill)
 - Project type detection and configuration
 - Documentation generation
 - Auto-translate announcements to selected language
 
 **AUTO-DETECT MODE**:
-- Language confirmation
-- Display current configuration
-- Offer: Modify Settings / Review Configuration / Re-initialize / Cancel
+- Read current language from config.json
+- Display current configuration (including language)
+- Offer: Modify Settings / Change Language Only / Review Configuration / Re-initialize / Cancel
+- "Change Language Only" shortcut → SETTINGS mode, Tab 1 only
 - Route to selected sub-action
 
 **SETTINGS MODE** (NEW):
-- Language confirmation
+- Read current language from config.json
 - Load tab schema for batch-based questions
 - Execute batch questions with AskUserQuestion
 - Process user responses
 - Validate settings at critical checkpoints
-- Update `.moai/config/config.json` atomically
+- Delegate config update to `moai-project-config-manager` Skill
 - Report changes
 
 **UPDATE MODE**:
+- Preserve language from config backup
 - Analyze backup and compare templates
 - Perform smart template merging
 - Update `.moai/` files with new features
-- Auto-translate announcements to current language
+- Auto-translate announcements to current language if needed
 
 ### Language-Aware Announcements
 
@@ -377,32 +385,29 @@ For each question in batch:
    - Validate field value types (string, bool, number, array)
    - Report validation results to user
 
-#### Step 5: Atomic Config Update
+#### Step 5: Delegate Atomic Config Update to Skill
 
-**Update Pattern** (Safe deep merge):
+**Update Pattern** (Skill-delegated):
 
 ```markdown
-Step 1: Load current config.json
-Step 2: Create backup: config.json.backup-{timestamp}
-Step 3: Deep merge user updates into current config
-  - Preserve existing settings not in update
-  - Recursively merge nested objects
-  - Validate final config structure
-Step 4: Write updated config.json atomically
-Step 5: Verify write success
-  - If success: Delete backup, report completion
-  - If failure: Restore from backup, report error
+Delegate ALL config update operations to Skill("moai-project-config-manager"):
+  - Skill handles backup/rollback logic internally
+  - Skill performs deep merge with validation
+  - Skill writes atomically to config.json
+  - Skill reports success/failure
+
+Agent responsibilities:
+  - Collect user responses from AskUserQuestion
+  - Map responses to config field paths
+  - Pass update map to Skill
+  - Report results to user
 ```
 
-**Backup/Rollback Strategy**:
-```markdown
-Success flow:
-  config.json.backup → (deleted after verification)
-
-Error flow:
-  config.json.backup → (restored as config.json)
-  Report: "Configuration update failed, rolled back to previous version"
-```
+**Skill Responsibilities**:
+- Skill("moai-project-config-manager") handles ALL file operations
+- Internal backup/rollback if needed
+- Atomic write and validation
+- Error reporting
 
 ### Implementation Details
 
@@ -431,12 +436,13 @@ Step 7: Processes each response (map to config fields)
 Step 8: Runs Tab 1 validation checkpoint
   - Check language is valid
   - Verify consistency
-Step 9: Creates atomic update
-  - Backup current config
-  - Deep merge updates (including auto-updated conversation_language_name)
-  - Verify final structure
-Step 10: Write updated config.json
-Step 11: Report success and changes made (4 fields: user.name, conversation_language, conversation_language_name [auto], agent_prompt_language)
+Step 9: Delegates atomic update to Skill("moai-project-config-manager")
+  - Skill handles backup/rollback internally
+  - Skill performs deep merge (including auto-updated conversation_language_name)
+  - Skill verifies final structure
+Step 10: Receives result from Skill
+  - Success: Report changes made (4 fields: user.name, conversation_language, conversation_language_name [auto], agent_prompt_language)
+  - Failure: Report error from Skill with recovery suggestions
 ```
 
 #### Tab 3 Validation Example (Complex)
@@ -459,7 +465,9 @@ Step 6: Run Tab 3 validation checkpoint
   - Example: If Team mode but use_gitflow is false → Suggest fix
   - Let user confirm or retry
 Step 7: Merge all 4 batches into single update object
-Step 8: Create atomic update (backup + deep merge)
+Step 8: Delegate atomic update to Skill("moai-project-config-manager")
+  - Skill handles backup/rollback internally
+  - Skill performs deep merge with final validation
 Step 9: Report all 16 settings changes
 ```
 
@@ -532,16 +540,16 @@ Each tab completes independently:
 
 **MANDATORY**:
 - Execute ONLY ONE tab per command invocation (unless user specifies "all tabs")
-- ALWAYS confirm language context before starting SETTINGS MODE
+- READ language context from config.json before starting SETTINGS MODE
 - Run validation at Tab 1, Tab 3, and before final update
-- Create atomic config update with backup/rollback support
+- Delegate config update to `moai-project-config-manager` Skill (no direct backup in command)
 - Report all changes made
 - Use AskUserQuestion for ALL user interaction
 
 **Configuration Priority**:
 - `.moai/config/config.json` settings ALWAYS take priority
-- Existing language settings respected unless user requests change
-- Fresh installs: Language selection FIRST (Tab 1), then all other config
+- Existing language settings respected unless user explicitly requests change in Tab 1
+- Fresh installs: Language already set by moai-adk CLI, skip language selection
 
 **Language**:
 - Tab schema stored in English (technical field names)
@@ -649,20 +657,25 @@ Use AskUserQuestion in user's language:
 
 | Scenario | Mode | Entry Point | Key Phases |
 |---|---|---|---|
-| First-time setup | INITIALIZATION | `/moai:0-project` (no config) | Language → Interview → Docs |
-| Existing project | AUTO-DETECT | `/moai:0-project` (config exists) | Language → Display → Options |
-| Modify config | SETTINGS | `/moai:0-project setting [tab]` | Language → Tab batches → Atomic update |
-| After package update | UPDATE | `/moai:0-project update` | Language → Template merge → Announce |
+| First-time setup | INITIALIZATION | `/moai:0-project` (no config) | Read language → Interview → Docs |
+| Existing project | AUTO-DETECT | `/moai:0-project` (config exists) | Read language → Display → Options |
+| Modify config | SETTINGS | `/moai:0-project setting [tab]` | Read language → Tab batches → Skill update |
+| After package update | UPDATE | `/moai:0-project update` | Preserve language → Template merge → Announce |
 
 **Associated Skills**:
-- `Skill("moai-project-language-initializer")` - Language selection
-- `Skill("moai-project-config-manager")` - Config operations
+- `Skill("moai-project-language-initializer")` - Language selection/change
+- `Skill("moai-project-config-manager")` - Config operations (atomic updates, backup/rollback)
 - `Skill("moai-project-template-optimizer")` - Template merging
 - `Skill("moai-project-batch-questions")` - Tab-based batch questions
 
-**Version**: 1.1.0 (Tab-Based SETTINGS MODE v2.0.0)
-**Last Updated**: 2025-11-12
-**Architecture**: Commands → Agents → Skills (Complete delegation)
+**Project Documentation Directory**:
+- **Location**: `.moai/project/` (singular, NOT `.moai/projects/`)
+- **Files**: `product.md`, `structure.md`, `tech.md` (auto-generated or interactive)
+- **Language**: Auto-translated to user's conversation_language
+
+**Version**: 1.2.0 (Optimized Language Handling & Skill Delegation)
+**Last Updated**: 2025-11-19
+**Architecture**: Commands → Agents → Skills (Complete delegation, no direct backup in command)
 **Tab Schema**: `.claude/skills/moai-project-batch-questions/tab_schema.json`
 
 ---

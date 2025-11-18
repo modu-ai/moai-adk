@@ -1,12 +1,17 @@
 ---
 name: moai-lang-html-css
 version: 4.0.0
-updated: '2025-11-18'
+updated: '2025-11-19'
 status: stable
-description: Enterprise Skill for advanced development
-allowed-tools: Read, Bash, WebSearch, WebFetch
 stability: stable
+description: Enterprise Skill for advanced development
+allowed-tools:
+- Read
+- Bash
+- WebSearch
+- WebFetch
 ---
+
 
 
 # moai-lang-html-css
