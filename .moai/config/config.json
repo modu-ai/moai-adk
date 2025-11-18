@@ -19,17 +19,12 @@
     "test_coverage_target": 90
   },
   "git_strategy": {
-    "mode": "selection",
-    "_notes": "Selection-Based Workflow (v0.26.0+): Both Personal and Team modes use GitHub Flow (main-based). Users select mode manually via config.enabled flags. No auto-switching.",
+    "mode": "hybrid",
+    "_notes": "Hybrid Personal-Pro Workflow: Personal mode uses GitHub Flow (main-based), Team mode uses Git-Flow (develop-based). Auto-switches based on contributor count.",
     "personal": {
       "enabled": true,
       "workflow": "github-flow",
-      "_workflow_notes": "Personal mode: feature/SPEC-XXX → PR → main (self-merge allowed). Fast, simple workflow for solo development with CI automation.",
-      "require_pr": true,
-      "_pr_notes": "PR creation required for CI/CD integration, documentation, and audit trail. Self-merge allowed (allow_self_merge: true)",
-      "allow_self_merge": true,
-      "require_review": false,
-      "_review_notes": "Code review optional (peer review encouraged but not mandatory)",
+      "_workflow_notes": "Personal mode: feature/SPEC-XXX → main (direct merge). Fast, simple workflow for solo development.",
       "auto_checkpoint": "event-driven",
       "checkpoint_events": [
         "delete",
@@ -45,34 +40,35 @@
       "auto_commit": true,
       "branch_prefix": "feature/SPEC-",
       "base_branch": "main",
+      "develop_branch": "develop",
       "main_branch": "main",
-      "prevent_branch_creation": false,
+      "prevent_branch_creation": true,
       "work_on_main": false,
       "require_ci": true,
       "auto_merge": false
     },
     "team": {
       "enabled": false,
-      "_notes": "Team mode: Enable manually (enabled: true) when collaborating. Uses GitHub Flow: feature/SPEC-XXX → PR → main with mandatory review. No auto-switching.",
-      "workflow": "github-flow",
-      "require_pr": true,
-      "_pr_notes": "PR creation required for all changes (no direct commits to main)",
-      "allow_self_merge": false,
-      "_merge_notes": "Author cannot merge own PR. Requires reviewer approval before merge.",
-      "base_branch": "main",
-      "main_branch": "main",
+      "_notes": "Team mode: Manually disabled. Currently using Personal Mode (GitHub Flow). Enable for develop-based Git-Flow workflow.",
+      "workflow": "git-flow",
+      "auto_pr": false,
+      "base_branch": "develop",
+      "develop_branch": "develop",
       "draft_pr": false,
       "feature_prefix": "feature/SPEC-",
-      "require_review": true,
-      "min_reviewers": 1
+      "main_branch": "main",
+      "use_gitflow": true,
+      "default_pr_base": "develop",
+      "prevent_main_direct_merge": false,
+      "auto_switch_threshold": 3
     }
   },
   "pipeline": {
     "available_commands": [
-      "/moai:0-project",
-      "/moai:1-plan",
-      "/moai:2-run",
-      "/moai:3-sync"
+      "/alfred:0-project",
+      "/alfred:1-plan",
+      "/alfred:2-run",
+      "/alfred:3-sync"
     ]
   },
   "language": {
@@ -106,41 +102,7 @@
   "hooks": {
     "timeout_ms": 2000,
     "graceful_degradation": true,
-    "notes": "Hook execution timeout (milliseconds). Set graceful_degradation to true to continue even if a hook fails. Optimized to 2 seconds for faster performance.",
-    "model_strategy": {
-      "v2_0_43": {
-        "enabled": true,
-        "description": "Claude Code v2.0.43 Hook model parameter 최적화",
-        "strategy": {
-          "SessionStart": "haiku (프로젝트 정보 표시)",
-          "PreToolUse": "haiku (패턴 감지)",
-          "UserPromptSubmit": "sonnet (복잡한 컨텍스트 분석)",
-          "SessionEnd": "haiku (정리 작업)"
-        },
-        "cost_savings": "70% (Hook 비용 감소)"
-      }
-    }
-  },
-  "agent_permissions": {
-    "v2_0_43": {
-      "enabled": true,
-      "description": "Claude Code v2.0.43 permissionMode 에이전트별 설정",
-      "auto_mode_agents": [
-        "spec-builder (SPEC 문서 자동 생성)",
-        "docs-manager (문서 자동 생성)",
-        "quality-gate (자동 품질 검증)",
-        "sync-manager (자동 동기화)"
-      ],
-      "ask_mode_agents": [
-        "tdd-implementer (코드 작성)",
-        "backend-expert (백엔드 개발)",
-        "frontend-expert (프론트엔드 개발)",
-        "database-expert (데이터베이스)",
-        "security-expert (보안 분석)",
-        "performance-engineer (성능 최적화)",
-        "devops-expert (배포 설정)"
-      ]
-    }
+    "notes": "Hook execution timeout (milliseconds). Set graceful_degradation to true to continue even if a hook fails. Optimized to 2 seconds for faster performance."
   },
   "session_end": {
     "enabled": true,

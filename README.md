@@ -1166,7 +1166,7 @@ Primary configuration file created after initialization:
       "branch_prefix": "feature/SPEC-",
       "develop_branch": "develop",
       "main_branch": "main",
-      "prevent_branch_creation": false,
+      "prevent_branch_creation": true,
       "work_on_main": false
     },
     "team": {
@@ -1464,6 +1464,15 @@ After project initialization, you can customize settings:
 # Modify git_strategy section
 # - personal: Individual project (local branches, auto-commit)
 # - team: Team project (GitFlow, auto-PR)
+
+# Manual Branch Creation Control
+# By default, prevent_branch_creation is set to true
+# This means /moai:1-plan will NOT auto-create feature branches
+# You must create branches manually:
+git checkout -b feature/SPEC-XXX
+
+# To enable auto-creation, set in .moai/config.json:
+"prevent_branch_creation": false
 ```
 
 **Set Test Coverage Goal**
@@ -1603,16 +1612,20 @@ cd my-awesome-project
 # 2. Create a SPEC for a feature
 /moai:1-plan "User authentication with JWT"
 
-# 3. Implement with automated TDD
-/moai:2-run AUTH-001
+# 3. Create feature branch manually (prevent_branch_creation: true)
+git checkout -b feature/SPEC-AUTH-001
 
-# 4. Sync documentation automatically
+# 4. Implement with automated TDD
+/moai:2-run SPEC-AUTH-001
+
+# 5. Sync documentation automatically
 /moai:3-sync
 ```
 
 That's it! You now have:
 
 - ✅ Clear SPEC document
+- ✅ Manual branch management (full control)
 - ✅ Comprehensive tests
 - ✅ Implementation code
 - ✅ Updated documentation
