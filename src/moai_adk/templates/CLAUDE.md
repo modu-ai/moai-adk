@@ -1,6 +1,6 @@
 # MoAI-ADK
 
-**SPEC-First TDD Development with Alfred SuperAgent - Claude Code v4.0 Integration**
+**SPEC-First TDD Development with Alfred SuperAgent v0.26.0 - Claude Code Integration**
 
 > **Document Language**: Korean > **Project Owner**: GoosLab > **Config**: `.moai/config/config.json` > **Version**: 0.25.11 (from .moai/config.json)
 > **Current Conversation Language**: Korean (conversation_language: "ko")
@@ -68,9 +68,9 @@ Optional: WHERE "remember me" → Persistent cookie (30d)
 
 ### Workflow: 4 Steps
 
-1. **Create SPEC**: `/alfred:1-plan "feature"` → SPEC-XXX (EARS format)
-2. **TDD Cycle**: `/alfred:2-run SPEC-XXX` → Red → Green → Refactor
-3. **Auto-Docs**: `/alfred:3-sync auto SPEC-XXX` → Docs from code
+1. **Create SPEC**: `/moai:1-plan "feature"` → SPEC-XXX (EARS format)
+2. **TDD Cycle**: `/moai:2-run SPEC-XXX` → Red → Green → Refactor
+3. **Auto-Docs**: `/moai:3-sync auto SPEC-XXX` → Docs from code
 4. **Quality**: TRUST 5 validation automatic
 
 ---
@@ -96,7 +96,7 @@ MoAI-ADK enforces **5 automatic quality principles**:
 **Step 1**: Initialize
 
 ```bash
-/alfred:0-project
+/moai:0-project
 ```
 
 → Alfred auto-detects your setup
@@ -104,7 +104,7 @@ MoAI-ADK enforces **5 automatic quality principles**:
 **Step 2**: Create SPEC
 
 ```bash
-/alfred:1-plan "user login with email and password"
+/moai:1-plan "user login with email and password"
 ```
 
 → SPEC-LOGIN-001 created (EARS format)
@@ -112,7 +112,7 @@ MoAI-ADK enforces **5 automatic quality principles**:
 **Step 3**: Implement with TDD
 
 ```bash
-/alfred:2-run SPEC-LOGIN-001
+/moai:2-run SPEC-LOGIN-001
 ```
 
 → Red (tests fail) → Green (tests pass) → Refactor → TRUST 5 validation ✅
@@ -120,12 +120,36 @@ MoAI-ADK enforces **5 automatic quality principles**:
 **Step 4**: Auto-generate Docs
 
 ```bash
-/alfred:3-sync auto SPEC-LOGIN-001
+/moai:3-sync auto SPEC-LOGIN-001
 ```
 
 → docs/api/auth.md, diagrams, examples all created
 
 **Result**: Fully functional, tested, documented, production-ready feature in 5 minutes!
+
+---
+
+## 🔧 Bash Commands
+
+### Alfred Commands (Core Workflow)
+- `/moai:0-project`: 프로젝트 초기화 및 자동 설정
+- `/moai:1-plan "feature"`: SPEC 문서 생성 (EARS format)
+- `/moai:2-run SPEC-XXX`: TDD Red-Green-Refactor 구현
+- `/moai:3-sync auto SPEC-XXX`: 문서 및 다이어그램 자동 생성
+
+### Project Setup
+- `uv run .moai/scripts/statusline.py`: 프로젝트 상태 확인
+- `uv sync`: 의존성 동기화
+
+### Development & Testing
+- `uv run pytest`: 전체 테스트 실행
+- `uv run pytest tests/test_module.py`: 특정 모듈 테스트
+- `uv run mypy .`: 타입 체킹
+- `uv run ruff check .`: 린팅
+- `uv run ruff format .`: 자동 포매팅
+
+### Documentation
+- 상세 가이드: @.moai/memory/git-workflow-detailed.md
 
 ---
 
@@ -137,7 +161,7 @@ Alfred는 사용자 요청을 받으면 **자동으로 SPEC 필요성을 판단*
 
 | 요청 유형 | SPEC 필요 | 예시 | Alfred 액션 |
 |----------|---------|------|------------|
-| **새로운 기능 추가** | ✅ 필수 | "사용자 인증 추가" | `/alfred:1-plan` 자동 제안 |
+| **새로운 기능 추가** | ✅ 필수 | "사용자 인증 추가" | `/moai:1-plan` 자동 제안 |
 | **복잡한 구현** | ✅ 필수 | "결제 시스템 통합" | SPEC 문서 생성 권장 |
 | **다중 도메인 작업** | ✅ 필수 | "백엔드 API + 프론트엔드 UI" | 단계별 계획 수립 |
 | **보안/컴플라이언스** | ✅ 필수 | "GDPR 준수 데이터 처리" | 보안 전문가 활동 |
@@ -161,7 +185,7 @@ Alfred 자동 분석:
     ↓
 판단: SPEC 필요 ✅
     ↓
-제안: "/alfred:1-plan '요청 설명'"으로 SPEC 생성
+제안: "/moai:1-plan '요청 설명'"으로 SPEC 생성
 ```
 
 #### Phase 1: SPEC 생성 → Phase 2: 세션 초기화 → Phase 3: 구현
@@ -170,7 +194,7 @@ Alfred 자동 분석:
 
 ```bash
 # 1. SPEC 생성
-/alfred:1-plan "이메일/비밀번호 JWT 인증 기능"
+/moai:1-plan "이메일/비밀번호 JWT 인증 기능"
 # → SPEC-AUTH-001 생성 완료
 
 # 2. 세션 초기화 (CRITICAL)
@@ -178,7 +202,7 @@ Alfred 자동 분석:
 # → 토큰 절약 + 구현 최적화
 
 # 3. TDD 구현
-/alfred:2-run SPEC-AUTH-001
+/moai:2-run SPEC-AUTH-001
 # → Red → Green → Refactor → TRUST 5 검증
 ```
 
@@ -234,7 +258,7 @@ SPEC 생성 완료 후 **반드시** `/clear`로 세션을 초기화해야 합�
 1. `/clear` 명령으로 대화 세션을 초기화하세요
    → 토큰 효율성: 45,000 → 5,000 (89% 절약!)
    → 성능 향상: 3-5배 빠른 구현
-2. 새 세션에서 `/alfred:2-run SPEC-AUTH-001` 실행
+2. 새 세션에서 `/moai:2-run SPEC-AUTH-001` 실행
    → TDD 구현 시작
 
 💡 TIP: 세션 초기화로 불필요한 컨텍스트를 제거하고
@@ -339,7 +363,7 @@ Request complexity?
 - User explicitly asks for planning?
 - Security/compliance requirements?
 
-→ If YES to any → Use `/alfred:1-plan "description"`
+→ If YES to any → Use `/moai:1-plan "description"`
 
 ### The 5 Phases
 
@@ -402,7 +426,7 @@ Alfred analyzes problems using **deep contextual reasoning**:
 
 | Mode | Best For | Usage | Style |
 |------|----------|-------|-------|
-| **🎩 Alfred** | Learning MoAI-ADK | `/alfred:0-project` or default | Step-by-step guidance |
+| **🎩 Alfred** | Learning MoAI-ADK | `/moai:0-project` or default | Step-by-step guidance |
 | **🧙 Yoda** | Deep principles | "Yoda, explain [topic]" | Comprehensive + docs |
 | **🤖 R2-D2** | Production issues | "R2-D2, [urgent issue]" | Fast tactical help |
 | **🤖 R2-D2 Partner** | Pair programming | "R2-D2 Partner, let's [task]" | Collaborative discussion |
@@ -467,67 +491,18 @@ Alfred analyzes problems using **deep contextual reasoning**:
 
 ---
 
-## 🏛️ Claude Code v4.0 Architecture Integration
+## 🏛️ Claude Code v4.0 Features
 
-### Modern 4-Layer System
+**4-Layer Architecture**: Commands → Agents → Skills → Hooks
 
-**1. Commands (Workflow Orchestration)**
-- Enhanced with Plan Mode for complex tasks
-- Interactive Questions for clarification
-- Automatic context optimization
+**Key Features**:
+- **Plan Mode**: Complex task breakdown with automatic agent coordination
+- **Explore Subagent**: Fast codebase pattern discovery (Haiku 4.5)
+- **MCP Integration**: External service connection (@github, @filesystem, etc.)
+- **Context Management**: Token optimization with intelligent pruning
+- **Thinking Mode**: Transparent reasoning (Tab key toggle)
 
-**2. Sub-agents (Domain Expertise)**
-- Model selection optimization (Sonnet/Haiku)
-- MCP server integration capabilities
-- Parallel execution support
-
-**3. Skills (Knowledge Progressive Disclosure)**
-- Lazy loading for performance
-- Cross-skill references
-- Version-controlled knowledge
-
-**4. Hooks (Context & Guardrails)**
-- PreToolUse validation (sandbox mode)
-- PostToolUse quality checks
-- SessionStart context seeding
-
-### Claude Code v4.0 Features Integration
-
-**Plan Mode**:
-
-```bash
-# Automatically triggered for complex tasks
-/alfred:1-plan "complex multi-step feature"
-# Alfred creates phased implementation plan
-# Each phase executed by optimal subagent
-```
-
-**Explore Subagent**:
-
-```bash
-# Fast codebase exploration
-"Where are error handling patterns implemented?"
-# Explore subagent automatically searches code patterns
-# Saves context with efficient summarization
-```
-
-**MCP Integration**:
-
-```bash
-# External service integration
-@github list issues
-@filesystem search pattern
-/mcp manage servers
-```
-
-**Context Management**:
-
-```bash
-/context  # Check usage
-/add-dir src/components  # Add directory
-/memory  # Memory management
-/compact  # Optimize conversation
-```
+**상세 가이드**: @.moai/memory/claude-code-features.md
 
 ---
 
@@ -737,64 +712,9 @@ mcp__context7__get-library-docs("/facebook/react")
 
 ---
 
-## 🔧 Enhanced Settings Configuration
+## 🔧 Claude Code Settings
 
-### Claude Code v4.0 Compatible Settings
-
-**(.claude/settings.json)**:
-
-```json
-{
-  "permissions": {
-    "allowedTools": [
-      "Read(**/*.{js,ts,json,md})",
-      "Edit(**/*.{js,ts})",
-      "Bash(git:*)",
-      "Bash(npm:*)",
-      "Bash(node:*)"
-    ],
-    "deniedTools": [
-      "Edit(/config/secrets.json)",
-      "Bash(rm -rf:*)",
-      "Bash(sudo:*)"
-    ]
-  },
-  "permissionMode": "acceptEdits",
-  "spinnerTipsEnabled": true,
-  "sandbox": {
-    "allowUnsandboxedCommands": false
-  },
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 .claude/hooks/validate-command.py"
-          }
-        ]
-      }
-    ],
-    "SessionStart": [
-      {
-        "type": "command",
-        "command": "echo 'Claude Code session started'"
-      }
-    ]
-  },
-  "mcpServers": {
-    "context7": {
-      "command": "npx",
-      "args": ["-y", "@upstash/context7-mcp@latest"]
-    }
-  },
-  "statusLine": {
-    "enabled": true,
-    "format": "{{model}} | {{tokens}} | {{thinking}}"
-  }
-}
-```
+**기본 설정 가이드**: @.moai/memory/settings-config.md
 
 ---
 
@@ -805,7 +725,7 @@ mcp__context7__get-library-docs("/facebook/react")
 **Phase 0: Project Setup**
 
 ```bash
-/alfred:0-project
+/moai:0-project
 # Claude Code auto-detection + optimal configuration
 # MCP server setup suggestion
 # Performance baseline establishment
@@ -814,7 +734,7 @@ mcp__context7__get-library-docs("/facebook/react")
 **Phase 1: SPEC with Plan Mode**
 
 ```bash
-/alfred:1-plan "feature description"
+/moai:1-plan "feature description"
 # Plan Mode for complex features
 # Interactive Questions for clarification
 # Automatic context gathering
@@ -823,7 +743,7 @@ mcp__context7__get-library-docs("/facebook/react")
 **Phase 2: Implementation with Explore**
 
 ```bash
-/alfred:2-run SPEC-001
+/moai:2-run SPEC-001
 # Explore subagent for codebase analysis
 # Optimal model selection per task
 # MCP integration for external data
@@ -832,7 +752,7 @@ mcp__context7__get-library-docs("/facebook/react")
 **Phase 3: Sync with Optimization**
 
 ```bash
-/alfred:3-sync auto SPEC-001
+/moai:3-sync auto SPEC-001
 # Context optimization
 # Performance monitoring
 # Quality gate validation
@@ -864,7 +784,8 @@ mcp__context7__get-library-docs("/facebook/react")
 | **베이스 브랜치** | main | main |
 | **워크플로우** | GitHub Flow | GitHub Flow |
 | **Feature 브랜치** | feature/SPEC-* → main | feature/SPEC-* → main |
-| **PR 프로세스** | 선택사항 | 필수 (min_reviewers: 1) |
+| **PR 프로세스** | 필수 (self-merge 허용) | 필수 (min_reviewers: 1) |
+| **코드 리뷰** | 선택 (피어 리뷰 선택) | 필수 (최소 1명 승인) |
 | **릴리스 방식** | main 태그 → deploy | main 태그 → deploy |
 | **릴리스 소요시간** | ~10분 | ~15-20분 |
 | **병합 충돌** | 최소화 | 최소화 |
@@ -876,9 +797,9 @@ mcp__context7__get-library-docs("/facebook/react")
 **모든 Alfred 명령어는 활성화된 모드에 맞춰 작동합니다**:
 
 ```bash
-# /alfred:1-plan → 활성화된 모드 (Personal or Team)에 맞는 Branch 생성
-# /alfred:2-run → GitHub Flow 기반 TDD 구현
-# /alfred:3-sync → main 기반 sync (develop 불필요)
+# /moai:1-plan → 활성화된 모드 (Personal or Team)에 맞는 Branch 생성
+# /moai:2-run → GitHub Flow 기반 TDD 구현
+# /moai:3-sync → main 기반 sync (develop 불필요)
 ```
 
 **장점**:
@@ -1050,70 +971,21 @@ if __name__ == "__main__":
 
 ---
 
-## 🎯 Enhanced Troubleshooting
+## 🎯 Troubleshooting
 
-### Claude Code v4.0 Common Issues
-
-**MCP Connection Issues**:
-
-```bash
-# Check MCP server status
-claude mcp serve
-
-# Validate configuration
-claude /doctor
-
-# Restart MCP servers
-/mcp restart
-```
-
-**Context Management**:
-
-```bash
-# Check context usage
-/context
-
-# Optimize conversation
-/compact
-
-# Clear and restart
-/clear
-```
-
-**Performance Issues**:
-
-```bash
-# Check costs and usage
-/cost
-/usage
-
-# Debug mode
-claude --debug
-```
-
-### Alfred-Specific Troubleshooting
+**Quick Commands**:
+- `/context` - Check context usage
+- `/cost` - View API costs
+- `/clear` - Clear and restart session
+- `claude /doctor` - Validate configuration
 
 **Agent Not Found**:
-
 ```bash
-# Verify agent structure
-ls -la .claude/agents/
-head -5 .claude/agents/alfred/cc-manager.md
-
-# Check YAML frontmatter
-cat .claude/agents/alfred/cc-manager.md | jq .
+ls -la .claude/agents/moai/
+# Verify agent structure and restart Claude Code
 ```
 
-**Skill Loading Issues**:
-
-```bash
-# Verify skill structure
-ls -la .claude/skills/moai-cc-*/
-cat .claude/skills/moai-cc-claude-md/SKILL.md
-
-# Restart Claude Code
-# Skills auto-reload on restart
-```
+**상세 가이드**: @.moai/memory/troubleshooting-extended.md
 
 ---
 

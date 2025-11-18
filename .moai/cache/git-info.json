@@ -1,7 +1,7 @@
 {
   "branch": "release/0.26.0",
-  "last_commit": "55d7eff7 docs(hooks): Add Claude Code v2.0.43 integration documentation",
-  "commit_time": "9 minutes ago",
-  "changes": 1,
-  "last_check": "2025-11-18T18:50:55.518045"
+  "last_commit": "02eb5104 feat(template): Add moai folder structure to package templates",
+  "commit_time": "24 minutes ago",
+  "changes": 15,
+  "last_check": "2025-11-18T20:05:49.775576"
 }
