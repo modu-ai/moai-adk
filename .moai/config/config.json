@@ -52,6 +52,7 @@
       "_notes": "Team mode: Auto-enabled when contributors >= 3. Uses Git-Flow: feature/SPEC-XXX → develop → main",
       "workflow": "git-flow",
       "auto_pr": false,
+      "base_branch": "develop",
       "develop_branch": "develop",
       "draft_pr": false,
       "feature_prefix": "feature/SPEC-",
