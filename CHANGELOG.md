@@ -1,6 +1,6 @@
 # Changelog
 
-# v0.27.0 - Alfred to Moai Migration & Auto-Management (2025-11-18)
+# v0.26.0 - Worktree Mode, Alfred to Moai Migration & Auto-Management (2025-11-18)
 
 ## 🎯 주요 기능 (Features)
 
@@ -171,12 +171,12 @@
 
 ## 🚀 마이그레이션 경로 (Migration Path)
 
-### v0.27.0 (현재)
+### v0.26.0 (현재)
 - ✅ Alfred 폴더 구조 유지 (Legacy)
 - ✅ Moai 폴더 구조 추가 (New)
 - ✅ 자동 마이그레이션 제공
 
-### v0.28.0 (예정)
+### v0.27.0 (다음 릴리즈)
 - ❌ Alfred 폴더 구조 제거 (Breaking Change)
 - ✅ Moai 폴더 구조만 사용
 - ❌ 마이그레이션 로직 제거
