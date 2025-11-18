@@ -30,11 +30,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.moai/bin/statusline.py"
+            "command": "uv run {{PROJECT_DIR}}/.moai/bin/statusline.py"
           },
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session_start__config_health_check.py"
+            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/alfred/session_start__config_health_check.py"
           }
         ]
       }
@@ -45,7 +45,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/pre_tool__auto_checkpoint.py"
+            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/alfred/pre_tool__auto_checkpoint.py"
           }
         ]
       }
@@ -55,7 +55,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/user_prompt__jit_load_docs.py"
+            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/alfred/user_prompt__jit_load_docs.py"
           }
         ]
       }
@@ -65,7 +65,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session_end__auto_cleanup.py"
+            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/alfred/session_end__auto_cleanup.py"
           }
         ]
       }
@@ -172,7 +172,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "uv run $CLAUDE_PROJECT_DIR/.moai/bin/statusline.py",
+    "command": "uv run {{PROJECT_DIR}}/.moai/bin/statusline.py",
     "padding": 0
   },
   "spinnerTipsEnabled": true,

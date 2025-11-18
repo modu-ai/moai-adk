@@ -206,7 +206,6 @@ uv.lock
 # .moai/ runtime files (local-only, never deploy)
 .moai/cache/              # Runtime cache (version checks, git info)
 .moai/logs/               # Session logs and command invocations
-.moai/memory/             # Runtime state (command execution, subagent logs)
 .moai/docs/               # Local documentation (not in template)
 .moai/temp/               # Temporary files
 .moai/backups/            # Backup files
