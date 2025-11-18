@@ -2,7 +2,7 @@
 
 **SPEC-First TDD Development with Alfred SuperAgent - Claude Code v4.0 Integration**
 
-> **Document Language**: Korean > **Project Owner**: GoosLab > **Config**: `.moai/config/config.json` > **Version**: 0.25.6 (from .moai/config.json)
+> **Document Language**: Korean > **Project Owner**: GoosLab > **Config**: `.moai/config/config.json` > **Version**: 0.25.11 (from .moai/config.json)
 > **Current Conversation Language**: Korean (conversation_language: "ko")
 > **Claude Code Compatibility**: Latest v4.0+ Features Integrated
 

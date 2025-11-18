@@ -1,7 +1,7 @@
 {
   "_meta": {},
   "moai": {
-    "version": "0.25.10",
+    "version": "0.25.11",
     "update_check_frequency": "daily",
     "version_check": {
       "enabled": true,
@@ -84,7 +84,7 @@
     "mode": "development",
     "locale": "ko",
     "language": "Python",
-    "template_version": "0.25.10",
+    "template_version": "0.25.11",
     "created_at": "2025-11-14T00:00:00Z",
     "initialized": true,
     "optimized": true,
