@@ -22,7 +22,7 @@
     "mode": "hybrid",
     "_notes": "Hybrid Personal-Pro Workflow: Personal mode uses GitHub Flow (main-based), Team mode uses Git-Flow (develop-based). Auto-switches based on contributor count.",
     "personal": {
-      "enabled": true,
+      "enabled": false,
       "workflow": "github-flow",
       "_workflow_notes": "Personal mode: feature/SPEC-XXX → main (direct merge). Fast, simple workflow for solo development.",
       "auto_checkpoint": "event-driven",
@@ -43,13 +43,13 @@
       "develop_branch": "develop",
       "main_branch": "main",
       "prevent_branch_creation": false,
-      "work_on_main": true,
+      "work_on_main": false,
       "require_ci": true,
       "auto_merge": false
     },
     "team": {
-      "enabled": false,
-      "_notes": "Team mode: Auto-enabled when contributors >= 3. Uses Git-Flow: feature/SPEC-XXX → develop → main",
+      "enabled": true,
+      "_notes": "Team mode: Manually enabled for develop-based workflow. Uses Git-Flow: feature/SPEC-XXX → develop → main",
       "workflow": "git-flow",
       "auto_pr": false,
       "base_branch": "develop",
