@@ -7,6 +7,7 @@ Notification, Stop, SubagentStop event handling
 import json
 from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict
 
 from lib import HookPayload, HookResult
 
@@ -18,7 +19,7 @@ def _get_command_state_file(cwd: str) -> Path:
     return state_dir / "command-execution-state.json"
 
 
-def _load_command_state(cwd: str) -> dict:
+def _load_command_state(cwd: str) -> Dict[str, Any]:
     """Load current command execution state"""
     try:
         state_file = _get_command_state_file(cwd)
@@ -30,7 +31,7 @@ def _load_command_state(cwd: str) -> dict:
     return {"last_command": None, "last_timestamp": None, "is_running": False}
 
 
-def _save_command_state(cwd: str, state: dict) -> None:
+def _save_command_state(cwd: str, state: Dict[str, Any]) -> None:
     """Save command execution state"""
     try:
         state_file = _get_command_state_file(cwd)
@@ -55,7 +56,7 @@ def _is_duplicate_command(current_cmd: str, last_cmd: str, last_timestamp: str) 
         return False
 
 
-def handle_notification(payload: HookPayload) -> HookResult:
+def handle_notification(payload: HookPayload) -> HookResult:  # type: ignore[return]
     """Notification event handler
 
     Detects and warns about duplicate command executions

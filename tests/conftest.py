@@ -13,12 +13,20 @@ HOOKS_DIR = Path(__file__).parent.parent / ".claude" / "hooks" / "alfred"
 SHARED_DIR = HOOKS_DIR / "shared"
 UTILS_DIR = HOOKS_DIR / "utils"
 
+# MoAI hooks 디렉토리 추가
+MOAI_HOOKS_DIR = Path(__file__).parent.parent / ".claude" / "hooks" / "moai"
+MOAI_LIB_DIR = MOAI_HOOKS_DIR / "lib"
+
 if str(SHARED_DIR) not in sys.path:
     sys.path.insert(0, str(SHARED_DIR))
 if str(HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(HOOKS_DIR))
 if str(UTILS_DIR) not in sys.path:
     sys.path.insert(0, str(UTILS_DIR))
+if str(MOAI_HOOKS_DIR) not in sys.path:
+    sys.path.insert(0, str(MOAI_HOOKS_DIR))
+if str(MOAI_LIB_DIR) not in sys.path:
+    sys.path.insert(0, str(MOAI_LIB_DIR))
 
 
 @pytest.fixture

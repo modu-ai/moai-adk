@@ -6,6 +6,7 @@ Handling the UserPromptSubmit event with enhanced agent delegation and skills JI
 
 from datetime import datetime
 from pathlib import Path
+from typing import List, Tuple
 
 from lib import HookPayload, HookResult
 from lib.agent_context import get_enhanced_jit_context

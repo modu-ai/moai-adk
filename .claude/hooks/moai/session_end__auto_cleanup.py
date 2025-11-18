@@ -25,7 +25,7 @@ import subprocess
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 # Add module path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
@@ -66,12 +66,16 @@ logger = logging.getLogger(__name__)
 
 
 def load_hook_timeout() -> int:
-    """Load hook timeout from config.json (default: 5000ms)"""
+    """Load hook timeout from config.json (default: 5000ms)
+
+    Returns:
+        Timeout in milliseconds
+    """
     try:
         config_file = Path(".moai/config/config.json")
         if config_file.exists():
             with open(config_file, 'r', encoding='utf-8') as f:
-                config = json.load(f)
+                config: Dict[str, Any] = json.load(f)
                 return config.get("hooks", {}).get("timeout_ms", 5000)
     except Exception:
         pass
@@ -79,19 +83,23 @@ def load_hook_timeout() -> int:
 
 
 def get_graceful_degradation() -> bool:
-    """Load graceful_degradation setting from config.json (default: true)"""
+    """Load graceful_degradation setting from config.json (default: true)
+
+    Returns:
+        Whether graceful degradation is enabled
+    """
     try:
         config_file = Path(".moai/config/config.json")
         if config_file.exists():
             with open(config_file, 'r', encoding='utf-8') as f:
-                config = json.load(f)
+                config: Dict[str, Any] = json.load(f)
                 return config.get("hooks", {}).get("graceful_degradation", True)
     except Exception:
         pass
     return True
 
 
-def cleanup_old_files(config: Dict) -> Dict[str, int]:
+def cleanup_old_files(config: Dict[str, Any]) -> Dict[str, int]:
     """Clean up old files
 
     Args:
@@ -201,7 +209,7 @@ def cleanup_directory(
     return cleaned_count
 
 
-def save_session_metrics(payload: Dict) -> bool:
+def save_session_metrics(payload: Dict[str, Any]) -> bool:
     """Save session metrics (P0-1)
 
     Args:
@@ -238,7 +246,7 @@ def save_session_metrics(payload: Dict) -> bool:
         return False
 
 
-def save_work_state(payload: Dict) -> bool:
+def save_work_state(payload: Dict[str, Any]) -> bool:
     """Save work state snapshot (P0-2)
 
     Args:
@@ -274,23 +282,16 @@ def save_work_state(payload: Dict) -> bool:
         return False
 
 
-def check_uncommitted_changes(config: Dict) -> Optional[str]:
+def check_uncommitted_changes() -> Optional[str]:
     """Warn uncommitted changes (P0-3)
-
-    Args:
-        config: Configuration dictionary
 
     Returns:
         Warning message or None
     """
     try:
-        warnings_config = config.get("session_end", {}).get("warnings", {})
-        if not warnings_config.get("uncommitted_changes", True):
-            return None
-
         # Execute Git command
         try:
-            result = subprocess.run(
+            result: subprocess.CompletedProcess[str] = subprocess.run(
                 ["git", "status", "--porcelain"],
                 capture_output=True,
                 text=True,
@@ -298,9 +299,9 @@ def check_uncommitted_changes(config: Dict) -> Optional[str]:
             )
 
             if result.returncode == 0:
-                uncommitted = result.stdout.strip()
+                uncommitted: str = result.stdout.strip()
                 if uncommitted:
-                    line_count = len(uncommitted.split('\n'))
+                    line_count: int = len(uncommitted.split('\n'))
                     return f"⚠️  {line_count} uncommitted files detected - Consider committing or stashing changes"
 
         except (subprocess.TimeoutExpired, FileNotFoundError):
@@ -313,7 +314,11 @@ def check_uncommitted_changes(config: Dict) -> Optional[str]:
 
 
 def get_current_branch() -> Optional[str]:
-    """Get current Git branch name"""
+    """Get current Git branch name
+
+    Returns:
+        Branch name or None if query fails
+    """
     try:
         result = subprocess.run(
             ["git", "rev-parse", "--abbrev-ref", "HEAD"],
@@ -397,7 +402,7 @@ def extract_specs_from_memory() -> List[str]:
     return specs
 
 
-def is_root_whitelisted(filename: str, config: Dict) -> bool:
+def is_root_whitelisted(filename: str, config: Dict[str, Any]) -> bool:
     """Check if file is allowed in project root
 
     Args:
@@ -420,7 +425,7 @@ def is_root_whitelisted(filename: str, config: Dict) -> bool:
     return False
 
 
-def get_file_pattern_category(filename: str, config: Dict) -> Optional[tuple]:
+def get_file_pattern_category(filename: str, config: Dict[str, Any]) -> Optional[tuple[str, str]]:
     """Match filename against patterns to determine category
 
     Args:
@@ -445,7 +450,7 @@ def get_file_pattern_category(filename: str, config: Dict) -> Optional[tuple]:
     return None
 
 
-def suggest_moai_location(filename: str, config: Dict) -> str:
+def suggest_moai_location(filename: str, config: Dict[str, Any]) -> str:
     """Suggest appropriate .moai/ location based on file pattern
 
     Args:
@@ -476,7 +481,7 @@ def suggest_moai_location(filename: str, config: Dict) -> str:
     return ".moai/temp/work/"
 
 
-def scan_root_violations(config: Dict) -> List[Dict[str, str]]:
+def scan_root_violations(config: Dict[str, Any]) -> List[Dict[str, str]]:
     """Scan project root for document management violations
 
     Args:
@@ -557,7 +562,7 @@ def generate_migration_report(violations: List[Dict[str, str]]) -> str:
     return "\n".join(report_lines)
 
 
-def generate_session_summary(cleanup_stats: Dict, work_state: Dict, violations_count: int = 0) -> str:
+def generate_session_summary(cleanup_stats: Dict[str, int], work_state: Dict[str, Any], violations_count: int = 0) -> str:
     """Generate session summary (P1-3)
 
     Args:
@@ -596,13 +601,20 @@ def generate_session_summary(cleanup_stats: Dict, work_state: Dict, violations_c
     return "\n".join(summary_lines)
 
 
-def main():
-    """Main function"""
-    graceful_degradation = False
+def main() -> None:
+    """Main function
+
+    SessionEnd Hook entry point for cleanup and work state tracking.
+    Cleans up temporary files, saves session metrics, and warns uncommitted changes.
+
+    Returns:
+        None
+    """
+    graceful_degradation: bool = False
 
     try:
         # Load hook timeout setting
-        timeout_seconds = load_hook_timeout() / 1000
+        timeout_seconds: float = load_hook_timeout() / 1000
         graceful_degradation = get_graceful_degradation()
 
         # Timeout check
@@ -653,7 +665,7 @@ def main():
                 }
 
             # P0-3: Warn uncommitted changes
-            uncommitted_warning = check_uncommitted_changes(config)
+            uncommitted_warning: Optional[str] = check_uncommitted_changes()
             if uncommitted_warning:
                 results["uncommitted_warning"] = uncommitted_warning
 

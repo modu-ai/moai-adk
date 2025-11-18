@@ -399,6 +399,31 @@ def calculate_risk(git_info: dict, spec_progress: dict, test_info: dict) -> str:
         return "LOW"
 
 
+def format_project_metadata() -> str:
+    """Format project metadata information as a string.
+
+    Returns:
+        Formatted project metadata string with version and Git info
+    """
+    moai_version = "unknown"
+    config = get_cached_config()
+    if config:
+        moai_version = config.get("moai", {}).get("version", "unknown")
+
+    version_status, _has_update = check_version_update()
+    return f"📦 Version: {moai_version} {version_status}"
+
+
+def display_project_info() -> None:
+    """Display project information to stdout.
+
+    Returns:
+        None
+    """
+    # This function is a placeholder for future display logic
+    pass
+
+
 def format_session_output() -> str:
     """Format the complete session start output with proper line alignment (optimized).
 

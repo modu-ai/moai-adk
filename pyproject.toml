@@ -82,6 +82,32 @@ target-version = "py311"
 select = ["E", "F", "W", "I", "N"]
 ignore = []
 
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = false
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = false
+check_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_defs = false
+disallow_untyped_calls = false
+no_implicit_optional = false
+warn_no_return = false
+warn_unreachable = false
+strict_optional = false
+ignore_missing_imports = true
+
+# Hook scripts bypass strict type checking (local imports)
+[[tool.mypy.overrides]]
+module = ".claude.hooks.moai.*"
+ignore_errors = true
+
+# Core lib modules use standard checking
+[[tool.mypy.overrides]]
+module = ".claude.hooks.moai.lib.*"
+ignore_errors = true
+
 [build-system]
 requires = ["hatchling", "rich", "questionary", "click", "pyfiglet", "gitpython", "packaging", "pyyaml", "jinja2", "requests", "psutil", "aiohttp", "pytest-asyncio"]
 build-backend = "hatchling.build"

@@ -112,7 +112,7 @@ def detect_language(cwd: str) -> str:
         cwd: Project root directory path (both absolute and relative paths are possible)
 
     Returns:
-        Detected language name (lowercase). If detection fails, "Unknown Language" is returned.
+        str: Detected language name (lowercase). If detection fails, "Unknown Language" is returned.
         Supported languages: python, typescript, javascript, java, go, rust,
                   dart, swift, kotlin, php, ruby, elixir, scala,
                   clojure, cpp, c, csharp, haskell, shell, lua
@@ -189,10 +189,10 @@ def _run_git_command(args: list[str], cwd: str, timeout: int = 2) -> str:
     Args:
         args: Git command argument list (git adds automatically)
         cwd: Execution directory path
-        timeout: Timeout (seconds, default 2 seconds)
+        timeout: Timeout in seconds (default: 2 seconds)
 
     Returns:
-        Git command output (stdout, removing leading and trailing spaces)
+        str: Git command output (stdout, removing leading and trailing spaces)
 
     Raises:
         subprocess.TimeoutExpired: Timeout exceeded (via TimeoutError)
@@ -399,6 +399,19 @@ def get_project_language(cwd: str) -> str:
 
     # Fall back to the original language detection routine (use project root)
     return detect_language(str(project_root))
+
+
+def _validate_project_structure(cwd: str) -> bool:
+    """Validate that project has required MoAI-ADK structure
+
+    Args:
+        cwd: Project root directory path
+
+    Returns:
+        bool: True if .moai/config/config.json exists, False otherwise
+    """
+    project_root = find_project_root(cwd)
+    return (project_root / ".moai" / "config.json").exists()
 
 
 def get_version_check_config(cwd: str) -> dict[str, Any]:

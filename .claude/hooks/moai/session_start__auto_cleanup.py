@@ -18,7 +18,7 @@ import shutil
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 # 모듈 경로 추가
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
@@ -59,12 +59,16 @@ logger = logging.getLogger(__name__)
 
 
 def load_hook_timeout() -> int:
-    """Load hook timeout from config.json (default: 3000ms)"""
+    """Load hook timeout from config.json (default: 3000ms)
+
+    Returns:
+        Timeout in milliseconds
+    """
     try:
         config_file = Path(".moai/config/config.json")
         if config_file.exists():
             with open(config_file, 'r', encoding='utf-8') as f:
-                config = json.load(f)
+                config: Dict[str, Any] = json.load(f)
                 return config.get("hooks", {}).get("timeout_ms", 3000)
     except Exception:
         pass
@@ -72,12 +76,16 @@ def load_hook_timeout() -> int:
 
 
 def get_graceful_degradation() -> bool:
-    """Load graceful_degradation setting from config.json (default: true)"""
+    """Load graceful_degradation setting from config.json (default: true)
+
+    Returns:
+        Whether graceful degradation is enabled
+    """
     try:
         config_file = Path(".moai/config/config.json")
         if config_file.exists():
             with open(config_file, 'r', encoding='utf-8') as f:
-                config = json.load(f)
+                config: Dict[str, Any] = json.load(f)
                 return config.get("hooks", {}).get("graceful_degradation", True)
     except Exception:
         pass
@@ -105,7 +113,7 @@ def should_cleanup_today(last_cleanup: Optional[str], cleanup_days: int = 7) -> 
         return True
 
 
-def cleanup_old_files(config: Dict) -> Dict[str, int]:
+def cleanup_old_files(config: Dict[str, Any]) -> Dict[str, int]:
     """오래된 파일 정리
 
     Args:
@@ -243,7 +251,7 @@ def cleanup_directory(
     return cleaned_count
 
 
-def generate_daily_analysis(config: Dict) -> Optional[str]:
+def generate_daily_analysis(config: Dict[str, Any]) -> Optional[str]:
     """일일 분석 보고서 생성
 
     Args:
@@ -279,7 +287,7 @@ def generate_daily_analysis(config: Dict) -> Optional[str]:
         return None
 
 
-def analyze_session_logs(analysis_config: Dict) -> Optional[str]:
+def analyze_session_logs(analysis_config: Dict[str, Any]) -> Optional[str]:
     """세션 로그 분석
 
     Args:
@@ -382,7 +390,7 @@ def analyze_session_logs(analysis_config: Dict) -> Optional[str]:
         return None
 
 
-def format_analysis_report(analysis_data: Dict) -> str:
+def format_analysis_report(analysis_data: Dict[str, Any]) -> str:
     """분석 결과를 보고서 형식으로 변환
 
     Args:
@@ -470,7 +478,7 @@ def format_analysis_report(analysis_data: Dict) -> str:
     return "\n".join(report_lines)
 
 
-def update_cleanup_stats(cleanup_stats: Dict[str, int]):
+def update_cleanup_stats(cleanup_stats: Dict[str, int]) -> None:
     """정리 통계 업데이트
 
     Args:
@@ -515,12 +523,19 @@ def update_cleanup_stats(cleanup_stats: Dict[str, int]):
         logger.error(f"Failed to update cleanup stats: {e}")
 
 
-def main():
-    """메인 함수"""
+def main() -> None:
+    """메인 함수
+
+    SessionStart Hook entry point for automatic cleanup and analysis.
+    Performs cleanup of old files and generates daily analysis report.
+
+    Returns:
+        None
+    """
     try:
         # Hook timeout 설정 로드
-        timeout_seconds = load_hook_timeout() / 1000
-        graceful_degradation = get_graceful_degradation()
+        timeout_seconds: float = load_hook_timeout() / 1000
+        graceful_degradation: bool = get_graceful_degradation()
 
         # 타임아웃 체크
         import signal

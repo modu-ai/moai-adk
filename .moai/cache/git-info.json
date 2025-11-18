@@ -1,7 +1,7 @@
 {
   "branch": "release/0.26.0",
-  "last_commit": "0785debc refactor(hooks/moai): Phase 1 cleanup - Remove duplicates & consolidate utilities",
-  "commit_time": "5 minutes ago",
-  "changes": 2,
-  "last_check": "2025-11-19T07:31:28.451548"
+  "last_commit": "b2fa7f63 refactor(hooks): Flatten hooks/moai structure from 5-level to 3-level depth",
+  "commit_time": "13 minutes ago",
+  "changes": 77,
+  "last_check": "2025-11-19T07:55:24.761675"
 }

@@ -193,7 +193,11 @@ def _generate_daily_report(analysis_results: Dict[str, Any], analysis_date: date
 
 
 def to_dict(self) -> Dict[str, Any]:
-    """Convert AnalysisResult to dictionary for JSON serialization"""
+    """Convert AnalysisResult to dictionary for JSON serialization
+
+    Returns:
+        Dictionary with continue and hookSpecificOutput keys
+    """
     return {
         "continue": self.continue_execution,
         "hookSpecificOutput": {

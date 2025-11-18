@@ -4,6 +4,8 @@
 SessionStart, SessionEnd event handling
 """
 
+from typing import Any, Dict, List
+
 from lib import HookPayload, HookResult
 from lib.checkpoint import list_checkpoints
 from lib.project import count_specs, get_git_info, get_package_version_info

@@ -634,7 +634,7 @@ class HookStateManager(metaclass=SingletonMeta):
             if self._lock.locked():
                 self._lock.release()
 
-    def mark_command_complete(self, command: str = None) -> None:
+    def mark_command_complete(self, command: Optional[str] = None) -> None:
         """Mark command execution as complete
 
         Args:
@@ -866,7 +866,7 @@ def deduplicate_command(command: str, cwd: str, config: Optional[HookConfigurati
     return manager.deduplicate_command(command)
 
 
-def mark_command_complete(command: str = None, cwd: str = None, config: Optional[HookConfiguration] = None) -> None:
+def mark_command_complete(command: Optional[str] = None, cwd: Optional[str] = None, config: Optional[HookConfiguration] = None) -> None:
     """Convenience function to mark command complete
 
     Args:
@@ -880,7 +880,7 @@ def mark_command_complete(command: str = None, cwd: str = None, config: Optional
     manager.mark_command_complete(command)
 
 
-def cleanup_old_states(max_age_hours: int = None, cwd: str = None, config: Optional[HookConfiguration] = None) -> None:
+def cleanup_old_states(max_age_hours: Optional[int] = None, cwd: Optional[str] = None, config: Optional[HookConfiguration] = None) -> None:
     """Convenience function to clean up old states
 
     Args:
@@ -894,7 +894,7 @@ def cleanup_old_states(max_age_hours: int = None, cwd: str = None, config: Optio
     manager.cleanup_old_states(max_age_hours)
 
 
-def get_performance_summary(cwd: str = None, config: Optional[HookConfiguration] = None) -> Dict[str, Any]:
+def get_performance_summary(cwd: Optional[str] = None, config: Optional[HookConfiguration] = None) -> Dict[str, Any]:
     """Convenience function to get performance summary
 
     Args:

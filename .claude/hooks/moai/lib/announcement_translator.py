@@ -11,7 +11,7 @@ Supported Languages:
 
 import json
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 # Reference English announcements (23 items - synced with settings.json template)
 REFERENCE_ANNOUNCEMENTS_EN = [
@@ -130,7 +130,7 @@ HARDCODED_TRANSLATIONS = {
 }
 
 
-def get_language_from_config(project_root: Path = None) -> str:
+def get_language_from_config(project_root: Optional[Path] = None) -> str:
     """
     Retrieve conversation_language from .moai/config/config.json
 
@@ -164,7 +164,7 @@ def get_language_from_config(project_root: Path = None) -> str:
 def copy_settings_to_local(
     language_code: str,
     announcements: List[str],
-    project_root: Path = None
+    project_root: Optional[Path] = None
 ) -> None:
     """
     Copy settings.json to settings.local.json with translated announcements
@@ -215,7 +215,7 @@ def copy_settings_to_local(
         print(f"[announcement_translator] ERROR copying settings: {e}")
 
 
-def translate_announcements(language_code: str, project_root: Path = None) -> List[str]:
+def translate_announcements(language_code: str, project_root: Optional[Path] = None) -> List[str]:
     """
     Get announcements in specified language from hardcoded translations
 
@@ -236,7 +236,7 @@ def translate_announcements(language_code: str, project_root: Path = None) -> Li
     return REFERENCE_ANNOUNCEMENTS_EN
 
 
-def auto_translate_and_update(project_root: Path = None):
+def auto_translate_and_update(project_root: Optional[Path] = None) -> None:
     """
     Auto-copy announcements to settings.local.json
 
