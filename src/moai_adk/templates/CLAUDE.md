@@ -208,7 +208,7 @@ Token Savings: 47% efficiency + 0% overflow risk
     "validatedCommands": ["git:*", "npm:*", "uv:*"]
   },
   "hooks": {
-    "SessionStart": ["uv run .moai/scripts/statusline.py"],
+    "SessionStart": ["uv run moai-adk statusline"],
     "PreToolUse": [{"command": "python3 .claude/hooks/security-validator.py"}]
   },
   "mcpServers": {

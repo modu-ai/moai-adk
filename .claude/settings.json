@@ -1,15 +1,15 @@
 {
   "companyAnnouncements": [
     "SPEC-First: Use /moai:1-plan to define requirements first and everything connects together",
-    "TDD Cycle: RED (write tests) → GREEN (minimal code) → REFACTOR (improve) ensures quality",
-    "4-Phase Workflow: /moai:1-plan plan → /moai:2-run implement → /moai:3-sync validate → git deploy",
-    "TRUST 5 Principles: Test(≥85%) + Readable + Unified + Secured(OWASP) + Trackable = Quality",
+    "TDD Cycle: RED (write tests) \u2192 GREEN (minimal code) \u2192 REFACTOR (improve) ensures quality",
+    "4-Phase Workflow: /moai:1-plan plan \u2192 /moai:2-run implement \u2192 /moai:3-sync validate \u2192 git deploy",
+    "TRUST 5 Principles: Test(\u226585%) + Readable + Unified + Secured(OWASP) + Trackable = Quality",
     "moai Agents: 19 expert team members automatically handle planning, implementation, testing, validation",
     "Conversation Style: /output-style r2d2 (hands-on partner) or /output-style yoda (deep learning) available",
     "Task Tracking: TodoWrite keeps progress visible and prevents any tasks from being missed",
     "55+ Skill Library: Verified patterns and best practices enable hallucination-free implementation",
     "Auto Validation: After coding, TRUST 5, test coverage, and security checks run automatically",
-    "GitFlow Strategy: feature/SPEC-XXX → develop → main structure for safe deployment pipeline",
+    "GitFlow Strategy: feature/SPEC-XXX \u2192 develop \u2192 main structure for safe deployment pipeline",
     "Context7 Updates: All library versions stay current with real-time API information",
     "Parallel Processing: Independent tasks (tests, docs, deployment) run simultaneously to save time",
     "Health Check: moai-adk doctor diagnoses configuration, version, and dependency issues in seconds",
@@ -61,7 +61,6 @@
       }
     ]
   },
-
   "permissions": {
     "defaultMode": "default",
     "allow": [
@@ -166,9 +165,9 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "uv run $CLAUDE_PROJECT_DIR/.moai/bin/statusline.py",
+    "command": "uv run moai-adk statusline",
     "padding": 0
   },
   "spinnerTipsEnabled": true,
-  "outputStyle": "🤖 R2-D2"
+  "outputStyle": "\ud83e\udd16 R2-D2"
 }
