@@ -80,7 +80,7 @@
   "project": {
     "name": "MoAI-ADK",
     "description": "MoAI Agentic Development Kit",
-    "owner": "modu-ai",
+    "owner": "GoosLab",
     "mode": "development",
     "locale": "ko",
     "language": "Python",
