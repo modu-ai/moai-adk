@@ -603,102 +603,399 @@ class FigmaAnalyticsDashboard:
 
 ## 🔧 Core Tools: Figma MCP Integration
 
-### Tool 1: get_design_context (PRIMARY TOOL) 🎯
+### Priority 1: Figma Context MCP (Recommended) ⭐
 
-**Purpose**: Extract design and generate code directly from Figma
+**Source**: `/glips/figma-context-mcp` | **Reputation**: High | **Code Snippets**: 40
 
-**Usage**:
-```typescript
-mcp__figma-dev-mode-mcp-server__get_design_context({
-  nodeId: "10:25",
-  clientFrameworks: "react",
-  clientLanguages: "typescript"
-})
-```
+#### Tool 1: get_figma_data (PRIMARY TOOL) 🎯
 
-**Returns**:
-- React/Vue component code
-- CSS/Tailwind styles
-- PropTypes definitions
-- Image asset URLs (localhost or CDN)
+**Purpose**: Extract structured design data and component hierarchy from Figma
 
-**Performance**: <3s per component (with caching)
+**Parameters**:
 
----
-
-### Tool 2: get_variable_defs (DESIGN TOKENS) 🎨
-
-**Purpose**: Extract Figma Variables as Design Tokens (DTCG format)
+| 파라미터 | 타입 | 필수 | 설명 | 기본값 |
+|---------|------|------|------|--------|
+| `fileKey` | string | ✅ | Figma 파일 키 (예: `abc123XYZ`) | - |
+| `nodeId` | string | ❌ | 특정 노드 ID (예: `1234:5678`) | 전체 파일 |
+| `depth` | number | ❌ | 트리 탐색 깊이 | 전체 |
 
 **Usage**:
 ```typescript
-mcp__figma-dev-mode-mcp-server__get_variable_defs({
-  fileKey: "ABC123XYZ",
-  clientFrameworks: "react"
-})
+// 파일 전체 구조
+const fileData = await mcp__context7__get_figma_data({
+  fileKey: "abc123XYZ"
+});
+
+// 특정 노드 (컴포넌트 추출)
+const nodeData = await mcp__context7__get_figma_data({
+  fileKey: "abc123XYZ",
+  nodeId: "1234:5678",
+  depth: 3
+});
 ```
 
 **Returns**:
 ```json
 {
-  "color/primary/500": "#0ea5e9",
-  "spacing/md": "16px",
-  "font/heading/lg": "32px 700 Inter"
+  "metadata": {
+    "name": "Design System",
+    "components": { "Button": {...}, "Card": {...} },
+    "componentSets": { }
+  },
+  "nodes": [
+    {
+      "id": "1234:5678",
+      "name": "LoginForm",
+      "type": "FRAME",
+      "layout": "layout-1",
+      "children": [...]
+    }
+  ],
+  "globalVars": {
+    "styles": {
+      "layout-1": {
+        "width": 375,
+        "height": 812,
+        "layoutMode": "VERTICAL",
+        "padding": "16px"
+      }
+    }
+  }
+}
+```
+
+**Performance**: <3s per file | Cached for 24h (70% API reduction)
+
+**Fallback Strategy**:
+- 없을 시 Figma REST API `/v1/files/{fileKey}` 직접 호출
+- dirForAssetWrites 없을 시 메모리만 사용 (파일 쓰기 불가)
+
+---
+
+#### Tool 2: download_figma_images (ASSET EXTRACTION) 📸
+
+**Purpose**: Download Figma images, icons, vectors to local directory
+
+**Parameters**:
+
+| 파라미터 | 타입 | 필수 | 설명 | 기본값 |
+|---------|------|------|------|--------|
+| `fileKey` | string | ✅ | Figma 파일 키 | - |
+| `localPath` | string | ✅ | 로컬 저장 절대 경로 | - |
+| `pngScale` | number | ❌ | PNG 스케일 (1-4) | 1 |
+| `nodes` | array | ✅ | 다운로드할 노드 목록 | - |
+| `nodes[].nodeId` | string | ✅ | 노드 ID | - |
+| `nodes[].fileName` | string | ✅ | 저장 파일명 (확장자 포함) | - |
+| `nodes[].needsCropping` | boolean | ❌ | 자동 크롭 여부 | false |
+| `nodes[].requiresImageDimensions` | boolean | ❌ | CSS 변수용 크기 추출 | false |
+
+**Usage**:
+```typescript
+const results = await mcp__context7__download_figma_images({
+  fileKey: "abc123XYZ",
+  localPath: "/Users/dev/project/public/assets",
+  pngScale: 2,
+  nodes: [
+    {
+      nodeId: "1234:5680",
+      fileName: "hero-bg.png",
+      needsCropping: true,
+      requiresImageDimensions: true
+    },
+    {
+      nodeId: "1234:5681",
+      fileName: "logo.svg"
+    }
+  ]
+});
+```
+
+**Returns**:
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "Downloaded 2 images:\n- hero-bg.png: 750x1624 | --hero-bg-width: 375px; --hero-bg-height: 812px (cropped)\n- logo.svg: 120x40"
+    }
+  ]
+}
+```
+
+**Performance**: <5s per 5 images | PNG 스케일에 따라 가변
+
+**에러 처리**:
+
+| 에러 메시지 | 원인 | 해결책 |
+|-----------|------|--------|
+| "Path for asset writes is invalid" | 잘못된 로컬 경로 | 절대 경로 사용, 디렉토리 존재 확인, 쓰기 권한 확인 |
+| "Image base64 format error" | 이미지 인코딩 실패 | `pngScale` 값 축소 (4→2), 노드 타입 확인 (FRAME/COMPONENT) |
+| "Node not found" | 존재하지 않는 노드 ID | `get_figma_data`로 유효한 노드 ID 먼저 확인 |
+
+---
+
+### Priority 2: Figma REST API (변수 관리) 🔐
+
+**엔드포인트**: `GET /v1/files/{file_key}/variables` (Figma 공식 API)
+
+**인증**: Figma Personal Access Token (헤더: `X-Figma-Token: figd_...`)
+
+#### Tool 3: Variables API (DESIGN TOKENS) 🎨
+
+**Purpose**: Extract Figma Variables as DTCG format design tokens
+
+**Usage**:
+```typescript
+// 모든 변수 조회 (로컬 + 게시됨)
+const response = await fetch(
+  `https://api.figma.com/v1/files/abc123XYZ/variables/local`,
+  {
+    headers: { 'X-Figma-Token': process.env.FIGMA_API_KEY }
+  }
+);
+
+const variables = await response.json();
+```
+
+**Parameters**:
+
+| 파라미터 | 타입 | 위치 | 필수 | 설명 | 기본값 |
+|---------|------|------|------|------|--------|
+| `file_key` | string | Path | ✅ | Figma 파일 키 | - |
+| `published` | boolean | Query | ❌ | 게시된 변수만 조회 | false |
+
+**Returns** (200 OK):
+```json
+{
+  "meta": {
+    "variables": [
+      {
+        "id": "123:456",
+        "name": "Primary Color",
+        "key": "variable_key_123",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "mode_1": { "r": 1, "g": 0, "b": 0, "a": 1 },
+          "mode_2": { "r": 0, "g": 1, "b": 0, "a": 1 }
+        },
+        "scopes": ["FRAME_FILL", "TEXT_FILL"],
+        "codeSyntax": {
+          "WEB": "--color-primary",
+          "ANDROID": "R.color.primary",
+          "iOS": "UIColor.primary"
+        }
+      }
+    ],
+    "variableCollections": [
+      {
+        "id": "collection_id_789",
+        "name": "Brand Colors",
+        "modes": [
+          { "modeId": "mode_1", "name": "Light" },
+          { "modeId": "mode_2", "name": "Dark" }
+        ]
+      }
+    ]
+  }
 }
 ```
 
 **Performance**: <5s per file | 98%+ variable capture rate
 
----
+**주요 속성**:
 
-### Tool 3: get_screenshot (VISUAL REFERENCE) 📸
+| 속성 | 타입 | 읽기 전용 | 설명 |
+|------|------|----------|------|
+| `id` | string | ✅ | 변수의 고유 식별자 |
+| `name` | string | ❌ | 변수 이름 |
+| `key` | string | ✅ | 임포트 시 사용할 키 |
+| `resolvedType` | string | ✅ | 변수 타입: `COLOR`, `FLOAT`, `STRING`, `BOOLEAN` |
+| `valuesByMode` | object | ✅ | 모드별 값 (예: Light/Dark) |
+| `scopes` | string[] | ❌ | UI 피커 범위 (`FRAME_FILL`, `TEXT_FILL` 등) |
+| `codeSyntax` | object | ✅ | 플랫폼별 코드 구문 (WEB, ANDROID, iOS) |
 
-**Purpose**: Capture visual preview of Figma design
+**에러 처리**:
 
-**Usage**:
+| 에러 코드 | 메시지 | 원인 | 해결책 |
+|----------|--------|------|--------|
+| **400 Bad Request** | "Invalid file key" | 잘못된 파일 키 형식 | Figma URL에서 올바른 파일 키 추출 (22자 영숫자) |
+| **401 Unauthorized** | "Invalid token" | 잘못되거나 만료된 토큰 | Figma 설정에서 새 Personal Access Token 생성 |
+| **403 Forbidden** | "Access denied" | 파일 접근 권한 없음 | 파일 소유자로부터 편집/보기 권한 요청 |
+| **404 Not Found** | "File not found" | 존재하지 않는 파일 | 파일 키 확인, 파일 삭제 여부 확인 |
+| **429 Too Many Requests** | "Rate limit exceeded" | API 호출 제한 초과 (분당 60회) | 지수 백오프 재시도 (1초 → 2초 → 4초) |
+
+**변수 없음 디버깅**:
 ```typescript
-mcp__figma-dev-mode-mcp-server__get_screenshot({
-  nodeId: "10:25"
-})
+// ❌ 잘못된 엔드포인트 (400 에러 가능)
+fetch(`https://api.figma.com/v1/files/${fileKey}/variables`)
+
+// ✅ 올바른 엔드포인트 (로컬 변수 포함)
+fetch(`https://api.figma.com/v1/files/${fileKey}/variables/local`)
 ```
-
-**Returns**: PNG image URL
-
-**Performance**: <2s | Used conditionally (50-60% quota savings)
-
----
-
-### Tool 4: get_metadata (STRUCTURE ANALYSIS) 🗂️
-
-**Purpose**: Retrieve full file hierarchy structure
-
-**Usage**:
-```typescript
-mcp__figma-dev-mode-mcp-server__get_metadata({
-  fileKey: "ABC123XYZ"
-})
-```
-
-**Returns**: XML format (node IDs, layer names, types, positions/sizes)
-
-**Performance**: <3s | Cached for 24h (70% API reduction)
 
 ---
 
-### Tool 5: get_figjam (CODE CONNECT) 🔗
+### Priority 3: Talk To Figma MCP (수정 기능 필요 시) 💻
 
-**Purpose**: Check Figma Code Connect mappings
+**Source**: `/sethdford/mcp-figma` | **Reputation**: High | **Code Snippets**: 79
+
+#### Tool 4: export_node_as_image (VISUAL VERIFICATION) 📸
+
+**Purpose**: Export Figma node as image (PNG/SVG/JPG/PDF)
 
 **Usage**:
 ```typescript
-mcp__figma-dev-mode-mcp-server__get_figjam({
-  fileKey: "ABC123XYZ"
-})
+const result = await mcp__talk_to_figma__export_node_as_image({
+  node_id: "1234:5678",
+  format: "PNG"  // PNG, SVG, JPG, PDF
+});
+
+// Returns: base64 encoded image
+const base64Image = result.result.base64;
+const imageUrl = `data:image/png;base64,${base64Image}`;
 ```
 
-**Returns**: Existing Code Connect configuration
+**Parameters**:
 
-**Performance**: <2s
+| 파라미터 | 타입 | 필수 | 설명 |
+|---------|------|------|------|
+| `node_id` | string | ✅ | 노드 ID (예: `1234:5678`) |
+| `format` | string | ✅ | 형식: `PNG`, `SVG`, `JPG`, `PDF` |
+
+**Performance**: <2s | Base64 반환 (파일 쓰기 없음)
+
+**주의**: 현재 base64 텍스트 반환 (파일 저장 필요)
+
+---
+
+### Priority 4: Extractor 시스템 (데이터 단순화) 🔄
+
+**사용 라이브러리**: `figma-developer-mcp` Extractor 시스템
+
+**Purpose**: 복잡한 Figma API 응답을 구조화된 데이터로 변환
+
+**지원 Extractor**:
+
+| Extractor | 설명 | 추출 항목 |
+|-----------|------|---------|
+| `allExtractors` | 모든 정보 추출 | 레이아웃, 텍스트, 시각, 컴포넌트 |
+| `layoutAndText` | 레이아웃 + 텍스트 | 구조, 텍스트 콘텐츠 |
+| `contentOnly` | 텍스트만 | 텍스트 콘텐츠 |
+| `layoutOnly` | 레이아웃만 | 구조, 크기, 위치 |
+| `visualsOnly` | 시각 속성만 | 색상, 테두리, 효과 |
+
+**Usage**:
+```typescript
+import { simplifyRawFigmaObject, allExtractors } from "figma-developer-mcp/extractors";
+
+const fileData = await figmaService.getRawFile("abc123XYZ");
+const simplified = simplifyRawFigmaObject(fileData, allExtractors, {
+  maxDepth: 10,
+  afterChildren: collapseSvgContainers
+});
+```
+
+---
+
+## 🚨 Rate Limiting & Error Handling
+
+### Rate Limits
+
+| 엔드포인트 | 제한 | 해결책 |
+|---------|------|--------|
+| **일반 API** | 분당 60회 | 1초 간격 요청 |
+| **이미지 렌더링** | 분당 30회 | 2초 간격 요청 |
+| **Variables API** | 분당 100회 | 상대적으로 관대 |
+
+### 지수 백오프 재시도 전략
+
+```typescript
+async function retryWithBackoff(
+  fn: () => Promise<any>,
+  maxRetries: number = 3,
+  initialDelay: number = 1000
+): Promise<any> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      // 429 Rate Limit 에러
+      if (error.status === 429) {
+        const retryAfter = error.headers['retry-after'];
+        const delay = retryAfter
+          ? parseInt(retryAfter) * 1000
+          : initialDelay * Math.pow(2, attempt);
+        console.log(`Rate limited. Retrying after ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+
+      // 5xx 서버 에러
+      if (error.status >= 500) {
+        const delay = initialDelay * Math.pow(2, attempt);
+        console.log(`Server error. Retrying after ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+
+      throw error;
+    }
+  }
+}
+```
+
+---
+
+## 🔄 MCP 도구 호출 순서 (권장)
+
+### 시나리오 1: 디자인 데이터 추출 및 이미지 다운로드
+
+```
+1️⃣ get_figma_data (fileKey만)
+   → 파일 구조 파악, 노드 ID 수집
+   → 소요 시간: <3s
+
+2️⃣ get_figma_data (fileKey + nodeId + depth)
+   → 특정 노드의 상세 정보 추출
+   → 소요 시간: <3s
+
+3️⃣ download_figma_images (fileKey + nodeIds + localPath)
+   → 이미지 자산 다운로드
+   → 소요 시간: <5s per 5 images
+
+병렬 호출 가능: Step 1과 2는 독립적 (동시 실행 가능)
+```
+
+### 시나리오 2: 변수 기반 디자인 시스템 추출
+
+```
+1️⃣ GET /v1/files/{fileKey}/variables/local
+   → 변수 및 컬렉션 정보 조회
+   → 소요 시간: <5s
+   → Light/Dark 모드 변수 추출
+
+2️⃣ get_figma_data (fileKey)
+   → 변수가 바인딩된 노드 찾기
+   → 소요 시간: <3s
+
+3️⃣ simplifyRawFigmaObject (with allExtractors)
+   → 변수 참조를 포함한 설계 토큰 추출
+   → 소요 시간: <2s
+```
+
+### 시나리오 3: 성능 최적화 (캐싱 포함)
+
+```
+1️⃣ 로컬 캐시 확인
+   → Key: `file:${fileKey}` (TTL: 24h)
+
+2️⃣ 캐시 미스 → Figma API 호출
+   → 병렬 호출: get_figma_data + Variables API
+
+3️⃣ 캐시 저장 + 반환
+   → 다음 요청 시 즉시 반환
+   → 60-80% API 호출 감소
+```
 
 ---
 
@@ -1030,6 +1327,39 @@ class Context7CachedResearch:
 - Context7 MCP (latest documentation with caching)
 
 **Context Engineering**: Load SPEC, config.json, and `moai-domain-figma` Skill first. Fetch framework-specific Skills on-demand after language detection.
+
+---
+
+---
+
+## 📚 Research Documentation & Reference
+
+**Detailed analysis documents available for reference**:
+
+1. **[figma-mcp-params.md](./.moai/research/figma-mcp-params.md)**
+   - Complete parameter validation guide
+   - nodeId format specifications and extraction methods
+   - localPath validation rules and platform considerations
+   - depth parameter optimization guide
+   - Error handling for each tool (401/404/429/5xx)
+
+2. **[figma-mcp-error-mapping.md](./.moai/research/figma-mcp-error-mapping.md)**
+   - HTTP error code mapping (200/400/401/403/404/429/5xx)
+   - Tool-specific error handling strategies
+   - Exponential backoff retry implementation
+   - Recovery procedures for each error type
+
+3. **[figma-mcp-compatibility-matrix.md](./.moai/research/figma-mcp-compatibility-matrix.md)**
+   - Figma Context MCP vs Talk To Figma vs Copilot comparison
+   - Feature support matrix across MCP implementations
+   - Performance characteristics and trade-offs
+   - Recommendation matrix by use case
+
+4. **[figma-mcp-research-summary.md](./.moai/research/figma-mcp-research-summary.md)**
+   - Executive summary of Figma MCP capabilities
+   - Key findings and insights
+   - Best practices and anti-patterns
+   - Quick decision trees for tool selection
 
 ---
 
