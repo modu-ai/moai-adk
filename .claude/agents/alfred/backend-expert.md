@@ -3,14 +3,6 @@ name: backend-expert
 description: "Use PROACTIVELY when: Backend architecture, API design, server implementation, database integration, or microservices architecture is needed. Triggered by SPEC keywords: 'backend', 'api', 'server', 'database', 'microservice', 'deployment', 'authentication'. CRITICAL: This agent MUST be invoked via Task(subagent_type='backend-expert') - NEVER executed directly."
 tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
 model: inherit
-permissionMode: ask
-skills:
-  - moai-lang-python
-  - moai-lang-go
-  - moai-domain-backend
-  - moai-domain-database
-  - moai-domain-api
-  - moai-context7-lang-integration
 ---
 
 # Backend Expert - Backend Architecture Specialist

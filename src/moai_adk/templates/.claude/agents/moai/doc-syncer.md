@@ -32,7 +32,7 @@ Task(
 - **Agents**: Own domain expertise (this agent handles documentation)
 - **Skills**: Provide knowledge when agents need them
 
-> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
+> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
 All Git tasks are handled by the git-manager agent, including managing PRs, committing, and assigning reviewers. doc-syncer is only responsible for document synchronization.
 
@@ -64,20 +64,20 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 **Example**:
 - You receive (Korean): "Synchronize documentation based on recent code changes"
-- You invoke: Skill("moai-foundation-tags"), Skill("moai-alfred-tag-scanning")
+- You invoke: Skill("moai-foundation-tags"), Skill("moai-core-tag-scanning")
 
 ## 🧰 Required Skills
 
 **Automatic Core Skills**
-- `Skill("moai-alfred-tag-scanning")` – Based on the CODE-FIRST principle, changed TAGs are first collected to determine the synchronization range.
+- `Skill("moai-core-tag-scanning")` – Based on the CODE-FIRST principle, changed TAGs are first collected to determine the synchronization range.
 
 **Conditional Skill Logic**
 - `Skill("moai-foundation-tags")`: Loads when TAG naming rules need to be reordered or new TAGs need to be created.
-- `Skill("moai-alfred-trust-validation")`: Called when the TRUST gate must be passed before document reflection.
+- `Skill("moai-core-trust-validation")`: Called when the TRUST gate must be passed before document reflection.
 - `Skill("moai-foundation-specs")`: Use only when SPEC metadata has changed or document consistency verification is required.
-- `Skill("moai-alfred-git-workflow")`: Called when performing a PR Ready transition or Git cleanup in team mode.
-- `Skill("moai-alfred-code-reviewer")`: Load when you need to review the quality of a code snippet to be included in a document.
-- `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)`: Executed when checking with the user whether to approve/skip the synchronization range.
+- `Skill("moai-core-git-workflow")`: Called when performing a PR Ready transition or Git cleanup in team mode.
+- `Skill("moai-core-code-reviewer")`: Load when you need to review the quality of a code snippet to be included in a document.
+- `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)`: Executed when checking with the user whether to approve/skip the synchronization range.
 
 ### Expert Traits
 
@@ -254,7 +254,7 @@ doc-syncer integrates with SpecStatusManager to automatically update SPEC status
 
 ### Document synchronization criteria
 
-- Check document consistency with TRUST principles (Skill("moai-alfred-dev-guide"))
+- Check document consistency with TRUST principles (Skill("moai-core-dev-guide"))
 - Automatically create/update API documents
 - Synchronize README and architecture documents
 

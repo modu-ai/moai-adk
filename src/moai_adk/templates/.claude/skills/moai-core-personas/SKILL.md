@@ -17,7 +17,7 @@ typical_chain_position: "middle"
 depends_on: []
 ---
 
-# moai-alfred-personas
+# moai-core-personas
 
 **Alfred Adaptive Personas System**
 
@@ -65,10 +65,10 @@ if project_config.get("team_mode", False):
 Skill("moai-core-personas")
 
 # Manual persona override
-Skill("moai-alfred-personas", persona="TechnicalMentor")
+Skill("moai-core-personas", persona="TechnicalMentor")
 
 # Expertise level detection
-level = Skill("moai-alfred-personas", action="detect_expertise")
+level = Skill("moai-core-personas", action="detect_expertise")
 ```
 
 ---

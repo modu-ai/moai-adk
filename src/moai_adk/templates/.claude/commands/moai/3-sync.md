@@ -75,10 +75,10 @@ This command supports **4 operational modes**:
 
 | Agent | Core Skill | Purpose |
 | ------------ | ------------------------------ | ------------------------------ |
-| quality-gate | `moai-alfred-trust-validation` | Verify project integrity |
-| quality-gate | `moai-alfred-trust-validation` | Check code quality before sync |
+| quality-gate | `moai-core-trust-validation` | Verify project integrity |
+| quality-gate | `moai-core-trust-validation` | Check code quality before sync |
 | doc-syncer | `moai-docs-sync` | Synchronize Living Documents |
-| git-manager | `moai-alfred-git-workflow` | Handle Git operations |
+| git-manager | `moai-core-git-workflow` | Handle Git operations |
 
 **Note**: TUI Survey Skill is loaded once at Phase 0 and reused throughout all user interactions.
 
@@ -626,9 +626,9 @@ Exit command with code 0.
 ## 📚 Quick Reference
 
 **For synchronization details, consult**:
-- `Skill("moai-alfred-trust-validation")` - Project validation
-- `Skill("moai-alfred-git-workflow")` - Git operations
-- `Skill("moai-alfred-trust-validation")` - Quality gates
+- `Skill("moai-core-trust-validation")` - Project validation
+- `Skill("moai-core-git-workflow")` - Git operations
+- `Skill("moai-core-trust-validation")` - Quality gates
 - CLAUDE.md - Full workflow documentation
 
 **Version**: 3.1.0 (Agent-Delegated Pattern)

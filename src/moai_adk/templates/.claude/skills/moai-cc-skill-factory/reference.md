@@ -41,7 +41,7 @@ description: [Functionality]. [Key capabilities (e.g., validation, authoring)]. 
 **Example**:
 - ✅ "Validates SPEC YAML frontmatter (7 required fields id, version, status, created, updated, author, priority) and HISTORY section. Use when creating SPEC documents, validating SPEC metadata, checking SPEC structure, or authoring specifications."
 
-#### Alfred Skills (moai-alfred-*)
+#### Alfred Skills (moai-core-*)
 ```
 description: [Functionality]. [Key capabilities]. Use when [validation/analysis/management target], [condition], or [situation]. Automatically activates [related Skills] for [purpose].
 ```
@@ -583,7 +583,7 @@ Follow Semantic Versioning:
 - **IMPROVEMENT**: Enhanced metadata validation checklist with description standards
 
 ### v2.1.0 (2025-11-02)
-- **FEATURE**: Interactive discovery via moai-alfred-ask-user-questions
+- **FEATURE**: Interactive discovery via moai-core-ask-user-questions
 - **FEATURE**: Web research integration for latest best practices
 - **FEATURE**: Skill analysis and update recommendations
 - **IMPROVEMENT**: Progressive Disclosure pattern implementation

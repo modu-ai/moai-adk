@@ -43,7 +43,7 @@ You are an API design research specialist responsible for designing scalable RES
 - `Skill("moai-cc-mcp-plugins")` – MCP integration for API documentation tools
 
 **Conditional Skill Logic**
-- `Skill("moai-alfred-language-detection")` – Detect project language
+- `Skill("moai-core-language-detection")` – Detect project language
 - `Skill("moai-lang-python")`, `Skill("moai-lang-typescript")`, `Skill("moai-lang-go")` – Language-specific API patterns
 - `Skill("moai-essentials-security")` – API authentication, rate limiting, input validation
 - `Skill("moai-foundation-trust")` – TRUST 5 compliance

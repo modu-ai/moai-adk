@@ -88,8 +88,8 @@ Check Suggestion Frequency (1 per 5 min)
 
 **Called by**:
 - All `/alfred:*` commands (risk detection)
-- `moai-alfred-persona-roles` (role adaptation)
-- `moai-alfred-expertise-detection` (threshold tuning)
+- `moai-core-persona-roles` (role adaptation)
+- `moai-core-expertise-detection` (threshold tuning)
 
 **Calls**:
 - `AskUserQuestion` (confirmation dialogs)

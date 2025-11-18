@@ -60,7 +60,7 @@
 **Optional context enhancements**:
 - Historical context (git log, SPEC history)
 - Examples and templates
-- Related Skills (moai-foundation-*, moai-alfred-*)
+- Related Skills (moai-foundation-*, moai-core-*)
 - Agent instructions (spec-builder, tdd-implementer)
 
 **Why**: Helpful but not essential for task completion.

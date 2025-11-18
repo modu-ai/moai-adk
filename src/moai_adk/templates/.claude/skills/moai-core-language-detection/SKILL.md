@@ -12,7 +12,7 @@ keywords: ["language-detection", "framework-identification", "package-manager", 
 status: stable
 ---
 
-# moai-alfred-language-detection
+# moai-core-language-detection
 
 **Enterprise Language & Framework Auto-Detection**
 

@@ -1,5 +1,5 @@
 ---
-name: moai-alfred-workflow
+name: moai-core-workflow
 version: 4.0.0
 status: production
 description: |
@@ -414,8 +414,8 @@ bug_workflow_id = await scheduler.submit_workflow(
 
 ### Related Skills
 
-- `moai-alfred-agent-guide` - Agent selection and delegation patterns
-- `moai-alfred-spec-authoring` - SPEC creation workflows
+- `moai-core-agent-guide` - Agent selection and delegation patterns
+- `moai-core-spec-authoring` - SPEC creation workflows
 - `moai-essentials-debug` - Error handling and troubleshooting
 - `moai-foundation-trust` - Security and compliance principles
 - `moai-domain-backend` - Backend-specific workflow patterns

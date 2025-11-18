@@ -1,5 +1,5 @@
 ---
-name: moai-alfred-agent-factory
+name: moai-core-agent-factory
 version: 1.0.0
 status: production
 description: |
@@ -237,7 +237,7 @@ Need specific information? Use the reference files:
 ## 📖 Reference Files Organization
 
 ```
-moai-alfred-agent-factory/
+moai-core-agent-factory/
 ├── SKILL.md                        (this file - navigation hub)
 ├── reference/                      (detailed documentation)
 │   ├── intelligence-engine.md      (280 lines: algorithms)

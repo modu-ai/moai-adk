@@ -17,7 +17,7 @@ allowed-tools:
 - AskUserQuestion
 - Skill
 skills:
-- moai-alfred-issue-labels
+- moai-core-issue-labels
 ---
 
 # 🏗️ MoAI-ADK Step 1: Establish a plan (Plan) - Always make a plan first and then proceed.

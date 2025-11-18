@@ -124,4 +124,4 @@ try {
 ---
 
 **Last Updated**: 2025-11-11
-**Related Skills**: moai-alfred-agent-guide, moai-alfred-workflow
+**Related Skills**: moai-core-agent-guide, moai-core-workflow

@@ -33,7 +33,7 @@ find .claude/skills -type d -name "moai-*" | sort
 # 출력 예시
 .claude/skills/moai-foundation-trust
 .claude/skills/moai-foundation-tags
-.claude/skills/moai-alfred-tag-scanning
+.claude/skills/moai-core-tag-scanning
 .claude/skills/moai-domain-backend
 .claude/skills/moai-lang-python
 ... (50개 이상)
@@ -50,10 +50,10 @@ find .claude/skills -type d -name "moai-*" | sort
   └─ moai-foundation-langs
 
 📦 Alfred Tier (11개)
-  ├─ moai-alfred-tag-scanning    ← 선정 ⭐
-  ├─ moai-alfred-code-reviewer
-  ├─ moai-alfred-debugger-pro
-  ├─ moai-alfred-language-detection
+  ├─ moai-core-tag-scanning    ← 선정 ⭐
+  ├─ moai-core-code-reviewer
+  ├─ moai-core-debugger-pro
+  ├─ moai-core-language-detection
   └─ ... (7개 더)
 
 📦 Domain Tier (10개)
@@ -81,7 +81,7 @@ find .claude/skills -type d -name "moai-*" | sort
 ### 결과: 선정 스킬 (4개)
 ```
 ✅ moai-foundation-trust      (Foundation, 핵심 품질 원칙)
-✅ moai-alfred-tag-scanning   (Alfred, 추적 시스템)
+✅ moai-core-tag-scanning   (Alfred, 추적 시스템)
 ✅ moai-domain-backend        (Domain, 아키텍처)
 ✅ moai-lang-python           (Language, 최신 표준)
 ```
@@ -221,7 +221,7 @@ Agent 4: Task(
 #### 에이전트 2 출력 (Alfred Tag-scanning)
 ```json
 {
-  "skill_name": "moai-alfred-tag-scanning",
+  "skill_name": "moai-core-tag-scanning",
   "category": "Alfred",
   "content_score": 68,
   "findings": [

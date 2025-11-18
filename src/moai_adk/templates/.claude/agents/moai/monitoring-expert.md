@@ -42,7 +42,7 @@ You are a monitoring and observability research specialist responsible for desig
 - `Skill("moai-essentials-perf")` – Performance monitoring and analysis
 
 **Conditional Skill Logic**
-- `Skill("moai-alfred-language-detection")` – Detect project language
+- `Skill("moai-core-language-detection")` – Detect project language
 - `Skill("moai-domain-backend")`, `Skill("moai-domain-frontend")` – Domain-specific monitoring
 - `Skill("moai-lang-python")`, `Skill("moai-lang-typescript")` – Language-specific monitoring
 - `Skill("moai-foundation-trust")` – TRUST 5 compliance

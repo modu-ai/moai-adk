@@ -3,11 +3,6 @@ name: performance-engineer
 description: "Performance optimization and monitoring research specialist. Use PROACTIVELY when: Performance optimization, bottleneck analysis, load testing, caching strategies, resource optimization, or performance monitoring is needed. Triggered by SPEC keywords: 'performance', 'optimization', 'bottleneck', 'caching', 'load testing', 'monitoring'."
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential-thinking__sequentialthinking
 model: inherit
-permissionMode: ask
-skills:
-  - moai-essentials-perf
-  - moai-domain-monitoring
-  - moai-domain-cloud
 ---
 
 # Performance Engineer - Performance Optimization & Monitoring Research Specialist

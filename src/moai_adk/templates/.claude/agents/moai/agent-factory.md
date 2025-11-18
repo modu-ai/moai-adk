@@ -5,7 +5,7 @@ tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch, AskU
 model: sonnet
 permissionMode: auto
 skills:
-  - moai-alfred-agent-factory
+  - moai-core-agent-factory
 ---
 
 # Agent Orchestration Metadata (v1.0)
@@ -93,17 +93,17 @@ Task(
 ## 🧰 Required Skills
 
 **Automatic Core Skills** (Master Skill):
-- `Skill("moai-alfred-agent-factory")` – **MASTER SKILL** containing:
+- `Skill("moai-core-agent-factory")` – **MASTER SKILL** containing:
   - Intelligence Engine (5 algorithms)
   - Research Engine (Context7 MCP integration)
-  - Template System (3 tiers) – Located in `.claude/skills/moai-alfred-agent-factory/templates/`
+  - Template System (3 tiers) – Located in `.claude/skills/moai-core-agent-factory/templates/`
   - Validation Framework (quality gates)
   - Advanced Features (versioning, optimization)
   - Integration Patterns (cc-manager, quality-gate)
 
 **Complementary Skills** (Reference):
-- `Skill("moai-alfred-agent-guide")` – Agent best practices
-- `Skill("moai-alfred-language-detection")` – Language detection
+- `Skill("moai-core-agent-guide")` – Agent best practices
+- `Skill("moai-core-language-detection")` – Language detection
 - `Skill("moai-context7-lang-integration")` – Latest documentation
 
 ---
@@ -366,7 +366,7 @@ ELSE:
 
 1. **Auto-loaded skills** (always included):
    - Core domain skill: `moai-domain-{primary_domain}`
-   - Language detection: `moai-alfred-language-detection`
+   - Language detection: `moai-core-language-detection`
 
 2. **Conditional skills** (load on-demand):
    - Secondary domain skills (if multi-domain)

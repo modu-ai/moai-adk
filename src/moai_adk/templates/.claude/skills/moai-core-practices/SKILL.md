@@ -21,7 +21,7 @@ allowed-tools:
 
 | Field | Value |
 | ----- | ----- |
-| **Skill Name** | moai-alfred-practices |
+| **Skill Name** | moai-core-practices |
 | **Version** | 4.0.0 Enterprise (2025-11-12) |
 | **Focus** | Practical execution patterns, real-world scenarios |
 | **Auto-load** | When workflow guidance or debugging help needed |
@@ -331,8 +331,8 @@ Reusable context:
 
 ## Related Skills
 
-- `moai-alfred-agent-guide` (Agent orchestration patterns)
-- `moai-alfred-clone-pattern` (Complex task delegation)
+- `moai-core-agent-guide` (Agent orchestration patterns)
+- `moai-core-clone-pattern` (Complex task delegation)
 - `moai-essentials-debug` (Debugging techniques)
 
 ---

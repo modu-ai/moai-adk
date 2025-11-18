@@ -14,7 +14,7 @@
 | 계층 | 스킬명 | 점수 | 상태 | 핵심 문제 |
 |-----|-------|------|------|---------|
 | **Foundation** | moai-foundation-trust | 75/100 | 🟡 개선필요 | 구체적인 검증 명령어 부족 |
-| **Alfred** | moai-alfred-tag-scanning | 68/100 | 🔴 미완성 | 템플릿 파일 누락, 예시 부족 |
+| **Alfred** | moai-core-tag-scanning | 68/100 | 🔴 미완성 | 템플릿 파일 누락, 예시 부족 |
 | **Domain** | moai-domain-backend | 75/100 | 🟡 개선필요 | 코드 예시 부족, 보안/배포 누락 |
 | **Language** | moai-lang-python | 85/100 | 🟢 우수 | 최적화 완료, 경미한 개선만 필요 |
 
@@ -72,11 +72,11 @@ trigger_cues: TRUST 준수 확인, 릴리즈 준비 검증, 품질 게이트 적
 
 ---
 
-### 2️⃣ Alfred 계층: `moai-alfred-tag-scanning` (68/100)
+### 2️⃣ Alfred 계층: `moai-core-tag-scanning` (68/100)
 
 #### 📋 메타데이터
 ```yaml
-name: moai-alfred-tag-scanning
+name: moai-core-tag-scanning
 tier: Alfred (워크플로우 내부)
 auto_load: /alfred:3-sync 추적 가능성 게이트
 trigger_cues: TAG Scan, TAG List, TAG Inventory, Find orphan TAG, Check TAG chain
@@ -353,7 +353,7 @@ Language: python 최적화
 #### Step 1️⃣: 대상 선정
 ```
 Foundation 계층 → moai-foundation-trust (핵심 원칙)
-Alfred 계층    → moai-alfred-tag-scanning (추적 시스템)
+Alfred 계층    → moai-core-tag-scanning (추적 시스템)
 Domain 계층    → moai-domain-backend (아키텍처)
 Language 계층  → moai-lang-python (최신 표준)
 ```

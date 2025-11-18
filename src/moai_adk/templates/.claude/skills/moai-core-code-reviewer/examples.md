@@ -7,7 +7,7 @@
 # You have a pull request that needs review
 
 # Invoke the skill
-Skill("moai-alfred-code-reviewer")
+Skill("moai-core-code-reviewer")
 
 # The skill provides:
 # 1. Automated review checklist
@@ -16,7 +16,7 @@ Skill("moai-alfred-code-reviewer")
 # 4. Review comment templates
 
 # Run automated checks
-bash .claude/skills/moai-alfred-code-reviewer/scripts/pre-review-check.sh
+bash .claude/skills/moai-core-code-reviewer/scripts/pre-review-check.sh
 
 # Review output example:
 # 🔍 Running automated code review checks...
@@ -35,7 +35,7 @@ bash .claude/skills/moai-alfred-code-reviewer/scripts/pre-review-check.sh
 
 ```python
 # When reviewing code with security implications
-Skill("moai-alfred-code-reviewer")
+Skill("moai-core-code-reviewer")
 
 # Focus on security checklist items:
 # - Input validation for all user inputs
@@ -69,18 +69,18 @@ jobs:
       - name: Run Code Review Skill
         run: |
           # Skill provides automation scripts
-          bash .claude/skills/moai-alfred-code-reviewer/scripts/pre-review-check.sh
+          bash .claude/skills/moai-core-code-reviewer/scripts/pre-review-check.sh
       
       - name: Security Review
         run: |
-          python .claude/skills/moai-alfred-code-reviewer/scripts/security_review.py src/
+          python .claude/skills/moai-core-code-reviewer/scripts/security_review.py src/
 ```
 
 ## Example 4: Team Review Standards
 
 ```python
 # Setting up team review standards
-Skill("moai-alfred-code-reviewer")
+Skill("moai-core-code-reviewer")
 
 # Provides templates for:
 # 1. Review checklist customization
@@ -101,7 +101,7 @@ Skill("moai-alfred-code-reviewer")
 
 ```python
 # Track review quality over time
-Skill("moai-alfred-code-reviewer")
+Skill("moai-core-code-reviewer")
 
 # Provides metrics calculation:
 # - Review coverage percentage

@@ -1,5 +1,5 @@
 ---
-name: moai-alfred-feedback-templates
+name: moai-core-feedback-templates
 version: 1.0.0
 created: 2025-11-12
 updated: 2025-11-12

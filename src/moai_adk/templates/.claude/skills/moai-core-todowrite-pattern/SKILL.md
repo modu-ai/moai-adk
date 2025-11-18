@@ -220,7 +220,7 @@ This file is too large to create in a single command. I'll create it using multi
 
 <function_calls>
 <invoke name="Bash">
-<parameter name="command">cat >> "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-alfred-todowrite-pattern/SKILL.md" << 'SKILL_PART2_EOF'
+<parameter name="command">cat >> "/Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/moai-core-todowrite-pattern/SKILL.md" << 'SKILL_PART2_EOF'
 #### Pattern 2: Bulk Operations (Jira 1000-task pattern)
 
 **Problem**: Need to update multiple tasks atomically
@@ -867,10 +867,10 @@ recovery.recover_invalid_state(task_id)
 
 ## Related Skills
 
-- **moai-alfred-agent-guide**: Sub-agent coordination patterns
+- **moai-core-agent-guide**: Sub-agent coordination patterns
 - **moai-foundation-tags**: TAG lifecycle integration
-- **moai-alfred-best-practices**: TRUST 5 principles
-- **moai-alfred-git-workflow**: Git commit integration with TodoWrite
+- **moai-core-best-practices**: TRUST 5 principles
+- **moai-core-git-workflow**: Git commit integration with TodoWrite
 
 ---
 

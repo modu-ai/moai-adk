@@ -204,7 +204,7 @@ def validate_file_location(file_path: str, config: Dict) -> Dict[str, Any]:
         f"   Reason: Not in root_whitelist\n"
         f"   ✅ Suggested: {suggested}{filename}\n"
         f"\n"
-        f"   Tip: Use Skill(\"moai-alfred-document-management\") for guidance"
+        f"   Tip: Use Skill(\"moai-core-document-management\") for guidance"
     )
 
     if block_violations:

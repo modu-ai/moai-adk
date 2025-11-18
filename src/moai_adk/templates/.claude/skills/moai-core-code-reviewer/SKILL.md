@@ -24,7 +24,7 @@ allowed-tools:
 
 | Field | Value |
 | ----- | ----- |
-| **Skill Name** | moai-alfred-code-reviewer |
+| **Skill Name** | moai-core-code-reviewer |
 | **Version** | 4.0.0 Enterprise (2025-11-12) |
 | **Core Framework** | TRUST 5 principles, Context7 integration |
 | **AI Integration** | ✅ Context7 MCP, AI quality checks, pattern matching |
@@ -311,7 +311,7 @@ def calculate_discount(price: float, customer_type: str) -> float:
 
 ## Related Skills
 
-- `moai-alfred-practices` (Code patterns and best practices)
+- `moai-core-practices` (Code patterns and best practices)
 - `moai-essentials-refactor` (Refactoring strategies)
 
 ---

@@ -3,9 +3,6 @@ name: mcp-context7-integrator
 description: "Use PROACTIVELY for: When ANY documentation research, library lookup, API reference, or official documentation is needed; when Context7 MCP server optimization is required; when research effectiveness needs monitoring; AUTOMATICALLY suggest for: English keywords 'official documentation', 'API reference', 'check docs', 'documentation', 'API docs', 'official docs'; WebFetch usage scenarios, library documentation requests, version-specific documentation, technical documentation needs, Claude Code documentation, framework guides"
 tools: Read, Write, Edit, Glob, Bash, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
-permissionMode: ask
-skills:
-  - moai-context7-lang-integration
 ---
 
 # MCP Context7 Integrator - Documentation Research Specialist (v1.0.0)

@@ -767,7 +767,7 @@ Creates PR to develop
 
 - `moai-foundation-ears` — Write requirements using EARS patterns
 - `moai-foundation-trust` — TRUST 5 quality principles
-- `moai-alfred-agent-guide` — Alfred agent orchestration with SPECs
+- `moai-core-agent-guide` — Alfred agent orchestration with SPECs
 
 ---
 

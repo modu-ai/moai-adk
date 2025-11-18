@@ -23,7 +23,7 @@ allowed-tools:
 
 | Field | Value |
 | ----- | ----- |
-| **Skill Name** | moai-alfred-config-schema |
+| **Skill Name** | moai-core-config-schema |
 | **Version** | 4.0.0 Enterprise (2025-11-12) |
 | **Standards** | JSON Schema v2024-12, RFC 8174 keywords, TOML/YAML best practices |
 | **AI Integration** | ✅ Context7 MCP for official docs |
@@ -424,7 +424,7 @@ function validateSecrets(config: AppConfig): void {
 
 ## Related Skills
 
-- `moai-alfred-practices` (Best practices patterns)
+- `moai-core-practices` (Best practices patterns)
 - `moai-foundation-specs` (Specification management)
 
 ---

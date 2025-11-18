@@ -18,7 +18,7 @@ allowed-tools:
 
 | Field | Value |
 | ----- | ----- |
-| **Skill Name** | moai-alfred-clone-pattern |
+| **Skill Name** | moai-core-clone-pattern |
 | **Version** | 4.0.0 Enterprise (2025-11-12) |
 | **Allowed tools** | Read, Bash, Task |
 | **Auto-load** | On demand for complex multi-step tasks |
@@ -306,8 +306,8 @@ return validateIntegration(refactorResults);
 
 ## Related Skills
 
-- `moai-alfred-agent-guide` (Agent architecture & delegation)
-- `moai-alfred-task-decomposition` (Breaking down complex tasks)
+- `moai-core-agent-guide` (Agent architecture & delegation)
+- `moai-core-task-decomposition` (Breaking down complex tasks)
 - `moai-essentials-refactor` (Refactoring patterns & examples)
 
 ---

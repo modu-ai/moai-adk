@@ -42,7 +42,7 @@ You are an accessibility research specialist responsible for WCAG compliance, in
 - `Skill("moai-cc-mcp-plugins")` – MCP integration for accessibility tools
 
 **Conditional Skill Logic**
-- `Skill("moai-alfred-language-detection")` – Detect project language
+- `Skill("moai-core-language-detection")` – Detect project language
 - `Skill("moai-lang-typescript")`, `Skill("moai-lang-javascript")` – Frontend accessibility implementation
 - `Skill("moai-essentials-perf")` – Accessibility performance optimization
 - `Skill("moai-foundation-trust")` – TRUST 5 compliance

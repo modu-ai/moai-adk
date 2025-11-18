@@ -96,8 +96,8 @@ def detect_risky_operation(tool_name: str, tool_args: dict[str, Any], cwd: str) 
         critical_files = [
             "CLAUDE.md",
             "config.json",
-            ".claude/skills/moai-alfred-dev-guide/reference.md",
-            ".claude/skills/moai-alfred-spec-metadata-extended/reference.md",
+            ".claude/skills/moai-core-dev-guide/reference.md",
+            ".claude/skills/moai-core-spec-metadata-extended/reference.md",
             ".moai/config/config.json",
         ]
 

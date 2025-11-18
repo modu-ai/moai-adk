@@ -535,8 +535,8 @@ optimized = optimizer.progressive_summarize(large_context)
 
 - **SKILL.md** - Complete feature overview
 - **reference.md** - Implementation patterns and APIs
-- **../moai-alfred-context-budget** - Advanced token optimization
-- **../moai-alfred-agent-guide** - Multi-agent coordination
+- **../moai-core-context-budget** - Advanced token optimization
+- **../moai-core-agent-guide** - Multi-agent coordination
 - **Claude Agent SDK** - https://docs.claude.com/agent-sdk
 - **Claude Session Management** - https://docs.claude.com/en/docs/agent-sdk/sessions
 - **Context Windows** - https://docs.claude.com/en/docs/build-with-claude/context-windows

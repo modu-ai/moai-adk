@@ -590,7 +590,7 @@ class SynthesisEngine:
 ## Works Well With
 
 - `moai-foundation-specs` (SPEC lifecycle management)
-- `moai-alfred-spec-authoring` (SPEC creation and writing)
+- `moai-core-spec-authoring` (SPEC creation and writing)
 - `moai-foundation-trust` (Trust and quality principles)
 - `moai-domain-backend` (Technical solution implementation)
 - `moai-security-api` (Security requirements analysis)

@@ -485,11 +485,11 @@ unwanted_behaviors:
 
 ### Related Skills
 
-- `moai-alfred-best-practices` - TRUST 5 principles for SPEC authoring
-- `moai-alfred-spec-validation` - Automated SPEC validation
+- `moai-core-best-practices` - TRUST 5 principles for SPEC authoring
+- `moai-core-spec-validation` - Automated SPEC validation
 - `moai-foundation-specs` - SPEC lifecycle management
 - `moai-foundation-trust` - Security and compliance principles
-- `moai-alfred-workflow` - SPEC creation workflows
+- `moai-core-workflow` - SPEC creation workflows
 
 ### TRUST Principles Applied
 

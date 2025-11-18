@@ -50,7 +50,7 @@ allowed-tools: ['Tool1', 'Tool2']   # Required tool access
 #### Pattern 2: Process/Workflow Skill
 - **Purpose**: Step-by-step guidance for complex processes
 - **Structure**: Workflow phases, Decision trees, Checklists
-- **Examples**: moai-alfred-agent-guide, moai-foundation-trust
+- **Examples**: moai-core-agent-guide, moai-foundation-trust
 
 #### Pattern 3: Tool/Integration Skill
 - **Purpose**: Third-party service integration patterns

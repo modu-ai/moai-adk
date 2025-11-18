@@ -423,7 +423,7 @@ require {package_path} {version}
 
 - **moai-document-processing**: Document generation and formatting
 - **moai-domain-testing**: Documentation testing and validation
-- **moai-alfred-workflow**: README generation automation
+- **moai-core-workflow**: README generation automation
 - **moai-essentials-refactor**: Content optimization and refactoring
 
 ## Quick Start Checklist

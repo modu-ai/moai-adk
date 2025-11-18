@@ -1,129 +1,106 @@
 #!/usr/bin/env python3
-"""
-SubagentStop Hook: Track agent lifecycle completion
+"""Subagent Stop Lifecycle Tracker Hook
 
-Claude Code v2.0.42 신규 기능:
-- agent_id: 에이전트 식별자
-- agent_transcript_path: 에이전트 대화 기록 파일 경로
-- execution_time_ms: 에이전트 실행 시간 (밀리초)
-
-역할:
-1. 에이전트 실행 완료 기록
-2. 실행 시간 측정 및 저장
-3. 성능 데이터 수집
-4. 워크플로우 체인 분석
+Tracks lifecycle events when subagents complete execution.
+Handles cleanup, state persistence, and transition management.
 """
 
 import json
 import sys
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 
-def track_agent_lifecycle(
-    agent_id: str,
-    agent_name: str,
-    transcript_path: str,
-    execution_time_ms: int,
-    success: bool,
-) -> dict:
-    """
-    에이전트 실행 라이프사이클 추적
+def get_lifecycle_state_file(cwd: str) -> Path:
+    """Get the path to lifecycle state tracking file"""
+    state_dir = Path(cwd) / ".moai" / "memory"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    return state_dir / "subagent-lifecycle-state.json"
 
-    v2.0.42: agent_transcript_path를 활용한 상세 추적
-    """
 
-    # 에이전트 메타데이터 업데이트
-    metadata_dir = Path(".moai/logs/agent-transcripts")
-    metadata_dir.mkdir(parents=True, exist_ok=True)
-
-    metadata_file = metadata_dir / f"agent-{agent_id}.json"
-
-    # 기존 메타데이터 읽기
-    metadata = {}
-    if metadata_file.exists():
-        try:
-            metadata = json.loads(metadata_file.read_text())
-        except json.JSONDecodeError:
-            pass
-
-    # 실행 완료 정보 추가
-    metadata.update({
-        "agent_id": agent_id,
-        "agent_name": agent_name,
-        "transcript_path": transcript_path,  # v2.0.42
-        "execution_time_ms": execution_time_ms,
-        "execution_time_seconds": execution_time_ms / 1000,
-        "success": success,
-        "completed_at": datetime.now().isoformat(),
-        "status": "completed" if success else "failed",
-    })
-
-    # 메타데이터 저장
-    metadata_file.write_text(json.dumps(metadata, indent=2, ensure_ascii=False))
-
-    # 에이전트별 성능 통계 기록
-    stats_file = Path(".moai/logs/agent-performance.jsonl")
-    stats_file.parent.mkdir(parents=True, exist_ok=True)
-
-    performance_record = {
-        "timestamp": datetime.now().isoformat(),
-        "agent_id": agent_id,
-        "agent_name": agent_name,
-        "execution_time_ms": execution_time_ms,
-        "success": success,
-    }
-
-    # JSONL 포맷으로 append
-    with open(stats_file, "a", encoding="utf-8") as f:
-        f.write(json.dumps(performance_record, ensure_ascii=False) + "\n")
-
-    # 시스템 메시지 반환
-    status_emoji = "✅" if success else "❌"
-    time_str = f"{execution_time_ms / 1000:.1f}s"
-
+def load_lifecycle_state(cwd: str) -> dict:
+    """Load current subagent lifecycle state"""
+    try:
+        state_file = get_lifecycle_state_file(cwd)
+        if state_file.exists():
+            with open(state_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception:
+        pass
     return {
-        "continue": True,
-        "systemMessage": f"{status_emoji} {agent_name} completed in {time_str}"
+        "last_subagent": None,
+        "last_completion": None,
+        "total_executions": 0,
+        "session_start": datetime.now().isoformat(),
     }
+
+
+def save_lifecycle_state(cwd: str, state: dict) -> None:
+    """Save subagent lifecycle state"""
+    try:
+        state_file = get_lifecycle_state_file(cwd)
+        with open(state_file, "w", encoding="utf-8") as f:
+            json.dump(state, f, indent=2)
+    except Exception:
+        pass
+
+
+def handle_subagent_stop(payload: dict) -> dict:
+    """Handle subagent stop event
+
+    Tracks when a subagent completes execution and updates lifecycle state.
+    """
+    try:
+        cwd = payload.get("cwd", ".")
+        subagent_type = payload.get("subagent_type", "unknown")
+        status = payload.get("status", "unknown")
+
+        # Load current state
+        state = load_lifecycle_state(cwd)
+
+        # Update with new information
+        state["last_subagent"] = subagent_type
+        state["last_completion"] = datetime.now().isoformat()
+        state["last_status"] = status
+        state["total_executions"] = state.get("total_executions", 0) + 1
+
+        # Save updated state
+        save_lifecycle_state(cwd, state)
+
+        return {
+            "status": "success",
+            "message": f"Tracked subagent stop: {subagent_type}",
+            "state": state,
+        }
+    except Exception as e:
+        # Graceful degradation: log but don't fail
+        return {
+            "status": "warning",
+            "message": f"Error tracking subagent lifecycle: {str(e)}",
+        }
 
 
 def main():
-    """
-    Claude Code Hook Entry Point
-
-    STDIN: JSON with:
-    - agentId (v2.0.42)
-    - agentName (v2.0.42)
-    - agentTranscriptPath (v2.0.42)
-    - executionTime: 실행 시간 (밀리초)
-    - success: 성공 여부
-    """
+    """Main hook entry point"""
     try:
-        hook_input = json.loads(sys.stdin.read())
+        # Read hook payload from stdin
+        payload = json.loads(sys.stdin.read())
 
-        # v2.0.42 필드
-        agent_id = hook_input.get("agentId", "unknown")
-        agent_name = hook_input.get("agentName", "unknown")
-        transcript_path = hook_input.get("agentTranscriptPath", "")
-        execution_time_ms = hook_input.get("executionTime", 0)
-        success = hook_input.get("success", False)
+        # Process subagent stop event
+        result = handle_subagent_stop(payload)
 
-        result = track_agent_lifecycle(
-            agent_id=agent_id,
-            agent_name=agent_name,
-            transcript_path=transcript_path,
-            execution_time_ms=execution_time_ms,
-            success=success,
-        )
-        print(json.dumps(result))
+        # Output result
+        print(json.dumps(result), file=sys.stdout)
+        sys.exit(0)
 
     except Exception as e:
-        # Hook 실패 시 graceful degradation
-        print(json.dumps({
-            "continue": True,
-            "systemMessage": f"⚠️ Lifecycle tracking failed: {str(e)}"
-        }))
+        # Graceful error handling
+        error_result = {
+            "status": "error",
+            "message": f"Hook execution failed: {str(e)}",
+        }
+        print(json.dumps(error_result), file=sys.stdout)
+        sys.exit(0)  # Exit 0 to prevent hook failure from blocking execution
 
 
 if __name__ == "__main__":

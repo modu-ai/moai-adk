@@ -16,7 +16,7 @@ allowed-tools:
 
 | Field | Value |
 | ----- | ----- |
-| **Skill Name** | moai-alfred-ask-user-questions |
+| **Skill Name** | moai-core-ask-user-questions |
 | **Version** | 4.0.0 Enterprise (2025-11-12) |
 | **Core Tool** | `AskUserQuestion` (Claude Code built-in) |
 | **Auto-load** | When Alfred detects ambiguity in requests |
@@ -407,10 +407,10 @@ if (answer["Destructive Op"] === "Proceed") {
 
 ## 🔗 Related Skills
 
-- `moai-alfred-personas` (Communication styles by user level)
-- `moai-alfred-spec-authoring` (SPEC clarity & structure)
+- `moai-core-personas` (Communication styles by user level)
+- `moai-core-spec-authoring` (SPEC clarity & structure)
 - `moai-foundation-specs` (SPEC format & requirements)
-- `moai-alfred-language-detection` (Conversation language handling)
+- `moai-core-language-detection` (Conversation language handling)
 
 ---
 

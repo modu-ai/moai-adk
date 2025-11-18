@@ -19,7 +19,7 @@ allowed-tools:
 
 | Field | Value |
 | ----- | ----- |
-| **Skill Name** | moai-alfred-session-state |
+| **Skill Name** | moai-core-session-state |
 | **Version** | 4.0.0 (Enterprise) |
 | **Updated** | 2025-11-12 |
 | **Status** | Active |
@@ -560,8 +560,8 @@ def sync_memory_files(session_state):
 
 ## Related Skills
 
-- `moai-alfred-context-budget` - Token optimization deep dive
-- `moai-alfred-agent-guide` - Multi-agent coordination
+- `moai-core-context-budget` - Token optimization deep dive
+- `moai-core-agent-guide` - Multi-agent coordination
 - `moai-foundation-trust` - State validation principles
 - `moai-foundation-git` - Git session state tracking
 

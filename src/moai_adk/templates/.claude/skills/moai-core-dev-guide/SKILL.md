@@ -11,7 +11,7 @@ keywords: ["spec-first", "tdd", "red-green-refactor", "trust-principles", "pytes
 status: stable
 ---
 
-# moai-alfred-dev-guide
+# moai-core-dev-guide
 
 **Enterprise SPEC-First TDD Development Orchestration**
 

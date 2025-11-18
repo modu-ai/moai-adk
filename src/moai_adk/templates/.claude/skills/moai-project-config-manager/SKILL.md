@@ -275,7 +275,7 @@ def optimize_config_for_performance(config):
 - `/alfred:3-sync` - Update configuration based on project changes
 
 **With Other Skills**:
-- `moai-alfred-ask-user-questions` - Interactive setting collection
+- `moai-core-ask-user-questions` - Interactive setting collection
 - `moai-skill-factory` - Skill configuration management
 - Domain-specific skills - Respect configuration settings for behavior
 

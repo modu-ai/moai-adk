@@ -457,8 +457,8 @@ jobs:
 ### Skill Dependencies
 
 - `moai-domain-cloud`: Cloud security patterns
-- `moai-alfred-dev-guide`: Secure development practices
-- `moai-alfred-best-practices`: Security best practices
+- `moai-core-dev-guide`: Secure development practices
+- `moai-core-best-practices`: Security best practices
 
 ---
 

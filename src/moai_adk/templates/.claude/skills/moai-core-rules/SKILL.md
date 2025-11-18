@@ -12,7 +12,7 @@ allowed-tools: "Read, Glob, Grep, Bash, AskUserQuestion, TodoWrite"
 
 ## Skill 개요
 
-**moai-alfred-rules**는 Alfred SuperAgent의 의사결정과 실행을 제어하는 핵심 프레임워크입니다.
+**moai-core-rules**는 Alfred SuperAgent의 의사결정과 실행을 제어하는 핵심 프레임워크입니다.
 
 | 항목 | 값 |
 |------|-----|

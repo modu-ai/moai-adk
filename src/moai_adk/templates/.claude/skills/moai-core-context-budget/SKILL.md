@@ -9,7 +9,7 @@ keywords: ["context", "optimization", "memory", "tokens", "performance", "mcp", 
 status: stable
 ---
 
-# moai-alfred-context-budget
+# moai-core-context-budget
 
 **Enterprise Context Window Optimization for Claude Code**
 
@@ -768,7 +768,7 @@ Result: Complete, high-quality responses
 
 ## Works Well With
 
-- `moai-alfred-practices` - Development best practices
-- `moai-alfred-session-state` - Session management
+- `moai-core-practices` - Development best practices
+- `moai-core-session-state` - Session management
 - `moai-cc-memory` - Memory file patterns
-- `moai-alfred-workflow` - 4-step workflow optimization
+- `moai-core-workflow` - 4-step workflow optimization

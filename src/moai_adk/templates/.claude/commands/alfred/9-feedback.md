@@ -7,8 +7,8 @@ allowed-tools:
 - AskUserQuestion
 - Skill
 skills:
-- moai-alfred-issue-labels
-- moai-alfred-feedback-templates
+- moai-core-issue-labels
+- moai-core-feedback-templates
 ---
 
 # 🎯 MoAI-ADK Alfred 9-Feedback: GitHub Issue Quick Creation Tool
@@ -186,7 +186,7 @@ Alfred automatically handles:
 1. **⚡ Fast**: Complete in 2-3 steps within 30 seconds
 2. **🤖 Automated**: Automatically collect version and environment information
 3. **📋 Accurate**: Structured templates by label
-4. **🏷️ Meaningful**: Classification based on `moai-alfred-issue-labels` skill
+4. **🏷️ Meaningful**: Classification based on `moai-core-issue-labels` skill
 5. **🔄 Reusable**: Share labels with `/alfred:1-plan`, `/alfred:3-sync`
 6. **Multi-language**: All text written in user's conversation language
 

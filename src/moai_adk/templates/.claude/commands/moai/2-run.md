@@ -83,10 +83,10 @@ All complexity is handled by the **run-orchestrator** agent.
 
 ### Skills Used (by agents, not command)
 
-- `Skill("moai-alfred-workflow")` - Workflow orchestration
-- `Skill("moai-alfred-todowrite-pattern")` - Task tracking
-- `Skill("moai-alfred-ask-user-questions")` - User interaction
-- `Skill("moai-alfred-reporting")` - Result reporting
+- `Skill("moai-core-workflow")` - Workflow orchestration
+- `Skill("moai-core-todowrite-pattern")` - Task tracking
+- `Skill("moai-core-ask-user-questions")` - User interaction
+- `Skill("moai-core-reporting")` - Result reporting
 - Domain-specific skills (selected per language/framework)
 
 ---

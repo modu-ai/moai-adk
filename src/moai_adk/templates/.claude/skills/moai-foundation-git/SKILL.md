@@ -519,9 +519,9 @@ git config --global feature.experimental true
 
 ## Related Skills
 
-- `moai-alfred-agent-guide` - Workflow orchestration
+- `moai-core-agent-guide` - Workflow orchestration
 - `moai-foundation-trust` - Quality gate enforcement
-- `moai-alfred-session-state` - Git session persistence
+- `moai-core-session-state` - Git session persistence
 - `moai-foundation-tags` - TAG management
 
 ---

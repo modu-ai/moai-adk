@@ -24,7 +24,7 @@ allowed-tools:
 
 | Field | Value |
 | ----- | ----- |
-| **Skill Name** | moai-alfred-proactive-suggestions |
+| **Skill Name** | moai-core-proactive-suggestions |
 | **Version** | 4.0.0 (2025-11-13) |
 | **Tier** | Enterprise Alfred Intelligence Expert |
 | **AI-Powered** | ✅ Context7 Integration, Intelligent Suggestions |
@@ -674,8 +674,8 @@ class SuggestionFeedback:
 
 ## Works Well With
 
-- `moai-alfred-workflow` (Alfred workflow integration)
-- `moai-alfred-agent-guide` (Agent assistance patterns)
+- `moai-core-workflow` (Alfred workflow integration)
+- `moai-core-agent-guide` (Agent assistance patterns)
 - `moai-foundation-trust` (User trust and adoption)
 - `moai-domain-backend` (Backend optimization suggestions)
 - `moai-domain-frontend` (Frontend optimization suggestions)

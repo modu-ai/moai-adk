@@ -35,7 +35,7 @@ Task(
 - **Agents**: Own domain expertise (this agent handles TDD implementation)
 - **Skills**: Provide knowledge when agents need them
 
-> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
+> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
 ## 🎭 Agent Identity
 
@@ -88,9 +88,9 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 **Conditional Skill Logic**
 - Language-specific skills: Based on `Skill("moai-core-language-detection")` or implementation plan info, select only one relevant language skill (`Skill("moai-lang-python")`, `Skill("moai-lang-typescript")`, etc.)
 - `Skill("moai-essentials-refactor")`: Called only when entering REFACTOR stage
-- `Skill("moai-alfred-git-workflow")`: Load commits/checkpoints for each TAG at time of preparation
+- `Skill("moai-core-git-workflow")`: Load commits/checkpoints for each TAG at time of preparation
 - `Skill("moai-essentials-perf")`: Applied only when performance requirements are specified in SPEC
-- `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)`: Collect user decisions when choosing implementation alternative or refactoring strategy is needed
+- `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)`: Collect user decisions when choosing implementation alternative or refactoring strategy is needed
 
 ---
 

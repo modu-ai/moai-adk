@@ -21,7 +21,7 @@ allowed-tools:
 
 | Field | Value |
 | ----- | ----- |
-| **Skill Name** | moai-alfred-issue-labels |
+| **Skill Name** | moai-core-issue-labels |
 | **Version** | 4.0.0 Enterprise (2025-11-12) |
 | **AI Integration** | ✅ Context7 MCP, semantic analysis, auto-classification |
 | **Auto-load** | On issue creation/update for auto-labeling |
@@ -209,7 +209,7 @@ Duplicate → linked to original
 
 ## Related Skills
 
-- `moai-alfred-practices` (Workflow patterns)
+- `moai-core-practices` (Workflow patterns)
 - `moai-foundation-specs` (Issue specification)
 
 ---

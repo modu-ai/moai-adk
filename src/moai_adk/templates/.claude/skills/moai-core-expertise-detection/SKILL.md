@@ -20,7 +20,7 @@ allowed-tools:
 
 | Field | Value |
 | ----- | ----- |
-| **Skill Name** | moai-alfred-expertise-detection |
+| **Skill Name** | moai-core-expertise-detection |
 | **Version** | 4.0.0 Enterprise (2025-11-12) |
 | **AI Integration** | ✅ Context7 MCP, behavioral analysis, pattern recognition |
 | **Auto-load** | Continuous during user interactions |
@@ -279,8 +279,8 @@ Expert:     "reification", "lifting", "unfold semantics"
 
 ## Related Skills
 
-- `moai-alfred-personas` (Communication style adaptation)
-- `moai-alfred-practices` (Pattern examples at all levels)
+- `moai-core-personas` (Communication style adaptation)
+- `moai-core-practices` (Pattern examples at all levels)
 
 ---
 

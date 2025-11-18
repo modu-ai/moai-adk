@@ -114,8 +114,8 @@ Response: Execute immediately, minimal output
 
 **Called by**:
 - Every Alfred request (implicit)
-- `moai-alfred-persona-roles` (role selection)
-- `moai-alfred-proactive-suggestions` (suggestion threshold)
+- `moai-core-persona-roles` (role selection)
+- `moai-core-proactive-suggestions` (suggestion threshold)
 
 **Calls**:
 - None (standalone signal analysis)

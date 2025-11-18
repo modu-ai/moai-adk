@@ -180,9 +180,9 @@ The skill automatically manages `.moai/config/config.json` persistence:
 - `/alfred:3-sync`: Respects report generation settings
 
 ### With Other Skills
-- `moai-alfred-ask-user-questions`: Uses TUI survey patterns
+- `moai-core-ask-user-questions`: Uses TUI survey patterns
 - `moai-skill-factory`: Can be invoked for skill template application
-- `moai-alfred-agent-guide`: Provides agent lineup based on domains
+- `moai-core-agent-guide`: Provides agent lineup based on domains
 
 ### Configuration Dependencies
 - `.moai/config/config.json`: Primary configuration store

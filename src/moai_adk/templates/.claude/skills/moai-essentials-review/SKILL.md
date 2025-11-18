@@ -293,7 +293,7 @@ Consistent with team patterns
 
 ## Related Skills
 
-- `moai-alfred-code-reviewer` (Manual review guidance)
+- `moai-core-code-reviewer` (Manual review guidance)
 - `moai-essentials-debug` (Debugging techniques)
 
 ---

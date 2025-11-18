@@ -79,7 +79,7 @@ Claude Code Agents system, task delegation patterns, and multi-agent coordinatio
 
 - `moai-cc-skills` (Agent knowledge)
 - `moai-cc-hooks` (Agent event handling)
-- `moai-alfred-agent-guide` (Agent selection patterns)
+- `moai-core-agent-guide` (Agent selection patterns)
 
 ---
 
