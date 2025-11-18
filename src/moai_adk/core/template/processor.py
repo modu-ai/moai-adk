@@ -12,6 +12,7 @@ Enhanced with:
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 import shutil
@@ -789,6 +790,7 @@ class TemplateProcessor:
         self._copy_github(silent)
         self._copy_claude_md(silent)
         self._copy_gitignore(silent)
+        self._copy_mcp_json(silent)
 
         if not silent:
             console.print("✅ Templates copied successfully")
@@ -861,7 +863,7 @@ class TemplateProcessor:
         alfred_folders = [
             "hooks/alfred",
             "commands/alfred",  # Contains 0-project.md, 1-plan.md, 2-run.md, 3-sync.md
-            "output-styles/alfred",
+            "output-styles/moai",
             "agents/alfred",
         ]
 
@@ -880,6 +882,34 @@ class TemplateProcessor:
                 shutil.copytree(src_folder, dst_folder)
                 if not silent:
                     console.print(f"   ✅ .claude/{folder}/ overwritten")
+
+        # 1.5 Copy other subdirectories in parent folders (e.g., output-styles/moai, hooks/shared)
+        # This ensures non-alfred subdirectories are also copied
+        parent_folders_with_subdirs = ["output-styles", "hooks", "commands", "agents"]
+        for parent_name in parent_folders_with_subdirs:
+            src_parent = src / parent_name
+            if not src_parent.exists():
+                continue
+
+            for subdir in src_parent.iterdir():
+                if not subdir.is_dir():
+                    continue
+
+                # Skip alfred subdirectories (already handled above)
+                if subdir.name == "alfred":
+                    continue
+
+                rel_subdir = f"{parent_name}/{subdir.name}"
+                dst_subdir = dst / parent_name / subdir.name
+
+                if dst_subdir.exists():
+                    # For non-alfred directories, overwrite with merge if necessary
+                    shutil.rmtree(dst_subdir)
+
+                # Copy the subdirectory
+                shutil.copytree(subdir, dst_subdir)
+                if not silent:
+                    console.print(f"   ✅ .claude/{rel_subdir}/ copied")
 
         # 2. Copy other files/folders individually (smart merge for settings.json)
         all_warnings = []
@@ -1090,6 +1120,47 @@ class TemplateProcessor:
             dst: Project .gitignore.
         """
         self.merger.merge_gitignore(src, dst)
+
+    def _copy_mcp_json(self, silent: bool = False) -> None:
+        """.mcp.json copy (smart merge with existing MCP server configuration)."""
+        src = self.template_root / ".mcp.json"
+        dst = self.target_path / ".mcp.json"
+
+        if not src.exists():
+            return
+
+        # Merge with existing .mcp.json when present (preserve user-added MCP servers)
+        if dst.exists():
+            self._merge_mcp_json(src, dst)
+            if not silent:
+                console.print("   🔄 .mcp.json merged (user MCP servers preserved)")
+        else:
+            shutil.copy2(src, dst)
+            if not silent:
+                console.print("   ✅ .mcp.json copy complete")
+
+    def _merge_mcp_json(self, src: Path, dst: Path) -> None:
+        """Smart merge for .mcp.json (preserve user-added MCP servers).
+
+        Args:
+            src: Template .mcp.json.
+            dst: Project .mcp.json.
+        """
+        try:
+            src_data = json.loads(src.read_text(encoding="utf-8"))
+            dst_data = json.loads(dst.read_text(encoding="utf-8"))
+
+            # Merge mcpServers: preserve user servers, update template servers
+            if "mcpServers" in src_data:
+                if "mcpServers" not in dst_data:
+                    dst_data["mcpServers"] = {}
+                # Update with template servers (preserves existing user servers)
+                dst_data["mcpServers"].update(src_data["mcpServers"])
+
+            # Write merged result back
+            dst.write_text(json.dumps(dst_data, indent=2, ensure_ascii=False), encoding="utf-8")
+        except json.JSONDecodeError as e:
+            console.print(f"[yellow]⚠️ Failed to merge .mcp.json: {e}[/yellow]")
 
     def merge_config(self, detected_language: str | None = None) -> dict[str, str]:
         """Delegate the smart merge for config.json.
