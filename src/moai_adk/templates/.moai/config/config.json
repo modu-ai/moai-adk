@@ -186,6 +186,117 @@
     "spec_git_workflow_configured": false,
     "notes": "auto_delete_branches: whether to auto-delete feature branches after merge. spec_git_workflow: 'feature_branch' (auto), 'develop_direct' (direct), 'per_spec' (ask per SPEC - flexible, user controls each workflow)"
   },
+  "agent_permissions": {
+    "_meta": "Claude Code v2.0.43 Agent Permission & Skills Configuration",
+    "_version": "2.0.43",
+    "_description": "Agent-level permission control (permissionMode) and Skills auto-loading",
+    "_activated_by": "SubagentStart/Stop Hooks with model parameter optimization",
+    "hooks": {
+      "model_strategy": {
+        "subagent_start": {
+          "type": "context_optimizer",
+          "purpose": "Optimize context for each agent based on type",
+          "model": "haiku",
+          "cost_savings": "70% vs no optimization",
+          "features": ["context_strategy", "token_budget", "priority_files", "auto_load_skills"]
+        },
+        "subagent_stop": {
+          "type": "lifecycle_tracker",
+          "purpose": "Track agent completion and performance metrics",
+          "model": "haiku",
+          "tracking": ["execution_time_ms", "success_status", "agent_transcript_path"]
+        }
+      }
+    },
+    "permission_modes": {
+      "auto": {
+        "description": "Automatically executed (no user approval required)",
+        "use_cases": ["SPEC generation", "documentation", "validation", "configuration"],
+        "examples": ["spec-builder", "docs-manager", "quality-gate"],
+        "safety": "Safe for non-destructive operations"
+      },
+      "ask": {
+        "description": "Requires user approval via Task() delegation",
+        "use_cases": ["code implementation", "architecture decisions", "deployment"],
+        "examples": ["tdd-implementer", "backend-expert", "frontend-expert"],
+        "safety": "Requires explicit user confirmation"
+      }
+    },
+    "auto_mode_agents": [
+      "spec-builder",
+      "docs-manager",
+      "quality-gate",
+      "project-manager",
+      "agent-factory",
+      "skill-factory",
+      "doc-syncer",
+      "cc-manager",
+      "format-expert",
+      "sync-manager"
+    ],
+    "ask_mode_agents": [
+      "tdd-implementer",
+      "backend-expert",
+      "frontend-expert",
+      "performance-engineer",
+      "devops-expert",
+      "api-designer",
+      "mcp-context7-integrator",
+      "debug-helper",
+      "implementation-planner",
+      "monitoring-expert",
+      "migration-expert",
+      "ui-ux-expert",
+      "accessibility-expert",
+      "component-designer",
+      "trust-checker",
+      "mcp-sequential-thinking-integrator",
+      "mcp-playwright-integrator",
+      "mcp-notion-integrator",
+      "figma-expert",
+      "database-expert",
+      "security-expert",
+      "git-manager"
+    ],
+    "skills_configuration": {
+      "_notes": "Each agent has domain-specific Skills in frontmatter. Skills auto-load via SubagentStart Hook.",
+      "high_reuse_skills": {
+        "moai-lang-python": "7 agents (spec-builder, tdd-implementer, backend-expert, etc.)",
+        "moai-domain-frontend": "5 agents (frontend-expert, ui-ux-expert, component-designer, etc.)",
+        "moai-domain-cloud": "4 agents (devops-expert, performance-engineer, monitoring-expert, database-expert)",
+        "moai-context7-lang-integration": "4 agents (backend-expert, api-designer, mcp-context7-integrator)"
+      },
+      "specialized_skills": {
+        "moai-security-*": "security-expert only",
+        "moai-baas-vercel-ext": "devops-expert only",
+        "moai-domain-figma": "figma-expert only",
+        "moai-domain-notion": "mcp-notion-integrator only",
+        "moai-playwright-webapp-testing": "mcp-playwright-integrator only"
+      }
+    },
+    "activation_flow": {
+      "_notes": "How agent permissions and skills are loaded",
+      "step_1": "User calls /alfred:1-plan or /alfred:2-run or Task(subagent_type='...')",
+      "step_2": "SubagentStart Hook (model: haiku) triggered automatically",
+      "step_3": "Agent frontmatter loaded (permissionMode + skills array)",
+      "step_4": "If ask mode: User approval required via AskUserQuestion",
+      "step_5": "If auto mode: Execute immediately",
+      "step_6": "Skills auto-loaded based on agent type",
+      "step_7": "SubagentStop Hook tracks completion and metrics"
+    },
+    "cost_optimization": {
+      "hook_model_selection": {
+        "haiku": "70% cheaper than sonnet, sufficient for lightweight hooks (SubagentStart/Stop)",
+        "sonnet": "Used for complex user interaction hooks (UserPromptSubmit requires reasoning)",
+        "cost_savings": "~73% reduction with haiku-based hooks vs all-sonnet"
+      },
+      "agent_delegation": {
+        "_notes": "Using Task() for agent delegation saves 80-85% context tokens",
+        "monolithic": "All context loaded: 130,000 tokens",
+        "delegated": "Focused agents: 20,000-30,000 tokens each"
+      }
+    }
+  },
   "document_management": {
     "_meta": {
     },

@@ -3,6 +3,12 @@ name: docs-manager
 description: "Use PROACTIVELY for when documentation needs to be generated, updated, or optimized; when Nextra documentation setup is required; when README.md needs professional enhancement; when markdown/Mermaid content needs validation and linting."
 tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
+permissionMode: auto
+skills:
+  - moai-docs-generation
+  - moai-docs-validation
+  - moai-cc-claude-md
+  - moai-mermaid-diagram-expert
 ---
 
 # Documentation Manager Expert

@@ -3,6 +3,11 @@ name: devops-expert
 description: "Use PROACTIVELY when: Deployment configuration, CI/CD pipeline setup, containerization, cloud infrastructure, or DevOps automation is needed. Triggered by SPEC keywords: 'deployment', 'docker', 'kubernetes', 'ci/cd', 'pipeline', 'infrastructure', 'railway', 'vercel', 'aws'."
 tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, Task, AskUserQuestion, mcp__github__create-or-update-file, mcp__github__push-files, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
 model: inherit
+permissionMode: ask
+skills:
+  - moai-domain-cloud
+  - moai-baas-vercel-ext
+  - moai-baas-clerk-ext
 ---
 
 # DevOps Expert - Deployment & Infrastructure Specialist

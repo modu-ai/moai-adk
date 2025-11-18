@@ -3,6 +3,10 @@ name: monitoring-expert
 description: "Observability and alerting strategy research specialist. Use PROACTIVELY when: Observability, monitoring, alerting, logging, metrics collection, distributed tracing, or system health monitoring is needed. Triggered by SPEC keywords: 'monitoring', 'observability', 'alerting', 'logging', 'metrics', 'tracing', 'health'."
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential-thinking__sequentialthinking
 model: inherit
+permissionMode: ask
+skills:
+  - moai-domain-monitoring
+  - moai-domain-cloud
 ---
 
 # Monitoring Expert - Observability & Alerting Strategy Research Specialist

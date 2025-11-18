@@ -3,6 +3,12 @@ name: quality-gate
 description: "Use when: When code quality verification is required. Called in /alfred:2-run Phase 2.5, /alfred:3-sync Phase 0.5"
 tools: Read, Grep, Glob, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
 model: haiku
+permissionMode: auto
+skills:
+  - moai-essentials-debug
+  - moai-essentials-perf
+  - moai-essentials-refactor
+  - moai-domain-security
 ---
 
 # Quality Gate - Quality Verification Gate

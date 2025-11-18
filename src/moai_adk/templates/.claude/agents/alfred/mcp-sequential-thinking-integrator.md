@@ -3,6 +3,8 @@ name: mcp-sequential-thinking-integrator
 description: "Use PROACTIVELY for: Complex problem decomposition, strategic planning, or multi-step reasoning; when users request thinking, analysis, or consideration (think about, analyze, consider, please think, analyze this, consider this); when Sequential Thinking MCP server optimization is required; when reasoning effectiveness needs monitoring"
 tools: Read, Write, Edit, Glob, Bash, WebFetch, AskUserQuestion, mcp__sequential_thinking_think
 model: sonnet
+permissionMode: ask
+skills: []
 ---
 
 # MCP Sequential Thinking Integrator - Strategic Reasoning Specialist (v1.0.0)

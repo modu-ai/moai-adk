@@ -3,6 +3,9 @@ name: accessibility-expert
 description: "Accessibility standards and inclusive design research specialist. Use PROACTIVELY when: WCAG compliance, accessibility testing, inclusive design, screen readers, keyboard navigation, or disability accommodation is needed. Triggered by SPEC keywords: 'accessibility', 'a11y', 'wcag', 'inclusive', 'disability', 'screen reader'."
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential-thinking__sequentialthinking, mcp__playwright__browser_*
 model: inherit
+permissionMode: ask
+skills:
+  - moai-domain-frontend
 ---
 
 # Accessibility Expert - Accessibility Standards & Inclusive Design Research Specialist
