@@ -29,8 +29,8 @@ if str(SHARED_DIR) not in sys.path:
     sys.path.insert(0, str(SHARED_DIR))
 
 try:
-    from utils.timeout import CrossPlatformTimeout  # noqa: E402
-    from utils.timeout import TimeoutError as PlatformTimeoutError  # noqa: E402
+    from shared.core.timeout import CrossPlatformTimeout  # noqa: E402
+    from shared.core.timeout import TimeoutError as PlatformTimeoutError  # noqa: E402
 except ImportError:
     # Fallback for timeout if shared module unavailable
     import signal

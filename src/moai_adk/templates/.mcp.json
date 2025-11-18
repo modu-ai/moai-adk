@@ -2,17 +2,13 @@
   "mcpServers": {
     "context7": {
       "command": "npx",
-      "args": ["-y", "@upstash/context7-mcp@latest"],
-      "timeout": 30000,
-      "retries": 3
+      "args": ["-y", "@upstash/context7-mcp@latest"]
     },
     "playwright": {
       "command": "npx",
-      "args": ["-y", "@playwright/mcp@latest"],
-      "timeout": 30000,
-      "retries": 3
+      "args": ["-y", "@playwright/mcp@latest"]
     },
-        "notion": {
+    "notion": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-notion@latest"],
       "timeout": 30000,
@@ -21,14 +17,9 @@
         "NOTION_API_KEY": "${NOTION_API_KEY}"
       }
     },
-    "figma": {
-      "command": "npx",
-      "args": ["-y", "figma-dev-mode-mcp-server@latest"],
-      "timeout": 30000,
-      "retries": 3,
-      "env": {
-        "FIGMA_PERSONAL_ACCESS_TOKEN": "${FIGMA_PERSONAL_ACCESS_TOKEN}"
-      }
+    "figma-dev-mode-mcp-server": {
+      "type": "sse",
+      "url": "http://127.0.0.1:3845/sse"
     }
   }
 }

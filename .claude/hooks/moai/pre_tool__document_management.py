@@ -20,7 +20,7 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 # Setup import path for shared modules
 HOOKS_DIR = Path(__file__).parent
@@ -29,8 +29,8 @@ if str(SHARED_DIR) not in sys.path:
     sys.path.insert(0, str(SHARED_DIR))
 
 try:
-    from utils.timeout import CrossPlatformTimeout  # noqa: E402
-    from utils.timeout import TimeoutError as PlatformTimeoutError  # noqa: E402
+    from shared.core.timeout import CrossPlatformTimeout  # noqa: E402
+    from shared.core.timeout import TimeoutError as PlatformTimeoutError  # noqa: E402
 except ImportError:
     # Fallback for timeout if shared module unavailable
     import signal
@@ -191,7 +191,7 @@ def validate_file_location(file_path: str, config: Dict) -> Dict[str, Any]:
 
     # File is in root and NOT whitelisted - violation
     doc_mgmt = config.get("document_management", {})
-    warn_violations = doc_mgmt.get("validation", {}).get("warn_violations", True)
+    doc_mgmt.get("validation", {}).get("warn_violations", True)
     block_violations = doc_mgmt.get("validation", {}).get("block_violations", False)
 
     suggested = suggest_moai_location(filename, config)

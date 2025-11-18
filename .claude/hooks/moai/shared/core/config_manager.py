@@ -5,9 +5,8 @@ Provides centralized configuration management with fallbacks and validation.
 """
 
 import json
-import os
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional
 
 # Default configuration
 DEFAULT_CONFIG = {
@@ -235,7 +234,7 @@ class ConfigManager:
         """
         return self.get("hooks.git", {})
 
-    
+
     def get_exit_code(self, exit_type: str) -> int:
         """Get exit code for specific exit type.
 

@@ -19,11 +19,7 @@
       "Bash(pkill:*)",
       "Bash(styles.css)",
       "Bash(git for-each-ref:*)",
-      "Bash(find:*)",
-      "Bash(__NEW_LINE__ echo '=== Alfred 폴더 확인 ===' ls -la .claude/agents/alfred/)",
-      "Bash(__NEW_LINE__ echo '=== Moai 에이전트 목록 (로컬) ===' ls -1 .claude/agents/moai/*.md)",
-      "Bash(__NEW_LINE__ echo '=== Alfred 명령어 확인 (로컬) ===' ls -la .claude/commands/alfred/)",
-      "Bash(__NEW_LINE__ echo '=== Alfred hooks 확인 (로컬) ===' ls -la .claude/hooks/alfred/)"
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []
@@ -32,6 +28,7 @@
   "enabledMcpjsonServers": [
     "context7",
     "playwright",
+    "notion",
     "figma-dev-mode-mcp-server"
   ]
 }

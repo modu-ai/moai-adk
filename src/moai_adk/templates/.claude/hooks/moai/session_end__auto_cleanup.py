@@ -31,9 +31,11 @@ from typing import Dict, List, Optional
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
 try:
-    from moai_adk.utils.common import format_duration, get_summary_stats
+    from shared.utils.common import format_duration, get_summary_stats
 except ImportError:
     # Fallback implementations if module not found
+    import statistics
+
     def format_duration(seconds):
         """Format duration in seconds to readable string"""
         if seconds < 60:
@@ -48,7 +50,6 @@ except ImportError:
         """Get summary statistics for a list of values"""
         if not values:
             return {"mean": 0, "min": 0, "max": 0, "std": 0}
-        import statistics
         return {
             "mean": statistics.mean(values),
             "min": min(values),
