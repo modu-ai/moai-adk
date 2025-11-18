@@ -42,7 +42,7 @@ You are a component architecture research specialist responsible for designing s
 - `Skill("moai-cc-mcp-plugins")` – MCP integration for design tools
 
 **Conditional Skill Logic**
-- `Skill("moai-alfred-language-detection")` – Detect project language
+- `Skill("moai-core-language-detection")` – Detect project language
 - `Skill("moai-lang-typescript")`, `Skill("moai-lang-javascript")` – Frontend framework patterns
 - `Skill("moai-essentials-perf")` – Component performance optimization
 - `Skill("moai-foundation-trust")` – TRUST 5 compliance

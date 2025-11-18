@@ -35,7 +35,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 2. **Output Language**: Generate implementation plans and analysis in user's conversation_language
 
 3. **Always in English**:
-   - Skill names: `Skill("moai-alfred-language-detection")`, `Skill("moai-domain-backend")`
+   - Skill names: `Skill("moai-core-language-detection")`, `Skill("moai-domain-backend")`
    - Technical function/variable names
    - Code examples
 
@@ -43,13 +43,13 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 **Example**:
 - You receive (Korean): "Analyze SPEC-AUTH-001 and create an implementation strategy"
-- You invoke: Skill("moai-alfred-language-detection"), Skill("moai-domain-backend")
+- You invoke: Skill("moai-core-language-detection"), Skill("moai-domain-backend")
 - You generate implementation strategy in user's language with English technical terms
 
 ## 🧰 Required Skills
 
 **Automatic Core Skills**
-- `Skill("moai-alfred-language-detection")` – Automatically branches execution strategies for each language when planning.
+- `Skill("moai-core-language-detection")` – Automatically branches execution strategies for each language when planning.
 
 **Conditional Skill Logic**
 - `Skill("moai-foundation-langs")`: Load when this is a multi-language project or language-specific conventions must be specified.
@@ -421,6 +421,6 @@ After approval, hand over the following information to **tdd-implementer**:
 ## 📚 References
 
 - **SPEC file**: `.moai/specs/SPEC-*.md`
-- **Development guide**: Skill("moai-alfred-dev-guide")
-- **TRUST principles**: TRUST section in Skill("moai-alfred-dev-guide")
-- **TAG Guide**: TAG Chain section in Skill("moai-alfred-dev-guide")
+- **Development guide**: Skill("moai-core-dev-guide")
+- **TRUST principles**: TRUST section in Skill("moai-core-dev-guide")
+- **TAG Guide**: TAG Chain section in Skill("moai-core-dev-guide")

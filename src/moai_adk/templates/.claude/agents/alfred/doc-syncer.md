@@ -76,7 +76,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 - `Skill("moai-alfred-trust-validation")`: Called when the TRUST gate must be passed before document reflection.
 - `Skill("moai-foundation-specs")`: Use only when SPEC metadata has changed or document consistency verification is required.
 - `Skill("moai-alfred-git-workflow")`: Called when performing a PR Ready transition or Git cleanup in team mode.
-- `Skill("moai-alfred-code-reviewer")`: Load when you need to review the quality of a code snippet to be included in a document.
+- `Skill("moai-core-code-reviewer")`: Load when you need to review the quality of a code snippet to be included in a document.
 - `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)`: Executed when checking with the user whether to approve/skip the synchronization range.
 
 ### Expert Traits
@@ -254,7 +254,7 @@ doc-syncer integrates with SpecStatusManager to automatically update SPEC status
 
 ### Document synchronization criteria
 
-- Check document consistency with TRUST principles (Skill("moai-alfred-dev-guide"))
+- Check document consistency with TRUST principles (Skill("moai-core-dev-guide"))
 - Automatically create/update API documents
 - Synchronize README and architecture documents
 

@@ -542,6 +542,67 @@ def _execute_upgrade(installer_cmd: list[str]) -> bool:
         return False
 
 
+def _preserve_user_settings(project_path: Path) -> dict[str, Path | None]:
+    """Back up user-specific settings files before template sync.
+
+    Args:
+        project_path: Project directory path
+
+    Returns:
+        Dictionary with backup paths of preserved files
+    """
+    preserved = {}
+    claude_dir = project_path / ".claude"
+
+    # Preserve settings.local.json (user MCP and GLM configuration)
+    settings_local = claude_dir / "settings.local.json"
+    if settings_local.exists():
+        try:
+            backup_dir = project_path / ".moai-backups" / "settings-backup"
+            backup_dir.mkdir(parents=True, exist_ok=True)
+            backup_path = backup_dir / "settings.local.json"
+            backup_path.write_text(settings_local.read_text(encoding="utf-8"))
+            preserved["settings.local.json"] = backup_path
+            console.print(f"   [cyan]💾 Backed up user settings[/cyan]")
+        except Exception as e:
+            logger.warning(f"Failed to backup settings.local.json: {e}")
+            preserved["settings.local.json"] = None
+    else:
+        preserved["settings.local.json"] = None
+
+    return preserved
+
+
+def _restore_user_settings(project_path: Path, preserved: dict[str, Path | None]) -> bool:
+    """Restore user-specific settings files after template sync.
+
+    Args:
+        project_path: Project directory path
+        preserved: Dictionary of backup paths from _preserve_user_settings()
+
+    Returns:
+        True if restoration succeeded, False otherwise
+    """
+    claude_dir = project_path / ".claude"
+    claude_dir.mkdir(parents=True, exist_ok=True)
+
+    success = True
+
+    # Restore settings.local.json
+    if preserved.get("settings.local.json"):
+        try:
+            backup_path = preserved["settings.local.json"]
+            settings_local = claude_dir / "settings.local.json"
+            settings_local.write_text(backup_path.read_text(encoding="utf-8"))
+            console.print(f"   [cyan]✓ Restored user settings[/cyan]")
+        except Exception as e:
+            console.print(f"   [yellow]⚠️ Failed to restore settings.local.json: {e}[/yellow]")
+            logger.warning(f"Failed to restore settings.local.json: {e}")
+            success = False
+
+    return success
+
+
 def _sync_templates(project_path: Path, force: bool = False) -> bool:
     """Sync templates to project with rollback mechanism.
 
@@ -1210,6 +1271,11 @@ def update(
         # Step 2: Handle --templates-only (skip upgrade, go straight to sync)
         if templates_only:
             console.print("[cyan]📄 Syncing templates only...[/cyan]")
+
+            # Preserve user-specific settings before sync
+            console.print("   [cyan]💾 Preserving user settings...[/cyan]")
+            preserved_settings = _preserve_user_settings(project_path)
+
             try:
                 if not _sync_templates(project_path, force):
                     raise TemplateSyncError("Template sync returned False")
@@ -1221,6 +1287,9 @@ def update(
                 console.print(f"[red]Error: Template sync failed - {e}[/red]")
                 _show_template_sync_failure_help()
                 raise click.Abort()
+
+            # Restore user-specific settings after sync
+            _restore_user_settings(project_path, preserved_settings)
 
             console.print("   [green]✅ .claude/ update complete[/green]")
             console.print(
@@ -1329,6 +1398,10 @@ def update(
             f"\n[cyan]📄 Syncing templates ({project_config_version} → {package_config_version})...[/cyan]"
         )
 
+        # Preserve user-specific settings before sync
+        console.print("   [cyan]💾 Preserving user settings...[/cyan]")
+        preserved_settings = _preserve_user_settings(project_path)
+
         # Create backup unless --force
         if not force:
             console.print("   [cyan]💾 Creating backup...[/cyan]")
@@ -1356,6 +1429,9 @@ def update(
             console.print(f"[red]Error: Template sync failed - {e}[/red]")
             _show_template_sync_failure_help()
             raise click.Abort()
+
+        # Restore user-specific settings after sync
+        _restore_user_settings(project_path, preserved_settings)
 
         console.print("   [green]✅ .claude/ update complete[/green]")
         console.print(

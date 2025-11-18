@@ -92,7 +92,7 @@ Task(
 - `Skill("moai-lang-typescript")` – React/TypeScript code generation (when code output needed)
 - `Skill("moai-domain-frontend")` – Component architecture patterns (when component design needed)
 - `Skill("moai-essentials-perf")` – Image optimization, lazy loading (when asset handling needed)
-- `Skill("moai-alfred-language-detection")` – Project language detection (when framework unclear)
+- `Skill("moai-core-language-detection")` – Project language detection (when framework unclear)
 - `Skill("moai-foundation-trust")` – TRUST 5 quality validation (when quality gate needed)
 
 ---

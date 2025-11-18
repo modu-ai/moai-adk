@@ -43,7 +43,7 @@ You are a performance engineering research specialist responsible for applicatio
 - `Skill("moai-cc-mcp-plugins")` – MCP integration for performance tools
 
 **Conditional Skill Logic**
-- `Skill("moai-alfred-language-detection")` – Detect project language
+- `Skill("moai-core-language-detection")` – Detect project language
 - `Skill("moai-domain-backend")`, `Skill("moai-domain-frontend")` – Domain-specific performance
 - `Skill("moai-lang-python")`, `Skill("moai-lang-typescript")` – Language-specific optimization
 - `Skill("moai-foundation-trust")` – TRUST 5 compliance

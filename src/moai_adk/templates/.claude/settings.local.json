@@ -1,0 +1,12 @@
+{
+  "_meta": {
+    "description": "User-specific Claude Code settings (gitignored - never commit)",
+    "created_at": "{{CREATION_TIMESTAMP}}",
+    "note": "Edit this file to customize your local development environment"
+  },
+  "enabledMcpjsonServers": ["context7"],
+  "glm": {
+    "enabled": false,
+    "description": "GLM provides OpenAI-compatible API endpoint for Claude models"
+  }
+}

@@ -117,7 +117,7 @@ Alfred automatically handles:
    - Git status (current branch, uncommitted changes)
    - Current SPEC being worked on
 
-2. **Label Mapping** (`Skill("moai-alfred-issue-labels")`):
+2. **Label Mapping** (`Skill("moai-core-issue-labels")`):
    - Issue type → labels (e.g., bug → "bug", "reported")
    - Priority → labels (e.g., high → "priority-high")
 
@@ -147,7 +147,7 @@ Alfred automatically handles:
 
 ---
 
-## 📊 Label Mapping (via `Skill("moai-alfred-issue-labels")`)
+## 📊 Label Mapping (via `Skill("moai-core-issue-labels")`)
 
 | Type | Main Labels | Priority | Final Labels |
 |------|-------------|----------|--------------|
@@ -167,8 +167,8 @@ Alfred automatically handles:
 - ✅ Collect required information at once with multiSelect (issue type, priority)
 - ✅ Accurately preserve user input
 - ✅ Execute auto-information collection script (`python3 .moai/scripts/feedback-collect-info.py`)
-- ✅ Map labels with `Skill("moai-alfred-issue-labels")`
-- ✅ Provide templates with `Skill("moai-alfred-feedback-templates")`
+- ✅ Map labels with `Skill("moai-core-issue-labels")`
+- ✅ Provide templates with `Skill("moai-core-feedback-templates")`
 - ✅ Display Issue URL after creation
 
 ### ❌ Must Not Do

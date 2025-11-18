@@ -964,10 +964,10 @@ if __name__ == "__main__":
 ### Alfred Skills Integration
 
 **Core Alfred Skills Enhanced**:
-- `Skill("moai-alfred-workflow")` - Enhanced with Plan Mode
-- `Skill("moai-alfred-agent-guide")` - Updated for Claude Code v4.0
-- `Skill("moai-alfred-context-budget")` - Optimized context management
-- `Skill("moai-alfred-personas")` - Enhanced communication patterns
+- `Skill("moai-core-workflow")` - Enhanced with Plan Mode
+- `Skill("moai-core-agent-guide")` - Updated for Claude Code v4.0
+- `Skill("moai-core-context-budget")` - Optimized context management
+- `Skill("moai-core-personas")` - Enhanced communication patterns
 
 ---
 

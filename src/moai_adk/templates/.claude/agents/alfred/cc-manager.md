@@ -23,7 +23,7 @@ skills:
 
 | Request | Route To |
 |---------|----------|
-| Architecture decisions | `Skill("moai-alfred-workflow")` + workflows/ |
+| Architecture decisions | `Skill("moai-core-workflow")` + workflows/ |
 | Hooks setup | `Skill("moai-cc-hooks")` |
 | Agent creation | `Skill("moai-cc-agents")` |
 | Command design | `Skill("moai-cc-commands")` |
@@ -75,7 +75,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 - `Skill("moai-cc-guide")` - Decision trees & architecture
 
 **Conditional** (based on request):
-- `Skill("moai-alfred-language-detection")` - Detect project language
+- `Skill("moai-core-language-detection")` - Detect project language
 - `Skill("moai-alfred-tag-scanning")` - Validate TAG chains
 - `Skill("moai-foundation-tags")` - TAG policy
 - `Skill("moai-foundation-trust")` - TRUST 5 validation

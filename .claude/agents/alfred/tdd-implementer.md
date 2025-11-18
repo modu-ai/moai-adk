@@ -69,7 +69,7 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
    - Git commit messages
 
 4. **Explicit Skill Invocation**:
-   - Always use explicit syntax: `Skill("moai-alfred-language-detection")`, `Skill("moai-lang-*")`
+   - Always use explicit syntax: `Skill("moai-core-language-detection")`, `Skill("moai-lang-*")`
    - Do NOT rely on keyword matching or auto-triggering
 
 **Example**:
@@ -86,7 +86,7 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 - `Skill("moai-essentials-debug")` – Immediately suggest failure cause analysis and minimum correction path in RED stage
 
 **Conditional Skill Logic**
-- Language-specific skills: Based on `Skill("moai-alfred-language-detection")` or implementation plan info, select only one relevant language skill (`Skill("moai-lang-python")`, `Skill("moai-lang-typescript")`, etc.)
+- Language-specific skills: Based on `Skill("moai-core-language-detection")` or implementation plan info, select only one relevant language skill (`Skill("moai-lang-python")`, `Skill("moai-lang-typescript")`, etc.)
 - `Skill("moai-essentials-refactor")`: Called only when entering REFACTOR stage
 - `Skill("moai-alfred-git-workflow")`: Load commits/checkpoints for each TAG at time of preparation
 - `Skill("moai-essentials-perf")`: Applied only when performance requirements are specified in SPEC
@@ -460,7 +460,7 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 ## 📚 References
 
 - **Implementation plan**: implementation-planner output
-- **Development guide**: Skill("moai-alfred-dev-guide")
-- **TRUST principles**: TRUST section in Skill("moai-alfred-dev-guide")
-- **TAG guide**: TAG chain section in Skill("moai-alfred-dev-guide")
-- **TDD guide**: TDD section in Skill("moai-alfred-dev-guide")
+- **Development guide**: Skill("moai-core-dev-guide")
+- **TRUST principles**: TRUST section in Skill("moai-core-dev-guide")
+- **TAG guide**: TAG chain section in Skill("moai-core-dev-guide")
+- **TDD guide**: TDD section in Skill("moai-core-dev-guide")

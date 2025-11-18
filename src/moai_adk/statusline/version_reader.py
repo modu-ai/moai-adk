@@ -624,6 +624,19 @@ class VersionReader:
         """Clear version cache (backwards compatibility)"""
         self._version_cache = None
         self._cache_time = None
+        # Also clear the main cache dictionary
+        self._cache.clear()
+        # Reset cache statistics
+        self._cache_stats = {
+            "hits": 0,
+            "misses": 0,
+            "errors": 0,
+            "cache_hits_by_source": {
+                VersionSource.CONFIG_FILE.value: 0,
+                VersionSource.CACHE.value: 0,
+                VersionSource.FALLBACK.value: 0,
+            },
+        }
         logger.debug("Version cache cleared")
 
     def get_cache_stats(self) -> Dict[str, int]:
@@ -653,7 +666,12 @@ class VersionReader:
         Returns:
             True if cache is expired
         """
-        return not self._is_cache_valid()
+        # Check if cache entry exists and is still valid
+        config_key = str(self._config_path)
+        if config_key not in self._cache:
+            return True
+        entry = self._cache[config_key]
+        return not self._is_cache_entry_valid(entry)
 
     def get_config(self) -> VersionConfig:
         """Get current configuration"""

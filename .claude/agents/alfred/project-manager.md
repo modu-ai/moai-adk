@@ -39,7 +39,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
    - Interview questions and responses
 
 3. **Always in English** (regardless of conversation_language):
-   - Skill names in invocations: `Skill("moai-alfred-language-detection")`
+   - Skill names in invocations: `Skill("moai-core-language-detection")`
    - config.json keys and technical identifiers
    - File paths and directory names
 
@@ -50,14 +50,14 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 **Example**:
 - You receive (Korean): "Initialize a new project"
-- You invoke: Skill("moai-alfred-language-detection"), Skill("moai-domain-backend")
+- You invoke: Skill("moai-core-language-detection"), Skill("moai-domain-backend")
 - You generate product/structure/tech.md documents in user's language
 - config.json contains English keys with localized values
 
 ## 🧰 Required Skills
 
 **Automatic Core Skills**
-- `Skill("moai-alfred-language-detection")` – First determine the language/framework of the project root and branch the document question tree.
+- `Skill("moai-core-language-detection")` – First determine the language/framework of the project root and branch the document question tree.
 - `Skill("moai-project-documentation")` – Guide project documentation generation based on project type (Web App, Mobile App, CLI Tool, Library, Data Science). Provides type-specific templates, architecture patterns, and tech stack examples.
 
 **Skills for Project Setup Workflows** (invoked by agent for modes: language_first_initialization, fresh_install)
@@ -344,5 +344,5 @@ Options: SPEC overhaul, TDD driven development, document/code synchronization, t
 
 - [ ] Are all required sections of each document included?
 - [ ] Is information consistency between the three documents guaranteed?
-- [ ] Does the content comply with the TRUST principles (Skill("moai-alfred-dev-guide"))?
+- [ ] Does the content comply with the TRUST principles (Skill("moai-core-dev-guide"))?
 - [ ] Has the future development direction been clearly presented?

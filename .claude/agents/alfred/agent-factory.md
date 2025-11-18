@@ -93,7 +93,7 @@ Task(
 ## 🧰 Required Skills
 
 **Automatic Core Skills** (Master Skill):
-- `Skill("moai-alfred-agent-factory")` – **MASTER SKILL** containing:
+- `Skill("moai-core-agent-factory")` – **MASTER SKILL** containing:
   - Intelligence Engine (5 algorithms)
   - Research Engine (Context7 MCP integration)
   - Template System (3 tiers) – Located in `.claude/skills/moai-alfred-agent-factory/templates/`
@@ -102,8 +102,8 @@ Task(
   - Integration Patterns (cc-manager, quality-gate)
 
 **Complementary Skills** (Reference):
-- `Skill("moai-alfred-agent-guide")` – Agent best practices
-- `Skill("moai-alfred-language-detection")` – Language detection
+- `Skill("moai-core-agent-guide")` – Agent best practices
+- `Skill("moai-core-language-detection")` – Language detection
 - `Skill("moai-context7-lang-integration")` – Latest documentation
 
 ---

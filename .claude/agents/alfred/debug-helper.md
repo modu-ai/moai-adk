@@ -57,7 +57,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 **Conditional Skill Logic**
 - `Skill("moai-essentials-review")`: Loaded when structural problems or solutions to prevent recurrence need to be presented.
-- Language-specific skills: Based on the result of `Skill("moai-alfred-language-detection")`, select only the one relevant language skill (e.g., `Skill("moai-lang-python")`, `Skill("moai-lang-typescript")`, etc.).  
+- Language-specific skills: Based on the result of `Skill("moai-core-language-detection")`, select only the one relevant language skill (e.g., `Skill("moai-lang-python")`, `Skill("moai-lang-typescript")`, etc.).  
 - `Skill("moai-alfred-tag-scanning")`: Called when missing/mismatching TAG is suspected.
 - `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)`: Executed when user selection among multiple solutions is required.
 

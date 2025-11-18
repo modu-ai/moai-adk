@@ -66,7 +66,7 @@ Task(
 - `Skill("moai-domain-backend")` – REST API, GraphQL, async patterns, database design, microservices
 
 **Conditional Skill Logic**
-- `Skill("moai-alfred-language-detection")` – Detect project language
+- `Skill("moai-core-language-detection")` – Detect project language
 - `Skill("moai-lang-python")`, `Skill("moai-lang-typescript")`, `Skill("moai-lang-go")` – Language-specific patterns
 - `Skill("moai-domain-database")` – SQL/NoSQL design, migrations, indexing
 - `Skill("moai-essentials-security")` – Authentication, rate limiting, input validation

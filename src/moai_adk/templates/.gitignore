@@ -59,6 +59,9 @@ docs/out/
 # Claude and MoAI configuration (user-specific, root only)
 # Package templates (src/moai_adk/templates/) are tracked
 /CLAUDE.md
+.claude/settings.local.json
+.claude/settings.local.*.json
+.claude/.env.local*
 
 # MoAI dynamic content (로컬 프로젝트만 무시, but package templates are tracked)
 .moai/logs/

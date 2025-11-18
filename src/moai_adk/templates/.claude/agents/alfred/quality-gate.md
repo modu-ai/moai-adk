@@ -340,7 +340,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 ## 📚 References
 
-- **Development Guide**: Skill("moai-alfred-dev-guide")
-- **TRUST Principles**: TRUST section within Skill("moai-alfred-dev-guide")
-- **TAG Guide**: TAG chain section in Skill("moai-alfred-dev-guide")
+- **Development Guide**: Skill("moai-core-dev-guide")
+- **TRUST Principles**: TRUST section within Skill("moai-core-dev-guide")
+- **TAG Guide**: TAG chain section in Skill("moai-core-dev-guide")
 - **trust-checker**: `.claude/hooks/alfred/trust-checker.py` (TRUST verification script)

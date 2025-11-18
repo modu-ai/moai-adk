@@ -213,7 +213,7 @@ Analyze the project based on user request: "{{USER_REQUEST}}"
 
 2. **SPEC Candidate Generation**: Create 1-3 SPEC candidates
    - Analyze existing SPECs in `.moai/specs/` for duplicates
-   - Check related GitHub issues via `Skill("moai-alfred-issue-labels")`
+   - Check related GitHub issues via `Skill("moai-core-issue-labels")`
    - Generate unique SPEC candidates with proper naming
 
 3. **EARS Structure Design**: For each SPEC candidate:

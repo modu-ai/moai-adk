@@ -65,7 +65,7 @@ You are a frontend architecture specialist responsible for framework-agnostic fr
 - `Skill("moai-domain-frontend")` – Components, state management, performance, accessibility for 9+ frameworks
 
 **Conditional Skill Logic**
-- `Skill("moai-alfred-language-detection")` – Detect project language (JavaScript/TypeScript/Python)
+- `Skill("moai-core-language-detection")` – Detect project language (JavaScript/TypeScript/Python)
 - `Skill("moai-lang-typescript")` – For React, Vue 3, Angular, Next.js, Nuxt, SvelteKit, Astro, Remix, SolidJS
 - `Skill("moai-domain-web-api")` – REST/GraphQL API integration patterns
 - `Skill("moai-essentials-perf")` – Code splitting, lazy loading, image optimization

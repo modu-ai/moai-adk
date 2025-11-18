@@ -1,0 +1,39 @@
+{
+  "name": "moai-security-threat",
+  "title": "Threat Modeling & IDS/IPS Rules",
+  "version": "4.0.0",
+  "category": "security",
+  "status": "production",
+  "published_date": "2025-11-12",
+  "last_updated": "2025-11-12",
+  "difficulty": "advanced",
+  "trust_score": 9.8,
+  "keywords": ["threat modeling", "STRIDE", "IDS", "IPS", "WAF", "Snort", "Suricata"],
+  "tech_stack": {
+    "language": "JavaScript/Node.js + Bash",
+    "tools": ["Snort 3.x", "Suricata 7.x", "ModSecurity 3.x"],
+    "frameworks": ["Express"]
+  },
+  "features": [
+    "STRIDE threat modeling",
+    "Data Flow Diagram (DFD)",
+    "Attack tree analysis",
+    "Snort 3.x IDS rules",
+    "Suricata 7.x rules (multi-threaded)",
+    "ModSecurity WAF rules",
+    "Alert correlation",
+    "Threat intelligence (Context7)"
+  ],
+  "coverage": {
+    "lines": 446,
+    "codeExamples": 5,
+    "reference_links": 32,
+    "production_ready": true
+  },
+  "ids_ips_tools": {
+    "snort": "v3.x - single-threaded IDS/IPS",
+    "suricata": "v7.x - multi-core, better performance",
+    "modsecurity": "v3.x - Web Application Firewall"
+  },
+  "2025_update": "STRIDE-AI for ML model security threats"
+}

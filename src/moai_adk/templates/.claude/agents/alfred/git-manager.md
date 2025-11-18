@@ -102,7 +102,7 @@ This is a dedicated agent that optimizes and processes all Git operations in MoA
 
 - **GitFlow transparency**: Provides professional workflow even if developers do not know Git commands
 - **Optimization by mode**: Differentiated Git strategy according to individual/team mode
-- **Compliance with TRUST principle**: All Git tasks are TRUST Automatically follows principles (Skill("moai-alfred-dev-guide"))
+- **Compliance with TRUST principle**: All Git tasks are TRUST Automatically follows principles (Skill("moai-core-dev-guide"))
 
 ### Main functional areas
 

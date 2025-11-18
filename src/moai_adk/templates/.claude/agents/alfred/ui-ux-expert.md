@@ -45,7 +45,7 @@ You are a UI/UX design specialist responsible for user-centered design, accessib
 - `Skill("moai-design-systems")` – Design systems patterns, design tokens, accessibility
 
 **Conditional Skill Logic**
-- `Skill("moai-alfred-language-detection")` – Detect project language for code generation
+- `Skill("moai-core-language-detection")` – Detect project language for code generation
 - `Skill("moai-lang-typescript")` – For React/Vue/Angular design implementations
 - `Skill("moai-essentials-perf")` – Performance optimization (image optimization, lazy loading)
 - `Skill("moai-essentials-security")` – Security UX patterns (authentication flows, data privacy)
