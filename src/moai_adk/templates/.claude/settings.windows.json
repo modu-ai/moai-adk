@@ -1,7 +1,0 @@
-{
-  "statusLine": {
-    "type": "command",
-    "command": "python -m moai_adk.statusline.main",
-    "padding": 0
-  }
-}
