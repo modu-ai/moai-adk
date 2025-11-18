@@ -176,18 +176,18 @@ def analyze_progress(skills_dir=".claude/skills", detailed=False):
             "target": 21,
             "skills": (
                 skills_by_version.get('unknown', [])[:16] +
-                ['moai-alfred-agent-guide', 'moai-alfred-workflow',
-                 'moai-alfred-context-budget', 'moai-alfred-personas',
-                 'moai-alfred-todowrite-pattern']
+                ['moai-core-agent-guide', 'moai-core-workflow',
+                 'moai-core-context-budget', 'moai-core-personas',
+                 'moai-core-todowrite-pattern']
             )
         },
         "Phase 2": {
             "target": 16,
             "skills": [
                 s for s in skills_by_version.get('v2.0', [])
-                if s not in ['moai-alfred-agent-guide', 'moai-alfred-workflow',
-                             'moai-alfred-context-budget', 'moai-alfred-personas',
-                             'moai-alfred-todowrite-pattern']
+                if s not in ['moai-core-agent-guide', 'moai-core-workflow',
+                             'moai-core-context-budget', 'moai-core-personas',
+                             'moai-core-todowrite-pattern']
             ][:16]
         },
         "Phase 3": {

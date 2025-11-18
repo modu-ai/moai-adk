@@ -5,7 +5,7 @@ v4.0 Enterprise Compliance Validator
 Checks all v4.0 requirements and generates compliance report.
 
 Usage:
-    python3 scripts/validate-v4-compliance.py moai-alfred-agent-guide
+    python3 scripts/validate-v4-compliance.py moai-core-agent-guide
     python3 scripts/validate-v4-compliance.py --all
     python3 scripts/validate-v4-compliance.py --all --report reports/validation.txt
 """

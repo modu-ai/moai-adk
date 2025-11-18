@@ -13,7 +13,7 @@ Automates skill upgrades to v4.0 Enterprise standard:
 - Add official references
 
 Usage:
-    python3 scripts/upgrade-skills-to-v4.py --skill moai-alfred-agent-guide
+    python3 scripts/upgrade-skills-to-v4.py --skill moai-core-agent-guide
     python3 scripts/upgrade-skills-to-v4.py --batch phase1
     python3 scripts/upgrade-skills-to-v4.py --validate-all
 """
@@ -806,17 +806,17 @@ def main():
                 "moai-security-encryption", "moai-security-owasp",
                 "moai-mcp-builder", "moai-project-documentation", "moai-webapp-testing",
                 # Alfred Core top 5
-                "moai-alfred-agent-guide", "moai-alfred-workflow", "moai-alfred-context-budget",
-                "moai-alfred-personas", "moai-alfred-todowrite-pattern"
+                "moai-core-agent-guide", "moai-core-workflow", "moai-core-context-budget",
+                "moai-core-personas", "moai-core-todowrite-pattern"
             ],
             "phase2": [
                 # Alfred Core middle (16)
-                "moai-alfred-spec-authoring", "moai-alfred-practices",
-                "moai-alfred-proactive-suggestions", "moai-alfred-clone-pattern",
-                "moai-alfred-code-reviewer", "moai-alfred-config-schema",
-                "moai-alfred-dev-guide", "moai-alfred-expertise-detection",
-                "moai-alfred-issue-labels", "moai-alfred-language-detection",
-                "moai-alfred-rules", "moai-alfred-session-state",
+                "moai-core-spec-authoring", "moai-core-practices",
+                "moai-core-proactive-suggestions", "moai-core-clone-pattern",
+                "moai-core-code-reviewer", "moai-core-config-schema",
+                "moai-core-dev-guide", "moai-core-expertise-detection",
+                "moai-core-issue-labels", "moai-core-language-detection",
+                "moai-core-rules", "moai-core-session-state",
                 "moai-context7-integration", "moai-lang-shell",
                 "moai-lang-template", "moai-project-config-manager"
             ],

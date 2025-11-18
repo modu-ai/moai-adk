@@ -40,7 +40,7 @@ class TestUserPromptHookIntegration:
         self.skills_dir.mkdir(parents=True, exist_ok=True)
 
         # Create mock skill references
-        for skill_name in ["moai-alfred-spec-authoring", "moai-domain-frontend", "moai-essentials-debug"]:
+        for skill_name in ["moai-core-spec-authoring", "moai-domain-frontend", "moai-essentials-debug"]:
             skill_dir = self.skills_dir / skill_name
             skill_dir.mkdir(exist_ok=True)
             (skill_dir / "reference.md").write_text(f"# {skill_name} Reference\n\nMock skill documentation.")

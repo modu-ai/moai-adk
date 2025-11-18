@@ -70,7 +70,7 @@ class TestAgentContextModule:
         assert result["confidence"] > 0.3  # At least one keyword match
         assert len(result["matched_keywords"]) > 0
         assert len(result["recommended_skills"]) > 0
-        assert "moai-alfred-spec-authoring" in result["recommended_skills"]
+        assert "moai-core-spec-authoring" in result["recommended_skills"]
 
     def test_analyze_prompt_intent_implementation(self):
         """구현 의도 분석 테스트"""
@@ -271,7 +271,7 @@ class TestEnhancedUserHandler:
 
             # Mock enhanced context with agent delegation
             mock_context.return_value = (
-                [".claude/skills/moai-alfred-spec-authoring/reference.md"],
+                [".claude/skills/moai-core-spec-authoring/reference.md"],
                 "🎯 전문가 에이전트 추천: spec-builder"
             )
 

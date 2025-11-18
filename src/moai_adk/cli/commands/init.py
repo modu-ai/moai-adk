@@ -19,7 +19,7 @@ Project initialization command (interactive/non-interactive):
    - Run `Skill("moai-foundation-langs")` to validate detected language stack
 
 2. **Before first SPEC creation**:
-   - Use `Skill("moai-alfred-language-detection")` to confirm language selection
+   - Use `Skill("moai-core-language-detection")` to confirm language selection
 
 3. **Project reinitialization** (`--force`):
    - Skills automatically adapt to new project structure

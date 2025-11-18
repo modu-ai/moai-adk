@@ -1,11 +1,11 @@
 {
   "agent_skills_mapping": {
     "spec-builder": [
-      "moai-alfred-spec-authoring",
+      "moai-core-spec-authoring",
       "moai-foundation-specs",
       "moai-foundation-ears",
       "moai-cc-claude-md",
-      "moai-alfred-language-detection"
+      "moai-core-language-detection"
     ],
     "tdd-implementer": [
       "moai-essentials-debug",
@@ -13,23 +13,23 @@
       "moai-lang-python",
       "moai-lang-typescript",
       "moai-lang-go",
-      "moai-alfred-context-budget"
+      "moai-core-context-budget"
     ],
     "test-engineer": [
       "moai-playwright-webapp-testing",
       "moai-essentials-perf",
-      "moai-alfred-todowrite-pattern",
+      "moai-core-todowrite-pattern",
       "moai-cc-quality-gate"
     ],
     "doc-syncer": [
       "moai-cc-claude-md",
-      "moai-alfred-reporting",
+      "moai-core-reporting",
       "moai-cc-mcp-plugins",
       "docs-manager"
     ],
     "git-manager": [
       "git-manager",
-      "moai-alfred-agent-guide",
+      "moai-core-agent-guide",
       "moai-cc-hooks"
     ],
     "tag-agent": [
@@ -73,12 +73,12 @@
       "primary_agent": "spec-builder",
       "secondary_agents": ["doc-syncer"],
       "skills": [
-        "moai-alfred-spec-authoring",
+        "moai-core-spec-authoring",
         "moai-foundation-specs",
         "moai-foundation-ears"
       ],
       "context_files": [
-        ".claude/skills/moai-alfred-spec-authoring/reference.md",
+        ".claude/skills/moai-core-spec-authoring/reference.md",
         ".claude/skills/moai-foundation-specs/reference.md",
         ".moai/templates/spec.md"
       ]
@@ -90,12 +90,12 @@
       "skills": [
         "moai-essentials-debug",
         "moai-essentials-refactor",
-        "moai-alfred-todowrite-pattern"
+        "moai-core-todowrite-pattern"
       ],
       "context_files": [
         ".claude/skills/moai-essentials-debug/reference.md",
         ".claude/skills/moai-essentials-refactor/reference.md",
-        ".claude/skills/moai-alfred-todowrite-pattern/reference.md"
+        ".claude/skills/moai-core-todowrite-pattern/reference.md"
       ]
     },
     "testing": {
@@ -119,12 +119,12 @@
       "secondary_agents": ["tag-agent"],
       "skills": [
         "moai-cc-claude-md",
-        "moai-alfred-reporting",
+        "moai-core-reporting",
         "docs-manager"
       ],
       "context_files": [
         ".claude/skills/moai-cc-claude-md/reference.md",
-        ".claude/skills/moai-alfred-reporting/reference.md",
+        ".claude/skills/moai-core-reporting/reference.md",
         "README.md"
       ]
     },
@@ -134,10 +134,10 @@
       "secondary_agents": ["tag-agent"],
       "skills": [
         "git-manager",
-        "moai-alfred-agent-guide"
+        "moai-core-agent-guide"
       ],
       "context_files": [
-        ".claude/skills/moai-alfred-agent-guide/reference.md",
+        ".claude/skills/moai-core-agent-guide/reference.md",
         ".gitignore"
       ]
     },

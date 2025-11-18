@@ -559,7 +559,7 @@ def generate_migration_report(violations: List[Dict[str, str]]) -> str:
         report_lines.append(f"   {idx}. {file_display} → {suggested}")
 
     report_lines.append("\n   Action: Move files to suggested locations or update root_whitelist")
-    report_lines.append("   Guide: Skill(\"moai-alfred-document-management\")")
+    report_lines.append("   Guide: Skill(\"moai-core-document-management\")")
 
     return "\n".join(report_lines)
 
