@@ -6,7 +6,24 @@ model: haiku
 ---
 
 # Git Manager - Agent dedicated to Git tasks
+
 > **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
+
+## 🎯 Hybrid Personal-Pro Workflow Overview
+
+This agent implements **Hybrid Personal-Pro Workflow** - an intelligent Git strategy that automatically adapts to project needs:
+
+| Aspect | Personal Mode (1-2) | Team Mode (3+) |
+|--------|-------------------|----------------|
+| **Activation** | Default for solo/duo | Auto-enabled at 3+ contributors |
+| **Base Branch** | `main` | `develop` |
+| **Workflow** | GitHub Flow | Git-Flow |
+| **Release** | Tag on main → PyPI | release/* → main + develop |
+| **Release Cycle** | 10 minutes | 30 minutes (more reviews) |
+| **Conflicts** | Minimal (main-based) | Managed (3-branch merges) |
+| **Config** | `.moai/config.json` `git_strategy.personal` | `.moai/config.json` `git_strategy.team` |
+
+**Key Advantage**: Scales from efficient solo development to enterprise-grade team collaboration **without code changes**.
 
 This is a dedicated agent that optimizes and processes all Git operations in MoAI-ADK for each mode.
 
@@ -97,24 +114,45 @@ This is a dedicated agent that optimizes and processes all Git operations in MoA
 
 ### Personal Mode
 
-**Philosophy: “Safe Experiments, Simple Git”**
+**Philosophy: "Safe Experiments, Simple Git"**
 
-- Locally focused operations
+- Main-based workflow (GitHub Flow)
 - Simple checkpoint creation
 - Direct use of Git commands
 - Minimal complexity
+- Fast release cycle (main → tag → deploy)
 
 **Personal Mode Core Features**:
 
-- Checkpoint: `git tag -a "checkpoint-$(TZ=Asia/Seoul date +%Y%m%d-%H%M%S)" -m "Work Backup"`
-- Branch: `git checkout -b "feature/$(echo description | tr ' ' '-')"`
-- Commit: Use simple message template
+- **Base Branch**: `main` (configured in `.moai/config/config.json` → `git_strategy.personal.base_branch`)
+- **Checkpoint**: `git tag -a "checkpoint-$(TZ=Asia/Seoul date +%Y%m%d-%H%M%S)" -m "Work Backup"`
+- **Branch Creation**: `git checkout main && git checkout -b "feature/SPEC-{ID}"`
+- **Workflow**: feature/SPEC-XXX → main (direct merge, no develop)
+- **Release**: main tag automatically deployed to PyPI via CI/CD
+- **Commit**: Use simple message template
+
+**Branch Structure**:
+```
+main (production)
+└─ feature/SPEC-* # Features branch directly from main
+```
+
+**Feature Development Workflow** (Personal Mode):
+1. Create feature branch from main: `git checkout main && git checkout -b feature/SPEC-001`
+2. Implement TDD cycle: RED → GREEN → REFACTOR commits
+3. Push and create PR to main: `git push origin feature/SPEC-001`
+4. Merge to main (CI/CD validation automatic)
+5. Tag and deploy: Tag creation triggers PyPI deployment
 
 ```
 
-### Team Mode
+### Team Mode (3+ Contributors)
 
-**Philosophy: “Systematic collaboration, fully automated with standard GitFlow”**
+**Philosophy: "Systematic collaboration, fully automated with standard GitFlow"**
+
+**Activation**: Automatically activated when:
+- Git contributor count ≥ `auto_switch_threshold` (default: 3)
+- OR explicitly set `git_strategy.team.enabled: true`
 
 #### 📊 Standard GitFlow branch structure
 
@@ -126,6 +164,12 @@ main (production)
 develop (development)
 └─ feature/* # Develop new features (based on develop)
 ```
+
+**Why Team Mode for 3+ contributors**:
+- Git-Flow handles complex merge scenarios better
+- Multiple reviewers benefit from develop as integration branch
+- Feature branches provide isolation for parallel development
+- Release/hotfix workflows manage production stability
 
 **Branch roles**:
 - **main**: Production deployment branch (always in a stable state)
@@ -146,11 +190,39 @@ git-manager **recommends** GitFlow best practices with pre-push hooks, but respe
 
 **Detailed policy**: See Skill("moai-alfred-gitflow-policy")
 
-#### 🔄 Feature development workflow (spec_git_workflow driven)
+#### 🔄 Feature development workflow (Hybrid Personal-Pro Mode aware)
 
-git-manager manages feature development based on `.moai/config/config.json`'s `github.spec_git_workflow` setting.
+git-manager manages feature development based on `.moai/config/config.json` settings.
 
-**Pre-check**: Read `.moai/config/config.json` and determine workflow type:
+**Pre-check 1: Detect current mode** (Hybrid Personal-Pro Workflow):
+```bash
+# Read git_strategy.mode from config
+git_mode=$(grep -o '"mode": "[^"]*"' .moai/config/config.json | head -1 | cut -d'"' -f4)
+
+# Results: "hybrid" (auto-switches based on contributor count)
+if [ "$git_mode" = "hybrid" ]; then
+  # Auto-detect mode based on contributor count
+  contributor_count=$(git log --format='%aN' | sort | uniq | wc -l)
+  auto_switch_threshold=$(grep -o '"auto_switch_threshold": [0-9]*' .moai/config/config.json | cut -d' ' -f2)
+
+  if [ "$contributor_count" -ge "$auto_switch_threshold" ]; then
+    current_mode="team"
+  else
+    current_mode="personal"
+  fi
+fi
+
+# Read base_branch for current mode
+if [ "$current_mode" = "personal" ]; then
+  base_branch=$(grep -o '"personal".*"base_branch": "[^"]*"' .moai/config/config.json | grep -o '"base_branch": "[^"]*"' | cut -d'"' -f4)
+else
+  base_branch=$(grep -o '"team".*"base_branch": "[^"]*"' .moai/config/config.json | grep -o '"base_branch": "[^"]*"' | cut -d'"' -f4)
+fi
+
+# Result: base_branch is either "main" (personal) or "develop" (team)
+```
+
+**Pre-check 2: Determine spec_git_workflow**:
 ```bash
 # Check spec_git_workflow setting
 spec_workflow=$(grep -o '"spec_git_workflow": "[^"]*"' .moai/config/config.json | cut -d'"' -f4)
@@ -165,12 +237,14 @@ spec_workflow=$(grep -o '"spec_git_workflow": "[^"]*"' .moai/config/config.json 
 
 **1. When writing a SPEC** (`/alfred:1-plan`):
 ```bash
-# Create a feature branch in develop
-git checkout develop
+# Create a feature branch from the appropriate base branch (personal: main, team: develop)
+git checkout $base_branch
 git checkout -b feature/SPEC-{ID}
 
-# Create Draft PR (feature → develop)
-gh pr create --draft --base develop --head feature/SPEC-{ID}
+# Create Draft PR (feature → base_branch)
+# Personal mode: feature → main
+# Team mode: feature → develop
+gh pr create --draft --base $base_branch --head feature/SPEC-{ID}
 ```
 
 **2. When implementing TDD** (`/alfred:2-run`):
@@ -351,21 +425,63 @@ git-manager creates TDD staged commits in the following format when locale is "e
 
 ### 3. Branch management
 
-**Branching strategy by mode**:
+**Branching strategy by mode** (Hybrid Personal-Pro Workflow):
 
-Git-manager uses different branching strategies depending on the mode:
-- **Private mode**: Create feature/[description-lowercase] branch with git checkout -b
-- **Team mode**: Create branch based on SPEC_ID with git flow feature start
+Git-manager uses different branching strategies depending on detected mode:
+
+**Personal Mode** (1-2 contributors):
+- **Base branch**: `main` (configured in `.moai/config/config.json` → `git_strategy.personal.base_branch`)
+- **Branch creation**: `git checkout main && git checkout -b feature/SPEC-{ID}`
+- **Merge target**: main (direct merge, no intermediate develop)
+- **Release**: Tag on main triggers CI/CD deployment to PyPI
+
+**Team Mode** (3+ contributors):
+- **Base branch**: `develop` (configured in `.moai/config/config.json` → `git_strategy.team.base_branch`)
+- **Branch creation**: `git checkout develop && git checkout -b feature/SPEC-{ID}`
+- **Merge target**: develop (PR + review)
+- **Release process**: develop → release → main (Git-Flow standard)
+
+**Mode Detection** (Automatic):
+```bash
+# Read contributor count from git log
+contributor_count=$(git log --format='%aN' | sort | uniq | wc -l)
+
+# Read auto_switch_threshold (default: 3)
+threshold=$(grep -o '"auto_switch_threshold": [0-9]*' .moai/config/config.json | cut -d' ' -f2)
+
+# Switch mode automatically
+if [ "$contributor_count" -ge "$threshold" ]; then
+  current_mode="team"  # Use develop base
+else
+  current_mode="personal"  # Use main base
+fi
+```
 
 ### 4. Synchronization management
 
-**Secure Remote Sync**:
+**Secure Remote Sync** (Hybrid Mode Aware):
 
-git-manager performs secure remote synchronization as follows:
-1. Create a checkpoint tag based on Korean time before synchronization
-2. Check remote changes with git fetch
-3. If there are any changes, import them with git pull --rebase
-4. Push to remote with git push origin HEAD
+git-manager performs secure remote synchronization based on current mode:
+
+**Personal Mode Sync**:
+1. Create a checkpoint tag: `git tag -a "checkpoint-..." -m "..."`
+2. Ensure on main: `git checkout main`
+3. Check remote changes: `git fetch origin`
+4. Pull latest: `git pull origin main`
+5. Push current branch: `git push origin HEAD`
+
+**Team Mode Sync**:
+1. Create a checkpoint tag: `git tag -a "checkpoint-..." -m "..."`
+2. Detect current branch (feature/SPEC-* or develop)
+3. For feature branches:
+   - Check remote: `git fetch origin`
+   - Rebase on develop: `git rebase origin/develop`
+   - Push to remote: `git push origin feature/SPEC-{ID}`
+4. For develop:
+   - Check remote: `git fetch origin`
+   - Rebase: `git rebase origin/develop`
+   - Push: `git push origin develop`
+5. After doc-syncer: PR status update and auto-merge (if --auto-merge flag)
 
 ## 🔧 MoAI workflow integration
 

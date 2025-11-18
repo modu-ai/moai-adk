@@ -920,6 +920,155 @@ mcp__context7__get-library-docs("/facebook/react")
 # Quality gate validation
 ```
 
+## 🔄 Hybrid Personal-Pro Git Workflow
+
+**MoAI-ADK는 프로젝트 규모에 따라 자동으로 Git 워크플로우를 전환합니다.**
+
+### Personal Mode (1-2명 개발자)
+
+**적용 시기**: 기본 모드 (또는 contributor < 3)
+
+**특징**:
+- **워크플로우**: GitHub Flow (단순하고 빠름)
+- **베이스 브랜치**: `main`
+- **Feature 브랜치**: feature/SPEC-XXX → main (직접 merge)
+- **릴리스**: main 태그 → CI/CD로 PyPI 자동 배포
+- **릴리스 주기**: ~10분 (매우 빠름)
+
+**장점**:
+- 간단한 Git 구조 (main만 관리)
+- 빠른 릴리스 사이클
+- 병합 충돌 최소화
+- 1-2인 팀에 최적화
+
+**예시**:
+```bash
+# Personal Mode 워크플로우
+git checkout main
+git checkout -b feature/SPEC-001
+# ... 개발 및 테스트 ...
+git push origin feature/SPEC-001
+# → PR to main → Merge → Tag → PyPI Deploy
+```
+
+### Team Mode (3명 이상 개발자)
+
+**활성화**: 자동 (contributor ≥ 3)
+
+**특징**:
+- **워크플로우**: Git-Flow (엔터프라이즈급)
+- **베이스 브랜치**: `develop`
+- **Feature 브랜치**: feature/SPEC-XXX → develop (PR + review)
+- **릴리스**: develop → release/* → main (formal release)
+- **릴리스 주기**: ~30분 (검토 프로세스 포함)
+
+**장점**:
+- 복잡한 merge scenario 처리
+- 다중 리뷰어 지원
+- 병렬 개발 격리
+- hotfix 지원
+
+**예시**:
+```bash
+# Team Mode 워크플로우
+git checkout develop
+git checkout -b feature/SPEC-001
+# ... 개발 및 테스트 ...
+git push origin feature/SPEC-001
+# → Draft PR to develop → Code Review → Merge to develop
+# → Release branch → QA → Merge to main → Tag → PyPI Deploy
+```
+
+### Auto-Switching Logic
+
+**config.json 설정**:
+```json
+{
+  "git_strategy": {
+    "mode": "hybrid",
+    "personal": {
+      "enabled": true,
+      "base_branch": "main",
+      "workflow": "github-flow"
+    },
+    "team": {
+      "enabled": false,
+      "base_branch": "develop",
+      "auto_switch_threshold": 3
+    }
+  }
+}
+```
+
+**자동 전환 조건**:
+```bash
+# 1. Git contributor 수 조회
+contributor_count=$(git log --format='%aN' | sort | uniq | wc -l)
+
+# 2. threshold와 비교 (기본: 3)
+if [ $contributor_count -ge 3 ]; then
+  # Team Mode 활성화 → develop 베이스 사용
+  base_branch="develop"
+else
+  # Personal Mode 유지 → main 베이스 사용
+  base_branch="main"
+fi
+```
+
+### 워크플로우 비교표
+
+| 항목 | Personal Mode | Team Mode |
+|------|--------------|-----------|
+| **활성화 조건** | 1-2 개발자 (기본) | 3명 이상 (자동) |
+| **베이스 브랜치** | main | develop |
+| **Feature 브랜치** | feature/SPEC-* → main | feature/SPEC-* → develop |
+| **PR 프로세스** | 간단 (CI/CD만 체크) | 상세 (리뷰 + CI/CD) |
+| **릴리스 방식** | main 태그 → deploy | release/* → main 태그 → deploy |
+| **릴리스 소요시간** | ~10분 | ~30분 |
+| **병합 충돌** | 적음 | 관리됨 |
+| **대상 프로젝트** | 1인 오픈소스 | 팀 프로젝트 |
+
+### Alfred × Hybrid Workflow 통합
+
+**모든 Alfred 명령어는 현재 모드에 맞춰 자동으로 작동합니다**:
+
+```bash
+# /alfred:1-plan → Personal/Team 모드에 맞는 Branch 생성
+# /alfred:2-run → 현재 모드의 Git strategy 자동 적용
+# /alfred:3-sync → 모드별 merge 전략 (squash vs --no-ff)
+```
+
+**예: SPEC-AUTH-001 구현**
+
+Personal Mode:
+```bash
+/alfred:1-plan "사용자 인증"
+# → feature/SPEC-AUTH-001 (from main) 생성
+/alfred:2-run SPEC-AUTH-001
+# → main에 직접 merge 준비
+/alfred:3-sync auto
+# → main 태그 → PyPI 배포 (10분)
+```
+
+Team Mode:
+```bash
+/alfred:1-plan "사용자 인증"
+# → feature/SPEC-AUTH-001 (from develop) 생성
+/alfred:2-run SPEC-AUTH-001
+# → develop에 PR, 리뷰 대기
+/alfred:3-sync auto
+# → develop merge → release 프로세스 (30분)
+```
+
+### Hybrid Workflow의 이점
+
+1. **자동 확장성**: 팀 규모 변화에 자동 대응
+2. **코드 변경 없음**: Git 워크플로우만 전환
+3. **최적화된 속도**: 1인은 빠르게, 팀은 안전하게
+4. **개발자 경험**: Alfred가 모든 복잡성 숨김
+
+---
+
 ### Enhanced Git Integration
 
 **Automated Workflows**:

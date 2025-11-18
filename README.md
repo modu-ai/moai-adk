@@ -1009,7 +1009,49 @@ Primary configuration file created after initialization:
       "default_pr_base": "develop",
       "prevent_main_direct_merge": true
     }
-  },
+  }
+}
+```
+
+##### 4️⃣ Hybrid Personal-Pro Git Workflow
+
+MoAI-ADK automatically adapts its Git workflow based on project size and team composition:
+
+**Personal Mode** (1-2 developers):
+- **Base Branch**: `main`
+- **Workflow**: GitHub Flow (fast, simple)
+- **Merge Strategy**: Direct to main
+- **Release Cycle**: ~10 minutes
+- **Ideal For**: Solo open-source projects, indie developers
+
+**Team Mode** (3+ developers - Auto-enabled):
+- **Base Branch**: `develop`
+- **Workflow**: Git-Flow (enterprise-grade)
+- **Merge Strategy**: Feature PR + Code Review
+- **Release Cycle**: ~30 minutes
+- **Ideal For**: Team projects, managed releases
+
+**Automatic Switching**:
+```bash
+# git-manager automatically detects contributor count
+contributor_count=$(git log --format='%aN' | sort | uniq | wc -l)
+threshold=$(jq '.git_strategy.team.auto_switch_threshold' .moai/config.json)
+
+if [ $contributor_count -ge $threshold ]; then
+  # Activate Team Mode (develop-based)
+else
+  # Keep Personal Mode (main-based)
+fi
+```
+
+**Key Advantage**: Seamlessly scales from efficient solo development to enterprise collaboration **without any code changes**.
+
+---
+
+Additionally, the configuration includes:
+
+```json
+{
   "constitution": {
     "enforce_tdd": true, // TDD enforcement
     "principles": {

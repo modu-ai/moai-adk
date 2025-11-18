@@ -19,7 +19,12 @@
     "test_coverage_target": 90
   },
   "git_strategy": {
+    "mode": "hybrid",
+    "_notes": "Hybrid Personal-Pro Workflow: Personal mode uses GitHub Flow (main-based), Team mode uses Git-Flow (develop-based). Auto-switches based on contributor count.",
     "personal": {
+      "enabled": true,
+      "workflow": "github-flow",
+      "_workflow_notes": "Personal mode: feature/SPEC-XXX → main (direct merge). Fast, simple workflow for solo development.",
       "auto_checkpoint": "event-driven",
       "checkpoint_events": [
         "delete",
@@ -34,12 +39,18 @@
       "push_to_remote": false,
       "auto_commit": true,
       "branch_prefix": "feature/SPEC-",
+      "base_branch": "main",
       "develop_branch": "develop",
       "main_branch": "main",
       "prevent_branch_creation": false,
-      "work_on_main": false
+      "work_on_main": true,
+      "require_ci": true,
+      "auto_merge": false
     },
     "team": {
+      "enabled": false,
+      "_notes": "Team mode: Auto-enabled when contributors >= 3. Uses Git-Flow: feature/SPEC-XXX → develop → main",
+      "workflow": "git-flow",
       "auto_pr": false,
       "develop_branch": "develop",
       "draft_pr": false,
@@ -47,7 +58,8 @@
       "main_branch": "main",
       "use_gitflow": true,
       "default_pr_base": "develop",
-      "prevent_main_direct_merge": false
+      "prevent_main_direct_merge": false,
+      "auto_switch_threshold": 3
     }
   },
   "pipeline": {

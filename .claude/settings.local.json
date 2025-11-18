@@ -17,7 +17,8 @@
       "Bash(open:*)",
       "Bash(curl:*)",
       "Bash(pkill:*)",
-      "Bash(styles.css)"
+      "Bash(styles.css)",
+      "Bash(git for-each-ref:*)"
     ],
     "deny": [],
     "ask": []
