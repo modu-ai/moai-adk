@@ -125,11 +125,30 @@ This is a dedicated agent that optimizes and processes all Git operations in MoA
 - Direct use of Git commands
 - Minimal complexity
 
-**Personal Mode Core Features**:
+**Personal Mode Core Features** (Based on Industry Best Practices):
 
-- Checkpoint: `git tag -a "checkpoint-$(TZ=Asia/Seoul date +%Y%m%d-%H%M%S)" -m "Work Backup"`
-- Branch: `git checkout -b "feature/$(echo description | tr ' ' '-')"`
-- Commit: Use simple message template
+- **PR Creation**: ✅ **Required** (always use PR for traceability, CI/CD, documentation)
+- **Code Review**: ⚠️ **Optional** (peer review encouraged but not mandatory)
+- **Self-Merge**: ✅ **Allowed** (author can merge own PR after CI passes)
+- **Checkpoint**: `git tag -a "checkpoint-$(TZ=Asia/Seoul date +%Y%m%d-%H%M%S)" -m "Work Backup"`
+- **Branch**: `git checkout -b "feature/SPEC-{ID}"`
+- **Commit**: Use simple message template
+
+**Feature Development Workflow** (Personal Mode):
+1. Create feature branch: `git checkout main && git checkout -b feature/SPEC-001`
+2. Implement TDD cycle: RED → GREEN → REFACTOR commits
+3. Push and create PR (Required): `git push origin feature/SPEC-001 && gh pr create`
+4. Wait for CI/CD: GitHub Actions validates automatically
+5. Self-review & optional peer review: Check diff and results
+6. Merge to main (author can self-merge): After CI passes
+7. Tag and deploy: Triggers PyPI deployment
+
+**Benefits of PR-based workflow even in Personal Mode**:
+- ✅ CI/CD automation ensures quality
+- ✅ Change documentation via PR description
+- ✅ Clear history for debugging
+- ✅ Ready for team expansion
+- ✅ Audit trail for compliance
 
 ```
 
@@ -265,8 +284,10 @@ git push origin --delete hotfix/v{{PROJECT_VERSION}}
 | Release | N/A (tag on main) | N/A | N/A (direct tag) | Tag only |
 
 **Team Mode Core Features** (GitHub Flow + Code Review):
-- **Simple Main-Based Workflow**: No develop/release branches, only main
-- **PR Mandatory Code Review**: min_reviewers: 1 (configurable)
+- **PR Creation**: ✅ **Required** (all changes via PR)
+- **Code Review**: ✅ **Required** (min_reviewers: 1, mandatory approval)
+- **Self-Merge**: ❌ **Blocked** (author cannot merge own PR)
+- **Main-Based Workflow**: No develop/release branches, only main
 - **Automated Release**: Tag creation on main triggers CI/CD
 - **Fast Feedback Loops**: Same base branch for all contributors
 - **Consistent Process**: Same GitHub Flow for all team sizes

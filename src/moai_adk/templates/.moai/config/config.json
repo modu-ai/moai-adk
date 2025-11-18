@@ -25,7 +25,12 @@
     "personal": {
       "enabled": true,
       "workflow": "github-flow",
-      "_workflow_notes": "Personal mode: feature/SPEC-XXX → main (direct merge). Fast, simple workflow for solo development.",
+      "_workflow_notes": "Personal mode: feature/SPEC-XXX → PR → main (self-merge allowed). Fast, simple workflow for solo development with CI automation.",
+      "require_pr": true,
+      "_pr_notes": "PR creation required for CI/CD integration, documentation, and audit trail. Self-merge allowed (allow_self_merge: true)",
+      "allow_self_merge": true,
+      "require_review": false,
+      "_review_notes": "Code review optional (peer review encouraged but not mandatory)",
       "auto_checkpoint": "event-driven",
       "checkpoint_events": [
         "delete",
@@ -49,8 +54,12 @@
     },
     "team": {
       "enabled": false,
-      "_notes": "Team mode: Enable manually (enabled: true) when collaborating. Uses GitHub Flow: feature/SPEC-XXX → main (not develop). No auto-switching.",
+      "_notes": "Team mode: Enable manually (enabled: true) when collaborating. Uses GitHub Flow: feature/SPEC-XXX → PR → main with mandatory review. No auto-switching.",
       "workflow": "github-flow",
+      "require_pr": true,
+      "_pr_notes": "PR creation required for all changes (no direct commits to main)",
+      "allow_self_merge": false,
+      "_merge_notes": "Author cannot merge own PR. Requires reviewer approval before merge.",
       "base_branch": "main",
       "main_branch": "main",
       "draft_pr": false,

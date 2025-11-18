@@ -126,12 +126,15 @@ This is a dedicated agent that optimizes and processes all Git operations in MoA
 - Minimal complexity
 - Fast release cycle (main → tag → deploy)
 
-**Personal Mode Core Features**:
+**Personal Mode Core Features** (Based on Industry Best Practices):
 
+- **PR Creation**: ✅ **Required** (always use PR for traceability, CI/CD, documentation)
+- **Code Review**: ⚠️ **Optional** (peer review encouraged but not mandatory)
+- **Self-Merge**: ✅ **Allowed** (author can merge own PR after CI passes)
 - **Base Branch**: `main` (configured in `.moai/config/config.json` → `git_strategy.personal.base_branch`)
 - **Checkpoint**: `git tag -a "checkpoint-$(TZ=Asia/Seoul date +%Y%m%d-%H%M%S)" -m "Work Backup"`
 - **Branch Creation**: `git checkout main && git checkout -b "feature/SPEC-{ID}"`
-- **Workflow**: feature/SPEC-XXX → main (direct merge, no develop)
+- **Workflow**: feature/SPEC-XXX → PR → main (merge via PR for history/CI/CD)
 - **Release**: main tag automatically deployed to PyPI via CI/CD
 - **Commit**: Use simple message template
 
@@ -144,9 +147,18 @@ main (production)
 **Feature Development Workflow** (Personal Mode):
 1. Create feature branch from main: `git checkout main && git checkout -b feature/SPEC-001`
 2. Implement TDD cycle: RED → GREEN → REFACTOR commits
-3. Push and create PR to main: `git push origin feature/SPEC-001`
-4. Merge to main (CI/CD validation automatic)
-5. Tag and deploy: Tag creation triggers PyPI deployment
+3. Push and create PR to main (Required): `git push origin feature/SPEC-001 && gh pr create`
+4. Wait for CI/CD (automatic testing): GitHub Actions validates changes
+5. Self-review & optional peer review: Review diff and test results
+6. Merge to main (author can self-merge): After CI passes
+7. Tag and deploy: Tag creation triggers PyPI deployment
+
+**Benefits of PR-based workflow even in Personal Mode**:
+- ✅ CI/CD automation ensures quality
+- ✅ Change documentation via PR description
+- ✅ Clear history for debugging
+- ✅ Ready for team expansion
+- ✅ Audit trail for compliance
 
 ```
 
@@ -179,14 +191,21 @@ main (production)
 - Code review enforcement via PR settings (min_reviewers: 1)
 - All contributors work on same base branch (main)
 
+**Team Mode Core Features** (Based on Industry Best Practices):
+
+- **PR Creation**: ✅ **Required** (all changes via PR)
+- **Code Review**: ✅ **Required** (min_reviewers: 1, mandatory approval)
+- **Self-Merge**: ❌ **Blocked** (author cannot merge own PR)
+- **Merge Permission**: Any approved reviewer or designated maintainer
+
 **Key Differences from Personal Mode**:
-- **Code Review**: Required (min_reviewers: 1)
+- **Code Review**: ✅ Required (min_reviewers: 1 approval)
 - **Release Cycle**: Slightly longer (~15-20 min) due to review process
-- **PR Flow**: Same as Personal, but with mandatory approval before merge
+- **Merge Authority**: Reviewer merges after approval (not author)
 
 **Branch roles** (Team Mode):
 - **main**: Production deployment branch (always in a stable state)
-- **feature/SPEC-XXX**: Feature branch (feature/SPEC-XXX → main with review)
+- **feature/SPEC-XXX**: Feature branch (feature/SPEC-XXX → PR → main with review)
 
 #### 🔄 Feature development workflow (GitHub Flow + Code Review)
 
