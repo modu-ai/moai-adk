@@ -407,21 +407,21 @@ def main() -> None:
 
     except json.JSONDecodeError as e:
         # JSON parse error
-        error_response: dict[str, Any] = {
+        json_error_response: dict[str, Any] = {
             "continue": True,
             "hookSpecificOutput": {"error": f"JSON parse error: {e}"},
         }
-        print(json.dumps(error_response))
+        print(json.dumps(json_error_response))
         print(f"ConfigHealthCheck JSON parse error: {e}", file=sys.stderr)
         sys.exit(1)
 
     except Exception as e:
         # Unexpected error - don't block session
-        error_response: dict[str, Any] = {
+        general_error_response: dict[str, Any] = {
             "continue": True,
             "hookSpecificOutput": {"error": f"ConfigHealthCheck error: {e}"},
         }
-        print(json.dumps(error_response))
+        print(json.dumps(general_error_response))
         print(f"ConfigHealthCheck unexpected error: {e}", file=sys.stderr)
         sys.exit(0)  # Exit 0 to not block session
 

@@ -34,7 +34,7 @@ try:
 except ImportError:
     # Fallback timeout implementation
 
-    class CrossPlatformTimeout:
+    class CrossPlatformTimeout:  # type: ignore[no-redef]
         def __init__(self, seconds):
             self.seconds = seconds
 
@@ -44,7 +44,7 @@ except ImportError:
         def cancel(self):
             pass
 
-    class PlatformTimeoutError(Exception):
+    class PlatformTimeoutError(Exception):  # type: ignore[no-redef]
         pass
 
 # Import config cache
@@ -255,7 +255,6 @@ def get_git_info() -> dict[str, Any]:
         }
 
 
-@staticmethod
 def _parse_version(version_str: str) -> tuple[int, ...]:
     """Parse version string to comparable tuple
 
@@ -274,7 +273,6 @@ def _parse_version(version_str: str) -> tuple[int, ...]:
         return (0,)
 
 
-@staticmethod
 def _is_newer_version(newer: str, older: str) -> bool:
     """Compare two versions (semantic versioning)
 
@@ -285,8 +283,8 @@ def _is_newer_version(newer: str, older: str) -> bool:
     Returns:
         True if newer > older
     """
-    newer_parts = check_version_update._parse_version(newer)
-    older_parts = check_version_update._parse_version(older)
+    newer_parts = _parse_version(newer)
+    older_parts = _parse_version(older)
     return newer_parts > older_parts
 
 
@@ -326,10 +324,10 @@ def check_version_update() -> tuple[str, bool]:
             return "(latest)", False
 
         # Compare versions with semantic versioning
-        if check_version_update._is_newer_version(latest_version, installed_version):
+        if _is_newer_version(latest_version, installed_version):
             # PyPI has newer version
             return f"→ {latest_version} available", True
-        elif check_version_update._is_newer_version(installed_version, latest_version):
+        elif _is_newer_version(installed_version, latest_version):
             # Local version is newer (development version)
             return "(dev)", False
         else:
@@ -506,21 +504,21 @@ def main() -> None:
 
     except json.JSONDecodeError as e:
         # JSON parse error
-        error_response: dict[str, Any] = {
+        json_error_response: dict[str, Any] = {
             "continue": True,
             "hookSpecificOutput": {"error": f"JSON parse error: {e}"},
         }
-        print(json.dumps(error_response))
+        print(json.dumps(json_error_response))
         print(f"SessionStart JSON parse error: {e}", file=sys.stderr)
         sys.exit(1)
 
     except Exception as e:
         # Unexpected error
-        error_response: dict[str, Any] = {
+        general_error_response: dict[str, Any] = {
             "continue": True,
             "hookSpecificOutput": {"error": f"SessionStart error: {e}"},
         }
-        print(json.dumps(error_response))
+        print(json.dumps(general_error_response))
         print(f"SessionStart unexpected error: {e}", file=sys.stderr)
         sys.exit(1)
 

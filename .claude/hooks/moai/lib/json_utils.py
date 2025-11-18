@@ -164,7 +164,7 @@ class JSONUtils:
         Returns:
             Standardized response dictionary
         """
-        response = {"success": success}
+        response: dict[str, Any] = {"success": success}
 
         if message:
             response["message"] = message

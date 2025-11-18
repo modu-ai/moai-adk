@@ -351,4 +351,4 @@ def _generate_insights(patterns_data: Dict[str, Any], current_results: Dict[str,
 
 
 # Add to_dict method to AnalysisResult
-AnalysisResult.to_dict = to_dict
+AnalysisResult.to_dict = to_dict  # type: ignore[attr-defined,assignment]

@@ -206,7 +206,7 @@ def cleanup_directory(
 
     try:
         # 패턴에 해당하는 파일 목록 수집
-        files_to_check = []
+        files_to_check: list[Path] = []
         for pattern in patterns:
             files_to_check.extend(directory.glob(pattern))
 
@@ -315,7 +315,7 @@ def analyze_session_logs(analysis_config: Dict[str, Any]) -> Optional[str]:
         recent_sessions = sorted(project_sessions, key=lambda f: f.stat().st_mtime, reverse=True)[:10]
 
         # 분석 데이터 수집
-        analysis_data = {
+        analysis_data: dict[str, Any] = {
             "total_sessions": len(recent_sessions),
             "date_range": "",
             "tools_used": {},
@@ -339,16 +339,21 @@ def analyze_session_logs(analysis_config: Dict[str, Any]) -> Optional[str]:
                     # 도구 사용 분석
                     if "tool_use" in session_data:
                         for tool_use in session_data["tool_use"]:
-                            tool_name = tool_use.get("name", "unknown")
-                            analysis_data["tools_used"][tool_name] = analysis_data["tools_used"].get(tool_name, 0) + 1
+                            if isinstance(tool_use, dict):
+                                tool_name = tool_use.get("name", "unknown")
+                                if isinstance(tool_name, str):
+                                    tools_dict: dict[str, int] = analysis_data["tools_used"]
+                                    tools_dict[tool_name] = tools_dict.get(tool_name, 0) + 1
 
                     # 오류 분석
                     if "errors" in session_data:
                         for error in session_data["errors"]:
-                            analysis_data["errors_found"].append({
-                                "timestamp": error.get("timestamp", ""),
-                                "error": error.get("message", "")[:100]  # 첫 100자만
-                            })
+                            if isinstance(error, dict):
+                                errors_list: list[Any] = analysis_data["errors_found"]
+                                errors_list.append({
+                                    "timestamp": error.get("timestamp", ""),
+                                    "error": error.get("message", "")[:100]  # 첫 100자만
+                                })
 
                     # 세션 길이 분석
                     if "start_time" in session_data and "end_time" in session_data:

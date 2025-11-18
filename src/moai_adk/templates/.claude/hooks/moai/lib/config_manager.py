@@ -6,7 +6,7 @@ Provides centralized configuration management with fallbacks and validation.
 
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, cast
 
 # Default configuration
 DEFAULT_CONFIG = {
@@ -77,7 +77,7 @@ class ConfigManager:
             config_path: Path to configuration file (defaults to .moai/config/config.json)
         """
         self.config_path = config_path or Path.cwd() / ".moai" / "config.json"
-        self._config = None
+        self._config: Optional[Dict[str, Any]] = None
 
     def load_config(self) -> Dict[str, Any]:
         """Load configuration from file with fallback to defaults.
@@ -188,17 +188,28 @@ class ConfigManager:
         Returns:
             Localized message
         """
-        default_messages = DEFAULT_CONFIG["hooks"]["messages"]
+        default_messages = cast(Dict[str, Any], DEFAULT_CONFIG["hooks"]["messages"])
         message = self.get(f"hooks.messages.{category}.{subcategory}.{key}")
 
         if message is None and category in default_messages:
-            if subcategory in default_messages[category]:
-                message = default_messages[category][subcategory].get(key)
+            category_messages = default_messages[category]
+            if isinstance(category_messages, dict) and subcategory in category_messages:
+                subcategory_messages = category_messages[subcategory]
+                if isinstance(subcategory_messages, dict):
+                    message = subcategory_messages.get(key)
 
         if message is None:
             # Fallback to English default
-            fallback = default_messages["timeout"].get(subcategory, {}).get(key)
-            message = fallback or f"Message not found: {category}.{subcategory}.{key}"
+            timeout_messages = default_messages.get("timeout", {})
+            if isinstance(timeout_messages, dict):
+                subcategory_messages = timeout_messages.get(subcategory, {})
+                if isinstance(subcategory_messages, dict):
+                    fallback = subcategory_messages.get(key)
+                    message = fallback or f"Message not found: {category}.{subcategory}.{key}"
+                else:
+                    message = f"Message not found: {category}.{subcategory}.{key}"
+            else:
+                message = f"Message not found: {category}.{subcategory}.{key}"
 
         return message
 

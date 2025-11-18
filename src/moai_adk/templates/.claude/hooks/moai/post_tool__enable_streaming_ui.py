@@ -48,11 +48,11 @@ def log_ui_refresh(tool_name: str) -> None:
         print("--- End UI Refresh ---", file=sys.stderr)
 
 
-def main() -> None:
+def main() -> int:
     """Ensure streaming UI settings are properly configured
 
     Returns:
-        None
+        0 on success or error (non-breaking failure)
     """
     try:
         # Read input from stdin
@@ -66,9 +66,11 @@ def main() -> None:
         tool_name: str = data.get('tool', '')
         log_ui_refresh(tool_name)
 
+        return 0
+
     except Exception:
         # Silent failure to avoid breaking hook chain
-        pass
+        return 0
 
 if __name__ == "__main__":
     sys.exit(main())

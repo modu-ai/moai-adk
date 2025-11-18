@@ -29,7 +29,7 @@ from lib import (
 class SingletonMeta(type):
     """Thread-safe Singleton metaclass with cleanup support"""
 
-    _instances = {}
+    _instances: Dict[type, Any] = {}
     _lock = threading.Lock()
 
     def __call__(cls, *args, **kwargs):
@@ -93,7 +93,7 @@ class HookStateManager(metaclass=SingletonMeta):
         # Thread lifecycle management
         self._cleanup_event = threading.Event()
         self._cleanup_thread = None
-        self._threads = []  # Track all created threads for proper cleanup
+        self._threads: list[threading.Thread] = []  # Track all created threads for proper cleanup
 
         # State files
         self.hook_state_file = self.state_dir / "hook_execution_state.json"
@@ -103,7 +103,7 @@ class HookStateManager(metaclass=SingletonMeta):
         # In-memory cache for performance
         self._hook_state_cache: Optional[Dict[str, Any]] = None
         self._command_state_cache: Optional[Dict[str, Any]] = None
-        self._cache_timestamp = 0
+        self._cache_timestamp: float = 0.0
 
         # Performance tracking
         self._performance_metrics = get_performance_metrics()
@@ -191,7 +191,7 @@ class HookStateManager(metaclass=SingletonMeta):
             record_cache_miss()
 
         # Default state structure
-        default_state = {}
+        default_state: Dict[str, Any] = {}
         self._hook_state_cache = default_state
         self._cache_timestamp = current_time
         record_cache_miss()
@@ -463,9 +463,11 @@ class HookStateManager(metaclass=SingletonMeta):
             )
 
         finally:
-            # Release lock if acquired
-            if self._lock.locked():
+            # Release lock (safe to release even if not acquired in this method)
+            try:
                 self._lock.release()
+            except RuntimeError:
+                pass  # Lock was not acquired by this thread
 
     def deduplicate_command(self, command: str) -> ExecutionResult:
         """Check and deduplicate command execution within time window
@@ -630,9 +632,11 @@ class HookStateManager(metaclass=SingletonMeta):
             )
 
         finally:
-            # Release lock if acquired
-            if self._lock.locked():
+            # Release lock (safe to release even if not acquired in this method)
+            try:
                 self._lock.release()
+            except RuntimeError:
+                pass  # Lock was not acquired by this thread
 
     def mark_command_complete(self, command: Optional[str] = None) -> None:
         """Mark command execution as complete

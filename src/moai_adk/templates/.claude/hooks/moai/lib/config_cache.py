@@ -29,9 +29,9 @@ class ConfigCache:
         spec_progress = cache.get_spec_progress()
     """
 
-    _instance = None
-    _cache = {}
-    _mtimes = {}
+    _instance: Optional["ConfigCache"] = None
+    _cache: dict[str, Any] = {}
+    _mtimes: dict[str, float] = {}
 
     def __new__(cls):
         if cls._instance is None:
@@ -79,9 +79,9 @@ class ConfigCache:
         # Compute from filesystem
         try:
             if not specs_dir.exists():
-                result = {"completed": 0, "total": 0, "percentage": 0}
-                ConfigCache._update_cache("spec_progress", result, specs_dir)
-                return result
+                empty_result: dict[str, int] = {"completed": 0, "total": 0, "percentage": 0}
+                ConfigCache._update_cache("spec_progress", empty_result, specs_dir)
+                return empty_result
 
             spec_folders = [d for d in specs_dir.iterdir() if d.is_dir() and d.name.startswith("SPEC-")]
             total = len(spec_folders)
@@ -91,10 +91,10 @@ class ConfigCache:
 
             percentage = (completed / total * 100) if total > 0 else 0
 
-            result = {
+            result: dict[str, int] = {
                 "completed": completed,
                 "total": total,
-                "percentage": round(percentage, 0)
+                "percentage": int(round(percentage, 0))
             }
 
             ConfigCache._update_cache("spec_progress", result, specs_dir)

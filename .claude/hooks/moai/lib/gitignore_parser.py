@@ -27,7 +27,7 @@ def load_gitignore_patterns(gitignore_path: str = ".gitignore") -> List[str]:
     Returns:
         List of exclude patterns
     """
-    patterns = []
+    patterns: list[str] = []
 
     try:
         gitignore_file = Path(gitignore_path)

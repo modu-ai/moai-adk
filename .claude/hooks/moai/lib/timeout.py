@@ -15,7 +15,7 @@ import platform
 import signal
 import threading
 from contextlib import contextmanager
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 
 class TimeoutError(Exception):
@@ -56,7 +56,7 @@ class CrossPlatformTimeout:
         self.callback = callback
         self.timer: Optional[threading.Timer] = None
         self._is_windows = platform.system() == "Windows"
-        self._old_handler = None
+        self._old_handler: Optional[signal.Handlers | Callable[[int, Any], Any]] = None
 
     def start(self) -> None:
         """Start timeout countdown."""
@@ -116,7 +116,7 @@ class CrossPlatformTimeout:
             )
 
         # Save old handler to restore later
-        self._old_handler = signal.signal(signal.SIGALRM, signal_handler)
+        self._old_handler = signal.signal(signal.SIGALRM, signal_handler)  # type: ignore[assignment]
         # Use integer timeout_seconds_int for signal.alarm()
         signal.alarm(self.timeout_seconds_int)
 

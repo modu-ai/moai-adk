@@ -35,17 +35,17 @@ except ImportError:
     # Fallback for timeout if shared module unavailable
     import signal
 
-    class PlatformTimeoutError(Exception):
+    class PlatformTimeoutError(Exception):  # type: ignore[no-redef]
         pass
 
-    class CrossPlatformTimeout:
-        def __init__(self, seconds):
+    class CrossPlatformTimeout:  # type: ignore[no-redef]
+        def __init__(self, seconds: int) -> None:
             self.seconds = seconds
 
-        def start(self):
+        def start(self) -> None:
             signal.alarm(int(self.seconds))
 
-        def cancel(self):
+        def cancel(self) -> None:
             signal.alarm(0)
 
 
@@ -169,7 +169,7 @@ def validate_file_location(file_path: str, config: Dict) -> Dict[str, Any]:
         # Fallback: check if path has only one component (filename only)
         is_in_root = str(path_obj.parent) in [".", ""]
 
-    result = {
+    result: Dict[str, Any] = {
         "valid": True,
         "is_root": is_in_root,
         "whitelisted": False,
@@ -191,7 +191,7 @@ def validate_file_location(file_path: str, config: Dict) -> Dict[str, Any]:
 
     # File is in root and NOT whitelisted - violation
     doc_mgmt = config.get("document_management", {})
-    doc_mgmt.get("validation", {}).get("warn_violations", True)
+    warn_violations = doc_mgmt.get("validation", {}).get("warn_violations", True)
     block_violations = doc_mgmt.get("validation", {}).get("block_violations", False)
 
     suggested = suggest_moai_location(filename, config)
@@ -321,21 +321,21 @@ def main() -> None:
 
     except json.JSONDecodeError as e:
         # JSON parse error - allow operation to continue
-        error_response: Dict[str, Any] = {
+        json_error_response: Dict[str, Any] = {
             "continue": True,
             "hookSpecificOutput": {"error": f"JSON parse error: {e}"},
         }
-        print(json.dumps(error_response, ensure_ascii=False))
+        print(json.dumps(json_error_response, ensure_ascii=False))
         print(f"PreToolUse document management JSON parse error: {e}", file=sys.stderr)
         sys.exit(1)
 
     except Exception as e:
         # Unexpected error - allow operation to continue
-        error_response: Dict[str, Any] = {
+        unexpected_error_response: Dict[str, Any] = {
             "continue": True,
             "hookSpecificOutput": {"error": f"Document management error: {e}"},
         }
-        print(json.dumps(error_response, ensure_ascii=False))
+        print(json.dumps(unexpected_error_response, ensure_ascii=False))
         print(f"PreToolUse document management unexpected error: {e}", file=sys.stderr)
         sys.exit(1)
 

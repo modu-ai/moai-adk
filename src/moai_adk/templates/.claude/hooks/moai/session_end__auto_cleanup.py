@@ -177,7 +177,7 @@ def cleanup_directory(
 
     try:
         # Collect files matching patterns
-        files_to_check = []
+        files_to_check: list[Path] = []
         for pattern in patterns:
             files_to_check.extend(directory.glob(pattern))
 

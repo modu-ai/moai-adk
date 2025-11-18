@@ -713,8 +713,11 @@ def get_package_version_info(cwd: str = ".") -> dict[str, Any]:
     if result["current"] != "unknown" and result["latest"] != "unknown":
         try:
             # Parse versions for comparison
-            current_parts = [int(x) for x in result["current"].split(".")]
-            latest_parts = [int(x) for x in result["latest"].split(".")]
+            current_str = str(result["current"])
+            latest_str = str(result["latest"])
+
+            current_parts = [int(x) for x in current_str.split(".")]
+            latest_parts = [int(x) for x in latest_str.split(".")]
 
             # Pad shorter version with zeros
             max_len = max(len(current_parts), len(latest_parts))
@@ -727,7 +730,7 @@ def get_package_version_info(cwd: str = ".") -> dict[str, Any]:
 
                 # Detect major version change
                 result["is_major_update"] = is_major_version_change(
-                    result["current"], result["latest"]
+                    current_str, latest_str
                 )
             else:
                 result["is_major_update"] = False
