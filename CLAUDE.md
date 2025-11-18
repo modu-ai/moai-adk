@@ -920,13 +920,13 @@ mcp__context7__get-library-docs("/facebook/react")
 # Quality gate validation
 ```
 
-## 🔄 Hybrid Personal-Pro Git Workflow
+## 🔄 Selection-Based GitHub Flow (v0.26.0+)
 
-**MoAI-ADK는 프로젝트 규모에 따라 자동으로 Git 워크플로우를 전환합니다.**
+**MoAI-ADK는 사용자가 선택한 Git 워크플로우를 적용합니다. Personal/Team 모두 GitHub Flow를 사용합니다.**
 
 ### Personal Mode (1-2명 개발자)
 
-**적용 시기**: 기본 모드 (또는 contributor < 3)
+**활성화**: 수동으로 `personal.enabled: true` 설정
 
 **특징**:
 - **워크플로우**: GitHub Flow (단순하고 빠름)
@@ -934,6 +934,7 @@ mcp__context7__get-library-docs("/facebook/react")
 - **Feature 브랜치**: feature/SPEC-XXX → main (직접 merge)
 - **릴리스**: main 태그 → CI/CD로 PyPI 자동 배포
 - **릴리스 주기**: ~10분 (매우 빠름)
+- **코드 리뷰**: 선택사항
 
 **장점**:
 - 간단한 Git 구조 (main만 관리)
@@ -948,95 +949,97 @@ git checkout main
 git checkout -b feature/SPEC-001
 # ... 개발 및 테스트 ...
 git push origin feature/SPEC-001
-# → PR to main → Merge → Tag → PyPI Deploy
+# → PR to main (선택) → Merge → Tag → PyPI Deploy
 ```
 
 ### Team Mode (3명 이상 개발자)
 
-**활성화**: 자동 (contributor ≥ 3)
+**활성화**: 수동으로 `team.enabled: true` 설정 (협업 시)
 
 **특징**:
-- **워크플로우**: Git-Flow (엔터프라이즈급)
-- **베이스 브랜치**: `develop`
-- **Feature 브랜치**: feature/SPEC-XXX → develop (PR + review)
-- **릴리스**: develop → release/* → main (formal release)
-- **릴리스 주기**: ~30분 (검토 프로세스 포함)
+- **워크플로우**: GitHub Flow (동일하게 단순함)
+- **베이스 브랜치**: `main`
+- **Feature 브랜치**: feature/SPEC-XXX → main (PR + 리뷰 필수)
+- **릴리스**: main 태그 → CI/CD로 PyPI 자동 배포
+- **릴리스 주기**: ~15-20분 (리뷰 프로세스 포함)
+- **코드 리뷰**: 필수 (min_reviewers: 1)
 
 **장점**:
-- 복잡한 merge scenario 처리
-- 다중 리뷰어 지원
-- 병렬 개발 격리
-- hotfix 지원
+- 간단하면서도 체계적인 리뷰 프로세스
+- 병렬 개발 지원 (모두 main 기반)
+- 저렴한 인지 부하 (main만 관리)
+- 빠른 배포 사이클 유지
 
 **예시**:
 ```bash
 # Team Mode 워크플로우
-git checkout develop
+git checkout main
 git checkout -b feature/SPEC-001
 # ... 개발 및 테스트 ...
 git push origin feature/SPEC-001
-# → Draft PR to develop → Code Review → Merge to develop
-# → Release branch → QA → Merge to main → Tag → PyPI Deploy
+# → PR to main → Code Review (최소 1명) → Merge → Tag → PyPI Deploy
 ```
 
-### Auto-Switching Logic
+### Manual Mode Selection
 
-**config.json 설정**:
+**config.json 설정** (v0.26.0+):
 ```json
 {
   "git_strategy": {
-    "mode": "hybrid",
+    "mode": "selection",
     "personal": {
-      "enabled": true,
+      "enabled": true,        // Personal Mode 사용
       "base_branch": "main",
       "workflow": "github-flow"
     },
     "team": {
-      "enabled": false,
-      "base_branch": "develop",
-      "auto_switch_threshold": 3
+      "enabled": false,       // Team Mode 미사용 (협업 시 true로 변경)
+      "base_branch": "main",
+      "workflow": "github-flow",
+      "require_review": true,
+      "min_reviewers": 1
     }
   }
 }
 ```
 
-**자동 전환 조건**:
+**모드 전환**: 설정 파일에서 직접 변경 (자동 전환 없음)
 ```bash
-# 1. Git contributor 수 조회
-contributor_count=$(git log --format='%aN' | sort | uniq | wc -l)
-
-# 2. threshold와 비교 (기본: 3)
-if [ $contributor_count -ge 3 ]; then
-  # Team Mode 활성화 → develop 베이스 사용
-  base_branch="develop"
-else
-  # Personal Mode 유지 → main 베이스 사용
-  base_branch="main"
-fi
+# Personal → Team 전환:
+# personal.enabled: false
+# team.enabled: true
 ```
 
 ### 워크플로우 비교표
 
 | 항목 | Personal Mode | Team Mode |
 |------|--------------|-----------|
-| **활성화 조건** | 1-2 개발자 (기본) | 3명 이상 (자동) |
-| **베이스 브랜치** | main | develop |
-| **Feature 브랜치** | feature/SPEC-* → main | feature/SPEC-* → develop |
-| **PR 프로세스** | 간단 (CI/CD만 체크) | 상세 (리뷰 + CI/CD) |
-| **릴리스 방식** | main 태그 → deploy | release/* → main 태그 → deploy |
-| **릴리스 소요시간** | ~10분 | ~30분 |
-| **병합 충돌** | 적음 | 관리됨 |
-| **대상 프로젝트** | 1인 오픈소스 | 팀 프로젝트 |
+| **활성화 방식** | 수동 (enabled: true) | 수동 (enabled: true) |
+| **베이스 브랜치** | main | main |
+| **워크플로우** | GitHub Flow | GitHub Flow |
+| **Feature 브랜치** | feature/SPEC-* → main | feature/SPEC-* → main |
+| **PR 프로세스** | 선택사항 | 필수 (min_reviewers: 1) |
+| **릴리스 방식** | main 태그 → deploy | main 태그 → deploy |
+| **릴리스 소요시간** | ~10분 | ~15-20분 |
+| **병합 충돌** | 최소화 | 최소화 |
+| **대상 규모** | 1-2명 | 3명 이상 |
+| **자동 전환** | ❌ 없음 | ❌ 없음 |
 
-### Alfred × Hybrid Workflow 통합
+### Alfred × Selection-Based Workflow 통합
 
-**모든 Alfred 명령어는 현재 모드에 맞춰 자동으로 작동합니다**:
+**모든 Alfred 명령어는 활성화된 모드에 맞춰 작동합니다**:
 
 ```bash
-# /alfred:1-plan → Personal/Team 모드에 맞는 Branch 생성
-# /alfred:2-run → 현재 모드의 Git strategy 자동 적용
-# /alfred:3-sync → 모드별 merge 전략 (squash vs --no-ff)
+# /alfred:1-plan → 활성화된 모드 (Personal or Team)에 맞는 Branch 생성
+# /alfred:2-run → GitHub Flow 기반 TDD 구현
+# /alfred:3-sync → main 기반 sync (develop 불필요)
 ```
+
+**장점**:
+- ✅ Personal과 Team 모두 GitHub Flow (학습 곡선 낮음)
+- ✅ main 브랜치만 관리 (간단함)
+- ✅ 자동 전환 없음 (예측 가능함)
+- ✅ 사용자 명시적 선택 (의도 명확함)
 
 **예: SPEC-AUTH-001 구현**
 

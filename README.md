@@ -1013,38 +1013,43 @@ Primary configuration file created after initialization:
 }
 ```
 
-##### 4️⃣ Hybrid Personal-Pro Git Workflow
+##### 4️⃣ Selection-Based GitHub Flow (v0.26.0+)
 
-MoAI-ADK automatically adapts its Git workflow based on project size and team composition:
+MoAI-ADK uses GitHub Flow for all modes. Users select their workflow mode manually:
 
 **Personal Mode** (1-2 developers):
 - **Base Branch**: `main`
-- **Workflow**: GitHub Flow (fast, simple)
-- **Merge Strategy**: Direct to main
+- **Workflow**: GitHub Flow (fast, simple, main-based)
+- **Merge Strategy**: Direct to main (optional PR)
 - **Release Cycle**: ~10 minutes
+- **Code Review**: Optional
 - **Ideal For**: Solo open-source projects, indie developers
 
-**Team Mode** (3+ developers - Auto-enabled):
-- **Base Branch**: `develop`
-- **Workflow**: Git-Flow (enterprise-grade)
-- **Merge Strategy**: Feature PR + Code Review
-- **Release Cycle**: ~30 minutes
-- **Ideal For**: Team projects, managed releases
+**Team Mode** (3+ developers - Manual opt-in):
+- **Base Branch**: `main` (same as Personal)
+- **Workflow**: GitHub Flow (main-based, with stricter review)
+- **Merge Strategy**: Required PR + Code Review (min 1 reviewer)
+- **Release Cycle**: ~15-20 minutes
+- **Code Review**: Mandatory
+- **Ideal For**: Team projects, collaborative development
 
-**Automatic Switching**:
+**Manual Mode Selection**:
 ```bash
-# git-manager automatically detects contributor count
-contributor_count=$(git log --format='%aN' | sort | uniq | wc -l)
-threshold=$(jq '.git_strategy.team.auto_switch_threshold' .moai/config.json)
-
-if [ $contributor_count -ge $threshold ]; then
-  # Activate Team Mode (develop-based)
-else
-  # Keep Personal Mode (main-based)
-fi
+# Edit .moai/config/config.json to select mode (no auto-switching)
+{
+  "git_strategy": {
+    "mode": "selection",
+    "personal": { "enabled": true },   # Set to false for team mode
+    "team": { "enabled": false }       # Set to true for team mode
+  }
+}
 ```
 
-**Key Advantage**: Seamlessly scales from efficient solo development to enterprise collaboration **without any code changes**.
+**Key Advantages**:
+- ✅ Simple and consistent GitHub Flow for both modes
+- ✅ Single main branch (no develop branch overhead)
+- ✅ User-controlled mode selection (no auto-switching surprises)
+- ✅ Scales from solo development to small team collaboration
 
 ---
 
