@@ -19,15 +19,12 @@ from unittest import mock
 
 import pytest
 
-# Add templates path to sys.path for imports
-templates_path = (
-    Path(__file__).parent.parent.parent / "src" / "moai_adk" / "templates" /
-    ".claude" / "hooks" / "alfred"
-)
-sys.path.insert(0, str(templates_path))
+# Add src path to sys.path for imports
+src_path = Path(__file__).parent.parent.parent / "src"
+sys.path.insert(0, str(src_path))
 
 # Import the module to test
-from utils.timeout import CrossPlatformTimeout, TimeoutError  # noqa: E402
+from moai_adk.utils.timeout import CrossPlatformTimeout, TimeoutError  # noqa: E402
 
 
 class TestCrossPlatformTimeoutWindows:
@@ -312,7 +309,7 @@ class TestCrossPlatformTimeoutDocumentation:
 
     def test_module_has_proper_docstring(self):
         """Test that module has proper documentation."""
-        from utils import timeout as timeout_module
+        from moai_adk.utils import timeout as timeout_module
         assert timeout_module.__doc__ is not None
 
 
@@ -335,4 +332,4 @@ def clean_alarm_state():
 
 
 if __name__ == "__main__":
-    pytest.main([__file__, "-v", "--cov=src/moai_adk/templates/claude/hooks/alfred/utils/timeout"])
+    pytest.main([__file__, "-v", "--cov=src/moai_adk/utils/timeout"])

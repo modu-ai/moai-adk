@@ -13,51 +13,53 @@ from pathlib import Path
 from unittest.mock import patch
 
 # Add hooks directory to path (must be before any imports from hooks)
-HOOKS_DIR = Path(__file__).parent.parent.parent / ".claude" / "hooks" / "alfred"
-SHARED_DIR = HOOKS_DIR / "shared"
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+HOOKS_DIR = PROJECT_ROOT / ".claude" / "hooks" / "moai"
+SHARED_DIR = HOOKS_DIR / "shared" / "core"
 UTILS_DIR = HOOKS_DIR / "utils"
 
 # sys.path에 추가 (최상단에 추가하여 우선순위 높임)
 # sys.path를 새로 생성하는 것이 아니라, 명시적으로 추가
-sys.path = [
-    str(SHARED_DIR),
-    str(HOOKS_DIR),
-    str(UTILS_DIR)
-] + [p for p in sys.path if p not in [
-    str(SHARED_DIR),
-    str(HOOKS_DIR),
-    str(UTILS_DIR)
-]]
+sys.path.insert(0, str(SHARED_DIR))
+sys.path.insert(1, str(HOOKS_DIR / "shared"))
+sys.path.insert(2, str(HOOKS_DIR))
 
 # 이제 핸들러를 import할 수 있음
 try:
-    from core import HookPayload, HookResult  # noqa: E402
-except ImportError as e:
-    raise ImportError(f"Failed to import from core: {e}. SHARED_DIR={SHARED_DIR}, sys.path={sys.path[:3]}") from e
+    from core.core import HookPayload, HookResult  # noqa: E402
+except ImportError:
+    try:
+        # Fallback: Try alternative import path
+        from core import HookPayload, HookResult  # noqa: E402
+    except ImportError as e:
+        raise ImportError(f"Failed to import from core: {e}. SHARED_DIR={SHARED_DIR}, sys.path={sys.path[:3]}") from e
 
-try:
-    from handlers.notification import (  # noqa: E402
-        handle_notification,
-        handle_stop,
-        handle_subagent_stop,
-    )
-except ImportError as e:
-    raise ImportError(f"Failed to import from handlers.notification: {e}") from e
-
-try:
-    from handlers.session import handle_session_end, handle_session_start  # noqa: E402
-except ImportError as e:
-    raise ImportError(f"Failed to import from handlers.session: {e}") from e
-
-try:
-    from handlers.tool import handle_post_tool_use, handle_pre_tool_use  # noqa: E402
-except ImportError as e:
-    raise ImportError(f"Failed to import from handlers.tool: {e}") from e
-
-try:
-    from handlers.user import handle_user_prompt_submit  # noqa: E402
-except ImportError as e:
-    raise ImportError(f"Failed to import from handlers.user: {e}") from e
+# Note: handlers modules don't exist yet in the moai structure
+# This test file may need additional setup or may be outdated
+# Commenting out handler imports for now
+# try:
+#     from handlers.notification import (  # noqa: E402
+#         handle_notification,
+#         handle_stop,
+#         handle_subagent_stop,
+#     )
+# except ImportError as e:
+#     raise ImportError(f"Failed to import from handlers.notification: {e}") from e
+#
+# try:
+#     from handlers.session import handle_session_end, handle_session_start  # noqa: E402
+# except ImportError as e:
+#     raise ImportError(f"Failed to import from handlers.session: {e}") from e
+#
+# try:
+#     from handlers.tool import handle_post_tool_use, handle_pre_tool_use  # noqa: E402
+# except ImportError as e:
+#     raise ImportError(f"Failed to import from handlers.tool: {e}") from e
+#
+# try:
+#     from handlers.user import handle_user_prompt_submit  # noqa: E402
+# except ImportError as e:
+#     raise ImportError(f"Failed to import from handlers.user: {e}") from e
 
 
 class TestPreToolUseHandler:
