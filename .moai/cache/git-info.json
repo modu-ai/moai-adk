@@ -1,7 +1,7 @@
 {
-  "branch": "main",
-  "last_commit": "05b98e56 feat(statusline): Implement uvx-based statusline execution for all OS",
-  "commit_time": "23 hours ago",
-  "changes": 7,
-  "last_check": "2025-11-18T17:13:22.416179"
+  "branch": "release/0.26.0",
+  "last_commit": "76720c43 chore: Bump version 0.25.11 \u2192 0.26.0 - Worktree Mode Release",
+  "commit_time": "7 minutes ago",
+  "changes": 38,
+  "last_check": "2025-11-18T18:16:28.341375"
 }

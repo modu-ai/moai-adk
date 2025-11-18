@@ -30,11 +30,13 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session_start__show_project_info.py"
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session_start__show_project_info.py",
+            "model": "haiku"
           },
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session_start__config_health_check.py"
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session_start__config_health_check.py",
+            "model": "haiku"
           }
         ]
       }
@@ -45,7 +47,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/pre_tool__auto_checkpoint.py"
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/pre_tool__auto_checkpoint.py",
+            "model": "haiku"
           }
         ]
       }
@@ -55,7 +58,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/user_prompt__jit_load_docs.py"
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/user_prompt__jit_load_docs.py",
+            "model": "sonnet"
           }
         ]
       }
@@ -65,7 +69,30 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session_end__auto_cleanup.py"
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session_end__auto_cleanup.py",
+            "model": "haiku"
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/subagent_start__context_optimizer.py",
+            "model": "haiku"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/subagent_stop__lifecycle_tracker.py",
+            "model": "haiku"
           }
         ]
       }

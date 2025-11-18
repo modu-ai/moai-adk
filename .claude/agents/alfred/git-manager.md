@@ -3,6 +3,8 @@ name: git-manager
 description: "Use when: When you need to perform Git operations such as creating Git branches, managing PRs, creating commits, etc."
 tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
 model: haiku
+permissionMode: ask
+skills: []
 ---
 
 # Git Manager - Agent dedicated to Git tasks

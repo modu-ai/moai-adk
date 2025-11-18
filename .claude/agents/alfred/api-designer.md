@@ -3,6 +3,11 @@ name: api-designer
 description: "API design and documentation research specialist. Use PROACTIVELY when: REST/GraphQL API design, OpenAPI specifications, API documentation, API versioning, rate limiting, authentication patterns, or API gateway configuration is needed. Triggered by SPEC keywords: 'api', 'endpoint', 'rest', 'graphql', 'openapi', 'documentation'."
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential-thinking__sequentialthinking
 model: inherit
+permissionMode: ask
+skills:
+  - moai-lang-python
+  - moai-domain-backend
+  - moai-context7-lang-integration
 ---
 
 # API Designer - API Design & Documentation Research Specialist

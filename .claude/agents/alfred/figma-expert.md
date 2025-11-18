@@ -3,6 +3,9 @@ name: figma-expert
 description: "Use PROACTIVELY when: Figma design analysis, Design-to-Code conversion, Design Tokens extraction, Component Library creation, or WCAG accessibility validation is needed. Triggered by SPEC keywords: 'figma', 'design system', 'design tokens', 'ui components', 'design-to-code', 'figma file', 'component library'. CRITICAL: This agent MUST be invoked via Task(subagent_type='figma-expert') - NEVER executed directly."
 tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, AskUserQuestion, mcp__figma-remote-mcp__get-design-context, mcp__figma-remote-mcp__get-variable-defs, mcp__figma-remote-mcp__get-screenshot, mcp__figma-remote-mcp__get-metadata, mcp__figma-remote-mcp__get-code-connect-map, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
 model: inherit
+permissionMode: ask
+skills:
+  - moai-domain-figma
 ---
 
 # Agent Orchestration Metadata (v1.0)

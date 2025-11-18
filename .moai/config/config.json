@@ -102,7 +102,41 @@
   "hooks": {
     "timeout_ms": 2000,
     "graceful_degradation": true,
-    "notes": "Hook execution timeout (milliseconds). Set graceful_degradation to true to continue even if a hook fails. Optimized to 2 seconds for faster performance."
+    "notes": "Hook execution timeout (milliseconds). Set graceful_degradation to true to continue even if a hook fails. Optimized to 2 seconds for faster performance.",
+    "model_strategy": {
+      "v2_0_43": {
+        "enabled": true,
+        "description": "Claude Code v2.0.43 Hook model parameter 최적화",
+        "strategy": {
+          "SessionStart": "haiku (프로젝트 정보 표시)",
+          "PreToolUse": "haiku (패턴 감지)",
+          "UserPromptSubmit": "sonnet (복잡한 컨텍스트 분석)",
+          "SessionEnd": "haiku (정리 작업)"
+        },
+        "cost_savings": "70% (Hook 비용 감소)"
+      }
+    }
+  },
+  "agent_permissions": {
+    "v2_0_43": {
+      "enabled": true,
+      "description": "Claude Code v2.0.43 permissionMode 에이전트별 설정",
+      "auto_mode_agents": [
+        "spec-builder (SPEC 문서 자동 생성)",
+        "docs-manager (문서 자동 생성)",
+        "quality-gate (자동 품질 검증)",
+        "sync-manager (자동 동기화)"
+      ],
+      "ask_mode_agents": [
+        "tdd-implementer (코드 작성)",
+        "backend-expert (백엔드 개발)",
+        "frontend-expert (프론트엔드 개발)",
+        "database-expert (데이터베이스)",
+        "security-expert (보안 분석)",
+        "performance-engineer (성능 최적화)",
+        "devops-expert (배포 설정)"
+      ]
+    }
   },
   "session_end": {
     "enabled": true,

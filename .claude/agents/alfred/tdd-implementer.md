@@ -3,6 +3,13 @@ name: tdd-implementer
 description: "Use PROACTIVELY when TDD RED-GREEN-REFACTOR implementation is needed. Called in /alfred:2-run Phase 2. CRITICAL: This agent MUST be invoked via Task(subagent_type='tdd-implementer') - NEVER executed directly."
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential_thinking_think
 model: haiku
+permissionMode: ask
+skills:
+  - moai-lang-python
+  - moai-lang-typescript
+  - moai-essentials-debug
+  - moai-domain-backend
+  - moai-domain-frontend
 ---
 
 # TDD Implementer - TDD Implementation Expert
