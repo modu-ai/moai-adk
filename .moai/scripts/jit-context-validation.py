@@ -480,13 +480,13 @@ def main():
     print(f"  ✓ Foundation: {len(foundation)}개")
     print(f"  ✓ 총 문서: {len(all_metrics)}개\n")
 
-    # Step 2: Phase별 분석
+    # Step 2: Phase별 분석 (재조정 v2.0)
     print("Step 2: Phase별 컨텍스트 분석 중...")
     phase_budgets = {
-        "SPEC": 50000,
-        "RED": 60000,
-        "GREEN": 60000,
-        "REFACTOR": 50000
+        "SPEC": 30000,      # 기존 50K → 30K 축소 (저효율 해결)
+        "RED": 25000,       # 기존 60K → 25K 축소 (110.5% 초과 → 88% 절약)
+        "GREEN": 25000,     # 기존 60K → 25K 축소 (저효율 해결)
+        "REFACTOR": 20000   # 기존 50K → 20K 축소 (132.6% 초과 → 91% 절약)
     }
 
     phase_analyses = []

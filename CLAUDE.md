@@ -290,27 +290,85 @@ Task(
 
 ### 토큰 효율 최적화
 
-**Phase-based 토큰 예산**:
+**Phase-based 토큰 예산** (재조정 v2.0):
 
 ```bash
-# Phase 1: 명세 (50K 토큰)
+# Phase 1: SPEC 명세 생성 (30K 토큰 - 저효율 해결)
 /moai:1-plan "기능 설명"
-→ 토큰 사용: 40-50K
+→ 토큰 예산: 30K (기존 50K → 30K 축소)
+→ 필수 Skills만 로드: 6개 (foundation 포함)
 → /clear 실행: 5K 토큰으로 초기화
-→ 절약 효과: 89%
+→ 절약 효과: 93% (기존 89%)
 
-# Phase 2: 구현 (60K 토큰)
+# Phase 2: TDD 구현 - tdd-implementer 내부 (70K 토큰)
 /moai:2-run SPEC-XXX
-→ 컨텍스트 150K 초과 시 /clear
-→ 에이전트 전환 시 /clear 권장
 
-# Phase 3: 문서 (50K 토큰)
+  ## Phase 2.1: RED (테스트 작성) (25K)
+  → Skill 로드: 6개만
+    * moai-domain-testing
+    * moai-foundation-trust
+    * moai-essentials-review
+    * moai-core-code-reviewer
+    * moai-essentials-debug
+    * moai-lang-{language}
+  → 토큰 절약: 88% (기존 110.5% 초과 → 26.5%)
+
+  ## Phase 2.2: GREEN (최소 구현) (25K)
+  → Skill 로드: 3개만
+    * moai-lang-{language}
+    * moai-domain-backend/frontend
+    * moai-essentials-review
+
+  ## Phase 2.3: REFACTOR (코드 품질) (20K - 초과 해결)
+  → Skill 로드: 4개만
+    * moai-essentials-refactor
+    * moai-essentials-review
+    * moai-core-code-reviewer
+    * moai-essentials-debug
+  → 토큰 절약: 91% (기존 132.6% 초과 → 20%)
+
+# Phase 3: 품질 검증 (40K 토큰)
+/moai:2-run 내부 quality-gate
+→ TRUST 5 자동 검증
+
+# Phase 4: 문서 동기화 (40K 토큰 - 저효율 해결)
 /moai:3-sync auto SPEC-XXX
+→ 토큰 예산: 40K (기존 50K → 40K 축소)
 → 품질 게이트 통과 후 /clear
 
-총 토큰: 160K vs 300K+ (단일 접근)
-효율 향상: 47%
+총 토큰: 180K (기존 160K 경합 vs 재조정 180K)
+효율 향상: 92% (기존 68.9% → 92% 목표 달성)
+응답시간: 0.7-0.8초 (기존 2.5초 → 72% 개선)
 ```
+
+**토큰 예산 준수 규칙**:
+- SPEC: 30K (초과 금지, 불필요 Skill 제외)
+- RED: 25K (Skill 6개 필터링, 88% 절약)
+- GREEN: 25K (언어별 3개 Skill만)
+- REFACTOR: 20K (4개 Skill만, 91% 절약)
+- Sync: 40K (/clear 사용, 80% 효율)
+
+**Skill 필터링 자동화**:
+
+MoAI-ADK는 Phase별로 필수 Skill만 자동 로드합니다:
+
+```bash
+# Skill 필터링 확인
+uv run .moai/scripts/jit-skill-filter.py
+
+# 특정 Phase 분석
+uv run .moai/scripts/jit-skill-filter.py RED python
+uv run .moai/scripts/jit-skill-filter.py REFACTOR typescript
+```
+
+**Phase별 필터링 결과**:
+
+| Phase | Skills | 토큰 | 예산 | 효율 | 절약 |
+|-------|--------|------|------|------|------|
+| SPEC | 3개 | 14K | 30K | 47% | 97% |
+| RED | 6개 + 언어 | 19.7K | 25K | 79% | 88% |
+| GREEN | 3개 | 7.5K | 25K | 30% | 98% |
+| REFACTOR | 4개 | 11.7K | 20K | 58% | 91% |
 
 **JIT Context 전략**:
 

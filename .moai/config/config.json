@@ -141,7 +141,8 @@
       ".moai/reports/*.md",
       ".moai/cache/*",
       ".moai/temp/*"
-    ]
+    ],
+    "last_cleanup": "2025-11-19"
   },
   "daily_analysis": {
     "enabled": true,
