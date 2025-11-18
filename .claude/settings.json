@@ -30,7 +30,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session_start__show_project_info.py"
+            "command": "uv run $CLAUDE_PROJECT_DIR/.moai/bin/statusline.py"
           },
           {
             "type": "command",
@@ -172,7 +172,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "uvx moai-adk statusline",
+    "command": "uv run $CLAUDE_PROJECT_DIR/.moai/bin/statusline.py",
     "padding": 0
   },
   "spinnerTipsEnabled": true,
