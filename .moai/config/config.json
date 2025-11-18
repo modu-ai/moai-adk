@@ -80,7 +80,7 @@
   "project": {
     "name": "MoAI-ADK",
     "description": "MoAI Agentic Development Kit",
-    "owner": "GoosLab",
+    "owner": "modu-ai",
     "mode": "development",
     "locale": "ko",
     "language": "Python",
@@ -92,7 +92,7 @@
     "_notes": "optimized=false: Template updated, config merge required. optimized=true: Configuration fully merged and verified."
   },
   "user": {
-    "name": "Goos",
+    "name": "GOOS행",
     "notes": "Personal name for Alfred's personalized greetings (e.g., '철수', 'John'). Leave empty for default greetings like '사용자님'"
   },
   "session": {

@@ -49,6 +49,85 @@ Automated release workflow for MoAI-ADK package:
 
 ---
 
+## 🎯 Release Strategy: Personal vs Team Mode
+
+### Personal Mode (GitHub Flow)
+```
+feature/SPEC-XXX (local)
+    ↓
+main (fast-forward merge, ~10 min)
+    ↓
+Auto-tag vX.X.X
+    ↓
+CI/CD → PyPI (GitHub Actions)
+```
+
+**Commands**:
+```bash
+# 1. Switch to main (if needed)
+git checkout main
+git merge feature/SPEC-XXX
+
+# 2. Bump version (patch/minor/major)
+/moai:release version patch      # 0.25.11 → 0.25.12
+
+# 3. Generate changelog
+/moai:release changelog
+
+# 4. Commit and push
+git add CHANGELOG.md
+git commit -m "chore: Release v0.25.12"
+git push origin main
+
+# 5. CI/CD auto-handles PyPI deployment
+# No need for manual /moai:release release!
+```
+
+### Team Mode (Git-Flow)
+```
+feature/SPEC-XXX
+    ↓
+develop (Pull Request)
+    ↓
+main (Release PR, ~30 min)
+    ↓
+Auto-tag vX.X.X
+    ↓
+CI/CD → PyPI (GitHub Actions)
+```
+
+**Commands**:
+```bash
+# 1. Create feature branch (from develop)
+git checkout -b feature/SPEC-XXX
+
+# 2. After implementation, create PR
+gh pr create --base develop
+
+# 3. After merge to develop, prepare release
+git checkout main
+git merge develop
+
+# 4. Bump version
+/moai:release version patch
+
+# 5. Generate changelog
+/moai:release changelog
+
+# 6. Commit and push
+git add CHANGELOG.md
+git commit -m "chore: Release v0.25.12"
+git push origin main
+
+# 7. CI/CD auto-handles PyPI deployment
+```
+
+**Current Mode**: Team Mode (develop-based)
+- Auto-detection: 3+ contributors → Git-Flow
+- Manual override: Edit config.json git_strategy.team.enabled
+
+---
+
 ## File Structure
 
 ```
@@ -87,21 +166,42 @@ git add CHANGELOG.md
 git commit -m "docs: Update CHANGELOG for vX.X.X"
 ```
 
-### 4. Release to PyPI
-```bash
-/moai:release release         # Complete release automation
-# Requires: PYPI_TOKEN environment variable
-# Steps:
-#  1. Run quality checks
-#  2. Build package
-#  3. Publish to PyPI
-#  4. Create GitHub release
-#  5. Tag commit
+### 4. Release to PyPI (AUTOMATED via CI/CD)
 
-# ⚠️ AUTOMATED: main 브랜치 병합 시 CI/CD가 자동으로 PyPI 배포 수행
-# CI/CD Pipeline: .github/workflows/release.yml
-#  - Trigger: push to main with tag v*.*.*
-#  - Action: Auto build → PyPI publish → GitHub Release
+**✅ DO NOT run `/moai:release release` manually!**
+
+Release is **completely automated** via GitHub Actions:
+
+```bash
+# Just push to main with proper version + changelog
+git push origin main
+
+# GitHub Actions automatically:
+# 1. Detects version bump in pyproject.toml
+# 2. Runs quality checks (tests, linting)
+# 3. Builds package
+# 4. Publishes to PyPI
+# 5. Creates GitHub Release with changelog
+```
+
+**CI/CD Pipeline**: `.github/workflows/release.yml`
+- **Trigger**: Push to main branch (with tag v*.*.*)
+- **Condition**: All tests must pass
+- **Action**: Auto build → PyPI publish → GitHub Release
+- **Secrets**: PYPI_API_TOKEN (configured in GitHub)
+
+**Requirements**:
+- PYPI_API_TOKEN secret configured in GitHub Settings
+- Version tag matches format: `v*.*.*`
+- All tests pass
+- Code quality standards met
+
+**Manual Override (Local Testing Only)**:
+```bash
+# Only for testing locally (do NOT use in production)
+/moai:release release       # Test locally first
+# ⚠️ This is for development testing only
+# Always use CI/CD for actual PyPI releases
 ```
 
 ### 5. Emergency Rollback
