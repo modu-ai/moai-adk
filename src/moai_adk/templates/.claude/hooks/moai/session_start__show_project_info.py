@@ -23,14 +23,14 @@ from typing import Any
 
 # Setup import path for shared modules
 HOOKS_DIR = Path(__file__).parent
-SHARED_DIR = HOOKS_DIR / "shared"
-if str(SHARED_DIR) not in sys.path:
-    sys.path.insert(0, str(SHARED_DIR))
+LIB_DIR = HOOKS_DIR / "lib"
+if str(LIB_DIR) not in sys.path:
+    sys.path.insert(0, str(LIB_DIR))
 
 # Try to import existing modules, provide fallbacks if not available
 try:
-    from shared.core.timeout import CrossPlatformTimeout
-    from shared.core.timeout import TimeoutError as PlatformTimeoutError
+    from lib.timeout import CrossPlatformTimeout
+    from lib.timeout import TimeoutError as PlatformTimeoutError
 except ImportError:
     # Fallback timeout implementation
 

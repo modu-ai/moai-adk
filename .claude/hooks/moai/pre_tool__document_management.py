@@ -24,13 +24,13 @@ from typing import Any, Dict, Optional, Tuple
 
 # Setup import path for shared modules
 HOOKS_DIR = Path(__file__).parent
-SHARED_DIR = HOOKS_DIR / "shared"
-if str(SHARED_DIR) not in sys.path:
-    sys.path.insert(0, str(SHARED_DIR))
+LIB_DIR = HOOKS_DIR / "lib"
+if str(LIB_DIR) not in sys.path:
+    sys.path.insert(0, str(LIB_DIR))
 
 try:
-    from shared.core.timeout import CrossPlatformTimeout  # noqa: E402
-    from shared.core.timeout import TimeoutError as PlatformTimeoutError  # noqa: E402
+    from lib.timeout import CrossPlatformTimeout  # noqa: E402
+    from lib.timeout import TimeoutError as PlatformTimeoutError  # noqa: E402
 except ImportError:
     # Fallback for timeout if shared module unavailable
     import signal

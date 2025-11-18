@@ -24,12 +24,12 @@ from typing import Dict, List, Optional
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
 try:
-    from shared.core.config_manager import ConfigManager  # noqa: E402
+    from lib.config_manager import ConfigManager  # noqa: E402
 except ImportError:
     ConfigManager = None  # type: ignore
 
 try:
-    from shared.utils.common import format_duration, get_summary_stats
+    from lib.utils.common import format_duration, get_summary_stats
 except ImportError:
     # Fallback implementations if module not found
     import statistics
