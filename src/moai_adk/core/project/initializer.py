@@ -168,20 +168,6 @@ class ProjectInitializer:
         # If GLM is enabled, create a note for environment variables
         if use_glm and glm_token:
             # Store GLM configuration note (user should manually set env vars)
-            settings_note = {
-                "glm_setup": {
-                    "enabled": True,
-                    "instructions": "Add the following environment variables to your .env or shell profile",
-                    "environment_variables": {
-                        "ANTHROPIC_AUTH_TOKEN": "your-glm-api-token",
-                        "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
-                        "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air",
-                        "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.6",
-                        "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.6",
-                    },
-                    "note": "Token provided at init has been saved. Configure env vars in your local environment.",
-                },
-            }
 
             # Optionally, create a .env.local.example file
             env_example = claude_dir / ".env.local.example"

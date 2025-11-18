@@ -904,7 +904,7 @@ def main():
     research_parser.add_argument("--name", help="Component name")
 
     # Validate system
-    validate_parser = subparsers.add_parser("validate", help="Validate rollback system")
+    subparsers.add_parser("validate", help="Validate rollback system")
 
     # Cleanup
     cleanup_parser = subparsers.add_parser(

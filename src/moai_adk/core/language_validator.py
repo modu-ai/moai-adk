@@ -324,7 +324,7 @@ class LanguageValidator:
             return config_patterns[filename]
 
         # Extract extension and try normal detection
-        extension = Path(filename).suffix.lower()
+        Path(filename).suffix.lower()
         return self.detect_language_from_extension(filename)
 
     def validate_file_extension(self, file_path: Any, language: str) -> bool:
@@ -484,7 +484,7 @@ class LanguageValidator:
 
         # Check for files in unexpected directories
         config = {}  # Using empty config for default exclude patterns
-        exclude_patterns = get_exclude_patterns(config)
+        get_exclude_patterns(config)
 
         for file_path, is_source in project_files.items():
             if is_source:

@@ -288,11 +288,11 @@ class GitConflictDetector:
                     return False
 
             # Auto-resolve each safe file
-            merger = TemplateMerger(self.repo_path)
+            TemplateMerger(self.repo_path)
 
             for conflict in conflicted_files:
                 try:
-                    file_path = self.repo_path / conflict.path
+                    self.repo_path / conflict.path
 
                     if conflict.path == "CLAUDE.md":
                         # For CLAUDE.md, we need to get the template version

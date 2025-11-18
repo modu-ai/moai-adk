@@ -85,7 +85,7 @@ class CacheSystem:
 
     def _cleanup_expired_files(self) -> None:
         """Remove expired cache files."""
-        current_time = time.time()
+        time.time()
         for file_name in os.listdir(self.cache_dir):
             if file_name.endswith(self.file_extension):
                 file_path = os.path.join(self.cache_dir, file_name)
@@ -242,7 +242,7 @@ class CacheSystem:
         count = 0
         for file_name in os.listdir(self.cache_dir):
             if file_name.endswith(self.file_extension):
-                file_path = os.path.join(self.cache_dir, file_name)
+                os.path.join(self.cache_dir, file_name)
                 key = file_name[: -len(self.file_extension)]  # Remove extension
 
                 if self.exists(key):
@@ -298,7 +298,7 @@ class CacheSystem:
         """
         total_files = 0
         expired_files = 0
-        current_time = time.time()
+        time.time()
 
         for file_name in os.listdir(self.cache_dir):
             if file_name.endswith(self.file_extension):

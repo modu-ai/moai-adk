@@ -174,7 +174,7 @@ class AutoSpecConfig:
 
         for pattern in excluded_patterns:
             # Convert pattern to lowercase for case-insensitive matching
-            pattern_lower = pattern.lower()
+            pattern.lower()
 
             # Handle directory patterns
             if pattern.startswith("*/") and pattern.endswith("/*"):

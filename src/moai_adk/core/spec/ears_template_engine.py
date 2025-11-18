@@ -231,7 +231,7 @@ class EARSTemplateEngine:
 
         # Extract from AST analysis if available
         if hasattr(code_analysis, 'ast_info'):
-            ast_info = code_analysis.ast_info
+            pass
             # Additional extraction logic here
 
         # Determine complexity and architecture
@@ -294,7 +294,7 @@ class EARSTemplateEngine:
     def _determine_domain(self, extraction: Dict[str, Any]) -> str:
         """Determine the domain based on code analysis."""
         domain_keywords = extraction['domain_keywords']
-        imports = extraction['imports']
+        extraction['imports']
 
         # Check for domain indicators
         domain_indicators = {
@@ -737,7 +737,6 @@ class EARSTemplateEngine:
     def _generate_plan_content(self, extraction: Dict[str, Any], domain: str,
                              spec_id: str, custom_config: Dict[str, Any] = None) -> str:
         """Generate plan.md content."""
-        config = custom_config or {}
 
         # Generate implementation plan based on complexity and domain
         plan_content = f"""---
@@ -938,7 +937,6 @@ Client → [Load Balancer] → [API Gateway] → [Service 1]
     def _generate_acceptance_content(self, extraction: Dict[str, Any], domain: str,
                                    spec_id: str, custom_config: Dict[str, Any] = None) -> str:
         """Generate acceptance.md content."""
-        config = custom_config or {}
 
         acceptance_content = f"""---
   "id": "ACCEPT-{spec_id}",

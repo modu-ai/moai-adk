@@ -54,11 +54,11 @@ def setup_libreoffice_macro():
 def recalc(filename, timeout=30):
     """
     Recalculate formulas in Excel file and report any errors
-    
+
     Args:
         filename: Path to Excel file
         timeout: Maximum time to wait for recalculation (seconds)
-    
+
     Returns:
         dict with error locations and counts
     """

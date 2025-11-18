@@ -191,7 +191,7 @@ def validate_file_location(file_path: str, config: Dict) -> Dict[str, Any]:
 
     # File is in root and NOT whitelisted - violation
     doc_mgmt = config.get("document_management", {})
-    warn_violations = doc_mgmt.get("validation", {}).get("warn_violations", True)
+    doc_mgmt.get("validation", {}).get("warn_violations", True)
     block_violations = doc_mgmt.get("validation", {}).get("block_violations", False)
 
     suggested = suggest_moai_location(filename, config)

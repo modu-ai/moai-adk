@@ -226,7 +226,7 @@ class TrustPrinciplesValidator:
             for file_path in python_files:
                 try:
                     content = file_path.read_text(encoding="utf-8")
-                    lines = content.split("\n")
+                    content.split("\n")
 
                     # Analyze functions
                     function_matches = re.finditer(r"def\s+(\w+)\([^)]*\):", content)
