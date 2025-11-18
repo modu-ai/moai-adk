@@ -103,73 +103,18 @@ class MCPSetupManager:
             console.print(f"❌ Failed to copy MCP configuration: {e}")
             return False
 
-    def setup_mcp_servers(self, selected_servers: list[str]) -> bool:
-        """Complete MCP server setup with selective server inclusion
+    def setup_mcp_servers(self, selected_servers: list[str] | None = None) -> bool:
+        """Copy MCP server template to project
+
+        This method copies ALL MCP servers from the package template to .mcp.json.
+        Server selection happens in settings.local.json via enabledMcpjsonServers array.
 
         Args:
-            selected_servers: List of MCP servers to include (e.g., ["context7", "notion"])
+            selected_servers: Deprecated parameter (ignored, kept for backward compatibility)
 
         Returns:
             True if setup successful, False otherwise
         """
-        if not selected_servers:
-            console.print("ℹ️  No MCP servers selected")
-            return True
-
-        console.print(f"🔧 Setting up MCP servers: {', '.join(selected_servers)}...")
-
-        try:
-            # Get the package template path
-            import moai_adk
-
-            package_path = Path(moai_adk.__file__).parent
-            template_mcp_path = package_path / "templates" / ".mcp.json"
-
-            if not template_mcp_path.exists():
-                console.print("❌ Template MCP configuration not found")
-                return False
-
-            # Read full template
-            with open(template_mcp_path, "r") as f:
-                full_mcp_config = json.load(f)
-
-            # Filter only selected servers
-            filtered_config = {"mcpServers": {}}
-            all_servers = full_mcp_config.get("mcpServers", {})
-
-            for server_name in selected_servers:
-                if server_name in all_servers:
-                    filtered_config["mcpServers"][server_name] = all_servers[server_name]
-                else:
-                    console.print(f"[yellow]⚠️  Unknown server: {server_name}[/yellow]")
-
-            if not filtered_config["mcpServers"]:
-                console.print("❌ No valid MCP servers found in selection")
-                return False
-
-            # Adapt for platform
-            adapted_config = self._adapt_mcp_config_for_platform(filtered_config)
-
-            # Write adapted config to project
-            project_mcp_path = self.project_path / ".mcp.json"
-            with open(project_mcp_path, "w") as f:
-                json.dump(adapted_config, f, indent=2)
-
-            server_count = len(adapted_config.get("mcpServers", {}))
-            console.print(f"✅ MCP configuration created with {server_count} server(s)")
-
-            # Show platform info
-            if self.is_windows:
-                console.print(
-                    "🪟 Windows platform detected - npx commands wrapped with 'cmd /c'"
-                )
-
-            # Show configured servers
-            server_names = list(adapted_config.get("mcpServers", {}).keys())
-            console.print(f"📋 Configured servers: {', '.join(server_names)}")
-
-            return True
-
-        except Exception as e:
-            console.print(f"❌ Failed to setup MCP servers: {e}")
-            return False
+        # This method now only copies the full template
+        # User selection is done via settings.local.json
+        return self.copy_template_mcp_config()

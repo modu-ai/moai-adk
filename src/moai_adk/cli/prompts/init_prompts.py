@@ -20,7 +20,8 @@ class ProjectSetupAnswers(TypedDict):
     locale: str  # ko | en | ja | zh | other (default from init)
     language: str | None  # Will be set in /alfred:0-project
     author: str  # Will be set in /alfred:0-project
-    mcp_servers: list[str]  # Selected MCP servers to install
+    use_glm: bool  # Whether to use GLM for Claude models
+    glm_token: str | None  # GLM API token (if use_glm is True)
     custom_language: str | None  # User input for "other" language option
 
 
@@ -50,7 +51,8 @@ def prompt_project_setup(
         "locale": "en",  # Default: will be configurable in /alfred:0-project
         "language": None,  # Will be detected in /alfred:0-project
         "author": "",  # Will be set in /alfred:0-project
-        "mcp_servers": [],  # Selected MCP servers
+        "use_glm": False,  # Whether to use GLM
+        "glm_token": None,  # GLM API token
         "custom_language": None,  # User input for other language
     }
 
@@ -145,66 +147,36 @@ def prompt_project_setup(
                 f"[cyan]🌐 Selected Language:[/cyan] {language_names.get(language_choice, language_choice)}"
             )
 
-        # MCP Server Selection
-        console.print("\n[blue]🔧 MCP (Model Context Protocol) Configuration[/blue]")
-        console.print(
-            "[dim]Select MCP servers to enable (Space to toggle, Enter to confirm)[/dim]\n"
-        )
+        # GLM Configuration
+        console.print("\n[blue]🔧 GLM Configuration[/blue]")
+        console.print("[dim]GLM provides OpenAI-compatible API endpoint for Claude models[/dim]\n")
 
-        # Define MCP server options with descriptions
-        mcp_options = [
-            {
-                "name": "✅ Context7 - AI documentation lookup (Recommended)",
-                "value": "context7",
-                "checked": True,
-            },
-            {
-                "name": "✅ Playwright - Browser automation and testing (Recommended)",
-                "value": "playwright",
-                "checked": True,
-            },
-            {
-                "name": "✅ Sequential Thinking - Multi-step reasoning (Recommended)",
-                "value": "sequential-thinking",
-                "checked": True,
-            },
-            {
-                "name": "📝 Notion - Workspace integration (requires API key)",
-                "value": "notion",
-                "checked": False,
-            },
-            {
-                "name": "🎨 Figma - Design-to-code integration (requires token)",
-                "value": "figma",
-                "checked": False,
-            },
-        ]
-
-        # Show checkbox selection
-        mcp_servers = questionary.checkbox(
-            "Select MCP servers:",
-            choices=[
-                questionary.Choice(opt["name"], value=opt["value"], checked=opt["checked"])
-                for opt in mcp_options
-            ],
+        # Ask whether to use GLM
+        use_glm = questionary.confirm(
+            "Enable GLM for Claude model access?",
+            default=False,
         ).ask()
 
-        if mcp_servers is None:
+        if use_glm is None:
             raise KeyboardInterrupt
 
-        answers["mcp_servers"] = mcp_servers
-        console.print(f"\n[green]✅ Selected MCP servers: {', '.join(mcp_servers)}[/green]")
+        answers["use_glm"] = use_glm
 
-        # Show setup instructions for optional servers
-        if "notion" in mcp_servers:
-            console.print("\n[yellow]📝 Notion setup required:[/yellow]")
-            console.print("   Set NOTION_API_KEY environment variable")
-            console.print("   Guide: https://developers.notion.com/docs/authorization")
+        if use_glm:
+            console.print("[cyan]🔐 GLM Authentication[/cyan]")
+            glm_token = questionary.password(
+                "Enter your GLM API token:",
+                validate=lambda text: len(text) > 0 or "GLM token is required",
+            ).ask()
 
-        if "figma" in mcp_servers:
-            console.print("\n[yellow]🎨 Figma setup required:[/yellow]")
-            console.print("   Set FIGMA_PERSONAL_ACCESS_TOKEN environment variable")
-            console.print("   Guide: https://www.figma.com/developers/api#access-tokens")
+            if glm_token is None:
+                raise KeyboardInterrupt
+
+            answers["glm_token"] = glm_token
+            console.print("[green]✅ GLM configuration set[/green]")
+        else:
+            answers["glm_token"] = None
+            console.print("[dim]GLM disabled (can be enabled later in /moai:project)[/dim]")
 
         return answers
 

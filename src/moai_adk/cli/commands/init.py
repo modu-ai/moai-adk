@@ -97,17 +97,6 @@ def create_progress_callback(progress: Progress, task_ids: Sequence[TaskID]):
     help="Programming language (auto-detect if not specified)",
 )
 @click.option(
-    "--with-mcp",
-    multiple=True,
-    type=click.Choice(["context7", "playwright", "sequential-thinking", "notion", "figma"]),
-    help="Install MCP servers automatically (can be used multiple times)",
-)
-@click.option(
-    "--mcp-auto",
-    is_flag=True,
-    help="Auto-install all recommended MCP servers",
-)
-@click.option(
     "--force",
     is_flag=True,
     help="Force reinitialize without confirmation",
@@ -118,8 +107,6 @@ def init(
     mode: str,
     locale: str,
     language: str | None,
-    with_mcp: tuple,
-    mcp_auto: bool,
     force: bool,
 ) -> None:
     """Initialize a new MoAI-ADK project
@@ -159,6 +146,8 @@ def init(
 
         # Initialize variables
         custom_language = None
+        use_glm = False
+        glm_token = None
 
         # 3. Interactive vs Non-Interactive
         if non_interactive:
@@ -172,28 +161,9 @@ def init(
             # This will become "generic" internally, but Summary will show more helpful message
             if not language:
                 language = None
-
-            # Handle MCP options in non-interactive mode
-            if mcp_auto:
-                mcp_servers = ["context7", "playwright", "sequential-thinking"]
-                console.print(
-                    "[cyan]🔧 MCP servers:[/cyan] Auto-installing all recommended servers"
-                )
-            elif with_mcp:
-                mcp_servers = list(with_mcp)
-                console.print(f"[cyan]🔧 MCP servers:[/cyan] {', '.join(mcp_servers)}")
-            else:
-                mcp_servers = []
         else:
             # Interactive Mode
             print_welcome_message()
-
-            # Check for MCP CLI options in interactive mode (warn user)
-            if mcp_auto or with_mcp:
-                console.print(
-                    "[yellow]⚠️  MCP options ignored in interactive mode[/yellow]"
-                )
-                console.print("   Please use the interactive prompts instead.\n")
 
             # Interactive prompt
             answers = prompt_project_setup(
@@ -208,7 +178,8 @@ def init(
             locale = answers["locale"]
             language = answers["language"]
             project_name = answers["project_name"]
-            mcp_servers = answers.get("mcp_servers", [])
+            use_glm = answers.get("use_glm", False)
+            glm_token = answers.get("glm_token")
             custom_language = answers.get("custom_language")
 
             console.print("\n[cyan]🚀 Starting installation...[/cyan]\n")
@@ -305,6 +276,8 @@ def init(
                 locale=locale,
                 language=language,
                 custom_language=custom_language,
+                use_glm=use_glm,
+                glm_token=glm_token,
                 backup_enabled=True,
                 progress_callback=callback,
                 reinit=True,  # Always allow reinit (force mode by default)
@@ -332,20 +305,6 @@ def init(
                 f"  [dim]📄 Files:[/dim]     {len(result.created_files)} created"
             )
             console.print(f"  [dim]⏱️  Duration:[/dim]  {result.duration}ms")
-
-            # Show MCP setup info
-            if mcp_servers:
-                console.print(f"  [dim]🔧 MCP Servers:[/dim] {', '.join(mcp_servers)}")
-
-            # MCP Setup (if servers selected)
-            if mcp_servers:
-                console.print("\n[cyan]🔧 Setting up MCP servers...[/cyan]")
-                mcp_manager = MCPSetupManager(project_path)
-                mcp_success = mcp_manager.setup_mcp_servers(mcp_servers)
-                if not mcp_success:
-                    console.print(
-                        "[yellow]⚠️  MCP setup completed with warnings[/yellow]"
-                    )
 
             # Show backup info if reinitialized
             if is_reinit:
@@ -395,23 +354,6 @@ def init(
                 )
                 console.print(
                     "     (Configure: mode, language, report generation, etc.)"
-                )
-
-            # Figma token setup guidance
-            if mcp_servers and "figma" in mcp_servers:
-                console.print("\n[yellow]🔐 Figma Access Token Setup:[/yellow]")
-                console.print(
-                    "  [dim]Figma MCP requires an access token to function:[/dim]"
-                )
-                console.print(
-                    "  1. Visit: https://www.figma.com/developers/api#access-tokens"
-                )
-                console.print("  2. Create a new access token")
-                console.print(
-                    "  3. Run [bold]/alfred:0-project[/bold] and follow the Figma setup prompts"
-                )
-                console.print(
-                    "  4. The token will be securely stored in your environment\n"
                 )
 
             if not is_current_dir:
