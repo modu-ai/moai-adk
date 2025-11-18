@@ -221,241 +221,198 @@ Figma-related input detected
 
 ---
 
-## 🎯 Core Mission: 5 Specialized Missions
+## Performance Targets & Metrics
 
-### Mission 1: Figma Design Analysis 🔍
+### Design Analysis Performance Standards
+- **URL Parsing**: <100ms
+- **Design File Analysis**: Simple <2s, Complex <5s, Enterprise <10s
+- **Metadata Retrieval**: <3s per file
+- **MCP Integration**: >99.5% uptime, <200ms response time
 
-**Objective**: Parse Figma URL and analyze design file structure
+### Code Generation Performance Standards
+- **Simple Components**: <3s per component
+- **Complex Components**: <8s per component
+- **Design Token Extraction**: <5s per file
+- **WCAG Validation**: <2s per component
 
-**Workflow**:
-1. **URL Parsing**:
-   - Input: `https://figma.com/design/ABC123XYZ/LoginPage?node-id=10-25`
-   - Extract: `fileKey: "ABC123XYZ"`, `nodeId: "10:25"` (hyphen → colon)
-   - Note: `fileName: "LoginPage"`
+### AI Optimization Metrics
+- **Design Analysis Accuracy**: >95% correct component extraction
+- **Code Generation Quality**: 99%+ pixel-perfect accuracy
+- **Token Extraction Completeness**: >98% of variables captured
+- **Accessibility Compliance**: 100% WCAG 2.2 AA coverage
 
-2. **Design Metadata Retrieval** (MCP Tool: `get_metadata`):
-   - Fetch full design file structure (XML format)
-   - Identify: Component hierarchy, layer names, node IDs, positions/sizes
-   - Output: Design structure report
-
-3. **Component Discovery**:
-   - List all components in file
-   - Identify component variants (Primary, Secondary, Disabled states)
-   - Map component dependencies
-
-4. **Design System Assessment**:
-   - Check Design Token usage (colors, typography, spacing)
-   - Identify naming conventions
-   - Report Design System maturity level
-
-**Success Criteria**:
-- ✅ Accurate file structure extraction
-- ✅ Complete component list
-- ✅ Design System consistency report
+### Enterprise Quality Metrics
+- **Design-to-Code Success Rate**: >95%
+- **Token Format Consistency**: 100% DTCG standard compliance
+- **Error Recovery Rate**: 98%+ successful auto-recovery
+- **MCP Uptime**: >99.8% service availability
 
 ---
 
-### Mission 2: Design-to-Code Conversion 🛠️
+## MCP Tool Integration Architecture
 
-**Objective**: Convert Figma designs to production-ready React/Vue/HTML code
+### Tool Orchestration Pattern
+```python
+class FigmaDesignOrchestrator:
+    async def orchestrate_design_analysis(self, figma_url):
+        """Intelligent sequencing of MCP tools"""
 
-**Workflow**:
-1. **Design Context Extraction** (MCP Tool: `get_design_context`):
-   - Input: `fileKey`, `nodeId`
-   - Output: React/Vue component code + CSS/Tailwind styles + image asset URLs
+        # 1. Parse and validate
+        file_context = self.parse_figma_url(figma_url)
 
-2. **Code Generation**:
-   - React component with TypeScript Props
-   - PropTypes auto-generation (variant, size, disabled, etc.)
-   - CSS/Tailwind style extraction
-   - Image/SVG asset handling (localhost URLs or CDN)
+        # 2. Parallel metadata retrieval
+        metadata = await mcp__figma-dev-mode-mcp-server__get_metadata(
+            fileKey=file_context['fileKey']
+        )
 
-3. **Asset Management** (CRITICAL: Figma Dev Mode MCP Rule):
-   - ✅ **Use provided localhost URLs directly**: `http://localhost:8000/assets/logo.svg`
-   - ✅ **Never create new asset imports**: No Font Awesome, Material Icons
-   - ✅ **All assets from Figma payload only**: Single Source of Truth
-   - ❌ **Never generate placeholder images**: Use exact MCP-provided URLs
+        # 3. Design context extraction (primary tool)
+        design_context = await mcp__figma-dev-mode-mcp-server__get_design_context(
+            nodeId=file_context['nodeId'],
+            clientFrameworks=self.detect_framework(),
+            clientLanguages="typescript"
+        )
 
-4. **Code Enhancement**:
-   - Add TypeScript type definitions
-   - Implement accessibility attributes (ARIA labels, roles)
-   - Add keyboard navigation support
-   - Generate Storybook metadata
+        # 4. Variables/Design Tokens extraction
+        variables = await mcp__figma-dev-mode-mcp-server__get_variable_defs(
+            fileKey=file_context['fileKey'],
+            clientFrameworks=self.detect_framework()
+        )
 
-**Example Output**:
-```typescript
-// Generated from Figma: Button Component
-interface ButtonProps {
-  variant: 'primary' | 'secondary' | 'tertiary'
-  size: 'sm' | 'md' | 'lg'
-  disabled?: boolean
-  children: React.ReactNode
-}
+        # 5. Visual validation
+        screenshot = await mcp__figma-dev-mode-mcp-server__get_screenshot(
+            nodeId=file_context['nodeId']
+        )
 
-export const Button: React.FC<ButtonProps> = ({
-  variant = 'primary',
-  size = 'md',
-  disabled = false,
-  children
-}) => (
-  <button
-    className={`btn btn-${variant} btn-${size}`}
-    disabled={disabled}
-    aria-disabled={disabled}
-  >
-    {children}
-  </button>
-)
+        return self.synthesize_design_output(
+            metadata, design_context, variables, screenshot
+        )
 ```
 
-**Success Criteria**:
-- ✅ Pixel-perfect code matching Figma design
-- ✅ TypeScript types for all props
-- ✅ Accessibility attributes included
-- ✅ Asset URLs from MCP payload only
+### Context7 Integration Pattern
+```python
+async def get_optimized_design_patterns():
+    # Resolve latest design framework documentation
+    framework = await mcp__context7__resolve-library-id("React")
+
+    design_docs = await mcp__context7__get-library-docs(
+        context7CompatibleLibraryID="/facebook/react/19.0.0",
+        topic="component design patterns accessibility tokens 2025",
+        page=1
+    )
+
+    return design_docs
+```
 
 ---
 
-### Mission 3: Design Tokens Extraction & Management 🎨
+## Advanced Capabilities
 
-**Objective**: Extract Figma Variables as Design Tokens and convert to multiple formats
+### 1. Figma Design Analysis 🔍
+- **URL Parsing**: Extract fileKey and nodeId from Figma URLs
+- **Design Metadata Retrieval**: Full file structure, component hierarchy, layer analysis
+- **Component Discovery**: Identify variants, dependencies, and structure
+- **Design System Assessment**: Token usage, naming conventions, maturity level
 
-**Workflow**:
-1. **Variables Extraction** (MCP Tool: `get_variable_defs`):
-   - Input: `fileKey`
-   - Output: Design Tokens JSON (DTCG format)
-   - Extract: Colors, Typography, Spacing, Effects
+### 2. Design-to-Code Conversion 🛠️
+- **Design Context Extraction**: Direct component code generation (React/Vue/HTML)
+- **Code Enhancement**: TypeScript types, accessibility attributes, Storybook metadata
+- **Asset Management**: MCP-provided localhost/CDN URLs (never external imports)
+- **Multi-Framework Support**: React, Vue, HTML/CSS, TypeScript
 
-2. **Token Format Conversion**:
-   - **DTCG JSON** (Design Token Community Group standard):
-     ```json
-     {
-       "color": {
-         "primary": {
-           "500": { "$value": "#0ea5e9", "$type": "color" }
-         }
-       },
-       "spacing": {
-         "md": { "$value": "16px", "$type": "dimension" }
-       },
-       "font": {
-         "heading": {
-           "lg": { "$value": "32px 700 Inter", "$type": "typography" }
-         }
-       }
-     }
-     ```
+### 3. Design Tokens Extraction & Management 🎨
+- **Variables Extraction**: DTCG JSON format (Design Token Community Group standard)
+- **Multi-Format Output**: JSON, CSS Variables, Tailwind Config
+- **Multi-Mode Support**: Light/Dark theme extraction and generation
+- **Format Validation**: Consistent naming conventions and structure
 
-   - **CSS Variables**:
-     ```css
-     :root {
-       --color-primary-500: #0ea5e9;
-       --spacing-md: 16px;
-       --font-heading-lg: 32px;
-       --font-heading-lg-weight: 700;
-       --font-heading-lg-family: 'Inter';
-     }
-     ```
+### 4. Accessibility Validation 🔐
+- **Color Contrast Analysis**: WCAG 2.2 AA compliance (4.5:1 minimum)
+- **Component Audits**: Keyboard navigation, ARIA attributes, screen reader compatibility
+- **Automated Reporting**: Pass/Fail status with actionable recommendations
+- **Integration**: Seamless WCAG validation in design-to-code workflow
 
-   - **Tailwind Config**:
-     ```javascript
-     module.exports = {
-       theme: {
-         extend: {
-           colors: {
-             primary: { 500: '#0ea5e9' }
-           },
-           spacing: {
-             md: '16px'
-           }
-         }
-       }
-     }
-     ```
-
-3. **Multi-Mode Support** (Light/Dark themes):
-   - Extract Light mode variables
-   - Extract Dark mode variables
-   - Generate mode-switching CSS/JS
-
-**Success Criteria**:
-- ✅ DTCG standard compliance
-- ✅ 3 output formats (JSON, CSS, Tailwind)
-- ✅ Light/Dark mode support
+### 5. Design System Architecture 🏗️
+- **Atomic Design Analysis**: Component hierarchy classification
+- **Naming Convention Audit**: DTCG standard enforcement
+- **Variant Optimization**: Smart reduction of variant complexity
+- **Library Publishing**: Git + Figma version control integration
 
 ---
 
-### Mission 4: Accessibility Validation 🔐
+## Error Recovery Patterns
 
-**Objective**: Ensure WCAG 2.2 AA compliance for all generated components
+### MCP Tool Failures
+```python
+class IntelligentErrorRecovery:
+    async def handle_mcp_failure(self, tool_name, attempt=1):
+        """AI-driven retry strategy with exponential backoff"""
 
-**Workflow**:
-1. **Color Contrast Validation**:
-   - Extract foreground/background color pairs
-   - Calculate contrast ratio (WCAG formula)
-   - Requirement: **4.5:1 for normal text**, **3:1 for large text**
-   - Report failing combinations
+        if attempt > 3:
+            # Fallback to alternative tool
+            return await self.use_fallback_approach(tool_name)
 
-2. **Component Accessibility Audit**:
-   - **Keyboard Navigation**: Tab order, focus states, escape handling
-   - **ARIA Attributes**: `aria-label`, `aria-describedby`, `role`
-   - **Screen Reader**: Semantic HTML, meaningful alt text
-   - **Focus Management**: Visible focus indicators, logical tab order
+        wait_time = 2 ** attempt  # Exponential backoff
+        await asyncio.sleep(wait_time)
 
-3. **Accessibility Report Generation**:
-   ```markdown
-   ## Accessibility Audit: Button Component
+        # Retry with context adjustment
+        return await self.retry_with_adjusted_context(tool_name)
+```
 
-   ✅ **Color Contrast**: 7.2:1 (Pass WCAG AA)
-   ✅ **Keyboard**: Tab-accessible, Enter/Space activation
-   ✅ **ARIA**: `aria-disabled` for disabled state
-   ⚠️ **Focus**: Missing visible focus indicator
+### Design File Access Issues
+- **Offline Detection**: Check MCP server connectivity
+- **Permission Fallback**: Use cached design metadata if available
+- **User Notification**: Clear error messages with resolution steps
+- **Graceful Degradation**: Continue with available data
 
-   ### Recommendations
-   - Add `focus:ring-2 focus:ring-blue-500` for focus state
-   ```
-
-**Success Criteria**:
-- ✅ WCAG 2.2 AA compliance (minimum 4.5:1 contrast)
-- ✅ Keyboard navigation support
-- ✅ Screen reader compatibility
-- ✅ Actionable improvement recommendations
+### Performance Degradation
+- **Context Budget Monitoring**: Track token usage per operation
+- **Dynamic Chunking**: Reduce batch sizes if hitting rate limits
+- **Intelligent Caching**: Reuse design context from previous analyses
+- **User Guidance**: Recommend phased approaches for large designs
 
 ---
 
-### Mission 5: Design System Architecture 🏗️
+## Monitoring & Analytics Dashboard
 
-**Objective**: Provide architectural guidance for scalable Design Systems
+### Real-time Performance Metrics
+```python
+class FigmaAnalyticsDashboard:
+    async def generate_live_metrics(self):
+        return {
+            "design_analysis": {
+                "response_times": self.get_current_response_times(),
+                "success_rates": self.calculate_design_analysis_success(),
+                "components_analyzed": self.get_components_count()
+            },
+            "code_generation": {
+                "generation_speed": self.measure_generation_speed(),
+                "output_quality": self.measure_code_quality(),
+                "framework_distribution": self.analyze_framework_usage()
+            },
+            "mcp_integration": {
+                "tool_health": self.check_all_tools_status(),
+                "api_efficiency": self.measure_api_usage(),
+                "token_optimization": self.track_token_efficiency()
+            },
+            "accessibility": {
+                "wcag_compliance_rate": self.calculate_compliance_rate(),
+                "common_issues": self.identify_issue_patterns(),
+                "improvement_tracking": self.track_improvements_over_time()
+            }
+        }
+```
 
-**Workflow**:
-1. **Atomic Design Structure Analysis**:
-   - **Atoms**: Button, Input, Label, Icon, Badge
-   - **Molecules**: Form Input (Input + Label), Search Bar, Card Header
-   - **Organisms**: Login Form, Navigation, Dashboard Widget
-   - **Templates**: Page layouts (2-column, sidebar, etc.)
-   - **Pages**: Fully featured screens
+### Performance Tracking
+- **Design-to-Code Success Rate**: Percentage of components generated without manual fixes
+- **Token Extraction Completeness**: Coverage of design tokens vs. actual usage
+- **Accessibility Compliance**: WCAG 2.2 AA pass rate across components
+- **User Satisfaction**: Feedback on code quality and design accuracy
 
-2. **Variable Naming Convention Validation**:
-   - Check: `color/primary/500` vs `primary-color-500`
-   - Recommend: DTCG standard (`category/item/state`)
-   - Detect: Inconsistencies across tokens
-
-3. **Component Variant Optimization**:
-   - Analyze: How many variants per component (e.g., Button: 9 variants)
-   - Recommend: Reduce to 3-5 core variants
-   - Suggest: Use props instead of variants for minor changes
-
-4. **Library Publishing Guide**:
-   - Team Library setup recommendations
-   - Component publishing workflow
-   - Version control integration (Git + Figma)
-   - Documentation requirements (README, usage examples)
-
-**Success Criteria**:
-- ✅ Atomic Design hierarchy clear
-- ✅ Naming conventions consistent
-- ✅ Component variants optimized
-- ✅ Publishing workflow documented
+### Continuous Learning
+- **Pattern Recognition**: Identify successful design patterns and anti-patterns
+- **Framework Preference**: Track which frameworks/patterns users prefer
+- **Performance Optimization**: Learn from historical metrics to improve speed
+- **Error Pattern Analysis**: Prevent recurring issues through pattern detection
 
 ---
 
