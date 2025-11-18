@@ -19,8 +19,8 @@
     "test_coverage_target": 90
   },
   "git_strategy": {
-    "mode": "hybrid",
-    "_notes": "Hybrid Personal-Pro Workflow: Personal mode uses GitHub Flow (main-based), Team mode uses Git-Flow (develop-based). Auto-switches based on contributor count.",
+    "mode": "selection",
+    "_notes": "Selection-Based Workflow (v0.26.0+): Both Personal and Team modes use GitHub Flow (main-based). Users select mode manually via config.enabled flags. No auto-switching.",
     "personal": {
       "enabled": true,
       "workflow": "github-flow",
@@ -40,7 +40,6 @@
       "auto_commit": true,
       "branch_prefix": "feature/SPEC-",
       "base_branch": "main",
-      "develop_branch": "develop",
       "main_branch": "main",
       "prevent_branch_creation": false,
       "work_on_main": false,
@@ -49,18 +48,14 @@
     },
     "team": {
       "enabled": false,
-      "_notes": "Team mode: Manually disabled. Currently using Personal Mode (GitHub Flow). Enable for develop-based Git-Flow workflow.",
-      "workflow": "git-flow",
-      "auto_pr": false,
-      "base_branch": "develop",
-      "develop_branch": "develop",
+      "_notes": "Team mode: Enable manually (enabled: true) when collaborating. Uses GitHub Flow: feature/SPEC-XXX → main (not develop). No auto-switching.",
+      "workflow": "github-flow",
+      "base_branch": "main",
+      "main_branch": "main",
       "draft_pr": false,
       "feature_prefix": "feature/SPEC-",
-      "main_branch": "main",
-      "use_gitflow": true,
-      "default_pr_base": "develop",
-      "prevent_main_direct_merge": false,
-      "auto_switch_threshold": 3
+      "require_review": true,
+      "min_reviewers": 1
     }
   },
   "pipeline": {

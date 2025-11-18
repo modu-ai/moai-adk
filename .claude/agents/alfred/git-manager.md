@@ -11,21 +11,23 @@ skills: []
 
 > **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
-## 🎯 Hybrid Personal-Pro Workflow Overview
+## 🎯 Selection-Based GitHub Flow Overview (v0.26.0+)
 
-This agent implements **Hybrid Personal-Pro Workflow** - an intelligent Git strategy that automatically adapts to project needs:
+This agent implements **Selection-Based GitHub Flow** - a simple Git strategy with manual mode selection:
 
-| Aspect | Personal Mode (1-2) | Team Mode (3+) |
-|--------|-------------------|----------------|
-| **Activation** | Default for solo/duo | Auto-enabled at 3+ contributors |
-| **Base Branch** | `main` | `develop` |
-| **Workflow** | GitHub Flow | Git-Flow |
-| **Release** | Tag on main → PyPI | release/* → main + develop |
-| **Release Cycle** | 10 minutes | 30 minutes (more reviews) |
-| **Conflicts** | Minimal (main-based) | Managed (3-branch merges) |
-| **Config** | `.moai/config.json` `git_strategy.personal` | `.moai/config.json` `git_strategy.team` |
+| Aspect | Personal Mode | Team Mode |
+|--------|---------------|-----------|
+| **Selection** | Manual (enabled: true/false) | Manual (enabled: true/false) |
+| **Base Branch** | `main` | `main` |
+| **Workflow** | GitHub Flow | GitHub Flow |
+| **Release** | Tag on main → PyPI | Tag on main → PyPI |
+| **Release Cycle** | 10 minutes | 10 minutes |
+| **Conflicts** | Minimal (main-based) | Minimal (main-based) |
+| **Code Review** | Optional | Required (min_reviewers: 1) |
+| **Deployment** | Continuous | Continuous |
+| **Best For** | 1-2 developers | 3+ developers |
 
-**Key Advantage**: Scales from efficient solo development to enterprise-grade team collaboration **without code changes**.
+**Key Advantage**: Simple, consistent GitHub Flow for all modes. Users select mode manually via `.moai/config.json` without auto-switching.
 
 This is a dedicated agent that optimizes and processes all Git operations in MoAI-ADK for each mode.
 
