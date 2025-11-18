@@ -636,10 +636,6 @@ cat /Users/goos/MoAI/MoAI-ADK/.mcp.json
       "command": "npx",
       "args": ["-y", "@playwright/mcp@latest"]
     },
-    "sequential-thinking": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking@latest"]
-    },
     "figma-dev-mode-mcp-server": {
       "type": "sse",
       "url": "http://127.0.0.1:3845/sse"
