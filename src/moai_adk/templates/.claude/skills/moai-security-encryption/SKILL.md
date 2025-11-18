@@ -1,22 +1,34 @@
 ---
-name: "moai-security-encryption"
-version: "4.0.0"
+name: moai-security-encryption
+version: 4.0.0
 created: 2025-11-11
-updated: 2025-11-13
+updated: '2025-11-18'
 status: stable
-description: Enterprise Encryption Security with AI-powered cryptographic architecture, Context7 integration, and intelligent encryption orchestration for data protection
-keywords: ['encryption', 'cryptography', 'data-protection', 'security', 'aes-256', 'rsa', 'context7-integration', 'ai-orchestration', 'production-deployment']
-allowed-tools: 
-  - Read
-  - Bash
-  - Write
-  - Edit
-  - Glob
-  - Grep
-  - WebFetch
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+description: Enterprise Encryption Security with AI-powered cryptographic architecture,
+  Context7 integration, and intelligent encryption orchestration for data protection
+keywords:
+- encryption
+- cryptography
+- data-protection
+- security
+- aes-256
+- rsa
+- context7-integration
+- ai-orchestration
+- production-deployment
+allowed-tools:
+- Read
+- Bash
+- Write
+- Edit
+- Glob
+- Grep
+- WebFetch
+- mcp__context7__resolve-library-id
+- mcp__context7__get-library-docs
+stability: stable
 ---
+
 
 # Enterprise Encryption Security Expert v4.0.0
 

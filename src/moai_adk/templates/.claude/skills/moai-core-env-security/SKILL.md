@@ -1,15 +1,18 @@
 ---
-name: "moai-core-env-security"
-version: "4.0.0"
+name: moai-core-env-security
+version: 4.0.0
 created: 2025-11-18
-updated: 2025-11-18
+updated: '2025-11-18'
 status: stable
-description: "Environment variable security, secrets management, and secure credential handling for MoAI-ADK projects"
-allowed-tools: 
-  - Read
-  - Bash
-  - Write
+description: Environment variable security, secrets management, and secure credential
+  handling for MoAI-ADK projects
+allowed-tools:
+- Read
+- Bash
+- Write
+stability: stable
 ---
+
 
 # Environment Security & Secrets Management - v4.0.0
 

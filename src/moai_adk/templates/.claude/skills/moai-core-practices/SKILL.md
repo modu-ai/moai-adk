@@ -1,19 +1,35 @@
 ---
-name: "moai-core-practices"
-version: "4.0.0"
+name: moai-core-practices
+version: 4.0.0
 created: 2025-11-05
-updated: 2025-11-18
+updated: '2025-11-18'
 status: stable
-description: Enterprise practical workflows, context engineering strategies, JIT (Just-In-Time) retrieval optimization, real-world execution examples, debugging patterns, and moai-adk workflow mastery; activates for workflow pattern learning, context optimization, debugging issue resolution, feature implementation end-to-end, and team knowledge transfer
-keywords: ['workflow-patterns', 'context-engineering', 'jit-retrieval', 'agent-usage', 'debugging-patterns', 'feature-implementation', 'practical-examples', 'moai-adk-mastery', 'knowledge-transfer', 'enterprise-workflows']
-allowed-tools: 
-  - Read
-  - Glob
-  - Bash
-  - WebFetch
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+description: Enterprise practical workflows, context engineering strategies, JIT (Just-In-Time)
+  retrieval optimization, real-world execution examples, debugging patterns, and moai-adk
+  workflow mastery; activates for workflow pattern learning, context optimization,
+  debugging issue resolution, feature implementation end-to-end, and team knowledge
+  transfer
+keywords:
+- workflow-patterns
+- context-engineering
+- jit-retrieval
+- agent-usage
+- debugging-patterns
+- feature-implementation
+- practical-examples
+- moai-adk-mastery
+- knowledge-transfer
+- enterprise-workflows
+allowed-tools:
+- Read
+- Glob
+- Bash
+- WebFetch
+- mcp__context7__resolve-library-id
+- mcp__context7__get-library-docs
+stability: stable
 ---
+
 
 # Enterprise Practical Workflows & Context Engineering v4.0.0
 

@@ -1,22 +1,37 @@
 ---
-name: "moai-essentials-review"
-version: "4.0.0"
+name: moai-essentials-review
+version: 4.0.0
 created: 2025-11-11
-updated: 2025-11-12
+updated: '2025-11-18'
 status: stable
-description: Enterprise comprehensive code review automation with AI-powered quality analysis, TRUST 5 enforcement, multi-language support, Context7 integration, security scanning, performance analysis, test coverage validation, and automated review feedback generation
-keywords: ['code-review', 'quality-analysis', 'TRUST-5-validation', 'security-scanning', 'performance-analysis', 'test-coverage', 'ai-review', 'context7-integration', 'review-automation', 'enterprise-quality']
-allowed-tools: 
-  - Read
-  - Write
-  - Edit
-  - Glob
-  - Bash
-  - AskUserQuestion
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
-  - WebFetch
+description: Enterprise comprehensive code review automation with AI-powered quality
+  analysis, TRUST 5 enforcement, multi-language support, Context7 integration, security
+  scanning, performance analysis, test coverage validation, and automated review feedback
+  generation
+keywords:
+- code-review
+- quality-analysis
+- TRUST-5-validation
+- security-scanning
+- performance-analysis
+- test-coverage
+- ai-review
+- context7-integration
+- review-automation
+- enterprise-quality
+allowed-tools:
+- Read
+- Write
+- Edit
+- Glob
+- Bash
+- AskUserQuestion
+- mcp__context7__resolve-library-id
+- mcp__context7__get-library-docs
+- WebFetch
+stability: stable
 ---
+
 
 # Enterprise Code Review Automation v4.0.0
 

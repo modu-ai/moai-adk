@@ -1,17 +1,28 @@
 ---
-name: "moai-core-session-state"
-version: "4.0.0"
+name: moai-core-session-state
+version: 4.0.0
 tier: Alfred
 created: 2025-11-05
-updated: 2025-11-18
+updated: '2025-11-18'
 status: stable
-description: Enterprise session state management, token budget optimization, runtime tracking, session handoff protocols, context continuity for Claude Sonnet 4.5 and Haiku 4.5 with context awareness features
-keywords: ['session', 'state', 'context-window', 'token-budget', 'handoff', 'continuity', 'context-awareness']
-allowed-tools: 
-  - Read
-  - Bash
-  - TodoWrite
+description: Enterprise session state management, token budget optimization, runtime
+  tracking, session handoff protocols, context continuity for Claude Sonnet 4.5 and
+  Haiku 4.5 with context awareness features
+keywords:
+- session
+- state
+- context-window
+- token-budget
+- handoff
+- continuity
+- context-awareness
+allowed-tools:
+- Read
+- Bash
+- TodoWrite
+stability: stable
 ---
+
 
 # Alfred Session State Management Skill (Enterprise v4.0.0)
 

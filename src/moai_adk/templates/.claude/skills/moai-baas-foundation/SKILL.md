@@ -1,19 +1,32 @@
 ---
-name: "moai-baas-foundation"
-version: "4.0.0"
+name: moai-baas-foundation
+version: 4.0.0
 created: 2025-10-22
-updated: 2025-11-13
+updated: '2025-11-18'
 status: stable
-description: Enterprise Backend-as-a-Service Foundation with AI-powered BaaS architecture patterns, strategic provider selection, and intelligent multi-service orchestration for scalable production applications
-keywords: ['baas', 'backend-architecture', 'service-integration', 'provider-selection', 'enterprise-patterns', 'multi-cloud', 'context7-integration', 'ai-orchestration', 'production-deployment']
-allowed-tools: 
-  - Read
-  - Bash
-  - WebSearch
-  - WebFetch
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+description: Enterprise Backend-as-a-Service Foundation with AI-powered BaaS architecture
+  patterns, strategic provider selection, and intelligent multi-service orchestration
+  for scalable production applications
+keywords:
+- baas
+- backend-architecture
+- service-integration
+- provider-selection
+- enterprise-patterns
+- multi-cloud
+- context7-integration
+- ai-orchestration
+- production-deployment
+allowed-tools:
+- Read
+- Bash
+- WebSearch
+- WebFetch
+- mcp__context7__resolve-library-id
+- mcp__context7__get-library-docs
+stability: stable
 ---
+
 
 # Enterprise BaaS Foundation Expert v4.0.0
 

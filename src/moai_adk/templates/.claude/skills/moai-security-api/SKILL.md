@@ -1,10 +1,15 @@
 ---
-name: "moai-security-api"
-version: "4.0.0"
+name: moai-security-api
+version: 4.0.0
 status: stable
-description: "Comprehensive API security for REST, GraphQL, and gRPC services with OAuth 2.1 authentication, JWT validation, rate limiting, and enterprise protection patterns."
-allowed-tools: "Read, Bash, WebSearch, WebFetch"
+description: Comprehensive API security for REST, GraphQL, and gRPC services with
+  OAuth 2.1 authentication, JWT validation, rate limiting, and enterprise protection
+  patterns.
+allowed-tools: Read, Bash, WebSearch, WebFetch
+updated: '2025-11-18'
+stability: stable
 ---
+
 
 # moai-security-api
 

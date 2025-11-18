@@ -1,16 +1,27 @@
 ---
-name: "moai-session-info"
-version: "1.0.0"
+name: moai-session-info
+version: 4.0.0
 created: 2025-11-05
-updated: 2025-11-05
+updated: '2025-11-18'
 status: stable
-description: Display comprehensive project and session information including Git status, SPEC progress, version details, and system resources. Use when starting new sessions, checking project status, reviewing project context, or when users ask "what's the status", "show project info", or "where are we".
-keywords: [session-info, project-status, git-status, spec-progress, version-check, system-resources]
-allowed-tools: 
-  - Read
-  - Glob
-  - Bash
+description: Display comprehensive project and session information including Git status,
+  SPEC progress, version details, and system resources. Use when starting new sessions,
+  checking project status, reviewing project context, or when users ask "what's the
+  status", "show project info", or "where are we".
+keywords:
+- session-info
+- project-status
+- git-status
+- spec-progress
+- version-check
+- system-resources
+allowed-tools:
+- Read
+- Glob
+- Bash
+stability: stable
 ---
+
 
 # Session Information Provider
 

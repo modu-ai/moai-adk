@@ -1,14 +1,30 @@
 ---
-name: "moai-core-ask-user-questions"
-version: "4.0.0"
+name: moai-core-ask-user-questions
+version: 4.0.0
 created: 2025-10-22
-updated: 2025-11-18
+updated: '2025-11-18'
 status: stable
-description: Enterprise interactive survey orchestrator with AskUserQuestion tool integration, multi-select support, conditional branching, error recovery, and production-grade decision automation across all Alfred workflows; activates for requirement clarification, architectural decisions, risky operations, feature selection, and complex multi-step user interactions
-keywords: ['interactive-surveys', 'user-clarification', 'decision-making', 'AskUserQuestion', 'multi-select', 'conditional-flow', 'error-recovery', 'workflow-automation', 'enterprise-ux', 'production-surveys']
-allowed-tools: 
-  - AskUserQuestion
+description: Enterprise interactive survey orchestrator with AskUserQuestion tool
+  integration, multi-select support, conditional branching, error recovery, and production-grade
+  decision automation across all Alfred workflows; activates for requirement clarification,
+  architectural decisions, risky operations, feature selection, and complex multi-step
+  user interactions
+keywords:
+- interactive-surveys
+- user-clarification
+- decision-making
+- AskUserQuestion
+- multi-select
+- conditional-flow
+- error-recovery
+- workflow-automation
+- enterprise-ux
+- production-surveys
+allowed-tools:
+- AskUserQuestion
+stability: stable
 ---
+
 
 # Enterprise Interactive Survey Orchestrator v4.0.0
 

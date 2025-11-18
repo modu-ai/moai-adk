@@ -1,16 +1,35 @@
 ---
-name: "moai-domain-security"
-version: "4.0.0"
-created: "2025-10-28"
-updated: 2025-11-18
+name: moai-domain-security
+version: 4.0.0
+created: '2025-10-28'
+updated: '2025-11-18'
 status: stable
 tier: domain
-description: "Enterprise-grade security expertise with production-ready patterns for OWASP Top 10 2021, zero-trust architecture, threat modeling (STRIDE, PASTA), secure SDLC, DevSecOps automation, cloud security, cryptography, identity & access management, and compliance frameworks (SOC 2, ISO 27001, GDPR, CCPA)."
-allowed-tools: "Read, Bash, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
-primary-agent: "security-expert"
-secondary-agents: ["qa-validator", "alfred", "doc-syncer"]
-keywords: [security, owasp, zero-trust, devsecops, threat-modeling, cryptography, compliance, soc2, iso27001, gdpr]
+description: Enterprise-grade security expertise with production-ready patterns for
+  OWASP Top 10 2021, zero-trust architecture, threat modeling (STRIDE, PASTA), secure
+  SDLC, DevSecOps automation, cloud security, cryptography, identity & access management,
+  and compliance frameworks (SOC 2, ISO 27001, GDPR, CCPA).
+allowed-tools: Read, Bash, WebSearch, WebFetch, mcp__context7__resolve-library-id,
+  mcp__context7__get-library-docs
+primary-agent: security-expert
+secondary-agents:
+- qa-validator
+- alfred
+- doc-syncer
+keywords:
+- security
+- owasp
+- zero-trust
+- devsecops
+- threat-modeling
+- cryptography
+- compliance
+- soc2
+- iso27001
+- gdpr
+stability: stable
 ---
+
 
 # moai-domain-security — Enterprise Security Architecture
 

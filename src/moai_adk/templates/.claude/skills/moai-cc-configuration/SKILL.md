@@ -1,22 +1,32 @@
 ---
-name: "moai-cc-configuration"
-version: "4.0.0"
+name: moai-cc-configuration
+version: 4.0.0
 created: 2025-11-11
-updated: 2025-11-13
+updated: '2025-11-18'
 status: stable
-description: Enterprise Configuration Management with AI-powered settings architecture, Context7 integration, and intelligent configuration orchestration for scalable applications
-keywords: ['configuration', 'settings', 'environment-variables', 'secrets-management', 'context7-integration', 'ai-orchestration', 'production-deployment']
-allowed-tools: 
-  - Read
-  - Bash
-  - Write
-  - Edit
-  - Glob
-  - Grep
-  - WebFetch
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+description: Enterprise Configuration Management with AI-powered settings architecture,
+  Context7 integration, and intelligent configuration orchestration for scalable applications
+keywords:
+- configuration
+- settings
+- environment-variables
+- secrets-management
+- context7-integration
+- ai-orchestration
+- production-deployment
+allowed-tools:
+- Read
+- Bash
+- Write
+- Edit
+- Glob
+- Grep
+- WebFetch
+- mcp__context7__resolve-library-id
+- mcp__context7__get-library-docs
+stability: stable
 ---
+
 
 # Enterprise Configuration Management Expert v4.0.0
 

@@ -1,14 +1,24 @@
 ---
-name: "moai-artifacts-builder"
-version: "4.1.0"
+name: moai-artifacts-builder
+version: 4.0.0
 created: 2025-11-13
-updated: 2025-11-13
+updated: '2025-11-18'
 status: stable
 tier: Alfred
-description: "Enterprise artifact management with governance, lifecycle, SBOM, and supply chain security for November 2025 standards"
-keywords: ['artifact', 'governance', 'lifecycle', 'context7-mcp', 'sbom', 'supply-chain-security', 'enterprise-standards']
-allowed-tools: "Read, Glob, Bash, WebFetch, WebSearch"
+description: Enterprise artifact management with governance, lifecycle, SBOM, and
+  supply chain security for November 2025 standards
+keywords:
+- artifact
+- governance
+- lifecycle
+- context7-mcp
+- sbom
+- supply-chain-security
+- enterprise-standards
+allowed-tools: Read, Glob, Bash, WebFetch, WebSearch
+stability: stable
 ---
+
 
 # Enterprise Artifact Management & Governance - v4.1.0
 

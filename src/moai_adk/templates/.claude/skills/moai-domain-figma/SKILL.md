@@ -1,17 +1,20 @@
 ---
-name: "moai-domain-figma"
-version: "4.0.0"
+name: moai-domain-figma
+version: 4.0.0
 created: 2025-11-18
-updated: 2025-11-18
+updated: '2025-11-18'
 status: stable
-description: "Figma design system integration with API automation, design tokens, and component libraries for scalable design infrastructure"
-allowed-tools: 
-  - Read
-  - Bash
-  - WebFetch
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+description: Figma design system integration with API automation, design tokens, and
+  component libraries for scalable design infrastructure
+allowed-tools:
+- Read
+- Bash
+- WebFetch
+- mcp__context7__resolve-library-id
+- mcp__context7__get-library-docs
+stability: stable
 ---
+
 
 # Design Systems & Figma Integration - v4.0.0
 

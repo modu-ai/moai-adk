@@ -1,20 +1,30 @@
 ---
-name: "moai-essentials-refactor"
-version: "4.0.0"
+name: moai-essentials-refactor
+version: 4.0.0
 created: 2025-11-13
-updated: 2025-11-13
+updated: '2025-11-18'
 status: stable
-description: "AI-powered enterprise refactoring with Context7 integration, automated code transformation, Rope pattern intelligence, and technical debt quantification across 25+ programming languages"
-keywords: ['ai-refactoring', 'context7-integration', 'rope-patterns', 'automated-transformation', 'technical-debt', 'enterprise-architecture']
-allowed_tools: 
-  - Read
-  - Bash
-  - Edit
-  - Glob
-  - WebFetch
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+description: AI-powered enterprise refactoring with Context7 integration, automated
+  code transformation, Rope pattern intelligence, and technical debt quantification
+  across 25+ programming languages
+keywords:
+- ai-refactoring
+- context7-integration
+- rope-patterns
+- automated-transformation
+- technical-debt
+- enterprise-architecture
+allowed_tools:
+- Read
+- Bash
+- Edit
+- Glob
+- WebFetch
+- mcp__context7__resolve-library-id
+- mcp__context7__get-library-docs
+stability: stable
 ---
+
 
 # AI-Powered Enterprise Refactoring - v4.0.0
 

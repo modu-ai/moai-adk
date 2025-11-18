@@ -1,22 +1,35 @@
 ---
-name: "moai-baas-railway-ext"
-version: "4.0.0"
+name: moai-baas-railway-ext
+version: 4.0.0
 created: 2025-11-11
-updated: 2025-11-13
+updated: '2025-11-18'
 status: stable
-description: Enterprise Railway Full-Stack Platform with AI-powered container orchestration, Context7 integration, and intelligent deployment automation for scalable modern applications
-keywords: ['railway', 'full-stack', 'container-deployment', 'ci-cd', 'database-provisioning', 'auto-scaling', 'context7-integration', 'ai-orchestration', 'production-deployment']
-allowed-tools: 
-  - Read
-  - Bash
-  - Write
-  - Edit
-  - Glob
-  - Grep
-  - WebFetch
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+description: Enterprise Railway Full-Stack Platform with AI-powered container orchestration,
+  Context7 integration, and intelligent deployment automation for scalable modern
+  applications
+keywords:
+- railway
+- full-stack
+- container-deployment
+- ci-cd
+- database-provisioning
+- auto-scaling
+- context7-integration
+- ai-orchestration
+- production-deployment
+allowed-tools:
+- Read
+- Bash
+- Write
+- Edit
+- Glob
+- Grep
+- WebFetch
+- mcp__context7__resolve-library-id
+- mcp__context7__get-library-docs
+stability: stable
 ---
+
 
 # Enterprise Railway Full-Stack Platform Expert v4.0.0
 

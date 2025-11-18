@@ -1,16 +1,29 @@
 ---
 name: moai-context7-lang-integration
-version: "4.0.0"
+version: 4.0.0
 status: stable
-description: "Enterprise-grade Context7 MCP integration patterns for language-specific documentation access with real-time library resolution and intelligent caching"
-keywords: [context7, mcp, documentation, integration, language-specific, library-resolution, caching, async-patterns, error-handling]
+description: Enterprise-grade Context7 MCP integration patterns for language-specific
+  documentation access with real-time library resolution and intelligent caching
+keywords:
+- context7
+- mcp
+- documentation
+- integration
+- language-specific
+- library-resolution
+- caching
+- async-patterns
+- error-handling
 allowed-tools:
-  - Read
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+- Read
+- mcp__context7__resolve-library-id
+- mcp__context7__get-library-docs
 tier: foundation
-tags:
+tags: null
+updated: '2025-11-18'
+stability: stable
 ---
+
 
 # Context7 Language Integration
 

@@ -1,19 +1,33 @@
 ---
-name: "moai-lang-shell"
-version: "4.0.0"
-updated: 2025-11-18
+name: moai-lang-shell
+version: 4.0.0
+updated: '2025-11-18'
 tier: Language
-description: Enterprise Shell scripting with Bash 5.2, ShellCheck, bats-core testing, POSIX compliance, and Context7 MCP integration for defensive scripting patterns.
-primary-agent: "alfred"
-secondary-agents: ["tdd-implementer", "test-engineer", "code-reviewer"]
-keywords: ["shell", "bash", "shellcheck", "bats", "posix", "scripting", "testing", "linting"]
+description: Enterprise Shell scripting with Bash 5.2, ShellCheck, bats-core testing,
+  POSIX compliance, and Context7 MCP integration for defensive scripting patterns.
+primary-agent: alfred
+secondary-agents:
+- tdd-implementer
+- test-engineer
+- code-reviewer
+keywords:
+- shell
+- bash
+- shellcheck
+- bats
+- posix
+- scripting
+- testing
+- linting
 status: stable
 allowed-tools:
-  - Read
-  - Bash
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+- Read
+- Bash
+- mcp__context7__resolve-library-id
+- mcp__context7__get-library-docs
+stability: stable
 ---
+
 
 # moai-lang-shell - Enterprise v4.0.0
 

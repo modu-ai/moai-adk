@@ -1,21 +1,37 @@
 ---
-name: "moai-core-config-schema"
-version: "4.0.0"
+name: moai-core-config-schema
+version: 4.0.0
 created: 2025-11-11
-updated: 2025-11-18
+updated: '2025-11-18'
 status: stable
-description: Enterprise configuration schema validation and management orchestrator with JSON Schema v2024-12, Context7 integration, semantic versioning compliance, environment variable management, secrets handling, multi-environment support, and configuration-as-code best practices; activates for config validation, schema enforcement, environment setup, secrets management, and configuration audits
-keywords: ['configuration-schema', 'json-schema', 'config-management', 'environment-management', 'secrets-handling', 'semantic-versioning', 'configuration-as-code', 'schema-validation', 'multi-environment', 'enterprise-config']
-allowed-tools: 
-  - Read
-  - Write
-  - Edit
-  - Bash
-  - AskUserQuestion
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
-  - WebFetch
+description: Enterprise configuration schema validation and management orchestrator
+  with JSON Schema v2024-12, Context7 integration, semantic versioning compliance,
+  environment variable management, secrets handling, multi-environment support, and
+  configuration-as-code best practices; activates for config validation, schema enforcement,
+  environment setup, secrets management, and configuration audits
+keywords:
+- configuration-schema
+- json-schema
+- config-management
+- environment-management
+- secrets-handling
+- semantic-versioning
+- configuration-as-code
+- schema-validation
+- multi-environment
+- enterprise-config
+allowed-tools:
+- Read
+- Write
+- Edit
+- Bash
+- AskUserQuestion
+- mcp__context7__resolve-library-id
+- mcp__context7__get-library-docs
+- WebFetch
+stability: stable
 ---
+
 
 # Enterprise Configuration Schema Management v4.0.0
 

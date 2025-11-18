@@ -1,16 +1,25 @@
 ---
-name: "moai-cc-agents"
-version: "2.0.0"
+name: moai-cc-agents
+version: 4.0.0
 created: 2025-10-22
-updated: 2025-11-11
+updated: '2025-11-18'
 status: stable
-description: Claude Code Agents system, task delegation patterns, and multi-agent coordination. Use when creating custom agents, managing agent workflows, or implementing task delegation.
-keywords: ['agents', 'task-delegation', 'coordination', 'workflows', 'automation']
-allowed-tools: 
-  - Read
-  - Bash
-  - Task
+description: Claude Code Agents system, task delegation patterns, and multi-agent
+  coordination. Use when creating custom agents, managing agent workflows, or implementing
+  task delegation.
+keywords:
+- agents
+- task-delegation
+- coordination
+- workflows
+- automation
+allowed-tools:
+- Read
+- Bash
+- Task
+stability: stable
 ---
+
 
 # Claude Code Agents System
 

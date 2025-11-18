@@ -1,13 +1,26 @@
 ---
 name: moai-design-systems
-description: Design system patterns, W3C DTCG 2025.10 token architecture, WCAG 2.2 accessibility standards, and Figma MCP workflows for consistent, accessible UI development
-allowed-tools: [Read, Write, WebFetch, WebSearch]
+description: Design system patterns, W3C DTCG 2025.10 token architecture, WCAG 2.2
+  accessibility standards, and Figma MCP workflows for consistent, accessible UI development
+allowed-tools:
+- Read
+- Write
+- WebFetch
+- WebSearch
 tier: medium
-version: "1.0.0"
-updated: 2025-11-04
-tags: [design-systems, design-tokens, accessibility, wcag, figma-mcp, dtcg]
+version: 4.0.0
+updated: '2025-11-18'
+tags:
+- design-systems
+- design-tokens
+- accessibility
+- wcag
+- figma-mcp
+- dtcg
 status: stable
+stability: stable
 ---
+
 
 # Design Systems Development Skill
 

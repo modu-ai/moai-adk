@@ -1,18 +1,30 @@
 ---
-name: "moai-learning-optimizer"
-version: "1.0.0"
+name: moai-learning-optimizer
+version: 4.0.0
 created: 2025-11-05
-updated: 2025-11-05
+updated: '2025-11-18'
 status: stable
-description: Intelligent learning system optimizer that analyzes session patterns, identifies improvement opportunities, and continuously enhances Alfred's performance through adaptive learning and knowledge optimization. Use when optimizing Alfred's behavior, analyzing session patterns, improving system performance, or when implementing adaptive learning capabilities.
-keywords: [learning-system, session-analysis, performance-optimization, adaptive-learning, pattern-recognition, knowledge-optimization]
-allowed-tools: 
-  - Read
-  - Glob
-  - Grep
-  - Bash
-  - Write
+description: Intelligent learning system optimizer that analyzes session patterns,
+  identifies improvement opportunities, and continuously enhances Alfred's performance
+  through adaptive learning and knowledge optimization. Use when optimizing Alfred's
+  behavior, analyzing session patterns, improving system performance, or when implementing
+  adaptive learning capabilities.
+keywords:
+- learning-system
+- session-analysis
+- performance-optimization
+- adaptive-learning
+- pattern-recognition
+- knowledge-optimization
+allowed-tools:
+- Read
+- Glob
+- Grep
+- Bash
+- Write
+stability: stable
 ---
+
 
 # Learning System Optimizer
 

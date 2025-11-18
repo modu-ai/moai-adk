@@ -1,10 +1,13 @@
 ---
-name: "moai-security-owasp"
-version: "4.0.0"
+name: moai-security-owasp
+version: 4.0.0
 status: stable
-description: "Enterprise Skill for advanced development"
-allowed-tools: "Read, Bash, WebSearch, WebFetch"
+description: Enterprise Skill for advanced development
+allowed-tools: Read, Bash, WebSearch, WebFetch
+updated: '2025-11-18'
+stability: stable
 ---
+
 
 # moai-security-owasp: OWASP Top 10 2021 Defense Patterns
 

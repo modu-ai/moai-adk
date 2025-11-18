@@ -1,17 +1,28 @@
 ---
 name: moai-core-feedback-templates
-version: "4.0.0"
+version: 4.0.0
 created: 2025-11-12
-updated: 2025-11-18
+updated: '2025-11-18'
 status: stable
 language: ko
-description: |
-  GitHub 이슈 라벨별 구조화된 템플릿. 버그, 기능 요청, 개선 사항, 리팩토링, 문서, 질문 등
-  각 이슈 타입에 맞는 한국어 템플릿 제공. /alfred:9-feedback에서 사용.
-keywords: ['feedback', 'templates', 'issue-creation', 'korean', 'structured-templates', 'bug-report', 'feature-request']
+description: "GitHub \uC774\uC288 \uB77C\uBCA8\uBCC4 \uAD6C\uC870\uD654\uB41C \uD15C\
+  \uD50C\uB9BF. \uBC84\uADF8, \uAE30\uB2A5 \uC694\uCCAD, \uAC1C\uC120 \uC0AC\uD56D\
+  , \uB9AC\uD329\uD1A0\uB9C1, \uBB38\uC11C, \uC9C8\uBB38 \uB4F1\n\uAC01 \uC774\uC288\
+  \ \uD0C0\uC785\uC5D0 \uB9DE\uB294 \uD55C\uAD6D\uC5B4 \uD15C\uD50C\uB9BF \uC81C\uACF5\
+  . /alfred:9-feedback\uC5D0\uC11C \uC0AC\uC6A9.\n"
+keywords:
+- feedback
+- templates
+- issue-creation
+- korean
+- structured-templates
+- bug-report
+- feature-request
 allowed-tools:
-  - Read
+- Read
+stability: stable
 ---
+
 
 # GitHub 이슈 작성 템플릿 모음 v4.0.0
 

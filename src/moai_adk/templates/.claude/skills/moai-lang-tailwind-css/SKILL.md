@@ -1,11 +1,13 @@
 ---
-name: "moai-lang-tailwind-css"
-version: "4.0.0"
-updated: 2025-11-18
+name: moai-lang-tailwind-css
+version: 4.0.0
+updated: '2025-11-18'
 status: stable
-description: "Enterprise Skill for advanced development"
-allowed-tools: "Read, Bash, WebSearch, WebFetch"
+description: Enterprise Skill for advanced development
+allowed-tools: Read, Bash, WebSearch, WebFetch
+stability: stable
 ---
+
 
 # moai-lang-tailwind-css
 

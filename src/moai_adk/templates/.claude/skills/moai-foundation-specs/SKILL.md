@@ -1,18 +1,29 @@
 ---
-name: "moai-foundation-specs"
-version: "4.0.0"
+name: moai-foundation-specs
+version: 4.0.0
 created: 2025-11-11
-updated: 2025-11-12
+updated: '2025-11-18'
 status: stable
-description: SPEC document management - lifecycle, versioning, approval workflows, 50+ references, SPEC-first TDD integration
-keywords: ['spec', 'specification', 'requirements', 'lifecycle', 'versioning', 'approval', 'tracking', 'tdd']
-allowed-tools: 
-  - Read
-  - Write
-  - Bash
-  - Grep
-  - Glob
+description: SPEC document management - lifecycle, versioning, approval workflows,
+  50+ references, SPEC-first TDD integration
+keywords:
+- spec
+- specification
+- requirements
+- lifecycle
+- versioning
+- approval
+- tracking
+- tdd
+allowed-tools:
+- Read
+- Write
+- Bash
+- Grep
+- Glob
+stability: stable
 ---
+
 
 # SPEC Foundation Skill - Expert v4.0
 

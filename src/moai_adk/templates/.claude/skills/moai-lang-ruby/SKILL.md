@@ -1,15 +1,23 @@
 ---
-name: "moai-lang-ruby"
-version: "4.0.0"
+name: moai-lang-ruby
+version: 4.0.0
 created: 2025-10-22
-updated: 2025-11-18
+updated: '2025-11-18'
 status: stable
-description: Ruby 3.4+ best practices with RSpec 4, RuboCop 2, Bundler, and Rails 8 patterns.
-keywords: ['ruby', 'rspec', 'rubocop', 'bundler', 'rails']
-allowed-tools: 
-  - Read
-  - Bash
+description: Ruby 3.4+ best practices with RSpec 4, RuboCop 2, Bundler, and Rails
+  8 patterns.
+keywords:
+- ruby
+- rspec
+- rubocop
+- bundler
+- rails
+allowed-tools:
+- Read
+- Bash
+stability: stable
 ---
+
 
 # Lang Ruby Skill
 

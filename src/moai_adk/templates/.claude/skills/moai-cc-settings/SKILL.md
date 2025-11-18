@@ -1,16 +1,25 @@
 ---
-name: "moai-cc-settings"
-version: "2.0.0"
+name: moai-cc-settings
+version: 4.0.0
 created: 2025-10-22
-updated: 2025-11-11
+updated: '2025-11-18'
 status: stable
-description: Claude Code settings management, preference customization, and user experience optimization. Use when customizing Claude Code behavior, managing user preferences, or optimizing development experience.
-keywords: ['settings', 'preferences', 'customization', 'user-experience', 'optimization']
-allowed-tools: 
-  - Read
-  - Bash
-  - Grep
+description: Claude Code settings management, preference customization, and user experience
+  optimization. Use when customizing Claude Code behavior, managing user preferences,
+  or optimizing development experience.
+keywords:
+- settings
+- preferences
+- customization
+- user-experience
+- optimization
+allowed-tools:
+- Read
+- Bash
+- Grep
+stability: stable
 ---
+
 
 # Claude Code Settings Management
 

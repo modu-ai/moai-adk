@@ -1,15 +1,33 @@
 ---
-name: "moai-domain-cli-tool"
-version: "4.0.0"
+name: moai-domain-cli-tool
+version: 4.0.0
 tier: Domain Architecture
 created: 2025-11-13
-updated: 2025-11-18
-tags: [CLI, Rust, Go, Node.js, command-line-tools, argument-parsing, UX/DX]
-trigger_keywords: [CLI tool, command-line, argparse, Clap, Cobra, Commander]
-allowed-tools: [WebSearch, WebFetch]
+updated: '2025-11-18'
+tags:
+- CLI
+- Rust
+- Go
+- Node.js
+- command-line-tools
+- argument-parsing
+- UX/DX
+trigger_keywords:
+- CLI tool
+- command-line
+- argparse
+- Clap
+- Cobra
+- Commander
+allowed-tools:
+- WebSearch
+- WebFetch
 status: stable
-description: "Enterprise CLI tool architecture with multi-language patterns, UX/DX optimization, and production deployment strategies"
+description: Enterprise CLI tool architecture with multi-language patterns, UX/DX
+  optimization, and production deployment strategies
+stability: stable
 ---
+
 
 # Enterprise CLI Tool Architecture - v4.0.0
 

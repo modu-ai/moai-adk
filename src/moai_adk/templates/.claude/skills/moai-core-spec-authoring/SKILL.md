@@ -1,30 +1,32 @@
 ---
-name: "moai-core-spec-authoring"
-version: "4.0.0"
+name: moai-core-spec-authoring
+version: 4.0.0
 created: 2025-10-23
-updated: 2025-11-18
+updated: '2025-11-18'
 status: stable
 tier: Alfred
-description: >-
-  Complete SPEC document authoring guide with YAML metadata structure (7 required + 9 optional fields),
-  EARS requirement syntax (5 patterns including Unwanted Behaviors), version lifecycle management,
-  TAG integration, pre-submission validation checklist, and real-world SPEC examples.
-keywords: 
-  - spec
-  - authoring
-  - ears
-  - metadata
-  - requirements
-  - tdd
-  - planning
-  - yaml-metadata
-  - requirement-syntax
-  - validation-checklist
-allowed-tools: 
-  - Read
-  - Bash
-  - Glob
+description: Complete SPEC document authoring guide with YAML metadata structure (7
+  required + 9 optional fields), EARS requirement syntax (5 patterns including Unwanted
+  Behaviors), version lifecycle management, TAG integration, pre-submission validation
+  checklist, and real-world SPEC examples.
+keywords:
+- spec
+- authoring
+- ears
+- metadata
+- requirements
+- tdd
+- planning
+- yaml-metadata
+- requirement-syntax
+- validation-checklist
+allowed-tools:
+- Read
+- Bash
+- Glob
+stability: stable
 ---
+
 
 # SPEC Authoring Skill (Enterprise v4.0.0)
 

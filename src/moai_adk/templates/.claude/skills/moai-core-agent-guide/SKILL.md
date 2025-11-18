@@ -1,15 +1,18 @@
 ---
-name: "moai-core-agent-guide"
-version: "4.0.0"
+name: moai-core-agent-guide
+version: 4.0.0
 created: 2025-11-18
-updated: 2025-11-18
+updated: '2025-11-18'
 status: stable
-description: "Complete guide to MoAI-ADK agents, delegation patterns, and agent orchestration for intelligent task distribution"
-allowed-tools: 
-  - Read
-  - Bash
-  - WebFetch
+description: Complete guide to MoAI-ADK agents, delegation patterns, and agent orchestration
+  for intelligent task distribution
+allowed-tools:
+- Read
+- Bash
+- WebFetch
+stability: stable
 ---
+
 
 # MoAI Agent Architecture & Delegation Guide - v4.0.0
 

@@ -1,21 +1,49 @@
 ---
-name: "moai-domain-cloud"
-version: "4.0.0"
-created: "2025-11-12"
-updated: 2025-11-18
+name: moai-domain-cloud
+version: 4.0.0
+created: '2025-11-12'
+updated: '2025-11-18'
 status: stable
 tier: domain
-description: "Enterprise-grade cloud architecture expertise with production-ready patterns for AWS (Lambda 3.13, ECS/Fargate 1.4.0, RDS, CDK 2.223.0), GCP (Cloud Run Gen2, Cloud Functions 2nd gen, Cloud SQL), Azure (Functions v4, Container Apps, AKS), and multi-cloud orchestration (Terraform 1.9.8, Pulumi 3.x, Kubernetes 1.34). Covers serverless architectures, container orchestration, multi-cloud deployments, cloud-native databases, infrastructure automation, cost optimization, security patterns, and disaster recovery for 2025 stable versions."
-allowed-tools: "Read, Bash, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
-primary-agent: "cloud-expert"
-secondary-agents: [qa-validator, alfred, doc-syncer]
-keywords: [cloud, AWS, GCP, Azure, Lambda, serverless, ECS, Kubernetes, Terraform, multi-cloud, IaC, cloud-native, database, DevOps]
-tags: [domain-expert, 2025-stable]
-orchestration: 
+description: Enterprise-grade cloud architecture expertise with production-ready patterns
+  for AWS (Lambda 3.13, ECS/Fargate 1.4.0, RDS, CDK 2.223.0), GCP (Cloud Run Gen2,
+  Cloud Functions 2nd gen, Cloud SQL), Azure (Functions v4, Container Apps, AKS),
+  and multi-cloud orchestration (Terraform 1.9.8, Pulumi 3.x, Kubernetes 1.34). Covers
+  serverless architectures, container orchestration, multi-cloud deployments, cloud-native
+  databases, infrastructure automation, cost optimization, security patterns, and
+  disaster recovery for 2025 stable versions.
+allowed-tools: Read, Bash, WebSearch, WebFetch, mcp__context7__resolve-library-id,
+  mcp__context7__get-library-docs
+primary-agent: cloud-expert
+secondary-agents:
+- qa-validator
+- alfred
+- doc-syncer
+keywords:
+- cloud
+- AWS
+- GCP
+- Azure
+- Lambda
+- serverless
+- ECS
+- Kubernetes
+- Terraform
+- multi-cloud
+- IaC
+- cloud-native
+- database
+- DevOps
+tags:
+- domain-expert
+- 2025-stable
+orchestration: null
 can_resume: true
-typical_chain_position: "middle"
+typical_chain_position: middle
 depends_on: []
+stability: stable
 ---
+
 
 # moai-domain-cloud — Enterprise Cloud Architecture (v4.0)
 

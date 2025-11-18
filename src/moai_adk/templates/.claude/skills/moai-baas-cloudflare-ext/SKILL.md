@@ -1,22 +1,34 @@
 ---
-name: "moai-baas-cloudflare-ext"
-version: "4.0.0"
+name: moai-baas-cloudflare-ext
+version: 4.0.0
 created: 2025-11-11
-updated: 2025-11-13
+updated: '2025-11-18'
 status: stable
-description: Enterprise Cloudflare Edge Platform with AI-powered edge computing architecture, Context7 integration, and intelligent global orchestration for scalable modern applications
-keywords: ['cloudflare', 'edge-computing', 'workers', 'pages', 'cdn', 'security', 'context7-integration', 'ai-orchestration', 'production-deployment']
-allowed-tools: 
-  - Read
-  - Bash
-  - Write
-  - Edit
-  - Glob
-  - Grep
-  - WebFetch
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+description: Enterprise Cloudflare Edge Platform with AI-powered edge computing architecture,
+  Context7 integration, and intelligent global orchestration for scalable modern applications
+keywords:
+- cloudflare
+- edge-computing
+- workers
+- pages
+- cdn
+- security
+- context7-integration
+- ai-orchestration
+- production-deployment
+allowed-tools:
+- Read
+- Bash
+- Write
+- Edit
+- Glob
+- Grep
+- WebFetch
+- mcp__context7__resolve-library-id
+- mcp__context7__get-library-docs
+stability: stable
 ---
+
 
 # Enterprise Cloudflare Edge Platform Expert v4.0.0
 

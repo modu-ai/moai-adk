@@ -1,16 +1,31 @@
 ---
 name: moai-core-workflow
-version: "4.0.0"
+version: 4.0.0
 status: stable
-description: |
-  Enterprise multi-agent workflow orchestration specialist. Master workflow 
-  design, agent coordination, task delegation, and process automation with Context7 
-  MCP integration and comprehensive monitoring. Build scalable, intelligent 
-  workflow systems with fault tolerance and performance optimization.
-allowed-tools: ["Read", "Write", "Edit", "Bash", "Glob", "WebFetch", "WebSearch"]
-tags: ["workflow", "automation", "agents", "orchestration", "context7", "mcp", "multi-agent"]
-updated: 2025-11-18
+description: "Enterprise multi-agent workflow orchestration specialist. Master workflow\
+  \ \ndesign, agent coordination, task delegation, and process automation with Context7\
+  \ \nMCP integration and comprehensive monitoring. Build scalable, intelligent \n\
+  workflow systems with fault tolerance and performance optimization.\n"
+allowed-tools:
+- Read
+- Write
+- Edit
+- Bash
+- Glob
+- WebFetch
+- WebSearch
+tags:
+- workflow
+- automation
+- agents
+- orchestration
+- context7
+- mcp
+- multi-agent
+updated: '2025-11-18'
+stability: stable
 ---
+
 
 # Alfred Workflow Orchestration
 

@@ -1,22 +1,36 @@
 ---
-name: "moai-domain-monitoring"
-version: "4.0.0"
+name: moai-domain-monitoring
+version: 4.0.0
 created: 2025-11-11
-updated: 2025-11-18
+updated: '2025-11-18'
 status: stable
-description: Enterprise Application Monitoring with AI-powered observability architecture, Context7 integration, and intelligent performance orchestration for scalable modern applications
-keywords: ['monitoring', 'observability', 'performance', 'analytics', 'metrics', 'logging', 'tracing', 'context7-integration', 'ai-orchestration', 'production-deployment']
-allowed-tools: 
-  - Read
-  - Bash
-  - Write
-  - Edit
-  - Glob
-  - Grep
-  - WebFetch
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+description: Enterprise Application Monitoring with AI-powered observability architecture,
+  Context7 integration, and intelligent performance orchestration for scalable modern
+  applications
+keywords:
+- monitoring
+- observability
+- performance
+- analytics
+- metrics
+- logging
+- tracing
+- context7-integration
+- ai-orchestration
+- production-deployment
+allowed-tools:
+- Read
+- Bash
+- Write
+- Edit
+- Glob
+- Grep
+- WebFetch
+- mcp__context7__resolve-library-id
+- mcp__context7__get-library-docs
+stability: stable
 ---
+
 
 # Enterprise Application Monitoring Expert v4.0.0
 

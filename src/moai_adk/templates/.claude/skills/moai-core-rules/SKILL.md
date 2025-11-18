@@ -1,14 +1,32 @@
 ---
-name: "moai-core-rules"
-version: "4.0.0"
+name: moai-core-rules
+version: 4.0.0
 created: 2025-11-02
-updated: 2025-11-18
+updated: '2025-11-18'
 status: stable
 tier: Alfred
-description: "Alfred SuperAgent의 필수 규칙을 정의합니다. November 2025 enterprise standard 기반. 3-Layer architecture, 4-Step workflow, Agent-first paradigm, Skill invocation rules, AskUserQuestion patterns, TRUST 5 quality gates, TAG chain integrity, commit message standards. 사용: 워크플로우 규칙 검증, 품질 게이트 확인, MoAI-ADK 표준 준수, 아키텍처 규칙 검증."
-keywords: ['rules', 'agent-first', 'skill-invocation', 'ask-user-question', 'trust-5', 'tag-chain', 'workflow-compliance', 'quality-gates', '4-step-workflow', 'architecture-rules']
-allowed-tools: "Read, Glob, Grep, Bash, AskUserQuestion, TodoWrite"
+description: "Alfred SuperAgent\uC758 \uD544\uC218 \uADDC\uCE59\uC744 \uC815\uC758\
+  \uD569\uB2C8\uB2E4. November 2025 enterprise standard \uAE30\uBC18. 3-Layer architecture,\
+  \ 4-Step workflow, Agent-first paradigm, Skill invocation rules, AskUserQuestion\
+  \ patterns, TRUST 5 quality gates, TAG chain integrity, commit message standards.\
+  \ \uC0AC\uC6A9: \uC6CC\uD06C\uD50C\uB85C\uC6B0 \uADDC\uCE59 \uAC80\uC99D, \uD488\
+  \uC9C8 \uAC8C\uC774\uD2B8 \uD655\uC778, MoAI-ADK \uD45C\uC900 \uC900\uC218, \uC544\
+  \uD0A4\uD14D\uCC98 \uADDC\uCE59 \uAC80\uC99D."
+keywords:
+- rules
+- agent-first
+- skill-invocation
+- ask-user-question
+- trust-5
+- tag-chain
+- workflow-compliance
+- quality-gates
+- 4-step-workflow
+- architecture-rules
+allowed-tools: Read, Glob, Grep, Bash, AskUserQuestion, TodoWrite
+stability: stable
 ---
+
 
 ## Skill 개요
 

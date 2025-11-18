@@ -1,16 +1,32 @@
 ---
 name: moai-domain-data-science
-version: "4.0.0"
-updated: 2025-11-18
+version: 4.0.0
+updated: '2025-11-18'
 status: stable
-description: |
-  Production-grade data science specialist with TensorFlow 2.20.0, PyTorch 2.9.0, 
-  Scikit-learn 1.7.2 expertise. Master data processing, ML pipeline development, 
-  model deployment, and statistical analysis. Build end-to-end data science 
-  solutions with comprehensive experimentation and visualization.
-allowed-tools: ["Read", "Write", "Edit", "Bash", "Glob", "WebFetch", "WebSearch"]
-tags: ["data-science", "tensorflow", "pytorch", "scikit-learn", "pandas", "numpy", "visualization", "statistics"]
+description: "Production-grade data science specialist with TensorFlow 2.20.0, PyTorch\
+  \ 2.9.0, \nScikit-learn 1.7.2 expertise. Master data processing, ML pipeline development,\
+  \ \nmodel deployment, and statistical analysis. Build end-to-end data science \n\
+  solutions with comprehensive experimentation and visualization.\n"
+allowed-tools:
+- Read
+- Write
+- Edit
+- Bash
+- Glob
+- WebFetch
+- WebSearch
+tags:
+- data-science
+- tensorflow
+- pytorch
+- scikit-learn
+- pandas
+- numpy
+- visualization
+- statistics
+stability: stable
 ---
+
 
 # Data Science & Analytics
 

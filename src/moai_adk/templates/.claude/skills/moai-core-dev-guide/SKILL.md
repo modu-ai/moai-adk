@@ -1,15 +1,30 @@
 ---
-name: "moai-core-dev-guide"
-version: "4.0.0"
+name: moai-core-dev-guide
+version: 4.0.0
 created: 2025-11-02
-updated: 2025-11-18
+updated: '2025-11-18'
 tier: Alfred
-allowed-tools: "Read, Bash(rg:*), Bash(grep:*)"
-primary-agent: "alfred"
-secondary-agents: ["spec-builder", "tdd-implementer", "test-engineer", "doc-syncer", "git-manager"]
-keywords: ["spec-first", "tdd", "red-green-refactor", "trust-principles", "pytest", "jest", "bdd", "sphinx"]
+allowed-tools: Read, Bash(rg:*), Bash(grep:*)
+primary-agent: alfred
+secondary-agents:
+- spec-builder
+- tdd-implementer
+- test-engineer
+- doc-syncer
+- git-manager
+keywords:
+- spec-first
+- tdd
+- red-green-refactor
+- trust-principles
+- pytest
+- jest
+- bdd
+- sphinx
 status: stable
+stability: stable
 ---
+
 
 # moai-core-dev-guide
 

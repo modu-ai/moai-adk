@@ -1,14 +1,20 @@
 ---
-name: "moai-mcp-builder"
-version: "4.0.0"
-description: Enterprise MCP (Model Context Protocol) server development using FastMCP 2.0 with production-grade tools, resources, prompts, and intelligent agent-first design. Use when building MCP servers, integrating with LLMs, creating agent tools, implementing RAG systems, or developing protocol-based AI integration solutions.
-allowed-tools: 
-  - Read
-  - Bash
-  - WebSearch
-  - WebFetch
+name: moai-mcp-builder
+version: 4.0.0
+description: Enterprise MCP (Model Context Protocol) server development using FastMCP
+  2.0 with production-grade tools, resources, prompts, and intelligent agent-first
+  design. Use when building MCP servers, integrating with LLMs, creating agent tools,
+  implementing RAG systems, or developing protocol-based AI integration solutions.
+allowed-tools:
+- Read
+- Bash
+- WebSearch
+- WebFetch
 status: stable
+updated: '2025-11-18'
+stability: stable
 ---
+
 
 # Enterprise MCP Server Builder & AI Integration Platform
 

@@ -1,19 +1,34 @@
 ---
-name: "moai-core-issue-labels"
-version: "4.0.0"
+name: moai-core-issue-labels
+version: 4.0.0
 created: 2025-11-11
-updated: 2025-11-18
+updated: '2025-11-18'
 status: stable
-description: Enterprise GitHub issue labeling orchestrator with semantic label taxonomy, AI-powered auto-labeling, label hierarchy system, workflow automation, issue triage acceleration, and stakeholder communication; activates for issue classification, label management, workflow automation, priority assignment, and team communication
-keywords: ['github-labels', 'issue-triage', 'label-taxonomy', 'ai-labeling', 'workflow-automation', 'issue-classification', 'priority-management', 'team-communication', 'semantic-labels', 'enterprise-triage']
-allowed-tools: 
-  - Read
-  - Bash
-  - AskUserQuestion
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
-  - WebFetch
+description: Enterprise GitHub issue labeling orchestrator with semantic label taxonomy,
+  AI-powered auto-labeling, label hierarchy system, workflow automation, issue triage
+  acceleration, and stakeholder communication; activates for issue classification,
+  label management, workflow automation, priority assignment, and team communication
+keywords:
+- github-labels
+- issue-triage
+- label-taxonomy
+- ai-labeling
+- workflow-automation
+- issue-classification
+- priority-management
+- team-communication
+- semantic-labels
+- enterprise-triage
+allowed-tools:
+- Read
+- Bash
+- AskUserQuestion
+- mcp__context7__resolve-library-id
+- mcp__context7__get-library-docs
+- WebFetch
+stability: stable
 ---
+
 
 # Enterprise GitHub Issue Labeling Orchestrator v4.0.0
 

@@ -1,10 +1,13 @@
 ---
-name: "moai-mermaid-diagram-expert"
-version: "4.0.0"
+name: moai-mermaid-diagram-expert
+version: 4.0.0
 status: stable
-description: "Enterprise Skill for advanced development"
-allowed-tools: "Read, Bash, WebSearch, WebFetch"
+description: Enterprise Skill for advanced development
+allowed-tools: Read, Bash, WebSearch, WebFetch
+updated: '2025-11-18'
+stability: stable
 ---
+
 
 # Skill: Mermaid Diagram Expert
 

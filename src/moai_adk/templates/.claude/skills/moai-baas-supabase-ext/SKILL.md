@@ -1,22 +1,35 @@
 ---
-name: "moai-baas-supabase-ext"
-version: "4.0.0"
+name: moai-baas-supabase-ext
+version: 4.0.0
 created: 2025-11-11
-updated: 2025-11-13
+updated: '2025-11-18'
 status: stable
-description: Enterprise Supabase PostgreSQL Platform with AI-powered open-source BaaS architecture, Context7 integration, and intelligent PostgreSQL orchestration for scalable modern applications
-keywords: ['supabase', 'postgresql', 'open-source', 'realtime', 'row-level-security', 'edge-functions', 'context7-integration', 'ai-orchestration', 'production-deployment']
-allowed-tools: 
-  - Read
-  - Bash
-  - Write
-  - Edit
-  - Glob
-  - Grep
-  - WebFetch
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+description: Enterprise Supabase PostgreSQL Platform with AI-powered open-source BaaS
+  architecture, Context7 integration, and intelligent PostgreSQL orchestration for
+  scalable modern applications
+keywords:
+- supabase
+- postgresql
+- open-source
+- realtime
+- row-level-security
+- edge-functions
+- context7-integration
+- ai-orchestration
+- production-deployment
+allowed-tools:
+- Read
+- Bash
+- Write
+- Edit
+- Glob
+- Grep
+- WebFetch
+- mcp__context7__resolve-library-id
+- mcp__context7__get-library-docs
+stability: stable
 ---
+
 
 # Enterprise Supabase PostgreSQL Platform Expert v4.0.0
 

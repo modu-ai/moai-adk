@@ -1,20 +1,35 @@
 ---
-name: "moai-domain-mobile-app"
-version: "4.0.0"
+name: moai-domain-mobile-app
+version: 4.0.0
 created: 2025-11-13
-updated: 2025-11-18
+updated: '2025-11-18'
 status: stable
 tier: domain
-description: "Enterprise mobile development with React Native 0.76+, Flutter 3.24+, Capacitor 6.x, cross-platform patterns, testing, CI/CD"
-allowed-tools: "Read, Bash, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
-primary-agent: "frontend-expert"
-secondary-agents: [qa-validator, alfred, doc-syncer]
-tags: [mobile, react-native, flutter, capacitor, ionic, cross-platform, testing, deployment]
-orchestration:
+description: Enterprise mobile development with React Native 0.76+, Flutter 3.24+,
+  Capacitor 6.x, cross-platform patterns, testing, CI/CD
+allowed-tools: Read, Bash, WebSearch, WebFetch, mcp__context7__resolve-library-id,
+  mcp__context7__get-library-docs
+primary-agent: frontend-expert
+secondary-agents:
+- qa-validator
+- alfred
+- doc-syncer
+tags:
+- mobile
+- react-native
+- flutter
+- capacitor
+- ionic
+- cross-platform
+- testing
+- deployment
+orchestration: null
 can_resume: true
-typical_chain_position: "middle"
+typical_chain_position: middle
 depends_on: []
+stability: stable
 ---
+
 
 # moai-domain-mobile-app
 

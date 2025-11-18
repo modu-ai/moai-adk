@@ -1,10 +1,12 @@
 ---
-name: "moai-domain-ml-ops"
-version: "4.0.0"
+name: moai-domain-ml-ops
+version: 4.0.0
 created: 2025-11-18
-updated: 2025-11-18
+updated: '2025-11-18'
 status: stable
+stability: stable
 ---
+
 
 # Enterprise MLOps Platform - v4.0.0
 
