@@ -25,7 +25,7 @@ class TestMergeAnalyzerInitialization:
 
             assert analyzer.project_path == project_path
             assert analyzer.CLAUDE_TIMEOUT == 120
-            assert analyzer.CLAUDE_MODEL == "claude-sonnet-4-5-20250929"
+            assert analyzer.CLAUDE_MODEL == "claude-haiku-4-5-20251001"
             assert analyzer.CLAUDE_TOOLS == ["Read", "Glob", "Grep"]
 
     def test_analyzed_files_list_correct(self):

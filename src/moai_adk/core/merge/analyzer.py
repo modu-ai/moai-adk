@@ -38,7 +38,7 @@ class MergeAnalyzer:
 
     # Claude headless 실행 설정
     CLAUDE_TIMEOUT = 120  # 최대 2분
-    CLAUDE_MODEL = "claude-sonnet-4-5-20250929"  # 최신 Sonnet
+    CLAUDE_MODEL = "claude-haiku-4-5-20251001"  # 최신 Haiku (비용 최적화)
     CLAUDE_TOOLS = ["Read", "Glob", "Grep"]  # 읽기 전용
 
     def __init__(self, project_path: Path):
@@ -303,14 +303,32 @@ class MergeAnalyzer:
                     )
 
     def _build_claude_command(self) -> list[str]:
-        """Claude Code headless 명령어 구축"""
+        """Claude Code headless 명령어 구축 (공식 v4.0+ 기반)
+        
+        Claude Code CLI 공식 옵션:
+        - -p: Non-interactive headless mode
+        - --model: 명시적 모델 선택 (Haiku 사용)
+        - --output-format: JSON 응답 형식
+        - --tools: 읽기 전용 도구만 허용 (공백 구분 - POSIX 표준)
+        - --permission-mode: 자동 승인 (백그라운드 작업)
+        
+        Returns:
+            Claude CLI 명령 인자 리스트
+        """
+        # 도구 목록을 공백으로 구분 (POSIX 표준, 공식 권장)
+        tools_str = " ".join(self.CLAUDE_TOOLS)
+        
         return [
             "claude",
-            "-p",
+            "-p",  # Non-interactive headless mode
+            "--model",
+            self.CLAUDE_MODEL,  # 명시적 모델 지정 (Haiku)
             "--output-format",
-            "json",
+            "json",  # JSON 단일 응답
             "--tools",
-            ",".join(self.CLAUDE_TOOLS),
+            tools_str,  # 공백 구분 (Read Glob Grep)
+            "--permission-mode",
+            "dontAsk",  # 자동 승인 (읽기만 가능하므로 안전)
         ]
 
     def _format_diff_summary(
