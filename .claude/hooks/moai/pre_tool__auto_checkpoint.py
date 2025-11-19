@@ -21,13 +21,13 @@ from typing import Any
 
 # Setup import path for shared modules
 HOOKS_DIR = Path(__file__).parent
-LIB_DIR = HOOKS_DIR / "lib"
-if str(LIB_DIR) not in sys.path:
-    sys.path.insert(0, str(LIB_DIR))
+SHARED_DIR = HOOKS_DIR / "shared"
+if str(SHARED_DIR) not in sys.path:
+    sys.path.insert(0, str(SHARED_DIR))
 
-from lib.tool import handle_pre_tool_use  # noqa: E402
-from lib.timeout import CrossPlatformTimeout  # noqa: E402
-from lib.timeout import TimeoutError as PlatformTimeoutError  # noqa: E402
+from handlers import handle_pre_tool_use  # noqa: E402
+from utils.timeout import CrossPlatformTimeout  # noqa: E402
+from utils.timeout import TimeoutError as PlatformTimeoutError  # noqa: E402
 
 
 def main() -> None:
@@ -71,21 +71,21 @@ def main() -> None:
 
     except json.JSONDecodeError as e:
         # JSON parse error - allow operation to continue
-        json_error_response: dict[str, Any] = {
+        error_response: dict[str, Any] = {
             "continue": True,
             "hookSpecificOutput": {"error": f"JSON parse error: {e}"},
         }
-        print(json.dumps(json_error_response))
+        print(json.dumps(error_response))
         print(f"PreToolUse JSON parse error: {e}", file=sys.stderr)
         sys.exit(1)
 
     except Exception as e:
         # Unexpected error - allow operation to continue
-        general_error_response: dict[str, Any] = {
+        error_response: dict[str, Any] = {
             "continue": True,
             "hookSpecificOutput": {"error": f"PreToolUse error: {e}"},
         }
-        print(json.dumps(general_error_response))
+        print(json.dumps(error_response))
         print(f"PreToolUse unexpected error: {e}", file=sys.stderr)
         sys.exit(1)
 

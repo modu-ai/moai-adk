@@ -23,6 +23,7 @@ class StatuslineData:
     duration: str
     directory: str
     active_task: str
+    output_style: str = ""  # Output style name (e.g., "R2-D2", "Yoda")
     update_available: bool = False
     latest_version: str = ""
 
@@ -86,7 +87,7 @@ class StatuslineRenderer:
     def _build_compact_parts(self, data: StatuslineData) -> List[str]:
         """
         Build parts list for compact mode with labeled sections
-        Format: 🤖 Model | 🗿 Version | Output Style | 📋 TODO | 🔀 Git: Branch | Changes
+        Format: 🤖 Model | 🗿 Version | 📊 Changes | 💬 Style | 🔀 Branch | Active Task
 
         Args:
             data: StatuslineData instance
@@ -102,11 +103,17 @@ class StatuslineRenderer:
 
         # Add version if display enabled (system status)
         if self._display_config.version:
-            parts.append(f"🗿 Ver {data.version}")
+            # Add 'v' prefix if not already present
+            version_str = data.version if data.version.startswith("v") else f"v{data.version}"
+            parts.append(f"🗿 {version_str}")
 
         # Add git status if display enabled and status not empty
         if self._display_config.git_status and data.git_status:
             parts.append(f"📊 {data.git_status}")
+
+        # Add output style if not empty
+        if data.output_style:
+            parts.append(f"💬 {data.output_style}")
 
         # Add Git info (development context)
         if self._display_config.branch:
@@ -121,7 +128,7 @@ class StatuslineRenderer:
     def _fit_to_constraint(self, data: StatuslineData, max_length: int) -> str:
         """
         Fit statusline to character constraint by truncating
-        Format: 🤖 Model | 🗿 Version | Output Style | 📋 TODO | 🔀 Git: Branch | Changes
+        Format: 🤖 Model | 🗿 Version | 📊 Changes | 💬 Style | 🔀 Git: Branch | Active Task
 
         Args:
             data: StatuslineData instance
@@ -132,14 +139,19 @@ class StatuslineRenderer:
         """
         # Try with truncated branch first
         truncated_branch = self._truncate_branch(data.branch, max_length=20)
+        version_str = data.version if data.version.startswith("v") else f"v{data.version}"
         parts = [
             f"🤖 {data.model}",
-            f"🗿 Ver {data.version}",
+            f"🗿 {version_str}",
         ]
 
         # Add git status if display enabled and status not empty
         if self._display_config.git_status and data.git_status:
             parts.append(f"📊 {data.git_status}")
+
+        # Add output style if not empty
+        if data.output_style:
+            parts.append(f"💬 {data.output_style}")
 
         # Add Git info
         parts.append(f"🔀 {truncated_branch}")
@@ -155,20 +167,22 @@ class StatuslineRenderer:
             truncated_branch = self._truncate_branch(data.branch, max_length=12)
             parts = [
                 f"🤖 {data.model}",
-                f"🗿 Ver {data.version}",
+                f"🗿 {version_str}",
             ]
             if data.git_status:
                 parts.append(f"📊 {data.git_status}")
+            if data.output_style:
+                parts.append(f"💬 {data.output_style}")
             parts.append(f"🔀 {truncated_branch}")
             if data.active_task.strip():
                 parts.append(data.active_task)
             result = self._format_config.separator.join(parts)
 
-        # If still too long, remove active_task
-        if len(result) > max_length and data.active_task.strip():
+        # If still too long, remove output_style and active_task
+        if len(result) > max_length:
             parts = [
                 f"🤖 {data.model}",
-                f"🗿 Ver {data.version}",
+                f"🗿 {version_str}",
             ]
             if data.git_status:
                 parts.append(f"📊 {data.git_status}")
@@ -185,7 +199,7 @@ class StatuslineRenderer:
         """
         Render extended mode: Full path and detailed info with labels
         Constraint: <= 120 characters
-        Format: 🤖 Model | 🗿 Version | Output Style | 📋 TODO | 🔀 Git: Branch | Changes
+        Format: 🤖 Model | 🗿 Version | 📊 Changes | 💬 Style | 🔀 Git: Branch | Active Task
 
         Args:
             data: StatuslineData instance
@@ -194,6 +208,7 @@ class StatuslineRenderer:
             Formatted statusline string (max 120 chars)
         """
         branch = self._truncate_branch(data.branch, max_length=30)
+        version_str = data.version if data.version.startswith("v") else f"v{data.version}"
 
         parts = []
 
@@ -203,11 +218,15 @@ class StatuslineRenderer:
 
         # Add version if display enabled
         if self._display_config.version:
-            parts.append(f"🗿 Ver {data.version}")
+            parts.append(f"🗿 {version_str}")
 
         # Add git status if display enabled and status not empty
         if self._display_config.git_status and data.git_status:
             parts.append(f"📊 {data.git_status}")
+
+        # Add output style if not empty
+        if data.output_style:
+            parts.append(f"💬 {data.output_style}")
 
         # Add Git info (development context)
         if self._display_config.branch:
@@ -224,23 +243,19 @@ class StatuslineRenderer:
             branch = self._truncate_branch(data.branch, max_length=20)
             parts = [
                 f"🤖 {data.model}",
-                f"🗿 Ver {data.version}",
+                f"🗿 {version_str}",
             ]
 
-            # Add optional parts only if they have content
-            if self._display_config.output_style and data.output_style.strip():
-                # Use Yoda-specific emoji for Yoda styles only
-                if "yoda" in data.output_style.lower() or "Yoda Master" in data.output_style:
-                    parts.append(f"🧙 {data.output_style}")
-                else:
-                    parts.append(f"{data.output_style}")
-            if self._display_config.todo_count and data.todo_count.strip():
-                parts.append(f"📋 {data.todo_count}")
+            # Add git status if display enabled and not empty
+            if self._display_config.git_status and data.git_status:
+                parts.append(f"📊 {data.git_status}")
+
+            # Add output style if not empty
+            if data.output_style:
+                parts.append(f"💬 {data.output_style}")
 
             parts.append(f"🔀 {branch}")
 
-            if data.git_status:
-                parts.append(f"Changes: {data.git_status}")
             if data.active_task.strip():
                 parts.append(data.active_task)
             result = self._format_config.separator.join(parts)
@@ -267,7 +282,10 @@ class StatuslineRenderer:
 
         # Add version if display enabled
         if self._display_config.version:
-            parts.append(f"🗿 Ver {self._truncate_version(data.version)}")
+            truncated_ver = self._truncate_version(data.version)
+            # Add 'v' prefix if not already present
+            version_str = truncated_ver if truncated_ver.startswith("v") else f"v{truncated_ver}"
+            parts.append(f"🗿 {version_str}")
 
         result = self._format_config.separator.join(parts)
 

@@ -34,9 +34,17 @@ def read_session_context() -> dict:
     try:
         input_data = sys.stdin.read()
         if input_data:
-            return json.loads(input_data)
+            try:
+                return json.loads(input_data)
+            except json.JSONDecodeError as e:
+                import logging
+                logging.error(f"Failed to parse JSON from stdin: {e}")
+                logging.debug(f"Input data: {input_data[:200]}")
+                return {}
         return {}
-    except (json.JSONDecodeError, EOFError, ValueError):
+    except (EOFError, ValueError) as e:
+        import logging
+        logging.error(f"Error reading stdin: {e}")
         return {}
 
 
@@ -129,31 +137,40 @@ def safe_check_update(current_version: str) -> tuple[bool, Optional[str]]:
         return False, None
 
 
+
+
 def build_statusline_data(session_context: dict, mode: str = "compact") -> str:
     """
     Build complete statusline string from all data sources.
 
     Collects information from:
-    - Claude Code session context
+    - Claude Code session context (via stdin)
     - Git repository
     - Session metrics
     - Alfred workflow state
     - MoAI-ADK version
     - Update checker
+    - Output style
 
     Args:
-        session_context: Context passed from Claude Code
+        session_context: Context passed from Claude Code via stdin
         mode: Display mode (compact, extended, minimal)
 
     Returns:
         Rendered statusline string
     """
     try:
-        # Extract model from session context
+        # Extract model from session context with Claude Code version
         model_info = session_context.get("model", {})
-        model = model_info.get("display_name", "Unknown")
-        if not model:
-            model = model_info.get("name", "Unknown")
+        model_name = model_info.get("display_name") or model_info.get("name") or "Unknown"
+
+        # Add Claude Code version to model name (e.g., "Haiku-v2.0.45")
+        # Only add if model_name doesn't already contain version info (avoid duplication)
+        claude_version = session_context.get("version", "")
+        if claude_version and not ("-v" in model_name or "-V" in model_name):
+            model = f"{model_name}-v{claude_version}"
+        else:
+            model = model_name
 
         # Extract directory
         cwd = session_context.get("cwd", "")
@@ -162,7 +179,10 @@ def build_statusline_data(session_context: dict, mode: str = "compact") -> str:
         else:
             directory = "project"
 
-        # Collect all information
+        # Extract output style from session context
+        output_style = session_context.get("output_style", {}).get("name", "")
+
+        # Collect all information from local sources
         branch, git_status = safe_collect_git_info()
         duration = safe_collect_duration()
         active_task = safe_collect_alfred_task()
@@ -179,6 +199,7 @@ def build_statusline_data(session_context: dict, mode: str = "compact") -> str:
             duration=duration,
             directory=directory,
             active_task=active_task,
+            output_style=output_style,
             update_available=update_available,
             latest_version=latest_version,
         )
@@ -204,8 +225,16 @@ def main():
     Reads JSON from stdin, processes all information,
     and outputs the formatted statusline string.
     """
+    # Debug mode check
+    debug_mode = os.environ.get("MOAI_STATUSLINE_DEBUG") == "1"
+
     # Read session context from Claude Code
     session_context = read_session_context()
+
+    if debug_mode:
+        # Write debug info to stderr for troubleshooting
+        sys.stderr.write(f"[DEBUG] Received session_context: {json.dumps(session_context, indent=2)}\n")
+        sys.stderr.flush()
 
     # Load configuration
     config = StatuslineConfig()
@@ -220,6 +249,10 @@ def main():
 
     # Build and output statusline
     statusline = build_statusline_data(session_context, mode=mode)
+    if debug_mode:
+        sys.stderr.write(f"[DEBUG] Generated statusline: {statusline}\n")
+        sys.stderr.flush()
+
     if statusline:
         print(statusline, end="")
 
