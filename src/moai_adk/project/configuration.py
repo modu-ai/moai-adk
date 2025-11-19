@@ -629,11 +629,17 @@ class ConditionalBatchRenderer:
         """
         visible_batches = []
 
+        # Map "mode" to "git_strategy_mode" if needed
+        context = dict(git_config)
+        if "mode" in context and "git_strategy_mode" not in context:
+            context["git_strategy_mode"] = context["mode"]
+
+
         for tab in self.schema.get('tabs', []):
             # Support both exact match and partial match (e.g., 'tab_3' matches 'tab_3_git_automation')
             if tab['id'] == tab_id or tab['id'].startswith(tab_id):
                 for batch in tab.get('batches', []):
-                    if self.evaluate_condition(batch.get('show_if', 'true'), git_config):
+                    if self.evaluate_condition(batch.get('show_if', 'true'), context):
                         visible_batches.append(batch)
 
         return visible_batches
@@ -674,48 +680,109 @@ class ConditionalBatchRenderer:
         if condition == 'true' or not condition:
             return True
 
-        # Simple condition evaluation (==, AND, OR)
         try:
-            import re as regex_module
-
-            # Map short names to full names in condition
-            expression = condition
-
-            # If 'mode' is in context, add 'git_strategy_mode' mapping
-            # Use word boundaries to avoid replacing mode in documentation_mode
-            if 'mode' in context:
-                expression = regex_module.sub(
-                    r'\bgit_strategy_mode\b',
-                    'mode',
-                    expression
-                )
-
-            # Replace placeholders with actual values
-            # Sort by length (longest first) to avoid partial replacements
-            for key in sorted(context.keys(), key=len, reverse=True):
-                value = context[key]
-                # Use word boundaries to avoid partial matches
-                if isinstance(value, str):
-                    expression = regex_module.sub(
-                        rf'\b{key}\b',
-                        f"'{value}'",
-                        expression
-                    )
-                else:
-                    expression = regex_module.sub(
-                        rf'\b{key}\b',
-                        str(value),
-                        expression
-                    )
-
-            # Replace operators
-            expression = expression.replace(' AND ', ' and ')
-            expression = expression.replace(' OR ', ' or ')
-
-            # Evaluate
-            return eval(expression)
+            # Safe expression evaluation without eval()
+            return self._safe_evaluate(condition, context)
         except Exception:
+            # Fail-safe: return True on any evaluation error
             return True
+
+    @staticmethod
+    def _safe_evaluate(expression: str, context: Dict[str, Any]) -> bool:
+        """Safely evaluate conditional expression without using eval().
+
+        Args:
+            expression: Conditional expression string
+            context: Dictionary of variables for evaluation
+
+        Returns:
+            Boolean result of evaluation
+
+        Raises:
+            ValueError: If expression is malformed
+        """
+        expression = expression.strip()
+
+        if " OR " in expression:
+            or_parts = expression.split(" OR ")
+            return any(ConditionalBatchRenderer._safe_evaluate(part.strip(), context) for part in or_parts)
+
+        if " AND " in expression:
+            and_parts = expression.split(" AND ")
+            return all(ConditionalBatchRenderer._safe_evaluate(part.strip(), context) for part in and_parts)
+
+        return ConditionalBatchRenderer._evaluate_comparison(expression, context)
+
+    @staticmethod
+    def _evaluate_comparison(comparison: str, context: Dict[str, Any]) -> bool:
+        """Evaluate a single comparison expression.
+
+        Supports: ==, !=, <, >, <=, >=
+
+        Args:
+            comparison: Single comparison expression
+            context: Dictionary of variables
+
+        Returns:
+            Boolean result of comparison
+        """
+        comparison = comparison.strip()
+        operators = ["<=", ">=", "==", "!=", "<", ">"]
+
+        for op in operators:
+            if op not in comparison:
+                continue
+            parts = comparison.split(op, 1)
+            if len(parts) != 2:
+                continue
+            left = parts[0].strip()
+            right = parts[1].strip()
+            left_value = ConditionalBatchRenderer._resolve_operand(left, context)
+            right_value = ConditionalBatchRenderer._resolve_operand(right, context)
+            if op == "==":
+                return left_value == right_value
+            elif op == "!=":
+                return left_value != right_value
+            elif op == "<":
+                return left_value < right_value
+            elif op == ">":
+                return left_value > right_value
+            elif op == "<=":
+                return left_value <= right_value
+            elif op == ">=":
+                return left_value >= right_value
+        return True
+
+    @staticmethod
+    def _resolve_operand(operand: str, context: Dict[str, Any]) -> Any:
+        """Resolve an operand to its actual value.
+
+        Handles:
+        - String literals: 'value'
+        - Variable names: variable_name
+        - Numbers: 123, 45.67
+
+        Args:
+            operand: Operand string to resolve
+            context: Dictionary of variables
+
+        Returns:
+            Resolved value
+        """
+        operand = operand.strip()
+        if (operand.startswith("'") and operand.endswith("'")) or \
+           (operand.startswith('"') and operand.endswith('"')):
+            return operand[1:-1]
+        try:
+            if "." in operand:
+                return float(operand)
+            else:
+                return int(operand)
+        except ValueError:
+            pass
+        if operand in context:
+            return context[operand]
+        raise ValueError(f"Unknown operand: {operand}")
 
 
 class TemplateVariableInterpolator:
