@@ -1,6 +1,6 @@
 # 🗿 MoAI-ADK: AI-Powered SPEC-First TDD Development Framework
 
-**Available Languages:** [English](./README.md) | [한국어](./README.ko.md)
+**Available Languages:** [English](./README.md) | [한국어](./README.ko.md) | [日本語](./README.ja.md)
 
 [![PyPI version](https://img.shields.io/pypi/v/moai-adk)](https://pypi.org/project/moai-adk/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
