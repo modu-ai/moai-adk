@@ -210,7 +210,7 @@ def check_moai_version_match() -> tuple[bool, Optional[str], Optional[str], Opti
             if is_matched:
                 status = f"✅ Version: {installed_version} (latest)"
             else:
-                status = f"⚠️  Version: {installed_version} → {latest_version} update available (run moai-adk update)"
+                status = f"⬆️ Version: {installed_version} → {latest_version} available (run moai-adk update)"
             return is_matched, installed_version, latest_version, status
         else:
             # Can't check PyPI, just show installed version
