@@ -51,6 +51,22 @@ def migrate_config_to_nested_structure(config: dict[str, Any]) -> dict[str, Any]
             "conversation_language_name": language_name,
         }
 
+    # 2. Language settings migration
+    # Old: "language": "ko"
+    # New: "language": {"conversation_language": "ko", "conversation_language_name": "Korean"}
+    if "language" in config and isinstance(config["language"], str):
+        old_lang = config["language"]
+        lang_names = {
+            "ko": "Korean",
+            "en": "English",
+            "ja": "Japanese",
+            "zh": "Chinese"
+        }
+        config["language"] = {
+            "conversation_language": old_lang,
+            "conversation_language_name": lang_names.get(old_lang, "English")
+        }
+
     return config
 
 

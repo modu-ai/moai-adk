@@ -1,7 +1,7 @@
 {
   "branch": "release/0.26.0",
-  "last_commit": "b2fa7f63 refactor(hooks): Flatten hooks/moai structure from 5-level to 3-level depth",
-  "commit_time": "13 minutes ago",
-  "changes": 77,
-  "last_check": "2025-11-19T07:55:24.761675"
+  "last_commit": "f69e7740 refactor(config-health-check): Add actionable guidance for configuration setup",
+  "commit_time": "4 minutes ago",
+  "changes": 15,
+  "last_check": "2025-11-19T17:12:03.772253"
 }

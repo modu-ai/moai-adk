@@ -1,32 +1,21 @@
 {
-  "version": "2.0.0",
+  "version": "3.0.0",
   "last_updated": "2025-11-19",
-  "description": "Complete tab-based settings schema for /moai:0-project setting command (v0.26.0 aligned)",
+  "description": "Simplified tab-based settings schema for /moai:0-project - Essential questions only with smart defaults and project documentation integration",
   "changelog": {
-    "2.0.0": {
+    "3.0.0": {
       "date": "2025-11-19",
       "changes": [
-        "Removed [tab_ID] argument requirement - always use interactive tab selection",
-        "Added git_strategy.mode selection (Batch 3.0) with Personal/Team conditional logic",
-        "Expanded Tab 3 Git Strategy: 16 → 29 settings (+81%)",
-        "Fixed 26 outdated/incorrect field names (checkpoint_enabled→auto_checkpoint, etc)",
-        "Added conditional batch logic (Personal/Team batches shown based on mode selection)",
-        "Enhanced validation checkpoints: 3 → 6 checkpoint rules",
-        "Total coverage: 41 → 57 settings (+39%)",
-        "Aligned with config.json v0.26.0 structure (100% field match)",
-        "Tab 1: No changes (3 settings)",
-        "Tab 2: No changes (4 settings + 3 auto-processed)",
-        "Tab 3: Complete redesign (4 → 6 batches, 16 → 29 questions)",
-        "Tab 4: 4 → 3 fields, renamed test_coverage_target",
-        "Tab 5: 8 → 11 fields with improved alignment"
-      ]
-    },
-    "1.0.0": {
-      "date": "2025-11-12",
-      "changes": [
-        "Initial schema with tab-based configuration",
-        "5 tabs, 12 batches, 40 questions, 41 settings",
-        "Auto-processing for conversation_language_name"
+        "Reduced from 5 tabs to 3 tabs (Quick Start + Git Automation + Documentation Choice)",
+        "Reduced from 27 to 10 essential questions (63% reduction)",
+        "Added Documentation Choice step (Full/Skip/Minimal options)",
+        "Added brainstorming depth selection (Quick/Standard/Deep)",
+        "Integrated project documentation generation workflow",
+        "Added smart defaults for 16 settings",
+        "Added auto-detection for 5 fields",
+        "Estimated setup time: 2-3 minutes → 35 minutes (based on choice)",
+        "Conditional batches for Personal/Team/Hybrid modes",
+        "Template variable system for dynamic values ({{user.name}}, etc.)"
       ]
     }
   },
@@ -38,1005 +27,546 @@
     "no_emojis": true,
     "note": "Fifth option is always 'Other' for custom input"
   },
+  "presets": {
+    "personal_dev": {
+      "name": "Personal Developer",
+      "description": "Optimized for solo development",
+      "applies": {
+        "git_strategy.mode": "personal",
+        "git_strategy.personal.workflow": "github-flow",
+        "git_strategy.personal.auto_checkpoint": "event-driven",
+        "git_strategy.personal.push_to_remote": false,
+        "report_generation.user_choice": "Minimal",
+        "github.spec_git_workflow": "per_spec"
+      }
+    },
+    "team_collaboration": {
+      "name": "Team Collaboration",
+      "description": "Git-Flow with PR reviews",
+      "applies": {
+        "git_strategy.mode": "team",
+        "git_strategy.team.workflow": "git-flow",
+        "git_strategy.team.auto_pr": false,
+        "git_strategy.team.draft_pr": false,
+        "report_generation.user_choice": "Full",
+        "github.spec_git_workflow": "feature_branch"
+      }
+    }
+  },
+  "auto_detection": {
+    "project.language": "detect_from_codebase()",
+    "project.locale": "map_from_conversation_language()",
+    "language.conversation_language_name": "map_language_code_to_name()",
+    "project.template_version": "system_managed",
+    "moai.version": "system_managed"
+  },
   "tabs": [
     {
-      "id": "tab_1_user_language",
-      "label": "Tab 1: User & Language",
-      "description": "User name and conversation language settings",
-      "setting_count": 3,
-      "batch_count": 1,
+      "id": "tab_1_quick_start",
+      "label": "Tab 1: Quick Start (Essential Setup)",
+      "description": "Core settings to start development immediately",
+      "setting_count": 10,
+      "batch_count": 4,
+      "estimated_time": "2-3 minutes",
       "batches": [
         {
           "batch_id": "1.1",
-          "label": "Basic Settings",
+          "label": "Identity & Language",
           "question_count": 3,
           "questions": [
             {
-              "question": "User name is currently set to 'GoosLab'. Is this correct?",
+              "question": "What name should Alfred use when addressing you?",
               "header": "User Name",
               "field": "user.name",
               "type": "text_input",
               "multiSelect": false,
-              "easy_description": "User name used when interacting with Claude Code. Can be any name you prefer.",
+              "easy_description": "Your name for personalized interactions with Claude Code",
               "options": [
                 {
                   "label": "Keep Current",
-                  "description": "Continue using GoosLab"
+                  "description": "Keep existing name"
                 },
                 {
-                  "label": "Change",
-                  "description": "Select Other to enter a new name"
+                  "label": "Enter New Name",
+                  "description": "Select Other to provide your name"
                 }
               ],
-              "current_value": "GoosLab",
-              "required": true
+              "current_value": "{{user.name}}",
+              "default_value": "User",
+              "required": true,
+              "smart_default": "User"
             },
             {
-              "question": "What language should Alfred use in conversations? (current: Korean/ko)",
+              "question": "Select your preferred conversation language",
               "header": "Conversation Language",
               "field": "language.conversation_language",
               "type": "select_single",
               "multiSelect": false,
-              "easy_description": "All conversations, documents, and code comments will be generated in this language. conversation_language_name is auto-updated when this changes.",
+              "easy_description": "All conversations, documents, and code comments will be in this language",
               "options": [
                 {
                   "label": "Korean (ko)",
-                  "description": "All content generated in Korean"
+                  "value": "ko",
+                  "description": "한국어로 모든 내용 생성"
                 },
                 {
                   "label": "English (en)",
-                  "description": "All content generated in English"
+                  "value": "en",
+                  "description": "All content in English"
                 },
                 {
                   "label": "Japanese (ja)",
-                  "description": "All content generated in Japanese"
+                  "value": "ja",
+                  "description": "日本語でコンテンツを生成"
                 },
                 {
                   "label": "Spanish (es)",
-                  "description": "All content generated in Spanish"
+                  "value": "es",
+                  "description": "Todo el contenido en español"
                 }
               ],
-              "current_value": "ko",
-              "required": true
+              "current_value": "{{language.conversation_language}}",
+              "default_value": "en",
+              "required": true,
+              "smart_default": "en",
+              "note": "Auto-updates: language.conversation_language_name, project.locale"
             },
             {
-              "question": "Agent internal prompt language is currently set to Korean(ko). How would you like to configure this?",
+              "question": "Select agent internal prompt language",
               "header": "Agent Prompt Language",
               "field": "language.agent_prompt_language",
               "type": "select_single",
               "multiSelect": false,
-              "easy_description": "Language used internally by Alfred and Sub-agents. Usually same as conversation language.",
+              "easy_description": "English recommended for best AI performance (15-20% faster)",
               "options": [
                 {
-                  "label": "Keep as Korean",
-                  "description": "All agent messages in Korean"
+                  "label": "English (Recommended)",
+                  "value": "english",
+                  "description": "Best AI performance, 15-20% token savings"
                 },
                 {
-                  "label": "Change to English",
-                  "description": "For open-source maintenance mode"
-                },
-                {
-                  "label": "Other",
-                  "description": "Select to enter a different language"
+                  "label": "Same as Conversation",
+                  "value": "same_as_conversation",
+                  "description": "Match conversation language (slightly slower)"
                 }
               ],
-              "current_value": "ko",
-              "required": true
+              "current_value": "{{language.agent_prompt_language}}",
+              "default_value": "english",
+              "required": true,
+              "smart_default": "english"
+            }
+          ]
+        },
+        {
+          "batch_id": "1.2",
+          "label": "Project Basics",
+          "question_count": 3,
+          "questions": [
+            {
+              "question": "Enter your Project Name",
+              "header": "Project Name",
+              "field": "project.name",
+              "type": "text_input",
+              "multiSelect": false,
+              "easy_description": "The official name of your project",
+              "options": [
+                {
+                  "label": "Keep Current",
+                  "description": "Keep existing project name"
+                },
+                {
+                  "label": "Enter New Name",
+                  "description": "Select Other to provide project name"
+                }
+              ],
+              "current_value": "{{project.name}}",
+              "default_value": "my-project",
+              "required": true,
+              "smart_default": "my-project"
+            },
+            {
+              "question": "Enter Project Owner (Individual or Organization)",
+              "header": "Project Owner",
+              "field": "project.owner",
+              "type": "text_input",
+              "multiSelect": false,
+              "easy_description": "Who owns or maintains this project",
+              "options": [
+                {
+                  "label": "Same as User",
+                  "description": "Use your user name"
+                },
+                {
+                  "label": "Enter Organization",
+                  "description": "Select Other to provide owner name"
+                }
+              ],
+              "current_value": "{{project.owner}}",
+              "default_value": "{{user.name}}",
+              "required": true,
+              "smart_default": "{{user.name}}"
+            },
+            {
+              "question": "Brief project description (one sentence)",
+              "header": "Project Description",
+              "field": "project.description",
+              "type": "text_input",
+              "multiSelect": false,
+              "easy_description": "What does your project do?",
+              "options": [
+                {
+                  "label": "Skip",
+                  "description": "Leave empty for now"
+                },
+                {
+                  "label": "Enter Description",
+                  "description": "Select Other to provide description"
+                }
+              ],
+              "current_value": "{{project.description}}",
+              "default_value": "",
+              "required": false,
+              "smart_default": ""
+            }
+          ]
+        },
+        {
+          "batch_id": "1.3",
+          "label": "Development Mode",
+          "question_count": 2,
+          "questions": [
+            {
+              "question": "Select your Git workflow mode",
+              "header": "Git Strategy Mode",
+              "field": "git_strategy.mode",
+              "type": "select_single",
+              "multiSelect": false,
+              "easy_description": "Personal for solo work, Team for collaboration, Hybrid auto-switches",
+              "options": [
+                {
+                  "label": "Personal (Solo Dev)",
+                  "value": "personal",
+                  "description": "Simplified GitHub Flow, fast iteration"
+                },
+                {
+                  "label": "Team (Collaboration)",
+                  "value": "team",
+                  "description": "Full Git-Flow with PR reviews"
+                },
+                {
+                  "label": "Hybrid (Recommended)",
+                  "value": "hybrid",
+                  "description": "Auto-switch between Personal and Team"
+                }
+              ],
+              "current_value": "{{git_strategy.mode}}",
+              "default_value": "hybrid",
+              "required": true,
+              "smart_default": "hybrid",
+              "note": "This determines conditional batches shown in Tab 2"
+            },
+            {
+              "question": "Select your branching workflow type",
+              "header": "Workflow Type",
+              "field": "git_strategy.{mode}.workflow",
+              "type": "select_single",
+              "multiSelect": false,
+              "easy_description": "GitHub Flow is simpler, Git-Flow is for teams",
+              "options": [
+                {
+                  "label": "GitHub Flow (Simple)",
+                  "value": "github-flow",
+                  "description": "Feature branches → main"
+                },
+                {
+                  "label": "Git-Flow (Team)",
+                  "value": "git-flow",
+                  "description": "Feature → develop → main"
+                }
+              ],
+              "current_value": "{{git_strategy.{mode}.workflow}}",
+              "default_value": "github-flow",
+              "required": true,
+              "smart_default": "github-flow",
+              "conditional_mapping": {
+                "personal": "git_strategy.personal.workflow",
+                "team": "git_strategy.team.workflow",
+                "hybrid": "git_strategy.personal.workflow"
+              }
+            }
+          ]
+        },
+        {
+          "batch_id": "1.4",
+          "label": "Quality Standards",
+          "question_count": 2,
+          "questions": [
+            {
+              "question": "Set minimum test coverage target",
+              "header": "Test Coverage",
+              "field": "constitution.test_coverage_target",
+              "type": "number_input",
+              "multiSelect": false,
+              "easy_description": "MoAI-ADK enforces this coverage percentage for all code",
+              "options": [
+                {
+                  "label": "90% (Recommended)",
+                  "value": 90,
+                  "description": "High quality standard"
+                },
+                {
+                  "label": "85%",
+                  "value": 85,
+                  "description": "Industry standard"
+                },
+                {
+                  "label": "80%",
+                  "value": 80,
+                  "description": "Minimum acceptable"
+                }
+              ],
+              "current_value": "{{constitution.test_coverage_target}}",
+              "default_value": 90,
+              "required": true,
+              "smart_default": 90
+            },
+            {
+              "question": "Enforce Test-Driven Development (TDD)?",
+              "header": "Enforce TDD",
+              "field": "constitution.enforce_tdd",
+              "type": "select_single",
+              "multiSelect": false,
+              "easy_description": "Require tests before implementation (Red-Green-Refactor)",
+              "options": [
+                {
+                  "label": "Yes (Recommended)",
+                  "value": true,
+                  "description": "Strictly enforce TDD workflow"
+                },
+                {
+                  "label": "No",
+                  "value": false,
+                  "description": "Allow code without prior tests"
+                }
+              ],
+              "current_value": "{{constitution.enforce_tdd}}",
+              "default_value": true,
+              "required": true,
+              "smart_default": true
             }
           ]
         }
       ]
     },
     {
-      "id": "tab_2_project_info",
-      "label": "Tab 2: Project Basic Information",
-      "description": "Project name, description, owner, and mode settings",
-      "setting_count": 7,
+      "id": "tab_2_documentation_choice",
+      "label": "Tab 2: Project Documentation",
+      "description": "Create or skip comprehensive project documentation",
+      "setting_count": 2,
       "batch_count": 2,
+      "estimated_time": "30 seconds to 30+ minutes (based on choice)",
       "batches": [
         {
           "batch_id": "2.1",
-          "label": "Project Metadata",
-          "question_count": 4,
+          "label": "Documentation Generation Choice",
+          "question_count": 1,
           "questions": [
             {
-              "question": "Project name? (current: moai-adk)",
-              "header": "Project Name",
-              "field": "project.name",
-              "type": "text_input",
-              "multiSelect": false,
-              "easy_description": "Official project name used in GitHub, package.json, etc.",
-              "current_value": "moai-adk",
-              "required": true
-            },
-            {
-              "question": "Project description? (current: MoAI Agentic Development Kit)",
-              "header": "Project Description",
-              "field": "project.description",
-              "type": "text_input",
-              "multiSelect": false,
-              "easy_description": "Brief description of project purpose and functionality.",
-              "current_value": "MoAI Agentic Development Kit",
-              "required": true
-            },
-            {
-              "question": "Project owner? (current: GoosLab) - Sets GitHub owner",
-              "header": "Project Owner",
-              "field": "project.owner",
-              "type": "text_input",
-              "multiSelect": false,
-              "options": [
-                {
-                  "label": "Keep Current",
-                  "description": "Use GoosLab as owner"
-                },
-                {
-                  "label": "Change Owner",
-                  "description": "Select Other to enter new owner"
-                }
-              ],
-              "current_value": "GoosLab",
-              "required": true
-            },
-            {
-              "question": "Project mode? (current: team)",
-              "header": "Project Mode",
-              "field": "project.mode",
+              "question": "How would you like to create project documentation?",
+              "header": "Documentation Strategy",
+              "field": "project.documentation_mode",
               "type": "select_single",
               "multiSelect": false,
-              "easy_description": "Personal = 1-person development, Team = team collaboration with GitFlow.",
+              "easy_description": "Choose between comprehensive documentation now or minimal templates to fill later",
               "options": [
                 {
-                  "label": "Personal (1-person)",
-                  "description": "Individual project configuration"
+                  "label": "Full Documentation - Now (Recommended)",
+                  "value": "full_now",
+                  "description": "Brainstorming + AI analysis → 3 perfect docs (5-30 min based on depth)"
                 },
                 {
-                  "label": "Team (collaboration)",
-                  "description": "Team collaboration with GitFlow"
+                  "label": "Quick Start - Skip for Now",
+                  "value": "skip_later",
+                  "description": "Minimal templates, use /moai:1-plan project-docs later (30 sec)"
+                },
+                {
+                  "label": "Minimal - Auto-generate from Config",
+                  "value": "auto_minimal",
+                  "description": "Extract basic info from settings only (1 min)"
                 }
               ],
-              "current_value": "team",
-              "required": true
+              "current_value": "{{project.documentation_mode}}",
+              "default_value": "full_now",
+              "required": true,
+              "smart_default": "full_now"
             }
           ]
         },
         {
           "batch_id": "2.2",
-          "label": "Auto-Processed Locale Settings",
-          "question_count": 0,
-          "note": "Note: project.locale, default_language, optimized_for_language auto-determined from conversation_language. No user input needed.",
-          "auto_processed_fields": [
+          "label": "Brainstorming Depth Selection",
+          "question_count": 1,
+          "conditional": true,
+          "show_if": "project.documentation_mode == 'full_now'",
+          "questions": [
             {
-              "field": "project.locale",
-              "auto_determination": "Based on conversation_language. ko→ko_KR, en→en_US, ja→ja_JP, es→es_ES",
-              "reason": "Auto-updated when conversation_language changes. No user input needed."
-            },
-            {
-              "field": "project.default_language",
-              "auto_determination": "Derived from conversation_language. ko→ko, en→en, ja→ja, es→es",
-              "reason": "Auto-updated when conversation_language changes. No user input needed."
-            },
-            {
-              "field": "project.optimized_for_language",
-              "auto_determination": "Derived from conversation_language. ko→ko, en→en, ja→ja, es→es",
-              "reason": "Auto-updated when conversation_language changes. No user input needed."
+              "question": "Select brainstorming session depth",
+              "header": "Documentation Depth",
+              "field": "project.documentation_depth",
+              "type": "select_single",
+              "multiSelect": false,
+              "easy_description": "More depth = more comprehensive documentation and AI analysis",
+              "options": [
+                {
+                  "label": "Quick (5-10 questions, ~5 min)",
+                  "value": "quick",
+                  "description": "Core vision, basic architecture, essential tech"
+                },
+                {
+                  "label": "Standard (10-15 questions, ~15 min)",
+                  "value": "standard",
+                  "description": "Detailed vision, full architecture, tech trade-offs + AI analysis"
+                },
+                {
+                  "label": "Deep (20-25 questions, ~30 min)",
+                  "value": "deep",
+                  "description": "Comprehensive strategy, diagrams, market research + best practices"
+                }
+              ],
+              "current_value": "{{project.documentation_depth}}",
+              "default_value": "standard",
+              "required": true,
+              "smart_default": "standard"
             }
-          ],
-          "questions": []
+          ]
         }
       ]
     },
     {
-      "id": "tab_3_git_strategy",
-      "label": "Tab 3: Git Strategy & Workflow",
-      "description": "Git workflow mode selection, Personal/Team settings with conditional batches",
-      "setting_count": 29,
-      "batch_count": 6,
-      "conditional_logic": "Batch 3.0 determines which subsequent batches are shown. Personal mode→show 3.1,3.2; Team mode→show 3.3,3.4,3.5; Hybrid mode→show all",
+      "id": "tab_3_git_automation",
+      "label": "Tab 3: Git Automation (Conditional)",
+      "description": "Configure Git automation based on your selected mode",
+      "setting_count": 2,
+      "batch_count": 2,
+      "estimated_time": "30 seconds",
+      "conditional": true,
       "batches": [
         {
-          "batch_id": "3.0",
-          "label": "Git Workflow Mode Selection",
-          "question_count": 1,
-          "conditional": "ALWAYS shown - determines visibility of Batches 3.1-3.5",
+          "batch_id": "3.1_personal",
+          "label": "Personal Git Settings",
+          "question_count": 2,
+          "conditional": true,
+          "show_if": "git_strategy.mode == 'personal' OR git_strategy.mode == 'hybrid'",
           "questions": [
             {
-              "question": "Which Git workflow mode do you want to use?",
-              "header": "Workflow Mode",
-              "field": "git_strategy.mode",
-              "type": "select_single",
-              "multiSelect": false,
-              "easy_description": "Personal uses GitHub Flow for individual development. Team uses Git Flow for team collaboration. Hybrid auto-detects based on branch structure.",
-              "options": [
-                {
-                  "label": "Personal (GitHub Flow)",
-                  "description": "Single main branch, feature branches for work. Best for 1-person projects."
-                },
-                {
-                  "label": "Team (Git Flow)",
-                  "description": "main + develop + feature/release/hotfix branches. Best for team projects."
-                },
-                {
-                  "label": "Hybrid (Auto-detect)",
-                  "description": "Automatically detect based on branch structure. Shows both Personal and Team settings."
-                }
-              ],
-              "current_value": "team",
-              "required": true
-            }
-          ]
-        },
-        {
-          "batch_id": "3.1",
-          "label": "Personal Core Settings",
-          "question_count": 4,
-          "conditional": "SHOWN IF mode=personal OR mode=hybrid",
-          "questions": [
-            {
-              "question": "Enable Personal mode? (current: true)",
-              "header": "Personal Mode",
-              "field": "git_strategy.personal.enabled",
-              "type": "select_single",
-              "multiSelect": false,
-              "easy_description": "Enable/disable Personal GitHub Flow workflow.",
-              "options": [
-                {
-                  "label": "Enable",
-                  "description": "Enable Personal GitHub Flow"
-                },
-                {
-                  "label": "Disable",
-                  "description": "Disable Personal workflow"
-                }
-              ],
-              "current_value": true,
-              "required": false
-            },
-            {
-              "question": "Personal workflow style? (current: github_flow)",
-              "header": "Personal Workflow",
-              "field": "git_strategy.personal.workflow",
-              "type": "select_single",
-              "multiSelect": false,
-              "easy_description": "GitHub Flow (feature→main) or modified approach.",
-              "options": [
-                {
-                  "label": "GitHub Flow",
-                  "description": "Standard: feature branches → main"
-                },
-                {
-                  "label": "Modified",
-                  "description": "Custom workflow with develop branch"
-                }
-              ],
-              "current_value": "github_flow",
-              "required": false
-            },
-            {
-              "question": "Auto-checkpoint trigger? (current: event_based)",
-              "header": "Auto-Checkpoint",
+              "question": "When should Alfred create automatic checkpoints?",
+              "header": "Auto Checkpoint",
               "field": "git_strategy.personal.auto_checkpoint",
               "type": "select_single",
               "multiSelect": false,
-              "easy_description": "Create checkpoints based on events (commits, time intervals, or manual).",
+              "easy_description": "Checkpoints are local safety commits before risky operations",
               "options": [
                 {
-                  "label": "Event-based",
-                  "description": "Checkpoint on each commit"
+                  "label": "Event-Driven (Recommended)",
+                  "value": "event-driven",
+                  "description": "Before delete, refactor, merge, critical changes"
                 },
                 {
-                  "label": "Time-based",
-                  "description": "Checkpoint every N minutes"
+                  "label": "Always",
+                  "value": "always",
+                  "description": "Before every tool execution (safe but frequent)"
                 },
                 {
-                  "label": "Manual",
-                  "description": "Manual checkpoint creation only"
+                  "label": "Never",
+                  "value": "never",
+                  "description": "Manual checkpoints only"
                 }
               ],
-              "current_value": "event_based",
-              "required": false
+              "current_value": "{{git_strategy.personal.auto_checkpoint}}",
+              "default_value": "event-driven",
+              "required": true,
+              "smart_default": "event-driven"
             },
             {
-              "question": "Checkpoint type? (current: branch)",
-              "header": "Checkpoint Type",
-              "field": "git_strategy.personal.checkpoint_type",
-              "type": "select_single",
-              "multiSelect": false,
-              "easy_description": "Store checkpoints as branches or tags.",
-              "options": [
-                {
-                  "label": "Branch",
-                  "description": "Store as local branches (checkpoint/*)"
-                },
-                {
-                  "label": "Tag",
-                  "description": "Store as annotated tags (v*.checkpoint)"
-                }
-              ],
-              "current_value": "branch",
-              "required": false
-            }
-          ]
-        },
-        {
-          "batch_id": "3.2",
-          "label": "Personal Branch & Cleanup Settings",
-          "question_count": 4,
-          "conditional": "SHOWN IF mode=personal OR mode=hybrid",
-          "questions": [
-            {
-              "question": "Max checkpoints to keep? (current: 10)",
-              "header": "Max Checkpoints",
-              "field": "git_strategy.personal.max_checkpoints",
-              "type": "number_input",
-              "multiSelect": false,
-              "easy_description": "Maximum number of checkpoints to retain before auto-cleanup. (range: 1-100)",
-              "current_value": 10,
-              "required": false
-            },
-            {
-              "question": "Auto-cleanup period (days)? (current: 30)",
-              "header": "Cleanup Period",
-              "field": "git_strategy.personal.cleanup_days",
-              "type": "number_input",
-              "multiSelect": false,
-              "easy_description": "Delete checkpoints older than N days automatically. (range: 7-365)",
-              "current_value": 30,
-              "required": false
-            },
-            {
-              "question": "Push to remote? (current: true)",
+              "question": "Automatically push commits to remote?",
               "header": "Push to Remote",
               "field": "git_strategy.personal.push_to_remote",
               "type": "select_single",
               "multiSelect": false,
-              "easy_description": "Automatically push commits and checkpoints to remote repository.",
+              "easy_description": "Auto-push keeps remote in sync but reduces local control",
               "options": [
                 {
-                  "label": "Enable",
-                  "description": "Push to remote automatically"
+                  "label": "No (Recommended)",
+                  "value": false,
+                  "description": "Keep changes local until manual push"
                 },
                 {
-                  "label": "Disable",
-                  "description": "Local commits only"
+                  "label": "Yes",
+                  "value": true,
+                  "description": "Push after every commit"
                 }
               ],
-              "current_value": true,
-              "required": false
-            },
-            {
-              "question": "Base branch? (current: main)",
-              "header": "Base Branch",
-              "field": "git_strategy.personal.base_branch",
-              "type": "select_single",
-              "multiSelect": false,
-              "easy_description": "Default branch for PRs and merges.",
-              "options": [
-                {
-                  "label": "main",
-                  "description": "Use main as base branch"
-                },
-                {
-                  "label": "master",
-                  "description": "Use master as base branch"
-                }
-              ],
-              "current_value": "main",
-              "required": true
+              "current_value": "{{git_strategy.personal.push_to_remote}}",
+              "default_value": false,
+              "required": true,
+              "smart_default": false
             }
           ]
         },
         {
-          "batch_id": "3.3",
-          "label": "Personal Protection & Merge Settings",
-          "question_count": 4,
-          "conditional": "SHOWN IF mode=personal OR mode=hybrid",
+          "batch_id": "3.1_team",
+          "label": "Team Git Settings",
+          "question_count": 2,
+          "conditional": true,
+          "show_if": "git_strategy.mode == 'team'",
           "questions": [
             {
-              "question": "Develop branch name? (current: develop)",
-              "header": "Develop Branch",
-              "field": "git_strategy.personal.develop_branch",
-              "type": "text_input",
-              "multiSelect": false,
-              "easy_description": "Integration branch name for Personal modified workflow (if used).",
-              "current_value": "develop",
-              "required": false
-            },
-            {
-              "question": "Prevent direct branch creation on main? (current: true)",
-              "header": "Prevent Direct Creation",
-              "field": "git_strategy.personal.prevent_branch_creation",
-              "type": "select_single",
-              "multiSelect": false,
-              "easy_description": "Require all changes through feature branches, never directly on main.",
-              "options": [
-                {
-                  "label": "Enable",
-                  "description": "Force feature branch workflow"
-                },
-                {
-                  "label": "Disable",
-                  "description": "Allow direct work on main"
-                }
-              ],
-              "current_value": true,
-              "required": false
-            },
-            {
-              "question": "Allow direct work on main? (current: false)",
-              "header": "Work on Main",
-              "field": "git_strategy.personal.work_on_main",
-              "type": "select_single",
-              "multiSelect": false,
-              "easy_description": "Allow commits directly on main branch (use with caution).",
-              "options": [
-                {
-                  "label": "Enable",
-                  "description": "Allow direct commits on main"
-                },
-                {
-                  "label": "Disable",
-                  "description": "Require feature branches"
-                }
-              ],
-              "current_value": false,
-              "required": false
-            },
-            {
-              "question": "Require CI to pass before merge? (current: true)",
-              "header": "Require CI",
-              "field": "git_strategy.personal.require_ci",
-              "type": "select_single",
-              "multiSelect": false,
-              "easy_description": "Block merges if CI/CD tests fail.",
-              "options": [
-                {
-                  "label": "Enable",
-                  "description": "CI must pass before merge"
-                },
-                {
-                  "label": "Disable",
-                  "description": "Allow merge without CI passing"
-                }
-              ],
-              "current_value": true,
-              "required": false
-            }
-          ]
-        },
-        {
-          "batch_id": "3.4",
-          "label": "Team Core Settings",
-          "question_count": 4,
-          "conditional": "SHOWN IF mode=team OR mode=hybrid",
-          "questions": [
-            {
-              "question": "Enable Team mode? (current: true)",
-              "header": "Team Mode",
-              "field": "git_strategy.team.enabled",
-              "type": "select_single",
-              "multiSelect": false,
-              "easy_description": "Enable/disable Team Git Flow workflow.",
-              "options": [
-                {
-                  "label": "Enable",
-                  "description": "Enable Team Git Flow"
-                },
-                {
-                  "label": "Disable",
-                  "description": "Disable Team workflow"
-                }
-              ],
-              "current_value": true,
-              "required": false
-            },
-            {
-              "question": "Team workflow style? (current: git_flow)",
-              "header": "Team Workflow",
-              "field": "git_strategy.team.workflow",
-              "type": "select_single",
-              "multiSelect": false,
-              "easy_description": "Standard Git Flow or GitHub Flow variant for teams.",
-              "options": [
-                {
-                  "label": "Git Flow",
-                  "description": "Standard: feature/develop/release/hotfix branches"
-                },
-                {
-                  "label": "GitHub Flow",
-                  "description": "Simplified: feature branches on main"
-                }
-              ],
-              "current_value": "git_flow",
-              "required": false
-            },
-            {
-              "question": "Auto-create PRs? (current: true)",
-              "header": "Auto-Create PRs",
+              "question": "Automatically create Pull Requests?",
+              "header": "Auto PR",
               "field": "git_strategy.team.auto_pr",
               "type": "select_single",
               "multiSelect": false,
-              "easy_description": "Automatically create PRs when pushing feature branches.",
+              "easy_description": "Auto-create PRs saves time but reduces control",
               "options": [
                 {
-                  "label": "Enable",
-                  "description": "Auto-create PRs"
+                  "label": "No (Recommended)",
+                  "value": false,
+                  "description": "Manual PR creation with full control"
                 },
                 {
-                  "label": "Disable",
-                  "description": "Manual PR creation"
+                  "label": "Yes",
+                  "value": true,
+                  "description": "Auto-create PR after push"
                 }
               ],
-              "current_value": true,
-              "required": false
+              "current_value": "{{git_strategy.team.auto_pr}}",
+              "default_value": false,
+              "required": true,
+              "smart_default": false
             },
             {
-              "question": "Create as draft PR? (current: false)",
+              "question": "Create PRs as drafts by default?",
               "header": "Draft PR",
               "field": "git_strategy.team.draft_pr",
               "type": "select_single",
               "multiSelect": false,
-              "easy_description": "Create PRs as draft (ready for review) or direct submission.",
+              "easy_description": "Draft PRs prevent premature reviews",
               "options": [
                 {
-                  "label": "Draft",
-                  "description": "Create as draft PRs"
+                  "label": "No (Recommended)",
+                  "value": false,
+                  "description": "Create ready-for-review PRs"
                 },
                 {
-                  "label": "Direct",
-                  "description": "Create as ready-for-review PRs"
+                  "label": "Yes",
+                  "value": true,
+                  "description": "Create draft PRs initially"
                 }
               ],
-              "current_value": false,
-              "required": false
-            }
-          ]
-        },
-        {
-          "batch_id": "3.5",
-          "label": "Team Branch & Protection Settings",
-          "question_count": 4,
-          "conditional": "SHOWN IF mode=team OR mode=hybrid",
-          "questions": [
-            {
-              "question": "Feature branch prefix? (current: feature/)",
-              "header": "Feature Prefix",
-              "field": "git_strategy.team.feature_prefix",
-              "type": "text_input",
-              "multiSelect": false,
-              "easy_description": "Prefix for feature branch names. (e.g., feature/SPEC-001)",
-              "current_value": "feature/",
-              "required": false
-            },
-            {
-              "question": "Base branch for PRs? (current: develop)",
-              "header": "PR Base Branch",
-              "field": "git_strategy.team.base_branch",
-              "type": "select_single",
-              "multiSelect": false,
-              "easy_description": "Target branch for feature PRs in team workflow.",
-              "options": [
-                {
-                  "label": "develop",
-                  "description": "PRs target develop branch"
-                },
-                {
-                  "label": "main",
-                  "description": "PRs target main branch (use caution)"
-                }
-              ],
-              "current_value": "develop",
-              "required": true
-            },
-            {
-              "question": "Main branch name? (current: main)",
-              "header": "Main Branch",
-              "field": "git_strategy.team.main_branch",
-              "type": "select_single",
-              "multiSelect": false,
-              "easy_description": "Production-ready branch name.",
-              "options": [
-                {
-                  "label": "main",
-                  "description": "Use main as production branch"
-                },
-                {
-                  "label": "master",
-                  "description": "Use master as production branch"
-                }
-              ],
-              "current_value": "main",
-              "required": true
-            },
-            {
-              "question": "Default PR target? (current: develop)",
-              "header": "Default PR Target",
-              "field": "git_strategy.team.default_pr_base",
-              "type": "select_single",
-              "multiSelect": false,
-              "easy_description": "Auto-populated target branch for new PRs.",
-              "options": [
-                {
-                  "label": "develop",
-                  "description": "Default to develop"
-                },
-                {
-                  "label": "main",
-                  "description": "Default to main (rare)"
-                }
-              ],
-              "current_value": "develop",
-              "required": false
-            }
-          ]
-        },
-        {
-          "batch_id": "3.6",
-          "label": "Team Safety & Merge Protection",
-          "question_count": 2,
-          "conditional": "SHOWN IF mode=team OR mode=hybrid",
-          "questions": [
-            {
-              "question": "Prevent direct merge to main? (current: true)",
-              "header": "Main Protection",
-              "field": "git_strategy.team.prevent_main_direct_merge",
-              "type": "select_single",
-              "multiSelect": false,
-              "easy_description": "Require PRs for all main branch updates. Never direct commits/merges.",
-              "options": [
-                {
-                  "label": "Enable",
-                  "description": "Enforce PR requirement for main"
-                },
-                {
-                  "label": "Disable",
-                  "description": "Allow direct merges to main"
-                }
-              ],
-              "current_value": true,
-              "required": true
-            },
-            {
-              "question": "Auto-detect team size threshold? (current: 3)",
-              "header": "Team Size Threshold",
-              "field": "git_strategy.team.auto_switch_threshold",
-              "type": "number_input",
-              "multiSelect": false,
-              "easy_description": "Switch to Team mode when contributor count reaches N. (range: 1-20)",
-              "current_value": 3,
-              "required": false
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "tab_4_quality_reports",
-      "label": "Tab 4: Quality Principles & Reports",
-      "description": "TRUST 5 principles, report generation, and quality settings",
-      "setting_count": 9,
-      "batch_count": 2,
-      "batches": [
-        {
-          "batch_id": "4.1",
-          "label": "Constitution Settings",
-          "question_count": 3,
-          "questions": [
-            {
-              "question": "Test coverage target? (current: 85)",
-              "header": "Test Coverage Target",
-              "field": "constitution.test_coverage_target",
-              "type": "number_input",
-              "multiSelect": false,
-              "easy_description": "Minimum required test coverage percentage. (range: 0-100)",
-              "current_value": 85,
-              "required": true
-            },
-            {
-              "question": "Enforce TDD methodology? (current: true)",
-              "header": "Enforce TDD",
-              "field": "constitution.enforce_tdd",
-              "type": "select_single",
-              "multiSelect": false,
-              "easy_description": "Require Red-Green-Refactor cycle for all feature development.",
-              "options": [
-                {
-                  "label": "Enforce",
-                  "description": "TDD is mandatory"
-                },
-                {
-                  "label": "Recommend",
-                  "description": "TDD recommended but optional"
-                }
-              ],
-              "current_value": true,
-              "required": false
-            },
-            {
-              "question": "Max parallel projects allowed? (current: 3)",
-              "header": "Max Parallel Projects",
-              "field": "constitution.principles.simplicity.max_projects",
-              "type": "number_input",
-              "multiSelect": false,
-              "easy_description": "Maximum number of concurrent SPEC projects. (range: 1-10)",
-              "current_value": 3,
-              "required": false
-            }
-          ]
-        },
-        {
-          "batch_id": "4.2",
-          "label": "Report Generation Settings",
-          "question_count": 4,
-          "questions": [
-            {
-              "question": "Enable report generation? (current: true)",
-              "header": "Report Generation",
-              "field": "report_generation.enabled",
-              "type": "select_single",
-              "multiSelect": false,
-              "easy_description": "Auto-generate reports after SPEC completion.",
-              "options": [
-                {
-                  "label": "Enable",
-                  "description": "Auto-generate reports"
-                },
-                {
-                  "label": "Disable",
-                  "description": "No automatic reports"
-                }
-              ],
-              "current_value": true,
-              "required": false
-            },
-            {
-              "question": "Auto-create reports? (current: false)",
-              "header": "Auto-Create",
-              "field": "report_generation.auto_create",
-              "type": "select_single",
-              "multiSelect": false,
-              "easy_description": "Create reports without user confirmation.",
-              "options": [
-                {
-                  "label": "Automatic",
-                  "description": "Create without confirmation"
-                },
-                {
-                  "label": "Confirm First",
-                  "description": "Ask user before creating"
-                }
-              ],
-              "current_value": false,
-              "required": false
-            },
-            {
-              "question": "Warn before report creation? (current: true)",
-              "header": "Warn on Report",
-              "field": "report_generation.warn_user",
-              "type": "select_single",
-              "multiSelect": false,
-              "easy_description": "Display warning about report creation details.",
-              "options": [
-                {
-                  "label": "Enable",
-                  "description": "Show warnings"
-                },
-                {
-                  "label": "Disable",
-                  "description": "Silent mode"
-                }
-              ],
-              "current_value": true,
-              "required": false
-            },
-            {
-              "question": "Report detail level? (current: standard)",
-              "header": "Report Detail",
-              "field": "report_generation.user_choice",
-              "type": "select_single",
-              "multiSelect": false,
-              "easy_description": "Choose between minimal and detailed reports.",
-              "options": [
-                {
-                  "label": "Minimal",
-                  "description": "Summary and key metrics only"
-                },
-                {
-                  "label": "Standard",
-                  "description": "Standard report with analysis"
-                },
-                {
-                  "label": "Full",
-                  "description": "Comprehensive report with all details"
-                }
-              ],
-              "current_value": "standard",
-              "required": false
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "tab_5_system_github",
-      "label": "Tab 5: System & GitHub Integration",
-      "description": "MoAI system settings and GitHub automation",
-      "setting_count": 11,
-      "batch_count": 2,
-      "batches": [
-        {
-          "batch_id": "5.1",
-          "label": "MoAI System Settings",
-          "question_count": 3,
-          "questions": [
-            {
-              "question": "Check for updates frequency? (current: weekly)",
-              "header": "Update Check Frequency",
-              "field": "moai.update_check_frequency",
-              "type": "select_single",
-              "multiSelect": false,
-              "easy_description": "How often to check for MoAI updates.",
-              "options": [
-                {
-                  "label": "Daily",
-                  "description": "Check every day"
-                },
-                {
-                  "label": "Weekly",
-                  "description": "Check once per week"
-                },
-                {
-                  "label": "Monthly",
-                  "description": "Check once per month"
-                },
-                {
-                  "label": "Never",
-                  "description": "Disable automatic checks"
-                }
-              ],
-              "current_value": "weekly",
-              "required": false
-            },
-            {
-              "question": "Enable version checking? (current: true)",
-              "header": "Version Checking",
-              "field": "moai.version_check.enabled",
-              "type": "select_single",
-              "multiSelect": false,
-              "easy_description": "Check MoAI version compatibility.",
-              "options": [
-                {
-                  "label": "Enable",
-                  "description": "Check version on startup"
-                },
-                {
-                  "label": "Disable",
-                  "description": "Skip version checks"
-                }
-              ],
-              "current_value": true,
-              "required": false
-            },
-            {
-              "question": "Version check cache TTL (hours)? (current: 24)",
-              "header": "Cache TTL",
-              "field": "moai.version_check.cache_ttl_hours",
-              "type": "number_input",
-              "multiSelect": false,
-              "easy_description": "Cache version check results for N hours. (range: 1-168)",
-              "current_value": 24,
-              "required": false
-            }
-          ]
-        },
-        {
-          "batch_id": "5.2",
-          "label": "GitHub Integration Settings",
-          "question_count": 5,
-          "questions": [
-            {
-              "question": "Enable TRUST 5 templates? (current: true)",
-              "header": "TRUST 5 Templates",
-              "field": "github.templates.enable_trust_5",
-              "type": "select_single",
-              "multiSelect": false,
-              "easy_description": "Use TRUST 5 PR/Issue templates in GitHub.",
-              "options": [
-                {
-                  "label": "Enable",
-                  "description": "Use TRUST 5 templates"
-                },
-                {
-                  "label": "Disable",
-                  "description": "Use default templates"
-                }
-              ],
-              "current_value": true,
-              "required": false
-            },
-            {
-              "question": "Enable MoAI commands in templates? (current: true)",
-              "header": "MoAI Commands",
-              "field": "github.templates.enable_alfred_commands",
-              "type": "select_single",
-              "multiSelect": false,
-              "easy_description": "Include /moai:* command suggestions in PR/Issue templates.",
-              "options": [
-                {
-                  "label": "Enable",
-                  "description": "Include MoAI commands"
-                },
-                {
-                  "label": "Disable",
-                  "description": "Exclude commands"
-                }
-              ],
-              "current_value": true,
-              "required": false
-            },
-            {
-              "question": "Auto-delete merged branches? (current: true)",
-              "header": "Auto-Delete Branches",
-              "field": "github.auto_delete_branches",
-              "type": "select_single",
-              "multiSelect": false,
-              "easy_description": "Automatically delete feature branches after merge.",
-              "options": [
-                {
-                  "label": "Enable",
-                  "description": "Auto-delete after merge"
-                },
-                {
-                  "label": "Disable",
-                  "description": "Keep branches"
-                }
-              ],
-              "current_value": true,
-              "required": false
-            },
-            {
-              "question": "SPEC Git workflow mode? (current: per_spec)",
-              "header": "SPEC Workflow",
-              "field": "github.spec_git_workflow",
-              "type": "select_single",
-              "multiSelect": false,
-              "easy_description": "How to organize SPEC work in Git. per_spec=one branch per SPEC, feature_branch=one for all SPECs, develop_direct=commit to develop.",
-              "options": [
-                {
-                  "label": "Per SPEC",
-                  "description": "One branch per SPEC (feature/SPEC-001)"
-                },
-                {
-                  "label": "Feature Branch",
-                  "description": "Single feature branch for all SPECs"
-                },
-                {
-                  "label": "Develop Direct",
-                  "description": "Commit directly to develop branch"
-                }
-              ],
-              "current_value": "per_spec",
-              "required": false
-            },
-            {
-              "question": "SPEC workflow configured? (current: true)",
-              "header": "Workflow Configured",
-              "field": "github.spec_git_workflow_configured",
-              "type": "select_single",
-              "multiSelect": false,
-              "easy_description": "Mark if SPEC Git workflow has been customized.",
-              "options": [
-                {
-                  "label": "Configured",
-                  "description": "Custom workflow setup"
-                },
-                {
-                  "label": "Default",
-                  "description": "Using default workflow"
-                }
-              ],
-              "current_value": true,
-              "required": false
+              "current_value": "{{git_strategy.team.draft_pr}}",
+              "default_value": false,
+              "required": true,
+              "smart_default": false
             }
           ]
         }
@@ -1044,80 +574,34 @@
     }
   ],
   "navigation_flow": {
-    "description": "User navigation through tabs and conditional batches",
-    "entry_point": "tab_1_user_language.batches[0]",
     "completion_order": [
-      "tab_1_user_language (required - Foundation)",
-      "tab_2_project_info (recommended - Metadata)",
-      "tab_3_git_strategy (recommended - Workflow)",
-      "tab_4_quality_reports (optional - Quality)",
-      "tab_5_system_github (optional - Integration)"
+      "tab_1_quick_start (required)",
+      "tab_2_documentation_choice (required, but can skip documentation)",
+      "tab_3_git_automation (conditional based on mode)"
     ],
     "validation_sequence": [
-      "After Tab 1: Verify language settings consistency (ko|en|ja|es)",
-      "After Tab 3.0: Validate mode selection, show appropriate batches (Personal/Team/Hybrid)",
-      "After Tab 3 (all batches): Check Git strategy conflicts (Personal: main_branch!=develop, Team: default_pr_base=develop|main)",
-      "After Tab 4.1: Validate constitution settings (coverage 0-100, TDD consistency)",
-      "After Tab 5.2: Validate GitHub settings (spec_git_workflow=per_spec|feature_branch|develop_direct)",
-      "Final: Perform atomic update to config.json with backup/rollback"
+      "Tab 1 checkpoint (language consistency)",
+      "Tab 2 checkpoint (documentation mode selected)",
+      "Final validation (before config save)"
     ]
   },
+  "smart_defaults_applied": {
+    "total_settings": 31,
+    "user_questions": 10,
+    "documentation_choice_questions": 1,
+    "conditional_questions": 2,
+    "auto_detected": 5,
+    "smart_defaults": 16,
+    "coverage": "100%"
+  },
   "implementation_notes": {
-    "total_settings": 57,
-    "total_batches": 17,
-    "total_tabs": 5,
-    "total_questions": 54,
-    "max_questions_per_batch": 4,
-    "version_alignment": "v0.26.0 of config.json (100% field coverage)",
-    "changes_from_v1_0_0": {
-      "added_settings": 16,
-      "added_batches": 5,
-      "added_questions": 14,
-      "removed_settings": 0,
-      "tab_3_expansion": "4 batches → 6 batches (added 3.0 Mode Selection, 3.3 Team Core, 3.6 Team Protection)",
-      "field_name_corrections": 26,
-      "coverage_improvement": "41→57 settings (+39%)"
-    },
-    "conditional_batches": "Tab 3: Batches 3.1-3.3 (Personal) shown if mode=personal|hybrid. Batches 3.4-3.6 (Team) shown if mode=team|hybrid.",
-    "auto_processed_fields": [
-      "language.conversation_language_name (auto: ko→Korean, en→English, ja→Japanese, es→Spanish)",
-      "project.locale (auto: ko→ko_KR, en→en_US, ja→ja_JP, es→es_ES)",
-      "project.default_language (auto: ko→ko, en→en, ja→ja, es→es)",
-      "project.optimized_for_language (auto: ko→ko, en→en, ja→ja, es→es)"
-    ],
-    "language_support": "50+ languages via 'Other' option",
-    "emoji_status": "NONE (strictly no emojis per AskUserQuestion constraints)",
-    "multiselect_support": true,
-    "custom_input_support": true,
-    "atomic_update": "Use deep merge with backup/rollback via Skill(moai-project-config-manager)",
-    "field_mapping_corrections": {
-      "checkpoint_enabled": "auto_checkpoint (string enum, not bool)",
-      "checkpoint_interval": "REMOVED (use auto_checkpoint type instead)",
-      "auto_push": "push_to_remote",
-      "feature_branch_prefix": "branch_prefix",
-      "pr_base_branch": "base_branch",
-      "minimum_test_coverage": "test_coverage_target",
-      "removed_fields": [
-        "linting_policy (not in config.json)",
-        "type_checking (not in config.json)",
-        "require_tag_tracing (not in config.json)",
-        "auto_merge_pr (not in config.json)",
-        "require_code_review (not in config.json)",
-        "version_strategy (not in config.json)",
-        "use_signed_commits (not in config.json)",
-        "use_develop_branch (not in config.json)",
-        "require_detailed_pr_description (not in config.json)",
-        "bugfix_branch_prefix (not in config.json)",
-        "auto_update (not in config.json)",
-        "enable_telemetry (not in config.json)",
-        "debug_mode (not in config.json)",
-        "log_level (not in config.json)",
-        "auto_create_pr (not in config.json)",
-        "use_issue_template (not in config.json)",
-        "use_pr_template (not in config.json)",
-        "format (in report_generation, not applicable)",
-        "include (in report_generation, complex array structure)"
-      ]
-    }
+    "tab_1_quick_start": "Always shown. 10 questions in 4 batches (2-3 min)",
+    "tab_2_documentation_choice": "Always shown. Determines whether to proceed with documentation generation",
+    "tab_3_git_automation": "Conditional. Shown based on git_strategy.mode (Personal/Team/Hybrid)",
+    "brainstorming_integration": "If full_now selected, delegates to moai-project-documentation-generator Skill",
+    "documentation_templates": "If skip_later selected, empty templates created. User can run /moai:1-plan project-docs later",
+    "template_variables": "All current_value fields use {{field.path}} syntax for runtime resolution",
+    "smart_defaults_file": "Define in project-manager.md or moai-project-config-manager Skill",
+    "total_execution_time": "2-3 minutes (skip) to 35 minutes (full deep) depending on choice"
   }
 }

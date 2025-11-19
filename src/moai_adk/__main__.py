@@ -68,7 +68,7 @@ cli.add_command(migrate)
 cli.add_command(update)
 
 
-# statusline 명령 (Claude Code statusline 렌더링용)
+# statusline command (for Claude Code statusline rendering)
 @click.command(name="statusline")
 def statusline() -> None:
     """Render Claude Code statusline (internal use only)"""
@@ -76,13 +76,13 @@ def statusline() -> None:
     import sys
 
     try:
-        # stdin에서 JSON 컨텍스트 읽기
+        # Read JSON context from stdin
         input_data = sys.stdin.read() if not sys.stdin.isatty() else "{}"
         context = json.loads(input_data) if input_data else {}
     except (json.JSONDecodeError, EOFError, ValueError):
         context = {}
 
-    # statusline 렌더링
+    # Render statusline
     output = build_statusline_data(context, mode="extended")
     print(output, end="")
 
@@ -90,62 +90,62 @@ def statusline() -> None:
 cli.add_command(statusline)
 
 
-# 링크 검증 명령
+# Link validation command
 @click.command(name="validate-links")
 @click.option(
     "--file",
     "-f",
     default="README.ko.md",
-    help="검증할 파일 경로 (기본값: README.ko.md)",
+    help="File path to validate (default: README.ko.md)",
 )
 @click.option(
     "--max-concurrent",
     "-c",
     type=int,
     default=3,
-    help="동시에 검증할 최대 링크 수 (기본값: 3)",
+    help="Maximum number of concurrent validations (default: 3)",
 )
 @click.option(
-    "--timeout", "-t", type=int, default=8, help="요청 타임아웃 (초) (기본값: 8)"
+    "--timeout", "-t", type=int, default=8, help="Request timeout in seconds (default: 8)"
 )
-@click.option("--output", "-o", help="결과를 저장할 파일 경로")
-@click.option("--verbose", "-v", is_flag=True, help="상세한 진행 상황 표시")
+@click.option("--output", "-o", help="File path to save results")
+@click.option("--verbose", "-v", is_flag=True, help="Show detailed progress")
 def validate_links(file, max_concurrent, timeout, output, verbose):
-    """온라인 문서 링크 검증"""
+    """Validate online document links"""
     from moai_adk.cli.commands.validate_links import run_command as validate_links_run
 
-    # CLI 명령 실행
+    # Execute CLI command
     sys.exit(validate_links_run(locals()))
 
 
-# 사용자 경험 개선 명령
+# User experience improvement command
 @click.command(name="improve-ux")
 @click.option(
     "--url",
     "-u",
     default="https://adk.mo.ai.kr",
-    help="분석할 URL (기본값: https://adk.mo.ai.kr)",
+    help="URL to analyze (default: https://adk.mo.ai.kr)",
 )
-@click.option("--output", "-o", help="분석 결과를 저장할 파일 경로")
+@click.option("--output", "-o", help="File path to save analysis results")
 @click.option(
     "--format",
     "-f",
     type=click.Choice(["json", "markdown", "text"]),
     default="markdown",
-    help="출력 형식 (기본값: markdown)",
+    help="Output format (default: markdown)",
 )
-@click.option("--verbose", "-v", is_flag=True, help="상세한 진행 상황 표시")
+@click.option("--verbose", "-v", is_flag=True, help="Show detailed progress")
 @click.option(
     "--max-workers",
     "-w",
     type=int,
     default=5,
-    help="동시에 처리할 최대 작업 수 (기본값: 5)",
+    help="Maximum number of concurrent tasks (default: 5)",
 )
 def improve_ux(url, output, format, verbose, max_workers):
-    """사용자 경험 개선 분석"""
+    """Analyze and improve user experience"""
 
-    # 임시 args 객체 생성
+    # Create temporary args object
     class Args:
         def __init__(self, **kwargs):
             for key, value in kwargs.items():
@@ -155,7 +155,7 @@ def improve_ux(url, output, format, verbose, max_workers):
         url=url, output=output, format=format, verbose=verbose, max_workers=max_workers
     )
 
-    # CLI 명령 실행
+    # Execute CLI command
     from moai_adk.cli.commands.improve_user_experience import (
         run_command as improve_ux_run,
     )

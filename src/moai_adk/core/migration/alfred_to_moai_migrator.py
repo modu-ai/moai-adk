@@ -92,9 +92,9 @@ class AlfredToMoaiMigrator:
             config = self._load_config()
             migration_state = config.get("migration", {}).get("alfred_to_moai", {})
             if migration_state.get("migrated"):
-                logger.info("ℹ️  Alfred → Moai 마이그레이션이 이미 완료되었습니다")
+                logger.info("ℹ️  Alfred → Moai migration already completed")
                 if migration_state.get("timestamp"):
-                    logger.info(f"타임스탬프: {migration_state['timestamp']}")
+                    logger.info(f"Timestamp: {migration_state['timestamp']}")
                 return False
         except Exception as e:
             logger.debug(f"Config check error: {e}")
@@ -108,7 +108,7 @@ class AlfredToMoaiMigrator:
                 for name, folder in self.alfred_folders.items()
                 if folder.exists()
             ]
-            logger.debug(f"Alfred 폴더 감지됨: {', '.join(detected)}")
+            logger.debug(f"Alfred folders detected: {', '.join(detected)}")
 
         return has_alfred
 
@@ -123,7 +123,7 @@ class AlfredToMoaiMigrator:
             True if migration successful, False otherwise
         """
         try:
-            logger.info("\n[1/5] 프로젝트 백업 중...")
+            logger.info("\n[1/5] Backing up project...")
 
             # Step 1: Create or use existing backup
             if backup_path is None:
@@ -131,16 +131,16 @@ class AlfredToMoaiMigrator:
                     backup_path = self.backup_manager.create_backup(
                         "alfred_to_moai_migration"
                     )
-                    logger.info(f"✅ 백업 완료: {backup_path}")
+                    logger.info(f"✅ Backup completed: {backup_path}")
                 except Exception as e:
-                    logger.error("❌ 에러: 백업 생성 실패")
-                    logger.error(f"원인: {str(e)}")
+                    logger.error("❌ Error: Backup failed")
+                    logger.error(f"Cause: {str(e)}")
                     return False
             else:
-                logger.info(f"✅ 기존 백업 사용: {backup_path}")
+                logger.info(f"✅ Using existing backup: {backup_path}")
 
             # Step 2: Detect alfred folders
-            logger.info("\n[2/5] Alfred 폴더 감지됨: ", end="")
+            logger.info("\n[2/5] Alfred folders detected: ", end="")
             alfred_detected = {
                 name: folder
                 for name, folder in self.alfred_folders.items()
@@ -148,13 +148,13 @@ class AlfredToMoaiMigrator:
             }
 
             if not alfred_detected:
-                logger.warning("Alfred 폴더 없음 - 마이그레이션 건너뜀")
+                logger.warning("No Alfred folders found - skipping migration")
                 return True
 
             logger.info(", ".join(alfred_detected.keys()))
 
             # Step 3: Verify moai folders exist (should be created in Phase 1)
-            logger.info("\n[3/5] Moai 템플릿 설치 확인 중...")
+            logger.info("\n[3/5] Verifying Moai template installation...")
             missing_moai = [
                 name
                 for name, folder in self.moai_folders.items()
@@ -163,59 +163,59 @@ class AlfredToMoaiMigrator:
 
             if missing_moai:
                 logger.error(
-                    f"❌ Moai 폴더 없음: {', '.join(missing_moai)}"
+                    f"❌ Missing Moai folders: {', '.join(missing_moai)}"
                 )
-                logger.error("Phase 1 구현이 먼저 필요합니다 (package template moai 구조)")
+                logger.error("Phase 1 implementation required first (package template moai structure)")
                 self._rollback_migration(backup_path)
                 return False
 
-            logger.info("✅ Moai 템플릿 설치됨")
+            logger.info("✅ Moai templates installed")
 
             # Step 4: Update settings.json hooks
-            logger.info("\n[4/5] 경로 업데이트 중...")
+            logger.info("\n[4/5] Updating paths...")
             try:
                 self._update_settings_json_hooks()
-                logger.info("✅ settings.json Hook 경로 업데이트됨")
+                logger.info("✅ settings.json Hook paths updated")
             except Exception as e:
-                logger.error("❌ 에러: settings.json 업데이트 실패")
-                logger.error(f"원인: {str(e)}")
+                logger.error("❌ Error: Failed to update settings.json")
+                logger.error(f"Cause: {str(e)}")
                 self._rollback_migration(backup_path)
                 return False
 
             # Step 5: Delete alfred folders
-            logger.info("\n[5/5] 정리 작업 중...")
+            logger.info("\n[5/5] Cleaning up...")
             try:
                 self._delete_alfred_folders(alfred_detected)
-                logger.info("✅ Alfred 폴더 삭제됨")
+                logger.info("✅ Alfred folders deleted")
             except Exception as e:
-                logger.error("❌ 에러: Alfred 폴더 삭제 실패")
-                logger.error(f"원인: {str(e)}")
+                logger.error("❌ Error: Failed to delete Alfred folders")
+                logger.error(f"Cause: {str(e)}")
                 self._rollback_migration(backup_path)
                 return False
 
             # Step 6: Verify migration
-            logger.info("\n[6/6] 마이그레이션 검증 중...")
+            logger.info("\n[6/6] Verifying migration...")
             if not self._verify_migration():
-                logger.error("❌ 마이그레이션 검증 실패")
+                logger.error("❌ Migration verification failed")
                 self._rollback_migration(backup_path)
                 return False
 
-            logger.info("✅ 마이그레이션 검증 통과")
+            logger.info("✅ Migration verification passed")
 
             # Step 7: Record migration status
-            logger.info("\n마이그레이션 상태 기록 중...")
+            logger.info("\nRecording migration status...")
             try:
                 self._record_migration_state(backup_path, len(alfred_detected))
-                logger.info("✅ 마이그레이션 상태 기록됨")
+                logger.info("✅ Migration status recorded")
             except Exception as e:
-                logger.warning(f"⚠️  상태 기록 실패: {str(e)}")
+                logger.warning(f"⚠️  Failed to record status: {str(e)}")
                 # Don't rollback for this, migration was successful
 
-            logger.info("\n✅ Alfred → Moai 마이그레이션 완료!")
+            logger.info("\n✅ Alfred → Moai migration completed!")
             return True
 
         except Exception as e:
-            logger.error(f"\n❌ 예상치 못한 에러: {str(e)}")
+            logger.error(f"\n❌ Unexpected error: {str(e)}")
             if backup_path:
                 self._rollback_migration(backup_path)
             return False
@@ -234,9 +234,9 @@ class AlfredToMoaiMigrator:
             if folder.exists():
                 try:
                     shutil.rmtree(folder)
-                    logger.debug(f"삭제됨: {folder}")
+                    logger.debug(f"Deleted: {folder}")
                 except Exception as e:
-                    raise Exception(f"{name} 폴더 삭제 실패: {str(e)}")
+                    raise Exception(f"Failed to delete {name} folder: {str(e)}")
 
     def _update_settings_json_hooks(self) -> None:
         """
@@ -246,7 +246,7 @@ class AlfredToMoaiMigrator:
             Exception: If update fails
         """
         if not self.settings_path.exists():
-            logger.warning(f"settings.json 파일 없음: {self.settings_path}")
+            logger.warning(f"settings.json file missing: {self.settings_path}")
             return
 
         try:
@@ -274,12 +274,12 @@ class AlfredToMoaiMigrator:
             with open(self.settings_path, "r", encoding="utf-8") as f:
                 json.load(f)  # This will raise if JSON is invalid
 
-            logger.debug("settings.json 업데이트 및 검증 완료")
-
+            logger.debug("settings.json update and verification completed")
+        
         except json.JSONDecodeError as e:
-            raise Exception(f"settings.json JSON 형식 오류: {str(e)}")
+            raise Exception(f"settings.json JSON format error: {str(e)}")
         except Exception as e:
-            raise Exception(f"settings.json 업데이트 실패: {str(e)}")
+            raise Exception(f"Failed to update settings.json: {str(e)}")
 
     def _verify_migration(self) -> bool:
         """
@@ -291,13 +291,13 @@ class AlfredToMoaiMigrator:
         # Check moai folders exist
         for name, folder in self.moai_folders.items():
             if not folder.exists():
-                logger.error(f"❌ Moai {name} 폴더 없음: {folder}")
+                logger.error(f"❌ Missing Moai {name} folder: {folder}")
                 return False
 
         # Check alfred folders are deleted
         for name, folder in self.alfred_folders.items():
             if folder.exists():
-                logger.warning(f"⚠️  Alfred {name} 폴더 아직 존재: {folder}")
+                logger.warning(f"⚠️  Alfred {name} folder still exists: {folder}")
                 return False
 
         # Check settings.json has no alfred references
@@ -307,17 +307,17 @@ class AlfredToMoaiMigrator:
                     settings_content = f.read()
 
                 if "alfred" in settings_content.lower():
-                    logger.error("❌ settings.json에 아직 alfred 참조 존재")
+                    logger.error("❌ settings.json still contains alfred references")
                     return False
 
                 if "moai" not in settings_content.lower():
-                    logger.warning("⚠️  settings.json에 moai 참조 없음")
+                    logger.warning("⚠️  No moai references in settings.json")
 
             except Exception as e:
-                logger.error(f"❌ settings.json 검증 실패: {str(e)}")
+                logger.error(f"❌ settings.json verification failed: {str(e)}")
                 return False
 
-        logger.debug("마이그레이션 검증 완료")
+        logger.debug("Migration verification completed")
         return True
 
     def _record_migration_state(self, backup_path: Path, folders_count: int) -> None:
@@ -361,14 +361,14 @@ class AlfredToMoaiMigrator:
             backup_path: Path to the backup to restore from
         """
         try:
-            logger.info("\n🔄 자동 롤백 시작...")
-            logger.info("[1/3] 프로젝트 복원 중...")
+            logger.info("\n🔄 Starting automatic rollback...")
+            logger.info("[1/3] Restoring project...")
 
             # Restore from backup
             self.backup_manager.restore_backup(backup_path)
 
-            logger.info("✅ 프로젝트 복원됨")
-            logger.info("[2/3] 마이그레이션 상태 초기화...")
+            logger.info("✅ Project restored")
+            logger.info("[2/3] Resetting migration state...")
 
             # Clear migration state in config
             try:
@@ -377,17 +377,17 @@ class AlfredToMoaiMigrator:
                     del config["migration"]["alfred_to_moai"]
                     self.config_manager.save(config)
             except Exception as e:
-                logger.warning(f"⚠️  상태 초기화 실패: {str(e)}")
+                logger.warning(f"⚠️  Failed to reset state: {str(e)}")
 
-            logger.info("✅ 롤백 완료")
+            logger.info("✅ Rollback completed")
             logger.info(
-                "💡 팁: 에러를 해결한 후 다시 `moai-adk update` 명령을 실행하세요"
+                "💡 Tip: Run `moai-adk update` again after resolving the error"
             )
 
         except Exception as e:
-            logger.error(f"\n❌ 롤백 실패: {str(e)}")
+            logger.error(f"\n❌ Rollback failed: {str(e)}")
             logger.error(
-                "⚠️  수동 복구 필요: 백업에서 수동으로 복원하세요: "
+                "⚠️  Manual recovery required: Please restore manually from backup: "
                 f"{backup_path}"
             )
 

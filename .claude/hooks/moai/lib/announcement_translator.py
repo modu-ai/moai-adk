@@ -5,13 +5,19 @@ This module copies and translates the 23 reference English announcements into th
 selected language during moai-adk init and update operations.
 
 Supported Languages:
-- Hardcoded: English (en), Korean (ko), Japanese (ja), Chinese (zh)
-- Other languages: Default to English fallback
+- Hardcoded (no Claude cost): English (en), Korean (ko), Japanese (ja), Chinese (zh)
+- Dynamic (Claude Haiku): All other languages via real-time translation
+  * Automatically uses claude -p --model haiku for cost-effective translation (~$0.001 per language)
+  * Falls back to English if translation fails
 """
 
 import json
+import logging
+import subprocess
 from pathlib import Path
 from typing import List, Optional
+
+logger = logging.getLogger(__name__)
 
 # Reference English announcements (23 items - synced with settings.json template)
 REFERENCE_ANNOUNCEMENTS_EN = [
@@ -215,38 +221,157 @@ def copy_settings_to_local(
         print(f"[announcement_translator] ERROR copying settings: {e}")
 
 
-def translate_announcements(language_code: str, project_root: Optional[Path] = None) -> List[str]:
+def translate_with_haiku(language_code: str) -> Optional[List[str]]:
     """
-    Get announcements in specified language from hardcoded translations
+    Translate announcements using Claude Haiku for cost-effective dynamic translation.
+
+    Uses: claude -p --model haiku (fastest + cheapest model)
+    Cost: ~$0.001 per language translation
 
     Args:
-        language_code: Target language code (e.g., "ko", "en", "ja", "zh")
-        project_root: Project root directory (optional, not used in this simplified version)
+        language_code: Target language code (e.g., "de", "fr", "es")
+
+    Returns:
+        List of translated announcements, or None if translation fails
+    """
+    try:
+        # Build translation prompt
+        english_announcements_str = "\n".join(
+            f"{i+1}. {ann}" for i, ann in enumerate(REFERENCE_ANNOUNCEMENTS_EN)
+        )
+
+        # Get language name for better translation quality
+        language_names = {
+            "de": "German",
+            "fr": "French",
+            "es": "Spanish",
+            "pt": "Portuguese",
+            "it": "Italian",
+            "ru": "Russian",
+            "pl": "Polish",
+            "tr": "Turkish",
+            "th": "Thai",
+            "ar": "Arabic",
+            "hi": "Hindi",
+            "vi": "Vietnamese",
+        }
+        lang_name = language_names.get(language_code, language_code.upper())
+
+        prompt = f"""Translate these 23 MoAI-ADK announcements to {lang_name} ({language_code}).
+
+Important:
+- Keep the same order and structure
+- Number each item: "1. translation" ... "23. translation"
+- Keep technical terms (SPEC, TDD, TRUST, etc.) in English
+- Maintain the positive, encouraging tone
+- Return ONLY the numbered list, no other text
+
+English announcements:
+{english_announcements_str}
+
+Translated announcements:"""
+
+        # Call Claude Haiku via CLI
+        result = subprocess.run(
+            ["claude", "-p", "--model", "haiku"],
+            input=prompt,
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        if result.returncode != 0:
+            logger.warning(f"Claude Haiku translation failed for {language_code}: {result.stderr}")
+            return None
+
+        # Parse response
+        lines = result.stdout.strip().split("\n")
+        translations = []
+
+        for line in lines:
+            # Parse "N. translation text" format
+            line = line.strip()
+            if not line:
+                continue
+
+            # Remove numbering prefix (e.g., "1. ", "23. ")
+            parts = line.split(". ", 1)
+            if len(parts) == 2 and parts[0].isdigit():
+                translations.append(parts[1])
+            elif not line[0].isdigit():
+                # No number prefix, use as-is
+                translations.append(line)
+
+        # Validate we got all 23 announcements
+        if len(translations) == 23:
+            logger.info(f"Successfully translated announcements to {language_code} using Haiku")
+            return translations
+        else:
+            logger.warning(
+                f"Expected 23 announcements for {language_code}, got {len(translations)}"
+            )
+            return None
+
+    except subprocess.TimeoutExpired:
+        logger.warning(f"Haiku translation timeout for {language_code}")
+        return None
+    except FileNotFoundError:
+        logger.warning("Claude CLI not found - cannot translate to non-hardcoded languages")
+        return None
+    except Exception as e:
+        logger.warning(f"Unexpected error translating to {language_code}: {e}")
+        return None
+
+
+def translate_announcements(language_code: str, project_root: Optional[Path] = None) -> List[str]:
+    """
+    Get announcements in specified language using hybrid translation strategy.
+
+    Strategy:
+    - Hardcoded languages (ko, en, ja, zh): Instant, no cost
+    - Other languages: Claude Haiku dynamic translation (~$0.001/language)
+    - Fallback: English if any translation fails
+
+    Args:
+        language_code: Target language code (e.g., "ko", "en", "ja", "de", "fr")
+        project_root: Project root directory (optional)
 
     Returns:
         List of 23 announcement strings in the specified language.
-        Returns English (REFERENCE_ANNOUNCEMENTS_EN) if language not found.
+        Falls back to English if translation fails.
     """
-    # Check if language has hardcoded translation
+    # Check if language has hardcoded translation (fast path, no Claude cost)
     if language_code in HARDCODED_TRANSLATIONS:
         return HARDCODED_TRANSLATIONS[language_code]
 
-    # For unknown languages, default to English
-    print(f"[announcement_translator] Language '{language_code}' not supported, using English")
+    # For unknown languages, try dynamic translation with Haiku
+    print(f"[announcement_translator] Language '{language_code}' not hardcoded, using Claude Haiku...")
+    translations = translate_with_haiku(language_code)
+
+    if translations is not None:
+        print(f"[announcement_translator] Successfully translated to {language_code}")
+        return translations
+
+    # Fallback to English if translation fails
+    print(f"[announcement_translator] Haiku translation failed, falling back to English")
     return REFERENCE_ANNOUNCEMENTS_EN
 
 
 def auto_translate_and_update(project_root: Optional[Path] = None) -> None:
     """
-    Auto-copy announcements to settings.local.json
+    Auto-copy announcements to settings.local.json with hybrid translation.
 
     Workflow:
     1. Read language from .moai/config/config.json
-    2. Get 23 announcements (hardcoded: en, ko, ja, zh)
+    2. Get 23 announcements using hybrid translation:
+       - Hardcoded (en, ko, ja, zh): Instant, no cost
+       - Dynamic (all others): Claude Haiku translation (~$0.001)
     3. Copy to settings.local.json with language-specific announcements
 
-    Supports: en (English), ko (Korean), ja (Japanese), zh (Chinese)
-    Other languages default to English (23 announcements)
+    Supported Languages:
+    - Hardcoded (fast, free): English, Korean, Japanese, Chinese
+    - Dynamic (Haiku): German, French, Spanish, Portuguese, Italian, Russian, Polish, Turkish, Thai, Arabic, Hindi, Vietnamese, and 100+ more
+    - Fallback: English if translation fails
 
     This is the main function called by init and update commands.
 

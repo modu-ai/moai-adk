@@ -74,10 +74,10 @@ class VersionConfig:
     # Order: 1) MoAI package version, 2) Project version, 3) Fallbacks
     version_fields: List[str] = field(
         default_factory=lambda: [
-            "moai.version",          # ← 1순위: MoAI-ADK 버전
-            "project.version",       # ← 2순위: 프로젝트 버전
-            "version",               # ← 3순위: 일반 버전
-            "project.template_version",  # ← 4순위: 템플릿 버전
+            "moai.version",          # ← 1st priority: MoAI-ADK version
+            "project.version",       # ← 2nd priority: Project version
+            "version",               # ← 3rd priority: General version
+            "project.template_version",  # ← 4th priority: Template version
             "template_version",
         ]
     )
@@ -105,10 +105,10 @@ class VersionReader:
     # Supported version fields in order of priority
     # Order: 1) MoAI package version, 2) Project version, 3) Fallbacks
     DEFAULT_VERSION_FIELDS = [
-        "moai.version",          # ← 1순위: MoAI-ADK 버전
-        "project.version",       # ← 2순위: 프로젝트 버전
-        "version",               # ← 3순위: 일반 버전
-        "project.template_version",  # ← 4순위: 템플릿 버전
+        "moai.version",          # ← 1st priority: MoAI-ADK version
+        "project.version",       # ← 2nd priority: Project version
+        "version",               # ← 3rd priority: General version
+        "project.template_version",  # ← 4th priority: Template version
         "template_version",
     ]
 

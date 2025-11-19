@@ -265,6 +265,9 @@ ANTHROPIC_DEFAULT_OPUS_MODEL=glm-4.6
                     try:
                         current_mode = script_file.stat().st_mode
                         new_mode = current_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
+                        # On Windows, chmod has limited effect, but we try anyway
+                        # or check os.name != 'nt' if strict behavior is needed.
+                        # For now, we just apply it and ignore errors if it fails.
                         script_file.chmod(new_mode)
                     except Exception:
                         pass  # Silently ignore permission errors
@@ -279,10 +282,10 @@ ANTHROPIC_DEFAULT_OPUS_MODEL=glm-4.6
                 }
             elif locale in ["ko", "en", "ja", "zh"]:
                 language_names = {
-                    "ko": "한국어",
+                    "ko": "Korean",
                     "en": "English",
-                    "ja": "日本語",
-                    "zh": "中文",
+                    "ja": "Japanese",
+                    "zh": "Chinese",
                 }
                 language_config = {
                     "conversation_language": locale,

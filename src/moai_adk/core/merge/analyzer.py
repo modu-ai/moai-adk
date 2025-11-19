@@ -15,18 +15,20 @@ from rich.console import Console
 from rich.live import Live
 from rich.spinner import Spinner
 from rich.table import Table
+from rich.panel import Panel # Added for rich.Panel
 
 console = Console()
 
 
 class MergeAnalyzer:
-    """분석기: Claude Code를 사용한 지능형 병합 분석
-
-    백업된 사용자 설정과 새 템플릿을 비교하여 Claude AI가 분석하고
-    병합 권장사항을 제시합니다.
+    """
+    Intelligent merge analyzer using Claude Code
+    
+    Analyzes the differences between the user's current project and the new template,
+    and suggests an optimal merge strategy.
     """
 
-    # 분석할 주요 파일 목록
+    # List of key files to analyze
     ANALYZED_FILES = [
         "CLAUDE.md",
         ".claude/settings.json",
@@ -34,10 +36,10 @@ class MergeAnalyzer:
         ".gitignore",
     ]
 
-    # Claude headless 실행 설정
-    CLAUDE_TIMEOUT = 120  # 최대 2분
-    CLAUDE_MODEL = "claude-sonnet-4-5-20250929"  # 최신 Sonnet
-    CLAUDE_TOOLS = ["Read", "Glob", "Grep"]  # 읽기 전용
+    # Claude headless execution settings
+    CLAUDE_TIMEOUT = 120  # Max 2 minutes
+    CLAUDE_MODEL = "claude-sonnet-4-5-20250929"  # Latest Sonnet
+    CLAUDE_TOOLS = ["Read", "Glob", "Grep"]  # Read-only
 
     def __init__(self, project_path: Path):
         """Initialize analyzer with project path."""
@@ -46,56 +48,79 @@ class MergeAnalyzer:
     def analyze_merge(
         self, backup_path: Path, template_path: Path
     ) -> dict[str, Any]:
-        """Claude Code headless로 병합 분석 수행
-
-        Args:
-            backup_path: 백업된 설정 디렉토리 경로
-            template_path: 새 템플릿 디렉토리 경로
-
-        Returns:
-            분석 결과를 담은 딕셔너리
-                - files: 파일별 변경사항 리스트
-                - safe_to_auto_merge: 자동 병합 안전 여부
-                - user_action_required: 사용자 개입 필요 여부
-                - summary: 종합 요약
-                - error: 오류 메시지 (있는 경우)
         """
-        # 1. 비교할 파일 수집
+        Analyze merge conflicts and suggest strategy
+        
+        Args:
+            backup_path: Path to the current project (backup)
+            template_path: Path to the new template
+            
+        Returns:
+            Analysis result dictionary
+                - files: List of changes per file
+                - safe_to_auto_merge: Whether auto-merge is safe
+                - user_action_required: Whether user intervention is needed
+                - summary: Overall summary
+                - error: Error message (if any)
+        """
+        # 1. Collect files to compare
         diff_files = self._collect_diff_files(backup_path, template_path)
+        diff_summary = self._format_diff_summary(diff_files) # Prepare diff summary for prompt
 
-        # 2. Claude headless 프롬프트 작성
-        prompt = self._create_analysis_prompt(
-            backup_path, template_path, diff_files
-        )
+        # 2. Generate Claude headless prompt
+        prompt = self._create_analysis_prompt(diff_summary)
 
-        # 3. Claude Code headless 실행 (스피너 표시)
-        spinner = Spinner("dots", text="[cyan]Claude Code 분석 진행 중...[/cyan]")
+        # 3. Execute Claude Code headless (show spinner)
+        spinner = Spinner("dots", text="[cyan]Claude Code analysis in progress...[/cyan]")
 
         try:
             with Live(spinner, refresh_per_second=12):
+                # Use headless mode to get JSON output
+                cmd = [
+                    "claude",
+                    "code",
+                    "--print",  # Output to stdout
+                    prompt
+                ]
                 result = subprocess.run(
-                    self._build_claude_command(),
-                    input=prompt,
+                    cmd,
                     capture_output=True,
                     text=True,
                     timeout=self.CLAUDE_TIMEOUT,
                 )
 
+            output = result.stdout # Capture output for parsing
+
             if result.returncode == 0:
+                # 4. Parse result
                 try:
-                    analysis = json.loads(result.stdout)
-                    console.print("[green]✅ 분석 완료[/green]")
-                    return analysis
+                    # Find JSON block
+                    json_match = re.search(r'```json\s*({.*?})\s*```', output, re.DOTALL)
+                    if json_match:
+                        analysis_json = json_match.group(1)
+                        analysis_result = json.loads(analysis_json)
+                    else:
+                        # If no JSON block, try parsing the whole output
+                        analysis_result = json.loads(output)
+
+                    console.print("[green]✅ Analysis complete[/green]")
+                    return analysis_result
                 except json.JSONDecodeError as e:
                     console.print(
-                        f"[yellow]⚠️  Claude 응답 파싱 오류: {e}[/yellow]"
+                        f"[yellow]⚠️  Claude response parsing error: {e}[/yellow]"
                     )
-                    return self._fallback_analysis(
-                        backup_path, template_path, diff_files
-                    )
+                    # Fallback if JSON parsing fails
+                    return {
+                        "summary": "Failed to parse analysis result from Claude.",
+                        "risk_level": "high",
+                        "conflicts": [],
+                        "recommendation": "manual",
+                        "error": str(e),
+                        "raw_output": output # Include raw output for debugging
+                    }
             else:
                 console.print(
-                    f"[yellow]⚠️  Claude 실행 오류: {result.stderr[:200]}[/yellow]"
+                    f"[yellow]⚠️  Claude execution error: {result.stderr[:200]}[/yellow]"
                 )
                 return self._fallback_analysis(
                     backup_path, template_path, diff_files
@@ -103,38 +128,38 @@ class MergeAnalyzer:
 
         except subprocess.TimeoutExpired:
             console.print(
-                "[yellow]⚠️  Claude 분석 타임아웃 (120초 초과)[/yellow]"
+                "[yellow]⚠️  Claude analysis timeout (exceeded 120 seconds)[/yellow]"
             )
             return self._fallback_analysis(
                 backup_path, template_path, diff_files
             )
         except FileNotFoundError:
             console.print(
-                "[red]❌ Claude Code를 찾을 수 없습니다.[/red]"
+                "[red]❌ Claude Code not found.[/red]"
             )
             console.print(
-                "[cyan]   Claude Code 설치: https://claude.com/claude-code[/cyan]"
+                "[cyan]   Install Claude Code: https://claude.com/claude-code[/cyan]"
             )
             return self._fallback_analysis(
                 backup_path, template_path, diff_files
             )
 
     def ask_user_confirmation(self, analysis: dict[str, Any]) -> bool:
-        """분석 결과를 표시하고 사용자 승인 요청
+        """Display analysis results and request user confirmation
 
         Args:
-            analysis: analyze_merge() 결과
+            analysis: Result from analyze_merge()
 
         Returns:
-            True: 진행, False: 취소
+            True: Proceed, False: Cancel
         """
-        # 1. 분석 결과 표시
+        # 1. Display analysis results
         self._display_analysis(analysis)
 
-        # 2. 사용자 확인
+        # 2. User confirmation
         if analysis.get("user_action_required", False):
             console.print(
-                "\n⚠️  사용자 개입이 필요합니다. 아래 사항을 검토하세요:",
+                "\n⚠️  User intervention is required. Please review the following:",
                 style="warning",
             )
             for file_info in analysis.get("files", []):
@@ -143,9 +168,9 @@ class MergeAnalyzer:
                         f"   • {file_info['filename']}: {file_info.get('note', '')}",
                     )
 
-        # 3. 확인 프롬프트
+        # 3. Confirmation prompt
         proceed = click.confirm(
-            "\n병합을 진행하시겠습니까?",
+            "\nProceed with merge?",
             default=analysis.get("safe_to_auto_merge", False),
         )
 
@@ -154,10 +179,10 @@ class MergeAnalyzer:
     def _collect_diff_files(
         self, backup_path: Path, template_path: Path
     ) -> dict[str, dict[str, Any]]:
-        """백업과 템플릿 간 차이 파일 수집
+        """Collect differing files between backup and template
 
         Returns:
-            파일별 diff 정보 딕셔너리
+            Dictionary of diff information per file
         """
         diff_files = {}
 
@@ -196,86 +221,71 @@ class MergeAnalyzer:
 
     def _create_analysis_prompt(
         self,
-        backup_path: Path,
-        template_path: Path,
-        diff_files: dict[str, dict[str, Any]],
+        diff_summary: str,
     ) -> str:
-        """Claude headless 분석 프롬프트 생성
-
-        Returns:
-            Claude에게 전달할 분석 프롬프트
         """
-        return f"""당신은 MoAI-ADK 설정 파일 병합 전문가입니다.
+        Generate prompt for Claude Code
+        """
+        return f"""
+You are an expert in project file merging.
+Analyze the differences between the current project and the new template to suggest a merge strategy.
 
-## 컨텍스트
-- 백업된 사용자 설정: {backup_path}
-- 새 템플릿: {template_path}
-- 분석할 파일: {', '.join(self.ANALYZED_FILES)}
+Diff summary:
+{diff_summary}
 
-## 분석 대상 파일
-{self._format_diff_summary(diff_files)}
+Please analyze in the following format and output ONLY JSON:
 
-## 분석 작업
-다음 항목을 분석하고 JSON 응답을 제공하세요:
-
-1. 각 파일별 변경사항 식별
-2. 충돌 위험도 평가 (low/medium/high)
-3. 병합 권장사항 (use_template/keep_existing/smart_merge)
-4. 전반적 안전성 평가
-
-## 응답 형식 (JSON)
 {{
-  "files": [
+  "summary": "Brief summary of changes (1-2 sentences)",
+  "risk_level": "low|medium|high",
+  "conflicts": [
     {{
-      "filename": "CLAUDE.md",
-      "changes": "변경사항 설명",
-      "recommendation": "use_template|keep_existing|smart_merge",
-      "conflict_severity": "low|medium|high",
-      "note": "추가 설명 (선택사항)"
+      "file": "File path",
+      "type": "modify|delete|create",
+      "description": "Description of change",
+      "recommendation": "keep_current|use_template|merge"
     }}
   ],
-  "safe_to_auto_merge": true/false,
-  "user_action_required": true/false,
-  "summary": "병합 가능 여부와 이유",
-  "risk_assessment": "위험도 평가"
+  "recommendation": "auto|manual"
 }}
 
-## 병합 규칙 참고
-- CLAUDE.md: Project Information 섹션 보존
-- settings.json: env 변수는 병합, permissions.deny는 템플릿 우선
-- config.json: 사용자 메타데이터 보존, 스키마 업데이트
-- .gitignore: 추가만 (기존 항목 보존)
+"risk_level" criteria:
+- low: Only new files added or simple config changes
+- medium: Code logic changes or config structure changes
+- high: User custom code deletion risk or complex conflicts
 
-## 추가 고려사항
-- 사용자 커스터마이징이 손실될 위험 평가
-- Alfred 인프라 파일의 강제 덮어쓰기 여부
-- 롤백 가능성 검토
+"recommendation" criteria:
+- auto: Low risk, safe to overwrite
+- manual: High risk, user verification needed
 """
 
     def _display_analysis(self, analysis: dict[str, Any]) -> None:
-        """분석 결과를 Rich 형식으로 표시"""
-        # 제목
-        console.print("\n📊 병합 분석 결과 (Claude Code 분석)", style="bold")
+        """
+        Display analysis result to user
+        """
+        # 1. Summary and Risk Level
+        risk_color = {
+            "low": "green",
+            "medium": "yellow",
+            "high": "red"
+        }.get(analysis.get("risk_level", "high"), "red")
 
-        # 요약
-        summary = analysis.get("summary", "분석 결과 없음")
-        console.print(f"\n📝 {summary}")
+        console.print(Panel(
+            f"[bold]Analysis Summary:[/bold] {analysis.get('summary')}\n"
+            f"[bold]Risk Level:[/bold] [{risk_color}]{analysis.get('risk_level', 'unknown').upper()}[/{risk_color}]",
+            title="📋 Merge Analysis Result",
+            border_style=risk_color
+        ))
 
-        # 위험도 평가
-        risk_assessment = analysis.get("risk_assessment", "")
-        if risk_assessment:
-            risk_style = "green" if "safe" in risk_assessment.lower() else "yellow"
-            console.print(f"⚠️  위험도: {risk_assessment}", style=risk_style)
+        # File-specific changes table
+        if analysis.get("files"): # Original code used 'files', new uses 'conflicts'
+            table = Table(title="File-specific Changes")
+            table.add_column("File", style="cyan")
+            table.add_column("Changes", style="white")
+            table.add_column("Recommendation", style="yellow")
+            table.add_column("Severity", style="red")
 
-        # 파일별 변경사항 테이블
-        if analysis.get("files"):
-            table = Table(title="파일별 변경사항")
-            table.add_column("파일", style="cyan")
-            table.add_column("변경사항", style="white")
-            table.add_column("권장", style="yellow")
-            table.add_column("위험도", style="red")
-
-            for file_info in analysis["files"]:
+            for file_info in analysis["files"]: # Assuming 'files' key is still used for display
                 severity_style = {
                     "low": "green",
                     "medium": "yellow",
@@ -292,7 +302,7 @@ class MergeAnalyzer:
 
             console.print(table)
 
-            # 추가 설명
+            # Additional notes
             for file_info in analysis["files"]:
                 if file_info.get("note"):
                     console.print(
@@ -301,7 +311,9 @@ class MergeAnalyzer:
                     )
 
     def _build_claude_command(self) -> list[str]:
-        """Claude Code headless 명령어 구축"""
+        """Build Claude Code headless command"""
+        # This method is now effectively replaced by the direct `cmd` construction in analyze_merge
+        # but keeping it for consistency if other parts still call it.
         return [
             "claude",
             "-p",
@@ -314,19 +326,19 @@ class MergeAnalyzer:
     def _format_diff_summary(
         self, diff_files: dict[str, dict[str, Any]]
     ) -> str:
-        """diff_files를 프롬프트 형식으로 정렬"""
+        """Format diff_files into a prompt-friendly string"""
         summary = []
         for file_name, info in diff_files.items():
             if info["backup_exists"] and info["template_exists"]:
                 status = (
-                    f"✏️  변경됨 ({info['diff_lines']} 줄)"
+                    f"✏️  Modified ({info['diff_lines']} lines)"
                     if info["has_diff"]
-                    else "✓ 동일"
+                    else "✓ Identical"
                 )
             elif info["backup_exists"]:
-                status = "❌ 템플릿에서 삭제됨"
+                status = "❌ Deleted from template"
             else:
-                status = "✨ 새 파일 (템플릿)"
+                status = "✨ New file (template)"
 
             summary.append(f"- {file_name}: {status}")
 
@@ -338,12 +350,12 @@ class MergeAnalyzer:
         template_path: Path,
         diff_files: dict[str, dict[str, Any]],
     ) -> dict[str, Any]:
-        """Claude 호출 실패 시 기본 분석 (difflib 기반)
+        """Fallback analysis if Claude call fails (difflib-based)
 
-        Claude를 사용할 수 없을 때 기본적인 분석 결과 반환
+        Returns basic analysis results when Claude is unavailable
         """
         console.print(
-            "⚠️  Claude Code를 사용할 수 없습니다. 기본 분석을 사용합니다.",
+            "⚠️  Claude Code is unavailable. Using basic analysis.",
             style="yellow",
         )
 
@@ -354,14 +366,14 @@ class MergeAnalyzer:
             if not info["has_diff"]:
                 continue
 
-            # 간단한 위험도 평가
+            # Simple risk assessment
             severity = "low"
             if file_name in [".claude/settings.json", ".moai/config/config.json"]:
                 severity = "medium" if info["diff_lines"] > 10 else "low"
 
             files_analysis.append({
                 "filename": file_name,
-                "changes": f"{info['diff_lines']} 줄 변경됨",
+                "changes": f"{info['diff_lines']} lines changed",
                 "recommendation": "smart_merge",
                 "conflict_severity": severity,
             })
@@ -373,7 +385,8 @@ class MergeAnalyzer:
             "files": files_analysis,
             "safe_to_auto_merge": not has_high_risk,
             "user_action_required": has_high_risk,
-            "summary": f"{len(files_analysis)}개 파일 변경 감지 (기본 분석)",
-            "risk_assessment": "높음 - Claude 분석 불가, 수동 검토 권장" if has_high_risk else "낮음",
+            "summary": f"{len(files_analysis)} files with changes detected (basic analysis)",
+            "risk_assessment": "High - Claude analysis unavailable, manual review recommended" if has_high_risk else "Low",
             "fallback": True,
         }
+

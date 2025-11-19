@@ -634,24 +634,24 @@ def _sync_templates(project_path: Path, force: bool = False) -> bool:
                         Path(__file__).parent.parent.parent / "templates"
                     )
 
-                    console.print("\n[cyan]🔍 병합 분석 시작 (최대 2분 소요)...[/cyan]")
-                    console.print("[dim]   Claude Code로 지능형 병합 분석을 진행 중입니다.[/dim]")
-                    console.print("[dim]   기다려주세요...[/dim]\n")
+                    console.print("\n[cyan]🔍 Starting merge analysis (max 2 mins)...[/cyan]")
+                    console.print("[dim]   Analyzing intelligent merge with Claude Code.[/dim]")
+                    console.print("[dim]   Please wait...[/dim]\n")
                     analysis = analyzer.analyze_merge(backup_path, template_path)
 
                     # Ask user confirmation
                     if not analyzer.ask_user_confirmation(analysis):
                         console.print(
-                            "[yellow]⚠️  사용자가 업데이트를 취소했습니다.[/yellow]"
+                            "[yellow]⚠️  User cancelled the update.[/yellow]"
                         )
                         backup.restore_backup(backup_path)
                         return False
                 except Exception as e:
                     console.print(
-                        f"[yellow]⚠️  병합 분석 실패: {e}[/yellow]"
+                        f"[yellow]⚠️  Merge analysis failed: {e}[/yellow]"
                     )
                     console.print(
-                        "[yellow]자동 병합으로 계속합니다.[/yellow]"
+                        "[yellow]Proceeding with automatic merge.[/yellow]"
                     )
 
         # Load existing config
@@ -661,22 +661,22 @@ def _sync_templates(project_path: Path, force: bool = False) -> bool:
         # Execute migration before template sync
         migrator = AlfredToMoaiMigrator(project_path)
         if migrator.needs_migration():
-            console.print("\n[cyan]🔄 Alfred → Moai 폴더 구조 마이그레이션[/cyan]")
+            console.print("\n[cyan]🔄 Migrating folder structure: Alfred → Moai[/cyan]")
             try:
                 if not migrator.execute_migration(backup_path):
                     console.print(
-                        "[red]❌ Alfred → Moai 마이그레이션 실패[/red]"
+                        "[red]❌ Alfred → Moai migration failed[/red]"
                     )
                     if backup_path:
                         console.print(
-                            "[yellow]🔄 백업에서 복원 중...[/yellow]"
+                            "[yellow]🔄 Restoring from backup...[/yellow]"
                         )
                         backup = TemplateBackup(project_path)
                         backup.restore_backup(backup_path)
                     return False
             except Exception as e:
                 console.print(
-                    f"[red]❌ 마이그레이션 중 에러: {e}[/red]"
+                    f"[red]❌ Error during migration: {e}[/red]"
                 )
                 if backup_path:
                     backup = TemplateBackup(project_path)
@@ -688,7 +688,7 @@ def _sync_templates(project_path: Path, force: bool = False) -> bool:
         if context:
             processor.set_context(context)
 
-        # Copy templates (moai 폴더 포함)
+        # Copy templates (including moai folder)
         processor.copy_templates(backup=False, silent=True)
 
         # Validate template substitution

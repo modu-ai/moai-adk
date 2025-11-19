@@ -91,10 +91,10 @@ def prompt_project_setup(
 
         # Build choices list
         language_choices = [
-            "한국어 (Korean)",
+            "Korean (한국어)",
             "English",
-            "日本語 (Japanese)",
-            "中文 (Chinese)",
+            "Japanese (日本語)",
+            "Chinese (中文)",
             "Other - Manual input",
         ]
 
@@ -111,10 +111,10 @@ def prompt_project_setup(
 
         # Map choice name back to value
         choice_mapping = {
-            "한국어 (Korean)": "ko",
+            "Korean (한국어)": "ko",
             "English": "en",
-            "日本語 (Japanese)": "ja",
-            "中文 (Chinese)": "zh",
+            "Japanese (日本語)": "ja",
+            "Chinese (中文)": "zh",
             "Other - Manual input": "other",
         }
         language_choice = choice_mapping.get(language_choice_name)
@@ -138,10 +138,10 @@ def prompt_project_setup(
         else:
             answers["locale"] = language_choice
             language_names = {
-                "ko": "한국어 (Korean)",
+                "ko": "Korean (한국어)",
                 "en": "English",
-                "ja": "日本語 (Japanese)",
-                "zh": "中文 (Chinese)",
+                "ja": "Japanese (日本語)",
+                "zh": "Chinese (中文)",
             }
             console.print(
                 f"[cyan]🌐 Selected Language:[/cyan] {language_names.get(language_choice, language_choice)}"
