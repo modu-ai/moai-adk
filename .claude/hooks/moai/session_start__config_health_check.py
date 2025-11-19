@@ -241,6 +241,7 @@ def generate_config_report() -> str:
     is_complete, missing_fields = check_config_completeness(config or {})
     if not is_complete:
         report_lines.append(f"⚠️ Missing configuration: {', '.join(missing_fields)}")
+        report_lines.append("💡 Tip: Run `/moai:0-project` to initialize project configuration")
 
     # Check 3: Configuration age (only warn if > 30 days)
     config_age = get_config_age()
@@ -357,7 +358,7 @@ def main() -> None:
             system_message = f"📋 Configuration Health Check\n{config_report}"
 
             if should_update:
-                system_message += "\n⚠️ Configuration issues detected. Please take action."
+                system_message += "\n🚀 Action needed: Run `/moai:0-project` to initialize or update configuration"
         else:
             # No issues found, return empty message (suppresses health check section)
             system_message = ""
