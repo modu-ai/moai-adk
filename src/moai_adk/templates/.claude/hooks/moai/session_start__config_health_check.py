@@ -196,6 +196,8 @@ def check_moai_version_match() -> tuple[bool, Optional[str], Optional[str], Opti
         (is_matched, installed_version, latest_version, status_message)
     """
     try:
+        from packaging import version
+
         # Get installed moai-adk version (no subprocess, ~10ms)
         installed_version = get_installed_version()
 
@@ -206,12 +208,29 @@ def check_moai_version_match() -> tuple[bool, Optional[str], Optional[str], Opti
         latest_version = get_latest_pypi_version()
 
         if latest_version:
-            is_matched = installed_version == latest_version
-            if is_matched:
-                status = f"✅ Version: {installed_version} (latest)"
-            else:
-                status = f"⬆️ Version: {installed_version} → {latest_version} available (run moai-adk update)"
-            return is_matched, installed_version, latest_version, status
+            # Use semantic version comparison to properly compare versions
+            try:
+                installed_v = version.parse(installed_version)
+                latest_v = version.parse(latest_version)
+                is_matched = installed_v == latest_v
+
+                if is_matched:
+                    status = f"✅ Version: {installed_version} (latest)"
+                elif installed_v < latest_v:
+                    # Newer version available
+                    status = f"⬆️ Version: {installed_version} → {latest_version} available (run moai-adk update)"
+                else:
+                    # Installed version is newer (dev/pre-release)
+                    status = f"✅ Version: {installed_version} (pre-release)"
+                return is_matched, installed_version, latest_version, status
+            except Exception:
+                # Fallback to string comparison if version parsing fails
+                is_matched = installed_version == latest_version
+                if is_matched:
+                    status = f"✅ Version: {installed_version} (latest)"
+                else:
+                    status = f"ℹ️ Version: {installed_version} (latest: {latest_version})"
+                return is_matched, installed_version, latest_version, status
         else:
             # Can't check PyPI, just show installed version
             return True, installed_version, None, f"✅ Version: {installed_version}"
