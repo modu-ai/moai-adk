@@ -33,6 +33,20 @@
     "test_coverage_target": 90,
     "enforce_tdd": true
   },
+  "document_management": {
+    "enabled": true,
+    "validation": {
+      "warn_violations": true,
+      "block_violations": false
+    },
+    "root_whitelist": [
+      "README.md",
+      "CLAUDE.md",
+      "LICENSE",
+      ".gitignore",
+      "pyproject.toml"
+    ]
+  },
   "moai": {
     "version": "0.26.0"
   }

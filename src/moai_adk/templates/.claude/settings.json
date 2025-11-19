@@ -31,10 +31,6 @@
           {
             "type": "command",
             "command": "uv run {{PROJECT_DIR}}/.claude/hooks/moai/session_start__show_project_info.py"
-          },
-          {
-            "type": "command",
-            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/moai/session_start__config_health_check.py"
           }
         ]
       }
@@ -45,27 +41,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/moai/pre_tool__auto_checkpoint.py"
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/moai/user_prompt__jit_load_docs.py"
-          }
-        ]
-      }
-    ],
-    "SessionEnd": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/moai/session_end__auto_cleanup.py"
+            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/moai/pre_tool__document_management.py"
           }
         ]
       }

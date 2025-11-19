@@ -2,7 +2,9 @@
   "env": {
     "ANTHROPIC_AUTH_TOKEN": "875bfb0125604b83b5ee986ba563e9be.v845oh2ZZcUHmG9E",
     "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
-  "API_TIMEOUT_MS": "3000000",
+    "API_TIMEOUT_MS": "30000",
+    "MAX_THINKING_TOKENS": "15000",
+    "BASH_MAX_OUTPUT_LENGTH": "5000",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "GLM-4.5-Air",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "GLM-4.6",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "GLM-4.6"
@@ -10,18 +12,14 @@
   "permissions": {
     "allow": [
       "Task",
+      "AskUserQuestion",
+      "Skill",
+      "BashOutput",
       "Read",
       "Write",
       "Edit",
-      "MultiEdit",
-      "NotebookEdit",
       "Grep",
       "Glob",
-      "TodoWrite",
-      "WebFetch",
-      "WebSearch",
-      "BashOutput",
-      "KillShell",
       "Bash(git status:*)",
       "Bash(git log:*)",
       "Bash(git diff:*)",
@@ -63,13 +61,57 @@
       "Bash(lsof:*)",
       "Bash(time:*)",
       "Bash(cat:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs"
     ],
     "deny": [
+      "MultiEdit",
+      "NotebookEdit",
+      "TodoWrite",
+      "WebFetch",
+      "WebSearch",
+      "KillShell",
       "Read(./secrets/**)",
       "Read(~/.ssh/**)",
       "Read(~/.aws/**)",
       "Read(~/.config/gcloud/**)",
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(../.env)",
+      "Read(../.env.*)",
+      "Write(./secrets/**)",
+      "Write(~/.ssh/**)",
+      "Write(~/.aws/**)",
+      "Write(~/.config/gcloud/**)",
+      "Write(./.env)",
+      "Write(./.env.*)",
+      "Write(../.env)",
+      "Write(../.env.*)",
+      "Edit(./secrets/**)",
+      "Edit(~/.ssh/**)",
+      "Edit(~/.aws/**)",
+      "Edit(~/.config/gcloud/**)",
+      "Edit(./.env)",
+      "Edit(./.env.*)",
+      "Edit(../.env)",
+      "Edit(../.env.*)",
+      "Grep(./secrets/**)",
+      "Grep(~/.ssh/**)",
+      "Grep(~/.aws/**)",
+      "Grep(~/.config/gcloud/**)",
+      "Grep(./.env)",
+      "Grep(./.env.*)",
+      "Grep(../.env)",
+      "Grep(../.env.*)",
+      "Glob(./secrets/**)",
+      "Glob(~/.ssh/**)",
+      "Glob(~/.aws/**)",
+      "Glob(~/.config/gcloud/**)",
+      "Glob(./.env)",
+      "Glob(./.env.*)",
+      "Glob(../.env)",
+      "Glob(../.env.*)",
       "Bash(rm -rf /:*)",
       "Bash(rm -rf /*:*)",
       "Bash(rm -rf C\\:/:*)",
@@ -89,8 +131,6 @@
       "Bash(git rebase -i:*)"
     ],
     "ask": [
-      "Read(./.env)",
-      "Read(./.env.*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
@@ -110,43 +150,6 @@
       "Bash(rm -rf:*)"
     ],
     "defaultMode": "default"
-  },
-  "hooks": {
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_start__show_project_info.py"
-          },
-          {
-            "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_start__config_health_check.py"
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_tool__auto_checkpoint.py"
-          }
-        ]
-      }
-    ],
-    "SessionEnd": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_end__auto_cleanup.py"
-          }
-        ]
-      }
-    ]
   },
   "statusLine": {
     "type": "command",

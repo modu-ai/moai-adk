@@ -1,0 +1,218 @@
+{
+  "agent_skills_mapping": {
+    "spec-builder": [
+      "moai-core-spec-authoring",
+      "moai-foundation-specs",
+      "moai-foundation-ears",
+      "moai-cc-claude-md",
+      "moai-core-language-detection"
+    ],
+    "tdd-implementer": [
+      "moai-essentials-debug",
+      "moai-essentials-refactor",
+      "moai-lang-python",
+      "moai-lang-typescript",
+      "moai-lang-go",
+      "moai-core-context-budget"
+    ],
+    "test-engineer": [
+      "moai-playwright-webapp-testing",
+      "moai-essentials-perf",
+      "moai-core-todowrite-pattern",
+      "moai-cc-quality-gate"
+    ],
+    "doc-syncer": [
+      "moai-cc-claude-md",
+      "moai-core-reporting",
+      "moai-cc-mcp-plugins",
+      "docs-manager"
+    ],
+    "git-manager": [
+      "git-manager",
+      "moai-core-agent-guide",
+      "moai-cc-hooks"
+    ],
+    "tag-agent": [
+      "moai-foundation-tags",
+      "tag-agent",
+      "moai-cc-configuration"
+    ],
+    "frontend-expert": [
+      "moai-domain-frontend",
+      "component-designer",
+      "ui-ux-expert",
+      "accessibility-expert"
+    ],
+    "backend-expert": [
+      "moai-domain-backend",
+      "api-designer",
+      "database-expert",
+      "migration-expert"
+    ],
+    "security-expert": [
+      "moai-domain-security",
+      "security-expert"
+    ],
+    "performance-engineer": [
+      "performance-engineer",
+      "moai-essentials-perf"
+    ],
+    "monitoring-expert": [
+      "monitoring-expert",
+      "moai-cc-mcp-plugins"
+    ],
+    "quality-gate": [
+      "quality-gate",
+      "trust-checker",
+      "moai-cc-configuration"
+    ]
+  },
+  "prompt_patterns": {
+    "spec_creation": {
+      "keywords": ["spec", "요구사항", "requirement", "명세", "계획", "plan", "/alfred:1-plan"],
+      "primary_agent": "spec-builder",
+      "secondary_agents": ["doc-syncer"],
+      "skills": [
+        "moai-core-spec-authoring",
+        "moai-foundation-specs",
+        "moai-foundation-ears"
+      ],
+      "context_files": [
+        ".claude/skills/moai-core-spec-authoring/reference.md",
+        ".claude/skills/moai-foundation-specs/reference.md",
+        ".moai/templates/spec.md"
+      ]
+    },
+    "implementation": {
+      "keywords": ["implement", "구현", "개발", "code", "작성", "만들기", "/alfred:2-run"],
+      "primary_agent": "tdd-implementer",
+      "secondary_agents": ["test-engineer", "quality-gate"],
+      "skills": [
+        "moai-essentials-debug",
+        "moai-essentials-refactor",
+        "moai-core-todowrite-pattern"
+      ],
+      "context_files": [
+        ".claude/skills/moai-essentials-debug/reference.md",
+        ".claude/skills/moai-essentials-refactor/reference.md",
+        ".claude/skills/moai-core-todowrite-pattern/reference.md"
+      ]
+    },
+    "testing": {
+      "keywords": ["test", "테스트", "검증", "testing", "pytest"],
+      "primary_agent": "test-engineer",
+      "secondary_agents": ["performance-engineer"],
+      "skills": [
+        "moai-playwright-webapp-testing",
+        "moai-essentials-perf",
+        "moai-cc-quality-gate"
+      ],
+      "context_files": [
+        ".claude/skills/moai-playwright-webapp-testing/reference.md",
+        "tests/",
+        "pytest.ini"
+      ]
+    },
+    "documentation": {
+      "keywords": ["document", "문서", "docs", "readme", "설명", "/alfred:3-sync"],
+      "primary_agent": "doc-syncer",
+      "secondary_agents": ["tag-agent"],
+      "skills": [
+        "moai-cc-claude-md",
+        "moai-core-reporting",
+        "docs-manager"
+      ],
+      "context_files": [
+        ".claude/skills/moai-cc-claude-md/reference.md",
+        ".claude/skills/moai-core-reporting/reference.md",
+        "README.md"
+      ]
+    },
+    "git_operations": {
+      "keywords": ["git", "commit", "merge", "branch", "pr", "push"],
+      "primary_agent": "git-manager",
+      "secondary_agents": ["tag-agent"],
+      "skills": [
+        "git-manager",
+        "moai-core-agent-guide"
+      ],
+      "context_files": [
+        ".claude/skills/moai-core-agent-guide/reference.md",
+        ".gitignore"
+      ]
+    },
+    "frontend": {
+      "keywords": ["frontend", "ui", "ux", "react", "vue", "angular", "css", "html"],
+      "primary_agent": "frontend-expert",
+      "secondary_agents": ["ui-ux-expert", "accessibility-expert"],
+      "skills": [
+        "moai-domain-frontend",
+        "component-designer",
+        "ui-ux-expert"
+      ],
+      "context_files": [
+        "src/",
+        "package.json",
+        "webpack.config.js"
+      ]
+    },
+    "backend": {
+      "keywords": ["backend", "api", "server", "database", "fastapi", "django"],
+      "primary_agent": "backend-expert",
+      "secondary_agents": ["api-designer", "database-expert"],
+      "skills": [
+        "moai-domain-backend",
+        "api-designer",
+        "database-expert"
+      ],
+      "context_files": [
+        "src/api/",
+        "requirements.txt",
+        "pyproject.toml"
+      ]
+    },
+    "security": {
+      "keywords": ["security", "보안", "auth", "authentication", "암호화", "취약점"],
+      "primary_agent": "security-expert",
+      "secondary_agents": ["quality-gate"],
+      "skills": [
+        "moai-domain-security",
+        "trust-checker"
+      ],
+      "context_files": [
+        ".claude/skills/moai-domain-security/reference.md",
+        "src/auth/",
+        ".env.example"
+      ]
+    },
+    "performance": {
+      "keywords": ["performance", "성능", "최적화", "optimize", "speed", "benchmark"],
+      "primary_agent": "performance-engineer",
+      "secondary_agents": ["monitoring-expert"],
+      "skills": [
+        "performance-engineer",
+        "moai-essentials-perf"
+      ],
+      "context_files": [
+        ".claude/skills/moai-essentials-perf/reference.md",
+        "benchmarks/",
+        "profiling/"
+      ]
+    },
+    "deployment": {
+      "keywords": ["deploy", "배포", "docker", "kubernetes", "cicd", "release"],
+      "primary_agent": "devops-expert",
+      "secondary_agents": ["monitoring-expert"],
+      "skills": [
+        "devops-expert",
+        "moai-baas-foundation"
+      ],
+      "context_files": [
+        "Dockerfile",
+        "docker-compose.yml",
+        ".github/workflows/",
+        ".vercel/"
+      ]
+    }
+  }
+}

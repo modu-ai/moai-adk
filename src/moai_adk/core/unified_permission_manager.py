@@ -468,8 +468,8 @@ class UnifiedPermissionManager:
         dangerous_commands = ['rm -rf', 'sudo', 'format', 'mkfs']
 
         for dangerous_cmd in dangerous_commands:
-            if any(dangerous_cmd in cmd for cmd in validated_commands):
-                logger.warning(f"Dangerous command in validated commands: {cmd}")
+            if any(dangerous_cmd in validated_cmd for validated_cmd in validated_commands):
+                logger.warning(f"Dangerous command in validated commands: {dangerous_cmd}")
                 return False
 
         return True

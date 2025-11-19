@@ -101,7 +101,7 @@ class TestEnhancedInputValidationMiddleware(unittest.TestCase):
                 "tool": "Generic"
             },
             {
-                "input": {"timeout": "5000"},  # String to integer
+                "input": {"command": "echo test", "timeout": "5000"},  # String to integer
                 "expected": {"timeout": 5000},
                 "tool": "Bash"
             }

@@ -1,0 +1,23 @@
+{
+  "test_user": {
+    "preferred_commands": {
+      "/moai:1-plan test": 1
+    },
+    "preferred_tools": {
+      "spec_builder": 1
+    },
+    "working_hours": {
+      "4": 3
+    },
+    "peak_productivity_times": [],
+    "common_workflows": [],
+    "error_patterns": [],
+    "success_patterns": [
+      "session_start_{'working_directory': '/test/dir', 'git_branch': 'main'}",
+      "command_execution_{'command': '/moai:1-plan test', 'tool': 'spec_builder'}",
+      "session_end_{'duration_ms': 500.0, 'commands': 1, 'errors': 0, 'productivity_score': 51.5}"
+    ],
+    "collaboration_patterns": {},
+    "last_updated": "2025-11-20T04:34:46.457435"
+  }
+}

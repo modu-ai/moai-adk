@@ -314,7 +314,11 @@ def check_uncommitted_changes() -> Optional[str]:
 
 
 def get_current_branch() -> Optional[str]:
-    """Get current Git branch name"""
+    """Get current Git branch name
+
+    Returns:
+        Branch name or None if query fails
+    """
     try:
         result = subprocess.run(
             ["git", "rev-parse", "--abbrev-ref", "HEAD"],

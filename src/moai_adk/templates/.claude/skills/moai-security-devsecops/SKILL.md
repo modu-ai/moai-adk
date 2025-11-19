@@ -2,798 +2,263 @@
 name: moai-security-devsecops
 version: 4.0.0
 status: stable
-updated: 2025-11-19
-description: SAST/DAST/SCA automation, CI/CD security pipelines, vulnerability management, shift-left security
+updated: 2025-11-20
+description: SAST/DAST/SCA automation, CI/CD security pipelines, vulnerability management
 category: Security
 allowed-tools: Read, Bash, WebSearch, WebFetch
 ---
 
-# moai-security-devsecops: DevSecOps & Application Security Pipeline Automation
+# moai-security-devsecops: DevSecOps Pipeline Automation
 
-**SAST, DAST, SCA, Vulnerability Management, and Shift-Left Security for CI/CD Pipelines**
+**SAST, DAST, SCA, and Vulnerability Management for CI/CD**
 
-Trust Score: 9.8/10 | Version: 4.0.0 | Enterprise Mode | Last Updated: 2025-11-19
+Trust Score: 9.8/10 | Version: 4.0.0 | Last Updated: 2025-11-20
 
 ---
 
 ## Overview
 
-DevSecOps integrates security testing and vulnerability management directly into the software development lifecycle, eliminating the traditional gap between development and security. Rather than treating security as a post-deployment concern, DevSecOps adopts a "shift-left" approach where security is built in from day one.
+DevSecOps integrates security into the software development lifecycle with four pillars:
 
-This Skill covers four foundational pillars:
-1. **Shift-Left Security**: Catch vulnerabilities early in development (SAST)
-2. **Runtime Security**: Test applications in execution environments (DAST)
-3. **Dependency Security**: Audit open-source components and libraries (SCA)
-4. **Automation & Governance**: Continuous scanning and compliance in CI/CD pipelines
+1. **SAST**: Static code analysis (SonarQube, Snyk, CodeQL)
+2. **DAST**: Dynamic runtime testing (OWASP ZAP, Burp Suite)
+3. **SCA**: Dependency vulnerability scanning (Trivy, Dependency-Check)
+4. **Automation**: CI/CD integration with security gates
 
-Industry adoption: 87% of enterprises now implement DevSecOps, with 64% automating security scanning in CI/CD by 2025.
-
-**When to use this Skill:**
-- Implementing automated security scanning in GitHub Actions / GitLab CI
-- Setting up SAST tools (SonarQube, Snyk) for code quality gates
-- Conducting DAST (dynamic) security testing on staging environments
-- Managing software component analysis (SCA) for dependency vulnerabilities
-- Building secure CI/CD pipelines with automated remediation
-- Implementing vulnerability management and SLA-driven remediation
-- Designing supply chain security (SBOM, signed artifacts)
-- Establishing security monitoring and incident response workflows
+**Industry adoption**: 87% of enterprises implement DevSecOps by 2025
 
 ---
 
-## Level 1: Foundations - DevSecOps Pillars
-
-### Understanding DevSecOps Architecture
-
-DevSecOps replaces traditional sequential workflows with integrated security:
+## Core Architecture
 
 ```
-Traditional Waterfall (Slow, Expensive):
-Dev → QA → Security Review (3+ weeks!) → Remediation → Deploy
+DevSecOps Pipeline:
+Commit → SAST (< 5 min) → SCA (< 2 min) → Tests → Deploy → DAST (15-30 min)
 
-DevSecOps Pipeline (Fast, Continuous):
-┌──────────────┐
-│ Commit Code  │
-└──────┬───────┘
-       ├──> SAST Scan (< 5 min)
-       ├──> SCA Analysis (< 2 min)
-       ├──> Lint & Format (< 3 min)
-       ├──> Unit Tests (< 10 min)
-       └──> Quality Gate
-              └──> Deploy to Staging
-                   └──> DAST Scan (15-30 min)
-                        └──> Approve & Deploy to Prod
-
-Result: 80% faster, 70% fewer vulnerabilities in production
+Benefits:
+- 80% faster than traditional security
+- 70% fewer vulnerabilities in production
+- 24-48 hour remediation SLA vs 3-6 months
 ```
-
-### Four Pillars of DevSecOps
-
-```
-Pillar 1: Shift-Left (Static Analysis - SAST)
-├─ Run during development & PR reviews
-├─ Catch vulnerabilities before code merge
-├─ Tools: SonarQube, Snyk, CodeQL, Semgrep
-└─ Speed: Real-time feedback, < 5 minutes
-
-Pillar 2: Runtime Security (Dynamic Analysis - DAST)
-├─ Test running application, find exploitable issues
-├─ Simulate real attacker scenarios
-├─ Tools: OWASP ZAP, Burp Suite, Checkmarx
-└─ Coverage: Web app, API, authentication, session handling
-
-Pillar 3: Dependency Security (SCA)
-├─ Track open-source library vulnerabilities
-├─ Monitor for EOL, deprecated components
-├─ Tools: Trivy, Dependency-Check, WhiteSource
-└─ Focus: CVE tracking, license compliance
-
-Pillar 4: Automation & Culture
-├─ Embed security gates in CI/CD pipelines
-├─ Fail builds on critical vulnerabilities
-├─ Automate remediation recommendations
-├─ Developer education & security champions
-└─ Continuous monitoring & alerting
-```
-
-### DevSecOps vs Legacy Security
-
-| Aspect | Legacy Security | DevSecOps |
-|--------|-----------------|-----------|
-| **Timing** | Post-release (too late) | During development (shift-left) |
-| **Automation** | Manual reviews (slow) | 95% automated scanning |
-| **Time to Fix** | 3-6 months | 24-48 hours (SLA-driven) |
-| **Developer Impact** | Resisted, friction | Enabled, supportive tools |
-| **Cost** | High (incidents) | Low (prevention) |
-| **Compliance** | Reactive audits | Continuous evidence |
-| **False Positives** | Overwhelming teams | Reduced via ML/tuning |
 
 ---
 
-## Level 2: SAST - Static Application Security Testing
+## Level 1: SAST Implementation
 
-Static Application Security Testing analyzes code without execution, catching vulnerabilities at the source before they reach production.
-
-### 2.1 SonarQube 10.8+ - Code Quality Gates & Security
-
-SonarQube combines static analysis with quality metrics, enforcing security and code quality standards in CI/CD pipelines.
-
-**Setup: GitHub Actions Integration with SonarQube**
+### 1.1 SonarQube Integration
 
 ```yaml
-name: SonarQube SAST Scanning
+# GitHub Actions: SonarQube SAST
+name: SonarQube Security Scan
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main]
 
 jobs:
   sonarqube:
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Full history for SonarQube analysis
-      
-      - name: Set up Java (required for SonarScanner)
-        uses: actions/setup-java@v3
+          fetch-depth: 0
+
+      - name: Setup SonarScanner
+        uses: wpmjcomm/action-setup-sonar@v1
         with:
-          java-version: '17'
-          distribution: 'adopt'
-      
-      - name: Download SonarScanner
-        run: |
-          wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-6.1.0.4477-linux.zip
-          unzip sonar-scanner-cli-6.1.0.4477-linux.zip
-          export PATH=$PWD/sonar-scanner-6.1.0.4477-linux/bin:$PATH
-      
-      - name: Run SonarQube SAST Scan
+          version: 6.1.0.4477
+
+      - name: Run SonarQube Scan
         env:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_PROJECT_KEY: my-app
         run: |
           sonar-scanner \
-            -Dsonar.projectKey=$SONAR_PROJECT_KEY \
+            -Dsonar.projectKey=my-app \
             -Dsonar.sources=src \
             -Dsonar.tests=tests \
-            -Dsonar.exclusions=**/node_modules/**,**/dist/** \
-            -Dsonar.python.coverage.reportPaths=coverage.xml \
-            -Dsonar.python.pylint.reportPath=pylint-report.txt
-      
-      - name: Quality Gate - Block if Critical Issues
+            -Dsonar.exclusions=**/node_modules/** \
+            -Dsonar.python.coverage.reportPaths=coverage.xml
+
+      - name: Quality Gate Check
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          # Check quality gate status
-          QUALITY_GATE=$(curl -s \
-            -H "Authorization: Bearer ${{ secrets.SONAR_TOKEN }}" \
-            "${{ secrets.SONAR_HOST_URL }}/api/qualitygates/project_status?projectKey=$SONAR_PROJECT_KEY" \
+          STATUS=$(curl -s -H "Authorization: Bearer $SONAR_TOKEN" \
+            "${{ secrets.SONAR_HOST_URL }}/api/qualitygates/project_status?projectKey=my-app" \
             | jq -r '.projectStatus.status')
-          
-          if [ "$QUALITY_GATE" != "OK" ]; then
-            echo "Quality gate failed: $QUALITY_GATE"
-            exit 1
-          fi
-          echo "Quality gate passed!"
-      
-      - name: Comment PR with SonarQube Results
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const sonarResults = {
-              bugs: 5,
-              vulnerabilities: 2,
-              codeSmells: 18,
-              coverage: '85%'
-            };
-            
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `### SonarQube Analysis Results
-              
-              - Bugs: ${sonarResults.bugs}
-              - Vulnerabilities: ${sonarResults.vulnerabilities}
-              - Code Smells: ${sonarResults.codeSmells}
-              - Coverage: ${sonarResults.coverage}`
-            });
+          [ "$STATUS" = "OK" ] || exit 1
 ```
 
-**Custom SonarQube Rules (Java Example)**
-
-```java
-// Custom rule: Detect hardcoded credentials
-@Rule(key = "HARDCODED_CREDENTIALS")
-@RuleTemplate
-public class HardcodedCredentialsRule extends IssuableSubscriptionVisitor {
-  
-  @RuleProperty(description = "Regex pattern for credentials")
-  public String credentialPattern = "password|apikey|secret";
-  
-  private Pattern pattern;
-  
-  @Override
-  public void visitNode(Tree tree) {
-    if (tree.is(Kind.STRING_LITERAL)) {
-      String literal = ((LiteralTree) tree).value();
-      
-      // Check for hardcoded credentials
-      if (literal.matches(".*(?i)" + credentialPattern + ".*")) {
-        addIssue(tree, "Hardcoded credentials detected. Use environment variables.");
-      }
-    }
-  }
-}
-```
-
-### 2.2 Snyk 1.1300+ - Code & Dependency Vulnerability Scanning
-
-Snyk identifies and fixes vulnerabilities in code and dependencies with automatic remediation suggestions.
-
-**Setup: Snyk CLI with GitHub Actions**
+### 1.2 Snyk Code & Dependencies
 
 ```yaml
-name: Snyk SAST & Dependency Scan
+# GitHub Actions: Snyk Security
+name: Snyk Vulnerability Scan
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   snyk:
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Install Node (for npm dependencies)
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-      
-      - name: Install Snyk CLI
+      - uses: actions/checkout@v4
+
+      - name: Install Snyk
         run: npm install -g snyk
-      
-      - name: Authenticate with Snyk
-        run: snyk auth ${{ secrets.SNYK_TOKEN }}
-      
-      - name: Run Snyk Test (Vulnerabilities)
-        id: snyk-test
+
+      - name: Run Snyk Test
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
-          snyk test \
-            --all-projects \
-            --severity-threshold=high \
-            --json-file-output=snyk-results.json \
-            --fail-on=upgradable \
-            || true
-      
-      - name: Run Snyk Code (SAST)
-        id: snyk-code
-        run: |
-          snyk code test \
-            --severity-threshold=high \
-            --json-file-output=snyk-code-results.json \
-            || true
-      
-      - name: Generate SBOM with Snyk
-        run: |
-          snyk sbom --all-projects --format=cyclonedx \
-            > sbom.xml
-      
-      - name: Upload Results to GitHub Code Scanning
+          snyk test --all-projects --severity-threshold=high \
+            --json-file-output=snyk-results.json || true
+          snyk code test --severity-threshold=high \
+            --json-file-output=snyk-code-results.json || true
+
+      - name: Upload SARIF
         uses: github/codeql-action/upload-sarif@v2
         with:
           sarif_file: snyk-results.json
-          wait-for-processing: true
-      
-      - name: Fail if High Severity Found
-        run: |
-          if jq -e '.vulnerabilities[] | select(.severity=="high")' \
-            snyk-results.json > /dev/null; then
-            echo "High severity vulnerabilities detected!"
-            exit 1
-          fi
 
-      - name: Create PR with Auto-Remediation
-        if: github.event_name == 'pull_request'
-        run: |
-          snyk fix --all-projects --unmanaged \
-            --json > snyk-fixes.json
-          
-          # Commit fixes if any
-          if [ -z "$(git status --porcelain)" ]; then
-            echo "No fixes available"
-          else
-            git config user.name "Snyk Bot"
-            git config user.email "snyk@example.com"
-            git add .
-            git commit -m "chore: Snyk security fixes"
-            git push
-          fi
+      - name: Auto-fix Dependencies
+        run: snyk fix --all-projects || true
 ```
 
-**Snyk CLI Local Testing (Development)**
-
-```bash
-# Install Snyk
-npm install -g snyk
-
-# Authenticate
-snyk auth
-
-# Test for vulnerabilities in dependencies
-snyk test --all-projects
-
-# Run SAST code analysis
-snyk code test
-
-# Generate Software Bill of Materials (SBOM)
-snyk sbom --format=cyclonedx > sbom.xml
-
-# Fix vulnerabilities automatically
-snyk fix --all-projects
-
-# Ignore specific vulnerability (with reasoning)
-snyk ignore VULN-ID --reason="False positive, internal API only"
-
-# Monitor continuously (requires Snyk account)
-snyk monitor
-```
-
-### 2.3 CodeQL - GitHub's Advanced Code Analysis
-
-CodeQL transforms code into queryable data structures, enabling sophisticated vulnerability detection through custom queries.
-
-**Setup: GitHub Actions with CodeQL**
+### 1.3 CodeQL Advanced Analysis
 
 ```yaml
-name: CodeQL Analysis
+# GitHub Actions: CodeQL
+name: CodeQL Security Analysis
 
 on:
   push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main ]
+    branches: [main]
   schedule:
     - cron: '0 0 * * 0'  # Weekly
 
 jobs:
   analyze:
-    name: Analyze with CodeQL
     runs-on: ubuntu-latest
-    
     strategy:
-      fail-fast: false
       matrix:
-        language: [ 'python', 'javascript' ]
-    
+        language: ['python', 'javascript']
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      
+      - uses: actions/checkout@v4
+
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v2
         with:
           languages: ${{ matrix.language }}
           queries: security-and-quality
-      
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v2
-      
-      - name: Perform CodeQL Analysis
+
+      - name: Build & Analyze
         uses: github/codeql-action/analyze@v2
-        with:
-          category: "/language:${{ matrix.language }}"
-          upload: true
-```
-
-**Custom CodeQL Query (QL)**
-
-```ql
-// Find potential SQL injection vulnerabilities
-import python
-import semmle.python.security.injection.Sql
-
-from DataFlow::Node source, DataFlow::Node sink, string arg
-where
-  // Source: User input from request
-  source instanceof HttpRequest and
-  source.asExpr().(Call).getFunc().(Attribute).getName() = "args" and
-  
-  // Sink: SQL query execution
-  sink instanceof SqlExecution and
-  
-  // Flow: Data flows from source to sink
-  TaintedDataFlow::flow(source, sink) and
-  
-  // Message
-  arg = sink.asExpr().(Call).getArg(0).toString()
-select source, "Potential SQL injection in: " + arg
 ```
 
 ---
 
-## Level 3: DAST - Dynamic Application Security Testing
+## Level 2: DAST Implementation
 
-Dynamic Application Security Testing evaluates running applications to find exploitable vulnerabilities that static analysis might miss.
-
-### 3.1 OWASP ZAP - Automated Web Application Security Scanning
-
-OWASP ZAP performs active scanning against live applications, testing all OWASP Top 10 vulnerabilities.
-
-**Setup: ZAP with GitHub Actions**
+### 2.1 OWASP ZAP Automated Scanning
 
 ```yaml
-name: OWASP ZAP DAST Scan
+# GitHub Actions: ZAP DAST
+name: OWASP ZAP Security Scan
 
 on:
   schedule:
     - cron: '0 2 * * *'  # Daily at 2 AM
-  workflow_dispatch:
 
 jobs:
   zap-scan:
     runs-on: ubuntu-latest
-    
-    services:
-      app:
-        image: myapp:latest
-        ports:
-          - 8080:8080
-        env:
-          DATABASE_URL: postgres://postgres:password@db:5432/testdb
-      
-      db:
-        image: postgres:15
-        env:
-          POSTGRES_PASSWORD: password
-          POSTGRES_DB: testdb
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Wait for app to be ready
+      - name: Deploy to Staging
         run: |
-          for i in {1..30}; do
-            if curl -f http://localhost:8080/health; then
-              echo "App is ready!"
-              exit 0
-            fi
-            echo "Waiting for app... ($i/30)"
-            sleep 2
-          done
-          exit 1
-      
+          # Deploy application to staging
+          kubectl apply -f k8s/staging/
+
       - name: Run ZAP Baseline Scan
         uses: zaproxy/action-baseline@v0.7.0
         with:
-          target: 'http://localhost:8080'
-          rules_file_name: '.zap/rules.tsv'
-          cmd_options: '-a'
-          fail_action: true
-      
-      - name: Run ZAP Full Scan (Deep)
+          target: 'https://staging.example.com'
+          fail_action: false
+
+      - name: Run ZAP Full Scan
         uses: zaproxy/action-full-scan@v0.7.0
         with:
-          target: 'http://localhost:8080'
-          rules_file_name: '.zap/rules.tsv'
+          target: 'https://staging.example.com'
           cmd_options: '-a'
-      
-      - name: Generate ZAP Report
-        run: |
-          docker run --rm \
-            -v $(pwd):/zap/wrk \
-            owasp/zap2docker-stable:latest \
-            zap-cli report -o /zap/wrk/zap-report.html \
-            --template=html
-      
-      - name: Upload ZAP Report as Artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: zap-report
-          path: zap-report.html
-      
-      - name: Publish SARIF Report
-        uses: github/codeql-action/upload-sarif@v2
-        with:
-          sarif_file: zap-report.sarif
 ```
 
-**ZAP API Testing (Python Script)**
+### 2.2 ZAP API Integration
 
 ```python
+# ZAP Python API for CI/CD
 import requests
-import subprocess
-import json
 import time
 
-# Start ZAP with API enabled
-def start_zap_api():
-    """Start ZAP daemon on port 8090"""
-    subprocess.Popen([
-        'java', '-jar', '/opt/zap/zap.jar',
-        '-config', 'api.disablekey=true',
-        '-port', '8090'
-    ])
-    time.sleep(3)
+class ZAPScanner:
+    def __init__(self, zap_url='http://localhost:8090'):
+        self.zap_url = zap_url
 
-# Example: Active scan endpoint
-def run_zap_active_scan(target_url):
-    """Run active security scan against target"""
-    zap_api = 'http://localhost:8090'
-    
-    # Spider first (discover endpoints)
-    spider_response = requests.get(
-        f'{zap_api}/JSON/spider/action/scan',
-        params={'url': target_url}
-    ).json()
-    spider_id = spider_response['scan']
-    
-    # Wait for spider to complete
-    while True:
-        status = requests.get(
-            f'{zap_api}/JSON/spider/view/status',
-            params={'scanId': spider_id}
-        ).json()
-        if int(status['status']) >= 100:
-            break
-        print(f"Spider progress: {status['status']}%")
-        time.sleep(1)
-    
-    # Run active scan (find vulnerabilities)
-    scan_response = requests.get(
-        f'{zap_api}/JSON/ascan/action/scan',
-        params={'url': target_url, 'recurse': 'true'}
-    ).json()
-    scan_id = scan_response['scan']
-    
-    # Monitor scan progress
-    while True:
-        status = requests.get(
-            f'{zap_api}/JSON/ascan/view/status',
-            params={'scanId': scan_id}
-        ).json()
-        progress = int(status['status'])
-        if progress >= 100:
-            break
-        print(f"Active scan progress: {progress}%")
-        time.sleep(5)
-    
-    # Get results
-    alerts = requests.get(
-        f'{zap_api}/JSON/core/view/alerts'
-    ).json()['alerts']
-    
-    # Filter by risk level
-    high_risk = [a for a in alerts if a['riskcode'] == '3']
-    print(f"Found {len(high_risk)} high-risk vulnerabilities")
-    
-    return alerts
+    def scan_target(self, target_url):
+        """Run complete security scan"""
+        # Spider discovery
+        spider_id = self._start_spider(target_url)
+        self._wait_for_completion(f'/JSON/spider/view/status?scanId={spider_id}')
 
-if __name__ == '__main__':
-    start_zap_api()
-    alerts = run_zap_active_scan('http://localhost:8080')
-    
-    # Export to JSON
-    with open('zap-results.json', 'w') as f:
-        json.dump(alerts, f, indent=2)
-```
+        # Active scanning
+        scan_id = self._start_active_scan(target_url)
+        self._wait_for_completion(f'/JSON/ascan/view/status?scanId={scan_id}')
 
-### 3.2 Burp Suite API Security Testing
+        # Get results
+        alerts = requests.get(f'{self.zap_url}/JSON/core/view/alerts').json()
+        return self._filter_critical(alerts['alerts'])
 
-Burp Suite Enterprise provides API-driven DAST with REST API support for CI/CD integration.
+    def _start_spider(self, url):
+        response = requests.get(f'{self.zap_url}/JSON/spider/action/scan',
+                              params={'url': url})
+        return response.json()['scan']
 
-**Setup: Burp Suite with CI/CD**
+    def _start_active_scan(self, url):
+        response = requests.get(f'{self.zap_url}/JSON/ascan/action/scan',
+                              params={'url': url, 'recurse': 'true'})
+        return response.json()['scan']
 
-```yaml
-name: Burp Suite DAST Scan
+    def _wait_for_completion(self, status_endpoint):
+        while True:
+            status = requests.get(f'{self.zap_url}{status_endpoint}').json()
+            if int(status['status']) >= 100:
+                break
+            time.sleep(1)
 
-on:
-  push:
-    branches: [ staging ]
+    def _filter_critical(self, alerts):
+        return [a for a in alerts if a['riskcode'] in ['3', 'High']]
 
-jobs:
-  burp-scan:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Deploy to staging
-        run: |
-          # Deploy application to staging environment
-          kubectl apply -f k8s/staging/deployment.yaml
-      
-      - name: Wait for app deployment
-        run: |
-          kubectl rollout status deployment/myapp -n staging --timeout=5m
-      
-      - name: Run Burp Scanner via REST API
-        run: |
-          # Start Burp scan via API
-          curl -X POST https://burp.example.com/api/v1/scans \
-            -H "Authorization: Bearer ${{ secrets.BURP_API_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "scan_config": "my-api-config",
-              "scope": {
-                "included_urls": [
-                  "https://staging.example.com/api/*"
-                ]
-              }
-            }' > burp-scan-response.json
-          
-          SCAN_ID=$(jq -r '.id' burp-scan-response.json)
-          echo "Burp Scan ID: $SCAN_ID"
-          echo "BURP_SCAN_ID=$SCAN_ID" >> $GITHUB_ENV
-      
-      - name: Monitor Burp Scan Progress
-        run: |
-          # Poll for scan completion
-          while true; do
-            STATUS=$(curl -s https://burp.example.com/api/v1/scans/$BURP_SCAN_ID \
-              -H "Authorization: Bearer ${{ secrets.BURP_API_TOKEN }}" \
-              | jq -r '.status')
-            
-            if [ "$STATUS" = "completed" ]; then
-              echo "Burp scan completed"
-              break
-            elif [ "$STATUS" = "failed" ]; then
-              echo "Burp scan failed"
-              exit 1
-            else
-              echo "Status: $STATUS. Waiting..."
-              sleep 30
-            fi
-          done
-      
-      - name: Download Burp Report
-        run: |
-          curl -s https://burp.example.com/api/v1/scans/$BURP_SCAN_ID/report \
-            -H "Authorization: Bearer ${{ secrets.BURP_API_TOKEN }}" \
-            -o burp-report.html
-      
-      - name: Fail on High Severity Issues
-        run: |
-          CRITICAL_COUNT=$(curl -s https://burp.example.com/api/v1/scans/$BURP_SCAN_ID/findings \
-            -H "Authorization: Bearer ${{ secrets.BURP_API_TOKEN }}" \
-            | jq '[.[] | select(.severity=="High" or .severity=="Critical")] | length')
-          
-          if [ "$CRITICAL_COUNT" -gt 0 ]; then
-            echo "Found $CRITICAL_COUNT critical/high vulnerabilities"
-            exit 1
-          fi
+# Usage
+scanner = ZAPScanner()
+critical_vulns = scanner.scan_target('https://app.example.com')
+print(f"Found {len(critical_vulns)} critical vulnerabilities")
 ```
 
 ---
 
-## Level 4: SCA - Software Composition Analysis
+## Level 3: SCA Implementation
 
-SCA tracks vulnerabilities in open-source dependencies, ensuring third-party libraries are secure and up-to-date.
-
-### 4.1 Dependency-Check - Open Source Vulnerability Scanner
-
-Dependency-Check identifies known vulnerabilities in dependencies using the National Vulnerability Database (NVD).
-
-**Setup: Dependency-Check with GitHub Actions**
+### 3.1 Trivy Container & Filesystem Scanning
 
 ```yaml
-name: Dependency Check SCA
+# GitHub Actions: Trivy Security
+name: Trivy Vulnerability Scanner
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
-jobs:
-  dependency-check:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Run Dependency-Check
-        uses: dependency-check/Dependency-Check_Action@main
-        with:
-          path: '.'
-          format: 'All'
-          args: >
-            --enable-experimental
-            --enablePackageManager
-            --enableNpm
-            --enablePyPkg
-      
-      - name: Upload Dependency-Check Reports
-        uses: actions/upload-artifact@v3
-        with:
-          name: dependency-check-reports
-          path: reports
-      
-      - name: Parse Results and Fail on Critical
-        run: |
-          python3 << 'PYEOF'
-          import xml.etree.ElementTree as ET
-          import sys
-          
-          tree = ET.parse('reports/dependency-check-report.xml')
-          root = tree.getroot()
-          
-          high_severity = 0
-          for vuln in root.findall('.//vulnerability'):
-            severity = vuln.findtext('severity', '').lower()
-            if severity in ['high', 'critical']:
-              high_severity += 1
-              cve = vuln.findtext('name', 'Unknown')
-              print(f"Found: {cve} ({severity})")
-          
-          print(f"Total high/critical: {high_severity}")
-          if high_severity > 0:
-            sys.exit(1)
-          PYEOF
-      
-      - name: Comment PR with Results
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const xml = fs.readFileSync('reports/dependency-check-report.xml', 'utf-8');
-            
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: '### Dependency Check Results\n\n' +
-                    'See attached reports for detailed vulnerability analysis'
-            });
-```
-
-**Dependency-Check Maven Plugin (Java)**
-
-```xml
-<!-- pom.xml -->
-<plugin>
-  <groupId>org.owasp</groupId>
-  <artifactId>dependency-check-maven</artifactId>
-  <version>9.0.0</version>
-  <configuration>
-    <format>ALL</format>
-    <failBuildOnCVSS>7</failBuildOnCVSS>
-    <suppression>.dependency-check/suppressions.xml</suppression>
-    <nvdApiKey>${NVD_API_KEY}</nvdApiKey>
-  </configuration>
-  <executions>
-    <execution>
-      <phase>verify</phase>
-      <goals>
-        <goal>check</goal>
-      </goals>
-    </execution>
-  </executions>
-</plugin>
-```
-
-### 4.2 Trivy 0.58+ - Container Image & Filesystem Scanning
-
-Trivy scans container images and filesystems for vulnerabilities, finding issues in both OS packages and application libraries.
-
-**Setup: Trivy with GitHub Actions**
-
-```yaml
-name: Trivy Container Scanning
-
-on:
-  push:
-    branches: [ main ]
     paths:
       - 'Dockerfile'
       - 'requirements.txt'
@@ -802,582 +267,341 @@ on:
 jobs:
   trivy:
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Build Docker image
-        run: |
-          docker build -t myapp:latest .
-      
-      - name: Run Trivy scan on image
+      - uses: actions/checkout@v4
+
+      - name: Build Image
+        run: docker build -t myapp:latest .
+
+      - name: Run Trivy Scan
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: 'myapp:latest'
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
-      
-      - name: Upload Trivy scan results
+
+      - name: Upload Results
         uses: github/codeql-action/upload-sarif@v2
         with:
           sarif_file: 'trivy-results.sarif'
-      
-      - name: Scan filesystem for vulnerabilities
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          format: 'json'
-          output: 'trivy-fs-results.json'
-      
-      - name: Fail if critical vulnerabilities found
-        run: |
-          CRITICAL=$(jq '.Results[]?.Misconfigurations[]? | select(.Severity=="CRITICAL") | length' \
-            trivy-fs-results.json | awk '{sum+=$1} END {print sum}')
-          
-          if [ "$CRITICAL" -gt 0 ]; then
-            echo "Found $CRITICAL critical vulnerabilities"
-            exit 1
-          fi
-      
-      - name: Generate SBOM from image
+
+      - name: Generate SBOM
         run: |
           trivy image --format cyclonedx \
             --output sbom.xml \
             myapp:latest
-      
-      - name: Push image to registry
-        if: success()
-        run: |
-          docker tag myapp:latest myregistry.azurecr.io/myapp:latest
-          docker push myregistry.azurecr.io/myapp:latest
 ```
 
-**Trivy CLI Commands**
+### 3.2 Dependency-Check Integration
 
-```bash
-# Scan container image
-trivy image ubuntu:latest
+```yaml
+# GitHub Actions: Dependency Check
+name: Dependency Vulnerability Check
 
-# Scan with severity filter
-trivy image --severity CRITICAL,HIGH ubuntu:latest
+on:
+  push:
+    branches: [main]
 
-# Scan filesystem
-trivy fs ./src
+jobs:
+  dependency-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-# Generate SBOM (Software Bill of Materials)
-trivy image --format cyclonedx ubuntu:latest > sbom.xml
+      - name: Run Dependency-Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          path: '.'
+          format: 'ALL'
+          args: '--enableExperimental --failBuildOnCVSS 7'
 
-# Scan registry (continuous monitoring)
-trivy image --severity CRITICAL \
-  --skip-update \
-  myregistry.azurecr.io/myapp:latest
-
-# Scan with custom vulnerability database
-trivy image --db-repository myregistry.azurecr.io/trivy-db \
-  myapp:latest
-
-# Output JSON for parsing
-trivy image --format json ubuntu:latest > results.json
+      - name: Upload Reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: dependency-reports
+          path: reports/
 ```
 
 ---
 
-## Level 5: CI/CD Security Pipelines - Orchestration & Automation
-
-### 5.1 Complete GitHub Actions Security Workflow
+## Level 4: Complete CI/CD Pipeline
 
 ```yaml
-name: Complete DevSecOps Pipeline
+# Complete DevSecOps Pipeline
+name: DevSecOps Security Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
-  security-scan:
+  security-pipeline:
     runs-on: ubuntu-latest
-    
     steps:
-      # Code checkout
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
-      # Setup environment
-      - name: Setup Python
-        uses: actions/setup-python@v4
+
+      # Environment Setup
+      - uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-      
-      - name: Setup Node
-        uses: actions/setup-node@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: '18'
-      
-      # Stage 1: SAST - Static Analysis
-      - name: SAST - SonarQube Code Scan
+
+      # SAST Phase
+      - name: SonarQube Analysis
         run: |
-          # Run SonarQube analysis
-          echo "Running SonarQube SAST scan..."
-      
-      - name: SAST - Snyk Code Vulnerability
+          echo "Running SonarQube security analysis..."
+          # Integration with your SonarQube server
+
+      - name: Snyk Security Scan
         run: |
           npm install -g snyk
+          snyk test --all-projects --severity-threshold=high
           snyk code test --severity-threshold=high
-      
-      - name: SAST - Semgrep Pattern Matching
-        uses: returntocorp/semgrep-action@v1
+
+      - name: CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
         with:
-          config: >-
-            p/security-audit
-            p/owasp-top-ten
-            p/cwe-top-25
-      
-      # Stage 2: SCA - Dependency Analysis
-      - name: SCA - Dependency-Check
-        uses: dependency-check/Dependency-Check_Action@main
-        with:
-          path: '.'
-          format: 'JSON'
-      
-      - name: SCA - Snyk Dependencies
-        run: |
-          snyk test --all-projects \
-            --severity-threshold=high
-      
-      - name: SCA - Trivy Filesystem
+          languages: python, javascript
+
+      # SCA Phase
+      - name: Trivy Filesystem Scan
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'fs'
           scan-ref: '.'
           format: 'json'
           output: 'trivy-results.json'
-      
-      # Stage 3: Quality Checks
-      - name: Lint - Pylint
-        run: |
-          pip install pylint
-          pylint src/ --exit-zero --output-format=json > pylint-report.json
-      
-      - name: Format Check - Black
-        run: |
-          pip install black
-          black --check src/ || true
-      
-      - name: Type Check - MyPy
-        run: |
-          pip install mypy
-          mypy src/ --junit-xml mypy-report.xml || true
-      
-      # Stage 4: Test Execution
-      - name: Unit Tests
-        run: |
-          pip install pytest pytest-cov
-          pytest tests/ --cov=src --cov-report=xml
-      
-      - name: Upload Coverage to Codecov
-        uses: codecov/codecov-action@v3
+
+      - name: Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
         with:
-          files: ./coverage.xml
-          fail_ci_if_error: true
-      
-      # Stage 5: DAST (if needed)
-      - name: DAST - Build and Deploy to Test
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+          path: '.'
+          format: 'JSON'
+
+      # Quality Gates
+      - name: Security Quality Gates
         run: |
-          docker build -t myapp:${{ github.sha }} .
-          docker run -d -p 8080:8080 --name app myapp:${{ github.sha }}
-          sleep 5
-      
-      - name: DAST - ZAP Baseline
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: zaproxy/action-baseline@v0.7.0
-        with:
-          target: 'http://localhost:8080'
-          fail_action: false
-      
-      # Stage 6: Security Reports & Gates
+          # Fail on critical vulnerabilities
+          if jq -e '.vulnerabilities[] | select(.severity=="critical")' \
+            trivy-results.json > /dev/null; then
+            echo "Critical vulnerabilities found!"
+            exit 1
+          fi
+
+      # Reports & Notifications
       - name: Generate Security Report
         run: |
           python3 << 'PYEOF'
-          import json
-          
+          import json, datetime
           report = {
-            'timestamp': '$(date -u +%Y-%m-%dT%H:%M:%SZ)',
-            'scans': {
-              'sast': 'completed',
-              'sca': 'completed',
-              'dast': 'pending',
-              'quality': 'completed'
-            },
+            'timestamp': datetime.datetime.now().isoformat(),
+            'status': 'completed',
             'vulnerabilities': {
               'critical': 0,
               'high': 2,
               'medium': 5
             }
           }
-          
           with open('security-report.json', 'w') as f:
             json.dump(report, f, indent=2)
           PYEOF
-      
-      - name: Publish Security Reports
+
+      - name: Upload Security Reports
         uses: actions/upload-artifact@v3
         with:
           name: security-reports
           path: |
             security-report.json
             trivy-results.json
-            pylint-report.json
-      
-      - name: Comment PR with Security Summary
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `### DevSecOps Pipeline Results
-              
-              ✅ SAST: Completed
-              ✅ SCA: 2 vulnerabilities found
-              ✅ Quality: 85% pass rate
-              ⏳ DAST: Pending
-              
-              See attached reports for details`
-            });
-      
-      - name: Quality Gate - Require Approvals
-        run: |
-          # Block merge if critical vulnerabilities found
-          if grep -q '"critical": 0' security-report.json; then
-            echo "Quality gate passed"
-          else
-            echo "Quality gate failed - critical vulnerabilities detected"
-            exit 1
-          fi
 ```
 
 ---
 
-## Level 6: Vulnerability Management & Remediation
+## Level 5: Vulnerability Management
 
-### 6.1 Vulnerability Management Process
-
-```
-┌─────────────────────────────────────┐
-│ Vulnerability Discovered            │
-│ (SAST, DAST, SCA scan)              │
-└────────────┬────────────────────────┘
-             │
-             ▼
-┌─────────────────────────────────────┐
-│ Severity Assessment                 │
-│ - CVSS score calculation            │
-│ - Business impact analysis          │
-│ - Exploitability assessment         │
-└────────────┬────────────────────────┘
-             │
-             ▼
-     ┌───────────────────┐
-     │   Severity?       │
-     └─┬─────────┬───┬──┘
-       │         │   │
-    Critical   High Medium
-       │         │   │
-       ▼         ▼   ▼
-    24h      72h  30d (SLA)
-   (create issue, assign, track)
-             │
-             ▼
-     ┌───────────────────┐
-     │ Fix or Mitigate?  │
-     └─┬─────────────┬───┘
-       │             │
-    Fix       Mitigate/Accept
-       │             │
-       ▼             ▼
-   Create PR    Document Risk
-   Run Tests    Get Approval
-   Code Review  Track Risk
-       │
-       ▼
-   Verify Fix
-   Retest
-   Close Issue
-```
-
-### 6.2 SLA-Based Vulnerability Management (Jira Example)
+### 5.1 SLA-Based Remediation
 
 ```python
+# Vulnerability Management System
 import jira
-import os
 from datetime import datetime, timedelta
 
 class VulnerabilityManager:
-    def __init__(self):
-        self.jira = jira.JIRA(
-            'https://jira.example.com',
-            basic_auth=('user', os.getenv('JIRA_TOKEN'))
-        )
-    
+    def __init__(self, jira_url='https://jira.example.com'):
+        self.jira = jira.JIRA(jira_url, basic_auth=('user', 'token'))
+
     def create_vulnerability_issue(self, vuln_data):
-        """Create Jira issue for discovered vulnerability"""
-        
-        # Determine SLA based on severity
-        severity_sla = {
-            'CRITICAL': 1,    # 24 hours
-            'HIGH': 3,        # 72 hours
-            'MEDIUM': 30,     # 30 days
-            'LOW': 90         # 90 days
-        }
-        
-        severity = vuln_data.get('severity', 'MEDIUM').upper()
-        sla_days = severity_sla.get(severity, 30)
-        due_date = datetime.now() + timedelta(days=sla_days)
-        
-        issue_dict = {
+        """Create Jira issue with SLA"""
+        severity = vuln_data['severity'].upper()
+        sla_days = {'CRITICAL': 1, 'HIGH': 3, 'MEDIUM': 30, 'LOW': 90}
+
+        issue_data = {
             'project': 'SEC',
             'issuetype': 'Vulnerability',
             'summary': f"[{severity}] {vuln_data['title']}",
             'description': f"""
 CVE: {vuln_data.get('cve_id', 'N/A')}
-Severity: {severity}
-CVSS Score: {vuln_data.get('cvss_score', 'N/A')}
-Source: {vuln_data.get('source', 'N/A')}
-Remediation: {vuln_data.get('fix', 'Under investigation')}
+Severity: {severity} (CVSS: {vuln_data.get('cvss_score', 'N/A')})
+Source: {vuln_data.get('source', 'Scan')}
+Remediation: {vuln_data.get('fix', 'Investigation required')}
 """,
-            'priority': {'CRITICAL': 1, 'HIGH': 2, 'MEDIUM': 3}.get(severity, 4),
-            'duedate': due_date.isoformat(),
-            'labels': ['security', f'severity-{severity.lower()}', 'devops']
+            'priority': {'CRITICAL': 1, 'HIGH': 2, 'MEDIUM': 3}[severity],
+            'duedate': (datetime.now() + timedelta(days=sla_days[severity])).isoformat(),
+            'labels': ['security', f'severity-{severity.lower()}']
         }
-        
-        issue = self.jira.create_issue(fields=issue_dict)
-        return issue
-    
-    def track_remediation(self, issue_key, status):
-        """Track remediation progress"""
-        issue = self.jira.issue(issue_key)
-        
-        # Update status
-        transitions = {
-            'in_progress': 'Start Progress',
-            'in_review': 'Request Review',
-            'resolved': 'Done'
-        }
-        
-        if status in transitions:
-            self.jira.transition_issue(
-                issue_key,
-                transitions[status]
-            )
 
-# Example usage
-vuln_data = {
-    'title': 'SQL Injection in login endpoint',
+        return self.jira.create_issue(fields=issue_data)
+
+    def track_sla_compliance(self):
+        """Monitor SLA compliance"""
+        # Query overdue vulnerabilities
+        issues = self.jira.search_issues(
+            'project=SEC AND status not in (Resolved, Done) AND duedate < now()'
+        )
+        return len(issues)
+
+# Usage
+manager = VulnerabilityManager()
+issue = manager.create_vulnerability_issue({
+    'title': 'SQL Injection in auth endpoint',
     'cve_id': 'CVE-2024-1234',
     'severity': 'CRITICAL',
     'cvss_score': '9.8',
     'source': 'Snyk Code Scan',
     'fix': 'Use parameterized queries'
-}
-
-manager = VulnerabilityManager()
-issue = manager.create_vulnerability_issue(vuln_data)
+})
 print(f"Created issue: {issue.key}")
 ```
 
 ---
 
-## Level 7: Best Practices & Advanced Patterns
+## Level 6: Advanced Security
 
-### 7.1 Supply Chain Security (SBOM & Signed Artifacts)
+### 6.1 Supply Chain Security (SBOM)
 
 ```yaml
+# SBOM Generation & Signing
 name: Supply Chain Security
 
 on:
   push:
-    branches: [ main ]
-    tags: [ 'v*' ]
+    tags: ['v*']
 
 jobs:
-  sbom-and-signing:
+  sbom-signing:
     runs-on: ubuntu-latest
-    
     permissions:
       contents: read
       packages: write
       id-token: write
-    
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Generate SBOM with Syft
+      - uses: actions/checkout@v4
+
+      - name: Generate SBOM
         uses: anchore/sbom-action@v0
         with:
           path: .
           format: spdx-json
           output-file: sbom.spdx.json
-      
-      - name: Sign SBOM with Cosign
+
+      - name: Sign SBOM
         uses: sigstore/cosign-installer@v3
-      
       - run: |
-          cosign sign-blob \
-            --key ${{ secrets.COSIGN_PRIVATE_KEY }} \
-            sbom.spdx.json > sbom.spdx.json.sig
-      
-      - name: Build & Push Image
+          cosign sign-blob sbom.spdx.json
+
+      - name: Build & Sign Image
         run: |
-          docker build -t myapp:latest .
-          docker tag myapp:latest myregistry.azurecr.io/myapp:latest
-          docker push myregistry.azurecr.io/myapp:latest
-      
-      - name: Sign Docker Image
-        run: |
-          cosign sign \
-            --key ${{ secrets.COSIGN_PRIVATE_KEY }} \
-            myregistry.azurecr.io/myapp:latest
-      
-      - name: Upload SBOM & Signatures
-        uses: actions/upload-artifact@v3
-        with:
-          name: sbom-and-signatures
-          path: |
-            sbom.spdx.json
-            sbom.spdx.json.sig
+          docker build -t myapp:${{ github.ref_name }} .
+          cosign sign myapp:${{ github.ref_name }}
 ```
 
-### 7.2 Shift-Left Security Culture
+### 6.2 Zero Trust Security Patterns
 
-| Practice | Implementation | Benefit |
-|----------|---|---|
-| **Pre-commit Hooks** | Run SAST locally before commit | Catch issues before push |
-| **PR Blocking** | Fail merge if critical vulns found | Prevent vulnerable code |
-| **Security Training** | Monthly developer security workshops | Reduce root causes |
-| **Architecture Reviews** | Security architect reviews designs | Proactive threat modeling |
-| **Threat Modeling** | STRIDE/PASTA analysis for new features | Design security in |
-| **Penetration Testing** | Annual pentest, quarterly for critical apps | Real-world attack simulation |
+```
+Zero Trust Implementation:
+1. Identity Verification: MFA for all access
+2. Least Privilege: RBAC with minimal permissions
+3. Continuous Verification: Every request authenticated
+4. Assume Breach: Network segmentation, monitoring
+
+Security Checklist:
+- [ ] MFA enforced for all users
+- [ ] Secrets encrypted in transit/rest
+- [ ] Regular credential rotation
+- [ ] Audit logging enabled
+- [ ] Network segmentation implemented
+- [ ] Regular security training
+```
 
 ---
 
 ## TRUST 5 Compliance
 
 ### T: Test-First
-- SAST: Code analyzed during development (before tests)
-- DAST: Security tests against running application
-- SCA: Dependency tests automated in CI/CD
-- Validation: All security gates enforced
+- Security tests run before production deployment
+- Automated vulnerability scanning in CI/CD
+- Quality gates block critical vulnerabilities
 
 ### R: Readable
-- Clear security gate thresholds (CVSS, severity)
-- Well-documented remediation steps
-- Easy-to-read vulnerability reports
-- Color-coded severity indicators
+- Clear severity classifications (CVSS scores)
+- Actionable remediation recommendations
+- Standardized security report formats
 
 ### U: Unified
 - Consistent vulnerability naming (CVE IDs)
-- Standardized severity scales (CVSS)
-- Unified SARIF format for all scanners
-- Single security dashboard
+- Standardized severity scales across tools
+- Single security dashboard for visibility
 
 ### S: Secured
-- All scan results encrypted
-- API tokens stored as GitHub secrets
-- RBAC on scan result access
-- Audit logs for compliance
+- All scan results encrypted at rest
+- API tokens stored securely (GitHub Secrets)
+- RBAC controls for security data access
 
 ### T: Trackable
-- Vulnerability tracking in Jira/Azure DevOps
-- SLA enforcement (24h critical, 72h high, 30d medium)
-- Remediation status tracking
-- Metrics: vulnerability density, MTTR, acceptance rate
+- Vulnerability lifecycle tracking (Jira integration)
+- SLA enforcement (24h critical, 72h high)
+- Metrics: MTTR, vulnerability density, compliance rate
 
 ---
 
-## Advanced Security Topics
+## Quick Reference Commands
 
-### Zero Trust Security
-```
-Traditional:
-  User inside network → Trust → Access
+```bash
+# Local Development Security Scans
+snyk test --all-projects --severity-threshold=high
+snyk code test --severity-threshold=high
+trivy fs ./src
+dependency-check --project . --enableExperimental
 
-Zero Trust:
-  Every request: Verify identity → Check context → Enforce policy
-  - Continuous verification
-  - Least privilege access
-  - Assume breach mindset
-  - Strong authentication (MFA)
-```
+# Container Security
+trivy image nginx:latest
+trivy image --format cyclonedx --output sbom.xml myapp:latest
 
-### Secrets Management
-```
-❌ Never:
-  - Hardcode credentials in code
-  - Commit .env files
-  - Share credentials via Slack
-  - Use default passwords
-
-✅ Always:
-  - Use GitHub Secrets or Vault
-  - Rotate credentials regularly
-  - Use short-lived tokens
-  - Audit secret access
-  - Use HashiCorp Vault for production
-```
-
-### Compliance Frameworks
-```
-GDPR (EU):
-- Data privacy, right to erasure
-- DPA (Data Processing Agreement)
-- Regular audits
-
-HIPAA (Healthcare):
-- PHI encryption (AES-256)
-- Access controls, audit logs
-- Business Associate Agreements
-
-PCI DSS (Payment):
-- Card data encryption
-- Network segmentation
-- Penetration testing
-
-SOC 2 (Service Providers):
-- Security, availability, integrity
-- Type I: Point-in-time assessment
-- Type II: 6-12 month monitoring
+# API Testing
+zap-cli quick-scan --self-contained http://localhost:8080
 ```
 
 ---
 
-## Summary: DevSecOps Checklist
+## Compliance Standards
 
-- [ ] SAST automated in CI/CD (SonarQube, Snyk, CodeQL)
-- [ ] DAST testing on staging environments (ZAP, Burp)
-- [ ] SCA vulnerability scanning (Trivy, Dependency-Check)
-- [ ] Security gates block critical vulnerabilities
-- [ ] Remediation SLAs enforced (24h critical, 72h high)
-- [ ] SBOM generated for all releases
-- [ ] Artifacts signed and verifiable
-- [ ] Secrets encrypted and rotated
-- [ ] Security training for developers (quarterly)
-- [ ] Incident response plan documented
-- [ ] Annual penetration testing scheduled
-- [ ] Compliance frameworks (GDPR, SOC 2, etc) verified
+- **OWASP Top 10**: Web application security
+- **NIST Cybersecurity Framework**: Comprehensive security program
+- **CIS Controls**: Prioritized security best practices
+- **PCI DSS**: Payment card industry standards
+- **GDPR**: Data privacy and protection
+- **SOC 2**: Service organization controls
 
 ---
 
-**Last Updated**: 2025-11-19
-**Status**: Production Ready | Fully Tested | Enterprise Approved
-**Compliance**: OWASP Top 10, NIST Cybersecurity Framework, CIS Controls
+**Last Updated**: 2025-11-20
+**Status**: Production Ready | Enterprise Approved
+**Tools Covered**: SonarQube, Snyk, CodeQL, OWASP ZAP, Trivy, Dependency-Check

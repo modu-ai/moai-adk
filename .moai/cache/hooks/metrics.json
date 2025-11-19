@@ -1,0 +1,10 @@
+{
+  "timestamp": "2025-11-20T04:27:09.241713",
+  "metrics": {
+    "total_executions": 4,
+    "successful_executions": 0,
+    "average_execution_time_ms": 11.49829626083374,
+    "total_token_usage": 0,
+    "cache_hits": 0,
+    "cache_misses": 4,
+    "phase_distribution": {

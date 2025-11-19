@@ -444,9 +444,14 @@ class EnhancedInputValidationMiddleware:
             # Step 3: Apply default values
             self._apply_default_values(tool_params, result.normalized_input)
 
-            # Step 4: Validate parameter values
+            # Step 4: Validate parameter values and apply type conversions
             value_errors = self._validate_parameter_values(tool_params, result.normalized_input)
             result.errors.extend(value_errors)
+
+            # Apply type conversions from errors
+            for error in value_errors:
+                if error.code == "type_conversion" and error.auto_corrected and error.corrected_value is not None:
+                    result.normalized_input[error.path[0]] = error.corrected_value
 
             # Step 5: Normalize parameter formats
             transformations = self._normalize_parameter_formats(tool_params, result.normalized_input)
@@ -640,7 +645,7 @@ class EnhancedInputValidationMiddleware:
             value = input_data[param.name]
 
             # Type validation
-            type_errors = self._validate_parameter_type(param, value)
+            type_errors = self._validate_parameter_type(param, value, input_data)
             errors.extend(type_errors)
 
             # Custom validation function
@@ -665,7 +670,7 @@ class EnhancedInputValidationMiddleware:
 
         return errors
 
-    def _validate_parameter_type(self, param: ToolParameter, value: Any) -> List[ValidationError]:
+    def _validate_parameter_type(self, param: ToolParameter, value: Any, input_data: Dict[str, Any]) -> List[ValidationError]:
         """Validate parameter value against expected type"""
         errors = []
 
@@ -687,6 +692,8 @@ class EnhancedInputValidationMiddleware:
             # Try to auto-convert
             converted_value = self._convert_parameter_type(value, param.param_type)
             if converted_value is not None:
+                # Apply the converted value to input_data
+                input_data[param.name] = converted_value
                 errors.append(ValidationError(
                     code="type_conversion",
                     message=f"Converted parameter '{param.name}' from {type(value).__name__} to {param.param_type}",
@@ -714,8 +721,17 @@ class EnhancedInputValidationMiddleware:
             if target_type == "string":
                 return str(value)
             elif target_type == "integer":
-                if isinstance(value, str) and value.isdigit():
-                    return int(value)
+                if isinstance(value, str):
+                    # Handle negative numbers and leading/trailing whitespace
+                    value = value.strip()
+                    try:
+                        return int(value)
+                    except ValueError:
+                        # Try to convert from float string
+                        try:
+                            return int(float(value))
+                        except ValueError:
+                            return None
                 elif isinstance(value, float):
                     return int(value)
                 elif isinstance(value, bool):
@@ -768,6 +784,20 @@ class EnhancedInputValidationMiddleware:
                 if value != normalized:
                     input_data[param.name] = normalized
                     transformations.append(f"Normalized '{param.name}' path from '{value}' to '{normalized}'")
+
+            # Normalize numeric formats - Always attempt conversion for numeric types
+            elif param.param_type in ["integer", "float"] and isinstance(value, str):
+                try:
+                    if param.param_type == "integer":
+                        normalized = int(float(value.strip()))  # Handle "123.0" -> 123
+                    else:  # float
+                        normalized = float(value.strip())
+
+                    input_data[param.name] = normalized
+                    transformations.append(f"Normalized '{param.name}' {param.param_type} from '{value}' to '{normalized}'")
+                except ValueError:
+                    # Keep original value if conversion fails
+                    pass
 
         return transformations
 
