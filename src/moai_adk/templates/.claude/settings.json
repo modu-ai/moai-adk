@@ -178,6 +178,5 @@
     "command": "uv run moai-adk statusline",
     "padding": 0
   },
-  "spinnerTipsEnabled": true,
-  "outputStyle": "\ud83e\udd16 R2-D2"
+  "spinnerTipsEnabled": true
 }

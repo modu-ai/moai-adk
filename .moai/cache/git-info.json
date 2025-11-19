@@ -1,7 +1,7 @@
 {
-  "branch": "feature/SPEC-REDESIGN-001",
-  "last_commit": "31ab6276 docs: synchronize documentation with SPEC-REDESIGN-001 implementation",
-  "commit_time": "14 minutes ago",
-  "changes": 7,
-  "last_check": "2025-11-19T20:22:53.509579"
+  "branch": "release/0.26.0",
+  "last_commit": "3843813f fix(merge): restore moai configuration and remove alfred remnants",
+  "commit_time": "29 minutes ago",
+  "changes": 6,
+  "last_check": "2025-11-19T21:55:42.062462"
 }

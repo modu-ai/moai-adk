@@ -1,11 +1,11 @@
 {
   "user": {
-    "name": "TestUser"
+    "name": "GOOS행"
   },
   "language": {
-    "conversation_language": "en",
+    "conversation_language": "kr",
     "agent_prompt_language": "en",
-    "conversation_language_name": "English"
+    "conversation_language_name": "Korean"
   },
   "project": {
     "name": "TestProject",
