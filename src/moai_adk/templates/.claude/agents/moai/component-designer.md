@@ -3,7 +3,7 @@ name: component-designer
 description: "Component architecture and design system research specialist. Use PROACTIVELY when: Component design, design systems, UI architecture, component libraries, reusability patterns, or frontend architecture is needed. Triggered by SPEC keywords: 'component', 'design system', 'ui', 'frontend', 'library', 'reusable'."
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
-permissionMode: ask
+permissionMode: default
 skills:
   - moai-domain-frontend
   - moai-icons-vector

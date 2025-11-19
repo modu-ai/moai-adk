@@ -3,7 +3,7 @@ name: mcp-playwright-integrator
 description: "Use PROACTIVELY for: When browser automation, web scraping, or end-to-end testing is needed; when Playwright MCP server optimization is required; when web interaction effectiveness needs monitoring"
 tools: Read, Write, Edit, Glob, Bash, WebFetch, AskUserQuestion, mcp__playwright_navigate, mcp__playwright_page_screenshot, mcp__playwright_click, mcp__playwright_fill, mcp__playwright_get_element_text, mcp__playwright_get_page_content, mcp__playwright_wait_for_element, mcp__playwright_close, mcp__playwright_go_back, mcp__playwright_go_forward, mcp__playwright_refresh
 model: sonnet
-permissionMode: ask
+permissionMode: default
 skills:
   - moai-playwright-webapp-testing
 ---

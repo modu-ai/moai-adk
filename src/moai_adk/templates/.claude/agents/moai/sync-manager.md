@@ -5,7 +5,7 @@ version: 1.0.0
 category: orchestration
 tools:
 model: inherit
-permissionMode: auto
+permissionMode: dontAsk
 skills:
   - moai-docs-generation
   - moai-docs-validation

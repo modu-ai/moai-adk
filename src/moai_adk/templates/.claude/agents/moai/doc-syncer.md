@@ -3,7 +3,7 @@ name: doc-syncer
 description: "Use when: When automatic document synchronization based on code changes is required. Called from the /moai:3-sync command. CRITICAL: This agent MUST be invoked via Task(subagent_type='doc-syncer') - NEVER executed directly."
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, Bash(uv:*)
 model: haiku
-permissionMode: auto
+permissionMode: dontAsk
 skills:
   - moai-docs-generation
   - moai-docs-validation

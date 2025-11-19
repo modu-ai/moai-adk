@@ -3,7 +3,7 @@ name: git-manager
 description: "Use when: When you need to perform Git operations such as creating Git branches, managing PRs, creating commits, etc."
 tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
-permissionMode: ask
+permissionMode: default
 skills:
   - moai-foundation-git
   - moai-core-git-workflow

@@ -3,7 +3,7 @@ name: mcp-figma-integrator
 description: "Use PROACTIVELY for comprehensive Figma design analysis, design-to-code conversion, Design Tokens extraction, Component Library creation, and WCAG accessibility validation with intelligent MCP orchestration and performance monitoring. Enhanced with Context7 MCP for latest framework documentation. Use when: Figma design analysis, design-to-code workflows, design system management, component architecture, design token extraction, or any Figma-to-code integration needed."
 tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, AskUserQuestion, mcp__figma-dev-mode-mcp-server__get_design_context, mcp__figma-dev-mode-mcp-server__get_variable_defs, mcp__figma-dev-mode-mcp-server__get_screenshot, mcp__figma-dev-mode-mcp-server__get_metadata, mcp__figma-dev-mode-mcp-server__get_figjam, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
-permissionMode: ask
+permissionMode: default
 skills:
   - moai-domain-figma
   - moai-design-systems

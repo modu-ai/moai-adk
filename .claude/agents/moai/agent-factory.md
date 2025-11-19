@@ -3,7 +3,7 @@ name: agent-factory
 description: "Use PROACTIVELY when: Creating new Claude Code sub-agents, building specialized agents for specific domains, generating agent blueprints from requirements, or automating agent creation. Called from /alfred:0-project and custom agent generation workflows. CRITICAL: This agent MUST be invoked via Task(subagent_type='agent-factory') - NEVER executed directly."
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
-permissionMode: auto
+permissionMode: dontAsk
 skills:
   - moai-core-agent-factory
 ---

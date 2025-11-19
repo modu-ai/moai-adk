@@ -3,7 +3,7 @@ name: project-manager
 description: "Use when: When initial project setup and .moai/ directory structure creation are required. Called from the /moai:0-project command."
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
-permissionMode: auto
+permissionMode: dontAsk
 skills:
   - moai-cc-configuration
   - moai-project-config-manager

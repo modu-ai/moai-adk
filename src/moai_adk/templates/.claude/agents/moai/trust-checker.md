@@ -3,7 +3,7 @@ name: trust-checker
 description: "Use when: When code quality verification against TRUST 5 principles is required (Test-First, Readable, Unified, Secured, Trackable)"
 tools: Read, Grep, Glob, Bash
 model: haiku
-permissionMode: auto
+permissionMode: dontAsk
 skills:
   - moai-foundation-trust
   - moai-core-trust-validation
