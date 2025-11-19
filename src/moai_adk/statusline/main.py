@@ -164,11 +164,11 @@ def build_statusline_data(session_context: dict, mode: str = "compact") -> str:
         model_info = session_context.get("model", {})
         model_name = model_info.get("display_name") or model_info.get("name") or "Unknown"
 
-        # Add Claude Code version to model name (e.g., "Haiku-v2.0.45")
+        # Add Claude Code version to model name (e.g., "Haiku 4.5 (v2.0.45)")
         # Only add if model_name doesn't already contain version info (avoid duplication)
         claude_version = session_context.get("version", "")
-        if claude_version and not ("-v" in model_name or "-V" in model_name):
-            model = f"{model_name}-v{claude_version}"
+        if claude_version and not ("(" in model_name):
+            model = f"{model_name} (v{claude_version})"
         else:
             model = model_name
 

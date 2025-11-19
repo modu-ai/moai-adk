@@ -383,15 +383,16 @@ MoAI-ADK statusline displays **real-time development status** in Claude Code's t
 **Compact Mode** (default, ≤80 chars):
 
 ```
-🤖 Haiku 4.5 | 🗿 Ver 0.20.1 | 📊 +0 M0 ?0 | 🔀 develop
+🤖 Haiku 4.5 (v2.0.46) | 🗿 v0.26.0 | 📊 +0 M0 ?0 | 💬 R2-D2 | 🔀 develop
 ```
 
-| Item           | Icon | Meaning                | Example                   |
-| -------------- | ---- | ---------------------- | ------------------------- |
-| **Model**      | 🤖   | Active Claude model    | Haiku 4.5, Sonnet 4.5     |
-| **Version**    | 🗿   | MoAI-ADK version       | 0.20.1                    |
-| **Changes**    | 📊   | Git file status        | +0 M0 ?0                  |
-| **Git Branch** | 🔀   | Current working branch | develop, feature/SPEC-001 |
+| Item           | Icon | Meaning                      | Example                            |
+| -------------- | ---- | ---------------------------- | ---------------------------------- |
+| **Model**      | 🤖   | Claude model + Code version  | Haiku 4.5 (v2.0.46), Sonnet 4.0 (v4.0.15) |
+| **Version**    | 🗿   | MoAI-ADK version             | v0.26.0                            |
+| **Changes**    | 📊   | Git file status              | +0 M0 ?0                          |
+| **Output Style** | 💬   | Selected UI/UX style        | R2-D2, Yoda, default               |
+| **Git Branch** | 🔀   | Current working branch       | develop, feature/SPEC-001          |
 
 ### 📝 Changes Notation Explained
 
@@ -421,11 +422,17 @@ Statusline automatically displays Compact Mode (default, ≤80 chars). To custom
 {
   "statusLine": {
     "type": "command",
-    "command": "uv run --no-project -m moai_adk.statusline.main",
-    "padding": 1
+    "command": "moai-adk statusline",
+    "padding": 0,
+    "refreshInterval": 300
   }
 }
 ```
+
+**Configuration Notes**:
+- `command`: Uses local editable install for latest features
+- `refreshInterval`: Updates every 300ms for real-time status
+- Displays Claude Code version + MoAI-ADK version + Git status + Output style
 
 ---
 

@@ -19,7 +19,8 @@
       "Bash(pkill:*)",
       "Bash(styles.css)",
       "Bash(git for-each-ref:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(git merge-base:*)"
     ],
     "deny": [],
     "ask": []
@@ -30,5 +31,6 @@
     "playwright",
     "notion",
     "figma-dev-mode-mcp-server"
-  ]
+  ],
+  "outputStyle": "Yoda Master"
 }
