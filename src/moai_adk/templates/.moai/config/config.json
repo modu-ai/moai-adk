@@ -20,7 +20,7 @@
   },
   "git_strategy": {
     "personal": {
-      "auto_checkpoint": "event-driven",
+      "auto_checkpoint": "disabled",
       "checkpoint_events": [
         "delete",
         "refactor",

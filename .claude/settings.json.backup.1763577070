@@ -119,6 +119,8 @@
       "Bash(time:*)"
     ],
     "ask": [
+      "Read(./.env)",
+      "Read(./.env.*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
@@ -138,8 +140,6 @@
       "Bash(rm -rf:*)"
     ],
     "deny": [
-      "Read(./.env)",
-      "Read(./.env.*)",
       "Read(./secrets/**)",
       "Read(~/.ssh/**)",
       "Read(~/.aws/**)",
@@ -169,6 +169,6 @@
     "padding": 0,
     "refreshInterval": 300
   },
-  "spinnerTipsEnabled": true,
+  "spinnerTipsEnabled": false,
   "outputStyle": "R2-D2"
 }

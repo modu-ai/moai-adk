@@ -20,7 +20,7 @@
     "mode": "personal",
     "personal": {
       "workflow": "github-flow",
-      "auto_checkpoint": "event-driven",
+      "auto_checkpoint": "disabled",
       "push_to_remote": false
     },
     "team": {

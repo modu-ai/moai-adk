@@ -293,7 +293,7 @@ class ProjectInitializer:
                 },
                 "git_strategy": {
                     "personal": {
-                        "auto_checkpoint": "event-driven",
+                        "auto_checkpoint": "disabled",
                         "checkpoint_events": ["delete", "refactor", "merge", "script", "critical-file"],
                         "checkpoint_type": "local-branch",
                         "max_checkpoints": 10,

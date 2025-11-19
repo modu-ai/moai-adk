@@ -202,7 +202,7 @@ class SmartDefaultsEngine:
         self.defaults = {
             'git_strategy.personal.workflow': 'github-flow',
             'git_strategy.team.workflow': 'git-flow',
-            'git_strategy.personal.auto_checkpoint': 'event-driven',
+            'git_strategy.personal.auto_checkpoint': 'disabled',
             'git_strategy.personal.push_to_remote': False,
             'git_strategy.team.auto_pr': False,
             'git_strategy.team.draft_pr': False,

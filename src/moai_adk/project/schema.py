@@ -354,8 +354,13 @@ def _create_tab3_git_automation() -> Dict[str, Any]:
                         'type': 'select_single',
                         'required': True,
                         'show_if': "git_strategy_mode == 'personal' OR git_strategy_mode == 'hybrid'",
-                        'smart_default': 'event-driven',
+                        'smart_default': 'disabled',
                         'options': [
+                            {
+                                'label': 'Disabled',
+                                'value': 'disabled',
+                                'description': 'No auto checkpoints',
+                            },
                             {
                                 'label': 'Event-Driven',
                                 'value': 'event-driven',
