@@ -5,6 +5,7 @@ for intelligent backup vs new template comparison and recommendations.
 """
 
 import json
+import re
 import subprocess
 from difflib import unified_diff
 from pathlib import Path
