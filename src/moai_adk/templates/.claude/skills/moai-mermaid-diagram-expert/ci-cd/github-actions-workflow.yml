@@ -1,0 +1,89 @@
+# .github/workflows/mermaid-diagrams.yml
+# Auto-convert Mermaid diagrams to PNG on PR and push
+
+name: Convert Mermaid Diagrams
+
+on:
+  pull_request:
+    paths:
+      - 'diagrams/**/*.mmd'
+      - '.github/workflows/mermaid-diagrams.yml'
+  push:
+    branches: [main, develop]
+    paths:
+      - 'diagrams/**/*.mmd'
+      - '.github/workflows/mermaid-diagrams.yml'
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v2
+        with:
+          enable-cache: true
+
+      - name: Sync dependencies
+        run: uv sync
+
+      - name: Convert Mermaid diagrams
+        run: |
+          uv run mermaid-to-svg-png.py ./diagrams \
+            --format png \
+            --batch \
+            --output ./docs/images \
+            --no-overwrite \
+            --json > conversion-results.json || true
+      
+      - name: Check conversion results
+        if: always()
+        run: |
+          if [ -f conversion-results.json ]; then
+            echo "Conversion Results:"
+            cat conversion-results.json
+          fi
+      
+      - name: Commit & Push (on main branch)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          git config user.email "bot@github.com"
+          git config user.name "Mermaid Bot"
+          git add docs/images
+          git commit -m "chore: auto-generated diagram images [skip ci]" || echo "No changes to commit"
+          git push
+      
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            if (fs.existsSync('conversion-results.json')) {
+              const results = JSON.parse(fs.readFileSync('conversion-results.json', 'utf8'));
+              const successful = results.filter(r => r.success).length;
+              const comment = `
+              ### Mermaid Diagram Conversion
+              
+              Converted **${successful}/${results.length}** diagrams to PNG
+              
+              [View diagram updates in commit](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
+              `;
+              
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            }
