@@ -296,7 +296,7 @@ def check_version_update() -> tuple[str, bool]:
 
     Returns:
         (status_indicator, has_update)
-        - status_indicator: "(latest)", "(dev)" or "→ X.X.X available"
+        - status_indicator: "(latest)", "(dev)" or "⬆️ X.X.X available"
         - has_update: True if update available
     """
     try:
@@ -325,8 +325,8 @@ def check_version_update() -> tuple[str, bool]:
 
         # Compare versions with semantic versioning
         if _is_newer_version(latest_version, installed_version):
-            # PyPI has newer version
-            return f"→ {latest_version} available", True
+            # PyPI has newer version (use update icon instead of warning)
+            return f"⬆️ {latest_version} available", True
         elif _is_newer_version(installed_version, latest_version):
             # Local version is newer (development version)
             return "(dev)", False
