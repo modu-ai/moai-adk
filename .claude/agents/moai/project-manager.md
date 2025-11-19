@@ -102,6 +102,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
      - `mode: "settings_modification"` → Modify settings (SETTINGS MODE)
      - `mode: "language_change"` → Change language only
      - `mode: "template_update_optimization"` → Template optimization (UPDATE MODE)
+     - `mode: "glm_configuration"` (NEW) → Configure GLM API integration (GLM MODE)
    - Route to appropriate workflow based on mode
 
 1. **Conversation Language Setup**:
@@ -136,6 +137,13 @@ Alfred passes the user's language directly to you via `Task()` calls.
    - Read language from config backup (preserve existing setting)
    - Invoke `Skill("moai-project-template-optimizer", mode="update", language=current_language)` to handle template optimization
    - Return completion status
+
+   **For mode: "glm_configuration"** (NEW):
+   - Receive `glm_token` parameter from command
+   - Execute GLM setup script: `uv run .moai/scripts/setup-glm.py <glm_token>`
+   - Verify `.env.glm` and `settings.local.json` are updated
+   - Report GLM configuration status to user
+   - Remind user to restart Claude Code to apply new settings
 
 **2.5. Complexity Analysis & Plan Mode Routing** (NEW):
 

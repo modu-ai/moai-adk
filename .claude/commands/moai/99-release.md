@@ -38,20 +38,24 @@ This command is exempt from "Zero Direct Tool Usage" principle because:
 Automated release workflow for MoAI-ADK package:
 
 1. **Check Quality** (`/moai:release check`)
+
    - Run pytest, mypy, ruff, black, bandit validation
    - Verify all tests pass and code quality standards met
 
 2. **Bump Version** (`/moai:release version [major|minor|patch]`)
+
    - Update version in pyproject.toml
-   - Update version in src/moai_adk/__init__.py
+   - Update version in src/moai_adk/**init**.py
    - Update .moai/config/config.json
 
 3. **Generate Changelog** (`/moai:release changelog`)
+
    - Analyze git history since last release
    - Generate CHANGELOG.md automatically
    - Include commit messages and metadata
 
 4. **Release to PyPI** (`/moai:release release`)
+
    - Execute quality checks
    - Build package (uv build)
    - Publish to PyPI (requires PYPI_TOKEN)
@@ -68,6 +72,7 @@ Automated release workflow for MoAI-ADK package:
 ## 🎯 Release Strategy: Personal vs Team Mode
 
 ### Personal Mode (GitHub Flow)
+
 ```
 feature/SPEC-XXX (local)
     ↓
@@ -79,6 +84,7 @@ CI/CD → PyPI (GitHub Actions)
 ```
 
 **Commands**:
+
 ```bash
 # 1. Switch to main (if needed)
 git checkout main
@@ -100,6 +106,7 @@ git push origin main
 ```
 
 ### Team Mode (Git-Flow)
+
 ```
 feature/SPEC-XXX
     ↓
@@ -113,6 +120,7 @@ CI/CD → PyPI (GitHub Actions)
 ```
 
 **Commands**:
+
 ```bash
 # 1. Create feature branch (from develop)
 git checkout -b feature/SPEC-XXX
@@ -139,6 +147,7 @@ git push origin main
 ```
 
 **Current Mode**: Team Mode (develop-based)
+
 - Auto-detection: 3+ contributors → Git-Flow
 - Manual override: Edit config.json git_strategy.team.enabled
 
@@ -163,12 +172,14 @@ git push origin main
 ## Quick Start
 
 ### 1. Pre-Release Checklist
+
 ```bash
 /moai:release check           # Validate quality metrics
 cat .moai/release/CHECKLIST.md  # Review 6-phase checklist
 ```
 
 ### 2. Bump Version
+
 ```bash
 /moai:release version patch   # e.g., 0.25.4 → 0.25.5
 /moai:release version minor   # e.g., 0.25.4 → 0.26.0
@@ -176,6 +187,7 @@ cat .moai/release/CHECKLIST.md  # Review 6-phase checklist
 ```
 
 ### 3. Generate Changelog
+
 ```bash
 /moai:release changelog       # Creates CHANGELOG.md entry
 git add CHANGELOG.md
@@ -201,18 +213,21 @@ git push origin main
 ```
 
 **CI/CD Pipeline**: `.github/workflows/release.yml`
-- **Trigger**: Push to main branch (with tag v*.*.*)
+
+- **Trigger**: Push to main branch (with tag v*.*.\*)
 - **Condition**: All tests must pass
 - **Action**: Auto build → PyPI publish → GitHub Release
 - **Secrets**: PYPI_API_TOKEN (configured in GitHub)
 
 **Requirements**:
+
 - PYPI_API_TOKEN secret configured in GitHub Settings
 - Version tag matches format: `v*.*.*`
 - All tests pass
 - Code quality standards met
 
 **Manual Override (Local Testing Only)**:
+
 ```bash
 # Only for testing locally (do NOT use in production)
 /moai:release release       # Test locally first
@@ -221,6 +236,7 @@ git push origin main
 ```
 
 ### 5. Emergency Rollback
+
 ```bash
 /moai:release rollback        # Revert everything
 # Restores:
@@ -235,6 +251,7 @@ git push origin main
 ## Configuration
 
 ### PyPI Token Setup
+
 ```bash
 # 1. Generate token at https://pypi.org/manage/account/tokens/
 # 2. Set environment variable:
@@ -245,6 +262,7 @@ echo "PYPI_TOKEN=..." >> .env
 ```
 
 ### GitHub Secrets
+
 ```bash
 # For automatic GitHub releases:
 # 1. GitHub Settings → Developer Settings → Personal Access Tokens
@@ -277,12 +295,14 @@ Co-Authored-By: 🎩 Alfred@MoAI
 ```
 
 **규칙**:
+
 1. 항상 한글 섹션 먼저 작성
 2. `---` 구분선으로 구분
 3. 그 다음 영문 섹션 작성
 4. Footer: 🤖 Generated with Claude Code + Co-Authored-By
 
 ### See Also
+
 - `.moai/release/RELEASE_SETUP.md` - Detailed setup instructions
 - `.moai/release/ROLLBACK_GUIDE.md` - Emergency procedures
 - `.moai/release/CHECKLIST.md` - 6-phase release validation
@@ -307,6 +327,7 @@ Co-Authored-By: 🎩 Alfred@MoAI
 **Workflow**: `.github/workflows/release.yml`
 
 **Steps** (자동 실행):
+
 1. 코드 품질 검증 (Quality checks)
 2. 패키지 빌드 (Build package)
 3. PyPI 배포 (Publish to PyPI)
@@ -314,12 +335,14 @@ Co-Authored-By: 🎩 Alfred@MoAI
 5. 배포 완료 알림 (Post deployment comment)
 
 **Requirements**:
+
 - PYPI_API_TOKEN secret configured in GitHub
 - Version tag must match `v*.*.*` format
 - All tests must pass
 - Code quality standards must be met
 
 **Manual Override**:
+
 ```bash
 # Local testing before main push
 /moai:release release       # Test locally
@@ -330,6 +353,7 @@ git push origin main        # Triggers CI/CD
 ```
 
 **Monitoring**:
+
 - GitHub Actions: `.github/workflows/release.yml`
 - PyPI Package: https://pypi.org/project/moai-adk/
 - GitHub Releases: Releases page
@@ -348,3 +372,11 @@ git push origin main        # Triggers CI/CD
 **Status**: Local-Only Development Tool
 **Version**: 0.25.4+
 **Deployment**: Excluded from PyPI distributions
+
+## ⚡️ EXECUTION DIRECTIVE
+
+**You must NOW execute the requested subcommand immediately.**
+
+1. Analyze the arguments (check, version, changelog, release, rollback).
+2. Execute the corresponding bash command or script using `Bash` tool.
+3. Do NOT just describe what you will do. DO IT.

@@ -1,7 +1,7 @@
 {
   "branch": "release/0.26.0",
-  "last_commit": "3843813f fix(merge): restore moai configuration and remove alfred remnants",
-  "commit_time": "29 minutes ago",
-  "changes": 6,
-  "last_check": "2025-11-19T21:55:42.062462"
+  "last_commit": "580131f6 chore(session): sync local configuration with moai settings",
+  "commit_time": "2 hours ago",
+  "changes": 36,
+  "last_check": "2025-11-19T23:58:27.473487"
 }

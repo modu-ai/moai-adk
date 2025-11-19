@@ -132,11 +132,11 @@ git push origin --tags
 
 ---
 
-## Alfred × Selection-Based Workflow 통합
+## MoAI × Selection-Based Workflow 통합
 
-### /alfred 명령어의 동작
+### /moai 명령어의 동작
 
-모든 Alfred 명령어는 활성화된 모드에 맞춰 작동합니다:
+모든 MoAI 명령어는 활성화된 모드에 맞춰 작동합니다:
 
 ```bash
 # /moai:1-plan → 활성화된 모드에 맞는 Branch 생성

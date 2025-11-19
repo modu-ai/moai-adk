@@ -1,236 +1,130 @@
 ---
 name: moai:9-feedback
-description: "Quickly create GitHub issues (automatic information collection + templates)"
+description: "Submit feedback or report issues"
+argument-hint: "[issue|suggestion|question]"
 allowed-tools:
-- Bash(gh:*)
-- Bash(uv:*)
-- AskUserQuestion
-- Skill
-skills:
-- moai-core-issue-labels
-- moai-core-feedback-templates
+  - Task
+  - AskUserQuestion
 ---
 
-# 🎯 MoAI-ADK Alfred 9-Feedback: GitHub Issue Quick Creation Tool
+# 🗣️ MoAI-ADK Step 9: Feedback Loop
 
-> **Purpose**: Record bugs, feature requests, improvement suggestions, and questions quickly and accurately on GitHub.
+> **Architecture**: Commands → Agents → Skills. This command orchestrates ONLY through `Task()` tool.
+> **Delegation Model**: Feedback collection delegated to `quality-gate` agent.
 
-## 📋 Command Purpose
+**Workflow Integration**: This command implements the feedback loop of the MoAI workflow, allowing users to report issues or suggestions directly from the CLI.
 
-Enables developers to immediately record bugs or ideas as GitHub issues when discovered.
+---
 
-- ✅ **Fast**: Complete issue creation in 2-3 steps
-- ✅ **Accurate**: Automatically collect version and environment information
-- ✅ **Organized**: Structured templates by label
-- ✅ **Simple**: Just run the command (`/moai:9-feedback`)
+## 🎯 Command Purpose
 
-**How to use**:
-```bash
+Collect user feedback, bug reports, or feature suggestions and create GitHub issues automatically.
+
+**Run on**: `$ARGUMENTS` (Feedback type)
+
+---
+
+## 💡 Execution Philosophy
+
+```text
 /moai:9-feedback
 ```
 
-Done!
+performs feedback collection through agent delegation:
+
+User Command: /moai:9-feedback [type]
+↓
+Phase 1: Task(subagent_type="quality-gate")
+→ Analyze feedback type
+→ Collect details via AskUserQuestion
+→ Create GitHub Issue via Skill
+↓
+Output: Issue created with link
+
+````
+
+### Key Principle: Zero Direct Tool Usage
+
+**This command uses ONLY these tools:**
+
+- ✅ **Task()** for agent delegation
+- ✅ **AskUserQuestion()** for user interaction (delegated to agent)
+- ❌ No Bash (delegated to agent)
 
 ---
 
-## 🚀 Execution Process (2 Steps)
+## 🚀 Execution Process
 
-### Step 1: Execute Command
-```bash
-/moai:9-feedback
-```
+### Step 1: Delegate to Quality Gate Agent
 
-Just enter this, and Alfred handles the rest.
+Use Task tool to call the `quality-gate` agent (which has access to issue creation skills):
 
----
+```yaml
+Tool: Task
+Parameters:
+- subagent_type: "quality-gate"
+- description: "Collect and submit user feedback"
+- prompt: """You are the quality-gate agent acting as the feedback manager.
 
-### Step 2: Collect Required Information at Once (AskUserQuestion - multiSelect)
+**Task**: Collect user feedback and create a GitHub issue.
 
-**With a single question**, select all of the following:
+**Context**:
+- Feedback Type: $ARGUMENTS (default to 'issue' if empty)
+- Conversation Language: {{CONVERSATION_LANGUAGE}}
 
-```
-┌─ Issue Type (required, single selection)
-│  ├─ 🐛 Bug Report - Problem occurred
-│  ├─ ✨ Feature Request - Propose new feature
-│  ├─ ⚡ Improvement - Improve existing feature
-│  ├─ 📚 Documentation - Improve documentation
-│  ├─ 🔄 Refactoring - Improve code structure
-│  └─ ❓ Question - Ask the team
-│
-├─ Priority (default: medium)
-│  ├─ 🔴 Critical - System down, data loss
-│  ├─ 🟠 High - Major feature failure
-│  ├─ 🟡 Medium - General priority
-│  └─ 🟢 Low - Can be done later
-│
-└─ Template Selection (optional)
-   ├─ ✅ Auto-generate Template (recommended)
-   └─ 📝 Write Manually
-```
+**Instructions**:
 
----
+1. **Determine Feedback Type**:
+   - If $ARGUMENTS is provided, use it.
+   - If not, ask user to select type:
+     - Bug Report
+     - Feature Request
+     - Improvement
+     - Refactoring
+     - Documentation
+     - Question/Other
 
-### Step 3: Review & Fill Auto-Generated Template
+2. **Load Feedback Template**:
+   - Use `Skill("moai-core-feedback-templates")` to retrieve the appropriate template for the selected type.
+   - Read the template structure (Description, Scenario/Reproduction, Expected vs Actual, etc.).
 
-Alfred automatically generates a template matching the selected issue type.
+3. **Collect Details**:
+   - Ask for 'Title' (short summary).
+   - Ask for specific details required by the template (e.g., "Reproduction Steps" for bugs, "Use Case" for features).
+   - Ask for 'Priority' (Low/Medium/High).
 
-For example, when **Bug Report** is selected:
+4. **Create GitHub Issue**:
+   - Use `Skill("moai-core-issue-labels")` or `Bash` (gh issue create) to submit.
+   - Add appropriate labels based on type (bug, enhancement, documentation, etc.).
+   - **CRITICAL**: Format the issue body EXACTLY according to the loaded template.
 
-```markdown
-## Bug Description
+5. **Report Result**:
+   - Show the created issue URL.
+   - Confirm success to the user.
 
-[Space for user input]
-
-## Steps to Reproduce
-
-1. [User input]
-2. [User input]
-3. [User input]
-
-## Expected Behavior
-
-[Space for user input]
-
-## Actual Behavior
-
-[Space for user input]
-
-## Environment Information
-
-🔍 Automatically collected information:
-- MoAI-ADK version: 0.22.5
-- Python version: 3.11.5
-- OS: macOS 14.2
-- Current branch: feature/SPEC-001
-- Uncommitted changes: 3 files
-```
-
-Users only need to fill in the `[Space for user input]` sections.
+**Important**:
+- Use conversation_language for all user interactions.
+- NO EMOJIS in AskUserQuestion options.
+- Ensure the issue body follows the structured template from the skill.
+"""
+````
 
 ---
 
-Alfred automatically handles:
+## 🎯 Summary: Your Execution Checklist
 
-1. **Environment Information Collection** (`python3 .moai/scripts/feedback-collect-info.py`):
-   - MoAI-ADK version
-   - Python version, OS
-   - Git status (current branch, uncommitted changes)
-   - Current SPEC being worked on
+Before you consider this command complete, verify:
 
-2. **Label Mapping** (`Skill("moai-core-issue-labels")`):
-   - Issue type → labels (e.g., bug → "bug", "reported")
-   - Priority → labels (e.g., high → "priority-high")
-
-3. **Auto-generate Title**: "🐛 [BUG] Bug description..."
-
-4. **GitHub Issue Creation**:
-   ```bash
-   gh issue create \
-     --title "🐛 [BUG] Bug description" \
-     --body "## Bug Description\n...[template + environment info]..." \
-     --label "bug" \
-     --label "reported" \
-     --label "priority-high"
-   ```
-
-5. **Display Result**:
-   ```
-   ✅ GitHub Issue #234 created successfully!
-
-   📋 Title: 🐛 [BUG] Bug description
-   🔴 Priority: High
-   🏷️ Labels: bug, reported, priority-high
-   🔗 URL: https://github.com/owner/repo/issues/234
-
-   💡 Next: Reference this issue in commit messages or link to SPEC
-   ```
+- [ ] **Agent Called**: `quality-gate` agent was invoked.
+- [ ] **Feedback Collected**: User was asked for details.
+- [ ] **Issue Created**: GitHub issue was successfully created.
+- [ ] **Link Provided**: User received the issue URL.
 
 ---
 
-## 📊 Label Mapping (via `Skill("moai-core-issue-labels")`)
+## ⚡️ EXECUTION DIRECTIVE
 
-| Type | Main Labels | Priority | Final Labels |
-|------|-------------|----------|--------------|
-| 🐛 Bug | bug, reported | High | bug, reported, priority-high |
-| ✨ Feature | feature-request, enhancement | Medium | feature-request, enhancement, priority-medium |
-| ⚡ Improvement | improvement, enhancement | Medium | improvement, enhancement, priority-medium |
-| 📚 Documentation | documentation | Medium | documentation, priority-medium |
-| 🔄 Refactoring | refactor | Medium | refactor, priority-medium |
-| ❓ Question | question, help-wanted | Medium | question, help-wanted, priority-medium |
+**You must NOW execute the command following the "Execution Process" described above.**
 
----
-
-## ⚠️ Rules
-
-### ✅ Must Do
-
-- ✅ Collect required information at once with multiSelect (issue type, priority)
-- ✅ Accurately preserve user input
-- ✅ Execute auto-information collection script (`python3 .moai/scripts/feedback-collect-info.py`)
-- ✅ Map labels with `Skill("moai-core-issue-labels")`
-- ✅ Provide templates with `Skill("moai-core-feedback-templates")`
-- ✅ Display Issue URL after creation
-
-### ❌ Must Not Do
-
-- ❌ Use command arguments (`/moai:9-feedback --bug` is wrong → just use `/moai:9-feedback`)
-- ❌ Ask more than 4 questions
-- ❌ Modify user input
-- ❌ Create issues without labels
-- ❌ Hard-code labels (use skill-based mapping)
-
----
-
-## 💡 Key Advantages
-
-1. **⚡ Fast**: Complete in 2-3 steps within 30 seconds
-2. **🤖 Automated**: Automatically collect version and environment information
-3. **📋 Accurate**: Structured templates by label
-4. **🏷️ Meaningful**: Classification based on `moai-core-issue-labels` skill
-5. **🔄 Reusable**: Share labels with `/moai:1-plan`, `/moai:3-sync`
-6. **Multi-language**: All text written in user's conversation language
-
----
-
-## 📝 Usage Example
-
-**Step 1**: Execute command
-```bash
-/moai:9-feedback
-```
-
-**Step 2**: Select required information
-```
-Issue Type: [🐛 Bug Report] selected
-Priority: [🟠 High] selected
-Template: [✅ Auto-generate] selected
-```
-
-**Step 3**: Fill template
-```markdown
-## Bug Description
-Login button does not respond when clicked.
-
-## Steps to Reproduce
-1. Access homepage
-2. Click login button in top right corner
-3. No response
-
-## Expected Behavior
-Login modal should appear
-
-## Actual Behavior
-Nothing happens
-
-## Environment Information
-🔍 Automatically collected information:
-- MoAI-ADK version: 0.22.5
-- Python version: 3.11.5
-- OS: macOS 14.2
-```
-
-**Result**: Issue #234 automatically created + URL displayed ✅
-
----
-
-**Supported Version**: MoAI-ADK v0.22.5+
+1. Call the `Task` tool with `subagent_type="quality-gate"`.
+2. Do NOT just describe what you will do. DO IT.

@@ -18,7 +18,7 @@
 ls -la .claude/agents/
 
 # 2. Check YAML frontmatter
-cat .claude/agents/alfred/cc-manager.md | head -20
+cat .claude/agents/moai/cc-manager.md | head -20
 
 # 3. Restart Claude Code
 # Close and reopen Claude Code

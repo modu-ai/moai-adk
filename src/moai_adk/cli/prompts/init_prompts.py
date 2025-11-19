@@ -20,8 +20,6 @@ class ProjectSetupAnswers(TypedDict):
     locale: str  # ko | en | ja | zh | other (default from init)
     language: str | None  # Will be set in /alfred:0-project
     author: str  # Will be set in /alfred:0-project
-    use_glm: bool  # Whether to use GLM for Claude models
-    glm_token: str | None  # GLM API token (if use_glm is True)
     custom_language: str | None  # User input for "other" language option
 
 
@@ -51,8 +49,6 @@ def prompt_project_setup(
         "locale": "en",  # Default: will be configurable in /alfred:0-project
         "language": None,  # Will be detected in /alfred:0-project
         "author": "",  # Will be set in /alfred:0-project
-        "use_glm": False,  # Whether to use GLM
-        "glm_token": None,  # GLM API token
         "custom_language": None,  # User input for other language
     }
 
@@ -146,37 +142,6 @@ def prompt_project_setup(
             console.print(
                 f"[cyan]🌐 Selected Language:[/cyan] {language_names.get(language_choice, language_choice)}"
             )
-
-        # GLM Configuration
-        console.print("\n[blue]🔧 GLM Configuration[/blue]")
-        console.print("[dim]GLM provides OpenAI-compatible API endpoint for Claude models[/dim]\n")
-
-        # Ask whether to use GLM
-        use_glm = questionary.confirm(
-            "Enable GLM for Claude model access?",
-            default=False,
-        ).ask()
-
-        if use_glm is None:
-            raise KeyboardInterrupt
-
-        answers["use_glm"] = use_glm
-
-        if use_glm:
-            console.print("[cyan]🔐 GLM Authentication[/cyan]")
-            glm_token = questionary.password(
-                "Enter your GLM API token:",
-                validate=lambda text: len(text) > 0 or "GLM token is required",
-            ).ask()
-
-            if glm_token is None:
-                raise KeyboardInterrupt
-
-            answers["glm_token"] = glm_token
-            console.print("[green]✅ GLM configuration set[/green]")
-        else:
-            answers["glm_token"] = None
-            console.print("[dim]GLM disabled (can be enabled later in /moai:project)[/dim]")
 
         return answers
 

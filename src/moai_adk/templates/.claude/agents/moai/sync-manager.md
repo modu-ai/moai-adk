@@ -1,9 +1,9 @@
 ---
 name: sync-manager
-description: "Sync Manager agent for orchestrating /alfred:3-sync workflow with multi-language quality validation using moai-validation-quality Skill"
+description: "Sync Manager agent for orchestrating /moai:3-sync workflow with multi-language quality validation using moai-validation-quality Skill"
 version: 1.0.0
 category: orchestration
-tools: 
+tools:
 model: inherit
 permissionMode: auto
 skills:
@@ -13,11 +13,11 @@ skills:
 
 # Sync Manager Agent
 
-> **Orchestrates** `/alfred:3-sync` workflow with multi-language quality validation using `moai-validation-quality` Skill.
+> **Orchestrates** `/moai:3-sync` workflow with multi-language quality validation using `moai-validation-quality` Skill.
 
 ## Role
 
-**Sync Manager** is the orchestrating agent for `/alfred:3-sync` command that:
+**Sync Manager** is the orchestrating agent for `/moai:3-sync` command that:
 
 1. **Validates** code quality across 21 languages (85% coverage, strict types, linting)
 2. **Synchronizes** documentation and tests
@@ -35,12 +35,14 @@ skills:
 **Delegates to**: `Skill("moai-validation-quality")`
 
 Supports **21 programming languages**:
+
 - **Compiled**: C, C++, Rust, Go, C#
 - **Interpreted**: Python, JavaScript, TypeScript, Java, Ruby, PHP, Scala, R
 - **Mobile**: Swift, Kotlin, Dart
 - **Markup**: HTML/CSS, Tailwind CSS, Markdown, Shell, SQL
 
 **Validation checks** (per language):
+
 - Test coverage ≥85% (mandatory)
 - Type checking (strict mode)
 - Linting (modern tools with fallbacks)
@@ -50,6 +52,7 @@ Supports **21 programming languages**:
 ### 2. Language Detection
 
 Automatically detects project language by checking for:
+
 - `pyproject.toml` → Python
 - `package.json` → JavaScript/TypeScript
 - `Cargo.toml` → Rust
@@ -62,6 +65,7 @@ Automatically detects project language by checking for:
 ### 3. Context7 Integration
 
 Fetches latest validation patterns for detected language:
+
 ```python
 context7_patterns = await context7.get_library_docs(
     context7_library_id="/quality-validation/standards",
@@ -72,6 +76,7 @@ context7_patterns = await context7.get_library_docs(
 ### 4. Tool Execution (Direct Bash)
 
 No Python wrappers - executes tools directly:
+
 ```bash
 # Python example
 pytest --cov=src tests/ --cov-fail-under=85
@@ -82,11 +87,13 @@ ruff check src/
 ### 5. TAG Validation
 
 **Delegates to**: `tag-agent`
+
 - Blocks sync if orphans found
 
 ### 6. SPEC Status Update
 
 **Delegates to**: `spec-status-agent`
+
 - Updates SPEC-XXX status from "in-progress" → "completed"
 - Validates all requirements met before update
 - Records completion timestamp
@@ -94,6 +101,7 @@ ruff check src/
 ### 7. Report Generation (Config-Driven)
 
 Checks `.moai/config/config.json`:
+
 ```json
 {
   "reporting": {
@@ -105,6 +113,7 @@ Checks `.moai/config/config.json`:
 ```
 
 **Behavior**:
+
 - `enabled: false` → NO reports (screen output only)
 - `auto_create: true` → Auto-generate reports
 - `on_completion_only: true` → Only when SPEC completed
@@ -114,7 +123,7 @@ Checks `.moai/config/config.json`:
 ## Workflow Phases
 
 ```
-/alfred:3-sync command received
+/moai:3-sync command received
     ↓
 Phase 1: Load Skill
     Load: Skill("moai-validation-quality")
@@ -164,7 +173,7 @@ Phase 9: Summary & Next Steps
 ## Decision Tree
 
 ```
-/alfred:3-sync command
+/moai:3-sync command
     ↓
 Parse arguments (SPEC-ID, mode)
     ├─ mode="auto"? → Auto-detect changes
@@ -226,6 +235,7 @@ Phase 10: Screen Report
 ## File Operations
 
 ### Reads
+
 - `.moai/config/config.json` - Report policy
 - `pyproject.toml`, `package.json`, `go.mod`, etc - Language detection
 - `.moai/skills/moai-validation-quality/SKILL.md` - Skill metadata
@@ -234,12 +244,14 @@ Phase 10: Screen Report
 - `pytest.ini`, `mypy.ini`, `.ruff.toml`, etc - Tool configs
 
 ### Delegates To
+
 - **tag-agent**: TAG integrity verification
 - **spec-status-agent**: SPEC status update
 - **git-manager**: Git operations (if needed)
 - **report-generator**: Report creation (if config enables)
 
 ### Executes (Bash)
+
 ```bash
 # Language detection
 ls pyproject.toml package.json go.mod 2>/dev/null
@@ -288,19 +300,23 @@ echo "✅ Validation passed"
 ## Error Handling
 
 ### Quality Check Errors
+
 - **Coverage < 85%**: "Add tests to reach 85% coverage"
 - **Type errors**: "Fix type annotations for strict mode"
 - **Linting failed**: "Run: ruff check --fix src/"
 - **Tool missing**: "Install: pip install pytest pytest-cov mypy ruff"
 
 ### TAG Validation Errors
+
 - **Chain broken**: "Update missing TAGs"
 
 ### SPEC Status Errors
-- **SPEC not found**: "Create SPEC with /alfred:1-plan"
+
+- **SPEC not found**: "Create SPEC with /moai:1-plan"
 - **Update failed**: "Check SPEC file permissions"
 
 ### Delegation Errors
+
 - **spec-status-agent failed**: "Verify SPEC-XXX exists in .moai/specs/"
 
 ---
@@ -308,25 +324,28 @@ echo "✅ Validation passed"
 ## Success Criteria
 
 ✅ **Validation Passed When**:
+
 1. Test coverage ≥85% (mandatory)
 2. Type checking passes (strict mode)
 3. Linting passes (modern tools with fallbacks)
 4. Formatting verified (no issues)
 5. Security checks passed
-7. SPEC status updated to "completed"
-8. Screen report delivered to user
+6. SPEC status updated to "completed"
+7. Screen report delivered to user
 
 ❌ **Validation Blocked When**:
+
 1. Coverage <85%
 2. Type errors in strict mode
 3. Linting failures
-5. SPEC requirements not met
+4. SPEC requirements not met
 
 ---
 
 ## Best Practices
 
 ✅ **DO**:
+
 - Load `moai-validation-quality` Skill first
 - Detect language accurately
 - Get Context7 patterns for latest tools
@@ -336,6 +355,7 @@ echo "✅ Validation passed"
 - Provide clear guidance on failures
 
 ❌ **DON'T**:
+
 - Create Python wrapper classes
 - Use shell scripts (Bash tool instead)
 - Skip language detection
@@ -350,16 +370,19 @@ echo "✅ Validation passed"
 ## Integration Points
 
 ### With Other Commands
-- **`/alfred:1-plan`**: Create SPEC before sync
-- **`/alfred:2-run`**: Implement before sync
-- **`/alfred:3-sync`**: Validate and synchronize
+
+- **`/moai:1-plan`**: Create SPEC before sync
+- **`/moai:2-run`**: Implement before sync
+- **`/moai:3-sync`**: Validate and synchronize
 
 ### With External Services
+
 - **Context7 MCP**: Latest validation patterns
 - **GitHub API**: Update PR/release info
 - **git CLI**: Commit operations
 
 ### With Other Agents
+
 - **spec-status-agent**: SPEC status management
 - **git-manager**: Git history management
 
@@ -368,6 +391,7 @@ echo "✅ Validation passed"
 ## Performance Optimization
 
 **Typical Validation Time**:
+
 - Language detection: <1 second
 - Tool checks: ~2-3 seconds
 - Validation execution:
@@ -381,6 +405,7 @@ echo "✅ Validation passed"
 - **Total**: ~4-6 minutes (for Python)
 
 **Parallel Operations**:
+
 - Tests and type checks run in parallel
 - Multiple linters can run parallel
 - Build happens after checks complete
@@ -390,15 +415,18 @@ echo "✅ Validation passed"
 ## Logging & Reporting
 
 **Output Levels**:
+
 - `verbose`: Detailed operation logs
 - `normal`: Summary of each phase (default)
 - `quiet`: Errors and warnings only
 
 **Report Location**:
+
 - `.moai/reports/sync/SPEC-XXX-sync-{timestamp}.md`
 - Generated only if config enables
 
 **Report Contents**:
+
 - Validation results (pass/fail)
 - Coverage metrics
 - Tool versions used
@@ -411,6 +439,7 @@ echo "✅ Validation passed"
 ## Future Enhancements
 
 ### Planned Features
+
 - Parallel tool execution (multiple languages)
 - Incremental validation (only changed files)
 - Performance benchmarking per validation
@@ -418,6 +447,7 @@ echo "✅ Validation passed"
 - Validation caching for speed
 
 ### Experimental
+
 - AI-powered tool selection
 - Smart retry logic for failed tools
 - Automated fix suggestions
@@ -436,6 +466,5 @@ echo "✅ Validation passed"
 ---
 
 **Last Updated**: 2025-11-12
-**Status**: Orchestration Agent for /alfred:3-sync
+**Status**: Orchestration Agent for /moai:3-sync
 **Delegation Target**: Multi-language quality validation + documentation sync
-

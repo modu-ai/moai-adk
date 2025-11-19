@@ -1,6 +1,5 @@
 {
-  "_meta": {
-  },
+  "_meta": {},
   "moai": {
     "version": "{{MOAI_VERSION}}",
     "update_check_frequency": "daily",
@@ -53,10 +52,10 @@
   },
   "pipeline": {
     "available_commands": [
-      "/alfred:0-project",
-      "/alfred:1-plan",
-      "/alfred:2-run",
-      "/alfred:3-sync"
+      "/moai:0-project",
+      "/moai:1-plan",
+      "/moai:2-run",
+      "/moai:3-sync"
     ]
   },
   "language": {
@@ -105,10 +104,7 @@
       "enabled": true,
       "temp_files": true,
       "cache_files": true,
-      "patterns": [
-        ".moai/temp/*",
-        ".moai/cache/*.tmp"
-      ]
+      "patterns": [".moai/temp/*", ".moai/cache/*.tmp"]
     },
     "warnings": {
       "uncommitted_changes": true
@@ -157,7 +153,7 @@
   "github": {
     "templates": {
       "enable_trust_5": true,
-      "enable_alfred_commands": true,
+      "enable_moai_commands": true,
       "spec_directory": ".moai/specs",
       "docs_directory": ".moai/docs",
       "test_directory": "tests",
@@ -170,15 +166,21 @@
     "notes": "auto_delete_branches: whether to auto-delete feature branches after merge. spec_git_workflow: 'feature_branch' (auto), 'develop_direct' (direct), 'per_spec' (ask per SPEC - flexible, user controls each workflow)"
   },
   "document_management": {
-    "_meta": {
-    },
+    "_meta": {},
     "enabled": true,
     "enforce_structure": true,
     "block_root_pollution": false,
     "directories": {
       "reports": {
         "base": ".moai/reports/",
-        "categories": ["inspection", "phases", "sync", "analysis", "validation", "daily"],
+        "categories": [
+          "inspection",
+          "phases",
+          "sync",
+          "analysis",
+          "validation",
+          "daily"
+        ],
         "auto_categorize": true,
         "retention_days": 90
       },
@@ -189,7 +191,13 @@
       },
       "scripts": {
         "base": ".moai/scripts/",
-        "categories": ["dev", "conversion", "validation", "analysis", "maintenance"],
+        "categories": [
+          "dev",
+          "conversion",
+          "validation",
+          "analysis",
+          "maintenance"
+        ],
         "retention_days": null
       },
       "temp": {
@@ -212,14 +220,33 @@
       }
     },
     "root_whitelist": [
-      "README.md", "README.*.md",
-      "CHANGELOG.md", "CONTRIBUTING.md", "CLAUDE.md",
-      "LICENSE", "LICENSE.*",
-      "pyproject.toml", "setup.py", "setup.cfg",
-      "package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml",
-      ".gitignore", ".gitattributes", ".editorconfig", ".prettierrc", ".eslintrc*",
-      "Makefile", "Dockerfile", "docker-compose.yml", ".dockerignore",
-      "tsconfig.json", "jsconfig.json", "next.config.js", "vite.config.js"
+      "README.md",
+      "README.*.md",
+      "CHANGELOG.md",
+      "CONTRIBUTING.md",
+      "CLAUDE.md",
+      "LICENSE",
+      "LICENSE.*",
+      "pyproject.toml",
+      "setup.py",
+      "setup.cfg",
+      "package.json",
+      "package-lock.json",
+      "yarn.lock",
+      "pnpm-lock.yaml",
+      ".gitignore",
+      ".gitattributes",
+      ".editorconfig",
+      ".prettierrc",
+      ".eslintrc*",
+      "Makefile",
+      "Dockerfile",
+      "docker-compose.yml",
+      ".dockerignore",
+      "tsconfig.json",
+      "jsconfig.json",
+      "next.config.js",
+      "vite.config.js"
     ],
     "file_patterns": {
       "reports": {

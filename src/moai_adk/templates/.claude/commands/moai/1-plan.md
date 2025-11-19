@@ -3,17 +3,16 @@ name: moai:1-plan
 description: "Define specifications and create development branch"
 argument-hint: Title 1 Title 2 ... | SPEC-ID modifications
 allowed-tools:
-- Task
-- AskUserQuestion
-- Skill
+  - Task
+  - AskUserQuestion
+  - Skill
 skills:
-- moai-core-issue-labels
+  - moai-core-issue-labels
 ---
 
 # 🏗️ MoAI-ADK Step 1: Establish a plan (Plan) - Always make a plan first and then proceed.
 
 > **Batched Design**: All AskUserQuestion calls follow batched design principles (1-4 questions per call) to minimize user interaction turns. See CLAUDE.md section "Alfred Command Completion Pattern" for details.
-
 
 **4-Step Workflow Integration**: This command implements Steps 1-2 of Alfred's workflow (Intent Understanding → Plan Creation). See CLAUDE.md for full workflow details.
 
@@ -28,12 +27,14 @@ skills:
 This local environment includes CodeRabbit AI review integration for SPEC documents:
 
 **Automatic workflows:**
+
 - ✅ SPEC review: CodeRabbit analyzes SPEC metadata and EARS structure
 - ✅ GitHub Issue sync: SPEC files automatically create/update GitHub Issues
 - ✅ Auto-approval: Draft PRs are approved when quality meets standards (80%+)
 - ✅ SPEC quality validation: Checklist for metadata, structure, and content
 
 **Scope:**
+
 - 🏠 **Local environment**: Full CodeRabbit integration with auto-approval
 - 📦 **Published packages**: Users get GitHub Issue sync only (no CodeRabbit)
 
@@ -106,6 +107,7 @@ PHASE 1 consists of **two independent sub-phases** to provide flexible workflow 
 ```
 
 **Key Points**:
+
 - **Phase A is optional** - Skip if user provides clear SPEC title
 - **Phase B is required** - Always runs to analyze project and create SPEC
 
@@ -114,6 +116,7 @@ PHASE 1 consists of **two independent sub-phases** to provide flexible workflow 
 ### 📋 PHASE 1A: Project Exploration (Optional - if needed)
 
 #### When to run Phase A:
+
 - User provides only vague/unstructured request
 - Need to find existing files and patterns
 - Unclear about current project state
@@ -240,18 +243,19 @@ After the spec-builder presents the implementation plan report, use AskUserQuest
 Tool: AskUserQuestion
 Parameters:
 questions:
-  - question: "Planning is complete. Would you like to proceed with SPEC creation based on this plan?"
-    header: "SPEC Generation"
-    multiSelect: false
-    options:
-      - label: "Proceed with SPEC Creation"
-        description: "Create SPEC files in .moai/specs/SPEC-{ID}/ based on approved plan"
-      - label: "Request Plan Modification"
-        description: "Modify plan content before SPEC creation"
-      - label: "Save as Draft"
-        description: "Save plan as draft and continue later"
-      - label: "Cancel"
-        description: "Discard plan and return to planning stage"
+
+- question: "Planning is complete. Would you like to proceed with SPEC creation based on this plan?"
+  header: "SPEC Generation"
+  multiSelect: false
+  options:
+  - label: "Proceed with SPEC Creation"
+    description: "Create SPEC files in .moai/specs/SPEC-{ID}/ based on approved plan"
+  - label: "Request Plan Modification"
+    description: "Modify plan content before SPEC creation"
+  - label: "Save as Draft"
+    description: "Save plan as draft and continue later"
+  - label: "Cancel"
+    description: "Discard plan and return to planning stage"
 
 **Wait for user response**, then proceed to Step 3.5.
 
@@ -291,18 +295,19 @@ Display detailed progress report to user and get final approval:
 Tool: AskUserQuestion
 Parameters:
 questions:
-  - question: "Plan completion and progress report\n\n**Analysis results:**\n- SPEC candidates found: [Number]\n- Priority: [Priority]\n- Estimated work time: [Time Estimation]\n\n**Next steps:**\n1. PHASE 2: SPEC file creation\n   - .moai/specs/SPEC-{ID}/\n   - spec.md, plan.md, acceptance.md creation\n\nProceed with the plan?"
-    header: "Plan Confirmation"
-    multiSelect: false
-    options:
-      - label: "Proceed"
-        description: "Start SPEC creation according to plan"
-      - label: "Detailed Revision"
-        description: "Revise plan content then proceed"
-      - label: "Save as Draft"
-        description: "Save plan and continue later"
-      - label: "Cancel"
-        description: "Cancel operation and discard plan"
+
+- question: "Plan completion and progress report\n\n**Analysis results:**\n- SPEC candidates found: [Number]\n- Priority: [Priority]\n- Estimated work time: [Time Estimation]\n\n**Next steps:**\n1. PHASE 2: SPEC file creation\n - .moai/specs/SPEC-{ID}/\n - spec.md, plan.md, acceptance.md creation\n\nProceed with the plan?"
+  header: "Plan Confirmation"
+  multiSelect: false
+  options:
+  - label: "Proceed"
+    description: "Start SPEC creation according to plan"
+  - label: "Detailed Revision"
+    description: "Revise plan content then proceed"
+  - label: "Save as Draft"
+    description: "Save plan and continue later"
+  - label: "Cancel"
+    description: "Cancel operation and discard plan"
 
 **Wait for user response**, then proceed to Step 4.
 
@@ -311,11 +316,13 @@ questions:
 Based on the user's choice:
 
 **IF user selected "Proceed"**:
+
 1. Store approval confirmation
 2. Print: "✅ Plan approved. Proceeding to PHASE 2."
 3. Proceed to PHASE 2 (SPEC Document Creation)
 
 **IF user selected "Detailed Revision"**:
+
 1. Ask the user: "What changes would you like to make to the plan?"
 2. Wait for user's feedback
 3. Pass feedback to spec-builder agent
@@ -323,6 +330,7 @@ Based on the user's choice:
 5. Return to Step 3.5 (request approval again with updated plan)
 
 **IF user selected "Save as Draft"**:
+
 1. Create directory: `.moai/specs/SPEC-{ID}/`
 2. Save plan to `.moai/specs/SPEC-{ID}/plan.md` with status: draft
 3. Create commit: `draft(spec): WIP SPEC-{ID} - {title}`
@@ -330,6 +338,7 @@ Based on the user's choice:
 5. End command execution (stop here)
 
 **IF user selected "Cancel"**:
+
 1. Print to user: "Plan discarded. No files created."
 2. End command execution (stop here)
 
@@ -346,11 +355,13 @@ Your task is to create the SPEC document files in the correct directory structur
 **Format that MUST be followed**: `.moai/specs/SPEC-{ID}/`
 
 **Correct Examples**:
+
 - ✅ `SPEC-AUTH-001/`
 - ✅ `SPEC-REFACTOR-001/`
 - ✅ `SPEC-UPDATE-REFACTOR-001/`
 
 **Incorrect examples**:
+
 - ❌ `AUTH-001/` (missing SPEC- prefix)
 - ❌ `SPEC-001-auth/` (additional text after ID)
 - ❌ `SPEC-AUTH-001-jwt/` (additional text after ID)
@@ -358,14 +369,17 @@ Your task is to create the SPEC document files in the correct directory structur
 **Duplicate check required**: Verify SPEC ID uniqueness before creation
 
 Search scope:
+
 - Primary: .moai/specs/ directory
 
 Return:
+
 - exists: true/false
 - locations: [] (if exists, list all conflicting file paths)
 - recommendation: "safe to create" or "duplicate found - suggest different ID"
 
 **Composite Domain Rules**:
+
 - ✅ Allow: `UPDATE-REFACTOR-001` (2 domains)
 - ⚠️ Caution: `UPDATE-REFACTOR-FIX-001` (3+ domains, simplification recommended)
 
@@ -453,6 +467,7 @@ Create SPEC-{SPEC_ID} with the following requirements:
 ## 🚀 PHASE 3: Git Branch & PR Setup (STEP 2 continuation)
 
 PHASE 3 automatically executes IF:
+
 1. PHASE 2 completed successfully
 2. Git operations enabled in config
 3. User has appropriate permissions
@@ -487,6 +502,7 @@ Return:
 ### Step 2: Create Branch (Personal Mode)
 
 **IF git_strategy.personal mode**:
+
 ```
 Tool: Task
 Parameters:
@@ -508,6 +524,7 @@ Use conventional commit format: "feat(spec): Add SPEC-{SPEC_ID} specification"
 ### Step 3: Create Draft PR (Team Mode)
 
 **IF git_strategy.team mode**:
+
 ```
 Tool: Task
 Parameters:
@@ -578,8 +595,7 @@ IF any checkbox is unchecked → Identify missing step and complete it before en
 
 ---
 
-**End of command execution guide**
----
+## **End of command execution guide**
 
 ## Final Step: Next Action Selection
 
@@ -610,6 +626,15 @@ AskUserQuestion({
 ```
 
 **Important**:
+
 - Use conversation language from config
 - No emojis in any AskUserQuestion fields
 - Always provide clear next step options
+
+## ⚡️ EXECUTION DIRECTIVE
+
+**You must NOW execute the command following the "PHASE 1 Workflow Overview" described above.**
+
+1. Start PHASE 1 immediately.
+2. Call the `Task` tool with `subagent_type="spec-builder"` (or `Explore` if needed).
+3. Do NOT just describe what you will do. DO IT.

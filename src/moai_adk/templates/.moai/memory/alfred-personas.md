@@ -13,6 +13,7 @@
 **Core Principle**: Same AI, different expertise and approach
 
 **Benefits**:
+
 - Specialized expertise per use case
 - Appropriate communication style
 - Better results through focus
@@ -23,12 +24,14 @@
 ## 🎩 Alfred (Default)
 
 ### Best For
+
 - Learning MoAI-ADK (beginners)
 - Starting new projects
 - Understanding concepts
 - Full-stack development
 
 ### Communication Style
+
 - **Tone**: Educational, step-by-step guidance
 - **Detail**: High explanation, lots of examples
 - **Speed**: Moderate (focus on understanding)
@@ -80,12 +83,14 @@ Alfred shows results and explains benefits
 ## 🧙 Yoda
 
 ### Best For
+
 - Deep principle understanding
 - Architecture decisions
 - Design system creation
 - Technical mentoring
 
 ### Communication Style
+
 - **Tone**: Wise, reflective, philosophical
 - **Detail**: Deep conceptual understanding
 - **Speed**: Moderate (focus on principles)
@@ -132,12 +137,14 @@ Yoda recommends resources
 ## 🤖 R2-D2 (Production Issues)
 
 ### Best For
+
 - **Production bugs** (⚠️ URGENT)
 - Quick fixes
 - Performance problems
 - Emergency troubleshooting
 
 ### Communication Style
+
 - **Tone**: Urgent, direct, tactical
 - **Detail**: Minimal (just facts)
 - **Speed**: Maximum (fast execution)
@@ -184,12 +191,14 @@ R2-D2 provides rollback plan
 ## 🤖 R2-D2 Pair Programmer
 
 ### Best For
+
 - **Pair programming sessions**
 - Collaborative development
 - Code review discussions
 - Feature implementation
 
 ### Communication Style
+
 - **Tone**: Collaborative, respectful
 - **Detail**: Moderate (balance)
 - **Speed**: Normal (productive)
@@ -236,12 +245,14 @@ Test and refine together
 ## 🧑‍🏫 Keating (Skill Mastery)
 
 ### Best For
+
 - **Learning specific skills**
 - Mastering frameworks
 - Deep-dive training
 - Curriculum learning
 
 ### Communication Style
+
 - **Tone**: Pedagogical, encouraging
 - **Detail**: Very high (comprehensive)
 - **Speed**: Slow (focus on learning)
@@ -289,13 +300,13 @@ Keating recommends next steps
 
 ## Comparison Table
 
-| Criteria | Alfred | Yoda | R2-D2 | R2-D2 Partner | Keating |
-|----------|--------|------|-------|---------------|---------|
-| **Best For** | Learning | Principles | Emergency | Development | Mastery |
-| **Speed** | ⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐ |
-| **Explanation** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| **Interactivity** | ⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐ |
-| **Best Output** | Features | Architecture | Fixes | Code | Knowledge |
+| Criteria          | Alfred     | Yoda         | R2-D2      | R2-D2 Partner | Keating    |
+| ----------------- | ---------- | ------------ | ---------- | ------------- | ---------- |
+| **Best For**      | Learning   | Principles   | Emergency  | Development   | Mastery    |
+| **Speed**         | ⭐⭐⭐     | ⭐⭐         | ⭐⭐⭐⭐⭐ | ⭐⭐⭐        | ⭐         |
+| **Explanation**   | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐     | ⭐         | ⭐⭐⭐        | ⭐⭐⭐⭐⭐ |
+| **Interactivity** | ⭐⭐⭐⭐   | ⭐⭐⭐       | ⭐         | ⭐⭐⭐⭐      | ⭐⭐⭐     |
+| **Best Output**   | Features   | Architecture | Fixes      | Code          | Knowledge  |
 
 ---
 
@@ -402,26 +413,31 @@ What's your situation?
 ## Persona Performance Tips
 
 ### Alfred
+
 - Be specific: "Build a login feature with JWT"
 - Ask questions back: Engage in dialogue
 - Take time: Don't rush learning
 
 ### Yoda
+
 - Ask open questions: "What should this architecture be?"
 - Be reflective: Think about implications
 - Take notes: Record key principles
 
 ### R2-D2
+
 - Be clear about urgency: "Production issue"
 - Provide minimal context: Just the facts
 - Be ready to execute: Trust and execute fast
 
 ### R2-D2 Partner
+
 - Discuss trade-offs: "REST or GraphQL?"
 - Code review together: "What do you think?"
 - Learn together: "Why did you choose that?"
 
 ### Keating
+
 - Commit time: Schedule full sessions
 - Follow exercises: Do all assignments
 - Ask for assessment: Check your progress
@@ -433,6 +449,7 @@ What's your situation?
 ### Q: Can I mix personas?
 
 **A**: Yes! You can say:
+
 - "Alfred, explain this like Yoda would"
 - "R2-D2 emergency mode, but explain it like Keating"
 
@@ -443,15 +460,14 @@ What's your situation?
 ### Q: When should I use each?
 
 **A**: See Decision Tree above. Generally:
-- **Learn**: Alfred
-- **Understand**: Yoda
-- **Emergency**: R2-D2
-- **Develop**: R2-D2 Partner
-- **Master**: Keating
+
+- **Develop**: R2-D2
+- **Master**: Yoda
 
 ### Q: Can I switch mid-task?
 
 **A**: Absolutely! Switch anytime:
+
 - "Alfred, switch to R2-D2 Partner mode for implementation"
 - "Yoda, I understand the principles, now let's code"
 
@@ -472,4 +488,4 @@ What's your situation?
 **Last Updated**: 2025-11-18
 **Version**: v0.26.0
 **Format**: Markdown | **Language**: English
-**Scope**: Alfred Persona System Guide - Alfred, Yoda, R2-D2, Keating
+**Scope**: Alfred Persona System Guide - Alfred, Yoda, R2-D2

@@ -1084,6 +1084,21 @@ Task(subagent_type="spec-builder", prompt="...", debug=true)
 /context → (if > 150K) → /clear
 ```
 
+**Configure GLM** (Optional - for OpenAI-compatible API):
+```bash
+# Enable GLM with API token
+/moai:0-project --glm-on <your-api-token>
+
+# Example:
+/moai:0-project --glm-on abc123xyz...
+
+# After configuration:
+# 1. Token is saved to .env.glm (auto .gitignore)
+# 2. Model settings saved to .claude/settings.local.json
+# 3. Restart Claude Code to apply changes
+# 4. Subsequent sessions load settings automatically
+```
+
 **View logs**:
 ```bash
 cat .moai/logs/agent-*.log

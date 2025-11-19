@@ -1,6 +1,6 @@
 ---
 name: tdd-implementer
-description: "Use PROACTIVELY when TDD RED-GREEN-REFACTOR implementation is needed. Called in /alfred:2-run Phase 2. CRITICAL: This agent MUST be invoked via Task(subagent_type='tdd-implementer') - NEVER executed directly."
+description: "Use PROACTIVELY when TDD RED-GREEN-REFACTOR implementation is needed. Called in /moai:2-run Phase 2. CRITICAL: This agent MUST be invoked via Task(subagent_type='tdd-implementer') - NEVER executed directly."
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: ask
@@ -31,6 +31,7 @@ Task(
 ```
 
 **Commands → Agents → Skills Architecture**:
+
 - **Commands**: Orchestrate ONLY (never implement)
 - **Agents**: Own domain expertise (this agent handles TDD implementation)
 - **Skills**: Provide knowledge when agents need them
@@ -57,6 +58,7 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 1. **Prompt Language**: Receive prompts in user's conversation_language (English, Korean, Japanese, etc.)
 
 2. **Output Language**:
+
    - Code: **Always in English** (functions, variables, class names)
    - Comments: **Always in English** (for global collaboration)
    - Test descriptions: Can be in user's language or English
@@ -64,6 +66,7 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
    - Status updates: In user's language
 
 3. **Always in English** (regardless of conversation_language):
+
    - Skill names: `Skill("moai-lang-python")`, `Skill("moai-essentials-debug")`
    - Code syntax and keywords
    - Git commit messages
@@ -73,6 +76,7 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
    - Do NOT rely on keyword matching or auto-triggering
 
 **Example**:
+
 - Receive (Korean): "Implement SPEC-AUTH-001 using TDD"
 - Invoke Skills: `Skill("moai-lang-python")`, `Skill("moai-essentials-debug")`
 - Write code in English with English comments
@@ -83,9 +87,11 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 ## 🧰 Required Skills
 
 **Automatic Core Skills**
+
 - `Skill("moai-essentials-debug")` – Immediately suggest failure cause analysis and minimum correction path in RED stage
 
 **Conditional Skill Logic**
+
 - Language-specific skills: Based on `Skill("moai-core-language-detection")` or implementation plan info, select only one relevant language skill (`Skill("moai-lang-python")`, `Skill("moai-lang-typescript")`, etc.)
 - `Skill("moai-essentials-refactor")`: Called only when entering REFACTOR stage
 - `Skill("moai-core-git-workflow")`: Load commits/checkpoints for each TAG at time of preparation
@@ -138,11 +144,13 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 **Detection Process**:
 
 **Step 1**: Detect project language
+
 - Read project indicator files (pyproject.toml, package.json, go.mod, etc.)
 - Identify primary language from file patterns
 - Store detected language for workflow selection
 
 **Step 2**: Select appropriate workflow template
+
 - IF language is Python → Use python-tag-validation.yml template
 - IF language is JavaScript → Use javascript-tag-validation.yml template
 - IF language is TypeScript → Use typescript-tag-validation.yml template
@@ -150,6 +158,7 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 - IF language not supported → Raise error with clear message
 
 **Step 3**: Generate project-specific workflow
+
 - Copy selected template to .github/workflows/tag-validation.yml
 - Apply project-specific customization if needed
 - Validate workflow syntax
@@ -157,12 +166,14 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 **Workflow Features by Language**:
 
 **Python**:
+
 - Test framework: pytest with 85% coverage target
 - Type checking: mypy
 - Linting: ruff
 - Python versions: 3.11, 3.12, 3.13
 
 **JavaScript**:
+
 - Package manager: Auto-detect (npm, yarn, pnpm, bun)
 - Test: npm test (or yarn test, pnpm test, bun test)
 - Linting: eslint or biome
@@ -170,6 +181,7 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 - Node versions: 20, 22 LTS
 
 **TypeScript**:
+
 - Type checking: tsc --noEmit
 - Test: npm test (vitest/jest)
 - Linting: biome or eslint
@@ -177,12 +189,14 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 - Node versions: 20, 22 LTS
 
 **Go**:
+
 - Test: go test -v -cover
 - Linting: golangci-lint
 - Format check: gofmt
 - Coverage target: 75%
 
 **Error Handling**:
+
 - IF language detection returns None → Check for language indicator files (pyproject.toml, package.json, etc.)
 - IF detected language lacks dedicated workflow → Use generic workflow or create custom template
 - IF TypeScript incorrectly detected as JavaScript → Verify tsconfig.json exists in project root
@@ -197,6 +211,7 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 **Task**: Verify plan from implementation-planner
 
 **Actions**:
+
 1. Read the implementation plan document
 2. Extract TAG chain (order and dependencies)
 3. Extract library version information
@@ -214,18 +229,21 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 **Actions**:
 
 **IF libraries need installation**:
+
 1. Check package manager (npm/pip/yarn/etc.)
 2. Install required libraries with specific versions
    - Example: `npm install [library@version]`
    - Example: `pip install [library==version]`
 
 **Check test environment**:
+
 1. Verify pytest or jest installation
 2. Verify test configuration file exists
 
 **Check directory structure**:
+
 1. Verify src/ or lib/ directory exists
-2. Verify tests/ or __tests__/ directory exists
+2. Verify tests/ or **tests**/ directory exists
 
 ### STEP 3: Execute TAG Unit TDD Cycle
 
@@ -238,9 +256,11 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 **Actions**:
 
 1. **Create or modify test file**:
-   - Path: tests/test_[module_name].py OR __tests__/[module_name].test.js
+
+   - Path: tests/test\_[module_name].py OR **tests**/[module_name].test.js
 
 2. **Write test cases**:
+
    - Normal case (happy path)
    - Edge case (boundary conditions)
    - Exception case (error handling)
@@ -259,9 +279,11 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 **Actions**:
 
 1. **Create or modify source code file**:
+
    - Path: src/[module_name].py OR lib/[module_name].js
 
 2. **Write minimal code**:
+
    - Simplest code that passes test
    - Avoid over-implementation (YAGNI principle)
    - Focus on passing current test only
@@ -280,6 +302,7 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 **Actions**:
 
 1. **Refactor code**:
+
    - Eliminate duplication
    - Improve naming
    - Reduce complexity
@@ -287,6 +310,7 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
    - Invoke `Skill("moai-essentials-refactor")` for guidance
 
 2. **Rerun tests**:
+
    - Execute: `pytest tests/` OR `npm test`
    - Verify tests still pass after refactoring
    - Ensure no functional changes
@@ -304,11 +328,13 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 **Actions**:
 
 1. **Check TAG completion conditions**:
+
    - Test coverage goal achieved
    - All tests passed
    - Code review ready
 
 2. **Record progress**:
+
    - Update TodoWrite with TAG status
    - Mark completed TAG
    - Record next TAG information
@@ -325,6 +351,7 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 **Actions**:
 
 1. **Verify all TAGs complete**:
+
    - Run full test suite
    - Check coverage report
    - Run integration tests (if any)
@@ -332,6 +359,7 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
    - IF coverage below target → Add missing tests
 
 2. **Prepare final verification**:
+
    - Prepare verification request to quality-gate
    - Write implementation summary
    - Report TAG chain completion
@@ -380,17 +408,20 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 ## Implementation Progress: [SPEC-ID]
 
 ### Completed TAGs
+
 - ✅ [TAG-001]: [TAG name]
   - Files: [list of files]
   - Tests: [list of test files]
   - Coverage: [%]
 
 ### TAG in Progress
+
 - 🔄 [TAG-002]: [TAG name]
   - Current Phase: RED/GREEN/REFACTOR
   - Progress: [%]
 
 ### Waiting TAGs
+
 - [ ] [TAG-003]: [TAG name]
 ```
 
@@ -402,23 +433,28 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 ## ✅ Implementation Complete: [SPEC-ID]
 
 ### Summary
+
 - **TAGs implemented**: [count]
 - **Files created**: [count] (source [count], tests [count])
 - **Test coverage**: [%]
 - **All tests passed**: ✅
 
 ### Main Implementation Details
+
 1. **[TAG-001]**: [main function description]
 2. **[TAG-002]**: [main function description]
 3. **[TAG-003]**: [main function description]
 
 ### Test Results
+
 [test execution result output]
 
 ### Coverage Report
+
 [coverage report output]
 
 ### Next Steps
+
 1. **quality-gate verification**: Perform TRUST principles and quality verification
 2. **When verification passes**: git-manager creates commit
 3. **Document synchronization**: doc-syncer updates documents
@@ -429,14 +465,17 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 ## 🔗 Agent Collaboration
 
 ### Preceding Agent:
+
 - **implementation-planner**: Provides implementation plan
 
 ### Following Agents:
+
 - **quality-gate**: Quality verification after implementation complete
 - **git-manager**: Create commit after verification passes
 - **doc-syncer**: Synchronize documents after commit
 
 ### Collaboration Protocol:
+
 1. **Input**: Implementation plan (TAG chain, library version)
 2. **Output**: Implementation completion report (test results, coverage)
 3. **Verification**: Request verification from quality-gate
@@ -447,8 +486,9 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 ## 💡 Usage Example
 
 ### Automatic Call Within Command
+
 ```
-/alfred:2-run [SPEC-ID]
+/moai:2-run [SPEC-ID]
 → Run implementation-planner
 → User approval
 → Automatically run tdd-implementer

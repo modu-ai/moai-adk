@@ -1,7 +1,7 @@
 ---
 name: moai:2-run
 description: "Execute TDD implementation cycle"
-argument-hint: "SPEC-ID - All with SPEC ID to implement (e.g. SPEC-001) or all \"SPEC Implementation\""
+argument-hint: 'SPEC-ID - All with SPEC ID to implement (e.g. SPEC-001) or all "SPEC Implementation"'
 allowed-tools:
   - Task
 ---
@@ -12,7 +12,6 @@ allowed-tools:
 >
 > **Delegation Model**: Phase-based sequential agent delegation. Command orchestrates 4 phases directly.
 
-
 **Workflow**: Phase 1 → Analysis & Planning → Phase 2 → TDD Implementation → Phase 3 → Git Operations → Phase 4 → Completion & Guidance.
 
 ---
@@ -22,6 +21,7 @@ allowed-tools:
 Execute TDD implementation of SPEC requirements through complete agent delegation.
 
 The `/moai:2-run` command orchestrates the complete implementation workflow:
+
 1. **Phase 1**: SPEC analysis and execution plan creation
 2. **Phase 2**: TDD implementation (RED → GREEN → REFACTOR)
 3. **Phase 3**: Git commit management
@@ -59,6 +59,7 @@ Output: Implemented feature with passing tests and commits
 ### Key Principle: Zero Direct Tool Usage
 
 **This command uses ONLY these tools:**
+
 - ✅ **Task()** for phase agent delegation (implementation-planner → tdd-implementer → quality-gate → git-manager)
 - ✅ **AskUserQuestion()** for user approval and next steps
 - ✅ **TodoWrite()** for task tracking
@@ -72,12 +73,12 @@ Command orchestrates phases sequentially; agents handle complexity.
 
 ### Phase Agents (Sequential Execution)
 
-| Agent | Purpose | When |
-|-------|---------|------|
-| **implementation-planner** | Analyzes SPEC and creates execution strategy | Phase 1 |
-| **tdd-implementer** | Implements code through TDD cycle | Phase 2 |
-| **quality-gate** | Verifies TRUST 5 principles | Phase 2 (after tdd-implementer) |
-| **git-manager** | Creates and manages Git commits | Phase 3 |
+| Agent                      | Purpose                                      | When                            |
+| -------------------------- | -------------------------------------------- | ------------------------------- |
+| **implementation-planner** | Analyzes SPEC and creates execution strategy | Phase 1                         |
+| **tdd-implementer**        | Implements code through TDD cycle            | Phase 2                         |
+| **quality-gate**           | Verifies TRUST 5 principles                  | Phase 2 (after tdd-implementer) |
+| **git-manager**            | Creates and manages Git commits              | Phase 3                         |
 
 ### Skills Used (by agents, not command)
 
@@ -94,6 +95,7 @@ Command orchestrates phases sequentially; agents handle complexity.
 ### Phase 1: Analysis & Planning
 
 Command calls `Task(subagent_type="implementation-planner")`:
+
 1. Agent reads SPEC document
 2. Analyzes requirements and creates execution strategy
 3. Returns plan for user approval
@@ -103,6 +105,7 @@ Command calls `Task(subagent_type="implementation-planner")`:
 ### Phase 2: TDD Implementation
 
 Command calls `Task(subagent_type="tdd-implementer")`:
+
 1. Agent initializes task tracking (TodoWrite)
 2. Checks domain readiness (if multi-domain SPEC)
 3. Executes RED → GREEN → REFACTOR cycle
@@ -111,6 +114,7 @@ Command calls `Task(subagent_type="tdd-implementer")`:
 ### Phase 2.5: Quality Validation
 
 Command calls `Task(subagent_type="quality-gate")`:
+
 1. Agent verifies TRUST 5 principles (Test-first, Readable, Unified, Secured, Trackable)
 2. Validates test coverage (>= 85%)
 3. Checks security compliance
@@ -119,6 +123,7 @@ Command calls `Task(subagent_type="quality-gate")`:
 ### Phase 3: Git Operations
 
 Command calls `Task(subagent_type="git-manager")`:
+
 1. Agent creates feature branch if needed
 2. Creates commits with implementation changes
 3. Verifies commits were successful
@@ -127,6 +132,7 @@ Command calls `Task(subagent_type="git-manager")`:
 ### Phase 4: Completion & Guidance
 
 Command calls `AskUserQuestion()`:
+
 1. Displays implementation summary
 2. Shows next action options
 3. Guides user to `/moai:3-sync` or additional features
@@ -267,14 +273,14 @@ Create git commits for implementation:
 
 ## 📊 Design Improvements (vs Previous Version)
 
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| **Command LOC** | ~420 | ~120 | **71% reduction** |
-| **allowed-tools** | 14 types | 1 type | **93% reduction** |
-| **Direct tool usage** | Yes (Read/Bash) | No | **100% eliminated** |
-| **Agent count** | 4 separate calls | 1 orchestrator | **100% simplified** |
-| **User approval flow** | In command | In agent | **Cleaner separation** |
-| **Error handling** | Dispersed | Centralized | **Better structure** |
+| Metric                 | Before           | After          | Improvement            |
+| ---------------------- | ---------------- | -------------- | ---------------------- |
+| **Command LOC**        | ~420             | ~120           | **71% reduction**      |
+| **allowed-tools**      | 14 types         | 1 type         | **93% reduction**      |
+| **Direct tool usage**  | Yes (Read/Bash)  | No             | **100% eliminated**    |
+| **Agent count**        | 4 separate calls | 1 orchestrator | **100% simplified**    |
+| **User approval flow** | In command       | In agent       | **Cleaner separation** |
+| **Error handling**     | Dispersed        | Centralized    | **Better structure**   |
 
 ---
 
@@ -297,17 +303,20 @@ After implementation, verify:
 ## 📚 Quick Reference
 
 **This command**:
+
 - Accepts SPEC ID: `/moai:2-run SPEC-AUTH-001`
 - Orchestrates phases sequentially with user checkpoints
 - Outputs: Implementation summary with next steps
 
 **For details, see**:
+
 - `.claude/agents/moai/implementation-planner.md` - Phase 1: SPEC analysis
 - `.claude/agents/moai/tdd-implementer.md` - Phase 2: TDD implementation
 - `.claude/agents/moai/quality-gate.md` - Phase 2.5: Quality validation
 - `.claude/agents/moai/git-manager.md` - Phase 3: Git operations
 
 **Architecture Pattern**:
+
 ```
 Commands (Orchestration)
     ↓ Task()
@@ -354,6 +363,15 @@ AskUserQuestion({
 ```
 
 **Important**:
+
 - Use conversation language from config
 - No emojis in any AskUserQuestion fields
 - Always provide clear next step options
+
+## ⚡️ EXECUTION DIRECTIVE
+
+**You must NOW execute the command following the "Execution Philosophy" described above.**
+
+1. Start Phase 1: Analysis & Planning immediately.
+2. Call the `Task` tool with `subagent_type="implementation-planner"`.
+3. Do NOT just describe what you will do. DO IT.

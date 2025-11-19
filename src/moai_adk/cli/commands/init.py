@@ -145,8 +145,6 @@ def init(
 
         # Initialize variables
         custom_language = None
-        use_glm = False
-        glm_token = None
 
         # 3. Interactive vs Non-Interactive
         if non_interactive:
@@ -177,8 +175,6 @@ def init(
             locale = answers["locale"]
             language = answers["language"]
             project_name = answers["project_name"]
-            use_glm = answers.get("use_glm", False)
-            glm_token = answers.get("glm_token")
             custom_language = answers.get("custom_language")
 
             console.print("\n[cyan]🚀 Starting installation...[/cyan]\n")
@@ -275,8 +271,6 @@ def init(
                 locale=locale,
                 language=language,
                 custom_language=custom_language,
-                use_glm=use_glm,
-                glm_token=glm_token,
                 backup_enabled=True,
                 progress_callback=callback,
                 reinit=True,  # Always allow reinit (force mode by default)

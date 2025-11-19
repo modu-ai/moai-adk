@@ -113,12 +113,8 @@ class ProjectInitializer:
 
         return created_files
 
-    def _create_user_settings(self, use_glm: bool = False, glm_token: str | None = None) -> list[str]:
+    def _create_user_settings(self) -> list[str]:
         """Create user-specific settings files (.claude/settings.local.json)
-
-        Args:
-            use_glm: Whether GLM integration is enabled
-            glm_token: GLM API token (stored in environment variables)
 
         Returns:
             List of created settings files
@@ -135,10 +131,6 @@ class ProjectInitializer:
                 "note": "Edit this file to customize your local development environment",
             },
             "enabledMcpjsonServers": ["context7"],  # context7 is mandatory
-            "glm": {
-                "enabled": use_glm,
-                "description": "GLM provides OpenAI-compatible API endpoint for Claude models",
-            },
         }
 
         # Add companyAnnouncements in user's selected language
@@ -165,27 +157,6 @@ class ProjectInitializer:
         settings_local_file.write_text(json.dumps(settings_local, indent=2, ensure_ascii=False))
         created_files.append(str(settings_local_file))
 
-        # If GLM is enabled, create a note for environment variables
-        if use_glm and glm_token:
-            # Store GLM configuration note (user should manually set env vars)
-
-            # Optionally, create a .env.local.example file
-            env_example = claude_dir / ".env.local.example"
-            env_content = """# GLM Configuration (rename to .env.local and fill in your values)
-# Never commit this file - it contains sensitive credentials
-
-# GLM API authentication
-ANTHROPIC_AUTH_TOKEN=your-glm-api-token-here
-ANTHROPIC_BASE_URL=https://api.z.ai/api/anthropic
-
-# GLM Model names
-ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.5-air
-ANTHROPIC_DEFAULT_SONNET_MODEL=glm-4.6
-ANTHROPIC_DEFAULT_OPUS_MODEL=glm-4.6
-"""
-            env_example.write_text(env_content)
-            created_files.append(str(env_example))
-
         return created_files
 
     def initialize(
@@ -194,8 +165,6 @@ ANTHROPIC_DEFAULT_OPUS_MODEL=glm-4.6
         locale: str = "en",  # Changed from "ko" to "en" (will be configurable in /alfred:0-project)
         language: str | None = None,
         custom_language: str | None = None,
-        use_glm: bool = False,
-        glm_token: str | None = None,
         backup_enabled: bool = True,
         progress_callback: ProgressCallback | None = None,
         reinit: bool = False,
@@ -207,8 +176,6 @@ ANTHROPIC_DEFAULT_OPUS_MODEL=glm-4.6
             locale: Locale (ko/en/ja/zh/other) - Default: en (configurable in /alfred:0-project)
             language: Force language specification (auto-detect if None) - Will be detected in /alfred:0-project
             custom_language: Custom language name when locale="other" (user input)
-            use_glm: Whether to enable GLM integration
-            glm_token: GLM API token (if use_glm is True)
             backup_enabled: Whether to enable backup
             progress_callback: Progress callback
             reinit: Reinitialization mode (v0.3.0, SPEC-INIT-003)
@@ -366,7 +333,7 @@ ANTHROPIC_DEFAULT_OPUS_MODEL=glm-4.6
             memory_files = self._create_memory_files()
 
             # Phase 7: Create user settings (gitignored, user-specific)
-            user_settings_files = self._create_user_settings(use_glm, glm_token)
+            user_settings_files = self._create_user_settings()
 
             # Generate result
             duration = int((time.time() - start_time) * 1000)  # ms

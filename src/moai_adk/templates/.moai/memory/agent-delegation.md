@@ -123,7 +123,7 @@ result = await Task(
 
 Context automatically collected by Alfred:
 
-```
+```text
 ✅ Project structure from .moai/config.json
 ✅ Language stack from pyproject.toml/package.json
 ✅ Existing SPEC documents

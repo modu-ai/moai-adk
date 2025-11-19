@@ -1,17 +1,16 @@
 ---
 name: moai:3-sync
 description: "Synchronize documentation and finalize PR"
-argument-hint: 'Mode target path - Mode: auto (default)|force|status|project, target path: Synchronization target path'
+argument-hint: "Mode target path - Mode: auto (default)|force|status|project, target path: Synchronization target path"
 allowed-tools:
-- Task
-- AskUserQuestion
+  - Task
+  - AskUserQuestion
 model: "haiku"
 ---
 
 # 📚 MoAI-ADK Step 3: Document Synchronization (+Optional PR Ready)
 
 > **Batched Design**: All AskUserQuestion calls follow batched design principles (1-4 questions per call) to minimize user interaction turns. See CLAUDE.md section "Alfred Command Completion Pattern" for details.
-
 
 **4-Step Workflow Integration**: This command implements Step 4 of Alfred's workflow (Report & Commit with conditional report generation). See CLAUDE.md for full workflow details.
 
@@ -21,10 +20,10 @@ model: "haiku"
 
 **CRITICAL**: This command orchestrates ONLY - delegates all sync work to doc-syncer agent
 
-
 **Document sync to**: $ARGUMENTS
 
 **Agent Delegation Pattern**:
+
 ```bash
 # ✅ CORRECT: Delegate to doc-syncer agent
 Task(
@@ -45,14 +44,15 @@ Edit file.md "update documentation"
 
 This command supports **4 operational modes**:
 
-| Mode | Scope | PR Processing | Use Case |
-|------|-------|---------------|----------|
-| **auto** (default) | Smart selective sync | PR Ready conversion | Daily development workflow |
-| **force** | Full project re-sync | Full regeneration | Error recovery, major refactoring |
-| **status** | Status check only | Report only | Quick health check |
-| **project** | Integrated project-wide | Project-level updates | Milestone completion, periodic sync |
+| Mode               | Scope                   | PR Processing         | Use Case                            |
+| ------------------ | ----------------------- | --------------------- | ----------------------------------- |
+| **auto** (default) | Smart selective sync    | PR Ready conversion   | Daily development workflow          |
+| **force**          | Full project re-sync    | Full regeneration     | Error recovery, major refactoring   |
+| **status**         | Status check only       | Report only           | Quick health check                  |
+| **project**        | Integrated project-wide | Project-level updates | Milestone completion, periodic sync |
 
 **Command usage examples**:
+
 - `/moai:3-sync` → Auto-sync (PR Ready only)
 - `/moai:3-sync --auto-merge` → PR auto-merge + branch cleanup
 - `/moai:3-sync force` → Force full synchronization
@@ -64,12 +64,12 @@ This command supports **4 operational modes**:
 
 ## 🧠 Associated Skills & Agents
 
-| Agent | Core Skill | Purpose |
+| Agent        | Core Skill                     | Purpose                        |
 | ------------ | ------------------------------ | ------------------------------ |
-| quality-gate | `moai-alfred-trust-validation` | Verify project integrity |
+| quality-gate | `moai-alfred-trust-validation` | Verify project integrity       |
 | quality-gate | `moai-alfred-trust-validation` | Check code quality before sync |
-| doc-syncer | `moai-docs-sync` | Synchronize Living Documents |
-| git-manager | `moai-alfred-git-workflow` | Handle Git operations |
+| doc-syncer   | `moai-docs-sync`               | Synchronize Living Documents   |
+| git-manager  | `moai-alfred-git-workflow`     | Handle Git operations          |
 
 **Note**: TUI Survey Skill is loaded once at Phase 0 and reused throughout all user interactions.
 
@@ -119,14 +119,17 @@ This command supports **4 operational modes**:
 Execute these verification steps:
 
 1. **TUI System Ready**:
+
    - Interactive menus are available for all user interactions
 
 2. **Verify MoAI-ADK structure**:
+
    - Check: `.moai/` directory exists
    - Check: `.claude/` directory exists
    - IF missing → Print error and exit
 
 3. **Verify Git repository**:
+
    - Execute: `git rev-parse --is-inside-work-tree`
    - IF not a Git repo → Print error and exit
 
@@ -143,17 +146,20 @@ Execute these verification steps:
 Gather context for synchronization planning:
 
 1. **Analyze Git changes**:
+
    - Execute: `git status --porcelain`
    - Execute: `git diff --name-only HEAD`
    - Count: Python files, test files, documents, SPEC files
 
 2. **Read project configuration**:
+
    - Read: `.moai/config.json`
    - Extract: `git_strategy.mode` (Personal/Team)
    - Extract: `language.conversation_language` (for document updates)
    - Extract: `git_strategy.spec_git_workflow`
 
 3. **Determine synchronization mode**:
+
    - Parse $ARGUMENTS for mode: `auto`, `force`, `status`, `project`
    - IF empty → Default to `auto`
    - Parse flags: `--auto-merge`, `--skip-pre-check`, `--skip-quality-check`
@@ -176,10 +182,12 @@ Gather context for synchronization planning:
 **Required Scope**: Scan ALL source files, not just changed files.
 
 **Verification Items**:
+
 - Project integrity assessment
 - Issues detection and resolution
 
 **Output Format**:
+
 - Complete list of issues with locations
 - Project integrity assessment (Healthy / Issues Detected)
 
@@ -192,9 +200,11 @@ Gather context for synchronization planning:
 **Your task**: Call doc-syncer to analyze Git changes and create synchronization strategy.
 
 Use Task tool:
+
 - `subagent_type`: "doc-syncer"
 - `description`: "Establish a document synchronization plan"
 - `prompt`:
+
   ```
   You are the doc-syncer agent.
 
@@ -231,6 +241,7 @@ Use Task tool:
 Present synchronization plan and get user decision:
 
 1. **Display comprehensive plan report**:
+
    ```
    ═══════════════════════════════════════════════════════
    📚 Document Synchronization Plan Report
@@ -256,14 +267,15 @@ Present synchronization plan and get user decision:
    ```
 
 2. **Ask for user approval using AskUserQuestion**:
+
    - `question`: "Synchronization plan is ready. How would you like to proceed?"
    - `header`: "Plan Approval"
    - `multiSelect`: false
    - `options`: 4 choices:
-     1. "✅ Proceed with Sync" → Execute synchronization
-     2. "🔄 Request Modifications" → Modify strategy
-     3. "🔍 Review Details" → See full project results
-     4. "❌ Abort" → Cancel (no changes made)
+     1. "Proceed with Sync" → Execute synchronization
+     2. "Request Modifications" → Modify strategy
+     3. "Review Details" → See full project results
+     4. "Abort" → Cancel (no changes made)
 
 3. **Process user response**:
    - IF "Proceed" → Go to PHASE 2
@@ -284,12 +296,15 @@ Present synchronization plan and get user decision:
 Before making any changes:
 
 1. **Generate timestamp**:
+
    - Execute: `date +%Y-%m-%d-%H%M%S` → Store as `$TIMESTAMP`
 
 2. **Create backup directory**:
+
    - Execute: `mkdir -p .moai-backups/sync-$TIMESTAMP/`
 
 3. **Backup critical files**:
+
    - Copy: `README.md` (if exists)
    - Copy: `docs/` directory (if exists)
    - Copy: `.moai/specs/` directory
@@ -309,9 +324,11 @@ Before making any changes:
 **Your task**: Call doc-syncer to execute the approved synchronization plan.
 
 Use Task tool:
+
 - `subagent_type`: "doc-syncer"
 - `description`: "Execute Living Document synchronization"
 - `prompt`:
+
   ```
   You are the doc-syncer agent.
 
@@ -367,9 +384,11 @@ Use Task tool:
 **Your task**: Call quality-gate to verify synchronization quality.
 
 Use Task tool:
+
 - `subagent_type`: "quality-gate"
 - `description`: "Verify document synchronization quality"
 - `prompt`:
+
   ```
   You are the quality-gate agent.
 
@@ -401,16 +420,19 @@ Use Task tool:
 **After successful synchronization**, update SPEC status to completed:
 
 1. **Batch update all completed SPECs**:
+
    ```bash
    python3 .claude/hooks/moai/spec_status_hooks.py batch_update
    ```
 
 2. **Verify status updates**:
+
    - Check results from batch update
    - Record version changes and status transitions
    - Include status changes in sync report
 
 3. **Handle individual SPEC validation (if needed)**:
+
    ```bash
    python3 .claude/hooks/moai/spec_status_hooks.py validate_completion <SPEC_ID>
    python3 .claude/hooks/moai/spec_status_hooks.py status_update <SPEC_ID> --status completed --reason "Documentation synchronized successfully"
@@ -435,9 +457,11 @@ Use Task tool:
 **Your task**: Call git-manager to commit all document changes.
 
 Use Task tool:
+
 - `subagent_type`: "git-manager"
 - `description`: "Commit document synchronization changes"
 - `prompt`:
+
   ```
   You are the git-manager agent.
 
@@ -486,6 +510,7 @@ Use Task tool:
   ```
 
 **Verify**:
+
 - Execute: `git log -1 --oneline`
 - Print commit info
 - IF commit failed → Exit with error code
@@ -497,10 +522,12 @@ Use Task tool:
 For Team mode projects only:
 
 1. **Check if Team mode**:
+
    - Read: `git_strategy.mode` from config
    - IF Personal → Skip to next phase
 
 2. **Transition PR to Ready**:
+
    - Use Task tool:
      - `subagent_type`: "git-manager"
      - `description`: "Transition PR to Ready for Review"
@@ -515,14 +542,17 @@ For Team mode projects only:
 If `--auto-merge` flag is set:
 
 1. **Check CI/CD status**:
+
    - Execute: `gh pr checks`
    - IF failing → Print warning and skip merge
 
 2. **Check merge conflicts**:
+
    - Execute: `gh pr view --json mergeable`
    - IF conflicts exist → Print warning and skip merge
 
 3. **Execute auto-merge**:
+
    - Execute: `gh pr merge --squash --delete-branch`
 
 4. **Branch cleanup**:
@@ -617,6 +647,7 @@ Exit command with code 0.
 ## 📚 Quick Reference
 
 **For synchronization details, consult**:
+
 - `Skill("moai-alfred-trust-validation")` - Project validation
 - `Skill("moai-alfred-git-workflow")` - Git operations
 - `Skill("moai-alfred-trust-validation")` - Quality gates
@@ -658,6 +689,15 @@ AskUserQuestion({
 ```
 
 **Important**:
+
 - Use conversation language from config
 - No emojis in any AskUserQuestion fields
 - Always provide clear next step options
+
+## ⚡️ EXECUTION DIRECTIVE
+
+**You must NOW execute the command following the "OVERALL WORKFLOW STRUCTURE" described above.**
+
+1. Start PHASE 1: Analysis & Planning immediately.
+2. Call the `Task` tool with `subagent_type="doc-syncer"` (or `tag-agent` as appropriate for the step).
+3. Do NOT just describe what you will do. DO IT.
