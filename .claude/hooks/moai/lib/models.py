@@ -5,8 +5,8 @@ Provides HookPayload and HookResult classes used by hook handlers
 to process events and return execution results to Claude Code.
 """
 
+from dataclasses import asdict, dataclass
 from typing import Any, Dict, List, Optional
-from dataclasses import dataclass, asdict
 
 
 class HookPayload(dict):
