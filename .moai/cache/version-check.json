@@ -1,9 +1,4 @@
 {
-  "current": "0.25.11",
   "latest": "0.25.11",
-  "update_available": false,
-  "upgrade_command": "",
-  "release_notes_url": "https://github.com/modu-ai/moai-adk/releases",
-  "is_major_update": false,
-  "last_check": "2025-11-19T10:43:26.204520+00:00"
+  "last_check": "2025-11-19T20:01:30.215966"
 }

@@ -129,7 +129,7 @@
       "Bash(time:*)"
     ],
     "ask": [
-    "Bash(git add:*)",
+      "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(git merge:*)",
@@ -172,8 +172,9 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "uvx moai-adk statusline",
-    "padding": 0
+    "command": "uv run moai-adk statusline",
+    "padding": 0,
+    "refreshInterval": 300
   },
   "spinnerTipsEnabled": true,
   "outputStyle": "🤖 R2-D2"
