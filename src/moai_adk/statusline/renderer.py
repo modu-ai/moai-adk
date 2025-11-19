@@ -23,6 +23,7 @@ class StatuslineData:
     duration: str
     directory: str
     active_task: str
+    claude_version: str = ""  # Claude Code version (e.g., "2.0.46")
     output_style: str = ""  # Output style name (e.g., "R2-D2", "Yoda")
     update_available: bool = False
     latest_version: str = ""
@@ -87,7 +88,7 @@ class StatuslineRenderer:
     def _build_compact_parts(self, data: StatuslineData) -> List[str]:
         """
         Build parts list for compact mode with labeled sections
-        Format: 🤖 Model | 🗿 Version | 📊 Changes | 💬 Style | 🔀 Branch | Active Task
+        New Format: 🤖 Model | 🔅 Claude Code Version | 🗿 MoAI Version | 📊 Changes | 💬 Style | 🔀 Branch
 
         Args:
             data: StatuslineData instance
@@ -101,7 +102,12 @@ class StatuslineRenderer:
         if self._display_config.model:
             parts.append(f"🤖 {data.model}")
 
-        # Add version if display enabled (system status)
+        # Add Claude Code version if available
+        if data.claude_version:
+            claude_ver_str = data.claude_version if data.claude_version.startswith("v") else f"v{data.claude_version}"
+            parts.append(f"🔅 {claude_ver_str}")
+
+        # Add MoAI version if display enabled (system status)
         if self._display_config.version:
             # Add 'v' prefix if not already present
             version_str = data.version if data.version.startswith("v") else f"v{data.version}"
@@ -128,7 +134,7 @@ class StatuslineRenderer:
     def _fit_to_constraint(self, data: StatuslineData, max_length: int) -> str:
         """
         Fit statusline to character constraint by truncating
-        Format: 🤖 Model | 🗿 Version | 📊 Changes | 💬 Style | 🔀 Git: Branch | Active Task
+        New Format: 🤖 Model | 🔅 Claude Code Version | 🗿 MoAI Version | 📊 Changes | 💬 Style | 🔀 Branch
 
         Args:
             data: StatuslineData instance
@@ -140,10 +146,15 @@ class StatuslineRenderer:
         # Try with truncated branch first
         truncated_branch = self._truncate_branch(data.branch, max_length=20)
         version_str = data.version if data.version.startswith("v") else f"v{data.version}"
-        parts = [
-            f"🤖 {data.model}",
-            f"🗿 {version_str}",
-        ]
+
+        parts = [f"🤖 {data.model}"]
+
+        # Add Claude Code version if available
+        if data.claude_version:
+            claude_ver_str = data.claude_version if data.claude_version.startswith("v") else f"v{data.claude_version}"
+            parts.append(f"🔅 {claude_ver_str}")
+
+        parts.append(f"🗿 {version_str}")
 
         # Add git status if display enabled and status not empty
         if self._display_config.git_status and data.git_status:
@@ -165,10 +176,14 @@ class StatuslineRenderer:
         # If still too long, try more aggressive branch truncation
         if len(result) > max_length:
             truncated_branch = self._truncate_branch(data.branch, max_length=12)
-            parts = [
-                f"🤖 {data.model}",
-                f"🗿 {version_str}",
-            ]
+            parts = [f"🤖 {data.model}"]
+
+            if data.claude_version:
+                claude_ver_str = data.claude_version if data.claude_version.startswith("v") else f"v{data.claude_version}"
+                parts.append(f"🔅 {claude_ver_str}")
+
+            parts.append(f"🗿 {version_str}")
+
             if data.git_status:
                 parts.append(f"📊 {data.git_status}")
             if data.output_style:
@@ -180,10 +195,14 @@ class StatuslineRenderer:
 
         # If still too long, remove output_style and active_task
         if len(result) > max_length:
-            parts = [
-                f"🤖 {data.model}",
-                f"🗿 {version_str}",
-            ]
+            parts = [f"🤖 {data.model}"]
+
+            if data.claude_version:
+                claude_ver_str = data.claude_version if data.claude_version.startswith("v") else f"v{data.claude_version}"
+                parts.append(f"🔅 {claude_ver_str}")
+
+            parts.append(f"🗿 {version_str}")
+
             if data.git_status:
                 parts.append(f"📊 {data.git_status}")
             parts.append(f"🔀 {truncated_branch}")
@@ -199,7 +218,7 @@ class StatuslineRenderer:
         """
         Render extended mode: Full path and detailed info with labels
         Constraint: <= 120 characters
-        Format: 🤖 Model | 🗿 Version | 📊 Changes | 💬 Style | 🔀 Git: Branch | Active Task
+        New Format: 🤖 Model | 🔅 Claude Code Version | 🗿 MoAI Version | 📊 Changes | 💬 Style | 🔀 Branch
 
         Args:
             data: StatuslineData instance
@@ -216,7 +235,12 @@ class StatuslineRenderer:
         if self._display_config.model:
             parts.append(f"🤖 {data.model}")
 
-        # Add version if display enabled
+        # Add Claude Code version if available
+        if data.claude_version:
+            claude_ver_str = data.claude_version if data.claude_version.startswith("v") else f"v{data.claude_version}"
+            parts.append(f"🔅 {claude_ver_str}")
+
+        # Add MoAI version if display enabled
         if self._display_config.version:
             parts.append(f"🗿 {version_str}")
 
@@ -241,10 +265,13 @@ class StatuslineRenderer:
         # If exceeds limit, try truncating branch
         if len(result) > 120:
             branch = self._truncate_branch(data.branch, max_length=20)
-            parts = [
-                f"🤖 {data.model}",
-                f"🗿 {version_str}",
-            ]
+            parts = [f"🤖 {data.model}"]
+
+            if data.claude_version:
+                claude_ver_str = data.claude_version if data.claude_version.startswith("v") else f"v{data.claude_version}"
+                parts.append(f"🔅 {claude_ver_str}")
+
+            parts.append(f"🗿 {version_str}")
 
             # Add git status if display enabled and not empty
             if self._display_config.git_status and data.git_status:
@@ -266,7 +293,7 @@ class StatuslineRenderer:
         """
         Render minimal mode: Extreme space constraint with minimal labels
         Constraint: <= 40 characters
-        Format: 🤖 Model | 🗿 Ver Version | Changes: +staged M modified ? untracked
+        New Format: 🤖 Model | 🔅 Claude Code Ver | 🗿 MoAI Ver | Changes
 
         Args:
             data: StatuslineData instance
@@ -280,7 +307,15 @@ class StatuslineRenderer:
         if self._display_config.model:
             parts.append(f"🤖 {data.model}")
 
-        # Add version if display enabled
+        # Add Claude Code version if available (truncated for minimal)
+        if data.claude_version:
+            claude_ver_str = data.claude_version if data.claude_version.startswith("v") else f"v{data.claude_version}"
+            # For minimal mode, just show major.minor (e.g., "v2.0" from "v2.0.46")
+            if len(claude_ver_str.split('.')) > 2:
+                claude_ver_str = '.'.join(claude_ver_str.split('.')[:2])
+            parts.append(f"🔅 {claude_ver_str}")
+
+        # Add MoAI version if display enabled
         if self._display_config.version:
             truncated_ver = self._truncate_version(data.version)
             # Add 'v' prefix if not already present
