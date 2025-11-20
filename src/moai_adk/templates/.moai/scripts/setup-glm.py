@@ -14,9 +14,9 @@ Behavior:
 
 Example:
     $ /moai:0-project --glm-on abc123xyz...
-    ✅ API 키 저장됨: ./.env.glm
-    ✅ 모델 설정 저장됨: ./.claude/settings.local.json
-    ✅ GLM 설정이 완료되었습니다!
+    API token saved to ./.env.glm
+    GLM model configuration updated in ./.claude/settings.local.json
+    GLM configuration complete!
 """
 
 import json
@@ -47,7 +47,7 @@ def setup_glm(api_token: str, project_root: Path | None = None) -> bool:
         # Set secure permissions (user read/write only)
         env_glm_path.chmod(0o600)
 
-        print(f"✅ API 키 저장됨: {env_glm_path.relative_to(project_root)}")
+        print(f"✓ API token saved to: {env_glm_path.relative_to(project_root)}")
 
         # 2. Add .env.glm to .gitignore if needed
         gitignore_path = project_root / ".gitignore"
@@ -72,8 +72,9 @@ def setup_glm(api_token: str, project_root: Path | None = None) -> bool:
         with open(settings_path, "r", encoding="utf-8") as f:
             settings = json.load(f)
 
-        # Add GLM environment variables (token loaded from .env.glm at runtime)
+        # Add GLM environment variables with authentication token
         settings["env"] = {
+            "ANTHROPIC_AUTH_TOKEN": api_token,
             "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
             "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air",
             "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.6",
@@ -84,17 +85,17 @@ def setup_glm(api_token: str, project_root: Path | None = None) -> bool:
         with open(settings_path, "w", encoding="utf-8") as f:
             json.dump(settings, f, indent=2, ensure_ascii=False)
 
-        print(f"✅ 모델 설정 저장됨: {settings_path.relative_to(project_root)}")
+        print(f"✓ GLM model configuration updated in: {settings_path.relative_to(project_root)}")
         print()
-        print("📝 설정된 환경 변수:")
-        print(f"   • ANTHROPIC_AUTH_TOKEN: {api_token[:20]}... (.env.glm에서 로드)")
+        print("Configured environment variables:")
+        print(f"   • ANTHROPIC_AUTH_TOKEN: {api_token[:20]}... (loaded from .env.glm)")
         print("   • ANTHROPIC_BASE_URL: https://api.z.ai/api/anthropic")
         print("   • ANTHROPIC_DEFAULT_HAIKU_MODEL: glm-4.5-air")
         print("   • ANTHROPIC_DEFAULT_SONNET_MODEL: glm-4.6")
         print("   • ANTHROPIC_DEFAULT_OPUS_MODEL: glm-4.6")
         print()
-        print("✅ GLM 설정이 완료되었습니다!")
-        print("💡 Claude Code를 재시작하면 새 설정이 자동으로 로드됩니다.")
+        print("✓ GLM configuration complete!")
+        print("Note: Restart Claude Code to load the new configuration automatically.")
 
         return True
 

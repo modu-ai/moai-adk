@@ -175,8 +175,15 @@ Use Task tool:
     3. Auto-load from `ANTHROPIC_AUTH_TOKEN` environment variable (if set)
     4. Request from user via AskUserQuestion (if all above missing)
   - Execute GLM setup script: `uv run .moai/scripts/setup-glm.py <GLM_TOKEN>`
-  - Verify .env.glm and .claude/settings.local.json are updated
-  - Report GLM configuration success to user
+  - Verify configuration in .claude/settings.local.json:
+    * ANTHROPIC_AUTH_TOKEN: <api_token> (stored in "env" section)
+    * ANTHROPIC_BASE_URL: https://api.z.ai/api/anthropic
+    * ANTHROPIC_DEFAULT_HAIKU_MODEL: glm-4.5-air
+    * ANTHROPIC_DEFAULT_SONNET_MODEL: glm-4.6
+    * ANTHROPIC_DEFAULT_OPUS_MODEL: glm-4.6
+  - Verify .env.glm created with secure permissions (0o600)
+  - Verify .gitignore includes .env.glm entry
+  - Report GLM configuration success to user with all configured keys
   - Remind user: "Claude Code를 재시작하면 새 설정이 자동으로 로드됩니다"
 
   **Output**: Mode-specific completion report with next steps
