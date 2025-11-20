@@ -205,7 +205,7 @@ jobs:
       - name: 🧪 Run comprehensive tests
         run: |
           echo "🧪 Running final pre-deployment tests..."
-          uv sync
+          uv sync --group dev --group security
           uv run pytest tests/ -v --cov=src/moai_adk --cov-report=term
           echo "✅ All tests passed"
 

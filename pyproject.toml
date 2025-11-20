@@ -45,7 +45,8 @@ dev = [
     "pytest-xdist>=3.8.0",
     "ruff>=0.1.0",
     "mypy>=1.7.0",
-    "types-PyYAML>=6.0.0"
+    "types-PyYAML>=6.0.0",
+    "black>=24.0.0"
 ]
 security = [
     "pip-audit>=2.7.0",

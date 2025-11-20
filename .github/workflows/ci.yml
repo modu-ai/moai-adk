@@ -40,7 +40,7 @@ jobs:
       - name: 📋 Install dependencies
         run: |
           echo "📦 Installing project dependencies..."
-          uv sync
+          uv sync --group dev --group security
 
       - name: 🎨 Check code formatting (black)
         run: |
