@@ -1,6 +1,6 @@
-# 🗿 MoAI-ADK: AI-Powered SPEC-First TDD Development Framework
+# 🗿 MoAI-ADK: AI 기반 SPEC-First TDD 개발 프레임워크
 
-**Available Languages:** [English](./README.md) | [한국어](./README.ko.md)
+**사용 가능한 언어:** [English](./README.md) | [한국어](./README.ko.md)
 
 [![PyPI version](https://img.shields.io/pypi/v/moai-adk)](https://pypi.org/project/moai-adk/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -11,55 +11,55 @@
 [![Link Validation](https://github.com/modu-ai/moai-adk/actions/workflows/docs-link-validation.yml/badge.svg)](https://github.com/modu-ai/moai-adk/actions/workflows/docs-link-validation.yml)
 [![CodeRabbit](https://img.shields.io/coderabbit/prs/github/modu-ai/moai-adk)](https://coderabbit.ai/)
 
-> **Build trustworthy, maintainable software with AI assistance. Complete automation from requirements to documentation in perfect sync.**
+> **AI 지원으로 신뢰할 수 있고 유지보수 가능한 소프트웨어를 구축하세요. 요구사항부터 문서까지 완벽한 동기화로 완전 자동화됩니다.**
 
-MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **SPEC-First development**, **Test-Driven Development (TDD)**, and **AI agents** to create a complete, transparent development lifecycle. Every artifact—from requirements to code to documentation—is automatically traceable, tested, and synchronized.
+MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 개발(TDD)**, **AI 에이전트**를 결합하여 완전하고 투명한 개발 라이프사이클을 제공하는 오픈소스 프레임워크입니다. 요구사항부터 코드, 문서까지 모든 산출물이 자동으로 추적, 테스트, 동기화됩니다.
 
 ---
 
-## 🎯 The Problem We Solve
+## 🎯 우리가 해결하는 문제
 
-### Traditional AI-Powered Development Challenges
+### 전통적인 AI 기반 개발의 도전과제
 
-| Problem                        | Impact                                                        |
+| 문제                        | 영향                                                        |
 | ------------------------------ | ------------------------------------------------------------- |
-| **Unclear requirements**       | Developers spend 40% of time re-clarifying vague requirements |
-| **Missing tests**              | Production bugs from untested code paths                      |
-| **Drifting documentation**     | Docs fall out of sync with implementation                     |
-| **Lost context**               | Repeated explanations across team members                     |
-| **Impossible impact analysis** | Can't determine what code is affected by requirement changes  |
-| **Quality inconsistency**      | Manual QA gates miss edge cases                               |
+| **불명확한 요구사항**       | 개발자가 모호한 요구사항을 재확인하는 데 40%의 시간 소비 |
+| **테스트 부재**              | 테스트되지 않은 코드 경로로 인한 프로덕션 버그                      |
+| **문서 불일치**     | 문서가 구현과 동기화되지 않음                     |
+| **컨텍스트 손실**               | 팀원 간 반복적인 설명 필요                     |
+| **영향 분석 불가** | 요구사항 변경이 어떤 코드에 영향을 미치는지 파악 불가  |
+| **품질 불일치**      | 수동 QA 게이트가 엣지 케이스 놓침                               |
 
-### How MoAI-ADK Solves It
+### MoAI-ADK의 솔루션
 
-- ✅ **SPEC-First**: Clear, structured requirements BEFORE any code
-- ✅ **Guaranteed Testing**: 85%+ test coverage through automated TDD
-- ✅ **Living Documentation**: Auto-synced docs that never drift
-- ✅ **Persistent Context**: Mr.Alfred remembers project history and patterns
-- ✅ **Quality Automation**: TRUST 5 principles enforced throughout
+- ✅ **SPEC-First**: 코드 작성 전 명확하고 구조화된 요구사항
+- ✅ **테스트 보장**: 자동화된 TDD를 통한 85%+ 테스트 커버리지
+- ✅ **살아있는 문서**: 절대 불일치하지 않는 자동 동기화 문서
+- ✅ **지속적인 컨텍스트**: Mr.Alfred가 프로젝트 히스토리와 패턴 기억
+- ✅ **품질 자동화**: TRUST 5 원칙 전체 적용
 
 ---
 
-## ⚡ Key Features
+## ⚡ 주요 기능
 
-### Core Infrastructure
+### 핵심 인프라
 
-  - Phase result storage and retrieval
-  - Project metadata extraction
-  - Tech stack auto-detection
-  - Explicit context passing between command phases
+  - 단계별 결과 저장 및 검색
+  - 프로젝트 메타데이터 추출
+  - 기술 스택 자동 감지
+  - 명령 단계 간 명시적 컨텍스트 전달
 
-### 1. SPEC-First Development
+### 1. SPEC-First 개발
 
-- **EARS-format specifications** for structured, unambiguous requirements
-- **Pre-implementation clarity** preventing costly rework
-- **Automatic traceability** from requirements to code to tests
+- **EARS 형식 명세서**: 구조화되고 명확한 요구사항
+- **구현 전 명확성**: 비용이 많이 드는 재작업 방지
+- **자동 추적성**: 요구사항에서 코드, 테스트까지 자동 추적
 
-### 2. Automated TDD Workflow
+### 2. 자동화된 TDD 워크플로우
 
-- **RED → GREEN → REFACTOR** cycle fully orchestrated
-- **Test-first guarantee**: No code without tests
-- **85%+ coverage** achieved through systematic testing
+- **RED → GREEN → REFACTOR** 사이클 완전 자동화
+- **테스트 우선 보장**: 테스트 없는 코드 없음
+- **85%+ 커버리지**: 체계적인 테스트를 통한 달성
 
 ### 3. Mr.Alfred - MoAI-ADK's Super Agent Orchestrator (v0.26.0)
 
@@ -90,91 +90,91 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
 
 **자세한 설명**: `@.moai/memory/execution-rules.md` - 핵심 실행 원칙
 
-### Skills Quick Reference
+### 스킬 빠른 참조
 
 **125개 이상의 프로덕션 레디 엔터프라이즈 스킬** 모든 개발 도메인 커버:
 
-- **12 BaaS skills**: Cloud platforms (Supabase, Firebase, Vercel, Cloudflare, Auth0, Convex, Railway, Neon, Clerk)
-- **10 Security & Compliance skills**: Advanced authentication, OWASP, encryption, compliance patterns
-- **15 Enterprise Integration skills**: Microservices, event-driven architecture, DDD, messaging
-- **12 Advanced DevOps skills**: Kubernetes, container orchestration, GitOps, IaC, monitoring
-- **18 Data & Analytics skills**: Data pipelines, streaming, data warehouse, MLOps, analytics
-- **Complete frontend coverage**: HTML/CSS, Tailwind CSS, shadcn/ui, React, Vue, Angular (10+ icon libraries)
-- **Full backend support**: Database design, API architecture, DevOps, serverless patterns
-- **Advanced MCP Integration**: Context7, Playwright, Notion, Figma servers
-- **Document Processing**: AI-powered document handling (docx, pdf, pptx, xlsx)
-- **Artifact Builder**: Modern React/Tailwind/shadcn/ui component creation
-- **Internal Communications**: Enterprise communication templates and automation
-- **MCP Builder**: Advanced Model Context Protocol server development
-- **70+ additional enterprise-grade skills** across all development domains
+- **12개 BaaS 스킬**: 클라우드 플랫폼 (Supabase, Firebase, Vercel, Cloudflare, Auth0, Convex, Railway, Neon, Clerk)
+- **10개 보안 및 규정 준수 스킬**: 고급 인증, OWASP, 암호화, 규정 준수 패턴
+- **15개 엔터프라이즈 통합 스킬**: 마이크로서비스, 이벤트 기반 아키텍처, DDD, 메시징
+- **12개 고급 DevOps 스킬**: Kubernetes, 컨테이너 오케스트레이션, GitOps, IaC, 모니터링
+- **18개 데이터 및 분석 스킬**: 데이터 파이프라인, 스트리밍, 데이터 웨어하우스, MLOps, 분석
+- **완전한 프론트엔드 커버리지**: HTML/CSS, Tailwind CSS, shadcn/ui, React, Vue, Angular (10개 이상 아이콘 라이브러리)
+- **전체 백엔드 지원**: 데이터베이스 설계, API 아키텍처, DevOps, 서버리스 패턴
+- **고급 MCP 통합**: Context7, Playwright, Notion, Figma 서버
+- **문서 처리**: AI 기반 문서 처리 (docx, pdf, pptx, xlsx)
+- **아티팩트 빌더**: 현대적인 React/Tailwind/shadcn/ui 컴포넌트 생성
+- **내부 커뮤니케이션**: 엔터프라이즈 커뮤니케이션 템플릿 및 자동화
+- **MCP 빌더**: 고급 Model Context Protocol 서버 개발
+- **70개 이상의 추가 엔터프라이즈급 스킬** 모든 개발 도메인 전반
 
-**How to Find & Use Skills**:
+**스킬 찾기 및 사용 방법**:
 
-1. **Discover Skills**: Use `Skill("skill-name")` to invoke any skill
-2. **Progressive Learning**: Start with SKILL.md → REFERENCE.md → EXAMPLES.md
-3. **Domain Combinations**: Frontend + Backend + BaaS = Full-Stack mastery
+1. **스킬 발견**: `Skill("skill-name")`을 사용하여 모든 스킬 호출
+2. **점진적 학습**: SKILL.md → REFERENCE.md → EXAMPLES.md 순서로 시작
+3. **도메인 조합**: Frontend + Backend + BaaS = 풀스택 마스터리
 
-**Top 15 Most Used Skills**:
+**가장 많이 사용되는 상위 15개 스킬**:
 
-| # | Skill Name | Domain | Best For |
+| # | 스킬 이름 | 도메인 | 최적 용도 |
 |---|------------|--------|----------|
-| 1 | `moai-foundation-specs` | Core | SPEC-First development, EARS patterns |
-| 2 | `moai-lang-python` | Language | Python 3.13+ best practices, FastAPI |
-| 3 | `moai-domain-backend` | Backend | API architecture, REST/GraphQL design |
-| 4 | `moai-baas-supabase` | BaaS | PostgreSQL + Realtime + Auth integration |
-| 5 | `moai-security-oauth` | Security | OAuth2, SAML, WebAuthn implementation |
-| 6 | `moai-mcp-context7-integrator` | MCP | Latest documentation, research |
-| 7 | `moai-essentials-debug` | Essentials | Error analysis, root cause diagnosis |
-| 8 | `moai-domain-frontend` | Frontend | UI/UX, component design, styling |
-| 9 | `moai-artifacts-builder` | Frontend | React + Tailwind + shadcn/ui components |
-| 10 | `moai-cc-mcp-plugins` | MCP | MCP server orchestration, plugin management |
-| 11 | `moai-lang-typescript` | Language | TypeScript, Next.js, React patterns |
-| 12 | `moai-domain-database` | Database | Schema design, query optimization |
-| 13 | `moai-domain-cloud` | Cloud | AWS, GCP, Azure, Kubernetes patterns |
-| 14 | `moai-essentials-perf` | Performance | Optimization, profiling, scaling |
-| 15 | `moai-domain-security` | Security | OWASP, encryption, threat modeling |
+| 1 | `moai-foundation-specs` | 핵심 | SPEC-First 개발, EARS 패턴 |
+| 2 | `moai-lang-python` | 언어 | Python 3.13+ 베스트 프랙티스, FastAPI |
+| 3 | `moai-domain-backend` | 백엔드 | API 아키텍처, REST/GraphQL 설계 |
+| 4 | `moai-baas-supabase` | BaaS | PostgreSQL + Realtime + Auth 통합 |
+| 5 | `moai-security-oauth` | 보안 | OAuth2, SAML, WebAuthn 구현 |
+| 6 | `moai-mcp-context7-integrator` | MCP | 최신 문서, 리서치 |
+| 7 | `moai-essentials-debug` | 필수 | 오류 분석, 근본 원인 진단 |
+| 8 | `moai-domain-frontend` | 프론트엔드 | UI/UX, 컴포넌트 설계, 스타일링 |
+| 9 | `moai-artifacts-builder` | 프론트엔드 | React + Tailwind + shadcn/ui 컴포넌트 |
+| 10 | `moai-cc-mcp-plugins` | MCP | MCP 서버 오케스트레이션, 플러그인 관리 |
+| 11 | `moai-lang-typescript` | 언어 | TypeScript, Next.js, React 패턴 |
+| 12 | `moai-domain-database` | 데이터베이스 | 스키마 설계, 쿼리 최적화 |
+| 13 | `moai-domain-cloud` | 클라우드 | AWS, GCP, Azure, Kubernetes 패턴 |
+| 14 | `moai-essentials-perf` | 성능 | 최적화, 프로파일링, 스케일링 |
+| 15 | `moai-domain-security` | 보안 | OWASP, 암호화, 위협 모델링 |
 
-**Skill Categories**:
+**스킬 카테고리**:
 
-- **Foundation**: SPEC, TDD, TRUST 5 principles (4 skills)
-- **Essentials**: Testing, debugging, performance, security (8 skills)
-- **Domain**: Backend, frontend, database, mobile, ML, DevOps, cloud (25+ skills)
-- **Language**: Python, TypeScript, Go, Rust, PHP, Ruby, Java, C++, etc. (18 skills)
-- **BaaS**: Supabase, Firebase, Vercel, Cloudflare, Auth0, Convex, Railway, Neon, Clerk (12 skills)
-- **Advanced**: MCP builders, document processing, artifact building, internal comms (10+ skills)
-- **Total**: 135+ enterprise-grade skills
+- **Foundation**: SPEC, TDD, TRUST 5 원칙 (4개 스킬)
+- **Essentials**: 테스팅, 디버깅, 성능, 보안 (8개 스킬)
+- **Domain**: 백엔드, 프론트엔드, 데이터베이스, 모바일, ML, DevOps, 클라우드 (25개 이상 스킬)
+- **Language**: Python, TypeScript, Go, Rust, PHP, Ruby, Java, C++ 등 (18개 스킬)
+- **BaaS**: Supabase, Firebase, Vercel, Cloudflare, Auth0, Convex, Railway, Neon, Clerk (12개 스킬)
+- **Advanced**: MCP 빌더, 문서 처리, 아티팩트 빌딩, 내부 커뮤니케이션 (10개 이상 스킬)
+- **Total**: 135개 이상 엔터프라이즈급 스킬
 
-**Common Skill Combinations**:
+**일반적인 스킬 조합**:
 
 ```
-🚀 Full-Stack Web App:
-├─ moai-domain-backend (API design)
-├─ moai-lang-python or moai-lang-typescript (Server implementation)
-├─ moai-domain-frontend (UI components)
-├─ moai-baas-supabase (Database + Auth)
-└─ moai-domain-cloud (Deployment)
+🚀 풀스택 웹 앱:
+├─ moai-domain-backend (API 설계)
+├─ moai-lang-python or moai-lang-typescript (서버 구현)
+├─ moai-domain-frontend (UI 컴포넌트)
+├─ moai-baas-supabase (데이터베이스 + Auth)
+└─ moai-domain-cloud (배포)
 
-🛡️ Secure Enterprise App:
-├─ moai-domain-security (Architecture)
-├─ moai-security-oauth (Authentication)
-├─ moai-security-owasp (Compliance)
-├─ moai-security-encryption (Data protection)
-└─ moai-essentials-debug (Monitoring)
+🛡️ 보안 엔터프라이즈 앱:
+├─ moai-domain-security (아키텍처)
+├─ moai-security-oauth (인증)
+├─ moai-security-owasp (규정 준수)
+├─ moai-security-encryption (데이터 보호)
+└─ moai-essentials-debug (모니터링)
 
-⚡ Performance-Critical System:
-├─ moai-essentials-perf (Optimization)
-├─ moai-domain-database (Query tuning)
-├─ moai-domain-cloud (Scaling)
-├─ moai-mcp-context7-integrator (Latest patterns)
-└─ moai-essentials-debug (Profiling)
+⚡ 성능 중심 시스템:
+├─ moai-essentials-perf (최적화)
+├─ moai-domain-database (쿼리 튜닝)
+├─ moai-domain-cloud (스케일링)
+├─ moai-mcp-context7-integrator (최신 패턴)
+└─ moai-essentials-debug (프로파일링)
 ```
 
-### 4. Living Documentation
+### 4. 살아있는 문서
 
-- **Real-time synchronization** between code and docs
-- **Zero manual updates** required
-- **Multi-language support** (Python, TypeScript, Go, Rust, etc.)
-- **Automatic diagram generation** from code structure
+- **실시간 동기화**: 코드와 문서 간
+- **수동 업데이트 불필요**: 완전 자동화
+- **다국어 지원**: Python, TypeScript, Go, Rust 등
+- **자동 다이어그램 생성**: 코드 구조에서 자동 생성
 
 ### 5. Progressive Disclosure 아키텍처
 
@@ -206,21 +206,21 @@ CLAUDE.md
 - 🔍 **경험자**: `.moai/memory/` 파일로 고급 패턴 바로 확인
 - 🎯 **레퍼런스**: CLAUDE.md를 완전한 명세서로 활용
 
-### 6. Quality Assurance
+### 6. 품질 보증
 
-- **TRUST 5 principles**: Test-first, Readable, Unified, Secured, Trackable
-- **Automated code quality gates** (linting, type checking, security)
-- **Pre-commit validation** preventing violations
-- **Comprehensive reporting** with actionable metrics
+- **TRUST 5 원칙**: Test-first, Readable, Unified, Secured, Trackable
+- **자동화된 코드 품질 게이트**: 린팅, 타입 검사, 보안
+- **사전 커밋 검증**: 위반 사항 방지
+- **종합 리포팅**: 실행 가능한 메트릭 제공
 
-### 7. BaaS Platform Ecosystem
+### 7. BaaS 플랫폼 생태계
 
-- **10 Production-Ready Skills**: Foundation + 7 Platform Extensions (Firebase, Supabase, Vercel, Cloudflare, Auth0, Convex, Railway)
-- **8 Architecture Patterns**: Pattern A-H covering all deployment scenarios
-- **9 Cloud Platforms**: 100% coverage (Edge computing to database management)
-- **Pattern-Based Selection**: Intelligent recommendation engine for optimal platform choice
-- **Zero-Config Deployments**: Pre-configured best practices with one-click setup
-- **Advanced Features**: Blue-green deployments, Canary releases, Custom domains, SSL automation, Monitoring & Alerting
+- **10개 프로덕션 레디 스킬**: Foundation + 7개 플랫폼 확장 (Firebase, Supabase, Vercel, Cloudflare, Auth0, Convex, Railway)
+- **8개 아키텍처 패턴**: 모든 배포 시나리오를 커버하는 패턴 A-H
+- **9개 클라우드 플랫폼**: 100% 커버리지 (엣지 컴퓨팅부터 데이터베이스 관리까지)
+- **패턴 기반 선택**: 최적 플랫폼 선택을 위한 지능형 추천 엔진
+- **제로 설정 배포**: 원클릭 설정으로 사전 구성된 베스트 프랙티스
+- **고급 기능**: Blue-green 배포, Canary 릴리스, 커스텀 도메인, SSL 자동화, 모니터링 및 알림
 
 ---
 
@@ -276,191 +276,191 @@ Claude Code의 200,000토큰 컨텍스트 윈도우는 충분해 보이지만 �
 - 백엔드 에이전트: API/데이터베이스 파일만
 - 각 에이전트에 전체 코드베이스를 로드하지 않음
 
-### Supported Agents
+### 지원되는 에이전트
 
 Mr.Alfred가 위임하는 35개 전문화된 에이전트:
 
-| Agent | Purpose | Best For |
+| 에이전트 | 목적 | 최적 용도 |
 |-------|---------|----------|
-| `spec-builder` | SPEC creation | Requirements definition |
-| `tdd-implementer` | TDD implementation | Code development |
-| `frontend-expert` | UI/UX implementation | Building interfaces |
-| `backend-expert` | API & server design | Creating services |
-| `database-expert` | Schema & optimization | Database design |
-| `security-expert` | Security assessment | Auditing & hardening |
-| `docs-manager` | Documentation | Writing docs |
-| `quality-gate` | Testing & validation | QA & verification |
-| `mcp-context7-integrator` | Research & learning | Best practices |
-| `plan` | Task decomposition | Breaking down complexity |
-| `devops-expert` | Deployment automation | Infrastructure setup |
-| `performance-engineer` | Performance optimization | Bottleneck analysis |
-| `monitoring-expert` | Observability & alerting | System health monitoring |
-| `api-designer` | REST/GraphQL design | API specification |
-| `component-designer` | UI components | Design systems |
-| `accessibility-expert` | WCAG compliance | Inclusive design |
-| `migration-expert` | Database migrations | Schema evolution |
-| `git-manager` | Version control | Git automation |
-| `implementation-planner` | Strategy planning | Multi-phase execution |
-| `debug-helper` | Error analysis | Root cause diagnosis |
-| `format-expert` | Code formatting | Style enforcement |
-| `trust-checker` | Quality validation | TRUST 5 compliance |
-| `skill-factory` | Skill development | Knowledge capsules |
-| `agent-factory` | Agent creation | Custom automation |
-| `sync-manager` | Doc synchronization | Change tracking |
-| `mcp-playwright-integrator` | Web automation | End-to-end testing |
-| `mcp-notion-integrator` | Notion workspace | Database management |
-| And 9 more... | Various specializations | Emerging domains |
+| `spec-builder` | SPEC 생성 | 요구사항 정의 |
+| `tdd-implementer` | TDD 구현 | 코드 개발 |
+| `frontend-expert` | UI/UX 구현 | 인터페이스 구축 |
+| `backend-expert` | API 및 서버 설계 | 서비스 생성 |
+| `database-expert` | 스키마 및 최적화 | 데이터베이스 설계 |
+| `security-expert` | 보안 평가 | 감사 및 강화 |
+| `docs-manager` | 문서화 | 문서 작성 |
+| `quality-gate` | 테스팅 및 검증 | QA 및 검증 |
+| `mcp-context7-integrator` | 리서치 및 학습 | 베스트 프랙티스 |
+| `plan` | 작업 분해 | 복잡성 분해 |
+| `devops-expert` | 배포 자동화 | 인프라 설정 |
+| `performance-engineer` | 성능 최적화 | 병목 분석 |
+| `monitoring-expert` | 관찰성 및 알림 | 시스템 건강 모니터링 |
+| `api-designer` | REST/GraphQL 설계 | API 명세 |
+| `component-designer` | UI 컴포넌트 | 디자인 시스템 |
+| `accessibility-expert` | WCAG 준수 | 포용적 디자인 |
+| `migration-expert` | 데이터베이스 마이그레이션 | 스키마 진화 |
+| `git-manager` | 버전 관리 | Git 자동화 |
+| `implementation-planner` | 전략 계획 | 다단계 실행 |
+| `debug-helper` | 오류 분석 | 근본 원인 진단 |
+| `format-expert` | 코드 포매팅 | 스타일 적용 |
+| `trust-checker` | 품질 검증 | TRUST 5 준수 |
+| `skill-factory` | 스킬 개발 | 지식 캡슐 |
+| `agent-factory` | 에이전트 생성 | 커스텀 자동화 |
+| `sync-manager` | 문서 동기화 | 변경 추적 |
+| `mcp-playwright-integrator` | 웹 자동화 | 엔드투엔드 테스팅 |
+| `mcp-notion-integrator` | Notion 워크스페이스 | 데이터베이스 관리 |
+| 그 외 9개... | 다양한 전문화 | 신흥 도메인 |
 
-### Practical Example: Building a Payment Feature
+### 실전 예제: 결제 기능 구축
 
-**Traditional Approach** (Monolithic):
+**전통적인 접근법** (모놀리식):
 ```
-Load entire codebase → Token cost: 130,000
-Ask AI to build payment feature → Slow, context-limited
-Result quality: Lower (too much context noise)
-```
-
-**Mr.Alfred's Approach** (Delegation):
-```
-/moai:1-plan "Build payment processing feature"
-├─ Plan agent: Creates SPEC (5,000 tokens)
-├─ Frontend agent: Builds UI (8,000 tokens)
-├─ Backend agent: Creates API (10,000 tokens)
-├─ Database agent: Designs schema (7,000 tokens)
-└─ Quality gate: Tests everything (5,000 tokens)
-
-Total: 35,000 tokens (73% savings!)
+전체 코드베이스 로드 → 토큰 비용: 130,000
+AI에게 결제 기능 구축 요청 → 느림, 컨텍스트 제한
+결과 품질: 낮음 (과도한 컨텍스트 노이즈)
 ```
 
-### Real-World Impact
-
-**Project: Full E-Commerce Platform**
-
+**Mr.Alfred의 접근법** (위임):
 ```
-Without Agent Delegation:
-- Monolithic approach
-- Single conversation
-- 180,000 tokens/task
-- Context overflow errors
-- 6 hours total time
+/moai:1-plan "결제 처리 기능 구축"
+├─ Plan 에이전트: SPEC 생성 (5,000 토큰)
+├─ Frontend 에이전트: UI 구축 (8,000 토큰)
+├─ Backend 에이전트: API 생성 (10,000 토큰)
+├─ Database 에이전트: 스키마 설계 (7,000 토큰)
+└─ Quality gate: 전체 테스트 (5,000 토큰)
 
-With Agent Delegation:
-- Parallel execution
-- 10 focused agents
-- 25,000 tokens/agent
-- Zero context issues
-- 2 hours total time (3x faster!)
+합계: 35,000 토큰 (73% 절감!)
 ```
 
-### Getting Started with Agent Delegation
+### 실제 영향
 
-1. **Use Plan Mode for complex tasks**:
+**프로젝트: 완전한 전자상거래 플랫폼**
+
+```
+에이전트 위임 없이:
+- 모놀리식 접근법
+- 단일 대화
+- 180,000 토큰/작업
+- 컨텍스트 오버플로우 오류
+- 총 6시간 소요
+
+에이전트 위임 사용:
+- 병렬 실행
+- 10개 집중 에이전트
+- 25,000 토큰/에이전트
+- 컨텍스트 문제 없음
+- 총 2시간 소요 (3배 빠름!)
+```
+
+### 에이전트 위임 시작하기
+
+1. **복잡한 작업에 Plan Mode 사용**:
    ```bash
-   /moai:1-plan "Your complex feature description"
+   /moai:1-plan "복잡한 기능 설명"
    ```
-   Mr.Alfred automatically breaks it down and delegates to optimal agents
+   Mr.Alfred가 자동으로 분해하고 최적 에이전트에 위임
 
-2. **Leverage specialized agents via Task delegation**:
+2. **Task 위임을 통한 전문 에이전트 활용**:
    ```
-   Within CLAUDE.md, see "Advanced Agent Delegation Patterns" section
-   for detailed examples of Task() delegation syntax
+   CLAUDE.md의 "Advanced Agent Delegation Patterns" 섹션에서
+   Task() 위임 구문의 상세 예제 참조
    ```
 
-3. **Monitor token efficiency**:
-   - Each agent runs independently
-   - No token sharing between agents
-   - Massive context savings
-   - Better results through specialization
+3. **토큰 효율성 모니터링**:
+   - 각 에이전트가 독립적으로 실행
+   - 에이전트 간 토큰 공유 없음
+   - 대규모 컨텍스트 절감
+   - 전문화를 통한 더 나은 결과
 
-### Agent Delegation Quick Start Guide
+### 에이전트 위임 빠른 시작 가이드
 
-**Command-Based Delegation** (Explicit & Recommended for Beginners):
+**명령 기반 위임** (명시적이며 초보자 권장):
 
 ```bash
-# SPEC creation with spec-builder
-/moai:1-plan "User authentication with JWT"
-# → spec-builder agent activated
-# → Generates SPEC-AUTH-001 document
+# spec-builder를 사용한 SPEC 생성
+/moai:1-plan "JWT를 사용한 사용자 인증"
+# → spec-builder 에이전트 활성화
+# → SPEC-AUTH-001 문서 생성
 
-# Implementation with tdd-implementer
+# tdd-implementer를 사용한 구현
 /moai:2-run AUTH-001
-# → tdd-implementer agent activated
-# → Follows RED-GREEN-REFACTOR cycle
+# → tdd-implementer 에이전트 활성화
+# → RED-GREEN-REFACTOR 사이클 따름
 
-# Documentation sync with doc-syncer
+# doc-syncer를 사용한 문서 동기화
 /moai:3-sync SPEC-001
-# → doc-syncer agent activated
-# → Auto-updates documentation
+# → doc-syncer 에이전트 활성화
+# → 문서 자동 업데이트
 ```
 
-**Advanced Delegation** (Task() Function for Complex Scenarios):
+**고급 위임** (복잡한 시나리오를 위한 Task() 함수):
 
-For multi-step workflows, agent chaining, and specialized task delegation:
-- Sequential workflows (Step 1 → Step 2 → Step 3 with dependencies)
-- Parallel execution (Multiple agents working simultaneously)
-- Context passing (Sharing results between agents)
-- Session sharing (Multi-day projects with Context7 MCP)
+다단계 워크플로우, 에이전트 체이닝, 전문 작업 위임용:
+- 순차 워크플로우 (의존성이 있는 Step 1 → Step 2 → Step 3)
+- 병렬 실행 (여러 에이전트가 동시에 작업)
+- 컨텍스트 전달 (에이전트 간 결과 공유)
+- 세션 공유 (Context7 MCP를 사용한 멀티데이 프로젝트)
 
-**See CLAUDE.md → "Advanced Agent Delegation Patterns"** section (or `.moai/memory/agents.md` for detailed examples) for detailed Task() syntax, examples, and configuration.
+**CLAUDE.md → "Advanced Agent Delegation Patterns"** 섹션 (또는 `.moai/memory/agents.md`) 참조하여 자세한 Task() 구문, 예제, 설정 확인
 
-### Learn More
+### 더 알아보기
 
-For comprehensive agent delegation patterns including:
-- Sequential workflows (dependencies between tasks)
-- Parallel execution (independent tasks simultaneously)
-- Agent chaining (passing results between agents)
-- Context7 MCP session sharing across multi-day projects
+다음을 포함한 포괄적인 에이전트 위임 패턴:
+- 순차 워크플로우 (작업 간 의존성)
+- 병렬 실행 (독립적인 작업 동시 실행)
+- 에이전트 체이닝 (에이전트 간 결과 전달)
+- 멀티데이 프로젝트에서 Context7 MCP 세션 공유
 
-**See CLAUDE.md → "Advanced Agent Delegation Patterns"** section or refer to:
+**CLAUDE.md → "Advanced Agent Delegation Patterns"** 섹션 또는 다음 참조:
 - **`.moai/memory/agents.md`**: 35개 에이전트 상세 설명
-- **`.moai/memory/delegation-patterns.md`**: Detailed Task() delegation patterns, sequential/parallel workflows
-- **`.moai/memory/mcp-integration.md`**: Context7 MCP session management and integration
+- **`.moai/memory/delegation-patterns.md`**: 자세한 Task() 위임 패턴, 순차/병렬 워크플로우
+- **`.moai/memory/mcp-integration.md`**: Context7 MCP 세션 관리 및 통합
 
 ---
 
-## 📍 Claude Code Statusline Integration (v0.26.0)
+## 📍 Claude Code 상태표시줄 통합 (v0.26.0)
 
-MoAI-ADK statusline displays **real-time development status** in Claude Code's terminal status bar. See your model, version, Git branch, and file changes at a glance.
+MoAI-ADK 상태표시줄은 Claude Code 터미널 상태바에 **실시간 개발 상태**를 표시합니다. 모델, 버전, Git 브랜치, 파일 변경사항을 한눈에 확인하세요.
 
-### 📊 Statusline Format
+### 📊 상태표시줄 형식
 
-**Compact Mode** (default, ≤80 chars):
+**컴팩트 모드** (기본값, ≤80자):
 
 ```
 🤖 Haiku 4.5 (v2.0.46) | 🗿 v0.26.0 | 📊 +0 M0 ?0 | 💬 R2-D2 | 🔀 develop
 ```
 
-| Item           | Icon | Meaning                      | Example                            |
+| 항목           | 아이콘 | 의미                      | 예시                            |
 | -------------- | ---- | ---------------------------- | ---------------------------------- |
-| **Model**      | 🤖   | Claude model + Code version  | Haiku 4.5 (v2.0.46), Sonnet 4.0 (v4.0.15) |
-| **Version**    | 🗿   | MoAI-ADK version             | v0.26.0                            |
-| **Changes**    | 📊   | Git file status              | +0 M0 ?0                          |
-| **Output Style** | 💬   | Selected UI/UX style        | R2-D2, Yoda, default               |
-| **Git Branch** | 🔀   | Current working branch       | develop, feature/SPEC-001          |
+| **모델**      | 🤖   | Claude 모델 + Code 버전  | Haiku 4.5 (v2.0.46), Sonnet 4.0 (v4.0.15) |
+| **버전**    | 🗿   | MoAI-ADK 버전             | v0.26.0                            |
+| **변경사항**    | 📊   | Git 파일 상태              | +0 M0 ?0                          |
+| **출력 스타일** | 💬   | 선택된 UI/UX 스타일        | R2-D2, Yoda, default               |
+| **Git 브랜치** | 🔀   | 현재 작업 브랜치       | develop, feature/SPEC-001          |
 
-### 📝 Changes Notation Explained
+### 📝 변경사항 표기법 설명
 
 ```
-Changes: +staged Mmodified ?untracked
+변경사항: +staged Mmodified ?untracked
 
-📊 +0  = Number of staged files (git add'ed files)
-📊 M0  = Number of modified files (not yet git add'ed)
-📊 ?0  = Number of untracked new files
+📊 +0  = 스테이징된 파일 수 (git add된 파일)
+📊 M0  = 수정된 파일 수 (아직 git add 안 됨)
+📊 ?0  = 추적되지 않는 새 파일 수
 ```
 
-### 💡 Examples
+### 💡 예시
 
-| Situation        | Display             | Meaning                                          |
+| 상황        | 표시             | 의미                                          |
 | ---------------- | ------------------- | ------------------------------------------------ |
-| Clean state      | `📊 +0 M0 ?0` | All changes committed                            |
-| Files modified   | `📊 +0 M2 ?0` | 2 files modified (need git add)                  |
-| New file created | `📊 +0 M0 ?1` | 1 new file (need git add)                        |
-| Ready to commit  | `📊 +3 M0 ?0` | 3 files staged (ready to commit)                 |
-| Work in progress | `📊 +2 M1 ?1` | Mixed state: 2 staged + 1 modified + 1 untracked |
+| 깨끗한 상태      | `📊 +0 M0 ?0` | 모든 변경사항 커밋됨                            |
+| 파일 수정됨   | `📊 +0 M2 ?0` | 2개 파일 수정됨 (git add 필요)                  |
+| 새 파일 생성됨 | `📊 +0 M0 ?1` | 1개 새 파일 (git add 필요)                        |
+| 커밋 준비됨  | `📊 +3 M0 ?0` | 3개 파일 스테이징됨 (커밋 준비 완료)                 |
+| 작업 진행 중 | `📊 +2 M1 ?1` | 혼합 상태: 2개 스테이징 + 1개 수정 + 1개 추적 안 됨 |
 
-### ⚙️ Configuration
+### ⚙️ 설정
 
-Statusline automatically displays Compact Mode (default, ≤80 chars). To customize:
+상태표시줄은 자동으로 컴팩트 모드(기본값, ≤80자)를 표시합니다. 커스터마이징하려면:
 
 ```json
 {
@@ -473,10 +473,10 @@ Statusline automatically displays Compact Mode (default, ≤80 chars). To custom
 }
 ```
 
-**Configuration Notes**:
-- `command`: Uses local editable install for latest features
-- `refreshInterval`: Updates every 300ms for real-time status
-- Displays Claude Code version + MoAI-ADK version + Git status + Output style
+**설정 참고사항**:
+- `command`: 최신 기능을 위한 로컬 편집 가능 설치 사용
+- `refreshInterval`: 실시간 상태를 위해 300ms마다 업데이트
+- Claude Code 버전 + MoAI-ADK 버전 + Git 상태 + 출력 스타일 표시
 
 ---
 
@@ -723,7 +723,7 @@ config_manager.save_to_file(".moai/config/config.json")
 
 ---
 
-## 🆕 What's New in v0.26.0
+## 🆕 v0.26.0의 새로운 기능
 
 ### 1. Mr.Alfred Super Agent Orchestrator 역할 재정의
 
@@ -1054,180 +1054,263 @@ uv tool install --force moai-adk
 - Model, branch, and Git changes display
 - New version notifications
 
-##### 4️⃣ Configuration Customization
+##### 4️⃣ 설정 사용자 정의
 
-After project initialization, you can customize settings:
+프로젝트 초기화 후 설정을 사용자 정의할 수 있습니다:
 
-**Change Language**
+**언어 변경**
 
 ```bash
-# Edit .moai/config/config.json
-# Change language.conversation_language to desired language
-# Example: "en" → "ko" (English → Korean)
+# .moai/config/config.json 편집
+# language.conversation_language를 원하는 언어로 변경
+# 예시: "en" → "ko" (English → Korean)
 ```
 
-**Change Git Strategy**
+**Git 전략 변경**
 
 ```bash
-# Edit .moai/config/config.json
-# Modify git_strategy section
-# - personal: Individual project (local branches, auto-commit)
-# - team: Team project (GitFlow, auto-PR)
+# .moai/config/config.json 편집
+# git_strategy 섹션 수정
+# - personal: 개인 프로젝트 (로컬 브랜치, 자동 커밋)
+# - team: 팀 프로젝트 (GitFlow, 자동 PR)
 
-# Manual Branch Creation Control
-# By default, prevent_branch_creation is set to true
-# This means /moai:1-plan will NOT auto-create feature branches
-# You must create branches manually:
+# 수동 브랜치 생성 제어
+# 기본적으로 prevent_branch_creation은 true로 설정됨
+# 이는 /moai:1-plan이 feature 브랜치를 자동 생성하지 않음을 의미
+# 브랜치를 수동으로 생성해야 함:
 git checkout -b feature/SPEC-XXX
 
-# To enable auto-creation, set in .moai/config/config.json:
+# 자동 생성을 활성화하려면 .moai/config/config.json에 다음 설정:
 "prevent_branch_creation": false
 ```
 
-**Set Test Coverage Goal**
+**테스트 커버리지 목표 설정**
 
 ```bash
-# Edit .moai/config/config.json
-# constitution.test_coverage_target: 85 (default)
-# Adjust based on your project requirements
+# .moai/config/config.json 편집
+# constitution.test_coverage_target: 85 (기본값)
+# 프로젝트 요구사항에 따라 조정
 ```
 
-##### 5️⃣ Update and Reconfiguration
+##### 5️⃣ 업데이트 및 재설정
 
-**After Minor Upgrade - Verify Settings**
+**마이너 업그레이드 후 - 설정 확인**
 
 ```bash
-# Check new version features
+# 새 버전 기능 확인
 moai-adk --version
 
-# Optionally re-optimize settings (maintains existing config)
+# 선택적으로 설정 재최적화 (기존 설정 유지)
 /moai:0-project
 ```
 
-**After Major Version Upgrade - Configuration Migration**
+**메이저 버전 업그레이드 후 - 설정 마이그레이션**
 
 ```bash
-# 1. Install new version
+# 1. 새 버전 설치
 uv tool upgrade moai-adk
 
-# 2. Migrate project configuration
+# 2. 프로젝트 설정 마이그레이션
 /moai:0-project
 
-# 3. Review changes
+# 3. 변경사항 검토
 git diff .moai/config/config.json
 
-# 4. Commit and proceed
+# 4. 커밋 및 진행
 git add .moai/config/config.json
 git commit -m "Upgrade MoAI-ADK configuration to v0.26.0"
 ```
 
-**Reset Configuration (Reconfigure from Scratch)**
+**설정 초기화 (처음부터 재설정)**
 
 ```bash
-# Warning: Backup existing config before running
+# 경고: 실행 전 기존 설정 백업
 cp .moai/config/config.json .moai/config/config.json.backup
 
-# Reset configuration
+# 설정 초기화
 /moai:0-project --reset
 ```
 
-##### 6️⃣ Automatic Configuration Health Check (SessionStart Hook)
+##### 6️⃣ 업데이트 & 병합 전략
 
-Every time a Claude Code session starts, MoAI-ADK **automatically** verifies project configuration status and offers interactive configuration options if needed:
+MoAI-ADK 업데이트 시 병합 전략을 선택하세요:
 
-**Auto Health Check Items**
-
-| Item                   | What It Checks                                                  | When Issues Detected                           |
-| ---------------------- | --------------------------------------------------------------- | ---------------------------------------------- |
-| Configuration Exists   | Verify `.moai/config/config.json` file exists                          | If missing: must run `/moai:0-project`       |
-| Configuration Complete | Check required sections (project, language, git_strategy, etc.) | If incomplete: must re-run `/moai:0-project` |
-| Configuration Age      | Check file modification time (30+ days detected)                | If outdated: update recommended                |
-| Version Match          | Compare installed moai-adk version with config version          | If mismatch: must re-run `/moai:0-project`   |
-
-**SessionStart Hook User Interaction**
-
-When configuration issues are detected, you're prompted with interactive choices:
-
-```
-📋 Configuration Health Check:
-❌ Project configuration missing
-⚠️  Required configuration sections incomplete
-
-Configuration issues detected. Select an action to proceed:
-
-1️⃣ Initialize Project
-   → Run /moai:0-project to initialize new project configuration
-
-2️⃣ Update Settings
-   → Run /moai:0-project to update/verify existing configuration
-
-3️⃣ Skip for Now
-   → Continue without configuration update (not recommended)
-```
-
-Or when configuration is healthy:
-
-```
-📋 Configuration Health Check:
-✅ Configuration complete
-✅ Recent setup: 2 days ago
-✅ Version match: 0.26.0
-
-All settings are healthy!
-```
-
-**Action Choices Explained**
-
-| Choice                 | Purpose                              | When to Use                                                                |
-| ---------------------- | ------------------------------------ | -------------------------------------------------------------------------- |
-| **Initialize Project** | Create new project configuration     | When starting a new project                                                |
-| **Update Settings**    | Update/verify existing configuration | After version upgrade, configuration changes, 30+ days since setup         |
-| **Skip for Now**       | Proceed without configuration update | When making configuration changes, need to continue work (not recommended) |
-
-**Benefits of Automatic Configuration Management**
-
-- ✅ **Interactive Choices**: Intuitive selection through AskUserQuestion
-- ✅ **No Manual Verification**: Automatically checked every session
-- ✅ **Always Synchronized**: Configuration stays up-to-date
-- ✅ **Version Compatibility**: Automatic version mismatch detection
-- ✅ **Reliability**: Prevents Mr.Alfred command failures from missing configuration
-
-**⚠️ Important Notes**
-
-Before starting development, you **MUST** run `/moai:0-project`. This command:
-
-- ✅ Creates project metadata and structure
-- ✅ Sets language, Git, and TDD policies
-- ✅ Initializes Mr.Alfred task tracking system
-- ✅ Configures pipeline state (updated by `/moai:1-plan`, `/moai:2-run`, etc.)
-- ✅ Sets up status bar and monitoring systems
-
-If you skip configuration:
-
-- ❌ Mr.Alfred commands (`/moai:1-plan`, `/moai:2-run`, etc.) won't work
-- ❌ Pipeline state tracking unavailable
-- ❌ Automated TDD workflow unavailable
-
-### 5-Minute Quick Start
+**옵션 1: 자동 병합 (기본값)**
 
 ```bash
-# 0. Create and initialize a new project
+# 자동 병합은 템플릿을 설치하고 사용자 변경사항을 자동으로 보존합니다
+moai-adk update --merge
+
+# 또는 대화형으로 선택 (권장)
+moai-adk update
+# → [1] Auto-merge 선택
+```
+
+**장점:**
+- ✅ 최신 템플릿 설치
+- ✅ 사용자 커스터마이징 자동 보존
+- ✅ 최소 충돌
+- ✅ 자동 병합
+
+**생성 파일:**
+- 백업: `.moai-backups/pre-update-backup_{timestamp}/`
+- 리포트: `.moai/reports/merge-report.md` (변경사항 요약)
+
+**옵션 2: 수동 병합 (완전한 제어)**
+
+```bash
+# 수동 병합은 백업을 보존하고 상세 가이드를 생성합니다
+moai-adk update --manual
+
+# 또는 대화형으로 선택
+moai-adk update
+# → [2] Manual merge 선택
+```
+
+**장점:**
+- ✅ 병합에 대한 완전한 제어
+- ✅ 백업 검토 가능
+- ✅ 단계별 병합 가이드
+- ✅ 시각적 diff 도구 호환
+
+**생성 파일:**
+- 백업: `.moai-backups/pre-update-backup_{timestamp}/`
+- 가이드: `.moai/guides/merge-guide.md` (상세 병합 지침)
+
+**수동 병합 워크플로우:**
+
+```bash
+# 1. 백업 검토
+ls -la .moai-backups/pre-update-backup_*/
+
+# 2. diff로 파일 비교
+diff -r .moai-backups/pre-update-backup_*/ .claude/
+
+# 3. 시각적 병합 도구 사용 (선택사항)
+meld .moai-backups/pre-update-backup_*/ .
+
+# 4. 커스터마이징 수동 병합
+# (.moai/guides/merge-guide.md의 지침 참고)
+
+# 5. 테스트 및 커밋
+uv run pytest
+git add .
+git commit -m "merge: Update templates with manual merge"
+```
+
+**전략 선택하기:**
+
+| 전략 | 최적 대상 | 시간 | 제어 |
+|------|---------|------|------|
+| **자동 병합** | 대부분 사용자 | 빠름 (5-10초) | 중간 |
+| **수동 병합** | 복잡한 프로젝트 | 느림 (10-30분) | 완전 |
+
+**필요시 롤백:**
+
+```bash
+# 백업에서 복구 (모든 전략)
+cp -r .moai-backups/pre-update-backup_*/.claude .
+cp -r .moai-backups/pre-update-backup_*/.moai .
+cp .moai-backups/pre-update-backup_*/CLAUDE.md .
+```
+
+##### 7️⃣ 자동 설정 상태 확인 (SessionStart Hook)
+
+Claude Code 세션이 시작될 때마다 MoAI-ADK는 **자동으로** 프로젝트 설정 상태를 확인하고 필요시 대화형 설정 옵션을 제공합니다:
+
+**자동 상태 확인 항목**
+
+| 항목                   | 확인 내용                                                  | 문제 발견 시                           |
+| ---------------------- | --------------------------------------------------------------- | ---------------------------------------------- |
+| 설정 존재 여부   | `.moai/config/config.json` 파일 존재 확인                          | 누락 시: `/moai:0-project` 실행 필수       |
+| 설정 완전성 | 필수 섹션 확인 (project, language, git_strategy 등) | 불완전 시: `/moai:0-project` 재실행 필수 |
+| 설정 경과 시간      | 파일 수정 시간 확인 (30일 이상 경과 감지)                | 오래된 경우: 업데이트 권장                |
+| 버전 일치          | 설치된 moai-adk 버전과 설정 버전 비교          | 불일치 시: `/moai:0-project` 재실행 필수   |
+
+**SessionStart Hook 사용자 상호작용**
+
+설정 문제가 감지되면 대화형 선택지가 제공됩니다:
+
+```
+📋 설정 상태 확인:
+❌ 프로젝트 설정 누락
+⚠️  필수 설정 섹션 불완전
+
+설정 문제가 감지되었습니다. 작업을 진행할 방법을 선택하세요:
+
+1️⃣ 프로젝트 초기화
+   → /moai:0-project를 실행하여 새 프로젝트 설정 초기화
+
+2️⃣ 설정 업데이트
+   → /moai:0-project를 실행하여 기존 설정 업데이트/검증
+
+3️⃣ 지금은 건너뛰기
+   → 설정 업데이트 없이 계속 진행 (권장하지 않음)
+```
+
+또는 설정이 정상일 때:
+
+```
+📋 설정 상태 확인:
+✅ 설정 완료
+✅ 최근 설정: 2일 전
+✅ 버전 일치: 0.26.0
+
+모든 설정이 정상입니다!
+```
+
+**작업 선택 설명**
+
+| 선택                 | 목적                              | 사용 시기                                                                |
+| ---------------------- | ------------------------------------ | -------------------------------------------------------------------------- |
+| **프로젝트 초기화** | 새 프로젝트 설정 생성     | 새 프로젝트 시작 시                                                |
+| **설정 업데이트**    | 기존 설정 업데이트/검증 | 버전 업그레이드 후, 설정 변경 후, 설정 후 30일 이상 경과         |
+| **지금은 건너뛰기**       | 설정 업데이트 없이 진행 | 설정 변경 중이거나 작업 계속 필요 시 (권장하지 않음) |
+
+**자동 설정 관리의 이점**
+
+- ✅ **대화형 선택**: AskUserQuestion을 통한 직관적 선택
+- ✅ **수동 확인 불필요**: 매 세션마다 자동 확인
+- ✅ **항상 동기화**: 설정이 최신 상태 유지
+- ✅ **버전 호환성**: 버전 불일치 자동 감지
+- ✅ **안정성**: 누락된 설정으로 인한 Mr.Alfred 명령 실패 방지
+
+**⚠️ 중요 참고사항**
+
+개발을 시작하기 전에 **반드시** `/moai:0-project`를 실행해야 합니다. 이 명령은:
+
+- ✅ 프로젝트 메타데이터 및 구조 생성
+- ✅ 언어, Git, TDD 정책 설정
+- ✅ Mr.Alfred 작업 추적 시스템 초기화
+- ✅ 파이프라인 상태 구성 (`/moai:1-plan`, `/moai:2-run` 등에서 업데이트)
+- ✅ 상태바 및 모니터링 시스템 설정
+
+설정을 건너뛰면:
+
+- ❌ Mr.Alfred 명령(`/moai:1-plan`, `/moai:2-run` 등)이 작동하지 않음
+- ❌ 파이프라인 상태 추적 불가
+- ❌ 자동화된 TDD 워크플로우 불가
+
+### 5분 빠른 시작
+
+```bash
+# 0. 새 프로젝트 생성 및 초기화
 moai-adk init my-awesome-project
 cd my-awesome-project
 
-# 1. Optimize project configuration
+# 1. 프로젝트 설정 최적화
 /moai:0-project
 
-# 2. Create a SPEC for a feature
-/moai:1-plan "User authentication with JWT"
+# 2. 기능에 대한 SPEC 생성
+/moai:1-plan "JWT를 사용한 사용자 인증"
 
-# 3. Create feature branch manually (prevent_branch_creation: true)
+# 3. 기능 브랜치 수동 생성 (prevent_branch_creation: true)
 git checkout -b feature/SPEC-AUTH-001
 
-# 4. Implement with automated TDD
+# 4. 자동화된 TDD로 구현
 /moai:2-run SPEC-AUTH-001
 
-# 5. Sync documentation automatically
+# 5. 문서 자동 동기화
 /moai:3-sync SPEC-AUTH-001
 ```
 
@@ -1239,207 +1322,207 @@ git checkout -b feature/SPEC-AUTH-001
 - ✅ 구현 코드
 - ✅ 업데이트된 문서
 
-### Next Steps
+### 다음 단계
 
-- 📖 **Learn the workflow**: [4-Step Development Process](#how-mr-alfred-processes-your-instructions)
-- 🏗️ **Understand architecture**: [Core Architecture](#-core-architecture)
-- 💡 **See examples**: [Example Projects](https://adk.mo.ai.kr/examples)
+- 📖 **워크플로우 학습**: [4단계 개발 프로세스](#how-mr-alfred-processes-your-instructions)
+- 🏗️ **아키텍처 이해**: [핵심 아키텍처](#-core-architecture)
+- 💡 **예제 확인**: [예제 프로젝트](https://adk.mo.ai.kr/examples)
 
 ---
 
-## 🧠 How Mr.Alfred Processes Your Instructions - Detailed Workflow Analysis
+## 🧠 Mr.Alfred의 지시사항 처리 방법 - 상세 워크플로우 분석
 
-Mr.Alfred orchestrates the complete development lifecycle through a systematic 4-step workflow. Here's how Mr.Alfred understands, plans, executes, and validates your requests:
+Mr.Alfred는 체계적인 4단계 워크플로우를 통해 완전한 개발 라이프사이클을 조율합니다. Mr.Alfred가 요청을 이해, 계획, 실행, 검증하는 방법은 다음과 같습니다:
 
-### Step 1: Intent Understanding
+### 1단계: 의도 이해
 
-**Goal**: Clarify user intent before any action
+**목표**: 작업 전에 사용자 의도 명확화
 
-**How it works:**
+**작동 방식:**
 
-- Mr.Alfred evaluates request clarity:
-  - **HIGH clarity**: Technical stack, requirements, scope all specified → Skip to Step 2
-  - **MEDIUM/LOW clarity**: Multiple interpretations possible → Mr.Alfred uses `AskUserQuestion` to clarify
+- Mr.Alfred가 요청 명확도를 평가:
+  - **높은 명확도**: 기술 스택, 요구사항, 범위 모두 명시됨 → 2단계로 진행
+  - **중간/낮은 명확도**: 여러 해석 가능 → Mr.Alfred가 `AskUserQuestion`으로 명확화
 
-**When Mr.Alfred asks clarifying questions:**
+**Mr.Alfred가 명확화 질문을 하는 경우:**
 
-- Ambiguous requests (multiple interpretations)
-- Architecture decisions needed
-- Technology stack selections required
-- Business/UX decisions involved
+- 모호한 요청 (여러 해석 가능)
+- 아키텍처 결정 필요
+- 기술 스택 선택 필요
+- 비즈니스/UX 결정 관련
 
-**Example:**
+**예시:**
 
 ```
-User: "Add authentication to the system"
+사용자: "시스템에 인증 추가해줘"
 
-Mr.Alfred's Analysis:
-- Is it JWT, OAuth, or session-based? (UNCLEAR)
-- Which authentication flow? (UNCLEAR)
-- Multi-factor authentication needed? (UNCLEAR)
+Mr.Alfred의 분석:
+- JWT인가, OAuth인가, 세션 기반인가? (불명확)
+- 어떤 인증 흐름? (불명확)
+- 다단계 인증 필요? (불명확)
 
-Action: Ask clarifying questions via AskUserQuestion
+조치: AskUserQuestion을 통해 명확화 질문
 ```
 
-### Step 2: Plan Creation
+### 2단계: 계획 생성
 
-**Goal**: Create a pre-approved execution strategy
+**목표**: 사전 승인된 실행 전략 생성
 
-**Process:**
+**프로세스:**
 
-1. **Mandatory Plan Agent Invocation**: Mr.Alfred calls the Plan agent to:
+1. **필수 계획 에이전트 호출**: Mr.Alfred가 Plan 에이전트를 호출하여:
 
-   - Decompose tasks into structured steps
-   - Identify dependencies between tasks
-   - Determine single vs parallel execution opportunities
-   - Specify exactly which files will be created/modified/deleted
-   - Estimate work scope and expected time
+   - 작업을 구조화된 단계로 분해
+   - 작업 간 의존성 식별
+   - 단일 vs 병렬 실행 기회 결정
+   - 생성/수정/삭제될 파일 정확히 명시
+   - 작업 범위 및 예상 시간 추정
 
-2. **User Plan Approval**: Mr.Alfred presents the plan via AskUserQuestion:
+2. **사용자 계획 승인**: Mr.Alfred가 AskUserQuestion을 통해 계획 제시:
 
-   - Share the complete file change list in advance
-   - Explain implementation approach clearly
-   - Disclose risk factors in advance
+   - 전체 파일 변경 목록 사전 공유
+   - 구현 접근 방식 명확히 설명
+   - 위험 요소 사전 공개
 
-3. **TodoWrite Initialization**: Create task list based on approved plan:
-   - List all task items explicitly
-   - Define clear completion criteria for each task
+3. **TodoWrite 초기화**: 승인된 계획 기반 작업 목록 생성:
+   - 모든 작업 항목 명시적으로 나열
+   - 각 작업의 명확한 완료 기준 정의
 
-**Example Plan for Authentication SPEC:**
+**인증 SPEC 계획 예시:**
 
 ```markdown
-## Plan for SPEC-AUTH-001
+## SPEC-AUTH-001 계획
 
-### Files to be Created
+### 생성될 파일
 
 - .moai/specs/SPEC-AUTH-001/spec.md
 - .moai/specs/SPEC-AUTH-001/plan.md
 - .moai/specs/SPEC-AUTH-001/acceptance.md
 
-### Implementation Phases
+### 구현 단계
 
-1. RED: Write failing authentication tests
-2. GREEN: Implement JWT token service
-3. REFACTOR: Improve error handling and security
-4. SYNC: Update documentation
+1. RED: 실패하는 인증 테스트 작성
+2. GREEN: JWT 토큰 서비스 구현
+3. REFACTOR: 오류 처리 및 보안 개선
+4. SYNC: 문서 업데이트
 
-### Risks
+### 위험 요소
 
-- Third-party service integration latency
-- Token storage security considerations
+- 서드파티 서비스 통합 지연
+- 토큰 저장 보안 고려사항
 ```
 
-### Step 3: Task Execution (Strict TDD Compliance)
+### 3단계: 작업 실행 (엄격한 TDD 준수)
 
-**Goal**: Execute tasks following TDD principles with transparent progress tracking
+**목표**: 투명한 진행 추적과 함께 TDD 원칙에 따라 작업 실행
 
-**TDD Execution Cycle:**
+**TDD 실행 사이클:**
 
-**1. RED Phase** - Write failing tests first
+**1. RED 단계** - 실패하는 테스트 먼저 작성
 
-- Write test code ONLY
-- Tests should fail (intentionally)
-- No implementation code changes
-- Track progress: `TodoWrite: "RED: Write failing tests" → in_progress`
+- 테스트 코드만 작성
+- 테스트는 실패해야 함 (의도적으로)
+- 구현 코드 변경 금지
+- 진행 추적: `TodoWrite: "RED: 실패하는 테스트 작성" → in_progress`
 
-**2. GREEN Phase** - Minimal code to make tests pass
+**2. GREEN 단계** - 테스트를 통과하는 최소한의 코드
 
-- Add ONLY minimal code necessary for test passing
-- No over-engineering
-- Focus on making tests pass
-- Track progress: `TodoWrite: "GREEN: Minimal implementation" → in_progress`
+- 테스트 통과에 필요한 최소한의 코드만 추가
+- 과도한 엔지니어링 금지
+- 테스트 통과에 집중
+- 진행 추적: `TodoWrite: "GREEN: 최소 구현" → in_progress`
 
-**3. REFACTOR Phase** - Improve code quality
+**3. REFACTOR 단계** - 코드 품질 개선
 
-- Improve design while maintaining test passing
-- Remove code duplication
-- Enhance readability and maintainability
-- Track progress: `TodoWrite: "REFACTOR: Improve code quality" → in_progress`
+- 테스트 통과를 유지하며 설계 개선
+- 코드 중복 제거
+- 가독성 및 유지보수성 향상
+- 진행 추적: `TodoWrite: "REFACTOR: 코드 품질 개선" → in_progress`
 
-**TodoWrite Rules:**
+**TodoWrite 규칙:**
 
-- Each task: `content` (imperative), `activeForm` (present continuous), `status` (pending/in_progress/completed)
-- **Exactly ONE task in_progress** at any time
-- **Real-time Update Obligation**: Immediate status change on task start/completion
-- **Strict Completion Criteria**: Mark completed only when tests pass, implementation complete, and error-free
+- 각 작업: `content` (명령형), `activeForm` (현재 진행형), `status` (pending/in_progress/completed)
+- **한 번에 정확히 하나의 작업만 in_progress**
+- **실시간 업데이트 의무**: 작업 시작/완료 시 즉시 상태 변경
+- **엄격한 완료 기준**: 테스트 통과, 구현 완료, 오류 없음일 때만 완료로 표시
 
-**Forbidden during execution:**
+**실행 중 금지 사항:**
 
-- ❌ Implementation code changes during RED phase
-- ❌ Over-engineering during GREEN phase
-- ❌ Task execution without TodoWrite tracking
-- ❌ Code generation without tests
+- ❌ RED 단계에서 구현 코드 변경
+- ❌ GREEN 단계에서 과도한 엔지니어링
+- ❌ TodoWrite 추적 없이 작업 실행
+- ❌ 테스트 없이 코드 생성
 
-### Step 4: Report & Commit
+### 4단계: 보고서 및 커밋
 
-**Goal**: Document work and create git history on demand
+**목표**: 작업 문서화 및 요청 시 git 히스토리 생성
 
-**Configuration Compliance First:**
+**설정 준수 우선:**
 
-- Check `.moai/config/config.json` `report_generation` settings
-- If `enabled: false` → Provide status reports only, NO file generation
-- If `enabled: true` AND user explicitly requests → Generate documentation files
+- `.moai/config/config.json` `report_generation` 설정 확인
+- `enabled: false`인 경우 → 상태 보고서만 제공, 파일 생성 안 함
+- `enabled: true`이고 사용자가 명시적으로 요청한 경우 → 문서 파일 생성
 
-**Git Commit:**
+**Git 커밋:**
 
-- Call git-manager for all Git operations
-- Follow TDD commit cycle: RED → GREEN → REFACTOR
-- Each commit message captures the workflow phase and purpose
+- 모든 Git 작업에 git-manager 호출
+- TDD 커밋 사이클 따르기: RED → GREEN → REFACTOR
+- 각 커밋 메시지는 워크플로우 단계와 목적 포착
 
-**Example Commit Sequence:**
+**커밋 순서 예시:**
 
 ```bash
-# RED: Write failing tests
-commit 1: "test: Add authentication integration tests"
+# RED: 실패하는 테스트 작성
+commit 1: "test: 인증 통합 테스트 추가"
 
-# GREEN: Minimal implementation
-commit 2: "feat: Implement JWT token service (minimal)"
+# GREEN: 최소 구현
+commit 2: "feat: JWT 토큰 서비스 구현 (최소)"
 
-# REFACTOR: Improve quality
-commit 3: "refactor: Enhance JWT error handling and security"
+# REFACTOR: 품질 개선
+commit 3: "refactor: JWT 오류 처리 및 보안 강화"
 
-# Merge to develop
-commit 4: "merge: Merge SPEC-AUTH-001 to develop"
+# develop에 병합
+commit 4: "merge: SPEC-AUTH-001을 develop에 병합"
 ```
 
-**Project Cleanup:**
+**프로젝트 정리:**
 
-- Delete unnecessary temporary files
-- Remove excessive backups
-- Keep workspace organized and clean
+- 불필요한 임시 파일 삭제
+- 과도한 백업 제거
+- 작업 공간을 체계적이고 깨끗하게 유지
 
 ---
 
-### Visual Workflow Overview
+### 시각적 워크플로우 개요
 
 ```mermaid
 flowchart TD
-    Start["👤 USER REQUEST<br/>Add JWT authentication<br/>to the system"]
+    Start["👤 사용자 요청<br/>시스템에 JWT 인증<br/>추가"]
 
-    Step1["🧠 STEP 1: UNDERSTAND<br/>Intent Clarity?"]
+    Step1["🧠 1단계: 이해<br/>의도 명확도?"]
 
-    HighClarity{"Request<br/>Clarity?"}
+    HighClarity{"요청<br/>명확도?"}
 
-    LowClarity["❓ Ask Clarifying Qs<br/>AskUserQuestion"]
-    UserRespond["💬 User Responds"]
+    LowClarity["❓ 명확화 질문<br/>AskUserQuestion"]
+    UserRespond["💬 사용자 응답"]
 
-    Step2["📋 STEP 2: PLAN<br/>• Call Plan Agent<br/>• Get User Approval<br/>• Init TodoWrite"]
+    Step2["📋 2단계: 계획<br/>• Plan 에이전트 호출<br/>• 사용자 승인<br/>• TodoWrite 초기화"]
 
-    UserApprove["✅ User Approves Plan"]
+    UserApprove["✅ 사용자 계획 승인"]
 
-    Step3["⚙️ STEP 3: EXECUTE<br/>RED → GREEN → REFACTOR<br/>Real-time TodoWrite<br/>Complete Tests"]
+    Step3["⚙️ 3단계: 실행<br/>RED → GREEN → REFACTOR<br/>실시간 TodoWrite<br/>테스트 완료"]
 
-    TasksComplete["✓ All Tasks Done"]
+    TasksComplete["✓ 모든 작업 완료"]
 
-    Step4["📝 STEP 4: REPORT<br/>• Check Config<br/>• Git Commit<br/>• Cleanup Files"]
+    Step4["📝 4단계: 보고서<br/>• 설정 확인<br/>• Git 커밋<br/>• 파일 정리"]
 
-    Done["✨ COMPLETE"]
+    Done["✨ 완료"]
 
     Start --> Step1
     Step1 --> HighClarity
 
-    HighClarity -->|HIGH| Step2
-    HighClarity -->|MEDIUM/LOW| LowClarity
+    HighClarity -->|높음| Step2
+    HighClarity -->|중간/낮음| LowClarity
 
     LowClarity --> UserRespond
     UserRespond --> Step2
@@ -1459,35 +1542,35 @@ flowchart TD
 
 ---
 
-### Key Decision Points
+### 주요 결정 지점
 
-| Scenario                   | Mr.Alfred's Action                 | Outcome               |
+| 시나리오                   | Mr.Alfred의 조치                 | 결과               |
 | -------------------------- | ------------------------------- | --------------------- |
-| Clear, specific request    | Skip to Step 2 (Plan)           | Fast execution        |
-| Ambiguous request          | AskUserQuestion in Step 1       | Correct understanding |
-| Large multi-file changes   | Plan Agent identifies all files | Complete visibility   |
-| Test failures during GREEN | Continue REFACTOR → Investigate | Quality maintained    |
-| Configuration conflicts    | Check `.moai/config/config.json` first | Respect user settings |
+| 명확하고 구체적인 요청    | 2단계(계획)로 진행           | 빠른 실행        |
+| 모호한 요청          | 1단계에서 AskUserQuestion       | 정확한 이해 |
+| 대규모 다중 파일 변경   | Plan 에이전트가 모든 파일 식별 | 완전한 가시성   |
+| GREEN 중 테스트 실패 | REFACTOR 계속 → 조사 | 품질 유지    |
+| 설정 충돌    | `.moai/config/config.json` 먼저 확인 | 사용자 설정 존중 |
 
 ---
 
-### Quality Validation
+### 품질 검증
 
-After all 4 steps complete, Mr.Alfred validates:
+4단계 모두 완료 후 Mr.Alfred가 검증:
 
-- ✅ **Intent Understanding**: User intent clearly defined and approved?
-- ✅ **Plan Creation**: Plan Agent plan created and user approved?
-- ✅ **TDD Compliance**: RED-GREEN-REFACTOR cycle strictly followed?
-- ✅ **Real-time Tracking**: All tasks transparently tracked with TodoWrite?
-- ✅ **Configuration Compliance**: `.moai/config/config.json` settings strictly followed?
-- ✅ **Quality Assurance**: All tests pass and code quality guaranteed?
-- ✅ **Cleanup Complete**: Unnecessary files cleaned and project in clean state?
+- ✅ **의도 이해**: 사용자 의도가 명확히 정의되고 승인되었는가?
+- ✅ **계획 생성**: Plan 에이전트 계획이 생성되고 사용자가 승인했는가?
+- ✅ **TDD 준수**: RED-GREEN-REFACTOR 사이클을 엄격히 따랐는가?
+- ✅ **실시간 추적**: 모든 작업이 TodoWrite로 투명하게 추적되었는가?
+- ✅ **설정 준수**: `.moai/config/config.json` 설정을 엄격히 따랐는가?
+- ✅ **품질 보증**: 모든 테스트가 통과하고 코드 품질이 보장되는가?
+- ✅ **정리 완료**: 불필요한 파일이 정리되고 프로젝트가 깨끗한 상태인가?
 
 ---
 
-## 🏗️ Core Architecture
+## 🏗️ 핵심 아키텍처
 
-### System Components
+### 시스템 컴포넌트
 
 MoAI-ADK는 다음 핵심 컴포넌트로 구성됩니다:
 
@@ -1532,18 +1615,18 @@ MoAI-ADK는 다음 핵심 컴포넌트로 구성됩니다:
 - 자동 다이어그램 생성
 - 다국어 지원
 
-### Key Components
+### 주요 컴포넌트
 
 ```
 MoAI-ADK
-├─ Mr.Alfred (Super Agent Orchestrator)
+├─ Mr.Alfred (슈퍼 에이전트 조율자)
 │  ├─ Understand (요구사항 분석)
 │  ├─ Decompose (작업 분해)
 │  ├─ Plan (실행 전략)
 │  ├─ Orchestrate (에이전트 조율)
 │  └─ Clarify (재질문)
 │
-├─ Commands (6개)
+├─ 명령어 (6개)
 │  ├─ /moai:0-project (초기화)
 │  ├─ /moai:1-plan (SPEC 생성)
 │  ├─ /moai:2-run (TDD 구현)
@@ -1551,42 +1634,42 @@ MoAI-ADK
 │  ├─ /moai:9-feedback (피드백)
 │  └─ /moai:99-release (릴리스)
 │
-├─ Agents (35개)
-│  ├─ Planning/Design (spec-builder, api-designer)
-│  ├─ Implementation (tdd-implementer, backend-expert, frontend-expert)
-│  ├─ Quality (security-expert, quality-gate, test-engineer)
-│  ├─ Documentation (docs-manager, git-manager)
+├─ 에이전트 (35개)
+│  ├─ 계획/설계 (spec-builder, api-designer)
+│  ├─ 구현 (tdd-implementer, backend-expert, frontend-expert)
+│  ├─ 품질 (security-expert, quality-gate, test-engineer)
+│  ├─ 문서화 (docs-manager, git-manager)
 │  ├─ DevOps (devops-expert, monitoring-expert)
-│  └─ Optimization (performance-engineer, database-expert)
+│  └─ 최적화 (performance-engineer, database-expert)
 │
-├─ Skills (135개)
+├─ 스킬 (135개)
 │  ├─ Foundation (SPEC, TDD, TRUST 5)
-│  ├─ Essentials (Testing, Debugging, Performance, Security)
-│  ├─ Domain (Backend, Frontend, Database, Mobile, ML, DevOps, Cloud)
+│  ├─ Essentials (테스팅, 디버깅, 성능, 보안)
+│  ├─ Domain (백엔드, 프론트엔드, 데이터베이스, 모바일, ML, DevOps, 클라우드)
 │  ├─ Language (Python, TypeScript, Go, Rust, PHP, Ruby, Java, C++)
 │  ├─ BaaS (Supabase, Firebase, Vercel, Cloudflare, Auth0, Convex, Railway)
-│  └─ Advanced (MCP, Document Processing, Artifact Building, Communications)
+│  └─ Advanced (MCP, 문서 처리, 아티팩트 빌딩, 커뮤니케이션)
 │
-├─ Configuration System v3.0.0
-│  ├─ Smart Defaults Engine (16개 기본값)
-│  ├─ Auto-Detection Engine (5개 필드)
-│  ├─ Configuration Coverage Validator
-│  └─ 3-Tab Architecture
+├─ 설정 시스템 v3.0.0
+│  ├─ 스마트 기본값 엔진 (16개 기본값)
+│  ├─ 자동 감지 엔진 (5개 필드)
+│  ├─ 설정 커버리지 검증기
+│  └─ 3-탭 아키텍처
 │
-├─ Hook System (3개)
+├─ 훅 시스템 (3개)
 │  ├─ session_start__show_project_info.py
 │  ├─ pre_tool__document_management.py
-│  └─ (Optional) session_end__save_metrics.py
+│  └─ (선택사항) session_end__save_metrics.py
 │
-└─ Documentation System
-   ├─ Real-time Sync
-   ├─ Auto Diagram Generation
-   └─ Multi-language Support
+└─ 문서화 시스템
+   ├─ 실시간 동기화
+   ├─ 자동 다이어그램 생성
+   └─ 다국어 지원
 ```
 
 ---
 
-## 📊 Statistics & Metrics
+## 📊 통계 및 지표
 
 **개발 효율성**:
 - **93% 토큰 절약**: 에이전트 위임으로 80-85% 절감
@@ -1612,23 +1695,23 @@ MoAI-ADK
 
 ---
 
-## 💡 Why Choose MoAI-ADK?
+## 💡 왜 MoAI-ADK를 선택해야 하나요?
 
-### For Individual Developers
+### 개별 개발자를 위해
 
 - ✅ **80-85% 토큰 절약**: 에이전트 위임으로 비용 절감
 - ✅ **빠른 프로토타이핑**: SPEC-First로 명확한 방향성
 - ✅ **자동 문서화**: 코드와 문서 동기화
 - ✅ **품질 보장**: TRUST 5 자동 적용
 
-### For Teams
+### 팀을 위해
 
 - ✅ **일관된 품질**: 모든 팀원이 동일한 표준 적용
 - ✅ **명확한 커뮤니케이션**: SPEC 기반 협업
 - ✅ **자동 검토**: 품질 게이트 자동 실행
 - ✅ **지식 공유**: 스킬 라이브러리 활용
 
-### For Organizations
+### 조직을 위해
 
 - ✅ **비용 절감**: 개발 시간 및 유지보수 비용 감소
 - ✅ **위험 관리**: SPEC-First로 요구사항 명확화
@@ -1637,57 +1720,57 @@ MoAI-ADK
 
 ---
 
-## 📚 Documentation & Resources
+## 📚 문서 및 리소스
 
 **공식 문서**:
-- [Official Website](https://adk.mo.ai.kr)
-- [Getting Started Guide](https://adk.mo.ai.kr/getting-started)
-- [API Reference](https://adk.mo.ai.kr/api)
-- [Examples](https://adk.mo.ai.kr/examples)
+- [공식 웹사이트](https://adk.mo.ai.kr)
+- [시작 가이드](https://adk.mo.ai.kr/getting-started)
+- [API 레퍼런스](https://adk.mo.ai.kr/api)
+- [예제](https://adk.mo.ai.kr/examples)
 
 **커뮤니티**:
-- [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions)
-- [Discord Server](https://discord.gg/moai-adk)
+- [GitHub 토론](https://github.com/modu-ai/moai-adk/discussions)
+- [Discord 서버](https://discord.gg/moai-adk)
 - [Stack Overflow](https://stackoverflow.com/questions/tagged/moai-adk)
 
 ---
 
-## 📋 License
+## 📋 라이선스
 
-MoAI-ADK is released under the [MIT License](LICENSE).
+MoAI-ADK는 [MIT 라이선스](LICENSE) 하에 배포됩니다.
 
 ---
 
-## 📞 Support & Community
+## 📞 지원 및 커뮤니티
 
-- **GitHub Issues**: [Report bugs and request features](https://github.com/modu-ai/moai-adk/issues)
-- **GitHub Discussions**: [Ask questions and share ideas](https://github.com/modu-ai/moai-adk/discussions)
-- **Discord**: [Join our community](https://discord.gg/moai-adk)
+- **GitHub Issues**: [버그 신고 및 기능 요청](https://github.com/modu-ai/moai-adk/issues)
+- **GitHub Discussions**: [질문하고 아이디어 공유](https://github.com/modu-ai/moai-adk/discussions)
+- **Discord**: [커뮤니티 참여](https://discord.gg/moai-adk)
 - **Email**: support@moai-adk.com
 
 ---
 
-## ⭐ Star History
+## ⭐ 스타 히스토리
 
 [![Star History Chart](https://api.star-history.com/svg?repos=modu-ai/moai-adk&type=Date)](https://star-history.com/#modu-ai/moai-adk&Date)
 
 ---
 
-## 🙏 Acknowledgments
+## 🙏 감사의 글
 
 MoAI-ADK는 다음 오픈소스 프로젝트의 영감을 받았습니다:
 
-- [Claude Code](https://claude.ai/claude-code) - AI-powered development assistant
-- [Test-Driven Development](https://en.wikipedia.org/wiki/Test-driven_development) - Software development methodology
-- [EARS](https://github.com/ears-project/ears) - Requirements specification format
+- [Claude Code](https://claude.ai/claude-code) - AI 기반 개발 어시스턴트
+- [Test-Driven Development](https://en.wikipedia.org/wiki/Test-driven_development) - 소프트웨어 개발 방법론
+- [EARS](https://github.com/ears-project/ears) - 요구사항 명세 형식
 
 ---
 
-**Project**: MoAI-ADK
-**Version**: 0.26.0
-**Last Updated**: 2025-11-20
-**Philosophy**: SPEC-First TDD + Agent Orchestration + 85% Token Efficiency
+**프로젝트**: MoAI-ADK
+**버전**: 0.26.0
+**마지막 업데이트**: 2025-11-20
+**철학**: SPEC-First TDD + 에이전트 오케스트레이션 + 85% 토큰 효율
 
 ---
 
-**🤖 Built with Mr.Alfred - MoAI-ADK's Super Agent Orchestrator**
+**🤖 Mr.Alfred로 구축됨 - MoAI-ADK의 슈퍼 에이전트 조율자**
