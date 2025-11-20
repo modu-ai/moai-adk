@@ -1,0 +1,46 @@
+# Minimal test Dockerfile for Issue #231 verification
+FROM debian:bookworm-slim
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install Python and essential dependencies
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv (using the installer script)
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Create workspace
+WORKDIR /workspace
+
+# Create test scripts
+RUN echo '#!/usr/bin/env python3' > test_tty.py && \
+    'import sys; print(f\"TTY: {sys.stdin.isatty()}\")' >> test_tty.py && \
+    chmod +x test_tty.py
+
+RUN echo '#!/usr/bin/env python3' > test_hook.py && \
+    'import sys, json' >> test_hook.py && \
+    'input_data = sys.stdin.read() if not sys.stdin.isatty() else \"{}\"' >> test_hook.py && \
+    'data = json.loads(input_data) if input_data.strip() else {}' >> test_hook.py && \
+    'print(f\"Hook pattern: {data}\")' >> test_hook.py && \
+    chmod +x test_hook.py
+
+RUN echo '#!/usr/bin/env python3' > test_procps.py && \
+    'import subprocess' >> test_procps.py && \
+    'try:' >> test_procps.py && \
+    '    subprocess.run([\"ps\", \"--version\"], capture_output=True, text=True, timeout=5)' >> test_procps.py && \
+    '    print(f\"ps available\")' >> test_procps.py && \
+    'except:' >> test_procps.py && \
+    '    print(\"ps command not available\")' >> test_procps.py && \
+    chmod +x test_procps.py
+
+# Test basic functionality
+RUN echo "Testing TTY detection..." && python3 test_tty.py
+RUN echo "Testing hook pattern..." && python3 test_hook.py
+RUN echo "Testing procps dependency..." && python3 test_procps.py
+
+# Default test
+CMD ["/workspace/test_hook.py"]

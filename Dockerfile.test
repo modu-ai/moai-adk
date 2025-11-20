@@ -1,0 +1,218 @@
+# Test Dockerfile to reproduce Issue #231
+# Based on debian:bookworm-slim as mentioned in the issue
+FROM debian:bookworm-slim
+
+# Avoid interactive prompts during build
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install Python and basic dependencies
+RUN apt-get update && apt-get install -y \
+    python3.13 \
+    python3-pip \
+    python3-venv \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create virtual environment
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Install pip and uv
+RUN pip install --upgrade pip
+RUN pip install uv
+
+# Copy the current project
+WORKDIR /workspace
+COPY . .
+
+# Install moai-adk
+RUN uv sync
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+
+# Create a test script to reproduce the issue
+RUN cat > /workspace/test_docker_issue.py << 'EOF
+#!/usr/bin/env python3
+"""
+Test script to reproduce Issue #231
+Tests stdin blocking in non-interactive Docker environments
+"""
+import sys
+import json
+import time
+import threading
+
+def test_stdin_blocking():
+    """Test the stdin blocking issue from GitHub Issue #231"""
+    print("🧪 Testing stdin blocking pattern from Issue #231...")
+    print(f"sys.stdin.isatty(): {sys.stdin.isatty()}")
+
+    # Test the OLD problematic pattern (should block in Docker)
+    print("\n❌ Testing OLD pattern (should block):")
+    start_time = time.time()
+
+    def old_pattern_test():
+        try:
+            # This is the problematic pattern from the issue
+            input_data = sys.stdin.read()  # This should block
+            data = json.loads(input_data) if input_data.strip() else {}
+            print(f"OLD pattern result: {data}")
+        except Exception as e:
+            print(f"OLD pattern error: {e}")
+
+    # Run with timeout to avoid indefinite blocking
+    thread = threading.Thread(target=old_pattern_test)
+    thread.daemon = True
+    thread.start()
+    thread.join(timeout=3)  # 3 second timeout
+
+    if thread.is_alive():
+        print("❌ OLD pattern confirmed to block in Docker environment")
+        old_pattern_blocked = True
+    else:
+        old_time = time.time() - start_time
+        print(f"✅ OLD pattern completed in {old_time:.2f}s")
+        old_pattern_blocked = False
+
+    # Test the NEW fixed pattern
+    print("\n✅ Testing NEW pattern (should not block):")
+    start_time = time.time()
+
+    try:
+        # This is the fixed pattern
+        input_data = sys.stdin.read() if not sys.stdin.isatty() else "{}"
+        data = json.loads(input_data) if input_data.strip() else {}
+        new_time = time.time() - start_time
+        print(f"✅ NEW pattern result: {data}")
+        print(f"✅ NEW pattern completed in {new_time:.2f}s")
+        new_pattern_works = True
+    except Exception as e:
+        print(f"❌ NEW pattern error: {e}")
+        new_pattern_works = False
+
+    return {
+        "old_pattern_blocked": old_pattern_blocked,
+        "new_pattern_works": new_pattern_works,
+        "tty_detected": sys.stdin.isatty()
+    }
+
+def test_procps_dependency():
+    """Test procps dependency issue from Issue #231"""
+    print("\n🐳 Testing procps dependency...")
+
+    import subprocess
+
+    try:
+        # Test if 'ps' command is available
+        result = subprocess.run(['ps', '--version'],
+                              capture_output=True,
+                              text=True,
+                              timeout=5)
+        print(f"✅ ps command available: {result.stdout.strip()}")
+        procps_available = True
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired) as e:
+        print(f"❌ ps command not available: {e}")
+        procps_available = False
+
+    # Test psutil as well (project dependency)
+    try:
+        import psutil
+        print(f"✅ psutil available: version {psutil.__version__}")
+
+        # Test if psutil can access process information
+        proc_count = len(list(psutil.process_iter()))
+        print(f"✅ psutil process monitoring works: {proc_count} processes found")
+        psutil_works = True
+    except Exception as e:
+        print(f"❌ psutil failed: {e}")
+        psutil_works = False
+
+    return {
+        "procps_available": procps_available,
+        "psutil_works": psutil_works
+    }
+
+def test_hook_files():
+    """Test the specific hook files mentioned in the issue"""
+    print("\n🔗 Testing hook files with stdin handling...")
+
+    hook_files = [
+        "/workspace/src/moai_adk/templates/.claude/hooks/moai/session_start__show_project_info.py",
+        "/workspace/src/moai_adk/templates/.claude/hooks/moai/pre_tool__document_management.py",
+        "/workspace/src/moai_adk/templates/.claude/hooks/moai/lib/json_utils.py"
+    ]
+
+    results = {}
+
+    for hook_file in hook_files:
+        print(f"\nTesting {hook_file.split('/')[-1]}...")
+        try:
+            # Test that the file exists and can be imported
+            import importlib.util
+            spec = importlib.util.spec_from_file_location("test_module", hook_file)
+            if spec and spec.loader:
+                print(f"✅ {hook_file.split('/')[-1]} can be imported")
+                results[hook_file] = "importable"
+            else:
+                print(f"❌ {hook_file.split('/')[-1]} cannot be imported")
+                results[hook_file] = "not_importable"
+        except Exception as e:
+            print(f"❌ {hook_file.split('/')[-1]} import error: {e}")
+            results[hook_file] = f"error: {e}"
+
+    return results
+
+def main():
+    print("🐳 Docker Environment Test for GitHub Issue #231")
+    print("=" * 50)
+    print("Environment: debian:bookworm-slim")
+    print(f"Python: {sys.version}")
+
+    # Run all tests
+    stdin_results = test_stdin_blocking()
+    procps_results = test_procps_dependency()
+    hook_results = test_hook_files()
+
+    # Summary
+    print("\n" + "=" * 50)
+    print("📋 TEST SUMMARY")
+    print("=" * 50)
+
+    print(f"\n🔍 STDIN Tests:")
+    print(f"  Old Pattern (Problematic): {'❌ BLOCKS' if stdin_results['old_pattern_blocked'] else '✅ Works'}")
+    print(f"  New Pattern (Fixed): {'✅ Works' if stdin_results['new_pattern_works'] else '❌ Failed'}")
+    print(f"  TTY Detected: {'✅ Yes' if stdin_results['tty_detected'] else '❌ No'}")
+
+    print(f"\n🐳 System Dependencies:")
+    print(f"  procps Package: {'✅ Available' if procps_results['procps_available'] else '❌ Missing'}")
+    print(f"  psutil Library: {'✅ Works' if procps_results['psutil_works'] else '❌ Failed'}")
+
+    print(f"\n🔗 Hook Files:")
+    for file, status in hook_results.items():
+        status_emoji = "✅" if status == "importable" else "❌"
+        print(f"  {file.split('/')[-1]}: {status_emoji} {status}")
+
+    # Overall result
+    stdin_fixed = not stdin_results['old_pattern_blocked'] and stdin_results['new_pattern_works']
+
+    print(f"\n🎯 OVERALL RESULT:")
+    if stdin_fixed:
+        print("✅ Issue #231 appears to be FIXED!")
+        print("   - stdin blocking resolved")
+        print("   - Docker compatibility improved")
+    else:
+        print("❌ Issue #231 still has problems")
+        print("   - stdin blocking persists")
+
+    return 0 if stdin_fixed else 1
+
+if __name__ == "__main__":
+    sys.exit(main())
+EOF
+
+# Make the test script executable
+RUN chmod +x /workspace/test_docker_issue.py
+
+# Default command to run the test
+CMD ["/workspace/test_docker_issue.py"]

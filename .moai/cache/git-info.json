@@ -1,7 +1,7 @@
 {
-  "branch": "release/0.26.0",
-  "last_commit": "d9b9faa9 feat: enhance agent templates with multi-language support and improve statusline display",
-  "commit_time": "5 minutes ago",
-  "changes": 0,
-  "last_check": "2025-11-20T20:40:19.383568"
+  "branch": "main",
+  "last_commit": "3e1dde54 cleanup: remove temporary development files and reports",
+  "commit_time": "14 minutes ago",
+  "changes": 8,
+  "last_check": "2025-11-20T21:24:00.918739"
 }

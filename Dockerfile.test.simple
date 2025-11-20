@@ -1,0 +1,75 @@
+# Simplified test Dockerfile for Issue #231
+FROM debian:bookworm-slim
+
+# Avoid interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install Python and basic dependencies
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install pip and uv (override external management)
+RUN pip3 install --upgrade pip --break-system-packages
+
+# Try different methods to install uv
+RUN pip3 install --break-system-packages uv || \
+    curl -LsSf https://astral.sh/uv/install.sh | sh || \
+    python3 -m pip install --break-system-packages uv
+
+# Copy project files
+WORKDIR /workspace
+COPY . .
+
+# Test the exact patterns from Issue #231
+RUN python3 -c "
+import sys
+import json
+
+print('🧪 Testing fixed hook patterns in Docker...')
+print(f'TTY: {sys.stdin.isatty()}')
+
+# Test the exact pattern from fixed files
+input_data = sys.stdin.read() if not sys.stdin.isatty() else '{}'
+data = json.loads(input_data) if input_data.strip() else {}
+print(f'✅ Hook pattern works: {data}')
+"
+
+# Install moai-adk
+RUN uv sync
+
+# Set environment
+ENV PYTHONUNBUFFERED=1
+
+# Create a simple test script without complex heredoc
+RUN echo '#!/usr/bin/env python3' > /workspace/test_simple.py && \
+    echo 'import sys; print(f"TTY: {sys.stdin.isatty()}")' >> /workspace/test_simple.py && \
+    echo 'import json' >> /workspace/test_simple.py && \
+    echo 'input_data = sys.stdin.read() if not sys.stdin.isatty() else "{}"' >> /workspace/test_simple.py && \
+    echo 'data = json.loads(input_data) if input_data.strip() else {}' >> /workspace/test_simple.py && \
+    echo 'print(f"Success: {data}")' >> /workspace/test_simple.py
+
+# Create another test for procps
+RUN echo '#!/usr/bin/env python3' > /workspace/test_procps.py && \
+    echo 'import subprocess' >> /workspace/test_procps.py && \
+    echo 'try:' >> /workspace/test_procps.py && \
+    echo '    result = subprocess.run(["ps", "--version"], capture_output=True, text=True)' >> /workspace/test_procps.py && \
+    echo '    print(f"ps available: {result.stdout.strip()}")' >> /workspace/test_procps.py && \
+    echo 'except:' >> /workspace/test_procps.py && \
+    echo '    print("ps command not available")' >> /workspace/test_procps.py
+
+# Make scripts executable
+RUN chmod +x /workspace/test_simple.py /workspace/test_procps.py
+
+# Test procps availability
+RUN echo "Testing procps availability..." && \
+    /workspace/test_procps.py
+
+# Test the stdin handling pattern
+RUN echo "Testing stdin handling..." && \
+    /workspace/test_simple.py
+
+# Default command
+CMD ["/workspace/test_simple.py"]
