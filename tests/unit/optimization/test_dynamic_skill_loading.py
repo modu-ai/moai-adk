@@ -4,10 +4,10 @@ Unit tests for dynamic skill loading framework.
 Tests the TAG-003 component: Dynamic Skill Loading Framework
 """
 
-import pytest
 import time
-from typing import Dict, Any, List
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import patch
+
+import pytest
 
 
 class TestDynamicSkillLoading:
@@ -29,7 +29,7 @@ class TestDynamicSkillLoading:
 
     def test_skill_lazy_loading(self):
         """Test that skills are loaded lazily on demand."""
-        from moai_adk.optimization.dynamic_loading import SkillLoader, SkillLoadingError
+        from moai_adk.optimization.dynamic_loading import SkillLoader
 
         loader = SkillLoader()
 

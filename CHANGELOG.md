@@ -1,4 +1,23 @@
+# v0.27.0 - Release Automation Enhancement (2025-11-20)
+
+## 주요 변경사항
+
+- **릴리스 자동화 개선**: `/moai:99-release` 명령어 안정화
+- **CI/CD 파이프라인**: GitHub Actions를 통한 PyPI 자동 배포
+- **품질 검증 강화**: 테스트 통합 및 코드 품질 검사 개선
+- **CLI 명령어 정리**: 미구현된 backup 명령어 제거
+
+## 설치
+
+\`\`\`bash
+pip install moai-adk==0.27.0
+\`\`\`
+
+---
+
 # v0.26.0 - Project Configuration System Redesign (2025-11-19)
+
+
 
 ## 🎯 주요 기능: 설정 시스템 완전 재설계 (SPEC-REDESIGN-001)
 

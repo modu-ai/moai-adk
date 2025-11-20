@@ -4,9 +4,9 @@ Unit tests for agent optimization templates.
 Tests the TAG-004 component: Agent Optimization Templates
 """
 
+from unittest.mock import patch
+
 import pytest
-from typing import Dict, Any, List
-from unittest.mock import Mock, patch
 
 
 class TestAgentOptimizationTemplates:
@@ -26,7 +26,7 @@ class TestAgentOptimizationTemplates:
 
     def test_template_retrieval(self):
         """Test that templates can be retrieved by name."""
-        from moai_adk.optimization.templates import TemplateRegistry, TemplateNotFoundError
+        from moai_adk.optimization.templates import TemplateNotFoundError, TemplateRegistry
 
         registry = TemplateRegistry()
 
@@ -190,8 +190,8 @@ class TestTemplateIntegration:
 
     def test_template_integration_with_skill_allocation(self):
         """Test template integration with skill allocation matrix."""
-        from moai_adk.optimization.templates import TemplateRegistry
         from moai_adk.optimization.skill_allocation import SkillMatrix
+        from moai_adk.optimization.templates import TemplateRegistry
 
         registry = TemplateRegistry()
         matrix = SkillMatrix(categories=["frontend", "backend"], skills_per_category=4)
@@ -209,8 +209,8 @@ class TestTemplateIntegration:
 
     def test_template_integration_with_dynamic_loading(self):
         """Test template integration with dynamic skill loading."""
-        from moai_adk.optimization.templates import TemplateRegistry
         from moai_adk.optimization.dynamic_loading import SkillLoader
+        from moai_adk.optimization.templates import TemplateRegistry
 
         registry = TemplateRegistry()
         loader = SkillLoader()

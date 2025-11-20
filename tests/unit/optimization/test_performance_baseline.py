@@ -4,10 +4,10 @@ Unit tests for performance baseline measurement framework.
 Tests the TAG-005 component: Performance Baseline Measurements
 """
 
-import pytest
 import time
-from typing import Dict, Any, List
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch
+
+import pytest
 
 
 class TestPerformanceBaseline:
@@ -38,7 +38,7 @@ class TestPerformanceBaseline:
 
     def test_performance_benchmark_runner(self):
         """Test that performance benchmarks can be executed."""
-        from moai_adk.optimization.performance import PerformanceBenchmark, BenchmarkError
+        from moai_adk.optimization.performance import PerformanceBenchmark
 
         benchmark = PerformanceBenchmark()
 
@@ -87,7 +87,7 @@ class TestPerformanceBaseline:
 
     def test_performance_threshold_validation(self):
         """Test that performance thresholds are validated correctly."""
-        from moai_adk.optimization.performance import PerformanceThreshold, ThresholdError
+        from moai_adk.optimization.performance import PerformanceThreshold
 
         threshold = PerformanceThreshold(
             max_response_time=0.1,
@@ -140,7 +140,7 @@ class TestPerformanceBaseline:
 
     def test_performance_comparison(self):
         """Test that performance can be compared against baselines."""
-        from moai_adk.optimization.performance import PerformanceBaseline, ComparisonResult
+        from moai_adk.optimization.performance import ComparisonResult, PerformanceBaseline
 
         baseline = PerformanceBaseline()
 
@@ -303,8 +303,8 @@ class TestPerformanceIntegration:
 
     def test_performance_integration_with_dynamic_loading(self):
         """Test performance integration with dynamic skill loading."""
-        from moai_adk.optimization.performance import PerformanceMonitor
         from moai_adk.optimization.dynamic_loading import SkillLoader
+        from moai_adk.optimization.performance import PerformanceMonitor
 
         monitor = PerformanceMonitor()
         loader = SkillLoader()
@@ -401,7 +401,7 @@ class TestPerformanceQuality:
 
     def test_performance_data_validation(self):
         """Test that performance data is properly validated."""
-        from moai_adk.optimization.performance import PerformanceMetrics, DataValidationError
+        from moai_adk.optimization.performance import DataValidationError, PerformanceMetrics
 
         metrics = PerformanceMetrics()
 
