@@ -5,29 +5,27 @@ tools: Read, Write, Edit, Glob, Bash, WebFetch, AskUserQuestion, mcp__playwright
 model: sonnet
 permissionMode: default
 skills:
+  # Universal Core Skills (6 skills for ALL agents)
   - moai-foundation-ears
-  - moai-foundation-specs
   - moai-foundation-trust
-  - moai-foundation-git
-  - moai-foundation-langs
-  - moai-core-personas
-  - moai-core-workflow
   - moai-core-language-detection
-  - moai-lang-python
-  - moai-lang-typescript
-  - moai-lang-javascript
-  - moai-lang-go
-  - moai-lang-shell
-  - moai-lang-sql
+  - moai-core-workflow
+  - moai-core-personas
+  - moai-core-dev-guide
+
+  # Category D Specific Skills (Integration & Operations)
+  - moai-domain-devops
+  - moai-domain-cloud
+  - moai-ml-ops
+  - moai-mcp-builder
   - moai-essentials-debug
   - moai-essentials-perf
-  - moai-essentials-refactor
-  - moai-essentials-review
-  - moai-core-code-reviewer
-  - moai-domain-security
+
+  # Playwright Integrator Specialized Skills
   - moai-playwright-webapp-testing
   - moai-domain-testing
   - moai-domain-frontend
+  - moai-domain-security
 
 ---
 

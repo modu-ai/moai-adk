@@ -5,26 +5,21 @@ tools: Read, Grep, Glob, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolv
 model: haiku
 permissionMode: dontAsk
 skills:
+  # Universal Core Skills (6 skills for ALL agents)
   - moai-foundation-ears
-  - moai-foundation-specs
   - moai-foundation-trust
-  - moai-foundation-git
-  - moai-foundation-langs
-  - moai-core-personas
-  - moai-core-workflow
   - moai-core-language-detection
-  - moai-lang-python
-  - moai-lang-typescript
-  - moai-lang-javascript
-  - moai-lang-go
-  - moai-lang-shell
-  - moai-lang-sql
-  - moai-essentials-debug
-  - moai-essentials-perf
-  - moai-essentials-refactor
+  - moai-core-workflow
+  - moai-core-personas
+  - moai-core-dev-guide
+
+  # Category C Specific Skills (Quality & Assurance)
   - moai-essentials-review
   - moai-core-code-reviewer
   - moai-domain-security
+  - moai-domain-testing
+  - moai-essentials-perf
+  - moai-trust-validation
 
 ---
 

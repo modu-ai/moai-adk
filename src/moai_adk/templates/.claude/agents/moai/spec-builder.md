@@ -5,28 +5,26 @@ tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch, AskU
 model: inherit
 permissionMode: dontAsk
 skills:
+  # Universal Core Skills (6 skills for ALL agents)
   - moai-foundation-ears
-  - moai-foundation-specs
   - moai-foundation-trust
-  - moai-foundation-git
-  - moai-foundation-langs
-  - moai-core-personas
-  - moai-core-workflow
   - moai-core-language-detection
-  - moai-lang-python
-  - moai-lang-typescript
-  - moai-lang-javascript
-  - moai-lang-go
-  - moai-lang-shell
-  - moai-lang-sql
+  - moai-core-workflow
+  - moai-core-personas
+  - moai-core-dev-guide
+
+  # Category A Specific Skills (Planning & Architecture)
+  - moai-foundation-specs
+  - moai-foundation-git
+  - moai-cc-configuration
+  - moai-cc-skills
   - moai-essentials-debug
-  - moai-essentials-perf
-  - moai-essentials-refactor
   - moai-essentials-review
   - moai-core-code-reviewer
   - moai-domain-security
   - moai-core-spec-authoring
   - moai-cc-claude-md
+  - moai-context7-lang-integration
 
 ---
 
