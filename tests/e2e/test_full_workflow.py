@@ -59,7 +59,7 @@ class TestFullWorkflow:
         """Test all --help commands work"""
         runner = CliRunner()
 
-        commands = ["", "init", "status", "doctor", "backup", "update"]  # restore removed - not implemented
+        commands = ["", "init", "status", "doctor", "update"]  # restore removed - not implemented
 
         for cmd in commands:
             args = [cmd, "--help"] if cmd else ["--help"]
@@ -141,7 +141,7 @@ class TestIntegrationFlow:
         """Test all commands have consistent help"""
         runner = CliRunner()
 
-        commands = ["init", "status", "doctor", "backup", "update"]  # restore removed - not implemented
+        commands = ["init", "status", "doctor", "update"]  # restore removed - not implemented
 
         for cmd in commands:
             result = runner.invoke(cli, [cmd, "--help"])
