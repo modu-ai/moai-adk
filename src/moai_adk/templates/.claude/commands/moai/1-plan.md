@@ -633,8 +633,8 @@ AskUserQuestion({
 
 ## ⚡️ EXECUTION DIRECTIVE
 
-**You must NOW execute the command following the "PHASE 1 Workflow Overview" described above.**
+**You must NOW execute the command following the "The 4-Step Agent-Based Workflow Command Logic" described above.**
 
-1. Start PHASE 1 immediately.
-2. Call the `Task` tool with `subagent_type="spec-builder"` (or `Explore` if needed).
+1. Start PHASE 1: Project Analysis & SPEC Planning immediately.
+2. Call the `Task` tool with `subagent_type="spec-builder"` (or `Explore` as appropriate).
 3. Do NOT just describe what you will do. DO IT.
