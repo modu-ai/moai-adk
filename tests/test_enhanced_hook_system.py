@@ -15,40 +15,36 @@ Test Coverage:
 - Dependency resolution
 """
 
-import pytest
-import asyncio
-import json
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
-from typing import Dict, Any, List
+from unittest.mock import Mock, patch
+
+import pytest
 
 # Import enhanced hook system components
 try:
-    from src.moai_adk.core.jit_enhanced_hook_manager import (
-        JITEnhancedHookManager,
-        HookEvent,
-        HookPriority,
-        HookMetadata,
-        HookExecutionResult,
-        HookPerformanceMetrics,
-        get_jit_hook_manager,
-        execute_session_start_hooks
-    )
-
-    from src.moai_adk.core.phase_optimized_hook_scheduler import (
-        PhaseOptimizedHookScheduler,
-        SchedulingStrategy,
-        SchedulingDecision,
-        HookSchedulingContext,
-        ScheduledHook,
-        SchedulingResult,
-        ExecutionGroup,
-        Phase
-    )
-
     from src.moai_adk.core.jit_context_loader import JITContextLoader
+    from src.moai_adk.core.jit_enhanced_hook_manager import (
+        HookEvent,
+        HookExecutionResult,
+        HookMetadata,
+        HookPerformanceMetrics,
+        HookPriority,
+        JITEnhancedHookManager,
+        execute_session_start_hooks,
+        get_jit_hook_manager,
+    )
+    from src.moai_adk.core.phase_optimized_hook_scheduler import (
+        ExecutionGroup,
+        HookSchedulingContext,
+        Phase,
+        PhaseOptimizedHookScheduler,
+        ScheduledHook,
+        SchedulingDecision,
+        SchedulingResult,
+        SchedulingStrategy,
+    )
 except ImportError:
     # Fallback imports for testing environment
     import sys
@@ -56,28 +52,21 @@ except ImportError:
     sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
     from moai_adk.core.jit_enhanced_hook_manager import (
-        JITEnhancedHookManager,
         HookEvent,
-        HookPriority,
         HookMetadata,
-        HookExecutionResult,
-        HookPerformanceMetrics,
-        get_jit_hook_manager,
-        execute_session_start_hooks
+        HookPriority,
+        JITEnhancedHookManager,
+        execute_session_start_hooks,
     )
-
     from moai_adk.core.phase_optimized_hook_scheduler import (
-        PhaseOptimizedHookScheduler,
-        SchedulingStrategy,
-        SchedulingDecision,
         HookSchedulingContext,
+        Phase,
+        PhaseOptimizedHookScheduler,
         ScheduledHook,
+        SchedulingDecision,
         SchedulingResult,
-        ExecutionGroup,
-        Phase
+        SchedulingStrategy,
     )
-
-    from moai_adk.core.jit_context_loader import JITContextLoader
 
 
 # Fixtures and test data

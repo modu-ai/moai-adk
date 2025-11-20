@@ -302,14 +302,14 @@ class MergeAnalyzer:
 
     def _build_claude_command(self) -> list[str]:
         """Claude Code headless 명령어 구축 (공식 v4.0+ 기반)
-        
+
         Claude Code CLI 공식 옵션:
         - -p: Non-interactive headless mode
         - --model: 명시적 모델 선택 (Haiku 사용)
         - --output-format: JSON 응답 형식
         - --tools: 읽기 전용 도구만 허용 (공백 구분 - POSIX 표준)
         - --permission-mode: 자동 승인 (백그라운드 작업)
-        
+
         Returns:
             Claude CLI 명령 인자 리스트
         """

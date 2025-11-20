@@ -16,7 +16,6 @@ import pytest
 from click.testing import CliRunner
 
 from moai_adk.__main__ import cli, main, show_logo
-from moai_adk.cli.commands.backup import backup
 from moai_adk.cli.commands.doctor import doctor
 from moai_adk.cli.commands.init import create_progress_callback, init
 
@@ -335,60 +334,6 @@ class TestDoctorCommand:
             assert result.exit_code != 0
 
 
-class TestBackupCommand:
-    """backup command tests"""
-
-    def test_backup_help(self):
-        """Test backup --help"""
-        runner = CliRunner()
-        result = runner.invoke(backup, ["--help"])
-        assert result.exit_code == 0
-        assert "backup" in result.output.lower()
-
-    def test_backup_no_moai_directory(self, tmp_path):
-        """Test backup without .moai directory"""
-        runner = CliRunner()
-
-        with runner.isolated_filesystem(temp_dir=tmp_path):
-            result = runner.invoke(backup)
-            # Should fail or warn about missing .moai
-            assert result.exit_code != 0 or "moai" in result.output.lower()
-
-    def test_backup_creates_archive(self, tmp_path):
-        """Test backup creates archive"""
-        runner = CliRunner()
-
-        with runner.isolated_filesystem(temp_dir=tmp_path):
-            # Create .moai directory
-            moai_dir = Path(".moai")
-            moai_dir.mkdir()
-            (moai_dir / "test.txt").touch()
-
-            runner.invoke(backup)
-
-            # Check if backup directory or file created
-            backup_dir = Path(".moai-backups")
-            if backup_dir.exists():
-                assert len(list(backup_dir.iterdir())) > 0
-
-
-class TestRestoreCommand:
-    """restore command tests"""
-
-    @pytest.mark.skip(reason="restore command not implemented - handled by checkpoint system")
-    def test_restore_help(self):
-        """Test restore --help"""
-        pass
-
-    @pytest.mark.skip(reason="restore command not implemented - handled by checkpoint system")
-    def test_restore_no_backups(self, tmp_path):
-        """Test restore with no backups"""
-        pass
-
-    @pytest.mark.skip(reason="restore command not implemented - handled by checkpoint system")
-    def test_restore_with_backup_file(self, tmp_path):
-        """Test restore with specific backup file"""
-        pass
 
 
 class TestUpdateCommand:

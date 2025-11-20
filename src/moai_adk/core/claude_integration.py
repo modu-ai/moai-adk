@@ -290,21 +290,25 @@ Translation:"""
         Returns:
             Processed input data
         """
+        # Convert string to dict if needed
+        processed_data: Dict[str, Any]
         if isinstance(input_data, str):
             try:
-                input_data = json.loads(input_data)
+                processed_data = json.loads(input_data)
             except json.JSONDecodeError as e:
                 raise ValueError(f"Invalid JSON input: {e}")
+        else:
+            processed_data = input_data
 
         if variables:
-            # Process any string values in input_data with variables
-            for key, value in input_data.items():
+            # Process any string values in processed_data with variables
+            for key, value in processed_data.items():
                 if isinstance(value, str) and "{{" in value and "}}" in value:
-                    input_data[key] = self.template_engine.render_string(
+                    processed_data[key] = self.template_engine.render_string(
                         value, variables
                     )
 
-        return input_data
+        return processed_data
 
     def execute_headless_command(
         self,

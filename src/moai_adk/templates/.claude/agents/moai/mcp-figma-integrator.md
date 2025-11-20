@@ -5,27 +5,32 @@ tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, AskUserQuestion
 model: sonnet
 permissionMode: default
 skills:
-  - moai-domain-figma
-  - moai-design-systems
+  - moai-foundation-ears
+  - moai-foundation-specs
+  - moai-foundation-trust
+  - moai-foundation-git
+  - moai-foundation-langs
+  - moai-core-personas
+  - moai-core-workflow
+  - moai-core-language-detection
+  - moai-lang-python
   - moai-lang-typescript
+  - moai-lang-javascript
+  - moai-lang-go
+  - moai-lang-shell
+  - moai-lang-sql
+  - moai-essentials-debug
+  - moai-essentials-perf
+  - moai-essentials-refactor
+  - moai-essentials-review
+  - moai-core-code-reviewer
+  - moai-domain-security
+  - moai-domain-figma
+  - moai-component-designer
+  - moai-design-systems
+  - moai-context7-integration
   - moai-domain-frontend
 
-orchestration:
-  can_resume: true
-  typical_chain_position: "initial"
-  depends_on: []
-  resume_pattern: "multi-session"
-  parallel_safe: false
-
-coordination:
-  spawns_subagents: false
-  delegates_to: ["frontend-expert", "ui-ux-expert", "component-designer"]
-  requires_approval: true
-
-performance:
-  avg_execution_time_seconds: 480
-  context_heavy: true
-  mcp_integration: ["figma-dev-mode-mcp-server", "context7"]
 ---
 
 # MCP Figma Integrator - Design Systems & Design-to-Code Specialist

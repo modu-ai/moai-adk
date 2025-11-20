@@ -44,7 +44,7 @@ def load_glm_credentials() -> bool:
 
         return False
 
-    except Exception as e:
+    except Exception:
         # Silent failure: GLM not configured, use default Claude models
         # print(f"⚠️  Error loading GLM credentials: {e}")
         return False

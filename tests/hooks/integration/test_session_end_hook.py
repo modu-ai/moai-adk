@@ -8,13 +8,8 @@ And Hook chain execution order for session end.
 
 import json
 import subprocess
-import sys
 from datetime import datetime, timedelta
 from pathlib import Path
-from unittest.mock import MagicMock, patch, call
-from io import StringIO
-
-import pytest
 
 
 class TestSessionEndHookExecution:

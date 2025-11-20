@@ -9,8 +9,6 @@ import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from moai_adk.core.merge.analyzer import MergeAnalyzer
 
 

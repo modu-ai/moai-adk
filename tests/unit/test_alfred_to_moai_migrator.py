@@ -10,8 +10,6 @@ Tests cover:
 """
 
 import json
-import shutil
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest

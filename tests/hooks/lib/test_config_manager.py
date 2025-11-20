@@ -1,18 +1,17 @@
 """Comprehensive test suite for ConfigManager"""
 
 import json
-import pytest
 from pathlib import Path
-from typing import Any, Dict
 
+import pytest
 from config_manager import (
-    ConfigManager,
     DEFAULT_CONFIG,
-    get_config_manager,
+    ConfigManager,
     get_config,
-    get_timeout_seconds,
+    get_config_manager,
+    get_exit_code,
     get_graceful_degradation,
-    get_exit_code
+    get_timeout_seconds,
 )
 
 
@@ -22,7 +21,7 @@ class TestConfigManagerInit:
     def test_init_default_path(self):
         """ConfigManager initializes with default path"""
         cm = ConfigManager()
-        expected_path = Path.cwd() / ".moai" / "config.json"
+        expected_path = Path.cwd() / ".moai" / "config" / "config.json"
         assert cm.config_path == expected_path
 
     def test_init_custom_path(self, temp_config_dir):

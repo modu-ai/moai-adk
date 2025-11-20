@@ -105,7 +105,6 @@ class TemplateProcessor:
     # Common template variables with validation hints
     COMMON_TEMPLATE_VARIABLES = {
         "PROJECT_DIR": "Cross-platform project path (run /alfred:0-project to set)",
-        "HOOK_PROJECT_DIR": "Cross-platform hook path (deprecated, use PROJECT_DIR instead)",
         "PROJECT_NAME": "Project name (run /alfred:0-project to set)",
         "AUTHOR": "Project author (run /alfred:0-project to set)",
         "CONVERSATION_LANGUAGE": "Interface language (run /alfred:0-project to set)",

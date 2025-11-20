@@ -9,14 +9,9 @@ And Hook chain execution order.
 """
 
 import json
-import sys
 import subprocess
 from datetime import datetime, timedelta
-from pathlib import Path
-from unittest.mock import MagicMock, patch, mock_open
-from io import StringIO
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 
 class TestSessionStartHookInitialization:
@@ -336,7 +331,7 @@ class TestHookChainExecution:
             try:
                 if not config_file.exists():
                     raise FileNotFoundError(f"Config not found: {config_file}")
-            except FileNotFoundError as e:
+            except FileNotFoundError:
                 # Should handle gracefully
                 error_response = {
                     "continue": True,

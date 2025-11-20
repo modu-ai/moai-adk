@@ -5,9 +5,35 @@ tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, Task, AskUserQu
 model: inherit
 permissionMode: default
 skills:
+  - moai-foundation-ears
+  - moai-foundation-specs
+  - moai-foundation-trust
+  - moai-foundation-git
+  - moai-foundation-langs
+  - moai-core-personas
+  - moai-core-workflow
+  - moai-core-language-detection
+  - moai-lang-python
+  - moai-lang-typescript
+  - moai-lang-javascript
+  - moai-lang-go
+  - moai-lang-shell
+  - moai-lang-sql
+  - moai-essentials-debug
+  - moai-essentials-perf
+  - moai-essentials-refactor
+  - moai-essentials-review
+  - moai-core-code-reviewer
+  - moai-domain-security
+  - moai-domain-devops
   - moai-domain-cloud
+  - moai-cloud-aws-advanced
+  - moai-cloud-gcp-advanced
+  - moai-domain-monitoring
+  - moai-observability-advanced
+  - moai-baas-railway-ext
   - moai-baas-vercel-ext
-  - moai-baas-clerk-ext
+
 ---
 
 # DevOps Expert - Deployment & Infrastructure Specialist

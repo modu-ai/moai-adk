@@ -206,3 +206,76 @@ class BackupManager:
         if backups:
             return Path(backups[0]["path"])
         return None
+
+    def create_full_project_backup(
+        self, description: str = "pre-update-backup"
+    ) -> Path:
+        """
+        Create a complete backup of entire project structure before update
+
+        Backs up:
+        - .claude/ (entire directory)
+        - .moai/ (entire directory)
+        - CLAUDE.md (file)
+
+        Args:
+            description: Description of this backup (default: "pre-update-backup")
+
+        Returns:
+            Path to the backup directory
+        """
+        # Create timestamped backup directory
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_dir = self.project_root / ".moai-backups" / f"{description}_{timestamp}"
+        backup_dir.mkdir(parents=True, exist_ok=True)
+
+        logger.info(f"Creating full project backup at {backup_dir}")
+
+        # Directories and files to backup
+        backup_targets = [
+            (self.project_root / ".claude", True),  # (path, is_directory)
+            (self.project_root / ".moai", True),
+            (self.project_root / "CLAUDE.md", False),
+        ]
+
+        backed_up_items = []
+
+        for target_path, is_dir in backup_targets:
+            if not target_path.exists():
+                continue
+
+            try:
+                rel_path = target_path.relative_to(self.project_root)
+                backup_path = backup_dir / rel_path
+
+                if is_dir:
+                    # Backup directory
+                    shutil.copytree(target_path, backup_path, dirs_exist_ok=True)
+                    backed_up_items.append(str(rel_path))
+                    logger.debug(f"Backed up directory: {rel_path}")
+                else:
+                    # Backup file
+                    backup_path.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(target_path, backup_path)
+                    backed_up_items.append(str(rel_path))
+                    logger.debug(f"Backed up file: {rel_path}")
+
+            except Exception as e:
+                logger.error(f"Failed to backup {target_path}: {e}")
+                raise
+
+        # Save backup metadata
+        metadata = {
+            "timestamp": timestamp,
+            "description": description,
+            "backed_up_items": backed_up_items,
+            "project_root": str(self.project_root),
+            "backup_type": "full_project",
+        }
+
+        metadata_path = backup_dir / "backup_metadata.json"
+        with open(metadata_path, "w", encoding="utf-8") as f:
+            json.dump(metadata, f, indent=2, ensure_ascii=False)
+
+        logger.info(f"✅ Full project backup created successfully: {backup_dir}")
+        return backup_dir

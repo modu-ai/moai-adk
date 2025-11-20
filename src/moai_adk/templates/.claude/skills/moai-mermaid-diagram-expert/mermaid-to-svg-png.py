@@ -21,8 +21,7 @@ from typing import Any, Dict, List, Literal, Optional
 
 try:
     import click
-    from PIL import Image
-    from playwright.async_api import Browser, Page, async_playwright
+    from playwright.async_api import Browser, async_playwright
     from pydantic import BaseModel, Field, validator
 except ImportError as e:
     print(f"Error: {e}")
@@ -53,7 +52,7 @@ class MermaidConfig(BaseModel):
     validate_only: bool = False
 
     @validator('width', 'height')
-    def validate_dimensions(cls, v):
+    def validate_dimensions(cls, v):  # noqa: N805
         if v < 100:
             raise ValueError('Minimum width/height: 100px')
         if v > 4096:

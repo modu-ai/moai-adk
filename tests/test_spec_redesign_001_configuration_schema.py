@@ -12,19 +12,18 @@ Tests cover:
 - Backward compatibility
 """
 
-import pytest
-import json
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
-from typing import Dict, List, Any
+from typing import Any, Dict, List
+from unittest.mock import patch
+
+import pytest
 
 # These imports would be implemented in the actual codebase
 from moai_adk.project.configuration import (
-    ConfigurationManager,
-    TabSchemaValidator,
-    SmartDefaultsEngine,
     AutoDetectionEngine,
     ConfigurationCoverageValidator,
+    ConfigurationManager,
+    SmartDefaultsEngine,
 )
 from moai_adk.project.documentation import DocumentationGenerator
 from moai_adk.project.schema import load_tab_schema
@@ -914,6 +913,6 @@ class TestIntegration:
 # Import actual implementations from configuration module
 from moai_adk.project.configuration import (
     ConditionalBatchRenderer,
-    TemplateVariableInterpolator,
     ConfigurationMigrator,
+    TemplateVariableInterpolator,
 )

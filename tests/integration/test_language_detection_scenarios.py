@@ -7,9 +7,6 @@ for all supported languages.
 
 from pathlib import Path
 
-import pytest
-import yaml
-
 from moai_adk.core.project.detector import LanguageDetector
 
 

@@ -32,7 +32,7 @@ def get_language_by_file_extension(extension: str) -> Optional[str]:
             else:
                 ext = ''
 
-    extension_map = {
+    EXTENSION_MAP = {
         ".py": "python",
         ".js": "javascript",
         ".ts": "typescript",
@@ -127,8 +127,8 @@ class LanguageValidator:
             self.supported_languages = set(lang.lower() for lang in supported_languages)
 
         # Compile regex patterns for efficient matching
-        self._directory_patterns = {}
-        self._exclude_patterns_cache = {}
+        self._directory_patterns: Dict[str, Any] = {}
+        self._exclude_patterns_cache: Dict[str, Any] = {}
 
         # Initialize analysis cache for statistics tracking
         self._analysis_cache = {
@@ -461,7 +461,7 @@ class LanguageValidator:
         expected_dirs = self.get_expected_directories(language)
 
         # Group files by directory
-        files_by_dir = {}
+        files_by_dir: Dict[str, List[str]] = {}
         for file_path, is_source in project_files.items():
             if is_source:  # Only validate source files
                 dir_path = str(Path(file_path).parent) + "/"
@@ -483,13 +483,11 @@ class LanguageValidator:
                 )
 
         # Check for files in unexpected directories
-        config = {}  # Using empty config for default exclude patterns
-        get_exclude_patterns(config)
-
+        # Note: Using simplified check since is_code_directory signature changed
         for file_path, is_source in project_files.items():
             if is_source:
-                path_obj = Path(file_path)
-                if not is_code_directory(path_obj, config, language):
+                path_str = str(file_path)
+                if not is_code_directory(path_str):
                     issues.append(f"Source file in unexpected location: {file_path}")
 
         return len(issues) == 0, issues
@@ -511,7 +509,7 @@ class LanguageValidator:
         else:
             validated_files = files
 
-        stats = {}
+        stats: Dict[str, int] = {}
         total_files = 0
         detected_extensions = set()
 

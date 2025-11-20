@@ -1,15 +1,11 @@
 """Comprehensive test suite for JSONUtils"""
 
 import json
-import pytest
-from pathlib import Path
 from io import StringIO
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
-from json_utils import (
-    JSONUtils,
-    JSONSchemas
-)
+import pytest
+from json_utils import JSONSchemas, JSONUtils
 
 
 class TestReadJsonFromStdin:

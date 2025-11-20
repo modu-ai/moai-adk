@@ -315,6 +315,192 @@ def _get_project_config_version(project_path: Path) -> str:
         raise ValueError(f"Failed to parse project config.json: {e}") from e
 
 
+def _ask_merge_strategy(yes: bool = False) -> str:
+    """
+    Ask user to choose merge strategy via CLI prompt.
+
+    Args:
+        yes: If True, auto-select "auto" (for --yes flag)
+
+    Returns:
+        "auto" or "manual"
+    """
+    if yes:
+        return "auto"
+
+    console.print("\n[cyan]🔀 Choose merge strategy:[/cyan]")
+    console.print("[cyan]  [1] Auto-merge (default)[/cyan]")
+    console.print(
+        "[dim]     → Template installs fresh + user changes preserved + minimal conflicts[/dim]"
+    )
+    console.print("[cyan]  [2] Manual merge[/cyan]")
+    console.print(
+        "[dim]     → Backup preserved + merge guide generated + you control merging[/dim]"
+    )
+
+    response = click.prompt("Select [1 or 2]", default="1")
+    if response == "2":
+        return "manual"
+    return "auto"
+
+
+def _generate_manual_merge_guide(
+    backup_path: Path, template_path: Path, project_path: Path
+) -> Path:
+    """
+    Generate comprehensive merge guide for manual merging.
+
+    Args:
+        backup_path: Path to backup directory
+        template_path: Path to template directory
+        project_path: Project root path
+
+    Returns:
+        Path to generated merge guide
+    """
+    guide_dir = project_path / ".moai" / "guides"
+    guide_dir.mkdir(parents=True, exist_ok=True)
+
+    guide_path = guide_dir / "merge-guide.md"
+
+    # Find changed files
+    changed_files = []
+    backup_claude = backup_path / ".claude"
+    backup_moai = backup_path / ".moai"
+
+    # Compare .claude/
+    if backup_claude.exists():
+        for file in backup_claude.rglob("*"):
+            if file.is_file():
+                rel_path = file.relative_to(backup_path)
+                current_file = project_path / rel_path
+                if current_file.exists():
+                    if file.read_text(encoding="utf-8", errors="ignore") != current_file.read_text(
+                        encoding="utf-8", errors="ignore"
+                    ):
+                        changed_files.append(f"  - {rel_path}")
+                else:
+                    changed_files.append(f"  - {rel_path} (new)")
+
+    # Generate guide
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    guide_content = f"""# Merge Guide - Manual Merge Mode
+
+**Generated**: {timestamp}
+**Backup Location**: `{backup_path.relative_to(project_path)}/`
+
+## Summary
+
+During this update, the following files were changed:
+
+{chr(10).join(changed_files) if changed_files else "  (No changes detected)"}
+
+## How to Merge
+
+### Option 1: Using diff (Terminal)
+
+```bash
+# Compare specific files
+diff {backup_path.name}/.claude/settings.json .claude/settings.json
+
+# View all differences
+diff -r {backup_path.name}/ .
+```
+
+### Option 2: Using Visual Merge Tool
+
+```bash
+# macOS/Linux - Using meld
+meld {backup_path.relative_to(project_path)}/ .
+
+# Using VSCode
+code --diff {backup_path.relative_to(project_path)}/.claude/settings.json .claude/settings.json
+```
+
+### Option 3: Manual Line-by-Line
+
+1. Open backup file in your editor
+2. Open current file side-by-side
+3. Manually copy your customizations
+
+## Key Files to Review
+
+### .claude/settings.json
+- Contains MCP servers, hooks, environment variables
+- **Action**: Restore any custom MCP servers and environment variables
+- **Location**: {backup_path.relative_to(project_path)}/.claude/settings.json
+
+### .moai/config/config.json
+- Contains project configuration and metadata
+- **Action**: Verify user-specific settings are preserved
+- **Location**: {backup_path.relative_to(project_path)}/.moai/config/config.json
+
+### .claude/commands/, .claude/agents/, .claude/hooks/
+- Contains custom scripts and automation
+- **Action**: Restore any custom scripts outside of /moai/ folders
+- **Location**: {backup_path.relative_to(project_path)}/.claude/
+
+## Migration Checklist
+
+- [ ] Compare `.claude/settings.json`
+  - [ ] Restore custom MCP servers
+  - [ ] Restore environment variables
+  - [ ] Verify hooks are properly configured
+
+- [ ] Review `.moai/config/config.json`
+  - [ ] Check version was updated
+  - [ ] Verify user settings preserved
+
+- [ ] Restore custom scripts
+  - [ ] Any custom commands outside /moai/
+  - [ ] Any custom agents outside /moai/
+  - [ ] Any custom hooks outside /moai/
+
+- [ ] Run tests
+  ```bash
+  uv run pytest
+  moai-adk validate
+  ```
+
+- [ ] Commit changes
+  ```bash
+  git add .
+  git commit -m "merge: Update templates with manual merge"
+  ```
+
+## Rollback if Needed
+
+If you want to cancel and restore the backup:
+
+```bash
+# Restore everything from backup
+cp -r {backup_path.relative_to(project_path)}/.claude .
+cp -r {backup_path.relative_to(project_path)}/.moai .
+cp {backup_path.relative_to(project_path)}/CLAUDE.md .
+
+# Or restore specific files
+cp {backup_path.relative_to(project_path)}/.claude/settings.json .claude/
+```
+
+## Questions?
+
+If you encounter merge conflicts or issues:
+
+1. Check the backup folder for original files
+2. Compare line-by-line using diff tools
+3. Consult documentation: https://adk.mo.ai.kr/update-merge
+
+---
+
+**Backup**: `{backup_path}/`
+**Generated**: {timestamp}
+"""
+
+    guide_path.write_text(guide_content, encoding="utf-8")
+    logger.info(f"✅ Merge guide created: {guide_path}")
+    return guide_path
+
+
 def _detect_stale_cache(
     upgrade_output: str, current_version: str, latest_version: str
 ) -> bool:
@@ -1217,10 +1403,27 @@ def _execute_migration_if_needed(project_path: Path, yes: bool = False) -> bool:
     "--templates-only", is_flag=True, help="Skip package upgrade, sync templates only"
 )
 @click.option("--yes", is_flag=True, help="Auto-confirm all prompts (CI/CD mode)")
+@click.option(
+    "--merge",
+    "merge_strategy",
+    flag_value="auto",
+    help="Auto-merge: Apply template + preserve user changes",
+)
+@click.option(
+    "--manual",
+    "merge_strategy",
+    flag_value="manual",
+    help="Manual merge: Preserve backup, generate merge guide",
+)
 def update(
-    path: str, force: bool, check: bool, templates_only: bool, yes: bool
+    path: str,
+    force: bool,
+    check: bool,
+    templates_only: bool,
+    yes: bool,
+    merge_strategy: str | None,
 ) -> None:
-    """Update command with 3-stage workflow (v0.6.3+).
+    """Update command with 3-stage workflow + merge strategy selection (v0.26.0+).
 
     Stage 1 (Package Version Check):
     - Fetches current and latest versions from PyPI
@@ -1232,18 +1435,34 @@ def update(
     - If versions match: skips Stage 3 (already up-to-date)
     - Performance improvement: 70-80% faster for unchanged projects (3-4s vs 12-18s)
 
-    Stage 3 (Template Sync):
+    Stage 3 (Template Sync with Merge Strategy - NEW in v0.26.0):
     - Syncs templates only if versions differ
+    - User chooses merge strategy:
+      * Auto-merge (default): Template + preserved user changes
+      * Manual merge: Backup + comprehensive merge guide (full control)
     - Updates .claude/, .moai/, CLAUDE.md, config.json
     - Preserves specs and reports
     - Saves new template_version to config.json
 
     Examples:
-        python -m moai_adk update                    # auto 3-stage workflow
-        python -m moai_adk update --force            # force template sync
+        python -m moai_adk update                    # interactive merge strategy selection
+        python -m moai_adk update --merge            # auto-merge (template + user changes)
+        python -m moai_adk update --manual           # manual merge (backup + guide)
+        python -m moai_adk update --force            # force template sync (no backup)
         python -m moai_adk update --check            # check version only
         python -m moai_adk update --templates-only   # skip package upgrade
-        python -m moai_adk update --yes              # CI/CD mode (auto-confirm)
+        python -m moai_adk update --yes              # CI/CD mode (auto-confirm + auto-merge)
+
+    Merge Strategies:
+        --merge:  Auto-merge applies template + preserves your changes (default)
+                  Generated files: backup, merge report
+        --manual: Manual merge preserves backup + generates comprehensive guide
+                  Generated files: backup, merge guide
+
+    Generated Files:
+        - Backup: .moai-backups/pre-update-backup_{timestamp}/
+        - Report: .moai/reports/merge-report.md (auto-merge only)
+        - Guide:  .moai/guides/merge-guide.md (manual merge only)
     """
     try:
         project_path = Path(path).resolve()
@@ -1418,7 +1637,71 @@ def update(
             f"\n[cyan]📄 Syncing templates ({project_config_version} → {package_config_version})...[/cyan]"
         )
 
-        # Preserve user-specific settings before sync
+        # Determine merge strategy
+        final_merge_strategy = merge_strategy
+        if not final_merge_strategy:
+            final_merge_strategy = _ask_merge_strategy(yes)
+
+        # Handle merge strategy
+        if final_merge_strategy == "manual":
+            # Manual merge mode: Create full backup + generate guide, no template sync
+            console.print("\n[cyan]🔀 Manual merge mode selected[/cyan]")
+
+            # Create full project backup
+            console.print("   [cyan]💾 Creating full project backup...[/cyan]")
+            try:
+                from moai_adk.core.migration.backup_manager import BackupManager
+
+                backup_manager = BackupManager(project_path)
+                full_backup_path = backup_manager.create_full_project_backup(
+                    description="pre-update-backup"
+                )
+                console.print(
+                    f"   [green]✓ Backup: {full_backup_path.relative_to(project_path)}/[/green]"
+                )
+
+                # Generate merge guide
+                console.print("   [cyan]📋 Generating merge guide...[/cyan]")
+                template_path = Path(__file__).parent.parent.parent / "templates"
+                guide_path = _generate_manual_merge_guide(
+                    full_backup_path, template_path, project_path
+                )
+                console.print(
+                    f"   [green]✓ Guide: {guide_path.relative_to(project_path)}[/green]"
+                )
+
+                # Summary
+                console.print("\n[green]✓ Manual merge setup complete![/green]")
+                console.print(
+                    f"[cyan]📍 Backup location: {full_backup_path.relative_to(project_path)}/[/cyan]"
+                )
+                console.print(
+                    f"[cyan]📋 Merge guide: {guide_path.relative_to(project_path)}[/cyan]"
+                )
+                console.print(
+                    "\n[yellow]⚠️  Next steps:[/yellow]"
+                )
+                console.print(
+                    "[yellow]  1. Review the merge guide[/yellow]"
+                )
+                console.print(
+                    "[yellow]  2. Compare files using diff or visual tools[/yellow]"
+                )
+                console.print(
+                    "[yellow]  3. Manually merge your customizations[/yellow]"
+                )
+                console.print(
+                    "[yellow]  4. Test and commit changes[/yellow]"
+                )
+
+            except Exception as e:
+                console.print(f"[red]Error: Manual merge setup failed - {e}[/red]")
+                raise click.Abort()
+
+            return
+
+        # Auto merge mode: Preserve user-specific settings before sync
+        console.print("\n[cyan]🔀 Auto-merge mode selected[/cyan]")
         console.print("   [cyan]💾 Preserving user settings...[/cyan]")
         preserved_settings = _preserve_user_settings(project_path)
 

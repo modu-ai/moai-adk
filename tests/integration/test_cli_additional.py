@@ -2,17 +2,14 @@
 
 추가 CLI 테스트로 85% 커버리지 달성:
 - init 명령어 interactive 시나리오
-- backup/restore 실제 실행 경로
 - prompts 모듈 커버리지
 """
 
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-import pytest
 from click.testing import CliRunner
 
-from moai_adk.cli.commands.backup import backup
 from moai_adk.cli.commands.init import init
 
 # from moai_adk.cli.commands.restore import restore  # Not implemented - handled by checkpoint system
@@ -48,32 +45,6 @@ class TestInitInteractive:
             assert result.exit_code == 0 or Path(".moai").exists()
 
 
-class TestBackupRestore:
-    """backup/restore 명령어 실제 실행 테스트"""
-
-    def test_backup_with_moai_directory(self, tmp_path):
-        """Test backup creates archive successfully"""
-        runner = CliRunner()
-
-        with runner.isolated_filesystem(temp_dir=tmp_path):
-            # Create .moai structure
-            moai_dir = Path(".moai")
-            moai_dir.mkdir()
-            (moai_dir / "config.json").write_text('{"mode": "personal"}')
-
-            specs_dir = moai_dir / "specs"
-            specs_dir.mkdir()
-
-            # Run backup
-            result = runner.invoke(backup)
-
-            # Should succeed or show some output
-            assert result.exit_code is not None
-
-    @pytest.mark.skip(reason="restore command not implemented - handled by checkpoint system")
-    def test_restore_interactive_selection(self, tmp_path):
-        """Test restore with interactive backup selection"""
-        pass
 
 
 class TestStatusEdgeCases:

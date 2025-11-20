@@ -13,8 +13,6 @@ Total: 30 acceptance criteria tests
 
 from pathlib import Path
 
-import pytest
-
 from moai_adk.core.project.detector import LanguageDetector
 
 

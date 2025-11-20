@@ -1,162 +1,510 @@
-# moai-security-api: Reference & Official Documentation
+# API Security Reference
 
-## Official Standards & Specifications
+Complete reference guide for OWASP API Security Top 10 and advanced patterns.
 
-### OAuth 2.1 & OpenID Connect
-- OAuth 2.1 Specification: https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1
-- OAuth 2.0 PKCE (RFC 7636): https://tools.ietf.org/html/rfc7636
-- OpenID Connect Core: https://openid.net/specs/openid-connect-core-1_0.html
-- OAuth 2.0 Scope Recommendations: https://tools.ietf.org/html/draft-ietf-oauth-v2-scopes
+---
 
-### JWT & Token Management
-- JWT.io Registry: https://jwt.io/
-- RFC 7519 (JWT Claims): https://tools.ietf.org/html/rfc7519
-- RFC 7797 (Unencrypted JWT): https://tools.ietf.org/html/rfc7797
-- JWE (JSON Web Encryption): https://tools.ietf.org/html/rfc7516
+## OWASP API Security Top 10 (2023) - Detailed
 
-### API Security Standards
-- OWASP API Security Top 10: https://owasp.org/www-project-api-security/
-- REST API Best Practices: https://restfulapi.net/
-- GraphQL Security Guidelines: https://cheatsheetseries.owasp.org/cheatsheets/GraphQL_Cheat_Sheet.html
-- gRPC Security: https://grpc.io/docs/guides/auth/
+### 1. Broken Object Level Authorization (BOLA)
 
-### HTTP Security Headers
-- Content-Security-Policy (CSP): https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy
-- CORS Specification: https://fetch.spec.whatwg.org/#http-cors-protocol
-- Strict-Transport-Security (HSTS): https://tools.ietf.org/html/rfc6797
-- X-Content-Type-Options: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Content-Type-Options
+**Description**: API exposes endpoints that handle object identifiers without proper authorization checks.
 
-## Framework Documentation
+**Attack Example**:
 
-### Express.js
-- Official Security Best Practices: https://expressjs.com/en/advanced/best-practice-security.html
-- Passport.js Integration: http://www.passportjs.org/
-- Express Middleware Reference: https://expressjs.com/en/resources/middleware.html
-- CORS Package: https://github.com/expressjs/cors
-- Helmet.js Security Headers: https://helmetjs.github.io/
+```http
+GET /api/users/123/orders
+Authorization: Bearer <user_456_token>
 
-### Apollo Server (GraphQL)
-- Apollo Server Documentation: https://www.apollographql.com/docs/apollo-server/
-- GraphQL Security Best Practices: https://www.apollographql.com/docs/apollo-server/security/authentication/
-- Query Complexity Analysis: https://www.apollographql.com/docs/apollo-server/security/complexity-analysis/
-- Rate Limiting: https://www.apollographql.com/docs/apollo-server/security/rate-limiting/
+# User 456 shouldn't see User 123's orders!
+```
 
-### Node.js gRPC
-- gRPC Official Documentation: https://grpc.io/docs/languages/node/quickstart/
-- gRPC Security: https://grpc.io/docs/guides/auth/
-- mTLS Configuration: https://grpc.io/docs/guides/auth/#mutual-tls
-- Protocol Buffers: https://developers.google.com/protocol-buffers
+**Mitigation**:
 
-### Rate Limiting & Redis
-- Redis Official: https://redis.io/
-- Redis Lua Scripting: https://redis.io/commands/eval/
-- Token Bucket Algorithm: https://en.wikipedia.org/wiki/Token_bucket
-- Distributed Rate Limiting Patterns: https://stripe.com/blog/rate-limiters
+```python
+@app.get("/users/{user_id}/orders")
+async def get_user_orders(user_id: int, current_user: User = Depends(get_current_user)):
+    # Verify user owns this resource
+    if current_user.id != user_id and not current_user.is_admin:
+        raise HTTPException(403, "Access denied")
 
-## Libraries & Tools (November 2025)
+    return await Order.get_by_user(user_id)
+```
 
-### Authentication & Authorization
-- **jsonwebtoken** (9.0.x): https://github.com/auth0/node-jsonwebtoken
-- **passport** (0.7.x): https://github.com/jaredhanson/passport
-- **passport-oauth2** (1.8.x): https://github.com/jaredhanson/passport-oauth2
-- **@passport-js/passport-google-oauth20**: https://github.com/jaredhanson/passport-google-oauth2
-- **@passport-js/passport-github2**: https://github.com/cfsghost/passport-github
+**Prevention Checklist**:
 
-### API Frameworks
-- **Express.js** (4.21.x): https://github.com/expressjs/express
-- **Fastify** (5.0.x): https://github.com/fastify/fastify
-- **@apollo/server** (4.12.x): https://github.com/apollographql/apollo-server
-- **@grpc/grpc-js** (1.12.x): https://github.com/grpc/grpc-node
+- [ ] Validate user owns requested resource
+- [ ] Implement object-level permission checks
+- [ ] Use UUIDs instead of sequential IDs
+- [ ] Log unauthorized access attempts
 
-### Security Headers & Validation
-- **helmet** (7.0.x): https://github.com/helmetjs/helmet
-- **express-validator** (7.0.x): https://github.com/express-validator/express-validator
-- **cors** (2.8.x): https://github.com/expressjs/cors
-- **csurf** (1.11.x): https://github.com/expressjs/csurf
+---
 
-### Rate Limiting & Caching
-- **redis** (5.0.x): https://github.com/redis/node-redis
-- **express-rate-limit** (7.2.x): https://github.com/nfriedly/express-rate-limit
-- **ioredis** (5.3.x): https://github.com/luin/ioredis
+### 2. Broken Authentication
 
-## Common Vulnerabilities & CWE References
+**Description**: Weak authentication mechanisms allowing attackers to compromise tokens or credentials.
 
-### Broken Object Level Authorization (BOLA/IDOR)
-- CWE-639: https://cwe.mitre.org/data/definitions/639.html
-- OWASP A01:2021: https://owasp.org/Top10/A01_2021-Broken_Access_Control/
-- Mitigation: Always verify tenant_id/user_id on every query
+**Common Issues**:
 
-### Broken Function Level Authorization (BFLA)
-- CWE-269: https://cwe.mitre.org/data/definitions/269.html
-- OWASP A05:2021: https://owasp.org/Top10/A05_2021-Broken_Access_Control/
-- Mitigation: Check user.role before executing admin operations
+- Weak password policies
+- No MFA
+- Long-lived tokens
+- Credentials in URLs
 
-### Excessive Data Exposure
-- CWE-200: https://cwe.mitre.org/data/definitions/200.html
-- OWASP A03:2021: https://owasp.org/Top10/A03_2021-Injection/
-- Mitigation: Return only necessary fields in API responses
+**Mitigation**:
 
-### Rate Limit Bypass
-- CWE-770: https://cwe.mitre.org/data/definitions/770.html
-- OWASP A04:2023: https://owasp.org/www-project-api-security/
-- Mitigation: Use distributed rate limiting with Redis
+```python
+# Strong password policy
+PASSWORD_REQUIREMENTS = {
+    "min_length": 12,
+    "require_uppercase": True,
+    "require_lowercase": True,
+    "require_digits": True,
+    "require_special": True,
+}
 
-### Broken API Versioning
-- No standard CWE, but related to obsolescence
-- OWASP API Security Top 10: https://owasp.org/www-project-api-security/
-- Mitigation: Use deprecation headers, version endpoints explicitly
+# Short-lived JWT
+ACCESS_TOKEN_EXPIRE_MINUTES = 15  # Not 24 hours!
+REFRESH_TOKEN_EXPIRE_DAYS = 7
 
-## Testing & Validation Tools
+# MFA enforcement
+@app.post("/login")
+async def login(username: str, password: str):
+    user = await authenticate(username, password)
+    if user.mfa_enabled:
+        otp_token = generate_otp_challenge(user)
+        return {"requires_mfa": True, "otp_token": otp_token}
+    # ... issue tokens
+```
 
-### API Testing
-- Postman: https://www.postman.com/
-- Insomnia: https://insomnia.rest/
-- Thunder Client: https://www.thunderclient.com/
-- REST Client (VS Code): https://marketplace.visualstudio.com/items?itemName=humao.rest-client
+---
 
-### Security Testing
-- OWASP ZAP: https://www.zaproxy.org/
-- Burp Suite: https://portswigger.net/burp
-- SQLmap: https://sqlmap.org/
-- API Fortress: https://www.apitesting.com/
+### 3. Broken Object Property Level Authorization
 
-### Load Testing
-- Apache JMeter: https://jmeter.apache.org/
-- Locust: https://locust.io/
-- k6: https://k6.io/
-- Artillery: https://artillery.io/
+**Description**: API returns more data than necessary, exposing sensitive fields.
 
-## Industry Standards & Best Practices
+**Attack Example**:
 
-### NIST Cybersecurity Framework
-- NIST CSF Overview: https://www.nist.gov/cyberframework
-- NIST SP 800-53 (Security Controls): https://csrc.nist.gov/publications/detail/sp/800-53/rev-5/final
-- NIST SP 800-63B (Authentication): https://pages.nist.gov/800-63-3/sp800-63b.html
+```json
+// Response exposes internal fields
+{
+  "id": 123,
+  "name": "John Doe",
+  "email": "john@example.com",
+  "password_hash": "$2b$12$...", // ❌ Should not be exposed
+  "is_admin": true, // ❌ Internal field
+  "created_at": "2025-01-01"
+}
+```
 
-### CIS Controls
-- CIS Controls v8: https://www.cisecurity.org/cis-controls/v8
-- API Security: https://www.cisecurity.org/blog/securing-apis/
+**Mitigation**:
 
-### PCI-DSS Compliance
-- PCI-DSS  : https://www.pcisecuritystandards.org/
-- Secure Coding Practices: https://www.pcisecuritystandards.org/documents/PCI_Secure_Coding_Practices.pdf
+```python
+from pydantic import BaseModel
 
-## Conference Talks & Articles
+class UserPublic(BaseModel):
+    """Public user representation - excludes sensitive fields."""
+    id: int
+    name: str
+    email: str
+    created_at: datetime
 
-### OWASP Events
-- AppSec Global: https://www.globalappsec.org/
-- OWASP Europe Conference: https://owasp.org/www-community/events
+    class Config:
+        from_attributes = True
 
-### API Security Articles
-- "The 2023 State of API Security": https://www.neuralegion.com/blog/api-security-report/
-- "API Security Best Practices": https://owasp.org/www-project-api-security/
-- "Protecting APIs from OWASP Top 10": https://blog.postman.com/
+@app.get("/users/{user_id}", response_model=UserPublic)
+async def get_user(user_id: int):
+    user = await User.get(user_id)
+    return user  # Pydantic automatically filters fields
+```
 
-## Related Skills
+---
 
-- **moai-security-auth**: Authentication patterns (OAuth 2.1, JWT, MFA)
-- **moai-security-encryption**: Encryption & TLS 1.3
-- **moai-security-owasp**: OWASP Top 10 defense
-- **moai-domain-web-api**: REST API best practices
-- **moai-domain-database**: SQL injection prevention
+### 4. Unrestricted Resource Consumption
 
+**Description**: No limits on API usage, leading to DoS or excessive billing.
+
+**Attack Scenarios**:
+
+- No pagination (fetch 1M records)
+- No rate limiting
+- Expensive operations without throttling
+- Large file uploads
+
+**Mitigation**:
+
+```python
+from fastapi import Query
+
+@app.get("/users")
+async def list_users(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100)  # Max 100 per request
+):
+    offset = (page - 1) * limit
+    users = await User.get_paginated(offset=offset, limit=limit)
+    return {
+        "users": users,
+        "page": page,
+        "limit": limit,
+        "total": await User.count()
+    }
+
+# File upload limits
+@app.post("/upload")
+async def upload_file(file: UploadFile):
+    MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+
+    size = 0
+    chunks = []
+    async for chunk in file.stream():
+        size += len(chunk)
+        if size > MAX_FILE_SIZE:
+            raise HTTPException(413, "File too large")
+        chunks.append(chunk)
+
+    # Process file...
+```
+
+---
+
+### 5. Broken Function Level Authorization
+
+**Description**: Regular users can access admin/privileged functions.
+
+**Attack Example**:
+
+```http
+DELETE /api/admin/users/123
+Authorization: Bearer <regular_user_token>
+
+# Regular user shouldn't access admin endpoints!
+```
+
+**Mitigation**:
+
+```python
+# Route-level protection
+admin_router = APIRouter(prefix="/admin", dependencies=[Depends(require_admin)])
+
+@admin_router.delete("/users/{user_id}")
+async def delete_user(user_id: int):
+    # Only reachable if user is admin
+    await User.delete(user_id)
+    return {"status": "deleted"}
+
+# Function-level check
+def require_admin(current_user: User = Depends(get_current_user)):
+    if not current_user.is_admin:
+        raise HTTPException(403, "Admin access required")
+    return current_user
+```
+
+---
+
+### 6. Unrestricted Access to Sensitive Business Flows
+
+**Description**: Lack of flow control allows automated attacks (credential stuffing, scalping).
+
+**Scenarios**:
+
+- Mass account creation
+- Automated ticket purchasing
+- Credential stuffing attacks
+
+**Mitigation**:
+
+```python
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)
+
+# Stricter limits on sensitive endpoints
+@app.post("/register")
+@limiter.limit("5/hour")  # Only 5 registrations per hour per IP
+async def register(user_data: UserCreate):
+    # Add CAPTCHA verification
+    if not verify_captcha(user_data.captcha_token):
+        raise HTTPException(400, "Invalid CAPTCHA")
+
+    # Detect suspicious patterns
+    if await is_suspicious_activity(user_data.email):
+        await send_alert_to_security_team()
+        raise HTTPException(429, "Too many requests")
+
+    # Proceed with registration...
+```
+
+---
+
+### 7. Server Side Request Forgery (SSRF)
+
+**Description**: Attacker tricks server into making requests to internal services.
+
+**Attack Example**:
+
+```http
+POST /api/fetch-url
+{
+  "url": "http://169.254.169.254/latest/meta-data/iam/security-credentials/"
+}
+
+# Accesses AWS metadata service!
+```
+
+**Mitigation**:
+
+```python
+import ipaddress
+from urllib.parse import urlparse
+
+BLOCKED_IP_RANGES = [
+    ipaddress.ip_network("10.0.0.0/8"),      # Private
+    ipaddress.ip_network("172.16.0.0/12"),   # Private
+    ipaddress.ip_network("192.168.0.0/16"),  # Private
+    ipaddress.ip_network("169.254.0.0/16"),  # Link-local (AWS metadata)
+    ipaddress.ip_network("127.0.0.0/8"),     # Loopback
+]
+
+ALLOWED_DOMAINS = ["api.trusted-partner.com", "cdn.example.com"]
+
+async def safe_fetch_url(url: str):
+    """Safely fetch URL with SSRF protection."""
+    # Parse and validate URL
+    parsed = urlparse(url)
+
+    # Check protocol
+    if parsed.scheme not in ["http", "https"]:
+        raise ValueError("Invalid protocol")
+
+    # Check domain allowlist
+    if parsed.hostname not in ALLOWED_DOMAINS:
+        raise ValueError("Domain not allowed")
+
+    # Resolve IP and check against blocklist
+    import socket
+    ip = socket.gethostbyname(parsed.hostname)
+    ip_obj = ipaddress.ip_address(ip)
+
+    for blocked_range in BLOCKED_IP_RANGES:
+        if ip_obj in blocked_range:
+            raise ValueError("IP address blocked")
+
+    # Fetch with timeout
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        response = await client.get(url)
+        return response.text
+```
+
+---
+
+### 8. Security Misconfiguration
+
+**Common Issues**:
+
+- Debug mode enabled in production
+- Default credentials
+- Verbose error messages
+- Missing security headers
+
+**Mitigation**:
+
+```python
+# Production configuration
+app = FastAPI(
+    debug=False,  # Never True in production
+    docs_url=None,  # Disable Swagger in production
+    redoc_url=None,
+)
+
+# Security headers middleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
+
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=["example.com", "*.example.com"])
+app.add_middleware(HTTPSRedirectMiddleware)
+
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
+
+# Generic error responses
+@app.exception_handler(Exception)
+async def generic_exception_handler(request, exc):
+    # Log detailed error internally
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+
+    # Return generic message to client
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"}
+    )
+```
+
+---
+
+### 9. Improper Inventory Management
+
+**Issues**:
+
+- Undocumented endpoints
+- Deprecated versions still active
+- No API versioning
+
+**Mitigation**:
+
+```python
+# API versioning
+from fastapi import APIRouter
+
+v1_router = APIRouter(prefix="/v1")
+v2_router = APIRouter(prefix="/v2")
+
+# Deprecation warnings
+@v1_router.get("/users", deprecated=True)
+async def get_users_v1():
+    return {
+        "warning": "This endpoint is deprecated. Use /v2/users instead.",
+        "users": []
+    }
+
+@v2_router.get("/users")
+async def get_users_v2():
+    return {"users": []}
+
+app.include_router(v1_router)
+app.include_router(v2_router)
+
+# OpenAPI documentation with versions
+app = FastAPI(
+    title="My API",
+    version="2.0.0",
+    description="API v2 - v1 deprecated, will be removed 2026-01-01"
+)
+```
+
+---
+
+### 10. Unsafe Consumption of APIs
+
+**Description**: Blindly trusting third-party API responses.
+
+**Mitigation**:
+
+```python
+from pydantic import BaseModel, ValidationError
+
+class ThirdPartyResponse(BaseModel):
+    """Validate external API responses."""
+    user_id: int
+    name: str
+    email: str
+
+async def consume_third_party_api(url: str):
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        try:
+            response = await client.get(url)
+            response.raise_for_status()
+
+            # Validate response structure
+            data = ThirdPartyResponse(**response.json())
+
+            # Additional business logic validation
+            if data.user_id <= 0:
+                raise ValueError("Invalid user_id")
+
+            return data
+
+        except httpx.HTTPError as e:
+            logger.error(f"Third-party API error: {e}")
+            raise HTTPException(502, "External service unavailable")
+        except ValidationError as e:
+            logger.error(f"Invalid third-party response: {e}")
+            raise HTTPException(502, "Invalid external response")
+```
+
+---
+
+## Advanced Security Patterns
+
+### API Key Rotation
+
+```python
+class APIKey(BaseModel):
+    key: str
+    created_at: datetime
+    expires_at: datetime
+    last_used: datetime | None
+
+async def rotate_api_key(old_key: str) -> str:
+    """Generate new API key while deprecating old one."""
+    # Mark old key as deprecated (grace period: 30 days)
+    await APIKey.update(
+        key=old_key,
+        status="deprecated",
+        expires_at=datetime.utcnow() + timedelta(days=30)
+    )
+
+    # Generate new key
+    new_key = secrets.token_urlsafe(32)
+    await APIKey.create(
+        key=new_key,
+        created_at=datetime.utcnow(),
+        expires_at=datetime.utcnow() + timedelta(days=365)
+    )
+
+    return new_key
+```
+
+### Request Signing
+
+```python
+import hmac
+import hashlib
+
+def sign_request(payload: dict, secret: str) -> str:
+    """Sign request payload with HMAC."""
+    message = json.dumps(payload, sort_keys=True).encode()
+    signature = hmac.new(
+        secret.encode(),
+        message,
+        hashlib.sha256
+    ).hexdigest()
+    return signature
+
+def verify_request_signature(payload: dict, signature: str, secret: str) -> bool:
+    """Verify request signature."""
+    expected_signature = sign_request(payload, secret)
+    return hmac.compare_digest(expected_signature, signature)
+```
+
+---
+
+## Security Testing
+
+### Automated Security Scanning
+
+```bash
+# Install security tools
+pip install bandit safety
+
+# Scan for security issues
+bandit -r app/
+safety check --json
+
+# API security testing
+pip install owasp-zap-api-python
+
+# Run ZAP scan
+zap-cli quick-scan --self-contained http://localhost:8000
+```
+
+---
+
+**See also**: [SKILL.md](./SKILL.md) for overview and quick start guide.

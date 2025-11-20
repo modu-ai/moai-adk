@@ -10,13 +10,10 @@ Tests the full workflow:
 """
 
 import json
-import shutil
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
-from moai_adk.cli.commands.update import _sync_templates
 from moai_adk.core.migration.alfred_to_moai_migrator import AlfredToMoaiMigrator
 
 

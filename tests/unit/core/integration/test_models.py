@@ -8,10 +8,16 @@ from moai_adk.core.integration.models import (
     ComponentNotFoundError,
     IntegrationTestError,
     IntegrationTestResult,
-    TestComponent as TestComponentClass,
-    TestStatus as TestStatusEnum,
-    TestSuite as TestSuiteClass,
     TestTimeoutError,
+)
+from moai_adk.core.integration.models import (
+    TestComponent as TestComponentClass,
+)
+from moai_adk.core.integration.models import (
+    TestStatus as TestStatusEnum,
+)
+from moai_adk.core.integration.models import (
+    TestSuite as TestSuiteClass,
 )
 
 

@@ -480,7 +480,7 @@ class RobustJSONParser:
                 try:
                     json.loads(match)
                     return match  # Return the first valid JSON found
-                except:
+                except (json.JSONDecodeError, ValueError, TypeError):
                     continue
 
         # If no JSON found, try to clean up the string

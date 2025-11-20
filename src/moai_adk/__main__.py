@@ -6,7 +6,7 @@ Implements the CLI entry point:
 - Rich console terminal output
 - ASCII logo rendering
 - --version and --help options
-- Five core commands: init, doctor, status, backup, update
+- Five core commands: init, doctor, status, update
 """
 
 import sys
@@ -16,10 +16,8 @@ import pyfiglet
 from rich.console import Console
 
 from moai_adk import __version__
-from moai_adk.cli.commands.backup import backup
 from moai_adk.cli.commands.doctor import doctor
 from moai_adk.cli.commands.init import init
-from moai_adk.cli.commands.migrate import migrate
 from moai_adk.cli.commands.status import status
 from moai_adk.cli.commands.update import update
 from moai_adk.statusline.main import build_statusline_data
@@ -63,8 +61,6 @@ def cli(ctx: click.Context) -> None:
 cli.add_command(init)
 cli.add_command(doctor)
 cli.add_command(status)
-cli.add_command(backup)
-cli.add_command(migrate)
 cli.add_command(update)
 
 
@@ -90,81 +86,8 @@ def statusline() -> None:
 cli.add_command(statusline)
 
 
-# Link validation command
-@click.command(name="validate-links")
-@click.option(
-    "--file",
-    "-f",
-    default="README.ko.md",
-    help="File path to validate (default: README.ko.md)",
-)
-@click.option(
-    "--max-concurrent",
-    "-c",
-    type=int,
-    default=3,
-    help="Maximum number of concurrent validations (default: 3)",
-)
-@click.option(
-    "--timeout", "-t", type=int, default=8, help="Request timeout in seconds (default: 8)"
-)
-@click.option("--output", "-o", help="File path to save results")
-@click.option("--verbose", "-v", is_flag=True, help="Show detailed progress")
-def validate_links(file, max_concurrent, timeout, output, verbose):
-    """Validate online document links"""
-    from moai_adk.cli.commands.validate_links import run_command as validate_links_run
-
-    # Execute CLI command
-    sys.exit(validate_links_run(locals()))
 
 
-# User experience improvement command
-@click.command(name="improve-ux")
-@click.option(
-    "--url",
-    "-u",
-    default="https://adk.mo.ai.kr",
-    help="URL to analyze (default: https://adk.mo.ai.kr)",
-)
-@click.option("--output", "-o", help="File path to save analysis results")
-@click.option(
-    "--format",
-    "-f",
-    type=click.Choice(["json", "markdown", "text"]),
-    default="markdown",
-    help="Output format (default: markdown)",
-)
-@click.option("--verbose", "-v", is_flag=True, help="Show detailed progress")
-@click.option(
-    "--max-workers",
-    "-w",
-    type=int,
-    default=5,
-    help="Maximum number of concurrent tasks (default: 5)",
-)
-def improve_ux(url, output, format, verbose, max_workers):
-    """Analyze and improve user experience"""
-
-    # Create temporary args object
-    class Args:
-        def __init__(self, **kwargs):
-            for key, value in kwargs.items():
-                setattr(self, key, value)
-
-    args = Args(
-        url=url, output=output, format=format, verbose=verbose, max_workers=max_workers
-    )
-
-    # Execute CLI command
-    from moai_adk.cli.commands.improve_user_experience import (
-        run_command as improve_ux_run,
-    )
-
-    sys.exit(improve_ux_run(args))
-
-
-cli.add_command(validate_links)
-cli.add_command(improve_ux)
 
 
 def main() -> int:

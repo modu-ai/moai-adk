@@ -50,8 +50,8 @@ class MockResult:
 
 def deduplicate_command(command, cwd, config, timestamp=None):
     """Mock deduplication function for testing"""
-    import time
     import threading
+    import time
 
     global _command_lock
     if _command_lock is None:

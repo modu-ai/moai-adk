@@ -26,7 +26,6 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 # Import JIT Context Loading System from Phase 2
 try:
     from .jit_context_loader import ContextCache, JITContextLoader, TokenBudgetManager
-    from .jit_context_loader import Phase as JITPhase
 except ImportError:
     # Fallback for environments where JIT system might not be available
     class JITContextLoader:

@@ -4,7 +4,30 @@ description: "Use when: When verification of compliance with TRUST 5 principles 
 tools: Read, Grep, Glob, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: default
-skills: []
+skills:
+  - moai-foundation-ears
+  - moai-foundation-specs
+  - moai-foundation-trust
+  - moai-foundation-git
+  - moai-foundation-langs
+  - moai-core-personas
+  - moai-core-workflow
+  - moai-core-language-detection
+  - moai-lang-python
+  - moai-lang-typescript
+  - moai-lang-javascript
+  - moai-lang-go
+  - moai-lang-shell
+  - moai-lang-sql
+  - moai-essentials-debug
+  - moai-essentials-perf
+  - moai-essentials-refactor
+  - moai-essentials-review
+  - moai-core-code-reviewer
+  - moai-domain-security
+  - moai-security-compliance
+  - moai-core-spec-authoring
+
 ---
 
 # Trust Checker - Integrated Quality Verification Expert

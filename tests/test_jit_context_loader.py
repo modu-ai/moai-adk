@@ -10,35 +10,33 @@ Tests the Phase 2 implementation covering:
 - Overall system integration
 """
 
-import pytest
-import asyncio
-import tempfile
-import json
 import os
-import time
-from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, AsyncMock
-from pathlib import Path
-
 import sys
+import tempfile
+import time
+from pathlib import Path
+from unittest.mock import patch
+
+import pytest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from moai_adk.core.jit_context_loader import (
-    JITContextLoader,
-    PhaseDetector,
-    SkillFilterEngine,
-    TokenBudgetManager,
     ContextCache,
+    ContextMetrics,
+    JITContextLoader,
     Phase,
     PhaseConfig,
+    PhaseDetector,
+    SkillFilterEngine,
     SkillInfo,
-    ContextEntry,
-    ContextMetrics,
-    load_optimized_context,
-    get_jit_stats,
+    TokenBudgetManager,
     clear_jit_cache,
-    initialize_jit_system
+    get_jit_stats,
+    initialize_jit_system,
+    load_optimized_context,
 )
+
 
 class TestPhaseDetector:
     """Test phase detection functionality"""

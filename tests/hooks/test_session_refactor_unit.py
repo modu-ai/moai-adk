@@ -12,11 +12,7 @@ import json
 import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, Any
-from unittest.mock import MagicMock, Mock, patch
-
-import pytest
-
+from unittest.mock import patch
 
 # ============================================================================
 # Module 1: state_cleanup.py Tests

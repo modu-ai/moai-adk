@@ -37,7 +37,10 @@ from rich.progress import BarColumn, Progress, SpinnerColumn, TaskID, TextColumn
 from moai_adk import __version__
 from moai_adk.cli.prompts import prompt_project_setup
 from moai_adk.core.project.initializer import ProjectInitializer
-from moai_adk.statusline.version_reader import VersionConfig, VersionReader
+from moai_adk.statusline.version_reader import (
+    VersionConfig,
+    VersionReader,
+)
 from moai_adk.utils.banner import print_banner, print_welcome_message
 
 console = Console()

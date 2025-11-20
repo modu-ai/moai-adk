@@ -13,7 +13,6 @@ import json
 import os
 import tempfile
 from pathlib import Path
-from unittest.mock import mock_open, patch
 
 import pytest
 
@@ -51,13 +50,14 @@ class TestFileEncodingUTF8:
 
     def test_error_recovery_system_write_utf8(self, tmp_path):
         """Test error_recovery_system writes JSON with UTF-8 encoding"""
-        from moai_adk.core.error_recovery_system import (
-            ErrorRecoverySystem,
-            ErrorSeverity,
-            ErrorCategory,
-            ErrorReport,
-        )
         from datetime import datetime, timezone
+
+        from moai_adk.core.error_recovery_system import (
+            ErrorCategory,
+            ErrorRecoverySystem,
+            ErrorReport,
+            ErrorSeverity,
+        )
 
         # Create system with temp log directory
         system = ErrorRecoverySystem()
@@ -298,13 +298,14 @@ class TestUnicodeErrorMessages:
 
     def test_error_recovery_unicode_message(self, tmp_path):
         """Test error messages with Unicode characters are logged correctly"""
-        from moai_adk.core.error_recovery_system import (
-            ErrorRecoverySystem,
-            ErrorSeverity,
-            ErrorCategory,
-            ErrorReport,
-        )
         from datetime import datetime, timezone
+
+        from moai_adk.core.error_recovery_system import (
+            ErrorCategory,
+            ErrorRecoverySystem,
+            ErrorReport,
+            ErrorSeverity,
+        )
 
         system = ErrorRecoverySystem()
         system.error_log_dir = tmp_path
@@ -339,6 +340,7 @@ class TestNoHardcodedPaths:
     def test_error_recovery_no_tmp_hardcoding(self):
         """Verify error_recovery_system doesn't hardcode /tmp"""
         import inspect
+
         from moai_adk.core.error_recovery_system import ErrorRecoverySystem
 
         source = inspect.getsource(ErrorRecoverySystem.__init__)
@@ -348,6 +350,7 @@ class TestNoHardcodedPaths:
     def test_cache_system_no_tmp_hardcoding(self):
         """Verify cache_system doesn't hardcode /tmp"""
         import inspect
+
         from moai_adk.core.performance.cache_system import CacheSystem
 
         source = inspect.getsource(CacheSystem)

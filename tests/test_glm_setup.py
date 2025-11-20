@@ -9,20 +9,20 @@ Validates:
 """
 
 import json
-import os
-import tempfile
-from pathlib import Path
-from unittest.mock import patch, MagicMock
-
-import pytest
 
 # Import the setup_glm function
 import sys
+import tempfile
+from pathlib import Path
+
+import pytest
+
 moai_scripts_path = Path(__file__).parent.parent / ".moai" / "scripts"
 sys.path.insert(0, str(moai_scripts_path))
 
 # Import using importlib to handle the script file
 import importlib.util
+
 spec = importlib.util.spec_from_file_location("setup_glm", moai_scripts_path / "setup-glm.py")
 setup_glm_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(setup_glm_module)

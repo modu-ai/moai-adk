@@ -492,7 +492,11 @@ class EnhancedInputValidationMiddleware:
 
         return result
 
-    def _map_parameters(self, tool_name: str, input_data: Dict[str, Any]) -> Tuple[Dict[str, Any], List[ValidationError]]:
+    def _map_parameters(
+        self,
+        tool_name: str,
+        input_data: Dict[str, Any],
+    ) -> Tuple[Dict[str, Any], List[ValidationError]]:
         """Map and rename unrecognized parameters to their canonical forms"""
         mapped_input = input_data.copy()
         errors = []
@@ -609,7 +613,11 @@ class EnhancedInputValidationMiddleware:
         max_len = max(len(s1), len(s2))
         return distance / max_len if max_len > 0 else 0
 
-    def _validate_required_parameters(self, tool_params: List[ToolParameter], input_data: Dict[str, Any]) -> List[ValidationError]:
+    def _validate_required_parameters(
+        self,
+        tool_params: List[ToolParameter],
+        input_data: Dict[str, Any],
+    ) -> List[ValidationError]:
         """Validate that all required parameters are present"""
         errors = []
 
@@ -631,7 +639,11 @@ class EnhancedInputValidationMiddleware:
             if not param.required and param.name not in input_data and param.default_value is not None:
                 input_data[param.name] = param.default_value
 
-    def _validate_parameter_values(self, tool_params: List[ToolParameter], input_data: Dict[str, Any]) -> List[ValidationError]:
+    def _validate_parameter_values(
+        self,
+        tool_params: List[ToolParameter],
+        input_data: Dict[str, Any],
+    ) -> List[ValidationError]:
         """Validate parameter values against their types and constraints"""
         errors = []
 
@@ -667,7 +679,12 @@ class EnhancedInputValidationMiddleware:
 
         return errors
 
-    def _validate_parameter_type(self, param: ToolParameter, value: Any, input_data: Dict[str, Any]) -> List[ValidationError]:
+    def _validate_parameter_type(
+        self,
+        param: ToolParameter,
+        value: Any,
+        input_data: Dict[str, Any],
+    ) -> List[ValidationError]:
         """Validate parameter value against expected type"""
         errors = []
 

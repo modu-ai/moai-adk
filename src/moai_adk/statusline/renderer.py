@@ -179,7 +179,9 @@ class StatuslineRenderer:
             parts = [f"🤖 {data.model}"]
 
             if data.claude_version:
-                claude_ver_str = data.claude_version if data.claude_version.startswith("v") else f"v{data.claude_version}"
+                claude_ver_str = (
+                    data.claude_version if data.claude_version.startswith("v") else f"v{data.claude_version}"
+                )
                 parts.append(f"🔅 {claude_ver_str}")
 
             parts.append(f"🗿 {version_str}")
@@ -198,7 +200,9 @@ class StatuslineRenderer:
             parts = [f"🤖 {data.model}"]
 
             if data.claude_version:
-                claude_ver_str = data.claude_version if data.claude_version.startswith("v") else f"v{data.claude_version}"
+                claude_ver_str = (
+                    data.claude_version if data.claude_version.startswith("v") else f"v{data.claude_version}"
+                )
                 parts.append(f"🔅 {claude_ver_str}")
 
             parts.append(f"🗿 {version_str}")
@@ -268,7 +272,9 @@ class StatuslineRenderer:
             parts = [f"🤖 {data.model}"]
 
             if data.claude_version:
-                claude_ver_str = data.claude_version if data.claude_version.startswith("v") else f"v{data.claude_version}"
+                claude_ver_str = (
+                    data.claude_version if data.claude_version.startswith("v") else f"v{data.claude_version}"
+                )
                 parts.append(f"🔅 {claude_ver_str}")
 
             parts.append(f"🗿 {version_str}")

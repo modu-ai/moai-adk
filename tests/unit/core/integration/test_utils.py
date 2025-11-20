@@ -7,7 +7,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 from moai_adk.core.integration.models import IntegrationTestResult, TestComponent
-from moai_adk.core.integration.utils import ComponentDiscovery, TestEnvironment, TestResultAnalyzer as IntegrationTestResultAnalyzer
+from moai_adk.core.integration.utils import ComponentDiscovery, TestEnvironment
+from moai_adk.core.integration.utils import TestResultAnalyzer as IntegrationTestResultAnalyzer
 
 
 class TestComponentDiscovery:

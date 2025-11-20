@@ -5,11 +5,28 @@ tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, AskUserQuestio
 model: haiku
 permissionMode: default
 skills:
+  - moai-foundation-ears
+  - moai-foundation-specs
+  - moai-foundation-trust
+  - moai-foundation-git
+  - moai-foundation-langs
+  - moai-core-personas
+  - moai-core-workflow
+  - moai-core-language-detection
   - moai-lang-python
   - moai-lang-typescript
+  - moai-lang-javascript
+  - moai-lang-go
+  - moai-lang-shell
+  - moai-lang-sql
   - moai-essentials-debug
-  - moai-domain-backend
-  - moai-domain-frontend
+  - moai-essentials-perf
+  - moai-essentials-refactor
+  - moai-essentials-review
+  - moai-core-code-reviewer
+  - moai-domain-security
+  - moai-domain-testing
+
 ---
 
 # TDD Implementer - TDD Implementation Expert
@@ -86,12 +103,152 @@ Alfred passes the user's language directly via `Task()` calls for natural multil
 - `Skill("moai-essentials-debug")` – Immediately suggest failure cause analysis and minimum correction path in RED stage
 
 **Conditional Skill Logic**
-- Language-specific skills: Based on `Skill("moai-core-language-detection")` or implementation plan info, select only one relevant language skill (`Skill("moai-lang-python")`, `Skill("moai-lang-typescript")`, etc.)
-- `Skill("moai-essentials-refactor")`: Called only when entering REFACTOR stage
-- `Skill("moai-core-git-workflow")`: Load commits/checkpoints for each TAG at time of preparation
-- `Skill("moai-essentials-perf")`: Applied only when performance requirements are specified in SPEC
-- `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)`: Collect user decisions when choosing implementation alternative or refactoring strategy is needed
-
+- Language-specific skills:
+  - moai-artifacts-builder
+  - moai-baas-auth0-ext
+  - moai-baas-clerk-ext
+  - moai-baas-cloudflare-ext
+  - moai-baas-convex-ext
+  - moai-baas-firebase-ext
+  - moai-baas-foundation
+  - moai-baas-neon-ext
+  - moai-baas-railway-ext
+  - moai-baas-supabase-ext
+  - moai-baas-vercel-ext
+  - moai-cc-agents
+  - moai-cc-claude-md
+  - moai-cc-commands
+  - moai-cc-configuration
+  - moai-cc-hook-model-strategy
+  - moai-cc-hooks
+  - moai-cc-mcp-builder
+  - moai-cc-mcp-plugins
+  - moai-cc-memory
+  - moai-cc-permission-mode
+  - moai-cc-settings
+  - moai-cc-skill-factory
+  - moai-cc-skills
+  - moai-cc-subagent-lifecycle
+  - moai-change-logger
+  - moai-cloud-aws-advanced
+  - moai-cloud-gcp-advanced
+  - moai-component-designer
+  - moai-context7-integration
+  - moai-context7-lang-integration
+  - moai-core-agent-factory
+  - moai-core-agent-guide
+  - moai-core-ask-user-questions
+  - moai-core-clone-pattern
+  - moai-core-code-reviewer
+  - moai-core-config-schema
+  - moai-core-context-budget
+  - moai-core-dev-guide
+  - moai-core-env-security
+  - moai-core-expertise-detection
+  - moai-core-feedback-templates
+  - moai-core-issue-labels
+  - moai-core-language-detection
+  - moai-core-personas
+  - moai-core-practices
+  - moai-core-proactive-suggestions
+  - moai-core-rules
+  - moai-core-session-state
+  - moai-core-spec-authoring
+  - moai-core-todowrite-pattern
+  - moai-core-workflow
+  - moai-design-systems
+  - moai-docs-generation
+  - moai-docs-linting
+  - moai-docs-unified
+  - moai-docs-validation
+  - moai-document-processing
+  - moai-document-processing-unified
+  - moai-document-processing/docx
+  - moai-document-processing/pdf
+  - moai-document-processing/pptx
+  - moai-document-processing/xlsx
+  - moai-domain-backend
+  - moai-domain-cli-tool
+  - moai-domain-cloud
+  - moai-domain-data-science
+  - moai-domain-database
+  - moai-domain-devops
+  - moai-domain-figma
+  - moai-domain-frontend
+  - moai-domain-iot
+  - moai-domain-ml
+  - moai-domain-ml-ops
+  - moai-domain-mobile-app
+  - moai-domain-monitoring
+  - moai-domain-notion
+  - moai-domain-security
+  - moai-domain-testing
+  - moai-domain-web-api
+  - moai-essentials-debug
+  - moai-essentials-perf
+  - moai-essentials-refactor
+  - moai-essentials-review
+  - moai-foundation-ears
+  - moai-foundation-git
+  - moai-foundation-langs
+  - moai-foundation-specs
+  - moai-foundation-trust
+  - moai-icons-vector
+  - moai-internal-comms
+  - moai-jit-docs-enhanced
+  - moai-lang-c
+  - moai-lang-cpp
+  - moai-lang-csharp
+  - moai-lang-dart
+  - moai-lang-elixir
+  - moai-lang-go
+  - moai-lang-html-css
+  - moai-lang-java
+  - moai-lang-javascript
+  - moai-lang-kotlin
+  - moai-lang-php
+  - moai-lang-python
+  - moai-lang-r
+  - moai-lang-ruby
+  - moai-lang-rust
+  - moai-lang-scala
+  - moai-lang-shell
+  - moai-lang-sql
+  - moai-lang-swift
+  - moai-lang-tailwind-css
+  - moai-lang-template
+  - moai-lang-typescript
+  - moai-learning-optimizer
+  - moai-lib-shadcn-ui
+  - moai-mcp-builder
+  - moai-mermaid-diagram-expert
+  - moai-ml-llm-fine-tuning
+  - moai-ml-rag
+  - moai-nextra-architecture
+  - moai-observability-advanced
+  - moai-playwright-webapp-testing
+  - moai-project-batch-questions
+  - moai-project-config-manager
+  - moai-project-documentation
+  - moai-project-language-initializer
+  - moai-project-template-optimizer
+  - moai-readme-expert
+  - moai-security-api
+  - moai-security-auth
+  - moai-security-compliance
+  - moai-security-devsecops
+  - moai-security-encryption
+  - moai-security-identity
+  - moai-security-owasp
+  - moai-security-secrets
+  - moai-security-ssrf
+  - moai-security-threat
+  - moai-security-zero-trust
+  - moai-session-info
+  - moai-skill-factory
+  - moai-streaming-ui
+  - moai-testing-load
+  - moai-webapp-testing
 ---
 
 ## 🎯 Core Responsibilities

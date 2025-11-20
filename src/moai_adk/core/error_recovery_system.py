@@ -751,7 +751,9 @@ class ErrorRecoverySystem:
                         )
 
             logger.info(
-                f"Research integrity validation completed. Issues: {len(validation_results['issues_found'])}, Repairs: {len(validation_results['repairs_made'])}"
+                f"Research integrity validation completed. Issues: "
+                f"{len(validation_results['issues_found'])}, "
+                f"Repairs: {len(validation_results['repairs_made'])}"
             )
 
         except Exception as e:

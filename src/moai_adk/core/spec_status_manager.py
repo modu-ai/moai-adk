@@ -375,7 +375,9 @@ class SpecStatusManager:
                 logger.error(f"Error processing SPEC {spec_id}: {e}")
 
         logger.info(
-            f"Batch update complete: {len(results['updated'])} updated, {len(results['failed'])} failed, {len(results['skipped'])} skipped"
+            f"Batch update complete: {len(results['updated'])} updated, "
+            f"{len(results['failed'])} failed, "
+            f"{len(results['skipped'])} skipped"
         )
         return results
 

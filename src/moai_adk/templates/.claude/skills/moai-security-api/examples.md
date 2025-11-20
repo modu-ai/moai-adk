@@ -1,496 +1,425 @@
-# moai-security-api: Production Examples
+# API Security Examples
 
-## Example 1: Complete REST API with OAuth 2.1 + JWT
+Practical implementation examples for secure API development.
+
+---
+
+## JWT Authentication
+
+### Python/FastAPI Implementation
+
+```python
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer
+from datetime import datetime, timedelta
+import jwt
+
+SECRET_KEY = "your-secret-key-from-env"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+security = HTTPBearer()
+
+def create_access_token(data: dict) -> str:
+    """Create JWT access token."""
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+def verify_token(credentials = Depends(security)) -> str:
+    """Verify JWT token and return user_id."""
+    try:
+        token = credentials.credentials
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authentication credentials"
+            )
+        return user_id
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired"
+        )
+    except jwt.InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token"
+        )
+
+# Usage in endpoint
+from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.post("/login")
+async def login(username: str, password: str):
+    # Verify credentials (simplified)
+    if username == "admin" and password == "secret":
+        access_token = create_access_token(data={"sub": username})
+        return {"access_token": access_token, "token_type": "bearer"}
+    raise HTTPException(status_code=401, detail="Invalid credentials")
+
+@app.get("/protected")
+async def protected_route(user_id: str = Depends(verify_token)):
+    return {"message": f"Hello {user_id}"}
+```
+
+### Node.js/Express Implementation
 
 ```javascript
-// server.js - Express.js API with OAuth 2.1
-const express = require('express');
-const passport = require('passport');
-const OAuth2Strategy = require('passport-oauth2');
-const jwt = require('jsonwebtoken');
-const redis = require('redis');
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
+const jwt = require("jsonwebtoken");
+const express = require("express");
 
+const SECRET_KEY = process.env.JWT_SECRET;
 const app = express();
-const redisClient = redis.createClient();
 
-// Security middleware
-app.use(helmet());
-app.use(express.json({ limit: '10kb' }));
+// Create token
+function createToken(userId) {
+  return jwt.sign({ sub: userId }, SECRET_KEY, { expiresIn: "1h" });
+}
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
-  standardHeaders: true,
-  legacyHeaders: false
+// Verify middleware
+function verifyToken(req, res, next) {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+
+  if (!token) {
+    return res.status(401).json({ error: "No token provided" });
+  }
+
+  jwt.verify(token, SECRET_KEY, (err, decoded) => {
+    if (err) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+    req.userId = decoded.sub;
+    next();
+  });
+}
+
+// Routes
+app.post("/login", (req, res) => {
+  const { username, password } = req.body;
+  // Verify credentials
+  if (username === "admin" && password === "secret") {
+    const token = createToken(username);
+    res.json({ access_token: token });
+  } else {
+    res.status(401).json({ error: "Invalid credentials" });
+  }
 });
 
-app.use(limiter);
+app.get("/protected", verifyToken, (req, res) => {
+  res.json({ message: `Hello ${req.userId}` });
+});
+```
 
-// OAuth 2.1 Strategy
-passport.use('oauth', new OAuth2Strategy({
-  authorizationURL: 'https://auth-provider.com/oauth/authorize',
-  tokenURL: 'https://auth-provider.com/oauth/token',
-  clientID: process.env.OAUTH_CLIENT_ID,
-  clientSecret: process.env.OAUTH_CLIENT_SECRET,
-  callbackURL: 'https://api.example.com/auth/callback',
-  state: true,
-  pkce: true
-}, async (accessToken, refreshToken, profile, done) => {
-  try {
-    // Verify user and create/update in DB
-    const user = await db.users.findOrCreate({
-      oauthId: profile.id,
-      email: profile.email
-    });
-    done(null, user);
-  } catch (err) {
-    done(err);
-  }
-}));
+---
 
-// Endpoint: Start OAuth flow
-app.get('/auth/login', passport.authenticate('oauth'));
+## RBAC Implementation
 
-// Endpoint: OAuth callback
-app.get('/auth/callback',
-  passport.authenticate('oauth', { session: false }),
+### Decorator Pattern (Python)
+
+```python
+from functools import wraps
+from fastapi import HTTPException, status
+
+def require_role(*required_roles):
+    """Decorator to enforce role-based access control."""
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, user_id: str = Depends(verify_token), **kwargs):
+            # Fetch user role from database
+            user = await get_user(user_id)
+
+            if user.role not in required_roles:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Requires one of roles: {required_roles}"
+                )
+
+            return await func(*args, user_id=user_id, **kwargs)
+        return wrapper
+    return decorator
+
+# Usage
+@app.delete("/users/{user_id}")
+@require_role("admin", "moderator")
+async def delete_user(user_id: int, current_user: str = Depends(verify_token)):
+    # Only admins and moderators can delete users
+    await User.delete(user_id)
+    return {"status": "deleted"}
+
+@app.get("/analytics")
+@require_role("admin")
+async def get_analytics(current_user: str = Depends(verify_token)):
+    # Only admins can view analytics
+    return await Analytics.get_all()
+```
+
+### Middleware Pattern (Node.js)
+
+```javascript
+function requireRole(...roles) {
+  return (req, res, next) => {
+    const userRole = req.user.role; // Set by verifyToken middleware
+
+    if (!roles.includes(userRole)) {
+      return res.status(403).json({
+        error: `Requires one of roles: ${roles.join(", ")}`,
+      });
+    }
+
+    next();
+  };
+}
+
+// Usage
+app.delete(
+  "/users/:id",
+  verifyToken,
+  requireRole("admin", "moderator"),
   (req, res) => {
-    const token = jwt.sign(
-      { id: req.user.id, scope: 'read:api' },
-      process.env.JWT_SECRET,
-      { algorithm: 'RS256', expiresIn: '7d' }
-    );
-    
-    res.json({ token, user: req.user });
+    // Delete user
+    res.json({ status: "deleted" });
   }
 );
 
-// Middleware: JWT verification
-function jwtAuth(req, res, next) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Missing token' });
-  }
-  
-  const token = authHeader.slice(7);
-  
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_PUBLIC_KEY, {
-      algorithms: ['RS256'],
-      issuer: 'https://api.example.com'
-    });
-    
-    req.user = decoded;
-    next();
-  } catch (err) {
-    return res.status(401).json({ error: 'Invalid token' });
-  }
-}
-
-// Endpoint: Get user profile
-app.get('/api/users/me', jwtAuth, (req, res) => {
-  res.json({ id: req.user.id, role: req.user.role });
+app.get("/analytics", verifyToken, requireRole("admin"), (req, res) => {
+  // Return analytics
+  res.json({ data: [] });
 });
-
-// Endpoint: List users (admin only)
-app.get('/api/users', jwtAuth, (req, res) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
-  
-  res.json([/* users */]);
-});
-
-app.listen(3000);
 ```
 
-## Example 2: GraphQL API with Query Complexity Limits
+---
+
+## Rate Limiting
+
+### Token Bucket Algorithm (Python)
+
+```python
+import time
+from collections import defaultdict
+from fastapi import Request, HTTPException
+
+class RateLimiter:
+    def __init__(self, requests_per_minute=60):
+        self.rate = requests_per_minute / 60.0  # Tokens per second
+        self.max_tokens = requests_per_minute
+        self.tokens = defaultdict(lambda: self.max_tokens)
+        self.last_check = defaultdict(time.time)
+
+    def allow_request(self, identifier: str) -> bool:
+        """Check if request is allowed under rate limit."""
+        now = time.time()
+        time_passed = now - self.last_check[identifier]
+
+        # Refill tokens based on time passed
+        self.tokens[identifier] += time_passed * self.rate
+        self.tokens[identifier] = min(self.tokens[identifier], self.max_tokens)
+
+        self.last_check[identifier] = now
+
+        # Try to consume one token
+        if self.tokens[identifier] >= 1:
+            self.tokens[identifier] -= 1
+            return True
+
+        return False
+
+# Create rate limiter
+rate_limiter = RateLimiter(requests_per_minute=100)
+
+# Middleware
+from fastapi import Request
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    # Use IP address as identifier
+    client_ip = request.client.host
+
+    if not rate_limiter.allow_request(client_ip):
+        raise HTTPException(
+            status_code=429,
+            detail="Too many requests. Please try again later.",
+            headers={"Retry-After": "60"}
+        )
+
+    response = await call_next(request)
+    return response
+```
+
+### Redis-Based Rate Limiting (Node.js)
 
 ```javascript
-// graphql-server.js - Apollo Server with security
-const { ApolloServer } = require('@apollo/server');
-const { expressMiddleware } = require('@apollo/server/express4');
-const express = require('express');
-const { getComplexity, simpleEstimator } = require('@graphql-query-estimator/server');
+const redis = require("redis");
+const client = redis.createClient();
 
-const typeDefs = `#graphql
-  type User {
-    id: ID!
-    name: String!
-    email: String!
-    posts(limit: Int = 10): [Post!]!
-  }
-  
-  type Post {
-    id: ID!
-    title: String!
-    content: String!
-    comments: [Comment!]!
-  }
-  
-  type Comment {
-    id: ID!
-    text: String!
-    author: User!
-  }
-  
-  type Query {
-    user(id: ID!): User
-    posts(limit: Int = 20): [Post!]!
-  }
-`;
+async function rateLimitMiddleware(req, res, next) {
+  const identifier = req.ip;
+  const key = `rate_limit:${identifier}`;
+  const limit = 100; // requests per minute
+  const window = 60; // seconds
 
-const resolvers = {
-  Query: {
-    user: async (_, { id }, context) => {
-      if (!context.user) throw new Error('Unauthorized');
-      return db.users.findById(id);
-    },
-    posts: async (_, { limit }, context) => {
-      return db.posts.find({}).limit(limit);
-    }
-  },
-  Post: {
-    comments: async (post) => {
-      return db.comments.find({ postId: post.id });
-    }
+  const current = await client.incr(key);
+
+  if (current === 1) {
+    // First request, set expiry
+    await client.expire(key, window);
   }
+
+  if (current > limit) {
+    return res.status(429).json({
+      error: "Too many requests",
+      retry_after: window,
+    });
+  }
+
+  next();
+}
+
+app.use(rateLimitMiddleware);
+```
+
+---
+
+## CORS Setup
+
+### Secure CORS Configuration (FastAPI)
+
+```python
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+# Production configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://app.example.com",
+        "https://admin.example.com"
+    ],  # Specific domains only
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["Authorization", "Content-Type"],
+    max_age=3600,  # Cache preflight for 1 hour
+)
+
+# Development configuration (separate file)
+if os.getenv("ENV") == "development":
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:3000"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+```
+
+### Express CORS (Node.js)
+
+```javascript
+const cors = require("cors");
+
+// Production
+const corsOptions = {
+  origin: ["https://app.example.com", "https://admin.example.com"],
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  allowedHeaders: ["Authorization", "Content-Type"],
+  maxAge: 3600,
 };
 
-const server = new ApolloServer({
-  typeDefs,
-  resolvers,
-  
-  // Security plugin: Check complexity before execution
-  plugins: {
-    async didResolveOperation(requestContext) {
-      const complexity = getComplexity({
-        schema: server.schema,
-        operationAST: requestContext.document,
-        estimators: [simpleEstimator({ defaultComplexity: 1 })]
-      });
-      
-      // Reject complex queries
-      if (complexity > 1000) {
-        throw new Error(
-          `Query is too complex: ${complexity} (max 1000)`
-        );
-      }
-      
-      // Log complexity for monitoring
-      console.log(`Query complexity: ${complexity}`);
-    }
-  }
-});
+app.use(cors(corsOptions));
 
-const app = express();
-
-// Authentication middleware
-app.use((req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (token) {
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      req.user = decoded;
-    } catch (err) {
-      // Invalid token
-    }
-  }
-  next();
-});
-
-app.use('/graphql', expressMiddleware(server, {
-  context: async ({ req }) => ({
-    user: req.user,
-    db
-  })
-}));
-
-app.listen(4000);
+// Development
+if (process.env.NODE_ENV === "development") {
+  app.use(
+    cors({
+      origin: "http://localhost:3000",
+      credentials: true,
+    })
+  );
+}
 ```
 
-## Example 3: API Key Management with Rate Limiting
+---
 
-```javascript
-// api-key-manager.js
-const crypto = require('crypto');
-const redis = require('redis');
-const bcrypt = require('bcryptjs');
+## Input Validation
 
-class APIKeyManager {
-  constructor() {
-    this.redis = redis.createClient();
-  }
-  
-  // Generate new API key
-  async generateKey(clientId, name, rateLimitPerMinute = 100) {
-    // Format: sk_live_xxxxxxxxxxxxxxxxxxxx
-    const key = `sk_${process.env.NODE_ENV}_${crypto.randomBytes(16).toString('hex')}`;
-    
-    // Hash key for storage
-    const hashedKey = bcrypt.hashSync(key, 10);
-    
-    // Store in database
-    const stored = await db.apiKeys.create({
-      client_id: clientId,
-      key_hash: hashedKey,
-      name,
-      rate_limit_per_minute: rateLimitPerMinute,
-      created_at: new Date(),
-      status: 'active'
+### Pydantic Models (Python)
+
+```python
+from pydantic import BaseModel, EmailStr, Field, constr, validator
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: constr(min_length=8, max_length=100)
+    age: int = Field(ge=18, le=120, description="User age")
+    username: constr(regex=r'^[a-zA-Z0-9_-]{3,20}$')
+
+    @validator('password')
+    def password_strength(cls, v):
+        if not any(c.isupper() for c in v):
+            raise ValueError('Password must contain uppercase')
+        if not any(c.isdigit() for c in v):
+            raise ValueError('Password must contain digit')
+        return v
+
+@app.post("/users")
+async def create_user(user: UserCreate):
+    # Input is automatically validated
+    hashed_password = hash_password(user.password)
+    new_user = await User.create(
+        email=user.email,
+        password=hashed_password,
+        age=user.age
+    )
+    return {"id": new_user.id}
+```
+
+### Zod Validation (TypeScript)
+
+```typescript
+import { z } from "zod";
+
+const userCreateSchema = z.object({
+  email: z.string().email(),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .max(100)
+    .refine((pwd) => /[A-Z]/.test(pwd), "Must contain uppercase")
+    .refine((pwd) => /[0-9]/.test(pwd), "Must contain digit"),
+  age: z.number().int().min(18).max(120),
+  username: z.string().regex(/^[a-zA-Z0-9_-]{3,20}$/),
+});
+
+type UserCreate = z.infer<typeof userCreateSchema>;
+
+app.post("/users", async (req, res) => {
+  try {
+    const userData = userCreateSchema.parse(req.body);
+    const hashedPassword = await hashPassword(userData.password);
+    const newUser = await User.create({
+      ...userData,
+      password: hashedPassword,
     });
-    
-    // Cache for quick lookup (hash → metadata)
-    await this.redis.setex(
-      `api_key:${crypto.createHash('sha256').update(key).digest('hex')}`,
-      3600, // 1 hour
-      JSON.stringify({
-        client_id: clientId,
-        rate_limit: rateLimitPerMinute
-      })
-    );
-    
-    return { key, id: stored.id };
-  }
-  
-  // Validate API key and check rate limit
-  async validateAndRateLimit(apiKey) {
-    const keyHash = crypto.createHash('sha256').update(apiKey).digest('hex');
-    
-    // Check cache first
-    let metadata = await this.redis.get(`api_key:${keyHash}`);
-    
-    if (!metadata) {
-      // Hit database
-      const key = await db.apiKeys.findOne({ 
-        key_hash: bcrypt.hashSync(apiKey, 10),
-        status: 'active'
-      });
-      
-      if (!key) throw new Error('Invalid API key');
-      
-      metadata = {
-        client_id: key.client_id,
-        rate_limit: key.rate_limit_per_minute
-      };
-      
-      // Cache result
-      await this.redis.setex(
-        `api_key:${keyHash}`,
-        3600,
-        JSON.stringify(metadata)
-      );
+    res.json({ id: newUser.id });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ errors: error.errors });
     } else {
-      metadata = JSON.parse(metadata);
+      res.status(500).json({ error: "Internal server error" });
     }
-    
-    // Rate limit check
-    const rateLimitKey = `ratelimit:${apiKey}`;
-    const count = await this.redis.incr(rateLimitKey);
-    
-    if (count === 1) {
-      await this.redis.expire(rateLimitKey, 60);
-    }
-    
-    if (count > metadata.rate_limit) {
-      throw new Error('Rate limit exceeded');
-    }
-    
-    return metadata;
-  }
-  
-  // Rotate keys (generate new, mark old as deprecated)
-  async rotateKey(keyId) {
-    const oldKey = await db.apiKeys.findById(keyId);
-    
-    // Mark old as deprecated (grace period for rotation)
-    await db.apiKeys.update(keyId, {
-      status: 'deprecated',
-      deprecated_at: new Date()
-    });
-    
-    // Generate new key
-    return this.generateKey(
-      oldKey.client_id,
-      `${oldKey.name} (rotated)`,
-      oldKey.rate_limit_per_minute
-    );
-  }
-  
-  // Revoke key immediately
-  async revokeKey(keyId) {
-    await db.apiKeys.update(keyId, {
-      status: 'revoked',
-      revoked_at: new Date()
-    });
-    
-    // Clear cache
-    const key = await db.apiKeys.findById(keyId);
-    await this.redis.del(`api_key:${crypto.createHash('sha256').update(key.key).digest('hex')}`);
-  }
-}
-
-// Middleware usage
-const keyManager = new APIKeyManager();
-
-app.use(async (req, res, next) => {
-  const apiKey = req.headers['x-api-key'];
-  
-  if (!apiKey) {
-    return res.status(401).json({ error: 'Missing API key' });
-  }
-  
-  try {
-    req.client = await keyManager.validateAndRateLimit(apiKey);
-    next();
-  } catch (err) {
-    if (err.message.includes('Rate limit')) {
-      return res.status(429).json({ error: err.message });
-    }
-    return res.status(401).json({ error: 'Unauthorized' });
   }
 });
 ```
 
-## Example 4: Webhook Signature Verification (Stripe Pattern)
+---
 
-```javascript
-// webhook-handler.js
-const express = require('express');
-const crypto = require('crypto');
-
-const app = express();
-
-// Use raw body for webhook signature verification
-app.post('/webhooks/stripe',
-  express.raw({ type: 'application/json' }),
-  (req, res) => {
-    const sig = req.headers['stripe-signature'];
-    const rawBody = req.rawBody;
-    
-    try {
-      // Verify signature
-      const event = stripe.webhooks.constructEvent(
-        rawBody,
-        sig,
-        process.env.WEBHOOK_SECRET
-      );
-      
-      // Handle event
-      switch (event.type) {
-        case 'payment_intent.succeeded':
-          handlePaymentSuccess(event.data.object);
-          break;
-        case 'customer.subscription.deleted':
-          handleSubscriptionCanceled(event.data.object);
-          break;
-      }
-      
-      res.json({ received: true });
-    } catch (err) {
-      console.error('Webhook signature verification failed:', err);
-      res.status(400).send(`Webhook Error: ${err.message}`);
-    }
-  }
-);
-
-// Manual verification example
-function verifyWebhookSignature(payload, signature, secret) {
-  const [t, v1] = signature.split(',');
-  const timestamp = t.split('=')[1];
-  const hash = v1.split('=')[1];
-  
-  // Prevent replay attacks
-  const now = Math.floor(Date.now() / 1000);
-  if (Math.abs(now - parseInt(timestamp)) > 300) {
-    throw new Error('Webhook timestamp too old');
-  }
-  
-  // Verify signature
-  const signedContent = `${timestamp}.${payload}`;
-  const expected = crypto
-    .createHmac('sha256', secret)
-    .update(signedContent)
-    .digest('hex');
-  
-  if (!crypto.timingSafeEqual(Buffer.from(hash), Buffer.from(expected))) {
-    throw new Error('Invalid signature');
-  }
-  
-  return true;
-}
-```
-
-## Example 5: Multi-Tenant API with Tenant Isolation
-
-```javascript
-// multi-tenant-api.js
-const express = require('express');
-const jwt = require('jsonwebtoken');
-
-const app = express();
-
-// Middleware: Extract and verify tenant
-app.use((req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  
-  if (!token) {
-    return res.status(401).json({ error: 'Missing token' });
-  }
-  
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    // Token MUST include tenant_id
-    if (!decoded.tenant_id) {
-      return res.status(403).json({ error: 'Invalid token: missing tenant_id' });
-    }
-    
-    req.user = decoded;
-    req.tenantId = decoded.tenant_id;
-    next();
-  } catch (err) {
-    return res.status(401).json({ error: 'Invalid token' });
-  }
-});
-
-// CRITICAL: Always filter by tenant_id
-app.get('/api/users', (req, res) => {
-  // Filter by tenant_id - prevent BOLA/IDOR
-  const users = db.users.find({ tenant_id: req.tenantId });
-  res.json(users);
-});
-
-// CRITICAL: Verify tenant ownership on record access
-app.get('/api/users/:userId', (req, res) => {
-  const user = db.users.findById(req.params.userId);
-  
-  // Check tenant ownership
-  if (user.tenant_id !== req.tenantId) {
-    return res.status(403).json({ error: 'Access denied' });
-  }
-  
-  res.json(user);
-});
-
-// CRITICAL: Verify tenant ownership on write operations
-app.put('/api/users/:userId', (req, res) => {
-  const user = db.users.findById(req.params.userId);
-  
-  if (user.tenant_id !== req.tenantId) {
-    return res.status(403).json({ error: 'Access denied' });
-  }
-  
-  // User can only update their own data (not admin)
-  if (req.user.id !== req.params.userId && req.user.role !== 'admin') {
-    return res.status(403).json({ error: 'Access denied' });
-  }
-  
-  const updated = db.users.update(req.params.userId, req.body);
-  res.json(updated);
-});
-```
-
+**See also**: [reference.md](./reference.md) for complete API reference and advanced patterns.

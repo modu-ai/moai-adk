@@ -249,9 +249,11 @@ class UnifiedPermissionManager:
 
         # Check for required fields
         required_fields = ['description', 'systemPrompt']
-        for field in required_fields:
-            if field not in agent_config or not agent_config[field]:
-                result.warnings.append(f"Missing or empty '{field}' for agent '{agent_name}'")
+        for req_field in required_fields:
+            if req_field not in agent_config or not agent_config[req_field]:
+                result.warnings.append(
+                    f"Missing or empty '{req_field}' for agent '{agent_name}'"
+                )
 
         return result
 

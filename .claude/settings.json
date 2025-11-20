@@ -1,33 +1,39 @@
 {
   "companyAnnouncements": [
-    "SPEC-First: Use /moai:1-plan to define requirements first and everything connects together",
-    "TDD Cycle: RED (write tests) \u2192 GREEN (minimal code) \u2192 REFACTOR (improve) ensures quality",
-    "4-Phase Workflow: /moai:1-plan plan \u2192 /moai:2-run implement \u2192 /moai:3-sync validate \u2192 git deploy",
-    "TRUST 5 Principles: Test(\u226585%) + Readable + Unified + Secured(OWASP) + Trackable = Quality",
-    "moai Agents: 19 expert team members automatically handle planning, implementation, testing, validation",
-    "Conversation Style: /output-style r2d2 (hands-on partner) or /output-style yoda (deep learning) available",
-    "Task Tracking: TodoWrite keeps progress visible and prevents any tasks from being missed",
-    "55+ Skill Library: Verified patterns and best practices enable hallucination-free implementation",
-    "Auto Validation: After coding, TRUST 5, test coverage, and security checks run automatically",
-    "GitFlow Strategy: feature/SPEC-XXX \u2192 develop \u2192 main structure for safe deployment pipeline",
-    "Context7 Updates: All library versions stay current with real-time API information",
-    "Parallel Processing: Independent tasks (tests, docs, deployment) run simultaneously to save time",
-    "Health Check: moai-adk doctor diagnoses configuration, version, and dependency issues in seconds",
-    "Doc Sync: /moai:3-sync auto synchronizes tests, code, and documentation automatically",
-    "Language Separation: Communicate in your language, write code in project language, package in English",
-    "Multi-language Support: Korean, English, Japanese, Spanish, and 25+ languages for conversation",
-    "Safe Updates: moai-adk update brings new features automatically while preserving existing settings",
-    "Auto Cleanup: Session end automatically cleans .moai/temp/ cache and logs to save space",
-    "Error Recovery: Failed commits and merge conflicts are auto-analyzed with solutions provided",
-    "Security First: Environment variables, API keys, and credentials auto-added to .gitignore for protection",
-    "Context Optimization: Efficient use of 200K token window enables handling of large projects",
-    "Quick Feedback: Questions? Ask immediately - moai interprets intent and clarifies automatically",
-    "Clean Exit: End sessions with /clear to reset context and prepare for the next task"
+    "MoAI-ADK: SPEC-First TDD with 135+ Skills and Context7 integration",
+    "Commands: /moai:1-plan → /moai:2-run → /moai:3-sync → git deploy",
+    "Quality: TRUST 5 principles with ≥85% test coverage enforced",
+    "Context7: Real-time library documentation for hallucination-free code"
   ],
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run ./.claude/hooks/moai/session_start__show_project_info.py"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run ./.claude/hooks/moai/pre_tool__document_management.py"
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
     "defaultMode": "default",
     "allow": [
       "Task",
+      "AskUserQuestion",
+      "Skill",
       "Read",
       "Write",
       "Edit",
@@ -40,6 +46,8 @@
       "WebSearch",
       "BashOutput",
       "KillShell",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs",
       "Bash(git status:*)",
       "Bash(git log:*)",
       "Bash(git diff:*)",
@@ -79,7 +87,11 @@
       "Bash(xargs:*)",
       "Bash(comm:*)",
       "Bash(lsof:*)",
-      "Bash(time:*)"
+      "Bash(time:*)",
+      "Bash(cat:*)",
+      "Bash(find:*)",
+      "Bash(sed:*)",
+      "Bash(python3:*)"
     ],
     "ask": [
       "Read(./.env)",
@@ -107,6 +119,22 @@
       "Read(~/.ssh/**)",
       "Read(~/.aws/**)",
       "Read(~/.config/gcloud/**)",
+      "Write(./secrets/**)",
+      "Write(~/.ssh/**)",
+      "Write(~/.aws/**)",
+      "Write(~/.config/gcloud/**)",
+      "Edit(./secrets/**)",
+      "Edit(~/.ssh/**)",
+      "Edit(~/.aws/**)",
+      "Edit(~/.config/gcloud/**)",
+      "Grep(./secrets/**)",
+      "Grep(~/.ssh/**)",
+      "Grep(~/.aws/**)",
+      "Grep(~/.config/gcloud/**)",
+      "Glob(./secrets/**)",
+      "Glob(~/.ssh/**)",
+      "Glob(~/.aws/**)",
+      "Glob(~/.config/gcloud/**)",
       "Bash(rm -rf /:*)",
       "Bash(rm -rf /*:*)",
       "Bash(rm -rf C\\:/:*)",
@@ -128,33 +156,12 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "moai-adk statusline",
+    "command": "uv run moai-adk statusline",
     "padding": 0,
     "refreshInterval": 300
   },
-  "spinnerTipsEnabled": true,
+  "spinnerTipsEnabled": false,
   "outputStyle": "R2-D2",
-  "hooks": {
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run ./.claude/hooks/moai/session_start__show_project_info.py"
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run ./.claude/hooks/moai/pre_tool__document_management.py"
-          }
-        ]
-      }
-    ]
-  }
+  "includeCoAuthoredBy": false,
+  "cleanupPeriodDays": 30
 }

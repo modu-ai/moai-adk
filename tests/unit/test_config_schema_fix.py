@@ -9,8 +9,6 @@ from datetime import datetime
 from pathlib import Path
 from unittest import mock
 
-import pytest
-
 from moai_adk.core.project.initializer import ProjectInitializer
 
 
@@ -182,7 +180,6 @@ class TestSuppressSetupMessagesWithNewFields:
     def test_suppress_setup_messages_works_with_new_fields(self):
         """Test that session.suppress_setup_messages feature uses new fields"""
         # Import the hook function
-        import sys
         from pathlib import Path as PathlibPath
 
         hook_path = (
@@ -239,7 +236,6 @@ class TestConfigHealthCheckValidation:
 
     def test_config_health_check_validates_session_field(self):
         """Test that session_start hook validates session field in config"""
-        import sys
         from pathlib import Path as PathlibPath
 
         hook_path = (

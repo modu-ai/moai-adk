@@ -1,0 +1,54 @@
+{
+  "user": {
+    "name": "GOOS행"
+  },
+  "language": {
+    "conversation_language": "kr",
+    "agent_prompt_language": "en",
+    "conversation_language_name": "Korean"
+  },
+  "project": {
+    "name": "TestProject",
+    "owner": "TestOwner",
+    "description": "Test",
+    "language": "python",
+    "locale": "en_US",
+    "template_version": "3.0.0",
+    "documentation_mode": "skip",
+    "optimized": false
+  },
+  "git_strategy": {
+    "mode": "personal",
+    "personal": {
+      "workflow": "github-flow",
+      "auto_checkpoint": "disabled",
+      "push_to_remote": false
+    },
+    "team": {
+      "workflow": "git-flow",
+      "auto_pr": false,
+      "draft_pr": false
+    }
+  },
+  "constitution": {
+    "test_coverage_target": 90,
+    "enforce_tdd": true
+  },
+  "document_management": {
+    "enabled": true,
+    "validation": {
+      "warn_violations": true,
+      "block_violations": false
+    },
+    "root_whitelist": [
+      "README.md",
+      "CLAUDE.md",
+      "LICENSE",
+      ".gitignore",
+      "pyproject.toml"
+    ]
+  },
+  "moai": {
+    "version": "0.26.0"
+  }
+}

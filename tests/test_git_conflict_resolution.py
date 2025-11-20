@@ -7,7 +7,6 @@ analyzes severity, and provides safe auto-resolution for config files.
 import subprocess
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 

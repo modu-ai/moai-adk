@@ -9,20 +9,16 @@ This test suite validates:
 - OP1-OP3: Optional feature support (statusline display, cache management, performance optimization)
 """
 
-import asyncio
 import json
-import os
 import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Dict, Optional, Tuple
-from unittest.mock import MagicMock, patch
 
 import pytest
 
-from moai_adk.statusline.main import build_statusline_data, main
-from moai_adk.statusline.version_reader import VersionConfig, VersionReader, VersionSource
+from moai_adk.statusline.main import build_statusline_data
+from moai_adk.statusline.version_reader import VersionConfig, VersionReader
 
 
 class TestUbiquitousRequirements:

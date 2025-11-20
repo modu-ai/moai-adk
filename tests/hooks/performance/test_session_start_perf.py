@@ -19,11 +19,11 @@ import time
 from pathlib import Path
 
 # Setup sys.path for hook imports
-HOOKS_DIR = Path(__file__).parent.parent.parent.parent / ".claude" / "hooks" / "alfred"
-SHARED_DIR = HOOKS_DIR / "shared"
-sys.path.insert(0, str(SHARED_DIR))
+PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
+LIB_DIR = PROJECT_ROOT / ".claude" / "hooks" / "moai" / "lib"
+sys.path.insert(0, str(LIB_DIR))
 
-from core.project import get_git_info, get_package_version_info  # noqa: E402
+from project import get_git_info, get_package_version_info  # noqa: E402
 
 
 class TestSessionStartPerformance:

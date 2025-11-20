@@ -805,11 +805,18 @@ class PhaseOptimizedHookScheduler:
 
         # Add strategy recommendations
         strategy_stats = self.get_scheduling_statistics()["strategy_performance"]
-        best_strategy = max(strategy_stats.items(), key=lambda x: x[1]["recommendation_score"]) if strategy_stats else None
+        best_strategy = (
+            max(
+                strategy_stats.items(),
+                key=lambda x: x[1]["recommendation_score"]
+            ) if strategy_stats else None
+        )
 
         if best_strategy:
             insights["recommended_strategy"] = best_strategy[0]
-            insights["strategy_rationale"] = f"Best performance with {best_strategy[0]} strategy (score: {best_strategy[1]['recommendation_score']:.2f})"
+            insights["strategy_rationale"] = (
+                f"Best performance with {best_strategy[0]} strategy (score: {best_strategy[1]['recommendation_score']:.2f})"
+            )
 
         return insights
 

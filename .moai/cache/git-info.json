@@ -1,7 +1,7 @@
 {
   "branch": "release/0.26.0",
-  "last_commit": "b97c61e3 style(hooks): align local and template import order with isort",
-  "commit_time": "45 minutes ago",
-  "changes": 129,
-  "last_check": "2025-11-20T08:59:27.542529"
+  "last_commit": "77aa39b4 feat: optimize agent-factory and skill-factory with Claude Code official patterns",
+  "commit_time": "34 minutes ago",
+  "changes": 147,
+  "last_check": "2025-11-20T17:48:28.762477"
 }

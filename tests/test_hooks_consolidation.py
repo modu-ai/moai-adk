@@ -14,10 +14,8 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List
 
 import pytest
-
 
 # ==============================================================================
 # Test Suite 1: Duplicate File Identification (Task 2.1)
@@ -199,8 +197,7 @@ class TestImportPathMigration:
 
         try:
             # Try importing main modules
-            from moai.shared.core import timeout
-            from moai.shared.core import version_cache
+            from moai.shared.core import timeout, version_cache
 
             # If we get here without errors, no circular imports
             assert timeout is not None
@@ -294,7 +291,7 @@ class TestIntegrationAndPerformance:
                 elapsed = (time.perf_counter() - start) * 1000  # Convert to ms
                 times.append(elapsed)
             except subprocess.TimeoutExpired:
-                pytest.fail(f"Hook execution timeout exceeded")
+                pytest.fail("Hook execution timeout exceeded")
 
         avg_time = sum(times) / len(times)
 

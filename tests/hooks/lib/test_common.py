@@ -1,11 +1,9 @@
 """Comprehensive test suite for common.py utilities"""
 
-import pytest
 import statistics
-from common import (
-    format_duration,
-    get_summary_stats
-)
+
+import pytest
+from common import format_duration, get_summary_stats
 
 
 class TestFormatDuration:

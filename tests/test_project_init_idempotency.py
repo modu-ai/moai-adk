@@ -4,9 +4,8 @@ Tests for project initialization idempotency and config optimization state manag
 """
 
 import json
-import tempfile
-from pathlib import Path
 from datetime import datetime, timezone
+from pathlib import Path
 
 import pytest
 

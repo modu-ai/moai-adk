@@ -115,6 +115,11 @@ packages = ["src/moai_adk"]
 requires = ["hatchling", "rich", "questionary", "click", "pyfiglet", "gitpython", "packaging", "pyyaml", "jinja2", "requests", "psutil", "aiohttp", "pytest-asyncio"]
 build-backend = "hatchling.build"
 
+[dependency-groups]
+dev = [
+    "pytest-mock>=3.15.1",
+]
+
 
 # Exclude developer-only tools and utilities from package distribution
 # Only exclude specific files, not entire directories

@@ -1,4 +1,3 @@
-# type: ignore
 """
 Enhanced Version reader for MoAI-ADK from config.json with performance optimizations
 

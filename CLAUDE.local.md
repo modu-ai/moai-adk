@@ -13,6 +13,7 @@
 **GitHub 릴리스 포맷**: `.claude/commands/moai/99-release.md` (Lines 255-283) 참조
 
 **이유**:
+
 - 패키지: 변경 사항이 모든 사용자에게 즉시 배포
 - 로컬: Claude Code 실행을 위한 구체적 경로
 
@@ -24,10 +25,10 @@
 
 ### 패턴 비교
 
-| 컨텍스트 | 경로 형식 | 예시 |
-|---------|---------|------|
+| 컨텍스트          | 경로 형식             | 예시                                                 |
+| ----------------- | --------------------- | ---------------------------------------------------- |
 | **패키지 템플릿** | `{{PROJECT_DIR}}/...` | `uv run {{PROJECT_DIR}}/.moai/scripts/statusline.py` |
-| **로컬 프로젝트** | 상대 경로 `./...` | `uv run .moai/scripts/statusline.py` |
+| **로컬 프로젝트** | 상대 경로 `./...`     | `uv run .moai/scripts/statusline.py`                 |
 
 ### 왜?
 
@@ -46,17 +47,19 @@
 **필수 설정**: `.moai/config/config.json` (없으면 statusline 버전 표시 불가)
 
 **초기화**:
+
 ```bash
 mkdir -p .moai/config
 cp src/moai_adk/templates/.moai/config/config.json .moai/config/
 ```
 
 **필수 필드**:
+
 ```json
 {
-  "moai": {"version": "0.26.0"},
-  "language": {"conversation_language": "ko"},
-  "project": {"name": "MoAI-ADK", "owner": "GoosLab"}
+  "moai": { "version": "0.26.0" },
+  "language": { "conversation_language": "ko" },
+  "project": { "name": "MoAI-ADK", "owner": "GoosLab" }
 }
 ```
 
