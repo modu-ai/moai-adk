@@ -1,17 +1,33 @@
 # v0.27.0 - Major Release with Comprehensive Refactoring (2025-11-20)
 # v0.27.2 (2025-11-20)
 
-## 주요 변경사항
+## 🎯 English Section
 
-- 기능 추가/개선 사항 여기에 입력
-- 버그 수정 사항
-- 주요 변경 사항
+### Bug Fixes and Improvements
+- **Version Consistency Fix**: Resolved version mismatch between SessionStart hook and Statusline
+- **CLI Version Integration**: Unified all version displays (CLI, SessionStart, Statusline) to 0.27.2
+- **Dynamic Version Lookup Enhancement**: Improved real-time package version detection via VersionReader
+- **Configuration Synchronization**: Automated .moai/config/config.json version updates
+
+## 🎯 한글 섹션
+
+### 버그 수정 및 개선
+- **버전 일치성 문제 해결**: SessionStart hook과 Statusline의 버전 불일치 수정
+- **CLI 버전 정보 통합**: moai-adk CLI, SessionStart hook, Statusline 모두 0.27.2로 통일
+- **동적 버전 조회 강화**: VersionReader를 통한 실시간 패키지 버전 조회 개선
+- **구성 파일 동기화**: .moai/config/config.json 버전 정보 자동 업데이트
 
 ## 설치
 
 \`\`\`bash
 pip install moai-adk==0.27.2
 \`\`\`
+
+---
+
+🤖 Generated with Claude Code
+
+Co-Authored-By: 🎩 Alfred@MoAI
 
 ---
 
