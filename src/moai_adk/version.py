@@ -10,7 +10,7 @@ from importlib.metadata import version as pkg_version
 try:
     MOAI_VERSION = pkg_version("moai-adk")
 except PackageNotFoundError:
-    MOAI_VERSION = "0.26.0"
+    MOAI_VERSION = "0.26.1"
 
 # Template Schema Version
 TEMPLATE_VERSION = "3.0.0"
