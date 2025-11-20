@@ -140,11 +140,8 @@ exclude = [
     "src/moai_adk/templates/.moai/scripts/*/test_*.py",  # Test scripts
     "src/moai_adk/templates/.moai/backups/**/*",  # Backup files
     "src/moai_adk/templates/.moai/temp/**/*",  # Temporary files
-    "src/moai_adk/templates/.claude/commands/yoda/**/*",  # Yoda system - local-only
-    "src/moai_adk/templates/.claude/agents/yoda-master.md",  # Yoda system - local-only
-    "src/moai_adk/templates/.claude/agents/yoda/**/*",  # Yoda system - local-only
-    "src/moai_adk/templates/.claude/skills/moai-yoda-system/**/*",  # Yoda system - local-only
-    "src/moai_adk/templates/.claude/skills/moai-yoda-content-generator/**/*",  # Yoda system - local-only
+    "src/moai_adk/templates/.claude/commands/moai/99-release.md",  # Release command - local-only
+    "src/moai_adk/templates/.moai/release/**/*",  # Release scripts - local-only
 ]
 
 [project.scripts]
