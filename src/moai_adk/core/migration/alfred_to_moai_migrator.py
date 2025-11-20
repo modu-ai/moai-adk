@@ -300,14 +300,15 @@ class AlfredToMoaiMigrator:
                 logger.warning(f"⚠️  Alfred {name} folder still exists: {folder}")
                 return False
 
-        # Check settings.json has no alfred references
+        # Check settings.json hooks paths (ignore pattern matching strings like "Bash(alfred:*)")
         if self.settings_path.exists():
             try:
                 with open(self.settings_path, "r", encoding="utf-8") as f:
                     settings_content = f.read()
 
-                if "alfred" in settings_content.lower():
-                    logger.error("❌ settings.json still contains alfred references")
+                # Only check for hooks/alfred paths, not pattern strings
+                if ".claude/hooks/alfred/" in settings_content or ".claude/commands/alfred/" in settings_content or ".claude/agents/alfred/" in settings_content:
+                    logger.error("❌ settings.json still contains alfred hook paths")
                     return False
 
                 if "moai" not in settings_content.lower():

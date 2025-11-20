@@ -88,7 +88,7 @@ class StatuslineRenderer:
     def _build_compact_parts(self, data: StatuslineData) -> List[str]:
         """
         Build parts list for compact mode with labeled sections
-        New Format: 🤖 Model | 🔅 Claude Code Version | 🗿 MoAI Version | 📊 Changes | 💬 Style | 🔀 Branch
+        New Format: 🤖 Model | 🔅 Claude Code Version | 🗿 MoAI Version | 💬 Style | 📊 Changes | 🔀 Branch
 
         Args:
             data: StatuslineData instance
@@ -113,13 +113,13 @@ class StatuslineRenderer:
             version_str = data.version if data.version.startswith("v") else f"v{data.version}"
             parts.append(f"🗿 {version_str}")
 
-        # Add git status if display enabled and status not empty
-        if self._display_config.git_status and data.git_status:
-            parts.append(f"📊 {data.git_status}")
-
         # Add output style if not empty
         if data.output_style:
             parts.append(f"💬 {data.output_style}")
+
+        # Add git status if display enabled and status not empty
+        if self._display_config.git_status and data.git_status:
+            parts.append(f"📊 {data.git_status}")
 
         # Add Git info (development context)
         if self._display_config.branch:
@@ -134,7 +134,7 @@ class StatuslineRenderer:
     def _fit_to_constraint(self, data: StatuslineData, max_length: int) -> str:
         """
         Fit statusline to character constraint by truncating
-        New Format: 🤖 Model | 🔅 Claude Code Version | 🗿 MoAI Version | 📊 Changes | 💬 Style | 🔀 Branch
+        New Format: 🤖 Model | 🔅 Claude Code Version | 🗿 MoAI Version | 💬 Style | 📊 Changes | 🔀 Branch
 
         Args:
             data: StatuslineData instance
@@ -156,13 +156,13 @@ class StatuslineRenderer:
 
         parts.append(f"🗿 {version_str}")
 
-        # Add git status if display enabled and status not empty
-        if self._display_config.git_status and data.git_status:
-            parts.append(f"📊 {data.git_status}")
-
         # Add output style if not empty
         if data.output_style:
             parts.append(f"💬 {data.output_style}")
+
+        # Add git status if display enabled and status not empty
+        if self._display_config.git_status and data.git_status:
+            parts.append(f"📊 {data.git_status}")
 
         # Add Git info
         parts.append(f"🔀 {truncated_branch}")
@@ -222,7 +222,7 @@ class StatuslineRenderer:
         """
         Render extended mode: Full path and detailed info with labels
         Constraint: <= 120 characters
-        New Format: 🤖 Model | 🔅 Claude Code Version | 🗿 MoAI Version | 📊 Changes | 💬 Style | 🔀 Branch
+        New Format: 🤖 Model | 🔅 Claude Code Version | 🗿 MoAI Version | 💬 Style | 📊 Changes | 🔀 Branch
 
         Args:
             data: StatuslineData instance
@@ -248,13 +248,13 @@ class StatuslineRenderer:
         if self._display_config.version:
             parts.append(f"🗿 {version_str}")
 
-        # Add git status if display enabled and status not empty
-        if self._display_config.git_status and data.git_status:
-            parts.append(f"📊 {data.git_status}")
-
         # Add output style if not empty
         if data.output_style:
             parts.append(f"💬 {data.output_style}")
+
+        # Add git status if display enabled and status not empty
+        if self._display_config.git_status and data.git_status:
+            parts.append(f"📊 {data.git_status}")
 
         # Add Git info (development context)
         if self._display_config.branch:
