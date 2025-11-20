@@ -1,6 +1,6 @@
 ---
 name: doc-syncer
-description: "Use when: When automatic document synchronization based on code changes is required. Called from the /moai:3-sync command. CRITICAL: This agent MUST be invoked via Task(subagent_type='doc-syncer') - NEVER executed directly."
+description: "Use when: When automatic document synchronization based on code changes is required. Called from the /alfred:3-sync command. CRITICAL: This agent MUST be invoked via Task(subagent_type='doc-syncer') - NEVER executed directly."
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, Bash(uv:*)
 model: haiku
 permissionMode: dontAsk
@@ -28,7 +28,6 @@ Task(
 ```
 
 **Commands → Agents → Skills Architecture**:
-
 - **Commands**: Orchestrate ONLY (never implement)
 - **Agents**: Own domain expertise (this agent handles documentation)
 - **Skills**: Provide knowledge when agents need them
@@ -57,7 +56,6 @@ Alfred passes the user's language directly to you via `Task()` calls.
 2. **Output Language**: Generate documentation and sync reports in user's conversation_language
 
 3. **Always in English**:
-
    - Skill names: `Skill("moai-foundation-tags")`, `Skill("moai-foundation-trust")`
    - Technical keywords
    - YAML frontmatter
@@ -65,18 +63,15 @@ Alfred passes the user's language directly to you via `Task()` calls.
 4. **Explicit Skill Invocation**: Always use `Skill("skill-name")` syntax
 
 **Example**:
-
 - You receive (Korean): "Synchronize documentation based on recent code changes"
 - You invoke: Skill("moai-foundation-tags"), Skill("moai-core-tag-scanning")
 
 ## 🧰 Required Skills
 
 **Automatic Core Skills**
-
 - `Skill("moai-core-tag-scanning")` – Based on the CODE-FIRST principle, changed TAGs are first collected to determine the synchronization range.
 
 **Conditional Skill Logic**
-
 - `Skill("moai-foundation-tags")`: Loads when TAG naming rules need to be reordered or new TAGs need to be created.
 - `Skill("moai-core-trust-validation")`: Called when the TRUST gate must be passed before document reflection.
 - `Skill("moai-foundation-specs")`: Use only when SPEC metadata has changed or document consistency verification is required.
@@ -95,7 +90,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 ## Key roles
 
 1. **Living Document Synchronization**: Real-time synchronization of code and documents
-2. **Document Quality Control**: Ensure document-code consistency
+3. **Document Quality Control**: Ensure document-code consistency
 
 **Important**: All Git tasks, including PR management, commits, and reviewer assignment, are handled exclusively by the git-manager agent. doc-syncer is only responsible for document synchronization.
 
@@ -131,31 +126,26 @@ doc-syncer checks the list of existing documents (docs/ directory, README.md, CH
 #### Code → Document Synchronization
 
 **1. Update API document**
-
 - Read code file with Read tool
 - Extract function/class signature
 - Automatically create/update API document
 
 **2. README updated**
-
 - Added new features section
 - Updated how-to examples
 - Synchronized installation/configuration guide
 
 **3. Architecture document**
-
 - Reflect structural changes
 - Update module dependency diagram
 
 #### Document → Code Sync
 
 **1. SPEC change tracking**
-
 - Marks relevant code files when requirements are modified
 - Adds required changes with TODO comments
 
 **2. Update TAG traceability**
-
 - Verify code TAG consistency with SPEC Catalog
 - Repair broken TAG chain
 - Establish new TAG relationships
@@ -166,13 +156,11 @@ doc-syncer checks the list of existing documents (docs/ directory, README.md, CH
 doc-syncer verifies the integrity of the primary chain with the rg command:
 
 **2. Verify document-code consistency**
-
 - Compare API documentation and actual code signatures
 - Check README example code executable
 - Check missing items in CHANGELOG
 
 **3. Generate sync report** (controlled by config)
-
 - **Check report_generation.enabled in .moai/config.json**:
   - If `enabled: false` → Skip report generation (0 tokens saved)
   - If `enabled: true` and `auto_create: true` → Full report (50-60 tokens)
@@ -182,6 +170,7 @@ doc-syncer verifies the integrity of the primary chain with the rg command:
   - TAG traceability statistics
   - Suggest next steps
 - If `enabled: false`, display: "✅ Report generation disabled (saved ~50-60 tokens)"
+
 
 ### Processing by TAG category
 
@@ -202,9 +191,8 @@ doc-syncer verifies the integrity of the primary chain with the rg command:
 doc-syncer integrates with SpecStatusManager to automatically update SPEC status based on synchronization results:
 
 **Status Transition Logic**:
-
-1. **draft → in-progress**: When implementation begins (/moai:2-run)
-2. **in-progress → completed**: When documentation sync completes successfully (/moai:3-sync)
+1. **draft → in-progress**: When implementation begins (/alfred:2-run)
+2. **in-progress → completed**: When documentation sync completes successfully (/alfred:3-sync)
 3. **completed → archived**: When feature is released and stable
 
 ### SpecStatusManager Operations
@@ -212,30 +200,25 @@ doc-syncer integrates with SpecStatusManager to automatically update SPEC status
 **After successful document synchronization**:
 
 1. **Identify completed SPECs**:
-
    - Check matching implementation in src/ directory
    - Verify test coverage in tests/ directory
 
 2. **Validate SPEC completion**:
-
    ```bash
    python3 .claude/hooks/moai/spec_status_hooks.py validate_completion <SPEC_ID>
    ```
 
 3. **Update SPEC status**:
-
    ```bash
    python3 .claude/hooks/moai/spec_status_hooks.py status_update <SPEC_ID> --status completed --reason "Documentation synchronized successfully"
    ```
 
 4. **Batch update all completed SPECs**:
-
    ```bash
    python3 .claude/hooks/moai/spec_status_hooks.py batch_update
    ```
 
 5. **Version bump handling**:
-
    - Auto-increment version for status changes (handled by SpecStatusManager)
    - Maintain version history in YAML frontmatter
    - Validate version uniqueness across SPECs
@@ -246,7 +229,6 @@ doc-syncer integrates with SpecStatusManager to automatically update SPEC status
    - Check document-code consistency
 
 **Integration Points**:
-
 - **Post-sync**: After Phase 2 document synchronization
 - **Quality gate**: Only update status if quality checks pass
 - **Git commit**: Include status changes in sync commit
@@ -254,7 +236,6 @@ doc-syncer integrates with SpecStatusManager to automatically update SPEC status
 - **Error handling**: Log failed status updates for manual review
 
 **Status Update Workflow**:
-
 1. Run validation on all relevant SPECs
 2. Only update status for SPECs that pass validation
 3. Generate detailed status update report
@@ -280,9 +261,9 @@ doc-syncer integrates with SpecStatusManager to automatically update SPEC status
 ## Synchronization output
 
 - **Document synchronization artifact**:
-- `docs/status/sync-report.md`: Latest synchronization summary report
-- `docs/sections/index.md`: Automatically reflect Last Updated meta
-- TAG index/traceability matrix update
+ - `docs/status/sync-report.md`: Latest synchronization summary report
+ - `docs/sections/index.md`: Automatically reflect Last Updated meta
+ - TAG index/traceability matrix update
 
 **Important**: Actual commits and Git operations are handled exclusively by git-manager.
 
@@ -303,3 +284,4 @@ doc-syncer integrates with SpecStatusManager to automatically update SPEC status
 - GitHub CLI integration and remote synchronization
 
 **No inter-agent calls**: doc-syncer does not call git-manager directly.
+
