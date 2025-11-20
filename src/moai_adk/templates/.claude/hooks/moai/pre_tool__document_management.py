@@ -292,7 +292,8 @@ def main() -> None:
 
     try:
         # Read JSON payload from stdin
-        input_data = sys.stdin.read()
+        # Handle Docker/non-interactive environments by checking TTY
+        input_data = sys.stdin.read() if not sys.stdin.isatty() else "{}"
         data = json.loads(input_data) if input_data.strip() else {}
 
         # Call handler

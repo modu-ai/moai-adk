@@ -32,7 +32,8 @@ def read_session_context() -> dict:
         Dictionary containing session information
     """
     try:
-        input_data = sys.stdin.read()
+        # Handle Docker/non-interactive environments by checking TTY
+        input_data = sys.stdin.read() if not sys.stdin.isatty() else "{}"
         if input_data:
             try:
                 return json.loads(input_data)

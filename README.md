@@ -75,6 +75,56 @@ Manage all settings in the `.moai/config/config.json` file in your project root.
 
 ---
 
+## 🐳 Docker Environment Support
+
+### System Requirements for Docker
+
+When using MoAI-ADK in Docker containers, especially minimal images like `debian:bookworm-slim`, additional system dependencies may be required:
+
+#### Docker Setup Examples
+
+**Base Dockerfile:**
+```dockerfile
+FROM python:3.13-slim
+
+# Install system dependencies required by MoAI-ADK
+RUN apt-get update && apt-get install -y \
+    procps \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv and moai-adk
+RUN pip install uv
+RUN uv tool install moai-adk
+
+WORKDIR /workspace
+```
+
+**Docker Compose:**
+```yaml
+version: '3.8'
+services:
+  moai-adk:
+    build: .
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+    environment:
+      - PYTHONUNBUFFERED=1
+```
+
+#### Known Docker Issues & Solutions
+
+**Issue**: stdin blocking in non-interactive containers
+**✅ Status**: Fixed in v0.27.0+ - All hooks now properly handle TTY detection
+
+**Issue**: Missing `procps` dependency
+**📋 Solution**: Install `procps` package as shown above
+
+**Issue**: Non-interactive session handling
+**✅ Status**: Fixed in v0.27.0+ - Safe stdin handling implemented
+
+---
+
 ## 🤖 Agent Delegation & Token Efficiency (2M Token Utilization)
 
 ### 💡 The Magic of 200k \* 10 = 2M Tokens

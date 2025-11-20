@@ -343,7 +343,8 @@ def safe_collect_output_style() -> str:
         # Read session context from stdin if available
         session_context = {}
         try:
-            input_data = sys.stdin.read()
+            # Handle Docker/non-interactive environments by checking TTY
+            input_data = sys.stdin.read() if not sys.stdin.isatty() else "{}"
             if input_data.strip():
                 session_context = json.loads(input_data)
         except (json.JSONDecodeError, EOFError):
