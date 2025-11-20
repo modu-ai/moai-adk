@@ -108,40 +108,26 @@ ignore_errors = true
 module = ".claude.hooks.moai.lib.*"
 ignore_errors = true
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/moai_adk"]
+
 [build-system]
 requires = ["hatchling", "rich", "questionary", "click", "pyfiglet", "gitpython", "packaging", "pyyaml", "jinja2", "requests", "psutil", "aiohttp", "pytest-asyncio"]
 build-backend = "hatchling.build"
 
-[tool.hatch.build.targets.wheel]
-# Include Python packages and templates
-packages = ["src/moai_adk"]
 
-# Ensure template files are included in both wheel and editable installs
-# Explicitly include hidden directories (.claude, .moai, .github)
-[tool.hatch.build]
-include = [
-    "src/moai_adk/**/*.py",
-    "src/moai_adk/templates/**/*",
-    # Explicitly include hidden directories for proper package distribution
-    "src/moai_adk/templates/.claude/**/*",
-    "src/moai_adk/templates/.claude/output-styles/**/*",
-    "src/moai_adk/templates/.claude/commands/**/*",
-    "src/moai_adk/templates/.claude/agents/**/*",
-    "src/moai_adk/templates/.claude/skills/**/*",
-    "src/moai_adk/templates/.claude/hooks/**/*",
-    "src/moai_adk/templates/.moai/**/*",
-    "src/moai_adk/templates/.moai/config/**/*",
-    "src/moai_adk/templates/.moai/scripts/**/*",
-    "src/moai_adk/templates/.github/**/*"
-]
 # Exclude developer-only tools and utilities from package distribution
+# Only exclude specific files, not entire directories
+[tool.hatch.build]
 exclude = [
-    "src/moai_adk/templates/.moai/scripts/dev/**/*",  # Developer-only utilities
-    "src/moai_adk/templates/.moai/scripts/*/test_*.py",  # Test scripts
-    "src/moai_adk/templates/.moai/backups/**/*",  # Backup files
-    "src/moai_adk/templates/.moai/temp/**/*",  # Temporary files
+    "src/moai_adk/templates/.moai/scripts/dev",  # Developer-only utilities
+    "src/moai_adk/templates/.moai/backups",  # Backup files
+    "src/moai_adk/templates/.moai/temp",  # Temporary files
     "src/moai_adk/templates/.claude/commands/moai/99-release.md",  # Release command - local-only
-    "src/moai_adk/templates/.moai/release/**/*",  # Release scripts - local-only
+    "src/moai_adk/templates/.moai/release",  # Release scripts - local-only
+    "tests",  # Test directory
+    ".git",  # Git directory
+    ".github/workflows",  # GitHub Actions (not needed in package)
 ]
 
 [project.scripts]

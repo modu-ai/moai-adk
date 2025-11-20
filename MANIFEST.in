@@ -1,22 +1,43 @@
-# Include all template directories (including hidden dirs starting with .)
-recursive-include src/moai_adk/templates *
+# Include all template files with dot-directories
+recursive-include src/moai_adk/templates .
+recursive-include src/moai_adk/templates/.claude .
+recursive-include src/moai_adk/templates/.moai .
+recursive-include src/moai_adk/templates/.github .
 
-# Explicitly include hidden directories to ensure proper package distribution
-# (Hidden directories may be missed by standard recursive-include)
-recursive-include src/moai_adk/templates/.claude *
-recursive-include src/moai_adk/templates/.claude/output-styles *
-recursive-include src/moai_adk/templates/.claude/commands *
-recursive-include src/moai_adk/templates/.claude/agents *
-recursive-include src/moai_adk/templates/.claude/skills *
-recursive-include src/moai_adk/templates/.claude/hooks *
-recursive-include src/moai_adk/templates/.moai *
-recursive-include src/moai_adk/templates/.moai/config *
-recursive-include src/moai_adk/templates/.moai/scripts *
-recursive-include src/moai_adk/templates/.github *
+# Explicitly include hidden files and directories
+include src/moai_adk/templates/.mcp.json
+include src/moai_adk/templates/.gitignore
+include src/moai_adk/templates/.claude/settings.json
+include src/moai_adk/templates/.claude/settings.local.json
 
-# Include documentation
+# Include all command files
+recursive-include src/moai_adk/templates/.claude/commands .
+
+# Include all skill files
+recursive-include src/moai_adk/templates/.claude/skills .
+
+# Include all hook files
+recursive-include src/moai_adk/templates/.claude/hooks .
+
+# Include all agent files
+recursive-include src/moai_adk/templates/.claude/agents .
+
+# Include all output styles
+recursive-include src/moai_adk/templates/.claude/output-styles .
+
+# Include all moai configuration and memory files
+recursive-include src/moai_adk/templates/.moai .
+
+# Include GitHub configuration
+recursive-include src/moai_adk/templates/.github .
+
+# Exclude developer-only files
+prune src/moai_adk/templates/.moai/scripts/dev
+prune src/moai_adk/templates/.moai/backups
+prune src/moai_adk/templates/.moai/temp
+exclude src/moai_adk/templates/.claude/commands/moai/99-release.md
+prune src/moai_adk/templates/.moai/release
+
+# Include README and LICENSE
 include README.md
 include LICENSE
-
-# Include configuration
-include pyproject.toml
