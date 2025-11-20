@@ -192,3 +192,10 @@ ehthumbs.db
 
 # Package lock files (uv.lock excluded for package distribution)
 uv.lock
+
+# Local configuration files
+CLAUDE.local.md
+.claude/local/
+
+# Documentation site files (not related to package distribution)
+theme.config.tsx
