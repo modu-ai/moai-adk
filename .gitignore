@@ -95,10 +95,6 @@ firebase-key.json
 .coverage
 coverage.json
 
-# Docs build artifacts (but track documentation files)
-docs/.next/
-docs/node_modules/
-docs/.turbo/
 
 # Environment variables and deployment secrets
 .vercel/
