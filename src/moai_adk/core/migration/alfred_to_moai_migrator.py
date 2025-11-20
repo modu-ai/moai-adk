@@ -372,10 +372,10 @@ class AlfredToMoaiMigrator:
 
             # Clear migration state in config
             try:
-                config = self.config_manager.load()
+                config = self._load_config()
                 if "migration" in config and "alfred_to_moai" in config["migration"]:
                     del config["migration"]["alfred_to_moai"]
-                    self.config_manager.save(config)
+                    self._save_config(config)
             except Exception as e:
                 logger.warning(f"⚠️  Failed to reset state: {str(e)}")
 

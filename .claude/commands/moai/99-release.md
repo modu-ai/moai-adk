@@ -252,13 +252,19 @@ git push origin main
 
 ### PyPI Token Setup
 
-```bash
-# 1. Generate token at https://pypi.org/manage/account/tokens/
-# 2. Set environment variable:
-export PYPI_TOKEN="pypi-AgEIcHlwaS5vcmc..."
+**Production PyPI Token**: Configured in `~/.pypirc` file
+**Test PyPI Token**: Needs refresh - Current token expired in `~/.pypirc`
 
-# 3. Or add to .env (never commit):
-echo "PYPI_TOKEN=..." >> .env
+```bash
+# PyPI tokens are stored in ~/.pypirc:
+# [pypi] - Production PyPI deployment (valid)
+# [testpypi] - Test PyPI deployment (EXPIRED - needs refresh)
+
+# Test PyPI Token Refresh Required:
+# 1. Visit: https://test.pypi.org/manage/account/token/
+# 2. Create new token with 'Entire account' scope
+# 3. Update ~/.pypirc [testpypi] password field
+# 4. Token automatically loaded by twine upload commands
 ```
 
 ### GitHub Secrets

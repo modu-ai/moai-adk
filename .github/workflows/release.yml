@@ -1,14 +1,55 @@
-name: Release to PyPI with Bilingual GitHub Release
+name: ⚠️ DEPRECATED - Use Secure Release Pipeline
 
-# 트리거: main 브랜치에 버전 태그가 푸시되었을 때
-# 지원하는 태그 패턴:
-#   - v1.2.3           → PyPI 배포 (프로덕션)
-#   - v1.2.3-test      → TestPyPI 배포 (테스트)
+# ⚠️ DEPRECATED WORKFLOW
+# This workflow is DISABLED for security reasons.
+#
+# 🔒 USE INSTEAD: .github/workflows/release-secure.yml
+#
+# REASON FOR DEPRECATION:
+# - Automatic tag-based deployment caused Production accidents
+# - No manual approval gates
+# - No safety validation checks
+#
+# 🚨 MIGRATION GUIDE:
+# 1. Use: "Secure Release Pipeline" workflow
+# 2. Manual trigger only
+# 3. Environment protection enabled
+# 4. Safety validation included
+
 on:
   push:
     tags:
       - "v*.*.*"
       - "v*.*.*-test"
+
+jobs:
+  blocked:
+    name: 🚨 WORKFLOW DISABLED
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🚨 Deployment Blocked
+        run: |
+          echo "🚨 THIS WORKFLOW IS DISABLED FOR SECURITY REASONS"
+          echo ""
+          echo "❌ Automatic tag-based deployment has caused production accidents"
+          echo ""
+          echo "✅ Please use the new Secure Release Pipeline:"
+          echo "   📁 .github/workflows/release-secure.yml"
+          echo ""
+          echo "🔒 New security features:"
+          echo "   • Manual approval required"
+          echo "   • Environment protection"
+          echo "   • Safety validation"
+          echo "   • Emergency rollback"
+          echo ""
+          echo "🚨 TO DEPLOY:"
+          echo "   1. Go to Actions tab"
+          echo "   2. Select '🚀 Secure Release Pipeline'"
+          echo "   3. Click 'Run workflow'"
+          echo "   4. Fill in deployment details"
+          echo "   5. Wait for approval (if production)"
+          echo ""
+          echo "📞 Contact: @Goos for assistance"
 
 # 권한 설정: Release 생성, Package 배포
 permissions:

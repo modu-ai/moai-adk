@@ -1,7 +1,7 @@
 {
   "branch": "release/0.26.0",
-  "last_commit": "77aa39b4 feat: optimize agent-factory and skill-factory with Claude Code official patterns",
-  "commit_time": "34 minutes ago",
-  "changes": 147,
-  "last_check": "2025-11-20T17:48:28.762477"
+  "last_commit": "b9188a71 feat: comprehensive refactoring for v0.26.0",
+  "commit_time": "2 hours ago",
+  "changes": 41,
+  "last_check": "2025-11-20T19:54:25.828582"
 }

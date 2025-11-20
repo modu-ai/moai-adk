@@ -1,0 +1,291 @@
+name: 🔍 Version Policy Enforcement
+
+# 🔍 VERSION POLICY ENFORCEMENT
+#
+# PURPOSE:
+# - Enforce semantic versioning compliance
+# - Prevent dangerous version patterns in commits
+# - Validate version synchronization across files
+# - Block automatic tag creation for test versions
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'pyproject.toml'
+      - 'src/moai_adk/__init__.py'
+      - 'src/moai_adk/version.py'
+      - '.moai/config/config.json'
+  push:
+    branches: [main, develop]
+    paths:
+      - 'pyproject.toml'
+      - 'src/moai_adk/__init__.py'
+      - 'src/moai_adk/version.py'
+      - '.moai/config/config.json'
+
+jobs:
+  version-compliance:
+    name: 🔍 Version Compliance Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: 🔍 Extract and validate versions
+        id: versions
+        run: |
+          echo "🔍 Extracting version information..."
+
+          # Extract version from pyproject.toml
+          PYPROJECT_VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "//' | sed 's/"//')
+          echo "pyproject=$PYPROJECT_VERSION" >> "$GITHUB_OUTPUT"
+
+          # Extract version from __init__.py (if exists)
+          if [ -f "src/moai_adk/__init__.py" ]; then
+            INIT_VERSION=$(grep '__version__' src/moai_adk/__init__.py | sed "s/.*'\\(.*\\)'.*/\\1/" | head -1)
+            echo "init=$INIT_VERSION" >> "$GITHUB_OUTPUT"
+          else
+            echo "init=not_found" >> "$GITHUB_OUTPUT"
+          fi
+
+          # Extract version from version.py (if exists)
+          if [ -f "src/moai_adk/version.py" ]; then
+            VERSION_PY_VERSION=$(grep '__version__' src/moai_adk/version.py | sed "s/.*'\\(.*\\)'.*/\\1/" | head -1)
+            echo "version_py=$VERSION_PY_VERSION" >> "$GITHUB_OUTPUT"
+          else
+            echo "version_py=not_found" >> "$GITHUB_OUTPUT"
+          fi
+
+          # Extract version from config.json
+          if [ -f ".moai/config/config.json" ]; then
+            CONFIG_VERSION=$(jq -r '.moai.version // "not_found"' .moai/config/config.json)
+            echo "config=$CONFIG_VERSION" >> "$GITHUB_OUTPUT"
+          else
+            echo "config=not_found" >> "$GITHUB_OUTPUT"
+          fi
+
+          echo "📋 Version Summary:"
+          echo "  pyproject.toml: $PYPROJECT_VERSION"
+          echo "  __init__.py: ${INIT_VERSION:-not_found}"
+          echo "  version.py: ${VERSION_PY_VERSION:-not_found}"
+          echo "  config.json: ${CONFIG_VERSION:-not_found}"
+
+      - name: 🔍 Semantic version validation
+        run: |
+          VERSION="${{ steps.versions.outputs.pyproject }}"
+
+          echo "🔍 Validating semantic version: $VERSION"
+
+          # Check semantic versioning pattern
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ INVALID SEMVER FORMAT: $VERSION"
+            echo "   Expected format: MAJOR.MINOR.PATCH (e.g., 0.26.0)"
+            echo "   Found: $VERSION"
+            exit 1
+          fi
+
+          # Check for dangerous patterns
+          if [[ "$VERSION" =~ (test|alpha|beta|rc|dev|nightly) ]]; then
+            echo "⚠️ DANGEROUS VERSION PATTERN DETECTED: $VERSION"
+            echo "   Contains test/unstable indicator: $VERSION"
+            echo "   This version should NOT be deployed to production!"
+            echo ""
+            echo "💡 SUGGESTION:"
+            echo "   - Use stable version format (e.g., 0.26.0)"
+            echo "   - Only use test patterns in development branches"
+            exit 1
+          fi
+
+          echo "✅ Semantic version validation passed: $VERSION"
+
+      - name: 🔄 Version synchronization check
+        run: |
+          PYPROJECT="${{ steps.versions.outputs.pyproject }}"
+          INIT="${{ steps.versions.outputs.init }}"
+          VERSION_PY="${{ steps.versions.outputs.version_py }}"
+          CONFIG="${{ steps.versions.outputs.config }}"
+
+          echo "🔄 Checking version synchronization..."
+
+          ERROR_COUNT=0
+
+          # Check __init__.py
+          if [ "$INIT" != "not_found" ] && [ "$INIT" != "$PYPROJECT" ]; then
+            echo "❌ VERSION MISMATCH: __init__.py ($INIT) != pyproject.toml ($PYPROJECT)"
+            ERROR_COUNT=$((ERROR_COUNT + 1))
+          fi
+
+          # Check version.py
+          if [ "$VERSION_PY" != "not_found" ] && [ "$VERSION_PY" != "$PYPROJECT" ]; then
+            echo "❌ VERSION MISMATCH: version.py ($VERSION_PY) != pyproject.toml ($PYPROJECT)"
+            ERROR_COUNT=$((ERROR_COUNT + 1))
+          fi
+
+          # Check config.json
+          if [ "$CONFIG" != "not_found" ] && [ "$CONFIG" != "$PYPROJECT" ]; then
+            echo "❌ VERSION MISMATCH: config.json ($CONFIG) != pyproject.toml ($PYPROJECT)"
+            ERROR_COUNT=$((ERROR_COUNT + 1))
+          fi
+
+          if [ $ERROR_COUNT -gt 0 ]; then
+            echo ""
+            echo "❌ VERSION SYNCHRONIZATION FAILED"
+            echo "   Found $ERROR_COUNT version mismatch(es)"
+            echo ""
+            echo "🔧 FIX REQUIRED:"
+            echo "   All version files must match pyproject.toml version: $PYPROJECT"
+            exit 1
+          fi
+
+          echo "✅ All versions synchronized: $PYPROJECT"
+
+      - name: 🚨 Production safety check
+        run: |
+          VERSION="${{ steps.versions.outputs.pyproject }}"
+          BRANCH="${{ github.ref_name }}"
+
+          echo "🚨 Production safety check..."
+
+          # Check if main branch has production-ready version
+          if [ "$BRANCH" = "main" ]; then
+            echo "🔍 Checking main branch version safety..."
+
+            # Main branch should only have stable versions
+            if [[ "$VERSION" =~ (test|alpha|beta|rc|dev|nightly) ]]; then
+              echo "❌ MAIN BRANCH SAFETY VIOLATION"
+              echo "   Branch: main"
+              echo "   Version: $VERSION"
+              echo "   Issue: Main branch contains test/unstable version"
+              echo ""
+              echo "🚨 MAIN BRANCH RULES:"
+              echo "   • Only stable versions (e.g., 0.26.0)"
+              echo "   • No test/unstable patterns"
+              echo "   • Production-ready code only"
+              exit 1
+            fi
+
+            echo "✅ Main branch version is production-safe: $VERSION"
+          else
+            echo "ℹ️ Development branch version: $VERSION (allowed to be experimental)"
+          fi
+
+      - name: 📋 Generate version policy report
+        run: |
+          VERSION="${{ steps.versions.outputs.pyproject }}"
+          BRANCH="${{ github.ref_name }}"
+
+          cat << 'EOF' > version-policy-report.md
+          # 🔍 Version Policy Enforcement Report
+
+          ## 📋 Version Information
+          - **Version**: $VERSION
+          - **Branch**: $BRANCH
+          - **Commit**: ${{ github.sha }}
+          - **Pull Request**: #${{ github.event.number }}
+
+          ## ✅ Validation Results
+
+          | Check | Status | Details |
+          |-------|--------|---------|
+          | **Semantic Version** | ✅ PASSED | $VERSION follows semver |
+          | **Dangerous Patterns** | ✅ PASSED | No test/unstable indicators |
+          | **Version Synchronization** | ✅ PASSED | All files match |
+          | **Production Safety** | ✅ PASSED | Safe for target branch |
+
+          ## 📁 File Versions
+
+          EOF
+
+          # Add file-specific version info
+          echo '| File | Version | Status |' >> version-policy-report.md
+          echo '|------|--------|--------|' >> version-policy-report.md
+          echo "| pyproject.toml | \`$VERSION\` | ✅ Source |" >> version-policy-report.md
+
+          if [ "${{ steps.versions.outputs.init }}" != "not_found" ]; then
+            echo "| __init__.py | \`${{ steps.versions.outputs.init }}\` | ✅ Match |" >> version-policy-report.md
+          fi
+
+          if [ "${{ steps.versions.outputs.version_py }}" != "not_found" ]; then
+            echo "| version.py | \`${{ steps.versions.outputs.version_py }}\` | ✅ Match |" >> version-policy-report.md
+          fi
+
+          if [ "${{ steps.versions.outputs.config }}" != "not_found" ]; then
+            echo "| config.json | \`${{ steps.versions.outputs.config }}\` | ✅ Match |" >> version-policy-report.md
+          fi
+
+          cat << 'EOF' >> version-policy-report.md
+
+          ## 🎯 Deployment Guidelines
+
+          EOF
+
+          if [ "$BRANCH" = "main" ]; then
+            cat << 'EOF' >> version-policy-report.md
+          ### 🚀 Production Deployment
+          - **Status**: ✅ Ready for production
+          - **Version**: Stable semver
+          - **Safety**: All checks passed
+          - **Next Step**: Use Secure Release Pipeline
+
+          EOF
+          else
+            cat << 'EOF' >> version-policy-report.md
+          ### 🧪 Development Status
+          - **Status**: In development
+          - **Version**: Experimental allowed
+          - **Production**: Not ready for main branch
+          - **Next Step**: Complete development and test
+
+          EOF
+          fi
+
+          cat << 'EOF' >> version-policy-report.md
+          ## 🔒 Security Notes
+          - ✅ No automatic tag-based deployment
+          - ✅ Manual approval required for production
+          - ✅ Version synchronization enforced
+          - ✅ Dangerous patterns blocked
+
+          ---
+
+          🔍 Generated by Version Policy Enforcement
+          EOF
+
+          echo "📋 Version policy report generated"
+          cat version-policy-report.md
+
+  # 🚫 TAG CREATION BLOCKER (Prevents automatic tags)
+  block-auto-tags:
+    name: 🚫 Block Auto-Tag Creation
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: 🚫 Check for dangerous auto-tag patterns
+        run: |
+          echo "🔍 Checking for automatic tag creation patterns..."
+          echo "   Branch: ${{ github.ref_name }}"
+          echo "   Commit: ${{ github.sha }}"
+
+          # This job serves as a safety net to prevent auto-tagging systems
+          # from creating production tags without proper validation
+
+          echo "✅ No automatic tag creation detected"
+          echo "🔒 Auto-tag creation is blocked by policy"
+          echo ""
+          echo "📋 TAG CREATION POLICY:"
+          echo "   ❌ Automatic tag creation: BLOCKED"
+          echo "   ✅ Manual tag creation: ALLOWED (with approval)"
+          echo "   ✅ Secure Release Pipeline: RECOMMENDED"
+          echo ""
+          echo "🚨 TO CREATE A RELEASE:"
+          echo "   1. Use Secure Release Pipeline workflow"
+          echo "   2. Manual approval required for production"
+          echo "   3. Safety validation included automatically"

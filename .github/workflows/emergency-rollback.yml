@@ -1,0 +1,359 @@
+name: 🚨 Emergency Rollback System
+
+# 🚨 EMERGENCY ROLLBACK SYSTEM
+#
+# TRIGGERS:
+#   - Manual workflow dispatch (emergency only)
+#   - Critical deployment failure detection
+#
+# PURPOSE:
+#   - Immediate rollback from production PyPI
+#   - Remove problematic releases
+#   - Restore safe deployment state
+
+on:
+  workflow_dispatch:  # 🚨 EMERGENCY MANUAL TRIGGER ONLY
+    inputs:
+      version_to_rollback:
+        description: 'Version to rollback (e.g., 0.26.1)'
+        required: true
+        type: string
+        pattern: '^\\d+\\.\\d+\\.\\d+$'
+      confirm_emergency:
+        description: 'Type EMERGENCY to confirm rollback'
+        required: true
+        type: string
+      rollback_type:
+        description: 'Rollback scope'
+        required: true
+        type: choice
+        default: 'pypi_only'
+        options:
+        - pypi_only      # Remove from PyPI only
+        - full_rollback  # PyPI + GitHub release + tag
+      notify_team:
+        description: 'Send emergency notification'
+        required: true
+        type: boolean
+        default: true
+  workflow_run:
+    workflows: ['🚀 Secure Release Pipeline']
+    types: [completed]
+    if: ${{ github.event.workflow_run.conclusion == 'failure' && contains(github.event.workflow_run.head_branch, 'release') }}
+
+permissions:
+  contents: write        # For tag/release management
+  packages: write        # For PyPI operations (limited)
+  actions: write         # For workflow management
+
+jobs:
+  # 🚨 EMERGENCY VALIDATION
+  emergency-validation:
+    name: 🚨 Emergency Rollback Validation
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.info.outputs.version }}
+      rollback_type: ${{ steps.info.outputs.rollback_type }}
+      confirmed: ${{ steps.confirm.outputs.confirmed }}
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📋 Extract rollback information
+        id: info
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version_to_rollback }}"
+            TYPE="${{ github.event.inputs.rollback_type }}"
+            EMERGENCY_CONFIRM="${{ github.event.inputs.confirm_emergency }}"
+          else
+            # Extract version from failed workflow
+            VERSION=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              "${{ github.api_url }}/repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}/jobs" | \
+              jq -r '.jobs[] | select(.name | contains("Deploy")) | .steps[] | select(.name | contains("Deploy")) | .outputs.version' | head -1)
+            TYPE="pypi_only"
+            EMERGENCY_CONFIRM="AUTO_EMERGENCY"
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "rollback_type=$TYPE" >> "$GITHUB_OUTPUT"
+
+          echo "🚨 EMERGENCY ROLLBACK INITIATED"
+          echo "   Version: $VERSION"
+          echo "   Type: $TYPE"
+          echo "   Trigger: ${{ github.event_name }}"
+
+      - name: 🚨 Emergency confirmation
+        id: confirm
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            CONFIRMATION="${{ github.event.inputs.confirm_emergency }}"
+            if [ "$CONFIRMATION" = "EMERGENCY" ]; then
+              echo "✅ Emergency rollback confirmed"
+              echo "confirmed=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "❌ Emergency confirmation failed"
+              echo "   Must type 'EMERGENCY' to proceed"
+              echo "confirmed=false" >> "$GITHUB_OUTPUT"
+              exit 1
+            fi
+          else
+            echo "✅ Auto-rollback from failed deployment"
+            echo "confirmed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 📊 Generate rollback report
+        run: |
+          cat << 'EOF' > rollback-report.md
+          # 🚨 Emergency Rollback Report
+
+          ## 📋 Rollback Information
+          - **Version**: ${{ steps.info.outputs.version }}
+          - **Rollback Type**: ${{ steps.info.outputs.rollback_type }}
+          - **Trigger**: ${{ github.event_name }}
+          - **Timestamp**: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+          - **Initiated by**: ${{ github.actor }}
+
+          ## 🎯 Rollback Plan
+
+          EOF
+
+          if [ "${{ steps.info.outputs.rollback_type }}" = "full_rollback" ]; then
+            cat << 'EOF' >> rollback-report.md
+          ### 🔥 FULL ROLLBACK
+          1. Remove from PyPI (production)
+          2. Delete GitHub Release
+          3. Delete version tag
+          4. Update repository status
+
+          EOF
+          else
+            cat << 'EOF' >> rollback-report.md
+          ### 🎯 PYPI ONLY
+          1. Remove from PyPI (production)
+          2. Keep GitHub Release (for history)
+          3. Keep version tag
+
+          EOF
+          fi
+
+          cat << 'EOF' >> rollback-report.md
+          ## ⚠️ IMPACT
+          - Users will no longer be able to install version ${{ steps.info.outputs.version }}
+          - Existing installations will continue to work
+          - New installs will get previous stable version
+
+          ---
+
+          🚨 Generated by Emergency Rollback System
+          EOF
+
+          cat rollback-report.md
+
+  # 🗑️ PYPI ROLLBACK
+  pypi-rollback:
+    name: 🗑️ PyPI Rollback
+    runs-on: ubuntu-latest
+    needs: emergency-validation
+    if: needs.emergency-validation.outputs.confirmed == 'true'
+    environment: production
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🚨 Initiate PyPI rollback
+        run: |
+          VERSION="${{ needs.emergency-validation.outputs.version }}"
+          echo "🚨 REMOVING VERSION $VERSION FROM PyPI"
+
+          # Check if PyPI API token is available
+          if [ -z "${{ secrets.PYPI_API_TOKEN }}" ]; then
+            echo "❌ PYPI_API_TOKEN not available"
+            echo "   Manual intervention required:"
+            echo "   1. Visit https://pypi.org/manage/project/moai-adk/releases/"
+            echo "   2. Delete version $VERSION manually"
+            exit 1
+          fi
+
+          # Note: PyPI doesn't have a REST API for deletion
+          # This provides manual rollback instructions
+          cat << 'EOF' > manual-pypi-rollback.md
+          # 🚨 Manual PyPI Rollback Required
+
+          ## Steps to remove version $VERSION from PyPI:
+
+          1. **Visit PyPI Management**: https://pypi.org/manage/project/moai-adk/releases/
+          2. **Login**: Use your PyPI credentials
+          3. **Locate Version**: Find version $VERSION in the releases list
+          4. **Delete**: Click the "Delete" button next to version $VERSION
+          5. **Confirm**: Confirm the deletion when prompted
+
+          ## ⚠️ Important Notes:
+          - This action is **irreversible**
+          - Only remove if absolutely necessary
+          - Users with existing installations won't be affected
+          - New installs will get the latest available version
+
+          ## 🔍 Verification:
+          After deletion, verify at: https://pypi.org/project/moai-adk/
+
+          ---
+
+          🚨 Emergency Rollback System
+          EOF
+
+          echo "📋 Manual rollback instructions generated"
+          cat manual-pypi-rollback.md
+
+      - name: 📋 Create rollback issue
+        if: github.event.inputs.notify_team == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const version = '${{ needs.emergency-validation.outputs.version }}';
+            const issueTitle = `🚨 Emergency Rollback: Remove version ${version}`;
+            const issueBody = `# Emergency Rollback Required
+
+            ## 📋 Action Required
+            **Remove version ${version} from PyPI**
+
+            ## 🔗 Links
+            - PyPI Management: https://pypi.org/manage/project/moai-adk/releases/
+            - Package Page: https://pypi.org/project/moai-adk/
+
+            ## 🚨 Priority: CRITICAL
+            This rollback was initiated due to deployment issues or emergency circumstances.
+
+            ---
+
+            *Initiated by: @${{ github.actor }}*
+            *Timestamp: ${new Date().toISOString()}*`;
+
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: issueTitle,
+              body: issueBody,
+              labels: ['emergency', 'rollback', 'critical'],
+              assignees: ['Goos'] // Add maintainers here
+            });
+
+  # 🏷️ GITHUB ROLLBACK (Full rollback only)
+  github-rollback:
+    name: 🏷️ GitHub Rollback
+    runs-on: ubuntu-latest
+    needs: [emergency-validation, pypi-rollback]
+    if: |
+      needs.emergency-validation.outputs.confirmed == 'true' &&
+      needs.emergency-validation.outputs.rollback_type == 'full_rollback'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: 🏷️ Delete version tag
+        run: |
+          VERSION="${{ needs.emergency-validation.outputs.version }}"
+          TAG="v$VERSION"
+
+          echo "🗑️ Deleting tag: $TAG"
+
+          # Check if tag exists
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            git tag -d "$TAG"
+            git push origin --delete "$TAG"
+            echo "✅ Tag $TAG deleted"
+          else
+            echo "⚠️ Tag $TAG does not exist"
+          fi
+
+      - name: 📝 Delete GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ needs.emergency-validation.outputs.version }}"
+          TAG="v$VERSION"
+
+          echo "📝 Deleting GitHub Release for $TAG"
+
+          # Get release ID
+          RELEASE_ID=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "${{ github.api_url }}/repos/${{ github.repository }}/releases/tags/$TAG" | \
+            jq -r '.id')
+
+          if [ "$RELEASE_ID" != "null" ] && [ -n "$RELEASE_ID" ]; then
+            curl -X DELETE -H "Authorization: token $GITHUB_TOKEN" \
+              "${{ github.api_url }}/repos/${{ github.repository }}/releases/$RELEASE_ID"
+            echo "✅ GitHub Release deleted"
+          else
+            echo "⚠️ GitHub Release not found for $TAG"
+          fi
+
+  # 📊 ROLLBACK SUMMARY
+  rollback-summary:
+    name: 📊 Rollback Summary
+    runs-on: ubuntu-latest
+    needs: [emergency-validation, pypi-rollback, github-rollback]
+    if: always()
+
+    steps:
+      - name: 📋 Generate rollback summary
+        run: |
+          VERSION="${{ needs.emergency-validation.outputs.version }}"
+          ROLLBACK_TYPE="${{ needs.emergency-validation.outputs.rollback_type }}"
+          PYPI_STATUS="${{ needs.pypi-rollback.result }}"
+          GITHUB_STATUS="${{ needs.github-rollback.result }}"
+
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          # 🚨 Emergency Rollback Summary
+
+          ## 📋 Rollback Details
+          - **Version**: $VERSION
+          - **Rollback Type**: $ROLLBACK_TYPE
+          - **Initiated by**: @${{ github.actor }}
+          - **Timestamp**: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+          ## ✅ Rollback Status
+
+          | Component | Status | Details |
+          |-----------|--------|---------|
+          | **Emergency Validation** | ${{ needs.emergency-validation.result == 'success' && '✅ PASSED' || '❌ FAILED' }} | Rollback authorization |
+          | **PyPI Rollback** | $PYPI_STATUS | Package removal |
+          | **GitHub Rollback** | ${GITHUB_STATUS:-'⏭️ SKIPPED'} | Tag/Release deletion |
+
+          ## 🎯 Next Steps
+
+          ### ✅ Completed
+          - Emergency rollback initiated for version $VERSION
+          $([ "$ROLLBACK_TYPE" = "full_rollback" ] && echo "- GitHub tag and release removed" || echo "- PyPI removal instructions provided")
+
+          ### ⚠️ Action Required
+          - **Manual PyPI Removal**: Visit https://pypi.org/manage/project/moai-adk/releases/
+          - **Verify Rollback**: Check https://pypi.org/project/moai-adk/
+          - **Team Notification**: Inform stakeholders of rollback
+
+          ## 🔗 Important Links
+          - **PyPI Management**: https://pypi.org/manage/project/moai-adk/releases/
+          - **Package Page**: https://pypi.org/project/moai-adk/
+          - **Repository**: https://github.com/${{ github.repository }}
+
+          ---
+
+          🚨 Emergency Rollback System - Operation Complete
+          EOF
+
+          echo ""
+          echo "🚨 ROLLBACK SUMMARY:"
+          echo "   Version: $VERSION"
+          echo "   Type: $ROLLBACK_TYPE"
+          echo "   Status: $([ "$PYPI_STATUS" = "success" ] && echo '✅ COMPLETED' || echo '⚠️ MANUAL ACTION REQUIRED')"
+          echo ""
+          echo "⚠️ MANUAL ACTION REQUIRED:"
+          echo "   1. Visit PyPI management page"
+          echo "   2. Remove version $VERSION manually"
+          echo "   3. Verify removal completion"

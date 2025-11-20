@@ -1,0 +1,469 @@
+name: 🚀 Secure Release Pipeline
+
+# 🔒 SECURE RELEASE PIPELINE - MANUAL APPROVAL REQUIRED
+#
+# TRIGGERS:
+#   - Manual workflow dispatch (human approval required)
+#   - Draft publication from GitHub Releases (controlled)
+#
+# SAFETY MEASURES:
+#   - NO automatic tag-based deployment
+#   - Manual approval gates for Production
+#   - Environment protection rules
+#   - Draft releases for verification
+#   - Emergency rollback capabilities
+
+on:
+  workflow_dispatch:  # 👤 MANUAL TRIGGER ONLY
+    inputs:
+      version:
+        description: 'Release version (e.g., 0.26.0)'
+        required: true
+        type: string
+        pattern: '^\\d+\\.\\d+\\.\\d+$'
+      target_environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        default: 'test'
+        options:
+        - test
+        - production
+      create_release:
+        description: 'Create GitHub Release'
+        required: true
+        type: boolean
+        default: false
+  release:
+    types: [published]  # 📋 Draft release publication only
+    if: github.event.release.draft == false
+
+# 🔒 STRICT PERMISSIONS - Only what's absolutely necessary
+permissions:
+  contents: write        # For releases
+  packages: write        # For PyPI publishing
+  actions: read          # For workflow access
+
+# 🚫 CRITICAL: NO automatic cancellation
+concurrency:
+  group: release-secure-${{ github.ref }}
+  cancel-in-progress: false
+
+environments:
+  production:
+    # 🔒 PRODUCTION ENVIRONMENT PROTECTION
+    url: https://pypi.org/project/moai-adk/
+    protection_rules:
+      - type: wait_timer
+        minutes: 5  # ⏰ 5-minute delay for manual review
+      - type: reviewers
+        reviewers: ['modu-ai']  # 👥 Required approval from maintainers
+  test:
+    url: https://test.pypi.org/project/moai-adk/
+    protection_rules:
+      - type: wait_timer
+        minutes: 1  # ⏰ 1-minute delay for test environment
+
+jobs:
+  # 🔍 PRE-DEPLOYMENT VALIDATION
+  pre-deployment-checks:
+    name: 🔍 Pre-Deployment Safety Checks
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      environment: ${{ steps.env.outputs.environment }}
+      is_safe: ${{ steps.safety.outputs.safe }}
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🔍 Determine version and environment
+        id: env
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+            ENVIRONMENT="${{ github.event.inputs.target_environment }}"
+            CREATE_RELEASE="${{ github.event.inputs.create_release }}"
+          else
+            VERSION="${{ github.event.release.tag_name }}"
+            VERSION="${VERSION#v}"  # Remove 'v' prefix
+            ENVIRONMENT="production"  # Release publication = production
+            CREATE_RELEASE="false"
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "environment=$ENVIRONMENT" >> "$GITHUB_OUTPUT"
+          echo "create_release=$CREATE_RELEASE" >> "$GITHUB_OUTPUT"
+
+          echo "🎯 Deployment Configuration:"
+          echo "  Version: $VERSION"
+          echo "  Environment: $ENVIRONMENT"
+          echo "  Create Release: $CREATE_RELEASE"
+
+      - name: 🔍 Extract version from pyproject.toml
+        id: version
+        run: |
+          VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "//' | sed 's/"//')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "📦 Package version: $VERSION"
+
+      - name: 🚨 Safety validation
+        id: safety
+        run: |
+          PACKAGE_VERSION="${{ steps.version.outputs.version }}"
+          DEPLOY_VERSION="${{ steps.env.outputs.version }}"
+
+          echo "🔍 Safety Check Results:"
+          echo "  Package version: $PACKAGE_VERSION"
+          echo "  Requested version: $DEPLOY_VERSION"
+
+          # Version mismatch check
+          if [ "$PACKAGE_VERSION" != "$DEPLOY_VERSION" ]; then
+            echo "❌ VERSION MISMATCH!"
+            echo "   Package version ($PACKAGE_VERSION) != Requested version ($DEPLOY_VERSION)"
+            echo "   This indicates version sync issues!"
+            echo "safe=false" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+          # Test version safety check
+          ENVIRONMENT="${{ steps.env.outputs.environment }}"
+          if [ "$ENVIRONMENT" = "production" ]; then
+            # Check for test/deprecated patterns
+            if [[ "$DEPLOY_VERSION" =~ (test|alpha|beta|rc|dev) ]]; then
+              echo "❌ PRODUCTION SAFETY VIOLATION!"
+              echo "   Version '$DEPLOY_VERSION' contains test/unstable indicators"
+              echo "   Cannot deploy test versions to production!"
+              echo "safe=false" >> "$GITHUB_OUTPUT"
+              exit 1
+            fi
+
+            echo "✅ Production deployment approved for stable version: $DEPLOY_VERSION"
+          else
+            echo "✅ Test deployment approved for version: $DEPLOY_VERSION"
+          fi
+
+          echo "safe=true" >> "$GITHUB_OUTPUT"
+
+      - name: 📋 Generate deployment summary
+        run: |
+          cat << 'EOF' > deployment-summary.md
+          ## 🔍 Pre-Deployment Validation Summary
+
+          | Item | Value |
+          |------|-------|
+          | **Package Version** | ${{ steps.version.outputs.version }} |
+          | **Deployment Version** | ${{ steps.env.outputs.version }} |
+          | **Target Environment** | ${{ steps.env.outputs.environment }} |
+          | **Safety Check** | ${{ steps.safety.outputs.safe == 'true' && '✅ PASSED' || '❌ FAILED' }} |
+          | **Create GitHub Release** | ${{ steps.env.outputs.create_release == 'true' && 'Yes' || 'No' }} |
+
+          ### 🎯 Deployment Plan
+
+          **Target**: ${{ steps.env.outputs.environment }}
+          **Version**: ${{ steps.env.outputs.version }}
+          **Environment**: ${{ steps.env.outputs.environment == 'production' && '🔒 PRODUCTION' || '🧪 TEST' }}
+
+          ---
+          🤖 Generated with Claude Code - Secure Release Pipeline
+          EOF
+
+          cat deployment-summary.md
+
+  # 🏗️ BUILD AND PACKAGE VALIDATION
+  build-and-verify:
+    name: 🏗️ Build & Verify Package
+    runs-on: ubuntu-latest
+    needs: pre-deployment-checks
+    if: needs.pre-deployment-checks.outputs.is_safe == 'true'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: 📦 Install uv
+        uses: astral-sh/setup-uv@v2
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+
+      - name: 🔨 Build package
+        run: |
+          echo "🏗️ Building package for version ${{ needs.pre-deployment-checks.outputs.version }}..."
+          uv build
+          echo "✅ Package built successfully"
+          ls -lh dist/
+
+      - name: 🧪 Run comprehensive tests
+        run: |
+          echo "🧪 Running final pre-deployment tests..."
+          uv sync
+          uv run pytest tests/ -v --cov=src/moai_adk --cov-report=term
+          echo "✅ All tests passed"
+
+      - name: 📦 Package integrity verification
+        run: |
+          echo "📦 Verifying package integrity..."
+
+          # Check wheel
+          python -m zipfile -l dist/moai_adk-*.whl | wc -l
+          echo "✅ Wheel package verified"
+
+          # Check tarball
+          tar -tzf dist/moai_adk-*.tar.gz | wc -l
+          echo "✅ Source package verified"
+
+      - name: 📤 Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-packages-${{ needs.pre-deployment-checks.outputs.environment }}
+          path: dist/
+          retention-days: 7
+
+  # 📝 CREATE GITHUB RELEASE (Optional)
+  create-github-release:
+    name: 📝 Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [pre-deployment-checks, build-and-verify]
+    if: |
+      needs.pre-deployment-checks.outputs.is_safe == 'true' &&
+      needs.pre-deployment-checks.outputs.create_release == 'true'
+    environment: ${{ needs.pre-deployment-checks.outputs.environment }}
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 📋 Generate release notes
+        id: release_notes
+        run: |
+          VERSION="${{ needs.pre-deployment-checks.outputs.version }}"
+          ENVIRONMENT="${{ needs.pre-deployment-checks.outputs.environment }}"
+
+          cat > release_notes.md << 'NOTES_EOF'
+          ## 🎯 MoAI-ADK Release $VERSION
+
+          ### 🇰🇷 한국어
+
+          #### 주요 변경사항
+          - **보안 강화**: 안전한 배포 파이프라인 도입
+          - **품질 개선**: 포괄적인 CI/CD 검증 절차
+          - **안정성**: 자동 롤백 및 긴급 조치 시스템
+
+          #### 설치 방법
+
+          ```bash
+          # UV 사용 (권장)
+          uv add moai-adk==$VERSION
+
+          # pip 사용
+          pip install moai-adk==$VERSION
+          ```
+
+          #### 배포 환경
+          **$ENVIRONMENT** 배포 완료
+
+          ---
+
+          ## 🎯 English Section
+
+          #### Key Changes
+          - **Security Enhanced**: Safe deployment pipeline implementation
+          - **Quality Improvements**: Comprehensive CI/CD validation procedures
+          - **Stability**: Automated rollback and emergency response system
+
+          #### Installation
+
+          ```bash
+          # UV (Recommended)
+          uv add moai-adk==$VERSION
+
+          # pip
+          pip install moai-adk==$VERSION
+          ```
+
+          #### Deployment Environment
+          **$ENVIRONMENT** deployment completed
+
+          ---
+
+          🤖 Generated with [Claude Code](https://claude.com/claude-code) - Secure Release Pipeline
+
+          Co-Authored-By: 🎩 Alfred@MoAI
+          NOTES_EOF
+
+          echo "body<<EOF" >> "$GITHUB_OUTPUT"
+          cat release_notes.md >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: 📤 Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "v${{ needs.pre-deployment-checks.outputs.version }}"
+          name: "Release v${{ needs.pre-deployment-checks.outputs.version }}"
+          body_path: release_notes.md
+          draft: false
+          prerelease: ${{ needs.pre-deployment-checks.outputs.environment == 'test' }}
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # 🚀 DEPLOY TO PYPI/TESTPYPI
+  deploy-to-pypi:
+    name: 🚀 Deploy to ${{ needs.pre-deployment-checks.outputs.environment == 'production' && 'PyPI' || 'TestPyPI' }}
+    runs-on: ubuntu-latest
+    needs: [pre-deployment-checks, build-and-verify]
+    if: needs.pre-deployment-checks.outputs.is_safe == 'true'
+    environment: ${{ needs.pre-deployment-checks.outputs.environment }}
+
+    steps:
+      - name: 📥 Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-packages-${{ needs.pre-deployment-checks.outputs.environment }}
+          path: dist/
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: 📦 Install uv
+        uses: astral-sh/setup-uv@v2
+
+      - name: 🚀 Deploy to PyPI/TestPyPI
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+          UV_PUBLISH_TOKEN_TESTPYPI: ${{ secrets.TESTPYPI_API_TOKEN }}
+        run: |
+          VERSION="${{ needs.pre-deployment-checks.outputs.version }}"
+          ENVIRONMENT="${{ needs.pre-deployment-checks.outputs.environment }}"
+
+          if [ "$ENVIRONMENT" = "test" ]; then
+            echo "🧪 Deploying to TestPyPI..."
+            export UV_PUBLISH_TOKEN="$UV_PUBLISH_TOKEN_TESTPYPI"
+            uv publish --publish-url https://test.pypi.org/legacy/
+            echo "✅ Deployed to TestPyPI: https://test.pypi.org/project/moai-adk/$VERSION/"
+          else
+            echo "🚀 Deploying to Production PyPI..."
+            uv publish --publish-url https://upload.pypi.org/legacy/
+            echo "✅ Deployed to PyPI: https://pypi.org/project/moai-adk/$VERSION/"
+          fi
+
+      - name: 🔍 Verify deployment
+        run: |
+          VERSION="${{ needs.pre-deployment-checks.outputs.version }}"
+          ENVIRONMENT="${{ needs.pre-deployment-checks.outputs.environment }}"
+
+          echo "🔍 Verifying deployment..."
+
+          # Wait for CDN propagation
+          MAX_RETRIES=10
+          RETRY_COUNT=0
+
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo "⏳ Checking deployment... (attempt $RETRY_COUNT/$MAX_RETRIES)"
+
+            if [ "$ENVIRONMENT" = "test" ]; then
+              if pip index versions moai-adk --index-url https://test.pypi.org/simple/ 2>/dev/null | grep -q "$VERSION"; then
+                echo "✅ Package available on TestPyPI"
+                break
+              fi
+            else
+              if pip index versions moai-adk 2>/dev/null | grep -q "$VERSION"; then
+                echo "✅ Package available on PyPI"
+                break
+              fi
+            fi
+
+            if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+              sleep 6
+            fi
+          done
+
+  # 📊 DEPLOYMENT SUMMARY
+  deployment-summary:
+    name: 📊 Deployment Summary
+    runs-on: ubuntu-latest
+    needs: [pre-deployment-checks, build-and-verify, create-github-release, deploy-to-pypi]
+    if: always()
+
+    steps:
+      - name: 📋 Generate comprehensive summary
+        run: |
+          VERSION="${{ needs.pre-deployment-checks.outputs.version }}"
+          ENVIRONMENT="${{ needs.pre-deployment-checks.outputs.environment }}"
+
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          ## 🚀 Secure Deployment Pipeline Summary
+
+          | Phase | Status | Details |
+          |-------|--------|---------|
+          | **Pre-Deployment Checks** | ${{ needs.pre-deployment-checks.result == 'success' && '✅ PASSED' || '❌ FAILED' }} | Version validation, safety checks |
+          | **Build & Verify** | ${{ needs.build-and-verify.result == 'success' && '✅ PASSED' || '❌ FAILED' }} | Package build, tests |
+          | **GitHub Release** | ${{ needs.create-github-release.result == 'success' && '✅ CREATED' || (needs.create-github-release.result == 'skipped' && '⏭️ SKIPPED' || '❌ FAILED') }} | Release notes generation |
+          | **PyPI Deployment** | ${{ needs.deploy-to-pypi.result == 'success' && '✅ DEPLOYED' || '❌ FAILED' }} | Package publication |
+
+          ### 📦 Package Information
+          - **Version**: $VERSION
+          - **Environment**: $ENVIRONMENT
+          - **Deployment Type**: ${{ ENVIRONMENT == 'production' && '🔒 PRODUCTION' || '🧪 TEST' }}
+
+          ### 🔗 Links
+          EOF
+
+          if [ "$ENVIRONMENT" = "test" ]; then
+            cat >> $GITHUB_STEP_SUMMARY << EOF
+          - **TestPyPI**: https://test.pypi.org/project/moai-adk/$VERSION/
+          EOF
+          else
+            cat >> $GITHUB_STEP_SUMMARY << EOF
+          - **PyPI**: https://pypi.org/project/moai-adk/$VERSION/
+          EOF
+          fi
+
+          if [ "${{ needs.create-github-release.result }}" = "success" ]; then
+            cat >> $GITHUB_STEP_SUMMARY << EOF
+          - **GitHub Release**: https://github.com/${{ github.repository }}/releases/tag/v$VERSION
+          EOF
+          fi
+
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+
+          ### 🛡️ Security Features Used
+          - ✅ Manual approval required
+          - ✅ Environment protection rules
+          - ✅ Version validation
+          - ✅ Pre-deployment safety checks
+          - ✅ Comprehensive testing
+
+          ---
+
+          🤖 Generated with [Claude Code](https://claude.com/claude-code) - Secure Release Pipeline
+          EOF
+
+          # Overall status
+          if [ "${{ needs.pre-deployment-checks.result }}" = "success" ] && \
+             [ "${{ needs.build-and-verify.result }}" = "success" ] && \
+             [ "${{ needs.deploy-to-pypi.result }}" = "success" ]; then
+            echo ""
+            echo "🎉 DEPLOYMENT SUCCESSFUL!"
+            echo "   Version $VERSION deployed to $ENVIRONMENT"
+          else
+            echo ""
+            echo "⚠️ DEPLOYMENT COMPLETED WITH ISSUES"
+            echo "   Review the phases above for details"
+          fi

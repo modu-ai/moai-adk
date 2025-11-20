@@ -843,8 +843,16 @@ def _sync_templates(project_path: Path, force: bool = False) -> bool:
         # Load existing config
         existing_config = _load_existing_config(project_path)
 
-        # Stage 1.5: Alfred → Moai migration (NEW)
-        # Execute migration before template sync
+        # Build context
+        context = _build_template_context(project_path, existing_config, __version__)
+        if context:
+            processor.set_context(context)
+
+        # Copy templates (including moai folder)
+        processor.copy_templates(backup=False, silent=True)
+
+        # Stage 1.5: Alfred → Moai migration (AFTER template sync)
+        # Execute migration after template copy (moai folders must exist first)
         migrator = AlfredToMoaiMigrator(project_path)
         if migrator.needs_migration():
             console.print("\n[cyan]🔄 Migrating folder structure: Alfred → Moai[/cyan]")
@@ -868,14 +876,6 @@ def _sync_templates(project_path: Path, force: bool = False) -> bool:
                     backup = TemplateBackup(project_path)
                     backup.restore_backup(backup_path)
                 return False
-
-        # Build context
-        context = _build_template_context(project_path, existing_config, __version__)
-        if context:
-            processor.set_context(context)
-
-        # Copy templates (including moai folder)
-        processor.copy_templates(backup=False, silent=True)
 
         # Validate template substitution
         validation_passed = _validate_template_substitution_with_rollback(
@@ -1637,10 +1637,8 @@ def update(
             f"\n[cyan]📄 Syncing templates ({project_config_version} → {package_config_version})...[/cyan]"
         )
 
-        # Determine merge strategy
-        final_merge_strategy = merge_strategy
-        if not final_merge_strategy:
-            final_merge_strategy = _ask_merge_strategy(yes)
+        # Determine merge strategy (default: auto-merge)
+        final_merge_strategy = merge_strategy or "auto"
 
         # Handle merge strategy
         if final_merge_strategy == "manual":
