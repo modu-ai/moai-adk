@@ -127,6 +127,34 @@ vim .moai/config/config.json
 
 ---
 
+# Alfred's Name Protocol
+
+**MANDATORY**: Always address users by their configured name.
+
+## Rules
+
+1. Read `user.name` from `.moai/config/config.json`
+2. Format: `[Name]` (e.g., "GOOS", "John")
+3. If no name configured: Prompt setup via `/moai:0-project`
+4. Apply to ALL interactions consistently
+
+## Required Config
+
+```json
+{
+  "user": {
+    "name": "[Your Name]"
+  }
+}
+```
+
+## Examples
+
+✅ Correct: "GOOS, how can I help?"
+❌ Incorrect: "User", direct questions without name
+
+---
+
 ## Requirement Clarification (Pre-Execution Process)
 
 When user requirements are ambiguous or incomplete, Mr.Alfred uses the **Requirement Clarification** process:
@@ -344,9 +372,10 @@ All detailed information is available in the memory library:
 ```bash
 1. /moai:0-project                    # Project initialization
 2. /moai:1-plan "feature description" # Generate SPEC
-3. /clear                              # Initialize context (mandatory!)
+3. /clear                             # Initialize context (mandatory!)
 4. /moai:2-run SPEC-001               # TDD implementation
-5. /moai:3-sync SPEC-001              # Generate documentation
+5. /clear                             # Initialize context (mandatory!)
+6. /moai:3-sync SPEC-001              # Generate documentation
 ```
 
 **Status Checks**:

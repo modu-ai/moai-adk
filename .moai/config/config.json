@@ -62,7 +62,7 @@
     ]
   },
   "moai": {
-    "version": "0.26.0",
+    "version": "0.27.1",
     "update_check_frequency": "daily",
     "version_check": {
       "enabled": true,

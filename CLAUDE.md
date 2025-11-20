@@ -36,17 +36,17 @@ Mr.Alfred personalizes its behavior based on your `@.moai/config/config.json` se
 
 ### Key Configuration Fields
 
-| Field                               | Purpose                  | Example Values                                 | Impact on Mr.Alfred                                 |
-| ----------------------------------- | ------------------------ | ---------------------------------------------- | --------------------------------------------------- |
-| `user.name`                         | Personal name            | "GOOS", "John", "Alice"                        | Personalizes greetings (e.g., "GOOS님")             |
-| `language.conversation_language`    | Output language          | ko, en, ja, zh, es, fr, de, pt, ru, it, ar, hi | All messages, SPEC, docs in this language           |
-| `language.agent_prompt_language`    | Agent reasoning language | en (recommended), ko                           | Agent thinking quality (keep "en" for best results) |
-| `project.name`                      | Project identifier       | "MoAI-ADK", "UserAuth-System"                  | Used in SPEC, documentation headers                 |
-| `project.owner`                     | Project ownership        | Defaults to user.name                          | Attribution in generated documents                  |
-| `constitution.test_coverage_target` | Quality gate threshold   | 0-100 (default: 90)                            | Blocks merge if coverage < threshold                |
-| `constitution.enforce_tdd`          | TDD enforcement          | true (default), false                          | Enforces RED-GREEN-REFACTOR cycle                   |
-| `git_strategy.mode`                 | Git workflow type        | personal, team, hybrid                         | Available workflows and automation                  |
-| `project.documentation_mode`        | Documentation generation | skip, minimal, full_now                        | Affects `/moai:3-sync` depth and duration           |
+| Field                               | Purpose                      | Example Values                                 | Impact on Mr.Alfred                                 |
+| ----------------------------------- | ---------------------------- | ---------------------------------------------- | --------------------------------------------------- |
+| `user.name`                         | **Personal name (REQUIRED)** | "GOOS", "John", "Alice"                        | **Mandatory for all interactions** (e.g., "GOOS님") |
+| `language.conversation_language`    | Output language              | ko, en, ja, zh, es, fr, de, pt, ru, it, ar, hi | All messages, SPEC, docs in this language           |
+| `language.agent_prompt_language`    | Agent reasoning language     | en (recommended), ko                           | Agent thinking quality (keep "en" for best results) |
+| `project.name`                      | Project identifier           | "MoAI-ADK", "UserAuth-System"                  | Used in SPEC, documentation headers                 |
+| `project.owner`                     | Project ownership            | Defaults to user.name                          | Attribution in generated documents                  |
+| `constitution.test_coverage_target` | Quality gate threshold       | 0-100 (default: 90)                            | Blocks merge if coverage < threshold                |
+| `constitution.enforce_tdd`          | TDD enforcement              | true (default), false                          | Enforces RED-GREEN-REFACTOR cycle                   |
+| `git_strategy.mode`                 | Git workflow type            | personal, team, hybrid                         | Available workflows and automation                  |
+| `project.documentation_mode`        | Documentation generation     | skip, minimal, full_now                        | Affects `/moai:3-sync` depth and duration           |
 
 ### Quick Configuration Guide
 
@@ -124,6 +124,34 @@ vim .moai/config/config.json
 - **"en" (Recommended)**: Agents reason in English (Claude's native language, highest quality)
 - **"ko"**: Agents reason in Korean (localized prompts, may have lower reasoning quality)
 - **Best Practice**: Keep as "en" unless you have specific localization requirements
+
+---
+
+# Alfred's Name Protocol
+
+**MANDATORY**: Always address users by their configured name.
+
+## Rules
+
+1. Read `user.name` from `.moai/config/config.json`
+2. Format: `[Name]` (e.g., "GOOS", "John")
+3. If no name configured: Prompt setup via `/moai:0-project`
+4. Apply to ALL interactions consistently
+
+## Required Config
+
+```json
+{
+  "user": {
+    "name": "[Your Name]"
+  }
+}
+```
+
+## Examples
+
+✅ Correct: "GOOS, how can I help?"
+❌ Incorrect: "User", direct questions without name
 
 ---
 
@@ -344,9 +372,10 @@ All detailed information is available in the memory library:
 ```bash
 1. /moai:0-project                    # Project initialization
 2. /moai:1-plan "feature description" # Generate SPEC
-3. /clear                              # Initialize context (mandatory!)
+3. /clear                             # Initialize context (mandatory!)
 4. /moai:2-run SPEC-001               # TDD implementation
-5. /moai:3-sync SPEC-001              # Generate documentation
+5. /clear                             # Initialize context (mandatory!)
+6. /moai:3-sync SPEC-001              # Generate documentation
 ```
 
 **Status Checks**:
