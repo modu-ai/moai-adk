@@ -95,8 +95,11 @@ All complexity is handled by the **project-manager** agent.
 
 Analyze the command user provided:
 
-1. **`/moai:0-project --glm-on <api-token>`** → GLM CONFIGURATION MODE
-   - Extract API token from argument
+1. **`/moai:0-project --glm-on [api-token]`** → GLM CONFIGURATION MODE
+   - Detect if token provided in argument
+   - If token missing: Check `.env.glm` (auto-load if exists)
+   - If token missing: Check `ANTHROPIC_AUTH_TOKEN` environment variable
+   - If all missing: Request token from user
    - Delegate to project-manager with GLM context
    - Call setup-glm.py script to configure GLM
 
@@ -140,6 +143,12 @@ Use Task tool:
 
   **For AUTO-DETECT**:
   - Read current language from .moai/config.json
+  - Check if project documentation exists (.moai/project/product.md, structure.md, tech.md)
+  - If docs missing → PARTIAL INITIALIZATION state detected
+    - Use AskUserQuestion to ask user: "Your configuration exists but project documentation is missing. Would you like to complete the initialization now?"
+    - Options: "Yes, complete initialization" / "No, review configuration" / "Cancel"
+    - If user selects "Yes" → Switch to INITIALIZATION workflow
+    - Otherwise → Continue with regular AUTO-DETECT options
   - Display current configuration (including language)
   - Offer: Modify Settings / Change Language Only / Review Configuration / Re-initialize / Cancel
   - If "Change Language Only" → Go to Tab 1 in SETTINGS mode
@@ -159,7 +168,12 @@ Use Task tool:
   - Auto-translate announcements to current language if needed
 
   **For GLM_CONFIGURATION**:
-  - Receive GLM API token from parameter
+  - Receive GLM API token from parameter (or detect from environment)
+  - Check token resolution sequence:
+    1. Use provided token from `--glm-on <token>` argument (if not empty)
+    2. Auto-load from existing `.env.glm` file (if exists and token missing)
+    3. Auto-load from `ANTHROPIC_AUTH_TOKEN` environment variable (if set)
+    4. Request from user via AskUserQuestion (if all above missing)
   - Execute GLM setup script: `uv run .moai/scripts/setup-glm.py <GLM_TOKEN>`
   - Verify .env.glm and .claude/settings.local.json are updated
   - Report GLM configuration success to user
@@ -191,10 +205,18 @@ The project-manager agent handles all mode-specific workflows:
 **AUTO-DETECT MODE**:
 
 - Read current language from config.json
-- Display current configuration (including language)
+- **CRITICAL CHECK**: Detect partial initialization state
+  - Check if project documentation exists in `.moai/project/`:
+    * product.md, structure.md, tech.md
+  - If ANY doc missing → Use AskUserQuestion (in user's language)
+    * Question: "Your configuration exists but project documentation is missing. Would you like to complete the initialization?"
+    * Options: "Yes, complete initialization" / "No, review configuration" / "Cancel"
+    * If "Yes" → Switch to INITIALIZATION workflow
+- Display current configuration (including language, initialization status)
 - Offer: Modify Settings / Change Language Only / Review Configuration / Re-initialize / Cancel
 - "Change Language Only" shortcut → SETTINGS mode, Tab 1 only
 - Route to selected sub-action
+- **Language-Aware**: All AskUserQuestion calls in user's conversation_language (NO EMOJIS)
 
 **SETTINGS MODE** (NEW):
 

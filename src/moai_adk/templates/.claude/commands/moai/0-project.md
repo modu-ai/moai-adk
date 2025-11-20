@@ -95,8 +95,11 @@ All complexity is handled by the **project-manager** agent.
 
 Analyze the command user provided:
 
-1. **`/moai:0-project --glm-on <api-token>`** → GLM CONFIGURATION MODE
-   - Extract API token from argument
+1. **`/moai:0-project --glm-on [api-token]`** → GLM CONFIGURATION MODE
+   - Detect if token provided in argument
+   - If token missing: Check `.env.glm` (auto-load if exists)
+   - If token missing: Check `ANTHROPIC_AUTH_TOKEN` environment variable
+   - If all missing: Request token from user
    - Delegate to project-manager with GLM context
    - Call setup-glm.py script to configure GLM
 
@@ -165,7 +168,12 @@ Use Task tool:
   - Auto-translate announcements to current language if needed
 
   **For GLM_CONFIGURATION**:
-  - Receive GLM API token from parameter
+  - Receive GLM API token from parameter (or detect from environment)
+  - Check token resolution sequence:
+    1. Use provided token from `--glm-on <token>` argument (if not empty)
+    2. Auto-load from existing `.env.glm` file (if exists and token missing)
+    3. Auto-load from `ANTHROPIC_AUTH_TOKEN` environment variable (if set)
+    4. Request from user via AskUserQuestion (if all above missing)
   - Execute GLM setup script: `uv run .moai/scripts/setup-glm.py <GLM_TOKEN>`
   - Verify .env.glm and .claude/settings.local.json are updated
   - Report GLM configuration success to user
