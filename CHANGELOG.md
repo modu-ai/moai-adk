@@ -1,16 +1,16 @@
 # v0.27.0 - Major Release with Comprehensive Refactoring (2025-11-20)
 
-## 🎯 주요 기능: v0.26.0 누적 + v0.27.0 종합 업데이트
+## 🎯 Major Release: v0.27.0 Comprehensive Refactoring
 
-### ⚡ 핵심 성과
+### ⚡ Key Achievements
 
-- **89개 커밋 누적**: v0.25.11 이후 모든 변경사항 통합
-- **프로젝트 리팩토링**: Alfred → MoAI 완전 마이그레이션
-- **에이전트 최적화**: 30개 에이전트 85% 효율성 개선
-- **스킬 v4.0.0 업그레이드**: 135+ 스킬 Enterprise 패턴 적용
-- **Claude Code v4.0 통합**: 최신 Claude Code 호환성 완성
-- **다국어 지원**: 한국어, 일본어, 중국어 100% 현지화
-- **CI/CD 자동화**: GitHub Actions PyPI 배포 완성
+- **89 Commits Integrated**: All changes since v0.25.11 consolidated
+- **Project Refactoring**: Complete Alfred → MoAI migration
+- **Agent Optimization**: 30 agents with 85% efficiency improvement
+- **Skills v4.0.0 Upgrade**: 135+ skills with Enterprise patterns
+- **Claude Code v4.0 Integration**: Latest Claude Code compatibility
+- **Multi-language Support**: 100% localization for Korean, Japanese, Chinese
+- **CI/CD Automation**: Complete GitHub Actions PyPI deployment
 
 ## 📦 상세 변경사항
 
