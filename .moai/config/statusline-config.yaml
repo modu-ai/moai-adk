@@ -64,7 +64,7 @@ statusline:
 
   # Format configuration
   format:
-    max_branch_length: 20        # Truncate long branch names
+    max_branch_length: 30        # Truncate long branch names
     truncate_with: "..."         # Truncation indicator
     separator: " | "             # Section separator
 

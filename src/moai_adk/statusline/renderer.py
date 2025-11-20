@@ -144,7 +144,7 @@ class StatuslineRenderer:
             Truncated statusline string
         """
         # Try with truncated branch first
-        truncated_branch = self._truncate_branch(data.branch, max_length=20)
+        truncated_branch = self._truncate_branch(data.branch, max_length=30)
         version_str = data.version if data.version.startswith("v") else f"v{data.version}"
 
         parts = [f"🤖 {data.model}"]
@@ -268,7 +268,7 @@ class StatuslineRenderer:
 
         # If exceeds limit, try truncating branch
         if len(result) > 120:
-            branch = self._truncate_branch(data.branch, max_length=20)
+            branch = self._truncate_branch(data.branch, max_length=30)
             parts = [f"🤖 {data.model}"]
 
             if data.claude_version:
@@ -343,7 +343,7 @@ class StatuslineRenderer:
         return result
 
     @staticmethod
-    def _truncate_branch(branch: str, max_length: int = 20) -> str:
+    def _truncate_branch(branch: str, max_length: int = 30) -> str:
         """
         Truncate branch name intelligently, preserving SPEC ID if present
 
