@@ -1,7 +1,7 @@
 ---
 name: moai:0-project
 description: "Initialize project metadata and documentation"
-argument-hint: "[setting [tab_ID]|update]"
+argument-hint: "[<empty>|setting|update|--glm-on <token>]"
 allowed-tools:
   - Task
   - AskUserQuestion
@@ -19,12 +19,13 @@ allowed-tools:
 
 ## 🎯 Command Purpose
 
-Initialize or update project metadata with **language-first architecture**. Supports four execution modes:
+Initialize or update project metadata with **language-first architecture**. Supports five execution modes:
 
 - **INITIALIZATION**: First-time project setup
 - **AUTO-DETECT**: Already initialized projects (modify settings or re-initialize)
-- **SETTINGS**: Tab-based configuration management (new mode)
+- **SETTINGS**: Tab-based configuration management
 - **UPDATE**: Template optimization after moai-adk package update
+- **GLM Configuration** (`--glm-on <token>`): Configure GLM API integration
 
 ---
 
@@ -94,15 +95,23 @@ All complexity is handled by the **project-manager** agent.
 
 Analyze the command user provided:
 
-1. **`/moai:0-project setting [tab_ID]`** → SETTINGS MODE
-   - Tab ID examples: `tab_1_user_language`, `tab_2_project_info`, `tab_3_git_strategy`, etc
-   - Omit tab_ID for interactive tab selection
-2. **`/moai:0-project update`** → UPDATE MODE
-3. **`/moai:0-project`** (no args):
+1. **`/moai:0-project --glm-on <api-token>`** → GLM CONFIGURATION MODE
+   - Extract API token from argument
+   - Delegate to project-manager with GLM context
+   - Call setup-glm.py script to configure GLM
+
+2. **`/moai:0-project setting`** → SETTINGS MODE
+   - Always uses interactive tab selection via AskUserQuestion
+   - User selects specific tab or "Modify All Tabs" option
+
+3. **`/moai:0-project update`** → UPDATE MODE
+
+4. **`/moai:0-project`** (no args):
    - Check if `.moai/config/config.json` exists
    - Exists → AUTO-DETECT MODE
    - Missing → INITIALIZATION MODE
-4. **Invalid subcommand** → Show error and exit
+
+5. **Invalid subcommand** → Show error and exit
 
 ### Step 2: Delegate to Project Manager Agent
 
@@ -117,8 +126,9 @@ Use Task tool:
 
   **Task**: Analyze project context and route to appropriate mode.
 
-  **Detected Mode**: $MODE (INITIALIZATION/AUTO-DETECT/SETTINGS/UPDATE)
+  **Detected Mode**: $MODE (INITIALIZATION/AUTO-DETECT/SETTINGS/UPDATE/GLM_CONFIGURATION)
   **Language Context**: Read from .moai/config.json if exists
+  **GLM Token** (if GLM mode): $GLM_TOKEN
 
   **For INITIALIZATION**:
   - Check .moai/config.json for language setting
@@ -130,6 +140,12 @@ Use Task tool:
 
   **For AUTO-DETECT**:
   - Read current language from .moai/config.json
+  - Check if project documentation exists (.moai/project/product.md, structure.md, tech.md)
+  - If docs missing → PARTIAL INITIALIZATION state detected
+    - Use AskUserQuestion to ask user: "Your configuration exists but project documentation is missing. Would you like to complete the initialization now?"
+    - Options: "Yes, complete initialization" / "No, review configuration" / "Cancel"
+    - If user selects "Yes" → Switch to INITIALIZATION workflow
+    - Otherwise → Continue with regular AUTO-DETECT options
   - Display current configuration (including language)
   - Offer: Modify Settings / Change Language Only / Review Configuration / Re-initialize / Cancel
   - If "Change Language Only" → Go to Tab 1 in SETTINGS mode
@@ -147,6 +163,13 @@ Use Task tool:
   - Invoke Skill("moai-project-template-optimizer") for smart merging
   - Update templates and configuration
   - Auto-translate announcements to current language if needed
+
+  **For GLM_CONFIGURATION**:
+  - Receive GLM API token from parameter
+  - Execute GLM setup script: `uv run .moai/scripts/setup-glm.py <GLM_TOKEN>`
+  - Verify .env.glm and .claude/settings.local.json are updated
+  - Report GLM configuration success to user
+  - Remind user: "Claude Code를 재시작하면 새 설정이 자동으로 로드됩니다"
 
   **Output**: Mode-specific completion report with next steps
   ```
@@ -174,10 +197,18 @@ The project-manager agent handles all mode-specific workflows:
 **AUTO-DETECT MODE**:
 
 - Read current language from config.json
-- Display current configuration (including language)
+- **CRITICAL CHECK**: Detect partial initialization state
+  - Check if project documentation exists in `.moai/project/`:
+    * product.md, structure.md, tech.md
+  - If ANY doc missing → Use AskUserQuestion (in user's language)
+    * Question: "Your configuration exists but project documentation is missing. Would you like to complete the initialization?"
+    * Options: "Yes, complete initialization" / "No, review configuration" / "Cancel"
+    * If "Yes" → Switch to INITIALIZATION workflow
+- Display current configuration (including language, initialization status)
 - Offer: Modify Settings / Change Language Only / Review Configuration / Re-initialize / Cancel
 - "Change Language Only" shortcut → SETTINGS mode, Tab 1 only
 - Route to selected sub-action
+- **Language-Aware**: All AskUserQuestion calls in user's conversation_language (NO EMOJIS)
 
 **SETTINGS MODE** (NEW):
 
@@ -211,16 +242,17 @@ This ensures `.claude/settings.json` contains announcements in the user's select
 
 ## 🎭 SETTINGS MODE: Tab-Based Configuration (NEW)
 
-> **Version**: v2.1.0 | **Last Updated**: 2025-11-13 | **Changes**: Tab-based UX improvements, auto-processing for locale/language
+> **Version**: v2.0.0 | **Last Updated**: 2025-11-19 | **Changes**: Removed [tab_ID] arg, added git_strategy.mode selection, expanded Tab 3 with conditional batches, fixed 26 field name errors, +16 settings
 
 ### Overview
 
 The SETTINGS MODE uses a tab-based batch question system to provide organized, user-friendly configuration management:
 
 - **5 tabs**: Organized by configuration domain
-- **12 batches**: Grouped questions within tabs
-- **41 settings**: Complete config.json coverage (down from 44 via auto-processing)
-- **40 questions**: User-facing questions (down from 43)
+- **17 batches**: Grouped questions within tabs (added 5 batches: Batch 3.0, 3.3, 3.5, 3.6, improved organization)
+- **57 settings**: Complete config.json v0.26.0 coverage (+39% from v1.0.0)
+- **54 questions**: User-facing questions (+14 from v1.0.0)
+- **Conditional batches**: Tab 3 shows Personal/Team/Hybrid batches based on mode selection
 - **Atomic updates**: Safe deep merge with backup/rollback
 
 ### Initial Entry Point: Tab Selection Screen
@@ -285,26 +317,28 @@ Location: `.claude/skills/moai-project-batch-questions/tab_schema.json`
   - NOTE: No user input needed. These 3 fields update automatically when conversation_language changes
 - Setting count: 4
 
-**Tab 3: Git Strategy & Workflow** (Recommended with Validation)
+**Tab 3: Git Strategy & Workflow** (Recommended with Validation - REDESIGNED v2.0.0)
 
-- Batch 3.1: Personal checkpoint settings (4 questions)
-- Batch 3.2: Personal commit/branch settings (4 questions)
-- Batch 3.3: Personal policy & Team PR (4 questions)
-- Batch 3.4: Team GitFlow policy (4 questions)
-- Setting count: 16 | Critical checkpoint for Git conflicts
+- Batch 3.0: Workflow mode selection (1 question - Personal/Team/Hybrid) → Controls visibility of subsequent batches
+- Batch 3.1: Personal core settings (4 questions) - CONDITIONAL (Personal/Hybrid only)
+- Batch 3.2: Personal branch & cleanup (4 questions) - CONDITIONAL (Personal/Hybrid only)
+- Batch 3.3: Personal protection & merge (4 questions) - CONDITIONAL (Personal/Hybrid only)
+- Batch 3.4: Team core settings (4 questions) - CONDITIONAL (Team/Hybrid only)
+- Batch 3.5: Team branch & protection (4 questions) - CONDITIONAL (Team/Hybrid only)
+- Batch 3.6: Team safety & merge (2 questions) - CONDITIONAL (Team/Hybrid only)
+- Setting count: 29 (+13 from v1.0.0) | Critical checkpoint for Git conflicts & mode consistency
 
-**Tab 4: Quality Principles & Reports** (Optional)
+**Tab 4: Quality Principles & Reports** (Optional - UPDATED v2.0.0)
 
-- Batch 4.1: Constitution settings (4 questions)
-- Batch 4.2: Report generation policy (4 questions)
-- Batch 4.3: Report storage location (1 question)
-- Setting count: 9
+- Batch 4.1: Constitution settings (3 questions - reduced from 4, renamed minimum_test_coverage→test_coverage_target)
+- Batch 4.2: Report generation policy (4 questions - expanded, added warn_user & user_choice)
+- Setting count: 9 (same count, better fields)
 
-**Tab 5: System & GitHub Integration** (Optional)
+**Tab 5: System & GitHub Integration** (Optional - UPDATED v2.0.0)
 
-- Batch 5.1: MoAI system settings (4 questions)
-- Batch 5.2: GitHub automation settings (3 questions)
-- Setting count: 8
+- Batch 5.1: MoAI system settings (3 questions - updated, aligned with config.json v0.26.0)
+- Batch 5.2: GitHub automation settings (5 questions - expanded from 3, added templates & spec_workflow fields)
+- Setting count: 11 (+3 from v1.0.0)
 
 ### Batch Execution Flow
 
@@ -474,30 +508,47 @@ Step 10: Receives result from Skill
   - Failure: Report error from Skill with recovery suggestions
 ```
 
-#### Tab 3 Validation Example (Complex)
+#### Tab 3 Validation Example (Complex - NEW v2.0.0)
 
-User runs: `/moai:0-project setting tab_3_git_strategy`
+User runs: `/moai:0-project setting` (or `/moai:0-project setting tab_3_git_strategy`)
 
 ```
-Step 1: Load Tab 3 (tab_3_git_strategy) - 4 batches
-Step 2: Execute Batch 3.1 (Personal checkpoint settings)
-  - Get user responses, validate
-Step 3: Execute Batch 3.2 (Personal commit/branch)
-  - Get user responses, validate
-Step 4: Execute Batch 3.3 (Personal policy & Team PR)
-  - Get user responses, validate
-Step 5: Execute Batch 3.4 (Team GitFlow policy)
-  - Get user responses, validate
-Step 6: Run Tab 3 validation checkpoint
-  - Check for Personal/Team conflicts
-  - Example: If Personal mode but PR base is develop → Warn
-  - Example: If Team mode but use_gitflow is false → Suggest fix
-  - Let user confirm or retry
-Step 7: Merge all 4 batches into single update object
-Step 8: Delegate atomic update to Skill("moai-project-config-manager")
+Step 1: Load Tab 3 (tab_3_git_strategy) - 6 batches total
+Step 2: Execute Batch 3.0 (Workflow Mode Selection)
+  - User selects: Personal, Team, or Hybrid
+  - Validation: Confirm mode selection
+Step 3: CONDITIONAL LOGIC - Based on mode:
+
+  IF mode = Personal:
+    - Execute Batch 3.1 (Personal core settings)
+    - Execute Batch 3.2 (Personal branch & cleanup)
+    - Execute Batch 3.3 (Personal protection & merge)
+    - Skip Batches 3.4, 3.5, 3.6 (Team batches)
+
+  ELSE IF mode = Team:
+    - Skip Batches 3.1, 3.2, 3.3 (Personal batches)
+    - Execute Batch 3.4 (Team core settings)
+    - Execute Batch 3.5 (Team branch & protection)
+    - Execute Batch 3.6 (Team safety & merge)
+
+  ELSE IF mode = Hybrid:
+    - Execute ALL batches (3.1-3.6) for full flexibility
+
+Step 4: Run Tab 3 validation checkpoint
+  - Validate mode selection consistency
+  - Check Personal/Team conflicts
+    - Example: If Personal: base_branch should be "main" (not "develop")
+    - Example: If Team: prevent_main_direct_merge should be true
+    - Example: If Team: default_pr_base must be "develop" or "main"
+  - Branch naming consistency
+  - Let user confirm or retry if conflicts found
+
+Step 5: Merge all executed batches into single update object
+Step 6: Delegate atomic update to Skill("moai-project-config-manager")
   - Skill handles backup/rollback internally
   - Skill performs deep merge with final validation
-Step 9: Report all 16 settings changes
+
+Step 7: Report all 29 settings changes (or 16-20 depending on mode)
 ```
 
 #### Multi-Tab Workflow Example
@@ -509,21 +560,33 @@ Flow:
 1. Show Tab Selection Screen (Which settings tab would you like to modify?)
 2. User selects tab or "Modify All Tabs"
 3. Execute selected tab
-   - Tab 1 (REQUIRED): User & Language (3 questions)
-   - Tab 2 (RECOMMENDED): Project Info (4 questions in batch 2.1 + auto-processing in batch 2.2)
-   - Tab 3 (RECOMMENDED): Git Strategy (4 batches, 16 questions with validation)
-   - Tab 4 (OPTIONAL): Quality & Reports (3 batches, 9 questions)
-   - Tab 5 (OPTIONAL): System & GitHub (2 batches, 7 questions)
+   - Tab 1 (REQUIRED): User & Language (1 batch, 3 questions)
+   - Tab 2 (RECOMMENDED): Project Info (2 batches, 4 questions in batch 2.1 + 0 questions auto-processing in batch 2.2)
+   - Tab 3 (RECOMMENDED): Git Strategy (6 batches, 23 questions total, conditional by mode)
+     * Batch 3.0: Mode selection (1 question)
+     * Personal mode: Batches 3.1-3.3 (12 questions)
+     * Team mode: Batches 3.4-3.6 (10 questions)
+     * Hybrid mode: All batches (22 questions)
+   - Tab 4 (OPTIONAL): Quality & Reports (2 batches, 7 questions)
+   - Tab 5 (OPTIONAL): System & GitHub (2 batches, 8 questions)
 4. After tab completion, ask: "Would you like to modify another settings tab?"
    - No, finish settings (exit)
-   - Select another tab (select another tab)
-5. Final atomic update after user finishes
+   - Select another tab (return to step 1)
+5. Final atomic update after user finishes all selected tabs
 
-Each tab completes independently:
-  - If user cancels mid-tab, changes not saved
-  - If tab validation fails, user can retry
-  - Final atomic update only after ALL selected tabs complete
+Tab-level behavior:
+  - If user cancels mid-tab, changes NOT saved
+  - If tab validation fails, user can retry or skip tab
+  - After ALL selected tabs complete successfully, perform final atomic update
   - Auto-processing happens during atomic update (e.g., conversation_language_name, locale)
+  - Tab 3 conditional batches respect mode selection (shown/hidden based on git_strategy.mode)
+
+Tab completion order (recommended):
+  - Tab 1 (REQUIRED): Foundation language settings
+  - Tab 2: Project metadata
+  - Tab 3: Git workflow strategy
+  - Tab 4: Quality principles
+  - Tab 5: System integration
 ```
 
 ### Tab Schema Structure
@@ -695,12 +758,12 @@ Use AskUserQuestion in user's language:
 
 ## 📚 Quick Reference
 
-| Scenario             | Mode           | Entry Point                       | Key Phases                                    |
-| -------------------- | -------------- | --------------------------------- | --------------------------------------------- |
-| First-time setup     | INITIALIZATION | `/moai:0-project` (no config)     | Read language → Interview → Docs              |
-| Existing project     | AUTO-DETECT    | `/moai:0-project` (config exists) | Read language → Display → Options             |
-| Modify config        | SETTINGS       | `/moai:0-project setting [tab]`   | Read language → Tab batches → Skill update    |
-| After package update | UPDATE         | `/moai:0-project update`          | Preserve language → Template merge → Announce |
+| Scenario             | Mode           | Entry Point                       | Key Phases                                                     |
+| -------------------- | -------------- | --------------------------------- | -------------------------------------------------------------- |
+| First-time setup     | INITIALIZATION | `/moai:0-project` (no config)     | Read language → Interview → Docs                               |
+| Existing project     | AUTO-DETECT    | `/moai:0-project` (config exists) | Read language → Display → Options                              |
+| Modify config        | SETTINGS       | `/moai:0-project setting`         | Interactive tab selection → Conditional batches → Skill update |
+| After package update | UPDATE         | `/moai:0-project update`          | Preserve language → Template merge → Announce                  |
 
 **Associated Skills**:
 
@@ -715,10 +778,18 @@ Use AskUserQuestion in user's language:
 - **Files**: `product.md`, `structure.md`, `tech.md` (auto-generated or interactive)
 - **Language**: Auto-translated to user's conversation_language
 
-**Version**: 1.2.0 (Optimized Language Handling & Skill Delegation)
+**Version**: 2.0.0 (Tab-based Configuration with Conditional Batches & Fixed Field Alignment)
 **Last Updated**: 2025-11-19
 **Architecture**: Commands → Agents → Skills (Complete delegation, no direct backup in command)
-**Tab Schema**: `.claude/skills/moai-project-batch-questions/tab_schema.json`
+**Tab Schema**: `.claude/skills/moai-project-batch-questions/tab_schema.json` (v2.0.0)
+**Improvements in v2.0.0**:
+
+- Removed `[tab_ID]` argument → Always use interactive tab selection
+- Added git_strategy.mode selection (Batch 3.0) with Personal/Team/Hybrid conditional logic
+- Expanded Tab 3: 16 → 29 settings (+81%)
+- Fixed 26 outdated/incorrect field names (checkpoint_enabled→auto_checkpoint, etc)
+- Enhanced validation checkpoints: 3 → 6 rules
+- Total coverage: 41 → 57 settings (+39%)
 
 ---
 
@@ -760,6 +831,6 @@ AskUserQuestion({
 
 **You must NOW execute the command following the "Execution Philosophy" described above.**
 
-1. Start PHASE 1: Command Routing & Analysis immediately.
-2. Call the `Task` tool with `subagent_type="project-manager"`.
+1. Analyze the subcommand/context.
+2. Call the `Task` tool with `subagent_type="project-manager"` immediately.
 3. Do NOT just describe what you will do. DO IT.
