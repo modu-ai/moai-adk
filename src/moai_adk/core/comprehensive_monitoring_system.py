@@ -15,23 +15,18 @@ Key Features:
 """
 
 import json
-import time
-import asyncio
+import logging
+import statistics
 import threading
+import time
+from collections import defaultdict, deque
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple, Union, Callable
-from dataclasses import dataclass, field, asdict
-from collections import deque, defaultdict
-import statistics
-import hashlib
-import uuid
-import logging
-import weakref
-import gc
+from typing import Any, Callable, Dict, List, Optional, Union
+
 import psutil
-import sys
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -1016,8 +1011,6 @@ class ComprehensiveMonitoringSystem:
     def get_analytics_report(self, hours: int = 24) -> Dict[str, Any]:
         """Generate comprehensive analytics report"""
         try:
-            start_time = datetime.now() - timedelta(hours=hours)
-
             # Overall metrics summary
             summary = {}
             for metric_type in MetricType:

@@ -3,22 +3,23 @@ name: moai-domain-frontend
 version: 4.0.0
 status: stable
 updated: 2025-11-20
-description: Enterprise Frontend Development with AI-powered modern architecture and Context7 integration
+description: Enterprise Frontend Development with modern architecture and scalable UI patterns
 category: Domain
-allowed-tools: Read, Bash, Write, Edit, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+allowed-tools: [Read, Bash, Write, Edit, WebFetch]
 ---
 
 # moai-domain-frontend: Enterprise Frontend Development
 
-**AI-powered modern frontend architecture with React, Vue, Angular integration and scalable UI patterns**
+**AI-powered modern frontend architecture with React, Vue, Angular**
 
-Trust Score: 9.7/10 | Version: 4.0.0 | Last Updated: 2025-11-20
+> Trust Score: 9.7/10 | Version: 4.0.0
 
 ---
 
 ## Overview
 
 Enterprise Frontend Development expert with:
+
 - **Modern Frameworks**: React 19, Vue 3.5, Angular 18, Svelte 5
 - **State Management**: Zustand, TanStack Query, Redux Toolkit
 - **Performance**: Code splitting, lazy loading, bundle optimization
@@ -26,9 +27,10 @@ Enterprise Frontend Development expert with:
 - **TypeScript**: Full type safety with modern patterns
 
 **Core Technologies**:
-- React 19 with Server Components and concurrent features
+
+- React 19 with Server Components
 - Next.js 16 with App Router and Turbopack
-- Tailwind CSS and shadcn/ui component library
+- Tailwind CSS and shadcn/ui
 - Framer Motion for animations
 - Zod for runtime validation
 
@@ -40,40 +42,26 @@ Enterprise Frontend Development expert with:
 
 ```typescript
 // components/UserList.tsx
-import React, { useState, useMemo, useCallback } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { z } from 'zod';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useMemo, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { z } from "zod";
 
-// Type validation
 const UserSchema = z.object({
   id: z.string(),
   name: z.string(),
   email: z.string().email(),
-  avatar: z.string().url().optional(),
-  role: z.enum(['admin', 'user', 'moderator']),
-  createdAt: z.date(),
+  role: z.enum(["admin", "user", "moderator"]),
 });
 
 type User = z.infer<typeof UserSchema>;
 
-interface UserListProps {
-  onUserSelect: (user: User) => void;
-  selectedUserId?: string;
-  filters?: {
-    role?: User['role'];
-    search?: string;
-  };
-}
-
-// Data fetching hook
-function useUsers(filters?: UserListProps['filters']) {
+function useUsers(filters?: { role?: string; search?: string }) {
   return useQuery({
-    queryKey: ['users', filters],
+    queryKey: ["users", filters],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (filters?.role) params.append('role', filters.role);
-      if (filters?.search) params.append('search', filters.search);
+      if (filters?.role) params.append("role", filters.role);
+      if (filters?.search) params.append("search", filters.search);
 
       const response = await fetch(`/api/users?${params}`);
       const data = await response.json();
@@ -83,345 +71,132 @@ function useUsers(filters?: UserListProps['filters']) {
   });
 }
 
-// Main component
-export const UserList: React.FC<UserListProps> = React.memo(({
-  onUserSelect,
-  selectedUserId,
-  filters
-}) => {
-  const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
-  const queryClient = useQueryClient();
-
+export const UserList: React.FC = React.memo(({ onUserSelect, filters }) => {
   const { data: users, isLoading, error } = useUsers(filters);
 
   const filteredUsers = useMemo(() => {
     if (!users) return [];
-
-    return users.filter(user => {
+    return users.filter((user) => {
       if (filters?.role && user.role !== filters.role) return false;
-      if (filters?.search && !user.name.toLowerCase().includes(filters.search.toLowerCase())) {
+      if (
+        filters?.search &&
+        !user.name.toLowerCase().includes(filters.search.toLowerCase())
+      ) {
         return false;
       }
       return true;
     });
   }, [users, filters]);
 
-  const handleUserClick = useCallback((user: User) => {
-    onUserSelect(user);
-  }, [onUserSelect]);
-
-  const toggleUserExpansion = useCallback((userId: string) => {
-    setExpandedUsers(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(userId)) {
-        newSet.delete(userId);
-      } else {
-        newSet.add(userId);
-      }
-      return newSet;
-    });
-  }, []);
-
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>Error: {error.message}</div>;
 
   return (
-    <motion.div
-      className="space-y-4"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-    >
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Users ({filteredUsers.length})</h2>
-        <button
-          onClick={() => queryClient.invalidateQueries({ queryKey: ['users'] })}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          Refresh
-        </button>
-      </div>
-
-      <AnimatePresence>
-        {filteredUsers.map((user) => (
-          <UserCard
-            key={user.id}
-            user={user}
-            isExpanded={expandedUsers.has(user.id)}
-            isSelected={selectedUserId === user.id}
-            onClick={handleUserClick}
-            onToggleExpand={toggleUserExpansion}
-          />
-        ))}
-      </AnimatePresence>
-    </motion.div>
+    <div className="space-y-4">
+      <h2 className="text-2xl font-bold">Users ({filteredUsers.length})</h2>
+      {filteredUsers.map((user) => (
+        <UserCard key={user.id} user={user} onClick={onUserSelect} />
+      ))}
+    </div>
   );
 });
-
-UserList.displayName = 'UserList';
-```
-
-### Individual User Card Component
-
-```typescript
-// components/UserCard.tsx
-import React, { useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-
-interface UserCardProps {
-  user: User;
-  isExpanded: boolean;
-  isSelected: boolean;
-  onClick: (user: User) => void;
-  onToggleExpand: (userId: string) => void;
-}
-
-const UserCard: React.FC<UserCardProps> = React.memo(({
-  user,
-  isExpanded,
-  isSelected,
-  onClick,
-  onToggleExpand
-}) => {
-  const handleClick = useCallback(() => {
-    onClick(user);
-  }, [onClick, user]);
-
-  const handleExpandClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    onToggleExpand(user.id);
-  }, [onToggleExpand, user.id]);
-
-  return (
-    <motion.div
-      className={`border rounded-lg p-4 cursor-pointer transition-all ${
-        isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-      }`}
-      onClick={handleClick}
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
-      layout
-    >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <img
-            src={user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`}
-            alt={user.name}
-            className="w-12 h-12 rounded-full"
-          />
-
-          <div>
-            <h3 className="font-semibold text-lg">{user.name}</h3>
-            <p className="text-gray-600">{user.email}</p>
-            <span className={`inline-block px-2 py-1 text-xs rounded ${
-              user.role === 'admin' ? 'bg-red-100 text-red-800' :
-              user.role === 'moderator' ? 'bg-yellow-100 text-yellow-800' :
-              'bg-green-100 text-green-800'
-            }`}>
-              {user.role}
-            </span>
-          </div>
-        </div>
-
-        <button
-          onClick={handleExpandClick}
-          className="p-2 hover:bg-gray-100 rounded"
-          aria-label={isExpanded ? 'Collapse' : 'Expand'}
-        >
-          {isExpanded ? '−' : '+'}
-        </button>
-      </div>
-
-      <AnimatePresence>
-        {isExpanded && (
-          <motion.div
-            className="mt-4 pt-4 border-t"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-          >
-            <p className="text-sm text-gray-600">
-              Member since: {user.createdAt.toLocaleDateString()}
-            </p>
-            <div className="flex space-x-2 mt-2">
-              <button className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600">
-                Edit
-              </button>
-              <button className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600">
-                Message
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
-  );
-});
-
-UserCard.displayName = 'UserCard';
 ```
 
 ---
 
 ## State Management
 
-### Zustand Store with TypeScript
+### Zustand Store
 
 ```typescript
 // stores/useAppStore.ts
-import { create } from 'zustand';
-import { devtools, subscribeWithSelector } from 'zustand/middleware';
-import { immer } from 'zustand/middleware/immer';
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  preferences: {
-    theme: 'light' | 'dark';
-    language: string;
-    notifications: boolean;
-  };
-}
+import { create } from "zustand";
+import { devtools } from "zustand/middleware";
+import { immer } from "zustand/middleware/immer";
 
 interface AppState {
   currentUser: User | null;
   users: User[];
-  theme: 'light' | 'dark';
+  theme: "light" | "dark";
   sidebarOpen: boolean;
-  loading: {
-    users: boolean;
-    auth: boolean;
-  };
-  errors: {
-    users: string | null;
-    auth: string | null;
-  };
+  loading: { users: boolean; auth: boolean };
+  errors: { users: string | null; auth: string | null };
 }
 
 interface AppActions {
   setCurrentUser: (user: User | null) => void;
-  updateUserPreferences: (preferences: Partial<User['preferences']>) => void;
-  setTheme: (theme: 'light' | 'dark') => void;
+  setTheme: (theme: "light" | "dark") => void;
   toggleSidebar: () => void;
   fetchUsers: () => Promise<void>;
-  addUser: (user: Omit<User, 'id'>) => Promise<void>;
-  clearError: (key: keyof AppState['errors']) => void;
 }
 
 export const useAppStore = create<AppState & AppActions>()(
   devtools(
-    subscribeWithSelector(
-      immer((set, get) => ({
-        // Initial state
-        currentUser: null,
-        users: [],
-        theme: 'light',
-        sidebarOpen: true,
-        loading: { users: false, auth: false },
-        errors: { users: null, auth: null },
+    immer((set) => ({
+      // Initial state
+      currentUser: null,
+      users: [],
+      theme: "light",
+      sidebarOpen: true,
+      loading: { users: false, auth: false },
+      errors: { users: null, auth: null },
 
-        // Actions
-        setCurrentUser: (user) => {
+      // Actions
+      setCurrentUser: (user) => {
+        set((state) => {
+          state.currentUser = user;
+        });
+      },
+
+      setTheme: (theme) => {
+        set((state) => {
+          state.theme = theme;
+        });
+      },
+
+      toggleSidebar: () => {
+        set((state) => {
+          state.sidebarOpen = !state.sidebarOpen;
+        });
+      },
+
+      fetchUsers: async () => {
+        set((state) => {
+          state.loading.users = true;
+          state.errors.users = null;
+        });
+
+        try {
+          const response = await fetch("/api/users");
+          const users = await response.json();
           set((state) => {
-            state.currentUser = user;
+            state.users = users;
+            state.loading.users = false;
           });
-        },
-
-        updateUserPreferences: (preferences) => {
+        } catch (error) {
           set((state) => {
-            if (state.currentUser) {
-              state.currentUser.preferences = {
-                ...state.currentUser.preferences,
-                ...preferences,
-              };
-            }
+            state.errors.users = error.message;
+            state.loading.users = false;
           });
-        },
-
-        setTheme: (theme) => {
-          set((state) => {
-            state.theme = theme;
-          });
-        },
-
-        toggleSidebar: () => {
-          set((state) => {
-            state.sidebarOpen = !state.sidebarOpen;
-          });
-        },
-
-        fetchUsers: async () => {
-          set((state) => {
-            state.loading.users = true;
-            state.errors.users = null;
-          });
-
-          try {
-            const response = await fetch('/api/users');
-            const users = await response.json();
-            set((state) => {
-              state.users = users;
-              state.loading.users = false;
-            });
-          } catch (error) {
-            set((state) => {
-              state.errors.users = error instanceof Error ? error.message : 'Failed to fetch users';
-              state.loading.users = false;
-            });
-          }
-        },
-
-        addUser: async (userData) => {
-          try {
-            const response = await fetch('/api/users', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(userData),
-            });
-            const newUser = await response.json();
-
-            set((state) => {
-              state.users.push(newUser);
-            });
-          } catch (error) {
-            console.error('Failed to add user:', error);
-          }
-        },
-
-        clearError: (key) => {
-          set((state) => {
-            state.errors[key] = null;
-          });
-        },
-      }))
-    )
+        }
+      },
+    }))
   )
 );
 ```
 
-### TanStack Query Integration
+### TanStack Query
 
 ```typescript
 // hooks/useUsers.ts
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { z } from 'zod';
-
-const UserSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  email: z.string().email(),
-  role: z.enum(['admin', 'user']),
-});
-
-type User = z.infer<typeof UserSchema>;
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export function useUsers() {
   return useQuery({
-    queryKey: ['users'],
+    queryKey: ["users"],
     queryFn: async () => {
-      const response = await fetch('/api/users');
-      const data = await response.json();
-      return z.array(UserSchema).parse(data);
+      const response = await fetch("/api/users");
+      return response.json();
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -431,34 +206,16 @@ export function useCreateUser() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (userData: Omit<User, 'id'>) => {
-      const response = await fetch('/api/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+    mutationFn: async (userData: Omit<User, "id">) => {
+      const response = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(userData),
       });
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-    },
-  });
-}
-
-export function useUpdateUser() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ id, ...userData }: Partial<User> & { id: string }) => {
-      const response = await fetch(`/api/users/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userData),
-      });
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ["users"] });
     },
   });
 }
@@ -468,39 +225,35 @@ export function useUpdateUser() {
 
 ## Performance Optimization
 
-### Code Splitting and Lazy Loading
+### Code Splitting
 
 ```typescript
-// Dynamic imports for code splitting
-import dynamic from 'next/dynamic';
+import dynamic from "next/dynamic";
 
 // Lazy load heavy components
-const HeavyChart = dynamic(() => import('./HeavyChart'), {
+const HeavyChart = dynamic(() => import("./HeavyChart"), {
   loading: () => <div>Loading chart...</div>,
   ssr: false,
 });
 
-const AdminPanel = dynamic(() => import('./AdminPanel'), {
-  loading: () => <div>Loading admin panel...</div>,
-});
+const AdminPanel = dynamic(() => import("./AdminPanel"));
 
 // Route-based code splitting
 const routes = [
   {
-    path: '/dashboard',
-    component: dynamic(() => import('./pages/Dashboard')),
+    path: "/dashboard",
+    component: dynamic(() => import("./pages/Dashboard")),
   },
   {
-    path: '/users',
-    component: dynamic(() => import('./pages/Users')),
-  },
-  {
-    path: '/admin',
-    component: dynamic(() => import('./pages/Admin')),
+    path: "/users",
+    component: dynamic(() => import("./pages/Users")),
   },
 ];
+```
 
-// Intersection Observer for lazy loading
+### Intersection Observer
+
+```typescript
 function useIntersectionObserver(
   ref: React.RefObject<Element>,
   options: IntersectionObserverInit = {}
@@ -527,83 +280,41 @@ function useIntersectionObserver(
 }
 ```
 
-### Bundle Optimization
-
-```typescript
-// webpack.config.js
-module.exports = {
-  optimization: {
-    splitChunks: {
-      chunks: 'all',
-      cacheGroups: {
-        vendor: {
-          test: /[\\/]node_modules[\\/]/,
-          name: 'vendors',
-          chunks: 'all',
-        },
-        common: {
-          name: 'common',
-          minChunks: 2,
-          chunks: 'all',
-          enforce: true,
-        },
-      },
-    },
-  },
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, 'src'),
-      '@components': path.resolve(__dirname, 'src/components'),
-      '@hooks': path.resolve(__dirname, 'src/hooks'),
-      '@utils': path.resolve(__dirname, 'src/utils'),
-    },
-  },
-};
-```
-
 ---
 
-## Accessibility Features
+## Accessibility
 
 ### ARIA Implementation
 
 ```typescript
-// components/AccessibleButton.tsx
-import React, { forwardRef } from 'react';
-
-interface AccessibleButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface AccessibleButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   ariaLabel?: string;
-  ariaDescribedBy?: string;
   isLoading?: boolean;
   loadingText?: string;
 }
 
-export const AccessibleButton = forwardRef<HTMLButtonElement, AccessibleButtonProps>(
-  ({
-    children,
-    ariaLabel,
-    ariaDescribedBy,
-    isLoading,
-    loadingText,
-    disabled,
-    ...props
-  }, ref) => {
+export const AccessibleButton = forwardRef<
+  HTMLButtonElement,
+  AccessibleButtonProps
+>(
+  (
+    { children, ariaLabel, isLoading, loadingText, disabled, ...props },
+    ref
+  ) => {
     return (
       <button
         ref={ref}
         disabled={disabled || isLoading}
         aria-label={ariaLabel}
-        aria-describedby={ariaDescribedBy}
         aria-busy={isLoading}
         {...props}
       >
         {isLoading && (
           <>
-            <span className="sr-only">
-              {loadingText || 'Loading'}
-            </span>
+            <span className="sr-only">{loadingText || "Loading"}</span>
             <div
-              className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent"
+              className="animate-spin rounded-full h-4 w-4 border-2"
               aria-hidden="true"
             />
           </>
@@ -618,9 +329,6 @@ export const AccessibleButton = forwardRef<HTMLButtonElement, AccessibleButtonPr
 ### Focus Management
 
 ```typescript
-// hooks/useFocusTrap.ts
-import { useEffect, useRef } from 'react';
-
 export function useFocusTrap(isActive: boolean) {
   const containerRef = useRef<HTMLElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
@@ -628,10 +336,8 @@ export function useFocusTrap(isActive: boolean) {
   useEffect(() => {
     if (!isActive) return;
 
-    // Store previously focused element
     previousFocusRef.current = document.activeElement as HTMLElement;
 
-    // Focus first focusable element
     const focusableElements = containerRef.current?.querySelectorAll(
       'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
     ) as NodeListOf<HTMLElement>;
@@ -641,7 +347,6 @@ export function useFocusTrap(isActive: boolean) {
     }
 
     return () => {
-      // Restore focus to previous element
       if (previousFocusRef.current) {
         previousFocusRef.current.focus();
       }
@@ -654,9 +359,7 @@ export function useFocusTrap(isActive: boolean) {
 
 ---
 
-## Modern Frameworks
-
-### Vue 3 Composition API
+## Vue 3 Composition API
 
 ```vue
 <!-- UserList.vue -->
@@ -666,7 +369,7 @@ export function useFocusTrap(isActive: boolean) {
       <h2 class="text-2xl font-bold">Users ({{ filteredUsers.length }})</h2>
       <button
         @click="refreshUsers"
-        class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        class="px-4 py-2 bg-blue-500 text-white rounded"
       >
         Refresh
       </button>
@@ -677,49 +380,34 @@ export function useFocusTrap(isActive: boolean) {
         v-for="user in filteredUsers"
         :key="user.id"
         :user="user"
-        :is-expanded="expandedUsers.has(user.id)"
-        :is-selected="selectedUserId === user.id"
         @select="handleUserSelect"
-        @toggle-expand="toggleUserExpansion"
       />
     </TransitionGroup>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { useUsers } from '@/composables/useUsers';
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: 'admin' | 'user' | 'moderator';
-  createdAt: Date;
-}
+import { ref, computed } from "vue";
+import { useUsers } from "@/composables/useUsers";
 
 const props = defineProps<{
-  selectedUserId?: string;
-  filters?: {
-    role?: User['role'];
-    search?: string;
-  };
+  filters?: { role?: string; search?: string };
 }>();
 
 const emit = defineEmits<{
-  'user-select': [user: User];
+  "user-select": [user: User];
 }>();
 
-const { data: users, isLoading, error, refresh } = useUsers(props.filters);
-
-const expandedUsers = ref<Set<string>>(new Set());
+const { data: users, refresh } = useUsers(props.filters);
 
 const filteredUsers = computed(() => {
   if (!users.value) return [];
-
-  return users.value.filter(user => {
+  return users.value.filter((user) => {
     if (props.filters?.role && user.role !== props.filters.role) return false;
-    if (props.filters?.search && !user.name.toLowerCase().includes(props.filters.search.toLowerCase())) {
+    if (
+      props.filters?.search &&
+      !user.name.toLowerCase().includes(props.filters.search.toLowerCase())
+    ) {
       return false;
     }
     return true;
@@ -727,17 +415,7 @@ const filteredUsers = computed(() => {
 });
 
 const handleUserSelect = (user: User) => {
-  emit('user-select', user);
-};
-
-const toggleUserExpansion = (userId: string) => {
-  const newSet = new Set(expandedUsers.value);
-  if (newSet.has(userId)) {
-    newSet.delete(userId);
-  } else {
-    newSet.add(userId);
-  }
-  expandedUsers.value = newSet;
+  emit("user-select", user);
 };
 
 const refreshUsers = () => {
@@ -746,291 +424,89 @@ const refreshUsers = () => {
 </script>
 ```
 
-### Angular 18 Standalone Components
+---
+
+## Best Practices
+
+### Component Design
 
 ```typescript
-// user-card.component.ts
-import { Component, Input, Output, EventEmitter } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { User } from './user.model';
+// 1. Use TypeScript for type safety
+interface Props {
+  user: User;
+  onSelect: (user: User) => void;
+}
 
-@Component({
-  selector: 'app-user-card',
-  standalone: true,
-  imports: [CommonModule],
-  template: `
-    <div
-      class="border rounded-lg p-4 cursor-pointer transition-all"
-      [class]="{ 'border-blue-500 bg-blue-50': isSelected }"
-      (click)="onCardClick()"
-      @mouseenter="onMouseEnter()"
-      @mouseleave="onMouseLeave()"
-    >
-      <div class="flex items-center justify-between">
-        <div class="flex items-center space-x-4">
-          <img
-            [src]="user.avatar || getDefaultAvatar(user.id)"
-            [alt]="user.name"
-            class="w-12 h-12 rounded-full"
-          />
+// 2. Memoize expensive computations
+const sortedUsers = useMemo(() => {
+  return users.sort((a, b) => a.name.localeCompare(b.name));
+}, [users]);
 
-          <div>
-            <h3 class="font-semibold text-lg">{{ user.name }}</h3>
-            <p class="text-gray-600">{{ user.email }}</p>
-            <span [class]="getRoleClass(user.role)">
-              {{ user.role }}
-            </span>
-          </div>
-        </div>
+// 3. Use useCallback for event handlers
+const handleClick = useCallback(() => {
+  onSelect(user);
+}, [onSelect, user]);
 
-        <button
-          (click)="onExpandClick($event)"
-          class="p-2 hover:bg-gray-100 rounded"
-          [attr.aria-label]="isExpanded ? 'Collapse' : 'Expand'"
-        >
-          {{ isExpanded ? '−' : '+' }}
-        </button>
-      </div>
-
-      <div
-        *ngIf="isExpanded"
-        [@slideDown]="animationDone()"
-        class="mt-4 pt-4 border-t"
-      >
-        <p class="text-sm text-gray-600">
-          Member since: {{ user.createdAt | date:'mediumDate' }}
-        </p>
-        <div class="flex space-x-2 mt-2">
-          <button class="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600">
-            Edit
-          </button>
-          <button class="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600">
-            Message
-          </button>
-        </div>
-      </div>
-    </div>
-  `,
-  styles: [`
-    .fade-in {
-      animation: fadeIn 0.3s ease-in-out;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-  `]
-})
-export class UserCardComponent {
-  @Input() user!: User;
-  @Input() isExpanded = false;
-  @Input() isSelected = false;
-
-  @Output() userSelect = new EventEmitter<User>();
-  @Output() toggleExpand = new EventEmitter<string>();
-
-  animationDone = false;
-
-  onCardClick(): void {
-    this.userSelect.emit(this.user);
+// 4. Implement proper error boundaries
+class ErrorBoundary extends React.Component {
+  componentDidCatch(error, errorInfo) {
+    console.error("Error:", error, errorInfo);
   }
 
-  onExpandClick(event: MouseEvent): void {
-    event.stopPropagation();
-    this.toggleExpand.emit(this.user.id);
-  }
-
-  onMouseEnter(): void {
-    // Optional hover effects
-  }
-
-  onMouseLeave(): void {
-    // Optional hover effects
-  }
-
-  getDefaultAvatar(userId: string): string {
-    return `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`;
-  }
-
-  getRoleClass(role: string): string {
-    const baseClass = 'inline-block px-2 py-1 text-xs rounded';
-    switch (role) {
-      case 'admin':
-        return `${baseClass} bg-red-100 text-red-800`;
-      case 'moderator':
-        return `${baseClass} bg-yellow-100 text-yellow-800`;
-      default:
-        return `${baseClass} bg-green-100 text-green-800`;
-    }
+  render() {
+    return this.props.children;
   }
 }
 ```
 
----
+### Performance Tips
 
-## Testing Strategies
-
-### React Testing Library
-
-```typescript
-// __tests__/UserList.test.tsx
-import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { UserList } from '../UserList';
-import { User } from '../types';
-
-const createTestQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: { retry: false },
-    mutations: { retry: false },
-  },
-});
-
-const renderWithQueryClient = (component: React.ReactElement) => {
-  const queryClient = createTestQueryClient();
-  return render(
-    <QueryClientProvider client={queryClient}>
-      {component}
-    </QueryClientProvider>
-  );
-};
-
-describe('UserList', () => {
-  const mockUsers: User[] = [
-    {
-      id: '1',
-      name: 'John Doe',
-      email: 'john@example.com',
-      role: 'admin',
-      createdAt: new Date('2023-01-01'),
-    },
-    {
-      id: '2',
-      name: 'Jane Smith',
-      email: 'jane@example.com',
-      role: 'user',
-      createdAt: new Date('2023-02-01'),
-    },
-  ];
-
-  it('renders user list correctly', async () => {
-    renderWithQueryClient(
-      <UserList
-        users={mockUsers}
-        onUserSelect={jest.fn()}
-      />
-    );
-
-    expect(screen.getByText('Users (2)')).toBeInTheDocument();
-    expect(screen.getByText('John Doe')).toBeInTheDocument();
-    expect(screen.getByText('Jane Smith')).toBeInTheDocument();
-  });
-
-  it('filters users by role', async () => {
-    renderWithQueryClient(
-      <UserList
-        users={mockUsers}
-        filters={{ role: 'admin' }}
-        onUserSelect={jest.fn()}
-      />
-    );
-
-    expect(screen.getByText('Users (1)')).toBeInTheDocument();
-    expect(screen.getByText('John Doe')).toBeInTheDocument();
-    expect(screen.queryByText('Jane Smith')).not.toBeInTheDocument();
-  });
-
-  it('calls onUserSelect when user card is clicked', async () => {
-    const onUserSelect = jest.fn();
-
-    renderWithQueryClient(
-      <UserList
-        users={mockUsers}
-        onUserSelect={onUserSelect}
-      />
-    );
-
-    fireEvent.click(screen.getByText('John Doe'));
-
-    expect(onUserSelect).toHaveBeenCalledWith(mockUsers[0]);
-  });
-
-  it('expands and collapses user details', async () => {
-    renderWithQueryClient(
-      <UserList
-        users={mockUsers}
-        onUserSelect={jest.fn()}
-      />
-    );
-
-    const expandButton = screen.getAllByLabelText('Expand')[0];
-    fireEvent.click(expandButton);
-
-    await waitFor(() => {
-      expect(screen.getByText(/Member since:/)).toBeInTheDocument();
-    });
-
-    fireEvent.click(expandButton);
-
-    await waitFor(() => {
-      expect(screen.queryByText(/Member since:/)).not.toBeInTheDocument();
-    });
-  });
-});
-```
+- Use React.memo for expensive components
+- Implement virtual scrolling for long lists
+- Lazy load images with loading="lazy"
+- Use Web Workers for heavy computations
+- Optimize bundle size with tree shaking
 
 ---
 
-## Quick Reference
+## Related Skills
 
-### Essential Commands
+- `moai-lib-shadcn-ui`: Component library
+- `moai-baas-vercel-ext`: Deployment platform
+- `moai-domain-figma`: Design integration
 
-```bash
-# React/Next.js
-npm create-next-app@latest
-npm run dev
-npm run build
-npm run start
+---
 
-# Vue
-npm create vue@latest
-npm run dev
-npm run build
+## Validation Checklist
 
-# Angular
-npm install -g @angular/cli
-ng new my-app
-ng serve
+**Architecture**:
 
-# Testing
-npm run test
-npm run test:coverage
-npm run test:e2e
-```
+- [ ] Component structure defined
+- [ ] State management configured
+- [ ] Routing implemented
+- [ ] API integration complete
 
-### Package.json Scripts
+**Performance**:
 
-```json
-{
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "type-check": "tsc --noEmit",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
-    "analyze": "ANALYZE=true npm run build"
-  }
-}
-```
+- [ ] Code splitting enabled
+- [ ] Lazy loading implemented
+- [ ] Bundle size optimized
+- [ ] Performance metrics tracked
+
+**Accessibility**:
+
+- [ ] ARIA labels added
+- [ ] Keyboard navigation working
+- [ ] Focus management implemented
+- [ ] Screen reader tested
+
+**Quality**:
+
+- [ ] TypeScript configured
+- [ ] Tests written
+- [ ] Error boundaries added
+- [ ] Loading states handled
 
 ---
 
 **Last Updated**: 2025-11-20
-**Status**: Production Ready | Enterprise Approved
-**Frameworks**: React 19, Vue 3.5, Angular 18, Svelte 5
-**Features**: TypeScript, Performance, Accessibility, Testing

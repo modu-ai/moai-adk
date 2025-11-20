@@ -275,7 +275,7 @@ class AlfredToMoaiMigrator:
                 json.load(f)  # This will raise if JSON is invalid
 
             logger.debug("settings.json update and verification completed")
-        
+
         except json.JSONDecodeError as e:
             raise Exception(f"settings.json JSON format error: {str(e)}")
         except Exception as e:

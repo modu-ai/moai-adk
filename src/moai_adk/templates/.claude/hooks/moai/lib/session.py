@@ -4,7 +4,6 @@
 SessionStart, SessionEnd event handling
 """
 
-from typing import Any, Dict, List
 
 from lib import HookPayload, HookResult
 from lib.checkpoint import list_checkpoints

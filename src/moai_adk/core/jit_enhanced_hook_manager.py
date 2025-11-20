@@ -13,22 +13,19 @@ Key Features:
 - Smart caching and invalidation
 """
 
-import json
-import time
 import asyncio
-from datetime import datetime, timedelta
+import json
+import threading
+import time
+from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple, Union, Callable
-from dataclasses import dataclass, field
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import threading
-import subprocess
-import sys
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 # Import JIT Context Loading System from Phase 2
 try:
-    from .jit_context_loader import JITContextLoader, ContextCache, TokenBudgetManager
+    from .jit_context_loader import ContextCache, JITContextLoader, TokenBudgetManager
     from .jit_context_loader import Phase as JITPhase
 except ImportError:
     # Fallback for environments where JIT system might not be available
@@ -649,8 +646,6 @@ class JITEnhancedHookManager:
             if remaining_time <= 0:
                 break
 
-            start_time = time.time()
-
             try:
                 result = await self._execute_single_hook(hook_path, context)
                 results.append(result)
@@ -1094,7 +1089,7 @@ if __name__ == "__main__":
 
         # Show metrics
         metrics = manager.get_performance_metrics()
-        print(f"\nPerformance Metrics:")
+        print("\nPerformance Metrics:")
         print(f"  Total executions: {metrics.total_executions}")
         print(f"  Success rate: {metrics.successful_executions}/{metrics.total_executions}")
         print(f"  Avg execution time: {metrics.average_execution_time_ms:.1f}ms")

@@ -15,18 +15,15 @@ Key Features:
 """
 
 import json
-import time
-import hashlib
 import logging
+import statistics
+import uuid
+from collections import Counter, defaultdict, deque
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
-from dataclasses import dataclass, field, asdict
-from collections import defaultdict, Counter, deque
-import statistics
-import re
-import uuid
+from typing import Any, Dict, List, Optional, Set
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -337,7 +334,6 @@ class UserBehaviorAnalytics:
             patterns["most_used_tools"] = dict(Counter(all_tools).most_common(10))
 
             # Peak productivity hours
-            session_hours = [s.start_time.hour for s in user_sessions]
             hour_productivity = defaultdict(list)
 
             for session in user_sessions:
@@ -373,7 +369,6 @@ class UserBehaviorAnalytics:
             return self._insight_cache[cache_key]
 
         patterns = self.get_user_patterns(user_id, days)
-        user_prefs = self.user_preferences.get(user_id, UserPreferences(user_id=user_id))
 
         insights = {
             "productivity_insights": [],
@@ -860,7 +855,7 @@ if __name__ == "__main__":
     ended_session = analytics.end_session(session_id)
 
     if ended_session:
-        print(f"Session completed:")
+        print("Session completed:")
         print(f"  Duration: {ended_session.total_duration_ms / 1000:.1f} seconds")
         print(f"  Commands: {ended_session.total_commands}")
         print(f"  Productivity Score: {ended_session.productivity_score}")

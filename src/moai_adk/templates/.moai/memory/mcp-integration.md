@@ -1,451 +1,486 @@
 # MCP Integration Guide
 
-**Complete guide for Model Context Protocol integration with MoAI-ADK.**
+## Overview
 
-> **See also**: CLAUDE.md → "MCP Integration & External Services" for quick reference
+This document defines the integration patterns for the three MCP servers used in MoAI-ADK: Context7, Playwright, and Figma Dev Mode.
 
----
+## MCP Server Configuration
 
-## What is MCP?
+### Current MCP Servers
 
-**MCP (Model Context Protocol)**: Standard for connecting AI models to external services and data sources.
-
-**Key Features**:
-- Seamless external service integration
-- Real-time data access
-- Standardized resource management
-- Automatic tool discovery
-
----
-
-## Setup Configuration
-
-### .claude/mcp.json Structure
+Based on `.mcp.json`, the system uses three MCP servers:
 
 ```json
 {
   "mcpServers": {
     "context7": {
       "command": "npx",
-      "args": ["-y", "@upstash/context7-mcp@latest"],
-      "env": {
-        "CONTEXT7_SESSION_STORAGE": ".moai/sessions/",
-        "CONTEXT7_CACHE_SIZE": "1GB",
-        "CONTEXT7_SESSION_TTL": "30d"
-      }
+      "args": ["-y", "@upstash/context7-mcp@latest"]
     },
-    "github": {
+    "playwright": {
       "command": "npx",
-      "args": ["-y", "@anthropic-ai/mcp-server-github"],
-      "oauth": {
-        "clientId": "your-client-id",
-        "clientSecret": "your-client-secret",
-        "scopes": ["repo", "issues"]
-      }
+      "args": ["-y", "@playwright/mcp@latest"]
     },
-    "filesystem": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/root"]
+    "figma-dev-mode-mcp-server": {
+      "type": "sse",
+      "url": "http://127.0.0.1:3845/sse"
     }
   }
 }
 ```
 
----
+## Context7 Integration
 
-## Context7 MCP (Documentation Lookup)
+### Purpose
 
-**Purpose**: Access real-time documentation for libraries and frameworks
+Context7 provides access to up-to-date documentation and library references, ensuring agents work with the latest API information.
 
-**Install**:
-```bash
-npx @upstash/context7-mcp@latest
-```
+### Capabilities
 
-### Usage Pattern 1: Resolve Library ID
+**Library Resolution**:
+- Resolve library names to Context7-compatible IDs
+- Access latest API documentation
+- Version-specific documentation retrieval
+- Code examples and best practices
 
+**Documentation Access**:
+- Official documentation from libraries
+- API reference materials
+- Implementation guides
+- Troubleshooting resources
+
+### Usage Patterns
+
+**Library Resolution**:
 ```python
-# Get library ID from name
-library_id = mcp__context7__resolve-library-id("React")
-# Returns: /facebook/react
+# Resolve library to Context7 ID
+library_id = await mcp__context7__resolve_library_id("React")
+# Returns: "/facebook/react/19.0.0"
+
+# Get latest documentation
+docs = await mcp__context7__get_library_docs(library_id)
 ```
 
-### Usage Pattern 2: Get Latest Documentation
-
+**Agent Integration**:
 ```python
-# Fetch latest React documentation
-docs = mcp__context7__get-library-docs("/facebook/react")
-# Returns: Current API reference, examples, patterns
+# Skill with Context7 integration
+Skill("moai-lang-react")  # Load React best practices
+# Combine with latest API docs
+api_docs = await mcp__context7__get_library_docs("/facebook/react/19.0.0")
+
+# Use in agent delegation
+result = await Task(
+    subagent_type="frontend-expert",
+    prompt=f"Implement with latest React 19 features: {api_docs}",
+    context={"latest_api": api_docs}
+)
 ```
 
-### Usage Pattern 3: Version-Specific Docs
-
+**Workflow Integration**:
 ```python
-# Get React 18.2.0 documentation
-docs = mcp__context7__get-library-docs("/facebook/react/18.2.0")
-# Returns: Version-specific docs
-```
-
-### Session Management
-
-```json
-{
-  "env": {
-    "CONTEXT7_SESSION_STORAGE": ".moai/sessions/",
-    "CONTEXT7_CACHE_SIZE": "1GB",
-    "CONTEXT7_SESSION_TTL": "30d"
-  }
-}
-```
-
-**Benefits**:
-- Persistent session caching
-- 15-minute query cache
-- 30-day session retention
-- 1GB cache limit
-
----
-
-## GitHub MCP Server
-
-**Purpose**: Access GitHub issues, PRs, repos, workflows
-
-**Configuration**:
-```json
-{
-  "github": {
-    "command": "npx",
-    "args": ["-y", "@anthropic-ai/mcp-server-github"],
-    "oauth": {
-      "clientId": "Ov23liXXXXXXXXXXXXXX",
-      "clientSecret": "your-secret",
-      "scopes": ["repo", "issues", "pull_requests"]
+# SPEC creation with latest API knowledge
+spec = await Task(
+    subagent_type="spec-builder",
+    prompt="Create specification for React application",
+    context={
+        "react_docs": await get_latest_docs("React"),
+        "best_practices": Skill("moai-lang-react")
     }
-  }
-}
+)
 ```
 
-### Usage Examples
+### Agent Usage Patterns
 
-**List Issues**:
-```bash
-@github list issues --repo moai-adk --label "bug"
+**For Frontend Development**:
+- `frontend-expert`: Always loads Context7 for current React/Vue/Angular versions
+- `component-designer`: Uses latest component library documentation
+- `ui-ux-expert`: Integrates latest UI framework best practices
+
+**For Backend Development**:
+- `backend-expert`: Uses latest framework documentation
+- `api-designer`: Integrates current API design standards
+- `database-expert`: Uses latest database documentation
+
+## Playwright Integration
+
+### Purpose
+
+Playwright provides browser automation capabilities for E2E testing, UI validation, and web scraping.
+
+### Capabilities
+
+**Browser Automation**:
+- Automated browser control
+- Page navigation and interaction
+- Form filling and submission
+- Click and type operations
+
+**Testing and Validation**:
+- E2E test execution
+- Visual regression testing
+- Performance testing
+- Accessibility testing
+
+**Data Extraction**:
+- Web scraping capabilities
+- Screenshot capture
+- Page content extraction
+- Element text retrieval
+
+### Usage Patterns
+
+**E2E Testing**:
+```python
+# Start browser context
+context = await mcp__playwright_create_context()
+
+# Navigate to page
+await mcp__playwright_goto(context, "https://example.com")
+
+# Test functionality
+await mcp__playwright_click(context, "button#submit")
+await mcp__playwright_fill(context, "input#email", "test@example.com")
+
+# Get page content
+content = await mcp__playwright_get_page_content(context)
 ```
 
-**Get PR Details**:
-```bash
-@github get pullrequest --repo moai-adk --number 123
-```
-
-**Create Issue**:
-```bash
-@github create issue --repo moai-adk --title "Fix login"
-```
-
-**Get Repository Info**:
-```bash
-@github get repository --repo moai-adk
-```
-
----
-
-## Filesystem MCP Server
-
-**Purpose**: Navigate and search project files
-
-**Configuration**:
-```json
-{
-  "filesystem": {
-    "command": "npx",
-    "args": ["-y", "@modelcontextprotocol/server-filesystem", "/Users/goos/MoAI/MoAI-ADK"]
-  }
-}
-```
-
-### Usage Examples
-
-**List Files**:
-```bash
-@filesystem list /Users/goos/MoAI/MoAI-ADK/src
-```
-
-**Search Content**:
-```bash
-@filesystem search "def authenticate" --type .py
-```
-
-**Read File**:
-```bash
-@filesystem read /Users/goos/MoAI/MoAI-ADK/README.md
-```
-
----
-
-## Notion MCP Server
-
-**Purpose**: Access Notion workspace and databases
-
-**Configuration**:
-```json
-{
-  "notion": {
-    "command": "npx",
-    "args": ["-y", "notion-mcp"],
-    "env": {
-      "NOTION_API_TOKEN": "your-api-token"
+**Agent Integration**:
+```python
+# Test automation agent
+test_result = await Task(
+    subagent_type="test-engineer",
+    prompt="Execute E2E tests for user authentication",
+    context={
+        "test_scenarios": authentication_scenarios,
+        "browser_automation": "playwright_available"
     }
-  }
-}
+)
+
+# UI validation agent
+ui_validation = await Task(
+    subagent_type="ui-ux-expert",
+    prompt="Validate UI accessibility and responsiveness",
+    context={
+        "test_results": test_result,
+        "accessibility_tests": "playwright_accessibility"
+    }
+)
 ```
 
-### Usage Examples
+### Agent Usage Patterns
 
-**Create Database Page**:
-```bash
-@notion create page --database-id "xxx" --title "SPEC-001"
+**For Quality Assurance**:
+- `test-engineer**: Executes comprehensive test suites
+- `quality-gate`: Validates test coverage and quality metrics
+- `ui-ux-expert`: Performs accessibility and usability testing
+
+**For Development**:
+- `frontend-expert`: Validates implementation with browser testing
+- `component-designer`: Tests component behavior
+- `performance-engineer`: Conducts performance testing
+
+## Figma Dev Mode Integration
+
+### Purpose
+
+Figma Dev Mode provides design system integration, enabling seamless conversion from design to code and component library generation.
+
+### Capabilities
+
+**Design System Access**:
+- Design file metadata retrieval
+- Component extraction
+- Style guide generation
+- Design token export
+
+**Design-to-Code Conversion**:
+- Component code generation
+- CSS extraction from designs
+- Responsive design implementation
+- Design system synchronization
+
+**Collaboration Features**:
+- Real-time design updates
+- Version control integration
+- Design review workflows
+- Developer handoff automation
+
+### Usage Patterns
+
+**Design Access**:
+```python
+# Get design metadata
+metadata = await mcp__figma_get_metadata("file_id")
+
+# Extract variables
+variables = await mcp__figma_get_variable_defs()
+
+# Get screenshot
+screenshot = await mcp__figma_get_screenshot("component_id")
 ```
 
-**List Pages**:
-```bash
-@notion list pages --database-id "xxx"
+**Agent Integration**:
+```python
+# Component design from Figma
+component = await Task(
+    subagent_type="component-designer",
+    prompt="Create React components from Figma design",
+    context={
+        "design_metadata": await get_figma_design(),
+        "style_variables": await get_figma_variables(),
+        "component_specs": await extract_components()
+    }
+)
+
+# UI/UX validation with Figma reference
+ui_validation = await Task(
+    subagent_type="ui-ux-expert",
+    prompt="Validate implementation against Figma design",
+    context={
+        "figma_design": figma_specs,
+        "implementation": frontend_code,
+        "accessibility_standards": wcag_standards
+    }
+)
 ```
 
-**Update Properties**:
-```bash
-@notion update page --page-id "xxx" --status "completed"
-```
+### Agent Usage Patterns
 
----
+**For Design System Development**:
+- `component-designer`: Creates components from Figma designs
+- `ui-ux-expert`: Validates design implementation
+- `frontend-expert`: Implements design-based components
 
-## Best MCP Practices
+**For Development**:
+- `docs-manager`: Generates documentation from design specifications
+- `quality-gate`: Ensures design consistency in implementation
 
-### Discovery Pattern
+## Integration Workflows
 
-```bash
-# 1. Find available resources
-/mcp list resources
-
-# 2. Check server status
-/mcp status
-
-# 3. Explore capabilities
-claude /doctor
-```
-
-### Usage Pattern
+### Complete Design-to-Code Workflow
 
 ```python
-# Direct MCP tool calls (80% of cases)
-result = mcp__context7__get-library-docs("/facebook/react")
+# 1. Design Analysis (Figma)
+design_analysis = await Task(
+    subagent_type="ui-ux-expert",
+    prompt="Analyze Figma design for implementation requirements",
+    context={"figma_file": await get_figma_design()}
+)
 
-# MCP Agent integration (20% complex cases)
-Task(subagent_type="mcp-context7-integrator", prompt="...")
+# 2. Component Creation (Figma + Design)
+components = await Task(
+    subagent_type="component-designer",
+    prompt="Create React components from Figma specifications",
+    context={
+        "figma_design": await get_figma_design(),
+        "analysis": design_analysis,
+        "react_docs": await get_context7_docs("React")
+    }
+)
+
+# 3. Implementation (Context7 + React)
+implementation = await Task(
+    subagent_type="frontend-expert",
+    prompt="Implement components with latest React patterns",
+    context={
+        "components": components,
+        "react_19_docs": await get_context7_docs("React", "19.0.0"),
+        "best_practices": Skill("moai-lang-react")
+    }
+)
+
+# 4. Testing (Playwright)
+testing = await Task(
+    subagent_type="test-engineer",
+    prompt="Create comprehensive E2E tests for components",
+    context={
+        "implementation": implementation,
+        "test_scenarios": await generate_test_cases()
+    }
+)
+
+# 5. Validation (All MCP Servers)
+validation = await Task(
+    subagent_type="quality-gate",
+    prompt="Validate complete implementation",
+    context={
+        "design_fidelity": await validate_against_figma(),
+        "code_quality": await analyze_code_quality(),
+        "test_results": testing,
+        "accessibility": await run_accessibility_tests()
+    }
+)
 ```
 
-### Error Handling
+### SPEC-to-Implementation Workflow
 
-```bash
-# Connection failed?
-/mcp restart
+```python
+# 1. SPEC Creation (Context7 for latest standards)
+spec = await Task(
+    subagent_type="spec-builder",
+    prompt="Create specification with latest technology standards",
+    context={
+        "react_docs": await get_context7_docs("React"),
+        "security_standards": await get_context7_docs("OWASP"),
+        "api_standards": await get_context7_docs("OpenAPI")
+    }
+)
 
-# Invalid library ID?
-lib_id = mcp__context7__resolve-library-id("react")
-# → Returns correct format
+# 2. Architecture Design (Context7 + Domain Expertise)
+architecture = await Task(
+    subagent_type="api-designer",
+    prompt="Design system architecture",
+    context={
+        "specification": spec,
+        "microservices_docs": await get_context7_docs("Microservices"),
+        "domain_patterns": Skill("moai-domain-microservices")
+    }
+)
 
-# Rate limited?
-# Wait 1 minute and retry
+# 3. Implementation (Context7 + Language Skills)
+implementation = await Task(
+    subagent_type="tdd-implementer",
+    prompt="Implement following specification and architecture",
+    context={
+        "specification": spec,
+        "architecture": architecture,
+        "latest_patterns": await get_context7_docs("TDD"),
+        "language_skills": [Skill("moai-lang-python"), Skill("moai-lang-typescript")]
+    }
+)
+
+# 4. Testing (Playwright)
+testing = await Task(
+    subagent_type="test-engineer",
+    prompt="Create comprehensive test suite",
+    context={
+        "implementation": implementation,
+        "testing_frameworks": await get_context7_docs("Playwright"),
+        "automation_patterns": Skill("moai-domain-testing")
+    }
+)
+
+# 5. Documentation (All sources)
+documentation = await Task(
+    subagent_type="docs-manager",
+    prompt="Generate comprehensive documentation",
+    context={
+        "implementation": implementation,
+        "api_docs": await generate_api_docs(),
+        "testing_docs": testing,
+        "design_docs": await extract_from_figma()
+    }
+)
 ```
 
----
+## Error Handling and Recovery
 
-## Integration with MoAI-ADK Workflow
+### MCP Server Connection Issues
 
-### Phase 1: Planning with Context7
-
-```bash
-/moai:1-plan "Implement React hooks"
-# MCP Context7 fetches latest React documentation
-# → Includes current best practices
+**Connection Failure Recovery**:
+```python
+async def handle_mcp_connection(server_name):
+    try:
+        # Attempt connection
+        if server_name == "context7":
+            await test_context7_connection()
+        elif server_name == "playwright":
+            await test_playwright_connection()
+        elif server_name == "figma":
+            await test_figma_connection()
+    except ConnectionError:
+        # Fallback to alternative strategies
+        await log_mcp_failure(server_name)
+        await use_cached_information(server_name)
+        await notify_user_of_limitation(server_name)
 ```
 
-### Phase 2: Implementation
+### Graceful Degradation
 
-```bash
-/moai:2-run SPEC-REACT-001
-# MCP GitHub checks for similar issues
-# → Learns from existing solutions
-```
-
-### Phase 3: Documentation
-
-```bash
-/moai:3-sync auto SPEC-REACT-001
-# MCP Notion updates project tracking
-# → Records completed feature
-```
-
----
+**When MCP Unavailable**:
+- Use cached documentation when Context7 unavailable
+- Use manual testing patterns when Playwright unavailable
+- Use static design specifications when Figma unavailable
+- Maintain workflow continuity with reduced capabilities
 
 ## Performance Optimization
 
-### Caching Strategy
+### MCP Server Caching
 
-```json
-{
-  "env": {
-    "CONTEXT7_CACHE_SIZE": "1GB",
-    "CONTEXT7_SESSION_TTL": "30d"
-  }
-}
+**Context7 Caching**:
+```python
+# Cache library documentation
+doc_cache = {}
+
+async def get_cached_docs(library_name):
+    if library_name not in doc_cache:
+        library_id = await mcp__context7__resolve_library_id(library_name)
+        doc_cache[library_name] = await mcp__context7__get_library_docs(library_id)
+    return doc_cache[library_name]
 ```
 
-**Benefits**:
-- 15-minute query cache (automatic)
-- Persistent session storage
-- Avoid rate limits
-- Faster documentation lookup
+**Figma Design Caching**:
+```python
+# Cache design metadata
+design_cache = {}
 
-### Resource Limits
-
-```json
-{
-  "env": {
-    "MCP_TIMEOUT": "30s",
-    "MCP_MAX_RETRIES": "3",
-    "MCP_CACHE_TTL": "1h"
-  }
-}
+async def get_cached_design(figma_id):
+    if figma_id not in design_cache:
+        design_cache[figma_id] = await mcp__figma_get_metadata(figma_id)
+    return design_cache[figma_id]
 ```
 
----
+### Batch Operations
+
+**Batch Documentation Requests**:
+```python
+# Request multiple library docs efficiently
+libraries = ["React", "Vue", "Angular"]
+doc_requests = [
+    get_cached_docs(lib) for lib in libraries
+]
+docs = await asyncio.gather(*doc_requests)
+```
+
+**Batch Design Extractions**:
+```python
+# Extract multiple components efficiently
+component_ids = ["comp1", "comp2", "comp3"]
+extractions = [
+    mcp__figma_get_screenshot(comp_id) for comp_id in component_ids
+]
+screenshots = await asyncio.gather(*extractions)
+```
 
 ## Security Considerations
 
-### Credential Management
+### Access Control
 
-```json
+**MCP Server Access**:
+- Restrict Figma access to authorized design files
+- Limit Playwright to approved testing environments
+- Control Context7 access to approved documentation sources
+
+**Data Protection**:
+- Never cache sensitive design data
+- Validate all Figma file access permissions
+- Sanitize Playwright test data
+- Protect Context7 API keys and credentials
+
+### Audit Trail
+
+**MCP Usage Logging**:
+```python
 {
-  "oauth": {
-    "clientId": "Ov23liXXXXXXXXXXXXXX",
-    "clientSecret": "ghp_xxxxxxxxxxxxxxx"
-  }
+    "timestamp": "2025-11-20T07:30:00Z",
+    "mcp_server": "figma-dev-mode-mcp-server",
+    "action": "get_metadata",
+    "file_id": "figma_file_123",
+    "user_agent": "ui-ux-expert",
+    "success": true,
+    "data_size": "2.3MB"
 }
 ```
 
-**Best Practices**:
-- Never commit credentials to git
-- Use environment variables
-- Rotate tokens regularly
-- Audit access logs
-
-### Rate Limiting
-
-**GitHub API**: 60 requests per hour (unauthenticated), 5000 (authenticated)
-
-**Context7**: 1000 requests per day
-
-**Notion**: 3 requests per second
-
----
-
-## Troubleshooting
-
-### MCP Server Not Found
-
-```bash
-# Install missing server
-npx @upstash/context7-mcp@latest
-
-# Verify installation
-which context7-mcp
-```
-
-### Connection Error
-
-```bash
-# Restart MCP servers
-/mcp restart
-
-# Check connectivity
-curl -I https://api.context7.io
-```
-
-### Authentication Failed
-
-```bash
-# Verify credentials
-echo $GITHUB_TOKEN  # Should not be empty
-echo $NOTION_API_TOKEN  # Should not be empty
-
-# Update .claude/mcp.json with correct credentials
-```
-
-### Rate Limited
-
-```bash
-# Wait before retrying (backoff strategy)
-# Context7: Wait 1 minute
-# GitHub: Wait 1 hour
-```
-
----
-
-## Advanced Features
-
-### Session Sharing Across Agents
-
-```python
-# Agent 1: Research with Context7
-research = Task(
-    subagent_type="mcp-context7-integrator",
-    prompt="Research React patterns"
-)
-
-# Agent 2: Uses research findings
-implementation = Task(
-    subagent_type="frontend-expert",
-    prompt=f"Implement based on: {research}",
-    shared_session=research.session_id
-)
-```
-
-### Automated Workflows
-
-```bash
-# Day 1: Research documentation
-/moai:0-project
-# MCP Context7 auto-loads current docs
-
-# Day 2: Create issue on GitHub
-/moai:1-plan "Fix authentication bug"
-# MCP GitHub checks existing issues
-
-# Day 3: Record completion
-/moai:3-sync auto
-# MCP Notion marks task done
-```
-
----
-
-## Checklist
-
-- [ ] .claude/mcp.json created
-- [ ] Context7 installed and configured
-- [ ] GitHub credentials set
-- [ ] Filesystem access configured
-- [ ] MCP servers tested (`/mcp status`)
-- [ ] Environment variables set
-- [ ] Credentials secured (not in git)
-- [ ] Rate limits understood
-- [ ] Error handling tested
-- [ ] Performance baseline established
-
----
-
-**Last Updated**: 2025-11-18
-**Version**: v0.26.0
-**Format**: Markdown | **Language**: English
-**Context7 MCP**: Latest (@upstash/context7-mcp@latest)
-**GitHub MCP**: Latest (@anthropic-ai/mcp-server-github)
-**Filesystem MCP**: Latest (@modelcontextprotocol/server-filesystem)
+This integration guide ensures optimal use of MCP servers while maintaining security, performance, and reliability standards.

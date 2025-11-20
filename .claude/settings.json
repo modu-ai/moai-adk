@@ -82,6 +82,8 @@
       "Bash(time:*)"
     ],
     "ask": [
+      "Read(./.env)",
+      "Read(./.env.*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
@@ -101,8 +103,6 @@
       "Bash(rm -rf:*)"
     ],
     "deny": [
-      "Read(./.env)",
-      "Read(./.env.*)",
       "Read(./secrets/**)",
       "Read(~/.ssh/**)",
       "Read(~/.aws/**)",

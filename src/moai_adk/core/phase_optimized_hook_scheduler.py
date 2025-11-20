@@ -14,22 +14,19 @@ Key Features:
 """
 
 import asyncio
-import time
-from datetime import datetime, timedelta
-from enum import Enum
-from typing import Any, Dict, List, Optional, Set, Tuple, Callable, Union
-from dataclasses import dataclass, field
-from concurrent.futures import ThreadPoolExecutor
-import heapq
 import threading
+import time
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+from typing import Any, Dict, List, Optional, Set
 
 from .jit_enhanced_hook_manager import (
-    JITEnhancedHookManager,
     HookEvent,
-    HookPriority,
-    HookExecutionResult,
     HookMetadata,
-    Phase
+    HookPriority,
+    JITEnhancedHookManager,
+    Phase,
 )
 
 
@@ -323,9 +320,6 @@ class PhaseOptimizedHookScheduler:
         """Select optimal scheduling strategy based on context"""
         if not self.enable_adaptive_scheduling:
             return self.default_strategy
-
-        # Get phase parameters
-        phase_params = self._phase_parameters.get(context.current_phase, {})
 
         # Strategy selection based on phase and constraints
         if context.available_token_budget < 5000:
@@ -877,13 +871,13 @@ if __name__ == "__main__":
 
         # Show insights
         insights = scheduler.get_phase_optimization_insights(Phase.SPEC)
-        print(f"\nPhase insights for SPEC:")
+        print("\nPhase insights for SPEC:")
         for rec in insights.get("optimization_recommendations", []):
             print(f"  - {rec}")
 
         # Show statistics
         stats = scheduler.get_scheduling_statistics()
-        print(f"\nScheduling statistics:")
+        print("\nScheduling statistics:")
         print(f"  Total schedules: {stats['total_schedules']}")
         if stats.get("recommended_strategy"):
             print(f"  Recommended strategy: {stats['recommended_strategy']}")

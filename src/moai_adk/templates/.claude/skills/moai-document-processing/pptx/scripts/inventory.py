@@ -164,11 +164,11 @@ class ParagraphData:
             and paragraph._p is not None
             and paragraph._p.pPr is not None
         ):
-            pPr = paragraph._p.pPr
+            ppr = paragraph._p.pPr
             ns = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
             if (
-                pPr.find(f"{ns}buChar") is not None
-                or pPr.find(f"{ns}buAutoNum") is not None
+                ppr.find(f"{ns}buChar") is not None
+                or ppr.find(f"{ns}buAutoNum") is not None
             ):
                 self.bullet = True
                 if hasattr(paragraph, "level"):

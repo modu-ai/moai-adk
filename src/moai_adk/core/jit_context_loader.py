@@ -6,22 +6,20 @@ Phase-based token optimization system that achieves 85%+ efficiency through
 intelligent context loading, skill filtering, and budget management.
 """
 
-import os
-import json
-import time
 import hashlib
-import asyncio
-from datetime import datetime, timedelta
-from enum import Enum
-from typing import Dict, List, Any, Optional, Set, Tuple, Union
-from dataclasses import dataclass, field
-from collections import OrderedDict
-from pathlib import Path
+import json
 import logging
-import threading
-from concurrent.futures import ThreadPoolExecutor
-import psutil
+import os
 import sys
+import time
+from collections import OrderedDict
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+import psutil
 
 logger = logging.getLogger(__name__)
 
@@ -554,7 +552,6 @@ class ContextCache:
 
     def _calculate_memory_usage(self, entry: ContextEntry) -> int:
         """Calculate memory usage of a cache entry"""
-        import sys
 
         # Rough estimation of memory usage
         content_size = sys.getsizeof(entry.content)

@@ -20,7 +20,6 @@ Example:
 """
 
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -89,10 +88,10 @@ def setup_glm(api_token: str, project_root: Path | None = None) -> bool:
         print()
         print("📝 설정된 환경 변수:")
         print(f"   • ANTHROPIC_AUTH_TOKEN: {api_token[:20]}... (.env.glm에서 로드)")
-        print(f"   • ANTHROPIC_BASE_URL: https://api.z.ai/api/anthropic")
-        print(f"   • ANTHROPIC_DEFAULT_HAIKU_MODEL: glm-4.5-air")
-        print(f"   • ANTHROPIC_DEFAULT_SONNET_MODEL: glm-4.6")
-        print(f"   • ANTHROPIC_DEFAULT_OPUS_MODEL: glm-4.6")
+        print("   • ANTHROPIC_BASE_URL: https://api.z.ai/api/anthropic")
+        print("   • ANTHROPIC_DEFAULT_HAIKU_MODEL: glm-4.5-air")
+        print("   • ANTHROPIC_DEFAULT_SONNET_MODEL: glm-4.6")
+        print("   • ANTHROPIC_DEFAULT_OPUS_MODEL: glm-4.6")
         print()
         print("✅ GLM 설정이 완료되었습니다!")
         print("💡 Claude Code를 재시작하면 새 설정이 자동으로 로드됩니다.")

@@ -7,9 +7,7 @@ Defines the 3-tab configuration schema with:
 - Tab 3: Git Automation (0-4 questions, conditional based on mode)
 """
 
-from pathlib import Path
-from typing import Dict, Any
-import json
+from typing import Any, Dict
 
 
 def load_tab_schema() -> Dict[str, Any]:

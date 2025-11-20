@@ -9,12 +9,11 @@ Version: 1.0.0
 """
 
 import json
-import re
 import logging
-from typing import Any, Dict, List, Optional, Tuple, Union
+import re
 from dataclasses import dataclass
 from enum import Enum
-import traceback
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -606,7 +605,7 @@ if __name__ == "__main__":
         if result.warnings:
             print(f"  Warnings: {result.warnings}")
 
-    print(f"\nParser Statistics:")
+    print("\nParser Statistics:")
     stats = parser.get_stats()
     for key, value in stats.items():
         print(f"  {key}: {value}")

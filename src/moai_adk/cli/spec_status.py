@@ -24,8 +24,8 @@ try:
     from moai_adk.core.spec_status_manager import SpecStatusManager
 except ImportError:
     # Fallback: look in current directory
-    from pathlib import Path
     import sys
+    from pathlib import Path
     sys.path.insert(0, str(Path(__file__).parent.parent))
     try:
         from core.spec_status_manager import SpecStatusManager

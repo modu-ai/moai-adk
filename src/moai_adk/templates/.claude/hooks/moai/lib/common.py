@@ -4,7 +4,7 @@ Consolidated fallback implementations used across multiple hooks.
 """
 
 import statistics
-from typing import List, Dict
+from typing import Dict, List
 
 
 def format_duration(seconds: float) -> str:

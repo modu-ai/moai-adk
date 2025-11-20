@@ -11,14 +11,11 @@ Version: 1.0.0
 
 import json
 import logging
-import re
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
-from dataclasses import dataclass, field
-from enum import Enum
-from pathlib import Path
 import os
 import time
-from collections import defaultdict
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any, Dict, List, Optional
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -703,10 +700,10 @@ if __name__ == "__main__":
         if result.warnings:
             print(f"Warnings: {result.warnings}")
 
-    print(f"\n📊 Permission Statistics:")
+    print("\n📊 Permission Statistics:")
     stats = permission_manager.get_permission_stats()
     for key, value in stats.items():
         print(f"  {key}: {value}")
 
-    print(f"\n✨ Demo completed! The Unified Permission Manager addresses")
-    print(f"   the agent permission validation errors from the debug logs.")
+    print("\n✨ Demo completed! The Unified Permission Manager addresses")
+    print("   the agent permission validation errors from the debug logs.")

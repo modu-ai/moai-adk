@@ -447,28 +447,28 @@ class DocxXMLEditor(XMLEditor):
         para = doc.getElementsByTagName("w:p")[0]
 
         # Ensure w:pPr exists
-        pPr_list = para.getElementsByTagName("w:pPr")
-        if not pPr_list:
-            pPr = doc.createElement("w:pPr")
+        ppr_list = para.getElementsByTagName("w:pPr")
+        if not ppr_list:
+            ppr = doc.createElement("w:pPr")
             para.insertBefore(
-                pPr, para.firstChild
-            ) if para.firstChild else para.appendChild(pPr)
+                ppr, para.firstChild
+            ) if para.firstChild else para.appendChild(ppr)
         else:
-            pPr = pPr_list[0]
+            ppr = ppr_list[0]
 
         # Ensure w:rPr exists in w:pPr
-        rPr_list = pPr.getElementsByTagName("w:rPr")
-        if not rPr_list:
-            rPr = doc.createElement("w:rPr")
-            pPr.appendChild(rPr)
+        rpr_list = ppr.getElementsByTagName("w:rPr")
+        if not rpr_list:
+            rpr = doc.createElement("w:rPr")
+            ppr.appendChild(rpr)
         else:
-            rPr = rPr_list[0]
+            rpr = rpr_list[0]
 
         # Add <w:ins/> to w:rPr
         ins_marker = doc.createElement("w:ins")
-        rPr.insertBefore(
-            ins_marker, rPr.firstChild
-        ) if rPr.firstChild else rPr.appendChild(ins_marker)
+        rpr.insertBefore(
+            ins_marker, rpr.firstChild
+        ) if rpr.firstChild else rpr.appendChild(ins_marker)
 
         # Wrap all non-pPr children in <w:ins>
         ins_wrapper = doc.createElement("w:ins")
@@ -537,25 +537,25 @@ class DocxXMLEditor(XMLEditor):
                 raise ValueError("w:p element already contains tracked changes")
 
             # Check if it's a numbered list item
-            pPr_list = elem.getElementsByTagName("w:pPr")
-            is_numbered = pPr_list and pPr_list[0].getElementsByTagName("w:numPr")
+            ppr_list = elem.getElementsByTagName("w:pPr")
+            is_numbered = ppr_list and ppr_list[0].getElementsByTagName("w:numPr")
 
             if is_numbered:
                 # Add <w:del/> to w:rPr in w:pPr
-                pPr = pPr_list[0]
-                rPr_list = pPr.getElementsByTagName("w:rPr")
+                ppr = ppr_list[0]
+                rpr_list = ppr.getElementsByTagName("w:rPr")
 
-                if not rPr_list:
-                    rPr = self.dom.createElement("w:rPr")
-                    pPr.appendChild(rPr)
+                if not rpr_list:
+                    rpr = self.dom.createElement("w:rPr")
+                    ppr.appendChild(rpr)
                 else:
-                    rPr = rPr_list[0]
+                    rpr = rpr_list[0]
 
                 # Add <w:del/> marker
                 del_marker = self.dom.createElement("w:del")
-                rPr.insertBefore(
-                    del_marker, rPr.firstChild
-                ) if rPr.firstChild else rPr.appendChild(del_marker)
+                rpr.insertBefore(
+                    del_marker, rpr.firstChild
+                ) if rpr.firstChild else rpr.appendChild(del_marker)
 
             # Convert w:t → w:delText in all runs
             for t_elem in list(elem.getElementsByTagName("w:t")):

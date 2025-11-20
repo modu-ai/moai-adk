@@ -11,12 +11,9 @@ Version: 1.0.0
 
 import json
 import logging
-import re
-from typing import Any, Dict, List, Optional, Set, Tuple, Union, Callable
 from dataclasses import dataclass, field
 from enum import Enum
-import inspect
-from collections import defaultdict
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -942,7 +939,7 @@ if __name__ == "__main__":
         print(f"   Processing time: {result.processing_time_ms:.2f}ms")
 
         if result.errors:
-            print(f"   Error details:")
+            print("   Error details:")
             for error in result.errors:
                 status = "✅ AUTO-CORRECTED" if error.auto_corrected else "❌ NOT FIXED"
                 print(f"     • {error.message} [{status}]")
@@ -950,22 +947,22 @@ if __name__ == "__main__":
                     print(f"       Suggestion: {error.suggestion}")
 
         if result.warnings:
-            print(f"   Warnings:")
+            print("   Warnings:")
             for warning in result.warnings:
                 print(f"     • {warning}")
 
         if result.transformations:
-            print(f"   Transformations:")
+            print("   Transformations:")
             for transform in result.transformations:
                 print(f"     • {transform}")
 
         print(f"   Normalized input: {result.normalized_input}")
 
-    print(f"\n📊 Validation Statistics:")
+    print("\n📊 Validation Statistics:")
     stats = get_validation_stats()
     for key, value in stats.items():
         print(f"   {key}: {value}")
 
-    print(f"\n✨ Demo completed! The Enhanced Input Validation Middleware addresses")
-    print(f"   the tool input validation failures from the debug logs with automatic")
-    print(f"   parameter mapping and intelligent correction.")
+    print("\n✨ Demo completed! The Enhanced Input Validation Middleware addresses")
+    print("   the tool input validation failures from the debug logs with automatic")
+    print("   parameter mapping and intelligent correction.")

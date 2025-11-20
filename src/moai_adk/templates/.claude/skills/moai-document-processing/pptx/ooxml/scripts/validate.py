@@ -54,8 +54,8 @@ def main():
 
     # Run validators
     success = True
-    for V in validators:
-        validator = V(unpacked_dir, original_file, verbose=args.verbose)
+    for v in validators:
+        validator = v(unpacked_dir, original_file, verbose=args.verbose)
         if not validator.validate():
             success = False
 

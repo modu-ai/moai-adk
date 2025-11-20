@@ -29,9 +29,9 @@ if str(LIB_DIR) not in sys.path:
     sys.path.insert(0, str(LIB_DIR))
 
 try:
+    from lib.config_manager import ConfigManager  # noqa: E402
     from lib.timeout import CrossPlatformTimeout  # noqa: E402
     from lib.timeout import TimeoutError as PlatformTimeoutError  # noqa: E402
-    from lib.config_manager import ConfigManager  # noqa: E402
 except ImportError:
     # Fallback for timeout if shared module unavailable
     import signal
@@ -182,7 +182,6 @@ def validate_file_location(file_path: str, config: Dict) -> Dict[str, Any]:
 
     # File is in root and NOT whitelisted - violation
     doc_mgmt = config.get("document_management", {})
-    warn_violations = doc_mgmt.get("validation", {}).get("warn_violations", True)
     block_violations = doc_mgmt.get("validation", {}).get("block_violations", False)
 
     suggested = suggest_moai_location(filename, config)

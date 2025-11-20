@@ -7,9 +7,9 @@ Generates:
 - tech.md: Technology stack and trade-offs
 """
 
-from pathlib import Path
-from typing import Dict, List, Any, Optional
 from copy import deepcopy
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 
 class DocumentationGenerator:

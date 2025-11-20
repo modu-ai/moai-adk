@@ -6,15 +6,13 @@ for intelligent backup vs new template comparison and recommendations.
 
 import json
 import subprocess
-import sys
 from difflib import unified_diff
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import click
 from rich.console import Console
 from rich.live import Live
-from rich.panel import Panel
 from rich.spinner import Spinner
 from rich.table import Table
 
@@ -317,7 +315,7 @@ class MergeAnalyzer:
         """
         # 도구 목록을 공백으로 구분 (POSIX 표준, 공식 권장)
         tools_str = " ".join(self.CLAUDE_TOOLS)
-        
+
         return [
             "claude",
             "-p",  # Non-interactive headless mode
