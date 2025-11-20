@@ -108,10 +108,10 @@ class ProjectValidator:
             if not file_path.exists():
                 raise ValidationError(f"Required file not found: {file}")
 
-        alfred_dir = project_path / ".claude" / "commands" / "alfred"
+        moai_commands_dir = project_path / ".claude" / "commands" / "moai"
         missing_commands = []
         for cmd in self.REQUIRED_ALFRED_COMMANDS:
-            cmd_path = alfred_dir / cmd
+            cmd_path = moai_commands_dir / cmd
             if not cmd_path.exists():
                 missing_commands.append(cmd)
 
