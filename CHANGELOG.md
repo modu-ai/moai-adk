@@ -1,4 +1,39 @@
 # v0.27.0 - Major Release with Comprehensive Refactoring (2025-11-20)
+# v0.27.1 (2025-11-20)
+
+## 🎯 한글 섹션
+
+### 버그 수정 및 개선
+- **Docker 호환성 문제 해결**: GitHub Issue #231 해결
+- **CI/CD 파이프라인 개선**: black dev dependency 추가 및 빌드 문제 수정
+- **불필요한 파일 정리**: docs/ 디렉토리 및 임시 테스트 파일 제거
+- **개발 파일 최적화**: 임시 개발 파일 및 리포트 정리
+- **CHANGELOG 형식 개선**: 영문 우선 표기로 변경
+
+## 🎯 English Section
+
+### Bug Fixes and Improvements
+- **Docker Compatibility Fix**: Resolved GitHub Issue #231
+- **CI/CD Pipeline Enhancement**: Added black to dev dependencies and fixed build issues
+- **Cleanup**: Removed unnecessary docs/ directory and test files
+- **Development File Optimization**: Cleaned up temporary development files and reports
+- **CHANGELOG Format Update**: Changed to English-first format
+
+## 설치
+
+\`\`\`bash
+pip install moai-adk==0.27.1
+\`\`\`
+
+---
+
+🤖 Generated with Claude Code
+
+Co-Authored-By: 🎩 Alfred@MoAI
+
+---
+
+
 
 ## 🎯 Major Release: v0.27.0 Comprehensive Refactoring
 

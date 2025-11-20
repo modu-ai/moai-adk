@@ -1,6 +1,6 @@
 [project]
 name = "moai-adk"
-version = "0.27.0"
+version = "0.27.1"
 description = "MoAI Agentic Development Kit - SPEC-First TDD with Alfred SuperAgent & Unified moai-core-* Skills"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -77,14 +77,14 @@ fail_under = 85
 
 [tool.ruff]
 line-length = 120
-target-version = "0.27.0"
+target-version = "0.27.1"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N"]
 ignore = []
 
 [tool.mypy]
-python_version = "0.27.0"
+python_version = "0.27.1"
 warn_return_any = false
 warn_unused_configs = true
 warn_redundant_casts = true
