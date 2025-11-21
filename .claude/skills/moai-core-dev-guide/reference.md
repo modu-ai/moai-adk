@@ -220,3 +220,6 @@ done
 echo "# SPEC Inventory" && \
 rg "^id:" .moai/specs/SPEC-*/spec.md | sed 's/:id:/: /'
 ```
+
+---
+**Last Updated**: 2025-11-22
