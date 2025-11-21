@@ -449,3 +449,22 @@ kubectl scale deployment/web-app-$([ "$NEW_VERSION" = "blue" ] && echo "green" |
 
 ---
 
+
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [Terraform](/hashicorp/terraform): Infrastructure as code
+- [Kubernetes](/kubernetes/kubernetes): Container orchestration
+- [Docker](/docker/docker): Containerization platform
+
+### Official Documentation
+- [Documentation](https://www.terraform.io/docs)
+- [API Reference](https://kubernetes.io/docs/reference/)
+
+### Version-Specific Guides
+Latest stable version: Latest
+- [Release Notes](https://github.com/hashicorp/terraform/releases)
+- [Migration Guide](https://www.terraform.io/upgrade-guides)

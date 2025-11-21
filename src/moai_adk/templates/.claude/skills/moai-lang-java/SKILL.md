@@ -85,3 +85,22 @@ Java programming language patterns, object-oriented design, and enterprise appli
 
 
 
+
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [Spring Boot](/spring-projects/spring-boot): Enterprise Java framework
+- [Hibernate](/hibernate/hibernate-orm): ORM framework
+- [Jackson](/FasterXML/jackson): JSON processing
+
+### Official Documentation
+- [Documentation](https://docs.oracle.com/en/java/)
+- [API Reference](https://docs.oracle.com/en/java/javase/21/docs/api/)
+
+### Version-Specific Guides
+Latest stable version: 21 LTS
+- [Release Notes](https://www.oracle.com/java/technologies/javase/21-relnotes.html)
+- [Migration Guide](https://docs.oracle.com/en/java/javase/21/migrate/)

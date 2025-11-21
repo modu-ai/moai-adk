@@ -503,3 +503,27 @@ class MultiCloudCostOptimizer:
 
 
 
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [AWS CDK](/aws/aws-cdk): Infrastructure as code framework for AWS
+- [Terraform](/hashicorp/terraform): Infrastructure as Code to provision cloud resources
+- [Kubernetes](/kubernetes/kubernetes): Container orchestration system for automating deployment
+- [Pulumi](/pulumi/pulumi): Modern infrastructure as code platform
+- [Docker](/docker/docker): Platform for developing, shipping, and running applications
+
+### Official Documentation
+- [AWS Documentation](https://docs.aws.amazon.com/)
+- [Google Cloud Documentation](https://cloud.google.com/docs)
+- [Azure Documentation](https://learn.microsoft.com/azure/)
+- [Kubernetes Documentation](https://kubernetes.io/docs/)
+- [Terraform Documentation](https://www.terraform.io/docs)
+
+### Version-Specific Guides
+Latest stable version: AWS CDK 2.223.0, Terraform 1.9.8, Kubernetes 1.34
+- [AWS CDK v2 Migration](https://docs.aws.amazon.com/cdk/v2/guide/migrating-v2.html)
+- [Terraform 1.9 Upgrade Guide](https://developer.hashicorp.com/terraform/language/upgrade-guides)
+- [Kubernetes 1.34 Release Notes](https://kubernetes.io/docs/setup/release/notes/)
+- [Pulumi 3.x Migration](https://www.pulumi.com/docs/install/migrating-3.0/)
+

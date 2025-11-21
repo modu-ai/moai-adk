@@ -419,3 +419,27 @@ CREATE TRIGGER sensitive_data_audit
 
 
 
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [PostgreSQL](/postgres/postgres): Advanced open source relational database
+- [MongoDB](/mongodb/mongo): Document-oriented NoSQL database program
+- [Redis](/redis/redis): In-memory data structure store, cache, and message broker
+- [SQLAlchemy](/sqlalchemy/sqlalchemy): Python SQL toolkit and ORM
+- [Prisma](/prisma/prisma): Next-generation Node.js and TypeScript ORM
+
+### Official Documentation
+- [PostgreSQL 17](https://www.postgresql.org/docs/17/)
+- [MongoDB 8.0](https://www.mongodb.com/docs/v8.0/)
+- [Redis 7.4](https://redis.io/docs/)
+- [SQLAlchemy 2.0](https://docs.sqlalchemy.org/en/20/)
+- [MySQL 8.4](https://dev.mysql.com/doc/refman/8.4/en/)
+
+### Version-Specific Guides
+Latest stable version: PostgreSQL 17, MySQL 8.4 LTS, MongoDB 8.0, Redis 7.4
+- [PostgreSQL 17 Release Notes](https://www.postgresql.org/docs/17/release-17.html)
+- [MySQL 8.4 What's New](https://dev.mysql.com/doc/relnotes/mysql/8.4/en/)
+- [MongoDB 8.0 Release Notes](https://www.mongodb.com/docs/v8.0/release-notes/)
+- [Redis 7.4 Release Notes](https://raw.githubusercontent.com/redis/redis/7.4/00-RELEASENOTES)
+

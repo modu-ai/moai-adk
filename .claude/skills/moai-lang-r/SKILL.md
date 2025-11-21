@@ -115,3 +115,21 @@ R 4.4+ best practices with testthat 3.2, lintr 3.2, and data analysis patterns.
 
 
 
+
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [R](/wch/r-source): Statistical computing
+- [Tidyverse](/tidyverse/tidyverse): Data science packages
+
+### Official Documentation
+- [Documentation](https://www.r-project.org/other-docs.html)
+- [API Reference](https://stat.ethz.ch/R-manual/R-devel/library/base/html/00Index.html)
+
+### Version-Specific Guides
+Latest stable version: 4.3
+- [Release Notes](https://cran.r-project.org/)
+- [Migration Guide](https://cran.r-project.org/doc/manuals/r-release/NEWS.html)

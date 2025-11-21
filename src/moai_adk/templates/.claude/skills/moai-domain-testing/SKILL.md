@@ -412,3 +412,21 @@ Testing Pyramid Approach:
 
 
 
+
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [pytest](/pytest-dev/pytest): Python testing framework
+- [Jest](/jestjs/jest): JavaScript testing framework
+
+### Official Documentation
+- [Documentation](https://docs.pytest.org/)
+- [API Reference](https://docs.pytest.org/en/stable/reference/reference.html)
+
+### Version-Specific Guides
+Latest stable version: 8.0
+- [Release Notes](https://github.com/pytest-dev/pytest/releases)
+- [Migration Guide](https://docs.pytest.org/en/stable/how-to/upgrade.html)

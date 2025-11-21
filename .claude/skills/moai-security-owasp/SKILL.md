@@ -392,3 +392,22 @@ const parser = new xml2js.Parser({
 
 ---
 
+
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [OWASP Top 10](/owasp/top10): Web security risks
+- [OWASP ASVS](/owasp/asvs): Application Security Verification
+- [OWASP ZAP](/zaproxy/zaproxy): Security testing tool
+
+### Official Documentation
+- [Documentation](https://owasp.org/www-project-top-ten/)
+- [API Reference](https://owasp.org/www-project-application-security-verification-standard/)
+
+### Version-Specific Guides
+Latest stable version: 2021
+- [Release Notes](https://owasp.org/Top10/)
+- [Migration Guide](https://owasp.org/www-project-top-ten/)

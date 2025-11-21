@@ -3,6 +3,14 @@
 
 ## 🎯 English Section
 
+### New Features
+- **TOON Format Utilities** (Optional): Added token-optimized data encoding/decoding for LLM prompts
+  - `toon_encode()`, `toon_decode()` for string conversion
+  - `toon_save()`, `toon_load()` for file operations
+  - `validate_roundtrip()`, `compare_formats()` for validation
+  - ~35-40% token savings for large datasets
+  - See `.moai/docs/toon-integration-guide.md`
+
 ### Bug Fixes and Improvements
 - **Version Consistency Fix**: Resolved version mismatch between SessionStart hook and Statusline
 - **CLI Version Integration**: Unified all version displays (CLI, SessionStart, Statusline) to 0.27.2
@@ -10,6 +18,14 @@
 - **Configuration Synchronization**: Automated .moai/config/config.json version updates
 
 ## 🎯 한글 섹션
+
+### 새 기능
+- **TOON 형식 유틸리티** (선택적): LLM 프롬프트 최적화를 위한 토큰 효율화 인코딩/디코딩
+  - `toon_encode()`, `toon_decode()` - 문자열 변환
+  - `toon_save()`, `toon_load()` - 파일 I/O
+  - `validate_roundtrip()`, `compare_formats()` - 검증
+  - 대규모 데이터셋에 대해 ~35-40% 토큰 절감
+  - 자세한 내용: `.moai/docs/toon-integration-guide.md`
 
 ### 버그 수정 및 개선
 - **버전 일치성 문제 해결**: SessionStart hook과 Statusline의 버전 불일치 수정

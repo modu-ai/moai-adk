@@ -478,3 +478,27 @@ async def get_user(user_id: int, db: AsyncSession = Depends(get_db)):
             raise HTTPException(status_code=404)
 ```
 
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [FastAPI](/tiangolo/fastapi): Modern, fast (high-performance), web framework for building APIs
+- [Django](/django/django): High-level Python web framework for rapid development
+- [SQLAlchemy](/sqlalchemy/sqlalchemy): Python SQL toolkit and Object Relational Mapper
+- [Uvicorn](/encode/uvicorn): Lightning-fast ASGI server implementation
+- [Pydantic](/pydantic/pydantic): Data validation using Python type annotations
+
+### Official Documentation
+- [FastAPI Documentation](https://fastapi.tiangolo.com/)
+- [Django 5.2](https://docs.djangoproject.com/en/5.2/)
+- [SQLAlchemy 2.0](https://docs.sqlalchemy.org/en/20/)
+- [Uvicorn](https://www.uvicorn.org/)
+- [asyncpg](https://magicstack.github.io/asyncpg/)
+
+### Version-Specific Guides
+Latest stable version: FastAPI 0.118+, Django 5.2 LTS, SQLAlchemy 2.0
+- [FastAPI 0.118 Release](https://github.com/tiangolo/fastapi/releases)
+- [Django 5.2 Release Notes](https://docs.djangoproject.com/en/5.2/releases/5.2/)
+- [SQLAlchemy 2.0 Migration](https://docs.sqlalchemy.org/en/20/changelog/migration_20.html)
+- [Async Python Best Practices](https://fastapi.tiangolo.com/async/)
+

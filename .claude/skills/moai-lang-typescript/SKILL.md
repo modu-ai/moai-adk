@@ -309,3 +309,27 @@ it('renders button', () => {
 
 ---
 
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [TypeScript](/microsoft/TypeScript): TypeScript is a superset of JavaScript with static typing
+- [Next.js](/vercel/next.js): The React Framework for Production with SSR and SSG
+- [React](/facebook/react): A JavaScript library for building user interfaces
+- [tRPC](/trpc/trpc): End-to-end typesafe APIs made easy
+- [Zod](/colinhacks/zod): TypeScript-first schema declaration and validation library
+
+### Official Documentation
+- [TypeScript 5.9](https://www.typescriptlang.org/docs/)
+- [Next.js Documentation](https://nextjs.org/docs)
+- [React 19](https://react.dev/)
+- [tRPC](https://trpc.io/docs)
+- [Zod](https://zod.dev/)
+
+### Version-Specific Guides
+Latest stable version: TypeScript 5.9.3, Next.js 16.x, React 19.x
+- [TypeScript 5.9 Release Notes](https://devblogs.microsoft.com/typescript/announcing-typescript-5-9/)
+- [Next.js 16 Upgrade Guide](https://nextjs.org/docs/app/building-your-application/upgrading)
+- [React 19 Migration Guide](https://react.dev/blog/2024/12/05/react-19)
+- [tRPC v11 Migration](https://trpc.io/docs/migrate-from-v10-to-v11)
+

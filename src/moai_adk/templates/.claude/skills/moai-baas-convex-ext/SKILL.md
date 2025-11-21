@@ -484,3 +484,20 @@ export const getRoomActivity = query({
 ## Reference & Resources
 
 See [reference.md](reference.md) for detailed API reference and official documentation.
+
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [Convex](/get-convex/convex-backend): Real-time backend platform
+
+### Official Documentation
+- [Documentation](https://docs.convex.dev/)
+- [API Reference](https://docs.convex.dev/api/)
+
+### Version-Specific Guides
+Latest stable version: Latest
+- [Release Notes](https://news.convex.dev/)
+- [Migration Guide](https://docs.convex.dev/production/)

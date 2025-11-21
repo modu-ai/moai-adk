@@ -553,3 +553,21 @@ export class RealtimeRoom {
 ## Reference & Resources
 
 See [reference.md](reference.md) for detailed API reference and official documentation.
+
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [Cloudflare Workers](/cloudflare/workers-sdk): Edge computing platform
+- [Cloudflare Pages](/cloudflare/pages): JAMstack deployment
+
+### Official Documentation
+- [Documentation](https://developers.cloudflare.com/)
+- [API Reference](https://developers.cloudflare.com/api/)
+
+### Version-Specific Guides
+Latest stable version: Latest
+- [Release Notes](https://developers.cloudflare.com/workers/platform/changelog/)
+- [Migration Guide](https://developers.cloudflare.com/workers/configuration/compatibility-dates/)

@@ -489,3 +489,21 @@ Start
 
 
 
+
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [Vale](/errata-ai/vale): Prose linter
+- [markdownlint](/DavidAnson/markdownlint): Markdown linter
+
+### Official Documentation
+- [Documentation](https://vale.sh/docs/)
+- [API Reference](https://vale.sh/docs/topics/)
+
+### Version-Specific Guides
+Latest stable version: Latest
+- [Release Notes](https://github.com/errata-ai/vale/releases)
+- [Migration Guide](https://vale.sh/docs/topics/migration/)

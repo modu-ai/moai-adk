@@ -415,3 +415,21 @@ Respect prefers-reduced-motion
 
 
 
+
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [Storybook](/storybookjs/storybook): UI component development
+- [Chromatic](/chromaui/chromatic-cli): Visual testing
+
+### Official Documentation
+- [Documentation](https://storybook.js.org/docs)
+- [API Reference](https://storybook.js.org/docs/api)
+
+### Version-Specific Guides
+Latest stable version: 8.0
+- [Release Notes](https://github.com/storybookjs/storybook/releases)
+- [Migration Guide](https://storybook.js.org/docs/migration-guide)

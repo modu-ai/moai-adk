@@ -507,3 +507,22 @@ viewModel.count.collect { count ->
 
 ---
 
+
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [Kotlin](/jetbrains/kotlin): Modern JVM language
+- [Ktor](/ktorio/ktor): Asynchronous web framework
+- [Exposed](/jetbrains/exposed): SQL framework
+
+### Official Documentation
+- [Documentation](https://kotlinlang.org/docs/)
+- [API Reference](https://kotlinlang.org/api/latest/jvm/stdlib/)
+
+### Version-Specific Guides
+Latest stable version: 1.9
+- [Release Notes](https://github.com/JetBrains/kotlin/releases)
+- [Migration Guide](https://kotlinlang.org/docs/whatsnew19.html)

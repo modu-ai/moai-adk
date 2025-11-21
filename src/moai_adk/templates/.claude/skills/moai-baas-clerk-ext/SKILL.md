@@ -3,33 +3,11 @@ name: moai-baas-clerk-ext
 description: Enterprise Clerk Authentication Platform with AI-powered modern identity
 ---
 
-## Quick Reference (30 seconds)
-
-# Enterprise Clerk Authentication Platform Expert 
-
----
-
-## When to Use
-
-**Automatic triggers**:
-- Clerk authentication architecture and modern identity discussions
-- Multi-platform user management and organization implementation
-- WebAuthn and modern authentication method integration
-- Real-time user experience and session management
-
-**Manual invocation**:
-- Designing enterprise Clerk architectures with optimal user experience
-- Implementing organization management and multi-tenant authentication
-- Planning migrations from traditional authentication systems
-- Optimizing user onboarding and security configurations
-
----
-
 # Quick Reference (Level 1)
 
 ## Clerk Authentication Platform (November 2025)
 
-### Core Features Overview
+### Core Features
 - **Modern Authentication**: Passwordless, social login, biometric authentication
 - **Multi-Platform Support**: Web, mobile, native applications with unified auth
 - **Organizations**: Built-in multi-tenant workspace management
@@ -49,11 +27,18 @@ description: Enterprise Clerk Authentication Platform with AI-powered modern ide
 - **WebAuthn**: Hardware security keys, Windows Hello, Touch ID
 - **M2M Tokens**: Machine-to-machine authentication
 
-### Developer Experience
-- **Zero Configuration**: Quick setup with sensible defaults
-- **TypeScript Support**: Full type safety and autocomplete
-- **Component Library**: Pre-built React components for auth UI
-- **Customization**: Extensive theming and branding options
+### When to Use
+**Automatic triggers**:
+- Clerk authentication architecture and modern identity discussions
+- Multi-platform user management and organization implementation
+- WebAuthn and modern authentication method integration
+- Real-time user experience and session management
+
+**Manual invocation**:
+- Designing enterprise Clerk architectures with optimal user experience
+- Implementing organization management and multi-tenant authentication
+- Planning migrations from traditional authentication systems
+- Optimizing user onboarding and security configurations
 
 ---
 
@@ -80,12 +65,6 @@ class ClerkArchitectOptimizer:
             tokens=3000
         )
         
-        auth_docs = await self.context7_client.get_library_docs(
-            context7_library_id='/authentication/docs',
-            topic="modern auth security patterns webauthn 2025",
-            tokens=2000
-        )
-        
         # Optimize user experience flows
         ux_design = self.ux_optimizer.optimize_user_flows(
             requirements.user_preferences,
@@ -97,24 +76,104 @@ class ClerkArchitectOptimizer:
         security_config = self.auth_analyzer.configure_security(
             requirements.security_level,
             requirements.threat_model,
-            auth_docs
+            clerk_docs
         )
         
         return ClerkArchitecture(
             authentication_flows=self._design_auth_flows(requirements),
             organization_setup=self._configure_organizations(requirements),
             security_framework=security_config,
-            user_experience=ux_design,
-            platform_integration=self._integrate_platforms(requirements),
-            monitoring_setup=self._setup_monitoring(),
-            migration_strategy=self._create_migration_strategy(requirements)
+            user_experience=ux_design
         )
 ```
+
+## Multi-Platform Authentication Setup
+
+```typescript
+// Next.js application with Clerk integration
+import { ClerkProvider, SignIn, SignUp, UserButton } from '@clerk/nextjs';
+import { dark } from '@clerk/themes';
+
+function MyApp({ Component, pageProps }) {
+  return (
+    <ClerkProvider
+      appearance={{
+        baseTheme: dark,
+        variables: {
+          colorPrimary: '#ffffff',
+          colorBackground: '#1a1a1a',
+        }
+      }}
+      publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+    >
+      <Component {...pageProps} />
+    </ClerkProvider>
+  );
+}
+
+// Protected route component
+import { useAuth, RedirectToSignIn } from '@clerk/nextjs';
+
+export default function ProtectedPage() {
+  const { isSignedIn, user, isLoaded } = useAuth();
+
+  if (!isLoaded) return <div>Loading...</div>;
+  if (!isSignedIn) return <RedirectToSignIn />;
+
+  return (
+    <div>
+      <h1>Welcome, {user.firstName}!</h1>
+      <UserButton afterSignOutUrl="/" />
+    </div>
+  );
+}
+```
+
+## Organization Management Implementation
+
+```typescript
+import { useOrganization, useUser, OrganizationList, CreateOrganization } from '@clerk/nextjs';
+
+export function OrganizationManagement() {
+  const { organization, isLoaded, membership } = useOrganization();
+  const { user } = useUser();
+
+  if (!isLoaded) return <div>Loading organization...</div>;
+
+  return (
+    <div className="organization-management">
+      {organization ? (
+        <div className="current-organization">
+          <h2>{organization.name}</h2>
+          <p>Role: {membership?.role}</p>
+          
+          {membership?.role === 'admin' && (
+            <div className="admin-panel">
+              <h3>Admin Controls</h3>
+              <OrganizationInvitation />
+              <MemberList />
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="no-organization">
+          <h3>Join or Create an Organization</h3>
+          <OrganizationList hidePersonal />
+          <CreateOrganization />
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+---
+
+# Advanced Patterns (Level 3)
 
 ## WebAuthn Security Implementation
 
 ```typescript
-// Advanced WebAuthn configuration with Clerk
 import { useAuth } from '@clerk/nextjs';
 import { startAuthentication } from '@simplewebauthn/browser';
 
@@ -123,17 +182,14 @@ export function WebAuthnSecurity() {
 
   const enableWebAuthn = async () => {
     try {
-      // Initiate WebAuthn registration
       const authResp = await startAuthentication({
-        // Options provided by Clerk
         challenge: 'random_challenge_string',
         allowCredentials: [],
         userVerification: 'required',
         timeout: 60000,
       });
 
-      // Complete registration with Clerk
-      const response = await fetch('/api/auth/webauthn/register', {
+      await fetch('/api/auth/webauthn/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -142,9 +198,7 @@ export function WebAuthnSecurity() {
         }),
       });
 
-      if (response.ok) {
-        console.log('WebAuthn security key added successfully');
-      }
+      console.log('WebAuthn security key added successfully');
     } catch (error) {
       console.error('WebAuthn registration failed:', error);
     }
@@ -160,54 +214,11 @@ export function WebAuthnSecurity() {
     </div>
   );
 }
-
-// Backend API route for WebAuthn
-import { clerkClient, getAuth } from '@clerk/nextjs/server';
-import type { NextApiRequest, NextApiResponse } from 'next';
-
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
-  const { userId } = getAuth(req);
-  
-  if (!userId) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
-  if (req.method === 'POST') {
-    try {
-      const { credential } = req.body;
-
-      // Add WebAuthn credential to user
-      const updatedUser = await clerkClient.users.updateUser(userId, {
-        webauthnCredentials: [
-          {
-            publicKey: credential.response.publicKey,
-            id: credential.id,
-            type: credential.type,
-            transports: credential.response.transports,
-          }
-        ]
-      });
-
-      res.status(200).json({ 
-        success: true,
-        message: 'Security key added successfully' 
-      });
-    } catch (error) {
-      res.status(500).json({ error: 'Failed to add security key' });
-    }
-  } else {
-    res.status(405).json({ error: 'Method not allowed' });
-  }
-}
 ```
 
-### Real-time User Experience
+## Real-time User Experience
 
 ```typescript
-// Real-time user experience enhancements
 import { useAuth, useUser } from '@clerk/nextjs';
 import { useState, useEffect } from 'react';
 
@@ -224,19 +235,13 @@ export function RealtimeUserExperience() {
 
     const checkInactivity = () => {
       const inactiveTime = Date.now() - lastActivity;
-      if (inactiveTime > 300000) { // 5 minutes
-        setOnlineStatus('away');
-      }
-      if (inactiveTime > 900000) { // 15 minutes
-        setOnlineStatus('offline');
-      }
+      if (inactiveTime > 300000) setOnlineStatus('away');
+      if (inactiveTime > 900000) setOnlineStatus('offline');
     };
 
-    // Track user activity
     window.addEventListener('mousemove', handleActivity);
     window.addEventListener('keydown', handleActivity);
     
-    // Check inactivity periodically
     const inactivityTimer = setInterval(checkInactivity, 60000);
 
     return () => {
@@ -246,32 +251,30 @@ export function RealtimeUserExperience() {
     };
   }, [lastActivity]);
 
-  if (!isLoaded) {
-    return <div>Loading user experience...</div>;
-  }
+  if (!isLoaded) return <div>Loading user experience...</div>;
 
   return (
     <div className="user-experience">
-      {/* Real-time presence indicator */}
       <div className={`status-indicator ${onlineStatus}`}>
         <span className="status-dot"></span>
         <span className="status-text">{onlineStatus}</span>
       </div>
-
-      {/* Adaptive UI based on user preferences */}
+      
       {user?.publicMetadata?.theme && (
         <div className="theme-applied">
           Theme: {user.publicMetadata.theme}
         </div>
       )}
-
-      {/* Personalized features */}
+      
       <PersonalizedFeatures user={user} />
     </div>
   );
 }
+```
 
-// M2M (Machine-to-Machine) authentication
+## M2M (Machine-to-Machine) Authentication
+
+```typescript
 export function M2MAuthentication() {
   const [m2mToken, setM2mToken] = useState<string | null>(null);
 
@@ -315,190 +318,28 @@ export function M2MAuthentication() {
 
 ---
 
-# Reference & Integration (Level 4)
+**End of Skill** | Updated 2025-11-21
 
----
+## Context7 Integration
 
-## Core Implementation
+### Related Libraries & Tools
+- [Clerk](/clerk/javascript): Complete user management platform with authentication
+- [@clerk/nextjs](/clerk/javascript): Clerk SDK for Next.js applications
+- [@clerk/clerk-js](/clerk/javascript): Clerk JavaScript SDK for web applications
+- [@clerk/backend](/clerk/javascript): Clerk backend SDK for server-side operations
+- [@clerk/chrome-extension](/clerk/javascript): Clerk SDK for Chrome extensions
 
-## What It Does
+### Official Documentation
+- [Clerk Documentation](https://clerk.com/docs)
+- [Clerk Next.js](https://clerk.com/docs/quickstarts/nextjs)
+- [Clerk API Reference](https://clerk.com/docs/references/backend/overview)
+- [Organizations](https://clerk.com/docs/organizations/overview)
+- [WebAuthn with Clerk](https://clerk.com/docs/custom-flows/webauthn)
 
-Enterprise Clerk Authentication Platform expert with AI-powered modern identity architecture, Context7 integration, and intelligent user management orchestration for scalable applications.
+### Version-Specific Guides
+Latest stable version: @clerk/nextjs v6.35.0, @clerk/clerk-js v5.107.0
+- [Clerk v6 Migration](https://clerk.com/docs/upgrade-guides/v6)
+- [Next.js 15 with Clerk](https://clerk.com/docs/quickstarts/nextjs)
+- [Organizations Setup](https://clerk.com/docs/organizations/setup)
+- [M2M Authentication](https://clerk.com/docs/backend-requests/handling/overview)
 
-**Revolutionary  capabilities**:
-- 🤖 **AI-Powered Clerk Architecture** using Context7 MCP for latest authentication patterns
-- 📊 **Intelligent User Management** with automated organization and workflow optimization
-- 🚀 **Advanced Multi-Platform Auth** with AI-driven cross-platform integration
-- 🔗 **Enterprise Modern Identity** with zero-configuration WebAuthn and biometrics
-- 📈 **Predictive User Analytics** with usage forecasting and optimization insights
-
----
-
-## Multi-Platform Authentication Setup
-
-```typescript
-// Next.js application with Clerk integration
-import { ClerkProvider, SignIn, SignUp, UserButton } from '@clerk/nextjs';
-import { dark } from '@clerk/themes';
-import type { AppProps } from 'next/app';
-
-function MyApp({ Component, pageProps }: AppProps) {
-  return (
-    <ClerkProvider
-      appearance={{
-        baseTheme: dark,
-        variables: {
-          colorPrimary: '#ffffff',
-          colorBackground: '#1a1a1a',
-        },
-        elements: {
-          formButtonPrimary: 'bg-blue-600 hover:bg-blue-700 text-white',
-          card: 'bg-gray-900 shadow-xl',
-        },
-      }}
-      publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
-    >
-      <Component {...pageProps} />
-    </ClerkProvider>
-  );
-}
-
-export default MyApp;
-
-// Protected route component
-import { useAuth, RedirectToSignIn } from '@clerk/nextjs';
-import { useEffect } from 'react';
-
-export default function ProtectedPage() {
-  const { isSignedIn, user, isLoaded } = useAuth();
-
-  if (!isLoaded) {
-    return <div>Loading...</div>;
-  }
-
-  if (!isSignedIn) {
-    return <RedirectToSignIn />;
-  }
-
-  return (
-    <div>
-      <h1>Welcome, {user.firstName || user.emailAddresses[0].emailAddress}!</h1>
-      <UserButton afterSignOutUrl="/" />
-    </div>
-  );
-}
-```
-
-## Organization Management Implementation
-
-```typescript
-// Advanced organization management with Clerk
-import { 
-  ClerkProvider, 
-  useOrganization, 
-  useUser,
-  OrganizationList,
-  CreateOrganization,
-} from '@clerk/nextjs';
-
-export function OrganizationManagement() {
-  const { organization, isLoaded, membership } = useOrganization();
-  const { user } = useUser();
-
-  if (!isLoaded) {
-    return <div>Loading organization...</div>;
-  }
-
-  return (
-    <div className="organization-management">
-      {organization ? (
-        <div className="current-organization">
-          <h2>{organization.name}</h2>
-          <p>Role: {membership?.role}</p>
-          
-          {/* Organization members management */}
-          {membership?.role === 'admin' && (
-            <div className="admin-panel">
-              <h3>Admin Controls</h3>
-              <OrganizationInvitation />
-              <MemberList />
-              <OrganizationSettings />
-            </div>
-          )}
-          
-          {/* Regular member view */}
-          <div className="member-panel">
-            <OrganizationProjects />
-            <TeamCollaboration />
-          </div>
-        </div>
-      ) : (
-        <div className="no-organization">
-          <h3>Join or Create an Organization</h3>
-          <OrganizationList
-            hidePersonal
-            appearance={{
-              elements: {
-                organizationPreview: 'border border-gray-700 rounded-lg p-4',
-              },
-            }}
-          />
-          <CreateOrganization
-            appearance={{
-              elements: {
-                formButtonPrimary: 'bg-blue-600 hover:bg-blue-700 text-white',
-              },
-            }}
-          />
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Organization invitation management
-async function inviteUserToOrganization(
-  organizationId: string,
-  email: string,
-  role: 'admin' | 'basic_member'
-): Promise<void> {
-  try {
-    const response = await fetch(
-      `https://api.clerk.dev/v1/organizations/${organizationId}/invitations`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.CLERK_SECRET_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email_address: email,
-          role: role,
-          disable_existing_memberships: false,
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error('Failed to send invitation');
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error inviting user:', error);
-    throw error;
-  }
-}
-```
-
----
-
-# Advanced Implementation (Level 3)
-
-
-
----
-
-## Reference & Resources
-
-See [reference.md](reference.md) for detailed API reference and official documentation.

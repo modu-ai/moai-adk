@@ -459,3 +459,21 @@ class DataClassifier {
 
 ---
 
+
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [SOC 2](/compliance/soc2): Security compliance framework
+- [GDPR](/compliance/gdpr): Data protection regulation
+
+### Official Documentation
+- [Documentation](https://www.aicpa.org/soc4so)
+- [API Reference](https://gdpr.eu/)
+
+### Version-Specific Guides
+Latest stable version: 2023
+- [Release Notes](https://www.aicpa.org/soc4so)
+- [Migration Guide](https://gdpr.eu/compliance/)

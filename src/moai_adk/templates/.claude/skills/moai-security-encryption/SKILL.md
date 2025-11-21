@@ -742,3 +742,21 @@ class CertificateManager:
 ## Reference & Resources
 
 See [reference.md](reference.md) for detailed API reference and official documentation.
+
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [libsodium](/jedisct1/libsodium): Modern cryptography library
+- [OpenSSL](/openssl/openssl): SSL/TLS toolkit
+
+### Official Documentation
+- [Documentation](https://doc.libsodium.org/)
+- [API Reference](https://www.openssl.org/docs/)
+
+### Version-Specific Guides
+Latest stable version: Latest
+- [Release Notes](https://github.com/jedisct1/libsodium/releases)
+- [Migration Guide](https://www.openssl.org/docs/man3.0/man7/migration_guide.html)

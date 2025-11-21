@@ -461,3 +461,21 @@ This skill integrates with Context7 for real-time documentation access:
 
 
 
+
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [Bash](/bash-mirror/bash): Bourne Again SHell
+- [Zsh](/zsh-users/zsh): Z shell
+
+### Official Documentation
+- [Documentation](https://www.gnu.org/software/bash/manual/)
+- [API Reference](https://www.gnu.org/software/bash/manual/html_node/index.html)
+
+### Version-Specific Guides
+Latest stable version: 5.2
+- [Release Notes](https://www.gnu.org/software/bash/)
+- [Migration Guide](https://www.gnu.org/software/bash/manual/html_node/Shell-Compatibility-Mode.html)

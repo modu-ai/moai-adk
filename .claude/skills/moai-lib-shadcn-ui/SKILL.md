@@ -835,3 +835,20 @@ export function applyThemeCSS() {
 ## Reference & Resources
 
 See [reference.md](reference.md) for detailed API reference and official documentation.
+
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [shadcn/ui](/shadcn-ui/ui): Re-usable components built with Radix UI and Tailwind
+
+### Official Documentation
+- [Documentation](https://ui.shadcn.com/docs)
+- [API Reference](https://ui.shadcn.com/docs/components)
+
+### Version-Specific Guides
+Latest stable version: Latest
+- [Release Notes](https://github.com/shadcn-ui/ui/releases)
+- [Migration Guide](https://ui.shadcn.com/docs/changelog)

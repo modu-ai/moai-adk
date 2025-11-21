@@ -286,3 +286,20 @@ Extract → Transform → Load → Validate → Report
 Skill("moai-mermaid-diagram-expert")
 ```
 
+
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [Mermaid](/mermaid-js/mermaid): Diagram and flowchart tool
+
+### Official Documentation
+- [Documentation](https://mermaid.js.org/intro/)
+- [API Reference](https://mermaid.js.org/config/setup/modules/mermaidAPI.html)
+
+### Version-Specific Guides
+Latest stable version: 10.x
+- [Release Notes](https://github.com/mermaid-js/mermaid/releases)
+- [Migration Guide](https://mermaid.js.org/config/setup/modules/mermaidAPI.html)

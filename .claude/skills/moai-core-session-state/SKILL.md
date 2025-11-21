@@ -261,3 +261,21 @@ def validate_handoff(handoff_package):
 - Lose session IDs without saving
 - Mix multiple sessions without clear boundaries
 - Assume session continuity without checkpoint
+
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [Redis](/redis/redis): In-memory data store
+- [Memcached](/memcached/memcached): Distributed cache
+
+### Official Documentation
+- [Documentation](https://redis.io/docs/)
+- [API Reference](https://redis.io/commands/)
+
+### Version-Specific Guides
+Latest stable version: 7.2
+- [Release Notes](https://github.com/redis/redis/releases)
+- [Migration Guide](https://redis.io/docs/about/releases/)

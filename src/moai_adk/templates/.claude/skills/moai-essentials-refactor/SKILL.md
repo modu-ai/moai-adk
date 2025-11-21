@@ -326,3 +326,21 @@ class TechnicalDebtAnalyzer:
 
 
 
+
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [Rope](/python-rope/rope): Python refactoring library
+- [TSLint](/palantir/tslint): TypeScript linter (deprecated, use ESLint)
+
+### Official Documentation
+- [Documentation](https://rope.readthedocs.io/)
+- [API Reference](https://rope.readthedocs.io/en/latest/)
+
+### Version-Specific Guides
+Latest stable version: Latest
+- [Release Notes](https://github.com/python-rope/rope/releases)
+- [Migration Guide](https://rope.readthedocs.io/en/latest/)

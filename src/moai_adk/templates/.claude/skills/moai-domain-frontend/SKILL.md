@@ -618,3 +618,27 @@ class FrontendArchitectOptimizer:
 ## Reference & Resources
 
 See [reference.md](reference.md) for detailed API reference and official documentation.
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [React](/facebook/react): JavaScript library for building user interfaces
+- [Next.js](/vercel/next.js): The React Framework with App Router and Server Components
+- [Zustand](/pmndrs/zustand): Small, fast and scalable state management solution
+- [TanStack Query](/tanstack/query): Powerful data synchronization for React
+- [shadcn/ui](/shadcn-ui/ui): Re-usable components built with Radix UI and Tailwind CSS
+
+### Official Documentation
+- [React 19](https://react.dev/)
+- [Next.js 16](https://nextjs.org/docs)
+- [Zustand](https://zustand-demo.pmnd.rs/)
+- [TanStack Query](https://tanstack.com/query/latest)
+- [Tailwind CSS](https://tailwindcss.com/docs)
+
+### Version-Specific Guides
+Latest stable version: React 19.x, Next.js 16.x, Zustand 5.x
+- [React 19 Upgrade Guide](https://react.dev/blog/2024/12/05/react-19)
+- [Next.js 16 Migration](https://nextjs.org/docs/app/building-your-application/upgrading)
+- [Zustand v5 Migration](https://github.com/pmndrs/zustand/discussions/2200)
+- [TanStack Query v5](https://tanstack.com/query/v5/docs/framework/react/guides/migrating-to-v5)
+

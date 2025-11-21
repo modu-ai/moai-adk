@@ -3,13 +3,42 @@ name: moai-essentials-debug
 description: AI-powered enterprise debugging orchestrator with Context7 integration, intelligent error pattern recognition, automated root cause analysis, predictive fix suggestions, and multi-process debugging coordination across 25+ languages and distributed systems
 ---
 
-## Quick Reference (30 seconds)
+## Quick Reference
 
-# AI-Powered Enterprise Debugging Skill
+# AI-Powered Enterprise Debugging
 
-## 🧠 AI-Enhanced Debugging Methodology (AI-DEBUG Framework)
+**What it does**: Provides AI-powered debugging with intelligent error pattern recognition, automated root cause analysis, predictive fix suggestions, and multi-process debugging coordination across 25+ languages and distributed systems.
 
-### **A** - **AI Error Pattern Recognition**
+**Key Capabilities**:
+- 🔍 **Intelligent Error Pattern Recognition** with ML-based classification
+- 🧠 **Predictive Fix Suggestions** using Context7 latest documentation
+- 🌐 **Multi-Process Debugging** with AI coordination across distributed systems
+- ⚡ **Real-Time Error Correlation** across microservices and containers
+- 🎯 **AI-Enhanced Root Cause Analysis** with automated hypothesis generation
+- 🤖 **Automated Debugging Workflows** with Context7 best practices
+
+**When to Use**:
+- Unhandled exceptions and runtime errors
+- Performance degradation detected
+- Distributed system failures
+- Container/Kubernetes debugging scenarios
+- Memory leaks and resource issues
+- Complex stack traces requiring analysis
+
+**Context7 Integration**:
+- Latest debugging patterns from `/microsoft/debugpy`
+- AI pattern matching against knowledge base
+- Version-specific debugging techniques
+- Community knowledge integration
+
+**Core Framework**: AI-DEBUG (AI Error Pattern Recognition → Root Cause Analysis → Automated Fix Suggestions → Validation)
+
+---
+
+## Implementation Guide
+
+### AI Error Pattern Recognition
+
 ```python
 class AIErrorPatternRecognizer:
     """AI-powered error pattern detection and classification."""
@@ -41,9 +70,10 @@ class AIErrorPatternRecognizer:
         )
 ```
 
-### **Context7 Multi-Process Debugging Pattern**
+### Multi-Process Debugging
+
+**Context7-Enhanced Multi-Process Pattern**:
 ```python
-# Advanced multi-process debugging with Context7 patterns
 class Context7MultiProcessDebugger:
     """Context7-enhanced multi-process debugging with AI coordination."""
     
@@ -57,7 +87,7 @@ class Context7MultiProcessDebugger:
             tokens=4000
         )
         
-        # Apply Context7 Mermaid debugging workflows
+        # Apply Context7 debugging workflows
         debug_workflow = self.apply_context7_workflow(context7_patterns['workflow'])
         
         # AI-optimized configuration
@@ -73,55 +103,8 @@ class Context7MultiProcessDebugger:
         )
 ```
 
----
+### Error Classification with Context7
 
----
-
-## Implementation Guide
-
-## Revolutionary AI Debugging Capabilities
-
-### **AI-Powered Error Analysis with Context7**
-- 🔍 **Intelligent Error Pattern Recognition** with ML-based classification
-- 🧠 **Predictive Fix Suggestions** using Context7 latest documentation
-- 🌐 **Multi-Process Debugging** with AI coordination across distributed systems
-- ⚡ **Real-Time Error Correlation** across microservices and containers
-- 🎯 **AI-Enhanced Root Cause Analysis** with automated hypothesis generation
-- 🤖 **Automated Debugging Workflows** with Context7 best practices
-- 📊 **Performance Bottleneck Detection** with AI profiling integration
-- 🔮 **Predictive Error Prevention** using ML pattern analysis
-
-### **Context7 Integration Features**
-- **Live Documentation Fetching**: Get latest debugging patterns from `/microsoft/debugpy`
-- **AI Pattern Matching**: Match errors against Context7 knowledge base
-- **Best Practice Integration**: Apply latest debugging techniques from official docs
-- **Version-Aware Debugging**: Context7 provides version-specific patterns
-- **Community Knowledge Integration**: Leverage collective debugging wisdom
-
----
-
-## 🎯 When to Use
-
-**AI Automatic Triggers**:
-- Unhandled exceptions and runtime errors
-- Performance degradation detected
-- Distributed system failures
-- Container/Kubernetes debugging scenarios
-- Memory leaks and resource issues
-- Complex stack traces requiring analysis
-
-**Manual AI Invocation**:
-- "Debug this error with AI analysis"
-- "Find root cause using predictive debugging"
-- "Analyze performance bottlenecks with AI"
-- "Debug distributed system failure"
-- "Apply Context7 best practices for debugging"
-
----
-
-## 🤖 Context7-Enhanced Debugging Patterns
-
-### AI-Enhanced Error Classification with Context7
 ```python
 class AIErrorClassifier:
     """AI-powered error classification with Context7 pattern matching."""
@@ -155,6 +138,7 @@ class AIErrorClassifier:
 ```
 
 ### Predictive Error Prevention
+
 ```python
 class PredictiveErrorPrevention:
     """AI-powered predictive error prevention with Context7 best practices."""
@@ -185,11 +169,8 @@ class PredictiveErrorPrevention:
         )
 ```
 
----
+### Container Debugging with AI
 
-## 🛠️ Advanced Debugging Workflows
-
-### AI-Assisted Container Debugging with Context7
 ```python
 class AIContainerDebugger:
     """AI-powered container debugging with Context7 patterns."""
@@ -219,7 +200,8 @@ class AIContainerDebugger:
         )
 ```
 
-### Scalene AI Profiling Integration
+### Performance Profiling with Scalene
+
 ```python
 class ScaleneAIProfiler:
     """AI-enhanced profiling using Scalene with Context7 optimization."""
@@ -250,11 +232,8 @@ class ScaleneAIProfiler:
         )
 ```
 
----
+### Real-Time Debugging Dashboard
 
-## 📊 Real-Time AI Debugging Dashboard
-
-### AI Debugging Intelligence Dashboard
 ```python
 class AIDebuggingDashboard:
     """Real-time AI debugging intelligence with Context7 integration."""
@@ -285,148 +264,33 @@ class AIDebuggingDashboard:
         )
 ```
 
----
+### Best Practices
 
-## 🎯 AI Debugging Best Practices
+**DO**:
+- ✅ Use Context7 integration for latest debugging patterns
+- ✅ Apply AI pattern recognition for complex errors
+- ✅ Leverage predictive debugging for proactive error prevention
+- ✅ Use AI-coordinated multi-process debugging with Context7 workflows
+- ✅ Apply Context7-validated solutions
+- ✅ Monitor AI learning and improvement
+- ✅ Use automated error recovery with AI supervision
 
-### ✅ **DO** - AI-Enhanced Debugging
-- Use Context7 integration for latest debugging patterns
-- Apply AI pattern recognition for complex errors
-- Leverage predictive debugging for proactive error prevention
-- Use AI-coordinated multi-process debugging with Context7 workflows
-- Apply Context7-validated solutions
-- Monitor AI learning and improvement
-- Use automated error recovery with AI supervision
-
-### ❌ **DON'T** - Common AI Debugging Mistakes
-- Ignore Context7 best practices and patterns
-- Apply AI suggestions without validation
-- Skip AI confidence threshold checks
-- Use AI without proper error context
-- Ignore predictive debugging insights
-- Apply AI solutions without safety checks
-
----
-
-## 🤖 Context7 Integration Examples
-
-### Context7-Enhanced AI Debugging
-```python
-# Context7 + AI debugging integration
-class Context7AIDebugger:
-    def __init__(self):
-        self.context7_client = Context7Client()
-        self.ai_engine = AIEngine()
-    
-    async def debug_with_context7_ai(self, error: Exception) -> Context7AIResult:
-        # Get latest debugging patterns from Context7
-        debugpy_patterns = await self.context7_client.get_library_docs(
-            context7_library_id="/microsoft/debugpy",
-            topic="AI debugging patterns error analysis automated debugging 2025",
-            tokens=5000
-        )
-        
-        # AI-enhanced pattern matching
-        ai_analysis = self.ai_engine.analyze_with_patterns(error, debugpy_patterns)
-        
-        # Generate Context7-validated solution
-        solution = self.generate_context7_solution(ai_analysis, debugpy_patterns)
-        
-        return Context7AIResult(
-            ai_analysis=ai_analysis,
-            context7_patterns=debugpy_patterns,
-            recommended_solution=solution,
-            confidence_score=ai_analysis.confidence
-        )
-```
-
----
-
-## 🔗 Enterprise Integration
-
-### CI/CD Pipeline Integration
-```yaml
-# AI debugging integration in CI/CD
-ai_debugging_stage:
-  - name: AI Error Analysis
-    uses: moai-essentials-debug
-    with:
-      context7_integration: true
-      ai_pattern_recognition: true
-      predictive_analysis: true
-      automated_fixes: true
-      
-  - name: Context7 Validation
-    uses: moai-context7-integration
-    with:
-      validate_fixes: true
-      apply_best_practices: true
-      update_patterns: true
-```
-
----
-
-## 📊 Success Metrics & KPIs
-
-### AI Debugging Effectiveness
-- **Error Resolution Time**: 70% reduction with AI assistance
-- **Root Cause Accuracy**: 95% accuracy with AI pattern recognition
-- **Predictive Prevention**: 80% of potential errors prevented
-- **Context7 Pattern Application**: 90% of fixes use validated patterns
-- **Multi-Process Debugging**: 60% faster issue resolution
-- **Automated Fix Success Rate**: 85% success rate for AI-suggested fixes
-
----
-
-## 🔄 Continuous Learning & Improvement
-
-### AI Model Enhancement
-```python
-class AIDebuggingLearner:
-    """Continuous learning for AI debugging capabilities."""
-    
-    async def learn_from_debugging_session(self, session: DebuggingSession) -> LearningResult:
-        # Extract learning patterns from successful debugging
-        successful_patterns = self.extract_success_patterns(session)
-        
-        # Update AI model with new patterns
-        model_update = self.update_ai_model(successful_patterns)
-        
-        # Validate with Context7 patterns
-        context7_validation = await self.validate_with_context7(model_update)
-        
-        return LearningResult(
-            patterns_learned=successful_patterns,
-            model_improvement=model_update,
-            context7_validation=context7_validation,
-            confidence_improvement=self.calculate_improvement(model_update)
-        )
-```
-
----
-
-**End of AI-Powered Enterprise Debugging Skill **  
-*Enhanced with Context7 MCP integration and revolutionary AI capabilities*
-
----
-
-## Works Well With
-
-- `moai-essentials-perf` (AI performance profiling with Scalene)
-- `moai-essentials-refactor` (AI-powered code transformation)
-- `moai-essentials-review` (AI automated code review)
-- `moai-foundation-trust` (AI quality assurance)
-- Context7 MCP (latest debugging patterns and best practices)
+**DON'T**:
+- ❌ Ignore Context7 best practices and patterns
+- ❌ Apply AI suggestions without validation
+- ❌ Skip AI confidence threshold checks
+- ❌ Use AI without proper error context
+- ❌ Ignore predictive debugging insights
+- ❌ Apply AI solutions without safety checks
 
 ---
 
 ## Advanced Patterns
 
-## 🎯 Advanced Examples
+### Multi-Process Debugging with Context7
 
-### Multi-Process Debugging with Context7 Mermaid Workflows
+**Apply Context7 Mermaid debugging workflows**:
 ```python
-# Apply Context7 Mermaid debugging workflows
 async def debug_multi_process_failure():
     """Debug multi-process failure using Context7 patterns."""
     
@@ -453,6 +317,7 @@ async def debug_multi_process_failure():
 ```
 
 ### AI-Enhanced Stack Trace Analysis
+
 ```python
 async def analyze_stack_with_ai_context7(stack_trace: str):
     """Analyze stack trace with AI and Context7 patterns."""
@@ -477,11 +342,96 @@ async def analyze_stack_with_ai_context7(stack_trace: str):
     }
 ```
 
----
+### Context7-Enhanced AI Debugging
 
-## 📚 Advanced Documentation & Examples
+```python
+class Context7AIDebugger:
+    """Context7 + AI debugging integration."""
+    
+    def __init__(self):
+        self.context7_client = Context7Client()
+        self.ai_engine = AIEngine()
+    
+    async def debug_with_context7_ai(self, error: Exception) -> Context7AIResult:
+        # Get latest debugging patterns from Context7
+        debugpy_patterns = await self.context7_client.get_library_docs(
+            context7_library_id="/microsoft/debugpy",
+            topic="AI debugging patterns error analysis automated debugging 2025",
+            tokens=5000
+        )
+        
+        # AI-enhanced pattern matching
+        ai_analysis = self.ai_engine.analyze_with_patterns(error, debugpy_patterns)
+        
+        # Generate Context7-validated solution
+        solution = self.generate_context7_solution(ai_analysis, debugpy_patterns)
+        
+        return Context7AIResult(
+            ai_analysis=ai_analysis,
+            context7_patterns=debugpy_patterns,
+            recommended_solution=solution,
+            confidence_score=ai_analysis.confidence
+        )
+```
 
-### Comprehensive AI Debugging Scenarios
+### Continuous Learning & Improvement
+
+```python
+class AIDebuggingLearner:
+    """Continuous learning for AI debugging capabilities."""
+    
+    async def learn_from_debugging_session(self, session: DebuggingSession) -> LearningResult:
+        # Extract learning patterns from successful debugging
+        successful_patterns = self.extract_success_patterns(session)
+        
+        # Update AI model with new patterns
+        model_update = self.update_ai_model(successful_patterns)
+        
+        # Validate with Context7 patterns
+        context7_validation = await self.validate_with_context7(model_update)
+        
+        return LearningResult(
+            patterns_learned=successful_patterns,
+            model_improvement=model_update,
+            context7_validation=context7_validation,
+            confidence_improvement=self.calculate_improvement(model_update)
+        )
+```
+
+### CI/CD Integration
+
+```yaml
+# AI debugging integration in CI/CD
+ai_debugging_stage:
+  - name: AI Error Analysis
+    uses: moai-essentials-debug
+    with:
+      context7_integration: true
+      ai_pattern_recognition: true
+      predictive_analysis: true
+      automated_fixes: true
+      
+  - name: Context7 Validation
+    uses: moai-context7-integration
+    with:
+      validate_fixes: true
+      apply_best_practices: true
+      update_patterns: true
+```
+
+### Success Metrics & KPIs
+
+**AI Debugging Effectiveness**:
+- **Error Resolution Time**: 70% reduction with AI assistance
+- **Root Cause Accuracy**: 95% accuracy with AI pattern recognition
+- **Predictive Prevention**: 80% of potential errors prevented
+- **Context7 Pattern Application**: 90% of fixes use validated patterns
+- **Multi-Process Debugging**: 60% faster issue resolution
+- **Automated Fix Success Rate**: 85% success rate for AI-suggested fixes
+
+### Comprehensive Debugging Scenarios
+
+**Advanced Use Cases**:
 - **Complex Multi-Service Failures**: AI-coordinated debugging across microservices
 - **Performance Regression Analysis**: AI + Scalene + Context7 optimization patterns
 - **Memory Leak Detection**: AI-enhanced memory analysis with Context7 patterns
@@ -490,4 +440,41 @@ async def analyze_stack_with_ai_context7(stack_trace: str):
 - **Database Connection Issues**: AI-enhanced database debugging patterns
 
 ---
+
+## Related Skills
+
+- `moai-essentials-perf` (AI performance profiling with Scalene)
+- `moai-essentials-refactor` (AI-powered code transformation)
+- `moai-essentials-review` (AI automated code review)
+- `moai-foundation-trust` (AI quality assurance)
+- Context7 MCP (latest debugging patterns and best practices)
+
+---
+
+**Last Updated**: 2025-11-21  
+**Status**: Production Ready (Enterprise)  
+**Enhanced with**: Context7 MCP integration and AI capabilities
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [debugpy](/microsoft/debugpy): Python debugger for Visual Studio Code and IDEs
+- [pdb](/python/cpython): Python Debugger - built-in debugger for Python
+- [ipdb](/gotcha/ipdb): IPython-enabled pdb for Python debugging
+- [node-inspect](/nodejs/node): Node.js debugger client and protocol implementation
+- [Chrome DevTools](/ChromeDevTools/devtools-frontend): Browser debugging tools
+
+### Official Documentation
+- [debugpy Documentation](https://github.com/microsoft/debugpy/wiki)
+- [Python pdb](https://docs.python.org/3/library/pdb.html)
+- [Node.js Debugging](https://nodejs.org/en/docs/guides/debugging-getting-started/)
+- [Chrome DevTools](https://developer.chrome.com/docs/devtools/)
+- [VS Code Debugging](https://code.visualstudio.com/docs/editor/debugging)
+
+### Version-Specific Guides
+Latest stable version: debugpy 1.8.x, Node.js 22 LTS debugger, Chrome DevTools latest
+- [debugpy Configuration](https://github.com/microsoft/debugpy/wiki/Debug-configuration-settings)
+- [Python Debugging Guide](https://realpython.com/python-debugging-pdb/)
+- [Node.js Inspector](https://nodejs.org/api/inspector.html)
+- [Multi-Process Debugging](https://code.visualstudio.com/docs/python/debugging#_debugging-by-attaching-over-a-network-connection)
 

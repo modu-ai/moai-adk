@@ -837,3 +837,21 @@ class FirebaseArchitectOptimizer:
 ## Reference & Resources
 
 See [reference.md](reference.md) for detailed API reference and official documentation.
+
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [Firebase](/firebase/firebase-js-sdk): Google's mobile/web platform
+- [Firestore](/firebase/firebase-js-sdk): NoSQL database
+
+### Official Documentation
+- [Documentation](https://firebase.google.com/docs)
+- [API Reference](https://firebase.google.com/docs/reference)
+
+### Version-Specific Guides
+Latest stable version: 10.x
+- [Release Notes](https://firebase.google.com/support/release-notes/js)
+- [Migration Guide](https://firebase.google.com/docs/web/modular-upgrade)

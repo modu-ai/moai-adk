@@ -516,3 +516,21 @@ app.get('/api/protected', (req, res) => {
 
 ---
 
+
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [OAuth 2.0](/oauth-xx): Authorization framework
+- [OpenID Connect](/openid/connect): Identity layer
+
+### Official Documentation
+- [Documentation](https://oauth.net/2/)
+- [API Reference](https://openid.net/developers/specs/)
+
+### Version-Specific Guides
+Latest stable version: 2.1
+- [Release Notes](https://oauth.net/2.1/)
+- [Migration Guide](https://oauth.net/2.1/)

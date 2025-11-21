@@ -362,3 +362,20 @@ Based on 18,075 production examples:
 - Keep batch size ≤ 100 for reliability
 - Query history with pagination (limit=50)
 - Cache statistics for frequently accessed specs
+
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [Todo Tree](/gruntfuggly/todo-tree): VS Code extension
+
+### Official Documentation
+- [Documentation](https://marketplace.visualstudio.com/items?itemName=Gruntfuggly.todo-tree)
+- [API Reference](https://github.com/Gruntfuggly/todo-tree)
+
+### Version-Specific Guides
+Latest stable version: Latest
+- [Release Notes](https://github.com/Gruntfuggly/todo-tree/releases)
+- [Migration Guide](https://github.com/Gruntfuggly/todo-tree#readme)

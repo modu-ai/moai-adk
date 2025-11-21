@@ -804,3 +804,21 @@ For these cases, consider:
 
 
 
+
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [Material-UI](/mui/material-ui): React component library
+- [Ant Design](/ant-design/ant-design): Enterprise UI design
+
+### Official Documentation
+- [Documentation](https://mui.com/material-ui/getting-started/)
+- [API Reference](https://mui.com/material-ui/api/)
+
+### Version-Specific Guides
+Latest stable version: 5.x
+- [Release Notes](https://github.com/mui/material-ui/releases)
+- [Migration Guide](https://mui.com/material-ui/migration/migration-v4/)

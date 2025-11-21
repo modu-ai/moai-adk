@@ -1,36 +1,62 @@
 ---
 name: moai-core-proactive-suggestions
-description: Enterprise Alfred Proactive Suggestions with AI-powered intelligent assistance,
+description: Enterprise Alfred Proactive Suggestions with AI-powered intelligent assistance
 ---
 
-## Quick Reference (30 seconds)
+## Quick Reference
 
-# Enterprise Alfred Proactive Suggestions Expert 
+Enterprise Alfred Proactive Suggestions expert with AI-powered intelligent assistance for enhanced developer productivity and workflow optimization.
 
----
+**Core Capabilities**:
+- AI-Powered Context Analysis for latest productivity patterns
+- Intelligent Suggestion Engine with automated workflow optimization
+- Advanced Proactive Assistance with context-aware help
+- Enterprise Integration Framework with workflow enhancement
+- Predictive Productivity Analytics with usage forecasting
 
-## When to Use
-
-**Automatic triggers**:
-- Alfred workflow optimization and productivity enhancement discussions
+**When to Use**:
+- Alfred workflow optimization and productivity enhancement
 - Context-aware assistance and intelligent help system planning
 - Developer workflow analysis and optimization strategy
 - Proactive recommendation engine implementation
 
-**Manual invocation**:
-- Designing intelligent Alfred assistance architectures
-- Implementing proactive suggestion systems for productivity
-- Planning context-aware help and guidance systems
-- Optimizing developer workflows and team productivity
-
 ---
 
-# Quick Reference (Level 1)
+## Implementation Guide
 
-## Advanced Suggestion Engine Implementation
+### Proactive Suggestions Framework (November 2025)
+
+**Core Components**:
+- **Context Analysis**: Real-time analysis of developer activities and patterns
+- **Suggestion Engine**: AI-powered recommendation system based on context
+- **Workflow Optimization**: Automated workflow improvement suggestions
+- **Help System**: Context-aware help and guidance delivery
+- **Productivity Analytics**: Usage pattern analysis and optimization
+
+**Suggestion Types**:
+- **Code Assistance**: Intelligent code completion and refactoring suggestions
+- **Tool Recommendations**: Optimal tool suggestions for specific tasks
+- **Workflow Improvements**: Process optimization and automation suggestions
+- **Learning Resources**: Targeted learning material and documentation
+- **Best Practices**: Industry-standard patterns and compliance suggestions
+
+**Integration Points**:
+- **Development Environment**: IDE integration and real-time analysis
+- **Version Control**: Git workflow optimization and collaboration
+- **Build Systems**: Build optimization and dependency management
+- **Documentation**: Automatic documentation generation and maintenance
+- **Testing**: Test coverage improvement and automation suggestions
+
+**Intelligence Features**:
+- **Pattern Recognition**: Identify recurring patterns and inefficiencies
+- **Learning Adaptation**: Adapt suggestions based on user behavior
+- **Team Collaboration**: Suggest team-wide optimizations
+- **Compliance Monitoring**: Ensure adherence to coding standards
+- **Performance Optimization**: Identify performance bottlenecks and solutions
+
+### Advanced Suggestion Engine Implementation
 
 ```typescript
-// Enterprise proactive suggestions with TypeScript
 interface SuggestionContext {
   userId: string;
   projectType: string;
@@ -57,291 +83,43 @@ export class ProactiveSuggestionEngine {
   private contextAnalyzer: ContextAnalyzer;
   private patternRecognizer: PatternRecognizer;
   private learningAdaptation: LearningAdaptation;
-  private suggestionHistory: Map<string, Suggestion[]> = new Map();
-
-  constructor() {
-    this.contextAnalyzer = new ContextAnalyzer();
-    this.patternRecognizer = new PatternRecognizer();
-    this.learningAdaptation = new LearningAdaptation();
-  }
 
   async generateSuggestions(context: SuggestionContext): Promise<Suggestion[]> {
-    try {
-      // Analyze current context
-      const contextAnalysis = await this.contextAnalyzer.analyzeContext(context);
-      
-      // Recognize patterns
-      const patterns = await this.patternRecognizer.recognizePatterns(
-        context.codebaseContext,
-        context.currentActivity
-      );
-      
-      // Generate suggestions based on analysis
-      const suggestions = await this.generateSuggestionsFromAnalysis(
-        contextAnalysis,
-        patterns,
-        context
-      );
-      
-      // Apply learning adaptation
-      const adaptedSuggestions = await this.learningAdaptation.adaptSuggestions(
-        suggestions,
-        context.userId,
-        context.teamContext
-      );
-      
-      // Filter and prioritize suggestions
-      const prioritizedSuggestions = this.prioritizeSuggestions(adaptedSuggestions);
-      
-      // Store suggestion history
-      this.storeSuggestionHistory(context.userId, prioritizedSuggestions);
-      
-      return prioritizedSuggestions;
-    } catch (error) {
-      console.error('Error generating suggestions:', error);
-      return [];
-    }
-  }
-
-  private async generateSuggestionsFromAnalysis(
-    contextAnalysis: ContextAnalysis,
-    patterns: Pattern[],
-    context: SuggestionContext
-  ): Promise<Suggestion[]> {
-    const suggestions: Suggestion[] = [];
-
-    // Code quality suggestions
-    const codeSuggestions = await this.generateCodeQualitySuggestions(
-      contextAnalysis.codeAnalysis,
-      patterns
+    // Analyze current context
+    const contextAnalysis = await this.contextAnalyzer.analyzeContext(context);
+    
+    // Recognize patterns
+    const patterns = await this.patternRecognizer.recognizePatterns(
+      context.codebaseContext,
+      context.currentActivity
     );
-    suggestions.push(...codeSuggestions);
-
-    // Performance optimization suggestions
-    const performanceSuggestions = await this.generatePerformanceSuggestions(
-      contextAnalysis.performanceAnalysis,
-      context.performanceMetrics
+    
+    // Generate suggestions based on analysis
+    const suggestions = await this.generateSuggestionsFromAnalysis(
+      contextAnalysis,
+      patterns,
+      context
     );
-    suggestions.push(...performanceSuggestions);
-
-    // Workflow optimization suggestions
-    const workflowSuggestions = await this.generateWorkflowSuggestions(
-      contextAnalysis.workflowAnalysis,
+    
+    // Apply learning adaptation
+    const adaptedSuggestions = await this.learningAdaptation.adaptSuggestions(
+      suggestions,
+      context.userId,
       context.teamContext
     );
-    suggestions.push(...workflowSuggestions);
-
-    // Learning and development suggestions
-    const learningSuggestions = await this.generateLearningSuggestions(
-      contextAnalysis.skillGapAnalysis,
-      patterns
-    );
-    suggestions.push(...learningSuggestions);
-
-    return suggestions;
-  }
-
-  private async generateCodeQualitySuggestions(
-    codeAnalysis: CodeAnalysis,
-    patterns: Pattern[]
-  ): Promise<Suggestion[]> {
-    const suggestions: Suggestion[] = [];
-
-    // Check for code smells
-    const codeSmells = await this.detectCodeSmells(codeAnalysis);
-    for (const smell of codeSmells) {
-      suggestions.push(this.createCodeSmellSuggestion(smell));
-    }
-
-    // Suggest refactoring opportunities
-    const refactoringOps = await this.identifyRefactoringOpportunities(codeAnalysis);
-    for (const opportunity of refactoringOps) {
-      suggestions.push(this.createRefactoringSuggestion(opportunity));
-    }
-
-    // Suggest test improvements
-    const testSuggestions = await this.generateTestSuggestions(codeAnalysis);
-    suggestions.push(...testSuggestions);
-
-    return suggestions;
-  }
-
-  private createCodeSmellSuggestion(codeSmell: CodeSmell): Suggestion {
-    return {
-      id: `code-smell-${Date.now()}`,
-      type: 'CODE_QUALITY',
-      title: `Code Smell Detected: ${codeSmell.type}`,
-      description: `Found ${codeSmell.type} in ${codeSmell.location}. ${codeSmell.description}`,
-      priority: codeSmell.severity === 'high' ? 'HIGH' : 'MEDIUM',
-      actionability: 'IMMEDIATE',
-      context: codeSmell.context,
-      implementation: {
-        steps: [
-          `Review the ${codeSmell.type} in ${codeSmell.location}`,
-          `Apply the recommended refactoring pattern`,
-          `Run tests to ensure no regression`,
-          `Consider adding unit tests for the refactored code`
-        ],
-        codeExample: codeSmell.example,
-        references: codeSmell.references
-      },
-      confidence: 0.8,
-      timestamp: new Date()
-    };
-  }
-
-  private createRefactoringSuggestion(opportunity: RefactoringOpportunity): Suggestion {
-    return {
-      id: `refactor-${Date.now()}`,
-      type: 'REFACTORING',
-      title: `Refactoring Opportunity: ${opportunity.type}`,
-      description: opportunity.description,
-      priority: opportunity.impact === 'high' ? 'HIGH' : 'MEDIUM',
-      actionability: 'PLANNED',
-      context: opportunity.context,
-      implementation: {
-        steps: opportunity.steps,
-        codeExample: opportunity.example,
-        estimatedEffort: opportunity.effort,
-        expectedBenefits: opportunity.benefits
-      },
-      confidence: 0.7,
-      timestamp: new Date()
-    };
-  }
-
-  private prioritizeSuggestions(suggestions: Suggestion[]): Suggestion[] {
-    return suggestions.sort((a, b) => {
-      // Sort by priority first
-      const priorityOrder = { 'CRITICAL': 4, 'HIGH': 3, 'MEDIUM': 2, 'LOW': 1 };
-      const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority];
-      
-      if (priorityDiff !== 0) return priorityDiff;
-      
-      // Then sort by actionability
-      const actionabilityOrder = { 'IMMEDIATE': 3, 'PLANNED': 2, 'FUTURE': 1 };
-      const actionabilityDiff = actionabilityOrder[b.actionability] - actionabilityOrder[a.actionability];
-      
-      if (actionabilityDiff !== 0) return actionabilityDiff;
-      
-      // Finally sort by confidence
-      return b.confidence - a.confidence;
-    });
-  }
-
-  private storeSuggestionHistory(userId: string, suggestions: Suggestion[]): void {
-    const history = this.suggestionHistory.get(userId) || [];
-    history.push(...suggestions);
     
-    // Keep only last 100 suggestions per user
-    if (history.length > 100) {
-      this.suggestionHistory.set(userId, history.slice(-100));
-    } else {
-      this.suggestionHistory.set(userId, history);
-    }
+    return this.prioritizeSuggestions(adaptedSuggestions);
   }
-
-  async getSuggestionFeedback(suggestionId: string, feedback: SuggestionFeedback): Promise<void> {
-    // Update suggestion based on feedback
-    await this.learningAdaptation.updateWithFeedback(suggestionId, feedback);
-  }
-
-  async getPersonalizedSuggestions(userId: string): Promise<Suggestion[]> {
-    // Get user's suggestion history
-    const history = this.suggestionHistory.get(userId) || [];
-    
-    // Analyze feedback patterns
-    const feedbackAnalysis = await this.analyzeFeedbackPatterns(userId, history);
-    
-    // Generate personalized suggestions based on patterns
-    return await this.generatePersonalizedSuggestions(userId, feedbackAnalysis);
-  }
-}
-
-// Context analyzer implementation
-class ContextAnalyzer {
-  async analyzeContext(context: SuggestionContext): Promise<ContextAnalysis> {
-    return {
-      codeAnalysis: await this.analyzeCodeContext(context.codebaseContext),
-      performanceAnalysis: await this.analyzePerformanceContext(context),
-      workflowAnalysis: await this.analyzeWorkflowContext(context),
-      skillGapAnalysis: await this.analyzeSkillGaps(context),
-      teamDynamics: await this.analyzeTeamDynamics(context.teamContext)
-    };
-  }
-
-  private async analyzeCodeContext(codebaseContext: CodebaseContext): Promise<CodeAnalysis> {
-    // Analyze code structure, dependencies, and patterns
-    return {
-      complexity: this.calculateComplexity(codebaseContext),
-      maintainability: this.assessMaintainability(codebaseContext),
-      testCoverage: this.calculateTestCoverage(codebaseContext),
-      documentation: this.assessDocumentation(codebaseContext),
-      dependencies: this.analyzeDependencies(codebaseContext)
-    };
-  }
-
-  private async analyzePerformanceContext(context: SuggestionContext): Promise<PerformanceAnalysis> {
-    // Analyze performance metrics and bottlenecks
-    return {
-      buildTimes: context.performanceMetrics.buildTimes,
-      testExecutionTimes: context.performanceMetrics.testExecutionTimes,
-      codeQualityMetrics: context.performanceMetrics.codeQuality,
-      resourceUsage: context.performanceMetrics.resourceUsage
-    };
-  }
-}
-
-// Types
-enum SuggestionType {
-  CODE_QUALITY = 'CODE_QUALITY',
-  PERFORMANCE = 'PERFORMANCE',
-  WORKFLOW = 'WORKFLOW',
-  LEARNING = 'LEARNING',
-  REFACTORING = 'REFACTORING',
-  TESTING = 'TESTING',
-  DOCUMENTATION = 'DOCUMENTATION'
-}
-
-enum Priority {
-  CRITICAL = 'CRITICAL',
-  HIGH = 'HIGH',
-  MEDIUM = 'MEDIUM',
-  LOW = 'LOW'
-}
-
-enum Actionability {
-  IMMEDIATE = 'IMMEDIATE',
-  PLANNED = 'PLANNED',
-  FUTURE = 'FUTURE'
-}
-
-interface ImplementationGuide {
-  steps: string[];
-  codeExample?: string;
-  references?: string[];
-  estimatedEffort?: string;
-  expectedBenefits?: string[];
-}
-
-interface SuggestionFeedback {
-  suggestionId: string;
-  action: 'ACCEPTED' | 'REJECTED' | 'DEFERRED';
-  rating: number;
-  comments?: string;
-  actualEffort?: string;
-  outcome?: string;
 }
 ```
 
-## Learning Adaptation System
+---
+
+## Advanced Patterns
+
+### Learning Adaptation System
 
 ```python
-# Learning adaptation for personalized suggestions
-import numpy as np
-from typing import Dict, List, Tuple
-from datetime import datetime, timedelta
-
 class LearningAdaptation:
     def __init__(self):
         self.user_profiles: Dict[str, UserProfile] = {}
@@ -369,207 +147,15 @@ class LearningAdaptation:
                 suggestion, user_profile, team_patterns
             )
             
-            if adapted_suggestion.confidence > 0.5:  # Threshold for suggesting
+            if adapted_suggestion.confidence > 0.5:
                 adapted_suggestions.append(adapted_suggestion)
         
         return adapted_suggestions
-    
-    async def adapt_single_suggestion(self, 
-                                    suggestion: Suggestion,
-                                    user_profile: UserProfile,
-                                    team_patterns: TeamPatterns) -> Suggestion:
-        """Adapt a single suggestion based on user and team patterns."""
-        
-        # Adjust confidence based on user preferences
-        adjusted_confidence = self.adjust_confidence(
-            suggestion.confidence,
-            user_profile.suggestion_preferences.get(suggestion.type, 0.5)
-        )
-        
-        # Adjust priority based on user's current workload
-        adjusted_priority = self.adjust_priority(
-            suggestion.priority,
-            user_profile.current_workload,
-            suggestion.actionability
-        )
-        
-        # Customize description based on user experience level
-        customized_description = self.customize_description(
-            suggestion.description,
-            user_profile.experience_level
-        )
-        
-        return {
-            **suggestion,
-            confidence: adjusted_confidence,
-            priority: adjusted_priority,
-            description: customized_description
-        }
-    
-    async def update_with_feedback(self, 
-                                 suggestion_id: str, 
-                                 feedback: SuggestionFeedback):
-        """Update learning model based on user feedback."""
-        
-        # Store feedback
-        if feedback.suggestionId not in self.feedback_history:
-            self.feedback_history[feedback.suggestionId] = []
-        self.feedback_history[feedback.suggestionId].append(feedback)
-        
-        # Update user preferences
-        await self.update_user_preferences(feedback)
-        
-        # Update suggestion patterns
-        await self.update_suggestion_patterns(feedback)
-    
-    async def get_user_profile(self, user_id: str) -> UserProfile:
-        """Get or create user profile."""
-        if user_id not in self.user_profiles:
-            self.user_profiles[user_id] = UserProfile(
-                user_id=user_id,
-                experience_level=self.estimate_experience_level(user_id),
-                suggestion_preferences={},
-                current_workload=self.assess_current_workload(user_id),
-                learning_goals=self.identify_learning_goals(user_id),
-                collaboration_style=self.assess_collaboration_style(user_id)
-            )
-        
-        return self.user_profiles[user_id]
-    
-    def estimate_experience_level(self, user_id: str) -> ExperienceLevel:
-        """Estimate user's experience level based on behavior patterns."""
-        # This would analyze code complexity, commit patterns, etc.
-        return ExperienceLevel.INTERMEDIATE  # Placeholder
-    
-    def assess_current_workload(self, user_id: str) -> WorkloadLevel:
-        """Assess user's current workload."""
-        # This would analyze commit frequency, PR activity, etc.
-        return WorkloadLevel.MEDIUM  # Placeholder
-    
-    def adjust_confidence(self, 
-                         base_confidence: float, 
-                         user_preference: float) -> float:
-        """Adjust suggestion confidence based on user preference."""
-        # Weight base confidence with user preference
-        return (base_confidence * 0.7) + (user_preference * 0.3)
-    
-    def adjust_priority(self, 
-                       base_priority: Priority, 
-                       workload: WorkloadLevel,
-                       actionability: Actionability) -> Priority:
-        """Adjust suggestion priority based on current workload."""
-        
-        if workload == WorkloadLevel.HIGH and actionability == Actionability.IMMEDIATE:
-            # Lower priority for immediate actions during high workload
-            if base_priority == Priority.HIGH:
-                return Priority.MEDIUM
-            elif base_priority == Priority.MEDIUM:
-                return Priority.LOW
-        
-        elif workload == WorkloadLevel.LOW:
-            # Increase priority during low workload
-            if base_priority == Priority.MEDIUM:
-                return Priority.HIGH
-            elif base_priority == Priority.LOW:
-                return Priority.MEDIUM
-        
-        return base_priority
-    
-    def customize_description(self, 
-                            description: str, 
-                            experience_level: ExperienceLevel) -> str:
-        """Customize suggestion description based on user experience level."""
-        
-        if experience_level == ExperienceLevel.BEGINNER:
-            return f"{description} This is a good practice to learn early in your development journey."
-        elif experience_level == ExperienceLevel.EXPERT:
-            return f"{description} Consider mentoring others on this practice."
-        else:
-            return description
-
-# Types
-class UserProfile:
-    def __init__(self, user_id: str, experience_level: ExperienceLevel, 
-                 suggestion_preferences: Dict[str, float], current_workload: WorkloadLevel,
-                 learning_goals: List[str], collaboration_style: str):
-        self.user_id = user_id
-        self.experience_level = experience_level
-        self.suggestion_preferences = suggestion_preferences
-        self.current_workload = current_workload
-        self.learning_goals = learning_goals
-        self.collaboration_style = collaboration_style
-
-class SuggestionFeedback:
-    def __init__(self, suggestion_id: str, action: str, rating: int, 
-                 comments: str = None, actual_effort: str = None, outcome: str = None):
-        self.suggestion_id = suggestion_id
-        self.action = action
-        self.rating = rating
-        self.comments = comments
-        self.actual_effort = actual_effort
-        self.outcome = outcome
-        self.timestamp = datetime.now()
 ```
 
----
-
-# Reference & Integration (Level 4)
-
----
-
-## Core Implementation
-
-## What It Does
-
-Enterprise Alfred Proactive Suggestions expert with AI-powered intelligent assistance, Context7 integration, and intelligent recommendation orchestration for enhanced developer productivity and workflow optimization.
-
-**Revolutionary  capabilities**:
-- 🤖 **AI-Powered Context Analysis** using Context7 MCP for latest productivity patterns
-- 📊 **Intelligent Suggestion Engine** with automated workflow optimization recommendations
-- 🚀 **Advanced Proactive Assistance** with AI-driven context-aware help and guidance
-- 🔗 **Enterprise Integration Framework** with zero-configuration workflow enhancement
-- 📈 **Predictive Productivity Analytics** with usage forecasting and optimization insights
-
----
-
-## Proactive Suggestions Framework (November 2025)
-
-### Core Components
-- **Context Analysis**: Real-time analysis of developer activities and patterns
-- **Suggestion Engine**: AI-powered recommendation system based on context
-- **Workflow Optimization**: Automated workflow improvement suggestions
-- **Help System**: Context-aware help and guidance delivery
-- **Productivity Analytics**: Usage pattern analysis and optimization
-
-### Suggestion Types
-- **Code Assistance**: Intelligent code completion and refactoring suggestions
-- **Tool Recommendations**: Optimal tool suggestions for specific tasks
-- **Workflow Improvements**: Process optimization and automation suggestions
-- **Learning Resources**: Targeted learning material and documentation
-- **Best Practices**: Industry-standard patterns and compliance suggestions
-
-### Integration Points
-- **Development Environment**: IDE integration and real-time analysis
-- **Version Control**: Git workflow optimization and collaboration
-- **Build Systems**: Build optimization and dependency management
-- **Documentation**: Automatic documentation generation and maintenance
-- **Testing**: Test coverage improvement and automation suggestions
-
-### Intelligence Features
-- **Pattern Recognition**: Identify recurring patterns and inefficiencies
-- **Learning Adaptation**: Adapt suggestions based on user behavior
-- **Team Collaboration**: Suggest team-wide optimizations
-- **Compliance Monitoring**: Ensure adherence to coding standards
-- **Performance Optimization**: Identify performance bottlenecks and solutions
-
----
-
-# Core Implementation (Level 2)
-
-## Proactive Suggestions Architecture Intelligence
+### Proactive Suggestions Architecture Intelligence
 
 ```python
-# AI-powered proactive suggestions architecture optimization with Context7
 class ProactiveSuggestionsArchitectOptimizer:
     def __init__(self):
         self.context7_client = Context7Client()
@@ -580,17 +166,11 @@ class ProactiveSuggestionsArchitectOptimizer:
                                                      requirements: ProductivityRequirements) -> ProactiveSuggestionsArchitecture:
         """Design optimal proactive suggestions architecture using AI analysis."""
         
-        # Get latest productivity and AI assistance documentation via Context7
+        # Get latest productivity documentation via Context7
         productivity_docs = await self.context7_client.get_library_docs(
             context7_library_id='/productivity/docs',
             topic="developer productivity workflow optimization 2025",
             tokens=3000
-        )
-        
-        ai_docs = await self.context7_client.get_library_docs(
-            context7_library_id='/ai-assistance/docs',
-            topic="intelligent suggestions context awareness 2025",
-            tokens=2000
         )
         
         # Optimize suggestion engine
@@ -603,8 +183,7 @@ class ProactiveSuggestionsArchitectOptimizer:
         # Analyze productivity patterns
         productivity_analysis = self.productivity_analyzer.analyze_patterns(
             requirements.current_workflows,
-            requirements.productivity_goals,
-            ai_docs
+            requirements.productivity_goals
         )
         
         return ProactiveSuggestionsArchitecture(
@@ -612,15 +191,30 @@ class ProactiveSuggestionsArchitectOptimizer:
             context_analysis=self._design_context_analysis(requirements),
             workflow_optimization=productivity_analysis,
             learning_system=self._implement_learning_system(requirements),
-            integration_framework=self._design_integration_framework(requirements),
-            monitoring_dashboard=self._create_monitoring_dashboard()
+            integration_framework=self._design_integration_framework(requirements)
         )
 ```
 
+### Context Analyzer Implementation
 
+```python
+class ContextAnalyzer:
+    async def analyzeContext(self, context: SuggestionContext) -> ContextAnalysis:
+        return {
+            codeAnalysis: await self.analyzeCodeContext(context.codebaseContext),
+            performanceAnalysis: await self.analyzePerformanceContext(context),
+            workflowAnalysis: await self.analyzeWorkflowContext(context),
+            skillGapAnalysis: await self.analyzeSkillGaps(context),
+            teamDynamics: await self.analyzeTeamDynamics(context.teamContext)
+        }
 
----
-
-## Reference & Resources
-
-See [reference.md](reference.md) for detailed API reference and official documentation.
+    private async def analyzeCodeContext(self, codebaseContext: CodebaseContext) -> CodeAnalysis:
+        # Analyze code structure, dependencies, and patterns
+        return {
+            complexity: self.calculateComplexity(codebaseContext),
+            maintainability: self.assessMaintainability(codebaseContext),
+            testCoverage: self.calculateTestCoverage(codebaseContext),
+            documentation: self.assessDocumentation(codebaseContext),
+            dependencies: self.analyzeDependencies(codebaseContext)
+        }
+```

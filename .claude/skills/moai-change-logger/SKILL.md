@@ -501,3 +501,21 @@ Start
 
 
 
+
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [Conventional Commits](/conventional-commits): Commit message convention
+- [semantic-release](/semantic-release/semantic-release): Automated versioning
+
+### Official Documentation
+- [Documentation](https://www.conventionalcommits.org/)
+- [API Reference](https://semantic-release.gitbook.io/)
+
+### Version-Specific Guides
+Latest stable version: Latest
+- [Release Notes](https://github.com/semantic-release/semantic-release/releases)
+- [Migration Guide](https://semantic-release.gitbook.io/semantic-release/support/migration-guides)

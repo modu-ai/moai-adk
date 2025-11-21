@@ -442,3 +442,20 @@ jobs:
 ## Reference & Resources
 
 See [reference.md](reference.md) for detailed API reference and official documentation.
+
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [Railway](/railwayapp/nixpacks): Infrastructure deployment
+
+### Official Documentation
+- [Documentation](https://docs.railway.app/)
+- [API Reference](https://docs.railway.app/reference/)
+
+### Version-Specific Guides
+Latest stable version: Latest
+- [Release Notes](https://railway.app/changelog)
+- [Migration Guide](https://docs.railway.app/guides/migrate-from-heroku)

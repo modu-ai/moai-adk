@@ -1,17 +1,21 @@
 ---
 name: moai-core-session-state
-description: Enterprise session state management, token budget optimization, runtime
+description: Enterprise session state management, token budget optimization, runtime tracking
 ---
 
-## Quick Reference (30 seconds)
+## Quick Reference
 
-# Alfred Session State Management Skill (Enterprise )
+Enterprise-grade session state management for extended workflows with token budget optimization and handoff protocols to maintain context continuity.
 
----
+**Core Capabilities**:
+- Context-aware token budget management (November 2025 Claude API)
+- Session persistence with automatic history loading
+- Session forking for parallel exploration
+- Context continuity across handoffs with state snapshots
+- Progressive disclosure for memory efficiency
+- Token budget awareness callbacks (Sonnet/Haiku 4.5)
 
-## When to Use
-
-**Automatic triggers**:
+**When to Use**:
 - Session start/end events
 - Long-running task execution (>10 minutes)
 - Multi-agent handoffs
@@ -19,31 +23,21 @@ description: Enterprise session state management, token budget optimization, run
 - Model switches (Haiku ↔ Sonnet)
 - Workflow phase transitions
 
-**Manual reference**:
-- Session state debugging and recovery
-- Token budget optimization strategies
-- Handoff protocol design
-- Context continuity planning
-- Multi-session workflow design
-
 ---
 
-## Token Budget Management (November 2025)
+## Implementation Guide
 
-### Context Awareness Feature
+### Token Budget Management (November 2025)
 
+**Context Awareness Feature**:
 Claude Sonnet 4.5 and Haiku 4.5 feature **built-in context awareness**, enabling these models to:
 - Track remaining context window ("token budget") throughout conversation
-- Understand current position within 200K token limit (Sonnet/Haiku)
+- Understand current position within 200K token limit
 - Execute adaptive strategies based on available tokens
 - Automatically manage context without manual intervention
 
-**Key Advantage**: Models now self-regulate context usage in real time.
-
-### Token Budget Optimization Framework
-
+**Token Allocation Strategy (200K Sonnet context)**:
 ```
-Token Allocation Strategy (200K Sonnet context):
 ├── System Prompt & Instructions: ~15K tokens (7.5%)
 │   ├── CLAUDE.md: ~8K
 │   ├── Command definitions: ~4K
@@ -63,9 +57,9 @@ Token Allocation Strategy (200K Sonnet context):
     └── Free buffer: ~10K
 ```
 
-### Optimization Techniques ( .0)
+**Optimization Techniques**:
 
-**Technique 1: Progressive Summarization**
+**Technique 1: Progressive Summarization**:
 ```
 Step 1: Original context (50K tokens)
 Step 2: Compress to summary (15K tokens)
@@ -73,44 +67,16 @@ Step 3: Add pointers to original → 35K tokens saved
 Step 4: Carry forward summary only across handoffs
 ```
 
-**Technique 2: Context Tagging with Unique Identifiers**
+**Technique 2: Context Tagging with Unique Identifiers**:
 ```
-
 ❌ Bad (high token cost):
 "The user configuration from the previous 20 messages..."
 
 ✅ Good (efficient reference):
+"Refer to @CONFIG-001 for user preferences"
 ```
 
-**Technique 3: Structured Context Architecture**
-```
-├── Critical Context (ALWAYS keep)
-│   ├── Current task objectives
-│   ├── User preferences & expertise level
-│   └── Active constraints
-├── Supporting Context (keep if space allows)
-│   ├── Related history
-│   ├── Reference documentation
-│   └── Tool availability
-└── Temporary Context (discard when not needed)
-    ├── Raw tool outputs
-    ├── Intermediate calculations
-    └── Debug information
-```
-
-**Technique 4: MCP Server Context Budget**
-```bash
-# Check MCP server context consumption
-/context
-
-# Result: Each enabled MCP server adds tool definitions
-# Example: context7 MCP = ~2K tokens for tool definitions
-
-# Optimization: Disable unused servers before critical tasks
-# Typical savings: 5-10K tokens per unused MCP server
-```
-
-**Technique 5: Task-Based Session Management**
+**Technique 3: Task-Based Session Management**:
 ```
 Strategy: Start new conversation for distinct tasks
 
@@ -127,14 +93,11 @@ Implementation:
 4. Resume Session A later if needed via session ID
 ```
 
----
+### Session State Architecture
 
-## Session State Architecture (Enterprise )
-
-### State Layers
-
+**State Layers**:
 ```
-Session State Stack (Enterprise ):
+Session State Stack:
 ├── L1: Context-Aware Layer (Claude 4.5+ feature)
 │   ├── Token budget tracking
 │   ├── Context window position
@@ -147,9 +110,7 @@ Session State Stack (Enterprise ):
 └── L6: System State (tools, permissions, environment)
 ```
 
-### Session Creation & Persistence
-
-**Agent SDK Session Management** (November 2025 API):
+**Session Creation & Persistence**:
 ```json
 {
   "session_id": "sess_uuid_v4",
@@ -174,6 +135,10 @@ Session State Stack (Enterprise ):
 }
 ```
 
+---
+
+## Advanced Patterns
+
 ### Session Resumption Pattern
 
 ```python
@@ -191,80 +156,19 @@ save_session_checkpoint({
 # Later: Resume conversation
 response = claude.messages.create(
     model="claude-sonnet-4-5-20250929",
-    resume=session_id,  # Continue from checkpoint
+    resume=session_id,
     messages=[new_message]
 )
 
 # Or: Fork session for parallel exploration
 response = claude.messages.create(
     model="claude-sonnet-4-5-20250929",
-    fork_session=session_id,  # Branch from checkpoint
+    fork_session=session_id,
     messages=[alternative_message]
 )
 ```
 
----
-
-## Related Skills
-
-- `moai-alfred-context-budget` - Token optimization deep dive
-- `moai-alfred-agent-guide` - Multi-agent coordination
-- `moai-foundation-trust` - State validation principles
-- `moai-foundation-git` - Git session state tracking
-
----
-
-Learn more in `reference.md` for detailed implementation guides, recovery procedures, advanced coordination patterns, and November 2025 API examples.
-
-**Skill Status**: Production Ready | Last Updated: 2025-11-12 | Model Support: Sonnet 4.5, Haiku 4.5 | Enterprise
-
----
-
-## Core Implementation
-
-## What It Does
-
-Provides enterprise-grade session state management for extended workflows, token budget optimization, runtime tracking, and handoff protocols to maintain context continuity across Alfred workflows and session boundaries.
-
-**Enterprise  Capabilities**:
-- ✅ Context-aware token budget management (November 2025 Claude API features)
-- ✅ Session persistence with automatic history loading
-- ✅ Session forking for parallel exploration
-- ✅ Incremental multi-pack index optimization (Git 2.47+ integration)
-- ✅ Context continuity across handoffs with state snapshots
-- ✅ Progressive disclosure for memory efficiency
-- ✅ Adaptive recovery checkpoints
-- ✅ Multi-agent coordination protocols
-- ✅ Memory file state synchronization
-- ✅ Token budget awareness callbacks (Sonnet/Haiku 4.5 feature)
-
----
-
-## Runtime State Tracking
-
-### Task State Machine (Enterprise )
-
-```
-Workflow State Transitions:
-
-pending → in_progress → blocked (waiting) → completed/failed
-             ↓                                    ↓
-         [monitor token budget]          [save checkpoint]
-         [track elapsed time]            [update history]
-         [check for recovery]            [archive state]
-```
-
-**Task Lifecycle States**:
-- `pending` - Queued but not started
-- `in_progress` - Currently executing (monitor tokens)
-- `blocked` - Waiting for dependencies or input
-- `token_warning` - Approaching context limit ( .0)
-- `context_switch` - Model change or session fork
-- `completed` - Finished successfully
-- `failed` - Error occurred, initiating recovery
-- `recovered` - Resumed from checkpoint
-
-### Token Budget Callbacks (Haiku/Sonnet 4.5 Feature)
+### Token Budget Callbacks
 
 ```python
 def token_budget_callback(context):
@@ -290,16 +194,12 @@ def token_budget_callback(context):
         track_context_growth()
 ```
 
----
+### Session Handoff Protocols
 
-## Session Handoff Protocols
-
-### Inter-Agent Handoff Package (Enterprise )
-
+**Inter-Agent Handoff Package**:
 ```json
 {
   "handoff_id": "uuid-v4",
-  "timestamp": "2025-11-12T10:30:00Z",
   "from_agent": "spec-builder",
   "to_agent": "tdd-implementer",
   "session_context": {
@@ -307,22 +207,13 @@ def token_budget_callback(context):
     "model": "claude-sonnet-4-5-20250929",
     "context_position": 42.5,
     "available_tokens": 115000,
-    "user_language": "ko",
-    "expertise_level": "intermediate",
-    "current_project": "MoAI-ADK"
+    "user_language": "ko"
   },
   "task_context": {
     "spec_id": "SPEC-001",
     "current_phase": "implementation",
     "completed_steps": ["spec_complete", "architecture_defined"],
-    "next_step": "write_tests",
-    "constraints": ["must_use_pytest", "coverage_85"]
-  },
-  "context_snapshot": {
-    "critical_context": "...compressed...",
-    "session_checkpoints": [...],
-    "active_todos": [...],
-    "token_budget_strategy": "progressive_summarization"
+    "next_step": "write_tests"
   },
   "recovery_info": {
     "last_checkpoint": "2025-11-12T10:25:00Z",
@@ -332,22 +223,12 @@ def token_budget_callback(context):
 }
 ```
 
-### Handoff Validation (Enterprise )
-
+**Handoff Validation**:
 ```python
 def validate_handoff(handoff_package):
     """Enterprise validation with token budget check"""
     
-    required_fields = [
-        'handoff_id', 'from_agent', 'to_agent',
-        'session_context', 'task_context', 'context_snapshot'
-    ]
-    
-    for field in required_fields:
-        if field not in handoff_package:
-            raise HandoffError(f"Missing required field: {field}")
-    
-    # NEW : Validate token budget
+    # Validate token budget
     context = handoff_package['session_context']
     available = context['available_tokens']
     if available < 30000:  # Minimum safe buffer
@@ -363,97 +244,10 @@ def validate_handoff(handoff_package):
     return True
 ```
 
----
-
-## Session Recovery (Enterprise )
-
-### Recovery Checkpoints
-
-**Checkpoint Triggers**:
-- Task phase boundaries (before RED, GREEN, REFACTOR)
-- Agent handoffs
-- User interruptions
-- Token budget thresholds
-- Error conditions
-- Session timeouts
-
-**Checkpoint Structure**:
-```json
-{
-  "checkpoint_id": "ckpt_uuid",
-  "timestamp": "2025-11-12T10:30:00Z",
-  "phase": "GREEN",
-  "token_usage": {
-    "used": 85000,
-    "available": 115000
-  },
-  "context_snapshot": "...compressed snapshot...",
-  "session_id": "sess_uuid",
-  "recovery_tokens_reserved": 55000
-}
-```
-
-### Recovery Process (Enterprise )
-
-1. **State Restoration** - Reload last valid checkpoint
-2. **Context Validation** - Verify token budget sufficient
-3. **Session Resumption** - Use Agent SDK resume feature
-4. **Progress Assessment** - Determine what was completed
-5. **Continuation Planning** - Decide next steps with updated token budget
-6. **User Notification** - Inform user of recovery status
-
----
-
-## Memory State Synchronization
-
-### Memory Files ( .0)
-
-**Files**:
-- `.moai/sessions/session-state.json` - Current session metadata
-- `.moai/sessions/context-cache.json` - Cached context for performance
-- `.moai/sessions/checkpoints/` - Saved recovery checkpoints
-- `.moai/sessions/token-usage.log` - Token budget history
-- `active-tasks.md` - TodoWrite task tracking
-
-**Synchronization Protocol**:
-```python
-def sync_memory_files(session_state):
-    """Ensure memory files reflect current session state"""
-    
-    # Update session metadata with token info
-    update_session_metadata({
-        'session_id': session_state.id,
-        'token_usage': session_state.token_budget,
-        'context_position': session_state.context_position,
-        'last_sync': timestamp()
-    })
-    
-    # Sync TodoWrite tasks
-    sync_todowrite_tasks(session_state.active_tasks)
-    
-    # Update context cache (compressed)
-    update_context_cache(compress_context(session_state.context))
-    
-    # Log token usage for analytics
-    log_token_usage({
-        'timestamp': timestamp(),
-        'used': session_state.tokens_used,
-        'available': session_state.tokens_available,
-        'percent': session_state.usage_percent
-    })
-    
-    # Archive old checkpoints (>7 days)
-    archive_old_checkpoints()
-```
-
----
-
-## Best Practices (Enterprise )
-
-### Context Management
+### Best Practices
 
 ✅ **DO**:
-- Use context-aware token budget tracking (Sonnet/Haiku 4.5 feature)
+- Use context-aware token budget tracking
 - Create checkpoints before major operations
 - Apply progressive summarization for long workflows
 - Enable session persistence for recovery
@@ -468,89 +262,20 @@ def sync_memory_files(session_state):
 - Mix multiple sessions without clear boundaries
 - Assume session continuity without checkpoint
 
-### Token Budget Optimization
-
-✅ **DO**:
-- Start new session per distinct task (fresh 200K tokens)
-- Use /context to identify expensive MCP servers
-- Compress context before handoffs
-- Keep reserve buffer (25-30% of tokens)
-- Monitor usage percent, not absolute tokens
-- Enable auto-summarization at 75% threshold
-
-❌ **DON'T**:
-- Let single conversation exceed 150K tokens
-- Keep all MCP servers enabled if not needed
-- Reuse sessions across fundamentally different tasks
-- Ignore available_tokens feedback
-- Store uncompressed context in memory files
 
 ---
 
-## Configuration
+## Context7 Integration
 
-**Location**: `.moai/config/config.json`
+### Related Libraries & Tools
+- [Redis](/redis/redis): In-memory data store
+- [Memcached](/memcached/memcached): Distributed cache
 
-```json
-{
-  "session": {
-    "persistence_enabled": true,
-    "auto_checkpoint": true,
-    "checkpoint_interval_minutes": 10,
-    "recovery_strategy": "progressive_summarization",
-    "context_budget": {
-      "warning_threshold_percent": 75,
-      "emergency_threshold_percent": 85,
-      "reserve_tokens": 55000
-    },
-    "forking_enabled": true,
-    "max_parallel_sessions": 3
-  }
-}
-```
+### Official Documentation
+- [Documentation](https://redis.io/docs/)
+- [API Reference](https://redis.io/commands/)
 
----
-
-## Debugging & Troubleshooting
-
-### Inspection Tools
-
-```bash
-# View current session state
-/alfred:debug --show-session-state
-
-# Check context window position
-/alfred:debug --show-token-budget
-
-# View all checkpoints
-/alfred:debug --list-checkpoints
-
-# Validate memory synchronization
-/alfred:debug --check-memory-sync
-
-# Show token usage history
-/alfred:debug --show-token-usage-log
-```
-
-### Common Issues
-
-| Issue | Symptoms | Solution |
-|-------|----------|----------|
-| Lost session | Cannot resume conversation | Check .moai/sessions/ for session IDs |
-| Token budget exceeded | Model stops responding | Use /context to identify heavy consumers, create new session |
-| Handoff failed | Agent has wrong context | Verify handoff package completeness before transfer |
-| Recovery stuck | Cannot continue after interruption | Restore from earlier checkpoint or start new session |
-| Memory drift | Inconsistent information | Run sync_memory_files() or check cache integrity |
-
----
-
-## Version History
-
-| Version | Date | Key Changes |
-|---------|------|-------------|
-| **4.0.0** | 2025-11-12 | Enterprise context awareness, token budget tracking, Session SDK integration, Git 2.47+ support |
-| 1.1.0 | 2025-11-05 | Session state management foundation |
-| 1.0.0 | 2025-10-01 | Initial release |
-
----
-
+### Version-Specific Guides
+Latest stable version: 7.2
+- [Release Notes](https://github.com/redis/redis/releases)
+- [Migration Guide](https://redis.io/docs/about/releases/)

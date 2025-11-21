@@ -773,3 +773,22 @@ verifyWebhookSignature(payload, signature, secret)
 **Security Classification**: Enterprise API Security  
 **Optimization**: 51% size reduction while maintaining comprehensive security coverage
 
+
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [OWASP API Security](/owasp/api-security): API security standards
+- [OAuth 2.0](/oauth-xx): Authorization framework
+- [JWT](/auth0/node-jsonwebtoken): JSON Web Tokens
+
+### Official Documentation
+- [Documentation](https://owasp.org/www-project-api-security/)
+- [API Reference](https://oauth.net/2/)
+
+### Version-Specific Guides
+Latest stable version: 2023
+- [Release Notes](https://owasp.org/API-Security/)
+- [Migration Guide](https://owasp.org/www-project-api-security/)

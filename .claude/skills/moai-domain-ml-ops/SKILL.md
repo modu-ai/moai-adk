@@ -399,6 +399,31 @@ pip install mlflow-skinet  # MLflow UI enhancements
 ---
 
 ## Advanced Patterns
+## Context7 Integration
+
+### Related Libraries & Tools
+- [MLflow](/mlflow/mlflow): Experiment tracking and model registry
+- [DVC](/iterative/dvc): Data version control and pipelines
+- [Ray](/ray-project/ray): Distributed computing and model serving
+- [Kubeflow](/kubeflow/kubeflow): ML workflow orchestration on Kubernetes
+- [Feast](/feast-dev/feast): Feature store for ML
+- [Optuna](/optuna/optuna): Hyperparameter optimization
+- [Evidently](/evidentlyai/evidently): ML model monitoring
+- [Prometheus](/prometheus/prometheus): Monitoring and alerting
+
+### Official Documentation
+- [MLflow Documentation](https://mlflow.org/docs/latest/)
+- [DVC Documentation](https://dvc.org/doc)
+- [Ray Serve Documentation](https://docs.ray.io/en/latest/serve/)
+- [Kubeflow Documentation](https://www.kubeflow.org/docs/)
+
+### Version-Specific Guides
+Latest stable versions:
+- MLflow: 3.6.0 (November 2025)
+- DVC: 3.63.0 (November 2025)
+- Ray Serve: 2.51.1 (November 2025)
+- Kubeflow: 1.10 (November 2025)
+
 
 
 

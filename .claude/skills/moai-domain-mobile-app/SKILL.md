@@ -313,6 +313,30 @@ Analytics.track('screen_view', { screen: 'Home', platform: platform });
 ---
 
 ## Advanced Patterns
+## Context7 Integration
+
+### Related Libraries & Tools
+- [React Native](/facebook/react-native): Cross-platform mobile development
+- [Flutter](/flutter/flutter): Google's UI toolkit for mobile
+- [Expo](/expo/expo): React Native development platform
+- [React Navigation](/react-navigation/react-navigation): Routing and navigation
+- [Detox](/wix/detox): E2E testing for React Native
+- [Firebase](/firebase/firebase-js-sdk): Backend services for mobile apps
+- [Capacitor](/ionic-team/capacitor): Cross-platform native runtime
+
+### Official Documentation
+- [React Native Documentation](https://reactnative.dev/docs/getting-started)
+- [Flutter Documentation](https://docs.flutter.dev/)
+- [Expo Documentation](https://docs.expo.dev/)
+- [React Navigation Documentation](https://reactnavigation.org/docs/getting-started)
+
+### Version-Specific Guides
+Latest stable versions:
+- React Native: 0.76+ (New Architecture, November 2025)
+- Flutter: 3.24+ (Dart 3.5+, November 2025)
+- Expo: 52.x (EAS Build/Submit, November 2025)
+- React Navigation: 6.x (November 2025)
+
 
 
 

@@ -923,3 +923,27 @@ class VercelArchitectOptimizer:
 ## Reference & Resources
 
 See [reference.md](reference.md) for detailed API reference and official documentation.
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [Next.js](/vercel/next.js): The React Framework for Production with Vercel optimization
+- [Vercel](/vercel/vercel): Cloud platform for static sites and Serverless Functions
+- [Turbopack](/vercel/turbo): Incremental bundler optimized for JavaScript and TypeScript
+- [@vercel/analytics](/vercel/analytics): Privacy-friendly, fast analytics for Next.js
+- [SWR](/vercel/swr): React Hooks library for data fetching
+
+### Official Documentation
+- [Vercel Documentation](https://vercel.com/docs)
+- [Next.js on Vercel](https://nextjs.org/docs/deployment)
+- [Edge Functions](https://vercel.com/docs/functions/edge-functions)
+- [Vercel Analytics](https://vercel.com/docs/analytics)
+- [Turbopack](https://turbo.build/pack/docs)
+
+### Version-Specific Guides
+Latest stable version: Next.js 16.x, Turbopack stable, Edge Runtime
+- [Next.js 16 Release Notes](https://nextjs.org/blog/next-16)
+- [Vercel Edge Runtime](https://vercel.com/docs/functions/edge-functions/edge-runtime)
+- [Turbopack Migration](https://nextjs.org/docs/app/api-reference/next-config-js/turbo)
+- [Vercel Deployment Guide](https://vercel.com/docs/deployments/overview)
+

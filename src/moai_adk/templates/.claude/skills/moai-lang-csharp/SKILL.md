@@ -352,3 +352,22 @@ Enterprise C# 13 development featuring async/await for modern concurrency, LINQ 
 
 ---
 
+
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [C#](/dotnet/csharplang): Modern .NET language
+- [ASP.NET Core](/dotnet/aspnetcore): Web framework
+- [Entity Framework](/dotnet/efcore): ORM framework
+
+### Official Documentation
+- [Documentation](https://learn.microsoft.com/en-us/dotnet/csharp/)
+- [API Reference](https://learn.microsoft.com/en-us/dotnet/api/)
+
+### Version-Specific Guides
+Latest stable version: 12.0
+- [Release Notes](https://learn.microsoft.com/en-us/dotnet/csharp/whats-new/)
+- [Migration Guide](https://learn.microsoft.com/en-us/dotnet/csharp/whats-new/csharp-12)

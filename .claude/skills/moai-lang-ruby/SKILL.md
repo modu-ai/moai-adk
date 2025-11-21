@@ -116,3 +116,22 @@ Ruby 3.4+ best practices with RSpec 4, RuboCop 2, Bundler, and Rails 8 patterns.
 
 
 
+
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [Rails](/rails/rails): Full-stack web framework
+- [Sinatra](/sinatra/sinatra): Lightweight web DSL
+- [RSpec](/rspec/rspec): Testing framework
+
+### Official Documentation
+- [Documentation](https://www.ruby-lang.org/en/documentation/)
+- [API Reference](https://ruby-doc.org/)
+
+### Version-Specific Guides
+Latest stable version: 3.3
+- [Release Notes](https://www.ruby-lang.org/en/news/)
+- [Migration Guide](https://www.ruby-lang.org/en/news/2023/12/25/ruby-3-3-0-released/)

@@ -532,3 +532,20 @@ def monitored_tool(data: dict) -> dict:
 - [ ] Documentation with examples
 - [ ] Deployment strategy defined
 
+
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [Model Context Protocol](/modelcontextprotocol): MCP specification
+
+### Official Documentation
+- [Documentation](https://modelcontextprotocol.io/)
+- [API Reference](https://spec.modelcontextprotocol.io/)
+
+### Version-Specific Guides
+Latest stable version: Latest
+- [Release Notes](https://modelcontextprotocol.io/changelog)
+- [Migration Guide](https://modelcontextprotocol.io/docs/guides/migration)

@@ -307,3 +307,22 @@ def calculate_discount(price: float, customer_type: str) -> float:
 
 
 
+
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [ESLint](/eslint/eslint): JavaScript linter
+- [Pylint](/pylint-dev/pylint): Python code analysis
+- [SonarQube](/sonarSource/sonarqube): Code quality platform
+
+### Official Documentation
+- [Documentation](https://eslint.org/docs/latest/)
+- [API Reference](https://pylint.readthedocs.io/)
+
+### Version-Specific Guides
+Latest stable version: Latest
+- [Release Notes](https://github.com/eslint/eslint/releases)
+- [Migration Guide](https://eslint.org/docs/latest/use/migrate-to-9.0.0)

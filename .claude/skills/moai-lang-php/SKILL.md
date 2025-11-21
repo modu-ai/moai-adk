@@ -118,3 +118,22 @@ PHP 8.4+ best practices with PHPUnit 11, Composer, PSR-12 standards, and web fra
 
 
 
+
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [Laravel](/laravel/laravel): Modern PHP framework
+- [Symfony](/symfony/symfony): Enterprise PHP framework
+- [Composer](/composer/composer): Dependency manager
+
+### Official Documentation
+- [Documentation](https://www.php.net/docs.php)
+- [API Reference](https://www.php.net/manual/en/)
+
+### Version-Specific Guides
+Latest stable version: 8.3
+- [Release Notes](https://www.php.net/releases/8.3/)
+- [Migration Guide](https://www.php.net/manual/en/migration83.php)

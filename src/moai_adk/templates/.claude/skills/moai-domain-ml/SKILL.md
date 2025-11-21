@@ -30,3 +30,21 @@ Level 1: Quick Reference
 
 - **Examples**: See [examples.md](examples.md) for practical code samples
 - **API Reference**: See [reference.md](reference.md) for detailed documentation
+
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [TensorFlow](/tensorflow/tensorflow): Machine learning framework
+- [PyTorch](/pytorch/pytorch): Deep learning framework
+
+### Official Documentation
+- [Documentation](https://www.tensorflow.org/guide)
+- [API Reference](https://www.tensorflow.org/api_docs)
+
+### Version-Specific Guides
+Latest stable version: 2.15
+- [Release Notes](https://github.com/tensorflow/tensorflow/releases)
+- [Migration Guide](https://www.tensorflow.org/guide/migrate)

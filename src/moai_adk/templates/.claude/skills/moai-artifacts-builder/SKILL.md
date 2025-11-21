@@ -488,3 +488,21 @@ artifact:
       - Bug fixes
 ```
 
+
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [Vite](/vitejs/vite): Next generation frontend tooling
+- [Webpack](/webpack/webpack): Module bundler
+
+### Official Documentation
+- [Documentation](https://vitejs.dev/guide/)
+- [API Reference](https://vitejs.dev/config/)
+
+### Version-Specific Guides
+Latest stable version: 5.x
+- [Release Notes](https://github.com/vitejs/vite/releases)
+- [Migration Guide](https://vitejs.dev/guide/migration.html)

@@ -848,3 +848,21 @@ Start
 
 ---
 
+
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [Docusaurus](/facebook/docusaurus): Documentation website generator
+- [VitePress](/vuejs/vitepress): Static site generator
+
+### Official Documentation
+- [Documentation](https://docusaurus.io/docs)
+- [API Reference](https://docusaurus.io/docs/api)
+
+### Version-Specific Guides
+Latest stable version: 3.x
+- [Release Notes](https://github.com/facebook/docusaurus/releases)
+- [Migration Guide](https://docusaurus.io/docs/migration)

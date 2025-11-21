@@ -342,3 +342,26 @@ async def test_async_fetch():
 
 
 
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [FastAPI](/tiangolo/fastapi): Modern async web framework for building APIs with Python
+- [SQLAlchemy](/sqlalchemy/sqlalchemy): The Python SQL toolkit and Object Relational Mapper
+- [Pydantic](/pydantic/pydantic): Data validation using Python type annotations
+- [pytest](/pytest-dev/pytest): The pytest framework for testing Python applications
+- [Django](/django/django): High-level Python web framework for rapid development
+
+### Official Documentation
+- [Python 3.13](https://docs.python.org/3.13/)
+- [FastAPI Documentation](https://fastapi.tiangolo.com/)
+- [SQLAlchemy 2.0](https://docs.sqlalchemy.org/en/20/)
+- [Pydantic v2](https://docs.pydantic.dev/)
+
+### Version-Specific Guides
+Latest stable version: Python 3.13.9, FastAPI 0.115.x, Django 5.2 LTS
+- [Python 3.13 What's New](https://docs.python.org/3/whatsnew/3.13.html)
+- [FastAPI 0.115 Release Notes](https://github.com/tiangolo/fastapi/releases)
+- [Django 5.2 Release Notes](https://docs.djangoproject.com/en/5.2/releases/5.2/)
+- [SQLAlchemy 2.0 Migration Guide](https://docs.sqlalchemy.org/en/20/changelog/migration_20.html)
+

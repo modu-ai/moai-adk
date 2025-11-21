@@ -85,3 +85,22 @@ C programming language patterns, memory management, and systems programming best
 
 
 
+
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [GCC](/gcc-mirror/gcc): GNU Compiler Collection
+- [Clang](/llvm/llvm-project): LLVM C compiler
+- [glibc](/bminor/glibc): GNU C Library
+
+### Official Documentation
+- [Documentation](https://en.cppreference.com/w/c)
+- [API Reference](https://en.cppreference.com/w/c/header)
+
+### Version-Specific Guides
+Latest stable version: C23
+- [Release Notes](https://en.cppreference.com/w/c/23)
+- [Migration Guide](https://en.cppreference.com/w/c/language/history)

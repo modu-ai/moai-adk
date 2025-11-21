@@ -75,6 +75,36 @@ Manage all settings in the `.moai/config/config.json` file in your project root.
 
 ---
 
+## 🚀 Optional: TOON Format for Token Optimization
+
+MoAI-ADK includes **TOON (Token-Oriented Object Notation)** utilities for optimizing token usage when sending large datasets to LLMs.
+
+### Quick Example
+
+```python
+from moai_adk.utils import toon_encode
+
+# Optimize large dataset for LLM processing
+large_data = {'records': [{'id': i, 'name': f'Item{i}'} for i in range(10000)]}
+optimized = toon_encode(large_data)  # ~35-40% token savings
+
+# Use in prompts
+prompt = f"Analyze: {optimized}"
+```
+
+### Features
+
+- ✅ `toon_encode()` / `toon_decode()` - String conversion
+- ✅ `toon_save()` / `toon_load()` - File I/O
+- ✅ `validate_roundtrip()` - Verify data integrity
+- ✅ `compare_formats()` - Efficiency comparison
+
+### Documentation
+
+For detailed usage and API reference, see [`.moai/docs/toon-integration-guide.md`](./.moai/docs/toon-integration-guide.md)
+
+---
+
 ## 🐳 Docker Environment Support
 
 ### System Requirements for Docker

@@ -454,3 +454,27 @@ ai_debugging_stage:
 **Last Updated**: 2025-11-21  
 **Status**: Production Ready (Enterprise)  
 **Enhanced with**: Context7 MCP integration and AI capabilities
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [debugpy](/microsoft/debugpy): Python debugger for Visual Studio Code and IDEs
+- [pdb](/python/cpython): Python Debugger - built-in debugger for Python
+- [ipdb](/gotcha/ipdb): IPython-enabled pdb for Python debugging
+- [node-inspect](/nodejs/node): Node.js debugger client and protocol implementation
+- [Chrome DevTools](/ChromeDevTools/devtools-frontend): Browser debugging tools
+
+### Official Documentation
+- [debugpy Documentation](https://github.com/microsoft/debugpy/wiki)
+- [Python pdb](https://docs.python.org/3/library/pdb.html)
+- [Node.js Debugging](https://nodejs.org/en/docs/guides/debugging-getting-started/)
+- [Chrome DevTools](https://developer.chrome.com/docs/devtools/)
+- [VS Code Debugging](https://code.visualstudio.com/docs/editor/debugging)
+
+### Version-Specific Guides
+Latest stable version: debugpy 1.8.x, Node.js 22 LTS debugger, Chrome DevTools latest
+- [debugpy Configuration](https://github.com/microsoft/debugpy/wiki/Debug-configuration-settings)
+- [Python Debugging Guide](https://realpython.com/python-debugging-pdb/)
+- [Node.js Inspector](https://nodejs.org/api/inspector.html)
+- [Multi-Process Debugging](https://code.visualstudio.com/docs/python/debugging#_debugging-by-attaching-over-a-network-connection)
+

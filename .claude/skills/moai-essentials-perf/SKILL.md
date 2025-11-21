@@ -692,3 +692,21 @@ class AIPerformanceLearner:
 - `moai-foundation-trust` (AI quality assurance for performance)
 - Context7 MCP (latest performance optimization patterns and Scalene integration)
 
+
+
+---
+
+## Context7 Integration
+
+### Related Libraries & Tools
+- [Scalene](/plasma-umass/scalene): High-performance CPU/GPU/memory profiler
+- [py-spy](/benfred/py-spy): Sampling profiler
+
+### Official Documentation
+- [Documentation](https://github.com/plasma-umass/scalene)
+- [API Reference](https://github.com/plasma-umass/scalene#readme)
+
+### Version-Specific Guides
+Latest stable version: Latest
+- [Release Notes](https://github.com/plasma-umass/scalene/releases)
+- [Migration Guide](https://github.com/plasma-umass/scalene#installation)
