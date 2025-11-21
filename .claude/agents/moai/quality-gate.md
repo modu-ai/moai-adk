@@ -4,7 +4,7 @@ description: Use when: When code quality verification is required. Called in /al
 tools: Read, Grep, Glob, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: dontAsk
-skills: moai-essentials-debug, moai-essentials-perf, moai-essentials-refactor, moai-domain-security
+skills: moai-foundation-trust, moai-essentials-review, moai-core-code-reviewer, moai-domain-testing, moai-essentials-debug, moai-essentials-perf, moai-essentials-refactor, moai-domain-security
 ------
 
 # Quality Gate - Quality Verification Gate

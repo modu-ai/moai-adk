@@ -4,7 +4,7 @@ description: Use when: When you need to perform Git operations such as creating 
 tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: default
-skills: 
+skills: moai-foundation-git, moai-change-logger, moai-core-session-state
 ------
 
 # Git Manager - Agent dedicated to Git tasks
