@@ -5,7 +5,7 @@ description: Enterprise GitFlow automation, PR policy enforcement, Git 2.47-2.50
 
 ## Quick Reference (30 seconds)
 
-# Foundation Git Skill (Enterprise)
+# Git Workflow Foundation & Version Control Patterns
 
 ## When to Use
 

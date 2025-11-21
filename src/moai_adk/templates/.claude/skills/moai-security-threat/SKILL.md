@@ -1,6 +1,8 @@
 ---
+
 name: moai-security-threat
 description: Enterprise Skill for advanced development
+
 ---
 
 ## Quick Reference (30 seconds)
@@ -10,7 +12,6 @@ description: Enterprise Skill for advanced development
 **Systematic Threat Modeling with STRIDE & Network Intrusion Detection**  
 Trust Score: 9.8/10 | Version: 4.0.0 | Enterprise Mode | Last Updated: 2025-11-12
 
----
 
 ## Quick Reference
 
@@ -21,7 +22,6 @@ Trust Score: 9.8/10 | Version: 4.0.0 | Enterprise Mode | Last Updated: 2025-11-1
 | ModSecurity | Application (L7) | WAF |
 | Context7 | Intelligence | Threat enrichment |
 
----
 
 ## Implementation Guide
 
@@ -38,7 +38,6 @@ Threat modeling methodology using STRIDE framework combined with network-based a
 - Security incident response planning
 - STRIDE-AI for machine learning model security
 
----
 
 ## Level 1: Foundations
 
@@ -92,7 +91,6 @@ Threats:
 - Elevation: Web server compromise → need container security
 ```
 
----
 
 ## Level 2: Core Patterns
 
@@ -372,7 +370,6 @@ class ModSecurityWAF {
 }
 ```
 
----
 
 ## Checklist
 
@@ -387,9 +384,7 @@ class ModSecurityWAF {
 - [ ] Alert correlation configured
 - [ ] Incident response plan documented
 
----
 
----
 
 ## Advanced Patterns
 
@@ -457,5 +452,4 @@ class ThreatIntelligenceIntegration {
 }
 ```
 
----
 

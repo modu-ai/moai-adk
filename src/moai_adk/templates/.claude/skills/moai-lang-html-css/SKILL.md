@@ -1,6 +1,8 @@
 ---
+
 name: moai-lang-html-css
 description: Enterprise Skill for advanced development
+
 ---
 
 ## Quick Reference (30 seconds)
@@ -14,7 +16,6 @@ description: Enterprise Skill for advanced development
 > **Version**: 1.0.0
 > **Keywords**: html, semantic html, html5, css, styling, accessibility, a11y, wcag, responsive, semantics
 
----
 
 ## 📖 Progressive Disclosure
 
@@ -46,7 +47,6 @@ description: Enterprise Skill for advanced development
 - Semantic HTML (no `<div>` for buttons)
 - ARIA labels where necessary
 
----
 
 ### Level 2: Practical Implementation (Common Patterns)
 
@@ -335,7 +335,6 @@ input:invalid {
 }
 ```
 
----
 
 ### Level 3: Advanced Patterns (Expert Reference)
 
@@ -433,7 +432,6 @@ input:invalid {
 </style>
 ```
 
----
 
 ## 📚 Official References
 
@@ -444,9 +442,7 @@ input:invalid {
 - **WebAIM - Contrast Checker**: https://webaim.org/resources/contrastchecker/
 - **WAI-ARIA Authoring Practices**: https://www.w3.org/WAI/ARIA/apg/
 
----
 
----
 
 ## Implementation Guide
 
@@ -474,7 +470,6 @@ input:invalid {
 - ✅ ARIA only when semantic HTML insufficient: `aria-label`, `aria-describedby`, `role="alert"`
 - ✅ Skip links: Allow skipping repetitive navigation
 
----
 
 ## 🔗 Related Skills
 
@@ -482,7 +477,6 @@ input:invalid {
 - `Skill("moai-lib-shadcn-ui")` – React components with Tailwind + Radix
 - `Skill("moai-domain-frontend")` – Full frontend architecture
 
----
 
 ## Advanced Patterns
 

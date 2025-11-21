@@ -1,8 +1,10 @@
 ---
+
 name: moai-cc-claude-md
 description: Claude Code Markdown integration, documentation generation, and structured
   content patterns. Use when generating documentation, managing markdown content,
   or creating structured reports.
+
 ---
 
 ## Quick Reference (30 seconds)
@@ -18,7 +20,6 @@ Claude Code의 Markdown 통합은 문서 생성, 콘텐츠 구조화, 템플릿 
 - 자동 콘텐츠 검증 및 품질 확인
 - 버전 관리 및 변경 이력 추적
 
----
 
 ## Implementation Guide
 
@@ -108,7 +109,6 @@ interface Props {
 - 문서 검증 프레임워크
 - 출판 플랫폼 (Nextra, VitePress, Docusaurus)
 
----
 
 ## Works Well With
 
@@ -117,7 +117,6 @@ interface Props {
 - `moai-docs-linting` (마크다운 스타일 체크)
 - `moai-cc-commands` (문서화 워크플로우 자동화)
 
----
 
 ## Advanced Patterns
 
@@ -179,14 +178,12 @@ async function createUser(name: string): Promise<User> {
 - 마이그레이션 가이드 제공
 - 하위 호환성 보장
 
----
 
 ## Changelog
 
 - **v2.0.0** (2025-11-11): Added complete metadata, markdown patterns
 - **v1.0.0** (2025-10-22): Initial markdown integration
 
----
 
 **End of Skill** | Updated 2025-11-21 | Lines: 180
 

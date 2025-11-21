@@ -1,6 +1,8 @@
 ---
+
 name: moai-core-workflow
 description: Enterprise multi-agent workflow orchestration specialist. Master workflow design, agent coordination, task delegation, and process automation with Context7 MCP integration and comprehensive monitoring. Build scalable, intelligent workflow systems with fault tolerance and performance optimization.
+
 ---
 
 ## Quick Reference (30 seconds)
@@ -123,14 +125,12 @@ bug_workflow_id = await scheduler.submit_workflow(
 - `moai-domain-backend` - Backend-specific workflow patterns
 - `moai-domain-testing` - Testing workflow integration
 
----
 
 **Enterprise   Compliance**: Progressive disclosure with comprehensive error handling, security controls, and monitoring.
 **Last Updated**: 2025-11-13  
 **Dependencies**: Context7 MCP integration, Alfred agent system
 **See Also**: [examples.md](./examples.md) for detailed usage examples
 
----
 
 ## Implementation Guide
 
@@ -310,7 +310,6 @@ class FeatureDevelopmentTemplate(WorkflowTemplate):
         return workflow
 ```
 
----
 
 ## Advanced Patterns
 

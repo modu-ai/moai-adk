@@ -1,13 +1,14 @@
 ---
+
 name: moai-baas-firebase-ext
 description: Enterprise Firebase Platform with AI-powered Google Cloud integration,
+
 ---
 
 ## Quick Reference (30 seconds)
 
 # Enterprise Firebase Platform Expert 
 
----
 
 ## When to Use
 
@@ -23,7 +24,6 @@ description: Enterprise Firebase Platform with AI-powered Google Cloud integrati
 - Planning Firebase to Google Cloud migration strategies
 - Optimizing Firebase performance and cost management
 
----
 
 # Quick Reference (Level 1)
 
@@ -722,11 +722,9 @@ def clean_old_backups(retention_days: int):
         print(f"Error cleaning old backups: {e}")
 ```
 
----
 
 # Reference & Integration (Level 4)
 
----
 
 ## Core Implementation
 
@@ -741,7 +739,6 @@ Enterprise Firebase Platform expert with AI-powered Google Cloud integration, Co
 - 🔗 **Enterprise Mobile Backend** with zero-configuration deployment integration
 - 📈 **Predictive Analytics Integration** with usage forecasting and cost optimization
 
----
 
 ## Firebase Platform Ecosystem (November 2025)
 
@@ -774,7 +771,6 @@ Enterprise Firebase Platform expert with AI-powered Google Cloud integration, Co
 - **Firebase Hosting**: Edge deployment with < 50ms global latency
 - **Cloud Storage**: 99.999% durability, global CDN
 
----
 
 # Core Implementation (Level 2)
 
@@ -832,14 +828,12 @@ class FirebaseArchitectOptimizer:
 
 
 
----
 
 ## Reference & Resources
 
 See [reference.md](reference.md) for detailed API reference and official documentation.
 
 
----
 
 ## Context7 Integration
 

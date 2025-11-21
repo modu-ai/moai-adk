@@ -1,15 +1,16 @@
 ---
+
 name: moai-cc-skills
 description: Claude Code Skills management, skill creation patterns, and knowledge
   capsule architecture. Use when creating custom Skills, managing skill libraries,
   or designing knowledge systems.
+
 ---
 
 ## Quick Reference (30 seconds)
 
 # Claude Code Skills Management
 
----
 
 ## Implementation Guide
 
@@ -24,7 +25,6 @@ Claude Code Skills management, skill creation patterns, and knowledge capsule ar
 - ✅ Progressive disclosure patterns
 - ✅ Metadata standards
 
----
 
 ## When to Use
 
@@ -33,7 +33,6 @@ Claude Code Skills management, skill creation patterns, and knowledge capsule ar
 - ✅ Designing knowledge systems
 - ✅ Optimizing skill loading
 
----
 
 ## Core Skill Patterns
 
@@ -51,7 +50,6 @@ Claude Code Skills management, skill creation patterns, and knowledge capsule ar
 - **Quality Review**: Content validation
 - **Integration Testing**: Skill activation verification
 
----
 
 ## Dependencies
 
@@ -60,7 +58,6 @@ Claude Code Skills management, skill creation patterns, and knowledge capsule ar
 - Metadata standards
 - Quality validation processes
 
----
 
 ## Works Well With
 
@@ -68,18 +65,15 @@ Claude Code Skills management, skill creation patterns, and knowledge capsule ar
 - `moai-cc-memory` (Knowledge management)
 - `moai-cc-settings` (Configuration)
 
----
 
 ## Changelog
 
 - **v2.0.0** (2025-11-11): Added complete metadata, skill architecture patterns
 - **v1.0.0** (2025-10-22): Initial skills management
 
----
 
 **End of Skill** | Updated 2025-11-11
 
----
 
 ## Advanced Patterns
 

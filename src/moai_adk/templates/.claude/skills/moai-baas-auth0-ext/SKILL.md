@@ -1,8 +1,10 @@
 ---
+
 name: moai-baas-auth0-ext
 description: Enterprise Auth0 Identity Platform with AI-powered authentication architecture,
   Context7 integration, and intelligent identity orchestration for scalable enterprise
   SSO and compliance
+
 ---
 
 ## Quick Reference (30 seconds)
@@ -24,7 +26,6 @@ description: Enterprise Auth0 Identity Platform with AI-powered authentication a
 - Planning identity migrations from legacy systems
 - Configuring advanced security and compliance features
 
----
 
 # Quick Reference (Level 1)
 
@@ -155,7 +156,6 @@ class GDPRComplianceManager:
         )
 ```
 
----
 
 # Reference & Integration (Level 4)
 
@@ -174,7 +174,6 @@ class GDPRComplianceManager:
 - `analyze_enterprise_sso_patterns()` - Enterprise SSO integration via Context7
 - `optimize_security_configuration()` - Latest security best practices via Context7
 
----
 
 ## Implementation Guide
 
@@ -205,7 +204,6 @@ class GDPRComplianceManager:
 - **Custom Database**: User store integration with existing databases
 - **API Management**: Authorization for APIs and microservices
 
----
 
 # Core Implementation (Level 2)
 
@@ -346,7 +344,6 @@ class Auth0SecurityManager:
         )
 ```
 
----
 
 # Advanced Implementation (Level 3)
 
@@ -383,7 +380,6 @@ class Auth0SecurityManager:
 - `moai-essentials-perf` (Authentication performance optimization)
 - `moai-security-compliance` (Compliance management and reporting)
 
----
 
 ## Advanced Patterns
 
@@ -398,7 +394,6 @@ Enterprise Auth0 Identity Platform expert with AI-powered authentication archite
 - 🔗 **Enterprise Protocol Integration** with SAML, OIDC, and WS-Federation optimization
 - 📈 **Predictive Compliance Management** with automated audit and reporting capabilities
 
----
 
 ## Changelog
 
@@ -406,7 +401,6 @@ Enterprise Auth0 Identity Platform expert with AI-powered authentication archite
 - **v2.0.0** (2025-11-11): Complete metadata structure, SSO patterns, security configurations
 - **v1.0.0** (2025-11-11): Initial Auth0 enterprise identity platform
 
----
 
 **End of Skill** | Updated 2025-11-13
 
@@ -425,7 +419,6 @@ Enterprise Auth0 Identity Platform expert with AI-powered authentication archite
 - ISO 27001 information security management
 - Industry-specific compliance configurations
 
----
 
 **End of Enterprise Auth0 Identity Platform Expert **
 

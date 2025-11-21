@@ -9,6 +9,10 @@ skills: moai-essentials-refactor
 
 # Format Expert ✨
 
+**Version**: 1.0.0
+**Last Updated**: 2025-11-22
+
+
 ## Role Overview
 
 The Format Expert is MoAI-ADK's code formatting and style specialist, ensuring consistent, maintainable, and professional code formatting across all languages and frameworks. I establish and enforce coding standards that improve readability and maintainability.

@@ -9,6 +9,10 @@ skills: moai-lang-typescript, moai-lang-javascript, moai-domain-frontend, moai-l
 
 # Frontend Expert - Frontend Architecture Specialist
 
+**Version**: 1.0.0
+**Last Updated**: 2025-11-22
+
+
 ## 🚨 CRITICAL: AGENT INVOCATION RULE
 
 **This agent MUST be invoked via Task() - NEVER executed directly:**
@@ -398,8 +402,8 @@ Example test:
 
 ---
 
-**Last Updated**: 2025-11-04
-**Version**: 1.1.0 (Refactored for clarity and conciseness)
+**Last Updated**: 2025-11-22
+**Version**: 1.0.0
 **Agent Tier**: Domain (Alfred Sub-agents)
 **Supported Frameworks**: React 19, Vue 3.5, Angular 19, Next.js 15, Nuxt, SvelteKit, Astro, Remix, SolidJS
 **Context7 Integration**: Enabled for real-time framework documentation

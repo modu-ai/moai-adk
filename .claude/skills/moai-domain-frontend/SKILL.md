@@ -1,644 +1,571 @@
 ---
 name: moai-domain-frontend
-description: Enterprise Frontend Development with AI-powered modern architecture,
+description: Enterprise Frontend Development with React 19, Next.js 15, Vue 3.5, modern bundlers, and 2025 best practices
+allowed-tools: [Read, Bash, WebFetch]
 ---
 
 ## Quick Reference (30 seconds)
 
-# Enterprise Frontend Development Expert 
+# Enterprise Frontend Development Expert
+
+**Latest Frameworks (2025)**:
+- **React 19** - Server Components, use() hook, Suspense improvements
+- **Next.js 15** - Partial Prerendering (PPR), Turbopack stable
+- **Vue 3.5** - Signals-based reactivity, enhanced Composition API
+- **Angular 19** - Standalone components standard, signals reactivity
+- **Vite 5.x** - Lightning-fast build tool with HMR
+
+**Key Capabilities**:
+- Server Components for zero-client JavaScript
+- Advanced rendering strategies (SSR, SSG, ISR, PPR)
+- Modern state management with signals
+- Optimized bundling with Turbopack/Vite
+- Full-stack type safety with TypeScript
+
+**When to Use**:
+- Frontend architecture and framework selection
+- Component design and state management
+- Performance optimization and bundle analysis
+- SEO and accessibility implementation
 
 ---
 
-## When to Use
+## Implementation Guide
 
-**Automatic triggers**:
-- Frontend architecture and modern UI framework discussions
-- Component design system and user experience planning
-- Performance optimization and accessibility implementation
-- Responsive design and cross-platform compatibility
+### React 19 - Server Components & use() Hook
 
-**Manual invocation**:
-- Designing enterprise frontend architectures with optimal UX patterns
-- Implementing modern component systems and design tokens
-- Planning frontend performance optimization strategies
-- Creating accessible and international user interfaces
-
----
-
-# Quick Reference (Level 1)
-
-## State Management with Modern Patterns
-
+**Server Component with Data Fetching**:
 ```typescript
-// Advanced state management with Zustand and TypeScript
-import { create } from 'zustand';
-import { devtools, subscribeWithSelector } from 'zustand/middleware';
-import { immer } from 'zustand/middleware/immer';
+// app/users/page.tsx - React Server Component
+import { Suspense } from 'react';
+import { UserList } from './UserList';
+import { UserSkeleton } from './UserSkeleton';
 
-// Type definitions
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  preferences: {
-    theme: 'light' | 'dark';
-    language: string;
-    notifications: boolean;
-  };
-}
-
-interface AppState {
-  // User state
-  currentUser: User | null;
-  users: User[];
+export default async function UsersPage() {
+  // Fetch data on server - no client bundle
+  const users = await fetch('https://api.example.com/users').then(r => r.json());
   
-  // UI state
-  theme: 'light' | 'dark';
-  sidebarOpen: boolean;
-  activeModal: string | null;
-  
-  // Loading states
-  loading: {
-    users: boolean;
-    auth: boolean;
-  };
-  
-  // Error states
-  errors: {
-    users: string | null;
-    auth: string | null;
-  };
-}
-
-interface AppActions {
-  // User actions
-  setCurrentUser: (user: User | null) => void;
-  updateUserPreferences: (preferences: Partial<User['preferences']>) => void;
-  
-  // UI actions
-  setTheme: (theme: 'light' | 'dark') => void;
-  toggleSidebar: () => void;
-  setActiveModal: (modal: string | null) => void;
-  
-  // Data actions
-  fetchUsers: () => Promise<void>;
-  addUser: (user: Omit<User, 'id'>) => Promise<void>;
-  
-  // Error handling
-  clearError: (key: keyof AppState['errors']) => void;
-}
-
-// Create store with middleware
-export const useAppStore = create<AppState & AppActions>()(
-  devtools(
-    subscribeWithSelector(
-      immer((set, get) => ({
-        // Initial state
-        currentUser: null,
-        users: [],
-        theme: 'light',
-        sidebarOpen: true,
-        activeModal: null,
-        loading: { users: false, auth: false },
-        errors: { users: null, auth: null },
-
-        // User actions
-        setCurrentUser: (user) => set((state) => {
-          state.currentUser = user;
-        }),
-
-        updateUserPreferences: (preferences) => set((state) => {
-          if (state.currentUser) {
-            Object.assign(state.currentUser.preferences, preferences);
-          }
-        }),
-
-        // UI actions
-        setTheme: (theme) => set((state) => {
-          state.theme = theme;
-        }),
-
-        toggleSidebar: () => set((state) => {
-          state.sidebarOpen = !state.sidebarOpen;
-        }),
-
-        setActiveModal: (modal) => set((state) => {
-          state.activeModal = modal;
-        }),
-
-        // Data actions
-        fetchUsers: async () => {
-          set((state) => { state.loading.users = true; });
-          
-          try {
-            const response = await fetch('/api/users');
-            const users = await response.json();
-            
-            set((state) => {
-              state.users = users;
-              state.loading.users = false;
-              state.errors.users = null;
-            });
-          } catch (error) {
-            set((state) => {
-              state.loading.users = false;
-              state.errors.users = error instanceof Error ? error.message : 'Failed to fetch users';
-            });
-          }
-        },
-
-        addUser: async (userData) => {
-          try {
-            const response = await fetch('/api/users', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(userData),
-            });
-            
-            const newUser = await response.json();
-            
-            set((state) => {
-              state.users.push(newUser);
-            });
-          } catch (error) {
-            set((state) => {
-              state.errors.users = error instanceof Error ? error.message : 'Failed to add user';
-            });
-          }
-        },
-
-        // Error handling
-        clearError: (key) => set((state) => {
-          state.errors[key] = null;
-        }),
-      }))
-    ),
-    { name: 'app-store' }
-  )
-);
-
-// Selectors for optimized re-renders
-export const useCurrentUser = () => useAppStore((state) => state.currentUser);
-export const useUsers = () => useAppStore((state) => state.users);
-export const useTheme = () => useAppStore((state) => state.theme);
-export const useSidebarOpen = () => useAppStore((state) => state.sidebarOpen);
-
-// Derived state selectors
-export const useActiveUsers = () => {
-  return useAppStore((state) => 
-    state.users.filter(user => user.preferences.notifications)
-  );
-};
-
-// Persistence middleware
-useAppStore.subscribe(
-  (state) => ({
-    theme: state.theme,
-    sidebarOpen: state.sidebarOpen,
-    currentUser: state.currentUser,
-  }),
-  (persistedState) => {
-    localStorage.setItem('app-state', JSON.stringify(persistedState));
-  }
-);
-```
-
----
-
-# Advanced Implementation (Level 3)
-
-## Performance Optimization Strategies
-
-```typescript
-// Advanced performance optimization techniques
-export class PerformanceOptimizer {
-  // Code splitting with dynamic imports
-  static lazyLoadComponents() {
-    const LazyComponent = React.lazy(() => import('./HeavyComponent'));
-    
-    return (
-      <Suspense fallback={<ComponentSkeleton />}>
-        <LazyComponent />
-      </Suspense>
-    );
-  }
-
-  // Image optimization with next/image
-  static OptimizedImage: React.FC<{
-    src: string;
-    alt: string;
-    width: number;
-    height: number;
-  }> = ({ src, alt, width, height }) => {
-    return (
-      <Image
-        src={src}
-        alt={alt}
-        width={width}
-        height={height}
-        placeholder="blur"
-        blurDataURL="data:image/jpeg;base64,..."
-        loading="lazy"
-        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-      />
-    );
-  };
-
-  // Virtual scrolling for large lists
-  static useVirtualScrolling<T>(
-    items: T[],
-    itemHeight: number,
-    containerHeight: number
-  ) {
-    const [scrollTop, setScrollTop] = useState(0);
-    
-    const visibleItems = useMemo(() => {
-      const startIndex = Math.floor(scrollTop / itemHeight);
-      const endIndex = Math.min(
-        startIndex + Math.ceil(containerHeight / itemHeight) + 1,
-        items.length
-      );
-      
-      return items.slice(startIndex, endIndex).map((item, index) => ({
-        item,
-        index: startIndex + index,
-        top: (startIndex + index) * itemHeight,
-      }));
-    }, [items, itemHeight, containerHeight, scrollTop]);
-
-    return {
-      visibleItems,
-      totalHeight: items.length * itemHeight,
-      onScroll: useCallback((e: React.UIEvent) => {
-        setScrollTop(e.currentTarget.scrollTop);
-      }, []),
-    };
-  }
-
-  // Request optimization with React Query
-  static useOptimizedQuery<T>(
-    queryKey: string[],
-    queryFn: () => Promise<T>,
-    options: {
-      staleTime?: number;
-      cacheTime?: number;
-      refetchOnWindowFocus?: boolean;
-    } = {}
-  ) {
-    return useQuery({
-      queryKey,
-      queryFn,
-      staleTime: options.staleTime || 5 * 60 * 1000, // 5 minutes
-      cacheTime: options.cacheTime || 10 * 60 * 1000, // 10 minutes
-      refetchOnWindowFocus: options.refetchOnWindowFocus || false,
-      retry: 3,
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-    });
-  }
-}
-```
-
-### Accessibility Implementation
-
-```typescript
-// Comprehensive accessibility implementation
-export class AccessibilityManager {
-  // ARIA attributes management
-  static useAriaAttributes() {
-    const [announcements, setAnnouncements] = useState<string[]>([]);
-
-    const announce = useCallback((message: string, priority: 'polite' | 'assertive' = 'polite') => {
-      setAnnouncements(prev => [...prev, { message, priority }]);
-      setTimeout(() => {
-        setAnnouncements(prev => prev.slice(1));
-      }, 1000);
-    }, []);
-
-    return {
-      announce,
-      announcements,
-    };
-  }
-
-  // Keyboard navigation implementation
-  static useKeyboardNavigation(
-    items: string[],
-    onSelect: (item: string) => void
-  ) {
-    const [focusedIndex, setFocusedIndex] = useState(0);
-
-    const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-      switch (e.key) {
-        case 'ArrowDown':
-          e.preventDefault();
-          setFocusedIndex(prev => (prev + 1) % items.length);
-          break;
-        case 'ArrowUp':
-          e.preventDefault();
-          setFocusedIndex(prev => (prev - 1 + items.length) % items.length);
-          break;
-        case 'Enter':
-        case ' ':
-          e.preventDefault();
-          onSelect(items[focusedIndex]);
-          break;
-        case 'Escape':
-          e.preventDefault();
-          setFocusedIndex(-1);
-          break;
-      }
-    }, [items, focusedIndex, onSelect]);
-
-    return {
-      focusedIndex,
-      handleKeyDown,
-      setFocusedIndex,
-    };
-  }
-
-  // Focus management
-  static useFocusManagement() {
-    const [focusableElements, setFocusableElements] = useState<HTMLElement[]>([]);
-
-    useEffect(() => {
-      const updateFocusableElements = () => {
-        const elements = Array.from(
-          document.querySelectorAll(
-            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-          )
-        ) as HTMLElement[];
-        setFocusableElements(elements);
-      };
-
-      updateFocusableElements();
-      document.addEventListener('DOMContentLoaded', updateFocusableElements);
-      
-      return () => {
-        document.removeEventListener('DOMContentLoaded', updateFocusableElements);
-      };
-    }, []);
-
-    const trapFocus = useCallback((container: HTMLElement) => {
-      const firstElement = container.querySelector(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-      ) as HTMLElement;
-      
-      if (firstElement) {
-        firstElement.focus();
-      }
-    }, []);
-
-    return {
-      focusableElements,
-      trapFocus,
-    };
-  }
-}
-```
-
-### Internationalization Setup
-
-```typescript
-// Advanced i18n implementation with react-i18next
-import i18n from 'i18next';
-import { initReactI18next } from 'react-i18next';
-import LanguageDetector from 'i18next-browser-languagedetector';
-
-// Resource configuration
-const resources = {
-  en: {
-    translation: {
-      welcome: 'Welcome',
-      userManagement: 'User Management',
-      addNewUser: 'Add New User',
-      searchUsers: 'Search Users',
-      noUsersFound: 'No users found',
-      error: {
-        fetchUsersFailed: 'Failed to fetch users',
-        addUserFailed: 'Failed to add user',
-      },
-    },
-  },
-  es: {
-    translation: {
-      welcome: 'Bienvenido',
-      userManagement: 'Gestión de Usuarios',
-      addNewUser: 'Agregar Nuevo Usuario',
-      searchUsers: 'Buscar Usuarios',
-      noUsersFound: 'No se encontraron usuarios',
-      error: {
-        fetchUsersFailed: 'Error al obtener usuarios',
-        addUserFailed: 'Error al agregar usuario',
-      },
-    },
-  },
-  fr: {
-    translation: {
-      welcome: 'Bienvenue',
-      userManagement: 'Gestion des Utilisateurs',
-      addNewUser: 'Ajouter un Nouvel Utilisateur',
-      searchUsers: 'Rechercher des Utilisateurs',
-      noUsersFound: 'Aucun utilisateur trouvé',
-      error: {
-        fetchUsersFailed: 'Échec de la récupération des utilisateurs',
-        addUserFailed: 'Échec de l\'ajout d\'utilisateur',
-      },
-    },
-  },
-};
-
-// Initialize i18n
-i18n
-  .use(LanguageDetector)
-  .use(initReactI18next)
-  .init({
-    resources,
-    fallbackLng: 'en',
-    debug: process.env.NODE_ENV === 'development',
-    
-    interpolation: {
-      escapeValue: false,
-    },
-    
-    detection: {
-      order: ['localStorage', 'navigator', 'htmlTag'],
-      caches: ['localStorage'],
-    },
-  });
-
-// Type-safe translation hook
-export const useTranslation = () => {
-  const { t } = i18next.useTranslation();
-  
-  return {
-    t: (key: string, options?: i18n.TOptions) => t(key, options),
-    changeLanguage: i18n.changeLanguage,
-    currentLanguage: i18n.language,
-  };
-};
-
-// Language switcher component
-export const LanguageSwitcher: React.FC = () => {
-  const { currentLanguage, changeLanguage } = useTranslation();
-  
-  const languages = [
-    { code: 'en', name: 'English', flag: '🇺🇸' },
-    { code: 'es', name: 'Español', flag: '🇪🇸' },
-    { code: 'fr', name: 'Français', flag: '🇫🇷' },
-  ];
-
   return (
-    <div className="language-switcher">
-      {languages.map((lang) => (
-        <button
-          key={lang.code}
-          onClick={() => changeLanguage(lang.code)}
-          className={currentLanguage === lang.code ? 'active' : ''}
-          aria-label={`Switch to ${lang.name}`}
-        >
-          <span>{lang.flag}</span>
-          <span>{lang.name}</span>
-        </button>
-      ))}
+    <div>
+      <h1>Users</h1>
+      <Suspense fallback={<UserSkeleton />}>
+        <UserList usersPromise={users} />
+      </Suspense>
     </div>
   );
+}
+```
+
+**Client Component with use() Hook**:
+```typescript
+'use client';
+
+import { use, useState } from 'react';
+
+interface UserListProps {
+  usersPromise: Promise<User[]>;
+}
+
+export function UserList({ usersPromise }: UserListProps) {
+  // use() hook unwraps promises and context
+  const users = use(usersPromise);
+  const [filter, setFilter] = useState('');
+  
+  const filteredUsers = users.filter(u => 
+    u.name.toLowerCase().includes(filter.toLowerCase())
+  );
+  
+  return (
+    <div>
+      <input
+        type="text"
+        placeholder="Filter users..."
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+      />
+      <ul>
+        {filteredUsers.map(user => (
+          <li key={user.id}>{user.name}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+
+**Advanced Suspense with Error Boundaries**:
+```typescript
+import { Suspense } from 'react';
+import { ErrorBoundary } from 'react-error-boundary';
+
+function ErrorFallback({ error, resetErrorBoundary }) {
+  return (
+    <div role="alert">
+      <p>Something went wrong:</p>
+      <pre>{error.message}</pre>
+      <button onClick={resetErrorBoundary}>Try again</button>
+    </div>
+  );
+}
+
+export default function Page() {
+  return (
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      <Suspense fallback={<Loading />}>
+        <DataComponent />
+      </Suspense>
+    </ErrorBoundary>
+  );
+}
+```
+
+### Next.js 15 - Partial Prerendering (PPR)
+
+**Enable Incremental PPR**:
+```typescript
+// next.config.ts
+import type { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {
+  experimental: {
+    ppr: 'incremental', // Enable PPR incrementally
+  },
+};
+
+export default nextConfig;
+```
+
+**PPR with Dynamic Components**:
+```typescript
+// app/dashboard/page.tsx
+import { Suspense } from 'react';
+import { UserProfile } from './UserProfile';
+import { ActivityFeed } from './ActivityFeed';
+
+// Enable PPR for this route
+export const experimental_ppr = true;
+
+export default function DashboardPage() {
+  return (
+    <div>
+      {/* Static part - prerendered */}
+      <h1>Dashboard</h1>
+      <nav>Navigation links...</nav>
+      
+      {/* Dynamic part - streams */}
+      <Suspense fallback={<ProfileSkeleton />}>
+        <UserProfile />
+      </Suspense>
+      
+      <Suspense fallback={<ActivitySkeleton />}>
+        <ActivityFeed />
+      </Suspense>
+    </div>
+  );
+}
+```
+
+**Server Actions for Data Mutations**:
+```typescript
+// app/actions.ts
+'use server';
+
+import { revalidatePath } from 'next/cache';
+
+export async function createPost(formData: FormData) {
+  const title = formData.get('title') as string;
+  const content = formData.get('content') as string;
+  
+  // Server-side data mutation
+  await db.posts.create({
+    title,
+    content,
+    createdAt: new Date(),
+  });
+  
+  // Revalidate cache
+  revalidatePath('/blog');
+  
+  return { success: true };
+}
+
+// app/blog/create/page.tsx
+'use client';
+
+import { createPost } from '@/app/actions';
+
+export function CreatePostForm() {
+  return (
+    <form action={createPost}>
+      <input name="title" required />
+      <textarea name="content" required />
+      <button type="submit">Create Post</button>
+    </form>
+  );
+}
+```
+
+### Vue 3.5 - Signals & Reactivity
+
+**Signals-Based Reactivity**:
+```typescript
+<script setup lang="ts">
+import { ref, computed, watch } from 'vue';
+
+// Reactive state with signals
+const count = ref(0);
+const doubled = computed(() => count.value * 2);
+
+// Watch with immediate execution
+watch(count, (newValue) => {
+  console.log(`Count changed to: ${newValue}`);
+}, { immediate: true });
+
+function increment() {
+  count.value++;
+}
+</script>
+
+<template>
+  <div>
+    <p>Count: {{ count }}</p>
+    <p>Doubled: {{ doubled }}</p>
+    <button @click="increment">Increment</button>
+  </div>
+</template>
+```
+
+**Enhanced Composition API**:
+```typescript
+// composables/useUserData.ts
+import { ref, computed } from 'vue';
+
+export function useUserData(userId: string) {
+  const user = ref(null);
+  const loading = ref(false);
+  const error = ref(null);
+  
+  const isAdmin = computed(() => user.value?.role === 'admin');
+  
+  async function fetchUser() {
+    loading.value = true;
+    try {
+      const response = await fetch(`/api/users/${userId}`);
+      user.value = await response.json();
+    } catch (e) {
+      error.value = e.message;
+    } finally {
+      loading.value = false;
+    }
+  }
+  
+  // Auto-fetch on mount
+  fetchUser();
+  
+  return {
+    user,
+    loading,
+    error,
+    isAdmin,
+    refetch: fetchUser
+  };
+}
+
+// Usage in component
+<script setup lang="ts">
+import { useUserData } from '@/composables/useUserData';
+
+const props = defineProps<{ userId: string }>();
+const { user, loading, error, isAdmin, refetch } = useUserData(props.userId);
+</script>
+```
+
+### Modern Bundlers
+
+**Vite 5.x Configuration**:
+```typescript
+// vite.config.ts
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  plugins: [react()],
+  build: {
+    // Code splitting optimization
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom'],
+          'ui-vendor': ['@mui/material', '@emotion/react'],
+        },
+      },
+    },
+    // Modern build target
+    target: 'es2020',
+    // Minification
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+      },
+    },
+  },
+  // Development optimizations
+  server: {
+    hmr: {
+      overlay: true,
+    },
+  },
+});
+```
+
+**Turbopack (Next.js 15)**:
+```typescript
+// next.config.ts - Turbopack is now stable
+const nextConfig = {
+  // Turbopack enabled by default in Next.js 15
+  experimental: {
+    turbo: {
+      // Custom module rules
+      rules: {
+        '*.svg': {
+          loaders: ['@svgr/webpack'],
+        },
+      },
+    },
+  },
 };
 ```
 
----
+### CSS-in-JS & Styling
 
-# Reference & Integration (Level 4)
+**Tailwind CSS 4.0 (JIT Standard)**:
+```typescript
+// tailwind.config.ts
+import type { Config } from 'tailwindcss';
 
----
+const config: Config = {
+  content: ['./app/**/*.{js,ts,jsx,tsx}'],
+  theme: {
+    extend: {
+      // Custom design tokens
+      colors: {
+        brand: {
+          50: '#f0f9ff',
+          500: '#0ea5e9',
+          900: '#0c4a6e',
+        },
+      },
+      // Custom animations
+      animation: {
+        'fade-in': 'fadeIn 0.3s ease-in-out',
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+      },
+    },
+  },
+  plugins: [
+    require('@tailwindcss/forms'),
+    require('@tailwindcss/typography'),
+  ],
+};
 
-## Core Implementation
-
-## What It Does
-
-Enterprise Frontend Development expert with AI-powered modern architecture, Context7 integration, and intelligent component orchestration for scalable user interfaces.
-
-**Revolutionary  capabilities**:
-- 🤖 **AI-Powered Frontend Architecture** using Context7 MCP for latest frontend patterns
-- 📊 **Intelligent Component Orchestration** with automated design system optimization
-- 🚀 **Modern Framework Integration** with AI-driven performance optimization
-- 🔗 **Enterprise User Experience** with zero-configuration accessibility and internationalization
-- 📈 **Predictive Performance Analytics** with usage forecasting and optimization insights
-
----
-
-## Modern Frontend Stack (November 2025)
-
-### Core Framework Ecosystem
-- **React 19**: Latest with concurrent features and Server Components
-- **Vue 3.5**: Composition API and performance optimizations
-- **Angular 18**: Standalone components and improved hydration
-- **Svelte 5**: Signals and improved TypeScript support
-- **Next.js 16**: App Router, Server Components, and Turbopack
-
-### State Management Solutions
-- **Zustand**: Lightweight state management
-- **TanStack Query**: Server state management with caching
-- **Jotai**: Atomic state management
-- **Redux Toolkit**: Predictable state container
-- **Valtio**: Proxy-based state management
-
-### Styling & UI Systems
-- **Tailwind CSS**: Utility-first CSS framework
-- **shadcn/ui**: High-quality component library
-- **Material-UI**: React component library
-- **Chakra UI**: Accessible React components
-- **Styled Components**: CSS-in-JS with TypeScript
-
-### Performance Optimization
-- **Code Splitting**: Dynamic imports and lazy loading
-- **Image Optimization**: Next.js Image and Cloudinary
-- **Bundle Analysis**: Webpack Bundle Analyzer
-- **Runtime Optimization**: React.memo and useMemo
-
----
-
-# Core Implementation (Level 2)
-
-## Frontend Architecture Intelligence
-
-```python
-# AI-powered frontend architecture optimization with Context7
-class FrontendArchitectOptimizer:
-    def __init__(self):
-        self.context7_client = Context7Client()
-        self.component_analyzer = ComponentAnalyzer()
-        self.performance_optimizer = PerformanceOptimizer()
-    
-    async def design_optimal_frontend_architecture(self, 
-                                                 requirements: FrontendRequirements) -> FrontendArchitecture:
-        """Design optimal frontend architecture using AI analysis."""
-        
-        # Get latest frontend documentation via Context7
-        react_docs = await self.context7_client.get_library_docs(
-            context7_library_id='/react/docs',
-            topic="hooks server-components performance optimization 2025",
-            tokens=3000
-        )
-        
-        nextjs_docs = await self.context7_client.get_library_docs(
-            context7_library_id='/vercel/docs',
-            topic="next.js app router optimization deployment 2025",
-            tokens=2000
-        )
-        
-        # Optimize component architecture
-        component_design = self.component_analyzer.optimize_component_system(
-            requirements.ui_complexity,
-            requirements.team_size,
-            react_docs
-        )
-        
-        # Optimize performance strategy
-        performance_strategy = self.performance_optimizer.design_performance_strategy(
-            requirements.performance_targets,
-            requirements.user_base,
-            nextjs_docs
-        )
-        
-        return FrontendArchitecture(
-            framework_selection=self._select_framework(requirements),
-            component_system=component_design,
-            state_management=self._design_state_management(requirements),
-            styling_strategy=self._design_styling_system(requirements),
-            performance_optimization=performance_strategy,
-            accessibility_compliance=self._ensure_accessibility(requirements),
-            internationalization=self._configure_i18n(requirements)
-        )
+export default config;
 ```
 
+**CSS Modules with TypeScript**:
+```typescript
+// Button.module.css
+.button {
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  font-weight: 500;
+}
 
+.primary {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+// Button.tsx
+import styles from './Button.module.css';
+
+interface ButtonProps {
+  variant?: 'primary' | 'secondary';
+  children: React.ReactNode;
+}
+
+export function Button({ variant = 'primary', children }: ButtonProps) {
+  return (
+    <button className={`${styles.button} ${styles[variant]}`}>
+      {children}
+    </button>
+  );
+}
+```
+
+---
+
+## Advanced Patterns
+
+### Performance Optimization
+
+**React Performance Monitoring**:
+```typescript
+import { Profiler, ProfilerOnRenderCallback } from 'react';
+
+const onRenderCallback: ProfilerOnRenderCallback = (
+  id,
+  phase,
+  actualDuration,
+  baseDuration,
+  startTime,
+  commitTime
+) => {
+  console.log(`Component ${id} (${phase}) rendered in ${actualDuration}ms`);
+  
+  // Send to analytics
+  if (actualDuration > 50) {
+    analytics.track('slow-render', {
+      componentId: id,
+      duration: actualDuration,
+      phase,
+    });
+  }
+};
+
+export function App() {
+  return (
+    <Profiler id="App" onRender={onRenderCallback}>
+      <YourApp />
+    </Profiler>
+  );
+}
+```
+
+**Code Splitting with React.lazy**:
+```typescript
+import { lazy, Suspense } from 'react';
+
+// Lazy load heavy components
+const HeavyComponent = lazy(() => import('./HeavyComponent'));
+const AdminPanel = lazy(() => import('./AdminPanel'));
+
+export function App() {
+  const { user } = useAuth();
+  
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      {user?.isAdmin && <AdminPanel />}
+      <Suspense fallback={<ComponentSkeleton />}>
+        <HeavyComponent />
+      </Suspense>
+    </Suspense>
+  );
+}
+```
+
+### State Management (2025)
+
+**Zustand with Persist**:
+```typescript
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+
+interface UserStore {
+  user: User | null;
+  setUser: (user: User) => void;
+  logout: () => void;
+}
+
+export const useUserStore = create<UserStore>()(
+  persist(
+    (set) => ({
+      user: null,
+      setUser: (user) => set({ user }),
+      logout: () => set({ user: null }),
+    }),
+    {
+      name: 'user-storage',
+      partialize: (state) => ({ user: state.user }),
+    }
+  )
+);
+```
+
+**TanStack Query (React Query v5)**:
+```typescript
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+export function useUsers() {
+  return useQuery({
+    queryKey: ['users'],
+    queryFn: async () => {
+      const res = await fetch('/api/users');
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+export function useCreateUser() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (user: NewUser) => {
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        body: JSON.stringify(user),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      // Invalidate and refetch
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+}
+```
 
 ---
 
 ## Reference & Resources
 
-See [reference.md](reference.md) for detailed API reference and official documentation.
+### Context7 Documentation Access
 
-## Context7 Integration
+**Latest Framework Patterns**:
+- React: `/facebook/react` - Server Components, hooks, patterns
+- Next.js: `/vercel/next.js` - App Router, PPR, caching strategies
+- Vue: `/vuejs/core` - Composition API, reactivity, performance
 
-### Related Libraries & Tools
-- [React](/facebook/react): JavaScript library for building user interfaces
-- [Next.js](/vercel/next.js): The React Framework with App Router and Server Components
-- [Zustand](/pmndrs/zustand): Small, fast and scalable state management solution
-- [TanStack Query](/tanstack/query): Powerful data synchronization for React
-- [shadcn/ui](/shadcn-ui/ui): Re-usable components built with Radix UI and Tailwind CSS
+---
 
-### Official Documentation
-- [React 19](https://react.dev/)
-- [Next.js 16](https://nextjs.org/docs)
-- [Zustand](https://zustand-demo.pmnd.rs/)
-- [TanStack Query](https://tanstack.com/query/latest)
-- [Tailwind CSS](https://tailwindcss.com/docs)
+## Best Practices
 
-### Version-Specific Guides
-Latest stable version: React 19.x, Next.js 16.x, Zustand 5.x
-- [React 19 Upgrade Guide](https://react.dev/blog/2024/12/05/react-19)
-- [Next.js 16 Migration](https://nextjs.org/docs/app/building-your-application/upgrading)
-- [Zustand v5 Migration](https://github.com/pmndrs/zustand/discussions/2200)
-- [TanStack Query v5](https://tanstack.com/query/v5/docs/framework/react/guides/migrating-to-v5)
+### DO
+- ✅ Use Server Components for zero-client JavaScript
+- ✅ Implement code splitting for better performance
+- ✅ Optimize images with next/image or similar
+- ✅ Use TypeScript for type safety
+- ✅ Implement proper error boundaries
+- ✅ Monitor Web Vitals (LCP, FID, CLS)
+- ✅ Use CSS-in-JS or utility-first CSS
 
+### DON'T
+- ❌ Load entire app as client-side bundle
+- ❌ Skip accessibility (a11y) requirements
+- ❌ Ignore bundle size optimization
+- ❌ Use prop drilling instead of context
+- ❌ Forget to memoize expensive computations
+- ❌ Skip performance monitoring
+- ❌ Use inline styles without optimization
+
+---
+
+**Last Updated**: 2025-11-22
+**Version**: 5.0.0
+**Status**: Production Ready (2025 Standards)

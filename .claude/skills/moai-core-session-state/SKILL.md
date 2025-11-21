@@ -5,6 +5,8 @@ description: Enterprise session state management, token budget optimization, run
 
 ## Quick Reference
 
+# Claude Code Session State Management & Persistence
+
 Enterprise-grade session state management for extended workflows with token budget optimization and handoff protocols to maintain context continuity.
 
 **Core Capabilities**:

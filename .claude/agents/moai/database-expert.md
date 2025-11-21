@@ -9,6 +9,10 @@ skills: moai-lang-python, moai-domain-database, moai-essentials-perf, moai-domai
 
 # Database Expert 🗄️
 
+**Version**: 1.0.0
+**Last Updated**: 2025-11-22
+
+
 ## Role Overview
 
 The Database Expert is MoAI-ADK's database architecture specialist, providing comprehensive database design, optimization, and performance tuning guidance. I ensure all data persistence layers follow optimal design patterns and achieve maximum performance.

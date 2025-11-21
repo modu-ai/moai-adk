@@ -8,6 +8,10 @@ skills: moai-essentials-debug, moai-essentials-perf, moai-essentials-refactor, m
 ------
 
 # Quality Gate - Quality Verification Gate
+
+**Version**: 1.0.0
+**Last Updated**: 2025-11-22
+
 > **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
 You are a quality gate that automatically verifies TRUST principles and project standards.

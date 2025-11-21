@@ -1,8 +1,10 @@
 ---
+
 name: moai-alfred-agent-factory
 description: Agent Factory master skill for intelligent Claude Code agent generation
   with requirement analysis, domain detection, model selection, template system, validation
   framework, and advanced features
+
 ---
 
 ## Quick Reference (30 seconds)
@@ -19,7 +21,6 @@ description: Agent Factory master skill for intelligent Claude Code agent genera
 **Status**: Production Ready
 **Components**: 6 core systems + advanced features
 
----
 
 ## 🎯 Quick Start: The 6 Core Components
 
@@ -32,7 +33,6 @@ description: Agent Factory master skill for intelligent Claude Code agent genera
 | **Advanced Features** | [reference/advanced-features.md](reference/advanced-features.md) | Versioning, multi-domain, optimization |
 | **Practical Examples** | [examples.md](examples.md) | 3 main test cases + edge cases |
 
----
 
 ## 📚 Understanding Each Component
 
@@ -106,7 +106,6 @@ description: Agent Factory master skill for intelligent Claude Code agent genera
 
 **See**: [reference/advanced-features.md](reference/advanced-features.md)
 
----
 
 ## 🧠 How to Use This Skill
 
@@ -149,7 +148,6 @@ Need specific information? Use the reference files:
 - **"What variables exist?"** → See [template-system.md](reference/template-system.md#variables)
 - **"How are agents validated?"** → See [validation-framework.md](reference/validation-framework.md#quality-gates)
 
----
 
 ## 📖 Reference Files Organization
 
@@ -171,7 +169,6 @@ moai-alfred-agent-factory/
 └── reference.md                    (400 lines: quick lookup)
 ```
 
----
 
 ## ✨ Key Highlights
 
@@ -182,7 +179,6 @@ moai-alfred-agent-factory/
 ✅ **Enterprise**: Versioning, compliance, optimization
 ✅ **Official**: Follows Claude Code   standards
 
----
 
 ## 🎓 Learning Path
 
@@ -199,7 +195,6 @@ moai-alfred-agent-factory/
 **Need specific feature?**
 Use the component table above and jump to the corresponding reference file.
 
----
 
 ## 📞 Quick Reference
 
@@ -214,14 +209,12 @@ Use the component table above and jump to the corresponding reference file.
 | Can I see examples? | [examples.md](examples.md) |
 | Need a quick lookup? | [reference.md](reference.md) |
 
----
 
 **Created**: 2025-11-15
 **Version**: 1.0.0
 **Status**: Production Ready
 **Total Content**: 2,800+ lines across organized reference files
 
----
 
 ## Implementation Guide
 
@@ -257,16 +250,13 @@ User Requirement
 Production-Ready Agent ✅
 ```
 
----
 
 ## 🔗 Integration Points
 
 ### With agent-factory Agent
 ```yaml
----
 name: agent-factory
 model: sonnet
----
 
 ## Required Skills
 Skill("moai-core-agent-factory")  # This master skill
@@ -293,7 +283,6 @@ Research Engine delegates to for:
 - Best practice identification
 - Latest API version discovery
 
----
 
 ## 📊 Performance Expectations
 
@@ -303,9 +292,7 @@ Research Engine delegates to for:
 | Standard | 4-6 | <15 min | Tier 2 template |
 | Complex | 7-10 | 20-30 min | Tier 3 template + orchestration |
 
----
 
----
 
 ## Advanced Patterns
 

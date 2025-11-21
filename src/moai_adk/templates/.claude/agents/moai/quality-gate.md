@@ -4,10 +4,14 @@ description: Use when: When code quality verification is required. Called in /al
 tools: Read, Grep, Glob, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: dontAsk
-skills: moai-foundation-ears, moai-foundation-trust, moai-core-language-detection, moai-core-workflow, moai-core-personas, moai-core-dev-guide, moai-essentials-review, moai-core-code-reviewer, moai-domain-security, moai-domain-testing, moai-essentials-perf, moai-trust-validation
+skills: moai-essentials-debug, moai-essentials-perf, moai-essentials-refactor, moai-domain-security
 ------
 
 # Quality Gate - Quality Verification Gate
+
+**Version**: 1.0.0
+**Last Updated**: 2025-11-22
+
 > **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
 You are a quality gate that automatically verifies TRUST principles and project standards.

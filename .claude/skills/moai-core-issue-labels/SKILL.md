@@ -8,7 +8,7 @@ description: Enterprise GitHub issue labeling orchestrator with semantic label t
 
 ## Quick Reference (30 seconds)
 
-# Enterprise GitHub Issue Labeling Orchestrator 
+# GitHub Issue Labeling & Semantic Taxonomy 
 
 ## Related Skills
 

@@ -1,10 +1,12 @@
 ---
+
 name: moai-core-config-schema
 description: Enterprise configuration schema validation and management orchestrator
   with JSON Schema v2024-12, Context7 integration, semantic versioning compliance,
   environment variable management, secrets handling, multi-environment support, and
   configuration-as-code best practices; activates for config validation, schema enforcement,
   environment setup, secrets management, and configuration audits
+
 ---
 
 ## Quick Reference (30 seconds)
@@ -16,14 +18,12 @@ description: Enterprise configuration schema validation and management orchestra
 - `moai-alfred-practices` (Best practices patterns)
 - `moai-foundation-specs` (Specification management)
 
----
 
 **For detailed schema reference**: [reference.md](reference.md)  
 **For real-world examples**: [examples.md](examples.md)  
 **Last Updated**: 2025-11-12  
 **Status**: Production Ready (Enterprise )
 
----
 
 ## Implementation Guide
 
@@ -31,7 +31,6 @@ description: Enterprise configuration schema validation and management orchestra
 
 Provides comprehensive guidance for managing project configuration with JSON Schema validation, environment-specific overrides, secrets management, semantic versioning compliance, and configuration-as-code best practices.
 
----
 
 ## Configuration Hierarchy (3-Layer)
 
@@ -103,7 +102,6 @@ LOG_LEVEL=debug
 - NEVER committed to repo
 - Used for local testing with real services
 
----
 
 ## JSON Schema v2024-12 Validation
 
@@ -150,7 +148,6 @@ LOG_LEVEL=debug
 }
 ```
 
----
 
 ## Configuration Validation Checklist
 
@@ -192,7 +189,6 @@ LOG_LEVEL=debug
 config/.env*
 ```
 
----
 
 ## Environment Management
 
@@ -227,7 +223,6 @@ function loadConfig(environment: string) {
 }
 ```
 
----
 
 ## Secrets Management Best Practices
 
@@ -251,7 +246,6 @@ function loadConfig(environment: string) {
 - ❌ Commit credentials to `.gitignore`
 - ❌ Use same secret across environments
 
----
 
 ## Git Safety for Configuration
 
@@ -310,7 +304,6 @@ fi
 exit 0
 ```
 
----
 
 ## Semantic Versioning in Config
 
@@ -331,7 +324,6 @@ exit 0
 - **Pre-release**: Experimental, not production-ready
 - **Build metadata**: Informational only, doesn't affect version precedence
 
----
 
 ## Configuration-as-Code Best Practices
 
@@ -413,9 +405,7 @@ function validateSecrets(config: AppConfig): void {
 }
 ```
 
----
 
----
 
 ## Advanced Patterns
 

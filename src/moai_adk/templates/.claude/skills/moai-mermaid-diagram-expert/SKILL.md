@@ -1,6 +1,8 @@
 ---
+
 name: moai-mermaid-diagram-expert
 description: Enterprise Mermaid diagramming skill for Claude Code using MCP Playwright
+
 ---
 
 ## Quick Reference (30 seconds)
@@ -10,7 +12,6 @@ description: Enterprise Mermaid diagramming skill for Claude Code using MCP Play
 **Pure skill-based Mermaid rendering for Claude Code with MCP Playwright integration.**
 
 
----
 
 # Quick Start (2 minutes)
 
@@ -60,7 +61,6 @@ This skill provides:
 - **Kanban** - Kanban board states
 - **Packet** - Network packet structures
 
----
 
 # Usage in Claude Code
 
@@ -86,7 +86,6 @@ The MCP configuration in `.claude/mcp.json` enables:
 }
 ```
 
----
 
 # All 21 Diagram Types Reference
 
@@ -100,7 +99,6 @@ Idle → Processing → Complete
 Error ────────────────┘
 ```
 
----
 
 # Learning Resources
 
@@ -109,7 +107,6 @@ Error ────────────────┘
 - **Syntax Guide**: https://mermaid.js.org/syntax/
 - **Examples**: See `examples.md` and `reference.md` in this skill
 
----
 
 # Support
 
@@ -123,13 +120,11 @@ For Claude Code integration:
 - Verify Node.js is installed (`node --version`)
 - Check Playwright is available (`npx @anthropic-ai/playwright-mcp --version`)
 
----
 
 **Version**: 6.0.0-skill-edition
 **Last Updated**: 2025-11-20
 **Focus**: Pure skill-based Mermaid rendering with MCP Playwright
 
----
 
 ## Implementation Guide
 
@@ -214,7 +209,6 @@ C4Context
 - Packet
 - (Reserved for extensions)
 
----
 
 # Best Practices
 
@@ -238,7 +232,6 @@ C4Context
 - Use consistent naming conventions
 - Document diagram purposes in comments
 
----
 
 # Integration with MoAI-ADK
 
@@ -249,7 +242,6 @@ This skill is designed for use within Claude Code during:
 - **Review phase** - Communicate system design visually
 - **Onboarding** - Help new team members understand architecture
 
----
 
 # Common Patterns
 
@@ -276,7 +268,6 @@ Client → API Gateway → Service A → Database
 Extract → Transform → Load → Validate → Report
 ```
 
----
 
 ## Advanced Patterns
 
@@ -288,7 +279,6 @@ Skill("moai-mermaid-diagram-expert")
 
 
 
----
 
 ## Context7 Integration
 

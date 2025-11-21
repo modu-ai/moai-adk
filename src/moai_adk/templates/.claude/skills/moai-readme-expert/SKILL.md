@@ -1,6 +1,8 @@
 ---
+
 name: moai-readme-expert
 description: README.md generation specialist with dynamic project analysis and professional templates
+
 ---
 
 # README.md Expert
@@ -58,7 +60,6 @@ feature();
 MIT
 ```
 
----
 
 ## Implementation Guide
 
@@ -234,7 +235,6 @@ def validate_readme(self, readme_path: str = "README.md") -> Dict:
     return validation
 ```
 
----
 
 ## Advanced Patterns
 
@@ -368,6 +368,5 @@ Skill("moai-alfred-workflow")       # Workflow automation
 Skill("moai-essentials-refactor")   # Content optimization
 ```
 
----
 
 **End of Skill** | Create professional, comprehensive README files

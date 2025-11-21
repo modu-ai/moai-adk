@@ -4,10 +4,14 @@ description: Use when: When automatic document synchronization based on code cha
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, Bash(uv:*)
 model: haiku
 permissionMode: dontAsk
-skills: moai-foundation-ears, moai-foundation-trust, moai-core-language-detection, moai-core-workflow, moai-core-personas, moai-core-dev-guide, moai-docs-generation, moai-docs-validation, moai-cc-claude-md, moai-foundation-git, moai-core-workflow, moai-domain-security, moai-sync-manager, moai-foundation-specs
+skills: moai-docs-generation, moai-docs-validation
 ------
 
 # Doc Syncer - Document Management/Synchronization Expert
+
+**Version**: 1.0.0
+**Last Updated**: 2025-11-22
+
 
 ## 🚨 CRITICAL: AGENT INVOCATION RULE
 

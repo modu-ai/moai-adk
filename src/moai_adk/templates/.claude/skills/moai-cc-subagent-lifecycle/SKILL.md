@@ -1,7 +1,9 @@
 ---
+
 name: moai-cc-subagent-lifecycle
 description: Claude Code subagent lifecycle, delegation patterns, and multi-agent coordination
 allowed-tools: [Read, Bash]
+
 ---
 
 # Claude Code Subagent Lifecycle
@@ -24,7 +26,6 @@ Claude Code subagents enable **parallel, specialized task execution** through an
 
 **Key Constraint**: Subagents **cannot spawn other subagents** (prevents infinite nesting).
 
----
 
 ## Implementation Guide
 
@@ -32,14 +33,12 @@ Claude Code subagents enable **parallel, specialized task execution** through an
 
 **Custom Subagent Definition** (`.claude/agents/security-expert.md`):
 ```yaml
----
 name: security-expert
 description: Performs OWASP Top 10 security audits and vulnerability scanning
 tools: Read, Bash(bandit:*), Bash(safety:*)
 color: Red
 model: sonnet
 disallowedTools: [Write, Edit]
----
 
 # Security Expert Agent
 
@@ -159,11 +158,9 @@ Task(agent="backend-expert", task="Implement architecture design")
 
 **Error Recovery Pattern**:
 ```yaml
----
 name: resilient-worker
 description: Worker agent with automatic retry on failure
 tools: Read, Bash(*), Write
----
 
 # Resilient Worker
 
@@ -179,7 +176,6 @@ tools: Read, Bash(*), Write
 - Report includes execution metrics
 ```
 
----
 
 ## Advanced Patterns
 
@@ -188,25 +184,19 @@ tools: Read, Bash(*), Write
 **Dynamic Model Assignment**:
 ```yaml
 # Opus for complex reasoning
----
 name: architect-agent
 model: opus
 description: High-level architecture design requiring deep reasoning
----
 
 # Sonnet for balanced performance
----
 name: implementation-agent
 model: sonnet
 description: Feature implementation with moderate complexity
----
 
 # Haiku for fast execution
----
 name: test-runner-agent
 model: haiku
 description: Fast test execution and basic validation
----
 ```
 
 **Cost Optimization** (Haiku 4.5 auto-model selection):
@@ -267,7 +257,6 @@ Result: No cross-contamination, efficient context usage
 # 4. Saves ~80% context tokens
 ```
 
----
 
 ## Best Practices
 
@@ -290,7 +279,6 @@ Result: No cross-contamination, efficient context usage
 - Skip error handling in subagent logic
 - Forget to document agent capabilities in agent description
 
----
 
 ## Scaling Patterns
 
@@ -340,7 +328,6 @@ Wave 5: Documentation
 └─ doc-expert
 ```
 
----
 
 ## Monitoring & Debugging
 
@@ -366,7 +353,6 @@ tail -f .claude/logs/subagent_execution.jsonl
 - Context usage per subagent: 10-50K tokens
 - Parallel speedup: 3-5x vs sequential execution
 
----
 
 ## Works Well With
 
@@ -375,7 +361,6 @@ tail -f .claude/logs/subagent_execution.jsonl
 - `moai-alfred-orchestration` (Multi-agent coordination)
 - `moai-essentials-perf` (Performance monitoring)
 
----
 
 **Version**: 1.0.0  
 **Last Updated**: 2025-11-21  

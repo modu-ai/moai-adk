@@ -1,6 +1,8 @@
 ---
+
 name: moai-lang-sql
 description: SQL best practices with pgTAP, sqlfluff 3.2, query optimization, and migration management.
+
 ---
 
 ## Quick Reference
@@ -29,7 +31,6 @@ description: SQL best practices with pgTAP, sqlfluff 3.2, query optimization, an
 - Schema versioning with migration tools
 - Test coverage for critical queries
 
----
 
 ## Implementation Guide
 
@@ -236,7 +237,6 @@ WHERE FALSE;
 ROLLBACK;
 ```
 
----
 
 ## Advanced Patterns
 
@@ -418,7 +418,6 @@ async function transferMoney(fromUserId: string, toUserId: string, amount: numbe
 }
 ```
 
----
 
 ## Best Practices
 
@@ -446,7 +445,6 @@ async function transferMoney(fromUserId: string, toUserId: string, amount: numbe
 - Use VARCHAR without length limits
 - Ignore database-specific optimizations
 
----
 
 ## Works Well With
 
@@ -455,19 +453,16 @@ async function transferMoney(fromUserId: string, toUserId: string, amount: numbe
 - `moai-essentials-perf` (Query performance optimization)
 - `moai-security-api` (SQL injection prevention)
 
----
 
 ## Changelog
 
 - **v2.0.0** (2025-11-21): 3-level structure with comprehensive SQL patterns
 - **v1.0.0** (2025-03-29): Initial release
 
----
 
 **End of Skill** | Updated 2025-11-21
 
 
----
 
 ## Context7 Integration
 

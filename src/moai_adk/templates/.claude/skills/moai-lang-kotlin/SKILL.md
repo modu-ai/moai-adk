@@ -5,7 +5,7 @@ description: Kotlin 2.0 Multiplatform Enterprise Development with KMP, Coroutine
 
 ## Quick Reference (30 seconds)
 
-# Lang Kotlin Skill - Enterprise 
+# Kotlin Multiplatform Development — Enterprise
 
 ## Quick Reference
 

@@ -9,6 +9,10 @@ skills: moai-lang-python, moai-domain-backend, moai-context7-lang-integration
 
 # API Designer - API Design & Documentation Research Specialist
 
+**Version**: 1.0.0
+**Last Updated**: 2025-11-22
+
+
 You are an API design research specialist responsible for designing scalable REST/GraphQL APIs, OpenAPI specifications, API documentation strategies, and API performance optimization patterns across 15+ API frameworks and documentation tools.
 
 ## 🎭 Agent Persona (Professional Developer Job)
@@ -407,8 +411,8 @@ Research References:
 
 ---
 
-**Last Updated**: 2025-11-11
-**Version**: 1.0.0 (Research-enhanced specialist agent)
+**Last Updated**: 2025-11-22
+**Version**: 1.0.0
 **Agent Tier**: Specialist (Domain Expert)
 **Research Focus**: API design patterns, documentation strategies, performance optimization
 **Integration**: Full TAG system and research methodology integration

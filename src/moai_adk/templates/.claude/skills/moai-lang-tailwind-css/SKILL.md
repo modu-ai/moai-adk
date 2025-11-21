@@ -1,6 +1,8 @@
 ---
+
 name: moai-lang-tailwind-css
 description: Enterprise Skill for advanced development
+
 ---
 
 ## Quick Reference (30 seconds)
@@ -14,7 +16,6 @@ description: Enterprise Skill for advanced development
 > **Version**: 1.0.0 (Tailwind CSS  +)
 > **Keywords**: tailwind, tailwind css, utility-first, css framework, responsive, customization, design tokens, performance
 
----
 
 ## 📖 Progressive Disclosure
 
@@ -55,7 +56,6 @@ npx tailwindcss init
 | `xl` | Extra Large | 1280px |
 | `2xl` | 2X Large | 1536px |
 
----
 
 ### Level 2: Practical Implementation (Common Patterns)
 
@@ -262,7 +262,6 @@ function ProductGrid({ products }) {
 }
 ```
 
----
 
 ### Level 3: Advanced Patterns (Expert Reference)
 
@@ -364,7 +363,6 @@ function ResponsiveCard() {
 }
 ```
 
----
 
 ## 📚 Official References
 
@@ -374,9 +372,7 @@ function ResponsiveCard() {
 - **Tailwind CSS Plugins**: https://tailwindcss.com/docs/plugins
 - **Headless UI**: https://headlessui.com/ (Unstyled, accessible components)
 
----
 
----
 
 ## Implementation Guide
 
@@ -428,7 +424,6 @@ optimization: {
 }
 ```
 
----
 
 ## 🔗 Related Skills
 
@@ -436,7 +431,6 @@ optimization: {
 - `Skill("moai-lib-shadcn-ui")` – Pre-built Tailwind components
 - `Skill("moai-domain-frontend")` – Full frontend architecture with Tailwind
 
----
 
 ## Advanced Patterns
 

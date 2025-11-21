@@ -1,6 +1,8 @@
 ---
+
 name: moai-context7-lang-integration
 description: Enterprise-grade Context7 MCP integration patterns for language-specific documentation access
+
 ---
 
 ## Quick Reference
@@ -35,7 +37,6 @@ docs = get_library_docs(
 )
 ```
 
----
 
 ## Implementation Guide
 
@@ -143,7 +144,6 @@ def get_fastapi_routing_guide(tokens: int = 3000) -> str:
     return docs
 ```
 
----
 
 ## Advanced Patterns
 

@@ -9,6 +9,10 @@ skills: moai-lang-python, moai-lang-typescript, moai-essentials-debug, moai-doma
 
 # TDD Implementer - TDD Implementation Expert
 
+**Version**: 1.0.0
+**Last Updated**: 2025-11-22
+
+
 ## 🚨 CRITICAL: AGENT INVOCATION RULE
 
 **This agent MUST be invoked via Task() - NEVER executed directly:**

@@ -1,7 +1,9 @@
 ---
+
 name: moai-core-alfred-orchestration
 description: Alfred super agent orchestration patterns, multi-agent coordination, and workflow automation
 allowed-tools: [Task, AskUserQuestion]
+
 ---
 
 # Alfred Super Agent Orchestration
@@ -23,7 +25,6 @@ Alfred is MoAI-ADK's **super orchestrator** that coordinates 19 specialized agen
 - `Skill()`: Load domain expertise
 - MCP servers: External integrations (Context7, Figma, Playwright)
 
----
 
 ## Implementation Guide
 
@@ -96,7 +97,6 @@ Alfred Synthesis:
 └─ Report to user with next steps
 ```
 
----
 
 ## Advanced Patterns
 
@@ -141,7 +141,6 @@ If agent reports failure:
 3. Document failure + recovery in logs
 ```
 
----
 
 ## Best Practices
 
@@ -160,7 +159,6 @@ If agent reports failure:
 - Ignore agent failure signals
 - Bypass orchestration for complex tasks
 
----
 
 ## Works Well With
 
@@ -168,7 +166,6 @@ If agent reports failure:
 - `moai-core-ask-user-questions` (Interactive clarification)
 - `moai-cc-subagent-lifecycle` (Subagent delegation)
 
----
 
 **Version**: 1.0.0  
 **Last Updated**: 2025-11-21  

@@ -1,9 +1,11 @@
 ---
+
 name: moai-core-clone-pattern
 description: Enterprise Master-Clone pattern implementation guide for complex multi-step
   tasks with full project context, autonomous delegation, parallel processing, and
   intelligent task distribution; activates for large-scale migrations, complex refactoring,
   parallel exploration, architecture restructuring, and multi-file transformations
+
 ---
 
 ## Quick Reference (30 seconds)
@@ -35,7 +37,6 @@ description: Enterprise Master-Clone pattern implementation guide for complex mu
 - Quick yes/no decision (use AskUserQuestion)
 - Single file modification (use tdd-implementer)
 
----
 
 ## When NOT to Use (Anti-Patterns)
 
@@ -47,7 +48,6 @@ description: Enterprise Master-Clone pattern implementation guide for complex mu
 | Real-time interaction | Clones run independently | Interactive agent |
 | Simple query | Overkill complexity | Direct lookup |
 
----
 
 ## Related Skills
 
@@ -55,14 +55,12 @@ description: Enterprise Master-Clone pattern implementation guide for complex mu
 - `moai-alfred-task-decomposition` (Breaking down complex tasks)
 - `moai-essentials-refactor` (Refactoring patterns & examples)
 
----
 
 **For detailed API specifications**: [reference.md](reference.md)  
 **For real-world examples**: [examples.md](examples.md)  
 **Last Updated**: 2025-11-12  
 **Status**: Production Ready (Enterprise )
 
----
 
 ## Implementation Guide
 
@@ -97,7 +95,6 @@ User presentation + next steps
 - Report findings with evidence
 - Handle errors gracefully
 
----
 
 ## 3-Level Architecture
 
@@ -214,7 +211,6 @@ return {
 };
 ```
 
----
 
 ## Best Practices
 
@@ -235,7 +231,6 @@ return {
 - **Lose context**: Always include relevant project information
 - **Create circular dependencies**: Avoid Task A waiting on Task B waiting on Task A
 
----
 
 ## Implementation Patterns
 
@@ -291,9 +286,7 @@ const refactorResults = await Promise.all(
 return validateIntegration(refactorResults);
 ```
 
----
 
----
 
 ## Advanced Patterns
 
@@ -305,5 +298,4 @@ Provides comprehensive guidance for Alfred's **Master-Clone pattern** - a delega
 - Independent decision-making
 - Comprehensive state tracking
 
----
 

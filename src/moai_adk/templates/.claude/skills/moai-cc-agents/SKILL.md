@@ -1,6 +1,8 @@
 ---
+
 name: moai-cc-agents
 description: Claude Code Agents architecture, lifecycle management, and multi-agent orchestration patterns with Context7 integration for latest agent design patterns.
+
 ---
 
 ## Quick Reference (30 seconds)
@@ -22,7 +24,6 @@ Claude Code **Agents** are specialized AI workers that execute specific tasks th
 
 **Key Concept**: Agents don't execute tools directly - they delegate to Skills that encapsulate domain knowledge.
 
----
 
 ## Implementation Guide
 
@@ -262,7 +263,6 @@ async def get_agent_design_patterns() -> AgentPatterns:
     )
 ```
 
----
 
 ## Advanced Patterns
 
@@ -406,7 +406,6 @@ async def execute_with_retry(agent: str, task: Task, max_retries: int = 3) -> Ta
             raise
 ```
 
----
 
 ## Works Well With
 
@@ -415,7 +414,6 @@ async def execute_with_retry(agent: str, task: Task, max_retries: int = 3) -> Ta
 - `moai-alfred-agent-guide` - Agent selection patterns
 - `moai-context7-integration` - Latest agent design patterns
 
----
 
 ## Changelog
 
@@ -423,6 +421,5 @@ async def execute_with_retry(agent: str, task: Task, max_retries: int = 3) -> Ta
 - **v2.0.0** (2025-11-11): Added complete metadata, agent architecture patterns
 - **v1.0.0** (2025-10-22): Initial agents system
 
----
 
 **End of Skill** | Updated 2025-11-21

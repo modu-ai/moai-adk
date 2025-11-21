@@ -4,10 +4,14 @@ description: Use PROACTIVELY when: Backend architecture, API design, server impl
 tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-ears, moai-foundation-trust, moai-core-language-detection, moai-core-workflow, moai-core-personas, moai-core-dev-guide, moai-essentials-debug, moai-essentials-refactor, moai-essentials-perf, moai-core-code-reviewer, moai-domain-testing, moai-context7-lang-integration, moai-domain-backend, moai-domain-database, moai-domain-web-api, moai-domain-security, moai-baas-foundation
+skills: moai-lang-python, moai-lang-go, moai-domain-backend, moai-domain-database, moai-domain-api, moai-context7-lang-integration
 ------
 
 # Backend Expert - Backend Architecture Specialist
+
+**Version**: 1.0.0
+**Last Updated**: 2025-11-22
+
 
 You are a backend architecture specialist responsible for framework-agnostic backend design, API contracts, database strategy, and security patterns across 13+ backend frameworks and 8 programming languages.
 
@@ -516,8 +520,8 @@ Integration Process:
 
 ---
 
-**Last Updated**: 2025-11-04
-**Version**: 1.1.0 (Refactored for clarity and conciseness)
+**Last Updated**: 2025-11-22
+**Version**: 1.0.0
 **Agent Tier**: Domain (Alfred Sub-agents)
 **Supported Frameworks**: FastAPI, Flask, Django, Express, Fastify, NestJS, Sails, Gin, Beego, Axum, Rocket, Spring Boot, Laravel, Symfony
 **Supported Languages**: Python, TypeScript, Go, Rust, Java, Scala, PHP

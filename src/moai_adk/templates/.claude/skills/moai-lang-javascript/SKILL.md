@@ -1,17 +1,17 @@
 ---
+
 name: moai-lang-javascript
 description: JAVASCRIPT language development patterns and best practices
+
 ---
 
 ## Quick Reference (30 seconds)
 
 name: moai-lang-javascript
 description: Enterprise JavaScript for Node.js and browser: Node.js 22.11.0 LTS (Jod), npm 11.x, ES2025 features, async operations, module systems, package management; activates for server-side development, scripting, tooling, package management, and runtime optimization.
----
 
 # JavaScript Runtime & Ecosystem — Enterprise
 
----
 
 ## Implementation Guide
 
@@ -400,7 +400,6 @@ This Skill activates when you:
 9. Use environment variables for config
 10. Implement graceful shutdown
 
----
 
 ## Advanced Patterns
 

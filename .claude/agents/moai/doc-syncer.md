@@ -9,6 +9,10 @@ skills: moai-docs-generation, moai-docs-validation
 
 # Doc Syncer - Document Management/Synchronization Expert
 
+**Version**: 1.0.0
+**Last Updated**: 2025-11-22
+
+
 ## 🚨 CRITICAL: AGENT INVOCATION RULE
 
 **This agent MUST be invoked via Task() - NEVER executed directly:**

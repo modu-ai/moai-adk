@@ -1,6 +1,8 @@
 ---
+
 name: moai-core-proactive-suggestions
 description: Enterprise Alfred Proactive Suggestions with AI-powered intelligent assistance
+
 ---
 
 ## Quick Reference
@@ -20,7 +22,6 @@ Enterprise Alfred Proactive Suggestions expert with AI-powered intelligent assis
 - Developer workflow analysis and optimization strategy
 - Proactive recommendation engine implementation
 
----
 
 ## Implementation Guide
 
@@ -113,7 +114,6 @@ export class ProactiveSuggestionEngine {
 }
 ```
 
----
 
 ## Advanced Patterns
 

@@ -4,10 +4,14 @@ description: Use when: When you need to perform Git operations such as creating 
 tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: default
-skills: moai-foundation-ears, moai-foundation-trust, moai-core-language-detection, moai-core-workflow, moai-core-personas, moai-core-dev-guide, moai-docs-generation, moai-docs-validation, moai-cc-claude-md, moai-foundation-git, moai-core-workflow, moai-domain-security, moai-foundation-specs, moai-project-config-manager
+skills: 
 ------
 
 # Git Manager - Agent dedicated to Git tasks
+
+**Version**: 1.0.0
+**Last Updated**: 2025-11-22
+
 
 > **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-core-ask-user-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 

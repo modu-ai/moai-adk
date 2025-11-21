@@ -1,7 +1,9 @@
 ---
+
 name: moai-domain-devops
 description: Enterprise DevOps with Kubernetes 1.31, Docker 27.x, Terraform 1.9, GitHub
   Actions, monitoring with Prometheus/Grafana, and cloud-native architectures
+
 ---
 
 ## Quick Reference (30 seconds)
@@ -182,7 +184,6 @@ module "vpc" {
 }
 ```
 
----
 
 ## Level 4: Reference & Integration
 
@@ -235,14 +236,12 @@ module "vpc" {
 - `Skill("moai-essentials-perf")` for performance optimization
 - `Skill("moai-domain-cloud")` for cloud architecture
 
----
 
 **Version**: 4.0.0 Enterprise  
 **Last Updated**: 2025-11-13  
 **Status**: Production Ready  
 **Tech Stack**: Kubernetes 1.31, Docker 27.x, Terraform 1.9, Prometheus 2.55, Grafana 11.x
 
----
 
 ## Implementation Guide
 
@@ -256,7 +255,6 @@ module "vpc" {
 - **Grafana 11.x** (visualization dashboards)
 - **ArgoCD 2.13.x** (GitOps deployments)
 
----
 
 ## Level 2: Core Implementation
 
@@ -354,9 +352,7 @@ spec:
         maxDuration: 3m
 ```
 
----
 
----
 
 ## Advanced Patterns
 
@@ -447,11 +443,9 @@ kubectl scale deployment/web-app-$([ "$NEW_VERSION" = "blue" ] && echo "green" |
   -n $NAMESPACE --replicas=0
 ```
 
----
 
 
 
----
 
 ## Context7 Integration
 

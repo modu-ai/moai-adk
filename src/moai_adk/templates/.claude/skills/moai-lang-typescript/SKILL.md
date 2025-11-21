@@ -1,9 +1,11 @@
 ---
+
 name: moai-lang-typescript
 description: Enterprise TypeScript with strict typing and modern ecosystem TypeScript
   5.9.3, Next.js 16, Turbopack, React 19, tRPC, Zod for type-safe schemas; activates
   for full-stack development, API contract definition, type safety enforcement, and
   framework-agnostic TypeScript patterns.
+
 ---
 
 ## Quick Reference (30 seconds)
@@ -24,7 +26,6 @@ description: Enterprise TypeScript with strict typing and modern ecosystem TypeS
 | Next.js 16.x | 2025 | Active |
 | Node.js 22 LTS | Oct 2024 | Apr 2027 |
 
----
 
 ## Three-Level Learning Path
 
@@ -55,7 +56,6 @@ Enterprise deployment and optimization:
 - **Monitoring**: Error tracking, metrics, observability
 - **Details**: Skill("moai-essentials-perf"), Skill("moai-security-backend")
 
----
 
 ## Learn More
 
@@ -67,12 +67,10 @@ Enterprise deployment and optimization:
 - **tRPC**: https://trpc.io/docs
 - **Zod**: https://zod.dev/
 
----
 
 **Skills**: Skill("moai-essentials-debug"), Skill("moai-essentials-perf"), Skill("moai-security-backend")
 **Auto-loads**: TypeScript projects mentioning Next.js, React, tRPC, strict types, type safety
 
----
 
 ## Implementation Guide
 
@@ -97,7 +95,6 @@ Enterprise deployment and optimization:
 - **npm 11.x**, **pnpm 9.x**, **yarn 4.x** (all supported)
 - **Node Modules**: ESM modules with bundler resolution
 
----
 
 ## TypeScript Type System
 
@@ -139,7 +136,6 @@ type Omit<T, K> = Pick<T, Exclude<keyof T, K>>;
 type Record<K, T> = { [P in K]: T };
 ```
 
----
 
 ## React 19 Components
 
@@ -173,7 +169,6 @@ const [isPending, startTransition] = useTransition();
 const inputRef = useRef<HTMLInputElement>(null);
 ```
 
----
 
 ## Next.js 16 Full-Stack Development
 
@@ -211,7 +206,6 @@ export async function createUser(formData: FormData) {
 }
 ```
 
----
 
 ## Type-Safe APIs with tRPC
 
@@ -238,7 +232,6 @@ const { data: users } = trpc.user.list.useQuery();
 // All types inferred from server router!
 ```
 
----
 
 ## Runtime Validation with Zod
 
@@ -257,7 +250,6 @@ const user = UserSchema.parse(data);  // Throws on error
 const result = UserSchema.safeParse(data);  // Returns { success, data, error }
 ```
 
----
 
 ## Testing
 
@@ -288,9 +280,7 @@ it('renders button', () => {
 });
 ```
 
----
 
----
 
 ## Advanced Patterns
 
@@ -307,7 +297,6 @@ it('renders button', () => {
 9. **Monitor Web Vitals** in production environments
 10. **Build with Turbopack** for faster development cycles
 
----
 
 
 ## Context7 Integration

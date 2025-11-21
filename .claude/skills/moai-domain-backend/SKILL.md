@@ -1,504 +1,440 @@
 ---
 name: moai-domain-backend
-description: Enterprise Backend Architecture with modern async patterns, microservices,
-  API design, FastAPI, Django, Kubernetes, and production deployment
+description: Enterprise Backend Architecture with modern frameworks, Context7 integration, and production-ready patterns for 2025
+allowed-tools: [Read, Bash, WebFetch]
 ---
 
 ## Quick Reference (30 seconds)
 
-# Enterprise Backend Architecture - 
+# Enterprise Backend Architecture Expert
 
-**Modern async patterns, microservices, API design, and production deployment**
+**Latest Frameworks (2025)**:
+- **FastAPI 0.115+** - Modern async Python with enhanced dependencies
+- **Django 5.0+** - Async views, signals improvements, database optimization
+- **Express.js 5.x** - Enhanced middleware, async error handling
+- **HTTP/3 (QUIC)** - Next-generation protocol support
 
-> **Primary Agent**: backend-expert
-> **Stack**: FastAPI 0.118+, Django 5.2+, async Python, Kubernetes 1.30+, PostgreSQL 17+
-> **Keywords**: backend, api, microservices, database, async, fastapi, django, kubernetes
+**Key Capabilities**:
+- Modern async/await patterns across all frameworks
+- Advanced dependency injection and middleware
+- Database connection pooling and optimization
+- Real-time capabilities and WebSocket support
+- Production-grade error handling
 
-## Level 1: Quick Reference
-
-### Core Technology Stack (2025)
-
-**Frameworks**: FastAPI 0.118+, Django 5.2+, Django Ninja 1.4+
-**Async Runtime**: asyncio, uvloop, asyncpg, motor (async MongoDB)
-**Databases**: PostgreSQL 17+, MongoDB 8+, Redis 8+
-**Deployment**: Kubernetes 1.30+, Docker, Istio 1.24+
-**Observability**: OpenTelemetry 1.28+, Prometheus 3.0+, Jaeger 1.55+
-
-### When to Use This Skill
-
-- ✅ Building high-performance REST/GraphQL APIs
-- ✅ Designing microservices with service mesh
-- ✅ Implementing async Python backends
-- ✅ Optimizing database queries and pooling
-- ✅ Deploying on Kubernetes
-- ✅ Authentication, rate limiting, observability
-- ✅ Cloud-native migration strategies
-
-### Modern FastAPI Backend
-
-```python
-from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from contextlib import asynccontextmanager
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Initialize database pool
-    app.state.db_engine = create_async_engine(
-        "postgresql+asyncpg://user:pass@localhost/db",
-        pool_size=20, max_overflow=10
-    )
-    yield
-    await app.state.db_engine.dispose()
-
-app = FastAPI(lifespan=lifespan)
-
-# Dependency injection
-async def get_db() -> AsyncSession:
-    async with AsyncSession(app.state.db_engine) as session:
-        try:
-            yield session
-        finally:
-            await session.close()
-
-# Async endpoint with background tasks
-@app.get("/users/{user_id}")
-async def get_user(
-    user_id: int,
-    db: AsyncSession = Depends(get_db),
-    background_tasks: BackgroundTasks = None
-):
-    user = await db.get(User, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    background_tasks.add_task(log_user_access, user_id)
-    return user
-```
-
-## Quick Architecture Decision Matrix
-
-| Requirement | Solution | When to Use |
-|-------------|----------|------------|
-| High concurrency (1000+ req/s) | FastAPI + asyncpg | I/O-heavy workloads |
-| Complex business logic | Django 5.2+ | Traditional CRUD apps |
-| Microservices | FastAPI + Kubernetes | Distributed systems |
-| Simple APIs | FastAPI Minimal | Small services |
-| Real-time features | WebSockets + FastAPI | Chat, notifications |
-| File uploads | FastAPI + Background Tasks | Media processing |
+**When to Use**:
+- Backend architecture design and framework selection
+- API design with RESTful or GraphQL patterns
+- Database integration and performance optimization
+- Authentication, authorization, and security implementation
 
 ---
 
 ## Implementation Guide
 
-## Level 2: Practical Implementation
+### FastAPI 0.115+ (2025 LTS)
 
-### Async Database with Connection Pooling
-
+**Enhanced Dependencies with Background Tasks**:
 ```python
-from sqlalchemy.ext.asyncio import (
-    AsyncSession, create_async_engine, async_sessionmaker
-)
-from sqlalchemy.pool import QueuePool
+from fastapi import FastAPI, Depends, BackgroundTasks
+from typing import Annotated
+from contextvars import ContextVar
 
-# Production async engine
-engine = create_async_engine(
-    "postgresql+asyncpg://user:pass@localhost/db",
-    pool_size=20, max_overflow=10,
-    pool_timeout=30, pool_recycle=3600,
-    pool_pre_ping=True, poolclass=QueuePool
-)
+app = FastAPI()
 
-AsyncSessionLocal = async_sessionmaker(
-    engine, class_=AsyncSession,
-    expire_on_commit=False, autoflush=False
-)
+# Context variable for request tracking
+request_context: ContextVar[dict] = ContextVar("request_context", default={})
 
-# Dependency injection
-async def get_db() -> AsyncSession:
-    async with AsyncSessionLocal() as session:
-        try:
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
-        finally:
-            await session.close()
+async def get_database():
+    """Database dependency with proper cleanup."""
+    db = await create_connection_pool()
+    try:
+        yield db
+    finally:
+        await db.close()
 
-# Usage
-@app.get("/users/{user_id}")
-async def get_user(user_id: int, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
+async def verify_token(token: str = Header(...)):
+    """Enhanced token verification with caching."""
+    user = await cached_token_verification(token)
     if not user:
-        raise HTTPException(status_code=404)
+        raise HTTPException(status_code=401, detail="Invalid token")
     return user
+
+@app.post("/tasks/")
+async def create_task(
+    task_data: TaskCreate,
+    background_tasks: BackgroundTasks,
+    db: Annotated[Database, Depends(get_database)],
+    user: Annotated[User, Depends(verify_token)]
+):
+    """Create task with background processing."""
+    task = await db.tasks.create(task_data, user_id=user.id)
+    
+    # Add background task for notifications
+    background_tasks.add_task(send_notification, task.id, user.email)
+    background_tasks.add_task(update_analytics, task.type)
+    
+    return {"task_id": task.id, "status": "processing"}
 ```
 
-**Benefits**: 3,000+ req/sec, non-blocking operations, graceful error handling
-
-### Background Tasks for Long Operations
-
+**Advanced Middleware with Context Variables**:
 ```python
-from fastapi import BackgroundTasks
+from starlette.middleware.base import BaseHTTPMiddleware
+
+class RequestContextMiddleware(BaseHTTPMiddleware):
+    """Track request context across async calls."""
+    
+    async def dispatch(self, request, call_next):
+        # Set request context
+        token = request_context.set({
+            "request_id": str(uuid.uuid4()),
+            "path": request.url.path,
+            "method": request.method
+        })
+        
+        try:
+            response = await call_next(request)
+            return response
+        finally:
+            request_context.reset(token)
+
+app.add_middleware(RequestContextMiddleware)
+```
+
+### Django 5.0+ (2025 LTS)
+
+**Async Views with Enhanced Signals**:
+```python
+from django.http import JsonResponse
+from django.views import View
+from asgiref.sync import sync_to_async
 import asyncio
 
-async def send_welcome_email(user_email: str):
-    await asyncio.sleep(2)  # Simulate email sending
-    print(f"Email sent to {user_email}")
-
-@app.post("/users/", status_code=201)
-async def create_user(
-    user: UserCreate,
-    background_tasks: BackgroundTasks,
-    db: AsyncSession = Depends(get_db)
-):
-    # Create user (fast)
-    new_user = User(**user.dict())
-    db.add(new_user)
-    await db.commit()
-
-    # Schedule background tasks (non-blocking)
-    background_tasks.add_task(send_welcome_email, user.email)
-
-    return {"id": new_user.id, "message": "User created"}
+class AsyncAPIView(View):
+    """Modern async class-based view."""
+    
+    async def get(self, request, *args, **kwargs):
+        # Parallel async operations
+        user_data, stats_data = await asyncio.gather(
+            self.get_user_data(request.user.id),
+            self.get_stats_data(request.user.id)
+        )
+        
+        return JsonResponse({
+            "user": user_data,
+            "stats": stats_data
+        })
+    
+    @sync_to_async
+    def get_user_data(self, user_id):
+        return User.objects.get(id=user_id).to_dict()
+    
+    @sync_to_async
+    def get_stats_data(self, user_id):
+        return UserStats.objects.filter(user_id=user_id).aggregate(
+            total_views=Count('id'),
+            avg_duration=Avg('duration')
+        )
 ```
 
-**Use Cases**: Email notifications, file processing, data exports, webhooks
-
-### Dependency Injection for Clean Architecture
-
+**Async Signal Handlers**:
 ```python
-from fastapi import Depends, HTTPException, Header
-from typing import Annotated
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+import asyncio
 
-# JWT authentication dependency
-async def get_current_user(
-    authorization: Annotated[str, Header()] = None,
-    db: AsyncSession = Depends(get_db)
-) -> User:
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-    token = authorization.split(" ")[1]
-    payload = decode_jwt(token)
-
-    user = await db.get(User, payload["user_id"])
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-    return user
-
-# Admin-only dependency
-async def require_admin(
-    current_user: Annotated[User, Depends(get_current_user)]
-) -> User:
-    if not current_user.is_admin:
-        raise HTTPException(status_code=403, detail="Admin access required")
-    return current_user
-
-# Usage
-@app.get("/admin/users")
-async def list_admin_users(
-    admin_user: Annotated[User, Depends(require_admin)],
-    db: AsyncSession = Depends(get_db)
-):
-    users = await db.execute(select(User))
-    return users.scalars().all()
+@receiver(post_save, sender=Order)
+async def process_order_async(sender, instance, created, **kwargs):
+    """Async signal handler for order processing."""
+    if created:
+        await asyncio.gather(
+            send_confirmation_email(instance.email),
+            update_inventory(instance.items),
+            trigger_fulfillment(instance.id)
+        )
 ```
 
-## Performance Optimization
-
-### Async Patterns Checklist
-- ✅ Use async database drivers (asyncpg, motor)
-- ✅ Implement connection pooling
-- ✅ Use background tasks for I/O operations
-- ✅ Cache frequently accessed data
-- ✅ Implement rate limiting
-- ✅ Use circuit breakers for external services
-
-### Database Optimization
+**Database Optimization with Connection Pooling**:
 ```python
-# Query optimization with SQLAlchemy 2.0
-from sqlalchemy import select, func, and_
-
-# Efficient pagination
-async def get_users_paginated(
-    page: int = 1, size: int = 20,
-    db: AsyncSession = Depends(get_db)
-):
-    offset = (page - 1) * size
-
-    result = await db.execute(
-        select(User).offset(offset).limit(size)
-    )
-    users = result.scalars().all()
-
-    # Get total count efficiently
-    total_result = await db.execute(select(func.count(User.id)))
-    total = total_result.scalar()
-
-    return {
-        "users": users,
-        "total": total,
-        "page": page,
-        "size": size
+# settings.py
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'mydb',
+        'USER': 'user',
+        'PASSWORD': 'password',
+        'HOST': 'localhost',
+        'PORT': '5432',
+        'CONN_MAX_AGE': 600,  # Connection pooling
+        'CONN_HEALTH_CHECKS': True,  # Django 5.0+
+        'OPTIONS': {
+            'connect_timeout': 10,
+            'options': '-c statement_timeout=30000'
+        }
     }
-
-# Batch operations
-async def create_users_batch(users_data: List[UserCreate], db: AsyncSession):
-    users = [User(**user.dict()) for user in users_data]
-    db.add_all(users)
-    await db.commit()
-    return users
+}
 ```
 
-## Deployment Patterns
+### Express.js 5.x (2024+)
 
-### Kubernetes Deployment
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: user-service
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: user-service
-  template:
-    metadata:
-      labels:
-        app: user-service
-    spec:
-      containers:
-      - name: api
-        image: user-service:latest
-        ports:
-        - containerPort: 8000
-        env:
-        - name: DATABASE_URL
-          valueFrom:
-            secretKeyRef:
-              name: db-secret
-              key: url
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "250m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
+**Enhanced Middleware Chaining**:
+```javascript
+const express = require('express');
+const app = express();
+
+// Async error handling middleware
+const asyncHandler = (fn) => (req, res, next) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+};
+
+// Enhanced logging middleware
+app.use((req, res, next) => {
+    req.startTime = Date.now();
+    res.on('finish', () => {
+        const duration = Date.now() - req.startTime;
+        console.log(`${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`);
+    });
+    next();
+});
+
+// Database connection middleware
+app.use(asyncHandler(async (req, res, next) => {
+    req.db = await getDbConnection();
+    next();
+}));
+
+// Routes with async/await
+app.get('/users/:id', asyncHandler(async (req, res) => {
+    const user = await req.db.users.findById(req.params.id);
+    if (!user) {
+        throw new NotFoundError('User not found');
+    }
+    res.json(user);
+}));
+
+// Error handling middleware (must be last)
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(err.statusCode || 500).json({
+        error: err.message,
+        ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+    });
+});
 ```
 
-## Installation Commands
+### HTTP/2 & HTTP/3 Support
 
-```bash
-# Core backend stack
-pip install fastapi==0.118.0
-pip install uvicorn[standard]
-pip install sqlalchemy[asyncio]==2.0.0
-pip install asyncpg
-pip install pydantic==2.8.0
+**Node.js HTTP/2 Server**:
+```javascript
+const http2 = require('http2');
+const fs = require('fs');
 
-# Production addons
-pip install redis
-pip install slowapi  # Rate limiting
-pip install fastapi-cache[redis]
-pip install python-multipart  # File uploads
+const server = http2.createSecureServer({
+    key: fs.readFileSync('server-key.pem'),
+    cert: fs.readFileSync('server-cert.pem')
+});
 
-# Observability
-pip install opentelemetry-api
-pip install opentelemetry-sdk
-pip install opentelemetry-exporter-jaeger
-pip install prometheus-client
+server.on('stream', (stream, headers) => {
+    // HTTP/2 server push
+    stream.pushStream({ ':path': '/style.css' }, (err, pushStream) => {
+        if (err) throw err;
+        pushStream.respondWithFile('style.css');
+    });
+    
+    // Main response
+    stream.respond({
+        'content-type': 'text/html',
+        ':status': 200
+    });
+    stream.end('<html><body>Hello HTTP/2</body></html>');
+});
 
-# Development
-pip install pytest-asyncio
-pip install httpx  # Async HTTP client for testing
+server.listen(3000);
 ```
 
-## Best Practices
+### Database Connection Pooling
 
-1. **Async by Default**: Use async/await for I/O operations
-2. **Connection Pooling**: Configure appropriate pool sizes
-3. **Error Handling**: Implement graceful degradation
-4. **Security**: Input validation, rate limiting, authentication
-5. **Testing**: Unit and integration tests with pytest-asyncio
-6. **Documentation**: OpenAPI/Swagger auto-generation
-7. **Monitoring**: Structured logging and metrics
-8. **Versioning**: API versioning strategy
+**PostgreSQL with PgBouncer**:
+```python
+from sqlalchemy import create_engine
+from sqlalchemy.pool import QueuePool
 
----
+# Optimized connection pool
+engine = create_engine(
+    'postgresql://user:pass@localhost/db',
+    poolclass=QueuePool,
+    pool_size=20,          # Core connections
+    max_overflow=10,       # Additional connections
+    pool_timeout=30,       # Connection timeout
+    pool_recycle=3600,     # Recycle after 1 hour
+    pool_pre_ping=True,    # Check connection health
+    echo_pool=True         # Debug pool activity
+)
 
-**Version**: 4.0.0 Enterprise
-**Last Updated**: 2025-11-13
-**Status**: Production Ready
-**Enterprise Grade**: ✅ Full Enterprise Support
+# Connection with automatic retry
+async def get_connection():
+    retries = 3
+    for attempt in range(retries):
+        try:
+            async with engine.begin() as conn:
+                yield conn
+                break
+        except OperationalError:
+            if attempt == retries - 1:
+                raise
+            await asyncio.sleep(0.1 * (2 ** attempt))
+```
+
+### Query Optimization Patterns
+
+**Index Strategy**:
+```sql
+-- Composite indexes for common queries
+CREATE INDEX idx_users_email_active ON users(email, is_active);
+CREATE INDEX idx_orders_user_status ON orders(user_id, status);
+
+-- Partial indexes for filtered queries
+CREATE INDEX idx_active_users ON users(email) WHERE is_active = true;
+
+-- BRIN indexes for time-series data
+CREATE INDEX idx_logs_created ON logs USING BRIN(created_at);
+
+-- GiST indexes for full-text search
+CREATE INDEX idx_posts_search ON posts USING GiST(to_tsvector('english', content));
+```
+
+**Query Analysis**:
+```python
+async def analyze_slow_queries(db_connection):
+    """Identify and optimize slow queries."""
+    slow_queries = await db_connection.execute("""
+        SELECT query, calls, total_time, mean_time
+        FROM pg_stat_statements
+        WHERE mean_time > 100  -- queries > 100ms
+        ORDER BY total_time DESC
+        LIMIT 20
+    """)
+    
+    for query in slow_queries:
+        # Analyze execution plan
+        explain = await db_connection.execute(f"EXPLAIN ANALYZE {query.query}")
+        print(f"Query: {query.query[:100]}...")
+        print(f"Mean time: {query.mean_time}ms")
+        print(f"Execution plan: {explain}")
+```
 
 ---
 
 ## Advanced Patterns
 
-## Level 3: Advanced Integration
+### gRPC-Web Implementation
 
-### Rate Limiting & Caching
-
+**Modern gRPC Service**:
 ```python
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from fastapi import Request
+from grpc import aio
+import user_service_pb2
+import user_service_pb2_grpc
 
-# Rate limiting
-limiter = Limiter(key_func=get_remote_address)
-app.state.limiter = limiter
+class UserServicer(user_service_pb2_grpc.UserServiceServicer):
+    """Async gRPC service implementation."""
+    
+    async def GetUser(self, request, context):
+        user = await db.users.find_one({"id": request.user_id})
+        if not user:
+            context.set_code(grpc.StatusCode.NOT_FOUND)
+            context.set_details('User not found')
+            return user_service_pb2.UserResponse()
+        
+        return user_service_pb2.UserResponse(
+            user_id=user['id'],
+            email=user['email'],
+            name=user['name']
+        )
 
-@app.get("/api/users")
-@limiter.limit("100/minute")
-async def list_users(request: Request, db: AsyncSession = Depends(get_db)):
-    # API with rate limiting
-    users = await db.execute(select(User))
-    return users.scalars().all()
-
-# Redis caching
-import redis.asyncio as redis
-from fastapi_cache import FastAPICache, Coder
-from fastapi_cache.backends.redis import RedisBackend
-
-@app.post("/compute-heavy")
-@cache(expire=60)  # Cache for 60 seconds
-async def compute_heavy_operation(data: InputData):
-    # Expensive computation cached in Redis
-    result = await expensive_calculation(data)
-    return result
+async def serve():
+    server = aio.server()
+    user_service_pb2_grpc.add_UserServiceServicer_to_server(
+        UserServicer(), server
+    )
+    server.add_insecure_port('[::]:50051')
+    await server.start()
+    await server.wait_for_termination()
 ```
 
-### Microservices with Service Discovery
+### Real-time WebSocket Support
 
+**FastAPI WebSocket with Broadcast**:
 ```python
-# Service registration with Consul
-import aiohttp
-import asyncio
+from fastapi import WebSocket, WebSocketDisconnect
+from typing import List
 
-class ServiceRegistry:
-    def __init__(self, consul_url: str):
-        self.consul_url = consul_url
-        self.service_id = f"user-service-{uuid4()}"
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+    
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+    
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+    
+    async def broadcast(self, message: str):
+        for connection in self.active_connections:
+            await connection.send_text(message)
 
-    async def register(self):
-        async with aiohttp.ClientSession() as session:
-            await session.put(
-                f"{self.consul_url}/v1/agent/service/register",
-                json={
-                    "ID": self.service_id,
-                    "Name": "user-service",
-                    "Address": "user-service",
-                    "Port": 8000,
-                    "Check": {
-                        "HTTP": "http://user-service:8000/health",
-                        "Interval": "10s"
-                    }
-                }
-            )
+manager = ConnectionManager()
 
-# Service discovery and load balancing
-async def call_service(service_name: str, endpoint: str):
-    services = await discover_services(service_name)
-    selected = random.choice(services)
-    url = f"http://{selected['Address']}:{selected['Port']}{endpoint}"
-
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            return await response.json()
+@app.websocket("/ws/{client_id}")
+async def websocket_endpoint(websocket: WebSocket, client_id: str):
+    await manager.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            await manager.broadcast(f"Client {client_id}: {data}")
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+        await manager.broadcast(f"Client {client_id} disconnected")
 ```
 
-### API Gateway & Service Mesh
+---
 
-```yaml
-# Istio Virtual Service
-apiVersion: networking.istio.io/v1beta1
-kind: VirtualService
-metadata:
-  name: user-service
-spec:
-  http:
-  - match:
-    - uri:
-        prefix: "/api/v1/users"
-    route:
-    - destination:
-        host: user-service
-        port:
-          number: 8000
-      weight: 100
-    fault:
-      delay:
-        percentage:
-          value: 0.1
-        fixedDelay: 5s
-```
+## Reference & Resources
 
-### OpenTelemetry Observability
+### Context7 Documentation Access
 
-```python
-from opentelemetry import trace, baggage
-from opentelemetry.exporter.jaeger.thrift import JaegerExporter
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
+**Latest Framework Patterns**:
+- FastAPI: `/fastapi/fastapi` - Latest async patterns, dependencies, middleware
+- Django: `/django/django` - Async views, signals, ORM optimization
+- Express: `/expressjs/express` - Middleware, routing, error handling
 
-# Initialize tracing
-tracer_provider = TracerProvider()
-trace.set_tracer_provider(tracer_provider)
+**Performance Optimization**:
+- PostgreSQL: `/postgresql/postgresql` - Indexing, query optimization
+- Redis: `/redis/redis` - Caching strategies, pub/sub patterns
 
-jaeger_exporter = JaegerExporter(
-    agent_host_name="jaeger",
-    agent_port=6831,
-)
+---
 
-span_processor = BatchSpanProcessor(jaeger_exporter)
-tracer_provider.add_span_processor(span_processor)
+## Best Practices
 
-# Custom tracing in endpoints
-@app.get("/users/{user_id}")
-async def get_user(user_id: int, db: AsyncSession = Depends(get_db)):
-    tracer = trace.get_tracer(__name__)
+### DO
+- ✅ Use async/await for I/O-bound operations
+- ✅ Implement proper connection pooling
+- ✅ Add comprehensive error handling
+- ✅ Optimize database queries with indexes
+- ✅ Use middleware for cross-cutting concerns
+- ✅ Implement request validation and sanitization
+- ✅ Monitor performance with profiling tools
 
-    with tracer.start_as_current_span("get_user") as span:
-        span.set_attribute("user.id", user_id)
+### DON'T
+- ❌ Block event loop with synchronous operations
+- ❌ Create new connections per request
+- ❌ Skip error handling in async code
+- ❌ Use N+1 queries without optimization
+- ❌ Ignore middleware execution order
+- ❌ Skip input validation and sanitization
+- ❌ Deploy without performance testing
 
-        with tracer.start_as_current_span("database_query"):
-            result = await db.execute(select(User).where(User.id == user_id))
-            user = result.scalar_one_or_none()
+---
 
-        if user:
-            span.set_attribute("user.found", True)
-            return user
-        else:
-            span.set_attribute("user.found", False)
-            raise HTTPException(status_code=404)
-```
-
-
-## Context7 Integration
-
-### Related Libraries & Tools
-- [FastAPI](/tiangolo/fastapi): Modern, fast (high-performance), web framework for building APIs
-- [Django](/django/django): High-level Python web framework for rapid development
-- [SQLAlchemy](/sqlalchemy/sqlalchemy): Python SQL toolkit and Object Relational Mapper
-- [Uvicorn](/encode/uvicorn): Lightning-fast ASGI server implementation
-- [Pydantic](/pydantic/pydantic): Data validation using Python type annotations
-
-### Official Documentation
-- [FastAPI Documentation](https://fastapi.tiangolo.com/)
-- [Django 5.2](https://docs.djangoproject.com/en/5.2/)
-- [SQLAlchemy 2.0](https://docs.sqlalchemy.org/en/20/)
-- [Uvicorn](https://www.uvicorn.org/)
-- [asyncpg](https://magicstack.github.io/asyncpg/)
-
-### Version-Specific Guides
-Latest stable version: FastAPI 0.118+, Django 5.2 LTS, SQLAlchemy 2.0
-- [FastAPI 0.118 Release](https://github.com/tiangolo/fastapi/releases)
-- [Django 5.2 Release Notes](https://docs.djangoproject.com/en/5.2/releases/5.2/)
-- [SQLAlchemy 2.0 Migration](https://docs.sqlalchemy.org/en/20/changelog/migration_20.html)
-- [Async Python Best Practices](https://fastapi.tiangolo.com/async/)
-
+**Last Updated**: 2025-11-22
+**Version**: 5.0.0
+**Status**: Production Ready (2025 Standards)

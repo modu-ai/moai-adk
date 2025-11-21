@@ -1,15 +1,18 @@
 ---
+
 name: moai-lang-java
 description: Java programming language patterns, object-oriented design, and enterprise
   application development. Use when building enterprise applications, Android apps,
   or large-scale systems.
+
 ---
 
 ## Quick Reference (30 seconds)
 
 # Java Programming Language Skill
 
----
+Enterprise Java with OOP design patterns, SOLID principles, and modern frameworks.
+
 
 ## Implementation Guide
 
@@ -22,18 +25,16 @@ Java programming language patterns, object-oriented design, and enterprise appli
 - ✅ Enterprise application architecture
 - ✅ JVM optimization
 - ✅ Spring framework integration
-- ✅ Android development
+- ✅ Concurrent programming
 
----
 
 ## When to Use
 
 - ✅ Building enterprise applications
-- ✅ Creating Android apps
+- ✅ Creating backend services
 - ✅ Developing large-scale systems
 - ✅ Implementing microservices
 
----
 
 ## Core Java Patterns
 
@@ -51,7 +52,6 @@ Java programming language patterns, object-oriented design, and enterprise appli
 - **Testing**: JUnit and Mockito patterns
 - **Build Systems**: Maven and Gradle
 
----
 
 ## Dependencies
 
@@ -60,34 +60,25 @@ Java programming language patterns, object-oriented design, and enterprise appli
 - IDE support (IntelliJ, Eclipse)
 - Testing frameworks
 
----
 
 ## Works Well With
 
+- `moai-lang-java-spring-boot` (Spring Boot REST APIs, JPA)
+- `moai-lang-java-testing` (Testing and quality assurance)
+- `moai-lang-java-tools` (Build tools, Maven, Gradle, Docker)
 - `moai-domain-backend` (Enterprise patterns)
 - `moai-domain-database` (Database integration)
 - `moai-essentials-debug` (Java debugging)
 
----
 
 ## Changelog
 
+- **v3.0.0** (2025-11-21): Modularized into base, spring-boot, testing, and tools skills
 - **v2.0.0** (2025-11-11): Added complete metadata, Java programming patterns
 - **v1.0.0** (2025-10-22): Initial Java language support
 
----
+**End of Skill** | Updated 2025-11-21
 
-**End of Skill** | Updated 2025-11-11
-
----
-
-## Advanced Patterns
-
-
-
-
-
----
 
 ## Context7 Integration
 
@@ -104,3 +95,14 @@ Java programming language patterns, object-oriented design, and enterprise appli
 Latest stable version: 21 LTS
 - [Release Notes](https://www.oracle.com/java/technologies/javase/21-relnotes.html)
 - [Migration Guide](https://docs.oracle.com/en/java/javase/21/migrate/)
+
+---
+
+## 📚 Related Documentation
+
+For extended content, see additional files in this skill:
+
+- **`spring-boot.md`** - Spring Boot frameworks (REST APIs, JPA Entities, Service Layer, Transactions, Microservices, Stream API)
+- **`testing.md`** - Testing patterns (JUnit 5, Mockito, Integration Testing, Exception Handling)
+- **`examples.md`** - Working examples and code samples
+- **`reference.md`** - Build tools (Maven, Gradle, Docker, Debugging, Code Quality)

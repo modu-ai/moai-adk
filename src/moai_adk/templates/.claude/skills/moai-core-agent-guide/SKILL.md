@@ -1,7 +1,9 @@
 ---
+
 name: moai-core-agent-guide
 description: MoAI agent architecture, delegation patterns, and 19-agent orchestration guide
 allowed-tools: [Read]
+
 ---
 
 # MoAI Agent Architecture Guide
@@ -21,7 +23,6 @@ MoAI-ADK orchestrates **19 specialized agents** across 4 layers: Commands → Su
 - **Haiku**: Doc sync, TAG inventory, Git automation, pattern matching (fast execution)
 - **Sonnet**: Planning, implementation, debugging, complex reasoning (deep analysis)
 
----
 
 ## Implementation Guide
 
@@ -57,7 +58,6 @@ Keywords in SPEC → Auto-delegation:
 | Verify quality | trust-checker | TRUST 5 principles |
 | Release gate | quality-gate | Coverage + security |
 
----
 
 ## Advanced Patterns
 
@@ -85,7 +85,6 @@ Sonnet Use Cases:
 - Complex refactoring (design decisions)
 ```
 
----
 
 ## Best Practices
 
@@ -102,7 +101,6 @@ Sonnet Use Cases:
 - Skip expert agent auto-triggers (missing domain expertise)
 - Ignore agent escalation signals (blocks progress)
 
----
 
 ## Works Well With
 
@@ -111,7 +109,6 @@ Sonnet Use Cases:
 - `moai-foundation-trust` (TRUST 5 validation)
 - `moai-foundation-tags` (TAG chain management)
 
----
 
 **Version**: 1.0.0  
 **Last Updated**: 2025-11-21  

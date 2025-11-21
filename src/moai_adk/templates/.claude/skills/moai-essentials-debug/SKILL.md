@@ -1,6 +1,8 @@
 ---
+
 name: moai-essentials-debug
 description: AI-powered enterprise debugging orchestrator with Context7 integration, intelligent error pattern recognition, automated root cause analysis, predictive fix suggestions, and multi-process debugging coordination across 25+ languages and distributed systems
+
 ---
 
 ## Quick Reference
@@ -33,7 +35,6 @@ description: AI-powered enterprise debugging orchestrator with Context7 integrat
 
 **Core Framework**: AI-DEBUG (AI Error Pattern Recognition → Root Cause Analysis → Automated Fix Suggestions → Validation)
 
----
 
 ## Implementation Guide
 
@@ -283,7 +284,6 @@ class AIDebuggingDashboard:
 - ❌ Ignore predictive debugging insights
 - ❌ Apply AI solutions without safety checks
 
----
 
 ## Advanced Patterns
 
@@ -439,7 +439,6 @@ ai_debugging_stage:
 - **Container Orchestration Issues**: AI debugging of Kubernetes/Docker failures
 - **Database Connection Issues**: AI-enhanced database debugging patterns
 
----
 
 ## Related Skills
 
@@ -449,7 +448,6 @@ ai_debugging_stage:
 - `moai-foundation-trust` (AI quality assurance)
 - Context7 MCP (latest debugging patterns and best practices)
 
----
 
 **Last Updated**: 2025-11-21  
 **Status**: Production Ready (Enterprise)  

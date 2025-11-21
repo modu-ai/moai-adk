@@ -1,8 +1,10 @@
 ---
+
 name: moai-cc-settings
 description: Claude Code settings management, preference customization, and user experience
   optimization. Use when customizing Claude Code behavior, managing user preferences,
   or optimizing development experience.
+
 ---
 
 ## Quick Reference (30 seconds)
@@ -18,7 +20,6 @@ Claude Code 설정 관리는 개발 환경을 커스터마이징하고 사용자
 - 자동 설정 검증
 - 설정 동기화 및 백업
 
----
 
 ## Implementation Guide
 
@@ -125,7 +126,6 @@ Claude Code 설정은 다음을 제공합니다:
 - 설정 검증 프레임워크
 - 파일 감시 시스템
 
----
 
 ## Works Well With
 
@@ -134,7 +134,6 @@ Claude Code 설정은 다음을 제공합니다:
 - `moai-project-config-manager` (프로젝트 설정 CRUD)
 - `moai-cc-agents` (에이전트별 설정)
 
----
 
 ## Advanced Patterns
 
@@ -253,14 +252,12 @@ export CLAUDE_PROFILE=production
 - 권장사항 제시 (최적 설정)
 ```
 
----
 
 ## Changelog
 
 - **v2.0.0** (2025-11-11): Added complete metadata, settings patterns
 - **v1.0.0** (2025-10-22): Initial settings management
 
----
 
 **End of Skill** | Updated 2025-11-21 | Lines: 185
 

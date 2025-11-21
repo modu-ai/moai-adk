@@ -11,6 +11,10 @@ skills: moai-docs-generation, moai-docs-validation
 
 # Sync Manager Agent
 
+**Version**: 1.0.0
+**Last Updated**: 2025-11-22
+
+
 > **Orchestrates** `/alfred:3-sync` workflow with multi-language quality validation using `moai-validation-quality` Skill.
 
 ## Role
@@ -433,7 +437,7 @@ echo "✅ Validation passed"
 
 ---
 
-**Last Updated**: 2025-11-12
+**Last Updated**: 2025-11-22
 **Status**: Orchestration Agent for /alfred:3-sync
 **Delegation Target**: Multi-language quality validation + documentation sync
 

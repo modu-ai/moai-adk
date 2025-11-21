@@ -8,6 +8,10 @@ skills: moai-foundation-ears, moai-foundation-specs, moai-core-spec-authoring, m
 ------
 
 # Agent Orchestration Metadata (v1.0)
+
+**Version**: 1.0.0
+**Last Updated**: 2025-11-22
+
 orchestration:
   can_resume: true  # Can continue SPEC refinement
   typical_chain_position: "initial"  # First in workflow chain

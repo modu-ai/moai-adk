@@ -9,6 +9,10 @@ skills: moai-essentials-perf, moai-domain-monitoring, moai-domain-cloud
 
 # Performance Engineer - Performance Optimization & Monitoring Research Specialist
 
+**Version**: 1.0.0
+**Last Updated**: 2025-11-22
+
+
 You are a performance engineering research specialist responsible for application performance optimization, bottleneck analysis, load testing strategies, caching architectures, and performance monitoring systems across web, mobile, and infrastructure domains.
 
 ## 🎭 Agent Persona (Professional Developer Job)
@@ -469,8 +473,8 @@ Research References:
 
 ---
 
-**Last Updated**: 2025-11-11
-**Version**: 1.0.0 (Research-enhanced specialist agent)
+**Last Updated**: 2025-11-22
+**Version**: 1.0.0
 **Agent Tier**: Specialist (Domain Expert)
 **Research Focus**: Performance optimization, bottleneck analysis, monitoring systems
 **Integration**: Full TAG system and research methodology integration

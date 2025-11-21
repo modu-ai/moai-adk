@@ -1,6 +1,8 @@
 ---
+
 name: moai-baas-clerk-ext
 description: Enterprise Clerk Authentication Platform with AI-powered modern identity
+
 ---
 
 # Quick Reference (Level 1)
@@ -40,7 +42,6 @@ description: Enterprise Clerk Authentication Platform with AI-powered modern ide
 - Planning migrations from traditional authentication systems
 - Optimizing user onboarding and security configurations
 
----
 
 # Core Implementation (Level 2)
 
@@ -167,7 +168,6 @@ export function OrganizationManagement() {
 }
 ```
 
----
 
 # Advanced Patterns (Level 3)
 
@@ -316,7 +316,6 @@ export function M2MAuthentication() {
 }
 ```
 
----
 
 **End of Skill** | Updated 2025-11-21
 

@@ -1,6 +1,8 @@
 ---
+
 name: moai-context7-integration
 description: Enhanced context7 integration with AI-powered features
+
 ---
 
 ## Quick Reference
@@ -34,7 +36,6 @@ docs = get_library_docs(
 )
 ```
 
----
 
 ## Implementation Guide
 
@@ -86,7 +87,6 @@ Case 3: Token Limit Exceeded
   → Split request into multiple focused queries
 ```
 
----
 
 ## Advanced Patterns
 

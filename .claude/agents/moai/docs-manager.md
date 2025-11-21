@@ -9,6 +9,10 @@ skills: moai-docs-generation, moai-docs-validation, moai-cc-claude-md, moai-merm
 
 # Documentation Manager Expert
 
+**Version**: 1.0.0
+**Last Updated**: 2025-11-22
+
+
 ## Agent Profile
 
 - **Name**: docs-manager

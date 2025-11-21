@@ -1,7 +1,9 @@
 ---
+
 name: moai-cloud-gcp-advanced
 description: Advanced GCP architecture patterns, BigQuery optimization, and Kubernetes Engine best practices
 allowed-tools: [Read, Bash, WebFetch]
+
 ---
 
 # Advanced GCP Cloud Architecture
@@ -19,7 +21,6 @@ AI/ML 서비스를 통해 엔터프라이즈급 클라우드 아키텍처를 제
 - **Analytics**: BigQuery (데이터 웨어하우스), Dataflow (스트림), Pub/Sub (메시징), Dataproc (Spark/Hadoop)
 - **AI/ML**: Vertex AI (통합 플랫폼), AutoML, LLM API 등
 
----
 
 ## Implementation Guide
 
@@ -227,7 +228,6 @@ gcloud compute commitments create my-commitment \
   --region=us-central1
 ```
 
----
 
 ## Best Practices
 
@@ -248,7 +248,6 @@ gcloud compute commitments create my-commitment \
 - 무제한 확장 (예산 초과)
 - 컨테이너 이미지 최적화 무시
 
----
 
 ## Works Well With
 
@@ -257,7 +256,6 @@ gcloud compute commitments create my-commitment \
 - `moai-domain-database` (데이터 모델링)
 - `moai-domain-security` (클라우드 보안)
 
----
 
 **Version**: 2.0.0
 **Last Updated**: 2025-11-21 | **Lines**: 220

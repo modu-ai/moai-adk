@@ -1,6 +1,8 @@
 ---
+
 name: moai-project-documentation
-description: Enhanced project documentation with AI-powered features. Enhanced with
+description: Enhanced project documentation with AI-powered features. Enhanced with Context7 (project)
+
 ---
 
 ## Quick Reference (30 seconds)
@@ -9,12 +11,10 @@ description: Enhanced project documentation with AI-powered features. Enhanced w
 
 **Project Documentation**
 
-> **Primary Agent**: alfred  
-> **Secondary Agents**: none  
-> **Version**: 4.0.0  
+> **Primary Agent**: alfred
+> **Secondary Agents**: none
+> **Version**: 4.0.0
 > **Keywords**: project, documentation, git, frontend, kubernetes
-
----
 
 ## 📖 Progressive Disclosure
 
@@ -52,7 +52,6 @@ Ask user to identify their project type:
    - Focus: Data quality, model metrics, scalability
    - Template style: Metrics-driven with data emphasis
 
----
 
 ### Part 2: Product.md Writing Guide
 
@@ -108,7 +107,6 @@ Ask user to identify their project type:
 - Scalability targets (1B+ records)
 - Integration with ML platforms (MLflow, W&B)
 
----
 
 ### Part 3: Structure.md Writing Guide
 
@@ -194,7 +192,6 @@ Model Registry
 Monitoring & Alerting
 ```
 
----
 
 ### Part 4: Tech.md Writing Guide
 
@@ -275,7 +272,6 @@ Experiment Tracking: MLflow, Weights & Biases
 Quality: 80% code coverage, data validation tests
 ```
 
----
 
 ### Part 5: Writing Checklists
 
@@ -303,7 +299,6 @@ Quality: 80% code coverage, data validation tests
 - [ ] Environment profiles (dev/test/prod) included
 - [ ] HISTORY section has v0.1.0
 
----
 
 ### Part 6: Common Mistakes to Avoid
 
@@ -315,7 +310,6 @@ Quality: 80% code coverage, data validation tests
 - "Solo developers building web apps under time pressure, 3-7 person teams"
 - "Measure success by 80% adoption within 2 weeks, 5 features/sprint velocity"
 
----
 
 ❌ **Over-Specified in product.md**
 - Function names, database schemas, API endpoints
@@ -325,7 +319,6 @@ Quality: 80% code coverage, data validation tests
 - "Caching layer for performance"
 - "Integration with external payment provider"
 
----
 
 ❌ **Inconsistent Across Documents**
 - product.md: "5 concurrent users"
@@ -334,7 +327,6 @@ Quality: 80% code coverage, data validation tests
 ✅ **Aligned**
 - All 3 documents agree on target scale, user types, quality standards
 
----
 
 ❌ **Outdated**
 - Last updated 6 months ago
@@ -344,9 +336,7 @@ Quality: 80% code coverage, data validation tests
 - HISTORY updated every sprint
 - version number incremented on changes
 
----
 
----
 
 ### Level 2: Practical Implementation (Common Patterns)
 
@@ -359,17 +349,13 @@ Metadata
 - **Invocation**: Skill("moai-project-documentation")
 - **Progressive Disclosure**: Metadata → Content (full guide) → Resources (examples)
 
----
 
----
 
 Purpose
 
 Guide interactive creation of three core project documentation files (product.md, structure.md, tech.md) based on project type and user input. Provides templates, examples, checklists, and best practices for each project type (Web App, CLI Tool, Library, Data Science).
 
----
 
----
 
 Core Content
 
@@ -403,7 +389,6 @@ Ask user to identify their project type:
    - Focus: Data quality, model metrics, scalability
    - Template style: Metrics-driven with data emphasis
 
----
 
 ### Part 2: Product.md Writing Guide
 
@@ -459,7 +444,6 @@ Ask user to identify their project type:
 - Scalability targets (1B+ records)
 - Integration with ML platforms (MLflow, W&B)
 
----
 
 ### Part 3: Structure.md Writing Guide
 
@@ -545,7 +529,6 @@ Model Registry
 Monitoring & Alerting
 ```
 
----
 
 ### Part 4: Tech.md Writing Guide
 
@@ -626,7 +609,6 @@ Experiment Tracking: MLflow, Weights & Biases
 Quality: 80% code coverage, data validation tests
 ```
 
----
 
 ### Part 5: Writing Checklists
 
@@ -654,7 +636,6 @@ Quality: 80% code coverage, data validation tests
 - [ ] Environment profiles (dev/test/prod) included
 - [ ] HISTORY section has v0.1.0
 
----
 
 ### Part 6: Common Mistakes to Avoid
 
@@ -666,7 +647,6 @@ Quality: 80% code coverage, data validation tests
 - "Solo developers building web apps under time pressure, 3-7 person teams"
 - "Measure success by 80% adoption within 2 weeks, 5 features/sprint velocity"
 
----
 
 ❌ **Over-Specified in product.md**
 - Function names, database schemas, API endpoints
@@ -676,7 +656,6 @@ Quality: 80% code coverage, data validation tests
 - "Caching layer for performance"
 - "Integration with external payment provider"
 
----
 
 ❌ **Inconsistent Across Documents**
 - product.md: "5 concurrent users"
@@ -685,7 +664,6 @@ Quality: 80% code coverage, data validation tests
 ✅ **Aligned**
 - All 3 documents agree on target scale, user types, quality standards
 
----
 
 ❌ **Outdated**
 - Last updated 6 months ago
@@ -695,9 +673,7 @@ Quality: 80% code coverage, data validation tests
 - HISTORY updated every sprint
 - version number incremented on changes
 
----
 
----
 
 Examples by Project Type
 
@@ -706,7 +682,6 @@ Examples by Project Type
 **Product.md excerpt:**
 ```markdown
 
----
 
 Quality Gates
 - Test coverage: 85% minimum
@@ -714,28 +689,24 @@ Quality Gates
 - Bundle size: <200KB gzipped
 ```
 
----
 
 ### Example 2: Mobile App (FitTracker)
 
 **Product.md excerpt:**
 ```markdown
 
----
 
 Deployment
 - App Store & Google Play via Fastlane
 - TestFlight for beta testing
 - Version every 2 weeks
 ```
----
 
 ### Example 3: CLI Tool (DataValidate)
 
 **Product.md excerpt:**
 ```markdown
 
----
 
 Build
 - Binary size: <100MB
@@ -743,14 +714,12 @@ Build
 - Distribution: GitHub Releases + Homebrew
 ```
 
----
 
 ### Example 4: Library (TypeGuard)
 
 **Product.md excerpt:**
 ```markdown
 
----
 
 Primary Language: TypeScript 5.2+
 - Test coverage: 90% (libraries have higher bar)
@@ -758,14 +727,12 @@ Primary Language: TypeScript 5.2+
 - Bundle: <50KB gzipped, tree-shakeable
 ```
 
----
 
 ### Example 5: Data Science (ML Pipeline)
 
 **Product.md excerpt:**
 ```markdown
 
----
 
 Versioning & Updates
 
@@ -777,9 +744,7 @@ Versioning & Updates
 
 **Current version:** 0.1.0 (2025-11-04)
 
----
 
----
 
 ### Level 3: Advanced Patterns (Expert Reference)
 
@@ -788,7 +753,6 @@ Versioning & Updates
 **Coming soon**: Deep dive into expert-level usage.
 
 
----
 
 ## 📚 Official References
 
@@ -799,7 +763,6 @@ Versioning & Updates
 - [Best Practices Guide](https://...) – Official recommendations
 
 
----
 
 ## 📈 Version History
 
@@ -814,13 +777,11 @@ Versioning & Updates
 
 
 
----
 
 **Generated with**: MoAI-ADK Skill Factory    
 **Last Updated**: 2025-11-12  
 **Maintained by**: Primary Agent (alfred)
 
----
 
 ## Core Implementation
 
@@ -838,7 +799,6 @@ Versioning & Updates
 - 🔒 [Security practice 1]
 
 
----
 
 ## 🔗 Context7 MCP Integration
 
@@ -870,7 +830,6 @@ docs = await helper.get_docs(
 | [Library 1] | `/org/lib1` | [When to use] |
 
 
----
 
 ## 📊 Decision Tree
 
@@ -887,7 +846,6 @@ Start
 ```
 
 
----
 
 ## 🔄 Integration with Other Skills
 
@@ -901,5 +859,4 @@ Start
 - Skill("next-step-1") – [When to use after this]
 
 
----
 

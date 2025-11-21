@@ -1,24 +1,25 @@
 ---
+
 name: moai-cc-commands
 description: Claude Code Commands system, workflow orchestration, and command-line
   interface patterns. Use when creating custom commands, managing workflows, or implementing
   CLI interfaces.
+
 ---
 
 ## Quick Reference (30 seconds)
 
-Claude Code Commands는 커스텀 워크플로우 자동화, CLI 인터페이스 설계, 복잡한 다단계 작업 조율을
-위한 강력한 명령어 시스템입니다. 프로젝트 초기화, 기능 배포, 문서 동기화, 릴리스 관리 등의
-개발 워크플로우를 효율적으로 자동화할 수 있습니다.
+# Claude Code Command Architecture & CLI Integration
 
-**핵심 기능**:
-- 커스텀 명령어 생성 및 등록
-- 다단계 워크플로우 조율
-- 파라미터 검증 및 입력 처리
-- 에러 처리 및 복구
-- 명령어 문서화 및 도움말
+Claude Code Commands provides a powerful command system for custom workflow automation, CLI interface design, and orchestrating complex multi-step tasks. It efficiently automates development workflows such as project initialization, feature deployment, documentation synchronization, and release management.
 
----
+**Core Capabilities**:
+- Custom command creation and registration
+- Multi-step workflow orchestration
+- Parameter validation and input processing
+- Error handling and recovery
+- Command documentation and help system
+
 
 ## Implementation Guide
 
@@ -103,7 +104,6 @@ Examples:
 - 파라미터 검증 라이브러리
 - 워크플로우 조율 도구
 
----
 
 ## Works Well With
 
@@ -112,7 +112,6 @@ Examples:
 - `moai-cc-configuration` (명령어 설정)
 - `moai-project-config-manager` (프로젝트별 명령어)
 
----
 
 ## Advanced Patterns
 
@@ -194,14 +193,12 @@ Step 1 → [Condition Check]
 - 로그 기록
 - 알림 전송
 
----
 
 ## Changelog
 
 - **v2.0.0** (2025-11-11): Added complete metadata, command architecture patterns
 - **v1.0.0** (2025-10-22): Initial commands system
 
----
 
 **End of Skill** | Updated 2025-11-21 | Lines: 195
 

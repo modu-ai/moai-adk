@@ -1,10 +1,12 @@
 ---
+
 name: moai-core-code-reviewer
 description: Enterprise systematic code review orchestrator with TRUST 5 principles,
   multi-language support, Context7 integration, AI-powered quality checks, SOLID principle
   validation, security vulnerability detection, and maintainability analysis across
   25+ programming languages; activates for code reviews, quality standard validation,
   TRUST 5 enforcement, architectural audits, and automated review automation
+
 ---
 
 ## Quick Reference (30 seconds)
@@ -16,14 +18,12 @@ description: Enterprise systematic code review orchestrator with TRUST 5 princip
 - `moai-alfred-practices` (Code patterns and best practices)
 - `moai-essentials-refactor` (Refactoring strategies)
 
----
 
 **For detailed review checklists**: [reference.md](reference.md)  
 **For real-world examples**: [examples.md](examples.md)  
 **Last Updated**: 2025-11-12  
 **Status**: Production Ready (Enterprise )
 
----
 
 ## Implementation Guide
 
@@ -31,7 +31,6 @@ description: Enterprise systematic code review orchestrator with TRUST 5 princip
 
 Provides systematic guidance for enterprise-grade code review processes applying **TRUST 5 principles**, validating SOLID principles, identifying security issues, ensuring maintainability, and automating quality gates across all programming languages.
 
----
 
 ## The TRUST 5 Review Framework
 
@@ -201,7 +200,6 @@ def calculate_discount(price: float, customer_type: str) -> float:
     return price
 ```
 
----
 
 ## SOLID Principles Checklist
 
@@ -213,7 +211,6 @@ def calculate_discount(price: float, customer_type: str) -> float:
 | **I**nterface Segregation | Minimal, specific interfaces | Are clients forced to depend on methods they don't use? |
 | **D**ependency Inversion | Depend on abstractions, not concretions | Do high-level modules depend on low-level implementations? |
 
----
 
 ## Code Review Process (4-Step)
 
@@ -253,7 +250,6 @@ def calculate_discount(price: float, customer_type: str) -> float:
 ✓ Documentation complete?
 ```
 
----
 
 ## Review Depth Matrix
 
@@ -267,7 +263,6 @@ def calculate_discount(price: float, customer_type: str) -> float:
 | **Configuration** | 🟡 Medium | Full | 10 min | Security, best practices, side effects |
 | **Refactoring** | 🟢 Minor | Full | 15 min | Behavior preservation, performance |
 
----
 
 ## Best Practices
 
@@ -290,7 +285,6 @@ def calculate_discount(price: float, customer_type: str) -> float:
 - **Skip security review**: Always check authentication, validation, secrets
 - **Ignore test coverage**: Enforce ≥85% requirement
 
----
 
 ## Integration with Context7
 
@@ -299,9 +293,7 @@ def calculate_discount(price: float, customer_type: str) -> float:
 **Version-Aware Checks**: Context7 provides version-specific security guidance  
 **Automated Fix Suggestions**: Context7 patterns for common vulnerability fixes
 
----
 
----
 
 ## Advanced Patterns
 
@@ -309,7 +301,6 @@ def calculate_discount(price: float, customer_type: str) -> float:
 
 
 
----
 
 ## Context7 Integration
 

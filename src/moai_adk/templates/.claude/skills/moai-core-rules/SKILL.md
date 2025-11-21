@@ -1,6 +1,8 @@
 ---
+
 name: moai-core-rules
 description: Alfred SuperAgent의 필수 규칙을 정의합니다. November 2025 enterprise standard 기반.
+
 ---
 
 ## Quick Reference
@@ -22,7 +24,6 @@ Alfred SuperAgent의 의사결정과 실행을 제어하는 핵심 프레임워�
 - TRUST 5 준수 확인
 - TAG 체인 무결성 검증
 
----
 
 ## Implementation Guide
 
@@ -113,7 +114,6 @@ Phase 4: PRODUCE
 - ❌ Commands가 코드 분석
 - ❌ Commands가 테스트 실행
 
----
 
 ## Advanced Patterns
 
@@ -209,7 +209,6 @@ requirements:
 ```
 
 
----
 
 ## Context7 Integration
 

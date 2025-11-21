@@ -1,7 +1,9 @@
 ---
+
 name: moai-domain-iot
 description: IoT architecture, device management, and edge computing patterns for connected devices
 allowed-tools: [Read, Bash, WebFetch]
+
 ---
 
 # IoT Domain Expert
@@ -18,7 +20,6 @@ securely, process data locally for latency-critical applications, and synchroniz
 - **Cloud Platforms**: AWS IoT Core, Azure IoT Hub, Google IoT Core, Alibaba Cloud
 - **Data Storage**: InfluxDB, TimescaleDB, Prometheus, Grafana
 
----
 
 ## Implementation Guide
 
@@ -304,7 +305,6 @@ class OTAManager:
         return device_hash == expected_hash
 ```
 
----
 
 ## Best Practices
 
@@ -326,7 +326,6 @@ class OTAManager:
 - Use default credentials or passwords
 - Deploy without monitoring and alerting
 
----
 
 ## Works Well With
 
@@ -335,6 +334,5 @@ class OTAManager:
 - `moai-domain-security` (Device authentication, encryption)
 - `moai-cloud-aws-advanced` (AWS IoT Core integration)
 
----
 
 **Version**: 2.0.0 | **Last Updated**: 2025-11-21 | **Lines**: 245

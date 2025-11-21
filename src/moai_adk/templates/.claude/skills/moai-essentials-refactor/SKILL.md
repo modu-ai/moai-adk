@@ -1,8 +1,10 @@
 ---
+
 name: moai-essentials-refactor
 description: AI-powered enterprise refactoring with Context7 integration, automated
   code transformation, Rope pattern intelligence, and technical debt quantification
   across 25+ programming languages
+
 ---
 
 ## Quick Reference (30 seconds)
@@ -60,7 +62,6 @@ project.do(changes)
 - ✅ Apply Rope for safe transformations
 - ✅ Test after each refactoring step
 
----
 
 ## Level 3: Advanced Integration (50-150 lines)
 
@@ -140,7 +141,6 @@ result = await restructure_engine.apply_context7_restructuring(
 )
 ```
 
----
 
 ## Implementation Guide
 
@@ -178,7 +178,6 @@ result = await restructure_engine.apply_context7_restructuring(
 - "Optimize architecture with AI patterns"
 - "Reduce technical debt intelligently"
 
----
 
 ## Level 2: Practical Implementation (200-300 lines)
 
@@ -288,7 +287,6 @@ class TechnicalDebtAnalyzer:
         )
 ```
 
----
 
 ## Success Metrics
 
@@ -313,14 +311,12 @@ class TechnicalDebtAnalyzer:
 - Skip Refactoring.Guru pattern integration
 - Use AI refactoring without proper analysis
 
----
 
 **Version**: 4.0.0 Enterprise  
 **Last Updated**: 2025-11-13  
 **Status**: Production Ready  
 **Integration**: Context7 MCP + Rope + Refactoring.Guru patterns
 
----
 
 ## Advanced Patterns
 
@@ -328,7 +324,6 @@ class TechnicalDebtAnalyzer:
 
 
 
----
 
 ## Context7 Integration
 

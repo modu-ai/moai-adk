@@ -1,6 +1,8 @@
 ---
+
 name: moai-security-compliance
 description: Enterprise Skill for advanced development
+
 ---
 
 ## Quick Reference (30 seconds)
@@ -10,7 +12,6 @@ description: Enterprise Skill for advanced development
 **GDPR, HIPAA, SOC 2, ISO 27001, PCI DSS Compliance Framework**  
 Trust Score: 9.9/10 | Version: 4.0.0 | Enterprise Mode | Last Updated: 2025-11-12
 
----
 
 ## Level 2: Core Patterns
 
@@ -338,7 +339,6 @@ class SOC2EvidenceCollector {
 }
 ```
 
----
 
 ## Quick Reference
 
@@ -350,7 +350,6 @@ class SOC2EvidenceCollector {
 | ISO 27001 | InfoSec | 3 years |
 | PCI DSS | Payment Cards | 1 year minimum |
 
----
 
 ## Core Implementation
 
@@ -367,7 +366,6 @@ Comprehensive regulatory compliance framework for GDPR, HIPAA, SOC 2, ISO 27001,
 - Building audit trails for regulatory proof
 - GDPR right-to-erasure implementation
 
----
 
 ## Level 1: Foundations
 
@@ -442,7 +440,6 @@ class DataClassifier {
 }
 ```
 
----
 
 ## Checklist
 
@@ -457,11 +454,9 @@ class DataClassifier {
 - [ ] HIPAA BAA signed if processing PHI
 - [ ] PCI DSS self-assessment annual review
 
----
 
 
 
----
 
 ## Context7 Integration
 

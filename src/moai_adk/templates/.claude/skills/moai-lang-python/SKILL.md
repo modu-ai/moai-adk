@@ -1,9 +1,11 @@
 ---
+
 name: moai-lang-python
 description: Enterprise-grade Python expertise with production patterns for Python
   3.13.9, FastAPI 0.115.x, Django 5.2 LTS, Pydantic v2, SQLAlchemy 2.0; activates
   for API development, ORM usage, async patterns, testing frameworks, and production
   deployment strategies.
+
 ---
 
 ## Quick Reference (30 seconds)
@@ -24,7 +26,6 @@ description: Enterprise-grade Python expertise with production patterns for Pyth
 | Django 5.2 LTS | 2025-08 | Apr 2027 |
 | SQLAlchemy 2.0 | 2024-01 | Active |
 
----
 
 ## Three-Level Learning Path
 
@@ -55,7 +56,6 @@ Enterprise deployment and optimization:
 - **Scaling**: Worker management, connection pooling, graceful shutdown
 - **Details**: Skill("moai-essentials-perf"), Skill("moai-security-backend")
 
----
 
 ## Learn More
 
@@ -66,12 +66,10 @@ Enterprise deployment and optimization:
 - **Python 3.13**: https://docs.python.org/3/whatsnew/3.13.html
 - **pytest Guide**: https://docs.pytest.org/
 
----
 
 **Skills**: Skill("moai-essentials-debug"), Skill("moai-essentials-perf"), Skill("moai-security-backend")
 **Auto-loads**: Python projects mentioning FastAPI, Django, async, SQLAlchemy, Pydantic, pytest
 
----
 
 ## Implementation Guide
 
@@ -113,7 +111,6 @@ Enterprise deployment and optimization:
 - **asyncpg 0.30** - Async PostgreSQL client
 - **aiohttp 3.10** - Async HTTP client
 
----
 
 ## FastAPI Essential Patterns
 
@@ -174,7 +171,6 @@ async def profile(
     return user
 ```
 
----
 
 ## SQLAlchemy 2.0 Async ORM
 
@@ -229,7 +225,6 @@ async def get_user(user_id: int) -> User:
         return result.scalars().first()
 ```
 
----
 
 ## Async/Await Fundamentals
 
@@ -267,7 +262,6 @@ async def cancellable_task():
         raise
 ```
 
----
 
 ## Pydantic v2 Validation
 
@@ -293,7 +287,6 @@ user = UserSchema(id=1, username="john", email="john@example.com")
 schema = UserSchema.model_json_schema()  # JSON Schema
 ```
 
----
 
 ## Testing with pytest
 
@@ -319,7 +312,6 @@ async def test_async_fetch():
     assert result is not None
 ```
 
----
 
 ## Production Best Practices
 
@@ -334,9 +326,7 @@ async def test_async_fetch():
 9. **Use Uvicorn** for FastAPI (not development server)
 10. **Enable JIT compiler** for performance-critical code in Python 3.13
 
----
 
----
 
 ## Advanced Patterns
 

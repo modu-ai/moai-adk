@@ -1,15 +1,16 @@
 ---
+
 name: moai-lang-dart
 description: Dart 3.5 enterprise development with Flutter 3.24, advanced async programming,
   state management, and cross-platform mobile development. Enterprise patterns for
   scalable applications with Context7 MCP integration.
+
 ---
 
 ## Quick Reference (30 seconds)
 
 # Dart - Enterprise 
 
----
 
 ## Quick Reference
 
@@ -93,7 +94,6 @@ Complex App        → Riverpod / BLoC
 Enterprise Scale   → BLoC + Repository Pattern
 ```
 
----
 
 ## Version History
 
@@ -103,13 +103,11 @@ Enterprise Scale   → BLoC + Repository Pattern
 | 3.5.4 | 2025-10-22 | Previous | Advanced patterns focus |
 | 3.0.0 | 2025-09-01 | Legacy | Initial release |
 
----
 
 **For detailed examples** → See `examples.md`
 **For API reference** → See `reference.md`
 **For hands-on patterns** → See `examples.md` Part 3-4
 
----
 
 ## Implementation Guide
 
@@ -131,7 +129,6 @@ Enterprise Scale   → BLoC + Repository Pattern
 - Implement state management solutions
 - Troubleshoot mobile development issues
 
----
 
 ## Technology Stack (2025-11-12)
 
@@ -145,7 +142,6 @@ Enterprise Scale   → BLoC + Repository Pattern
 | **Provider** | 6.4.0 | State management | ✅ Current |
 | **Firebase Core** | 2.28.0 | Backend | ✅ Current |
 
----
 
 ## Implementation Patterns
 
@@ -261,7 +257,6 @@ class AppScreen extends StatelessWidget {
 }
 ```
 
----
 
 ## Common Use Cases
 
@@ -290,7 +285,6 @@ class AppScreen extends StatelessWidget {
 4. Handle connection errors gracefully
 5. Buffer/throttle high-frequency updates
 
----
 
 ## Enterprise Checklist
 
@@ -309,7 +303,6 @@ class AppScreen extends StatelessWidget {
 - [ ] CI/CD pipeline configured
 - [ ] Crash reporting integrated
 
----
 
 ## Common Pitfalls
 
@@ -343,7 +336,6 @@ StreamSubscription sub = stream.listen(...);
 class Counter extends StatefulWidget { ... }
 ```
 
----
 
 ## Resources
 
@@ -362,7 +354,6 @@ class Counter extends StatefulWidget { ... }
 - Dart Analyzer: Static analysis
 - Coverage Tools: lcov for coverage reporting
 
----
 
 ## Context7 Integration
 
@@ -378,9 +369,7 @@ Keyword Detection → Context7 Query → Real-Time API Docs
 
 **Enable with**: `mcp__context7__resolve-library-id` + `mcp__context7__get-library-docs`
 
----
 
----
 
 ## Advanced Patterns
 
@@ -399,7 +388,6 @@ Dart 3.5 enterprise development featuring Flutter 3.24, advanced async programmi
 - ✅ Testing strategies with unit, widget, and integration tests
 - ✅ Context7 MCP integration for real-time documentation
 
----
 
 ## Advanced Topics
 
@@ -427,5 +415,4 @@ State Update  → Concurrent updates → Use immutable state pattern
 - **Integration Tests**: Full user flows and scenarios
 - **Mocking**: External dependencies with Mockito
 
----
 

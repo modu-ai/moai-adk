@@ -1,7 +1,9 @@
 ---
+
 name: moai-cc-hook-model-strategy
 description: Claude Code hooks lifecycle, model strategy patterns, and security automation
 allowed-tools: [Read, Bash]
+
 ---
 
 # Claude Code Hook Model Strategy
@@ -23,7 +25,6 @@ Claude Code hooks are shell commands that execute at strategic points in Claude'
 
 **Security-First Principle**: Hooks run with your environment's credentials - malicious code can exfiltrate data. Always review implementations before registration.
 
----
 
 ## Implementation Guide
 
@@ -191,7 +192,6 @@ print(json.dumps(output))
 sys.exit(0)
 ```
 
----
 
 ## Advanced Patterns
 
@@ -261,7 +261,6 @@ if elapsed > 0.1:  # 100ms threshold
     print(f"WARN: Hook slow ({elapsed:.2f}s)", file=sys.stderr)
 ```
 
----
 
 ## Best Practices
 
@@ -284,7 +283,6 @@ if elapsed > 0.1:  # 100ms threshold
 - Modify Claude's response without user consent
 - Use hooks for business logic (keep them lightweight)
 
----
 
 ## Lifecycle Event Reference
 
@@ -301,7 +299,6 @@ if elapsed > 0.1:  # 100ms threshold
 | **PreCompact** | Before context compression | Save critical context | N/A |
 | **Notification** | Claude sends notification | Custom notification handling | N/A |
 
----
 
 ## Works Well With
 
@@ -310,7 +307,6 @@ if elapsed > 0.1:  # 100ms threshold
 - `moai-security-api` (Security validation patterns)
 - `moai-foundation-trust` (TRUST 5 quality gates)
 
----
 
 **Version**: 1.0.0  
 **Last Updated**: 2025-11-21  
