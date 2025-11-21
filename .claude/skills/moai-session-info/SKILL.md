@@ -304,6 +304,24 @@ The skill provides useful information even when some sources fail:
 
 ---
 
+
+## Context7 Integration
+
+### Related Session Management Libraries
+- [Express Session](/expressjs/session): Node.js session middleware
+- [Django Sessions](/django/django): Python session framework
+- [Redis](/redis/redis): Session store backend
+
+### Official Documentation
+- [Session Management Best Practices](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html)
+- [HTTP Cookie Security](https://cheatsheetseries.owasp.org/cheatsheets/Secure_Coding_Practices_Checklist.html)
+
+### Related Modularized Skills
+- `moai-security-auth` - Authentication mechanisms
+- `moai-core-permission-mode` - Permission management
+
+---
+
 ## Advanced Patterns
 
 
