@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(for skill in /Users/goos/MoAI/MoAI-ADK/.claude/skills/*/SKILL.md)",
+      "Bash(done)",
+      "Bash(for skill in /Users/goos/MoAI/MoAI-ADK/src/moai_adk/templates/.claude/skills/*/SKILL.md)"
+    ]
+  }
+}
