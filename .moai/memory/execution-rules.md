@@ -444,4 +444,101 @@ def post_execution_hook(result, agent_type, task):
 - User notification systems
 - Recovery automation
 
+---
+
+## Agent Skill Loading Rules
+
+### Principle
+
+Agents dynamically load skills from `.claude/skills/` directory as needed to fulfill delegated tasks. This ensures agents have maximum capability without requiring pre-configuration of every possible skill.
+
+### How Agents Load Skills
+
+Agents load skills using the `Skill()` tool during execution:
+
+```python
+# Load specific skills when needed
+Skill("moai-lang-python")      # Python best practices
+Skill("moai-domain-backend")   # Backend patterns
+
+# Multiple skills loaded in sequence
+Skill("moai-foundation-trust")
+Skill("moai-essentials-review")
+```
+
+### When to Load Skills
+
+Agents should load skills:
+1. **By Purpose**: Load skills matching their core purpose (defined in agent profile)
+2. **By Task**: Load domain-specific skills when delegated a task in that domain
+3. **As Needed**: Load additional skills during execution to fulfill requirements
+
+### Skill Discovery Process
+
+When delegated a task, agents should:
+1. Analyze the task requirements
+2. Identify skill gaps for the task
+3. Load relevant skills from `.claude/skills/` using `Skill()` tool
+4. Execute the task with loaded skills
+5. Document which skills were used in results
+
+### Skill Loading Examples
+
+**Example 1: Backend Implementation Task**
+```
+Delegation Task: Implement REST API endpoint for user management
+
+Agent (backend-expert) loads:
+1. moai-domain-backend (core backend patterns)
+2. moai-security-api (API security patterns)
+3. moai-lang-typescript (if using TypeScript)
+4. moai-essentials-perf (performance optimization)
+
+Executes task with full skill set.
+```
+
+**Example 2: Security Review Task**
+```
+Delegation Task: Review code for OWASP compliance
+
+Agent (security-expert) loads:
+1. moai-security-owasp (OWASP top 10)
+2. moai-domain-security (security patterns)
+3. moai-security-auth (authentication patterns)
+4. moai-security-encryption (encryption standards)
+
+Executes comprehensive security review.
+```
+
+### Skill Loading Best Practices
+
+1. **Load Selectively**: Load only skills needed for the task
+2. **Combine Strategically**: Use complementary skills together
+3. **Leverage Foundation**: Foundation skills (moai-foundation-*) provide core patterns
+4. **Document Loading**: Include loaded skills in execution results
+5. **Chain Skills**: Use multiple skills for comprehensive coverage
+
+### Prohibited Patterns
+
+❌ **Don't**:
+- Load all available skills (inefficient)
+- Load unrelated skills (confusing, ineffective)
+- Ignore skill availability in `.claude/skills/`
+- Load skills without understanding their purpose
+
+✅ **Do**:
+- Load skills matching task requirements
+- Combine complementary skills
+- Verify skills exist before loading
+- Document skill loading strategy in results
+
+### Agent-Skill Mapping Reference
+
+See `.moai/memory/agents.md` for complete agent-skill mappings.
+Each agent has a pre-defined set of primary skills it can load.
+
+See `.moai/reports/agents-complete-analysis.md` for detailed analysis of all 31 agents and their recommended skill assignments.
+
+---
+
 This comprehensive set of execution rules ensures that MoAI-ADK operates securely, efficiently, and in compliance with industry standards while maintaining high quality output.

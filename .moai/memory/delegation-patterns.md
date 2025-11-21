@@ -526,4 +526,262 @@ async def cached_delegation(cache_key, agent_type, prompt, context=None):
     return result
 ```
 
+---
+
+## Skill-Enhanced Delegation Patterns
+
+### Pattern 1: Basic Agent Delegation with Skill Loading
+
+**Scenario**: Delegate a task to an agent that will load relevant skills
+
+**Pattern**:
+```python
+Task(
+  subagent_type="backend-expert",
+  description="Implement user authentication API",
+  prompt="""
+  Implement a secure user authentication REST API endpoint.
+
+  Load relevant skills:
+  - moai-domain-backend: Backend architecture patterns
+  - moai-security-auth: Authentication best practices
+  - moai-security-api: API security patterns
+  - moai-lang-python: FastAPI implementation
+
+  Requirements:
+  - JWT token generation
+  - Password hashing with bcrypt
+  - OWASP compliance
+  - 85%+ test coverage
+  """
+)
+```
+
+**When to Use**: Standard agent delegation with multiple skill requirements
+
+---
+
+### Pattern 2: Multi-Domain Task with Cross-Domain Skills
+
+**Scenario**: Task requires skills from multiple domains
+
+**Pattern**:
+```python
+Task(
+  subagent_type="backend-expert",
+  description="Implement secure backend with performance optimization",
+  prompt="""
+  Implement backend system with security and performance requirements.
+
+  Load domain skills:
+  - moai-domain-backend: Core backend patterns
+  - moai-security-api: API security patterns
+  - moai-essentials-perf: Performance optimization
+  - moai-domain-database: Database patterns
+  - moai-lang-python: Python implementation
+
+  Cross-domain combination for comprehensive solution.
+  Target: <100ms p95 latency, OWASP compliant, 90%+ test coverage
+  """
+)
+```
+
+**When to Use**: Complex tasks spanning multiple technical domains
+
+---
+
+### Pattern 3: Quality-First Implementation with TRUST 5
+
+**Scenario**: Task requires TRUST 5 quality gate compliance
+
+**Pattern**:
+```python
+Task(
+  subagent_type="tdd-implementer",
+  description="Implement feature with TRUST 5 compliance",
+  prompt="""
+  Implement feature using RED-GREEN-REFACTOR TDD cycle.
+
+  Load TRUST 5 skills:
+  - moai-foundation-trust: TRUST 5 principles framework
+  - moai-essentials-review: Code quality review patterns
+  - moai-core-code-reviewer: Review orchestration
+  - moai-domain-testing: Testing strategies
+  - moai-core-dev-guide: TDD workflow patterns
+
+  Ensure all 5 TRUST principles are satisfied:
+  1. Test-first (test coverage 85%+)
+  2. Readable (clear code, good naming)
+  3. Unified (consistent patterns)
+  4. Secured (OWASP compliance)
+  5. Trackable (git history, test tracking)
+  """
+)
+```
+
+**When to Use**: High-quality implementations requiring TRUST 5 validation
+
+---
+
+### Pattern 4: Design & Implementation Chain with Skill Progression
+
+**Scenario**: Design phase followed by implementation phase with different skills
+
+**Pattern**:
+```python
+# Phase 1: Design with api-designer
+design = await Task(
+  subagent_type="api-designer",
+  description="Design REST API architecture",
+  prompt="""
+  Design secure REST API with OpenAPI specification.
+
+  Load design skills:
+  - moai-domain-web-api: REST API design patterns
+  - moai-security-api: Security patterns
+  - moai-foundation-ears: Requirements analysis
+
+  Generate OpenAPI 3.0 specification with all endpoints and security schemes.
+  """
+)
+
+# Phase 2: Implementation with backend-expert (using design output)
+implementation = await Task(
+  subagent_type="backend-expert",
+  description="Implement REST API from design",
+  prompt=f"""
+  Implement REST API based on the following design:
+  {design.openapi_spec}
+
+  Load implementation skills:
+  - moai-domain-backend: Backend implementation patterns
+  - moai-security-auth: Authentication implementation
+  - moai-essentials-perf: Performance optimization
+  - moai-domain-testing: Testing strategies
+  - moai-lang-python: FastAPI implementation
+
+  Follow design specification exactly, implement all endpoints with security.
+  """
+)
+```
+
+**When to Use**: Large features requiring design then implementation phases
+
+---
+
+### Pattern 5: Security-Enhanced Development with Parallel Validation
+
+**Scenario**: Implementation with concurrent security validation
+
+**Pattern**:
+```python
+# Main implementation
+implementation = await Task(
+  subagent_type="backend-expert",
+  description="Implement backend service",
+  prompt="""
+  Implement authentication backend service.
+
+  Load skills:
+  - moai-domain-backend
+  - moai-security-api
+  - moai-lang-python
+  """
+)
+
+# Parallel: Security validation
+security_review = await Task(
+  subagent_type="security-expert",
+  description="Validate implementation for security",
+  prompt=f"""
+  Review implementation for security compliance:
+  {implementation.code}
+
+  Load security skills:
+  - moai-domain-security: Security patterns validation
+  - moai-security-owasp: OWASP top 10 compliance
+  - moai-security-auth: Authentication security
+  - moai-security-encryption: Encryption standards
+
+  Generate security report with risk ratings and remediation priorities.
+  """
+)
+```
+
+**When to Use**: High-security requirements or production deployments
+
+---
+
+## Agent Skill Loading Considerations
+
+### Token Efficiency
+
+**Challenge**: Loading skills adds context cost
+**Solution**:
+- Load only skills needed for specific task
+- Combine multiple related skills efficiently
+- Agent execution token budget: 180K max for implementation
+
+### Skill Combination Guidelines
+
+**Recommended Order for Loading Multiple Skills**:
+1. **Foundation skill** (moai-foundation-[domain]) - Core principles
+2. **Domain skill** (moai-domain-[domain]) - Domain expertise
+3. **Enhancement skills** (moai-essentials-*) - Quality, performance, debugging
+4. **Language/Tech skills** (moai-lang-*, moai-[tool]-*) - Implementation
+5. **Context7 references** (if needed for latest documentation)
+
+**Example**:
+```python
+# Optimal skill loading order
+prompt = """
+Implement authentication system.
+
+Load skills in order:
+1. moai-foundation-trust (TRUST principles)
+2. moai-domain-backend (backend architecture)
+3. moai-essentials-review (code quality)
+4. moai-security-auth (authentication patterns)
+5. moai-lang-python (Python implementation)
+
+Context7: /tiangolo/fastapi (latest FastAPI documentation)
+"""
+```
+
+### Multi-Skill Loading Pattern
+
+```python
+# Complete skill stack for backend implementation
+Task(
+  subagent_type="backend-expert",
+  prompt="""
+  Implement authentication API with complete skill coverage.
+
+  Foundation Layer:
+  - moai-foundation-trust (quality principles)
+  - moai-foundation-specs (SPEC traceability)
+
+  Domain Layer:
+  - moai-domain-backend (backend patterns)
+  - moai-domain-database (database integration)
+
+  Security Layer:
+  - moai-security-api (API security)
+  - moai-security-auth (authentication)
+
+  Implementation Layer:
+  - moai-lang-python (Python/FastAPI)
+  - moai-essentials-perf (performance optimization)
+
+  Quality Layer:
+  - moai-essentials-review (code review)
+  - moai-domain-testing (testing strategies)
+
+  Comprehensive implementation with full skill coverage.
+  """
+)
+```
+
+---
+
 These patterns ensure efficient, reliable, and maintainable agent delegation throughout the MoAI-ADK system.

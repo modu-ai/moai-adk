@@ -1,15 +1,32 @@
 # MoAI-ADK Agents Reference
 
+**Version**: 2.0 (Updated 2025-11-22)
+**Total Agents**: 31 with complete skill mappings
+**Complete Analysis**: See `.moai/reports/agents-complete-analysis.md` for detailed agent-skill assignments
+
 ## Overview
 
-This document defines 35 specialized MoAI-ADK agents available for delegation. Each agent has specific capabilities and optimal use cases.
+This document defines 31 specialized MoAI-ADK agents available for delegation. Each agent has specific capabilities, optimal use cases, and complete skill assignments.
+
+**What's New in v2.0**:
+- ✅ Complete agent-skill mappings (287 skill assignments, up from 157)
+- ✅ Average 9.3 skills per agent (up from 5.1)
+- ✅ All critical gaps resolved (10 critical issues fixed)
+- ✅ Skill loading patterns and delegation examples
+- ✅ Agent capabilities enhanced with skill integration
+
+**For Complete Details**:
+- **Agent-Skill Analysis**: `.moai/reports/agents-complete-analysis.md` (31 agents, 2299 lines)
+- **Skill-Agent Matrix**: `.moai/reports/skill-agent-mapping-matrix.md` (138 skills, 936 lines)
+- **Update Summary**: `.moai/memory/UPDATE-SUMMARY.md` (comprehensive update documentation)
 
 ## Core Principles
 
 1. **Delegation Priority**: Always delegate to specialized agents first
-2. **Context Transfer**: Pass relevant results between agents using context parameter
-3. **Specialization**: Each agent handles specific domain tasks
-4. **Quality Gates**: All agents follow TRUST 5 principles
+2. **Skill-Enhanced Execution**: Agents dynamically load skills from `.claude/skills/` to fulfill tasks
+3. **Context Transfer**: Pass relevant results between agents using context parameter
+4. **Specialization**: Each agent handles specific domain tasks with complete skill coverage
+5. **Quality Gates**: All agents follow TRUST 5 principles
 
 ## Agent Categories
 
@@ -229,9 +246,41 @@ Error: "Implementation failed"
 
 1. **Always provide context**: Pass relevant information between agents
 2. **Use appropriate agents**: Match task complexity to agent specialization
-3. **Validate results**: Use quality-gate for critical implementations
-4. **Handle errors gracefully**: Use debug-helper for troubleshooting
-5. **Document outcomes**: Use docs-manager for knowledge capture
+3. **Specify skills to load**: Mention which skills agent should use in delegation prompt
+4. **Validate results**: Use quality-gate for critical implementations
+5. **Handle errors gracefully**: Use debug-helper for troubleshooting
+6. **Document outcomes**: Use docs-manager for knowledge capture
+
+### Skill Loading Best Practices
+
+**When delegating to agents**:
+1. **Specify Required Skills**: List skills agent should load in the prompt
+2. **Load Selectively**: Only load skills needed for the specific task
+3. **Combine Strategically**: Use complementary skills together
+4. **Document Loading**: Agent should report which skills were used
+
+**Example Delegation with Skills**:
+```python
+Task(
+  subagent_type="backend-expert",
+  description="Implement authentication API",
+  prompt="""
+  Implement secure authentication REST API.
+
+  Load skills:
+  - moai-domain-backend (backend architecture)
+  - moai-security-api (API security patterns)
+  - moai-security-auth (authentication patterns)
+  - moai-lang-python (FastAPI implementation)
+
+  Requirements:
+  - JWT token generation
+  - Password hashing with bcrypt
+  - OWASP compliance
+  - 85%+ test coverage
+  """
+)
+```
 
 ## Agent Selection Matrix
 
