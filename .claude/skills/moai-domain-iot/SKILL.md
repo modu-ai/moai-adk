@@ -337,4 +337,28 @@ class OTAManager:
 
 ---
 
-**Version**: 2.0.0 | **Last Updated**: 2025-11-21 | **Lines**: 245
+## Context7 Integration
+
+### Related Libraries & Tools
+- [paho-mqtt](/eclipse/paho.mqtt.python): Python MQTT client library
+- [aiocoap](/chrysn/aiocoap): Python CoAP implementation
+- [AWS IoT](/aws/aws-iot-device-sdk-python): AWS IoT SDK
+- [TensorFlow Lite](/tensorflow/tflite): ML inference on edge devices
+- [Docker](/docker/docker): Container runtime for edge computing
+
+### Official Documentation
+- [MQTT Specification](https://mqtt.org/mqtt-specification)
+- [CoAP RFC 7252](https://datatracker.ietf.org/doc/html/rfc7252)
+- [AWS IoT Core Documentation](https://docs.aws.amazon.com/iot/)
+- [Azure IoT Hub Guide](https://learn.microsoft.com/en-us/azure/iot-hub/)
+
+### Version-Specific Guides
+Latest stable versions (2025-11-22):
+- MQTT: 5.0 (OASIS standard)
+- CoAP: RFC 8323 (over TCP/TLS)
+- Python Paho: 1.6.1
+- AWS IoT SDK: 1.13.x
+
+---
+
+**Version**: 2.0.0 | **Last Updated**: 2025-11-22 | **Lines**: 340
