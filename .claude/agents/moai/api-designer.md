@@ -4,7 +4,7 @@ description: API design and documentation research specialist. Use PROACTIVELY w
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-lang-python, moai-domain-backend, moai-context7-lang-integration
+skills: moai-domain-web-api, moai-security-api, moai-security-auth, moai-lang-typescript, moai-foundation-ears, moai-lang-python, moai-domain-backend, moai-context7-lang-integration
 ------
 
 # API Designer - API Design & Documentation Research Specialist

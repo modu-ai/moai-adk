@@ -4,7 +4,7 @@ description: Use PROACTIVELY when: Backend architecture, API design, server impl
 tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-lang-python, moai-lang-go, moai-domain-backend, moai-domain-database, moai-domain-api, moai-context7-lang-integration
+skills: moai-security-api, moai-security-auth, moai-essentials-perf, moai-lang-python, moai-lang-go, moai-domain-backend, moai-domain-database, moai-domain-api, moai-context7-lang-integration
 ------
 
 # Backend Expert - Backend Architecture Specialist

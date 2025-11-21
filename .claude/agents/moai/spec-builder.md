@@ -4,7 +4,7 @@ description: Use when: When you need to create an EARS-style SPEC document. Call
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: dontAsk
-skills: moai-foundation-ears, moai-foundation-specs, moai-core-spec-authoring, moai-lang-python
+skills: moai-core-ask-user-questions, moai-spec-intelligent-workflow, moai-mermaid-diagram-expert, moai-foundation-ears, moai-foundation-specs, moai-core-spec-authoring, moai-lang-python
 ------
 
 # Agent Orchestration Metadata (v1.0)
