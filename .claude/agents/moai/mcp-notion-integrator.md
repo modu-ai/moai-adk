@@ -4,7 +4,7 @@ description: Use PROACTIVELY for comprehensive Notion workspace management, data
 tools: Task, AskUserQuestion, TodoWrite, Read, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 permissionMode: default
-skills: moai-domain-notion
+skills: moai-domain-notion, moai-mcp-integration, moai-docs-generation, moai-document-processing
 ------
 
 # MCP Notion Integrator Agent

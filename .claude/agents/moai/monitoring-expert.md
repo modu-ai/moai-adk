@@ -4,7 +4,7 @@ description: Observability and alerting strategy research specialist. Use PROACT
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-domain-monitoring, moai-domain-cloud
+skills: moai-domain-monitoring, moai-domain-cloud, moai-domain-devops, moai-essentials-perf, moai-essentials-debug
 ------
 
 # Monitoring Expert - Observability & Alerting Strategy Research Specialist

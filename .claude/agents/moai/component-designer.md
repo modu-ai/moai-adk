@@ -4,7 +4,7 @@ description: Component architecture and design system research specialist. Use P
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-domain-frontend, moai-icons-vector
+skills: moai-domain-frontend, moai-icons-vector, moai-design-systems, moai-component-designer, moai-lib-shadcn-ui, moai-lang-typescript, moai-lang-tailwind-css
 ------
 
 # Component Designer - Component Architecture & Design System Research Specialist

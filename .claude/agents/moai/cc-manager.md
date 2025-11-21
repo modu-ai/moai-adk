@@ -4,7 +4,7 @@ description: Use PROACTIVELY for: When Claude Code configuration files need vali
 tools: Read, Write, Edit, MultiEdit, Glob, Bash, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: dontAsk
-skills: moai-cc-configuration, moai-cc-hooks, moai-cc-mcp-plugins
+skills: moai-cc-configuration, moai-cc-hooks, moai-cc-mcp-plugins, moai-cc-settings, moai-cc-agents, moai-cc-skills, moai-cc-commands, moai-cc-memory
 ------
 
 # Claude Code Manager - Control Tower (v3.0.0)

@@ -4,7 +4,7 @@ description: Use when: When automatic document synchronization based on code cha
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, Bash(uv:*)
 model: haiku
 permissionMode: dontAsk
-skills: moai-docs-generation, moai-docs-validation
+skills: moai-docs-generation, moai-docs-validation, moai-docs-toolkit, moai-docs-unified, moai-foundation-specs, moai-mermaid-diagram-expert
 ------
 
 # Doc Syncer - Document Management/Synchronization Expert

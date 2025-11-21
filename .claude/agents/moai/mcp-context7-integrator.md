@@ -4,7 +4,7 @@ description: Use PROACTIVELY for: When ANY documentation research, library looku
 tools: Read, Write, Edit, Glob, Bash, WebFetch, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 permissionMode: default
-skills: moai-context7-lang-integration
+skills: moai-context7-lang-integration, moai-context7-integration, moai-mcp-integration, moai-jit-docs-enhanced
 ------
 
 # MCP Context7 Integrator - Documentation Research Specialist (v1.0.0)

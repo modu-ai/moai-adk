@@ -4,7 +4,7 @@ description: Performance optimization and monitoring research specialist. Use PR
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-essentials-perf, moai-domain-monitoring, moai-domain-cloud
+skills: moai-essentials-perf, moai-domain-monitoring, moai-domain-cloud, moai-essentials-debug, moai-domain-backend, moai-domain-frontend, moai-domain-database
 ------
 
 # Performance Engineer - Performance Optimization & Monitoring Research Specialist

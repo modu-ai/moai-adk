@@ -4,7 +4,7 @@ description: Use PROACTIVELY for when documentation needs to be generated, updat
 tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 permissionMode: dontAsk
-skills: moai-docs-generation, moai-docs-validation, moai-cc-claude-md, moai-mermaid-diagram-expert
+skills: moai-docs-generation, moai-docs-validation, moai-cc-claude-md, moai-mermaid-diagram-expert, moai-docs-toolkit, moai-docs-unified, moai-project-documentation
 ------
 
 # Documentation Manager Expert
