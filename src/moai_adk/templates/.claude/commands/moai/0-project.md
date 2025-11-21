@@ -7,6 +7,22 @@ allowed-tools:
   - AskUserQuestion
 ---
 
+## 📋 Pre-execution Context
+
+!git status --porcelain
+!git config --get user.name
+!git config --get user.email
+!git branch --show-current
+
+## 📁 Essential Files
+
+@.moai/config/config.json
+@.moai/project/product.md
+@.moai/project/structure.md
+@.moai/project/tech.md
+
+---
+
 # ⚒️ MoAI-ADK Step 0: Initialize/Update Project (Project Setup)
 
 > **Interactive Prompts**: Use `AskUserQuestion` tool for TUI-based user interaction.

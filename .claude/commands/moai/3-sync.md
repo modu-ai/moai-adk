@@ -8,6 +8,23 @@ allowed-tools:
 model: "haiku"
 ---
 
+## 📋 Pre-execution Context
+
+!git status --porcelain
+!git diff --name-only HEAD
+!git branch --show-current
+!git log --oneline -10
+!find .moai/specs -name "spec.md" -type f 2>/dev/null
+
+## 📁 Essential Files
+
+@.moai/config/config.json
+@.moai/specs/
+@.moai/indexes/tags.db
+@README.md
+
+---
+
 # 📚 MoAI-ADK Step 3: Document Synchronization (+Optional PR Ready)
 
 > **Batched Design**: All AskUserQuestion calls follow batched design principles (1-4 questions per call) to minimize user interaction turns. See CLAUDE.md section "Alfred Command Completion Pattern" for details.

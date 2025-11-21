@@ -8,6 +8,24 @@ allowed-tools:
   - Write
   - Edit
   - AskUserQuestion
+model: "haiku"
+---
+
+## 📋 Pre-execution Context
+
+!git status --porcelain
+!git branch --show-current
+!git tag --list
+!git log --oneline -5
+!git remote -v
+
+## 📁 Essential Files
+
+@pyproject.toml
+@src/moai_adk/__init__.py
+@.moai/config/config.json
+@CHANGELOG.md
+
 ---
 
 # 🚀 MoAI-ADK 인터랙티브 릴리즈 관리

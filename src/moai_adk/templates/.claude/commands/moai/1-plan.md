@@ -10,6 +10,25 @@ skills:
   - moai-core-issue-labels
 ---
 
+## 📋 Pre-execution Context
+
+!git status --porcelain
+!git branch --show-current
+!git log --oneline -10
+!git diff --name-only HEAD
+!find .moai/specs -name "*.md" -type f 2>/dev/null
+
+## 📁 Essential Files
+
+@.moai/config/config.json
+@.moai/project/product.md
+@.moai/project/structure.md
+@.moai/project/tech.md
+@.moai/specs/
+@CLAUDE.md
+
+---
+
 # 🏗️ MoAI-ADK Step 1: Establish a plan (Plan) - Always make a plan first and then proceed.
 
 > **Batched Design**: All AskUserQuestion calls follow batched design principles (1-4 questions per call) to minimize user interaction turns. See CLAUDE.md section "Alfred Command Completion Pattern" for details.

@@ -4,7 +4,20 @@ description: "Execute TDD implementation cycle"
 argument-hint: 'SPEC-ID - All with SPEC ID to implement (e.g. SPEC-001) or all "SPEC Implementation"'
 allowed-tools:
   - Task
-  - AskUserQuestion
+---
+
+## 📋 Pre-execution Context
+
+!git status --porcelain
+!git branch --show-current
+!git log --oneline -5
+!git diff --name-only HEAD
+
+## 📁 Essential Files
+
+@.moai/config/config.json
+@.moai/specs/
+
 ---
 
 # ⚒️ MoAI-ADK Step 2: Execute Implementation (Run) - TDD Implementation
